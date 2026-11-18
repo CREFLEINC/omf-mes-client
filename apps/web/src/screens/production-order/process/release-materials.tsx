@@ -157,7 +157,7 @@ export const ReleaseMaterials = ({
                   '환산 기준',
                   '확인',
                 ]}
-                widths={[150, 210, 110, 135, 260, 110]}
+                widths={[135, 195, 110, 135, 260, 140]}
               >
                 <tbody>
                   {rows.map(({ row, choice, rate, set }) => (
@@ -199,9 +199,10 @@ export const ReleaseMaterials = ({
                                     aria-label={`${target.workOrderNo} ${row.itemCode} 환산 비율`}
                                     value={choice.rate ?? String(row.conversionRate ?? '')}
                                     disabled={disabled}
-                                    error={
+                                    aria-invalid={choice.rate !== null && rate === null}
+                                    aria-describedby={
                                       choice.rate !== null && rate === null
-                                        ? '0보다 큰 비율을 입력하세요. 소수 8자리까지 반올림합니다.'
+                                        ? `material-rate-${target.workOrderId}-${row.bomComponentId}`
                                         : undefined
                                     }
                                     onChange={(event) =>
@@ -218,7 +219,16 @@ export const ReleaseMaterials = ({
                               )}
                               <span>{row.bomUomCode}</span>
                             </div>
-                            {choice.rate !== null && (
+                            {choice.rate !== null && rate === null && (
+                              <span
+                                id={`material-rate-${target.workOrderId}-${row.bomComponentId}`}
+                                className="field-error release-material-error"
+                                role="alert"
+                              >
+                                0보다 큰 비율을 입력하세요.
+                              </span>
+                            )}
+                            {choice.rate !== null && rate !== null && (
                               <span className="field-note">
                                 입력값은 배포 시 품목 환산으로 저장됩니다.
                               </span>
@@ -239,16 +249,17 @@ export const ReleaseMaterials = ({
                       </td>
                       <td>
                         {row.confirmationRequired ? (
-                          <label>
-                            <input
-                              type="checkbox"
-                              aria-label={`${target.workOrderNo} ${row.itemCode} 환산 확인`}
-                              disabled={disabled || rate === null}
-                              checked={choice.checked}
-                              onChange={(event) => set({ checked: event.target.checked })}
-                            />{' '}
-                            환산 확인
-                          </label>
+                          <Button
+                            size="sm"
+                            variant="outlined"
+                            className="release-material-confirm"
+                            aria-label={`${target.workOrderNo} ${row.itemCode} 환산 확인`}
+                            aria-pressed={choice.checked}
+                            disabled={disabled || rate === null}
+                            onClick={() => set({ checked: !choice.checked })}
+                          >
+                            {choice.checked ? '확인 완료' : '환산 확인'}
+                          </Button>
                         ) : (
                           '—'
                         )}

@@ -14,3 +14,20 @@
   width: 112px;
   min-width: 0;
 }
+
+.release-material-error {
+  display: block;
+  margin-top: var(--space-1);
+  white-space: normal;
+}
+.release-material-rate input[aria-invalid='true'] {
+  border-color: var(--error);
+}
+.release-material-confirm {
+  white-space: nowrap;
+}
+.release-material-confirm[aria-pressed='true'] {
+  background: var(--secondary-container);
+  color: var(--on-secondary-container);
+  border-color: var(--secondary);
+}
