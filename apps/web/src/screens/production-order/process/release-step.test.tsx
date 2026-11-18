@@ -185,7 +185,7 @@ describe('배포 확인 단계 — 생산 창고 공장', () => {
       ]),
     });
 
-    expect(screen.getAllByText(pw.decidedAtRelease)).toHaveLength(2);
+    expect(screen.getAllByText(pw.decidedAtRelease)).toHaveLength(3);
     expect(screen.getByText(pw.materialsUndetermined)).toBeInTheDocument();
   });
 });

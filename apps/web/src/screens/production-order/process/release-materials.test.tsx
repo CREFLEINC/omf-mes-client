@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -37,6 +38,41 @@ const Harness = () => {
   );
 };
 describe('자재 환산 확인', () => {
+  it('선택한 자재만 표시하되 다른 작업지시 입력과 전체 검증은 보존한다', async () => {
+    const user = userEvent.setup();
+    const Selected = () => {
+      const [id, setId] = useState(1);
+      const review = useReleaseMaterials(
+        [
+          { workOrderId: 1, workOrderNo: 'SYN-WO-1' },
+          { workOrderId: 2, workOrderNo: 'SYN-WO-2' },
+        ],
+        true,
+      );
+      return (
+        <>
+          <button onClick={() => setId(id === 1 ? 2 : 1)}>다른 작업지시</button>
+          <ReleaseMaterials review={review} workOrderId={id} />
+          <button disabled={!review.ready}>전체 배포</button>
+        </>
+      );
+    };
+    renderWithProviders(<Selected />, {
+      fetch: async () =>
+        jsonResponse({
+          items: [{ ...row, conversionSource: 'NONE', conversionRate: null, stockQty: null }],
+        }),
+    });
+    const input = await screen.findByRole('textbox', { name: /환산 비율/ });
+    await user.type(input, '2');
+    expect(screen.getByRole('button', { name: '전체 배포' })).toBeDisabled();
+    expect(screen.queryByRole('region', { name: 'SYN-WO-2 자재 소요' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: '다른 작업지시' }));
+    await user.type(await screen.findByRole('textbox', { name: /환산 비율/ }), '3');
+    expect(screen.getByRole('button', { name: '전체 배포' })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: '다른 작업지시' }));
+    expect(screen.getByRole('textbox', { name: /환산 비율/ })).toHaveValue('2');
+  });
   it('재고 단위 자릿수로 정확히 올리고 입력 비율을 8자리 반올림한다', () => {
     expect(stockQuantity(367, 1000, 3)).toBe('0.367');
     expect(stockQuantity(0.4, 1000, 3)).toBe('0.001');

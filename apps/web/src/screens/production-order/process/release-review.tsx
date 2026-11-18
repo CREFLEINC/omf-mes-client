@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { RevisionDetailButton } from './revision-detail';
 import { AlertBanner, SkeletonText } from '@crefle/web-ui';
 import { useQueries } from '@tanstack/react-query';
@@ -14,6 +14,40 @@ import { AdjustableNativeTable } from './adjustable-table';
 import type { ReleaseLine } from './release-step';
 import { formatQty } from './process-model';
 import './release-review.css';
+
+export const ReleaseInformationTable = ({
+  rows,
+  label,
+  paired = false,
+}: {
+  rows: readonly (readonly ReactNode[])[];
+  label: string;
+  paired?: boolean;
+}) => {
+  const count = paired ? 2 : 1;
+  const groups = Array.from({ length: Math.ceil(rows.length / count) }, (_, at) =>
+    rows.slice(at * count, (at + 1) * count),
+  );
+  return (
+    <table
+      className={`erp-release-information-table${paired ? ' is-paired' : ''}`}
+      aria-label={label}
+    >
+      <tbody>
+        {groups.map((group, at) => (
+          <tr key={at}>
+            {group.map(([name, value]) => (
+              <Fragment key={String(name)}>
+                <th scope="row">{name}</th>
+                <td>{value}</td>
+              </Fragment>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+};
 
 export interface ReleaseReviewPlan extends ProductionPlanFact {
   revisionContent?: { bom?: ReactNode; routing?: ReactNode };
@@ -131,16 +165,7 @@ export const AssignmentFacts = ({
     ],
     ['스크랩 위치', locationName(fact.defaultScrapLocationId)],
   ];
-  return (
-    <dl className="erp-wo-final-facts">
-      {values.map(([label, value]) => (
-        <div key={label}>
-          <dt>{label}</dt>
-          <dd>{value}</dd>
-        </div>
-      ))}
-    </dl>
-  );
+  return <ReleaseInformationTable rows={values} label="4M 배정 정보" />;
 };
 const ReviewPlan = ({
   plan,
@@ -172,47 +197,49 @@ const ReviewPlan = ({
       {view !== 'assign' && (
         <section aria-label="생산계획 정보">
           <h4>생산계획</h4>
-          <dl className="erp-wo-final-facts">
-            {[
-              ['계획일', plan.planDate],
-              ['생산량', `${formatQty(plan.plannedQty)} ${uomLabelOf(plan.uomId)}`],
-              [
-                '생산 라인',
-                lineNameOf?.(plan.plannedLineId) ??
-                  (plan.plannedLineId === null ? '미지정' : `ID ${plan.plannedLineId}`),
-              ],
-              ['BOM', plan.bomLabel],
-              ['Routing', plan.routingLabel],
-            ].map(([label, value]) => (
-              <div key={label}>
-                <dt>{label}</dt>
-                <dd
-                  className={
-                    label === 'BOM' || label === 'Routing' ? 'erp-wo-final-revision' : undefined
-                  }
-                >
-                  {value}
-                  {label === 'BOM' && (
-                    <RevisionDetailButton
-                      iconOnly
-                      kind="BOM"
-                      value={String(plan.bomId)}
-                      content={plan.revisionContent?.bom}
-                    />
-                  )}{' '}
-                  {label === 'Routing' && (
-                    <RevisionDetailButton
-                      iconOnly
-                      kind="Routing"
-                      content={plan.revisionContent?.routing}
-                      value={String(plan.routingId)}
-                      label={plan.routingLabel}
-                    />
-                  )}
-                </dd>
-              </div>
-            ))}
-          </dl>
+          <table className="erp-release-information-table" aria-label="생산계획 정보">
+            <tbody>
+              {[
+                ['계획일', plan.planDate],
+                ['생산량', `${formatQty(plan.plannedQty)} ${uomLabelOf(plan.uomId)}`],
+                [
+                  '생산 라인',
+                  lineNameOf?.(plan.plannedLineId) ??
+                    (plan.plannedLineId === null ? '미지정' : `ID ${plan.plannedLineId}`),
+                ],
+                ['BOM', plan.bomLabel],
+                ['Routing', plan.routingLabel],
+              ].map(([label, value]) => (
+                <tr key={label}>
+                  <th scope="row">{label}</th>
+                  <td
+                    className={
+                      label === 'BOM' || label === 'Routing' ? 'erp-wo-final-revision' : undefined
+                    }
+                  >
+                    {value}
+                    {label === 'BOM' && (
+                      <RevisionDetailButton
+                        iconOnly
+                        kind="BOM"
+                        value={String(plan.bomId)}
+                        content={plan.revisionContent?.bom}
+                      />
+                    )}{' '}
+                    {label === 'Routing' && (
+                      <RevisionDetailButton
+                        iconOnly
+                        kind="Routing"
+                        content={plan.revisionContent?.routing}
+                        value={String(plan.routingId)}
+                        label={plan.routingLabel}
+                      />
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </section>
       )}
       <section aria-label="공정별 작업지시">
@@ -287,9 +314,13 @@ const ReviewPlan = ({
             );
             return (
               <section className="erp-wo-final-operation" key={line.workOrder.workOrderId}>
-                <h5>
-                  {line.workOrder.workOrderNo} / {line.workOrder.operationName}
-                </h5>
+                <ReleaseInformationTable
+                  label="작업지시 정보"
+                  rows={[
+                    ['작업지시 번호', line.workOrder.workOrderNo],
+                    ['공정', line.workOrder.operationName],
+                  ]}
+                />
                 {!fact ? (
                   result?.isError ? (
                     <AlertBanner variant="error" title="작업지시 배정 정보를 조회하지 못했습니다" />
