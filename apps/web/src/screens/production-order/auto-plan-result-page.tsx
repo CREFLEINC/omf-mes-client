@@ -1,7 +1,8 @@
 import { AlertBanner, Button, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { useMemo } from 'react';
 import { createProposalReadClient, type PlanProposal } from '@omf-mes/api-client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { createProposalSession } from './proposal-review/proposal-api';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useSession } from '../../patterns/session';
 import { useApiClient } from '../../patterns/api-context';
@@ -21,6 +22,7 @@ export const AutoPlanResultPage = ({
   permissionMenuPath?: string | null;
 }) => {
   const bulk = useWorklistBulk();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [search] = useSearchParams();
   const { session } = useSession();
@@ -78,6 +80,10 @@ export const AutoPlanResultPage = ({
       return { rows: proposals.map((row) => toLiveProposal(row, catalog)), catalog, warnings };
     },
   });
+  const transport = useMemo(
+    () => (query.data?.catalog ? createProposalSession(reader, query.data.catalog) : null),
+    [reader, query.data?.catalog],
+  );
   if (!allowed) return <ForbiddenNotice menuPath={permissionMenuPath} />;
   const back = () => void navigate(worklistPath());
   if (query.isPending)
@@ -121,7 +127,24 @@ export const AutoPlanResultPage = ({
           resourceSource={(row, operation, field) =>
             liveResourceSource(api.client, data.catalog!, row, field, operation)
           }
-          unavailableReason="실제 ERP W/O의 제안과 기준정보를 조회한 화면입니다. 보완값은 이 화면에만 유지됩니다. 선택 확정·보완값 서버 재검증은 계약 통합 후 연결합니다."
+          onRevalidate={transport?.revalidate}
+          onChooseDrafts={transport?.chooseDrafts}
+          onReload={transport?.reload}
+          errorText={transport?.error}
+          onConfirmRow={
+            transport
+              ? async (row) => {
+                  const result = await transport.confirm(row);
+                  await queryClient.invalidateQueries({
+                    predicate: (query) =>
+                      ['production-orders', 'production-plans', 'work-orders'].includes(
+                        String(query.queryKey[0]),
+                      ),
+                  });
+                  return result;
+                }
+              : undefined
+          }
         />
       ) : (
         <EmptyState

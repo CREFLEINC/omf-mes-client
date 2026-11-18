@@ -1,3 +1,4 @@
+import { ProposalAuditHistory } from './audit-history';
 import { ProposalPlanningWorkspace } from './planning-workspace';
 import { Link } from 'react-router';
 import { messages } from '@omf-mes/i18n';
@@ -94,6 +95,11 @@ export interface ProposalReviewProps {
   ) => ReferenceSource | null;
   onClose: () => void;
   onConfirm?: (rows: ReviewProposal[]) => Promise<void>;
+  onConfirmRow?: (row: ReviewProposal) => Promise<ReviewProposal>;
+  onRevalidate?: (row: ReviewProposal) => Promise<ReviewProposal>;
+  onChooseDrafts?: (row: ReviewProposal, action: 'CONTINUE' | 'REPLACE') => Promise<ReviewProposal>;
+  onReload?: (row: ReviewProposal) => Promise<ReviewProposal>;
+  errorText?: (error: unknown) => string;
   preview?: boolean;
   proposalTime?: string;
   unavailableReason?: string;
@@ -106,6 +112,11 @@ export const ProposalReview = ({
   resourceSource,
   onClose,
   onConfirm,
+  onConfirmRow,
+  onRevalidate,
+  onChooseDrafts,
+  onReload,
+  errorText = () => '요청 결과를 확인하지 못했습니다.',
   preview = false,
   proposalTime,
   unavailableReason,
@@ -124,7 +135,11 @@ export const ProposalReview = ({
   const [weekDate, setWeekDate] = useState(
     initialProposals.flatMap((row) => row.plans)[0]?.date ?? new Date().toISOString().slice(0, 10),
   );
-  const [dialog, setDialog] = useState<'close' | 'confirm' | null>(null);
+  const [dialog, setDialog] = useState<'close' | 'confirm' | 'reload' | null>(null);
+  const [progress, setProgress] = useState('');
+  const [draftChoice, setDraftChoice] = useState(false);
+  const [draftDialog, setDraftDialog] = useState(false);
+  const actionReasonId = useId();
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState('');
   const remainingId = useId();
@@ -143,6 +158,9 @@ export const ProposalReview = ({
           : applyReceiptStorage({
               ...row,
               changed: true,
+              validated: false,
+              serverErrors: [],
+              corrections: [],
               plans: row.plans.map((plan) =>
                 plan.key === planKey && plan.source !== '기존 확정 계획'
                   ? { ...update(plan), reviewFields: completionFields(row, plan) }
@@ -265,11 +283,36 @@ export const ProposalReview = ({
   const pageRows = rows.slice((page - 1) * size, page * size);
   const close = () => (dirty ? setDialog('close') : onClose());
   const confirm = async () => {
-    if (!ready || !onConfirm || pending) return;
+    if (!ready || (!onConfirm && !onConfirmRow) || pending) return;
     setPending(true);
     setFailure('');
     try {
-      await onConfirm(structuredClone(selectedRows));
+      if (onConfirmRow) {
+        let completed = 0;
+        for (const [index, row] of selectedRows.entries()) {
+          setProgress(`${index + 1} / ${selectedRows.length}건 처리 중`);
+          try {
+            const updated = await onConfirmRow(structuredClone(row));
+            setRows((current) => current.map((value) => (value.id === row.id ? updated : value)));
+            completed += 1;
+          } catch (error) {
+            setRows((current) =>
+              current.map((value) =>
+                value.id === row.id
+                  ? { ...value, validated: false, serverErrors: [errorText(error)] }
+                  : value,
+              ),
+            );
+          }
+        }
+        setProgress(
+          `${selectedRows.length}건 중 ${completed}건 확정 완료 / ${selectedRows.length - completed}건 확인 필요`,
+        );
+        setChecked([]);
+        setDialog(null);
+        return;
+      }
+      await onConfirm!(structuredClone(selectedRows));
       setRows((current) =>
         current.map((row) =>
           selectedRows.some((value) => value.id === row.id)
@@ -291,11 +334,31 @@ export const ProposalReview = ({
       setPending(false);
     }
   };
+  const updateSelected = async (operation: () => Promise<ReviewProposal>) => {
+    if (!selected || pending) return;
+    setPending(true);
+    setChecked((current) => current.filter((id) => id !== selected.id));
+    try {
+      const updated = await operation();
+      setRows((current) => current.map((row) => (row.id === updated.id ? updated : row)));
+      setFailure('');
+    } catch (error) {
+      setFailure(errorText(error));
+    } finally {
+      setPending(false);
+    }
+  };
   return (
     <div className="proposal-review-page">
       <PageHeader
         title="생산계획 자동 전개 제안"
-        actions={<Chip status="idle">검토 중 / 미반영</Chip>}
+        actions={
+          <Chip status={rows.some((row) => row.outcome) ? 'success' : 'idle'}>
+            {rows.some((row) => row.outcome)
+              ? `확정 완료 ${rows.filter((row) => row.outcome).length}건`
+              : '검토 중 / 미반영'}
+          </Chip>
+        }
         breadcrumb={
           <Breadcrumb
             aria-label={messages.common.shell.breadcrumb}
@@ -319,6 +382,7 @@ export const ProposalReview = ({
           </AlertBanner>
         )}
         {failure && <AlertBanner variant="error" title={failure} />}
+        {progress && <p role="status">{progress}</p>}
         <section aria-label="제안 검토 조건">
           <section className="proposal-counts" aria-label="제안 요약">
             {[
@@ -570,6 +634,103 @@ export const ProposalReview = ({
                     : `작업지시 ${selected.plans.reduce((sum, plan) => sum + plan.operations.length, 0)}건 생성 예정`}
                 </p>
               )}
+              {selected.serverKind === 'AUTO_WORK_ORDER' && (
+                <AlertBanner variant="info" title="자동 처리 ERP W/O">
+                  {selected.autoWorkOrder?.errorText ??
+                    (selected.autoWorkOrder?.lastAttemptedAt
+                      ? `최근 처리 ${selected.autoWorkOrder.lastAttemptedAt}`
+                      : '처리 이력 없음')}
+                  <Link to={`/production/production-orders/${encodeURIComponent(selected.number)}`}>
+                    작업계획 확인
+                  </Link>
+                </AlertBanner>
+              )}
+              {!!selected.existingDrafts?.length && !selected.outcome && (
+                <div className="proposal-review-toolbar">
+                  <Button
+                    variant="outlined"
+                    disabled={pending}
+                    aria-describedby={actionReasonId}
+                    onClick={() => setDraftDialog(true)}
+                  >
+                    작성중 계획 {selected.existingDrafts?.length ?? 0}건 확인
+                  </Button>
+                  <span>
+                    {selected.existingDraftAction === 'CONTINUE'
+                      ? '작성중 계획 이어서'
+                      : selected.existingDraftAction === 'REPLACE'
+                        ? '새 계획으로 대체'
+                        : '처리 방법 미선택'}
+                  </span>
+                </div>
+              )}
+              <span id={actionReasonId} className="sr-only">
+                {pending
+                  ? '요청 처리 중입니다.'
+                  : selected.basisChanges?.length
+                    ? '최신 제안으로 다시 검토하세요.'
+                    : selected.existingDrafts?.length && !selected.existingDraftAction
+                      ? '작성중 계획 처리 방법을 선택하세요.'
+                      : '제안을 재검증한 후 확정 대상을 선택하세요.'}
+              </span>
+              {selected.basisChanges?.length ? (
+                <AlertBanner variant="warning" title="검토 기준이 변경되었습니다">
+                  {selected.basisChanges.map((message) => (
+                    <p key={message}>{message}</p>
+                  ))}
+                </AlertBanner>
+              ) : null}
+              {selected.outcome ? (
+                <section aria-label="확정 결과">
+                  <h3>
+                    {selected.outcome === 'ALREADY_PROCESSED'
+                      ? '이미 확정된 ERP W/O입니다'
+                      : '확정 완료'}
+                  </h3>
+                  <Link to={`/production/production-orders/${encodeURIComponent(selected.number)}`}>
+                    작업계획에서 확정 결과 확인
+                  </Link>
+                  {selected.resultPlans?.map((plan) => (
+                    <p key={plan.productionPlanId}>
+                      {plan.planNo} / {plan.workOrders.map((op) => op.workOrderNo).join(', ')}
+                    </p>
+                  ))}
+                </section>
+              ) : (
+                selected.serverKind !== 'AUTO_WORK_ORDER' && (
+                  <div className="proposal-review-toolbar">
+                    {onRevalidate && (
+                      <Button
+                        disabled={
+                          pending ||
+                          (!!selected.existingDrafts?.length && !selected.existingDraftAction) ||
+                          !!selected.basisChanges?.length
+                        }
+                        aria-describedby={actionReasonId}
+                        onClick={() => void updateSelected(() => onRevalidate(selected))}
+                      >
+                        제안 재검증
+                      </Button>
+                    )}
+                    {onReload && (
+                      <Button
+                        variant="outlined"
+                        disabled={pending}
+                        onClick={() => setDialog('reload')}
+                      >
+                        최신 제안으로 다시 검토
+                      </Button>
+                    )}
+                  </div>
+                )
+              )}
+              {selected.corrections?.map((message) => (
+                <AlertBanner key={message} variant="info" title={message} />
+              ))}
+              {selected.serverWarnings?.map((message) => (
+                <AlertBanner key={message} variant="warning" title={message} />
+              ))}
+              {selected.live && <ProposalAuditHistory id={selected.id} number={selected.number} />}
               <dl className="proposal-facts">
                 {[
                   ['공장', selected.plant],
@@ -694,12 +855,23 @@ export const ProposalReview = ({
                     if (pending) return;
                     setRows((current) =>
                       current.map((row) =>
-                        row.id === selected.id ? { ...row, plans, changed: true } : row,
+                        row.id === selected.id
+                          ? {
+                              ...row,
+                              plans,
+                              changed: true,
+                              validated: false,
+                              serverErrors: [],
+                              corrections: [],
+                            }
+                          : row,
                       ),
                     );
                     setChecked((current) => current.filter((id) => id !== selected.id));
                   }}
-                  pending={pending}
+                  pending={
+                    pending || !!selected.outcome || selected.serverKind === 'AUTO_WORK_ORDER'
+                  }
                   source={resourceSource}
                   edit={edit}
                   pick={pick}
@@ -1001,22 +1173,145 @@ export const ProposalReview = ({
           )}
         </AdjustableLayout>
       </main>
+      {draftDialog && selected && (
+        <Dialog
+          open
+          title="작성중 계획 처리"
+          onClose={() => !pending && setDraftDialog(false)}
+          footer={
+            <Button
+              variant="outlined"
+              disabled={pending}
+              aria-describedby={actionReasonId}
+              onClick={() => setDraftDialog(false)}
+            >
+              닫기
+            </Button>
+          }
+        >
+          <section aria-label="작성중 계획 처리">
+            <h3>작성중 계획 {selected.existingDrafts?.length ?? 0}건</h3>
+            <AdjustableNativeTable
+              storageKey="proposal-existing-drafts"
+              labels={['계획번호', '계획일', '생산량', '생산 라인']}
+              widths={[180, 120, 120, 180]}
+            >
+              <tbody>
+                {(selected.existingDrafts ?? []).map((draft) => (
+                  <tr key={draft.productionPlanId}>
+                    <td>{draft.planNo}</td>
+                    <td>{draft.planDate}</td>
+                    <td>
+                      {draft.plannedQty.toLocaleString()} {selected.uom}
+                    </td>
+                    <td>{draft.plannedLineName ?? '미지정'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </AdjustableNativeTable>
+            {onChooseDrafts && (
+              <div className="proposal-review-toolbar">
+                <Button
+                  variant={selected.existingDraftAction === 'CONTINUE' ? 'filled' : 'outlined'}
+                  disabled={pending}
+                  aria-describedby={actionReasonId}
+                  onClick={() => {
+                    setDraftDialog(false);
+                    void updateSelected(() => onChooseDrafts(selected, 'CONTINUE'));
+                  }}
+                >
+                  작성중 계획 이어서
+                </Button>
+                <Button
+                  variant={selected.existingDraftAction === 'REPLACE' ? 'filled' : 'outlined'}
+                  disabled={pending}
+                  aria-describedby={actionReasonId}
+                  onClick={() => {
+                    if (selected.existingDraftAction !== 'REPLACE') {
+                      setDraftDialog(false);
+                      setDraftChoice(true);
+                    }
+                  }}
+                >
+                  새 계획으로 대체
+                </Button>
+              </div>
+            )}
+          </section>
+        </Dialog>
+      )}
+      {draftChoice && selected && (
+        <Dialog
+          open
+          title="작성중 계획 대체"
+          onClose={() => !pending && setDraftChoice(false)}
+          footer={
+            <>
+              <Button variant="outlined" disabled={pending} onClick={() => setDraftChoice(false)}>
+                취소
+              </Button>
+              <Button
+                disabled={pending}
+                aria-describedby={actionReasonId}
+                onClick={() => {
+                  setDraftChoice(false);
+                  void updateSelected(() => onChooseDrafts!(selected, 'REPLACE'));
+                }}
+              >
+                새 계획으로 검토
+              </Button>
+            </>
+          }
+        >
+          <p>
+            선택 확정 시 작성중 계획 {selected.existingDrafts?.length}건을 삭제하고 새 계획으로
+            대체합니다. 지금은 검토 내용만 변경합니다.
+          </p>
+        </Dialog>
+      )}
+      {dialog === 'reload' && selected && (
+        <Dialog
+          open
+          title="최신 제안으로 다시 검토"
+          onClose={() => setDialog(null)}
+          footer={
+            <>
+              <Button variant="outlined" onClick={() => setDialog(null)}>
+                취소
+              </Button>
+              <Button
+                onClick={() => {
+                  setDialog(null);
+                  void updateSelected(() => onReload!(selected));
+                }}
+              >
+                다시 검토
+              </Button>
+            </>
+          }
+        >
+          <p>
+            이 ERP W/O의 화면 보완값을 버리고 최신 제안을 불러옵니다. 작성중 계획 처리 방법과 확정
+            대상을 다시 선택하세요.
+          </p>
+        </Dialog>
+      )}
       <ActionBar
         remainingId={remainingId}
-        remaining={`선택 ${checked.length}건${!onConfirm ? ' / 실제 확정 미연결' : ''}`}
+        remaining={`선택 ${checked.length}건${!onConfirm && !onConfirmRow ? ' / 실제 확정 미연결' : ''}`}
       >
         <Button variant="outlined" disabled={pending} onClick={close}>
           {unavailableReason ? '작업계획 목록으로' : '제안 닫기'}
         </Button>
         <Button
-          disabled={!ready || !onConfirm || pending}
+          disabled={!ready || (!onConfirm && !onConfirmRow) || pending}
           aria-describedby={remainingId}
           onClick={() => setDialog('confirm')}
         >
           선택 제안 확정
         </Button>
       </ActionBar>
-      {dialog && (
+      {(dialog === 'close' || dialog === 'confirm') && (
         <Dialog
           open
           title={dialog === 'close' ? '제안을 닫으시겠습니까?' : '선택 제안 확정'}

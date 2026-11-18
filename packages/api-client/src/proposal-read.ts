@@ -8,3 +8,7 @@ export const createProposalReadClient = (baseUrl: string, fetch?: typeof globalT
     ...(fetch ? { fetch } : {}),
   });
 export type PlanProposal = components['schemas']['ProductionPlanProposal'];
+export type ProposalComponents = components;
+export type ProposalRevalidateBody = components['schemas']['ProductionPlanProposalRevalidate'];
+export type ProposalRevalidation = components['schemas']['ProductionPlanProposalRevalidation'];
+export type ProposalConfirmation = components['schemas']['ProductionPlanProposalConfirmResult'];

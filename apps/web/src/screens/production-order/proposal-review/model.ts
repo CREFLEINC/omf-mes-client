@@ -16,6 +16,8 @@ export const resourceLabels = {
 export type ResourceField = keyof typeof resourceLabels;
 export interface ReviewOperation {
   number?: string;
+  routingOperationId?: number;
+  plannedTimeSourceCode?: 'SYSTEM' | 'USER';
   key: string;
   sequence: number;
   name: string;
@@ -30,6 +32,13 @@ export interface ReviewOperation {
 }
 export type PlanReviewField = 'date' | 'quantity' | 'line' | 'routing';
 export interface ReviewPlan {
+  serverPlanKey?: string;
+  productionPlanId?: number;
+  savedVersionNo?: number;
+  splitFromKey?: string;
+  fgWarehouseOverride?: { warehouseId: number; erpMismatchAcknowledged: true };
+  appliedWarehouse?: ReferenceRow | null;
+  remarks?: string;
   planDateSourceCode?: 'SYSTEM' | 'USER';
   planDateCalendar?: import('@omf-mes/api-client').PlanningComponents['schemas']['PlanningCalendarDay'];
   planDateAdjustment?: import('@omf-mes/api-client').PlanProposal['plans'][number]['planDateAdjustment'];
@@ -49,6 +58,15 @@ export interface ReviewPlan {
   routingOptions?: { value: ReferenceRow; operations: ReviewOperation[] }[];
 }
 export interface ReviewProposal {
+  validated?: boolean;
+  serverErrors?: string[];
+  basisChanges?: string[];
+  corrections?: string[];
+  existingDrafts?: import('@omf-mes/api-client').ProposalComponents['schemas']['ProductionPlanProposalExistingDraft'][];
+  existingDraftAction?: 'CONTINUE' | 'REPLACE';
+  outcome?: 'CONFIRMED' | 'ALREADY_PROCESSED';
+  resultPlans?: import('@omf-mes/api-client').ProposalConfirmation['plans'];
+  autoWorkOrder?: import('@omf-mes/api-client').PlanProposal['autoWorkOrder'];
   basis?: import('@omf-mes/api-client').PlanProposal['basis'];
   serverWarnings?: string[];
   id: string;
@@ -75,7 +93,8 @@ export interface ReviewProposal {
   changed?: boolean;
   live?: boolean;
   plantId?: number;
-  serverKind?: 'NEW_PLAN' | 'REVIEW_DRAFT' | 'KEEP_CONFIRMED' | 'NOT_PROPOSABLE';
+  serverKind?:
+    'NEW_PLAN' | 'REVIEW_DRAFT' | 'KEEP_CONFIRMED' | 'NOT_PROPOSABLE' | 'AUTO_WORK_ORDER';
   serverStatus?: string;
   serverIssues?: string[];
 }
@@ -98,8 +117,17 @@ export const applyReceiptStorage = (row: ReviewProposal): ReviewProposal => {
             ...plan,
             operations: plan.operations.map((op) => ({
               ...op,
-              defaultFgLocationSource: location ? 'ERP_STORAGE_LOCATION' : 'NONE',
-              resources: { ...op.resources, defaultFgLocationId: location },
+              defaultFgLocationSource: (
+                plan.fgWarehouseOverride ? op.resources.defaultFgLocationId : location
+              )
+                ? 'ERP_STORAGE_LOCATION'
+                : 'NONE',
+              resources: {
+                ...op.resources,
+                defaultFgLocationId: plan.fgWarehouseOverride
+                  ? op.resources.defaultFgLocationId
+                  : location,
+              },
             })),
           },
     ),
@@ -110,16 +138,24 @@ export const proposedQuantity = (row: ReviewProposal): number =>
     .filter((plan) => plan.source !== '기존 확정 계획')
     .reduce((sum, plan) => sum + (Number(plan.quantity) || 0), 0);
 export const proposalErrors = (row: ReviewProposal): string[] => {
+  if (row.outcome) return ['확정 완료'];
   const editable = row.plans.filter((plan) => plan.source !== '기존 확정 계획');
-  const errors = [...row.issues];
-  if (row.live && row.changed) errors.push('보완한 제안의 서버 재검증 필요');
-  if (row.live && !row.changed && row.serverStatus === 'NEEDS_INPUT')
+  const errors = [...row.issues, ...(row.serverErrors ?? []), ...(row.basisChanges ?? [])];
+  if (row.serverKind === 'AUTO_WORK_ORDER')
+    errors.push('자동 처리 ERP W/O는 선택 확정하지 않습니다');
+  if (row.existingDrafts?.length && !row.existingDraftAction)
+    errors.push('작성중 계획 처리 방법을 선택하세요');
+  if (row.live && !row.validated) errors.push('보완한 제안의 서버 재검증 필요');
+  if (row.live && !row.validated && row.serverStatus === 'NEEDS_INPUT')
     errors.push(...(row.serverIssues?.length ? row.serverIssues : ['서버 점검 보완 필요']));
   const storage = row.erpStorage;
   if (storage?.erpStorageLocationCode) {
     if (storage.reasonCode)
       errors.push(storageFailureLabels[storage.reasonCode] ?? '생산품 입고 창고 확인 필요');
-    else if (!storage.warehouse || !storage.location)
+    else if (
+      !storage.warehouse ||
+      (!storage.location && editable.some((plan) => !plan.fgWarehouseOverride))
+    )
       errors.push('생산품 입고 창고의 자동 입고 위치 확인 필요');
   }
   if (!editable.length) errors.push('확정할 제안이 없습니다');
@@ -153,12 +189,16 @@ export const proposalErrors = (row: ReviewProposal): string[] => {
   return [...new Set(errors)];
 };
 export const reviewStatus = (row: ReviewProposal) =>
-  (row.serverKind === 'KEEP_CONFIRMED' && row.serverStatus === 'NO_CHANGE') ||
-  (row.plans.length > 0 && row.plans.every((plan) => plan.source === '기존 확정 계획'))
-    ? '변경 없음'
-    : proposalErrors(row).length
-      ? '검토 필요'
-      : '확정 가능';
+  row.outcome
+    ? '확정 완료'
+    : row.serverKind === 'AUTO_WORK_ORDER'
+      ? '자동 처리'
+      : (row.serverKind === 'KEEP_CONFIRMED' && row.serverStatus === 'NO_CHANGE') ||
+          (row.plans.length > 0 && row.plans.every((plan) => plan.source === '기존 확정 계획'))
+        ? '변경 없음'
+        : proposalErrors(row).length
+          ? '검토 필요'
+          : '확정 가능';
 export const proposalAction = (row: ReviewProposal) =>
   reviewStatus(row) === '변경 없음'
     ? '기존 확정 계획 유지'

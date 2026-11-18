@@ -216,9 +216,16 @@ const EditorSession = ({
   const lineSource = useLineSource(plantId);
   const equipmentSource = useEquipmentSource(plantId, idOrNull(draft.productionLineId));
   const moldSource = useMoldSource(plantId);
+  const appliedLocation = locations.items.find(
+    (item) => item.locationId === workOrder.defaultFgLocationId,
+  );
   const fgSource = useLocationSource(plantId, '', {
-    erpCode: erpStorage?.erpStorageLocationCode,
-    warehouseId: erpStorage?.erpStorageWarehouse?.id,
+    erpCode: workOrder.fgWarehouseDiffersFromErp
+      ? workOrder.fgWarehouseCode
+      : erpStorage?.erpStorageLocationCode,
+    warehouseId: workOrder.fgWarehouseDiffersFromErp
+      ? appliedLocation?.warehouseId
+      : erpStorage?.erpStorageWarehouse?.id,
   });
   const arrival = useWarehouseArrival(
     erpStorage?.erpStorageLocationCode ? erpStorage.erpStorageWarehouse?.id : undefined,
@@ -671,14 +678,19 @@ const EditorSession = ({
             <div className="field-cell">
               <span className="field-label">생산품 입고 창고</span>
               <span>
-                {erpStorage?.erpStorageLocationCode
-                  ? erpStorage.erpStorageWarehouse
-                    ? `${erpStorage.erpStorageWarehouse.name} (${erpStorage.erpStorageWarehouse.code})`
-                    : `${erpStorage.erpStorageLocationCode} · 창고 연결 확인 필요`
-                  : (locations.items.find(
-                      (item) => String(item.locationId) === draft.defaultFgLocationId,
-                    )?.warehouseName ?? '미지정')}
+                {workOrder.fgWarehouseDiffersFromErp
+                  ? `${appliedLocation?.warehouseName ?? workOrder.fgWarehouseCode} (${workOrder.fgWarehouseCode})`
+                  : erpStorage?.erpStorageLocationCode
+                    ? erpStorage.erpStorageWarehouse
+                      ? `${erpStorage.erpStorageWarehouse.name} (${erpStorage.erpStorageWarehouse.code})`
+                      : `${erpStorage.erpStorageLocationCode} · 창고 연결 확인 필요`
+                    : (locations.items.find(
+                        (item) => String(item.locationId) === draft.defaultFgLocationId,
+                      )?.warehouseName ?? '미지정')}
               </span>
+              {workOrder.fgWarehouseDiffersFromErp && (
+                <span>ERP 입고 창고와 다름: {workOrder.erpStorageLocationCode}</span>
+              )}
               {erpStorage?.erpStorageWarehouse && arrival.isPending ? (
                 <span className="field-note">입고 위치 확인 중</span>
               ) : null}

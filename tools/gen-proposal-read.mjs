@@ -37,12 +37,21 @@ const snapshots = files.map((name) => {
   return target;
 });
 const { document: merged } = mergeSpecs(snapshots);
-const endpoint = '/planning/production-orders:plan-proposals';
-if (!merged.paths[endpoint]?.get) throw new Error('Pinned contract has no proposal GET.');
+const endpoints = [
+  '/planning/production-orders:plan-proposals',
+  '/planning/production-orders/{productionOrderId}:confirm-plan-proposal',
+  '/planning/production-orders/{productionOrderId}:revalidate-plan-proposal',
+  '/planning/production-orders/{productionOrderId}/audit-events',
+];
 const selected = {
   openapi: merged.openapi,
   info: merged.info,
-  paths: { [endpoint]: { get: merged.paths[endpoint].get } },
+  paths: Object.fromEntries(
+    endpoints.map((endpoint) => {
+      if (!merged.paths[endpoint]) throw new Error(`Missing pinned endpoint: ${endpoint}`);
+      return [endpoint, merged.paths[endpoint]];
+    }),
+  ),
   components: {},
 };
 const seen = new Set();
@@ -80,8 +89,10 @@ execFileSync(process.execPath, [
 writeFileSync(
   output,
   await format(
-    `// Server contract: CREFLEINC/omf-mes-server@${commit}\n// Generated read-only projection; no write endpoints.\n${readFileSync(output, 'utf8')}`,
+    `// Server contract: CREFLEINC/omf-mes-server@${commit}\n// Generated proposal review, revalidation, confirmation and audit projection.\n${readFileSync(output, 'utf8')}`,
     { parser: 'typescript', singleQuote: true, printWidth: 100 },
   ),
 );
-console.log(`Generated proposal GET from ${commit}: ${seen.size} referenced components.`);
+console.log(
+  `Generated proposal review contract from ${commit}: ${seen.size} referenced components.`,
+);

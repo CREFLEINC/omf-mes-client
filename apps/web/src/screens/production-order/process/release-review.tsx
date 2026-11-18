@@ -104,6 +104,14 @@ export const AssignmentFacts = ({
           ],
         ]
       : []),
+    ...(fact.fgWarehouseDiffersFromErp
+      ? [
+          [
+            '입고 창고 확인',
+            `ERP 입고 창고와 다름: ${fact.erpStorageLocationCode} → ${fact.fgWarehouseCode}`,
+          ],
+        ]
+      : []),
     ['WIP 위치', locationName(fact.defaultWipLocationId)],
     [
       '생산품 입고 창고',

@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { MaterialComponents, components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -6,11 +6,15 @@ import { runRequest } from '../../patterns/request';
 
 type ResourceRecommendations = components['schemas']['ResourceRecommendations'];
 
-type WorkOrder = components['schemas']['WorkOrder'];
+type WorkOrder = MaterialComponents['schemas']['WorkOrder'];
 type ValidationFinding = components['schemas']['ValidationFinding'];
 
 export interface WorkOrderFact {
   workOrderId: number;
+  productionOrderId?: number;
+  erpStorageLocationCode?: string;
+  fgWarehouseCode?: string;
+  fgWarehouseDiffersFromErp?: boolean;
   workOrderNo: string;
   productionPlanId: number;
   routingOperationId: number;
@@ -65,6 +69,10 @@ export const workOrderDetailPath = (workOrderId: number): string =>
 
 export const toWorkOrderFact = (workOrder: WorkOrder): WorkOrderFact => ({
   workOrderId: workOrder.workOrderId,
+  productionOrderId: workOrder.productionOrderId,
+  erpStorageLocationCode: workOrder.erpStorageLocationCode,
+  fgWarehouseCode: workOrder.fgWarehouseCode,
+  fgWarehouseDiffersFromErp: workOrder.fgWarehouseDiffersFromErp,
   workOrderNo: workOrder.workOrderNo,
   productionPlanId: workOrder.productionPlanId,
   routingOperationId: workOrder.routingOperationId,

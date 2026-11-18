@@ -14,6 +14,8 @@ const proposal: PlanProposal = {
   itemId: 1,
   uomId: 1,
   kind: 'NEW_PLAN',
+  autoWorkOrder: null,
+  existingDrafts: [],
   status: 'NEEDS_INPUT',
   reasons: [{ code: 'WORK_ORDER_LINE_REQUIRED', category: 'INPUT' }],
   orderQty: 100,
