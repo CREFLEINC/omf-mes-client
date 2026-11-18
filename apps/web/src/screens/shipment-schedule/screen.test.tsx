@@ -837,6 +837,15 @@ describe('ShipmentScheduleScreen — 피처 010 지시서 상세', () => {
     expect(sheet.getByText('SAMPLE-LOT-0001')).toBeInTheDocument();
     expect(sheet.getByText('SAMPLE-LOT-0004')).toBeInTheDocument();
     expect(sheet.queryByText('SAMPLE-LOT-0003')).toBeNull();
+    /* 시안 Print-Preview — 피킹 LOT 표의 OQC 판정 칸과 라인 합계·초과 줄. */
+    expect(sheet.getByRole('columnheader', { name: t.print.oqc })).toBeInTheDocument();
+    expect(sheet.getByText('SAMPLE-LOT-0001').closest('tr')).toHaveTextContent(
+      t.print.oqcStatus.ACCEPTED,
+    );
+    expect(sheet.getByText('SAMPLE-LOT-0004').closest('tr')).toHaveTextContent(
+      t.print.oqcStatus.NOT_INSPECTED,
+    );
+    expect(sheet.getByText(t.print.lineTotal(110, 10))).toBeInTheDocument();
     for (const signature of t.print.signatures) {
       expect(sheet.getAllByRole('columnheader', { name: signature }).length).toBeGreaterThan(0);
     }

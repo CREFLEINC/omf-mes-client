@@ -248,6 +248,17 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
     qty: 'Số lượng',
     places: 'Kho, vị trí',
     managementCode: 'Mã quản lý xuất hàng',
+    oqc: 'Kết quả OQC',
+    oqcStatus: {
+      NOT_REQUIRED: '—',
+      SKIPPED: 'Bỏ qua kiểm tra',
+      NOT_INSPECTED: 'Chưa kiểm tra',
+      ACCEPTED: 'Đạt',
+      REJECTED: 'Không đạt',
+      HELD: 'Tạm giữ',
+    },
+    lineTotal: (total: number, over: number): string =>
+      over > 0 ? `Tổng ${String(total)}, vượt ${String(over)}` : `Tổng ${String(total)}`,
     noLots: 'Chưa lấy LOT nào.',
     signatures: ['Người lập', 'Lấy hàng', 'Kiểm tra xuất hàng', 'Xác nhận xuất hàng'],
     printedAt: (value: string): string => `In lúc ${value}`,

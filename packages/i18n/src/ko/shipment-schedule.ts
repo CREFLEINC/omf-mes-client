@@ -279,6 +279,18 @@ export const shipmentSchedule = {
     qty: '수량',
     places: '창고, 위치',
     managementCode: '출하 관리 코드',
+    oqc: 'OQC 판정',
+    oqcStatus: {
+      NOT_REQUIRED: '—',
+      SKIPPED: '검사 생략',
+      NOT_INSPECTED: '미검사',
+      ACCEPTED: '합격',
+      REJECTED: '불합격',
+      HELD: '보류',
+    },
+    /** 라인마다 피킹 LOT 아래 합계 줄(시안 「합계 110 · 초과 10」). */
+    lineTotal: (total: number, over: number): string =>
+      over > 0 ? `합계 ${String(total)}, 초과 ${String(over)}` : `합계 ${String(total)}`,
     noLots: '아직 피킹한 LOT 이 없습니다.',
     signatures: ['작성', '피킹', '출하 검사', '출하 확인'],
     printedAt: (value: string): string => `인쇄 ${value}`,

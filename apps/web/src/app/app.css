@@ -36979,7 +36979,20 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .ship-request-detail,
 .ship-request-line {
   display: grid;
+  /* 한 칸을 서랍 폭에 묶는다 — 기본(auto) 칸은 넓은 표의 하한(58rem)만큼 늘어 1280 폭에서 오른쪽 칸이 잘렸다(검증 1회차). */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
+  min-width: 0;
+}
+
+/* 서랍 안 표는 서랍 폭에 맞추고, 그래도 넘치면 표만 옆으로 민다(머리·안내는 잘리지 않는다). */
+.ship-request-detail .wide-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.ship-request-detail .wide-table table {
   min-width: 0;
 }
 
@@ -37061,6 +37074,12 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 .ship-print__num {
   text-align: end;
+}
+
+/* 라인 합계·초과 줄(시안 Print-Preview) — 굵게, 가운데. */
+.ship-print__total td {
+  font-weight: 700;
+  text-align: center;
 }
 
 .ship-print__signatures td {

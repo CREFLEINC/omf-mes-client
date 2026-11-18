@@ -1,7 +1,7 @@
 import { Button, Dialog, Radio, RadioGroup } from '@crefle/web-ui';
 import { ko, messages, vi } from '@omf-mes/i18n';
 import { QrCode } from '@omf-mes/ui';
-import { useId, useState } from 'react';
+import { Fragment, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { formatPlantDateTime } from '../../patterns/plant-time';
@@ -116,18 +116,35 @@ export const ShipmentRequestSheet = ({
               <th scope="col">{l.qty}</th>
               <th scope="col">{l.places}</th>
               <th scope="col">{l.managementCode}</th>
+              <th scope="col">{l.oqc}</th>
             </tr>
           </thead>
           <tbody>
-            {lots.map(({ line, lot }) => (
-              <tr key={lot.shipmentRequestLotId}>
-                <td>{line.lineNo}</td>
-                <td>{lot.lotNo}</td>
-                <td className="ship-print__num">{lot.pickedQty}</td>
-                <td>{lot.portions.map((portion) => portionText(portion)).join(', ')}</td>
-                <td>{lot.managementCode ?? ''}</td>
-              </tr>
-            ))}
+            {linesOf(detail).map((line) => {
+              const mine = lots.filter((entry) => entry.line === line).map((entry) => entry.lot);
+              if (mine.length === 0) return null;
+              const total = mine.reduce((sum, lot) => sum + lot.pickedQty, 0);
+              return (
+                <Fragment key={line.shipmentRequestLineId}>
+                  {mine.map((lot) => (
+                    <tr key={lot.shipmentRequestLotId}>
+                      <td>{line.lineNo}</td>
+                      <td>{lot.lotNo}</td>
+                      <td className="ship-print__num">{lot.pickedQty}</td>
+                      <td>{lot.portions.map((portion) => portionText(portion)).join(', ')}</td>
+                      <td>{lot.managementCode ?? ''}</td>
+                      <td>{lot.oqcLotStatus === null ? '' : l.oqcStatus[lot.oqcLotStatus]}</td>
+                    </tr>
+                  ))}
+                  <tr className="ship-print__total">
+                    <td>{line.lineNo}</td>
+                    <td colSpan={5}>
+                      {l.lineTotal(total, Math.max(0, total - line.allocatedQty))}
+                    </td>
+                  </tr>
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       )}
