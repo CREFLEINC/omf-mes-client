@@ -3182,8 +3182,8 @@ describe('WarehouseLocationScreen — 보관 품목', () => {
     // 지금 모양 그대로 — 층 없는 랙은 0 에서 시작한다.
     expect(within(dialog).getByLabelText('행 (층 수)')).toHaveValue('0');
     const section = itemsSection(dialog);
-    /* 랙 창에는 「지정 품목만 받기」 스위치가 없다 — 옵션은 Location 수정 창에서 켠다. */
-    expect(within(section).queryByRole('switch')).toBeNull();
+    /* 「지정 품목만 받기」는 기본 끔 — 켜지 않으면 품목만 보낸다(FR-017c). */
+    expect(within(section).getByRole('switch')).not.toBeChecked();
     await user.click(await within(section).findByRole('combobox', { name: '품목 추가' }));
     await user.click(await screen.findByRole('option', { name: /ITEM-303/ }));
 
@@ -3197,6 +3197,108 @@ describe('WarehouseLocationScreen — 보관 품목', () => {
     // 층 · 셀은 만들지 않고, 위치 자체도 고치지 않는다.
     expect(requests.some((request) => request.method === 'POST')).toBe(false);
     expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
+  });
+
+  /* 피처 009 — 층 없는 랙도 맨 아래 위치라 「지정 품목만 받기」를 랙 창에서 켜고 끈다(FR-017c). */
+  it('FR-017c 층 없는 랙의 랙 창에도 「지정 품목만 받기」가 있고, 지정 품목이 없으면 켤 수 없다', async () => {
+    const { user } = renderScreen(leafRackRoutes(), '?wh=1001');
+
+    const dialog = await openLeafRack(user);
+    const toggle = await within(itemsSection(dialog)).findByRole('switch', {
+      name: messages.warehouseLocation.itemsSection.restrict.label,
+    });
+    expect(toggle).not.toBeChecked();
+    expect(toggle).toBeDisabled();
+    expect(
+      within(dialog).getByText(messages.warehouseLocation.itemsSection.restrict.noItems),
+    ).toBeInTheDocument();
+  });
+
+  it('FR-017c·Q26 랙 창에서 품목을 더하고 켜면 품목 PUT 뒤 위치 PUT(itemRestricted=true)', async () => {
+    const { requests, user } = renderScreen(
+      leafRackRoutes(
+        itemPickerRoute,
+        {
+          match: (request) =>
+            request.method === 'PUT' &&
+            new URL(request.url).pathname === '/mdm/locations/2005/items',
+          respond: () => jsonResponse({ items: [] }),
+        },
+        {
+          match: (request) =>
+            request.method === 'PUT' && new URL(request.url).pathname === '/mdm/locations/2005',
+          respond: () =>
+            jsonResponse({ ...leafRack, itemRestricted: true }, { headers: { ETag: '"6"' } }),
+        },
+      ),
+      '?wh=1001',
+    );
+
+    const dialog = await openLeafRack(user);
+    const section = itemsSection(dialog);
+    await user.click(await within(section).findByRole('combobox', { name: '품목 추가' }));
+    await user.click(await screen.findByRole('option', { name: /ITEM-303/ }));
+    const toggle = within(section).getByRole('switch', {
+      name: messages.warehouseLocation.itemsSection.restrict.label,
+    });
+    await waitFor(() => expect(toggle).toBeEnabled());
+    await user.click(toggle);
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: '저장' })).toBeEnabled());
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+    const puts = requests.filter((request) => request.method === 'PUT');
+    expect(puts.map((request) => request.url.pathname)).toEqual([
+      '/mdm/locations/2005/items',
+      '/mdm/locations/2005',
+    ]);
+    expect(JSON.parse(puts[1]?.body ?? '{}')).toMatchObject({ itemRestricted: true });
+    expect(puts[1]?.headers.get('If-Match')).toBeTruthy();
+  });
+
+  it('FR-017c 랙 창에서 켜기를 서버가 거절하면 그 까닭이 스위치 아래에 선다', async () => {
+    const restrictedItems: StubRoute = {
+      match: (request) => isGet(request, '/mdm/locations/2005/items'),
+      respond: () => jsonResponse({ items: storedItems }),
+    };
+    const { user } = renderScreen(
+      [
+        restrictedItems,
+        ...leafRackRoutes({
+          match: (request) =>
+            request.method === 'PUT' && new URL(request.url).pathname === '/mdm/locations/2005',
+          respond: () =>
+            jsonResponse(
+              {
+                errors: [
+                  {
+                    scope: 'field',
+                    field: 'itemRestricted',
+                    code: 'STATE_LOCKED',
+                    message: '지정 밖 품목 재고가 있어 켤 수 없습니다.',
+                  },
+                ],
+              },
+              { status: 400 },
+            ),
+        }),
+      ],
+      '?wh=1001',
+    );
+
+    const dialog = await openLeafRack(user);
+    const section = itemsSection(dialog);
+    await within(section).findByText('ITEM-301');
+    await user.click(
+      within(section).getByRole('switch', {
+        name: messages.warehouseLocation.itemsSection.restrict.label,
+      }),
+    );
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    expect(
+      await within(section).findByText('지정 밖 품목 재고가 있어 켤 수 없습니다.'),
+    ).toBeInTheDocument();
   });
 
   it('#1673 층 없는 랙을 열기만 하고 아무것도 안 바꾸면 저장할 것이 없다', async () => {

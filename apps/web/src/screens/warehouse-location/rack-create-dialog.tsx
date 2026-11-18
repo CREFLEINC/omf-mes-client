@@ -51,11 +51,11 @@ export interface RackCreateDialogProps {
 export interface RackLeafItems {
   /** 보관 품목 칸 — 저장하는 동안은 잠근다. */
   slot: (disabled: boolean) => ReactNode;
-  /** 받은 목록과 다르게 고쳤나. */
+  /** 받은 목록이나 「지정 품목만 받기」를 고쳤나(피처 009). */
   changed: boolean;
-  /** 지정 품목만인데 품목이 없나 — 빈 목록은 제한 해제라 보내지 않는다. */
+  /** 「지정 품목만 받기」를 켜는데 지정 품목이 없나 — 서버도 거절하므로 보내지 않는다(피처 009). */
   invalid: boolean;
-  /** 고친 목록을 보낸다. 실패하면 던진다. */
+  /** 고친 목록 · 옵션을 보낸다. 실패하면 던진다. */
   save: () => Promise<void>;
 }
 

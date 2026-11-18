@@ -887,6 +887,12 @@ export const WarehouseLocationScreen = () => {
       : null;
   const itemsQuery = useLocationItems(itemsTargetId);
   const [itemsDraft, setItemsDraft] = useState<LocationItemsDraft | null>(null);
+  /*
+   * 층 없는 랙(랙 창 · #1673)의 「지정 품목만 받기」 — 랙 창은 위치 폼 값을 쓰지 않아 따로 둔다(피처 009 · FR-017c).
+   * null 이면 고치지 않았다(받은 값 그대로).
+   */
+  const [rackRestricted, setRackRestricted] = useState<boolean | null>(null);
+  const [rackRestrictError, setRackRestrictError] = useState<string | undefined>(undefined);
   /** 위치를 먼저 저장한 뒤 이어 보낼 품목 목록 — 위치 저장의 성공 처리기가 읽는다. */
   const pendingItemsRef = useRef<{ locationId: number; itemIds: number[] } | null>(null);
   /** 품목을 먼저 저장한 뒤 이어 보낼 위치 값 — 「지정 품목만 받기」를 켜는 저장(피처 009). 품목 저장의 성공 처리기가 읽는다. */
@@ -936,6 +942,8 @@ export const WarehouseLocationScreen = () => {
   /** 창을 열고 닫을 때 · 최신을 다시 받을 때 — 고치던 품목 목록과 그 오류를 버린다. */
   const resetItemsDraft = (): void => {
     setItemsDraft(null);
+    setRackRestricted(null);
+    setRackRestrictError(undefined);
     pendingItemsRef.current = null;
     pendingLocationRef.current = null;
     itemsWrite.reset();
@@ -1001,10 +1009,65 @@ export const WarehouseLocationScreen = () => {
    * 층 없는 랙의 보관 품목(#1673) — 칸은 수정 창과 같고, 저장은 랙 창이 별칭 다음에 이어 부른다. 실패는 랙 창이 멈춘
    * 자리와 서버 문구로 알린다.
    */
-  /* 빈 목록은 「지정 없음」일 뿐이다(피처 009) — 막을 까닭이 없다. */
-  const rackItemsInvalid = false;
   const rackItemsId =
     itemsTargetId !== null && rackDialog?.rack?.locationId === itemsTargetId ? itemsTargetId : null;
+  /*
+   * 랙 창의 「지정 품목만 받기」(피처 009 · FR-017c) — Location 수정 창과 같은 규칙: 지정 품목이 없으면 켜기만 미리 잠그고,
+   * 그 밖의 조건은 저장 때 서버가 검사한다. 거절은 스위치 아래에 서버 문구로.
+   */
+  const rackStoredRestricted =
+    rackDetail.data?.location.itemRestricted ?? rackDialog?.rack?.itemRestricted ?? false;
+  const rackRestrictedNow = rackRestricted ?? rackStoredRestricted;
+  const rackRestrictChanged = rackRestrictedNow !== rackStoredRestricted;
+  const rackItemsEmpty = itemsDraft !== null && itemsDraft.items.length === 0;
+  /* 빈 목록은 「지정 없음」일 뿐이다(피처 009) — 켜는 저장에서만 막는다(서버도 거절한다). */
+  const rackItemsInvalid = rackRestrictChanged && rackRestrictedNow && rackItemsEmpty;
+  const putRackItems = async (locationId: number): Promise<void> => {
+    if (!itemsChanged || itemsDraft === null) return;
+    await runRequest(() =>
+      client.PUT('/mdm/locations/{locationId}/items', {
+        params: {
+          path: { locationId },
+          header: { 'Idempotency-Key': createIdempotencyKey() },
+        },
+        body: { itemIds: draftItemIds(itemsDraft) },
+      }),
+    );
+  };
+  /** 옵션만 바꾼다 — 별칭을 먼저 저장했을 수 있어 상세를 다시 받아 그 잠금 토큰으로 보낸다. */
+  const putRackRestriction = async (locationId: number): Promise<void> => {
+    if (!rackRestrictChanged) return;
+    const fresh = (
+      await runRequest(() =>
+        client.GET('/mdm/locations/{locationId}', { params: { path: { locationId } } }),
+      )
+    ).location;
+    try {
+      await runRequest(() =>
+        client.PUT('/mdm/locations/{locationId}', {
+          params: {
+            path: { locationId },
+            header: {
+              'Idempotency-Key': createIdempotencyKey(),
+              'If-Match': etags.ifMatch(locationDetailPath(locationId)) ?? '',
+            },
+          },
+          body: toLocationUpdate(
+            { ...locationToFormValues(fresh), itemRestricted: rackRestrictedNow },
+            fresh,
+          ),
+        }),
+      );
+    } catch (error) {
+      const api = error instanceof ApiRequestError ? error.apiError : null;
+      const items =
+        api !== null && (api.kind === 'validation' || api.kind === 'stateLocked')
+          ? api.errors.filter((item) => item.field === 'itemRestricted')
+          : [];
+      if (items.length > 0) setRackRestrictError(items.map((item) => item.message).join(' '));
+      throw error;
+    }
+  };
   const rackLeafItems: RackLeafItems | null =
     rackItemsId !== null
       ? {
@@ -1018,21 +1081,35 @@ export const WarehouseLocationScreen = () => {
               error={undefined}
               disabled={disabled}
               itemTypeCodes={itemTypeScope ?? undefined}
+              restriction={{
+                checked: rackRestrictedNow,
+                onChange: (checked) => {
+                  setRackRestricted(checked);
+                  setRackRestrictError(undefined);
+                },
+                lockReason:
+                  !rackRestrictedNow && rackItemsEmpty
+                    ? t.itemsSection.restrict.noItems
+                    : undefined,
+                error: rackItemsInvalid ? t.itemsSection.restrict.noItems : rackRestrictError,
+                disabled,
+              }}
             />
           ),
-          changed: itemsChanged,
+          changed: itemsChanged || rackRestrictChanged,
           invalid: rackItemsInvalid,
+          /*
+           * 켜는 저장은 품목이 먼저(서버가 저장된 지정으로 켜기를 검사한다), 끄는 저장은 옵션이 먼저(끈 뒤의 품목 교체가 지정 밖
+           * 재고 검사에 걸리지 않게) — Location 수정 창과 같다.
+           */
           save: async () => {
-            if (itemsDraft === null) return;
-            await runRequest(() =>
-              client.PUT('/mdm/locations/{locationId}/items', {
-                params: {
-                  path: { locationId: rackItemsId },
-                  header: { 'Idempotency-Key': createIdempotencyKey() },
-                },
-                body: { itemIds: draftItemIds(itemsDraft) },
-              }),
-            );
+            if (rackRestrictChanged && !rackRestrictedNow) {
+              await putRackRestriction(rackItemsId);
+              await putRackItems(rackItemsId);
+              return;
+            }
+            await putRackItems(rackItemsId);
+            await putRackRestriction(rackItemsId);
           },
         }
       : null;
