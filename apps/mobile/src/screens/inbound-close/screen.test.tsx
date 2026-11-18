@@ -261,14 +261,26 @@ afterEach(() => {
 });
 
 describe('US2-10 입하 중 목록 · 상세 · 해제 · 마감', () => {
-  it('US2-10 입하 중 카드는 번호 · 품목 · 공급사 · LOT 수 · 합계 · 첫 등록을 보이고 경과일 강조는 없다', async () => {
+  it('US2-10 입하 중 카드는 번호와 이름표 붙은 공급사 · 품목 · LOT 수 · 전체 수량 · 첫 등록을 보이고 경과일 강조는 없다', async () => {
     const { sent } = mount();
 
     const card = await screen.findByRole('button', { name: /SYN-IL-20261111-0003/u });
     expect(card).toHaveTextContent(t.open.receiving);
-    expect(card).toHaveTextContent('SYN-ITEM-01 합성 품목 가 · 합성 공급사 가');
-    expect(card).toHaveTextContent(t.card.total(2, '2,000 EA'));
-    expect(card).toHaveTextContent(/첫 등록 \d\d-\d\d \d\d:\d\d/u);
+    /* 이름표 붙은 칸(사용자 지시 2026-11-18 「명시적인 타이틀」). */
+    for (const label of [
+      t.card.facts.supplier,
+      t.card.facts.item,
+      t.card.facts.lotCount,
+      t.card.facts.totalQty,
+      t.card.facts.firstAt,
+    ]) {
+      expect(within(card).getByText(label)).toBeInTheDocument();
+    }
+    expect(within(card).getByText('합성 공급사 가')).toBeInTheDocument();
+    expect(within(card).getByText('SYN-ITEM-01 합성 품목 가')).toBeInTheDocument();
+    expect(within(card).getByText(t.card.lotCount(2))).toBeInTheDocument();
+    expect(within(card).getByText('2,000 EA')).toBeInTheDocument();
+    expect(within(card).getByText(/^\d\d-\d\d \d\d:\d\d$/u)).toBeInTheDocument();
     expect(screen.getByText(t.open.heading(1))).toBeInTheDocument();
     expect(sent.find((each) => each.search.get('closable') === 'true')?.search.get('plantId')).toBe(
       '8301',
@@ -284,9 +296,12 @@ describe('US2-10 입하 중 목록 · 상세 · 해제 · 마감', () => {
     await user.click(await screen.findByRole('button', { name: /SYN-IL-20261111-0003/u }));
     expect(await screen.findByText(t.detail.statusValue)).toBeInTheDocument();
     expect(screen.queryByText(/[MW]-01-\d\d/u)).toBeNull();
-    expect(screen.getByText('SYN-ITEM-01|1000|261111|SYN-P-01|0001')).toBeInTheDocument();
-    /* 두 LOT 의 상태가 같아 칩은 제목 옆에 하나뿐이다(사용자 지시 2026-11-18 「가능하면 한 줄로」). */
-    expect(screen.getAllByText(t.detail.pending)).toHaveLength(1);
+    /* 번호 칸은 번호 전체 대신 끝 일련번호(사용자 지시 2026-11-18). */
+    expect(
+      within(screen.getByRole('table', { name: t.detail.lots(2) })).getByText('0001'),
+    ).toBeInTheDocument();
+    /* 품질(검사 대기 · 보류) 칩은 두지 않는다(사용자 지시 2026-11-18). */
+    expect(screen.queryByText(/검사 대기/u)).toBeNull();
 
     await user.click(screen.getByRole('button', { name: t.detail.close }));
     const dialog = await screen.findByRole('dialog', {
@@ -305,7 +320,7 @@ describe('US2-10 입하 중 목록 · 상세 · 해제 · 마감', () => {
     expect(close?.headers.get('Idempotency-Key')).not.toBeNull();
   });
 
-  it('G2 L20 상세 LOT 줄 — 수량 뒤 패키징 「· 봉지 10」(이름, 없으면 코드), LOT 번호는 [해제]와 다른 줄', async () => {
+  it('G2 L20 상세 LOT 줄 — 수량 뒤 패키징 「· 봉지 10」(이름, 없으면 코드), 한 행에 번호 · 수량 · ✕', async () => {
     const user = userEvent.setup();
     const base = detailOf(inboundLot(3), 2);
     const names = ['봉지', null];
@@ -329,14 +344,20 @@ describe('US2-10 입하 중 목록 · 상세 · 해제 · 마감', () => {
     expect(await screen.findByText('1,000 EA · 봉지 10')).toBeInTheDocument();
     expect(screen.getByText('1,000 EA · SYN-BAG 10')).toBeInTheDocument();
 
-    /* LOT 번호 줄에는 [해제]가 끼지 않는다 — 번호가 줄 폭을 다 쓴다. */
-    const lotNo = screen.getByText('SYN-ITEM-01|1000|261111|SYN-P-01|0001');
-    expect(lotNo).toHaveClass('inbound-close__lot-no');
-    expect(lotNo.parentElement?.children[0]).toBe(lotNo);
+    /*
+     * 한 행에 번호(끝 일련번호) · 수량 · ✕ — 번호 전체는 행에 쓰지 않고 확인 창에 보인다(사용자 지시 2026-11-18
+     * 「목록과 계층으로 깔끔하게」, 예전 G2 L20 은 번호를 줄 폭 전체로 접어 썼다).
+     */
+    const row = screen.getByText('0001').closest('tr') as HTMLElement;
+    expect(within(row).getByText('1,000 EA · 봉지 10')).toBeInTheDocument();
+    expect(screen.queryByText('SYN-ITEM-01|1000|261111|SYN-P-01|0001')).toBeNull();
+    /* [해제]는 ✕ 아이콘 단추 — 글자 「해제」는 보이지 않는다(사용자 지시 2026-11-18). */
+    const unregister = within(row).getByRole('button', { name: t.detail.unregister });
+    expect(within(row).queryByText(t.detail.unregister)).toBeNull();
+
+    await user.click(unregister);
     expect(
-      within(lotNo.nextElementSibling as HTMLElement).getByRole('button', {
-        name: t.detail.unregister,
-      }),
+      within(await screen.findByRole('dialog')).getByText('SYN-ITEM-01|1000|261111|SYN-P-01|0001'),
     ).toBeInTheDocument();
   });
 

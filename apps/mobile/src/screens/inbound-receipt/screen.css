@@ -19,7 +19,7 @@
 
 .receive__notice {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--space-2, 8px);
   padding: var(--space-3, 12px);
   border-radius: var(--radius-md);
@@ -32,9 +32,17 @@
   display: none;
 }
 
+/* 결과 · 알림 줄 오른쪽 ✕ — 줄을 지운다. */
+.receive__dismiss {
+  flex: none;
+  margin: calc(-1 * var(--space-1, 4px)) calc(-1 * var(--space-2, 8px))
+    calc(-1 * var(--space-1, 4px)) auto;
+  color: inherit;
+}
+
 .receive-line {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--space-2, 8px);
   padding: var(--space-2, 8px) var(--space-3, 12px);
   border-radius: var(--radius-md);
@@ -66,6 +74,13 @@
   border-radius: var(--radius-md);
 }
 
+/* 전송 대기 번호 — 고정폭 굵은 글자, 길면 접힌다(셸의 overflow-wrap). */
+.receive__pending-no {
+  font: var(--type-body-sm);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
 .receive__pending ul {
   margin: 0;
   padding: 0;
@@ -79,26 +94,88 @@
 }
 
 .receive__cards-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 8px);
   margin: 0;
   font: var(--type-headline-sm);
 }
 
-.receive-card {
+/* 제목 오른쪽 건수 — 제목과 갈리게 옅은 파랑 배지(빨강은 주 단추에만). */
+.receive__cards-count {
+  flex: none;
+  padding: 2px var(--space-3, 12px);
+  border-radius: var(--radius-full);
+  background: var(--semantic-info-container);
+  color: var(--on-semantic-info-container);
+  font: var(--type-title-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * 입하 LOT 카드 — 테두리 상자 + 회색 머리 띠로 카드끼리 또렷이 갈린다(사용자 지시 2026-11-18). 마지막으로 스캔이
+ * 들어간 맨 위 카드는 테두리가 짙다. 클래스를 겹쳐 적어 디자인 시스템 카드의 안쪽 여백보다 앞선다.
+ */
+.receive-card.receive-card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2, 8px);
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+}
+
+.receive-card.receive-card[data-current='true'] {
+  border-color: var(--brand-charcoal);
 }
 
 .receive-card[data-closed='true'] {
   background: var(--surface-container-low);
 }
 
+/* 머리 띠 — 누르면 접고 편다. 번호 · 상태 칩 · 화살표. */
 .receive-card__head {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-2, 8px);
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border: 0;
+  border-bottom: 1px solid var(--outline-variant);
+  background: var(--surface-container);
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.receive-card__head > .receive-card__no {
+  flex: 1 1 auto;
+}
+
+.receive-card__head > :not(.receive-card__no) {
+  flex: none;
+}
+
+.receive-card__head:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+/* 접히는 부분 — 자재 관리 LOT 표와 [입하 마감]. */
+.receive-card__more {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  padding: 0 var(--space-3, 12px) var(--space-3, 12px);
+}
+
+.receive-card__more[hidden] {
+  display: none;
 }
 
 .receive-card__no {
@@ -107,29 +184,39 @@
   white-space: nowrap;
 }
 
-/*
- * 자재 관리 LOT 번호는 한 줄(screens/M-01-01.md 「좁은 폭」) — 작은 고정폭 글자로 남는 폭을 다 쓴다.
- * 넘치면 가운데를 줄여 끝 두 칸(공급사 · 일련번호)을 남긴다(patterns/lot-no-line).
- */
-.receive-lot__no {
-  flex: 1 1 auto;
-  font: var(--type-body-sm);
-  font-family: var(--font-mono);
-  font-weight: 700;
-}
-
 /* 낱말 조각 — 조각 사이(빈칸)에서만 꺾인다. 한 낱말이 줄보다 길면 셸의 overflow-wrap 으로 안에서 꺾인다. */
 .receive-card__word {
   display: inline-block;
   max-width: 100%;
 }
 
-/* 합계와 (모두 같을 때의) 품질 칩을 한 줄에. */
-.receive-card__sum {
-  display: flex;
-  flex-wrap: wrap;
+/*
+ * 이름표 붙은 칸 — 이름표는 작은 회색 글자, 값은 오른쪽. 공급사 · 품목 · 품질은 한 줄을 다 쓰고 LOT 수 · 전체 수량은 나란히.
+ */
+.receive-card__facts {
+  padding: var(--space-3, 12px);
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr);
   align-items: center;
-  gap: var(--space-2, 8px);
+  gap: var(--space-1, 4px) var(--space-3, 12px);
+  margin: 0;
+}
+
+.receive-card__facts > dt {
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+}
+
+.receive-card__facts > dd {
+  min-width: 0;
+  margin: 0;
+}
+
+.receive-card__facts > .receive-card__wide {
+  grid-column: span 3;
+}
+
+.receive-card__strong {
   font-weight: 700;
 }
 
@@ -142,99 +229,36 @@
   width: 100%;
 }
 
-.receive-card__lots {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2, 8px);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* 순번 | 두 줄 본문(번호 · 칩 / 수량 · 공급사 LOT · [해제]). */
-.receive-lot {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: var(--space-2, 8px);
-  padding: var(--space-1, 4px) var(--space-2, 8px);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-}
-
-.receive-lot[data-latest='true'] {
-  border-color: var(--brand-charcoal);
-}
-
-.receive-lot__seq {
-  min-width: 1.25em;
-  font-weight: 700;
-}
-
-.receive-lot__body {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-/* 한 줄 — 칩은 줄어들지 않고, 번호 · 공급사 LOT 글이 남는 폭에서 줄어든다. */
-.receive-lot__line {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1, 4px);
-  min-width: 0;
-  white-space: nowrap;
-}
-
-.receive-lot__line > * {
-  flex: none;
-}
-
-.receive-lot__line > .receive-lot__no {
-  flex: 1 1 auto;
-}
-
-.receive-lot__qty {
-  font: var(--type-label-sm);
-  font-weight: 400;
-}
-
-.receive-lot__line > .receive-lot__supplier {
-  flex: 0 1 auto;
-}
-
-.receive-lot__line > .receive-lot__unregister {
-  margin-inline-start: auto;
-}
-
-.receive-lot__supplier {
+/*
+ * 카드 아래 자재 관리 LOT 표(patterns/lot-table.css). 공급사 LOT 칸은 시트를 여는 단추 — 값이 길면 말줄임.
+ */
+.receive-lots__supplier {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1, 4px);
-  min-width: 0;
-  min-height: 44px;
-  margin-inline-start: var(--space-1, 4px);
+  gap: 2px;
+  max-width: 7.5em;
+  min-height: 40px;
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--on-surface-muted);
-  font: var(--type-label-sm);
-  font-weight: 400;
+  color: inherit;
+  font: inherit;
   text-align: start;
   cursor: pointer;
 }
 
-.receive-lot__supplier-text {
+.receive-lots__supplier-text {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.receive-lot__supplier > :not(.receive-lot__supplier-text) {
+.receive-lots__supplier > :not(.receive-lots__supplier-text) {
   flex: none;
+  color: var(--on-surface-muted);
 }
 
-.receive-lot__supplier:disabled {
+.receive-lots__supplier:disabled {
   cursor: default;
 }
 
