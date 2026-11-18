@@ -1,4 +1,4 @@
-import { AlertBanner, Button, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 
@@ -16,6 +16,7 @@ import {
   isCompletable,
   lookupFailureOf,
   qtyWithUom,
+  serverMessageOf,
   totalsOf,
   uomOf,
   type Completion,
@@ -58,6 +59,13 @@ export const PopShipmentCompleteScreen = () => {
   const identity = usePopIdentity();
   const workerSession = useWorkerSession();
   const workerNo = identity.workerNo?.trim() || workerSession?.worker.workerNo?.trim() || null;
+  /* 결과 「작업자」는 이름(사번) — 세션 작업자가 같은 사번일 때만 이름을 안다(POP 홈과 같은 규칙). */
+  const workerLabel =
+    workerNo !== null &&
+    workerSession?.worker.workerNo === workerNo &&
+    workerSession.worker.workerName
+      ? `${workerSession.worker.workerName} (${workerNo})`
+      : workerNo;
 
   const [view, setView] = useState<View>({ kind: 'idle' });
   const [notice, setNotice] = useState<ScanNotice | null>(null);
@@ -84,7 +92,12 @@ export const PopShipmentCompleteScreen = () => {
    *
    * @param keepFailure 완료 실패 뒤 다시 읽는 경우 — 실패 까닭을 남겨 둔다.
    */
-  const open = (code: string, via: Via, keepFailure = false): void => {
+  const open = (
+    code: string,
+    via: Via,
+    keepFailure = false,
+    onOpened?: (completion: Completion) => void,
+  ): void => {
     if (lookup.isPending || complete.isPending) return;
     setNotice(null);
     if (!keepFailure) setFailure(null);
@@ -92,6 +105,7 @@ export const PopShipmentCompleteScreen = () => {
       onSuccess: (completion) => {
         complete.resetKey();
         show(completion, via);
+        onOpened?.(completion);
       },
       onError: (error) => {
         const reason = lookupFailureOf(toApiError(error));
@@ -147,9 +161,13 @@ export const PopShipmentCompleteScreen = () => {
         onError: (error) => {
           const apiError = toApiError(error);
           const reason = completeFailureOf(apiError);
+          /* 서버 문구를 함께 보인다 — 막힌 까닭을 작업자가 그대로 전할 수 있게(검증 1회차 F-3). */
+          const message = serverMessageOf(apiError);
+          const withMessage = (base: string): string =>
+            message === null || message === base ? base : t.failure.withMessage(base, message);
           if (reason === 'network' || reason === 'other') {
             /* 같은 멱등 키로 다시 누른다 — 서버가 받았는지 모른다. */
-            setFailure(reason === 'network' ? t.failure.network : t.failure.other);
+            setFailure(reason === 'network' ? t.failure.network : withMessage(t.failure.other));
             return;
           }
           complete.resetKey();
@@ -161,8 +179,16 @@ export const PopShipmentCompleteScreen = () => {
             return;
           }
           if (reason === 'blocked') setFailure(t.failure.blocked);
-          if (reason === 'changed') setFailure(t.failure.changed);
-          open(confirm.completion.code, confirm.via, true);
+          if (reason === 'changed') setFailure(withMessage(t.failure.changed));
+          /*
+           * 「이미 완료」는 다시 읽어 정말 완료됐으면 안내 화면으로 가고(오류 띠 없음), 완료되지 않았으면 서버가 다른
+           * 까닭으로 거절한 것이다 — 확인 화면에 남아 오류를 알린다.
+           */
+          open(confirm.completion.code, confirm.via, true, (reread) => {
+            if (reason === 'alreadyCompleted' && !isAlreadyCompleted(reread)) {
+              setFailure(withMessage(t.failure.alreadyNotDone));
+            }
+          });
         },
       },
     );
@@ -186,10 +212,15 @@ export const PopShipmentCompleteScreen = () => {
             ? t.bar.blocked(groups.length)
             : workerNo === null
               ? t.bar.workerMissing
-              : t.bar.ready(
-                  qtyWithUom(totalsOf(view.completion).qty, uomOf(view.completion)),
-                  totalsOf(view.completion).lotCount,
-                );
+              : null;
+  /* 완료 가능 — 시안 바닥 띠: 굵은 요약(「160 EA · LOT 4」) + 무엇이 생기는지. */
+  const readyLead =
+    barNote === null && confirm !== null
+      ? t.bar.readyLead(
+          qtyWithUom(totalsOf(confirm.completion).qty, uomOf(confirm.completion)),
+          totalsOf(confirm.completion).lotCount,
+        )
+      : null;
 
   return (
     <main className="pop-shell pop-ui pop-ship" aria-labelledby={titleId}>
@@ -249,13 +280,22 @@ export const PopShipmentCompleteScreen = () => {
           {view.kind === 'idle' && <IdleView />}
           {view.kind === 'confirm' && <ConfirmView completion={view.completion} via={view.via} />}
           {view.kind === 'already' && <AlreadyView completion={view.completion} />}
-          {view.kind === 'done' && <ResultView result={view.result} workerNo={workerNo} />}
+          {view.kind === 'done' && <ResultView result={view.result} workerNo={workerLabel} />}
         </div>
       </div>
 
       <div className="pop-action-bar">
         <div className="pop-action-note" id={barNoteId} aria-live="polite">
-          <p className="field-note">{barNote}</p>
+          {readyLead !== null ? (
+            <p className="field-note pop-ship-bar-ready">
+              <Icon name="inventory" size={20} aria-hidden />
+              <strong>{readyLead}</strong>
+              <span aria-hidden="true">—</span>
+              <span>{t.bar.readyNote}</span>
+            </p>
+          ) : (
+            <p className="field-note">{barNote}</p>
+          )}
         </div>
         {confirm !== null && (
           <>

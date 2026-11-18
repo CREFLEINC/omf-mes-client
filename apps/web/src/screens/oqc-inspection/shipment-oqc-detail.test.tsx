@@ -138,7 +138,11 @@ describe('W-04-03 출하 OQC 새 흐름 — 상세', () => {
     expect(row3.getByText(s.lots.replaceHint)).toBeInTheDocument();
     /* 지시서에서 읽은 창고 · 위치 몫. */
     const row1 = within(lots.getByText('P2611-0001').closest('tr') as HTMLElement);
-    expect(row1.getByText(s.lots.portion('창고A', 'A-01-01', '40'))).toBeInTheDocument();
+    expect(
+      row1.getByText(
+        `${s.lots.portion('창고A', 'A-01-01', '30')} · ${s.lots.portion('창고A', 'K7QX-SYS-STAGING', '10')}`,
+      ),
+    ).toBeInTheDocument();
     /* 고객 · 지시서 번호. */
     expect(await screen.findByText(partnerNames[501] as string)).toBeInTheDocument();
     expect(screen.getAllByText('SR-261118-001').length).toBeGreaterThan(0);

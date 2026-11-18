@@ -198,8 +198,9 @@ export const popShipmentComplete = {
 
   bar: {
     idle: '지시서를 스캔하거나 찾으면 확인 화면이 열립니다.',
-    ready: (qty: string, lotCount: number): string =>
-      `합계 ${qty}, LOT ${String(lotCount)}개. 누르면 재고 차감과 출고 전표가 한 번에 생깁니다.`,
+    /* 시안 바닥 띠 — 굵은 요약(「160 EA · LOT 4」) + 무엇이 생기는지. */
+    readyLead: (qty: string, lotCount: number): string => `${qty} · LOT ${String(lotCount)}`, // ui-check-ignore: C-13 시안 P0407 바닥 띠
+    readyNote: '누르면 재고 차감·출고 전표가 한 번에 생깁니다.', // ui-check-ignore: C-13 시안 P0407 바닥 띠 문구
     blocked: (count: number): string =>
       `막는 이유 ${String(count)}건을 해결해야 완료할 수 있습니다.`,
     done: '완료했습니다. 다음 지시서를 스캔하거나 찾으세요.',
@@ -212,6 +213,11 @@ export const popShipmentComplete = {
   },
 
   failure: {
+    /* 409 ALREADY_COMPLETED 인데 다시 읽어도 완료되지 않은 지시서(검증 1회차 F-3) — 아무 말 없이 두지 않는다. */
+    alreadyNotDone:
+      '서버가 「이미 출하 완료」로 거절했지만 이 지시서는 아직 완료되지 않았습니다. [다시 확인]을 누르고, 그래도 안 되면 담당자에게 알리세요.',
+    /* 서버 문구를 함께 보인다 — 작업자가 담당자에게 그대로 전할 수 있게. */
+    withMessage: (base: string, message: string): string => `${base} (서버: ${message})`,
     blocked: '완료를 막는 이유가 새로 생겼습니다. 이유를 확인하세요.',
     changed: '그사이 지시서가 바뀌었습니다. 다시 확인한 뒤 완료하세요.',
     network: '연결이 끊겨 완료하지 못했습니다. 연결을 확인한 뒤 다시 누르세요.',

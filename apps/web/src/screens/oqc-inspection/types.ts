@@ -59,6 +59,11 @@ export interface InspectionQueueRow {
   shipmentRequestNo?: string;
   pickedLotCount?: number;
   lotJudgmentSummary?: InspectionRequestForward['lotJudgmentSummary'];
+  /** 출하 OQC 새 흐름 — 품목 코드·이름·단위·피킹 수량 합(POP 카드 「FG-A100 · 피킹 LOT 3개 · 110 EA」 · 검증 1회차). */
+  itemCode?: string;
+  itemName?: string;
+  uomCode?: string;
+  pickedQty?: number;
 }
 
 export interface InspectionQueueResult {
@@ -80,6 +85,10 @@ export const toInspectionQueueRow = (item: InspectionRequestResponse): Inspectio
   ...(item.shipmentRequestNo === undefined ? {} : { shipmentRequestNo: item.shipmentRequestNo }),
   ...(item.pickedLotCount === undefined ? {} : { pickedLotCount: item.pickedLotCount }),
   ...(item.lotJudgmentSummary === undefined ? {} : { lotJudgmentSummary: item.lotJudgmentSummary }),
+  ...(item.itemCode === undefined ? {} : { itemCode: item.itemCode }),
+  ...(item.itemName === undefined ? {} : { itemName: item.itemName }),
+  ...(item.uomCode === undefined ? {} : { uomCode: item.uomCode }),
+  ...(item.pickedQty === undefined ? {} : { pickedQty: item.pickedQty }),
 });
 
 export const toInspectionQueueResult = (response: {

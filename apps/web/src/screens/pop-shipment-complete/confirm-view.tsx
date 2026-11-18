@@ -41,16 +41,19 @@ const targetOf = (completion: Completion, group: BlockerGroup): string => {
   return [...lines, ...group.lotNos].join(', ');
 };
 
-/** LOT 몫 요약 글 — 「완제품 창고 A 20, 완제품 창고 B 20 (적치 대기 10 포함)」. 한 창고 한 자리면 null. */
+/** LOT 몫 요약 글 — 「완제품 창고 A 20 (적치 대기 10 포함), 완제품 창고 B 20」. 한 창고 한 자리면 null. */
 const portionText = (lot: CompletionLot): string | null => {
   const summary = portionSummaryOf(lot.portions);
   if (summary === null) return null;
-  const parts = summary.warehouses
-    .map((entry) => t.lots.portion(entry.name, formatQty(entry.qty)))
+  /* 적치 대기 몫은 그 몫이 있는 창고 바로 뒤에만 붙인다 — 「창고1 30 (적치 대기 5 포함), 창고2 10」. */
+  return summary.warehouses
+    .map((entry) => {
+      const text = t.lots.portion(entry.name, formatQty(entry.qty));
+      return entry.staging > 0
+        ? `${text} (${t.lots.stagingIncluded(formatQty(entry.staging))})`
+        : text;
+    })
     .join(', ');
-  return summary.staging > 0
-    ? `${parts} (${t.lots.stagingIncluded(formatQty(summary.staging))})`
-    : parts;
 };
 
 /** 교체 근거 판정 글 — 판정 코드가 OQC 판정 이름에 있으면 그 이름. */

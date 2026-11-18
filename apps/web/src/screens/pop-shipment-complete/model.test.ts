@@ -179,14 +179,26 @@ describe('LOT 몫 요약·단위·409 막는 이유', () => {
     expect(portionSummaryOf([portion('A', 40)])).toBeNull();
     expect(portionSummaryOf([portion('A', 20), portion('B', 20)])).toEqual({
       warehouses: [
-        { name: 'A', qty: 20 },
-        { name: 'B', qty: 20 },
+        { name: 'A', qty: 20, staging: 0 },
+        { name: 'B', qty: 20, staging: 0 },
       ],
       staging: 0,
     });
     expect(portionSummaryOf([portion('A', 20), portion('A', 10, STAGING_ROLE)])).toEqual({
-      warehouses: [{ name: 'A', qty: 30 }],
+      warehouses: [{ name: 'A', qty: 30, staging: 10 }],
       staging: 10,
+    });
+  });
+
+  it('Q2 적치 대기 몫은 그 몫이 있는 창고에만 붙는다 — 다른 창고 몫에 섞이지 않는다', () => {
+    expect(
+      portionSummaryOf([portion('A', 25), portion('A', 5, STAGING_ROLE), portion('B', 10)]),
+    ).toEqual({
+      warehouses: [
+        { name: 'A', qty: 30, staging: 5 },
+        { name: 'B', qty: 10, staging: 0 },
+      ],
+      staging: 5,
     });
   });
 

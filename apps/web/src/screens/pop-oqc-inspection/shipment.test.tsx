@@ -127,6 +127,44 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     ).toBeInTheDocument();
   });
 
+  it('US3-1·Q4 목록 카드는 품목 코드와 「피킹 LOT n개 · 합 단위」를 보인다(품목 번호 #id 가 아니다)', async () => {
+    renderPop(
+      '900028',
+      shipmentOqcRequest({
+        itemCode: 'FG-A100',
+        itemName: '센서 모듈 A',
+        uomCode: 'EA',
+        pickedQty: 110,
+      }),
+    );
+
+    const card = await screen.findByRole('button', { name: pop.queue.selectRow('IR-OQC-0201') });
+    expect(within(card).getByText(ps.card('FG-A100', 4, '110 EA'))).toBeInTheDocument();
+    expect(within(card).queryByText(/#2101/u)).toBeNull();
+  });
+
+  it('US3-1·Q4 머리에 품목 코드·이름, 목표·피킹·초과, 고객·납품처가 서고 피킹 LOT 줄에 창고·위치 몫(적치 대기)이 보인다', async () => {
+    const user = userEvent.setup();
+    renderPop(
+      '900028',
+      shipmentOqcRequest({ itemCode: 'FG-A100', itemName: '센서 모듈 A', uomCode: 'EA' }),
+    );
+
+    await openRequest(user);
+
+    expect(await screen.findByText(partnerNames[501] as string)).toBeInTheDocument();
+    expect(screen.getByText(partnerNames[502] as string)).toBeInTheDocument();
+    expect(screen.getByText(ps.itemValue('FG-A100', '센서 모듈 A'))).toBeInTheDocument();
+    expect(screen.getByText('100 EA')).toBeInTheDocument();
+    expect(screen.getByText('140 EA')).toBeInTheDocument();
+    expect(screen.getByText(s.over('40'))).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `${s.lots.portion('창고A', 'A-01-01', '30')} · ${s.lots.portion('창고A', ps.staging, '10')}`,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('US3-4 수량 칸이 없고, 새 결과는 미검사 LOT 만 미리 체크한다', async () => {
     const user = userEvent.setup();
     renderPop();
@@ -212,6 +250,10 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     expect(match.queryByRole('checkbox', { name: 'P2611-0003' })).toBeNull();
     expect(screen.getByText(ps.lotsReplacedHeading)).toBeInTheDocument();
     expect(await screen.findByText(/NC-261118-0003/)).toBeInTheDocument();
+    /* US3-5 시안 — 「2회차 불합격 · PDA 교체 시각 작업자 · 부적합 NC-…」. */
+    expect(
+      screen.getByText(/^2회차 불합격 · PDA 교체 .* 작업자A · 부적합 NC-261118-0003$/u),
+    ).toBeInTheDocument();
   });
 
   it('사번이 없으면 저장이 잠긴다', async () => {

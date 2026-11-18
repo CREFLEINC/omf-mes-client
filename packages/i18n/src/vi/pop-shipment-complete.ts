@@ -190,8 +190,9 @@ export const popShipmentComplete = {
 
   bar: {
     idle: 'Quét hoặc tìm lệnh xuất hàng để mở màn hình xác nhận.',
-    ready: (qty: string, lotCount: number): string =>
-      `Tổng ${qty}, ${String(lotCount)} LOT. Khi nhấn, việc trừ tồn kho và phiếu xuất kho được tạo cùng lúc.`,
+    /* 시안 바닥 띠 — 굵은 요약(「160 EA · LOT 4」) + 무엇이 생기는지. */
+    readyLead: (qty: string, lotCount: number): string => `${qty} · ${String(lotCount)} LOT`,
+    readyNote: 'Khi nhấn, việc trừ tồn kho và phiếu xuất kho được tạo cùng lúc.',
     blocked: (count: number): string =>
       `Cần xử lý ${String(count)} lý do trên mới có thể hoàn tất xuất hàng.`,
     done: 'Đã hoàn tất. Hãy quét hoặc tìm lệnh tiếp theo.',
@@ -204,6 +205,11 @@ export const popShipmentComplete = {
   },
 
   failure: {
+    /* 409 ALREADY_COMPLETED 인데 다시 읽어도 완료되지 않은 지시서(검증 1회차 F-3) — 아무 말 없이 두지 않는다. */
+    alreadyNotDone:
+      'Máy chủ từ chối vì «đã hoàn tất xuất hàng» nhưng lệnh này vẫn chưa hoàn tất. Hãy nhấn [Kiểm tra lại], nếu vẫn không được hãy báo người phụ trách.',
+    /* 서버 문구를 함께 보인다 — 작업자가 담당자에게 그대로 전할 수 있게. */
+    withMessage: (base: string, message: string): string => `${base} (Máy chủ: ${message})`,
     blocked: 'Vừa phát sinh lý do chặn hoàn tất. Hãy xem lại các lý do.',
     changed: 'Lệnh xuất hàng vừa thay đổi. Hãy kiểm tra lại rồi hoàn tất.',
     network: 'Mất kết nối nên chưa hoàn tất được. Hãy kiểm tra kết nối rồi nhấn lại.',

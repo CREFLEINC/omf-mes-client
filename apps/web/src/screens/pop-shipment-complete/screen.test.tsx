@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { PopIdentityProvider, UNKNOWN_POP_IDENTITY } from '../../patterns/pop-identity';
+import { setWorkerSession, type WorkerSession } from '../../patterns/worker-session';
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
 import {
   blockedCompletion,
@@ -142,7 +143,7 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     expect(within(lot2).getByText('완제품 창고 A 20, 완제품 창고 B 20')).toBeInTheDocument();
     expect(within(lot1).queryByText(/완제품 창고/u)).toBeNull();
 
-    expect(screen.getByText(t.bar.ready('160 EA', 4))).toBeInTheDocument();
+    expect(screen.getByText(t.bar.readyLead('160 EA', 4))).toBeInTheDocument();
     expect(completeButton()).toBeEnabled();
   });
 
@@ -209,6 +210,56 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     expect(within(lots).queryByText('P2611-0003')).toBeNull();
   });
 
+  it('Q2 — 적치 대기 몫이 창고 1 에만 있으면 「(적치 대기 n 포함)」은 창고 1 몫 바로 뒤에만 붙는다', async () => {
+    const user = userEvent.setup();
+    const base = completion();
+    const lot = base.lots[2] as Completion['lots'][number];
+    const first = lot.portions[0] as Completion['lots'][number]['portions'][number];
+    renderScreen({
+      lookups: [
+        jsonResponse(
+          completion({
+            lots: [
+              ...base.lots.slice(0, 2),
+              {
+                ...lot,
+                portions: [
+                  { ...first, qty: 25 },
+                  {
+                    ...first,
+                    locationId: 9,
+                    locationCode: 'SYS-STAGING',
+                    locationSystemRoleCode: 'PUTAWAY_STAGING',
+                    qty: 5,
+                  },
+                  {
+                    ...first,
+                    warehouseId: 12,
+                    warehouseCode: 'WH-FG-B',
+                    warehouseName: '완제품 창고 B',
+                    locationId: 10,
+                    qty: 10,
+                  },
+                ],
+              },
+              ...base.lots.slice(3),
+            ],
+          }),
+        ),
+      ],
+    });
+
+    await scan(user, CODE);
+
+    const lots = await screen.findByRole('table', { name: t.lots.caption });
+    const row = within(lots).getByText('P2611-0004').closest('tr') as HTMLElement;
+    expect(
+      within(row).getByText(
+        `${t.lots.portion('완제품 창고 A', '30')} (${t.lots.stagingIncluded('5')}), ${t.lots.portion('완제품 창고 B', '10')}`,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('US7-1·Q15 — 확인 화면에 ERP 송신 표시가 없고, 수주 없는 지시서는 수주 칸만 「없음」이다', async () => {
     const user = userEvent.setup();
     renderScreen({ lookups: [jsonResponse(completion({ salesOrderNo: null }))] });
@@ -218,6 +269,28 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     expect(await screen.findByText(t.head.noSalesOrder)).toBeInTheDocument();
     expect(screen.queryByText(/ERP/u)).toBeNull();
     expect(completeButton()).toBeEnabled();
+  });
+
+  it('Q9 완료 결과의 작업자는 이름(사번)이다 — 세션 작업자가 같은 사번일 때', async () => {
+    setWorkerSession({
+      worker: {
+        workerId: 1,
+        workerNo: '100027',
+        workerName: '합성 작업자',
+      } as WorkerSession['worker'],
+      assignedAt: '2026-11-18T08:00:00+07:00',
+      isOtherPlant: false,
+    });
+    try {
+      const user = userEvent.setup();
+      renderScreen();
+      await scan(user, CODE);
+      await user.click(await screen.findByRole('button', { name: t.bar.complete }));
+
+      expect(await screen.findByText('합성 작업자 (100027)')).toBeInTheDocument();
+    } finally {
+      setWorkerSession(null);
+    }
   });
 
   it('US1-3·SC-002·Q9 — [출하 완료] 한 번으로 완료를 보내고(확인 창 없음) 결과가 다음 스캔까지 남는다', async () => {
@@ -342,6 +415,50 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     expect(lookupCalls()).toHaveLength(2);
   });
 
+  it('Q2·FR-019 — 409 ALREADY_COMPLETED 인데 다시 읽어도 완료되지 않았으면 확인 화면에 서버 문구와 함께 오류를 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      lookups: [jsonResponse(completion()), jsonResponse(completion())],
+      complete: [conflict('ALREADY_COMPLETED', { message: '이미 출하 완료된 지시서입니다.' })],
+    });
+
+    await scan(user, CODE);
+    await user.click(await screen.findByRole('button', { name: t.bar.complete }));
+
+    expect(
+      await screen.findByText(
+        t.failure.withMessage(t.failure.alreadyNotDone, '이미 출하 완료된 지시서입니다.'),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(t.head.ready)).toBeInTheDocument();
+  });
+
+  it('Q2 — 다른 409(VERSION_CONFLICT 등)는 서버 문구를 함께 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      complete: [conflict('VERSION_CONFLICT', { message: '다른 곳에서 지시서가 바뀌었습니다.' })],
+    });
+
+    await scan(user, CODE);
+    await user.click(await screen.findByRole('button', { name: t.bar.complete }));
+
+    expect(
+      await screen.findByText(
+        t.failure.withMessage(t.failure.changed, '다른 곳에서 지시서가 바뀌었습니다.'),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('Q9 — 완료 가능하면 바닥 띠에 「합계 · LOT 수」 요약과 무엇이 생기는지 안내가 선다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await scan(user, CODE);
+
+    expect(await screen.findByText(t.bar.readyLead('160 EA', 4))).toBeInTheDocument();
+    expect(screen.getByText(t.bar.readyNote)).toBeInTheDocument();
+  });
+
   it('서버가 응답하지 못해 완료하지 못하면 확인 화면에 남고 같은 멱등 키로 다시 누른다', async () => {
     const user = userEvent.setup();
     const { completeCalls } = renderScreen({
@@ -350,7 +467,9 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
 
     await scan(user, CODE);
     await user.click(await screen.findByRole('button', { name: t.bar.complete }));
-    expect(await screen.findByText(t.failure.other)).toBeInTheDocument();
+    expect(
+      await screen.findByText(t.failure.withMessage(t.failure.other, 'down')),
+    ).toBeInTheDocument();
 
     await user.click(completeButton());
     expect(await screen.findByText(t.result.title)).toBeInTheDocument();
@@ -416,7 +535,8 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
       name: t.search.select('SR-261118-001'),
     });
     expect(within(row).getByText(t.search.ready)).toBeInTheDocument();
-    expect(within(row).getByText('가나전자')).toBeInTheDocument();
+    /* US4-4·Q10 — 고객 이름은 지시서 행의 customer 를 쓴다(POP 은 거래처 목록을 못 읽는다). */
+    expect(within(row).getByText('가나전자(행)')).toBeInTheDocument();
     expect(within(row).getByText(t.search.summaryValue(2, 4, '160', '150'))).toBeInTheDocument();
     expect(
       within(row).getByText(t.search.itemsValue('FG-A100', '센서 모듈 A', 1)),

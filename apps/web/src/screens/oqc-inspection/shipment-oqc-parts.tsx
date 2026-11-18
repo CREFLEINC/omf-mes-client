@@ -61,10 +61,20 @@ export const LotJudgmentChip = ({
 );
 
 /** 창고 · 위치별 몫 — 「창고A A-01-01 40 · 창고B B-02-01 20」. 지시서를 못 읽었으면 빈 글. */
-export const portionsText = (lot: ShipmentRequestLot | null): string =>
+export const portionsText = (
+  lot: ShipmentRequestLot | null,
+  /** 적치 대기 자리를 시스템 코드 대신 이 이름으로 적는다(P-04-06). 없으면 위치 코드 그대로. */
+  stagingLabel?: string,
+): string =>
   (lot?.portions ?? [])
     .map((portion) =>
-      s.lots.portion(portion.warehouseName, portion.locationCode, formatQty(portion.qty)),
+      s.lots.portion(
+        portion.warehouseName,
+        stagingLabel !== undefined && portion.locationSystemRoleCode === 'PUTAWAY_STAGING'
+          ? stagingLabel
+          : portion.locationCode,
+        formatQty(portion.qty),
+      ),
     )
     .join(' · '); // ui-check-ignore: C-13 시안 W0403 · P0406 「창고 · 위치」 칸 표기
 

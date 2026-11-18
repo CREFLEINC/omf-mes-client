@@ -2,6 +2,7 @@ import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { formatQty } from '../../patterns/package-qty';
 import { lotOverviewOf } from '../oqc-inspection/shipment-oqc';
 import { OverviewChip } from '../oqc-inspection/shipment-oqc-parts';
 import { toStatusBadge } from '../oqc-inspection/status-badge';
@@ -59,9 +60,15 @@ export const PopQueueList = ({ rows, selectedId, onSelect, empty }: PopQueueList
                 </span>
               ) : (
                 <span className="pop-mlot-supplier-sub pop-oqc-shipment-card">
-                  {(row.pickedLotCount ?? 0) === 0
-                    ? ps.cardEmpty(detail.idValue(row.itemId))
-                    : ps.card(detail.idValue(row.itemId), row.pickedLotCount ?? 0)}
+                  <span>
+                    {(row.pickedLotCount ?? 0) === 0
+                      ? ps.cardEmpty(row.itemCode ?? detail.idValue(row.itemId))
+                      : ps.card(
+                          row.itemCode ?? detail.idValue(row.itemId),
+                          row.pickedLotCount ?? 0,
+                          `${formatQty(row.pickedQty ?? 0)} ${row.uomCode ?? ''}`.trim(),
+                        )}
+                  </span>
                   <OverviewChip overview={overview} />
                 </span>
               )}

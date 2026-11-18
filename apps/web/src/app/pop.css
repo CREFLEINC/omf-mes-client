@@ -10499,6 +10499,13 @@
   min-height: 0;
 }
 
+.pop-ui .pop-ship-bar-ready {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
 .pop-ui .pop-ship-scan {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;

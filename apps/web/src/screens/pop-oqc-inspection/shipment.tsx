@@ -1,5 +1,5 @@
 import { Button, Chip, EmptyState, Icon } from '@crefle/web-ui';
-import type { InspectionResultSummaryForward } from '@omf-mes/api-client';
+import type { components, InspectionResultSummaryForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
@@ -32,6 +32,8 @@ import {
 } from '../oqc-inspection/shipment-oqc-queries';
 import { SHIPMENT_JUDGMENTS } from '../oqc-inspection/shipment-result-drawer';
 import type { InspectionRequestResponse } from '../oqc-inspection/types';
+
+type ShipmentRequestLot = components['schemas']['ShipmentRequestLot'];
 import { formatDateTime } from '../oqc-inspection/types';
 import { PopSerialStep } from './serial-step';
 
@@ -142,6 +144,34 @@ export const usePopShipmentForm = (inspectionRequestId: number | null, workerNo:
 
 export type PopShipmentForm = ReturnType<typeof usePopShipmentForm>;
 
+/** 머리 품목 칸 — 의뢰 응답의 코드·이름, 없으면 지시서 라인, 그래도 없으면 품목 번호. */
+const itemText = (
+  request: InspectionRequestResponse,
+  refData: ShipmentRequestRef | undefined,
+): string => {
+  const code = request.itemCode ?? refData?.itemCode ?? null;
+  if (code === null || code === '') return pop.detail.idValue(request.itemId);
+  return ps.itemValue(code, request.itemName ?? refData?.itemName ?? '');
+};
+
+/** 교체로 빠진 LOT 줄 — 「2회차 불합격 · PDA 교체 11-18 11:02 작업자 · 부적합 NC-…」(시안 P0406). */
+const popReplacedText = (lot: ShipmentRequestLot | null): string => {
+  const replacement = lot?.replacement ?? null;
+  if (replacement === null) return replacedText(lot);
+  const names: Readonly<Record<string, string>> = s.judgments;
+  const judgment =
+    replacement.judgment === null
+      ? s.judgments.REJECTED
+      : (names[replacement.judgment] ?? replacement.judgment);
+  return ps.replacedLine(
+    replacement.resultRound,
+    judgment,
+    formatPlantDateTime(replacement.replacedAt) ?? replacement.replacedAt,
+    replacement.worker?.workerName ?? '',
+    replacement.nonconformanceNo,
+  );
+};
+
 const Summary = ({
   request,
   refData,
@@ -175,7 +205,7 @@ const Summary = ({
         <dl className="pop-oqc-summary__figures">
           <div>
             <dt>{pop.detail.fields.item}</dt>
-            <dd>{pop.detail.idValue(request.itemId)}</dd>
+            <dd>{itemText(request, refData)}</dd>
           </div>
           <div>
             <dt>{ps.target}</dt>
@@ -217,7 +247,7 @@ const LotLine = ({
   refData: ShipmentRequestRef | undefined;
   uom: string;
 }) => {
-  const portions = portionsText(refData?.lotOf(view.lot.lotId) ?? null);
+  const portions = portionsText(refData?.lotOf(view.lot.lotId) ?? null, ps.staging);
 
   return (
     <li className="pop-oqc-shipment-lot">
@@ -307,7 +337,8 @@ export const PopShipmentDetail = ({
     return <p className="field-note">{pop.detail.loading}</p>;
   }
 
-  const uom = uomCode ?? '';
+  /* 단위는 의뢰 응답의 코드를 먼저 쓴다 — POP 은 단위 마스터를 못 읽을 수 있다. */
+  const uom = request.uomCode ?? uomCode ?? '';
   const refData = form.ref;
   const lots = request.lots ?? [];
   const lotNoOf = (lotId: number): string =>
@@ -366,7 +397,7 @@ export const PopShipmentDetail = ({
                     </span>
                     <Chip size="md">{s.lots.replaced}</Chip>
                     <span className="pop-oqc-shipment-muted">
-                      {replacedText(refData?.lotOf(lot.lotId) ?? null)}
+                      {popReplacedText(refData?.lotOf(lot.lotId) ?? null)}
                     </span>
                   </li>
                 ))}

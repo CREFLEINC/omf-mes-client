@@ -221,6 +221,8 @@ export const requestRow = (overrides: Partial<ShipmentRequestRow> = {}): Shipmen
   salesOrderNo: 'SO-T1',
   customerId: 71,
   shipToPartnerId: 72,
+  customer: { partnerId: 71, partnerCode: 'C-GANA', partnerName: '가나전자(행)' },
+  shipTo: { partnerId: 72, partnerCode: 'S-GANA2', partnerName: '가나전자 2공장' },
   requestedShipDate: '2026-11-18',
   statusCode: 'OPEN',
   shippingInspectionStatusCode: 'PASSED',

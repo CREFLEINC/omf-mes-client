@@ -89,8 +89,8 @@ export const qtyWithUom = (qty: number, uom: string): string =>
 export const STAGING_ROLE = 'PUTAWAY_STAGING';
 
 export interface PortionSummary {
-  /** 창고별 몫(처음 나온 순서). */
-  warehouses: { name: string; qty: number }[];
+  /** 창고별 몫(처음 나온 순서) — `staging` 은 그 창고 안 적치 대기 자리 몫(검증 1회차: 다른 창고 몫에 붙지 않게). */
+  warehouses: { name: string; qty: number; staging: number }[];
   /** 적치 대기 자리 몫의 합. */
   staging: number;
 }
@@ -105,10 +105,15 @@ export const portionSummaryOf = (
   const warehouses: PortionSummary['warehouses'] = [];
   let staging = 0;
   for (const portion of portions) {
+    const atStaging = portion.locationSystemRoleCode === STAGING_ROLE ? portion.qty : 0;
     const seen = warehouses.find((entry) => entry.name === portion.warehouseName);
-    if (seen === undefined) warehouses.push({ name: portion.warehouseName, qty: portion.qty });
-    else seen.qty += portion.qty;
-    if (portion.locationSystemRoleCode === STAGING_ROLE) staging += portion.qty;
+    if (seen === undefined) {
+      warehouses.push({ name: portion.warehouseName, qty: portion.qty, staging: atStaging });
+    } else {
+      seen.qty += portion.qty;
+      seen.staging += atStaging;
+    }
+    staging += atStaging;
   }
   return warehouses.length > 1 || staging > 0 ? { warehouses, staging } : null;
 };
@@ -165,6 +170,20 @@ export const OQC_TONE: Record<OqcLotStatus, ChipTone> = {
 };
 
 /* ── 실패 가르기 ─────────────────────────────────────────────────────────── */
+
+/** 서버가 준 사람 글(충돌 봉투 `message` · 오류 봉투 첫 줄). 없으면 null. */
+export const serverMessageOf = (error: ApiError): string | null => {
+  switch (error.kind) {
+    case 'validation':
+    case 'stateLocked':
+      return error.errors.find((item) => item.message.trim() !== '')?.message ?? null;
+    case 'conflict':
+    case 'http':
+      return error.message === undefined || error.message.trim() === '' ? null : error.message;
+    case 'network':
+      return null;
+  }
+};
 
 /** 오류 봉투(`errors[]`)의 업무 코드들. 충돌·HTTP 오류는 `code` 한 칸이다. */
 const codesOf = (error: ApiError): string[] => {
@@ -249,6 +268,8 @@ export interface SearchRowView {
   shipmentRequestNo: string;
   code: string;
   customerId: number;
+  /** 고객 이름 — 지시서 행의 `customer`(POP 은 거래처 목록을 못 읽는다). 없으면 빈 글. */
+  customerName: string;
   requestedShipDate: string;
   ready: boolean;
   /** 막는 이유 수(이유 코드별 합). */
@@ -280,6 +301,7 @@ export const toSearchRow = (row: ShipmentRequestRow): SearchRowView => {
     firstItem: first === undefined ? null : { code: first.itemCode, name: first.itemName },
     moreItems: Math.max(items.length - 1, 0),
     customerId: row.customerId,
+    customerName: row.customer?.partnerName ?? '',
     requestedShipDate: row.requestedShipDate,
     ready: row.completionBlockers.length === 0,
     blockedCount: blockerSummary.reduce((sum, entry) => sum + entry.count, 0),

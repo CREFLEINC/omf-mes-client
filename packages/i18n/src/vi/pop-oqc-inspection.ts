@@ -135,7 +135,22 @@ export const popOqcInspection = {
     confirm: 'Lưu phán định',
   },
   shipment: {
-    card: (item: string, count: number): string => `${item} · ${String(count)} LOT đã lấy`,
+    card: (item: string, count: number, qty: string): string =>
+      `${item} · ${String(count)} LOT đã lấy · ${qty}`,
+    itemValue: (code: string, name: string): string => (name === '' ? code : `${code} ${name}`),
+    staging: 'Chờ cất hàng',
+    replacedLine: (
+      round: number | null,
+      judgment: string,
+      at: string,
+      worker: string,
+      nonconformanceNo: string | null,
+    ): string =>
+      [
+        round === null ? judgment : `Lần ${String(round)} ${judgment}`,
+        `Thay trên PDA ${at}${worker === '' ? '' : ` ${worker}`}`,
+        ...(nonconformanceNo === null ? [] : [`Không phù hợp ${nonconformanceNo}`]),
+      ].join(' · '),
     cardEmpty: (item: string): string => `${item} · Chưa có LOT đã lấy`,
     target: 'Mục tiêu',
     picked: 'Đã lấy',
