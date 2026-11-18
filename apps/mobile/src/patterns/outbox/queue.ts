@@ -43,6 +43,11 @@ export interface OutboxEntry {
    * 담는 쪽이 자기 기록의 이름을 함께 넣는다.
    */
   label: string;
+  /**
+   * 무엇을 어디에 적었는지 한 줄(예: 「LOT → 위치」). 되돌아온 기록 카드에서 이름 아래에 선다 — 같은
+   * 이름의 기록이 여럿이면 이름만으로는 어느 것이 되돌아왔는지 가려지지 않는다(피처 009).
+   */
+  summary?: string;
   idempotencyKey: string;
   method: OutboxMethod;
   path: string;

@@ -29,6 +29,7 @@ const base: Location = {
   isLeaf: false,
   systemRoleCode: null,
   hasItemRestriction: false,
+  itemRestricted: false,
 };
 
 const LOCATIONS: Location[] = [

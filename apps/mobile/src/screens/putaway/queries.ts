@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 import { useApiClient } from '../../patterns/api-context';
 import { findLot } from '../../patterns/lots';
 import { runRequest } from '../../patterns/request';
+import type { LocationCheck, PendingLot, PendingLotLookup } from './direct';
 import type { PutawayTask } from './putaway';
 
 /** 아직 적치하지 않은 지시만. 끝낸 것이 목록에 남으면 같은 자리를 두 번 다녀온다. */
@@ -13,6 +14,8 @@ export const putawayKeys = {
   tasks: (workerId: number | null) => ['putaway-tasks', workerId] as const,
   task: (putawayTaskId: number | null) => ['putaway-task', putawayTaskId] as const,
   lotNo: (lotId: number | null) => ['putaway-lot-no', lotId] as const,
+  /** 피처 009 — 적치 대기 LOT(지시 없음). */
+  pendingLots: (workerId: number | null) => ['putaway-pending-lots', workerId] as const,
 };
 
 /**
@@ -121,6 +124,78 @@ export const useFindTasksByLot = (): ((code: string) => Promise<LotTasks>) => {
 
       return { lotNo: lot.lotNo, tasks: data.items };
     },
+    [client],
+  );
+};
+
+/** 적치 대기 LOT 목록과 그 전체 수(홈 배지에 더하는 수와 같다). */
+export interface PendingLots {
+  items: PendingLot[];
+  total: number;
+}
+
+/** 서버가 받는 한 쪽의 최대 — 목록은 이 수까지 보이고, 수는 `total` 로 말한다. */
+const PENDING_PAGE_SIZE = 100;
+
+/**
+ * 단말 공장의 적치 대기 LOT(피처 009, contracts §1). 공장은 서버가 단말로 고정한다. 지시 목록과 같은 문 -
+ * 사번이 풀린 뒤에 묻는다.
+ */
+export const usePendingLots = (workerId: number | null): UseQueryResult<PendingLots> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: putawayKeys.pendingLots(workerId),
+    enabled: workerId !== null,
+    queryFn: async () => {
+      if (workerId === null) {
+        throw new Error('작업자를 확인하기 전에는 적치 대기 LOT 을 조회하지 않습니다.');
+      }
+
+      const data = await runRequest(() =>
+        client.GET('/logistics/putaway-pending-lots', {
+          params: { query: { size: PENDING_PAGE_SIZE } },
+        }),
+      );
+
+      return { items: data.items, total: data.page.total };
+    },
+  });
+};
+
+/**
+ * 스캔한 라벨 값으로 LOT 하나를 확인한다(contracts §2). 적치 대기가 아니어도 이유를 돌려준다 — 지시가 있으면
+ * (`HAS_TASK`) 지금 지시 경로로 연다.
+ */
+export const useLookupPendingLot = (): ((lotNo: string) => Promise<PendingLotLookup>) => {
+  const { client } = useApiClient();
+
+  return useCallback(
+    (lotNo: string) =>
+      runRequest(() =>
+        client.GET('/logistics/putaway-pending-lots:lookup', { params: { query: { lotNo } } }),
+      ),
+    [client],
+  );
+};
+
+/**
+ * 스캔한 위치 코드로 판정을 받는다(contracts §3). 위치 코드는 전체 유일이라 창고를 먼저 고르지 않는다.
+ * LOT 이 그 사이 적치 대기가 아니게 됐으면 409(이유 코드)로 던진다.
+ */
+export const useCheckLocation = (): ((
+  lotId: number,
+  locationCode: string,
+) => Promise<LocationCheck>) => {
+  const { client } = useApiClient();
+
+  return useCallback(
+    (lotId: number, locationCode: string) =>
+      runRequest(() =>
+        client.GET('/logistics/putaway-pending-lots/{lotId}/location-check', {
+          params: { path: { lotId }, query: { locationCode } },
+        }),
+      ),
     [client],
   );
 };

@@ -29,6 +29,7 @@ const loc = (
   isLeaf: false,
   systemRoleCode: null,
   hasItemRestriction: false,
+  itemRestricted: false,
   ...extra,
 });
 

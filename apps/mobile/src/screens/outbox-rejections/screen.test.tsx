@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
@@ -587,5 +588,142 @@ describe('전송 실패한 기록 화면', () => {
 
     expect(screen.getAllByRole('group', { name: '상세' })).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: '상세 닫기' })).toHaveLength(1);
+  });
+});
+
+/*
+ * 피처 009 — 대기열에 있던 적치 기록이 서버에서 거절되면, 일반 사유 대신 스캔 때와 같은 판정 문구를 보인다
+ * (시안 M-01-05 ⑧). 지정 품목 목록은 싣지 않는다.
+ */
+describe('전송 실패한 기록 — 적치 판정 문구(피처 009)', () => {
+  const putaway = (code: string, message: string, status = 400): RejectedRecord =>
+    record({
+      entry: {
+        id: 'p-1',
+        label: '적치 완료',
+        summary: 'RM-LOT-0103 → WH01-C01-02',
+        idempotencyKey: 'key-p1',
+        method: 'POST',
+        path: '/logistics/putaway-pending-lots/43:putaway',
+        body: {},
+        occurredAt: '2026-11-18T02:42:00.000Z',
+        confirmation: 'pending',
+      },
+      error: {
+        kind: 'validation',
+        status,
+        errors: [{ scope: 'field', field: 'locationId', code, message }],
+      },
+    });
+
+  it('US2-9 RESTRICTED_LOCATION 은 「이 위치는 지정 품목만 받습니다」와 다시 적치하라는 안내', async () => {
+    seed([putaway('RESTRICTED_LOCATION', '이 위치는 지정 품목만 받습니다.')]);
+
+    render();
+
+    expect(
+      await screen.findByText(messages.putaway.direct.verdict.RESTRICTED_LOCATION),
+    ).toBeInTheDocument();
+    expect(screen.getByText('RM-LOT-0103 → WH01-C01-02')).toBeInTheDocument();
+    expect(screen.getByText(messages.putaway.direct.rejectedHint)).toBeInTheDocument();
+    /* 서버 문구(한국어 하나)를 사유로 그대로 내지 않는다 — 상세의 서버 메시지 칸에만 남는다. */
+    expect(screen.queryByText('이 위치는 지정 품목만 받습니다.')).not.toBeInTheDocument();
+  });
+
+  it('FR-030 다른 단말이 먼저 적치했으면(409 ALREADY_PUT_AWAY) 「이미 적치됨」과 그 자리', async () => {
+    seed([
+      putaway(
+        'ALREADY_PUT_AWAY',
+        '이미 적치된 LOT 입니다. (원자재창고 › A구역 › 랙 01 › 3단)',
+        409,
+      ),
+    ]);
+
+    render();
+
+    expect(
+      await screen.findByText(messages.putaway.direct.reason.ALREADY_PUT_AWAY),
+    ).toBeInTheDocument();
+    expect(screen.getByText('원자재창고 › A구역 › 랙 01 › 3단')).toBeInTheDocument();
+    expect(screen.queryByText(messages.putaway.direct.rejectedHint)).not.toBeInTheDocument();
+  });
+
+  it('FR-017b·T054 지시 적치 완료가 LOCATION_ITEM_RESTRICTED 로 거절되면 같은 판정 문구', async () => {
+    seed([
+      record({
+        entry: {
+          ...putaway('X', 'x').entry,
+          path: '/logistics/putaway-tasks/90:complete',
+        },
+        error: {
+          kind: 'validation',
+          status: 400,
+          errors: [
+            {
+              scope: 'field',
+              field: 'actualLocationId',
+              code: 'LOCATION_ITEM_RESTRICTED',
+              message: '이 위치는 지정 품목만 받습니다.',
+            },
+          ],
+        },
+      }),
+    ]);
+
+    render();
+
+    expect(
+      await screen.findByText(messages.putaway.direct.verdict.RESTRICTED_LOCATION),
+    ).toBeInTheDocument();
+  });
+
+  it('FR-017b·T058 제품 입고(goods-receipts)가 LOCATION_ITEM_RESTRICTED 로 거절되면 같은 판정 문구', async () => {
+    seed([
+      record({
+        entry: { ...putaway('X', 'x').entry, path: '/logistics/goods-receipts' },
+        error: {
+          kind: 'validation',
+          status: 400,
+          errors: [
+            {
+              scope: 'screen',
+              code: 'LOCATION_ITEM_RESTRICTED',
+              message: '이 위치는 지정 품목만 받습니다.',
+            },
+          ],
+        },
+      }),
+    ]);
+
+    render();
+
+    expect(
+      await screen.findByText(messages.putaway.direct.verdict.RESTRICTED_LOCATION),
+    ).toBeInTheDocument();
+  });
+
+  it('적치 기록이 아니면 지금처럼 서버 사유를 보인다', async () => {
+    seed([
+      record({
+        error: {
+          kind: 'validation',
+          errors: [
+            {
+              scope: 'field',
+              field: 'x',
+              code: 'RESTRICTED_LOCATION',
+              message: '증상을 적어 주세요',
+            },
+          ],
+        },
+      }),
+    ]);
+
+    render();
+
+    expect(await screen.findByText('증상을 적어 주세요')).toBeInTheDocument();
+    expect(
+      screen.queryByText(messages.putaway.direct.verdict.RESTRICTED_LOCATION),
+    ).not.toBeInTheDocument();
   });
 });

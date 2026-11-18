@@ -1,4 +1,4 @@
-import { EmptyState } from '@crefle/web-ui';
+import { EmptyState, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
@@ -6,7 +6,7 @@ import { Button } from '../../patterns/button';
 import { Card } from '../../patterns/card';
 import { useOutbox } from '../../patterns/outbox';
 import { useScreenTitle } from '../../patterns/screen-title';
-import { detailsOf, reasonOf, whenOf } from './record';
+import { detailsOf, putawayNoticeOf, reasonOf, whenOf } from './record';
 import './screen.css';
 
 const t = messages.outboxRejections;
@@ -46,7 +46,33 @@ export const OutboxRejectionsScreen = () => {
                 <p className="outbox-rejections__when">
                   {t.occurredAt(whenOf(record.entry.occurredAt))}
                 </p>
-                <p className="outbox-rejections__reason">{reasonOf(record.error)}</p>
+                {record.entry.summary === undefined ? null : (
+                  <p className="outbox-rejections__summary">{record.entry.summary}</p>
+                )}
+                {/*
+                 * 적치 기록(피처 009)은 스캔 때와 같은 판정 문구를 보인다(시안 M-01-05 ⑧). 모르는 코드면 지금처럼
+                 * 일반 사유.
+                 */}
+                {(() => {
+                  const notice = putawayNoticeOf(record);
+
+                  return notice === null ? (
+                    <p className="outbox-rejections__reason">{reasonOf(record.error)}</p>
+                  ) : (
+                    <div className="outbox-rejections__notice">
+                      <Icon name="block" size={20} />
+                      <div>
+                        <p className="outbox-rejections__reason">{notice.title}</p>
+                        {notice.detail === null ? null : (
+                          <p className="outbox-rejections__summary">{notice.detail}</p>
+                        )}
+                        {notice.hint === null ? null : (
+                          <p className="outbox-rejections__hint">{notice.hint}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
                 {record.cascaded ? (
                   <p className="outbox-rejections__cascaded">{t.cascaded}</p>
                 ) : null}

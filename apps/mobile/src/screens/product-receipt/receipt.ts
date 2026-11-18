@@ -192,14 +192,25 @@ export const destinationOf = (
  * `designated` 가 undefined 면 아직 묻는 중이다 - 모르는 채 통과시키면 막아야 할 자리가 잠깐 열린다.
  */
 export const MATCHED = 'matched';
+/** 「지정 품목만 받기」를 켠 위치에 지정 밖 품목 — 막는다(서버 코어도 LOCATION_ITEM_RESTRICTED 로 거절). */
 export const NOT_ALLOWED = 'notAllowed';
+/**
+ * 지정 밖 품목이지만 옵션이 꺼진 위치 — 품목 지정은 안내라 확인 한 번 뒤 받는다(피처 009 T058 · FR-017b). 제품 입고는
+ * 보관 품목을 자동으로 더하지 않는다.
+ */
+export const UNDESIGNATED = 'undesignated';
 export const ANYWHERE = 'anywhere';
 export const CHECKING = 'checking';
 
 export type LocationVerdict =
-  typeof MATCHED | typeof NOT_ALLOWED | typeof ANYWHERE | typeof CHECKING;
+  typeof MATCHED | typeof NOT_ALLOWED | typeof UNDESIGNATED | typeof ANYWHERE | typeof CHECKING;
 
-export const verdictOf = (designated: number[] | undefined, itemIds: number[]): LocationVerdict => {
+export const verdictOf = (
+  designated: number[] | undefined,
+  itemIds: number[],
+  /** 위치의 「지정 품목만 받기」(`Location.itemRestricted`, 위치 조회 응답). */
+  itemRestricted = false,
+): LocationVerdict => {
   if (designated === undefined) {
     return CHECKING;
   }
@@ -208,7 +219,11 @@ export const verdictOf = (designated: number[] | undefined, itemIds: number[]): 
     return ANYWHERE;
   }
 
-  return itemIds.every((itemId) => designated.includes(itemId)) ? MATCHED : NOT_ALLOWED;
+  if (itemIds.every((itemId) => designated.includes(itemId))) {
+    return MATCHED;
+  }
+
+  return itemRestricted ? NOT_ALLOWED : UNDESIGNATED;
 };
 
 /**
@@ -248,6 +263,8 @@ export interface SubmitInput {
   queuedForLots: number;
   verdict: LocationVerdict;
   stocked: ReadonlyMap<number, StockedCheck>;
+  /** 지정되지 않은 위치인 것을 알고 [미지정 위치 적치]를 눌렀나(T058). */
+  confirmedOutside?: boolean;
 }
 
 export const canSubmit = ({
@@ -260,6 +277,7 @@ export const canSubmit = ({
   queuedForLots,
   verdict,
   stocked,
+  confirmedOutside = false,
 }: SubmitInput): boolean => {
   if (
     warehouse === null ||
@@ -285,7 +303,12 @@ export const canSubmit = ({
    * 위치를 관리하는 창고에서만 보관 품목을 따진다. 관리하지 않으면 스캔할 라벨 자체가 없어 대조할
    * 대상이 없다.
    */
-  if (managed && verdict !== MATCHED && verdict !== ANYWHERE) {
+  if (
+    managed &&
+    verdict !== MATCHED &&
+    verdict !== ANYWHERE &&
+    !(verdict === UNDESIGNATED && confirmedOutside)
+  ) {
     return false;
   }
 

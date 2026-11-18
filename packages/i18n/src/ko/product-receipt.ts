@@ -82,8 +82,15 @@ export const productReceipt = {
     noDefault: '이 창고에 창고 전체 위치가 없습니다. 관리자에게 문의하세요.',
     /** 위치가 보관 품목으로 이 품목을 정해 두었다. */
     matched: '이 품목의 보관 위치입니다',
-    /** 다른 품목 전용 위치. 두면 서버도 막는다. */
-    notAllowed: (code: string) => `${code} 은(는) 다른 품목 전용 위치입니다`,
+    /**
+     * 「지정 품목만 받기」를 켠 위치에 지정 밖 품목(피처 009 T058). 두면 서버도 막는다(LOCATION_ITEM_RESTRICTED). 옵션이 꺼진
+     * 위치는 막지 않고 확인을 묻는다 — 품목 지정은 안내다(FR-017b).
+     */
+    notAllowed: '이 위치는 지정 품목만 받습니다',
+    undesignated: '지정된 위치가 아닙니다. 정말 적치합니까?',
+    confirmUndesignated: '미지정 위치 적치',
+    rescan: '다시 스캔',
+    undesignatedConfirmed: '지정된 위치가 아닌 곳에 입고합니다',
     /** 보관 품목을 정하지 않은 위치 — 막지 않는다. */
     anywhere: '품목을 가리지 않는 위치입니다',
     itemsLoadFailed: '이 위치의 보관 품목을 확인할 수 없습니다',

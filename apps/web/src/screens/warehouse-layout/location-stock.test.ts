@@ -24,6 +24,7 @@ const location = (
   isActive: true,
   isLeaf: true,
   hasItemRestriction: false,
+  itemRestricted: false,
 });
 
 const LOCATIONS: LocationView[] = [

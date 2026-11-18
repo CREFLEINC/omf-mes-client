@@ -15,11 +15,8 @@ export const putaway = {
     notFound: (workerNo: string) => `${workerNo} 사번의 작업자를 찾지 못했습니다`,
   },
   tasks: {
-    legend: '내 적치 지시',
     loading: '적치 지시를 불러오는 중입니다',
     loadFailed: '적치 지시를 확인할 수 없습니다. 연결을 확인하세요.',
-    none: '받은 적치 지시가 없습니다',
-    count: (count: string) => `적치 대기 ${count}건`,
     from: (code: string) => `현재 ${code}`,
     /*
      * 라벨과 눈으로 대조할 값이다. 지시 번호만으로는 무엇을 집는지 알 수 없다. 계약이 목록
@@ -59,15 +56,12 @@ export const putaway = {
    */
   lotScan: {
     label: '자재 LOT 스캔',
-    prompt: '자재 LOT 라벨을 스캔하면 그 지시를 엽니다',
     manual: '직접 입력',
     manualSubmit: '입력한 LOT 으로',
-    finding: 'LOT 의 적치 지시를 찾는 중입니다',
-    findFailed: 'LOT 의 적치 지시를 확인할 수 없습니다. 연결을 확인하세요.',
     /** 위치 라벨 같은 다른 라벨이거나, 등록되지 않은 LOT. 목록은 그대로 둔다. */
     notLot: 'LOT 라벨이 아니거나 등록되지 않은 LOT 입니다',
     none: '이 LOT 의 적치 지시가 없습니다',
-    noneHint: '입고 처리 전이거나, 이미 적치했거나, 다른 공장의 LOT 입니다',
+    noneHint: '지시를 이미 끝냈거나 다른 기기에서 먼저 적치했습니다',
     /** 같은 LOT 을 나눠 입고하면 지시가 여럿이다 - 그 지시만 남기고 고르게 한다. */
     many: (count: string) => `이 LOT 의 적치 지시 ${count}건 — 하나를 고르세요`,
     showAll: '전체 지시 보기',
@@ -121,6 +115,8 @@ export const putaway = {
     temporaryMove: '임시 위치 적재로 이동',
     /** 둘 곳 밖. 보관 위치는 위치 관리의 「보관 품목」에서 정한다. */
     notAllowed: (allowed: string) => `이 품목의 보관 위치(${allowed})가 아닙니다`,
+    /** 보관 위치 밖을 확인하고 [미지정 위치 적치]를 눌렀다(T054) — 다음은 LOT · 기록. */
+    outsideConfirmed: '보관 위치가 아닌 곳에 적치합니다',
     /** 보관 위치를 정하지 않은 품목 — 막지 않는다. */
     anywhere: '보관 위치를 정하지 않은 품목입니다. 이 창고 어디든 둘 수 있습니다',
     /** LOT 으로 연 지시는 위치 스캔이 곧 기록이라, 막힌 것이 기록되지 않았음을 말한다. */
@@ -154,6 +150,7 @@ export const putaway = {
     description: '연결되면 보냅니다. 아직 보내지 않았습니다.',
   },
   rejected: {
+    count: (count: string) => `전송하지 못한 적치 ${count}건`,
     title: '적치를 전송하지 못했습니다',
     description: '전송 실패한 기록에서 사유를 확인하세요. ',
     action: '전송 실패한 기록 보기',
@@ -164,4 +161,85 @@ export const putaway = {
     description: '기록되지 않았습니다. 다시 시도하세요.',
   },
   noWorker: '사번을 먼저 확인하세요',
+  /**
+   * 피처 009 — 적치 지시 없는 구매 입고 적치(omf-all-around#294). IQC 판정·입하 마감이 끝난 자재 관리 LOT 을
+   * 지시 없이 위치를 스캔해 적치하면 그때 입고된다. 지시(004 보충·배포 전 구매 입고)는 위 문구 그대로다.
+   */
+  direct: {
+    /** 목록 머리 — 두 종류의 수(가운뎃점 나열은 C-13 이라 쉼표로 푼다). */
+    summary: (lots: string, tasks: string) => `적치 대기 LOT ${lots}건, 적치 지시 ${tasks}건`,
+    lotsLegend: '적치 대기 LOT',
+    lotsLoading: '적치 대기 LOT 을 불러오는 중입니다',
+    lotsLoadFailed: '적치 대기 LOT 을 확인할 수 없습니다. 연결을 확인하세요.',
+    tasksLegend: '적치 지시',
+    /** 두 목록이 모두 비었을 때. */
+    none: '적치할 LOT 과 적치 지시가 없습니다',
+    /** 입하 LOT 이 없는 이전 흐름 LOT 의 묶음 머리. */
+    noInboundLot: '입하 LOT 없음(이전 흐름)',
+    /** 묶음 머리의 입하 LOT · 공급처. */
+    groupSource: (inboundLotNo: string, supplier: string) =>
+      supplier === '' ? inboundLotNo : `${inboundLotNo}, ${supplier}`,
+    defective: '불량',
+    normal: '정상',
+    lotScanPrompt: '자재 LOT 라벨을 스캔하면 그 LOT 을 엽니다',
+    finding: 'LOT 을 확인하는 중입니다',
+    findFailed: 'LOT 을 확인할 수 없습니다. 연결을 확인하세요.',
+    /** 적치 대기가 아닌 LOT 을 스캔했을 때 — 서버 이유 코드마다(FR-011). */
+    reason: {
+      RECEIVING: '입하 마감 전',
+      INSPECTION: 'IQC 판정 전(보류)',
+      ALREADY_PUT_AWAY: '이미 적치됨',
+      HAS_TASK: '적치 지시가 있는 LOT 입니다',
+      DISPOSED: '처분됨',
+      OTHER_PLANT: '다른 공장 LOT',
+      NOT_INBOUND: '구매 입하 LOT 이 아닙니다',
+    },
+    /** 이미 적치된 자리 — 위치 코드 · 창고. */
+    putAwayAt: (code: string, warehouse: string) => `${code}, ${warehouse}`,
+    /** 적치 방식(공통코드 GOODS_RECEIPT_PUTAWAY_MODE). */
+    mode: {
+      DESIGNATED: '지정 위치',
+      UNDESIGNATED: '미지정 위치',
+      TEMPORARY: '임시 적치',
+    },
+    /** LOT 화면 머리. */
+    qtyLabel: '수량',
+    inboundLotLabel: '입하 LOT',
+    lotLabel: '자재 LOT',
+    statusLabel: '판정',
+    change: '다른 LOT 고르기',
+    /** 지정 위치 목록 — 창고별. */
+    designatedLegend: '지정 위치 — 공장 안 모든 창고',
+    designatedNone: '이 품목이 지정된 위치가 없습니다. 둘 위치를 스캔하세요',
+    wholeWarehouse: '창고 전체 — 위치를 나누지 않은 창고',
+    checking: '위치를 확인하는 중입니다',
+    checkFailed: '위치를 확인할 수 없습니다. 연결을 확인하세요.',
+    /** 판정 문구 — 판정 코드로 꺼낸다(베트남어 때문에 서버 메시지를 그대로 쓰지 않는다). */
+    verdict: {
+      DESIGNATED: '지정 위치입니다',
+      UNDESIGNATED: '지정된 위치가 아닙니다. 정말 적치합니까?',
+      NOT_FOUND: '찾을 수 없는 위치',
+      INACTIVE: '찾을 수 없는 위치',
+      OTHER_PLANT: '다른 공장 위치',
+      STAGING: '적치 대기 위치에는 둘 수 없습니다',
+      NOT_LEAF: '구역이나 랙이 아니라 맨 아래 위치를 스캔하세요',
+      DEFECT_LOT_NEEDS_DEFECT_WAREHOUSE: '불량 LOT 은 불량창고에만 둘 수 있습니다',
+      NORMAL_LOT_IN_DEFECT_WAREHOUSE: '정상 LOT 은 불량창고에 둘 수 없습니다',
+      RESTRICTED_LOCATION: '이 위치는 지정 품목만 받습니다',
+    },
+    /** 미지정 위치 확인 — 적치하면 보관 품목에 더해진다(FR-017a). */
+    addsDesignation: (itemCode: string) =>
+      `적치하면 이 위치의 보관 품목에 ${itemCode} 가 더해집니다`,
+    notYetRecorded: '아직 기록하지 않았습니다.',
+    notRecorded: '기록하지 않았습니다',
+    rescan: '다시 스캔',
+    confirmUndesignated: '미지정 위치 적치',
+    /** 단추 없이 기록한다는 것을 단추 자리에서 말한다. */
+    auto: '지정 위치를 스캔하면 바로 기록합니다',
+    /** 방금 기록한 것 — LOT → 위치 수량. */
+    row: (lotNo: string, code: string, qty: string) => `${lotNo} → ${code} ${qty}`,
+    receipt: (receiptNo: string, warehouse: string) => `입고 ${receiptNo}, ${warehouse}`,
+    /** 전송 실패한 기록 — 서버가 거절한 적치(US2-9 · FR-030). */
+    rejectedHint: 'LOT 은 적치 대기 목록에 그대로 있습니다. 다른 위치에 다시 적치하세요.',
+  },
 } as const;

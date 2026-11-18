@@ -70,6 +70,7 @@ export const locationFixtures: Location[] = [
     isLeaf: false,
     systemRoleCode: null,
     hasItemRestriction: false,
+    itemRestricted: false,
   },
   {
     locationId: 2002,
@@ -83,6 +84,7 @@ export const locationFixtures: Location[] = [
     isLeaf: false,
     systemRoleCode: null,
     hasItemRestriction: false,
+    itemRestricted: false,
   },
   {
     locationId: 2003,
@@ -96,6 +98,7 @@ export const locationFixtures: Location[] = [
     isLeaf: true,
     systemRoleCode: null,
     hasItemRestriction: false,
+    itemRestricted: false,
   },
   {
     locationId: 2004,
@@ -109,6 +112,7 @@ export const locationFixtures: Location[] = [
     isLeaf: true,
     systemRoleCode: null,
     hasItemRestriction: false,
+    itemRestricted: false,
   },
 ];
 

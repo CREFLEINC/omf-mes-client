@@ -75,7 +75,8 @@
 }
 
 .putaway__done li .putaway__scanned {
-  flex: 1 1 0;
+  /* 글이 아이콘 옆 한 줄 폭을 다 쓴다 — 칩은 다음 줄(`putaway__done-chips`)로 내려간다. */
+  flex: 1 1 calc(100% - 20px - var(--space-2, 8px));
   min-width: 0;
   font: var(--type-label-sm);
   letter-spacing: 0;
@@ -251,4 +252,152 @@
 .putaway__auto-note--risk {
   background: var(--semantic-warning-container);
   color: var(--on-semantic-warning-container);
+}
+
+/*
+ * 피처 009 — 적치 대기 LOT 목록. 입하 LOT · 품목 묶음 하나가 흰 카드 하나이고, 그 안에 LOT 줄이 누르는
+ * 곳으로 쌓인다. 줄을 누르면 그 LOT 라벨을 스캔한 것과 같다.
+ */
+.putaway__groups,
+.putaway__lots,
+.putaway__designated ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.putaway__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+  padding: var(--space-3) var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.putaway__group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+
+.putaway__group-head strong {
+  font-family: var(--font-mono);
+}
+
+.putaway__lot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 48px;
+  box-sizing: border-box;
+  margin: 0;
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--surface-container-low);
+  color: var(--on-surface);
+  font: var(--type-body-sm);
+  text-align: start;
+  white-space: normal;
+  cursor: pointer;
+}
+
+.putaway__lot:active {
+  background: var(--surface-container);
+}
+
+.putaway__lot:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.putaway__lot .putaway__scanned {
+  flex: 1 1 0;
+  min-width: 0;
+  font-family: var(--font-mono);
+}
+
+.putaway__lot-qty {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+
+/* LOT 화면의 지정 위치 — 창고별 묶음, 줄마다 코드와 경로(창고 › 구역 › 랙). */
+.putaway__designated {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+.putaway__designated-legend {
+  font: var(--type-label-lg);
+}
+
+.putaway__designated-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+.putaway__designated-warehouse {
+  font-weight: 600;
+}
+
+.putaway__designated li {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.putaway__designated li .putaway__scanned {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.putaway__path {
+  color: var(--on-surface-muted);
+  overflow-wrap: anywhere;
+}
+
+/* 「적치됨」 줄의 방식 · 결과 칩 — 글 아래 줄, 아이콘 자리만큼 들여서. */
+.putaway__done-chips {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  gap: var(--space-1, 4px);
+  padding-left: calc(20px + var(--space-2, 8px));
+}
+
+/* 적치 대기 LOT 줄 — 번호 한 줄, 그 아래 「불량」 칩 · 수량. */
+.putaway__lot-main {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.putaway__lot-main .putaway__scanned {
+  flex: none;
+}
+
+.putaway__lot-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+
+/* 떠 있는 직접 입력 단추(48px)와 그 아래 여백만큼 — 마지막 내용이 단추 밑으로 들어가지 않게. */
+.putaway__tools-clearance {
+  flex: none;
+  height: calc(48px + var(--space-3, 12px));
 }

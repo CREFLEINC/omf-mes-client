@@ -50,6 +50,7 @@ const location: components['schemas']['Location'] = {
   isLeaf: true,
   systemRoleCode: null,
   hasItemRestriction: false,
+  itemRestricted: false,
 };
 const earlierLocation: components['schemas']['Location'] = {
   ...location,
