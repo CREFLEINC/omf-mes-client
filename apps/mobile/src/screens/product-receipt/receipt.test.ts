@@ -5,6 +5,7 @@ import {
   CHECKING,
   MATCHED,
   NOT_ALLOWED,
+  UNDESIGNATED,
   canSubmit,
   destinationOf,
   differsFromExpected,
@@ -382,8 +383,10 @@ describe('위치의 보관 품목', () => {
   });
 
   /* 인식표에 품목이 여럿이면 전부 보관 품목이어야 한다. */
-  it('하나라도 보관 품목이 아니면 막는다', () => {
-    expect(verdictOf([2003], [2003, 2004])).toBe(NOT_ALLOWED);
+  /* T058 · FR-017b — 품목 지정은 안내. 막는 것은 「지정 품목만 받기」를 켠 위치뿐이다. */
+  it('FR-017b·T058 하나라도 보관 품목이 아니면 옵션이 꺼진 위치는 확인, 켠 위치는 막는다', () => {
+    expect(verdictOf([2003], [2003, 2004])).toBe(UNDESIGNATED);
+    expect(verdictOf([2003], [2003, 2004], true)).toBe(NOT_ALLOWED);
   });
 
   it('보관 품목을 정하지 않은 위치는 어디든 받는다', () => {
@@ -409,6 +412,9 @@ describe('위치의 보관 품목', () => {
 
     expect(canSubmit({ ...base, verdict: CHECKING })).toBe(false);
     expect(canSubmit({ ...base, verdict: NOT_ALLOWED })).toBe(false);
+    expect(canSubmit({ ...base, verdict: NOT_ALLOWED, confirmedOutside: true })).toBe(false);
+    expect(canSubmit({ ...base, verdict: UNDESIGNATED })).toBe(false);
+    expect(canSubmit({ ...base, verdict: UNDESIGNATED, confirmedOutside: true })).toBe(true);
     expect(canSubmit({ ...base, verdict: ANYWHERE })).toBe(true);
   });
 });
