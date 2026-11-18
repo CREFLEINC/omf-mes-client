@@ -564,23 +564,7 @@
   background: var(--surface-container);
 }
 
-.proposal-review-help {
-  position: fixed;
-  z-index: 1000;
-  box-sizing: border-box;
-  max-width: min(24rem, calc(100vw - 24px));
-  max-height: calc(100dvh - 24px);
-  overflow: auto;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  background: var(--surface);
-  color: var(--on-surface);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-sm);
-  padding: var(--space-3) var(--space-4);
-  font: var(--type-body-sm);
-  box-shadow: var(--elevation-3);
-}
+
 
 .proposal-manual-workspace {
   display: grid;

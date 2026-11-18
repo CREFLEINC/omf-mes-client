@@ -1,7 +1,8 @@
+import { ReviewHelp } from '../proposal-review/review-help';
 import './release-review.css';
 import './release-materials.css';
 import type { MaterialComponents } from '@omf-mes/api-client';
-import { AlertBanner, Button, TextField, Tooltip } from '@crefle/web-ui';
+import { AlertBanner, Button, TextField } from '@crefle/web-ui';
 import { useQueries } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useApiClient } from '../../../patterns/api-context';
@@ -214,25 +215,15 @@ export const ReleaseMaterials = ({
                                 </span>
                               )}
                               <span>{row.bomUomCode}</span>
-                              <Tooltip
-                                content={
-                                  choice.rate !== null && rate !== null
-                                    ? '입력한 비율로 소요량을 계산합니다. 이 비율은 배포 시 품목별 단위 환산으로 저장됩니다.'
-                                    : row.conversionSource === 'ITEM'
-                                      ? '품목별 단위 환산에 등록된 비율입니다. 비율 변경은 품목 기준정보에서 처리합니다.'
-                                      : row.conversionSource === 'COMMON'
-                                        ? '단위 사이에 정해진 기본 환산 비율입니다. 품목별 등록값이 있으면 우선 적용합니다.'
-                                        : `1 ${row.stockUomCode}에 해당하는 ${row.bomUomCode} 수량을 입력하세요. 배포 시 품목별 단위 환산으로 저장됩니다.`
-                                }
-                              >
-                                <button
-                                  type="button"
-                                  className="info-mark"
-                                  aria-label={`${target.workOrderNo} ${row.itemCode} 환산 비율 도움말`}
-                                >
-                                  ?
-                                </button>
-                              </Tooltip>
+                              <ReviewHelp title={`${target.workOrderNo} ${row.itemCode} 환산 비율`}>
+                                {choice.rate !== null && rate !== null
+                                  ? '입력한 비율로 소요량을 계산합니다. 이 비율은 배포 시 품목별 단위 환산으로 저장됩니다.'
+                                  : row.conversionSource === 'ITEM'
+                                    ? '품목별 단위 환산에 등록된 비율입니다. 비율 변경은 품목 기준정보에서 처리합니다.'
+                                    : row.conversionSource === 'COMMON'
+                                      ? '단위 사이에 정해진 기본 환산 비율입니다. 품목별 등록값이 있으면 우선 적용합니다.'
+                                      : `1 ${row.stockUomCode}에 해당하는 ${row.bomUomCode} 수량을 입력하세요. 배포 시 품목별 단위 환산으로 저장됩니다.`}
+                              </ReviewHelp>
                             </div>
                             {choice.rate !== null && rate === null && (
                               <span
