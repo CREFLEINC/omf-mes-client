@@ -221,6 +221,7 @@ export interface ReferenceFieldProps {
   valueLabel: string;
   /** 긴 선택값을 줄바꿈하여 전체 표시한다. */
   wrapValue?: boolean;
+  clearable?: boolean;
   /** 비었을 때 흐린 문구. 기본은 「눌러서 찾기」. */
   placeholder?: string;
   source: ReferenceSource | null;
@@ -243,6 +244,7 @@ export const ReferenceField = ({
   size = 'md',
   valueLabel,
   wrapValue = false,
+  clearable = true,
   source,
   required = false,
   disabled = false,
@@ -291,7 +293,7 @@ export const ReferenceField = ({
               {valueLabel || placeholder || t.select(label)}
             </span>
           </button>
-          {valueLabel !== '' && (
+          {clearable && valueLabel !== '' && (
             <IconButton
               icon="close"
               size="sm"
@@ -320,7 +322,7 @@ export const ReferenceField = ({
           onClick={() => !locked && setOpen(true)}
           onSearch={() => !locked && setOpen(true)}
           onChange={() => undefined}
-          onClear={onClear}
+          onClear={clearable ? onClear : undefined}
         />
       )}
       {children}

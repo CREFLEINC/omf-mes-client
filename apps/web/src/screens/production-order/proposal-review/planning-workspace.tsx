@@ -1,5 +1,9 @@
+import { ProposalWarehouseField } from './warehouse-field';
 import { createLocalKey } from '../../../patterns/local-key';
 import { plantToday } from '../../../patterns/plant-time';
+import { useApiClient } from '../../../patterns/api-context';
+import { runRequest } from '../../../patterns/request';
+import { useRoutingReferenceQuery } from '../../production-plan/reference-queries';
 import { useProductionLineReferenceQuery } from '../../production-plan/reference-queries';
 import { useRef, useState } from 'react';
 import { AlertBanner, Button, Tabs } from '@crefle/web-ui';
@@ -26,6 +30,7 @@ import { PlanSummary } from './plan-summary';
 interface Props {
   row: ReviewProposal;
   pending: boolean;
+  onBusyChange?: (busy: boolean) => void;
   onPlansChange: (plans: ReviewPlan[]) => void;
   source: (
     row: ReviewProposal,
@@ -43,12 +48,17 @@ interface Props {
 export const ProposalPlanningWorkspace = ({
   row,
   pending,
+  onBusyChange,
   onPlansChange,
   source,
   edit,
   pick,
 }: Props) => {
   const [stage, setStage] = useState('plan');
+  const { client } = useApiClient();
+  const routings = useRoutingReferenceQuery(row.live ? (row.itemId ?? null) : null, true);
+  const [routingBusy, setRoutingBusy] = useState(false);
+  const [routingError, setRoutingError] = useState('');
   const template = useRef(row.plans[0]);
   const addPlan = () => {
     const original = template.current;
@@ -70,6 +80,10 @@ export const ProposalPlanningWorkspace = ({
         key,
         number: undefined,
         source: '신규 제안',
+        serverPlanKey: undefined,
+        productionPlanId: undefined,
+        savedVersionNo: undefined,
+        planDateSourceCode: 'USER' as const,
         quantity: String(remaining),
         recalculationRequired: true,
         operations: original.operations.map((op) => ({
@@ -141,6 +155,103 @@ export const ProposalPlanningWorkspace = ({
         },
       })),
     }));
+  const changeRouting = async (value: string) => {
+    if (!plan || pending || routingBusy) return;
+    const option = plan.routingOptions?.find((option) => String(option.value.id) === value);
+    if (option) {
+      edit(plan.key, (current) => ({
+        ...current,
+        routingId: option.value.id,
+        routing: option.value.name,
+        operations: structuredClone(option.operations),
+        recalculationRequired: true,
+      }));
+      return;
+    }
+    const revision = routings.data?.items.find((item) => String(item.routingId) === value);
+    if (!revision) return;
+    onBusyChange?.(true);
+    setRoutingBusy(true);
+    setRoutingError('');
+    try {
+      const [operations, dependencies] = await Promise.all([
+        runRequest(() =>
+          client.GET('/planning/routings/{routingId}/operations', {
+            params: { path: { routingId: revision.routingId } },
+          }),
+        ),
+        runRequest(() =>
+          client.GET('/planning/routings/{routingId}/operation-dependencies', {
+            params: { path: { routingId: revision.routingId } },
+          }),
+        ),
+      ]);
+      const mapped = await Promise.all(
+        operations.items.map(async (operation) => {
+          const process = await runRequest(() =>
+            client.GET('/mdm/processes/{processId}', {
+              params: { path: { processId: operation.processId } },
+            }),
+          );
+          const original = plan.operations.find(
+            (op) => op.routingOperationId === operation.routingOperationId,
+          );
+          return {
+            key: String(operation.routingOperationId),
+            routingOperationId: operation.routingOperationId,
+            sequence: operation.operationSeq,
+            name: operation.nameKo ?? process.process.processName ?? process.process.processCode,
+            processCode: process.process.processCode,
+            quantity: Number(plan.quantity),
+            start: original?.start ?? plan.operations[0]?.start ?? '',
+            end: original?.end ?? plan.operations[0]?.end ?? '',
+            plannedTimeSourceCode: 'SYSTEM' as const,
+            predecessors: dependencies.items
+              .filter((link) => link.successorOperationId === operation.routingOperationId)
+              .map((link) => {
+                const before = operations.items.find(
+                  (op) => op.routingOperationId === link.predecessorOperationId,
+                );
+                return before
+                  ? `${before.operationSeq} / ${before.nameKo ?? ''}`
+                  : String(link.predecessorOperationId);
+              }),
+            required: [
+              'productionLineId',
+              'defaultFgLocationId',
+              ...(operation.equipmentRequired ? ['plannedEquipmentId'] : []),
+              ...(operation.moldRequired ? ['plannedMoldId'] : []),
+            ] as ResourceField[],
+            resources: original?.resources ?? {
+              productionLineId: plan.operations[0]?.resources.productionLineId ?? null,
+              plannedEquipmentId: null,
+              plannedMoldId: null,
+              responsibleWorkerId: null,
+              plannedShiftId: null,
+              defaultWipLocationId: null,
+              defaultScrapLocationId: null,
+              defaultFgLocationId:
+                plan.operations[0]?.resources.defaultFgLocationId ??
+                row.erpStorage?.location ??
+                null,
+            },
+          };
+        }),
+      );
+      edit(plan.key, (current) => ({
+        ...current,
+        routingId: revision.routingId,
+        routing: `${revision.routingCode} (개정 ${revision.routingVersion})`,
+        operations: mapped,
+        recalculationRequired: true,
+      }));
+    } catch {
+      setRoutingError('Routing 공정 정보를 조회하지 못했습니다. 다시 선택하세요.');
+    } finally {
+      setRoutingBusy(false);
+      onBusyChange?.(false);
+    }
+  };
   const operationTable = (p: ReviewPlan) => (
     <AdjustableNativeTable
       storageKey="proposal-manual-style:operations"
@@ -210,6 +321,7 @@ export const ProposalPlanningWorkspace = ({
         </div>
       ) : (
         <>
+          {routingError && <AlertBanner variant="error" title={routingError} />}
           {stage === 'master' && (
             <>
               {plan.bomId && plan.routingId ? (
@@ -218,28 +330,22 @@ export const ProposalPlanningWorkspace = ({
                   routingId={String(plan.routingId)}
                   itemId={row.itemId}
                   locked={plan.source === '기존 확정 계획'}
-                  disabled={pending}
+                  disabled={pending || routingBusy}
                   options={
-                    plan.routingOptions?.length
-                      ? plan.routingOptions.map((option) => ({
-                          value: String(option.value.id),
-                          label: `${option.value.name} (${option.value.code})`,
+                    row.live && routings.data?.items.length
+                      ? routings.data.items.map((item) => ({
+                          value: String(item.routingId),
+                          label: `${item.routingCode} (개정 ${item.routingVersion})`,
+                          isDefault: item.isDefault,
                         }))
-                      : [{ value: String(plan.routingId), label: plan.routing }]
+                      : plan.routingOptions?.length
+                        ? plan.routingOptions.map((option) => ({
+                            value: String(option.value.id),
+                            label: `${option.value.name} (${option.value.code})`,
+                          }))
+                        : [{ value: String(plan.routingId), label: plan.routing }]
                   }
-                  onRoutingChange={(value) => {
-                    const choice = plan.routingOptions?.find(
-                      (option) => String(option.value.id) === value,
-                    );
-                    if (choice)
-                      edit(plan.key, (current) => ({
-                        ...current,
-                        routingId: choice.value.id,
-                        routing: `${choice.value.name} (${choice.value.code})`,
-                        operations: structuredClone(choice.operations),
-                        recalculationRequired: true,
-                      }));
-                  }}
+                  onRoutingChange={(value) => void changeRouting(value)}
                 />
               ) : (
                 <>
@@ -342,6 +448,10 @@ export const ProposalPlanningWorkspace = ({
                         key,
                         number: undefined,
                         source: '신규 제안' as const,
+                        serverPlanKey: undefined,
+                        productionPlanId: undefined,
+                        savedVersionNo: undefined,
+                        planDateSourceCode: 'USER' as const,
                         date: draft.planDate,
                         quantity: draft.plannedQty,
                         recalculationRequired: true,
@@ -375,9 +485,14 @@ export const ProposalPlanningWorkspace = ({
                               ...structuredClone(original),
                               key,
                               number: index === 0 ? original.number : undefined,
+                              source: index === 0 ? original.source : ('신규 제안' as const),
+                              productionPlanId: index === 0 ? original.productionPlanId : undefined,
+                              savedVersionNo: index === 0 ? original.savedVersionNo : undefined,
+                              serverPlanKey: index === 0 ? original.serverPlanKey : undefined,
+                              splitFromKey: index === 0 ? original.splitFromKey : original.key,
                               date: part.planDate,
                               quantity: part.plannedQty,
-                              planDateSourceCode: part.planDateSourceCode,
+                              planDateSourceCode: 'USER' as const,
                               recalculationRequired: true,
                               operations: original.operations.map((op) => ({
                                 ...structuredClone(op),
@@ -525,18 +640,13 @@ export const ProposalPlanningWorkspace = ({
                           />
                         ))}
                     </div>
-                    <section aria-label="생산품 입고 창고">
-                      <dl className="erp-wo-final-facts">
-                        <div>
-                          <dt>생산품 입고 창고</dt>
-                          <dd>
-                            {row.erpStorage?.warehouse
-                              ? `${row.erpStorage.warehouse.name} (${row.erpStorage.warehouse.code})`
-                              : (row.erpStorage?.erpStorageLocationCode ?? 'ERP 미지정')}
-                          </dd>
-                        </div>
-                      </dl>
-                    </section>
+                    <ProposalWarehouseField
+                      row={row}
+                      plan={selected.plan}
+                      disabled={pending || selected.plan.source === '기존 확정 계획'}
+                      onChange={(updated) => edit(selected.plan.key, () => updated)}
+                    />
+
                     <div className="assign-plan-row">
                       <DateTimeField
                         minDate={plantToday()}
@@ -549,7 +659,9 @@ export const ProposalPlanningWorkspace = ({
                             ...current,
                             recalculationRequired: true,
                             operations: current.operations.map((op) =>
-                              op.key === selected.op.key ? { ...op, start: value } : op,
+                              op.key === selected.op.key
+                                ? { ...op, start: value, plannedTimeSourceCode: 'USER' as const }
+                                : op,
                             ),
                           }))
                         }
@@ -565,7 +677,9 @@ export const ProposalPlanningWorkspace = ({
                             ...current,
                             recalculationRequired: true,
                             operations: current.operations.map((op) =>
-                              op.key === selected.op.key ? { ...op, end: value } : op,
+                              op.key === selected.op.key
+                                ? { ...op, end: value, plannedTimeSourceCode: 'USER' as const }
+                                : op,
                             ),
                           }))
                         }

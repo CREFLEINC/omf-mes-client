@@ -89,7 +89,14 @@ export type {
   InspectionPlanVersionUpdateForward,
   InspectionGuideForward,
 } from './forward-contract';
-export { createProposalReadClient, type PlanProposal } from './proposal-read';
+export {
+  createProposalReadClient,
+  type PlanProposal,
+  type ProposalComponents,
+  type ProposalRevalidateBody,
+  type ProposalRevalidation,
+  type ProposalConfirmation,
+} from './proposal-read';
 
 export type { components as PlanningComponents } from './generated/planning-calendar';
 

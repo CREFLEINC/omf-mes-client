@@ -172,6 +172,9 @@ export function toLiveProposal(row: PlanProposal, catalog: LiveCatalog): ReviewP
     plant: catalog.plants.get(row.plantId) ?? '공장명 확인 필요',
     plantId: row.plantId,
     live: true,
+    validated: false,
+    existingDrafts: row.existingDrafts,
+    autoWorkOrder: row.autoWorkOrder,
     serverKind: row.kind,
     serverStatus: row.status,
     orderQty: row.orderQty,
@@ -192,6 +195,9 @@ export function toLiveProposal(row: PlanProposal, catalog: LiveCatalog): ReviewP
     plans: row.plans.map((plan) => ({
       key: `${row.productionOrderId}:${plan.proposalPlanKey}`,
       number: plan.planNo,
+      serverPlanKey: plan.proposalPlanKey,
+      productionPlanId: plan.productionPlanId,
+      savedVersionNo: plan.saved?.versionNo,
       source: plan.planSource === 'EXISTING_DRAFT' ? '작성중 계획' : '신규 제안',
       date: plan.planDate,
       planDateSourceCode: plan.planDateSourceCode,
@@ -204,6 +210,8 @@ export function toLiveProposal(row: PlanProposal, catalog: LiveCatalog): ReviewP
       routingId: plan.routingId,
       operations: plan.workOrders.map((op) => ({
         key: String(op.routingOperationId),
+        routingOperationId: op.routingOperationId,
+        plannedTimeSourceCode: 'SYSTEM',
         sequence: op.operationSeq,
         name: op.operationName,
         processCode: op.processCode ?? `공정 ID ${op.processId}`,
