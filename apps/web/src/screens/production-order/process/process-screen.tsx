@@ -332,6 +332,7 @@ export const ProcessWorkspace = ({
 
   /* 단계 */
   const [step, setStep] = useState<ScreenStep | null>(null);
+  const [releaseSelectedId, setReleaseSelectedId] = useState<number | null>(null);
   const materials = useReleaseMaterials(
     (releaseLines ?? []).map((line) => line.workOrder),
     step === 'release' || step === 'done',
@@ -609,10 +610,12 @@ export const ProcessWorkspace = ({
 
   const releaseInformation = (readOnly: boolean) => (
     <ReleaseStep
-      materialReview={
+      onSelectedWorkOrderChange={setReleaseSelectedId}
+      materialReview={(workOrderId) =>
         !readOnly && (
           <ReleaseMaterials
             review={materials}
+            workOrderId={workOrderId}
             disabled={releasing}
             errors={releaseAttempts.flatMap((attempt) =>
               (attempt.materialErrors ?? []).map((error) => ({
@@ -807,6 +810,7 @@ export const ProcessWorkspace = ({
             )}
             {releaseInformation(true)}
             <ReleaseResult
+              focusedWorkOrderId={releaseSelectedId}
               orderNo={order.productionOrderNo}
               itemCode={item?.itemCode}
               itemName={item?.itemName}

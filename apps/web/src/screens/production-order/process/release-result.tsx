@@ -11,13 +11,14 @@ import { useRoutingOperations } from '../../routing/queries';
 import { toWorkOrderFact } from '../../work-order/queries';
 import type { ReleaseAttempt } from '../release-runner';
 import type { OrderWorkOrder } from './queries';
-import { AssignmentFacts } from './release-review';
+import { AssignmentFacts, ReleaseInformationTable } from './release-review';
 import { AdjustableNativeTable } from './adjustable-table';
 import { formatQty } from './process-model';
 import { MATERIAL_ISSUE_SHORTAGE_PATH } from './release-step';
 import './release-result.css';
 
 interface Props {
+  focusedWorkOrderId?: number | null;
   orderNo: string;
   itemCode?: string;
   itemName?: string;
@@ -99,9 +100,14 @@ const SelectedResult = ({
   const docs = requests.data?.items ?? attempt?.materialIssueRequests;
   return (
     <section className="erp-wo-release-result-detail" aria-label="선택 작업지시 배포 상세">
-      <h3>
-        {row.workOrderNo} / {row.operationName}
-      </h3>
+      <h3>선택 작업지시 상세</h3>
+      <ReleaseInformationTable
+        label="작업지시 정보"
+        rows={[
+          ['작업지시 번호', row.workOrderNo],
+          ['공정', row.operationName],
+        ]}
+      />
       {attempt && attempt.status !== 'released' && (
         <AlertBanner
           variant="warning"
@@ -117,55 +123,61 @@ const SelectedResult = ({
       ) : (
         <>
           <div className="erp-wo-release-result-detail-grid">
-            <section>
-              <h4>4M 배정</h4>
-              <AssignmentFacts
-                fact={fact}
-                plantId={props.plantId}
-                lineNameOf={props.lineNameOf}
-                equipmentRequired={operation?.equipmentRequired === true}
-                moldRequired={operation?.moldRequired === true}
-              />
-              {operations.isError && <p>공정별 필수 설정 조회 실패</p>}
-              <dl className="erp-wo-final-facts">
-                <div>
-                  <dt>계획 시작</dt>
-                  <dd>{dateTime(fact.plannedStartAt)}</dd>
-                </div>
-                <div>
-                  <dt>계획 종료</dt>
-                  <dd>{dateTime(fact.plannedEndAt)}</dd>
-                </div>
-              </dl>
-            </section>
+            {props.focusedWorkOrderId === undefined && (
+              <section>
+                <h4>4M 배정</h4>
+                <AssignmentFacts
+                  fact={fact}
+                  plantId={props.plantId}
+                  lineNameOf={props.lineNameOf}
+                  equipmentRequired={operation?.equipmentRequired === true}
+                  moldRequired={operation?.moldRequired === true}
+                />
+                {operations.isError && <p>공정별 필수 설정 조회 실패</p>}
+                <table className="erp-release-information-table">
+                  <tbody>
+                    <tr>
+                      <th scope="row">계획 시작</th>
+                      <td>{dateTime(fact.plannedStartAt)}</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">계획 종료</th>
+                      <td>{dateTime(fact.plannedEndAt)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+            )}
             <section>
               <h4>배포 및 LOT</h4>
-              <dl className="erp-wo-final-facts">
-                <div>
-                  <dt>배포 일시</dt>
-                  <dd>{dateTime(detail.data?.releasedAt)}</dd>
-                </div>
-                <div>
-                  <dt>현재 상태</dt>
-                  <dd>{props.statusName(detail.data?.statusCode ?? row.statusCode)}</dd>
-                </div>
-                <div>
-                  <dt>선발행 LOT</dt>
-                  <dd>
-                    {detail.data?.preIssuedLots
-                      ? `${detail.data.preIssuedLots.slotCount}건`
-                      : '정보 미제공'}
-                  </dd>
-                </div>
-                <div>
-                  <dt>실적 등록 LOT</dt>
-                  <dd>
-                    {detail.data?.preIssuedLots
-                      ? `${detail.data.preIssuedLots.withResultCount}건`
-                      : '정보 미제공'}
-                  </dd>
-                </div>
-              </dl>
+              <table className="erp-release-information-table">
+                <tbody>
+                  <tr>
+                    <th scope="row">배포 일시</th>
+                    <td>{dateTime(detail.data?.releasedAt)}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">현재 상태</th>
+                    <td>{props.statusName(detail.data?.statusCode ?? row.statusCode)}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">선발행 LOT</th>
+                    <td>
+                      {detail.data?.preIssuedLots
+                        ? `${detail.data.preIssuedLots.slotCount}건`
+                        : '정보 미제공'}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th scope="row">실적 등록 LOT</th>
+                    <td>
+                      {detail.data?.preIssuedLots
+                        ? `${detail.data.preIssuedLots.withResultCount}건`
+                        : '정보 미제공'}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </section>
           </div>
         </>
@@ -216,7 +228,9 @@ export const ReleaseResult = (props: Props) => {
   const [selected, setSelected] = useState<number | null>(null);
   const [stacked, setStacked] = useState(false);
   const row =
-    props.workOrders.find((entry) => entry.workOrderId === selected) ?? props.workOrders[0];
+    props.workOrders.find(
+      (entry) => entry.workOrderId === (props.focusedWorkOrderId ?? selected),
+    ) ?? props.workOrders[0];
   const immediate = props.attempts.length > 0;
   const failures = props.attempts.filter((entry) => entry.status !== 'released');
   const pending = props.workOrders.filter(
@@ -266,43 +280,47 @@ export const ReleaseResult = (props: Props) => {
           <strong>{immediate ? failures.length : pending.length}건</strong>
         </div>
       </div>
-      <dl className="erp-wo-final-facts">
-        <div>
-          <dt>ERP W/O</dt>
-          <dd>{props.orderNo}</dd>
-        </div>
-        <div>
-          <dt>품목 코드</dt>
-          <dd>{props.itemCode ?? '조회 중'}</dd>
-        </div>
-        <div>
-          <dt>품목명</dt>
-          <dd>{props.itemName ?? '조회 중'}</dd>
-        </div>
-      </dl>
+      <table className="erp-release-information-table">
+        <tbody>
+          <tr>
+            <th scope="row">ERP W/O</th>
+            <td>{props.orderNo}</td>
+          </tr>
+          <tr>
+            <th scope="row">품목 코드</th>
+            <td>{props.itemCode ?? '조회 중'}</td>
+          </tr>
+          <tr>
+            <th scope="row">품목명</th>
+            <td>{props.itemName ?? '조회 중'}</td>
+          </tr>
+        </tbody>
+      </table>
       {props.failed && <AlertBanner variant="error" title="작업지시 목록 조회 실패" />}
       {props.pending ? (
         <SkeletonText lines={4} />
       ) : (
-        plans.map((plan) => (
+        (props.focusedWorkOrderId === undefined ? plans : []).map((plan) => (
           <section key={plan.productionPlanId} className="erp-wo-release-result-plan">
             <h3>생산계획 / {plan.planNo}</h3>
-            <dl className="erp-wo-final-facts">
-              <div>
-                <dt>계획일</dt>
-                <dd>{plan.planDate}</dd>
-              </div>
-              <div>
-                <dt>생산 라인</dt>
-                <dd>{props.lineNameOf(plan.plannedLineId)}</dd>
-              </div>
-              <div>
-                <dt>생산량</dt>
-                <dd>
-                  {formatQty(plan.plannedQty)} {props.uomLabelOf(plan.uomId)}
-                </dd>
-              </div>
-            </dl>
+            <table className="erp-release-information-table">
+              <tbody>
+                <tr>
+                  <th scope="row">계획일</th>
+                  <td>{plan.planDate}</td>
+                </tr>
+                <tr>
+                  <th scope="row">생산 라인</th>
+                  <td>{props.lineNameOf(plan.plannedLineId)}</td>
+                </tr>
+                <tr>
+                  <th scope="row">생산량</th>
+                  <td>
+                    {formatQty(plan.plannedQty)} {props.uomLabelOf(plan.uomId)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
             <AdjustableNativeTable
               storageKey="omf-mes:release-result:orders"
               labels={[

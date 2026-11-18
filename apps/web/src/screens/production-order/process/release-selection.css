@@ -1,0 +1,42 @@
+.erp-wo-release-selection-table td p {
+  margin: var(--space-1) 0 0;
+}
+.erp-wo-release-selection-table td button {
+  white-space: nowrap;
+  padding-inline: 0;
+}
+.erp-wo-release-selection-table .selectable-table tbody > tr.is-active > td {
+  background: var(--secondary-container);
+  color: var(--on-secondary-container);
+}
+.erp-wo-release-selection-table .selectable-table tbody > tr.is-active > td:first-child {
+  box-shadow: inset 3px 0 0 var(--secondary);
+}
+.erp-release-information-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font: var(--type-body-sm);
+}
+.erp-release-information-table th,
+.erp-release-information-table td {
+  border-bottom: 1px solid var(--outline-variant);
+  padding: var(--space-3);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.erp-release-information-table th {
+  width: 9rem;
+  font-weight: 500;
+  color: var(--on-surface-variant);
+  background: var(--surface-container);
+}
+.erp-release-information-table td {
+  background: var(--surface);
+}
+@media (max-width: 600px) {
+  .erp-release-information-table th {
+    width: 7rem;
+  }
+}

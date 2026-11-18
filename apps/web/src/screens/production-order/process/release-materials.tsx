@@ -112,10 +112,12 @@ export const useReleaseMaterials = (targets: readonly ReleaseTarget[], enabled: 
 export type MaterialReview = ReturnType<typeof useReleaseMaterials>;
 export const ReleaseMaterials = ({
   review,
+  workOrderId,
   disabled = false,
   errors = [],
 }: {
   review: MaterialReview;
+  workOrderId?: number;
   disabled?: boolean;
   errors?: { workOrderId: number; field?: string; message: string }[];
 }) => (
@@ -123,131 +125,139 @@ export const ReleaseMaterials = ({
     <div className="section-heading-row">
       <h3 className="section-title">자재 소요량 확인</h3>
     </div>
-    {review.groups.map(({ target, query, rows }) => (
-      <section key={target.workOrderId} aria-label={`${target.workOrderNo} 자재 소요`}>
-        <div className="section-heading-row">
-          <h4>{target.workOrderNo}</h4>
-          {(query.isError || errors.some((error) => error.workOrderId === target.workOrderId)) && (
-            <Button
-              variant="outlined"
-              disabled={disabled || query.isFetching}
-              onClick={() => void query.refetch()}
-            >
-              다시 조회
-            </Button>
-          )}
-        </div>
-        {query.isPending ? (
-          <p role="status">자재 소요 조회 중</p>
-        ) : query.isError ? (
-          <AlertBanner variant="error" title="자재 소요를 조회하지 못했습니다. 다시 조회하세요." />
-        ) : rows.length === 0 ? (
-          <p>출고요청 대상 자재 없음</p>
-        ) : (
-          <>
-            <div className="erp-wo-table-scroll">
-              <AdjustableNativeTable
-                storageKey="omf-release-materials"
-                className="erp-wo-final-table"
-                labels={['자재 코드', '자재명', 'BOM 소요량', '출고 기준 소요량', '환산 비율']}
-                widths={[135, 195, 110, 135, 260]}
+    {review.groups
+      .filter((group) => workOrderId === undefined || group.target.workOrderId === workOrderId)
+      .map(({ target, query, rows }) => (
+        <section key={target.workOrderId} aria-label={`${target.workOrderNo} 자재 소요`}>
+          <div className="section-heading-row">
+            <h4>{target.workOrderNo}</h4>
+            {(query.isError ||
+              errors.some((error) => error.workOrderId === target.workOrderId)) && (
+              <Button
+                variant="outlined"
+                disabled={disabled || query.isFetching}
+                onClick={() => void query.refetch()}
               >
-                <tbody>
-                  {rows.map(({ row, choice, rate, set }) => (
-                    <tr key={row.bomComponentId}>
-                      <td>{row.itemCode}</td>
-                      <td>{row.itemName}</td>
-                      <td>
-                        {quantityText(row.bomQty)} {row.bomUomCode}
-                      </td>
-                      <td>
-                        {choice.rate !== null
-                          ? rate !== null
-                            ? stockQuantity(row.bomQty, rate, row.stockUomScale)
-                            : '—'
-                          : row.stockQty == null
-                            ? '—'
-                            : quantityText(row.stockQty)}{' '}
-                        {row.stockUomCode}
-                      </td>
-                      <td>
-                        {row.conversionSource === null ? (
-                          '—'
-                        ) : (
-                          <>
-                            {row.conversionSource === 'NONE' && rate === null && (
-                              <span>환산 비율 미등록</span>
-                            )}
-                            <div className="release-material-ratio">
-                              <span>1 {row.stockUomCode} =</span>
-                              {editableRate(row) ? (
-                                <div className="release-material-rate">
-                                  <TextField
-                                    size="sm"
-                                    inputMode="decimal"
-                                    aria-label={`${target.workOrderNo} ${row.itemCode} 환산 비율`}
-                                    value={choice.rate ?? String(row.conversionRate ?? '')}
-                                    disabled={disabled}
-                                    aria-invalid={choice.rate !== null && rate === null}
-                                    aria-describedby={
-                                      choice.rate !== null && rate === null
-                                        ? `material-rate-${target.workOrderId}-${row.bomComponentId}`
-                                        : undefined
-                                    }
-                                    onChange={(event) => set({ rate: event.target.value })}
-                                  />
-                                </div>
-                              ) : (
-                                <span>
-                                  {row.conversionRate == null
-                                    ? ''
-                                    : quantityText(row.conversionRate)}
+                다시 조회
+              </Button>
+            )}
+          </div>
+          {query.isPending ? (
+            <p role="status">자재 소요 조회 중</p>
+          ) : query.isError ? (
+            <AlertBanner
+              variant="error"
+              title="자재 소요를 조회하지 못했습니다. 다시 조회하세요."
+            />
+          ) : rows.length === 0 ? (
+            <p>출고요청 대상 자재 없음</p>
+          ) : (
+            <>
+              <div className="erp-wo-table-scroll">
+                <AdjustableNativeTable
+                  storageKey="omf-release-materials"
+                  className="erp-wo-final-table"
+                  labels={['자재 코드', '자재명', 'BOM 소요량', '출고 기준 소요량', '환산 비율']}
+                  widths={[135, 195, 110, 135, 260]}
+                >
+                  <tbody>
+                    {rows.map(({ row, choice, rate, set }) => (
+                      <tr key={row.bomComponentId}>
+                        <td>{row.itemCode}</td>
+                        <td>{row.itemName}</td>
+                        <td>
+                          {quantityText(row.bomQty)} {row.bomUomCode}
+                        </td>
+                        <td>
+                          {choice.rate !== null
+                            ? rate !== null
+                              ? stockQuantity(row.bomQty, rate, row.stockUomScale)
+                              : '—'
+                            : row.stockQty == null
+                              ? '—'
+                              : quantityText(row.stockQty)}{' '}
+                          {row.stockUomCode}
+                        </td>
+                        <td>
+                          {row.conversionSource === null ? (
+                            '—'
+                          ) : (
+                            <>
+                              {row.conversionSource === 'NONE' && rate === null && (
+                                <span>환산 비율 미등록</span>
+                              )}
+                              <div className="release-material-ratio">
+                                <span>1 {row.stockUomCode} =</span>
+                                {editableRate(row) ? (
+                                  <div className="release-material-rate">
+                                    <TextField
+                                      size="sm"
+                                      inputMode="decimal"
+                                      aria-label={`${target.workOrderNo} ${row.itemCode} 환산 비율`}
+                                      value={choice.rate ?? String(row.conversionRate ?? '')}
+                                      disabled={disabled}
+                                      aria-invalid={choice.rate !== null && rate === null}
+                                      aria-describedby={
+                                        choice.rate !== null && rate === null
+                                          ? `material-rate-${target.workOrderId}-${row.bomComponentId}`
+                                          : undefined
+                                      }
+                                      onChange={(event) => set({ rate: event.target.value })}
+                                    />
+                                  </div>
+                                ) : (
+                                  <span>
+                                    {row.conversionRate == null
+                                      ? ''
+                                      : quantityText(row.conversionRate)}
+                                  </span>
+                                )}
+                                <span>{row.bomUomCode}</span>
+                                <ReviewHelp
+                                  title={`${target.workOrderNo} ${row.itemCode} 환산 비율`}
+                                >
+                                  {choice.rate !== null && rate !== null
+                                    ? '입력한 비율로 소요량을 계산합니다. 이 비율은 배포 시 품목별 단위 환산으로 저장됩니다.'
+                                    : row.conversionSource === 'ITEM'
+                                      ? '품목별 단위 환산에 등록된 비율입니다. 비율 변경은 품목 기준정보에서 처리합니다.'
+                                      : row.conversionSource === 'COMMON'
+                                        ? '단위 사이에 정해진 기본 환산 비율입니다. 품목별 등록값이 있으면 우선 적용합니다.'
+                                        : `1 ${row.stockUomCode}에 해당하는 ${row.bomUomCode} 수량을 입력하세요. 배포 시 품목별 단위 환산으로 저장됩니다.`}
+                                </ReviewHelp>
+                              </div>
+                              {choice.rate !== null && rate === null && (
+                                <span
+                                  id={`material-rate-${target.workOrderId}-${row.bomComponentId}`}
+                                  className="field-error release-material-error"
+                                  role="alert"
+                                >
+                                  {choice.rate.trim() !== '' && Number(choice.rate) === 0
+                                    ? '환산 비율에 0을 입력할 수 없습니다.'
+                                    : '환산 비율을 확인하세요.'}
                                 </span>
                               )}
-                              <span>{row.bomUomCode}</span>
-                              <ReviewHelp title={`${target.workOrderNo} ${row.itemCode} 환산 비율`}>
-                                {choice.rate !== null && rate !== null
-                                  ? '입력한 비율로 소요량을 계산합니다. 이 비율은 배포 시 품목별 단위 환산으로 저장됩니다.'
-                                  : row.conversionSource === 'ITEM'
-                                    ? '품목별 단위 환산에 등록된 비율입니다. 비율 변경은 품목 기준정보에서 처리합니다.'
-                                    : row.conversionSource === 'COMMON'
-                                      ? '단위 사이에 정해진 기본 환산 비율입니다. 품목별 등록값이 있으면 우선 적용합니다.'
-                                      : `1 ${row.stockUomCode}에 해당하는 ${row.bomUomCode} 수량을 입력하세요. 배포 시 품목별 단위 환산으로 저장됩니다.`}
-                              </ReviewHelp>
-                            </div>
-                            {choice.rate !== null && rate === null && (
-                              <span
-                                id={`material-rate-${target.workOrderId}-${row.bomComponentId}`}
-                                className="field-error release-material-error"
-                                role="alert"
-                              >
-                                {choice.rate.trim() !== '' && Number(choice.rate) === 0
-                                  ? '환산 비율에 0을 입력할 수 없습니다.'
-                                  : '환산 비율을 확인하세요.'}
+                            </>
+                          )}
+                          {errors
+                            .filter(
+                              (error) =>
+                                error.workOrderId === target.workOrderId &&
+                                error.field?.includes(`bomComponentId=${row.bomComponentId}`),
+                            )
+                            .map((error, i) => (
+                              <span role="alert" className="field-error" key={i}>
+                                {error.message}
                               </span>
-                            )}
-                          </>
-                        )}
-                        {errors
-                          .filter(
-                            (error) =>
-                              error.workOrderId === target.workOrderId &&
-                              error.field?.includes(`bomComponentId=${row.bomComponentId}`),
-                          )
-                          .map((error, i) => (
-                            <span role="alert" className="field-error" key={i}>
-                              {error.message}
-                            </span>
-                          ))}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </AdjustableNativeTable>
-            </div>
-          </>
-        )}
-      </section>
-    ))}
+                            ))}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </AdjustableNativeTable>
+              </div>
+            </>
+          )}
+        </section>
+      ))}
   </section>
 );

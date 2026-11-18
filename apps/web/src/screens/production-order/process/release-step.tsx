@@ -1,8 +1,9 @@
-import { ReleaseReview, type ReleaseReviewPlan } from './release-review';
-import { AdjustableLayout } from './adjustable-layout';
-import { AdjustableNativeTable } from './adjustable-table';
+import { ReleaseReview, ReleaseInformationTable, type ReleaseReviewPlan } from './release-review';
+import './release-selection.css';
+import { AdjustableLayout, useAdjustableOrientation } from './adjustable-layout';
+import { AdjustableTable } from './adjustable-table';
 import { TerminalConnections } from './terminal-connections';
-import { AlertBanner, Button, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, Button, SkeletonText, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 import { useQueries, useQuery } from '@tanstack/react-query';
@@ -222,9 +223,39 @@ export const toReleaseLines = (
     };
   });
 
+const ReleaseTargetList = ({
+  columns,
+  lines,
+  selectedId,
+  onSelect,
+}: {
+  columns: Column<ReleaseLine>[];
+  lines: ReleaseLine[];
+  selectedId: number;
+  onSelect: (id: string) => void;
+}) => {
+  const orientation = useAdjustableOrientation();
+  return (
+    <AdjustableTable
+      storageKey={`omf-mes:work-planning:release-select-columns:${orientation}`}
+      columns={
+        orientation === 'side'
+          ? columns.filter((column) => ['workOrder', 'process', 'quantity'].includes(column.key))
+          : columns
+      }
+      rows={lines}
+      getRowId={(line) => String(line.workOrder.workOrderId)}
+      activeId={String(selectedId)}
+      onActivate={(line) => onSelect(String(line.workOrder.workOrderId))}
+      rowLabel={(line) => `${line.workOrder.workOrderNo} 배포 상세`}
+    />
+  );
+};
+
 export interface ReleaseStepProps {
+  onSelectedWorkOrderChange?: (id: number) => void;
   readOnly?: boolean;
-  materialReview?: import('react').ReactNode;
+  materialReview?: (workOrderId: number) => import('react').ReactNode;
   plantId?: number;
   reviewPlans?: ReleaseReviewPlan[];
   lines: ReleaseLine[] | undefined;
@@ -244,6 +275,7 @@ export interface ReleaseStepProps {
  * 배포 확인 단계(마지막 확인 단계). 결과를 바꾸는 값(W/O, 수량, LOT 크기)과 반영 사항을 1280×800 첫 화면 안에 보인다.
  */
 export const ReleaseStep = ({
+  onSelectedWorkOrderChange,
   readOnly = false,
   materialReview,
   plantId,
@@ -310,6 +342,84 @@ export const ReleaseStep = ({
     ];
   })();
   const hasBlocks = failures.some((failure) => failure.links.length > 0);
+  const columns: Column<ReleaseLine>[] = [
+    {
+      key: 'workOrder',
+      header: '작업지시 번호',
+      width: '220px',
+      render: ({ workOrder: target }) => (
+        <>
+          <Button
+            variant="text"
+            size="sm"
+            aria-label={`${target.workOrderNo} 상세 확인`}
+            aria-pressed={target.workOrderId === wo.workOrderId}
+            onClick={() => {
+              setSelectedId(String(target.workOrderId));
+              onSelectedWorkOrderChange?.(target.workOrderId);
+            }}
+          >
+            {target.workOrderNo}
+          </Button>
+        </>
+      ),
+    },
+    {
+      key: 'process',
+      header: '공정',
+      width: '110px',
+      render: ({ workOrder: target }) => target.operationName,
+    },
+    {
+      key: 'planDate',
+      header: '계획일',
+      width: '130px',
+      render: ({ workOrder: target }) => planDateOf?.(target.productionPlanId) ?? '—',
+    },
+    {
+      key: 'line',
+      header: '생산 라인',
+      width: '190px',
+      render: ({ workOrder: target }) => lineNameOf?.(target.productionLineId ?? null) ?? '—',
+    },
+    {
+      key: 'quantity',
+      header: t.columns.orderQty,
+      width: '110px',
+      render: ({ workOrder: target }) =>
+        `${formatQty(target.orderQty)} ${uomLabelOf(target.uomId)}`,
+    },
+    ...(!readOnly
+      ? [
+          {
+            key: 'lots',
+            header: t.columns.lotCount,
+            width: '110px',
+            render: (line: ReleaseLine) => (line.lotCount == null ? '—' : `${line.lotCount}개`),
+          },
+        ]
+      : []),
+    ...(issueDates === undefined
+      ? []
+      : [
+          {
+            key: 'issueDate',
+            header: pw.issueWorkDate,
+            width: '110px',
+            render: (line: ReleaseLine) =>
+              issueDates.get(line.workOrder.workOrderId)?.undetermined === true
+                ? pw.decidedAtRelease
+                : monthDay(issueDates.get(line.workOrder.workOrderId)?.issueWorkDate),
+          },
+          {
+            key: 'productionDate',
+            header: pw.productionDate,
+            width: '110px',
+            render: (line: ReleaseLine) =>
+              monthDay(issueDates.get(line.workOrder.workOrderId)?.productionDate),
+          },
+        ]),
+  ];
 
   return (
     <div className="erp-wo-release-workspace">
@@ -317,16 +427,6 @@ export const ReleaseStep = ({
         <h2 className="section-title">{t.heading}</h2>
         <span className="field-note">{t.scope(lines.length)}</span>
       </div>
-      {materialReview}
-      {reviewPlans && (
-        <ReleaseReview
-          plans={reviewPlans}
-          lines={lines}
-          plantId={plantId ?? null}
-          lineNameOf={lineNameOf}
-          uomLabelOf={uomLabelOf}
-        />
-      )}
       <AdjustableLayout
         storageKey="omf-mes:work-planning:release-layout"
         label="배포 확인"
@@ -335,108 +435,89 @@ export const ReleaseStep = ({
       >
         <section className="pane erp-wo-release-targets" aria-label="배포 작업지시">
           <h3 className="section-title">배포 작업지시</h3>
-          <div className="erp-wo-release-target-table">
-            <AdjustableNativeTable
-              storageKey="omf-mes:work-planning:release-columns"
-              widths={
-                issueDates === undefined ? [220, 220, 120, 120] : [220, 220, 120, 120, 120, 120]
-              }
-              labels={[
-                '작업지시 · 공정',
-                '계획일 · 생산 라인',
-                t.columns.orderQty,
-                readOnly ? 'LOT' : t.columns.lotCount,
-                ...(issueDates === undefined ? [] : [pw.issueWorkDate, pw.productionDate]),
-              ]}
-            >
-              <tbody>
-                {lines.map((line) => {
-                  const target = line.workOrder;
-                  return (
-                    <tr
-                      key={target.workOrderId}
-                      data-selected={target.workOrderId === wo.workOrderId}
-                    >
-                      <td data-label="작업지시 · 공정">
-                        <Button
-                          variant="text"
-                          size="sm"
-                          aria-label={`${target.workOrderNo} 상세 확인`}
-                          aria-pressed={target.workOrderId === wo.workOrderId}
-                          onClick={() => setSelectedId(String(target.workOrderId))}
-                        >
-                          {target.workOrderNo}
-                        </Button>
-                        <p>{target.operationName}</p>
-                      </td>
-                      <td data-label="계획일 · 생산 라인">
-                        {planDateOf?.(target.productionPlanId) ?? '—'}
-                        <p>{lineNameOf?.(target.productionLineId ?? null) ?? '—'}</p>
-                      </td>
-                      <td data-label={t.columns.orderQty}>
-                        {formatQty(target.orderQty)} {uomLabelOf(target.uomId)}
-                      </td>
-                      <td data-label={t.columns.lotCount}>
-                        {readOnly
-                          ? '배포 결과에서 확인'
-                          : line.lotCount == null
-                            ? '—'
-                            : `${line.lotCount}개`}
-                      </td>
-                      {issueDates !== undefined && (
-                        <>
-                          <td data-label={pw.issueWorkDate}>
-                            {issueDates.get(target.workOrderId)?.undetermined === true
-                              ? pw.decidedAtRelease
-                              : monthDay(issueDates.get(target.workOrderId)?.issueWorkDate)}
-                          </td>
-                          <td data-label={pw.productionDate}>
-                            {monthDay(issueDates.get(target.workOrderId)?.productionDate)}
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </AdjustableNativeTable>
+          <div className="erp-wo-release-selection-table">
+            <ReleaseTargetList
+              columns={columns}
+              lines={lines}
+              selectedId={wo.workOrderId}
+              onSelect={(id) => {
+                setSelectedId(id);
+                onSelectedWorkOrderChange?.(Number(id));
+              }}
+            />
           </div>
         </section>
-        <div className="erp-wo-release-layout">
+        <div className="erp-wo-release-layout" role="region" aria-label="선택 작업지시 배포 상세">
+          <h3 className="section-title">선택 작업지시 상세</h3>
+          <ReleaseInformationTable
+            label="작업지시 정보"
+            rows={[
+              ['작업지시 번호', wo.workOrderNo],
+              ['공정', wo.operationName],
+            ]}
+          />
+          {reviewPlans && (
+            <ReleaseReview
+              plans={reviewPlans}
+              lines={[selected]}
+              plantId={plantId ?? null}
+              lineNameOf={lineNameOf}
+              uomLabelOf={uomLabelOf}
+            />
+          )}
+          {issueDates && (
+            <table className="erp-release-information-table">
+              <tbody>
+                <tr>
+                  <th scope="row">{pw.issueWorkDate}</th>
+                  <td>
+                    {issueDates.get(wo.workOrderId)?.undetermined
+                      ? pw.decidedAtRelease
+                      : (issueDates.get(wo.workOrderId)?.issueWorkDate ?? '—')}
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">{pw.productionDate}</th>
+                  <td>{issueDates.get(wo.workOrderId)?.productionDate ?? '—'}</td>
+                </tr>
+              </tbody>
+            </table>
+          )}
+          {materialReview?.(wo.workOrderId)}
           {!reviewPlans && (
-            <details className="pane erp-wo-release-detail" aria-label={t.selectedTarget}>
-              <summary>
-                선택 작업지시 상세 · {wo.workOrderNo} · {wo.operationName}
-              </summary>
-              <dl className="erp-wo-release-summary">
-                <div>
-                  <dt>{t.orderNo}</dt>
-                  <dd>{orderNo ?? '—'}</dd>
-                </div>
-                <div>
-                  <dt>{t.item}</dt>
-                  <dd>{itemLabel ?? '—'}</dd>
-                </div>
-                <div>
-                  <dt>{t.columns.operation}</dt>
-                  <dd>{wo.operationName}</dd>
-                </div>
-                <div>
-                  <dt>{t.columns.orderQty}</dt>
-                  <dd>
-                    {formatQty(wo.orderQty)} {uomLabelOf(wo.uomId)}
-                  </dd>
-                </div>
-                <div>
-                  <dt>{t.planDate}</dt>
-                  <dd>{planDateOf?.(wo.productionPlanId) ?? '—'}</dd>
-                </div>
-                <div>
-                  <dt>{t.line}</dt>
-                  <dd>{lineNameOf?.(wo.productionLineId ?? null) ?? '—'}</dd>
-                </div>
-              </dl>
-            </details>
+            <section className="pane erp-wo-release-detail" aria-label={t.selectedTarget}>
+              <h3 className="section-title">작업지시 정보</h3>
+              <table className="erp-release-information-table">
+                <tbody>
+                  <tr>
+                    <th scope="row">{t.orderNo}</th>
+                    <td>{orderNo ?? '—'}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">{t.item}</th>
+                    <td>{itemLabel ?? '—'}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">{t.columns.operation}</th>
+                    <td>{wo.operationName}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">{t.columns.orderQty}</th>
+                    <td>
+                      {formatQty(wo.orderQty)} {uomLabelOf(wo.uomId)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th scope="row">{t.planDate}</th>
+                    <td>{planDateOf?.(wo.productionPlanId) ?? '—'}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">{t.line}</th>
+                    <td>{lineNameOf?.(wo.productionLineId ?? null) ?? '—'}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </section>
           )}
           {plantId != null && (
             <section className="pane erp-wo-release-terminals" aria-label="연결 단말기 확인">
@@ -452,7 +533,7 @@ export const ReleaseStep = ({
                   role="region"
                   aria-label={messages.screenPatterns.effectList.title(t.task)}
                 >
-                  <h3 className="section-title">배포 시 반영 사항</h3>
+                  <h3 className="section-title">전체 배포 시 반영 사항</h3>
                   <ul>
                     <li>{t.effects.status(lines.length)}</li>
                     <li>
