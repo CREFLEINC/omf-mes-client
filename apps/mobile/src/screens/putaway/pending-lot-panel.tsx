@@ -296,7 +296,13 @@ export const PendingLotPanel = ({ found, workerNo, onClose, onRecorded }: Pendin
             title={d.verdict.UNDESIGNATED}
           >
             {where(verdict)}
-            <span className="putaway__verdict-line">{d.addsDesignation(lot.itemCode)}</span>
+            {/*
+             * 기록하면 보관 품목에 더해지는가는 서버가 말한다(`designationAddable`) — 나뉜 창고의 「창고 전체」 같은 시스템
+             * 자리는 미지정이어도 더하지 않는다(FR-017a · Q24, 실제 앱 확인 2026-11-18).
+             */}
+            {verdict.designationAddable ? (
+              <span className="putaway__verdict-line">{d.addsDesignation(lot.itemCode)}</span>
+            ) : null}
             <span className="putaway__verdict-line">{d.notYetRecorded}</span>
           </AlertBanner>
         ) : null}

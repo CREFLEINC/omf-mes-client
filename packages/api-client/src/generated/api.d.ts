@@ -57543,6 +57543,8 @@ export interface components {
       warehouseName?: string;
       isDefectWarehouse?: boolean;
       message: string;
+      /** @description 미지정 위치 적치로 기록하면 이 위치의 보관 품목에 이 품목이 더해지는가 — 판정이 UNDESIGNATED 이고 사람이 만든 위치(시스템 자리 아님)일 때만 true. 나뉜 창고의 「창고 전체」는 UNDESIGNATED 여도 false(FR-017a). PDA 는 true 일 때만 「적치하면 보관 품목에 더해집니다」를 보인다. 근거: 피처 009 · omf-all-around#294 · 검증 뒤 추가 */
+      designationAddable: boolean;
     };
     PutawayDirect: {
       /**
