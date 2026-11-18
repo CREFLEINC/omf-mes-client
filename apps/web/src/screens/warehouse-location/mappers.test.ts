@@ -132,13 +132,15 @@ describe('toWarehouseCreate', () => {
 describe('locationToFormValues', () => {
   const location: Location = locationFixtures[2]!;
 
-  it('상위 · 코드 · 별칭만 옮긴다 — 위치유형 · 혼적 · 수용량 · 보관조건 칸은 없다', () => {
+  /* 피처 009 — 「지정 품목만 받기」도 옮긴다(수정 창의 스위치). */
+  it('상위 · 코드 · 별칭 · 지정 품목만 받기만 옮긴다 — 위치유형 · 혼적 · 수용량 · 보관조건 칸은 없다', () => {
     const values = locationToFormValues({ ...location, aliasName: '1층' });
 
     expect(values).toEqual({
       parentLocationId: '2002',
       locationCode: 'A-01-01-01',
       aliasName: '1층',
+      itemRestricted: false,
     });
   });
 

@@ -2379,6 +2379,15 @@ describe('WarehouseLocationScreen — 서버가 만든 위치', () => {
     expect(
       within(dialog).getByRole('button', { name: messages.common.deactivate }),
     ).toBeInTheDocument();
+    /* 피처 009 — 시스템 자리는 「지정 품목만 받기」를 켤 수 없다. 잠긴 스위치 줄을 까닭과 함께(FR-017c). */
+    const restrict = within(dialog).getByRole('switch', {
+      name: messages.warehouseLocation.itemsSection.restrict.label,
+    });
+    expect(restrict).toBeDisabled();
+    expect(restrict).not.toBeChecked();
+    expect(
+      within(dialog).getByText(messages.warehouseLocation.itemsSection.restrict.system),
+    ).toBeInTheDocument();
   });
 });
 
@@ -2745,7 +2754,7 @@ describe('WarehouseLocationScreen — 보관 품목', () => {
   };
 
   const itemsSection = (dialog: HTMLElement): HTMLElement =>
-    within(dialog).getByRole('region', { name: '보관 품목' });
+    within(dialog).getByRole('region', { name: messages.warehouseLocation.itemsSection.title });
 
   it('보관 품목은 맨 아래 위치의 수정 창에만 있다', async () => {
     const { requests, user } = renderScreen(
@@ -2760,11 +2769,14 @@ describe('WarehouseLocationScreen — 보관 품목', () => {
       expect(within(dialog).getByRole('button', { name: '별칭 수정' })).toBeEnabled(),
     );
 
-    expect(within(dialog).queryByRole('region', { name: '보관 품목' })).toBeNull();
+    expect(
+      within(dialog).queryByRole('region', { name: messages.warehouseLocation.itemsSection.title }),
+    ).toBeNull();
     expect(requests.some((request) => request.url.pathname.endsWith('/items'))).toBe(false);
   });
 
-  it('창을 열면 지정 품목을 받아 지정 품목만으로 보인다', async () => {
+  /* 피처 009 — 품목 지정은 안내라 「품목 무관 / 지정 품목만」 단추가 없다. 목록은 늘 선다. */
+  it('창을 열면 지정 품목을 받아 목록으로 보이고 「품목 무관 / 지정 품목만」 단추는 없다', async () => {
     const { requests, user } = renderScreen(
       locationWriteRoutes(locationDetailRoute(locationFixtures[3]!), itemsRoute(storedItems)),
       '?wh=1001',
@@ -2775,11 +2787,11 @@ describe('WarehouseLocationScreen — 보관 품목', () => {
 
     expect(await within(section).findByText('ITEM-301')).toBeInTheDocument();
     expect(within(section).getByText('너트')).toBeInTheDocument();
-    expect(within(section).getByRole('button', { name: '지정 품목만' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
+    expect(within(section).queryByRole('button', { name: '지정 품목만' })).toBeNull();
+    expect(within(section).queryByRole('button', { name: '품목 무관' })).toBeNull();
+    expect(within(section).getByRole('heading')).toHaveTextContent(
+      `${messages.warehouseLocation.itemsSection.title}2`,
     );
-    expect(within(section).getByRole('heading')).toHaveTextContent('보관 품목2');
     expect(requests.some((request) => request.url.pathname === '/mdm/locations/2004/items')).toBe(
       true,
     );
@@ -2799,8 +2811,7 @@ describe('WarehouseLocationScreen — 보관 품목', () => {
 
     const dialog = await openLeaf(user);
     const section = itemsSection(dialog);
-    await user.click(await within(section).findByRole('button', { name: '지정 품목만' }));
-    await user.click(within(section).getByRole('combobox', { name: '품목 추가' }));
+    await user.click(await within(section).findByRole('combobox', { name: '품목 추가' }));
     await user.click(await screen.findByRole('option', { name: /ITEM-303/ }));
     // 자재창고(1001)는 원자재 · 부자재만 고른다 — 창고 유형으로 품목 유형을 좁힌다.
     expect(
@@ -2831,7 +2842,8 @@ describe('WarehouseLocationScreen — 보관 품목', () => {
     ).toBe(false);
   });
 
-  it('품목 무관으로 돌리면 빈 목록을 보내 제한을 푼다', async () => {
+  /* 피처 009 — 빈 목록은 「지정 품목 없음」이다(안내). 단추 대신 줄마다 뺀다. */
+  it('지정 품목을 모두 빼면 빈 목록을 보내고 「지정 품목 없음」이 선다', async () => {
     const { requests, user } = renderScreen(
       locationWriteRoutes(
         locationDetailRoute(locationFixtures[3]!),
@@ -2844,8 +2856,12 @@ describe('WarehouseLocationScreen — 보관 품목', () => {
     const dialog = await openLeaf(user);
     const section = itemsSection(dialog);
     await within(section).findByText('ITEM-301');
-    await user.click(within(section).getByRole('button', { name: '품목 무관' }));
+    await user.click(within(section).getByRole('button', { name: 'ITEM-301 삭제' }));
+    await user.click(within(section).getByRole('button', { name: 'ITEM-302 삭제' }));
     expect(within(section).queryByText('ITEM-301')).not.toBeInTheDocument();
+    expect(
+      within(section).getByText(messages.warehouseLocation.itemsSection.none),
+    ).toBeInTheDocument();
 
     await user.click(within(dialog).getByRole('button', { name: '저장' }));
     expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
@@ -2854,21 +2870,6 @@ describe('WarehouseLocationScreen — 보관 품목', () => {
       (request) => request.method === 'PUT' && request.url.pathname === '/mdm/locations/2004/items',
     );
     expect(JSON.parse(put?.body ?? '{}')).toEqual({ itemIds: [] });
-  });
-
-  it('지정 품목만인데 품목이 없으면 보내지 않고 칸 아래에 알린다', async () => {
-    const { requests, user } = renderScreen(
-      locationWriteRoutes(locationDetailRoute(locationFixtures[3]!)),
-      '?wh=1001',
-    );
-
-    const dialog = await openLeaf(user);
-    const section = itemsSection(dialog);
-    await user.click(await within(section).findByRole('button', { name: '지정 품목만' }));
-    await user.click(within(dialog).getByRole('button', { name: '저장' }));
-
-    expect(within(section).getByText('품목을 하나 이상 선택하세요.')).toBeInTheDocument();
-    expect(requests.some((request) => request.method === 'PUT')).toBe(false);
   });
 
   it('지정 밖 품목의 재고가 있다는 거절은 보관 품목 아래에 서버 문구로 보인다', async () => {
@@ -2943,9 +2944,14 @@ describe('WarehouseLocationScreen — 보관 품목', () => {
     expect(screen.getAllByText('저장했습니다')).toHaveLength(1);
   });
 
-  it('지정 품목만 두는 위치는 목록의 코드 뒤에 표식이 있다', async () => {
+  /* 피처 009 — 자물쇠는 「지정 품목만 받기」를 켠 위치에만. 지정 품목이 있다는 것(hasItemRestriction)은 안내다. */
+  it('US2-8 「지정 품목만 받기」를 켠 위치만 목록의 코드 뒤에 자물쇠가 있다', async () => {
     const restricted = locationFixtures.map((location) =>
-      location.locationId === 2004 ? { ...location, hasItemRestriction: true } : location,
+      location.locationId === 2004
+        ? { ...location, hasItemRestriction: true, itemRestricted: true }
+        : location.locationId === 2003
+          ? { ...location, hasItemRestriction: true }
+          : location,
     );
     const { user } = renderScreen(
       [
@@ -2958,9 +2964,174 @@ describe('WarehouseLocationScreen — 보관 품목', () => {
     );
 
     const panel = await openLocationTab(user);
-    const marks = within(panel).getAllByRole('img', { name: '지정 품목만' });
+    const marks = within(panel).getAllByRole('img', { name: '지정 품목만 받기' });
     expect(marks).toHaveLength(1);
     expect(marks[0]!.closest('.tree-toggle')).toHaveTextContent('B-01');
+  });
+
+  /*
+   * 피처 009 — 「지정 품목만 받기」(itemRestricted · 기본 끔). 창의 [저장]으로 품목과 함께 저장하고, 켜기 조건은 저장 때
+   * 서버가 검사한다(지정 품목이 없는 것만 미리 잠근다).
+   */
+  const restrictSwitch = (dialog: HTMLElement): HTMLElement =>
+    within(dialog).getByRole('switch', {
+      name: messages.warehouseLocation.itemsSection.restrict.label,
+    });
+  const locationPutRoute = (respond?: StubRoute['respond']): StubRoute => ({
+    match: (request) =>
+      request.method === 'PUT' && new URL(request.url).pathname === '/mdm/locations/2004',
+    respond:
+      respond ??
+      ((request) =>
+        request
+          .clone()
+          .json()
+          .then((body: { itemRestricted?: boolean }) =>
+            jsonResponse(
+              { ...locationFixtures[3]!, itemRestricted: body.itemRestricted ?? false },
+              { headers: { ETag: '"6"' } },
+            ),
+          )),
+  });
+
+  it('Q26 「지정 품목만 받기」는 기본 끔이고, 지정 품목이 없으면 켤 수 없다(까닭을 보인다)', async () => {
+    const { user } = renderScreen(
+      locationWriteRoutes(locationDetailRoute(locationFixtures[3]!)),
+      '?wh=1001',
+    );
+
+    const dialog = await openLeaf(user);
+    await within(itemsSection(dialog)).findByText(messages.warehouseLocation.itemsSection.none);
+
+    expect(restrictSwitch(dialog)).not.toBeChecked();
+    expect(restrictSwitch(dialog)).toBeDisabled();
+    expect(
+      within(dialog).getByText(messages.warehouseLocation.itemsSection.restrict.noItems),
+    ).toBeInTheDocument();
+  });
+
+  it('US2-8·Q26 켜고 저장하면 위치 수정에 itemRestricted=true 만 실린다(품목은 그대로)', async () => {
+    const { requests, user } = renderScreen(
+      locationWriteRoutes(
+        locationDetailRoute(locationFixtures[3]!),
+        itemsRoute(storedItems),
+        locationPutRoute(),
+      ),
+      '?wh=1001',
+    );
+
+    const dialog = await openLeaf(user);
+    await within(itemsSection(dialog)).findByText('ITEM-301');
+    await user.click(restrictSwitch(dialog));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+    const puts = requests.filter((request) => request.method === 'PUT');
+    expect(puts.map((request) => request.url.pathname)).toEqual(['/mdm/locations/2004']);
+    expect(JSON.parse(puts[0]?.body ?? '{}')).toMatchObject({ itemRestricted: true });
+  });
+
+  it('품목을 더하면서 켜면 품목을 먼저 저장하고 위치를 이어 보낸다 — 서버가 저장된 지정으로 켜기를 검사한다', async () => {
+    const { requests, user } = renderScreen(
+      locationWriteRoutes(
+        locationDetailRoute(locationFixtures[3]!),
+        itemPickerRoute,
+        itemsPutRoute(() => jsonResponse({ items: [] })),
+        locationPutRoute(),
+      ),
+      '?wh=1001',
+    );
+
+    const dialog = await openLeaf(user);
+    const section = itemsSection(dialog);
+    await user.click(await within(section).findByRole('combobox', { name: '품목 추가' }));
+    await user.click(await screen.findByRole('option', { name: /ITEM-303/ }));
+    await waitFor(() => expect(restrictSwitch(dialog)).toBeEnabled());
+    await user.click(restrictSwitch(dialog));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+    const writes = requests
+      .filter((request) => request.method === 'PUT')
+      .map((request) => request.url.pathname);
+    expect(writes).toEqual(['/mdm/locations/2004/items', '/mdm/locations/2004']);
+  });
+
+  it('켠 위치를 끄면 itemRestricted=false 를 싣는다 — 끄기는 늘 된다', async () => {
+    const restricted = { ...locationFixtures[3]!, hasItemRestriction: true, itemRestricted: true };
+    const { requests, user } = renderScreen(
+      locationWriteRoutes(
+        locationDetailRoute(restricted),
+        itemsRoute(storedItems),
+        locationPutRoute(),
+      ),
+      '?wh=1001',
+    );
+
+    const dialog = await openLeaf(user);
+    await within(itemsSection(dialog)).findByText('ITEM-301');
+    expect(restrictSwitch(dialog)).toBeChecked();
+    await user.click(restrictSwitch(dialog));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+    const put = requests.find((request) => request.method === 'PUT');
+    expect(JSON.parse(put?.body ?? '{}')).toMatchObject({ itemRestricted: false });
+  });
+
+  it('별칭만 고치면 itemRestricted 를 싣지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      locationWriteRoutes(
+        locationDetailRoute(locationFixtures[3]!),
+        itemsRoute(storedItems),
+        locationPutRoute(),
+      ),
+      '?wh=1001',
+    );
+
+    const dialog = await openLeaf(user);
+    await within(itemsSection(dialog)).findByText('ITEM-301');
+    await user.type(await aliasInput(user, dialog), 'B 보관');
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+    const put = requests.find((request) => request.method === 'PUT');
+    expect(JSON.parse(put?.body ?? '{}')).not.toHaveProperty('itemRestricted');
+  });
+
+  it('Q26 지정 밖 재고가 있어 켜기를 거절하면 그 까닭이 스위치 아래에 서고 창은 남는다', async () => {
+    const { user } = renderScreen(
+      locationWriteRoutes(
+        locationDetailRoute(locationFixtures[3]!),
+        itemsRoute(storedItems),
+        locationPutRoute(() =>
+          jsonResponse(
+            {
+              errors: [
+                {
+                  scope: 'field',
+                  field: 'itemRestricted',
+                  code: 'STATE_LOCKED',
+                  message: '지정 밖 품목 재고가 있어 켤 수 없습니다.',
+                },
+              ],
+            },
+            { status: 400 },
+          ),
+        ),
+      ),
+      '?wh=1001',
+    );
+
+    const dialog = await openLeaf(user);
+    await within(itemsSection(dialog)).findByText('ITEM-301');
+    await user.click(restrictSwitch(dialog));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    expect(
+      await within(itemsSection(dialog)).findByText('지정 밖 품목 재고가 있어 켤 수 없습니다.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
   /** #1673 — 층 없이 랙까지만 만든 구역(B-01 → B-01-01). 랙이 맨 아래 위치다. */
@@ -3011,11 +3182,9 @@ describe('WarehouseLocationScreen — 보관 품목', () => {
     // 지금 모양 그대로 — 층 없는 랙은 0 에서 시작한다.
     expect(within(dialog).getByLabelText('행 (층 수)')).toHaveValue('0');
     const section = itemsSection(dialog);
-    await user.click(await within(section).findByRole('button', { name: '지정 품목만' }));
-    // 품목 없이 지정 품목만이면 보낼 수 없다.
-    expect(within(section).getByText('품목을 하나 이상 선택하세요.')).toBeInTheDocument();
-    expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled();
-    await user.click(within(section).getByRole('combobox', { name: '품목 추가' }));
+    /* 「지정 품목만 받기」는 기본 끔 — 켜지 않으면 품목만 보낸다(FR-017c). */
+    expect(within(section).getByRole('switch')).not.toBeChecked();
+    await user.click(await within(section).findByRole('combobox', { name: '품목 추가' }));
     await user.click(await screen.findByRole('option', { name: /ITEM-303/ }));
 
     await waitFor(() => expect(within(dialog).getByRole('button', { name: '저장' })).toBeEnabled());
@@ -3030,11 +3199,113 @@ describe('WarehouseLocationScreen — 보관 품목', () => {
     expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
   });
 
+  /* 피처 009 — 층 없는 랙도 맨 아래 위치라 「지정 품목만 받기」를 랙 창에서 켜고 끈다(FR-017c). */
+  it('FR-017c 층 없는 랙의 랙 창에도 「지정 품목만 받기」가 있고, 지정 품목이 없으면 켤 수 없다', async () => {
+    const { user } = renderScreen(leafRackRoutes(), '?wh=1001');
+
+    const dialog = await openLeafRack(user);
+    const toggle = await within(itemsSection(dialog)).findByRole('switch', {
+      name: messages.warehouseLocation.itemsSection.restrict.label,
+    });
+    expect(toggle).not.toBeChecked();
+    expect(toggle).toBeDisabled();
+    expect(
+      within(dialog).getByText(messages.warehouseLocation.itemsSection.restrict.noItems),
+    ).toBeInTheDocument();
+  });
+
+  it('FR-017c·Q26 랙 창에서 품목을 더하고 켜면 품목 PUT 뒤 위치 PUT(itemRestricted=true)', async () => {
+    const { requests, user } = renderScreen(
+      leafRackRoutes(
+        itemPickerRoute,
+        {
+          match: (request) =>
+            request.method === 'PUT' &&
+            new URL(request.url).pathname === '/mdm/locations/2005/items',
+          respond: () => jsonResponse({ items: [] }),
+        },
+        {
+          match: (request) =>
+            request.method === 'PUT' && new URL(request.url).pathname === '/mdm/locations/2005',
+          respond: () =>
+            jsonResponse({ ...leafRack, itemRestricted: true }, { headers: { ETag: '"6"' } }),
+        },
+      ),
+      '?wh=1001',
+    );
+
+    const dialog = await openLeafRack(user);
+    const section = itemsSection(dialog);
+    await user.click(await within(section).findByRole('combobox', { name: '품목 추가' }));
+    await user.click(await screen.findByRole('option', { name: /ITEM-303/ }));
+    const toggle = within(section).getByRole('switch', {
+      name: messages.warehouseLocation.itemsSection.restrict.label,
+    });
+    await waitFor(() => expect(toggle).toBeEnabled());
+    await user.click(toggle);
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: '저장' })).toBeEnabled());
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+    const puts = requests.filter((request) => request.method === 'PUT');
+    expect(puts.map((request) => request.url.pathname)).toEqual([
+      '/mdm/locations/2005/items',
+      '/mdm/locations/2005',
+    ]);
+    expect(JSON.parse(puts[1]?.body ?? '{}')).toMatchObject({ itemRestricted: true });
+    expect(puts[1]?.headers.get('If-Match')).toBeTruthy();
+  });
+
+  it('FR-017c 랙 창에서 켜기를 서버가 거절하면 그 까닭이 스위치 아래에 선다', async () => {
+    const restrictedItems: StubRoute = {
+      match: (request) => isGet(request, '/mdm/locations/2005/items'),
+      respond: () => jsonResponse({ items: storedItems }),
+    };
+    const { user } = renderScreen(
+      [
+        restrictedItems,
+        ...leafRackRoutes({
+          match: (request) =>
+            request.method === 'PUT' && new URL(request.url).pathname === '/mdm/locations/2005',
+          respond: () =>
+            jsonResponse(
+              {
+                errors: [
+                  {
+                    scope: 'field',
+                    field: 'itemRestricted',
+                    code: 'STATE_LOCKED',
+                    message: '지정 밖 품목 재고가 있어 켤 수 없습니다.',
+                  },
+                ],
+              },
+              { status: 400 },
+            ),
+        }),
+      ],
+      '?wh=1001',
+    );
+
+    const dialog = await openLeafRack(user);
+    const section = itemsSection(dialog);
+    await within(section).findByText('ITEM-301');
+    await user.click(
+      within(section).getByRole('switch', {
+        name: messages.warehouseLocation.itemsSection.restrict.label,
+      }),
+    );
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    expect(
+      await within(section).findByText('지정 밖 품목 재고가 있어 켤 수 없습니다.'),
+    ).toBeInTheDocument();
+  });
+
   it('#1673 층 없는 랙을 열기만 하고 아무것도 안 바꾸면 저장할 것이 없다', async () => {
     const { user } = renderScreen(leafRackRoutes(), '?wh=1001');
 
     const dialog = await openLeafRack(user);
-    await within(itemsSection(dialog)).findByRole('button', { name: '지정 품목만' });
+    await within(itemsSection(dialog)).findByRole('combobox', { name: '품목 추가' });
     expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled();
   });
 
@@ -3054,13 +3325,14 @@ describe('WarehouseLocationScreen — 보관 품목', () => {
 
     const dialog = await openLeafRack(user);
     const section = itemsSection(dialog);
-    await user.click(await within(section).findByRole('button', { name: '지정 품목만' }));
-    await user.click(within(section).getByRole('combobox', { name: '품목 추가' }));
+    await user.click(await within(section).findByRole('combobox', { name: '품목 추가' }));
     await user.click(await screen.findByRole('option', { name: /ITEM-303/ }));
 
     await user.clear(within(dialog).getByLabelText('행 (층 수)'));
     await user.type(within(dialog).getByLabelText('행 (층 수)'), '1');
-    expect(within(dialog).queryByRole('region', { name: '보관 품목' })).toBeNull();
+    expect(
+      within(dialog).queryByRole('region', { name: messages.warehouseLocation.itemsSection.title }),
+    ).toBeNull();
 
     await waitFor(() => expect(within(dialog).getByRole('button', { name: '저장' })).toBeEnabled());
     await user.click(within(dialog).getByRole('button', { name: '저장' }));
@@ -3075,7 +3347,9 @@ describe('WarehouseLocationScreen — 보관 품목', () => {
     await user.click(within(panel).getByRole('button', { name: 'A-01-01' }));
     const dialog = screen.getByRole('dialog', { name: '랙 수정' });
     expect(within(dialog).getByLabelText('행 (층 수)')).toHaveValue('1');
-    expect(within(dialog).queryByRole('region', { name: '보관 품목' })).toBeNull();
+    expect(
+      within(dialog).queryByRole('region', { name: messages.warehouseLocation.itemsSection.title }),
+    ).toBeNull();
     expect(requests.some((request) => request.url.pathname.endsWith('/items'))).toBe(false);
   });
 });

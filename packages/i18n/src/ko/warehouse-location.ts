@@ -202,17 +202,29 @@ export const warehouseLocation = {
     start: (label: string): string => `${label} 수정`,
     done: (label: string): string => `${label} 수정 완료`,
   },
+  /**
+   * 보관 품목 — 피처 009(omf-all-around#294 · 2026-11-18 결정)부터 **안내**다. PDA 미지정 위치 적치 때 자동으로 늘어난다.
+   * 지정 밖 품목을 막는 것은 위치 옵션 「지정 품목만 받기」(itemRestricted · 기본 끔)를 켠 위치뿐이다.
+   */
   itemsSection: {
-    title: '보관 품목',
-    anyItem: '품목 무관',
-    listedOnly: '지정 품목만',
+    title: '보관 품목(안내)',
+    guide:
+      'PDA 미지정 위치 적치 때 자동으로 더해집니다. 「지정 품목만 받기」를 켜지 않으면 다른 품목도 막지 않습니다.',
+    list: '지정 품목',
+    none: '지정 품목 없음',
     addItem: '품목 추가',
     remove: (itemCode: string): string => `${itemCode} 삭제`,
     loading: '보관 품목을 불러오는 중',
     loadFailed: '보관 품목을 불러오지 못했습니다.',
-    required: '품목을 하나 이상 선택하세요.',
-    /** 목록의 위치 코드 옆 표식. */
-    restricted: '지정 품목만',
+    /** 목록의 위치 코드 옆 자물쇠 — 「지정 품목만 받기」를 켠 위치에만. */
+    restricted: '지정 품목만 받기',
+    /** 위치 옵션 스위치. 창의 [저장]으로 품목과 함께 저장한다. */
+    restrict: {
+      label: '지정 품목만 받기',
+      help: '켜면 지정한 품목만 이 위치에 들어옵니다(모든 경로). 끄면 지정 품목은 안내이고 어떤 품목이든 둘 수 있습니다.',
+      noItems: '지정 품목이 없어 켤 수 없습니다. 품목을 먼저 더합니다.',
+      system: '창고 전체와 적치 대기 위치는 켤 수 없습니다.',
+    },
   },
   /** 랙의 층 · 셀 설정 대화상자(사용자 지시 2026-10-29). */
   deleteLocation: {
