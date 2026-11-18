@@ -56,6 +56,8 @@ describe('자재 환산 확인', () => {
     await user.click(checkbox);
     expect(screen.getByRole('button', { name: '배포' })).toBeEnabled();
     expect(screen.getByLabelText('배포 본문')).toHaveTextContent('"confirmed":true');
+    expect(screen.getByRole('status')).toHaveTextContent('✓ 확인 완료');
+    expect(screen.queryByRole('button', { name: /수량 확인/ })).not.toBeInTheDocument();
   });
   it('환산이 없으면 비율 입력·결과 확인 후 배포하고 비율 수정 시 확인을 해제한다', async () => {
     const user = userEvent.setup();
@@ -74,7 +76,8 @@ describe('자재 환산 확인', () => {
     expect(screen.getByRole('button', { name: '배포' })).toBeEnabled();
     expect(screen.getByLabelText('배포 본문')).toHaveTextContent('"conversionRate":1000');
     await user.clear(input);
-    expect(checkbox).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: /수량 확인/ })).toBeDisabled();
+    expect(screen.queryByText('✓ 확인 완료')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '배포' })).toBeDisabled();
   });
   it('0 입력 오류는 입력란 밖에 표시하고 단위와 확인 버튼 배치를 유지한다', async () => {

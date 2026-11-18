@@ -250,17 +250,22 @@ export const ReleaseMaterials = ({
                       </td>
                       <td>
                         {row.confirmationRequired ? (
-                          <Button
-                            size="sm"
-                            variant="outlined"
-                            className="release-material-confirm"
-                            aria-label={`${target.workOrderNo} ${row.itemCode} 수량 확인`}
-                            aria-pressed={choice.checked}
-                            disabled={disabled || rate === null}
-                            onClick={() => set({ checked: !choice.checked })}
-                          >
-                            {choice.checked ? '✓ 확인 완료' : '수량 확인'}
-                          </Button>
+                          choice.checked ? (
+                            <span className="release-material-complete" role="status">
+                              ✓ 확인 완료
+                            </span>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outlined"
+                              className="release-material-confirm"
+                              aria-label={`${target.workOrderNo} ${row.itemCode} 수량 확인`}
+                              disabled={disabled || rate === null}
+                              onClick={() => set({ checked: true })}
+                            >
+                              수량 확인
+                            </Button>
+                          )
                         ) : (
                           '—'
                         )}
