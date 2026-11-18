@@ -1,0 +1,27 @@
+/* 자재 관리 LOT 번호 한 줄 — 앞 조각만 줄어들고 끝 두 칸은 그대로 선다(lot-no-line.tsx). */
+.lot-no-line {
+  display: flex;
+  min-width: 0;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.lot-no-line__head {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lot-no-line__tail {
+  flex: none;
+}
+
+/* 낭독기용 번호 전체 — 화면에는 보이지 않는다. */
+.lot-no-line__full {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

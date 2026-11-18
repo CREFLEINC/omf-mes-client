@@ -155,7 +155,8 @@ export const inboundLotShareText = (share: InboundLotShare): string =>
 /**
  * 품목명 칸의 LOT 줄 — LOT 번호(그대로) + 입하 LOT 칩 · 패키징 · 매칭 조정 링크(005) + 근거(보조색 · 넘치면 말줄임).
  * 라벨 미부착 줄은 LOT 번호 자리에 「라벨 미부착」을 보조색으로 적는다 — 번호를 지어내지 않는다.
- * 매칭 조정 링크는 새 흐름 입하 LOT 에만 선다 — W-01-16 권한이 없으면(`canOpenWorkRecord` 거짓) 글만.
+ * 매칭 조정 링크는 새 흐름 입하 LOT 에만 선다 — W-01-16 권한이 없으면(`canOpenWorkRecord` 거짓) 세우지 않는다(갈 수 없는
+ * 곳을 글로 알리는 안내는 두지 않는다 · 사용자 지시 2026-11-18).
  */
 export const LotMainCell = ({
   lot,
@@ -187,15 +188,11 @@ export const LotMainCell = ({
           {lot.package !== null && (
             <span className="po-board-lot-meta">{packageText(lot.package)}</span>
           )}
-          {isNewFlow &&
-            lot.inboundLotId !== null &&
-            (canOpenWorkRecord ? (
-              <Link className="po-board-lot-meta" to={workRecordHref(lot.inboundLotId)}>
-                {t.lot.workRecordLink}
-              </Link>
-            ) : (
-              <span className="po-board-lot-meta">{t.lot.workRecordLink}</span>
-            ))}
+          {isNewFlow && lot.inboundLotId !== null && canOpenWorkRecord && (
+            <Link className="po-board-lot-meta" to={workRecordHref(lot.inboundLotId)}>
+              {t.lot.workRecordLink}
+            </Link>
+          )}
         </span>
       )}
       {evidence !== '' && <OneLine text={evidence} />}

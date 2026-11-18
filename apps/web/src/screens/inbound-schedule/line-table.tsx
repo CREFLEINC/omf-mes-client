@@ -424,7 +424,8 @@ export const LineTable = ({
       header: t.table.itemName,
       /*
        * 005 FR-035 — 라인에 입하 LOT 마다 몫 「{IL} · 매칭 {수량} {단위}」(마감한 입하 LOT) · 「{IL} · 입하 중」(마감 전 —
-       * 배정이 없어 LOT 줄이 없다)을 품목명 아래 한 줄로 낸다.
+       * 배정이 없어 LOT 줄이 없다)을 품목명 **옆** 같은 줄에 옅게 낸다(사용자 지시 2026-11-18 「가능하면 한 줄로」 — 전에는
+       * 품목명 아래 줄). 칸이 모자라면 몫 글이 먼저 줄어든다.
        */
       render: (row) => {
         if (row.kind !== 'line') return '';
@@ -433,14 +434,14 @@ export const LineTable = ({
         const sharesText = shares.map(inboundLotShareText).join(t.lot.shareSeparator);
 
         return (
-          <>
+          <span className="po-board-name-line">
             <OneLine text={orEmpty(row.line.itemName)} />
             {shares.length > 0 && (
               <span className="po-board-one-line po-board-lot-meta" title={sharesText}>
                 {sharesText}
               </span>
             )}
-          </>
+          </span>
         );
       },
     },

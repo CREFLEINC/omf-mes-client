@@ -128,10 +128,10 @@ describe('FR-035 W-01-09 LOT 줄 · 라인의 입하 LOT', () => {
     );
   });
 
-  it('FR-035 W-01-16 권한이 없으면 매칭 조정 안내는 글만 보인다', () => {
+  it('FR-035 W-01-16 권한이 없으면 매칭 조정을 세우지 않는다 — 갈 수 없는 곳을 글로 알리지 않는다', () => {
     renderCell(lotProgress({ inboundLotId: 9901, inboundLotNo: 'IL-20261112-0001' }), false);
 
-    expect(screen.getByText(t.lot.workRecordLink)).toBeInTheDocument();
+    expect(screen.queryByText(t.lot.workRecordLink)).toBeNull();
     expect(screen.queryByRole('link')).toBeNull();
   });
 

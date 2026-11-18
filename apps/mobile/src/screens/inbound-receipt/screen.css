@@ -1,5 +1,5 @@
 /*
- * M-01-01 입하 등록(005) — 스캔 화면 하나: 스캔 칸 · 결과 줄 · 전송 대기 띠 · 입하 LOT 카드(screens/M-01-01.md).
+ * M-01-01 입하 등록(005) — 스캔 화면 하나: 스캔 칸 · 결과 줄(하나) · 전송 대기 띠 · 입하 LOT 카드(screens/M-01-01.md).
  */
 .receive {
   display: flex;
@@ -17,7 +17,6 @@
   margin: 0;
 }
 
-.receive__banner,
 .receive__notice {
   display: flex;
   align-items: flex-start;
@@ -28,18 +27,9 @@
   color: var(--on-semantic-info-container);
 }
 
-.receive__banner {
-  background: var(--semantic-warning-container);
-  color: var(--on-semantic-warning-container);
-}
-
-.receive__lines {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2, 8px);
-  margin: 0;
-  padding: 0;
-  list-style: none;
+/* 결과가 없으면 자리를 차지하지 않는다 — 구획 사이 간격도 생기지 않게. */
+.receive__result:empty {
+  display: none;
 }
 
 .receive-line {
@@ -89,19 +79,8 @@
 }
 
 .receive__cards-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  column-gap: var(--space-2, 8px);
   margin: 0;
   font: var(--type-headline-sm);
-}
-
-/* 부제는 통째로 다음 줄로 — 글자 단위로 꺾이지 않게(G1 360 폭). */
-.receive__cards-head small {
-  color: var(--on-surface-muted);
-  font: var(--type-body-sm);
-  white-space: nowrap;
 }
 
 .receive-card {
@@ -129,16 +108,14 @@
 }
 
 /*
- * 자재 관리 LOT 번호는 한 줄(screens/M-01-01.md 「좁은 폭」) — 시안처럼 작은 고정폭 글자로 카드 폭을 다 쓴다.
- * 그래도 넘치면 끝을 말줄임으로 자른다(번호 전체는 시트 · 해제 버튼 이름에 있다).
+ * 자재 관리 LOT 번호는 한 줄(screens/M-01-01.md 「좁은 폭」) — 작은 고정폭 글자로 남는 폭을 다 쓴다.
+ * 넘치면 가운데를 줄여 끝 두 칸(공급사 · 일련번호)을 남긴다(patterns/lot-no-line).
  */
 .receive-lot__no {
-  overflow: hidden;
+  flex: 1 1 auto;
   font: var(--type-body-sm);
   font-family: var(--font-mono);
   font-weight: 700;
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }
 
 /* 낱말 조각 — 조각 사이(빈칸)에서만 꺾인다. 한 낱말이 줄보다 길면 셸의 overflow-wrap 으로 안에서 꺾인다. */
@@ -147,7 +124,12 @@
   max-width: 100%;
 }
 
+/* 합계와 (모두 같을 때의) 품질 칩을 한 줄에. */
 .receive-card__sum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2, 8px);
   font-weight: 700;
 }
 
@@ -169,12 +151,13 @@
   list-style: none;
 }
 
+/* 순번 | 두 줄 본문(번호 · 칩 / 수량 · 공급사 LOT · [해제]). */
 .receive-lot {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
+  align-items: center;
   gap: var(--space-2, 8px);
-  padding: var(--space-2, 8px);
+  padding: var(--space-1, 4px) var(--space-2, 8px);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
 }
@@ -184,46 +167,74 @@
 }
 
 .receive-lot__seq {
+  min-width: 1.25em;
   font-weight: 700;
 }
 
 .receive-lot__body {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1, 4px);
   min-width: 0;
 }
 
-.receive-lot__chips {
+/* 한 줄 — 칩은 줄어들지 않고, 번호 · 공급사 LOT 글이 남는 폭에서 줄어든다. */
+.receive-lot__line {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-1, 4px);
+  min-width: 0;
+  white-space: nowrap;
 }
 
-.receive-lot__foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2, 8px);
+.receive-lot__line > * {
+  flex: none;
+}
+
+.receive-lot__line > .receive-lot__no {
+  flex: 1 1 auto;
+}
+
+.receive-lot__qty {
+  font: var(--type-label-sm);
+  font-weight: 400;
+}
+
+.receive-lot__line > .receive-lot__supplier {
+  flex: 0 1 auto;
+}
+
+.receive-lot__line > .receive-lot__unregister {
+  margin-inline-start: auto;
 }
 
 .receive-lot__supplier {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1, 4px);
+  min-width: 0;
   min-height: 44px;
+  margin-inline-start: var(--space-1, 4px);
   padding: 0;
   border: 0;
   background: transparent;
-  color: inherit;
-  font: var(--type-body-sm);
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  font-weight: 400;
   text-align: start;
   cursor: pointer;
 }
 
+.receive-lot__supplier-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.receive-lot__supplier > :not(.receive-lot__supplier-text) {
+  flex: none;
+}
+
 .receive-lot__supplier:disabled {
-  color: var(--on-surface-muted);
   cursor: default;
 }
 

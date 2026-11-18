@@ -91,7 +91,7 @@ const LotsSection = ({ detail }: { detail: WorkRecordDetail }) => (
               <tr key={lot.lotId}>
                 <td className="iwr-code">{lot.lotNo}</td>
                 <td className="is-number">
-                  {formatQty(lot.lotQty)} <span className="field-note">{detail.uomCode}</span>
+                  {formatQty(lot.lotQty)} <span className="iwr-unit">{detail.uomCode}</span>
                 </td>
                 <td>
                   <Chip size="sm" status={status.status}>
@@ -109,17 +109,13 @@ const LotsSection = ({ detail }: { detail: WorkRecordDetail }) => (
 
 const footerOf = (
   view: View,
-  detail: WorkRecordDetail,
   editing: boolean,
   lockId: string,
   onClose: () => void,
   onFinalize: () => void,
 ) => (
   <div className="iwr-drawer-foot">
-    {view === 'ready' && <span className="field-note">{td.footReady}</span>}
-    {view === 'prog' && (
-      <span className="field-note">{reasonOf(detail, detail.finalizeBlockers)}</span>
-    )}
+    {/* 진행 중의 막힘 이유는 본문 머리 띠가 이미 말한다 — 바닥에 같은 말을 또 적지 않는다. */}
     {view === 'ready' && editing && (
       <span id={lockId} className="field-note">
         {td.finalizeLockedByEdit}
@@ -184,9 +180,7 @@ export const DetailPanel = ({
             variant="warning"
             icon="hourglass_top"
             title={td.blocked(reasonOf(data, data.finalizeBlockers))}
-          >
-            {td.blockedHelp}
-          </AlertBanner>
+          />
         )}
         <AllocationSection key={data.versionNo} detail={data} onEditingChange={setEditing} />
         <LotsSection detail={data} />
@@ -205,7 +199,7 @@ export const DetailPanel = ({
       footer={
         data === undefined || view === null
           ? undefined
-          : footerOf(view, data, editing, lockId, onClose, () => onFinalize(data))
+          : footerOf(view, editing, lockId, onClose, () => onFinalize(data))
       }
     >
       {body()}

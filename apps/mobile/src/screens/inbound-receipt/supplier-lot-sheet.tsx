@@ -84,9 +84,6 @@ export const SupplierLotSheet = ({
           setValue(event.target.value);
         }}
       />
-      {lot.fromSupplierLabel && lot.supplierLotNo !== null ? (
-        <p className="receive-sheet__note">{t.prefilled}</p>
-      ) : null}
       {rest.length === 0 ? null : (
         <Checkbox
           checked={applyRest}
@@ -98,7 +95,6 @@ export const SupplierLotSheet = ({
           {applyRest && differing > 0 ? ` (${t.applyRestNote(differing)})` : ''}
         </Checkbox>
       )}
-      <p className="receive-sheet__note">{t.note}</p>
     </Dialog>
   );
 };

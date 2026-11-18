@@ -2,6 +2,7 @@ import { Chip, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { Fragment, type ReactNode } from 'react';
 
+import { OneLine } from '../../patterns/po-board';
 import type { WorkRecordLot } from './forward-contract';
 import { formatAt, formatQty, matchParts, reasonOf, shortDate, type View } from './types';
 
@@ -69,6 +70,7 @@ const lastHead = (view: View): string =>
 /**
  * 입하 LOT 목록(시안 W0116-After). 넓은 표라 1280 폭에서는 표 상자 안에서 가로로 민다(`.wide-table`).
  * 행 어디를 눌러도 상세가 열린다 — 키보드는 입하 LOT 칸의 단추가 맡는다.
+ * 행은 한 줄이다(사용자 지시 2026-11-18) — 수량 · 단위, 품목 코드 · 이름, 칩 둘을 한 줄에 두고 긴 이름 · 매칭은 말줄임.
  */
 export const LotTable = ({
   view,
@@ -126,18 +128,21 @@ export const LotTable = ({
                 </button>
               </td>
               <td>{lot.supplierName}</td>
-              <td className="is-wrap">
-                <span className="iwr-code">{lot.itemCode}</span> {lot.itemName}
+              <td>
+                <span className="iwr-item">
+                  <span className="iwr-code">{lot.itemCode}</span>
+                  <OneLine text={lot.itemName} />
+                </span>
               </td>
               <td>{shortDate(lot.receivingDate)}</td>
               <td className="is-number">{String(lot.lotCount)}</td>
               <td className="is-number">
-                {formatQty(lot.receivedQty)} <span className="field-note">{lot.uomCode}</span>
+                {formatQty(lot.receivedQty)} <span className="iwr-unit">{lot.uomCode}</span>
               </td>
               <td className="is-number">
-                {formatQty(lot.goodsReceivedQty)} <span className="field-note">{lot.uomCode}</span>
+                {formatQty(lot.goodsReceivedQty)} <span className="iwr-unit">{lot.uomCode}</span>
               </td>
-              <td className="is-wrap">
+              <td>
                 <MatchSummary lot={lot} />
               </td>
               <td>{lastCell(view, lot)}</td>

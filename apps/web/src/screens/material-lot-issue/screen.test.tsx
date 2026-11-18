@@ -259,7 +259,8 @@ describe('W-01-14 자재 관리 LOT 발행', () => {
     expect(resin.getByText(t.defaults.missing)).toBeInTheDocument();
     expect(await resin.findByText(t.defaults.manual)).toBeInTheDocument();
 
-    expect(screen.getByText(t.banner)).toBeInTheDocument();
+    /* 머리 안내 띠(라벨은 POP 에서 · 입하 LOT 은 PDA 에서)는 두지 않는다(사용자 지시 2026-11-18). */
+    expect(screen.queryByText(/P-01-01|M-01-01/u)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /라벨|인쇄/ })).not.toBeInTheDocument();
   });
 
@@ -312,7 +313,7 @@ describe('W-01-14 자재 관리 LOT 발행', () => {
     expect(bar.getByRole('group', { name: t.filters.view })).toContainElement(
       bar.getByRole('checkbox', { name: t.filters.waitingOnly }),
     );
-    expect(screen.getByText(t.list.help)).toHaveClass('mlot-issue-help');
+    expect(document.querySelector('.mlot-issue-help')).toBeNull();
   });
 
   it('G2 L21 공장이 여럿이면 공장 칸에도 「공장」 이름이 붙는다', async () => {
@@ -445,7 +446,6 @@ describe('W-01-14 자재 관리 LOT 발행', () => {
     );
 
     expect(await dialog.findByText(t.dialog.source.none)).toBeInTheDocument();
-    expect(dialog.getByText(t.dialog.packageNone.none)).toBeInTheDocument();
     expect(dialog.getByLabelText(t.dialog.lotQty)).toHaveValue('');
   });
 });

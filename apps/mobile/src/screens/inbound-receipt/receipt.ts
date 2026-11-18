@@ -153,10 +153,12 @@ export type ScanLine =
       inboundLotNo: string;
       created: boolean;
       count: number;
-      fromSupplierLabel: boolean;
+      /** 이 스캔 때 날짜가 바뀌어 자동 마감된 「입하 중」 입하 LOT 번호. */
+      autoClosed: string | null;
     }
   | { kind: 'offline'; id: string; lotNo: string }
-  | { kind: 'reject'; id: string; lotNo: string; reason: string; body: string }
+  /** `body` 는 제목에 없는 사실(들어가 있는 입하 LOT · 서버 문구)만 — 없으면 null. */
+  | { kind: 'reject'; id: string; lotNo: string; reason: string; body: string | null }
   | { kind: 'closed'; id: string; lotNo: string; inboundLotNo: string };
 
 /** 서버가 실어 준 이유 문구(검증 · 잠김 · 충돌) — 없으면 null. */

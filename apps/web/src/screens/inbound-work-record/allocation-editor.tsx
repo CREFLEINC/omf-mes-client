@@ -193,12 +193,16 @@ export const AllocationSection = ({
               const remaining = known ? candidate.maxQty - qty : null;
               return (
                 <tr key={id} data-invalid={badLines.has(id) ? true : undefined}>
-                  <td className="is-wrap">
+                  {/* 라인 이름과 「마감 뒤 생김」을 한 줄에 — 덮개 폭이 모자라면 꼬리표만 아래 줄로(사용자 지시 2026-11-18). */}
+                  <td className="iwr-line-cell">
                     <span className="iwr-code">
                       {td.lineName(candidate.purchaseOrderNo, candidate.lineNo)}
                     </span>
                     {candidate.openedAfterReceiptClose === true && (
-                      <span className="field-note iwr-line-note">{td.openedAfterClose}</span>
+                      <>
+                        {' '}
+                        <span className="iwr-line-tag">{td.openedAfterClose}</span>
+                      </>
                     )}
                   </td>
                   <td>{shortDate(candidate.orderDate)}</td>
@@ -279,7 +283,6 @@ export const AllocationSection = ({
     <section className="iwr-section" aria-label={td.matchTitle}>
       <div className="iwr-section-head">
         <h3 className="iwr-section-title">{td.matchTitle}</h3>
-        <span className="field-note">{td.matchRule}</span>
         {editable && values === null && candidates.isSuccess && (
           <span className="iwr-section-actions">
             <Button
@@ -304,8 +307,6 @@ export const AllocationSection = ({
       {table()}
       {values !== null && (
         <>
-          <p className="field-note">{te.help}</p>
-          <p className="field-note">{te.reopenNote}</p>
           {errors.length > 0 && (
             <AlertBanner variant="error" title={te.errorsTitle}>
               <ul className="iwr-errors">
