@@ -367,9 +367,19 @@ export const ProcessWorkspace = ({
         ? 'done'
         : initialStep && canEnter(initialStep, judgments)
           ? initialStep
-          : firstOpenStep(judgments),
+          : planFacts.length === 0
+            ? 'master'
+            : firstOpenStep(judgments),
     );
-  }, [alreadyReleased, allWorkOrders.data, initialStep, judgments, loading, step]);
+  }, [
+    alreadyReleased,
+    allWorkOrders.data,
+    initialStep,
+    judgments,
+    loading,
+    planFacts.length,
+    step,
+  ]);
   useEffect(() => {
     if (step === 'assign' && assignSelected === null) {
       const first = firstBlocked ?? unreleased.data?.[0];
