@@ -87,8 +87,7 @@ export const judgeRelease = (
   if (
     fact.productionLineId === null ||
     fact.defaultWipLocationId === null ||
-    fact.defaultFgLocationId === null ||
-    fact.defaultScrapLocationId === null
+    fact.defaultFgLocationId === null
   ) {
     return { ready: false, reason: t.setupMissing };
   }

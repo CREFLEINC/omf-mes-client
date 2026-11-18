@@ -500,8 +500,10 @@ export const ProposalPlanningWorkspace = ({
                         )
                         .filter(
                           (field) =>
-                            field !== 'defaultFgLocationId' ||
-                            !row.erpStorage?.erpStorageLocationCode,
+                            field !== 'defaultWipLocationId' &&
+                            field !== 'defaultScrapLocationId' &&
+                            (field !== 'defaultFgLocationId' ||
+                              !row.erpStorage?.erpStorageLocationCode),
                         )
                         .map((field) => (
                           <ReferenceField
