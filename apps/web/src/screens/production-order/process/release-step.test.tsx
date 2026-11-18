@@ -110,7 +110,7 @@ describe('배포 확인 단계 — 생산 창고 공장', () => {
     renderStep({ issueDates });
 
     const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
-    expect(headers).toEqual(expect.arrayContaining([pw.productionDate, pw.issueWorkDate]));
+    expect(headers.slice(-2)).toEqual([pw.issueWorkDate, pw.productionDate]);
     const effects = within(
       screen.getByRole('region', { name: messages.screenPatterns.effectList.title(t.task) }),
     );

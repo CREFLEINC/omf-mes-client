@@ -346,7 +346,7 @@ export const ReleaseStep = ({
                 '계획일 · 생산 라인',
                 t.columns.orderQty,
                 readOnly ? 'LOT' : t.columns.lotCount,
-                ...(issueDates === undefined ? [] : [pw.productionDate, pw.issueWorkDate]),
+                ...(issueDates === undefined ? [] : [pw.issueWorkDate, pw.productionDate]),
               ]}
             >
               <tbody>
@@ -385,13 +385,13 @@ export const ReleaseStep = ({
                       </td>
                       {issueDates !== undefined && (
                         <>
-                          <td data-label={pw.productionDate}>
-                            {monthDay(issueDates.get(target.workOrderId)?.productionDate)}
-                          </td>
                           <td data-label={pw.issueWorkDate}>
                             {issueDates.get(target.workOrderId)?.undetermined === true
                               ? pw.decidedAtRelease
                               : monthDay(issueDates.get(target.workOrderId)?.issueWorkDate)}
+                          </td>
+                          <td data-label={pw.productionDate}>
+                            {monthDay(issueDates.get(target.workOrderId)?.productionDate)}
                           </td>
                         </>
                       )}
