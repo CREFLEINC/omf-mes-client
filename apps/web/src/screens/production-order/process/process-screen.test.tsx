@@ -365,6 +365,14 @@ const DRAFT_PLAN: Plan = {
 const CONFIRMED_PLAN: Plan = { ...DRAFT_PLAN, confirmedAt: '2026-10-20T09:00:00+09:00' };
 
 describe('작업지시 목록 처리 화면(T-W-C)', () => {
+  it('신규 ERP W/O 편성은 기본 BOM·Routing이 준비되어도 BOM·Routing부터 연다', async () => {
+    const user = userEvent.setup();
+    renderAt(`${WORKLIST}/${ORDER_NO}`, world());
+    await currentStep(tp.steps.master);
+    await user.click(screen.getByRole('tab', { name: tp.steps.plan }));
+    await currentStep(tp.steps.plan);
+  });
+
   it('배포 이력과 과거 작성중 계획이 함께 있어도 계획일 수정으로 돌아갈 수 있다', async () => {
     const user = userEvent.setup();
     renderAt(
@@ -565,7 +573,10 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
   });
 
   it('상단 품목코드와 품목명을 분리하고 품목명 안의 표기를 유지한다', async () => {
+    const user = userEvent.setup();
     renderAt(`${WORKLIST}/${ORDER_NO}`, world());
+    await currentStep(tp.steps.master);
+    await user.click(screen.getByRole('tab', { name: tp.steps.plan }));
     await currentStep(tp.steps.plan);
     const summary = document.querySelector('.erp-wo-summary')! as HTMLElement;
     expect(within(summary).getByText(t.list.columns.itemCode, { exact: true })).toBeVisible();
@@ -574,7 +585,10 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     expect(within(summary).getByText('SYN-ITEM', { exact: true })).toBeVisible();
   });
   it('상단은 ERP W/O·품목 식별 정보만 표시하고 수량은 생산계획에 표시한다', async () => {
+    const user = userEvent.setup();
     renderAt(`${WORKLIST}/${ORDER_NO}`, world({ itemGroupCode: 'G100' }));
+    await currentStep(tp.steps.master);
+    await user.click(screen.getByRole('tab', { name: tp.steps.plan }));
     await currentStep(tp.steps.plan);
     const identity = screen.getByRole('region', { name: 'ERP W/O 정보' });
     const item = screen.getByRole('region', { name: '품목 정보' });
@@ -634,6 +648,8 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
   it('단건 계획 추가도 팝업에서 검토한 뒤 미저장 계획으로 추가한다', async () => {
     const user = userEvent.setup();
     const server = renderAt(`${WORKLIST}/${ORDER_NO}`, world());
+    await currentStep(tp.steps.master);
+    await user.click(screen.getByRole('tab', { name: tp.steps.plan }));
     await currentStep(tp.steps.plan);
     await user.click(screen.getByRole('button', { name: '계획 추가' }));
     const dialog = screen.getByRole('dialog', { name: '계획 추가' });
