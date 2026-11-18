@@ -10483,3 +10483,393 @@
 .pop-split-preview .pop-split-meta > dd {
   margin: 0;
 }
+
+/*
+ * ══ P-04-07 출하 완료(피처 010 · omf-all-around#305) ══════════════════════════
+ *
+ * 스캔 칸 → 본문(입구 안내 · 확인 화면 · 결과) → 바닥 띠. 본문만 구르고 스캔 칸과 [출하 완료]는 늘 보인다.
+ * 확인 화면은 1024 배치에서 좌우 2단(왼쪽 라인·창고, 오른쪽 LOT), 좁으면 한 단으로 쌓는다(시안 ⑩).
+ * 표 셀은 한 줄이고 품목명만 남는 폭을 가져가 말줄임한다(C-16). LOT 번호는 고정폭으로 자르지 않는다(C-10).
+ */
+.pop-ui.pop-ship > .pop-ship-main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+}
+
+.pop-ui .pop-ship-scan {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: end;
+  gap: var(--space-3);
+}
+
+.pop-ui .pop-ship-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ── 스캔 대기: 세 입구 ── */
+.pop-ui .pop-ship-idle {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.pop-ui .pop-ship-entries {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pop-ui .pop-ship-entry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .pop-ship-entry > strong {
+  font: var(--type-title-sm);
+  color: var(--on-surface);
+}
+
+.pop-ui .pop-ship-idle__same {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-low);
+}
+
+/* ── 확인 화면 ── */
+.pop-ui .pop-ship-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.pop-ui .pop-ship-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.pop-ui .pop-ship-head__key {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.pop-ui .pop-ship-head__label,
+.pop-ui .pop-ship-head__via {
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .pop-ship-head__via {
+  margin-inline-start: auto;
+}
+
+.pop-ui .pop-ship-head__no {
+  font: var(--type-title-lg);
+  font-family: var(--font-mono);
+}
+
+.pop-ui .pop-ship-head__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
+}
+
+.pop-ui .pop-ship-head__facts > div {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.pop-ui .pop-ship-head__facts dt {
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .pop-ship-head__facts dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.pop-ui .pop-ship-section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font: var(--type-title-sm);
+}
+
+.pop-ui .pop-ship-section-title--error {
+  color: var(--semantic-error-text);
+}
+
+.pop-ui .pop-ship-blockers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--semantic-error-container);
+  color: var(--on-semantic-error-container);
+}
+
+.pop-ui .pop-ship-blockers > ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pop-ui .pop-ship-blocker {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+/* 막는 이유는 잘라 내지 않는다 — 베트남어가 길어도 줄을 바꾼다(시안 ⑨). */
+.pop-ui .pop-ship-blocker__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.pop-ui .pop-ship-blocker__target {
+  font-family: var(--font-mono);
+}
+
+.pop-ui .pop-ship-blocker__hint {
+  font: var(--type-body-sm);
+}
+
+.pop-ui .pop-ship-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.pop-ui .pop-ship-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.pop-ui .pop-ship-col > section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.pop-ui .pop-ship-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.pop-ui .pop-ship-table th,
+.pop-ui .pop-ship-table td {
+  padding: var(--space-2) var(--space-2);
+  border-block-end: 1px solid var(--outline-variant);
+  text-align: start;
+  white-space: nowrap;
+}
+
+.pop-ui .pop-ship-table th {
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .pop-ship-table .pop-ship-num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.pop-ui .pop-ship-table .pop-ship-code,
+.pop-ui .pop-ship-table .pop-ship-lot {
+  font-family: var(--font-mono);
+}
+
+.pop-ui .pop-ship-table .pop-ship-name {
+  width: 100%;
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 초과는 경고가 아니라 정보다 — 노란 글자만(시안 ③). */
+.pop-ui .pop-ship-table .pop-ship-over {
+  color: var(--on-semantic-warning-container);
+  font-weight: 600;
+}
+
+.pop-ui .pop-ship-table .pop-ship-row-blocked > td {
+  background: var(--semantic-error-container);
+}
+
+.pop-ui .pop-ship-warehouses {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pop-ui .pop-ship-warehouses > li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-low);
+}
+
+.pop-ui .pop-ship-warehouse__qty {
+  margin-inline-start: auto;
+  color: var(--on-surface-variant);
+}
+
+/* ── 완료 결과 · 이미 완료 ── */
+.pop-ui .pop-ship-outcome {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.pop-ui .pop-ship-outcome--done {
+  border-color: var(--semantic-success);
+}
+
+.pop-ui .pop-ship-outcome__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--semantic-success-text);
+}
+
+.pop-ui .pop-ship-outcome__head h2,
+.pop-ui .pop-ship-outcome__head p {
+  margin: 0;
+}
+
+.pop-ui .pop-ship-outcome__head h2 {
+  font: var(--type-title-lg);
+}
+
+.pop-ui .pop-ship-outcome__label {
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .pop-ship-outcome__no {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+.pop-ui .pop-ship-outcome__facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.pop-ui .pop-ship-outcome__facts > div {
+  display: contents;
+}
+
+.pop-ui .pop-ship-outcome__facts dt {
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .pop-ship-outcome__facts dd {
+  margin: 0;
+}
+
+/* ── 찾기 ── */
+.pop-ui .pop-ship-search {
+  width: min(880px, calc(100% - var(--space-6)));
+}
+
+.pop-ui .pop-ship-search-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: end;
+  gap: var(--space-3);
+}
+
+.pop-ui .pop-ship-search-count {
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+}
+
+.pop-ui .pop-ship-search-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 420px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.pop-ui .pop-ship-search-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--on-surface);
+  text-align: start;
+  cursor: pointer;
+}
+
+.pop-ui .pop-ship-search-row__blocked {
+  color: var(--semantic-error-text);
+}
+
+/* 배치 폭이 좁으면(시안 ⑩ — 960 미만) 확인 화면과 입구 안내를 한 단으로 쌓는다. */
+@media (max-width: 959px) {
+  .pop-ui .pop-ship-body,
+  .pop-ui .pop-ship-entries {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
