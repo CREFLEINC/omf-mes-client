@@ -21480,7 +21480,7 @@ export interface paths {
     put?: never;
     /**
      * 적치 완료
-     * @description `allowedLocations` 가 있으면 그 중 하나여야 한다 — 아니면 400 으로 막는다. 비어 있으면 이 창고의 켜진 맨 아래 위치 어디든 둘 수 있으며, 이때도 실제 위치는 반드시 남는다. 근거: M-01-05 §5-2-1 · 사용자 결정 2026-10-29(적치 규칙 제거) 창고 보충 수령 원천 지시는 적치 대기에 남은 만큼만 옮기고 끝낸다(0 이면 원장 없이 완료) — 응답 movedQty. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+     * @description `allowedLocations` 는 안내다 — 이 창고의 켜진 맨 아래 위치 어디든 둘 수 있고(목록 밖이라고 막지 않는다), 실제 위치는 반드시 남는다. 막는 것은 「지정 품목만 받기」를 켠 위치의 지정 밖 품목(400 LOCATION_ITEM_RESTRICTED)과 맨 아래 위치·창고 일치 검사다. 근거: 피처 009 T054 · 사용자 결정 2026-11-18 · omf-all-around#294. 근거: M-01-05 §5-2-1 · 사용자 결정 2026-10-29(적치 규칙 제거) 창고 보충 수령 원천 지시는 적치 대기에 남은 만큼만 옮기고 끝낸다(0 이면 원장 없이 완료) — 응답 movedQty. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
      */
     post: {
       parameters: {
@@ -55405,7 +55405,7 @@ export interface components {
        */
       locationLevelCode: 'ZONE' | 'RACK' | 'LEVEL' | 'CELL' | null;
     };
-    /** @description 적치 완료. `allowedLocations` 가 있으면 그 중 하나여야 한다 — 아니면 400 INVALID(`actualLocationId`). 비어 있으면 이 창고의 켜진 맨 아래 위치 어디든. 보관 품목을 걸어 둔 위치에 다른 품목을 두면 재고 코어가 400 STATE_LOCKED(screen). 정 못 두면 `:complete-temporary`(사유 필수). */
+    /** @description 적치 완료. `allowedLocations` 는 안내다 — 이 창고의 켜진 맨 아래 위치 어디든 둘 수 있다(피처 009 T054 · 사용자 결정 2026-11-18). 「지정 품목만 받기」를 켠 위치에 지정 밖 품목을 두면 재고 코어가 400 LOCATION_ITEM_RESTRICTED(screen). 정 못 두면 `:complete-temporary`(사유 필수). */
     PutawayTaskComplete: {
       /**
        * Format: int64
