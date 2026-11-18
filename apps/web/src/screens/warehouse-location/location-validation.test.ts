@@ -29,9 +29,10 @@ describe('validateLocation', () => {
 });
 
 describe('LOCATION_FORM_FIELDS', () => {
+  /* 피처 009 — 「지정 품목만 받기」 스위치도 칸이다(서버의 켜기 거절이 그 아래에 붙는다). */
   it('화면에 칸이 있는 값만 담는다 — 위치유형 · 혼적 허용은 칸 없이 실려 간다', () => {
     expect([...LOCATION_FORM_FIELDS].sort()).toEqual(
-      ['aliasName', 'locationCode', 'parentLocationId'].sort(),
+      ['aliasName', 'itemRestricted', 'locationCode', 'parentLocationId'].sort(),
     );
   });
 });

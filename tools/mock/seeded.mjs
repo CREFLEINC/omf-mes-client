@@ -892,6 +892,8 @@ const locationView = (location) => ({
     (row) => row.parentLocationId === location.locationId && row.isActive,
   ),
   hasItemRestriction: state.locationItems.some((row) => row.locationId === location.locationId),
+  /* 「지정 품목만 받기」(피처 009) — 저장한 값, 없으면 끔(배포 때 모든 위치 끔). */
+  itemRestricted: location.itemRestricted ?? false,
 });
 
 /** 단계는 상위로 정한다 — 상위 없음 → 구역 · 구역 밑 → 랙 · 랙 밑 → 층 · 층 밑 → 셀. */
@@ -1013,8 +1015,35 @@ on('PUT', '/mdm/locations/{locationId}', (params, _query, body, headers) => {
       return fieldError('parentLocationId', 'INVALID', '상위 위치는 바꿀 수 없습니다.');
     }
 
+    /*
+     * 「지정 품목만 받기」(피처 009) — 켜기는 사람이 만든 위치 · 지정 품목 1개 이상일 때만.
+     * ⚠ 실서버와 다름: 「지정 밖 품목 재고 있음」 갈래는 두지 않았다(재고를 위치별로 들고 있지 않다).
+     */
+    if (body?.itemRestricted === true && location.itemRestricted !== true) {
+      const hasItems = state.locationItems.some((row) => row.locationId === location.locationId);
+      if (location.systemRoleCode !== null || !hasItems) {
+        return {
+          status: 400,
+          created: {
+            errors: [
+              {
+                scope: 'field',
+                field: 'itemRestricted',
+                code: 'STATE_LOCKED',
+                message:
+                  location.systemRoleCode !== null
+                    ? '서버가 만든 자리는 「지정 품목만 받기」를 켤 수 없습니다.'
+                    : '지정 품목이 없어 켤 수 없습니다.',
+              },
+            ],
+          },
+        };
+      }
+    }
+
     if (location.systemRoleCode === null) location.locationName = body?.locationName;
     if (body?.aliasName !== undefined) location.aliasName = body.aliasName;
+    if (typeof body?.itemRestricted === 'boolean') location.itemRestricted = body.itemRestricted;
     bumpVersion(locationVersions, location.locationId);
     return {
       status: 200,
@@ -1066,7 +1095,7 @@ on('GET', '/mdm/locations/{locationId}/items', (params) => {
 });
 
 /*
- * 통째로 바꾼다 — 빈 배열이면 제한을 푼다.
+ * 통째로 바꾼다 — 빈 배열이면 지정을 모두 지운다(지정은 안내 · 피처 009).
  * ⚠ 실서버와 다름: 「지정 밖 품목의 재고가 이미 있음」(itemIds STATE_LOCKED) 갈래는 두지 않았다.
  */
 on('PUT', '/mdm/locations/{locationId}/items', (params, _query, body, headers) =>

@@ -31749,47 +31749,6 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   text-align: center;
 }
 
-.location-items-mode {
-  display: inline-flex;
-  align-self: flex-start;
-  padding: 2px;
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-  background: var(--surface-container);
-}
-
-.location-items-mode-option {
-  height: 28px;
-  padding: 0 var(--space-3);
-  border: 0;
-  border-radius: calc(var(--radius-md) - 2px);
-  background: transparent;
-  color: var(--on-surface-variant);
-  font: var(--type-label-lg);
-  cursor: pointer;
-  transition: background-color var(--motion-fast) var(--ease-standard);
-}
-
-.location-items-mode-option:hover:not(:disabled) {
-  background: var(--surface-container-high);
-}
-
-.location-items-mode-option:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.location-items-mode-option[aria-pressed="true"] {
-  background: var(--surface);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 60%, transparent);
-  color: var(--primary);
-}
-
-.location-items-mode-option:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-
 .location-items-list {
   display: grid;
   margin: 0;
@@ -31830,7 +31789,42 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   white-space: nowrap;
 }
 
-/* 위치 목록 — 지정 품목만 두는 위치의 코드 뒤 자물쇠. */
+/* 지정 품목이 없을 때 목록 자리 — 칸 높이는 그대로 둔다. */
+.location-items-empty {
+  padding: var(--space-2) var(--space-3);
+  color: var(--on-surface-muted);
+  font: var(--type-body-md);
+}
+
+/* 「지정 품목만 받기」 스위치 줄(피처 009) — 스위치 · 이름 한 줄, 그 아래 설명 · 잠긴 까닭 · 서버 거절. */
+.location-restrict {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-top: var(--space-2);
+}
+
+.location-restrict-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.location-restrict-label {
+  font: var(--type-label-lg);
+  font-weight: 600;
+}
+
+.location-restrict-lock {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+
+/* 위치 목록 — 「지정 품목만 받기」를 켠 위치의 코드 뒤 자물쇠(피처 009). */
 .location-restricted-icon {
   display: inline-flex;
   margin-left: var(--space-1);

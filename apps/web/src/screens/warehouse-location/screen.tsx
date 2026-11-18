@@ -31,6 +31,7 @@ import {
   isItemsDraftChanged,
   type LocationItemsDraft,
   LocationItemsSection,
+  RestrictionToggle,
 } from './location-items-section';
 import { itemTypesForWarehouse } from './item-scope';
 import { RackCreateDialog, type RackLeafItems } from './rack-create-dialog';
@@ -793,13 +794,19 @@ export const WarehouseLocationScreen = () => {
   };
 
   /**
-   * 저장 하나가 둘을 맡는다 — 위치 칸을 고쳤으면 위치 수정, 보관 품목을 바꿨으면 품목 목록 교체. 둘 다면 위치가 먼저다.
-   * 지정 품목만인데 품목이 없으면 보내지 않고 칸 아래에 알린다(빈 목록은 제한 해제라 뜻이 뒤집힌다).
+   * 저장 하나가 둘을 맡는다 — 위치 칸(별칭 · 「지정 품목만 받기」)을 고쳤으면 위치 수정, 보관 품목을 바꿨으면 품목 목록 교체.
+   * 둘 다면 위치가 먼저다 — 단, 「지정 품목만 받기」를 **켜는** 저장은 품목이 먼저다(피처 009). 서버가 켤 때 저장된 지정
+   * 품목으로 조건을 보므로, 품목을 더하면서 켜면 품목이 먼저 들어가 있어야 한다. 끄는 저장은 위치가 먼저라 끈 뒤의 품목
+   * 교체가 지정 밖 재고 검사에 걸리지 않는다.
+   * 켜는데 지정 품목이 하나도 없으면 보내지 않고 스위치 아래에 알린다(서버도 거절한다).
    */
   const handleSaveLocation = () => {
     const errors: Record<string, string> = { ...validateLocation(locationValues) };
-    if (itemsChanged && itemsDraft?.restricted === true && itemsDraft.items.length === 0) {
-      errors.itemIds = t.itemsSection.required;
+    const storedRestricted = locationFormSource?.location.itemRestricted ?? false;
+    const turningOn =
+      dialogState.mode === 'edit' && locationValues.itemRestricted === true && !storedRestricted;
+    if (turningOn && itemsDraft !== null && itemsDraft.items.length === 0) {
+      errors.itemRestricted = t.itemsSection.restrict.noItems;
     }
     setLocationFieldErrors(errors);
 
@@ -809,9 +816,17 @@ export const WarehouseLocationScreen = () => {
       itemsChanged && itemsDraft !== null && itemsTargetId !== null
         ? { locationId: itemsTargetId, itemIds: draftItemIds(itemsDraft) }
         : null;
-    pendingItemsRef.current = pendingItems;
     itemsWrite.reset();
 
+    if (turningOn && pendingItems !== null) {
+      pendingItemsRef.current = null;
+      pendingLocationRef.current = locationValues;
+      itemsWrite.write(pendingItems);
+      return;
+    }
+
+    pendingItemsRef.current = pendingItems;
+    pendingLocationRef.current = null;
     if (dialogState.mode === 'create' || locationChanged || pendingItems === null) {
       locationWrite.write(locationValues);
       return;
@@ -874,6 +889,8 @@ export const WarehouseLocationScreen = () => {
   const [itemsDraft, setItemsDraft] = useState<LocationItemsDraft | null>(null);
   /** 위치를 먼저 저장한 뒤 이어 보낼 품목 목록 — 위치 저장의 성공 처리기가 읽는다. */
   const pendingItemsRef = useRef<{ locationId: number; itemIds: number[] } | null>(null);
+  /** 품목을 먼저 저장한 뒤 이어 보낼 위치 값 — 「지정 품목만 받기」를 켜는 저장(피처 009). 품목 저장의 성공 처리기가 읽는다. */
+  const pendingLocationRef = useRef<LocationFormValues | null>(null);
 
   /* 고칠 목록은 받은 목록에서 시작한다 — 다시 받는 중에는 기다려 옛 캐시로 시작하지 않는다. */
   if (
@@ -882,7 +899,7 @@ export const WarehouseLocationScreen = () => {
     itemsQuery.data !== undefined &&
     !itemsQuery.isFetching
   ) {
-    setItemsDraft({ restricted: itemsQuery.data.length > 0, items: itemsQuery.data });
+    setItemsDraft({ items: itemsQuery.data });
   }
 
   const itemsWrite = useMasterWrite<
@@ -903,6 +920,13 @@ export const WarehouseLocationScreen = () => {
     knownFields: ['itemIds'],
     onSuccess: () => {
       pendingItemsRef.current = null;
+      /* 「지정 품목만 받기」를 켜는 저장 — 품목이 들어갔으니 이제 위치를 보낸다. 창은 그것까지 끝나야 닫는다. */
+      const pendingLocation = pendingLocationRef.current;
+      if (pendingLocation !== null) {
+        pendingLocationRef.current = null;
+        locationWrite.write(pendingLocation);
+        return;
+      }
       setDialogState(CLOSED_LOCATION_DIALOG);
       setLocationFieldErrors({});
       toast.show({ variant: 'success', description: messages.common.saved });
@@ -913,6 +937,7 @@ export const WarehouseLocationScreen = () => {
   const resetItemsDraft = (): void => {
     setItemsDraft(null);
     pendingItemsRef.current = null;
+    pendingLocationRef.current = null;
     itemsWrite.reset();
   };
 
@@ -937,19 +962,47 @@ export const WarehouseLocationScreen = () => {
     setItemsDraft(draft);
     itemsWrite.reset();
     setLocationFieldErrors((prev) => {
-      if (!('itemIds' in prev)) return prev;
+      if (!('itemIds' in prev) && !('itemRestricted' in prev)) return prev;
       const next = { ...prev };
       delete next.itemIds;
+      delete next.itemRestricted;
       return next;
     });
+  };
+
+  /*
+   * 「지정 품목만 받기」 켜기를 서버가 거절한 까닭(STATE_LOCKED · itemRestricted — 지정 밖 재고 · 시스템 자리)은 배너가 아니라
+   * 스위치 아래에 둔다(피처 009).
+   */
+  const restrictLockedMessage =
+    locationWrite.error?.kind === 'stateLocked' &&
+    locationWrite.error.errors.length > 0 &&
+    locationWrite.error.errors.every((item) => item.field === 'itemRestricted')
+      ? locationWrite.error.errors.map((item) => item.message).join(' ')
+      : undefined;
+  const restrictionSaving = locationWrite.isSaving || itemsWrite.isSaving;
+  const restrictionChecked = locationValues.itemRestricted ?? false;
+  /** 고치는 위치의 「지정 품목만 받기」 스위치. 지정 품목이 없으면 켜기만 미리 잠근다 — 켠 것을 끄는 것은 늘 된다. */
+  const restriction = {
+    checked: restrictionChecked,
+    onChange: (checked: boolean) => changeLocationValues({ itemRestricted: checked }),
+    lockReason:
+      !restrictionChecked && itemsDraft !== null && itemsDraft.items.length === 0
+        ? t.itemsSection.restrict.noItems
+        : undefined,
+    error:
+      locationFieldErrors.itemRestricted ??
+      locationWrite.fieldErrors.itemRestricted ??
+      restrictLockedMessage,
+    disabled: restrictionSaving,
   };
 
   /**
    * 층 없는 랙의 보관 품목(#1673) — 칸은 수정 창과 같고, 저장은 랙 창이 별칭 다음에 이어 부른다. 실패는 랙 창이 멈춘
    * 자리와 서버 문구로 알린다.
    */
-  const rackItemsInvalid =
-    itemsChanged && itemsDraft?.restricted === true && itemsDraft.items.length === 0;
+  /* 빈 목록은 「지정 없음」일 뿐이다(피처 009) — 막을 까닭이 없다. */
+  const rackItemsInvalid = false;
   const rackItemsId =
     itemsTargetId !== null && rackDialog?.rack?.locationId === itemsTargetId ? itemsTargetId : null;
   const rackLeafItems: RackLeafItems | null =
@@ -962,7 +1015,7 @@ export const WarehouseLocationScreen = () => {
               onRetry={() => void itemsQuery.refetch()}
               draft={itemsDraft}
               onChange={changeItemsDraft}
-              error={rackItemsInvalid ? t.itemsSection.required : undefined}
+              error={undefined}
               disabled={disabled}
               itemTypeCodes={itemTypeScope ?? undefined}
             />
@@ -1472,10 +1525,12 @@ export const WarehouseLocationScreen = () => {
             {dialogState.mode === 'edit' && locationDetail.isError && (
               <LoadErrorBanner error={locationDetail.error} onRetry={handleReloadLocationDetail} />
             )}
-            <SaveErrorBanner
-              error={locationWrite.error}
-              onReload={dialogState.mode === 'edit' ? handleReloadLocationDetail : undefined}
-            />
+            {restrictLockedMessage === undefined && (
+              <SaveErrorBanner
+                error={locationWrite.error}
+                onReload={dialogState.mode === 'edit' ? handleReloadLocationDetail : undefined}
+              />
+            )}
             {itemsLockedMessage === undefined && <SaveErrorBanner error={itemsWrite.error} />}
           </>
         }
@@ -1515,7 +1570,7 @@ export const WarehouseLocationScreen = () => {
         onSave={handleSaveLocation}
         isDirty={locationChanged || itemsChanged}
         itemsSlot={
-          itemsTargetId === null ? null : (
+          itemsTargetId !== null ? (
             <LocationItemsSection
               isLoading={itemsQuery.isPending || (itemsDraft === null && itemsQuery.isFetching)}
               isError={itemsQuery.isError}
@@ -1527,8 +1582,20 @@ export const WarehouseLocationScreen = () => {
               }
               disabled={locationWrite.isSaving || itemsWrite.isSaving}
               itemTypeCodes={itemTypeScope ?? undefined}
+              restriction={dialogState.mode === 'edit' ? restriction : undefined}
             />
-          )
+          ) : dialogState.mode === 'edit' &&
+            editingLocation !== null &&
+            isSystemLocation(editingLocation) ? (
+            /* 시스템 자리(창고 전체 · 적치 대기)는 켤 수 없다 — 잠긴 스위치 줄만 까닭과 함께(시안 결정 · FR-017c). */
+            <section
+              className="location-section location-items-section"
+              aria-label={t.itemsSection.restrict.label}
+            >
+              <h3 className="location-section-title">{t.itemsSection.restrict.label}</h3>
+              <RestrictionToggle checked={false} lockReason={t.itemsSection.restrict.system} />
+            </section>
+          ) : null
         }
         /* 라벨은 고칠 때만 — 아직 없는 위치에는 발행할 대상이 없다. */
         labelSlot={

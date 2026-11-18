@@ -142,8 +142,11 @@ export const LocationPane = ({
           <button type="button" className="link-cell" onClick={() => onEdit(row.location)}>
             {row.location.locationCode}
           </button>
-          {/* 지정한 품목만 두는 위치 — 코드 뒤 작은 자물쇠(사용자 지시 2026-10-29). */}
-          {row.location.hasItemRestriction && (
+          {/*
+           * 「지정 품목만 받기」를 켠 위치만 — 코드 뒤 작은 자물쇠(사용자 지시 2026-10-29 · 피처 009 시안 결정). 지정 품목이
+           * 있다는 것(hasItemRestriction)은 안내라 자물쇠를 달지 않는다 — PDA 적치로 지정이 늘어 「막힌 위치」로 잘못 읽힌다.
+           */}
+          {row.location.itemRestricted && (
             <span
               className="location-restricted-icon"
               role="img"

@@ -79,6 +79,7 @@ export const locationToFormValues = (location: Location): LocationFormValues => 
   parentLocationId: optionalIdToText(location.parentLocationId),
   locationCode: location.locationCode,
   aliasName: location.aliasName ?? '',
+  itemRestricted: location.itemRestricted,
 });
 
 /** 신규 Location 폼의 초기값. 선택값을 추측하지 않는다. 코드는 여는 쪽이 발행해 채운다. */
@@ -113,14 +114,25 @@ const locationBody = (values: LocationFormValues, locationName: string): Locatio
  */
 export const toLocationUpdate = (
   values: LocationFormValues,
-  stored: Pick<Location, 'locationName' | 'aliasName' | 'systemRoleCode'>,
+  stored: Pick<Location, 'locationName' | 'aliasName' | 'systemRoleCode'> &
+    Partial<Pick<Location, 'itemRestricted'>>,
 ): LocationUpdate => {
   const aliasChanged = trimmedAlias(values) !== (stored.aliasName?.trim() || null);
   const locationName =
     aliasChanged && !isSystemLocation(stored)
       ? (trimmedAlias(values) ?? values.locationCode.trim())
       : stored.locationName;
-  return locationBody(values, locationName);
+  /*
+   * 「지정 품목만 받기」는 바꿨을 때만 싣는다(피처 009) — 서버는 켤 때마다 조건(지정 · 지정 밖 재고)을 다시 보므로,
+   * 그대로 둔 값을 실어 보내면 별칭만 고쳐도 켜기 검사에 걸릴 수 있다. 보내지 않으면 서버가 그대로 둔다.
+   */
+  const restrictChanged =
+    values.itemRestricted !== undefined &&
+    values.itemRestricted !== (stored.itemRestricted ?? false);
+  return {
+    ...locationBody(values, locationName),
+    ...(restrictChanged ? { itemRestricted: values.itemRestricted } : {}),
+  };
 };
 
 /**
@@ -153,4 +165,5 @@ export const isSameWarehouseValues = (a: WarehouseFormValues, b: WarehouseFormVa
 export const isSameLocationValues = (a: LocationFormValues, b: LocationFormValues): boolean =>
   a.parentLocationId === b.parentLocationId &&
   a.locationCode === b.locationCode &&
-  a.aliasName === b.aliasName;
+  a.aliasName === b.aliasName &&
+  (a.itemRestricted ?? false) === (b.itemRestricted ?? false);

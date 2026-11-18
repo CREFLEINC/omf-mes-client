@@ -9,6 +9,8 @@ export const LOCATION_FORM_FIELDS: readonly string[] = [
   'parentLocationId',
   'locationCode',
   'aliasName',
+  /* 피처 009 — 켜기 조건을 서버가 거절하면(지정 없음 · 지정 밖 재고 · 시스템 자리) 그 스위치 아래에 붙인다. */
+  'itemRestricted',
 ];
 
 /** 서버 한도(#875) — 넘으면 400 INVALID 다. */

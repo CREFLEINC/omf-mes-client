@@ -38,6 +38,10 @@ export interface LocationFormValues {
   locationCode: string;
   /** MES 별칭 — 위치의 이름이다. 빈 글이면 별칭 없음. */
   aliasName: string;
+  /**
+   * 「지정 품목만 받기」(피처 009 · 기본 끔). 수정 때만 — 등록 창에는 없다(옵션은 수정에서만 켜고 끈다). 바꿨을 때만 싣는다.
+   */
+  itemRestricted?: boolean;
 }
 
 export interface LookupOptions {

@@ -195,16 +195,23 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     done: (label: string): string => `Xong sửa ${label}`,
   },
   itemsSection: {
-    title: 'Mặt hàng lưu trữ',
-    anyItem: 'Mọi mặt hàng',
-    listedOnly: 'Chỉ mặt hàng chỉ định',
+    title: 'Mặt hàng lưu trữ (hướng dẫn)',
+    guide:
+      'Tự động được thêm khi cất vào vị trí không chỉ định trên PDA. Nếu không bật «Chỉ nhận mặt hàng chỉ định», mặt hàng khác cũng không bị chặn.',
+    list: 'Mặt hàng chỉ định',
+    none: 'Chưa có mặt hàng chỉ định',
     addItem: 'Thêm mặt hàng',
     remove: (itemCode: string): string => `Xóa ${itemCode}`,
     loading: 'Đang tải mặt hàng lưu trữ',
     loadFailed: 'Không tải được mặt hàng lưu trữ.',
-    required: 'Hãy chọn ít nhất một mặt hàng.',
-    /** 목록의 위치 코드 옆 표식. */
-    restricted: 'Chỉ mặt hàng chỉ định',
+    /** 목록의 위치 코드 옆 자물쇠 — 「지정 품목만 받기」를 켠 위치에만. */
+    restricted: 'Chỉ nhận mặt hàng chỉ định',
+    restrict: {
+      label: 'Chỉ nhận mặt hàng chỉ định',
+      help: 'Bật thì chỉ mặt hàng chỉ định được vào vị trí này (mọi luồng). Tắt thì mặt hàng chỉ định chỉ là hướng dẫn, mặt hàng nào cũng để được.',
+      noItems: 'Chưa có mặt hàng chỉ định nên không bật được. Hãy thêm mặt hàng trước.',
+      system: 'Không bật được cho vị trí toàn kho và khu chờ cất.',
+    },
   },
   /** 랙의 층 · 셀 설정 대화상자(사용자 지시 2026-10-29). */
   deleteLocation: {
