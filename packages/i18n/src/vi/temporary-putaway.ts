@@ -73,4 +73,18 @@ export const temporaryPutaway: Translated<typeof ko.temporaryPutaway> = {
   },
   noWorker: 'Hãy xác nhận mã nhân viên trước',
   done: 'Đến màn hình cất hàng',
+  lot: {
+    open: 'Cất tạm',
+    notice: 'Nhập kho vào vị trí «toàn kho» của kho đã chọn, không cần vị trí.',
+    warehouseLegend: 'Kho',
+    designatedCount: (count: string) => `${count} vị trí chỉ định`,
+    noDesignated: 'Mặt hàng này chưa có vị trí chỉ định',
+    defectOnly: 'LOT lỗi chỉ được chọn kho hàng lỗi.',
+    none: 'Không có kho nào để chọn',
+    chosen: (warehouse: string, qty: string) => `${warehouse}, vị trí toàn kho ${qty}`,
+    locked: 'Chọn kho để tiếp tục',
+    row: (lotNo: string, warehouse: string, qty: string) =>
+      `${lotNo} → ${warehouse}, toàn kho ${qty}`,
+    receipt: (receiptNo: string) => `Nhập kho ${receiptNo}`,
+  },
 };

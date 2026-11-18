@@ -729,3 +729,126 @@ describe('임시 위치 적재 화면 — 같은 지시를 두 번 적지 않는
     expect(keys.size).toBe(1);
   });
 });
+
+/*
+ * 피처 009 — LOT 모드(FR-020 · US4). M-01-05 의 적치 대기 LOT 화면 [임시 적치]가 LOT 을 넘겨 연다. 창고만 고르고
+ * 사유를 받지 않으며, 그 창고의 「창고 전체」 자리로 입고한다.
+ */
+describe('임시 위치 적재 — LOT 모드(피처 009)', () => {
+  const pendingLot = (overrides: Record<string, unknown> = {}) => ({
+    lotId: 41,
+    lotNo: 'RM-LOT-0103',
+    itemId: 31,
+    itemCode: 'RM-1001',
+    itemName: '수지A',
+    qty: 1000,
+    uomCode: 'EA',
+    lotStatusCode: 'NORMAL',
+    inboundLotId: 5,
+    inboundLotNo: 'IL-20261117-0005',
+    ...overrides,
+  });
+
+  const handoff = (
+    lot = pendingLot(),
+    temporaryWarehouses: unknown[] = [
+      { warehouseId: 2, warehouseName: '원자재창고', isDefect: false, designatedCount: 2 },
+      { warehouseId: 3, warehouseName: '외부창고', isDefect: false, designatedCount: 1 },
+      { warehouseId: 4, warehouseName: '부자재창고', isDefect: false, designatedCount: 0 },
+    ],
+  ) => ({
+    pendingLot: {
+      lotId: lot.lotId,
+      lotNo: lot.lotNo,
+      found: true,
+      eligible: true,
+      lot,
+      temporaryWarehouses,
+    },
+  });
+
+  const temporaryRoute = (seen: Request[]): StubRoute => ({
+    match: (req) =>
+      /^\/logistics\/putaway-pending-lots\/\d+:putaway-temporary$/.test(
+        new URL(req.url).pathname,
+      ) && req.method === 'POST',
+    respond: (req) => {
+      seen.push(req.clone());
+      return jsonResponse(
+        {
+          goodsReceiptId: 301,
+          goodsReceiptNo: 'GR-20261118-0004',
+          lotId: 41,
+          lotNo: 'RM-LOT-0103',
+          qty: 1000,
+          uomCode: 'EA',
+          warehouseId: 2,
+          warehouseName: '원자재창고',
+          locationId: 80,
+          locationCode: 'WH01-SYS-WHOLE',
+          locationPath: '원자재창고 › 창고 전체',
+          putawayModeCode: 'TEMPORARY',
+          itemDesignationAdded: false,
+        },
+        { status: 201 },
+      );
+    },
+  });
+
+  it('US4-1 창고를 서버가 준 차례로 보이고, 사유 칸 · 위치 스캔이 없다', async () => {
+    mount(handoff());
+
+    const radios = await screen.findAllByRole('radio');
+    expect(radios.map((each) => each.closest('label')?.textContent ?? '')).toEqual([
+      expect.stringContaining('원자재창고'),
+      expect.stringContaining('외부창고'),
+      expect.stringContaining('부자재창고'),
+    ]);
+    expect(screen.getByText(messages.temporaryPutaway.lot.designatedCount('2'))).toBeTruthy();
+    expect(screen.getByText(messages.temporaryPutaway.lot.noDesignated)).toBeTruthy();
+    expect(screen.getByText(messages.temporaryPutaway.lot.notice)).toBeTruthy();
+    expect(screen.queryByText(messages.temporaryPutaway.reason.legend)).toBeNull();
+    expect(screen.queryByLabelText('임시 위치 코드 스캔')).toBeNull();
+    /* 정상 LOT 은 미리 고르지 않는다. */
+    expect(screen.getByRole('button', { name: '임시 적치 등록' })).toBeDisabled();
+    expect(screen.getByText(messages.temporaryPutaway.lot.locked)).toBeTruthy();
+  });
+
+  it('US4-2·Q11 창고를 고르고 [임시 적치 등록] 한 번으로 `:putaway-temporary {warehouseId}` 를 보낸다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount(handoff(), [temporaryRoute(seen)]);
+
+    await user.click(await screen.findByRole('radio', { name: /원자재창고/ }));
+    expect(
+      screen.getByText(messages.temporaryPutaway.lot.chosen('원자재창고', '1000 EA')),
+    ).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: '임시 적치 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+    expect(new URL(seen[0]!.url).pathname).toBe(
+      '/logistics/putaway-pending-lots/41:putaway-temporary',
+    );
+    const body = (await seen[0]!.json()) as Record<string, unknown>;
+    expect(body.warehouseId).toBe(2);
+    expect(body).not.toHaveProperty('reasonCode');
+    expect(body).not.toHaveProperty('remarks');
+    expect(seen[0]!.headers.get('X-Worker-No')).toBe('900028');
+    expect(await screen.findByText(messages.temporaryPutaway.sent.title)).toBeTruthy();
+    expect(screen.getByText('입고 GR-20261118-0004')).toBeTruthy();
+  });
+
+  it('US4-4 불량 LOT 에 불량창고가 하나뿐이면 미리 골라 두고 불량창고만 고른다고 말한다', async () => {
+    mount(
+      handoff(pendingLot({ lotStatusCode: 'DEFECTIVE' }), [
+        { warehouseId: 9, warehouseName: '불량창고', isDefect: true, designatedCount: 1 },
+      ]),
+    );
+
+    expect(await screen.findByRole('radio', { name: /불량창고/ })).toBeChecked();
+    expect(screen.getByText(messages.temporaryPutaway.lot.defectOnly)).toBeTruthy();
+    expect(screen.getByRole('button', { name: '임시 적치 등록' })).not.toBeDisabled();
+  });
+});

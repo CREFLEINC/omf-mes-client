@@ -22,7 +22,9 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
 import { allowedSummaryOf, type PutawayTask } from '../putaway/putaway';
+import type { PendingLot, PendingLotLookup } from '../putaway/direct';
 import { putawayKeys, usePutawayTask } from '../putaway/queries';
+import { TemporaryLotMode } from './lot-mode';
 import {
   PUTAWAY_TASK_TEMPORARY_REASON,
   canSubmit,
@@ -43,14 +45,39 @@ export interface TemporaryPutawayHandoff {
   task: PutawayTask;
 }
 
+/** 피처 009 — M-01-05 의 적치 대기 LOT 화면이 넘긴 LOT(LOT 모드). */
+export interface TemporaryLotHandoff {
+  pendingLot: PendingLotLookup & { lot: PendingLot };
+}
+
+const isLotHandoff = (value: unknown): value is TemporaryLotHandoff =>
+  typeof value === 'object' &&
+  value !== null &&
+  'pendingLot' in value &&
+  typeof (value as { pendingLot: { lot?: unknown } }).pendingLot?.lot === 'object';
+
+/**
+ * M-01-07 임시 위치 적재. 두 모드 — LOT 모드(피처 009, 적치 대기 LOT 을 창고만 골라)와 지시 모드(지금 그대로,
+ * 004 보충 · 배포 전 구매 입고 지시를 위치 · 사유와 함께).
+ */
+export const TemporaryPutawayScreen = () => {
+  useScreenTitle(t.title);
+  const routed = useLocation();
+
+  return isLotHandoff(routed.state) ? (
+    <TemporaryLotMode found={routed.state.pendingLot} />
+  ) : (
+    <TemporaryTaskMode />
+  );
+};
+
 const isHandoff = (value: unknown): value is TemporaryPutawayHandoff =>
   typeof value === 'object' &&
   value !== null &&
   'task' in value &&
   typeof (value as { task: unknown }).task === 'object';
 
-export const TemporaryPutawayScreen = () => {
-  useScreenTitle(t.title);
+const TemporaryTaskMode = () => {
   const failureText = useLoadFailure();
 
   const { enqueue, flush, isRejected, loaded, pendingOf } = useOutbox();

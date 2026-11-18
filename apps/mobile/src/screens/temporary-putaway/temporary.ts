@@ -3,9 +3,13 @@ import { messages } from '@omf-mes/i18n';
 
 import { isStockableLocation, type Location } from '../../patterns/locations';
 import { createIdempotencyKey, type OutboxDraft } from '../../patterns/outbox';
+import type { PendingLot, PendingLotLookup } from '../putaway/direct';
 import { businessDateOf, type PutawayTask } from '../putaway/putaway';
 
 export type PutawayTaskCompleteTemporary = components['schemas']['PutawayTaskCompleteTemporary'];
+export type PutawayTemporary = components['schemas']['PutawayTemporary'];
+/** LOT 모드(피처 009)에서 고를 수 있는 창고 — `:lookup` 의 `temporaryWarehouses` 한 줄. */
+export type TemporaryWarehouse = NonNullable<PendingLotLookup['temporaryWarehouses']>[number];
 
 /** 사유 코드 값 목록이 오는 공통코드 그룹. */
 export const PUTAWAY_TASK_TEMPORARY_REASON = 'PUTAWAY_TASK_TEMPORARY_REASON';
@@ -98,6 +102,50 @@ export const toOutboxDraft = (
     idempotencyKey: createIdempotencyKey(),
     method: 'POST',
     path: temporaryPathOf(task.putawayTaskId),
+    body,
+    occurredAt,
+    confirmation: 'pending',
+  };
+};
+
+/**
+ * LOT 모드(피처 009)의 처음 고른 창고. 불량 LOT 에 불량창고가 하나뿐이면 미리 골라 둔다(시안 결정) — 고를 것이
+ * 하나뿐인데 한 번 더 누르게 하지 않는다. 정상 LOT 은 사람이 고른다.
+ */
+export const initialWarehouseOf = (
+  lot: Pick<PendingLot, 'lotStatusCode'>,
+  warehouses: readonly TemporaryWarehouse[],
+): number | null => {
+  const [only, ...rest] = warehouses;
+
+  return lot.lotStatusCode === 'DEFECTIVE' && only !== undefined && rest.length === 0
+    ? only.warehouseId
+    : null;
+};
+
+/**
+ * LOT 모드의 임시 적치(contracts §5) — 창고만, 사유 없음. 재고는 그 창고의 「창고 전체」 자리에 들어간다.
+ */
+export const toTemporaryLotDraft = (
+  lot: Pick<PendingLot, 'lotId' | 'lotNo'>,
+  warehouse: Pick<TemporaryWarehouse, 'warehouseId' | 'warehouseName'>,
+  now: Date,
+  workerNo: string,
+): OutboxDraft => {
+  const occurredAt = now.toISOString();
+  const body: PutawayTemporary = {
+    warehouseId: warehouse.warehouseId,
+    businessDate: businessDateOf(now),
+    occurredAt,
+  };
+
+  return {
+    label: messages.temporaryPutaway.record,
+    summary: `${lot.lotNo} → ${warehouse.warehouseName}`,
+    workerNo,
+    idempotencyKey: createIdempotencyKey(),
+    method: 'POST',
+    path: `/logistics/putaway-pending-lots/${String(lot.lotId)}:putaway-temporary`,
     body,
     occurredAt,
     confirmation: 'pending',
