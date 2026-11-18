@@ -47,19 +47,9 @@ import { useUomReferenceLookup } from '../reference-lookups';
 import { apiErrorText, invalidateFlow, releaseWorkOrder } from '../release-runner';
 import { ForbiddenNotice, isForbidden } from '../forbidden-notice';
 import { ProcessStateChip, ReasonChips } from '../worklist-chips';
-import {
-  processPath,
-  readWorklistFilters,
-  rememberedWorklistSearch,
-  worklistPath,
-} from '../worklist-filters';
+import { rememberedWorklistSearch, worklistPath } from '../worklist-filters';
 import { deriveWorklistState, type ProcessStepKey } from '../worklist-model';
-import {
-  useProductionOrderByNumber,
-  useWorklist,
-  useWorklistCount,
-  worklistKeys,
-} from '../worklist-queries';
+import { useProductionOrderByNumber, worklistKeys } from '../worklist-queries';
 import type { ProductionOrderFact } from '../types';
 import { AssignStep } from './assign-step';
 import { automaticBomId, automaticRoutingId, MasterStep } from './master-step';
@@ -409,16 +399,6 @@ export const ProcessWorkspace = ({
         ? { ...derivedBase, reasons: [{ code: 'LINE_UNKNOWN' }, ...derivedBase.reasons] }
         : derivedBase;
   const lastSearch = useMemo(() => rememberedWorklistSearch(), []);
-  const lastFilters = useMemo(() => readWorklistFilters(lastSearch), [lastSearch]);
-  const nextList = useWorklist(lastFilters);
-  const actionRequiredCount = useWorklistCount('ACTION_REQUIRED', lastFilters.plant);
-  const nextOrder = (() => {
-    const items = nextList.data?.items ?? [];
-    const index = items.findIndex((entry) => entry.productionOrderNo === order.productionOrderNo);
-    return index >= 0
-      ? items[index + 1]
-      : items.find((entry) => entry.productionOrderNo !== order.productionOrderNo);
-  })();
 
   const savePlans = useCallback(
     async (confirm: boolean) => {
@@ -566,7 +546,7 @@ export const ProcessWorkspace = ({
 
   const guidance =
     step === 'done'
-      ? { text: tp.remaining.remainingOrders(actionRequiredCount.data ?? 0) }
+      ? { text: '' }
       : step === 'release'
         ? releaseGuidance
         : judgments[step].guidance;
@@ -611,6 +591,7 @@ export const ProcessWorkspace = ({
   const releaseInformation = (readOnly: boolean) => (
     <ReleaseStep
       onSelectedWorkOrderChange={setReleaseSelectedId}
+      selectedWorkOrderId={releaseSelectedId}
       materialReview={(workOrderId) =>
         !readOnly && (
           <ReleaseMaterials
@@ -833,20 +814,52 @@ export const ProcessWorkspace = ({
     }
   })();
 
+  const releaseNavigationOrders =
+    step === 'done'
+      ? (allWorkOrders.data ?? [])
+      : (releaseLines ?? []).map((line) => line.workOrder);
+  const releaseNavigationIndex = Math.max(
+    0,
+    releaseNavigationOrders.findIndex((row) => row.workOrderId === releaseSelectedId),
+  );
+  const releaseNavigation = (
+    <div className="erp-release-work-order-navigation" role="group" aria-label="배포 작업지시 이동">
+      <Button
+        variant="outlined"
+        disabled={releasing || releaseNavigationOrders.length === 0 || releaseNavigationIndex === 0}
+        onClick={() =>
+          setReleaseSelectedId(
+            releaseNavigationOrders[releaseNavigationIndex - 1]?.workOrderId ?? null,
+          )
+        }
+      >
+        이전 작업지시
+      </Button>
+      <span aria-live="polite">
+        {releaseNavigationOrders.length ? releaseNavigationIndex + 1 : 0} /{' '}
+        {releaseNavigationOrders.length}
+      </span>
+      <Button
+        variant="outlined"
+        disabled={releasing || releaseNavigationIndex >= releaseNavigationOrders.length - 1}
+        onClick={() =>
+          setReleaseSelectedId(
+            releaseNavigationOrders[releaseNavigationIndex + 1]?.workOrderId ?? null,
+          )
+        }
+      >
+        다음 작업지시
+      </Button>
+    </div>
+  );
   const primary = (() => {
     if (step === 'done') {
-      return nextOrder === undefined ? (
-        <Button onClick={() => void navigate(worklistPath(lastSearch))}>
-          {josa(tp.done.toWorklist, '으로/로')}
-        </Button>
-      ) : (
+      return (
         <>
           <Button variant="outlined" onClick={() => void navigate(worklistPath(lastSearch))}>
             {josa(tp.done.toWorklist, '으로/로')}
           </Button>
-          <Button onClick={() => void navigate(processPath(nextOrder.productionOrderNo))}>
-            {tp.done.nextOrder}
-          </Button>
+          {releaseNavigation}
         </>
       );
     }
@@ -860,6 +873,7 @@ export const ProcessWorkspace = ({
       return (
         <>
           {prev}
+          {releaseNavigation}
           <Button
             loading={releasing}
             disabled={

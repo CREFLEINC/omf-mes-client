@@ -254,6 +254,7 @@ const ReleaseTargetList = ({
 
 export interface ReleaseStepProps {
   onSelectedWorkOrderChange?: (id: number) => void;
+  selectedWorkOrderId?: number | null;
   readOnly?: boolean;
   materialReview?: (workOrderId: number) => import('react').ReactNode;
   plantId?: number;
@@ -276,6 +277,7 @@ export interface ReleaseStepProps {
  */
 export const ReleaseStep = ({
   onSelectedWorkOrderChange,
+  selectedWorkOrderId,
   readOnly = false,
   materialReview,
   plantId,
@@ -294,7 +296,11 @@ export const ReleaseStep = ({
   if (lines === undefined) return <SkeletonText lines={4} />;
   const totalLots = lines.reduce((sum, line) => sum + (line.lotCount ?? 0), 0);
   const selected =
-    lines.find((line) => String(line.workOrder.workOrderId) === selectedId) ?? lines[0];
+    lines.find(
+      (line) =>
+        String(line.workOrder.workOrderId) ===
+        (selectedWorkOrderId == null ? selectedId : String(selectedWorkOrderId)),
+    ) ?? lines[0];
   if (selected === undefined) return <p className="empty-line">{t.empty}</p>;
   const wo = selected.workOrder;
   const monthDay = (iso: string | null | undefined): string => (iso == null ? '' : iso.slice(5));

@@ -40,3 +40,14 @@
     width: 7rem;
   }
 }
+.erp-release-work-order-navigation {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.erp-release-work-order-navigation > span {
+  font: var(--type-body-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
