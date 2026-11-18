@@ -31,3 +31,10 @@
 .product-receipt__wide {
   width: 100%;
 }
+
+/* 지정되지 않은 위치 확인(피처 009 T058) — [다시 스캔] · [미지정 위치 적치] 반씩. */
+.product-receipt__confirm {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2, 8px);
+}
