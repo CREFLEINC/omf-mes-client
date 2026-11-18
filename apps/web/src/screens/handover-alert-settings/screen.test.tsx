@@ -80,13 +80,16 @@ interface SetupOptions {
   etag?: string | null;
   respondPut?: (request: Request) => Response;
   candidates?: number[];
+  /** 서버가 더한 종류(피처 009 의 적치 대기 등) — 10종 뒤에 붙는다 */
+  extraTypes?: typeof TYPES;
 }
 
 const setup = (options: SetupOptions = {}) => {
   const writes: Request[] = [];
   const summaryQueries: URL[] = [];
   const settings: Record<string, HandoverAlertSetting> = {};
-  for (const type of TYPES) {
+  const types = [...TYPES, ...(options.extraTypes ?? [])];
+  for (const type of types) {
     settings[type.alertTypeCode] = {
       plantId: PLANT_A.plantId,
       alertTypeCode: type.alertTypeCode,
@@ -112,7 +115,7 @@ const setup = (options: SetupOptions = {}) => {
     },
     {
       match: (request) => pathOf(request) === '/app/handover-alert-types',
-      respond: () => jsonResponse({ items: TYPES }),
+      respond: () => jsonResponse({ items: types }),
     },
     {
       match: (request) => pathOf(request) === '/app/handover-alert-settings',
@@ -227,6 +230,44 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     const pane = await openType(user, '자재 출고 피킹');
     expect(pane.getByText(t.types.MATERIAL_PICKING_REQUESTED.when)).toBeInTheDocument();
     expect(pane.getByText(t.types.MATERIAL_PICKING_REQUESTED.where)).toBeInTheDocument();
+  });
+
+  /* 피처 009(omf-all-around#294) — 「적치 대기」 새 유형과 바뀐 「검사 불합격」 처리 안내. */
+  it('FR-034 「적치 대기」(PUTAWAY_PENDING)도 「언제」·「처리」 안내가 선다', async () => {
+    const user = userEvent.setup();
+    setup({
+      extraTypes: [
+        {
+          alertTypeCode: 'PUTAWAY_PENDING',
+          name: '적치 대기',
+          nameVi: 'Chờ xếp kho',
+          targetTypeCode: 'INBOUND_LOT',
+        },
+      ],
+    });
+
+    const pane = await openType(user, '적치 대기');
+    expect(pane.getByText(t.types.PUTAWAY_PENDING.when)).toBeInTheDocument();
+    expect(pane.getByText(t.types.PUTAWAY_PENDING.where)).toBeInTheDocument();
+  });
+
+  it('FR-003 「검사 불합격」 처리 안내는 관리웹 입고 처리가 아니라 PDA 적치다', async () => {
+    const user = userEvent.setup();
+    setup({
+      extraTypes: [
+        {
+          alertTypeCode: 'IQC_INSPECTION_REJECTED',
+          name: '검사 불합격',
+          nameVi: 'IQC NG',
+          targetTypeCode: 'LOT',
+        },
+      ],
+    });
+
+    const pane = await openType(user, '검사 불합격');
+    expect(pane.getByText(t.types.IQC_INSPECTION_REJECTED.where)).toBeInTheDocument();
+    expect(t.types.IQC_INSPECTION_REJECTED.where).not.toContain('입고 처리');
+    expect(t.types.IQC_INSPECTION_REJECTED.where).toContain('PDA');
   });
 
   it('US2-6 고를 공장이 하나면 공장 칸이 없고 그 공장 설정을 연다', async () => {

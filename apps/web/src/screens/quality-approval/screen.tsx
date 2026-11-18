@@ -116,7 +116,10 @@ const PQC_SKIP = 'PQC_SKIP';
 /** 「다음 할 일」이 여는 화면(#193) — 반려 뒤 정상 검사로, 실행 뒤 그다음 업무로. */
 const IQC_INSPECTION_PATH = '/logistics/iqc-inspection';
 const OQC_INSPECTION_PATH = '/shipment/oqc-inspection';
-const GOODS_RECEIPT_PATH = '/logistics/goods-receipt';
+/** 피처 009 — IQC 생략 뒤의 입고는 PDA 적치다. 다음 할 일은 입고 관리(W-01-09)에서 그 LOT 의 진행을 보는 것. */
+const INBOUND_SCHEDULE_PATH = '/logistics/inbound-schedule';
+const inboundScheduleLotPath = (lotId: number): string =>
+  `${INBOUND_SCHEDULE_PATH}?lot=${String(lotId)}`;
 const SHIPMENT_PROCESSING_PATH = '/shipment/shipment-processing';
 export interface QualityApprovalScreenProps {
   approvalTypeCodes?: readonly string[];
@@ -680,9 +683,9 @@ export const QualityApprovalScreen = ({
             : isIqcSkip && skipLotId !== null && judgeSkipExecute(skipLot).kind === 'executed'
               ? {
                   value: n.iqcDone,
-                  to: GOODS_RECEIPT_PATH,
-                  label: n.openGoodsReceipt,
-                  screen: GOODS_RECEIPT_PATH,
+                  to: inboundScheduleLotPath(skipLotId),
+                  label: n.openInboundSchedule,
+                  screen: INBOUND_SCHEDULE_PATH,
                   alert: { title: n.iqcDoneTitle, tone: 'success' },
                 }
               : isOqcSkip &&

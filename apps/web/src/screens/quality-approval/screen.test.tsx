@@ -1194,6 +1194,37 @@ describe('QualityApprovalScreen conditions', () => {
     );
   });
 
+  /* 피처 009 — 관리웹 입고 처리(W-01-10)가 없어졌다. 생략한 LOT 은 PDA 적치로 입고된다. */
+  it('FR-003 생략을 실행한 IQC 생략은 「PDA 에서 적치하면 입고됩니다」와 입고 관리의 그 LOT 링크를 잇는다', async () => {
+    const approved = {
+      ...requests[0]!,
+      approvalTypeCode: 'IQC_SKIP',
+      statusCode: 'APPROVED',
+      isMyTurn: false,
+      currentStepNo: null,
+      target: { ...requests[0]!.target, targetLotId: 91 },
+    } as unknown as ApprovalRequest;
+    renderScreen(
+      approvalFetch([
+        listRoute(),
+        detailRoute(31, () => jsonResponse(detailBody(approved))),
+        {
+          match: (request) => new URL(request.url).pathname === '/trace/lots/91',
+          respond: () => jsonResponse({ lot: { lotId: 91, statusCode: 'NORMAL' } }),
+        },
+      ]),
+      '/quality/approvals?approvalRequestId=31',
+    );
+
+    const next = await screen.findByRole('group', { name: t.next.heading });
+    expect(next).toHaveTextContent(t.next.iqcDone);
+    expect(within(next).getByRole('link', { name: t.next.openInboundSchedule })).toHaveAttribute(
+      'href',
+      '/logistics/inbound-schedule?lot=91',
+    );
+    expect(within(next).queryByRole('link', { name: /정상품 입하/ })).toBeNull();
+  });
+
   it('결재 대기 요청에는 다음 할 일을 세우지 않는다(#193)', async () => {
     renderScreen(approvalFetch([listRoute()]), '/quality/approvals?approvalRequestId=31');
 

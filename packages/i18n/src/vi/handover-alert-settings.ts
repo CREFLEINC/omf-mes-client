@@ -84,8 +84,11 @@ export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> 
     },
     IQC_INSPECTION_REJECTED: {
       when: 'Khi kết quả IQC được xác nhận là không đạt — 1 lần cho mỗi LOT không đạt',
-      where:
-        'Web quản trị › Quản lý mua hàng / vật tư › Quản lý nhập kho (nhập kho — vào kho hàng lỗi)',
+      where: 'PDA › Kho › Cất hàng và hoàn tất nhập kho (cất vào kho hàng lỗi trên PDA)',
+    },
+    PUTAWAY_PENDING: {
+      when: 'Khi có LOT cần cất do xác nhận kết quả IQC hoặc đóng nhập hàng không cần kiểm — 1 lần cho mỗi LOT nhập (kèm số LOT)',
+      where: 'PDA › Kho › Cất hàng và hoàn tất nhập kho (M-01-05)',
     },
     PUTAWAY_REQUESTED: {
       when: 'Khi nhập kho tạo lệnh xếp kệ — 1 lần cho mỗi phiếu nhập kho (kèm số lệnh)',

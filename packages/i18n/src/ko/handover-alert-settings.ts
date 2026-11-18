@@ -87,7 +87,15 @@ export const handoverAlertSettings = {
     },
     IQC_INSPECTION_REJECTED: {
       when: 'IQC 판정이 불합격으로 확정될 때 — 불합격 LOT 1건에 1번',
-      where: '관리웹 구매 / 자재 관리 › 입고 관리 (입고 처리 — 불량 창고로)',
+      /* 피처 009 — 관리웹 입고 처리가 없어졌다. 불합격 LOT 도 PDA 적치로 불량창고에 입고한다(FR-003). */
+      // ui-check-ignore: C-13 PDA 화면 이름 「적치·입고 완료」 그대로
+      where: '모바일 PDA › 창고 › 적치·입고 완료 (PDA 적치로 불량창고에 입고)',
+    },
+    /** 피처 009(omf-all-around#294) — 지시 없이 적치할 LOT 이 생겼다(FR-034). */
+    PUTAWAY_PENDING: {
+      when: 'IQC 판정 확정 또는 검사 불필요 입하 마감으로 적치할 LOT 이 생길 때 — 입하 LOT 1건에 1번(LOT 수를 내용에)',
+      // ui-check-ignore: C-13 PDA 화면 이름 「적치·입고 완료」 그대로
+      where: '모바일 PDA › 창고 › 적치·입고 완료 (M-01-05)',
     },
     PUTAWAY_REQUESTED: {
       when: '입고 처리로 적치 지시가 생길 때 — 입고 1건에 1번(적치 지시 수를 내용에)',

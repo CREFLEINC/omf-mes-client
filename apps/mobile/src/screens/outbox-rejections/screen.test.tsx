@@ -648,6 +648,35 @@ describe('전송 실패한 기록 — 적치 판정 문구(피처 009)', () => {
     expect(screen.queryByText(messages.putaway.direct.rejectedHint)).not.toBeInTheDocument();
   });
 
+  it('FR-017b·T054 지시 적치 완료가 LOCATION_ITEM_RESTRICTED 로 거절되면 같은 판정 문구', async () => {
+    seed([
+      record({
+        entry: {
+          ...putaway('X', 'x').entry,
+          path: '/logistics/putaway-tasks/90:complete',
+        },
+        error: {
+          kind: 'validation',
+          status: 400,
+          errors: [
+            {
+              scope: 'field',
+              field: 'actualLocationId',
+              code: 'LOCATION_ITEM_RESTRICTED',
+              message: '이 위치는 지정 품목만 받습니다.',
+            },
+          ],
+        },
+      }),
+    ]);
+
+    render();
+
+    expect(
+      await screen.findByText(messages.putaway.direct.verdict.RESTRICTED_LOCATION),
+    ).toBeInTheDocument();
+  });
+
   it('적치 기록이 아니면 지금처럼 서버 사유를 보인다', async () => {
     seed([
       record({

@@ -164,8 +164,12 @@ export const qualityApproval = {
     openOqcInspection: 'OQC 출하검사 열기',
     /** IQC 생략 실행 완료 — 초록 체크 제목 · 할 일 두 줄(사용자 지시 2026-10-27). */
     iqcDoneTitle: '수입검사 생략이 완료되었습니다.',
-    iqcDone: '이어서 자재 입고를 진행해 주세요.',
-    openGoodsReceipt: '정상품 입하 열기',
+    /*
+     * 피처 009(omf-all-around#294) — 관리웹 입고 처리(W-01-10)가 없어졌다. 생략한 LOT 은 적치 대기가 되고 PDA 에서
+     * 적치하면 입고된다. 링크는 입고 관리(W-01-09)에서 그 LOT 의 진행을 본다.
+     */
+    iqcDone: 'PDA 에서 적치하면 입고됩니다.',
+    openInboundSchedule: '입고 관리 열기',
     oqcDone: 'OQC 생략을 실행했습니다 — 출하 처리를 이어서 하세요',
     openShipmentProcessing: '출하 처리 열기',
   },
