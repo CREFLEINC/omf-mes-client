@@ -1,4 +1,4 @@
-import { Chip, Icon } from '@crefle/web-ui';
+import { Chip, Icon, IconButton } from '@crefle/web-ui';
 import type { InboundLotDetail, InboundLotMaterialLot } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import type { UseQueryResult } from '@tanstack/react-query';
@@ -6,9 +6,11 @@ import { Fragment, useId } from 'react';
 
 import { Button } from '../../patterns/button';
 import { Card } from '../../patterns/card';
-import { LotNoLine } from '../../patterns/lot-no-line';
+import { shortLotNos } from '../../patterns/lot-short-no';
 import { plantClock } from '../../patterns/plant-time';
 import { isReceiving, type CardLock, type CardState } from './receipt';
+
+import '../../patterns/lot-table.css';
 
 const t = messages.inboundReceipt.card;
 
@@ -20,7 +22,7 @@ const packageUnitOf = (pkg: { uomCode: string; uomName?: string | null }): strin
 };
 
 /**
- * 공급사 · 품목 줄 — 낱말마다 꺾이지 않는 조각으로 그린다. 한글은 음절 사이에서도 꺾여 「검사불 / 필요」가 되는데,
+ * 공급사 · 품목 값 — 낱말마다 꺾이지 않는 조각으로 그린다. 한글은 음절 사이에서도 꺾여 「검사불 / 필요」가 되는데,
  * 모바일 규칙(`code-wrapping`)이 `word-break: keep-all` 을 막아 조각(inline-block)으로 낱말 단위 꺾기를 만든다(G1 잔여).
  */
 const Words = ({ text }: { text: string }) => (
@@ -47,6 +49,11 @@ export interface InboundLotCardProps {
   lock: CardLock;
   pendingCount: number;
   busy: boolean;
+  /** 자재 관리 LOT 표 · [입하 마감]을 펼쳤는가 — 머리를 누르면 바뀐다. */
+  open: boolean;
+  /** 마지막으로 스캔이 들어간 카드(맨 위) — 테두리를 짙게. */
+  current: boolean;
+  onToggle: () => void;
   onUnregister: (lot: InboundLotMaterialLot) => void;
   onEditSupplierLot: (lot: InboundLotMaterialLot) => void;
   onClose: () => void;
@@ -64,12 +71,16 @@ export const InboundLotCard = ({
   lock,
   pendingCount,
   busy,
+  open,
+  current,
+  onToggle,
   onUnregister,
   onEditSupplierLot,
   onClose,
 }: InboundLotCardProps) => {
   const data = detail?.data;
   const lockNoteId = useId();
+  const bodyId = useId();
 
   if (data === undefined) {
     return (
@@ -103,132 +114,146 @@ export const InboundLotCard = ({
           ? t.statusClosed
           : t.statusClosedNoIqc;
   const lots = data.lots.filter((lot) => lot.lifecycleStatusCode !== 'WAITING');
-  /* 품질 상태가 모두 같으면 합계 줄에 칩 하나만 — 줄마다 같은 칩을 되풀이하지 않는다. 섞이면 줄마다 단다. */
-  const sharedQuality = lots.every((lot) => lot.statusCode === lots[0]?.statusCode)
-    ? (lots[0]?.statusCode ?? null)
-    : null;
-  const qualityChip = (statusCode: string) => (
-    <Chip size="sm" status={statusCode === 'NORMAL' ? 'success' : 'warning'}>
-      {statusCode === 'NORMAL' ? t.qualityNormal : t.qualityPending}
-    </Chip>
-  );
+  /* 품질(검사 대기 · 보류) 칩은 두지 않는다(사용자 지시 2026-11-18). */
+  const shortNos = shortLotNos(lots.map((lot) => lot.lotNo));
 
   return (
     <Card
       className="receive-card"
       role="group"
       data-closed={!receiving}
+      data-current={current}
       aria-label={data.inboundLotNo}
     >
-      <div className="receive-card__head">
+      {/*
+       * 머리 띠 — 누르면 자재 관리 LOT 표 · [입하 마감]을 접고 편다(사용자 지시 2026-11-18 「입하 LOT 단위 접기 펴기」).
+       * 이름표 붙은 칸(공급사 · 품목 · LOT 수 · 전체 수량)은 접어도 남아 카드끼리 가를 수 있다.
+       */}
+      <button
+        type="button"
+        className="receive-card__head"
+        aria-expanded={open}
+        aria-controls={bodyId}
+        aria-label={open ? t.collapse(data.inboundLotNo) : t.expand(data.inboundLotNo)}
+        onClick={onToggle}
+      >
         <span className="receive-card__no">{data.inboundLotNo}</span>
         <Chip size="sm" status={receiving ? (card.created ? 'warning' : 'info') : 'success'}>
           {status}
         </Chip>
-      </div>
-      <p className="receive-card__pair">
-        <Words text={t.pair(data.supplierName, data.itemCode, data.itemName)} />
-      </p>
-      <p className="receive-card__sum">
-        <span>{t.summary(data.lotCount, qtyText(data.receivedQty, data.uomCode))}</span>
-        {sharedQuality === null ? null : qualityChip(sharedQuality)}
-      </p>
+        <Icon name={open ? 'expand_less' : 'expand_more'} size={24} />
+      </button>
+      {/* 이름표 붙은 칸 — 공급사 · 품목은 한 줄씩, LOT 수 · 전체 수량은 나란히(사용자 지시 2026-11-18 「명시적인 타이틀」). */}
+      <dl className="receive-card__facts">
+        <dt>{t.facts.supplier}</dt>
+        <dd className="receive-card__wide">
+          <Words text={data.supplierName} />
+        </dd>
+        <dt>{t.facts.item}</dt>
+        <dd className="receive-card__wide">
+          <Words text={`${data.itemCode} ${data.itemName}`} />
+        </dd>
+        <dt>{t.facts.lotCount}</dt>
+        <dd className="receive-card__strong">{t.lotCount(data.lotCount)}</dd>
+        <dt>{t.facts.totalQty}</dt>
+        <dd className="receive-card__strong">{qtyText(data.receivedQty, data.uomCode)}</dd>
+      </dl>
 
-      <ol className="receive-card__lots">
-        {lots.map((lot, index) => {
-          const mark = card.registered.get(lot.lotId);
-          /* 이 화면에서 등록한 줄은 「방금 등록」(마지막 하나)만 칩을 단다 — 줄마다 「이번에 등록」을 달지 않는다. */
-          const when =
-            mark === 'latest'
-              ? t.justNow
-              : mark === 'session'
-                ? null
-                : t.earlier(plantClock(lot.registeredAt));
+      <div id={bodyId} className="receive-card__more" hidden={!open}>
+        {/*
+         * 자재 관리 LOT 은 카드(입하 LOT) 아래 한 단 낮은 표 — 행은 한 줄, 줄마다 테두리 상자를 두지 않는다(사용자 지시
+         * 2026-11-18 「목록과 계층으로 깔끔하게」). 번호 칸은 번호 전체 대신 카드 안에서 가를 수 있는 끝 조각(보통 일련번호),
+         * 번호 전체는 공급사 LOT 시트와 단추 이름에 있다. 공급사 LOT 칸을 누르면 시트, ✕ 는 확인 없이 바로 해제.
+         */}
+        <table className="lot-table receive-lots" aria-label={t.lotsLabel}>
+          <thead>
+            <tr>
+              <th scope="col">{t.columns.no}</th>
+              <th scope="col">{t.columns.qty}</th>
+              <th scope="col">{t.columns.registered}</th>
+              <th scope="col">{t.columns.supplierLot}</th>
+              {receiving ? <th scope="col" aria-label={t.unregister} /> : null}
+            </tr>
+          </thead>
+          <tbody>
+            {lots.map((lot) => {
+              const latest = card.registered.get(lot.lotId) === 'latest';
 
-          return (
-            /*
-             * 줄은 두 줄 — 위: LOT 번호 · 칩, 아래: 수량 · 공급사 LOT · [해제](사용자 지시 2026-11-18 「가능하면 한 줄로」).
-             * 번호가 넘치면 가운데를 줄여 일련번호를 남기고, 아래 줄이 모자라면 공급사 LOT 글이 줄어든다.
-             */
-            <li key={lot.lotId} className="receive-lot" data-latest={mark === 'latest'}>
-              <span className="receive-lot__seq">{index + 1}</span>
-              <span className="receive-lot__body">
-                <span className="receive-lot__line">
-                  <LotNoLine lotNo={lot.lotNo} className="receive-lot__no" />
-                  {when === null ? null : (
-                    <Chip size="sm" status={mark === 'latest' ? 'info' : 'idle'}>
-                      {when}
-                    </Chip>
-                  )}
-                  {lot.fromSupplierLabel ? (
-                    <Chip size="sm" status="idle">
-                      {t.supplierLabel}
-                    </Chip>
-                  ) : null}
-                  {sharedQuality === null ? qualityChip(lot.statusCode) : null}
-                </span>
-                <span className="receive-lot__line">
-                  <span className="receive-lot__qty">
+              return (
+                <tr key={lot.lotId} data-latest={latest}>
+                  <td className="lot-table__no">{shortNos.get(lot.lotNo) ?? lot.lotNo}</td>
+                  <td>
                     {qtyText(lot.lotQty, data.uomCode)}
                     {lot.package === null
                       ? ''
                       : t.package(packageUnitOf(lot.package), lot.package.count)}
-                  </span>
-                  <button
-                    type="button"
-                    className="receive-lot__supplier"
-                    aria-label={t.editSupplierLot(lot.lotNo)}
-                    disabled={!editable || busy}
-                    onClick={() => {
-                      onEditSupplierLot(lot);
-                    }}
-                  >
-                    <span className="receive-lot__supplier-text">
-                      {lot.supplierLotNo === null
-                        ? t.noSupplierLot
-                        : t.supplierLot(lot.supplierLotNo)}
-                    </span>
-                    <Icon name={editable ? 'edit' : 'lock'} size={16} />
-                  </button>
-                  {receiving ? (
-                    <Button
-                      className="receive-lot__unregister"
-                      variant="outlined"
-                      size="sm"
-                      disabled={lock !== null || busy}
+                    {lot.fromSupplierLabel ? (
+                      <>
+                        {' '}
+                        <Chip size="sm" status="idle">
+                          {t.supplierLabel}
+                        </Chip>
+                      </>
+                    ) : null}
+                  </td>
+                  <td className={latest ? 'lot-table__latest' : 'lot-table__muted'}>
+                    {latest ? t.justNow : plantClock(lot.registeredAt)}
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="receive-lots__supplier"
+                      aria-label={t.editSupplierLot(lot.lotNo)}
+                      disabled={!editable || busy}
                       onClick={() => {
-                        onUnregister(lot);
+                        onEditSupplierLot(lot);
                       }}
                     >
-                      {t.unregister}
-                    </Button>
+                      <span className="receive-lots__supplier-text">
+                        {lot.supplierLotNo ?? t.noSupplierLot}
+                      </span>
+                      {editable ? <Icon name="edit" size={14} /> : null}
+                    </button>
+                  </td>
+                  {receiving ? (
+                    <td className="lot-table__x">
+                      <IconButton
+                        icon="close"
+                        size="md"
+                        aria-label={t.unregister}
+                        disabled={lock !== null || busy}
+                        onClick={() => {
+                          onUnregister(lot);
+                        }}
+                      />
+                    </td>
                   ) : null}
-                </span>
-              </span>
-            </li>
-          );
-        })}
-      </ol>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
 
-      {receiving ? (
-        <>
-          <Button
-            className="receive-card__close"
-            disabled={lock !== null || busy}
-            aria-describedby={lock === null ? undefined : lockNoteId}
-            onClick={onClose}
-          >
-            {t.close}
-          </Button>
-          {lock === null ? null : (
-            <p id={lockNoteId} className="receive-card__note">
-              {lock === 'offline' ? t.blockedOffline : t.blockedPending(pendingCount)}
-            </p>
-          )}
-        </>
-      ) : data.statusCode === 'VOIDED' || !data.inspectionRequired || iqcNo === null ? null : (
-        <p className="receive-card__note">{t.iqcRequest(iqcNo)}</p>
-      )}
+        {receiving ? (
+          <>
+            <Button
+              className="receive-card__close"
+              disabled={lock !== null || busy}
+              aria-describedby={lock === null ? undefined : lockNoteId}
+              onClick={onClose}
+            >
+              {t.close}
+            </Button>
+            {lock === null ? null : (
+              <p id={lockNoteId} className="receive-card__note">
+                {lock === 'offline' ? t.blockedOffline : t.blockedPending(pendingCount)}
+              </p>
+            )}
+          </>
+        ) : data.statusCode === 'VOIDED' || !data.inspectionRequired || iqcNo === null ? null : (
+          <p className="receive-card__note">{t.iqcRequest(iqcNo)}</p>
+        )}
+      </div>
     </Card>
   );
 };
