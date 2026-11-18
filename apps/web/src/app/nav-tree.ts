@@ -154,8 +154,11 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             to: '/logistics/inbound-schedule',
             label: '입고 관리',
             labelVi: 'Quản lý nhập kho',
-            /* 입하 등록(W-01-03) · 입고 처리(W-01-10)만 가진 사람도 이 화면에서 그 일을 한다. */
-            alsoFor: ['/logistics/over-receipt-split', '/logistics/goods-receipt'],
+            /*
+             * 입하 등록(W-01-03)만 가진 사람도 이 화면에서 그 일을 한다. 입고 처리(W-01-10)는 이 화면에서 없어졌다 —
+             * 구매 입고는 PDA 적치로 한다(피처 009 · omf-all-around#294).
+             */
+            alsoFor: ['/logistics/over-receipt-split'],
           },
           {
             to: '/logistics/inbound-excess',

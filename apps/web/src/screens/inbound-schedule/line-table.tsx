@@ -16,6 +16,7 @@ import type { UnallocatedLine } from './excess-types';
 import {
   inboundLotShareText,
   LotActionCell,
+  LotLocationCell,
   LotMainCell,
   lotLocation,
   StageChip,
@@ -27,7 +28,6 @@ import { formatDate } from './period';
 import { formatQty, OneLine, orEmpty, ReceiptStatusCell } from './receipt-status';
 import {
   inboundLotShares,
-  isReceiptReady,
   lineTableRowId,
   linesWithLots,
   lotRowQtyOf,
@@ -36,12 +36,7 @@ import {
   type LineTableRow,
 } from './stage';
 import { sortRows, type SortAccessors } from './table-sort';
-import type {
-  InboundLotProgress,
-  InboundScheduleLine,
-  IssuedLotProgress,
-  PurchaseOrderSummary,
-} from './types';
+import type { InboundLotProgress, InboundScheduleLine, PurchaseOrderSummary } from './types';
 
 const t = messages.inboundSchedule;
 
@@ -69,22 +64,8 @@ export interface LineTableProps {
   progressFailed?: boolean;
   /** 표 위에 나타나는 한 줄(입고 결과 · 실패 알림). */
   notice?: ReactNode;
-  /** LOT 줄의 「입고 처리」 — 없으면(권한 없음) 세우지 않는다. */
-  onPostReceipt?: (lot: IssuedLotProgress) => void;
   /** W-01-16 입하/입고 작업 기록을 열 수 있는가 — 거짓이면 LOT 줄의 매칭 조정 안내가 글만 된다(005). */
   canOpenWorkRecord?: boolean;
-  /**
-   * 「입고 대기」 LOT 을 체크해 한 번에 입고(사용자 지시 2026-10-28). 없으면(입고 권한 없음) LOT 줄에 체크가 서지 않는다.
-   */
-  lotPick?: {
-    checked: ReadonlySet<number>;
-    toggle: (lotId: number) => void;
-    /** 이 발주의 「입고 대기」 LOT 수 — 「입고 대기 전체」 체크가 다 골랐는지 잰다. */
-    total: number;
-    /** 「입고 대기 전체」 — 다 골랐으면 모두 풀고, 아니면 모두 고른다. */
-    toggleAll: () => void;
-    onSubmit: () => void;
-  };
 }
 
 const NO_LINE_EXCESSES: ReadonlyMap<number, readonly UnallocatedLine[]> = new Map();
@@ -256,8 +237,6 @@ export const LineTable = ({
   lots,
   progressFailed = false,
   notice,
-  onPostReceipt,
-  lotPick,
   canOpenWorkRecord = false,
 }: LineTableProps) => {
   const isTree = lots !== undefined;
@@ -296,44 +275,7 @@ export const LineTable = ({
   const sortedLines = sortRows(rows, sort, lineSortAccessors(storageLocationNameOf));
   const tableRows = toLineTableRows(sortedLines, lots, collapsed);
 
-  /* 「입고 대기」 LOT — 체크해 한 번에 입고한다. */
-  const hasReceiptReady =
-    lots !== undefined && [...lots.values()].some((own) => own.some(isReceiptReady));
-
   const columns: Column<LineTableRow>[] = [
-    /*
-     * 체크 열 — 「입고 대기」 LOT 줄을 체크해 한 번에 입고한다(`lotPick`). 005 부터 웹에서 입하를 받지 않으므로(FR-036)
-     * 라인 줄의 체크는 없다. 입고 권한이 없거나 입고 대기 LOT 이 없으면 이 열이 없다.
-     */
-    ...(lotPick !== undefined && hasReceiptReady
-      ? [
-          {
-            key: 'check',
-            header: null,
-            width: '40px',
-            render: (row: LineTableRow) => {
-              if (row.kind === 'lot') {
-                const { lot } = row;
-                if (lotPick === undefined || !isReceiptReady(lot)) return null;
-
-                return (
-                  <input
-                    type="checkbox"
-                    className="po-board-check"
-                    aria-label={t.lot.selectForPost(lot.lotNo)}
-                    checked={lotPick.checked.has(lot.lotId)}
-                    onChange={() => {
-                      lotPick.toggle(lot.lotId);
-                    }}
-                  />
-                );
-              }
-
-              return null;
-            },
-          } satisfies Column<LineTableRow>,
-        ]
-      : []),
     /*
      * 계층 열 — 라인의 접기 손잡이와 LOT 줄의 안내선(사이드바 묶음과 같은 모양). 머리칸에는 「LOT 모두 접기」 손잡이가 선다.
      * 상태 열과 나눴다 — 머리칸이 정렬 단추가 되면 그 안에 손잡이(단추)를 둘 수 없다(사용자 지시 2026-10-24 상태 열 정렬).
@@ -510,15 +452,10 @@ export const LineTable = ({
           return <OneLine text={storageLocationNameOf(row.line.erpStorageLocationCode)} />;
         }
 
-        const location = lotLocation(row.lot);
-
-        return location !== '' ? (
-          <OneLine text={location} />
+        return lotLocation(row.lot) !== '' ? (
+          <LotLocationCell lot={row.lot} />
         ) : (
-          <LotActionCell
-            lot={row.lot}
-            {...(onPostReceipt === undefined ? {} : { onPostReceipt })}
-          />
+          <LotActionCell lot={row.lot} />
         );
       },
     },
@@ -579,35 +516,6 @@ export const LineTable = ({
           </div>
           <OrderProgress order={order} />
         </dl>
-        {/*
-         * 체크한 「입고 대기」 LOT 을 한 번에 입고한다 — 입고 대기 LOT 이 있을 때만 선다. 「입고 대기 전체」 체크가 이 발주의
-         * 입고 대기 LOT 을 한 번에 고르고 푼다(사용자 지시 2026-10-28 — 하나씩 체크하기 번거롭다).
-         */}
-        {lotPick !== undefined && hasReceiptReady && (
-          <div className="po-board-order-actions">
-            <label className="po-board-check-all">
-              <input
-                type="checkbox"
-                className="po-board-check"
-                checked={lotPick.total > 0 && lotPick.checked.size === lotPick.total}
-                ref={(node) => {
-                  if (node !== null) {
-                    node.indeterminate =
-                      lotPick.checked.size > 0 && lotPick.checked.size < lotPick.total;
-                  }
-                }}
-                onChange={lotPick.toggleAll}
-              />
-              {t.lot.selectAllForPost}
-            </label>
-            <span className="po-board-checked-count" aria-live="polite">
-              {t.lot.checkedForPost(lotPick.checked.size)}
-            </span>
-            <Button size="sm" disabled={lotPick.checked.size === 0} onClick={lotPick.onSubmit}>
-              {t.lot.postChecked}
-            </Button>
-          </div>
-        )}
       </header>
 
       {isLoading ? (

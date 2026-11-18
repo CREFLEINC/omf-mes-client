@@ -47,7 +47,7 @@ export const notificationCenter: Translated<typeof ko.notificationCenter> = {
     targetActions: {
       approval: 'Phê duyệt',
       iqcInspection: 'Đánh giá IQC',
-      defectReceipt: 'Nhập kho hàng lỗi',
+      inboundSchedule: 'Mở quản lý nhập kho',
     },
   },
   /** 비활성 사유는 **그 컨트롤의 이름으로 시작한다**(공유계약 G-3). 옮긴 말에서도 앞머리를 지킨다. */

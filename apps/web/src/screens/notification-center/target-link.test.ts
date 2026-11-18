@@ -20,16 +20,34 @@ describe('toTargetLink — 대응표에 있는 유형', () => {
     expect(toTargetLink(viewOf(APPROVAL), TITLE)?.to).toBe('/approval/inbox?rq=7201');
   });
 
-  it('검사 불합격(IQC) 알림은 입고 관리의 그 LOT 입고 처리 창을 가리킨다', () => {
+  /* 피처 009 — 「입고 처리」 창(`post=`)은 없어졌다. 불합격 LOT 도 PDA 에서 불량창고로 적치한다. */
+  it('검사 불합격(IQC) 알림은 입고 관리의 그 LOT 발주를 연다 — 입고 처리 창은 열지 않는다', () => {
     const view = viewOf({
       eventCode: 'IQC_INSPECTION_REJECTED',
       targetTypeCode: 'LOT',
       targetId: 55,
     });
 
-    expect(toTargetLink(view, TITLE)?.to).toBe('/logistics/inbound-schedule?lot=55&post=55');
+    expect(toTargetLink(view, TITLE)?.to).toBe('/logistics/inbound-schedule?lot=55');
     /* 「이동」 대신 할 일을 보인다(사용자 지시 2026-11-10). */
-    expect(toTargetLink(view, TITLE)?.shortLabel).toBe(t.actions.targetActions.defectReceipt);
+    expect(toTargetLink(view, TITLE)?.shortLabel).toBe(t.actions.targetActions.inboundSchedule);
+  });
+
+  it('Q20 「적치 대기」 알림(INBOUND_LOT)은 입고 관리의 그 입하 LOT 으로 간다', () => {
+    const view = viewOf({
+      eventCode: 'PUTAWAY_PENDING',
+      targetTypeCode: 'INBOUND_LOT',
+      targetId: 31,
+    });
+
+    expect(toTargetLink(view, TITLE)?.to).toBe('/logistics/inbound-schedule?inboundLot=31');
+    expect(toTargetLink(view, TITLE)?.shortLabel).toBe(t.actions.targetActions.inboundSchedule);
+  });
+
+  it('005 이전 흐름 「적치 대기」(LOT 대상)는 그 LOT 의 발주로 간다', () => {
+    const view = viewOf({ eventCode: 'PUTAWAY_PENDING', targetTypeCode: 'LOT', targetId: 56 });
+
+    expect(toTargetLink(view, TITLE)?.to).toBe('/logistics/inbound-schedule?lot=56');
   });
 
   it('다른 알림의 LOT 대상은 여전히 열지 않는다', () => {

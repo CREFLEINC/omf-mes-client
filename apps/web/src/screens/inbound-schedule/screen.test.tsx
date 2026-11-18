@@ -1098,7 +1098,6 @@ describe('InboundScheduleScreen — 초과분 발주 연결(둘째 탭으로 건
 });
 
 describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진행 열)', () => {
-  const tg = messages.goodsReceipt;
   /** 왼쪽 표 — 묶음 수를 실은 줄(7101 · 7102)과 싣지 않은 줄(7103 · 7104), 미착수인데 LOT 이 없는 7105. */
   const ROWS_WITH_STAGES = [
     orderSummary({ expectedReceiptDate: TODAY, inboundStageCounts: { INSPECTION: 2, RECEIPT: 1 } }),
@@ -1160,67 +1159,175 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     expect(screen.queryByText(t.lot.loadFailed)).toBeNull();
   });
 
-  it('「입고 대기」 LOT 줄만 체크가 서고, 체크하면 일괄 입고 창이 그 LOT 으로 열린다', async () => {
-    const { user } = renderScreen(progressRoutes(), '?po=7101');
+  /*
+   * 피처 009 — PDA 에서 지시 없이 적치한 LOT(입고 = 적치). 7301 아래 입하 LOT 하나(SAMPLE-IL-0001)의 자재 관리 LOT 셋:
+   * 지정 위치로 적치(완료) · 적치 대기 · 임시 적치. 그리고 불합격 적치 대기 하나(라인 7302).
+   */
+  const DIRECT_LOTS = [
+    lotProgress({
+      lotId: 7731,
+      lotNo: 'SAMPLE|LOT|0031',
+      inboundReceiptLineId: 7631,
+      inboundLotId: 9001,
+      inboundLotNo: 'SAMPLE-IL-0001',
+      receiptDatetime: '2026-10-21T08:00:00+09:00',
+      receivedQty: 10,
+      allocatedQty: 30,
+      receivableQty: 0,
+      lotStatusCode: 'NORMAL',
+      stageCode: 'COMPLETED',
+      nextActionCode: null,
+      goodsReceipt: {
+        goodsReceiptId: 7841,
+        goodsReceiptNo: 'SAMPLE-GR-0031',
+        receiptDatetime: '2026-10-22T09:00:00+09:00',
+        statusCode: 'POSTED',
+      },
+      putaway: null,
+      putawayModeCode: 'DESIGNATED',
+      putawayLocation: {
+        locationCode: 'SAMPLE-B-02',
+        locationName: '합성 위치 나',
+        locationAliasName: null,
+      },
+    }),
+    lotProgress({
+      lotId: 7732,
+      lotNo: 'SAMPLE|LOT|0032',
+      inboundReceiptLineId: 7632,
+      inboundLotId: 9001,
+      inboundLotNo: 'SAMPLE-IL-0001',
+      receiptDatetime: '2026-10-21T08:00:00+09:00',
+      receivedQty: 10,
+      allocatedQty: 30,
+      receivableQty: 10,
+      lotStatusCode: 'NORMAL',
+      stageCode: 'PUTAWAY_PENDING',
+      nextActionCode: 'PUTAWAY',
+    }),
+    lotProgress({
+      lotId: 7733,
+      lotNo: 'SAMPLE|LOT|0033',
+      inboundReceiptLineId: 7633,
+      inboundLotId: 9001,
+      inboundLotNo: 'SAMPLE-IL-0001',
+      receiptDatetime: '2026-10-21T08:00:00+09:00',
+      receivedQty: 10,
+      allocatedQty: 30,
+      receivableQty: 0,
+      lotStatusCode: 'NORMAL',
+      stageCode: 'PUTAWAY_TEMPORARY',
+      nextActionCode: null,
+      goodsReceipt: {
+        goodsReceiptId: 7843,
+        goodsReceiptNo: 'SAMPLE-GR-0033',
+        receiptDatetime: '2026-10-22T10:00:00+09:00',
+        statusCode: 'POSTED',
+      },
+      putaway: null,
+      putawayModeCode: 'TEMPORARY',
+      putawayLocation: {
+        locationCode: 'SAMPLE-SYS-WHOLE',
+        locationName: '창고 전체',
+        locationAliasName: null,
+      },
+    }),
+    lotProgress({
+      purchaseOrderLineId: 7302,
+      lotId: 7734,
+      lotNo: 'SAMPLE|LOT|0034',
+      inboundReceiptLineId: 7634,
+      inboundLotId: 9002,
+      inboundLotNo: 'SAMPLE-IL-0002',
+      receivedQty: 20,
+      allocatedQty: 20,
+      receivableQty: 20,
+      lotStatusCode: 'DEFECTIVE',
+      stageCode: 'PUTAWAY_PENDING',
+      nextActionCode: 'PUTAWAY',
+      inspection: {
+        inspectionRequestId: 7834,
+        inspectionRequestNo: 'SAMPLE-IQ-0034',
+        statusCode: 'COMPLETED',
+        requestedAt: '2026-10-21T10:00:00+09:00',
+        judgmentCode: 'REJECTED',
+        judgedAt: '2026-10-21T15:00:00+09:00',
+      },
+    }),
+  ];
 
-    const check = await within(linesPane()).findByRole('checkbox', {
-      name: t.lot.selectForPost('SAMPLE|LOT|0003'),
-    });
-    /* 입고 대기가 아닌 LOT 줄에는 체크가 없다. */
-    expect(
-      within(linesPane()).queryByRole('checkbox', {
-        name: t.lot.selectForPost('SAMPLE|LOT|0002'),
-      }),
-    ).toBeNull();
-    const submit = within(linesPane()).getByRole('button', { name: t.lot.postChecked });
-    expect(submit).toBeDisabled();
-
-    await user.click(check);
-    expect(within(linesPane()).getByText(t.lot.checkedForPost(1))).toBeInTheDocument();
-    await user.click(submit);
-
-    const dialog = await screen.findByRole('dialog', {
-      name: messages.goodsReceipt.batch.title(1),
-    });
-    expect(dialog).toHaveTextContent('SAMPLE|LOT|0003');
-  });
-
-  it('「입고 대기 전체」 체크가 입고 대기 LOT 을 모두 고르고, 다시 누르면 모두 푼다', async () => {
-    const extraReady = {
-      ...progressFixtures[0],
-      lotId: 7713,
-      lotNo: 'SAMPLE|LOT|0013',
-      inboundReceiptLineId: 7613,
-    };
-    const { user } = renderScreen(
-      progressRoutes(ROWS_WITH_STAGES, [...progressFixtures, extraReady]),
+  it('US1-6·Q5 「입고 처리」 단추 · 체크 · 일괄 처리가 없고, 적치 대기 LOT 은 「PDA에서 적치」다', async () => {
+    renderScreen(
+      progressRoutes(ROWS_WITH_STAGES, [...progressFixtures, ...DIRECT_LOTS]),
       '?po=7101',
     );
 
-    const all = await within(linesPane()).findByRole('checkbox', {
-      name: t.lot.selectAllForPost,
-    });
-    const one = within(linesPane()).getByRole('checkbox', {
-      name: t.lot.selectForPost('SAMPLE|LOT|0003'),
-    });
-    const other = within(linesPane()).getByRole('checkbox', {
-      name: t.lot.selectForPost('SAMPLE|LOT|0013'),
-    });
+    await screen.findByText('SAMPLE|LOT|0032');
+    const pane = linesPane();
 
-    /* 하나만 고르면 전체 체크는 반쯤 찬다. */
-    await user.click(one);
-    expect(all).toHaveProperty('indeterminate', true);
+    expect(within(pane).queryByRole('checkbox')).toBeNull();
+    expect(within(pane).queryAllByRole('button', { name: /입고 처리/ })).toHaveLength(0);
+    expect(lotRow('SAMPLE|LOT|0032')).toHaveTextContent(t.stage.code.PUTAWAY_PENDING);
+    expect(lotRow('SAMPLE|LOT|0032')).toHaveTextContent(t.lot.putawayOnPda);
+    /* 옛 서버가 「입고 처리」(POST_RECEIPT)를 내도 단추를 세우지 않는다. */
+    expect(within(lotRow('SAMPLE|LOT|0003')).queryByRole('button')).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
 
-    await user.click(all);
-    expect(one).toBeChecked();
-    expect(other).toBeChecked();
-    expect(all).toBeChecked();
-    expect(within(linesPane()).getByText(t.lot.checkedForPost(2))).toBeInTheDocument();
+  it('Q4 지시 없이 적치한 LOT 은 위치 칸에 입고 라인의 위치와 적치 방식 칩, 근거에 입고 · 적치일이 선다', async () => {
+    renderScreen(
+      progressRoutes(ROWS_WITH_STAGES, [...progressFixtures, ...DIRECT_LOTS]),
+      '?po=7101',
+    );
 
-    await user.click(all);
-    expect(one).not.toBeChecked();
-    expect(other).not.toBeChecked();
-    expect(within(linesPane()).getByRole('button', { name: t.lot.postChecked })).toBeDisabled();
+    await screen.findByText('SAMPLE|LOT|0031');
+
+    expect(lotRow('SAMPLE|LOT|0031')).toHaveTextContent(t.stage.code.COMPLETED);
+    expect(lotRow('SAMPLE|LOT|0031')).toHaveTextContent('SAMPLE-B-02 · 합성 위치 나');
+    expect(lotRow('SAMPLE|LOT|0031')).toHaveTextContent(t.lot.mode.DESIGNATED);
+    expect(lotRow('SAMPLE|LOT|0031')).toHaveTextContent('입고 SAMPLE-GR-0031 · 2026.10.22');
+    expect(lotRow('SAMPLE|LOT|0031')).toHaveTextContent(t.lot.evidence.putawayDone('2026.10.22'));
+    /* 임시 적치는 「완료」가 아니라 「임시 적치」 단계, 자리는 그 창고 「창고 전체」. */
+    expect(lotRow('SAMPLE|LOT|0033')).toHaveTextContent(t.stage.code.PUTAWAY_TEMPORARY);
+    expect(lotRow('SAMPLE|LOT|0033')).toHaveTextContent('SAMPLE-SYS-WHOLE');
+    expect(lotRow('SAMPLE|LOT|0033')).toHaveTextContent(t.lot.mode.TEMPORARY);
+    /* 지시로 적치한 LOT 은 지금처럼 지시 위치, 방식 칩은 없다. */
+    expect(lotRow('SAMPLE|LOT|0004')).toHaveTextContent('SAMPLE-A-01 · 합성 위치 가');
+    expect(lotRow('SAMPLE|LOT|0004')).not.toHaveTextContent(t.lot.mode.DESIGNATED);
+  });
+
+  it('US1-5 일부만 적치된 입하 LOT 은 라인 몫 글에 「일부 입고 n/m」, 불합격 LOT 에는 「불량」 칩', async () => {
+    renderScreen(
+      progressRoutes(ROWS_WITH_STAGES, [...progressFixtures, ...DIRECT_LOTS]),
+      '?po=7101',
+    );
+
+    await screen.findByText('SAMPLE|LOT|0031');
+    const line = within(linesPane()).getByText('SAMPLE-ITEM-01').closest('tr');
+    if (line === null) throw new Error('라인 1 줄이 없습니다');
+
+    expect(line).toHaveTextContent(
+      t.lot.sharePartial(t.lot.shareAllocated('SAMPLE-IL-0001', '30', 'SAMPLE-EA'), 2, 3),
+    );
+    /* 하나도 적치하지 않은 입하 LOT 에는 붙이지 않는다. */
+    const line2 = within(linesPane()).getByText('SAMPLE-ITEM-02').closest('tr');
+    expect(line2).not.toHaveTextContent('일부 입고');
+    expect(lotRow('SAMPLE|LOT|0034')).toHaveTextContent(t.lot.defective);
+    expect(lotRow('SAMPLE|LOT|0031')).not.toHaveTextContent(t.lot.defective);
+  });
+
+  it('「입고 대기」 칩은 흐리게 남는다 — 구매 입고는 PDA 적치로 한다', async () => {
+    renderScreen(progressRoutes(), '?po=7101');
+
+    const group = await screen.findByRole('group', { name: t.stage.label });
+    const receipt = within(group).getByRole('button', {
+      name: t.stage.filterOn(t.stage.group.RECEIPT),
+    });
+    const putaway = within(group).getByRole('button', {
+      name: t.stage.filterOn(t.stage.group.PUTAWAY),
+    });
+    expect(receipt.outerHTML).toContain('po-board-stage-chip--retired');
+    expect(putaway.outerHTML).not.toContain('po-board-stage-chip--retired');
   });
 
   it('진행 조회가 다른 이유로 실패하면 라인은 그대로 두고 한 줄로 알린다', async () => {
@@ -1263,15 +1370,13 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     expect(lotRow('SAMPLE|LOT|0004')).toHaveTextContent('SAMPLE-A-01 · 합성 위치 가');
     expect(lotRow('SAMPLE|LOT|0004')).toHaveTextContent(t.lot.receivedOn('2026.10.19'));
 
-    /* 다음 할 일 — 서버가 준 것만 단추다. 검사 화면으로 가는 링크는 없다. */
-    expect(
-      within(pane).getByRole('button', { name: t.actions.postReceiptRow('SAMPLE|LOT|0003') }),
-    ).toBeInTheDocument();
-    /* 검사 의뢰 전 LOT 에도 단추가 없다 — 의뢰는 입하 등록 때 서버가 만든다(#909). */
+    /*
+     * 다음 할 일 — 이 화면에는 단추가 없다(피처 009 — 「입고 처리」는 없어졌다). 검사 의뢰 전 LOT 에도 단추가 없다 — 의뢰는
+     * 입하 등록 때 서버가 만든다(#909). 검사 화면으로 가는 링크도 없다.
+     */
+    expect(within(lotRow('SAMPLE|LOT|0003')).queryByRole('button')).toBeNull();
     expect(within(lotRow('SAMPLE|LOT|0002')).queryByRole('button')).toBeNull();
-    /* 줄 단추 하나와, 발주 머리의 「체크한 LOT 입고 처리」(입고 대기 LOT 이 있어 나타난다 · 체크 전이라 잠김). */
-    expect(within(pane).getAllByRole('button', { name: /입고 처리/ })).toHaveLength(2);
-    expect(within(pane).getByRole('button', { name: t.lot.postChecked })).toBeDisabled();
+    expect(within(pane).queryAllByRole('button', { name: /입고 처리/ })).toHaveLength(0);
     expect(within(pane).queryByRole('link')).toBeNull();
 
     /* 발주 머리의 「진행」. */
@@ -1570,89 +1675,14 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     ).toBe(true);
   });
 
-  it('「입고 처리」를 누르면 그 LOT 의 창이 주소로 열리고, 취소하면 주소에서 빠진다', async () => {
-    const detailRoute: StubRoute = {
-      match: (request) => isGet(request, '/logistics/inbound-receipts/7501'),
-      respond: () =>
-        jsonResponse({
-          inboundReceipt: {
-            inboundReceiptId: 7501,
-            inboundReceiptNo: 'SAMPLE-IR-0001',
-            supplierId: 8101,
-            plantId: 8201,
-            receiptDatetime: '2026-10-21T10:00:00+09:00',
-            statusCode: 'CONFIRMED',
-          },
-          lines: [
-            {
-              inboundReceiptLineId: 7603,
-              inboundReceiptId: 7501,
-              lineNo: 1,
-              itemId: 8301,
-              receivedQty: 20,
-              uomId: 8501,
-              supplierLotMissing: false,
-              inspectionRequired: false,
-              statusCode: 'CONFIRMED',
-              lotId: 7703,
-              supplierLotLabelAttached: true,
-              receivableQty: 20,
-            },
-          ],
-        }),
-    };
-    const emptyListRoute = (pathname: string): StubRoute => ({
-      match: (request) => isGet(request, pathname),
-      respond: () => jsonResponse(listBody([])),
-    });
-    const { user } = renderScreen(
-      [
-        detailRoute,
-        emptyListRoute('/mdm/warehouses'),
-        emptyListRoute('/mdm/locations'),
-        ...progressRoutes(),
-        emptyListRoute(CODE_VALUES_PATH),
-      ],
-      '?po=7101',
-    );
-
-    await screen.findByText('SAMPLE|LOT|0003');
-    await user.click(
-      screen.getByRole('button', { name: t.actions.postReceiptRow('SAMPLE|LOT|0003') }),
-    );
-
-    expect(currentLocation()).toContain('post=7703');
-    const dialog = await screen.findByRole('dialog', { name: tg.panel.title });
-    expect(dialog).toHaveTextContent('SAMPLE|LOT|0003');
-    expect(dialog).toHaveTextContent('SAMPLE-PO-0001');
-    expect(await within(dialog).findByText('SAMPLE-IR-0001')).toBeInTheDocument();
-    /* 검사 화면으로 가는 링크는 창에도 없다. */
-    expect(within(dialog).queryByRole('link')).toBeNull();
-
-    await user.click(within(dialog).getByRole('button', { name: messages.common.cancel }));
-    await waitFor(() => {
-      expect(currentLocation()).not.toContain('post=');
-    });
-  });
-
-  it('「검사 불합격(IQC)」 알림 주소(lot·post)로 오면 그 LOT 의 발주만 조회해 입고 처리 창을 연다', async () => {
-    const emptyListRoute = (pathname: string): StubRoute => ({
-      match: (request) => isGet(request, pathname),
-      respond: () => jsonResponse(listBody([])),
-    });
+  it('「검사 불합격(IQC)」 알림 주소(lot)로 오면 그 LOT 의 발주만 조회한다 — 옛 주소의 post 가 있어도 창은 열리지 않는다', async () => {
     const { requests } = renderScreen(
-      [
-        emptyListRoute('/logistics/inbound-receipts/7501'),
-        emptyListRoute('/mdm/warehouses'),
-        emptyListRoute('/mdm/locations'),
-        ...progressRoutes(ROWS_WITH_STAGES.slice(0, 1)),
-        emptyListRoute(CODE_VALUES_PATH),
-      ],
+      progressRoutes(ROWS_WITH_STAGES.slice(0, 1)),
       '?lot=7703&post=7703',
     );
 
-    const dialog = await screen.findByRole('dialog', { name: tg.panel.title });
-    expect(dialog).toHaveTextContent('SAMPLE|LOT|0003');
+    await screen.findByText('SAMPLE|LOT|0003');
+    expect(screen.queryByRole('dialog')).toBeNull();
 
     const list = requestsTo(requests, LIST_PATH);
     expect(list[0]?.url.search).toBe('?lotId=7703&openOnly=false&size=20');
@@ -1660,16 +1690,46 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     expect(requestsTo(requests, STAGE_COUNTS_PATH)).toHaveLength(0);
   });
 
-  it('입고 처리 권한(W-01-10)이 없으면 「입고 처리」 단추가 없다', async () => {
-    renderScreen(progressRoutes(), '?po=7101', {
-      ...SYNTHETIC_SESSION,
-      permissions: ['W-01-09', 'W-01-03'],
+  it('Q20 「적치 대기」 알림 주소(inboundLot)로 오면 그 입하 LOT 의 LOT 으로 발주를 좁힌다', async () => {
+    const inboundLotRoute: StubRoute = {
+      match: (request) => isGet(request, '/logistics/inbound-lots/9001'),
+      respond: () =>
+        jsonResponse({
+          inboundLotId: 9001,
+          inboundLotNo: 'SAMPLE-IL-0001',
+          lots: [{ lotId: 7732, lotNo: 'SAMPLE|LOT|0032' }],
+          events: [],
+        }),
+    };
+    const { requests } = renderScreen(
+      [
+        inboundLotRoute,
+        ...progressRoutes(ROWS_WITH_STAGES.slice(0, 1), [...progressFixtures, ...DIRECT_LOTS]),
+      ],
+      '?inboundLot=9001',
+    );
+
+    await screen.findByText('SAMPLE|LOT|0032');
+
+    const list = requestsTo(requests, LIST_PATH);
+    expect(list).toHaveLength(1);
+    expect(list[0]?.url.search).toBe('?lotId=7732&openOnly=false&size=20');
+  });
+
+  it('입하 LOT 을 읽지 못하면 조건 없이 연다', async () => {
+    const forbidden: StubRoute = {
+      match: (request) => isGet(request, '/logistics/inbound-lots/9001'),
+      respond: () =>
+        jsonResponse(
+          { errors: [{ scope: 'screen', code: 'FORBIDDEN', message: '권한 없음' }] },
+          { status: 403 },
+        ),
+    };
+    const { requests } = renderScreen([forbidden, ...progressRoutes()], '?inboundLot=9001');
+
+    await waitFor(() => {
+      expect(requestsTo(requests, LIST_PATH)).toHaveLength(1);
     });
-
-    await screen.findByText('SAMPLE|LOT|0003');
-
-    expect(
-      screen.queryByRole('button', { name: t.actions.postReceiptRow('SAMPLE|LOT|0003') }),
-    ).toBeNull();
+    expect(requestsTo(requests, LIST_PATH)[0]?.url.searchParams.has('lotId')).toBe(false);
   });
 });

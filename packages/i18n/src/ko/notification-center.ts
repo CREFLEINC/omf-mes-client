@@ -68,7 +68,7 @@ export const notificationCenter = {
     targetActions: {
       approval: '결재하기',
       iqcInspection: 'IQC 판정하기',
-      defectReceipt: '불량 창고 입고 처리',
+      inboundSchedule: '입고 관리 열기',
     },
   },
   /**

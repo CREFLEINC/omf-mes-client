@@ -1,6 +1,5 @@
-import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
@@ -8,8 +7,6 @@ import { plantToday } from '../../patterns/plant-time';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
-import { GoodsReceiptBatchPostPanel, type BatchPostLot } from '../goods-receipt/batch-post-panel';
-import { GoodsReceiptPostPanel } from '../goods-receipt/post-panel';
 import { excessTabHref, readLegacyExcessEntry, type ExcessEntry } from './excess-entry';
 import { excessesByLine } from './excess-match';
 import {
@@ -29,7 +26,7 @@ import {
   type ScheduleFilters,
 } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
-import { lotEvidence, WORK_RECORD_PATH } from './lot-row';
+import { WORK_RECORD_PATH } from './lot-row';
 import {
   describeReference,
   lookupNote,
@@ -41,10 +38,10 @@ import {
   type LookupResult,
 } from './lookups';
 import { PageNav } from './page-nav';
-import { readLotEntry, readPostEntry, withoutPostEntry, withPostEntry } from './post-entry';
+import { readInboundLotEntry, readLotEntry } from './post-entry';
 import {
   isProgressUnavailable,
-  progressKeys,
+  useInboundLotFirstLot,
   useInboundProgress,
   useInboundStageCounts,
 } from './progress-queries';
@@ -59,12 +56,11 @@ import {
 } from './period';
 import { LineTable } from './line-table';
 import { OrderTable } from './order-table';
-import { scheduleKeys, usePurchaseOrderLines, usePurchaseOrderSummaries } from './queries';
-import { hasLot, isReceiptReady, progressByLine } from './stage';
+import { usePurchaseOrderLines, usePurchaseOrderSummaries } from './queries';
+import { progressByLine } from './stage';
 import { StageChips } from './stage-chips';
 import type {
   InboundScheduleLine,
-  IssuedLotProgress,
   PurchaseOrderSummary,
   PurchaseOrderSummaryQuery,
   SelectOption,
@@ -80,12 +76,6 @@ const NO_EXCESSES: UnallocatedLine[] = [];
 
 /** 왼쪽 표 한 쪽 20줄(사용자 지시 2026-10-20). 서버 기본(50)보다 작게 실어 보낸다 — 상한은 200. */
 export const LIST_PAGE_SIZE = 20;
-
-/** 「입고 처리」의 권한 — 자재 입고 처리 화면(W-01-10)과 같다. 세션이 권한 목록을 주지 않았으면 단추를 세운다 — 막는 것은 서버다. */
-const POST_PERMISSION = 'W-01-10';
-
-/** 입고 처리 뒤 함께 다시 읽을 것 — LOT 줄의 단계 · 왼쪽 「진행」 열 · 탭 줄 칩 수. */
-const POST_REFRESH_KEYS = [scheduleKeys.all, progressKeys.all] as const;
 
 /**
  * 참조 목록을 선택지로 옮긴다.
@@ -118,6 +108,9 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
  *
  * **입하·입고 일을 이 화면으로 모은다**(사용자 지시 2026-10-21). 일마다 오른쪽 창이 열리고, 창은 주소가 연다.
  *
+ * - **입고 처리**(W-01-10) — **009 부터 웹에서 하지 않는다**(FR-003 · omf-all-around#294). 구매 입하 자재는 PDA
+ *   「적치·입고 완료」(M-01-05)에서 적치할 때 그 LOT 하나씩 입고된다. 입고 가능 LOT 은 「적치 대기 · PDA에서 적치」로 보이고,
+ *   적치한 LOT 은 위치와 적치 방식(지정 위치 · 미지정 위치 · 임시 적치)이 선다.
  * - **입하 등록**(W-01-03) — **005 부터 웹에서 받지 않는다**(FR-036 · T059). 입하는 PDA 입하 등록(M-01-01)에서 자재 관리
  *   LOT 라벨을 스캔해 한다 — 라인 표 위에 그 안내 한 줄만 선다(screens/W-01-09.md). 옛 「초과 입하 분리」 주소는
  *   `register-redirect.tsx` 가 이 화면으로 옮겨 준다.
@@ -129,8 +122,6 @@ export const InboundScheduleScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { splitRef, aboveRef } = useFitToViewport();
   const { session } = useSession();
-  const canPost =
-    session?.permissions === undefined || session.permissions.includes(POST_PERMISSION);
   const split = usePaneSplit('omf-mes:inbound-schedule:split', 0.4);
   const quickRef = useRef<QuickLookupHandle>(null);
 
@@ -152,9 +143,17 @@ export const InboundScheduleScreen = () => {
    * 기간뿐이다(없는 날짜·뒤집힌 기간) — 그런 값은 서버로 보내지 않는다.
    */
   const periodReason = filters.overdueOnly ? null : validatePeriod(period);
-  const lotEntry = readLotEntry(searchParams);
-  const listQuery: PurchaseOrderSummaryQuery | null =
-    lotEntry !== null
+  /*
+   * 「적치 대기」 알림(피처 009)은 입하 LOT 을 가리킨다 — 그 입하 LOT 의 자재 관리 LOT 하나로 `lot=` 과 같이 좁힌다. 찾는 동안은
+   * 목록을 묻지 않는다(조건 없는 목록이 잠깐 섰다가 바뀌지 않게). 찾지 못하면 조건 없이 연다.
+   */
+  const inboundLotEntry = readInboundLotEntry(searchParams);
+  const inboundLotLot = useInboundLotFirstLot(inboundLotEntry);
+  const resolvingInboundLot = inboundLotEntry !== null && inboundLotLot.isPending;
+  const lotEntry = readLotEntry(searchParams) ?? inboundLotLot.data ?? null;
+  const listQuery: PurchaseOrderSummaryQuery | null = resolvingInboundLot
+    ? null
+    : lotEntry !== null
       ? { lotId: lotEntry, openOnly: false, size: LIST_PAGE_SIZE }
       : periodReason === null
         ? {
@@ -254,77 +253,6 @@ export const InboundScheduleScreen = () => {
   const openExcess = (entry: Partial<ExcessEntry> = {}): void => {
     void navigate(
       excessTabHref({ ...entry, purchaseOrderId: selectedOrder?.purchaseOrderId ?? null }),
-    );
-  };
-
-  const selectedOrderId = selectedOrder?.purchaseOrderId ?? null;
-
-  /*
-   * 「입고 처리」 창 — LOT 줄에서 열린다(`post=<LOT>`). 대상 LOT 은 고른 발주의 진행 자료에서 찾는다 — 없으면(자료가 바뀌었다 ·
-   * 다른 발주의 주소) 창을 세우지 않는다. 창은 LOT 하나로 서고 전표·라인 값은 창이 전표 상세로 받는다.
-   */
-  const postLotId = canPost ? readPostEntry(searchParams) : null;
-  const postLot =
-    postLotId === null
-      ? null
-      : (progress.data?.items.find(
-          (lot): lot is IssuedLotProgress => hasLot(lot) && lot.lotId === postLotId,
-        ) ?? null);
-  const postLine =
-    postLot === null
-      ? null
-      : (lineRows.find((line) => line.purchaseOrderLineId === postLot.purchaseOrderLineId) ?? null);
-  const openPost = (lot: IssuedLotProgress): void => {
-    setSearchParams(withPostEntry(searchParams, lot.lotId));
-  };
-  const closePost = (): void => {
-    setSearchParams(withoutPostEntry(searchParams));
-  };
-
-  /*
-   * 「입고 대기」 LOT 일괄 입고(사용자 지시 2026-10-28 「입고 요청 일괄 처리」) — LOT 줄을 체크해 한 창에서 한 번에 입고한다.
-   * 체크는 지금 진행 자료로 다시 거른다(다른 곳에서 입고돼 단계가 바뀐 LOT 은 빠진다). 발주가 바뀌면 비운다.
-   */
-  const [checkedLotIds, setCheckedLotIds] = useState<ReadonlySet<number>>(new Set());
-  const [batchLots, setBatchLots] = useState<BatchPostLot[] | null>(null);
-  useEffect(() => {
-    setCheckedLotIds(new Set());
-    setBatchLots(null);
-  }, [selectedOrderId]);
-  const readyLots = (progress.data?.items ?? []).filter(isReceiptReady);
-  const checkedLots = readyLots.filter((lot) => checkedLotIds.has(lot.lotId));
-  const toggleLot = (lotId: number): void => {
-    setCheckedLotIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(lotId)) next.delete(lotId);
-      else next.add(lotId);
-
-      return next;
-    });
-  };
-  const toggleAllLots = (): void => {
-    setCheckedLotIds(
-      checkedLots.length === readyLots.length
-        ? new Set()
-        : new Set(readyLots.map((lot) => lot.lotId)),
-    );
-  };
-  const openBatch = (): void => {
-    if (checkedLots.length === 0) return;
-    setBatchLots(
-      checkedLots.map((lot) => {
-        const line = lineRows.find((each) => each.purchaseOrderLineId === lot.purchaseOrderLineId);
-
-        return {
-          inboundReceiptId: lot.inboundReceiptId,
-          inboundReceiptLineId: lot.inboundReceiptLineId,
-          lotId: lot.lotId,
-          lotNo: lot.lotNo,
-          itemCode: line?.itemCode ?? '',
-          itemName: line?.itemName ?? '',
-          uomCode: lot.uomCode,
-        };
-      }),
     );
   };
 
@@ -435,8 +363,8 @@ export const InboundScheduleScreen = () => {
             <>
               <OrderTable
                 rows={rows}
-                isLoading={list.isPending && listQuery !== null}
-                hasQuery={listQuery !== null}
+                isLoading={(list.isPending && listQuery !== null) || resolvingInboundLot}
+                hasQuery={listQuery !== null || resolvingInboundLot}
                 isBeyondLast={pageView.isBeyondLast}
                 today={today}
                 selectedId={selectedOrder?.purchaseOrderId ?? null}
@@ -504,57 +432,11 @@ export const InboundScheduleScreen = () => {
               onOpenExcess={openExcess}
               {...(progressUnavailable || lotsByLine === undefined ? {} : { lots: lotsByLine })}
               progressFailed={progress.isError && !progressUnavailable}
-              {...(canPost ? { onPostReceipt: openPost } : {})}
               canOpenWorkRecord={toWebAccess(session?.permissions).allows(WORK_RECORD_PATH)}
-              {...(canPost
-                ? {
-                    lotPick: {
-                      checked: new Set(checkedLots.map((lot) => lot.lotId)),
-                      toggle: toggleLot,
-                      total: readyLots.length,
-                      toggleAll: toggleAllLots,
-                      onSubmit: openBatch,
-                    },
-                  }
-                : {})}
             />
           )}
         </section>
       </div>
-
-      {postLot !== null && postLine !== null && selectedOrder !== null && (
-        <GoodsReceiptPostPanel
-          /* 다른 LOT 을 열면 창을 새로 세운다 — 앞 LOT 의 초안이 남지 않는다. */
-          key={postLot.lotId}
-          target={{
-            inboundReceiptId: postLot.inboundReceiptId,
-            inboundReceiptLineId: postLot.inboundReceiptLineId,
-            lotId: postLot.lotId,
-          }}
-          context={{
-            purchaseOrderNo: selectedOrder.purchaseOrderNo,
-            supplierName: selectedOrder.supplierName,
-            itemCode: postLine.itemCode,
-            itemName: postLine.itemName,
-            lotNo: postLot.lotNo,
-            uomCode: postLot.uomCode,
-            inspectionNote: lotEvidence(postLot) === '' ? null : lotEvidence(postLot),
-          }}
-          refreshKeys={POST_REFRESH_KEYS}
-          onClose={closePost}
-        />
-      )}
-
-      {batchLots !== null && (
-        <GoodsReceiptBatchPostPanel
-          lots={batchLots}
-          refreshKeys={POST_REFRESH_KEYS}
-          onClose={() => {
-            setBatchLots(null);
-            setCheckedLotIds(new Set());
-          }}
-        />
-      )}
     </>
   );
 };

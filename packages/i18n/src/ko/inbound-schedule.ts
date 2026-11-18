@@ -52,9 +52,6 @@ export const inboundSchedule = {
     collapseAll: 'LOT 모두 접기',
     expandLine: (lineNo: number): string => `${String(lineNo)}번 줄 LOT 펼치기`,
     collapseLine: (lineNo: number): string => `${String(lineNo)}번 줄 LOT 접기`,
-    /** LOT 줄의 다음 할 일 — 서버가 정한 것만 나타난다(C-17). */
-    postReceipt: '입고 처리',
-    postReceiptRow: (lotNo: string): string => `${lotNo} 입고 처리`,
   },
   /** 비활성 사유·실패 사유는 그 컨트롤이나 대상의 이름으로 시작한다(배치 규범 4). */
   reasons: {
@@ -313,11 +310,6 @@ export const inboundSchedule = {
   },
   /** 라인 아래 LOT 줄 — 번호 · 입하일 · 수량과, 그 단계의 근거(서버가 준 값만 적는다). */
   lot: {
-    /** 「입고 대기」 LOT 줄의 체크 — 체크한 LOT 을 한 번에 입고한다(사용자 지시 2026-10-28). */
-    selectForPost: (lotNo: string): string => `${lotNo} 입고 선택`,
-    selectAllForPost: '입고 대기 전체',
-    checkedForPost: (count: number): string => `선택 ${String(count)}건`,
-    postChecked: '체크한 LOT 입고 처리',
     receivedOn: (date: string): string => `입하 ${date}`,
     /** 적치는 PDA 의 일이다 — 이 화면은 보기만 한다. */
     putawayOnPda: 'PDA에서 적치',
@@ -352,6 +344,17 @@ export const inboundSchedule = {
     shareAllocated: (inboundLotNo: string, qty: string, uom: string): string =>
       `${inboundLotNo} · 매칭 ${qty} ${uom}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-09.md)
     shareReceiving: (inboundLotNo: string): string => `${inboundLotNo} · 입하 중`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-09.md)
+    /** 피처 009 — 입하 LOT 의 자재 관리 LOT 중 일부만 적치(입고)됐을 때 몫 글 뒤에(US1-5, 시안 W0109-After). */
+    sharePartial: (share: string, received: number, total: number): string =>
+      `${share} · 일부 입고 ${String(received)}/${String(total)}`, // ui-check-ignore: C-13 시안 확정 문구(009 W0109-After)
+    /** 피처 009 — 불합격 LOT(불량창고로만 적치). */
+    defective: '불량',
+    /** 피처 009 — 적치 방식(입고 라인 putawayModeCode). 위치 칸의 칩. */
+    mode: {
+      DESIGNATED: '지정 위치',
+      UNDESIGNATED: '미지정 위치',
+      TEMPORARY: '임시 적치',
+    },
     receiving: '입하 중',
     shareSeparator: ', ',
   },

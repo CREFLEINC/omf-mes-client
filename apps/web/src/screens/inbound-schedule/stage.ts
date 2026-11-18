@@ -113,10 +113,6 @@ export const stageLead = (counts: InboundStageCounts): StageLead | null => {
 export const hasLot = (lot: InboundLotProgress): lot is IssuedLotProgress =>
   lot.lotId !== null && lot.lotNo !== null;
 
-/** 「입고 대기」 LOT 줄인가 — 체크해 한 번에 입고할 수 있는 줄이다. */
-export const isReceiptReady = (lot: InboundLotProgress): lot is IssuedLotProgress =>
-  hasLot(lot) && lot.stageCode === 'RECEIPT_READY';
-
 /**
  * LOT 을 발주 라인별로 묶는다. 한 라인 안은 **입하 일시 → LOT 번호** 순이다 — 먼저 들어온 것이 위다.
  * LOT 이 없는 줄(라벨 미부착)은 같은 입하 일시 안에서 입하 라인 순이다.
@@ -211,6 +207,9 @@ export type InboundLotShare =
       inboundLotNo: string;
       allocatedQty: number;
       uomCode: string;
+      /** 이 라인 아래 그 입하 LOT 의 자재 관리 LOT 수와 그 중 입고(적치)된 수 — 「일부 입고 n/m」(피처 009 · US1-5). */
+      lotCount: number;
+      receivedLotCount: number;
     }
   | { kind: 'receiving'; inboundLotId: number; inboundLotNo: string };
 
@@ -226,7 +225,15 @@ export const inboundLotShares = (
   const seen = new Set<number>();
 
   for (const lot of lots) {
-    if (lot.inboundLotId === null || lot.inboundLotNo === null || seen.has(lot.inboundLotId)) {
+    if (lot.inboundLotId === null || lot.inboundLotNo === null) continue;
+
+    const received = lot.goodsReceipt === null ? 0 : 1;
+    const known = shares.find(
+      (share) => share.kind === 'allocated' && share.inboundLotId === lot.inboundLotId,
+    );
+    if (known !== undefined && known.kind === 'allocated') {
+      known.lotCount += 1;
+      known.receivedLotCount += received;
       continue;
     }
     seen.add(lot.inboundLotId);
@@ -236,6 +243,8 @@ export const inboundLotShares = (
       inboundLotNo: lot.inboundLotNo,
       allocatedQty: lot.allocatedQty,
       uomCode: lot.uomCode,
+      lotCount: 1,
+      receivedLotCount: received,
     });
   }
 
