@@ -195,6 +195,22 @@ const line = (overrides: Record<string, unknown> = {}) => ({
   shippedQty: 0,
   uomId: 920001,
   shippingInspectionRequired: false,
+  picks: [
+    {
+      lotId: 1001,
+      lotNo: 'SYN-LOT-1001',
+      pickedQty: 60,
+      uomId: 920001,
+      pickedAt: '2026-09-01T00:00:00Z',
+    },
+    {
+      lotId: 1002,
+      lotNo: 'SYN-LOT-1002',
+      pickedQty: 40,
+      uomId: 920001,
+      pickedAt: '2026-09-01T00:00:00Z',
+    },
+  ],
   ...overrides,
 });
 

@@ -4,10 +4,11 @@ import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 
 /**
- * ①출하 내역의 LOT 수동 선택 목록 — `GET /trace/lots?itemId=&heldOnly=false`.
+ * ①출하 내역의 LOT 수동 선택 목록 — `GET /trace/lots?itemId=&heldOnly=false` 중 **이 출하작업지시에서 집은 LOT**
+ * (`ShipmentRequestLine.picks[]`)만 남긴다. 평시 출하는 피킹분만 낼 수 있어(계약 L-2) 집지 않은 LOT —
+ * 입고 전 · 검사 대기 LOT 까지 — 을 고르면 서버가 거절한다(omf-all-around#302).
  *
- * **자동 프리필을 하지 않는다**(계획서 미결 항목 — `ShipmentRequestLine.picks[]`가 baseline에
- * 없다). `heldOnly=false`로 보류·비보류 LOT을 함께 받고, 보류 LOT은 목록에 보이되 화면이
+ * **자동 프리필을 하지 않는다.** `heldOnly=false`로 보류·비보류 LOT을 함께 받고, 보류 LOT은 목록에 보이되 화면이
  * 선택하지 못하게 막는다(`shipment-lines-pane.tsx`가 `held`로 옵션을 잠근다).
  *
  * 라인마다 다른 품목일 수 있어 **품목별로 한 번씩** 받는다. 화면이 선택된 출하작업지시의
@@ -43,9 +44,10 @@ const lotCandidateKeys = {
   forItem: (itemId: number) => ['shipment-processing-lookups', 'lots', itemId] as const,
 };
 
-/** 품목 id마다 하나씩 LOT 후보를 받아 `Record<itemId, LotCandidateResult>`로 낸다. */
+/** 품목 id마다 하나씩 LOT 후보를 받아 `Record<itemId, LotCandidateResult>`로 낸다. `pickedLotIds` 는 품목별로 집은 LOT 이다. */
 export const useLotCandidatesByItem = (
   itemIds: readonly number[],
+  pickedLotIds: Readonly<Record<number, readonly number[]>>,
 ): Record<number, LotCandidateResult> => {
   const { client } = useApiClient();
   const uniqueIds = [...new Set(itemIds)];
@@ -78,12 +80,14 @@ export const useLotCandidatesByItem = (
 
     result[itemId] = {
       items:
-        data?.items.map((lot) => ({
-          lotId: lot.lotId,
-          lotNo: lot.lotNo,
-          held: lot.held ?? false,
-          expiryDate: lot.expiryDate ?? null,
-        })) ?? [],
+        data?.items
+          .filter((lot) => (pickedLotIds[itemId] ?? []).includes(lot.lotId))
+          .map((lot) => ({
+            lotId: lot.lotId,
+            lotNo: lot.lotNo,
+            held: lot.held ?? false,
+            expiryDate: lot.expiryDate ?? null,
+          })) ?? [],
       truncated: data !== undefined && data.page.total > data.items.length,
       isError: query.isError,
       isLoading: query.isPending,

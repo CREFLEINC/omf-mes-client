@@ -203,7 +203,13 @@ export const ShipmentProcessingCandidateScreen = () => {
   const lineDrafts = toSelectedLineDrafts(ownedLineDrafts, state.selectedShipmentRequestId);
   const loadingInfo = toSelectedLoadingInfo(ownedLoadingInfo, state.selectedShipmentRequestId);
   const itemIds = [...new Set(lineDrafts.map((line) => line.itemId))];
-  const lotCandidates = useLotCandidatesByItem(itemIds);
+  const pickedLotIds: Record<number, number[]> = {};
+  if (detailState.kind === 'RESOLVED') {
+    for (const line of detailState.detail.lines ?? []) {
+      pickedLotIds[line.itemId] = [...(pickedLotIds[line.itemId] ?? []), ...line.pickedLotIds];
+    }
+  }
+  const lotCandidates = useLotCandidatesByItem(itemIds, pickedLotIds);
 
   const updateLineDrafts = (
     update: (drafts: LineAllocationDraft[]) => LineAllocationDraft[],

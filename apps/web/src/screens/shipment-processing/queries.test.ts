@@ -128,7 +128,7 @@ describe('useShipmentRequestCandidates', () => {
       expect(result.current.data).toBeDefined();
     });
 
-    expect(result.current.data?.items[0]?.lines).toEqual([line]);
+    expect(result.current.data?.items[0]?.lines).toEqual([{ ...line, pickedLotIds: [] }]);
   });
 });
 

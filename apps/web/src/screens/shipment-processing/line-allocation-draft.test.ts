@@ -27,6 +27,7 @@ const sourceLine = (
   shippedQty: 0,
   uomId: 920001,
   shippingInspectionRequired: false,
+  pickedLotIds: [],
   ...overrides,
 });
 

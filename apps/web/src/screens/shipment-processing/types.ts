@@ -14,7 +14,7 @@ type ShipmentRequestLineResponse = components['schemas']['ShipmentRequestLine'];
 
 export type ShipmentProgressCode = ShipmentRequestResponse['shipmentProgressCode'];
 
-/** 출하작업지시 한 라인. `pickedQty`만 있고 `picks[]`(LOT별 내역)는 baseline에 없다(계획서 미결 항목). */
+/** 출하작업지시 한 라인. `pickedLotIds` 는 이 라인에서 실제로 집은 LOT(`picks[]`) — 출하 내역의 LOT 원천이다(계약 L-2). */
 export interface ShipmentRequestLineCandidate {
   shipmentRequestLineId: number;
   lineNo: number;
@@ -25,6 +25,7 @@ export interface ShipmentRequestLineCandidate {
   shippedQty: number;
   uomId: number;
   shippingInspectionRequired: boolean;
+  pickedLotIds: number[];
 }
 
 export const toShipmentRequestLineCandidate = (
@@ -39,6 +40,7 @@ export const toShipmentRequestLineCandidate = (
   shippedQty: line.shippedQty,
   uomId: line.uomId,
   shippingInspectionRequired: line.shippingInspectionRequired,
+  pickedLotIds: (line.picks ?? []).map((pick) => pick.lotId),
 });
 
 /**
