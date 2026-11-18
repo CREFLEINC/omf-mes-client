@@ -167,8 +167,14 @@ export function applyRevalidation(
               return {
                 ...op,
                 quantity: checkedOp.orderQty,
-                start: formatPlantDateTime(checkedOp.plannedStartAt) ?? '',
-                end: formatPlantDateTime(checkedOp.plannedEndAt) ?? '',
+                start:
+                  op.plannedTimeSourceCode === 'USER'
+                    ? op.start
+                    : (formatPlantDateTime(checkedOp.plannedStartAt) ?? op.start),
+                end:
+                  op.plannedTimeSourceCode === 'USER'
+                    ? op.end
+                    : (formatPlantDateTime(checkedOp.plannedEndAt) ?? op.end),
                 plannedTimeSourceCode: checkedOp.plannedTimeSourceCode,
                 predecessors: checkedOp.predecessors.map((predecessor) => {
                   const before = plan.operations.find(
@@ -291,27 +297,35 @@ export function createProposalSession(client: Client, catalog: LiveCatalog) {
             ? row.confirmedQty + row.plans.reduce((sum, plan) => sum + Number(plan.quantity), 0)
             : row.orderQty,
         draftQty: 0,
-        remainingQty: Math.max(
-          0,
-          row.orderQty -
-            (row.confirmedQty + row.plans.reduce((sum, plan) => sum + Number(plan.quantity), 0)),
-        ),
-        plans: row.plans.map((plan, index) => {
-          const saved = response.plans.find(
-            (saved) => saved.proposalPlanKey === body.plans[index]?.proposalPlanKey,
-          );
-          return {
-            ...plan,
-            number: saved?.planNo ?? plan.number,
-            source: '기존 확정 계획' as const,
-            operations: plan.operations.map((op) => ({
-              ...op,
-              number:
-                saved?.workOrders.find((item) => item.routingOperationId === op.routingOperationId)
-                  ?.workOrderNo ?? op.number,
-            })),
-          };
-        }),
+        remainingQty:
+          response.outcome === 'ALREADY_PROCESSED'
+            ? 0
+            : Math.max(
+                0,
+                row.orderQty -
+                  (row.confirmedQty +
+                    row.plans.reduce((sum, plan) => sum + Number(plan.quantity), 0)),
+              ),
+        plans:
+          response.outcome === 'ALREADY_PROCESSED'
+            ? []
+            : row.plans.map((plan, index) => {
+                const saved = response.plans.find(
+                  (saved) => saved.proposalPlanKey === body.plans[index]?.proposalPlanKey,
+                );
+                return {
+                  ...plan,
+                  number: saved?.planNo ?? plan.number,
+                  source: '기존 확정 계획' as const,
+                  operations: plan.operations.map((op) => ({
+                    ...op,
+                    number:
+                      saved?.workOrders.find(
+                        (item) => item.routingOperationId === op.routingOperationId,
+                      )?.workOrderNo ?? op.number,
+                  })),
+                };
+              }),
       };
     },
     error: (error: unknown) =>

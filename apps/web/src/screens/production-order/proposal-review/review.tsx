@@ -137,10 +137,12 @@ export const ProposalReview = ({
   );
   const [dialog, setDialog] = useState<'close' | 'confirm' | 'reload' | null>(null);
   const [progress, setProgress] = useState('');
-  const [draftChoice, setDraftChoice] = useState(false);
+  const [draftChoice, setDraftChoice] = useState<'CONTINUE' | 'REPLACE' | null>(null);
   const [draftDialog, setDraftDialog] = useState(false);
   const actionReasonId = useId();
-  const [pending, setPending] = useState(false);
+  const [requestPending, setPending] = useState(false);
+  const [editorBusy, setEditorBusy] = useState(false);
+  const pending = requestPending || editorBusy;
   const [failure, setFailure] = useState('');
   const remainingId = useId();
   const selected = rows.find((row) => row.id === active);
@@ -851,6 +853,19 @@ export const ProposalReview = ({
                 <ProposalPlanningWorkspace
                   key={selected.id}
                   row={selected}
+                  onBusyChange={(busy) => {
+                    setEditorBusy(busy);
+                    if (busy) {
+                      setChecked((current) => current.filter((id) => id !== selected.id));
+                      setRows((current) =>
+                        current.map((row) =>
+                          row.id === selected.id
+                            ? { ...row, validated: false, changed: true }
+                            : row,
+                        ),
+                      );
+                    }
+                  }}
                   onPlansChange={(plans) => {
                     if (pending) return;
                     setRows((current) =>
@@ -1213,11 +1228,13 @@ export const ProposalReview = ({
               <div className="proposal-review-toolbar">
                 <Button
                   variant={selected.existingDraftAction === 'CONTINUE' ? 'filled' : 'outlined'}
-                  disabled={pending}
+                  disabled={pending || selected.existingDraftAction === 'CONTINUE'}
                   aria-describedby={actionReasonId}
                   onClick={() => {
                     setDraftDialog(false);
-                    void updateSelected(() => onChooseDrafts(selected, 'CONTINUE'));
+                    if (selected.changed || selected.existingDraftAction === 'REPLACE')
+                      setDraftChoice('CONTINUE');
+                    else void updateSelected(() => onChooseDrafts(selected, 'CONTINUE'));
                   }}
                 >
                   작성중 계획 이어서
@@ -1229,7 +1246,7 @@ export const ProposalReview = ({
                   onClick={() => {
                     if (selected.existingDraftAction !== 'REPLACE') {
                       setDraftDialog(false);
-                      setDraftChoice(true);
+                      setDraftChoice('REPLACE');
                     }
                   }}
                 >
@@ -1243,30 +1260,34 @@ export const ProposalReview = ({
       {draftChoice && selected && (
         <Dialog
           open
-          title="작성중 계획 대체"
-          onClose={() => !pending && setDraftChoice(false)}
+          title={draftChoice === 'CONTINUE' ? '작성중 계획 이어서 검토' : '작성중 계획 대체'}
+          onClose={() => !pending && setDraftChoice(null)}
           footer={
             <>
-              <Button variant="outlined" disabled={pending} onClick={() => setDraftChoice(false)}>
+              <Button variant="outlined" disabled={pending} onClick={() => setDraftChoice(null)}>
                 취소
               </Button>
               <Button
                 disabled={pending}
                 aria-describedby={actionReasonId}
                 onClick={() => {
-                  setDraftChoice(false);
-                  void updateSelected(() => onChooseDrafts!(selected, 'REPLACE'));
+                  setDraftChoice(null);
+                  void updateSelected(() => onChooseDrafts!(selected, draftChoice));
                 }}
               >
-                새 계획으로 검토
+                {draftChoice === 'CONTINUE' ? '작성중 계획 불러오기' : '새 계획으로 검토'}
               </Button>
             </>
           }
         >
-          <p>
-            선택 확정 시 작성중 계획 {selected.existingDrafts?.length}건을 삭제하고 새 계획으로
-            대체합니다. 지금은 검토 내용만 변경합니다.
-          </p>
+          {draftChoice === 'CONTINUE' ? (
+            <p>화면의 보완값을 버리고 저장된 작성중 계획을 다시 불러옵니다. 계속하시겠습니까?</p>
+          ) : (
+            <p>
+              선택 확정 시 작성중 계획 {selected.existingDrafts?.length}건을 삭제하고 새 계획으로
+              대체합니다. 화면의 보완값은 새 제안으로 바뀌며 지금은 저장하지 않습니다.
+            </p>
+          )}
         </Dialog>
       )}
       {dialog === 'reload' && selected && (

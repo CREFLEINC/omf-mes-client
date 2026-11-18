@@ -30,6 +30,7 @@ import { PlanSummary } from './plan-summary';
 interface Props {
   row: ReviewProposal;
   pending: boolean;
+  onBusyChange?: (busy: boolean) => void;
   onPlansChange: (plans: ReviewPlan[]) => void;
   source: (
     row: ReviewProposal,
@@ -47,6 +48,7 @@ interface Props {
 export const ProposalPlanningWorkspace = ({
   row,
   pending,
+  onBusyChange,
   onPlansChange,
   source,
   edit,
@@ -81,7 +83,7 @@ export const ProposalPlanningWorkspace = ({
         serverPlanKey: undefined,
         productionPlanId: undefined,
         savedVersionNo: undefined,
-        planDateSourceCode: 'USER',
+        planDateSourceCode: 'USER' as const,
         quantity: String(remaining),
         recalculationRequired: true,
         operations: original.operations.map((op) => ({
@@ -168,6 +170,7 @@ export const ProposalPlanningWorkspace = ({
     }
     const revision = routings.data?.items.find((item) => String(item.routingId) === value);
     if (!revision) return;
+    onBusyChange?.(true);
     setRoutingBusy(true);
     setRoutingError('');
     try {
@@ -246,6 +249,7 @@ export const ProposalPlanningWorkspace = ({
       setRoutingError('Routing 공정 정보를 조회하지 못했습니다. 다시 선택하세요.');
     } finally {
       setRoutingBusy(false);
+      onBusyChange?.(false);
     }
   };
   const operationTable = (p: ReviewPlan) => (
@@ -447,7 +451,7 @@ export const ProposalPlanningWorkspace = ({
                         serverPlanKey: undefined,
                         productionPlanId: undefined,
                         savedVersionNo: undefined,
-                        planDateSourceCode: draft.planDateSourceCode ?? 'USER',
+                        planDateSourceCode: 'USER' as const,
                         date: draft.planDate,
                         quantity: draft.plannedQty,
                         recalculationRequired: true,
@@ -488,7 +492,7 @@ export const ProposalPlanningWorkspace = ({
                               splitFromKey: index === 0 ? original.splitFromKey : original.key,
                               date: part.planDate,
                               quantity: part.plannedQty,
-                              planDateSourceCode: part.planDateSourceCode,
+                              planDateSourceCode: 'USER' as const,
                               recalculationRequired: true,
                               operations: original.operations.map((op) => ({
                                 ...structuredClone(op),

@@ -183,6 +183,27 @@ describe('#277 proposal contract integration', () => {
     expect(updated.plans).toEqual([]);
     expect(updated.confirmedQty).toBe(value.orderQty);
   });
+  it('USER time inputs survive REQUIRED errors instead of adopting system fallback times', () => {
+    const value = row();
+    const op = value.plans[0]!.operations[0]!;
+    op.plannedTimeSourceCode = 'USER';
+    op.start = `${value.plans[0]!.date} 13:00`;
+    op.end = '';
+    const result = validation(value);
+    result.confirmable = false;
+    result.errors = [
+      {
+        scope: 'field',
+        field: 'plans[0].workOrders[0].plannedEndAt',
+        code: 'REQUIRED',
+        message: '종료 시각이 필요합니다.',
+      },
+    ];
+    const checked = applyRevalidation(value, result, catalog);
+    expect(checked.plans[0]!.operations[0]!.start).toBe(op.start);
+    expect(checked.plans[0]!.operations[0]!.end).toBe('');
+    expect(checked.validated).toBe(false);
+  });
   it('revalidation only calls the non-saving endpoint', async () => {
     const value = row();
     const requests: Request[] = [];
@@ -222,6 +243,35 @@ describe('#277 proposal contract integration', () => {
     value.plans[0]!.quantity = '50';
     await session.confirm(value);
     expect(keys[2]).not.toBe(keys[0]);
+  });
+  it('a concurrent confirmation only displays the actual result, not the stale editable proposal', async () => {
+    const value = row();
+    value.plans[0]!.quantity = '50';
+    const session = createProposalSession(
+      createProposalReadClient('http://localhost', async () =>
+        jsonResponse({
+          productionOrderId: Number(value.id),
+          outcome: 'ALREADY_PROCESSED',
+          plans: [
+            {
+              productionPlanId: 99,
+              planNo: 'SAVED-BY-OTHER',
+              statusCode: 'CONFIRMED',
+              versionNo: 2,
+              workOrders: [],
+              planDateCalendar: validation(value).plans[0]!.planDateCalendar,
+            },
+          ],
+          replacedDrafts: [],
+        }),
+      ),
+      catalog,
+    );
+    const result = await session.confirm(value);
+    expect(result.plans).toEqual([]);
+    expect(result.resultPlans?.[0]?.planNo).toBe('SAVED-BY-OTHER');
+    expect(result.remainingQty).toBe(0);
+    expect(result.confirmedQty).toBe(value.orderQty);
   });
   it('unvalidated proposals cannot call confirmation', async () => {
     const value = row();

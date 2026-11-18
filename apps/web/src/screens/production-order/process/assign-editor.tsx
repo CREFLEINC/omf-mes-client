@@ -699,7 +699,11 @@ const EditorSession = ({
                 <span role="alert">입고 위치 기준정보 확인 필요</span>
               ) : null}
             </div>
-            {reference('defaultFgLocationId', '입고 위치', fgSource)}
+            {reference(
+              'defaultFgLocationId',
+              '입고 위치',
+              workOrder.fgWarehouseDiffersFromErp ? null : fgSource,
+            )}
             <span className="assign-empty" aria-hidden="true" />
           </>
         ) : (

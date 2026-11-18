@@ -136,6 +136,9 @@ export const AutoPlanResultPage = ({
               ? async (row) => {
                   const result = await transport.confirm(row);
                   await queryClient.invalidateQueries({
+                    queryKey: ['production-order-proposal-audit', row.id],
+                  });
+                  await queryClient.invalidateQueries({
                     predicate: (query) =>
                       ['production-orders', 'production-plans', 'work-orders'].includes(
                         String(query.queryKey[0]),

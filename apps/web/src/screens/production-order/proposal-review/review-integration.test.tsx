@@ -98,6 +98,47 @@ describe('#277 review integration', () => {
       expect(choose).toHaveBeenCalledWith(expect.objectContaining({ id: '3' }), 'REPLACE'),
     );
   });
+  it('selecting CONTINUE again cannot discard edited plan values', async () => {
+    const user = userEvent.setup();
+    const value = readyRow('5');
+    value.existingDraftAction = 'CONTINUE';
+    value.changed = true;
+    value.plans[0]!.quantity = '37';
+    value.existingDrafts = [
+      {
+        productionPlanId: 10,
+        versionNo: 3,
+        planNo: 'DRAFT-10',
+        planDate: value.plans[0]!.date,
+        plannedQty: 100,
+        uomId: 1,
+        plannedLineId: null,
+        plannedLineCode: null,
+        plannedLineName: null,
+        statusCode: 'PLANNED',
+        createdBy: null,
+        createdByName: null,
+        createdAt: '2026-11-18T00:00:00Z',
+        updatedAt: '2026-11-18T00:00:00Z',
+        createdAutomatically: false,
+      },
+    ];
+    const choose = vi.fn();
+    renderWithProviders(
+      <ProposalReview
+        initialProposals={[value]}
+        resourceSource={previewResourceSource}
+        onClose={() => {}}
+        onChooseDrafts={choose}
+      />,
+      { session: null },
+    );
+    await user.click(screen.getByRole('button', { name: '작성중 계획 1건 확인' }));
+    const button = screen.getByRole('button', { name: '작성중 계획 이어서' });
+    expect(button).toBeDisabled();
+    await user.click(button);
+    expect(choose).not.toHaveBeenCalled();
+  });
   it('AUTO_WORK_ORDER cannot be selected for human confirmation', () => {
     const value = { ...readyRow('4'), serverKind: 'AUTO_WORK_ORDER' as const, plans: [] };
     renderWithProviders(
