@@ -4,9 +4,11 @@ import type { Location } from '../../patterns/locations';
 import type { PutawayTask } from '../putaway/putaway';
 import {
   canSubmit,
+  initialWarehouseOf,
   isAlreadyPutAway,
   queuedCountOf,
   toOutboxDraft,
+  toTemporaryLotDraft,
   type TemporaryDraft,
 } from './temporary';
 
@@ -159,5 +161,37 @@ describe('등록 본문', () => {
 
     expect(entry.path).toContain(':complete-temporary');
     expect(entry.path.endsWith(':complete')).toBe(false);
+  });
+});
+
+describe('LOT 모드(피처 009)', () => {
+  const lot = { lotId: 41, lotNo: 'RM-LOT-0103', lotStatusCode: 'NORMAL' as const };
+  const one = [{ warehouseId: 9, warehouseName: '불량창고', isDefect: true, designatedCount: 1 }];
+
+  it('US4-4 불량 LOT 에 창고가 하나뿐이면 미리 고르고, 정상 LOT 은 고르지 않는다', () => {
+    expect(initialWarehouseOf({ lotStatusCode: 'DEFECTIVE' }, one)).toBe(9);
+    expect(initialWarehouseOf({ lotStatusCode: 'NORMAL' }, one)).toBeNull();
+    expect(
+      initialWarehouseOf({ lotStatusCode: 'DEFECTIVE' }, [...one, { ...one[0]!, warehouseId: 10 }]),
+    ).toBeNull();
+  });
+
+  it('US4-2 창고만 · 사유 없이 `:putaway-temporary` 로 담는다', () => {
+    const now = new Date(2026, 10, 18, 10, 0);
+    const draft = toTemporaryLotDraft(
+      lot,
+      { warehouseId: 2, warehouseName: '원자재창고' },
+      now,
+      '900028',
+    );
+
+    expect(draft.path).toBe('/logistics/putaway-pending-lots/41:putaway-temporary');
+    expect(draft.body).toEqual({
+      warehouseId: 2,
+      businessDate: '2026-11-18',
+      occurredAt: now.toISOString(),
+    });
+    expect(draft.summary).toBe('RM-LOT-0103 → 원자재창고');
+    expect(draft.confirmation).toBe('pending');
   });
 });

@@ -116,3 +116,14 @@
   display: flex;
   gap: var(--space-2);
 }
+
+/* LOT 모드(피처 009) — 창고 한 줄에 이름과 지정 위치 수. */
+.temporary__warehouse {
+  display: flex;
+  flex-direction: column;
+}
+
+.temporary__receipt {
+  display: block;
+  color: var(--on-surface-muted);
+}

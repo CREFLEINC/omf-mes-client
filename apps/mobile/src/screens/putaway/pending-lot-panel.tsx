@@ -1,6 +1,7 @@
 import { AlertBanner, Icon, IconButton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 
 import { useBackStep } from '../../patterns/back-step';
 import { BottomActionBar } from '../../patterns/bottom-action-bar';
@@ -87,6 +88,7 @@ export interface PendingLotPanelProps {
  */
 export const PendingLotPanel = ({ found, workerNo, onClose, onRecorded }: PendingLotPanelProps) => {
   const failureText = useLoadFailure();
+  const navigate = useNavigate();
   const { enqueue, flush, isRejected } = useOutbox();
   const checkLocation = useCheckLocation();
   const lot = found.lot;
@@ -360,6 +362,13 @@ export const PendingLotPanel = ({ found, workerNo, onClose, onRecorded }: Pendin
               <span>{d.auto}</span>
             </p>
           }
+          /* 위치를 못 정하면 창고만 골라 임시 적치한다(M-01-07 LOT 모드, FR-020). */
+          secondary={{
+            label: messages.temporaryPutaway.lot.open,
+            onClick: () => {
+              void navigate('/temporary-putaway', { state: { pendingLot: found } });
+            },
+          }}
         />
       )}
     </>

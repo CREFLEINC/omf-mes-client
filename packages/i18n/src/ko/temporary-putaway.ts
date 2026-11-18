@@ -98,4 +98,25 @@ export const temporaryPutaway = {
   },
   noWorker: '사번을 먼저 확인하세요',
   done: '적치 화면으로',
+  /**
+   * 피처 009 — LOT 모드. M-01-05 의 적치 대기 LOT 화면 [임시 적치]가 LOT 을 넘겨 연다. 위치 없이 창고만 고르고,
+   * 사유를 받지 않으며, 그 창고의 「창고 전체」 자리로 입고한다(FR-020).
+   */
+  lot: {
+    /** M-01-05 LOT 화면의 단추. */
+    open: '임시 적치',
+    notice: '위치 없이 고른 창고의 「창고 전체」 위치로 입고합니다.',
+    warehouseLegend: '창고',
+    designatedCount: (count: string) => `지정 위치 ${count}곳`,
+    noDesignated: '이 품목 지정 위치 없음',
+    /** 불량 LOT 은 불량창고만 고른다(US4-4). */
+    defectOnly: '불량 LOT 은 불량창고만 고를 수 있습니다.',
+    none: '고를 수 있는 창고가 없습니다',
+    chosen: (warehouse: string, qty: string) => `${warehouse}, 창고 전체 위치에 ${qty}`,
+    locked: '창고를 고르면 진행합니다',
+    /** 등록 뒤 — LOT → 창고. */
+    row: (lotNo: string, warehouse: string, qty: string) =>
+      `${lotNo} → ${warehouse}, 창고 전체 ${qty}`,
+    receipt: (receiptNo: string) => `입고 ${receiptNo}`,
+  },
 } as const;

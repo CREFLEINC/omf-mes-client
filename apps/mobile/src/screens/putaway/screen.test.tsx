@@ -197,9 +197,14 @@ const SignedIn = ({ children }: { children: ReactNode }) => {
 /** 임시 적치 화면이 무엇을 받는지만 비춘다. 인계 내용은 DOM 에 남지 않는다. */
 const HandoffProbe = () => {
   const routed = useLocation();
-  const state = routed.state as { location?: unknown } | null;
+  const state = routed.state as { location?: unknown; pendingLot?: { lotNo?: string } } | null;
 
-  return <p>{state !== null && 'location' in state ? '위치 넘김' : '위치 안 넘김'}</p>;
+  return (
+    <>
+      <p>{state !== null && 'location' in state ? '위치 넘김' : '위치 안 넘김'}</p>
+      {state?.pendingLot === undefined ? null : <p>{`LOT 넘김 ${state.pendingLot.lotNo ?? ''}`}</p>}
+    </>
+  );
 };
 
 const mount = (
@@ -1385,6 +1390,16 @@ describe('적치 대기 LOT — 지시 없는 적치(피처 009)', () => {
 
     expect(await screen.findByText(messages.putaway.direct.designatedLegend)).toBeTruthy();
     expect(asked).toEqual([PENDING_NO]);
+  });
+
+  it('US4-1 LOT 화면의 [임시 적치]는 그 LOT 을 들고 임시 위치 적재(LOT 모드)로 간다', async () => {
+    const user = userEvent.setup();
+    mount([eligible()], { pendingLots: [pendingLot()] });
+    await openPending();
+
+    await user.click(screen.getByRole('button', { name: '임시 적치' }));
+
+    expect(await screen.findByText(`LOT 넘김 ${PENDING_NO}`)).toBeTruthy();
   });
 
   it('US1-3·US1-4·Q3 지정 위치를 스캔하면 단추 없이 `:putaway` 로 기록하고 목록을 다시 읽는다', async () => {
