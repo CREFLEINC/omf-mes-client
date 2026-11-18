@@ -1,3 +1,4 @@
+import { createLocalKey } from '../../../patterns/local-key';
 import { plantToday } from '../../../patterns/plant-time';
 import { useProductionLineReferenceQuery } from '../../production-plan/reference-queries';
 import { useRef, useState } from 'react';
@@ -61,7 +62,7 @@ export const ProposalPlanningWorkspace = ({
           .reduce((sum, p) => sum + Number(p.quantity || 0), 0),
     );
     if (!remaining) return;
-    const key = crypto.randomUUID();
+    const key = createLocalKey();
     onPlansChange([
       ...row.plans,
       {
@@ -334,7 +335,7 @@ export const ProposalPlanningWorkspace = ({
                   onPlansChange([
                     ...row.plans,
                     ...drafts.map((draft) => {
-                      const key = crypto.randomUUID();
+                      const key = createLocalKey();
                       const line = lines.find((line) => String(line.id) === draft.plannedLineId);
                       return {
                         ...structuredClone(original),
@@ -369,7 +370,7 @@ export const ProposalPlanningWorkspace = ({
                       plan.key !== entry.key
                         ? [plan]
                         : parts.map((part, index) => {
-                            const key = index === 0 ? original.key : crypto.randomUUID();
+                            const key = index === 0 ? original.key : createLocalKey();
                             return {
                               ...structuredClone(original),
                               key,

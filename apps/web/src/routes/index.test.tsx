@@ -203,7 +203,12 @@ const BackProbe = () => {
  * 라우트 표·셸·탐침을 한 벌로 태운다. **사이드바를 실제로 눌러** 이동을 재는 시험이 쓴다 —
  * 링크의 `href` 글자만 보면 그 주소가 라우트 표에 없어도 통과한다.
  */
-const renderRoutedApp = (route: string, routes: StubRoute[]): void => {
+const renderRoutedApp = (
+  route: string,
+  routes: StubRoute[],
+  /** 이탈 확인(`LeaveGuard` · `useBlocker`)을 쓰는 화면은 앱처럼 데이터 라우터로 띄운다 */
+  { dataRouter = false }: { dataRouter?: boolean } = {},
+): void => {
   renderWithProviders(
     <>
       <RoutedApp />
@@ -218,7 +223,7 @@ const renderRoutedApp = (route: string, routes: StubRoute[]): void => {
      * **조회로 받지 않고 심는다.** 조회로 받으면 판정이 끝날 때까지 한 틱을 「확인하는 중」에
      * 머물러, 이 파일의 시험 전부가 첫 렌더를 기다리는 모양으로 바뀐다.
      */
-    { fetch: createStubFetch(routes), route, session: SYNTHETIC_SESSION },
+    { fetch: createStubFetch(routes), route, session: SYNTHETIC_SESSION, dataRouter },
   );
 
   /*
@@ -296,6 +301,11 @@ const alarmRecipientRoutes = (): StubRoute[] => [
 const iqcInspectionRoutes = (): StubRoute[] => [
   /* 화면이 들어올 때 세션을 다시 읽는다(omf-all-around#104). */
   signedInRoute(SYNTHETIC_SESSION),
+  /* OA 공장 전용 화면이라 먼저 세션 공장이 OA 공장인지 본다 — 시험 세션의 공장(8401)을 OA 로 둔다. */
+  lookupRoute('/mdm/code-values', [{ code: 'OA-SYN', codeName: '합성 OA 공장' }]),
+  lookupRoute('/mdm/plants', [
+    { plantId: 8401, businessUnitId: 8301, plantCode: 'OA-SYN', plantName: '합성 OA 공장' },
+  ]),
   {
     match: (request) => isGet(request, '/quality/inspection-requests'),
     respond: () => jsonResponse(iqcQueueResponse()),
@@ -1167,7 +1177,7 @@ describe('appRouter — IQC 수입검사·판정의 진입 경로', () => {
    * 않으므로(탭 막대가 화면 이름을 말한다 · #185) 검사 대기 목록 구획으로 잰다.
    */
   it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
-    renderRoutedApp('/logistics/iqc-inspection', iqcInspectionRoutes());
+    renderRoutedApp('/logistics/iqc-inspection', iqcInspectionRoutes(), { dataRouter: true });
 
     expect(
       await screen.findByRole('region', { name: messages.iqcInspection.queue.heading }),
@@ -1185,7 +1195,7 @@ describe('appRouter — IQC 수입검사·판정의 진입 경로', () => {
    * 접근 이름에 실린 의뢰번호로 잰다.
    */
   it('첫 진입에 검사 대기 큐가 실제로 그려진다', async () => {
-    renderRoutedApp('/logistics/iqc-inspection', iqcInspectionRoutes());
+    renderRoutedApp('/logistics/iqc-inspection', iqcInspectionRoutes(), { dataRouter: true });
 
     expect(await screen.findByRole('button', { name: /IR-2026-0001/ })).toBeInTheDocument();
   });
