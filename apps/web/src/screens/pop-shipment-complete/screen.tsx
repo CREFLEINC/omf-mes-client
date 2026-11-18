@@ -287,7 +287,9 @@ export const PopShipmentCompleteScreen = () => {
       <div className="pop-action-bar">
         <div className="pop-action-note" id={barNoteId} aria-live="polite">
           {readyLead !== null ? (
-            <p className="field-note pop-ship-bar-ready">
+            /* ⚠ `field-note` 가 아니다 — POP 하단 안내 문장은 공통 규칙으로 숨지만(#291), 이 줄은 안내가 아니라
+               누르면 무엇이 일어나는지의 요약이다(시안 P0407-After 바닥 띠 · 검증 1회차). */
+            <p className="pop-ship-bar-ready">
               <Icon name="inventory" size={20} aria-hidden />
               <strong>{readyLead}</strong>
               <span aria-hidden="true">—</span>
