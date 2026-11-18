@@ -47,6 +47,7 @@ const location = (overrides: Partial<Location> = {}): Location => ({
   isLeaf: true,
   systemRoleCode: null,
   hasItemRestriction: false,
+  itemRestricted: false,
   isActive: true,
   ...overrides,
 });

@@ -27,6 +27,7 @@ const makeLocation = (
   isLeaf: true,
   systemRoleCode: null,
   hasItemRestriction: false,
+  itemRestricted: false,
 });
 
 const codesOf = (rows: { location: Location }[]): string[] =>

@@ -242,6 +242,7 @@ const locationResponse = (overrides: Partial<LocationResponse> = {}): LocationRe
   isLeaf: true,
   systemRoleCode: null,
   hasItemRestriction: false,
+  itemRestricted: false,
   ...overrides,
 });
 

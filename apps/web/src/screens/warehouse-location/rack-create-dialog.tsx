@@ -178,6 +178,7 @@ export const RackCreateDialog = ({
           isLeaf: true,
           systemRoleCode: null,
           hasItemRestriction: false,
+          itemRestricted: false,
         });
   /* 이미 만든 랙이면 새로 받은 목록에서 그 밑을 본다. 새 랙이면 밑이 비어 있다. */
   const plan =

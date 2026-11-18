@@ -318,6 +318,8 @@ const BASE_LOT: InboundLotProgress = {
   },
   goodsReceipt: null,
   putaway: null,
+  putawayModeCode: null,
+  putawayLocation: null,
   inboundLotId: null,
   inboundLotNo: null,
   package: null,

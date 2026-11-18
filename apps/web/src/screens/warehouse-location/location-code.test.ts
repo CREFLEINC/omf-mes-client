@@ -20,6 +20,7 @@ const location = (
   isLeaf: true,
   systemRoleCode,
   hasItemRestriction: false,
+  itemRestricted: false,
 });
 
 const staging = location(90, 'WH-SYS-STAGING', null, 'PUTAWAY_STAGING');

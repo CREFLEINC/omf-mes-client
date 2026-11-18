@@ -29,6 +29,7 @@ const created = (locationId: number, code: string, name = code): Location => ({
   isLeaf: true,
   systemRoleCode: null,
   hasItemRestriction: false,
+  itemRestricted: false,
 });
 
 const stockLocked = () =>

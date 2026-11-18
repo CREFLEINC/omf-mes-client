@@ -118,6 +118,7 @@ export const locationSeed = (
   isActive: true,
   isLeaf: true,
   hasItemRestriction: false,
+  itemRestricted: false,
   ...extra,
 });
 
