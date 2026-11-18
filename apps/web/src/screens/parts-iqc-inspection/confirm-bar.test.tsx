@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { formatPlantDateTime } from '../../patterns/plant-time';
 import { SessionProvider, type Session } from '../../patterns/session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { InboundDetail } from './inbound-detail';
@@ -101,6 +102,10 @@ const mount = (initial: InboundInspection, options: Options = {}) => {
   const sent: { path: string; body: unknown }[] = [];
   const path = (request: Request) => new URL(request.url).pathname;
   const fetch = createStubFetch([
+    {
+      match: (request) => request.method === 'GET' && path(request) === '/app/attachments',
+      respond: () => jsonResponse({ items: [] }),
+    },
     {
       match: (request) =>
         request.method === 'GET' && path(request) === '/quality/inspection-requests/501',
@@ -213,8 +218,9 @@ describe('W-01-01 판정 확정', () => {
     expect(dialog).toHaveTextContent('합격');
     expect(dialog).toHaveTextContent(`${tj.accepted} 2`);
     expect(dialog).toHaveTextContent(`${tj.lotRow}${tj.lotState.release}`);
-    for (const line of t.confirm.apply.ACCEPTED(2)) expect(dialog).toHaveTextContent(line);
-    /* IQC 는 [확정 취소]가 있어 「되돌릴 수 없음」 대신 IQC 안내를 낸다. */
+    /* 「확정 시 적용 사항」 구획은 두지 않는다(omf-all-around#296). */
+    expect(dialog).not.toHaveTextContent(tj.applyHeading);
+    /* IQC 는 [판정 수정]이 있어 「되돌릴 수 없음」 대신 IQC 안내를 낸다. */
     expect(dialog).toHaveTextContent(t.confirm.note);
     expect(dialog).not.toHaveTextContent(tj.irreversible);
     await user.click(within(dialog).getByRole('button', { name: tj.confirm }));
@@ -266,14 +272,13 @@ describe('W-01-01 판정 확정', () => {
     expect(onConfirmed).not.toHaveBeenCalled();
   });
 
-  it('불합격으로 확정하면 부적합 번호를 알린다 — LOT 상태 「불량」 · 적용 줄 셋', async () => {
+  it('불합격으로 확정하면 부적합 번호를 알린다 — LOT 상태 「불량」', async () => {
     const user = userEvent.setup();
     mount(base({ previewJudgmentCode: 'REJECTED', results: [result(1, 'REJECTED')] }));
 
     await user.click(await screen.findByRole('button', { name: t.confirm.open }));
     const dialog = await screen.findByRole('dialog', { name: tj.title });
     expect(dialog).toHaveTextContent(`${tj.lotRow}${tj.lotState.hold}`);
-    for (const line of t.confirm.apply.REJECTED(2)) expect(dialog).toHaveTextContent(line);
     await user.click(within(dialog).getByRole('button', { name: tj.confirm }));
 
     expect(await screen.findByText(t.confirm.doneRejected('TST-NC-0009'))).toBeInTheDocument();
@@ -331,13 +336,29 @@ describe('W-01-01 판정 확정', () => {
 describe('W-01-01 확정 취소', () => {
   it('US5-1 합격 확정 취소 — 확인 창 · 사유(선택) → `:cancel-confirm`, 뒤에는 결과를 다시 고칠 수 있다(SC-005)', async () => {
     const user = userEvent.setup();
-    const { sent } = mount(confirmedOf());
+    const { sent } = mount(
+      confirmedOf({
+        results: [
+          { ...result(1, 'ACCEPTED'), matchedLotIds: [1, 2] },
+          { ...result(2, 'ACCEPTED'), matchedLotIds: [2], inspectedAt: '2099-11-12T02:30:00Z' },
+        ],
+      }),
+    );
 
     await user.click(await screen.findByRole('button', { name: t.cancel.open }));
     const dialog = await screen.findByRole('dialog', { name: t.cancel.title });
     expect(dialog).toHaveTextContent(t.cancel.target('IL-20991111-0003'));
     expect(dialog).toHaveTextContent(t.cancel.lots(2));
     expect(dialog).toHaveTextContent(t.cancel.lotsTo);
+    /* 검사 결과는 그대로 · 적용 검사 회차와 그 검사 일시(omf-all-around#296). */
+    expect(dialog).toHaveTextContent(`${t.cancel.results(2)}${t.cancel.resultsTo}`);
+    expect(dialog).toHaveTextContent(
+      t.cancel.appliedValue(1, formatPlantDateTime('2099-11-11T01:00:00Z') ?? ''),
+    );
+    expect(dialog).toHaveTextContent(
+      t.cancel.appliedValue(2, formatPlantDateTime('2099-11-12T02:30:00Z') ?? ''),
+    );
+    expect(dialog).toHaveTextContent(t.cancel.keepNote);
     expect(dialog).toHaveTextContent(t.cancel.note);
     await user.type(within(dialog).getByLabelText(t.cancel.reason), '합성 사유');
     await user.click(within(dialog).getByRole('button', { name: t.cancel.proceed }));

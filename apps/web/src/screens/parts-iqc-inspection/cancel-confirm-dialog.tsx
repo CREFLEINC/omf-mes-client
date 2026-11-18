@@ -2,8 +2,10 @@ import { AlertBanner, Button, Dialog, Icon, TextArea } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { formatPlantDateTime } from '../../patterns/plant-time';
 import { FieldLabel } from '../iqc-inspection/field-label';
 import type { InboundInspection } from './inbound-queries';
+import { lotJudgmentsOf } from './lot-judgment';
 
 const t = messages.iqcInboundLot.cancel;
 
@@ -46,6 +48,16 @@ export const CancelConfirmDialog = ({
   const [reason, setReason] = useState('');
   const reasonId = useId();
   const inboundLotNo = inspection.inboundLotNo ?? inspection.inspectionRequestNo;
+  const results = inspection.results ?? [];
+  /* 적용 검사 — LOT 판정에 쓰인 회차(상세 표 「적용 검사」와 같은 값)와 그 검사 일시(사용자 지시 2026-11-18 · #296). */
+  const appliedSeqs = new Set(
+    lotJudgmentsOf(inspection).flatMap((each) =>
+      each.resultSeqNo === null ? [] : [each.resultSeqNo],
+    ),
+  );
+  const applied = results
+    .filter((result) => appliedSeqs.has(result.seqNo))
+    .sort((a, b) => a.seqNo - b.seqNo);
 
   return (
     <Dialog
@@ -79,6 +91,24 @@ export const CancelConfirmDialog = ({
               <strong>{t.lotsTo}</strong>
             </dd>
           </div>
+          <div className="iqc-cancel-confirm-change">
+            <dt>{t.results(results.length)}</dt>
+            <dd>
+              <strong>{t.resultsTo}</strong>
+            </dd>
+          </div>
+          {applied.length === 0 ? null : (
+            <div className="iqc-cancel-confirm-change">
+              <dt>{t.applied}</dt>
+              <dd className="iqc-cancel-confirm-applied">
+                {applied.map((result) => (
+                  <span key={result.inspectionResultId}>
+                    {t.appliedValue(result.seqNo, formatPlantDateTime(result.inspectedAt) ?? '-')}
+                  </span>
+                ))}
+              </dd>
+            </div>
+          )}
           {inspection.nonconformanceNo == null ? null : (
             <div className="iqc-cancel-confirm-change">
               <dt>{t.nonconformance(inspection.nonconformanceNo)}</dt>
@@ -88,6 +118,10 @@ export const CancelConfirmDialog = ({
             </div>
           )}
         </dl>
+        <p className="iqc-inspection-action-note" data-tone="info">
+          <Icon name="info" size={14} aria-hidden />
+          {t.keepNote}
+        </p>
         <p className="iqc-inspection-action-note" data-tone="info">
           <Icon name="info" size={14} aria-hidden />
           {t.note}

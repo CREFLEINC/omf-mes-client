@@ -24,6 +24,7 @@ import {
   useInboundRefresh,
   type InboundInspection,
 } from './inbound-queries';
+import { InboundAttachDialog, InboundAttachmentTable } from './inbound-attachments';
 import { InboundHistory } from './inbound-history';
 import { LotNo } from './lot-match-field';
 import { ResultDrawer, type ResultDrawerProps } from './result-drawer';
@@ -38,6 +39,7 @@ const tr = messages.iqcInboundLot.results;
 const td = messages.iqcInboundLot.drawer;
 const th = messages.iqcInboundLot.history;
 const ts = messages.iqcInboundLot.split;
+const ta = messages.iqcInboundLot.attachments;
 
 /** 부적합 처분 관리(W-03-10) — 불합격 확정 배너의 부적합 번호가 이 화면으로 간다. */
 const DISPOSITION_PATH = '/quality/dispositions';
@@ -119,6 +121,7 @@ export const InboundDetail = ({
   /* 상세 내용 · 변경 이력 탭(사용자 지시 2026-11-16 · omf-all-around#274). */
   const [tab, setTab] = useState<'detail' | 'history'>('detail');
   const [splitOpen, setSplitOpen] = useState(false);
+  const [attachOpen, setAttachOpen] = useState(false);
   const splitLockId = useId();
 
   if (query.isPending) return <p className="field-note">{t.loading}</p>;
@@ -210,10 +213,10 @@ export const InboundDetail = ({
         </span>
       ),
     },
-    /* 판정(예상) · 적용 검사 — LOT 마다 적용된(최신) 검사 회차와 그 판정(사용자 시안 2026-11-16 · #274). */
+    /* 판정 · 적용 검사 — LOT 마다 적용된(최신) 검사 회차와 그 판정(사용자 시안 2026-11-16 · #274). 확정 전에도 「판정」(#296). */
     {
       key: 'judgment',
-      header: confirmed ? t.columns.judgment : t.columns.judgmentPreview,
+      header: t.columns.judgment,
       render: (row) => {
         const judgment = lotJudgmentOf(row.lotId);
 
@@ -459,6 +462,16 @@ export const InboundDetail = ({
                         <span className="parts-iqc-muted">{tr.count(results.length)}</span>
                       </h3>
                       <span className="parts-iqc-footer-gap" />
+                      {/* 파일 첨부 — [검사 결과 추가] 왼쪽, 확정 뒤에도 붙일 수 있다(사용자 지시 2026-11-18 · omf-all-around#296). */}
+                      <Button
+                        variant="outlined"
+                        size="md"
+                        disabled={lots.length === 0}
+                        leadingIcon={<Icon name="attach_file" size={18} aria-hidden />}
+                        onClick={() => setAttachOpen(true)}
+                      >
+                        {ta.open}
+                      </Button>
                       {/* 확정 뒤에는 단추만 감춘다 — 확정은 위 배너가 알린다(omf-all-around#286). */}
                       {confirmed ? null : (
                         <Button
@@ -482,6 +495,7 @@ export const InboundDetail = ({
                         setDeleting(result);
                       }}
                     />
+                    <InboundAttachmentTable lots={lots} />
                   </section>
 
                   {/* 분리 · 판정 확정 단추는 상세 내용 맨 아래(사용자 지시 2026-11-16 · #274). */}
@@ -585,6 +599,14 @@ export const InboundDetail = ({
                     >
                       <p className="dialog-text">{tr.deleteBody}</p>
                     </Dialog>
+                  )}
+
+                  {attachOpen && (
+                    <InboundAttachDialog
+                      lots={lots}
+                      uomCode={uomCode}
+                      onClose={() => setAttachOpen(false)}
+                    />
                   )}
 
                   {splitOpen && (

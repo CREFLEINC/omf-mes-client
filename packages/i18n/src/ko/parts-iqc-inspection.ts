@@ -34,6 +34,9 @@ export const partsIqcInspection = {
     edit: '수정',
     version: '버전',
     versionNo: (no: number) => `${String(no)}판`,
+    /** 검사 회차(사용자 지시 2026-11-18 · omf-all-around#296) — 결과 창에서 열 때만. */
+    seq: '검사 회차',
+    seqNo: (no: number) => `${String(no)}회차`,
     facts: {
       planCode: '기준서 코드',
       planName: '모델명',

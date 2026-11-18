@@ -62,14 +62,14 @@ export const iqcInboundLot = {
       /* 판정 확정된 의뢰의 상태는 「완료」(사용자 지시 2026-11-16 · #274). */
       CONFIRMED: '완료',
     },
-    noPermission: '판정 확정·확정 취소는 확정 권한(W-01-15)이 있는 사람이 합니다', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
+    noPermission: '판정 확정·판정 수정은 확정 권한(W-01-15)이 있는 사람이 합니다', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
     columns: {
       lotNo: 'LOT 번호',
       qty: '수량',
       status: '품질 상태',
       /* LOT 마다 적용된(최신) 검사 회차와 그 판정(사용자 시안 2026-11-16 · #274). */
+      /* 확정 전에도 「판정」(「판정(예상)」에서 정정 · omf-all-around#296). */
       judgment: '판정',
-      judgmentPreview: '판정(예상)',
       applied: '적용 검사',
     },
     noJudgment: '미판정',
@@ -101,7 +101,7 @@ export const iqcInboundLot = {
           : `자재 관리 LOT ${count}개가 모두 불량 처리되었습니다. 부적합 ${ncNo}에서 후속 처분을 진행하세요.`,
       ncOpen: '부적합 처분 관리로 이동',
       heldTitle: '검사 보류 확정',
-      held: '자재 관리 LOT는 검사 대기로 남습니다. 다시 검사하려면 확정 취소 후 검사 결과를 추가하세요.',
+      held: '자재 관리 LOT는 검사 대기로 남습니다. 다시 검사하려면 판정 수정 후 검사 결과를 추가하세요.',
     },
     pick: '검사 의뢰를 선택하세요.',
     loadFailed: '검사 의뢰를 불러오지 못했습니다.',
@@ -238,6 +238,36 @@ export const iqcInboundLot = {
     loadFailed: '변경 이력을 불러오지 못했습니다.',
     close: '닫기',
   },
+  /**
+   * 검사 결과 상자의 파일 첨부(사용자 지시 2026-11-18 · omf-all-around#296) — [파일 첨부] → 연결할 자재 관리 LOT 고르기 → [저장].
+   * 파일은 고른 LOT 마다 붙고(서버 첨부 대상은 LOT), 표는 이 입하 LOT 의 LOT 첨부를 파일 하나에 한 줄로 모은다.
+   */
+  attachments: {
+    open: '파일 첨부',
+    title: '파일 첨부',
+    fileHeading: '첨부할 파일',
+    pick: '파일 선택',
+    removeFile: (name: string) => `${name} 제거`,
+    fileRequired: '첨부할 파일을 고르세요',
+    lotHeading: '연결할 자재 관리 LOT',
+    lotRequired: '자재 관리 LOT를 1개 이상 고르세요',
+    cancel: '취소',
+    save: '저장',
+    saved: (count: number) => `파일 ${count}개를 첨부했습니다.`,
+    failed: '일부 파일을 올리지 못했습니다. 다시 저장하면 남은 것만 올립니다.',
+    tableTitle: '첨부 파일',
+    count: (count: number) => `(${count}건)`,
+    columns: {
+      fileName: '파일명',
+      lots: '연결 LOT',
+      size: '크기',
+      uploadedAt: '등록 일시',
+    },
+    empty: '첨부한 파일이 없습니다.',
+    loadFailed: '첨부 파일을 불러오지 못했습니다.',
+    download: (name: string) => `${name} 내려받기`,
+    downloadFailed: '파일을 내려받지 못했습니다. 다시 시도하세요.',
+  },
   /** 자재 관리 LOT 분리 창(권한 W-01-01 · 확정 전만 · T092 · T093). */
   split: {
     open: '자재 관리 LOT 분리',
@@ -290,19 +320,11 @@ export const iqcInboundLot = {
     /** 재작업으로 다시 연 뒤 새 결과가 없다(G2 L2). */
     lockedNoNewResult: '다시 열린 검사입니다. 새 결과를 1건 이상 기록하세요',
     lockedNoJudgment: '판정이 없는 결과가 있습니다',
-    /** 확인 창은 PQC · OQC 와 같은 `JudgmentConfirmDialog` — 「확정 시 적용 사항」 줄과 안내 글만 IQC 것을 준다. */
-    apply: {
-      ACCEPTED: (count: number) => [
-        `자재 관리 LOT ${count}개 전부 → 정상 (검사 대기 보류 해제, 입고 가능)`,
-      ],
-      REJECTED: (count: number) => [
-        `자재 관리 LOT ${count}개 전부 → 불량`,
-        '부적합 1건(판정 대기)에 자재 관리 LOT 전부를 담습니다',
-        '불합격 알림을 보냅니다',
-      ],
-      HELD: (count: number) => [`자재 관리 LOT ${count}개 → 검사 대기 유지(보류)`],
-    },
-    note: '확정하면 결과를 고치거나 더하거나 지울 수 없습니다. 잘못 확정했으면 [확정 취소]로 되돌립니다(입고·처분 전까지).', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
+    /**
+     * 확인 창은 PQC · OQC 와 같은 `JudgmentConfirmDialog` — 안내 글만 IQC 것을 준다. 「확정 시 적용 사항」 구획은 두지 않는다
+     * (사용자 지시 2026-11-18 · omf-all-around#296).
+     */
+    note: '확정 후 확정 취소로 수정할 수 있습니다.', // ui-check-ignore: C-13 사용자 지정 문구(omf-all-around#296)
     doneRejected: (ncNo: string | null) =>
       ncNo === null
         ? '불합격으로 확정했습니다. 부적합이 생겼습니다.'
@@ -311,12 +333,13 @@ export const iqcInboundLot = {
     conflict: '이미 바뀌었습니다',
     reload: '다시 불러오기',
     failed: '판정을 확정하지 못했습니다.',
-    noPermission: '판정 확정·확정 취소는 확정 권한(W-01-15)이 있는 사람이 합니다', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
+    noPermission: '판정 확정·판정 수정은 확정 권한(W-01-15)이 있는 사람이 합니다', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
   },
   cancel: {
-    open: '확정 취소',
+    /* 단추 이름 「확정 취소」 → 「판정 수정」(사용자 지시 2026-11-18 · omf-all-around#296). 서버 동작(:cancel-confirm)은 같다. */
+    open: '판정 수정',
     /* 확인 창(사용자 시안 2026-11-17 · omf-all-around#286) — 질문 제목 · 대상 · 「취소 시 변경 사항」 상자 · 안내 한 줄. */
-    title: '판정 확정을 취소하시겠습니까?',
+    title: '판정을 수정하시겠습니까?',
     target: (inboundLotNo: string) => `대상: ${inboundLotNo}`,
     changesHeading: '취소 시 변경 사항',
     lots: (count: number) => `자재 관리 LOT ${count}개`,
@@ -324,14 +347,20 @@ export const iqcInboundLot = {
     lotsTo: '검사 대기 · 보류', // ui-check-ignore: C-13 사용자 시안 표기(omf-all-around#286)
     nonconformance: (ncNo: string) => `부적합 ${ncNo}`,
     nonconformanceTo: '취소 상태로 변경',
+    /* 검사 결과 · 적용 검사 일시 줄(사용자 지시 2026-11-18 · omf-all-around#296) — 결과는 지워지지 않고 그대로 남는다. */
+    results: (count: number) => `검사 결과 ${count}건`,
+    resultsTo: '그대로 유지',
+    applied: '적용 검사',
+    appliedValue: (seqNo: number, when: string) => `${seqNo}회차 (${when})`,
+    keepNote: '판정을 수정해도 검사 결과는 그대로 남습니다.',
     note: '취소 후 결과를 수정하고 다시 확정할 수 있습니다. 기존 확정 내역은 변경 이력에 남으며, 발송된 알림은 취소되지 않습니다.',
     reason: '취소 사유 (선택)',
     reasonPlaceholder: '취소 사유를 입력해 주세요.',
     back: '유지하기',
-    proceed: '확정 취소',
+    proceed: '판정 수정',
     done: '판정 확정을 취소했습니다. 결과를 다시 고칠 수 있습니다.',
-    blockedTitle: '확정을 취소할 수 없습니다',
-    blockedLead: '아래 일이 이미 진행되어 판정 확정을 되돌릴 수 없습니다.',
+    blockedTitle: '판정을 수정할 수 없습니다',
+    blockedLead: '아래 일이 이미 진행되어 판정을 수정할 수 없습니다.',
     blockedTail:
       '입고를 취소하거나 상태 변경을 되돌린 뒤 다시 시도하세요. 불합격 건의 처분·특채가 시작됐으면 W-03-10 에서 처리합니다.', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
     blockedOk: '확인',

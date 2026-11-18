@@ -14,6 +14,8 @@ export interface LotMatchFieldProps {
   uomCode: string;
   value: readonly number[];
   disabled?: boolean;
+  /** 머리 글 — 기본 「자재 관리 LOT 매칭」. 파일 첨부 창은 「연결할 자재 관리 LOT」(omf-all-around#296). */
+  heading?: string;
   /** 「자재 관리 LOT를 1개 이상 고르세요」 — [저장]을 눌렀는데 비었을 때. */
   error?: string | null;
   onChange: (next: number[]) => void;
@@ -42,6 +44,7 @@ export const LotMatchField = ({
   otherResults,
   uomCode,
   value,
+  heading = t.matchHeading,
   disabled = false,
   error = null,
   onChange,
@@ -49,7 +52,7 @@ export const LotMatchField = ({
   <section className="parts-iqc-card iqc-inbound-match" aria-labelledby="iqc-inbound-match-head">
     <div className="parts-iqc-block-head">
       <h3 id="iqc-inbound-match-head" className="parts-iqc-sub-title">
-        {t.matchHeading}{' '}
+        {heading}{' '}
         <span className="required-mark" aria-hidden="true">
           *
         </span>

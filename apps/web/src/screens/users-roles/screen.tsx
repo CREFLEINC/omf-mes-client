@@ -9,11 +9,13 @@ import {
 } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
+import { sessionKeys } from '../../patterns/session';
 import { lookupLabel, selectableOptions } from './code-options';
 import { DeactivateDialog } from './deactivate-dialog';
 import {
@@ -211,6 +213,14 @@ export const UsersRolesScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
   const { client } = useApiClient();
+  const queryClient = useQueryClient();
+  /*
+   * 역할 · 데이터 범위를 바꾸면 지금 로그인한 세션(권한 · 공장 범위)을 다시 읽는다 — 자기 계정을 바꿨을 때 새로고침 없이 화면
+   * (IQC 탭의 OA · 부품 화면 고르기 등)이 바로 따라온다(사용자 지시 2026-11-18 · omf-all-around#296).
+   */
+  const refreshSession = (): void => {
+    void queryClient.refetchQueries({ queryKey: sessionKeys.current });
+  };
 
   const tab = resolveTab(searchParams.get('tab'));
   const isUsersTab = tab.id === 'users';
@@ -695,6 +705,7 @@ export const UsersRolesScreen = () => {
       const next = toRoleAssignDraft(saved.items);
       setRoleAssignState({ source: saved, baseline: next, selected: next });
       toast.show({ variant: 'success', description: messages.common.saved });
+      refreshSession();
     },
   });
 
@@ -720,6 +731,7 @@ export const UsersRolesScreen = () => {
       const next = toDataScopeDrafts(saved.items);
       setDataScopeState({ source: saved, baseline: next, drafts: next });
       toast.show({ variant: 'success', description: messages.common.saved });
+      refreshSession();
     },
   });
 

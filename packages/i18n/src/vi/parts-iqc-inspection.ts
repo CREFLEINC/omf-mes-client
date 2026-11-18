@@ -37,6 +37,8 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     edit: 'Sửa',
     version: 'Phiên bản',
     versionNo: (no: number) => `Bản ${String(no)}`,
+    seq: 'Lần kiểm tra',
+    seqNo: (no: number) => `Lần ${String(no)}`,
     facts: {
       planCode: 'Mã tiêu chuẩn',
       planName: 'Tên model',

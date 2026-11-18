@@ -107,7 +107,6 @@ export const ConfirmActions = ({
 
   const versionNo = inspection.versionNo ?? 0;
   const results = inspection.results ?? [];
-  const lotCount = (inspection.lots ?? []).length;
   const preview = inspection.previewJudgmentCode ?? null;
   const lock = confirmLockOf(inspection);
   const count = (code: string) =>
@@ -243,14 +242,8 @@ export const ConfirmActions = ({
             rejected: String(count('REJECTED')),
             held: String(count('HELD')),
           }}
-          applyLines={
-            preview === 'REJECTED'
-              ? t.apply.REJECTED(lotCount)
-              : preview === 'HELD'
-                ? t.apply.HELD(lotCount)
-                : t.apply.ACCEPTED(lotCount)
-          }
           note={t.note}
+          className="iqc-judgment-confirm"
           isSaving={busy}
           onClose={() => setAsking(null)}
           onConfirm={() => void confirm()}

@@ -37,11 +37,11 @@ const t = messages.inspectionDocuments;
 /** 서버와 같은 한도(`MAX_ATTACHMENT_BYTES`). 넘으면 보내기 전에 막아 10MB 를 올리고 나서야 거절받지 않게 한다. */
 const MAX_BYTES = 10 * 1024 * 1024;
 /** 고르는 창의 거름 — 정본 판정은 서버(파일 머리 바이트)다. */
-const ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.xlsx,.xls,.docx,.doc,.pptx,.ppt,.csv,.txt';
+export const ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.xlsx,.xls,.docx,.doc,.pptx,.ppt,.csv,.txt';
 const ACCEPTED_EXTENSIONS = ACCEPT.split(',');
 
 /** 고르는 시점의 사전 검사 — 통과하면 `null`. 서버가 머리 바이트로 다시 판정한다. */
-const precheck = (file: File): string | null => {
+export const precheck = (file: File): string | null => {
   const dot = file.name.lastIndexOf('.');
   const extension = dot < 0 ? '' : file.name.slice(dot).toLowerCase();
   if (!ACCEPTED_EXTENSIONS.includes(extension)) return t.unsupported;
@@ -49,10 +49,10 @@ const precheck = (file: File): string | null => {
   return null;
 };
 
-const sizeText = (bytes: number): string =>
+export const sizeText = (bytes: number): string =>
   bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB`;
 
-const formatAt = (iso: string): string => {
+export const formatAt = (iso: string): string => {
   const at = new Date(iso);
   const pad = (n: number): string => String(n).padStart(2, '0');
   return `${String(at.getFullYear())}-${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}:${pad(at.getMinutes())}`;

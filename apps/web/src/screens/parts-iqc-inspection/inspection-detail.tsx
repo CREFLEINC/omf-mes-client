@@ -665,6 +665,8 @@ const SkippedSummary = (props: {
 
 /** 결과 드로어 모드(005 새 흐름). */
 export interface InspectionFormDrawer {
+  /** 이 결과의 검사 회차 — 검사 기준 상세 창에 보인다(사용자 지시 2026-11-18 · omf-all-around#296). */
+  seqNo: number;
   /** 고른 자재 관리 LOT — 저장 때 `matchedLotIds` 로 싣는다. */
   matchedLotIds: number[];
   /** 매칭 칸 · 재검 사유 칸(드로어가 그린다). */
@@ -1144,6 +1146,7 @@ const InspectionForm = (props: FormProps) => {
           itemParts={props.itemParts}
           version={version}
           specs={specs}
+          {...(props.drawer == null ? {} : { seqNo: props.drawer.seqNo })}
           drawings={<DrawingImages drawings={props.drawings} />}
           onClose={() => setPlanOpen(false)}
         />

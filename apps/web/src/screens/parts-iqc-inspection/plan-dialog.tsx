@@ -20,6 +20,8 @@ export interface PlanDialogProps {
   itemParts: { code: string; name: string } | null;
   version: PlanVersion;
   specs: ItemSpec[];
+  /** 검사 회차 — 입하 LOT 결과 창에서 열면 그 회차를 보인다(사용자 지시 2026-11-18 · omf-all-around#296). */
+  seqNo?: number;
   /** 기준서 도면 — 검사 화면과 같은 그림을 그대로 보인다. */
   drawings: React.ReactNode;
   onClose: () => void;
@@ -36,6 +38,7 @@ export const PlanDialog = ({
   itemParts,
   version,
   specs,
+  seqNo,
   drawings,
   onClose,
 }: PlanDialogProps) => {
@@ -56,6 +59,7 @@ export const PlanDialog = ({
     { label: t.plan.facts.planCode, value: planCode },
     { label: t.plan.facts.planName, value: planName },
     { label: t.plan.version, value: t.plan.versionNo(version.planVersion) },
+    ...(seqNo === undefined ? [] : [{ label: t.plan.seq, value: t.plan.seqNo(seqNo) }]),
     {
       label: t.target.itemName,
       value: itemParts?.name ?? '-',

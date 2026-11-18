@@ -1,0 +1,381 @@
+import {
+  AlertBanner,
+  Button,
+  Dialog,
+  Icon,
+  IconButton,
+  Table,
+  useToast,
+  type Column,
+} from '@crefle/web-ui';
+import {
+  createIdempotencyKey,
+  type components,
+  type InspectionLotForward,
+  type paths,
+} from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
+import { useRef, useState, type ChangeEvent } from 'react';
+
+import { useApiClient } from '../../patterns/api-context';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useColumnWidths } from '../../patterns/column-resize';
+import { runRequest } from '../../patterns/request';
+import {
+  ACCEPT,
+  attachmentKeys,
+  formatAt,
+  precheck,
+  sizeText,
+} from '../inspection-documents/attachment-panel';
+import { LotMatchField, LotNo } from './lot-match-field';
+
+type Attachment = components['schemas']['Attachment'];
+type AttachmentUpload = NonNullable<
+  Parameters<ReturnType<typeof useApiClient>['client']['POST']>[1]
+>['body'];
+
+const t = messages.iqcInboundLot.attachments;
+const td = messages.inspectionDocuments;
+
+/** 같은 파일을 여러 LOT 에 붙이면 LOT 마다 첨부가 하나씩 생긴다 — 표에서는 파일 하나를 한 줄로 모은다. */
+interface FileRow {
+  key: string;
+  first: Attachment;
+  lotNos: string[];
+}
+
+const fileKeyOf = (row: Attachment): string =>
+  [
+    row.fileName,
+    String(row.byteSize),
+    String(row.uploadedBy ?? ''),
+    row.uploadedAt.slice(0, 16),
+  ].join('|');
+
+/** 이 입하 LOT 의 자재 관리 LOT 첨부 전부 — LOT 마다 같은 캐시(`attachmentKeys`)를 쓴다. */
+const useLotAttachments = (lots: readonly InspectionLotForward[]) => {
+  const { client } = useApiClient();
+  const queries = useQueries({
+    queries: lots.map((lot) => ({
+      queryKey: attachmentKeys.list('LOT', lot.lotId),
+      queryFn: () =>
+        runRequest(() =>
+          client.GET('/app/attachments', {
+            params: { query: { targetTypeCode: 'LOT', targetId: lot.lotId } },
+          }),
+        ).then((response) => response.items),
+    })),
+  });
+  const rows = new Map<string, FileRow>();
+  queries.forEach((query, index) => {
+    const lot = lots[index];
+    if (lot === undefined) return;
+    for (const item of query.data ?? []) {
+      const key = fileKeyOf(item);
+      const row = rows.get(key);
+      if (row === undefined) rows.set(key, { key, first: item, lotNos: [lot.lotNo] });
+      else if (!row.lotNos.includes(lot.lotNo)) row.lotNos.push(lot.lotNo);
+    }
+  });
+
+  return {
+    rows: [...rows.values()].sort((a, b) => b.first.uploadedAt.localeCompare(a.first.uploadedAt)),
+    isPending: queries.some((query) => query.isPending),
+    isError: queries.some((query) => query.isError),
+  };
+};
+
+/**
+ * 검사 결과 상자의 첨부 파일 표(사용자 지시 2026-11-18 · omf-all-around#296) — 파일명 · 연결 LOT · 크기 · 등록 일시,
+ * 파일명 옆 단추로 내려받는다. 열 폭 끌기 · 순서 바꾸기는 다른 표와 같다.
+ */
+export const InboundAttachmentTable = ({ lots }: { lots: readonly InspectionLotForward[] }) => {
+  const { client } = useApiClient();
+  const list = useLotAttachments(lots);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const download = async (row: Attachment): Promise<void> => {
+    setNotice(null);
+    try {
+      const blob = (await runRequest(() =>
+        client.GET('/app/attachments/{attachmentId}/content', {
+          params: { path: { attachmentId: row.attachmentId } },
+          parseAs: 'blob',
+        }),
+      )) as Blob;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = row.fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setNotice(t.downloadFailed);
+    }
+  };
+
+  const baseColumns: Column<FileRow>[] = [
+    {
+      key: 'fileName',
+      header: t.columns.fileName,
+      width: '280px',
+      render: (row) => (
+        <span className="inspection-documents-file-cell">
+          <span className="iqc-inbound-attach-name" title={row.first.fileName}>
+            {row.first.fileName}
+          </span>
+          <IconButton
+            icon="download"
+            size="sm"
+            aria-label={t.download(row.first.fileName)}
+            title={t.download(row.first.fileName)}
+            onClick={() => void download(row.first)}
+          />
+        </span>
+      ),
+    },
+    {
+      key: 'lots',
+      header: t.columns.lots,
+      width: '220px',
+      align: 'center',
+      render: (row) => (
+        <span className="iqc-inbound-attach-lots">
+          {row.lotNos.map((lotNo) => (
+            <LotNo key={lotNo} lotNo={lotNo} />
+          ))}
+        </span>
+      ),
+    },
+    {
+      key: 'size',
+      header: t.columns.size,
+      width: '96px',
+      align: 'center',
+      render: (row) => sizeText(row.first.byteSize),
+    },
+    {
+      key: 'uploadedAt',
+      header: t.columns.uploadedAt,
+      width: '150px',
+      align: 'center',
+      render: (row) => formatAt(row.first.uploadedAt),
+    },
+  ];
+  const ordered = useColumnOrder('omf-mes:iqc-inbound-attachments:columns:order', baseColumns);
+  const resizable = useColumnWidths('omf-mes:iqc-inbound-attachments:columns', ordered);
+  const fit = useFitColumns(resizable.columns, {});
+
+  return (
+    <div className="iqc-inbound-attachments">
+      <h4 className="parts-iqc-sub-title">
+        {t.tableTitle} <span className="parts-iqc-muted">{t.count(list.rows.length)}</span>
+      </h4>
+      {list.isError ? (
+        <p className="field-note">{t.loadFailed}</p>
+      ) : (
+        <div ref={fit.ref} className="inspection-queue-table" style={resizable.style}>
+          <Table
+            caption={t.tableTitle}
+            density="compact"
+            columns={fit.columns}
+            rows={list.rows}
+            getRowId={(row) => row.key}
+            empty={<p className="field-note">{list.isPending ? td.loading : t.empty}</p>}
+          />
+        </div>
+      )}
+      {notice === null ? null : <p className="field-note">{notice}</p>}
+    </div>
+  );
+};
+
+/**
+ * [파일 첨부] 창(사용자 지시 2026-11-18 · omf-all-around#296) — 파일을 고르고 연결할 자재 관리 LOT 를 골라 [저장]. 파일 하나를 고른
+ * LOT 마다 붙인다(서버는 요청 하나에 파일 하나 · 대상 하나). 중간에 실패하면 올라간 것은 기억해 다시 [저장]할 때 남은 것만 보낸다.
+ */
+export const InboundAttachDialog = ({
+  lots,
+  uomCode,
+  onClose,
+}: {
+  lots: readonly InspectionLotForward[];
+  uomCode: string;
+  onClose: () => void;
+}) => {
+  const { client } = useApiClient();
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  /* 처음에는 LOT 전부 — 성적서 하나에 모든 LOT 결과가 담기는 경우가 많다. */
+  const [lotIds, setLotIds] = useState<number[]>(lots.map((lot) => lot.lotId));
+  const [tried, setTried] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [failed, setFailed] = useState(false);
+  /* 이미 올라간 「파일 · LOT」 짝 — 다시 저장할 때 건너뛴다. */
+  const sent = useRef(new Set<string>());
+
+  const fileId = (file: File): string =>
+    `${file.name}-${String(file.size)}-${String(file.lastModified)}`;
+
+  const pick = (event: ChangeEvent<HTMLInputElement>): void => {
+    const picked = Array.from(event.target.files ?? []);
+    event.target.value = '';
+    setFiles((prev) => [
+      ...prev,
+      ...picked.filter((file) => !prev.some((each) => fileId(each) === fileId(file))),
+    ]);
+  };
+
+  const fileError = tried && files.length === 0 ? t.fileRequired : null;
+  const lotError = tried && lotIds.length === 0 ? t.lotRequired : null;
+  const hasPrecheckError = files.some((file) => precheck(file) !== null);
+
+  const save = async (): Promise<void> => {
+    setTried(true);
+    if (files.length === 0 || lotIds.length === 0 || hasPrecheckError) return;
+    setSaving(true);
+    setFailed(false);
+    let ok = true;
+    for (const file of files) {
+      for (const lotId of lotIds) {
+        const key = `${fileId(file)}@${String(lotId)}`;
+        if (sent.current.has(key)) continue;
+        const form = new FormData();
+        form.append('targetTypeCode', 'LOT');
+        form.append('targetId', String(lotId));
+        form.append('file', file);
+        const result = await client.POST('/app/attachments', {
+          params: { header: { 'Idempotency-Key': createIdempotencyKey() } },
+          body: form as unknown as AttachmentUpload,
+        });
+        if (result.error !== undefined) {
+          ok = false;
+          break;
+        }
+        sent.current.add(key);
+      }
+      if (!ok) break;
+    }
+    await Promise.all(
+      lots.map((lot) =>
+        queryClient.invalidateQueries({ queryKey: attachmentKeys.list('LOT', lot.lotId) }),
+      ),
+    );
+    setSaving(false);
+    if (!ok) {
+      setFailed(true);
+      return;
+    }
+    toast.show({ variant: 'success', description: t.saved(files.length) });
+    onClose();
+  };
+
+  return (
+    <Dialog
+      open
+      size="md"
+      showCloseButton={false}
+      closeOnBackdropClick={false}
+      title={t.title}
+      onClose={() => {
+        if (!saving) onClose();
+      }}
+      footer={
+        <>
+          <Button variant="outlined" disabled={saving} onClick={onClose}>
+            {t.cancel}
+          </Button>
+          <Button loading={saving} disabled={hasPrecheckError} onClick={() => void save()}>
+            {t.save}
+          </Button>
+        </>
+      }
+    >
+      <div className="iqc-inbound-attach-dialog">
+        <section className="parts-iqc-card" aria-labelledby="iqc-inbound-attach-files">
+          <div className="parts-iqc-block-head">
+            <h3 id="iqc-inbound-attach-files" className="parts-iqc-sub-title">
+              {t.fileHeading}{' '}
+              <span className="required-mark" aria-hidden="true">
+                *
+              </span>
+            </h3>
+            <span className="parts-iqc-footer-gap" />
+            <Button
+              variant="outlined"
+              size="sm"
+              disabled={saving}
+              leadingIcon={<Icon name="attach_file" size={16} aria-hidden />}
+              onClick={() => inputRef.current?.click()}
+            >
+              {t.pick}
+            </Button>
+          </div>
+          <p className="field-note">{td.help}</p>
+          {files.length === 0 ? null : (
+            <div
+              className="inspection-documents-selected-list"
+              role="group"
+              aria-label={t.fileHeading}
+            >
+              {files.map((file) => {
+                const error = precheck(file);
+                return (
+                  <div className="inspection-documents-selected" key={fileId(file)}>
+                    <span className="inspection-documents-selected-name" title={file.name}>
+                      {file.name}
+                    </span>
+                    <span className="inspection-documents-selected-size">
+                      {sizeText(file.size)}
+                    </span>
+                    <IconButton
+                      icon="delete"
+                      size="md"
+                      aria-label={t.removeFile(file.name)}
+                      title={t.removeFile(file.name)}
+                      disabled={saving}
+                      onClick={() =>
+                        setFiles((prev) => prev.filter((each) => fileId(each) !== fileId(file)))
+                      }
+                    />
+                    {error === null ? null : <span className="field-error">{error}</span>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {fileError === null ? null : (
+            <p className="field-error" role="alert">
+              {fileError}
+            </p>
+          )}
+          <input
+            ref={inputRef}
+            type="file"
+            accept={ACCEPT}
+            multiple
+            hidden
+            aria-label={t.pick}
+            onChange={pick}
+          />
+        </section>
+        <LotMatchField
+          lots={lots}
+          otherResults={[]}
+          uomCode={uomCode}
+          value={lotIds}
+          heading={t.lotHeading}
+          disabled={saving}
+          error={lotError}
+          onChange={setLotIds}
+        />
+        {failed ? <AlertBanner variant="error">{t.failed}</AlertBanner> : null}
+      </div>
+    </Dialog>
+  );
+};
