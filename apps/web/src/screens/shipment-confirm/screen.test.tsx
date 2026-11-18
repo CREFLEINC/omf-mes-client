@@ -211,7 +211,7 @@ describe('ShipmentConfirmScreen — W-04-12 출하 내역', () => {
     expect(dialog).toHaveTextContent(t.cancelDialog.hold);
     expect(dialog).toHaveTextContent(t.cancelDialog.whatTitle);
     expect(dialog).toHaveTextContent(
-      t.cancelDialog.what.stock(110, '합성 완제품 창고 A, 합성 완제품 창고 B'),
+      t.cancelDialog.what.stock(110, '합성 완제품 창고 A 60, 합성 완제품 창고 B 50'),
     );
     expect(dialog).toHaveTextContent(t.cancelDialog.what.request('SYN-SR-3001'));
 

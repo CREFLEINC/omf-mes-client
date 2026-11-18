@@ -206,8 +206,14 @@ export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) 
             flowOf(selected) === 'completed'
               ? {
                   qty: selected.totalQty,
-                  warehouses: selected.warehouses.map((w) => w.warehouseName).join(', '),
-                  shipmentRequestNo: detail.data?.shipmentRequestNo ?? null,
+                  /* 창고마다 빠진 수량을 함께 적는다(시안 「완제품 창고 A 90, B 70」) — 모르면 이름만. */
+                  warehouses: selected.warehouses
+                    .map((w) =>
+                      w.qty === null ? w.warehouseName : `${w.warehouseName} ${String(w.qty)}`,
+                    )
+                    .join(', '),
+                  shipmentRequestNo:
+                    selected.shipmentRequestNo ?? detail.data?.shipmentRequestNo ?? null,
                 }
               : null
           }
