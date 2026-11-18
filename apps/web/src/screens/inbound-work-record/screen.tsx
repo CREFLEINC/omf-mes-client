@@ -28,8 +28,6 @@ const daysBefore = (date: string, days: number): string => {
 };
 
 const viewName = (view: View): string => t.views[view];
-const viewHint = (view: View): string =>
-  view === 'ready' ? t.views.readyHint : view === 'prog' ? t.views.progHint : t.views.finalHint;
 
 /**
  * W-01-16 입하/입고 작업 기록(005 · omf-all-around#254 · screens/W-01-16.md · 시안 W0116-After). 「구매 / 자재 관리 ›
@@ -202,7 +200,6 @@ export const InboundWorkRecordScreen = () => {
           content: null,
         }))}
       />
-      <p className="field-note">{viewHint(view)}</p>
       {table()}
 
       {openId !== null && finalizing === null && (

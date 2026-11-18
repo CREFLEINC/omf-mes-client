@@ -205,8 +205,11 @@ export const inboundSchedule = {
     listExpand: '초과분 목록 펼치기',
     /** 목록 이름 — 연결할 초과분만 보인다(연결한 것은 아직 보이지 않는다 · 사용자 결정 2026-10-27). */
     listTitle: '미연결 초과분',
-    /** 005 — 이 탭은 이전 데이터(`PER_RECEIPT`)만 다룬다. 새 흐름의 P/O 없음은 W-01-16 에서 매칭한다. */
-    newFlowNotice: '새 흐름 입하의 P/O 없음은 입하/입고 작업 기록(W-01-16)에서 매칭합니다.',
+    /**
+     * 005 — 이 탭은 이전 데이터(`PER_RECEIPT`)만 다룬다. 새 흐름의 P/O 없음은 W-01-16 에서 매칭한다 — 화면에는 「새 흐름」 ·
+     * 화면 코드 같은 개발 낱말을 적지 않는다(사용자 지시 2026-11-18). 뒤에 그 화면 링크가 붙는다.
+     */
+    newFlowNotice: '입하 LOT의 P/O 없음 수량 매칭:',
     newFlowLink: '입하/입고 작업 기록',
     table: {
       receiptNo: '입하번호',
@@ -308,14 +311,6 @@ export const inboundSchedule = {
     /** 발주 머리의 「진행」 — 묶음마다 「검사 대기 1」을 「·」로 잇는다. */
     summarySeparator: ' · ',
   },
-  /**
-   * 입하 등록 자리의 안내 — 005 부터 웹에서 입하를 받지 않는다(FR-036 · screens/W-01-09.md). 옛 라인 표 입하 등록(체크 일괄 ·
-   * 행 수량 입력 · 확인 창)은 걷었다.
-   */
-  receive: {
-    pdaOnly:
-      '입하는 PDA 입하 등록(M-01-01)에서 자재 관리 LOT 라벨을 스캔해 합니다. 라벨이 없으면 POP 「자재 관리 LOT 라벨」에서 만들어 붙이세요.',
-  },
   /** 라인 아래 LOT 줄 — 번호 · 입하일 · 수량과, 그 단계의 근거(서버가 준 값만 적는다). */
   lot: {
     /** 「입고 대기」 LOT 줄의 체크 — 체크한 LOT 을 한 번에 입고한다(사용자 지시 2026-10-28). */
@@ -351,8 +346,8 @@ export const inboundSchedule = {
     /** 자재 관리 LOT 의 패키징 「봉지 10 × 100」 — 단위 이름(없으면 코드) · 개수 × 개당 수량. */
     package: (uom: string, count: string, qtyPerPackage: string): string =>
       `${uom} ${count} × ${qtyPerPackage}`,
-    /** 새 흐름 입하 LOT 의 매칭 조정은 W-01-16 에서 — 권한이 없으면 글만 보인다. */
-    workRecordLink: '매칭 조정은 입하/입고 작업 기록에서',
+    /** 새 흐름 입하 LOT 의 매칭 조정은 W-01-16 에서 — 권한이 있을 때만 링크로 선다. */
+    workRecordLink: '매칭 조정',
     /** 라인의 입하 LOT 몫 — 마감한 입하 LOT 은 P/O 매칭 몫, 마감 전은 「입하 중」. */
     shareAllocated: (inboundLotNo: string, qty: string, uom: string): string =>
       `${inboundLotNo} · 매칭 ${qty} ${uom}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-09.md)

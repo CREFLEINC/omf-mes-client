@@ -18,12 +18,6 @@ export const inboundWorkRecord: Translated<typeof ko.inboundWorkRecord> = {
     ready: 'Chờ duyệt chốt',
     prog: 'Đang xử lý',
     final: 'Chốt cuối cùng',
-    readyHint:
-      'Đã nhập hàng xong và mọi LOT quản lý vật tư đã kết thúc (đã nhập kho hoặc đã xử lý trả hàng · hủy). Kiểm tra ghép P/O rồi chốt cuối cùng.',
-    progHint:
-      'LOT nhập hàng đang nhập hàng, hoặc còn IQC · nhập kho · xử lý. Không thể chốt cuối cùng.',
-    finalHint:
-      'LOT nhập hàng đã chốt cuối cùng. Không thể hủy nhập kho · hủy chốt nhập hàng · sửa ghép P/O.',
   },
   list: {
     label: 'Danh sách LOT nhập hàng',
@@ -78,16 +72,10 @@ export const inboundWorkRecord: Translated<typeof ko.inboundWorkRecord> = {
     receivedValue: (qty: string, uom: string, count: number) =>
       `${qty} ${uom} · ${String(count)} LOT quản lý vật tư`,
     blocked: (reason: string) => `Không thể chốt cuối cùng — ${reason}.`,
-    blockedHelp: 'Mọi LOT quản lý vật tư phải đã nhập kho hoặc đã xử lý trả hàng · hủy xong.',
-    finalized: (at: string, by: string) =>
-      `Chốt cuối cùng ${at} · ${by}. Không thể hủy nhập kho · hủy chốt nhập hàng · sửa ghép P/O.`,
-    finalizedNoName: (at: string) =>
-      `Chốt cuối cùng ${at}. Không thể hủy nhập kho · hủy chốt nhập hàng · sửa ghép P/O.`,
+    finalized: (at: string, by: string) => `Chốt cuối cùng ${at} · ${by}`,
+    finalizedNoName: (at: string) => `Chốt cuối cùng ${at}`,
     matchTitle: 'Ghép P/O',
-    matchRule:
-      'Tự động khi chốt: P/O có ngày đặt cũ trước, phần còn lại → dung sai, còn dư thì Không có P/O',
-    noMatchYet:
-      'Đang nhập hàng nên chưa có ghép P/O. Sẽ tự ghép khi chốt nhập hàng (thủ công · tự động).',
+    noMatchYet: 'Đang nhập hàng nên chưa có ghép P/O.',
     editMatch: 'Sửa ghép P/O',
     matchLabel: 'Bảng ghép P/O',
     matchColumns: {
@@ -122,14 +110,10 @@ export const inboundWorkRecord: Translated<typeof ko.inboundWorkRecord> = {
       inspectionHold: 'Chờ kiểm tra · tạm giữ',
       waitingReceipt: 'Chờ nhập kho',
     },
-    footReady:
-      'Nếu đã kiểm tra ghép P/O thì chốt cuối cùng. Sau khi chốt cuối cùng sẽ thành đối tượng nhập kho mua hàng ERP (gửi ở #265).',
     finalize: 'Chốt cuối cùng',
     finalizeLockedByEdit: 'Hãy lưu hoặc hủy phần sửa ghép P/O trước',
   },
   editor: {
-    help: 'Chỉ chuyển giữa các dòng P/O đang mở của cùng nhà cung cấp · mặt hàng. Mỗi dòng không được vượt 「SL đặt + dung sai − đã nhận trước」.',
-    reopenNote: 'Nếu hủy chốt nhập hàng, phần ghép đã sửa sẽ mất và được tính lại khi chốt lại.',
     qtyLabel: (line: string) => `${line} ghép lần này`,
     errorsTitle: 'Không thể lưu',
     notNumber: (line: string) => `${line}: hãy nhập số từ 0 trở lên`,
@@ -161,19 +145,16 @@ export const inboundWorkRecord: Translated<typeof ko.inboundWorkRecord> = {
       `Còn ${qty} ${uom} Không có P/O. Số lượng đó sẽ không được gửi sang ERP.`,
     acknowledge: 'Đã xác nhận',
     acknowledgeNeeded: 'Phải xác nhận số lượng Không có P/O mới chốt cuối cùng được.',
-    warning:
-      'Sau khi chốt cuối cùng không thể hủy nhập kho · hủy chốt nhập hàng · sửa ghép P/O. Sau khi chốt cuối cùng sẽ thành đối tượng nhập kho mua hàng ERP (gửi ở #265).',
+    warning: 'Sau khi chốt cuối cùng không thể hủy nhập kho · hủy chốt nhập hàng · sửa ghép P/O.',
     cancel: 'Hủy',
     confirm: 'Chốt cuối cùng',
-    done: (inboundLotNo: string) =>
-      `${inboundLotNo} đã chốt cuối cùng — thành đối tượng nhập kho mua hàng ERP (gửi ở #265)`,
+    done: (inboundLotNo: string) => `${inboundLotNo} đã chốt cuối cùng`,
     blocked: (reason: string) => `Không thể chốt cuối cùng — ${reason}`,
     failed: 'Không chốt cuối cùng được.',
   },
   errors: {
     conflict: 'Người khác đã thay đổi trước',
     reload: 'Tải lại',
-    stateLocked:
-      'LOT nhập hàng đã quay về đang nhập hàng — khi chốt lại, ghép P/O sẽ được tính lại',
+    stateLocked: 'LOT nhập hàng đã quay về đang nhập hàng',
   },
 };

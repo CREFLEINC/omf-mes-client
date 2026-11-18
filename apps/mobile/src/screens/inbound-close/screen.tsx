@@ -285,6 +285,15 @@ export const InboundCloseScreen = () => {
   if (view.kind === 'detail') {
     const target = detail.data;
     const isOpen = target?.statusCode === 'RECEIVING';
+    const lots = target?.lots ?? [];
+    const sharedStatus = lots.every((lot) => lot.statusCode === lots[0]?.statusCode)
+      ? (lots[0]?.statusCode ?? null)
+      : null;
+    const statusChip = (statusCode: string) => (
+      <Chip size="sm" status={statusCode === 'NORMAL' ? 'success' : 'warning'}>
+        {statusCode === 'NORMAL' ? t.detail.normal : t.detail.pending}
+      </Chip>
+    );
 
     return (
       <div className="inbound-close">
@@ -327,27 +336,30 @@ export const InboundCloseScreen = () => {
                 {t.card.total(target.lots.length, formatQty(target.receivedQty, target.uomCode))}
               </dd>
             </dl>
-            <h2 className="inbound-close__heading">{t.detail.lots(target.lots.length)}</h2>
+            {/* 상태가 모두 같으면 칩은 제목 옆에 하나 — 줄마다 같은 칩을 되풀이하지 않는다. 섞이면 줄마다 단다. */}
+            <div className="inbound-close__heading-row">
+              <h2 className="inbound-close__heading">{t.detail.lots(target.lots.length)}</h2>
+              {sharedStatus === null ? null : statusChip(sharedStatus)}
+            </div>
             <ul className="inbound-close__lots">
               {target.lots.map((lot, index) => (
                 <li key={lot.lotId} className="inbound-close__lot">
                   <span className="inbound-close__index">{index + 1}</span>
                   {/*
                    * LOT 번호는 줄 폭을 다 쓴다 — [해제] 옆에 끼우면 360 폭에서 세 줄로 접혔다(G2 L20).
-                   * [해제]는 수량 · 상태 줄 끝으로 내린다.
+                   * 수량 · 상태 칩 · [해제]는 둘째 줄 한 줄에 — 줄이 모자라면 수량 글이 줄어든다(사용자 지시
+                   * 2026-11-18 「가능하면 한 줄로」, 전에는 [해제]가 셋째 줄로 내려갔다).
                    */}
                   <span className="inbound-close__lot-body">
                     <span className="inbound-close__mono inbound-close__lot-no">{lot.lotNo}</span>
                     <span className="inbound-close__lot-meta">
-                      <span className="inbound-close__dim">
+                      <span className="inbound-close__dim inbound-close__small inbound-close__line">
                         {formatQty(lot.lotQty, target.uomCode)}
                         {lot.package === null
                           ? ''
                           : t.detail.package(packageNameOf(lot.package), lot.package.count)}
                       </span>
-                      <Chip status={lot.statusCode === 'NORMAL' ? 'success' : 'warning'}>
-                        {lot.statusCode === 'NORMAL' ? t.detail.normal : t.detail.pending}
-                      </Chip>
+                      {sharedStatus === null ? statusChip(lot.statusCode) : null}
                       <Button
                         className="inbound-close__lot-action"
                         variant="outlined"
@@ -365,7 +377,6 @@ export const InboundCloseScreen = () => {
                 </li>
               ))}
             </ul>
-            <p className="inbound-close__dim">{t.detail.note}</p>
             <BottomActionBar
               primary={{
                 label: t.detail.close,
@@ -473,23 +484,23 @@ export const InboundCloseScreen = () => {
                     {lot.reopened ? t.open.reopened : t.open.receiving}
                   </Chip>
                 </span>
-                <span>
+                <span className="inbound-close__line">
                   {t.card.itemSupplier(`${lot.itemCode} ${lot.itemName}`, lot.supplierName)}
                 </span>
-                <span className="inbound-close__row inbound-close__dim">
-                  <span>{t.card.total(lot.lotCount, formatQty(lot.receivedQty, lot.uomCode))}</span>
-                  <span>{t.open.firstAt(shortWhen(lot.firstRegisteredAt))}</span>
+                <span className="inbound-close__line inbound-close__dim inbound-close__small">
+                  {t.card.withSub(
+                    t.card.total(lot.lotCount, formatQty(lot.receivedQty, lot.uomCode)),
+                    t.open.firstAt(shortWhen(lot.firstRegisteredAt)),
+                  )}
                 </span>
               </button>
             </li>
           ))}
         </ul>
-        <p className="inbound-close__dim">{t.open.note}</p>
       </section>
 
       <section className="inbound-close__section" aria-label={t.done.heading(done.length)}>
         <h2 className="inbound-close__heading">{t.done.heading(done.length)}</h2>
-        <p className="inbound-close__dim">{t.done.note}</p>
         {reopenable.data !== undefined && done.length === 0 ? (
           <p className="inbound-close__dim">{t.done.empty}</p>
         ) : null}
@@ -510,10 +521,10 @@ export const InboundCloseScreen = () => {
                     <Chip status="info">{reason.chip}</Chip>
                   </span>
                 </span>
-                <span>
+                <span className="inbound-close__line">
                   {t.card.itemSupplier(`${lot.itemCode} ${lot.itemName}`, lot.supplierName)}
                 </span>
-                <span className="inbound-close__dim">
+                <span className="inbound-close__line inbound-close__dim inbound-close__small">
                   {t.card.withSub(
                     t.card.total(lot.lotCount, formatQty(lot.receivedQty, lot.uomCode)),
                     reason.sub,
@@ -525,8 +536,8 @@ export const InboundCloseScreen = () => {
                     {t.done.blocked(blocker.inboundLotNo)}
                   </span>
                 )}
-                <span className="inbound-close__row">
-                  <span className="inbound-close__dim">{closedText(lot)}</span>
+                <span className="inbound-close__row inbound-close__row--one">
+                  <span className="inbound-close__dim inbound-close__small">{closedText(lot)}</span>
                   <Button
                     variant="outlined"
                     size="lg"
@@ -542,14 +553,6 @@ export const InboundCloseScreen = () => {
             );
           })}
         </ul>
-        <div className="inbound-close__hidden">
-          <strong>{t.done.hiddenTitle}</strong>
-          <ul>
-            {t.done.hidden.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-        </div>
       </section>
 
       {dialog?.kind === 'reopen' ? (
@@ -577,7 +580,6 @@ export const InboundCloseScreen = () => {
               dialog.target.iqc?.requestNo ?? '',
             )}
           />
-          <p className="inbound-close__text">{t.reopenDialog.common}</p>
         </ConfirmDialog>
       ) : null}
       {blockedDialog}

@@ -329,15 +329,6 @@ export const InboundScheduleScreen = () => {
   };
 
   /*
-   * 입하 등록 자리의 안내 — 005 부터 웹에서 입하를 받지 않는다(FR-036 · screens/W-01-09.md). 입하는 PDA 스캔으로만 생긴다.
-   */
-  const linesNotice = (
-    <p className="po-board-lines-status" role="note">
-      {t.receive.pdaOnly}
-    </p>
-  );
-
-  /*
    * 단계 칩 — 탭 막대 오른쪽(셸의 일 단추 자리). 누르면 그 묶음의 LOT 이 있는 발주만 남는다(조건이 바뀌니 첫 쪽으로).
    * 서버가 묶음 수를 셀 수 없으면(404·403) 세우지 않는다 — 조건·머리 건수·행 칩은 같은 기준이어야 한다(C-17).
    */
@@ -513,7 +504,6 @@ export const InboundScheduleScreen = () => {
               onOpenExcess={openExcess}
               {...(progressUnavailable || lotsByLine === undefined ? {} : { lots: lotsByLine })}
               progressFailed={progress.isError && !progressUnavailable}
-              notice={linesNotice}
               {...(canPost ? { onPostReceipt: openPost } : {})}
               canOpenWorkRecord={toWebAccess(session?.permissions).allows(WORK_RECORD_PATH)}
               {...(canPost

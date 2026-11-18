@@ -1,13 +1,4 @@
-import {
-  AlertBanner,
-  Button,
-  Checkbox,
-  Chip,
-  EmptyState,
-  Skeleton,
-  TextField,
-  useToast,
-} from '@crefle/web-ui';
+import { Button, Checkbox, Chip, EmptyState, Skeleton, TextField, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
@@ -256,7 +247,6 @@ export const MaterialLotIssueScreen = () => {
 
   return (
     <div className="mlot-issue">
-      <AlertBanner variant="info">{t.banner}</AlertBanner>
       {filters}
       <div className="mlot-issue-section-head">
         <h2>{tl.count(rows.length)}</h2>
@@ -272,7 +262,6 @@ export const MaterialLotIssueScreen = () => {
         </span>
       </div>
       {table()}
-      <p className="field-note mlot-issue-help">{tl.help}</p>
 
       {opened !== null && issueOpen === null && (
         <DetailDialog

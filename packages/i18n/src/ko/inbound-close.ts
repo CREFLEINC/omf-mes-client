@@ -3,6 +3,9 @@
  *
  * 입하 중인 입하 LOT 를 건별로 확인·해제·입하 마감하고, 아직 다음 일이 시작되지 않은 입하 완료 건을 마감 취소한다.
  * 문구는 확정 시안(mockups/M0103-After)을 따른다. 「공급사·품목」은 설계 확정 용어다.
+ * 화면에 원리 설명 · 다른 화면 코드(M-01-01 · W-01-01 · W-01-16)를 적지 않는다(사용자 지시 2026-11-18). 마감하지 않아도 공장
+ * 날짜가 바뀌면 시스템이 자동 마감하고, 마감 취소 목록에는 아직 다음 일(IQC 결과 · 입고 · 긴급 생략 결재 · 최종 마감)이
+ * 시작되지 않은 건만 온다 — 이 사정은 주석에만 남긴다.
  */
 export const inboundClose = {
   title: '입하 마감',
@@ -10,7 +13,6 @@ export const inboundClose = {
   open: {
     heading: (count: number) => `입하 중 (마감 대상) ${count}`,
     empty: '마감할 입하 LOT가 없습니다',
-    note: '마감하지 않아도 공장 날짜가 바뀌면 시스템이 자동 마감합니다.',
     receiving: '입하 중',
     reopened: '마감 취소됨',
     firstAt: (when: string) => `첫 등록 ${when}`,
@@ -18,7 +20,6 @@ export const inboundClose = {
   /** 목록 아래 구획 — 입하 완료 · 마감 취소 가능. */
   done: {
     heading: (count: number) => `입하 완료 · 마감 취소 가능 ${count}`, // ui-check-ignore: C-13 설계 확정 구획 이름(screens/M-01-03.md)
-    note: '아직 아무 일도 시작되지 않은 건만 보입니다.',
     empty: '마감 취소할 수 있는 건이 없습니다',
     autoChip: '자동 마감',
     closedAuto: (when: string) => `날짜 바뀜 자동 마감 ${when}`,
@@ -32,13 +33,6 @@ export const inboundClose = {
       INSPECTION_NOT_REQUIRED: { chip: '검사 불필요 · 입고 전', sub: '자재 관리 LOT 정상' }, // ui-check-ignore: C-13 설계 확정 칩 문구(screens/M-01-03.md)
       IQC_SKIPPED: { chip: '긴급 생략 실행 · 입고 전', sub: '자재 관리 LOT 정상(긴급 생략)' }, // ui-check-ignore: C-13 설계 확정 칩 문구(screens/M-01-03.md)
     },
-    hiddenTitle: '여기에 보이지 않는 것 — 마감 취소 불가',
-    hidden: [
-      'IQC 결과가 1건이라도 있는 건 (W-01-01 에서 결과를 지운 뒤에야 보임)',
-      '자재 관리 LOT가 하나라도 입고된 건',
-      '긴급 생략 결재 대기 중인 건',
-      '관리자가 최종 마감 한 건 (W-01-16 입하/입고 작업 기록)',
-    ],
   },
   /** 카드 공통. */
   card: {
@@ -65,19 +59,18 @@ export const inboundClose = {
     unregister: '해제',
     /** LOT 수량 뒤 패키징 — 「1,000 EA · 봉지 10」(M-01-01 과 같은 표기, G2 L20). */
     package: (unit: string, count: number) => ` · ${unit} ${String(count)}`, // ui-check-ignore: C-13 설계 확정 표기 「1,000 EA · 봉지 10」(screens/M-01-01.md)
-    note: '남은 상자는 M-01-01 입하 등록에서 스캔하면 마감 전까지 이 입하 LOT에 이어 들어갑니다. 공장 날짜가 바뀌면 자동 마감됩니다.',
     close: '마감',
     loading: '입하 LOT를 불러오는 중입니다',
     gone: '이 입하 LOT는 이미 마감됐거나 없어졌습니다. 목록으로 돌아가세요.',
   },
   unregisterDialog: {
-    title: '자재 관리 LOT 등록을 풀까요?',
-    body: (qty: string) => `대기로 돌아가고 입하 수량에서 ${qty}만큼 빠집니다.`,
-    last: '마지막 자재 관리 LOT입니다. 풀면 입하 LOT가 없어지고(입하 취소) 이 목록에서 빠집니다.',
+    title: '자재 관리 LOT 등록을 해제할까요?',
+    body: (qty: string) => `입하 수량에서 ${qty}만큼 빠집니다.`,
+    last: '마지막 자재 관리 LOT입니다. 해제하면 입하 취소됩니다.',
     cancel: '취소',
-    proceed: '등록 풀기',
-    done: (tail: string) => `등록을 풀었습니다 — …|${tail} 대기로`,
-    lastDone: (no: string) => `${no} 마지막 자재 관리 LOT를 풀었습니다 — 입하 LOT 없어짐`,
+    proceed: '해제',
+    done: (tail: string) => `등록 해제 — …|${tail}`,
+    lastDone: (no: string) => `${no} 입하 취소 — 마지막 자재 관리 LOT 해제`,
   },
   closeDialog: {
     title: (no: string) => `${no} 를 마감할까요?`,
@@ -86,7 +79,7 @@ export const inboundClose = {
     withoutIqc: '검사 불필요 품목이라 IQC는 「검사 생략」으로 남고',
     /** IQC 기본 생략 기준이 없는 검사 불필요 품목(G2 L15 · US2-7). */
     withoutIqcRecord: '검사 불필요 품목이라 IQC 기록이 생기지 않고',
-    rest: ', 이 입하 LOT에는 더 받거나 해제할 수 없습니다. 같은 공급사·품목을 다시 스캔하면 새 입하 LOT가 생깁니다.', // ui-check-ignore: C-13 설계 확정 용어 「공급사·품목」(screens/M-01-03.md)
+    rest: ', 더 받거나 해제할 수 없습니다.',
     cancel: '취소',
     proceed: '마감',
   },
@@ -94,8 +87,7 @@ export const inboundClose = {
     withIqc: (no: string) => `입하 완료 — IQC 요청이 생겼습니다(${no})`,
     withIqcNoNumber: '입하 완료 — IQC 요청이 생겼습니다',
     noInspection: '입하 완료 — 검사 불필요, 자재 관리 LOT 정상',
-    notice:
-      '품질 담당자에게 IQC 인계 알림을 보냈습니다. 결과가 기록되기 전까지는 「입하 완료 · 마감 취소 가능」에 보입니다.', // ui-check-ignore: C-13 설계 확정 구획 이름(screens/M-01-03.md)
+    notice: '품질 담당자에게 IQC 인계 알림을 보냈습니다.',
     back: '목록으로',
   },
   reopenDialog: {
@@ -106,10 +98,8 @@ export const inboundClose = {
       INSPECTION_NOT_REQUIRED: () =>
         'IQC 「검사 생략」 기록이 취소되고 입하 LOT가 「입하 중」으로 돌아갑니다. 자재 관리 LOT는 정상 그대로입니다(검사 불필요 품목).',
       IQC_SKIPPED: (iqcNo: string) =>
-        `IQC 요청(${iqcNo})이 취소되고 입하 LOT가 「입하 중」으로 돌아갑니다. 긴급 IQC 생략이 무효가 되고 자재 관리 LOT가 검사 대기로 돌아갑니다. 다시 마감하면 검사하거나 생략을 다시 요청해야 합니다`,
+        `IQC 요청(${iqcNo})이 취소되고 입하 LOT가 「입하 중」으로 돌아갑니다. 긴급 IQC 생략이 무효가 되고 자재 관리 LOT가 검사 대기로 돌아갑니다.`,
     },
-    common:
-      '입하 중이 되면 같은 공급사·품목 스캔이 이 입하 LOT로 들어갑니다. 더 받거나 해제한 뒤 다시 마감합니다. 공장 날짜가 바뀌면 다시 자동 마감됩니다.', // ui-check-ignore: C-13 설계 확정 용어 「공급사·품목」(screens/M-01-03.md)
     cancel: '닫기',
     proceed: '마감 취소',
     done: (no: string) => `${no} 마감을 취소했습니다 — 입하 중으로`,
@@ -118,13 +108,12 @@ export const inboundClose = {
   blockedDialog: {
     title: '마감을 취소할 수 없습니다',
     openReceipt: (supplier: string, item: string, no: string) =>
-      `같은 공급사·품목(${supplier} · ${item})의 ${no} 이 입하 중입니다. 입하 중인 입하 LOT는 공급사·품목마다 하나뿐이라 그것을 먼저 마감하세요.`, // ui-check-ignore: C-13 설계 확정 막힘 문구(screens/M-01-03.md)
+      `같은 공급사·품목(${supplier} · ${item})의 ${no} 이 입하 중입니다. 먼저 마감하세요.`, // ui-check-ignore: C-13 설계 확정 막힘 문구(screens/M-01-03.md)
     codes: {
-      IQC_RECORDED:
-        '그사이 IQC 결과가 기록됐습니다. W-01-01 에서 결과를 지운 뒤에야 마감을 취소할 수 있습니다.',
+      IQC_RECORDED: '그사이 IQC 결과가 기록됐습니다.',
       GOODS_RECEIVED: '그사이 자재 관리 LOT가 입고됐습니다.',
       SKIP_PENDING: '긴급 생략 결재가 진행 중입니다.',
-      INBOUND_LOT_FINALIZED: '관리자가 최종 마감 했습니다(W-01-16 입하/입고 작업 기록).',
+      INBOUND_LOT_FINALIZED: '관리자가 최종 마감했습니다.',
       LEGACY_INBOUND_LOT: '이전 데이터 입하라 마감을 취소할 수 없습니다.',
     } as Record<string, string | undefined>,
     other: '지금은 마감을 취소할 수 없습니다. 목록을 다시 불러왔습니다.',

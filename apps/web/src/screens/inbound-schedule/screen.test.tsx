@@ -582,7 +582,8 @@ describe('InboundScheduleScreen — 입하 등록(라인 표)', () => {
 
     await within(linesPane()).findByText('SAMPLE-ITEM-01');
 
-    expect(within(linesPane()).getByText(t.receive.pdaOnly)).toBeInTheDocument();
+    /* 입하는 PDA 에서만 하지만, 그 사정을 라인 표 위 안내문으로 적지 않는다(사용자 지시 2026-11-18). */
+    expect(within(linesPane()).queryByText(/PDA|M-01-01/u)).toBeNull();
     expect(within(linesPane()).queryByRole('checkbox')).toBeNull();
     expect(within(linesPane()).queryByRole('textbox')).toBeNull();
     expect(requests.every((request) => request.method === 'GET')).toBe(true);

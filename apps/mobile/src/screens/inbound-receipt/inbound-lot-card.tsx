@@ -6,6 +6,7 @@ import { Fragment, useId } from 'react';
 
 import { Button } from '../../patterns/button';
 import { Card } from '../../patterns/card';
+import { LotNoLine } from '../../patterns/lot-no-line';
 import { plantClock } from '../../patterns/plant-time';
 import { isReceiving, type CardLock, type CardState } from './receipt';
 
@@ -46,8 +47,6 @@ export interface InboundLotCardProps {
   lock: CardLock;
   pendingCount: number;
   busy: boolean;
-  /** 이 화면이 마감했는가 — 아니면 「다른 단말 또는 날짜 자동 마감」 문구를 앞에 붙인다. */
-  closedHere: boolean;
   onUnregister: (lot: InboundLotMaterialLot) => void;
   onEditSupplierLot: (lot: InboundLotMaterialLot) => void;
   onClose: () => void;
@@ -65,7 +64,6 @@ export const InboundLotCard = ({
   lock,
   pendingCount,
   busy,
-  closedHere,
   onUnregister,
   onEditSupplierLot,
   onClose,
@@ -105,6 +103,15 @@ export const InboundLotCard = ({
           ? t.statusClosed
           : t.statusClosedNoIqc;
   const lots = data.lots.filter((lot) => lot.lifecycleStatusCode !== 'WAITING');
+  /* 품질 상태가 모두 같으면 합계 줄에 칩 하나만 — 줄마다 같은 칩을 되풀이하지 않는다. 섞이면 줄마다 단다. */
+  const sharedQuality = lots.every((lot) => lot.statusCode === lots[0]?.statusCode)
+    ? (lots[0]?.statusCode ?? null)
+    : null;
+  const qualityChip = (statusCode: string) => (
+    <Chip size="sm" status={statusCode === 'NORMAL' ? 'success' : 'warning'}>
+      {statusCode === 'NORMAL' ? t.qualityNormal : t.qualityPending}
+    </Chip>
+  );
 
   return (
     <Card
@@ -123,44 +130,50 @@ export const InboundLotCard = ({
         <Words text={t.pair(data.supplierName, data.itemCode, data.itemName)} />
       </p>
       <p className="receive-card__sum">
-        {t.summary(data.lotCount, qtyText(data.receivedQty, data.uomCode))}
+        <span>{t.summary(data.lotCount, qtyText(data.receivedQty, data.uomCode))}</span>
+        {sharedQuality === null ? null : qualityChip(sharedQuality)}
       </p>
 
       <ol className="receive-card__lots">
         {lots.map((lot, index) => {
           const mark = card.registered.get(lot.lotId);
+          /* 이 화면에서 등록한 줄은 「방금 등록」(마지막 하나)만 칩을 단다 — 줄마다 「이번에 등록」을 달지 않는다. */
           const when =
             mark === 'latest'
               ? t.justNow
               : mark === 'session'
-                ? t.thisVisit
+                ? null
                 : t.earlier(plantClock(lot.registeredAt));
 
           return (
+            /*
+             * 줄은 두 줄 — 위: LOT 번호 · 칩, 아래: 수량 · 공급사 LOT · [해제](사용자 지시 2026-11-18 「가능하면 한 줄로」).
+             * 번호가 넘치면 가운데를 줄여 일련번호를 남기고, 아래 줄이 모자라면 공급사 LOT 글이 줄어든다.
+             */
             <li key={lot.lotId} className="receive-lot" data-latest={mark === 'latest'}>
               <span className="receive-lot__seq">{index + 1}</span>
-              <div className="receive-lot__body">
-                <span className="receive-lot__no">{lot.lotNo}</span>
-                <span className="receive-lot__qty">
-                  {qtyText(lot.lotQty, data.uomCode)}
-                  {lot.package === null
-                    ? ''
-                    : t.package(packageUnitOf(lot.package), lot.package.count)}
-                </span>
-                <span className="receive-lot__chips">
-                  <Chip size="sm" status={mark === 'latest' ? 'info' : 'idle'}>
-                    {when}
-                  </Chip>
+              <span className="receive-lot__body">
+                <span className="receive-lot__line">
+                  <LotNoLine lotNo={lot.lotNo} className="receive-lot__no" />
+                  {when === null ? null : (
+                    <Chip size="sm" status={mark === 'latest' ? 'info' : 'idle'}>
+                      {when}
+                    </Chip>
+                  )}
                   {lot.fromSupplierLabel ? (
                     <Chip size="sm" status="idle">
                       {t.supplierLabel}
                     </Chip>
                   ) : null}
-                  <Chip size="sm" status={lot.statusCode === 'NORMAL' ? 'success' : 'warning'}>
-                    {lot.statusCode === 'NORMAL' ? t.qualityNormal : t.qualityPending}
-                  </Chip>
+                  {sharedQuality === null ? qualityChip(lot.statusCode) : null}
                 </span>
-                <span className="receive-lot__foot">
+                <span className="receive-lot__line">
+                  <span className="receive-lot__qty">
+                    {qtyText(lot.lotQty, data.uomCode)}
+                    {lot.package === null
+                      ? ''
+                      : t.package(packageUnitOf(lot.package), lot.package.count)}
+                  </span>
                   <button
                     type="button"
                     className="receive-lot__supplier"
@@ -170,14 +183,16 @@ export const InboundLotCard = ({
                       onEditSupplierLot(lot);
                     }}
                   >
-                    <Icon name="sell" size={16} />
-                    {lot.supplierLotNo === null
-                      ? t.noSupplierLot
-                      : t.supplierLot(lot.supplierLotNo)}
+                    <span className="receive-lot__supplier-text">
+                      {lot.supplierLotNo === null
+                        ? t.noSupplierLot
+                        : t.supplierLot(lot.supplierLotNo)}
+                    </span>
                     <Icon name={editable ? 'edit' : 'lock'} size={16} />
                   </button>
                   {receiving ? (
                     <Button
+                      className="receive-lot__unregister"
                       variant="outlined"
                       size="sm"
                       disabled={lock !== null || busy}
@@ -189,7 +204,7 @@ export const InboundLotCard = ({
                     </Button>
                   ) : null}
                 </span>
-              </div>
+              </span>
             </li>
           );
         })}
@@ -211,16 +226,8 @@ export const InboundLotCard = ({
             </p>
           )}
         </>
-      ) : data.statusCode === 'VOIDED' ? null : (
-        <>
-          <p className="receive-card__note">
-            {closedHere ? '' : t.closedElsewhere}
-            {data.inspectionRequired
-              ? t.closedNote(iqcNo)
-              : `${t.noInspection}. ${t.closedNote(null)}`}
-          </p>
-          <p className="receive-card__note">{t.readOnlySupplierLot}</p>
-        </>
+      ) : data.statusCode === 'VOIDED' || !data.inspectionRequired || iqcNo === null ? null : (
+        <p className="receive-card__note">{t.iqcRequest(iqcNo)}</p>
       )}
     </Card>
   );

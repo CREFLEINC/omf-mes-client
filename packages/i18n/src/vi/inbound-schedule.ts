@@ -148,8 +148,7 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     listCollapse: 'Thu gọn danh sách phần vượt',
     listExpand: 'Mở rộng danh sách phần vượt',
     listTitle: 'Phần vượt chưa liên kết',
-    newFlowNotice:
-      'Phần không có P/O của luồng nhập hàng mới được khớp tại Nhật ký công việc nhập hàng / nhập kho (W-01-16).',
+    newFlowNotice: 'Khớp số lượng không có P/O của LOT nhập hàng:',
     newFlowLink: 'Nhật ký công việc nhập hàng / nhập kho',
     table: {
       receiptNo: 'Số nhập hàng',
@@ -231,10 +230,6 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     beforeReceipt: 'Chưa nhận hàng',
     summarySeparator: ' · ',
   },
-  receive: {
-    pdaOnly:
-      'Nhập hàng được thực hiện bằng cách quét nhãn LOT quản lý vật tư ở màn hình Đăng ký nhập hàng trên PDA (M-01-01). Nếu chưa có nhãn, hãy tạo và dán nhãn ở POP 「Nhãn LOT quản lý vật tư」.',
-  },
   lot: {
     selectForPost: (lotNo: string): string => `Chọn ${lotNo} để nhập kho`,
     selectAllForPost: 'Tất cả chờ nhập kho',
@@ -262,7 +257,7 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     inboundLot: (inboundLotNo: string): string => `LOT nhập hàng ${inboundLotNo}`,
     package: (uom: string, count: string, qtyPerPackage: string): string =>
       `${uom} ${count} × ${qtyPerPackage}`,
-    workRecordLink: 'Điều chỉnh khớp tại Nhật ký công việc nhập hàng / nhập kho',
+    workRecordLink: 'Điều chỉnh khớp',
     shareAllocated: (inboundLotNo: string, qty: string, uom: string): string =>
       `${inboundLotNo} · khớp ${qty} ${uom}`,
     shareReceiving: (inboundLotNo: string): string => `${inboundLotNo} · Đang nhập hàng`,
