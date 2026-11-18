@@ -92,11 +92,7 @@ describe('POP 표 — 긴 번호가 다른 열을 밀어내지 않는다', () =>
   const fixedLayout = (selector: string): RegExp =>
     new RegExp(`\\.pop-ui\\s+\\.${selector}\\s*\\{[^}]*table-layout:\\s*fixed`, 'u');
 
-  it('포장 라벨 재출력의 내용물 표가 폭을 못박는다', () => {
-    expect(popCss).toMatch(fixedLayout('pop-reprint-contents'));
-  });
-
-  /* 같은 사유·같은 처리 — 셋째 표를 빠뜨렸던 자리다(리뷰 지적). */
+  /* 포장 라벨 재출력(P-02-09)의 내용물 표는 화면과 함께 없앴다(omf-all-around#293). */
   it('재구성 라벨 발행의 내용물 표가 폭을 못박는다', () => {
     expect(popCss).toMatch(fixedLayout('pop-repack-contents'));
   });
@@ -109,9 +105,6 @@ describe('POP 표 — 긴 번호가 다른 열을 밀어내지 않는다', () =>
   it('긴 번호를 감추지 않고 접는다', () => {
     /* 008 — 출고 QR 라인 표는 걷었다. P-01-02 분할 LOT 번호는 `|` 칸 경계에서만 접고 칸 하나는 끊지 않는다. */
     expect(popCss).toMatch(/\.pop-ui\s+\.pop-split-seg\s*\{[^}]*white-space:\s*nowrap/u);
-    expect(popCss).toMatch(
-      /\.pop-ui\s+\.pop-reprint-contents\s+td\s*\{[^}]*overflow-wrap:\s*anywhere/u,
-    );
   });
 
   /*
