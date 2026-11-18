@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
@@ -1533,6 +1533,48 @@ describe('적치 대기 LOT — 지시 없는 적치(피처 009)', () => {
 
     expect((await screen.findAllByText(messages.putaway.rejected.title)).length).toBeGreaterThan(0);
     expect(seen).toHaveLength(1);
+    /* Q28 — 거절은 「적치됨」으로 세지 않고 따로 모아 「전송 실패한 기록」으로 안내한다. */
+    expect(screen.getByText(messages.putaway.rejected.count('1'))).toBeTruthy();
+    expect(screen.queryByText(messages.putaway.done.count('1'))).toBeNull();
+    expect(screen.getByRole('link', { name: messages.putaway.rejected.action })).toBeTruthy();
+  });
+
+  it('Q1 375px — LOT 줄은 번호 한 줄, 「불량」 칩 · 수량은 그 아래 줄이라 번호를 가리지 않는다', async () => {
+    mount([], {
+      pendingLots: [pendingLot({ lotNo: 'V9-X|10|261118|V9-S2|0001', lotStatusCode: 'DEFECTIVE' })],
+    });
+
+    const row = await screen.findByRole('button', { name: /V9-X\|10\|261118\|V9-S2\|0001/ });
+    const lotNo = within(row).getByText('V9-X|10|261118|V9-S2|0001');
+    const chip = within(row).getByText(messages.putaway.direct.defective);
+
+    expect(lotNo.closest('.putaway__lot-meta')).toBeNull();
+    expect(chip.closest('.putaway__lot-meta')).not.toBeNull();
+    expect(lotNo.parentElement).toBe(chip.closest('.putaway__lot-meta')?.parentElement);
+  });
+
+  it('Q3 「적치됨」 줄은 「LOT → 위치」 글과 방식 · 결과 칩을 다른 줄에 둔다', async () => {
+    const seen: Request[] = [];
+    mount([eligible(), checkRoute(), putawayRoute(seen)], { pendingLots: [pendingLot()] });
+    await openPending();
+    scan('WH01-A01-03');
+
+    const heading = await screen.findByText(messages.putaway.done.count('1'));
+    const list = heading.parentElement?.querySelector('.putaway__done');
+    const text = within(list as HTMLElement).getByText(`${PENDING_NO} → WH01-A01-03 1000 EA`);
+    const chips = list?.querySelector('.putaway__done-chips');
+
+    expect(chips?.textContent).toContain(messages.putaway.direct.mode.DESIGNATED);
+    expect(chips?.textContent).toContain(messages.putaway.sent.title);
+    expect(chips?.contains(text)).toBe(false);
+  });
+
+  it('목록 끝에 떠 있는 직접 입력 단추 높이만큼 비워 마지막 내용이 가리지 않는다', async () => {
+    const { container } = mount([], { pendingLots: [pendingLot()] });
+    await screen.findByText(PENDING_NO);
+
+    const root = container.querySelector('.putaway');
+    expect(root?.lastElementChild?.classList.contains('putaway__tools-clearance')).toBe(true);
   });
 
   it('US5-1·Q13 적치 대기가 아닌 LOT 은 이유를 말하고 목록을 그대로 둔다', async () => {
