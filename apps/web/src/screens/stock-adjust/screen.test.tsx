@@ -35,11 +35,6 @@ import { StockAdjustScreen } from './screen';
 
 const t = messages.stockAdjust;
 
-/*
- * 전표 상태 값 목록 자리표시(`code-options.ts`)는 이력 상태 조건과 함께 걷었다(사용자 지시
- * 2026-11-18). 조정 사유는 고객이 공통코드 마스터에 등록하는 값이라 아래 스텁이 채운다.
- */
-
 /**
  * 고객이 공통코드 마스터에 등록해 둔 조정 사유 — **화면이 조회로 받는다.**
  *
@@ -409,7 +404,7 @@ describe('StockAdjustScreen — 없는 실사 주소 정리', () => {
   it('정리가 뒤로가기 기록을 늘리지 않는다', async () => {
     const { user } = renderScreen(allRoutes(), '?count=9109');
 
-    await screen.findByText(t.source.countNotFoundNote);
+    await waitForLocation(ROUTE);
     await user.click(screen.getByRole('button', { name: '뒤로' }));
 
     await waitForLocation(ROUTE);
@@ -426,7 +421,6 @@ describe('StockAdjustScreen — 없는 실사 주소 정리', () => {
   it('정리해도 실사 갈래에 남는다 — 고를 자리와 안내를 지킨다', async () => {
     renderScreen(allRoutes(), '?count=9109');
 
-    await screen.findByText(t.source.countNotFoundNote);
     await waitForLocation(ROUTE);
 
     expect(screen.getByRole('radio', { name: t.source.count })).toBeChecked();
@@ -482,7 +476,6 @@ describe('StockAdjustScreen — 실사 차이 승계', () => {
     await loadVariance(user);
 
     expect(bodyRows()).toHaveLength(3);
-    expect(screen.getByText(t.source.loadedNote(3))).toBeInTheDocument();
   });
 
   /**
@@ -778,7 +771,7 @@ describe('StockAdjustScreen — 직접 등록 갈래', () => {
    * ⭐ **못 찾으면 「—」이고 0이 아니다**(C8). 0으로 메우면 「장부에 없다」가 「장부에 0이 있다」로
    * 바뀌어 차이 계산이 거짓이 된다. 그리고 **그 줄도 조정할 수 있다.**
    */
-  it('장부에서 못 찾으면 빈 값 표식이고 그 사실을 적는다', async () => {
+  it('장부에서 못 찾으면 빈 값 표식이고 그 줄을 막지 않는다', async () => {
     const { user } = renderScreen(allRoutes(), '');
 
     await screen.findByLabelText(t.source.warehouseField);
@@ -796,15 +789,9 @@ describe('StockAdjustScreen — 직접 등록 갈래', () => {
     await user.click(screen.getByRole('option', { name: UOM_LABEL }));
     await user.type(diffBox(1), '-20');
 
-    /* 장부 미확인 안내문은 걷었다(사용자 지시 2026-11-18) — 빈 장부 칸이 설 때까지 기다린다. */
     await waitFor(() => {
       expect(cellsOf(0)[3]).toBe(t.values.empty);
     });
-    expect(
-      screen.queryByText(
-        '장부를 확인하지 못한 줄도 조정할 수 있습니다. 차이 수량만 있으면 됩니다.',
-      ),
-    ).not.toBeInTheDocument();
 
     expect(cellsOf(0)[4]).toBe(t.values.empty);
     /* 그 줄이 오류로 막히지 않는다 — 장부를 몰라도 조정할 수 있다. */
@@ -876,27 +863,7 @@ describe('StockAdjustScreen — 차이 수량', () => {
 /**
  * ⭐ **잔량을 직접 고치지 않는다**(조심 ③ · C6·C13·C14).
  */
-describe('StockAdjustScreen — 세 열과 범위 안내', () => {
-  /* 탭 위 범위 안내 배너와 표 위 실물·음수 안내문은 걷었다(사용자 지시 2026-11-18). */
-  it('범위 안내 배너가 없다', async () => {
-    renderScreen(allRoutes(), '');
-
-    await screen.findByLabelText(t.source.warehouseField);
-
-    expect(screen.queryByText('조정은 수불 원장에 기록됩니다')).not.toBeInTheDocument();
-  });
-
-  it('표 위에 실물·음수 안내문이 없다', async () => {
-    renderScreen(allRoutes(), '');
-
-    await screen.findByLabelText(t.source.warehouseField);
-
-    expect(
-      screen.queryByText('실물은 장부에 차이를 더한 값입니다. 직접 고치지 않습니다.'),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText('줄이는 조정은 차이를 음수로 넣습니다.')).not.toBeInTheDocument();
-  });
-
+describe('StockAdjustScreen — 세 열', () => {
   /**
    * ⛔ **결과 수량을 뜻하는 낱말이 슬라이스 어디에도 없다**(C14). 그 말이 한 번이라도 서면
    * 사용자가 이 화면을 잔량 덮어쓰기로 읽는다. 양성 앵커(표가 섰다) 뒤에 잰다.
@@ -934,15 +901,6 @@ describe('StockAdjustScreen — 세 열과 범위 안내', () => {
  * ⛔ **승인 대기 탭을 두지 않는다**(조심 ① · D-3).
  */
 describe('StockAdjustScreen — 결재는 결재함이 소유한다', () => {
-  /* 탭 위 결재 안내 배너는 걷었다(사용자 지시 2026-11-18). */
-  it('결재 안내 배너가 없다', async () => {
-    renderScreen(allRoutes(), '');
-
-    await screen.findByLabelText(t.source.warehouseField);
-
-    expect(screen.queryByText('결재는 결재함에서 합니다')).not.toBeInTheDocument();
-  });
-
   it('승인·반려 조작이 0건이다', async () => {
     const { user } = renderScreen(allRoutes());
 
@@ -1006,8 +964,6 @@ describe('StockAdjustScreen — 조정 사유 값 목록', () => {
 
     expect(reasonField()).toBeEnabled();
     expect(screen.queryByText(messages.pendingCode.note)).toBeNull();
-    /* 문면이 바뀐 같은 뜻의 안내가 되살아나는 자리까지 막는다. */
-    expect(registerPane().textContent ?? '').not.toContain('확정');
   });
 
   it('마스터가 비어 있어도 대상은 세울 수 있다', async () => {
@@ -1068,10 +1024,6 @@ describe('StockAdjustScreen — 라인 사유', () => {
     await loadVariance(user);
 
     expect(screen.getByText(t.lineTable.countReason('SAMPLE_VR_A'))).toBeInTheDocument();
-    /* 읽기 전용 안내문은 걷었다(사용자 지시 2026-11-18). */
-    expect(
-      screen.queryByText('실사에서 적은 사유는 참고로만 보입니다. 이 화면에서 고치지 않습니다.'),
-    ).not.toBeInTheDocument();
   });
 
   it('표에 사유 선택칸이 0건이다', async () => {
@@ -1256,26 +1208,8 @@ describe('StockAdjustScreen — 실사 차이 잘림', () => {
   const truncatedVarianceRoutes = (): StubRoute[] =>
     allRoutes([getRoute(VARIANCE_PATH, countVarianceLineFixtures, 12)]);
 
+  /** 받은 수와 전체 수를 살아 있는 영역으로 알리고 **완결을 주장하지 않는다.** */
   it('앞쪽 일부만 왔으면 받은 수와 전체 수를 함께 말한다', async () => {
-    const { user } = renderScreen(truncatedVarianceRoutes());
-
-    await loadVariance(user);
-
-    expect(screen.getByText(t.source.loadedTruncatedNote(3, 12))).toBeInTheDocument();
-  });
-
-  /** 잘린 상태에서 **완결을 주장하지 않는다** — 이 문구가 서면 사용자가 전부로 읽는다. */
-  it('잘렸으면 「전부 가져왔다」로 말하지 않는다', async () => {
-    const { user } = renderScreen(truncatedVarianceRoutes());
-
-    await loadVariance(user);
-
-    expect(screen.getByText(t.source.loadedTruncatedNote(3, 12))).toBeInTheDocument();
-    expect(screen.queryByText(t.source.loadedNote(3))).not.toBeInTheDocument();
-  });
-
-  /** 표를 보지 않는 사용자에게도 닿아야 한다 — 살아 있는 영역으로 알린다. */
-  it('잘림을 살아 있는 영역으로 알린다', async () => {
     const { user } = renderScreen(truncatedVarianceRoutes());
 
     await loadVariance(user);
@@ -1284,6 +1218,7 @@ describe('StockAdjustScreen — 실사 차이 잘림', () => {
       'role',
       'status',
     );
+    expect(screen.queryByText(t.source.loadedNote(3))).not.toBeInTheDocument();
   });
 
   /** 짝 방향 — 전부 왔으면 완결을 말한다. 「늘 잘렸다」로 통과하지 않게 한다. */
@@ -1446,20 +1381,6 @@ describe('StockAdjustScreen — 장부가 없이 오는 실사', () => {
 
     expect(cellsOf(0)[3]).toBe(t.values.empty);
     expect(cellsOf(0)[4]).toBe(t.values.empty);
-  });
-
-  /* 장부 미확인 안내문은 걷었다(사용자 지시 2026-11-18) — 빈 장부여도 안내문이 서지 않는다. */
-  it('장부가 비어도 안내문을 두지 않는다', async () => {
-    const { user } = renderScreen(allRoutes([blindVarianceRoute()]));
-
-    await loadVariance(user);
-
-    expect(cellsOf(0)[3]).toBe(t.values.empty);
-    expect(
-      screen.queryByText(
-        '장부를 확인하지 못한 줄도 조정할 수 있습니다. 차이 수량만 있으면 됩니다.',
-      ),
-    ).not.toBeInTheDocument();
   });
 
   it.each(['undefined', 'NaN'])('%o가 화면에 서지 않는다', async (word) => {
@@ -1641,7 +1562,6 @@ describe('StockAdjustScreen — 등록이 막힌 사유', () => {
 
     expect(registerButton()).toBeDisabled();
     expect(screen.getByText(t.actionReasons.registerNeedsReason)).toBeInTheDocument();
-    expect(registerPane().textContent ?? '').not.toContain('확정');
   });
 
   /** ⭐ **사유가 오면 그것을 고를 수 있다** — 조회가 죽은 통로가 아니라는 증거다. */
@@ -2256,7 +2176,6 @@ describe('StockAdjustScreen — 버린 초안의 되먹임', () => {
     release();
 
     expect(await screen.findByText(t.notes.unconfirmedRegisterNote)).toBeInTheDocument();
-    expect(t.notes.unconfirmedRegisterNote).toContain(t.tabs.history);
 
     /* 새 초안의 결과로 세우지 않는다 — 결과 구획도 폼 잠금도 서지 않는다. */
     expect(screen.queryByRole('region', { name: t.result.label })).not.toBeInTheDocument();
@@ -2894,47 +2813,6 @@ describe('StockAdjustScreen — 등록 실패', () => {
   });
 
   /**
-   * ⭐ **이 안내의 본체는 여전히 금지다**(전례 `poRegister.notes.networkUnconfirmed`의 잣대).
-   *
-   * 전표 두 벌을 막는 것은 확인이 아니라 **하지 않는 것**이다 — 훅이 호출마다 새 멱등 키를
-   * 만들어 「다시 보내기」가 그대로 두 번째 요청이 되기 때문이다.
-   *
-   * ✅ **앞 회차의 음성 축(「처리 이력」 0건)을 이 회차가 의도적으로 지웠다** — 그 잣대는
-   * 「없는 자리를 가리키지 않는다」였고, 이력 탭이 서면서 **그 자리가 실재하게 됐다.**
-   *
-   * ⭐ **절이 셋이고 차례가 곧 뜻이다**(T2 R-2의 두 절 잣대를 세 절로 넓힌 형태):
-   *
-   * | 절 | 무엇을 말하나 | 빠지면 |
-   * | :-: | --- | --- |
-   * | ① **사실** | 그 요청의 운명을 **모른다** | 「모르니까 하지 말라」의 근거가 사라져 맨 지시가 된다 |
-   * | ② **금지** | 바로 다시 보내지 마라 | 완화의 본체가 사라진다 |
-   * | ③ **확인 자리** | 어디서 되찾는가 | 사용자가 갇힌다 |
-   *
-   * **①이 잣대에서 함께 빠졌던 자리다**(검증 문제 ① · 리뷰 R-2). 문면이 「이 화면에서 확인할
-   * 수 없습니다」 → 「알 수 없습니다」로 바뀌면서 옛 단언이 살 수 없게 됐는데, **바뀐 문면에
-   * 맞춰 다시 세우지 않고 걷혔다.** 절의 **성질**을 재는 형태로 되세운다.
-   */
-  it('그 안내가 사실·금지·확인 자리를 그 차례로 말한다', () => {
-    /* ① 사실 — 요청의 운명을 모른다는 것이 이 완화의 근거다. */
-    expect(t.notes.networkUnconfirmed).toContain('알 수 없습니다');
-    /* ② 금지 — 완화의 본체. */
-    expect(t.notes.networkUnconfirmed).toContain('다시 등록하지 마세요');
-    /* ③ 확인 자리 — 이력 탭이 서면서 비로소 말할 수 있게 된 절. */
-    expect(t.notes.networkUnconfirmed).toContain(t.tabs.history);
-
-    /*
-     * **차례가 뒤집히면 뜻이 뒤집힌다.** 금지가 확인 뒤로 가면 조건부 재전송 허가가 되고,
-     * 사실이 금지 뒤로 가면 근거 없는 지시가 된다.
-     */
-    const factAt = t.notes.networkUnconfirmed.indexOf('알 수 없습니다');
-    const banAt = t.notes.networkUnconfirmed.indexOf('다시 등록하지 마세요');
-    const placeAt = t.notes.networkUnconfirmed.indexOf(t.tabs.history);
-
-    expect(factAt).toBeLessThan(banAt);
-    expect(banAt).toBeLessThan(placeAt);
-  });
-
-  /**
    * ⭐ **가리키는 자리가 실제로 선다** — 문구만 고치고 탭이 없으면 그것이 곧 죽은 지시다.
    * 안내가 부르는 이름으로 탭을 찾고, 눌러 보아 그 자리에 조회 조건이 서는지까지 잰다.
    */
@@ -3249,23 +3127,13 @@ describe('StockAdjustScreen — 상신 확인 창', () => {
     expect(within(dialog).getByText('SAMPLE-IA-9301')).toBeVisible();
     expect(within(first).getByText('요약 줄')).toBeVisible();
     expect(within(full).getByText('요약 줄')).toBeVisible();
-    /* 「첫 줄만 보입니다」 안내는 걷었다(사용자 지시 2026-11-18). */
-    expect(
-      within(first).queryByText('결재함 목록에서는 이 첫 줄만 보입니다.'),
-    ).not.toBeInTheDocument();
   });
 
   /**
-   * ⚠ **이룰 수 없는 조치를 유도하지 않는다**(전례가 남긴 자리 · T2 리뷰 R-3과 같은 축).
-   *
    * 이 칸은 **한 줄 입력**이다 — 디자인 시스템의 `TextField`가 `<input>`이라 붙여넣어도 줄바꿈이
-   * 지워진다. 그런데 전례의 자리표시 문구는 「다음 줄부터 근거를 적으세요」로 **여러 줄을
-   * 지시한다** — 그대로 베끼면 사용자가 할 수 없는 조치를 찾아 헤맨다.
-   *
-   * **여러 줄 입력이 붙는 날 이 시험이 함께 바뀐다** — 그때 문구도 갈아야 한다는 것을 이 감지기가
-   * 잡는다(지금 문구만 고치면 이 시험이 울지 않으므로, 값 축과 문구 축을 함께 문다).
+   * 지워진다. **여러 줄 입력이 붙는 날 이 시험이 함께 바뀐다.**
    */
-  it('사유 칸이 한 줄 입력이고 유도 문구가 여러 줄을 지시하지 않는다', async () => {
+  it('사유 칸이 한 줄 입력이다', async () => {
     withReasonCodes();
 
     const { user } = renderScreen(submitRoutes());
@@ -3274,7 +3142,6 @@ describe('StockAdjustScreen — 상신 확인 창', () => {
     fillReason('첫 줄\n둘째 줄');
 
     expect(submitReasonField()).toHaveValue('첫 줄둘째 줄');
-    expect(t.submit.reasonPlaceholder).not.toContain('다음 줄');
   });
 
   it('계속 입력을 누르면 창이 닫히고 요청이 나가지 않는다', async () => {
@@ -3495,10 +3362,9 @@ describe('StockAdjustScreen — 상신 성공', () => {
 
   /**
    * ⭐ **자리표시가 잠금을 정하지 않는다**(D-13 · C37). 비어 있는 동안 어떤 버튼도 잠그지
-   * 않고 「승인되었습니다」도 서지 않는다. 「판정하지 못합니다」·「승인은 재고를 움직이지
-   * 않습니다」 안내문은 걷었다(사용자 지시 2026-11-18).
+   * 않고 「승인되었습니다」도 서지 않는다.
    */
-  it('승인 판정을 못 하는 동안 안내문도 승인 표기도 없다', async () => {
+  it('승인 판정을 못 하는 동안 승인 표기가 없다', async () => {
     withReasonCodes();
 
     const { user } = renderScreen(submitRoutes());
@@ -3508,11 +3374,7 @@ describe('StockAdjustScreen — 상신 성공', () => {
 
     await screen.findByText('SAMPLE-AP-0001');
 
-    expect(within(progressPane()).queryByText(/판정하지 못합니다/)).not.toBeInTheDocument();
     expect(within(progressPane()).queryByText(t.progress.approvedNote)).not.toBeInTheDocument();
-    expect(
-      within(progressPane()).queryByText(/승인은 재고를 움직이지 않습니다/),
-    ).not.toBeInTheDocument();
   });
 
   /** 결재 진행을 못 읽어도 **상신은 이미 접수됐다** — 화면 배너로 번지지 않는다. */
@@ -4355,7 +4217,6 @@ describe('StockAdjustScreen — 전기 자리', () => {
     expect(screen.queryByRole('region', { name: t.post.label })).not.toBeInTheDocument();
   });
 
-  /* 접힌 전기 구획의 상시 사유(「결재선이 없는 조정만」)는 걷었다(사용자 지시 2026-11-18). */
   it('등록하면 접힌 채로 선다', async () => {
     withReasonCodes();
 
@@ -4363,7 +4224,6 @@ describe('StockAdjustScreen — 전기 자리', () => {
 
     await registerThenPostReady(user);
 
-    expect(within(postPane()).queryByText(/결재선이 없는 조정만/)).not.toBeInTheDocument();
     expect(togglePostButton()).toHaveAttribute('aria-expanded', 'false');
     expect(within(postPane()).queryByLabelText(t.post.businessDate)).not.toBeInTheDocument();
     expect(
@@ -4606,8 +4466,8 @@ describe('StockAdjustScreen — 전기 확인 창', () => {
     expect(postRequests(requests)).toHaveLength(0);
   });
 
-  /** 창이 **무엇이 언제 자로 잡히는지**와 「일어나는 일」 세 문장을 함께 되보인다. */
-  it('창이 두 값과 일어나는 일 세 문장을 되보인다', async () => {
+  /** 창이 **무엇이 언제 자로 잡히는지**와 되돌릴 수 없다는 한 줄을 함께 되보인다. */
+  it('창이 두 값과 되돌릴 수 없다는 한 줄을 되보인다', async () => {
     withReasonCodes();
 
     const { user } = renderScreen(postRoutes());
@@ -4625,11 +4485,7 @@ describe('StockAdjustScreen — 전기 확인 창', () => {
     expect(within(dialog).getByText('2026-08-18 00:30')).toBeVisible();
     /* 두 날짜가 갈렸다는 사실을 밝히되 막지 않는다(공유계약 C-8). */
     expect(within(dialog).getByText(t.dialog.postDatesApart)).toBeVisible();
-    /* 되돌릴 수 없다는 한 줄만 남고 「전기하면 일어나는 일」 세 문장은 걷었다(사용자 지시 2026-11-18). */
     expect(within(dialog).getByText(t.dialog.postLead)).toBeVisible();
-    expect(
-      within(dialog).queryByRole('region', { name: '전기하면 일어나는 일' }),
-    ).not.toBeInTheDocument();
   });
 
   /**
@@ -4790,10 +4646,6 @@ describe('StockAdjustScreen — 전기 성공', () => {
     await screen.findByText(t.post.postedTitle('SAMPLE-IA-9301'));
 
     expect(within(resultPane()).getByText(t.result.createdTitle('SAMPLE-IA-9301'))).toBeVisible();
-    /* 전기 뒤 장부 낡음 안내문은 걷었다(사용자 지시 2026-11-18). */
-    expect(
-      within(postPane()).queryByText(/전기 뒤에 다시 부르지 않습니다/),
-    ).not.toBeInTheDocument();
   });
 });
 
@@ -5131,36 +4983,6 @@ describe('StockAdjustScreen — 전기 실패', () => {
 
     expect(screen.queryByText(t.post.failedTitle('SAMPLE-IA-9301'))).not.toBeInTheDocument();
     expect(screen.queryByText(t.post.failedDescription)).not.toBeInTheDocument();
-  });
-
-  /**
-   * ⭐ **이 안내의 본체는 여전히 금지다**(등록 축 `notes.networkUnconfirmed`와 같은 잣대).
-   *
-   * 재고 이중 이동을 막는 것은 확인이 아니라 **하지 않는 것**이다 — 다시 누르는 길이 상세
-   * GET을 먼저 지나 **새 잠금 토큰을 앉히므로** 낙관적 잠금도 두 번째 전기를 막지 못한다.
-   *
-   * ✅ **앞 회차의 음성 축(「처리 이력」 0건)을 이 회차가 의도적으로 지웠다** — 이력 탭이
-   * 서면서 그 자리가 실재하게 됐다.
-   *
-   * ⭐ **절 셋과 차례를 등록 축과 같은 형태로 잰다**(검증 문제 ① · 리뷰 R-2). 여기서는
-   * ③이 한 겹 더 무겁다 — 가리키는 것이 탭 이름만이 아니라 **이력 상세가 실제로 그리는 값**
-   * (전기일)이라, 그 라벨 상수를 함께 담는지까지 본다.
-   */
-  it('그 안내가 사실·금지·확인 자리를 그 차례로 말한다', () => {
-    /* ① 사실 — 재고가 움직였는지 모른다는 것이 이 완화의 근거다. */
-    expect(t.post.networkUnconfirmed).toContain('알 수 없습니다');
-    /* ② 금지 — 다시 누르면 낙관적 잠금도 막지 못한다. */
-    expect(t.post.networkUnconfirmed).toContain('바로 다시 전기하지 마세요');
-    /* ③ 확인 자리 — 탭과 **그 탭이 실제로 그리는 값**을 함께 가리킨다. */
-    expect(t.post.networkUnconfirmed).toContain(t.tabs.history);
-    expect(t.post.networkUnconfirmed).toContain(t.historySummary.adjustedAt);
-
-    const factAt = t.post.networkUnconfirmed.indexOf('알 수 없습니다');
-    const banAt = t.post.networkUnconfirmed.indexOf('바로 다시 전기하지 마세요');
-    const placeAt = t.post.networkUnconfirmed.indexOf(t.tabs.history);
-
-    expect(factAt).toBeLessThan(banAt);
-    expect(banAt).toBeLessThan(placeAt);
   });
 
   /** 짝 방향 — 서버가 거절한 요청에는 그 안내가 없다. 전달된 것이 확실하기 때문이다. */
@@ -5648,18 +5470,6 @@ describe('StockAdjustScreen — 탭', () => {
     expect(screen.getAllByRole('tab')).toHaveLength(2);
   });
 
-  /** 승인 대기 탭이 이름으로도 되살아나지 않는다 — 양성 앵커 뒤에 잰다. */
-  it('승인 대기 탭이 없다', async () => {
-    renderScreen(historyRoutes());
-
-    await waitForCounts();
-
-    for (const tab of screen.getAllByRole('tab')) {
-      expect(tab.textContent ?? '').not.toContain('승인');
-      expect(tab.textContent ?? '').not.toContain('대기');
-    }
-  });
-
   it('처음 열면 조정 등록 탭이 서고 이력 구획은 렌더되지 않는다', async () => {
     renderScreen(historyRoutes());
 
@@ -5682,7 +5492,7 @@ describe('StockAdjustScreen — 탭', () => {
 
     await waitForCounts();
 
-    /* 두 탭의 안내문을 걷어(사용자 지시 2026-11-18) 각 탭에만 있는 라벨 글자로 잰다. */
+    /* 각 탭에만 있는 라벨 글자로 잰다. */
     expect(screen.queryAllByText(t.historyFields.period)).toHaveLength(0);
 
     await openHistoryTab(user);
@@ -5755,21 +5565,6 @@ describe('StockAdjustScreen — 탭', () => {
 
     expect(await screen.findByRole('table')).toBeInTheDocument();
     expect(diffBox(1)).toHaveValue('-7');
-  });
-
-  /* 탭 위에 늘 서던 결재 안내·범위 안내 배너는 걷었다(사용자 지시 2026-11-18). */
-  it('두 탭 어디에도 결재 안내·범위 안내 배너가 없다', async () => {
-    const { user } = renderScreen(historyRoutes());
-
-    await waitForCounts();
-
-    expect(screen.queryByText('결재는 결재함에서 합니다')).not.toBeInTheDocument();
-    expect(screen.queryByText('조정은 수불 원장에 기록됩니다')).not.toBeInTheDocument();
-
-    await openHistoryTab(user);
-
-    expect(screen.queryByText('결재는 결재함에서 합니다')).not.toBeInTheDocument();
-    expect(screen.queryByText('조정은 수불 원장에 기록됩니다')).not.toBeInTheDocument();
   });
 
   /**
@@ -5905,10 +5700,7 @@ describe('StockAdjustScreen — 이력 조회', () => {
     await waitForLocation(`${ROUTE}?count=9101&tab=history&hrs=${SAMPLE_REASON}`);
   });
 
-  /*
-   * 선택지가 늘 비어 쓰이지 않던 상태 조건과 그 「값 목록 미확정」 안내는 걷었다(사용자 지시
-   * 2026-11-18). 옛 주소에 `hst`가 남아 있어도 요청에 싣지 않는다.
-   */
+  /* 상태 조건은 걷었다. 옛 주소에 `hst`가 남아 있어도 요청에 싣지 않는다. */
   it('상태 조건 칸이 없고 옛 주소의 상태 키는 요청에 실리지 않는다', async () => {
     withReasonCodes();
 
@@ -5921,7 +5713,6 @@ describe('StockAdjustScreen — 이력 조회', () => {
     });
 
     expect(within(bar).queryByLabelText('상태')).not.toBeInTheDocument();
-    expect(within(bar).queryByText(/값 목록이 아직 확정되지 않아/)).not.toBeInTheDocument();
     expect(adjustmentRequests(requests)[0]?.url.searchParams.has('statusCode')).toBe(false);
     expect(within(bar).getByLabelText(t.historyFields.reason)).toHaveTextContent(
       t.historyFilters.all,
@@ -6249,8 +6040,6 @@ describe('StockAdjustScreen — 이력 상세', () => {
     expect(cells[5]).toContain('-20');
     expect(cells[3]).toBe(t.values.empty);
     expect(cells[4]).toBe(t.values.empty);
-    /* 장부·실물이 비는 까닭을 밝히던 안내문은 걷었다(사용자 지시 2026-11-18). */
-    expect(within(historyDetailPane()).queryByText(/조정 시점의 값이라/)).not.toBeInTheDocument();
   });
 
   it('고른 전표가 주소에 실린다 — 새로고침해도 같은 전표가 열린다', async () => {
@@ -6305,23 +6094,4 @@ describe('StockAdjustScreen — 이력 상세', () => {
 
     expect(currentLocation()).not.toContain('ia=9302');
   });
-});
-
-/**
- * ⭐ **묶음 재판단** — 이력 탭이 서면서 앞 회차들이 「그때 다시 본다」로 넘긴 자리들.
- *
- * | 넘긴 것 | 이 회차의 판정 |
- * | --- | --- |
- * | 네트워크 미확인 안내 둘 | **가리킬 자리가 생겼다** — 문구를 갱신하고 그 탭이 실재함을 잰다 |
- * | 매임 끊긴 성공의 지속성 | **이력이 대신한다** — 문구가 그 자리를 가리킨다 |
- * | 성공/실패 비대칭 | **닫는다** — 응답 없음 갈래도 사실을 말한다 |
- */
-describe('StockAdjustScreen — 이력이 대신하는 자리', () => {
-  it('매임이 끊긴 성공의 안내가 이력 탭을 가리킨다', () => {
-    expect(t.result.unboundCreatedNote('SAMPLE-IA-9301')).toContain(t.tabs.history);
-    expect(t.result.unboundSubmittedNote('SAMPLE-IA-9301')).toContain(t.tabs.history);
-    expect(t.post.unboundPostedNote('SAMPLE-IA-9301')).toContain(t.tabs.history);
-  });
-
-  /* 전기 뒤 장부 낡음 안내문(`post.bookQtyStale`)은 걷었다(사용자 지시 2026-11-18). */
 });

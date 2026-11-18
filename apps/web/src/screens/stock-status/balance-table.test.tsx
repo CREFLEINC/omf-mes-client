@@ -304,19 +304,6 @@ describe('BalanceTable — 1단 그룹 헤더', () => {
   });
 });
 
-describe('BalanceTable — 표 아래 안내', () => {
-  /* 정렬·그룹 범위 안내문은 걷었다(사용자 지시 2026-11-18). */
-  it.each([
-    { view: 'item' as const, rows: itemViewFixtures },
-    { view: 'lot' as const, rows: lotViewFixtures },
-  ])('$view 보기의 표 아래에 안내문을 두지 않는다', ({ view, rows }) => {
-    renderTable({ view, rows });
-
-    expect(table()).toBeInTheDocument();
-    expect(document.querySelector('p.field-note')).toBeNull();
-  });
-});
-
 describe('BalanceTable — 참조 값 표기', () => {
   it('참조가 오면 이름으로 보인다', () => {
     renderTable({ view: 'item' });

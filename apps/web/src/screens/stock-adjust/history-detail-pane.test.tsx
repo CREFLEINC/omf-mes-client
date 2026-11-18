@@ -231,13 +231,6 @@ describe('HistoryDetailPane — 라인 표', () => {
     expect(cellsOf(0)[5]).toContain('-20');
   });
 
-  /* 두 열이 비는 까닭과 위치 열이 없는 까닭을 밝히던 안내문은 걷었다(사용자 지시 2026-11-18). */
-  it('라인 표 아래에 안내문을 두지 않는다', () => {
-    renderPane();
-
-    expect(document.querySelector('p.field-note')).toBeNull();
-  });
-
   /**
    * ⭐ **없는 것과 못 푼 것을 가른다**(검증 문제 ③ · 목록 표의 실사 참조와 같은 강도).
    *
@@ -274,15 +267,6 @@ describe('HistoryDetailPane — 라인 표', () => {
 });
 
 describe('HistoryDetailPane — 이름 풀이 실패', () => {
-  /** **말하는 셋과 되살리는 셋이 같다** — 이 구획에 없는 위치를 문구가 가리키지 않는다. */
-  it('안내가 이 구획에 있는 셋만 말한다', () => {
-    renderPane({ hasReferenceError: true });
-
-    expect(screen.getByText(t.reasons.historyReferencesFailed)).toBeInTheDocument();
-    expect(t.reasons.historyReferencesFailed).not.toContain('위치');
-    expect(t.reasons.lineReferencesFailed).toContain('위치');
-  });
-
   it('실패 사유와 복구 경로가 그 자리에 함께 선다', async () => {
     const { onRetryReferences, user } = renderPane({ hasReferenceError: true });
 

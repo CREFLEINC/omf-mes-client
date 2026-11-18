@@ -43,15 +43,11 @@ describe('OpenForm — 개시 입력 칸', () => {
     expect(screen.getByRole('checkbox', { name: t.fields.blindCount })).toBeInTheDocument();
   });
 
-  /**
-   * **C19 · G1** — 값 목록이 확정되지 않아 실사 유형 선택지가 비어 있다. 자리표시가 그 사정을
-   * 밝히고, 칸 아래 안내문(`pendingCode.note`)은 걷었다(사용자 지시 2026-11-18).
-   */
-  it('실사 유형 선택지가 비어 있으면 자리표시만 붙는다', () => {
+  /** **C19 · G1** — 값 목록이 확정되지 않아 실사 유형 선택지가 비어 있으면 자리표시가 붙는다. */
+  it('실사 유형 선택지가 비어 있으면 자리표시가 붙는다', () => {
     renderForm();
 
     expect(screen.getByText(messages.pendingCode.placeholder)).toBeInTheDocument();
-    expect(screen.queryByText(messages.pendingCode.note)).not.toBeInTheDocument();
     /* 짝 방향 — 창고 선택지는 실제로 들어 있다(빈 것이 부품 탓이 아님을 밝힌다). */
     expect(screen.getByLabelText(t.fields.warehouse)).toBeInTheDocument();
   });

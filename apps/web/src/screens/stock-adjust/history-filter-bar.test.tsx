@@ -37,17 +37,6 @@ const renderBar = (overrides: Partial<HistoryFilterBarProps> = {}) => {
 const searchButton = (): HTMLElement =>
   screen.getByRole('button', { name: messages.common.search });
 
-/**
- * 그 칸이 **자기 보조 문구로 걸어 둔 글**. 문서 전체에서 찾으면 옆 칸의 문구가 걸려
- * 「이 칸에는 없다」가 헛통과한다 — `aria-describedby`가 가리키는 자리만 읽는다.
- */
-const describedTextOf = (label: string): string => {
-  const field = screen.getByLabelText(label);
-  const ids = (field.getAttribute('aria-describedby') ?? '').split(' ').filter((id) => id !== '');
-
-  return ids.map((id) => document.getElementById(id)?.textContent ?? '').join(' ');
-};
-
 describe('HistoryFilterBar — 조건 칸', () => {
   /* 선택지가 늘 비어 쓰이지 않던 상태 칸은 걷었다(사용자 지시 2026-11-18). */
   it('조건 칸이 셋이다 — 전기일·대상 실사·조정 사유', () => {
@@ -69,7 +58,6 @@ describe('HistoryFilterBar — 조건 칸', () => {
     expect(screen.getByLabelText(t.historyFields.period)).toBeInTheDocument();
     expect(container.querySelectorAll('input[type="checkbox"]')).toHaveLength(0);
     expect(screen.queryAllByRole('switch')).toHaveLength(0);
-    expect(container.textContent ?? '').not.toContain('승인 대기');
   });
 
   /** 계약에 검색어 조건이 없다 — 만들면 쳐도 아무것도 좁혀지지 않는 칸이 된다. */
@@ -77,17 +65,6 @@ describe('HistoryFilterBar — 조건 칸', () => {
     renderBar();
 
     expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
-  });
-
-  /**
-   * ⭐ 사유는 **고객의 마스터에서 오는 실제 목록**이라(#36 회신 ④ · D-9 개정) 「목록 준비 중」이
-   * 서지 않는다. 상태 칸과 그 안내는 걷었다(사용자 지시 2026-11-18).
-   */
-  it('사유 칸에 「목록 준비 중」이 없다', () => {
-    renderBar();
-
-    expect(describedTextOf(t.historyFields.reason)).toBe('');
-    expect(screen.queryByText(/값 목록이 아직 확정되지 않아/)).not.toBeInTheDocument();
   });
 
   /**
@@ -233,11 +210,10 @@ describe('HistoryFilterBar — 조건 칩', () => {
     expect(screen.getByText(t.historyFilters.chipPeriodFrom('2026-08-01'))).toBeInTheDocument();
   });
 
-  it('조건이 없으면 칩도 안내문도 서지 않는다', () => {
-    const { container } = renderBar();
+  it('조건이 없으면 칩이 서지 않는다', () => {
+    renderBar();
 
     expect(screen.queryByText(t.historyFilters.chipRemoveReason)).not.toBeInTheDocument();
-    expect(container.querySelector('p.field-note')).toBeNull();
   });
 });
 

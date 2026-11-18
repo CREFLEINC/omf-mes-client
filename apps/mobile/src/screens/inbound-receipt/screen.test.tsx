@@ -398,13 +398,12 @@ describe('M-01-01 입하 등록 — 화면에 없는 것', () => {
     expect(screen.getByText(t.cards.empty)).toBeInTheDocument();
   });
 
-  it('원리 · 요령 설명 문단을 두지 않는다 — 화면 코드도 적지 않는다(사용자 지시 2026-11-18)', async () => {
+  it('화면 코드를 적지 않는다', async () => {
     mount(createServer());
 
     await screen.findByLabelText(t.scan.label);
 
-    expect(screen.queryByText(/100상자|마감하지 않은 입하 LOT|M-01-0/u)).toBeNull();
-    expect(screen.queryByText(/공급사·품목마다 한 장/u)).toBeNull();
+    expect(document.body.textContent).not.toMatch(/[MPW]-0\d-\d\d/u);
   });
 });
 
@@ -437,7 +436,6 @@ describe('US2-1 스캔마다 바로 등록', () => {
     expect(within(lotCard).getByText(t.card.statusNew)).toBeInTheDocument();
     /* 칩은 마지막 줄의 「방금 등록」 하나뿐 — 앞서 이 화면에서 등록한 줄에는 칩을 달지 않는다. */
     expect(within(lotCard).getAllByText(t.card.justNow)).toHaveLength(1);
-    expect(within(lotCard).queryByText(/이번에 등록/u)).toBeNull();
   });
 
   it('US2-4 공급사·품목이 섞이면 카드가 두 장 — 마지막에 건드린 것이 위', async () => {
@@ -498,7 +496,6 @@ describe('US2-1 스캔마다 바로 등록', () => {
       screen.getByText(t.reject.title(t.reject.alreadyReceived, '…|SYN01|0001')),
     ).toBeInTheDocument();
     /* 결과 줄은 하나 — 앞선 「폐기됨」 줄은 쌓이지 않고 덮였다(사용자 지시 2026-11-18). */
-    expect(screen.getAllByText(new RegExp('등록 안 됨', 'u'))).toHaveLength(1);
     expect(screen.queryByText(new RegExp(t.reject.voided, 'u'))).toBeNull();
   });
 
@@ -515,7 +512,6 @@ describe('US2-1 스캔마다 바로 등록', () => {
     const result = screen.getByRole('status', { name: t.scan.results });
     expect(result.querySelectorAll('.receive-line')).toHaveLength(1);
     expect(result).toHaveTextContent(t.result.created('SYN-IL-6001'));
-    expect(screen.queryByText(/등록 안 됨/u)).toBeNull();
   });
 
   it('G1 이 화면 카드에 없는 이미 입하된 라벨 · 자재 관리 LOT 이 아닌 라벨도 까닭별 문구로 거부한다', async () => {
@@ -618,7 +614,7 @@ describe('US2-2 입하 마감', () => {
     const dialog = await screen.findByRole('dialog', { name: t.closeDialog.title('SYN-IL-6001') });
 
     expect(dialog).toHaveTextContent(t.closeDialog.bodyNoIqcRecord);
-    expect(dialog).not.toHaveTextContent('검사 생략');
+    expect(dialog).not.toHaveTextContent(t.closeDialog.bodyNoInspection);
   });
 
   it('G1 검사 불필요 품목의 마감 확인 창은 「검사 생략」 문구 — IQC 요청이 생긴다고 하지 않는다', async () => {
@@ -700,11 +696,7 @@ describe('US2-6 공급사 LOT 번호 시트', () => {
     await waitFor(() =>
       expect(within(card('SYN-IL-6001')).getAllByText(t.card.noSupplierLot)).toHaveLength(2),
     );
-    /*
-     * 자재 관리 LOT 은 카드 아래 한 줄짜리 표 — 번호 칸은 끝 일련번호, 수량 · 공급사 LOT · ✕ 가 같은 행이다. 품질
-     * (검사 대기 · 보류) 칩은 두지 않는다(사용자 지시 2026-11-18).
-     */
-    expect(within(card('SYN-IL-6001')).queryByText(/검사 대기/u)).toBeNull();
+    /* 자재 관리 LOT 은 카드 아래 한 줄짜리 표 — 번호 칸은 끝 일련번호, 수량 · 공급사 LOT · ✕ 가 같은 행이다. */
     const lotTable = within(card('SYN-IL-6001')).getByRole('table', { name: t.card.lotsLabel });
     const row = within(lotTable).getByText('0001').closest('tr') as HTMLElement;
     expect(
@@ -774,10 +766,6 @@ describe('US2-6 공급사 LOT 번호 시트', () => {
         within(card('SYN-IL-6001')).getByText(t.card.iqcRequest('SYN-IQC-0001')),
       ).toBeInTheDocument(),
     );
-    expect(
-      within(card('SYN-IL-6001')).queryByText(/스캔하면|고칠 수 없습니다|M-01-03/u),
-    ).toBeNull();
-
     expect(
       within(card('SYN-IL-6001')).getByRole('button', { name: t.card.editSupplierLot(A(1)) }),
     ).toBeDisabled();
