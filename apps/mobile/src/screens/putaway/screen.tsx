@@ -22,7 +22,22 @@ import { useWorkerId } from '../../patterns/workers';
 import { useLocationByCode, useLocations, type Location } from '../../patterns/locations';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
-import { putawayKeys, useFindTasksByLot, usePutawayTasks, useTaskLotNo } from './queries';
+import {
+  putawayKeys,
+  useFindTasksByLot,
+  useLookupPendingLot,
+  usePendingLots,
+  usePutawayTasks,
+  useTaskLotNo,
+} from './queries';
+import {
+  groupPendingLots,
+  modeTextOf,
+  reasonTextOf,
+  type PendingLot,
+  type PendingLotLookup,
+} from './direct';
+import { PendingLotPanel, type DirectRecorded } from './pending-lot-panel';
 import {
   ANYWHERE,
   MATCHED,
@@ -40,6 +55,7 @@ import {
 import './screen.css';
 
 const t = messages.putaway;
+const d = messages.putaway.direct;
 /* 필수 표시는 화면마다 짓지 않는다. 같은 뜻이 여러 모양으로 갈린다. */
 const required = messages.common.required;
 
@@ -51,8 +67,10 @@ interface Registered {
   locationCode: string;
   qty: string;
   outcome: Outcome;
-  /** 창고 보충 지시가 덜 옮겼거나 옮길 것이 없었다(004, 완료 응답). */
+  /** 창고 보충 지시가 덜 옮겼거나 옮길 것이 없었다(004, 완료 응답). 지시 없는 적치는 입고 번호 · 창고. */
   note: string | null;
+  /** 지시 없는 적치의 적치 방식(피처 009). 지시 완료는 null. */
+  mode?: string | null;
 }
 
 /**
@@ -61,7 +79,12 @@ interface Registered {
  */
 type LotLookup =
   | { code: string; kind: 'finding' | 'failed' | 'notLot' | 'none' }
-  | { code: string; kind: 'many'; lotNo: string; tasks: PutawayTask[] };
+  | { code: string; kind: 'many'; lotNo: string; tasks: PutawayTask[] }
+  /** 피처 009 — 적치 대기가 아닌 LOT(이유 코드, FR-011). 이미 적치됐으면 그 자리. */
+  | { code: string; kind: 'reason'; reasonCode: string; putAway: PendingLotLookup['putAway'] };
+
+/** `:lookup` 이 적치 대기라고 답한 LOT — 그 LOT 화면을 연다. */
+type OpenedLot = PendingLotLookup & { lot: PendingLot };
 
 export const PutawayScreen = () => {
   useScreenTitle(t.title);
@@ -85,6 +108,9 @@ export const PutawayScreen = () => {
    */
   const [byLot, setByLot] = useState(false);
   const [lookup, setLookup] = useState<LotLookup | null>(null);
+  /* 피처 009 — 연 적치 대기 LOT. 지시(`task`)와 함께 열리지 않는다. */
+  const [pendingLot, setPendingLot] = useState<OpenedLot | null>(null);
+  const lookupPendingLot = useLookupPendingLot();
   /*
    * 방금 기록한 건 - 목록 위 배너로 무엇을 어디에 두었는지 말한다. 다음 스캔까지 둔다. 단추 없이
    * 기록되므로 화면이 바뀐 것만으로는 기록됐는지 알 수 없다.
@@ -104,6 +130,7 @@ export const PutawayScreen = () => {
 
   const workerId = useWorkerId(worker?.workerNo ?? null);
   const tasks = usePutawayTasks(workerId.data ?? null);
+  const pendingLots = usePendingLots(workerId.data ?? null);
   const locations = useLocations(task?.warehouseId ?? null);
   const byCode = useLocationByCode(task?.warehouseId ?? null, scanned);
   const uoms = useUomCodes(true);
@@ -224,6 +251,11 @@ export const PutawayScreen = () => {
     clearScans();
   };
 
+  /*
+   * 목록에서 LOT 라벨을 읽었다(피처 009). 먼저 적치 대기 LOT 인지 묻는다 — 그렇다면 그 LOT 화면을 열고, 지시가
+   * 있으면(`HAS_TASK`) 지금 지시 경로(omf-all-around#272)로 연다. 구매 입하 LOT 이 아니면(`NOT_INBOUND`) 생산 LOT 의
+   * 창고 보충 지시일 수 있어 지시도 찾아본다(004 — 지금처럼).
+   */
   const lookUpLot = async (code: string) => {
     if (code === '') {
       return;
@@ -238,6 +270,37 @@ export const PutawayScreen = () => {
       setLookup(next);
       playErrorTone();
     };
+
+    let checked: PendingLotLookup;
+    try {
+      checked = await lookupPendingLot(code);
+    } catch {
+      if (seq === lookupSeq.current) {
+        settle({ code, kind: 'failed' });
+      }
+      return;
+    }
+
+    if (seq !== lookupSeq.current) {
+      return;
+    }
+
+    if (!checked.found) {
+      settle({ code, kind: 'notLot' });
+      return;
+    }
+
+    if (checked.eligible && checked.lot !== undefined) {
+      setLookup(null);
+      setPendingLot({ ...checked, lot: checked.lot });
+      return;
+    }
+
+    const reasonCode = checked.reasonCode ?? 'NOT_INBOUND';
+    if (reasonCode !== 'HAS_TASK' && reasonCode !== 'NOT_INBOUND') {
+      settle({ code, kind: 'reason', reasonCode, putAway: checked.putAway });
+      return;
+    }
 
     let found: Awaited<ReturnType<typeof findTasksByLot>>;
     try {
@@ -257,13 +320,29 @@ export const PutawayScreen = () => {
     if (found.lotNo === null) {
       settle({ code, kind: 'notLot' });
     } else if (only === undefined) {
-      settle({ code, kind: 'none' });
+      settle(
+        reasonCode === 'NOT_INBOUND'
+          ? { code, kind: 'reason', reasonCode, putAway: undefined }
+          : { code, kind: 'none' },
+      );
     } else if (rest.length === 0) {
       setLookup(null);
       openTask(only, found.lotNo);
     } else {
       setLookup({ code, kind: 'many', lotNo: found.lotNo, tasks: found.tasks });
     }
+  };
+
+  /* 적치 대기 LOT 화면이 한 건을 적었다 — 목록으로 돌아와 무엇을 어디에 두었는지 말한다. */
+  const directRecorded = async (recorded: DirectRecorded) => {
+    setRegistered((prev) => [...prev, recorded]);
+    setLastRecorded(recorded);
+    setPendingLot(null);
+    /* 방금 적치한 LOT 이 목록에 그대로 서 있으면 같은 LOT 을 두 번 적치할 수 있다. 배지 수도 함께 바뀐다. */
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: putawayKeys.pendingLots(workerId.data ?? null) }),
+      queryClient.invalidateQueries({ queryKey: putawayKeys.tasks(workerId.data ?? null) }),
+    ]);
   };
 
   /* 목록의 LOT 스캔 칸(omf-all-around#272). 지시를 열면 칸이 사라지고 위치 칸이 받는다. */
@@ -304,7 +383,7 @@ export const PutawayScreen = () => {
   useBackStep(task !== null && locationSettled, clearScans);
   useBackStep(task !== null && !locationSettled, closeTask);
   /* 여럿을 추린 목록에서 뒤로가면 전체 목록으로 돌아온다. */
-  useBackStep(task === null && lookup?.kind === 'many', () => {
+  useBackStep(task === null && pendingLot === null && lookup?.kind === 'many', () => {
     setLookup(null);
   });
 
@@ -446,9 +525,16 @@ export const PutawayScreen = () => {
 
   return (
     <div className="putaway with-bottom-action-bar">
-      {task === null ? (
+      {pendingLot !== null && worker !== null ? (
+        <PendingLotPanel
+          key={pendingLot.lot.lotId}
+          found={pendingLot}
+          workerNo={worker.workerNo}
+          onClose={() => setPendingLot(null)}
+          onRecorded={(recorded) => void directRecorded(recorded)}
+        />
+      ) : task === null ? (
         <section className="putaway__section">
-          <h2>{t.tasks.legend}</h2>
           {workerId.isPending && worker !== null ? <p role="status">{t.worker.loading}</p> : null}
           {workerId.isError ? (
             <FailureBanner
@@ -472,9 +558,6 @@ export const PutawayScreen = () => {
             앞서 받은 0건이 남아 있어도 지금 조회가 실패했으면 없다고 말하지 않는다(#1198 실기 -
             등록 만료 옆에 「받은 적치 지시가 없습니다」가 떴다). 빈 목록 안내는 성공일 때만.
           */}
-          {tasks.isSuccess && tasks.data.length === 0 ? (
-            <p className="putaway__note">{t.tasks.none}</p>
-          ) : null}
           {/*
            * 방금 기록한 것(omf-all-around#272). LOT 으로 연 지시는 단추 없이 기록되고 목록으로 돌아오므로,
            * 무엇을 어디에 두었는지 여기서 말한다. 다음 스캔까지 둔다.
@@ -496,7 +579,12 @@ export const PutawayScreen = () => {
                     : t.sent.title
               }
             >
-              {t.done.row(lastRecorded.lotNo, lastRecorded.locationCode, lastRecorded.qty)}
+              <span className="putaway__verdict-line">
+                {t.done.row(lastRecorded.lotNo, lastRecorded.locationCode, lastRecorded.qty)}
+              </span>
+              {lastRecorded.mode === undefined || lastRecorded.note === null ? null : (
+                <span className="putaway__verdict-line">{lastRecorded.note}</span>
+              )}
             </AlertBanner>
           )}
 
@@ -505,14 +593,34 @@ export const PutawayScreen = () => {
             <ScanZone
               field={listLotField}
               label={t.lotScan.label}
-              prompt={t.lotScan.prompt}
+              prompt={d.lotScanPrompt}
               tools={manualButton(listLotField, t.lotScan.manual, t.lotScan.manualSubmit)}
             />
           )}
-          {lookup?.kind === 'finding' ? <p role="status">{t.lotScan.finding}</p> : null}
+          {lookup?.kind === 'finding' ? <p role="status">{d.finding}</p> : null}
           {lookup?.kind === 'failed' ? (
             <AlertBanner variant="error" title={lookup.code}>
-              {t.lotScan.findFailed}
+              {d.findFailed}
+            </AlertBanner>
+          ) : null}
+          {/* 적치 대기가 아닌 LOT(FR-011) — 지금은 모두 「적치 지시가 없습니다」 한 가지였다(시안 ⑦). */}
+          {lookup?.kind === 'reason' ? (
+            <AlertBanner
+              className="putaway__verdict"
+              variant="error"
+              title={reasonTextOf(lookup.reasonCode) ?? lookup.reasonCode}
+            >
+              <span className="putaway__verdict-line putaway__scanned">{lookup.code}</span>
+              {lookup.putAway === undefined ? null : (
+                <span className="putaway__verdict-line">
+                  {[
+                    d.putAwayAt(lookup.putAway.locationCode, lookup.putAway.warehouseName),
+                    modeTextOf(lookup.putAway.putawayModeCode),
+                  ]
+                    .filter((each) => each !== null)
+                    .join(', ')}
+                </span>
+              )}
             </AlertBanner>
           ) : null}
           {lookup?.kind === 'notLot' ? (
@@ -541,9 +649,73 @@ export const PutawayScreen = () => {
             </AlertBanner>
           ) : null}
 
-          {lookup?.kind !== 'many' && tasks.data !== undefined && tasks.data.length > 0 ? (
-            <p className="putaway__note">{t.tasks.count(String(tasks.data.length))}</p>
+          {lookup?.kind !== 'many' && tasks.data !== undefined && pendingLots.data !== undefined ? (
+            <p className="putaway__note">
+              {d.summary(String(pendingLots.data.total), String(tasks.data.length))}
+            </p>
           ) : null}
+
+          {/*
+           * 적치 대기 LOT(피처 009) — 입하 LOT · 품목으로 묶는다(입하 마감 오래된 순). 줄을 누르면 그 LOT 을
+           * 스캔한 것과 같다. 여럿을 추린 지시 목록을 보는 동안은 접는다.
+           */}
+          {lookup?.kind === 'many' ? null : (
+            <>
+              {pendingLots.isPending && workerId.isSuccess && workerId.data !== null ? (
+                <p role="status">{d.lotsLoading}</p>
+              ) : null}
+              {pendingLots.isError ? (
+                <FailureBanner
+                  variant="error"
+                  title={failureText(pendingLots.error, d.lotsLoadFailed)}
+                />
+              ) : null}
+              {pendingLots.data === undefined || pendingLots.data.items.length === 0 ? null : (
+                <>
+                  <h2>{d.lotsLegend}</h2>
+                  <ul className="putaway__groups">
+                    {groupPendingLots(pendingLots.data.items).map((group) => (
+                      <li key={group.key} className="putaway__group">
+                        <p className="putaway__group-head">
+                          <strong>{group.itemCode}</strong>
+                          <span>{group.itemName}</span>
+                          <Chip>{String(group.lots.length)}</Chip>
+                        </p>
+                        <p className="putaway__note">{group.source}</p>
+                        <ul className="putaway__lots">
+                          {group.lots.map((each) => (
+                            <li key={each.lotId}>
+                              <button
+                                type="button"
+                                className="putaway__lot"
+                                onClick={() => void lookUpLot(each.lotNo)}
+                              >
+                                <span className="putaway__scanned">{each.lotNo}</span>
+                                {each.lotStatusCode === 'DEFECTIVE' ? (
+                                  <Chip status="error">{d.defective}</Chip>
+                                ) : null}
+                                <span className="putaway__lot-qty">{`${String(each.qty)} ${each.uomCode}`}</span>
+                                <Icon name="chevron_right" size={24} className="putaway__chevron" />
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              {tasks.isSuccess &&
+              tasks.data.length === 0 &&
+              pendingLots.isSuccess &&
+              pendingLots.data.items.length === 0 ? (
+                <p className="putaway__note">{d.none}</p>
+              ) : null}
+              {tasks.data === undefined || tasks.data.length === 0 ? null : (
+                <h2>{d.tasksLegend}</h2>
+              )}
+            </>
+          )}
 
           {/* 카드 전체가 누르는 곳이다. 오른쪽 끝 › 가 고르는 카드임을 말한다. */}
           <ul className="putaway__tasks">
@@ -865,10 +1037,11 @@ export const PutawayScreen = () => {
                 />
                 <span className="putaway__scanned">
                   {t.done.row(each.lotNo, each.locationCode, each.qty)}
-                  {each.note === null ? null : (
+                  {each.note === null || each.mode !== undefined ? null : (
                     <span className="putaway__moved-note">{each.note}</span>
                   )}
                 </span>
+                {each.mode === undefined || each.mode === null ? null : <Chip>{each.mode}</Chip>}
                 {each.outcome === 'rejected' ? (
                   <Chip status="error">{t.rejected.title}</Chip>
                 ) : each.outcome === 'queued' ? (

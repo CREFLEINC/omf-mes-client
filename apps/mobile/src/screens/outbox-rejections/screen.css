@@ -62,3 +62,26 @@
   margin: 0;
   overflow-wrap: anywhere;
 }
+
+/* 무엇을 어디에 적었는가(「LOT → 위치」). 번호라 자리가 흔들리지 않게, 좁은 화면에서는 글자 사이에서 끊는다. */
+.outbox-rejections__summary {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* 적치 판정 문구(피처 009) — 스캔 때 막힌 배너와 같은 말을 아이콘과 함께. */
+.outbox-rejections__notice {
+  display: flex;
+  gap: var(--space-2, 8px);
+  align-items: flex-start;
+  color: var(--semantic-error, inherit);
+}
+
+.outbox-rejections__notice .outbox-rejections__reason {
+  font-weight: 600;
+}
+
+.outbox-rejections__hint {
+  color: var(--on-surface-muted, inherit);
+}

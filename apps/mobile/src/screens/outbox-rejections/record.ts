@@ -42,6 +42,64 @@ export const reasonOf = (error: ApiError): string => {
   }
 };
 
+/** 적치 지시 없는 적치(피처 009) — `:putaway`·`:putaway-temporary`. */
+const DIRECT_PUTAWAY_PATH = /^\/logistics\/putaway-pending-lots\/\d+:putaway(-temporary)?$/;
+
+const errorCodesOf = (error: ApiError): string[] => {
+  switch (error.kind) {
+    case 'validation':
+    case 'stateLocked':
+      return error.errors.map((item) => item.code);
+    case 'conflict':
+    case 'http':
+      return error.code === undefined ? [] : [error.code];
+    case 'network':
+      return [];
+  }
+};
+
+export interface PutawayNotice {
+  /** 판정 문구(「이 위치는 지정 품목만 받습니다」 등). */
+  title: string;
+  /** 이미 적치된 자리처럼 판정에 딸린 값 — 서버 메시지의 괄호 안. 없으면 null. */
+  detail: string | null;
+  /** 위치 판정으로 막힌 것만 — LOT 은 목록에 남아 다시 적치한다. 이유(이미 적치됨 등)면 null. */
+  hint: string | null;
+}
+
+/**
+ * 서버가 거절한 적치 기록을 스캔 때와 같은 판정 문구로(US2-9 · FR-030, 시안 「전송 실패한 기록」).
+ *
+ * 일반 사유(「지금 상태에서는 할 수 없는 일입니다」) 대신 판정 코드로 PDA 문구 파일에서 꺼낸다 — 서버 메시지는
+ * 한국어 하나라 베트남어 화면에 그대로 쓰지 않는다. 지정 품목 목록은 싣지 않는다. 적치 기록이 아니거나 모르는
+ * 코드면 null — 그때는 지금처럼 일반 사유를 보인다.
+ */
+export const putawayNoticeOf = (record: RejectedRecord): PutawayNotice | null => {
+  if (!DIRECT_PUTAWAY_PATH.test(record.entry.path)) {
+    return null;
+  }
+
+  const direct = messages.putaway.direct;
+  for (const code of errorCodesOf(record.error)) {
+    const verdict =
+      code in direct.verdict ? direct.verdict[code as keyof typeof direct.verdict] : null;
+    const reason = code in direct.reason ? direct.reason[code as keyof typeof direct.reason] : null;
+    const title = verdict ?? reason;
+
+    if (title !== null) {
+      /* 이미 적치됨은 서버가 메시지 괄호에 그 자리(경로)를 싣는다 — 값이라 그대로 옮긴다. */
+      const place =
+        code === 'ALREADY_PUT_AWAY'
+          ? (/\(([^()]+)\)\s*$/.exec(serverMessageOf(record.error) ?? '')?.[1] ?? null)
+          : null;
+
+      return { title, detail: place, hint: verdict === null ? null : direct.rejectedHint };
+    }
+  }
+
+  return null;
+};
+
 const pad = (value: number): string => String(value).padStart(2, '0');
 
 /**
