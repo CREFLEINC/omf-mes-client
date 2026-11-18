@@ -150,34 +150,26 @@ const SelectedResult = ({
             )}
             <section>
               <h4>배포 및 LOT</h4>
-              <table className="erp-release-information-table">
-                <tbody>
-                  <tr>
-                    <th scope="row">배포 일시</th>
-                    <td>{dateTime(detail.data?.releasedAt)}</td>
-                  </tr>
-                  <tr>
-                    <th scope="row">현재 상태</th>
-                    <td>{props.statusName(detail.data?.statusCode ?? row.statusCode)}</td>
-                  </tr>
-                  <tr>
-                    <th scope="row">선발행 LOT</th>
-                    <td>
-                      {detail.data?.preIssuedLots
-                        ? `${detail.data.preIssuedLots.slotCount}건`
-                        : '정보 미제공'}
-                    </td>
-                  </tr>
-                  <tr>
-                    <th scope="row">실적 등록 LOT</th>
-                    <td>
-                      {detail.data?.preIssuedLots
-                        ? `${detail.data.preIssuedLots.withResultCount}건`
-                        : '정보 미제공'}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+              <ReleaseInformationTable
+                paired
+                label="배포 및 LOT"
+                rows={[
+                  ['배포 일시', dateTime(detail.data?.releasedAt)],
+                  ['현재 상태', props.statusName(detail.data?.statusCode ?? row.statusCode)],
+                  [
+                    '선발행 LOT',
+                    detail.data?.preIssuedLots
+                      ? `${detail.data.preIssuedLots.slotCount}건`
+                      : '정보 미제공',
+                  ],
+                  [
+                    '실적 등록 LOT',
+                    detail.data?.preIssuedLots
+                      ? `${detail.data.preIssuedLots.withResultCount}건`
+                      : '정보 미제공',
+                  ],
+                ]}
+              />
             </section>
           </div>
         </>

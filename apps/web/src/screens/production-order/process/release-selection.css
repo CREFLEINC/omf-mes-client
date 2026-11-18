@@ -51,3 +51,18 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+.erp-release-information-table.is-paired th {
+  width: 8rem;
+}
+@media (max-width: 600px) {
+  .erp-release-information-table.is-paired tbody {
+    display: block;
+  }
+  .erp-release-information-table.is-paired tr {
+    display: grid;
+    grid-template-columns: 7rem minmax(0, 1fr);
+  }
+  .erp-release-information-table.is-paired th {
+    width: auto;
+  }
+}

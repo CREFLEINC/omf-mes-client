@@ -859,7 +859,6 @@ export const ProcessWorkspace = ({
           <Button variant="outlined" onClick={() => void navigate(worklistPath(lastSearch))}>
             {josa(tp.done.toWorklist, '으로/로')}
           </Button>
-          {releaseNavigation}
         </>
       );
     }
@@ -873,7 +872,6 @@ export const ProcessWorkspace = ({
       return (
         <>
           {prev}
-          {releaseNavigation}
           <Button
             loading={releasing}
             disabled={
@@ -1006,7 +1004,9 @@ export const ProcessWorkspace = ({
           remainingLink={remainingLink}
           remainingId={remainingId}
           leading={
-            dirtyPlans ? (
+            step === 'release' || step === 'done' ? (
+              releaseNavigation
+            ) : dirtyPlans ? (
               <Button variant="outlined" disabled={planBusy} onClick={() => void savePlans(false)}>
                 {tp.plan.saveDraft}
               </Button>

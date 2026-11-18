@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { messages } from '@omf-mes/i18n';
 import { renderWithProviders } from '../../../test/api-harness';
 import { ReleaseStep, toReleaseLines } from './release-step';
@@ -21,6 +21,36 @@ const workOrders: OrderWorkOrder[] = [1, 2].map((id) => ({
 }));
 
 describe('배포 대상 상세', () => {
+  it('작업지시 선택 변경 시 상세 상단으로 이동하고 최초 로드에는 이동하지 않는다', async () => {
+    const previous = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollIntoView');
+    const scroll = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scroll,
+    });
+    try {
+      const user = userEvent.setup();
+      renderWithProviders(
+        <ReleaseStep
+          lines={toReleaseLines(workOrders, {}, new Map())}
+          uomLabelOf={() => 'EA'}
+          failures={[]}
+          revealErrors={false}
+          onLotSizeChange={() => {}}
+        />,
+      );
+      expect(scroll).not.toHaveBeenCalled();
+      await user.click(screen.getByRole('row', { name: 'WO-2 배포 상세' }));
+      expect(scroll).toHaveBeenCalledWith({ block: 'start', inline: 'nearest', behavior: 'auto' });
+      expect(scroll.mock.instances[0]).toBe(
+        screen.getByRole('region', { name: '선택 작업지시 배포 상세' }),
+      );
+    } finally {
+      if (previous) Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', previous);
+      else Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView');
+    }
+  });
+
   it('배포 완료 조회에서 안내만 반복하는 LOT 열은 표시하지 않는다', () => {
     renderWithProviders(
       <ReleaseStep
