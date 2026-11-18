@@ -23,16 +23,3 @@
 .release-material-rate input[aria-invalid='true'] {
   border-color: var(--error);
 }
-.release-material-confirm {
-  white-space: nowrap;
-}
-.release-material-complete {
-  display: inline-flex;
-  align-items: center;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-  white-space: nowrap;
-  background: var(--secondary-container);
-  color: var(--on-secondary-container);
-  border-color: var(--secondary);
-}

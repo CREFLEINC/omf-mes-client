@@ -46,7 +46,6 @@ export const editableRate = (row: MaterialRequirement) =>
 const quantityText = (value: number) =>
   value.toLocaleString(undefined, { maximumFractionDigits: 20 });
 interface Choice {
-  checked: boolean;
   rate: string | null;
 }
 export const useReleaseMaterials = (targets: readonly ReleaseTarget[], enabled: boolean) => {
@@ -74,7 +73,7 @@ export const useReleaseMaterials = (targets: readonly ReleaseTarget[], enabled: 
       query,
       rows: rows.map((row) => {
         const key = `${target.workOrderId}:${signature}:${row.bomComponentId}`;
-        const choice = choices[key] ?? { checked: false, rate: null };
+        const choice = choices[key] ?? { rate: null };
         const rate = choice.rate === null ? row.conversionRate : normalizedRate(choice.rate);
         return {
           row,
@@ -92,9 +91,7 @@ export const useReleaseMaterials = (targets: readonly ReleaseTarget[], enabled: 
       (group) =>
         group.query.isSuccess &&
         !group.query.isFetching &&
-        group.rows.every(
-          ({ row, choice, rate }) => !row.confirmationRequired || (choice.checked && rate !== null),
-        ),
+        group.rows.every(({ row, rate }) => !row.confirmationRequired || rate !== null),
     );
   const confirmations: MaterialConfirmations = Object.fromEntries(
     groups.map((group) => [
@@ -103,7 +100,7 @@ export const useReleaseMaterials = (targets: readonly ReleaseTarget[], enabled: 
         .filter(({ row }) => row.confirmationRequired)
         .map(({ row, choice, rate }) => ({
           bomComponentId: row.bomComponentId,
-          confirmed: choice.checked,
+          confirmed: rate !== null,
           ...(editableRate(row) && choice.rate !== null && rate !== null
             ? { conversionRate: rate }
             : {}),
@@ -130,13 +127,15 @@ export const ReleaseMaterials = ({
       <section key={target.workOrderId} aria-label={`${target.workOrderNo} 자재 소요`}>
         <div className="section-heading-row">
           <h4>{target.workOrderNo}</h4>
-          <Button
-            variant="outlined"
-            disabled={disabled || query.isFetching}
-            onClick={() => void query.refetch()}
-          >
-            다시 조회
-          </Button>
+          {(query.isError || errors.some((error) => error.workOrderId === target.workOrderId)) && (
+            <Button
+              variant="outlined"
+              disabled={disabled || query.isFetching}
+              onClick={() => void query.refetch()}
+            >
+              다시 조회
+            </Button>
+          )}
         </div>
         {query.isPending ? (
           <p role="status">자재 소요 조회 중</p>
@@ -150,15 +149,8 @@ export const ReleaseMaterials = ({
               <AdjustableNativeTable
                 storageKey="omf-release-materials"
                 className="erp-wo-final-table"
-                labels={[
-                  '자재 코드',
-                  '자재명',
-                  'BOM 소요량',
-                  '출고 기준 소요량',
-                  '환산 비율',
-                  '확인',
-                ]}
-                widths={[135, 195, 110, 135, 260, 140]}
+                labels={['자재 코드', '자재명', 'BOM 소요량', '출고 기준 소요량', '환산 비율']}
+                widths={[135, 195, 110, 135, 260]}
               >
                 <tbody>
                   {rows.map(({ row, choice, rate, set }) => (
@@ -202,9 +194,7 @@ export const ReleaseMaterials = ({
                                         ? `material-rate-${target.workOrderId}-${row.bomComponentId}`
                                         : undefined
                                     }
-                                    onChange={(event) =>
-                                      set({ rate: event.target.value, checked: false })
-                                    }
+                                    onChange={(event) => set({ rate: event.target.value })}
                                   />
                                 </div>
                               ) : (
@@ -249,28 +239,6 @@ export const ReleaseMaterials = ({
                               {error.message}
                             </span>
                           ))}
-                      </td>
-                      <td>
-                        {row.confirmationRequired ? (
-                          choice.checked ? (
-                            <span className="release-material-complete" role="status">
-                              ✓ 확인 완료
-                            </span>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="outlined"
-                              className="release-material-confirm"
-                              aria-label={`${target.workOrderNo} ${row.itemCode} 수량 확인`}
-                              disabled={disabled || rate === null}
-                              onClick={() => set({ checked: true })}
-                            >
-                              수량 확인
-                            </Button>
-                          )
-                        ) : (
-                          '—'
-                        )}
                       </td>
                     </tr>
                   ))}

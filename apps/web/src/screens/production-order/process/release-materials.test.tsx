@@ -47,19 +47,15 @@ describe('자재 환산 확인', () => {
     expect(editableRate({ ...row, bomUomCode: 'PC', stockUomCode: 'EA' })).toBe(true);
     expect(editableRate({ ...row, conversionSource: 'ITEM' })).toBe(false);
   });
-  it('공통 질량 환산은 편집 없이 확인해야 배포할 수 있다', async () => {
-    const user = userEvent.setup();
+  it('등록된 환산 비율은 별도 확인 없이 배포 본문에 반영한다', async () => {
     renderWithProviders(<Harness />, { fetch: async () => jsonResponse({ items: [row] }) });
-    const checkbox = await screen.findByRole('button', { name: 'SYN-WO SYN-RESIN 수량 확인' });
-    expect(screen.getByRole('button', { name: '배포' })).toBeDisabled();
-    expect(screen.queryByRole('textbox', { name: /환산 비율/ })).not.toBeInTheDocument();
-    await user.click(checkbox);
+    expect(await screen.findByText('0.367 KG')).toBeVisible();
     expect(screen.getByRole('button', { name: '배포' })).toBeEnabled();
     expect(screen.getByLabelText('배포 본문')).toHaveTextContent('"confirmed":true');
-    expect(screen.getByText('✓ 확인 완료')).toHaveAttribute('role', 'status');
     expect(screen.queryByRole('button', { name: /수량 확인/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '다시 조회' })).not.toBeInTheDocument();
   });
-  it('환산이 없으면 비율 입력·결과 확인 후 배포하고 비율 수정 시 확인을 해제한다', async () => {
+  it('환산이 없으면 유효한 비율 입력 후 배포하고 입력을 지우면 배포를 막는다', async () => {
     const user = userEvent.setup();
     renderWithProviders(<Harness />, {
       fetch: async () =>
@@ -68,17 +64,15 @@ describe('자재 환산 확인', () => {
         }),
     });
     const input = await screen.findByRole('textbox', { name: 'SYN-WO SYN-RESIN 환산 비율' });
-    const checkbox = screen.getByRole('button', { name: /수량 확인/ });
-    expect(checkbox).toBeDisabled();
+    expect(screen.getByRole('button', { name: '배포' })).toBeDisabled();
     await user.type(input, '1000');
     expect(screen.getByText('0.367 KG')).toBeVisible();
-    await user.click(checkbox);
     expect(screen.getByRole('button', { name: '배포' })).toBeEnabled();
     expect(screen.getByLabelText('배포 본문')).toHaveTextContent('"conversionRate":1000');
+    expect(screen.getByLabelText('배포 본문')).toHaveTextContent('"confirmed":true');
     await user.clear(input);
-    expect(screen.getByRole('button', { name: /수량 확인/ })).toBeDisabled();
-    expect(screen.queryByText('✓ 확인 완료')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '배포' })).toBeDisabled();
+    expect(screen.getByRole('alert')).toHaveTextContent('환산 비율을 확인하세요.');
   });
   it('0 입력 오류는 입력란 밖에 표시하고 단위와 확인 버튼 배치를 유지한다', async () => {
     const user = userEvent.setup();
@@ -94,7 +88,7 @@ describe('자재 환산 확인', () => {
     expect(error).toHaveTextContent('환산 비율에 0을 입력할 수 없습니다.');
     expect(input).toHaveAttribute('aria-describedby', error.id);
     expect(error.closest('.release-material-rate')).toBeNull();
-    expect(screen.getByRole('button', { name: /수량 확인/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '배포' })).toBeDisabled();
   });
   it('소수 자릿수가 많은 소요량과 환산 비율도 생략하지 않는다', async () => {
     renderWithProviders(<Harness />, {
@@ -143,6 +137,7 @@ describe('자재 환산 확인', () => {
   it('조회 실패 시 배포를 허용하지 않는다', async () => {
     renderWithProviders(<Harness />, { fetch: async () => jsonResponse({}, { status: 500 }) });
     await screen.findByText('자재 소요를 조회하지 못했습니다. 다시 조회하세요.');
+    expect(screen.getByRole('button', { name: '다시 조회' })).toBeEnabled();
     expect(screen.getByRole('button', { name: '배포' })).toBeDisabled();
   });
 });
