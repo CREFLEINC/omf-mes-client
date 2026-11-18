@@ -513,7 +513,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     ],
   },
   /*
-   * 영업 / 출하 관리 — 출하지시 편성 → 예정 → 출하 처리(정상·긴급 직행) → 확정·취소,
+   * 영업 / 출하 관리 — 출하지시 편성 → 예정 → 긴급 직행 → 출하 내역(피처 010),
    * 그리고 확정된 출하가 되돌아오는 반품·클레임 갈래가 뒤따른다. OQC 판정은 「품질 관리」로 옮겼다.
    */
   {
@@ -534,32 +534,26 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         labelVi: 'Danh sách kế hoạch xuất hàng',
       },
       /*
-       * 출하 처리 — 정상 흐름(상차·실물 출고)과 창고 경유·피킹·포장을 건너뛰는 긴급 직행은 **같은
-       * 출하 생성 경로**다. 정상을 첫 탭에 두어 예외가 기본으로 읽히지 않게 한다.
+       * 피처 010(omf-all-around#305) — 출하는 PDA 피킹 → OQC → POP 「출하 완료」(P-04-07)로 끝난다.
+       * 관리웹 출하 처리(W-04-04)는 **메뉴에서 감춘다** — 주소·화면은 남긴다(배포 전에 예약만 있던
+       * 옛 피킹을 끝내는 관리자용 링크, 배포 공지). 그래서 그 묶음에 있던 긴급 직행(W-04-05)이
+       * 독립 항목으로 나왔다 — 창고 경유·피킹·포장을 건너뛰는 예외 흐름이라 출하 내역 «앞»이다.
        */
       {
-        to: '/shipment/shipment-processing',
+        to: '/shipment/expedited-shipment',
         icon: 'outbound',
-        label: '출하 처리',
-        labelVi: 'Xử lý xuất hàng',
-        tabs: [
-          {
-            to: '/shipment/shipment-processing',
-            label: '출하 처리(상차·실물 출고)',
-            labelVi: 'Xử lý xuất hàng (lên xe · xuất thực tế)',
-          },
-          {
-            to: '/shipment/expedited-shipment',
-            label: '긴급 직행 출하 처리',
-            labelVi: 'Xử lý xuất hàng thẳng khẩn',
-          },
-        ],
+        label: '긴급 직행 출하 처리',
+        labelVi: 'Xử lý xuất hàng thẳng khẩn',
       },
+      /*
+       * W-04-12 — 확정 단계가 없어져 이름이 「출하 내역」이다(피처 010). 옛 흐름·긴급 직행의 미확정
+       * 출하는 이 화면 상세에서 한 건씩 확정한다.
+       */
       {
         to: '/shipment/shipment-confirm',
         icon: 'task_alt',
-        label: '출하 확정·취소',
-        labelVi: 'Xác nhận · hủy xuất hàng',
+        label: '출하 내역',
+        labelVi: 'Lịch sử xuất hàng',
       },
       /*
        * 반품·클레임 — 확정된 출하가 되돌아오는 한 흐름이다: 입고 등록 → 판정 의뢰(판정은 품질의
