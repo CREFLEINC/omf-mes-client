@@ -61,7 +61,7 @@ export const unitLineKey = (handlingUnitContentId: number): string =>
 const PRODUCT_LOT_TYPES: readonly string[] = ['PRODUCTION', 'PRODUCT'];
 
 /** 생산 LOT 라벨을 받지 않는 까닭. */
-export type LotRefusal = 'notProduct' | 'voided' | 'notCompleted' | 'noGood';
+export type LotRefusal = 'notProduct' | 'voided' | 'noGood';
 
 /** LOT 의 양품 실적. `withProgress=true` 로 받은 단건에만 실린다 — 없으면 0 으로 본다. */
 export const goodQtyOf = (lot: Pick<Lot, 'progress'>): number => lot.progress?.goodQty ?? 0;
@@ -69,11 +69,12 @@ export const goodQtyOf = (lot: Pick<Lot, 'progress'>): number => lot.progress?.g
 /**
  * 생산 LOT 라벨로 입고할 수 있는가(omf-all-around#293 — 생산 포장을 없애 상자가 생기지 않는다).
  *
- * 생산 완료된 LOT 만 받는다. 생산 중인 LOT 은 실적이 더 붙어 수량이 계속 바뀐다. 이미 재고로 선
- * LOT 은 여기서 가리지 않는다 — 인식표 줄과 같은 재고 확인(`stockedLines`)이 막는다.
+ * 양품 실적이 들어온 생산 LOT 을 받는다 — 생산 LOT 라벨은 POP 실적 입력 때 나오므로 LOT 완료(라벨 스캔
+ * 마감)를 기다리지 않는다(사용자 지시 2026-11-18). 이미 재고로 선 LOT 은 여기서 가리지 않는다 — 인식표
+ * 줄과 같은 재고 확인(`stockedLines`)이 막는다.
  */
 export const lotRefusalOf = (
-  lot: Pick<Lot, 'lotTypeCode' | 'lifecycleStatusCode' | 'completedAt' | 'progress'>,
+  lot: Pick<Lot, 'lotTypeCode' | 'lifecycleStatusCode' | 'progress'>,
 ): LotRefusal | null => {
   if (!PRODUCT_LOT_TYPES.includes(lot.lotTypeCode)) {
     return 'notProduct';
@@ -81,10 +82,6 @@ export const lotRefusalOf = (
 
   if (lot.lifecycleStatusCode === 'VOIDED') {
     return 'voided';
-  }
-
-  if (lot.completedAt == null) {
-    return 'notCompleted';
   }
 
   return goodQtyOf(lot) > 0 ? null : 'noGood';

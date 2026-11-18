@@ -766,7 +766,7 @@ describe('제품 입고·적치 화면', () => {
     };
     const findLotField = () => screen.findByLabelText(/FG-1001 · FG-2026-000311 실물 수량/);
 
-    it('생산 완료된 LOT 은 양품 실적을 수량으로 채운다', async () => {
+    it('생산 LOT 은 양품 실적을 수량으로 채운다', async () => {
       const user = userEvent.setup();
       mount({ scanLot: {} });
       await scanLotLabel(user);
@@ -831,14 +831,14 @@ describe('제품 입고·적치 화면', () => {
       });
     });
 
-    it('생산 완료 전 LOT 은 받지 않고 소리로도 알린다', async () => {
+    it('생산 완료 전이어도 양품 실적이 있으면 받는다', async () => {
       const user = userEvent.setup();
-      mount({ scanLot: { completed: false } });
+      mount({ scanLot: { completed: false, goodQty: 200 } });
       await scanLotLabel(user);
 
-      expect(await screen.findByText(/아직 생산 완료되지 않았습니다/)).toBeTruthy();
-      expect(screen.queryByLabelText(/실물 수량/)).toBeNull();
-      expect(tone.played).toBeGreaterThan(0);
+      const field = (await findLotField()) as HTMLInputElement;
+
+      expect(field.value).toBe('200');
     });
 
     it('자재 LOT 은 받지 않는다', async () => {

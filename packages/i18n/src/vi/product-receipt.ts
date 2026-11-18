@@ -29,8 +29,6 @@ export const productReceipt: Translated<typeof ko.productReceipt> = {
     lotRefused: {
       notProduct: (lotNo: string) => `${lotNo} không phải LOT thành phẩm`,
       voided: (lotNo: string) => `${lotNo} là LOT đã hủy số`,
-      notCompleted: (lotNo: string) =>
-        `${lotNo} chưa hoàn thành sản xuất. Hãy hoàn thành LOT ở màn hình sản xuất rồi nhập kho.`,
       noGood: (lotNo: string) => `${lotNo} chưa có sản lượng đạt`,
     },
     picked: (no: string) => `Thẻ nhận diện ${no}`,

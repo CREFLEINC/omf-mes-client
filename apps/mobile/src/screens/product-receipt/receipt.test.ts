@@ -447,15 +447,14 @@ describe('생산 LOT 라벨 입고 (omf-all-around#293)', () => {
     },
   };
 
-  it('생산 완료 · 양품이 있는 생산 LOT 은 받는다', () => {
+  it('양품이 있는 생산 LOT 은 생산 완료 전이어도 받는다', () => {
     expect(lotRefusalOf(lot)).toBeNull();
     expect(lotRefusalOf({ ...lot, lotTypeCode: 'PRODUCT' })).toBeNull();
   });
 
-  it('자재 LOT · 폐번 · 생산 완료 전 · 양품 0 은 받지 않는다', () => {
+  it('자재 LOT · 폐번 · 양품 0 은 받지 않는다', () => {
     expect(lotRefusalOf({ ...lot, lotTypeCode: 'MATERIAL' })).toBe('notProduct');
     expect(lotRefusalOf({ ...lot, lifecycleStatusCode: 'VOIDED' })).toBe('voided');
-    expect(lotRefusalOf({ ...lot, completedAt: null })).toBe('notCompleted');
     expect(lotRefusalOf({ ...lot, progress: { ...lot.progress, goodQty: 0 } })).toBe('noGood');
     expect(lotRefusalOf({ ...lot, progress: undefined })).toBe('noGood');
   });

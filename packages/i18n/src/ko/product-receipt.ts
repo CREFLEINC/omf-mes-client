@@ -35,8 +35,6 @@ export const productReceipt = {
     lotRefused: {
       notProduct: (lotNo: string) => `${lotNo} 은(는) 제품 LOT이 아닙니다`,
       voided: (lotNo: string) => `${lotNo} 은(는) 폐번된 LOT입니다`,
-      notCompleted: (lotNo: string) =>
-        `${lotNo} 은(는) 아직 생산 완료되지 않았습니다. 생산 작업에서 LOT을 완료한 뒤 입고하세요.`,
       noGood: (lotNo: string) => `${lotNo} 은(는) 양품 실적이 없습니다`,
     },
     picked: (no: string) => `인식표 ${no}`,
