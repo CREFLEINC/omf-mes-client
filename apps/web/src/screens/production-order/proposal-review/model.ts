@@ -139,13 +139,15 @@ export const proposalErrors = (row: ReviewProposal): string[] => {
     else if (isPastPlanningDate(plan.date)) errors.push(pastPlanningDateMessage());
     if (!plan.operations.length) errors.push('Routing 공정을 확인하세요');
     plan.operations.forEach((op) =>
-      op.required.forEach((field) => {
-        if (
-          !op.resources[field] &&
-          !(field === 'defaultFgLocationId' && storage?.erpStorageLocationCode)
-        )
-          errors.push(`${op.name}: ${resourceLabels[field]} 미지정`);
-      }),
+      op.required
+        .filter((field) => field !== 'defaultWipLocationId' && field !== 'defaultScrapLocationId')
+        .forEach((field) => {
+          if (
+            !op.resources[field] &&
+            !(field === 'defaultFgLocationId' && storage?.erpStorageLocationCode)
+          )
+            errors.push(`${op.name}: ${resourceLabels[field]} 미지정`);
+        }),
     );
   });
   return [...new Set(errors)];

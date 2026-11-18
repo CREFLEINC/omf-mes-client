@@ -146,9 +146,7 @@ export const workOrderAssignmentDraftFrom = (fact: WorkOrderFact): WorkOrderAssi
 /** 저장 전에 반드시 골라야 하는 칸 — 화면의 필수 표시와 같은 목록이다. */
 export const REQUIRED_ASSIGNMENT_FIELDS = [
   'productionLineId',
-  'defaultWipLocationId',
   'defaultFgLocationId',
-  'defaultScrapLocationId',
 ] as const;
 
 export const validateWorkOrderAssignmentDraft = (
@@ -170,9 +168,8 @@ export const validateWorkOrderAssignmentDraft = (
   }
 
   /*
-   * 생산 라인과 기본 위치 셋은 반드시 골라야 저장할 수 있다(사용자 지시 2026-09-20).
-   * 세 위치가 비면 배포(W-02-04)가 서버에서 막히고, 라인은 작업지시 검증이 본다 —
-   * 그 막힘을 배포 화면까지 가서 만나지 않도록 이 화면에서 먼저 잡는다.
+   * 생산 라인과 생산품 입고 위치를 확인한다. WIP는 서버가 라인 기본값으로 적용하고
+   * 스크랩 위치는 계획 화면에서 입력받지 않는다.
    */
   for (const field of REQUIRED_ASSIGNMENT_FIELDS) {
     if (draft[field].trim() === '') fieldErrors[field] = 'REQUIRED';
@@ -226,9 +223,7 @@ export const toWorkOrderAssignmentUpdate = (
     plannedEquipmentId: toNullableId(draft.plannedEquipmentId),
     plannedMoldId: toNullableId(draft.plannedMoldId),
     plannedShiftId: toNullableId(draft.plannedShiftId),
-    defaultWipLocationId: toNullableId(draft.defaultWipLocationId),
     defaultFgLocationId: toNullableId(draft.defaultFgLocationId),
-    defaultScrapLocationId: toNullableId(draft.defaultScrapLocationId),
     plannedStartAt:
       draft.plannedStartAtLocal === '' ? null : toOffsetDateTime(draft.plannedStartAtLocal),
     plannedEndAt: draft.plannedEndAtLocal === '' ? null : toOffsetDateTime(draft.plannedEndAtLocal),

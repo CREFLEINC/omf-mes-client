@@ -56,6 +56,14 @@ const validDraft = (
 });
 
 describe('work-order assignment model', () => {
+  it('WIP·스크랩 입력 없이 저장하며 서버 자동값을 덮어쓰지 않는다', () => {
+    const draft = validDraft({ defaultWipLocationId: '', defaultScrapLocationId: '' });
+    expect(isWorkOrderAssignmentSaveEnabled(draft)).toBe(true);
+    const body = toWorkOrderAssignmentUpdate(draft);
+    expect(body).not.toHaveProperty('defaultWipLocationId');
+    expect(body).not.toHaveProperty('defaultScrapLocationId');
+  });
+
   it('moves complete and null facts to the exact owned draft shape', () => {
     expect(workOrderAssignmentDraftFrom(workOrderFact())).toEqual({
       productionLineId: '901',
@@ -119,9 +127,7 @@ describe('work-order assignment model', () => {
     ).toEqual({
       fieldErrors: {
         productionLineId: 'REQUIRED',
-        defaultWipLocationId: 'REQUIRED',
         defaultFgLocationId: 'REQUIRED',
-        defaultScrapLocationId: 'REQUIRED',
         priorityNo: 'REQUIRED',
       },
       formError: 'ASSIGNMENT_REQUIRED',
@@ -297,9 +303,7 @@ describe('work-order assignment model', () => {
       plannedEquipmentId: 903,
       plannedMoldId: 904,
       plannedShiftId: 905,
-      defaultWipLocationId: 906,
       defaultFgLocationId: 907,
-      defaultScrapLocationId: 908,
       plannedStartAt: '2026-08-23T09:45:00+07:00',
       plannedEndAt: '2026-08-23T10:45:00+07:00',
       priorityNo: 7,
@@ -324,9 +328,7 @@ describe('work-order assignment model', () => {
       plannedEquipmentId: 903,
       plannedMoldId: null,
       plannedShiftId: null,
-      defaultWipLocationId: 911,
       defaultFgLocationId: 912,
-      defaultScrapLocationId: 913,
       plannedStartAt: null,
       plannedEndAt: null,
       priorityNo: 2,

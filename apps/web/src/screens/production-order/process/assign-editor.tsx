@@ -15,7 +15,6 @@ import { locationOptionLabel } from '../../../patterns/location-label';
 import { ReferenceField, type ReferenceRow } from '../../../patterns/reference-picker';
 import { SaveErrorBanner } from '../../../patterns/master';
 import {
-  LINE_LOCATION_WAREHOUSE_TYPES,
   useWorkOrderEquipment,
   useWorkOrderLocations,
   useWorkOrderProductionLines,
@@ -217,15 +216,10 @@ const EditorSession = ({
   const lineSource = useLineSource(plantId);
   const equipmentSource = useEquipmentSource(plantId, idOrNull(draft.productionLineId));
   const moldSource = useMoldSource(plantId);
-  const wipSource = useLocationSource(plantId, LINE_LOCATION_WAREHOUSE_TYPES.defaultWipLocationId);
   const fgSource = useLocationSource(plantId, '', {
     erpCode: erpStorage?.erpStorageLocationCode,
     warehouseId: erpStorage?.erpStorageWarehouse?.id,
   });
-  const scrapSource = useLocationSource(
-    plantId,
-    LINE_LOCATION_WAREHOUSE_TYPES.defaultScrapLocationId,
-  );
   const arrival = useWarehouseArrival(
     erpStorage?.erpStorageLocationCode ? erpStorage.erpStorageWarehouse?.id : undefined,
   );
@@ -275,7 +269,7 @@ const EditorSession = ({
   const lineOf = (id: string) =>
     lines.data?.items.find((item) => String(item.productionLineId) === id);
   /*
-   * 라인은 정해졌는데 기본 위치 셋이 모두 비어 있으면(자동 계획이 라인만 정한 W/O) 그 라인 기본 위치로 초안을 채운다.
+   * 라인이 정해진 W/O의 빈 위치만 라인 기본값으로 채운다. 저장된 입고 위치는 보존한다.
    * 라인을 고를 때 채우는 기존 4M 규칙과 같은 값이고, 사용자는 요약을 보고 [저장]만 누르면 된다(T-W-C 높이가 모자랄 때 ①).
    * 저장 전이므로 저장하지 않은 변경으로 다룬다.
    */
@@ -283,10 +277,7 @@ const EditorSession = ({
   useEffect(() => {
     if (readOnly || prefillSettled || !linesLoaded) return;
     setPrefillSettled(true);
-    if (
-      baseline.productionLineId === '' ||
-      LOCATION_FIELDS.some((field) => baseline[field] !== '')
-    ) {
+    if (baseline.productionLineId === '') {
       return;
     }
     const line = lines.data?.items.find(
@@ -294,7 +285,7 @@ const EditorSession = ({
     );
     if (line === undefined) return;
     const filled: Partial<WorkOrderAssignmentDraft> = {
-      ...lineLocationDefaults(line),
+      defaultWipLocationId: lineLocationDefaults(line).defaultWipLocationId,
       ...(!erpStorage?.erpStorageLocationCode
         ? {
             defaultFgLocationId:
@@ -303,7 +294,14 @@ const EditorSession = ({
         : {}),
     };
     if (Object.values(filled).every((value) => value === '')) return;
-    setDraft((current) => ({ ...current, ...filled }));
+    setDraft((current) => ({
+      ...current,
+      ...Object.fromEntries(
+        Object.entries(filled).filter(
+          ([field]) => current[field as keyof WorkOrderAssignmentDraft] === '',
+        ),
+      ),
+    }));
   }, [
     readOnly,
     baseline,
@@ -317,14 +315,14 @@ const EditorSession = ({
     update.reset();
     setDraft((current) => {
       const merged = { ...current, ...next };
-      /* 완제품 입고 목적지는 라인 변경으로 덮어쓰지 않는다. WIP·스크랩만 라인 기본값을 따른다. */
+      /* 완제품 입고 목적지는 라인 변경으로 덮어쓰지 않는다. WIP만 라인 기본값을 따른다. */
       if (
         next.productionLineId !== undefined &&
         next.productionLineId !== current.productionLineId
       ) {
         const line = lineOf(next.productionLineId);
         merged.plannedEquipmentId = next.plannedEquipmentId ?? '';
-        Object.assign(merged, lineLocationDefaults(line));
+        merged.defaultWipLocationId = lineLocationDefaults(line).defaultWipLocationId;
       }
       if (
         next.plannedShiftId !== undefined &&
@@ -507,7 +505,7 @@ const EditorSession = ({
     .map((item) => item.field ?? '');
   const locationNeedsInput =
     (draft.productionLineId !== '' || LOCATION_FIELDS.some((field) => draft[field] !== '')) &&
-    LOCATION_FIELDS.some((field) => draft[field] === '');
+    draft.defaultFgLocationId === '';
   const planNeedsInput =
     draft.plannedShiftId !== '' &&
     (draft.plannedStartAtLocal === '' || draft.plannedEndAtLocal === '');
@@ -535,7 +533,7 @@ const EditorSession = ({
   const locationPairs: FoldPair[] =
     draft.productionLineId === '' && LOCATION_FIELDS.every((field) => draft[field] === '')
       ? [{ label: '', value: t.fold.afterLine }]
-      : LOCATION_FIELDS.map((field) =>
+      : (['defaultFgLocationId'] as const).map((field) =>
           draft[field] === ''
             ? { label: locationNames[field], value: t.fold.unset, unset: true }
             : {
@@ -670,7 +668,6 @@ const EditorSession = ({
         {locationOpen ? (
           <>
             <h3 className="assign-group-title">{t.groups.location}</h3>
-            {reference('defaultWipLocationId', t.fields.defaultWipLocationId, wipSource)}
             <div className="field-cell">
               <span className="field-label">생산품 입고 창고</span>
               <span>
@@ -691,7 +688,6 @@ const EditorSession = ({
               ) : null}
             </div>
             {reference('defaultFgLocationId', '입고 위치', fgSource)}
-            {reference('defaultScrapLocationId', t.fields.defaultScrapLocationId, scrapSource)}
             <span className="assign-empty" aria-hidden="true" />
           </>
         ) : (

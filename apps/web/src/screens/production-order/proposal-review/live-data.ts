@@ -214,9 +214,7 @@ export function toLiveProposal(row: PlanProposal, catalog: LiveCatalog): ReviewP
         defaultFgLocationSource: op.defaultFgLocationSource,
         required: [
           'productionLineId',
-          'defaultWipLocationId',
           'defaultFgLocationId',
-          'defaultScrapLocationId',
           ...(op.equipmentRequired ? ['plannedEquipmentId' as const] : []),
           ...(op.moldRequired ? ['plannedMoldId' as const] : []),
         ],
