@@ -20,6 +20,3 @@
   margin-top: var(--space-1);
   white-space: normal;
 }
-.release-material-rate input[aria-invalid='true'] {
-  border-color: var(--error);
-}
