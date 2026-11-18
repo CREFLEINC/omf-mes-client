@@ -54,6 +54,8 @@ const page = { page: 1, size: 200, total: 1, totalElements: 1, totalPages: 1 };
 
 const UNIT_NO = 'HU-2026-000710';
 const LOT_NO = 'FG-2026-000311';
+/** 두 번째 생산 LOT(같은 품목). `secondLot` 을 켜면 찾을 수 있다. */
+const LOT_NO_2 = 'FG-2026-000312';
 const LOC_CODE = 'FG-A-02-01';
 
 interface Options {
@@ -83,6 +85,15 @@ interface Options {
   stockUnreachable?: boolean;
   /** 한 인식표에 품목이 둘이다 - 어느 규칙으로 재야 할지 정해진 것이 없는 자리다. */
   twoItems?: boolean;
+  /**
+   * 생산 LOT 라벨(FG-2026-000311)을 LOT 번호로 찾을 수 있다(omf-all-around#293). 기본은 생산 완료 ·
+   * 양품 480 인 생산 LOT 이다.
+   */
+  scanLot?: { completed?: boolean; goodQty?: number; lotTypeCode?: string };
+  /** 두 번째 생산 LOT(8202 · FG-2026-000312)도 찾을 수 있다. */
+  secondLot?: boolean;
+  /** 이 LOT 들만 이미 재고로 서 있다(`alreadyStocked` 는 전부). */
+  stockedLotIds?: number[];
 }
 
 const routes = (options: Options = {}): StubRoute[] => [
@@ -163,18 +174,61 @@ const routes = (options: Options = {}): StubRoute[] => [
       }),
   },
   {
+    match: (req) => new URL(req.url).pathname === '/trace/lots',
+    respond: (req) => {
+      options.asked?.push(req.url);
+      const lotNo = new URL(req.url).searchParams.get('lotNo');
+      const second = options.secondLot === true && lotNo === LOT_NO_2;
+      const found = options.scanLot !== undefined && (lotNo === LOT_NO || second);
+
+      return jsonResponse({
+        items: found
+          ? [
+              {
+                lotId: second ? 8202 : 8201,
+                lotNo: second ? LOT_NO_2 : LOT_NO,
+                itemId: 2101,
+                lotTypeCode: options.scanLot?.lotTypeCode ?? 'PRODUCTION',
+                plantId: 1001,
+                initialQty: 500,
+                uomId: 1001,
+                sourceTypeCode: 'PRODUCTION_RESULT',
+                sourceId: 5501,
+                statusCode: 'NORMAL',
+              },
+            ]
+          : [],
+        page: { ...page, total: found ? 1 : 0 },
+      });
+    },
+  },
+  {
     match: (req) => /\/trace\/lots\/\d+$/.test(new URL(req.url).pathname),
-    respond: () => {
+    respond: (req) => {
+      const second = new URL(req.url).pathname.endsWith('/8202');
       if (options.lotFailed === true) {
         throw new TypeError('Failed to fetch');
       }
 
+      const scanLot = options.scanLot;
+
       return jsonResponse({
         lot: {
-          lotId: 8201,
-          lotNo: LOT_NO,
+          lotId: second ? 8202 : 8201,
+          lotNo: second ? LOT_NO_2 : LOT_NO,
           itemId: 2101,
-          lotTypeCode: 'PRODUCT',
+          lotTypeCode: scanLot?.lotTypeCode ?? (scanLot === undefined ? 'PRODUCT' : 'PRODUCTION'),
+          ...(scanLot === undefined
+            ? {}
+            : {
+                completedAt: scanLot.completed === false ? null : '2026-11-17T09:00:00+07:00',
+                progress: {
+                  goodQty: scanLot.goodQty ?? 480,
+                  achievementRate: 0.96,
+                  varianceQty: -20,
+                  completionJudgmentCode: 'UNDER',
+                },
+              }),
           plantId: 1001,
           initialQty: 500,
           uomId: 1001,
@@ -273,7 +327,18 @@ const routes = (options: Options = {}): StubRoute[] => [
   },
   {
     match: (req) => new URL(req.url).pathname === '/inventory/balances',
-    respond: () => {
+    respond: (req) => {
+      const lotId = Number(new URL(req.url).searchParams.get('lotId'));
+
+      if (options.stockedLotIds !== undefined) {
+        const stocked = options.stockedLotIds.includes(lotId);
+
+        return jsonResponse({
+          items: stocked ? [{ balanceId: 7001, lotId, locationId: 3101, onHandQty: 500 }] : [],
+          page,
+        });
+      }
+
       if (options.stockUnreachable === true) {
         return jsonResponse(
           { code: 'SERVICE_UNAVAILABLE', message: '연결할 수 없습니다.', errors: [] },
@@ -391,7 +456,10 @@ describe('제품 입고·적치 화면', () => {
 
     const label = await screen.findByText(/실물 수량/);
 
-    expect(label.textContent).toContain('연결되면 표시됩니다');
+    /* LOT 상세는 줄이 선 뒤에 묻는다(omf-all-around#293) — 실패가 돌아올 때까지 기다린다. */
+    await waitFor(() => {
+      expect(label.textContent).toContain('연결되면 표시됩니다');
+    });
     expect(label.textContent).not.toContain('8201');
   });
 
@@ -692,7 +760,7 @@ describe('제품 입고·적치 화면', () => {
 
     scanUnit('HU-2026-999999');
 
-    await screen.findByText('HU-2026-999999 인식표를 찾지 못했습니다');
+    await screen.findByText('HU-2026-999999 에 맞는 LOT·인식표를 찾지 못했습니다');
     expect(tone.played).toBeGreaterThan(0);
   });
 
@@ -705,5 +773,157 @@ describe('제품 입고·적치 화면', () => {
 
     expect(await screen.findByText(`${LOC_CODE} 은(는) 다른 품목 전용 위치입니다`)).toBeTruthy();
     expect(screen.getByRole('button', { name: '입고·적치 완료' })).toBeDisabled();
+  });
+
+  /*
+   * 생산 포장을 없애 상자가 생기지 않는다 — 제품은 생산 LOT 라벨로 들어온다(omf-all-around#293).
+   */
+  describe('생산 LOT 라벨로 입고', () => {
+    const scanLotLabel = async (user: ReturnType<typeof userEvent.setup>) => {
+      await pickWarehouse(user);
+      scanUnit(LOT_NO);
+    };
+    const findLotField = () => screen.findByLabelText(/FG-1001 · FG-2026-000311 실물 수량/);
+
+    it('생산 LOT 은 양품 실적을 수량으로 채운다', async () => {
+      const user = userEvent.setup();
+      mount({ scanLot: {} });
+      await scanLotLabel(user);
+
+      const field = (await findLotField()) as HTMLInputElement;
+
+      expect(field.value).toBe('480');
+      expect(screen.getByText('양품 실적 480')).toBeTruthy();
+    });
+
+    it('양품 실적과 다르면 말하되 막지 않는다', async () => {
+      const user = userEvent.setup();
+      mount({ scanLot: {} });
+      await scanLotLabel(user);
+
+      const field = await findLotField();
+      await user.clear(field);
+      await user.type(field, '470');
+      await pickLocation(user);
+
+      expect(await screen.findByText(/양품 실적과 다릅니다/)).toBeTruthy();
+      await readyToSubmit();
+    });
+
+    it('LOT 줄로 입고하고 적치까지 이어 보낸다', async () => {
+      const user = userEvent.setup();
+      const seen: Request[] = [];
+      mount({ scanLot: {}, seen });
+      await scanLotLabel(user);
+      await findLotField();
+      await pickLocation(user);
+      await readyToSubmit();
+
+      await user.click(screen.getByRole('button', { name: '입고·적치 완료' }));
+
+      expect(await screen.findByText('입고하고 적치했습니다')).toBeTruthy();
+
+      const receipt = seen.find(
+        (each) => new URL(each.url).pathname === '/logistics/goods-receipts',
+      );
+      const body = (await receipt?.json()) as {
+        receiptTypeCode: string;
+        lines: { lotId: number; itemId: number; receiptQty: number }[];
+      };
+
+      expect(body.receiptTypeCode).toBe('PRODUCT');
+      expect(body.lines).toEqual([
+        expect.objectContaining({ lotId: 8201, itemId: 2101, receiptQty: 480 }),
+      ]);
+    });
+
+    it('같은 LOT 을 다시 읽어도 줄이 늘지 않는다', async () => {
+      const user = userEvent.setup();
+      mount({ scanLot: {} });
+      await scanLotLabel(user);
+      await findLotField();
+
+      scanUnit(LOT_NO);
+
+      await waitFor(() => {
+        expect(screen.getAllByLabelText(/실물 수량/)).toHaveLength(1);
+      });
+    });
+
+    it('생산 완료 전이어도 양품 실적이 있으면 받는다', async () => {
+      const user = userEvent.setup();
+      mount({ scanLot: { completed: false, goodQty: 200 } });
+      await scanLotLabel(user);
+
+      const field = (await findLotField()) as HTMLInputElement;
+
+      expect(field.value).toBe('200');
+    });
+
+    it('자재 LOT 은 받지 않는다', async () => {
+      const user = userEvent.setup();
+      mount({ scanLot: { lotTypeCode: 'MATERIAL' } });
+      await scanLotLabel(user);
+
+      expect(await screen.findByText(`${LOT_NO} 은(는) 제품 LOT이 아닙니다`)).toBeTruthy();
+      expect(screen.queryByLabelText(/실물 수량/)).toBeNull();
+    });
+
+    it('양품 실적이 없는 LOT 은 받지 않는다', async () => {
+      const user = userEvent.setup();
+      mount({ scanLot: { goodQty: 0 } });
+      await scanLotLabel(user);
+
+      expect(await screen.findByText(`${LOT_NO} 은(는) 양품 실적이 없습니다`)).toBeTruthy();
+      expect(screen.queryByLabelText(/실물 수량/)).toBeNull();
+    });
+
+    it('이미 입고한 LOT 은 줄에 남기지 않고 거절한다 — 남으면 같이 읽은 다른 LOT 까지 못 보낸다', async () => {
+      const user = userEvent.setup();
+      mount({ scanLot: {}, alreadyStocked: true });
+      await scanLotLabel(user);
+
+      expect(await screen.findByText(`${LOT_NO} 은(는) 이미 입고한 LOT입니다`)).toBeTruthy();
+      await waitFor(() => {
+        expect(screen.queryByLabelText(/실물 수량/)).toBeNull();
+      });
+
+      scanUnit(LOT_NO);
+
+      expect(await screen.findByText(`${LOT_NO} 은(는) 이미 입고한 LOT입니다`)).toBeTruthy();
+      expect(screen.queryByLabelText(/실물 수량/)).toBeNull();
+    });
+
+    it('이미 입고한 LOT 을 함께 읽어도 앞서 읽은 LOT 은 남아 보낼 수 있고, 다시 읽어도 거절한다', async () => {
+      const user = userEvent.setup();
+      const seen: Request[] = [];
+      mount({ scanLot: {}, secondLot: true, stockedLotIds: [8202], seen });
+      await scanLotLabel(user);
+      await findLotField();
+
+      scanUnit(LOT_NO_2);
+      expect(await screen.findByText(`${LOT_NO_2} 은(는) 이미 입고한 LOT입니다`)).toBeTruthy();
+
+      /* 다른 번호를 거친 뒤 다시 읽어도 줄이 되살아나지 않는다. */
+      scanUnit(LOT_NO);
+      await waitFor(() => {
+        expect(screen.queryByText(`${LOT_NO_2} 은(는) 이미 입고한 LOT입니다`)).toBeNull();
+      });
+      scanUnit(LOT_NO_2);
+      expect(await screen.findByText(`${LOT_NO_2} 은(는) 이미 입고한 LOT입니다`)).toBeTruthy();
+      expect(screen.getAllByLabelText(/실물 수량/)).toHaveLength(1);
+
+      await pickLocation(user);
+      await readyToSubmit();
+      await user.click(screen.getByRole('button', { name: '입고·적치 완료' }));
+      expect(await screen.findByText('입고하고 적치했습니다')).toBeTruthy();
+
+      const receipt = seen.find(
+        (each) => new URL(each.url).pathname === '/logistics/goods-receipts',
+      );
+      const body = (await receipt?.json()) as { lines: { lotId: number }[] };
+
+      expect(body.lines.map((line) => line.lotId)).toEqual([8201]);
+    });
   });
 });

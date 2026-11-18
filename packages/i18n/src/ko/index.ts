@@ -139,7 +139,6 @@ import { inboundReceipt } from './inbound-receipt';
 import { inboundClose } from './inbound-close';
 import { iqcInboundLot } from './iqc-inbound-lot';
 import { packingRepack } from './packing-repack';
-import { packingWork } from './packing-work';
 import { putaway } from './putaway';
 import { recycleEntry } from './recycle-entry';
 import { inboundVariance } from './inbound-variance';
@@ -164,7 +163,6 @@ import { materialDefect } from './material-defect';
 import { popOqcInspection } from './pop-oqc-inspection';
 import { popMaterialLotLabel } from './pop-material-lot-label';
 import { reworkResultRegister } from './rework-result-register';
-import { packingLabelReprint } from './packing-label-reprint';
 import { shippingPackingLabel } from './shipping-packing-label';
 import { shippingUnit } from './shipping-unit';
 import { repackLabelIssue } from './repack-label-issue';
@@ -302,7 +300,6 @@ export const ko = {
   inboundClose,
   iqcInboundLot,
   packingRepack,
-  packingWork,
   putaway,
   recycleEntry,
   inboundVariance,
@@ -330,7 +327,6 @@ export const ko = {
   workStart,
   workPrecheckGate,
   reworkResultRegister,
-  packingLabelReprint,
   shippingPackingLabel,
   shippingUnit,
   repackLabelIssue,

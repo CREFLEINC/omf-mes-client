@@ -8,6 +8,8 @@ import {
   canSubmit,
   destinationOf,
   differsFromExpected,
+  lotLineOf,
+  lotRefusalOf,
   managesLocations,
   putawayTaskIdsOf,
   qtyProblemOf,
@@ -15,6 +17,7 @@ import {
   toPutawayDraft,
   toReceiptDraft,
   verdictOf,
+  withLotLine,
   type DraftLine,
   type Location,
   type Warehouse,
@@ -49,7 +52,8 @@ const location = (overrides: Partial<Location> = {}): Location => ({
 });
 
 const line = (overrides: Partial<DraftLine> = {}): DraftLine => ({
-  handlingUnitContentId: 6101,
+  key: 'unit-6101',
+  from: 'unit',
   itemId: 2101,
   lotId: 8201,
   uomId: 1001,
@@ -424,5 +428,56 @@ describe('입고 응답의 적치 지시', () => {
 
   it('응답이 없으면 빈 목록이다', () => {
     expect(putawayTaskIdsOf(undefined)).toEqual([]);
+  });
+});
+
+describe('생산 LOT 라벨 입고 (omf-all-around#293)', () => {
+  const lot = {
+    lotId: 8201,
+    itemId: 2101,
+    uomId: 1001,
+    lotTypeCode: 'PRODUCTION',
+    lifecycleStatusCode: 'ACTIVE',
+    completedAt: '2026-11-17T09:00:00+07:00',
+    progress: {
+      goodQty: 480,
+      achievementRate: 0.96,
+      varianceQty: -20,
+      completionJudgmentCode: 'UNDER' as const,
+    },
+  };
+
+  it('양품이 있는 생산 LOT 은 생산 완료 전이어도 받는다', () => {
+    expect(lotRefusalOf(lot)).toBeNull();
+    expect(lotRefusalOf({ ...lot, lotTypeCode: 'PRODUCT' })).toBeNull();
+  });
+
+  it('자재 LOT · 폐번 · 양품 0 은 받지 않는다', () => {
+    expect(lotRefusalOf({ ...lot, lotTypeCode: 'MATERIAL' })).toBe('notProduct');
+    expect(lotRefusalOf({ ...lot, lifecycleStatusCode: 'VOIDED' })).toBe('voided');
+    expect(lotRefusalOf({ ...lot, progress: { ...lot.progress, goodQty: 0 } })).toBe('noGood');
+    expect(lotRefusalOf({ ...lot, progress: undefined })).toBe('noGood');
+  });
+
+  it('수량은 양품 실적으로 채운다', () => {
+    expect(lotLineOf(lot)).toEqual({
+      key: 'lot-8201',
+      from: 'lot',
+      itemId: 2101,
+      lotId: 8201,
+      uomId: 1001,
+      expectedQty: 480,
+      qty: '480',
+    });
+  });
+
+  it('LOT 줄은 이어 붙이고 같은 LOT 은 한 번만, 인식표 줄은 걷어 낸다', () => {
+    const first = lotLineOf(lot);
+    const second = lotLineOf({ ...lot, lotId: 8202 });
+
+    expect(withLotLine([], first)).toEqual([first]);
+    expect(withLotLine([first], second)).toEqual([first, second]);
+    expect(withLotLine([first, second], first)).toEqual([first, second]);
+    expect(withLotLine([line()], first)).toEqual([first]);
   });
 });

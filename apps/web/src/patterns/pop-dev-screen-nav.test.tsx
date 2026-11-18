@@ -45,11 +45,11 @@ describe('PopDevScreenNav — 개발용 POP 화면 이동', () => {
     renderNav();
 
     await userEvent.click(trigger());
-    await userEvent.type(screen.getByRole('searchbox', { name: '목록 검색' }), 'P-02-13');
-    await userEvent.click(screen.getByRole('option', { name: 'P-02-13 PQC 제품 검사' }));
+    await userEvent.type(screen.getByRole('searchbox', { name: '목록 검색' }), 'P-05-01');
+    await userEvent.click(screen.getByRole('option', { name: 'P-05-01 공구 사용' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('status').textContent).toBe('/pop/pqc-inspection?ir=1001');
+      expect(screen.getByRole('status').textContent).toBe('/pop/tool-usage?workOrderId=11002');
     });
   });
 

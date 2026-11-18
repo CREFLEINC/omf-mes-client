@@ -1,13 +1,9 @@
 import type { ko } from '../ko';
 import type { Translated } from './translated';
 
-/** P-02-13 PQC 제품 검사. */
+/** PQC 검사 결과 입력 부품(관리웹). POP PQC 제품 검사(P-02-13)는 #293 에서 없앴다. */
 export const pqcInspection: Translated<typeof ko.pqcInspection> = {
-  title: 'Kiểm tra sản phẩm PQC',
   emptyValue: '—',
-  header: {
-    synced: 'Đã đồng bộ',
-  },
   detail: {
     heading: 'Đối tượng',
     nothingSelected: 'Hãy chọn đối tượng kiểm tra ở màn hình công việc rồi vào.',
@@ -23,15 +19,6 @@ export const pqcInspection: Translated<typeof ko.pqcInspection> = {
     planLabel: (code: string, version: number): string => `Tiêu chuẩn ${code} v${String(version)}`,
     sample: (ratio: number): string => `Mẫu ${String(ratio)}%`,
     sampleQty: (qty: number): string => `Mẫu ${String(qty)} cái`,
-  },
-  coverage: {
-    heading: 'Khoảng sản xuất áp dụng',
-    from: 'Bắt đầu',
-    to: 'Kết thúc',
-    date: 'Ngày',
-    time: 'Giờ',
-    note: 'Giờ bắt đầu · kết thúc kiểm tra được nhập tự động, có thể sửa nếu cần.',
-    invalidOrder: 'Kết thúc không được sớm hơn bắt đầu.',
   },
   pad: {
     title: 'Bàn phím số',

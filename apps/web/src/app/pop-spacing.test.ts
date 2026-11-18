@@ -112,20 +112,3 @@ describe('POP 사번 키패드 높이', () => {
     expect(rules).toMatch(/\.worker-no-submit\s*\{[^}]*min-height:\s*72px/u);
   });
 });
-
-/*
- * ⛔ **격자에는 쌓기 여백을 얹지 않는다**(#1092 · 사용자 지적 2026-09-12).
- *
- * `app.css` 의 `.pop-section > * > * + *` 가 구획 안 블록 사이에 간격을 주는데, 그 규칙이
- * **숫자 키패드의 키에도 닿는다.** 격자는 `gap` 으로 이미 간격을 갖고 있어 두 벌이 겹치고,
- * `+ *` 가 첫 자식을 비껴가므로 **첫 키만 홀로 위로 올라선다** — 키패드가 일그러져 보인다.
- *
- * ⚠ 렌더 시험으로는 잡히지 않는다(`css: false`). 원문으로 겨눈다.
- */
-describe('POP 키패드 — 격자에 쌓기 여백이 겹치지 않는다', () => {
-  it('포장 작업 키패드가 쌓기 여백을 되돌린다', () => {
-    expect(rules).toMatch(
-      /\.pop-ui\s+\.pack-work-scan\s+\.pack-work-keypad\s*>\s*\*\s*\+\s*\*\s*\{[^}]*margin-block-start:\s*0\s*[;}]/u,
-    );
-  });
-});

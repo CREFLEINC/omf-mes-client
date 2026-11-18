@@ -9,12 +9,11 @@ const STORAGE_KEY = 'omf.pop.home.shortcuts';
 
 export const MAX_SHORTCUTS = 6;
 
-/** 기본 바로가기(확정 시안의 여섯 칸). */
+/** 기본 바로가기(확정 시안의 여섯 칸 — PQC 제품 검사를 없애 다섯 칸, omf-all-around#293). */
 export const DEFAULT_SHORTCUT_PATHS: readonly string[] = [
   '/pop/production-result',
   '/pop/work-start',
   '/pop/packing',
-  '/pop/pqc-inspection',
   '/pop/work-hold',
   '/pop/material-input',
 ];

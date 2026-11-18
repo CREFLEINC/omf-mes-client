@@ -34,7 +34,7 @@ export const popChrome = {
     count: (name: string, count: number): string => `${name}, 남은 작업 ${String(count)}건`,
   },
   /** 홈 화면(#291) — 사번 확인 뒤 처음 서는 화면. */
-  /** 작업 단계 줄(#291) — 작업 지시 목록 탭 아래 ①②③④. */
+  /** 작업 단계 줄(#291) — 작업 지시 목록 탭 아래 ①②③. */
   workSteps: {
     label: '작업 단계',
     pickWorkOrder: '작업지시 선택',
