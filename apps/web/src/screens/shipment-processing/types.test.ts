@@ -14,6 +14,9 @@ const line = (overrides: Partial<Parameters<typeof toShipmentRequestLineCandidat
   shippingInspectionRequired: true,
   /* client#601 1-5 — 집은 LOT 신설. 이 시험은 아직 이 값을 읽지 않는다. */
   picks: [],
+  /* 피처 010 — 초과·피킹 LOT 행. 이 시험은 아직 이 값을 읽지 않는다. */
+  overQty: 0,
+  lots: [],
   ...overrides,
 });
 
@@ -27,6 +30,14 @@ const request = (overrides: Partial<Parameters<typeof toShipmentRequestCandidate
   shipmentProgressCode: 'PICKED' as const,
   shippingInspectionStatusCode: 'PASSED' as const,
   lines: [],
+  /* 피처 010 — 지시서 코드·피킹 창고·교체·막힘·판정 요약·완료 출하. 이 시험은 아직 읽지 않는다. */
+  code: 'SHPREQ:SYN',
+  pickingWarehouses: [],
+  replacementCount: 0,
+  completionBlockers: [],
+  blockerSummary: {},
+  lotJudgmentSummary: { notInspected: 0, accepted: 0, rejected: 0, held: 0 },
+  completedShipment: null,
   ...overrides,
 });
 
