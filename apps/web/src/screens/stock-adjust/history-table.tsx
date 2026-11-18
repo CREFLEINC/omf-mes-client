@@ -185,7 +185,6 @@ export const HistoryTable = ({
         size="sm"
         live
         title={t.empty.historyBeyondLastTitle}
-        description={t.empty.historyBeyondLastDescription}
         action={
           <Button variant="outlined" disabled={isLocked} onClick={onFirstPage}>
             {t.actions.goFirstPage}
@@ -193,12 +192,7 @@ export const HistoryTable = ({
         }
       />
     ) : (
-      <EmptyState
-        size="sm"
-        live
-        title={t.empty.historyNoResultTitle}
-        description={t.empty.historyNoResultDescription}
-      />
+      <EmptyState size="sm" live title={t.empty.historyNoResultTitle} />
     );
 
   return (

@@ -186,22 +186,22 @@ describe('ApprovalProgressPane — 못 읽었을 때', () => {
 /**
  * ⭐ **자리표시가 잠금이 아니라 안내를 정한다**(D-13 · C37).
  *
- * 비어 있으면 「판정하지 못합니다」가 서고, 채우면 승인 안내가 살아난다 — **어느 쪽에서도
- * 잠기는 컨트롤이 없다**(이 구획에는 버튼이 0건이다).
+ * 채우면 승인 안내가 살아난다 — **어느 쪽에서도 잠기는 컨트롤이 없다**(이 구획에는 버튼이
+ * 0건이다). 비어 있을 때의 「판정하지 못합니다」 안내는 걷었다(사용자 지시 2026-11-18).
  */
 describe('ApprovalProgressPane — 승인 판정 자리표시', () => {
-  it('비어 있으면 판정하지 못한다고 밝힌다', () => {
+  it('비어 있으면 승인 안내도 판정 안내도 없다', () => {
     renderPane({ kind: 'ready', view: readyView() });
 
-    expect(within(pane()).getByText(t.progress.unjudgeableNote)).toBeInTheDocument();
+    expect(within(pane()).getByText('SAMPLE-AP-0001')).toBeInTheDocument();
     expect(within(pane()).queryByText(t.progress.approvedNote)).not.toBeInTheDocument();
+    expect(pane().querySelector('p.field-note')).toBeNull();
   });
 
   it('채우고 그 요청이 승인이면 승인 안내가 살아난다', () => {
     renderPane({ kind: 'ready', view: readyView({}, [SAMPLE_APPROVED_STATUS]) }, false);
 
     expect(within(pane()).getByText(t.progress.approvedNote)).toBeInTheDocument();
-    expect(within(pane()).queryByText(t.progress.unjudgeableNote)).not.toBeInTheDocument();
   });
 
   /** 채웠어도 그 상태가 아니면 승인 안내가 서지 않는다 — 짝 방향이다. */
@@ -217,13 +217,6 @@ describe('ApprovalProgressPane — 승인 판정 자리표시', () => {
     /* 짝 양성 — 구획은 실제로 섰다. */
     expect(within(pane()).getByText('SAMPLE-AP-0001')).toBeInTheDocument();
     expect(within(pane()).queryByText(t.progress.approvedNote)).not.toBeInTheDocument();
-  });
-
-  /** **계약이 못 박은 사실**이라 자리표시와 무관하게 늘 선다 — 승인은 재고를 움직이지 않는다. */
-  it('승인이 재고를 움직이지 않는다는 사실은 늘 선다', () => {
-    renderPane({ kind: 'ready', view: readyView() });
-
-    expect(within(pane()).getByText(t.progress.postSeparateNote)).toBeInTheDocument();
   });
 
   /**

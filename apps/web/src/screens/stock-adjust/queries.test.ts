@@ -1071,7 +1071,6 @@ describe('useStockAdjustments', () => {
           {
             inventoryCountId: 9101,
             reasonCode: 'SAMPLE_AR_A',
-            statusCode: 'SAMPLE_ST_A',
             adjustedAtFrom: '2026-08-01',
             adjustedAtTo: '2026-08-18',
             page: 2,
@@ -1088,7 +1087,6 @@ describe('useStockAdjustments', () => {
     expect(Object.fromEntries(requests[0]?.url.searchParams ?? [])).toEqual({
       inventoryCountId: '9101',
       reasonCode: 'SAMPLE_AR_A',
-      statusCode: 'SAMPLE_ST_A',
       adjustedAtFrom: '2026-08-01',
       adjustedAtTo: '2026-08-18',
       page: '2',

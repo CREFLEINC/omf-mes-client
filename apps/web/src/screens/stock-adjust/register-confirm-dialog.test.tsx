@@ -92,14 +92,12 @@ describe('RegisterConfirmDialog — 무엇을 만드는가', () => {
     expect(screen.getByText(t.dialog.registerNoUndo)).toBeVisible();
   });
 
-  /**
-   * **등록이 전기가 아니다.** 이 문장을 적지 않으면 사용자가 이 한 번으로 재고가 움직인 것으로
-   * 읽고, 전기하지 않은 조정을 끝난 것으로 믿은 채 화면을 떠난다.
-   */
-  it('등록만 한다는 사실을 적는다 — 재고는 아직 움직이지 않는다', () => {
+  /* 「등록만 합니다」 안내는 걷었다(사용자 지시 2026-11-18) — 되돌릴 수 없다는 한 줄만 남는다. */
+  it('되돌릴 수 없다는 한 줄만 남는다', () => {
     renderDialog();
 
-    expect(screen.getByText(t.dialog.registerIsNotPost)).toBeVisible();
+    expect(screen.getByText(t.dialog.registerNoUndo)).toBeVisible();
+    expect(screen.queryByText(/재고는 아직 움직이지 않/)).not.toBeInTheDocument();
   });
 
   /** **내부 번호를 담지 않는다**(`omf-mes#44`). 짝으로 사유 코드는 실제로 보인다. */

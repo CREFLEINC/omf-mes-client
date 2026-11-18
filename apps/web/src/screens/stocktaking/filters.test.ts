@@ -24,19 +24,22 @@ const filters = (overrides: Partial<CountFilters> = {}): CountFilters => ({
 const NAMES = { warehouse: 'SAMPLE-WH-01 · 합성 창고 가' };
 
 describe('readFilters', () => {
-  it('주소의 조건 여섯을 읽는다', () => {
-    const read = readFilters(
-      params('wh=9101&from=2026-08-01&to=2026-08-31&ty=SAMPLE_COUNT_TYPE_A&st=SAMPLE_COUNT_STATUS_A&prog=1'),
-    );
+  it('주소의 조건 넷을 읽는다', () => {
+    const read = readFilters(params('wh=9101&from=2026-08-01&to=2026-08-31&prog=1'));
 
     expect(read).toEqual({
       warehouse: '9101',
       from: '2026-08-01',
       to: '2026-08-31',
-      countType: 'SAMPLE_COUNT_TYPE_A',
-      status: 'SAMPLE_COUNT_STATUS_A',
       inProgressOnly: true,
     });
+  });
+
+  /* 실사 유형(`ty`)·상태(`st`) 조건은 걷었다(사용자 지시 2026-11-18) — 옛 주소에 남아 있어도 읽지 않는다. */
+  it('걷은 실사 유형·상태 키는 조건으로 읽지 않는다', () => {
+    expect(readFilters(params('ty=SAMPLE_COUNT_TYPE_A&st=SAMPLE_COUNT_STATUS_A'))).toEqual(
+      DEFAULT_FILTERS,
+    );
   });
 
   it('키가 없으면 조건을 걸지 않는다', () => {
@@ -64,11 +67,6 @@ describe('readFilters', () => {
     expect(readFilters(params('to=20260801')).to).toBe('');
     /* 짝 방향 — 있는 날짜는 그대로 통과한다. */
     expect(readFilters(params('from=2026-02-28')).from).toBe('2026-02-28');
-  });
-
-  it('공백만 친 코드는 조건이 아니다', () => {
-    expect(readFilters(params('ty=%20%20')).countType).toBe('');
-    expect(readFilters(params('st=%20')).status).toBe('');
   });
 
   /*
@@ -105,15 +103,12 @@ describe('readSelectedCountId · readSelectedLocationId', () => {
 
 describe('toSearchParams', () => {
   it('채운 조건만 주소에 싣는다', () => {
-    const search = toSearchParams(
-      filters({ warehouse: '9101', from: '2026-08-01', countType: 'SAMPLE_COUNT_TYPE_A' }),
-      1,
-    );
+    const search = toSearchParams(filters({ warehouse: '9101', from: '2026-08-01' }), 1);
 
     expect(search.get('wh')).toBe('9101');
     expect(search.get('from')).toBe('2026-08-01');
-    expect(search.get('ty')).toBe('SAMPLE_COUNT_TYPE_A');
     expect(search.has('to')).toBe(false);
+    expect(search.has('ty')).toBe(false);
     expect(search.has('st')).toBe(false);
   });
 
@@ -142,14 +137,10 @@ describe('toSearchParams', () => {
 
   /** 조건을 걸러 내는 잣대가 읽기와 같다 — 다르면 주소에 못 쓰는 값이 남는다. */
   it('이상한 값은 주소에 남기지 않는다', () => {
-    const search = toSearchParams(
-      filters({ warehouse: 'abc', from: '2026-13-01', status: '   ' }),
-      1,
-    );
+    const search = toSearchParams(filters({ warehouse: 'abc', from: '2026-13-01' }), 1);
 
     expect(search.has('wh')).toBe(false);
     expect(search.has('from')).toBe(false);
-    expect(search.has('st')).toBe(false);
   });
 });
 
@@ -160,8 +151,6 @@ describe('toFilterQuery', () => {
         warehouse: '9101',
         from: '2026-08-01',
         to: '2026-08-31',
-        countType: 'SAMPLE_COUNT_TYPE_A',
-        status: 'SAMPLE_COUNT_STATUS_A',
         inProgressOnly: true,
       }),
     );
@@ -170,8 +159,6 @@ describe('toFilterQuery', () => {
       warehouseId: 9101,
       plannedDateFrom: '2026-08-01',
       plannedDateTo: '2026-08-31',
-      countTypeCode: 'SAMPLE_COUNT_TYPE_A',
-      statusCode: 'SAMPLE_COUNT_STATUS_A',
       inProgressOnly: true,
     });
   });
@@ -221,9 +208,7 @@ describe('toFilterChips', () => {
    * **조건은 걸리지 않는데 칩만 뜬다** — 사용자는 칩을 보고 조건이 걸린 줄 안다.
    */
   it('요청에 실리지 않는 값으로는 칩을 만들지 않는다', () => {
-    expect(toFilterChips(filters({ warehouse: 'abc', from: '2026-13-01', status: ' ' }), NAMES)).toEqual(
-      [],
-    );
+    expect(toFilterChips(filters({ warehouse: 'abc', from: '2026-13-01' }), NAMES)).toEqual([]);
   });
 
   it('조건이 없으면 칩이 없다', () => {
@@ -236,8 +221,6 @@ describe('toFilterChips', () => {
       filters({
         warehouse: '9101',
         from: '2026-08-01',
-        countType: 'SAMPLE_COUNT_TYPE_A',
-        status: 'SAMPLE_COUNT_STATUS_A',
         inProgressOnly: true,
       }),
       NAMES,
@@ -250,10 +233,10 @@ describe('toFilterChips', () => {
 
 describe('clearFilter', () => {
   it('칩 하나를 푼다', () => {
-    const next = clearFilter(filters({ warehouse: '9101', status: 'SAMPLE_COUNT_STATUS_A' }), 'warehouse');
+    const next = clearFilter(filters({ warehouse: '9101', from: '2026-08-01' }), 'warehouse');
 
     expect(next.warehouse).toBe('');
-    expect(next.status).toBe('SAMPLE_COUNT_STATUS_A');
+    expect(next.from).toBe('2026-08-01');
   });
 
   /* 기간은 칩이 하나다 — 한쪽만 풀면 칩을 지웠는데 조건이 남아 결과가 그대로다. */

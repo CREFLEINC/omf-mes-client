@@ -22,6 +22,9 @@ import { messages } from '@omf-mes/i18n';
  * **검색어 칸이 없다** — 계약의 조정 목록 조회에 검색어 조건이 없다(실측). 만들면 쳐도 아무것도
  * 좁혀지지 않는 칸이 된다.
  *
+ * **상태 조건(`hst`)도 없다** — 값 목록이 확정되지 않아 선택지가 늘 비어 쓰이지 않던 칸이라
+ * 걷었다(사용자 지시 2026-11-18). 옛 주소에 남아 있어도 읽지 않는다.
+ *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
@@ -32,8 +35,6 @@ export interface AdjustmentFilters {
   count: string;
   /** 조정 사유 코드. **선택칸에서 고른 값이 들어온다**(고객의 공통코드 마스터 · #36 회신) */
   reason: string;
-  /** 전표 상태 코드. 선택지가 자리표시라 지금은 주소를 손으로 고칠 때만 들어온다(D-9) */
-  status: string;
   /** 전기일 범위. `DatePicker mode="range"` 한 컨트롤이 `YYYY-MM-DD` 두 값을 준다 */
   from: string;
   to: string;
@@ -49,7 +50,6 @@ export interface AdjustmentFilters {
 export const DEFAULT_ADJUSTMENT_FILTERS: AdjustmentFilters = {
   count: '',
   reason: '',
-  status: '',
   from: '',
   to: '',
 };
@@ -58,7 +58,6 @@ export const DEFAULT_ADJUSTMENT_FILTERS: AdjustmentFilters = {
 const HISTORY_URL_KEYS = {
   count: 'hc',
   reason: 'hrs',
-  status: 'hst',
   from: 'hfrom',
   to: 'hto',
   page: 'hpage',
@@ -115,15 +114,13 @@ const readDateFilter = (raw: string): string => {
  * 공백만 친 값은 조건이 아니다 — 주소에 남기면 조건이 걸린 것처럼 보인다.
  *
  * **선택칸이 만들 수 없는 값이어도 주소는 손으로 고쳐지는 자리다** — 사유는 이제 목록에서
- * 고르지만(#36 회신) 그 목록 밖의 값이 주소로 들어오는 길은 그대로 열려 있고, 상태는 아직
- * 자리표시라 그 길이 유일하다.
+ * 고르지만(#36 회신) 그 목록 밖의 값이 주소로 들어오는 길은 그대로 열려 있다.
  */
 const normalizeText = (raw: string): string => raw.trim();
 
 export const readAdjustmentFilters = (params: URLSearchParams): AdjustmentFilters => ({
   count: readNumberFilter(params.get(HISTORY_URL_KEYS.count) ?? ''),
   reason: normalizeText(params.get(HISTORY_URL_KEYS.reason) ?? ''),
-  status: normalizeText(params.get(HISTORY_URL_KEYS.status) ?? ''),
   from: readDateFilter(params.get(HISTORY_URL_KEYS.from) ?? ''),
   to: readDateFilter(params.get(HISTORY_URL_KEYS.to) ?? ''),
 });
@@ -163,7 +160,6 @@ export const toHistorySearchParams = (
   const entries: [string, string][] = [
     [HISTORY_URL_KEYS.count, readNumberFilter(filters.count)],
     [HISTORY_URL_KEYS.reason, normalizeText(filters.reason)],
-    [HISTORY_URL_KEYS.status, normalizeText(filters.status)],
     [HISTORY_URL_KEYS.from, readDateFilter(filters.from)],
     [HISTORY_URL_KEYS.to, readDateFilter(filters.to)],
   ];
@@ -178,7 +174,7 @@ export const toHistorySearchParams = (
 };
 
 /**
- * 계약이 쓰는 쿼리 이름 — **넷뿐이다**(실측).
+ * 계약이 쓰는 쿼리 이름 — 계약이 받는 넷 가운데 **셋을 쓴다**(상태 조건은 걷었다).
  *
  * ⛔ **`pendingApprovalOnly`가 이 타입에 없다**(D-3 · C41). 계약이 그 조건을 아직 정의하고
  * 있으나 이 화면에는 승인 대기 탭이 없다 — **거짓으로 싣는 것도 싣는 것이다**(그 조건이 요청
@@ -189,7 +185,6 @@ export const toHistorySearchParams = (
 export interface AdjustmentFilterQuery {
   inventoryCountId?: number;
   reasonCode?: string;
-  statusCode?: string;
   adjustedAtFrom?: string;
   adjustedAtTo?: string;
 }
@@ -197,21 +192,19 @@ export interface AdjustmentFilterQuery {
 export const toAdjustmentFilterQuery = (filters: AdjustmentFilters): AdjustmentFilterQuery => {
   const count = readNumberFilter(filters.count);
   const reason = normalizeText(filters.reason);
-  const status = normalizeText(filters.status);
   const from = readDateFilter(filters.from);
   const to = readDateFilter(filters.to);
 
   return {
     ...(count === '' ? {} : { inventoryCountId: Number(count) }),
     ...(reason === '' ? {} : { reasonCode: reason }),
-    ...(status === '' ? {} : { statusCode: status }),
     ...(from === '' ? {} : { adjustedAtFrom: from }),
     ...(to === '' ? {} : { adjustedAtTo: to }),
   };
 };
 
 /** 칩이 되는 조건. **기간은 칩 하나다** — 시작과 종료가 한 조건이다. */
-export type AdjustmentChipKey = 'period' | 'count' | 'reason' | 'status';
+export type AdjustmentChipKey = 'period' | 'count' | 'reason';
 
 /**
  * ×로 풀 수 있는 조건. **기간이 빠져 있다** — 날짜 컨트롤이 값을 개별로 비우는 수단을 주지
@@ -255,7 +248,6 @@ export const toAdjustmentFilterChips = (
 ): AdjustmentFilterChip[] => {
   const count = readNumberFilter(filters.count);
   const reason = normalizeText(filters.reason);
-  const status = normalizeText(filters.status);
   const from = readDateFilter(filters.from);
   const to = readDateFilter(filters.to);
 
@@ -276,14 +268,6 @@ export const toAdjustmentFilterChips = (
         removeLabel: t.historyFilters.chipRemoveReason,
       },
       reason,
-    ],
-    [
-      {
-        key: 'status',
-        label: t.historyFilters.chipStatus(status),
-        removeLabel: t.historyFilters.chipRemoveStatus,
-      },
-      status,
     ],
   ];
 

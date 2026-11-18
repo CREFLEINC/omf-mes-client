@@ -67,13 +67,6 @@ describe('ResultPane — 화면이 확인한 것만 말한다', () => {
     expect(within(pane).getByText('SAMPLE_IA_STATUS_B')).toBeVisible();
   });
 
-  /** 지금 상태의 정본이 이 화면이 아니라는 사실을 함께 적는다. */
-  it('등록 시점의 값이라는 사실을 적는다', () => {
-    const pane = renderPane();
-
-    expect(within(pane).getByText(t.result.statusNote)).toBeVisible();
-  });
-
   /** **서버가 저장한 줄 수**를 말한다 — 화면이 보낸 줄 수가 아니다. */
   it('서버가 저장한 줄 수를 낸다', () => {
     const pane = renderPane({ created: { lineCount: 3 } });
@@ -81,11 +74,13 @@ describe('ResultPane — 화면이 확인한 것만 말한다', () => {
     expect(within(pane).getByText(t.result.lineCount(3))).toBeVisible();
   });
 
-  /** 등록은 전기가 아니다 — 재고가 아직 움직이지 않았다는 사실을 결과 구획도 말한다. */
-  it('재고가 아직 움직이지 않았다는 사실을 적는다', () => {
+  /* 결과 구획의 설명문(재고 미이동·상태·ERP 적재 안내)은 걷었다(사용자 지시 2026-11-18). */
+  it('결과 구획에 설명문을 두지 않는다', () => {
     const pane = renderPane();
 
-    expect(within(pane).getByText(t.result.createdDescription)).toBeVisible();
+    expect(within(pane).getByText(t.result.createdTitle('SAMPLE-IA-9301'))).toBeVisible();
+    expect(within(pane).queryByText(/재고는 아직 움직이지 않았습니다/)).not.toBeInTheDocument();
+    expect(within(pane).queryByText(/서버가 준 상태입니다/)).not.toBeInTheDocument();
   });
 
   /** **내부 번호를 내지 않는다**(`omf-mes#44`). 짝으로 업무 번호는 실제로 보인다. */
@@ -125,10 +120,11 @@ describe('ResultPane — ERP 송신 세 갈래', () => {
   });
 
   /** **적재는 전송이 아니다**(계약 문면). 어느 갈래에도 「전송 완료」라는 낱말을 쓰지 않는다. */
-  it('적재가 전송 완료가 아니라는 사실을 적는다', () => {
+  it('「전송 완료」라는 낱말을 쓰지 않는다', () => {
     const pane = renderPane({ created: { erpMessageQueued: true } });
 
-    expect(within(pane).getByText(t.result.erpNote)).toBeVisible();
+    expect(within(pane).getByText(t.result.erpQueued)).toBeVisible();
+    expect(pane.textContent ?? '').not.toContain('전송 완료');
   });
 });
 
@@ -185,7 +181,6 @@ describe('ResultPane — 상신 갈래', () => {
     const pane = renderPane({ phase: 'submitted' });
 
     expect(within(pane).getByText(t.result.submittedTitle('SAMPLE-IA-9301'))).toBeVisible();
-    expect(within(pane).getByText(t.result.submittedDescription)).toBeVisible();
     expect(within(pane).queryByLabelText(t.submit.reason)).not.toBeInTheDocument();
     expect(
       within(pane).queryByRole('button', { name: t.actions.requestApproval }),

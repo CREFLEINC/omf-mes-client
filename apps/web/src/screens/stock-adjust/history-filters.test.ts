@@ -34,7 +34,6 @@ describe('DEFAULT_ADJUSTMENT_FILTERS — 아무 조건도 걸지 않은 상태',
     expect(DEFAULT_ADJUSTMENT_FILTERS).toEqual({
       count: '',
       reason: '',
-      status: '',
       from: '',
       to: '',
     });
@@ -44,20 +43,15 @@ describe('DEFAULT_ADJUSTMENT_FILTERS — 아무 조건도 걸지 않은 상태',
    * ⛔ **승인 대기 조건을 만들지 않는다**(D-3 · C41). 계약에 남아 있는 조건이라 자리를 두면
    * 저절로 실린다 — 조건 목록에 그 이름이 **아예 없다**는 것이 이 화면의 방어다.
    */
-  it('조건이 넷뿐이다 — 승인 대기 조건이 목록에 없다', () => {
-    expect(Object.keys(DEFAULT_ADJUSTMENT_FILTERS)).toEqual([
-      'count',
-      'reason',
-      'status',
-      'from',
-      'to',
-    ]);
+  it('조건이 셋뿐이다 — 승인 대기·상태 조건이 목록에 없다', () => {
+    /* 상태 조건은 선택지가 늘 비어 걷었다(사용자 지시 2026-11-18). */
+    expect(Object.keys(DEFAULT_ADJUSTMENT_FILTERS)).toEqual(['count', 'reason', 'from', 'to']);
     expect(Object.keys(DEFAULT_ADJUSTMENT_FILTERS)).not.toContain('pendingApprovalOnly');
   });
 });
 
 describe('readAdjustmentFilters — 주소가 정본이다', () => {
-  it('네 조건을 주소에서 읽는다', () => {
+  it('세 조건을 주소에서 읽고 옛 상태 키(`hst`)는 읽지 않는다', () => {
     expect(
       readAdjustmentFilters(
         params('?hc=9101&hrs=SAMPLE_AR_A&hst=SAMPLE_ST_A&hfrom=2026-08-01&hto=2026-08-18'),
@@ -65,7 +59,6 @@ describe('readAdjustmentFilters — 주소가 정본이다', () => {
     ).toEqual({
       count: '9101',
       reason: 'SAMPLE_AR_A',
-      status: 'SAMPLE_ST_A',
       from: '2026-08-01',
       to: '2026-08-18',
     });
@@ -94,8 +87,7 @@ describe('readAdjustmentFilters — 주소가 정본이다', () => {
   );
 
   it('공백만 친 코드는 조건이 아니다', () => {
-    expect(readAdjustmentFilters(params('?hrs=%20%20&hst=%20')).reason).toBe('');
-    expect(readAdjustmentFilters(params('?hrs=%20%20&hst=%20')).status).toBe('');
+    expect(readAdjustmentFilters(params('?hrs=%20%20')).reason).toBe('');
   });
 });
 
@@ -158,7 +150,6 @@ describe('toHistorySearchParams — 조건을 주소로', () => {
     const seeded = filters({
       count: '9101',
       reason: 'SAMPLE_AR_A',
-      status: 'SAMPLE_ST_A',
       from: '2026-08-01',
       to: '2026-08-18',
     });
@@ -173,13 +164,12 @@ describe('toAdjustmentFilterQuery — 계약이 쓰는 이름', () => {
     expect(toAdjustmentFilterQuery(DEFAULT_ADJUSTMENT_FILTERS)).toEqual({});
   });
 
-  it('네 조건이 계약 이름으로 실린다 — 실사 번호는 수로 나간다', () => {
+  it('세 조건이 계약 이름으로 실린다 — 실사 번호는 수로 나간다', () => {
     expect(
       toAdjustmentFilterQuery(
         filters({
           count: '9101',
           reason: 'SAMPLE_AR_A',
-          status: 'SAMPLE_ST_A',
           from: '2026-08-01',
           to: '2026-08-18',
         }),
@@ -187,7 +177,6 @@ describe('toAdjustmentFilterQuery — 계약이 쓰는 이름', () => {
     ).toEqual({
       inventoryCountId: 9101,
       reasonCode: 'SAMPLE_AR_A',
-      statusCode: 'SAMPLE_ST_A',
       adjustedAtFrom: '2026-08-01',
       adjustedAtTo: '2026-08-18',
     });
@@ -261,13 +250,12 @@ describe('toAdjustmentFilterChips — 걸린 조건을 눈에 보이게', () => 
       filters({
         count: '9101',
         reason: 'SAMPLE_AR_A',
-        status: 'SAMPLE_ST_A',
         from: '2026-08-01',
       }),
       NAMES,
     );
 
-    expect(chips.map((chip) => chip.key)).toEqual(['period', 'count', 'reason', 'status']);
+    expect(chips.map((chip) => chip.key)).toEqual(['period', 'count', 'reason']);
   });
 });
 

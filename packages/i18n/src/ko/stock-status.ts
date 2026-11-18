@@ -11,8 +11,9 @@
  * **「(LOT 무관)」·「(자사 소유)」는 빈 값이 아니라 확정된 뜻이다.** 대시나 「알 수 없음」으로
  * 두면 자료가 빠졌거나 값이 잘못됐다는 뜻이 되어 정반대로 읽힌다.
  *
- * **정렬 안내가 W-01-09와 반대다** — 그 화면은 「현재 쪽 안에서만」이고 이 화면은
- * 「전체 결과 기준」이다. 서버가 정렬해 쪽을 나눠 주기 때문이다.
+ * **화면에 설명문을 두지 않는다**(사용자 지시 2026-11-18). 정렬·그룹 범위 안내, 임시 목록·
+ * 위치·LOT 선택칸 안내, 수량·유효기한·수불 기간·위치 이름 범위 안내, 의심자재 등록 경로 안내,
+ * 빈 상태 설명을 걷었고 비활성 사유는 첫 문장만 남겼다.
  */
 export const stockStatus = {
   title: '재고 현황·상태 조회',
@@ -71,12 +72,12 @@ export const stockStatus = {
      * **창고 필수는 이 화면의 규칙이지 계약의 규칙이 아니다.** 문구도 그렇게 읽히게 쓴다 —
      * 「창고는 필수입니다」가 아니라 「창고를 고른 뒤 조회합니다」다.
      */
-    warehouseRequired: '창고를 고른 뒤 조회합니다. 이 화면은 한 창고의 재고를 봅니다.',
+    warehouseRequired: '창고를 고른 뒤 조회합니다.',
     /*
      * LOT 이름을 풀 범위를 품목이 정한다 — 품목 없이 열면 LOT 칸이 거의 전부
      * 「알 수 없음」이 되어 정상 값이 잘못된 값으로 보인다.
      */
-    lotViewNeedsItem: 'LOT별 보기는 품목을 고른 뒤에 열립니다. LOT 이름을 품목 범위에서 풉니다.',
+    lotViewNeedsItem: 'LOT별 보기는 품목을 고른 뒤에 열립니다.',
     /*
      * **문구에 적은 대상과 「다시 시도」가 다시 부르는 대상이 같아야 한다.** 다르면 눌러도
      * 한쪽은 실패인 채로 남는데 문구는 둘 다 고쳐질 것처럼 말한다.
@@ -89,8 +90,7 @@ export const stockStatus = {
      * 부르면 거부된다 — 「기간을 줄이면 빨라집니다」가 아니라 「기간 없이는 조회할 수
      * 없습니다」로 적는다. 그렇게 적지 않으면 사용자가 기간을 비운 채 기다린다.
      */
-    historyNeedsPeriod:
-      '영업일 시작과 종료를 모두 채운 뒤 조회합니다. 수불 이력은 기간 없이는 조회할 수 없습니다.',
+    historyNeedsPeriod: '영업일 시작과 종료를 모두 채운 뒤 조회합니다.',
     historyPeriodReversed: '영업일 종료가 시작보다 앞섭니다. 두 날짜의 순서를 바꾸세요.',
   },
   loading: {
@@ -122,19 +122,11 @@ export const stockStatus = {
     item: (name: string): string => `품목: ${name}`,
     location: (name: string): string => `위치: ${name}`,
   },
-  /**
-   * 조건 줄. 상태·소유 구분 선택지는 조회 결과에서 만들므로 그 한계를 문구가 함께 밝힌다 —
-   * ① 아직 확정되지 않은 **임시 목록**이라는 것 ② 이번 결과에 없는 값은 빠진다는 것.
-   */
+  /** 조건 줄. 상태·소유 구분 선택지는 조회 결과에서 만든다(그 한계를 밝히던 안내는 걷었다). */
   filters: {
     all: '전체',
-    codeNote:
-      '아직 확정되지 않은 임시 목록입니다. 이번 조회 결과에 나온 값으로 만들어, 결과에 없는 값은 목록에 없습니다.',
     lookupTruncated: '선택지가 앞쪽 일부만 보입니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
     lookupFailed: '선택지를 불러오지 못했습니다.',
-    /* 위치·LOT 선택칸은 매달린 조건이 없으면 선택지가 비어 있다 — 그 사실을 밝힌다. */
-    locationNeedsWarehouse: '창고를 고르면 위치 선택지가 채워집니다.',
-    lotNeedsItem: '품목을 고르고 LOT별 보기로 바꾸면 LOT 선택지가 채워집니다.',
     chipWarehouse: (value: string): string => `창고: ${value}`,
     chipItem: (value: string): string => `품목: ${value}`,
     chipLot: (value: string): string => `LOT: ${value}`,
@@ -172,14 +164,10 @@ export const stockStatus = {
      * 무엇을 해도 결과가 같다. 사유는 조건 줄의 잠긴 버튼이 이미 밝힌다.
      */
     notQueriedTitle: '아직 조회하지 않았습니다',
-    notQueriedDescription: '조건 줄에서 창고를 고른 뒤 조회하세요.',
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
-    beyondLastDescription: '첫 쪽으로 이동하세요.',
     noResultTitle: '조건에 맞는 재고가 없습니다',
-    noResultDescription: '조건을 줄이거나 「잔액 0 포함」을 켠 뒤 다시 조회하세요.',
     /* 목록이 계속 보이는 자리라 「무엇을 하면 채워지는가」만 말한다. */
     noSelectionTitle: '고른 LOT이 없습니다',
-    noSelectionDescription: '위 표에서 LOT을 고르면 그 상태와 보류가 여기에 보입니다.',
   },
   values: {
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
@@ -210,19 +198,6 @@ export const stockStatus = {
      */
     inactiveSuffix: ' (미사용)',
   },
-  notes: {
-    /*
-     * **W-01-09와 반대다.** 그 화면은 쪽 안 정렬이라 「현재 쪽 안에서만」이고,
-     * 이 화면은 서버 정렬이라 「전체 결과 기준」이다. 베껴 쓰면 사실과 어긋난다.
-     *
-     * 방향을 함께 밝힌다 — 계약의 `sort`가 열만 받고 방향을 받지 않아 한 방향뿐인데,
-     * `aria-sort`는 「모름」을 표기할 수단이 없어 오름차순으로 적는다.
-     */
-    sortScope:
-      '정렬은 서버가 전체 결과를 기준으로 합니다. 정렬 방향은 고를 수 없어 오름차순 한 방향입니다.',
-    /* 밝히지 않으면 사용자가 「이 품목의 LOT은 이게 전부」로 읽는다 — 서버가 쪽을 나눠 준다. */
-    groupScope: '그룹은 지금 보고 있는 쪽 안에서만 묶입니다. 다른 쪽의 행은 함께 묶이지 않습니다.',
-  },
   /**
    * LOT 상세 구획 — 아래 구획이다(계획 결정 2). **조회만 한다** — 등록·수정·보류 해제 수단이
    * 하나도 없다. 그것은 품질 도메인 화면의 소관이다.
@@ -236,12 +211,9 @@ export const stockStatus = {
     attributes: (lotNo: string): string => `LOT ${lotNo}`,
     /*
      * **수량은 상세 조회가 아니라 고른 잔액 줄에서 온다.** 계약의 `Lot`은 만들어질 때의
-     * 초기 수량만 갖는다. 그래서 「이 조건으로 조회한 줄의 수량」임을 밝힌다 —
-     * 밝히지 않으면 사용자가 그 LOT의 전체 재고로 읽는다.
+     * 초기 수량만 갖는다.
      */
     quantities: '지금 수량',
-    quantitiesNote:
-      '지금 걸린 조회 조건에 해당하는 줄의 수량입니다. 가용은 서버가 계산해 내려준 값입니다.',
     onHandQty: '보유',
     reservedQty: '예약',
     pickedQty: '피킹',
@@ -257,13 +229,10 @@ export const stockStatus = {
     remarks: '비고',
     /*
      * **표식일 뿐이다.** 기한이 지난 재고를 어떻게 할지가 아직 정해지지 않아
-     * 자동으로 보류를 걸지 않는다(이슈 §4 미결 5). 임박 기준 일수도 미확정이라(미결 2)
-     * 상수에서 받아 문구에 넣는다 — 문구에 숫자를 박으면 고칠 자리가 둘이 된다.
+     * 자동으로 보류를 걸지 않는다(이슈 §4 미결 5). 임박 기준 일수도 미확정이다(미결 2).
      */
     expiryPassed: '유효기한 경과',
     expirySoon: '유효기한 임박',
-    expiryNote: (days: number): string =>
-      `임박 기준은 ${String(days)}일이며 아직 확정되지 않았습니다. 기한이 지나도 보류가 자동으로 걸리지 않습니다.`,
     externalIdentifiers: '외부 식별자',
     identifierType: '식별자 유형',
     externalIdentifier: '식별자',
@@ -289,13 +258,6 @@ export const stockStatus = {
       /* 계약이 「비어 있으면 전량 보류」로 정했다. 빈칸이나 0으로 두면 정반대로 읽힌다. */
       wholeLot: '전량 보류',
       emptyTitle: '해제되지 않은 보류가 없습니다',
-      emptyDescription: '이 LOT에 걸린 보류가 없거나 모두 해제되었습니다.',
-      /*
-       * **경로 안내이지 링크가 아니다.** 의심자재 등록은 품질 도메인 화면의 소관이고
-       * 그 화면이 아직 없어 링크를 만들면 죽은 링크가 된다(이슈 §6).
-       */
-      suspectMaterialPath:
-        '의심자재 등록은 품질관리 > 의심자재 등록(W-03-03)에서 합니다. 이 화면은 조회만 합니다.',
     },
   },
   /**
@@ -311,9 +273,6 @@ export const stockStatus = {
   history: {
     periodFrom: '영업일 시작',
     periodTo: '영업일 종료',
-    /** 왜 기간이 필요한지와 기본값을 함께 밝힌다 — 둘 다 없으면 사용자가 빈 칸을 의심한다. */
-    periodNote:
-      '수불 원장은 영업일로 나뉘어 있어 기간이 있어야 조회할 수 있습니다. LOT을 고르면 최근 1개월이 채워집니다.',
     table: {
       businessDate: '영업일',
       transactionNo: '거래 번호',
@@ -338,13 +297,9 @@ export const stockStatus = {
     empty: {
       /* 기간을 채우기 전에는 요청이 나가지 않는다 — 그것을 「없습니다」로 말하지 않는다. */
       notQueriedTitle: '아직 조회하지 않았습니다',
-      notQueriedDescription: '영업일 범위를 채운 뒤 조회하세요.',
       beyondLastTitle: '이 쪽에는 이력이 없습니다',
-      beyondLastDescription: '첫 쪽으로 이동하세요.',
       noResultTitle: '이 기간에 움직인 기록이 없습니다',
-      noResultDescription: '영업일 범위를 넓힌 뒤 다시 조회하세요.',
       noSelectionTitle: '고른 거래가 없습니다',
-      noSelectionDescription: '위 표에서 거래를 고르면 그 거래의 라인이 여기에 보입니다.',
     },
     lines: {
       title: '거래 라인',
@@ -362,8 +317,6 @@ export const stockStatus = {
        * 뜻이 되어 정반대로 읽히므로(#47), 풀 수 없는 이유를 그대로 적는다.
        */
       otherWarehouseLocation: '(다른 창고의 위치)',
-      scopeNote:
-        '위치 이름은 조건 줄에서 고른 창고의 것만 풀립니다. 다른 창고로 오간 라인은 위치 이름 대신 그 사실을 적습니다.',
       emptyTitle: '이 거래에 라인이 없습니다',
       /** 문구가 적은 대상과 「다시 시도」가 다시 부르는 대상이 같아야 한다. */
       referencesFailed:

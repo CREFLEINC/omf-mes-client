@@ -37,11 +37,10 @@ interface AdjustmentEntry {
   varianceCount: number;
 }
 
-/** 갈래 하나가 내는 것 전부 — 라벨·짝 목록·안내·「조정 등록」 자리. */
+/** 갈래 하나가 내는 것 전부 — 라벨·짝 목록·「조정 등록」 자리. */
 interface ResultLayout {
   label: string;
   rows: ResultRow[];
-  note: string;
   /**
    * **조정 등록으로 잇는가**, 이으면 무엇을 넘기는가. `null`이면 그 자리를 두지 않는다.
    *
@@ -92,7 +91,6 @@ const toLayout = (result: ResultView): ResultLayout => {
       return {
         label: t.result.label,
         rows: [{ key: 'countNo', label: t.result.openedNo, value: result.countNo }],
-        note: t.result.openedNote,
         adjustmentEntry: null,
       };
     case 'saved':
@@ -110,7 +108,6 @@ const toLayout = (result: ResultView): ResultLayout => {
             value: t.result.savedCount(result.replacedLineCount),
           },
         ],
-        note: t.result.savedNote,
         adjustmentEntry: null,
       };
     case 'closed':
@@ -130,7 +127,6 @@ const toLayout = (result: ResultView): ResultLayout => {
           },
           ...toSummaryRows(result.summary),
         ],
-        note: t.result.closedNote,
         /*
          * **차이가 남은 마감에만 잇는다**(D-18 · C47·C48). 차이가 0이면 조정할 것이 없어
          * 자리를 두지 않는다 — 길을 두면 사용자는 무엇을 조정하러 가는지 모른 채 화면을 연다.
@@ -164,8 +160,8 @@ const toLayout = (result: ResultView): ResultLayout => {
  * 때 쓰는 **업무 번호**라 내는 것이 맞고, 위치는 화면이 **이름으로 풀어** 넘긴다. 마감 갈래는
  * 이제 내부 번호를 받지만 **링크 주소에만** 싣는다 — 사람이 읽는 자리에는 넣지 않는다.
  *
- * **성공을 단정하는 말을 쓰지 않는다.** 화면이 증거로 갖는 것은 응답이 준 값뿐이고,
- * 진행 요약은 위 구획이 상세 조회로 따로 받는다 — 그 사실을 안내가 밝힌다.
+ * **성공을 단정하는 말을 쓰지 않는다.** 화면이 증거로 갖는 것은 응답이 준 값뿐이다.
+ * 갈래마다 붙던 안내문은 걷었다(사용자 지시 2026-11-18).
  *
  * **이동은 마감 갈래의 「조정 등록」 하나뿐이다**(D-18). 만들어진 실사도 저장한 위치도 같은
  * 화면에서 이어 다루므로 앞 두 갈래에는 갈 곳이 없다. 그 하나도 **차이가 남은 마감에만** 서고
@@ -188,8 +184,6 @@ export const ResultPane = ({ result }: ResultPaneProps): ReactNode => {
           </div>
         ))}
       </dl>
-
-      <p className="field-note">{layout.note}</p>
 
       {/*
        * **이름-값 목록 밖에 둔다.** 이어서 하는 일은 이 마감이 **가진 값**이 아니라 그 결과로

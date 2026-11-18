@@ -1,5 +1,4 @@
 import {
-  AlertBanner,
   Breadcrumb,
   Button,
   EmptyState,
@@ -13,6 +12,7 @@ import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'rea
 import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { usePageHub } from '../../patterns/page-hub';
 import { AdjustLineTable, type AdjustLineRow } from './adjust-line-table';
 import { summarizeAdjustLines, toInventoryAdjustmentCreate } from './adjust-request';
 import {
@@ -25,7 +25,6 @@ import {
 } from './approval-progress';
 import { ApprovalProgressPane, type ApprovalProgressState } from './approval-progress-pane';
 import { toBookQty, type BookQtyState } from './balances';
-import { PLACEHOLDER_STOCK_ADJUST_CODES, toCodeOptionSets } from './code-options';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import { readInventoryCountId, withInventoryCountId, withoutInventoryCountId } from './entry';
 import { HeaderForm } from './header-form';
@@ -270,6 +269,7 @@ const CLOSED_POST_PANEL: PostPanelState = {
  */
 export const StockAdjustScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const hub = usePageHub();
 
   const urlCountId = readInventoryCountId(searchParams);
 
@@ -1231,13 +1231,10 @@ export const StockAdjustScreen = () => {
       label: `${count.inventoryCountNo} · ${count.plannedDate}`,
     })) ?? [];
 
-  /**
-   * 값 목록이 확정되지 않은 코드 — **이제 상태 하나뿐이다**(D-9 개정).
-   *
-   * **컴포넌트 안에서 옮긴다** — 모듈 수준에 두면 값 목록이 채워지는 날 그 시점의 배열이
-   * 얼어붙고, 이 화면이 「채우면 저절로 살아나는 자리」라는 사실이 깨진다.
+  /*
+   * 값 목록이 확정되지 않은 전표 상태를 이력 조건으로 두던 자리(`code-options.ts`)는 선택지가
+   * 늘 비어 쓰이지 않아 칸과 함께 걷었다(사용자 지시 2026-11-18).
    */
-  const codeOptions = toCodeOptionSets(PLACEHOLDER_STOCK_ADJUST_CODES);
 
   /**
    * 조정 사유 선택지 — **두 탭이 같은 목록을 쓴다**(등록 헤더 · 이력 조건).
@@ -1484,27 +1481,6 @@ export const StockAdjustScreen = () => {
   const hasHistoryReferenceError = items.isError || uoms.isError || lots.isError;
 
   const hasBalanceError = Object.values(balances.sources).some((source) => source.isError);
-
-  /**
-   * 장부가 「—」인데 **그 이유를 말해 줘야 하는** 줄이 있는가.
-   *
-   * 두 갈래를 함께 본다.
-   *
-   * | 갈래 | 어떻게 나오나 |
-   * | --- | --- |
-   * | 잔액에서 (품목·LOT)을 못 찾았다 | `notFound` |
-   * | **실사가 장부를 내려보내지 않았다**(블라인드 실사) | 승계 줄인데 `countSystemQty`가 없다 |
-   *
-   * ⛔ **`notAsked`를 통째로 더하지 않는다.** 그 갈래에는 「위치를 아직 고르지 않은 갓 더한
-   * 줄」이 함께 들어 있어, 더할 때마다 안내가 떠서 **정상 상태를 사고처럼** 보이게 만든다.
-   * 그래서 블라인드 갈래는 **승계 줄이라는 사실**로 좁혀 가른다 — 그 줄은 사용자가 채울 수
-   * 있는 것이 아무것도 없는데 두 열이 비어 있으므로, 이유 없는 대시로 남으면 안 된다.
-   */
-  const hasUnknownBookQty =
-    rows.some((row) => row.bookQty.kind === 'notFound') ||
-    lines.some((line) => line.countLineId !== null && line.countSystemQty === null);
-
-  const hasInheritedReason = lines.some((line) => line.countReasonCode !== null);
 
   /**
    * **잘린 목록으로 등록하지 않는다**(T1이 세운 판정의 소비처).
@@ -2053,17 +2029,7 @@ export const StockAdjustScreen = () => {
     }
 
     if (rows.length === 0) {
-      return (
-        <EmptyState
-          size="sm"
-          title={t.empty.noLinesTitle}
-          description={
-            sourceKind === 'count'
-              ? t.empty.noLinesCountDescription
-              : t.empty.noLinesDirectDescription
-          }
-        />
-      );
+      return <EmptyState size="sm" title={t.empty.noLinesTitle} />;
     }
 
     return (
@@ -2089,10 +2055,7 @@ export const StockAdjustScreen = () => {
         {/* 차이 0인 줄은 **막지 않고** 무엇이 일어나는지만 밝힌다(D-4). */}
         {excludedCount > 0 && <p className="field-note">{t.notes.excludedZero(excludedCount)}</p>}
 
-        {/* 실사에서 온 사유는 보이기만 한다(D-7) — 고칠 수 있는 값으로 읽히지 않게 밝힌다. */}
-        {hasInheritedReason && <p className="field-note">{t.notes.lineReasonReadOnly}</p>}
-
-        <p className="field-note">{t.notes.lineNoAssignedByServer}</p>
+        {/* 실사 사유 읽기 전용 안내와 줄번호 안내는 걷었다(사용자 지시 2026-11-18). */}
       </>
     );
   };
@@ -2197,12 +2160,7 @@ export const StockAdjustScreen = () => {
       </section>
 
       <section className="pane" aria-label={t.panes.lines}>
-        {/*
-         * ⭐ **실물은 파생이고 차이는 음수를 받는다**(조심 ②·③). 표를 읽기 전에 이 둘을 알아야
-         * 사용자가 「실물을 고쳐야 하나」·「음수를 넣어도 되나」를 묻지 않는다.
-         */}
-        <p className="field-note">{t.notes.actualDerived}</p>
-        <p className="field-note">{t.notes.negativeAllowed}</p>
+        {/* 실물 파생·음수 입력 안내문은 걷었다(사용자 지시 2026-11-18). */}
 
         {variance.isError && (
           <LoadErrorBanner
@@ -2258,11 +2216,7 @@ export const StockAdjustScreen = () => {
           onChange={changeHeader}
         />
 
-        {/*
-         * 장부를 못 찾아도 **등록은 막지 않는다**(C8) — 잠금 사유 옆에 서야 그 사실이 읽힌다.
-         * 표 아래에 두면 「막는 사정」 목록에서 떨어져, 사용자가 장부부터 채우려 든다.
-         */}
-        {hasUnknownBookQty && <p className="field-note">{t.notes.bookQtyOptional}</p>}
+        {/* 장부를 못 찾아도 **등록은 막지 않는다**(C8). 그 사실을 밝히던 안내문은 걷었다(사용자 지시 2026-11-18). */}
 
         <div className="form-actions">
           {/*
@@ -2469,11 +2423,7 @@ export const StockAdjustScreen = () => {
           description={t.empty.historyNotFoundDescription}
         />
       ) : (
-        <EmptyState
-          size="sm"
-          title={t.empty.historyNoSelectionTitle}
-          description={t.empty.historyNoSelectionDescription}
-        />
+        <EmptyState size="sm" title={t.empty.historyNoSelectionTitle} />
       );
     }
 
@@ -2552,7 +2502,6 @@ export const StockAdjustScreen = () => {
           countOptions={countOptions}
           reasonOptions={reasonOptions}
           reasonNote={reasonNote}
-          statusOptions={codeOptions.status}
           countNote={countList?.truncated === true ? t.lookups.truncated : undefined}
           isLocked={isNavigationLocked}
           onSearch={(nextFilters) => {
@@ -2633,40 +2582,27 @@ export const StockAdjustScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
+      {/*
+       * 탭 묶음(재고 관리) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다
+       * (사용자 지시 2026-11-18 · `patterns/page-hub.tsx`). 이 화면의 머리에는 일 단추가 없다.
+       */}
+      {hub === null && (
+        <PageHeader
+          title={t.title}
+          breadcrumb={
+            <Breadcrumb
+              items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          }
+        />
+      )}
 
       {/*
-       * ⭐ **범위 안내는 늘 선다**(조심 ③ · C13). 이 화면을 「잔량을 고치는 화면」으로 읽는 것이
-       * 여기서 가장 비싼 오해라, 맥락 유무로 접으면 정작 그렇게 읽는 사람이 읽지 못한다.
-       *
-       * **탭 위에 둔다** — 두 탭에 함께 걸리는 사실이다.
+       * ⛔ **승인 대기 탭을 두지 않는다**(조심 ① · D-3 · C42). 결재는 결재함이 소유한다.
+       * 탭 위에 늘 서던 범위 안내(「조정은 수불 원장에 기록됩니다」)와 결재 안내(「결재는
+       * 결재함에서 합니다」) 배너는 걷었다(사용자 지시 2026-11-18).
        */}
-      <div className="banner-slot">
-        <AlertBanner variant="info" title={t.scope.title}>
-          {t.scope.description}
-        </AlertBanner>
-      </div>
-
-      {/*
-       * ⛔ **승인 대기 탭을 두지 않는다**(조심 ① · D-3 · C42). 결재는 결재함이 소유한다 —
-       * 이 안내가 그 자리를 가리키므로 사용자가 여기서 승인 버튼을 찾지 않는다.
-       *
-       * **탭 위에 둔다.** 한 탭 안에 두면 다른 탭에서는 그 사실이 사라지는데, 승인·반려를
-       * 찾게 되는 자리는 오히려 **이력 탭**이다(지난 조정의 상태가 거기 보인다).
-       */}
-      <div className="banner-slot">
-        <AlertBanner variant="info" title={t.approvalNotice.title}>
-          {t.approvalNotice.description}
-        </AlertBanner>
-      </div>
 
       <Tabs aria-label={t.tabs.label} items={tabItems} value={tab} onChange={changeTab} />
 

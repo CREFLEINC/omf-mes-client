@@ -30,14 +30,9 @@ export interface HistoryFilterBarProps {
   /**
    * 사유 선택지의 **한계**를 밝히는 보조 문구(불러오기 실패 · 잘림).
    *
-   * ⛔ **「목록 준비 중」을 여기 넣지 않는다**(#36 회신 ④) — 아래 상태 칸과 갈리는 자리다.
+   * ⛔ **「목록 준비 중」을 여기 넣지 않는다**(#36 회신 ④).
    */
   reasonNote?: string;
-  /**
-   * 전표 상태 선택지. **값 목록이 아직 확정되지 않았다**(자리표시 · `code-options.ts`) —
-   * 화면이 넘긴다. 부품이 상수를 직접 읽으면 그 전환을 화면 수준에서 잴 수 없다.
-   */
-  statusOptions: SelectOption[];
   /** 선택지가 잘렸는가 같은 사정. 밝히지 않으면 불완전한 목록을 완전한 것으로 읽는다 */
   countNote?: string;
   /** 잠겼는가. 조건이 바뀌면 고른 전표가 풀리므로 나가는 중인 쓰기가 있으면 잠근다 */
@@ -60,10 +55,12 @@ export interface HistoryFilterBarProps {
  * **검색어 칸이 없다.** 계약의 조정 목록 조회에 검색어 조건이 **없다**(실측) — 만들면 쳐도
  * 아무것도 좁혀지지 않는 칸이 된다.
  *
- * **사유와 상태는 이제 갈린다**(#36 회신 · D-9 개정). 사유는 고객의 공통코드 마스터에서 오는
- * 실제 목록이고, 상태는 아직 설계가 정할 자리표시다 — ⛔ 사유 칸에 「목록 준비 중」을 붙이면
- * 고객이 스스로 넣을 값을 우리가 미루고 있는 것처럼 읽힌다.
- * **어느 쪽이 비어도 아무것도 잠기지 않는다** — 조회는 조건 없이도 열려 있다.
+ * **사유는 고객의 공통코드 마스터에서 오는 실제 목록이다**(#36 회신 · D-9 개정) — ⛔ 사유 칸에
+ * 「목록 준비 중」을 붙이면 고객이 스스로 넣을 값을 우리가 미루고 있는 것처럼 읽힌다.
+ * **비어도 아무것도 잠기지 않는다** — 조회는 조건 없이도 열려 있다.
+ *
+ * 선택지가 늘 비어 쓰이지 않던 상태 조건과 그 「값 목록 미확정」 안내, 기간 안내 두 줄
+ * (비우면 전기 전 전표도 보인다 · 「초기화」로만 푼다)은 걷었다(사용자 지시 2026-11-18).
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
@@ -73,7 +70,6 @@ export const HistoryFilterBar = ({
   countOptions,
   reasonOptions,
   reasonNote,
-  statusOptions,
   countNote,
   isLocked = false,
   onSearch,
@@ -93,7 +89,6 @@ export const HistoryFilterBar = ({
   const {
     count: appliedCount,
     reason: appliedReason,
-    status: appliedStatus,
     from: appliedFrom,
     to: appliedTo,
   } = appliedFilters;
@@ -102,11 +97,10 @@ export const HistoryFilterBar = ({
     setFilters({
       count: appliedCount,
       reason: appliedReason,
-      status: appliedStatus,
       from: appliedFrom,
       to: appliedTo,
     });
-  }, [appliedCount, appliedReason, appliedStatus, appliedFrom, appliedTo]);
+  }, [appliedCount, appliedReason, appliedFrom, appliedTo]);
 
   const search = (): void => {
     onSearch(filters);
@@ -124,13 +118,12 @@ export const HistoryFilterBar = ({
   };
 
   const chips = toAdjustmentFilterChips(appliedFilters, chipNames);
-  const hasPeriodChip = chips.some((chip) => chip.key === 'period');
 
   const allOption: SelectOption = { value: '', label: t.historyFilters.all };
 
   /**
    * **고를 값이 하나도 없는 칸**은 「전체」도 붙이지 않는다. 「전체」만 있으면 목록이 준비된
-   * 것처럼 보인다 — 왜 비었는지는 안내가 말한다.
+   * 것처럼 보인다.
    */
   const withAll = (options: SelectOption[]): SelectOption[] =>
     options.length === 0 ? options : [allOption, ...options];
@@ -142,12 +135,6 @@ export const HistoryFilterBar = ({
    * 「전체」는 고를 수 있는 정상 조건이다 — 빼면 그 칸이 준비되지 않은 것처럼 읽힌다.
    */
   const reasonSelectOptions: SelectOption[] = [allOption, ...reasonOptions];
-
-  const codeNote = (options: SelectOption[]): string | undefined =>
-    options.length === 0 ? t.historyFilters.codePending : undefined;
-
-  const codePlaceholder = (options: SelectOption[]): string =>
-    options.length === 0 ? t.historyFilters.codePlaceholder : t.historyFilters.all;
 
   return (
     <>
@@ -201,18 +188,6 @@ export const HistoryFilterBar = ({
           }}
         />
 
-        <SelectField
-          label={t.historyFields.status}
-          options={withAll(statusOptions)}
-          value={filters.status}
-          note={codeNote(statusOptions)}
-          placeholder={codePlaceholder(statusOptions)}
-          disabled={isLocked}
-          onChange={(value) => {
-            setFilters((prev) => ({ ...prev, status: value }));
-          }}
-        />
-
         {/* 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다. */}
         <div className="field-cell field-cell-unlabeled">
           <div className="filter-actions">
@@ -225,9 +200,6 @@ export const HistoryFilterBar = ({
           </div>
         </div>
       </div>
-
-      {/* 기본 기간이 없다는 사실은 화면에서 읽혀야 한다 — 빈 칸이 고장으로 읽히지 않게 한다. */}
-      <p className="field-note">{t.historyFilters.periodNote}</p>
 
       {chips.length > 0 && (
         <div className="filter-bar">
@@ -255,9 +227,6 @@ export const HistoryFilterBar = ({
           )}
         </div>
       )}
-
-      {/* ×가 하나만 없는 이유를 밝힌다 — 없으면 사용자가 ×를 찾다가 화면을 고장으로 읽는다. */}
-      {hasPeriodChip && <p className="field-note">{t.historyFilters.periodClearNote}</p>}
     </>
   );
 };

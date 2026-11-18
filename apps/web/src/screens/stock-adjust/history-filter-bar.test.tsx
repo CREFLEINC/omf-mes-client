@@ -20,7 +20,6 @@ const baseProps = (overrides: Partial<HistoryFilterBarProps> = {}): HistoryFilte
   chipNames: { count: COUNT_NAME },
   countOptions: [{ value: '9101', label: COUNT_NAME }],
   reasonOptions: [],
-  statusOptions: [],
   isLocked: false,
   onSearch: vi.fn(),
   onRemoveFilter: vi.fn(),
@@ -50,20 +49,21 @@ const describedTextOf = (label: string): string => {
 };
 
 describe('HistoryFilterBar — 조건 칸', () => {
-  it('조건 칸이 넷이다 — 전기일·대상 실사·조정 사유·상태', () => {
+  /* 선택지가 늘 비어 쓰이지 않던 상태 칸은 걷었다(사용자 지시 2026-11-18). */
+  it('조건 칸이 셋이다 — 전기일·대상 실사·조정 사유', () => {
     renderBar();
 
     expect(screen.getByLabelText(t.historyFields.period)).toBeInTheDocument();
     expect(screen.getByLabelText(t.historyFields.count)).toBeInTheDocument();
     expect(screen.getByLabelText(t.historyFields.reason)).toBeInTheDocument();
-    expect(screen.getByLabelText(t.historyFields.status)).toBeInTheDocument();
+    expect(screen.queryByLabelText('상태')).not.toBeInTheDocument();
   });
 
   /**
    * ⛔ C41·D-3의 자리. **승인 대기 조건 칸이 없다** — 양성 앵커(네 칸이 실제로 섰다)를 먼저
    * 재고 그 뒤에 「다섯째 칸이 없다」를 잰다.
    */
-  it('승인 대기 조건 칸이 없다 — 조건 컨트롤이 넷뿐이다', () => {
+  it('승인 대기 조건 칸이 없다 — 조건 컨트롤이 셋뿐이다', () => {
     const { container } = renderBar();
 
     expect(screen.getByLabelText(t.historyFields.period)).toBeInTheDocument();
@@ -80,19 +80,14 @@ describe('HistoryFilterBar — 조건 칸', () => {
   });
 
   /**
-   * ⭐ **사유와 상태가 갈린다**(#36 회신 ④ · D-9 개정).
-   *
-   * 상태는 아직 설계가 정할 자리표시라 「목록 준비 중」이 서고, 사유는 **고객의 마스터에서
-   * 오는 실제 목록**이라 그 문구가 서지 않는다 — 하나만 남았다는 사실을 개수로 고정한다.
+   * ⭐ 사유는 **고객의 마스터에서 오는 실제 목록**이라(#36 회신 ④ · D-9 개정) 「목록 준비 중」이
+   * 서지 않는다. 상태 칸과 그 안내는 걷었다(사용자 지시 2026-11-18).
    */
-  it('「목록 준비 중」은 상태 칸에만 선다 — 사유 칸에는 없다', () => {
+  it('사유 칸에 「목록 준비 중」이 없다', () => {
     renderBar();
 
-    /* 양성 앵커 — 상태 칸은 자리표시 그대로다. 이것이 서야 「하나뿐」이 뜻을 갖는다. */
-    expect(screen.getAllByText(t.historyFilters.codePending)).toHaveLength(1);
-    expect(describedTextOf(t.historyFields.status)).toContain(t.historyFilters.codePending);
-    expect(describedTextOf(t.historyFields.reason)).not.toContain(t.historyFilters.codePending);
-    expect(screen.getByLabelText(t.historyFields.status)).toBeEnabled();
+    expect(describedTextOf(t.historyFields.reason)).toBe('');
+    expect(screen.queryByText(/값 목록이 아직 확정되지 않아/)).not.toBeInTheDocument();
   });
 
   /**
@@ -133,16 +128,6 @@ describe('HistoryFilterBar — 조건 칸', () => {
     renderBar({ reasonNote: t.lookups.failed });
 
     expect(screen.getByText(t.lookups.failed)).toBeInTheDocument();
-  });
-
-  /** 상태 칸은 자리표시 그대로다 — 값이 차면 「전체」가 함께 선다. */
-  it('상태 값 목록이 차면 「전체」가 함께 선다', async () => {
-    const { user } = renderBar({ statusOptions: [{ value: 'SAMPLE_ST_A', label: 'SAMPLE_ST_A' }] });
-
-    await user.click(screen.getByLabelText(t.historyFields.status));
-
-    expect(screen.getByRole('option', { name: t.historyFilters.all })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'SAMPLE_ST_A' })).toBeInTheDocument();
   });
 
   it('선택지의 한계를 밝히는 안내를 그 칸에 붙인다', () => {
@@ -235,7 +220,8 @@ describe('HistoryFilterBar — 조건 칩', () => {
    * **기간 칩에는 ×가 없고 그 사정을 밝힌다** — 양성 앵커(다른 칩에는 ×가 있다)를 먼저 재고
    * 그 뒤에 잰다.
    */
-  it('기간 칩에는 ×가 없고 푸는 길을 안내한다', () => {
+  /* 푸는 길(「초기화」)을 밝히던 안내는 걷었다(사용자 지시 2026-11-18). */
+  it('기간 칩에는 ×가 없다', () => {
     renderBar({ appliedFilters: filters({ from: '2026-08-01', reason: 'SAMPLE_AR_A' }) });
 
     expect(
@@ -244,14 +230,14 @@ describe('HistoryFilterBar — 조건 칩', () => {
     expect(
       screen.queryByRole('button', { name: t.historyFilters.chipRemoveCount }),
     ).not.toBeInTheDocument();
-    expect(screen.getByText(t.historyFilters.periodClearNote)).toBeInTheDocument();
+    expect(screen.getByText(t.historyFilters.chipPeriodFrom('2026-08-01'))).toBeInTheDocument();
   });
 
-  it('조건이 없으면 칩도 서지 않는다', () => {
-    renderBar();
+  it('조건이 없으면 칩도 안내문도 서지 않는다', () => {
+    const { container } = renderBar();
 
-    expect(screen.queryByText(t.historyFilters.periodClearNote)).not.toBeInTheDocument();
-    expect(screen.getByText(t.historyFilters.periodNote)).toBeInTheDocument();
+    expect(screen.queryByText(t.historyFilters.chipRemoveReason)).not.toBeInTheDocument();
+    expect(container.querySelector('p.field-note')).toBeNull();
   });
 });
 

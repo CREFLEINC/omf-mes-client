@@ -135,6 +135,7 @@ export const ResultPane = ({
           {t.result.submitFailedDescription}
         </AlertBanner>
       ) : (
+        /* 성공 배너 아래 붙던 「재고는 아직 움직이지 않았다」 설명문은 걷었다(사용자 지시 2026-11-18). */
         <AlertBanner
           variant="success"
           title={
@@ -142,9 +143,7 @@ export const ResultPane = ({
               ? t.result.submittedTitle(created.inventoryAdjustmentNo)
               : t.result.createdTitle(created.inventoryAdjustmentNo)
           }
-        >
-          {phase === 'submitted' ? t.result.submittedDescription : t.result.createdDescription}
-        </AlertBanner>
+        />
       )}
 
       {/* 나가는 중이라는 사실은 배너를 갈아 끼우지 않고 덧붙인다 — 전표를 만든 사실이 그대로 남는다. */}
@@ -175,12 +174,8 @@ export const ResultPane = ({
         </div>
       </dl>
 
-      <p className="field-note">{t.result.statusNote}</p>
-
+      {/* 상태·ERP 적재의 뜻을 밝히던 안내문은 걷었다(사용자 지시 2026-11-18). */}
       <p>{t.result.lineCount(created.lineCount)}</p>
-
-      {/* 적재는 전송이 아니다 — 상대 시스템에서 아직 보이지 않는 것이 정상이다. */}
-      <p className="field-note">{t.result.erpNote}</p>
 
       {canSubmit && (
         <>
@@ -198,7 +193,6 @@ export const ResultPane = ({
               label={t.submit.reason}
               value={reason}
               placeholder={t.submit.reasonPlaceholder}
-              helperText={t.submit.reasonHelper}
               disabled={phase === 'submitting'}
               error={reasonError}
               onChange={(event) => {

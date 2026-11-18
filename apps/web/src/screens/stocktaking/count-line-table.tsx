@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { Select } from '../../patterns/select';
-import { codeNote, codePlaceholder } from './code-options';
+import { codePlaceholder } from './code-options';
 import type { LineRowView } from './line-replace-request';
 import {
   describeReference,
@@ -206,9 +206,6 @@ export const buildCountLineColumns = ({
           {row.reason.kind === 'invalid' && (
             <span className="field-error">{row.reason.message}</span>
           )}
-          {codeNote(reasonOptions) !== undefined && (
-            <span className="field-note">{codeNote(reasonOptions)}</span>
-          )}
         </div>
       ),
     },
@@ -229,9 +226,9 @@ export interface CountLineTableProps extends CountLineColumnsInput {
  * **빈 상태를 표의 `empty`가 맡는다**(감지기 M34). 바깥에서 0건을 갈라 다른 것을 그리면
  * `empty`가 닿을 수 없는 죽은 가지가 된다(W-01-07 Minor의 형태).
  *
- * **치환의 뜻을 표 위에서 늘 밝힌다**(계획 결정 15). 저장 확인 창을 두지 않는 대신 이 안내가
- * 항상 보인다 — 파괴 경로(부분 저장)는 **전 줄 필수**와 **잘림 차단**이 구조로 막으므로 창이
- * 지킬 것이 없고, 위치마다 되풀이되는 조작에 마찰만 더한다.
+ * **저장 확인 창을 두지 않는다**(계획 결정 15). 파괴 경로(부분 저장)는 **전 줄 필수**와 **잘림
+ * 차단**이 구조로 막는다. 표 위의 치환·빈 칸 시작 안내와 차이 사유 칸의 「선택지 준비 중」
+ * 안내는 걷었다(사용자 지시 2026-11-18).
  *
  * **좁히는 조건을 두지 않는다**(계획 결정 6 · 감지기 M44). 계약에 `uncountedOnly`·
  * `varianceOnly`·`itemId`가 있으나 그 조건으로 받은 목록을 저장하면 **나머지가 미실사로
@@ -277,9 +274,6 @@ export const CountLineTable = ({
 
   return (
     <>
-      <p className="field-note">{t.notes.replaceSemantics}</p>
-      <p className="field-note">{t.notes.countedQtyEmptyStart}</p>
-
       {/*
        * **잘림은 경고가 아니라 차단이다**(계획 결정 8). 못 받은 줄이 치환에 실리지 않으면
        * 그 줄이 미실사로 되돌아간다 — 살아 있는 영역으로 알려 표를 보지 않는 사용자에게도 닿게 한다.
@@ -301,14 +295,7 @@ export const CountLineTable = ({
            * 새 줄의 입력칸에 남아 보일 수 있다.
            */
           getRowId={(row) => String(row.line.inventoryCountLineId)}
-          empty={
-            <EmptyState
-              size="sm"
-              live
-              title={t.empty.noLinesTitle}
-              description={t.empty.noLinesDescription}
-            />
-          }
+          empty={<EmptyState size="sm" live title={t.empty.noLinesTitle} />}
         />
       </div>
 

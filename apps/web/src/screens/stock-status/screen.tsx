@@ -11,6 +11,8 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
+import { usePageHub } from '../../patterns/page-hub';
 import { formatAsOf } from './as-of';
 import { BalanceFilterBar } from './balance-filter-bar';
 import { BalanceTable } from './balance-table';
@@ -121,6 +123,8 @@ const toLookupId = (value: string): number | null => (value === '' ? null : Numb
  */
 export const StockStatusScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const hub = usePageHub();
+  const hubActionsTarget = useHubActionsTarget();
 
   /**
    * **주소 키의 수명 — 무엇이 바뀔 때 무엇을 비우는가.**
@@ -384,13 +388,10 @@ export const StockStatusScreen = () => {
   const partners = usePartnerOptions();
 
   /*
-   * LOT 선택칸 아래 안내. **훅을 켜는 값과 같은 값을 본다** — 다르면 선택지는 채워졌는데
-   * 「고르면 채워집니다」라고 말하는 어긋남이 생긴다.
-   *
-   * `isLotNameShown`이면 품목이 있다 — `resolveViewAxis`와 `resolveFilters`가 각각 보장하므로
-   * 품목 유무를 여기서 다시 묻지 않는다(물으면 늘 참인 죽은 가지가 된다).
+   * LOT 선택칸 아래 안내(잘림·실패). **훅을 켜는 값과 같은 값을 본다** — 훅이 꺼져 있으면
+   * 낼 것이 없다. 「고르면 채워집니다」 안내는 걷었다(사용자 지시 2026-11-18).
    */
-  const lotNote = isLotNameShown ? lookupNote(lots) : t.filters.lotNeedsItem;
+  const lotNote = isLotNameShown ? lookupNote(lots) : undefined;
 
   /**
    * 조건을 주소에 반영한다. 주소가 정본이라 조회는 주소가 바뀐 결과로 일어난다.
@@ -651,13 +652,7 @@ export const StockStatusScreen = () => {
    */
   const detailPane = (): ReactNode => {
     if (selectedLotId === null) {
-      return (
-        <EmptyState
-          size="sm"
-          title={t.empty.noSelectionTitle}
-          description={t.empty.noSelectionDescription}
-        />
-      );
+      return <EmptyState size="sm" title={t.empty.noSelectionTitle} />;
     }
 
     if (lotDetail.isError) {
@@ -714,13 +709,7 @@ export const StockStatusScreen = () => {
    */
   const transactionLinePane = (scopeWarehouseId: number): ReactNode => {
     if (selectedTransaction === null) {
-      return (
-        <EmptyState
-          size="sm"
-          title={t.history.empty.noSelectionTitle}
-          description={t.history.empty.noSelectionDescription}
-        />
-      );
+      return <EmptyState size="sm" title={t.history.empty.noSelectionTitle} />;
     }
 
     if (transactionDetail.isError) {
@@ -758,64 +747,77 @@ export const StockStatusScreen = () => {
     );
   };
 
+  const headerActions = (
+    <>
+      {/*
+       * 조회 시점 스냅샷임을 밝힌다 — 이 화면은 자동으로 갱신되지 않는다.
+       * 조회하기 전에는 가리킬 시각이 없어 내지 않는다.
+       *
+       * **live 영역으로 두지 않는다**(`<output>`은 암묵적으로 `role="status"`다).
+       * 쪽 이동·정렬 변경·새로고침마다 낭독되는데, 이 화면은 다른 자리에서도
+       * 같은 사정이 두 번 읽히지 않게 `live`를 일부러 붙이지 않았다 —
+       * 조회가 끝났음은 표의 빈 상태가 이미 알린다.
+       */}
+      {asOf !== null && (
+        <span data-testid="as-of" className="field-note">
+          {t.asOf(asOf)}
+        </span>
+      )}
+      <Button
+        variant="outlined"
+        size="sm"
+        disabled={listQuery === null}
+        onClick={() => {
+          /*
+           * **화면이 보고 있는 조회를 전부 다시 한다.** 목록만 다시 부르면 상세 구획에
+           * 갱신된 수량(고른 잔액 줄에서 온다)과 갱신되지 않은 보류·유효기한이 섞이고,
+           * 그 위의 「기준 {시각}」이 화면 일부에 대해 거짓이 된다. 이 화면은 스스로를
+           * 「조회 시점 스냅샷」으로 선언했고 기준 시각이 그 선언의 유일한 표시다.
+           *
+           * **고른 LOT이 없으면 부르지 않는다.** 설치본(`@tanstack/query-core@5.101.4`)의
+           * `Query.fetch`는 `enabled`를 보지 않는다 — `refetch()`는 비활성 쿼리에서도
+           * `queryFn`을 실행한다. 지금은 `queryFn`이 던져서 요청이 나가지 않지만,
+           * 그것은 **가드가 막는 것**이지 훅이 무동작인 것이 아니다. 뜻을 던지기에
+           * 기대지 않고 여기서 밝힌다.
+           *
+           * 조건·보기·정렬·쪽·선택은 하나도 바꾸지 않는다(수명 표 8행).
+           */
+          void list.refetch();
+
+          if (selectedLotId !== null) void lotDetail.refetch();
+          /* 이력도 같은 이유로 함께 부른다 — 기간이 없으면 부를 것이 없다. */
+          if (historyQuery !== null) void history.refetch();
+          if (selectedTransaction !== null) void transactionDetail.refetch();
+        }}
+      >
+        {t.actions.refresh}
+      </Button>
+    </>
+  );
+
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-        actions={
-          <>
-            {/*
-             * 조회 시점 스냅샷임을 밝힌다 — 이 화면은 자동으로 갱신되지 않는다.
-             * 조회하기 전에는 가리킬 시각이 없어 내지 않는다.
-             *
-             * **live 영역으로 두지 않는다**(`<output>`은 암묵적으로 `role="status"`다).
-             * 쪽 이동·정렬 변경·새로고침마다 낭독되는데, 이 화면은 다른 자리에서도
-             * 같은 사정이 두 번 읽히지 않게 `live`를 일부러 붙이지 않았다 —
-             * 조회가 끝났음은 표의 빈 상태가 이미 알린다.
-             */}
-            {asOf !== null && (
-              <span data-testid="as-of" className="field-note">
-                {t.asOf(asOf)}
-              </span>
-            )}
-            <Button
-              variant="outlined"
-              size="sm"
-              disabled={listQuery === null}
-              onClick={() => {
-                /*
-                 * **화면이 보고 있는 조회를 전부 다시 한다.** 목록만 다시 부르면 상세 구획에
-                 * 갱신된 수량(고른 잔액 줄에서 온다)과 갱신되지 않은 보류·유효기한이 섞이고,
-                 * 그 위의 「기준 {시각}」이 화면 일부에 대해 거짓이 된다. 이 화면은 스스로를
-                 * 「조회 시점 스냅샷」으로 선언했고 기준 시각이 그 선언의 유일한 표시다.
-                 *
-                 * **고른 LOT이 없으면 부르지 않는다.** 설치본(`@tanstack/query-core@5.101.4`)의
-                 * `Query.fetch`는 `enabled`를 보지 않는다 — `refetch()`는 비활성 쿼리에서도
-                 * `queryFn`을 실행한다. 지금은 `queryFn`이 던져서 요청이 나가지 않지만,
-                 * 그것은 **가드가 막는 것**이지 훅이 무동작인 것이 아니다. 뜻을 던지기에
-                 * 기대지 않고 여기서 밝힌다.
-                 *
-                 * 조건·보기·정렬·쪽·선택은 하나도 바꾸지 않는다(수명 표 8행).
-                 */
-                void list.refetch();
-
-                if (selectedLotId !== null) void lotDetail.refetch();
-                /* 이력도 같은 이유로 함께 부른다 — 기간이 없으면 부를 것이 없다. */
-                if (historyQuery !== null) void history.refetch();
-                if (selectedTransaction !== null) void transactionDetail.refetch();
-              }}
-            >
-              {t.actions.refresh}
-            </Button>
-          </>
-        }
-      />
+      {/*
+       * 탭 묶음(재고 관리) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않고(사용자 지시
+       * 2026-11-18 · `patterns/page-hub.tsx`), 기준 시각과 새로고침은 탭 막대 오른쪽 자리로 옮긴다.
+       * 그 자리가 없으면 화면 맨 위에 그대로 둔다.
+       */}
+      {hub === null ? (
+        <PageHeader
+          title={t.title}
+          breadcrumb={
+            <Breadcrumb
+              items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          }
+          actions={headerActions}
+        />
+      ) : hubActionsTarget === null ? (
+        <div className="filter-actions">{headerActions}</div>
+      ) : (
+        <HubActions target={hubActionsTarget}>{headerActions}</HubActions>
+      )}
 
       {/* 조회 실패는 빈 상태로 오인시키지 않는다 — 「없습니다」로 내면 자료가 없는 줄 안다. */}
       {list.isError && (
@@ -861,13 +863,9 @@ export const StockStatusScreen = () => {
             location: describeReference(toReference(locations, toLookupId(filters.location))),
           }}
           warehouseNote={lookupNote(warehouses)}
-          /* 매달린 조건이 비어 선택지가 없는 것을 「그런 값이 없다」로 읽지 않게 한다. */
           lotNote={lotNote}
-          locationNote={
-            draftWarehouseId === null
-              ? t.filters.locationNeedsWarehouse
-              : lookupNote(draftLocations)
-          }
+          /* 「창고를 고르면 채워집니다」 안내는 걷었다(사용자 지시 2026-11-18). */
+          locationNote={draftWarehouseId === null ? undefined : lookupNote(draftLocations)}
           onWarehouseChange={setDraftWarehouse}
           referencesFailed={filterReferences.some((reference) => reference.isError)}
           onRetryReferences={retryFilterReferences}

@@ -18,7 +18,10 @@ import type { SelectOption, StocktakingCodeKey } from './types';
  * | --- | --- | :-: | --- |
  * | `countType` | 개시 — 실사 유형 | **요청 필수** | **개시가 통째로 막힌다**(PR ②) |
  * | `varianceReason` | 결과 등록 — 차이 사유 | **조건부 필수** | **차이가 있는 위치만** 저장이 막힌다(PR ③) |
- * | `status` | 조회 조건 | 선택 | 아무것도 막히지 않는다. 조건 칸이 비고 안내가 붙는다 |
+ *
+ * 조회 조건의 실사 유형·상태는 선택지가 늘 비어 쓰이지 않아 걷었고, 선택지가 왜 비었는지 밝히던
+ * `pendingCode.note`도 이 화면에서는 내지 않는다(사용자 지시 2026-11-18). 잠기는 까닭은 버튼 옆
+ * 비활성 사유가 말한다.
  *
  * **잠금 판정은 이 파일이 소유하고 사유 문구는 그 조작이 소유한다.** 「고를 값이 있는가」는
  * 값 목록의 사정이라 여기서 재고(`isCountTypeListPending`), 「그래서 무엇이 막히는가」는
@@ -41,14 +44,13 @@ export type CodeValueLists = Record<StocktakingCodeKey, readonly string[]>;
 export type CodeOptionSets = Record<StocktakingCodeKey, SelectOption[]>;
 
 /**
- * 값 목록 — **셋 다 비어 있다.**
+ * 값 목록 — **둘 다 비어 있다.**
  *
  * 자리표시 값을 하나 넣어 두지 않는다. 넣으면 사용자가 그것을 고를 수 있고, 고르면
  * 서버가 모르는 코드가 되돌릴 수 없는 전표에 실린다.
  */
 export const PLACEHOLDER_STOCKTAKING_CODES: CodeValueLists = {
   countType: [],
-  status: [],
   varianceReason: [],
 };
 
@@ -65,7 +67,6 @@ const toOptions = (values: readonly string[]): SelectOption[] =>
  */
 export const toCodeOptionSets = (values: CodeValueLists): CodeOptionSets => ({
   countType: toOptions(values.countType),
-  status: toOptions(values.status),
   varianceReason: toOptions(values.varianceReason),
 });
 
@@ -95,10 +96,6 @@ export const isCountTypeListPending = (sets: CodeOptionSets): boolean =>
  */
 export const isVarianceReasonListPending = (sets: CodeOptionSets): boolean =>
   sets.varianceReason.length === 0;
-
-/** 선택지가 왜 비어 있는지 밝히는 안내. **차면 거둔다** — 남으면 화면이 거짓말을 한다. */
-export const codeNote = (options: readonly SelectOption[]): string | undefined =>
-  options.length === 0 ? messages.pendingCode.note : undefined;
 
 /** 선택칸 트리거에 보이는 자리표시 문구. */
 export const codePlaceholder = (): string => messages.pendingCode.placeholder;

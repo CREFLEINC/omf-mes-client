@@ -134,22 +134,10 @@ export const LotHoldTable = ({ holds, uomLookup }: LotHoldTableProps) => (
         rows={holds}
         /* **이 문자열은 화면에 나오지 않는다** — React key로만 쓰인다(#44). */
         getRowId={(hold) => String(hold.lotHoldId)}
-        empty={
-          <EmptyState
-            size="sm"
-            live
-            title={t.detail.holds.emptyTitle}
-            description={t.detail.holds.emptyDescription}
-          />
-        }
+        empty={<EmptyState size="sm" live title={t.detail.holds.emptyTitle} />}
       />
     </div>
 
-    {/*
-     * **경로 안내이지 등록 수단이 아니다**(이슈 §6). 링크로 만들면 그 화면이 아직 없어
-     * 죽은 링크가 되고, 버튼으로 만들면 조회 전용인 이 화면이 쓰기를 갖게 된다.
-     * 보류가 없어도 남긴다 — 의심자재를 등록할 자리는 보류 유무와 무관하다.
-     */}
-    <p className="field-note">{t.detail.holds.suspectMaterialPath}</p>
+    {/* 의심자재 등록 경로 안내(화면 코드 포함)는 걷었다(사용자 지시 2026-11-18). */}
   </>
 );
