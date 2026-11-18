@@ -36,6 +36,7 @@ export const productReceipt = {
       notProduct: (lotNo: string) => `${lotNo} 은(는) 제품 LOT이 아닙니다`,
       voided: (lotNo: string) => `${lotNo} 은(는) 폐번된 LOT입니다`,
       noGood: (lotNo: string) => `${lotNo} 은(는) 양품 실적이 없습니다`,
+      stocked: (lotNo: string) => `${lotNo} 은(는) 이미 입고한 LOT입니다`,
     },
     picked: (no: string) => `인식표 ${no}`,
     empty: '이 인식표에는 담긴 물건이 없습니다',

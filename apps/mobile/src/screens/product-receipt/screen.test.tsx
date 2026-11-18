@@ -859,16 +859,20 @@ describe('제품 입고·적치 화면', () => {
       expect(screen.queryByLabelText(/실물 수량/)).toBeNull();
     });
 
-    it('다른 기기가 먼저 입고한 LOT 은 막는다', async () => {
+    it('이미 입고한 LOT 은 줄에 남기지 않고 거절한다 — 남으면 같이 읽은 다른 LOT 까지 못 보낸다', async () => {
       const user = userEvent.setup();
       mount({ scanLot: {}, alreadyStocked: true });
       await scanLotLabel(user);
-      await findLotField();
-      await pickLocation(user);
 
+      expect(await screen.findByText(`${LOT_NO} 은(는) 이미 입고한 LOT입니다`)).toBeTruthy();
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: '입고·적치 완료' })).toBeDisabled();
+        expect(screen.queryByLabelText(/실물 수량/)).toBeNull();
       });
+
+      scanUnit(LOT_NO);
+
+      expect(await screen.findByText(`${LOT_NO} 은(는) 이미 입고한 LOT입니다`)).toBeTruthy();
+      expect(screen.queryByLabelText(/실물 수량/)).toBeNull();
     });
   });
 });

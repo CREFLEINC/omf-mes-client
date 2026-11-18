@@ -30,6 +30,7 @@ export const productReceipt: Translated<typeof ko.productReceipt> = {
       notProduct: (lotNo: string) => `${lotNo} không phải LOT thành phẩm`,
       voided: (lotNo: string) => `${lotNo} là LOT đã hủy số`,
       noGood: (lotNo: string) => `${lotNo} chưa có sản lượng đạt`,
+      stocked: (lotNo: string) => `${lotNo} là LOT đã nhập kho`,
     },
     picked: (no: string) => `Thẻ nhận diện ${no}`,
     empty: 'Thẻ nhận diện này không có hàng nào bên trong',

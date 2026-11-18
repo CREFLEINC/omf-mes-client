@@ -83,6 +83,8 @@ export const ProductReceiptScreen = () => {
   const [keypadFor, setKeypadFor] = useState<string | null>(null);
   /* 같은 라벨을 다시 읽으면 상태는 그대로라 소리가 다시 나지 않는다. 회차를 함께 센다. */
   const [scanSeq, setScanSeq] = useState(0);
+  /* 이미 입고해 줄에서 뺀 생산 LOT. 다시 스캔하면 줄을 더하지 않고 바로 거절한다. */
+  const [refusedStockedLotIds, setRefusedStockedLotIds] = useState<ReadonlySet<number>>(new Set());
   const contentsSection = useRef<HTMLDivElement | null>(null);
   const locationSection = useRef<HTMLDivElement | null>(null);
   /*
@@ -100,6 +102,7 @@ export const ProductReceiptScreen = () => {
   const scannedLot = useProductLotByNo(scannedCode, unit.isSuccess && unit.data === null);
   const foundLot = scannedLot.data ?? null;
   const lotRefusal = foundLot === null ? null : lotRefusalOf(foundLot);
+  const lotStocked = foundLot !== null && refusedStockedLotIds.has(foundLot.lotId);
   /* 인식표도 생산 LOT 도 아니다. */
   const codeNotFound =
     scannedCode !== null && unit.data === null && scannedLot.isSuccess && scannedLot.data === null;
@@ -124,6 +127,15 @@ export const ProductReceiptScreen = () => {
   const verdict = designated.isError ? ANYWHERE : verdictOf(designated.data, itemIds);
   const stocked = useStockedLots(lines.map((line) => line.lotId));
   const alreadyStocked = stockedLines(lines, stocked);
+  /*
+   * 생산 LOT 라벨 줄은 하나씩 쌓인다 — 이미 입고한 LOT 이 줄로 남으면 지울 길이 없어 같이 스캔한
+   * 다른 LOT 까지 못 보낸다. 그 줄은 빼고 스캔 칸에서 거절로 알린다(omf-all-around#293).
+   * 인식표 줄은 다음 인식표 스캔이 통째로 갈아 끼우므로 그대로 둔다.
+   */
+  const stockedLotIds = alreadyStocked
+    .filter((line) => line.from === 'lot')
+    .map((line) => line.lotId)
+    .join(',');
   const unverified = unverifiedLines(lines, stocked);
 
   /*
@@ -156,6 +168,7 @@ export const ProductReceiptScreen = () => {
   const scanMissed =
     codeNotFound ||
     lotRefusal !== null ||
+    lotStocked ||
     (scannedLocation !== null && atLocation.isSuccess && atLocation.data === null) ||
     (atLocation.data != null && verdict === NOT_ALLOWED);
 
@@ -196,12 +209,23 @@ export const ProductReceiptScreen = () => {
   useEffect(() => {
     const lot = scannedLot.data;
 
-    if (lot == null || lotRefusalOf(lot) !== null) {
+    if (lot == null || lotRefusalOf(lot) !== null || refusedStockedLotIds.has(lot.lotId)) {
       return;
     }
 
     setLines((current) => withLotLine(current, lotLineOf(lot)));
   }, [scannedLot.data]);
+
+  useEffect(() => {
+    if (stockedLotIds === '') {
+      return;
+    }
+
+    const ids = new Set(stockedLotIds.split(',').map(Number));
+
+    setRefusedStockedLotIds((current) => new Set([...current, ...ids]));
+    setLines((current) => current.filter((line) => line.from !== 'lot' || !ids.has(line.lotId)));
+  }, [stockedLotIds]);
 
   const unitScan = useScanField({
     onScan: (value) => {
@@ -444,6 +468,9 @@ export const ProductReceiptScreen = () => {
           {foundLot === null || lotRefusal === null ? null : (
             <AlertBanner variant="error" title={t.unit.lotRefused[lotRefusal](foundLot.lotNo)} />
           )}
+          {foundLot !== null && lotStocked ? (
+            <AlertBanner variant="error" title={t.unit.lotRefused.stocked(foundLot.lotNo)} />
+          ) : null}
           {foundUnit === null ? null : <p>{t.unit.picked(foundUnit.handlingUnitNo)}</p>}
           {foundUnit !== null && contents.isSuccess && contents.data.length === 0 ? (
             <AlertBanner variant="warning" title={t.unit.empty} />
