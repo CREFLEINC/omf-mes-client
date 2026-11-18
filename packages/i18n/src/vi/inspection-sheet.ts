@@ -34,6 +34,17 @@ export const inspectionSheet = {
     pickHint: 'Chọn phiếu kiểm tra trong danh sách để xem nội dung.',
   },
 
+  create: {
+    button: 'Lập theo số sê-ri',
+    title: 'Lập phiếu kiểm tra',
+    serial: 'Số sê-ri thiết bị',
+    placeholder: 'Quét hoặc nhập số sê-ri',
+    note: 'Nếu số sê-ri này đã có phiếu kiểm tra thì mở phiếu đó.',
+    open: 'Mở',
+    close: 'Đóng',
+    opened: 'Đã mở phiếu kiểm tra.',
+  },
+
   columns: {
     serialNo: 'Sê-ri',
     model: 'Model',
@@ -62,6 +73,7 @@ export const inspectionSheet = {
       items: (count: number): string => `Hạng mục kiểm tra ${String(count)} mục`,
       ngs: (count: number): string => `Ghi chép NG · sửa chữa · kiểm lại ${String(count)} mục`,
       events: (count: number): string => `Lịch sử ký · phê duyệt ${String(count)} mục`,
+      entry: 'Nhập kiểm tra',
     },
     itemsEmpty: 'Không có hạng mục kiểm tra.',
     finalizeNote: 'Khi đã ký và phê duyệt đầy đủ, phiếu kiểm tra được xác lập.',

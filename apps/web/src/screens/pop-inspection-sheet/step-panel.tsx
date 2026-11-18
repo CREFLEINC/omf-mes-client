@@ -34,13 +34,15 @@ export interface StepPanelProps {
   disabled: boolean;
   isSaving: boolean;
   onSave: (variables: StepWriteVariables) => void;
+  /** 관리웹 「제품 검사표 조회」의 입력 탭(omf-all-around#316) — 관리웹 크기로 그린다. */
+  web?: boolean;
 }
 
 /**
  * 단계별 검사 — 단계를 고르고 항목마다 OK/NG 를 누른다. 1차 판정은 항목이 정한다(하나라도 NG 면 NG).
  * NG 단계는 수리 뒤 재검이 OK 면 「NG → OK」로 저장한다(양식의 판정 칸과 같다).
  */
-export const StepPanel = ({ steps, disabled, isSaving, onSave }: StepPanelProps) => {
+export const StepPanel = ({ steps, disabled, isSaving, onSave, web = false }: StepPanelProps) => {
   const [selected, setSelected] = useState(steps[0]?.stepCode ?? null);
   const step = steps.find((row) => row.stepCode === selected) ?? null;
 
@@ -51,7 +53,7 @@ export const StepPanel = ({ steps, disabled, isSaving, onSave }: StepPanelProps)
         {steps.map((row) => (
           <Button
             key={row.stepCode}
-            size="lg"
+            size={web ? 'md' : 'lg'}
             variant={row.stepCode === selected ? 'filled' : 'outlined'}
             aria-pressed={row.stepCode === selected}
             onClick={() => setSelected(row.stepCode)}
@@ -68,6 +70,7 @@ export const StepPanel = ({ steps, disabled, isSaving, onSave }: StepPanelProps)
           disabled={disabled}
           isSaving={isSaving}
           onSave={onSave}
+          web={web}
         />
       )}
     </section>
@@ -79,9 +82,11 @@ interface StepFormProps {
   disabled: boolean;
   isSaving: boolean;
   onSave: (variables: StepWriteVariables) => void;
+  web: boolean;
 }
 
-const StepForm = ({ step, disabled, isSaving, onSave }: StepFormProps) => {
+const StepForm = ({ step, disabled, isSaving, onSave, web }: StepFormProps) => {
+  const size = web ? 'md' : 'lg';
   const [judgments, setJudgments] = useState<Judgments>(() => savedJudgments(step));
   const [manualFirst, setManualFirst] = useState<InspectionSheetJudgment | null>(
     step.items.length === 0 ? (step.result?.firstJudgmentCode ?? null) : null,
@@ -148,7 +153,7 @@ const StepForm = ({ step, disabled, isSaving, onSave }: StepFormProps) => {
                   /* ui-check-ignore: C-4 완료된 검사표이거나 출하검사 화면이 기록한 단계라 잠긴다 — 사유는 위 안내 띠 */
                   <Button
                     key={option}
-                    size="lg"
+                    size={size}
                     variant={value === option ? 'filled' : 'outlined'}
                     aria-pressed={value === option}
                     aria-label={t.itemJudgment(item.checkItemCode, option)}
@@ -171,7 +176,7 @@ const StepForm = ({ step, disabled, isSaving, onSave }: StepFormProps) => {
             /* ui-check-ignore: C-4 완료된 검사표이거나 출하검사 화면이 기록한 단계라 잠긴다 — 사유는 위 안내 띠 */
             <Button
               key={option}
-              size="lg"
+              size={size}
               variant={manualFirst === option ? 'filled' : 'outlined'}
               aria-pressed={manualFirst === option}
               disabled={locked}
@@ -209,7 +214,7 @@ const StepForm = ({ step, disabled, isSaving, onSave }: StepFormProps) => {
         </div>
         <Button
           variant="filled"
-          size="xl"
+          size={web ? 'md' : 'xl'}
           aria-describedby={noteId}
           disabled={locked || plan.mode === 'blocked' || !changed || isSaving}
           onClick={save}

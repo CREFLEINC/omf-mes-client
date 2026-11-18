@@ -5,7 +5,8 @@ import { useState } from 'react';
 
 import { DateTimeField } from '../../patterns/date-time-field';
 import { masterName } from '../../patterns/master-name';
-import { PopSelect as Select } from '../../patterns/pop-select';
+import { PopSelect } from '../../patterns/pop-select';
+import { Select as WebSelect } from '../../patterns/select';
 
 const t = messages.popInspectionSheet.ng;
 
@@ -90,13 +91,17 @@ export interface NgPanelProps {
   disabled: boolean;
   isSaving: boolean;
   onSave: (ngs: InspectionSheetNgWrite[]) => void;
+  /** 관리웹 「제품 검사표 조회」의 입력 탭(omf-all-around#316) — 관리웹 크기 · 펼침 선택 칸으로 그린다. */
+  web?: boolean;
 }
 
 /**
  * NG·수리·재검 블록 — 양식의 NG 칸(발견 부문·공정, 발생 공정, 표준서·항목 번호, 내용, 조사·수리, 구분, 수리 부문·담당·일,
  * 재검 결과·담당·일)을 한 건씩 적는다. 저장은 통째로 바뀐다. ⛔ 불량 기록(defect_record)은 만들지 않는다(담당자 결정 ⑥).
  */
-export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => {
+export const NgPanel = ({ sheet, disabled, isSaving, onSave, web = false }: NgPanelProps) => {
+  const size = web ? 'md' : 'lg';
+  const Select = web ? WebSelect : PopSelect;
   const [initial] = useState<NgDraft[]>(() => toNgDrafts(sheet));
   const [drafts, setDrafts] = useState<NgDraft[]>(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -171,7 +176,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
                 <p>{draft.ngContent || t.none}</p>
               </div>
               <Button
-                size="lg"
+                size={size}
                 variant="outlined"
                 aria-label={`${t.block(n)} ${t.edit}`}
                 onClick={() => toggle(draft.key, true)}
@@ -189,7 +194,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
         ) => (
           <TextField
             label={label}
-            size="lg"
+            size={size}
             maxLength={max}
             value={value ?? ''}
             disabled={disabled}
@@ -222,7 +227,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
               onChange={(next) => set(draft.key, patch(next))}
             />
             <Button
-              size="lg"
+              size={size}
               variant="outlined"
               disabled={disabled}
               onClick={() => set(draft.key, patch(nowInput()))}
@@ -253,7 +258,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
             </div>
             <TextField
               label={t.ngContent}
-              size="lg"
+              size={size}
               maxLength={1000}
               value={draft.ngContent}
               disabled={disabled}
@@ -288,14 +293,14 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
             <div className="form-actions">
               {!disabled && (
                 <Button
-                  size="lg"
+                  size={size}
                   variant="text"
                   onClick={() => setDrafts((prev) => prev.filter((d) => d.key !== draft.key))}
                 >
                   {t.remove(n)}
                 </Button>
               )}
-              <Button size="lg" variant="outlined" onClick={() => toggle(draft.key, false)}>
+              <Button size={size} variant="outlined" onClick={() => toggle(draft.key, false)}>
                 {t.collapse}
               </Button>
             </div>
@@ -304,7 +309,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
       })}
       <div className="form-actions">
         <Button
-          size="lg"
+          size={size}
           variant="outlined"
           disabled={disabled}
           onClick={() => {
@@ -316,7 +321,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
           {t.add}
         </Button>
         <Button
-          size="lg"
+          size={size}
           // ui-check-ignore: C-4 바뀐 값이 없거나 저장 중일 때만 잠긴다 — 고칠 것이 없다는 것 말고 사유가 없다
           disabled={disabled || isSaving || !changed}
           onClick={save}

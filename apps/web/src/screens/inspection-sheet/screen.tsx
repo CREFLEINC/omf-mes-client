@@ -32,7 +32,7 @@ import {
   SplitOrientationToggle,
   useSplitOrientation,
 } from '../../patterns/split-orientation';
-import { useSheet } from '../pop-inspection-sheet/queries';
+import { useOpenSheet, useSheet } from '../pop-inspection-sheet/queries';
 import {
   type Decision,
   type InspectionSheetListQuery,
@@ -46,6 +46,7 @@ import {
 import { useFourMChangeTypeLabel } from '../four-m-inputs/panel';
 import { downloadSheetXlsx } from './export';
 import { type DetailTab, SheetDetail } from './sheet-detail';
+import { SheetEntry } from './sheet-entry';
 import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 
 type InspectionSheetSummary = components['schemas']['InspectionSheetSummary'];
@@ -239,6 +240,7 @@ const StatusChips = ({
 /**
  * 제품 검사표 조회(관리웹 · 품질 관리 · W-03-13 · omf-all-around#89). POP 에서 입력한 시리얼별 검사표를 LOT·시리얼로
  * 찾아 본다(후속 공정·품질 부서 조회). 서명 권한(W-03-14)이 있는 관리자는 단계 서명·승인·확인·승인 취소를 한다.
+ * 시리얼로 검사표를 열고(없으면 서버가 만든다) 검사 입력 탭에서 POP 와 같이 입력한다(omf-all-around#316).
  */
 /** OA 공장 전용(omf-all-around#89) — 계정 범위에 OA 공장이 없으면 안내만 보이고 조회를 보내지 않는다. */
 export const InspectionSheetScreen = () => (
@@ -261,6 +263,7 @@ const InspectionSheetScreenBody = () => {
     model: useId(),
     layout: useId(),
     reason: useId(),
+    serial: useId(),
   };
   const [draft, setDraft] = useState<Filter>(EMPTY_FILTER);
   const [filter, setFilter] = useState<Filter>(EMPTY_FILTER);
@@ -280,6 +283,20 @@ const InspectionSheetScreenBody = () => {
   const [reasonError, setReasonError] = useState('');
   const lastDecision = useRef<Decision | null>(null);
   const changeTypeLabel = useFourMChangeTypeLabel();
+  /* 시리얼로 작성 창(omf-all-around#316) — 열면 그 검사표를 고르고 검사 입력 탭으로 연다. */
+  const [creating, setCreating] = useState(false);
+  const [serialDraft, setSerialDraft] = useState('');
+  const openSheet = useOpenSheet((opened) => {
+    setCreating(false);
+    setDetailTab('entry');
+    setOpenId(opened.inspectionSheetId);
+    toast.show({ variant: 'success', description: t.create.opened });
+  });
+  const startCreate = () => {
+    setSerialDraft('');
+    openSheet.reset();
+    setCreating(true);
+  };
 
   const scan = useListFilter(filter);
   const list = useSheetList(toQuery(filter, scan ?? {}), scan !== null);
@@ -529,6 +546,13 @@ const InspectionSheetScreenBody = () => {
               >
                 {isDetailOpen ? t.list.detailClose : t.list.detailOpen}
               </Button>
+              <Button
+                variant="outlined"
+                leadingIcon={<Icon name="add" size={18} aria-hidden />}
+                onClick={startCreate}
+              >
+                {t.create.button}
+              </Button>
             </div>
           </div>
           {/* 아랫줄 — 모델 · 작업지시. `hidden` 은 감싸는 상자에 둔다. */}
@@ -676,9 +700,20 @@ const InspectionSheetScreenBody = () => {
                 busy={decision.isSaving}
                 onSign={(step) => decide({ kind: 'sign', stepCode: step.stepCode })}
                 onTabChange={setDetailTab}
+                initialTab={detailTab}
+                entry={
+                  completed ? undefined : (
+                    <SheetEntry
+                      sheet={data}
+                      version={sheet.dataUpdatedAt}
+                      onReload={() => void sheet.refetch()}
+                    />
+                  )
+                }
               />
               {/* 꼬리 — 왼쪽 엑셀 다운로드, 오른쪽 승인 · 확인(사용자 시안 2026-11-02). 기본 정보 탭에서만(사용자 지시 2026-11-02). */}
-              {detailTab === 'basic' && (
+              {/* 완료되면 검사 입력 탭이 사라져 기본 정보로 돌아간다(`SheetDetail`). */}
+              {(detailTab === 'basic' || (detailTab === 'entry' && completed)) && (
                 <div className="form-actions inspection-sheet-detail-actions">
                   <div className="inspection-sheet-detail-actions-start">
                     {/* 고객 양식(B-05-101) 엑셀 내려받기(사용자 지시 2026-11-02 · #217). */}
@@ -786,6 +821,55 @@ const InspectionSheetScreenBody = () => {
               {t.confirmDialog.completes}
             </p>
           )}
+        </Dialog>
+      )}
+
+      {creating && (
+        <Dialog
+          open
+          size="sm"
+          showCloseButton={false}
+          onClose={() => setCreating(false)}
+          title={t.create.title}
+          footer={
+            <>
+              <Button variant="outlined" onClick={() => setCreating(false)}>
+                {t.create.close}
+              </Button>
+              <Button
+                type="submit"
+                form={ids.serial}
+                // ui-check-ignore: C-4 시리얼이 비었거나 여는 중일 때만 잠긴다
+                disabled={serialDraft.trim() === '' || openSheet.isSaving}
+                loading={openSheet.isSaving}
+              >
+                {t.create.open}
+              </Button>
+            </>
+          }
+        >
+          <form
+            id={ids.serial}
+            onSubmit={(event) => {
+              event.preventDefault();
+              const serialNo = serialDraft.trim();
+              if (serialNo === '' || openSheet.isSaving) return;
+              openSheet.write({ serialNo });
+            }}
+          >
+            <TextField
+              label={t.create.serial}
+              placeholder={t.create.placeholder}
+              value={serialDraft}
+              required
+              fullWidth
+              autoFocus
+              error={openSheet.fieldErrors.serialNo}
+              onChange={(event) => setSerialDraft(event.target.value)}
+            />
+            <p className="field-note">{t.create.note}</p>
+            <SaveErrorBanner error={openSheet.error} />
+          </form>
         </Dialog>
       )}
 
