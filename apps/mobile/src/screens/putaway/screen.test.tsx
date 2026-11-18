@@ -1217,6 +1217,16 @@ describe('적치 대기 LOT — 지시 없는 적치(피처 009)', () => {
       locationPath: '원자재창고 › B구역 › 랙 02 › 1단',
       warehouseId: 2,
       warehouseName: '원자재창고',
+      designationAddable: true,
+    },
+    /* 나뉜 창고의 「창고 전체」 — 미지정이지만 시스템 자리라 보관 품목에 더하지 않는다(Q24). */
+    'WH01-SYS-WHOLE': {
+      verdictCode: 'UNDESIGNATED',
+      locationId: 13,
+      locationPath: '원자재창고 › 창고 전체',
+      warehouseId: 2,
+      warehouseName: '원자재창고',
+      designationAddable: false,
     },
     'WH01-C01-02': {
       verdictCode: 'RESTRICTED_LOCATION',
@@ -1244,7 +1254,7 @@ describe('적치 대기 LOT — 지시 없는 적치(피처 009)', () => {
       return jsonResponse({
         locationCode: code,
         message: '서버 문구',
-        ...(verdicts[code] ?? { verdictCode: 'NOT_FOUND' }),
+        ...(verdicts[code] ?? { verdictCode: 'NOT_FOUND', designationAddable: false }),
       });
     },
   });
@@ -1440,6 +1450,17 @@ describe('적치 대기 LOT — 지시 없는 적치(피처 009)', () => {
     expect(screen.getByRole('button', { name: '다시 스캔' })).toBeTruthy();
     expect(seen).toHaveLength(0);
     expect(tone.played).toBeGreaterThan(0);
+  });
+
+  it('Q24 나뉜 창고의 「창고 전체」처럼 더하지 않는 미지정 위치는 「보관 품목에 더해집니다」를 보이지 않는다', async () => {
+    mount([eligible(), checkRoute()], { pendingLots: [pendingLot()] });
+    await openPending();
+
+    scan('WH01-SYS-WHOLE');
+
+    expect(await screen.findByText(messages.putaway.direct.verdict.UNDESIGNATED)).toBeTruthy();
+    expect(screen.queryByText(messages.putaway.direct.addsDesignation('RM-1001'))).toBeNull();
+    expect(screen.getByRole('button', { name: '미지정 위치 적치' })).toBeTruthy();
   });
 
   it('US2-2·Q6 [미지정 위치 적치]를 누르면 confirmUndesignated=true 로 기록한다', async () => {
