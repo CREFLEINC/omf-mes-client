@@ -147,24 +147,27 @@ describe('useLegacyOutboxDrain — 단말에 남은 확정을 마저 보낸다',
     expect(stored(PQC_KEY)).toEqual([pqcEntry('k-1'), pqcEntry('k-2')]);
   });
 
-  it('인증이 막히면(401) 내리지 않는다 — 단말 토큰이 다시 서면 보낸다', async () => {
+  it('인증이 막힌 건(401)은 내리지 않고 남기되 뒤의 건은 보낸다', async () => {
     const seen: Request[] = [];
-    globalThis.localStorage.setItem(PQC_KEY, JSON.stringify([pqcEntry('k-1')]));
+    globalThis.localStorage.setItem(PQC_KEY, JSON.stringify([pqcEntry('k-1'), pqcEntry('k-2')]));
 
     renderHookWithProviders(() => useLegacyOutboxDrain(true), {
       fetch: createStubFetch([
         route(
           '/quality/inspection-results',
-          () => jsonResponse({ message: '인증' }, { status: 401 }),
+          (request) =>
+            request.headers.get('Idempotency-Key') === 'k-1'
+              ? jsonResponse({ message: '인증' }, { status: 401 })
+              : jsonResponse({ inspectionResultId: 2 }, { status: 201 }),
           seen,
         ),
       ]),
     });
 
     await waitFor(() => {
-      expect(seen).toHaveLength(1);
+      expect(stored(PQC_KEY)).toEqual([pqcEntry('k-1')]);
     });
-    expect(stored(PQC_KEY)).toEqual([pqcEntry('k-1')]);
+    expect(seen.map((each) => each.headers.get('Idempotency-Key'))).toEqual(['k-1', 'k-2']);
   });
 
   it('서버가 거부한 건은 내리고 다음 건을 보낸다', async () => {

@@ -13,7 +13,7 @@ import { runRequest, toApiError } from './request';
  * 작업자는 이미 「저장했습니다」를 봤다. POP 이 켜져 있는 동안 여기서 같은 멱등 키로 마저 보낸다.
  *
  * - 서버가 받았거나 거부한 건은 내린다(거부는 다시 보내도 풀리지 않는다 — 공유계약 C-2).
- * - 통신·일시 장애·인증(401)은 남겨 두고 다음 기회(연결 회복·다시 켜기)에 보낸다.
+ * - 통신·일시 장애는 그 건부터 남겨 두고, 인증(401)은 그 건만 남겨 두고 다음 기회(연결 회복·다시 켜기)에 보낸다.
  * - 모양이 깨진 건은 버린다 — 남기면 그 뒤의 정상 건까지 막는다.
  */
 
@@ -155,40 +155,57 @@ const writeQueue = (storageKey: string, rest: readonly unknown[]): void => {
   }
 };
 
-/** 기다리면 풀리는 실패인가 — 인증(401)은 단말 토큰이 다시 서면 풀린다. */
-const shouldWait = (error: unknown): boolean => {
+/**
+ * 실패를 어떻게 다룰 것인가.
+ * - `wait`: 통신·일시 장애 — 이 건부터 남기고 멈춘다(순서를 지킨다).
+ * - `keep`: 인증(401) — 단말 토큰이 다시 서면 풀릴 수도, 단말 범위 밖이라 영영 안 풀릴 수도 있다(서버가 둘을
+ *   같은 401 로 답한다). 버리지 않고 남기되 뒤의 건은 막지 않는다.
+ * - `drop`: 서버가 받지 않기로 판정한 것 — 내린다.
+ */
+const failureOf = (error: unknown): 'wait' | 'keep' | 'drop' => {
   const apiError = toApiError(error);
 
-  return !isRejected(error) || (apiError.kind === 'http' && apiError.status === 401);
+  if (apiError.kind === 'http' && apiError.status === 401) return 'keep';
+
+  return isRejected(error) ? 'drop' : 'wait';
 };
 
-/** 큐 하나를 앞에서부터 한 건씩 보낸다. 기다려야 하는 실패를 만나면 그 건부터 남기고 멈춘다. */
+/** 큐 하나를 앞에서부터 한 건씩 보낸다. */
 export const drainLegacyQueue = async <Entry>(
   client: Client,
   queue: LegacyQueue<Entry>,
 ): Promise<void> => {
   const stored = readQueue(queue.storageKey);
-  let sentUpTo = 0;
+  const kept: unknown[] = [];
 
-  for (const value of stored) {
+  for (const [index, value] of stored.entries()) {
     const entry = queue.parse(value);
 
-    if (entry !== null) {
-      try {
-        await queue.send(client, entry);
-      } catch (error) {
-        if (shouldWait(error)) break;
-        console.warn(
-          `[pop-legacy-outbox] ${queue.storageKey} 의 한 건을 서버가 거부해 내렸습니다`,
-          error,
-        );
-      }
-    }
+    if (entry === null) continue;
 
-    sentUpTo += 1;
+    try {
+      await queue.send(client, entry);
+    } catch (error) {
+      const failure = failureOf(error);
+
+      if (failure === 'wait') {
+        kept.push(...stored.slice(index));
+        break;
+      }
+
+      if (failure === 'keep') {
+        kept.push(value);
+        continue;
+      }
+
+      console.warn(
+        `[pop-legacy-outbox] ${queue.storageKey} 의 한 건을 서버가 거부해 내렸습니다`,
+        error,
+      );
+    }
   }
 
-  if (stored.length > 0) writeQueue(queue.storageKey, stored.slice(sentUpTo));
+  if (stored.length > 0) writeQueue(queue.storageKey, kept);
 };
 
 /**
