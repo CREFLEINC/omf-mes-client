@@ -1,5 +1,6 @@
 import { AlertBanner, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import type { ApiError } from '@omf-mes/api-client';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
@@ -33,6 +34,7 @@ import {
   INSPECTION_PENDING,
   MATCHED,
   NOT_ALLOWED,
+  UNDESIGNATED,
   RECEIPT_LABEL,
   canSubmit,
   destinationOf,
@@ -57,6 +59,13 @@ import './screen.css';
 const t = messages.productReceipt;
 const required = messages.common.required;
 
+/** 서버가 「지정 품목만 받기」 위치라 거절했나 — 코어 코드 LOCATION_ITEM_RESTRICTED(T058). */
+const isRestrictedRejection = (error: ApiError | undefined): boolean =>
+  error !== undefined &&
+  (error.kind === 'validation' || error.kind === 'stateLocked'
+    ? error.errors.some((item) => item.code === 'LOCATION_ITEM_RESTRICTED')
+    : error.kind !== 'network' && error.code === 'LOCATION_ITEM_RESTRICTED');
+
 type Outcome = 'held' | 'sent' | 'receivedOnly' | 'putawayRejected' | 'rejected';
 
 /* 숫자판이 옮겨 갈 칸을 찾는 이름. 담는 쪽과 찾는 쪽이 이 함수 하나를 함께 쓴다. */
@@ -76,6 +85,10 @@ export const ProductReceiptScreen = () => {
   /* 스캔값 하나 — 인식표로 먼저 찾고, 없으면 생산 LOT 라벨로 찾는다(omf-all-around#293). */
   const [scannedCode, setScannedCode] = useState<string | null>(null);
   const [scannedLocation, setScannedLocation] = useState<string | null>(null);
+  /* 지정되지 않은 위치를 알고 [미지정 위치 적치]를 눌렀나(T058). 위치를 다시 읽으면 걷는다. */
+  const [confirmedOutside, setConfirmedOutside] = useState(false);
+  /* 서버가 「지정 품목만 받기」로 거절했나(LOCATION_ITEM_RESTRICTED) — 결과 화면에 같은 판정 문구로. */
+  const [restrictedRejection, setRestrictedRejection] = useState(false);
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
@@ -124,7 +137,9 @@ export const ProductReceiptScreen = () => {
    */
   const itemIds = [...new Set(lines.map((line) => line.itemId))];
   const designated = useLocationItemIds(atLocation.data?.locationId ?? null);
-  const verdict = designated.isError ? ANYWHERE : verdictOf(designated.data, itemIds);
+  const verdict = designated.isError
+    ? ANYWHERE
+    : verdictOf(designated.data, itemIds, atLocation.data?.itemRestricted ?? false);
   const stocked = useStockedLots(lines.map((line) => line.lotId));
   const alreadyStocked = stockedLines(lines, stocked);
   /*
@@ -159,6 +174,7 @@ export const ProductReceiptScreen = () => {
     queuedForLots,
     verdict,
     stocked,
+    confirmedOutside,
   });
 
   /*
@@ -170,7 +186,7 @@ export const ProductReceiptScreen = () => {
     lotRefusal !== null ||
     lotStocked ||
     (scannedLocation !== null && atLocation.isSuccess && atLocation.data === null) ||
-    (atLocation.data != null && verdict === NOT_ALLOWED);
+    (atLocation.data != null && (verdict === NOT_ALLOWED || verdict === UNDESIGNATED));
 
   useEffect(() => {
     if (scanMissed) {
@@ -237,6 +253,7 @@ export const ProductReceiptScreen = () => {
   const locationScan = useScanField({
     onScan: (value) => {
       setScannedLocation(value.trim());
+      setConfirmedOutside(false);
       setScanSeq((seq) => seq + 1);
     },
   });
@@ -269,6 +286,8 @@ export const ProductReceiptScreen = () => {
   const restart = () => {
     setScannedCode(null);
     setScannedLocation(null);
+    setConfirmedOutside(false);
+    setRestrictedRejection(false);
     setLines([]);
     setOutcome(null);
     setSaveFailed(false);
@@ -312,6 +331,9 @@ export const ProductReceiptScreen = () => {
         (result !== null && result.rejected.some((each) => mine(each.entry))) ||
         isRejected(draft.idempotencyKey)
       ) {
+        setRestrictedRejection(
+          isRestrictedRejection(result?.rejected.find((each) => mine(each.entry))?.error),
+        );
         setOutcome('rejected');
         return;
       }
@@ -349,6 +371,9 @@ export const ProductReceiptScreen = () => {
        * 본다 - 남의 화면이 담아 둔 건까지 세면 다 간 적치를 안 갔다고 말한다.
        */
       if (putaway !== null && putaway.rejected.some((each) => isMine(each.entry))) {
+        setRestrictedRejection(
+          putaway.rejected.some((each) => isMine(each.entry) && isRestrictedRejection(each.error)),
+        );
         setOutcome('putawayRejected');
         return;
       }
@@ -374,6 +399,8 @@ export const ProductReceiptScreen = () => {
             <Link to="/putaway">{t.receivedOnly.action}</Link>
           </AlertBanner>
         ) : null}
+        {/* 「지정 품목만 받기」 위치라 거절됐다 — 스캔 때와 같은 판정 문구(T058). */}
+        {restrictedRejection ? <AlertBanner variant="error" title={t.location.notAllowed} /> : null}
         {outcome === 'putawayRejected' ? (
           <AlertBanner variant="error" title={t.putawayRejected.title}>
             {t.putawayRejected.description}
@@ -591,10 +618,44 @@ export const ProductReceiptScreen = () => {
                 {atLocation.data == null ? null : verdict === MATCHED ? (
                   <AlertBanner variant="success" title={t.location.matched} />
                 ) : verdict === NOT_ALLOWED ? (
-                  <AlertBanner
-                    variant="error"
-                    title={t.location.notAllowed(atLocation.data.locationCode)}
-                  />
+                  <AlertBanner variant="error" title={t.location.notAllowed}>
+                    {atLocation.data.locationCode}
+                  </AlertBanner>
+                ) : verdict === UNDESIGNATED ? (
+                  /*
+                   * 지정 밖 품목이지만 옵션이 꺼진 위치 — 확인 한 번(T058 · FR-017b). 제품 입고는 보관 품목을 더하지 않아
+                   * 그 문구는 두지 않는다.
+                   */
+                  confirmedOutside ? (
+                    <AlertBanner variant="info" title={t.location.undesignatedConfirmed}>
+                      {atLocation.data.locationCode}
+                    </AlertBanner>
+                  ) : (
+                    <>
+                      <AlertBanner variant="warning" title={t.location.undesignated}>
+                        {atLocation.data.locationCode}
+                      </AlertBanner>
+                      <div className="product-receipt__confirm">
+                        <Button
+                          variant="outlined"
+                          size="xl"
+                          onClick={() => {
+                            setScannedLocation(null);
+                            locationScan.focus();
+                          }}
+                        >
+                          {t.location.rescan}
+                        </Button>
+                        <Button
+                          variant="filled"
+                          size="xl"
+                          onClick={() => setConfirmedOutside(true)}
+                        >
+                          {t.location.confirmUndesignated}
+                        </Button>
+                      </div>
+                    </>
+                  )
                 ) : verdict === ANYWHERE && !designated.isError ? (
                   <AlertBanner variant="info" title={t.location.anywhere} />
                 ) : null}

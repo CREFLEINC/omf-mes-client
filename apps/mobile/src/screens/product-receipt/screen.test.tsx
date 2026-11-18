@@ -94,6 +94,10 @@ interface Options {
   secondLot?: boolean;
   /** 이 LOT 들만 이미 재고로 서 있다(`alreadyStocked` 는 전부). */
   stockedLotIds?: number[];
+  /** 스캔한 위치가 「지정 품목만 받기」를 켰다(피처 009 T058). */
+  restricted?: boolean;
+  /** 적치 완료를 「지정 품목만 받기」 위치라 서버가 거절한다(LOCATION_ITEM_RESTRICTED). */
+  putawayRestricted?: boolean;
 }
 
 const routes = (options: Options = {}): StubRoute[] => [
@@ -259,6 +263,7 @@ const routes = (options: Options = {}): StubRoute[] => [
                   systemRoleCode: null,
                   isLeaf: true,
                   isActive: true,
+                  itemRestricted: options.restricted === true,
                 },
               ]),
           ...(options.noWholeLocation === true
@@ -302,6 +307,22 @@ const routes = (options: Options = {}): StubRoute[] => [
     match: (req) => /\/logistics\/putaway-tasks\/\d+:complete$/.test(new URL(req.url).pathname),
     respond: async (req) => {
       options.seen?.push(req.clone());
+
+      if (options.putawayRestricted === true) {
+        return jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'field',
+                field: 'actualLocationId',
+                code: 'LOCATION_ITEM_RESTRICTED',
+                message: '이 위치는 지정 품목만 받습니다.',
+              },
+            ],
+          },
+          { status: 400 },
+        );
+      }
 
       /* 고쳐야 풀리는 거절이다. 다시 보내도 같은 답이 온다. */
       if (options.putawayRejected === true) {
@@ -653,16 +674,68 @@ describe('제품 입고·적치 화면', () => {
     expect(await screen.findByText(/담긴 물건이 없습니다/)).toBeTruthy();
   });
 
-  /* 다른 품목 전용 위치에 두면 다음 피킹이 물건을 찾지 못한다. 서버도 막는다. */
-  it('다른 품목 전용 위치를 스캔하면 막는다', async () => {
+  /*
+   * 피처 009 T058 · FR-017b — 품목 지정은 안내다. 「지정 품목만 받기」를 켠 위치만 지정 밖 품목을 막고(서버 코어도 거절),
+   * 꺼진 위치는 확인 한 번 뒤 받는다. 제품 입고는 보관 품목을 더하지 않는다.
+   */
+  it('FR-017b·T058 「지정 품목만 받기」 위치에 지정 밖 품목이면 막는다', async () => {
     const user = userEvent.setup();
-    mount({ designated: [9999] });
+    mount({ designated: [9999], restricted: true });
     await openUnit(user);
     await pickLocation(user);
 
-    expect(await screen.findByText(`${LOC_CODE} 은(는) 다른 품목 전용 위치입니다`)).toBeTruthy();
+    expect(await screen.findByText('이 위치는 지정 품목만 받습니다')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '미지정 위치 적치' })).toBeNull();
     expect(screen.getByRole('button', { name: '입고·적치 완료' })).toBeDisabled();
     expect(tone.played).toBeGreaterThan(0);
+  });
+
+  it('FR-017b·T058 옵션이 꺼진 위치에 지정 밖 품목이면 확인 뒤 입고 · 적치한다(보관 품목 추가 문구 없음)', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ designated: [9999], seen });
+    await openUnit(user);
+    await pickLocation(user);
+
+    expect(await screen.findByText('지정된 위치가 아닙니다. 정말 적치합니까?')).toBeTruthy();
+    expect(screen.queryByText(/보관 품목에/)).toBeNull();
+    expect(screen.getByRole('button', { name: '입고·적치 완료' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: '미지정 위치 적치' }));
+    expect(await screen.findByText('지정된 위치가 아닌 곳에 입고합니다')).toBeTruthy();
+    await readyToSubmit();
+    await user.click(screen.getByRole('button', { name: '입고·적치 완료' }));
+
+    await waitFor(() => {
+      expect(seen.some((each) => new URL(each.url).pathname.endsWith(':complete'))).toBe(true);
+    });
+    expect(await screen.findByText('입고하고 적치했습니다')).toBeTruthy();
+  });
+
+  it('FR-017b·T058 [다시 스캔]은 위치를 걷고 입고하지 않는다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ designated: [9999], seen });
+    await openUnit(user);
+    await pickLocation(user);
+
+    await user.click(await screen.findByRole('button', { name: '다시 스캔' }));
+
+    expect(screen.queryByText('지정된 위치가 아닙니다. 정말 적치합니까?')).toBeNull();
+    expect(screen.getByRole('button', { name: '입고·적치 완료' })).toBeDisabled();
+    expect(seen).toHaveLength(0);
+  });
+
+  it('FR-017b·T058 적치를 서버가 LOCATION_ITEM_RESTRICTED 로 거절하면 「이 위치는 지정 품목만 받습니다」', async () => {
+    const user = userEvent.setup();
+    mount({ putawayRestricted: true });
+    await openUnit(user);
+    await pickLocation(user);
+    await readyToSubmit();
+
+    await user.click(screen.getByRole('button', { name: '입고·적치 완료' }));
+
+    expect(await screen.findByText('이 위치는 지정 품목만 받습니다')).toBeTruthy();
   });
 
   it('이 품목의 보관 위치면 맞다고 말한다', async () => {
@@ -765,13 +838,14 @@ describe('제품 입고·적치 화면', () => {
   });
 
   /* 인식표에 품목이 여럿이면 전부 보관 품목이어야 한다. */
-  it('한 인식표의 품목 중 하나라도 보관 품목이 아니면 막는다', async () => {
+  it('FR-017b·T058 한 인식표의 품목 중 하나라도 보관 품목이 아니면 확인을 묻는다', async () => {
     const user = userEvent.setup();
     mount({ twoItems: true });
     await openUnit(user);
     await pickLocation(user);
 
-    expect(await screen.findByText(`${LOC_CODE} 은(는) 다른 품목 전용 위치입니다`)).toBeTruthy();
+    /* T058 — 옵션이 꺼진 위치라 막지 않고 확인을 묻는다. 확인 전에는 입고하지 않는다. */
+    expect(await screen.findByText('지정된 위치가 아닙니다. 정말 적치합니까?')).toBeTruthy();
     expect(screen.getByRole('button', { name: '입고·적치 완료' })).toBeDisabled();
   });
 
