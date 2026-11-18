@@ -816,7 +816,7 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     await user.click(screen.getByRole('button', { name: tp.release.release }));
 
     expect(await screen.findByRole('heading', { name: '배포 결과', level: 2 })).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'SYN-WO-9002' }));
+    await user.click(screen.getByRole('row', { name: 'SYN-WO-9002 배포 상세' }));
     expect(await screen.findByText('설비 점검이 막았습니다')).toBeVisible();
     expect(state.released).toEqual([9001]);
     state.rejectRelease = [];
