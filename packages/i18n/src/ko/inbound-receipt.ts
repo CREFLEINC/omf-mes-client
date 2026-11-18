@@ -14,6 +14,8 @@ export const inboundReceipt = {
     /** 화면에는 보이지 않는다 — 스캔 칸의 설명(화면 낭독기). */
     prompt: '자재 관리 LOT 라벨을 스캔하세요',
     results: '스캔 결과',
+    /** 결과 · 알림 줄 오른쪽 ✕ — 그 줄을 지운다(사용자 지시 2026-11-18). */
+    dismiss: '알림 지우기',
     manual: '직접 입력',
     manualSubmit: '입력한 번호로 등록',
   },
@@ -48,7 +50,12 @@ export const inboundReceipt = {
     queueFailed: '전송 대기에 담지 못했습니다. 다시 스캔하세요.',
   },
   cards: {
-    title: (count: number) => `이번에 받은 입하 LOT ${count}`,
+    /**
+     * 이 화면에서 스캔해 만들거나 더한 입하 LOT 카드 — 화면을 떠나면 비워진다. 제목 오른쪽에 건수를 다른 색 배지로 따로
+     * 둔다(사용자 지시 2026-11-18 「등록된 입하 LOT 목록」).
+     */
+    title: '등록된 입하 LOT 목록',
+    count: (count: number) => `${count}건`,
     empty: '아직 등록한 자재 관리 LOT가 없습니다',
   },
   card: {
@@ -57,20 +64,28 @@ export const inboundReceipt = {
     statusClosed: '마감됨 · IQC 요청됨', // ui-check-ignore: C-13 설계 확정 문구(screens/M-01-01.md)
     statusClosedNoIqc: '마감됨',
     statusVoided: '입하 취소',
-    pair: (supplier: string, itemCode: string, itemName: string) =>
-      `${supplier} · ${itemCode} ${itemName}`, // ui-check-ignore: C-13 설계 확정 문구(screens/M-01-01.md)
-    summary: (count: number, total: string) => `자재 관리 LOT ${count}개 · ${total}`, // ui-check-ignore: C-13 설계 확정 문구(screens/M-01-01.md)
+    /** 카드 머리 아래 이름표 붙은 칸 — 공급사 · 품목 · LOT 수 · 전체 수량 · 품질(사용자 지시 2026-11-18 「명시적인 타이틀」). */
+    facts: {
+      supplier: '공급사',
+      item: '품목',
+      lotCount: 'LOT 수',
+      totalQty: '전체 수량',
+    },
+    /** 카드 머리 단추 — 입하 LOT 마다 자재 관리 LOT 표를 접고 편다. */
+    expand: (inboundLotNo: string) => `${inboundLotNo} 펼치기`,
+    collapse: (inboundLotNo: string) => `${inboundLotNo} 접기`,
+    lotCount: (count: number) => `${count}개`,
     loading: '입하 LOT를 불러오는 중입니다',
     loadFailed: '입하 LOT를 불러오지 못했습니다',
     retry: '다시 불러오기',
-    justNow: '방금 등록',
-    earlier: (time: string) => `앞서 등록 ${time}`,
+    /** 카드 아래 자재 관리 LOT 표 — 행은 한 줄(번호 · 수량 · 등록 시각 · 공급사 LOT · ✕). 번호는 보통 끝 일련번호. */
+    lotsLabel: '자재 관리 LOT 목록',
+    columns: { no: '번호', qty: '수량', registered: '등록', supplierLot: '공급사 LOT' },
+    /** 등록 칸 — 마지막 스캔은 「방금」, 나머지는 등록 시각. */
+    justNow: '방금',
     package: (uomCode: string, count: number) => ` · ${uomCode} ${String(count)}`, // ui-check-ignore: C-13 설계 확정 표기 「1,000 EA · 봉지 10」(screens/M-01-01.md)
     supplierLabel: '공급사 라벨',
-    qualityPending: '검사 대기 · 보류', // ui-check-ignore: C-13 설계 확정 문구(screens/M-01-01.md)
-    qualityNormal: '정상',
-    supplierLot: (no: string) => `공급사 LOT ${no}`,
-    noSupplierLot: '공급사 LOT 없음',
+    noSupplierLot: '없음',
     editSupplierLot: (lotNo: string) => `${lotNo} 공급사 LOT 번호 고치기`,
     unregister: '해제',
     close: '입하 마감',

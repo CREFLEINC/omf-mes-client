@@ -15,7 +15,6 @@ export const inboundClose = {
     empty: '마감할 입하 LOT가 없습니다',
     receiving: '입하 중',
     reopened: '마감 취소됨',
-    firstAt: (when: string) => `첫 등록 ${when}`,
   },
   /** 목록 아래 구획 — 입하 완료 · 마감 취소 가능. */
   done: {
@@ -36,10 +35,17 @@ export const inboundClose = {
   },
   /** 카드 공통. */
   card: {
-    itemSupplier: (item: string, supplier: string) => `${item} · ${supplier}`, // ui-check-ignore: C-13 설계 확정 카드 표기(screens/M-01-03.md)
-    total: (count: number, qty: string) => `자재 관리 LOT ${count}개 · ${qty}`, // ui-check-ignore: C-13 설계 확정 합계 표기(screens/M-01-03.md)
+    /** 카드 안 이름표 붙은 칸(사용자 지시 2026-11-18 「명시적인 타이틀 — 공급사, LOT 수, 전체 수량」). */
+    facts: {
+      supplier: '공급사',
+      item: '품목',
+      lotCount: 'LOT 수',
+      totalQty: '전체 수량',
+      firstAt: '첫 등록',
+      quality: '품질',
+    },
+    lotCount: (count: number) => `${count}개`,
     open: (no: string) => `${no} 열기`,
-    withSub: (total: string, sub: string) => `${total} · ${sub}`, // ui-check-ignore: C-13 설계 확정 카드 표기(screens/M-01-03.md)
     withIqc: (closed: string, iqcNo: string) => `${closed} · ${iqcNo}`, // ui-check-ignore: C-13 설계 확정 카드 표기(screens/M-01-03.md)
     lotItem: (no: string, item: string) => `${no} · ${item}`, // ui-check-ignore: C-13 설계 확정 창 표기(mockups/M0103-After)
   },
@@ -52,10 +58,11 @@ export const inboundClose = {
     supplier: '공급사',
     receiptNo: '입하 번호',
     firstAt: '첫 등록',
-    total: '합계',
+    lotCount: 'LOT 수',
+    totalQty: '전체 수량',
     lots: (count: number) => `자재 관리 LOT ${count}`,
-    pending: '검사 대기 · 보류', // ui-check-ignore: C-13 설계 확정 상태 칩(screens/M-01-03.md)
-    normal: '정상',
+    /** 자재 관리 LOT 표 — 행은 한 줄(번호 · 수량 · 등록 시각 · ✕). 번호는 보통 끝 일련번호. */
+    columns: { no: '번호', qty: '수량', registered: '등록' },
     unregister: '해제',
     /** LOT 수량 뒤 패키징 — 「1,000 EA · 봉지 10」(M-01-01 과 같은 표기, G2 L20). */
     package: (unit: string, count: number) => ` · ${unit} ${String(count)}`, // ui-check-ignore: C-13 설계 확정 표기 「1,000 EA · 봉지 10」(screens/M-01-01.md)

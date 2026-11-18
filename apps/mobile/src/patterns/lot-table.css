@@ -1,0 +1,61 @@
+/*
+ * 입하 LOT 아래 자재 관리 LOT 목록(입하 등록 카드 · 입하 마감 상세가 함께 쓴다) — 머리 아래 한 단 낮은 표.
+ * 행은 한 줄이고 칸 사이는 가는 선만 둔다. 줄마다 테두리 상자를 두지 않는다(사용자 지시 2026-11-18 「목록과 계층으로 깔끔하게」).
+ */
+.lot-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--type-label-sm);
+  font-weight: 400;
+}
+
+.lot-table th {
+  padding: var(--space-1);
+  border-bottom: 1px solid var(--outline-variant);
+  color: var(--on-surface-muted);
+  font-weight: 500;
+  text-align: start;
+  white-space: nowrap;
+}
+
+.lot-table td {
+  height: 40px;
+  padding: 0 var(--space-1);
+  border-bottom: 1px solid var(--surface-container-high);
+  white-space: nowrap;
+}
+
+.lot-table tbody tr:last-child > td {
+  border-bottom: 0;
+}
+
+/* 번호(보통 끝 일련번호) — 행을 가르는 값이라 굵은 고정폭. */
+.lot-table__no {
+  font: var(--type-body-sm);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.lot-table__muted {
+  color: var(--on-surface-muted);
+}
+
+/* 방금 등록한 줄 — 옅은 바탕으로 한 줄만 돋운다. */
+.lot-table tr[data-latest='true'] > td {
+  background: var(--surface-container-low);
+}
+
+.lot-table__latest {
+  font-weight: 700;
+}
+
+/* [해제] ✕ — 테두리 없는 작은 아이콘, 누르는 자리는 40px. */
+.lot-table__x {
+  width: 1px;
+  padding-inline-end: 0;
+  text-align: end;
+}
+
+.lot-table__x > button {
+  color: var(--on-surface-variant);
+}

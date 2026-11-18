@@ -1,5 +1,5 @@
 import { ProposalWarehouseField } from './warehouse-field';
-import { createIdempotencyKey } from '@omf-mes/api-client';
+import { createLocalKey } from '../../../patterns/local-key';
 import { plantToday } from '../../../patterns/plant-time';
 import { useApiClient } from '../../../patterns/api-context';
 import { runRequest } from '../../../patterns/request';
@@ -72,7 +72,7 @@ export const ProposalPlanningWorkspace = ({
           .reduce((sum, p) => sum + Number(p.quantity || 0), 0),
     );
     if (!remaining) return;
-    const key = createIdempotencyKey();
+    const key = createLocalKey();
     onPlansChange([
       ...row.plans,
       {
@@ -441,7 +441,7 @@ export const ProposalPlanningWorkspace = ({
                   onPlansChange([
                     ...row.plans,
                     ...drafts.map((draft) => {
-                      const key = createIdempotencyKey();
+                      const key = createLocalKey();
                       const line = lines.find((line) => String(line.id) === draft.plannedLineId);
                       return {
                         ...structuredClone(original),
@@ -480,7 +480,7 @@ export const ProposalPlanningWorkspace = ({
                       plan.key !== entry.key
                         ? [plan]
                         : parts.map((part, index) => {
-                            const key = index === 0 ? original.key : createIdempotencyKey();
+                            const key = index === 0 ? original.key : createLocalKey();
                             return {
                               ...structuredClone(original),
                               key,

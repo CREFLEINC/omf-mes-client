@@ -433,9 +433,7 @@ describe('US2-1 스캔마다 바로 등록', () => {
     );
 
     const lotCard = await screen.findByRole('group', { name: 'SYN-IL-6001' });
-    await waitFor(() =>
-      expect(within(lotCard).getByText(t.card.summary(2, '2,000 EA'))).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(within(lotCard).getByText(t.card.lotCount(2))).toBeInTheDocument());
     expect(within(lotCard).getByText(t.card.statusNew)).toBeInTheDocument();
     /* 칩은 마지막 줄의 「방금 등록」 하나뿐 — 앞서 이 화면에서 등록한 줄에는 칩을 달지 않는다. */
     expect(within(lotCard).getAllByText(t.card.justNow)).toHaveLength(1);
@@ -457,7 +455,23 @@ describe('US2-1 스캔마다 바로 등록', () => {
       'SYN-IL-6002',
       'SYN-IL-6001',
     ]);
-    expect(screen.getByText(t.cards.title(2))).toBeInTheDocument();
+    /* 제목은 「등록된 입하 LOT 목록」, 건수는 오른쪽 배지(사용자 지시 2026-11-18). */
+    const heading = screen.getByRole('heading', { name: new RegExp(t.cards.title, 'u') });
+    expect(heading).toHaveTextContent(t.cards.count(2));
+    expect(heading.querySelector('.receive__cards-count')).toHaveTextContent(t.cards.count(2));
+    /* 맨 위(마지막으로 스캔이 들어간) 카드만 펼치고 아래 카드는 접는다 — 머리를 누르면 편다. */
+    expect(
+      await within(cards[0] as HTMLElement).findByRole('button', {
+        name: t.card.collapse('SYN-IL-6002'),
+      }),
+    ).toHaveAttribute('aria-expanded', 'true');
+    const second = await within(cards[1] as HTMLElement).findByRole('button', {
+      name: t.card.expand('SYN-IL-6001'),
+    });
+    expect(second).toHaveAttribute('aria-expanded', 'false');
+    expect(within(cards[1] as HTMLElement).queryByRole('table')).toBeNull();
+    await userEvent.setup().click(second);
+    expect(within(cards[1] as HTMLElement).getByRole('table')).toBeInTheDocument();
   });
 
   it('US2-5 폐기 · 이미 등록된 라벨은 거부 줄로 알리고 등록되지 않는다 — 까닭은 서버 reasonCode 로 가른다(G1)', async () => {
@@ -469,7 +483,12 @@ describe('US2-1 스캔마다 바로 등록', () => {
     ).toBeInTheDocument();
     await scan(A(1));
     await screen.findByRole('group', { name: 'SYN-IL-6001' });
-    await waitFor(() => expect(within(card('SYN-IL-6001')).getByText(A(1))).toBeInTheDocument());
+    /* 카드 표의 번호 칸은 끝 일련번호다 — 번호 전체는 공급사 LOT 단추 이름에 있다. */
+    await waitFor(() =>
+      expect(
+        within(card('SYN-IL-6001')).getByRole('button', { name: t.card.editSupplierLot(A(1)) }),
+      ).toBeInTheDocument(),
+    );
     await scan(A(1));
 
     expect(
@@ -530,9 +549,14 @@ describe('US2-1 스캔마다 바로 등록', () => {
     const lotCard = await screen.findByRole('group', { name: 'SYN-IL-6001' });
 
     expect(await within(lotCard).findByText(/봉지 포장 10/u)).toBeInTheDocument();
-    const pair = lotCard.querySelector('.receive-card__pair');
-    expect(pair?.querySelectorAll('.receive-card__word').length).toBeGreaterThan(1);
-    expect(pair).toHaveTextContent(t.card.pair('합성 공급사 SYN01', 'SYN-CAP', '합성 자재'));
+    /* 공급사 · 품목은 이름표 붙은 칸 — 값은 낱말 조각(사용자 지시 2026-11-18 「명시적인 타이틀」). */
+    const facts = lotCard.querySelector('.receive-card__facts') as HTMLElement;
+    expect(facts.querySelectorAll('.receive-card__word').length).toBeGreaterThan(1);
+    const valueOf = (label: string) =>
+      [...facts.querySelectorAll('dt')].find((dt) => dt.textContent === label)?.nextElementSibling;
+    expect(valueOf(t.card.facts.supplier)).toHaveTextContent('합성 공급사 SYN01');
+    expect(valueOf(t.card.facts.item)).toHaveTextContent('SYN-CAP 합성 자재');
+    expect(valueOf(t.card.facts.totalQty)).toHaveTextContent('1,000 EA');
   });
 
   it('G1 성공은 결과 줄 한 번만 — 알림 줄에 같은 문구를 또 띄우지 않는다', async () => {
@@ -677,18 +701,19 @@ describe('US2-6 공급사 LOT 번호 시트', () => {
       expect(within(card('SYN-IL-6001')).getAllByText(t.card.noSupplierLot)).toHaveLength(2),
     );
     /*
-     * 줄은 두 줄 — 수량 · 공급사 LOT · [해제]가 같은 줄이고, 품질이 모두 같아 칩은 합계 줄에 하나뿐이다
-     * (사용자 지시 2026-11-18 「가능하면 한 줄로」).
+     * 자재 관리 LOT 은 카드 아래 한 줄짜리 표 — 번호 칸은 끝 일련번호, 수량 · 공급사 LOT · ✕ 가 같은 행이다. 품질
+     * (검사 대기 · 보류) 칩은 두지 않는다(사용자 지시 2026-11-18).
      */
-    expect(within(card('SYN-IL-6001')).getAllByText(t.card.qualityPending)).toHaveLength(1);
-    const supplierButton = within(card('SYN-IL-6001')).getByRole('button', {
-      name: t.card.editSupplierLot(A(1)),
-    });
+    expect(within(card('SYN-IL-6001')).queryByText(/검사 대기/u)).toBeNull();
+    const lotTable = within(card('SYN-IL-6001')).getByRole('table', { name: t.card.lotsLabel });
+    const row = within(lotTable).getByText('0001').closest('tr') as HTMLElement;
     expect(
-      within(supplierButton.parentElement as HTMLElement).getByRole('button', {
-        name: t.card.unregister,
-      }),
+      within(row).getByRole('button', { name: t.card.editSupplierLot(A(1)) }),
     ).toBeInTheDocument();
+    expect(within(row).getByRole('button', { name: t.card.unregister })).toBeInTheDocument();
+    expect(within(lotTable).queryByText(A(1))).toBeNull();
+    /* [해제]는 ✕ 아이콘 단추 — 「해제」는 낭독기 이름으로만 남고 글자로는 보이지 않는다(사용자 지시 2026-11-18). */
+    expect(within(card('SYN-IL-6001')).queryByText(t.card.unregister)).toBeNull();
 
     await user.click(
       within(card('SYN-IL-6001')).getByRole('button', { name: t.card.editSupplierLot(A(1)) }),
@@ -706,9 +731,7 @@ describe('US2-6 공급사 LOT 번호 시트', () => {
       supplierLotNo: 'SYN-SL-77',
     });
     await waitFor(() =>
-      expect(
-        within(card('SYN-IL-6001')).getAllByText(t.card.supplierLot('SYN-SL-77')),
-      ).toHaveLength(2),
+      expect(within(card('SYN-IL-6001')).getAllByText('SYN-SL-77')).toHaveLength(2),
     );
   });
 
@@ -803,9 +826,7 @@ describe('US2-14 오프라인', () => {
 
     expect(await screen.findByText(t.offline.flushed(1, 1, 0))).toBeInTheDocument();
     await waitFor(() =>
-      expect(
-        within(card('SYN-IL-6001')).getByText(t.card.summary(2, '2,000 EA')),
-      ).toBeInTheDocument(),
+      expect(within(card('SYN-IL-6001')).getByText('2,000 EA')).toBeInTheDocument(),
     );
     expect(screen.queryByText(t.offline.title(1))).toBeNull();
     /* 보낸 라벨의 「오프라인」 · 「이미 전송 대기」 줄은 내린다(G1). */

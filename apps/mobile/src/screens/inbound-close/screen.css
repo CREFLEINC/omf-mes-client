@@ -29,8 +29,7 @@
   font: var(--type-title-sm);
 }
 
-.inbound-close__cards,
-.inbound-close__lots {
+.inbound-close__cards {
   display: flex;
   flex-direction: column;
   gap: var(--space-3, 12px);
@@ -96,6 +95,30 @@ button.inbound-close__card:focus-visible {
   min-width: 0;
 }
 
+/* 카드 안 이름표 붙은 칸 — 이름표는 작은 회색 글자, 값은 한 줄(넘치면 말줄임). LOT 수 · 전체 수량은 나란히. */
+.inbound-close__card-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr);
+  align-items: baseline;
+  gap: 2px var(--space-3);
+}
+
+.inbound-close__card-label {
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+}
+
+.inbound-close__card-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inbound-close__card-value.is-wide {
+  grid-column: span 3;
+}
+
 .inbound-close__chips {
   display: flex;
   flex-wrap: wrap;
@@ -141,70 +164,10 @@ button.inbound-close__card:focus-visible {
   margin: 0;
 }
 
-.inbound-close__lot {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-}
-
-.inbound-close__index {
-  flex: none;
-  min-width: 1.25em;
-  color: var(--on-surface-muted);
-  font-weight: 700;
-}
-
-.inbound-close__lot-body {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
-}
-
-/* LOT 번호는 줄 폭을 다 쓴다 — 360 폭에서도 한두 줄(G2 L20). */
-.inbound-close__lot-no {
-  font: var(--type-body-sm);
-  font-family: var(--font-mono);
-}
-
-/*
- * 수량 · 패키징 · 상태 칩 · [해제]를 한 줄에, [해제]는 오른쪽 끝(사용자 지시 2026-11-18 「가능하면 한 줄로」).
- * 접지 않는다 — 모자라면 수량 글이 말줄임으로 줄고 칩 · 단추는 그대로다.
- */
-.inbound-close__lot-meta {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.inbound-close__lot-meta > * {
-  flex: none;
-}
-
-.inbound-close__lot-meta > .inbound-close__line {
-  flex: 0 1 auto;
-}
-
-/* 카드 · LOT 줄의 보조 글(수량 · 합계 · 마감 시각)은 한 단 작은 글자 — 한 줄에 들어가게. */
+/* 카드의 보조 글(합계 · 마감 시각)은 한 단 작은 글자 — 한 줄에 들어가게. */
 .inbound-close__small {
   font: var(--type-label-sm);
   font-weight: 400;
-}
-
-.inbound-close__heading-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.inbound-close__lot-action {
-  margin-inline-start: auto;
 }
 
 .inbound-close__result {

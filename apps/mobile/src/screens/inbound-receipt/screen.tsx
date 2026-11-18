@@ -89,6 +89,11 @@ export const InboundReceiptScreen = () => {
   const workerNo = worker?.workerNo ?? null;
 
   const [cards, setCards] = useState<CardState[]>([]);
+  /*
+   * 사람이 직접 접거나 편 카드. 없으면 맨 위(마지막으로 스캔이 들어간) 카드만 펼친다 — 스캔이 들어가면 그 카드의
+   * 손댄 기록을 지워 맨 위에서 펼쳐지게 한다(사용자 지시 2026-11-18 「입하 LOT 단위 접기 펴기」).
+   */
+  const [openById, setOpenById] = useState<ReadonlyMap<number, boolean>>(new Map());
   /* 결과 줄과 알림은 한 자리다 — 하나를 세우면 다른 하나는 내린다. */
   const [line, setLine] = useState<ScanLine | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -117,6 +122,20 @@ export const InboundReceiptScreen = () => {
     setLine(null);
   };
 
+  /* 결과 · 알림 줄 오른쪽 ✕ — 그 줄을 지운다(사용자 지시 2026-11-18). */
+  const dismiss = (
+    <IconButton
+      className="receive__dismiss"
+      icon="close"
+      size="sm"
+      aria-label={t.scan.dismiss}
+      onClick={() => {
+        setLine(null);
+        setNotice(null);
+      }}
+    />
+  );
+
   const refreshCard = (inboundLotId: number): void => {
     void queryClient.invalidateQueries({ queryKey: inboundLotKeys.detail(inboundLotId) });
   };
@@ -124,6 +143,11 @@ export const InboundReceiptScreen = () => {
   /** 받기 결과를 화면에 — 카드 · 결과 줄(날짜 자동 마감도 이 줄에). */
   const apply = (result: InboundLotReceiveResult, lotNo: string): void => {
     setCards((previous) => applyReceive(previous, result));
+    setOpenById((previous) => {
+      const next = new Map(previous);
+      for (const lot of result.inboundLots) next.delete(lot.inboundLotId);
+      return next;
+    });
 
     for (const lot of result.inboundLots) {
       refreshCard(lot.inboundLotId);
@@ -424,7 +448,10 @@ export const InboundReceiptScreen = () => {
       {/* 결과 · 알림 자리 — 늘 하나다(다음 스캔 · 알림이 덮는다). */}
       <div className="receive__result" role="status" aria-label={t.scan.results}>
         {notice !== null ? (
-          <p className="receive__notice">{notice}</p>
+          <p className="receive__notice">
+            <span>{notice}</span>
+            {dismiss}
+          </p>
         ) : line === null ? null : (
           <p key={line.id} className="receive-line" data-kind={line.kind}>
             {line.kind === 'ok' ? (
@@ -471,6 +498,7 @@ export const InboundReceiptScreen = () => {
                 </span>
               </>
             )}
+            {dismiss}
           </p>
         )}
       </div>
@@ -483,18 +511,23 @@ export const InboundReceiptScreen = () => {
           <ul>
             {pendingLotNos.map((lotNo) => (
               <li key={lotNo}>
-                <span className="receive-lot__no">{lotNo}</span>
+                <span className="receive__pending-no">{lotNo}</span>
               </li>
             ))}
           </ul>
         </section>
       )}
 
-      <section className="receive__cards" aria-label={t.cards.title(cards.length)}>
-        <h2 className="receive__cards-head">{t.cards.title(cards.length)}</h2>
+      <section className="receive__cards" aria-label={t.cards.title}>
+        {/* 제목과 건수 — 건수는 오른쪽 끝에 다른 색 배지로(사용자 지시 2026-11-18). */}
+        <h2 className="receive__cards-head">
+          <span>{t.cards.title}</span>
+          <span className="receive__cards-count">{t.cards.count(cards.length)}</span>
+        </h2>
         {cards.length === 0 ? <p className="receive-card__note">{t.cards.empty}</p> : null}
-        {cards.map((card) => {
+        {cards.map((card, index) => {
           const detail = details.get(card.inboundLotId);
+          const open = openById.get(card.inboundLotId) ?? index === 0;
           const data = detail?.data;
           const pairCount =
             data === undefined
@@ -512,6 +545,11 @@ export const InboundReceiptScreen = () => {
               lock={cardLockOf(online, pairCount)}
               pendingCount={pairCount}
               busy={busyId === card.inboundLotId}
+              open={open}
+              current={index === 0}
+              onToggle={() => {
+                setOpenById((previous) => new Map(previous).set(card.inboundLotId, !open));
+              }}
               onUnregister={(lot) => {
                 if (data !== undefined) void unregister(data, lot);
               }}

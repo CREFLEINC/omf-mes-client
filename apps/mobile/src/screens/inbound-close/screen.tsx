@@ -1,4 +1,4 @@
-import { AlertBanner, Chip, Icon, useToast } from '@crefle/web-ui';
+import { AlertBanner, Chip, Icon, IconButton, useToast } from '@crefle/web-ui';
 import type {
   InboundLot,
   InboundLotClosed,
@@ -7,7 +7,7 @@ import type {
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useRef, useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useBackStep } from '../../patterns/back-step';
@@ -16,8 +16,10 @@ import { Button } from '../../patterns/button';
 import { ConfirmDialog } from '../../patterns/confirm-dialog';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
+import { shortLotNos } from '../../patterns/lot-short-no';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { currentPlantId } from '../../patterns/plant';
+import { plantClock } from '../../patterns/plant-time';
 import { toApiError } from '../../patterns/request';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -45,6 +47,7 @@ import {
   useInboundLotDetail,
   useReopenableLots,
 } from './queries';
+import '../../patterns/lot-table.css';
 import './screen.css';
 
 const t = messages.inboundClose;
@@ -70,13 +73,37 @@ type Dialog =
   | null;
 
 /**
+ * 카드 안 이름표 붙은 칸 — 공급사 · 품목 · LOT 수 · 전체 수량 …(사용자 지시 2026-11-18 「명시적인 타이틀」).
+ * 누르는 카드(단추) 안에도 들어가야 해서 `dl` 대신 `span` 으로 그린다. 넓은 칸(`wide`)은 한 줄을 다 쓰고, 값은 한 줄 말줄임.
+ */
+const CardFacts = ({
+  rows,
+}: {
+  rows: readonly (readonly [label: string, value: string, wide?: boolean])[];
+}) => (
+  <span className="inbound-close__card-facts">
+    {rows.map(([label, value, wide]) => (
+      <Fragment key={label}>
+        <span className="inbound-close__card-label">{label}</span>
+        <span
+          className={
+            wide === true ? 'inbound-close__card-value is-wide' : 'inbound-close__card-value'
+          }
+        >
+          {value}
+        </span>
+      </Fragment>
+    ))}
+  </span>
+);
+
+/**
  * `M-01-03` 입하 마감(PDA · 005 · omf-all-around#254 · screens/M-01-03.md).
  *
  * ```
  * ←  입하 마감
  * 입하 중 (마감 대상) N          ← closable=true — 누르면 상세(LOT · 해제 · 마감)
  * 입하 완료 · 마감 취소 가능 N    ← reopenable=true — [마감 취소]
- * 여기에 보이지 않는 것 — 마감 취소 불가
  * ```
  *
  * ⭐ 온라인에서만 쓴다 — 마감 · 해제 · 마감 취소 모두 바로 부르는 API 다(아웃박스에 담지 않는다).
@@ -266,8 +293,10 @@ export const InboundCloseScreen = () => {
         <dl className="inbound-close__facts">
           <dt>{t.detail.inboundLot}</dt>
           <dd className="inbound-close__mono">{closed.inboundLotNo}</dd>
-          <dt>{t.detail.total}</dt>
-          <dd>{t.card.total(closed.lotCount, formatQty(closed.receivedQty, closed.uomCode))}</dd>
+          <dt>{t.detail.lotCount}</dt>
+          <dd>{t.card.lotCount(closed.lotCount)}</dd>
+          <dt>{t.detail.totalQty}</dt>
+          <dd>{formatQty(closed.receivedQty, closed.uomCode)}</dd>
         </dl>
         {closed.inspectionRequired ? <AlertBanner variant="info" title={t.result.notice} /> : null}
         <BottomActionBar
@@ -286,14 +315,7 @@ export const InboundCloseScreen = () => {
     const target = detail.data;
     const isOpen = target?.statusCode === 'RECEIVING';
     const lots = target?.lots ?? [];
-    const sharedStatus = lots.every((lot) => lot.statusCode === lots[0]?.statusCode)
-      ? (lots[0]?.statusCode ?? null)
-      : null;
-    const statusChip = (statusCode: string) => (
-      <Chip size="sm" status={statusCode === 'NORMAL' ? 'success' : 'warning'}>
-        {statusCode === 'NORMAL' ? t.detail.normal : t.detail.pending}
-      </Chip>
-    );
+    const shortNos = shortLotNos(lots.map((lot) => lot.lotNo));
 
     return (
       <div className="inbound-close">
@@ -312,10 +334,6 @@ export const InboundCloseScreen = () => {
               <dd className="inbound-close__mono">{target.inboundLotNo}</dd>
               <dt>{t.detail.status}</dt>
               <dd>{t.detail.statusValue}</dd>
-              <dt>{t.detail.item}</dt>
-              <dd>
-                <span className="inbound-close__mono">{target.itemCode}</span> {target.itemName}
-              </dd>
               <dt>{t.detail.supplier}</dt>
               <dd>
                 {target.supplierName}{' '}
@@ -323,6 +341,14 @@ export const InboundCloseScreen = () => {
                   {target.supplierCode}
                 </span>
               </dd>
+              <dt>{t.detail.item}</dt>
+              <dd>
+                <span className="inbound-close__mono">{target.itemCode}</span> {target.itemName}
+              </dd>
+              <dt>{t.detail.lotCount}</dt>
+              <dd>{t.card.lotCount(target.lots.length)}</dd>
+              <dt>{t.detail.totalQty}</dt>
+              <dd>{formatQty(target.receivedQty, target.uomCode)}</dd>
               {target.inboundReceiptNo === null ? null : (
                 <>
                   <dt>{t.detail.receiptNo}</dt>
@@ -331,52 +357,50 @@ export const InboundCloseScreen = () => {
               )}
               <dt>{t.detail.firstAt}</dt>
               <dd>{fullWhen(target.firstRegisteredAt)}</dd>
-              <dt>{t.detail.total}</dt>
-              <dd>
-                {t.card.total(target.lots.length, formatQty(target.receivedQty, target.uomCode))}
-              </dd>
             </dl>
-            {/* 상태가 모두 같으면 칩은 제목 옆에 하나 — 줄마다 같은 칩을 되풀이하지 않는다. 섞이면 줄마다 단다. */}
-            <div className="inbound-close__heading-row">
-              <h2 className="inbound-close__heading">{t.detail.lots(target.lots.length)}</h2>
-              {sharedStatus === null ? null : statusChip(sharedStatus)}
-            </div>
-            <ul className="inbound-close__lots">
-              {target.lots.map((lot, index) => (
-                <li key={lot.lotId} className="inbound-close__lot">
-                  <span className="inbound-close__index">{index + 1}</span>
-                  {/*
-                   * LOT 번호는 줄 폭을 다 쓴다 — [해제] 옆에 끼우면 360 폭에서 세 줄로 접혔다(G2 L20).
-                   * 수량 · 상태 칩 · [해제]는 둘째 줄 한 줄에 — 줄이 모자라면 수량 글이 줄어든다(사용자 지시
-                   * 2026-11-18 「가능하면 한 줄로」, 전에는 [해제]가 셋째 줄로 내려갔다).
-                   */}
-                  <span className="inbound-close__lot-body">
-                    <span className="inbound-close__mono inbound-close__lot-no">{lot.lotNo}</span>
-                    <span className="inbound-close__lot-meta">
-                      <span className="inbound-close__dim inbound-close__small inbound-close__line">
-                        {formatQty(lot.lotQty, target.uomCode)}
-                        {lot.package === null
-                          ? ''
-                          : t.detail.package(packageNameOf(lot.package), lot.package.count)}
-                      </span>
-                      {sharedStatus === null ? statusChip(lot.statusCode) : null}
-                      <Button
-                        className="inbound-close__lot-action"
-                        variant="outlined"
-                        size="lg"
+            {/* 품질(검사 대기 · 보류) 칩은 두지 않는다(사용자 지시 2026-11-18). */}
+            <h2 className="inbound-close__heading">{t.detail.lots(target.lots.length)}</h2>
+            {/*
+             * 자재 관리 LOT 은 제목 아래 한 줄짜리 표 — 줄마다 테두리 상자를 두지 않는다(사용자 지시 2026-11-18 「목록과 계층으로
+             * 깔끔하게」). 번호 칸은 번호 전체 대신 이 입하 LOT 안에서 가를 수 있는 끝 조각(보통 일련번호) — 번호 전체는 ✕ 를
+             * 누르면 뜨는 확인 창에 있다. 예전에는 번호를 줄 폭 전체로 접어 썼다(G2 L20).
+             */}
+            <table className="lot-table" aria-label={t.detail.lots(target.lots.length)}>
+              <thead>
+                <tr>
+                  <th scope="col">{t.detail.columns.no}</th>
+                  <th scope="col">{t.detail.columns.qty}</th>
+                  <th scope="col">{t.detail.columns.registered}</th>
+                  <th scope="col" aria-label={t.detail.unregister} />
+                </tr>
+              </thead>
+              <tbody>
+                {target.lots.map((lot) => (
+                  <tr key={lot.lotId}>
+                    <td className="lot-table__no">{shortNos.get(lot.lotNo) ?? lot.lotNo}</td>
+                    <td>
+                      {formatQty(lot.lotQty, target.uomCode)}
+                      {lot.package === null
+                        ? ''
+                        : t.detail.package(packageNameOf(lot.package), lot.package.count)}
+                    </td>
+                    <td className="lot-table__muted">{plantClock(lot.registeredAt)}</td>
+                    <td className="lot-table__x">
+                      <IconButton
+                        icon="close"
+                        size="md"
+                        aria-label={t.detail.unregister}
                         disabled={lockReason !== null}
                         onClick={() => {
                           setActionError(null);
                           setDialog({ kind: 'unregister', lot });
                         }}
-                      >
-                        {t.detail.unregister}
-                      </Button>
-                    </span>
-                  </span>
-                </li>
-              ))}
-            </ul>
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
             <BottomActionBar
               primary={{
                 label: t.detail.close,
@@ -484,15 +508,15 @@ export const InboundCloseScreen = () => {
                     {lot.reopened ? t.open.reopened : t.open.receiving}
                   </Chip>
                 </span>
-                <span className="inbound-close__line">
-                  {t.card.itemSupplier(`${lot.itemCode} ${lot.itemName}`, lot.supplierName)}
-                </span>
-                <span className="inbound-close__line inbound-close__dim inbound-close__small">
-                  {t.card.withSub(
-                    t.card.total(lot.lotCount, formatQty(lot.receivedQty, lot.uomCode)),
-                    t.open.firstAt(shortWhen(lot.firstRegisteredAt)),
-                  )}
-                </span>
+                <CardFacts
+                  rows={[
+                    [t.card.facts.supplier, lot.supplierName, true],
+                    [t.card.facts.item, `${lot.itemCode} ${lot.itemName}`, true],
+                    [t.card.facts.lotCount, t.card.lotCount(lot.lotCount)],
+                    [t.card.facts.totalQty, formatQty(lot.receivedQty, lot.uomCode)],
+                    [t.card.facts.firstAt, shortWhen(lot.firstRegisteredAt), true],
+                  ]}
+                />
               </button>
             </li>
           ))}
@@ -521,15 +545,15 @@ export const InboundCloseScreen = () => {
                     <Chip status="info">{reason.chip}</Chip>
                   </span>
                 </span>
-                <span className="inbound-close__line">
-                  {t.card.itemSupplier(`${lot.itemCode} ${lot.itemName}`, lot.supplierName)}
-                </span>
-                <span className="inbound-close__line inbound-close__dim inbound-close__small">
-                  {t.card.withSub(
-                    t.card.total(lot.lotCount, formatQty(lot.receivedQty, lot.uomCode)),
-                    reason.sub,
-                  )}
-                </span>
+                <CardFacts
+                  rows={[
+                    [t.card.facts.supplier, lot.supplierName, true],
+                    [t.card.facts.item, `${lot.itemCode} ${lot.itemName}`, true],
+                    [t.card.facts.lotCount, t.card.lotCount(lot.lotCount)],
+                    [t.card.facts.totalQty, formatQty(lot.receivedQty, lot.uomCode)],
+                    [t.card.facts.quality, reason.sub, true],
+                  ]}
+                />
                 {blocker === null ? null : (
                   <span className="inbound-close__blocked">
                     <Icon name="lock" size={18} />

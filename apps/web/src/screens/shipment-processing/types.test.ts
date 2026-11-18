@@ -42,6 +42,7 @@ describe('toShipmentRequestLineCandidate', () => {
       shippedQty: 0,
       uomId: 920001,
       shippingInspectionRequired: true,
+      pickedLots: [],
     });
   });
 });
