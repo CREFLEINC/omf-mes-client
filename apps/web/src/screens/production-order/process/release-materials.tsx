@@ -231,7 +231,9 @@ export const ReleaseMaterials = ({
                                 className="field-error release-material-error"
                                 role="alert"
                               >
-                                0보다 큰 비율을 입력하세요.
+                                {choice.rate.trim() !== '' && Number(choice.rate) === 0
+                                  ? '환산 비율에 0을 입력할 수 없습니다.'
+                                  : '환산 비율을 확인하세요.'}
                               </span>
                             )}
                           </>

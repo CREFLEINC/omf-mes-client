@@ -91,7 +91,7 @@ describe('자재 환산 확인', () => {
     const input = await screen.findByRole('textbox', { name: /환산 비율/ });
     await user.type(input, '0');
     const error = screen.getByRole('alert');
-    expect(error).toHaveTextContent('0보다 큰 비율을 입력하세요.');
+    expect(error).toHaveTextContent('환산 비율에 0을 입력할 수 없습니다.');
     expect(input).toHaveAttribute('aria-describedby', error.id);
     expect(error.closest('.release-material-rate')).toBeNull();
     expect(screen.getByRole('button', { name: /수량 확인/ })).toBeDisabled();
