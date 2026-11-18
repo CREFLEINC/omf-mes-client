@@ -9,6 +9,8 @@ import {
   linesOf,
   portionText,
   replacementsOf,
+  salesOrderRemainingOf,
+  uomOfDetail,
   warehouseSummary,
   type ShipmentRequestDetail,
 } from './request-detail';
@@ -29,6 +31,37 @@ const OQC_TONE: Record<string, ChipStatus> = {
 
 const dateTime = (value: string): string => formatPlantDateTime(value) ?? value;
 
+/** 수주 잔량 칸 — 「100」 + 「수주 100」, 넘으면 「0 + 초과 10」 + 「수주 100, 출하 110」. */
+const SalesOrderRemainingCell = ({
+  line,
+}: {
+  line: Parameters<typeof salesOrderRemainingOf>[0];
+}) => {
+  const value = salesOrderRemainingOf(line);
+  switch (value.kind) {
+    case 'none':
+      return <>{t.values.empty}</>;
+    case 'cancelled':
+      return <>{t.detail.salesOrderCancelled}</>;
+    case 'remaining':
+      return (
+        <span className="ship-history-places">
+          <span>{t.detail.salesOrderRemaining(value.remaining)}</span>
+          <span className="field-note">{t.detail.salesOrderQty(value.ordered)}</span>
+        </span>
+      );
+    case 'over':
+      return (
+        <span className="ship-history-places">
+          <span>{t.detail.salesOrderOver(value.over)}</span>
+          <span className="field-note">
+            {t.detail.salesOrderQtyShipped(value.ordered, value.shipped)}
+          </span>
+        </span>
+      );
+  }
+};
+
 export interface RequestDetailDialogProps {
   detail: ShipmentRequestDetail | undefined;
   isLoading: boolean;
@@ -48,7 +81,7 @@ export interface RequestDetailDialogProps {
  * 막는 이유(수주 라인 취소는 「담당자에게 문의」 · FR-028b)를 보이고, [지시서 인쇄]를 연다.
  *
  * ⛔ ERP 송신 여부를 보이지 않는다(출하 완료 단계 화면 · 결정 2026-11-18).
- * ⚠ 수주 라인의 수주 · 출하 수량(「0 + 초과 n」)은 계약 라인에 칸이 없어 이번에는 그리지 않는다.
+ * 수주 라인의 수주 · 출하 수량으로 「수주 잔량」을 보인다 — 출하가 수주를 넘으면 「0 + 초과 n」(D-16).
  */
 export const RequestDetailDialog = ({
   detail,
@@ -115,6 +148,10 @@ export const RequestDetailDialog = ({
               <dd>{shipToPartnerName}</dd>
             </div>
             <div>
+              <dt>{t.detail.fields.salesOrder}</dt>
+              <dd>{detail.salesOrderNo ?? t.detail.noSalesOrder}</dd>
+            </div>
+            <div>
               <dt>{t.detail.fields.shipDate}</dt>
               <dd>{detail.requestedShipDate}</dd>
             </div>
@@ -136,7 +173,9 @@ export const RequestDetailDialog = ({
                 {warehouseSummary(detail).length === 0
                   ? t.detail.noPickingWarehouse
                   : warehouseSummary(detail)
-                      .map((w) => `${w.warehouseName} LOT ${String(w.lotCount)}, ${String(w.qty)}`)
+                      .map((w) =>
+                        `${w.warehouseName} LOT ${String(w.lotCount)}, ${String(w.qty)} ${uomOfDetail(detail)}`.trim(),
+                      )
                       .join(' / ')}
               </dd>
             </div>
@@ -179,18 +218,22 @@ export const RequestDetailDialog = ({
                     <tr>
                       <th scope="col">{t.detail.lineColumns.lineNo}</th>
                       <th scope="col">{t.detail.lineColumns.item}</th>
+                      <th scope="col">{t.detail.lineColumns.uom}</th>
                       <th scope="col">{t.detail.lineColumns.inspection}</th>
                       <th scope="col">{t.detail.lineColumns.requested}</th>
                       <th scope="col">{t.detail.lineColumns.target}</th>
                       <th scope="col">{t.detail.lineColumns.picked}</th>
                       <th scope="col">{t.detail.lineColumns.over}</th>
                       <th scope="col">{t.detail.lineColumns.shipped}</th>
+                      <th scope="col">{t.detail.lineColumns.salesOrderLine}</th>
+                      <th scope="col">{t.detail.lineColumns.salesOrderRemaining}</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
                       <td>{line.lineNo}</td>
                       <td>{item(line.itemId)}</td>
+                      <td>{line.uomCode === '' ? t.values.empty : line.uomCode}</td>
                       <td>
                         {line.shippingInspectionRequired
                           ? t.detail.inspectionRequired
@@ -207,6 +250,17 @@ export const RequestDetailDialog = ({
                             : t.values.empty}
                       </td>
                       <td className="ship-history-num">{line.shippedQty}</td>
+                      <td>
+                        {line.salesOrderLine === null
+                          ? t.values.empty
+                          : t.detail.salesOrderLine(
+                              line.salesOrderLine.salesOrderNo,
+                              line.salesOrderLine.lineNo,
+                            )}
+                      </td>
+                      <td>
+                        <SalesOrderRemainingCell line={line} />
+                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -243,7 +297,7 @@ export const RequestDetailDialog = ({
                                 <span
                                   key={`${String(portion.warehouseId)}-${String(portion.locationId)}`}
                                 >
-                                  {portionText(portion)}
+                                  {portionText(portion, t.detail.staging)}
                                 </span>
                               ))}
                             </span>
@@ -308,7 +362,7 @@ export const RequestDetailDialog = ({
                       <td>{`${String(row.lineNo)}, ${item(row.itemId)}`}</td>
                       <td>{`${row.lotNo}, ${String(row.qty)}`}</td>
                       <td>
-                        {`${row.resultNo}, ${
+                        {`${t.detail.resultRound(row.resultRound)}, ${
                           row.judgment === null
                             ? t.values.empty
                             : (t.detail.oqc[row.judgment as keyof typeof t.detail.oqc] ??

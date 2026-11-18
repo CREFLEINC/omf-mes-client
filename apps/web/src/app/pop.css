@@ -10727,6 +10727,22 @@
   text-overflow: ellipsis;
 }
 
+/* LOT 번호 아래 몫 요약 — 여러 창고·적치 대기 자리에 나뉜 LOT 만(시안 ③·④). */
+.pop-ui .pop-ship-table .pop-ship-lot__portions {
+  display: block;
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+
+/* 교체로 빠진 LOT 한 줄(시안 ③) — 출하에 들지 않는다는 알림. */
+.pop-ui .pop-ship-replaced {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  color: var(--on-surface-variant);
+}
+
 /* 초과는 경고가 아니라 정보다 — 노란 글자만(시안 ③). */
 .pop-ui .pop-ship-table .pop-ship-over {
   color: var(--on-semantic-warning-container);

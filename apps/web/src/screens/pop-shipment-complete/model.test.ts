@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 import { completion, requestRow } from './fixtures';
 import {
+  STAGING_ROLE,
+  blockersOfConflict,
   completeFailureOf,
   groupBlockers,
   isAlreadyCompleted,
@@ -11,9 +13,12 @@ import {
   minusDays,
   orderSearchRows,
   overText,
+  portionSummaryOf,
+  qtyWithUom,
   searchQueryOf,
   toSearchRow,
   totalsOf,
+  uomOf,
 } from './model';
 
 /** P-04-07 출하 완료 — 화면 규칙(피처 010 · omf-all-around#305). */
@@ -152,5 +157,63 @@ describe('P-04-07 찾기 조건', () => {
       'SR-261118-001',
       'SR-2',
     ]);
+  });
+});
+
+describe('LOT 몫 요약·단위·409 막는 이유', () => {
+  const portion = (
+    warehouseName: string,
+    qty: number,
+    locationSystemRoleCode: string | null = null,
+  ) => ({
+    warehouseId: warehouseName === 'A' ? 1 : 2,
+    warehouseCode: warehouseName,
+    warehouseName,
+    locationId: qty,
+    locationCode: `L-${String(qty)}`,
+    locationSystemRoleCode,
+    qty,
+  });
+
+  it('US4-5 한 창고 한 자리는 요약하지 않고, 여러 창고는 창고별 합, 적치 대기 자리는 따로 센다', () => {
+    expect(portionSummaryOf([portion('A', 40)])).toBeNull();
+    expect(portionSummaryOf([portion('A', 20), portion('B', 20)])).toEqual({
+      warehouses: [
+        { name: 'A', qty: 20 },
+        { name: 'B', qty: 20 },
+      ],
+      staging: 0,
+    });
+    expect(portionSummaryOf([portion('A', 20), portion('A', 10, STAGING_ROLE)])).toEqual({
+      warehouses: [{ name: 'A', qty: 30 }],
+      staging: 10,
+    });
+  });
+
+  it('US4-5 라인 단위가 하나면 합계에 붙이고, 섞이면 붙이지 않는다', () => {
+    expect(uomOf(completion())).toBe('EA');
+    expect(qtyWithUom(160, 'EA')).toBe('160 EA');
+    const mixed = completion();
+    expect(
+      uomOf({
+        ...mixed,
+        lines: mixed.lines.map((line, index) => ({ ...line, uomCode: index === 0 ? 'EA' : 'KG' })),
+      }),
+    ).toBe('');
+    expect(qtyWithUom(160, '')).toBe('160');
+  });
+
+  it('US4-6 409 충돌의 막는 이유를 계약 코드만 남겨 꺼낸다 — 없으면 null', () => {
+    expect(
+      blockersOfConflict({
+        kind: 'conflict',
+        cause: 'user',
+        code: 'COMPLETION_BLOCKED',
+        message: '',
+        blockers: [{ code: 'REJECTED', lotNo: 'P-1' }, { code: 'UNKNOWN' }],
+      }),
+    ).toEqual([{ code: 'REJECTED', lotNo: 'P-1' }]);
+    expect(blockersOfConflict({ kind: 'conflict', cause: 'user', message: '' })).toBeNull();
+    expect(blockersOfConflict({ kind: 'network' })).toBeNull();
   });
 });

@@ -108,6 +108,19 @@ describe('ShipmentConfirmScreen — W-04-12 출하 내역', () => {
     expect(within(await rowOf('SYN-SH-108')).getByText(t.flow.cancelled)).toBeInTheDocument();
   });
 
+  it('US7-1 목록에 「고객 · 지시서」 칸 — 고객 이름 아래 지시서 번호', async () => {
+    renderScreen();
+
+    const row = (
+      await within(listPane()).findByRole('button', { name: t.list.open('SYN-SH-101') })
+    ).closest('tr') as HTMLElement;
+    expect(row).toHaveTextContent('합성 고객 가');
+    expect(row).toHaveTextContent('SYN-SR-3001');
+    expect(
+      within(listPane()).getByRole('columnheader', { name: t.list.fields.customerRequest }),
+    ).toBeInTheDocument();
+  });
+
   it('Q22 일괄 확정·체크 칸·「모두 선택」이 없다', async () => {
     renderScreen();
     await rowOf('SYN-SH-105');
@@ -144,6 +157,18 @@ describe('ShipmentConfirmScreen — W-04-12 출하 내역', () => {
     const replaced = within(detail).getByText('SYN-LOT-0003').closest('tr');
     expect(replaced).toHaveTextContent(t.detail.replaced);
     expect(replaced).toHaveTextContent('SYN-NC-0004');
+
+    /* 머리: 수주·고객·납품처. 수주 없는 출하는 「수주 없음」. */
+    expect(within(detail).getByText('SYN-SO-01')).toBeInTheDocument();
+    expect(within(detail).getByText('합성 고객 가')).toBeInTheDocument();
+    expect(within(detail).getByText('합성 납품처 가')).toBeInTheDocument();
+
+    /* 재고가 빠진 창고 — 창고마다 출고 전표·빠진 수량·위치별 수량, 적치 대기 자리는 따로 적는다. */
+    const warehouses = within(detail).getByRole('region', { name: t.detail.warehouses });
+    expect(warehouses).toHaveTextContent(t.detail.goodsIssue('SYN-GI-0011'));
+    expect(warehouses).toHaveTextContent(t.detail.goodsIssue('SYN-GI-0012'));
+    expect(warehouses).toHaveTextContent('SYN-B-02-01');
+    expect(warehouses).toHaveTextContent(t.detail.staging);
 
     /* 출하 관리 코드는 보기만 한다 — 입력칸이 없다. */
     expect(within(detail).queryByRole('textbox')).toBeNull();

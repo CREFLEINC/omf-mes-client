@@ -435,9 +435,11 @@ export const ProductPickingScreen = () => {
                         </p>
                       )}
                       <p className="picking__note">
-                        {request.salesOrderId === null || request.salesOrderId === undefined
-                          ? `${t.requests.noSalesOrder}, ${t.requests.shipDate(request.requestedShipDate)}`
-                          : t.requests.shipDate(request.requestedShipDate)}
+                        {`${
+                          request.salesOrderNo === null
+                            ? t.requests.noSalesOrder
+                            : t.requests.salesOrder(request.salesOrderNo)
+                        }, ${t.requests.shipDate(request.requestedShipDate)}`}
                       </p>
                       {(request.lines ?? []).map((line) => (
                         <p key={line.shipmentRequestLineId}>
@@ -510,12 +512,8 @@ export const ProductPickingScreen = () => {
                   <dd>{shipToName}</dd>
                 </>
               )}
-              {target.salesOrderId === null || target.salesOrderId === undefined ? (
-                <>
-                  <dt>{t.request.salesOrder}</dt>
-                  <dd>{t.requests.noSalesOrder}</dd>
-                </>
-              ) : null}
+              <dt>{t.request.salesOrder}</dt>
+              <dd>{target.salesOrderNo ?? t.requests.noSalesOrder}</dd>
               <dt>{t.request.shipDate}</dt>
               <dd>{target.requestedShipDate}</dd>
             </dl>

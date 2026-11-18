@@ -124,7 +124,7 @@ export const ShipmentRequestSheet = ({
                 <td>{line.lineNo}</td>
                 <td>{lot.lotNo}</td>
                 <td className="ship-print__num">{lot.pickedQty}</td>
-                <td>{lot.portions.map(portionText).join(', ')}</td>
+                <td>{lot.portions.map((portion) => portionText(portion)).join(', ')}</td>
                 <td>{lot.managementCode ?? ''}</td>
               </tr>
             ))}

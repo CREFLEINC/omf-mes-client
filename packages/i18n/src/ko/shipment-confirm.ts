@@ -17,8 +17,8 @@ export const shipmentConfirm = {
   },
   filter: {
     period: '완료(출하)일',
-    q: '출하번호',
-    qPlaceholder: '출하번호 입력',
+    q: '출하번호, 지시서, 고객',
+    qPlaceholder: '검색어 입력',
     erp: 'ERP 송신',
     all: '전체',
     search: '조회',
@@ -55,6 +55,7 @@ export const shipmentConfirm = {
     fields: {
       shipmentNo: '출하번호',
       shippedAt: '완료(출하) 시각',
+      customerRequest: '고객과 지시서',
       warehouse: '창고',
       completedBy: '완료 단말과 작업자',
       erp: 'ERP 송신',
@@ -80,12 +81,22 @@ export const shipmentConfirm = {
     loadFailed: '출하 상세를 불러오지 못했습니다',
     fields: {
       shipmentRequest: '출하 지시서',
+      salesOrder: '수주',
+      customer: '고객',
+      shipTo: '납품처',
       completedAt: '완료(출하) 시각',
       terminal: 'POP 단말',
       worker: '작업자',
       erpDeliveryNo: 'ERP 납품번호',
     },
     erpDeliveryNone: '— (아직 송신 전)',
+    noSalesOrder: '수주 없음',
+    /* 재고가 빠진 창고(시안 W0412) — 출고 전표는 창고마다 한 장이다. */
+    warehouses: '재고가 빠진 창고',
+    warehousesNote: '출고 전표는 창고마다 한 장입니다.',
+    goodsIssue: (goodsIssueNos: string): string => `출고 전표 ${goodsIssueNos}`,
+    noGoodsIssue: '출고 전표 없음(확정 전)',
+    staging: '적치 대기',
     lines: '라인과 LOT',
     linesNote: '출하 수량은 LOT 통째입니다. 출하 관리 코드는 보기만 합니다.',
     columns: {

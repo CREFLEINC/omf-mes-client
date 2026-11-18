@@ -73,6 +73,55 @@ export const blockedTargetsOf = (
   ),
 });
 
+/** 확인 값의 단위 — 라인이 모두 같은 단위면 그 코드, 섞였거나 없으면 빈 글(합계에 단위를 붙이지 않는다). */
+export const uomOf = (completion: Completion): string => {
+  const codes = [
+    ...new Set(completion.lines.map((line) => line.uomCode).filter((code) => code !== '')),
+  ];
+  return codes.length === 1 ? (codes[0] ?? '') : '';
+};
+
+/** 수량에 단위를 붙인다 — 단위가 없으면 수량만. */
+export const qtyWithUom = (qty: number, uom: string): string =>
+  uom === '' ? formatQty(qty) : `${formatQty(qty)} ${uom}`;
+
+/** 적치 대기 자리(위치 시스템 역할). */
+export const STAGING_ROLE = 'PUTAWAY_STAGING';
+
+export interface PortionSummary {
+  /** 창고별 몫(처음 나온 순서). */
+  warehouses: { name: string; qty: number }[];
+  /** 적치 대기 자리 몫의 합. */
+  staging: number;
+}
+
+/**
+ * LOT 몫 요약 — 여러 창고에 나뉘었거나 적치 대기 자리 몫이 있을 때만 낸다(시안 ③·④ 「창고 A 20, B 20」).
+ * 한 창고 한 자리면 null — 줄을 늘리지 않는다.
+ */
+export const portionSummaryOf = (
+  portions: readonly CompletionLot['portions'][number][],
+): PortionSummary | null => {
+  const warehouses: PortionSummary['warehouses'] = [];
+  let staging = 0;
+  for (const portion of portions) {
+    const seen = warehouses.find((entry) => entry.name === portion.warehouseName);
+    if (seen === undefined) warehouses.push({ name: portion.warehouseName, qty: portion.qty });
+    else seen.qty += portion.qty;
+    if (portion.locationSystemRoleCode === STAGING_ROLE) staging += portion.qty;
+  }
+  return warehouses.length > 1 || staging > 0 ? { warehouses, staging } : null;
+};
+
+/** 409 `COMPLETION_BLOCKED` 가 실어 온 막는 이유 — 계약 코드만 남긴다. 없으면 null(확인 값을 다시 읽는다). */
+export const blockersOfConflict = (error: ApiError): CompletionBlocker[] | null => {
+  if (error.kind !== 'conflict' || error.blockers === undefined) return null;
+  const known: readonly string[] = [...BLOCKER_ORDER, 'ALREADY_COMPLETED'];
+  return error.blockers.flatMap((blocker) =>
+    known.includes(blocker.code) ? [blocker as CompletionBlocker] : [],
+  );
+};
+
 /** LOT 줄의 품목 코드 — 확인 값의 LOT 은 품목 번호만 갖고, 코드는 그 라인에 있다. */
 export const itemCodeOfLot = (completion: Completion, lot: CompletionLot): string =>
   completion.lines.find((line) => line.lineNo === lot.lineNo)?.itemCode ?? '';
@@ -205,6 +254,9 @@ export interface SearchRowView {
   /** 막는 이유 수(이유 코드별 합). */
   blockedCount: number;
   blockerSummary: { code: BlockerCode; count: number }[];
+  /** 첫 품목(코드·이름)과 그 밖의 품목 수 — 찾기 줄 「FG-A100 센서 모듈 A 외 1」. 라인이 없으면 null. */
+  firstItem: { code: string; name: string } | null;
+  moreItems: number;
   lineCount: number;
   lotCount: number;
   picked: number;
@@ -218,10 +270,15 @@ export const toSearchRow = (row: ShipmentRequestRow): SearchRowView => {
     return count > 0 ? [{ code, count }] : [];
   });
 
+  const items = [...new Map(lines.map((line) => [line.itemId, line])).values()];
+  const first = items[0];
+
   return {
     shipmentRequestId: row.shipmentRequestId,
     shipmentRequestNo: row.shipmentRequestNo,
     code: row.code,
+    firstItem: first === undefined ? null : { code: first.itemCode, name: first.itemName },
+    moreItems: Math.max(items.length - 1, 0),
     customerId: row.customerId,
     requestedShipDate: row.requestedShipDate,
     ready: row.completionBlockers.length === 0,

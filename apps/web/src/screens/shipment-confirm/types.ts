@@ -22,10 +22,19 @@ export const ERP_SEND_STATUSES: readonly ErpSendStatus[] = [
   'NOT_QUEUED',
 ];
 
+/** 재고가 빠진 창고 하나 — 출고 전표(창고마다 한 장)·빠진 수량·위치별 수량(시안 W0412 「재고가 빠진 창고」). */
 export interface WarehouseRef {
   warehouseId: number;
   warehouseName: string;
+  warehouseCode: string;
+  goodsIssueNos: string[];
+  /** 빠진 수량. 응답에 칸이 없으면(옛 서버) null — 0 으로 지어내지 않는다. */
+  qty: number | null;
+  locations: { locationCode: string; staging: boolean; qty: number }[];
 }
+
+/** 적치 대기 자리(위치 시스템 역할). */
+const STAGING_ROLE = 'PUTAWAY_STAGING';
 
 /**
  * 출하 한 건(목록 행).
@@ -41,6 +50,11 @@ export interface ShipmentRow {
   statusCode: string;
   expedited: boolean;
   erpDeliveryNo: string | null;
+  /** 출하 지시서·고객·납품처·수주(목록 「고객 · 지시서」 칸). 옛 응답이면 null. */
+  shipmentRequestNo: string | null;
+  customerName: string | null;
+  shipToName: string | null;
+  salesOrderNo: string | null;
   /** 서버 판정 그대로. 옛 서버가 안 내리면 `null` — 화면이 지어내지 않는다. */
   erpSendStatus: ErpSendStatus | null;
   cancelRequestPending: boolean;
@@ -65,6 +79,10 @@ export const toShipmentRow = (data: ShipmentResponse): ShipmentRow => ({
   statusCode: data.statusCode,
   expedited: data.expedited,
   erpDeliveryNo: data.erpDeliveryNo ?? null,
+  shipmentRequestNo: data.shipmentRequestNo ?? null,
+  customerName: data.customer?.partnerName ?? null,
+  shipToName: data.shipTo?.partnerName ?? null,
+  salesOrderNo: data.salesOrderNo ?? null,
   erpSendStatus: data.erpSendStatus ?? null,
   cancelRequestPending: data.cancelRequestPending ?? false,
   completedTerminalCode: data.completedTerminal?.terminalCode ?? null,
@@ -75,6 +93,14 @@ export const toShipmentRow = (data: ShipmentResponse): ShipmentRow => ({
   warehouses: (data.warehouses ?? []).map((warehouse) => ({
     warehouseId: warehouse.warehouseId,
     warehouseName: warehouse.warehouseName,
+    warehouseCode: warehouse.warehouseCode,
+    goodsIssueNos: warehouse.goodsIssueNos ?? [],
+    qty: warehouse.qty ?? null,
+    locations: (warehouse.locations ?? []).map((location) => ({
+      locationCode: location.locationCode,
+      staging: location.locationSystemRoleCode === STAGING_ROLE,
+      qty: location.qty,
+    })),
   })),
   totalQty: sumShippedQty(data.lines),
 });
@@ -203,5 +229,9 @@ export const toShipmentDetail = (
     };
   });
 
-  return { row, shipmentRequestNo: request?.shipmentRequestNo ?? null, lines };
+  return {
+    row,
+    shipmentRequestNo: row.shipmentRequestNo ?? request?.shipmentRequestNo ?? null,
+    lines,
+  };
 };

@@ -138,6 +138,18 @@ export const ShipmentList = ({
         ),
     },
     {
+      key: 'customerRequest',
+      header: t.list.fields.customerRequest,
+      render: (row) => (
+        <div className="ship-history-cell">
+          <span>{row.customerName ?? t.detail.noValue}</span>
+          {row.shipmentRequestNo !== null && (
+            <span className="field-note">{row.shipmentRequestNo}</span>
+          )}
+        </div>
+      ),
+    },
+    {
       key: 'warehouse',
       header: t.list.fields.warehouse,
       render: (row) => <WarehouseCell row={row} />,

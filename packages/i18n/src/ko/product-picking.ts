@@ -24,6 +24,7 @@ export const productPicking = {
     /* 출하 완료된 지시서는 목록에 세우지 않는다 — 더 집을 일이 없다. */
     completedHidden: '출하 완료된 지시서는 목록에서 빠집니다',
     noSalesOrder: '수주 없음',
+    salesOrder: (salesOrderNo: string) => `수주 ${salesOrderNo}`,
     shipDate: (date: string) => `출하 예정 ${date}`,
     lineSummary: (lineNo: number, item: string, picked: string, target: string) =>
       `${String(lineNo)}. ${item} 피킹 ${picked} / 목표 ${target}`,
@@ -57,6 +58,10 @@ export const productPicking = {
     qty: (qty: string, uom: string) => `${qty} ${uom}`,
     portion: (warehouse: string, location: string | null) =>
       location === null ? warehouse : `${warehouse}, ${location}`,
+    /* 적치 대기 자리(PUTAWAY_STAGING) 몫 — 아직 선반에 놓지 않은 재고다. */
+    staging: '적치 대기',
+    /* 판정을 정한 결과 — 불합격 줄에서 「어느 결과로 불합격인가」를 보인다. */
+    oqcResult: (round: number, at: string) => `OQC 결과 ${String(round)}, ${at}`,
     replace: '교체',
     replaced: '교체됨',
     replacedDetail: (nonconformanceNo: string | null, worker: string, at: string) =>

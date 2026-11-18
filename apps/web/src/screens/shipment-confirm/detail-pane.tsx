@@ -104,6 +104,18 @@ export const DetailPane = ({
           <dd>{detail.shipmentRequestNo ?? t.detail.noValue}</dd>
         </div>
         <div>
+          <dt>{t.detail.fields.salesOrder}</dt>
+          <dd>{row.salesOrderNo ?? t.detail.noSalesOrder}</dd>
+        </div>
+        <div>
+          <dt>{t.detail.fields.customer}</dt>
+          <dd>{row.customerName ?? t.detail.noValue}</dd>
+        </div>
+        <div>
+          <dt>{t.detail.fields.shipTo}</dt>
+          <dd>{row.shipToName ?? t.detail.noValue}</dd>
+        </div>
+        <div>
           <dt>{t.detail.fields.completedAt}</dt>
           <dd>{dateTime(row.shippedAt)}</dd>
         </div>
@@ -211,6 +223,37 @@ export const DetailPane = ({
           </table>
         </div>
       </section>
+
+      {row.warehouses.some((warehouse) => warehouse.qty !== null) && (
+        <section aria-label={t.detail.warehouses}>
+          <h4 className="field-label">{t.detail.warehouses}</h4>
+          <p className="field-note">{t.detail.warehousesNote}</p>
+          <ul className="ship-history-warehouses">
+            {row.warehouses.map((warehouse) => (
+              <li key={warehouse.warehouseId}>
+                <div className="ship-history-warehouse-head">
+                  <strong>{warehouse.warehouseName}</strong>
+                  <span className="field-note">{warehouse.warehouseCode}</span>
+                  <span className="ship-history-num">{warehouse.qty ?? t.detail.noValue}</span>
+                </div>
+                <div className="field-note">
+                  {warehouse.goodsIssueNos.length === 0
+                    ? t.detail.noGoodsIssue
+                    : t.detail.goodsIssue(warehouse.goodsIssueNos.join(', '))}
+                </div>
+                <span className="ship-history-places">
+                  {warehouse.locations.map((location) => (
+                    <span key={location.locationCode}>
+                      {`${location.locationCode} ${String(location.qty)}`}
+                      {location.staging ? ` (${t.detail.staging})` : ''}
+                    </span>
+                  ))}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {erpStatus !== null && (
         <section aria-label={t.detail.erp}>

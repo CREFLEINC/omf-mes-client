@@ -20,6 +20,7 @@ export interface ReplacementRow {
   workerName: string | null;
   workerNo: string | null;
   resultNo: string;
+  resultRound: number;
   judgment: string | null;
   resultAt: string;
   nonconformanceNo: string | null;
@@ -52,6 +53,7 @@ export const replacementsOf = (detail: ShipmentRequestDetail): ReplacementRow[] 
                 workerName: lot.replacement.worker?.workerName ?? null,
                 workerNo: lot.replacement.worker?.workerNo ?? null,
                 resultNo: lot.replacement.resultNo,
+                resultRound: lot.replacement.resultRound,
                 judgment: lot.replacement.judgment,
                 resultAt: lot.replacement.resultAt,
                 nonconformanceNo: lot.replacement.nonconformanceNo,
@@ -87,8 +89,48 @@ export const warehouseSummary = (
   }));
 };
 
-/** 창고·위치별 몫 한 줄 — 「창고 위치 수량」. 위치가 없으면 창고만. */
-export const portionText = (portion: RequestLot['portions'][number]): string =>
-  portion.locationCode === null
-    ? `${portion.warehouseName} ${String(portion.qty)}`
-    : `${portion.warehouseName} ${portion.locationCode} ${String(portion.qty)}`;
+/** 적치 대기 자리(위치 시스템 역할). */
+export const STAGING_ROLE = 'PUTAWAY_STAGING';
+
+/** 지시서 라인이 모두 같은 단위면 그 코드, 섞였거나 없으면 빈 글 — 피킹 창고 합계에 붙인다. */
+export const uomOfDetail = (detail: ShipmentRequestDetail): string => {
+  const codes = [
+    ...new Set(
+      linesOf(detail)
+        .map((line) => line.uomCode)
+        .filter((code) => code !== ''),
+    ),
+  ];
+  return codes.length === 1 ? (codes[0] ?? '') : '';
+};
+
+/** 창고·위치별 몫 한 줄 — 「창고 위치 수량」. 위치가 없으면 창고만. 적치 대기 자리면 끝에 「(적치 대기)」. */
+export const portionText = (portion: RequestLot['portions'][number], stagingLabel = ''): string => {
+  const place =
+    portion.locationCode === null
+      ? `${portion.warehouseName} ${String(portion.qty)}`
+      : `${portion.warehouseName} ${portion.locationCode} ${String(portion.qty)}`;
+  return portion.locationSystemRoleCode === STAGING_ROLE && stagingLabel !== ''
+    ? `${place} (${stagingLabel})`
+    : place;
+};
+
+export type SalesOrderRemaining =
+  | { kind: 'none' }
+  | { kind: 'cancelled' }
+  | { kind: 'remaining'; remaining: number; ordered: number }
+  | { kind: 'over'; over: number; ordered: number; shipped: number };
+
+/**
+ * 수주 잔량(시안 W0402-After ⑧) — 수주 − 출하. 출하가 수주를 넘으면 음수 대신 「0 + 초과 n」(D-16 · ERP 가
+ * 초과 출고를 받는다). 수주 없는 라인은 none, ERP 에서 취소된 수주 라인은 cancelled.
+ */
+export const salesOrderRemainingOf = (line: RequestLine): SalesOrderRemaining => {
+  const order = line.salesOrderLine;
+  if (order === null) return { kind: 'none' };
+  if (order.cancelled) return { kind: 'cancelled' };
+  const remaining = order.orderedQty - order.shippedQty;
+  return remaining < 0
+    ? { kind: 'over', over: -remaining, ordered: order.orderedQty, shipped: order.shippedQty }
+    : { kind: 'remaining', remaining, ordered: order.orderedQty };
+};

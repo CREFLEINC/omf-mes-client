@@ -50,10 +50,12 @@ const pickedLot = (overrides: Partial<ShipmentRequestLot> = {}): ShipmentRequest
       warehouseName: '창고 A',
       locationId: 11,
       locationCode: 'A-01-01',
+      locationSystemRoleCode: null,
       qty: 40,
     },
   ],
   oqcLotStatus: 'ACCEPTED',
+  oqcResult: null,
   replacement: null,
   ...overrides,
 });
@@ -62,11 +64,15 @@ const line = (overrides: Partial<ShipmentRequestLine> = {}): ShipmentRequestLine
   shipmentRequestLineId: 77,
   lineNo: 1,
   itemId: 31,
+  itemCode: 'FG-A100',
+  itemName: '센서 모듈',
   requestedQty: 100,
   allocatedQty: 100,
   pickedQty: 40,
   shippedQty: 0,
   uomId: 9,
+  uomCode: 'EA',
+  salesOrderLine: null,
   shippingInspectionRequired: true,
   picks: [],
   overQty: 0,
@@ -78,6 +84,7 @@ const request = (overrides: Partial<ShipmentRequest> = {}): ShipmentRequest =>
   ({
     shipmentRequestId: 5,
     shipmentRequestNo: 'SR-261118-001',
+    salesOrderNo: null,
     customerId: 1,
     shipToPartnerId: 1,
     requestedShipDate: '2026-11-18',
@@ -256,6 +263,17 @@ describe('M-04-01 제품 피킹 — 지시서 목록', () => {
     expect(within(card).getByText('피킹 중, LOT 1')).toBeTruthy();
   });
 
+  it('US1-1 수주가 있는 지시서는 카드와 머리에 수주 번호를 보인다', async () => {
+    const user = userEvent.setup();
+    mount([], { requests: [request({ salesOrderId: 70, salesOrderNo: 'SO-T1' })] });
+
+    const card = await screen.findByRole('button', { name: /SR-261118-001/ });
+
+    expect(within(card).getByText('수주 SO-T1, 출하 예정 2026-11-18')).toBeTruthy();
+    await openRequest(user);
+    expect(screen.getByText('SO-T1')).toBeTruthy();
+  });
+
   it('Q9 빈 목록이면 지시서가 없다고 말한다', async () => {
     mount([], { requests: [] });
 
@@ -294,6 +312,7 @@ describe('M-04-01 제품 피킹 — LOT 통째 피킹', () => {
                       warehouseName: '창고 A',
                       locationId: 1,
                       locationCode: 'A-01-02',
+                      locationSystemRoleCode: null,
                       qty: 20,
                     },
                     {
@@ -302,6 +321,7 @@ describe('M-04-01 제품 피킹 — LOT 통째 피킹', () => {
                       warehouseName: '창고 B',
                       locationId: 2,
                       locationCode: 'B-02-01',
+                      locationSystemRoleCode: null,
                       qty: 20,
                     },
                   ],
@@ -316,6 +336,40 @@ describe('M-04-01 제품 피킹 — LOT 통째 피킹', () => {
 
     expect(await screen.findByText('창고 A, A-01-02')).toBeTruthy();
     expect(screen.getByText('창고 B, B-02-01')).toBeTruthy();
+    expect(screen.queryByText('적치 대기')).toBeNull();
+  });
+
+  it('R-2·Q2 적치 대기 자리 몫에는 「적치 대기」 칩을 단다', async () => {
+    const user = userEvent.setup();
+    mount([], {
+      requests: [
+        request({
+          lines: [
+            line({
+              lots: [
+                pickedLot({
+                  portions: [
+                    {
+                      warehouseId: 1,
+                      warehouseCode: 'A',
+                      warehouseName: '창고 A',
+                      locationId: 9,
+                      locationCode: 'SYS-STAGING',
+                      locationSystemRoleCode: 'PUTAWAY_STAGING',
+                      qty: 10,
+                    },
+                  ],
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+    await openRequest(user);
+
+    expect(await screen.findByText('창고 A, SYS-STAGING')).toBeTruthy();
+    expect(screen.getByText('적치 대기')).toBeTruthy();
   });
 
   it('US1-1 LOT 스캔이 바로 :pick-lot 을 부르고 수량 없이 LOT 번호만 싣는다', async () => {
@@ -588,6 +642,37 @@ describe('M-04-01 제품 피킹 — OQC 판정과 [교체]', () => {
     expect(screen.getByText('불합격 LOT 이 있습니다. 교체하세요')).toBeTruthy();
   });
 
+  it('US2-1 불합격 줄에 판정을 정한 「OQC 결과 n, 시각」을 보인다', async () => {
+    const user = userEvent.setup();
+    mount([], {
+      requests: [
+        request({
+          lines: [
+            line({
+              lots: [
+                pickedLot({
+                  shipmentRequestLotId: 503,
+                  lotId: 3,
+                  lotNo: 'P2611-0003',
+                  oqcLotStatus: 'REJECTED',
+                  oqcResult: {
+                    inspectionResultId: 2,
+                    resultNo: 'IRS-2',
+                    round: 2,
+                    resultAt: '2026-11-18T07:10:00Z',
+                  },
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+    await openRequest(user);
+
+    expect(await screen.findByText('OQC 결과 2, 14:10')).toBeTruthy();
+  });
+
   it('US2-2 [교체]는 확인 상자 뒤 :replace 를 부르고 부적합 번호와 다시 받는 수량을 보인다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
@@ -630,6 +715,7 @@ describe('M-04-01 제품 피킹 — OQC 판정과 [교체]', () => {
                   replacement: {
                     inspectionResultId: 1,
                     resultNo: '2',
+                    resultRound: 2,
                     resultAt: '2026-11-18T07:10:00Z',
                     judgment: 'REJECTED',
                     nonconformanceId: 4,

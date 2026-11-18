@@ -114,6 +114,14 @@ export const popShipmentComplete = {
       oqc: 'OQC',
       managementCode: '출하 관리 코드',
     },
+    /* 여러 창고·적치 대기 자리에 나뉜 LOT 의 몫 — 「창고 A 20, 창고 B 20」. */
+    portion: (warehouse: string, qty: string): string => `${warehouse} ${qty}`,
+    stagingIncluded: (qty: string): string => `적치 대기 ${qty} 포함`,
+    /* 교체로 빠진 LOT — 확인 화면에서 출하에 들지 않는다는 것을 한 줄로 알린다. */
+    replaced: (count: number, lots: string): string =>
+      `교체로 빠진 LOT ${String(count)}: ${lots}. 출하에 들지 않습니다.`,
+    replacedLot: (lotNo: string, judgment: string | null): string =>
+      judgment === null ? lotNo : `${lotNo}(${judgment})`,
     oqc: {
       NOT_REQUIRED: '검사 불필요',
       SKIPPED: '검사 생략',
@@ -163,6 +171,9 @@ export const popShipmentComplete = {
     blocked: (count: number): string => `막힘 ${String(count)}`,
     shipDate: '출하일',
     customer: '고객',
+    items: '품목',
+    itemsValue: (code: string, name: string, more: number): string =>
+      more > 0 ? `${code} ${name} 외 ${String(more)}` : `${code} ${name}`,
     summary: '내용',
     summaryValue: (lineCount: number, lotCount: number, picked: string, target: string): string =>
       `라인 ${String(lineCount)}, LOT ${String(lotCount)}, 피킹 ${picked} / 목표 ${target}`,

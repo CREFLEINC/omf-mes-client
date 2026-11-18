@@ -96,6 +96,12 @@ export const popShipmentComplete = {
 
   lots: {
     heading: (count: number): string => `${String(count)} LOT`,
+    portion: (warehouse: string, qty: string): string => `${warehouse} ${qty}`,
+    stagingIncluded: (qty: string): string => `gồm ${qty} chờ xếp kệ`,
+    replaced: (count: number, lots: string): string =>
+      `${String(count)} LOT bị loại do thay thế: ${lots}. Không tính vào lô xuất hàng.`,
+    replacedLot: (lotNo: string, judgment: string | null): string =>
+      judgment === null ? lotNo : `${lotNo} (${judgment})`,
     caption: 'LOT đã lấy và phán định OQC',
     note: 'Phán định OQC là kết quả cuối cùng của lệnh này.',
     columns: {
@@ -156,6 +162,9 @@ export const popShipmentComplete = {
     shipDate: 'Ngày xuất',
     customer: 'Khách hàng',
     summary: 'Nội dung',
+    items: 'Mặt hàng',
+    itemsValue: (code: string, name: string, more: number): string =>
+      more > 0 ? `${code} ${name} và ${String(more)} mặt hàng khác` : `${code} ${name}`,
     summaryValue: (lineCount: number, lotCount: number, picked: string, target: string): string =>
       `${String(lineCount)} dòng, ${String(lotCount)} LOT, đã lấy ${picked} / mục tiêu ${target}`,
     blockedWhy: 'Lý do chặn',

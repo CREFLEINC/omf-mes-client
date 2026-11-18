@@ -724,12 +724,101 @@ describe('ShipmentScheduleScreen — 피처 010 지시서 상세', () => {
     expect(replaced).toHaveTextContent('SAMPLE-NC-0003');
 
     const history = within(dialog).getByRole('table', { name: t.detail.replacements });
-    expect(history).toHaveTextContent('SAMPLE-QR-0002');
+    /* 근거 결과는 회차로 보인다(시안 「결과 #2」). */
+    expect(history).toHaveTextContent(t.detail.resultRound(2));
     expect(history).toHaveTextContent('SAMPLE-NC-0003');
 
     expect(await within(dialog).findAllByText(/SAMPLE-FG-A100/)).not.toHaveLength(0);
     /* ⛔ 출하 완료 단계 화면에는 ERP 송신 여부를 보이지 않는다. */
     expect(dialog).not.toHaveTextContent('송신');
+  });
+
+  it('D-16·Q3 상세 머리에 수주 번호, 라인에 단위·수주 라인·수주 잔량 — 넘으면 「0 + 초과 n」, 적치 대기 몫은 따로 적는다', async () => {
+    const base = pickingRequest();
+    const line = (base.lines as Record<string, unknown>[])[0] as Record<string, unknown>;
+    const lots = line.lots as Record<string, unknown>[];
+    const request = {
+      ...base,
+      salesOrderNo: 'SAMPLE-SO-0001',
+      lines: [
+        {
+          ...line,
+          shippedQty: 110,
+          salesOrderLine: {
+            salesOrderLineId: 9951,
+            salesOrderNo: 'SAMPLE-SO-0001',
+            lineNo: 1,
+            orderedQty: 100,
+            shippedQty: 110,
+            cancelled: false,
+          },
+          lots: lots.map((lot) =>
+            lot.lotNo === 'SAMPLE-LOT-0004'
+              ? {
+                  ...lot,
+                  portions: [
+                    {
+                      warehouseId: 9401,
+                      warehouseCode: 'SAMPLE-WH-A',
+                      warehouseName: '합성 완제품 창고 A',
+                      locationId: 9419,
+                      locationCode: 'SAMPLE-STAGING',
+                      locationSystemRoleCode: 'PUTAWAY_STAGING',
+                      qty: 30,
+                    },
+                  ],
+                }
+              : lot,
+          ),
+        },
+      ],
+    };
+    const { user } = renderScreen(
+      [listRoute([request]), detailOf(request), itemRoute(), ...partnerRoutes()],
+      SHIP_DATE_FROM,
+    );
+
+    const dialog = await openDetail(user);
+
+    expect(await within(dialog).findAllByText('SAMPLE-SO-0001, 1')).not.toHaveLength(0);
+    expect(within(dialog).getByText('SAMPLE-SO-0001')).toBeInTheDocument();
+    expect(within(dialog).getByText('SAMPLE-EA')).toBeInTheDocument();
+    expect(within(dialog).getByText(t.detail.salesOrderOver(10))).toBeInTheDocument();
+    expect(within(dialog).getByText(t.detail.salesOrderQtyShipped(100, 110))).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(`합성 완제품 창고 A SAMPLE-STAGING 30 (${t.detail.staging})`),
+    ).toBeInTheDocument();
+  });
+
+  it('D-16 수주 잔량이 남으면 그 수량과 수주 수량을 보인다', async () => {
+    const base = pickingRequest();
+    const line = (base.lines as Record<string, unknown>[])[0] as Record<string, unknown>;
+    const request = {
+      ...base,
+      salesOrderNo: 'SAMPLE-SO-0002',
+      lines: [
+        {
+          ...line,
+          salesOrderLine: {
+            salesOrderLineId: 9952,
+            salesOrderNo: 'SAMPLE-SO-0002',
+            lineNo: 3,
+            orderedQty: 150,
+            shippedQty: 13,
+            cancelled: false,
+          },
+        },
+      ],
+    };
+    const { user } = renderScreen(
+      [listRoute([request]), detailOf(request), itemRoute(), ...partnerRoutes()],
+      SHIP_DATE_FROM,
+    );
+
+    const dialog = await openDetail(user);
+
+    expect(await within(dialog).findByText(t.detail.salesOrderRemaining(137))).toBeInTheDocument();
+    expect(within(dialog).getByText(t.detail.salesOrderQty(150))).toBeInTheDocument();
   });
 
   it('US4-2 [지시서 인쇄]는 A4 미리 보기에 QR 과 번호, 교체 LOT 을 뺀 피킹 LOT, 서명 칸 넷을 보인다', async () => {

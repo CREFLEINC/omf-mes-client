@@ -13,9 +13,35 @@ const shipment = {
   cancelRequestPending: false,
   completedTerminal: { terminalId: 1, terminalCode: 'SYN-POP' },
   completedWorker: { workerId: 2, workerNo: 'SYN-W', workerName: '합성 작업자' },
+  shipmentRequestNo: 'SYN-SR-1',
+  customer: { partnerId: 7, partnerCode: 'SYN-C', partnerName: '합성 고객' },
+  shipTo: { partnerId: 8, partnerCode: 'SYN-S', partnerName: '합성 납품처' },
+  salesOrderNo: 'SYN-SO-1',
   warehouses: [
-    { warehouseId: 11, warehouseCode: 'A', warehouseName: '창고 A' },
-    { warehouseId: 12, warehouseCode: 'B', warehouseName: '창고 B' },
+    {
+      warehouseId: 11,
+      warehouseCode: 'A',
+      warehouseName: '창고 A',
+      goodsIssueNos: ['SYN-GI-1'],
+      qty: 20,
+      locations: [
+        { locationId: 111, locationCode: 'A-01', locationSystemRoleCode: null, qty: 15 },
+        {
+          locationId: 112,
+          locationCode: 'A-STG',
+          locationSystemRoleCode: 'PUTAWAY_STAGING',
+          qty: 5,
+        },
+      ],
+    },
+    {
+      warehouseId: 12,
+      warehouseCode: 'B',
+      warehouseName: '창고 B',
+      goodsIssueNos: ['SYN-GI-2'],
+      qty: 50,
+      locations: [{ locationId: 121, locationCode: 'B-01', locationSystemRoleCode: null, qty: 50 }],
+    },
   ],
   lines: [
     {
@@ -69,6 +95,46 @@ describe('toShipmentRow', () => {
     expect(row.completedWorker).toEqual({ workerNo: 'SYN-W', workerName: '합성 작업자' });
     expect(row.warehouses.map((w) => w.warehouseName)).toEqual(['창고 A', '창고 B']);
     expect(row.totalQty).toBe(70);
+  });
+
+  it('US7-1·D-15 지시서·고객·납품처·수주와 창고마다 출고 전표·빠진 수량·위치(적치 대기 표시)를 옮긴다', () => {
+    const row = toShipmentRow(shipment);
+
+    expect(row).toMatchObject({
+      shipmentRequestNo: 'SYN-SR-1',
+      customerName: '합성 고객',
+      shipToName: '합성 납품처',
+      salesOrderNo: 'SYN-SO-1',
+    });
+    expect(row.warehouses[0]).toEqual({
+      warehouseId: 11,
+      warehouseName: '창고 A',
+      warehouseCode: 'A',
+      goodsIssueNos: ['SYN-GI-1'],
+      qty: 20,
+      locations: [
+        { locationCode: 'A-01', staging: false, qty: 15 },
+        { locationCode: 'A-STG', staging: true, qty: 5 },
+      ],
+    });
+  });
+
+  it('옛 응답(칸 없음)이면 지시서·고객·전표는 null·빈 값이다', () => {
+    const {
+      shipmentRequestNo: _no,
+      customer: _customer,
+      shipTo: _shipTo,
+      salesOrderNo: _order,
+      warehouses: _warehouses,
+      ...rest
+    } = shipment;
+    const row = toShipmentRow({
+      ...rest,
+      warehouses: [{ warehouseId: 11, warehouseCode: 'A', warehouseName: '창고 A' }],
+    } as never);
+
+    expect(row).toMatchObject({ shipmentRequestNo: null, customerName: null, salesOrderNo: null });
+    expect(row.warehouses[0]).toMatchObject({ goodsIssueNos: [], qty: null, locations: [] });
   });
 
   /* ⛔ 못 받은 것을 0 으로 지어내지 않는다 — 라인이 없으면 수량도 모른다. */

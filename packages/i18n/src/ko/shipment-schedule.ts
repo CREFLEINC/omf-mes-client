@@ -156,6 +156,7 @@ export const shipmentSchedule = {
       shipmentRequestNo: '작업지시번호',
       customer: '고객',
       shipToPartner: '납품처',
+      salesOrder: '수주',
       shipDate: '출하일',
       fulfillmentPlant: '출하 담당 공장',
       progress: '진행',
@@ -192,7 +193,23 @@ export const shipmentSchedule = {
       picked: '피킹',
       over: '초과',
       shipped: '출하',
+      uom: '단위',
+      salesOrderLine: '수주 라인',
+      salesOrderRemaining: '수주 잔량',
     },
+    noSalesOrder: '수주 없음',
+    salesOrderLine: (salesOrderNo: string, lineNo: number): string =>
+      `${salesOrderNo}, ${String(lineNo)}`,
+    /* 수주 잔량 = 수주 − 출하. 음수면 「0 + 초과 n」(ERP 는 초과 출고를 받는다 · D-16). */
+    salesOrderRemaining: (remaining: number): string => String(remaining),
+    salesOrderOver: (over: number): string => `0 + 초과 ${String(over)}`,
+    salesOrderQty: (ordered: number): string => `수주 ${String(ordered)}`,
+    salesOrderQtyShipped: (ordered: number, shipped: number): string =>
+      `수주 ${String(ordered)}, 출하 ${String(shipped)}`,
+    salesOrderCancelled: '수주 취소',
+    /* 적치 대기 자리(PUTAWAY_STAGING) 몫 표시. */
+    staging: '적치 대기',
+    resultRound: (round: number): string => `결과 #${String(round)}`,
     inspectionRequired: '필요',
     inspectionNotRequired: '불필요',
     short: (qty: number): string => `부족 ${String(qty)}`,

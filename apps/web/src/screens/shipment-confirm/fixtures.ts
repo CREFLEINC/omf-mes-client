@@ -120,11 +120,28 @@ const WAREHOUSE_IDS: Record<string, number> = {
   '합성 완제품 창고 B': 2002,
 };
 
-const warehouseOf = (name: string) => ({
-  warehouseId: WAREHOUSE_IDS[name] ?? 2999,
-  warehouseCode: name.endsWith('A') ? 'SYN-WH-A' : 'SYN-WH-B',
-  warehouseName: name,
-});
+/** 재고가 빠진 창고 — 출고 전표 하나·빠진 수량·위치별 수량(B 는 적치 대기 자리 몫을 함께 둔다). */
+const warehouseOf = (name: string) => {
+  const a = name.endsWith('A');
+  return {
+    warehouseId: WAREHOUSE_IDS[name] ?? 2999,
+    warehouseCode: a ? 'SYN-WH-A' : 'SYN-WH-B',
+    warehouseName: name,
+    goodsIssueNos: [a ? 'SYN-GI-0011' : 'SYN-GI-0012'],
+    qty: a ? 60 : 50,
+    locations: a
+      ? [{ locationId: 2101, locationCode: 'SYN-A-01-01', locationSystemRoleCode: null, qty: 60 }]
+      : [
+          { locationId: 2201, locationCode: 'SYN-B-02-01', locationSystemRoleCode: null, qty: 40 },
+          {
+            locationId: 2202,
+            locationCode: 'SYN-STAGING',
+            locationSystemRoleCode: 'PUTAWAY_STAGING',
+            qty: 10,
+          },
+        ],
+  };
+};
 
 /** 라인 하나 · LOT 둘. 첫 LOT 은 두 창고의 잔액 행에서 나가 배분이 둘이다. */
 const linesOf = (stub: ShipmentStub) => {
@@ -175,6 +192,10 @@ const shipmentBody = (stub: ShipmentStub) => ({
   shipmentId: stub.shipmentId,
   shipmentNo: stub.shipmentNo,
   shipmentRequestId: 3001,
+  shipmentRequestNo: 'SYN-SR-3001',
+  customer: { partnerId: 8201, partnerCode: 'SYN-CUS-01', partnerName: '합성 고객 가' },
+  shipTo: { partnerId: 8211, partnerCode: 'SYN-SHT-01', partnerName: '합성 납품처 가' },
+  salesOrderNo: stub.erpSendStatus === 'NOT_SENT_NO_SALES_ORDER' ? null : 'SYN-SO-01',
   warehouseId:
     stub.completedByPop === true ? null : (WAREHOUSE_IDS[stub.warehouseNames[0] ?? ''] ?? 2999),
   statusCode: stub.statusCode,

@@ -113,6 +113,11 @@ export const SearchDialog = ({ onClose, onPick }: SearchDialogProps) => {
             <PopRowInfo>
               <PopRowPair label={t.customer}>{customers.data?.get(row.customerId)}</PopRowPair>
               <PopRowPair label={t.shipDate}>{row.requestedShipDate}</PopRowPair>
+              {row.firstItem !== null && (
+                <PopRowPair label={t.items}>
+                  {t.itemsValue(row.firstItem.code, row.firstItem.name, row.moreItems)}
+                </PopRowPair>
+              )}
               <PopRowPair label={t.summary}>
                 {t.summaryValue(
                   row.lineCount,

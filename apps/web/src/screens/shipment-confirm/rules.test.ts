@@ -11,6 +11,10 @@ const row = (overrides: Partial<ShipmentRow> = {}): ShipmentRow => ({
   statusCode: 'CONFIRMED',
   expedited: false,
   erpDeliveryNo: null,
+  shipmentRequestNo: null,
+  customerName: null,
+  shipToName: null,
+  salesOrderNo: null,
   erpSendStatus: 'PENDING',
   cancelRequestPending: false,
   completedTerminalCode: 'SYN-POP',
@@ -78,18 +82,25 @@ describe('cancelLockOf', () => {
   });
 });
 
+const warehouse = (warehouseId: number, warehouseName: string) => ({
+  warehouseId,
+  warehouseName,
+  warehouseCode: warehouseName,
+  goodsIssueNos: [],
+  qty: null,
+  locations: [],
+});
+
 describe('warehouseDisplay', () => {
   it('Q18 하나면 이름, 여럿이면 「n곳」과 이름 목록', () => {
-    expect(warehouseDisplay(row({ warehouses: [{ warehouseId: 1, warehouseName: 'A' }] }))).toEqual(
-      { kind: 'one', name: 'A' },
-    );
+    expect(warehouseDisplay(row({ warehouses: [warehouse(1, 'A')] }))).toEqual({
+      kind: 'one',
+      name: 'A',
+    });
     expect(
       warehouseDisplay(
         row({
-          warehouses: [
-            { warehouseId: 1, warehouseName: 'A' },
-            { warehouseId: 2, warehouseName: 'B' },
-          ],
+          warehouses: [warehouse(1, 'A'), warehouse(2, 'B')],
         }),
       ),
     ).toEqual({ kind: 'many', count: 2, names: 'A, B' });

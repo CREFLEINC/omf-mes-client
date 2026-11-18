@@ -7,6 +7,9 @@ import { canReplace, codeProblem, oqcTone, type ShipmentRequestLot } from './pic
 
 const t = messages.productPicking;
 
+/** 적치 대기 자리(위치 시스템 역할) — 그 몫에 「적치 대기」 칩을 단다. */
+const STAGING = 'PUTAWAY_STAGING';
+
 /** 코드 칸이 지금 무엇을 받는가 — 다음 스캔(`scan`) 또는 기기 키보드(`type`). */
 export type CodeMode = 'scan' | 'type';
 
@@ -63,11 +66,20 @@ export const LotRow = ({
           {lot.portions.map((portion) => (
             <li key={`${String(portion.warehouseId)}-${String(portion.locationId)}`}>
               <span>{t.lot.portion(portion.warehouseName, portion.locationCode)}</span>
+              {portion.locationSystemRoleCode === STAGING ? (
+                <Chip status="warning">{t.lot.staging}</Chip>
+              ) : null}
               <span>{String(portion.qty)}</span>
             </li>
           ))}
         </ul>
       )}
+
+      {status === 'REJECTED' && lot.oqcResult !== null ? (
+        <p className="picking__note">
+          {t.lot.oqcResult(lot.oqcResult.round, plantClock(lot.oqcResult.resultAt))}
+        </p>
+      ) : null}
 
       {canReplace(lot) ? (
         <Button

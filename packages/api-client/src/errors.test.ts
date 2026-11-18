@@ -147,6 +147,39 @@ describe('normalizeApiError', () => {
    * 상태를 여기서 버리면 화면이 다시 얻을 자리가 없다. 되돌아온 기록의 상세가 응답 코드를
    * 빈 칸으로 내던 것이 그 결과였다 - 서버는 400 을 주었는데 목록에는 남지 않았다.
    */
+  /*
+   * 출하 완료 409 `COMPLETION_BLOCKED` 는 막는 이유 목록(`blockers`)을 함께 싣는다(피처 010). 버리면 화면이
+   * 이유를 보이려고 같은 값을 다시 조회해야 한다.
+   */
+  it('US4-6 409 충돌의 막는 이유(blockers)를 남기고, 모양이 틀린 줄은 버린다', () => {
+    const result = normalizeApiError(409, {
+      code: 'COMPLETION_BLOCKED',
+      message: '막힘',
+      conflictCause: 'user',
+      blockers: [
+        { code: 'PICKING_SHORT', lineNo: 2 },
+        { code: 'REJECTED', lotNo: 'P2611-0003' },
+        { lineNo: 3 },
+        'x',
+      ],
+    });
+
+    expect(result).toEqual({
+      kind: 'conflict',
+      status: 409,
+      cause: 'user',
+      code: 'COMPLETION_BLOCKED',
+      message: '막힘',
+      blockers: [
+        { code: 'PICKING_SHORT', lineNo: 2 },
+        { code: 'REJECTED', lotNo: 'P2611-0003' },
+      ],
+    });
+    expect(normalizeApiError(409, { conflictCause: 'user', message: '' })).not.toHaveProperty(
+      'blockers',
+    );
+  });
+
   it('봉투로 온 오류도 응답 코드를 지고 온다', () => {
     const invalid = normalizeApiError(400, {
       errors: [{ scope: 'screen', code: 'UNIQUE_VIOLATION', message: '이미 있는 값입니다.' }],

@@ -9,13 +9,15 @@ import { toApiError } from '../../patterns/request';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { ConfirmView } from './confirm-view';
 import {
+  blockersOfConflict,
   completeFailureOf,
-  formatQty,
   groupBlockers,
   isAlreadyCompleted,
   isCompletable,
   lookupFailureOf,
+  qtyWithUom,
   totalsOf,
+  uomOf,
   type Completion,
   type CompletionResult,
 } from './model';
@@ -143,13 +145,21 @@ export const PopShipmentCompleteScreen = () => {
           setView({ kind: 'done', result });
         },
         onError: (error) => {
-          const reason = completeFailureOf(toApiError(error));
+          const apiError = toApiError(error);
+          const reason = completeFailureOf(apiError);
           if (reason === 'network' || reason === 'other') {
             /* 같은 멱등 키로 다시 누른다 — 서버가 받았는지 모른다. */
             setFailure(reason === 'network' ? t.failure.network : t.failure.other);
             return;
           }
           complete.resetKey();
+          /* 409 가 실어 온 막는 이유를 그대로 그린다 — 다시 조회하지 않는다. 다른 단말이 바꾼 판정은 [다시 확인]으로 읽는다. */
+          const blockers = reason === 'blocked' ? blockersOfConflict(apiError) : null;
+          if (blockers !== null) {
+            setFailure(t.failure.blocked);
+            setView({ ...confirm, completion: { ...confirm.completion, blockers } });
+            return;
+          }
           if (reason === 'blocked') setFailure(t.failure.blocked);
           if (reason === 'changed') setFailure(t.failure.changed);
           open(confirm.completion.code, confirm.via, true);
@@ -177,7 +187,7 @@ export const PopShipmentCompleteScreen = () => {
             : workerNo === null
               ? t.bar.workerMissing
               : t.bar.ready(
-                  formatQty(totalsOf(view.completion).qty),
+                  qtyWithUom(totalsOf(view.completion).qty, uomOf(view.completion)),
                   totalsOf(view.completion).lotCount,
                 );
 
