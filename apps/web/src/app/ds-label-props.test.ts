@@ -30,7 +30,6 @@ const POP_SCREENS = [
   'material-input-scan',
   'packing-result',
   'pop-material-lot-label',
-  'pqc-inspection',
   'production-result',
   'repack-label-issue',
   'rework-result-register',

@@ -54,6 +54,8 @@ const page = { page: 1, size: 200, total: 1, totalElements: 1, totalPages: 1 };
 
 const UNIT_NO = 'HU-2026-000710';
 const LOT_NO = 'FG-2026-000311';
+/** 두 번째 생산 LOT(같은 품목). `secondLot` 을 켜면 찾을 수 있다. */
+const LOT_NO_2 = 'FG-2026-000312';
 const LOC_CODE = 'FG-A-02-01';
 
 interface Options {
@@ -88,6 +90,10 @@ interface Options {
    * 양품 480 인 생산 LOT 이다.
    */
   scanLot?: { completed?: boolean; goodQty?: number; lotTypeCode?: string };
+  /** 두 번째 생산 LOT(8202 · FG-2026-000312)도 찾을 수 있다. */
+  secondLot?: boolean;
+  /** 이 LOT 들만 이미 재고로 서 있다(`alreadyStocked` 는 전부). */
+  stockedLotIds?: number[];
 }
 
 const routes = (options: Options = {}): StubRoute[] => [
@@ -172,14 +178,15 @@ const routes = (options: Options = {}): StubRoute[] => [
     respond: (req) => {
       options.asked?.push(req.url);
       const lotNo = new URL(req.url).searchParams.get('lotNo');
-      const found = options.scanLot !== undefined && lotNo === LOT_NO;
+      const second = options.secondLot === true && lotNo === LOT_NO_2;
+      const found = options.scanLot !== undefined && (lotNo === LOT_NO || second);
 
       return jsonResponse({
         items: found
           ? [
               {
-                lotId: 8201,
-                lotNo: LOT_NO,
+                lotId: second ? 8202 : 8201,
+                lotNo: second ? LOT_NO_2 : LOT_NO,
                 itemId: 2101,
                 lotTypeCode: options.scanLot?.lotTypeCode ?? 'PRODUCTION',
                 plantId: 1001,
@@ -197,7 +204,8 @@ const routes = (options: Options = {}): StubRoute[] => [
   },
   {
     match: (req) => /\/trace\/lots\/\d+$/.test(new URL(req.url).pathname),
-    respond: () => {
+    respond: (req) => {
+      const second = new URL(req.url).pathname.endsWith('/8202');
       if (options.lotFailed === true) {
         throw new TypeError('Failed to fetch');
       }
@@ -206,8 +214,8 @@ const routes = (options: Options = {}): StubRoute[] => [
 
       return jsonResponse({
         lot: {
-          lotId: 8201,
-          lotNo: LOT_NO,
+          lotId: second ? 8202 : 8201,
+          lotNo: second ? LOT_NO_2 : LOT_NO,
           itemId: 2101,
           lotTypeCode: scanLot?.lotTypeCode ?? (scanLot === undefined ? 'PRODUCT' : 'PRODUCTION'),
           ...(scanLot === undefined
@@ -319,7 +327,18 @@ const routes = (options: Options = {}): StubRoute[] => [
   },
   {
     match: (req) => new URL(req.url).pathname === '/inventory/balances',
-    respond: () => {
+    respond: (req) => {
+      const lotId = Number(new URL(req.url).searchParams.get('lotId'));
+
+      if (options.stockedLotIds !== undefined) {
+        const stocked = options.stockedLotIds.includes(lotId);
+
+        return jsonResponse({
+          items: stocked ? [{ balanceId: 7001, lotId, locationId: 3101, onHandQty: 500 }] : [],
+          page,
+        });
+      }
+
       if (options.stockUnreachable === true) {
         return jsonResponse(
           { code: 'SERVICE_UNAVAILABLE', message: '연결할 수 없습니다.', errors: [] },
@@ -873,6 +892,38 @@ describe('제품 입고·적치 화면', () => {
 
       expect(await screen.findByText(`${LOT_NO} 은(는) 이미 입고한 LOT입니다`)).toBeTruthy();
       expect(screen.queryByLabelText(/실물 수량/)).toBeNull();
+    });
+
+    it('이미 입고한 LOT 을 함께 읽어도 앞서 읽은 LOT 은 남아 보낼 수 있고, 다시 읽어도 거절한다', async () => {
+      const user = userEvent.setup();
+      const seen: Request[] = [];
+      mount({ scanLot: {}, secondLot: true, stockedLotIds: [8202], seen });
+      await scanLotLabel(user);
+      await findLotField();
+
+      scanUnit(LOT_NO_2);
+      expect(await screen.findByText(`${LOT_NO_2} 은(는) 이미 입고한 LOT입니다`)).toBeTruthy();
+
+      /* 다른 번호를 거친 뒤 다시 읽어도 줄이 되살아나지 않는다. */
+      scanUnit(LOT_NO);
+      await waitFor(() => {
+        expect(screen.queryByText(`${LOT_NO_2} 은(는) 이미 입고한 LOT입니다`)).toBeNull();
+      });
+      scanUnit(LOT_NO_2);
+      expect(await screen.findByText(`${LOT_NO_2} 은(는) 이미 입고한 LOT입니다`)).toBeTruthy();
+      expect(screen.getAllByLabelText(/실물 수량/)).toHaveLength(1);
+
+      await pickLocation(user);
+      await readyToSubmit();
+      await user.click(screen.getByRole('button', { name: '입고·적치 완료' }));
+      expect(await screen.findByText('입고하고 적치했습니다')).toBeTruthy();
+
+      const receipt = seen.find(
+        (each) => new URL(each.url).pathname === '/logistics/goods-receipts',
+      );
+      const body = (await receipt?.json()) as { lines: { lotId: number }[] };
+
+      expect(body.lines.map((line) => line.lotId)).toEqual([8201]);
     });
   });
 });

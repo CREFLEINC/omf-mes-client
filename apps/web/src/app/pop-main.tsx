@@ -43,6 +43,7 @@ import { Navigate, Outlet, RouterProvider, createBrowserRouter, useLocation } fr
 import { popRoutes } from '../routes/pop';
 import { applyPopFit } from '../patterns/pop-fit';
 import { usePopIdentity } from '../patterns/pop-identity';
+import { useLegacyOutboxDrain } from '../patterns/pop-legacy-outbox';
 import { PopScreenNav } from '../patterns/pop-screen-nav';
 import { PopTopPrinterTarget, PopTopStatusTarget } from '../patterns/pop-top-status';
 import {
@@ -212,6 +213,8 @@ const PopChrome = () => {
   useRefreshPopTerminalOnScreenEntry();
   const { terminal } = usePopRegistration();
   const { workerNo } = usePopIdentity();
+  /* 없앤 생산 포장·PQC 제품 검사 화면이 단말에 남긴 확정을 마저 보낸다(#293). */
+  useLegacyOutboxDrain(terminal !== null);
   const { pathname } = useLocation();
   /* 맨 위 줄의 화면 상태 자리(연결·전송 표시). 화면이 `PopTopStatus` 로 그 자리에 그린다. */
   const [statusSlot, setStatusSlot] = useState<HTMLElement | null>(null);

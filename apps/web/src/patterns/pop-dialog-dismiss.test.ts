@@ -44,7 +44,6 @@ const POP_SCREEN_DIRS = [
   'emergency-work-order-field',
   'downtime-register',
   'pop-material-lot-label',
-  'pqc-inspection',
   'goods-issue-qr',
   'rework-result-register',
   'production-result',

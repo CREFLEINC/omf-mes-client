@@ -61,8 +61,8 @@ const REQUEST_COMPLETED = 'COMPLETED';
 const EMPTY_FIELD_ERRORS: Record<string, string> = {};
 
 /**
- * 결과를 내보내는 자리. POP 은 오프라인 큐(`useOutbox`), 관리웹은 바로 저장(`useDirectSubmitter`)이다 —
- * 패널은 어느 쪽인지 모른다.
+ * 결과를 내보내는 자리. 관리웹은 바로 저장(`useDirectSubmitter`)이다 — 패널은 내보내는 방법을 모른다
+ * (POP PQC 제품 검사의 오프라인 큐는 #293 에서 화면과 함께 없앴다).
  */
 export type PqcSubmitter = Pick<
   Outbox,
