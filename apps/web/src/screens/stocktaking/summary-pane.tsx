@@ -47,6 +47,8 @@ interface SummaryCell {
  * 비활성으로」라 했으나 실사 헤더를 고치는 오퍼레이션이 계약에 아예 없다(실측) — 비활성
  * 컨트롤을 두면 「언젠가 켜질 수 있는 것」으로 읽힌다.
  *
+ * 블라인드·요약 출처 안내문은 걷었다(사용자 지시 2026-11-18).
+ *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
 export const SummaryPane = ({ count, summary, warehouseName }: SummaryPaneProps) => {
@@ -81,8 +83,6 @@ export const SummaryPane = ({ count, summary, warehouseName }: SummaryPaneProps)
         </dl>
       </div>
 
-      {count.blindCount && <p className="field-note">{t.detail.blindNote}</p>}
-
       <div className="filter-bar" role="group" aria-label={t.detail.summaryLabel}>
         {summaryCells.map((cell) => (
           <StatCard
@@ -97,9 +97,6 @@ export const SummaryPane = ({ count, summary, warehouseName }: SummaryPaneProps)
           />
         ))}
       </div>
-
-      {/* 이 숫자가 어디서 왔는지 밝힌다 — 밝히지 않으면 화면이 센 것으로 읽힌다. */}
-      <p className="field-note">{t.detail.summaryNote}</p>
     </>
   );
 };

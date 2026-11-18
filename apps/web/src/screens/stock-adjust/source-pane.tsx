@@ -154,13 +154,13 @@ export const SourcePane = ({
       ) : (
         <>
           {/*
-           * **비어 있는 것이 정상이다**(조심 ⑤). 경고 표식을 붙이지 않고 「—」와 사실만 적는다 —
-           * 현장 실측과 직접 등록은 실사를 거치지 않는 정상 경로다.
+           * **비어 있는 것이 정상이다**(조심 ⑤). 경고 표식을 붙이지 않고 「—」만 적는다 —
+           * 현장 실측과 직접 등록은 실사를 거치지 않는 정상 경로다. 그 사실을 밝히던 안내문은
+           * 걷었다(사용자 지시 2026-11-18).
            */}
           <div className="field-cell">
             <span className="field-label">{t.source.countRefLabel}</span>
             <span>{t.values.empty}</span>
-            <span className="field-note">{t.source.directNote}</span>
           </div>
 
           <SelectField

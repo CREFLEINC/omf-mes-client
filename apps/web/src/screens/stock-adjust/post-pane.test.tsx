@@ -56,9 +56,6 @@ const toggleButton = (): HTMLElement =>
 
 const postButton = (): HTMLElement => within(pane()).getByRole('button', { name: t.actions.post });
 
-const effectsSection = (): HTMLElement =>
-  within(pane()).getByRole('region', { name: t.post.effectsLabel });
-
 /**
  * ⭐ **접힌 두 번째 선택지**(D-12) — 앞자리 주 버튼은 「조정 상신」이고 이 길은 펼쳐야 나온다.
  */
@@ -92,37 +89,12 @@ describe('PostPane — 접힌 두 번째 선택지', () => {
     expect(document.getElementById(controls ?? '')).not.toBeNull();
   });
 
-  /**
-   * ⭐ **상시 사유는 접혀 있을 때도 선다**(D-12).
-   *
-   * 이 길이 누구의 길인지 밝히지 않으면 결재선이 있는 조정도 여기로 오고, 그때 사용자가
-   * 만나는 것은 이유를 알 수 없는 400이다.
-   */
-  it('접혀 있어도 이 길이 누구의 것인지 밝힌다', () => {
+  /* 구획 첫 줄 안내와 「결재선이 없는 조정만」 상시 사유는 걷었다(사용자 지시 2026-11-18). */
+  it('접혀 있으면 여는 손잡이만 선다', () => {
     renderPane({ isExpanded: false });
 
-    expect(within(pane()).getByText(t.post.onlyWithoutRoute)).toBeVisible();
-  });
-
-  /**
-   * ⭐ **그 사유가 계약보다 넓게 말하지 않는다**(리뷰 R-3 · N-2의 잣대).
-   *
-   * 위 감지기는 **키를 참조**하므로 문면이 어떻게 바뀌든 따라가며 조용히 통과한다 — 옆 문구
-   * (`networkUnconfirmed`)에는 이미 세워 둔 두 절 잣대를 이 문구에도 세운다.
-   *
-   * 서버가 막는 것은 「승인이 필요한데 **끝나지 않았을 때**」이고 결재선의 존재 자체가 이 길을
-   * 영영 막는 것이 아니다. 넓게 적으면 **승인을 받아 낸 사용자가 이 길을 접고**, 그 조정은
-   * 승인만 받은 채 영영 전기되지 않는다 — 세 문장 ②가 막으려던 바로 그 사고다.
-   */
-  it('상시 사유가 승인이 끝나기 전으로 한정해 말한다', () => {
-    expect(t.post.onlyWithoutRoute).toContain('승인이 끝나기 전에는');
-    expect(t.post.onlyWithoutRoute).toContain('승인이 끝난 뒤에 전기하세요');
-
-    /*
-     * **음성 축** — 한정 없는 절이 되살아나면(또는 덧붙으면) 두 `toContain`이 그대로 통과한다.
-     * 한 문장 안에서 넓은 말과 좁은 말이 함께 서면 사용자는 **앞의 것을 읽는다.**
-     */
-    expect(t.post.onlyWithoutRoute).not.toContain('결재선이 있으면 서버가 전기를 막습니다');
+    expect(toggleButton()).toBeVisible();
+    expect(pane().querySelector('p')).toBeNull();
   });
 
   it('펼치면 두 칸과 전기 버튼이 선다', () => {
@@ -155,47 +127,22 @@ describe('PostPane — 접힌 두 번째 선택지', () => {
 });
 
 /**
- * ⭐ **「일어나는 일」 세 문장**(C38) — 버튼이 잠겨 있을 때도 선다.
+ * 「전기하면 일어나는 일」 세 문장은 걷었다(사용자 지시 2026-11-18) — 되돌릴 수 없다는 사실은
+ * 전기 확인 창의 한 줄이 밝힌다.
  */
 describe('PostPane — 일어나는 일 세 문장', () => {
-  it('펼치면 세 문장이 선다', () => {
+  it('펼쳐도 세 문장 구획이 없다', () => {
     renderPane();
 
-    expect(within(effectsSection()).getByText(t.post.effectMovesStock)).toBeVisible();
-    expect(within(effectsSection()).getByText(t.post.effectApprovalIsNotPosting)).toBeVisible();
-    expect(within(effectsSection()).getByText(t.post.effectNoUndoHere)).toBeVisible();
+    expect(postButton()).toBeEnabled();
+    expect(within(pane()).queryByRole('region')).not.toBeInTheDocument();
   });
 
-  /**
-   * ⭐ **잠금과 함께 감추지 않는다.** 감추면 정작 눌릴 수 있는 상태에서만 경고가 뜨는데,
-   * 그때는 이미 사용자가 누르러 온 순간이라 읽지 않는다.
-   */
-  it('버튼이 잠겨 있어도 세 문장이 그대로 선다', () => {
-    renderPane({ blockReason: t.actionReasons.postDraftInvalid, errors: { businessDate: '' } });
+  it('두 칸에 보조 문구를 두지 않는다', () => {
+    renderPane();
 
-    /* 짝 양성 — 버튼이 실제로 잠겼다. */
-    expect(postButton()).toBeDisabled();
-
-    expect(within(effectsSection()).getByText(t.post.effectMovesStock)).toBeVisible();
-    expect(within(effectsSection()).getByText(t.post.effectApprovalIsNotPosting)).toBeVisible();
-    expect(within(effectsSection()).getByText(t.post.effectNoUndoHere)).toBeVisible();
-  });
-
-  /** 나가는 중에도 남는다 — 그 사이에 사라지면 응답을 기다리는 동안 화면이 아무 말도 하지 않는다. */
-  it('나가는 중에도 세 문장이 남는다', () => {
-    renderPane({ isPosting: true, blockReason: t.actionReasons.posting });
-
-    expect(within(pane()).getByText(t.post.posting)).toBeVisible();
-    expect(within(effectsSection()).getByText(t.post.effectMovesStock)).toBeVisible();
-  });
-
-  /** 전기한 뒤에도 남는다 — 무슨 일이 일어났는지가 결과 옆에 그대로 있어야 한다. */
-  it('전기한 뒤에도 세 문장이 남는다', () => {
-    renderPane({
-      posting: readPosting({ adjustedAt: '2026-08-18T14:05:00+09:00', statusCode: 'SAMPLE_S_B' }),
-    });
-
-    expect(within(effectsSection()).getByText(t.post.effectMovesStock)).toBeVisible();
+    expect(within(pane()).getByLabelText(t.post.businessDate)).not.toHaveAccessibleDescription();
+    expect(within(pane()).getByLabelText(t.post.occurredAt)).not.toHaveAccessibleDescription();
   });
 });
 
@@ -312,13 +259,14 @@ describe('PostPane — 전기 결과', () => {
     expect(within(pane()).getByText(t.post.adjustedAtUnknown)).toBeVisible();
   });
 
-  /** 표의 장부·실물이 **등록 시점의 값**이라는 사실을 밝힌다 — 전기 뒤에 다시 부르지 않는다. */
-  it('표의 장부가 낡았다는 사실을 밝힌다', () => {
+  it('전기 뒤에 장부 낡음 안내를 두지 않는다', () => {
     renderPane({
       posting: readPosting({ adjustedAt: '2026-08-18T14:05:00+09:00', statusCode: 'SAMPLE_S_B' }),
     });
 
-    expect(within(pane()).getByText(t.post.bookQtyStale)).toBeVisible();
+    /* 장부 낡음 안내는 걷었다(사용자 지시 2026-11-18). */
+    expect(within(pane()).getByText(t.post.postedTitle('SAMPLE-IA-9301'))).toBeVisible();
+    expect(within(pane()).queryByText(/전기 뒤에 다시 부르지 않습니다/)).not.toBeInTheDocument();
   });
 
   /**

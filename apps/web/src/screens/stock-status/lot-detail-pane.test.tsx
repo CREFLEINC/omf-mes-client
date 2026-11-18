@@ -3,7 +3,6 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { EXPIRY_SOON_DAYS } from './expiry';
 import { balance, expiredLotDetail, heldLotDetail, plainLotDetail } from './fixtures';
 import { LotDetailPane, type LotDetailPaneProps } from './lot-detail-pane';
 import type { ReferenceSource } from './lookups';
@@ -88,14 +87,11 @@ describe('LotDetailPane — 수량 다섯', () => {
     expect(valueOf(t.detail.availableQty)).not.toContain('85');
   });
 
-  /*
-   * **어느 수량인지는 조회 조건이 정한다.** 계약의 LOT 상세는 초기 수량만 갖고 지금 남은 양은
-   * 잔액 줄이 나른다 — 밝히지 않으면 사용자가 그 LOT의 전체 재고로 읽는다.
-   */
-  it('수량이 조회 조건에 걸린 줄의 것임을 밝힌다', () => {
+  /* 수량 출처 안내문은 걷었다(사용자 지시 2026-11-18). */
+  it('수량 아래에 안내문을 두지 않는다', () => {
     renderPane();
 
-    expect(screen.getByText(t.detail.quantitiesNote)).toBeInTheDocument();
+    expect(document.querySelector('p.field-note')).toBeNull();
   });
 
   it('수량의 단위를 이름으로 낸다', () => {
@@ -122,23 +118,20 @@ describe('LotDetailPane — 유효기한 표식', () => {
   });
 
   /* 선행 단언의 짝 — 표식이 늘 붙는 것이 아님을 값으로 고정한다. */
-  it('유효기한이 없으면 표식도 안내도 없다', () => {
+  it('유효기한이 없으면 표식이 없다', () => {
     renderPane({ detail: plainLotDetail() });
 
     expect(screen.queryByText(t.detail.expirySoon)).not.toBeInTheDocument();
     expect(screen.queryByText(t.detail.expiryPassed)).not.toBeInTheDocument();
-    expect(screen.queryByText(t.detail.expiryNote(EXPIRY_SOON_DAYS))).not.toBeInTheDocument();
     expect(valueOf(t.detail.expiryDate)).toBe(t.values.empty);
   });
 
-  /*
-   * **표식일 뿐 조치가 아니다** — 기한이 지나도 보류가 자동으로 걸리지 않는다는 사실을
-   * 화면이 말한다(이슈 §4 미결 5). 기준 일수도 미확정이라 상수에서 받아 적는다.
-   */
-  it('표식이 붙으면 자동 보류가 없다는 사실을 함께 밝힌다', () => {
+  /* 표식 옆에 붙던 기준 일수·자동 보류 안내문은 걷었다(사용자 지시 2026-11-18). */
+  it('표식이 붙어도 안내문을 두지 않는다', () => {
     renderPane({ detail: expiredLotDetail(TODAY) });
 
-    expect(screen.getByText(t.detail.expiryNote(EXPIRY_SOON_DAYS))).toBeInTheDocument();
+    expect(screen.getByText(t.detail.expiryPassed)).toBeInTheDocument();
+    expect(document.querySelector('p.field-note')).toBeNull();
   });
 });
 
@@ -194,10 +187,11 @@ describe('LotDetailPane — 보류', () => {
     expect(screen.getByText('SAMPLE_HOLD_R_A')).toBeInTheDocument();
   });
 
-  it('보류 구획에 의심자재 등록 경로가 안내된다', () => {
+  /* 화면 코드가 든 의심자재 등록 경로 안내는 걷었다(사용자 지시 2026-11-18). */
+  it('보류 구획에 의심자재 등록 경로 안내가 없다', () => {
     renderPane();
 
-    expect(screen.getByText(t.detail.holds.suspectMaterialPath)).toBeInTheDocument();
+    expect(screen.queryByText(/W-03-03/)).not.toBeInTheDocument();
   });
 });
 

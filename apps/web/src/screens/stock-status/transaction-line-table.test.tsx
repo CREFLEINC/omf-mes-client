@@ -168,11 +168,11 @@ describe('TransactionLineTable — 값 표기', () => {
     expect(transfer).not.toContain(t.values.unknown);
   });
 
-  /* 밝히지 않으면 「(다른 창고의 위치)」가 자료 누락으로 읽힌다. */
-  it('위치 이름의 범위를 밝힌다', () => {
+  /* 위치 이름의 범위를 밝히던 안내문은 걷었다(사용자 지시 2026-11-18). */
+  it('표 아래에 위치 이름 범위 안내문을 두지 않는다', () => {
     renderTable();
 
-    expect(screen.getByText(t.history.lines.scopeNote)).toBeInTheDocument();
+    expect(document.querySelector('p.field-note')).toBeNull();
   });
 
   /* 같은 창고인데 목록에 없는 위치는 「알 수 없음」이 맞다 — 값이 잘못됐다는 뜻이다. */

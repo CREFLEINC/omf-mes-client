@@ -41,11 +41,8 @@ export interface PostConfirmDialogProps {
  * 여기서 확인시키는 것은 **무엇이 언제 자로 원장에 잡히는가**다 — 조정의 내용은 이미 서버에
  * 있고 이 창이 고칠 수 없다.
  *
- * ### 「일어나는 일」 세 문장이 **버튼이 잠겨 있을 때도** 서는 이유 (C38)
- *
- * 잠금과 함께 감추면 정작 눌릴 수 있는 상태에서만 경고가 뜨는데, 그때는 이미 사용자가 누르러
- * 온 순간이라 읽지 않는다. **같은 세 문장이 구획에도 상시로 선다** — 두 자리가 **같은 문구를
- * 나눠 쓰므로**(`t.post.effect*`) 한쪽만 고쳐져 갈리는 길이 없다.
+ * **되돌릴 수 없다는 사실은 한 줄(`dialog.postLead`)로만 밝힌다.** 그 아래 붙던 「전기하면
+ * 일어나는 일」 세 문장은 걷었다(사용자 지시 2026-11-18).
  *
  * **두 날짜가 갈려도 막지 않는다**(공유계약 C-8). 자정을 넘겨 일한 조정이면 그것이 정상이고,
  * 막으면 어제 자 조정을 전기할 길이 사라진다 — 화면은 **밝히기만 한다.**
@@ -108,16 +105,5 @@ export const PostConfirmDialog = ({
 
     {/* 갈린 날짜는 **막지 않고 밝힌다** — 뜻한 값인지 실수인지는 사용자가 안다. */}
     {summary.isBusinessDateApart && <p className="field-note">{t.dialog.postDatesApart}</p>}
-
-    {/*
-     * 무엇이 일어나는지가 실행 버튼 바로 위에 선다. **잠겨 있을 때도 그대로다**(C38) —
-     * 구획으로 감싸 이름을 붙이는 것은 스크린리더가 세 문장을 한 덩어리로 읽게 하기 위해서다.
-     */}
-    <section aria-label={t.post.effectsLabel}>
-      <p className="field-label">{t.post.effectsLabel}</p>
-      <p>{t.post.effectMovesStock}</p>
-      <p>{t.post.effectApprovalIsNotPosting}</p>
-      <p>{t.post.effectNoUndoHere}</p>
-    </section>
   </Dialog>
 );

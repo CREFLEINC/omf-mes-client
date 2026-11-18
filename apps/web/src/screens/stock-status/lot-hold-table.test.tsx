@@ -133,21 +133,20 @@ describe('LotHoldTable — 표기', () => {
 
 describe('LotHoldTable — 의심자재 등록', () => {
   /*
-   * **경로 안내뿐이고 등록 수단이 아니다**(이슈 §6). 그 화면(W-03-03)이 아직 없어
-   * 링크를 만들면 죽은 링크가 되고, 버튼으로 만들면 이 조회 화면이 쓰기를 갖게 된다.
+   * **등록 수단을 두지 않는다**(이슈 §6) — 조회 전용 화면이다. 화면 코드가 든 경로 안내문도
+   * 걷었다(사용자 지시 2026-11-18).
    */
-  it('경로를 안내하되 링크도 버튼도 아니다', () => {
-    renderHolds();
+  it('경로 안내도 링크도 버튼도 없다', () => {
+    const { container } = renderHolds();
 
-    expect(screen.getByText(t.detail.holds.suspectMaterialPath)).toBeInTheDocument();
+    expect(container.querySelector('.field-note')).toBeNull();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  /* 보류가 없어도 안내는 남는다 — 의심자재를 등록할 자리는 보류 유무와 무관하다. */
-  it('보류가 없어도 경로 안내가 남는다', () => {
-    renderHolds({ holds: [] });
+  it('보류가 없어도 경로 안내가 없다', () => {
+    const { container } = renderHolds({ holds: [] });
 
-    expect(screen.getByText(t.detail.holds.suspectMaterialPath)).toBeInTheDocument();
+    expect(container.querySelector('.field-note')).toBeNull();
   });
 });

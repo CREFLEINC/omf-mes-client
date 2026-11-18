@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { formatTransactionAt } from './as-of';
-import { classifyExpiry, EXPIRY_SOON_DAYS } from './expiry';
+import { classifyExpiry } from './expiry';
 import { describeReference, toReference, type ReferenceSource } from './lookups';
 import { LotHoldTable } from './lot-hold-table';
 import type { BalanceView, LotDetailView, LotExternalIdentifierView } from './types';
@@ -199,20 +199,8 @@ export const LotDetailPane = ({
     <>
       <SummaryList label={t.detail.attributes(lot.lotNo)} items={attributes} />
 
-      {/*
-       * **표식일 뿐 조치가 아니다.** 기한이 지나도 보류가 자동으로 걸리지 않는다는 사실과
-       * 기준 일수가 아직 확정되지 않았다는 사실을 함께 밝힌다(이슈 §4 미결 2·5).
-       * 표식이 없으면 내지 않는다 — 늘 떠 있으면 읽히지 않는다.
-       */}
-      {expiry !== 'none' && <p className="field-note">{t.detail.expiryNote(EXPIRY_SOON_DAYS)}</p>}
-
+      {/* 유효기한 기준·수량 출처 안내문은 걷었다(사용자 지시 2026-11-18). */}
       <SummaryList label={t.detail.quantities} items={quantities} />
-
-      {/*
-       * **어느 수량인지는 조회 조건이 정한다.** 밝히지 않으면 사용자가 그 LOT의 전체 재고로
-       * 읽는다 — 창고·위치·상태로 좁힌 줄의 수량이다.
-       */}
-      <p className="field-note">{t.detail.quantitiesNote}</p>
 
       {/*
        * **빈 상태를 만드는 자리는 하나다** — 표를 늘 그리고 `empty` 슬롯이 0건을 맡는다.

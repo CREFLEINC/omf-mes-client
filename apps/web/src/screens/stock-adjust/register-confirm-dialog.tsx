@@ -115,8 +115,10 @@ export const RegisterConfirmDialog = ({
         : t.dialog.noExcludedLine}
     </p>
 
-    {/* 무엇이 일어나고 무엇이 아직 일어나지 않는지가 실행 버튼 바로 위에 선다. */}
-    <p>{t.dialog.registerIsNotPost}</p>
+    {/*
+     * 되돌릴 수 없다는 한 줄만 실행 버튼 바로 위에 선다. 「등록만 합니다」 안내는 걷었다
+     * (사용자 지시 2026-11-18).
+     */}
     <p>{t.dialog.registerNoUndo}</p>
   </Dialog>
 );

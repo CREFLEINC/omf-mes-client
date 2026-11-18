@@ -35,7 +35,7 @@ const renderForm = (
 ) => {
   const onChange = vi.fn();
 
-  render(
+  const view = render(
     <HeaderForm
       values={{ ...VALUES, ...overrides }}
       reasonOptions={props.reasonOptions ?? REASON_OPTIONS}
@@ -46,7 +46,7 @@ const renderForm = (
     />,
   );
 
-  return { onChange, user: userEvent.setup() };
+  return { ...view, onChange, user: userEvent.setup() };
 };
 
 describe('HeaderForm — 계약이 받는 두 값', () => {
@@ -117,14 +117,12 @@ describe('HeaderForm — 계약이 받는 두 값', () => {
     expect(screen.getByLabelText(t.fields.sendToErp)).not.toBeChecked();
   });
 
-  /**
-   * **연계 방식은 서버가 정한다**(미결 #66 · D-11). 화면이 정하는 것은 보낼지 여부 하나이고,
-   * 그 사실만 토글 옆에 적는다 — 자리표시 상수를 두지 않는다.
-   */
-  it('보내는 방식은 서버가 정한다는 사실이 토글 옆에 선다', () => {
-    renderForm();
+  /* 토글 옆의 보내는 방식 안내는 걷었다(사용자 지시 2026-11-18). */
+  it('ERP 송신 토글 옆에 안내문을 두지 않는다', () => {
+    const { container } = renderForm();
 
-    expect(screen.getByText(t.notes.sendToErpNote)).toBeVisible();
+    expect(screen.getByLabelText(t.fields.sendToErp)).toBeInTheDocument();
+    expect(container.querySelector('.field-note')).toBeNull();
   });
 });
 

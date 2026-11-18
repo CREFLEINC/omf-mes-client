@@ -35,23 +35,10 @@ import { StockAdjustScreen } from './screen';
 
 const t = messages.stockAdjust;
 
-/**
- * 전표 상태 값 목록 — **미확정 자리표시를 갈아 끼운다**(전례 `disposal-issue`와 같은 형태).
- *
- * **판정·조립·잠금은 실물 그대로**이고 바뀌는 것은 「값 목록이 왔다」는 사실 하나다.
- *
- * ⭐ **조정 사유는 여기 없다** — 고객이 공통코드 마스터에 등록하는 값으로 결정돼(#36 회신)
- * 자리표시가 아니라 **실제 조회**로 온다. 그래서 그 목록은 목이 아니라 아래 스텁이 채운다.
+/*
+ * 전표 상태 값 목록 자리표시(`code-options.ts`)는 이력 상태 조건과 함께 걷었다(사용자 지시
+ * 2026-11-18). 조정 사유는 고객이 공통코드 마스터에 등록하는 값이라 아래 스텁이 채운다.
  */
-const { codeValues } = vi.hoisted(() => ({
-  codeValues: { status: [] as string[] },
-}));
-
-vi.mock('./code-options', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./code-options')>();
-
-  return { ...actual, PLACEHOLDER_STOCK_ADJUST_CODES: codeValues };
-});
 
 /**
  * 고객이 공통코드 마스터에 등록해 둔 조정 사유 — **화면이 조회로 받는다.**
@@ -71,7 +58,6 @@ const SECOND_REASON_LABEL = 'SYN-RSN-OMEGA · 합성 사유 나';
 let reasonCodeValues: unknown[] = [];
 
 beforeEach(() => {
-  codeValues.status = [];
   reasonCodeValues = [];
 });
 
@@ -695,7 +681,7 @@ describe('StockAdjustScreen — 직접 등록 갈래', () => {
   it('대상 실사가 빈 값 표식으로 보이고 경고 표식이 붙지 않는다', async () => {
     renderScreen(allRoutes(), '');
 
-    await screen.findByText(t.source.directNote);
+    await screen.findByLabelText(t.source.warehouseField);
 
     expect(within(sourcePane()).getByText(t.values.empty)).toBeInTheDocument();
     expect(within(sourcePane()).queryByRole('alert')).not.toBeInTheDocument();
@@ -704,7 +690,7 @@ describe('StockAdjustScreen — 직접 등록 갈래', () => {
   it('창고를 고르기 전에는 라인 추가가 사유와 함께 잠긴다', async () => {
     const { user } = renderScreen(allRoutes(), '');
 
-    await screen.findByText(t.source.directNote);
+    await screen.findByLabelText(t.source.warehouseField);
     await user.click(screen.getByRole('radio', { name: t.source.direct }));
 
     expect(addLineButton()).toBeDisabled();
@@ -716,7 +702,7 @@ describe('StockAdjustScreen — 직접 등록 갈래', () => {
   it('줄을 더하면 위치·품목·LOT·단위를 고를 수 있다', async () => {
     const { user } = renderScreen(allRoutes(), '');
 
-    await screen.findByText(t.source.directNote);
+    await screen.findByLabelText(t.source.warehouseField);
     await startDirectLine(user);
 
     expect(screen.getByLabelText(t.lineTable.locationLabel(1))).toBeInTheDocument();
@@ -732,7 +718,7 @@ describe('StockAdjustScreen — 직접 등록 갈래', () => {
   it('위치를 고르면 잔액 조회가 그 위치당 1회 나간다', async () => {
     const { requests, user } = renderScreen(allRoutes(), '');
 
-    await screen.findByText(t.source.directNote);
+    await screen.findByLabelText(t.source.warehouseField);
     await startDirectLine(user);
 
     expect(requestsTo(requests, BALANCES_PATH)).toHaveLength(0);
@@ -750,7 +736,7 @@ describe('StockAdjustScreen — 직접 등록 갈래', () => {
   it('같은 위치의 줄이 둘이어도 잔액 조회는 하나다', async () => {
     const { requests, user } = renderScreen(allRoutes(), '');
 
-    await screen.findByText(t.source.directNote);
+    await screen.findByLabelText(t.source.warehouseField);
     await startDirectLine(user);
 
     await user.click(screen.getByLabelText(t.lineTable.locationLabel(1)));
@@ -768,7 +754,7 @@ describe('StockAdjustScreen — 직접 등록 갈래', () => {
   it('장부를 찾으면 그 값이 서고 실물이 따라 선다', async () => {
     const { user } = renderScreen(allRoutes(), '');
 
-    await screen.findByText(t.source.directNote);
+    await screen.findByLabelText(t.source.warehouseField);
     await startDirectLine(user);
 
     await user.click(screen.getByLabelText(t.lineTable.locationLabel(1)));
@@ -795,7 +781,7 @@ describe('StockAdjustScreen — 직접 등록 갈래', () => {
   it('장부에서 못 찾으면 빈 값 표식이고 그 사실을 적는다', async () => {
     const { user } = renderScreen(allRoutes(), '');
 
-    await screen.findByText(t.source.directNote);
+    await screen.findByLabelText(t.source.warehouseField);
     await startDirectLine(user);
 
     await user.click(screen.getByLabelText(t.lineTable.locationLabel(1)));
@@ -810,9 +796,16 @@ describe('StockAdjustScreen — 직접 등록 갈래', () => {
     await user.click(screen.getByRole('option', { name: UOM_LABEL }));
     await user.type(diffBox(1), '-20');
 
-    await screen.findByText(t.notes.bookQtyOptional);
+    /* 장부 미확인 안내문은 걷었다(사용자 지시 2026-11-18) — 빈 장부 칸이 설 때까지 기다린다. */
+    await waitFor(() => {
+      expect(cellsOf(0)[3]).toBe(t.values.empty);
+    });
+    expect(
+      screen.queryByText(
+        '장부를 확인하지 못한 줄도 조정할 수 있습니다. 차이 수량만 있으면 됩니다.',
+      ),
+    ).not.toBeInTheDocument();
 
-    expect(cellsOf(0)[3]).toBe(t.values.empty);
     expect(cellsOf(0)[4]).toBe(t.values.empty);
     /* 그 줄이 오류로 막히지 않는다 — 장부를 몰라도 조정할 수 있다. */
     expect(diffBox(1)).toBeValid();
@@ -884,28 +877,24 @@ describe('StockAdjustScreen — 차이 수량', () => {
  * ⭐ **잔량을 직접 고치지 않는다**(조심 ③ · C6·C13·C14).
  */
 describe('StockAdjustScreen — 세 열과 범위 안내', () => {
-  it('수불 원장 안내가 상시 선다', async () => {
+  /* 탭 위 범위 안내 배너와 표 위 실물·음수 안내문은 걷었다(사용자 지시 2026-11-18). */
+  it('범위 안내 배너가 없다', async () => {
     renderScreen(allRoutes(), '');
 
-    expect(screen.getByText(t.scope.title)).toBeInTheDocument();
-    expect(screen.getByText(t.scope.description)).toBeInTheDocument();
+    await screen.findByLabelText(t.source.warehouseField);
+
+    expect(screen.queryByText('조정은 수불 원장에 기록됩니다')).not.toBeInTheDocument();
   });
 
-  it('맥락이 없어도 안내가 접히지 않는다', async () => {
-    renderScreen(allRoutes(), '?count=abc');
-
-    await waitFor(() => {
-      expect(screen.getByRole('radio', { name: t.source.direct })).toBeChecked();
-    });
-
-    expect(screen.getByText(t.scope.title)).toBeInTheDocument();
-  });
-
-  it('실물이 파생이라는 사실과 음수가 정상이라는 사실을 적는다', async () => {
+  it('표 위에 실물·음수 안내문이 없다', async () => {
     renderScreen(allRoutes(), '');
 
-    expect(screen.getByText(t.notes.actualDerived)).toBeInTheDocument();
-    expect(screen.getByText(t.notes.negativeAllowed)).toBeInTheDocument();
+    await screen.findByLabelText(t.source.warehouseField);
+
+    expect(
+      screen.queryByText('실물은 장부에 차이를 더한 값입니다. 직접 고치지 않습니다.'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('줄이는 조정은 차이를 음수로 넣습니다.')).not.toBeInTheDocument();
   });
 
   /**
@@ -945,11 +934,13 @@ describe('StockAdjustScreen — 세 열과 범위 안내', () => {
  * ⛔ **승인 대기 탭을 두지 않는다**(조심 ① · D-3).
  */
 describe('StockAdjustScreen — 결재는 결재함이 소유한다', () => {
-  it('결재함을 가리키는 안내가 상시 선다', () => {
+  /* 탭 위 결재 안내 배너는 걷었다(사용자 지시 2026-11-18). */
+  it('결재 안내 배너가 없다', async () => {
     renderScreen(allRoutes(), '');
 
-    expect(screen.getByText(t.approvalNotice.title)).toBeInTheDocument();
-    expect(screen.getByText(t.approvalNotice.description)).toBeInTheDocument();
+    await screen.findByLabelText(t.source.warehouseField);
+
+    expect(screen.queryByText('결재는 결재함에서 합니다')).not.toBeInTheDocument();
   });
 
   it('승인·반려 조작이 0건이다', async () => {
@@ -1014,7 +1005,7 @@ describe('StockAdjustScreen — 조정 사유 값 목록', () => {
     renderScreen(allRoutes(), '');
 
     expect(reasonField()).toBeEnabled();
-    expect(screen.queryByText(t.historyFilters.codePending)).toBeNull();
+    expect(screen.queryByText(messages.pendingCode.note)).toBeNull();
     /* 문면이 바뀐 같은 뜻의 안내가 되살아나는 자리까지 막는다. */
     expect(registerPane().textContent ?? '').not.toContain('확정');
   });
@@ -1071,13 +1062,16 @@ describe('StockAdjustScreen — 조정 사유 값 목록', () => {
  * 실사에서 실려 온 사유만 읽기 전용 글자로 보인다.
  */
 describe('StockAdjustScreen — 라인 사유', () => {
-  it('실사에서 온 사유가 글자로 보이고 그 사실을 적는다', async () => {
+  it('실사에서 온 사유가 글자로 보인다', async () => {
     const { user } = renderScreen(allRoutes());
 
     await loadVariance(user);
 
     expect(screen.getByText(t.lineTable.countReason('SAMPLE_VR_A'))).toBeInTheDocument();
-    expect(screen.getByText(t.notes.lineReasonReadOnly)).toBeInTheDocument();
+    /* 읽기 전용 안내문은 걷었다(사용자 지시 2026-11-18). */
+    expect(
+      screen.queryByText('실사에서 적은 사유는 참고로만 보입니다. 이 화면에서 고치지 않습니다.'),
+    ).not.toBeInTheDocument();
   });
 
   it('표에 사유 선택칸이 0건이다', async () => {
@@ -1166,7 +1160,7 @@ describe('StockAdjustScreen — 조회 실패', () => {
   it('장부 조회가 실패하면 장부 자리에 사유가 선다', async () => {
     const { user } = renderScreen(allRoutes([failingRoute(BALANCES_PATH, 500)]), '');
 
-    await screen.findByText(t.source.directNote);
+    await screen.findByLabelText(t.source.warehouseField);
     await startDirectLine(user);
 
     await user.click(screen.getByLabelText(t.lineTable.locationLabel(1)));
@@ -1184,7 +1178,7 @@ describe('StockAdjustScreen — 조회 실패', () => {
   it('장부 조회 실패에 다시 시도가 붙고 누르면 다시 나간다', async () => {
     const { requests, user } = renderScreen(allRoutes([failingRoute(BALANCES_PATH, 500)]), '');
 
-    await screen.findByText(t.source.directNote);
+    await screen.findByLabelText(t.source.warehouseField);
     await startDirectLine(user);
 
     await user.click(screen.getByLabelText(t.lineTable.locationLabel(1)));
@@ -1454,32 +1448,18 @@ describe('StockAdjustScreen — 장부가 없이 오는 실사', () => {
     expect(cellsOf(0)[4]).toBe(t.values.empty);
   });
 
-  /**
-   * **이유 없는 대시를 남기지 않는다**(리뷰 N-3 — 장부를 `null`로 받게 한 수정의 2차 효과).
-   *
-   * 승계 줄은 사용자가 채울 것이 아무것도 없는데 두 열이 통째로 비어 있다 — 왜 비었는지와
-   * 그래도 조정할 수 있다는 것을 함께 말하지 않으면 사용자가 화면을 고장으로 읽는다.
-   */
-  it('왜 비었는지와 그래도 조정할 수 있다는 것을 함께 말한다', async () => {
+  /* 장부 미확인 안내문은 걷었다(사용자 지시 2026-11-18) — 빈 장부여도 안내문이 서지 않는다. */
+  it('장부가 비어도 안내문을 두지 않는다', async () => {
     const { user } = renderScreen(allRoutes([blindVarianceRoute()]));
 
     await loadVariance(user);
 
-    expect(screen.getByText(t.notes.bookQtyOptional)).toBeInTheDocument();
-  });
-
-  /**
-   * ⛔ **짝 방향 — 갓 더한 빈 줄에는 서지 않는다.** 승계 줄이 아닌 `notAsked`까지 더하면
-   * 줄을 더할 때마다 안내가 떠서 정상 상태가 사고처럼 보인다.
-   */
-  it('갓 더한 빈 줄에는 그 안내가 서지 않는다', async () => {
-    const { user } = renderScreen(allRoutes(), '');
-
-    await screen.findByText(t.source.directNote);
-    await startDirectLine(user);
-
-    expect(screen.getByText(t.lineTable.bookQty)).toBeInTheDocument();
-    expect(screen.queryByText(t.notes.bookQtyOptional)).not.toBeInTheDocument();
+    expect(cellsOf(0)[3]).toBe(t.values.empty);
+    expect(
+      screen.queryByText(
+        '장부를 확인하지 못한 줄도 조정할 수 있습니다. 차이 수량만 있으면 됩니다.',
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it.each(['undefined', 'NaN'])('%o가 화면에 서지 않는다', async (word) => {
@@ -1694,7 +1674,7 @@ describe('StockAdjustScreen — 등록이 막힌 사유', () => {
 
     const { user } = renderScreen(allRoutes(), '');
 
-    await screen.findByText(t.source.directNote);
+    await screen.findByLabelText(t.source.warehouseField);
     await chooseReason(user);
 
     expect(registerButton()).toBeDisabled();
@@ -1781,7 +1761,7 @@ describe('StockAdjustScreen — 실사 차이가 잘린 채로는 등록하지 �
       '',
     );
 
-    await screen.findByText(t.source.directNote);
+    await screen.findByLabelText(t.source.warehouseField);
     await fillDirectLine(user);
     await chooseReason(user);
 
@@ -2051,7 +2031,7 @@ describe('StockAdjustScreen — 등록 요청', () => {
 
     const { requests, user } = renderScreen(registerRoutes(), '');
 
-    await screen.findByText(t.source.directNote);
+    await screen.findByLabelText(t.source.warehouseField);
     await fillDirectLine(user);
     await chooseReason(user);
     await submitRegister(user);
@@ -2506,7 +2486,7 @@ describe('StockAdjustScreen — 초안 버리기', () => {
   it('버릴 값이 없으면 잠기고 그 사정을 말한다', async () => {
     renderScreen(allRoutes(), '');
 
-    await screen.findByText(t.source.directNote);
+    await screen.findByLabelText(t.source.warehouseField);
 
     expect(discardButton()).toBeDisabled();
     expect(screen.getByText(t.actionReasons.discardNothing)).toBeInTheDocument();
@@ -2526,7 +2506,7 @@ describe('StockAdjustScreen — 초안 버리기', () => {
 
     const { user } = renderScreen(allRoutes(), '');
 
-    await screen.findByText(t.source.directNote);
+    await screen.findByLabelText(t.source.warehouseField);
     await chooseReason(user);
 
     expect(discardButton()).toBeEnabled();
@@ -3269,7 +3249,10 @@ describe('StockAdjustScreen — 상신 확인 창', () => {
     expect(within(dialog).getByText('SAMPLE-IA-9301')).toBeVisible();
     expect(within(first).getByText('요약 줄')).toBeVisible();
     expect(within(full).getByText('요약 줄')).toBeVisible();
-    expect(within(first).getByText(t.dialog.reasonSummaryNote)).toBeVisible();
+    /* 「첫 줄만 보입니다」 안내는 걷었다(사용자 지시 2026-11-18). */
+    expect(
+      within(first).queryByText('결재함 목록에서는 이 첫 줄만 보입니다.'),
+    ).not.toBeInTheDocument();
   });
 
   /**
@@ -3511,12 +3494,11 @@ describe('StockAdjustScreen — 상신 성공', () => {
   });
 
   /**
-   * ⭐ **자리표시가 잠금이 아니라 안내를 정한다**(D-13 · C37).
-   *
-   * 비어 있는 동안에는 「판정하지 못합니다」가 서고, 그 사실이 **어떤 버튼도 잠그지 않는다** —
-   * 이 구획에는 버튼이 0건이고 화면의 다른 조작도 승인 축으로 잠기지 않는다.
+   * ⭐ **자리표시가 잠금을 정하지 않는다**(D-13 · C37). 비어 있는 동안 어떤 버튼도 잠그지
+   * 않고 「승인되었습니다」도 서지 않는다. 「판정하지 못합니다」·「승인은 재고를 움직이지
+   * 않습니다」 안내문은 걷었다(사용자 지시 2026-11-18).
    */
-  it('승인 판정을 못 한다는 사실이 안내로만 선다', async () => {
+  it('승인 판정을 못 하는 동안 안내문도 승인 표기도 없다', async () => {
     withReasonCodes();
 
     const { user } = renderScreen(submitRoutes());
@@ -3526,9 +3508,11 @@ describe('StockAdjustScreen — 상신 성공', () => {
 
     await screen.findByText('SAMPLE-AP-0001');
 
-    expect(within(progressPane()).getByText(t.progress.unjudgeableNote)).toBeVisible();
+    expect(within(progressPane()).queryByText(/판정하지 못합니다/)).not.toBeInTheDocument();
     expect(within(progressPane()).queryByText(t.progress.approvedNote)).not.toBeInTheDocument();
-    expect(within(progressPane()).getByText(t.progress.postSeparateNote)).toBeVisible();
+    expect(
+      within(progressPane()).queryByText(/승인은 재고를 움직이지 않습니다/),
+    ).not.toBeInTheDocument();
   });
 
   /** 결재 진행을 못 읽어도 **상신은 이미 접수됐다** — 화면 배너로 번지지 않는다. */
@@ -4371,18 +4355,15 @@ describe('StockAdjustScreen — 전기 자리', () => {
     expect(screen.queryByRole('region', { name: t.post.label })).not.toBeInTheDocument();
   });
 
-  /**
-   * ⭐ **접혀 있어도 상시 사유가 선다**(D-12). 이 길이 누구의 것인지 밝히지 않으면 결재선이
-   * 있는 조정도 여기로 오고, 그때 사용자가 만나는 것은 이유를 알 수 없는 400이다.
-   */
-  it('등록하면 접힌 채로 서고 이 길이 누구의 것인지 밝힌다', async () => {
+  /* 접힌 전기 구획의 상시 사유(「결재선이 없는 조정만」)는 걷었다(사용자 지시 2026-11-18). */
+  it('등록하면 접힌 채로 선다', async () => {
     withReasonCodes();
 
     const { user } = renderScreen(postRoutes());
 
     await registerThenPostReady(user);
 
-    expect(within(postPane()).getByText(t.post.onlyWithoutRoute)).toBeVisible();
+    expect(within(postPane()).queryByText(/결재선이 없는 조정만/)).not.toBeInTheDocument();
     expect(togglePostButton()).toHaveAttribute('aria-expanded', 'false');
     expect(within(postPane()).queryByLabelText(t.post.businessDate)).not.toBeInTheDocument();
     expect(
@@ -4644,12 +4625,11 @@ describe('StockAdjustScreen — 전기 확인 창', () => {
     expect(within(dialog).getByText('2026-08-18 00:30')).toBeVisible();
     /* 두 날짜가 갈렸다는 사실을 밝히되 막지 않는다(공유계약 C-8). */
     expect(within(dialog).getByText(t.dialog.postDatesApart)).toBeVisible();
-
-    const effects = within(dialog).getByRole('region', { name: t.post.effectsLabel });
-
-    expect(within(effects).getByText(t.post.effectMovesStock)).toBeVisible();
-    expect(within(effects).getByText(t.post.effectApprovalIsNotPosting)).toBeVisible();
-    expect(within(effects).getByText(t.post.effectNoUndoHere)).toBeVisible();
+    /* 되돌릴 수 없다는 한 줄만 남고 「전기하면 일어나는 일」 세 문장은 걷었다(사용자 지시 2026-11-18). */
+    expect(within(dialog).getByText(t.dialog.postLead)).toBeVisible();
+    expect(
+      within(dialog).queryByRole('region', { name: '전기하면 일어나는 일' }),
+    ).not.toBeInTheDocument();
   });
 
   /**
@@ -4810,7 +4790,10 @@ describe('StockAdjustScreen — 전기 성공', () => {
     await screen.findByText(t.post.postedTitle('SAMPLE-IA-9301'));
 
     expect(within(resultPane()).getByText(t.result.createdTitle('SAMPLE-IA-9301'))).toBeVisible();
-    expect(within(postPane()).getByText(t.post.bookQtyStale)).toBeVisible();
+    /* 전기 뒤 장부 낡음 안내문은 걷었다(사용자 지시 2026-11-18). */
+    expect(
+      within(postPane()).queryByText(/전기 뒤에 다시 부르지 않습니다/),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -5699,12 +5682,13 @@ describe('StockAdjustScreen — 탭', () => {
 
     await waitForCounts();
 
-    expect(screen.queryByText(t.historyFilters.periodNote)).not.toBeInTheDocument();
+    /* 두 탭의 안내문을 걷어(사용자 지시 2026-11-18) 각 탭에만 있는 라벨 글자로 잰다. */
+    expect(screen.queryAllByText(t.historyFields.period)).toHaveLength(0);
 
     await openHistoryTab(user);
 
-    expect(screen.getByText(t.historyFilters.periodNote)).toBeInTheDocument();
-    expect(screen.queryByText(t.notes.actualDerived)).not.toBeInTheDocument();
+    expect(screen.getAllByText(t.historyFields.period).length).toBeGreaterThan(0);
+    expect(screen.queryByText(t.source.kindLabel)).not.toBeInTheDocument();
   });
 
   /** 주소가 정본이다 — 공유한 주소가 같은 탭을 연다. */
@@ -5773,19 +5757,19 @@ describe('StockAdjustScreen — 탭', () => {
     expect(diffBox(1)).toHaveValue('-7');
   });
 
-  /** 두 탭에 함께 걸리는 사실은 탭 위에 선다(C42 · C13). */
-  it('결재함 안내와 범위 안내가 두 탭에서 모두 선다', async () => {
+  /* 탭 위에 늘 서던 결재 안내·범위 안내 배너는 걷었다(사용자 지시 2026-11-18). */
+  it('두 탭 어디에도 결재 안내·범위 안내 배너가 없다', async () => {
     const { user } = renderScreen(historyRoutes());
 
     await waitForCounts();
 
-    expect(screen.getByText(t.approvalNotice.description)).toBeVisible();
-    expect(screen.getByText(t.scope.description)).toBeVisible();
+    expect(screen.queryByText('결재는 결재함에서 합니다')).not.toBeInTheDocument();
+    expect(screen.queryByText('조정은 수불 원장에 기록됩니다')).not.toBeInTheDocument();
 
     await openHistoryTab(user);
 
-    expect(screen.getByText(t.approvalNotice.description)).toBeVisible();
-    expect(screen.getByText(t.scope.description)).toBeVisible();
+    expect(screen.queryByText('결재는 결재함에서 합니다')).not.toBeInTheDocument();
+    expect(screen.queryByText('조정은 수불 원장에 기록됩니다')).not.toBeInTheDocument();
   });
 
   /**
@@ -5921,31 +5905,24 @@ describe('StockAdjustScreen — 이력 조회', () => {
     await waitForLocation(`${ROUTE}?count=9101&tab=history&hrs=${SAMPLE_REASON}`);
   });
 
-  /**
-   * ⚠ **상태는 그대로 기다린다**(#36 회신 ⚠). 조정 상태·문서 유형은 전이·분기가 걸려 설계가
-   * 정해서 내려 준다 — 사유가 살아났다고 그 둘까지 함께 걷으면 값을 지어내게 된다.
-   *
-   * 사유 칸과 **나란히** 잰다. 한쪽만 재면 둘이 같은 처리로 되돌아가도 잡히지 않는다.
+  /*
+   * 선택지가 늘 비어 쓰이지 않던 상태 조건과 그 「값 목록 미확정」 안내는 걷었다(사용자 지시
+   * 2026-11-18). 옛 주소에 `hst`가 남아 있어도 요청에 싣지 않는다.
    */
-  it('상태 칸은 자리표시 그대로다 — 사유 칸과 갈린다', async () => {
+  it('상태 조건 칸이 없고 옛 주소의 상태 키는 요청에 실리지 않는다', async () => {
     withReasonCodes();
 
-    const { user } = renderScreen(historyRoutes());
+    const { requests } = renderScreen(historyRoutes(), '?tab=history&hst=SAMPLE_ST_A');
 
-    await waitForCounts();
-    await openHistoryTab(user);
-
-    const bar = historyPane();
+    const bar = await screen.findByRole('region', { name: t.panes.history });
 
     await waitFor(() => {
-      expect(within(bar).getByText(t.historyFilters.codePending)).toBeVisible();
+      expect(adjustmentRequests(requests).length).toBeGreaterThan(0);
     });
 
-    /* 「준비 중」은 하나뿐이다 — 사유 칸에 되살아나면 둘이 된다. */
-    expect(within(bar).getAllByText(t.historyFilters.codePending)).toHaveLength(1);
-    expect(within(bar).getByLabelText(t.historyFields.status)).toHaveTextContent(
-      t.historyFilters.codePlaceholder,
-    );
+    expect(within(bar).queryByLabelText('상태')).not.toBeInTheDocument();
+    expect(within(bar).queryByText(/값 목록이 아직 확정되지 않아/)).not.toBeInTheDocument();
+    expect(adjustmentRequests(requests)[0]?.url.searchParams.has('statusCode')).toBe(false);
     expect(within(bar).getByLabelText(t.historyFields.reason)).toHaveTextContent(
       t.historyFilters.all,
     );
@@ -6272,7 +6249,8 @@ describe('StockAdjustScreen — 이력 상세', () => {
     expect(cells[5]).toContain('-20');
     expect(cells[3]).toBe(t.values.empty);
     expect(cells[4]).toBe(t.values.empty);
-    expect(within(historyDetailPane()).getByText(t.historyLineTable.qtyNote)).toBeVisible();
+    /* 장부·실물이 비는 까닭을 밝히던 안내문은 걷었다(사용자 지시 2026-11-18). */
+    expect(within(historyDetailPane()).queryByText(/조정 시점의 값이라/)).not.toBeInTheDocument();
   });
 
   it('고른 전표가 주소에 실린다 — 새로고침해도 같은 전표가 열린다', async () => {
@@ -6345,15 +6323,5 @@ describe('StockAdjustScreen — 이력이 대신하는 자리', () => {
     expect(t.post.unboundPostedNote('SAMPLE-IA-9301')).toContain(t.tabs.history);
   });
 
-  /**
-   * ⛔ **잔액 낡음만 이력을 가리키지 않는다.** 계약의 조정 라인에 장부가 없어 이력 상세가 그
-   * 낡음을 풀어 주지 못한다 — 가리키면 그 지시가 곧 죽은 문구가 된다.
-   *
-   * **양성 앵커를 같은 시점에 둔다**(리뷰 R-6). 음성 하나만 두면 그 문구가 **빈 문자열이 돼도**
-   * 통과한다 — 짝 양성이 다른 `it`에 있으면 도구가 그 짝을 보장하지 않는다.
-   */
-  it('전기 뒤 장부 낡음 안내는 사실을 말하되 이력을 가리키지 않는다', () => {
-    expect(t.post.bookQtyStale).toContain('등록할 때 받은 값');
-    expect(t.post.bookQtyStale).not.toContain(t.tabs.history);
-  });
+  /* 전기 뒤 장부 낡음 안내문(`post.bookQtyStale`)은 걷었다(사용자 지시 2026-11-18). */
 });

@@ -305,28 +305,15 @@ describe('BalanceTable — 1단 그룹 헤더', () => {
 });
 
 describe('BalanceTable — 표 아래 안내', () => {
-  /*
-   * **W-01-09와 반대다.** 그 화면은 「현재 쪽 안에서만」이고 이 화면은 서버 정렬이라
-   * 「전체 결과 기준」이다. 밝히지 않으면 사용자가 쪽 안 정렬로 읽는다.
-   */
-  it('정렬 범위와 방향 제약을 밝힌다', () => {
-    renderTable({ view: 'item' });
+  /* 정렬·그룹 범위 안내문은 걷었다(사용자 지시 2026-11-18). */
+  it.each([
+    { view: 'item' as const, rows: itemViewFixtures },
+    { view: 'lot' as const, rows: lotViewFixtures },
+  ])('$view 보기의 표 아래에 안내문을 두지 않는다', ({ view, rows }) => {
+    renderTable({ view, rows });
 
-    expect(screen.getByText(t.notes.sortScope)).toBeInTheDocument();
-  });
-
-  it('묶은 보기에서는 그룹 범위도 함께 밝힌다', () => {
-    renderTable({ view: 'lot', rows: lotViewFixtures });
-
-    expect(screen.getByText(t.notes.sortScope)).toBeInTheDocument();
-    expect(screen.getByText(t.notes.groupScope)).toBeInTheDocument();
-  });
-
-  /* 짝이 되는 방향 — 묶지 않는 보기에서는 가리킬 그룹이 없어 안내가 뜻을 잃는다. */
-  it('묶지 않는 보기에서는 그룹 안내를 내지 않는다', () => {
-    renderTable({ view: 'item' });
-
-    expect(screen.queryByText(t.notes.groupScope)).not.toBeInTheDocument();
+    expect(table()).toBeInTheDocument();
+    expect(document.querySelector('p.field-note')).toBeNull();
   });
 });
 

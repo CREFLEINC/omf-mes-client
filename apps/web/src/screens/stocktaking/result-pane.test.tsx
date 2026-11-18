@@ -84,14 +84,11 @@ describe('ResultPane — 개시 갈래', () => {
     expect(resultRegion()).toBeInTheDocument();
   });
 
-  /*
-   * **성공을 단정하는 말을 쓰지 않는다.** 화면이 증거를 갖는 것은 응답이 준 실사번호뿐이고,
-   * 진행 요약은 아래 구획이 상세 조회로 따로 받는다 — 그 사실을 안내가 밝힌다.
-   */
-  it('진행 요약을 어디서 보는지 밝힌다', () => {
+  /* 갈래마다 붙던 안내문은 걷었다(사용자 지시 2026-11-18). */
+  it('결과 구획에 안내문을 두지 않는다', () => {
     renderPane();
 
-    expect(within(resultRegion()).getByText(t.result.openedNote)).toBeInTheDocument();
+    expect(resultRegion().querySelector('.field-note')).toBeNull();
   });
 
   /*
@@ -120,7 +117,6 @@ describe('ResultPane — 저장 갈래', () => {
 
     expect(savedRegion()).toBeInTheDocument();
     expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
-    expect(screen.queryByText(t.result.openedNote)).not.toBeInTheDocument();
   });
 
   /** 무엇을 어디에 저장했는지 — **위치는 이름으로 온다**(#44). */
@@ -140,12 +136,6 @@ describe('ResultPane — 저장 갈래', () => {
 
     expect(within(savedRegion()).getByText(t.result.savedLineCount)).toBeInTheDocument();
     expect(within(savedRegion()).getByText(t.result.savedCount(3))).toBeInTheDocument();
-  });
-
-  it('요약이 어디서 갱신됐는지 밝힌다', () => {
-    renderPane(SAVED);
-
-    expect(within(savedRegion()).getByText(t.result.savedNote)).toBeInTheDocument();
   });
 
   /** 저장 갈래에도 내부 번호가 없다 — 위치 번호(9701)가 이름으로 풀려 들어온다. */
@@ -176,8 +166,6 @@ describe('ResultPane — 마감 갈래', () => {
     expect(closedRegion()).toBeInTheDocument();
     expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
     expect(screen.queryByRole('status', { name: t.result.savedLabel })).not.toBeInTheDocument();
-    expect(screen.queryByText(t.result.openedNote)).not.toBeInTheDocument();
-    expect(screen.queryByText(t.result.savedNote)).not.toBeInTheDocument();
   });
 
   /** 무엇을 마감했는지 — **업무 번호**로 낸다. 사용자가 나중에 이 실사를 찾을 때 쓰는 값이다. */
@@ -205,8 +193,6 @@ describe('ResultPane — 마감 갈래', () => {
 
       expect(within(closedRegion()).getByText(t.result.closedStatus)).toBeInTheDocument();
       expect(within(closedRegion()).getByText(statusCode)).toBeInTheDocument();
-      /* 안내가 코드에 따라 갈리지 않는다 — 갈리면 화면이 값을 해석한 것이다. */
-      expect(within(closedRegion()).getByText(t.result.closedNote)).toBeInTheDocument();
     },
   );
 

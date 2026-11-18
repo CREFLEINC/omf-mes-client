@@ -13,9 +13,6 @@ const WAREHOUSE_LABEL = 'SAMPLE-WH-01 · 합성 창고 가';
 const baseProps = (overrides: Partial<CountFilterBarProps> = {}): CountFilterBarProps => ({
   appliedFilters: DEFAULT_FILTERS,
   warehouseOptions: [{ value: '9101', label: WAREHOUSE_LABEL }],
-  /* 지금의 사실 그대로 — 둘 다 비어 있다(`omf-mes#64`). */
-  countTypeOptions: [],
-  statusOptions: [],
   chipNames: { warehouse: WAREHOUSE_LABEL },
   isLocked: false,
   onSearch: vi.fn<(filters: CountFilters) => void>(),
@@ -32,42 +29,30 @@ const renderBar = (overrides: Partial<CountFilterBarProps> = {}) => {
 };
 
 describe('CountFilterBar — 조건 줄', () => {
-  it('조건 칸이 여섯이다', () => {
+  it('조건 칸이 넷이다', () => {
     renderBar();
 
     expect(screen.getByLabelText(t.fields.warehouse)).toBeInTheDocument();
     expect(screen.getByLabelText(t.fields.plannedDateFrom)).toBeInTheDocument();
     expect(screen.getByLabelText(t.fields.plannedDateTo)).toBeInTheDocument();
-    expect(screen.getByLabelText(t.fields.countType)).toBeInTheDocument();
-    expect(screen.getByLabelText(t.fields.status)).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: t.fields.inProgressOnly })).toBeInTheDocument();
   });
 
   /*
-   * **C14** — 값 목록이 확정되지 않아 실사 유형·상태 선택지가 비어 있다.
-   * 비어 있는 선택칸만 두면 고장으로 읽히므로 **왜 비어 있는지**를 `aria-describedby`로 잇는다.
+   * 선택지가 늘 비어 쓰이지 않던 실사 유형·상태 조건과 그 「선택지 준비 중」 안내를 걷었다
+   * (사용자 지시 2026-11-18). 실사 유형은 개시 입력에만 남는다.
    */
-  it('실사 유형·상태 선택지가 비어 있고 각각 안내가 붙는다', () => {
+  it('실사 유형·상태 조건과 준비 중 안내가 없다', () => {
     renderBar();
 
-    const countType = screen.getByLabelText(t.fields.countType);
-    const status = screen.getByLabelText(t.fields.status);
-    const notes = screen.getAllByText(messages.pendingCode.note);
-
-    expect(notes).toHaveLength(2);
-    expect(countType.getAttribute('aria-describedby')).not.toBeNull();
-    expect(status.getAttribute('aria-describedby')).not.toBeNull();
-    expect(countType.getAttribute('aria-describedby')).not.toBe(
-      status.getAttribute('aria-describedby'),
-    );
-    /* 짝 방향 — 창고 선택지는 실제로 들어 있다(빈 것이 부품 탓이 아님을 밝힌다). */
-    expect(screen.getByLabelText(t.fields.warehouse)).toBeInTheDocument();
+    expect(screen.queryByLabelText(t.fields.countType)).not.toBeInTheDocument();
+    expect(screen.queryByText(messages.pendingCode.note)).not.toBeInTheDocument();
+    expect(screen.queryByText(messages.pendingCode.placeholder)).not.toBeInTheDocument();
   });
 
   /*
    * **「전체」가 값이 빈 선택지로 들어 있다.** 두지 않으면 창고를 한 번 고른 뒤
    * **선택칸 안에서는 해제할 수단이 사라진다**(칩의 ×로는 여전히 풀리므로 막다른 길은 아니다).
-   * 자리표시 코드 칸에는 두지 않는다 — 그쪽은 고를 값 자체가 아직 없다.
    */
   it('창고 선택칸의 첫 선택지가 값이 빈 「전체」다', async () => {
     const { user } = renderBar();
@@ -80,16 +65,6 @@ describe('CountFilterBar — 조건 줄', () => {
     /* 짝 — 실제 선택지도 함께 있다(「전체」만 있어서 통과하는 것이 아니다). */
     expect(options).toHaveLength(2);
     expect(options[1]).toHaveTextContent(WAREHOUSE_LABEL);
-  });
-
-  /** 값 목록이 오면 안내가 걷힌다 — 남으면 고를 수 있는데도 준비 중이라 말하는 거짓말이 된다. */
-  it('선택지가 차면 안내가 걷힌다', () => {
-    renderBar({
-      countTypeOptions: [{ value: 'SAMPLE_COUNT_TYPE_A', label: 'SAMPLE_COUNT_TYPE_A' }],
-      statusOptions: [{ value: 'SAMPLE_COUNT_STATUS_A', label: 'SAMPLE_COUNT_STATUS_A' }],
-    });
-
-    expect(screen.queryByText(messages.pendingCode.note)).not.toBeInTheDocument();
   });
 
   /*
@@ -121,13 +96,6 @@ describe('CountFilterBar — 조건 줄', () => {
 
     expect(screen.getByRole('button', { name: messages.common.search })).not.toBeDisabled();
     expect(screen.getByRole('button', { name: messages.common.reset })).not.toBeDisabled();
-  });
-
-  /* 기본 기간이 없다는 사실을 밝히지 않으면 비어 있는 칸이 고장으로 읽힌다. */
-  it('기간을 비워 두면 전체를 본다는 안내가 있다', () => {
-    renderBar();
-
-    expect(screen.getByText(t.filters.periodNote)).toBeInTheDocument();
   });
 
   /*
@@ -181,8 +149,8 @@ describe('CountFilterBar — 조건 줄', () => {
   /*
    * 짝 방향 — 주소가 **실제로 바뀌면** 편집 중인 값도 그 값으로 되돌아간다.
    *
-   * **여섯 축을 전부 센다.** 되돌림 판정은 조건 객체가 아니라 **값 여섯**에 걸려 있는데
-   * (그것이 이 부품의 #43 방어다), 한 축만 검사하면 나머지 다섯이 의존성에서 빠져도 드러나지
+   * **네 축을 전부 센다.** 되돌림 판정은 조건 객체가 아니라 **값 넷**에 걸려 있는데
+   * (그것이 이 부품의 #43 방어다), 한 축만 검사하면 나머지 셋이 의존성에서 빠져도 드러나지
    * 않는다. 이 저장소에는 ESLint 설정이 없어 `react-hooks/exhaustive-deps`도 그 배열을
    * 지켜 주지 않는다 — 도구가 없으면 단언이 그 자리를 대신해야 한다.
    *
@@ -198,8 +166,6 @@ describe('CountFilterBar — 조건 줄', () => {
     { axis: 'warehouse', applied: { warehouse: '9101' } },
     { axis: 'from', applied: { from: '2026-08-31' } },
     { axis: 'to', applied: { to: '2026-08-31' } },
-    { axis: 'countType', applied: { countType: 'SAMPLE_COUNT_TYPE_A' } },
-    { axis: 'status', applied: { status: 'SAMPLE_COUNT_STATUS_A' } },
     { axis: 'inProgressOnly', applied: { inProgressOnly: true } },
   ];
 

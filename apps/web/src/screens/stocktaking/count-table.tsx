@@ -157,7 +157,6 @@ export const CountTable = ({
         size="sm"
         live
         title={t.empty.beyondLastTitle}
-        description={t.empty.beyondLastDescription}
         action={
           <Button variant="outlined" disabled={isLocked} onClick={onFirstPage}>
             {t.actions.goFirstPage}
@@ -165,12 +164,7 @@ export const CountTable = ({
         }
       />
     ) : (
-      <EmptyState
-        size="sm"
-        live
-        title={t.empty.noResultTitle}
-        description={t.empty.noResultDescription}
-      />
+      <EmptyState size="sm" live title={t.empty.noResultTitle} />
     );
 
   return (

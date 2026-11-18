@@ -254,17 +254,6 @@ describe('BalanceFilterBar — 선택지의 한계 안내', () => {
     expect(screen.getByText(t.filters.lookupTruncated)).toBeInTheDocument();
   });
 
-  /* 매달린 조건이 채워지지 않아 선택지가 빈 것을 「없다」로 읽지 않게 한다. */
-  it('매달린 조건이 없으면 왜 비었는지 밝힌다', () => {
-    renderBar({
-      locationNote: t.filters.locationNeedsWarehouse,
-      lotNote: t.filters.lotNeedsItem,
-    });
-
-    expect(screen.getByText(t.filters.locationNeedsWarehouse)).toBeInTheDocument();
-    expect(screen.getByText(t.filters.lotNeedsItem)).toBeInTheDocument();
-  });
-
   /*
    * **잠그지 않는다.** 주소로 걸린 조건을 해제할 방법이 사라지기 때문이다 —
    * 선택지가 비어도 「전체」는 늘 있어 되돌릴 수 있다.
@@ -275,10 +264,13 @@ describe('BalanceFilterBar — 선택지의 한계 안내', () => {
     expect(screen.getByLabelText(t.fields.location)).toBeEnabled();
   });
 
-  it('코드 선택지가 임시 목록임을 밝힌다', () => {
-    renderBar();
+  /* 임시 목록 안내 등 칸 아래 설명문은 걷었다(사용자 지시 2026-11-18). 한계 안내가 없으면 비어 있다. */
+  it('한계가 없으면 칸 아래에 안내문을 두지 않는다', () => {
+    const { container } = renderBar();
+    /* 남는 것은 잠긴 조회 버튼의 사유 한 줄뿐이다. */
+    const notes = [...container.querySelectorAll('.field-note')].map((note) => note.textContent);
 
-    expect(screen.getAllByText(t.filters.codeNote)).toHaveLength(3);
+    expect(notes).toEqual([t.reasons.warehouseRequired]);
   });
 });
 

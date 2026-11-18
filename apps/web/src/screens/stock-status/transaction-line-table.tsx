@@ -204,11 +204,7 @@ export const TransactionLineTable = ({
         />
       </div>
 
-      {/*
-       * **위치 이름을 풀 수 있는 범위를 밝힌다.** 밝히지 않으면 「(다른 창고의 위치)」가
-       * 자료 누락으로 읽힌다 — 이 화면이 그 창고의 위치 목록을 받지 않았을 뿐이다.
-       */}
-      <p className="field-note">{t.history.lines.scopeNote}</p>
+      {/* 위치 이름을 풀 수 있는 범위를 밝히던 안내문은 걷었다(사용자 지시 2026-11-18). */}
 
       {hasReferenceError && (
         <div className="field-cell">
