@@ -1,4 +1,4 @@
-import { Button, Chip, Icon } from '@crefle/web-ui';
+import { Chip, Icon } from '@crefle/web-ui';
 import type { MaterialPackage } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { Link } from 'react-router';
@@ -15,12 +15,7 @@ import {
   stageTone,
   type InboundLotShare,
 } from './stage';
-import type {
-  InboundLotProgress,
-  InboundStageCode,
-  InboundStageGroup,
-  IssuedLotProgress,
-} from './types';
+import type { InboundLotProgress, InboundStageCode, InboundStageGroup } from './types';
 
 const t = messages.inboundSchedule;
 
@@ -130,6 +125,9 @@ export const lotEvidence = (lot: InboundLotProgress): string => {
 
   if (putaway !== null && putaway.completedAt !== null) {
     parts.push(t.lot.evidence.putawayDone(dateOf(putaway.completedAt)));
+  } else if (putaway === null && lot.putawayModeCode != null && goodsReceipt !== null) {
+    /* 지시 없이 적치한 LOT(피처 009) — 적치가 곧 입고라 적치일은 입고 일시다. */
+    parts.push(t.lot.evidence.putawayDone(dateOf(goodsReceipt.receiptDatetime)));
   }
 
   return parts.join(t.lot.evidence.separator);
@@ -146,11 +144,23 @@ export const workRecordHref = (inboundLotId: number): string =>
 export const packageText = (pkg: MaterialPackage): string =>
   t.lot.package(pkg.uomName ?? pkg.uomCode, formatQty(pkg.count), formatQty(pkg.qtyPerPackage));
 
-/** 라인의 입하 LOT 몫 한 조각 — 「{IL} · 매칭 {수량} {단위}」 / 「{IL} · 입하 중」. */
-export const inboundLotShareText = (share: InboundLotShare): string =>
-  share.kind === 'allocated'
-    ? t.lot.shareAllocated(share.inboundLotNo, formatQty(share.allocatedQty), share.uomCode)
-    : t.lot.shareReceiving(share.inboundLotNo);
+/**
+ * 라인의 입하 LOT 몫 한 조각 — 「{IL} · 매칭 {수량} {단위}」 / 「{IL} · 입하 중」. 일부만 적치(입고)됐으면 「· 일부 입고 n/m」
+ * 을 붙인다(피처 009 · US1-5) — 다 됐거나 하나도 안 됐으면 붙이지 않는다(단계 칩이 말한다).
+ */
+export const inboundLotShareText = (share: InboundLotShare): string => {
+  if (share.kind !== 'allocated') return t.lot.shareReceiving(share.inboundLotNo);
+
+  const text = t.lot.shareAllocated(
+    share.inboundLotNo,
+    formatQty(share.allocatedQty),
+    share.uomCode,
+  );
+
+  return share.receivedLotCount > 0 && share.receivedLotCount < share.lotCount
+    ? t.lot.sharePartial(text, share.receivedLotCount, share.lotCount)
+    : text;
+};
 
 /**
  * 품목명 칸의 LOT 줄 — LOT 번호(그대로) + 입하 LOT 칩 · 패키징 · 매칭 조정 링크(005) + 근거(보조색 · 넘치면 말줄임).
@@ -178,6 +188,12 @@ export const LotMainCell = ({
       ) : (
         <span className="po-board-lot-no">{lot.lotNo}</span>
       )}
+      {/* 불합격 LOT — 불량창고로만 적치한다(피처 009 · 시안 결정). */}
+      {lot.lotStatusCode === 'DEFECTIVE' && (
+        <Chip variant="status" status="error" size="sm">
+          {t.lot.defective}
+        </Chip>
+      )}
       {(lot.inboundLotNo !== null || lot.package !== null) && (
         <span className="po-board-lot-inbound">
           {lot.inboundLotNo !== null && (
@@ -203,54 +219,50 @@ export const LotMainCell = ({
 /**
  * 창고 칸의 LOT 줄 — 적치된(또는 임시 적치된) 위치. 다른 화면과 같은 「코드 · 별칭」 표기(omf-all-around#268 ·
  * `locationOptionLabel`). 아직 자리가 없으면 빈 칸.
+ *
+ * 피처 009 — 서버의 `putawayLocation` 을 쓴다. 지시 없이 적치했으면 입고 라인의 도착 위치(임시 적치면 그 창고 「창고 전체」),
+ * 지시로 적치했으면 그 지시의 실제 위치다(시안 결정 — 지금은 지시에서만 읽었다).
  */
 export const lotLocation = (lot: InboundLotProgress): string => {
-  const putaway = lot.putaway;
+  const place = lot.putawayLocation ?? lot.putaway;
 
-  if (putaway === null || putaway.locationCode === null) return '';
+  if (place === null || place.locationCode === null) return '';
 
   return locationOptionLabel({
-    locationCode: putaway.locationCode,
-    locationName: putaway.locationName,
-    aliasName: putaway.locationAliasName,
+    locationCode: place.locationCode,
+    locationName: place.locationName,
+    aliasName: place.locationAliasName,
   });
 };
 
-export interface LotActionProps {
-  lot: InboundLotProgress;
-  /** 없으면(권한 없음) 「입고 처리」 단추를 세우지 않는다 — 막는 것은 서버다. */
-  onPostReceipt?: (lot: IssuedLotProgress) => void;
-}
+/** 위치 칸 — 위치와 적치 방식 칩(지정 위치 · 미지정 위치 · 임시 적치, 피처 009). 지시로 적치한 LOT 은 칩이 없다. */
+export const LotLocationCell = ({ lot }: { lot: InboundLotProgress }) => {
+  const mode = lot.putawayModeCode;
+
+  return (
+    <span className="po-board-lot-location">
+      <OneLine text={lotLocation(lot)} />
+      {mode != null && (
+        <Chip variant="status" status="idle" size="sm">
+          {t.lot.mode[mode]}
+        </Chip>
+      )}
+    </span>
+  );
+};
 
 /**
- * 「다음 할 일」 칸 — **서버가 정한 것만** 나타난다(C-17). 이 화면이 하는 「입고 처리」는 단추, POP · PDA 의 일은 글자.
- * 단추는 LOT 하나를 대상으로 하므로 LOT 이 없는 줄에는 나타나지 않는다.
+ * 「다음 할 일」 칸 — **서버가 정한 것만** 나타난다(C-17). POP · PDA 의 일은 글자다. 이 화면이 하던 「입고 처리」는 없어졌다 —
+ * 구매 입하 자재는 PDA 적치로 입고한다(피처 009 · FR-003). 옛 서버가 `POST_RECEIPT` 를 내도 단추를 세우지 않는다.
  * 검사는 품질팀의 일이고 의뢰는 입하 등록 때 서버가 만든다 — 검사 단계 줄에는 할 일이 없다(사용자 결정 2026-10-29 · #909).
  */
-export const LotActionCell = ({ lot, onPostReceipt }: LotActionProps) => {
+export const LotActionCell = ({ lot }: { lot: InboundLotProgress }) => {
   if (lot.nextActionCode === 'ISSUE_LABEL') {
     return <span className="po-board-lot-note">{t.lot.issueLabelOnPop}</span>;
   }
   if (lot.nextActionCode === 'PUTAWAY') {
     return <span className="po-board-lot-note">{t.lot.putawayOnPda}</span>;
   }
-  if (!hasLot(lot)) return null;
 
-  switch (lot.nextActionCode) {
-    case 'POST_RECEIPT':
-      return onPostReceipt === undefined ? null : (
-        <Button
-          variant="outlined"
-          size="sm"
-          aria-label={t.actions.postReceiptRow(lot.lotNo)}
-          onClick={() => {
-            onPostReceipt(lot);
-          }}
-        >
-          {t.actions.postReceipt}
-        </Button>
-      );
-    default:
-      return null;
-  }
+  return null;
 };

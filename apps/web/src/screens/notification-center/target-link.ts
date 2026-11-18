@@ -15,7 +15,8 @@ import type { NotificationView } from './types';
  * | --- | --- | :-: |
  * | `APPROVAL_REQUEST` | `/approval/inbox?rq=<번호>` — 그 화면이 `rq`를 조건 없이 읽어 곧바로 상세를 연다(실측 `approval-inbox/filters.ts`의 `readSelectedRequestId`) | ✅ |
  * | `LOT` | ⛔ 재고 현황은 **창고 번호가 함께 있어야** 선택을 읽는다. 알림은 그것을 주지 않는다 |  |
- * | `LOT` · 알림 `IQC_INSPECTION_REJECTED` | `/logistics/inbound-schedule?lot=<번호>&post=<번호>` — 입고 관리가 그 LOT 의 발주를 찾아 「입고 처리」 창을 연다(불량 창고만 고를 수 있다) | ✅ |
+ * | `LOT` · 알림 `IQC_INSPECTION_REJECTED` · `PUTAWAY_PENDING` | `/logistics/inbound-schedule?lot=<번호>` — 입고 관리가 그 LOT 의 발주를 찾아 연다. 「입고 처리」 창은 없어졌다 — 구매 입고는 PDA 적치로 한다(피처 009) | ✅ |
+ * | `INBOUND_LOT` · 알림 `PUTAWAY_PENDING` | `/logistics/inbound-schedule?inboundLot=<번호>` — 입고 관리가 그 입하 LOT 의 발주를 찾아 연다(피처 009 · omf-all-around#294) | ✅ |
  * | `WORK_ORDER` | ⛔ 생산실행 화면이 아직 없다 |  |
  * | `NONCONFORMANCE` | ⛔ 품질 화면이 아직 없다 |  |
  * | `INBOUND_RECEIPT` | `/logistics/iqc-inspection` — 인계 T10(피처 002, R-8). IQC 화면은 입하로 거르지 못해 **탭만 연다** | ✅ |
@@ -65,16 +66,28 @@ const DESTINATIONS: Record<string, Destination> = {
     to: () => '/logistics/iqc-inspection',
     action: t.actions.targetActions.iqcInspection,
   },
+  /* 「적치 대기」(피처 009) — 입하 LOT 단위로 온다. 입고 관리가 그 입하 LOT 의 발주를 연다. */
+  INBOUND_LOT: {
+    to: (targetId) => `/logistics/inbound-schedule?inboundLot=${String(targetId)}`,
+    action: t.actions.targetActions.inboundSchedule,
+  },
 };
 
-/** 같은 대상 유형이라도 알림 종류가 도착지를 정하는 경우 — 유형 표보다 먼저 본다. */
-const EVENT_DESTINATIONS: Record<string, Destination & { targetTypeCode: string }> = {
-  IQC_INSPECTION_REJECTED: {
-    targetTypeCode: 'LOT',
-    to: (targetId) =>
-      `/logistics/inbound-schedule?lot=${String(targetId)}&post=${String(targetId)}`,
-    action: t.actions.targetActions.defectReceipt,
-  },
+/** LOT 하나를 입고 관리에서 연다 — 그 LOT 이 입하된 발주로 좁힌다. */
+const LOT_IN_INBOUND_SCHEDULE: Destination = {
+  to: (targetId) => `/logistics/inbound-schedule?lot=${String(targetId)}`,
+  action: t.actions.targetActions.inboundSchedule,
+};
+
+/**
+ * 같은 대상 유형이라도 알림 종류가 도착지를 정하는 경우 — 유형 표보다 먼저 본다. 키는 「알림 종류 · 대상 유형」이다 — 「적치
+ * 대기」는 입하 LOT(INBOUND_LOT)으로 오고, 005 이전 흐름 IQC 단건 확정만 LOT 으로 온다.
+ *
+ * 피처 009 — 「검사 불합격」이 열던 「입고 처리」 창(`post=`)은 없어졌다. 불합격 LOT 도 PDA 에서 불량창고로 적치한다.
+ */
+const EVENT_DESTINATIONS: Record<string, Destination> = {
+  'IQC_INSPECTION_REJECTED:LOT': LOT_IN_INBOUND_SCHEDULE,
+  'PUTAWAY_PENDING:LOT': LOT_IN_INBOUND_SCHEDULE,
 };
 
 /**
@@ -93,9 +106,8 @@ export const toTargetLink = (view: NotificationView, title: string): TargetLink 
 
   if (targetTypeCode === null || targetId === null) return null;
 
-  const byEvent = EVENT_DESTINATIONS[view.eventCode];
   const destination =
-    byEvent?.targetTypeCode === targetTypeCode ? byEvent : DESTINATIONS[targetTypeCode];
+    EVENT_DESTINATIONS[`${view.eventCode}:${targetTypeCode}`] ?? DESTINATIONS[targetTypeCode];
 
   if (destination === undefined) return null;
 

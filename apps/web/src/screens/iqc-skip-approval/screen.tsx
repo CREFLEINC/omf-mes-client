@@ -98,7 +98,8 @@ const t = messages.iqcSkipApproval;
 
 /** 「다음 할 일」이 여는 화면(#193) — 반려 뒤 수입검사, 실행 뒤 자재 입고 처리. */
 const IQC_INSPECTION_PATH = '/logistics/iqc-inspection';
-const GOODS_RECEIPT_PATH = '/logistics/goods-receipt';
+/** 피처 009 — IQC 생략 뒤의 입고는 PDA 적치다. 다음 할 일은 입고 관리(W-01-09)에서 그 LOT 의 진행을 보는 것. */
+const INBOUND_SCHEDULE_PATH = '/logistics/inbound-schedule';
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ITEMS: ApprovalRequest[] = [];
@@ -949,12 +950,12 @@ export const IqcSkipApprovalScreen = () => {
             )
           : skipLotId !== null &&
             judgeSkipExecute(skipLot).kind === 'executed' &&
-            access.allows(GOODS_RECEIPT_PATH) && (
+            access.allows(INBOUND_SCHEDULE_PATH) && (
               <RelatedLink
                 heading={messages.qualityApproval.next.heading}
                 value={messages.qualityApproval.next.iqcDone}
-                to={GOODS_RECEIPT_PATH}
-                label={messages.qualityApproval.next.openGoodsReceipt}
+                to={`${INBOUND_SCHEDULE_PATH}?lot=${String(skipLotId)}`}
+                label={messages.qualityApproval.next.openInboundSchedule}
                 alert={{ title: messages.qualityApproval.next.iqcDoneTitle, tone: 'success' }}
               />
             )}

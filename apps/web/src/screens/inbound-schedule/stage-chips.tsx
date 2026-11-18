@@ -6,6 +6,9 @@ import type { InboundStageCounts, InboundStageGroup } from './types';
 
 const t = messages.inboundSchedule;
 
+/** 더 쓰지 않는 묶음 — 서버가 세어도 늘 0 이다(계약 enum 은 지우지 않았다 · 피처 009 D-7). */
+const RETIRED_GROUP: InboundStageGroup = 'RECEIPT';
+
 export interface StageChipsProps {
   counts: InboundStageCounts;
   /** 지금 걸린 묶음. 비면 전부. */
@@ -30,6 +33,10 @@ export const StageChips = ({ counts, active, onChange }: StageChipsProps) => (
       return (
         <Chip
           key={group}
+          /*
+           * 「입고 대기」는 늘 0 이다 — 구매 입고는 PDA 적치로 한다(피처 009). 칩 줄의 자리는 남기되 흐리게 둔다(시안 결정).
+           */
+          {...(group === RETIRED_GROUP ? { className: 'po-board-stage-chip--retired' } : {})}
           variant="filter"
           size="sm"
           selected={isActive}

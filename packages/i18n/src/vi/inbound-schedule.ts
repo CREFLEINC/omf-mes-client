@@ -40,8 +40,6 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     collapseAll: 'Thu gọn tất cả LOT',
     expandLine: (lineNo: number): string => `Mở LOT của dòng ${String(lineNo)}`,
     collapseLine: (lineNo: number): string => `Thu gọn LOT của dòng ${String(lineNo)}`,
-    postReceipt: 'Xử lý nhập kho',
-    postReceiptRow: (lotNo: string): string => `Xử lý nhập kho ${lotNo}`,
   },
   reasons: {
     periodInvalid: 'Hạn giao phải là ngày có thật. Hãy chọn lại ngày bắt đầu và ngày kết thúc.',
@@ -231,10 +229,6 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     summarySeparator: ' · ',
   },
   lot: {
-    selectForPost: (lotNo: string): string => `Chọn ${lotNo} để nhập kho`,
-    selectAllForPost: 'Tất cả chờ nhập kho',
-    checkedForPost: (count: number): string => `Đã chọn ${String(count)}`,
-    postChecked: 'Nhập kho các LOT đã chọn',
     receivedOn: (date: string): string => `Nhận ${date}`,
     putawayOnPda: 'Xếp kho trên PDA',
     issueLabelOnPop: 'Phát hành nhãn trên POP',
@@ -261,6 +255,14 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     shareAllocated: (inboundLotNo: string, qty: string, uom: string): string =>
       `${inboundLotNo} · khớp ${qty} ${uom}`,
     shareReceiving: (inboundLotNo: string): string => `${inboundLotNo} · Đang nhập hàng`,
+    sharePartial: (share: string, received: number, total: number): string =>
+      `${share} · nhập kho một phần ${String(received)}/${String(total)}`, // ui-check-ignore: C-13 시안 확정 문구(009 W0109-After)
+    defective: 'Lỗi',
+    mode: {
+      DESIGNATED: 'Vị trí chỉ định',
+      UNDESIGNATED: 'Vị trí không chỉ định',
+      TEMPORARY: 'Cất tạm',
+    },
     receiving: 'Đang nhập hàng',
     shareSeparator: ', ',
   },

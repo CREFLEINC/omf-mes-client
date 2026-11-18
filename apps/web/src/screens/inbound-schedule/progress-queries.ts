@@ -80,3 +80,32 @@ export const useInboundStageCounts = (
     },
   });
 };
+
+/**
+ * 「적치 대기」 알림의 입하 LOT(피처 009)을 발주 목록 조건(`lotId`)으로 옮긴다 — 그 입하 LOT 의 첫 자재 관리 LOT. 발주 목록은
+ * 입하 LOT 으로 거르지 못한다. 찾지 못하거나(LOT 없음) 읽지 못하면(권한 · 연결) 조건 없이 연다 — 화면이 `isError` 로 가른다.
+ */
+export const useInboundLotFirstLot = (
+  inboundLotId: number | null,
+): UseQueryResult<number | null> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['inbound-progress', 'inbound-lot', inboundLotId] as const,
+    enabled: inboundLotId !== null,
+    retry: false,
+    queryFn: async () => {
+      if (inboundLotId === null) {
+        throw new Error('입하 LOT 이 없으면 묻지 않습니다.');
+      }
+
+      const detail = await runRequest(() =>
+        client.GET('/logistics/inbound-lots/{inboundLotId}', {
+          params: { path: { inboundLotId } },
+        }),
+      );
+
+      return detail.lots[0]?.lotId ?? null;
+    },
+  });
+};
