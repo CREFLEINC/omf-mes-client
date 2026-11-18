@@ -1,7 +1,7 @@
 import { Button, Checkbox, Chip, Dialog, EmptyState } from '@crefle/web-ui';
 import type { MaterialLotVoidResult } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useId, useState } from 'react';
+import { useState } from 'react';
 
 import { DetailDrawer } from '../../patterns/detail-drawer';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -37,7 +37,6 @@ export const DetailDialog = ({
   onIssue,
   onVoided,
 }: DetailDialogProps) => {
-  const reasonId = useId();
   const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
   const [confirming, setConfirming] = useState(false);
   const storage = useItemStorageUnit(group.itemId);
@@ -88,13 +87,13 @@ export const DetailDialog = ({
 
         <div className="mlot-issue-section-head">
           <h3>
-            {td.waitingTitle} <span className="field-note">{td.waitingCount(waiting.length)}</span>
+            {td.waitingTitle}{' '}
+            <span className="mlot-issue-count">{td.waitingCount(waiting.length)}</span>
           </h3>
           <span className="mlot-issue-actions">
             <Button
               variant="outlined"
               disabled={picked.length === 0}
-              aria-describedby={reasonId}
               onClick={() => {
                 voidLots.reset();
                 setConfirming(true);
@@ -153,7 +152,7 @@ export const DetailDialog = ({
                         </Chip>
                       </td>
                       <td>{labelCell(lot)}</td>
-                      <td className="field-note">
+                      <td className="mlot-issue-muted">
                         {`${td.channel[lot.createdChannelCode]} ${formatAt(lot.createdAt) ?? ''}`}
                       </td>
                     </tr>
@@ -163,9 +162,6 @@ export const DetailDialog = ({
             </table>
           </div>
         )}
-        <p id={reasonId} className="field-note">
-          {td.help}
-        </p>
         <div className="mlot-issue-detail-foot">
           <Button variant="outlined" onClick={onClose}>
             {td.close}

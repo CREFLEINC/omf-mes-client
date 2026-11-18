@@ -300,11 +300,7 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
                     </p>
                   ) : null}
                 </>
-              ) : (
-                <p className="field-note">
-                  {td.packageNone[filled.noPackage ? 'default' : filled.source]}
-                </p>
-              )}
+              ) : null}
             </section>
 
             <TextField
@@ -313,7 +309,6 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
               value={lotQtyValue}
               trailingIcon={<span title={td.unitLocked}>{uomCode}</span>}
               error={lotQtyError ?? undefined}
-              helperText={draft.packageOn ? td.lotQtyHelpPackage(uomCode) : td.lotQtyHelp(uomCode)}
               onChange={(event) =>
                 edit({ lotQty: event.target.value, lotQtyEdited: event.target.value !== '' })
               }
@@ -321,7 +316,6 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
             <TextField
               label={td.supplierLotNo}
               value={draft.supplierLotNo}
-              helperText={td.supplierLotHelp}
               onChange={(event) => edit({ supplierLotNo: event.target.value })}
             />
             <TextField

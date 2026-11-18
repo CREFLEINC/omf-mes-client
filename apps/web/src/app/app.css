@@ -12269,13 +12269,6 @@ th:hover > .col-drag {
   gap: var(--space-2);
 }
 
-/* 입고한 뒤 표 위의 한 줄 — 결과를 그 자리에서 알린다. */
-.po-board-lines-status {
-  margin: 0 0 var(--space-2);
-  font: var(--type-body-sm);
-  color: var(--semantic-on-success-container, var(--on-surface));
-}
-
 /* 발주 머리의 「진행」 — 묶음별 칩을 나란히(왼쪽 표 「진행」 칸은 칩 하나라 이 상자를 쓰지 않는다). */
 .po-board-progress {
   display: inline-flex;
@@ -12637,6 +12630,23 @@ a.erp-send-chips:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 품목명과 입하 LOT 몫을 한 줄에 — 이름이 먼저 자리를 잡고 몫 글이 남는 폭에서 줄어든다. */
+.po-board-name-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.po-board-name-line > .po-board-one-line {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.po-board-name-line > .po-board-lot-meta {
+  flex: 1 1 0;
 }
 
 /* 상태 칩과 지연 칩은 한 줄로 나란히 선다. */
@@ -36491,12 +36501,6 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   border-radius: var(--radius-lg);
 }
 
-/* 표 아래 도움말은 표 폭으로 — .field-note 의 20rem 에 갇히면 세 줄로 접힌다(G2 L21). */
-.mlot-issue-help {
-  max-width: none;
-  margin: 0;
-}
-
 .mlot-issue-section-head {
   display: flex;
   flex-wrap: wrap;
@@ -36565,6 +36569,13 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .mlot-issue-code,
 .mlot-issue-lot-no {
   font-family: var(--font-mono);
+}
+
+/* 제목 옆 건수 · 표의 만든 곳 칸 — 같은 줄에 옅게(`.field-note` 는 블록이라 줄이 바뀐다). */
+.mlot-issue-count,
+.mlot-issue-muted {
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
 }
 
 .mlot-issue-defaults {
@@ -36699,9 +36710,8 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   white-space: nowrap;
 }
 
-/* 머리 · 품목 · 매칭 칸은 두 줄까지(베트남어 긴 글), 번호 · 수량은 한 줄. */
-.iwr-table th,
-.iwr-table .is-wrap {
+/* 머리는 두 줄까지(베트남어 긴 글). 칸은 한 줄 — 긴 품목명 · 매칭은 말줄임(사용자 지시 2026-11-18 「가능하면 한 줄로」). */
+.iwr-table th {
   white-space: normal;
 }
 
@@ -36744,6 +36754,59 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   font-family: var(--font-mono);
 }
 
+/* 수량 뒤 단위 — 같은 줄에 옅게(`.field-note` 는 블록이라 단위가 아랫줄로 떨어진다). */
+.iwr-unit {
+  color: var(--on-surface-muted);
+}
+
+/* 품목 코드 · 이름 한 줄 — 이름이 넘치면 말줄임, 잘렸을 때만 마우스를 올리면 전체 이름(OneLine). */
+.iwr-item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  max-width: 18rem;
+}
+
+.iwr-item > .iwr-code {
+  flex: none;
+}
+
+.iwr-item > .po-board-one-line {
+  min-width: 0;
+}
+
+/* 목록 표의 P/O 매칭 한 줄 — 많으면 말줄임, 전체는 상세 덮개에 있다(최종 마감 확인 창에서는 접힌다). */
+.iwr-table .iwr-match {
+  display: block;
+  max-width: 22rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/*
+ * 매칭 표 — 덮개(720px) 안에 일곱 칸이 들어가게 머리 최소 폭을 줄인다(목록 표의 10ch 는 베트남어 긴 머리 때문, G2 L7).
+ * 라인 이름은 한 줄로 두고, 「마감 뒤 생김」 꼬리표는 자리가 있으면 옆에, 없으면 아래 줄로 간다.
+ */
+.iwr-match-table th {
+  min-width: 6ch;
+}
+
+.iwr-table .iwr-line-cell {
+  white-space: normal;
+}
+
+.iwr-table .iwr-line-cell > * {
+  white-space: nowrap;
+}
+
+.iwr-line-tag {
+  display: inline-block;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--surface-container-high);
+  color: var(--on-surface-muted);
+}
+
 .iwr-mark {
   padding: 0 var(--space-1);
   border-radius: var(--radius-sm);
@@ -36762,7 +36825,7 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 .iwr-chips {
   display: inline-flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: var(--space-1);
 }
@@ -36808,10 +36871,6 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 .iwr-section-actions {
   margin-inline-start: auto;
-}
-
-.iwr-line-note {
-  display: block;
 }
 
 .iwr-qty-input {

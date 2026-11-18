@@ -34,7 +34,8 @@ describe('W-01-16 입하/입고 작업 기록 — 목록', () => {
     );
     expect(screen.getByRole('tab', { name: new RegExp(`${t.views.prog}\\s*2`) })).toBeVisible();
     expect(screen.getByRole('tab', { name: new RegExp(`${t.views.final}\\s*1`) })).toBeVisible();
-    expect(screen.getByText(t.views.readyHint)).toBeVisible();
+    /* 보기마다의 뜻 풀이 문단은 두지 않는다(사용자 지시 2026-11-18). */
+    expect(screen.queryByText(/매칭을 확인하고 최종 마감합니다/u)).toBeNull();
 
     expect(within(row).getByText('0031/10: 300')).toBeVisible();
     const excess = within(row).getByText('0012/10: 1,575 (초과 75)');
@@ -82,7 +83,7 @@ describe('W-01-16 입하/입고 작업 기록 — 목록', () => {
     expect(within(receiving).getByText(t.list.receiving)).toBeVisible();
     expect(within(receiving).getByText(t.list.autoMatchLater)).toBeVisible();
     expect(screen.getByRole('columnheader', { name: t.list.columns.reason })).toBeVisible();
-    expect(screen.getByText(t.views.progHint)).toBeVisible();
+    expect(screen.queryByText(/최종 마감할 수 없습니다\./u)).toBeNull();
   });
 
   it('US8-1 보기에 입하 LOT 이 없으면 빈 상태 문구', async () => {

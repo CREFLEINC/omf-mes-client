@@ -397,6 +397,15 @@ describe('M-01-01 입하 등록 — 화면에 없는 것', () => {
     expect(screen.queryByRole('combobox')).toBeNull();
     expect(screen.getByText(t.cards.empty)).toBeInTheDocument();
   });
+
+  it('원리 · 요령 설명 문단을 두지 않는다 — 화면 코드도 적지 않는다(사용자 지시 2026-11-18)', async () => {
+    mount(createServer());
+
+    await screen.findByLabelText(t.scan.label);
+
+    expect(screen.queryByText(/100상자|마감하지 않은 입하 LOT|M-01-0/u)).toBeNull();
+    expect(screen.queryByText(/공급사·품목마다 한 장/u)).toBeNull();
+  });
 });
 
 describe('US2-1 스캔마다 바로 등록', () => {
@@ -428,8 +437,9 @@ describe('US2-1 스캔마다 바로 등록', () => {
       expect(within(lotCard).getByText(t.card.summary(2, '2,000 EA'))).toBeInTheDocument(),
     );
     expect(within(lotCard).getByText(t.card.statusNew)).toBeInTheDocument();
-    expect(within(lotCard).getByText(t.card.justNow)).toBeInTheDocument();
-    expect(within(lotCard).getByText(t.card.thisVisit)).toBeInTheDocument();
+    /* 칩은 마지막 줄의 「방금 등록」 하나뿐 — 앞서 이 화면에서 등록한 줄에는 칩을 달지 않는다. */
+    expect(within(lotCard).getAllByText(t.card.justNow)).toHaveLength(1);
+    expect(within(lotCard).queryByText(/이번에 등록/u)).toBeNull();
   });
 
   it('US2-4 공급사·품목이 섞이면 카드가 두 장 — 마지막에 건드린 것이 위', async () => {
@@ -450,14 +460,13 @@ describe('US2-1 스캔마다 바로 등록', () => {
     expect(screen.getByText(t.cards.title(2))).toBeInTheDocument();
   });
 
-  it('US2-5 폐기 · 이미 등록된 라벨은 거부 줄로 쌓이고 등록되지 않는다 — 까닭은 서버 reasonCode 로 가른다(G1)', async () => {
+  it('US2-5 폐기 · 이미 등록된 라벨은 거부 줄로 알리고 등록되지 않는다 — 까닭은 서버 reasonCode 로 가른다(G1)', async () => {
     mount(createServer({ voided: [A(9)] }));
 
     await scan(A(9));
     expect(
       await screen.findByText(t.reject.title(t.reject.voided, '…|SYN01|0009')),
     ).toBeInTheDocument();
-    expect(screen.getByText(t.reject.voidedBody)).toBeInTheDocument();
     await scan(A(1));
     await screen.findByRole('group', { name: 'SYN-IL-6001' });
     await waitFor(() => expect(within(card('SYN-IL-6001')).getByText(A(1))).toBeInTheDocument());
@@ -469,7 +478,25 @@ describe('US2-1 스캔마다 바로 등록', () => {
     expect(
       screen.getByText(t.reject.title(t.reject.alreadyReceived, '…|SYN01|0001')),
     ).toBeInTheDocument();
-    expect(screen.getAllByText(new RegExp('등록 안 됨', 'u'))).toHaveLength(2);
+    /* 결과 줄은 하나 — 앞선 「폐기됨」 줄은 쌓이지 않고 덮였다(사용자 지시 2026-11-18). */
+    expect(screen.getAllByText(new RegExp('등록 안 됨', 'u'))).toHaveLength(1);
+    expect(screen.queryByText(new RegExp(t.reject.voided, 'u'))).toBeNull();
+  });
+
+  it('결과 줄은 늘 하나 — 스캔할수록 아래 카드를 밀어내지 않는다', async () => {
+    mount(createServer({ voided: [A(8), A(9)] }));
+
+    await scan(A(8));
+    await screen.findByText(t.reject.title(t.reject.voided, '…|SYN01|0008'));
+    await scan(A(9));
+    await screen.findByText(t.reject.title(t.reject.voided, '…|SYN01|0009'));
+    await scan(A(1));
+    await screen.findByRole('group', { name: 'SYN-IL-6001' });
+
+    const result = screen.getByRole('status', { name: t.scan.results });
+    expect(result.querySelectorAll('.receive-line')).toHaveLength(1);
+    expect(result).toHaveTextContent(t.result.created('SYN-IL-6001'));
+    expect(screen.queryByText(/등록 안 됨/u)).toBeNull();
   });
 
   it('G1 이 화면 카드에 없는 이미 입하된 라벨 · 자재 관리 LOT 이 아닌 라벨도 까닭별 문구로 거부한다', async () => {
@@ -477,9 +504,8 @@ describe('US2-1 스캔마다 바로 등록', () => {
     mount(server);
 
     await scan(B(5));
-    expect(await screen.findByText(t.reject.notMaterialLotBody)).toBeInTheDocument();
     expect(
-      screen.getByText(t.reject.title(t.reject.notMaterialLot, '…|SYN02|0005')),
+      await screen.findByText(t.reject.title(t.reject.notMaterialLot, '…|SYN02|0005')),
     ).toBeInTheDocument();
   });
 
@@ -518,14 +544,14 @@ describe('US2-1 스캔마다 바로 등록', () => {
     expect(screen.getAllByText(new RegExp(t.result.created('SYN-IL-6001'), 'u'))).toHaveLength(1);
   });
 
-  it('날짜가 바뀌어 자동 마감된 입하 LOT 이 있으면 띠로 알린다', async () => {
+  it('날짜가 바뀌어 자동 마감된 입하 LOT 이 있으면 그 스캔의 결과 줄에 적는다', async () => {
     mount(createServer({ autoClose: 'SYN-IL-6001' }));
 
     await scan(A(1));
     await screen.findByRole('group', { name: 'SYN-IL-6001' });
     await scan(A(2));
 
-    expect(await screen.findByText(t.autoClosed('SYN-IL-6001'))).toBeInTheDocument();
+    expect(await screen.findByText(t.result.autoClosed('SYN-IL-6001'))).toBeInTheDocument();
     expect(await screen.findByRole('group', { name: 'SYN-IL-6002' })).toBeInTheDocument();
   });
 });
@@ -650,6 +676,19 @@ describe('US2-6 공급사 LOT 번호 시트', () => {
     await waitFor(() =>
       expect(within(card('SYN-IL-6001')).getAllByText(t.card.noSupplierLot)).toHaveLength(2),
     );
+    /*
+     * 줄은 두 줄 — 수량 · 공급사 LOT · [해제]가 같은 줄이고, 품질이 모두 같아 칩은 합계 줄에 하나뿐이다
+     * (사용자 지시 2026-11-18 「가능하면 한 줄로」).
+     */
+    expect(within(card('SYN-IL-6001')).getAllByText(t.card.qualityPending)).toHaveLength(1);
+    const supplierButton = within(card('SYN-IL-6001')).getByRole('button', {
+      name: t.card.editSupplierLot(A(1)),
+    });
+    expect(
+      within(supplierButton.parentElement as HTMLElement).getByRole('button', {
+        name: t.card.unregister,
+      }),
+    ).toBeInTheDocument();
 
     await user.click(
       within(card('SYN-IL-6001')).getByRole('button', { name: t.card.editSupplierLot(A(1)) }),
@@ -692,7 +731,7 @@ describe('US2-6 공급사 LOT 번호 시트', () => {
     expect(screen.queryByRole('dialog', { name: t.sheet.title })).toBeNull();
   });
 
-  it('US2-6 마감 뒤에는 읽기 전용 — 줄을 눌러도 시트가 열리지 않는다', async () => {
+  it('US2-6 마감 뒤에는 읽기 전용 — 줄을 눌러도 시트가 열리지 않고, 카드에는 IQC 요청 번호만 적는다', async () => {
     const user = userEvent.setup();
     mount(createServer());
 
@@ -708,8 +747,13 @@ describe('US2-6 공급사 LOT 번호 시트', () => {
       }),
     );
     await waitFor(() =>
-      expect(within(card('SYN-IL-6001')).getByText(t.card.readOnlySupplierLot)).toBeInTheDocument(),
+      expect(
+        within(card('SYN-IL-6001')).getByText(t.card.iqcRequest('SYN-IQC-0001')),
+      ).toBeInTheDocument(),
     );
+    expect(
+      within(card('SYN-IL-6001')).queryByText(/스캔하면|고칠 수 없습니다|M-01-03/u),
+    ).toBeNull();
 
     expect(
       within(card('SYN-IL-6001')).getByRole('button', { name: t.card.editSupplierLot(A(1)) }),
@@ -747,7 +791,9 @@ describe('US2-14 오프라인', () => {
 
     /* 같은 라벨을 또 찍으면 「이미 전송 대기」. */
     await scan(A(2));
-    expect(await screen.findByText(t.reject.alreadyQueuedBody)).toBeInTheDocument();
+    expect(
+      await screen.findByText(t.reject.title(t.reject.alreadyQueued, '…|SYN01|0002')),
+    ).toBeInTheDocument();
 
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
     server.setOffline(false);
@@ -763,7 +809,7 @@ describe('US2-14 오프라인', () => {
     );
     expect(screen.queryByText(t.offline.title(1))).toBeNull();
     /* 보낸 라벨의 「오프라인」 · 「이미 전송 대기」 줄은 내린다(G1). */
-    expect(screen.queryByText(t.reject.alreadyQueuedBody)).toBeNull();
+    expect(screen.queryByText(new RegExp(t.reject.alreadyQueued, 'u'))).toBeNull();
     expect(screen.queryByText(t.offline.scanned)).toBeNull();
     /* 화면이 직접 보낸 1건 + 아웃박스가 보낸 1건 — 오프라인 때 실패한 시도는 서버에 닿지 않았다. */
     expect(receives(server.sent)).toHaveLength(2);
