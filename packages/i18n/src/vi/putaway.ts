@@ -105,6 +105,7 @@ export const putaway: Translated<typeof ko.putaway> = {
     description: 'Sẽ gửi khi có kết nối. Hiện chưa gửi.',
   },
   rejected: {
+    count: (count: string) => `${count} lượt cất chưa gửi được`,
     title: 'Không gửi được cất hàng',
     description: 'Hãy xem lý do trong bản ghi gửi thất bại. ',
     action: 'Xem bản ghi gửi thất bại',

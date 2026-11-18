@@ -148,6 +148,7 @@ export const putaway = {
     description: '연결되면 보냅니다. 아직 보내지 않았습니다.',
   },
   rejected: {
+    count: (count: string) => `전송하지 못한 적치 ${count}건`,
     title: '적치를 전송하지 못했습니다',
     description: '전송 실패한 기록에서 사유를 확인하세요. ',
     action: '전송 실패한 기록 보기',

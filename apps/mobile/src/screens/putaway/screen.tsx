@@ -523,6 +523,34 @@ export const PutawayScreen = () => {
     />
   );
 
+  const done = registered.filter((each) => each.outcome !== 'rejected');
+  const failed = registered.filter((each) => each.outcome === 'rejected');
+  const doneRow = (each: Registered) => (
+    <li key={each.key}>
+      <Icon
+        name={each.outcome === 'rejected' ? 'error' : 'check_circle'}
+        size={20}
+        className="putaway__done-icon"
+      />
+      <span className="putaway__scanned">
+        {t.done.row(each.lotNo, each.locationCode, each.qty)}
+        {each.note === null || each.mode !== undefined ? null : (
+          <span className="putaway__moved-note">{each.note}</span>
+        )}
+      </span>
+      <span className="putaway__done-chips">
+        {each.mode === undefined || each.mode === null ? null : <Chip>{each.mode}</Chip>}
+        {each.outcome === 'rejected' ? (
+          <Chip status="error">{t.rejected.title}</Chip>
+        ) : each.outcome === 'queued' ? (
+          <Chip status="warning">{t.queued.title}</Chip>
+        ) : (
+          <Chip status="success">{t.sent.title}</Chip>
+        )}
+      </span>
+    </li>
+  );
+
   return (
     <div className="putaway with-bottom-action-bar">
       {pendingLot !== null && worker !== null ? (
@@ -690,11 +718,19 @@ export const PutawayScreen = () => {
                                 className="putaway__lot"
                                 onClick={() => void lookUpLot(each.lotNo)}
                               >
-                                <span className="putaway__scanned">{each.lotNo}</span>
-                                {each.lotStatusCode === 'DEFECTIVE' ? (
-                                  <Chip status="error">{d.defective}</Chip>
-                                ) : null}
-                                <span className="putaway__lot-qty">{`${String(each.qty)} ${each.uomCode}`}</span>
+                                {/*
+                                 * LOT 번호는 한 줄을 다 쓰고, 「불량」 칩 · 수량은 그 아래 줄에 선다 — 긴 번호(`…|…|…`)가
+                                 * 375px 에서 칩에 가려졌다(실제 앱 확인 2026-11-18).
+                                 */}
+                                <span className="putaway__lot-main">
+                                  <span className="putaway__scanned">{each.lotNo}</span>
+                                  <span className="putaway__lot-meta">
+                                    {each.lotStatusCode === 'DEFECTIVE' ? (
+                                      <Chip status="error">{d.defective}</Chip>
+                                    ) : null}
+                                    <span className="putaway__lot-qty">{`${String(each.qty)} ${each.uomCode}`}</span>
+                                  </span>
+                                </span>
                                 <Icon name="chevron_right" size={24} className="putaway__chevron" />
                               </button>
                             </li>
@@ -1024,42 +1060,35 @@ export const PutawayScreen = () => {
         </>
       )}
 
-      {registered.length === 0 ? null : (
+      {/*
+       * 기록한 것 — 「적치됨」은 서버가 받았거나 대기열에 담긴 것만 센다. 서버가 거절한 것은 적치되지 않았으므로 따로
+       * 「전송하지 못한 적치」로 모아 「전송 실패한 기록」으로 안내한다(실제 앱 확인 2026-11-18). 줄은 「LOT → 위치」 글이 한 줄
+       * 폭을 다 쓰고, 방식 · 결과 칩은 그 아래에 선다.
+       */}
+      {done.length === 0 ? null : (
         <section className="putaway__section">
-          <h2>{t.done.count(String(registered.length))}</h2>
-          <ul className="putaway__done">
-            {registered.map((each) => (
-              <li key={each.key}>
-                <Icon
-                  name={each.outcome === 'rejected' ? 'error' : 'check_circle'}
-                  size={20}
-                  className="putaway__done-icon"
-                />
-                <span className="putaway__scanned">
-                  {t.done.row(each.lotNo, each.locationCode, each.qty)}
-                  {each.note === null || each.mode !== undefined ? null : (
-                    <span className="putaway__moved-note">{each.note}</span>
-                  )}
-                </span>
-                {each.mode === undefined || each.mode === null ? null : <Chip>{each.mode}</Chip>}
-                {each.outcome === 'rejected' ? (
-                  <Chip status="error">{t.rejected.title}</Chip>
-                ) : each.outcome === 'queued' ? (
-                  <Chip status="warning">{t.queued.title}</Chip>
-                ) : (
-                  <Chip status="success">{t.sent.title}</Chip>
-                )}
-              </li>
-            ))}
-          </ul>
-          {registered.some((each) => each.outcome === 'rejected') ? (
-            <AlertBanner variant="error" title={t.rejected.title}>
-              {t.rejected.description}
-              <Link to="/rejections">{t.rejected.action}</Link>
-            </AlertBanner>
-          ) : null}
+          <h2>{t.done.count(String(done.length))}</h2>
+          <ul className="putaway__done">{done.map(doneRow)}</ul>
         </section>
       )}
+      {failed.length === 0 ? null : (
+        <section className="putaway__section">
+          <h2>{t.rejected.count(String(failed.length))}</h2>
+          <ul className="putaway__done">{failed.map(doneRow)}</ul>
+          <AlertBanner variant="error" title={t.rejected.title}>
+            {t.rejected.description}
+            <Link to="/rejections">{t.rejected.action}</Link>
+          </AlertBanner>
+        </section>
+      )}
+
+      {/*
+       * 떠 있는 직접 입력 단추(오른쪽 아래)가 마지막 내용을 가리지 않게 그 높이만큼 비운다 — 목록에는 바닥 바가 없어
+       * 단추가 화면 바닥에 뜬다(실제 앱 확인 2026-11-18 · 「전송 실패한 기록 보기」가 가려졌다).
+       */}
+      {task === null && pendingLot === null ? (
+        <div className="putaway__tools-clearance" aria-hidden="true" />
+      ) : null}
 
       {/*
        * 목록에는 단추가 없다 - 건마다 기록되고, 화면을 닫는 것은 위 ← · 홈 아이콘이다. 화면만 닫던
