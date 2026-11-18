@@ -37330,7 +37330,7 @@ export interface paths {
     put?: never;
     /**
      * IQC 판정 확정(검사 단위)
-     * @description 입하 LOT 검사(새 흐름 — targetTypeCode=INBOUND_LOT)의 결과 전부로 판정을 한 번에 확정한다(R-12). 판정 규칙(2026-11-12): 자재 관리 LOT 마다 그 LOT 를 매칭한 결과 중 순번이 가장 큰 결과의 판정이 LOT 판정이고(확정 차수·결과 상태와 상관없다 — 재작업 처분이 다시 연 요청(이력 REOPENED_BY_REWORK)의 앞 확정 결과(CONFIRMED)도 다시 매칭되지 않은 LOT 의 판정으로 쓰인다), 종합 판정 = LOT별 판정 중 가장 나쁜 것(불합격 > 보류 > 합격), 매칭된 결과가 없는 LOT 는 계산에서 빠진다 — 상세 previewJudgmentCode·lotJudgments 와 같은 계산이다. 기록 중(DRAFT)인 결과가 1건 이상이고 모든 기록 중 결과에 판정이 있고 각 결과의 합격·불합격·보류 수량 합이 검사 수량과 같아야 한다(아니면 400 — field 는 results 또는 results[n].overallJudgmentCode·results[n].inspectedQty, n 은 순번 · 재열기 뒤 재검사 결과가 없으면 400 results). 자재 관리 LOT 를 매칭한 결과가 하나도 없으면 400 results(REQUIRED). 한 트랜잭션: 기록 중 결과 전부 CONFIRMED, 요청 COMPLETED·overallJudgmentCode·confirmedAt·confirmedBy, 검사 수준 기록 1회, 자재 관리 LOT 전부 이동(합격 — 검사 대기 보류를 닫고 C4, 다른 열린 보류가 남은 LOT 은 이동 안 함 / 보류 — C5 / 불합격 — C6, LOT 상태 이력 원천 INSPECTION_REQUEST), 불합격이면 부적합 1건(PENDING_DECISION · LOT 전부를 대상 LOT 으로 · 수량은 각 LOT 초기 수량 · 결과 연결은 LOT 판정에 쓰인 불합격 결과 중 순번이 가장 작은 것 · 이미 열린 부적합이 있는 LOT 은 뺀다)과 불합격 인계 알림(입하 LOT 당 1회), 변경 이력 CONFIRMED. 4M 변경품은 결과 저장 때 이미 LOT 전부에 적혀 있다. 대기·진행 요청만 — 그 밖은 409 INVALID_STATE, 이전된 옛 요청(대상 LOT)·PQC·OQC 는 409 INVALID_STATE 「이전 데이터 검사는 결과 단위로 확정합니다」(결과 단위 :confirm 을 쓴다). 근거: 피처 005 자재 LOT 운영 구조 변경 §8 · omf-all-around#254 · R-12
+     * @description 입하 LOT 검사(새 흐름 — targetTypeCode=INBOUND_LOT)의 결과 전부로 판정을 한 번에 확정한다(R-12). 판정 규칙(2026-11-12): 자재 관리 LOT 마다 그 LOT 를 매칭한 결과 중 순번이 가장 큰 결과의 판정이 LOT 판정이고(확정 차수·결과 상태와 상관없다 — 재작업 처분이 다시 연 요청(이력 REOPENED_BY_REWORK)의 앞 확정 결과(CONFIRMED)도 다시 매칭되지 않은 LOT 의 판정으로 쓰인다), 종합 판정 = LOT별 판정 중 가장 나쁜 것(불합격 > 보류 > 합격), 매칭된 결과가 없는 LOT 는 계산에서 빠진다 — 상세 previewJudgmentCode·lotJudgments 와 같은 계산이다. 기록 중(DRAFT)인 결과가 1건 이상이고 모든 기록 중 결과에 판정이 있고 각 결과의 합격·불합격·보류 수량 합이 검사 수량과 같아야 한다(아니면 400 — field 는 results 또는 results[n].overallJudgmentCode·results[n].inspectedQty, n 은 순번 · 재열기 뒤 재검사 결과가 없으면 400 results). 자재 관리 LOT 를 매칭한 결과가 하나도 없으면 400 results(REQUIRED). 한 트랜잭션: 기록 중 결과 전부 CONFIRMED, 요청 COMPLETED·overallJudgmentCode·confirmedAt·confirmedBy, 검사 수준 기록 1회, 자재 관리 LOT 전부 이동(합격 — 검사 대기 보류를 닫고 C4, 다른 열린 보류가 남은 LOT 은 이동 안 함 / 보류 — C5 / 불합격 — C6, LOT 상태 이력 원천 INSPECTION_REQUEST), 불합격이면 부적합 1건(PENDING_DECISION · LOT 전부를 대상 LOT 으로 · 수량은 각 LOT 초기 수량 · 결과 연결은 LOT 판정에 쓰인 불합격 결과 중 순번이 가장 작은 것 · 이미 열린 부적합이 있는 LOT 은 뺀다)과 불합격 인계 알림(입하 LOT 당 1회), 변경 이력 CONFIRMED. 4M 변경품은 결과 저장 때 이미 LOT 전부에 적혀 있다. 대기·진행 요청만 — 그 밖은 409 INVALID_STATE, 이전된 옛 요청(대상 LOT)·PQC·OQC 는 409 INVALID_STATE 「이전 데이터 검사는 결과 단위로 확정합니다」(결과 단위 :confirm 을 쓴다). 근거: 피처 005 자재 LOT 운영 구조 변경 §8 · omf-all-around#254 · R-12 ⛔ 출하 OQC 새 흐름 의뢰·결과면 409 CONFIRMED_BY_SHIPMENT_COMPLETION — 확정은 출하 완료가 한다(피처 010).
      */
     post: {
       parameters: {
@@ -37395,7 +37395,7 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description 버전 충돌 VERSION_CONFLICT(versionNo 가 의뢰의 versionNo 와 다름) · INVALID_STATE(대기·진행이 아님 · 이전된 옛 요청·PQC·OQC) */
+        /** @description 버전 충돌 VERSION_CONFLICT(versionNo 가 의뢰의 versionNo 와 다름) · INVALID_STATE(대기·진행이 아님 · 이전된 옛 요청·PQC·OQC) · CONFIRMED_BY_SHIPMENT_COMPLETION(출하 OQC 새 흐름) */
         409: {
           headers: {
             [name: string]: unknown;
@@ -37650,7 +37650,7 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description 충돌 */
+        /** @description 충돌 · CONFIRMED_BY_SHIPMENT_COMPLETION(출하 OQC 새 흐름에 statusCode=CONFIRMED) */
         409: {
           headers: {
             [name: string]: unknown;
@@ -38089,7 +38089,7 @@ export interface paths {
     put?: never;
     /**
      * 검사 판정 확정
-     * @description 작성중 → 확정. ⭐ 이 순간 Lot Status 가 전이한다 — 합격이면 정상, 불합격이면 불량, 보류면 검사 대기다. 독립된 상태 전이 경로를 두지 않는다(결정 10 「상태 이중 보유 없음」 · 공유계약 B-8). ⛔ accepted + rejected + held = inspected 가 아니면 400 이다(A-3). 근거: W-01-01 §5-2 · P-02-13 §5-3 ⭐ PQC 샘플 검사에서 불합격 수가 공정별 합격판정개수를 넘으면 서버가 «같은 W/O 의 생산LOT 전체»를 INSPECTION_PENDING(검사 대기)으로 일괄 전이하고 관리자 알람을 낸다 — 화면이 부르는 추가 액션은 없다(도식 C14 · 05 §5 S2 태스크 4 ✓확정 2026-07-15). 기준값은 06 계약 GET /quality/inspection-plan-versions/{inspectionPlanVersionId} 가 갖는다. ⭐ 입하 LOT 검사(새 흐름 — 의뢰 targetTypeCode=INBOUND_LOT)의 결과는 409 INVALID_STATE 「검사 단위로 확정하세요」 — POST /quality/inspection-requests/{inspectionRequestId}:confirm 이 결과 전부를 한 번에 확정한다. PQC·OQC·이전된 옛 IQC 요청(대상 LOT)은 그대로 이 경로로 확정하고, 입하 LOT 를 가진 옛 요청은 의뢰의 종합 판정·확정 시각·사람도 함께 채운다. 근거: 피처 005 자재 LOT 운영 구조 변경 §8 · omf-all-around#254 · D-11
+     * @description 작성중 → 확정. ⭐ 이 순간 Lot Status 가 전이한다 — 합격이면 정상, 불합격이면 불량, 보류면 검사 대기다. 독립된 상태 전이 경로를 두지 않는다(결정 10 「상태 이중 보유 없음」 · 공유계약 B-8). ⛔ accepted + rejected + held = inspected 가 아니면 400 이다(A-3). 근거: W-01-01 §5-2 · P-02-13 §5-3 ⭐ PQC 샘플 검사에서 불합격 수가 공정별 합격판정개수를 넘으면 서버가 «같은 W/O 의 생산LOT 전체»를 INSPECTION_PENDING(검사 대기)으로 일괄 전이하고 관리자 알람을 낸다 — 화면이 부르는 추가 액션은 없다(도식 C14 · 05 §5 S2 태스크 4 ✓확정 2026-07-15). 기준값은 06 계약 GET /quality/inspection-plan-versions/{inspectionPlanVersionId} 가 갖는다. ⭐ 입하 LOT 검사(새 흐름 — 의뢰 targetTypeCode=INBOUND_LOT)의 결과는 409 INVALID_STATE 「검사 단위로 확정하세요」 — POST /quality/inspection-requests/{inspectionRequestId}:confirm 이 결과 전부를 한 번에 확정한다. PQC·OQC·이전된 옛 IQC 요청(대상 LOT)은 그대로 이 경로로 확정하고, 입하 LOT 를 가진 옛 요청은 의뢰의 종합 판정·확정 시각·사람도 함께 채운다. 근거: 피처 005 자재 LOT 운영 구조 변경 §8 · omf-all-around#254 · D-11 ⛔ 출하 OQC 새 흐름 의뢰·결과면 409 CONFIRMED_BY_SHIPMENT_COMPLETION — 확정은 출하 완료가 한다(피처 010).
      */
     post: {
       parameters: {
@@ -38156,7 +38156,7 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description 충돌 — VERSION_CONFLICT · INVALID_STATE(입하 LOT 검사 결과 — 검사 단위로 확정하세요) */
+        /** @description 충돌 — VERSION_CONFLICT · INVALID_STATE(입하 LOT 검사 결과 — 검사 단위로 확정하세요) · CONFIRMED_BY_SHIPMENT_COMPLETION(출하 OQC 새 흐름) */
         409: {
           headers: {
             [name: string]: unknown;
@@ -40988,14 +40988,18 @@ export interface paths {
            * @description 출하일·고객·작업지시번호 셋만. 근거: 공유계약 L-4
            *
            *     서버 구현 기준 허용 키는 requestedShipDate·customerId·shipmentRequestNo다(통보 201).
-           *
-           *     서버 구현 기준 허용 키는 requestedShipDate·customerId·shipmentRequestNo다(통보 201).
            */
           sort?: 'requestedShipDate' | 'customerId' | 'shipmentRequestNo';
           /** @description 1 부터 */
           page?: number;
           /** @description 기본 50 */
           size?: number;
+          /** @description OQC 불합격으로 교체한 LOT 이 있는 지시서만(피처 010 FR-015). false 는 거르지 않는다 */
+          hasReplacement?: boolean;
+          /** @description 지시서 번호·고객(코드·이름)·품목(코드·이름) 부분 일치(POP 찾기 · 피처 010) */
+          q?: string;
+          /** @description 완료 대기만 — completionBlockers 가 빈 지시서(피킹 ≥ 목표 · LOT 전부 합격·검사 불필요·생략 · 수주 라인 취소 없음 · 완료 전). false 는 거르지 않는다 */
+          completionReadyOnly?: boolean;
         };
         header?: never;
         path?: never;
@@ -41346,7 +41350,7 @@ export interface paths {
     put?: never;
     /**
      * 제품 LOT 피킹 확정
-     * @description 현장이 집은 제품 LOT 과 수량을 이 라인에 기록한다. ⭐ 화면이 예약을 직접 쓰지 않는다 — 서버가 이 피킹의 결과로 inventory_reservation 을 걸고 푼다(01 자재창고 계약 · M-01-08 §5-5 와 같은 규약). 자재 피킹의 :pick 과 대칭이다. ⛔ 오프라인 대상이 아니다 — Release 판정값을 캐시할 수 없어 이 화면은 온라인에서만 돈다(공유계약 C-6 · M-04-01 §5-6). 권장 외 LOT 을 집어도 막지 않는다 — 경고 후 통과이고 사유는 남기지 않는다(M-04-01 §5-5). 근거: M-04-01 §5-7
+     * @description ⛔ 피처 010(omf-all-around#305)부터 쓰지 않는다 — 늘 409 USE_PICK_LOT 이다. LOT 통째 피킹 :pick-lot 을 쓴다. 현장이 집은 제품 LOT 과 수량을 이 라인에 기록한다. ⭐ 화면이 예약을 직접 쓰지 않는다 — 서버가 이 피킹의 결과로 inventory_reservation 을 걸고 푼다(01 자재창고 계약 · M-01-08 §5-5 와 같은 규약). 자재 피킹의 :pick 과 대칭이다. ⛔ 오프라인 대상이 아니다 — Release 판정값을 캐시할 수 없어 이 화면은 온라인에서만 돈다(공유계약 C-6 · M-04-01 §5-6). 권장 외 LOT 을 집어도 막지 않는다 — 경고 후 통과이고 사유는 남기지 않는다(M-04-01 §5-5). 근거: M-04-01 §5-7
      */
     post: {
       parameters: {
@@ -41417,7 +41421,7 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description 충돌 — LOT 이 Hold 이거나 가용이 모자라거나 배정을 넘는다 */
+        /** @description 충돌 — 피처 010 부터 늘 USE_PICK_LOT */
         409: {
           headers: {
             [name: string]: unknown;
@@ -41447,7 +41451,7 @@ export interface paths {
     put?: never;
     /**
      * OQC 생략 요청
-     * @description 출하작업지시의 출하검사(OQC)를 생략하도록 결재를 요청한다. 요청을 만들기만 하고 의뢰·LOT 은 옮기지 않는다(공유계약 J-8 「승인은 자물쇠를 풀 뿐 실행하지 않는다」). 열린 OQC 의뢰(REQUESTED·IN_PROGRESS)가 없으면 400(code=STATE_LOCKED), 결재선이 없으면 400(code=ROUTE_NOT_FOUND), 진행 중인 요청이 있으면 400(code=APPROVAL_IN_PROGRESS). 근거: W-04-03 · omf-all-around#119 (서버 선행 · 장부 P-83)
+     * @description 출하작업지시의 출하검사(OQC)를 생략하도록 결재를 요청한다. 요청을 만들기만 하고 의뢰·LOT 은 옮기지 않는다(공유계약 J-8 「승인은 자물쇠를 풀 뿐 실행하지 않는다」). 열린 OQC 의뢰(REQUESTED·IN_PROGRESS)가 없으면 400(code=STATE_LOCKED), 결재선이 없으면 400(code=ROUTE_NOT_FOUND), 진행 중인 요청이 있으면 400(code=APPROVAL_IN_PROGRESS). 근거: W-04-03 · omf-all-around#119 (서버 선행 · 장부 P-83) ⭐ 피처 010(FR-012): 결과가 하나도 없는 열린 의뢰가 있어야 한다.
      */
     post: {
       parameters: {
@@ -41533,7 +41537,7 @@ export interface paths {
     put?: never;
     /**
      * 승인된 OQC 생략 실행
-     * @description OQC 생략 요청이 **승인된** 출하작업지시의 출하검사를 생략한다 — 확정 결과가 없는 열린 OQC 의뢰(REQUESTED·IN_PROGRESS)를 `SKIPPED` 로 닫고, 검사 대상 라인이 집은(피킹) LOT 마다 이력을 남긴다(정상 → 정상 · 전이 C27). 생략된 의뢰는 출하검사 판정에서 «통과»로 센다. ⛔ 승인만으로는 실행되지 않는다(공유계약 J-8). 승인된 요청이 없거나, 생략할 열린 의뢰가 없거나, 검사 대상 라인의 피킹이 끝나지 않았으면 400(code=STATE_LOCKED). 근거: W-04-03 · omf-all-around#119 (서버 선행 · 장부 P-83)
+     * @description OQC 생략 요청이 **승인된** 출하작업지시의 출하검사를 생략한다 — 확정 결과가 없는 열린 OQC 의뢰(REQUESTED·IN_PROGRESS)를 `SKIPPED` 로 닫고, 검사 대상 라인이 집은(피킹) LOT 마다 이력을 남긴다(정상 → 정상 · 전이 C27). 생략된 의뢰는 출하검사 판정에서 «통과»로 센다. ⛔ 승인만으로는 실행되지 않는다(공유계약 J-8). 승인된 요청이 없거나, 생략할 열린 의뢰가 없거나, 검사 대상 라인의 피킹이 끝나지 않았으면 400(code=STATE_LOCKED). 근거: W-04-03 · omf-all-around#119 (서버 선행 · 장부 P-83) ⭐ 피처 010(FR-012): 생략할 수 있는 의뢰 = 결과가 하나도 없는 열린 의뢰. 실행이 피킹 완료를 요구하지 않는다 — 지금 피킹된 LOT 에 C27 을 남기고, 뒤에 피킹되는 LOT 은 출하 완료가 남긴다.
      */
     post: {
       parameters: {
@@ -41633,17 +41637,9 @@ export interface paths {
            *     서버 구현 기준: hasUnassignedPackedBox=true가 아니면 필수이고, 빠지면 400 REQUIRED다. 조건부라서 required로 선언하지 못한다(통보 219).
            *
            *     서버 구현 기준: shippedAt을 출하 창고가 속한 공장의 로컬 날짜로 비교한다(통보 219).
-           *
-           *     서버 구현 기준: hasUnassignedPackedBox=true가 아니면 필수이고, 빠지면 400 REQUIRED다. 조건부라서 required로 선언하지 못한다(통보 219·P-24).
-           *
-           *     서버 구현 기준: shippedAt을 출하 창고가 속한 공장의 로컬 날짜로 비교한다(통보 219).
            */
           shipDateFrom?: string;
-          /**
-           * @description 서버 구현 기준: 끝 날짜를 포함하며 다음 날 공장 자정 미만으로 비교한다(통보 219).
-           *
-           *     서버 구현 기준: 끝 날짜를 포함하며 다음 날 공장 자정 미만으로 비교한다(통보 219).
-           */
+          /** @description 서버 구현 기준: 끝 날짜를 포함하며 다음 날 공장 자정 미만으로 비교한다(통보 219). */
           shipDateTo?: string;
           /** @description 출하 번호 검색. ⛔ 범위는 shipment_no 하나다 — 고객은 customerId 를, LOT 은 lotId 를 쓴다(omf-mes#170 과 같은 처리). 근거: W-04-06 §3 */
           q?: string;
@@ -41653,14 +41649,20 @@ export interface paths {
            * @description 경과일 긴 순이 기본이다. 근거: W-04-12 §5-7
            *
            *     서버 구현 기준 허용 키는 shippedAt·shipmentNo다(통보 219).
-           *
-           *     서버 구현 기준 허용 키는 shippedAt·shipmentNo다(통보 219).
            */
           sort?: 'shippedAt' | 'shipmentNo';
           /** @description 1 부터 */
           page?: number;
           /** @description 기본 50 */
           size?: number;
+          /** @description ERP 송신 상태로 거른다(응답 erpSendStatus 와 같은 판정 · 피처 010) */
+          erpSendStatus?:
+            | 'NOT_QUEUED'
+            | 'NOT_SENT_NO_SALES_ORDER'
+            | 'CANCELLED'
+            | 'SEND_ERROR'
+            | 'PENDING'
+            | 'SENT';
         };
         header?: never;
         path?: never;
@@ -41850,7 +41852,7 @@ export interface paths {
     put?: never;
     /**
      * 출하 취소 실행
-     * @description 승인 완료 후 실행한다. ⭐ 승인만으로 통과시키지 않는다 — 실행 시점에 후속을 다시 판정한다(공유계약 J-8). 그 사이 확정됐으면 409 다. 근거: W-04-12 §5-8
+     * @description 승인 완료 후 실행한다. ⭐ 승인만으로 통과시키지 않는다 — 실행 시점에 후속을 다시 판정한다(공유계약 J-8). 그 사이 확정됐으면 409 다. 근거: W-04-12 §5-8 ⭐ 피처 010: POP 완료 출하는 송신 전이면 실행한다 — 창고마다의 내부 재고 차감 기록 전부를 역전기·취소, 지시·수주 출하 수량을 내리고, 메시지를 CANCELLED 로, 피킹 LOT 을 PICKED 로 되돌려 같은 잔액 행에 예약을 다시 건다(다시 잡을 수 없는 LOT 은 풀린 채 피킹 LOT 행을 지운다). 지시서는 「출하 완료 전」이 된다. OQC 결과는 그대로. 보낸 뒤는 409 ERP_ALREADY_SENT.
      */
     post: {
       parameters: {
@@ -41917,7 +41919,7 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description 충돌 */
+        /** @description 충돌 · ERP_ALREADY_SENT(POP 완료 출하 — 이미 보냄) */
         409: {
           headers: {
             [name: string]: unknown;
@@ -42040,7 +42042,7 @@ export interface paths {
     put?: never;
     /**
      * 출하 취소 요청
-     * @description 미확정 구간에서만 된다. 사유가 필수다. 승인은 공통 계약이 소유한다. 01 자재창고가 쓰는 :request-cancel 과 같은 형태다. 근거: W-04-12 §5-8
+     * @description 미확정 구간에서만 된다. 사유가 필수다. 승인은 공통 계약이 소유한다. 01 자재창고가 쓰는 :request-cancel 과 같은 형태다. 근거: W-04-12 §5-8 ⭐ 피처 010: POP 출하 완료로 확정된 출하도 ERP 로 보내기 전(메시지 PENDING · sentAt 없음 · 바깥 행 0 · 수주 없는 출하는 늘)이면 상신한다 — 보낸 뒤는 409 ERP_ALREADY_SENT. 상신 중에는 러너가 그 출하를 보내지 않는다.
      */
     post: {
       parameters: {
@@ -42107,7 +42109,7 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description 충돌 */
+        /** @description 충돌 · ERP_ALREADY_SENT(POP 완료 출하 — 이미 보냄) */
         409: {
           headers: {
             [name: string]: unknown;
@@ -42973,6 +42975,456 @@ export interface paths {
           };
         };
         /** @description 저장 충돌. 다시 읽어 If-Match 를 새로 받는다 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ShipmentConflictResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/shipment-requests/{shipmentRequestId}/lines/{shipmentRequestLineId}:pick-lot': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 제품 LOT 통째 피킹
+     * @description PDA(M-04-01)가 LOT 을 스캔하면 그 LOT 의 공장 안 가용 잔액 전부(불량창고 제외 — 여러 창고·위치·적치 대기 자리 포함)를 이 라인에 피킹한다. 잔액 행마다 예약을 하나씩 걸고 곧바로 푼다(picked += 가용). 라인 피킹 합이 목표(allocatedQty)보다 작을 때만 받으므로 초과는 마지막 LOT 에서만 생긴다. 수량 입력은 없다. 피킹 LOT 행(shipment_request_lot)이 PICKED 로 생긴다. 근거: 피처 010 FR-004·004a·005·006
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /**
+           * @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+           * @example 100027
+           */
+          'X-Worker-No'?: components['parameters']['WorkerNoOptional'];
+        };
+        path: {
+          shipmentRequestId: number;
+          shipmentRequestLineId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ShipmentLotPick'];
+        };
+      };
+      responses: {
+        /** @description 피킹됨 — 피킹 LOT 행과 갱신된 라인 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ShipmentLotPickResult'];
+          };
+        };
+        /** @description 검증 실패 — LOT 이 없다·이 공장 LOT 이 아니다·다른 라인 품목·출하할 수 없는 LOT 상태·잔여 유효기간 부족 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한이 없다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 라인이 없다 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 충돌 — LOT_TARGET_REACHED · LOT_ALREADY_RESERVED · LOT_ALREADY_PICKED · NO_LINE_FOR_ITEM · INVALID_STATE(보류·피킹 막힌 상태·재고 없음·이행 공장 없음) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ShipmentConflictResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/shipment-request-lots/{shipmentRequestLotId}:replace': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * OQC 불합격 피킹 LOT 교체
+     * @description PDA [교체] — 한 트랜잭션에서 그 LOT 의 예약을 모두 풀고(잔액 피킹분 → 가용, 예약 released), 피킹 LOT 행을 REPLACED(근거 결과·부적합·작업자·시각)로, LOT 을 불량(C6)으로 옮기고 부적합 1건(PENDING_DECISION · 의뢰 = OQC 의뢰)을 만든다. 지시서는 바뀌지 않고 라인이 다시 피킹을 받는다. 본문 없음. 근거: 피처 010 FR-013·014
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /**
+           * @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+           * @example 100027
+           */
+          'X-Worker-No'?: components['parameters']['WorkerNoOptional'];
+        };
+        path: {
+          shipmentRequestLotId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 교체됨 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ShipmentLotReplaceResult'];
+          };
+        };
+        /** @description 로그인이 필요하다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한이 없다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 피킹 LOT 이 없다 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 충돌 — LOT_NOT_REJECTED(판정이 불합격이 아님 · PICKED 아님 · 출하 완료 뒤) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ShipmentConflictResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/shipment-request-lots/{shipmentRequestLotId}/management-code': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * 출하 관리 코드 저장
+     * @description PDA 가 코드 칸에서 스캔하거나 직접 넣은 값을 그 피킹 LOT 에 저장한다(FR-020·021). PICKED 일 때만 — 출하 완료(SHIPPED)·교체(REPLACED) 뒤는 409. 출하 완료 때 출하 내역의 LOT 배분 줄에 그대로 보인다.
+     */
+    put: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /**
+           * @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+           * @example 100027
+           */
+          'X-Worker-No'?: components['parameters']['WorkerNoOptional'];
+        };
+        path: {
+          shipmentRequestLotId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ShipmentLotManagementCode'];
+        };
+      };
+      responses: {
+        /** @description 저장됨 — 피킹 LOT 행 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ShipmentRequestLot'];
+          };
+        };
+        /** @description 100자 초과(RANGE) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한이 없다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 피킹 LOT 이 없다 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 충돌 — INVALID_STATE(출하 완료·교체 뒤) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ShipmentConflictResponse'];
+          };
+        };
+      };
+    };
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/shipment-requests:lookup': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 지시서 코드 해석 · 출하 완료 확인 값
+     * @description POP P-04-07 스캔·PDA 코드 보기 — SHPREQ:{지시서 번호} 를 해석해 완료 확인 값을 낸다. 단말이면 그 공장 지시서만(다른 공장은 404). 근거: 피처 010 FR-018 · R-9
+     */
+    get: {
+      parameters: {
+        query: {
+          code: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 확인 값 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ShipmentRequestCompletion'];
+          };
+        };
+        /** @description NOT_SHIPMENT_REQUEST_CODE — 지시서 코드 형식이 아니다(LOT 라벨 등) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description SHIPMENT_REQUEST_NOT_FOUND — 형식은 맞지만 지시서가 없다 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/shipment-requests/{shipmentRequestId}:complete': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 출하 완료(POP)
+     * @description POP P-04-07 [출하 완료] 한 번 — 한 트랜잭션에서 관문(FR-016) → 출하 «하나»(CONFIRMED 로 바로 · warehouseId null · 완료 단말·작업자) → 창고마다 내부 재고 차감 기록(goods_issue)·원장 출고 → 출하 라인·LOT 배분(예약 행마다) → 지시·수주 라인 출하 수량 → 피킹 LOT SHIPPED → 출하 OQC 확정(작성중 결과 확정·의뢰 완료·LOT 이력 C4, 생략 의뢰는 남은 LOT 에 C27) → 수주 연결 라인이 있으면 ERP 송신 적재. 같은 지시서는 한 번만 완료된다. 근거: 피처 010 FR-016~019 · R-8
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
+          'If-Match'?: components['parameters']['IfMatchVersionOptional'];
+          /**
+           * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+           * @example 100027
+           */
+          'X-Worker-No': components['parameters']['WorkerNo'];
+        };
+        path: {
+          shipmentRequestId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ShipmentCompletion'];
+        };
+      };
+      responses: {
+        /** @description 완료됨 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ShipmentCompletionResult'];
+          };
+        };
+        /** @description 본문 검증 실패 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description POP 단말이 아니다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 지시서가 없다 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description COMPLETION_BLOCKED(blockers) · ALREADY_COMPLETED · VERSION_CONFLICT · INVALID_STATE(피킹이 방금 바뀜) */
         409: {
           headers: {
             [name: string]: unknown;
@@ -58641,7 +59093,7 @@ export interface components {
        */
       recipientUserIds: number[];
     };
-    /** @description 단말 작업 화면의 남은 작업 수. 단말 유형에 맞는 키만 온다(모바일 4 · POP 5). 각 수는 그 화면 목록과 같은 조건으로 센다(배지 = 목록). 「오늘」은 공장 시간대. 알림 설정과 무관하다. 근거: 서버 선행 · 장부 P-137 · omf-all-around#190(피처 002 대기 작업 배지) */
+    /** @description 단말 작업 화면의 남은 작업 수. 단말 유형에 맞는 키만 온다(모바일 4 · POP 6). 각 수는 그 화면 목록과 같은 조건으로 센다(배지 = 목록). 「오늘」은 공장 시간대. 알림 설정과 무관하다. 근거: 서버 선행 · 장부 P-137 · omf-all-around#190(피처 002 대기 작업 배지) */
     TerminalWorkCounts: {
       /**
        * @description 모바일 적치 — 적치 지시 PENDING(단말 공장, 창고가 있으면 그 창고의 입고) + 적치 대기 LOT(GET /logistics/putaway-pending-lots 의 page.total — 단말 공장 기준, LOT 은 아직 창고에 없다). 근거: 피처 009 적치 지시 없는 구매 입고 적치 · omf-all-around#294
@@ -58688,6 +59140,11 @@ export interface components {
        * @example 3
        */
       oqcInspection?: number;
+      /**
+       * @description POP 출하 완료(P-04-07) — 오늘 출하일의 완료 대기 지시서(GET /logistics/shipment-requests?completionReadyOnly=true, 단말 공장). 근거: 피처 010 · omf-all-around#305
+       * @example 2
+       */
+      shipmentCompletion?: number;
     };
     /** @description 알림 수신자 후보 쪽. 근거: 서버 선행 · 장부 P-92 · omf-all-around#160(피처 001 이벤트 알림) */
     RecipientCandidatePage: {
@@ -64075,15 +64532,15 @@ export interface components {
        * @example 1
        */
       confirmCycle?: number;
-      /** @description 상세 조회·새 흐름 요청(targetTypeCode=INBOUND_LOT)만 — 입하 LOT 의 자재 관리 LOT 전부(LOT 번호 순) */
+      /** @description 상세 조회·새 흐름 요청(targetTypeCode=INBOUND_LOT)만 — 입하 LOT 의 자재 관리 LOT 전부(LOT 번호 순) ⭐ 출하 OQC 새 흐름 상세에도 싣는다(피처 010). */
       lots?: components['schemas']['InspectionRequestLot'][];
       /** @description 상세 조회·새 흐름 요청만 — 입하 LOT 의 P/O 배정(참고) */
       poAllocations?: components['schemas']['InspectionRequestPoAllocation'][];
       /** @description 상세 조회·새 흐름 요청만 — P/O 에 배정되지 않은 양(「P/O 없음」 · 참고) */
       unallocatedQty?: number;
-      /** @description 상세 조회·새 흐름 요청만 — 결과 목록(순번 순). 결과마다 매칭한 자재 관리 LOT */
+      /** @description 상세 조회·새 흐름 요청만 — 결과 목록(순번 순). 결과마다 매칭한 자재 관리 LOT ⭐ 출하 OQC 새 흐름 상세에도 싣는다(피처 010). */
       results?: components['schemas']['InspectionRequestResultSummary'][];
-      /** @description 상세 조회·새 흐름 요청만 — 입하 LOT 의 자재 관리 LOT 전부(LOT 번호 순)의 판정 근거(2026-11-12). previewJudgmentCode·:confirm 과 같은 계산 */
+      /** @description 상세 조회·새 흐름 요청만 — 입하 LOT 의 자재 관리 LOT 전부(LOT 번호 순)의 판정 근거(2026-11-12). previewJudgmentCode·:confirm 과 같은 계산 ⭐ 출하 OQC 새 흐름 상세에도 싣는다(피처 010). */
       lotJudgments?: components['schemas']['InspectionRequestLotJudgment'][];
       /**
        * @description 새 흐름 요청(targetTypeCode=INBOUND_LOT)만 — 목록 행·상세 모두. 지금 결과로 판정 확정하면 나올 종합 판정 — 자재 관리 LOT별 마지막 결과(순번 최대)의 판정 중 가장 나쁜 것(불합격 > 보류 > 합격 · 2026-11-12). 판정에 쓸 결과가 없거나(결과 0건·매칭된 LOT 없음) 판정이 빈 결과가 있으면 null. 미리 보기일 뿐 LOT 상태는 그대로다. 칸 이름은 클라이언트 C3 이 정함(피처 005 §8).
@@ -64106,7 +64563,7 @@ export interface components {
       supplierName?: string;
       /** @description 상세·새 흐름 요청만 — 입하 LOT 의 versionNo(분리 :split-lots 의 본문 versionNo). 칸 이름은 클라이언트 C3 이 정함(피처 005 §8). */
       inboundLotVersionNo?: number;
-      /** @description 상세·새 흐름 요청만 — 다음 결과가 받을 순번(남은 결과·지운 결과 중 최대 + 1 · 지운 번호는 다시 쓰지 않는다) */
+      /** @description 상세·새 흐름 요청만 — 다음 결과가 받을 순번(남은 결과·지운 결과 중 최대 + 1 · 지운 번호는 다시 쓰지 않는다) ⭐ 출하 OQC 새 흐름 상세에도 싣는다(피처 010). */
       nextResultSeqNo?: number;
       /** @description 상세·새 흐름 요청만 — 판정 확정한 사람. 확정 전 null. 칸 이름은 클라이언트 C3 이 정함(피처 005 §8). */
       confirmedByName?: string | null;
@@ -64118,6 +64575,27 @@ export interface components {
       /** @description 상세·새 흐름 요청만 — 그 부적합 번호. 칸 이름은 클라이언트 C3 이 정함(피처 005 §8). */
       nonconformanceNo?: string | null;
       aqlPlan?: components['schemas']['InspectionAqlPlan'];
+      /**
+       * @description 출하 OQC 새 흐름 — 지시서 번호(목록·상세)
+       * @example SR-20261118-0001
+       */
+      shipmentRequestNo?: string;
+      /**
+       * @description 출하 OQC 새 흐름 — 살아 있는 피킹 LOT 수(목록)
+       * @example 3
+       */
+      pickedLotCount?: number;
+      /** @description 출하 OQC 새 흐름 — 피킹 LOT 판정 수(목록). POP 「판정 대기/판정 완료」 탭은 notInspected > 0 으로 가른다(2026-11-18 결정). */
+      lotJudgmentSummary?: {
+        /** @example 3 */
+        notInspected: number;
+        /** @example 3 */
+        accepted: number;
+        /** @example 3 */
+        rejected: number;
+        /** @example 3 */
+        held: number;
+      };
     };
     /** @description 검사 결과 — 3계층의 2층. ⭐ 라인이 아니라 문서다 — 자체 번호·상태·잠금·자식·멱등키를 갖는다. */
     InspectionResult: {
@@ -64289,7 +64767,7 @@ export interface components {
         remarks: string;
       } | null;
     };
-    /** @description ⛔ statusCode=확정 이면 acceptedQty + rejectedQty + heldQty = inspectedQty 를 강제한다 (ck_inspection_result_qty · 공유계약 A-3). 작성중은 통과시킨다. ⭐ 검사자·단말은 «보내지 않는다» — 서버가 인증 주체에서 채운다(관리웹은 계정 토큰, 현장 단말·모바일은 사번 귀속 헤더). */
+    /** @description ⛔ statusCode=확정 이면 acceptedQty + rejectedQty + heldQty = inspectedQty 를 강제한다 (ck_inspection_result_qty · 공유계약 A-3). 작성중은 통과시킨다. ⭐ 검사자·단말은 «보내지 않는다» — 서버가 인증 주체에서 채운다(관리웹은 계정 토큰, 현장 단말·모바일은 사번 귀속 헤더). ⭐ 출하 OQC 새 흐름(피처 010 · omf-all-around#305 — OQC · 대상 SHIPMENT_REQUEST · lotId 없음): matchedLotIds 1개 이상 필수(그 지시서·품목의 PICKED 피킹 LOT 만 — 아니면 400 INVALID), overallJudgmentCode(ACCEPTED·REJECTED·HELD)만 받고 수량 칸은 무시한다 — 서버가 검사 수량 = 매칭 LOT 피킹 합, 판정 칸 하나에 같은 값으로 채운다. statusCode 는 DRAFT 만(CONFIRMED 면 409 CONFIRMED_BY_SHIPMENT_COMPLETION), 순번 = 최대 + 1, 불합격·보류를 가볍게 덮으면 reinspectionReasonCode 필수(400 REINSPECTION_REASON_REQUIRED), 시리얼 판정은 작성중 저장에서도 받는다. 첫 결과가 의뢰를 IN_PROGRESS 로 옮긴다. */
     InspectionResultCreate: {
       /**
        * Format: int64
@@ -64376,10 +64854,10 @@ export interface components {
       } | null;
       /** @description 시리얼 OQC — 출하작업지시 OQC 를 statusCode=CONFIRMED 로 저장할 때만 싣는다(다른 유형·작성중이면 400 serials·INVALID). 시리얼마다 결과와 같은 트랜잭션으로 한 줄씩 남는다. 막는 것(모두 400 serials·INVALID): 없는 시리얼 · 다른 품목 · 이 출하작업지시가 피킹하지 않은 LOT · 같은 시리얼 두 번 · 시리얼 수 > 검사 수량 · NG 수 > 불합격 수량. 이미 기록된 시리얼이면 1차는 그대로 두고 최종만 바꾼다 — 1차 OK 를 NG 로는 못 바꾼다(400 serials·INVALID). 하나라도 막히면 결과째 저장되지 않는다. ⚠ 한계: 시리얼당 한 줄이다 — 재검 회차가 같은 줄을 고치므로 회차별 이력은 남지 않는다. 1차 판정은 처음 기록한 값 그대로이고, 최종 판정과 마지막으로 쓴 회차만 바뀐다. 서버 선행(omf-all-around#68 · 장부 P-101). */
       serials?: components['schemas']['InspectionSerialJudgmentInput'][];
-      /** @description 입하 LOT 검사(targetTypeCode=INBOUND_LOT)의 결과만 — 이 결과가 본 자재 관리 LOT. 그 입하 LOT 소속만(아니면 400 INVALID), 한 결과에 같은 LOT 두 번은 400, 다른 결과와 겹치는 것은 된다. 1개 이상 필수 — 빼거나 빈 배열이면 400 MATCHED_LOT_REQUIRED(2026-11-12). 근거: 피처 005 자재 LOT 운영 구조 변경 §8 · omf-all-around#254 · R-10 */
+      /** @description 입하 LOT 검사(targetTypeCode=INBOUND_LOT)의 결과만 — 이 결과가 본 자재 관리 LOT. 그 입하 LOT 소속만(아니면 400 INVALID), 한 결과에 같은 LOT 두 번은 400, 다른 결과와 겹치는 것은 된다. 1개 이상 필수 — 빼거나 빈 배열이면 400 MATCHED_LOT_REQUIRED(2026-11-12). 근거: 피처 005 자재 LOT 운영 구조 변경 §8 · omf-all-around#254 · R-10 ⭐ 출하 OQC 새 흐름도 받는다 — 그 지시서·품목의 PICKED 피킹 LOT(피처 010). */
       matchedLotIds?: number[];
     };
-    /** @description 작성중인 결과만 고칠 수 있다. 확정된 것은 409 INVALID_STATE — 고치는 것이 아니라 재검이다(B-10) ⭐ 검사자·단말은 «보내지 않는다» — 서버가 인증 주체에서 채운다(관리웹은 계정 토큰, 현장 단말·모바일은 사번 귀속 헤더). */
+    /** @description 작성중인 결과만 고칠 수 있다. 확정된 것은 409 INVALID_STATE — 고치는 것이 아니라 재검이다(B-10) ⭐ 검사자·단말은 «보내지 않는다» — 서버가 인증 주체에서 채운다(관리웹은 계정 토큰, 현장 단말·모바일은 사번 귀속 헤더). ⭐ 출하 OQC 새 흐름(피처 010): 작성중만 고친다 — matchedLotIds·overallJudgmentCode·reinspectionReasonCode, 수량은 매칭으로 다시 채운다. */
     InspectionResultUpdate: {
       /**
        * Format: double
@@ -64429,7 +64907,7 @@ export interface components {
          */
         remarks: string;
       } | null;
-      /** @description 입하 LOT 검사 결과만 — 실으면 매칭을 통째로 갈아 끼운다(빈 배열은 400 MATCHED_LOT_REQUIRED · 2026-11-12), 빼면 그대로. 규칙은 POST 와 같다. 근거: 피처 005 자재 LOT 운영 구조 변경 §8 · omf-all-around#254 */
+      /** @description 입하 LOT 검사 결과만 — 실으면 매칭을 통째로 갈아 끼운다(빈 배열은 400 MATCHED_LOT_REQUIRED · 2026-11-12), 빼면 그대로. 규칙은 POST 와 같다. 근거: 피처 005 자재 LOT 운영 구조 변경 §8 · omf-all-around#254 ⭐ 출하 OQC 새 흐름도 받는다(피처 010). */
       matchedLotIds?: number[];
       /**
        * @description 입하 LOT 검사 결과만 — 재검 사유(공통코드 REINSPECTION_REASON · 열린 그룹이라 값은 대조하지 않는다). 빼면 저장값 그대로. 고친 뒤의 판정·매칭이 그 LOT 의 바로 앞 결과(이 결과보다 순번이 작은 것 중 가장 큰 것) 판정을 불합격 → 보류·합격, 보류 → 합격으로 바꾸면 필수(본문·저장값 모두 없으면 400 REINSPECTION_REASON_REQUIRED). 입하 LOT 검사가 아닌 결과에 실으면 400 INVALID. 근거: 피처 005 §8 판정 규칙 변경(2026-11-12)
@@ -64800,7 +65278,7 @@ export interface components {
     };
     QualityConflictResponse: {
       /**
-       * @description DUPLICATE_HOLD 는 해제되지 않은 전량 보류가 이미 있다는 뜻이다. HOLD_QTY_EXCEEDED 는 부분 보류 합계가 보유 수량을 넘는다는 뜻이다. 둘 다 서버가 판정한다 — 화면이 계산하지 않는다. DISPOSITION_QTY_EXCEEDED 는 처분 결정 수량 합이 대상 수량을 넘는다는 뜻이고 remainingQty 를 함께 내린다 — 같은 형태다. INVALID_STATE 는 이미 종결된 부적합에 판정을 저장하려 할 때도 쓴다. 근거: W-03-03 §5-5 · W-03-10 §6 · 공유계약 A-9 ⓑ · omf-mes#253
+       * @description DUPLICATE_HOLD 는 해제되지 않은 전량 보류가 이미 있다는 뜻이다. HOLD_QTY_EXCEEDED 는 부분 보류 합계가 보유 수량을 넘는다는 뜻이다. 둘 다 서버가 판정한다 — 화면이 계산하지 않는다. DISPOSITION_QTY_EXCEEDED 는 처분 결정 수량 합이 대상 수량을 넘는다는 뜻이고 remainingQty 를 함께 내린다 — 같은 형태다. INVALID_STATE 는 이미 종결된 부적합에 판정을 저장하려 할 때도 쓴다. 근거: W-03-03 §5-5 · W-03-10 §6 · 공유계약 A-9 ⓑ · omf-mes#253 CONFIRMED_BY_SHIPMENT_COMPLETION — 출하 OQC 새 흐름(OQC · 대상 SHIPMENT_REQUEST · lotId 없음) 의 결과는 출하 완료 때 함께 확정된다 — :confirm 이나 statusCode=CONFIRMED 저장을 받지 않는다(피처 010 · omf-all-around#305).
        * @example VERSION_CONFLICT
        * @enum {string}
        */
@@ -64810,7 +65288,8 @@ export interface components {
         | 'INVALID_STATE'
         | 'DUPLICATE_HOLD'
         | 'HOLD_QTY_EXCEEDED'
-        | 'DISPOSITION_QTY_EXCEEDED';
+        | 'DISPOSITION_QTY_EXCEEDED'
+        | 'CONFIRMED_BY_SHIPMENT_COMPLETION';
       /** @example 값 */
       message: string;
       /**
@@ -65441,7 +65920,7 @@ export interface components {
       /** Format: date-time */
       createdAt: string;
     };
-    /** @description 입하 LOT 검사의 자재 관리 LOT 한 개. 근거: 피처 005 자재 LOT 운영 구조 변경 §8 · omf-all-around#254 */
+    /** @description 입하 LOT 검사의 자재 관리 LOT 한 개. 근거: 피처 005 자재 LOT 운영 구조 변경 §8 · omf-all-around#254 ⭐ 출하 OQC 새 흐름(피처 010)이면 그 지시서·품목의 피킹 LOT 이다 — lotQty 는 피킹 수량, package 는 null, goodsReceived 는 false, 교체된 LOT 도 pickStatusCode=REPLACED 이력으로 싣는다(매칭 대상 아님). */
     InspectionRequestLot: {
       /** Format: int64 */
       lotId: number;
@@ -65454,6 +65933,23 @@ export interface components {
       statusCode: string;
       /** @description 취소되지 않은 입고가 있는가. 칸 이름은 클라이언트 C3 이 정함(피처 005 §8). */
       goodsReceived: boolean;
+      /**
+       * Format: int64
+       * @description 출하 OQC — 피킹 LOT 행 id
+       * @example 1001
+       */
+      shipmentRequestLotId?: number;
+      /**
+       * @description 출하 OQC — 피킹 LOT 상태
+       * @example PICKED
+       * @enum {string}
+       */
+      pickStatusCode?: 'PICKED' | 'REPLACED' | 'SHIPPED';
+      /**
+       * @description 출하 OQC — 출하 관리 코드
+       * @example 값
+       */
+      managementCode?: string | null;
     };
     /** @description 입하 LOT 의 P/O 배정 한 줄(참고 · logistics InboundLotPoAllocation 과 같은 모양) */
     InspectionRequestPoAllocation: {
@@ -66045,9 +66541,10 @@ export interface components {
       shipmentRequestId: number;
       /**
        * Format: int64
+       * @description 출하 창고. ⭐ POP 출하 완료(피처 010)로 생긴 출하는 여러 창고라 null — warehouses[] 를 본다(응답 모양 변경)
        * @example 1001
        */
-      warehouseId: number;
+      warehouseId: number | null;
       /** @example 값 */
       vehicleNo?: string;
       /** @example 값 */
@@ -66109,6 +66606,52 @@ export interface components {
       lines?: components['schemas']['ShipmentLine'][];
       /** @example 1 */
       versionNo?: number;
+      /**
+       * @description ERP 송신 상태(출하 내역 W-04-12 · 피처 010) — 위에서부터 처음 맞는 값: 미확정 NOT_QUEUED(확정 전) · 수주 연결 라인 0 NOT_SENT_NO_SALES_ORDER(송신 안 함) · 메시지 없음 NOT_QUEUED · 메시지 취소 CANCELLED · 송신 실패 SEND_ERROR · 보내기 전(PENDING·sentAt 없음·바깥 행 0) PENDING(대기) · 그 밖 SENT(보냄). 출하 완료 단계 화면에는 표시하지 않는다
+       * @example PENDING
+       * @enum {string}
+       */
+      erpSendStatus?:
+        'NOT_QUEUED' | 'NOT_SENT_NO_SALES_ORDER' | 'CANCELLED' | 'SEND_ERROR' | 'PENDING' | 'SENT';
+      /**
+       * @description 열린 취소 결재(SHIPMENT_CANCEL · 상신 중) — 그동안 ERP 송신을 보류한다(FR-024)
+       * @example false
+       */
+      cancelRequestPending?: boolean;
+      /** @description POP 출하 완료 단말(피처 010) — 옛 흐름은 null */
+      completedTerminal?: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        terminalId: number;
+        /** @example POP-01 */
+        terminalCode: string;
+      } | null;
+      /** @description POP 출하 완료 작업자(피처 010) */
+      completedWorker?: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        workerId: number;
+        /** @example 100027 */
+        workerNo: string;
+        /** @example 작업자 */
+        workerName: string;
+      } | null;
+      /** @description 재고가 빠진 창고들 — 출하 창고와 내부 재고 차감 기록(goods_issue) 기준(피처 010) */
+      warehouses?: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        warehouseId: number;
+        /** @example WH-FG */
+        warehouseCode: string;
+        /** @example 완제품창고 */
+        warehouseName: string;
+      }[];
     };
     /** @description 취소 실행. ⭐ 승인 완료만으로 통과시키지 않는다 — 실행 시점에 후속을 다시 판정한다(공유계약 J-8). 그 사이에 확정됐으면 409 ALREADY_CONFIRMED 다 */
     ShipmentCancel: {
@@ -66314,6 +66857,11 @@ export interface components {
        * @example 120
        */
       packedQty: number;
+      /**
+       * @description 출하 관리 코드(피처 010 FR-020) — 출하 상세에서만 싣는다(조회만)
+       * @example BOX-0001
+       */
+      managementCode?: string | null;
     };
     ShipmentLotAllocationCreate: {
       /**
@@ -66394,7 +66942,7 @@ export interface components {
        */
       shippingInspectionStatusCode: 'NOT_REQUIRED' | 'PENDING' | 'PASSED' | 'REJECTED' | 'HELD';
       /**
-       * @description ⭐ W-04-02 「진행」 열의 판정 근거 — 출하작업지시 «한 건»의 진행이다. 라인 전체의 요청·배정·피킹·출하 4수량을 서버가 롤업해 하나로 낸다. ⛔ 서버가 계산한다 — 화면이 다시 계산하지 않는다(공유계약 L-2 · L-2-1 ⑴). ⛔ 저장하지 않는다 — A-17 의 두 질문이 둘 다 「아니오」다(달력이 값을 바꾸지 않고, 과거 값을 얼릴 이유도 없다). NOT_ALLOCATED=배정 합 0 · PARTIALLY_ALLOCATED=0 보다 크고 요청 합보다 작은 배정 합 · PICKING=배정 합이 요청 합과 같고 피킹 합이 배정 합보다 작다 · PICKED=피킹 합이 배정 합과 같고 출하 합 0 · PARTIALLY_SHIPPED=출하 합이 0 보다 크고 배정 합보다 작다 · SHIPPED=출하 합이 배정 합과 같다. ⭐ 판정 순서는 뒤가 이긴다 — NOT_ALLOCATED, PARTIALLY_ALLOCATED, PICKING, PICKED, PARTIALLY_SHIPPED, SHIPPED. ⚠ statusCode 와 축이 다르다 — 그 칸은 「칸 불필요」로 닫혔고(x-no-code-key) 값이 없다. ⚠ shippingInspectionStatusCode 와도 축이 다르다 — 「검사 대기」는 이 축의 값이 아니라 그 축의 PENDING 이다. 한 칸에 두 축을 담으면 어느 쪽도 못 읽는다. ⛔ 화면이 라인을 순회해 판정하지 않는다 — W-04-01·W-04-02·W-04-04 가 각자 접으면 같은 건을 다르게 부른다(W-04-02 §9-1). 근거: W-04-02 §3·§4-A·§5-3 · W-04-04 §3·§5-4 · omf-mes#402
+       * @description ⭐ W-04-02 「진행」 열의 판정 근거 — 출하작업지시 «한 건»의 진행이다. 라인 전체의 요청·배정·피킹·출하 4수량을 서버가 롤업해 하나로 낸다. ⛔ 서버가 계산한다 — 화면이 다시 계산하지 않는다(공유계약 L-2 · L-2-1 ⑴). ⛔ 저장하지 않는다 — A-17 의 두 질문이 둘 다 「아니오」다(달력이 값을 바꾸지 않고, 과거 값을 얼릴 이유도 없다). NOT_ALLOCATED=배정 합 0 · PARTIALLY_ALLOCATED=0 보다 크고 요청 합보다 작은 배정 합 · PICKING=배정 합이 요청 합과 같고 피킹 합이 배정 합보다 작다 · PICKED=피킹 합이 배정 합과 같고 출하 합 0 · PARTIALLY_SHIPPED=출하 합이 0 보다 크고 배정 합보다 작다 · SHIPPED=출하 합이 배정 합과 같다. ⭐ 판정 순서는 뒤가 이긴다 — NOT_ALLOCATED, PARTIALLY_ALLOCATED, PICKING, PICKED, PARTIALLY_SHIPPED, SHIPPED. ⚠ statusCode 와 축이 다르다 — 그 칸은 「칸 불필요」로 닫혔고(x-no-code-key) 값이 없다. ⚠ shippingInspectionStatusCode 와도 축이 다르다 — 「검사 대기」는 이 축의 값이 아니라 그 축의 PENDING 이다. 한 칸에 두 축을 담으면 어느 쪽도 못 읽는다. ⛔ 화면이 라인을 순회해 판정하지 않는다 — W-04-01·W-04-02·W-04-04 가 각자 접으면 같은 건을 다르게 부른다(W-04-02 §9-1). 근거: W-04-02 §3·§4-A·§5-3 · W-04-04 §3·§5-4 · omf-mes#402 ⭐ 피처 010: PICKED 는 P ≥ A ∧ S = 0, SHIPPED 는 S ≥ A(초과 피킹·출하).
        * @example PICKING
        * @enum {string}
        */
@@ -66408,6 +66956,37 @@ export interface components {
       lines?: components['schemas']['ShipmentRequestLine'][];
       /** @example 1 */
       versionNo?: number;
+      /**
+       * @description 지시서 QR·스캔 값 SHPREQ:{shipmentRequestNo}(피처 010)
+       * @example SHPREQ:SR-20261118-0001
+       */
+      code: string;
+      /** @description 살아 있는 피킹 LOT 의 몫이 있는 창고들 — 지시서는 창고를 정하지 않는다(공장 단위). */
+      pickingWarehouses: components['schemas']['ShipmentPickingWarehouse'][];
+      /**
+       * @description OQC 불합격으로 교체한 LOT 수(FR-015 · 「LOT 교체 n」)
+       * @example 1
+       */
+      replacementCount: number;
+      /** @description 출하 완료를 막는 이유(FR-016) — 비면 완료 대기 */
+      completionBlockers: components['schemas']['ShipmentCompletionBlocker'][];
+      /** @description 목록의 「막힘 n」 — 이유 코드별 수(없는 이유는 키 생략) */
+      blockerSummary: {
+        /** @example 1 */
+        PICKING_SHORT?: number;
+        /** @example 1 */
+        NOT_INSPECTED?: number;
+        /** @example 1 */
+        REJECTED?: number;
+        /** @example 1 */
+        HELD?: number;
+        /** @example 1 */
+        SALES_ORDER_LINE_CANCELLED?: number;
+        /** @example 1 */
+        ALREADY_COMPLETED?: number;
+      };
+      lotJudgmentSummary: components['schemas']['ShipmentLotJudgmentSummary'];
+      completedShipment: components['schemas']['ShipmentCompletedShipment'] | null;
     };
     /** @description W-04-02 요약 구획 — 필터 전체 기준(목록 페이지와 다른 모집단). 근거: W-04-02 §4-B · omf-mes#232 */
     ShipmentRequestSummary: {
@@ -66527,7 +67106,7 @@ export interface components {
        */
       allocatedQty: number;
       /**
-       * @description 누적 피킹 수량. ⭐ 서버가 유지한다 — 화면이 더하지 않는다(공유계약 L-2). 배정 잔여 = allocatedQty − pickedQty
+       * @description 누적 피킹 수량. ⭐ 서버가 유지한다 — 화면이 더하지 않는다(공유계약 L-2). 배정 잔여 = allocatedQty − pickedQty ⭐ 피처 010: 목표(allocatedQty)를 넘을 수 있다 — LOT 통째 피킹의 마지막 LOT 이 초과를 만든다.
        * @example 120
        */
       pickedQty: number;
@@ -66558,6 +67137,14 @@ export interface components {
       minimumRemainingShelfLifeDays?: number | null;
       /** @description 이 라인에서 실제로 집은 제품 LOT 별 내역. ⭐ 서버가 유지한다 — W-04-04 출하 처리가 ShipmentCreate.lines[].allocations 를 채우는 원천이 이것이다(공유계약 L-2). 근거: M-04-01 §5-7 · W-04-04 §3 */
       picks: components['schemas']['ShipmentLinePickedLot'][];
+      /**
+       * Format: double
+       * @description 초과 = 피킹 − 목표(배정 allocatedQty). 목표에 못 미치면 0(피처 010)
+       * @example 40
+       */
+      overQty: number;
+      /** @description 피킹 LOT 행(교체 이력 포함 · 피처 010). picks 는 예약 행 그대로다. */
+      lots: components['schemas']['ShipmentRequestLot'][];
     };
     ShipmentRequestLineCreate: {
       /**
@@ -66594,7 +67181,7 @@ export interface components {
     };
     ShipmentConflictResponse: {
       /**
-       * @description ALREADY_CONFIRMED 는 이미 확정된 출하라는 뜻이다 — 확정 취소 경로가 없으므로 되돌릴 수 없다(W-04-12 §5-3). CANCEL_IN_PROGRESS 는 취소 결재가 진행 중이라 확정할 수 없다는 뜻이다(J-7). 근거: W-04-12 §5-8
+       * @description ALREADY_CONFIRMED 는 이미 확정된 출하라는 뜻이다 — 확정 취소 경로가 없으므로 되돌릴 수 없다(W-04-12 §5-3). CANCEL_IN_PROGRESS 는 취소 결재가 진행 중이라 확정할 수 없다는 뜻이다(J-7). 근거: W-04-12 §5-8 피처 010(omf-all-around#305): USE_PICK_LOT 는 옛 수량 피킹(:pick)이 닫혔다는 뜻이다 — LOT 통째 피킹(:pick-lot)을 쓴다. LOT_TARGET_REACHED 는 라인 피킹 합이 이미 목표(배정) 이상이다. LOT_ALREADY_RESERVED 는 그 LOT 의 잔액 행에 다른 예약·피킹·차단이 걸려 통째로 잡을 수 없다. LOT_ALREADY_PICKED 는 이미 이 지시서에 피킹한 LOT 이다. NO_LINE_FOR_ITEM 은 이 지시서에 그 LOT 품목의 라인이 없다. LOT_NOT_REJECTED 는 교체할 수 없는 피킹 LOT 이다 — OQC 판정이 불합격이 아니거나(교체 전에 재검 합격이 들어온 경우 포함) 이미 교체·출하됐다. COMPLETION_BLOCKED 는 출하 완료를 막는 이유가 있다(blockers 에 실린다). ALREADY_COMPLETED 는 이미 POP 에서 출하 완료한 지시서다(다시 스캔·동시 완료). ERP_ALREADY_SENT 는 ERP 로 이미 보낸(또는 보내는 중인) POP 완료 출하라 취소할 수 없다 — ERP 에서 처리한다.
        * @example VERSION_CONFLICT
        * @enum {string}
        */
@@ -66603,7 +67190,16 @@ export interface components {
         | 'DUPLICATE_KEY'
         | 'INVALID_STATE'
         | 'ALREADY_CONFIRMED'
-        | 'CANCEL_IN_PROGRESS';
+        | 'CANCEL_IN_PROGRESS'
+        | 'USE_PICK_LOT'
+        | 'LOT_TARGET_REACHED'
+        | 'LOT_ALREADY_RESERVED'
+        | 'LOT_ALREADY_PICKED'
+        | 'NO_LINE_FOR_ITEM'
+        | 'LOT_NOT_REJECTED'
+        | 'COMPLETION_BLOCKED'
+        | 'ALREADY_COMPLETED'
+        | 'ERP_ALREADY_SENT';
       /** @example 값 */
       message: string;
       /**
@@ -66617,6 +67213,8 @@ export interface components {
        * @enum {string}
        */
       conflictCause: 'user' | 'erpSync' | 'workerLease';
+      /** @description COMPLETION_BLOCKED 일 때만 — 막는 이유 목록 */
+      blockers?: components['schemas']['ShipmentCompletionBlocker'][];
     };
     /** @description 피킹 확정 요청. 사번은 본문이 아니라 X-Worker-No 헤더로 보낸다 */
     ShipmentLinePick: {
@@ -66973,6 +67571,420 @@ export interface components {
     ShippingUnitList: {
       items: components['schemas']['ShippingUnit'][];
       page: components['schemas']['PageMeta'];
+    };
+    /** @description LOT 통째 피킹 본문 — lotId 나 lotNo 중 하나(스캔은 LOT 번호). 수량은 받지 않는다 — 서버가 그 LOT 의 공장 안 가용 전부(불량창고 제외)를 피킹한다(피처 010 · omf-all-around#305). */
+    ShipmentLotPick: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      lotId?: number;
+      /** @example LOT-0001 */
+      lotNo?: string;
+    };
+    /** @description 피킹 LOT 의 창고·위치별 몫 — 그 LOT 의 예약 행(잔액 행마다 하나)에서 읽는다. 적치 대기 자리 몫도 포함한다. */
+    ShipmentLotPortion: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      warehouseId: number;
+      /** @example WH-FG */
+      warehouseCode: string;
+      /** @example 완제품창고 */
+      warehouseName: string;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      locationId: number | null;
+      /** @example FG-A01 */
+      locationCode: string | null;
+      /**
+       * Format: double
+       * @example 40
+       */
+      qty: number;
+    };
+    /** @description 출하 지시서 피킹 LOT(logistics.shipment_request_lot) — 지시서 라인 × LOT 한 행. 교체된 행(REPLACED)도 이력으로 싣는다. */
+    ShipmentRequestLot: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      shipmentRequestLotId: number;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      lotId: number;
+      /** @example LOT-0001 */
+      lotNo: string;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      itemId: number;
+      /**
+       * Format: double
+       * @description 피킹 때 그 LOT 의 공장 안 가용 합(통째)
+       * @example 40
+       */
+      pickedQty: number;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      uomId: number;
+      /**
+       * @example PICKED
+       * @enum {string}
+       */
+      statusCode: 'PICKED' | 'REPLACED' | 'SHIPPED';
+      /**
+       * @description 출하 관리 코드(선택, ≤100자)
+       * @example 값
+       */
+      managementCode: string | null;
+      /**
+       * Format: date-time
+       * @example 2026-11-18T03:00:00Z
+       */
+      pickedAt: string;
+      pickedWorker: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        workerId: number;
+        /** @example W-001 */
+        workerNo: string;
+        /** @example 작업자 */
+        workerName: string;
+      } | null;
+      /**
+       * Format: int64
+       * @description SHIPPED 가 된 출하
+       * @example 1001
+       */
+      shipmentId: number | null;
+      portions: components['schemas']['ShipmentLotPortion'][];
+      /**
+       * @description LOT OQC 판정 6종(FR-007) — 위에서부터 처음 맞는 값: 검사 불필요 NOT_REQUIRED · 의뢰 생략 SKIPPED · 이 지시서에서 그 LOT 을 매칭한 마지막 결과의 판정 · 없으면 NOT_INSPECTED(다른 지시서의 합격은 잇지 않는다). 교체된 행은 null.
+       * @example NOT_INSPECTED
+       * @enum {string|null}
+       */
+      oqcLotStatus:
+        'NOT_REQUIRED' | 'SKIPPED' | 'NOT_INSPECTED' | 'ACCEPTED' | 'REJECTED' | 'HELD' | null;
+      /** @description 교체된 행(REPLACED)만 — 그 밖은 null */
+      replacement: components['schemas']['ShipmentLotReplacement'] | null;
+    };
+    ShipmentPickingWarehouse: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      warehouseId: number;
+      /** @example WH-FG */
+      warehouseCode: string;
+      /** @example 완제품창고 */
+      warehouseName: string;
+    };
+    /** @description 통째 피킹 결과 — 만든 피킹 LOT 행과 갱신된 라인(목표·피킹·초과). */
+    ShipmentLotPickResult: {
+      pickedLot: components['schemas']['ShipmentRequestLot'];
+      line: components['schemas']['ShipmentRequestLine'];
+    };
+    /** @description 교체 근거(FR-015) — 불합격 결과·교체가 만든 부적합·작업자·시각. */
+    ShipmentLotReplacement: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      inspectionResultId: number;
+      /** @example IRS-20261118-0001 */
+      resultNo: string;
+      /**
+       * Format: date-time
+       * @example 2026-11-18T03:00:00Z
+       */
+      resultAt: string;
+      /** @example REJECTED */
+      judgment: string | null;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      nonconformanceId: number | null;
+      /** @example NC-20261118-0001 */
+      nonconformanceNo: string | null;
+      /**
+       * Format: date-time
+       * @example 2026-11-18T04:00:00Z
+       */
+      replacedAt: string;
+      worker: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        workerId: number;
+        /** @example W-001 */
+        workerNo: string;
+        /** @example 작업자 */
+        workerName: string;
+      } | null;
+    };
+    /** @description 교체 결과 — 교체된 피킹 LOT 행(이력), 교체가 만든 부적합 번호(그 LOT 에 열린 부적합이 이미 있으면 null), 다시 피킹을 받는 라인. */
+    ShipmentLotReplaceResult: {
+      replacedLot: components['schemas']['ShipmentRequestLot'];
+      /** @example NC-20261118-0001 */
+      nonconformanceNo: string | null;
+      line: components['schemas']['ShipmentRequestLine'];
+    };
+    /** @description 출하 관리 코드(FR-020) — 최대 100자, 중복·형식 검사 없음. null·빈 글자는 지운다. */
+    ShipmentLotManagementCode: {
+      /** @example BOX-0001 */
+      managementCode: string | null;
+    };
+    /** @description 출하 완료를 막는 이유(FR-016). SALES_ORDER_LINE_CANCELLED 는 「담당자에게 문의」 안내만 — 푸는 경로가 없다(FR-028b). */
+    ShipmentCompletionBlocker: {
+      /**
+       * @example NOT_INSPECTED
+       * @enum {string}
+       */
+      code:
+        | 'PICKING_SHORT'
+        | 'NOT_INSPECTED'
+        | 'REJECTED'
+        | 'HELD'
+        | 'SALES_ORDER_LINE_CANCELLED'
+        | 'ALREADY_COMPLETED';
+      /**
+       * @description PICKING_SHORT·SALES_ORDER_LINE_CANCELLED 의 라인
+       * @example 1
+       */
+      lineNo?: number;
+      /**
+       * @description NOT_INSPECTED·REJECTED·HELD 의 LOT
+       * @example LOT-0001
+       */
+      lotNo?: string;
+    };
+    /** @description 살아 있는 피킹 LOT 의 OQC 판정 수 */
+    ShipmentLotJudgmentSummary: {
+      /** @example 0 */
+      notInspected: number;
+      /** @example 3 */
+      accepted: number;
+      /** @example 0 */
+      rejected: number;
+      /** @example 0 */
+      held: number;
+    };
+    /** @description POP 에서 완료한 출하(취소 아님) */
+    ShipmentCompletedShipment: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      shipmentId: number;
+      /** @example SH-20261118-0001 */
+      shipmentNo: string;
+      /**
+       * Format: date-time
+       * @example 2026-11-18T05:00:00Z
+       */
+      completedAt: string;
+    };
+    /** @description POP 출하 완료 확인 값(P-04-07) — 지시서 코드 스캔과 찾기가 같은 값을 본다. ⛔ ERP 송신 여부는 싣지 않는다(출하 완료 단계 화면에 표시하지 않는다 · 2026-11-18). */
+    ShipmentRequestCompletion: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      shipmentRequestId: number;
+      /** @example SR-20261118-0001 */
+      shipmentRequestNo: string;
+      /** @example SHPREQ:SR-20261118-0001 */
+      code: string;
+      /**
+       * @description :complete 의 If-Match 값
+       * @example 3
+       */
+      versionNo: number;
+      /**
+       * Format: date
+       * @example 2026-11-18
+       */
+      requestedShipDate: string;
+      customer: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        partnerId: number;
+        /** @example C001 */
+        partnerCode: string;
+        /** @example 고객사 */
+        partnerName: string;
+      };
+      shipTo: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        partnerId: number;
+        /** @example C001 */
+        partnerCode: string;
+        /** @example 고객사 */
+        partnerName: string;
+      };
+      /** @example SO-0001 */
+      salesOrderNo: string | null;
+      /** @description 재고가 빠질 창고들(정보 — 출하는 하나) */
+      warehouses: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        warehouseId: number;
+        /** @example WH-FG */
+        warehouseCode: string;
+        /** @example 완제품창고 */
+        warehouseName: string;
+        /** @example 2 */
+        lotCount: number;
+        /**
+         * Format: double
+         * @example 40
+         */
+        qty: number;
+      }[];
+      lines: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        shipmentRequestLineId: number;
+        /** @example 1 */
+        lineNo: number;
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        itemId: number;
+        /** @example A-001 */
+        itemCode: string;
+        /** @example 품목 */
+        itemName: string;
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        uomId: number;
+        /**
+         * Format: double
+         * @description 목표 = 배정
+         * @example 40
+         */
+        targetQty: number;
+        /**
+         * Format: double
+         * @example 40
+         */
+        pickedQty: number;
+        /**
+         * Format: double
+         * @example 40
+         */
+        overQty: number;
+        /**
+         * Format: double
+         * @example 40
+         */
+        shippedQty: number;
+        /** @example 3 */
+        lotCount: number;
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        salesOrderLineId: number | null;
+      }[];
+      /** @description 살아 있는(또는 출하된) 피킹 LOT — 교체된 LOT 은 빠진다 */
+      lots: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        shipmentRequestLotId: number;
+        /** @example 1 */
+        lineNo: number;
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        lotId: number;
+        /** @example LOT-0001 */
+        lotNo: string;
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        itemId: number;
+        /**
+         * Format: double
+         * @example 40
+         */
+        qty: number;
+        /**
+         * @example PICKED
+         * @enum {string}
+         */
+        statusCode: 'PICKED' | 'SHIPPED';
+        /**
+         * @description LOT OQC 판정 6종(FR-007) — 위에서부터 처음 맞는 값: 검사 불필요 NOT_REQUIRED · 의뢰 생략 SKIPPED · 이 지시서에서 그 LOT 을 매칭한 마지막 결과의 판정 · 없으면 NOT_INSPECTED(다른 지시서의 합격은 잇지 않는다). 교체된 행은 null.
+         * @example NOT_INSPECTED
+         * @enum {string|null}
+         */
+        oqcLotStatus:
+          'NOT_REQUIRED' | 'SKIPPED' | 'NOT_INSPECTED' | 'ACCEPTED' | 'REJECTED' | 'HELD' | null;
+        /** @example BOX-0001 */
+        managementCode: string | null;
+      }[];
+      /** @description 비면 완료 가능 */
+      blockers: components['schemas']['ShipmentCompletionBlocker'][];
+      completedShipment: components['schemas']['ShipmentCompletedShipment'] | null;
+    };
+    /** @description 출하 완료 본문 — 영업일은 단말이 보낸다(서버가 수신 시각으로 다시 잡지 않는다 · C-8). 시각을 빼면 서버 시각. */
+    ShipmentCompletion: {
+      /**
+       * Format: date
+       * @example 2026-11-18
+       */
+      businessDate: string;
+      /**
+       * Format: date-time
+       * @example 2026-11-18T05:00:00Z
+       */
+      occurredAt?: string;
+    };
+    /** @description 완료 결과 — 만든 출하와 완료 뒤의 확인 값(완료 결과는 다음 스캔까지 남는다). */
+    ShipmentCompletionResult: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      shipmentId: number;
+      /** @example SH-20261118-0001 */
+      shipmentNo: string;
+      /**
+       * Format: date-time
+       * @example 2026-11-18T05:00:00Z
+       */
+      completedAt: string;
+      completion: components['schemas']['ShipmentRequestCompletion'];
     };
     InspectionLine: {
       /**
