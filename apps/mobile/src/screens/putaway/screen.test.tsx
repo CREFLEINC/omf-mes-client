@@ -692,7 +692,9 @@ describe('적치·입고 완료 화면', () => {
     expect(await screen.findByText('이 품목의 보관 위치(A-01-03)가 아닙니다')).toBeTruthy();
     expect(screen.getByLabelText(/위치 코드 스캔/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: '위치 재스캔' })).toBeNull();
-    expect(screen.getByText('임시로 두어야 하면 임시 위치 적재로 갑니다')).toBeTruthy();
+    /* T054 — 막지 않고 확인을 묻는다. 임시 위치 적재로 가는 길도 남는다. */
+    expect(screen.getByText(messages.putaway.direct.verdict.UNDESIGNATED)).toBeTruthy();
+    expect(screen.getByRole('button', { name: '미지정 위치 적치' })).toBeTruthy();
     expect(screen.queryByRole('link', { name: /임시/ })).toBeNull();
     expect(screen.getByRole('button', { name: '임시 위치 적재로 이동' })).toBeTruthy();
   });
@@ -1058,9 +1060,106 @@ describe('목록 LOT 스캔으로 연 적치 지시', () => {
 
     scan('B-02-01');
 
-    expect(await screen.findByText('기록하지 않았습니다')).toBeTruthy();
+    /* T054 — 확인 전에는 기록하지 않는다. */
+    expect(await screen.findByText(messages.putaway.direct.notYetRecorded)).toBeTruthy();
     expect(seen).toHaveLength(0);
     expect(tone.played).toBeGreaterThan(0);
+  });
+
+  /*
+   * 피처 009 T054 · FR-017b — 서버는 지시 적치를 허용 위치 밖이라고 막지 않는다. 단말은 확인 한 번 뒤 기록하고, 「지정 품목만
+   * 받기」 위치라 서버가 거절하면 그 판정 문구를 보인다.
+   */
+  it('FR-017b·T054 보관 위치 밖은 [미지정 위치 적치]를 누르면 그 위치로 기록한다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([lotRoute(), lotTasksRoute([task()]), completeRoute(seen)]);
+    await screen.findByRole('button', { name: /RM-1001/ });
+    await scanListLot(LOT_NO);
+    await screen.findByText('목록에서 스캔한 LOT 입니다');
+    scan('B-02-01');
+
+    await user.click(await screen.findByRole('button', { name: '미지정 위치 적치' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+    const body = (await seen[0]!.json()) as { actualLocationId: number };
+    expect(body.actualLocationId).toBe(9);
+  });
+
+  it('FR-017b·T054 [다시 스캔]은 위치 칸을 다시 열고 기록하지 않는다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([lotRoute(), lotTasksRoute([task()]), completeRoute(seen)]);
+    await screen.findByRole('button', { name: /RM-1001/ });
+    await scanListLot(LOT_NO);
+    await screen.findByText('목록에서 스캔한 LOT 입니다');
+    scan('B-02-01');
+
+    await user.click(await screen.findByRole('button', { name: '다시 스캔' }));
+
+    expect(screen.queryByText(messages.putaway.direct.verdict.UNDESIGNATED)).toBeNull();
+    expect(screen.getByLabelText(/위치 코드 스캔/)).toBeTruthy();
+    expect(seen).toHaveLength(0);
+  });
+
+  it('FR-017b·T054 「지정 품목만 받기」 위치라 서버가 LOCATION_ITEM_RESTRICTED 로 거절하면 그 판정 문구를 보인다', async () => {
+    const user = userEvent.setup();
+    mount([
+      lotRoute(),
+      lotTasksRoute([task()]),
+      {
+        match: (req) =>
+          /^\/logistics\/putaway-tasks\/\d+:complete$/.test(new URL(req.url).pathname) &&
+          req.method === 'POST',
+        respond: () =>
+          jsonResponse(
+            {
+              errors: [
+                {
+                  scope: 'field',
+                  field: 'actualLocationId',
+                  code: 'LOCATION_ITEM_RESTRICTED',
+                  message: '이 위치는 지정 품목만 받습니다.',
+                },
+              ],
+            },
+            { status: 400 },
+          ),
+      },
+    ]);
+    await screen.findByRole('button', { name: /RM-1001/ });
+    await scanListLot(LOT_NO);
+    await screen.findByText('목록에서 스캔한 LOT 입니다');
+    scan('B-02-01');
+    await user.click(await screen.findByRole('button', { name: '미지정 위치 적치' }));
+
+    expect(
+      (await screen.findAllByText(messages.putaway.direct.verdict.RESTRICTED_LOCATION)).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByText(messages.putaway.rejected.count('1'))).toBeTruthy();
+  });
+
+  it('FR-017b·T054 카드로 고른 지시도 보관 위치 밖을 확인하면 LOT 스캔으로 넘어가 [적치 완료]로 기록한다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([completeRoute(seen)]);
+    await user.click(await screen.findByRole('button', { name: /RM-1001/ }));
+    await screen.findByLabelText(/위치 코드 스캔/);
+    scan('B-02-01');
+    await user.click(await screen.findByRole('button', { name: '미지정 위치 적치' }));
+
+    expect(await screen.findByText(messages.putaway.verdict.outsideConfirmed)).toBeTruthy();
+    into((await screen.findByLabelText(/LOT 라벨 스캔/)) as HTMLInputElement, LOT_NO);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '적치 완료' })).not.toBeDisabled();
+    });
+    await user.click(screen.getByRole('button', { name: '적치 완료' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
   });
 
   /* 알고 정한 위험(2026-11-14) — 보관 위치를 정하지 않은 품목은 어느 위치든 받는다. 그 사실을 알린다. */

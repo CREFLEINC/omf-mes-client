@@ -75,6 +75,11 @@ export interface CompleteInput {
   lotNo: string | null;
   scannedLot: string | null;
   hasWorker: boolean;
+  /**
+   * 보관 위치 밖인 것을 알고 [미지정 위치 적치]를 눌렀나(피처 009 T054 · FR-017b). 서버는 지시 적치를 허용 위치 밖이라고
+   * 막지 않는다 — 막는 것은 「지정 품목만 받기」 위치뿐이다. 단말은 확인 한 번만 받는다.
+   */
+  confirmedOutside?: boolean;
 }
 
 export const canComplete = ({
@@ -83,12 +88,13 @@ export const canComplete = ({
   lotNo,
   scannedLot,
   hasWorker,
+  confirmedOutside = false,
 }: CompleteInput): boolean => {
   if (task === null || location === null || !hasWorker) {
     return false;
   }
 
-  if (verdictOf(task, location) === NOT_ALLOWED) {
+  if (verdictOf(task, location) === NOT_ALLOWED && !confirmedOutside) {
     return false;
   }
 

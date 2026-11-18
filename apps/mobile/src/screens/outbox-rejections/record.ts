@@ -74,12 +74,22 @@ export interface PutawayNotice {
  * 한국어 하나라 베트남어 화면에 그대로 쓰지 않는다. 지정 품목 목록은 싣지 않는다. 적치 기록이 아니거나 모르는
  * 코드면 null — 그때는 지금처럼 일반 사유를 보인다.
  */
+/** 지시 적치 완료 — 「지정 품목만 받기」 위치면 코어가 LOCATION_ITEM_RESTRICTED 로 거절한다(T054 · FR-017b). */
+const TASK_COMPLETE_PATH = /^\/logistics\/putaway-tasks\/\d+:complete$/;
+
 export const putawayNoticeOf = (record: RejectedRecord): PutawayNotice | null => {
+  const direct = messages.putaway.direct;
+
+  if (TASK_COMPLETE_PATH.test(record.entry.path)) {
+    return errorCodesOf(record.error).includes('LOCATION_ITEM_RESTRICTED')
+      ? { title: direct.verdict.RESTRICTED_LOCATION, detail: null, hint: direct.rejectedHint }
+      : null;
+  }
+
   if (!DIRECT_PUTAWAY_PATH.test(record.entry.path)) {
     return null;
   }
 
-  const direct = messages.putaway.direct;
   for (const code of errorCodesOf(record.error)) {
     const verdict =
       code in direct.verdict ? direct.verdict[code as keyof typeof direct.verdict] : null;

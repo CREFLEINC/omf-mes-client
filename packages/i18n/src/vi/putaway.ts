@@ -82,6 +82,7 @@ export const putaway: Translated<typeof ko.putaway> = {
     /** 임시로 두는 화면으로 가는 버튼 — 안내 문구와 갈라 둔다. */
     temporaryMove: 'Chuyển sang xếp tạm',
     notAllowed: (allowed: string) => `Không phải vị trí bảo quản của mặt hàng này (${allowed})`,
+    outsideConfirmed: 'Cất vào vị trí không phải vị trí lưu trữ',
     anywhere: 'Mặt hàng chưa định vị trí bảo quản. Có thể cất ở bất kỳ đâu trong kho này',
     notRecorded: 'Chưa ghi nhận',
   },
