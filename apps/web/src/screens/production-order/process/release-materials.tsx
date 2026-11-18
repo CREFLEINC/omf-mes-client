@@ -42,6 +42,8 @@ export const editableRate = (row: MaterialRequirement) =>
   row.conversionSource === 'NONE' ||
   (row.conversionSource === 'COMMON' &&
     [row.bomUomCode, row.stockUomCode].every((code) => ['EA', 'PC'].includes(code)));
+const quantityText = (value: number) =>
+  value.toLocaleString(undefined, { maximumFractionDigits: 20 });
 interface Choice {
   checked: boolean;
   rate: string | null;
@@ -163,14 +165,16 @@ export const ReleaseMaterials = ({
                       <td>{row.itemCode}</td>
                       <td>{row.itemName}</td>
                       <td>
-                        {row.bomQty.toLocaleString()} {row.bomUomCode}
+                        {quantityText(row.bomQty)} {row.bomUomCode}
                       </td>
                       <td>
                         {choice.rate !== null
                           ? rate !== null
                             ? stockQuantity(row.bomQty, rate, row.stockUomScale)
                             : '—'
-                          : (row.stockQty?.toLocaleString() ?? '환산 불가')}{' '}
+                          : row.stockQty == null
+                            ? '환산 불가'
+                            : quantityText(row.stockQty)}{' '}
                         {row.stockUomCode}
                       </td>
                       <td>
@@ -205,7 +209,11 @@ export const ReleaseMaterials = ({
                                   }
                                 />
                               ) : (
-                                <span>{row.conversionRate?.toLocaleString()}</span>
+                                <span>
+                                  {row.conversionRate == null
+                                    ? ''
+                                    : quantityText(row.conversionRate)}
+                                </span>
                               )}
                               <span>{row.bomUomCode}</span>
                             </div>

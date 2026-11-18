@@ -77,6 +77,26 @@ describe('자재 환산 확인', () => {
     expect(checkbox).not.toBeChecked();
     expect(screen.getByRole('button', { name: '배포' })).toBeDisabled();
   });
+  it('소수 자릿수가 많은 소요량과 환산 비율도 생략하지 않는다', async () => {
+    renderWithProviders(<Harness />, {
+      fetch: async () =>
+        jsonResponse({
+          items: [
+            {
+              ...row,
+              bomQty: 0.00000001,
+              stockQty: 1.234567,
+              stockUomScale: 6,
+              conversionRate: 0.00012345,
+              conversionSource: 'ITEM',
+            },
+          ],
+        }),
+    });
+    expect(await screen.findByText('0.00000001 GR')).toBeVisible();
+    expect(screen.getByText('1.234567 KG')).toBeVisible();
+    expect(screen.getByText('0.00012345')).toBeVisible();
+  });
   it('조회 실패 시 배포를 허용하지 않는다', async () => {
     renderWithProviders(<Harness />, { fetch: async () => jsonResponse({}, { status: 500 }) });
     await screen.findByText('자재 소요를 조회하지 못했습니다. 다시 조회하세요.');
