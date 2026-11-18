@@ -10,6 +10,7 @@ import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/scr
 import { PopInspectionSheetScreen } from '../screens/pop-inspection-sheet/screen';
 import { PopMaterialDefectScreen } from '../screens/pop-material-defect/screen';
 import { PopOqcInspectionScreen } from '../screens/pop-oqc-inspection/screen';
+import { PopShipmentCompleteScreen } from '../screens/pop-shipment-complete/screen';
 import { RepackLabelIssueScreen } from '../screens/repack-label-issue/screen';
 import { ProductionFlowScreen } from '../screens/production-result/screen';
 import { ReworkResultRegisterScreen } from '../screens/rework-result-register/screen';
@@ -244,4 +245,12 @@ export const popRoutes: RouteObject[] = [
    * 공정 단말에만 뜬다(서버 `can_input_inspection`).
    */
   { path: '/pop/oqc-inspection', element: <PopOqcInspectionScreen /> },
+  /*
+   * P-04-07 — 출하 완료(피처 010 · omf-all-around#305). 관리웹 W-04-04 출하 처리를 대신한다 — 출하 지시서
+   * 코드(PDA 화면 QR · 인쇄 QR)를 스캔하거나 찾아 열고 [출하 완료] 한 번으로 출하를 끝낸다.
+   *
+   * ⚠ **진입에 질의 문자열이 없다** — 스캔·찾기부터 시작한다. 공정 플래그 없이 늘 열리는 화면이다(서버
+   *   권한 목록에 P-04-07). 완료는 POP 단말만 할 수 있다 — 집행은 서버의 403 이다.
+   */
+  { path: '/pop/shipment-complete', element: <PopShipmentCompleteScreen /> },
 ];

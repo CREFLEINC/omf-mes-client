@@ -129,6 +129,8 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
   { path: '/pop/inspection-sheet', label: 'P-02-15 제품 검사표 입력' },
   /* ⚠ 진입값이 없다 — 판정 대기 목록에서 의뢰를 고른다. */
   { path: '/pop/oqc-inspection', label: 'P-04-06 OQC 출하검사 판정' },
+  /* ⚠ 진입값이 없다 — 지시서 코드 스캔이나 찾기부터 시작한다(피처 010). */
+  { path: '/pop/shipment-complete', label: 'P-04-07 출하 완료' },
 ];
 
 /** 진입 화면 — 이 셀렉터가 서 있는 자리라 목록에서 뺀다. 감지기가 이 예외를 안다. */
