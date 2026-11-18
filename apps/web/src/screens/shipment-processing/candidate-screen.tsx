@@ -40,7 +40,7 @@ import { OutcomePane } from './outcome-pane';
 import { ShipmentLinesPane } from './shipment-lines-pane';
 import { toShipmentCreatePayload } from './shipment-request-payload';
 import { SubmitConfirmDialog } from './submit-confirm-dialog';
-import type { ShipmentRequestCandidate } from './types';
+import type { PickedLot, ShipmentRequestCandidate } from './types';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 
 const t = messages.shipmentProcessing;
@@ -203,13 +203,13 @@ export const ShipmentProcessingCandidateScreen = () => {
   const lineDrafts = toSelectedLineDrafts(ownedLineDrafts, state.selectedShipmentRequestId);
   const loadingInfo = toSelectedLoadingInfo(ownedLoadingInfo, state.selectedShipmentRequestId);
   const itemIds = [...new Set(lineDrafts.map((line) => line.itemId))];
-  const pickedLotIds: Record<number, number[]> = {};
+  const pickedLots: Record<number, PickedLot[]> = {};
   if (detailState.kind === 'RESOLVED') {
     for (const line of detailState.detail.lines ?? []) {
-      pickedLotIds[line.itemId] = [...(pickedLotIds[line.itemId] ?? []), ...line.pickedLotIds];
+      pickedLots[line.itemId] = [...(pickedLots[line.itemId] ?? []), ...line.pickedLots];
     }
   }
-  const lotCandidates = useLotCandidatesByItem(itemIds, pickedLotIds);
+  const lotCandidates = useLotCandidatesByItem(itemIds, pickedLots);
 
   const updateLineDrafts = (
     update: (drafts: LineAllocationDraft[]) => LineAllocationDraft[],

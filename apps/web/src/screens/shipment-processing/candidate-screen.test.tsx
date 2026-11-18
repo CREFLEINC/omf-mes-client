@@ -260,13 +260,18 @@ const baseRoutes = (): StubRoute[] => [
     page: { page: 1, size: 20, total: 1 },
   }),
   jsonRoute('GET', '/logistics/shipment-requests/501', shipmentRequest({ lines: [line()] })),
-  jsonRoute('GET', '/trace/lots', {
-    items: [
-      { lotId: 1001, lotNo: 'SYN-LOT-1001', itemId: 910001, held: false, expiryDate: null },
-      { lotId: 1002, lotNo: 'SYN-LOT-1002', itemId: 910001, held: true, expiryDate: null },
-    ],
-    page: { page: 1, size: 100, total: 2 },
-  }),
+  ...[
+    { lotId: 1001, lotNo: 'SYN-LOT-1001', itemId: 910001, held: false, expiryDate: null },
+    { lotId: 1002, lotNo: 'SYN-LOT-1002', itemId: 910001, held: true, expiryDate: null },
+  ].map((lot) =>
+    jsonRoute(
+      'GET',
+      '/trace/lots',
+      { items: [lot], page: { page: 1, size: 1, total: 1 } },
+      200,
+      (url) => url.searchParams.get('lotNo') === lot.lotNo,
+    ),
+  ),
 ];
 
 const recordingFetch = (

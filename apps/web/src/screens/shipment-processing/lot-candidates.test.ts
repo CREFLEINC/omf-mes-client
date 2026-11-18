@@ -9,16 +9,18 @@ import {
 } from '../../test/api-harness';
 import { useLotCandidatesByItem } from './lot-candidates';
 
-const lotsRoute = (itemId: number, body: unknown): StubRoute => ({
+const lotRoute = (itemId: number, lotNo: string, lot: Record<string, unknown>): StubRoute => ({
   match: (req) => {
     const url = new URL(req.url);
     return (
       req.method === 'GET' &&
       url.pathname === '/trace/lots' &&
-      url.searchParams.get('itemId') === String(itemId)
+      url.searchParams.get('itemId') === String(itemId) &&
+      url.searchParams.get('lotNo') === lotNo
     );
   },
-  respond: () => jsonResponse(body),
+  respond: () =>
+    jsonResponse({ items: [{ lotNo, itemId, ...lot }], page: { page: 1, size: 1, total: 1 } }),
 });
 
 describe('useLotCandidatesByItem', () => {
@@ -29,31 +31,22 @@ describe('useLotCandidatesByItem', () => {
     expect(result.current).toEqual({});
   });
 
-  it('품목마다 한 번씩 조회하고 held를 옮긴다', async () => {
+  it('집은 LOT 마다 LOT 번호로 한 건씩 조회하고 held를 옮긴다(omf-all-around#302)', async () => {
     const fetch = createStubFetch([
-      lotsRoute(910001, {
-        items: [
-          {
-            lotId: 1001,
-            lotNo: 'SYN-LOT-1001',
-            held: true,
-            expiryDate: '2027-01-01',
-            itemId: 910001,
-          },
-          { lotId: 1002, lotNo: 'SYN-LOT-1002', expiryDate: null, itemId: 910001 },
-        ],
-        page: { page: 1, size: 100, total: 2 },
-      }),
-      lotsRoute(910002, {
-        items: [{ lotId: 2001, lotNo: 'SYN-LOT-2001', held: false, itemId: 910002 }],
-        page: { page: 1, size: 100, total: 1 },
-      }),
+      lotRoute(910001, 'SYN-LOT-1001', { lotId: 1001, held: true, expiryDate: '2027-01-01' }),
+      lotRoute(910001, 'SYN-LOT-1002', { lotId: 1002, expiryDate: null }),
+      lotRoute(910002, 'SYN-LOT-2001', { lotId: 2001, held: false }),
     ]);
     const { result } = renderHookWithProviders(
-      () => useLotCandidatesByItem([910001, 910002], { 910001: [1001, 1002], 910002: [2001] }),
-      {
-        fetch,
-      },
+      () =>
+        useLotCandidatesByItem([910001, 910002], {
+          910001: [
+            { lotId: 1001, lotNo: 'SYN-LOT-1001' },
+            { lotId: 1002, lotNo: 'SYN-LOT-1002' },
+          ],
+          910002: [{ lotId: 2001, lotNo: 'SYN-LOT-2001' }],
+        }),
+      { fetch },
     );
 
     await waitFor(() => {
@@ -72,38 +65,32 @@ describe('useLotCandidatesByItem', () => {
     expect(result.current[910002]?.items[0]?.held).toBe(false);
   });
 
-  it('같은 품목이 중복되면 한 번만 조회한다', async () => {
-    const fetch = createStubFetch([
-      lotsRoute(910001, { items: [], page: { page: 1, size: 100, total: 0 } }),
-    ]);
-    const { result } = renderHookWithProviders(() => useLotCandidatesByItem([910001, 910001], {}), {
+  it('집은 LOT 이 없으면 조회하지 않고 빈 후보를 낸다 — 집지 않은 · 입고 전 LOT 은 나오지 않는다', () => {
+    const fetch = createStubFetch([]);
+    const { result } = renderHookWithProviders(() => useLotCandidatesByItem([910001], {}), {
       fetch,
     });
 
-    await waitFor(() => {
-      expect(result.current[910001]).toBeDefined();
-    });
-
-    // 중복 품목이 결과 키에서도 하나로 접힌다 — 스텁이 한 요청만 받아도 예외가 나지 않는 것이
-    // 곧 한 번만 조회했다는 뜻이다(스텁은 규칙에 없는 요청을 받으면 던진다).
-    expect(Object.keys(result.current)).toEqual(['910001']);
+    expect(result.current[910001]).toEqual({ items: [], isError: false, isLoading: false });
   });
 
-  it('잘렸으면 truncated를 참으로 낸다', async () => {
-    const fetch = createStubFetch([
-      lotsRoute(910001, {
-        items: [{ lotId: 1001, lotNo: 'SYN-LOT-1001', itemId: 910001 }],
-        page: { page: 1, size: 100, total: 5 },
-      }),
-    ]);
+  it('같은 LOT 을 여러 번 집었어도 한 번만 조회한다', async () => {
+    const fetch = createStubFetch([lotRoute(910001, 'SYN-LOT-1001', { lotId: 1001 })]);
     const { result } = renderHookWithProviders(
-      () => useLotCandidatesByItem([910001], { 910001: [1001] }),
+      () =>
+        useLotCandidatesByItem([910001, 910001], {
+          910001: [
+            { lotId: 1001, lotNo: 'SYN-LOT-1001' },
+            { lotId: 1001, lotNo: 'SYN-LOT-1001' },
+          ],
+        }),
       { fetch },
     );
 
     await waitFor(() => {
-      expect(result.current[910001]?.truncated).toBe(true);
+      expect(result.current[910001]?.isLoading).toBe(false);
     });
+    expect(result.current[910001]?.items.map((lot) => lot.lotId)).toEqual([1001]);
   });
 
   it('조회 실패를 알린다', async () => {
@@ -114,35 +101,12 @@ describe('useLotCandidatesByItem', () => {
       },
     ]);
     const { result } = renderHookWithProviders(
-      () => useLotCandidatesByItem([910001], { 910001: [1001] }),
+      () => useLotCandidatesByItem([910001], { 910001: [{ lotId: 1001, lotNo: 'SYN-LOT-1001' }] }),
       { fetch },
     );
 
     await waitFor(() => {
       expect(result.current[910001]?.isError).toBe(true);
     });
-  });
-
-  it('이 출하작업지시에서 집은 LOT 만 후보로 낸다 — 집지 않은 · 입고 전 LOT 은 빠진다(omf-all-around#302)', async () => {
-    const fetch = createStubFetch([
-      lotsRoute(910001, {
-        items: [
-          { lotId: 1001, lotNo: 'SYN-LOT-1001', itemId: 910001 },
-          { lotId: 1002, lotNo: 'SYN-LOT-1002', itemId: 910001 },
-        ],
-        page: { page: 1, size: 100, total: 2 },
-      }),
-    ]);
-    const { result } = renderHookWithProviders(
-      () => useLotCandidatesByItem([910001], { 910001: [1002] }),
-      {
-        fetch,
-      },
-    );
-
-    await waitFor(() => {
-      expect(result.current[910001]?.isLoading).toBe(false);
-    });
-    expect(result.current[910001]?.items.map((lot) => lot.lotId)).toEqual([1002]);
   });
 });

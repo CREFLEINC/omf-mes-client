@@ -14,7 +14,12 @@ type ShipmentRequestLineResponse = components['schemas']['ShipmentRequestLine'];
 
 export type ShipmentProgressCode = ShipmentRequestResponse['shipmentProgressCode'];
 
-/** 출하작업지시 한 라인. `pickedLotIds` 는 이 라인에서 실제로 집은 LOT(`picks[]`) — 출하 내역의 LOT 원천이다(계약 L-2). */
+/** 출하작업지시 한 라인. `pickedLots` 는 이 라인에서 실제로 집은 LOT(`picks[]`) — 출하 내역의 LOT 원천이다(계약 L-2). */
+export interface PickedLot {
+  lotId: number;
+  lotNo: string;
+}
+
 export interface ShipmentRequestLineCandidate {
   shipmentRequestLineId: number;
   lineNo: number;
@@ -25,7 +30,7 @@ export interface ShipmentRequestLineCandidate {
   shippedQty: number;
   uomId: number;
   shippingInspectionRequired: boolean;
-  pickedLotIds: number[];
+  pickedLots: PickedLot[];
 }
 
 export const toShipmentRequestLineCandidate = (
@@ -40,7 +45,9 @@ export const toShipmentRequestLineCandidate = (
   shippedQty: line.shippedQty,
   uomId: line.uomId,
   shippingInspectionRequired: line.shippingInspectionRequired,
-  pickedLotIds: (line.picks ?? []).map((pick) => pick.lotId),
+  pickedLots: (line.picks ?? []).flatMap((pick) =>
+    pick.lotNo === undefined ? [] : [{ lotId: pick.lotId, lotNo: pick.lotNo }],
+  ),
 });
 
 /**

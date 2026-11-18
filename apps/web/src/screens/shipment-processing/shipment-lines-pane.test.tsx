@@ -23,13 +23,12 @@ const sourceLine = (
   shippedQty: 0,
   uomId: 920001,
   shippingInspectionRequired: false,
-  pickedLotIds: [],
+  pickedLots: [],
   ...overrides,
 });
 
 const lotResult = (items: LotCandidateResult['items'] = []): LotCandidateResult => ({
   items,
-  truncated: false,
   isError: false,
   isLoading: false,
 });
