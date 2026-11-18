@@ -1,0 +1,84 @@
+.erp-equipment-occupancy {
+  min-width: 0;
+  margin-top: var(--space-4);
+  font: var(--type-body-sm);
+}
+.erp-equipment-occupancy-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.erp-equipment-occupancy-heading h3 {
+  font: var(--type-title-sm);
+  margin: 0;
+}
+.erp-equipment-occupancy-heading p {
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+.erp-equipment-occupancy-time {
+  display: flex;
+  flex-direction: column;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.erp-equipment-occupancy-detail {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  background: var(--surface-container-low);
+  border-radius: var(--radius-sm);
+}
+.erp-equipment-occupancy-detail dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-5);
+  margin: 0;
+}
+.erp-equipment-occupancy-detail dt {
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+}
+.erp-equipment-occupancy-detail dd {
+  margin: var(--space-1) 0 0;
+  overflow-wrap: anywhere;
+}
+.erp-equipment-occupancy-detail .wide {
+  grid-column: 1/-1;
+}
+.erp-equipment-picker {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.erp-equipment-picker-search {
+  display: flex;
+  gap: var(--space-3);
+  align-items: end;
+  flex-wrap: wrap;
+}
+.erp-equipment-picker-search .field-cell {
+  flex: 1 1 220px;
+}
+.erp-equipment-occupancy .erp-equipment-conflict {
+  color: var(--on-semantic-warning-container);
+  background: var(--semantic-warning-container);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+@media (max-width: 600px) {
+  .erp-equipment-occupancy-detail dl {
+    grid-template-columns: 1fr;
+  }
+}
+.erp-equipment-picker .selectable-table tbody > tr.is-active > td,
+.erp-equipment-occupancy .selectable-table tbody > tr.is-active > td {
+  background: var(--secondary-container);
+  color: var(--on-secondary-container);
+}
+.erp-equipment-picker .selectable-table tbody > tr.is-active > td:first-child,
+.erp-equipment-occupancy .selectable-table tbody > tr.is-active > td:first-child {
+  box-shadow: inset 3px 0 0 var(--secondary);
+}

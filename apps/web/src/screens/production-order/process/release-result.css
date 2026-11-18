@@ -84,3 +84,7 @@
 .erp-wo-release-result.is-stacked .erp-wo-release-result-detail-grid {
   grid-template-columns: minmax(0, 1fr);
 }
+
+.erp-wo-release-result-detail-grid > section:only-child {
+  grid-column: 1 / -1;
+}
