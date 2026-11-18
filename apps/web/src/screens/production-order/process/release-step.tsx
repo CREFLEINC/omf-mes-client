@@ -5,7 +5,7 @@ import { AdjustableTable } from './adjustable-table';
 import { TerminalConnections } from './terminal-connections';
 import { AlertBanner, Button, SkeletonText, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { fetchAllPages } from '../../../patterns/fetch-all-pages';
@@ -254,6 +254,7 @@ const ReleaseTargetList = ({
 
 export interface ReleaseStepProps {
   onSelectedWorkOrderChange?: (id: number) => void;
+  selectedWorkOrderId?: number | null;
   readOnly?: boolean;
   materialReview?: (workOrderId: number) => import('react').ReactNode;
   plantId?: number;
@@ -276,6 +277,7 @@ export interface ReleaseStepProps {
  */
 export const ReleaseStep = ({
   onSelectedWorkOrderChange,
+  selectedWorkOrderId,
   readOnly = false,
   materialReview,
   plantId,
@@ -291,10 +293,24 @@ export const ReleaseStep = ({
   revealErrors,
 }: ReleaseStepProps) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const detailRef = useRef<HTMLDivElement>(null);
+  const lastSelection = useRef<number | null>(null);
+  const selected =
+    lines?.find(
+      (line) =>
+        String(line.workOrder.workOrderId) ===
+        (selectedWorkOrderId == null ? selectedId : String(selectedWorkOrderId)),
+    ) ?? lines?.[0];
+  const activeWorkOrderId = selected?.workOrder.workOrderId ?? null;
+  useLayoutEffect(() => {
+    if (activeWorkOrderId === null) return;
+    const changed = lastSelection.current !== null && lastSelection.current !== activeWorkOrderId;
+    lastSelection.current = activeWorkOrderId;
+    if (changed)
+      detailRef.current?.scrollIntoView?.({ block: 'start', inline: 'nearest', behavior: 'auto' });
+  }, [activeWorkOrderId]);
   if (lines === undefined) return <SkeletonText lines={4} />;
   const totalLots = lines.reduce((sum, line) => sum + (line.lotCount ?? 0), 0);
-  const selected =
-    lines.find((line) => String(line.workOrder.workOrderId) === selectedId) ?? lines[0];
   if (selected === undefined) return <p className="empty-line">{t.empty}</p>;
   const wo = selected.workOrder;
   const monthDay = (iso: string | null | undefined): string => (iso == null ? '' : iso.slice(5));
@@ -447,7 +463,12 @@ export const ReleaseStep = ({
             />
           </div>
         </section>
-        <div className="erp-wo-release-layout" role="region" aria-label="선택 작업지시 배포 상세">
+        <div
+          ref={detailRef}
+          className="erp-wo-release-layout"
+          role="region"
+          aria-label="선택 작업지시 배포 상세"
+        >
           <h3 className="section-title">선택 작업지시 상세</h3>
           <ReleaseInformationTable
             label="작업지시 정보"

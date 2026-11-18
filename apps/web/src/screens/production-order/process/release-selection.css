@@ -40,3 +40,29 @@
     width: 7rem;
   }
 }
+.erp-release-work-order-navigation {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.erp-release-work-order-navigation > span {
+  font: var(--type-body-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.erp-release-information-table.is-paired th {
+  width: 8rem;
+}
+@media (max-width: 600px) {
+  .erp-release-information-table.is-paired tbody {
+    display: block;
+  }
+  .erp-release-information-table.is-paired tr {
+    display: grid;
+    grid-template-columns: 7rem minmax(0, 1fr);
+  }
+  .erp-release-information-table.is-paired th {
+    width: auto;
+  }
+}

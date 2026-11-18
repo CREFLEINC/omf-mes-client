@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { RevisionDetailButton } from './revision-detail';
 import { AlertBanner, SkeletonText } from '@crefle/web-ui';
 import { useQueries } from '@tanstack/react-query';
@@ -18,21 +18,36 @@ import './release-review.css';
 export const ReleaseInformationTable = ({
   rows,
   label,
+  paired = false,
 }: {
   rows: readonly (readonly ReactNode[])[];
   label: string;
-}) => (
-  <table className="erp-release-information-table" aria-label={label}>
-    <tbody>
-      {rows.map(([name, value]) => (
-        <tr key={String(name)}>
-          <th scope="row">{name}</th>
-          <td>{value}</td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-);
+  paired?: boolean;
+}) => {
+  const count = paired ? 2 : 1;
+  const groups = Array.from({ length: Math.ceil(rows.length / count) }, (_, at) =>
+    rows.slice(at * count, (at + 1) * count),
+  );
+  return (
+    <table
+      className={`erp-release-information-table${paired ? ' is-paired' : ''}`}
+      aria-label={label}
+    >
+      <tbody>
+        {groups.map((group, at) => (
+          <tr key={at}>
+            {group.map(([name, value]) => (
+              <Fragment key={String(name)}>
+                <th scope="row">{name}</th>
+                <td>{value}</td>
+              </Fragment>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+};
 
 export interface ReleaseReviewPlan extends ProductionPlanFact {
   revisionContent?: { bom?: ReactNode; routing?: ReactNode };

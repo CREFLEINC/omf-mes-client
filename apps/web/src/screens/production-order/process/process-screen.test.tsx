@@ -778,6 +778,36 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     expect(screen.queryByRole('button', { name: tp.retry })).toBeNull();
   });
 
+  it('하단 이전·다음은 ERP W/O 이동 없이 선택 작업지시 상세를 바꾼다', async () => {
+    const user = userEvent.setup();
+    const state = world({
+      autoPlan: { status: 'DONE', reasons: [] },
+      plans: [{ ...CONFIRMED_PLAN }],
+      workOrders: [
+        { workOrderId: 9001, productionLineId: 31, located: true },
+        { workOrderId: 9002, productionLineId: 31, located: true },
+      ],
+    });
+    const server = renderAt(`${WORKLIST}/${ORDER_NO}`, state);
+    await currentStep(tp.steps.release);
+    expect(screen.getByRole('button', { name: '이전 작업지시' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: '다음 작업지시' }));
+    const detail = screen.getByRole('region', { name: '선택 작업지시 배포 상세' });
+    expect(detail).toHaveTextContent('SYN-WO-9002');
+    expect(detail).not.toHaveTextContent('SYN-WO-9001');
+    expect(screen.getByRole('button', { name: '다음 작업지시' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: '이전 작업지시' }));
+    expect(detail).toHaveTextContent('SYN-WO-9001');
+    expect(server.writes).toHaveLength(0);
+    await user.click(screen.getByRole('button', { name: tp.release.release }));
+    expect(await screen.findByRole('heading', { name: '배포 결과', level: 2 })).toBeVisible();
+    expect(screen.queryByRole('button', { name: tp.done.nextOrder })).toBeNull();
+    await user.click(screen.getByRole('button', { name: '다음 작업지시' }));
+    const details = screen.getAllByRole('region', { name: '선택 작업지시 배포 상세' });
+    for (const region of details) expect(region).toHaveTextContent('SYN-WO-9002');
+    expect(state.released).toEqual([9001, 9002]);
+  });
+
   it('배포가 모두 성공하면 완료 화면을 보인다', async () => {
     const user = userEvent.setup();
     const state = world({
