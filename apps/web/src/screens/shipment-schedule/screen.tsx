@@ -17,11 +17,14 @@ import {
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import { readPeriod, toPeriodQuery, validatePeriod, type PeriodInput } from './period';
+import { PrintPreviewDialog } from './print-preview';
 import {
   useFulfillmentPlantUpdate,
+  useItemLabels,
   useShipmentRequestDetail,
   useShipmentScheduleList,
 } from './queries';
+import { RequestDetailDialog } from './request-detail-dialog';
 import { SaveErrorBanner } from '../../patterns/master';
 import { ShipmentFilterBar } from './shipment-filter-bar';
 import { ShipmentTable } from './shipment-table';
@@ -98,6 +101,11 @@ export const ShipmentScheduleScreen = () => {
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
   const [fulfillmentPlantId, setFulfillmentPlantId] = useState('');
   const selectedDetail = useShipmentRequestDetail(selectedRequestId);
+  /* 피처 010 — 지시서 상세 창 · 인쇄 미리 보기. 공장 지정 창과 따로 연다. */
+  const [detailRequestId, setDetailRequestId] = useState<number | null>(null);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const requestDetail = useShipmentRequestDetail(detailRequestId);
+  const itemLabel = useItemLabels((requestDetail.data?.lines ?? []).map((line) => line.itemId));
   const toast = useToast();
   /* 저장이 끝나면 창을 닫고 다른 화면과 같은 자리에 알린다(사용자 지시 2026-09-22). */
   /*
@@ -231,6 +239,10 @@ export const ShipmentScheduleScreen = () => {
                 setSelectedRequestId(shipmentRequestId);
                 updatePlant.reset();
               }}
+              onOpenDetail={(shipmentRequestId) => {
+                setIsPrinting(false);
+                setDetailRequestId(shipmentRequestId);
+              }}
             />
             {listQuery !== null && !list.isPending && (
               <PageNav
@@ -316,6 +328,52 @@ export const ShipmentScheduleScreen = () => {
             <SaveErrorBanner error={updatePlant.error} />
           </div>
         </Dialog>
+      )}
+
+      {detailRequestId !== null && !isPrinting && (
+        <RequestDetailDialog
+          detail={requestDetail.data}
+          isLoading={requestDetail.isPending}
+          error={requestDetail.isError ? requestDetail.error : null}
+          onRetry={() => {
+            void requestDetail.refetch();
+          }}
+          customerName={describeReference(
+            toReference(customers, requestDetail.data?.customerId ?? null),
+          )}
+          shipToPartnerName={describeReference(
+            toReference(shipToPartners, requestDetail.data?.shipToPartnerId ?? null),
+          )}
+          fulfillmentPlantName={describeReference(
+            toReference(fulfillmentPlants, requestDetail.data?.fulfillmentPlantId ?? null),
+          )}
+          itemLabel={itemLabel}
+          onPrint={() => {
+            setIsPrinting(true);
+          }}
+          onClose={() => {
+            setDetailRequestId(null);
+          }}
+        />
+      )}
+
+      {detailRequestId !== null && isPrinting && requestDetail.data !== undefined && (
+        <PrintPreviewDialog
+          detail={requestDetail.data}
+          names={{
+            customer: describeReference(toReference(customers, requestDetail.data.customerId)),
+            shipToPartner: describeReference(
+              toReference(shipToPartners, requestDetail.data.shipToPartnerId),
+            ),
+            fulfillmentPlant: describeReference(
+              toReference(fulfillmentPlants, requestDetail.data.fulfillmentPlantId ?? null),
+            ),
+            item: (itemId) => itemLabel(itemId) ?? String(itemId),
+          }}
+          onClose={() => {
+            setIsPrinting(false);
+          }}
+        />
       )}
     </>
   );
