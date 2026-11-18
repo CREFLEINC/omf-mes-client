@@ -31,7 +31,9 @@ import {
   useTaskLotNo,
 } from './queries';
 import {
+  errorCodesOf,
   groupPendingLots,
+  rejectionTextOf,
   modeTextOf,
   reasonTextOf,
   type PendingLot,
@@ -71,6 +73,8 @@ interface Registered {
   note: string | null;
   /** 지시 없는 적치의 적치 방식(피처 009). 지시 완료는 null. */
   mode?: string | null;
+  /** 서버가 거절한 까닭의 판정 문구(「이 위치는 지정 품목만 받습니다」 등) — 모르면 없음. */
+  reason?: string | null;
 }
 
 /**
@@ -98,6 +102,8 @@ export const PutawayScreen = () => {
   const [task, setTask] = useState<PutawayTask | null>(null);
   const [pickedId, setPickedId] = useState<number | null>(null);
   const [scanned, setScanned] = useState<string | null>(null);
+  /* 보관 위치 밖을 알고 [미지정 위치 적치]를 눌렀나(T054). 위치를 다시 읽으면 걷는다. */
+  const [confirmedOutside, setConfirmedOutside] = useState(false);
   const [scannedLot, setScannedLot] = useState<string | null>(null);
   /* 같은 코드를 다시 스캔한 것도 한 회차다. 값만 보면 두 번째 스캔이 조용히 지나간다. */
   const [scanSeq, setScanSeq] = useState(0);
@@ -155,8 +161,16 @@ export const PutawayScreen = () => {
 
   const verdict = task === null || location === null ? null : verdictOf(task, location);
 
+  /*
+   * 보관 위치 밖(피처 009 T054 · FR-017b) — 막지 않고 「지정된 위치가 아닙니다. 정말 적치합니까?」 확인 한 번 뒤 기록한다.
+   * 서버도 지시 적치를 허용 위치 밖이라고 막지 않는다(막는 것은 「지정 품목만 받기」 위치 · LOCATION_ITEM_RESTRICTED).
+   */
+  const outsideUnconfirmed = verdict === NOT_ALLOWED && !confirmedOutside;
+
   /* 위치가 통과해야 LOT 을 묻는다 - 순서를 바꾸면 오적치를 막을 자리가 사라진다. */
-  const locationSettled = location !== null && (verdict === MATCHED || verdict === ANYWHERE);
+  const locationSettled =
+    location !== null &&
+    (verdict === MATCHED || verdict === ANYWHERE || (verdict === NOT_ALLOWED && confirmedOutside));
 
   const ready = canComplete({
     task,
@@ -164,6 +178,7 @@ export const PutawayScreen = () => {
     lotNo: lotNo.data ?? null,
     scannedLot,
     hasWorker: worker !== null,
+    confirmedOutside,
   });
 
   /*
@@ -194,7 +209,7 @@ export const PutawayScreen = () => {
     scansLocation(task, locations.data) &&
     scanned !== null &&
     location !== null &&
-    verdict !== NOT_ALLOWED;
+    !outsideUnconfirmed;
 
   /*
    * [위치 재스캔] — 배너 안 오른쪽 버튼. [임시 위치 적재로 이동]과 같은 모양이다(사용자 지정
@@ -221,11 +236,13 @@ export const PutawayScreen = () => {
   const rescanLocation = () => {
     setScanned(null);
     setPickedId(null);
+    setConfirmedOutside(false);
   };
 
   const clearScans = () => {
     setPickedId(null);
     setScanned(null);
+    setConfirmedOutside(false);
     setScannedLot(null);
   };
 
@@ -357,6 +374,7 @@ export const PutawayScreen = () => {
       setScanned(value.trim());
       setScanSeq((seq) => seq + 1);
       setPickedId(null);
+      setConfirmedOutside(false);
     },
   });
 
@@ -432,8 +450,14 @@ export const PutawayScreen = () => {
         outcome === 'sent'
           ? movedNoteOf(task, result?.responses.get(entry.idempotencyKey), uomOf(task.uomId))
           : null;
-      setRegistered((prev) => [...prev, { ...row, outcome, note }]);
-      setLastRecorded({ ...row, outcome, note });
+      /* 「지정 품목만 받기」 위치면 서버가 LOCATION_ITEM_RESTRICTED 로 거절한다 — 스캔 때와 같은 판정 문구로 말한다(T054). */
+      const rejection = result?.rejected.find((each) => mine(each.entry));
+      const reason =
+        outcome === 'rejected' && rejection !== undefined
+          ? rejectionTextOf(errorCodesOf(rejection.error))
+          : null;
+      setRegistered((prev) => [...prev, { ...row, outcome, note, reason }]);
+      setLastRecorded({ ...row, outcome, note, reason });
       setLookup(null);
 
       /*
@@ -610,6 +634,9 @@ export const PutawayScreen = () => {
               <span className="putaway__verdict-line">
                 {t.done.row(lastRecorded.lotNo, lastRecorded.locationCode, lastRecorded.qty)}
               </span>
+              {lastRecorded.reason === undefined || lastRecorded.reason === null ? null : (
+                <span className="putaway__verdict-line">{lastRecorded.reason}</span>
+              )}
               {lastRecorded.mode === undefined || lastRecorded.note === null ? null : (
                 <span className="putaway__verdict-line">{lastRecorded.note}</span>
               )}
@@ -962,21 +989,33 @@ export const PutawayScreen = () => {
                 {verdict === NOT_ALLOWED ? (
                   <AlertBanner
                     className="putaway__verdict putaway__verdict--action"
-                    variant="error"
+                    variant={confirmedOutside ? 'info' : 'warning'}
                     title={t.location.scanned(location.locationCode, location.locationName)}
                     action={
-                      <Button variant="outlined" size="lg" onClick={toTemporaryPutaway}>
-                        {t.verdict.temporaryMove}
-                      </Button>
+                      confirmedOutside ? (
+                        rescanButton
+                      ) : (
+                        <Button variant="outlined" size="lg" onClick={toTemporaryPutaway}>
+                          {t.verdict.temporaryMove}
+                        </Button>
+                      )
                     }
                   >
-                    <span className="putaway__verdict-line">
-                      {t.verdict.notAllowed(allowedSummaryOf(task) ?? '')}
-                    </span>
-                    <span className="putaway__verdict-line">{t.verdict.temporary}</span>
-                    {byLot ? (
-                      <span className="putaway__verdict-line">{t.verdict.notRecorded}</span>
-                    ) : null}
+                    {confirmedOutside ? (
+                      <span className="putaway__verdict-line">{t.verdict.outsideConfirmed}</span>
+                    ) : (
+                      <>
+                        <span className="putaway__verdict-line">
+                          {messages.putaway.direct.verdict.UNDESIGNATED}
+                        </span>
+                        <span className="putaway__verdict-line">
+                          {t.verdict.notAllowed(allowedSummaryOf(task) ?? '')}
+                        </span>
+                        <span className="putaway__verdict-line">
+                          {messages.putaway.direct.notYetRecorded}
+                        </span>
+                      </>
+                    )}
                   </AlertBanner>
                 ) : null}
 
@@ -1095,7 +1134,16 @@ export const PutawayScreen = () => {
        * [적치 완료]가 기록 단추로 오해됐다(omf-all-around#272). 카드로 고른 지시는 [적치 완료]가 기록한다.
        * LOT 으로 연 지시는 위치 스캔이 곧 기록이라 단추 자리에 그 사실을 적는다.
        */}
-      {task === null ? null : byLot ? (
+      {task !== null && location !== null && outsideUnconfirmed ? (
+        /* 보관 위치 밖 — 확인 한 번(T054). 지시 없는 적치의 미지정 위치와 같은 두 단추. */
+        <BottomActionBar
+          primary={{
+            label: messages.putaway.direct.confirmUndesignated,
+            onClick: () => setConfirmedOutside(true),
+          }}
+          secondary={{ label: messages.putaway.direct.rescan, onClick: rescanLocation }}
+        />
+      ) : task === null ? null : byLot ? (
         <BottomActionBar
           prompt={
             <p

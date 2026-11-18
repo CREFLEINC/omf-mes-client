@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { createIdempotencyKey, type OutboxDraft } from '../../patterns/outbox';
@@ -85,6 +85,35 @@ export const modeTextOf = (code: string | null | undefined): string | null =>
   code !== null && code !== undefined && code in t.mode
     ? t.mode[code as keyof typeof t.mode]
     : null;
+
+/** 오류의 코드들 — 봉투 항목의 코드, 없으면 응답의 코드. */
+export const errorCodesOf = (error: ApiError): string[] => {
+  switch (error.kind) {
+    case 'validation':
+    case 'stateLocked':
+      return error.errors.map((item) => item.code);
+    case 'conflict':
+    case 'http':
+      return error.code === undefined ? [] : [error.code];
+    case 'network':
+      return [];
+  }
+};
+
+/**
+ * 서버가 거절한 적치 기록의 판정 문구 — 지시 없는 적치의 판정 · 이유 코드와, 지시 적치(`:complete`)가 코어에서 받는
+ * `LOCATION_ITEM_RESTRICTED`(「지정 품목만 받기」 위치 · T054). 모르는 코드면 null.
+ */
+export const rejectionTextOf = (codes: readonly string[]): string | null => {
+  for (const code of codes) {
+    const text =
+      code === 'LOCATION_ITEM_RESTRICTED'
+        ? t.verdict.RESTRICTED_LOCATION
+        : (verdictTextOf(code) ?? reasonTextOf(code));
+    if (text !== null) return text;
+  }
+  return null;
+};
 
 export const DIRECT_PUTAWAY_PATH = /^\/logistics\/putaway-pending-lots\/\d+:putaway(-temporary)?$/;
 
