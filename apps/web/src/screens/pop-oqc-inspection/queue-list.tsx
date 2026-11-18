@@ -2,11 +2,14 @@ import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { lotOverviewOf } from '../oqc-inspection/shipment-oqc';
+import { OverviewChip } from '../oqc-inspection/shipment-oqc-parts';
 import { toStatusBadge } from '../oqc-inspection/status-badge';
 import type { InspectionQueueRow } from '../oqc-inspection/types';
 
 const t = messages.popOqcInspection.queue;
 const detail = messages.popOqcInspection.detail;
+const ps = messages.popOqcInspection.shipment;
 
 export interface PopQueueListProps {
   rows: InspectionQueueRow[];
@@ -30,6 +33,7 @@ export const PopQueueList = ({ rows, selectedId, onSelect, empty }: PopQueueList
       {rows.map((row) => {
         const selected = row.inspectionRequestId === selectedId;
         const badge = toStatusBadge(row.statusCode);
+        const overview = lotOverviewOf(row);
 
         return (
           <li key={row.inspectionRequestId}>
@@ -42,13 +46,25 @@ export const PopQueueList = ({ rows, selectedId, onSelect, empty }: PopQueueList
                 onSelect(row.inspectionRequestId);
               }}
             >
-              <span className="pop-mlot-supplier-name">{row.inspectionRequestNo}</span>
+              {/* 출하 OQC 새 흐름은 지시서 번호 · 피킹 LOT 수 · LOT 판정 요약(피처 010 · 시안 P0406 목록). */}
+              <span className="pop-mlot-supplier-name">
+                {row.shipmentRequestNo ?? row.inspectionRequestNo}
+              </span>
               <Chip variant="status" size="md" status={badge.tone}>
                 {badge.label}
               </Chip>
-              <span className="pop-mlot-supplier-sub">
-                {`${t.columns.item} ${detail.idValue(row.itemId)} · ${t.columns.qty} ${String(row.targetQty)}`}
-              </span>
+              {overview === null ? (
+                <span className="pop-mlot-supplier-sub">
+                  {`${t.columns.item} ${detail.idValue(row.itemId)} · ${t.columns.qty} ${String(row.targetQty)}`}
+                </span>
+              ) : (
+                <span className="pop-mlot-supplier-sub pop-oqc-shipment-card">
+                  {(row.pickedLotCount ?? 0) === 0
+                    ? ps.cardEmpty(detail.idValue(row.itemId))
+                    : ps.card(detail.idValue(row.itemId), row.pickedLotCount ?? 0)}
+                  <OverviewChip overview={overview} />
+                </span>
+              )}
             </button>
           </li>
         );

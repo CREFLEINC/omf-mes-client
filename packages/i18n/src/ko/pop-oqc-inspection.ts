@@ -146,4 +146,45 @@ export const popOqcInspection = {
     cancel: '취소',
     confirm: '판정 저장',
   },
+  /**
+   * 출하 OQC 새 흐름(피처 010) — 결과 추가만(고치기 · 지우기는 관리웹 W-04-03), 저장 확인 창 없음. 판정은 출하 완료 때 확정된다.
+   */
+  shipment: {
+    /** 목록 카드 둘째 줄 — 「FG-A100 · 피킹 LOT 3개」. */
+    card: (item: string, count: number): string => `${item} · 피킹 LOT ${String(count)}개`,
+    cardEmpty: (item: string): string => `${item} · 피킹 LOT 없음`,
+    target: '목표',
+    picked: '피킹',
+    refs: {
+      request: '의뢰번호',
+      customer: '고객',
+      shipTo: '납품처',
+      plan: '검사 기준',
+      requestedAt: '의뢰 일시',
+    },
+    lotsReplacedHeading: '교체로 빠진 LOT — 판정 대상 아님',
+    appliedNone: '적용 검사 없음',
+    form: {
+      heading: (seqNo: number): string => `${String(seqNo)}회차 검사 결과 추가`,
+      matchHint: '이 결과의 판정이 고른 LOT 에 걸립니다.',
+      judgmentHint: '하나만 고릅니다. 수량은 넣지 않습니다.',
+      serialHeading: '검사한 시리얼',
+      serialOptional: '(선택)',
+      noLots: '피킹된 LOT 이 없어 결과를 기록할 수 없습니다.',
+    },
+    bar: {
+      save: '결과 저장',
+      saving: '저장 중…',
+      saved: (seqNo: number): string => `${String(seqNo)}회차 결과를 저장했습니다.`,
+      ready: '저장할 수 있습니다. 판정은 출하 완료 때 확정됩니다.',
+      blocked: {
+        match: '피킹 LOT 을 1개 이상 고르세요.',
+        judgment: '판정을 고르세요.',
+        reason: '이 결과가 불합격이나 보류 판정을 바꿉니다. 재검 사유를 고르세요.',
+        noLots: '피킹된 LOT 이 없어 결과를 기록할 수 없습니다.',
+        skipped: '이 의뢰는 OQC 생략으로 닫혔습니다. 결과를 더하지 않습니다.',
+        completed: '출하 완료로 판정이 확정된 의뢰입니다. 결과를 더하지 않습니다.',
+      },
+    },
+  },
 };

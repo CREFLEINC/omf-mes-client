@@ -31,6 +31,12 @@ import { PopConfirmDialog, PopJudgmentBar, PopJudgmentForm, usePopJudgment } fro
 import { PopQueueList } from './queue-list';
 import { PopRequestSummary } from './request-summary';
 import { PopSerialStep } from './serial-step';
+import { isJudgedOpen, isShipmentOqc } from '../oqc-inspection/shipment-oqc';
+import { useUomLookup } from '../oqc-inspection/uom-lookup';
+import { PopShipmentBar, PopShipmentDetail, usePopShipmentForm } from './shipment';
+
+/** 판정 대기 목록은 한 번에 읽는다 — 판정을 마친 열린 의뢰를 「판정 완료」로 가르려면 다 있어야 한다(서버 상한 200). */
+const PENDING_SIZE = 200;
 
 const t = messages.popOqcInspection;
 
@@ -65,8 +71,8 @@ export const PopOqcInspectionScreen = () => {
   const pendingQueue = useInspectionQueue({
     inspectionTypeCode: FIXED_AXES.inspectionTypeCode,
     pendingOnly: true,
-    page: view === 'pending' ? page : 1,
-    size: PAGE_SIZE,
+    page: 1,
+    size: PENDING_SIZE,
   });
   const doneQueue = useInspectionQueue({
     inspectionTypeCode: FIXED_AXES.inspectionTypeCode,
@@ -76,7 +82,21 @@ export const PopOqcInspectionScreen = () => {
     size: PAGE_SIZE,
   });
   const queue = view === 'pending' ? pendingQueue : doneQueue;
+  /*
+   * 출하 OQC 새 흐름(피처 010 · 2026-11-18 결정) — 열린 의뢰라도 피킹 LOT 이 모두 판정을 가지면 「판정 완료」 탭에 선다
+   * (확정은 출하 완료 때라 상태가 진행으로 남는다). 미검사가 있거나 피킹 LOT 이 없으면 「판정 대기」.
+   */
+  const pendingRows = pendingQueue.data?.rows ?? [];
+  const waitingRows = pendingRows.filter((row) => !isJudgedOpen(row));
+  const judgedRows = pendingRows.filter(isJudgedOpen);
+  const viewCount = {
+    pending: waitingRows.length,
+    done: judgedRows.length + (doneQueue.data?.page.total ?? 0),
+  };
   const detail = useInspectionRequestDetail(selectedId);
+  const isNewFlow = detail.data !== undefined && isShipmentOqc(detail.data);
+  const shipmentForm = usePopShipmentForm(isNewFlow ? selectedId : null, workerNo);
+  const uoms = useUomLookup();
   const rounds = useInspectionRounds(selectedId);
   const round = latestRound(rounds.data ?? []);
 
@@ -142,7 +162,10 @@ export const PopOqcInspectionScreen = () => {
     setSerialRows([]);
   }, [selectedId]);
 
-  const rows = queue.data?.rows ?? [];
+  const rows =
+    view === 'pending'
+      ? waitingRows
+      : [...(page === 1 ? judgedRows : []), ...(doneQueue.data?.rows ?? [])];
 
   const emptyContent = queue.isError ? (
     <p className="field-note">{t.queue.unavailable}</p>
@@ -221,6 +244,9 @@ export const PopOqcInspectionScreen = () => {
       />
     ) : detail.data === undefined ? (
       <p className="field-note">{t.detail.loading}</p>
+    ) : isNewFlow ? (
+      /* 출하 OQC 새 흐름 — 피킹 LOT 매칭 · 판정만 · 결과 추가만(피처 010 · decisions #47). */
+      <PopShipmentDetail form={shipmentForm} uomCode={uoms.codeOf(detail.data.uomId)} />
     ) : (
       <>
         <PopRequestSummary detail={detail.data} />
@@ -290,8 +316,8 @@ export const PopOqcInspectionScreen = () => {
           <div className="pop-mlot-tabs" role="group" aria-label={t.queue.viewLabel}>
             {(
               [
-                ['pending', t.queue.heading, pendingQueue],
-                ['done', t.queue.doneHeading, doneQueue],
+                ['pending', t.queue.heading, viewCount.pending],
+                ['done', t.queue.doneHeading, viewCount.done],
               ] as const
             ).map(([key, label, source]) => (
               <button
@@ -309,7 +335,7 @@ export const PopOqcInspectionScreen = () => {
                 }}
               >
                 {label}
-                <span className="pop-mlot-tab-count">{source.data?.page.total ?? 0}</span>
+                <span className="pop-mlot-tab-count">{source}</span>
               </button>
             ))}
           </div>
@@ -342,42 +368,49 @@ export const PopOqcInspectionScreen = () => {
         </section>
       </div>
 
-      <PopJudgmentBar
-        formId={formId}
-        state={judgmentState}
-        isSaving={save.isSaving}
-        isJustSaved={isJustSaved}
-        saveError={save.error}
-        onReload={() => void rounds.refetch()}
-        isReinspecting={isReinspectingNow}
-        onStartReinspection={startReinspection}
-        onCancelReinspection={() => {
-          setIsReinspecting(false);
-          setDraft(draftOf(round));
-          setJudgment(storedJudgment);
-          setSerialRows([]);
-        }}
-      />
-
-      {judgmentState.openedAt !== null && selectedId !== null && detail.data !== undefined && (
-        <PopConfirmDialog
-          inspectionRequestNo={detail.data.inspectionRequestNo}
-          judgmentOptions={judgmentOptions}
-          judgment={judgment}
-          inspectedQty={inspectedQty}
-          preview={judgmentState.preview}
-          hasLot={detail.data.lotId !== null}
+      {isNewFlow ? (
+        <PopShipmentBar form={shipmentForm} />
+      ) : (
+        <PopJudgmentBar
+          formId={formId}
+          state={judgmentState}
+          isSaving={save.isSaving}
+          isJustSaved={isJustSaved}
           saveError={save.error}
           onReload={() => void rounds.refetch()}
-          isSaving={save.isSaving}
-          onClose={judgmentState.closeDialog}
-          onConfirm={() => {
-            const openedAt = judgmentState.openedAt;
-            if (openedAt === null || detail.data === undefined) return;
-            saveResult(selectedId, detail.data.uomId, openedAt);
+          isReinspecting={isReinspectingNow}
+          onStartReinspection={startReinspection}
+          onCancelReinspection={() => {
+            setIsReinspecting(false);
+            setDraft(draftOf(round));
+            setJudgment(storedJudgment);
+            setSerialRows([]);
           }}
         />
       )}
+
+      {!isNewFlow &&
+        judgmentState.openedAt !== null &&
+        selectedId !== null &&
+        detail.data !== undefined && (
+          <PopConfirmDialog
+            inspectionRequestNo={detail.data.inspectionRequestNo}
+            judgmentOptions={judgmentOptions}
+            judgment={judgment}
+            inspectedQty={inspectedQty}
+            preview={judgmentState.preview}
+            hasLot={detail.data.lotId !== null}
+            saveError={save.error}
+            onReload={() => void rounds.refetch()}
+            isSaving={save.isSaving}
+            onClose={judgmentState.closeDialog}
+            onConfirm={() => {
+              const openedAt = judgmentState.openedAt;
+              if (openedAt === null || detail.data === undefined) return;
+              saveResult(selectedId, detail.data.uomId, openedAt);
+            }}
+          />
+        )}
     </main>
   );
 };
