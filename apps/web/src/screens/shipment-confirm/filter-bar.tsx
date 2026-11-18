@@ -9,6 +9,8 @@ const t = messages.shipmentConfirm;
 
 export interface FilterBarProps {
   applied: ConfirmFilters;
+  /** 적용된 조건의 ERP 송신 상태별 건수 — 없으면 칩에 수를 붙이지 않는다(시안 「대기 2」). */
+  counts?: Readonly<Record<string, number>> | null;
   onApply: (filters: ConfirmFilters) => void;
   onReset: () => void;
 }
@@ -16,6 +18,16 @@ export interface FilterBarProps {
 const ERP_FILTERS: readonly ErpFilter[] = ['all', ...ERP_SEND_STATUSES];
 
 const erpLabel = (value: ErpFilter): string => (value === 'all' ? t.filter.all : t.erp[value]);
+
+/** 칩 글자 — 건수를 알면 「대기 2」, 「전체」는 상태별 합. */
+const chipLabel = (value: ErpFilter, counts: Readonly<Record<string, number>> | null): string => {
+  if (counts === null) return erpLabel(value);
+  const count =
+    value === 'all'
+      ? Object.values(counts).reduce((sum, one) => sum + one, 0)
+      : (counts[value] ?? 0);
+  return t.filter.chip(erpLabel(value), count);
+};
 
 /**
  * 조회 조건 — 기간 · 출하번호 · ERP 송신(피처 010).
@@ -25,7 +37,7 @@ const erpLabel = (value: ErpFilter): string => (value === 'all' ? t.filter.all :
  *
  * 기본 정렬은 경과일 긴 순 그대로다(§5-7) — 계약이 방향을 받지 않아 선택지를 두지 않는다.
  */
-export const FilterBar = ({ applied, onApply, onReset }: FilterBarProps) => {
+export const FilterBar = ({ applied, counts = null, onApply, onReset }: FilterBarProps) => {
   const periodId = useId();
   const periodNoteId = `${periodId}-note`;
   const [draft, setDraft] = useState<ConfirmFilters>(applied);
@@ -80,7 +92,7 @@ export const FilterBar = ({ applied, onApply, onReset }: FilterBarProps) => {
               selected={draft.erp === value}
               onSelectedChange={() => setDraft((current) => ({ ...current, erp: value }))}
             >
-              {erpLabel(value)}
+              {chipLabel(value, counts)}
             </Chip>
           ))}
         </div>

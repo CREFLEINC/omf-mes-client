@@ -18,6 +18,7 @@ export const shipmentConfirm: Translated<typeof ko.shipmentConfirm> = {
     all: 'Tất cả',
     search: 'Tra cứu',
     reset: 'Đặt lại',
+    chip: (label: string, count: number): string => `${label} ${String(count)}`,
     periodRequired: 'Hãy chọn khoảng thời gian để tra cứu',
     periodReversed: 'Ngày bắt đầu sau ngày kết thúc. Hãy đổi lại hai ngày',
   },
@@ -96,6 +97,8 @@ export const shipmentConfirm: Translated<typeof ko.shipmentConfirm> = {
       oqc: 'OQC',
     },
     line: (lineNo: number, itemCode: string): string => `Dòng ${String(lineNo)}: ${itemCode}`,
+    erpPending: (lineCount: number, salesOrderNos: string): string =>
+      `Chưa gửi sang ERP. Ở lần gửi tiếp theo, ${String(lineCount)} dòng có đơn bán hàng (đơn ${salesOrderNos}) sẽ được gửi.`,
     lineQty: (target: string, shipped: number): string =>
       `Mục tiêu ${target}, đã xuất ${String(shipped)}`,
     over: (qty: number): string => `Vượt +${String(qty)}`,
@@ -131,10 +134,11 @@ export const shipmentConfirm: Translated<typeof ko.shipmentConfirm> = {
     HELD: 'Tạm giữ',
   },
   cancelNote:
-    'Chỉ có thể hủy trước khi gửi sang ERP. Việc thực thi phần hủy đã được duyệt hãy làm ở hộp phê duyệt.',
+    'Chỉ có thể hủy trước khi gửi sang ERP. Khi việc hủy được duyệt, hãy thực thi bằng [Thực thi hủy] trên màn hình này.',
   actions: {
     confirm: 'Xác nhận',
     requestCancel: 'Yêu cầu hủy',
+    executeCancel: 'Thực thi hủy',
   },
   lock: {
     sent: 'Đã gửi sang ERP rồi. Hãy xử lý ở phía ERP',
@@ -143,6 +147,7 @@ export const shipmentConfirm: Translated<typeof ko.shipmentConfirm> = {
     confirmedLegacy: 'Sau khi xác nhận thì không thể hủy',
     cancelled: 'Lô xuất hàng đã bị hủy',
     running: 'Đang xử lý xác nhận',
+    cancelApproved: 'Việc hủy đã được duyệt. Hãy thực thi bằng [Thực thi hủy]',
   },
   confirmDialog: {
     title: 'Xác nhận xuất hàng',
@@ -177,6 +182,16 @@ export const shipmentConfirm: Translated<typeof ko.shipmentConfirm> = {
     cancel: 'Đóng',
     submit: 'Yêu cầu hủy',
   },
+  executeDialog: {
+    title: 'Thực thi hủy xuất hàng',
+    target: (shipmentNo: string): string => `Sẽ thực thi việc hủy đã được duyệt của ${shipmentNo}.`,
+    irreversible:
+      'Sau khi thực thi thì không thể hoàn tác. Muốn xuất lại, hãy hoàn tất xuất hàng lại trên POP.',
+    erpAlreadySent: 'Không thực thi được. Trong lúc đó đã gửi sang ERP rồi. Hãy xử lý ở phía ERP.',
+    failed: (message: string): string => `Không thực thi được. ${message}`,
+    cancel: 'Đóng',
+    submit: 'Thực thi hủy',
+  },
   result: {
     allConfirmed: (count: number): string => `Đã xác nhận ${String(count)} lô xuất hàng.`,
     partial: (confirmed: number, failed: number): string =>
@@ -189,6 +204,8 @@ export const shipmentConfirm: Translated<typeof ko.shipmentConfirm> = {
       lockUnavailable: 'Chưa nhận được thông tin cần để xác nhận. Hãy thử lại',
       unknown: 'Không xác nhận được',
     },
+    executeCancelDone: (shipmentNo: string): string =>
+      `Đã thực thi hủy ${shipmentNo}. Tồn kho và phiếu xuất kho đã được hoàn lại.`,
     requestCancelDone: (shipmentNo: string): string =>
       `Đã gửi yêu cầu hủy ${shipmentNo}. Việc hủy sẽ chạy sau khi được duyệt.`,
   },

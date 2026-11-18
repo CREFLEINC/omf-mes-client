@@ -23,6 +23,8 @@ export const shipmentConfirm = {
     all: '전체',
     search: '조회',
     reset: '초기화',
+    /** 거르기 칩 — 이름과 건수(시안 「대기 2」). */
+    chip: (label: string, count: number): string => `${label} ${String(count)}`,
     /** L-3 — 기간은 비울 수 없다. */
     periodRequired: '기간을 선택해야 조회할 수 있습니다',
     periodReversed: '시작일이 종료일보다 뒤입니다. 두 날짜를 바꿔 주세요',
@@ -109,6 +111,9 @@ export const shipmentConfirm = {
     line: (lineNo: number, itemCode: string): string => `라인 ${String(lineNo)}: ${itemCode}`,
     lineQty: (target: string, shipped: number): string => `목표 ${target}, 출하 ${String(shipped)}`,
     over: (qty: number): string => `초과 +${String(qty)}`,
+    /** 송신 대기 — 다음 송신 때 나갈 수주 연결 라인 수와 수주 번호(시안 「라인 n행(수주 SO-…)」). */
+    erpPending: (lineCount: number, salesOrderNos: string): string =>
+      `아직 ERP 로 보내지 않았습니다. 다음 송신 때 수주 연결 라인 ${String(lineCount)}행(수주 ${salesOrderNos})이 나갑니다.`,
     replaced: '교체됨 — 출하에 들지 않음',
     replacedNote: (replacedAt: string, nonconformanceNo: string | null): string =>
       nonconformanceNo === null
@@ -143,10 +148,11 @@ export const shipmentConfirm = {
   },
   /** 취소는 ERP 로 보내기 전에만 된다 — 그 사실을 취소 요청 옆에 둔다. */
   cancelNote:
-    'ERP 로 보내기 전에만 취소할 수 있습니다. 승인된 취소의 실행은 결재함에서 진행하세요.',
+    'ERP 로 보내기 전에만 취소할 수 있습니다. 취소가 승인되면 이 화면에서 [취소 실행]으로 실행합니다.',
   actions: {
     confirm: '확정',
     requestCancel: '취소 요청',
+    executeCancel: '취소 실행',
   },
   lock: {
     sent: 'ERP 로 이미 보냈습니다. ERP 에서 처리하세요',
@@ -155,6 +161,8 @@ export const shipmentConfirm = {
     confirmedLegacy: '확정 후에는 취소할 수 없습니다',
     cancelled: '취소된 출하입니다',
     running: '확정을 처리하는 중입니다',
+    /** 승인된 취소가 아직 실행되지 않았다 — 다시 요청하지 않고 실행한다. */
+    cancelApproved: '취소가 승인됐습니다. [취소 실행]으로 실행하세요',
   },
   confirmDialog: {
     title: '출하 확정',
@@ -193,6 +201,16 @@ export const shipmentConfirm = {
     cancel: '닫기',
     submit: '취소 요청',
   },
+  /** 승인된 취소의 실행 확인 창(FR-023 — 결재함은 승인만 하고 실행은 이 화면에서 한다). */
+  executeDialog: {
+    title: '출하 취소 실행',
+    target: (shipmentNo: string): string => `${shipmentNo}의 승인된 취소를 실행합니다.`,
+    irreversible: '실행하면 되돌릴 수 없습니다. 다시 내보내려면 POP 에서 출하를 다시 완료하세요.',
+    erpAlreadySent: '실행하지 못했습니다. 그 사이 ERP 로 이미 보냈습니다. ERP 에서 처리하세요.',
+    failed: (message: string): string => `실행하지 못했습니다. ${message}`,
+    cancel: '닫기',
+    submit: '취소 실행',
+  },
   result: {
     allConfirmed: (count: number): string => `출하 ${String(count)}건을 확정했습니다.`,
     partial: (confirmed: number, failed: number): string =>
@@ -205,6 +223,8 @@ export const shipmentConfirm = {
       lockUnavailable: '확정에 필요한 정보를 받지 못했습니다. 다시 시도하세요',
       unknown: '확정하지 못했습니다',
     },
+    executeCancelDone: (shipmentNo: string): string =>
+      `${shipmentNo}의 취소를 실행했습니다. 재고와 출고 전표가 되돌려졌습니다.`,
     requestCancelDone: (shipmentNo: string): string =>
       `${shipmentNo}의 취소 요청을 올렸습니다. 승인 뒤에 취소가 실행됩니다.`,
   },

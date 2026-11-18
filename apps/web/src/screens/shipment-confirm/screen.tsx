@@ -1,17 +1,26 @@
 import { AlertBanner, Breadcrumb, Button, PageHeader, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { plantToday } from '../../patterns/plant-time';
 import { CancelRequestDialog, cancelReasonError } from './cancel-request-dialog';
 import { ConfirmDialog } from './confirm-dialog';
 import { summaryMessage } from './confirm-run';
 import { DetailPane } from './detail-pane';
+import { ExecuteCancelDialog } from './execute-cancel-dialog';
 import { FilterBar } from './filter-bar';
 import { defaultFilters, toListQuery, type ConfirmFilters } from './filters';
-import { useCancelRequestMutation, useConfirmRunner } from './mutations';
-import { useShipmentDetail, useShipmentList } from './queries';
+import { useCancelExecuteMutation, useCancelRequestMutation, useConfirmRunner } from './mutations';
+import {
+  useApprovalTargetShipment,
+  useCancelApproval,
+  useShipmentDetail,
+  useShipmentList,
+} from './queries';
 import { flowOf } from './rules';
+import type { ShipmentRow } from './types';
 import { ShipmentList } from './shipment-list';
 
 const t = messages.shipmentConfirm;
@@ -42,6 +51,17 @@ export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) 
   const [isCancelOpen, setIsCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [showCancelError, setShowCancelError] = useState(false);
+  const [isExecuteOpen, setIsExecuteOpen] = useState(false);
+
+  /* 결재함 대상 링크(`?approvalRequestId=` · 화면 ID W-04-12)로 열리면 그 결재의 출하를 고른다(Q13). */
+  const [searchParams] = useSearchParams();
+  const linkedApprovalId = Number(searchParams.get('approvalRequestId') ?? '');
+  const linked = useApprovalTargetShipment(
+    Number.isSafeInteger(linkedApprovalId) && linkedApprovalId > 0 ? linkedApprovalId : null,
+  );
+  useEffect(() => {
+    if (typeof linked.data === 'number') setSelectedId(linked.data);
+  }, [linked.data]);
 
   const query = useMemo(() => toListQuery(filters, page), [filters, page]);
   const list = useShipmentList(query);
@@ -53,6 +73,7 @@ export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) 
   const detail = useShipmentDetail(selectedId);
   const selected = detail.data?.row ?? null;
   const runner = useConfirmRunner();
+  const cancelApproval = useCancelApproval(selectedId);
 
   const closeCancel = (): void => {
     setIsCancelOpen(false);
@@ -70,6 +91,20 @@ export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) 
       void detail.refetch();
     },
   });
+
+  const executeWrite = useCancelExecuteMutation({
+    shipmentId: isExecuteOpen ? selectedId : null,
+    onSuccess: () => {
+      const shipmentNo = selected?.shipmentNo ?? '';
+      setIsExecuteOpen(false);
+      toast.show({ variant: 'success', description: t.result.executeCancelDone(shipmentNo) });
+      void list.refetch();
+      void detail.refetch();
+      void cancelApproval.refetch();
+    },
+  });
+  const executeAlreadySent =
+    executeWrite.error?.kind === 'conflict' && executeWrite.error.code === 'ERP_ALREADY_SENT';
 
   /* 409 ERP_ALREADY_SENT — 요청하는 사이 송신이 먼저 끝났다. 일반 충돌 문구가 아니라 그 사실을 말한다. */
   const erpAlreadySent =
@@ -102,6 +137,7 @@ export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) 
           <h2>{t.panes.list}</h2>
           <FilterBar
             applied={filters}
+            counts={list.data?.erpSendStatusCounts ?? null}
             onApply={applyFilters}
             onReset={() => applyFilters(defaultFilters(baseNow))}
           />
@@ -177,6 +213,11 @@ export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) 
               setCancelReason('');
               setShowCancelError(false);
             }}
+            cancelApproved={cancelApproval.data === 'APPROVED'}
+            onExecuteCancel={() => {
+              executeWrite.reset();
+              setIsExecuteOpen(true);
+            }}
           />
         </section>
       </div>
@@ -199,24 +240,35 @@ export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) 
         />
       )}
 
+      {isExecuteOpen && selected !== null && (
+        <ExecuteCancelDialog
+          shipmentNo={selected.shipmentNo}
+          consequences={consequencesOf(selected, detail.data?.shipmentRequestNo ?? null)}
+          banner={
+            executeAlreadySent ? (
+              <AlertBanner variant="error">{t.executeDialog.erpAlreadySent}</AlertBanner>
+            ) : (
+              <SaveErrorBanner
+                error={executeWrite.error}
+                onReload={() => setIsExecuteOpen(false)}
+              />
+            )
+          }
+          isSubmitting={executeWrite.isSaving || detail.isFetching}
+          onClose={() => setIsExecuteOpen(false)}
+          onSubmit={() => {
+            executeWrite.write({
+              businessDate: plantToday(),
+              occurredAt: new Date().toISOString(),
+            });
+          }}
+        />
+      )}
+
       {isCancelOpen && selected !== null && (
         <CancelRequestDialog
           shipmentNo={selected.shipmentNo}
-          consequences={
-            flowOf(selected) === 'completed'
-              ? {
-                  qty: selected.totalQty,
-                  /* 창고마다 빠진 수량을 함께 적는다(시안 「완제품 창고 A 90, B 70」) — 모르면 이름만. */
-                  warehouses: selected.warehouses
-                    .map((w) =>
-                      w.qty === null ? w.warehouseName : `${w.warehouseName} ${String(w.qty)}`,
-                    )
-                    .join(', '),
-                  shipmentRequestNo:
-                    selected.shipmentRequestNo ?? detail.data?.shipmentRequestNo ?? null,
-                }
-              : null
-          }
+          consequences={consequencesOf(selected, detail.data?.shipmentRequestNo ?? null)}
           reason={cancelReason}
           showError={showCancelError}
           banner={
@@ -239,3 +291,16 @@ export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) 
     </>
   );
 };
+
+/** 취소가 실행되면 일어나는 것(POP 완료 출하만) — 요청 창과 실행 창이 같이 쓴다. */
+const consequencesOf = (row: ShipmentRow, requestNo: string | null) =>
+  flowOf(row) === 'completed'
+    ? {
+        qty: row.totalQty,
+        /* 창고마다 빠진 수량을 함께 적는다(시안 「완제품 창고 A 90, B 70」) — 모르면 이름만. */
+        warehouses: row.warehouses
+          .map((w) => (w.qty === null ? w.warehouseName : `${w.warehouseName} ${String(w.qty)}`))
+          .join(', '),
+        shipmentRequestNo: row.shipmentRequestNo ?? requestNo,
+      }
+    : null;

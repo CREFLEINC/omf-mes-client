@@ -33,6 +33,12 @@ export interface ConfirmStubOptions {
   listStatus?: number;
   /** 취소 요청 응답을 갈아 끼운다. */
   cancelResponse?: () => Response;
+  /** 출하별 마지막 취소 결재 상태(SHIPMENT_CANCEL). 없으면 결재 없음. */
+  cancelApprovals?: Record<number, 'PENDING' | 'APPROVED' | 'REJECTED'>;
+  /** 취소 실행 응답을 갈아 끼운다. */
+  cancelExecuteResponse?: () => Response;
+  /** 목록 응답의 ERP 송신 상태별 건수. 없으면 싣지 않는다. */
+  erpSendStatusCounts?: Record<string, number>;
 }
 
 let sent: Request[] = [];
@@ -214,12 +220,37 @@ const shipmentBody = (stub: ShipmentStub) => ({
   lines: linesOf(stub),
 });
 
+/** 출하 취소 결재(SHIPMENT_CANCEL) 한 건. */
+const approvalBody = (approvalRequestId: number, shipmentId: number, statusCode: string) => ({
+  approvalRequestId,
+  approvalRequestNo: `SYN-AP-${String(approvalRequestId)}`,
+  approvalTypeCode: 'SHIPMENT_CANCEL',
+  requestedBy: 1,
+  requestedWorkerId: null,
+  requestedByName: '합성 관리자',
+  requestedAt: '2026-11-18T13:00:00+07:00',
+  statusCode,
+  reason: '합성 사유',
+  target: {
+    targetTypeCode: 'SHIPMENT',
+    targetId: shipmentId,
+    displayName: `출하 #${String(shipmentId)}`,
+    openable: true,
+    screenId: 'W-04-12',
+  },
+  currentStepNo: null,
+  totalStepNo: 1,
+  isMyTurn: false,
+});
+
 /** 그 출하를 만든 지시서 — 목표·OQC 판정·위치 몫·교체 이력을 여기서 읽는다. */
 const shipmentRequestBody = () => ({
   shipmentRequestId: 3001,
   shipmentRequestNo: 'SYN-SR-3001',
   customerId: 8201,
   shipToPartnerId: 8211,
+  customer: { partnerId: 8201, partnerCode: 'SYN-CUS-01', partnerName: '합성 고객 가' },
+  shipTo: { partnerId: 8211, partnerCode: 'SYN-SHT-01', partnerName: '합성 납품처 가' },
   requestedShipDate: '2026-11-18',
   statusCode: 'SYN',
   shipmentProgressCode: 'SHIPPED',
@@ -236,6 +267,17 @@ const shipmentRequestBody = () => ({
       shipmentRequestLineId: 4001,
       lineNo: 1,
       itemId: 5001,
+      itemCode: 'SYN-FG-A100',
+      itemName: '합성 센서 모듈',
+      salesOrderLineId: 6001,
+      salesOrderLine: {
+        salesOrderLineId: 6001,
+        salesOrderNo: 'SYN-SO-01',
+        lineNo: 1,
+        orderedQty: 100,
+        shippedQty: 110,
+        cancelled: false,
+      },
       requestedQty: 100,
       allocatedQty: 100,
       pickedQty: 110,
@@ -317,6 +359,9 @@ export const confirmStub = (options: ConfirmStubOptions = {}): StubFetch => {
         return jsonResponse({
           items: items.map(shipmentBody),
           page: { page: 1, size: 50, total: items.length },
+          ...(options.erpSendStatusCounts === undefined
+            ? {}
+            : { erpSendStatusCounts: options.erpSendStatusCounts }),
         });
       },
     },
@@ -351,6 +396,44 @@ export const confirmStub = (options: ConfirmStubOptions = {}): StubFetch => {
         new URL(request.url).pathname.endsWith(':request-cancel') && request.method === 'POST',
       respond: () => options.cancelResponse?.() ?? jsonResponse({ approvalRequestId: 9001 }),
     },
+    {
+      match: (request: Request) =>
+        new URL(request.url).pathname.endsWith(':cancel') && request.method === 'POST',
+      respond: (request: Request) => {
+        const id = Number(new URL(request.url).pathname.split('/')[3]?.split(':')[0]);
+        const stub = shipments.find((one) => one.shipmentId === id) ?? DEFAULT_SHIPMENTS[0]!;
+        return (
+          options.cancelExecuteResponse?.() ??
+          jsonResponse({
+            ...shipmentBody(stub),
+            statusCode: 'CANCELLED',
+            erpSendStatus: 'CANCELLED',
+          })
+        );
+      },
+    },
+    {
+      match: (request: Request) =>
+        new URL(request.url).pathname === '/app/approval-requests' && request.method === 'GET',
+      respond: (request: Request) => {
+        const targetId = Number(new URL(request.url).searchParams.get('targetId'));
+        const status = options.cancelApprovals?.[targetId];
+        const items = status === undefined ? [] : [approvalBody(9000 + targetId, targetId, status)];
+        return jsonResponse({ items, page: { page: 1, size: 20, total: items.length } });
+      },
+    },
+    {
+      match: (request: Request) =>
+        /^\/app\/approval-requests\/\d+$/.test(new URL(request.url).pathname) &&
+        request.method === 'GET',
+      respond: (request: Request) => {
+        const approvalRequestId = Number(new URL(request.url).pathname.split('/').pop());
+        return jsonResponse({
+          request: approvalBody(approvalRequestId, approvalRequestId - 9000, 'APPROVED'),
+          steps: [],
+        });
+      },
+    },
   ];
 
   const stub = createStubFetch(routes);
@@ -368,6 +451,10 @@ export const confirmRequests = (): Request[] =>
 /** 나간 취소 요청들. */
 export const cancelRequests = (): Request[] =>
   sent.filter((request) => request.method === 'POST' && request.url.endsWith(':request-cancel'));
+
+/** 나간 취소 실행들. */
+export const cancelExecuteRequests = (): Request[] =>
+  sent.filter((request) => request.method === 'POST' && request.url.endsWith(':cancel'));
 
 /** 나간 목록 조회들. */
 export const listRequests = (): URL[] =>

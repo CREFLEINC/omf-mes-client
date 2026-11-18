@@ -29,7 +29,8 @@ export const flowOf = (row: ShipmentRow): ShipmentFlow => {
 /** [확정]은 옛 흐름·긴급 직행 미확정 출하 상세에만 선다(한 건씩 · 일괄 없음). */
 export const canConfirm = (row: ShipmentRow): boolean => row.statusCode === 'UNCONFIRMED';
 
-export type CancelLock = 'sent' | 'cancelPending' | 'sendError' | 'confirmedLegacy' | 'cancelled';
+export type CancelLock =
+  'sent' | 'cancelPending' | 'cancelApproved' | 'sendError' | 'confirmedLegacy' | 'cancelled';
 
 /**
  * 취소 요청을 막는 이유. 막지 않으면 `null`.
@@ -39,10 +40,12 @@ export type CancelLock = 'sent' | 'cancelPending' | 'sendError' | 'confirmedLega
  *   보냈으면 「ERP 에서 처리」, 송신 오류는 이번 범위에서 정하지 않아 담당자 문의로 잠근다.
  * - 열린 취소 결재가 있으면 다시 올리지 않는다(FR-024).
  */
-export const cancelLockOf = (row: ShipmentRow): CancelLock | null => {
+export const cancelLockOf = (row: ShipmentRow, cancelApproved = false): CancelLock | null => {
   const flow = flowOf(row);
   if (flow === 'cancelled') return 'cancelled';
   if (row.cancelRequestPending) return 'cancelPending';
+  /* 승인된 취소가 남아 있다 — 다시 요청하지 않고 [취소 실행]한다(Q13). */
+  if (cancelApproved) return 'cancelApproved';
   if (flow === 'legacyUnconfirmed' || flow === 'expeditedUnconfirmed') return null;
   if (flow === 'confirmed') return 'confirmedLegacy';
 

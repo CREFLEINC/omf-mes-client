@@ -127,6 +127,10 @@ export interface ReplacedLot {
 export interface ShipmentDetailLine {
   lineNo: number;
   itemCode: string;
+  /** 품목 이름 — 지시서 라인에서 읽는다(시안 「라인 1 · FG-A100 센서 모듈 A」). 모르면 빈 값. */
+  itemName: string;
+  /** 수주 연결 라인이면 수주 번호 — ERP 송신 안내가 센다. 수주 없는 라인은 `null`. */
+  salesOrderNo: string | null;
   shippedQty: number;
   /** 목표(지시서 라인 배정 수량). 지시서를 못 받았으면 `null`. */
   targetQty: number | null;
@@ -212,12 +216,17 @@ export const toShipmentDetail = (
       }
     }
 
+    const targetQty = requestLine?.allocatedQty ?? null;
     return {
       lineNo: line.lineNo,
-      itemCode,
+      itemCode: itemCode === '' ? (requestLine?.itemCode ?? '') : itemCode,
+      itemName: requestLine?.itemName ?? '',
+      salesOrderNo: requestLine?.salesOrderLine?.salesOrderNo ?? null,
       shippedQty: line.shippedQty,
-      targetQty: requestLine?.allocatedQty ?? null,
-      overQty: requestLine?.overQty ?? 0,
+      targetQty,
+      /* 초과는 이 출하가 낸 양 기준이다 — 완료 뒤 지시서의 살아 있는 피킹(overQty)은 0 이 된다. */
+      overQty:
+        targetQty === null ? (requestLine?.overQty ?? 0) : Math.max(0, line.shippedQty - targetQty),
       lots: [...lots.values()],
       replaced: requestLots
         .filter((lot) => lot.statusCode === 'REPLACED' && lot.replacement !== null)
