@@ -25,6 +25,11 @@ export const packingResult = {
     scanPlaceholder: '출하 번호를 스캔하세요',
     notFound: (code: string): string => `${code} — 오늘 피킹을 마친 출하 목록에 없습니다.`,
     unassigned: '미구성 상자',
+    /** 확정할 수 없는 출하 카드의 표식 — 흐리게 잠기고 고를 수 없다. */
+    blockedChip: '확정 불가',
+    status: '상태',
+    /** 미포장 배분이 없다 — 창고·담을 LOT 이 모두 그 배분에서 오므로 확정할 수 없다. */
+    noLots: '포장할 LOT이 남아 있지 않습니다',
   },
   band: {
     label: '포장 정보',

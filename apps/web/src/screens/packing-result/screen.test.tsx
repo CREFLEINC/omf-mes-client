@@ -65,6 +65,8 @@ interface Options {
   /** 포장 유형 선택지. **서버가 준 순서 그대로** 내려간다. */
   typeCodes?: { code: string; codeName: string }[];
   reads?: Request[];
+  /** 이 출하는 미포장 배분이 없다 — 확정할 수 없는 출하가 된다. */
+  noUnpackedShipmentId?: number;
 }
 
 const handlingUnitBody = {
@@ -250,6 +252,13 @@ const renderScreen = (options: Options = {}) => {
           return jsonResponse({ items: match.matched ? [allocation()] : [], page, match });
         }
 
+        if (
+          query.get('unpackedOnly') === 'true' &&
+          query.get('shipmentId') === String(options.noUnpackedShipmentId)
+        ) {
+          return jsonResponse({ items: [], page: { ...page, total: 0 } });
+        }
+
         return jsonResponse({ items: [allocation()], page });
       },
     },
@@ -416,6 +425,53 @@ describe('PackingResultScreen', () => {
 
     await user.type(screen.getByLabelText(t.shipments.scan), 'SYN-SH-9999{Enter}');
     expect(await screen.findByText(t.shipments.notFound('SYN-SH-9999'))).toBeInTheDocument();
+  });
+
+  /* ⭐ 확정할 수 없는 출하는 카드에 「확정 불가」와 사유를 남기고 잠근다 — 위 빨간 안내로 띄우지 않는다. */
+  it('미포장 배분이 없는 출하는 고르지 않고 「확정 불가」로 잠그며 사유를 카드에 적는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ noUnpackedShipmentId: 502 });
+
+    await chooseShipment(user, 'SYN-SH-0502');
+
+    const card = await screen.findByRole('button', {
+      name: new RegExp(t.shipments.blockedChip, 'u'),
+    });
+    expect(card).toHaveTextContent('SYN-SH-0502');
+    expect(card).toHaveTextContent(t.shipments.noLots);
+    expect(card).toBeDisabled();
+    expect(card).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: t.actions.next })).toBeDisabled();
+    expect(screen.queryByText(t.locks.warehouseMissing)).not.toBeInTheDocument();
+
+    /* 다른 출하는 그대로 고를 수 있다. */
+    await chooseShipment(user, 'SYN-SH-0501');
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /SYN-SH-0501/u })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+    });
+  });
+
+  it('확정할 수 없는 출하번호를 찍으면 고르지 않고 사유를 스캔 오류로 띄운다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ noUnpackedShipmentId: 502 });
+
+    await shipmentCard('SYN-SH-0502');
+    await user.type(screen.getByLabelText(t.shipments.scan), 'SYN-SH-0502{Enter}');
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.shipments.scan)).toHaveAccessibleDescription(
+        t.shipments.noLots,
+      );
+    });
+    expect(screen.getByRole('button', { name: t.actions.next })).toBeDisabled();
+
+    /* 이미 잠긴 출하를 다시 찍어도 고르지 않고 같은 사유를 띄운다. */
+    await user.type(screen.getByLabelText(t.shipments.scan), 'SYN-SH-0502{Enter}');
+    expect(screen.getByLabelText(t.shipments.scan)).toHaveAccessibleDescription(t.shipments.noLots);
+    expect(screen.getByRole('button', { name: t.actions.next })).toBeDisabled();
   });
 
   /*

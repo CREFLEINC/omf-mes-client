@@ -20,6 +20,9 @@ export const packingResult: Translated<typeof ko.packingResult> = {
     scanPlaceholder: 'Hãy quét số xuất hàng',
     notFound: (code: string): string => `${code} — không có trong danh sách xuất hàng hôm nay.`,
     unassigned: 'Kiện chưa cấu thành',
+    blockedChip: 'Không thể xác nhận',
+    status: 'Trạng thái',
+    noLots: 'Không còn LOT cần đóng gói',
   },
   band: {
     label: 'Thông tin đóng gói',

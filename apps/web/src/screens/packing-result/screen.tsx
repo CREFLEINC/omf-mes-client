@@ -96,6 +96,14 @@ const withoutServerText = (error: ApiError): ApiError =>
 
 type Step = 1 | 2 | 3;
 
+/**
+ * 고를 수 없는 출하의 사유 — 확정 잠금(`confirmLockReason`)의 창고 조건과 같은 축이다.
+ * 창고는 고른 출하의 첫 미포장 배분에서 오므로(`label`), 미포장 배분이 없으면 그 출하는
+ * 확정할 수 없다. ⚠ 목록 응답에는 미포장 배분 수가 없어 «고르기 조회가 돈 뒤»에야 안다.
+ */
+const shipmentBlockReason = (next: ShipmentEntry): string | undefined =>
+  next.allocations[0] === undefined ? t.shipments.noLots : undefined;
+
 const fmt = (value: number): string => value.toLocaleString();
 
 export const PackingResultScreen = () => {
@@ -112,7 +120,10 @@ export const PackingResultScreen = () => {
   const [matched, setMatched] = useState<MatchedLot | null>(null);
   const [scanValue, setScanValue] = useState('');
   const [shipmentScan, setShipmentScan] = useState('');
-  const [shipmentScanMiss, setShipmentScanMiss] = useState<string | null>(null);
+  /** 출하 스캔 칸 아래 빨간 한 줄 — 목록에 없는 번호이거나 확정할 수 없는 출하의 사유. */
+  const [shipmentScanError, setShipmentScanError] = useState<string | null>(null);
+  /** 확정할 수 없다고 확인된 출하(식별자 → 사유). 그 카드는 흐리게 잠긴다. */
+  const [blockedShipments, setBlockedShipments] = useState<Record<number, string>>({});
   const [lines, setLines] = useState<PackedLine[]>([]);
   /** 줄마다 친 수량(배분 식별자 → 키패드 글자). 비어 있으면 아직 넣지 않은 것이다. */
   const [qtys, setQtys] = useState<Record<number, string>>({});
@@ -223,16 +234,31 @@ export const PackingResultScreen = () => {
   const shipFit = useFitCount(shipBoxRef, { fallback: 4 });
   const shipPage = useClientPage(todayShipments.shipments, shipFit);
 
-  /** 출하 하나를 골랐다. ⚠ 이미 고른 것을 다시 고르면 아무것도 하지 않는다(담던 것을 지킨다). */
-  const chooseShipment = (selectedId: number): void => {
+  /**
+   * 출하 하나를 골랐다. ⚠ 이미 고른 것을 다시 고르면 아무것도 하지 않는다(담던 것을 지킨다).
+   * 조회 결과 확정할 수 없는 출하면 고르지 않고 그 카드에 사유를 남긴다 — 찍어서 고른 것이면
+   * 스캔 칸 아래에도 사유를 띄운다.
+   */
+  const chooseShipment = (selectedId: number, fromScan = false): void => {
     const selected = todayShipments.shipments.find(
       (shipment) => shipment.shipmentId === selectedId,
     );
     if (selected === undefined) return;
+    if (blockedShipments[selected.shipmentId] !== undefined) return;
     if (entry?.shipmentId === selected.shipmentId) return;
     if (!prepareEntryChange()) return;
 
-    shipmentSelection.mutate(selected, { onSuccess: applyEntry });
+    shipmentSelection.mutate(selected, {
+      onSuccess: (next) => {
+        const reason = shipmentBlockReason(next);
+        if (reason === undefined) {
+          applyEntry(next);
+          return;
+        }
+        setBlockedShipments((prev) => ({ ...prev, [next.shipmentId]: reason }));
+        if (fromScan) setShipmentScanError(reason);
+      },
+    });
   };
 
   /**
@@ -248,12 +274,17 @@ export const PackingResultScreen = () => {
         String(shipment.shipmentId).toLocaleLowerCase('ko-KR') === wanted,
     );
     if (found === undefined) {
-      setShipmentScanMiss(code);
+      setShipmentScanError(t.shipments.notFound(code));
       return;
     }
-    setShipmentScanMiss(null);
-    chooseShipment(found.shipmentId);
     shipPage.showIndex(todayShipments.shipments.indexOf(found));
+    const blockedReason = blockedShipments[found.shipmentId];
+    if (blockedReason !== undefined) {
+      setShipmentScanError(blockedReason);
+      return;
+    }
+    setShipmentScanError(null);
+    chooseShipment(found.shipmentId, true);
   };
 
   const scanLot = (code: string): void => {
@@ -472,7 +503,7 @@ export const PackingResultScreen = () => {
         onSubmit={scanShipment}
         placeholder={t.shipments.scanPlaceholder}
         disabled={!hasWorkerNo || todayShipments.isError || shipmentSelection.isPending}
-        error={shipmentScanMiss === null ? undefined : t.shipments.notFound(shipmentScanMiss)}
+        error={shipmentScanError ?? undefined}
       />
       {todayShipments.isPending ? (
         <PuEmpty icon="list" title={t.shipments.loading} />
@@ -481,6 +512,31 @@ export const PackingResultScreen = () => {
       ) : (
         <div className="pu-list pu-fit pk-fill" ref={shipBoxRef} aria-label={t.shipments.region}>
           {shipPage.items.map((shipment) => {
+            const blockedReason = blockedShipments[shipment.shipmentId];
+            if (blockedReason !== undefined) {
+              /* 확정 불가 — 고를 수 없다. 왜 못 고르는지 그 자리에서 말한다. */
+              return (
+                <button
+                  key={shipment.shipmentId}
+                  type="button"
+                  className="pu-item is-dim"
+                  aria-pressed={false}
+                  disabled
+                >
+                  <span className="pu-item-top">
+                    <span className="no">{shipment.shipmentNo}</span>
+                    <span className="chips">
+                      <PuChip>{t.shipments.blockedChip}</PuChip>
+                    </span>
+                  </span>
+                  <span className="pu-item-sub">
+                    <span>
+                      {t.shipments.status} <b>{blockedReason}</b>
+                    </span>
+                  </span>
+                </button>
+              );
+            }
             const isSelected = entry?.shipmentId === shipment.shipmentId;
             const items = isSelected
               ? [...new Set(entry.allocations.map((allocation) => allocation.itemCode))].join(', ')
