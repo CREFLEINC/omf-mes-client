@@ -34249,7 +34249,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   margin: 0;
   padding: 0 var(--space-4);
   border-radius: var(--radius-lg);
-  background: var(--surface-container-lowest, var(--surface));
+  background: var(--surface-container-low);
 }
 
 /* 묶음(LOT · 결과) 사이만 선을 긋는다(사용자 시안 2026-11-19 · omf-all-around#296). */
