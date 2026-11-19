@@ -27,7 +27,7 @@ export interface OqcQueueSkipCellProps {
 /**
  * 목록 「생략」 칸(사용자 지시 2026-11-09 · IQC #225 와 같다) — 상세에 있던 OQC 생략 구획(#119)을 줄로 옮겼다. 단위는 출하작업지시다.
  * 마지막 OQC_SKIP 결재로 단추 하나를 세운다: 없음 · 반려 → 생략 요청, 결재 중 → 승인 처리, 승인 → 생략 실행.
- * ⛔ 확정 회차가 있는 의뢰에는 세우지 않는다 — 판정이 난 의뢰를 생략으로 덮지 않는다(서버도 400).
+ * ⛔ 결과가 하나라도 있는 의뢰에는 세우지 않는다 — 결과 0건 의뢰만 생략한다(피처 010 FR-012 · 서버도 400).
  */
 export const OqcQueueSkipCell = ({
   inspectionRequestId,
@@ -65,7 +65,8 @@ export const OqcQueueSkipCell = ({
   if (
     approval.isError ||
     rounds.isError ||
-    rounds.data.some((row) => row.statusCode === 'CONFIRMED')
+    /* 결과가 하나라도 있으면 생략할 수 없다(피처 010 FR-012 · 서버도 결과 0건 의뢰만 받는다). */
+    rounds.data.length > 0
   ) {
     return <span title={approval.isError ? t.loadFailed : undefined}>{q.emptyValue}</span>;
   }

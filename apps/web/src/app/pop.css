@@ -7613,6 +7613,121 @@
   margin: 0;
 }
 
+/* ── 출하 OQC 새 흐름(피처 010 · 시안 P0406-After) — 왼쪽 요약 · LOT · 결과, 오른쪽 결과 입력 ── */
+.pop-ui .pop-oqc-shipment {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .pop-ui .pop-oqc-shipment {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.pop-ui .pop-oqc-shipment__col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.pop-ui .pop-oqc-shipment-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.pop-ui .pop-oqc-shipment-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.pop-ui .pop-oqc-shipment-box__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pop-ui .pop-oqc-shipment-box__head > h2,
+.pop-ui .pop-oqc-shipment-form__title {
+  margin: 0;
+  font: 700 18px / 26px var(--font-sans);
+}
+
+.pop-ui .pop-oqc-shipment-gap {
+  flex: 1 1 auto;
+}
+
+.pop-ui .pop-oqc-shipment-muted {
+  color: var(--on-surface-variant);
+  font-size: var(--pop-label);
+}
+
+.pop-ui .pop-oqc-shipment-lots,
+.pop-ui .pop-oqc-shipment-results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pop-ui .pop-oqc-shipment-lot,
+.pop-ui .pop-oqc-shipment-result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  padding-block: var(--space-2);
+  border-block-end: 1px solid var(--outline-variant);
+}
+
+.pop-ui .pop-oqc-shipment-lot__no {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.pop-ui .pop-oqc-shipment-lot__judgment,
+.pop-ui .pop-oqc-shipment-result__body,
+.pop-ui .pop-oqc-shipment-card {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pop-ui .pop-oqc-shipment-lots--replaced .pop-oqc-shipment-lot,
+.pop-ui .pop-oqc-shipment-replaced-head {
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .pop-oqc-shipment-replaced-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.pop-ui .pop-oqc-shipment-result__seq {
+  font-weight: 700;
+}
+
+.pop-ui .pop-oqc-shipment-judgments {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
 /* ── 판정 입력 ── */
 .pop-ui .pop-oqc-form {
   display: flex;
