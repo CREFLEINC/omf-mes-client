@@ -269,12 +269,13 @@ export const MaterialLotIssueScreen = () => {
 
   /* 고른 공급사·품목 — 오른쪽 구획. 고르기 전에는 고르라고 말한다(입고 관리와 같다). */
   const detail = (): ReactNode =>
-    opened === null ? (
+    opened === null || plantId === null ? (
       <EmptyState size="sm" title={t.detail.choose} />
     ) : (
       <DetailPane
         /* 고른 줄이 바뀌면 폐기 선택을 비운다 — 앞 공급사·품목의 LOT 이 남지 않게. */
         key={groupKey(opened)}
+        plantId={plantId}
         group={opened}
         defaults={byPair.get(groupKey(opened))}
         uoms={uoms.data}

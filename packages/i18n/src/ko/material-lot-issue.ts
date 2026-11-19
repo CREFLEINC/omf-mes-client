@@ -73,6 +73,23 @@ export const materialLotIssue = {
     channel: { POP: 'POP', WEB: '관리웹' },
     empty: '대기 자재 관리 LOT가 없습니다.',
   },
+  /**
+   * 미입고 P/O — 입하 마감이 채우는 차례 그대로(사용자 지시 2026-11-19). 자재 관리 LOT 는 발행할 때 P/O 와
+   * 묶이지 않아, 납기만 보이면 「이 LOT 은 그 P/O 몫」으로 읽힌다 — 그래서 채우는 차례를 함께 말한다.
+   */
+  poLines: {
+    title: '미입고 P/O',
+    count: (count: number) => `${count}건`,
+    fillOrder: '입하하면 위에서부터 채워짐',
+    columns: {
+      purchaseOrderNo: 'P/O 번호',
+      lineNo: 'No.',
+      orderDate: '발주일',
+      dueDate: '납기',
+      remainingQty: '남은 수량',
+    },
+    empty: '미입고 P/O가 없습니다.',
+  },
   /** 발행 창 — POP 「자재 관리 LOT 만들기」와 같은 칸·규칙(US1-8). */
   dialog: {
     title: '자재 관리 LOT 발행',

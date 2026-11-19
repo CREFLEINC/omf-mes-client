@@ -66,6 +66,19 @@ export const materialLotIssue: Translated<typeof ko.materialLotIssue> = {
     channel: { POP: 'POP', WEB: 'Quản trị' },
     empty: 'Không có LOT quản lý vật tư nào đang chờ.',
   },
+  poLines: {
+    title: 'P/O chưa nhập',
+    count: (count: number) => `${count} dòng`,
+    fillOrder: 'Khi nhập hàng sẽ điền từ trên xuống',
+    columns: {
+      purchaseOrderNo: 'Số P/O',
+      lineNo: 'No.',
+      orderDate: 'Ngày đặt hàng',
+      dueDate: 'Hạn giao',
+      remainingQty: 'Còn lại',
+    },
+    empty: 'Không có P/O chưa nhập.',
+  },
   dialog: {
     title: 'Phát hành LOT quản lý vật tư',
     target: 'Nhà cung cấp · mặt hàng',
