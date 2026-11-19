@@ -52,7 +52,7 @@ export const precheck = (file: File): string | null => {
 export const sizeText = (bytes: number): string =>
   bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB`;
 
-export const formatAt = (iso: string): string => {
+const formatAt = (iso: string): string => {
   const at = new Date(iso);
   const pad = (n: number): string => String(n).padStart(2, '0');
   return `${String(at.getFullYear())}-${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}:${pad(at.getMinutes())}`;
