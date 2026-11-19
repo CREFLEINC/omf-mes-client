@@ -78,6 +78,12 @@ import type {
   WarehouseFilters,
   WarehouseFormValues,
 } from './types';
+import {
+  buildLeafLocationRows,
+  LOCATION_VIEW_PARAM,
+  parentPathOf,
+  readLocationViewMode,
+} from './leaf-rows';
 import { WarehouseFormPane } from './warehouse-form-pane';
 import { WarehouseListPane } from './warehouse-list-pane';
 import { WAREHOUSE_FORM_FIELDS, validateWarehouse } from './warehouse-validation';
@@ -554,9 +560,20 @@ export const WarehouseLocationScreen = () => {
 
   const expandedIds = expansion?.ids ?? NO_EXPANDED_IDS;
 
+  /* 상위 경로는 검색과 무관한 전체 계층에서 찾는다 — 검색으로 빠진 랙도 이름이 보이게. */
+  const hierarchyById = useMemo(
+    () => new Map(hierarchyItems.map((item) => [item.locationId, item] as const)),
+    [hierarchyItems],
+  );
+
+  /* 보기(사용자 지시 2026-11-19) — 적치 위치만은 랙 아래 말단을 한 줄씩. */
+  const locationViewMode = readLocationViewMode(searchParams.get(LOCATION_VIEW_PARAM));
   const locationRows = useMemo(
-    () => buildLocationRows(locationItems, expandedIds),
-    [locationItems, expandedIds],
+    () =>
+      locationViewMode === 'leaf'
+        ? buildLeafLocationRows(locationItems)
+        : buildLocationRows(locationItems, expandedIds),
+    [locationItems, expandedIds, locationViewMode],
   );
 
   const allLocationRows = useMemo(
@@ -994,10 +1011,7 @@ export const WarehouseLocationScreen = () => {
   const restriction = {
     checked: restrictionChecked,
     onChange: (checked: boolean) => changeLocationValues({ itemRestricted: checked }),
-    lockReason:
-      !restrictionChecked && itemsDraft !== null && itemsDraft.items.length === 0
-        ? t.itemsSection.restrict.noItems
-        : undefined,
+    locked: !restrictionChecked && itemsDraft !== null && itemsDraft.items.length === 0,
     error:
       locationFieldErrors.itemRestricted ??
       locationWrite.fieldErrors.itemRestricted ??
@@ -1087,10 +1101,7 @@ export const WarehouseLocationScreen = () => {
                   setRackRestricted(checked);
                   setRackRestrictError(undefined);
                 },
-                lockReason:
-                  !rackRestrictedNow && rackItemsEmpty
-                    ? t.itemsSection.restrict.noItems
-                    : undefined,
+                locked: !rackRestrictedNow && rackItemsEmpty,
                 error: rackItemsInvalid ? t.itemsSection.restrict.noItems : rackRestrictError,
                 disabled,
               }}
@@ -1364,6 +1375,15 @@ export const WarehouseLocationScreen = () => {
                       />
                     ) : null
                   }
+                  viewMode={locationViewMode}
+                  onViewModeChange={(mode) => {
+                    const next = new URLSearchParams(searchParams);
+                    if (mode === 'leaf') next.set(LOCATION_VIEW_PARAM, 'leaf');
+                    else next.delete(LOCATION_VIEW_PARAM);
+                    setSearchParams(next, { replace: true });
+                    setSelectedLocationIds([]);
+                  }}
+                  parentPathOf={(location) => parentPathOf(location, hierarchyById)}
                   expandedIds={expandedIds}
                   onToggleExpand={handleToggleExpand}
                   onCollapseAll={() =>

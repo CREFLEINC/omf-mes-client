@@ -8,6 +8,7 @@ export {
   isUnauthenticated,
   normalizeApiError,
   type ApiError,
+  type ConflictBlocker,
   type ConflictCause,
   type ErrorItem,
   type RejectedLot,

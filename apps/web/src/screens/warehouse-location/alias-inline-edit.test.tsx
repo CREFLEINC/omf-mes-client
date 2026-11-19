@@ -216,7 +216,8 @@ describe('별칭 바로 고치기 (목록)', () => {
     await user.type(input, '바뀜{Escape}');
 
     expect(screen.queryByRole('textbox', { name: t.aliasEdit.edit('Z01-R001') })).toBeNull();
-    expect(screen.getByText('A열 1번 랙')).toBeInTheDocument();
+    /* 코드 칸(별칭이 있으면 코드 대신)과 별칭 칸 두 곳에 보인다. */
+    expect(screen.getAllByText('A열 1번 랙')).toHaveLength(2);
     expect(puts(requests)).toHaveLength(0);
   });
 
@@ -249,7 +250,8 @@ describe('별칭 바로 고치기 (목록)', () => {
     renderPane({ canEditAlias: false });
 
     expect(screen.queryByRole('button', { name: t.aliasEdit.edit('Z01-R001') })).toBeNull();
-    expect(screen.getByText('A열 1번 랙')).toBeInTheDocument();
+    /* 코드 칸(별칭이 있으면 코드 대신)과 별칭 칸 두 곳에 보인다. */
+    expect(screen.getAllByText('A열 1번 랙')).toHaveLength(2);
   });
 
   it('US2-1 구역 · 랙 · 층 · 셀 모두와 서버가 만든 자리(별칭만 고침)에 연필이 있다', () => {

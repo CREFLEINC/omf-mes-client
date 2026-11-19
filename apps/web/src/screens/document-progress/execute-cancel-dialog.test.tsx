@@ -39,30 +39,6 @@ describe('ExecuteCancelDialog — 창이 말하는 것 · C4-9', () => {
   });
 
   /**
-   * ⓐ **원장에 무엇이 일어나는지 말한다.** 이 조작은 전기된 문서면 원장에 역트랜잭션을 만든다 —
-   * 무엇이 일어나는지 모른 채 누르게 하면 확인 창이 형식이 된다.
-   */
-  it('원장 파급을 말한다', () => {
-    renderDialog();
-
-    expect(screen.getByText(t.executeDialog.ledgerImpact)).toBeInTheDocument();
-  });
-
-  /**
-   * ⭐ **파급을 갈래 없이 단언하지 않는다.** 전기 전 문서면 원장에는 아무것도 생기지 않는다 —
-   * 늘 무거운 쪽으로 적으면 화면이 확인하지 않은 것을 단언하게 되고, 그 경고를 몇 번 겪은
-   * 사용자는 다음 경고도 흘려 읽는다.
-   */
-  it('원장 파급이 조건을 밝힌 문장이다', () => {
-    renderDialog();
-
-    const line = screen.getByText(t.executeDialog.ledgerImpact).textContent ?? '';
-
-    expect(line).toContain('전기된 문서면');
-    expect(line).toContain('전기 전이면');
-  });
-
-  /**
    * ⓑ ⛔ **되돌릴 수 없다** — 이 창의 요점이다. 취소를 되무르는 경로가 **없다.**
    */
   it('되돌릴 수 없다고 말한다', () => {
@@ -87,17 +63,12 @@ describe('ExecuteCancelDialog — 창이 말하는 것 · C4-9', () => {
   });
 
   /**
-   * 세 문장이 **함께** 서야 뜻이 온전하다 — 원장 파급만 읽으면 되돌릴 수 있는 줄 알고,
-   * 되돌릴 수 없다는 말만 읽으면 무엇이 되돌아가는지 모른다.
+   * 두 문장이 **함께** 서야 뜻이 온전하다 — 어느 문서를 실행하는지와 되돌릴 수 없다는 사실.
    */
-  it('세 문장이 함께 선다', () => {
+  it('두 문장이 함께 선다', () => {
     renderDialog();
 
-    for (const line of [
-      t.executeDialog.target(DOCUMENT_NO),
-      t.executeDialog.ledgerImpact,
-      t.executeDialog.irreversible,
-    ]) {
+    for (const line of [t.executeDialog.target(DOCUMENT_NO), t.executeDialog.irreversible]) {
       expect(screen.getByText(line)).toBeInTheDocument();
     }
   });

@@ -55,6 +55,15 @@ export interface InspectionQueueRow {
   skipBasisCode: SkipBasisCode | null;
   /** 의뢰가 만들어진 시각(RFC3339) — 목록의 「의뢰 일시」 열(IQC 와 같은 열 · omf-all-around#136). */
   requestedAt: string;
+  /** 출하 OQC 새 흐름(피처 010) — 지시서 번호 · 살아 있는 피킹 LOT 수 · LOT 판정 수. 옛 흐름 줄은 없다. */
+  shipmentRequestNo?: string;
+  pickedLotCount?: number;
+  lotJudgmentSummary?: InspectionRequestForward['lotJudgmentSummary'];
+  /** 출하 OQC 새 흐름 — 품목 코드·이름·단위·피킹 수량 합(POP 카드 「FG-A100 · 피킹 LOT 3개 · 110 EA」 · 검증 1회차). */
+  itemCode?: string;
+  itemName?: string;
+  uomCode?: string;
+  pickedQty?: number;
 }
 
 export interface InspectionQueueResult {
@@ -73,6 +82,13 @@ export const toInspectionQueueRow = (item: InspectionRequestResponse): Inspectio
   statusCode: item.statusCode,
   skipBasisCode: item.skipBasisCode ?? null,
   requestedAt: item.requestedAt,
+  ...(item.shipmentRequestNo === undefined ? {} : { shipmentRequestNo: item.shipmentRequestNo }),
+  ...(item.pickedLotCount === undefined ? {} : { pickedLotCount: item.pickedLotCount }),
+  ...(item.lotJudgmentSummary === undefined ? {} : { lotJudgmentSummary: item.lotJudgmentSummary }),
+  ...(item.itemCode === undefined ? {} : { itemCode: item.itemCode }),
+  ...(item.itemName === undefined ? {} : { itemName: item.itemName }),
+  ...(item.uomCode === undefined ? {} : { uomCode: item.uomCode }),
+  ...(item.pickedQty === undefined ? {} : { pickedQty: item.pickedQty }),
 });
 
 export const toInspectionQueueResult = (response: {

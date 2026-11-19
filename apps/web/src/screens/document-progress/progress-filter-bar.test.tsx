@@ -34,16 +34,13 @@ const applied = (overrides: Partial<ProgressFilters> = {}): ProgressFilters => (
   ...overrides,
 });
 
-describe('ProgressFilterBar — 여덟 축이 선다', () => {
-  it('여덟 조건 칸이 모두 있고 라벨이 각 칸에 이어져 있다', () => {
+describe('ProgressFilterBar — 다섯 축이 선다', () => {
+  it('다섯 조건 칸이 모두 있고 라벨이 각 칸에 이어져 있다', () => {
     renderBar();
 
     expect(screen.getByLabelText(t.fields.documentType)).toBeInTheDocument();
     expect(screen.getByLabelText(t.fields.status)).toBeInTheDocument();
     expect(screen.getByLabelText(t.fields.period)).toBeInTheDocument();
-    expect(screen.getByLabelText(t.fields.item)).toBeInTheDocument();
-    expect(screen.getByLabelText(t.fields.lot)).toBeInTheDocument();
-    expect(screen.getByLabelText(t.fields.warehouse)).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: t.fields.cancellableOnly })).toBeInTheDocument();
     expect(screen.getByLabelText(t.fields.q)).toBeInTheDocument();
   });
@@ -54,30 +51,21 @@ describe('ProgressFilterBar — 여덟 축이 선다', () => {
     expect(screen.getAllByLabelText(t.fields.period)).toHaveLength(1);
   });
 
-  /* 번호로만 좁힌다는 사실을 화면이 말해야 이름을 치다 빈 결과를 보는 일이 없다. */
-  it('번호로 좁힌다는 사실을 적는다', () => {
-    renderBar();
+  /* 걷은 번호 칸(품목 · 자재 LOT · 창고)과 칸 아래 안내가 다시 생기지 않는다(사용자 지시 2026-11-19). */
+  it('번호 칸과 안내 문장이 없다', () => {
+    const { container } = renderBar();
 
-    expect(screen.getByText(t.filters.idNote)).toBeInTheDocument();
-  });
-
-  /*
-   * 기본 기간을 심지 않는다는 사실도 화면이 밝힌다 — **비어 있는 칸이 고장으로 읽히지 않게**
-   * 한다(전례 `disposal-issue/gi-filter-bar.tsx`의 `periodNote`와 같은 자리).
-   */
-  it('기본 기간이 없다는 사실을 적는다', () => {
-    renderBar();
-
-    expect(screen.getByText(t.filters.periodNote)).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /번호$/u })).not.toBeInTheDocument();
+    expect(container.querySelector('p.field-note')).toBeNull();
   });
 });
 
 describe('ProgressFilterBar — 모아서 적용', () => {
   it('적용된 조건이 컨트롤에 서 있다', () => {
-    renderBar({ appliedFilters: applied({ q: 'SYN-GR', item: '9301' }) });
+    renderBar({ appliedFilters: applied({ q: 'SYN-GR', cancellableOnly: true }) });
 
     expect(screen.getByLabelText(t.fields.q)).toHaveValue('SYN-GR');
-    expect(screen.getByLabelText(t.fields.item)).toHaveValue('9301');
+    expect(screen.getByRole('checkbox', { name: t.fields.cancellableOnly })).toBeChecked();
   });
 
   /* 조건을 고치는 동안 조회가 나가면 반쯤 지운 검색어로 요청이 나간다. */
@@ -93,10 +81,10 @@ describe('ProgressFilterBar — 모아서 적용', () => {
     const { onSearch, user } = renderBar();
 
     await user.type(screen.getByLabelText(t.fields.q), 'SYN-GR');
-    await user.type(screen.getByLabelText(t.fields.lot), '9601');
+    await user.click(screen.getByRole('checkbox', { name: t.fields.cancellableOnly }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
-    expect(onSearch).toHaveBeenCalledWith(applied({ q: 'SYN-GR', lot: '9601' }));
+    expect(onSearch).toHaveBeenCalledWith(applied({ q: 'SYN-GR', cancellableOnly: true }));
   });
 
   it('검색칸에서 엔터로도 조회된다', async () => {
@@ -185,81 +173,32 @@ describe('ProgressFilterBar — 초기화', () => {
   });
 });
 
-describe('ProgressFilterBar — 자리표시 코드 셋', () => {
-  /**
-   * **값을 지어내지 않는다.** 고를 것이 없는데 「전체」만 있으면 목록이 준비된 것처럼 보인다 —
-   * 왜 비었는지는 안내가 말한다. 유형과 상태 두 칸이 같은 안내를 쓴다.
+describe('ProgressFilterBar — 선택지', () => {
+  /*
+   * ⭐ **유형에는 「전체」가 없다** — 유형을 정해야 조회가 성립한다. 선택칸을 열어서 센다(디자인 시스템
+   * `Select`는 닫힌 상태에서 옵션을 렌더하지 않는다).
    */
-  it('값 목록이 비면 사유가 보인다', () => {
-    renderBar();
-
-    expect(screen.getAllByText(messages.pendingCode.note)).toHaveLength(2);
-  });
-
-  /**
-   * ⭐ **「전체」도 붙이지 않는다 — 선택칸을 열어서 센다.**
-   *
-   * ⛔ 닫힌 채로 `queryByRole('option')`을 재면 안 된다. 디자인 시스템 `Select`는 닫힌 상태에서
-   * 옵션을 렌더하지 않으므로 그 단언은 **구현과 무관하게 늘 통과**한다 — 빈 목록에 「전체」를
-   * 붙이도록 고쳐도 아무 감지기가 울리지 않는다.
-   */
-  it('값 목록이 비면 열어도 고를 것이 없다 — 「전체」도 없다', async () => {
-    const { user } = renderBar();
-
-    await user.click(screen.getByLabelText(t.fields.documentType));
-
-    expect(screen.queryAllByRole('option')).toHaveLength(0);
-    expect(screen.queryByText(t.filters.all)).not.toBeInTheDocument();
-  });
-
-  /* 짝 방향 — 값이 있으면 「전체」가 붙는다(앞 단언이 늘 참이 아니다). */
-  it('값 목록이 있으면 「전체」가 앞에 붙는다', async () => {
+  it('유형 선택지는 유형 표 그대로이고 「전체」가 없다', async () => {
     const { user } = renderBar({
       documentTypeOptions: toDocumentTypeOptions(documentTypeFixtures),
     });
+
+    expect(screen.getByLabelText(t.fields.documentType)).toHaveTextContent(t.filters.choose);
 
     await user.click(screen.getByLabelText(t.fields.documentType));
 
     const options = screen.getAllByRole('option');
 
-    /*
-     * 글자를 통째로 견주지 않는다 — 고른 항목에는 디자인 시스템이 확인 표식을 함께 넣어
-     * 텍스트가 라벨보다 길다. 차례와 라벨 포함 여부만 잰다.
-     */
-    expect(options).toHaveLength(4);
-    [t.filters.all, '합성 유형 가', '합성 유형 나', '합성 유형 다'].forEach((label, index) => {
+    expect(options).toHaveLength(3);
+    ['합성 유형 가', '합성 유형 나', '합성 유형 다'].forEach((label, index) => {
       expect(options[index]).toHaveTextContent(label);
     });
   });
 
-  /**
-   * 보조 문구는 **보이기만 해서는 안 되고** 선택칸의 접근 이름에 이어져 있어야 한다 —
-   * 잠기지 않은 칸이라도 스크린리더 사용자는 그 문구를 칸과 잇지 못하면 왜 비었는지 모른다.
-   */
-  it('준비 중 안내가 선택칸의 설명으로 이어져 있다', () => {
-    renderBar();
-
-    expect(screen.getByLabelText(t.fields.documentType)).toHaveAccessibleDescription(
-      messages.pendingCode.note,
-    );
-  });
-
-  /* ⚠ 비어 있어도 아무것도 잠그지 않는다 — 잠그면 무엇을 채워야 열리는지 읽을 수 없다. */
-  it('비어 있어도 조회·초기화가 잠기지 않는다', () => {
-    renderBar();
-
-    expect(screen.getByRole('button', { name: messages.common.search })).toBeEnabled();
-    expect(screen.getByRole('button', { name: messages.common.reset })).toBeEnabled();
-  });
-
-  /* ⭐ 전환 감지기 — 표를 채우면 고를 수 있고 그 칸의 안내가 사라진다. */
-  it('유형 표를 채우면 고를 수 있고 그 안내가 사라진다', async () => {
+  it('유형을 고르면 조회에 실린다', async () => {
     const { onSearch, user } = renderBar({
       documentTypeOptions: toDocumentTypeOptions(documentTypeFixtures),
     });
-
-    /* 상태 칸의 안내 하나만 남는다 — 유형 칸의 것이 사라졌다는 뜻이다. */
-    expect(screen.getAllByText(messages.pendingCode.note)).toHaveLength(1);
 
     await user.click(screen.getByLabelText(t.fields.documentType));
     await user.click(screen.getByRole('option', { name: '합성 유형 나' }));
@@ -268,26 +207,41 @@ describe('ProgressFilterBar — 자리표시 코드 셋', () => {
     expect(onSearch).toHaveBeenCalledWith(applied({ documentType: 'GOODS_ISSUE' }));
   });
 
-  it('상태 표를 채우면 고를 수 있다', async () => {
+  /* 상태는 공통코드에서 온다. 「전체」가 앞에 붙어 상태 조건을 풀 수 있다. */
+  it('상태 선택지는 「전체」 다음에 코드가 온다', async () => {
     const { onSearch, user } = renderBar({
-      statusOptions: [{ value: 'SYN_STATUS_A', label: 'SYN_STATUS_A' }],
+      statusOptions: [{ value: 'SYN_STATUS_A', label: '합성 상태 가' }],
     });
 
     await user.click(screen.getByLabelText(t.fields.status));
-    await user.click(screen.getByRole('option', { name: 'SYN_STATUS_A' }));
+
+    const options = screen.getAllByRole('option');
+
+    expect(options).toHaveLength(2);
+    expect(options[0]).toHaveTextContent(t.filters.all);
+
+    await user.click(screen.getByRole('option', { name: '합성 상태 가' }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     expect(onSearch).toHaveBeenCalledWith(applied({ status: 'SYN_STATUS_A' }));
   });
 
-  it('값 목록이 차면 「전체」로 되돌릴 수 있다', async () => {
-    const { user } = renderBar({
-      documentTypeOptions: toDocumentTypeOptions(documentTypeFixtures),
-    });
+  /* 코드 목록을 못 받았어도 「전체」로 조회할 수 있다 — 「선택지 준비 중」 안내를 세우지 않는다. */
+  it('상태 코드를 못 받았으면 「전체」만 있다', async () => {
+    const { user } = renderBar();
 
-    await user.click(screen.getByLabelText(t.fields.documentType));
+    expect(screen.queryByText(messages.pendingCode.note)).not.toBeInTheDocument();
 
-    expect(screen.getByRole('option', { name: t.filters.all })).toBeInTheDocument();
+    await user.click(screen.getByLabelText(t.fields.status));
+
+    expect(screen.getAllByRole('option')).toHaveLength(1);
+  });
+
+  it('조회·초기화는 잠기지 않는다', () => {
+    renderBar();
+
+    expect(screen.getByRole('button', { name: messages.common.search })).toBeEnabled();
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeEnabled();
   });
 });
 

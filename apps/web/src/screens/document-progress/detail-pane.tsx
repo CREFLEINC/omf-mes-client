@@ -4,32 +4,12 @@ import type { ReactNode } from 'react';
 
 import { documentTypeName } from './document-types';
 import type { CodeNameOf } from './queries';
-import { describeScreenOpenBlock, judgeScreenOpen, type ScreenRouteTable } from './screen-routes';
+import { judgeScreenOpen, type ScreenRouteTable } from './screen-routes';
 import { StepsPane } from './steps-pane';
 import { SuccessorsPane } from './successors-pane';
 import type { DocumentProgressDetailView } from './types';
 
 const t = messages.documentProgress;
-
-interface SummaryItem {
-  key: string;
-  label: string;
-  value: ReactNode;
-}
-
-/** 이름·값 짝을 한 덩어리로 낸다. 폼이 아니라 **값 표기**다(전례 `stock-status/lot-detail-pane`). */
-const SummaryList = ({ label, items }: { label: string; items: SummaryItem[] }) => (
-  <div role="group" aria-label={label}>
-    <dl className="filter-bar">
-      {items.map((item) => (
-        <div className="field-cell" key={item.key}>
-          <dt className="field-label">{item.label}</dt>
-          <dd>{item.value}</dd>
-        </div>
-      ))}
-    </dl>
-  </div>
-);
 
 export interface DetailPaneProps {
   detail: DocumentProgressDetailView;
@@ -39,22 +19,18 @@ export interface DetailPaneProps {
   onOpen: (path: string) => void;
   statusName: CodeNameOf;
   subTypeName: CodeNameOf;
+  /** 머리 아래 · 처리 경과 위에 놓는 취소 구획(요청 · 승인 진행 · 실행). */
+  children?: ReactNode;
 }
 
 /**
- * 고른 문서의 상세 — **목록 아래 구획**이다.
+ * 고른 전표 — **입고 관리 라인 머리와 같은 모양**(오른쪽 구획). 머리(유형 · 문서번호 + 사실 칸) 다음에
+ * 취소 구획, 처리 경과, 후속 문서가 이어진다. 구획이 통째로 스크롤한다.
  *
- * 드로어도 창도 아니다. 디자인 시스템에 드로어가 없고(설치본 실측), 창으로 대체하면 목록이
- * 가려져 「고르고 다시 목록으로 돌아가는」 이 화면의 반복 조회가 매번 열고 닫는 일이 된다.
+ * ⭐ **요약은 상세 응답의 값이다**(계약 `DocumentProgressDetail.progress`) — 왼쪽 목록 행을 다시 그리지 않는다.
  *
- * ⭐ **요약을 목록 행이 아니라 상세 응답의 `progress`에서 그린다**(계획 갈래 18). 두 조회의
- * 시점이 갈릴 수 있어, 목록 행을 다시 그리면 같은 화면의 위아래가 서로 다른 수량을 말한다.
- * 그 사실을 안내 한 줄로 밝히는 것이 짝이다.
- *
- * ⭐ **조회만 한다.** 취소 요청·승인 진행·취소 실행은 이 회차에 없다 — 그 조작이 실제로 생기는
- * 회차(단위 ③④)에서 이 구획 안에 자리를 얻는다.
- *
- * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
+ * ⭐ **문서 열기는 아직 없다** — 화면 ID → 주소 표(`SCREEN_ROUTES`)가 비어 있다. 열 수 없으면 단추를 두지
+ * 않는다(사용자 지시 2026-11-19 — 구현되지 않은 기능은 걷는다 · C-4). 표에 줄이 생기면 그것만으로 살아난다.
  */
 export const DetailPane = ({
   detail,
@@ -62,17 +38,12 @@ export const DetailPane = ({
   onOpen,
   statusName,
   subTypeName,
+  children,
 }: DetailPaneProps) => {
   const { progress } = detail;
   const openState = judgeScreenOpen(detail.screenId ?? '', routes);
 
-  const items: SummaryItem[] = [
-    {
-      key: 'documentType',
-      label: t.detail.documentType,
-      value: documentTypeName(progress.documentTypeCode),
-    },
-    { key: 'documentNo', label: t.detail.documentNo, value: progress.documentNo },
+  const facts: { key: string; label: string; value: string }[] = [
     { key: 'documentDate', label: t.detail.documentDate, value: progress.documentDate },
     {
       key: 'subType',
@@ -91,15 +62,26 @@ export const DetailPane = ({
 
   return (
     <>
-      <SummaryList label={t.detail.summary(progress.documentNo)} items={items} />
-
-      {/*
-       * ⛔ **열 수 없으면 손잡이를 아예 만들지 않는다**(계획 갈래 23). 잠긴 버튼을 두면
-       * 사용자가 눌러 보다 마는데, 지금은 어떤 문서로도 풀리지 않는 잠금이다 — 대신 사유를
-       * 글자로 밝힌다. **두 갈래를 뭉개지 않는다**: 풀 수 있는 사람이 다르다.
-       */}
-      {openState.kind === 'open' ? (
-        <div className="field-cell">
+      <header
+        className="po-board-order-head"
+        role="group"
+        aria-label={t.detail.summary(progress.documentNo)}
+      >
+        <div className="po-board-order-title">
+          <span className="po-board-order-eyebrow">
+            {documentTypeName(progress.documentTypeCode)}
+          </span>
+          <span className="po-board-order-no">{progress.documentNo}</span>
+        </div>
+        <dl className="po-board-order-facts">
+          {facts.map((fact) => (
+            <div key={fact.key}>
+              <dt>{fact.label}</dt>
+              <dd>{fact.value}</dd>
+            </div>
+          ))}
+        </dl>
+        {openState.kind === 'open' ? (
           <Button
             variant="outlined"
             size="sm"
@@ -109,12 +91,10 @@ export const DetailPane = ({
           >
             {t.actions.openDocument}
           </Button>
-        </div>
-      ) : (
-        <p className="field-note">{describeScreenOpenBlock(openState, t.detail.openBlocked)}</p>
-      )}
+        ) : null}
+      </header>
 
-      <p className="field-note">{t.detail.summaryNote}</p>
+      {children}
 
       <StepsPane steps={detail.steps} />
 

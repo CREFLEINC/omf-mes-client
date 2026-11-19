@@ -2,18 +2,11 @@ import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import { elapsedOf, formatElapsed, summarize } from './elapsed';
-import type { ShipmentRow } from './types';
+import type { ElapsedSource } from './elapsed';
 
 const NOW = new Date('2026-09-01T12:00:00+09:00');
 
-const row = (shippedAt: string | null, id = 1): ShipmentRow => ({
-  shipmentId: id,
-  shipmentNo: `SYNTH-SH-${String(id)}`,
-  shippedAt,
-  statusCode: 'CODE-A',
-  erpDeliveryNo: null,
-  totalQty: 100,
-});
+const row = (shippedAt: string | null, _id = 1): ElapsedSource => ({ shippedAt });
 
 describe('elapsedOf', () => {
   it('막 나간 건은 fresh다', () => {

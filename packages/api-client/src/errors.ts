@@ -15,6 +15,16 @@ export interface RejectedLot {
 }
 
 /**
+ * 출하 완료 409 `COMPLETION_BLOCKED` 의 막는 이유 한 줄(`ShipmentCompletionBlocker` — 피처 010).
+ * 코드 값 집합은 화면이 계약 타입으로 좁힌다 — 여기서는 모양만 본다.
+ */
+export interface ConflictBlocker {
+  code: string;
+  lineNo?: number;
+  lotNo?: string;
+}
+
+/**
  * 다시 불러도 안 풀리는 잠김. 봉투를 이 코드로 가른다.
  *
  * 읽는 쪽도 같은 값을 봐야 한다 - 따로 적으면 한쪽만 바뀌었을 때 갈래와 표시가 어긋난다.
@@ -53,6 +63,11 @@ export type ApiError =
       message: string;
       currentLotStatusCode?: string;
       status?: number;
+      /**
+       * 출하 완료를 막는 이유(`COMPLETION_BLOCKED` 일 때만 서버가 싣는다). 화면은 이것으로 이유를 바로
+       * 그린다 — 버리면 같은 값을 다시 조회해야 한다.
+       */
+      blockers?: ConflictBlocker[];
     }
   /*
    * 상태는 선택이다. 이 두 갈래는 서버 응답에서도 오고 화면이 스스로 만들기도 한다 - 저장을
@@ -147,6 +162,17 @@ const isRejectedLot = (value: unknown): value is RejectedLot =>
   typeof value.lotNo === 'string' &&
   typeof value.reasonCode === 'string';
 
+const toConflictBlocker = (value: unknown): ConflictBlocker[] => {
+  if (!isRecord(value) || typeof value.code !== 'string') return [];
+  return [
+    {
+      code: value.code,
+      ...(typeof value.lineNo === 'number' ? { lineNo: value.lineNo } : {}),
+      ...(typeof value.lotNo === 'string' ? { lotNo: value.lotNo } : {}),
+    },
+  ];
+};
+
 export const normalizeApiError = (status: number, body: unknown): ApiError => {
   const code = isRecord(body) && typeof body.code === 'string' ? body.code : undefined;
   const currentLotStatusCode =
@@ -165,6 +191,9 @@ export const normalizeApiError = (status: number, body: unknown): ApiError => {
       ...(code === undefined ? {} : { code }),
       message: typeof body.message === 'string' ? body.message : '',
       ...(currentLotStatusCode === undefined ? {} : { currentLotStatusCode }),
+      ...(Array.isArray(body.blockers)
+        ? { blockers: body.blockers.flatMap(toConflictBlocker) }
+        : {}),
     };
   }
 

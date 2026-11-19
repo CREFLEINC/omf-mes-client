@@ -1468,9 +1468,7 @@ describe('appRouter — 작업지시 목록 작업함의 진입 경로', () => {
     expect(
       screen.getAllByRole('heading', { level: 1, name: messages.erpWorkOrderFlow.title }),
     ).toHaveLength(1);
-    expect(
-      await screen.findByText(messages.erpWorkOrderFlow.list.emptyTitle),
-    ).toBeVisible();
+    expect(await screen.findByText(messages.erpWorkOrderFlow.list.emptyTitle)).toBeVisible();
   });
 
   it('작업함과 처리 화면 주소는 API 리소스가 아니라 화면 route다', () => {
@@ -1674,9 +1672,19 @@ describe('appRouter — 물류 전표 조회·취소의 진입 경로', () => {
         url.searchParams.get('size') === '1'
       );
     };
-    expect(requests.filter((request) => !isOaLookup(request) && !isIqcBadge(request))).toHaveLength(
-      0,
-    );
+    /* 상태 조건의 선택지(공통코드)는 조건 줄이 읽는다 — 목록 · 상세 조회가 아니라 빼고 센다. */
+    const isStatusOptions = (request: Request) => {
+      const url = new URL(request.url);
+      return (
+        url.pathname.endsWith('/mdm/code-values') &&
+        url.searchParams.get('codeGroupCode') === 'LOGISTICS_DOCUMENT_STATUS'
+      );
+    };
+    expect(
+      requests.filter(
+        (request) => !isOaLookup(request) && !isIqcBadge(request) && !isStatusOptions(request),
+      ),
+    ).toHaveLength(0);
   });
 
   /*
@@ -1691,7 +1699,7 @@ describe('appRouter — 물류 전표 조회·취소의 진입 경로', () => {
   it('사이드바 항목을 누르면 그 주소로 가고 조건 줄이 첫 상태로 돌아온다', async () => {
     const user = userEvent.setup();
 
-    renderRoutedApp(`/logistics/document-progress?q=${SYNTHETIC_DOCUMENT_NO}&item=9301`, []);
+    renderRoutedApp(`/logistics/document-progress?q=${SYNTHETIC_DOCUMENT_NO}&conly=1`, []);
 
     /* 짝 양성 — 주소의 조건이 라우트를 지나 조건 줄까지 실려 왔다. */
     expect(await screen.findByLabelText(docProgress.fields.q)).toHaveValue(SYNTHETIC_DOCUMENT_NO);
@@ -1704,7 +1712,9 @@ describe('appRouter — 물류 전표 조회·취소의 진입 경로', () => {
       expect(currentLocation()).toBe('/logistics/document-progress');
     });
     expect(screen.getByLabelText(docProgress.fields.q)).toHaveValue('');
-    expect(screen.getByLabelText(docProgress.fields.item)).toHaveValue('');
+    expect(
+      screen.getByRole('checkbox', { name: docProgress.fields.cancellableOnly }),
+    ).not.toBeChecked();
   });
 
   /*
@@ -1717,7 +1727,7 @@ describe('appRouter — 물류 전표 조회·취소의 진입 경로', () => {
   it('메뉴로 들어간 뒤 뒤로가기 한 번이면 앞 자리로 돌아온다', async () => {
     const user = userEvent.setup();
 
-    renderRoutedApp(`/logistics/document-progress?q=${SYNTHETIC_DOCUMENT_NO}&item=9301`, []);
+    renderRoutedApp(`/logistics/document-progress?q=${SYNTHETIC_DOCUMENT_NO}&conly=1`, []);
 
     await screen.findByRole('heading', { level: 1, name: docProgress.title });
 
@@ -1738,29 +1748,25 @@ describe('appRouter — 물류 전표 조회·취소의 진입 경로', () => {
   });
 
   /*
-   * ⛔ **내부 번호는 주소에만 산다**(`omf-mes#44`). 이 화면은 조건(품목·자재 LOT·창고)과 고른
-   * 문서를 전부 번호로 주소에 싣는데, 그 번호가 글자로 새면 사용자가 읽을 수 없는 값이 화면의
-   * 사실이 된다.
+   * ⛔ **내부 번호는 주소에만 산다**(`omf-mes#44`). 이 화면은 고른 문서를 번호로 주소에 싣는데,
+   * 그 번호가 글자로 새면 사용자가 읽을 수 없는 값이 화면의 사실이 된다.
    *
    * **주소에 실려 있음을 먼저 확인한 뒤** 글자에서 센다 — 값이 없어서 통과하는 일이 없게.
    *
-   * ⚠ **지금 이 감지기가 닿는 자리는 얇다.** 유형 표가 비어 있어 목록도 아래 상세 구획도 서지
-   * 않고, 조건 번호는 입력 칸의 **값**으로만 있어 글자 수집에 잡히지 않는다. 그래도 이 자리에
-   * 두는 이유는 **표가 채워지는 순간 같은 시험이 그 넓어진 화면을 그대로 훑기** 때문이다.
+   * ⚠ **지금 이 감지기가 닿는 자리는 얇다.** 유형을 고르지 않은 주소라 목록도 상세도 조회되지 않는다.
    */
   it('메뉴와 화면 어디에도 내부 번호가 글자로 나오지 않는다', async () => {
-    renderRoutedApp('/logistics/document-progress?item=9301&lot=9401&wh=9501&sel=9101', []);
+    renderRoutedApp('/logistics/document-progress?sel=9101', []);
 
     await screen.findByRole('heading', { level: 1, name: docProgress.title });
 
     /* 짝 양성 — 그 번호들은 주소에 실제로 실려 있다. */
-    expect(currentLocation()).toContain('item=9301');
     expect(currentLocation()).toContain('sel=9101');
 
     const nav = screen.getByRole('navigation', { name: '주 메뉴' });
     const main = screen.getByRole('main');
 
-    for (const internalId of ['9301', '9401', '9501', '9101']) {
+    for (const internalId of ['9101']) {
       expect(nav.textContent).not.toContain(internalId);
       expect(main.textContent).not.toContain(internalId);
     }

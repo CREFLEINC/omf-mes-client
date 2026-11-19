@@ -104,13 +104,11 @@ describe('LoadErrorBanner — 덮지 않는 문서 유형(400)', () => {
     renderBanner(httpError(400, '지원하지 않는 유형'));
 
     expect(screen.getByText(t.errors.unsupportedTitle)).toBeInTheDocument();
-    expect(screen.getByText(t.errors.unsupportedDescription)).toBeInTheDocument();
     expect(screen.queryByText(messages.httpError.loadTitle)).not.toBeInTheDocument();
   });
 
   it('문면이 일반 조회 실패 문면과 같지 않다', () => {
     expect(t.errors.unsupportedTitle).not.toBe(messages.httpError.loadTitle);
-    expect(t.errors.unsupportedDescription).not.toBe(messages.httpError.description);
   });
 
   /* 유형을 바꾸기 전에는 몇 번을 눌러도 같은 답이 온다. */

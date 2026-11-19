@@ -398,6 +398,16 @@ const renderScreen = (
   return { requests, release, user: userEvent.setup() };
 };
 
+/** 상태 조건의 선택지(공통코드) 조회를 뺀 요청 — 조건 줄이 화면을 열 때 한 번 읽는다. */
+const withoutStatusOptions = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter(
+    (request) =>
+      !(
+        request.url.pathname === '/mdm/code-values' &&
+        request.url.searchParams.get('codeGroupCode') === 'LOGISTICS_DOCUMENT_STATUS'
+      ),
+  );
+
 const listRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requests.filter((request) => request.url.pathname === LIST_PATH);
 
@@ -432,8 +442,8 @@ describe('유형 자리표시가 비어 있는 동안', () => {
     });
     expect(listRequests(requests)).toHaveLength(0);
 
-    /* 전체 요청 수로도 확인한다 — 이 화면은 이 회차에 다른 조회도 갖지 않는다. */
-    expect(requests).toHaveLength(0);
+    /* 전체 요청 수로도 확인한다 — 상태 선택지(공통코드) 말고는 다른 조회가 없다. */
+    expect(withoutStatusOptions(requests)).toHaveLength(0);
   });
 
   /* 빈 표를 내면 사용자는 조건에 맞는 문서가 없는 줄 알고 조건을 넓히며 헤맨다. */
@@ -471,24 +481,24 @@ describe('유형 자리표시가 비어 있는 동안', () => {
       `ty=${SELECTABLE_TYPE}&sel=9002`,
     );
 
-    expect(requests).toHaveLength(0);
+    expect(withoutStatusOptions(requests)).toHaveLength(0);
 
     await user.click(screen.getByRole('button', { name: '주소 이동' }));
     await waitFor(() => {
       expect(locationOf()).toContain('sel=9002');
     });
 
-    expect(requests).toHaveLength(0);
+    expect(withoutStatusOptions(requests)).toHaveLength(0);
   });
 
   /*
-   * 아래 구획 자체를 내지 않는다 — 조회가 성립하지 않아 **고를 대상이 없으므로**,
+   * 오른쪽 구획은 비워 둔다 — 조회가 성립하지 않아 **고를 대상이 없으므로**,
    * 「고르세요」를 내면 할 수 없는 일을 시키는 안내가 된다.
    */
-  it('상세 구획이 서지 않는다', () => {
+  it('오른쪽 구획이 비어 있다', () => {
     renderScreen([]);
 
-    expect(screen.queryByRole('region', { name: t.panes.detail })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: t.panes.detail })).toBeEmptyDOMElement();
     expect(screen.queryByText(t.empty.noSelectionTitle)).not.toBeInTheDocument();
   });
 });
@@ -714,7 +724,8 @@ describe('조회 조건이 질의로 나간다', () => {
     });
   });
 
-  it('번호 조건과 검색어가 실린다', async () => {
+  /* 걷은 번호 조건(품목 · 자재 LOT · 창고)은 옛 주소에 남아 있어도 싣지 않는다. */
+  it('검색어가 실리고 옛 번호 조건은 실리지 않는다', async () => {
     fillDocumentTypes();
     const { requests } = renderScreen(
       [listRoute()],
@@ -727,9 +738,9 @@ describe('조회 조건이 질의로 나간다', () => {
 
     const query = lastListQuery(requests);
 
-    expect(query.get('itemId')).toBe('9301');
-    expect(query.get('lotId')).toBe('9601');
-    expect(query.get('warehouseId')).toBe('9701');
+    expect(query.has('itemId')).toBe(false);
+    expect(query.has('lotId')).toBe(false);
+    expect(query.has('warehouseId')).toBe(false);
     expect(query.get('q')).toBe('SYN-GR');
   });
 
@@ -745,7 +756,9 @@ describe('조회 조건이 질의로 나간다', () => {
       expect(listRequests(requests)).toHaveLength(1);
     });
     expect(lastListQuery(requests).has('statusCode')).toBe(false);
-    expect(await screen.findByText('SYN-GR-2026-0001')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0001') }),
+    ).toBeInTheDocument();
   });
 });
 
@@ -756,14 +769,18 @@ describe('목록이 그려진다', () => {
 
     expect(screen.getByRole('status', { name: t.loading.list })).toBeInTheDocument();
 
-    expect(await screen.findByText('SYN-GR-2026-0001')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0001') }),
+    ).toBeInTheDocument();
   });
 
   it('후속 건수와 취소 가능 여부가 목록 열에서 보인다', async () => {
     fillDocumentTypes();
     renderScreen([listRoute()], `?ty=${SELECTABLE_TYPE}`);
 
-    expect(await screen.findByText('SYN-GR-2026-0002')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0002') }),
+    ).toBeInTheDocument();
     expect(screen.getByText(t.blockReasons.SUCCESSOR_EXISTS)).toBeInTheDocument();
     expect(screen.getByText('SYN_UNKNOWN_BLOCK_REASON')).toBeInTheDocument();
     expect(screen.getAllByText(t.cancel.available).length).toBeGreaterThan(0);
@@ -781,7 +798,9 @@ describe('목록이 그려진다', () => {
     fillDocumentTypes();
     renderScreen([listRoute()], `?ty=${SELECTABLE_TYPE}`);
 
-    expect(await screen.findByText('SYN-GR-2026-0001')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0001') }),
+    ).toBeInTheDocument();
     expect(screen.queryByText('9001')).not.toBeInTheDocument();
     expect(screen.queryByText('9501')).not.toBeInTheDocument();
     expect(screen.queryByText('SYN-SCREEN-01')).not.toBeInTheDocument();
@@ -796,7 +815,9 @@ describe('쪽 이동', () => {
       `?ty=${SELECTABLE_TYPE}`,
     );
 
-    expect(await screen.findByText('SYN-GR-2026-0001')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0001') }),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
 
@@ -823,7 +844,9 @@ describe('쪽 이동', () => {
       `?ty=${SELECTABLE_TYPE}&page=2`,
     );
 
-    expect(await screen.findByText('SYN-GR-2026-0001')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0001') }),
+    ).toBeInTheDocument();
 
     await user.type(screen.getByLabelText(t.fields.q), 'SYN-GR');
     await user.click(screen.getByRole('button', { name: messages.common.search }));
@@ -869,7 +892,9 @@ describe('고른 문서의 상세', () => {
     fillDocumentTypes();
     const { requests, user } = renderScreen([listRoute(), detailRoute()], `?ty=${SELECTABLE_TYPE}`);
 
-    expect(await screen.findByText('SYN-GR-2026-0001')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0001') }),
+    ).toBeInTheDocument();
     expect(detailRequests(requests)).toHaveLength(0);
 
     await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0001') }));
@@ -964,20 +989,17 @@ describe('고른 문서의 상세', () => {
     expect(await screen.findByText(t.empty.noSelectionTitle)).toBeInTheDocument();
   });
 
-  it('다시 누르면 선택이 풀리고 상세 구획이 닫힌다', async () => {
+  /* 입고 관리 표처럼 고른 줄을 다시 눌러도 그대로다 — 오른쪽이 닫히지 않는다. */
+  it('고른 줄을 다시 눌러도 선택이 그대로다', async () => {
     fillDocumentTypes();
     const { user } = renderScreen([listRoute(), detailRoute()], `?ty=${SELECTABLE_TYPE}&sel=9001`);
 
     expect(await screen.findByRole('table', { name: t.steps.caption })).toBeInTheDocument();
 
-    await user.click(
-      screen.getByRole('button', { name: t.actions.deselectRow('SYN-GR-2026-0001') }),
-    );
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0001') }));
 
-    await waitFor(() => {
-      expect(locationOf()).not.toContain('sel=');
-    });
-    expect(screen.getByText(t.empty.noSelectionTitle)).toBeInTheDocument();
+    expect(locationOf()).toContain('sel=9001');
+    expect(screen.getByRole('table', { name: t.steps.caption })).toBeInTheDocument();
   });
 
   /**
@@ -987,30 +1009,22 @@ describe('고른 문서의 상세', () => {
    * **두 축으로 잰다** — 주소의 `page`와 **다시 나간 요청의 질의값**. 주소만 재면 요청이 첫
    * 쪽으로 나가도 통과한다. 해제 축도 같은 자리에서 잰다.
    */
-  it('문서를 골랐다 해제해도 보던 쪽이 그대로다', async () => {
+  it('문서를 골라도 보던 쪽이 그대로다', async () => {
     fillDocumentTypes();
     const { requests, user } = renderScreen(
       [listRoute(documentProgressFixtures, { page: 2, total: 120 }), detailRoute()],
       `?ty=${SELECTABLE_TYPE}&page=2`,
     );
 
-    expect(await screen.findByText('SYN-GR-2026-0001')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0001') }),
+    ).toBeInTheDocument();
     expect(lastListQuery(requests).get('page')).toBe('2');
 
     await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0001') }));
 
     await waitFor(() => {
       expect(locationOf()).toContain('sel=9001');
-    });
-    expect(locationOf()).toContain('page=2');
-    expect(lastListQuery(requests).get('page')).toBe('2');
-
-    await user.click(
-      screen.getByRole('button', { name: t.actions.deselectRow('SYN-GR-2026-0001') }),
-    );
-
-    await waitFor(() => {
-      expect(locationOf()).not.toContain('sel=');
     });
     expect(locationOf()).toContain('page=2');
     expect(lastListQuery(requests).get('page')).toBe('2');
@@ -1053,15 +1067,14 @@ describe('고른 문서의 상세', () => {
     expect(locationOf()).not.toContain('sel=');
   });
 
-  /* 문서·후속을 여는 주소 규약이 아직 없다 — 손잡이를 만들지 않고 사유만 밝힌다(C2-8). */
-  it('열기 손잡이가 서지 않고 사유가 보인다', async () => {
+  /* 문서 · 후속을 여는 주소 규약이 아직 없다 — 손잡이를 만들지 않는다(C-4 · 사용자 지시 2026-11-19). */
+  it('열기 손잡이가 없다', async () => {
     fillDocumentTypes();
     renderScreen([listRoute(), detailRoute()], `?ty=${SELECTABLE_TYPE}&sel=9001`);
 
-    expect(await screen.findByText(t.detail.openBlocked.unmapped)).toBeInTheDocument();
-    expect(screen.getByText(t.successors.openBlocked.unmapped)).toBeInTheDocument();
-    expect(screen.getByText(t.successors.openBlocked.noScreenId)).toBeInTheDocument();
+    expect(await screen.findByRole('table', { name: t.successors.caption })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.actions.openDocument })).not.toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: t.successors.open })).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: t.actions.openSuccessor('SYN-GI-2026-0101') }),
     ).not.toBeInTheDocument();
@@ -1142,7 +1155,9 @@ describe('상세 조회가 실패하면', () => {
     renderScreen([listRoute(), failingDetailRoute(500)], `?ty=${SELECTABLE_TYPE}&sel=9001`);
 
     expect(await screen.findByText('상세를 불러오지 못했습니다')).toBeInTheDocument();
-    expect(screen.getByText('SYN-GR-2026-0001')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0001') }),
+    ).toBeInTheDocument();
   });
 
   it('다시 시도가 같은 상세를 한 번 더 부른다', async () => {
@@ -1196,7 +1211,7 @@ describe('상세 조회가 실패하면', () => {
       `ty=${SELECTABLE_TYPE}&q=SYN-GR&sel=9001`,
     );
 
-    await screen.findByText('SYN-GR-2026-0001');
+    await screen.findByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0001') });
     await user.click(screen.getByRole('button', { name: '주소 이동' }));
 
     expect(await screen.findByText(t.empty.detailNotFoundTitle)).toBeInTheDocument();
@@ -1232,7 +1247,7 @@ describe('상세 조회가 실패하면', () => {
    * 해제하는 순간 서명이 그대로라 안내가 되살아난다 — 사용자가 스스로 닫은 것을 화면이
    * 「찾을 수 없다」고 말한다. 주소를 쓰는 길이 안내를 함께 거두는지 여기서 잰다.
    */
-  it('404 뒤 다른 문서를 골랐다 해제해도 없음 안내가 되살아나지 않는다', async () => {
+  it('404 뒤 다른 문서를 고르면 없음 안내가 사라진다', async () => {
     fillDocumentTypes();
     const { user } = renderScreen(
       [
@@ -1249,14 +1264,6 @@ describe('상세 조회가 실패하면', () => {
     await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0002') }));
 
     expect(await screen.findByRole('table', { name: t.steps.caption })).toBeInTheDocument();
-    expect(screen.queryByText(t.empty.detailNotFoundTitle)).not.toBeInTheDocument();
-
-    /* ② 사용자가 스스로 해제한다 — 「고르면 보입니다」여야 한다. */
-    await user.click(
-      screen.getByRole('button', { name: t.actions.deselectRow('SYN-GR-2026-0002') }),
-    );
-
-    expect(await screen.findByText(t.empty.noSelectionTitle)).toBeInTheDocument();
     expect(screen.queryByText(t.empty.detailNotFoundTitle)).not.toBeInTheDocument();
   });
 
@@ -1491,8 +1498,8 @@ describe('리소스 상세 실패 — C3-4', () => {
     expect(requestCancelButton()).toBeDisabled();
 
     /* 진행현황은 살아 있다 — 경과·후속이 그대로 보인다. */
-    expect(screen.getByText(t.steps.caption)).toBeInTheDocument();
-    expect(screen.getByText(t.successors.caption)).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: t.steps.caption })).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: t.successors.caption })).toBeInTheDocument();
     /* ⛔ 화면 배너(조회 실패)가 서지 않는다. */
     expect(screen.queryByText(messages.httpError.loadTitle)).not.toBeInTheDocument();
   });
@@ -1521,7 +1528,7 @@ describe('서버가 막은 문서 — C3-2', () => {
    * ⭐ **판정 근거가 목록 열과 같은 자리에서 나온다.** 갈리면 목록에서는 「취소 요청 가능」인데
    * 아래에서는 잠긴 화면이 된다.
    */
-  it('cancellable이 거짓이면 잠기고 사유 문면이 보인다', async () => {
+  it('cancellable이 거짓이면 사유 칸 · 단추 없이 사유 문면만 보인다', async () => {
     fillDocumentTypes();
     renderScreen(
       cancelRoutes([
@@ -1533,12 +1540,13 @@ describe('서버가 막은 문서 — C3-2', () => {
       selectCancelTarget,
     );
 
-    await screen.findByLabelText(t.cancelRequest.reason);
-
-    expect(requestCancelButton()).toBeDisabled();
     expect(
-      screen.getByText(t.cancelRequest.blocked(t.blockReasons.SUCCESSOR_EXISTS)),
+      await screen.findByText(t.cancelRequest.blocked(t.blockReasons.SUCCESSOR_EXISTS)),
     ).toBeInTheDocument();
+    expect(screen.queryByLabelText(t.cancelRequest.reason)).not.toBeInTheDocument();
+    expect(
+      within(cancelPane()).queryByRole('button', { name: t.cancelRequest.label }),
+    ).not.toBeInTheDocument();
   });
 
   /**
@@ -1618,12 +1626,13 @@ describe('사유는 필수다 — C3-5', () => {
   });
 
   /** 미리 말한다 — 「말없이 버린다」와 「규칙대로 버리고 밝힌다」를 가르는 자리다. */
-  it('사유가 대상과 함께 사라진다는 사실을 칸이 미리 말한다', async () => {
+  /* 칸 아래 도움말은 걷었다(사용자 지시 2026-11-19) — 사유 칸에 덧붙은 설명이 없다. */
+  it('사유 칸에 도움말이 없다', async () => {
     fillDocumentTypes();
     renderScreen(cancelRoutes(), selectCancelTarget);
 
-    expect(await screen.findByLabelText(t.cancelRequest.reason)).toHaveAccessibleDescription(
-      /다른 문서를 고르면 적던 사유는 남지 않습니다/,
+    expect(await screen.findByLabelText(t.cancelRequest.reason)).not.toHaveAccessibleDescription(
+      /다른 문서를 고르면/u,
     );
   });
 
@@ -1644,7 +1653,7 @@ describe('사유는 필수다 — C3-5', () => {
 
 describe('확인 창이 뜬다 — C3-6', () => {
   /** 창이 대상 문서번호를 말한다 — 고른 뒤 창이 뜨기까지 사이가 있고 여러 문서를 오가며 본다. */
-  it('대상 문서번호와 승인·철회 사실을 함께 말한다', async () => {
+  it('대상 문서번호와 철회할 수 없다는 사실을 함께 말한다', async () => {
     fillDocumentTypes();
     const { user } = renderScreen(cancelRoutes(), selectCancelTarget);
 
@@ -1654,7 +1663,6 @@ describe('확인 창이 뜬다 — C3-6', () => {
     const dialog = await screen.findByRole('dialog');
 
     expect(within(dialog).getByText(t.cancelDialog.target('SYN-GR-2026-0001'))).toBeInTheDocument();
-    expect(within(dialog).getByText(t.cancelDialog.approval)).toBeInTheDocument();
     expect(within(dialog).getByText(t.cancelDialog.noWithdraw)).toBeInTheDocument();
   });
 
@@ -2015,7 +2023,6 @@ describe('나가는 중 — C3-13의 두 축', () => {
     const before = requestsTo(requests, OTHER_CANCEL_DETAIL_PATH).length;
     const handle = screen.getByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0002') });
 
-    expect(handle).toBeDisabled();
     await user.click(handle);
 
     expect(locationOf()).toContain('sel=9001');
@@ -2052,81 +2059,6 @@ describe('나가는 중 — C3-13의 두 축', () => {
 
     expect(locationOf()).not.toContain('q=SYN-GR');
     expect(listRequests(requests)).toHaveLength(before);
-  });
-
-  /**
-   * ⭐ **잠긴 이유가 화면에 있다** — 잠금의 짝이다.
-   *
-   * 조건 줄의 「조회」는 **컨트롤 자체가 잠기지 않으므로** 눌러도 아무 일이 없는 버튼이 된다.
-   * 그 상태에서 이유가 화면 어디에도 없으면 사용자는 화면이 고장 난 것으로 읽는다 — 이 슬라이스가
-   * 다른 자리에서 스스로 경고한 「증상이 **눌러도 아무 일이 없다**라 알아채기 어렵다」와 같은 형태다.
-   *
-   * **앞 감지기와 이어 붙이지 않고 따로 잰다** — 앞은 「막혔는가」, 여기는 「왜 막혔는지 말하는가」다.
-   */
-  it('창이 닫혀도 잠긴 이유가 화면에 선다', async () => {
-    const { requests } = await submitAndHold();
-
-    await waitFor(() => {
-      expect(writesTo(requests, REQUEST_CANCEL_PATH)).toHaveLength(1);
-    });
-
-    fireEvent(
-      screen.getByRole('dialog'),
-      new Event('cancel', { bubbles: false, cancelable: true }),
-    );
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    });
-
-    /* 「조회」는 여전히 눌린다 — 그래서 이유가 더 필요하다. */
-    expect(screen.getByRole('button', { name: messages.common.search })).toBeEnabled();
-    expect(screen.getByText(t.notes.lock.request)).toBeInTheDocument();
-  });
-
-  /**
-   * ⭐ **⛔ 그 이유가 취소 구획 **밖**에 있다.**
-   *
-   * 구획은 대상이 풀리면 사라지는데(나가는 중 바깥 주소 이동으로 `sel`이 빠진다) 잠금은 요청이
-   * 끝날 때까지 남는다. 구획 안에 두면 **구획이 사라진 채 잠긴 갈래**에서 잠긴 이유가 통째로
-   * 없어지고, 진행 표시조차 대상 매임으로 걸러져 남는 단서가 하나도 없다.
-   */
-  it('취소 구획이 사라져도 잠긴 이유는 남는다', async () => {
-    fillDocumentTypes();
-    const { requests, user } = renderScreen(
-      cancelRoutes(),
-      selectCancelTarget,
-      /* 고른 문서를 아예 뗀다 — 상세 구획이 「고르면 보입니다」가 되어 취소 구획이 사라진다. */
-      `ty=${CANCEL_TYPE}`,
-      [REQUEST_CANCEL_PATH],
-    );
-
-    await user.type(await screen.findByLabelText(t.cancelRequest.reason), '사유');
-    await user.click(requestCancelButton());
-    await user.click(screen.getByRole('button', { name: t.cancelDialog.confirm }));
-
-    await waitFor(() => {
-      expect(writesTo(requests, REQUEST_CANCEL_PATH)).toHaveLength(1);
-    });
-
-    await user.click(screen.getByRole('button', { name: '주소 이동' }));
-    await waitFor(() => {
-      expect(screen.queryByRole('region', { name: t.cancelRequest.label })).not.toBeInTheDocument();
-    });
-
-    /* 구획이 없어도 이유가 남는다 — 이것이 자리를 구획 밖에 둔 이유다. */
-    expect(screen.getByText(t.notes.lock.request)).toBeInTheDocument();
-  });
-
-  /** 짝 방향 — 나가는 중이 아니면 그 줄이 서지 않는다. 늘 떠 있는 안내는 읽히지 않는다. */
-  it('나가는 중이 아니면 잠김 안내가 서지 않는다', async () => {
-    fillDocumentTypes();
-    renderScreen(cancelRoutes(), selectCancelTarget);
-
-    await screen.findByLabelText(t.cancelRequest.reason);
-
-    /* **두 문면 다** 서지 않는다 — 갈래를 나눈 뒤 한쪽만 재면 나머지가 늘 떠 있어도 통과한다. */
-    expect(screen.queryByText(t.notes.lock.request)).not.toBeInTheDocument();
-    expect(screen.queryByText(t.notes.lock.execute)).not.toBeInTheDocument();
   });
 
   /**
@@ -2379,7 +2311,9 @@ describe('승인 진행 조회를 부르는 조건 — C4-1 · C4-2', () => {
       `ty=${CANCEL_TYPE}&sel=9002`,
     );
 
-    expect(await screen.findByText(t.approval.notSubmittedTitle)).toBeInTheDocument();
+    /* 요청이 없으면 승인 진행 구획을 그리지 않는다 — 취소 요청 칸이 선 것으로 화면이 섰음을 잰다. */
+    expect(await screen.findByLabelText(t.cancelRequest.reason)).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.approval.label })).not.toBeInTheDocument();
     expect(approvalRequests(requests)).toHaveLength(0);
 
     /* 주소를 손으로 고쳐 다른 문서로 옮겨도 마찬가지다 — 그 길은 클릭 핸들러를 지나지 않는다. */
@@ -2503,7 +2437,7 @@ describe('승인 진행 구획이 선다 — C4-3 · C4-4 · C4-5 · C4-6', () =
 
     /* 실패 표시는 승인 구획 **안**에만 있다. */
     expect(within(approvalPane()).getByText(t.approval.loadFailedTitle)).toBeInTheDocument();
-    expect(screen.getByText(t.steps.caption)).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: t.steps.caption })).toBeInTheDocument();
     expect(screen.getByLabelText(t.cancelRequest.reason)).toBeInTheDocument();
     expect(executeButton()).toBeInTheDocument();
   });
@@ -2564,8 +2498,10 @@ describe('실행 버튼의 근거 — C4-7 · C4-8', () => {
       expect(executeButton()).toBeEnabled();
     });
 
-    /* 짝 — 같은 화면에서 취소 **요청** 버튼은 잠겨 있다. 두 버튼의 근거가 서로 다르다. */
-    expect(requestCancelButton()).toBeDisabled();
+    /* 짝 — 같은 화면에서 취소 **요청** 버튼은 없다(사유 한 줄뿐). 두 버튼의 근거가 서로 다르다. */
+    expect(
+      within(cancelPane()).queryByRole('button', { name: t.cancelRequest.label }),
+    ).not.toBeInTheDocument();
   });
 
   /** 요청이 없으면 버튼을 그리지 않고 무엇을 하면 서는지 말한다. */
@@ -2573,12 +2509,11 @@ describe('실행 버튼의 근거 — C4-7 · C4-8', () => {
     fillDocumentTypes();
     renderScreen(executeRoutes([anyApprovalRoute], cancelableDetail()), selectCancelTarget);
 
-    await screen.findByRole('region', { name: t.executeCancel.label });
+    /* 실행할 것이 없으면 구획도 안내 줄도 없다(사용자 지시 2026-11-19). */
+    await screen.findByLabelText(t.cancelRequest.reason);
 
-    expect(
-      within(executePane()).queryByRole('button', { name: t.executeCancel.label }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByText(t.executeCancel.notRequestedNote)).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.executeCancel.label })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.executeCancel.label })).not.toBeInTheDocument();
   });
 
   /**
@@ -3054,52 +2989,6 @@ describe('실행의 대상 매임과 잠금 — C4-16', () => {
       expect(executeButton()).toBeEnabled();
     });
     expect(screen.queryByText('합성 실행 서버 오류')).not.toBeInTheDocument();
-  });
-
-  /**
-   * ⭐ **잠금 문면이 무엇이 나가는 중인지 말한다**(단위 ④에서 갈래를 나눈 자리). 앞 회차의 한
-   * 문장은 「취소 요청」만 말해 **실행 중에는 거짓**이었다.
-   */
-  it('실행이 나가는 중이면 실행 문면이 서고 요청 문면은 서지 않는다', async () => {
-    fillDocumentTypes();
-    const { requests, user } = renderScreen(executeRoutes(), selectCancelTarget, '', [
-      EXECUTE_CANCEL_PATH,
-    ]);
-
-    await waitFor(() => {
-      expect(executeButton()).toBeEnabled();
-    });
-    await confirmExecute(user);
-
-    await waitFor(() => {
-      expect(writesTo(requests, EXECUTE_CANCEL_PATH)).toHaveLength(1);
-    });
-
-    expect(screen.getByText(t.notes.lock.execute)).toBeInTheDocument();
-    expect(screen.queryByText(t.notes.lock.request)).not.toBeInTheDocument();
-  });
-
-  /** 짝 방향 — 요청이 나가는 중이면 요청 문면이다. 두 갈래가 실제로 갈리는지 함께 잰다. */
-  it('요청이 나가는 중이면 요청 문면이 서고 실행 문면은 서지 않는다', async () => {
-    fillDocumentTypes();
-    const { requests, user } = renderScreen(executeRoutes(), selectCancelTarget, '', [
-      REQUEST_CANCEL_PATH,
-    ]);
-
-    await waitFor(() => {
-      expect(requestCancelButton()).toBeEnabled();
-    });
-
-    await user.type(screen.getByLabelText(t.cancelRequest.reason), '사유');
-    await user.click(requestCancelButton());
-    await user.click(screen.getByRole('button', { name: t.cancelDialog.confirm }));
-
-    await waitFor(() => {
-      expect(writesTo(requests, REQUEST_CANCEL_PATH)).toHaveLength(1);
-    });
-
-    expect(screen.getByText(t.notes.lock.request)).toBeInTheDocument();
-    expect(screen.queryByText(t.notes.lock.execute)).not.toBeInTheDocument();
   });
 
   /**

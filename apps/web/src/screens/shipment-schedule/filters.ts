@@ -25,6 +25,12 @@ export interface ShipmentFilters {
   progress: ShipmentProgressCode | '';
   /** 검사 상태. `''`(전체) · `'true'`(대상) · `'false'`(대상 아님) 세 값만 갖는다. */
   inspection: string;
+  /** 피처 010 — 지시서 번호 · 고객 · 품목 부분 일치(계약 `q`). */
+  q: string;
+  /** 피처 010 — 완료 대기만(`completionReadyOnly`). 켜면 `'true'`. */
+  ready: '' | 'true';
+  /** 피처 010 — LOT 교체 있음(`hasReplacement`). 켜면 `'true'`. */
+  replaced: '' | 'true';
 }
 
 export const EMPTY_FILTERS: ShipmentFilters = {
@@ -32,6 +38,9 @@ export const EMPTY_FILTERS: ShipmentFilters = {
   shipToPartner: '',
   progress: '',
   inspection: '',
+  q: '',
+  ready: '',
+  replaced: '',
 };
 
 /** 주소 키는 짧게 쓰고 계약 이름과 분리한다 — 주소는 사람이 읽고 고치는 자리다. */
@@ -40,6 +49,9 @@ const URL_KEYS: Record<keyof ShipmentFilters, string> = {
   shipToPartner: 'shipToPartner',
   progress: 'progress',
   inspection: 'inspection',
+  q: 'q',
+  ready: 'ready',
+  replaced: 'replaced',
 };
 
 const POSITIVE_INTEGER = /^\d+$/;
@@ -49,6 +61,11 @@ const POSITIVE_INTEGER = /^\d+$/;
  * 조회 전체가 400으로 실패하고, 사용자에게는 「조회가 늘 안 된다」로만 보인다.
  */
 const readNumberFilter = (raw: string): string => (POSITIVE_INTEGER.test(raw) ? raw : '');
+
+const readFlag = (raw: string): '' | 'true' => (raw === 'true' ? 'true' : '');
+
+/** 검색어는 앞뒤 공백만 걷는다 — 빈 값이면 조건을 걸지 않는다. */
+const readQuery = (raw: string): string => raw.trim();
 
 const readInspectionFilter = (raw: string): string =>
   raw === 'true' || raw === 'false' ? raw : '';
@@ -61,6 +78,9 @@ export const readFilters = (params: URLSearchParams): ShipmentFilters => ({
   shipToPartner: readNumberFilter(params.get(URL_KEYS.shipToPartner) ?? ''),
   progress: readProgressFilter(params.get(URL_KEYS.progress) ?? ''),
   inspection: readInspectionFilter(params.get(URL_KEYS.inspection) ?? ''),
+  q: readQuery(params.get(URL_KEYS.q) ?? ''),
+  ready: readFlag(params.get(URL_KEYS.ready) ?? ''),
+  replaced: readFlag(params.get(URL_KEYS.replaced) ?? ''),
 });
 
 /** 주소가 가리키는 쪽. 이상한 값은 첫 쪽으로 본다 — 주소는 손으로 고쳐지는 자리다. */
@@ -92,6 +112,9 @@ export const toSearchParams = (
     [URL_KEYS.shipToPartner, readNumberFilter(filters.shipToPartner)],
     [URL_KEYS.progress, filters.progress],
     [URL_KEYS.inspection, readInspectionFilter(filters.inspection)],
+    [URL_KEYS.q, readQuery(filters.q)],
+    [URL_KEYS.ready, readFlag(filters.ready)],
+    [URL_KEYS.replaced, readFlag(filters.replaced)],
   ];
 
   for (const [key, value] of entries) {
@@ -110,6 +133,9 @@ export interface ShipmentFilterQuery {
   shipToPartnerId?: number;
   shipmentProgressCode?: ShipmentProgressCode;
   shippingInspectionRequired?: boolean;
+  q?: string;
+  completionReadyOnly?: boolean;
+  hasReplacement?: boolean;
 }
 
 export const toFilterQuery = (filters: ShipmentFilters): ShipmentFilterQuery => {
@@ -123,6 +149,9 @@ export const toFilterQuery = (filters: ShipmentFilters): ShipmentFilterQuery => 
     ...(filters.inspection === ''
       ? {}
       : { shippingInspectionRequired: filters.inspection === 'true' }),
+    ...(readQuery(filters.q) === '' ? {} : { q: readQuery(filters.q) }),
+    ...(filters.ready === 'true' ? { completionReadyOnly: true } : {}),
+    ...(filters.replaced === 'true' ? { hasReplacement: true } : {}),
   };
 };
 
@@ -171,6 +200,16 @@ export const toFilterChips = (filters: ShipmentFilters, names: FilterChipNames):
       removeLabel: t.filters.chipRemoveInspection,
     },
   ];
+
+  candidates.push(
+    { key: 'q', label: t.filters.chipQ(filters.q), removeLabel: t.filters.chipRemoveQ },
+    { key: 'ready', label: t.filters.readyOnly, removeLabel: t.filters.chipRemoveReadyOnly },
+    {
+      key: 'replaced',
+      label: t.filters.hasReplacement,
+      removeLabel: t.filters.chipRemoveHasReplacement,
+    },
+  );
 
   return candidates.filter((chip) => filters[chip.key] !== '');
 };

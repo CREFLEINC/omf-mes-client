@@ -1,6 +1,7 @@
 import { Breadcrumb, Button, Dialog, PageHeader, useToast, type SortState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router';
 
 import { Select } from '../../patterns/select';
@@ -17,12 +18,16 @@ import {
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import { readPeriod, toPeriodQuery, validatePeriod, type PeriodInput } from './period';
+import { PrintPreviewDialog } from './print-preview';
 import {
   useFulfillmentPlantUpdate,
+  useItemLabels,
   useShipmentRequestDetail,
   useShipmentScheduleList,
 } from './queries';
+import { RequestDetailDialog } from './request-detail-dialog';
 import { SaveErrorBanner } from '../../patterns/master';
+import { sessionKeys, type Session } from '../../patterns/session';
 import { ShipmentFilterBar } from './shipment-filter-bar';
 import { ShipmentTable } from './shipment-table';
 import { nextSortKey, readSortKey, toSortQuery } from './sort';
@@ -67,6 +72,11 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
  */
 export const ShipmentScheduleScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  /*
+   * 인쇄한 사람 — 로그인 세션의 사용자 이름(시안 Print-Preview). 세션 공급자 밖에서 그리는 시험도 있어
+   * 던지는 `useSession` 대신 이미 받아 둔 세션 값을 읽는다(없으면 빈 값).
+   */
+  const session = useQueryClient().getQueryData<Session>(sessionKeys.current) ?? null;
 
   const period = useMemo<PeriodInput>(() => readPeriod(searchParams), [searchParams]);
   const filters = useMemo<ShipmentFilters>(() => readFilters(searchParams), [searchParams]);
@@ -98,6 +108,11 @@ export const ShipmentScheduleScreen = () => {
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
   const [fulfillmentPlantId, setFulfillmentPlantId] = useState('');
   const selectedDetail = useShipmentRequestDetail(selectedRequestId);
+  /* 피처 010 — 지시서 상세 창 · 인쇄 미리 보기. 공장 지정 창과 따로 연다. */
+  const [detailRequestId, setDetailRequestId] = useState<number | null>(null);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const requestDetail = useShipmentRequestDetail(detailRequestId);
+  const itemLabel = useItemLabels((requestDetail.data?.lines ?? []).map((line) => line.itemId));
   const toast = useToast();
   /* 저장이 끝나면 창을 닫고 다른 화면과 같은 자리에 알린다(사용자 지시 2026-09-22). */
   /*
@@ -231,6 +246,10 @@ export const ShipmentScheduleScreen = () => {
                 setSelectedRequestId(shipmentRequestId);
                 updatePlant.reset();
               }}
+              onOpenDetail={(shipmentRequestId) => {
+                setIsPrinting(false);
+                setDetailRequestId(shipmentRequestId);
+              }}
             />
             {listQuery !== null && !list.isPending && (
               <PageNav
@@ -316,6 +335,53 @@ export const ShipmentScheduleScreen = () => {
             <SaveErrorBanner error={updatePlant.error} />
           </div>
         </Dialog>
+      )}
+
+      {detailRequestId !== null && !isPrinting && (
+        <RequestDetailDialog
+          detail={requestDetail.data}
+          isLoading={requestDetail.isPending}
+          error={requestDetail.isError ? requestDetail.error : null}
+          onRetry={() => {
+            void requestDetail.refetch();
+          }}
+          customerName={describeReference(
+            toReference(customers, requestDetail.data?.customerId ?? null),
+          )}
+          shipToPartnerName={describeReference(
+            toReference(shipToPartners, requestDetail.data?.shipToPartnerId ?? null),
+          )}
+          fulfillmentPlantName={describeReference(
+            toReference(fulfillmentPlants, requestDetail.data?.fulfillmentPlantId ?? null),
+          )}
+          itemLabel={itemLabel}
+          onPrint={() => {
+            setIsPrinting(true);
+          }}
+          onClose={() => {
+            setDetailRequestId(null);
+          }}
+        />
+      )}
+
+      {detailRequestId !== null && isPrinting && requestDetail.data !== undefined && (
+        <PrintPreviewDialog
+          detail={requestDetail.data}
+          names={{
+            customer: describeReference(toReference(customers, requestDetail.data.customerId)),
+            shipToPartner: describeReference(
+              toReference(shipToPartners, requestDetail.data.shipToPartnerId),
+            ),
+            fulfillmentPlant: describeReference(
+              toReference(fulfillmentPlants, requestDetail.data.fulfillmentPlantId ?? null),
+            ),
+            item: (itemId) => itemLabel(itemId) ?? String(itemId),
+            printedBy: session?.userName ?? '',
+          }}
+          onClose={() => {
+            setIsPrinting(false);
+          }}
+        />
       )}
     </>
   );

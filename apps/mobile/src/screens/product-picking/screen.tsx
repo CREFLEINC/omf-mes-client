@@ -1,4 +1,4 @@
-import { useQueryClient, type UseQueryResult } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { AlertBanner, Chip, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useRef, useState } from 'react';
@@ -6,316 +6,388 @@ import { useMemo, useRef, useState } from 'react';
 import { useBackStep } from '../../patterns/back-step';
 import { Button } from '../../patterns/button';
 import { Card } from '../../patterns/card';
-import { DockedNumberPad } from '../../patterns/docked-number-pad';
-import { LOT_HOLD_REASON, useCodeValues, type CodeValue } from '../../patterns/code-values';
+import { ConfirmDialog } from '../../patterns/confirm-dialog';
 import { playErrorTone } from '../../patterns/error-tone';
-import { useScannedLot } from '../../patterns/lots';
-import { useIdempotencyKey } from '../../patterns/idempotency';
-import { uomLabelOf, useCustomerNames, useItem, useUomCodes } from '../../patterns/masters';
+import { uomLabelOf, useCustomerNames, useItemLabels, useUomCodes } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
+import { createIdempotencyKey } from '../../patterns/outbox';
 import { toApiError } from '../../patterns/request';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
-import { FailureBanner } from '../../patterns/failure-banner';
-import { useLoadFailure, useSaveRefusal } from '../../patterns/load-failure';
+import { CodeSheet } from './code-sheet';
+import { LotRow, ReplacedRow, type CodeFieldState, type CodeMode } from './lot-row';
 import {
-  toCandidates,
-  useAvailableByLot,
-  useHoldReason,
-  useLotPool,
-  usePickLine,
-  useTodayRequests,
-  type LotHold,
-} from './queries';
-import {
-  CANDIDATE_PREVIEW,
-  FEFO,
-  FIFO,
-  canPick,
-  isRecommended,
-  isConflict,
-  isShelfLifeUnknown,
-  lotProblem,
-  qtyProblem,
-  rankCandidates,
-  remainingAllocated,
-  remainingDays,
-  sortFieldOf,
-  type Candidate,
+  activeLots,
+  canReplace,
+  codeProblem,
+  isNotRejected,
+  lineTiles,
+  partiesText,
+  pickRejectionOf,
+  replaceEffect,
+  replacedLots,
+  type PickRejection,
+  type ShipmentLotPickResult,
+  type ShipmentLotReplaceResult,
   type ShipmentRequest,
   type ShipmentRequestLine,
+  type ShipmentRequestLot,
 } from './picking';
+import {
+  LocalPickRejection,
+  PickLineError,
+  usePickLot,
+  useReplaceLot,
+  useSaveManagementCode,
+  useTodayRequests,
+} from './queries';
 import './screen.css';
 
 const t = messages.productPicking;
-/* 필수 표시는 화면마다 짓지 않는다. 같은 뜻이 여러 모양으로 갈린다. */
-const required = messages.common.required;
 
-interface Target {
-  request: ShipmentRequest;
-  line: ShipmentRequestLine;
+/** 스캔 칸 아래 한 자리에 하나만 뜨는 결과. */
+type Notice =
+  | { kind: 'picked'; result: ShipmentLotPickResult }
+  | {
+      kind: 'rejected';
+      lotNo: string;
+      line: ShipmentRequestLine | null;
+      rejection: PickRejection | { kind: 'notFound' | 'noLine' };
+    }
+  | { kind: 'replaced'; lotNo: string; result: ShipmentLotReplaceResult }
+  | { kind: 'replaceRefused'; lotNo: string; notRejected: boolean };
+
+interface CodeTarget {
+  lotId: number;
+  mode: CodeMode;
+  draft: string;
 }
 
-const policyLabel = (policy: string): string => {
-  if (policy === FEFO) {
-    return t.candidates.fefo;
-  }
+/**
+ * 같은 쓰기를 다시 보낼 때 같은 멱등 키를 쓴다. 응답이 온 뒤(성공이든 거절이든)에만 키를 버린다 —
+ * 연결이 끊겨 답을 못 받은 경우만 같은 키로 다시 간다(두 번 기록되지 않는다).
+ */
+const useKeyRing = () => {
+  const ring = useRef(new Map<string, string>());
 
-  return policy === FIFO ? t.candidates.fifo : policy;
+  return {
+    take: (target: string): string => {
+      const found = ring.current.get(target);
+
+      if (found !== undefined) {
+        return found;
+      }
+
+      const key = createIdempotencyKey();
+      ring.current.set(target, key);
+
+      return key;
+    },
+    settle: (target: string, error?: unknown) => {
+      if (error === undefined || toApiError(error).kind !== 'network') {
+        ring.current.delete(target);
+      }
+    },
+  };
 };
 
-/**
- * 보류 사유와 해제 조건. 서버가 여러 건을 낼 수 있어 그대로 늘어놓는다.
- *
- * 보류 조회와 표시명 조회는 서로 다른 물음이라 따로 받는다. 표시명을 이미 풀어 넘기면 아직
- * 안 온 것과 없는 것이 구별되지 않아, 도는 동안 표시명이 없다고 해 두었다가 이름으로 바뀐다.
- */
-const HoldReason = ({
-  holds,
-  reasons,
+const NoticeBanner = ({
+  notice,
+  uomOf,
+  onRetry,
 }: {
-  holds: UseQueryResult<LotHold[]>;
-  reasons: UseQueryResult<CodeValue[]>;
+  notice: Notice;
+  uomOf: (uomId: number) => string;
+  /** 전송 실패 띠의 [다시 시도] — 그 LOT 을 같은 멱등 키로 다시 보낸다. */
+  onRetry: (lotNo: string) => void;
 }) => {
-  if (holds.isPending) {
-    return <p className="picking__note">{t.lot.heldReasonLoading}</p>;
+  if (notice.kind === 'picked') {
+    const { pickedLot, line } = notice.result;
+    const tiles = lineTiles(line);
+
+    return (
+      <AlertBanner
+        variant="success"
+        title={t.picked.title(pickedLot.lotNo, String(pickedLot.pickedQty), uomOf(pickedLot.uomId))}
+      >
+        {tiles.kind === 'remaining'
+          ? t.picked.remaining(line.lineNo, String(tiles.value))
+          : tiles.value > 0
+            ? t.picked.reachedOver(line.lineNo, String(tiles.target), String(tiles.value))
+            : t.picked.reached(line.lineNo, String(tiles.target))}
+      </AlertBanner>
+    );
   }
 
-  if (holds.isError) {
-    return <p className="picking__note">{t.lot.heldReasonFailed}</p>;
+  if (notice.kind === 'replaced') {
+    const { line, nonconformanceNo, replacedLot } = notice.result;
+    const tiles = lineTiles(line);
+
+    return (
+      <AlertBanner variant="success" title={t.replace.done(notice.lotNo)}>
+        {nonconformanceNo === null ? null : <p>{t.replace.nonconformance(nonconformanceNo)}</p>}
+        {tiles.kind === 'remaining' ? (
+          <p>{t.replace.receiveMore(line.lineNo, String(tiles.value), uomOf(replacedLot.uomId))}</p>
+        ) : null}
+      </AlertBanner>
+    );
   }
 
-  /*
-   * 사유 자리에서만 갈린다. 해제 조건은 보류 조회가 들고 온 값이라, 표시명을 못 받았다고
-   * 함께 지우면 현장이 실제로 쓰는 것을 다른 물음의 실패로 버리는 것이 된다.
-   */
-  const reasonTextOf = (code: string): string => {
-    if (reasons.isPending) {
-      return t.lot.heldReasonLoading;
-    }
+  if (notice.kind === 'replaceRefused') {
+    return notice.notRejected ? (
+      <AlertBanner variant="error" title={t.replace.notRejected}>
+        <p>{notice.lotNo}</p>
+        <p>{t.replace.notRejectedDetail}</p>
+      </AlertBanner>
+    ) : (
+      <AlertBanner variant="error" title={t.replace.failed}>
+        <p>{notice.lotNo}</p>
+      </AlertBanner>
+    );
+  }
 
-    if (reasons.isError) {
-      return t.lot.heldReasonFailed;
-    }
-
-    const found = (reasons.data ?? []).find((each) => each.code === code);
-
-    return found === undefined ? t.lot.heldReasonUnknown(code) : t.lot.heldReason(found.name);
-  };
+  const { rejection } = notice;
+  const title =
+    rejection.kind === 'code'
+      ? t.rejected[rejection.code]
+      : rejection.kind === 'server'
+        ? rejection.message
+        : rejection.kind === 'failed'
+          ? t.rejected.failed
+          : rejection.kind === 'notFound'
+            ? t.rejected.notFound
+            : t.rejected.NO_LINE_FOR_ITEM;
 
   return (
-    <>
-      {(holds.data ?? []).map((hold) => (
-        <p key={hold.lotHoldId}>
-          {reasonTextOf(hold.reasonCode)}
-          {hold.releaseCondition === null || hold.releaseCondition === undefined
-            ? ''
-            : ` · ${t.lot.heldRelease(hold.releaseCondition)}`}
+    <AlertBanner variant="error" title={title} role="alert" aria-label={title}>
+      <p>{notice.lotNo}</p>
+      {rejection.kind === 'code' &&
+      rejection.code === 'LOT_TARGET_REACHED' &&
+      notice.line !== null ? (
+        <p>
+          {t.rejected.targetReachedDetail(
+            notice.line.lineNo,
+            String(notice.line.allocatedQty),
+            String(notice.line.pickedQty),
+          )}
         </p>
-      ))}
-    </>
+      ) : null}
+      {rejection.kind === 'code' && rejection.code === 'LOT_ALREADY_RESERVED' ? (
+        <p>{t.rejected.reservedDetail}</p>
+      ) : null}
+      {rejection.kind === 'notFound' ? <p>{t.rejected.notFoundDetail}</p> : null}
+      {rejection.kind === 'failed' ? (
+        <>
+          <p>{t.rejected.failedDetail}</p>
+          <Button variant="outlined" onClick={() => onRetry(notice.lotNo)}>
+            {t.rejected.retry}
+          </Button>
+        </>
+      ) : (
+        <p>{t.rejected.notPicked}</p>
+      )}
+    </AlertBanner>
   );
 };
 
-const CandidateCard = ({
-  candidate,
-  line,
-  today,
-  uoms,
-  recommended,
-  holds,
-  reasons,
-}: {
-  candidate: Candidate;
-  line: ShipmentRequestLine;
-  today: Date;
-  uoms: Map<number, string> | undefined;
-  recommended: boolean;
-  holds: UseQueryResult<LotHold[]> | null;
-  reasons: UseQueryResult<CodeValue[]>;
-}) => {
-  const problem = lotProblem(candidate, line, today);
-  const remaining = remainingDays(candidate.lot, today);
-  const uom = uomLabelOf(uoms, candidate.lot.uomId);
+/** 라인 머리의 목표 · 피킹 · 남음(또는 초과). */
+const LineTiles = ({ line, label }: { line: ShipmentRequestLine; label: string }) => {
+  const tiles = lineTiles(line);
 
   return (
-    <Card bordered>
-      <Card.Body className="card-body picking__candidate">
-        <div className="picking__candidate-head">
-          <strong>{candidate.lot.lotNo}</strong>
-          {recommended ? <Chip status="success">{t.candidates.recommended}</Chip> : null}
-        </div>
-        <p>{t.candidates.available(String(candidate.availableQty), uom)}</p>
-        <p className="picking__note">
-          {candidate.lot.expiryDate === null || candidate.lot.expiryDate === undefined
-            ? t.candidates.noExpiry
-            : `${t.candidates.expiry(candidate.lot.expiryDate)}${
-                remaining === null ? '' : ` · ${t.candidates.remainingDays(remaining)}`
-              }`}
-        </p>
-
-        {problem === 'shelfLifeShort' ? (
-          <AlertBanner
-            variant="error"
-            title={t.lot.shelfLifeShort(line.minimumRemainingShelfLifeDays ?? 0, remaining ?? 0)}
-          />
-        ) : problem === null ? null : (
-          <AlertBanner variant="error" title={t.lot[problem]}>
-            {/*
-             * 막는 것만으로는 무엇을 하면 풀리는지 알 수 없다. 사유는 고른 것 하나만 따로
-             * 물어 오므로 그 답이 있을 때만 적는다.
-             */}
-            {problem === 'held' && holds !== null ? (
-              <HoldReason holds={holds} reasons={reasons} />
-            ) : null}
-          </AlertBanner>
-        )}
-
-        {/* 셀 수 없는 것을 넉넉한 것으로 두지 않는다. 막지도 않는다 — 정본은 서버다. */}
-        {problem === null && isShelfLifeUnknown(candidate, line, today) ? (
-          <AlertBanner variant="warning" title={t.lot.shelfLifeUnknown} />
-        ) : null}
-      </Card.Body>
-    </Card>
+    <div className="picking__tiles" role="group" aria-label={label}>
+      <div className="picking__tile">
+        <span>{t.line.target}</span>
+        <strong>{String(tiles.target)}</strong>
+      </div>
+      <div className="picking__tile">
+        <span>{t.line.picked}</span>
+        <strong>{String(tiles.picked)}</strong>
+      </div>
+      <div className={`picking__tile picking__tile--${tiles.kind}`}>
+        <span>{tiles.kind === 'remaining' ? t.line.remaining : t.line.over}</span>
+        <strong>{String(tiles.value)}</strong>
+      </div>
+    </div>
   );
 };
 
 export const ProductPickingScreen = () => {
   useScreenTitle(t.title);
-  const failureText = useLoadFailure();
-  /* 단말 탓 거절은 다시 시도해도 같다 — 서버가 실은 까닭을 보인다(omf-all-around#202). */
-  const saveRefusal = useSaveRefusal();
 
   const online = useOnlineStatus();
   const { worker } = useWorkerSession();
   const today = useMemo(() => new Date(), []);
+  const queries = useQueryClient();
 
-  /*
-   * 어느 요청의 어느 라인인가만 들고 있는다. 대상 자체를 굳혀 두면 확정 뒤에도 옛 피킹량이
-   * 남아 남은 배정이 줄지 않고, 배정보다 많이 집을 수 있다 - 되돌릴 수 없는 예약 소진이다.
-   */
-  const [chosen, setChosen] = useState<{ requestId: number; lineId: number } | null>(null);
-  const [lotId, setLotId] = useState<number | null>(null);
-  const [qty, setQty] = useState('');
-  /* 숫자판은 칸을 눌렀을 때만 선다. 늘 띄우면 권장 LOT 목록과 확정 단추를 덮는다. */
-  const [keypadOpen, setKeypadOpen] = useState(false);
-  const [missed, setMissed] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
-  const [listView, setListView] = useState(false);
+  /* 어느 지시서인가만 들고 있는다. 화면이 보는 값은 늘 새 조회에서 나온다. */
+  const [chosenId, setChosenId] = useState<number | null>(null);
+  const [qrOpen, setQrOpen] = useState(false);
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const [freshLotId, setFreshLotId] = useState<number | null>(null);
+  const [replaceTarget, setReplaceTarget] = useState<{
+    lot: ShipmentRequestLot;
+    line: ShipmentRequestLine;
+  } | null>(null);
+  const [codeTarget, setCodeTarget] = useState<CodeTarget | null>(null);
+  const [codeFailedLotId, setCodeFailedLotId] = useState<number | null>(null);
   const [, setRetried] = useState(0);
-  /*
-   * 보내는 동안 잠근다. 상태로 두면 React 가 두 이벤트 사이에 커밋하지 못한 경우를 막지 못한다 -
-   * 셋이 잇달아 들어오면 셋 다 갱신 전의 값을 보고 통과한다. 즉시 바뀌는 자리에 둔다. 단추를
-   * 흐리게 하는 것은 DS 단추의 loading 이 이미 한다.
-   */
+  /* 보내는 동안 잠근다 — 스캐너가 같은 값을 잇달아 보내도 한 건만 나간다. */
   const inFlight = useRef(false);
+  const keys = useKeyRing();
 
   const requests = useTodayRequests(today);
-  /* 화면이 보는 값은 늘 새 조회에서 나온다. 상태에 굳은 사본을 두지 않는다. */
-  const target: Target | null = (() => {
-    if (chosen === null) {
-      return null;
-    }
+  const pick = usePickLot();
+  const replace = useReplaceLot();
+  const saveCode = useSaveManagementCode();
 
-    const request = requests.data?.find((each) => each.shipmentRequestId === chosen.requestId);
-    const line = request?.lines?.find((each) => each.shipmentRequestLineId === chosen.lineId);
-
-    return request === undefined || line === undefined ? null : { request, line };
-  })();
-  const itemId = target?.line.itemId ?? null;
-  const item = useItem(itemId);
+  const target: ShipmentRequest | null =
+    chosenId === null
+      ? null
+      : (requests.data?.find((each) => each.shipmentRequestId === chosenId) ?? null);
+  const lines = target?.lines ?? [];
+  const itemIds = (chosenId === null ? (requests.data ?? []) : target === null ? [] : [target])
+    .flatMap((request) => request.lines ?? [])
+    .map((line) => line.itemId);
+  const items = useItemLabels(itemIds);
   const uoms = useUomCodes(true);
-  const uomOf = (uomId: number | null | undefined) => uomLabelOf(uoms.data, uomId);
-  const customers = useCustomerNames(target !== null);
-  const pool = useLotPool(itemId);
-  const available = useAvailableByLot(itemId);
-  const pick = usePickLine();
+  const uomOf = (uomId: number) => uomLabelOf(uoms.data, uomId);
+  const customers = useCustomerNames(true);
+  const itemCodeOf = (itemId: number) => items.get(itemId)?.itemCode ?? `#${String(itemId)}`;
 
-  const candidates = useMemo(
-    () =>
-      pool.data === undefined || available.data === undefined
-        ? []
-        : toCandidates(pool.data, available.data.byLot),
-    [available.data, pool.data],
-  );
+  const allLots = lines.flatMap((line) => line.lots);
+  const codeLot =
+    codeTarget === null
+      ? null
+      : (allLots.find((lot) => lot.shipmentRequestLotId === codeTarget.lotId) ?? null);
 
-  const ranked = useMemo(
-    () => rankCandidates(candidates, item.data?.fifoPolicyCode ?? ''),
-    [candidates, item.data?.fifoPolicyCode],
-  );
-
-  const takeScan = (code: string) => {
-    const found = candidates.find((each) => each.lot.lotNo === code);
-
-    if (found === undefined) {
-      /* 화면을 보고 있지 않을 수 있다. 소리로도 알린다(공유계약 D-2). */
-      playErrorTone();
-      setMissed(code);
+  const submitCode = async (lot: ShipmentRequestLot, value: string) => {
+    if (worker === null || codeProblem(value) !== null) {
       return;
     }
 
-    setMissed(null);
-    setLotId(found.lot.lotId);
-    setQty('');
+    const ring = `code:${String(lot.shipmentRequestLotId)}:${value.trim()}`;
+    setCodeFailedLotId(null);
+
+    await saveCode
+      .mutateAsync({
+        lot,
+        managementCode: value,
+        workerNo: worker.workerNo,
+        idempotencyKey: keys.take(ring),
+      })
+      .then(() => {
+        keys.settle(ring);
+        setCodeTarget(null);
+      })
+      .catch((error: unknown) => {
+        keys.settle(ring, error);
+        setCodeFailedLotId(lot.shipmentRequestLotId);
+      });
   };
 
-  const queries = useQueryClient();
+  const pickScanned = async (lotNo: string) => {
+    if (target === null || worker === null || inFlight.current) {
+      return;
+    }
 
-  const retry = () => {
-    /*
-     * 다시 그려야 온라인 여부를 다시 읽는다. 단말이 연결이 돌아온 것을 놓쳤을 때 사람이
-     * 여는 유일한 길이라, 다시 그릴 일이 없으면 이 단추는 아무것도 하지 않는다.
-     */
-    setRetried((count) => count + 1);
-    void queries.refetchQueries({ predicate: (query) => query.state.status === 'error' });
+    inFlight.current = true;
+    const ring = `pick:${String(target.shipmentRequestId)}:${lotNo}`;
+
+    try {
+      const result = await pick.mutateAsync({
+        request: target,
+        lotNo,
+        workerNo: worker.workerNo,
+        idempotencyKey: keys.take(ring),
+      });
+
+      keys.settle(ring);
+      setFreshLotId(result.pickedLot.shipmentRequestLotId);
+      setNotice({ kind: 'picked', result });
+    } catch (error: unknown) {
+      const cause = error instanceof PickLineError ? error.cause : error;
+      keys.settle(ring, cause);
+      /* 화면을 보고 있지 않을 수 있다. 소리로도 알린다(공유계약 D-2). */
+      playErrorTone();
+      setNotice({
+        kind: 'rejected',
+        lotNo,
+        line: error instanceof PickLineError ? error.line : null,
+        rejection:
+          error instanceof LocalPickRejection
+            ? { kind: error.reason }
+            : pickRejectionOf(toApiError(cause)),
+      });
+    } finally {
+      inFlight.current = false;
+    }
+  };
+
+  const takeScan = (value: string) => {
+    /* 코드 칸이 스캔을 받는 중이면 그 LOT 코드로 바로 저장한다 — LOT 피킹은 쉰다. */
+    if (codeTarget?.mode === 'scan' && codeLot !== null) {
+      void submitCode(codeLot, value);
+      return;
+    }
+
+    void pickScanned(value);
+  };
+
+  const scanField = useScanField({ onScan: takeScan });
+
+  const confirmReplace = async () => {
+    if (replaceTarget === null || target === null || worker === null) {
+      return;
+    }
+
+    const { lot } = replaceTarget;
+    const ring = `replace:${String(lot.shipmentRequestLotId)}`;
+    setReplaceTarget(null);
+
+    await replace
+      .mutateAsync({
+        shipmentRequestId: target.shipmentRequestId,
+        lot,
+        workerNo: worker.workerNo,
+        idempotencyKey: keys.take(ring),
+      })
+      .then((result) => {
+        keys.settle(ring);
+        setNotice({ kind: 'replaced', lotNo: lot.lotNo, result });
+      })
+      .catch((error: unknown) => {
+        keys.settle(ring, error);
+        playErrorTone();
+        setNotice({
+          kind: 'replaceRefused',
+          lotNo: lot.lotNo,
+          notRejected: isNotRejected(toApiError(error)),
+        });
+      });
+  };
+
+  const leave = () => {
+    setChosenId(null);
+    setNotice(null);
+    setCodeTarget(null);
+    setFreshLotId(null);
   };
 
   /*
    * 뒤로가기는 화면 안 단계를 먼저 되돌린다. 라우터 이력에는 이 화면 하나뿐이라, 두지
-   * 않으면 대상을 고르고 스캔하던 사람이 한 번에 작업 목록까지 나간다.
+   * 않으면 지시서를 열고 스캔하던 사람이 한 번에 작업 목록까지 나간다.
    */
-  useBackStep(listView, () => {
-    setListView(false);
+  useBackStep(qrOpen, () => {
+    setQrOpen(false);
   });
-  useBackStep(!listView && chosen !== null, () => {
-    setChosen(null);
-    setLotId(null);
-    setQty('');
-    setMissed(null);
-  });
+  useBackStep(!qrOpen && chosenId !== null, leave);
 
-  const scanField = useScanField({ onScan: takeScan });
-  /*
-   * 빗나간 값이 없는 번호인지 다른 품목의 LOT 인지 가른다. 후보는 이 품목으로 걸러 와,
-   * 목록에 없다는 것만으로는 둘을 구별할 수 없다.
-   */
-  const missedLot = useScannedLot(missed);
-  /*
-   * 보류 사유는 고른 것 하나만 묻는다. 목록 전체에 물으면 후보 수만큼 호출이 나가고,
-   * 스펙이 요구한 자리도 스캔한 한 건이다.
-   */
-  const heldPick = candidates.find((each) => each.lot.lotId === lotId)?.held === true;
-  const holdReason = useHoldReason(heldPick ? lotId : null);
-  /* 사유 코드를 그대로 보이면 무엇이 걸렸는지 알 수 없다. 표시명은 마스터가 갖는다. */
-  const holdReasonCodes = useCodeValues(LOT_HOLD_REASON);
-
-  /*
-   * 한 번의 확정에 키 하나. 무엇을 적는 중인지를 함께 넘겨 대상이 바뀌면 스스로 비워지게 한다.
-   * 이 화면은 후보 LOT 을 바꿔 가며 고르는 것이 주된 조작이라, 요청·라인·후보·수량이 다 들어가야
-   * 한다. 수량은 친 문자열이 아니라 실제로 보낼 값으로 짓는다.
-   *
-   * 조기 반환보다 위에 둔다. 아래에 두면 연결이 끊겼다 붙는 순간 훅 수가 달라져 화면이 통째로
-   * 던진다.
-   */
-  const idempotency = useIdempotencyKey(
-    [
-      String(target?.request.shipmentRequestId),
-      String(target?.line.shipmentRequestLineId),
-      String(lotId),
-      String(Number(qty.trim())),
-    ].join(':'),
-  );
+  const retry = () => {
+    setRetried((count) => count + 1);
+    void queries.refetchQueries({ predicate: (query) => query.state.status === 'error' });
+  };
 
   if (!online) {
     return (
@@ -331,330 +403,155 @@ export const ProductPickingScreen = () => {
     );
   }
 
-  const selected = candidates.find((each) => each.lot.lotId === lotId) ?? null;
-  const problem =
-    target === null || selected === null ? null : qtyProblem(selected, target.line, qty);
-
-  const qtyMessage = (): string | undefined => {
-    if (selected === null || target === null || problem === null) {
-      return undefined;
-    }
-
-    if (problem === 'overAvailable') {
-      return t.qty.overAvailable(String(selected.availableQty));
-    }
-
-    if (problem === 'overAllocated') {
-      return t.qty.overAllocated(String(remainingAllocated(target.line)));
-    }
-
-    return t.qty[problem];
-  };
-
-  const restart = () => {
-    setLotId(null);
-    setQty('');
-    setMissed(null);
-    setDone(false);
-    scanField.focus();
-  };
-
-  const confirm = async () => {
-    if (target === null || selected === null || worker === null || inFlight.current) {
-      return;
-    }
-
-    inFlight.current = true;
-
-    try {
-      await pick
-        .mutateAsync({
-          shipmentRequestId: target.request.shipmentRequestId,
-          line: target.line,
-          candidate: selected,
-          qty,
-          workerNo: worker.workerNo,
-          idempotencyKey: idempotency.current(),
-        })
-        .then(() => {
-          idempotency.reset();
-          setDone(true);
-        })
-        .catch(() => null);
-    } finally {
-      inFlight.current = false;
-    }
-  };
-
-  if (done) {
-    return (
-      <div className="picking">
-        <AlertBanner variant="success" title={t.done} />
-        <Button className="picking__pick" variant="filled" size="2xl" onClick={restart}>
-          {t.another}
-        </Button>
-      </div>
-    );
-  }
+  const customerOf = (partnerId: number) => customers.data?.get(partnerId) ?? null;
+  /* 단말은 거래처 마스터를 못 읽는다 — 지시서 응답의 이름을 먼저 쓰고, 없을 때만 조회값을 쓴다. */
+  const namesOf = (request: ShipmentRequest) => ({
+    customer: request.customer?.partnerName ?? customerOf(request.customerId),
+    shipTo: request.shipTo?.partnerName ?? customerOf(request.shipToPartnerId),
+  });
 
   if (target === null) {
     return (
       <div className="picking">
         <section className="picking__section">
-          <h2>{t.targets.legend}</h2>
-          {/* 고르던 라인이 빠졌으면 말없이 나가지 않는다. 남겨 두면 나중에 예고 없이 되돌아간다. */}
-          {chosen !== null ? <AlertBanner variant="warning" title={t.targets.dropped} /> : null}
-          {requests.isPending ? <p role="status">{t.targets.loading}</p> : null}
-          {requests.isError ? <AlertBanner variant="error" title={t.targets.loadFailed} /> : null}
+          <h2>{t.requests.legend}</h2>
+          {chosenId !== null && requests.isSuccess ? (
+            <AlertBanner variant="warning" title={t.requests.dropped} />
+          ) : null}
+          {requests.isPending ? <p role="status">{t.requests.loading}</p> : null}
+          {requests.isError ? <AlertBanner variant="error" title={t.requests.loadFailed} /> : null}
           {requests.isSuccess && requests.data.length === 0 ? (
-            <p className="picking__note">{t.targets.none}</p>
+            <AlertBanner variant="info" title={t.requests.none}>
+              {t.requests.completedHidden}
+            </AlertBanner>
           ) : null}
           <ul className="picking__targets">
-            {(requests.data ?? []).flatMap((request) =>
-              (request.lines ?? []).map((line) => {
-                const left = remainingAllocated(line);
+            {(requests.data ?? []).map((request) => {
+              const lotCount = (request.lines ?? []).reduce(
+                (sum, line) => sum + activeLots(line).length,
+                0,
+              );
+              const { customer, shipTo } = namesOf(request);
 
-                return (
-                  <li
-                    key={`${String(request.shipmentRequestId)}-${String(line.shipmentRequestLineId)}`}
+              return (
+                <li key={request.shipmentRequestId}>
+                  <Card
+                    bordered
+                    interactive
+                    onClick={() => {
+                      setChosenId(request.shipmentRequestId);
+                      setNotice(null);
+                      setCodeTarget(null);
+                    }}
                   >
-                    <Card
-                      bordered
-                      interactive
-                      onClick={() => {
-                        setChosen({
-                          requestId: request.shipmentRequestId,
-                          lineId: line.shipmentRequestLineId,
-                        });
-                        setLotId(null);
-                        setQty('');
-                        setMissed(null);
-                      }}
-                    >
-                      <Card.Body className="card-body picking__target">
-                        <strong>{request.shipmentRequestNo}</strong>
-                        <p>{t.targets.line(line.lineNo)}</p>
-                        <p>
-                          {t.targets.progress(String(line.allocatedQty), String(line.pickedQty))}
+                    <Card.Body className="card-body picking__target">
+                      <strong>{request.shipmentRequestNo}</strong>
+                      {customer === null ? null : <p>{partiesText(customer, shipTo)}</p>}
+                      <p className="picking__note">
+                        {`${
+                          request.salesOrderNo === null
+                            ? t.requests.noSalesOrder
+                            : t.requests.salesOrder(request.salesOrderNo)
+                        }, ${t.requests.shipDate(request.requestedShipDate)}`}
+                      </p>
+                      {(request.lines ?? []).map((line) => (
+                        <p key={line.shipmentRequestLineId}>
+                          {t.requests.lineSummary(
+                            line.lineNo,
+                            itemCodeOf(line.itemId),
+                            String(line.pickedQty),
+                            String(line.allocatedQty),
+                          )}
                         </p>
-                        <p>
-                          {left <= 0 ? t.targets.complete : t.targets.remaining(String(left), '')}
-                        </p>
-                      </Card.Body>
-                    </Card>
-                  </li>
-                );
-              }),
-            )}
+                      ))}
+                      <Chip status={lotCount === 0 ? 'idle' : 'info'}>
+                        {lotCount === 0 ? t.requests.notStarted : t.requests.pickingLots(lotCount)}
+                      </Chip>
+                    </Card.Body>
+                  </Card>
+                </li>
+              );
+            })}
           </ul>
         </section>
       </div>
     );
   }
 
-  /*
-   * 피킹 화면에는 권장 순서 앞엣것만 세운다. 후보 카드가 130~210px 이라 그 위는 첫 화면에
-   * 들어오지 않는다. 전부 보려면 목록 화면으로 넘어간다.
-   */
-  const shownCandidates = ranked.ordered.slice(0, CANDIDATE_PREVIEW);
-  const allCandidates = ranked.ordered.length + ranked.unordered.length;
+  const { customer: customerName, shipTo: shipToName } = namesOf(target);
 
-  const candidateItem = (candidate: Candidate, recommended: boolean) => (
-    <li key={candidate.lot.lotId}>
-      <CandidateCard
-        candidate={candidate}
-        line={target.line}
-        today={today}
-        uoms={uoms.data}
-        recommended={recommended}
-        holds={candidate.lot.lotId === lotId ? holdReason : null}
-        reasons={holdReasonCodes}
-      />
-    </li>
-  );
-
-  if (listView) {
+  if (qrOpen) {
     return (
-      <div className="picking">
-        <section className="picking__section">
-          <h2>{t.candidates.listLegend}</h2>
-          <p className="picking__note">
-            {t.candidates.legend(policyLabel(item.data?.fifoPolicyCode ?? ''))}
-          </p>
-
-          <ul className="picking__candidates">
-            {ranked.ordered.map((candidate) =>
-              candidateItem(candidate, isRecommended(ranked, candidate.lot.lotId)),
-            )}
-          </ul>
-
-          {ranked.unordered.length === 0 ? null : (
-            <>
-              <h3 className="picking__subhead">{t.candidates.unorderedLegend}</h3>
-              <ul className="picking__candidates">
-                {ranked.unordered.map((candidate) => candidateItem(candidate, false))}
-              </ul>
-            </>
-          )}
-
-          <div className="action-bar">
-            <Button
-              className="picking__pick"
-              variant="filled"
-              size="xl"
-              onClick={() => {
-                setListView(false);
-              }}
-            >
-              {t.candidates.back}
-            </Button>
-          </div>
-        </section>
-      </div>
+      <CodeSheet
+        request={target}
+        customerName={customerName === null ? null : partiesText(customerName, shipToName)}
+        onClose={() => {
+          setQrOpen(false);
+        }}
+      />
     );
   }
 
-  const scanMessage = (): string | undefined => {
-    if (missed === null) {
-      return undefined;
-    }
+  const rejectedLot = lines
+    .flatMap((line) => activeLots(line).map((lot) => ({ line, lot })))
+    .find(({ lot }) => canReplace(lot));
 
-    const other = missedLot.data ?? null;
-
-    if (other === null) {
-      return t.scan.notFound(missed);
-    }
-    if (other.itemId !== target.line.itemId) {
-      return t.scan.otherItem(missed);
-    }
-
-    /*
-     * ⭐ 같은 품목인데 후보에 없다 — 번호를 잘못 읽은 것이 아니라 «아직 집을 수 없는» LOT 이다
-     *   (생산 미완료이거나 재고가 남지 않았다). 「못 찾았다」로 말하면 작업자가 다시 스캔한다.
-     */
-    return t.scan.notPickable(missed);
-  };
-
-  const lineUom = uomOf(target.line.uomId);
-  /* 이름을 못 받았으면 식별자를 대신 보이지 않는다. 작업자가 대조할 수 없는 값이다. */
-  const customerName = customers.data?.get(target.request.customerId) ?? null;
-
-  /*
-   * 여백 표시와 판이 같은 조건을 쓴다. 갈라 적으면 판만 지고 여백이 남아 화면 아래가 빈 채로
-   * 굳는다 - 바깥을 눌러 닫는 처리도 판과 함께 사라져 되돌릴 길이 없다.
-   */
-  const padOpen =
-    keypadOpen && selected !== null && lotProblem(selected, target.line, today) === null;
+  const codeStateOf = (lot: ShipmentRequestLot): CodeFieldState => ({
+    mode: codeTarget?.lotId === lot.shipmentRequestLotId ? codeTarget.mode : null,
+    draft: codeTarget?.lotId === lot.shipmentRequestLotId ? codeTarget.draft : '',
+    saving:
+      saveCode.isPending &&
+      saveCode.variables.lot.shipmentRequestLotId === lot.shipmentRequestLotId,
+    failed: codeFailedLotId === lot.shipmentRequestLotId,
+  });
 
   return (
-    <div className={padOpen ? 'picking docked-pad-open' : 'picking'}>
+    <div className="picking">
       <section className="picking__section">
-        <h2>{t.target.legend}</h2>
         <Card bordered>
           <Card.Body className="card-body picking__card">
-            <strong>{target.request.shipmentRequestNo}</strong>
-            {customerName === null ? null : <p>{t.target.customer(customerName)}</p>}
-            <p>{t.target.shipDate(target.request.requestedShipDate)}</p>
-            <p>{item.data === undefined ? '' : `${item.data.itemCode} ${item.data.itemName}`}</p>
-            {item.isError ? <p className="picking__note">{t.target.itemFailed}</p> : null}
-            <p>
-              {t.targets.progress(String(target.line.allocatedQty), String(target.line.pickedQty))}
-            </p>
-            <p>{t.targets.remaining(String(remainingAllocated(target.line)), lineUom)}</p>
-            {target.line.shippingInspectionRequired ? <Chip>{t.targets.inspection}</Chip> : null}
+            <strong>{target.shipmentRequestNo}</strong>
+            <dl className="picking__facts">
+              {customerName === null ? null : (
+                <>
+                  <dt>{t.request.customer}</dt>
+                  <dd>{customerName}</dd>
+                </>
+              )}
+              {shipToName === null ? null : (
+                <>
+                  <dt>{t.request.shipTo}</dt>
+                  <dd>{shipToName}</dd>
+                </>
+              )}
+              <dt>{t.request.salesOrder}</dt>
+              <dd>{target.salesOrderNo ?? t.requests.noSalesOrder}</dd>
+              <dt>{t.request.shipDate}</dt>
+              <dd>{target.requestedShipDate}</dd>
+            </dl>
+            <Button
+              className="picking__pick"
+              variant="outlined"
+              size="lg"
+              onClick={() => {
+                setQrOpen(true);
+              }}
+            >
+              {t.request.showCode}
+            </Button>
           </Card.Body>
         </Card>
-
-        {/* 자유 텍스트다. 해석해 LOT 을 걸러내지 않고 그대로 크게 보인다. */}
-        {target.line.customerLotRequirement === null ||
-        target.line.customerLotRequirement === undefined ||
-        target.line.customerLotRequirement.trim() === '' ? null : (
-          <AlertBanner variant="info" title={t.target.customerRequirement}>
-            {target.line.customerLotRequirement}
-          </AlertBanner>
-        )}
-
-        {target.line.minimumRemainingShelfLifeDays === null ||
-        target.line.minimumRemainingShelfLifeDays === undefined ? null : (
-          <p className="picking__note">
-            {t.target.minimumShelfLife(target.line.minimumRemainingShelfLifeDays)}
-          </p>
-        )}
-
-        <Button
-          className="picking__pick"
-          variant="text"
-          size="lg"
-          onClick={() => {
-            setChosen(null);
-            setLotId(null);
-            setQty('');
-            setMissed(null);
-          }}
-        >
-          {t.target.change}
-        </Button>
-        {/*
-          이 화면이 보이는 남은 배정은 목록 조회에서 나온다. 그것이 늙은 채로 굳으면 확정 전
-          값이 그대로 남아 배정을 다 채우고도 한 번 더 집게 된다 - 조용히 두지 않는다.
-        */}
-        {requests.isError ? <AlertBanner variant="error" title={t.targets.loadFailed} /> : null}
+        {requests.isError ? <AlertBanner variant="error" title={t.requests.loadFailed} /> : null}
       </section>
 
       <section className="picking__section">
-        <h2>{t.candidates.legend(policyLabel(item.data?.fifoPolicyCode ?? ''))}</h2>
-        {pool.isPending || available.isPending ? <p role="status">{t.candidates.loading}</p> : null}
-        {pool.isError || available.isError ? (
-          <FailureBanner
-            variant="error"
-            title={failureText(pool.error ?? available.error, t.candidates.loadFailed)}
-          />
-        ) : null}
-        {pool.data !== undefined && candidates.length === 0 ? (
-          <AlertBanner variant="warning" title={t.candidates.none} />
-        ) : null}
-        {/*
-          ⛔ 쪽이 잘렸는데 말하지 않으면 「없다」와 「못 받았다」가 같아 보인다 — 작업자가 있는
-             LOT 을 없다고 믿고 되돌아간다.
-        */}
-        {pool.data?.truncated === true || available.data?.truncated === true ? (
-          <AlertBanner variant="warning" title={t.candidates.truncated} />
-        ) : null}
-
-        {/* 모르는 정책으로 줄을 세운 척하면 엉뚱한 순서를 권장으로 낸다. */}
-        {item.data !== undefined && sortFieldOf(item.data.fifoPolicyCode) === null ? (
-          <AlertBanner variant="warning" title={t.candidates.unknownPolicy} />
-        ) : null}
-
-        <ul className="picking__candidates">
-          {shownCandidates.map((candidate) =>
-            candidateItem(candidate, isRecommended(ranked, candidate.lot.lotId)),
-          )}
-        </ul>
-
-        {allCandidates <= shownCandidates.length ? null : (
-          <Button
-            className="picking__pick"
-            variant="outlined"
-            size="lg"
-            onClick={() => {
-              setListView(true);
-            }}
-          >
-            {t.candidates.list(allCandidates)}
-          </Button>
-        )}
-      </section>
-
-      <section className="picking__section">
-        <h2>{t.scan.legend}</h2>
         <TextField
           ref={scanField.ref}
           label={t.scan.label}
           placeholder={t.scan.placeholder}
+          helperText={codeTarget?.mode === 'scan' ? t.scan.paused : t.scan.hint}
           size="xl"
           fullWidth
-          error={scanMessage()}
         />
         {/*
          * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
@@ -674,66 +571,155 @@ export const ProductPickingScreen = () => {
             {t.scan.manualLabel}
           </Button>
         )}
-        {selected === null ? null : <p>{t.scan.picked(selected.lot.lotNo)}</p>}
+        {pick.isPending ? <p role="status">{t.scan.pending(pick.variables.lotNo)}</p> : null}
+        {notice === null ? null : (
+          <NoticeBanner
+            notice={notice}
+            uomOf={uomOf}
+            onRetry={(lotNo) => void pickScanned(lotNo)}
+          />
+        )}
+        {rejectedLot === undefined || notice?.kind === 'replaced' ? null : (
+          <AlertBanner variant="error" title={t.replace.rejectedNotice}>
+            {t.line.title(rejectedLot.line.lineNo, itemCodeOf(rejectedLot.line.itemId))},{' '}
+            {rejectedLot.lot.lotNo}
+          </AlertBanner>
+        )}
       </section>
 
-      {/*
-       * 집을 수 없는 LOT 에는 수량칸을 열지 않는다. 열어 두면 「집을 수 없습니다」 옆에
-       * 「집을 수 있습니다」가 나란히 서고, 확정 단추만 잠긴 채 이유가 어긋난다.
-       */}
-      {selected === null || lotProblem(selected, target.line, today) !== null ? null : (
-        <section className="picking__section">
-          <h2>{t.qty.label}</h2>
-          {/* 권장은 순서 제안이지 위치가 아니다. 경고하되 막지 않고 사유도 묻지 않는다. */}
-          {isRecommended(ranked, selected.lot.lotId) ? null : (
-            <AlertBanner variant="warning" title={t.lot.notRecommended} />
-          )}
-          <TextField
-            label={required(t.qty.label)}
-            inputMode="none"
-            size="xl"
-            fullWidth
-            value={qty}
-            onChange={(event) => {
-              setQty(event.target.value);
-            }}
-            onFocus={() => {
-              setKeypadOpen(true);
-            }}
-            error={qtyMessage()}
-          />
-          {pick.error === null || pick.error === undefined ? null : isConflict(
-              toApiError(pick.error),
-            ) ? (
-            <AlertBanner variant="error" title={t.conflict} />
-          ) : (
-            <AlertBanner variant="error" title={saveRefusal(pick.error) ?? t.failed} />
-          )}
-          <Button
-            className="picking__pick"
-            variant="filled"
-            size="2xl"
-            loading={pick.isPending}
-            disabled={!canPick(selected, target.line, qty, worker !== null, today)}
-            onClick={() => void confirm()}
-          >
-            {t.submit}
-          </Button>
-        </section>
-      )}
+      {lines.map((line) => {
+        const label = t.line.title(line.lineNo, itemCodeOf(line.itemId));
+        const item = items.get(line.itemId);
+        const live = activeLots(line);
+        const gone = replacedLots(line);
+        const reached = lineTiles(line).kind === 'over';
 
-      {!padOpen ? null : (
-        <DockedNumberPad
-          head={t.qty.label}
-          value={qty}
-          onChange={setQty}
-          onClose={() => {
-            setKeypadOpen(false);
+        return (
+          <section key={line.shipmentRequestLineId} className="picking__section picking__line">
+            <div className="picking__line-head">
+              <h2>{label}</h2>
+              <Chip status={line.shippingInspectionRequired ? 'info' : 'idle'}>
+                {line.shippingInspectionRequired ? t.line.inspection : t.line.noInspection}
+              </Chip>
+              {reached ? <Chip status="success">{t.line.reached}</Chip> : null}
+            </div>
+            {item === undefined ? null : (
+              <p className="picking__note">
+                {item.itemName}, {uomOf(line.uomId)}
+              </p>
+            )}
+            {line.customerLotRequirement === null ||
+            line.customerLotRequirement === undefined ||
+            line.customerLotRequirement.trim() === '' ? null : (
+              <AlertBanner variant="info" title={t.line.customerRequirement}>
+                {line.customerLotRequirement}
+              </AlertBanner>
+            )}
+            {line.minimumRemainingShelfLifeDays === null ||
+            line.minimumRemainingShelfLifeDays === undefined ? null : (
+              <p className="picking__note">
+                {t.line.minimumShelfLife(line.minimumRemainingShelfLifeDays)}
+              </p>
+            )}
+            <LineTiles line={line} label={label} />
+
+            {live.length === 0 && gone.length === 0 ? (
+              <p className="picking__note">{t.line.noLots}</p>
+            ) : (
+              <ul className="picking__lots">
+                {live.map((lot) => (
+                  <LotRow
+                    key={lot.shipmentRequestLotId}
+                    lot={lot}
+                    uom={uomOf(lot.uomId)}
+                    fresh={lot.shipmentRequestLotId === freshLotId}
+                    code={codeStateOf(lot)}
+                    onReplace={() => {
+                      setReplaceTarget({ lot, line });
+                    }}
+                    onCodeScan={() => {
+                      setCodeFailedLotId(null);
+                      setCodeTarget({ lotId: lot.shipmentRequestLotId, mode: 'scan', draft: '' });
+                      scanField.focus();
+                    }}
+                    onCodeType={() => {
+                      setCodeFailedLotId(null);
+                      setCodeTarget({
+                        lotId: lot.shipmentRequestLotId,
+                        mode: 'type',
+                        draft: lot.managementCode ?? '',
+                      });
+                    }}
+                    onCodeDraft={(value) => {
+                      setCodeTarget({
+                        lotId: lot.shipmentRequestLotId,
+                        mode: 'type',
+                        draft: value,
+                      });
+                    }}
+                    onCodeCancel={() => {
+                      setCodeTarget(null);
+                      scanField.focus();
+                    }}
+                    onCodeSave={() => {
+                      void submitCode(lot, codeTarget?.draft ?? '');
+                    }}
+                  />
+                ))}
+                {gone.map((lot) => (
+                  <ReplacedRow key={lot.shipmentRequestLotId} lot={lot} uom={uomOf(lot.uomId)} />
+                ))}
+              </ul>
+            )}
+          </section>
+        );
+      })}
+
+      <Button className="picking__pick" variant="text" size="lg" onClick={leave}>
+        {t.request.change}
+      </Button>
+
+      {replaceTarget === null ? null : (
+        <ConfirmDialog
+          open
+          title={t.replace.confirmTitle(replaceTarget.lot.lotNo)}
+          cancelLabel={t.replace.cancel}
+          proceedLabel={t.replace.proceed}
+          onCancel={() => {
+            setReplaceTarget(null);
           }}
-          /* 남은 배정이 음수로 오면 상한이 음수가 된다. 서버 값이 그럴 수 있다. */
-          max={Math.max(0, Math.min(selected.availableQty, remainingAllocated(target.line)))}
-          allowDecimal
-        />
+          onProceed={() => void confirmReplace()}
+        >
+          {(() => {
+            const effect = replaceEffect(replaceTarget.line, replaceTarget.lot);
+            const uom = uomOf(replaceTarget.lot.uomId);
+
+            return (
+              <ul className="picking__effects">
+                <li>
+                  {t.replace.effectPicked(
+                    String(replaceTarget.lot.pickedQty),
+                    uom,
+                    replaceTarget.line.lineNo,
+                    String(effect.before),
+                    String(effect.after),
+                  )}
+                </li>
+                <li>{t.replace.effectDefect}</li>
+                {effect.receive > 0 ? (
+                  <li>
+                    {t.replace.effectReceive(
+                      replaceTarget.line.lineNo,
+                      String(effect.receive),
+                      uom,
+                    )}
+                  </li>
+                ) : null}
+                <li>{t.replace.irreversible}</li>
+              </ul>
+            );
+          })()}
+        </ConfirmDialog>
       )}
     </div>
   );

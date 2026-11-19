@@ -475,4 +475,143 @@ export const oqcInspection = {
     },
     round: (round: number): string => `${round}회차`,
   },
+  /**
+   * 출하 OQC 새 흐름(피처 010 · omf-all-around#305) — 대상이 출하 지시서이고 LOT 이 없는 의뢰. IQC W-01-01 처럼 결과마다 피킹 LOT 을
+   * 매칭하고 판정 하나만 남긴다. 수량 칸 · 확정 단추가 없고, 확정은 POP 출하 완료(P-04-07) 때 일어난다(decisions #47).
+   */
+  shipment: {
+    /** 목록 — 의뢰번호 아래 지시서 번호, 수량 칸 대신 「피킹 LOT」·「LOT 판정」. */
+    queue: {
+      pickedLotsColumn: '피킹 LOT',
+      judgmentColumn: 'LOT 판정',
+      pickedLots: (count: number): string => `${String(count)}개`,
+      noLots: '없음',
+    },
+    /** LOT 판정 요약 칩 — 출하 완료 관문과 같은 말. */
+    overview: {
+      notInspected: (count: number): string => `미검사 ${String(count)}`,
+      rejected: (count: number): string => `불합격 ${String(count)}`,
+      held: (count: number): string => `보류 ${String(count)}`,
+      allAccepted: '모두 합격',
+      none: '피킹 LOT 없음',
+      skipped: '생략',
+    },
+    /** LOT 판정 배지 — 미검사 · 합격 · 불합격 · 보류 · 생략(통과). */
+    judgments: {
+      ACCEPTED: '합격',
+      REJECTED: '불합격',
+      HELD: '보류',
+      NOT_INSPECTED: '미검사',
+      SKIPPED: '생략(통과)',
+    },
+    facts: {
+      shipmentRequest: '출하 지시서',
+      customer: '고객',
+      shipTo: '납품처',
+      item: '품목',
+      targetPicked: '목표 / 피킹',
+      inspectionType: '검사 유형',
+      inspectionTypeValue: '출하검사',
+      plan: '적용 기준',
+      requestedAt: '의뢰 일시',
+      request: '의뢰번호',
+    },
+    targetPicked: (target: string, picked: string, uom: string): string =>
+      `${target} / ${picked} ${uom}`,
+    over: (qty: string): string => `초과 ${qty}`,
+    note: '판정은 POP 「출하 완료」(P-04-07) 때 확정됩니다. 확정 버튼은 없습니다. 그 전까지 결과를 더하거나 고칠 수 있고, LOT 마다 그 LOT 을 매칭한 마지막 결과가 판정입니다.',
+    skipped: '이 의뢰는 OQC 생략으로 닫혔습니다.',
+    skippedMore:
+      '피킹 LOT 은 모두 통과로 봅니다. 생략 뒤 피킹되는 LOT(교체 포함)도 생략으로 봅니다.',
+    completed: '출하 완료로 판정이 확정된 의뢰입니다. 결과를 더하거나 고칠 수 없습니다.',
+    lots: {
+      title: '피킹 LOT',
+      count: (count: number): string => `(${String(count)}건)`,
+      total: (qty: string): string => `총 ${qty}`,
+      heading: (count: number): string => `피킹 LOT ${String(count)}건`,
+      columns: {
+        lotNo: 'LOT 번호',
+        qty: '피킹 수량',
+        portions: '창고 · 위치', // ui-check-ignore: C-13 시안 W0403 칸 이름 「창고 · 위치」
+        judgment: '판정',
+        applied: '적용 검사',
+      },
+      applied: (seqNo: number): string => `${String(seqNo)}회차`,
+      appliedNone: '없음',
+      replaceHint: 'PDA 에서 [교체] 가능',
+      replaced: '교체됨',
+      /** 교체된 LOT 회색 줄 — 「2회차 불합격 · PDA 교체 11-18 11:02 김작업 · 부적합 NC-…」. */
+      replacedLine: (
+        judgment: string,
+        at: string,
+        worker: string,
+        nonconformanceNo: string | null,
+      ): string =>
+        `${judgment} · PDA 교체 ${at} ${worker}${nonconformanceNo === null ? '' : ` · 부적합 ${nonconformanceNo}`}`, // ui-check-ignore: C-13 시안 W0403 · P0406 교체 근거 줄
+      replacedFallback: 'PDA 에서 교체되어 판정 대상에서 빠졌습니다.',
+      portion: (warehouse: string, location: string | null, qty: string): string =>
+        location === null ? `${warehouse} ${qty}` : `${warehouse} ${location} ${qty}`,
+      emptyTitle: '아직 피킹된 LOT 이 없습니다',
+      emptyDescription:
+        'PDA 「제품 피킹」에서 LOT 을 스캔하면 여기에 보입니다. 피킹이 끝나지 않아도 피킹된 LOT 부터 결과를 기록할 수 있습니다.',
+    },
+    results: {
+      title: '검사 결과',
+      count: (count: number): string => `(${String(count)}건)`,
+      heading: (count: number): string => `검사 결과 ${String(count)}건`,
+      add: '검사 결과 추가',
+      addBlocked: '피킹된 LOT 이 없어 결과를 추가할 수 없습니다.',
+      columns: {
+        seq: '검사 회차',
+        judgment: '판정',
+        matched: '적용 LOT',
+        inspector: '검사자',
+        inspectedAt: '검사 일시',
+        actions: '작업',
+      },
+      seq: (seqNo: number): string => `${String(seqNo)}회차`,
+      noMatch: '매칭 없음',
+      edit: '수정',
+      remove: '삭제',
+      lockedRow: '확정됨',
+      empty: '등록된 검사 결과가 없습니다.',
+      reason: (name: string): string => `재검 사유: ${name}`,
+    },
+    drawer: {
+      addTitle: (seqNo: number): string => `${String(seqNo)}회차 검사 결과 추가`,
+      editTitle: (seqNo: number): string => `${String(seqNo)}회차 검사 결과 수정`,
+      matchHeading: '피킹 LOT 매칭',
+      selectAll: '전부 선택',
+      selectNone: '전부 해제',
+      alsoMatched: (seqNos: string): string => `${seqNos}회차에도 매칭됨`,
+      matchRequired: '피킹 LOT 을 1개 이상 고르세요',
+      judgmentHeading: '판정',
+      judgmentNote: '하나만 고릅니다. 수량은 넣지 않습니다(서버가 매칭 LOT 피킹 합으로 채웁니다).',
+      judgmentRequired: '판정을 고르세요',
+      reasonHeading: '재검 사유',
+      reasonHelp: '이 결과가 아래 피킹 LOT 의 판정을 바꿉니다. 재검 사유를 고르세요.',
+      reasonLine: (lotNo: string, seqNo: number, before: string, after: string): string =>
+        `LOT ${lotNo}: ${String(seqNo)}회차 ${before} → 이 회차 ${after}`,
+      reasonPlaceholder: '재검 사유 선택',
+      reasonRequired: '재검 사유를 고르세요',
+      reasonLoadFailed: '재검 사유 목록을 불러오지 못했습니다.',
+      ruleErrors: {
+        MATCHED_LOT_REQUIRED: '피킹 LOT 을 1개 이상 고르세요',
+        REINSPECTION_REASON_REQUIRED:
+          '이 결과가 불합격이나 보류 판정을 바꿉니다. 재검 사유를 고르세요',
+      },
+      cancel: '취소',
+      save: '제출',
+      saving: '저장 중…',
+      added: (seqNo: number): string => `${String(seqNo)}회차 검사 결과를 기록했습니다.`,
+      updated: (seqNo: number): string => `${String(seqNo)}회차 검사 결과를 고쳤습니다.`,
+      loading: '결과를 불러오는 중입니다',
+      /** 409 CONFIRMED_BY_SHIPMENT_COMPLETION — 그 사이 출하 완료로 확정됐다. */
+      confirmedByShipment: '출하 완료로 판정이 확정되어 결과를 기록할 수 없습니다.',
+      saveFailed: '결과를 저장하지 못했습니다.',
+      discardBody: '입력한 내용이 사라집니다. 닫을까요?',
+      discardStay: '계속 입력',
+      discardLeave: '닫기',
+    },
+  },
 } as const;

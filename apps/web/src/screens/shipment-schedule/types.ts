@@ -30,6 +30,8 @@ export type PageMeta = components['schemas']['PageMeta'];
 export interface LineQtyTotals {
   requestedQty: number | null;
   allocatedQty: number | null;
+  /** 피처 010 — 피킹 합(LOT 통째). 목표(배정)를 넘을 수 있다. */
+  pickedQty: number | null;
   shippedQty: number | null;
 }
 
@@ -56,9 +58,10 @@ export const toLineQtyTotals = (
     (totals, line) => ({
       requestedQty: addQty(totals.requestedQty, line.requestedQty),
       allocatedQty: addQty(totals.allocatedQty, line.allocatedQty),
+      pickedQty: addQty(totals.pickedQty, line.pickedQty),
       shippedQty: addQty(totals.shippedQty, line.shippedQty),
     }),
-    { requestedQty: 0, allocatedQty: 0, shippedQty: 0 },
+    { requestedQty: 0, allocatedQty: 0, pickedQty: 0, shippedQty: 0 },
   );
 };
 
@@ -80,6 +83,14 @@ export interface ShipmentRequestView {
   shipmentProgressCode: ShipmentProgressCode;
   inspectionStatus: ShipmentRequestResponse['shippingInspectionStatusCode'];
   lineTotals: LineQtyTotals | null;
+  /** 피처 010 — 라인 초과 합(서버가 라인마다 계산한 `overQty`). */
+  overQty: number;
+  /** 피처 010 — 살아 있는 피킹 LOT 의 OQC 판정 수. 옛 서버가 안 주면 `null`. */
+  lotJudgmentSummary: ShipmentRequestResponse['lotJudgmentSummary'] | null;
+  /** 출하 완료를 막는 이유 수 — 비면 「완료 대기」(FR-016). 옛 서버가 안 주면 `null`. */
+  blockerCount: number | null;
+  pickingWarehouseNames: string[];
+  replacementCount: number;
 }
 
 /** 응답 한 건을 화면 타입으로 옮기는 **유일한 지점**이다. */
@@ -93,6 +104,14 @@ export const toShipmentRequestView = (data: ShipmentRequestResponse): ShipmentRe
   shipmentProgressCode: data.shipmentProgressCode,
   inspectionStatus: data.shippingInspectionStatusCode,
   lineTotals: toLineQtyTotals(data.lines),
+  overQty: (data.lines ?? []).reduce(
+    (sum, line) => sum + (typeof line.overQty === 'number' ? line.overQty : 0),
+    0,
+  ),
+  lotJudgmentSummary: data.lotJudgmentSummary ?? null,
+  blockerCount: data.completionBlockers === undefined ? null : data.completionBlockers.length,
+  pickingWarehouseNames: (data.pickingWarehouses ?? []).map((warehouse) => warehouse.warehouseName),
+  replacementCount: data.replacementCount ?? 0,
 });
 
 /** 목록 조회 결과. `page`는 쪽 이동과 위치 표시의 정본이다. */
