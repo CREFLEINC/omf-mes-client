@@ -122,13 +122,12 @@ describe('US1-4 라벨 발행 — 차례로 보낸다', () => {
     await user.click(screen.getByRole('button', { name: t.bar.issue(1) }));
 
     const dialog = await screen.findByRole('dialog', { name: t.preview.title });
-    expect(within(dialog).getByText(t.preview.note)).toBeInTheDocument();
     const label = within(dialog).getByRole('figure');
     expect(label).toHaveTextContent('SYN-ITEM-01|1000|261111|SYN-P-01|0001');
     expect(label).toHaveTextContent('1,000 EA');
     expect(label).toHaveTextContent('봉지 10 × 100');
     expect(label).toHaveTextContent('합성 공급사 가 (SYN-P-01)');
-    expect(within(dialog).getByText(t.preview.page(1, 1))).toBeInTheDocument();
+    expect(within(dialog).getByText(t.preview.count(1))).toBeInTheDocument();
   });
 
   it('US1-4 셸에 80 × 30 TSPL 라벨을 넘기고 QR 에는 LOT 번호만, 수량 줄 옆에 패키징을 싣는다', async () => {

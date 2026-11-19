@@ -840,7 +840,6 @@ export const PopMaterialLotLabelScreen = () => {
         <PreviewDialog
           lots={dialog.lots}
           reasonName={dialog.reprint ? reasonName : null}
-          printerName={headPrinter?.displayName ?? null}
           onCancel={() => {
             setDialog(null);
           }}

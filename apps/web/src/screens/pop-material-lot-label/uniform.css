@@ -128,7 +128,8 @@
   height: 48px;
 }
 
-/* 표: 줄 56, 두 줄 묶음 칸. 바깥 칸(`mll-table`)이 남는 높이를 갖고 쪽 건수를 잰다. */
+/* 표: 바깥 칸(`mll-table`)이 남는 높이를 갖고 쪽 건수를 잰다. 칸 폭·줄 높이는 공통 표(`pu-table`) 규칙.
+ * 발행 대기: LOT 번호 칸은 번호만큼(넘치면 말줄임) — 남는 폭은 마지막 「라벨」 칸이 갖는다. */
 .mll-table {
   overflow: hidden;
 }
@@ -137,50 +138,24 @@
   max-height: 100%;
 }
 
-.mll-table .pu-table {
-  table-layout: fixed;
-}
-
-.mll-table th.num {
-  width: 150px;
-}
-
-.mll-table .pu-table th,
-.mll-table .pu-table td {
-  padding-left: 10px;
-  padding-right: 10px;
-}
-
-.mll-table .pu-table td {
-  height: 56px;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  vertical-align: middle;
-}
-
-.mll-table .mll-ck {
-  width: 52px;
-  text-align: center;
-}
-
-.mll-table .mll-state {
-  width: 120px;
-}
-
-.mll-table .mll-last {
-  width: 130px;
+.mll-table .pu-table td.mll-lotcol {
+  max-width: 280px;
 }
 
 .mll-sub {
   display: block;
   font-size: 12px;
+  line-height: 16px;
   color: var(--pu-text-3);
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .mll-lot {
+  display: block;
   font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mll-table tr.mll-dis td {
@@ -358,14 +333,20 @@
   gap: 12px;
 }
 
-.mll-preview-printer {
-  margin-right: auto;
+.mll-preview-count {
   align-self: center;
-  font-size: 13px;
-  color: var(--pu-text-3);
+  padding: 8px 14px;
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-card-2);
+  color: var(--pu-text-2);
+  font-size: 15px;
 }
 
-/* 1024 단말: 발행 단위 줄은 두 줄로, 표 고정 칸은 좁게(LOT 번호 칸이 남는 폭을 갖는다). */
+.mll-preview-code {
+  font-size: 18px;
+}
+
+/* 1024 단말: 발행 단위 줄은 두 줄로. */
 @media (max-width: 1100px) {
   .mll-units {
     gap: 6px;
@@ -386,32 +367,6 @@
 
   .mll-units > .pu-btn {
     padding: 0 10px;
-  }
-
-  .mll-table .mll-ck {
-    width: 40px;
-  }
-
-  .mll-table th.num {
-    width: 104px;
-  }
-
-  .mll-table .mll-state {
-    width: 92px;
-  }
-
-  .mll-table .mll-last {
-    width: 84px;
-  }
-
-  .mll-table .pu-table th,
-  .mll-table .pu-table td {
-    padding-left: 6px;
-    padding-right: 6px;
-  }
-
-  .mll-lot {
-    font-size: 11px;
   }
 }
 

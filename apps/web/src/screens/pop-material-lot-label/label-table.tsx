@@ -126,12 +126,12 @@ export const LabelTable = ({
         <table className="pu-table">
           <thead>
             <tr>
-              <th className="mll-ck">{t.columns.check}</th>
-              <th>{t.columns.lotNo}</th>
+              <th className="fit mid">{t.columns.check}</th>
+              <th className={isReprint ? undefined : 'fit'}>{t.columns.lotNo}</th>
               {isReprint ? <th>{t.columns.item}</th> : null}
-              <th className="num">{t.columns.qty}</th>
-              <th className="mll-state">{t.columns.status}</th>
-              <th className="mll-last">
+              <th className="num fit">{t.columns.qty}</th>
+              <th className="fit mid">{t.columns.status}</th>
+              <th className={isReprint ? 'fit' : undefined}>
                 {showResults ? t.columns.result : isReprint ? t.columns.printed : t.columns.label}
               </th>
             </tr>
@@ -165,7 +165,7 @@ export const LabelTable = ({
                       : undefined
                   }
                 >
-                  <td className="mll-ck">
+                  <td className="fit mid">
                     {status !== null && status.kind !== 'notSelected' ? (
                       <span className="mll-mark" data-tone={statusTone(status)}>
                         {status.kind === 'printed' ? <PuIcon name="check" /> : null}
@@ -190,24 +190,24 @@ export const LabelTable = ({
                       <span className="mll-box is-off" aria-hidden="true" />
                     )}
                   </td>
-                  <td>
+                  <td className={isReprint ? undefined : 'fit mll-lotcol'} title={lot.lotNo}>
                     <span className="pu-mono mll-lot">{lot.lotNo}</span>
                     <span className="mll-sub">{lotSub}</span>
                   </td>
                   {isReprint ? (
-                    <td>
+                    <td title={`${lot.itemCode} ${lot.itemName}`}>
                       {lot.itemCode}
                       <span className="mll-sub">{lot.itemName}</span>
                     </td>
                   ) : null}
-                  <td className="num">
+                  <td className="num fit">
                     {`${formatQty(lot.lotQty)} ${lot.uomCode}`}
                     <span className="mll-sub">{packageText ?? t.noPackage}</span>
                   </td>
-                  <td className="mll-state">
+                  <td className="fit mid">
                     <LotStateChip lot={lot} />
                   </td>
-                  <td className="mll-last">
+                  <td className={isReprint ? 'fit' : undefined}>
                     {status === null ? (
                       <LabelCell lot={lot} />
                     ) : (

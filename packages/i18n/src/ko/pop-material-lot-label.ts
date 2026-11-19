@@ -279,11 +279,8 @@ export const popMaterialLotLabel = {
   },
   /** 라벨 미리 보기(발행 · 다시 인쇄). */
   preview: {
-    title: '라벨 발행 미리 보기',
+    title: '라벨 미리보기',
     reprintTitle: '재인쇄 미리 보기',
-    note: 'QR에는 자재 관리 LOT 번호만 실립니다. 라벨에는 품목·재고 수량·단위·포장(있으면)·공급사가 보입니다.',
-    reprintNote: (reason: string) =>
-      ` 사유 「${reason}」로 재인쇄합니다. 출력 회차가 하나 오릅니다.`,
     kind: '자재 관리 LOT',
     item: '품목',
     qty: '수량',
@@ -293,9 +290,7 @@ export const popMaterialLotLabel = {
     prev: '◀ 이전',
     next: '다음 ▶',
     page: (index: number, total: number) => `${index} / ${total}장`,
-    printer: (name: string) => `프린터 ${name}`,
-    printerDefault: '프린터 기본값',
-    cancel: '취소',
+    count: (count: number) => `${count}장`,
     close: '닫기',
     print: (count: number) => `${count}장 인쇄`,
     reprint: (count: number) => `${count}장 재인쇄`,
