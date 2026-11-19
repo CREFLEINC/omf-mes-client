@@ -222,6 +222,27 @@
   margin-inline: var(--pop-pad);
 }
 
+/*
+ * ⭐ **남는 높이를 가져갈 블록도 «자리»로 겨냥한다.**
+ *
+ * 본문을 담는 블록의 이름이 화면마다 다르다(`.pop-panes`·`.pop-assign`·구획 직접 나열…).
+ * 이름을 하나씩 적어 두면 화면이 늘 때마다 빠뜨리고, 빠뜨린 화면은
+ * **본문이 줄지 못해 화면 밖으로 넘친다**(실측 — 작업실적 등록 140px). 그래서 「무엇이
+ * 늘어나는가」가 아니라 「무엇이 늘어나지 «않는가»」를 적는다 — 머리줄·배너·액션 줄·창은
+ * 제 높이를 지키고, **나머지가 남는 높이를 나눠 갖는다.**
+ *
+ * ⚠ `[class*='action']` 은 액션 줄의 이름이 화면마다 다르기 때문이다(`.pop-actions`·
+ * `.action-bar`…). 이름 규칙에 기대는 자리라, 새 이름이 그 규칙을 벗어나면 그
+ * 화면에서 액션 줄이 늘어난다 — 그때 이 선택자를 고친다.
+ */
+.pop-ui
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not([data-pop-fixed]):not(.pu-screen) {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .pop-ui > .pop-assign {
   gap: var(--space-4);
   align-items: stretch;
@@ -497,6 +518,31 @@
   gap: var(--space-3);
 }
 
+/*
+ * 늘어난 블록 «안»에서 스크롤이 일어나게 한다.
+ *
+ * 남는 높이를 나눠 갖게 한 것만으로는 모자라다 — 블록이 줄어도 그 «내용»이 줄지 않으면
+ * 넘친 만큼이 화면 밖으로 나간다(실측 52px). 블록은 자기 테두리에서 자르고, 그 안의 칸이
+ * 스크롤한다. 머리줄은 그대로 서 있으므로 「지금 무슨 화면·어느 단말인가」는 사라지지 않는다.
+ *
+ * ⚠ `.pane` 은 제외한다 — 그쪽은 자기가 이미 스크롤 칸이다(위 구획 규칙).
+ */
+.pop-ui
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not([data-pop-fixed]):not(.pane):not(.pu-screen) {
+  overflow: hidden;
+}
+
+.pop-ui
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not([data-pop-fixed]):not(.pane):not(.pu-screen)
+  > * {
+  min-height: 0;
+  overflow-y: auto;
+}
+
 /* 머리줄과 본문 사이에 끼는 배너(작업지시 없음 등)는 늘어나지 않는다. */
 .pop-ui > .banner-slot {
   flex: 0 0 auto;
@@ -566,6 +612,73 @@
 
 .pop-ui .packing-label-status > [role='alert'] {
   flex: 1 1 28rem;
+}
+
+/*
+ * 본문은 **스스로 굴린다** — 이 화면은 위 「블록은 테두리에서 자르고 안쪽 칸이 스크롤한다」의
+ * 예외다.
+ *
+ * 스캔 셋이 제 높이를 지키고 포장 구성이 바닥을 갖는 순간 본문이 예산을 넘는데, 공용 규칙의
+ * `overflow: hidden` 이 그대로면 넘친 만큼이 **소리 없이 잘린다**(실측 151px — 포장 구성
+ * 아랫단과 진행 구획이 통째로 사라졌다). 머리줄과 액션바는 격자가 따로 잡고 있어 굴러도
+ * 밀리지 않는다 — [ 포장 확정 ]은 늘 같은 자리다.
+ */
+.pop-ui
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not([data-pop-fixed]):not(.pane).packing-body {
+  overflow-y: auto;
+}
+
+/*
+ * ①②③ 스캔 구획(출하번호 · 납품라벨 · 생산LOT)은 **눌리지 않는다**(사용자 지시 2026-09-10).
+ *
+ * 셋은 본문의 몫을 나눠 받고 있어 자리가 모자라면 «각자» 줄었고, 줄어든 만큼 상자 안에서
+ * 스크롤이 생겨 [ 읽기 ]·[ 직접 입력 ]이 반만 남았다(실측 41~46px). 스캔은 이 화면의 첫
+ * 동작이라 버튼이 반만 보이는 상태로 두면 그 자리에서 막힌다.
+ *
+ * ⭐ 스크롤은 아래 포장 구성이 맡는다 — 담긴 목록은 길어지는 것이 정상이고, 그 구획은 안에
+ * 표를 따로 굴릴 자리를 이미 갖고 있다.
+ *
+ * ⚠ **겨냥이 길다.** 위쪽 「늘어난 블록 안에서 스크롤한다」 규칙이 본문의 «모든» 자식에
+ *   `min-height: 0`·`overflow-y: auto` 를 걸고, 그 규칙의 `:not()` 사슬이 무게를 크게 만든다.
+ *   같은 사슬을 그대로 두고 뒤에 이름만 붙여 이긴다 — `!important` 를 쓰면 다음 사람이 이길
+ *   방법이 없어진다(이 파일의 규약).
+ */
+.pop-ui
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not([data-pop-fixed]):not(.pane)
+  > .packing-scan,
+.pop-ui
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not([data-pop-fixed]):not(.pane)
+  > .packing-target,
+.pop-ui
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not([data-pop-fixed]):not(.pane)
+  > .packing-progress {
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow: visible;
+}
+
+/*
+ * ④ 포장 구성 — **바닥을 둔다.** 위 셋이 제 높이를 지키면 남는 것을 이 구획이 받는데, 그대로
+ * 두면 0 까지 눌려 표가 통째로 사라졌다(실측 — 「담긴 것이 없습니다」조차 안 보였다). 표 머리와
+ * 수량 키패드가 함께 서는 최소 높이를 잡아 둔다.
+ *
+ * ⚠ 그래도 모자란 만큼은 본문이 스크롤한다(`app.css` 의 「마지막 안전망」) — 머리줄과 액션바는
+ *   자리를 지키므로 [ 포장 확정 ]은 늘 같은 곳에 있다.
+ */
+.pop-ui
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not([data-pop-fixed]):not(.pane)
+  > .packing-compose {
+  min-height: 15rem;
 }
 
 /*
@@ -2691,6 +2804,19 @@
 }
 
 /*
+ * ③ 은 남는 높이를 갖고, 줄이 넘치면 자기 안에서 스크롤한다. 최소 높이를 낮춰 두어야
+ * 위 구획들이 제 높이를 지킨 채로 본문이 한 화면에 담긴다.
+ */
+.pop-ui.packing-shell
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not([data-pop-fixed]):not(.pane)
+  > .packing-compose {
+  /* ③ 은 남는 높이를 갖고 넘치면 자기 안에서 스크롤한다 — 구획이 다섯이라 하한을 낮게 둔다. */
+  min-height: 7rem;
+}
+
+/*
  * ⛔ **키패드가 없다고 단을 하나로 접지 않는다**(#1351). 접으면 담긴 목록의 폭이 LOT 을 읽을
  *    때마다 바뀐다 — 그 흔들림을 없애려고 목록을 오른쪽 «붙박이» 단으로 옮긴 것이다. 왼쪽 단은
  *    키패드가 없는 동안 유형 줄만 세운 채 자리를 지킨다.
@@ -2965,6 +3091,22 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
+}
+
+/*
+ * 출하 실적 등록 — 본문 맨 위 「출하 대상을 선택하세요」 띠는 **제 높이를 지킨다**(#1268 · 사용자 지시
+ * 2026-09-15). 본문 겹(`.packing-body`)의 자식은 남는 높이를 나눠 갖고(`min-height: 0`) 넘치면
+ * 잘리는데, 띠도 그 규칙을 받아 반쯤 잘렸다(실측). 옆 구획(`.packing-target` 등)과 같은 무게로 푼다.
+ * ⛔ `.packing-body` 로 좁힌다 — 다른 화면 본문 겹의 띠까지 제 높이를 고집하면 세로 예산을 넘친다(리뷰 지적).
+ */
+.pop-ui
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not([data-pop-fixed]):not(.pane).packing-body
+  > .banner-slot {
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow: visible;
 }
 
 /*
