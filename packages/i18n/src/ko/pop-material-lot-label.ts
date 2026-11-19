@@ -77,7 +77,7 @@ export const popMaterialLotLabel = {
       check: '선택',
       lotNo: '자재 관리 LOT 번호',
       item: '품목',
-      qty: '재고 수량',
+      qty: '재고량',
       package: '포장',
       status: '상태',
       label: '라벨',

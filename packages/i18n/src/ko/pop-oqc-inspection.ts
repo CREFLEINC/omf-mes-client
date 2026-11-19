@@ -17,7 +17,7 @@ export const popOqcInspection = {
     caption: '판정 대기 의뢰 목록',
     columns: {
       item: '품목',
-      qty: '검사 수량',
+      qty: '검사량',
     },
     selectRow: (requestNo: string): string => `의뢰 ${requestNo} 선택`,
     loading: '판정 대기 목록을 불러오는 중입니다.',
@@ -88,7 +88,7 @@ export const popOqcInspection = {
     judgmentUnknown: (code: string): string => `저장된 판정(${code})이 목록에 없습니다.`,
     /** 넣은 수량 요약 · 회차별 결과. */
     summary: {
-      inspectedQty: '검사 수량',
+      inspectedQty: '검사량',
       accepted: '합격',
       rejected: '불합격',
       held: '보류',
@@ -148,7 +148,7 @@ export const popOqcInspection = {
       worker: '사번이 지정되지 않았습니다. [사용자 전환]에서 사번을 입력하세요.',
       confirmed: '확정된 회차입니다. 다시 판정하려면 재검사 회차를 추가하세요.',
       draftElsewhere: '다른 곳에서 작성 중인 회차입니다. 다시 판정하려면 재검사 회차를 추가하세요.',
-      totals: '합격 + 불합격 + 보류가 검사 수량과 같아야 합니다.',
+      totals: '합격 + 불합격 + 보류가 검사량과 같아야 합니다.',
       judgmentOptions: '판정 값 목록이 없어 저장할 수 없습니다. 담당자에게 문의하세요.',
       judgment: '종합 판정을 선택하세요.',
     },
@@ -161,7 +161,7 @@ export const popOqcInspection = {
     title: '판정을 저장할까요?',
     request: '의뢰번호',
     judgment: '종합 판정',
-    inspectedQty: '검사 수량',
+    inspectedQty: '검사량',
     accepted: '합격',
     rejected: '불합격',
     held: '보류',

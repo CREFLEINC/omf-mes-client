@@ -453,7 +453,7 @@ export const oqcInspection = {
     ok: 'OK',
     ng: 'NG',
     empty: '스캔한 시리얼이 없습니다. 시리얼 없이 LOT 판정만 저장할 수도 있습니다.',
-    tooMany: '검사한 시리얼 수가 검사 수량보다 많습니다.',
+    tooMany: '검사한 시리얼 수가 검사량보다 많습니다.',
     tooManyNg: 'NG 시리얼 수가 불합격량보다 많습니다. 불합격량을 확인하세요.',
     count: (total: number, ng: number): string => `시리얼 ${total}대, NG ${ng}대`,
     recordHeading: '시리얼별 출하검사 이력',

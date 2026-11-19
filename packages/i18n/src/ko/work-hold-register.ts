@@ -26,7 +26,7 @@ export const workHoldRegister = {
     title: '작업지시 (W/O)',
     process: '공정',
     item: '제품',
-    planQty: '계획수량',
+    planQty: '계획량',
   },
 
   session: {

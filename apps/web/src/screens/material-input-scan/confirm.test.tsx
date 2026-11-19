@@ -453,7 +453,7 @@ describe('투입 기록 — 결과를 어떻게 말하는가', () => {
       screen.queryByRole('button', { name: t.scanned.removeMaterial('SAMPLE-LOT-0001') }),
     ).toBeNull();
     expect(screen.queryByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'))).toBeNull();
-    expect(screen.getByLabelText(t.qty.title)).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: t.qty.title })).toBeDisabled();
     expect(screen.getByRole('button', { name: t.scanned.keypadSubmit })).toBeDisabled();
   });
 
@@ -854,7 +854,7 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
     await user.click(row);
     /* 입력은 스캔에서만 시작한다(PI-29). */
     expect(screen.queryByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'))).toBeNull();
-    expect(screen.getByLabelText(t.qty.title)).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: t.qty.title })).toBeDisabled();
     const next = screen.getByRole('button', { name: t.confirm.goToProductionResult });
     expect(next).toHaveProperty('disabled', false);
     expect(screen.getByText(t.remaining.done)).toBeTruthy();

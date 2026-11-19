@@ -11,7 +11,7 @@ export const toolUsage = {
     title: '작업지시 (W/O)',
     process: '공정',
     item: '제품',
-    planQty: '계획수량',
+    planQty: '계획량',
   },
 
   /** 맨 오른쪽 「수량」 키패드 구획. */
@@ -40,7 +40,7 @@ export const toolUsage = {
     sectionLabel: '타발수 입력',
     inputLabel: '타발수',
     unit: '회',
-    convertedLabel: '생산 수량으로 타발수 계산',
+    convertedLabel: '생산량으로 타발수 계산',
     baseQtyLabel: '수량',
     /** 환산이 어떻게 나온 값인지 식 그대로 보인다 — 「수량 500 × 2.5 = 1,250 회」 */
     convertedExpression: (baseQty: string, ratio: string, shots: string) =>

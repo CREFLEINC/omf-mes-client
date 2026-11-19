@@ -29,7 +29,7 @@ export const materialDefect = {
   qty: {
     padTitle: '입력',
     padUnit: (uom: string) => `단위 ${uom}`,
-    label: '불량 수량',
+    label: '불량량',
     invalid: '0보다 큰 수를 넣으세요.',
   },
 
@@ -66,7 +66,7 @@ export const materialDefect = {
 
   blocked: {
     code: '불량 코드를 고르세요.',
-    qty: '불량 수량을 넣으세요.',
+    qty: '불량량을 넣으세요.',
     uom: 'LOT 의 단위를 알 수 없어 기록할 수 없습니다.',
   },
 

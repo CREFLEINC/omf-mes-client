@@ -120,8 +120,8 @@ export const productionResult = {
       issued: '출력한 인식표',
       count: (count: number) => `${String(count)}개`,
       issueMissing: (count: number) => `부족한 인식표 ${String(count)}장 출력`,
-      matched: '실제 생산수량과 인식표 개체 수가 일치합니다.',
-      tooMany: '이미 만든 인식표 개체 수보다 실제 생산수량을 작게 낮출 수 없습니다.',
+      matched: '실제 생산량과 인식표 개체 수가 일치합니다.',
+      tooMany: '이미 만든 인식표 개체 수보다 실제 생산량을 작게 낮출 수 없습니다.',
       summaryFailed: '인식표 발행 이력을 확인할 수 없어 LOT 라벨 출력을 열지 않습니다.',
       restoreDocuments: (count: number) => `발행 기록이 없는 인식표 ${String(count)}장 복구`,
       printIncomplete: (count: number) =>
@@ -362,7 +362,7 @@ export const productionResult = {
 
   quantity: {
     sectionLabel: '실적 입력',
-    goodQtyLabel: '양품수량',
+    goodQtyLabel: '양품량',
     remarksLabel: '비고',
     keypadLabel: '수량 키패드',
     quickAdd: (step: number) => `＋${String(step)}`,
@@ -413,8 +413,8 @@ export const productionResult = {
     queuedBody: '연결되면 자동으로 보냅니다.',
     failTitle: '실적을 저장하지 못했습니다',
     /** 저장 후 분기 — 잔여가 남으면 이어서, 0 이면 LOT 완료로. */
-    continueBody: '잔여수량이 남아 있습니다. 이어서 입력해 주세요.',
-    lotDoneTitle: '이 LOT 의 잔여수량이 없습니다',
+    continueBody: '잔여량이 남아 있습니다. 이어서 입력해 주세요.',
+    lotDoneTitle: '이 LOT 의 잔여량이 없습니다',
     lotDoneBody: '생산LOT 완료 처리로 넘어가 주세요.',
   },
 } as const;

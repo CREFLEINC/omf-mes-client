@@ -21,12 +21,12 @@ export const materialInputScan = {
     title: '작업지시 (W/O)',
     process: '공정',
     item: '제품',
-    planQty: '계획수량',
+    planQty: '계획량',
     mold: '금형',
   },
   /** 오른쪽 「투입 수량」 구획(키패드 열). 단위는 고른 자재 → 작업지시 단위 순으로 늘 보인다. */
   qty: {
-    title: '투입 수량',
+    title: '투입량',
     unit: (uom: string): string => `단위 ${uom}`,
   },
   /**
@@ -134,11 +134,11 @@ export const materialInputScan = {
     /** 직접 입력 중인데 까닭이 따로 없을 때(단말 판정 전 등). */
     manualDefault: '투입량을 직접 입력합니다.',
     /** 투입 수량 칸. 보이는 이름은 구획 제목 「투입 수량」이고 접근 이름에 LOT 번호를 붙인다. */
-    qtyLabel: (lotNo: string): string => `${lotNo} 투입 수량`,
+    qtyLabel: (lotNo: string): string => `${lotNo} 투입량`,
     qtyProblems: {
-      empty: '투입 수량을 입력해 주세요.',
-      format: '투입 수량은 숫자로 입력해 주세요.',
-      notPositive: '투입 수량은 0보다 커야 합니다.',
+      empty: '투입량을 입력해 주세요.',
+      format: '투입량은 숫자로 입력해 주세요.',
+      notPositive: '투입량은 0보다 커야 합니다.',
     },
     /** 서버가 통과시키되 기록만 한 것 — 스펙 §5-3. 「통과」가 「정상」이 아니다. */
     unlinkedIssue: '출고 미귀속',
