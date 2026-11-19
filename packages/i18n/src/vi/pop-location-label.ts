@@ -43,7 +43,6 @@ export const popLocationLabel = {
   issue: {
     action: 'Phát hành nhãn',
     actionCount: (count: number) => `Phát hành ${String(count)} nhãn`,
-    checkingHistory: 'Đang kiểm tra lịch sử phát hành.',
     summaryFailed:
       'Không kiểm tra được lịch sử phát hành nên không thể phát hành. Hãy kiểm tra kết nối rồi thử lại.',
     retrySummary: 'Kiểm tra lại lịch sử',

@@ -425,8 +425,7 @@ export const PopLocationLabelScreen = () => {
         </PuNote>
       ) : null}
       {guard === 'tooMany' ? <PuNote tone="warn">{t.location.tooMany(MAX_TARGETS)}</PuNote> : null}
-      {/* 「묻는 중」도 말한다 — 잠깐이라도 단추가 잠기는 까닭이 보여야 한다. */}
-      {guard === 'summaryLoading' ? <PuNote live>{t.issue.checkingHistory}</PuNote> : null}
+      {/* 표에서 고를 때마다 잠깐 뜨던 「발행 이력을 확인하는 중」 안내는 두지 않는다(사용자 지시 2026-11-19). */}
 
       {warehouseId === null ? (
         <PuEmpty icon="list" title={t.location.awaitingWarehouse} />

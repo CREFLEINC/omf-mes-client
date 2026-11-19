@@ -50,7 +50,6 @@ export const popLocationLabel = {
     action: '라벨 발행',
     actionCount: (count: number) => `라벨 ${String(count)}장 발행`,
     /** 회차를 서버에 묻는 동안. 잠깐이라도 단추가 잠기는 까닭을 말한다. */
-    checkingHistory: '발행 이력을 확인하는 중입니다.',
     /**
      * 회차를 못 물었다.
      *
