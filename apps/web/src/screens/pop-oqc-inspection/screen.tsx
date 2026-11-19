@@ -339,6 +339,35 @@ export const PopOqcInspectionScreen = () => {
       <PuChip>{t.result.round(round?.inspectionRound ?? 1)}</PuChip>
     );
 
+  /* 단계 줄은 구획 제목 줄(회차 칩과 같은 줄)에 선다(사용자 지시 2026-11-19). */
+  const showFlow =
+    selectedId !== null &&
+    detail.data !== undefined &&
+    !detail.isError &&
+    !rounds.isError &&
+    !rounds.isPending &&
+    !showResult;
+  const flow = (
+    <PuFlow
+      label={t.result.flowLabel}
+      current={inQuantity ? 0 : 1}
+      steps={[
+        {
+          label: t.result.quantityTitle,
+          done: !inQuantity,
+          onGo: () => {
+            setStep('quantity');
+          },
+        },
+        {
+          label: t.result.judgmentTitle,
+          disabled: nextReason !== null,
+          onGo: goJudgment,
+        },
+      ]}
+    />
+  );
+
   const workBody = (() => {
     if (selectedId === null) {
       return (
@@ -415,32 +444,8 @@ export const PopOqcInspectionScreen = () => {
       );
     }
 
-    const flow = (
-      <PuFlow
-        label={t.result.flowLabel}
-        current={inQuantity ? 0 : 1}
-        steps={[
-          {
-            label: t.result.quantityTitle,
-            done: !inQuantity,
-            onGo: () => {
-              setStep('quantity');
-            },
-          },
-          {
-            label: t.result.judgmentTitle,
-            onGo: () => {
-              if (nextReason === null) goJudgment();
-              else puToast(nextReason, 'info');
-            },
-          },
-        ]}
-      />
-    );
-
     return (
       <>
-        {flow}
         {band}
         {inQuantity ? (
           <PopQuantityStep
@@ -613,6 +618,7 @@ export const PopOqcInspectionScreen = () => {
         <PuSection
           title={showResult ? title : undefined}
           label={title}
+          head={showFlow ? flow : undefined}
           meta={roundChip}
           className="oqc-work"
         >

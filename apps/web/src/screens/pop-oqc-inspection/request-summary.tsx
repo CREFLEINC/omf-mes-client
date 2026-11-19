@@ -20,6 +20,7 @@ import {
   type InspectionResultRound,
 } from '../oqc-inspection/types';
 import { judgmentTone } from './judgment';
+import { usePlanVersion } from '../parts-iqc-inspection/queries';
 
 const t = messages.popOqcInspection.detail;
 const r = messages.popOqcInspection.result;
@@ -54,6 +55,14 @@ export const PopRequestBand = ({ detail, history, judgmentOptions, wide }: PopRe
   const guides = useInspectionGuide(detail.inspectionRequestId).data ?? [];
   const typeLabel = t.targetTypes[detail.targetTypeCode] ?? detail.targetTypeCode;
   const planId = detail.inspectionPlanVersionId;
+  const planVersion = usePlanVersion(planId).data;
+  /* 버전을 아직 못 읽었으면 번호(#id)로 둔다 — 지어내지 않는다. */
+  const planLabel =
+    planId === null
+      ? t.noPlanVersion
+      : planVersion === undefined
+        ? t.idValue(planId)
+        : t.planVersion(planVersion.planVersion);
   const canViewPlan = planId !== null || guides.length > 0;
 
   const items: PuBandItem[] = [
@@ -77,7 +86,7 @@ export const PopRequestBand = ({ detail, history, judgmentOptions, wide }: PopRe
       label: label('file', t.fields.plan),
       value: (
         <span className="oqc-vrow">
-          <span>{planId === null ? t.noPlanVersion : t.idValue(planId)}</span>
+          <span>{planLabel}</span>
           {canViewPlan && (
             <PuButton
               size="sm"
@@ -123,7 +132,7 @@ export const PopRequestBand = ({ detail, history, judgmentOptions, wide }: PopRe
       <PuBand grid={wide ? 4 : 3} items={items} label={t.bandLabel} />
       {planOpen && (
         <PuDialog
-          title={planId === null ? t.planTitle : `${t.planTitle} · ${t.idValue(planId)}`}
+          title={planId === null ? t.planTitle : `${t.planTitle} · ${planLabel}`}
           wide
           onClose={() => {
             setPlanOpen(false);
@@ -134,7 +143,7 @@ export const PopRequestBand = ({ detail, history, judgmentOptions, wide }: PopRe
               { label: t.fields.inspectionType, value: detail.inspectionTypeCode },
               {
                 label: t.planNo,
-                value: planId === null ? t.noPlanVersion : t.planValue(planId),
+                value: planId === null ? t.noPlanVersion : t.planValue(planLabel),
               },
               {
                 label: t.guide,

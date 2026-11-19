@@ -56,7 +56,9 @@ export const popOqcInspection = {
     viewPlan: '기준 조회',
     planTitle: '적용 기준',
     planNo: '기준 번호',
-    planValue: (id: number): string => `#${String(id)} · 검사 시점 고정`,
+    /** 기준 버전(서버 planVersion) — 번호(#id)가 아니라 버전으로 보인다(사용자 지시 2026-11-19). */
+    planVersion: (no: number): string => `버전 ${String(no)}`,
+    planValue: (label: string): string => `${label} · 검사 시점 고정`,
     guide: '검사 내용',
     noGuide: '등록된 검사 안내가 없습니다.',
   },

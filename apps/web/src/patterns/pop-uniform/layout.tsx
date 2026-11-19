@@ -339,6 +339,8 @@ export interface PuFlowStep {
   done?: boolean;
   /** 눌러 갈 수 있으면 준다(끝난 단계, 또는 조건이 맞은 다음 단계). */
   onGo?: () => void;
+  /** 아직 넘어갈 수 없는 단계 — 흐리게, 눌리지 않는다(사용자 지시 2026-11-19). */
+  disabled?: boolean;
 }
 
 /** 구획 안 단계 줄(규칙 4): ① › ② › ③, 지금 빨강 · 끝남 초록 ✓. */
@@ -367,7 +369,7 @@ export const PuFlow = ({
             </span>
           )}
           {step.onGo !== undefined && !isNow ? (
-            <button type="button" className={cls} onClick={step.onGo}>
+            <button type="button" className={cls} disabled={step.disabled} onClick={step.onGo}>
               <i>{mark}</i>
               {step.label}
             </button>
