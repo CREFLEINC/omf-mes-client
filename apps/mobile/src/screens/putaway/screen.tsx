@@ -711,18 +711,25 @@ export const PutawayScreen = () => {
             </AlertBanner>
           ) : null}
 
-          {/* 머리 줄 오른쪽이 「적치 기록」(M-01-14) 입구다 — 지난 적치는 거기서 본다(피처 011). */}
-          {lookup?.kind !== 'many' && tasks.data !== undefined && pendingLots.data !== undefined ? (
-            <div className="putaway__head">
+          {/*
+           * 머리 줄 오른쪽이 「적치 기록」(M-01-14) 입구다 — 지난 적치는 거기서 본다(피처 011). 입구는 사번 미확인 · 조회
+           * 실패 · 연결 끊김에도 늘 선다(FR-003, T031). 왼쪽 수만 두 목록을 받았을 때 보인다.
+           */}
+          <div className="putaway__head">
+            {lookup?.kind !== 'many' &&
+            tasks.data !== undefined &&
+            pendingLots.data !== undefined ? (
               <p className="putaway__note">
                 {d.summary(String(pendingLots.data.total), String(tasks.data.length))}
               </p>
-              <Link className="putaway__history-link" to="/putaway-history">
-                {t.historyLink}
-                <Icon name="chevron_right" size={18} />
-              </Link>
-            </div>
-          ) : null}
+            ) : (
+              <span />
+            )}
+            <Link className="putaway__history-link" to="/putaway-history">
+              {t.historyLink}
+              <Icon name="chevron_right" size={18} />
+            </Link>
+          </div>
 
           {/*
            * 적치 대기 LOT(피처 009) — 입하 LOT · 품목으로 묶는다(입하 마감 오래된 순). 줄을 누르면 그 LOT 을

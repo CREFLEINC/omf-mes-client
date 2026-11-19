@@ -1748,6 +1748,31 @@ describe('적치 대기 LOT — 지시 없는 적치(피처 009)', () => {
     ).toBeTruthy();
   });
 
+  it('FR-003 조회 실패·연결 끊김에도 적치 기록 입구가 보인다', async () => {
+    const failed = mount([], { tasksStatus: 500 });
+    expect(await screen.findByText(messages.httpError.loadServer)).toBeTruthy();
+    expect(screen.getByRole('link', { name: messages.putaway.historyLink })).toHaveAttribute(
+      'href',
+      '/putaway-history',
+    );
+    expect(screen.queryByText(messages.putaway.direct.summary('0', '0'))).toBeNull();
+    failed.unmount();
+
+    /* 연결 끊김 — 사번 확인부터 닿지 않는다. */
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/mdm/workers',
+        respond: () => {
+          throw new TypeError('Failed to fetch');
+        },
+      },
+    ]);
+    expect(
+      await screen.findByText(messages.putaway.worker.loadFailed, { exact: false }),
+    ).toBeTruthy();
+    expect(screen.getByRole('link', { name: messages.putaway.historyLink })).toBeTruthy();
+  });
+
   it('US2-4 · SC-001 목록 머리 「적치 기록」 입구를 한 번 누르면 적치 기록 화면으로 간다', async () => {
     const user = userEvent.setup();
     mount([], { pendingLots: [pendingLot()] });
