@@ -16,7 +16,7 @@ import {
 import { useOutbox } from '../patterns/outbox';
 import { useWorkerSession } from '../patterns/worker-session';
 import { useRecordScreenVisit } from './frequent-screens';
-import { areaOfScreen, screenOf } from './home-menu';
+import { areaOfScreen, isWorkScreen, screenOf } from './home-menu';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -202,7 +202,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
    * 직전에 띄우던 것을 셸이 한 번에 한다. 사번 확인 화면으로 가는 단추를 함께 둔다.
    */
   const { worker } = useWorkerSession();
-  const needsWorker = worker === null && screenOf(pathname) !== undefined;
+  const needsWorker = worker === null && isWorkScreen(pathname);
 
   return (
     <ScreenTitleProvider>

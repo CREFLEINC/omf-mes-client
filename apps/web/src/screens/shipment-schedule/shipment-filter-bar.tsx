@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Chip, DatePicker } from '@crefle/web-ui';
+import { AlertBanner, Button, Checkbox, Chip, DatePicker, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
@@ -69,6 +69,9 @@ export const ShipmentFilterBar = ({
     shipToPartner: appliedShipToPartner,
     progress: appliedProgress,
     inspection: appliedInspection,
+    q: appliedQ,
+    ready: appliedReady,
+    replaced: appliedReplaced,
   } = appliedFilters;
 
   useEffect(() => {
@@ -81,8 +84,19 @@ export const ShipmentFilterBar = ({
       shipToPartner: appliedShipToPartner,
       progress: appliedProgress,
       inspection: appliedInspection,
+      q: appliedQ,
+      ready: appliedReady,
+      replaced: appliedReplaced,
     });
-  }, [appliedCustomer, appliedShipToPartner, appliedProgress, appliedInspection]);
+  }, [
+    appliedCustomer,
+    appliedShipToPartner,
+    appliedProgress,
+    appliedInspection,
+    appliedQ,
+    appliedReady,
+    appliedReplaced,
+  ]);
 
   const searchReason = validatePeriod(period);
 
@@ -165,6 +179,18 @@ export const ShipmentFilterBar = ({
           </div>
         </div>
 
+        {/* 피처 010 — 지시서 번호 · 고객 · 품목 부분 일치(계약 `q`). */}
+        <div className="field-cell">
+          <TextField
+            label={t.filters.q}
+            value={filters.q}
+            placeholder={t.filters.qPlaceholder}
+            onChange={(event) => {
+              const q = event.target.value;
+              setFilters((prev) => ({ ...prev, q }));
+            }}
+          />
+        </div>
         <SelectField
           wide
           label={t.fields.customer}
@@ -205,6 +231,28 @@ export const ShipmentFilterBar = ({
             setFilters((prev) => ({ ...prev, inspection: value }));
           }}
         />
+
+        {/* 피처 010 — 「완료 대기만」(completionReadyOnly) · 「LOT 교체 있음」(hasReplacement). */}
+        <div className="field-cell field-cell-unlabeled shipment-schedule-flags">
+          <Checkbox
+            checked={filters.ready === 'true'}
+            onChange={(event) => {
+              const ready = event.target.checked ? 'true' : '';
+              setFilters((prev) => ({ ...prev, ready }));
+            }}
+          >
+            {t.filters.readyOnly}
+          </Checkbox>
+          <Checkbox
+            checked={filters.replaced === 'true'}
+            onChange={(event) => {
+              const replaced = event.target.checked ? 'true' : '';
+              setFilters((prev) => ({ ...prev, replaced }));
+            }}
+          >
+            {t.filters.hasReplacement}
+          </Checkbox>
+        </div>
 
         <div className="field-cell field-cell-unlabeled shipment-schedule-filter-actions">
           <div className="filter-actions">

@@ -136,7 +136,6 @@ export const putaway = {
     lot: '자재 LOT 라벨을 스캔하면 진행합니다',
   },
   done: {
-    count: (count: string) => `적치됨 ${count}건`,
     row: (lotNo: string, code: string, qty: string) => `${lotNo} → ${code} ${qty}`,
     /** 창고 보충 지시는 적치 대기에 남은 양만큼만 옮긴다(004). */
     movedPartial: (qty: string) => `적치 대기에 남은 ${qty} 만 옮겼습니다(나머지는 먼저 출고됨)`,
@@ -161,6 +160,8 @@ export const putaway = {
     description: '기록되지 않았습니다. 다시 시도하세요.',
   },
   noWorker: '사번을 먼저 확인하세요',
+  /** 목록 머리 줄 오른쪽 — 지난 적치는 「적치 기록」(M-01-14)에서 본다(피처 011). */
+  historyLink: '적치 기록',
   /**
    * 피처 009 — 적치 지시 없는 구매 입고 적치(omf-all-around#294). IQC 판정·입하 마감이 끝난 자재 관리 LOT 을
    * 지시 없이 위치를 스캔해 적치하면 그때 입고된다. 지시(004 보충·배포 전 구매 입고)는 위 문구 그대로다.

@@ -22,8 +22,11 @@ const SESSION = {
   loginId: 'pop.terminal',
   userName: '합성 단말',
   scopes: [{ businessUnitId: 1001 }],
-  /* 자재 1 · 생산 3(재작업 실적 등록 포함 · #295) · 출하 1 · 품질 1 — 설비·창고 화면은 없다. */
-  permissions: ['P-01-01', 'P-02-01', 'P-02-03', 'P-04-01', 'P-04-03', 'P-04-06'],
+  /*
+   * 자재 1 · 생산 3(재작업 실적 등록 포함 · #295) · 출하 1(출하 완료 · 피처 010) · 품질 1 — 설비·창고 화면은 없다.
+   * 감춘 출하 포장(P-04-01) 권한도 남겨 두어, 권한이 있어도 탭·남은 작업에 서지 않는지 잰다.
+   */
+  permissions: ['P-01-01', 'P-02-01', 'P-02-03', 'P-04-01', 'P-04-03', 'P-04-06', 'P-04-07'],
 };
 
 const COUNTS: TerminalWorkCounts = {
@@ -175,8 +178,13 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     expect(firstTab).toHaveAttribute('aria-current', 'page');
     expect(screen.queryByText('지금: /pop/material-input')).not.toBeInTheDocument();
 
-    await user.click(within(tabs).getByRole('button', { name: /^출하 포장/u }));
-    expect(screen.getByText('지금: /pop/packing')).toBeInTheDocument();
+    /* 출하 묶음의 탭은 출하 완료뿐이다 — 감춘 출하 포장(P-04-01)은 권한이 있어도 서지 않는다(피처 010). */
+    expect(
+      within(tabs)
+        .getAllByRole('button')
+        .map((tab) => tab.textContent),
+    ).toEqual([expect.stringMatching(/^출하 완료/u)]);
+    expect(screen.getByText('지금: /pop/shipment-complete')).toBeInTheDocument();
     /* 재작업 실적 등록은 출하가 아니라 생산 묶음에 선다(#295). */
     expect(within(tabs).queryByRole('button', { name: /^재작업 실적 등록/u })).toBeNull();
   });
@@ -279,8 +287,11 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     expect(within(tab).getByText('12')).toBeInTheDocument();
   });
 
-  /* #295 시안 — 남은 작업 수가 없는 화면도 그 화면 대기 건수를 탭에 붙이고, 묶음 수는 탭 수의 합이다. */
-  it('창고·출하 화면 탭에 대기 건수가 붙고 묶음 수는 탭 합이며, 남은 작업 창 수는 그대로다', async () => {
+  /*
+   * #295 시안 — 남은 작업 수가 없는 화면도 그 화면 대기 건수를 탭에 붙이고, 묶음 수는 탭 수의 합이다.
+   * 피처 010 — 출하 단위 구성(P-04-05)은 감춘 화면이라 권한이 있어도 그 수를 묻지 않는다.
+   */
+  it('창고 화면 탭에 대기 건수가 붙고 묶음 수는 탭 합이며(감춘 출하 단위 구성은 묻지 않는다), 남은 작업 창 수는 그대로다', async () => {
     const user = userEvent.setup();
     const asked: string[] = [];
     const path = (request: Request) => new URL(request.url).pathname;
@@ -319,13 +330,9 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     expect(
       await within(groupsNav()).findByRole('button', { name: nav.groupCount('창고', 29) }),
     ).toBeInTheDocument();
-    /* 출하 = 출하 포장 4 + 출하 단위 구성 2. */
-    expect(
-      await within(groupsNav()).findByRole('button', { name: nav.groupCount('출하', 6) }),
-    ).toBeInTheDocument();
     expect(asked.some((url) => url.includes('plantId=2'))).toBe(true);
     expect(asked.some((url) => url.includes('labelState=UNPRINTED'))).toBe(true);
-    expect(asked.some((url) => url.includes('hasUnassignedPackedBox=true'))).toBe(true);
+    expect(asked.some((url) => url.includes('hasUnassignedPackedBox=true'))).toBe(false);
 
     await user.click(groupButton('창고'));
     const tabs = within(screen.getByRole('navigation', { name: nav.screensLabel('창고') }));
@@ -335,9 +342,12 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     expect(
       tabs.getByRole('button', { name: remaining.count('분할 LOT 라벨', 3) }),
     ).toBeInTheDocument();
-    /* 남은 작업 창은 남은 작업 수(`/app/terminal-work-counts`)만 — 3 + 4 + 12(긴급 수는 작업지시 목록에 합쳐 빠진다). */
+    /*
+     * 남은 작업 창은 남은 작업 수(`/app/terminal-work-counts`)만 — 3 + 12(긴급 수는 작업지시 목록에 합쳐,
+     * 감춘 출하 포장 수 4 는 빠진다).
+     */
     expect(
-      await screen.findByRole('button', { name: remaining.buttonLabel(19) }),
+      await screen.findByRole('button', { name: remaining.buttonLabel(15) }),
     ).toBeInTheDocument();
   });
 
@@ -404,28 +414,28 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     }
   });
 
-  it('[남은 작업] 창은 수가 있는 화면만 많은 순으로 보이고, 누르면 그 화면으로 간다', async () => {
+  /*
+   * Q21 피처 010 — 출하 포장(P-04-01)은 화면 이동 후보에서 감췄다. 서버가 그 수(shipmentPacking 4)를
+   * 보내도 창에 서지 않고 합계에도 들지 않는다.
+   */
+  it('Q21 [남은 작업] 창은 수가 있는 화면만 많은 순으로 보이고(감춘 출하 포장 제외), 누르면 그 화면으로 간다', async () => {
     const user = userEvent.setup();
     const { counted } = setup();
     await waitFor(() => expect(counted).toHaveLength(1));
 
-    const button = await screen.findByRole('button', { name: remaining.buttonLabel(19) });
+    const button = await screen.findByRole('button', { name: remaining.buttonLabel(15) });
     await user.click(button);
 
-    const dialog = within(screen.getByRole('dialog', { name: remaining.title(19) }));
+    const dialog = within(screen.getByRole('dialog', { name: remaining.title(15) }));
     expect(
       dialog
         .getAllByRole('button')
         .filter((item) => item.classList.contains('pop-remaining__item'))
         .map((item) => item.getAttribute('aria-label')),
-    ).toEqual([
-      remaining.count('OQC 출하검사', 12),
-      remaining.count('출하 포장', 4),
-      remaining.count('작업지시 목록', 3),
-    ]);
+    ).toEqual([remaining.count('OQC 출하검사', 12), remaining.count('작업지시 목록', 3)]);
 
-    await user.click(dialog.getByRole('button', { name: remaining.count('출하 포장', 4) }));
-    expect(screen.getByText('지금: /pop/packing')).toBeInTheDocument();
+    await user.click(dialog.getByRole('button', { name: remaining.count('OQC 출하검사', 12) }));
+    expect(screen.getByText('지금: /pop/oqc-inspection')).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 

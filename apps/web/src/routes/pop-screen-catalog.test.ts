@@ -2,7 +2,12 @@ import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import { POP_LEGACY_REDIRECTS, popRoutes } from './pop';
-import { POP_ENTRY_SCREEN_PATH, POP_HOME_PATH, POP_SCREENS } from '../patterns/pop-screen-catalog';
+import {
+  POP_ENTRY_SCREEN_PATH,
+  POP_HIDDEN_SCREEN_PATHS,
+  POP_HOME_PATH,
+  POP_SCREENS,
+} from '../patterns/pop-screen-catalog';
 
 /**
  * 업무용 [화면 이동](G-34)의 후보 목록이 라우트 표와 어긋나지 않는지 잰다.
@@ -17,16 +22,37 @@ import { POP_ENTRY_SCREEN_PATH, POP_HOME_PATH, POP_SCREENS } from '../patterns/p
  */
 describe('POP 화면 이름표', () => {
   /* 홈(#291)은 메뉴의 [홈] 단추로 가는 자리라 탭 목록에 넣지 않는다. */
-  it('진입 화면·홈을 뺀 POP 라우트를 하나도 빠뜨리지 않는다', () => {
+  it('진입 화면·홈·감춘 화면을 뺀 POP 라우트를 하나도 빠뜨리지 않는다', () => {
+    const hidden = new Set<string>(POP_HIDDEN_SCREEN_PATHS);
     const routed = popRoutes
       .map((route) => route.path)
-      .filter((path) => path !== POP_ENTRY_SCREEN_PATH && path !== POP_HOME_PATH)
+      .filter(
+        (path) =>
+          path !== POP_ENTRY_SCREEN_PATH && path !== POP_HOME_PATH && !hidden.has(path ?? ''),
+      )
       /* 합쳐서 없어진 화면의 옛 주소는 새 자리로 보내는 길일 뿐 화면이 아니다(#295). */
       .filter((path) => path === undefined || !(path in POP_LEGACY_REDIRECTS))
       .sort();
     const listed = POP_SCREENS.map((screen) => screen.path).sort();
 
     expect(listed).toEqual(routed);
+  });
+
+  /*
+   * Q21 피처 010 — 출하는 P-04-07 로 끝난다. 포장·재구성 라벨·출하 단위(P-04-01·P-04-04·P-04-05)는
+   * 화면 이동 후보에서 감추고, 라우트는 남긴다(감춘 목록이 라우트에 있어야 이 예외가 낡지 않는다).
+   */
+  it('Q21 P-04-01·P-04-04·P-04-05 는 화면 이동 후보에 없고 라우트는 남는다', () => {
+    const routed = new Set(popRoutes.map((route) => route.path));
+    const listed = POP_SCREENS.map((screen) => screen.code);
+
+    expect([...POP_HIDDEN_SCREEN_PATHS].sort()).toEqual(
+      ['/pop/packing', '/pop/repack-label-issue', '/pop/shipping-units'].sort(),
+    );
+    for (const path of POP_HIDDEN_SCREEN_PATHS) expect(routed.has(path)).toBe(true);
+    expect(listed).not.toContain('P-04-01');
+    expect(listed).not.toContain('P-04-04');
+    expect(listed).not.toContain('P-04-05');
   });
 
   /* 폐지된 화면이 목록에만 남는 것을 잡는다 — 라우트가 없는 주소는 후보가 될 수 없다. */
@@ -65,5 +91,17 @@ describe('POP 화면 이름표', () => {
 
     expect(workStart?.name).toBe(messages.workStart.title);
     expect(workStart?.name).toBe('작업지시 목록');
+  });
+
+  /* 피처 010 — 출하 묶음에 서고, 탭 끝 배지는 완료 대기 수(`shipmentCompletion`)다. */
+  it('출하 완료(P-04-07)는 출하 묶음이고 이름이 그 화면 머리줄 제목과 같다', () => {
+    const complete = POP_SCREENS.find((screen) => screen.code === 'P-04-07');
+
+    expect(complete).toMatchObject({
+      path: '/pop/shipment-complete',
+      group: 'shipping',
+      countKey: 'shipmentCompletion',
+    });
+    expect(complete?.name).toBe(messages.popShipmentComplete.title);
   });
 });

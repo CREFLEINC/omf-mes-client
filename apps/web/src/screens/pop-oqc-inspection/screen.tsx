@@ -58,7 +58,12 @@ import {
 import { PopQueueList } from './queue-list';
 import { PopRequestBand } from './request-summary';
 import { PopSerialDialog, PopSerialSummary } from './serial-step';
+import { PopShipmentBar, PopShipmentDetail, usePopShipmentForm } from './shipment';
+import { isJudgedOpen, isShipmentOqc } from '../oqc-inspection/shipment-oqc';
 import './uniform.css';
+
+/** 판정 대기 목록은 한 번에 읽는다 — 판정을 마친 열린 의뢰를 「판정 완료」로 가르려면 다 있어야 한다(서버 상한 200). */
+const PENDING_SIZE = 200;
 
 const t = messages.popOqcInspection;
 
@@ -98,8 +103,8 @@ export const PopOqcInspectionScreen = () => {
   const pendingQueue = useInspectionQueue({
     inspectionTypeCode: FIXED_AXES.inspectionTypeCode,
     pendingOnly: true,
-    page: view === 'pending' ? page : 1,
-    size: pageSize,
+    page: 1,
+    size: PENDING_SIZE,
   });
   const doneQueue = useInspectionQueue({
     inspectionTypeCode: FIXED_AXES.inspectionTypeCode,
@@ -109,7 +114,20 @@ export const PopOqcInspectionScreen = () => {
     size: pageSize,
   });
   const queue = view === 'pending' ? pendingQueue : doneQueue;
+  /*
+   * 출하 OQC 새 흐름(피처 010 · 2026-11-18 결정) — 열린 의뢰라도 피킹 LOT 이 모두 판정을 가지면 「판정 완료」 탭에 선다
+   * (확정은 출하 완료 때라 상태가 진행으로 남는다). 미검사가 있거나 피킹 LOT 이 없으면 「판정 대기」.
+   */
+  const pendingRows = pendingQueue.data?.rows ?? [];
+  const waitingRows = pendingRows.filter((row) => !isJudgedOpen(row));
+  const judgedRows = pendingRows.filter(isJudgedOpen);
+  const viewCount = {
+    pending: waitingRows.length,
+    done: judgedRows.length + (doneQueue.data?.page.total ?? 0),
+  };
   const detail = useInspectionRequestDetail(selectedId);
+  const isNewFlow = detail.data !== undefined && isShipmentOqc(detail.data);
+  const shipmentForm = usePopShipmentForm(isNewFlow ? selectedId : null, workerNo);
   /* 수량 옆 단위 코드(표시 전용) — 못 받으면 숫자만 둔다. */
   const uoms = useUomLookup();
   const uomCode = uoms.codeOf(detail.data?.uomId);
@@ -210,7 +228,27 @@ export const PopOqcInspectionScreen = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft.accepted]);
 
-  const rows = queue.data?.rows ?? [];
+  /*
+   * 판정 대기는 한 번에 읽은 줄(200)을 화면에서 쪽으로 나눠 보인다. 판정 완료는 서버 쪽 읽기 그대로이고,
+   * 판정을 마친 열린 의뢰(`judgedRows`)는 첫 쪽 앞에 선다(피처 010 — 목록 칸은 넘치면 굴린다).
+   */
+  const pendingPage = pageOf(waitingRows, page, pageSize);
+  const rows =
+    view === 'pending'
+      ? pendingPage.items
+      : [...(page === 1 ? judgedRows : []), ...(doneQueue.data?.rows ?? [])];
+  const listPager =
+    view === 'pending'
+      ? { total: pendingPage.total, pages: pendingPage.pages }
+      : {
+          total: doneQueue.data?.page.total ?? null,
+          pages: Math.max(
+            1,
+            Math.ceil(
+              (doneQueue.data?.page.total ?? 0) / Math.max(1, doneQueue.data?.page.size ?? 1),
+            ),
+          ),
+        };
 
   /* 재검사는 의뢰를 다시 검사한다 — 합계의 오른쪽 변은 의뢰의 대상 수량이다. */
   const inspectedQty = isReinspectingNow
@@ -593,8 +631,11 @@ export const PopOqcInspectionScreen = () => {
   );
 
   return (
-    <PuScreen className="oqc-u" actionBar={actionBar}>
-      <PuCols variant={inQuantity ? 'lk' : 'list'}>
+    <PuScreen
+      className="oqc-u"
+      actionBar={isNewFlow ? <PopShipmentBar form={shipmentForm} /> : actionBar}
+    >
+      <PuCols variant={inQuantity && !isNewFlow ? 'lk' : 'list'}>
         <PuSection
           className="oqc-list-card"
           head={
@@ -613,7 +654,7 @@ export const PopOqcInspectionScreen = () => {
                   value: 'pending',
                   label: (
                     <>
-                      {t.queue.heading} <PuCount>{pendingQueue.data?.page.total ?? 0}</PuCount>
+                      {t.queue.heading} <PuCount>{viewCount.pending}</PuCount>
                     </>
                   ),
                 },
@@ -621,7 +662,7 @@ export const PopOqcInspectionScreen = () => {
                   value: 'done',
                   label: (
                     <>
-                      {t.queue.doneHeading} <PuCount>{doneQueue.data?.page.total ?? 0}</PuCount>
+                      {t.queue.doneHeading} <PuCount>{viewCount.done}</PuCount>
                     </>
                   ),
                 },
@@ -645,12 +686,9 @@ export const PopOqcInspectionScreen = () => {
             />
           )}
           <PuPager
-            total={queue.data?.page.total ?? null}
-            page={page}
-            pages={Math.max(
-              1,
-              Math.ceil((queue.data?.page.total ?? 0) / Math.max(1, queue.data?.page.size ?? 1)),
-            )}
+            total={listPager.total}
+            page={view === 'pending' ? pendingPage.page : page}
+            pages={listPager.pages}
             label={t.queue.pageNav}
             onPage={(next) => {
               if (save.isSaving) return;
@@ -662,21 +700,29 @@ export const PopOqcInspectionScreen = () => {
         </PuSection>
 
         {/* 단계 이름은 단계 줄이 이미 보인다 — 구획 제목으로 겹쳐 쓰지 않는다(사용자 지시 2026-11-19). */}
-        <PuSection
-          title={showResult ? title : undefined}
-          label={title}
-          head={showFlow ? flow : undefined}
-          meta={roundChip}
-          className="oqc-work"
-        >
-          <PopWorkerMissingBanner workerNo={workerNo} />
-          {save.error !== null && judgmentState.openedAt === null && (
-            <SaveErrorBanner error={save.error} onReload={() => void rounds.refetch()} />
-          )}
-          {workBody}
-        </PuSection>
+        {isNewFlow ? (
+          /* 출하 OQC 새 흐름 — 피킹 LOT 매칭 · 판정만 · 결과 추가만(피처 010 · decisions #47). */
+          <PuSection label={t.detail.bandLabel} className="oqc-work">
+            <PopWorkerMissingBanner workerNo={workerNo} />
+            <PopShipmentDetail form={shipmentForm} uomCode={uomCode} />
+          </PuSection>
+        ) : (
+          <PuSection
+            title={showResult ? title : undefined}
+            label={title}
+            head={showFlow ? flow : undefined}
+            meta={roundChip}
+            className="oqc-work"
+          >
+            <PopWorkerMissingBanner workerNo={workerNo} />
+            {save.error !== null && judgmentState.openedAt === null && (
+              <SaveErrorBanner error={save.error} onReload={() => void rounds.refetch()} />
+            )}
+            {workBody}
+          </PuSection>
+        )}
 
-        {inQuantity && (
+        {inQuantity && !isNewFlow && (
           <PuSection title={t.result.keypadTitle}>
             <PuKeypad
               targetLabel={keypadOn ? t.result.fields[keypadTarget] : null}
@@ -695,7 +741,7 @@ export const PopOqcInspectionScreen = () => {
         )}
       </PuCols>
 
-      {serialOpen && selectedId !== null && detail.data !== undefined && (
+      {!isNewFlow && serialOpen && selectedId !== null && detail.data !== undefined && (
         <PopSerialDialog
           inspectionRequestId={selectedId}
           itemId={detail.data.itemId}
@@ -709,27 +755,30 @@ export const PopOqcInspectionScreen = () => {
         />
       )}
 
-      {judgmentState.openedAt !== null && selectedId !== null && detail.data !== undefined && (
-        <PopConfirmDialog
-          inspectionRequestNo={detail.data.inspectionRequestNo}
-          judgmentOptions={judgmentOptions}
-          judgment={judgment}
-          inspectedQty={inspectedQty}
-          uom={uomCode}
-          preview={judgmentState.preview}
-          hasLot={detail.data.lotId !== null}
-          serialSummary={isShipment ? t.serial.count(serialRows.length, ngSerials) : undefined}
-          saveError={save.error}
-          onReload={() => void rounds.refetch()}
-          isSaving={save.isSaving}
-          onClose={judgmentState.closeDialog}
-          onConfirm={() => {
-            const openedAt = judgmentState.openedAt;
-            if (openedAt === null || detail.data === undefined) return;
-            saveResult(selectedId, detail.data.uomId, openedAt);
-          }}
-        />
-      )}
+      {!isNewFlow &&
+        judgmentState.openedAt !== null &&
+        selectedId !== null &&
+        detail.data !== undefined && (
+          <PopConfirmDialog
+            inspectionRequestNo={detail.data.inspectionRequestNo}
+            judgmentOptions={judgmentOptions}
+            judgment={judgment}
+            inspectedQty={inspectedQty}
+            uom={uomCode}
+            preview={judgmentState.preview}
+            hasLot={detail.data.lotId !== null}
+            serialSummary={isShipment ? t.serial.count(serialRows.length, ngSerials) : undefined}
+            saveError={save.error}
+            onReload={() => void rounds.refetch()}
+            isSaving={save.isSaving}
+            onClose={judgmentState.closeDialog}
+            onConfirm={() => {
+              const openedAt = judgmentState.openedAt;
+              if (openedAt === null || detail.data === undefined) return;
+              saveResult(selectedId, detail.data.uomId, openedAt);
+            }}
+          />
+        )}
     </PuScreen>
   );
 };

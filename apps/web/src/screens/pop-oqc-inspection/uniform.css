@@ -12,6 +12,14 @@
   min-width: 0;
 }
 
+/*
+ * 판정 완료 첫 쪽은 판정을 마친 열린 의뢰가 서버 쪽 앞에 더 서므로(피처 010) 한 쪽 건수를 넘을 수 있다 —
+ * 넘친 줄이 가려지지 않게 목록 칸은 굴린다.
+ */
+.oqc-u .oqc-list-card .pu-list.pu-fit {
+  overflow-y: auto;
+}
+
 .oqc-u .oqc-work > .pu-card-body {
   gap: 8px;
 }
@@ -258,4 +266,117 @@
   .oqc-u .pu-cols.list:has(> .is-folded:first-child) {
     grid-template-columns: 56px minmax(0, 1fr);
   }
+}
+
+/*
+ * 출하 OQC 새 흐름(피처 010) 상세 · 바닥 띠 — main 의 옛 `.pop-ui` 규칙을 이 화면 뿌리(`.oqc-u`)로 옮겼다.
+ * 나머지 `pop-oqc-shipment*` 모양은 `app/pop.css` 의 피처 010 구획에 있다.
+ */
+.oqc-u .pop-oqc-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.oqc-u .pop-oqc-summary {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-block-end: var(--space-3);
+  border-block-end: 1px solid var(--outline-variant);
+}
+
+.oqc-u .pop-oqc-summary__key {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-6);
+}
+
+.oqc-u .pop-oqc-summary__no {
+  margin: 0;
+  font: 700 24px / 32px var(--font-sans);
+  letter-spacing: -0.01em;
+}
+
+.oqc-u .pop-oqc-summary__figures {
+  display: flex;
+  gap: var(--space-6);
+  margin: 0;
+}
+
+.oqc-u .pop-oqc-summary dt {
+  font-size: var(--pop-label);
+  line-height: 20px;
+  color: var(--on-surface-variant);
+}
+
+.oqc-u .pop-oqc-summary dd {
+  margin: 0;
+}
+
+.oqc-u .pop-oqc-summary__figures dd {
+  font: 700 24px / 32px var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+.oqc-u .pop-oqc-summary__ref {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
+}
+
+.oqc-u .pop-oqc-summary__ref > div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.oqc-u .pop-oqc-summary__ref dd {
+  font-weight: 600;
+}
+
+.oqc-u .pop-oqc-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.oqc-u .pop-oqc-step__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font: 600 18px / 26px var(--font-sans);
+}
+
+.oqc-u .pop-oqc-step__hint {
+  margin-inline-start: var(--space-2);
+  font: 400 var(--pop-label) / 22px var(--font-sans);
+  color: var(--on-surface-variant);
+}
+
+.oqc-u .pop-oqc-bar-note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font: 600 17px / 24px var(--font-sans);
+}
+
+.oqc-u .pop-oqc-bar-note--blocked > :first-child {
+  color: var(--semantic-warning);
+}
+
+.oqc-u .pop-oqc-bar-note--ready,
+.oqc-u .pop-oqc-bar-note--success {
+  color: var(--semantic-success-text);
+}
+
+/* 잠긴 까닭 · 준비됨 안내는 공통 메뉴 아래에서 감춘다(main 과 같다) — 저장 중 · 저장됨 · 실패는 그대로 보인다. */
+.pop-frame .oqc-u .pop-oqc-bar-note--blocked,
+.pop-frame .oqc-u .pop-oqc-bar-note--ready {
+  display: none;
 }

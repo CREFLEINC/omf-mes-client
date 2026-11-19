@@ -8,6 +8,10 @@
  */
 export const materialLotIssue = {
   title: '자재 관리 LOT 발행',
+  /** 목록 · 상세 사이 막대(입고 관리 짜임). */
+  splitter: '끌어서 목록과 상세 폭 조절',
+  listCollapse: '공급사와 품목 목록 접기',
+  listExpand: '공급사와 품목 목록 펼치기',
   filters: {
     label: '조회 조건',
     plant: '공장',
@@ -21,13 +25,13 @@ export const materialLotIssue = {
   list: {
     label: '공급사·품목', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-14.md · 시안 W0114-After)
     count: (count: number) => `공급사·품목 ${count}건`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-14.md · 시안 W0114-After)
-    note: (plant: string, today: string) => `${plant} · 오늘 ${today}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-14.md · 시안 W0114-After)
     issue: '자재 관리 LOT 발행',
     columns: {
       supplier: '공급사',
+      itemCode: '품목코드',
       item: '품목',
       baseUom: '기본 단위',
-      defaults: '기본 정보 (패키징 · 자재 관리 LOT당 재고 수량)', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-14.md · 시안 W0114-After)
+      defaults: '기본 정보',
       waiting: '대기',
       unprinted: '라벨 미출력',
       lastIssued: '최근 발행',
@@ -44,6 +48,7 @@ export const materialLotIssue = {
   },
   detail: {
     label: '공급사·품목 상세', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-14.md · 시안 W0114-After)
+    choose: '공급사와 품목을 고르세요',
     baseUom: '기본 단위',
     storageUom: '품목 기본 보관 단위',
     storageNone: '없음',
@@ -67,7 +72,6 @@ export const materialLotIssue = {
     unprinted: '미출력',
     channel: { POP: 'POP', WEB: '관리웹' },
     empty: '대기 자재 관리 LOT가 없습니다.',
-    close: '닫기',
   },
   /** 발행 창 — POP 「자재 관리 LOT 만들기」와 같은 칸·규칙(US1-8). */
   dialog: {

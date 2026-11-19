@@ -1,13 +1,17 @@
 import { messages } from '@omf-mes/i18n';
 import type { Ref } from 'react';
 
+import { formatQty } from '../../patterns/package-qty';
 import { PuChip, puCx, type PuChipTone } from '../../patterns/pop-uniform';
+import { lotOverviewOf, overviewStatus } from '../oqc-inspection/shipment-oqc';
+import { overviewText } from '../oqc-inspection/shipment-oqc-parts';
 import { toStatusBadge, type StatusTone } from '../oqc-inspection/status-badge';
 import type { InspectionQueueRow } from '../oqc-inspection/types';
 import { withUom, type UomLookup } from '../oqc-inspection/uom-lookup';
 
 const t = messages.popOqcInspection.queue;
 const detail = messages.popOqcInspection.detail;
+const ps = messages.popOqcInspection.shipment;
 
 const CHIP_TONE: Record<StatusTone, PuChipTone> = {
   idle: 'idle',
@@ -38,6 +42,9 @@ export const PopQueueList = ({ rows, selectedId, onSelect, listRef, uomOf }: Pop
       const selected = row.inspectionRequestId === selectedId;
       const badge = toStatusBadge(row.statusCode);
 
+      const overview = lotOverviewOf(row);
+      const itemLabel = row.itemCode ?? detail.idValue(row.itemId);
+
       return (
         <button
           key={row.inspectionRequestId}
@@ -49,20 +56,38 @@ export const PopQueueList = ({ rows, selectedId, onSelect, listRef, uomOf }: Pop
             onSelect(row.inspectionRequestId);
           }}
         >
+          {/* 출하 OQC 새 흐름은 지시서 번호 · 피킹 LOT 수 · LOT 판정 요약(피처 010 · 시안 P0406 목록). */}
           <span className="pu-item-top">
-            <span className="no">{row.inspectionRequestNo}</span>
+            <span className="no">{row.shipmentRequestNo ?? row.inspectionRequestNo}</span>
             <span className="chips">
               <PuChip tone={CHIP_TONE[badge.tone]}>{badge.label}</PuChip>
+              {overview !== null && (
+                <PuChip tone={CHIP_TONE[overviewStatus(overview)]}>{overviewText(overview)}</PuChip>
+              )}
             </span>
           </span>
-          <span className="pu-item-sub">
-            <span>
-              {t.columns.item} <b>{detail.idValue(row.itemId)}</b>
+          {overview === null ? (
+            <span className="pu-item-sub">
+              <span>
+                {t.columns.item} <b>{detail.idValue(row.itemId)}</b>
+              </span>
+              <span>
+                {t.columns.qty} <b>{withUom(String(row.targetQty), uomOf(row.uomId))}</b>
+              </span>
             </span>
-            <span>
-              {t.columns.qty} <b>{withUom(String(row.targetQty), uomOf(row.uomId))}</b>
+          ) : (
+            <span className="pu-item-sub">
+              <span>
+                {(row.pickedLotCount ?? 0) === 0
+                  ? ps.cardEmpty(itemLabel)
+                  : ps.card(
+                      itemLabel,
+                      row.pickedLotCount ?? 0,
+                      `${formatQty(row.pickedQty ?? 0)} ${row.uomCode ?? ''}`.trim(),
+                    )}
+              </span>
             </span>
-          </span>
+          )}
         </button>
       );
     })}

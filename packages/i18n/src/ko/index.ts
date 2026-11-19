@@ -143,6 +143,7 @@ import { putaway } from './putaway';
 import { recycleEntry } from './recycle-entry';
 import { inboundVariance } from './inbound-variance';
 import { temporaryPutaway } from './temporary-putaway';
+import { putawayHistory } from './putaway-history';
 import { shellHome } from './shell-home';
 import { taskFlow } from './task-flow';
 import { shellNav } from './shell-nav';
@@ -161,6 +162,7 @@ import { inspectionSheetTemplate } from './inspection-sheet-template';
 import { inspectionSheetEntry } from './inspection-sheet-entry';
 import { materialDefect } from './material-defect';
 import { popOqcInspection } from './pop-oqc-inspection';
+import { popShipmentComplete } from './pop-shipment-complete';
 import { popMaterialLotLabel } from './pop-material-lot-label';
 import { reworkResultRegister } from './rework-result-register';
 import { shippingPackingLabel } from './shipping-packing-label';
@@ -304,6 +306,7 @@ export const ko = {
   recycleEntry,
   inboundVariance,
   temporaryPutaway,
+  putawayHistory,
   poChangeReview,
   shellHome,
   taskFlow,
@@ -323,6 +326,7 @@ export const ko = {
   inspectionSheetEntry,
   materialDefect,
   popOqcInspection,
+  popShipmentComplete,
   popMaterialLotLabel,
   workStart,
   workPrecheckGate,

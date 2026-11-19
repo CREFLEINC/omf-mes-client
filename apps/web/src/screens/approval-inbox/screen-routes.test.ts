@@ -3,6 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { SCREEN_ROUTES, screenPathOf } from './screen-routes';
 
 describe('화면 ID 매핑표', () => {
+  it('US6-1·Q13 W-04-12(출하 내역)는 승인 요청 ID 를 싣는다 — 그 화면이 결재의 대상 출하를 연다', () => {
+    expect(screenPathOf('W-04-12', 9001, SCREEN_ROUTES)).toBe(
+      '/shipment/shipment-confirm?approvalRequestId=9001',
+    );
+  });
+
   it('W-03-09는 정식 주소에 선택한 승인 요청 ID를 싣는다', () => {
     expect(screenPathOf('W-03-09', 9001, SCREEN_ROUTES)).toBe(
       '/quality/approvals?approvalRequestId=9001',

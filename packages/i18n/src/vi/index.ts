@@ -104,6 +104,7 @@ import { inspectionSheetTemplate } from './inspection-sheet-template';
 import { inspectionSheetEntry } from './inspection-sheet-entry';
 import { materialDefect } from './material-defect';
 import { popOqcInspection } from './pop-oqc-inspection';
+import { popShipmentComplete } from './pop-shipment-complete';
 import { popMaterialLotLabel } from './pop-material-lot-label';
 import { popChrome } from './pop-chrome';
 import { popUniform } from './pop-uniform';
@@ -150,6 +151,7 @@ import { stocktaking } from './stocktaking';
 import { supplierReturn } from './supplier-return';
 import { suspiciousMaterialHold } from './suspicious-material-hold';
 import { temporaryPutaway } from './temporary-putaway';
+import { putawayHistory } from './putaway-history';
 import { terminalProcessMap } from './terminal-process-map';
 import { toolMaster } from './tool-master';
 import { toolPmOrder } from './tool-pm-order';
@@ -274,6 +276,7 @@ export const vi: Translated<Messages> = {
   inspectionSheetEntry,
   materialDefect,
   popOqcInspection,
+  popShipmentComplete,
   popMaterialLotLabel,
   popChrome,
   popUniform,
@@ -321,6 +324,7 @@ export const vi: Translated<Messages> = {
   supplierReturn,
   suspiciousMaterialHold,
   temporaryPutaway,
+  putawayHistory,
   terminalProcessMap,
   toolMaster,
   toolPmOrder,

@@ -218,6 +218,7 @@ const mount = (
         <Routes>
           <Route path="/" element={<PutawayScreen />} />
           <Route path="/temporary-putaway" element={<HandoffProbe />} />
+          <Route path="/putaway-history" element={<p>적치 기록 화면</p>} />
         </Routes>
       </SignedIn>
     </MemoryRouter>,
@@ -785,8 +786,11 @@ describe('적치·입고 완료 화면', () => {
     expect(body.actualLocationId).toBe(5);
     expect(body).not.toHaveProperty('confirmedNoRule');
     expect(body.businessDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    /* 목록 위 배너와 「적치됨」 줄 두 곳에 선다(omf-all-around#272). */
-    expect(await screen.findAllByText(`${LOT_NO} → A-01-03 120 EA`)).toHaveLength(2);
+    /*
+     * 목록 위 결과 띠 한 곳에만 선다 — 아래 「적치됨」 줄은 지웠다(피처 011 · 적치 기록 화면으로 옮김).
+     * 전에는 띠와 「적치됨」 줄 두 곳이었다(omf-all-around#272).
+     */
+    expect(await screen.findAllByText(`${LOT_NO} → A-01-03 120 EA`)).toHaveLength(1);
   });
 
   /*
@@ -801,7 +805,9 @@ describe('적치·입고 완료 화면', () => {
 
     await user.click(screen.getByRole('button', { name: '적치 완료' }));
 
-    expect(await screen.findByText('적치됨 1건')).toBeTruthy();
+    /* 쌓이던 「적치됨」 목록 대신 결과 띠가 방금 한 1건을 말한다(피처 011). */
+    expect(await screen.findByText(messages.putaway.sent.title)).toBeTruthy();
+    expect(screen.queryByText(/적치됨/)).toBeNull();
     expect(await screen.findByRole('button', { name: /RM-1001/ })).toBeTruthy();
     /* 목록에는 화면만 닫던 단추가 없다(omf-all-around#272). 닫기는 위 ← · 홈 아이콘이다. */
     expect(screen.queryByRole('button', { name: '적치 완료' })).toBeNull();
@@ -867,7 +873,7 @@ describe('적치·입고 완료 화면', () => {
     button.click();
     button.click();
 
-    await screen.findByText('적치됨 1건');
+    await screen.findByText(messages.putaway.sent.title);
     expect(seen).toHaveLength(1);
   });
 
@@ -882,7 +888,7 @@ describe('적치·입고 완료 화면', () => {
     await user.click(screen.getByRole('button', { name: '적치 완료' }));
 
     expect(await screen.findByText('적치를 저장하지 못했습니다')).toBeTruthy();
-    expect(screen.queryByText('적치됨 1건')).toBeNull();
+    expect(screen.queryByText(messages.putaway.sent.title)).toBeNull();
     expect(seen).toHaveLength(0);
   });
 });
@@ -1045,9 +1051,9 @@ describe('목록 LOT 스캔으로 연 적치 지시', () => {
     });
     const body = (await seen[0]!.json()) as { actualLocationId: number };
     expect(body.actualLocationId).toBe(5);
-    /* 목록 위 배너가 무엇을 어디에 두었는지 말한다(「적치됨」 줄과 같은 글). */
-    expect(await screen.findAllByText(`${LOT_NO} → A-01-03 120 EA`)).toHaveLength(2);
-    expect(screen.getAllByText('적치를 기록했습니다').length).toBeGreaterThan(1);
+    /* 목록 위 배너가 무엇을 어디에 두었는지 말한다 — 아래 「적치됨」 줄은 없다(피처 011). */
+    expect(await screen.findAllByText(`${LOT_NO} → A-01-03 120 EA`)).toHaveLength(1);
+    expect(screen.getAllByText('적치를 기록했습니다')).toHaveLength(1);
     expect(await screen.findByLabelText(/자재 LOT 스캔/)).toBeTruthy();
   });
 
@@ -1541,9 +1547,12 @@ describe('적치 대기 LOT — 지시 없는 적치(피처 009)', () => {
     expect(body.locationId).toBe(5);
     expect(body).not.toHaveProperty('confirmUndesignated');
     expect(seen[0]!.headers.get('X-Worker-No')).toBe('900028');
-    expect(await screen.findAllByText(`${PENDING_NO} → WH01-A01-03 1000 EA`)).toHaveLength(2);
+    /*
+     * 결과 띠 한 곳(LOT → 위치 수량 · 입고 전표 · 창고). 「적치됨」 줄과 그 방식 칩은 지웠다 — 방식은 「적치 기록」이
+     * 보인다(피처 011). 전에는 띠와 「적치됨」 줄 두 곳에 같은 글이 섰다.
+     */
+    expect(await screen.findAllByText(`${PENDING_NO} → WH01-A01-03 1000 EA`)).toHaveLength(1);
     expect(screen.getByText('입고 GR-20261118-0003, 원자재창고')).toBeTruthy();
-    expect(screen.getByText(messages.putaway.direct.mode.DESIGNATED)).toBeTruthy();
     await waitFor(() => {
       expect(listed).toBeGreaterThan(1);
     });
@@ -1668,9 +1677,8 @@ describe('적치 대기 LOT — 지시 없는 적치(피처 009)', () => {
 
     expect((await screen.findAllByText(messages.putaway.rejected.title)).length).toBeGreaterThan(0);
     expect(seen).toHaveLength(1);
-    /* Q28 — 거절은 「적치됨」으로 세지 않고 따로 모아 「전송 실패한 기록」으로 안내한다. */
+    /* Q28 · FR-014 — 거절은 따로 모아 「전송 실패한 기록」으로 안내한다(피처 011 뒤에도 그대로). */
     expect(screen.getByText(messages.putaway.rejected.count('1'))).toBeTruthy();
-    expect(screen.queryByText(messages.putaway.done.count('1'))).toBeNull();
     expect(screen.getByRole('link', { name: messages.putaway.rejected.action })).toBeTruthy();
   });
 
@@ -1688,20 +1696,95 @@ describe('적치 대기 LOT — 지시 없는 적치(피처 009)', () => {
     expect(lotNo.parentElement).toBe(chip.closest('.putaway__lot-meta')?.parentElement);
   });
 
-  it('Q3 「적치됨」 줄은 「LOT → 위치」 글과 방식 · 결과 칩을 다른 줄에 둔다', async () => {
+  /*
+   * 피처 011 — 스캔 · 확인 화면 아래에 쌓이던 「적치됨 N건」 목록을 지웠다. 지난 기록은 「적치 기록」(M-01-14)이
+   * 서버 이력으로 보인다. 화면에는 지금 다루는 LOT 과 직전 1건 결과 띠만 남는다.
+   */
+  it('US2-1 · SC-003 적치 뒤 다음 LOT 의 미지정 확인 창 아래에 지난 기록 목록이 없다', async () => {
+    const seen: Request[] = [];
+    const { container } = mount([eligible(), checkRoute(), putawayRoute(seen)], {
+      pendingLots: [pendingLot()],
+    });
+    await openPending();
+    scan('WH01-A01-03');
+    await screen.findByText(messages.putaway.sent.title);
+
+    await openPending();
+    scan('WH01-B02-01');
+    await screen.findByRole('button', { name: '미지정 위치 적치' });
+
+    expect(container.querySelector('.putaway__done')).toBeNull();
+    expect(screen.queryByText(/적치됨/)).toBeNull();
+    expect(screen.queryByText(`${PENDING_NO} → WH01-A01-03 1000 EA`)).toBeNull();
+  });
+
+  it('US2-2 지시 적치 화면에 지시 없는 적치 기록이 섞이지 않는다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    const { container } = mount([eligible(), checkRoute(), putawayRoute(seen)], {
+      pendingLots: [pendingLot()],
+    });
+    await openPending();
+    scan('WH01-A01-03');
+    await screen.findByText(messages.putaway.sent.title);
+
+    await user.click(await screen.findByRole('button', { name: /PT-2026-0007/ }));
+    await screen.findByLabelText(/위치 코드 스캔/);
+
+    expect(container.querySelector('.putaway__done')).toBeNull();
+    expect(screen.queryByText(`${PENDING_NO} → WH01-A01-03 1000 EA`)).toBeNull();
+  });
+
+  it('US2-3 기록 직후 목록 화면 맨 위 결과 띠에 직전 1건(LOT → 위치 수량, 입고 전표, 창고)이 그대로 보인다', async () => {
     const seen: Request[] = [];
     mount([eligible(), checkRoute(), putawayRoute(seen)], { pendingLots: [pendingLot()] });
     await openPending();
     scan('WH01-A01-03');
 
-    const heading = await screen.findByText(messages.putaway.done.count('1'));
-    const list = heading.parentElement?.querySelector('.putaway__done');
-    const text = within(list as HTMLElement).getByText(`${PENDING_NO} → WH01-A01-03 1000 EA`);
-    const chips = list?.querySelector('.putaway__done-chips');
+    expect(await screen.findByText(messages.putaway.sent.title)).toBeTruthy();
+    expect(screen.getAllByText(`${PENDING_NO} → WH01-A01-03 1000 EA`)).toHaveLength(1);
+    expect(
+      screen.getByText(messages.putaway.direct.receipt('GR-20261118-0003', '원자재창고')),
+    ).toBeTruthy();
+  });
 
-    expect(chips?.textContent).toContain(messages.putaway.direct.mode.DESIGNATED);
-    expect(chips?.textContent).toContain(messages.putaway.sent.title);
-    expect(chips?.contains(text)).toBe(false);
+  it('FR-003 조회 실패·연결 끊김에도 적치 기록 입구가 보인다', async () => {
+    const failed = mount([], { tasksStatus: 500 });
+    expect(await screen.findByText(messages.httpError.loadServer)).toBeTruthy();
+    expect(screen.getByRole('link', { name: messages.putaway.historyLink })).toHaveAttribute(
+      'href',
+      '/putaway-history',
+    );
+    expect(screen.queryByText(messages.putaway.direct.summary('0', '0'))).toBeNull();
+    failed.unmount();
+
+    /* 연결 끊김 — 사번 확인부터 닿지 않는다. */
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/mdm/workers',
+        respond: () => {
+          throw new TypeError('Failed to fetch');
+        },
+      },
+    ]);
+    expect(
+      await screen.findByText(messages.putaway.worker.loadFailed, { exact: false }),
+    ).toBeTruthy();
+    expect(screen.getByRole('link', { name: messages.putaway.historyLink })).toBeTruthy();
+  });
+
+  it('US2-4 · SC-001 목록 머리 「적치 기록」 입구를 한 번 누르면 적치 기록 화면으로 간다', async () => {
+    const user = userEvent.setup();
+    mount([], { pendingLots: [pendingLot()] });
+    await screen.findByText(PENDING_NO);
+
+    const summary = screen.getByText(messages.putaway.direct.summary('1', '1'));
+    const link = screen.getByRole('link', { name: messages.putaway.historyLink });
+    expect(summary.parentElement?.contains(link)).toBe(true);
+
+    await user.click(link);
+
+    expect(await screen.findByText('적치 기록 화면')).toBeTruthy();
   });
 
   it('목록 끝에 떠 있는 직접 입력 단추 높이만큼 비워 마지막 내용이 가리지 않는다', async () => {

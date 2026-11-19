@@ -24,6 +24,7 @@ export const shellHome: Translated<typeof ko.shellHome> = {
     iqcSkipRequest: 'Chỉ gửi yêu cầu · Phê duyệt trên web quản trị',
     putaway: 'Đưa vật tư đã nhập vào vị trí cất và hoàn tất nhập kho',
     temporaryPutaway: 'Để tạm ở vị trí tạm khi chưa cất được vào vị trí',
+    putawayHistory: 'Xem lại các lần cất hàng của tôi hoặc của thiết bị này theo ngày',
     stockTransfer: 'Chuyển tồn kho giữa các vị trí · Quét khi đến sau khi xuất',
     materialPicking: 'Lấy vật tư theo yêu cầu xuất kho',
     physicalCount: 'Đếm và ghi nhận hàng thực tế tại vị trí',

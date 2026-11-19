@@ -6,6 +6,11 @@ const line = (overrides: Partial<Parameters<typeof toShipmentRequestLineCandidat
   shipmentRequestLineId: 701,
   lineNo: 1,
   itemId: 910001,
+  /* 피처 010 시안 보완 — 품목·단위·수주 라인 표시 칸. 이 시험은 읽지 않는다. */
+  itemCode: 'SYN-ITEM',
+  itemName: '합성 품목',
+  uomCode: 'SYN-EA',
+  salesOrderLine: null,
   requestedQty: 120,
   allocatedQty: 120,
   pickedQty: 120,
@@ -14,19 +19,33 @@ const line = (overrides: Partial<Parameters<typeof toShipmentRequestLineCandidat
   shippingInspectionRequired: true,
   /* client#601 1-5 — 집은 LOT 신설. 이 시험은 아직 이 값을 읽지 않는다. */
   picks: [],
+  /* 피처 010 — 초과·피킹 LOT 행. 이 시험은 아직 이 값을 읽지 않는다. */
+  overQty: 0,
+  lots: [],
   ...overrides,
 });
 
 const request = (overrides: Partial<Parameters<typeof toShipmentRequestCandidate>[0]> = {}) => ({
   shipmentRequestId: 501,
   shipmentRequestNo: 'SYN-SR-501',
+  salesOrderNo: null,
   customerId: 601,
   shipToPartnerId: 602,
+  customer: null,
+  shipTo: null,
   requestedShipDate: '2026-08-31',
   statusCode: 'SYN-STATUS',
   shipmentProgressCode: 'PICKED' as const,
   shippingInspectionStatusCode: 'PASSED' as const,
   lines: [],
+  /* 피처 010 — 지시서 코드·피킹 창고·교체·막힘·판정 요약·완료 출하. 이 시험은 아직 읽지 않는다. */
+  code: 'SHPREQ:SYN',
+  pickingWarehouses: [],
+  replacementCount: 0,
+  completionBlockers: [],
+  blockerSummary: {},
+  lotJudgmentSummary: { notInspected: 0, accepted: 0, rejected: 0, held: 0 },
+  completedShipment: null,
   ...overrides,
 });
 

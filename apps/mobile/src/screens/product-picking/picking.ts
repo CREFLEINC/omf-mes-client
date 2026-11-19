@@ -1,228 +1,149 @@
 import type { ApiError, components } from '@omf-mes/api-client';
 
-import type { Lot } from '../../patterns/lots';
-
 export type ShipmentRequest = components['schemas']['ShipmentRequest'];
 export type ShipmentRequestLine = components['schemas']['ShipmentRequestLine'];
-export type ShipmentLinePick = components['schemas']['ShipmentLinePick'];
+export type ShipmentRequestLot = components['schemas']['ShipmentRequestLot'];
+export type ShipmentLotPickResult = components['schemas']['ShipmentLotPickResult'];
+export type ShipmentLotReplaceResult = components['schemas']['ShipmentLotReplaceResult'];
+export type ShipmentCompletionBlocker = components['schemas']['ShipmentCompletionBlocker'];
+export type OqcLotStatus = NonNullable<ShipmentRequestLot['oqcLotStatus']>;
+
+/** 출하 관리 코드 상한(FR-020). 서버도 같은 값으로 400 을 낸다. */
+export const MANAGEMENT_CODE_MAX = 100;
+
+const remainingOf = (line: ShipmentRequestLine): number => line.allocatedQty - line.pickedQty;
 
 /**
- * 선출 정책. 품목 마스터가 품목마다 갖는다.
+ * 스캔한 LOT 의 품목으로 라인을 고른다.
  *
- * 값으로 분기하는 것은 정렬 축 하나뿐이고, 모르는 값이 오면 정렬을 세우지 않고 그 사실을
- * 말한다. 값 목록이 아직 확정 전이라 아는 둘만 다루고 나머지를 통과로 두지 않는다.
+ * 같은 품목 라인이 둘 이상이면 아직 목표에 못 미친 앞 라인이다. 모두 채웠으면 앞 라인으로
+ * 보낸다 — 서버가 「목표 수량을 채웠습니다」로 거절하고, 그 말이 현장에 맞는 말이다.
+ * 그 품목 라인이 없으면 null — 보내지 않고 「이 품목 라인이 없습니다」를 보인다.
  */
-/*
- * 첫 화면에 세우는 권장 LOT 수. 후보 카드가 130~210px 이고 본문이 632px 이라 그 위는
- * 첫 화면에 들어오지 않는다. 나머지는 건수로 말하고 펼쳐서 본다.
- */
-export const CANDIDATE_PREVIEW = 3;
+export const chooseLine = (
+  lines: readonly ShipmentRequestLine[],
+  itemId: number,
+): ShipmentRequestLine | null => {
+  const same = lines.filter((line) => line.itemId === itemId);
 
-export const FEFO = 'FEFO';
-export const FIFO = 'FIFO';
+  return same.find((line) => remainingOf(line) > 0) ?? same[0] ?? null;
+};
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-export interface Candidate {
-  lot: Lot;
-  availableQty: number;
-  held: boolean;
+export interface LineTiles {
+  target: number;
+  picked: number;
+  /** 목표에 못 미치면 남음, 목표 이상이면 초과(서버 `overQty`). */
+  kind: 'remaining' | 'over';
+  value: number;
 }
 
-/** 오늘부터 유효기간까지 남은 날. 유효기간이 없으면 셀 수 없다. */
-export const remainingDays = (lot: Lot, today: Date): number | null => {
-  if (lot.expiryDate === null || lot.expiryDate === undefined) {
-    return null;
-  }
+/** 목표 · 피킹 · 남음(또는 초과). 초과는 서버가 센 값을 그대로 쓴다. */
+export const lineTiles = (line: ShipmentRequestLine): LineTiles => {
+  const left = remainingOf(line);
 
-  const expiry = Date.parse(lot.expiryDate);
-
-  if (Number.isNaN(expiry)) {
-    return null;
-  }
-
-  return Math.floor((expiry - today.getTime()) / MS_PER_DAY);
+  return left > 0
+    ? { target: line.allocatedQty, picked: line.pickedQty, kind: 'remaining', value: left }
+    : { target: line.allocatedQty, picked: line.pickedQty, kind: 'over', value: line.overQty };
 };
 
-/**
- * 이 정책이 무엇으로 줄을 세우는가.
- *
- * FEFO 는 유효기간, FIFO 는 제조 시각이다. 모르는 정책이면 세울 축이 없다.
- */
-export const sortFieldOf = (policy: string): 'expiryDate' | 'manufacturedAt' | null => {
-  if (policy === FEFO) {
-    return 'expiryDate';
-  }
+/** 살아 있는 피킹 LOT(교체 아님). 새로 집은 LOT 이 맨 위다. */
+export const activeLots = (line: ShipmentRequestLine): ShipmentRequestLot[] =>
+  line.lots
+    .filter((lot) => lot.statusCode !== 'REPLACED')
+    .sort((left, right) => right.pickedAt.localeCompare(left.pickedAt));
 
-  return policy === FIFO ? 'manufacturedAt' : null;
-};
+/** 교체로 빠진 LOT — 라인 맨 아래 흐린 이력 줄로만 남는다. */
+export const replacedLots = (line: ShipmentRequestLine): ShipmentRequestLot[] =>
+  line.lots.filter((lot) => lot.statusCode === 'REPLACED');
 
-export interface Ranked {
-  /** 정책이 정한 순서대로. 앞엣것이 권장 1순위다. */
-  ordered: Candidate[];
-  /** 정렬 축의 값이 없어 어디에 놓을지 정해지지 않는 것. 섞지 않고 뒤에 따로 둔다. */
-  unordered: Candidate[];
+/** [교체]는 판정이 불합격인 피킹 LOT 에만 선다(FR-013). 보류는 막기만 한다. */
+export const canReplace = (lot: ShipmentRequestLot): boolean =>
+  lot.statusCode === 'PICKED' && lot.oqcLotStatus === 'REJECTED';
+
+export interface ReplaceEffect {
+  before: number;
+  after: number;
+  /** 교체 뒤 라인이 다시 받는 수량. 빠져도 목표 이상이면 0. */
+  receive: number;
 }
 
-/**
- * 권장 순서를 세운다.
- *
- * 축의 값이 없는 줄을 섞으면 잘못된 순서를 권장으로 내놓고, 빼면 재고가 사라진 것처럼
- * 보인다. 뒤에 따로 두고 순서를 정할 수 없다고 적는다.
- */
-export const rankCandidates = (candidates: Candidate[], policy: string): Ranked => {
-  const field = sortFieldOf(policy);
+/** 교체 확인 상자에 미리 보일 수치 — 서버 결과가 정본이고 이것은 묻기 전의 안내다. */
+export const replaceEffect = (
+  line: ShipmentRequestLine,
+  lot: ShipmentRequestLot,
+): ReplaceEffect => {
+  const after = line.pickedQty - lot.pickedQty;
 
-  if (field === null) {
-    return { ordered: [], unordered: [...candidates] };
-  }
-
-  const ordered: Candidate[] = [];
-  const unordered: Candidate[] = [];
-
-  for (const candidate of candidates) {
-    const value = candidate.lot[field];
-
-    if (value === null || value === undefined || value === '') {
-      unordered.push(candidate);
-    } else {
-      ordered.push(candidate);
-    }
-  }
-
-  ordered.sort((left, right) => String(left.lot[field]).localeCompare(String(right.lot[field])));
-
-  return { ordered, unordered };
+  return { before: line.pickedQty, after, receive: Math.max(0, line.allocatedQty - after) };
 };
 
-/** 배정 중 아직 집지 않은 몫. 서버가 누적 피킹을 유지하므로 화면은 빼기만 한다. */
-export const remainingAllocated = (line: ShipmentRequestLine): number =>
-  line.allocatedQty - line.pickedQty;
+export type OqcTone = 'success' | 'error' | 'warning' | 'info' | 'idle';
 
-export type LotProblem = 'held' | 'shelfLifeShort' | 'otherItem';
-
-/**
- * 이 LOT 을 집을 수 없게 하는 것이 있는가.
- *
- * ⛔ 가용 0 은 여기서 보지 않는다 - 후보가 되는 조건이 이미 「집을 것이 남았는가」라
- * (`toCandidates`) 가용 0 인 `Candidate` 는 만들어지지 않는다. 갈래를 남겨 두면 닿지 않는
- * 문구를 지키느라 다음 사람이 헛되이 붙든다(omf-all-around#50 리뷰 실측).
- *
- * 잔여 유효기간은 구조화된 값이라 판정한다. 고객 LOT 요구 문장은 판정하지 않는다 - 자유
- * 텍스트라 못 알아들은 조건을 조용히 통과시키게 되고, 그것은 잘못된 LOT 이 나가는 것보다
- * 나쁘다. 무시했다는 사실조차 남지 않기 때문이다.
- */
-export const lotProblem = (
-  candidate: Candidate,
-  line: ShipmentRequestLine,
-  today: Date,
-): LotProblem | null => {
-  if (candidate.lot.itemId !== line.itemId) {
-    return 'otherItem';
+/** LOT 판정 배지 6종(FR-007)의 색. */
+export const oqcTone = (status: OqcLotStatus): OqcTone => {
+  switch (status) {
+    case 'ACCEPTED':
+      return 'success';
+    case 'REJECTED':
+      return 'error';
+    case 'HELD':
+      return 'warning';
+    case 'NOT_INSPECTED':
+      return 'info';
+    default:
+      return 'idle';
   }
-
-  if (candidate.held) {
-    return 'held';
-  }
-
-  const minimum = line.minimumRemainingShelfLifeDays;
-
-  if (minimum === null || minimum === undefined) {
-    return null;
-  }
-
-  const remaining = remainingDays(candidate.lot, today);
-
-  /*
-   * 셀 수 없는 것을 넉넉한 것으로 두지 않는다. 막지도 않는다 - 판정의 정본은 서버이고,
-   * 화면이 막으면 서버가 통과시킬 LOT 을 현장이 집지 못한다. 셀 수 없다는 사실을 말한다.
-   */
-  if (remaining === null) {
-    return null;
-  }
-
-  return remaining < minimum ? 'shelfLifeShort' : null;
 };
 
-/** 잔여 유효기간을 셀 수 없는 채로 하한이 걸려 있는가. */
-export const isShelfLifeUnknown = (
-  candidate: Candidate,
-  line: ShipmentRequestLine,
-  today: Date,
-): boolean =>
-  line.minimumRemainingShelfLifeDays !== null &&
-  line.minimumRemainingShelfLifeDays !== undefined &&
-  remainingDays(candidate.lot, today) === null;
+export const codeProblem = (text: string): 'tooLong' | null =>
+  text.trim().length > MANAGEMENT_CODE_MAX ? 'tooLong' : null;
 
-export type QtyProblem = 'empty' | 'notNumber' | 'notPositive' | 'overAvailable' | 'overAllocated';
+export type PickRejectionCode =
+  'LOT_TARGET_REACHED' | 'LOT_ALREADY_RESERVED' | 'LOT_ALREADY_PICKED' | 'NO_LINE_FOR_ITEM';
 
-export const qtyProblem = (
-  candidate: Candidate,
-  line: ShipmentRequestLine,
-  text: string,
-): QtyProblem | null => {
-  const trimmed = text.trim();
+export type PickRejection =
+  | { kind: 'code'; code: PickRejectionCode }
+  /** 보류·불량·재고 없음·유효기간 — 사유가 서버 문구 안에 있다. */
+  | { kind: 'server'; message: string }
+  /** 응답이 없었다. 같은 LOT 을 다시 스캔하면 같은 멱등 키로 간다. */
+  | { kind: 'failed' };
 
-  if (trimmed === '') {
-    return 'empty';
+const REJECTION_CODES: readonly string[] = [
+  'LOT_TARGET_REACHED',
+  'LOT_ALREADY_RESERVED',
+  'LOT_ALREADY_PICKED',
+  'NO_LINE_FOR_ITEM',
+];
+
+/** `:pick-lot` 의 거절을 화면 말로 가른다. 409 는 `code` 로, 나머지는 서버 문구로. */
+export const pickRejectionOf = (error: ApiError): PickRejection => {
+  if (error.kind === 'network') {
+    return { kind: 'failed' };
   }
 
-  const value = Number(trimmed);
+  const code = 'code' in error ? error.code : undefined;
 
-  if (!Number.isFinite(value)) {
-    return 'notNumber';
+  if (code !== undefined && REJECTION_CODES.includes(code)) {
+    return { kind: 'code', code: code as PickRejectionCode };
   }
 
-  if (value <= 0) {
-    return 'notPositive';
+  if (error.kind === 'validation' || error.kind === 'stateLocked') {
+    const message = error.errors[0]?.message;
+
+    return message === undefined || message === ''
+      ? { kind: 'failed' }
+      : { kind: 'server', message };
   }
 
-  if (value > candidate.availableQty) {
-    return 'overAvailable';
-  }
+  const message = 'message' in error ? error.message : undefined;
 
-  return value > remainingAllocated(line) ? 'overAllocated' : null;
+  return message === undefined || message === '' ? { kind: 'failed' } : { kind: 'server', message };
 };
 
-/**
- * 권장 1순위인가.
- *
- * 아니어도 막지 않는다. 권장은 순서 제안이지 위치가 아니라, 다른 것을 집어도 물건은 맞다.
- * 사유도 묻지 않는다.
- */
-export const isRecommended = (ranked: Ranked, lotId: number): boolean =>
-  ranked.ordered[0]?.lot.lotId === lotId;
+/** 교체를 서버가 물렸는가(재검 합격이 먼저 들어옴 등) — 다시 눌러도 풀리지 않는다. */
+export const isNotRejected = (error: ApiError): boolean =>
+  error.kind !== 'network' && 'code' in error && error.code === 'LOT_NOT_REJECTED';
 
-export const canPick = (
-  candidate: Candidate | null,
-  line: ShipmentRequestLine | null,
-  qty: string,
-  hasWorker: boolean,
-  today: Date,
-): boolean => {
-  if (candidate === null || line === null || !hasWorker) {
-    return false;
-  }
-
-  return lotProblem(candidate, line, today) === null && qtyProblem(candidate, line, qty) === null;
-};
-
-export const toPickBody = (
-  candidate: Candidate,
-  line: ShipmentRequestLine,
-  qty: string,
-): ShipmentLinePick => ({
-  lotId: candidate.lot.lotId,
-  pickedQty: Number(qty.trim()),
-  /* 단위는 라인의 것을 그대로 옮긴다. 화면이 고르게 두면 배정과 피킹이 다른 단위로 남는다. */
-  uomId: line.uomId,
-});
-
-/**
- * 서버가 되돌린 것이 집을 수 없는 상태로 바뀌었다는 뜻인가.
- *
- * 보류가 걸렸거나 가용이 모자라거나 배정을 넘었다는 판정이고, 다시 눌러서 풀리지 않는다.
- * 일반 실패와 같은 말을 쓰면 현장이 같은 확정을 되풀이한다.
- */
-export const isConflict = (error: ApiError): boolean =>
-  error.kind === 'conflict' || (error.kind === 'http' && error.status === 409);
+/** 카드·코드 화면의 「고객, 납품처」 — 납품처가 없거나 고객과 같으면 고객만 쓴다(가운뎃점 대신 쉼표, C-13). */
+export const partiesText = (customer: string, shipTo: string | null): string =>
+  shipTo === null || shipTo === customer ? customer : `${customer}, ${shipTo}`;

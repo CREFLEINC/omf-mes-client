@@ -79,8 +79,11 @@ export const createdShipmentRequestFixture: ShipmentRequestResponse = {
   shipmentRequestId: 8501,
   shipmentRequestNo: 'SAMPLE-SR-0001',
   salesOrderId: 8101,
+  salesOrderNo: null,
   customerId: 8201,
   shipToPartnerId: 8211,
+  customer: null,
+  shipTo: null,
   requestedShipDate: '2026-08-20',
   statusCode: 'SAMPLE_SR_S_A',
   shipmentProgressCode: 'NOT_ALLOCATED',
@@ -91,6 +94,11 @@ export const createdShipmentRequestFixture: ShipmentRequestResponse = {
       lineNo: 1,
       salesOrderLineId: 8601,
       itemId: 8301,
+      /* 피처 010 시안 보완 — 품목·단위·수주 라인 표시 칸. 이 화면은 읽지 않는다. */
+      itemCode: 'SAMPLE-ITEM-01',
+      itemName: '합성 품목 가',
+      uomCode: 'SAMPLE-EA',
+      salesOrderLine: null,
       requestedQty: 80,
       allocatedQty: 80,
       pickedQty: 0,
@@ -99,8 +107,19 @@ export const createdShipmentRequestFixture: ShipmentRequestResponse = {
       shippingInspectionRequired: false,
       /* client#601 1-5 — 집은 LOT 신설. 이 화면은 아직 이 값을 읽지 않는다. */
       picks: [],
+      /* 피처 010 — 초과·피킹 LOT 행. 이 화면은 아직 이 값을 읽지 않는다. */
+      overQty: 0,
+      lots: [],
     },
   ],
+  /* 피처 010 — 지시서 코드·피킹 창고·교체·막힘·판정 요약·완료 출하. 이 화면은 아직 읽지 않는다. */
+  code: 'SHPREQ:SAMPLE-SR-0001',
+  pickingWarehouses: [],
+  replacementCount: 0,
+  completionBlockers: [],
+  blockerSummary: {},
+  lotJudgmentSummary: { notInspected: 0, accepted: 0, rejected: 0, held: 0 },
+  completedShipment: null,
 };
 
 export const partnerFixtures = [

@@ -24,6 +24,30 @@
   color: var(--on-surface-muted, inherit);
 }
 
+/* 목록 머리 줄 — 왼쪽 수, 오른쪽 「적치 기록 ›」 입구(피처 011 · 시안 M-01-05). 좁으면 입구가 다음 줄로. */
+.putaway__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 8px);
+}
+
+.putaway__history-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0 var(--space-2, 8px) 0 var(--space-3, 12px);
+  border: 1px solid var(--outline-variant);
+  border-radius: 999px;
+  color: var(--on-surface);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
 .putaway__field {
   display: flex;
   flex-direction: column;
@@ -368,7 +392,7 @@
   overflow-wrap: anywhere;
 }
 
-/* 「적치됨」 줄의 방식 · 결과 칩 — 글 아래 줄, 아이콘 자리만큼 들여서. */
+/* 「전송하지 못한 적치」 줄의 방식 · 결과 칩 — 글 아래 줄, 아이콘 자리만큼 들여서. */
 .putaway__done-chips {
   display: flex;
   flex: 1 1 100%;

@@ -151,4 +151,58 @@ export const popOqcInspection = {
     cancel: 'Hủy',
     confirm: 'Lưu phán định',
   },
+  shipment: {
+    card: (item: string, count: number, qty: string): string =>
+      `${item} · ${String(count)} LOT đã lấy · ${qty}`,
+    itemValue: (code: string, name: string): string => (name === '' ? code : `${code} ${name}`),
+    staging: 'Chờ cất hàng',
+    replacedLine: (
+      round: number | null,
+      judgment: string,
+      at: string,
+      worker: string,
+      nonconformanceNo: string | null,
+    ): string =>
+      [
+        round === null ? judgment : `Lần ${String(round)} ${judgment}`,
+        `Thay trên PDA ${at}${worker === '' ? '' : ` ${worker}`}`,
+        ...(nonconformanceNo === null ? [] : [`Không phù hợp ${nonconformanceNo}`]),
+      ].join(' · '),
+    cardEmpty: (item: string): string => `${item} · Chưa có LOT đã lấy`,
+    target: 'Mục tiêu',
+    picked: 'Đã lấy',
+    refs: {
+      request: 'Số yêu cầu',
+      customer: 'Khách hàng',
+      shipTo: 'Nơi giao',
+      plan: 'Tiêu chuẩn kiểm tra',
+      requestedAt: 'Thời điểm yêu cầu',
+    },
+    lotsReplacedHeading: 'LOT đã bị thay thế — không còn là đối tượng phán định',
+    appliedNone: 'Chưa có lần áp dụng',
+    form: {
+      heading: (seqNo: number): string => `Thêm kết quả kiểm tra lần ${String(seqNo)}`,
+      matchHint: 'Phán định của kết quả này áp dụng cho các LOT đã chọn.',
+      judgmentHint: 'Chỉ chọn một. Không nhập số lượng.',
+      serialHeading: 'Số sê-ri đã kiểm tra',
+      serialOptional: '(tùy chọn)',
+      noLots: 'Chưa có LOT nào được lấy nên không thể ghi kết quả.',
+    },
+    bar: {
+      save: 'Lưu kết quả',
+      saving: 'Đang lưu…',
+      saved: (seqNo: number): string => `Đã lưu kết quả lần ${String(seqNo)}.`,
+      ready: 'Có thể lưu. Phán định sẽ được xác nhận khi hoàn tất xuất hàng.',
+      blocked: {
+        match: 'Hãy chọn ít nhất 1 LOT đã lấy.',
+        judgment: 'Hãy chọn phán định.',
+        reason:
+          'Kết quả này thay đổi phán định Không đạt hoặc Giữ lại. Hãy chọn lý do kiểm tra lại.',
+        noLots: 'Chưa có LOT nào được lấy nên không thể ghi kết quả.',
+        skipped: 'Yêu cầu này đã đóng do bỏ qua OQC. Không thêm kết quả.',
+        completed: 'Phán định đã được xác nhận khi hoàn tất xuất hàng. Không thêm kết quả.',
+        measurement: 'Hãy sửa lỗi giá trị đo của hạng mục kiểm tra rồi mới lưu được.',
+      },
+    },
+  },
 };

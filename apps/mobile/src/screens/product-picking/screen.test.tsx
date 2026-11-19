@@ -1,5 +1,4 @@
-import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
@@ -13,6 +12,7 @@ import {
 } from '../../test/api-harness';
 import { runBackStep } from '../../patterns/back-step';
 import { useWorkerSession } from '../../patterns/worker-session';
+import type { ShipmentRequest, ShipmentRequestLine, ShipmentRequestLot } from './picking';
 import { ProductPickingScreen } from './screen';
 
 const store = vi.hoisted(() => new Map<string, string>());
@@ -31,75 +31,86 @@ vi.mock('../../patterns/local-store', () => ({
 
 const page = { page: 0, size: 20, totalElements: 0, totalPages: 1 };
 
-const lotRow = (lotId: number, lotNo: string, expiryDate: string | null) => ({
-  lotId,
-  lotNo,
+const pickedLot = (overrides: Partial<ShipmentRequestLot> = {}): ShipmentRequestLot => ({
+  shipmentRequestLotId: 501,
+  lotId: 1,
+  lotNo: 'P2611-0001',
   itemId: 31,
-  /* 완제품도 생산에서 나온 LOT 은 PRODUCTION 이다 - 서버에 PRODUCT 유형은 서지 않는다. */
-  lotTypeCode: 'PRODUCTION',
-  plantId: 1,
-  initialQty: 500,
+  pickedQty: 40,
   uomId: 9,
-  sourceTypeCode: 'PRODUCTION',
-  sourceId: 1,
-  statusCode: 'NORMAL',
-  expiryDate,
-  manufacturedAt: '2026-03-03T00:00:00+09:00',
+  statusCode: 'PICKED',
+  managementCode: null,
+  pickedAt: '2026-11-18T01:00:00Z',
+  pickedWorker: null,
+  shipmentId: null,
+  portions: [
+    {
+      warehouseId: 1,
+      warehouseCode: 'WH-FG-A',
+      warehouseName: '창고 A',
+      locationId: 11,
+      locationCode: 'A-01-01',
+      locationSystemRoleCode: null,
+      qty: 40,
+    },
+  ],
+  oqcLotStatus: 'ACCEPTED',
+  oqcResult: null,
+  replacement: null,
+  ...overrides,
 });
 
-const EARLY = lotRow(1, 'FG-0298', '2099-02-01');
-const LATE = lotRow(2, 'FG-0311', '2099-02-06');
-const UNDATED = lotRow(3, 'FG-0305', null);
-
-const line = (overrides: Record<string, unknown> = {}) => ({
+const line = (overrides: Partial<ShipmentRequestLine> = {}): ShipmentRequestLine => ({
   shipmentRequestLineId: 77,
   lineNo: 1,
   itemId: 31,
-  requestedQty: 300,
-  allocatedQty: 300,
-  pickedQty: 120,
+  itemCode: 'FG-A100',
+  itemName: '센서 모듈',
+  requestedQty: 100,
+  allocatedQty: 100,
+  pickedQty: 40,
   shippedQty: 0,
   uomId: 9,
-  shippingInspectionRequired: false,
+  uomCode: 'EA',
+  salesOrderLine: null,
+  shippingInspectionRequired: true,
   picks: [],
+  overQty: 0,
+  lots: [pickedLot()],
   ...overrides,
 });
 
-const request = (overrides: Record<string, unknown> = {}) => ({
-  shipmentRequestId: 5,
-  shipmentRequestNo: 'SR-2026-0456',
-  customerId: 1,
-  shipToPartnerId: 1,
-  requestedShipDate: '2026-09-01',
-  statusCode: 'RELEASED',
-  shippingInspectionStatusCode: 'NOT_REQUIRED',
-  lines: [line()],
-  ...overrides,
-});
+const request = (overrides: Partial<ShipmentRequest> = {}): ShipmentRequest =>
+  ({
+    shipmentRequestId: 5,
+    shipmentRequestNo: 'SR-261118-001',
+    salesOrderNo: null,
+    customerId: 1,
+    shipToPartnerId: 1,
+    requestedShipDate: '2026-11-18',
+    statusCode: 'RELEASED',
+    shippingInspectionStatusCode: 'PENDING',
+    shipmentProgressCode: 'PICKING',
+    lines: [line()],
+    code: 'SHPREQ:SR-261118-001',
+    pickingWarehouses: [],
+    replacementCount: 0,
+    completionBlockers: [{ code: 'PICKING_SHORT', lineNo: 1 }],
+    blockerSummary: { PICKING_SHORT: 1 },
+    lotJudgmentSummary: { notInspected: 0, accepted: 1, rejected: 0, held: 0 },
+    completedShipment: null,
+    ...overrides,
+  }) as ShipmentRequest;
 
-const balance = (lotId: number, availableQty: number) => ({
-  groupBy: 'LOT',
-  itemId: 31,
-  lotId,
-  availableQty,
-  onHandQty: availableQty,
-  reservedQty: 0,
-  pickedQty: 0,
-  blockedQty: 0,
-  uomId: 9,
-  ownershipTypeCode: 'OWN',
-});
+/** 스캔값 → LOT. 품목 31 이 라인의 품목이다. */
+const LOTS: Record<string, { lotId: number; itemId: number }> = {
+  'P2611-0001': { lotId: 1, itemId: 31 },
+  'P2611-0003': { lotId: 3, itemId: 31 },
+  'P2611-0201': { lotId: 20, itemId: 99 },
+};
 
 interface Options {
-  requests?: unknown[];
-  lots?: unknown[];
-  held?: unknown[];
-  holds?: unknown[];
-  balances?: unknown[];
-  policy?: string;
-  lotsStatus?: number;
-  /** 보류 사유의 표시명 조회가 실패한다. 없는 것과 못 받은 것을 가르는 자리다. */
-  reasonsStatus?: number;
+  requests?: ShipmentRequest[];
 }
 
 const routes = (options: Options = {}): StubRoute[] => [
@@ -108,85 +119,34 @@ const routes = (options: Options = {}): StubRoute[] => [
     respond: () => jsonResponse({ items: options.requests ?? [request()], page }),
   },
   {
-    match: (req) => new URL(req.url).pathname === '/mdm/items/31',
-    respond: () =>
-      jsonResponse({
-        item: {
-          itemCode: 'FG-1001',
-          itemName: '완제품',
-          fifoPolicyCode: options.policy ?? 'FEFO',
-        },
-      }),
-  },
-  {
-    match: (req) => new URL(req.url).pathname === '/mdm/code-values',
-    respond: () =>
-      options.reasonsStatus === undefined
-        ? jsonResponse({
-            items: [
-              {
-                code: 'INSPECTION_PENDING',
-                codeName: 'Inspection pending',
-                nameKo: '수입검사 대기',
-                displayOrder: 1,
-                isActive: true,
-              },
-            ],
-            page,
-          })
-        : jsonResponse({ message: '실패' }, { status: options.reasonsStatus }),
+    match: (req) => /^\/mdm\/items\/\d+$/.test(new URL(req.url).pathname),
+    respond: (req) => {
+      const id = new URL(req.url).pathname.split('/').pop();
+
+      return jsonResponse({
+        item: { itemCode: id === '31' ? 'FG-A100' : 'FG-B200', itemName: '센서 모듈' },
+      });
+    },
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/partners',
-    respond: () => jsonResponse({ items: [{ partnerId: 1, partnerName: '가나상사' }], page }),
+    respond: () => jsonResponse({ items: [{ partnerId: 1, partnerName: '가나전자' }], page }),
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/uoms',
     respond: () => jsonResponse({ items: [{ uomId: 9, uomCode: 'EA' }], page }),
   },
   {
-    /* 고른 LOT 이 보류면 화면이 사유를 따로 묻는다. */
-    match: (req) => /\/trace\/lots\/\d+\/holds$/.test(new URL(req.url).pathname),
-    respond: () =>
-      jsonResponse({
-        items: options.holds ?? [
-          {
-            lotHoldId: 8501,
-            lotId: 1,
-            reasonCode: 'INSPECTION_PENDING',
-            holdQty: null,
-            uomId: 9,
-            releaseCondition: '수입검사 합격',
-            statusCode: 'OPEN',
-            heldAt: '2026-09-06T01:12:00.000Z',
-            releasedAt: null,
-          },
-        ],
-        page,
-      }),
-  },
-  {
     match: (req) => new URL(req.url).pathname === '/trace/lots',
     respond: (req) => {
-      if (options.lotsStatus !== undefined) {
-        return jsonResponse({ message: '실패' }, { status: options.lotsStatus });
-      }
-
-      const held = new URL(req.url).searchParams.get('heldOnly') === 'true';
+      const lotNo = new URL(req.url).searchParams.get('lotNo') ?? '';
+      const found = LOTS[lotNo];
 
       return jsonResponse({
-        items: held ? (options.held ?? []) : (options.lots ?? [EARLY, LATE]),
+        items: found === undefined ? [] : [{ ...found, lotNo, uomId: 9, statusCode: 'NORMAL' }],
         page,
       });
     },
-  },
-  {
-    match: (req) => new URL(req.url).pathname === '/inventory/balances',
-    respond: () =>
-      jsonResponse({
-        items: options.balances ?? [balance(1, 500), balance(2, 500), balance(3, 500)],
-        page,
-      }),
   },
 ];
 
@@ -216,34 +176,47 @@ const setOnline = (value: boolean) => {
   Object.defineProperty(navigator, 'onLine', { value, configurable: true });
 };
 
-/* 피킹 화면에는 권장 앞 세 건만 선다. 전부 보려면 목록 화면으로 넘어간다. */
-const openList = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(await screen.findByRole('button', { name: /목록보기\(\d+\)/ }));
-};
+type User = ReturnType<typeof userEvent.setup>;
 
-/* 설계는 스캔으로만 고르게 한다. 목록에서 바로 고르는 길은 없다. */
-const pickLot = async (user: ReturnType<typeof userEvent.setup>, lotNo: string) => {
-  if (screen.queryByRole('button', { name: '찾기' }) === null) {
+/* 스캐너 대신 직접 입력으로 같은 값을 넣는다. */
+const scan = async (user: User, value: string) => {
+  if (screen.queryByRole('button', { name: '피킹' }) === null) {
     await user.click(await screen.findByRole('button', { name: '직접 입력' }));
   }
 
   const field = screen.getByLabelText('제품 LOT 스캔');
 
   await user.clear(field);
-  await user.type(field, lotNo);
-
-  const submit = screen.queryByRole('button', { name: '찾기' });
-
-  if (submit !== null) {
-    await user.click(submit);
-  }
+  await user.type(field, value);
+  await user.click(screen.getByRole('button', { name: '피킹' }));
 };
 
-const chooseTarget = async (user: ReturnType<typeof userEvent.setup>) => {
-  const target = await screen.findByRole('button', { name: /SR-2026-0456/ });
-  await user.click(target);
-  await screen.findByText('FG-1001 완제품');
+const openRequest = async (user: User) => {
+  await user.click(await screen.findByRole('button', { name: /SR-261118-001/ }));
+  await screen.findByLabelText('제품 LOT 스캔');
 };
+
+const capture = (
+  pathname: string,
+  method: string,
+  respond: (req: Request) => Response | Promise<Response>,
+  seen: Request[],
+): StubRoute => ({
+  match: (req) => new URL(req.url).pathname === pathname && req.method === method,
+  respond: (req) => {
+    seen.push(req.clone());
+    return respond(req);
+  },
+});
+
+/** 쓰기 뒤 다시 읽으면 서버가 새 값을 준다 — 시험의 목록도 그 값을 따라간다. */
+const liveList = (read: () => ShipmentRequest[]): StubRoute => ({
+  match: (req) => new URL(req.url).pathname === '/logistics/shipment-requests',
+  respond: () => jsonResponse({ items: read(), page }),
+});
+
+const conflict = (code: string, message = '') =>
+  jsonResponse({ code, message, conflictCause: 'user' }, { status: 409 });
 
 beforeEach(() => {
   store.clear();
@@ -254,548 +227,330 @@ afterEach(() => {
   setOnline(true);
 });
 
-describe('제품LOT 피킹 스캔 화면', () => {
-  /* 보류 판정을 캐시할 수 없다. 확인하지 못한 채로 집게 두지 않는다. */
-  it('연결이 없으면 피킹할 수 없다고 말하고 목록을 열지 않는다', async () => {
+describe('M-04-01 제품 피킹 — 지시서 목록', () => {
+  it('R-12 연결이 없으면 피킹할 수 없다고 말하고 목록을 열지 않는다', async () => {
     setOnline(false);
     mount();
 
     expect(await screen.findByText('오프라인이라 피킹할 수 없습니다')).toBeTruthy();
-    expect(screen.queryByText('오늘 출하분')).toBeNull();
+    expect(screen.getByText('LOT 상태와 검사 판정을 확인할 수 없습니다')).toBeTruthy();
+    expect(screen.queryByText('오늘 출하 지시서')).toBeNull();
   });
 
-  it('오늘 출하분에서 대상을 고르면 배정과 남은 배정을 보인다', async () => {
-    const user = userEvent.setup();
-    mount();
-    await chooseTarget(user);
-
-    expect(screen.getByText('배정 300 · 피킹 120')).toBeTruthy();
-    expect(screen.getByText('남은 배정 180 EA')).toBeTruthy();
-  });
-
-  /* 자유 텍스트라 해석하지 않는다. 사람이 읽고 고르도록 그대로 크게 보인다. */
-  /*
-   * 「제품 LOT」은 따로 발번하는 유형이 아니라 완제품 창고에 선 생산 LOT 을 부르는 이름이다
-   * (경계 B6-01 갈래 ⓐ · omf-all-around#50). 유형을 실으면 후보가 영영 0건이라 피킹이
-   * 아예 열리지 않는다. 공정 중 LOT 을 거르는 몫은 재고 잔액이 맡는다.
-   */
-  it('후보를 LOT 유형으로 거르지 않는다', async () => {
-    const asked: (string | null)[] = [];
-    const user = userEvent.setup();
-    mount([
-      {
-        match: (req) => new URL(req.url).pathname === '/trace/lots',
-        respond: (req) => {
-          asked.push(new URL(req.url).searchParams.get('lotTypeCode'));
-          return jsonResponse({ items: [EARLY, LATE], page });
-        },
-      },
-    ]);
-    await chooseTarget(user);
-
-    await waitFor(() => {
-      expect(asked.length).toBeGreaterThan(0);
-    });
-    expect(asked.every((each) => each === null)).toBe(true);
-  });
-
-  /*
-   * 유형 축을 걷어낸 뒤로는 같은 품목의 공정 중 LOT 까지 함께 온다. 창고에 들어온 적이 없어
-   * 재고 잔액에 줄이 없고, 집을 수 없으므로 후보로 세우지 않는다.
-   */
-  it('재고 잔액에 줄이 없는 LOT 은 후보로 세우지 않는다', async () => {
-    const user = userEvent.setup();
-    const wip = lotRow(9, 'FG-0999', '2099-02-02');
-    mount([], { lots: [EARLY, LATE, wip], balances: [balance(1, 500), balance(2, 500)] });
-    await chooseTarget(user);
-    await screen.findByText('권장 1순위');
-
-    expect(screen.getByText('FG-0298')).toBeTruthy();
-    expect(screen.getByText('FG-0311')).toBeTruthy();
-    expect(screen.queryByText('FG-0999')).toBeNull();
-  });
-
-  /*
-   * ⭐ 같은 품목인데 후보에 없다 - 번호를 잘못 읽은 것이 아니라 아직 집을 수 없는 LOT 이다.
-   *   「못 찾았다」로 말하면 작업자가 같은 번호를 다시 스캔하며 헤맨다.
-   */
-  it('같은 품목인데 후보에 없는 LOT 은 못 찾았다고 말하지 않는다', async () => {
-    const user = userEvent.setup();
-    const wip = lotRow(9, 'FG-0999', '2099-02-02');
-    mount(
-      [
-        {
-          match: (req) =>
-            new URL(req.url).pathname === '/trace/lots' &&
-            new URL(req.url).searchParams.has('lotNo'),
-          respond: () => jsonResponse({ items: [wip], page }),
-        },
+  it('US1-1 카드가 지시서 하나고 라인을 「피킹 / 목표」로 줄여 보인다', async () => {
+    mount([], {
+      requests: [
+        request({
+          lines: [
+            line(),
+            line({
+              shipmentRequestLineId: 78,
+              lineNo: 2,
+              itemId: 32,
+              allocatedQty: 50,
+              pickedQty: 0,
+              lots: [],
+            }),
+          ],
+        }),
       ],
-      { lots: [EARLY, LATE], balances: [balance(1, 500), balance(2, 500)] },
-    );
-    await chooseTarget(user);
-    await pickLot(user, 'FG-0999');
+    });
 
-    expect(
-      await screen.findByText(/FG-0999 은\(는\) 지금 집을 수 있는 LOT 이 아닙니다/),
-    ).toBeTruthy();
+    const card = await screen.findByRole('button', { name: /SR-261118-001/ });
+
+    expect(await within(card).findByText('1. FG-A100 피킹 40 / 목표 100')).toBeTruthy();
+    expect(await within(card).findByText('2. FG-B200 피킹 0 / 목표 50')).toBeTruthy();
+    expect(within(card).getByText('피킹 중, LOT 1')).toBeTruthy();
   });
 
-  /*
-   * 설계 레이아웃이 대상 - 권장 LOT - 스캔 순이다. 스캔이 먼저 서면 무엇을 집어야 하는지
-   * 보기 전에 집으라고 시키는 것이 된다.
-   */
-  it('권장 LOT을 LOT 스캔보다 위에 보인다', async () => {
+  it('US1-1 수주가 있는 지시서는 카드와 머리에 수주 번호를 보인다', async () => {
+    const user = userEvent.setup();
+    mount([], { requests: [request({ salesOrderId: 70, salesOrderNo: 'SO-T1' })] });
+
+    const card = await screen.findByRole('button', { name: /SR-261118-001/ });
+
+    expect(within(card).getByText('수주 SO-T1, 출하 예정 2026-11-18')).toBeTruthy();
+    await openRequest(user);
+    expect(screen.getByText('SO-T1')).toBeTruthy();
+  });
+
+  it('Q9 빈 목록이면 지시서가 없다고 말한다', async () => {
+    mount([], { requests: [] });
+
+    expect(await screen.findByText('오늘 피킹할 출하 지시서가 없습니다')).toBeTruthy();
+  });
+});
+
+describe('M-04-01 제품 피킹 — LOT 통째 피킹', () => {
+  it('US1-1 지시서를 열면 라인별 목표·피킹·남음이 보이고 수량 칸과 숫자판이 없다', async () => {
     const user = userEvent.setup();
     mount();
-    await chooseTarget(user);
+    await openRequest(user);
 
-    const headings = screen.getAllByRole('heading').map((each) => each.textContent ?? '');
-    const candidates = headings.findIndex((each) => each.startsWith('권장 LOT'));
-    const scan = headings.indexOf('LOT 스캔');
-
-    expect(candidates).toBeGreaterThanOrEqual(0);
-    expect(scan).toBeGreaterThan(candidates);
+    const tiles = await screen.findByRole('group', { name: '라인 1, FG-A100' });
+    expect(within(tiles).getByText('목표')).toBeTruthy();
+    expect(within(tiles).getByText('100')).toBeTruthy();
+    expect(within(tiles).getByText('남음')).toBeTruthy();
+    expect(within(tiles).getByText('60')).toBeTruthy();
+    expect(screen.queryByLabelText(/피킹 수량/)).toBeNull();
+    expect(screen.queryByRole('button', { name: '피킹 확정' })).toBeNull();
   });
 
-  /* 식별자만 오는 값이라 이름을 따로 풀지 않으면 작업자가 대조할 수 없다. */
-  it('대상 카드에 고객과 출하 예정일을 보인다', async () => {
-    const user = userEvent.setup();
-    mount();
-    await chooseTarget(user);
-
-    expect(await screen.findByText('고객 가나상사')).toBeTruthy();
-    expect(screen.getByText('출하 예정 2026-09-01')).toBeTruthy();
-  });
-
-  it('고객 LOT 요구 문장을 그대로 보이고 그것으로 LOT을 걸러내지 않는다', async () => {
+  it('Q2 LOT 줄에 창고·위치별 몫이 보인다', async () => {
     const user = userEvent.setup();
     mount([], {
       requests: [
-        request({ lines: [line({ customerLotRequirement: '제조 90일 이내 · 동일 LOT 단일' })] }),
+        request({
+          lines: [
+            line({
+              lots: [
+                pickedLot({
+                  portions: [
+                    {
+                      warehouseId: 1,
+                      warehouseCode: 'A',
+                      warehouseName: '창고 A',
+                      locationId: 1,
+                      locationCode: 'A-01-02',
+                      locationSystemRoleCode: null,
+                      qty: 20,
+                    },
+                    {
+                      warehouseId: 2,
+                      warehouseCode: 'B',
+                      warehouseName: '창고 B',
+                      locationId: 2,
+                      locationCode: 'B-02-01',
+                      locationSystemRoleCode: null,
+                      qty: 20,
+                    },
+                  ],
+                }),
+              ],
+            }),
+          ],
+        }),
       ],
     });
-    await chooseTarget(user);
+    await openRequest(user);
 
-    expect(screen.getByText('제조 90일 이내 · 동일 LOT 단일')).toBeTruthy();
-    expect(await screen.findByText('FG-0298')).toBeTruthy();
-    expect(screen.getByText('FG-0311')).toBeTruthy();
+    expect(await screen.findByText('창고 A, A-01-02')).toBeTruthy();
+    expect(screen.getByText('창고 B, B-02-01')).toBeTruthy();
+    expect(screen.queryByText('적치 대기')).toBeNull();
   });
 
-  it('유효기간이 이른 것을 권장 1순위로 보인다', async () => {
+  it('R-2·Q2 적치 대기 자리 몫은 위치 코드(창고 접두가 붙은 시스템 코드) 대신 「적치 대기」로 보인다', async () => {
     const user = userEvent.setup();
-    mount();
-    await chooseTarget(user);
-
-    await screen.findByText('FG-0298');
-
-    const cards = screen.getAllByText(/FG-03|FG-02/);
-
-    expect(cards[0]?.textContent).toBe('FG-0298');
-    expect(screen.getByText('권장 1순위')).toBeTruthy();
-  });
-
-  /* 섞으면 잘못된 순서를 권장으로 내놓고, 빼면 재고가 사라진 것처럼 보인다. */
-  it('유효기간이 없는 LOT은 섞지 않고 따로 두고 그 사실을 말한다', async () => {
-    const user = userEvent.setup();
-    mount([], { lots: [EARLY, LATE, UNDATED] });
-    await chooseTarget(user);
-
-    await openList(user);
-
-    expect(await screen.findByText('순서를 정할 수 없습니다')).toBeTruthy();
-    expect(screen.getByText('FG-0305')).toBeTruthy();
-  });
-
-  /*
-   * 라우터 이력에는 이 화면 하나뿐이다. 단계를 되돌리지 않으면 대상을 고르고 스캔하던
-   * 사람이 뒤로가기 한 번에 작업 목록까지 나가 처음부터 다시 들어와야 한다.
-   */
-  it('뒤로가기는 고른 대상을 먼저 놓는다', async () => {
-    const user = userEvent.setup();
-    mount();
-    await chooseTarget(user);
-
-    expect(runBackStep()).toBe(true);
-
-    expect(await screen.findByRole('button', { name: /SR-2026-0456/ })).toBeTruthy();
-  });
-
-  it('목록 화면에서 뒤로가기는 피킹 화면으로 돌아간다', async () => {
-    const user = userEvent.setup();
-    mount([], { lots: [EARLY, LATE, UNDATED] });
-    await chooseTarget(user);
-    await openList(user);
-    await screen.findByText('전체 LOT');
-
-    expect(runBackStep()).toBe(true);
-
-    expect(await screen.findByLabelText('제품 LOT 스캔')).toBeTruthy();
-    expect(screen.queryByText('전체 LOT')).toBeNull();
-  });
-
-  /*
-   * 후보 카드가 130~210px 이고 본문이 632px 이다. 상한이 없으면 한 품목의 LOT 이 쌓인 날
-   * 목록이 화면 수십 장이 되어 스캐너를 든 한 손으로는 지날 수 없다.
-   */
-  it('권장 LOT 을 세 건까지만 세우고 나머지는 건수로 말한다', async () => {
-    const user = userEvent.setup();
-    const extra = [1, 2, 3].map((n) =>
-      lotRow(20 + n, `FG-04${String(n)}`, `2099-03-0${String(n)}`),
-    );
     mount([], {
-      lots: [EARLY, LATE, ...extra],
-      balances: extra
-        .map((lot) => balance(lot.lotId, 500))
-        .concat([balance(1, 500), balance(2, 500)]),
-    });
-    await chooseTarget(user);
-    await screen.findByText('권장 1순위');
-
-    expect(screen.getAllByText(/^FG-0/)).toHaveLength(3);
-    expect(screen.getByRole('button', { name: '목록보기(5)' })).toBeTruthy();
-
-    await openList(user);
-
-    expect(screen.getAllByText(/^FG-0/)).toHaveLength(5);
-  });
-
-  it('모르는 선출 정책이면 순서를 세우지 않고 그 사실을 말한다', async () => {
-    const user = userEvent.setup();
-    mount([], { policy: 'LIFO' });
-    await chooseTarget(user);
-
-    expect(await screen.findByText('선출 정책을 알 수 없어 순서를 정하지 않았습니다')).toBeTruthy();
-    expect(screen.queryByText('권장 1순위')).toBeNull();
-  });
-
-  it('보류가 걸린 LOT은 집을 수 없다고 말한다', async () => {
-    const user = userEvent.setup();
-    mount([], { held: [EARLY] });
-    await chooseTarget(user);
-
-    expect(await screen.findByText('보류 — 피킹할 수 없습니다')).toBeTruthy();
-  });
-
-  /*
-   * 막는 것만으로는 무엇을 하면 풀리는지 알 수 없다. 스펙이 사유까지 요구하고, 형제 화면은
-   * 이미 보이고 있어 같은 사람이 두 화면에서 다른 것을 받는다.
-   */
-  it('보류된 LOT 을 스캔하면 사유와 해제 조건을 함께 말한다', async () => {
-    const user = userEvent.setup();
-    mount([], { held: [EARLY] });
-    await chooseTarget(user);
-    await screen.findByText('보류 — 피킹할 수 없습니다');
-
-    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
-    await user.type(screen.getByLabelText('제품 LOT 스캔'), EARLY.lotNo);
-    await user.click(screen.getByRole('button', { name: '찾기' }));
-
-    /* 코드를 그대로 보이면 무엇이 걸렸는지 모른다. 표시명은 마스터가 갖는다. */
-    expect(await screen.findByText(/보류 사유 수입검사 대기/)).toBeTruthy();
-    expect(screen.getByText(/해제 조건 수입검사 합격/)).toBeTruthy();
-  });
-
-  /*
-   * 표시명 조회와 보류 조회는 서로 다른 물음이다. 뭉치면 표시명이 안 온 동안 표시명이 없다고
-   * 해 두었다가 이름으로 바뀌고, 조회가 실패해도 없는 것처럼 말한다.
-   */
-  it('표시명 조회가 실패하면 표시명이 없다고 말하지 않는다', async () => {
-    const user = userEvent.setup();
-    mount([], { held: [EARLY], reasonsStatus: 500 });
-    await chooseTarget(user);
-    await screen.findByText('보류 — 피킹할 수 없습니다');
-
-    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
-    await user.type(screen.getByLabelText('제품 LOT 스캔'), EARLY.lotNo);
-    await user.click(screen.getByRole('button', { name: '찾기' }));
-
-    expect(await screen.findByText(/보류 사유를 확인하지 못했습니다/)).toBeTruthy();
-    expect(screen.queryByText(/표시명 없음/)).toBeNull();
-  });
-
-  /*
-   * 해제 조건은 보류 조회가 들고 온 값이다. 표시명 조회가 실패했다고 함께 지우면, 손에 쥔
-   * 것을 다른 물음이 실패했다는 이유로 버리는 것이 된다 - 현장이 실제로 쓰는 것은 이쪽이다.
-   */
-  it('표시명을 못 받아도 해제 조건은 그대로 낸다', async () => {
-    const user = userEvent.setup();
-    mount([], { held: [EARLY], reasonsStatus: 500 });
-    await chooseTarget(user);
-    await screen.findByText('보류 — 피킹할 수 없습니다');
-
-    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
-    await user.type(screen.getByLabelText('제품 LOT 스캔'), EARLY.lotNo);
-    await user.click(screen.getByRole('button', { name: '찾기' }));
-
-    expect(await screen.findByText(/해제 조건 수입검사 합격/)).toBeTruthy();
-  });
-
-  /*
-   * 후보는 이 품목으로 걸러 온다. 목록에 없다는 것만으로는 없는 번호와 남의 품목을 가를 수
-   * 없고, 작업자가 할 일은 둘이 다르다 - 하나는 다시 찾고 하나는 대상을 다시 고른다.
-   */
-  it('다른 품목의 LOT 을 스캔하면 없는 번호와 다르게 말한다', async () => {
-    const user = userEvent.setup();
-    const foreign = { ...lotRow(9, 'FG-9999', '2099-05-05'), itemId: 77 };
-    mount([
-      {
-        match: (req) =>
-          new URL(req.url).pathname === '/trace/lots' && new URL(req.url).searchParams.has('lotNo'),
-        respond: () => jsonResponse({ items: [foreign], page }),
-      },
-    ]);
-    await chooseTarget(user);
-    await pickLot(user, 'FG-9999');
-
-    expect(await screen.findByText(/FG-9999 은\(는\) 이 라인의 품목이 아닙니다/)).toBeTruthy();
-  });
-
-  /*
-   * 스캔이 빗나가도 앞서 고른 것은 남는다. 무엇을 집는 중인지 글자로 없으면, 손에 든 것과
-   * 다른 LOT 에 수량을 적고 확정하게 된다.
-   */
-  it('스캔이 빗나가도 지금 집는 LOT 을 계속 말한다', async () => {
-    const user = userEvent.setup();
-    mount();
-    await chooseTarget(user);
-
-    await pickLot(user, EARLY.lotNo);
-    expect(await screen.findByText(`스캔됨 ${EARLY.lotNo}`)).toBeTruthy();
-
-    await pickLot(user, '없는LOT');
-
-    expect(await screen.findByText(/없는LOT LOT을 이 품목에서 찾지 못했습니다/)).toBeTruthy();
-    expect(screen.getByText(`스캔됨 ${EARLY.lotNo}`)).toBeTruthy();
-  });
-
-  /*
-   * 스펙은 보류 LOT 스캔을 거부로 정했다. 수량칸이 열리면 집을 수 없다는 말 옆에 집을 수
-   * 있다는 말이 나란히 서고, 확정 단추만 잠긴 채 이유가 어긋난다.
-   */
-  it('보류된 LOT 을 스캔해도 수량칸을 열지 않는다', async () => {
-    const user = userEvent.setup();
-    mount([], { held: [EARLY] });
-    await chooseTarget(user);
-    await screen.findByText('보류 — 피킹할 수 없습니다');
-
-    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
-    await user.type(screen.getByLabelText('제품 LOT 스캔'), EARLY.lotNo);
-    await user.click(screen.getByRole('button', { name: '찾기' }));
-    await screen.findByText(/보류 사유 수입검사 대기/);
-
-    expect(screen.queryByRole('button', { name: '피킹 확정' })).toBeNull();
-    expect(screen.queryByText('권장 1순위가 아닙니다 — 피킹할 수 있습니다')).toBeNull();
-  });
-
-  /*
-   * 판이 지면 아래를 비우는 표시도 함께 걷혀야 한다. 남으면 화면 아래가 빈 채로 굳고, 그
-   * 빈자리를 되돌릴 길이 없다 - 바깥을 눌러 닫는 처리는 판과 함께 사라진다.
-   */
-  it('보류된 LOT 을 찍으면 숫자판과 아래 여백이 함께 걷힌다', async () => {
-    const user = userEvent.setup();
-    mount([], { held: [LATE] });
-    await chooseTarget(user);
-    await screen.findByText('FG-0311');
-
-    await pickLot(user, EARLY.lotNo);
-    await user.click(await screen.findByLabelText(/피킹 수량/));
-
-    expect(await screen.findByRole('button', { name: '7' })).toBeTruthy();
-    expect(document.querySelector('.docked-pad-open')).not.toBeNull();
-
-    /* 스캐너로 읽는다. 단추를 누르면 그 누름이 먼저 판을 닫아 이 자리를 재지 못한다. */
-    const field = screen.getByLabelText('제품 LOT 스캔') as HTMLInputElement;
-    field.focus();
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
-      field,
-      LATE.lotNo,
-    );
-    field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
-
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: '7' })).toBeNull();
-    });
-    expect(document.querySelector('.docked-pad-open')).toBeNull();
-  });
-
-  /* 고르지도 않은 LOT 마다 사유를 물으면 후보 수만큼 호출이 나간다. */
-  it('고르기 전에는 보류 사유를 묻지 않는다', async () => {
-    const user = userEvent.setup();
-    const asked: string[] = [];
-    mount(
-      [
-        {
-          match: (req) => /\/trace\/lots\/\d+\/holds$/.test(new URL(req.url).pathname),
-          respond: (req) => {
-            asked.push(new URL(req.url).pathname);
-            return jsonResponse({ items: [], page });
-          },
-        },
+      requests: [
+        request({
+          lines: [
+            line({
+              lots: [
+                pickedLot({
+                  portions: [
+                    {
+                      warehouseId: 1,
+                      warehouseCode: 'A',
+                      warehouseName: '창고 A',
+                      locationId: 9,
+                      locationCode: '89YE-SYS-STAGING',
+                      locationSystemRoleCode: 'PUTAWAY_STAGING',
+                      qty: 10,
+                    },
+                  ],
+                }),
+              ],
+            }),
+          ],
+        }),
       ],
-      { held: [EARLY] },
-    );
-    await chooseTarget(user);
-    await screen.findByText('보류 — 피킹할 수 없습니다');
-
-    expect(asked).toHaveLength(0);
-  });
-
-  /*
-   * ⛔ 가용 0 은 집을 수 없으니 아예 보이지 않는다(사용자 결정 2026-09-21 · omf-all-around#50).
-   *   전에는 목록에 두고 「다른 출하에 배정됐습니다」로 말했는데, 그러면 작업자가 맨 위에 선
-   *   그것부터 집으려다 막힌다.
-   */
-  it('가용이 없는 LOT 은 목록에 세우지 않는다', async () => {
-    const user = userEvent.setup();
-    mount([], { balances: [balance(1, 0), balance(2, 500)] });
-    await chooseTarget(user);
-    await screen.findByText('FG-0311');
-
-    expect(screen.queryByText('FG-0298')).toBeNull();
-    expect(screen.queryByText('다른 출하에 배정됐습니다')).toBeNull();
-  });
-
-  it('잔여 유효기간이 하한에 못 미치면 그 수치와 함께 막는다', async () => {
-    const user = userEvent.setup();
-    mount([], {
-      requests: [request({ lines: [line({ minimumRemainingShelfLifeDays: 999999 })] })],
     });
-    await chooseTarget(user);
+    await openRequest(user);
 
-    const blocked = await screen.findAllByText(/고객 요구 999999일 미달/);
-
-    expect(blocked).toHaveLength(2);
-
-    await pickLot(user, EARLY.lotNo);
-
-    expect(screen.queryByRole('button', { name: '피킹 확정' })).toBeNull();
+    expect(await screen.findByText('창고 A')).toBeTruthy();
+    expect(screen.getByText('적치 대기')).toBeTruthy();
+    expect(screen.queryByText(/SYS-STAGING/)).toBeNull();
   });
 
-  /* 셀 수 없는 것을 넉넉한 것으로 두지 않는다. 판정의 정본은 서버다. */
-  it('유효기간이 없어 잔여를 셀 수 없으면 그 사실을 말하되 막지는 않는다', async () => {
-    const user = userEvent.setup();
-    mount([], {
-      lots: [UNDATED],
-      requests: [request({ lines: [line({ minimumRemainingShelfLifeDays: 180 })] })],
-    });
-    await chooseTarget(user);
-
-    await openList(user);
-
-    expect(await screen.findByText('유효기간이 없어 잔여 일수를 판정할 수 없습니다')).toBeTruthy();
-
-    await user.click(screen.getByRole('button', { name: '돌아가기' }));
-    await pickLot(user, UNDATED.lotNo);
-
-    expect(await screen.findByRole('button', { name: '피킹 확정' })).toBeTruthy();
-  });
-
-  /* 확인하지 못한 것을 LOT 이 없는 것으로 말하지 않는다. */
-  it('LOT 조회 실패를 LOT 없음으로 말하지 않는다', async () => {
-    const user = userEvent.setup();
-    mount([], { lotsStatus: 500 });
-    await chooseTarget(user);
-
-    expect(await screen.findByText(messages.httpError.loadServer)).toBeTruthy();
-    expect(screen.queryByText('이 품목에 피킹할 수 있는 LOT이 없습니다')).toBeNull();
-  });
-
-  /* 권장은 순서 제안이지 위치가 아니다. 다른 것을 집어도 물건은 맞다. */
-  it('권장 1순위가 아닌 LOT을 골라도 경고만 하고 막지 않는다', async () => {
-    const user = userEvent.setup();
-    mount();
-    await chooseTarget(user);
-    await screen.findByText('FG-0311');
-
-    await pickLot(user, LATE.lotNo);
-
-    expect(await screen.findByText('권장 1순위가 아닙니다 — 피킹할 수 있습니다')).toBeTruthy();
-    expect(screen.queryByLabelText('사유')).toBeNull();
-  });
-
-  it('남은 배정을 넘으면 확정을 막는다', async () => {
-    const user = userEvent.setup();
-    mount();
-    await chooseTarget(user);
-    await screen.findByText('FG-0298');
-
-    await pickLot(user, EARLY.lotNo);
-    await user.type(await screen.findByLabelText(/피킹 수량/), '181');
-
-    expect(
-      await screen.findByText('피킹 수량은 남은 배정 180을(를) 넘을 수 없습니다'),
-    ).toBeTruthy();
-    expect(screen.getByRole('button', { name: '피킹 확정' }).hasAttribute('disabled')).toBe(true);
-  });
-
-  /* 사번은 인증이 아니라 귀속이다. 없으면 서버가 요청 자체를 받지 않는다. */
-  it('확정은 사번과 멱등키를 실어 라인 경로로 보낸다', async () => {
+  it('US1-1 LOT 스캔이 바로 :pick-lot 을 부르고 수량 없이 LOT 번호만 싣는다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
+    const fresh = pickedLot({
+      shipmentRequestLotId: 503,
+      lotId: 3,
+      lotNo: 'P2611-0003',
+      pickedQty: 70,
+      oqcLotStatus: 'NOT_INSPECTED',
+      pickedAt: '2026-11-18T05:00:00Z',
+    });
+    const after = line({ pickedQty: 110, overQty: 10, lots: [pickedLot(), fresh] });
+    let current = [request()];
     mount([
-      {
-        match: (req) =>
-          new URL(req.url).pathname === '/logistics/shipment-requests/5/lines/77:pick' &&
-          req.method === 'POST',
-        respond: (req) => {
-          seen.push(req);
-          return jsonResponse(line({ pickedQty: 300 }));
+      liveList(() => current),
+      capture(
+        '/logistics/shipment-requests/5/lines/77:pick-lot',
+        'POST',
+        () => {
+          current = [request({ lines: [after] })];
+          return jsonResponse({ pickedLot: fresh, line: after });
         },
-      },
+        seen,
+      ),
     ]);
-    await chooseTarget(user);
-    await screen.findByText('FG-0298');
-
-    await pickLot(user, EARLY.lotNo);
-    await user.type(await screen.findByLabelText(/피킹 수량/), '180');
-    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
+    await openRequest(user);
+    await scan(user, 'P2611-0003');
 
     await waitFor(() => {
       expect(seen).toHaveLength(1);
     });
+    expect(await seen[0]?.json()).toEqual({ lotNo: 'P2611-0003' });
     expect(seen[0]?.headers.get('X-Worker-No')).toBe('900028');
     expect(seen[0]?.headers.get('Idempotency-Key')).toBeTruthy();
-    expect(await screen.findByText('피킹을 기록했습니다')).toBeTruthy();
+    expect(await screen.findByText('P2611-0003 70 EA 를 피킹했습니다')).toBeTruthy();
+    expect(screen.getByText('라인 1 목표 100 을 채웠습니다, 초과 10')).toBeTruthy();
+    const tiles = screen.getByRole('group', { name: '라인 1, FG-A100' });
+    expect(within(tiles).getByText('초과')).toBeTruthy();
+    expect(within(tiles).getByText('110')).toBeTruthy();
   });
 
-  /*
-   * 보낼 때마다 키를 새로 만들면 멱등키가 아무것도 막지 못한다. 서버가 기록한 뒤 응답이
-   * 유실되면 화면은 실패로 보이고, 다시 누르면 새 키라 서버가 같은 일을 한 번 더 한다.
-   */
-  it('확정을 다시 시도해도 같은 멱등키로 간다', async () => {
+  it('US1-1 같은 품목 라인이 둘이면 남은 수량이 있는 앞 라인으로 보낸다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount(
+      [
+        capture(
+          '/logistics/shipment-requests/5/lines/78:pick-lot',
+          'POST',
+          () =>
+            jsonResponse({
+              pickedLot: pickedLot(),
+              line: line({ shipmentRequestLineId: 78, lineNo: 2 }),
+            }),
+          seen,
+        ),
+      ],
+      {
+        requests: [
+          request({
+            lines: [
+              line({ pickedQty: 100, lots: [] }),
+              line({ shipmentRequestLineId: 78, lineNo: 2, pickedQty: 0, lots: [] }),
+            ],
+          }),
+        ],
+      },
+    );
+    await openRequest(user);
+    await scan(user, 'P2611-0003');
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+  });
+
+  it('US1-2 목표를 채운 라인에 스캔하면 「목표 수량을 채웠습니다」로 거절한다', async () => {
+    const user = userEvent.setup();
+    mount(
+      [
+        {
+          match: (req) => new URL(req.url).pathname.endsWith(':pick-lot'),
+          respond: () => conflict('LOT_TARGET_REACHED', '목표 수량을 채웠습니다.'),
+        },
+      ],
+      { requests: [request({ lines: [line({ pickedQty: 110, overQty: 10 })] })] },
+    );
+    await openRequest(user);
+    await scan(user, 'P2611-0003');
+
+    const banner = await screen.findByRole('alert', { name: /목표 수량을 채웠습니다/ });
+    expect(within(banner).getByText(/라인 1 은 목표 100 에 피킹 110 입니다/)).toBeTruthy();
+    expect(within(banner).getByText('피킹하지 않았습니다')).toBeTruthy();
+  });
+
+  it('FR-006 다른 작업에 잡힌 LOT · 이미 피킹한 LOT 을 코드별 문구로 거절한다', async () => {
+    const user = userEvent.setup();
+    let answer = 'LOT_ALREADY_RESERVED';
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname.endsWith(':pick-lot'),
+        respond: () => conflict(answer),
+      },
+    ]);
+    await openRequest(user);
+    await scan(user, 'P2611-0003');
+    expect(await screen.findByText('다른 작업에 잡힌 LOT 입니다')).toBeTruthy();
+
+    answer = 'LOT_ALREADY_PICKED';
+    await scan(user, 'P2611-0001');
+    expect(await screen.findByText('이미 이 지시서에 피킹한 LOT 입니다')).toBeTruthy();
+  });
+
+  it('FR-006 보류·불량·재고 없음은 서버 문구를 보인다', async () => {
+    const user = userEvent.setup();
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname.endsWith(':pick-lot'),
+        respond: () => conflict('INVALID_STATE', '보류 중인 LOT 입니다. (사유: QC)'),
+      },
+    ]);
+    await openRequest(user);
+    await scan(user, 'P2611-0003');
+
+    expect(await screen.findByText('보류 중인 LOT 입니다. (사유: QC)')).toBeTruthy();
+  });
+
+  it('FR-006 이 지시서에 그 품목 라인이 없으면 보내지 않고 알린다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([
+      capture(
+        '/logistics/shipment-requests/5/lines/77:pick-lot',
+        'POST',
+        () => jsonResponse({}),
+        seen,
+      ),
+    ]);
+    await openRequest(user);
+    await scan(user, 'P2611-0201');
+
+    expect(await screen.findByText('이 지시서에 이 품목 라인이 없습니다')).toBeTruthy();
+    expect(seen).toHaveLength(0);
+  });
+
+  it('FR-006 이 공장에서 찾지 못한 번호는 보내지 않고 알린다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openRequest(user);
+    await scan(user, 'NOPE-1');
+
+    expect(await screen.findByText('이 공장의 LOT 이 아닙니다')).toBeTruthy();
+  });
+
+  it('US1-1 전송이 실패하면 같은 LOT 재스캔은 같은 멱등 키로 간다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
     let reachable = false;
     mount([
-      {
-        match: (req) =>
-          new URL(req.url).pathname === '/logistics/shipment-requests/5/lines/77:pick' &&
-          req.method === 'POST',
-        respond: (req) => {
-          seen.push(req.clone());
-
+      capture(
+        '/logistics/shipment-requests/5/lines/77:pick-lot',
+        'POST',
+        () => {
           if (!reachable) {
             throw new TypeError('Failed to fetch');
           }
 
-          return jsonResponse(line({ pickedQty: 300 }));
+          return jsonResponse({ pickedLot: pickedLot(), line: line() });
         },
-      },
+        seen,
+      ),
     ]);
-    await chooseTarget(user);
-    await screen.findByText('FG-0298');
-
-    await pickLot(user, EARLY.lotNo);
-    await user.type(await screen.findByLabelText(/피킹 수량/), '180');
-    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
-
-    await waitFor(() => {
-      expect(seen).toHaveLength(1);
-    });
+    await openRequest(user);
+    await scan(user, 'P2611-0003');
+    expect(await screen.findByText('피킹을 기록하지 못했습니다')).toBeTruthy();
 
     reachable = true;
-    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
+    await scan(user, 'P2611-0003');
 
     await waitFor(() => {
       expect(seen).toHaveLength(2);
@@ -803,400 +558,485 @@ describe('제품LOT 피킹 스캔 화면', () => {
     expect(seen[1]?.headers.get('Idempotency-Key')).toBe(seen[0]?.headers.get('Idempotency-Key'));
   });
 
-  /* 보낼 값이 달라졌으면 다른 쓰기다. 앞 키로 가면 서버가 앞 시도로 보고 흡수한다. */
-  it('수량을 바꾸면 새 멱등키로 간다', async () => {
+  it('US1-1 전송 실패 띠의 [다시 시도]는 실패한 그 LOT 을 같은 멱등 키로 다시 보낸다(시안 ⑩)', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
+    let reachable = false;
     mount([
-      {
-        match: (req) =>
-          new URL(req.url).pathname === '/logistics/shipment-requests/5/lines/77:pick' &&
-          req.method === 'POST',
-        respond: (req) => {
-          seen.push(req.clone());
-          throw new TypeError('Failed to fetch');
+      capture(
+        '/logistics/shipment-requests/5/lines/77:pick-lot',
+        'POST',
+        () => {
+          if (!reachable) {
+            throw new TypeError('Failed to fetch');
+          }
+
+          return jsonResponse({ pickedLot: pickedLot(), line: line() });
         },
-      },
+        seen,
+      ),
     ]);
-    await chooseTarget(user);
-    await screen.findByText('FG-0298');
+    await openRequest(user);
+    await scan(user, 'P2611-0003');
+    const banner = await screen.findByRole('alert', { name: '피킹을 기록하지 못했습니다' });
 
-    await pickLot(user, EARLY.lotNo);
-
-    const field = await screen.findByLabelText(/피킹 수량/);
-
-    await user.type(field, '180');
-    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
-
-    await waitFor(() => {
-      expect(seen).toHaveLength(1);
-    });
-
-    await user.clear(field);
-    await user.type(field, '150');
-    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
+    reachable = true;
+    await user.click(within(banner).getByRole('button', { name: '다시 시도' }));
 
     await waitFor(() => {
       expect(seen).toHaveLength(2);
     });
-    expect(seen[1]?.headers.get('Idempotency-Key')).not.toBe(
-      seen[0]?.headers.get('Idempotency-Key'),
-    );
+    expect(seen[1]?.headers.get('Idempotency-Key')).toBe(seen[0]?.headers.get('Idempotency-Key'));
+    expect(((await seen[1]?.clone().json()) as { lotNo: string }).lotNo).toBe('P2611-0003');
   });
 
-  /* 후보를 바꾸는 것이 이 화면의 주된 조작이다. 다른 LOT 은 다른 쓰기다. */
-  it('다른 후보 LOT 을 고르면 새 멱등키로 간다', async () => {
+  it('뒤로가기는 연 지시서를 먼저 닫는다', async () => {
     const user = userEvent.setup();
-    const seen: Request[] = [];
-    mount([
-      {
-        match: (req) =>
-          new URL(req.url).pathname === '/logistics/shipment-requests/5/lines/77:pick' &&
-          req.method === 'POST',
-        respond: (req) => {
-          seen.push(req.clone());
-          throw new TypeError('Failed to fetch');
-        },
-      },
-    ]);
-    await chooseTarget(user);
-    await screen.findByText('FG-0311');
-
-    await pickLot(user, EARLY.lotNo);
-    await user.type(await screen.findByLabelText(/피킹 수량/), '180');
-    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
-
-    await waitFor(() => {
-      expect(seen).toHaveLength(1);
-    });
-
-    await pickLot(user, LATE.lotNo);
-    await user.type(await screen.findByLabelText(/피킹 수량/), '180');
-    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
-
-    await waitFor(() => {
-      expect(seen).toHaveLength(2);
-    });
-    expect(await seen[1]?.clone().json()).not.toMatchObject(
-      (await seen[0]?.clone().json()) as Record<string, unknown>,
-    );
-    expect(seen[1]?.headers.get('Idempotency-Key')).not.toBe(
-      seen[0]?.headers.get('Idempotency-Key'),
-    );
-  });
-
-  /* 장갑 낀 손이 한 번 더 누르면 멱등키가 다른 두 건이 나가 예약이 두 번 소진된다. */
-  it('보내는 동안 확정을 다시 눌러도 한 건만 나간다', async () => {
-    const user = userEvent.setup();
-    const seen: Request[] = [];
-    const gate: { release: (() => void) | null } = { release: null };
-    mount([
-      {
-        match: (req) =>
-          new URL(req.url).pathname === '/logistics/shipment-requests/5/lines/77:pick' &&
-          req.method === 'POST',
-        respond: async (req) => {
-          seen.push(req.clone());
-          await new Promise<void>((resolve) => {
-            gate.release = resolve;
-          });
-
-          return jsonResponse(line({ pickedQty: 300 }));
-        },
-      },
-    ]);
-    await chooseTarget(user);
-    await screen.findByText('FG-0298');
-
-    await pickLot(user, EARLY.lotNo);
-    await user.type(await screen.findByLabelText(/피킹 수량/), '180');
-
-    /* 장갑 낀 손의 연타다. 하나가 끝나기를 기다리지 않고 잇달아 누른다. */
-    const button = screen.getByRole('button', { name: '피킹 확정' });
-
-    button.click();
-    button.click();
-    button.click();
-
-    await waitFor(() => {
-      expect(seen.length).toBeGreaterThan(0);
-    });
-    gate.release?.();
-
-    expect(await screen.findByText('피킹을 기록했습니다')).toBeTruthy();
-    expect(seen).toHaveLength(1);
-  });
-
-  /*
-   * 창고 구석에서 연결이 끊겼다 붙는다. 훅이 조기 반환 아래에 있으면 그 순간 훅 수가 달라져
-   * 화면이 통째로 던지고, 이 앱에는 그것을 받을 자리가 없어 빈 화면이 남는다.
-   */
-  it('연결이 끊겼다 돌아와도 화면이 살아 있다', async () => {
-    const user = userEvent.setup();
-    setOnline(false);
     mount();
+    await openRequest(user);
 
-    await screen.findByText('오프라인이라 피킹할 수 없습니다');
+    expect(runBackStep()).toBe(true);
 
-    setOnline(true);
-    window.dispatchEvent(new Event('online'));
+    expect(await screen.findByRole('button', { name: /SR-261118-001/ })).toBeTruthy();
+  });
+});
 
-    await chooseTarget(user);
+describe('M-04-01 제품 피킹 — OQC 판정과 [교체]', () => {
+  it('FR-007 LOT 판정 배지 6종을 보인다', async () => {
+    const user = userEvent.setup();
+    const statuses = [
+      'NOT_INSPECTED',
+      'ACCEPTED',
+      'REJECTED',
+      'HELD',
+      'NOT_REQUIRED',
+      'SKIPPED',
+    ] as const;
+    mount([], {
+      requests: [
+        request({
+          lines: [
+            line({
+              lots: statuses.map((status, index) =>
+                pickedLot({
+                  shipmentRequestLotId: 600 + index,
+                  lotId: 600 + index,
+                  lotNo: `L-${String(index)}`,
+                  oqcLotStatus: status,
+                }),
+              ),
+            }),
+          ],
+        }),
+      ],
+    });
+    await openRequest(user);
 
-    expect(screen.getByText('배정 300 · 피킹 120')).toBeTruthy();
+    for (const label of ['미검사', '합격', '불합격', '보류', '검사 불필요', '검사 생략']) {
+      expect(await screen.findByText(label)).toBeTruthy();
+    }
   });
 
-  /* 라인이 다르면 다른 쓰기다. 대상 바꾸기로 라인을 갈아탈 수 있다. */
-  it('다른 라인을 고르면 새 멱등키로 간다', async () => {
+  it('US2-1 불합격 LOT 에만 [교체]가 있다', async () => {
+    const user = userEvent.setup();
+    mount([], {
+      requests: [
+        request({
+          lines: [
+            line({
+              lots: [
+                pickedLot({
+                  shipmentRequestLotId: 501,
+                  lotNo: 'P2611-0001',
+                  oqcLotStatus: 'ACCEPTED',
+                }),
+                pickedLot({
+                  shipmentRequestLotId: 503,
+                  lotId: 3,
+                  lotNo: 'P2611-0003',
+                  oqcLotStatus: 'REJECTED',
+                }),
+                pickedLot({
+                  shipmentRequestLotId: 504,
+                  lotId: 4,
+                  lotNo: 'P2611-0004',
+                  oqcLotStatus: 'HELD',
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+    await openRequest(user);
+
+    expect(await screen.findAllByRole('button', { name: /교체/ })).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'P2611-0003 교체' })).toBeTruthy();
+    expect(screen.getByText('불합격 LOT 이 있습니다. 교체하세요')).toBeTruthy();
+  });
+
+  it('US2-1 불합격 줄에 판정을 정한 「OQC 결과 n, 시각」을 보인다', async () => {
+    const user = userEvent.setup();
+    mount([], {
+      requests: [
+        request({
+          lines: [
+            line({
+              lots: [
+                pickedLot({
+                  shipmentRequestLotId: 503,
+                  lotId: 3,
+                  lotNo: 'P2611-0003',
+                  oqcLotStatus: 'REJECTED',
+                  oqcResult: {
+                    inspectionResultId: 2,
+                    resultNo: 'IRS-2',
+                    round: 2,
+                    resultAt: '2026-11-18T07:10:00Z',
+                  },
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+    await openRequest(user);
+
+    expect(await screen.findByText('OQC 결과 2, 14:10')).toBeTruthy();
+  });
+
+  it('US2-2 [교체]는 확인 상자 뒤 :replace 를 부르고 부적합 번호와 다시 받는 수량을 보인다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
-    const second = line({ shipmentRequestLineId: 78, lineNo: 2 });
+    const rejected = pickedLot({
+      shipmentRequestLotId: 503,
+      lotId: 3,
+      lotNo: 'P2611-0003',
+      pickedQty: 30,
+      oqcLotStatus: 'REJECTED',
+    });
+    let current = [
+      request({
+        lines: [
+          line({ pickedQty: 110, overQty: 10, lots: [pickedLot({ pickedQty: 80 }), rejected] }),
+        ],
+      }),
+    ];
+    const respond = (after: ShipmentRequestLine) => {
+      current = [request({ lines: [after] })];
+      return jsonResponse({
+        replacedLot: { ...rejected, statusCode: 'REPLACED' },
+        nonconformanceNo: 'NC-261118-0004',
+        line: after,
+      });
+    };
+    mount([
+      liveList(() => current),
+      capture(
+        '/logistics/shipment-request-lots/503:replace',
+        'POST',
+        () =>
+          respond(
+            line({
+              pickedQty: 80,
+              lots: [
+                pickedLot({ pickedQty: 80 }),
+                {
+                  ...rejected,
+                  statusCode: 'REPLACED',
+                  replacement: {
+                    inspectionResultId: 1,
+                    resultNo: '2',
+                    resultRound: 2,
+                    resultAt: '2026-11-18T07:10:00Z',
+                    judgment: 'REJECTED',
+                    nonconformanceId: 4,
+                    nonconformanceNo: 'NC-261118-0004',
+                    replacedAt: '2026-11-18T07:22:00Z',
+                    worker: { workerId: 1, workerNo: '900028', workerName: '김철수' },
+                  },
+                },
+              ],
+            }),
+          ),
+        seen,
+      ),
+    ]);
+    await openRequest(user);
+    await user.click(await screen.findByRole('button', { name: 'P2611-0003 교체' }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('P2611-0003 을 교체할까요?')).toBeTruthy();
+    expect(
+      within(dialog).getByText('피킹에서 30 EA 가 빠집니다(라인 1 피킹 110 → 80)'),
+    ).toBeTruthy();
+    expect(within(dialog).getByText('라인 1 이 20 EA 를 다시 받습니다')).toBeTruthy();
+    expect(seen).toHaveLength(0);
+
+    await user.click(within(dialog).getByRole('button', { name: '교체' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+    expect(seen[0]?.headers.get('X-Worker-No')).toBe('900028');
+    expect(await screen.findByText('P2611-0003 을 교체했습니다')).toBeTruthy();
+    expect(screen.getByText('부적합 NC-261118-0004 이 생겼습니다')).toBeTruthy();
+    expect(screen.getByText('라인 1 이 20 EA 를 더 받습니다. 다른 LOT 을 스캔하세요')).toBeTruthy();
+    expect(screen.getByText('교체됨')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'P2611-0003 교체' })).toBeNull();
+  });
+
+  it('US2-6 교체 전에 재검 합격이 들어오면 「교체하지 않았습니다」와 까닭을 보인다', async () => {
+    const user = userEvent.setup();
     mount(
       [
         {
-          match: (req) =>
-            /\/logistics\/shipment-requests\/5\/lines\/\d+:pick$/.test(req.url) &&
-            req.method === 'POST',
-          respond: (req) => {
-            seen.push(req.clone());
-            throw new TypeError('Failed to fetch');
-          },
+          match: (req) => new URL(req.url).pathname.endsWith(':replace'),
+          respond: () => conflict('LOT_NOT_REJECTED'),
         },
       ],
-      { requests: [request({ lines: [line(), second] })] },
+      {
+        requests: [
+          request({
+            lines: [
+              line({
+                lots: [
+                  pickedLot({
+                    shipmentRequestLotId: 503,
+                    lotNo: 'P2611-0003',
+                    oqcLotStatus: 'REJECTED',
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      },
+    );
+    await openRequest(user);
+    await user.click(await screen.findByRole('button', { name: 'P2611-0003 교체' }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '교체' }),
     );
 
-    await user.click(await screen.findByRole('button', { name: /1번 라인/ }));
-    await screen.findByText('FG-1001 완제품');
-    await screen.findByText('FG-0298');
+    expect(await screen.findByText('교체하지 않았습니다')).toBeTruthy();
+    expect(
+      screen.getByText(
+        '교체 전에 이 LOT 의 재검 합격이 들어와 교체할 필요가 없습니다. LOT 은 피킹된 채 남습니다',
+      ),
+    ).toBeTruthy();
+  });
+});
 
-    await pickLot(user, EARLY.lotNo);
-    await user.type(await screen.findByLabelText(/피킹 수량/), '180');
-    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
+describe('M-04-01 제품 피킹 — 출하 관리 코드', () => {
+  it('US5-1 코드 칸을 누르면 다음 스캔이 그 LOT 코드로 바로 저장된다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    const pickSeen: Request[] = [];
+    mount([
+      capture(
+        '/logistics/shipment-request-lots/501/management-code',
+        'PUT',
+        () => jsonResponse(pickedLot({ managementCode: 'GN-PLT-0007' })),
+        seen,
+      ),
+      capture(
+        '/logistics/shipment-requests/5/lines/77:pick-lot',
+        'POST',
+        () => jsonResponse({}),
+        pickSeen,
+      ),
+    ]);
+    await openRequest(user);
+    await user.click(
+      await screen.findByRole('button', { name: 'P2611-0001 출하 관리 코드 고치기' }),
+    );
+    expect(screen.getByText('코드 입력 중, LOT 스캔은 쉽니다')).toBeTruthy();
+
+    await scan(user, 'GN-PLT-0007');
 
     await waitFor(() => {
       expect(seen).toHaveLength(1);
     });
+    expect(await seen[0]?.json()).toEqual({ managementCode: 'GN-PLT-0007' });
+    expect(seen[0]?.headers.get('X-Worker-No')).toBe('900028');
+    expect(pickSeen).toHaveLength(0);
+    expect(await screen.findByText('GN-PLT-0007')).toBeTruthy();
+  });
 
-    await user.click(screen.getByRole('button', { name: '다른 대상 고르기' }));
-    await user.click(await screen.findByRole('button', { name: /2번 라인/ }));
-    await screen.findByText('FG-0298');
-    await pickLot(user, EARLY.lotNo);
-    await user.type(await screen.findByLabelText(/피킹 수량/), '180');
-    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
-
-    await waitFor(() => {
-      expect(seen).toHaveLength(2);
-    });
-    /* 전제 - 라인만 다르고 나머지는 같다. 그러지 않으면 이 시험은 라인을 재는 것이 아니다. */
-    expect(new URL(seen[0]?.url ?? '').pathname).toContain('/lines/77:pick');
-    expect(new URL(seen[1]?.url ?? '').pathname).toContain('/lines/78:pick');
-    expect(await seen[1]?.clone().json()).toEqual(await seen[0]?.clone().json());
-    expect(seen[1]?.headers.get('Idempotency-Key')).not.toBe(
-      seen[0]?.headers.get('Idempotency-Key'),
+  it('US5-4 직접 입력은 [저장]이고 비우면 지운다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount(
+      [
+        capture(
+          '/logistics/shipment-request-lots/501/management-code',
+          'PUT',
+          () => jsonResponse(pickedLot({ managementCode: null })),
+          seen,
+        ),
+      ],
+      {
+        requests: [request({ lines: [line({ lots: [pickedLot({ managementCode: 'OLD-1' })] })] })],
+      },
     );
-  });
+    await openRequest(user);
+    await user.click(
+      await screen.findByRole('button', { name: 'P2611-0001 출하 관리 코드 직접 입력' }),
+    );
 
-  /*
-   * 남은 배정은 굳은 스냅숏이 아니라 서버가 아는 값에서 나와야 한다. 확정 뒤에도 옛 값이
-   * 남으면 배정보다 많이 집을 수 있다 - 되돌릴 수 없는 예약 소진이다.
-   */
-  it('확정한 뒤 다음 건으로 가면 남은 배정이 줄어 있다', async () => {
-    const user = userEvent.setup();
-    let picked = 120;
-    mount([
-      {
-        match: (req) =>
-          new URL(req.url).pathname === '/logistics/shipment-requests/5/lines/77:pick' &&
-          req.method === 'POST',
-        respond: async (req) => {
-          /* 절대값을 박으면 화면이 무엇을 보냈든 통과한다. 보낸 만큼 더한다. */
-          const body = (await req.clone().json()) as { pickedQty: number };
-
-          picked += body.pickedQty;
-
-          return jsonResponse(line({ pickedQty: picked }));
-        },
-      },
-      {
-        /* 서버가 집은 양을 기억한다. 기억하지 않으면 낡은 스냅숏을 잡을 수 없다. */
-        match: (req) => new URL(req.url).pathname === '/logistics/shipment-requests',
-        respond: () =>
-          jsonResponse({ items: [request({ lines: [line({ pickedQty: picked })] })], page }),
-      },
-    ]);
-    await chooseTarget(user);
-
-    expect(screen.getByText('남은 배정 180 EA')).toBeTruthy();
-
-    await screen.findByText('FG-0298');
-    await pickLot(user, EARLY.lotNo);
-    await user.type(await screen.findByLabelText(/피킹 수량/), '180');
-    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
-
-    await screen.findByText('피킹을 기록했습니다');
-    await user.click(screen.getByRole('button', { name: '다음 피킹' }));
+    const field = screen.getByLabelText('출하 관리 코드(선택), 100자 이하');
+    await user.clear(field);
+    await user.click(screen.getByRole('button', { name: '저장' }));
 
     await waitFor(() => {
-      expect(screen.getByText('남은 배정 0 EA')).toBeTruthy();
+      expect(seen).toHaveLength(1);
     });
-    expect(screen.queryByText('남은 배정 180 EA')).toBeNull();
+    expect(await seen[0]?.json()).toEqual({ managementCode: null });
   });
 
-  /*
-   * 남은 배정을 목록 조회에서만 얻으면, 그 조회가 실패했을 때 확정 전 값이 그대로 남는다.
-   * 배정을 다 채우고도 남은 배정이 남아 보여 한 번 더 집게 된다.
-   */
-  it('확정 뒤 목록 조회가 실패해도 남은 배정이 되살아나지 않는다', async () => {
+  it('US5-2 101자는 「100자까지 넣을 수 있습니다」로 막고 보내지 않는다', async () => {
     const user = userEvent.setup();
-    let listFails = false;
-    let picked = 120;
+    const seen: Request[] = [];
+    mount([
+      capture(
+        '/logistics/shipment-request-lots/501/management-code',
+        'PUT',
+        () => jsonResponse({}),
+        seen,
+      ),
+    ]);
+    await openRequest(user);
+    await user.click(
+      await screen.findByRole('button', { name: 'P2611-0001 출하 관리 코드 직접 입력' }),
+    );
+
+    const field = screen.getByLabelText('출하 관리 코드(선택), 100자 이하');
+    await user.click(field);
+    await user.paste('a'.repeat(101));
+
+    expect(await screen.findByText('100자까지 넣을 수 있습니다')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '저장' }).hasAttribute('disabled')).toBe(true);
+    expect(seen).toHaveLength(0);
+  });
+
+  it('US5-1 저장이 실패하면 그 자리에 다시 하라고 남긴다', async () => {
+    const user = userEvent.setup();
     mount([
       {
-        match: (req) =>
-          new URL(req.url).pathname === '/logistics/shipment-requests/5/lines/77:pick' &&
-          req.method === 'POST',
-        respond: async (req) => {
-          const body = (await req.clone().json()) as { pickedQty: number };
-
-          picked += body.pickedQty;
-          listFails = true;
-
-          return jsonResponse(line({ pickedQty: picked }));
+        match: (req) => new URL(req.url).pathname.endsWith('/management-code'),
+        respond: () => {
+          throw new TypeError('Failed to fetch');
         },
       },
-      {
-        match: (req) => new URL(req.url).pathname === '/logistics/shipment-requests',
-        respond: () =>
-          listFails
-            ? jsonResponse({ message: '실패' }, { status: 500 })
-            : jsonResponse({ items: [request()], page }),
-      },
     ]);
-    await chooseTarget(user);
-    await screen.findByText('FG-0298');
-
-    await pickLot(user, EARLY.lotNo);
-    await user.type(await screen.findByLabelText(/피킹 수량/), '180');
-    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
-
-    await screen.findByText('피킹을 기록했습니다');
-    await user.click(screen.getByRole('button', { name: '다음 피킹' }));
-
-    await waitFor(() => {
-      expect(screen.getByText('남은 배정 0 EA')).toBeTruthy();
-    });
-    expect(screen.queryByText('남은 배정 180 EA')).toBeNull();
-    /* 조회가 늙었다는 사실도 함께 말한다. */
-    expect(screen.getByText('오늘 출하분을 확인할 수 없습니다')).toBeTruthy();
-  });
-
-  /* 말없이 빠지면 무슨 일이 있었는지 알 수 없다. 남겨 두면 없는 줄을 집게 된다. */
-  it('고르던 라인이 목록에서 빠지면 그 사실을 말한다', async () => {
-    const user = userEvent.setup();
-    let dropped = false;
-    let picked = 120;
-    mount([
-      {
-        match: (req) =>
-          new URL(req.url).pathname === '/logistics/shipment-requests/5/lines/77:pick' &&
-          req.method === 'POST',
-        respond: async (req) => {
-          const body = (await req.clone().json()) as { pickedQty: number };
-
-          picked += body.pickedQty;
-          dropped = true;
-
-          return jsonResponse(line({ pickedQty: picked }));
-        },
-      },
-      {
-        match: (req) => new URL(req.url).pathname === '/logistics/shipment-requests',
-        respond: () => jsonResponse({ items: dropped ? [] : [request()], page }),
-      },
-    ]);
-    await chooseTarget(user);
-    await screen.findByText('FG-0298');
-
-    await pickLot(user, EARLY.lotNo);
-    await user.type(await screen.findByLabelText(/피킹 수량/), '180');
-    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
-
-    await screen.findByText('피킹을 기록했습니다');
-    await user.click(screen.getByRole('button', { name: '다음 피킹' }));
-
-    expect(await screen.findByText('고르던 라인이 오늘 출하분에서 빠졌습니다')).toBeTruthy();
-  });
-
-  /* 확정 후 되돌리기를 두지 않는다. 예약이 소진된다. */
-  it('확정 뒤에 되돌리기를 두지 않고 그 사실을 말한다', async () => {
-    const user = userEvent.setup();
-    mount([
-      {
-        match: (req) =>
-          new URL(req.url).pathname === '/logistics/shipment-requests/5/lines/77:pick',
-        respond: () => jsonResponse(line({ pickedQty: 300 })),
-      },
-    ]);
-    await chooseTarget(user);
-    await screen.findByText('FG-0298');
-
-    await pickLot(user, EARLY.lotNo);
-    await user.type(await screen.findByLabelText(/피킹 수량/), '180');
-    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
-
-    expect(await screen.findByText('피킹을 기록했습니다')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /되돌리/ })).toBeNull();
-  });
-
-  /* 서버가 충돌로 되돌린 것은 다시 눌러서 풀리지 않는다. */
-  it('서버가 충돌로 되돌리면 다시 시도하라고 말하지 않는다', async () => {
-    const user = userEvent.setup();
-    mount([
-      {
-        match: (req) =>
-          new URL(req.url).pathname === '/logistics/shipment-requests/5/lines/77:pick',
-        respond: () => jsonResponse({ code: 'INVALID_STATE', message: '보류' }, { status: 409 }),
-      },
-    ]);
-    await chooseTarget(user);
-    await screen.findByText('FG-0298');
-
-    await pickLot(user, EARLY.lotNo);
-    await user.type(await screen.findByLabelText(/피킹 수량/), '180');
-    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
+    await openRequest(user);
+    await user.click(
+      await screen.findByRole('button', { name: 'P2611-0001 출하 관리 코드 고치기' }),
+    );
+    await scan(user, 'GN-PLT-0009');
 
     expect(
-      await screen.findByText('피킹할 수 없는 상태로 바뀌었습니다. 목록을 다시 확인하세요.'),
+      await screen.findByText('코드를 저장하지 못했습니다. 다시 스캔하거나 입력하세요'),
     ).toBeTruthy();
-    expect(screen.queryByText('피킹을 기록하지 못했습니다. 다시 시도하세요.')).toBeNull();
+  });
+});
+
+describe('M-04-01 제품 피킹 — 지시서 코드 보기', () => {
+  it('US4-1 SHPREQ 코드 QR 과 번호, 막는 이유를 전체 화면으로 보인다', async () => {
+    const user = userEvent.setup();
+    mount([], {
+      requests: [
+        request({
+          completionBlockers: [
+            { code: 'NOT_INSPECTED', lotNo: 'P2611-0004' },
+            { code: 'SALES_ORDER_LINE_CANCELLED', lineNo: 2 },
+          ],
+        }),
+      ],
+    });
+    await openRequest(user);
+    await user.click(screen.getByRole('button', { name: '지시서 코드 보기' }));
+
+    expect(await screen.findByRole('img', { name: '출하 지시서 SR-261118-001 QR' })).toBeTruthy();
+    expect(screen.getByText('SHPREQ:SR-261118-001')).toBeTruthy();
+    expect(screen.getByText('POP 「출하 완료」 화면의 스캐너에 비추세요')).toBeTruthy();
+    expect(screen.getByText('아직 완료할 수 없습니다')).toBeTruthy();
+    expect(screen.getByText('미검사 LOT P2611-0004')).toBeTruthy();
+    expect(
+      screen.getByText('라인 2 수주 라인이 취소되었습니다. 담당자에게 문의하세요'),
+    ).toBeTruthy();
+
+    await user.click(screen.getByRole('button', { name: '닫기' }));
+    expect(await screen.findByLabelText('제품 LOT 스캔')).toBeTruthy();
   });
 
-  /* 스캔이 실패했을 때 손으로 넣을 길이 없으면 현장이 멈춘다. */
-  it('직접 입력으로도 LOT을 고를 수 있다', async () => {
-    const user = userEvent.setup();
-    mount();
-    await chooseTarget(user);
-    await screen.findByText('FG-0311');
+  describe('US4-4·Q9 고객·납품처 — 단말은 거래처 마스터를 못 읽으므로 지시서 응답의 이름을 쓴다', () => {
+    const partnersDenied: StubRoute = {
+      match: (req) => new URL(req.url).pathname.startsWith('/mdm/partners'),
+      respond: () => new Response(JSON.stringify({ message: 'denied' }), { status: 401 }),
+    };
+    const named = () =>
+      request({
+        customerId: 1,
+        shipToPartnerId: 2,
+        customer: { partnerId: 1, partnerCode: 'C1', partnerName: '가나전자' },
+        shipTo: { partnerId: 2, partnerCode: 'S2', partnerName: '가나전자 2공장' },
+      });
 
-    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
-    await user.type(screen.getByLabelText('제품 LOT 스캔'), 'FG-0311');
-    await user.click(screen.getByRole('button', { name: '찾기' }));
+    it('US4-4 목록 카드에 「고객, 납품처」를 보인다', async () => {
+      mount([partnersDenied], { requests: [named()] });
 
-    expect(await screen.findByLabelText(/피킹 수량/)).toBeTruthy();
-    expect(screen.getByText('권장 1순위가 아닙니다 — 피킹할 수 있습니다')).toBeTruthy();
+      const card = await screen.findByRole('button', { name: /SR-261118-001/ });
+
+      expect(within(card).getByText('가나전자, 가나전자 2공장')).toBeTruthy();
+    });
+
+    it('US4-4 상세 머리에 고객·납품처를 보인다', async () => {
+      const user = userEvent.setup();
+      mount([partnersDenied], { requests: [named()] });
+      await openRequest(user);
+
+      expect(screen.getByText('고객')).toBeTruthy();
+      expect(screen.getByText('가나전자')).toBeTruthy();
+      expect(screen.getByText('납품처')).toBeTruthy();
+      expect(screen.getByText('가나전자 2공장')).toBeTruthy();
+    });
+
+    it('US4-1·Q9 「지시서 코드 보기」에 고객·납품처를 보인다', async () => {
+      const user = userEvent.setup();
+      mount([partnersDenied], { requests: [named()] });
+      await openRequest(user);
+      await user.click(screen.getByRole('button', { name: '지시서 코드 보기' }));
+
+      await screen.findByRole('img', { name: '출하 지시서 SR-261118-001 QR' });
+      expect(screen.getByText('가나전자, 가나전자 2공장')).toBeTruthy();
+    });
+
+    it('US4-4 고객과 납품처가 같으면 한 번만 쓴다', async () => {
+      mount([partnersDenied], {
+        requests: [
+          request({
+            customer: { partnerId: 1, partnerCode: 'C1', partnerName: '다라상사' },
+            shipTo: { partnerId: 1, partnerCode: 'C1', partnerName: '다라상사' },
+          }),
+        ],
+      });
+
+      const card = await screen.findByRole('button', { name: /SR-261118-001/ });
+
+      expect(within(card).getByText('다라상사')).toBeTruthy();
+    });
   });
 
-  it('이 품목에 없는 번호를 넣으면 찾지 못했다고 말한다', async () => {
+  it('US4-1 막는 이유가 없으면 「아직 완료할 수 없습니다」를 보이지 않는다', async () => {
     const user = userEvent.setup();
-    mount();
-    await chooseTarget(user);
-    await screen.findByText('FG-0298');
+    mount([], { requests: [request({ completionBlockers: [] })] });
+    await openRequest(user);
+    await user.click(screen.getByRole('button', { name: '지시서 코드 보기' }));
 
-    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
-    await user.type(screen.getByLabelText('제품 LOT 스캔'), 'FG-9999');
-    await user.click(screen.getByRole('button', { name: '찾기' }));
-
-    expect(await screen.findByText('FG-9999 LOT을 이 품목에서 찾지 못했습니다')).toBeTruthy();
+    await screen.findByRole('img', { name: '출하 지시서 SR-261118-001 QR' });
+    expect(screen.queryByText('아직 완료할 수 없습니다')).toBeNull();
   });
 });

@@ -33,6 +33,8 @@ export interface RestrictionToggleProps {
   onChange?: (checked: boolean) => void;
   /** 켤 수 없는 까닭 — 있으면 스위치가 잠기고 그 까닭이 선다(켠 것을 끄는 것은 늘 된다 — 여는 쪽이 정한다). */
   lockReason?: string | undefined;
+  /** 까닭 글 없이 켜기만 잠근다 — 지정 품목이 없을 때(사용자 지시 2026-11-19 — 안내 문장을 걷었다). */
+  locked?: boolean;
   /** 저장 때 서버가 켜기를 거절한 까닭(지정 밖 품목 재고 등). */
   error?: string | undefined;
   disabled?: boolean;
@@ -47,11 +49,11 @@ export const RestrictionToggle = ({
   checked,
   onChange,
   lockReason,
+  locked = false,
   error,
   disabled = false,
 }: RestrictionToggleProps) => {
   const id = useId();
-  const helpId = useId();
 
   return (
     <div className="location-restrict">
@@ -59,17 +61,13 @@ export const RestrictionToggle = ({
         <Switch
           id={id}
           checked={checked}
-          disabled={disabled || lockReason !== undefined}
-          aria-describedby={helpId}
+          disabled={disabled || locked || lockReason !== undefined}
           onChange={(event) => onChange?.(event.target.checked)}
         />
         <label htmlFor={id} className="location-restrict-label">
           {t.restrict.label}
         </label>
       </div>
-      <p id={helpId} className="field-note">
-        {t.restrict.help}
-      </p>
       {lockReason !== undefined && (
         <p className="location-restrict-lock">
           <Icon name="block" size={16} aria-hidden="true" />
@@ -137,7 +135,6 @@ export const LocationItemsSection = ({
 
     return (
       <>
-        <p className="field-note">{t.guide}</p>
         <ItemSelect
           aria-label={t.addItem}
           placeholder={t.addItem}

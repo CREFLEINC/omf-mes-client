@@ -10,6 +10,32 @@ import { formatPlantDateTime } from '../../patterns/plant-time';
 import { LotNo } from './lot-match-field';
 
 const t = messages.iqcInboundLot.results;
+
+/**
+ * 결과 표의 문구 — 기본은 IQC(자재 관리 LOT). 출하 OQC(피처 010 · W-04-03)는 자기 문구(피킹 LOT)를 넘긴다.
+ * 판정 이름(`judgmentText`)은 두 화면이 같은 공통코드라 따로 받지 않는다.
+ */
+export interface ResultListText {
+  columns: {
+    seq: string;
+    judgment: string;
+    inspectedQty?: string;
+    defects?: string;
+    matched: string;
+    inspector: string;
+    confirmedAt?: string;
+    inspectedAt?: string;
+    actions: string;
+  };
+  seq: (seqNo: number) => string;
+  noMatch: string;
+  edit: string;
+  remove: string;
+  lockedRow: string;
+  empty: string;
+  heading: (count: number) => string;
+  reason: (name: string) => string;
+}
 const judgmentLabel = messages.partsIqcInspection.judgment as Record<string, string | undefined>;
 
 /** 판정 칩 색 — 불합격 · 보류 · 합격. */
@@ -39,6 +65,20 @@ export interface ResultListProps {
   busy: boolean;
   onEdit: (result: InspectionResultSummaryForward) => void;
   onDelete: (result: InspectionResultSummaryForward) => void;
+  /** 문구 — 기본은 IQC. */
+  text?: ResultListText;
+  /** 검사 수량 · 불량 칸 — 출하 OQC 는 판정만 남겨 칸이 없다(피처 010). 기본 보인다. */
+  showQuantities?: boolean;
+  /** 확정 일시 칸 — 출하 OQC 는 숨기고 검사 일시를 보인다(피처 010). 기본 보인다. */
+  showConfirmedAt?: boolean;
+  /** 검사 일시 칸 — 출하 OQC 가 보인다. 기본 없음. */
+  showInspectedAt?: boolean;
+  /** [삭제] — 출하 OQC 결과는 서버가 지우지 않는다(피처 010). 기본 보인다. */
+  canDelete?: boolean;
+  /** 매칭 LOT 을 흐리게 그릴 것(교체로 빠진 피킹 LOT · 피처 010). */
+  inactiveLotIds?: readonly number[];
+  /** 칸 순서 · 폭 저장 키 — 화면마다 따로(출하 OQC 는 자기 키 · 피처 010). */
+  columnsStorageKey?: string;
 }
 
 /**
@@ -54,6 +94,13 @@ export const ResultList = ({
   busy,
   onEdit,
   onDelete,
+  text = t,
+  showQuantities = true,
+  showConfirmedAt = true,
+  showInspectedAt = false,
+  canDelete = true,
+  inactiveLotIds = [],
+  columnsStorageKey = 'omf-mes:iqc-inbound-results:columns',
 }: ResultListProps) => {
   const lotNoOf = (lotId: number): string =>
     lots.find((lot) => lot.lotId === lotId)?.lotNo ?? String(lotId);
@@ -62,14 +109,14 @@ export const ResultList = ({
     {
       key: 'seq',
       align: 'center',
-      header: t.columns.seq,
+      header: text.columns.seq,
       width: '110px',
-      render: (row) => t.seq(row.seqNo),
+      render: (row) => text.seq(row.seqNo),
     },
     {
       key: 'judgment',
       align: 'center',
-      header: t.columns.judgment,
+      header: text.columns.judgment,
       width: '160px',
       render: (row) => {
         const reason = row.reinspectionReasonName ?? row.reinspectionReasonCode ?? null;
@@ -80,14 +127,14 @@ export const ResultList = ({
               {judgmentText(row.overallJudgmentCode)}
             </Chip>
             {/* 불합격 · 보류를 덮은 결과의 재검 사유(FR-023a · 2026-11-12). */}
-            {reason === null ? null : <span className="parts-iqc-muted">{t.reason(reason)}</span>}
+            {reason === null ? null : <span className="parts-iqc-muted">{text.reason(reason)}</span>}
           </span>
         );
       },
     },
     {
       key: 'inspectedQty',
-      header: t.columns.inspectedQty,
+      header: text.columns.inspectedQty ?? '',
       width: '110px',
       align: 'center',
       render: (row) => `${formatQty(row.inspectedQty)} ${uomCode}`,
@@ -95,7 +142,7 @@ export const ResultList = ({
     {
       key: 'defects',
       align: 'center',
-      header: t.columns.defects,
+      header: text.columns.defects ?? '',
       width: '180px',
       render: (row) =>
         row.rejectedQty === 0 && row.defectNames.length === 0
@@ -105,31 +152,38 @@ export const ResultList = ({
     {
       key: 'matched',
       align: 'center',
-      header: t.columns.matched,
+      header: text.columns.matched,
       width: '300px',
       render: (row) =>
         row.matchedLotIds.length === 0 ? (
-          <span className="parts-iqc-muted">{t.noMatch}</span>
+          <span className="parts-iqc-muted">{text.noMatch}</span>
         ) : (
           /* LOT 번호 전체를 줄마다(끝 마디만 굵게) — 끝 마디만 칩으로 보이지 않는다(사용자 지시 2026-11-19 · omf-all-around#296). */
           <span className="iqc-inbound-attach-lots">
-            {row.matchedLotIds.map((lotId) => (
-              <LotNo key={lotId} lotNo={lotNoOf(lotId)} />
-            ))}
+            {row.matchedLotIds.map((lotId) =>
+              /* 교체로 빠진 피킹 LOT 은 흐리게(피처 010) — 번호는 IQC 와 같이 전체로. */
+              inactiveLotIds.includes(lotId) ? (
+                <span key={lotId} className="iqc-inbound-lot-inactive">
+                  <LotNo lotNo={lotNoOf(lotId)} />
+                </span>
+              ) : (
+                <LotNo key={lotId} lotNo={lotNoOf(lotId)} />
+              ),
+            )}
           </span>
         ),
     },
     {
       key: 'inspector',
       align: 'center',
-      header: t.columns.inspector,
+      header: text.columns.inspector,
       width: '110px',
       render: (row) => row.inspectorName ?? '—',
     },
     {
       key: 'confirmedAt',
       align: 'center',
-      header: t.columns.confirmedAt,
+      header: text.columns.confirmedAt ?? '',
       width: '150px',
       render: (row) =>
         row.statusCode === 'CONFIRMED' && confirmedAt !== null
@@ -137,14 +191,21 @@ export const ResultList = ({
           : '-',
     },
     {
+      key: 'inspectedAt',
+      align: 'center',
+      header: text.columns.inspectedAt ?? '',
+      width: '150px',
+      render: (row) => formatPlantDateTime(row.inspectedAt) ?? row.inspectedAt,
+    },
+    {
       key: 'actions',
       align: 'center',
-      header: t.columns.actions,
+      header: text.columns.actions,
       width: '100px',
       render: (row) =>
         locked ? (
           /* 「상태」 칸 — 확정된 결과는 라벨 하나(아이콘 없이 · 사용자 지시 2026-11-19 · omf-all-around#296). */
-          <Chip size="sm">{t.lockedRow}</Chip>
+          <Chip size="sm">{text.lockedRow}</Chip>
         ) : (
           <span className="iqc-inbound-actions">
             {/* 수정 · 삭제는 아이콘 단추(사용자 지시 2026-11-16 · #274) — 이름은 마우스를 올리면 보인다. */}
@@ -152,25 +213,34 @@ export const ResultList = ({
               icon="edit"
               size="sm"
               disabled={busy}
-              title={t.edit}
-              aria-label={`${t.seq(row.seqNo)} ${t.edit}`}
+              title={text.edit}
+              aria-label={`${text.seq(row.seqNo)} ${text.edit}`}
               onClick={() => onEdit(row)}
             />
-            <IconButton
-              icon="delete"
-              size="sm"
-              disabled={busy}
-              title={t.remove}
-              aria-label={`${t.seq(row.seqNo)} ${t.remove}`}
-              onClick={() => onDelete(row)}
-            />
+            {canDelete ? (
+              <IconButton
+                icon="delete"
+                size="sm"
+                disabled={busy}
+                title={text.remove}
+                aria-label={`${text.seq(row.seqNo)} ${text.remove}`}
+                onClick={() => onDelete(row)}
+              />
+            ) : null}
           </span>
         ),
     },
   ];
 
-  const ordered = useColumnOrder('omf-mes:iqc-inbound-results:columns:order', baseColumns);
-  const resizable = useColumnWidths('omf-mes:iqc-inbound-results:columns', ordered);
+  /* 화면마다 다른 칸은 빼고 순서 · 폭을 잡는다(피처 010 — 출하 OQC 는 수량 · 불량 · 확정 일시 없이 검사 일시). */
+  const hidden = new Set<string>([
+    ...(showQuantities ? [] : ['inspectedQty', 'defects']),
+    ...(showConfirmedAt ? [] : ['confirmedAt']),
+    ...(showInspectedAt ? [] : ['inspectedAt']),
+  ]);
+  const shown = baseColumns.filter((column) => !hidden.has(String(column.key)));
+  const ordered = useColumnOrder(`${columnsStorageKey}:order`, shown);
+  const resizable = useColumnWidths(columnsStorageKey, ordered);
   const fit = useFitColumns(resizable.columns, { scrollX: true });
 
   /* 결과가 없어도 첨부 파일 표처럼 머리줄을 두고 안내는 표 안에(사용자 지시 2026-11-19 · omf-all-around#296). */
@@ -181,7 +251,7 @@ export const ResultList = ({
         columns={fit.columns}
         rows={[...results].sort((a, b) => a.seqNo - b.seqNo)}
         getRowId={(row) => String(row.inspectionResultId)}
-        aria-label={t.heading(results.length)}
+        aria-label={text.heading(results.length)}
         empty={
           /* 빈 표 안내는 목록과 같은 모양(아이콘 + 글)으로(사용자 지시 2026-11-19 · omf-all-around#296). */
           <EmptyState
@@ -191,7 +261,7 @@ export const ResultList = ({
                 <Icon name="assignment" size={20} />
               </span>
             }
-            title={t.empty}
+            title={text.empty}
           />
         }
       />

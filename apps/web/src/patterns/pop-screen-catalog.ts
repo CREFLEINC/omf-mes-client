@@ -1,4 +1,5 @@
 import type { components } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 
 type TerminalWorkCountKey = keyof components['schemas']['TerminalWorkCounts'];
 
@@ -77,6 +78,19 @@ export const POP_SCREEN_GROUPS: readonly { key: PopScreenGroupKey; name: string 
   { key: 'production', name: '생산' },
   { key: 'quality', name: '품질' },
   { key: 'shipping', name: '출하' },
+];
+
+/**
+ * 라우트는 남기되 [화면 이동] 후보에서 **감춘** POP 화면(피처 010 · omf-all-around#305).
+ *
+ * 출하는 PDA 피킹 → OQC → P-04-07 「출하 완료」로 끝나 포장(P-04-01) · 재구성 라벨(P-04-04) ·
+ * 출하 단위(P-04-05)를 쓰지 않는다. 화면을 지우지 않는 이유는 배포 전 진행분 때문이다 — 주소로는
+ * 여전히 열린다. `routes/pop-screen-catalog.test.ts` 가 이 목록을 라우트 표와 대조한다.
+ */
+export const POP_HIDDEN_SCREEN_PATHS: readonly string[] = [
+  '/pop/packing',
+  '/pop/repack-label-issue',
+  '/pop/shipping-units',
 ];
 
 /**
@@ -178,21 +192,20 @@ export const POP_SCREENS: readonly PopScreen[] = [
     name: '비가동 실적 입력',
     needsEquipment: true,
   },
-  /* ⭐ 설계보다 앞선 화면이다(omf-all-around#89 · 서버 장부 P-102). */
+  /* 피처 010(omf-all-around#305) — 출하는 이 화면의 [출하 완료]로 끝난다. 탭 끝 배지는 완료 대기 수다. */
   {
-    path: '/pop/packing',
-    code: 'P-04-01',
+    path: '/pop/shipment-complete',
+    code: 'P-04-07',
     group: 'shipping',
-    name: '출하 포장',
-    countKey: 'shipmentPacking',
+    /*
+     * 단말 언어를 따른다(둘러보기 W-7) — 화면 머리줄 이름(`popShipmentComplete.title`)과 같은 말이다. 읽을 때 고른
+     * 언어로 읽는다(모듈이 실릴 때 붙잡지 않는다). ⚠ 다른 탭 이름은 010 전부터 한국어 고정이라 이번에 손대지 않았다.
+     */
+    get name(): string {
+      return messages.popShipmentComplete.title;
+    },
+    countKey: 'shipmentCompletion',
   },
-  {
-    path: '/pop/repack-label-issue',
-    code: 'P-04-04',
-    group: 'shipping',
-    name: '재구성 신규 라벨',
-  },
-  { path: '/pop/shipping-units', code: 'P-04-05', group: 'shipping', name: '출하 단위 구성' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#109) — 화면 코드는 사용자 결정으로 부여했다. */
   {
     path: '/pop/oqc-inspection',

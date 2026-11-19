@@ -1,24 +1,36 @@
 import { AlertBanner, Breadcrumb, Button, PageHeader, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
+import { plantToday } from '../../patterns/plant-time';
 import { CancelRequestDialog, cancelReasonError } from './cancel-request-dialog';
 import { ConfirmDialog } from './confirm-dialog';
-import { retryableIds, summaryMessage } from './confirm-run';
-import { elapsedOf, summarize } from './elapsed';
+import { summaryMessage } from './confirm-run';
+import { DetailPane } from './detail-pane';
+import { ExecuteCancelDialog } from './execute-cancel-dialog';
 import { FilterBar } from './filter-bar';
 import { defaultFilters, toListQuery, type ConfirmFilters } from './filters';
-import { useShipmentStatusLookup } from './lookups';
-import { useCancelRequestMutation, useConfirmRunner } from './mutations';
-import { OutcomePane } from './outcome-pane';
-import { useShipmentDetail, useUnconfirmedShipments } from './queries';
-import { batchSelectableIds, retainSelection, selectedRows } from './selection';
+import { useCancelExecuteMutation, useCancelRequestMutation, useConfirmRunner } from './mutations';
+import {
+  useApprovalTargetShipment,
+  useCancelApproval,
+  useShipmentDetail,
+  useShipmentList,
+} from './queries';
+import { flowOf } from './rules';
+import type { ShipmentRow } from './types';
 import { ShipmentList } from './shipment-list';
-import { SummaryPane } from './summary-pane';
-import { totalQtyOf } from './types';
 
 const t = messages.shipmentConfirm;
+const hubText = messages.common.inspectionHub;
 
 export interface ShipmentConfirmScreenProps {
   /** 기준 시각. 경과 계산이 실행하는 순간에 좌우되지 않게 밖에서 받는다. */
@@ -26,83 +38,106 @@ export interface ShipmentConfirmScreenProps {
 }
 
 /**
- * W-04-12 출하 확정·취소.
+ * W-04-12 출하 내역(피처 010 · omf-all-around#305 — 옛 「출하 확정·취소」).
  *
- * ⭐⭐ **이 화면이 「확정 후 취소」 문제를 없앤다**(§5-1). 되돌릴 수 있는 구간을 ERP 에 보내기
- * «전»으로 옮겨, 분산 트랜잭션·ERP 거부·불일치가 **구조적으로 사라진다** — 우회가 아니라 제거다.
+ * ⭐ 출하는 POP 「출하 완료」(P-04-07)에서 끝난다. 이 화면은 모든 출하를 보고(기간·출하번호·ERP
+ * 송신 거르기), 상세에서 LOT 별 출하 관리 코드·재고가 빠진 곳·완료 단말·작업자를 보이며, ERP 로
+ * 보내기 «전»이면 취소를 요청한다(FR-023). 옛 흐름·긴급 직행 미확정 출하만 상세에서 **한 건씩**
+ * 확정한다 — 일괄 확정·체크 칸은 없다(결정 2026-11-18).
  *
- * ⛔ **확정은 되돌릴 수 없다.** 그러나 확정 전 관문을 두껍게 하지 않는다(§5-3) — 경고를 늘리면
- * 경고 피로로 오히려 안 읽는다. 화면의 몫은 **결과 구획에 사실을 적는 것**까지다.
+ * ⛔ ERP 송신 상태는 이 화면에만 보인다 — 출하 완료 단계 화면에는 표시하지 않는다.
  */
 export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) => {
   const toast = useToast();
   const baseNow = useMemo(() => now ?? new Date(), [now]);
 
   const [filters, setFilters] = useState<ConfirmFilters>(() => defaultFilters(baseNow));
-  const [selected, setSelected] = useState<number[]>([]);
+  const [page, setPage] = useState(1);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
-  const [cancelTargetId, setCancelTargetId] = useState<number | null>(null);
+  const [isCancelOpen, setIsCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [showCancelError, setShowCancelError] = useState(false);
-
-  const query = useMemo(() => toListQuery(filters, 1), [filters]);
-  const list = useUnconfirmedShipments(query);
-  const statusLookup = useShipmentStatusLookup();
-  const rows = useMemo(() => list.data?.items ?? [], [list.data]);
+  const [isExecuteOpen, setIsExecuteOpen] = useState(false);
 
   /*
-   * 조회를 다시 하면 고른 건이 사라질 수 있다(다른 사람이 확정했거나 자동 확정이 돌았다) —
-   * 남은 것만 들고 가지 않으면 **없는 건을 확정하러 간다.**
+   * 목록 · 상세 배치(T-W-A) — 검사 조회·판정과 같은 좌우 분할(막대로 폭을 나눔), 1440 보다 좁거나 상하를 고르면 위아래.
+   * 각 창은 창 바닥에서 멈추고 안에서 구른다. 검증 2회차: 직접 짠 2열 격자에서 상세 표가 창 밖으로 넘쳤다.
    */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:shipment-confirm:split', 0.5);
+  const layout = useSplitOrientation('omf-mes:shipment-confirm:split-orientation');
+
+  /* 결재함 대상 링크(`?approvalRequestId=` · 화면 ID W-04-12)로 열리면 그 결재의 출하를 고른다(Q13). */
+  const [searchParams] = useSearchParams();
+  const linkedApprovalId = Number(searchParams.get('approvalRequestId') ?? '');
+  const linked = useApprovalTargetShipment(
+    Number.isSafeInteger(linkedApprovalId) && linkedApprovalId > 0 ? linkedApprovalId : null,
+  );
   useEffect(() => {
-    setSelected((current) => retainSelection(current, rows));
-  }, [rows]);
+    if (typeof linked.data === 'number') setSelectedId(linked.data);
+  }, [linked.data]);
 
-  const chosen = selectedRows(rows, selected);
+  /* W-04-02 완료 지시서의 출하 링크(`?shipmentId=`)로 열리면 그 출하를 고른다(시안 W0402-After ⑨). */
+  const linkedShipmentId = Number(searchParams.get('shipmentId') ?? '');
+  useEffect(() => {
+    if (Number.isSafeInteger(linkedShipmentId) && linkedShipmentId > 0)
+      setSelectedId(linkedShipmentId);
+  }, [linkedShipmentId]);
+
+  const query = useMemo(() => toListQuery(filters, page), [filters, page]);
+  const list = useShipmentList(query);
+  const rows = useMemo(() => list.data?.items ?? [], [list.data]);
+  const total = list.data?.page.total ?? 0;
+  const size = list.data?.page.size ?? 50;
+
+  /* 상세가 취소 요청·확정의 잠금 토큰(ETag)도 받는다. */
+  const detail = useShipmentDetail(selectedId);
+  const selected = detail.data?.row ?? null;
   const runner = useConfirmRunner();
-  const failures = runner.summary?.outcomes.filter((outcome) => outcome.failure !== null) ?? [];
-
-  /* 취소 요청의 잠금 토큰은 그 출하의 상세가 내린다 — 창을 열 때 함께 부른다. */
-  const cancelDetail = useShipmentDetail(cancelTargetId);
-  const cancelTarget = rows.find((row) => row.shipmentId === cancelTargetId) ?? null;
+  const cancelApproval = useCancelApproval(selectedId);
 
   const closeCancel = (): void => {
-    setCancelTargetId(null);
+    setIsCancelOpen(false);
     setCancelReason('');
     setShowCancelError(false);
   };
 
   const cancelWrite = useCancelRequestMutation({
-    shipmentId: cancelTargetId,
+    shipmentId: isCancelOpen ? selectedId : null,
     onSuccess: () => {
-      const shipmentNo = cancelTarget?.shipmentNo ?? '';
+      const shipmentNo = selected?.shipmentNo ?? '';
       closeCancel();
       toast.show({ variant: 'success', description: t.result.requestCancelDone(shipmentNo) });
       void list.refetch();
+      void detail.refetch();
     },
   });
 
-  /*
-   * ⛔ 이미 확정된 건은 다시 담지 않는다 — 다시 보내 봐야 같은 409 가 돌아오고, 남겨 두면
-   * 「실패 목록이 안 줄어드는」 화면이 된다.
-   */
-  const retryable = runner.summary === null ? [] : retryableIds(runner.summary);
-  const summary = summarize(rows, baseNow);
-  const thisMonth = rows.filter((row) => {
-    const elapsed = elapsedOf(row, baseNow);
-    if (elapsed.ms === null || row.shippedAt === null) return false;
-    const shipped = new Date(row.shippedAt);
-    return (
-      shipped.getFullYear() === baseNow.getFullYear() && shipped.getMonth() === baseNow.getMonth()
-    );
-  }).length;
+  const executeWrite = useCancelExecuteMutation({
+    shipmentId: isExecuteOpen ? selectedId : null,
+    onSuccess: () => {
+      const shipmentNo = selected?.shipmentNo ?? '';
+      setIsExecuteOpen(false);
+      toast.show({ variant: 'success', description: t.result.executeCancelDone(shipmentNo) });
+      void list.refetch();
+      void detail.refetch();
+      void cancelApproval.refetch();
+    },
+  });
+  const executeAlreadySent =
+    executeWrite.error?.kind === 'conflict' && executeWrite.error.code === 'ERP_ALREADY_SENT';
 
-  const confirmLock = runner.isRunning
-    ? t.lock.running
-    : chosen.length === 0
-      ? t.lock.selectNone
-      : undefined;
-  const cancelLock = selected.length === 1 ? undefined : t.lock.selectOneForCancel;
+  /* 409 ERP_ALREADY_SENT — 요청하는 사이 송신이 먼저 끝났다. 일반 충돌 문구가 아니라 그 사실을 말한다. */
+  const erpAlreadySent =
+    cancelWrite.error?.kind === 'conflict' && cancelWrite.error.code === 'ERP_ALREADY_SENT';
+
+  const applyFilters = (next: ConfirmFilters): void => {
+    setFilters(next);
+    setPage(1);
+  };
+
+  const lastPage = Math.max(1, Math.ceil(total / size));
 
   return (
     <>
@@ -115,110 +150,120 @@ export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) 
           />
         }
       />
+      <header ref={aboveRef} className="banner-slot ship-history-lead">
+        <AlertBanner variant="info">{t.lead}</AlertBanner>
+        <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} inline />
+      </header>
 
-      <SummaryPane total={list.data?.page.total ?? 0} page={summary} thisMonth={thisMonth} />
-
-      <section className="pane" aria-label={t.panes.list}>
-        <h2>{t.panes.list}</h2>
-        <FilterBar
-          applied={filters}
-          onApply={setFilters}
-          onReset={() => setFilters(defaultFilters(baseNow))}
-        />
-        <ShipmentList
-          rows={rows}
-          now={baseNow}
-          selected={selected}
-          statusLookup={statusLookup}
-          isLoading={list.isPending && query !== null}
-          error={
-            list.isError ? (
-              <AlertBanner
-                variant="error"
-                action={
-                  <Button variant="outlined" size="sm" onClick={() => void list.refetch()}>
-                    {messages.common.retry}
-                  </Button>
-                }
-              >
-                {t.list.loadFailed}
-              </AlertBanner>
-            ) : null
-          }
-          failures={failures}
-          onToggle={(shipmentId) =>
-            setSelected((current) =>
-              current.includes(shipmentId)
-                ? current.filter((id) => id !== shipmentId)
-                : [...current, shipmentId],
-            )
-          }
-          /* ⚠ 「모두 선택」은 일괄에 담을 수 있는 건만 담는다 — 3일 경과는 개별로만(§6). */
-          onToggleAll={() =>
-            setSelected((current) => (current.length > 0 ? [] : batchSelectableIds(rows, baseNow)))
-          }
-        />
-        <p className="field-note">
-          {t.list.selected(chosen.length, String(totalQtyOf(chosen) ?? t.list.elapsedUnknown))}
-        </p>
-      </section>
-
-      <OutcomePane count={chosen.length} />
-
-      <section className="pane" aria-label={t.actions.confirm}>
-        {/*
-         * 확정 결과는 «건별»이다(§6) — 성공분을 유지하고 실패한 건에만 사유를 붙인다.
-         * 「전부 실패했습니다」로 뭉뚱그리면 이미 확정된 건을 다시 확정하러 간다.
-         */}
-        {runner.summary !== null && (
-          <div className="banner-slot">
-            <AlertBanner variant={runner.summary.failed === 0 ? 'success' : 'warning'}>
-              {summaryMessage(runner.summary)}
-            </AlertBanner>
-          </div>
-        )}
-        {confirmLock !== undefined && (
-          <div className="banner-slot">
-            <AlertBanner variant="info">{confirmLock}</AlertBanner>
-          </div>
-        )}
-        {/* A-11 — 승인된 취소를 여기서 실행하지 못한다는 사실을 «취소 요청 옆»에 적는다. */}
-        <p className="field-note">{t.withdrawn.executeCancel}</p>
-        <div className="form-actions">
-          <Button
-            variant="outlined"
-            disabled={cancelLock !== undefined || runner.isRunning}
-            onClick={() => {
-              const [only] = selected;
-              if (only === undefined) return;
-              cancelWrite.reset();
-              setCancelTargetId(only);
-              setCancelReason('');
-              setShowCancelError(false);
+      <div
+        ref={splitRef}
+        className={`po-board-split ship-history-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
+      >
+        <section className="pane po-board-pane po-board-scroll" aria-label={t.panes.list}>
+          <h2>{t.panes.list}</h2>
+          <FilterBar
+            applied={filters}
+            counts={list.data?.erpSendStatusCounts ?? null}
+            onApply={applyFilters}
+            onReset={() => applyFilters(defaultFilters(baseNow))}
+          />
+          <ShipmentList
+            rows={rows}
+            now={baseNow}
+            selectedId={selectedId}
+            isLoading={list.isPending && query !== null}
+            error={
+              list.isError ? (
+                <AlertBanner
+                  variant="error"
+                  action={
+                    <Button variant="outlined" size="sm" onClick={() => void list.refetch()}>
+                      {messages.common.retry}
+                    </Button>
+                  }
+                >
+                  {t.list.loadFailed}
+                </AlertBanner>
+              ) : null
+            }
+            onOpen={(shipmentId) => {
+              runner.reset();
+              setSelectedId(shipmentId);
             }}
-          >
-            {t.actions.requestCancel}
-          </Button>
-          {retryable.length > 0 && (
-            <Button variant="outlined" onClick={() => setSelected(retryable)}>
-              {t.actions.retry}
-            </Button>
+          />
+          {total > size && (
+            <div className="filter-actions ship-history-pager">
+              <span className="field-note">{t.list.page(page, total)}</span>
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage((current) => current - 1)}
+              >
+                {t.list.prev}
+              </Button>
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={page >= lastPage}
+                onClick={() => setPage((current) => current + 1)}
+              >
+                {t.list.next}
+              </Button>
+            </div>
           )}
-          <Button
-            disabled={confirmLock !== undefined}
-            onClick={() => {
+        </section>
+
+        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        {layout.orientation === 'column' && (
+          <PaneHeightSplitter
+            label={hubText.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+          />
+        )}
+
+        <section
+          className="pane po-board-pane po-board-scroll ship-history-detail-pane"
+          aria-label={t.panes.detail}
+        >
+          <h2>{t.panes.detail}</h2>
+          <DetailPane
+            detail={selectedId === null ? undefined : detail.data}
+            isLoading={selectedId !== null && detail.isPending}
+            isError={selectedId !== null && detail.isError}
+            onRetry={() => void detail.refetch()}
+            confirmResult={
+              runner.summary === null ? null : (
+                <AlertBanner variant={runner.summary.failed === 0 ? 'success' : 'warning'}>
+                  {summaryMessage(runner.summary)}
+                </AlertBanner>
+              )
+            }
+            isConfirming={runner.isRunning}
+            onConfirm={() => {
               runner.reset();
               setIsConfirming(true);
             }}
-          >
-            {t.actions.confirm}
-          </Button>
-        </div>
-      </section>
+            onRequestCancel={() => {
+              cancelWrite.reset();
+              setIsCancelOpen(true);
+              setCancelReason('');
+              setShowCancelError(false);
+            }}
+            cancelApproved={cancelApproval.data === 'APPROVED'}
+            onExecuteCancel={() => {
+              executeWrite.reset();
+              setIsExecuteOpen(true);
+            }}
+          />
+        </section>
+      </div>
 
-      {isConfirming && (
+      {isConfirming && selected !== null && (
         <ConfirmDialog
-          rows={chosen}
+          rows={[selected]}
           isRunning={runner.isRunning}
           onClose={() => {
             if (!runner.isRunning) setIsConfirming(false);
@@ -226,21 +271,53 @@ export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) 
           onConfirm={() => {
             /* ⛔ 진행 중에는 다시 보내지 않는다 — 안 끝난 확정 위에 또 보내게 된다. */
             if (runner.isRunning) return;
-            void runner.run(chosen).then(() => {
+            void runner.run([selected]).then(() => {
               setIsConfirming(false);
-              setSelected([]);
+              void detail.refetch();
             });
           }}
         />
       )}
 
-      {cancelTargetId !== null && cancelTarget !== null && (
+      {isExecuteOpen && selected !== null && (
+        <ExecuteCancelDialog
+          shipmentNo={selected.shipmentNo}
+          consequences={consequencesOf(selected, detail.data?.shipmentRequestNo ?? null)}
+          banner={
+            executeAlreadySent ? (
+              <AlertBanner variant="error">{t.executeDialog.erpAlreadySent}</AlertBanner>
+            ) : (
+              <SaveErrorBanner
+                error={executeWrite.error}
+                onReload={() => setIsExecuteOpen(false)}
+              />
+            )
+          }
+          isSubmitting={executeWrite.isSaving || detail.isFetching}
+          onClose={() => setIsExecuteOpen(false)}
+          onSubmit={() => {
+            executeWrite.write({
+              businessDate: plantToday(),
+              occurredAt: new Date().toISOString(),
+            });
+          }}
+        />
+      )}
+
+      {isCancelOpen && selected !== null && (
         <CancelRequestDialog
-          shipmentNo={cancelTarget.shipmentNo}
+          shipmentNo={selected.shipmentNo}
+          consequences={consequencesOf(selected, detail.data?.shipmentRequestNo ?? null)}
           reason={cancelReason}
           showError={showCancelError}
-          banner={<SaveErrorBanner error={cancelWrite.error} onReload={closeCancel} />}
-          isSubmitting={cancelWrite.isSaving || cancelDetail.isPending}
+          banner={
+            erpAlreadySent ? (
+              <AlertBanner variant="error">{t.cancelDialog.erpAlreadySent}</AlertBanner>
+            ) : (
+              <SaveErrorBanner error={cancelWrite.error} onReload={closeCancel} />
+            )
+          }
+          isSubmitting={cancelWrite.isSaving || detail.isFetching}
           onChangeReason={setCancelReason}
           onClose={closeCancel}
           onSubmit={() => {
@@ -253,3 +330,16 @@ export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) 
     </>
   );
 };
+
+/** 취소가 실행되면 일어나는 것(POP 완료 출하만) — 요청 창과 실행 창이 같이 쓴다. */
+const consequencesOf = (row: ShipmentRow, requestNo: string | null) =>
+  flowOf(row) === 'completed'
+    ? {
+        qty: row.totalQty,
+        /* 창고마다 빠진 수량을 함께 적는다(시안 「완제품 창고 A 90, B 70」) — 모르면 이름만. */
+        warehouses: row.warehouses
+          .map((w) => (w.qty === null ? w.warehouseName : `${w.warehouseName} ${String(w.qty)}`))
+          .join(', '),
+        shipmentRequestNo: row.shipmentRequestNo ?? requestNo,
+      }
+    : null;

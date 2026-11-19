@@ -14,7 +14,7 @@ import { TaskDraftProvider, useTaskDraft } from '../patterns/task-draft';
 import { WorkerSessionProvider, useWorkerSession } from '../patterns/worker-session';
 import { appRoutes } from '../routes';
 import { FrequentScreensProvider, useRecordScreenVisit } from './frequent-screens';
-import { homeAreas } from './home-menu';
+import { hiddenScreens, homeAreas, screenOf } from './home-menu';
 import { HomeAreaScreen, ShellHome } from './shell-home';
 
 /*
@@ -23,8 +23,16 @@ import { HomeAreaScreen, ShellHome } from './shell-home';
  * - 전송 기록 두 화면 — 업무가 아니다. 앱바의 칩과 홈의 전송 현황이 그 길이고, 걸린 것이 없을
  *   때는 갈 일이 없다.
  * - 설정 — 업무가 아니다. 홈 맨 아래 단추가 그 길이다.
+ * - 감춘 작업 화면(`hiddenScreens`) — 라우트는 남기고 목록에서만 뺐다(피처 010 재포장).
  */
-const NOT_LISTED = new Set(['screens', 'screens/:area', 'outbox', 'rejections', 'settings']);
+const NOT_LISTED = new Set([
+  'screens',
+  'screens/:area',
+  'outbox',
+  'rejections',
+  'settings',
+  ...hiddenScreens.map((hidden) => hidden.to.slice(1)),
+]);
 
 const routedPaths = (): string[] =>
   (appRoutes[0]?.children ?? [])
@@ -175,6 +183,27 @@ describe('작업 목록', () => {
     expect(missing).toEqual([]);
   });
 
+  /*
+   * Q21 피처 010 — 출하는 PDA 피킹 → OQC → POP 출하 완료로 끝나 재포장(포장 수정)을 쓰지 않는다.
+   * 제품 출하 업무에서 감추되 라우트는 남긴다(배포 전 진행분).
+   */
+  it('Q21 재포장은 제품 출하 업무에 없고 라우트는 남는다', () => {
+    render(
+      <Shell path="/screens/shipping">
+        <HomeRoutes />
+      </Shell>,
+    );
+
+    expect(linkedPaths()).not.toContain('/packing-repack');
+    expect(screenOf('/packing-repack')).toBeUndefined();
+    expect(hiddenScreens.map((hidden) => hidden.to)).toEqual(['/packing-repack']);
+    expect(
+      (appRoutes[0]?.children ?? []).some(
+        (child) => 'path' in child && child.path === 'packing-repack',
+      ),
+    ).toBe(true);
+  });
+
   it('걸린 곳이 모두 라우트에 있다', () => {
     const routed = new Set(routedPaths().map((path) => `/${path}`));
 
@@ -210,7 +239,8 @@ describe('작업 목록', () => {
       '/screens/shopfloor',
       '/screens/shipping',
     ]);
-    expect(screen.getByRole('link', { name: /^창고/ })).toHaveTextContent('작업 6개');
+    /* 창고 7 — 피처 011 이 적치 기록(M-01-14)을 더했다. */
+    expect(screen.getByRole('link', { name: /^창고/ })).toHaveTextContent('작업 7개');
   });
 
   it('업무를 누르면 그 업무의 작업들이 선다', async () => {
@@ -228,7 +258,23 @@ describe('작업 목록', () => {
       'href',
       '/putaway',
     );
-    expect(within(list).getAllByRole('link')).toHaveLength(6);
+    expect(within(list).getAllByRole('link')).toHaveLength(7);
+  });
+
+  it('FR-003 · D-6 창고 업무에 「적치 기록」이 임시 위치 적재 바로 다음에 선다', async () => {
+    const user = userEvent.setup();
+    render(
+      <Shell>
+        <HomeRoutes />
+      </Shell>,
+    );
+
+    await user.click(screen.getByRole('link', { name: /^창고/ }));
+
+    const hrefs = within(screen.getByRole('navigation', { name: '창고' }))
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'));
+    expect(hrefs.indexOf('/putaway-history')).toBe(hrefs.indexOf('/temporary-putaway') + 1);
   });
 
   it('없는 업무 주소는 첫 화면으로 돌린다', () => {
