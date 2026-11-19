@@ -34,6 +34,8 @@ export interface JudgmentConfirmDialogProps {
   note?: string;
   /** 저장 실패 배너 — 창 안에 낸다. */
   banner?: ReactNode;
+  /** 본문 상자에 더할 클래스 — 화면별 모양 조정(IQC 경고 글 키우기 · omf-all-around#296). */
+  className?: string;
   isSaving: boolean;
   onClose: () => void;
   onConfirm: () => void;
@@ -54,6 +56,7 @@ export const JudgmentConfirmDialog = ({
   applyLines = [],
   note = t.irreversible,
   banner,
+  className,
   isSaving,
   onClose,
   onConfirm,
@@ -78,7 +81,7 @@ export const JudgmentConfirmDialog = ({
       if (!isSaving) onClose();
     }}
   >
-    <div className="judgment-confirm">
+    <div className={className === undefined ? 'judgment-confirm' : `judgment-confirm ${className}`}>
       {banner}
       <p className="judgment-confirm-target">{t.target(inspectionRequestNo)}</p>
       <div className="judgment-confirm-judgment">
