@@ -699,6 +699,12 @@ export const ShippingPackingLabelScreen = ({
       lead={
         shipmentId === null || !embedded ? undefined : (
           <PuButton
+            /* 누락 라벨이 없으면 누를 일이 없다(사용자 지시 2026-11-19). 확인 실패는 창에서 알리므로 열어 둔다. */
+            disabled={
+              !isRecoveryError &&
+              (isRecoveryPending ||
+                (missingPackingRows.length === 0 && missingDeliveryRows.length === 0))
+            }
             onClick={() => {
               setRecoveryOpen(true);
             }}

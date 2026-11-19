@@ -708,7 +708,10 @@ describe('ShippingPackingLabelScreen — 재진입 복구', () => {
      *   발행 현황이 온 뒤에 바뀐다 — 이름만 기다리고 수를 바로 읽으면 0 을 본다(실측).
      */
     // 「누락 라벨 이어서 출력」은 작업 줄 단추로 연다.
-    await user.click(await screen.findByRole('button', { name: t.recovery.title }));
+    // 누락 라벨이 셈해져야 눌린다 — 확인 중에는 잠긴다.
+    const recoveryOpen = await screen.findByRole('button', { name: t.recovery.title });
+    await waitFor(() => expect(recoveryOpen).toBeEnabled());
+    await user.click(recoveryOpen);
     await waitFor(() => {
       const card = screen.getByText(t.recovery.deliveryLabel).closest('[role="group"]');
 
