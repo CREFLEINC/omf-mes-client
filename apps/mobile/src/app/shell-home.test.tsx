@@ -210,7 +210,8 @@ describe('작업 목록', () => {
       '/screens/shopfloor',
       '/screens/shipping',
     ]);
-    expect(screen.getByRole('link', { name: /^창고/ })).toHaveTextContent('작업 6개');
+    /* 창고 7 — 피처 011 이 적치 기록(M-01-14)을 더했다. */
+    expect(screen.getByRole('link', { name: /^창고/ })).toHaveTextContent('작업 7개');
   });
 
   it('업무를 누르면 그 업무의 작업들이 선다', async () => {
@@ -228,7 +229,23 @@ describe('작업 목록', () => {
       'href',
       '/putaway',
     );
-    expect(within(list).getAllByRole('link')).toHaveLength(6);
+    expect(within(list).getAllByRole('link')).toHaveLength(7);
+  });
+
+  it('FR-003 · D-6 창고 업무에 「적치 기록」이 임시 위치 적재 바로 다음에 선다', async () => {
+    const user = userEvent.setup();
+    render(
+      <Shell>
+        <HomeRoutes />
+      </Shell>,
+    );
+
+    await user.click(screen.getByRole('link', { name: /^창고/ }));
+
+    const hrefs = within(screen.getByRole('navigation', { name: '창고' }))
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'));
+    expect(hrefs.indexOf('/putaway-history')).toBe(hrefs.indexOf('/temporary-putaway') + 1);
   });
 
   it('없는 업무 주소는 첫 화면으로 돌린다', () => {

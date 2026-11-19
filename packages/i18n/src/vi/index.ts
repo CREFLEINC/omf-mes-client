@@ -150,6 +150,7 @@ import { stocktaking } from './stocktaking';
 import { supplierReturn } from './supplier-return';
 import { suspiciousMaterialHold } from './suspicious-material-hold';
 import { temporaryPutaway } from './temporary-putaway';
+import { putawayHistory } from './putaway-history';
 import { terminalProcessMap } from './terminal-process-map';
 import { toolMaster } from './tool-master';
 import { toolPmOrder } from './tool-pm-order';
@@ -321,6 +322,7 @@ export const vi: Translated<Messages> = {
   supplierReturn,
   suspiciousMaterialHold,
   temporaryPutaway,
+  putawayHistory,
   terminalProcessMap,
   toolMaster,
   toolPmOrder,

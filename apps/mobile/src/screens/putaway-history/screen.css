@@ -1,0 +1,86 @@
+.putaway-history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+  padding: var(--space-4, 16px);
+}
+
+.putaway-history p {
+  margin: 0;
+}
+
+.putaway-history__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+  padding-top: var(--space-3, 12px);
+}
+
+/* 날짜 ‹ › — 가운데 날짜와 기준 · 건수, 양옆에 하루씩 옮기는 단추. */
+.putaway-history__date {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 8px);
+}
+
+.putaway-history__day {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  text-align: center;
+}
+
+.putaway-history__sub {
+  color: var(--on-surface-muted, inherit);
+  overflow-wrap: anywhere;
+}
+
+.putaway-history__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 한 건이 한 장. 누르는 카드가 아니라 테두리 없이 바탕만 올린다(읽기 전용). */
+.putaway-history__row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+/* 입고가 취소된 줄은 남기되 흐리게 — 「입고 취소됨」 칩이 까닭을 말한다. */
+.putaway-history__row--cancelled {
+  opacity: 0.62;
+}
+
+/* 라벨과 대조하는 값이라 자리가 흔들리지 않게 고정폭으로, 긴 LOT 번호는 아무 데서나 접는다. */
+.putaway-history__route {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.putaway-history__item {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.putaway-history__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1, 4px);
+  padding-block: 2px;
+}
+
+.putaway-history__more {
+  width: 100%;
+}

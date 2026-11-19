@@ -143,6 +143,7 @@ import { putaway } from './putaway';
 import { recycleEntry } from './recycle-entry';
 import { inboundVariance } from './inbound-variance';
 import { temporaryPutaway } from './temporary-putaway';
+import { putawayHistory } from './putaway-history';
 import { shellHome } from './shell-home';
 import { taskFlow } from './task-flow';
 import { shellNav } from './shell-nav';
@@ -304,6 +305,7 @@ export const ko = {
   recycleEntry,
   inboundVariance,
   temporaryPutaway,
+  putawayHistory,
   poChangeReview,
   shellHome,
   taskFlow,
