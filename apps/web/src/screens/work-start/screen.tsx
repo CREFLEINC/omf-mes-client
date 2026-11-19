@@ -48,7 +48,7 @@ import { assignedAtText, terminalNow } from './terminal-clock';
 import type { ControlOverride, WorkOrder, Worker } from './types';
 import { WorkOrderList, type ListKind, type ListScope } from './work-order-list';
 import type { ListOrder } from '../../patterns/pop-list-order';
-import { isEmergency, isRework } from './work-order-type';
+import { isRework } from './work-order-type';
 import { isHeld } from './work-order-status';
 import { WorkerPanel } from './worker-panel';
 import { verifyWorker } from './worker-verify';
@@ -838,30 +838,11 @@ export const WorkStartScreen = () => {
               submit();
             }}
             /*
-             * 긴급 작업지시는 작업 시작 없이도 자재 투입·실적 입력으로 바로 간다 — 옛 「긴급 작업지시」 화면의 두
-             * 버튼을 그대로 옮겼다(#295). 주소에 작업지시만 싣고, 판정은 그 화면과 서버가 한다.
+             * 긴급 작업지시의 [자재 투입]·[실적 입력]은 두지 않는다(사용자 지시 2026-11-19) — 진행 중이면
+             * [작업 이어하기]가 생산 흐름(자재 투입)으로 옮긴다.
              */
             secondary={
-              selected !== null && isEmergency(selected) ? (
-                <>
-                  <PuButton
-                    onClick={() => {
-                      goToMaterialInput(selected.workOrderId);
-                    }}
-                  >
-                    {t.actions.materialInput}
-                  </PuButton>
-                  <PuButton
-                    onClick={() => {
-                      void navigate(
-                        `/pop/production-result?workOrderId=${String(selected.workOrderId)}`,
-                      );
-                    }}
-                  >
-                    {t.actions.productionResult}
-                  </PuButton>
-                </>
-              ) : selected !== null && isRework(selected) ? (
+              selected !== null && isRework(selected) ? (
                 /*
                  * 재작업 W/O 의 실적은 재작업 실적 등록(P-04-03)이 받는다 — 그 W/O 를 고른 채로 연다(#295).
                  * [작업 시작]은 지금처럼 둔다(이 목록이 재작업 W/O 에 하던 일을 바꾸지 않는다).

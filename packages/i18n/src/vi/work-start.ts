@@ -124,8 +124,6 @@ export const workStart: Translated<typeof ko.workStart> = {
     checking: 'Đang kiểm tra',
     starting: 'Đang bắt đầu',
     continueToSession: 'Tiếp tục công việc',
-    materialInput: 'Đưa vật tư vào',
-    productionResult: 'Nhập kết quả',
     reworkResult: 'Đăng ký kết quả làm lại',
   },
 

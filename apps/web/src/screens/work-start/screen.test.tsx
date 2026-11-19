@@ -513,6 +513,28 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
     const equipment = within(info).getByText(t.selection.equipment).nextElementSibling;
     expect(equipment).toHaveTextContent(`${TERMINAL.equipmentName} (SYN-PRS-01)`);
     expect(equipment).toHaveTextContent(t.selection.terminalEquipment);
+    /* 계획 설비가 있는 W/O 는 목록 카드처럼 「설비 미지정」을 달지 않는다. */
+    expect(within(head).queryByText(t.list.unassignedEquipmentBadge)).toBeNull();
+  });
+
+  /** 사용자 지적 2026-11-19 — 목록 카드는 「설비 미지정」인데 고르면 설비가 지정된 듯 보였다. */
+  it('설비 미지정 W/O 를 고르면 목록과 같이 「설비 미지정」을 달고, 설비 줄은 이 단말 설비로 작업함을 말한다', async () => {
+    const { plannedEquipmentId: _id, ...unassigned } = WORK_ORDER;
+    const { user } = renderScreen({ workOrders: [unassigned] });
+
+    await enterWorkerNo(user, WORKER.workerNo);
+    const card = await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+    expect(within(card).getByText(t.list.unassignedEquipmentBadge)).toBeInTheDocument();
+    await user.click(card);
+
+    const selection = screen.getByRole('group', { name: t.selection.title });
+    const head = selection.querySelector('.ws-sel-top') as HTMLElement;
+    const info = selection.querySelector('.pu-kv') as HTMLElement;
+    expect(within(head).getByText(t.list.unassignedEquipmentBadge)).toBeInTheDocument();
+    const equipment = within(info).getByText(t.selection.equipment).nextElementSibling;
+    expect(equipment).toHaveTextContent(TERMINAL.equipmentName);
+    expect(equipment).toHaveTextContent(t.selection.terminalEquipment);
+    expect(equipment).not.toHaveTextContent(t.selection.assignedEquipment);
   });
 
   /**

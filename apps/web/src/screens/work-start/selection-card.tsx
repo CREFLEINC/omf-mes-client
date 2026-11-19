@@ -24,7 +24,7 @@ export interface SelectionCardProps {
   equipmentId: number | null;
   /** 이 시작이 쓸 설비 「이름 (코드)」. 모르면 `null`이고 그 줄을 숨긴다. */
   equipmentText: string | null;
-  /** 이 시작이 쓸 설비가 없다. 「설비 미지정」으로 보인다. */
+  /** 이 시작이 쓸 설비가 없다 — 설비 줄을 숨긴다. 「설비 미지정」 칩은 W/O 의 계획 설비로 따로 정한다. */
   isEquipmentUnassigned?: boolean;
   /** 단위 번호를 코드로 옮긴다. 못 옮기면 `null`. 수량만 낸다. */
   uomCodeOf: (uomId: number | undefined) => string | null;
@@ -105,8 +105,15 @@ export const SelectionCard = ({
       <h3 className="ws-group-title">{t.title}</h3>
       <div className="ws-sel-top">
         <span className="no">{workOrder.workOrderNo}</span>
-        {/* 목록에서 본 긴급 표식과 설비 미지정을 고른 뒤에도 남긴다(§5-3, #1147). */}
-        <WorkOrderChips workOrder={workOrder} isEquipmentUnassigned={isEquipmentUnassigned} />
+        {/*
+         * 목록에서 본 긴급 표식과 설비 미지정을 고른 뒤에도 남긴다(§5-3, #1147). 설비 미지정은 목록 카드와 같은 근거
+         * (W/O 의 계획 설비가 비었나)로 단다 — 아래 설비 줄은 이 시작이 쓸 «이 단말 설비»라 지정 설비로 읽히지 않게
+         * 칩이 함께 말한다(사용자 지적 2026-11-19 「설비가 지정되어 있는데 설비 미지정」).
+         */}
+        <WorkOrderChips
+          workOrder={workOrder}
+          isEquipmentUnassigned={workOrder.plannedEquipmentId == null}
+        />
       </div>
       <PuKv items={items} />
 

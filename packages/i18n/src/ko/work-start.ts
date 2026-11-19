@@ -170,9 +170,6 @@ export const workStart = {
     starting: '시작 중',
     /** 이미 진행 중인 작업으로 자리를 옮긴다(쓰기 없음). */
     continueToSession: '작업 이어하기',
-    /** 긴급 작업지시만 — 작업 시작 없이 바로 그 화면으로 간다(옛 「긴급 작업지시」 화면의 두 버튼). */
-    materialInput: '자재 투입',
-    productionResult: '실적 입력',
     reworkResult: '재작업 실적 등록',
   },
 

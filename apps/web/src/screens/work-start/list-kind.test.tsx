@@ -94,7 +94,7 @@ describe('P-02-01 작업지시 목록 — 전체 / 긴급 보기(#295)', () => {
     expect(listUrls(recorded.urls)).toHaveLength(0);
   });
 
-  it('긴급을 고르면 발행 시각 · 점검 통제 우회 안내 · [자재 투입]·[실적 입력]이 선다', async () => {
+  it('긴급을 고르면 발행 시각 · 점검 통제 우회 안내가 서고, [자재 투입]·[실적 입력]은 없다(사용자 지시 2026-11-19)', async () => {
     const { user } = renderScreen({
       route: '/pop/work-start?type=emergency',
       emergencyWorkOrders: [EMERGENCY],
@@ -112,38 +112,16 @@ describe('P-02-01 작업지시 목록 — 전체 / 긴급 보기(#295)', () => {
     if (dialog !== null)
       await user.click(within(dialog).getByRole('button', { name: t.worker.cancel }));
 
-    await user.click(screen.getByRole('button', { name: t.actions.productionResult }));
-    expect(screen.getByTestId('location')).toHaveTextContent(
-      `/pop/production-result?workOrderId=${String(EMERGENCY.workOrderId)}`,
-    );
+    expect(screen.queryByRole('button', { name: '자재 투입' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '실적 입력' })).toBeNull();
   });
 
-  it('긴급 [자재 투입]은 그 W/O 를 실어 자재 투입으로 간다', async () => {
-    const { user } = renderScreen({
-      route: '/pop/work-start?type=emergency',
-      emergencyWorkOrders: [EMERGENCY],
-    });
-
-    await user.click(
-      await screen.findByRole('button', { name: selectName(EMERGENCY.workOrderNo) }),
-    );
-    const dialog = screen.queryByRole('dialog', { name: t.worker.dialogTitle });
-    if (dialog !== null)
-      await user.click(within(dialog).getByRole('button', { name: t.worker.cancel }));
-    await user.click(screen.getByRole('button', { name: t.actions.materialInput }));
-    expect(screen.getByTestId('location')).toHaveTextContent(
-      `/pop/material-input?workOrderId=${String(EMERGENCY.workOrderId)}`,
-    );
-  });
-
-  it('긴급이 아닌 지시에는 [자재 투입]·[실적 입력]·우회 안내가 없다', async () => {
+  it('긴급이 아닌 지시에는 우회 안내가 없다', async () => {
     const { user } = renderScreen();
 
     await user.click(
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
     );
-    expect(screen.queryByRole('button', { name: t.actions.materialInput })).toBeNull();
-    expect(screen.queryByRole('button', { name: t.actions.productionResult })).toBeNull();
     expect(screen.queryByText(t.selection.bypassBody)).toBeNull();
   });
 });
@@ -159,8 +137,8 @@ describe('P-02-01 작업지시 목록 — 재작업 W/O(#295)', () => {
     if (dialog !== null)
       await user.click(within(dialog).getByRole('button', { name: t.worker.cancel }));
 
-    expect(screen.queryByRole('button', { name: t.actions.materialInput })).toBeNull();
-    expect(screen.queryByRole('button', { name: t.actions.productionResult })).toBeNull();
+    expect(screen.queryByRole('button', { name: '자재 투입' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '실적 입력' })).toBeNull();
     await user.click(screen.getByRole('button', { name: t.actions.reworkResult }));
     expect(screen.getByTestId('location')).toHaveTextContent(
       `/pop/rework-results?workOrderId=${String(REWORK.workOrderId)}`,
