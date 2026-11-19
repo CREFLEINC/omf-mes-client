@@ -1201,41 +1201,36 @@ textarea.pu-input {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
-  color: var(--pu-text-3);
   white-space: nowrap;
   min-width: 0;
 }
 
+/* 단계 줄 모양은 셸 작업 단계 줄(.pop-work-step)과 같다(사용자 지시 2026-11-19). */
 .pu-flow .st {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 4px;
-  border: 0;
-  background: none;
-  font: inherit;
-  color: inherit;
-  border-radius: 8px;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--pu-text);
+  font: 600 16px / 1 var(--font-sans, inherit);
 }
 
 .pu-flow .st i {
   font-style: normal;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   background: var(--pu-card-2);
   color: var(--pu-text-2);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
-}
-
-.pu-flow .st.is-done {
-  color: var(--pu-text-2);
 }
 
 .pu-flow .st.is-done i {
@@ -1244,8 +1239,10 @@ textarea.pu-input {
 }
 
 .pu-flow .st.is-now {
+  border-color: var(--pu-primary);
+  background: var(--pu-primary-soft);
   color: var(--pu-primary);
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .pu-flow .st.is-now i {
@@ -1266,7 +1263,8 @@ textarea.pu-input {
 }
 
 .pu-flow .sep {
-  color: var(--pu-line);
+  color: var(--pu-text-3);
+  font-size: 20px;
 }
 
 /* ── 정보 띠: 구획 색 바탕, 빨간 아이콘 제목, 「이름 값」 ── */

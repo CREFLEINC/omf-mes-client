@@ -609,7 +609,13 @@ export const PopOqcInspectionScreen = () => {
           />
         </PuSection>
 
-        <PuSection title={title} meta={roundChip} className="oqc-work">
+        {/* 단계 이름은 단계 줄이 이미 보인다 — 구획 제목으로 겹쳐 쓰지 않는다(사용자 지시 2026-11-19). */}
+        <PuSection
+          title={showResult ? title : undefined}
+          label={title}
+          meta={roundChip}
+          className="oqc-work"
+        >
           <PopWorkerMissingBanner workerNo={workerNo} />
           {save.error !== null && judgmentState.openedAt === null && (
             <SaveErrorBanner error={save.error} onReload={() => void rounds.refetch()} />

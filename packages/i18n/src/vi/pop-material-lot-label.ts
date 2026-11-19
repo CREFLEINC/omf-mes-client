@@ -26,7 +26,6 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
       'Chưa có nhà cung cấp · mặt hàng nào. Hãy đăng ký trước ở màn hình quản trị 「Thông tin mặc định nhà cung cấp · mặt hàng」.',
     noMatch: 'Không có nhà cung cấp · mặt hàng cần tìm.',
   },
-  reprintInfo: 'LOT đã in nhãn trong 2 tuần gần đây. LOT đã hủy không in lại được.',
   work: {
     meta: (supplier: string, supplierCode: string, uomCode: string, defaults: string) =>
       `${supplier} ${supplierCode} · Đơn vị cơ sở ${uomCode} · ${defaults}`,

@@ -37,7 +37,6 @@ export const popMaterialLotLabel = {
     noMatch: '찾는 공급사·품목이 없습니다.', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
   },
   /** 재발행 탭 왼쪽 안내. */
-  reprintInfo: '최근 2주 안에 라벨을 출력한 LOT입니다. 폐기된 LOT은 재인쇄할 수 없습니다.',
   /** 오른쪽 작업 칸. */
   work: {
     meta: (supplier: string, supplierCode: string, uomCode: string, defaults: string) =>

@@ -357,7 +357,6 @@ describe('US1-4 다시 인쇄', () => {
     await waitFor(() => expect(reprintRows()).toHaveLength(2));
     expect(reprintRows()[0]?.closest('tr')).toHaveTextContent('|0001');
     expect(reprintRows()[1]?.closest('tr')).toHaveTextContent('|0002');
-    expect(screen.getByText(t.reprintInfo)).toBeInTheDocument();
   });
 
   it('US1-4 사유를 고르기 전에는 보내지 않고, 고른 사유를 본문에 실어 출력 차수를 올린다', async () => {
@@ -422,6 +421,10 @@ describe('US1-4 다시 인쇄', () => {
     renderLabelScreen({ ...PRINTED(), reissueReasons: [] });
 
     await user.click(await screen.findByRole('tab', { name: t.tabs.reprint }));
+    /* 사유 칸은 LOT을 고른 뒤에만 선다. */
+    expect(screen.queryByText(t.reprint.reasonsEmpty)).toBeNull();
+    await waitFor(() => expect(reprintRows()).toHaveLength(2));
+    await user.click(reprintRows()[0] as HTMLElement);
 
     expect(await screen.findByText(t.reprint.reasonsEmpty)).toBeInTheDocument();
   });

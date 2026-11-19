@@ -561,7 +561,6 @@ export const PopMaterialLotLabelScreen = () => {
             }}
             onSubmit={submitScan}
           />
-          <p className="pu-help">{t.reprintInfo}</p>
         </>
       )}
     </PuSection>
@@ -730,7 +729,8 @@ export const PopMaterialLotLabelScreen = () => {
         pages={reprintPage.pages}
         onPage={reprintPage.setPage}
       />
-      {isShowingResults ? null : (
+      {/* 사유는 재인쇄할 LOT을 고른(스캔한) 뒤에만 보인다(사용자 지시 2026-11-19). */}
+      {isShowingResults || selected.length === 0 ? null : (
         <ReasonPicker
           reasons={reasons.data ?? []}
           isLoading={reasons.isPending}
