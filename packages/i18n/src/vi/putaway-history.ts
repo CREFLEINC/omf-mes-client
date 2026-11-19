@@ -15,10 +15,10 @@ export const putawayHistory: Translated<typeof ko.putawayHistory> = {
   prevDay: 'Ngày trước',
   nextDay: 'Ngày sau',
   basis: {
-    mine: (workerNo: string, workerName: string, count: number) =>
-      `${workerNo} ${workerName}, mọi thiết bị, ${String(count)} bản ghi`,
-    terminal: (terminalCode: string | null, count: number) =>
-      `${terminalCode === null ? 'Thiết bị này' : `Thiết bị ${terminalCode}`}, mọi công nhân, ${String(count)} bản ghi`,
+    mine: (workerNo: string, workerName: string, count: number | null) =>
+      `${workerNo} ${workerName}, mọi thiết bị${count === null ? '' : `, ${String(count)} bản ghi`}`,
+    terminal: (terminalCode: string | null, count: number | null) =>
+      `${terminalCode === null ? 'Thiết bị này' : `Thiết bị ${terminalCode}`}, mọi công nhân${count === null ? '' : `, ${String(count)} bản ghi`}`,
   },
   listLabel: 'Danh sách lịch sử cất hàng',
   loading: 'Đang tải lịch sử cất hàng',

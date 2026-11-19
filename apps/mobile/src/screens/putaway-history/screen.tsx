@@ -1,6 +1,7 @@
 import { AlertBanner, Chip, EmptyState, IconButton, Tabs } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 
 import { BottomActionBar } from '../../patterns/bottom-action-bar';
@@ -12,7 +13,12 @@ import { plantClock, plantToday } from '../../patterns/plant-time';
 import { toApiError } from '../../patterns/request';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
-import { usePutawayRecords, type PutawayRecord, type PutawayRecordScope } from './queries';
+import {
+  putawayRecordKeys,
+  usePutawayRecords,
+  type PutawayRecord,
+  type PutawayRecordScope,
+} from './queries';
 import './screen.css';
 
 const t = messages.putawayHistory;
@@ -107,9 +113,23 @@ export const PutawayHistoryScreen = () => {
   const queued =
     countPending(messages.putaway.record) + countPending(messages.temporaryPutaway.record);
 
+  /*
+   * 전송 대기가 줄면 그만큼 서버에 들어갔다 — 화면을 연 채로 보내져도 목록에 나타나게 다시 부른다(FR-014 · H12).
+   * 안내만 사라지고 목록이 그대로면 「보내지면 여기에 나옵니다」가 거짓이 된다.
+   */
+  const queryClient = useQueryClient();
+  const queuedBefore = useRef(queued);
+  useEffect(() => {
+    if (queued < queuedBefore.current) {
+      void queryClient.invalidateQueries({ queryKey: putawayRecordKeys.all });
+    }
+    queuedBefore.current = queued;
+  }, [queryClient, queued]);
+
   const unreachable = records.isError && toApiError(records.error).kind === 'network';
   const list = records.data;
-  const count = list?.total ?? 0;
+  /* 불러온 목록이 없으면(끊김 · 실패 · 불러오는 중) 「0건」이라고 하지 않는다. */
+  const count = list?.total ?? null;
 
   const basis =
     scope === 'WORKER'

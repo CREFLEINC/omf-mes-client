@@ -18,12 +18,12 @@ export const putawayHistory = {
     today ? `오늘, ${date} (${weekday})` : `${date} (${weekday})`,
   prevDay: '이전 날',
   nextDay: '다음 날',
-  /** 날짜 아래 — 지금 무엇을 기준으로 보는지와 건수. */
+  /** 날짜 아래 — 지금 무엇을 기준으로 보는지와 건수. 불러온 목록이 없으면(끊김 · 실패) 건수를 빼 null. */
   basis: {
-    mine: (workerNo: string, workerName: string, count: number) =>
-      `${workerNo} ${workerName}, 기기 무관, ${String(count)}건`,
-    terminal: (terminalCode: string | null, count: number) =>
-      `${terminalCode === null ? '이 기기' : `이 기기 ${terminalCode}`}, 작업자 무관, ${String(count)}건`,
+    mine: (workerNo: string, workerName: string, count: number | null) =>
+      `${workerNo} ${workerName}, 기기 무관${count === null ? '' : `, ${String(count)}건`}`,
+    terminal: (terminalCode: string | null, count: number | null) =>
+      `${terminalCode === null ? '이 기기' : `이 기기 ${terminalCode}`}, 작업자 무관${count === null ? '' : `, ${String(count)}건`}`,
   },
   listLabel: '적치 기록 목록',
   loading: '적치 기록을 불러오는 중입니다',
