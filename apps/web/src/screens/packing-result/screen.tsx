@@ -250,12 +250,22 @@ export const PackingResultScreen = () => {
 
   const shipBoxRef = useRef<HTMLDivElement>(null);
   const shipFit = useFitCount(shipBoxRef, { fallback: 4 });
-  const shipPage = useClientPage(todayShipments.shipments, shipFit);
+  /**
+   * 고를 수 있는 출하 먼저, 「확정 불가」는 맨 아래(omf-all-around#329) — 각 묶음 안은 받은 순서
+   * 그대로다. ⭐ 목록 전체를 받아 화면에서 쪽을 나누므로 «자르기 전에» 줄 세운다.
+   */
+  const orderedShipments = [
+    ...todayShipments.shipments.filter((shipment) => blockReasonOf(shipment) === undefined),
+    ...todayShipments.shipments.filter((shipment) => blockReasonOf(shipment) !== undefined),
+  ];
+  const shipPage = useClientPage(orderedShipments, shipFit);
 
   /**
    * 출하 하나를 골랐다. ⚠ 이미 고른 것을 다시 고르면 아무것도 하지 않는다(담던 것을 지킨다).
    * 조회 결과 확정할 수 없는 출하면 고르지 않고 그 카드에 사유를 남긴다 — 찍어서 고른 것이면
    * 스캔 칸 아래에도 사유를 띄운다.
+   * ⚠ 이전 출하 문맥은 «고를 수 있다고 판정된 뒤» 버린다 — 확정 불가로 판정된 출하를 눌렀다고
+   *   지금 고른 출하가 풀리면 안 된다(omf-all-around#329). 조회 중에는 카드·[다음]이 잠겨 있다.
    */
   const chooseShipment = (selectedId: number, fromScan = false): void => {
     const selected = todayShipments.shipments.find(
@@ -264,17 +274,23 @@ export const PackingResultScreen = () => {
     if (selected === undefined) return;
     if (blockReasonOf(selected) !== undefined) return;
     if (entry?.shipmentId === selected.shipmentId) return;
-    if (!prepareEntryChange()) return;
+    if (openUnit !== null) {
+      setEntryError('open-unit');
+      return;
+    }
 
     shipmentSelection.mutate(selected, {
       onSuccess: (next) => {
         const reason = shipmentBlockReason(next);
         if (reason === undefined) {
-          applyEntry(next);
+          if (prepareEntryChange()) applyEntry(next);
           return;
         }
         setBlockedShipments((prev) => ({ ...prev, [next.shipmentId]: reason }));
         if (fromScan) setShipmentScanError(reason);
+      },
+      onError: () => {
+        prepareEntryChange();
       },
     });
   };
@@ -295,7 +311,7 @@ export const PackingResultScreen = () => {
       setShipmentScanError(t.shipments.notFound(code));
       return;
     }
-    shipPage.showIndex(todayShipments.shipments.indexOf(found));
+    shipPage.showIndex(orderedShipments.indexOf(found));
     const blockedReason = blockReasonOf(found);
     if (blockedReason !== undefined) {
       setShipmentScanError(blockedReason);

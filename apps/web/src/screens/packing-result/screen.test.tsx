@@ -493,6 +493,42 @@ describe('PackingResultScreen', () => {
     });
   });
 
+  /** 출하 목록 카드의 출하번호 — 화면에 놓인 순서대로. */
+  const listedShipmentNos = (): string[] =>
+    screen
+      .getAllByRole('button', { name: /SYN-SH-\d+/u })
+      .map((card) => /SYN-SH-\d+/u.exec(card.textContent ?? '')?.[0] ?? '');
+
+  /* omf-all-around#329 — 「확정 불가」는 고를 수 있는 출하 «아래»에 선다. */
+  it('목록에서 확정 불가인 출하는 고를 수 있는 출하 아래로 내려간다', async () => {
+    renderScreen({ listedUnpackedLotCounts: { 501: 0, 502: 2 } });
+
+    await screen.findByRole('button', { name: new RegExp(t.shipments.blockedChip, 'u') });
+    expect(listedShipmentNos()).toEqual(['SYN-SH-0502', 'SYN-SH-0501']);
+  });
+
+  it('눌러서야 확정 불가로 판정된 출하(옛 서버)는 그때 아래로 내려가고 고른 출하는 그대로다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ noUnpackedShipmentId: 501 });
+
+    await chooseShipment(user, 'SYN-SH-0502');
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /SYN-SH-0502/u })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+    });
+    expect(listedShipmentNos()).toEqual(['SYN-SH-0501', 'SYN-SH-0502']);
+
+    await chooseShipment(user, 'SYN-SH-0501');
+    await screen.findByRole('button', { name: new RegExp(t.shipments.blockedChip, 'u') });
+    expect(listedShipmentNos()).toEqual(['SYN-SH-0502', 'SYN-SH-0501']);
+    expect(screen.getByRole('button', { name: /SYN-SH-0502/u })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
   it('확정할 수 없는 출하번호를 찍으면 고르지 않고 사유를 스캔 오류로 띄운다', async () => {
     const user = userEvent.setup();
     renderScreen({ noUnpackedShipmentId: 502 });
