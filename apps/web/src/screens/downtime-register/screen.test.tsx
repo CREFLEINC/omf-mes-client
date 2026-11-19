@@ -913,7 +913,7 @@ describe('DowntimeRegisterScreen — 구간을 치기 전', () => {
      *    오류 문구와 같은 줄이라 경고처럼 읽혔다(사용자 지적).
      * ⚠ 자리 자체는 늘 남는다 — 글자가 들고 날 때마다 줄이 흔들리면 손가락이 빗나간다.
      */
-    const empty = `${t.interval.duration} ${t.interval.durationEmpty}`;
+    const empty = `${t.interval.duration} ${t.interval.durationAuto}`;
     expect(durationText()).toBe(empty);
 
     /* 시작만 찍어도, 「아직 진행 중」을 켜도 여전히 산출할 수 없다 — 표기는 같다. */

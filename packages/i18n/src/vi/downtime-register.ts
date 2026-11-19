@@ -29,7 +29,7 @@ export const downtimeRegister: Translated<typeof ko.downtimeRegister> = {
     now: 'Bây giờ',
     stillOngoing: 'Vẫn đang diễn ra',
     duration: 'Thời gian dừng máy',
-    durationEmpty: common.reference.empty,
+    durationAuto: 'Tự tính',
   },
   reason: {
     title: 'Lý do',

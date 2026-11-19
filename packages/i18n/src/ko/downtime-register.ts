@@ -62,7 +62,7 @@ export const downtimeRegister = {
      */
     /** 시작 구획 제목 줄의 「비가동 시간 n분」(#295 시안 — 「구간」 제목 자리). */
     duration: '비가동 시간',
-    durationEmpty: common.reference.empty,
+    durationAuto: '자동 계산',
   },
   reason: {
     title: '사유',

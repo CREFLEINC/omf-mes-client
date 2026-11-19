@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
-import { PuButton, PuInput, PuSection } from '../../patterns/pop-uniform';
+import { PuButton, PuChip, PuInput, PuSection } from '../../patterns/pop-uniform';
 
 import { toDurationLabel } from './formatting';
 import {
@@ -85,9 +85,10 @@ export const IntervalFields = ({ draft, errors, onChange, children }: IntervalFi
 
   /*
    * 비가동 시간 — **입력 확인용**이다. 저장되는 값은 서버가 낸다(§4-A · L-2).
-   * ⛔ **0분으로 채우지 않는다** — 없는 값과 0을 같은 모양으로 만들지 않는다(`G-9`). 값 없음은 「—」다.
+   * ⛔ **0분으로 채우지 않는다** — 없는 값과 0을 같은 모양으로 만들지 않는다(`G-9`).
+   * ⭐ 제목 옆 라벨로 보인다 — 값이 없으면 「자동 계산」, 있으면 길이(사용자 지시 2026-11-19).
    */
-  const durationValue = minutes === null ? t.interval.durationEmpty : toDurationLabel(minutes);
+  const durationValue = minutes === null ? t.interval.durationAuto : toDurationLabel(minutes);
 
   const setStarted = (part: 'date' | 'time', value: string): void => {
     onChange({ ...draft, startedAt: { ...draft.startedAt, [part]: value } });
@@ -103,7 +104,7 @@ export const IntervalFields = ({ draft, errors, onChange, children }: IntervalFi
       grow={false}
       title={
         <span className="dt-dur">
-          {t.interval.duration} <b>{durationValue}</b>
+          {t.interval.duration} <PuChip tone="info">{durationValue}</PuChip>
         </span>
       }
     >
@@ -155,6 +156,8 @@ export const IntervalFields = ({ draft, errors, onChange, children }: IntervalFi
         <div className="dt-lbl-row">
           <span className="pu-label" id={endedLabelId}>
             {t.interval.endedAtLabel}
+            {/* 선택 칸은 늘 「(선택)」을 붙인다(사용자 지시 2026-11-19). */}
+            <span className="opt">{t.reason.optional}</span>
           </span>
           <label className="pu-check">
             <input

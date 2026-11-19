@@ -37,8 +37,9 @@
   color: var(--pu-text-2);
 }
 
-.dt-u .dt-dur b {
-  color: var(--pu-text);
+.dt-u .dt-dur .pu-chip {
+  margin-left: 8px;
+  vertical-align: middle;
 }
 
 .dt-u .dt-tm {
