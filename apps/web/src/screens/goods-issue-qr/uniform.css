@@ -213,26 +213,27 @@
   gap: 12px;
 }
 
-.giq-preview .pu-help {
-  margin: 0;
+.giq-label > span {
+  grid-column: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
-/* 라벨 미리 보기 — 80 × 30 mm 를 1 점 = 1 단위로(인쇄와 같은 자리). */
-.giq-preview .pop-split-label {
-  margin: 0;
-  text-align: center;
+.giq-label-code {
+  font-size: 18px;
 }
 
-.giq-preview .pop-split-label > svg {
-  width: 100%;
-  max-width: 639px;
-  border: 1px solid var(--pu-line);
-  font-family: Arial, sans-serif;
+.giq-label-qty {
+  font-size: 18px;
 }
 
-.giq-preview .pop-split-label > figcaption {
-  font-size: 13px;
-  color: var(--pu-text-3);
+.giq-label-lot {
+  font-size: 11px;
+}
+
+.giq-label-reissue {
+  color: #b3261e;
+  font-weight: 700;
 }
 
 .giq-meta {
@@ -257,13 +258,6 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-}
-
-.giq-preview-printer {
-  margin-right: auto;
-  align-self: center;
-  font-size: 13px;
-  color: var(--pu-text-3);
 }
 
 /* 1024 단말: 기간·보기 바꿈을 좁히고 LOT 번호 글자를 줄인다. */

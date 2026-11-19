@@ -40,7 +40,6 @@ import {
   useShellSelectsPrinter,
 } from '../pop-material-lot-label/queries';
 import { ReasonPicker } from '../pop-material-lot-label/reason-picker';
-import { LabelPreview } from './label-preview';
 import {
   PRINTED_PERIODS,
   PRINT_FAILED,
@@ -614,8 +613,6 @@ export const GoodsIssueQrScreen = () => {
           lots={printList}
           index={preview.index}
           isReprint={isPrintedTab}
-          reasonName={needsReason ? reasonName : null}
-          printerName={headPrinter?.displayName ?? null}
           onMove={(index) => {
             setPreview({ index });
           }}
@@ -827,8 +824,6 @@ const PreviewDialog = ({
   lots,
   index,
   isReprint,
-  reasonName,
-  printerName,
   onMove,
   onCancel,
   onPrint,
@@ -836,8 +831,6 @@ const PreviewDialog = ({
   lots: readonly SplitMaterialLot[];
   index: number;
   isReprint: boolean;
-  reasonName: string | null;
-  printerName: string | null;
   onMove: (index: number) => void;
   onCancel: () => void;
   onPrint: () => void;
@@ -856,10 +849,8 @@ const PreviewDialog = ({
       onClose={onCancel}
       footer={
         <>
-          <span className="giq-preview-printer">
-            {printerName === null ? t.preview.printerDefault : t.preview.printer(printerName)}
-          </span>
-          <PuButton onClick={onCancel}>{t.preview.cancel}</PuButton>
+          {/* 자재 관리 LOT 라벨 미리보기와 같은 모양(사용자 지시 2026-11-19): [닫기] · [N장 인쇄]. */}
+          <PuButton onClick={onCancel}>{t.preview.close}</PuButton>
           <PuButton variant="primary" icon="print" onClick={onPrint}>
             {isReprint ? t.preview.reprint(lots.length) : t.preview.print(lots.length)}
           </PuButton>
@@ -867,26 +858,23 @@ const PreviewDialog = ({
       }
     >
       <div className="giq-preview">
-        <p className="pu-help">
-          {t.preview.note}
-          {reasonName === null ? '' : t.preview.reissueNote(reasonName)}
-        </p>
-        <LabelPreview
-          fields={{
-            itemCode: label.itemCode,
-            itemName: label.itemName,
-            lotNo: label.lotNo,
-            qty: label.lotQty,
-            uomCode: label.uomCode,
-            issueSeq: nextIssueSeq(lot),
-            supplier:
-              label.supplierName === null || label.supplierCode === null
-                ? null
-                : `${label.supplierName} (${label.supplierCode})`,
-            receipt: null,
-            kind: 'material',
-          }}
-        />
+        <figure className="pu-label-preview giq-label" aria-label={label.lotNo}>
+          <b>{`${t.preview.kind} · ${plantToday()}`}</b>
+          <div className="qr" aria-hidden="true" />
+          <b className="giq-label-code">{label.itemCode}</b>
+          <span>{label.itemName}</span>
+          <span>
+            {`${t.preview.qty} `}
+            <b className="giq-label-qty">{formatBaseQty(label.lotQty, label.uomCode)}</b>
+          </span>
+          {label.supplierName === null || label.supplierCode === null ? null : (
+            <span>{`${label.supplierName} (${label.supplierCode})`}</span>
+          )}
+          <span className="pu-mono giq-label-lot">{label.lotNo}</span>
+          {isReprint ? (
+            <span className="giq-label-reissue">{t.preview.reissue(nextIssueSeq(lot))}</span>
+          ) : null}
+        </figure>
         <dl className="giq-meta">
           <dt>{t.preview.bag}</dt>
           <dd>
@@ -902,25 +890,27 @@ const PreviewDialog = ({
             <LotNoText lotNo={lot.parentLot.lotNo} />
           </dd>
         </dl>
-        <nav className="giq-preview-pager" aria-label={t.preview.page(index + 1, lots.length)}>
-          <PuButton
-            disabled={index <= 0}
-            onClick={() => {
-              onMove(index - 1);
-            }}
-          >
-            {t.preview.prev}
-          </PuButton>
-          <span>{t.preview.page(index + 1, lots.length)}</span>
-          <PuButton
-            disabled={index >= lots.length - 1}
-            onClick={() => {
-              onMove(index + 1);
-            }}
-          >
-            {t.preview.next}
-          </PuButton>
-        </nav>
+        {lots.length > 1 ? (
+          <nav className="giq-preview-pager" aria-label={t.preview.page(index + 1, lots.length)}>
+            <PuButton
+              disabled={index <= 0}
+              onClick={() => {
+                onMove(index - 1);
+              }}
+            >
+              {t.preview.prev}
+            </PuButton>
+            <span>{t.preview.page(index + 1, lots.length)}</span>
+            <PuButton
+              disabled={index >= lots.length - 1}
+              onClick={() => {
+                onMove(index + 1);
+              }}
+            >
+              {t.preview.next}
+            </PuButton>
+          </nav>
+        ) : null}
       </div>
     </PuDialog>
   );

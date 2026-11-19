@@ -104,11 +104,12 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
     running: (done: number, total: number) => `Đang in nhãn ${String(done)} / ${String(total)}`,
   },
   preview: {
-    title: 'Xem trước phát hành nhãn',
+    title: 'Xem trước nhãn',
     reprintTitle: 'Xem trước in lại',
-    note: 'Cùng mẫu với nhãn LOT quản lý vật tư. Mã QR chỉ chứa số LOT tách; trên nhãn hiển thị mặt hàng · số lượng (số lượng tách) · nhà cung cấp. Không có dòng đóng gói.',
-    reissueNote: (reason: string) => ` In lại với lý do 「${reason}」. Lượt in tăng thêm 1.`,
-    guide: '80 × 30 mm · QR = số LOT tách',
+    kind: 'LOT tách',
+    qty: 'Số lượng',
+    reissue: (seq: number) => `In lại lượt ${String(seq)}`,
+    close: 'Đóng',
     bag: 'Túi cần dán',
     bagValue: (qty: string, issueNo: string, lineNo: number, destination: string) =>
       `${qty} · phiếu xuất ${issueNo} dòng ${String(lineNo)}${destination === '' ? '' : ` · nơi đến ${destination}`}`,
@@ -116,11 +117,8 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
     prev: '◀ Trước',
     next: 'Sau ▶',
     page: (index: number, total: number) => `${String(index)} / ${String(total)} nhãn`,
-    cancel: 'Hủy',
     print: (count: number) => `In ${String(count)} nhãn`,
     reprint: (count: number) => `In lại ${String(count)} nhãn`,
-    printer: (name: string) => `Máy in ${name}`,
-    printerDefault: 'Máy in mặc định của máy chủ',
   },
   result: {
     printed: (count: number) => `Đã phát hành ${String(count)} nhãn. Hãy dán lên túi.`,

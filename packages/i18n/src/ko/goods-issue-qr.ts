@@ -113,12 +113,12 @@ export const goodsIssueQr = {
     running: (done: number, total: number) => `라벨 인쇄 중 ${String(done)} / ${String(total)}`,
   },
   preview: {
-    title: '라벨 발행 미리 보기',
+    title: '라벨 미리보기',
     reprintTitle: '재인쇄 미리 보기',
-    note: '자재 관리 LOT 라벨과 같은 양식입니다. QR에는 분할 LOT 번호만 실리고, 라벨에는 품목·수량(분할 수량)·공급사가 보입니다. 포장 줄은 없습니다.',
-    reissueNote: (reason: string) =>
-      ` 사유 「${reason}」로 재인쇄합니다. 인쇄 회차가 하나 오릅니다.`,
-    guide: '80 × 30 mm · QR = 분할 LOT 번호',
+    kind: '분할 LOT',
+    qty: '수량',
+    reissue: (seq: number) => `재인쇄 ${String(seq)}회`,
+    close: '닫기',
     bag: '붙일 봉지',
     bagValue: (qty: string, issueNo: string, lineNo: number, destination: string) =>
       `${qty} · 출고 ${issueNo} 라인 ${String(lineNo)}${destination === '' ? '' : ` · 도착 ${destination}`}`,
@@ -126,11 +126,8 @@ export const goodsIssueQr = {
     prev: '◀ 이전',
     next: '다음 ▶',
     page: (index: number, total: number) => `${String(index)} / ${String(total)}장`,
-    cancel: '취소',
     print: (count: number) => `${String(count)}장 인쇄`,
     reprint: (count: number) => `${String(count)}장 재인쇄`,
-    printer: (name: string) => `프린터 ${name}`,
-    printerDefault: '프린터 서버 기본값',
   },
   result: {
     printed: (count: number) => `라벨 ${String(count)}장을 발행했습니다. 봉지에 부착하세요.`,
