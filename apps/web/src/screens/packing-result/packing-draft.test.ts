@@ -62,7 +62,7 @@ describe('qtyError', () => {
     expect(qtyError('180', lineOfAllocation(allocation(), 0), 'EA')).toBeUndefined();
   });
 
-  it('잔여를 1 넘기면 포장 가능 수량을 말한다', () => {
+  it('잔여를 1 넘기면 포장 가능량을 말한다', () => {
     expect(qtyError('181', lineOfAllocation(allocation(), 0), 'EA')).toBe(
       t.qty.overRemaining('180 EA'),
     );

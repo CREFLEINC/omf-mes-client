@@ -63,12 +63,12 @@ export const packingResult = {
     remove: '포장에서 제외',
     sum: (qty: string): string => `포장 합계 ${qty}`,
     room: (qty: string): string => `포장 가능 ${qty}`,
-    reviewRoom: (qty: string): string => `담은 LOT의 포장 가능 수량 ${qty}`,
+    reviewRoom: (qty: string): string => `담은 LOT의 포장 가능량 ${qty}`,
   },
   qty: {
     title: '입력',
     unit: (uom: string): string => `단위 ${uom}`,
-    overRemaining: (qty: string): string => `포장 가능 수량(${qty})을 넘었습니다`,
+    overRemaining: (qty: string): string => `포장 가능량(${qty})을 넘었습니다`,
     notPositive: '수량은 0보다 커야 합니다',
   },
   fields: {
