@@ -35950,17 +35950,6 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   gap: var(--space-3);
 }
 
-/* 칸마다 이름을 위에 단다(G2 L21) — 이름 줄 아래 칸들의 밑선을 맞춘다. */
-.mlot-issue-filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-lg);
-}
-
 .mlot-issue-section-head {
   display: flex;
   flex-wrap: wrap;
@@ -36003,21 +35992,10 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   white-space: nowrap;
 }
 
-/* 머리와 품목 · 기본 정보 칸은 두 줄까지(베트남어 긴 글 — 시안 #vi). */
-.mlot-issue-table.is-wrap-head th,
-.mlot-issue-table .is-wrap {
-  white-space: normal;
-}
-
 .mlot-issue-table .is-number {
   text-align: end;
 }
 
-.mlot-issue-table tr.is-clickable {
-  cursor: pointer;
-}
-
-.mlot-issue-table tr.is-clickable:hover > td,
 .mlot-issue-table tr[aria-selected='true'] > td {
   background: var(--surface-container-high);
 }
@@ -36045,6 +36023,11 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   gap: var(--space-1);
 }
 
+/* 목록 표(입고 관리 짜임)는 한 줄 — 기본 정보 칩과 안내가 줄을 바꾸지 않는다. */
+.board-table .mlot-issue-defaults {
+  flex-wrap: nowrap;
+}
+
 .mlot-issue-facts {
   display: grid;
   grid-template-columns: max-content 1fr;
@@ -36058,12 +36041,6 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 .mlot-issue-facts > dd {
   margin: 0;
-}
-
-.mlot-issue-detail-foot {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: var(--space-3);
 }
 
 .mlot-issue-form {
