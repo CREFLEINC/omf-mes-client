@@ -51,8 +51,6 @@ export const iqcInboundLot = {
       requestedAt: '의뢰 일시',
       inspectedQty: '검사 수량',
       received: '입하',
-      receivedValue: (when: string, channel: string | null) =>
-        channel === null ? when : `${when} (${channel})`,
       plan: '검사 조건',
       splitFrom: '분리 원천',
     },

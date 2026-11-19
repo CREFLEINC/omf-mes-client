@@ -64,6 +64,8 @@ export interface InboundDetailProps {
   itemParts: { code: string; name: string } | null;
   /** 검사 조건(「AQL 1.0 · 육안 검사」) — 기준 버전에서. */
   planText: string;
+  /** 검사 조건 칸 오른쪽 [기준 조회] 단추(사용자 지시 2026-11-19 · omf-all-around#296). */
+  planAction?: ReactNode;
   uomCode: string;
   /** 결과 드로어의 양식 — 지금 IQC 양식 그대로(드로어 모드). */
   renderForm: ResultDrawerProps['renderForm'];
@@ -90,6 +92,7 @@ export const InboundDetail = ({
   inspectionRequestId,
   itemParts,
   planText,
+  planAction,
   uomCode,
   renderForm,
   headActions,
@@ -373,16 +376,15 @@ export const InboundDetail = ({
                     </div>
                     <div className="parts-iqc-fact">
                       <dt className="field-label">{t.facts.received}</dt>
-                      <dd>
-                        {t.facts.receivedValue(
-                          formatPlantDateTime(inspection.receivedAt ?? null) ?? '-',
-                          inspection.receivedChannelCode ?? null,
-                        )}
-                      </dd>
+                      {/* 입하 일시만 — 입하 경로(WEB · PDA)는 보이지 않는다(사용자 지시 2026-11-19 · omf-all-around#296). */}
+                      <dd>{formatPlantDateTime(inspection.receivedAt ?? null) ?? '-'}</dd>
                     </div>
                     <div className="parts-iqc-fact">
                       <dt className="field-label">{t.facts.plan}</dt>
-                      <dd>{planText}</dd>
+                      <dd className="parts-iqc-plan-cell">
+                        {planText}
+                        {planAction}
+                      </dd>
                     </div>
                     {inspection.splitFromInboundLotNo == null ? null : (
                       <div className="parts-iqc-fact">
@@ -490,7 +492,6 @@ export const InboundDetail = ({
                       action={
                         /* 파일 첨부 — 첨부 파일 표 위 오른쪽, 확정 뒤에도 붙일 수 있다(사용자 지시 2026-11-19 · omf-all-around#296). */
                         <Button
-                          variant="outlined"
                           size="md"
                           disabled={lots.length === 0}
                           leadingIcon={<Icon name="attach_file" size={18} aria-hidden />}

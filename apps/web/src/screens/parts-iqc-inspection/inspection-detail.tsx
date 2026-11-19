@@ -425,6 +425,8 @@ export const InspectionDetail = ({
    * 고른 탭은 의뢰마다 처음부터. 확정이 끝난 의뢰는 「검사 진행」 탭을 두지 않고 이력만 보인다(사용자 지시 2026-11-04).
    */
   const [picked, setPicked] = useState<{ requestId: number; tab: string } | null>(null);
+  /* 새 흐름 상세의 [기준 조회] 창(사용자 지시 2026-11-19 · omf-all-around#296). */
+  const [inboundPlanOpen, setInboundPlanOpen] = useState(false);
 
   if (inboundFlow && detail.data !== undefined) {
     const aql = version.data?.aqlValue;
@@ -440,6 +442,26 @@ export const InspectionDetail = ({
         inspectionRequestId={inspectionRequestId}
         itemParts={items.partsOf(detail.data.itemId)}
         planText={planText === '' ? '-' : planText}
+        planAction={
+          version.data === undefined || specs.data === undefined ? null : (
+            <>
+              <Button variant="outlined" size="sm" onClick={() => setInboundPlanOpen(true)}>
+                {t.plan.open}
+              </Button>
+              {inboundPlanOpen && (
+                <PlanDialog
+                  planCode={plan.data === undefined ? '-' : plan.data.inspectionPlanCode}
+                  planName={plan.data?.inspectionPlanName ?? '-'}
+                  itemParts={items.partsOf(detail.data.itemId)}
+                  version={version.data}
+                  specs={[...specs.data].sort((a, b) => a.sequenceNo - b.sequenceNo)}
+                  drawings={<DrawingImages drawings={drawings.data ?? []} />}
+                  onClose={() => setInboundPlanOpen(false)}
+                />
+              )}
+            </>
+          )
+        }
         uomCode={uoms.codeOf(detail.data.uomId) ?? ''}
         renderForm={renderInboundForm}
         headActions={inboundHead?.headActions}

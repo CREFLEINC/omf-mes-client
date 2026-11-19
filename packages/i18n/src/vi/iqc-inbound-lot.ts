@@ -32,8 +32,6 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
       requestedAt: 'Thời điểm yêu cầu',
       inspectedQty: 'Số lượng kiểm tra',
       received: 'Nhập hàng',
-      receivedValue: (when: string, channel: string | null) =>
-        channel === null ? when : `${when} (${channel})`,
       plan: 'Điều kiện kiểm tra',
       splitFrom: 'Tách từ',
     },
