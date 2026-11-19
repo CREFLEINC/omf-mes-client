@@ -3039,7 +3039,7 @@ describe('WarehouseLocationScreen — 보관 품목', () => {
           )),
   });
 
-  it('Q26 「지정 품목만 받기」는 기본 끔이고, 지정 품목이 없으면 켤 수 없다(까닭을 보인다)', async () => {
+  it('Q26 「지정 품목만 받기」는 기본 끔이고, 지정 품목이 없으면 켤 수 없다', async () => {
     const { user } = renderScreen(
       locationWriteRoutes(locationDetailRoute(locationFixtures[3]!)),
       '?wh=1001',
@@ -3050,9 +3050,10 @@ describe('WarehouseLocationScreen — 보관 품목', () => {
 
     expect(restrictSwitch(dialog)).not.toBeChecked();
     expect(restrictSwitch(dialog)).toBeDisabled();
+    /* 까닭 문장은 걷었다(사용자 지시 2026-11-19) — 스위치만 잠긴다. */
     expect(
-      within(dialog).getByText(messages.warehouseLocation.itemsSection.restrict.noItems),
-    ).toBeInTheDocument();
+      within(dialog).queryByText(messages.warehouseLocation.itemsSection.restrict.noItems),
+    ).not.toBeInTheDocument();
   });
 
   it('US2-8·Q26 켜고 저장하면 위치 수정에 itemRestricted=true 만 실린다(품목은 그대로)', async () => {
@@ -3254,9 +3255,10 @@ describe('WarehouseLocationScreen — 보관 품목', () => {
     });
     expect(toggle).not.toBeChecked();
     expect(toggle).toBeDisabled();
+    /* 까닭 문장은 걷었다(사용자 지시 2026-11-19) — 스위치만 잠긴다. */
     expect(
-      within(dialog).getByText(messages.warehouseLocation.itemsSection.restrict.noItems),
-    ).toBeInTheDocument();
+      within(dialog).queryByText(messages.warehouseLocation.itemsSection.restrict.noItems),
+    ).not.toBeInTheDocument();
   });
 
   it('FR-017c·Q26 랙 창에서 품목을 더하고 켜면 품목 PUT 뒤 위치 PUT(itemRestricted=true)', async () => {
