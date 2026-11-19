@@ -182,15 +182,16 @@ describe('WorkerAssignmentScreen — 현재 작업자', () => {
     expect(screen.getByRole('button', { name: t.input.submit })).toBeInTheDocument();
   });
 
-  it('사번을 확인하면 바로 홈으로 간다(#291)', async () => {
+  it('사번을 확인해도 홈으로 넘기지 않고 이 화면에서 확인 완료를 보인다(로그인 시안)', async () => {
     renderScreen();
 
     await typeWorkerNo('900028');
     await userEvent.click(screen.getByRole('button', { name: t.input.submit }));
 
-    await waitFor(() => {
-      expect(screen.getByRole('status', { name: '현재 경로' })).toHaveTextContent('/pop/home');
-    });
+    expect(await screen.findByText(t.current.confirmed)).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: '현재 경로' })).toHaveTextContent(
+      '/pop/worker-assignment',
+    );
   });
 
   it('다른 공장 소속이면 홈으로 넘기지 않고 경고를 보인다', async () => {

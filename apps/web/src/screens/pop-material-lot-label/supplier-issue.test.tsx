@@ -36,7 +36,7 @@ afterEach(() => {
 const openBatch = async (user: ReturnType<typeof userEvent.setup>): Promise<HTMLElement> => {
   await user.click(await screen.findByRole('button', { name: t.work.create }));
   const dialog = await screen.findByRole('dialog', { name: tb.title });
-  await within(dialog).findByText(tb.lotQty);
+  await within(dialog).findByText(tb.lotQty, { selector: 'label' });
 
   return dialog;
 };

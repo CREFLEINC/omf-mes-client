@@ -176,14 +176,11 @@ export const WorkerAssignmentScreen = () => {
       });
       setWorkerNo('');
       /*
-       * 사번을 확인하면 바로 홈으로 간다(#291 · 사용자 지시 2026-11-17) — 단말 등록 → 사번 입력 → 홈.
-       *
-       * ⛔ **다른 공장 소속이면 머문다.** 그 경고(「다른 공장 소속입니다」)는 이 화면의 작업자 카드에만
-       *    서므로, 바로 넘기면 작업자가 보지 못한다. 확인한 뒤 [작업 화면으로]로 홈에 간다.
+       * 사번을 확인해도 이 화면에 머문다(로그인 시안 P-CO-01 · 사용자 지시 2026-11-19) — 오른쪽 카드에
+       * 「확인 완료」를 보이고, 작업자가 [작업 화면으로 →]를 눌러 홈으로 간다.
        */
-      if (!result.isOtherPlant) void navigate(POP_HOME_PATH);
     },
-    [homePlantId, navigate],
+    [homePlantId],
   );
 
   useEffect(() => {

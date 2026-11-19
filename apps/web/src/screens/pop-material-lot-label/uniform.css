@@ -489,3 +489,22 @@
   background: var(--pu-card-2);
   font-size: 14px;
 }
+
+/* 자재 관리 LOT 만들기 창: 왼쪽 입력 · 오른쪽 키패드(POP 통일 규칙 8). */
+.pu-dialog:has(.mll-batch-wrap) {
+  width: min(1120px, calc(100vw - 32px));
+}
+
+.mll-batch-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .mll-batch-wrap {
+    grid-template-columns: minmax(0, 1fr) 260px;
+    gap: 16px;
+  }
+}
