@@ -148,9 +148,9 @@
   font-size: 22px;
 }
 
-/* 사번은 정수 칸이라 「.」 자리를 비운다(시안: 맨 아래 줄 0 · ←). */
-.wa-pad .pu-keypad button[aria-label='.'] {
-  visibility: hidden;
+/* 맨 아래 [전체 삭제]는 글자 키라 숫자보다 작게. */
+.wa-pad .pu-keypad .pu-keypad-clear {
+  font-size: 17px;
 }
 
 .wa-pad .wa-submit {
@@ -225,18 +225,6 @@
 .wa-right-actions > .pu-btn {
   height: 64px;
   font-size: 17px;
-}
-
-/*
- * 개발 서버 전용 화면 이동(`pop-dev-screen-nav`) — [작업 화면으로 →] 자리에 [작업자 변경]과 반반,
- * 같은 높이로 선다.
- */
-.wa-right-actions > .pop-dev-screen-nav {
-  min-width: 0;
-}
-
-.wa-right-actions .pop-select__trigger.pu-input {
-  height: 64px;
 }
 
 /* 머리줄 [단말 재등록]의 아이콘과 글자 사이. */

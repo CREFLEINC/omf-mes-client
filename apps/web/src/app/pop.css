@@ -1060,35 +1060,6 @@
   color: var(--on-surface);
 }
 
-/*
- * 개발용 화면 이동 — **개발 서버에서만 선다**(`patterns/pop-dev-screen-nav.tsx`).
- * 이름을 칸 «위»에 세운다. 옆으로 세우면 좁은 자리에서 이름과 칸이 서로 폭을 뺏어 둘 다
- * 잘린다(실측 —「개발…」).
- */
-.pop-dev-screen-nav {
-  display: block;
-  min-width: 0;
-}
-
-/*
- * 옆의 [교대]와 같은 모양으로 세운다(사용자 지시 2026-09-10) — 버튼 하나가 자리를 채운다.
- * 이름은 버튼이 말하므로 이름표와 「현재 값」 칸은 자리를 비운다. 이름표는 `display: none`
- * 이어도 `aria-labelledby` 가 가리키는 이름으로 남아 창 제목이 그대로 선다.
- */
-/* ⚠ `.pop-ui` 를 앞에 둔다 — 파일 뒤쪽의 `.pop-ui .pop-select*` 규칙과 무게를 맞춰야 이긴다. */
-.pop-ui .pop-dev-screen-nav > .field-label,
-.pop-ui .pop-dev-screen-nav .pop-select__value {
-  display: none;
-}
-
-.pop-ui .pop-dev-screen-nav .pop-select {
-  display: block;
-}
-
-.pop-ui .pop-dev-screen-nav .pop-select__trigger {
-  width: 100%;
-}
-
 /* 표 — 관리웹보다 한 급 크게. 좁은 구획에서도 열 이름이 접히지 않게 여백은 줄인다. */
 .pop-ui table {
   font-size: var(--pop-label);
@@ -4798,4 +4769,38 @@
   color: var(--on-surface);
   font: 700 15px / 20px var(--font-sans);
   white-space: nowrap;
+}
+
+/* 맨 위 줄 갱신 시각 · [종료] — POP 통일 시안 #295(규칙 17). [새로고침] 오른쪽 작은 흐린 글, [종료]는 맨 오른쪽. */
+.pop-nav-top__refreshed {
+  flex: 0 0 auto;
+  margin-inline-start: var(--space-1);
+  color: var(--pop-nav-band-muted);
+  font: 400 13px / 1 var(--font-sans);
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+
+.pop-nav-top__exit {
+  flex: 0 0 auto;
+}
+
+/* 1024 폭 — 갱신 시각 · [종료]가 더해져 단말·설비 칩이 다 줄지 않게 맨 위 줄 단추 여백을 줄인다(#295). */
+@media (max-width: 1180px) {
+  .pop-nav-top {
+    gap: 6px;
+    padding-inline-start: var(--space-4);
+  }
+
+  .pop-nav-top .pop-logout {
+    padding-inline: 10px;
+  }
+
+  .pop-nav-top .pop-logout .pop-nav-icon {
+    margin-inline-end: 2px;
+  }
+
+  .pop-nav-top__chip {
+    padding-inline: 10px;
+  }
 }

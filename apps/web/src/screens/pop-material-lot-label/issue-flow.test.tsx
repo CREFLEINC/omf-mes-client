@@ -127,7 +127,7 @@ describe('US1-4 라벨 발행 — 차례로 보낸다', () => {
     expect(label).toHaveTextContent('1,000 EA');
     expect(label).toHaveTextContent('봉지 10 × 100');
     expect(label).toHaveTextContent('합성 공급사 가 (SYN-P-01)');
-    expect(within(dialog).getByText(t.preview.count(1))).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: t.preview.print(1) })).toBeInTheDocument();
   });
 
   it('US1-4 셸에 80 × 30 TSPL 라벨을 넘기고 QR 에는 LOT 번호만, 수량 줄 옆에 패키징을 싣는다', async () => {

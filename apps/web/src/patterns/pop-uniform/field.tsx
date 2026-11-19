@@ -420,6 +420,8 @@ export const applyKeypadKey = (
 };
 
 const KEYS: readonly PuKey[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'back'];
+/** `clearInPad` 일 때 — 맨 아래 줄은 ← · 0 · [전체 삭제](마지막 칸은 따로 그린다). */
+const PAD_KEYS: readonly PuKey[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'back', '0'];
 
 /**
  * 같은 키패드(3×4, 키 56, 「.」 포함). 위에 「입력 칸: ○○」과 [전체 삭제](누른 칸만 지움).
@@ -431,6 +433,7 @@ export const PuKeypad = ({
   onClearAll,
   decimal = true,
   disabled = false,
+  clearInPad = false,
 }: {
   /** 지금 숫자가 들어갈 칸 이름. 없으면 「입력할 칸을 누르세요」. */
   targetLabel: ReactNode | null;
@@ -438,6 +441,11 @@ export const PuKeypad = ({
   onClearAll: () => void;
   decimal?: boolean;
   disabled?: boolean;
+  /**
+   * 정수 칸에서 [전체 삭제]를 위 줄 대신 키패드 맨 아래 줄에 둔다 — 「← · 0 · 전체 삭제」(사번 입력,
+   * 사용자 지시 2026-11-19). 이때 「.」 키는 없다.
+   */
+  clearInPad?: boolean;
 }) => (
   <div className="pu-stack" role="group" aria-label={t.keypad.region}>
     <div className="pu-keypad-head">
@@ -450,12 +458,14 @@ export const PuKeypad = ({
           </>
         )}
       </span>
-      <PuButton size="sm" disabled={disabled || targetLabel === null} onClick={onClearAll}>
-        {t.keypad.clearAll}
-      </PuButton>
+      {clearInPad ? null : (
+        <PuButton size="sm" disabled={disabled || targetLabel === null} onClick={onClearAll}>
+          {t.keypad.clearAll}
+        </PuButton>
+      )}
     </div>
     <div className="pu-keypad">
-      {KEYS.map((key) => (
+      {(clearInPad ? PAD_KEYS : KEYS).map((key) => (
         <button
           key={key}
           type="button"
@@ -469,6 +479,16 @@ export const PuKeypad = ({
           {key === 'back' ? '←' : key}
         </button>
       ))}
+      {clearInPad ? (
+        <button
+          type="button"
+          className="fn pu-keypad-clear"
+          disabled={disabled || targetLabel === null}
+          onClick={onClearAll}
+        >
+          {t.keypad.clearAll}
+        </button>
+      ) : null}
     </div>
   </div>
 );

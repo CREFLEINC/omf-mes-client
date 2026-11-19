@@ -245,7 +245,6 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     prev: '◀ Trước',
     next: 'Sau ▶',
     page: (index: number, total: number) => `${index} / ${total} nhãn`,
-    count: (count: number) => `${count} tờ`,
     close: 'Đóng',
     print: (count: number) => `In ${count} nhãn`,
     reprint: (count: number) => `In lại ${count} nhãn`,

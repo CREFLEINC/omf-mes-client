@@ -290,7 +290,6 @@ export const popMaterialLotLabel = {
     prev: '◀ 이전',
     next: '다음 ▶',
     page: (index: number, total: number) => `${index} / ${total}장`,
-    count: (count: number) => `${count}장`,
     close: '닫기',
     print: (count: number) => `${count}장 인쇄`,
     reprint: (count: number) => `${count}장 재인쇄`,

@@ -37,8 +37,7 @@ export const PreviewDialog = ({ lots, reasonName, onCancel, onPrint }: PreviewDi
       onClose={onCancel}
       footer={
         <>
-          {/* 시안(사용자 이미지 2026-11-19): 장 수 표시 · [닫기] · [N장 인쇄]. */}
-          <span className="mll-preview-count">{t.count(lots.length)}</span>
+          {/* 장 수는 [N장 인쇄]가 이미 말한다 — 따로 두지 않는다(사용자 지시 2026-11-19). */}
           <PuButton onClick={onCancel}>{t.close}</PuButton>
           <PuButton variant="primary" icon="print" onClick={onPrint}>
             {isReprint ? t.reprint(lots.length) : t.print(lots.length)}

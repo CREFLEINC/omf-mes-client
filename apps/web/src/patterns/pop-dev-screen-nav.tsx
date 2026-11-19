@@ -1,7 +1,7 @@
-import { useId } from 'react';
 import { useNavigate } from 'react-router';
 
-import { PopSelect as Select } from './pop-select';
+import { POP_HOME_PATH } from './pop-screen-catalog';
+import { PuButton } from './pop-uniform';
 
 /**
  * **개발 서버에서만 서는** POP 화면 이동 셀렉터 — 진입 화면(P-CO-01)의 「작업 화면으로
@@ -143,54 +143,20 @@ export interface PopDevScreenNavProps {
 
 export const PopDevScreenNav = ({ disabled }: PopDevScreenNavProps) => {
   const navigate = useNavigate();
-  const labelId = useId();
 
+  /*
+   * 누르면 고르는 창 없이 바로 홈으로 간다(사용자 지시 2026-11-19) — 다른 화면은 홈의 위 메뉴로
+   * 간다. 위 `POP_DEV_SCREENS` 는 라우트 대조 시험이 화면 목록을 지키는 데만 쓴다.
+   */
   return (
-    /*
-     * ⭐ **라벨과 칸을 한 덩어리로 내보낸다.** 조각(`<>`)으로 두 형제를 내보냈더니 액션 줄
-     * (`.pop-ui-actions`)이 자식을 똑같이 나눠 갖는 줄이라 **라벨이 버튼 하나만큼의 칸을
-     * 차지했다** — 옆의 [ 교대 ] 글자가 두 줄로 접히고 이 칸의 이름이 「개발…」로 잘렸다
-     * (실측). 부르는 쪽의 배치를 아는 것은 이 부품이 아니므로, 자리를 하나만 쓴다.
-     */
-    <div className="pop-dev-screen-nav">
-      {/*
-       * ⛔ **`aria-label` 로 때우지 않는다**(`docs/layout-conventions.md` 규범 3). 디자인
-       * 시스템의 `Select` 는 `label` prop 을 주지 않으므로 보이는 이름을 직접 만들어 잇는다 —
-       * `aria-label` 만 두면 **눈으로 보이는 이름이 없어** 무엇을 고르는 칸인지 알 수 없다.
-       * 같은 셸의 전례가 이 형태다(`screens/downtime-register/reason-fields.tsx`).
-       */}
-      <span className="field-label" id={labelId}>
-        {POP_DEV_SCREEN_NAV_LABEL}
-      </span>
-      <Select
-        aria-labelledby={labelId}
-        /*
-         * 옆의 [교대]와 같은 모양으로 선다(사용자 지시 2026-09-10) — 버튼 하나가 자리를
-         * 채우고, 이름은 그 버튼이 말한다. 이름표와 「현재 값」 칸은 `pop.css` 가 감춘다.
-         */
-        actionLabel={POP_DEV_SCREEN_NAV_LABEL}
-        /*
-         * ⚠ **옆 버튼들의 `POP_TOUCH_SIZE`(2xl)를 쓸 수 없다.** `SelectSize` 는 `xl` 까지고
-         * 그 상수는 `ButtonSize` 다 — 타입이 다르다. 디자인 시스템이 `Select` 에 72px 변형을
-         * 내려 주면 그때 한 자리로 모은다.
-         */
-        size="xl"
-        disabled={disabled}
-        placeholder={POP_DEV_SCREEN_NAV_LABEL}
-        /*
-         * ⭐ **고른 값을 남기지 않는다.** 고르는 즉시 다른 화면으로 떠나므로 「지금 여기서
-         * 무엇이 골라져 있는가」라는 상태가 성립하지 않는다 — 비제어로 두면 부품이 그 상태를
-         * 대신 들고 있다가, 돌아왔을 때 가지도 않을 화면 이름을 띄운다.
-         */
-        value={null}
-        options={POP_DEV_SCREENS.map(({ path, label, query }) => ({
-          value: `${path}${query ?? ''}`,
-          label,
-        }))}
-        onChange={(target) => {
-          void navigate(target);
-        }}
-      />
-    </div>
+    <PuButton
+      variant="primary"
+      disabled={disabled}
+      onClick={() => {
+        void navigate(POP_HOME_PATH);
+      }}
+    >
+      {POP_DEV_SCREEN_NAV_LABEL}
+    </PuButton>
   );
 };

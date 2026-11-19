@@ -112,6 +112,7 @@ export const KeypadPanel = ({
             <PuKeypad
               targetLabel={t.workerNo}
               decimal={false}
+              clearInPad
               disabled={isChecking}
               onKey={(key) => {
                 onChange(applyKeypadKey(workerNo, key, { decimal: false }));

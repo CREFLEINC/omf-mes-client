@@ -333,15 +333,6 @@
   gap: 12px;
 }
 
-.mll-preview-count {
-  align-self: center;
-  padding: 8px 14px;
-  border-radius: var(--radius-md, 12px);
-  background: var(--pu-card-2);
-  color: var(--pu-text-2);
-  font-size: 15px;
-}
-
 .mll-preview-code {
   font-size: 18px;
 }
