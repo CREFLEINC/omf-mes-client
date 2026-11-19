@@ -14,7 +14,6 @@ export const materialDefect = {
     item: '품목',
     section: '자재 정보',
     empty: '자재 LOT을 스캔하면 자재 정보가 나옵니다',
-    manualEntry: '직접 입력',
   },
 
   code: {

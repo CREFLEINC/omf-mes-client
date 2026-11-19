@@ -27,7 +27,6 @@ export const toolUsage = {
     placeholder: '금형 QR을 스캔하세요',
     /** QR 이 안 읽힐 때의 폴백. 같은 칸에 손으로 친다 — 스캐너와 입력 자리를 나누지 않는다. */
     /** 다른 POP 화면과 같은 이름(사용자 지시 2026-09-17). */
-    manualEntry: '직접 입력',
     cavity: '캐비티',
     mold: '금형',
     moldName: '금형명',

@@ -23,6 +23,7 @@ import {
   PuScanField,
   PuScreen,
   PuSection,
+  PuTextKeyboard,
   PuUnit,
   applyKeypadKey,
   puToast,
@@ -43,6 +44,7 @@ import { useLotStatusLabels } from '../material-input-scan/lot-status-labels';
 import './uniform.css';
 
 const t = messages.materialDefect;
+const tu = messages.popUniform;
 
 /** 자재 불량으로 보류하면 LOT 은 검사 대기로 묶인다 — 의심자재 등록(W-03-03)과 같은 도착 상태다. */
 const HOLD_TARGET_LOT_STATUS = 'INSPECTION_PENDING';
@@ -113,6 +115,8 @@ export const PopMaterialDefectScreen = () => {
   const [outcome, setOutcome] = useState<'recorded' | 'held' | 'holdFailed' | null>(null);
   const [holdFailure, setHoldFailure] = useState<string | null>(null);
   const [isRetryingHold, setIsRetryingHold] = useState(false);
+  /* 글자 칸(불량 내용 · 해제 조건)을 누르면 오른쪽 「수량」 키패드 자리에 글자판을 세운다(사용자 지시 2026-11-19). */
+  const [textTarget, setTextTarget] = useState<'description' | 'release' | null>(null);
   const statuses = useLotStatusLabels();
 
   const found = useQuery({
@@ -280,6 +284,19 @@ export const PopMaterialDefectScreen = () => {
   const uomCode = lot === null ? '' : (uoms?.find((uom) => uom.uomId === lot.uomId)?.uomCode ?? '');
   const lotMissing = lotNo !== null && found.data === null;
   const off = disabled || lot === null;
+  /* 해제 조건 칸이 닫히면(보류 해제) 숫자 키패드로 돌아간다. */
+  const activeText = textTarget === 'release' && !hold ? null : textTarget;
+  const textField =
+    activeText === 'description'
+      ? { label: t.description, value: description, set: setDescription, disabled: off }
+      : activeText === 'release'
+        ? {
+            label: t.hold.releaseCondition,
+            value: releaseCondition,
+            set: setReleaseCondition,
+            disabled,
+          }
+        : null;
   /* 없는 LOT 이면 칸을 비운다 — 이유는 칸 바로 아래 빨간 한 줄이 말한다(시안 규칙 6). */
   useEffect(() => {
     if (lotMissing) setLotNoDraft('');
@@ -340,7 +357,7 @@ export const PopMaterialDefectScreen = () => {
             done={lot !== null}
             autoFocus
             error={lotMissing ? t.lot.notFound : found.isError ? t.lot.loadFailed : undefined}
-            manual={{ title: t.lot.manualEntry, label: t.lot.label }}
+            manual={{ label: t.lot.label }}
           />
         </PuSection>
 
@@ -401,7 +418,8 @@ export const PopMaterialDefectScreen = () => {
                     id={qtyFieldId}
                     aria-label={t.qty.label}
                     numeric
-                    target={!off}
+                    target={!off && textField === null}
+                    onFocus={() => setTextTarget(null)}
                     need={!off && (qty === '' || record.fieldErrors.defectQty !== undefined)}
                     inputMode="decimal"
                     placeholder="0"
@@ -419,6 +437,8 @@ export const PopMaterialDefectScreen = () => {
                     id={descFieldId}
                     aria-label={t.description}
                     autoComplete="off"
+                    target={activeText === 'description'}
+                    onFocus={() => setTextTarget('description')}
                     value={description}
                     disabled={off}
                     onChange={(event) => setDescription(event.target.value)}
@@ -465,6 +485,8 @@ export const PopMaterialDefectScreen = () => {
                       id={releaseFieldId}
                       aria-label={t.hold.releaseCondition}
                       autoComplete="off"
+                      target={activeText === 'release'}
+                      onFocus={() => setTextTarget('release')}
                       value={releaseCondition}
                       disabled={disabled}
                       need={!disabled && releaseCondition.trim() === ''}
@@ -484,29 +506,48 @@ export const PopMaterialDefectScreen = () => {
             )}
           </PuSection>
 
-          {/* 수량 — 생산 작업 화면과 같은 「수량」 키패드 구획. */}
+          {/* 수량 — 생산 작업 화면과 같은 「수량」 키패드 구획. 글자 칸을 누르면 같은 자리에 글자판. */}
           <PuSection
-            title={t.qty.padTitle}
-            meta={t.qty.padUnit(uomCode === '' ? '—' : uomCode)}
+            title={textField === null ? t.qty.padTitle : tu.textKeyboard.region}
+            meta={textField === null ? t.qty.padUnit(uomCode === '' ? '—' : uomCode) : undefined}
             disabled={lot === null}
+            className={textField === null ? undefined : 'md-pad-text'}
           >
-            <PuKeypad
-              targetLabel={t.qty.label}
-              decimal
-              disabled={off}
-              onKey={(key) => {
-                setQty((prev) => {
-                  const next = applyKeypadKey(prev, key, { decimal: true }).replace(
-                    /^0+(?=\d)/u,
-                    '',
-                  );
-                  return next.length > QTY_MAX_LENGTH ? prev : next;
-                });
-              }}
-              onClearAll={() => {
-                setQty('');
-              }}
-            />
+            {textField !== null ? (
+              <div className="pu-stack" role="group" aria-label={textField.label}>
+                <div className="pu-keypad-head">
+                  <span className="pu-keypad-target">
+                    <b>{textField.label}</b>
+                  </span>
+                </div>
+                <PuTextKeyboard
+                  /* 판을 바꿔 열려면 칸마다 새로 그린다. 불량 내용만 한글 판(사용자 지시 2026-11-19). */
+                  key={activeText ?? ''}
+                  initialMode={activeText === 'description' ? 'ko' : 'en'}
+                  value={textField.value}
+                  disabled={textField.disabled}
+                  onChange={textField.set}
+                />
+              </div>
+            ) : (
+              <PuKeypad
+                targetLabel={t.qty.label}
+                decimal
+                disabled={off}
+                onKey={(key) => {
+                  setQty((prev) => {
+                    const next = applyKeypadKey(prev, key, { decimal: true }).replace(
+                      /^0+(?=\d)/u,
+                      '',
+                    );
+                    return next.length > QTY_MAX_LENGTH ? prev : next;
+                  });
+                }}
+                onClearAll={() => {
+                  setQty('');
+                }}
+              />
+            )}
           </PuSection>
         </PuCols>
       </div>

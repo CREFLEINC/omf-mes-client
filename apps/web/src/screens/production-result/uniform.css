@@ -320,3 +320,53 @@
   min-height: 0;
   padding: 8px;
 }
+
+/* 작업지시 마감 창: 소멸 사유(비고) 글자판이 열리면 창을 넓혀 왼쪽 내용 · 오른쪽 글자판. 평소에는 칸이 없는 듯 그대로. */
+.wc-wrap,
+.wc-wrap > .wc-main {
+  display: contents;
+}
+
+.pu-dialog:has(.wc-wrap.is-kbd) {
+  width: min(1120px, calc(100vw - 32px));
+  height: auto;
+  max-height: 86vh;
+}
+
+.pu-dialog:has(.wc-wrap.is-kbd) > .pu-dialog-body {
+  display: block;
+  overflow: auto;
+  flex: 1 1 auto;
+}
+
+.wc-wrap.is-kbd {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 440px;
+  gap: 20px;
+  align-items: start;
+}
+
+.wc-wrap.is-kbd > .wc-main {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+}
+
+/* 창 안이 길어 내려 보아도 글자판은 보이는 자리에 남는다. */
+.wc-wrap.is-kbd > .wc-kbd {
+  position: sticky;
+  top: 0;
+}
+
+@media (max-width: 1100px) {
+  .wc-wrap.is-kbd {
+    grid-template-columns: minmax(0, 1fr) 400px;
+    gap: 16px;
+  }
+}
+
+/* 꺼진 키(예: 빈 칸의 전체 삭제)를 눌러도 칸에서 초점이 빠져 글자판이 닫히지 않게, 누름을 글자판 바탕으로 넘긴다. */
+.wc-kbd .pu-tkbd button:disabled {
+  pointer-events: none;
+}

@@ -357,7 +357,7 @@ export const ToolUsageScreen = () => {
             autoFocus
             disabled={inputLocked}
             error={!scanFailed ? undefined : isDisposed ? t.scan.disposed : t.scan.notFound}
-            manual={{ title: t.scan.manualEntry, label: t.scan.inputLabel }}
+            manual={{ label: t.scan.inputLabel }}
           />
           {usableTool === null ? (
             <PuEmpty

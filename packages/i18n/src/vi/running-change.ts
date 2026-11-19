@@ -56,7 +56,6 @@ export const runningChange: Translated<typeof ko.runningChange> = {
   scan: {
     label: 'Quét LOT linh kiện mới',
     placeholder: 'Quét LOT linh kiện mới',
-    manualEntry: 'Nhập tay',
     outcomes: {
       partResolved: (code: string, lotNo: string) => `Đã thêm ${code} → ${lotNo}.`,
       ambiguous: (count: number) => `Tìm thấy nhiều kết quả (${count} mục). Hãy quét đúng số LOT.`,

@@ -194,7 +194,6 @@ export const RegistrationPanel = () => {
                 value={token}
                 onChange={setToken}
                 onSubmit={send}
-                manual={false}
                 disabled={busy}
                 error={failureText}
               />

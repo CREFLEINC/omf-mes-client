@@ -10,7 +10,6 @@ export const materialDefect = {
     item: 'Mặt hàng',
     section: 'Thông tin vật tư',
     empty: 'Quét LOT vật tư để xem thông tin',
-    manualEntry: 'Nhập tay',
   },
 
   code: {

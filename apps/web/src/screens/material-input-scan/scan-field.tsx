@@ -166,7 +166,7 @@ export const ScanField = ({
 
       {isManualOpen && (
         <PuManualDialog
-          title={u.scan.manual}
+          title={t.scan.label}
           label={t.scan.label}
           onClose={() => {
             setManualOpen(false);

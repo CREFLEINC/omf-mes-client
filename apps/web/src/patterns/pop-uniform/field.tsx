@@ -15,6 +15,7 @@ import { useScannerSubmit } from '../pop-scanner-submit';
 import { PuDialog } from './dialog';
 import { PuIcon } from './icon';
 import { PuButton, PuNote, puCx } from './layout';
+import { PuTextKeyboard } from './text-keyboard';
 
 /**
  * 칸(규칙 5) · 스캔 칸(규칙 6) · 고르기 타일(규칙 7) · 숫자 키패드(규칙 8) — #295.
@@ -224,7 +225,7 @@ export const PuScanField = ({
       {children}
       {manualOpen && manual !== false && (
         <PuManualDialog
-          title={manual?.title ?? t.scan.manual}
+          title={manual?.title ?? manual?.label ?? labelText}
           label={manual?.label ?? labelText}
           keypad={manual?.keypad ?? false}
           onClose={() => {
@@ -241,7 +242,10 @@ export const PuScanField = ({
   );
 };
 
-/** [직접 입력] 창: 칸 하나 + [취소] · [확인]. 숫자만 넣는 칸(사번 등)은 키패드를 함께 보인다. */
+/**
+ * [직접 입력] 창: 칸 하나 + [취소] · [확인]. 숫자만 넣는 칸(사번 등)은 키패드를,
+ * 그 밖의 칸은 칸 아래에 글자판(`PuTextKeyboard`)을 함께 보인다(사용자 지시 2026-11-19 · 단말에 실물 자판이 없다).
+ */
 export const PuManualDialog = ({
   title,
   label,
@@ -268,6 +272,7 @@ export const PuManualDialog = ({
     <PuDialog
       title={title}
       onClose={onClose}
+      wide={!keypad}
       footer={
         <>
           <PuButton onClick={onClose}>{t.dialog.cancel}</PuButton>
@@ -294,6 +299,17 @@ export const PuManualDialog = ({
           }}
         />
       </PuField>
+      {!keypad && (
+        /* 글자판의 빈 곳을 눌러도 칸에서 초점이 빠지지 않게 한다(Enter 로 확인이 그대로 된다). */
+        <div
+          className="pu-manual-kbd"
+          onMouseDown={(event) => {
+            event.preventDefault();
+          }}
+        >
+          <PuTextKeyboard value={value} onChange={setValue} />
+        </div>
+      )}
       {keypad && (
         <PuKeypad
           targetLabel={label}
@@ -454,7 +470,7 @@ export const PuKeypad = ({
           t.keypad.noTarget
         ) : (
           <>
-            {t.keypad.target} <b>{targetLabel}</b>
+            <b>{targetLabel}</b>
           </>
         )}
       </span>

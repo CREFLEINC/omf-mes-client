@@ -56,7 +56,11 @@ const toSyllable = (ch: string): Syllable | null => {
   const code = ch.charCodeAt(0);
   if (ch.length !== 1 || code < SYLLABLE_BASE || code > SYLLABLE_LAST) return null;
   const offset = code - SYLLABLE_BASE;
-  return { cho: Math.floor(offset / 588), jung: Math.floor((offset % 588) / 28), jong: offset % 28 };
+  return {
+    cho: Math.floor(offset / 588),
+    jung: Math.floor((offset % 588) / 28),
+    jong: offset % 28,
+  };
 };
 
 const fromSyllable = ({ cho, jung, jong }: Syllable): string =>
@@ -142,10 +146,14 @@ export const eraseHangul = (value: string): string => {
 
 type Mode = 'ko' | 'en' | 'num';
 
+/** 숫자 줄 — 한글·영문·기호 어느 판에서도 맨 위에 늘 있다(사용자 지시 2026-11-19). */
+const DIGITS = '1234567890';
+
+/** 'num' 은 기호 판이다(숫자는 맨 위 줄에 늘 있으므로). LOT 번호의 `|` 등을 넣는다. */
 const ROWS: Readonly<Record<Mode, readonly [string, string, string]>> = {
   ko: ['ㅂㅈㄷㄱㅅㅛㅕㅑㅐㅔ', 'ㅁㄴㅇㄹㅎㅗㅓㅏㅣ', 'ㅋㅌㅊㅍㅠㅜㅡ'],
   en: ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'],
-  num: ['1234567890', '-_./', ''],
+  num: ['-_./|:#()+', '', ''],
 };
 
 const KO_SHIFT: Readonly<Record<string, string>> = {
@@ -165,7 +173,8 @@ const shifted = (mode: Mode, ch: string): string => {
 };
 
 /**
- * 글자판: 4줄(키 56, 낮은 화면 48). 맨 아래 줄은 [한/영] [123] [띄어쓰기] [전체 삭제].
+ * 글자판: 5줄(키 56, 낮은 화면 48). 맨 위는 늘 숫자 줄, 맨 아래 줄은 [한/영] [기호] [띄어쓰기] [전체 삭제].
+ * 처음 판은 영문(기본). 불량 등록 칸만 `initialMode="ko"` 로 한글 판을 연다(사용자 지시 2026-11-19).
  * ⇧ 은 한 글자만 쌍자음·겹모음(ㅃㅉㄸㄲㅆㅒㅖ)·대문자로 바꾸고 풀린다.
  *
  * ⭐ 키를 눌러도 초점이 검색 칸에 남는다(`mousedown` 기본 동작 막음) — 스캐너·실물 자판이 계속 그 칸에 친다.
@@ -174,13 +183,16 @@ export const PuTextKeyboard = ({
   value,
   onChange,
   disabled = false,
+  initialMode = 'en',
 }: {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  /** 처음 보일 판. 기본은 영문 — 불량 등록(불량 내용 등)만 'ko'(사용자 지시 2026-11-19). */
+  initialMode?: 'ko' | 'en';
 }) => {
-  const [mode, setMode] = useState<Mode>('ko');
-  const [letters, setLetters] = useState<'ko' | 'en'>('ko');
+  const [mode, setMode] = useState<Mode>(initialMode);
+  const [letters, setLetters] = useState<'ko' | 'en'>(initialMode);
   const [shift, setShift] = useState(false);
   const [first = '', second = '', third = ''] = ROWS[mode];
 
@@ -245,6 +257,7 @@ export const PuTextKeyboard = ({
 
   return (
     <div className="pu-tkbd" role="group" aria-label={t.textKeyboard.region}>
+      {Array.from(DIGITS).map((ch) => charKey(ch))}
       {Array.from(first).map((ch) => charKey(ch))}
       {Array.from(second).map((ch, index) => charKey(ch, index === 0 ? 'row2' : undefined))}
       {mode === 'num' ? (
@@ -284,7 +297,7 @@ export const PuTextKeyboard = ({
           setShift(false);
         }}
       >
-        {t.textKeyboard.numbers}
+        {t.textKeyboard.symbols}
       </button>
       <button
         type="button"

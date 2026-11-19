@@ -1745,3 +1745,16 @@ textarea.pu-input {
   min-height: 0;
   overflow: hidden;
 }
+
+/*
+ * [직접 입력] 창의 글자판(#295 · 2026-11-19): 선택 창처럼 높이를 고정하지 않고 내용만큼만 —
+ * 칸 하나 + 글자판이라 1024×768 에서도 창 안에 다 들어간다.
+ */
+.pu-dialog:has(.pu-manual-kbd) {
+  height: auto;
+  max-height: calc(100vh - 24px);
+}
+
+.pu-manual-kbd .pu-tkbd button:disabled {
+  pointer-events: none;
+}

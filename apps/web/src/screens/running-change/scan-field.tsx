@@ -76,7 +76,7 @@ export const ScanField = ({
       done={done}
       inputRef={inputRef}
       error={outcome?.tone === 'error' ? outcome.text : undefined}
-      manual={{ title: t.scan.manualEntry, label: t.scan.label }}
+      manual={{ label: t.scan.label }}
     >
       {/* 여러 건이 걸린 것은 다시 읽으면 풀린다 — 못 찾은 것(빨강)과 갈라 주의 줄로 낸다. */}
       {outcome?.tone === 'warning' && <PuNote tone="warn">{outcome.text}</PuNote>}

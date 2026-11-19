@@ -73,27 +73,33 @@ describe('PuTextKeyboard', () => {
     fireEvent.click(screen.getByRole('button', { name }));
   };
 
-  it('⇧ 은 한 글자만 쌍자음으로 바꾸고, 한/영 · 123 으로 판을 바꾼다', () => {
+  it('영문 판으로 열리고 맨 위 숫자 줄은 늘 있다. ⇧ 은 한 글자만, 한/영 · 기호로 판을 바꾼다', () => {
     render(<Harness />);
+    press('m');
+    press('쌍자음·대문자');
+    press('C');
+    press('1');
+
+    press('한/영');
     press('쌍자음·대문자');
     press('ㄲ');
     press('ㅗ');
     press('ㅊ');
-    expect(screen.getByRole('status')).toHaveTextContent('꽃');
-
-    press('한/영');
-    press('m');
-    press('쌍자음·대문자');
-    press('C');
-    press('123');
-    press('1');
+    press('기호');
     press('-');
+    press('2');
     press('띄어쓰기');
-    expect(screen.getByRole('status')).toHaveTextContent(/^꽃mC1-$/u);
+    expect(screen.getByRole('status')).toHaveTextContent(/^mC1꽃-2$/u);
 
-    press('한/영');
-    expect(screen.getByRole('button', { name: 'm' })).toBeInTheDocument();
+    press('기호');
+    expect(screen.getByRole('button', { name: 'ㅂ' })).toBeInTheDocument();
     press('전체 삭제');
     expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  });
+
+  it('불량 등록 칸은 initialMode="ko" 로 한글 판을 연다', () => {
+    render(<PuTextKeyboard value="" onChange={() => undefined} initialMode="ko" />);
+    expect(screen.getByRole('button', { name: 'ㅂ' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'q' })).not.toBeInTheDocument();
   });
 });

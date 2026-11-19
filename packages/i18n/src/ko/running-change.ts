@@ -78,7 +78,6 @@ export const runningChange = {
   scan: {
     label: '신규 부품 LOT 스캔',
     placeholder: '신규 부품 LOT을 스캔하세요',
-    manualEntry: '직접 입력',
     outcomes: {
       /**
        * 읽은 코드와 찾은 LOT 이 «다를 때»만 둘을 잇는다 — 검색이 번호의 일부·외부 식별자로도

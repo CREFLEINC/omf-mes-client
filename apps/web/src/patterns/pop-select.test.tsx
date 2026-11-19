@@ -100,6 +100,8 @@ describe('PopSelect — G-34 선택 팝업', () => {
     renderWithProviders(<PopSelect aria-label="사유" options={options} />);
     await user.click(screen.getByRole('combobox', { name: '사유' }));
     const keyboard = screen.getByRole('group', { name: '글자판' });
+    /* 글자판은 영문 판으로 열린다 — 한/영 으로 한글 판. */
+    await user.click(within(keyboard).getByRole('button', { name: '한/영' }));
     for (const key of ['ㅅ', 'ㅓ', 'ㄹ', 'ㅂ', 'ㅣ']) {
       await user.click(within(keyboard).getByRole('button', { name: key }));
     }

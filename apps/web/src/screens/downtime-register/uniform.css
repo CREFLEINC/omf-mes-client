@@ -161,3 +161,38 @@
 .dt-u .dt-ongo .pu-btn {
   margin-left: auto;
 }
+
+/* 「사유」 구획: 평소에는 사유·고장이 위아래. 메모 글자판이 열리면 둘을 나란히 두어 글자판 자리를 만든다. */
+.dt-u .dt-pair {
+  display: contents;
+}
+
+.dt-u .dt-pair.is-kbd {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+@media (max-height: 780px) {
+  .dt-u .pu-card-body:has(.dt-pair.is-kbd) {
+    gap: 8px;
+  }
+}
+
+/* 꺼진 키(예: 빈 칸의 전체 삭제)를 눌러도 칸에서 초점이 빠져 글자판이 닫히지 않게, 누름을 글자판 바탕으로 넘긴다. */
+.dt-kbd .pu-tkbd button:disabled {
+  pointer-events: none;
+}
+
+/* 글자판이 다섯 줄(맨 위 숫자 줄)이라 칸 아래에 펼 때는 키를 조금 낮춰 구획 안에 들어가게 한다. */
+.dt-kbd .pu-tkbd {
+  --pu-key: 44px;
+  gap: 4px;
+}
+
+@media (max-height: 780px) {
+  .dt-kbd .pu-tkbd {
+    --pu-key: 40px;
+  }
+}

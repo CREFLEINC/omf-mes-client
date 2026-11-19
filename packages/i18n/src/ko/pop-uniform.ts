@@ -19,7 +19,7 @@ export const popUniform = {
     region: '글자판',
     shift: '쌍자음·대문자',
     lang: '한/영',
-    numbers: '123',
+    symbols: '기호',
     space: '띄어쓰기',
   },
   pager: {

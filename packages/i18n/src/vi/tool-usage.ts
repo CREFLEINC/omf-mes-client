@@ -21,7 +21,6 @@ export const toolUsage: Translated<typeof ko.toolUsage> = {
     sectionLabel: 'Quét công cụ',
     inputLabel: 'QR khuôn',
     placeholder: 'Quét QR khuôn',
-    manualEntry: 'Nhập tay',
     cavity: 'Khoang khuôn',
     mold: 'Khuôn',
     moldName: 'Tên khuôn',

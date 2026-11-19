@@ -221,7 +221,7 @@ describe('ToolUsageScreen — 툴 스캔', () => {
     renderScreen();
 
     await screen.findByRole('button', { name: t.actions.confirm });
-    await user.click(screen.getByRole('button', { name: t.scan.manualEntry }));
+    await user.click(screen.getByRole('button', { name: messages.popUniform.scan.manual }));
 
     const dialog = await screen.findByRole('dialog');
     await user.type(within(dialog).getByRole('textbox'), TOOL_CODE);

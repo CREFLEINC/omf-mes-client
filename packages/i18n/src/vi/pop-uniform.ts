@@ -19,7 +19,7 @@ export const popUniform: Translated<typeof ko.popUniform> = {
     region: 'Bàn phím chữ',
     shift: 'Chữ hoa',
     lang: '한/EN',
-    numbers: '123',
+    symbols: 'Ký hiệu',
     space: 'Dấu cách',
   },
   pager: {
