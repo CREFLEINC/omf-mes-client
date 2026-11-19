@@ -6908,11 +6908,8 @@ dialog.routing-history-dialog {
   justify-self: end;
 }
 
-.inspection-results-workspace > .split-orientation-toggle {
+.inspection-results-workspace > .more-menu {
   justify-self: end;
-  margin-left: 0;
-  padding-left: 0;
-  border-left: none;
 }
 
 .inspection-results-pane {
@@ -11714,7 +11711,7 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 /* 창이 좁으면 늘 위아래로 쌓인다 — 배치 고르기와 그 앞 구분선은 눌러도 바뀌는 것이 없어 감춘다. */
 @media (max-width: 1439px) {
-  .po-board-layout-toggle,
+  .po-board-layout-more,
   .quality-approval-type-bar-divider {
     display: none;
   }
@@ -19710,6 +19707,61 @@ dialog.layout-editor-dialog {
 .topbar-link:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
+}
+
+/*
+ * 누르면 아래로 펼치는 작은 판(`patterns/popover-button.tsx`) — 상단 바 이름 메뉴와 탭 막대 「⋯」(더보기)가 쓴다.
+ * 드물게 쓰는 기능을 화면에 늘 세우지 않고 한 곳에 접는다(관리웹 화면 정리 시안 A · 2026-11-20).
+ */
+.popover {
+  position: relative;
+  display: inline-flex;
+}
+
+.popover-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--on-surface);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  cursor: pointer;
+}
+
+.popover-trigger:hover,
+.popover-trigger[aria-expanded="true"] {
+  background: var(--surface-container-high);
+}
+
+.popover-trigger:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.popover-panel {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 200px;
+  padding: var(--space-2);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.16);
+}
+
+.more-menu > .popover-trigger {
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: var(--on-surface-variant);
 }
 
 /*
@@ -28177,13 +28229,16 @@ body.col-reordering * {
   text-align: left;
 }
 
-/* 목록 · 상세 배치 단추(`patterns/split-orientation.tsx`) — 상태 칩 옆, 칩과 한 칸 띄운다. */
+/* 목록 · 상세 배치 단추(`patterns/split-orientation.tsx`) — 「⋯」 판 안에 위아래로 선다. */
 .split-orientation-toggle {
   display: flex;
-  gap: var(--space-2);
-  margin-left: var(--space-2);
-  padding-left: var(--space-2);
-  border-left: 1px solid var(--outline-variant);
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.split-orientation-toggle > .split-orientation-option {
+  justify-content: flex-start;
+  height: 32px;
 }
 
 /*

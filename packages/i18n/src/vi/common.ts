@@ -35,6 +35,7 @@ export const common: Translated<typeof ko.common> = {
     notifications: 'Thông báo',
     mainMenu: 'Menu chính',
     breadcrumb: 'Đường dẫn điều hướng',
+    moreActions: 'Thêm',
     home: 'Danh sách công việc',
     back: 'Bước trước',
     backToArea: (area: string) => `Công việc ${area}`,

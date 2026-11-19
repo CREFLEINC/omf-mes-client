@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useState, useSyncExternalStore, type CSSProperties } from 'react';
 
 import { HubActions, useHubActionsTarget } from './hub-actions';
+import { MoreMenu } from './popover-button';
 
 const t = messages.common.inspectionHub;
 
@@ -177,7 +178,9 @@ export const useSideBySideFits = (): boolean =>
   );
 
 /**
- * 탭 줄 오른쪽(상태 칩 옆)의 배치 단추 둘 — 아이콘 + 「좌우 배치」 · 「상하 배치」. 고른 배치는 붉은 톤으로 눌린 상태다.
+ * 배치 단추 둘 — 아이콘 + 「좌우 배치」 · 「상하 배치」. 고른 배치는 붉은 톤으로 눌린 상태다.
+ * 탭 줄 오른쪽 「⋯」(더보기) 안에 접어 둔다 — 한 번 고르면 브라우저에 남아 다시 누를 일이 드물어, 탭 줄에 늘 세우지 않는다
+ * (관리웹 화면 정리 시안 A · 2026-11-20).
  * 탭 묶음 밖(탭 막대가 없는 계정 · 화면만 그린 시험)에서는 자리가 없어 그리지 않는다 — 배치는 좌우다.
  */
 export const SplitOrientationToggle = ({
@@ -199,22 +202,29 @@ export const SplitOrientationToggle = ({
   if (target === null && !inline) return null;
   const shown: SplitOrientation = fits ? orientation : 'column';
   const group = (
-    <div className="split-orientation-toggle" role="group" aria-label={t.layoutLabel}>
-      {OPTIONS.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          className="split-orientation-option"
-          aria-pressed={shown === option.value}
-          disabled={!fits && option.value === 'row'}
-          title={!fits && option.value === 'row' ? t.layoutNarrow : undefined}
-          onClick={() => onChange(option.value)}
-        >
-          <Icon name={option.icon} size={16} />
-          {option.label}
-        </button>
-      ))}
-    </div>
+    <MoreMenu>
+      {(close) => (
+        <div className="split-orientation-toggle" role="group" aria-label={t.layoutLabel}>
+          {OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className="split-orientation-option"
+              aria-pressed={shown === option.value}
+              disabled={!fits && option.value === 'row'}
+              title={!fits && option.value === 'row' ? t.layoutNarrow : undefined}
+              onClick={() => {
+                onChange(option.value);
+                close();
+              }}
+            >
+              <Icon name={option.icon} size={16} />
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </MoreMenu>
   );
 
   return target === null ? group : <HubActions target={target}>{group}</HubActions>;

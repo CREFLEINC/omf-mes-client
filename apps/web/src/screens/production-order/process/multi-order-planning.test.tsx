@@ -310,14 +310,29 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
       const detail = screen.getByRole('region', { name: '선택 ERP W/O 상세' });
       expect(within(detail).getByText('시험 품목 【 TEST-100 】', { exact: true })).toBeVisible();
       const user = userEvent.setup();
-      const layout = screen.getByRole('group', { name: 'ERP W/O 목록과 상세 배치' });
-      await user.click(within(layout).getByRole('button', { name: '상하 배치' }));
+      await user.click(screen.getByRole('button', { name: 'ERP W/O 목록과 상세 배치' }));
+      await user.click(
+        within(screen.getByRole('group', { name: 'ERP W/O 목록과 상세 배치' })).getByRole(
+          'button',
+          {
+            name: '상하 배치',
+          },
+        ),
+      );
       expect(within(list).getByRole('columnheader', { name: '품목 코드' })).toBeVisible();
       const row = within(list).getAllByRole('button')[0]!.closest('tr')!;
       expect(within(row).getByText('ITEM1', { exact: true })).toBeVisible();
       expect(within(row).getByText('시험 품목 【 TEST-100 】', { exact: true })).toBeVisible();
       expect(screen.queryByRole('region', { name: '현재 ERP W/O 정보' })).toBeNull();
-      await user.click(within(layout).getByRole('button', { name: '좌우 배치' }));
+      await user.click(screen.getByRole('button', { name: 'ERP W/O 목록과 상세 배치' }));
+      await user.click(
+        within(screen.getByRole('group', { name: 'ERP W/O 목록과 상세 배치' })).getByRole(
+          'button',
+          {
+            name: '좌우 배치',
+          },
+        ),
+      );
       expect(within(detail).getByText('시험 품목 【 TEST-100 】', { exact: true })).toBeVisible();
     } finally {
       fixtures.items.set(1, original);
