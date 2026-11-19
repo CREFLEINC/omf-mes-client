@@ -188,8 +188,11 @@ export const repackLabelIssue = {
     /* 설계 §3 액션바가 「발번·인쇄」다 — 이 화면이 하는 일은 번호를 매기고 뽑는 것이다. */
     submit: '발번·인쇄',
     submitCount: (count: number): string => `발번·인쇄 (${String(count)}장)`,
+    reissue: '재발행',
     reissueCount: (count: number): string => `재발행 (${String(count)}장)`,
     preview: '미리보기',
+    /** 이미 발행한 포장 — 미리보기 창에서 사유를 골라 재인쇄한다(#295 시안). */
+    previewReissue: '미리보기·재인쇄',
     /** 「확인할 수 없다」에만 준다 — 「권한이 없다」에는 다시 물을 것이 없다(G-3). */
     gateRetry: '다시 확인',
   },
@@ -204,7 +207,7 @@ export const repackLabelIssue = {
     failed: '라벨 이미지를 받지 못했습니다.',
     /** 받기는 했는데 그려지지 않는다 — 「못 받았다」와 다른 사실이라 따로 말한다. */
     notDrawable: '받은 라벨을 화면에 그릴 수 없습니다. 인쇄는 그대로 할 수 있습니다.',
-    print: '재인쇄',
+    printCount: (count: number): string => `${String(count)}장 재인쇄`,
     close: '취소',
   },
 

@@ -70,7 +70,12 @@ const pickReason = async (name: string): Promise<void> => {
 };
 
 /** 창 안 [인쇄] — 사유를 고른 뒤 발행·인쇄한다(사용자 지시 2026-09-17). */
-const dialogPrintButton = (): HTMLElement => screen.getByRole('button', { name: t.preview.print });
+const DIALOG_PRINT_NAME = new RegExp(`^${t.preview.printCount(0).replace(/^0/, '\\d+')}$`);
+const dialogPrintButton = (): HTMLElement =>
+  screen.getByRole('button', { name: DIALOG_PRINT_NAME });
+
+/** [미리보기] — 이미 발행한 포장이면 「미리보기·재인쇄」다(#295 시안). */
+const PREVIEW_NAME = new RegExp(`^${t.issue.preview}`);
 
 /** [발번·인쇄]로 사유 창을 연다 — 사유가 필요한 발행은 창에서 사유를 고른다. */
 const openReasonDialog = async (): Promise<void> => {
@@ -908,7 +913,7 @@ describe('RepackLabelIssueScreen — 발행 뒤', () => {
   it('발행 이력이 없으면 미리보기를 열 수 없다', async () => {
     await renderSelectedScreen({ history: [] });
 
-    expect(await screen.findByRole('button', { name: t.issue.preview })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: PREVIEW_NAME })).toBeDisabled();
   });
 
   /*
@@ -926,11 +931,21 @@ describe('RepackLabelIssueScreen — 발행 뒤', () => {
   });
 
   it('발행 이력이 있으면 미리보기를 열 수 있다', async () => {
-    await renderSelectedScreen({ history: [makeIssue({ printOutcome: 'SUCCEEDED' })] });
+    await renderSelectedScreen({
+      issueCount: 1,
+      history: [makeIssue({ printOutcome: 'SUCCEEDED' })],
+    });
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: t.issue.preview })).toBeEnabled();
+      expect(screen.getByRole('button', { name: PREVIEW_NAME })).toBeEnabled();
     });
+    /* 이미 발행한 포장 — 시안 「미리보기·재인쇄」 · 「재발행 (N장)」. */
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: PREVIEW_NAME })).toHaveTextContent(
+        t.issue.previewReissue,
+      );
+    });
+    expect(submitButton()).toHaveTextContent(t.issue.reissueCount(1));
   });
 
   /*
@@ -962,10 +977,10 @@ describe('RepackLabelIssueScreen — 발행 뒤', () => {
   it('그림을 받지 못하면 미리보기 창 자체가 뜨지 않는다 — 복구 동작은 재시도 하나뿐이다', async () => {
     await renderSelectedScreen({ history: [makeIssue({ printOutcome: 'SUCCEEDED' })] });
 
-    await clickWhenEnabled(() => screen.getByRole('button', { name: t.issue.preview }));
+    await clickWhenEnabled(() => screen.getByRole('button', { name: PREVIEW_NAME }));
 
     expect(await screen.findByText(t.preview.failed)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: t.preview.print })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: DIALOG_PRINT_NAME })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.preview.close })).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: messages.common.retry })).toHaveLength(1);
   });
@@ -1050,7 +1065,7 @@ describe('RepackLabelIssueScreen — 발행 뒤', () => {
       ],
     });
 
-    await clickWhenEnabled(() => screen.getByRole('button', { name: t.issue.preview }));
+    await clickWhenEnabled(() => screen.getByRole('button', { name: PREVIEW_NAME }));
 
     expect(await screen.findByText(t.preview.failed)).toBeInTheDocument();
     expect(renditionCalls).toHaveLength(0);

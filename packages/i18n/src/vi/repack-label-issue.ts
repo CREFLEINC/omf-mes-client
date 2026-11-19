@@ -128,8 +128,10 @@ export const repackLabelIssue: Translated<typeof ko.repackLabelIssue> = {
 
     submit: 'Cấp số · In',
     submitCount: (count: number): string => `Cấp số · In (${String(count)} tờ)`,
+    reissue: 'Phát hành lại',
     reissueCount: (count: number): string => `Phát hành lại (${String(count)} tờ)`,
     preview: 'Xem trước',
+    previewReissue: 'Xem trước · In lại',
     gateRetry: 'Kiểm tra lại',
   },
 
@@ -140,7 +142,7 @@ export const repackLabelIssue: Translated<typeof ko.repackLabelIssue> = {
     loading: 'Đang nhận nhãn.',
     failed: 'Không nhận được hình ảnh nhãn.',
     notDrawable: 'Không hiện được nhãn đã nhận lên màn hình. Vẫn in được bình thường.',
-    print: 'In lại',
+    printCount: (count: number): string => `In lại ${String(count)} tờ`,
     close: 'Hủy',
   },
 

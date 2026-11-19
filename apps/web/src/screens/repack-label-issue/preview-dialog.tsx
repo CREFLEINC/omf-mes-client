@@ -14,6 +14,8 @@ export interface PreviewDialogProps {
   mode: 'preview' | 'reason';
   /** 재인쇄 사유 칸. 두 창 모두 사유를 고른 뒤 [재인쇄]가 열린다(사용자 지시 2026-09-17). */
   reasonField: ReactNode;
+  /** [N장 재인쇄]의 장수 — 이 창이 발행할 포장 수. */
+  count: number;
   /** 사유를 골랐는가 — 안 골랐으면 [재인쇄]를 잠근다. */
   canPrint: boolean;
   /** 서버가 그린 라벨. 아직 못 받았으면 `null` */
@@ -36,6 +38,7 @@ export const PreviewDialog = ({
   open,
   mode,
   reasonField,
+  count,
   canPrint,
   imageUrl,
   isPrinting,
@@ -63,7 +66,7 @@ export const PreviewDialog = ({
         <>
           <PuButton onClick={onClose}>{t.close}</PuButton>
           <PuButton variant="primary" onClick={onPrint} disabled={!canPrint || isPrinting}>
-            {t.print}
+            {t.printCount(count)}
           </PuButton>
         </>
       }

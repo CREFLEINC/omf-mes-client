@@ -343,11 +343,13 @@ export const RepackLabelIssueScreen = () => {
         actionBar={
           <PuActionBar>
             <PuButton disabled={!canPreview} onClick={openPreview}>
-              {t.issue.preview}
+              {isReissue ? t.issue.previewReissue : t.issue.preview}
             </PuButton>
             <PuButton variant="primary" onClick={submit} disabled={isBlocked}>
               {isReissue
-                ? t.issue.reissueCount(labelCount)
+                ? labelCount > 0
+                  ? t.issue.reissueCount(labelCount)
+                  : t.issue.reissue
                 : labelCount > 0
                   ? t.issue.submitCount(labelCount)
                   : t.issue.submit}
@@ -568,6 +570,7 @@ export const RepackLabelIssueScreen = () => {
               serverError={reasonServerError}
             />
           }
+          count={dialog?.ids.length ?? 0}
           canPrint={reasonCode !== '' && !isSubmitting}
           imageUrl={printRunner.state.imageUrl}
           isPrinting={isSubmitting}
