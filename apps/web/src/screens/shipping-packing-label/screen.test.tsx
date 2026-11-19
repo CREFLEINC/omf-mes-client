@@ -329,23 +329,33 @@ describe('ShippingPackingLabelScreen — 대상 목록', () => {
     expect(screen.queryByRole('combobox', { name: t.printer.label })).toBeNull();
   });
 
-  it('납품라벨은 구성 중인 단위도 목록에 남기되 고를 수 없게 한다', async () => {
+  /* 발행할 수 없는 줄은 발행 대기에 보일 필요가 없다(사용자 지시 2026-11-19). */
+  it('납품라벨은 구성 중인 단위를 발행 대기에 두지 않는다 — 탭 건수·총 건수가 같다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
     await chooseKind(user, '납품라벨');
 
-    // 빠지지 않는다 — 빠지면 「구성 중」과 「이 출하에 없다」가 같은 모양이 된다.
-    expect(await screen.findByText('SYN-SU-0002')).toBeInTheDocument();
-    expect(screen.getByText(t.targets.status.blocked)).toBeInTheDocument();
+    expect(await screen.findByText('SYN-SU-0001')).toBeInTheDocument();
+    expect(screen.queryByText('SYN-SU-0002')).not.toBeInTheDocument();
+    expect(screen.queryByText(t.targets.status.blockedNote)).not.toBeInTheDocument();
+    expect(await rowCheckbox(0)).toBeEnabled();
+    expect(
+      screen
+        .getAllByRole('checkbox')
+        .filter((box) => box.getAttribute('aria-label') !== t.targets.selectAll),
+    ).toHaveLength(1);
+  });
 
-    // 구성 중인 줄(두 번째)을 눌러도 선택으로 남지 않아 발행이 열리지 않는다.
-    await user.click(await rowCheckbox(1));
+  it('납품라벨의 출하 단위가 모두 구성 중이면 빈 목록을 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ units: [OPEN_UNIT] });
 
-    await waitFor(() => {
-      expect(issueButton()).toBeDisabled();
-    });
-    expect(screen.queryByText(t.actions.needsTarget)).not.toBeInTheDocument();
+    await chooseKind(user, '납품라벨');
+
+    expect(await screen.findByText(t.list.waitEmpty)).toBeInTheDocument();
+    expect(screen.queryByText('SYN-SU-0002')).not.toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: t.targets.selectAll })).toBeDisabled();
   });
 
   it('납품라벨은 마감된 단위를 고르면 발행 단추가 열린다', async () => {

@@ -61,7 +61,6 @@ export const shippingPackingLabel = {
       closed: '마감',
       /** ⚠ 「왜 안 되는지」가 아니라 「어떻게 풀 것인가」를 담는다. */
       composing: '구성 중',
-      blocked: '발행 불가',
       blockedNote: '출하 단위를 마감하면 발행할 수 있습니다.',
     },
     /** 아직 한 번도 안 뽑은 대상 — 「없음」과 「모름」을 같은 모양으로 그리지 않는다. */

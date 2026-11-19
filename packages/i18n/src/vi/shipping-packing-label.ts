@@ -57,7 +57,6 @@ export const shippingPackingLabel: Translated<typeof ko.shippingPackingLabel> = 
     status: {
       closed: 'Đã chốt',
       composing: 'Đang cấu thành',
-      blocked: 'Không phát hành được',
       blockedNote: 'Chốt đơn vị giao hàng thì phát hành được.',
     },
     neverIssued: '—',

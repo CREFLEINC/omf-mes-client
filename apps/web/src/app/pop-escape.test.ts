@@ -110,10 +110,14 @@ describe('POP 표 — 긴 번호가 다른 열을 밀어내지 않는다', () =>
   });
 
   it('자재 관리 LOT 표 · 적재 위치 표도 번호(코드) 칸 폭을 못박는다', () => {
-    // 자재 관리 LOT 표는 칸마다 값 하나(#295) — 번호 칸은 남는 폭 비율 + `max-width: 0` 말줄임으로 묶는다.
-    expect(read('src/screens/pop-material-lot-label/uniform.css')).toMatch(
-      /\.mll-table\s+\.pu-table\s+th\.mll-lotcol[^{]*\{[^}]*max-width:\s*0/u,
+    // 자재 관리 LOT 표는 칸마다 값 하나(#295) — 번호 칸 머리에 폭(px)을 주고, 값 칸은 공통 표의
+    // `max-width: 0` 말줄임을 그대로 받는다(풀어 버리면 긴 LOT 번호가 다른 칸을 밀어낸다).
+    const mllCss = read('src/screens/pop-material-lot-label/uniform.css');
+    expect(mllCss).toMatch(
+      /\.mll-table\s+\.pu-table\s+th\.mll-lotcol\s*\{[^}]*(?<![-\w])width:\s*\d+px/u,
     );
+    expect(mllCss).not.toMatch(/td\.mll-lotcol[^{]*\{[^}]*max-width:\s*none/u);
+    expect(read('src/app/pop-uniform.css')).toMatch(/\.pu-table\s+td\s*\{[^}]*max-width:\s*0/u);
     expect(read('src/screens/pop-location-label/uniform.css')).toMatch(
       cappedColumn('ll-table', 'll-code'),
     );

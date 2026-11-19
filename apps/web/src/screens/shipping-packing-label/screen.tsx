@@ -359,9 +359,14 @@ export const ShippingPackingLabelScreen = ({
   const deliveryPrinters = usePrinters(embedded || kind === DELIVERY_LABEL ? DELIVERY_LABEL : null);
   const printers = kind === DELIVERY_LABEL ? deliveryPrinters : packingPrinters;
 
-  /* 발행 대기 = 발행 기록이 없는 대상, 재발행 = 한 번 이상 발행한 대상(서버의 발행 횟수). */
+  /* 발행 대기 = 발행 기록이 없는 대상, 재발행 = 한 번 이상 발행한 대상(서버의 발행 횟수).
+     발행할 수 없는 대상(구성 중인 출하 단위)은 발행 대기에 두지 않는다(사용자 지시 2026-11-19). */
   const waitRows = useMemo(
-    () => rows.filter((row) => (summaryOf(summaryItems, row.issueTargetId)?.issueCount ?? 0) === 0),
+    () =>
+      rows.filter(
+        (row) =>
+          row.isIssuable && (summaryOf(summaryItems, row.issueTargetId)?.issueCount ?? 0) === 0,
+      ),
     [rows, summaryItems],
   );
   const reissueRows = useMemo(
@@ -369,7 +374,7 @@ export const ShippingPackingLabelScreen = ({
     [rows, summaryItems],
   );
   const tabRows = tab === 'WAIT' ? waitRows : reissueRows;
-  const waitCount = waitRows.filter((row) => row.isIssuable).length;
+  const waitCount = waitRows.length;
 
   /* ⛔ 재발행 여부를 화면이 세지 않는다 — 서버가 준 발행 횟수로만 가른다(스펙 §5-4). */
   const selectedRows = useMemo(
@@ -648,14 +653,7 @@ export const ShippingPackingLabelScreen = ({
       );
     }
     if (kind !== null && isDelivery(kind)) {
-      return row.isIssuable ? (
-        <PuChip tone="ok">{t.targets.status.closed}</PuChip>
-      ) : (
-        <>
-          <PuChip>{t.targets.status.composing}</PuChip>
-          <PuChip tone="bad">{t.targets.status.blocked}</PuChip>
-        </>
-      );
+      return <PuChip tone="ok">{t.targets.status.closed}</PuChip>;
     }
 
     return <PuChip>{t.list.notIssued}</PuChip>;
