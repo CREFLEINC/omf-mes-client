@@ -34,12 +34,18 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     guide: 'Hãy tạo LOT quản lý vật tư và phát hành nhãn trước khi nhập hàng.',
     guidePicked:
       'LOT chờ nhập chưa có tồn kho nên bị từ chối khi quét xuất kho · đưa vào sản xuất trước khi quét nhập hàng.',
-    help: 'Trợ giúp',
-    helpBody: [
-      'LOT quản lý vật tư được tạo trước theo nhà cung cấp · mặt hàng rồi dán nhãn sẵn. Khi hàng về, chỉ cần quét ở màn hình nhập hàng PDA (M-01-01) là LOT sẽ vào LOT nhập hàng 「Đang nhập hàng」 của cùng nhà cung cấp · mặt hàng, hoặc một LOT nhập hàng mới tự sinh ra.',
-      'LOT chờ nhập chưa có tồn kho nên bị từ chối khi quét xuất kho · đưa vào sản xuất.',
-      'Thông tin mặc định (đóng gói · số lượng) được thiết lập ở màn hình quản trị 「Thông tin mặc định nhà cung cấp · mặt hàng」. Khi tạo, đóng gói · số lượng được điền từ thông tin mặc định.',
-      'Mã QR chỉ chứa số LOT quản lý vật tư; trên nhãn có mặt hàng · số lượng tồn kho · đơn vị · đóng gói (nếu có) · nhà cung cấp. Khi in lại, lượt in tăng thêm 1 và lý do được lưu lại.',
+    help: 'Hướng dẫn LOT quản lý vật tư',
+    helpIntro: 'Có thể tạo LOT và in nhãn trước khi vật tư nhập kho.',
+    helpItems: [
+      {
+        term: 'Nhập kho:',
+        text: 'Quét nhãn trên PDA thì LOT được nối vào LOT nhập hàng hiện có hoặc tạo LOT mới.',
+      },
+      {
+        term: 'Hạn chế sử dụng:',
+        text: 'LOT chưa nhập kho không thể xuất kho hay đưa vào sản xuất.',
+      },
+      { term: 'In lại nhãn:', text: 'Số lần in lại và lý do được ghi lại.' },
     ],
     waitingTitle: 'LOT quản lý vật tư chờ nhập',
     waitingEmpty: 'Không có LOT quản lý vật tư nào đang chờ nhập.',

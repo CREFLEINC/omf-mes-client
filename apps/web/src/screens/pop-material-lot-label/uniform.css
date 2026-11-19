@@ -287,6 +287,13 @@
   margin: 0;
 }
 
+.mll-help ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 22px;
+}
+
 .mll-void-list {
   margin: 0 0 10px;
   padding-left: 18px;

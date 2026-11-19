@@ -252,6 +252,15 @@
   box-shadow: 0 1px 2px rgb(0 0 0 / 6%);
 }
 
+/* 접기 단추는 구획 제목 줄 오른쪽 끝(사용자 지시 2026-11-19). 오른쪽 덧글(.meta)이 있으면 그 뒤에 붙는다. */
+.pu-card-head > .pu-fold-btn {
+  margin-left: auto;
+}
+
+.pu-card-head > .meta + .pu-fold-btn {
+  margin-left: 0;
+}
+
 .pu-fold-btn:hover,
 .pu-fold-strip:hover i {
   background: var(--pu-hover);

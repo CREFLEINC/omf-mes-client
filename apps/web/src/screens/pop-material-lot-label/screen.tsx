@@ -591,9 +591,14 @@ export const PopMaterialLotLabelScreen = () => {
               ) : null}
               <PuHelpButton title={t.work.help}>
                 <div className="mll-help">
-                  {t.work.helpBody.map((line) => (
-                    <p key={line}>{line}</p>
-                  ))}
+                  <p>{t.work.helpIntro}</p>
+                  <ul>
+                    {t.work.helpItems.map((item) => (
+                      <li key={item.term}>
+                        <b>{item.term}</b> {item.text}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </PuHelpButton>
               {/* C-4 — 사번이 없어 잠긴 까닭은 맨 위 띠와 같은 말이다. */}
