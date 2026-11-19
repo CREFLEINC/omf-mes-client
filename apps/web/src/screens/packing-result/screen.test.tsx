@@ -67,6 +67,8 @@ interface Options {
   reads?: Request[];
   /** 이 출하는 미포장 배분이 없다 — 확정할 수 없는 출하가 된다. */
   noUnpackedShipmentId?: number;
+  /** 목록 항목의 `unpackedLotCount`(출하 식별자 → 수). 생략하면 그 칸이 없다(옛 서버). */
+  listedUnpackedLotCounts?: Record<number, number>;
 }
 
 const handlingUnitBody = {
@@ -129,6 +131,11 @@ const renderScreen = (options: Options = {}) => {
          *    두었는데, 그 조회를 걷고 **고를 수 있는 것을 이 목록 하나로** 정했다. 두 건을 내려
          *    전환(다른 출하 고르기) 시험이 설 자리를 만든다.
          */
+        const counted = (shipmentId: number) => {
+          const count = options.listedUnpackedLotCounts?.[shipmentId];
+          return count === undefined ? {} : { unpackedLotCount: count };
+        };
+
         return jsonResponse({
           items: [
             {
@@ -138,6 +145,7 @@ const renderScreen = (options: Options = {}) => {
               warehouseId: 1001,
               statusCode: 'CONFIRMED',
               expedited: false,
+              ...counted(501),
             },
             {
               shipmentId: 502,
@@ -146,6 +154,7 @@ const renderScreen = (options: Options = {}) => {
               warehouseId: 1001,
               statusCode: 'CONFIRMED',
               expedited: false,
+              ...counted(502),
             },
           ],
           page: { page: 1, size: 50, total: 2 },
@@ -445,6 +454,36 @@ describe('PackingResultScreen', () => {
     expect(screen.queryByText(t.locks.warehouseMissing)).not.toBeInTheDocument();
 
     /* 다른 출하는 그대로 고를 수 있다. */
+    await chooseShipment(user, 'SYN-SH-0501');
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /SYN-SH-0501/u })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+    });
+  });
+
+  /* ⭐ omf-all-around#329 — 목록의 미포장 배분 수가 0 이면 누르기 «전», 처음 그릴 때부터 잠근다. */
+  it('목록의 unpackedLotCount 가 0 인 출하는 처음부터 「확정 불가」·사유로 잠겨 있다', async () => {
+    const user = userEvent.setup();
+    const reads: Request[] = [];
+    renderScreen({ listedUnpackedLotCounts: { 501: 2, 502: 0 }, reads });
+
+    const card = await screen.findByRole('button', {
+      name: new RegExp(t.shipments.blockedChip, 'u'),
+    });
+    expect(card).toHaveTextContent('SYN-SH-0502');
+    expect(card).toHaveTextContent(t.shipments.noLots);
+    expect(card).toBeDisabled();
+    expect(await shipmentCard('SYN-SH-0501')).toBeEnabled();
+
+    /* 찍어도 조회 없이 같은 사유를 띄운다. */
+    await user.type(screen.getByLabelText(t.shipments.scan), 'SYN-SH-0502{Enter}');
+    expect(screen.getByLabelText(t.shipments.scan)).toHaveAccessibleDescription(t.shipments.noLots);
+    expect(reads.some((request) => pathOf(request) === '/logistics/shipment-lot-allocations')).toBe(
+      false,
+    );
+
     await chooseShipment(user, 'SYN-SH-0501');
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /SYN-SH-0501/u })).toHaveAttribute(

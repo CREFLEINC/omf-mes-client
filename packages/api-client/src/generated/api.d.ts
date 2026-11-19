@@ -66194,6 +66194,11 @@ export interface components {
        */
       unassignedPackedBoxCount?: number;
       /**
+       * @description 아직 포장하지 않은 LOT 배분 수 — `GET /logistics/shipment-lot-allocations?shipmentId=&unpackedOnly=true` 의 건수와 같은 기준(포장 단위가 안 붙은 배분). 0 이면 포장할 LOT 이 남지 않았다. 목록에서만 채운다(상세는 세지 않는다). 근거: P-04-03 출하 포장 「확정 불가」 표시 (omf-all-around#329)
+       * @example 3
+       */
+      unpackedLotCount?: number;
+      /**
        * @description 긴급 직행 출하로 만들어진 건인가(W-04-05).
        * @default false
        * @example false

@@ -56,7 +56,13 @@ import {
   useUomDecimals,
 } from './queries';
 import { useTerminalGate } from './terminal-gating';
-import type { MatchedLot, PackedLine, ShipmentEntry, ShipmentLotAllocation } from './types';
+import type {
+  MatchedLot,
+  PackedLine,
+  Shipment,
+  ShipmentEntry,
+  ShipmentLotAllocation,
+} from './types';
 import { useOnline } from './use-online';
 import './uniform.css';
 
@@ -99,10 +105,15 @@ type Step = 1 | 2 | 3;
 /**
  * 고를 수 없는 출하의 사유 — 확정 잠금(`confirmLockReason`)의 창고 조건과 같은 축이다.
  * 창고는 고른 출하의 첫 미포장 배분에서 오므로(`label`), 미포장 배분이 없으면 그 출하는
- * 확정할 수 없다. ⚠ 목록 응답에는 미포장 배분 수가 없어 «고르기 조회가 돈 뒤»에야 안다.
+ * 확정할 수 없다. ⭐ 목록의 `unpackedLotCount` 로 «처음 그릴 때» 안다(omf-all-around#329) —
+ * 아래 고르기 조회 뒤 판정은 그 칸이 없는 옛 서버를 위한 뒷받침이다.
  */
 const shipmentBlockReason = (next: ShipmentEntry): string | undefined =>
   next.allocations[0] === undefined ? t.shipments.noLots : undefined;
+
+/** 목록 응답만으로 아는 사유. 칸이 없으면(옛 서버) 모른다 — 고를 때 판정한다. */
+const listedBlockReason = (shipment: Shipment): string | undefined =>
+  shipment.unpackedLotCount === 0 ? t.shipments.noLots : undefined;
 
 const fmt = (value: number): string => value.toLocaleString();
 
@@ -124,6 +135,13 @@ export const PackingResultScreen = () => {
   const [shipmentScanError, setShipmentScanError] = useState<string | null>(null);
   /** 확정할 수 없다고 확인된 출하(식별자 → 사유). 그 카드는 흐리게 잠긴다. */
   const [blockedShipments, setBlockedShipments] = useState<Record<number, string>>({});
+  /**
+   * 그 출하의 확정 불가 사유. ⚠ 지금 고른 출하에는 목록 사유를 대지 않는다 — 담는 중에 목록이
+   * 다시 읽혀 0 이 되어도 진행 중인 카드를 잠그지 않는다.
+   */
+  const blockReasonOf = (shipment: Shipment): string | undefined =>
+    blockedShipments[shipment.shipmentId] ??
+    (entry?.shipmentId === shipment.shipmentId ? undefined : listedBlockReason(shipment));
   const [lines, setLines] = useState<PackedLine[]>([]);
   /** 줄마다 친 수량(배분 식별자 → 키패드 글자). 비어 있으면 아직 넣지 않은 것이다. */
   const [qtys, setQtys] = useState<Record<number, string>>({});
@@ -244,7 +262,7 @@ export const PackingResultScreen = () => {
       (shipment) => shipment.shipmentId === selectedId,
     );
     if (selected === undefined) return;
-    if (blockedShipments[selected.shipmentId] !== undefined) return;
+    if (blockReasonOf(selected) !== undefined) return;
     if (entry?.shipmentId === selected.shipmentId) return;
     if (!prepareEntryChange()) return;
 
@@ -278,7 +296,7 @@ export const PackingResultScreen = () => {
       return;
     }
     shipPage.showIndex(todayShipments.shipments.indexOf(found));
-    const blockedReason = blockedShipments[found.shipmentId];
+    const blockedReason = blockReasonOf(found);
     if (blockedReason !== undefined) {
       setShipmentScanError(blockedReason);
       return;
@@ -512,7 +530,7 @@ export const PackingResultScreen = () => {
       ) : (
         <div className="pu-list pu-fit pk-fill" ref={shipBoxRef} aria-label={t.shipments.region}>
           {shipPage.items.map((shipment) => {
-            const blockedReason = blockedShipments[shipment.shipmentId];
+            const blockedReason = blockReasonOf(shipment);
             if (blockedReason !== undefined) {
               /* 확정 불가 — 고를 수 없다. 왜 못 고르는지 그 자리에서 말한다. */
               return (
