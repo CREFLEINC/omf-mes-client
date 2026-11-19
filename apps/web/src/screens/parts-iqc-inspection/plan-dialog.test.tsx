@@ -59,9 +59,10 @@ const specs = [
   },
 ] as never[];
 
-const renderDialog = () =>
+const renderDialog = (seqNo?: number) =>
   render(
     <PlanDialog
+      {...(seqNo === undefined ? {} : { seqNo })}
       planCode="IQC-AA205-1"
       planName="0090040302 수입검사"
       itemParts={{ code: '0090040302', name: 'BUSH' }}
@@ -89,6 +90,15 @@ describe('검사 기준 조회 팝업 (사용자 지시 2026-10-30)', () => {
     expect(screen.getByText('선택형')).toBeInTheDocument();
     expect(screen.getByText('4 ±0.1 (3.9 ~ 4.1)')).toBeInTheDocument();
     expect(screen.getByText('OK / NG')).toBeInTheDocument();
+  });
+
+  it('결과 창에서 열면 검사 회차를 보이고, 아니면 회차 칸이 없다(omf-all-around#296)', () => {
+    const { unmount } = renderDialog(3);
+    expect(screen.getByText('검사 회차')).toBeInTheDocument();
+    expect(screen.getByText('3회차')).toBeInTheDocument();
+    unmount();
+    renderDialog();
+    expect(screen.queryByText('검사 회차')).toBeNull();
   });
 
   it('「수정」은 새 창 없이 검사 기준 화면으로 옮겨 그 기준 · 버전을 연다', async () => {

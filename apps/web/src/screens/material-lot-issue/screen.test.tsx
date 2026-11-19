@@ -139,6 +139,9 @@ const OTHER_PLANT = {
   plantName: '합성 부품공장',
 };
 
+/** 대기 LOT 을 부른 공장 — 어느 공장으로 열렸는지 요청으로 잰다. */
+const waitingPlantIds: (string | null)[] = [];
+
 const setup = (
   options: {
     voidFails?: number[];
@@ -147,6 +150,7 @@ const setup = (
   } = {},
 ) => {
   const writes: Write[] = [];
+  waitingPlantIds.length = 0;
   const fetch = createStubFetch([
     {
       match: (r) => isGet(r, '/mdm/plants'),
@@ -154,7 +158,10 @@ const setup = (
     },
     {
       match: (r) => isGet(r, '/logistics/waiting-material-lots'),
-      respond: () => jsonResponse({ items: GROUPS }),
+      respond: (r) => {
+        waitingPlantIds.push(new URL(r.url).searchParams.get('plantId'));
+        return jsonResponse({ items: GROUPS });
+      },
     },
     {
       match: (r) => isGet(r, '/mdm/supplier-item-defaults'),
@@ -236,9 +243,14 @@ const rowOf = async (code: string) => {
   if (row === null) throw new Error(`${code} 줄이 없다`);
   return row;
 };
+/** 줄을 누르면 오른쪽 구획(입고 관리 짜임)에 그 공급사·품목이 나온다 — 덮개 창이 아니다. */
 const openDetail = async (user: ReturnType<typeof userEvent.setup>, code: string) => {
   await user.click(await rowOf(code));
-  return within(await screen.findByRole('dialog', { name: /SYN-CAP|SYN-RES/ }));
+  const pane = await screen.findByRole('region', { name: t.detail.label });
+  await waitFor(() =>
+    expect(within(pane).getByRole('group', { name: t.detail.label })).toHaveTextContent(code),
+  );
+  return within(pane);
 };
 
 describe('W-01-14 자재 관리 LOT 발행', () => {
@@ -248,12 +260,16 @@ describe('W-01-14 자재 관리 LOT 발행', () => {
     const cap = within(await rowOf('SYN-CAP'));
     const cells = cap.getAllByRole('cell').map((cell) => cell.textContent);
     expect(cells[0]).toBe('합성 공급사 가 SYN-S1');
-    expect(cells[1]).toBe('SYN-CAP 합성 캡');
-    expect(cells[2]).toBe('EA');
-    expect(cells[3]).toBe('BAG 10 × 100 = 1,000 EA');
-    expect(cells[4]).toBe('3');
-    expect(cells[5]).toBe('1');
-    expect(cells[6]).toMatch(/^11-11 \d\d:12$/);
+    /* 품목코드와 품목은 따로 열이다(사용자 지시 2026-11-19). */
+    expect(cells[1]).toBe('SYN-CAP');
+    expect(cells[2]).toBe('합성 캡');
+    expect(cells[3]).toBe('EA');
+    expect(cells[4]).toBe('BAG 10 × 100 = 1,000 EA');
+    expect(cells[5]).toBe('3');
+    expect(cells[6]).toBe('1');
+    expect(cells[7]).toMatch(/^11-11 \d\d:12$/);
+    expect(screen.getByRole('columnheader', { name: t.list.columns.itemCode })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: '기본 정보' })).toBeInTheDocument();
 
     const resin = within(await rowOf('SYN-RES'));
     expect(resin.getByText(t.defaults.missing)).toBeInTheDocument();
@@ -294,7 +310,7 @@ describe('W-01-14 자재 관리 LOT 발행', () => {
     setup({ plants: [OTHER_PLANT, PLANT] });
 
     await listTable();
-    expect(screen.getByText(t.list.note('합성 1공장', plantToday().slice(5)))).toBeInTheDocument();
+    expect(waitingPlantIds).toEqual(['8401']);
     /* 범위 밖 공장은 고를 수도 없다 — 공장이 하나면 공장 칸을 세우지 않는다. */
     expect(screen.queryByRole('combobox', { name: t.filters.plant })).toBeNull();
   });

@@ -83,7 +83,7 @@ export const LoadErrorBanner = ({ error, onRetry }: LoadErrorBannerProps) => {
           )
         }
       >
-        {unsupported ? t.errors.unsupportedDescription : describeLoadError(apiError)}
+        {unsupported ? null : describeLoadError(apiError)}
       </AlertBanner>
     </div>
   );

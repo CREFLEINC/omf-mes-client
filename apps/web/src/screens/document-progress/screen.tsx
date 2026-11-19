@@ -26,7 +26,6 @@ import { readCancelAvailability } from './cancel-availability';
 import { isSuccessorBlocked } from './cancel-error';
 import { CancelPane, type CancelLock } from './cancel-pane';
 import { CANCEL_REASON_FIELD, toCancelRequest } from './cancel-reason-draft';
-import { PLACEHOLDER_DOCUMENT_STATUS_CODES, toStatusOptions } from './code-options';
 import { DetailPane } from './detail-pane';
 import {
   readSelectedDocumentId,
@@ -63,6 +62,7 @@ import {
   useCancelApprovalRequest,
   useCancelResourceLock,
   useCodeNames,
+  useCodeOptions,
   useDocumentProgressDetail,
   useDocumentProgressList,
   useExecuteDocumentCancel,
@@ -72,6 +72,7 @@ import {
 import { RequestCancelDialog } from './request-cancel-dialog';
 import { SCREEN_ROUTES } from './screen-routes';
 import type { CancelExecutionView } from './types';
+import { BoardFrame } from '../../patterns/board-frame';
 import { SaveErrorBanner } from '../../patterns/master';
 
 const t = messages.documentProgress;
@@ -166,7 +167,7 @@ export const DocumentProgressScreen = () => {
   const documentTypes = DOCUMENT_TYPES;
   const documentTypeOptions = toDocumentTypeOptions(documentTypes);
   const disabledReasons = describeDisabledTypes(documentTypes);
-  const statusOptions = toStatusOptions(PLACEHOLDER_DOCUMENT_STATUS_CODES);
+  const statusOptions = useCodeOptions('LOGISTICS_DOCUMENT_STATUS');
 
   /*
    * ⭐ **조회가 성립하는가를 한 곳에서 정한다.** `toListQuery`가 `null`을 주면 목록 조회는
@@ -306,22 +307,10 @@ export const DocumentProgressScreen = () => {
    * 값**이다(완료 조건 C3-13).
    *
    * ⭐ **두 쓰기를 한 잠금으로 덮는다.** 잠그는 이유가 같기 때문이다 — 나가는 중에 대상이 바뀌면
-   * 앞 요청의 결과가 지금 보는 맥락에 나타난다. 다만 **잠긴 이유를 말하는 문면은 갈라 둔다**
-   * (`lockNote`): 되돌릴 수 없는 쪽이 나가는 중임을 사용자가 그 자리에서 읽어야 한다.
+   * 앞 요청의 결과가 지금 보는 맥락에 나타난다. 잠긴 동안은 버튼이 「보내는 중」으로 돈다 — 잠긴 이유를
+   * 따로 적던 줄은 걷었다(사용자 지시 2026-11-19).
    */
   const isCancelLocked = cancelWrite.isSaving || executeWrite.isSaving;
-
-  /**
-   * 잠긴 이유 한 줄 — **무엇이 나가는 중인지 말한다.**
-   *
-   * 둘이 함께 나가는 갈래는 없다: 한쪽이 나가는 동안 두 버튼이 모두 잠기고 창을 여는 길도
-   * 막힌다(`openCancelDialog`·`openExecuteDialog`). 그래서 차례가 답을 가르지 않는다.
-   */
-  const lockNote = ((): string | null => {
-    if (cancelWrite.isSaving) return t.notes.lock.request;
-
-    return executeWrite.isSaving ? t.notes.lock.execute : null;
-  })();
 
   /** 훅에 남아 있는 쓰기 결과가 **지금 보는 대상의 것인가.** */
   const isCancelResultMine = sentCancelTargetKeyRef.current === cancelTargetKey;
@@ -472,17 +461,15 @@ export const DocumentProgressScreen = () => {
   };
 
   /**
-   * 문서 고르기·해제(수명 표 3행).
+   * 문서 고르기(수명 표 3행). 입고 관리 표처럼 줄을 누르면 고르고, 이미 고른 줄은 그대로 둔다.
    *
-   * **보이는 줄을 바꾸지 않는다** — 조건·쪽을 그대로 두고 `sel`만 넣고 뺀다. 고를 때 첫 쪽으로
+   * **보이는 줄을 바꾸지 않는다** — 조건·쪽을 그대로 두고 `sel`만 넣는다. 고를 때 첫 쪽으로
    * 튀면 사용자가 3쪽에서 고른 문서의 상세를 보는 동안 목록은 1쪽이 된다.
    */
-  const toggleSelect = (documentId: number): void => {
-    const base = toSearchParams(filters, page);
+  const selectDocument = (documentId: number): void => {
+    if (documentId === selection?.documentId) return;
 
-    applySearchParams(
-      documentId === selection?.documentId ? base : withSelection(base, documentId),
-    );
+    applySearchParams(withSelection(toSearchParams(filters, page), documentId));
   };
 
   /**
@@ -794,25 +781,15 @@ export const DocumentProgressScreen = () => {
    * 고른 문서 한 벌뿐이다.
    */
   const detailSlot = (): ReactNode => {
+    /* 조회가 성립하지 않으면 고를 대상이 없다 — 「고르세요」를 내면 할 수 없는 일을 시키는 안내가 된다. */
+    if (listQuery === null) return null;
+
     if (isDetailNotFound || isDetailMissing) {
-      return (
-        <EmptyState
-          size="sm"
-          live
-          title={t.empty.detailNotFoundTitle}
-          description={t.empty.detailNotFoundDescription}
-        />
-      );
+      return <EmptyState size="sm" live title={t.empty.detailNotFoundTitle} />;
     }
 
     if (selection === null) {
-      return (
-        <EmptyState
-          size="sm"
-          title={t.empty.noSelectionTitle}
-          description={t.empty.noSelectionDescription}
-        />
-      );
+      return <EmptyState size="sm" title={t.empty.noSelectionTitle} />;
     }
 
     if (detail.isError) {
@@ -830,18 +807,16 @@ export const DocumentProgressScreen = () => {
     const { progress } = detail.data;
 
     return (
-      <>
-        <DetailPane
-          detail={detail.data}
-          routes={SCREEN_ROUTES}
-          onOpen={openScreen}
-          statusName={statusName}
-          subTypeName={subTypeName}
-        />
-
+      <DetailPane
+        detail={detail.data}
+        routes={SCREEN_ROUTES}
+        onOpen={openScreen}
+        statusName={statusName}
+        subTypeName={subTypeName}
+      >
         {/*
-         * ⭐ **취소 축이 상세 구획 안에 선다.** 후속 목록 바로 아래에 두는 이유는, 취소할 수
-         * 있는가를 가르는 것이 그 목록이기 때문이다 — 읽고 나서 결정하는 차례가 화면의 차례다.
+         * ⭐ **취소 축이 머리 바로 아래에 온다** — 처리 경과 · 후속 목록이 그 아래로 이어진다. 후속이 있으면
+         * 취소 칸이 사유를 말하므로 목록까지 내려가 읽지 않아도 된다.
          *
          * ⭐ **판정 근거가 목록 열과 같은 자리에서 나온다**(`readCancelAvailability`) — 갈리면
          * 목록에서는 「취소 요청 가능」인데 아래에서는 잠긴 화면이 된다.
@@ -880,17 +855,20 @@ export const DocumentProgressScreen = () => {
              * 읽고 나서 결정하는 차례가 화면의 차례다 — 후속 목록 위에 취소 요청이 서지 않는
              * 것과 같은 배치 규칙이다.
              */}
-            <ApprovalProgressPane
-              state={approvalState}
-              /*
-               * 자리표시를 **화면이 읽어 넘긴다** — 부품이 상수를 직접 읽으면 「값이 채워지면
-               * 무엇이 달라지는가」를 화면 수준에서 잴 수 없다.
-               */
-              isJudgePending={isApprovalJudgePending(APPROVED_APPROVAL_STATUS_CODES)}
-              onRetry={() => {
-                void approvalRequest.refetch();
-              }}
-            />
+            {/* 취소 요청이 아직 없으면 승인 진행을 그리지 않는다 — 보일 진행이 없다. */}
+            {submission.kind !== 'notSubmitted' && (
+              <ApprovalProgressPane
+                state={approvalState}
+                /*
+                 * 자리표시를 **화면이 읽어 넘긴다** — 부품이 상수를 직접 읽으면 「값이 채워지면
+                 * 무엇이 달라지는가」를 화면 수준에서 잴 수 없다.
+                 */
+                isJudgePending={isApprovalJudgePending(APPROVED_APPROVAL_STATUS_CODES)}
+                onRetry={() => {
+                  void approvalRequest.refetch();
+                }}
+              />
+            )}
 
             <ExecuteCancelPane
               /*
@@ -912,7 +890,7 @@ export const DocumentProgressScreen = () => {
             />
           </>
         )}
-      </>
+      </DetailPane>
     );
   };
 
@@ -928,91 +906,83 @@ export const DocumentProgressScreen = () => {
         }
       />
 
-      {list.isError && <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />}
-
       {/*
-       * ⭐ **잠긴 이유를 상시 밝힌다 — 자리가 상세 구획 밖이다.**
-       *
-       * 잠금 문(`applySearchParams`)이 조회·초기화·쪽 이동·고르기·해제를 막는데, 그중 **조건 줄과
-       * 쪽 이동은 컨트롤 자체가 잠기지 않는다** — 눌러도 아무 일이 없는 버튼이 생기고, 이 줄이
-       * 없으면 그 이유가 화면 어디에도 없다. 이 슬라이스가 다른 자리에서 스스로 경고한
-       * 「증상이 **눌러도 아무 일이 없다**라 알아채기 어렵다」와 같은 형태다.
-       *
-       * ⛔ **취소 구획 안에 두지 않는다.** 구획은 대상이 풀리면 사라지는데(나가는 중 바깥 주소
-       * 이동으로 `sel`이 빠지는 갈래) 잠금은 요청이 끝날 때까지 남는다 — 그 갈래에서 잠긴 이유가
-       * 통째로 사라진다. 진행 표시조차 대상 매임으로 걸러지므로 남는 단서가 하나도 없다.
-       *
-       * ⛔ **배너가 아니다.** 실패가 아니라 잠깐 지나가는 사실이라 `AlertBanner`를 쓰면 취소 축의
-       * 실패 배너와 같은 무게로 읽힌다.
-       *
-       * ⭐ **문면이 무엇이 나가는 중인지 말한다**(단위 ④에서 갈래를 나눈 자리). 앞 회차의 한
-       * 문장은 「취소 요청」만 말해 **실행 중에는 거짓**이었다 — 화면이 아는 사실을 흐리게 말할
-       * 이유가 없고, 되돌릴 수 없는 쪽이 나가는 중임은 특히 그 자리에서 읽혀야 한다.
+       * **입고 관리 짜임**(사용자 지시 2026-11-19) — 위 조회 조건, 왼쪽 전표 목록, 오른쪽 고른 전표. 두 구획은
+       * 창 바닥에서 멈추고 가운데 막대로 폭을 나눈다(`BoardFrame`).
        */}
-      {lockNote !== null && <p className="field-note">{lockNote}</p>}
-
-      <section className="pane" aria-label={t.title}>
-        {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-        <ProgressFilterBar
-          appliedFilters={filters}
-          documentTypeOptions={documentTypeOptions}
-          disabledTypeNote={
-            disabledReasons === undefined ? undefined : t.filters.disabledTypes(disabledReasons)
-          }
-          statusOptions={statusOptions}
-          onSearch={(nextFilters) => {
-            applyQuery(nextFilters);
-          }}
-          onReset={() => {
-            applyQuery(DEFAULT_PROGRESS_FILTERS);
-          }}
-        />
-
-        {/*
-         * 조회에 실패했으면 표도 빈 상태도 내지 않는다 — 실패를 「없습니다」로 보이면 사용자가
-         * 자료가 없는 줄 알고 조건을 넓힌다.
-         */}
-        {!list.isError && (
-          <>
-            <ProgressTable
-              rows={rows}
-              isLoading={listQuery !== null && list.isPending}
-              isTypeListPending={isDocumentTypeListPending(documentTypes)}
-              hasDocumentType={listQuery !== null}
-              isBeyondLast={pageView.isBeyondLast}
-              onFirstPage={() => {
-                applyQuery(filters);
-              }}
-              selectedDocumentId={selection?.documentId ?? null}
-              isLocked={isCancelLocked}
-              onToggleSelect={toggleSelect}
-              statusName={statusName}
-              subTypeName={subTypeName}
-            />
-            {listQuery !== null && !list.isPending && (
-              <PageNav
-                view={pageView}
-                onChange={(nextPage) => {
-                  applyQuery(filters, nextPage);
+      <BoardFrame
+        splitKey="omf-mes:document-progress:split"
+        initialRatio={0.6}
+        splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
+        above={{
+          label: t.panes.filters,
+          content: (
+            <>
+              {list.isError && (
+                <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
+              )}
+              {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
+              <div className="pane po-board-filter">
+                <ProgressFilterBar
+                  appliedFilters={filters}
+                  documentTypeOptions={documentTypeOptions}
+                  disabledTypeNote={
+                    disabledReasons === undefined
+                      ? undefined
+                      : t.filters.disabledTypes(disabledReasons)
+                  }
+                  statusOptions={statusOptions}
+                  onSearch={(nextFilters) => {
+                    applyQuery(nextFilters);
+                  }}
+                  onReset={() => {
+                    applyQuery(DEFAULT_PROGRESS_FILTERS);
+                  }}
+                />
+              </div>
+            </>
+          ),
+        }}
+        list={{
+          label: t.panes.list,
+          /*
+           * 조회에 실패했으면 표도 빈 상태도 내지 않는다 — 실패를 「없습니다」로 보이면 사용자가
+           * 자료가 없는 줄 알고 조건을 넓힌다.
+           */
+          content: list.isError ? null : (
+            <>
+              <ProgressTable
+                rows={rows}
+                isLoading={listQuery !== null && list.isPending}
+                isTypeListPending={isDocumentTypeListPending(documentTypes)}
+                hasDocumentType={listQuery !== null}
+                isBeyondLast={pageView.isBeyondLast}
+                onFirstPage={() => {
+                  applyQuery(filters);
                 }}
+                selectedDocumentId={selection?.documentId ?? null}
+                isLocked={isCancelLocked}
+                onSelect={selectDocument}
+                statusName={statusName}
+                subTypeName={subTypeName}
               />
-            )}
-          </>
-        )}
-      </section>
-
-      {/*
-       * **아래 구획은 조회가 성립할 때만 낸다.** 유형 표가 비어 있거나 유형을 고르지 않았으면
-       * 고를 대상 자체가 없어, 구획을 두면 「고르세요」가 할 수 없는 일을 시키는 안내가 된다.
-       *
-       * ⭐ **목록이 실패해도 낸다.** 이 구획은 목록 응답을 쓰지 않고 주소가 가리키는 문서를
-       * 그린다 — 한쪽이 실패했다고 다른 쪽을 감추면 사용자가 쓸 수 있는 것까지 잃는다.
-       */}
-      {listQuery !== null && (
-        <section className="pane" aria-label={t.panes.detail}>
-          {detailSlot()}
-        </section>
-      )}
+              {listQuery !== null && !list.isPending && (
+                <PageNav
+                  view={pageView}
+                  onChange={(nextPage) => {
+                    applyQuery(filters, nextPage);
+                  }}
+                />
+              )}
+            </>
+          ),
+        }}
+        /*
+         * ⭐ **목록이 실패해도 상세는 낸다.** 이 구획은 목록 응답을 쓰지 않고 주소가 가리키는 문서를
+         * 그린다 — 한쪽이 실패했다고 다른 쪽을 감추면 사용자가 쓸 수 있는 것까지 잃는다.
+         */
+        detail={{ label: t.panes.detail, content: detailSlot() }}
+      />
 
       {/*
        * ⭐ **창의 상태가 곧 확인된 요청이다.** 열려 있다는 것은 사유 검증을 통과했다는 뜻이고,

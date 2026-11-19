@@ -31,9 +31,6 @@ describe('DEFAULT_PROGRESS_FILTERS', () => {
       status: '',
       from: '',
       to: '',
-      item: '',
-      lot: '',
-      warehouse: '',
       cancellableOnly: false,
       q: '',
     });
@@ -96,9 +93,9 @@ describe('readFlagFilter', () => {
 });
 
 describe('readFilters', () => {
-  it('주소의 여덟 조건을 그대로 읽는다', () => {
+  it('주소의 다섯 조건을 그대로 읽는다', () => {
     const params = new URLSearchParams(
-      'ty=GOODS_RECEIPT&st=SYN_STATUS_A&from=2026-08-01&to=2026-08-31&item=9301&lot=9601&wh=9701&conly=1&q=SYN-GR',
+      'ty=GOODS_RECEIPT&st=SYN_STATUS_A&from=2026-08-01&to=2026-08-31&conly=1&q=SYN-GR',
     );
 
     expect(readFilters(params)).toEqual({
@@ -106,9 +103,6 @@ describe('readFilters', () => {
       status: 'SYN_STATUS_A',
       from: '2026-08-01',
       to: '2026-08-31',
-      item: '9301',
-      lot: '9601',
-      warehouse: '9701',
       cancellableOnly: true,
       q: 'SYN-GR',
     });
@@ -121,9 +115,7 @@ describe('readFilters', () => {
    * 하류(`toListQuery`·`toSearchParams`)의 재다듬기가 가려 주어 감지기가 침묵한다.
    */
   it('이상한 값은 조건에서 떨어뜨린다', () => {
-    const params = new URLSearchParams(
-      'ty=%20%20&st=%20&from=2026-02-31&item=0&lot=abc&wh=-1&conly=yes',
-    );
+    const params = new URLSearchParams('ty=%20%20&st=%20&from=2026-02-31&conly=yes');
 
     expect(readFilters(params)).toEqual({
       ...DEFAULT_PROGRESS_FILTERS,
@@ -154,9 +146,9 @@ describe('readPage', () => {
 
 describe('toSearchParams', () => {
   it('채운 조건만 주소에 적는다', () => {
-    const params = toSearchParams(filters({ status: 'SYN_STATUS_A', item: '9301' }), 1);
+    const params = toSearchParams(filters({ status: 'SYN_STATUS_A' }), 1);
 
-    expect(params.toString()).toBe('ty=GOODS_RECEIPT&st=SYN_STATUS_A&item=9301');
+    expect(params.toString()).toBe('ty=GOODS_RECEIPT&st=SYN_STATUS_A');
   });
 
   /* 기본값을 주소에 적으면 같은 화면의 주소가 두 가지가 된다. */
@@ -176,10 +168,9 @@ describe('toSearchParams', () => {
 
   /* 요청 조립과 같은 판정을 쓴다 — 갈리면 조건은 안 걸리는데 주소만 걸린 것처럼 보인다. */
   it('이상한 값은 주소에도 적지 않는다', () => {
-    const params = toSearchParams(filters({ from: '2026-02-31', lot: '0', q: '   ' }), 1);
+    const params = toSearchParams(filters({ from: '2026-02-31', q: '   ' }), 1);
 
     expect(params.has('from')).toBe(false);
-    expect(params.has('lot')).toBe(false);
     expect(params.has('q')).toBe(false);
   });
 });
@@ -225,9 +216,6 @@ describe('toListQuery — 조건 옮기기', () => {
         status: 'SYN_STATUS_A',
         from: '2026-08-01',
         to: '2026-08-31',
-        item: '9301',
-        lot: '9601',
-        warehouse: '9701',
         q: 'SYN-GR',
       }),
       documentTypeFixtures,
@@ -239,9 +227,6 @@ describe('toListQuery — 조건 옮기기', () => {
       statusCode: 'SYN_STATUS_A',
       documentDateFrom: '2026-08-01',
       documentDateTo: '2026-08-31',
-      itemId: 9301,
-      lotId: 9601,
-      warehouseId: 9701,
       cancellableOnly: false,
       q: 'SYN-GR',
       page: 2,
@@ -270,20 +255,19 @@ describe('toListQuery — 조건 옮기기', () => {
   });
 
   it('이상한 값은 질의에 싣지 않는다', () => {
-    const query = toListQuery(
-      filters({ from: '2026-13-01', item: '0', warehouse: 'abc', q: '   ' }),
-      documentTypeFixtures,
-      1,
-    );
+    const query = toListQuery(filters({ from: '2026-13-01', q: '   ' }), documentTypeFixtures, 1);
 
     expect(query).toEqual({ documentTypeCode: 'GOODS_RECEIPT', cancellableOnly: false });
   });
 
-  /* 번호는 문자열이 아니라 정수로 실린다 — 계약이 정수를 요구한다. */
-  it('번호 조건을 정수로 옮긴다', () => {
-    const query = toListQuery(filters({ item: '9301' }), documentTypeFixtures, 1);
+  /* 걷은 번호 조건(품목 · 자재 LOT · 창고)은 옛 주소에 남아 있어도 질의에 실리지 않는다. */
+  it('옛 주소의 번호 조건은 싣지 않는다', () => {
+    const params = new URLSearchParams('ty=GOODS_RECEIPT&item=9301&lot=9601&wh=9701');
 
-    expect(query?.itemId).toBe(9301);
+    expect(toListQuery(readFilters(params), documentTypeFixtures, 1)).toEqual({
+      documentTypeCode: 'GOODS_RECEIPT',
+      cancellableOnly: false,
+    });
   });
 
   /* 유형 코드는 **표의 값**을 그대로 싣는다 — 주소의 공백은 다듬고 값은 지어내지 않는다. */

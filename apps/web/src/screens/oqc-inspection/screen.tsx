@@ -458,15 +458,26 @@ export const OqcInspectionScreen = () => {
     }
     go(to, apply);
   };
-  /* 고른 줄을 다시 누르면 고르지 않은 상태로 — 상세가 닫힌다(저장 안 한 입력이 있으면 먼저 묻는다 · 사용자 지시 2026-10-28 · #197). */
-  const select = (inspectionRequestId: number): void =>
-    moveTo(inspectionRequestId === selectedId ? null : inspectionRequestId);
-
   /* 목록 · 상세 배치 — 입하 예정 조회와 같은 좌우 분할, 가운데 막대로 폭을 나눈다(비율은 브라우저에 남는다). */
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:oqc-inspection:split', 0.45);
   /* 좌우 · 상하 배치(사용자 지시 2026-10-26) — 세 탭이 같은 고름을 쓴다. */
   const layout = useSplitOrientation('omf-mes:inspection-hub:split-orientation');
+  /* 목록 접기 단추 — IQC 와 같다: 좌우 배치는 세로 막대, 상하 배치는 가로 막대(사용자 지시 2026-11-19 · omf-all-around#296). */
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: hubText.listCollapse,
+    expandLabel: hubText.listExpand,
+  };
+
+  /* 고른 줄을 다시 누르면 고르지 않은 상태로 — 상세가 닫힌다(저장 안 한 입력이 있으면 먼저 묻는다 · 사용자 지시 2026-10-28 · #197). */
+  /* 새 의뢰를 고르면 목록을 접어 상세가 자리를 다 쓴다 — IQC 와 같다(사용자 지시 2026-11-19 · omf-all-around#296). */
+  const select = (inspectionRequestId: number): void => {
+    const next = inspectionRequestId === selectedId ? null : inspectionRequestId;
+    moveTo(next);
+    if (next !== null && !split.collapsed) split.toggleCollapsed();
+  };
 
   /**
    * 표 자리에 그릴 것. **네 갈래를 가른다** — 실패 · 부르는 중 · 이 쪽에 없음 · 조건에 맞는 것 없음.
@@ -1148,6 +1159,7 @@ export const OqcInspectionScreen = () => {
         ref={splitRef}
         className={`po-board-split inspection-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
         style={{ ...split.style, ...layout.style }}
+        data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <section
           className="pane oqc-inspection-panes oqc-inspection-queue-pane"
@@ -1196,12 +1208,18 @@ export const OqcInspectionScreen = () => {
           )}
         </section>
 
-        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        <PaneSplitter
+          label={hubText.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+          collapse={listCollapse}
+        />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter
             label={hubText.heightSplitter}
             height={layout.listHeight}
             onChange={layout.changeListHeight}
+            collapse={listCollapse}
           />
         )}
 

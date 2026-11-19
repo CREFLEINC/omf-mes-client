@@ -7,9 +7,9 @@ import type {
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
-import { PopSelect as Select } from '../../patterns/pop-select';
+import { Select } from '../../patterns/select';
 
-const t = messages.popInspectionSheet.header;
+const t = messages.inspectionSheetEntry.header;
 
 type TextKey = Exclude<keyof InspectionSheetHeaderUpdate, 'rohsFlag' | 'overallResultCode'>;
 
@@ -77,7 +77,7 @@ export const HeaderPanel = ({ sheet, disabled, isSaving, onSave }: HeaderPanelPr
   const changed = JSON.stringify(trimmed(header)) !== JSON.stringify(trimmed(headerOf(sheet)));
 
   return (
-    <section className="pane pop-inspection-sheet-header" aria-label={t.heading}>
+    <section className="pane inspection-sheet-entry-header" aria-label={t.heading}>
       <h2 className="pane-title">{t.heading}</h2>
       <p className="field-note">{t.note}</p>
       <div className="form-grid">
@@ -99,7 +99,7 @@ export const HeaderPanel = ({ sheet, disabled, isSaving, onSave }: HeaderPanelPr
             <TextField
               key={key}
               label={t[key]}
-              size="lg"
+              size="md"
               maxLength={100}
               value={header[key] ?? ''}
               disabled={disabled}
@@ -111,7 +111,7 @@ export const HeaderPanel = ({ sheet, disabled, isSaving, onSave }: HeaderPanelPr
           <TextField
             key={key}
             label={t[key]}
-            size="lg"
+            size="md"
             maxLength={max}
             value={header[key] ?? ''}
             disabled={disabled}
@@ -144,12 +144,12 @@ export const HeaderPanel = ({ sheet, disabled, isSaving, onSave }: HeaderPanelPr
       </div>
       <div className="form-actions">
         <Button
-          size="lg"
+          size="md"
           variant="outlined"
           disabled={disabled || isSaving || !changed}
           onClick={() => onSave(trimmed(header))}
         >
-          {isSaving ? messages.popInspectionSheet.saving : t.save}
+          {isSaving ? messages.inspectionSheetEntry.saving : t.save}
         </Button>
       </div>
     </section>
