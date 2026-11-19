@@ -582,9 +582,7 @@ export const PopMaterialLotLabelScreen = () => {
             <b>{t.work.resultSummary(summary.printed, summary.unfinished.length)}</b>
           ) : (
             <>
-              <PuChip tone={waitingCount > 0 ? 'warn' : 'idle'}>
-                {t.pairs.waiting(waitingCount)}
-              </PuChip>
+              {/* 「입하 대기 N」 칩은 두지 않는다 — 건수는 표·아래 단추가 말한다(사용자 지시 2026-11-19). */}
               {receivedLots.length > 0 ? (
                 <PuChip tone="ok">{t.work.receivedChip(receivedLots.length)}</PuChip>
               ) : null}
