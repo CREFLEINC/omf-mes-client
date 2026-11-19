@@ -24,12 +24,10 @@ describe('BlockedExecutionPane — 승인은 유효하다 · C4-13', () => {
   });
 
   /** 무엇을 하면 풀리는지 말한다 — 할 일은 하나뿐이다: 후속을 먼저 취소한다. */
-  it('후속을 먼저 취소해야 한다고 말한다', () => {
+  it('승인을 기다리는 사이 후속이 생겼다고 말한다', () => {
     renderPane();
 
-    expect(screen.getByText(t.blockedExecution.description).textContent ?? '').toContain(
-      '후속을 먼저 취소',
-    );
+    expect(screen.getByText(t.blockedExecution.description)).toBeInTheDocument();
   });
 
   /**

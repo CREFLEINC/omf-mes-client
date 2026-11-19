@@ -290,12 +290,15 @@ export const ShipmentOqcDetail = ({
           lots={request.lots ?? []}
           uomCode={uom}
           locked={!isOpen}
+          confirmedAt={null}
           busy={false}
           onEdit={(result) => setDrawer({ editing: result })}
           onDelete={() => undefined}
           text={s.results}
           showQuantities={false}
+          showConfirmedAt={false}
           showInspectedAt
+          columnsStorageKey="omf-mes:oqc-shipment-results:columns"
           canDelete={false}
           inactiveLotIds={replaced.map((lot) => lot.lotId)}
         />

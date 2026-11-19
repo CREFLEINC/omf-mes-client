@@ -24,6 +24,7 @@ import {
   useInboundRefresh,
   type InboundInspection,
 } from './inbound-queries';
+import { InboundAttachDialog, InboundAttachmentTable } from './inbound-attachments';
 import { InboundHistory } from './inbound-history';
 import { LotNo } from './lot-match-field';
 import { ResultDrawer, type ResultDrawerProps } from './result-drawer';
@@ -38,6 +39,7 @@ const tr = messages.iqcInboundLot.results;
 const td = messages.iqcInboundLot.drawer;
 const th = messages.iqcInboundLot.history;
 const ts = messages.iqcInboundLot.split;
+const ta = messages.iqcInboundLot.attachments;
 
 /** 부적합 처분 관리(W-03-10) — 불합격 확정 배너의 부적합 번호가 이 화면으로 간다. */
 const DISPOSITION_PATH = '/quality/dispositions';
@@ -62,6 +64,8 @@ export interface InboundDetailProps {
   itemParts: { code: string; name: string } | null;
   /** 검사 조건(「AQL 1.0 · 육안 검사」) — 기준 버전에서. */
   planText: string;
+  /** 검사 조건 칸 오른쪽 [기준 조회] 단추(사용자 지시 2026-11-19 · omf-all-around#296). */
+  planAction?: ReactNode;
   uomCode: string;
   /** 결과 드로어의 양식 — 지금 IQC 양식 그대로(드로어 모드). */
   renderForm: ResultDrawerProps['renderForm'];
@@ -88,6 +92,7 @@ export const InboundDetail = ({
   inspectionRequestId,
   itemParts,
   planText,
+  planAction,
   uomCode,
   renderForm,
   headActions,
@@ -119,6 +124,7 @@ export const InboundDetail = ({
   /* 상세 내용 · 변경 이력 탭(사용자 지시 2026-11-16 · omf-all-around#274). */
   const [tab, setTab] = useState<'detail' | 'history'>('detail');
   const [splitOpen, setSplitOpen] = useState(false);
+  const [attachOpen, setAttachOpen] = useState(false);
   const splitLockId = useId();
 
   if (query.isPending) return <p className="field-note">{t.loading}</p>;
@@ -176,16 +182,16 @@ export const InboundDetail = ({
     lotJudgments.find((each) => each.lotId === lotId && each.resultSeqNo !== null) ?? null;
 
   const lotColumns: Column<InspectionLotForward>[] = [
-    /* 시안(사용자 지시 2026-11-16 · #274) — LOT 번호 왼쪽 · 수량 오른쪽 · 품질 상태는 글자만(자물쇠 없음). 패키징은 있을 때만. */
+    /* 시안(사용자 지시 2026-11-16 · #274) — 품질 상태는 글자만(자물쇠 없음). 패키징은 있을 때만. */
     {
       key: 'lotNo',
-      align: 'start',
+      align: 'center',
       header: t.columns.lotNo,
       render: (row) => <LotNo lotNo={row.lotNo} />,
     },
     {
       key: 'qty',
-      align: 'end',
+      align: 'center',
       header: t.columns.qty,
       render: (row) => {
         const pack = formatPackage(row.package);
@@ -199,6 +205,7 @@ export const InboundDetail = ({
     },
     {
       key: 'status',
+      align: 'center',
       header: t.columns.status,
       render: (row) => (
         /* 품질 상태도 라벨(칩)로 — 자물쇠 아이콘은 없이(사용자 지시 2026-11-16 · #274). */
@@ -210,10 +217,11 @@ export const InboundDetail = ({
         </span>
       ),
     },
-    /* 판정(예상) · 적용 검사 — LOT 마다 적용된(최신) 검사 회차와 그 판정(사용자 시안 2026-11-16 · #274). */
+    /* 판정 · 적용 검사 — LOT 마다 적용된(최신) 검사 회차와 그 판정(사용자 시안 2026-11-16 · #274). 확정 전에도 「판정」(#296). */
     {
       key: 'judgment',
-      header: confirmed ? t.columns.judgment : t.columns.judgmentPreview,
+      align: 'center',
+      header: t.columns.judgment,
       render: (row) => {
         const judgment = lotJudgmentOf(row.lotId);
 
@@ -228,6 +236,7 @@ export const InboundDetail = ({
     },
     {
       key: 'applied',
+      align: 'center',
       header: t.columns.applied,
       render: (row) => {
         const judgment = lotJudgmentOf(row.lotId);
@@ -370,16 +379,15 @@ export const InboundDetail = ({
                     </div>
                     <div className="parts-iqc-fact">
                       <dt className="field-label">{t.facts.received}</dt>
-                      <dd>
-                        {t.facts.receivedValue(
-                          formatPlantDateTime(inspection.receivedAt ?? null) ?? '-',
-                          inspection.receivedChannelCode ?? null,
-                        )}
-                      </dd>
+                      {/* 입하 일시만 — 입하 경로(WEB · PDA)는 보이지 않는다(사용자 지시 2026-11-19 · omf-all-around#296). */}
+                      <dd>{formatPlantDateTime(inspection.receivedAt ?? null) ?? '-'}</dd>
                     </div>
                     <div className="parts-iqc-fact">
                       <dt className="field-label">{t.facts.plan}</dt>
-                      <dd>{planText}</dd>
+                      <dd className="parts-iqc-plan-cell">
+                        {planText}
+                        {planAction}
+                      </dd>
                     </div>
                     {inspection.splitFromInboundLotNo == null ? null : (
                       <div className="parts-iqc-fact">
@@ -475,12 +483,35 @@ export const InboundDetail = ({
                       lots={lots}
                       uomCode={uomCode}
                       locked={confirmed}
+                      confirmedAt={inspection.confirmedAt ?? null}
                       busy={busy}
                       onEdit={(result) => setDrawer({ editing: result })}
                       onDelete={(result) => {
                         setWriteError(null);
                         setDeleting(result);
                       }}
+                    />
+                    <InboundAttachmentTable
+                      inspectionRequestId={inspectionRequestId}
+                      lots={lots}
+                      confirmedAt={inspection.confirmedAt ?? null}
+                      uomCode={uomCode}
+                      canLink={!confirmed}
+                      action={
+                        /* 파일 첨부 — 첨부 파일 표 위 오른쪽. 대기 · 진행 중에만, 판정 확정(완료) 뒤에는 감춘다(사용자 지시 2026-11-19 · omf-all-around#296). */
+                        confirmed ? null : (
+                          <Button
+                            size="md"
+                            disabled={
+                              lots.length === 0 // ui-check-ignore: C-4 붙일 LOT 이 없으면 바로 위 「자재 관리 LOT (0건)」이 사유다
+                            }
+                            leadingIcon={<Icon name="attach_file" size={18} aria-hidden />}
+                            onClick={() => setAttachOpen(true)}
+                          >
+                            {ta.open}
+                          </Button>
+                        )
+                      }
                     />
                   </section>
 
@@ -585,6 +616,15 @@ export const InboundDetail = ({
                     >
                       <p className="dialog-text">{tr.deleteBody}</p>
                     </Dialog>
+                  )}
+
+                  {attachOpen && (
+                    <InboundAttachDialog
+                      inspectionRequestId={inspectionRequestId}
+                      lots={lots}
+                      uomCode={uomCode}
+                      onClose={() => setAttachOpen(false)}
+                    />
                   )}
 
                   {splitOpen && (

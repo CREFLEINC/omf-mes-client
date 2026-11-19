@@ -5,11 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { documentSuccessor, documentSuccessorFixtures } from './fixtures';
 import { SCREEN_ROUTES, type ScreenRouteTable } from './screen-routes';
-import {
-  buildSuccessorColumns,
-  SuccessorsPane,
-  SUCCESSORS_TABLE_MIN_WIDTH_PX,
-} from './successors-pane';
+import { buildSuccessorColumns, SuccessorsPane } from './successors-pane';
 
 const t = messages.documentProgress;
 
@@ -21,25 +17,28 @@ const noop = (): void => undefined;
 describe('buildSuccessorColumns — 열 구성과 폭', () => {
   const columns = buildSuccessorColumns(SCREEN_ROUTES, noop);
 
-  it('네 열이다 — 유형 · 문서번호 · 수량 · 열기', () => {
+  /* 열 수 있는 후속이 없으면 열기 열을 두지 않는다(C-4 · 사용자 지시 2026-11-19). */
+  it('세 열이다 — 유형 · 문서번호 · 수량', () => {
     expect(columns.map((column) => column.key)).toEqual([
       'successorTypeCode',
       'successorNo',
       'qty',
-      'open',
     ]);
   });
 
-  it('모든 열이 폭을 지정하고 합이 표 하한 이상이다', () => {
-    expect(columns.filter((column) => column.width === undefined)).toHaveLength(0);
+  it('열 수 있는 후속이 있으면 열기 열이 붙는다', () => {
+    expect(
+      buildSuccessorColumns(filledRoutes, noop, documentSuccessorFixtures).map(
+        (column) => column.key,
+      ),
+    ).toEqual(['successorTypeCode', 'successorNo', 'qty', 'open']);
+  });
 
-    const fixed = columns.reduce(
-      (sum, column) => sum + Number.parseInt(column.width ?? '0px', 10),
-      0,
-    );
-
-    expect(fixed).toBe(928);
-    expect(fixed).toBeGreaterThanOrEqual(SUCCESSORS_TABLE_MIN_WIDTH_PX);
+  /* 문서번호 열만 남는 폭을 받는다 — 길이에 상한이 없는 문자열이다. */
+  it('문서번호 열만 남는 폭을 받는다', () => {
+    expect(
+      columns.filter((column) => column.width === undefined).map((column) => column.key),
+    ).toEqual(['successorNo']);
   });
 
   /**
@@ -52,7 +51,9 @@ describe('buildSuccessorColumns — 열 구성과 폭', () => {
     const CELL_PADDING_PX = 32;
     /* `sm` 버튼의 좌우 안쪽 여백. 글자만으로는 버튼이 담기지 않는다. */
     const BUTTON_PADDING_PX = 24;
-    const openColumn = columns.find((column) => column.key === 'open');
+    const openColumn = buildSuccessorColumns(filledRoutes, noop, documentSuccessorFixtures).find(
+      (column) => column.key === 'open',
+    );
 
     expect(Number.parseInt(openColumn?.width ?? '0px', 10)).toBeGreaterThanOrEqual(
       t.successors.open.length * CHAR_WIDTH_PX + BUTTON_PADDING_PX + CELL_PADDING_PX,
@@ -117,7 +118,6 @@ describe('SuccessorsPane', () => {
     render(<SuccessorsPane successors={[]} routes={SCREEN_ROUTES} onOpen={noop} />);
 
     expect(screen.getByText(t.successors.emptyTitle)).toBeInTheDocument();
-    expect(screen.getByText(t.successors.emptyDescription)).toBeInTheDocument();
     /*
      * ⛔ 경고 배너가 아니다. 디자인 시스템 `AlertBanner`는 `error`·`warning`에서 `role="alert"`로
      * 렌더되므로(설치본 실측), 0건을 경고로 바꾸는 순간 이 단언이 문다.
@@ -126,11 +126,11 @@ describe('SuccessorsPane', () => {
   });
 
   /**
-   * ⭐ **화면 ID 표가 비어 있는 동안 열기 손잡이가 서지 않는다.**
-   * 그럴듯한 주소를 지어 넣으면 사용자가 「열었더니 그 문서가 아닌」 자리에 도착한다.
+   * ⭐ **화면 ID 표가 비어 있는 동안 열기 열이 없다**(C-4). 그럴듯한 주소를 지어 넣지 않는다.
+   * 열 수 없는 사유를 적던 줄도 없다.
    */
-  it('표가 비어 있으면 열기 손잡이가 서지 않고 사유가 보인다', () => {
-    render(
+  it('표가 비어 있으면 열기 열도 사유 줄도 없다', () => {
+    const { container } = render(
       <SuccessorsPane
         successors={documentSuccessorFixtures}
         routes={SCREEN_ROUTES}
@@ -138,43 +138,9 @@ describe('SuccessorsPane', () => {
       />,
     );
 
-    /* ⛔ 잠긴 버튼도 두지 않는다 — 「손잡이가 서지 않는다」는 **아예 없다**는 뜻이다. */
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    /*
-     * ⭐ **두 갈래가 한 표 안에 섞여 오는 것이 실제 형태다** — 첫 후속은 화면 ID가 왔는데 표에
-     * 없고(`unmapped`), 둘째는 화면 ID 자체가 오지 않았다(`noScreenId`). 갈래마다 한 줄씩 선다.
-     */
-    expect(screen.getByText(t.successors.openBlocked.unmapped)).toBeInTheDocument();
-    expect(screen.getByText(t.successors.openBlocked.noScreenId)).toBeInTheDocument();
-  });
-
-  /**
-   * 줄의 **차례가 정해져 있다.** 갈래 표(`BLOCK_KIND_ORDER`)가 차례를 값으로 정하므로, 표의 키
-   * 순서가 바뀌거나 갈래가 늘어도 화면의 차례는 그 값이 정한 대로다 — 차례를 재는 자리가 없으면
-   * 그 값이 아무 일도 하지 않는 상수가 된다.
-   *
-   * 앞이 「화면 ID가 오지 않았다」인 이유: 그쪽이 **서버가 값을 채워야 풀리는** 갈래라 사용자가
-   * 먼저 알아야 할 사정이다.
-   */
-  it('두 갈래가 섞여 오면 줄의 차례가 정해져 있다', () => {
-    render(
-      <SuccessorsPane
-        successors={documentSuccessorFixtures}
-        routes={SCREEN_ROUTES}
-        onOpen={noop}
-      />,
-    );
-
-    const notes = screen
-      .getAllByText(
-        (_, element) =>
-          element?.textContent === t.successors.openBlocked.noScreenId ||
-          element?.textContent === t.successors.openBlocked.unmapped,
-      )
-      .filter((element) => element.tagName === 'P')
-      .map((element) => element.textContent);
-
-    expect(notes).toEqual([t.successors.openBlocked.noScreenId, t.successors.openBlocked.unmapped]);
+    expect(screen.queryByRole('button', { name: /열기$/u })).not.toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: t.successors.open })).not.toBeInTheDocument();
+    expect(container.querySelector('p.field-note')).toBeNull();
   });
 
   /* ⭐ 표에 줄이 생기면 **그것만으로** 열기가 살아난다 — 다른 자리는 바뀌지 않는다. */
@@ -186,13 +152,10 @@ describe('SuccessorsPane', () => {
     expect(
       screen.getByRole('button', { name: t.actions.openSuccessor('SYN-GI-2026-0101') }),
     ).toBeInTheDocument();
-    /* 화면 ID가 오지 않은 둘째 후속은 그대로 잠긴다 — 표를 채운다고 없는 값이 생기지 않는다. */
+    /* 화면 ID가 오지 않은 둘째 후속은 칸이 빈다 — 표를 채운다고 없는 값이 생기지 않는다. */
     expect(
       screen.queryByRole('button', { name: t.actions.openSuccessor('SYN-GI-2026-0102') }),
     ).not.toBeInTheDocument();
-    /* 남은 잠금은 **화면 ID가 오지 않은 쪽 하나뿐**이다 — 표를 채워 풀린 갈래는 사라진다. */
-    expect(screen.getByText(t.successors.openBlocked.noScreenId)).toBeInTheDocument();
-    expect(screen.queryByText(t.successors.openBlocked.unmapped)).not.toBeInTheDocument();
   });
 
   /** 부품은 주소를 모른다 — **표가 정한 주소**를 그대로 화면에 넘긴다. */
@@ -213,16 +176,6 @@ describe('SuccessorsPane', () => {
     );
 
     expect(onOpen).toHaveBeenCalledWith('/logistics/synthetic-successor');
-  });
-
-  /* 전건이 열리면 잠긴 사유를 낼 것이 없다 — 늘 떠 있는 안내는 읽히지 않는다. */
-  it('전건이 열리면 잠김 사유를 내지 않는다', () => {
-    render(
-      <SuccessorsPane successors={[documentSuccessor()]} routes={filledRoutes} onOpen={noop} />,
-    );
-
-    expect(screen.queryByText(t.successors.openBlocked.noScreenId)).not.toBeInTheDocument();
-    expect(screen.queryByText(t.successors.openBlocked.unmapped)).not.toBeInTheDocument();
   });
 
   /**

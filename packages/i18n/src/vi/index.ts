@@ -101,7 +101,7 @@ import { inspectionLevel } from './inspection-level';
 import { inspectionSheet } from './inspection-sheet';
 import { inspectionSheetPrint } from './inspection-sheet-print';
 import { inspectionSheetTemplate } from './inspection-sheet-template';
-import { popInspectionSheet } from './pop-inspection-sheet';
+import { inspectionSheetEntry } from './inspection-sheet-entry';
 import { materialDefect } from './material-defect';
 import { popOqcInspection } from './pop-oqc-inspection';
 import { popShipmentComplete } from './pop-shipment-complete';
@@ -272,7 +272,7 @@ export const vi: Translated<Messages> = {
   inspectionSheet,
   inspectionSheetPrint,
   inspectionSheetTemplate,
-  popInspectionSheet,
+  inspectionSheetEntry,
   materialDefect,
   popOqcInspection,
   popShipmentComplete,

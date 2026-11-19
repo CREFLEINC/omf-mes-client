@@ -5,9 +5,9 @@ import { useState } from 'react';
 
 import { DateTimeField } from '../../patterns/date-time-field';
 import { masterName } from '../../patterns/master-name';
-import { PopSelect as Select } from '../../patterns/pop-select';
+import { Select } from '../../patterns/select';
 
-const t = messages.popInspectionSheet.ng;
+const t = messages.inspectionSheetEntry.ng;
 
 /** 화면 안의 한 블록 — 날짜는 입력칸 글자(로컬 시각)로 들고, 보낼 때 ISO 로 바꾼다. */
 export interface NgDraft extends Omit<InspectionSheetNgWrite, 'repairedAt' | 'recheckedAt'> {
@@ -140,7 +140,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
   };
 
   return (
-    <section className="pane pop-inspection-sheet-ngs" aria-label={t.heading}>
+    <section className="pane inspection-sheet-entry-ngs" aria-label={t.heading}>
       <h2 className="pane-title">{t.heading}</h2>
       <p className="field-note">{t.note}</p>
       {drafts.length === 0 && <p className="field-note">{t.empty}</p>}
@@ -159,7 +159,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
                 ? [t.statusRepaired, 'info' as const]
                 : [t.statusOpen, 'warning' as const];
           return (
-            <div key={draft.key} className="pop-inspection-sheet-ng-summary">
+            <div key={draft.key} className="inspection-sheet-entry-ng-summary">
               <div>
                 <strong>{t.block(n)}</strong>{' '}
                 <Chip size="sm" status={tone}>
@@ -171,7 +171,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
                 <p>{draft.ngContent || t.none}</p>
               </div>
               <Button
-                size="lg"
+                size="md"
                 variant="outlined"
                 aria-label={`${t.block(n)} ${t.edit}`}
                 onClick={() => toggle(draft.key, true)}
@@ -189,7 +189,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
         ) => (
           <TextField
             label={label}
-            size="lg"
+            size="md"
             maxLength={max}
             value={value ?? ''}
             disabled={disabled}
@@ -214,7 +214,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
           </div>
         );
         const when = (label: string, value: string, patch: (v: string) => Partial<NgDraft>) => (
-          <div className="field-cell pop-inspection-sheet-when">
+          <div className="field-cell inspection-sheet-entry-when">
             <DateTimeField
               label={label}
               value={value}
@@ -222,7 +222,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
               onChange={(next) => set(draft.key, patch(next))}
             />
             <Button
-              size="lg"
+              size="md"
               variant="outlined"
               disabled={disabled}
               onClick={() => set(draft.key, patch(nowInput()))}
@@ -232,7 +232,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
           </div>
         );
         return (
-          <fieldset key={draft.key} className="pop-inspection-sheet-ng">
+          <fieldset key={draft.key} className="inspection-sheet-entry-ng">
             <legend>{t.block(n)}</legend>
             <div className="form-grid">
               {pick(
@@ -253,7 +253,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
             </div>
             <TextField
               label={t.ngContent}
-              size="lg"
+              size="md"
               maxLength={1000}
               value={draft.ngContent}
               disabled={disabled}
@@ -288,14 +288,14 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
             <div className="form-actions">
               {!disabled && (
                 <Button
-                  size="lg"
+                  size="md"
                   variant="text"
                   onClick={() => setDrafts((prev) => prev.filter((d) => d.key !== draft.key))}
                 >
                   {t.remove(n)}
                 </Button>
               )}
-              <Button size="lg" variant="outlined" onClick={() => toggle(draft.key, false)}>
+              <Button size="md" variant="outlined" onClick={() => toggle(draft.key, false)}>
                 {t.collapse}
               </Button>
             </div>
@@ -304,7 +304,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
       })}
       <div className="form-actions">
         <Button
-          size="lg"
+          size="md"
           variant="outlined"
           disabled={disabled}
           onClick={() => {
@@ -316,12 +316,12 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
           {t.add}
         </Button>
         <Button
-          size="lg"
+          size="md"
           // ui-check-ignore: C-4 바뀐 값이 없거나 저장 중일 때만 잠긴다 — 고칠 것이 없다는 것 말고 사유가 없다
           disabled={disabled || isSaving || !changed}
           onClick={save}
         >
-          {isSaving ? messages.popInspectionSheet.saving : t.save}
+          {isSaving ? messages.inspectionSheetEntry.saving : t.save}
         </Button>
       </div>
     </section>
