@@ -27382,6 +27382,88 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/logistics/putaway-records': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 적치 기록
+     * @description PDA 가 「내 기록」(scope=WORKER — X-Worker-No 의 작업자가 한 적치, 단말 무관) 또는 「이 단말」(scope=TERMINAL — 이 단말로 한 적치, 작업자 무관)의 적치를 공장 영업일 하루 단위로 본다. 지시 없는 적치(DIRECT — PDA :putaway·:putaway-temporary 로 만든 입고 라인)와 지시 적치(TASK — 단말이 :complete·:complete-temporary 한 적치 지시)를 합친다. MOBILE 단말 토큰 전용 — 계정 세션은 401(화면 권한이 없으면 403), POP 은 401. 결과는 언제나 단말 공장 안이다. businessDate 는 공장 오늘 ~ 6일 전, 벗어나면 400 RANGE. scope=WORKER 인데 X-Worker-No 가 없거나 이 공장 재직 작업자가 아니면 400 INVALID(필드 X-Worker-No). 정렬: recordedAt 내림차순, 같은 시각은 TASK 먼저·id 내림차순. 관리웹 입고·세션 완료(작업자·단말 없음)는 나오지 않는다. 근거: M-01-14 · 피처 011 PDA 적치 기록 · omf-all-around#325
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description WORKER — 요청 머리 X-Worker-No 의 작업자 · TERMINAL — 토큰의 단말 */
+          scope: 'WORKER' | 'TERMINAL';
+          /** @description 공장 영업일(YYYY-MM-DD) — 공장 시간대로 그날의 적치를 거른다. 공장 오늘 ~ 6일 전 */
+          businessDate: string;
+          page?: number;
+          size?: number;
+        };
+        header?: {
+          /**
+           * @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+           * @example 100027
+           */
+          'X-Worker-No'?: components['parameters']['WorkerNoOptional'];
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: components['schemas']['PutawayRecord'][];
+              page: components['schemas']['PageMeta'];
+            };
+          };
+        };
+        /** @description 검증 실패 — INVALID(scope·businessDate 형식, 작업자 없음) · RANGE(기간 밖 날짜) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description MOBILE 단말 토큰이 아니다(토큰 없음·계정 세션·POP) 또는 단말 범위 밖 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음(계정 세션) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/app/approval-routes': {
     parameters: {
       query?: never;
@@ -57610,6 +57692,75 @@ export interface components {
       putawayModeCode: 'DESIGNATED' | 'UNDESIGNATED' | 'TEMPORARY';
       /** @description 미지정 위치 적치로 그 위치의 보관 품목에 이 품목을 더했는가(이미 있었거나 시스템 자리·임시 적치면 false) */
       itemDesignationAdded: boolean;
+    };
+    /** @description 적치 기록 한 줄(저장하지 않는 조회 결과). 근거: M-01-14 · 피처 011 PDA 적치 기록 · omf-all-around#325 */
+    PutawayRecord: {
+      /**
+       * @description DIRECT 지시 없는 적치(입고 라인) · TASK 지시 적치(적치 지시)
+       * @enum {string}
+       */
+      recordType: 'DIRECT' | 'TASK';
+      /**
+       * Format: int64
+       * @description DIRECT 는 입고 라인 id, TASK 는 적치 지시 id
+       */
+      recordId: number;
+      /**
+       * @description DIRECT 는 입고 라인 적치 방식, TASK 는 완료(TASK)·임시 완료(TASK_TEMPORARY)
+       * @enum {string}
+       */
+      putawayModeCode: 'DESIGNATED' | 'UNDESIGNATED' | 'TEMPORARY' | 'TASK' | 'TASK_TEMPORARY';
+      /**
+       * @description 입고 종류 — 제품 입고 지시는 PRODUCT, 생산 창고 보충 수령 지시(피처 004)는 REPLENISHMENT, 그 밖은 PURCHASE
+       * @enum {string}
+       */
+      sourceCode: 'PURCHASE' | 'PRODUCT' | 'REPLENISHMENT';
+      /**
+       * Format: date-time
+       * @description DIRECT 는 입고 일시, TASK 는 완료 시각(단말이 보낸 occurredAt)
+       */
+      recordedAt: string;
+      /** @description DIRECT 는 입고 전표 번호, TASK 는 적치 지시 번호 */
+      documentNo: string;
+      lot: {
+        /** Format: int64 */
+        lotId: number;
+        lotNo: string;
+      };
+      item: {
+        /** Format: int64 */
+        itemId: number;
+        itemCode: string;
+        itemName: string;
+      };
+      /** @description 적치한 수량(소수 꼬리 없는 10진 문자열). TASK 는 원장에 옮긴 양 — 보충 수령 지시는 남은 만큼만 옮긴다 */
+      qty: string;
+      uomCode: string;
+      /** @description 품질 상태 — DEFECTIVE 면 「불량」. DIRECT 는 입고 라인, TASK 는 이어진 원장 줄의 도착 품질 */
+      qualityStatusCode: string | null;
+      warehouse: {
+        /** Format: int64 */
+        warehouseId: number;
+        warehouseCode: string;
+        warehouseName: string;
+      };
+      location: {
+        /** Format: int64 */
+        locationId: number;
+        locationCode: string;
+        /** @description 창고 › 상위 위치 › 위치 이름 */
+        path: string;
+      };
+      worker: {
+        workerNo: string;
+        workerName: string;
+      };
+      terminalCode: string;
+      /**
+       * @description 이어진 입고 전표 상태 — CANCELLED 「입고 취소됨」(목록에 남는다) · CANCEL_REQUESTED 「취소 요청 중」. 보충 수령 지시처럼 입고 전표가 없으면 null
+       * @enum {string|null}
+       */
+      receiptStatusCode: 'POSTED' | 'CANCEL_REQUESTED' | 'CANCELLED' | null;
     };
     /**
      * @description 결재선 정의. 승인 유형과 사업부로 고른다.
