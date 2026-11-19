@@ -250,7 +250,7 @@ export const stockStatus = {
       title: '해제되지 않은 보류',
       reason: '사유',
       status: '상태',
-      holdQty: '보류 수량',
+      holdQty: '보류량',
       uom: '단위',
       heldAt: '보류 시각',
       releaseCondition: '해제 조건',

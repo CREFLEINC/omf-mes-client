@@ -194,7 +194,7 @@ describe('의심자재 보류 입력 pane', () => {
     );
     await user.click(screen.getByRole('radio', { name: '일부 보류' }));
     expect(onBodyChange).toHaveBeenLastCalledWith(null);
-    await user.type(screen.getByLabelText('보류 수량'), '2');
+    await user.type(screen.getByLabelText('보류량'), '2');
     await waitFor(() =>
       expect(onBodyChange).toHaveBeenLastCalledWith(
         expect.objectContaining({ holdQty: 2, uomId: 804001 }),
@@ -202,7 +202,7 @@ describe('의심자재 보류 입력 pane', () => {
     );
     await user.click(screen.getByRole('button', { name: 'owner 변경' }));
     expect(screen.getByRole('radio', { name: '전량 보류' })).toBeChecked();
-    expect(screen.queryByLabelText('보류 수량')).toBeNull();
+    expect(screen.queryByLabelText('보류량')).toBeNull();
     await waitFor(() => expect(onBodyChange).toHaveBeenLastCalledWith(null));
   });
 
@@ -286,9 +286,9 @@ describe('의심자재 보류 입력 pane', () => {
   it('일부 보류 수량이 보유 수량을 넘으면 칸 아래에 알리고 등록 내용을 만들지 않는다', async () => {
     const { user, onBodyChange } = renderPane([display(701)]);
     await user.click(await screen.findByRole('radio', { name: '일부 보류' }));
-    await user.type(screen.getByLabelText(/^보류 수량/), '26');
+    await user.type(screen.getByLabelText(/^보류량/), '26');
 
-    expect(await screen.findByText('보류 수량은 보류 가능 수량 25 이하여야 합니다.')).toBeVisible();
+    expect(await screen.findByText('보류량은 보류 가능 수량 25 이하여야 합니다.')).toBeVisible();
     expect(onBodyChange).toHaveBeenLastCalledWith(null);
   });
 });

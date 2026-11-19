@@ -173,7 +173,7 @@ export const iqcInspection = {
       inspectionPlanVersionId: '적용 검사 기준',
       lotId: '대상 LOT',
       itemId: '품목',
-      targetQty: '총 검사 수량',
+      targetQty: '총 검사량',
       /** 의뢰가 만들어진 시각(`requestedAt`) — 목록 열 「의뢰 일시」와 같은 값이다. */
       requestedAt: '의뢰 일시',
       /** 품목의 현재 IQC 검사 수준 — 이 화면에서 바로 바꾼다(omf-all-around#133). */
@@ -267,25 +267,25 @@ export const iqcInspection = {
       fourMChange: '4M 변경품',
     },
     fields: {
-      inspectedQty: '총 검사 수량',
-      accepted: '합격 수량',
-      rejected: '불합격 수량',
-      held: '보류 수량',
+      inspectedQty: '총 검사량',
+      accepted: '합격량',
+      rejected: '불합격량',
+      held: '보류량',
     },
     /** 진행 막대의 접근 이름. */
     progressLabel: '검사 수량 대비 입력 합계',
     /** 넘겼다. 0으로 깎아 감추지 않는다. */
-    /** 총 검사 수량 옆 넘친 양 — 「+3 EA」. */
+    /** 총 검사량 옆 넘친 양 — 「+3 EA」. */
     overDelta: (over: string): string => `+${over}`,
-    /** 수량 줄의 입력 현황 「전체 34 EA 중 34 EA 미입력」 — 앞은 총 검사 수량, 뒤(강조)는 미입력 · 초과 수량(사용자 시안 2026-10-29 · #197). */
+    /** 수량 줄의 입력 현황 「전체 34 EA 중 34 EA 미입력」 — 앞은 총 검사량, 뒤(강조)는 미입력 · 초과 수량(사용자 시안 2026-10-29 · #197). */
     totalsOf: (total: string): string => `전체 ${total} 중`,
     shortBy: (short: string): string => `${short} 미입력`,
     overBy: (over: string): string => `${over} 초과`,
     /** 수량이 아닌 값이 있어 합계를 셀 수 없다(#197). */
     totalsUncountable: '수량 확인 필요',
-    /** 불합격 수량은 불량 내역의 합 — 직접 넣지 않는다(#197). */
+    /** 불합격량은 불량 내역의 합 — 직접 넣지 않는다(#197). */
     autoSum: '자동 계산',
-    /** 총 검사 수량 옆 모자란 양 — 「-1 EA」. */
+    /** 총 검사량 옆 모자란 양 — 「-1 EA」. */
     shortDelta: (short: string): string => `-${short}`,
     quantityInvalid: '0 이상의 숫자로 입력해 주세요. 소수점은 여섯 자리까지 됩니다.',
     /**
@@ -363,7 +363,7 @@ export const iqcInspection = {
       search: '불량 코드 검색',
       searchPlaceholder: '코드 또는 이름을 입력하세요',
       searchEmpty: '일치하는 불량 코드가 없습니다.',
-      /** 불량 내역(사용자 지시 2026-10-28 · #197) — 불합격 수량이 있으면 검사 수량 단계에서 불량 유형별 수량을 받는다. */
+      /** 불량 내역(사용자 지시 2026-10-28 · #197) — 불합격량이 있으면 검사 수량 단계에서 불량 유형별 수량을 받는다. */
       /** 체크하면 불량 내역을 받는다(사용자 지시 2026-10-28 · #197). */
       hasDefects: '불량 등록',
       defectsHeading: '불량 내역',
@@ -373,7 +373,7 @@ export const iqcInspection = {
       /** 불량 내역 표의 유형 열 제목 — 대분류 · 상세를 한 칸에 받는다(#197). */
       defectType: '불량 유형',
       defectQtyRequired: '불량 수량을 입력하세요.',
-      defectSumMismatch: '불량 내역 수량 합계가 불합격 수량과 같아야 합니다.',
+      defectSumMismatch: '불량 내역 수량 합계가 불합격량과 같아야 합니다.',
       /** 칸 아래 필수 누락 표시 — 확정이 막힌 이유(required·minorRequired)는 확정 단추 곁에 그대로 둔다. */
       majorMissing: '불량 대분류를 선택하세요.',
       minorMissing: '불량 상세를 선택하세요.',
@@ -396,7 +396,7 @@ export const iqcInspection = {
     },
     judgmentChange: {
       basis: (acceptanceNumber: number): string =>
-        `자동 판정: 불합격 수량 ${String(acceptanceNumber)}개 이하 → 합격`,
+        `자동 판정: 불합격량 ${String(acceptanceNumber)}개 이하 → 합격`,
       reason: '판정 변경 사유',
       reasonPlaceholder: '판정 변경 사유를 입력하세요',
       required: '자동 판정과 다른 판정은 변경 사유를 입력해야 확정할 수 있습니다.',

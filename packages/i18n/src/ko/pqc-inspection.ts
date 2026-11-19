@@ -132,7 +132,7 @@ export const pqcInspection = {
     short: (remaining: string): string => `미입력 ${remaining}`,
     over: (over: string): string => `${over} 초과`,
     judgmentPlaceholder: '종합 판정을 선택하세요',
-    dispositionNote: '불합격 수량이 있을 때 고릅니다. 불량창고 입고 후 확정됩니다.',
+    dispositionNote: '불합격량이 있을 때 고릅니다. 불량창고 입고 후 확정됩니다.',
     /** 저장된 회차를 다 읽기 전에는 저장·확정을 잠근다(리뷰 M1 · 관리웹 W-03-11 도 쓴다). 실패는 오류 띠가 이유와 [다시 시도]를 낸다. */
     roundLoading: '저장된 검사 결과를 불러오는 중입니다.',
   },
@@ -152,7 +152,7 @@ export const pqcInspection = {
      * ⚠ 순서가 뒤집힌다는 것을 화면이 먼저 말해야 한다. 안 말하면 고른 값이 확정인 줄 안다.
      * ⛔ 불합격이 0일 때 따로 붙이던 줄을 되살리지 않는다 — 같은 말이 두 줄로 겹친다.
      */
-    note: '불합격 수량이 있는 경우 처분을 선택할 수 있으며, 불량창고 입고 후 확정됩니다.',
+    note: '불합격량이 있는 경우 처분을 선택할 수 있으며, 불량창고 입고 후 확정됩니다.',
   },
 
   /**

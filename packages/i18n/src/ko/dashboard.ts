@@ -437,7 +437,7 @@ export const dashboard = {
     pqcBreakdownItem: '품목(CODE)별',
     pqcItemDefects: '품목(CODE)별 PQC 불량 구성',
     pendingOldest: (elapsed: string): string => `최장 대기 ${elapsed}`,
-    customerDefects: '고객별 OQC 불합격 수량',
+    customerDefects: '고객별 OQC 불합격량',
     returnByReason: '반품 구분별 수량',
     returnByReasonSub: '반품 입고 사유 · 공급사 반품 출고',
     returnReasonNone: '사유 미등록',

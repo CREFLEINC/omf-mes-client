@@ -135,7 +135,7 @@ export const oqcInspection = {
       target: '대상',
       lotId: '대상 LOT',
       itemId: '품목',
-      targetQty: '총 검사 수량',
+      targetQty: '총 검사량',
       /**
        * ⚠ 감추지 않는다. 검사 시점의 기준 버전이 그 검사에 **고정되고** 이후 기준이 바뀌어도
        * 이 검사는 당시 버전으로 남는다. 버전을 감추면 검사자도, 나중에 결과를 읽는 사람도
@@ -175,10 +175,10 @@ export const oqcInspection = {
     draftElsewhere:
       '이 회차는 다른 곳에서 작성 중이라 이 화면에서는 고칠 수 없습니다. 다시 판정하려면 재검사 회차를 추가합니다.',
     fields: {
-      inspectedQty: '총 검사 수량',
-      accepted: '합격 수량',
-      rejected: '불합격 수량',
-      held: '보류 수량',
+      inspectedQty: '총 검사량',
+      accepted: '합격량',
+      rejected: '불합격량',
+      held: '보류량',
     },
     /** 실시간 합계. 어긋난 값을 감추지 않는다. */
     sum: '입력 완료',
@@ -454,7 +454,7 @@ export const oqcInspection = {
     ng: 'NG',
     empty: '스캔한 시리얼이 없습니다. 시리얼 없이 LOT 판정만 저장할 수도 있습니다.',
     tooMany: '검사한 시리얼 수가 검사 수량보다 많습니다.',
-    tooManyNg: 'NG 시리얼 수가 불합격 수량보다 많습니다. 불합격 수량을 확인하세요.',
+    tooManyNg: 'NG 시리얼 수가 불합격량보다 많습니다. 불합격량을 확인하세요.',
     count: (total: number, ng: number): string => `시리얼 ${total}대, NG ${ng}대`,
     recordHeading: '시리얼별 출하검사 이력',
     /** 참고 정보 탭 이름(#136). */

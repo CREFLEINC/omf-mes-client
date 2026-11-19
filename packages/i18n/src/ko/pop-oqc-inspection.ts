@@ -38,7 +38,7 @@ export const popOqcInspection = {
       requestedAt: '의뢰 일시',
       item: '품목',
       inspectionType: '검사 유형',
-      targetQty: '총 검사 수량',
+      targetQty: '총 검사량',
       target: '대상',
       lot: '대상 LOT',
       plan: '적용 기준',
@@ -77,9 +77,9 @@ export const popOqcInspection = {
       '다른 곳에서 작성 중인 회차라 여기서 고칠 수 없습니다. 다시 판정하려면 [재검사 회차 추가]를 누르세요.',
     loading: '검사 결과를 불러오는 중입니다.',
     fields: {
-      accepted: '합격 수량',
-      rejected: '불합격 수량',
-      held: '보류 수량',
+      accepted: '합격량',
+      rejected: '불합격량',
+      held: '보류량',
     },
     quantityInvalid: '0 이상의 숫자만 넣을 수 있습니다(소수점 6자리까지).',
     keypadTitle: '입력',
@@ -130,7 +130,7 @@ export const popOqcInspection = {
       '보류는 LOT 상태를 바꾸지 않습니다. 이 출하작업지시는 판정이 끝날 때까지 출하할 수 없습니다.',
     picking: '이 LOT 을 쓰는 진행 중 피킹이 막히고, 이미 피킹된 수량은 되돌아오지 않습니다.',
     noAmendment: '저장 후에는 고칠 수 없습니다. 바꾸려면 재검사합니다.',
-    dispositionPath: '불합격 수량의 처분(재작업·폐기)은 이 화면에서 정하지 않습니다.',
+    dispositionPath: '불합격량의 처분(재작업·폐기)은 이 화면에서 정하지 않습니다.',
   },
 
   /** 아래 작업 줄 — 꺼진 단추의 이유는 단추에 손을 올리면 보인다(`title`). */

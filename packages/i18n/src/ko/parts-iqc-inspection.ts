@@ -16,7 +16,7 @@ export const partsIqcInspection = {
     inspectedAt: '검사일시',
     inspector: '검사자',
     inspectedQty: '검사 수량',
-    rejectedQty: '불합격 수량',
+    rejectedQty: '불합격량',
     judgment: '판정',
     status: '상태',
     statusOf: { DRAFT: '작성 중', CONFIRMED: '확정' } as Record<string, string>,
