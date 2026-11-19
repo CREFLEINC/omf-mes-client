@@ -217,7 +217,6 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
       fileName: 'Tên tệp',
       lots: 'Số LOT liên kết',
       size: 'Dung lượng',
-      uploadedAt: 'Thời gian đăng ký',
       confirmedAt: 'Thời gian xác nhận',
     },
     empty: 'Chưa có tệp đính kèm.',

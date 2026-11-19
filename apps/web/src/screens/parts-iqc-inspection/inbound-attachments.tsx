@@ -28,7 +28,6 @@ import { runRequest } from '../../patterns/request';
 import {
   ACCEPT,
   attachmentKeys,
-  formatAt,
   precheck,
   sizeText,
 } from '../inspection-documents/attachment-panel';
@@ -101,7 +100,7 @@ const useLotAttachments = (inspectionRequestId: number, lots: readonly Inspectio
 };
 
 /**
- * 검사 결과 상자의 첨부 파일 표(사용자 지시 2026-11-18 · omf-all-around#296) — 파일명 · 연결 LOT · 크기 · 등록 일시,
+ * 검사 결과 상자의 첨부 파일 표(사용자 지시 2026-11-18 · omf-all-around#296) — 파일명 · 연결 LOT · 크기 · 확정 일시,
  * 파일명 옆 단추로 내려받는다. 열 폭 끌기 · 순서 바꾸기는 다른 표와 같다.
  */
 export const InboundAttachmentTable = ({
@@ -204,17 +203,11 @@ export const InboundAttachmentTable = ({
       render: (row) => sizeText(row.first.byteSize),
     },
     {
-      key: 'uploadedAt',
-      header: t.columns.uploadedAt,
-      width: '150px',
-      align: 'center',
-      render: (row) => formatAt(row.first.uploadedAt),
-    },
-    {
       key: 'confirmedAt',
       header: t.columns.confirmedAt,
       width: '150px',
       align: 'center',
+      /* 등록 일시는 보이지 않고 확정 일시만 — 판정을 수정해 다시 확정하면 그 일시로 바뀐다(사용자 지시 2026-11-19). */
       render: () => (confirmedAt === null ? '-' : (formatPlantDateTime(confirmedAt) ?? '-')),
     },
   ];

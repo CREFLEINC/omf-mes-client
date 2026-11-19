@@ -260,7 +260,6 @@ export const iqcInboundLot = {
       fileName: '파일명',
       lots: '연결 LOT 번호',
       size: '크기',
-      uploadedAt: '등록 일시',
       confirmedAt: '확정 일시',
     },
     empty: '첨부한 파일이 없습니다.',
