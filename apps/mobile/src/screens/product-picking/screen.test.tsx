@@ -339,7 +339,7 @@ describe('M-04-01 제품 피킹 — LOT 통째 피킹', () => {
     expect(screen.queryByText('적치 대기')).toBeNull();
   });
 
-  it('R-2·Q2 적치 대기 자리 몫에는 「적치 대기」 칩을 단다', async () => {
+  it('R-2·Q2 적치 대기 자리 몫은 위치 코드(창고 접두가 붙은 시스템 코드) 대신 「적치 대기」로 보인다', async () => {
     const user = userEvent.setup();
     mount([], {
       requests: [
@@ -354,7 +354,7 @@ describe('M-04-01 제품 피킹 — LOT 통째 피킹', () => {
                       warehouseCode: 'A',
                       warehouseName: '창고 A',
                       locationId: 9,
-                      locationCode: 'SYS-STAGING',
+                      locationCode: '89YE-SYS-STAGING',
                       locationSystemRoleCode: 'PUTAWAY_STAGING',
                       qty: 10,
                     },
@@ -368,8 +368,9 @@ describe('M-04-01 제품 피킹 — LOT 통째 피킹', () => {
     });
     await openRequest(user);
 
-    expect(await screen.findByText('창고 A, SYS-STAGING')).toBeTruthy();
+    expect(await screen.findByText('창고 A')).toBeTruthy();
     expect(screen.getByText('적치 대기')).toBeTruthy();
+    expect(screen.queryByText(/SYS-STAGING/)).toBeNull();
   });
 
   it('US1-1 LOT 스캔이 바로 :pick-lot 을 부르고 수량 없이 LOT 번호만 싣는다', async () => {
@@ -555,6 +556,38 @@ describe('M-04-01 제품 피킹 — LOT 통째 피킹', () => {
       expect(seen).toHaveLength(2);
     });
     expect(seen[1]?.headers.get('Idempotency-Key')).toBe(seen[0]?.headers.get('Idempotency-Key'));
+  });
+
+  it('US1-1 전송 실패 띠의 [다시 시도]는 실패한 그 LOT 을 같은 멱등 키로 다시 보낸다(시안 ⑩)', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    let reachable = false;
+    mount([
+      capture(
+        '/logistics/shipment-requests/5/lines/77:pick-lot',
+        'POST',
+        () => {
+          if (!reachable) {
+            throw new TypeError('Failed to fetch');
+          }
+
+          return jsonResponse({ pickedLot: pickedLot(), line: line() });
+        },
+        seen,
+      ),
+    ]);
+    await openRequest(user);
+    await scan(user, 'P2611-0003');
+    const banner = await screen.findByRole('alert', { name: '피킹을 기록하지 못했습니다' });
+
+    reachable = true;
+    await user.click(within(banner).getByRole('button', { name: '다시 시도' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    expect(seen[1]?.headers.get('Idempotency-Key')).toBe(seen[0]?.headers.get('Idempotency-Key'));
+    expect(((await seen[1]?.clone().json()) as { lotNo: string }).lotNo).toBe('P2611-0003');
   });
 
   it('뒤로가기는 연 지시서를 먼저 닫는다', async () => {

@@ -65,7 +65,13 @@ export const LotRow = ({
         <ul className="picking__portions">
           {lot.portions.map((portion) => (
             <li key={`${String(portion.warehouseId)}-${String(portion.locationId)}`}>
-              <span>{t.lot.portion(portion.warehouseName, portion.locationCode)}</span>
+              {/* 적치 대기 자리는 코드(창고 위치 코드 접두가 붙은 시스템 코드, 예 89YE-SYS-STAGING) 대신 칩으로만 말한다(시안). */}
+              <span>
+                {t.lot.portion(
+                  portion.warehouseName,
+                  portion.locationSystemRoleCode === STAGING ? null : portion.locationCode,
+                )}
+              </span>
               {portion.locationSystemRoleCode === STAGING ? (
                 <Chip status="warning">{t.lot.staging}</Chip>
               ) : null}

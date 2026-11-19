@@ -92,7 +92,16 @@ const useKeyRing = () => {
   };
 };
 
-const NoticeBanner = ({ notice, uomOf }: { notice: Notice; uomOf: (uomId: number) => string }) => {
+const NoticeBanner = ({
+  notice,
+  uomOf,
+  onRetry,
+}: {
+  notice: Notice;
+  uomOf: (uomId: number) => string;
+  /** 전송 실패 띠의 [다시 시도] — 그 LOT 을 같은 멱등 키로 다시 보낸다. */
+  onRetry: (lotNo: string) => void;
+}) => {
   if (notice.kind === 'picked') {
     const { pickedLot, line } = notice.result;
     const tiles = lineTiles(line);
@@ -169,7 +178,12 @@ const NoticeBanner = ({ notice, uomOf }: { notice: Notice; uomOf: (uomId: number
       ) : null}
       {rejection.kind === 'notFound' ? <p>{t.rejected.notFoundDetail}</p> : null}
       {rejection.kind === 'failed' ? (
-        <p>{t.rejected.failedDetail}</p>
+        <>
+          <p>{t.rejected.failedDetail}</p>
+          <Button variant="outlined" onClick={() => onRetry(notice.lotNo)}>
+            {t.rejected.retry}
+          </Button>
+        </>
       ) : (
         <p>{t.rejected.notPicked}</p>
       )}
@@ -558,7 +572,13 @@ export const ProductPickingScreen = () => {
           </Button>
         )}
         {pick.isPending ? <p role="status">{t.scan.pending(pick.variables.lotNo)}</p> : null}
-        {notice === null ? null : <NoticeBanner notice={notice} uomOf={uomOf} />}
+        {notice === null ? null : (
+          <NoticeBanner
+            notice={notice}
+            uomOf={uomOf}
+            onRetry={(lotNo) => void pickScanned(lotNo)}
+          />
+        )}
         {rejectedLot === undefined || notice?.kind === 'replaced' ? null : (
           <AlertBanner variant="error" title={t.replace.rejectedNotice}>
             {t.line.title(rejectedLot.line.lineNo, itemCodeOf(rejectedLot.line.itemId))},{' '}

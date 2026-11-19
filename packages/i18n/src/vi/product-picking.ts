@@ -97,6 +97,7 @@ export const productPicking: Translated<typeof ko.productPicking> = {
     notFoundDetail: 'Hãy kiểm tra số và quét lại',
     failed: 'Không ghi nhận được việc lấy hàng',
     failedDetail: 'Hãy kiểm tra kết nối rồi quét lại cùng LOT đó. Sẽ không bị ghi hai lần',
+    retry: 'Thử lại',
   },
   replace: {
     confirmTitle: (lotNo: string) => `Thay thế ${lotNo}?`,

@@ -110,6 +110,8 @@ export const productPicking = {
     notFoundDetail: '번호를 확인하고 다시 스캔하세요',
     failed: '피킹을 기록하지 못했습니다',
     failedDetail: '연결을 확인하고 같은 LOT 을 다시 스캔하세요. 두 번 기록되지 않습니다',
+    /** 전송 실패 띠의 단추 — 실패한 그 LOT 을 같은 멱등 키로 다시 보낸다(시안 ⑩). */
+    retry: '다시 시도',
   },
   replace: {
     confirmTitle: (lotNo: string) => `${lotNo} 을 교체할까요?`,
