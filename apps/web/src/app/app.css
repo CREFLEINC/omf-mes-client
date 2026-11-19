@@ -36950,3 +36950,8 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   flex-direction: column;
   gap: var(--space-3);
 }
+
+/* 파일 안내(형식 · 크기 제한)는 한 줄로 — 공용 안내 폭 제한(20rem)을 풀어 준다(사용자 지시 2026-11-19 · omf-all-around#296). */
+.iqc-inbound-attach-dialog .field-note {
+  max-width: none;
+}
