@@ -248,7 +248,6 @@ export const iqcInboundLot = {
     removeFile: (name: string) => `${name} 제거`,
     fileRequired: '첨부할 파일을 고르세요',
     lotHeading: '연결할 자재 관리 LOT',
-    lotRequired: '자재 관리 LOT를 1개 이상 고르세요',
     cancel: '취소',
     save: '저장',
     saved: (count: number) => `파일 ${count}개를 첨부했습니다.`,

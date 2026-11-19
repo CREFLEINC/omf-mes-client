@@ -30415,7 +30415,8 @@ export interface paths {
             | 'BREAKDOWN'
             | 'LOT'
             | 'INSPECTION_RESULT'
-            | 'INSPECTION_PLAN_VERSION';
+            | 'INSPECTION_PLAN_VERSION'
+            | 'INSPECTION_REQUEST';
           targetId?: number;
         };
         header?: never;
@@ -30469,7 +30470,12 @@ export interface paths {
              * @example WAREHOUSE
              * @enum {string}
              */
-            targetTypeCode: 'WAREHOUSE' | 'NOTICE' | 'LOT' | 'INSPECTION_RESULT';
+            targetTypeCode:
+              | 'WAREHOUSE'
+              | 'NOTICE'
+              | 'LOT'
+              | 'INSPECTION_RESULT'
+              | 'INSPECTION_REQUEST';
             /** Format: int64 */
             targetId: number;
             /** Format: binary */
@@ -59913,7 +59919,8 @@ export interface components {
         | 'BREAKDOWN'
         | 'LOT'
         | 'INSPECTION_RESULT'
-        | 'INSPECTION_PLAN_VERSION';
+        | 'INSPECTION_PLAN_VERSION'
+        | 'INSPECTION_REQUEST';
       /**
        * Format: int64
        * @example 1001

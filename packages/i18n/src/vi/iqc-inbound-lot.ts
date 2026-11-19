@@ -206,7 +206,6 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
     removeFile: (name: string) => `Bỏ ${name}`,
     fileRequired: 'Hãy chọn tệp đính kèm',
     lotHeading: 'LOT quản lý vật tư liên kết',
-    lotRequired: 'Hãy chọn ít nhất 1 LOT quản lý vật tư',
     cancel: 'Hủy',
     save: 'Lưu',
     saved: (count: number) => `Đã đính kèm ${count} tệp.`,

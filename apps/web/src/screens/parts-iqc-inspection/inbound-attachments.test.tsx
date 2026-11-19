@@ -65,7 +65,12 @@ describe('IQC 입하 LOT 파일 첨부', () => {
     ]);
     let closed = false;
     renderWithProviders(
-      <InboundAttachDialog lots={LOTS} uomCode="EA" onClose={() => (closed = true)} />,
+      <InboundAttachDialog
+        inspectionRequestId={501}
+        lots={LOTS}
+        uomCode="EA"
+        onClose={() => (closed = true)}
+      />,
       { fetch, session: null },
     );
 
@@ -89,15 +94,30 @@ describe('IQC 입하 LOT 파일 첨부', () => {
     ]);
   });
 
-  it('LOT 를 모두 빼면 저장하지 않는다', async () => {
+  it('LOT 를 모두 빼고 저장하면 검사 의뢰에 한 번 붙인다(omf-all-around#296)', async () => {
     const user = userEvent.setup();
-    const fetch = createStubFetch([]);
-    renderWithProviders(
-      <InboundAttachDialog lots={LOTS} uomCode="EA" onClose={() => undefined} />,
+    const posted: { targetTypeCode: string; targetId: string }[] = [];
+    const fetch = createStubFetch([
       {
-        fetch,
-        session: null,
+        match: (request) => request.method === 'POST' && path(request) === '/app/attachments',
+        respond: async (request) => {
+          const body = await request.clone().text();
+          const field = (name: string): string =>
+            new RegExp(`name="${name}"\\r\\n\\r\\n([^\\r\\n]*)`).exec(body)?.[1] ?? '';
+          posted.push({ targetTypeCode: field('targetTypeCode'), targetId: field('targetId') });
+          return jsonResponse(attachment(1, 501, 'report.pdf'), { status: 201 });
+        },
       },
+    ]);
+    let closed = false;
+    renderWithProviders(
+      <InboundAttachDialog
+        inspectionRequestId={501}
+        lots={LOTS}
+        uomCode="EA"
+        onClose={() => (closed = true)}
+      />,
+      { fetch, session: null },
     );
 
     const dialog = await screen.findByRole('dialog', { name: t.title });
@@ -109,7 +129,9 @@ describe('IQC 입하 LOT 파일 첨부', () => {
       within(dialog).getByRole('button', { name: messages.iqcInboundLot.drawer.selectNone }),
     );
     await user.click(within(dialog).getByRole('button', { name: t.save }));
-    expect(await within(dialog).findByText(t.lotRequired)).toBeInTheDocument();
+
+    await waitFor(() => expect(closed).toBe(true));
+    expect(posted).toEqual([{ targetTypeCode: 'INSPECTION_REQUEST', targetId: '501' }]);
   });
 
   it('표는 여러 LOT 에 붙은 같은 파일을 한 줄로 모아 연결 LOT 를 함께 보인다', async () => {
@@ -117,7 +139,10 @@ describe('IQC 입하 LOT 파일 첨부', () => {
       {
         match: (request) => request.method === 'GET' && path(request) === '/app/attachments',
         respond: (request) => {
-          const targetId = Number(new URL(request.url).searchParams.get('targetId'));
+          const params = new URL(request.url).searchParams;
+          const targetId = Number(params.get('targetId'));
+          if (params.get('targetTypeCode') === 'INSPECTION_REQUEST')
+            return jsonResponse({ items: [attachment(20, 501, 'summary.xlsx')] });
           return jsonResponse({
             items:
               targetId === 3
@@ -127,14 +152,19 @@ describe('IQC 입하 LOT 파일 첨부', () => {
         },
       },
     ]);
-    renderWithProviders(<InboundAttachmentTable lots={LOTS} />, { fetch, session: null });
+    renderWithProviders(<InboundAttachmentTable inspectionRequestId={501} lots={LOTS} />, {
+      fetch,
+      session: null,
+    });
 
     const table = await screen.findByRole('table', { name: t.tableTitle });
-    await waitFor(() => expect(within(table).getAllByRole('row')).toHaveLength(3));
+    await waitFor(() => expect(within(table).getAllByRole('row')).toHaveLength(4));
     const report = within(table).getByText('report.pdf').closest('tr') as HTMLElement;
     expect(report).toHaveTextContent('0001');
     expect(report).toHaveTextContent('0002');
     expect(report).not.toHaveTextContent('0003');
-    expect(screen.getByText(t.count(2))).toBeInTheDocument();
+    /* LOT 없이 검사 의뢰에 붙은 파일은 연결 LOT 번호 칸이 「-」. */
+    expect(within(table).getByText('summary.xlsx').closest('tr')).toHaveTextContent('-');
+    expect(screen.getByText(t.count(3))).toBeInTheDocument();
   });
 });

@@ -488,6 +488,7 @@ export const InboundDetail = ({
                       }}
                     />
                     <InboundAttachmentTable
+                      inspectionRequestId={inspectionRequestId}
                       lots={lots}
                       action={
                         /* 파일 첨부 — 첨부 파일 표 위 오른쪽. 대기 · 진행 중에만, 판정 확정(완료) 뒤에는 감춘다(사용자 지시 2026-11-19 · omf-all-around#296). */
@@ -612,6 +613,7 @@ export const InboundDetail = ({
 
                   {attachOpen && (
                     <InboundAttachDialog
+                      inspectionRequestId={inspectionRequestId}
                       lots={lots}
                       uomCode={uomCode}
                       onClose={() => setAttachOpen(false)}

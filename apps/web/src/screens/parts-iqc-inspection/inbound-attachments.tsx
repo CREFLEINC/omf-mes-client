@@ -56,29 +56,39 @@ const fileKeyOf = (row: Attachment): string =>
     row.uploadedAt.slice(0, 16),
   ].join('|');
 
-/** 이 입하 LOT 의 자재 관리 LOT 첨부 전부 — LOT 마다 같은 캐시(`attachmentKeys`)를 쓴다. */
-const useLotAttachments = (lots: readonly InspectionLotForward[]) => {
+/**
+ * 이 입하 LOT 의 첨부 전부 — 자재 관리 LOT 마다 붙은 것과, LOT 을 고르지 않아 검사 의뢰에 붙은 것(omf-all-around#296).
+ * 대상마다 같은 캐시(`attachmentKeys`)를 쓴다.
+ */
+const useLotAttachments = (inspectionRequestId: number, lots: readonly InspectionLotForward[]) => {
   const { client } = useApiClient();
+  const targets: { type: 'LOT' | 'INSPECTION_REQUEST'; id: number; lotNo: string | null }[] = [
+    { type: 'INSPECTION_REQUEST', id: inspectionRequestId, lotNo: null },
+    ...lots.map((lot) => ({ type: 'LOT' as const, id: lot.lotId, lotNo: lot.lotNo })),
+  ];
   const queries = useQueries({
-    queries: lots.map((lot) => ({
-      queryKey: attachmentKeys.list('LOT', lot.lotId),
+    queries: targets.map((target) => ({
+      queryKey: attachmentKeys.list(target.type, target.id),
       queryFn: () =>
         runRequest(() =>
           client.GET('/app/attachments', {
-            params: { query: { targetTypeCode: 'LOT', targetId: lot.lotId } },
+            params: { query: { targetTypeCode: target.type, targetId: target.id } },
           }),
         ).then((response) => response.items),
     })),
   });
   const rows = new Map<string, FileRow>();
   queries.forEach((query, index) => {
-    const lot = lots[index];
-    if (lot === undefined) return;
+    const target = targets[index];
+    if (target === undefined) return;
     for (const item of query.data ?? []) {
-      const key = fileKeyOf(item);
+      /* 검사 의뢰에 붙은 것은 LOT 연결이 없다 — 같은 파일이라도 따로 한 줄. */
+      const key = target.lotNo === null ? `request|${String(item.attachmentId)}` : fileKeyOf(item);
       const row = rows.get(key);
-      if (row === undefined) rows.set(key, { key, first: item, lotNos: [lot.lotNo] });
-      else if (!row.lotNos.includes(lot.lotNo)) row.lotNos.push(lot.lotNo);
+      if (row === undefined)
+        rows.set(key, { key, first: item, lotNos: target.lotNo === null ? [] : [target.lotNo] });
+      else if (target.lotNo !== null && !row.lotNos.includes(target.lotNo))
+        row.lotNos.push(target.lotNo);
     }
   });
 
@@ -94,15 +104,17 @@ const useLotAttachments = (lots: readonly InspectionLotForward[]) => {
  * 파일명 옆 단추로 내려받는다. 열 폭 끌기 · 순서 바꾸기는 다른 표와 같다.
  */
 export const InboundAttachmentTable = ({
+  inspectionRequestId,
   lots,
   action,
 }: {
+  inspectionRequestId: number;
   lots: readonly InspectionLotForward[];
   /** 제목 줄 오른쪽 단추([파일 첨부]). */
   action?: ReactNode;
 }) => {
   const { client } = useApiClient();
-  const list = useLotAttachments(lots);
+  const list = useLotAttachments(inspectionRequestId, lots);
   const [notice, setNotice] = useState<string | null>(null);
 
   const download = async (row: Attachment): Promise<void> => {
@@ -150,13 +162,17 @@ export const InboundAttachmentTable = ({
       header: t.columns.lots,
       width: '220px',
       align: 'center',
-      render: (row) => (
-        <span className="iqc-inbound-attach-lots">
-          {row.lotNos.map((lotNo) => (
-            <LotNo key={lotNo} lotNo={lotNo} />
-          ))}
-        </span>
-      ),
+      render: (row) =>
+        /* LOT 을 고르지 않고 올린 파일 — 연결 LOT 없음. */
+        row.lotNos.length === 0 ? (
+          '-'
+        ) : (
+          <span className="iqc-inbound-attach-lots">
+            {row.lotNos.map((lotNo) => (
+              <LotNo key={lotNo} lotNo={lotNo} />
+            ))}
+          </span>
+        ),
     },
     {
       key: 'size',
@@ -222,13 +238,16 @@ export const InboundAttachmentTable = ({
 
 /**
  * [파일 첨부] 창(사용자 지시 2026-11-18 · omf-all-around#296) — 파일을 고르고 연결할 자재 관리 LOT 를 골라 [저장]. 파일 하나를 고른
- * LOT 마다 붙인다(서버는 요청 하나에 파일 하나 · 대상 하나). 중간에 실패하면 올라간 것은 기억해 다시 [저장]할 때 남은 것만 보낸다.
+ * LOT 마다 붙인다(서버는 요청 하나에 파일 하나 · 대상 하나). LOT 고르기는 선택이다 — 고르지 않으면 검사 의뢰(입하 LOT)에 붙인다
+ * (사용자 지시 2026-11-19). 중간에 실패하면 올라간 것은 기억해 다시 [저장]할 때 남은 것만 보낸다.
  */
 export const InboundAttachDialog = ({
+  inspectionRequestId,
   lots,
   uomCode,
   onClose,
 }: {
+  inspectionRequestId: number;
   lots: readonly InspectionLotForward[];
   uomCode: string;
   onClose: () => void;
@@ -259,22 +278,26 @@ export const InboundAttachDialog = ({
   };
 
   const fileError = tried && files.length === 0 ? t.fileRequired : null;
-  const lotError = tried && lotIds.length === 0 ? t.lotRequired : null;
   const hasPrecheckError = files.some((file) => precheck(file) !== null);
 
   const save = async (): Promise<void> => {
     setTried(true);
-    if (files.length === 0 || lotIds.length === 0 || hasPrecheckError) return;
+    if (files.length === 0 || hasPrecheckError) return;
+    /* LOT 을 고르지 않았으면 검사 의뢰 하나에 붙인다. */
+    const targets: { type: 'LOT' | 'INSPECTION_REQUEST'; id: number }[] =
+      lotIds.length === 0
+        ? [{ type: 'INSPECTION_REQUEST', id: inspectionRequestId }]
+        : lotIds.map((lotId) => ({ type: 'LOT', id: lotId }));
     setSaving(true);
     setFailed(false);
     let ok = true;
     for (const file of files) {
-      for (const lotId of lotIds) {
-        const key = `${fileId(file)}@${String(lotId)}`;
+      for (const target of targets) {
+        const key = `${fileId(file)}@${target.type}:${String(target.id)}`;
         if (sent.current.has(key)) continue;
         const form = new FormData();
-        form.append('targetTypeCode', 'LOT');
-        form.append('targetId', String(lotId));
+        form.append('targetTypeCode', target.type);
+        form.append('targetId', String(target.id));
         form.append('file', file);
         const result = await client.POST('/app/attachments', {
           params: { header: { 'Idempotency-Key': createIdempotencyKey() } },
@@ -288,11 +311,14 @@ export const InboundAttachDialog = ({
       }
       if (!ok) break;
     }
-    await Promise.all(
-      lots.map((lot) =>
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: attachmentKeys.list('INSPECTION_REQUEST', inspectionRequestId),
+      }),
+      ...lots.map((lot) =>
         queryClient.invalidateQueries({ queryKey: attachmentKeys.list('LOT', lot.lotId) }),
       ),
-    );
+    ]);
     setSaving(false);
     if (!ok) {
       setFailed(true);
@@ -397,8 +423,8 @@ export const InboundAttachDialog = ({
           uomCode={uomCode}
           value={lotIds}
           heading={t.lotHeading}
+          required={false}
           disabled={saving}
-          error={lotError}
           onChange={setLotIds}
         />
         {failed ? <AlertBanner variant="error">{t.failed}</AlertBanner> : null}
