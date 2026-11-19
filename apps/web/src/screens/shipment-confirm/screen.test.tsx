@@ -323,6 +323,17 @@ describe('ShipmentConfirmScreen — W-04-12 출하 내역', () => {
     expect(cancelRequests()[0]?.headers.get('If-Match')).toBe('"v101"');
   });
 
+  it('FR-023·Q14 송신 오류 출하도 취소를 요청할 수 있다 — 안내는 「아직 ERP 에 반영되지 않았으면 취소할 수 있다」', async () => {
+    const { user } = renderScreen();
+    await openDetail(user, 'SYN-SH-107');
+
+    expect(
+      within(detailPane()).getByRole('button', { name: t.actions.requestCancel }),
+    ).toBeEnabled();
+    expect(within(detailPane()).getByText(t.detail.erpMessage.SEND_ERROR)).toBeInTheDocument();
+    expect(within(detailPane()).getByText(t.cancelNote)).toBeInTheDocument();
+  });
+
   it('US7-4 수주 없이 나간 출하(송신 안 함)도 취소를 요청할 수 있다', async () => {
     const { user } = renderScreen();
     await openDetail(user, 'SYN-SH-102');

@@ -30,14 +30,14 @@ export const flowOf = (row: ShipmentRow): ShipmentFlow => {
 export const canConfirm = (row: ShipmentRow): boolean => row.statusCode === 'UNCONFIRMED';
 
 export type CancelLock =
-  'sent' | 'cancelPending' | 'cancelApproved' | 'sendError' | 'confirmedLegacy' | 'cancelled';
+  'sent' | 'cancelPending' | 'cancelApproved' | 'confirmedLegacy' | 'cancelled';
 
 /**
  * 취소 요청을 막는 이유. 막지 않으면 `null`.
  *
  * - 미확정(옛 흐름·긴급 직행): 지금처럼 확정 전에는 요청할 수 있다.
- * - POP 완료 출하: ERP 로 보내기 «전»(대기 · 송신 안 함)이면 요청할 수 있다(FR-023).
- *   보냈으면 「ERP 에서 처리」, 송신 오류는 이번 범위에서 정하지 않아 담당자 문의로 잠근다.
+ * - POP 완료 출하: ERP 로 보내기 «전»(대기 · 송신 안 함 · 송신 오류)이면 요청할 수 있다(FR-023 · 2026-11-19 사용자 결정).
+ *   보냈으면 「ERP 에서 처리」. 송신 오류라도 ERP 에 들어간 행이 있으면 서버가 409 `ERP_ALREADY_SENT` 로 막고 화면은 그 이유를 보인다.
  * - 열린 취소 결재가 있으면 다시 올리지 않는다(FR-024).
  */
 export const cancelLockOf = (row: ShipmentRow, cancelApproved = false): CancelLock | null => {
@@ -52,9 +52,8 @@ export const cancelLockOf = (row: ShipmentRow, cancelApproved = false): CancelLo
   switch (row.erpSendStatus) {
     case 'PENDING':
     case 'NOT_SENT_NO_SALES_ORDER':
-      return null;
     case 'SEND_ERROR':
-      return 'sendError';
+      return null;
     case 'CANCELLED':
       return 'cancelled';
     default:

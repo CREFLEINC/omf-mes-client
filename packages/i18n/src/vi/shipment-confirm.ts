@@ -114,7 +114,8 @@ export const shipmentConfirm: Translated<typeof ko.shipmentConfirm> = {
         'Chưa xác nhận. Khi xác nhận, phiếu sẽ được đưa vào hàng đợi gửi ERP — không gửi ngay lập tức.',
       PENDING: 'Chưa gửi sang ERP. Ở lần gửi tiếp theo, các dòng có đơn bán hàng sẽ được gửi.',
       SENT: 'Đã gửi sang ERP.',
-      SEND_ERROR: 'Gửi sang ERP không thành công. Hãy liên hệ người phụ trách.',
+      SEND_ERROR:
+        'Gửi sang ERP không thành công nên chưa được phản ánh vào ERP. Có thể yêu cầu hủy — khi việc hủy được thực thi, lần gửi này sẽ không thử lại.',
       NOT_SENT_NO_SALES_ORDER: 'Lô xuất hàng không có đơn bán hàng nên không gửi sang ERP.',
       CANCELLED: 'Lô xuất hàng đã bị hủy. Phần chờ gửi ERP cũng đã bị xóa.',
     },
@@ -134,7 +135,7 @@ export const shipmentConfirm: Translated<typeof ko.shipmentConfirm> = {
     HELD: 'Tạm giữ',
   },
   cancelNote:
-    'Chỉ có thể hủy trước khi gửi sang ERP. Khi việc hủy được duyệt, hãy thực thi bằng [Thực thi hủy] trên màn hình này.',
+    'Chỉ có thể hủy trước khi gửi sang ERP (kể cả khi gửi lỗi). Khi việc hủy được duyệt, hãy thực thi bằng [Thực thi hủy] trên màn hình này.',
   actions: {
     confirm: 'Xác nhận',
     requestCancel: 'Yêu cầu hủy',
@@ -143,7 +144,6 @@ export const shipmentConfirm: Translated<typeof ko.shipmentConfirm> = {
   lock: {
     sent: 'Đã gửi sang ERP rồi. Hãy xử lý ở phía ERP',
     cancelPending: 'Yêu cầu hủy đang chờ phê duyệt',
-    sendError: 'Lô xuất hàng này bị lỗi gửi ERP. Hãy liên hệ người phụ trách',
     confirmedLegacy: 'Sau khi xác nhận thì không thể hủy',
     cancelled: 'Lô xuất hàng đã bị hủy',
     running: 'Đang xử lý xác nhận',

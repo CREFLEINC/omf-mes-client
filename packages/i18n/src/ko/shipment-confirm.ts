@@ -126,7 +126,8 @@ export const shipmentConfirm = {
         '확정 전입니다. 확정하면 ERP 전표 송신이 대기열에 실립니다 — 즉시 전송이 아닙니다.',
       PENDING: '아직 ERP 로 보내지 않았습니다. 다음 송신 때 수주 연결 라인이 나갑니다.',
       SENT: 'ERP 로 보냈습니다.',
-      SEND_ERROR: 'ERP 송신에 실패했습니다. 담당자에게 문의하세요.',
+      SEND_ERROR:
+        'ERP 송신에 실패해 아직 ERP 에 반영되지 않았습니다. 취소를 요청할 수 있습니다 — 취소가 실행되면 이 송신은 다시 시도하지 않습니다.',
       NOT_SENT_NO_SALES_ORDER: '수주 없이 나간 출하라 ERP 로 보내지 않습니다.',
       CANCELLED: '취소된 출하입니다. ERP 송신 대기도 지워졌습니다.',
     },
@@ -148,7 +149,7 @@ export const shipmentConfirm = {
   },
   /** 취소는 ERP 로 보내기 전에만 된다 — 그 사실을 취소 요청 옆에 둔다. */
   cancelNote:
-    'ERP 로 보내기 전에만 취소할 수 있습니다. 취소가 승인되면 이 화면에서 [취소 실행]으로 실행합니다.',
+    'ERP 로 보내기 전(송신 오류 포함)에만 취소할 수 있습니다. 취소가 승인되면 이 화면에서 [취소 실행]으로 실행합니다.',
   actions: {
     confirm: '확정',
     requestCancel: '취소 요청',
@@ -157,7 +158,6 @@ export const shipmentConfirm = {
   lock: {
     sent: 'ERP 로 이미 보냈습니다. ERP 에서 처리하세요',
     cancelPending: '취소 요청이 결재 중입니다',
-    sendError: 'ERP 송신 오류가 난 출하입니다. 담당자에게 문의하세요',
     confirmedLegacy: '확정 후에는 취소할 수 없습니다',
     cancelled: '취소된 출하입니다',
     running: '확정을 처리하는 중입니다',
