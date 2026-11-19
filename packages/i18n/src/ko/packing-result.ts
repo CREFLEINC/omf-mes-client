@@ -27,13 +27,13 @@ export const packingResult = {
     unassigned: '미구성 상자',
     /** 확정할 수 없는 출하 카드의 표식 — 흐리게 잠기고 고를 수 없다. */
     blockedChip: '확정 불가',
-    status: '상태',
+    status: '확정 불가 사유',
     /** 미포장 배분이 없다 — 창고·담을 LOT 이 모두 그 배분에서 오므로 확정할 수 없다. */
     noLots: '포장할 LOT이 남아 있지 않습니다',
   },
   band: {
     label: '포장 정보',
-    shipment: '출하 대상',
+    shipment: '출하번호',
     type: '포장 유형',
     unitNo: '포장 번호',
     unassigned: '미구성 상자',
@@ -123,7 +123,7 @@ export const packingResult = {
     title: '포장을 확정할까요?',
     shipment: '출하번호',
     type: '포장 유형',
-    contents: '내용물',
+    contents: '포장 내용물',
     lotCount: (count: number): string => `LOT ${count}건`,
     lotCountWithQty: (count: number, qty: string): string => `LOT ${count}건 · 수량 ${qty}`,
     labelNotice: '확정 시 포장 라벨이 바로 인쇄됩니다.',

@@ -20,7 +20,7 @@ export const materialInputScan = {
   band: {
     title: '작업지시 (W/O)',
     process: '공정',
-    item: '제품',
+    item: '품목',
     planQty: '계획량',
     mold: '금형',
   },
@@ -35,10 +35,10 @@ export const materialInputScan = {
    */
   pairs: {
     /** 정보 영역의 「라벨 값」 쌍(C-21). 투입량의 값은 「투입량 / 불출량」이다(PI-33). */
-    lotLabel: 'LOT',
+    lotLabel: 'LOT 번호',
     progressLabel: '투입량',
     /** 수령 일시 — 목록 정렬 기준(사용자 지시 2026-11-19). 받지 않은(스캔만 한) 자재에는 두지 않는다. */
-    receivedAtLabel: '수령',
+    receivedAtLabel: '수령일시',
     progress: (recorded: string, issued: string | null, uom: string): string =>
       `${recorded}${issued === null ? '' : ` / ${issued}`}${uom === '' ? '' : ` ${uom}`}`,
   },

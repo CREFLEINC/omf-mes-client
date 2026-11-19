@@ -20,9 +20,9 @@ export const repackLabelIssue = {
   pending: {
     sectionLabel: '발행 대기',
     caption: '라벨을 아직 발행하지 않은 신규 포장',
-    newColumn: '새 포장',
-    remainderColumn: '잔량',
-    occurredColumn: '확정 시각',
+    newColumn: '새 포장 수',
+    remainderColumn: '잔량 포장 번호',
+    occurredColumn: '확정일시',
     /** 합병은 원 포장이 여럿이다 — 도면이 `CTN-…-0088+89` 로 잇는다. */
     sourceJoin: '+',
     newCount: (count: number): string => `${count}건`,
@@ -77,7 +77,7 @@ export const repackLabelIssue = {
     empty: '현재 발행을 기다리는 포장이 없습니다.',
     loadFailed: '발행 대기 목록을 불러오지 못했습니다.',
     /** 목록 위 찾기 칸 — 넣는 대로 목록이 줄어든다(#295 시안). */
-    searchPlaceholder: '포장 번호 또는 원 포장',
+    searchPlaceholder: '포장 번호 또는 기존 포장 번호',
     /** 찾기 칸을 누르면 뜨는 창의 제목. */
     searchTitle: '포장 검색',
     searchEmpty: '찾는 포장이 없습니다.',
@@ -88,7 +88,7 @@ export const repackLabelIssue = {
     reissueEmpty: '재발행할 포장이 없습니다.',
     reissueLoadFailed: '재발행 목록을 불러오지 못했습니다.',
     /** 재발행 목록 줄의 발행 횟수. */
-    issuedColumn: '발행',
+    issuedColumn: '출력 횟수',
     issuedCount: (count: number): string => `${String(count)}회`,
     /** 재발행 탭의 포장 라벨 스캔 칸. */
     scanLabel: '포장 번호',
@@ -127,7 +127,7 @@ export const repackLabelIssue = {
   /** 대상 포장 구획 — 무엇에 붙일 라벨인가. */
   handlingUnit: {
     sectionLabel: '대상 포장',
-    typeLabel: '유형',
+    typeLabel: '포장 유형',
     contentsLabel: '포장 내용물',
     unknownValue: '—',
     /*
@@ -146,9 +146,9 @@ export const repackLabelIssue = {
     /** 정보 띠(#295 시안) — 새 포장 번호 · 구분 · 원 포장 · 유형 · 확정 시각. */
     bandLabel: '대상 포장 정보',
     newNoLabel: '새 포장 번호',
-    repackTypeLabel: '구분',
-    sourceLabel: '원 포장',
-    occurredLabel: '확정 시각',
+    repackTypeLabel: '재구성 유형',
+    sourceLabel: '기존 포장 번호',
+    occurredLabel: '확정일시',
     /** 포장 내용물 한 줄 — 많으면 「외 N건」. */
     moreContents: (count: number): string => `외 ${String(count)}건`,
     /** 한 포장에 LOT 이 여럿이어도 라벨은 포장 단위 한 장이다(스펙 §4-B — 대상 LOT 을 비운다). */
@@ -168,10 +168,10 @@ export const repackLabelIssue = {
     remainderNumberNote: '기존 번호 유지 · 수량 변경 시에만',
     /** 인쇄 대상 표(#295 시안 — 자재 관리 LOT 라벨과 같은 표). */
     colPick: '선택',
-    colLabel: '라벨',
-    colNo: '번호',
-    colBody: '내용',
-    colIssued: '발행',
+    colLabel: '라벨 종류',
+    colNo: '포장 번호',
+    colBody: '포장 내용물',
+    colIssued: '출력 유무',
     newLabelName: '새 포장 라벨',
     remainderName: '잔량 라벨 재인쇄',
     /** 새 포장 줄의 내용 — 유형 · LOT 수 · (단위가 하나면) 수량. */
@@ -188,7 +188,7 @@ export const repackLabelIssue = {
     targetRequired: '인쇄할 라벨을 하나 이상 선택하세요.',
     summaryLoading: '발행 현황을 확인하는 중입니다.',
     summaryFailed: '발행 현황을 불러오지 못했습니다. 사유 입력이 필요한지 알 수 없습니다.',
-    lastIssuedAt: '마지막 발행',
+    lastIssuedAt: '최근 출력일시',
 
     reasonLabel: '재인쇄 사유',
     reasonPlaceholder: '사유를 고르세요',

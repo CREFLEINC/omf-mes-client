@@ -10,7 +10,7 @@ export const toolUsage = {
   band: {
     title: '작업지시 (W/O)',
     process: '공정',
-    item: '제품',
+    item: '품목',
     planQty: '계획량',
   },
 
@@ -28,7 +28,7 @@ export const toolUsage = {
     /** QR 이 안 읽힐 때의 폴백. 같은 칸에 손으로 친다 — 스캐너와 입력 자리를 나누지 않는다. */
     /** 다른 POP 화면과 같은 이름(사용자 지시 2026-09-17). */
     cavity: '캐비티',
-    mold: '금형',
+    mold: '금형 코드',
     moldName: '금형명',
     empty: '금형 QR을 스캔하세요',
     nextHint: '다음 실적은 금형 QR부터 스캔합니다.',
@@ -41,7 +41,7 @@ export const toolUsage = {
     inputLabel: '타발수',
     unit: '회',
     convertedLabel: '생산량으로 타발수 계산',
-    baseQtyLabel: '수량',
+    baseQtyLabel: '생산량',
     /** 환산이 어떻게 나온 값인지 식 그대로 보인다 — 「수량 500 × 2.5 = 1,250 회」 */
     convertedExpression: (baseQty: string, ratio: string, shots: string) =>
       `수량 ${baseQty} × ${ratio} = ${shots} 회 · 가장 가까운 정수로 맞춥니다`,
@@ -57,7 +57,7 @@ export const toolUsage = {
     current: '현재 누계',
     increment: '이번 입력',
     projected: '저장 후 예상 누계',
-    available: '사용 가능',
+    available: '잔여 타발수',
     /** 누계를 언제 받은 값인지. 서버가 시각을 주지 않아 «화면이 받은 시각»을 적는다. */
     asOf: (time: string) => `${time} 기준`,
     usageLabel: '적정타수 대비 사용률',

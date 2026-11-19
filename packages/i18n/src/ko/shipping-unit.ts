@@ -34,9 +34,9 @@ export const shippingUnit = {
     failed: '마감한 출하 단위를 불러오지 못했습니다.',
     empty: '마감한 출하 단위가 없습니다',
     chip: '마감',
-    shipment: '출하',
+    shipment: '출하번호',
     boxes: (count: number): string => `상자 ${String(count)}개`,
-    closedAt: '마감',
+    closedAt: '마감일시',
     pick: '출하 단위를 선택하세요',
     pickHint: '왼쪽 「구성 완료」 목록에서 단위를 누르면 마감 결과를 봅니다.',
   },
@@ -49,16 +49,16 @@ export const shippingUnit = {
   },
 
   band: {
-    shipment: '출하',
-    type: '유형',
-    unit: '출하 단위',
+    shipment: '출하번호',
+    type: '출하 단위 유형',
+    unit: '출하 단위 번호',
     unassigned: '미구성 상자',
     closedAt: '마감일시',
     count: (count: number): string => `${String(count)}개`,
   },
 
   unit: {
-    typeLabel: '유형',
+    typeLabel: '출하 단위 유형',
     failed: '출하 단위를 만들지 못했습니다.',
   },
 

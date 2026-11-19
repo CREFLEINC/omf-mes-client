@@ -132,7 +132,7 @@ export const downtimeRegister = {
     columns: {
       interval: '시각',
       duration: '비가동 시간',
-      reason: '사유',
+      reason: '비가동 사유',
       remarks: '메모',
     },
     /** 오프라인 집계의 범위를 이름으로 말한다(스펙 §6-2 · §9-3). */

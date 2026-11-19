@@ -25,7 +25,7 @@ export const workHoldRegister = {
   band: {
     title: '작업지시 (W/O)',
     process: '공정',
-    item: '제품',
+    item: '품목',
     planQty: '계획량',
   },
 
@@ -34,8 +34,8 @@ export const workHoldRegister = {
     /** 세션이 없을 때 「현재 세션」 구획의 빈 모양. */
     empty: '진행 중인 작업 세션이 없습니다.',
     sessionNo: (no: number) => `세션 #${String(no)}`,
-    startedLabel: '시작',
-    elapsedLabel: '경과',
+    startedLabel: '시작일시',
+    elapsedLabel: '경과 시간',
     loading: '세션을 확인하는 중입니다.',
     loadFailed: '현재 세션을 불러오지 못했습니다.',
     /** ⛔ 진입 차단 — 세션이 없으면 중단을 기록할 수 없다(스펙 §6). */
