@@ -18267,61 +18267,6 @@ dialog.layout-editor-dialog {
 }
 
 /*
- * POP 화면 한 벌 — 헤더 64 + 본문 704 = **768**(스펙 §3/E-1 「슬랙이 0」).
- *
- * ⛔ **둘을 한 껍데기로 묶는 이유가 있다.** 따로 두면 감싸는 레이아웃이 자식 사이에 여백을
- * 넣어 합이 768을 넘는다 — 실측으로 20픽셀 넘쳤다.
- *
- * ⚠ 이 예산은 **셸 밖에 설 때만** 성립한다 — 관리웹 셸 안에 두면 상단 바와 본문 여백이
- * 위에 얹힌다. 그래서 이 화면의 라우트는 `AppLayout` 자식이 아니다.
- */
-.pop-screen {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-/*
- * 작업자 지정 배치 — 화면 스펙 §3 의 도면을 그대로 옮긴다.
- *
- * 좌 512 / 우 512 는 1024 폭 단말의 비율이고, 본문 704 는 세로 예산(E-1)이다 —
- * **액션바가 없다.** 확인은 키패드 옆에 둔다.
- *
- * ⚠ 접힘 기준을 대상 단말(1024)보다 넓게 두면 실기기에서 도면의 2단이 서지 않는다.
- */
-.pop-assign {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-4);
-  align-items: stretch;
-  min-height: 704px;
-}
-
-.pop-pane {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  min-width: 0;
-}
-
-/* 단말 이름과 연결 상태 — 도면의 머리줄이다. */
-.pop-terminal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  min-height: 64px;
-  padding: 0 var(--space-4);
-}
-
-/*
- * 제품 이름 — 헤더 왼쪽 끝. 관리웹 상단 바의 상표 자리와 같은 무게로 세운다.
- */
-.pop-terminal-header__brand {
-  font-size: var(--font-size-lg, 1.125rem);
-}
-
-/*
  * 사번 표시 — **글자를 크게 한다.** 「큰 글자」는 글자 크기 요구이지 높이 요구가 아니라
  * (§7) 칸 높이는 그대로 두고 글자만 키운다.
  *
@@ -18341,13 +18286,6 @@ dialog.layout-editor-dialog {
   margin: 0;
   font-size: var(--font-size-2xl, 2rem);
   font-weight: 600;
-}
-
-@media (max-width: 900px) {
-  .pop-assign {
-    grid-template-columns: 1fr;
-    min-height: 0;
-  }
 }
 
 /*

@@ -124,7 +124,6 @@
  * 이름이 다른 것은 슬라이스 소유 규율의 결과이고, **보이는 것까지 달라야 할 이유는 없다.**
  */
 .pop-ui > .pop-header,
-.pop-ui > .pop-terminal-header,
 /*
  * 덮개(아래 「덮개」 절)의 머리줄도 같은 줄이다 — 화면을 덮고 서는 판이라 「지금 무엇을
  * 보고 있는가」가 뒷 화면과 같은 자리·같은 크기로 서야 한다. 겨냥을 한 단계 더 내려 잡지
@@ -148,8 +147,7 @@
  * 표제 — 멀리서 읽는 첫 글자다. DS 의 `title-lg`(20px)로는 머리줄에서 상태 칩과 무게가
  * 비슷해져 「무슨 화면인가」가 밀린다. `headline-lg` 급으로 올린다.
  */
-.pop-ui .pop-title,
-.pop-ui .pop-terminal-header__brand {
+.pop-ui .pop-title {
   margin: 0;
   font: var(--type-title-lg);
   letter-spacing: var(--type-title-lg-tracking);
@@ -177,13 +175,6 @@
   gap: var(--space-3);
   margin: 0 0 0 auto;
   white-space: nowrap;
-}
-
-/* 머리줄 안의 보조 문구는 `.field-note` 로 오지만 여기서는 잘 보여야 한다. */
-.pop-ui > .pop-terminal-header .field-note {
-  margin: 0;
-  font-size: var(--pop-text);
-  color: var(--on-surface-variant);
 }
 
 /* ── 본문 ──────────────────────────────────────────────────────────────── */
@@ -215,7 +206,7 @@
  *    아래 두 규칙(늘어남·넘침)은 이미 `dialog` 를 빼 두었는데 이 규칙만 빠뜨렸다.
  */
 .pop-ui
-  > :not(.pop-header):not(.pop-terminal-header):not(.pop-overlay):not(dialog):not(
+  > :not(.pop-header):not([data-pop-terminal-header]):not(.pop-overlay):not(dialog):not(
     [class*='action']
   ):not(.pu-screen) {
   box-sizing: border-box;
@@ -236,16 +227,11 @@
  * 화면에서 액션 줄이 늘어난다 — 그때 이 선택자를 고친다.
  */
 .pop-ui
-  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+  > :not(.pop-header):not([data-pop-terminal-header]):not(.banner-slot):not(dialog):not(
     [class*='action']
   ):not(.pop-overlay):not([data-pop-fixed]):not(.pu-screen) {
   flex: 1 1 auto;
   min-height: 0;
-}
-
-.pop-ui > .pop-assign {
-  gap: var(--space-4);
-  align-items: stretch;
 }
 
 /*
@@ -528,14 +514,14 @@
  * ⚠ `.pane` 은 제외한다 — 그쪽은 자기가 이미 스크롤 칸이다(위 구획 규칙).
  */
 .pop-ui
-  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+  > :not(.pop-header):not([data-pop-terminal-header]):not(.banner-slot):not(dialog):not(
     [class*='action']
   ):not(.pop-overlay):not([data-pop-fixed]):not(.pane):not(.pu-screen) {
   overflow: hidden;
 }
 
 .pop-ui
-  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+  > :not(.pop-header):not([data-pop-terminal-header]):not(.banner-slot):not(dialog):not(
     [class*='action']
   ):not(.pop-overlay):not([data-pop-fixed]):not(.pane):not(.pu-screen)
   > * {
@@ -624,7 +610,7 @@
  * 밀리지 않는다 — [ 포장 확정 ]은 늘 같은 자리다.
  */
 .pop-ui
-  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+  > :not(.pop-header):not([data-pop-terminal-header]):not(.banner-slot):not(dialog):not(
     [class*='action']
   ):not(.pop-overlay):not([data-pop-fixed]):not(.pane).packing-body {
   overflow-y: auto;
@@ -646,17 +632,17 @@
  *   방법이 없어진다(이 파일의 규약).
  */
 .pop-ui
-  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+  > :not(.pop-header):not([data-pop-terminal-header]):not(.banner-slot):not(dialog):not(
     [class*='action']
   ):not(.pop-overlay):not([data-pop-fixed]):not(.pane)
   > .packing-scan,
 .pop-ui
-  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+  > :not(.pop-header):not([data-pop-terminal-header]):not(.banner-slot):not(dialog):not(
     [class*='action']
   ):not(.pop-overlay):not([data-pop-fixed]):not(.pane)
   > .packing-target,
 .pop-ui
-  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+  > :not(.pop-header):not([data-pop-terminal-header]):not(.banner-slot):not(dialog):not(
     [class*='action']
   ):not(.pop-overlay):not([data-pop-fixed]):not(.pane)
   > .packing-progress {
@@ -674,7 +660,7 @@
  *   자리를 지키므로 [ 포장 확정 ]은 늘 같은 곳에 있다.
  */
 .pop-ui
-  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+  > :not(.pop-header):not([data-pop-terminal-header]):not(.banner-slot):not(dialog):not(
     [class*='action']
   ):not(.pop-overlay):not([data-pop-fixed]):not(.pane)
   > .packing-compose {
@@ -949,8 +935,7 @@
  * 구획 — **스크롤은 여기서만 일어난다.** 화면이 스크롤하면 머리줄이 위로 사라져 지금 어느
  * 화면·어느 단말인지가 없어진다.
  */
-.pop-ui .pane,
-.pop-ui .pop-pane {
+.pop-ui .pane {
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -961,8 +946,7 @@
 
 /* 구획 제목 — 본문과 한 급 차이를 두어 「여기서부터 다른 이야기」가 보이게 한다. */
 .pop-ui .pane > h2,
-.pop-ui .pane-title,
-.pop-ui .pop-pane > .field-label {
+.pop-ui .pane-title {
   margin: 0 0 var(--space-4);
   font: 600 20px/28px var(--font-sans);
   letter-spacing: -0.01em;
@@ -1077,26 +1061,6 @@
 }
 
 /*
- * 구획 «전체»가 지는 조작은 구획 폭을 그대로 쓴다. 폭이 글자 길이로 정해지면, 같은 무게의
- * 조작 둘이 서로 다른 크기로 서서 어느 쪽이 주된 것인지 흐려진다.
- */
-.pop-ui-actions {
-  display: flex;
-  gap: var(--space-3);
-  margin-block-start: auto;
-  padding-block-start: var(--space-4);
-}
-
-.pop-ui-actions > * {
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-.pop-ui-actions button {
-  width: 100%;
-}
-
-/*
  * 개발용 화면 이동 — **개발 서버에서만 선다**(`patterns/pop-dev-screen-nav.tsx`).
  * 이름을 칸 «위»에 세운다. 옆으로 세우면 좁은 자리에서 이름과 칸이 서로 폭을 뺏어 둘 다
  * 잘린다(실측 —「개발…」).
@@ -1123,12 +1087,6 @@
 
 .pop-ui .pop-dev-screen-nav .pop-select__trigger {
   width: 100%;
-}
-
-/* `<Link>` 로 감싼 버튼은 링크가 폭을 갖지 않으면 늘어나지 않는다. */
-.pop-ui-actions > a {
-  display: block;
-  text-decoration: none;
 }
 
 /* 표 — 관리웹보다 한 급 크게. 좁은 구획에서도 열 이름이 접히지 않게 여백은 줄인다. */
@@ -1188,17 +1146,6 @@
   margin-inline: var(--pop-pad);
 }
 
-/* ── 화면별 ────────────────────────────────────────────────────────────── */
-
-/*
- * P-CO-01 — 좌우 512 는 유지하되 **704 고정을 푼다.** 고정 높이는 뷰포트가 정확히 768 일
- * 때만 맞고, 아니면 남거나 넘친다. 위에서 화면 높이를 뷰포트에 못박았으므로 구획은
- * 「남은 만큼」이면 된다.
- */
-.pop-ui.pop-screen > .pop-assign {
-  min-height: 0;
-}
-
 /*
  * 사번 표시칸 — 이 화면이 말하는 값이라 가장 굵게 둔다.
  *
@@ -1234,17 +1181,6 @@
 }
 
 /*
- * 큰 화면에서 사번 칸·키패드가 구획 폭(실측 1538 에서 ≈ 750)만큼 늘어나지 않게 상한을 둔다
- * (담당자 지시서 6 — 지나치게 긴 입력창 금지). 1024 단말에서는 구획이 상한보다 좁아 그대로다.
- */
-.pop-ui.pop-screen > .pop-assign > .pop-pane:first-child > :not(.field-label) {
-  box-sizing: border-box;
-  width: 100%;
-  max-inline-size: 560px;
-  align-self: center;
-}
-
-/*
  * 스캔 줄 — 입력칸과 버튼의 **윗선을 맞춘다.** 버튼 높이가 72(터치 하한)이고 칸이 60이라
  * 기존 규범 2(라벨 층만큼 내림)로는 아랫선이 12px 어긋난다.
  */
@@ -1273,14 +1209,6 @@
 }
 
 /*
- * 구획에 직접 놓인 주 버튼(사번 「확인」 등)은 구획 폭을 쓴다. 위 `.pop-ui-actions` 와 같은
- * 근거이며, 묶을 짝이 없어 래퍼를 두지 않은 자리다.
- */
-.pop-ui .pop-pane > button {
-  width: 100%;
-}
-
-/*
  * 값 목록과 경고 사이의 구분선. 브라우저 기본 `<hr>` 은 내용 폭에 맞춰 줄어들어(실측: 점
  * 하나로 보였다) 선의 구실을 못 한다 — 구획 폭을 그대로 쓰는 가는 선으로 되돌린다.
  */
@@ -1289,22 +1217,6 @@
   margin: var(--space-4) 0;
   border: 0;
   border-block-start: 1px solid var(--outline-variant);
-}
-
-/*
- * ⭐ **키패드를 구획 바닥에 못박는다.** 실측에서 잡은 오조작이다 — 사번을 찍는 도중 「6자리와
- * 다릅니다」 경고가 뜨자 그 높이만큼 키패드가 **아래로 밀려**, 다음 숫자를 누르려던 손가락이
- * 한 줄 위의 키를 눌렀다. 위에서 배너가 늘어도 키의 자리는 그대로여야 한다.
- *
- * `.scan-outcome` 이 「결과가 없을 때도 자리를 비워 둔다」로 푼 것과 같은 문제이고, 이쪽은
- * 배너 조합이 여럿이라 높이를 예약하는 대신 **바닥 기준으로 세운다.**
- */
-.pop-ui .pop-pane > .omf-numeric-keypad {
-  margin-block-start: auto;
-}
-
-.pop-ui .pop-pane > .omf-numeric-keypad + button {
-  margin-block-start: var(--space-3);
 }
 
 /*
@@ -1318,73 +1230,6 @@
 
 .worker-no-notice > .banner-slot:last-child {
   margin-bottom: 0;
-}
-
-/*
- * P-CO-01 머리줄 — 단말을 **오른쪽 연결 상태 옆으로 붙인다.**
- *
- * ⚠ **설계 도면(§3)은 가운데다.** 도면은 제품명 왼쪽 · 단말 가운데 · 연결 오른쪽의 3단인데,
- * 여기서는 다른 POP 화면(`P-02-03`·`P-02-12`)의 `.pop-context-right` 와 같이 «지금 어디서
- * 찍고 있는가»를 오른쪽 한 덩이로 모은다. 단말을 옮기는 것이 아니라 **단말과 연결을 한
- * 묶음으로 읽게** 하는 것이 근거다 — 둘은 같은 질문("이 단말이 서버에 붙어 있나")의 답이고,
- * 사이를 벌려 두면 눈이 머리줄을 두 번 훑는다.
- *
- * ⛔ **이 결정은 아직 설계팀 것이 아니다.** 샘플에서 비교해 보려고 옵트인 층에만 둔 것이며,
- * 확정하려면 설계팀 회신이 있어야 한다. 도면을 고친 것이 아니라 이 화면 하나를 덮은 것이다.
- */
-.pop-ui > .pop-terminal-header {
-  justify-content: flex-start;
-}
-
-.pop-ui > .pop-terminal-header > .field-note {
-  margin-inline-start: auto;
-  /* 16(머리줄 gap) + 8 = 24 — 다른 POP 화면의 `.pop-context-right` 항목 간격과 맞춘다. */
-  margin-inline-end: var(--space-2);
-}
-
-/*
- * ⛔ **터치 타겟은 줄어들지 않는다.**
- *
- * 구획이 세로 flex 라, 내용이 남는 높이를 넘으면 flex 가 «줄일 수 있는 것»을 줄여 맞춘다.
- * 그 대상이 마지막 버튼이 되어 **「확인」이 72 에서 48 로 눌렸다**(실측). DS 가 `2xl`(72)로
- * 그린 것을 배치가 되돌린 것이고, 화면은 멀쩡해 보이므로 게이트도 시험도 잡지 못한다 —
- * 장갑 낀 손만 안다.
- *
- * 크기가 뜻을 갖는 화면이므로(`app.css` 의 `.pop-touch-target` 머리말) 눌리는 것들은
- * 줄이지 않는다. 자리가 모자라면 구획이 스크롤하는 쪽이 옳다.
- *
- * ⛔ **눌리는 것은 버튼만이 아니다.** 알림 자리(`.worker-no-notice`)는 자기 `min-height`
- * (배너 한 장 분)까지 눌리는데, **안의 배너는 그대로 그려진다** — 눌린 상자 밖으로 흘러나와
- * 아래 키패드 위에 겹쳤다(실측: 「6자리와 다릅니다」 경고와 「확인하지 못했습니다」 오류가
- * 함께 뜬 순간, 오류 배너가 키패드 첫 줄을 덮었다). 배너는 몇 장이 될지 화면이 정하므로
- * 자리를 미리 비워 두는 것만으로는 모자라고, **줄지 않는다고 말해 줘야** 한다.
- */
-.pop-ui .pop-pane > button,
-.pop-ui .pop-pane > .omf-numeric-keypad,
-.pop-ui .pop-pane > .worker-no-notice,
-.pop-ui-actions {
-  flex: none;
-}
-
-/*
- * ⚠ **액션 묶음 «안»에는 걸지 않는다.** 그 안은 가로 flex 라 `flex` 가 높이가 아니라 폭을
- * 정한다 — 걸었더니 버튼이 글자 길이만큼만 서서 둘째 버튼이 구획 밖으로 잘렸다(실측).
- * 세로로 눌릴 위험은 이 줄 자체를 `flex: none` 으로 둔 것이 이미 막는다.
- */
-
-/*
- * 눌리지 않게 한 만큼 자리를 돌려준다 — 안 그러면 진입 화면이 스크롤한다(실측 24px 넘침).
- *
- * 돌려받는 곳은 **겹쳐 있던 여백**이다. 이 구획은 세로 flex 라 자식 사이를 `gap` 이 이미
- * 벌리는데, 표제가 자기 아래 여백을 또 갖고 있어 28px(12 + 16)이 한 자리에 겹쳐 있었다.
- * 겹친 것을 걷고 자식 간격을 한 급 좁힌다 — 없앤 것이 아니라 두 번 세던 것을 한 번으로 만든다.
- */
-.pop-ui .pop-pane {
-  gap: var(--space-2);
-}
-
-.pop-ui .pop-pane > .field-label {
-  margin-block-end: 0;
 }
 
 /*
@@ -1450,8 +1295,7 @@
  * (실측). `.pane-lead` 가 같은 문제를 푼 방식이며, 여기서는 «구획의 직속 자식»만 푼다 —
  * 칸에 딸린 사유는 여전히 그 칸 아래에 좁게 선다.
  */
-.pop-ui .pane > .field-note,
-.pop-ui .pop-pane > .field-note {
+.pop-ui .pane > .field-note {
   max-width: none;
 }
 
@@ -2033,8 +1877,7 @@
 }
 
 .pop-logout button,
-.pop-ui .pop-header-tools button,
-.pop-ui .pop-terminal-header__reregister {
+.pop-ui .pop-header-tools button {
   min-height: 30px;
   padding-inline: 10px;
   font-size: 13px;
@@ -2046,7 +1889,6 @@
  *    머리줄의 작은 보조 조작이다 — 같은 자리의 [사용자 전환](`.pop-logout`, `.pop-ui` 밖이라
  *    DS 기본 `--radius-full` 을 그대로 받는다)과 생김새를 한 벌로 맞춘다.
  */
-.pop-ui .pop-terminal-header__reregister,
 .pop-ui .pop-header-tools button {
   border-radius: var(--radius-full);
 }
@@ -2127,13 +1969,11 @@
  *   규칙을 두지 않고 한 곳에서 민다. `.pop-context-right` 의 자기 `auto` 여백은 이때 남는
  *   자리를 한 번 더 나눠 가져 가운데에 뜨므로 거둔다.
  */
-.pop-ui > .pop-overlay > .pop-header > :first-child,
-.pop-ui > .pop-terminal-header > :first-child {
+.pop-ui > .pop-overlay > .pop-header > :first-child {
   margin-inline-end: auto;
 }
 
-.pop-ui > .pop-overlay > .pop-header > .pop-context-right,
-.pop-ui > .pop-terminal-header > .pop-context-right {
+.pop-ui > .pop-overlay > .pop-header > .pop-context-right {
   margin-inline-start: 0;
 }
 
@@ -2406,44 +2246,6 @@
   width: var(--control-height-md);
   min-width: 0;
   padding: 0;
-}
-
-/* ── 사번 입력 화면(P-CO-01)의 조작 셋 ───────────────────────────────────── */
-
-/*
- * [확인]·[교대]·[개발용 화면 이동]은 **각자 구획의 폭 전체를 쓰고 높이가 72 다**(설계 §3
- * 도면 · E-3).
- *
- * 실측이 제각각이었다 — 확인 685×40, 교대 369×72, 화면 이동 305×72. 크기가 다르면 같은
- * 무게의 조작이 서로 다른 종류로 읽힌다.
- *
- * ⚠ **오른쪽 둘은 나란히가 아니라 위아래다.** 도면이 교대와 이동을 각각 한 줄로 그렸고,
- *   나란히 두면 둘 다 반폭이 되어 왼쪽의 확인과 크기가 갈린다. 세로로 세우면 셋이 저절로
- *   같은 크기가 된다 — 두 구획의 폭이 같기 때문이다.
- *
- * ⚠ **한 줄에 하나씩 서면 폭이 어긋나지도 않는다.** 나란히 두었을 때 교대와 이동이 64px
- *   어긋나 있었다 — 액션 줄이 남은 폭을 반씩 나눈 «뒤»에 버튼 자기 좌우 여백(32+32)이 더
- *   붙기 때문이다.
- *
- * ⛔ 액션 줄 전체(`.pop-ui [class*='action']`)를 고치지 않는다 — 다른 POP 화면이 같은
- *    이름을 쓰고, 그 화면들의 버튼 수와 배치는 여기서 볼 수 없다. 이 화면(`.pop-assign`)
- *    안에서만 바꾼다.
- */
-.pop-ui .pop-assign .pop-ui-actions {
-  display: grid;
-  grid-auto-flow: row;
-}
-
-/*
- * 확인은 구획 폭을 그대로 쓴다(도면). 폭은 위쪽의 「구획에 직접 놓인 주 버튼은 구획 폭을
- * 쓴다」(`.pop-ui .pop-pane > button`)가 이미 주므로 여기서는 높이만 올린다.
- *
- * ⚠ 높이는 `height`(40)가 아니라 `min-height` 로 올린다 — 디자인 시스템이 등급별 높이를
- *   `height` 로 못박아, 낮은 쪽을 올리려면 하한을 걸어야 한다. 액션 줄이 72 를 같은
- *   방법으로 잡고 있다(`[class*='action'] button`).
- */
-.pop-ui .pop-pane > .worker-no-submit {
-  min-height: 72px;
 }
 
 /* ── 스크롤 손잡이 ──────────────────────────────────────────────────────── */
@@ -2808,7 +2610,7 @@
  * 위 구획들이 제 높이를 지킨 채로 본문이 한 화면에 담긴다.
  */
 .pop-ui.packing-shell
-  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+  > :not(.pop-header):not([data-pop-terminal-header]):not(.banner-slot):not(dialog):not(
     [class*='action']
   ):not(.pop-overlay):not([data-pop-fixed]):not(.pane)
   > .packing-compose {
@@ -2876,138 +2678,6 @@
 }
 
 /*
- * 단말 등록 패널 — P-CO-01 §3-A(#999).
- *
- * ⭐ **한가운데 한 상자.** 이 화면이 서는 순간에는 업무가 아무것도 열려 있지 않아 다른 칸과
- *    나란히 놓을 것이 없다. 설치 담당자가 서서 붙여넣는 자리라 손이 닿는 높이에 모은다.
- *
- * ⛔ **`100vh` 를 쓰지 않는다** — `pop-fit` 의 zoom 과 어긋나 바닥이 빈다(실측). 높이는
- *    `100%` 로 받는다.
- *
- * ⛔ **`border-box` 를 물려받지 못한다.** 이 패널은 라우터 «밖» 에 서서 `.pop-ui` 안에 들지
- *    않으므로 그 상자셈이 닿지 않는다 — `height: 100%` 에 여백 24px 이 «더해져» 문서가 화면
- *    보다 48px 길어지고, 상자 하나뿐인 화면에 세로 스크롤이 생겼다(실측 1216 / 1168).
- *    그래서 여기서 직접 잡는다.
- */
-.pop-registration {
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  padding: 24px;
-}
-
-/*
- * ⭐ **남는 폭을 쓴다.** 720px 로 못박아 두었더니 1024 예산에서도 좌우가 150px 씩 비고, 더
- *    넓은 창에서는 화면 한가운데 작은 쪽지처럼 떴다(사용자 지적). 폭은 `100%` 로 받아 창을
- *    따라가고 상한만 둔다 — 어느 크기에서도 좌우 여백 규칙은 그대로다.
- *
- * ⚠ **높이는 화면을 넘지 않는다.** 사유 문구가 길어져도 상자가 화면 밖으로 자라면 문서가
- *   다시 스크롤한다 — 넘치는 몫은 상자 «안에서» 처리한다.
- */
-/*
- * ⭐ **단말 화면이 예산보다 크면 상자째 키운다**(`worker-assignment/panel-scale`). 1920×1080
- *    단말에서 1024 예산대로 서니 화면 한가운데 작은 상자만 뜨고 나머지가 전부 여백이었다
- *    (실기 실측 2026-09-12 · 사용자 지적). 배율은 JS 가 `--pop-reg-scale` 로 넘긴다.
- *
- * ⛔ **`zoom` 이다.** `transform: scale()` 은 자리를 그대로 차지해 상자가 화면 밖으로 삐져
- *    나가고 스크롤이 생긴다. `zoom` 은 레이아웃 계산에 함께 들어간다.
- *
- * ⚠ **`%` 를 배율로 나누지 않는다.** 브라우저가 이미 «배율을 뺀» 크기로 풀어 준다(실측
- *   1920×1080 — 한 번 더 나눴더니 상자가 1462 대신 1331 로 섰다). 손으로 나누면 두 번
- *   나뉜다.
- */
-.pop-registration__card {
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  width: min(1040px, 100%);
-  max-height: 100%;
-  padding: 40px;
-  overflow-y: auto;
-  zoom: var(--pop-reg-scale, 1);
-}
-
-/*
- * 표제 — **업무 화면 머리줄과 같은 글자다**(`.pop-title` 이 쓰는 `title-lg`). 이 패널만
- * 28px 로 서 있었는데, 단말을 켜면 이 화면 다음에 바로 업무 화면이 오므로 두 표제가 다른
- * 크기로 보인다(사용자 지적).
- *
- * ⚠ **줄 높이가 글자 크기와 함께 오는 `font` 로 적는다.** 크기만 주면 물려받은 20px 이
- *   글자를 담지 못해 위아래가 잘린다(실측 — 상자 높이가 14.6px 로 섰다).
- */
-.pop-registration__title {
-  margin: 0;
-  font: var(--type-title-lg);
-  letter-spacing: var(--type-title-lg-tracking);
-}
-
-/*
- * ⚠ **본문은 16px 이다** — POP 표시 규격이 정한 크기(`--pop-text`)이고 업무 화면 전부가
- *   그것을 쓴다. 이 패널은 `.pop-ui` 밖이라 그 변수가 닿지 않으므로 값을 직접 적는다.
- */
-.pop-registration__guide {
-  margin: 0;
-  font-size: 18px;
-  line-height: 28px;
-}
-
-/*
- * 알림 띠의 표식을 글자 줄에 맞춘다.
- *
- * DS 는 표식을 «제목 줄»에 맞추려고 위 여백 4px 을 준다. 제목 없이 설명 한 줄만 내는 이
- * 자리에서는 그 여백이 그대로 어긋남이 된다(실측 — 표식이 글자보다 2.4px 아래에 섰다).
- * `pop-material-lot-outcome` 이 같은 사정을 같은 방식으로 풀었다.
- *
- * ⛔ **가운데 정렬로 바꾸지 않는다.** 문구가 두 줄이 되는 사유가 있어(미전송 큐 안내) 가운데로
- *    세우면 표식이 두 줄 «사이»에 뜬다 — 첫 줄에 맞추는 것이 맞다.
- */
-/* 토큰 입력 칸은 시안대로 둥글게, 칸 이름은 안내 문구에 맞는 크기로(omf-all-around#288). */
-.pop-registration__card [class*='inputWrap'] {
-  border-radius: var(--radius-full);
-  padding-inline: 16px;
-}
-
-.pop-registration__card label {
-  font-size: 16px;
-}
-
-.pop-registration [class*='_root_'] > [class*='icon'] {
-  margin-block-start: 0;
-}
-
-/* 확인용 사실표 — 라벨과 값을 두 열로 세운다. 설치 담당자가 눈으로 대조하는 자리다. */
-.pop-registration__facts {
-  display: grid;
-  grid-template-columns: 160px 1fr;
-  gap: 8px 16px;
-  margin: 0;
-  font-size: 16px;
-}
-
-.pop-registration__facts dt {
-  color: var(--pop-muted, #5f6368);
-}
-
-.pop-registration__facts dd {
-  margin: 0;
-  font-weight: 600;
-}
-
-/*
- * ⭐ **오른쪽에 모은다**(사용자 지시 2026-09-12). 상자가 창 폭을 따라 넓어지므로 왼쪽에
- *    붙여 두면 조작 둘이 넓은 여백의 반대편 끝에 앉아, 방금 읽은 확인 내용과 눈이 멀어진다 —
- *    대화상자 조작의 자리는 상자의 «끝»이다.
- */
-.pop-registration__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-/*
  * 작업 전 점검 확인 게이트 — POP 전용 표시 규칙(#1093 · 사용자 지시 2026-09-12).
  *
  * ⛔ **`app.css` 에 두지 않는다** — 그 파일은 관리웹 셸도 읽는다. 같은 브랜치의 비가동 사유
@@ -3051,20 +2721,17 @@
  *    남은 폭 안에서 줄어든다.
  */
 .pop-ui > .pop-header,
-.pop-ui > .pop-terminal-header,
 .pop-ui > .pop-overlay > .pop-header {
   gap: var(--space-3);
 }
 
 .pop-ui > .pop-header > *,
-.pop-ui > .pop-terminal-header > *,
 .pop-ui > .pop-overlay > .pop-header > * {
   min-width: 0;
 }
 
 .pop-ui > .pop-header > .pop-title,
 .pop-ui > .pop-header > .pop-context:not(.pop-context-right),
-.pop-ui > .pop-terminal-header > .pop-terminal-header__brand,
 .pop-ui > .pop-overlay > .pop-header > .pop-title,
 .pop-ui > .pop-overlay > .pop-header > .pop-context:not(.pop-context-right) {
   overflow: hidden;
@@ -3073,7 +2740,6 @@
 }
 
 .pop-ui > .pop-header > .pop-context-right,
-.pop-ui > .pop-terminal-header > .pop-context-right,
 .pop-ui > .pop-overlay > .pop-header > .pop-context-right {
   flex-shrink: 0;
 }
@@ -3100,7 +2766,7 @@
  * ⛔ `.packing-body` 로 좁힌다 — 다른 화면 본문 겹의 띠까지 제 높이를 고집하면 세로 예산을 넘친다(리뷰 지적).
  */
 .pop-ui
-  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+  > :not(.pop-header):not([data-pop-terminal-header]):not(.banner-slot):not(dialog):not(
     [class*='action']
   ):not(.pop-overlay):not([data-pop-fixed]):not(.pane).packing-body
   > .banner-slot {
@@ -4519,202 +4185,6 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
-}
-
-/*
- * ⭐ P-CO-01 사번 입력 화면 시안(omf-all-around#288).
- *
- * ⭐ **화면 크기를 따라 커지고 작아진다.** `pop-fit` 은 줄이기만 하므로 큰 단말에서는 칸·키가
- *    작게 서고 아래가 빈다. 본문(`.pop-assign`)을 크기 기준 상자로 두고 글자·키 높이를 그
- *    높이·폭에 비례한 값(상·하한 있음)으로 준다 — 한 값만 키우지 않고 같은 비율로 움직인다.
- */
-.pop-ui.pop-screen > .pop-assign {
-  container-type: size;
-  /*
-   * ⛔ 세로 길이만 보고 키우지 않는다 — 세로로 긴 창에서 키·칸이 시안 비율(키 높이 ≈ 키 폭의
-   *    1/3)을 크게 넘었다(사용자 지적). 폭과 높이 중 작은 쪽을 따르고 상한을 낮게 둔다.
-   */
-  --wa-text: clamp(15px, min(1.9cqh, 1.25cqw), 22px);
-  --wa-title: clamp(18px, min(2.6cqh, 1.7cqw), 28px);
-  --wa-key-h: clamp(56px, min(6.5cqh, 4.6cqw), 84px);
-  --wa-key-font: clamp(18px, min(2.8cqh, 1.9cqw), 30px);
-  --wa-gap: clamp(10px, min(1.4cqh, 1cqw), 16px);
-  /*
-   * 키 한 줄이 늘어날 수 있는 «상한». 두 구획은 화면 아래까지 서고(아래가 비면 찌부돼 보인다
-   * — 사용자 지적), 키패드는 남는 높이를 받되 이 값보다 커지지 않는다(꽉 채우기에서 키가
-   * 너무 커졌다 — 사용자 지적).
-   */
-  --wa-key-max: clamp(64px, min(9cqh, 6cqw), 100px);
-}
-
-.pop-ui .pop-assign > .pop-pane {
-  gap: var(--wa-gap);
-  padding: clamp(16px, min(2.4cqh, 1.6cqw), 28px);
-}
-
-.pop-ui .pop-assign > .pop-pane > .field-label {
-  margin: 0;
-  font-size: var(--wa-title);
-  line-height: 1.3;
-}
-
-/* 시안은 칸·키패드가 구획 폭을 다 쓴다. */
-.pop-ui.pop-screen > .pop-assign > .pop-pane:first-child > :not(.field-label) {
-  max-inline-size: none;
-}
-
-/* `worker-no-field` 는 `<input>` 에 붙는다 — 칸 이름·바깥 상자는 그 부모에서 찾는다. */
-.pop-ui .pop-assign [class*='_field_']:has(.worker-no-field) label {
-  display: inline-block;
-  margin-block-end: calc(var(--wa-gap) * 0.5);
-  font-size: var(--wa-text);
-}
-
-.pop-ui .pop-assign .worker-card__head > [class*='chip'],
-.pop-ui .pop-assign .worker-card__head > span {
-  font-size: calc(var(--wa-text) * 0.8);
-}
-
-.pop-ui .pop-assign [class*='inputWrap']:has(> .worker-no-field) {
-  min-height: var(--wa-key-h);
-  border-radius: var(--radius-full);
-  padding-inline: calc(var(--wa-key-h) * 0.3);
-}
-
-.pop-ui .pop-assign input.worker-no-field {
-  font-size: calc(var(--wa-text) * 1.25);
-  letter-spacing: 0.04em;
-  text-align: start;
-}
-
-/*
- * 사번 칸은 위, 키패드·[사번 확인]은 구획 «아래»에 붙는다(사용자 지시) — 둘 사이 안내 자리가
- * 남는 높이를 받아 벌어진다. 화면이 낮아도 최소 한 틈은 띄운다(사용자 지시). 안내(6자리 아님·
- * 오류·오프라인)는 그 자리 맨 위, 곧 사번 칸 바로 아래에 선다.
- */
-.pop-ui .pop-assign > .pop-pane > .omf-numeric-keypad {
-  margin-block-start: 0;
-  gap: var(--wa-gap);
-  grid-auto-rows: minmax(var(--wa-key-h), var(--wa-key-max));
-}
-
-/* 남는 높이가 있으면 키 한 줄을 상한까지 늘린다 — 줄 높이는 구획 높이에 비례한다. */
-.pop-ui .pop-assign .worker-no-keypad > button,
-.pop-ui .pop-assign > .pop-pane > .worker-no-submit {
-  height: clamp(var(--wa-key-h), calc((100cqh - 260px) / 5.6), var(--wa-key-max));
-}
-
-.pop-ui .pop-assign > .pop-pane > .worker-no-notice {
-  flex: 1 0 var(--wa-gap);
-  min-height: var(--wa-gap);
-}
-
-.pop-ui .pop-assign .worker-no-keypad > button,
-.pop-ui .pop-assign > .pop-pane > .worker-no-submit,
-.pop-ui .pop-assign .pop-ui-actions button {
-  min-height: var(--wa-key-h);
-  border-radius: var(--radius-full);
-}
-
-.pop-ui .pop-assign .worker-no-keypad > button {
-  font-size: var(--wa-key-font);
-}
-
-.pop-ui .pop-assign .worker-no-keypad > .omf-numeric-keypad__clear {
-  font-size: var(--wa-text);
-}
-
-.pop-ui .pop-assign > .pop-pane > .worker-no-submit,
-.pop-ui .pop-assign .pop-ui-actions button {
-  font-size: var(--wa-text);
-}
-
-.pop-ui .pop-assign > .pop-pane > .omf-numeric-keypad + button {
-  margin-block-start: 0;
-}
-
-/* 현재 작업자 — 비었을 때 안내, 확인 후 작업자 정보. 둘 다 같은 바탕 상자다. */
-.pop-ui .pop-assign .worker-card__none,
-.pop-ui .pop-assign .worker-card__info {
-  box-sizing: border-box;
-  border: 0;
-  border-radius: var(--radius-lg);
-  background: var(--surface-container-high);
-  padding: clamp(16px, min(2.4cqh, 1.6cqw), 28px);
-}
-
-.pop-ui .pop-assign .worker-card__none {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: calc(var(--wa-gap) * 0.6);
-  text-align: center;
-}
-
-.pop-ui .pop-assign .worker-card__none-icon {
-  width: calc(var(--wa-title) * 1.3);
-  height: calc(var(--wa-title) * 1.3);
-  color: var(--on-surface-variant);
-}
-
-.pop-ui .pop-assign .worker-card__none-title {
-  margin: 0;
-  font: 600 calc(var(--wa-title) * 0.85) / 1.4 var(--font-sans);
-  color: var(--on-surface);
-}
-
-.pop-ui .pop-assign .worker-card__none-help {
-  margin: 0;
-  font-size: var(--wa-text);
-  color: var(--on-surface-variant);
-}
-
-.pop-ui .pop-assign .worker-card__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.pop-ui .pop-assign .worker-card__name {
-  font: 700 var(--wa-title) / 1.3 var(--font-sans);
-}
-
-.pop-ui .pop-assign .worker-card__facts {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: calc(var(--wa-gap) * 0.6) var(--space-4);
-  margin: var(--wa-gap) 0 0;
-  font-size: var(--wa-text);
-}
-
-.pop-ui .pop-assign .worker-card__facts dt {
-  font-size: inherit;
-  color: var(--on-surface-variant);
-}
-
-.pop-ui .pop-assign .worker-card__facts dd {
-  margin: 0;
-  font-size: inherit;
-  font-weight: 600;
-  text-align: end;
-}
-
-/* 변경·이동 단추는 작업자 정보 바로 아래에 선다(시안). */
-/* [작업자 변경]·이동 단추는 구획 아래에 붙는다 — 키패드와 같은 자리(사용자 지시). */
-.pop-ui .pop-assign .pop-ui-actions {
-  margin-block-start: auto;
-  padding-block-start: var(--wa-gap);
-  gap: var(--wa-gap);
-}
-
-/* 사번 화면 머리줄 — 제품명만 왼쪽, 프린터·단말·연결·재등록은 오른쪽에 한 묶음(omf-all-around#288). */
-.pop-ui > .pop-terminal-header > .pop-terminal-header__brand {
-  margin-inline-end: auto;
-}
-
-.pop-ui > .pop-terminal-header > .field-note {
-  margin-inline-start: 0;
 }
 
 /*

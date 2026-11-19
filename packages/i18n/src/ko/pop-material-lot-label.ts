@@ -214,17 +214,13 @@ export const popMaterialLotLabel = {
   batch: {
     title: '자재 관리 LOT 만들기',
     close: '닫기',
-    pair: '공급사 · 품목', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    supplier: '공급사',
+    item: '품목',
     /** 기본값을 어디서 채웠나(US1-1 · US1-3). */
     source: {
       default: '기본 정보에서 가져옴',
       itemStorage: '공급사·품목 기본 정보 없음 — 품목 기본 보관 단위로 채움', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
       none: '기본 정보 없음 — 직접 입력',
-    },
-    sourceNote: {
-      defaultWithoutPackage: '기본 정보가 「포장 없음」입니다. 필요하면 넣을 수 있습니다.',
-      itemStorage: '포장 없이 만들면 기본 단위 수량만 남습니다(낱개가 섞인 상자 등).',
-      none: '이 공급사·품목은 기본 정보도, 품목 기본 보관 단위도 없어 포장 없이 시작합니다. 필요하면 넣을 수 있습니다.', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
     },
     loading: '기본 정보를 불러오는 중입니다.',
     defaultsFailed: '기본 정보를 불러오지 못했습니다 — 값을 직접 넣으세요.',
@@ -236,35 +232,24 @@ export const popMaterialLotLabel = {
     packageUomPlaceholder: '고르세요',
     packageCount: '포장 수',
     qtyPerPackage: (uomCode: string) => `포장당 수량 (${uomCode})`,
-    lotQty: '자재 관리 LOT당 재고 수량',
-    lotQtyPlaceholder: '자재 관리 LOT 1개의 수량',
-    lotQtyHelpPackaged: (uomCode: string) =>
-      `「포장 수 × 포장당 수량」으로 채워집니다. 직접 고치면 곱과 같아야 합니다. 단위는 ${uomCode} 고정.`,
-    lotQtyHelp: (uomCode: string) =>
-      `단위는 품목 기본 단위(${uomCode})로 정해져 있고 고르지 않습니다.`,
+    lotQty: 'LOT 1개 수량',
     unitLocked: '품목 기본 단위로 고정',
     supplierLot: '공급사 LOT 번호',
-    supplierLotPlaceholder: '예: SL-77',
-    supplierLotHelp: '만드는 자재 관리 LOT 모두에 같은 값이 들어갑니다.',
     lotCount: '개수',
     lotCountUnit: '개',
-    lotCountHelp: '한 번에 1~200개까지 만듭니다.',
     errors: {
       packageCount: '포장 수는 1 이상 정수입니다',
       qtyPerPackage: '포장당 수량은 0보다 커야 합니다',
       packageUom: '포장 단위를 고르세요',
-      lotQty: '재고 수량을 넣으세요(0보다 큰 수)',
+      lotQty: 'LOT 1개 수량을 넣으세요(0보다 큰 수)',
       integer: (uomCode: string) => `${uomCode}는 정수로 넣습니다`,
       lotCount: '개수는 1~200 사이 정수입니다',
       mismatch: (qty: string, product: string) =>
-        `재고 수량 ${qty} ≠ ${product} — 맞춰야 만들 수 있습니다`,
+        `LOT 1개 수량 ${qty} ≠ ${product} — 맞춰야 만들 수 있습니다`,
     },
     summary: (count: number, each: string, total: string) =>
       `자재 관리 LOT ${count}개 · 각 ${each} · 합계 ${total}`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
     summarySupplierLot: (no: string) => ` · 공급사 LOT ${no}`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
-    summaryNote: (pattern: string) =>
-      `번호 예: ${pattern} … · 입하 대기 상태로 만들어지며 재고는 늘지 않습니다. 입하 LOT는 PDA 스캔 때 정해집니다.`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
-    summaryEmpty: '개수를 넣으면 만들어질 자재 관리 LOT가 여기 보입니다.',
     cancel: '취소',
     submit: (count: number) => `${count}개 만들기`,
     submitIdle: '만들기',

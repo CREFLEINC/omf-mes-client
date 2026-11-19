@@ -149,7 +149,6 @@ describe('US1-3 기본 정보가 없으면', () => {
     expect(field(dialog, tb.lotQty).value).toBe('');
 
     await user.click(within(dialog).getByRole('button', { name: tb.packageOff }));
-    expect(within(dialog).getByText(tb.sourceNote.itemStorage)).toBeInTheDocument();
     await user.type(field(dialog, tb.lotQty), '1');
     await user.type(field(dialog, tb.lotCount), '5');
     await user.click(within(dialog).getByRole('button', { name: tb.submit(5) }));
@@ -172,7 +171,6 @@ describe('US1-3 기본 정보가 없으면', () => {
     const dialog = await openBatch(user);
 
     expect(within(dialog).getByText(tb.source.none)).toBeInTheDocument();
-    expect(within(dialog).getByText(tb.sourceNote.none)).toBeInTheDocument();
     expect(within(dialog).queryByRole('textbox', { name: tb.packageCount })).toBeNull();
   });
 

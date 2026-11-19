@@ -7,7 +7,6 @@ import { useApiClient } from '../../patterns/api-context';
 import {
   checkBatch,
   isIntegerUom,
-  lotNoPattern,
   prefillBatch,
   toBatchBody,
   useItemStorageUnit,
@@ -17,7 +16,6 @@ import {
   type BatchPrefill,
 } from '../../patterns/material-lot-batch';
 import { formatBaseQty, formatPackage } from '../../patterns/package-qty';
-import { plantToday } from '../../patterns/plant-time';
 import {
   PuButton,
   PuDialog,
@@ -228,19 +226,6 @@ const BatchForm = ({
             ),
           }
         : { ok: true, text: `${pkgText} = ${formatBaseQty(check.product, uomCode)}` };
-  const sourceNote =
-    prefill.source === 'default'
-      ? prefill.defaultWithoutPackage && !draft.packageOn
-        ? t.sourceNote.defaultWithoutPackage
-        : null
-      : prefill.source === 'itemStorage'
-        ? draft.packageOn
-          ? null
-          : t.sourceNote.itemStorage
-        : draft.packageOn
-          ? null
-          : t.sourceNote.none;
-
   return (
     <PuDialog
       title={t.title}
@@ -268,12 +253,20 @@ const BatchForm = ({
           {error === null ? null : <PuNote tone="bad">{error}</PuNote>}
 
           <div className="mll-batch-pair">
-            <span className="pu-label">{t.pair}</span>
-            <span>
-              {group.supplierName} <span className="mll-dim">{group.supplierCode}</span>
-              {' · '}
-              <b>{group.itemCode}</b> {group.itemName}
-            </span>
+            <div>
+              <span className="pu-label">{t.supplier}</span>
+              <span className="mll-batch-pair-value">
+                {group.supplierName} <span className="mll-dim">{group.supplierCode}</span>
+              </span>
+            </div>
+            <div>
+              <span className="pu-label">{t.item}</span>
+              <span className="mll-batch-pair-value">
+                <b>{group.itemCode}</b> {group.itemName}
+              </span>
+            </div>
+          </div>
+          <div>
             <span className="pu-chip mll-batch-source" data-source={prefill.source}>
               {t.source[prefill.source]}
             </span>
@@ -358,7 +351,6 @@ const BatchForm = ({
                 </PuField>
               </div>
             ) : null}
-            {sourceNote === null ? null : <p className="pu-help">{sourceNote}</p>}
             {packageError === null ? null : (
               <p className="mll-batch-calc" data-ok="false" role="alert">
                 {packageError}
@@ -375,7 +367,6 @@ const BatchForm = ({
                   onFocus={() => {
                     setTarget('lotQty');
                   }}
-                  placeholder={t.lotQtyPlaceholder}
                   inputMode="decimal"
                   numeric
                   need={shownLotQty.trim() === ''}
@@ -394,9 +385,6 @@ const BatchForm = ({
                   {lotQtyError}
                 </p>
               )}
-              <p className="pu-help">
-                {draft.packageOn ? t.lotQtyHelpPackaged(uomCode) : t.lotQtyHelp(uomCode)}
-              </p>
               {calcLine === null ? null : (
                 <p
                   className="mll-batch-calc"
@@ -410,13 +398,11 @@ const BatchForm = ({
             <PuField label={t.supplierLot} optional={t.optional} htmlFor={fieldId('supplierLot')}>
               <PuInput
                 id={fieldId('supplierLot')}
-                placeholder={t.supplierLotPlaceholder}
                 value={draft.supplierLotNo}
                 onChange={(event) => {
                   update({ supplierLotNo: event.target.value });
                 }}
               />
-              <p className="pu-help">{t.supplierLotHelp}</p>
             </PuField>
             <PuField label={t.lotCount} required htmlFor={fieldId('lotCount')}>
               <div className="pu-row">
@@ -426,7 +412,6 @@ const BatchForm = ({
                   onFocus={() => {
                     setTarget('lotCount');
                   }}
-                  placeholder="1~200"
                   inputMode="numeric"
                   numeric
                   need={draft.lotCount === ''}
@@ -442,32 +427,23 @@ const BatchForm = ({
                   {t.errors.lotCount}
                 </p>
               ) : null}
-              <p className="pu-help">{t.lotCountHelp}</p>
             </PuField>
           </div>
 
-          <p className="mll-batch-summary" aria-live="polite">
-            {check.ok && check.lotQty !== null && check.lotCount !== null ? (
-              <>
-                <b>
-                  {t.summary(
-                    check.lotCount,
-                    pkgText === null
-                      ? formatBaseQty(check.lotQty, uomCode)
-                      : `${formatBaseQty(check.lotQty, uomCode)} (${pkgText})`,
-                    formatBaseQty(check.lotQty * check.lotCount, uomCode),
-                  )}
-                  {check.supplierLotNo === null ? '' : t.summarySupplierLot(check.supplierLotNo)}
-                </b>
-                <br />
-                {t.summaryNote(
-                  lotNoPattern(group.itemCode, check.lotQty, group.supplierCode, plantToday()),
+          {check.ok && check.lotQty !== null && check.lotCount !== null ? (
+            <p className="mll-batch-summary" aria-live="polite">
+              <b>
+                {t.summary(
+                  check.lotCount,
+                  pkgText === null
+                    ? formatBaseQty(check.lotQty, uomCode)
+                    : `${formatBaseQty(check.lotQty, uomCode)} (${pkgText})`,
+                  formatBaseQty(check.lotQty * check.lotCount, uomCode),
                 )}
-              </>
-            ) : (
-              t.summaryEmpty
-            )}
-          </p>
+                {check.supplierLotNo === null ? '' : t.summarySupplierLot(check.supplierLotNo)}
+              </b>
+            </p>
+          ) : null}
         </div>
         <div className="mll-batch-keypad">
           <PuKeypad

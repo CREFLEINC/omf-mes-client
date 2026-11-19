@@ -167,19 +167,13 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
   batch: {
     title: 'Tạo LOT quản lý vật tư',
     close: 'Đóng',
-    pair: 'Nhà cung cấp · mặt hàng',
+    supplier: 'Nhà cung cấp',
+    item: 'Mặt hàng',
     source: {
       default: 'Lấy từ thông tin mặc định',
       itemStorage:
         'Chưa có thông tin mặc định nhà cung cấp · mặt hàng — điền theo đơn vị bảo quản mặc định của mặt hàng',
       none: 'Chưa có thông tin mặc định — nhập tay',
-    },
-    sourceNote: {
-      defaultWithoutPackage:
-        'Thông tin mặc định là 「Không đóng gói」. Nếu cần thì có thể thêm đóng gói.',
-      itemStorage:
-        'Nếu tạo không có đóng gói thì chỉ còn số lượng theo đơn vị cơ sở (ví dụ thùng có lẫn chiếc lẻ).',
-      none: 'Nhà cung cấp · mặt hàng này chưa có thông tin mặc định, cũng chưa có đơn vị bảo quản mặc định của mặt hàng nên bắt đầu không đóng gói. Nếu cần thì có thể thêm đóng gói.',
     },
     loading: 'Đang tải thông tin mặc định.',
     defaultsFailed: 'Không tải được thông tin mặc định — hãy nhập tay.',
@@ -191,35 +185,24 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     packageUomPlaceholder: 'Hãy chọn',
     packageCount: 'Số kiện đóng gói',
     qtyPerPackage: (uomCode: string) => `Số lượng mỗi kiện đóng gói (${uomCode})`,
-    lotQty: 'Số lượng tồn kho mỗi LOT quản lý vật tư',
-    lotQtyPlaceholder: 'Số lượng của 1 LOT quản lý vật tư',
-    lotQtyHelpPackaged: (uomCode: string) =>
-      `Được điền bằng 「Số kiện đóng gói × Số lượng mỗi kiện」. Nếu sửa tay thì phải bằng tích này. Đơn vị cố định là ${uomCode}.`,
-    lotQtyHelp: (uomCode: string) =>
-      `Đơn vị được cố định theo đơn vị cơ sở của mặt hàng (${uomCode}), không cần chọn.`,
+    lotQty: 'Số lượng 1 LOT',
     unitLocked: 'Cố định theo đơn vị cơ sở của mặt hàng',
     supplierLot: 'Số LOT nhà cung cấp',
-    supplierLotPlaceholder: 'VD: SL-77',
-    supplierLotHelp: 'Tất cả LOT quản lý vật tư được tạo đều nhận cùng một giá trị.',
     lotCount: 'Số lượng LOT',
     lotCountUnit: 'LOT',
-    lotCountHelp: 'Mỗi lần tạo được từ 1 đến 200 LOT.',
     errors: {
       packageCount: 'Số kiện đóng gói phải là số nguyên từ 1 trở lên',
       qtyPerPackage: 'Số lượng mỗi kiện đóng gói phải lớn hơn 0',
       packageUom: 'Hãy chọn đơn vị đóng gói',
-      lotQty: 'Hãy nhập số lượng tồn kho (số lớn hơn 0)',
+      lotQty: 'Hãy nhập số lượng 1 LOT (số lớn hơn 0)',
       integer: (uomCode: string) => `Đơn vị ${uomCode} phải nhập số nguyên`,
       lotCount: 'Số lượng LOT phải là số nguyên từ 1 đến 200',
       mismatch: (qty: string, product: string) =>
-        `Số lượng tồn kho ${qty} ≠ ${product} — phải khớp thì mới tạo được`,
+        `Số lượng 1 LOT ${qty} ≠ ${product} — phải khớp thì mới tạo được`,
     },
     summary: (count: number, each: string, total: string) =>
       `${count} LOT quản lý vật tư · mỗi LOT ${each} · Tổng ${total}`,
     summarySupplierLot: (no: string) => ` · LOT nhà cung cấp ${no}`,
-    summaryNote: (pattern: string) =>
-      `Ví dụ số: ${pattern} … · Được tạo ở trạng thái chờ nhập và tồn kho không tăng. LOT nhập hàng được xác định khi quét trên PDA.`,
-    summaryEmpty: 'Nhập số lượng LOT thì các LOT quản lý vật tư sẽ được tạo hiện ở đây.',
     cancel: 'Hủy',
     submit: (count: number) => `Tạo ${count} LOT`,
     submitIdle: 'Tạo',
