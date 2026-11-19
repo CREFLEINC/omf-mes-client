@@ -6,6 +6,7 @@ import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { formatQty } from '../../patterns/package-qty';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 import { LotNo } from './lot-match-field';
 
 const t = messages.iqcInboundLot.results;
@@ -33,6 +34,8 @@ export interface ResultListProps {
   uomCode: string;
   /** 판정 확정됨 — 행 끝 「확정됨」, 고치기 · 지우기 없음. */
   locked: boolean;
+  /** 이 의뢰의 판정 확정 일시 — 확정된 결과 줄의 「확정 일시」(omf-all-around#296). 확정 전은 `null`. */
+  confirmedAt: string | null;
   busy: boolean;
   onEdit: (result: InspectionResultSummaryForward) => void;
   onDelete: (result: InspectionResultSummaryForward) => void;
@@ -47,6 +50,7 @@ export const ResultList = ({
   lots,
   uomCode,
   locked,
+  confirmedAt,
   busy,
   onEdit,
   onDelete,
@@ -55,9 +59,16 @@ export const ResultList = ({
     lots.find((lot) => lot.lotId === lotId)?.lotNo ?? String(lotId);
 
   const baseColumns: Column<InspectionResultSummaryForward>[] = [
-    { key: 'seq', header: t.columns.seq, width: '110px', render: (row) => t.seq(row.seqNo) },
+    {
+      key: 'seq',
+      align: 'center',
+      header: t.columns.seq,
+      width: '110px',
+      render: (row) => t.seq(row.seqNo),
+    },
     {
       key: 'judgment',
+      align: 'center',
       header: t.columns.judgment,
       width: '160px',
       render: (row) => {
@@ -78,11 +89,12 @@ export const ResultList = ({
       key: 'inspectedQty',
       header: t.columns.inspectedQty,
       width: '110px',
-      align: 'end',
+      align: 'center',
       render: (row) => `${formatQty(row.inspectedQty)} ${uomCode}`,
     },
     {
       key: 'defects',
+      align: 'center',
       header: t.columns.defects,
       width: '180px',
       render: (row) =>
@@ -92,6 +104,7 @@ export const ResultList = ({
     },
     {
       key: 'matched',
+      align: 'center',
       header: t.columns.matched,
       width: '300px',
       render: (row) =>
@@ -108,12 +121,24 @@ export const ResultList = ({
     },
     {
       key: 'inspector',
+      align: 'center',
       header: t.columns.inspector,
       width: '110px',
       render: (row) => row.inspectorName ?? '—',
     },
     {
+      key: 'confirmedAt',
+      align: 'center',
+      header: t.columns.confirmedAt,
+      width: '150px',
+      render: (row) =>
+        row.statusCode === 'CONFIRMED' && confirmedAt !== null
+          ? (formatPlantDateTime(confirmedAt) ?? '-')
+          : '-',
+    },
+    {
       key: 'actions',
+      align: 'center',
       header: t.columns.actions,
       width: '100px',
       render: (row) =>

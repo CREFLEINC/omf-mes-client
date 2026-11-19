@@ -23,6 +23,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 import { runRequest } from '../../patterns/request';
 import {
   ACCEPT,
@@ -106,10 +107,13 @@ const useLotAttachments = (inspectionRequestId: number, lots: readonly Inspectio
 export const InboundAttachmentTable = ({
   inspectionRequestId,
   lots,
+  confirmedAt,
   action,
 }: {
   inspectionRequestId: number;
   lots: readonly InspectionLotForward[];
+  /** 이 의뢰의 판정 확정 일시 — 확정 전은 `null`(「-」 · omf-all-around#296). */
+  confirmedAt: string | null;
   /** 제목 줄 오른쪽 단추([파일 첨부]). */
   action?: ReactNode;
 }) => {
@@ -140,6 +144,7 @@ export const InboundAttachmentTable = ({
   const baseColumns: Column<FileRow>[] = [
     {
       key: 'fileName',
+      align: 'center',
       header: t.columns.fileName,
       width: '280px',
       render: (row) => (
@@ -187,6 +192,13 @@ export const InboundAttachmentTable = ({
       width: '150px',
       align: 'center',
       render: (row) => formatAt(row.first.uploadedAt),
+    },
+    {
+      key: 'confirmedAt',
+      header: t.columns.confirmedAt,
+      width: '150px',
+      align: 'center',
+      render: () => (confirmedAt === null ? '-' : (formatPlantDateTime(confirmedAt) ?? '-')),
     },
   ];
   const ordered = useColumnOrder('omf-mes:iqc-inbound-attachments:columns:order', baseColumns);

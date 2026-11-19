@@ -152,10 +152,13 @@ describe('IQC 입하 LOT 파일 첨부', () => {
         },
       },
     ]);
-    renderWithProviders(<InboundAttachmentTable inspectionRequestId={501} lots={LOTS} />, {
-      fetch,
-      session: null,
-    });
+    renderWithProviders(
+      <InboundAttachmentTable inspectionRequestId={501} lots={LOTS} confirmedAt={null} />,
+      {
+        fetch,
+        session: null,
+      },
+    );
 
     const table = await screen.findByRole('table', { name: t.tableTitle });
     await waitFor(() => expect(within(table).getAllByRole('row')).toHaveLength(4));

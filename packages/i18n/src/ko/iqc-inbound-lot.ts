@@ -120,6 +120,8 @@ export const iqcInboundLot = {
       defects: '불량',
       matched: '적용 LOT 번호',
       inspector: '검사자',
+      /* 판정 확정 일시(사용자 지시 2026-11-19 · omf-all-around#296) — 확정 전은 「-」. */
+      confirmedAt: '확정 일시',
       actions: '상태',
     },
     seq: (seqNo: number) => `${seqNo}회차`,
@@ -259,6 +261,7 @@ export const iqcInboundLot = {
       lots: '연결 LOT 번호',
       size: '크기',
       uploadedAt: '등록 일시',
+      confirmedAt: '확정 일시',
     },
     empty: '첨부한 파일이 없습니다.',
     loadFailed: '첨부 파일을 불러오지 못했습니다.',

@@ -182,16 +182,16 @@ export const InboundDetail = ({
     lotJudgments.find((each) => each.lotId === lotId && each.resultSeqNo !== null) ?? null;
 
   const lotColumns: Column<InspectionLotForward>[] = [
-    /* 시안(사용자 지시 2026-11-16 · #274) — LOT 번호 왼쪽 · 수량 오른쪽 · 품질 상태는 글자만(자물쇠 없음). 패키징은 있을 때만. */
+    /* 시안(사용자 지시 2026-11-16 · #274) — 품질 상태는 글자만(자물쇠 없음). 패키징은 있을 때만. */
     {
       key: 'lotNo',
-      align: 'start',
+      align: 'center',
       header: t.columns.lotNo,
       render: (row) => <LotNo lotNo={row.lotNo} />,
     },
     {
       key: 'qty',
-      align: 'end',
+      align: 'center',
       header: t.columns.qty,
       render: (row) => {
         const pack = formatPackage(row.package);
@@ -205,6 +205,7 @@ export const InboundDetail = ({
     },
     {
       key: 'status',
+      align: 'center',
       header: t.columns.status,
       render: (row) => (
         /* 품질 상태도 라벨(칩)로 — 자물쇠 아이콘은 없이(사용자 지시 2026-11-16 · #274). */
@@ -219,6 +220,7 @@ export const InboundDetail = ({
     /* 판정 · 적용 검사 — LOT 마다 적용된(최신) 검사 회차와 그 판정(사용자 시안 2026-11-16 · #274). 확정 전에도 「판정」(#296). */
     {
       key: 'judgment',
+      align: 'center',
       header: t.columns.judgment,
       render: (row) => {
         const judgment = lotJudgmentOf(row.lotId);
@@ -234,6 +236,7 @@ export const InboundDetail = ({
     },
     {
       key: 'applied',
+      align: 'center',
       header: t.columns.applied,
       render: (row) => {
         const judgment = lotJudgmentOf(row.lotId);
@@ -480,6 +483,7 @@ export const InboundDetail = ({
                       lots={lots}
                       uomCode={uomCode}
                       locked={confirmed}
+                      confirmedAt={inspection.confirmedAt ?? null}
                       busy={busy}
                       onEdit={(result) => setDrawer({ editing: result })}
                       onDelete={(result) => {
@@ -490,6 +494,7 @@ export const InboundDetail = ({
                     <InboundAttachmentTable
                       inspectionRequestId={inspectionRequestId}
                       lots={lots}
+                      confirmedAt={inspection.confirmedAt ?? null}
                       action={
                         /* 파일 첨부 — 첨부 파일 표 위 오른쪽. 대기 · 진행 중에만, 판정 확정(완료) 뒤에는 감춘다(사용자 지시 2026-11-19 · omf-all-around#296). */
                         confirmed ? null : (
