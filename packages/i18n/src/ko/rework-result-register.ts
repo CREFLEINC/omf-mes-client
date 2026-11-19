@@ -80,7 +80,7 @@ export const reworkResultRegister = {
   },
   /** 오른쪽 키패드 구획. */
   keypad: {
-    title: '수량',
+    title: '입력',
     unit: (uom: string): string => `단위 ${uom}`,
   },
   total: '합계',
@@ -94,9 +94,10 @@ export const reworkResultRegister = {
       ? `부분 실적입니다. 미처리 ${remaining}이 남습니다.`
       : `부분 실적입니다. 미처리 ${remaining} ${uom}가 남습니다.`,
   /** 도움말 창(규칙 14) — 상시 안내 줄 대신. */
-  helpTitle: '재작업 실적 입력',
-  reworkHint: '재작업 후 다시 불량이면 불량입니다. 재작업 수량이 아닙니다.',
-  lotHint: '결과는 원 LOT에 남으며 새 LOT을 만들지 않습니다.',
+  helpTitle: '재작업 실적 입력 안내',
+  reworkHint: '재작업 후에도 불량인 수량만 입력해 주세요.',
+  lotHint: '재작업 결과는 기존 LOT에 기록되며, 새로운 LOT는 생성되지 않습니다.',
+  helpConfirm: '확인',
   defectCode: '불량 코드',
   defectCodePlaceholder: '불량 코드를 선택하세요',
   /** 목록을 못 받았거나 비었을 때 — 저장은 막지 않는다(리뷰 M1). */

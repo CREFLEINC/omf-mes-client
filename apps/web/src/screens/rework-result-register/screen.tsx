@@ -439,32 +439,40 @@ export const ReworkResultRegisterScreen = () => {
         <PuEmpty icon="list" title={t.pickTitle} hint={t.pickHint} />
       </PuSection>
     ) : (
+      /* 단계 이름은 단계 줄이 이미 보인다 — 구획 제목을 겹쳐 쓰지 않는다(사용자 지시 2026-11-19). */
       <PuSection
-        title={step === 'defect' ? t.steps.defect : t.steps.input}
+        label={step === 'defect' ? t.steps.defect : t.steps.input}
+        head={
+          <PuFlow
+            label={t.steps.label}
+            current={step === 'defect' ? 1 : 0}
+            steps={[
+              {
+                label: t.steps.input,
+                done: step === 'defect',
+                onGo: step === 'defect' ? () => goStep('input') : undefined,
+              },
+              /* 수량 단계에서 [다음]과 같은 조건으로 눌러 넘어간다(사용자 지시 2026-11-19). */
+              {
+                label: t.steps.defect,
+                disabled: step === 'input' && selected === null,
+                onGo: step === 'input' ? () => goStep('defect') : undefined,
+              },
+            ]}
+          />
+        }
         meta={
           <>
             <PuChip tone={verdict === 'exceeded' ? 'bad' : verdict === 'complete' ? 'ok' : 'info'}>
               {`${t.total} ${String(total)} / ${String(progress.remaining)}`}
             </PuChip>
-            <PuHelpButton title={t.helpTitle}>
+            <PuHelpButton title={t.helpTitle} closeLabel={t.helpConfirm}>
               <p className="pu-dialog-text">{t.reworkHint}</p>
               <p className="pu-dialog-text">{t.lotHint}</p>
             </PuHelpButton>
           </>
         }
       >
-        <PuFlow
-          label={t.steps.label}
-          current={step === 'defect' ? 1 : 0}
-          steps={[
-            {
-              label: t.steps.input,
-              done: step === 'defect',
-              onGo: step === 'defect' ? () => goStep('input') : undefined,
-            },
-            { label: t.steps.defect },
-          ]}
-        />
         <PuBand
           grid={3}
           label={t.workOrders}
@@ -533,39 +541,42 @@ export const ReworkResultRegisterScreen = () => {
             <b>{t.rejected}</b> <span>{serverReasonOf(rejection) ?? t.rejectedHint}</span>
           </PuNote>
         )}
-        <div className="pu-grid2">{STEP_KEYS[step].map(quantityField)}</div>
-        {step === 'defect' && (
-          <PuField label={t.defectCode} htmlFor={defectCodeId} required={defectCodeRequired}>
-            <Select
-              id={defectCodeId}
-              options={defectCodeOptions.map((code) => ({
-                value: String(code.defectCodeId),
-                label: `${code.defectCode} ${code.defectName}`,
-              }))}
-              value={defectCode}
-              onChange={setDefectCode}
-              invalid={defectCodeMissing}
-              placeholder={
-                defectCodes.isSuccess && defectCodeOptions.length === 0
-                  ? t.defectCodeEmpty
-                  : t.defectCodePlaceholder
-              }
-              disabled={defectCodeOptions.length === 0}
-            />
-            {defectCodes.isError && (
-              <PuNote
-                tone="warn"
-                action={
-                  <PuButton size="sm" onClick={() => void defectCodes.refetch()}>
-                    {t.defectCodeRetry}
-                  </PuButton>
+        {/* 칸이 셋이면 한 줄에 셋, 불량 단계는 불량 수량과 불량 코드를 한 줄에(사용자 지시 2026-11-19). */}
+        <div className={STEP_KEYS[step].length === 3 ? 'pu-grid3' : 'pu-grid2'}>
+          {STEP_KEYS[step].map(quantityField)}
+          {step === 'defect' && (
+            <PuField label={t.defectCode} htmlFor={defectCodeId} required={defectCodeRequired}>
+              <Select
+                id={defectCodeId}
+                options={defectCodeOptions.map((code) => ({
+                  value: String(code.defectCodeId),
+                  label: `${code.defectCode} ${code.defectName}`,
+                }))}
+                value={defectCode}
+                onChange={setDefectCode}
+                invalid={defectCodeMissing}
+                placeholder={
+                  defectCodes.isSuccess && defectCodeOptions.length === 0
+                    ? t.defectCodeEmpty
+                    : t.defectCodePlaceholder
                 }
-              >
-                {t.defectCodeLoadFailed}
-              </PuNote>
-            )}
-          </PuField>
-        )}
+                disabled={defectCodeOptions.length === 0}
+              />
+              {defectCodes.isError && (
+                <PuNote
+                  tone="warn"
+                  action={
+                    <PuButton size="sm" onClick={() => void defectCodes.refetch()}>
+                      {t.defectCodeRetry}
+                    </PuButton>
+                  }
+                >
+                  {t.defectCodeLoadFailed}
+                </PuNote>
+              )}
+            </PuField>
+          )}
+        </div>
       </PuSection>
     );
 

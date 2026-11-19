@@ -102,7 +102,16 @@ export const PuConfirm = ({
 );
 
 /** 도움말 단추: 구획 제목 줄 오른쪽의 [?] — 긴 업무 설명은 상시 글 대신 이 창(규칙 14). */
-export const PuHelpButton = ({ title, children }: { title: ReactNode; children: ReactNode }) => {
+export const PuHelpButton = ({
+  title,
+  children,
+  closeLabel,
+}: {
+  title: ReactNode;
+  children: ReactNode;
+  /** 닫기 단추 글 — 없으면 [닫기]. */
+  closeLabel?: string;
+}) => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -122,6 +131,7 @@ export const PuHelpButton = ({ title, children }: { title: ReactNode; children: 
         <PuDialog
           title={title}
           wide
+          closeLabel={closeLabel}
           onClose={() => {
             setOpen(false);
           }}

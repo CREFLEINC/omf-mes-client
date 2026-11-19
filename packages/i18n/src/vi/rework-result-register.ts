@@ -54,7 +54,7 @@ export const reworkResultRegister: Translated<typeof ko.reworkResultRegister> = 
     scrapQty: 'Hủy bỏ',
   },
   keypad: {
-    title: 'Số lượng',
+    title: 'Nhập',
     unit: (uom: string): string => `Đơn vị ${uom}`,
   },
   total: 'Tổng',
@@ -67,9 +67,10 @@ export const reworkResultRegister: Translated<typeof ko.reworkResultRegister> = 
     uom === ''
       ? `Kết quả một phần. Còn ${remaining} chưa xử lý.`
       : `Kết quả một phần. Còn ${remaining} ${uom} chưa xử lý.`,
-  helpTitle: 'Nhập kết quả làm lại',
-  reworkHint: 'Làm lại xong mà vẫn lỗi thì nhập vào lỗi, không phải số lượng làm lại.',
-  lotHint: 'Kết quả vẫn ở LOT gốc, không tạo LOT mới.',
+  helpTitle: 'Hướng dẫn nhập kết quả làm lại',
+  reworkHint: 'Chỉ nhập số lượng vẫn còn lỗi sau khi làm lại.',
+  lotHint: 'Kết quả làm lại được ghi vào LOT hiện có, không tạo LOT mới.',
+  helpConfirm: 'Xác nhận',
   defectCode: 'Mã lỗi',
   defectCodePlaceholder: 'Hãy chọn mã lỗi',
   defectCodeLoadFailed: 'Không tải được mã lỗi. Vẫn có thể lưu mà không cần mã.',
