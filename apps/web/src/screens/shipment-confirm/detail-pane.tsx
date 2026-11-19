@@ -195,6 +195,12 @@ export const DetailPane = ({
                         <Chip status="warning" size="sm">
                           {t.detail.over(line.overQty)}
                         </Chip>
+                      )}{' '}
+                      {/* 수주 없는 라인은 ERP 로 보내지 않는다(US7-4) — 지시서를 받았을 때만 가른다. */}
+                      {line.targetQty !== null && line.salesOrderNo === null && (
+                        <Chip status="idle" size="sm">
+                          {t.detail.lineNotSent}
+                        </Chip>
                       )}
                     </td>
                   </tr>

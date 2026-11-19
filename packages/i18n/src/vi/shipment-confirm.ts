@@ -97,6 +97,7 @@ export const shipmentConfirm: Translated<typeof ko.shipmentConfirm> = {
       oqc: 'OQC',
     },
     line: (lineNo: number, itemCode: string): string => `Dòng ${String(lineNo)}: ${itemCode}`,
+    lineNotSent: 'Không gửi ERP',
     erpPending: (lineCount: number, salesOrderNos: string): string =>
       `Chưa gửi sang ERP. Ở lần gửi tiếp theo, ${String(lineCount)} dòng có đơn bán hàng (đơn ${salesOrderNos}) sẽ được gửi.`,
     lineQty: (target: string, shipped: number): string =>

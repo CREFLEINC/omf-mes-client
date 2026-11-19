@@ -111,6 +111,8 @@ export const shipmentConfirm = {
     line: (lineNo: number, itemCode: string): string => `라인 ${String(lineNo)}: ${itemCode}`,
     lineQty: (target: string, shipped: number): string => `목표 ${target}, 출하 ${String(shipped)}`,
     over: (qty: number): string => `초과 +${String(qty)}`,
+    /** 수주 없는 라인 — 이 라인은 ERP 로 보내지 않는다(US7-4 · FR-026). */
+    lineNotSent: 'ERP 송신 안 함',
     /** 송신 대기 — 다음 송신 때 나갈 수주 연결 라인 수와 수주 번호(시안 「라인 n행(수주 SO-…)」). */
     erpPending: (lineCount: number, salesOrderNos: string): string =>
       `아직 ERP 로 보내지 않았습니다. 다음 송신 때 수주 연결 라인 ${String(lineCount)}행(수주 ${salesOrderNos})이 나갑니다.`,

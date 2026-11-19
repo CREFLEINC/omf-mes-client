@@ -180,6 +180,21 @@ describe('ShipmentConfirmScreen — W-04-12 출하 내역', () => {
     expect(within(detail).getByText(t.detail.erpPending(1, 'SYN-SO-01'))).toBeInTheDocument();
   });
 
+  it('T053·US7-4·Q15 수주 라인과 수주 없는 라인이 섞인 출하는 수주 없는 라인 머리에 「ERP 송신 안 함」이 보인다', async () => {
+    const { user } = renderScreen({ mixedLines: true });
+    await openDetail(user, 'SYN-SH-101');
+
+    const line2 = (
+      await within(detailPane()).findByText(t.detail.line(2, 'SYN-FG-B200 합성 브래킷'))
+    ).closest('tr');
+    expect(line2).toHaveTextContent(t.detail.lineNotSent);
+    const line1 = within(detailPane())
+      .getByText(t.detail.line(1, 'SYN-FG-A100 합성 센서 모듈'))
+      .closest('tr');
+    expect(line1).not.toHaveTextContent(t.detail.lineNotSent);
+    expect(within(detailPane()).getByText(t.detail.erpPending(1, 'SYN-SO-01'))).toBeInTheDocument();
+  });
+
   it('Q15·US7-2 ERP 송신 거르기 칩에 상태별 건수와 전체 건수를 보인다', async () => {
     renderScreen({
       erpSendStatusCounts: { PENDING: 2, SENT: 1, NOT_SENT_NO_SALES_ORDER: 1, NOT_QUEUED: 2 },
