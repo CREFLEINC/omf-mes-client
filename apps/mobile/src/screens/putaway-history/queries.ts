@@ -17,6 +17,8 @@ export type PutawayRecordScope = 'WORKER' | 'TERMINAL';
 const PAGE_SIZE = 50;
 
 export const putawayRecordKeys = {
+  /** 기준 · 사번 · 날짜를 가리지 않고 전부 — 전송 대기가 보내졌을 때 다시 부르는 데 쓴다. */
+  all: ['putaway-records'] as const,
   /*
    * 「내 기록」은 사번이 열쇠에 든다 - 교대로 사번이 바뀌면 다른 목록이라 앞 작업자의 줄이 남지 않는다.
    * 「이 단말」은 사번과 무관해 null 로 둔다 - 사번이 바뀌어도 받아 둔 목록을 그대로 쓴다.

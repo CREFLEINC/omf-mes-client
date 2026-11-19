@@ -11,7 +11,7 @@ import {
   jsonResponse,
   renderWithProviders,
 } from '../../test/api-harness';
-import { OUTBOX_KEY, type OutboxEntry } from '../../patterns/outbox';
+import { OUTBOX_KEY, useOutbox, type OutboxEntry } from '../../patterns/outbox';
 import { useWorkerSession, type Worker } from '../../patterns/worker-session';
 import { PutawayHistoryScreen } from './screen';
 
@@ -81,7 +81,7 @@ interface BackendOptions {
 }
 
 const backend = (options: BackendOptions = {}) => {
-  const state = { down: false, seen: [] as Seen[] };
+  const state = { down: false, sendable: false, seen: [] as Seen[] };
   const fetch = createStubFetch([
     {
       match: (request) => new URL(request.url).pathname === '/logistics/putaway-records',
@@ -117,7 +117,11 @@ const backend = (options: BackendOptions = {}) => {
     {
       match: (request) => new URL(request.url).pathname.startsWith('/logistics/putaway-tasks/'),
       respond: () => {
-        throw new TypeError('Failed to fetch');
+        if (!state.sendable) {
+          throw new TypeError('Failed to fetch');
+        }
+
+        return jsonResponse({}, { status: 200 });
       },
     },
   ]);
@@ -148,6 +152,17 @@ const SwitchWorker = ({ to }: { to: Worker }) => {
   );
 };
 
+/** 셸이 연결이 돌아왔을 때 큐를 보내는 것과 같다. */
+const SendNow = () => {
+  const { flush } = useOutbox();
+
+  return (
+    <button type="button" onClick={() => void flush()}>
+      지금 보내기
+    </button>
+  );
+};
+
 const Where = () => {
   const routed = useLocation();
 
@@ -162,6 +177,7 @@ const render = (
     <MemoryRouter initialEntries={['/putaway-history']}>
       <SignedIn>
         <SwitchWorker to={LEE} />
+        <SendNow />
         <Routes>
           <Route path="/putaway-history" element={<PutawayHistoryScreen />} />
           <Route path="*" element={<Where />} />
@@ -464,6 +480,54 @@ describe('적치 기록 화면', () => {
     expect(await screen.findByText(t.queued.title(2))).toBeInTheDocument();
     await user.click(screen.getByRole('link', { name: t.queued.action }));
     expect(screen.getByTestId('where')).toHaveTextContent('/outbox');
+  });
+
+  it('FR-014·H12 전송 대기가 보내지면 목록을 다시 불러온다', async () => {
+    store.set(
+      OUTBOX_KEY,
+      JSON.stringify([
+        {
+          id: 'a',
+          label: messages.putaway.record,
+          idempotencyKey: 'key-a',
+          method: 'POST',
+          path: '/logistics/putaway-tasks/90:complete',
+          body: {},
+          occurredAt: '2026-11-18T14:40:00.000Z',
+          confirmation: 'immediate',
+          workerNo: KIM.workerNo,
+        } satisfies OutboxEntry,
+      ]),
+    );
+    const { state, fetch } = backend({
+      rows: () =>
+        state.sendable
+          ? [record({ recordType: 'TASK', recordId: 90, documentNo: 'PT-90' }), record()]
+          : [record()],
+    });
+    const user = userEvent.setup();
+    render(fetch);
+    expect(await screen.findByText(t.queued.title(1))).toBeInTheDocument();
+    await screen.findByText('GR-20261118-0002', { exact: false });
+
+    state.sendable = true;
+    await user.click(screen.getByRole('button', { name: '지금 보내기' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(t.queued.title(1))).toBeNull();
+    });
+    expect(await screen.findByText('PT-90', { exact: false })).toBeInTheDocument();
+    expect(within(listOf()).getAllByRole('listitem')).toHaveLength(2);
+  });
+
+  it('Edge-연결 끊김 불러온 적 없으면 건수를 보이지 않는다', async () => {
+    const { state, fetch } = backend();
+    state.down = true;
+    render(fetch);
+
+    expect(await screen.findByText(t.offline.none)).toBeInTheDocument();
+    expect(screen.getByText(t.basis.mine(KIM.workerNo, KIM.workerName, null))).toBeInTheDocument();
+    expect(screen.queryByText(/0건/)).toBeNull();
   });
 
   it('FR-014 전송 대기가 없으면 안내를 세우지 않는다', async () => {
