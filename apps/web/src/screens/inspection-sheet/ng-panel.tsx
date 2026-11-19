@@ -7,7 +7,7 @@ import { DateTimeField } from '../../patterns/date-time-field';
 import { masterName } from '../../patterns/master-name';
 import { Select } from '../../patterns/select';
 
-const t = messages.popInspectionSheet.ng;
+const t = messages.inspectionSheetEntry.ng;
 
 /** 화면 안의 한 블록 — 날짜는 입력칸 글자(로컬 시각)로 들고, 보낼 때 ISO 로 바꾼다. */
 export interface NgDraft extends Omit<InspectionSheetNgWrite, 'repairedAt' | 'recheckedAt'> {
@@ -321,7 +321,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
           disabled={disabled || isSaving || !changed}
           onClick={save}
         >
-          {isSaving ? messages.popInspectionSheet.saving : t.save}
+          {isSaving ? messages.inspectionSheetEntry.saving : t.save}
         </Button>
       </div>
     </section>

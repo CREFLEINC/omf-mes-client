@@ -9,7 +9,7 @@ import { useState } from 'react';
 
 import { Select } from '../../patterns/select';
 
-const t = messages.popInspectionSheet.header;
+const t = messages.inspectionSheetEntry.header;
 
 type TextKey = Exclude<keyof InspectionSheetHeaderUpdate, 'rohsFlag' | 'overallResultCode'>;
 
@@ -149,7 +149,7 @@ export const HeaderPanel = ({ sheet, disabled, isSaving, onSave }: HeaderPanelPr
           disabled={disabled || isSaving || !changed}
           onClick={() => onSave(trimmed(header))}
         >
-          {isSaving ? messages.popInspectionSheet.saving : t.save}
+          {isSaving ? messages.inspectionSheetEntry.saving : t.save}
         </Button>
       </div>
     </section>

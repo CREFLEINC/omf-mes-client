@@ -311,7 +311,7 @@ export const SheetDetail = ({
       render: (ng) =>
         [
           ng.foundDepartmentCode &&
-            messages.popInspectionSheet.ng.departments[ng.foundDepartmentCode],
+            messages.inspectionSheetEntry.ng.departments[ng.foundDepartmentCode],
           ng.foundStepCode && sheet.steps.find((s) => s.stepCode === ng.foundStepCode)?.nameKo,
           ng.checkItemCode,
         ]
@@ -326,7 +326,7 @@ export const SheetDetail = ({
         <>
           {ng.ngContent}
           {ng.ngTypeCode &&
-            ` (${messages.popInspectionSheet.ng.types[ng.ngTypeCode] ?? ng.ngTypeCode})`}
+            ` (${messages.inspectionSheetEntry.ng.types[ng.ngTypeCode] ?? ng.ngTypeCode})`}
           {ng.investigationText && <div className="field-note">{ng.investigationText}</div>}
         </>
       ),
@@ -338,7 +338,7 @@ export const SheetDetail = ({
       render: (ng) =>
         [
           ng.repairDepartmentCode &&
-            messages.popInspectionSheet.ng.departments[ng.repairDepartmentCode],
+            messages.inspectionSheetEntry.ng.departments[ng.repairDepartmentCode],
           ng.repairWorkerName,
           ng.repairedAt && when(ng.repairedAt),
         ]

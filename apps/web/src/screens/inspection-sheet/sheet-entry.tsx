@@ -9,7 +9,7 @@ import { NgPanel } from './ng-panel';
 import { useSaveHeader, useSaveNgs, useSaveStep } from './sheet-queries';
 import { StepPanel } from './step-panel';
 
-const t = messages.popInspectionSheet;
+const t = messages.inspectionSheetEntry;
 
 export interface SheetEntryProps {
   sheet: InspectionSheet;

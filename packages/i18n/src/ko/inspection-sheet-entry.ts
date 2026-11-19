@@ -1,5 +1,5 @@
 /** 제품 검사표 입력 부품(관리웹 「제품 검사표 조회」의 검사 입력 탭 · omf-all-around#89 · #316). */
-export const popInspectionSheet = {
+export const inspectionSheetEntry = {
   header: {
     heading: '머리 값',
     note: '자동으로 채운 값입니다. 다르면 고쳐서 저장하세요.',

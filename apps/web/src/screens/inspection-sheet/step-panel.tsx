@@ -14,7 +14,7 @@ import {
   stepSave,
 } from './step-judgment';
 
-const t = messages.popInspectionSheet.step;
+const t = messages.inspectionSheetEntry.step;
 
 const nameOf = (step: InspectionSheetStep): string =>
   masterName({ nameKo: step.nameKo, nameVi: step.nameVi }, step.nameKo);
@@ -215,7 +215,7 @@ const StepForm = ({ step, disabled, isSaving, onSave }: StepFormProps) => {
           onClick={save}
         >
           {isSaving
-            ? messages.popInspectionSheet.saving
+            ? messages.inspectionSheetEntry.saving
             : changed && plan.mode === 'draft'
               ? t.draftSave
               : t.save}

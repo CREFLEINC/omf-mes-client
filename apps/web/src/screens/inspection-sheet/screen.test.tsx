@@ -728,7 +728,7 @@ describe('제품 검사표 조회', () => {
   });
 
   it('검사 입력 탭에서 머리 값과 단계 판정을 상세의 ETag 로 잠가 저장한다', async () => {
-    const p = messages.popInspectionSheet;
+    const p = messages.inspectionSheetEntry;
     const { user, requests } = setup(['W-03-13']);
     await open(user);
     await user.click(screen.getByRole('tab', { name: d.tabs.entry }));

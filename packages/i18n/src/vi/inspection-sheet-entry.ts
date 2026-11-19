@@ -1,5 +1,5 @@
 /** Phần nhập phiếu kiểm tra sản phẩm (tab nhập trên web quản trị · #316). */
-export const popInspectionSheet = {
+export const inspectionSheetEntry = {
   header: {
     heading: 'Thông tin phần đầu',
     note: 'Giá trị được điền tự động. Nếu khác hãy sửa rồi lưu.',
