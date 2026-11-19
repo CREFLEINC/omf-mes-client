@@ -97,6 +97,7 @@ export const popShipmentComplete = {
     heading: 'Kho sẽ bị trừ tồn',
     note: 'Chỉ để tham khảo. Xuất hàng được ghi thành một lần.',
     entry: (lotCount: number, qty: string): string => `${String(lotCount)} LOT, SL ${qty}`,
+    splitLot: (lotNo: string): string => `${lotNo} nằm ở hai kho nên được tính ở cả hai kho.`,
   },
 
   lots: {
@@ -133,6 +134,9 @@ export const popShipmentComplete = {
     request: 'Lệnh xuất hàng',
     completedAt: 'Thời điểm hoàn tất',
     worker: 'Công nhân',
+    completedBy: 'Thiết bị và công nhân',
+    who: (terminalCode: string, workerName: string, workerNo: string): string =>
+      `${terminalCode}, ${workerName} (${workerNo})`,
     qty: 'SL xuất hàng',
     qtyValue: (qty: string, lineCount: number, lotCount: number, over: string | null): string =>
       `${qty}, ${String(lineCount)} dòng, ${String(lotCount)} LOT${over === null ? '' : ` (gồm vượt ${over})`}`,

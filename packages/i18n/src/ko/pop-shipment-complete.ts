@@ -107,6 +107,8 @@ export const popShipmentComplete = {
     heading: '재고가 빠질 창고',
     note: '정보로만 보입니다. 출하는 하나로 기록됩니다.',
     entry: (lotCount: number, qty: string): string => `LOT ${String(lotCount)}개, 수량 ${qty}`,
+    /** 두 창고 이상에 몫이 있는 LOT — 창고마다 LOT 수를 세면 그 LOT 이 양쪽에 들어간다(시안 ③). */
+    splitLot: (lotNo: string): string => `${lotNo} 는 두 창고에 나뉘어 있어 양쪽에 모두 셉니다.`,
   },
 
   lots: {
@@ -146,6 +148,10 @@ export const popShipmentComplete = {
     request: '출하 지시서',
     completedAt: '완료 시각',
     worker: '작업자',
+    /** 완료한 POP 단말과 작업자(시안 ⑥⑦ 「단말 · 작업자」 — C-13 으로 쉼표). */
+    completedBy: '단말과 작업자',
+    who: (terminalCode: string, workerName: string, workerNo: string): string =>
+      `${terminalCode}, ${workerName} (${workerNo})`,
     qty: '출하 수량',
     qtyValue: (qty: string, lineCount: number, lotCount: number, over: string | null): string =>
       `${qty}, 라인 ${String(lineCount)}, LOT ${String(lotCount)}${over === null ? '' : ` (초과 ${over} 포함)`}`,

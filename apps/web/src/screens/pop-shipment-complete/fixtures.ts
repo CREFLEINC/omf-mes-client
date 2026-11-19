@@ -206,6 +206,8 @@ export const completedShipment = {
   shipmentId: 1001,
   shipmentNo: 'SH-261118-001',
   completedAt: '2026-11-18T07:32:00Z',
+  completedTerminal: { terminalId: 61, terminalCode: 'POP-출하-01' },
+  completedWorker: { workerId: 71, workerNo: 'W-0102', workerName: '김작업' },
 };
 
 export const completionResult = (): CompletionResult => ({

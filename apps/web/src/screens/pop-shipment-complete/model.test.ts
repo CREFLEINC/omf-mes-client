@@ -57,6 +57,8 @@ describe('P-04-07 막는 이유 묶기', () => {
         shipmentId: 9,
         shipmentNo: 'SH-1',
         completedAt: '2026-11-18T07:32:00Z',
+        completedTerminal: null,
+        completedWorker: null,
       },
     });
     expect(isAlreadyCompleted(done)).toBe(true);

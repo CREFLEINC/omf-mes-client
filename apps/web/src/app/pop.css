@@ -10794,6 +10794,14 @@
   background: var(--semantic-error-container);
 }
 
+/* 두 창고에 나뉜 LOT 안내(시안 P0407-After ③) — 창고 목록 아래 한 줄씩. */
+.pop-ui .pop-ship-split-lot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: var(--space-2) 0 0;
+}
+
 .pop-ui .pop-ship-warehouses {
   display: flex;
   flex-direction: column;

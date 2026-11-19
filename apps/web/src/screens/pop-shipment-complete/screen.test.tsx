@@ -349,7 +349,7 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     expect(completeButton()).toBeEnabled();
   });
 
-  it('Q9 완료 결과의 작업자는 이름(사번)이다 — 세션 작업자가 같은 사번일 때', async () => {
+  it('Q9 서버가 완료 단말·작업자를 싣지 않으면 작업자는 세션 이름(사번)이다 — 세션 작업자가 같은 사번일 때', async () => {
     setWorkerSession({
       worker: {
         workerId: 1,
@@ -361,7 +361,18 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     });
     try {
       const user = userEvent.setup();
-      renderScreen();
+      const bare = { ...completedShipment, completedTerminal: null, completedWorker: null };
+      renderScreen({
+        complete: [
+          jsonResponse({
+            ...completionResult(),
+            completion: completion({
+              completedShipment: bare,
+              blockers: [{ code: 'ALREADY_COMPLETED' }],
+            }),
+          }),
+        ],
+      });
       await scan(user, CODE);
       await user.click(await screen.findByRole('button', { name: t.bar.complete }));
 
@@ -423,6 +434,42 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     expect(lookupCalls()).toHaveLength(2);
     expect(new URL(lookupCalls()[1]?.url ?? '').searchParams.get('code')).toBe(CODE);
     expect(completeButton()).toBeEnabled();
+  });
+
+  it('Q9·US1-3 — 완료 결과에 POP 단말과 작업자 이름(사번)이 보인다(시안 ⑥ 「단말 · 작업자」)', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await scan(user, CODE);
+    await user.click(await screen.findByRole('button', { name: t.bar.complete }));
+
+    expect(await screen.findByText(t.result.completedBy)).toBeInTheDocument();
+    expect(screen.getByText(t.result.who('POP-출하-01', '김작업', 'W-0102'))).toBeInTheDocument();
+  });
+
+  it('Q11 — 「이미 완료」 화면에도 완료한 POP 단말과 작업자 이름이 보인다(시안 ⑦)', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      lookups: [
+        jsonResponse(completion({ completedShipment, blockers: [{ code: 'ALREADY_COMPLETED' }] })),
+      ],
+    });
+
+    await scan(user, CODE);
+
+    expect(await screen.findByText(t.already.title)).toBeInTheDocument();
+    expect(screen.getByText(t.result.who('POP-출하-01', '김작업', 'W-0102'))).toBeInTheDocument();
+  });
+
+  it('R-2·Q2 — 두 창고에 나뉜 LOT 은 「재고가 빠질 창고」 아래에 양쪽에 모두 센다고 알린다(시안 ③)', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await scan(user, CODE);
+
+    const section = await screen.findByRole('region', { name: t.warehouses.heading });
+    expect(within(section).getByText(t.warehouses.splitLot('P2611-0002'))).toBeInTheDocument();
+    expect(within(section).queryByText(t.warehouses.splitLot('P2611-0001'))).toBeNull();
   });
 
   it('US1-6·Q11 — 이미 완료된 지시서를 다시 스캔하면 노란 안내와 완료된 출하만 보이고 아무것도 보내지 않는다', async () => {

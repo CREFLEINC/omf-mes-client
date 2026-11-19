@@ -10,6 +10,7 @@ import {
   overText,
   portionSummaryOf,
   qtyWithUom,
+  splitLotsOf,
   uomOf,
   type BlockerCode,
   type BlockerGroup,
@@ -212,6 +213,12 @@ export const ConfirmView = ({ completion, via }: ConfirmViewProps) => {
                   </li>
                 ))}
               </ul>
+              {splitLotsOf(completion).map((lotNo) => (
+                <p key={lotNo} className="field-note pop-ship-split-lot">
+                  <Icon name="info" size={18} aria-hidden />
+                  <span>{t.warehouses.splitLot(lotNo)}</span>
+                </p>
+              ))}
             </section>
           )}
         </div>

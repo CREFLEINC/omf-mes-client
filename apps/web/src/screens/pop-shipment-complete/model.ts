@@ -340,3 +340,11 @@ export const orderSearchRows = (rows: readonly SearchRowView[]): SearchRowView[]
   ...rows.filter((row) => row.ready),
   ...rows.filter((row) => !row.ready),
 ];
+
+/**
+ * 두 창고 이상에 몫이 있는 LOT 번호(살아 있는 피킹 LOT 순서) — 창고마다 LOT 수를 셀 때 양쪽에 모두 들어간다는 안내를 붙인다(시안 ③).
+ */
+export const splitLotsOf = (completion: Completion): string[] =>
+  completion.lots
+    .filter((lot) => new Set(lot.portions.map((portion) => portion.warehouseId)).size > 1)
+    .map((lot) => lot.lotNo);
