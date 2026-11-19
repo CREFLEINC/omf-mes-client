@@ -24,7 +24,7 @@ export const materialDefect = {
   },
 
   qty: {
-    padTitle: 'Số lượng',
+    padTitle: 'Nhập',
     padUnit: (uom: string) => `Đơn vị ${uom}`,
     label: 'Số lượng lỗi',
     invalid: 'Hãy nhập số lớn hơn 0.',

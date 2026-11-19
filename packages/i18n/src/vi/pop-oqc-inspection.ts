@@ -68,7 +68,7 @@ export const popOqcInspection = {
       held: 'SL tạm giữ',
     },
     quantityInvalid: 'Chỉ nhập số từ 0 trở lên (tối đa 6 chữ số thập phân).',
-    keypadTitle: 'Bàn phím số lượng',
+    keypadTitle: 'Nhập',
     judgmentStep: 'Phán định tổng',
     judgmentUnavailable: 'Danh sách giá trị phán định chưa sẵn sàng. Hãy liên hệ người phụ trách.',
     judgmentUnknown: (code: string): string =>

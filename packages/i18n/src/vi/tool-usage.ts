@@ -13,7 +13,7 @@ export const toolUsage: Translated<typeof ko.toolUsage> = {
   },
 
   pad: {
-    title: 'Số lượng',
+    title: 'Nhập',
     unit: (uom: string) => `Đơn vị ${uom}`,
   },
 

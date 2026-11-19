@@ -82,7 +82,7 @@ export const popOqcInspection = {
       held: '보류 수량',
     },
     quantityInvalid: '0 이상의 숫자만 넣을 수 있습니다(소수점 6자리까지).',
-    keypadTitle: '수량 키패드',
+    keypadTitle: '입력',
     judgmentStep: '종합 판정',
     judgmentUnavailable: '판정 값 목록이 준비되지 않았습니다. 담당자에게 문의하세요.',
     judgmentUnknown: (code: string): string => `저장된 판정(${code})이 목록에 없습니다.`,

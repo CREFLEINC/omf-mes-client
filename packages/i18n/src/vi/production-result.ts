@@ -265,7 +265,7 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     retry: 'Thử lại',
     close: 'Đóng',
     keypad: {
-      title: 'Số lượng',
+      title: 'Nhập',
       unit: (uom: string): string => `Đơn vị ${uom}`,
     },
   },

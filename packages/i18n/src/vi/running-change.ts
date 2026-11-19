@@ -99,7 +99,7 @@ export const runningChange: Translated<typeof ko.runningChange> = {
   },
 
   pad: {
-    title: 'Số lượng',
+    title: 'Nhập',
     unit: (uom: string) => `Đơn vị ${uom}`,
   },
 

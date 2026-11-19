@@ -315,7 +315,7 @@ export const productionResult = {
     close: '닫기',
     /** 맨 오른쪽 키패드 구획(#295 규칙 8) — 양품·불량 수량이 같은 키패드를 쓴다. */
     keypad: {
-      title: '수량',
+      title: '입력',
       unit: (uom: string): string => `단위 ${uom}`,
     },
   },

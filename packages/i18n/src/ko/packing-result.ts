@@ -58,7 +58,7 @@ export const packingResult = {
     reviewRoom: (qty: string): string => `담은 LOT의 포장 가능 수량 ${qty}`,
   },
   qty: {
-    title: '수량',
+    title: '입력',
     entryLabel: '담을 수량',
     room: (qty: string): string => `남은 ${qty}`,
     submit: '담기',

@@ -16,7 +16,7 @@ export const toolUsage = {
 
   /** 맨 오른쪽 「수량」 키패드 구획. */
   pad: {
-    title: '수량',
+    title: '입력',
     unit: (uom: string) => `단위 ${uom}`,
   },
 

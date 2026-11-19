@@ -152,7 +152,7 @@ export const runningChange = {
    * 단말에는 자판이 없다. 칸만 두면 값을 넣을 방법이 없다.
    */
   pad: {
-    title: '수량',
+    title: '입력',
     unit: (uom: string) => `단위 ${uom}`,
   },
 

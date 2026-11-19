@@ -53,7 +53,7 @@ export const packingResult: Translated<typeof ko.packingResult> = {
     reviewRoom: (qty: string): string => `SL có thể đóng của các LOT ${qty}`,
   },
   qty: {
-    title: 'Số lượng',
+    title: 'Nhập',
     entryLabel: 'SL cho vào',
     room: (qty: string): string => `Còn ${qty}`,
     submit: 'Cho vào',

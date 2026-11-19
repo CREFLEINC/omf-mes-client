@@ -28,7 +28,7 @@ export const materialDefect = {
   },
 
   qty: {
-    padTitle: '수량',
+    padTitle: '입력',
     padUnit: (uom: string) => `단위 ${uom}`,
     label: '불량 수량',
     invalid: '0보다 큰 수를 넣으세요.',
