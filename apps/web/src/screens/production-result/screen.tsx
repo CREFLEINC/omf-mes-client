@@ -10,7 +10,6 @@ import type { ApiError } from '@omf-mes/api-client';
 import { messages, named } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
 
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import type { SplitError } from '../../patterns/master';
@@ -405,7 +404,6 @@ export const ProductionFlowScreen = () => {
     setCompletedPage((page) => Math.floor(((page - 1) * previous) / completedPageSize) + 1);
   }, [completedPageSize]);
   const completedLots = useCompletedLots(entry.workOrderId, true, completedPage, completedPageSize);
-  const navigate = useNavigate();
   const isTagTarget = item.data === undefined ? null : requiresIdentificationTag(item.data);
   const serials = useSerials(currentLot.data?.lotId ?? null, isTagTarget === true);
   const tagIssueSummary = useTagIssueSummary(serials.data?.items ?? [], isTagTarget === true);
@@ -2457,20 +2455,6 @@ export const ProductionFlowScreen = () => {
                   </div>
                 )}
 
-                {/* 현재 LOT 작업에 딸린 보조 동작 — 부품 교체(P-02-11). 작업지시 마감은 작업 줄로 옮겼다(#295). */}
-                {workOrder.data !== undefined && !isWorkOrderClosed && (
-                  <div>
-                    <PuButton
-                      onClick={() => {
-                        void navigate(
-                          `/pop/running-change?workOrderId=${String(entry.workOrderId)}`,
-                        );
-                      }}
-                    >
-                      {t.flow.actions.runningChange}
-                    </PuButton>
-                  </div>
-                )}
               </>
             )}
           </PuSection>

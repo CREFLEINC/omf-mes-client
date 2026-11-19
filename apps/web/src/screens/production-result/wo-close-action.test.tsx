@@ -175,24 +175,18 @@ describe('WorkOrderCloseAction — 보내는 순서', () => {
     expect(within(dialog).getByText(t.fields.shortfallQty).nextElementSibling).toHaveTextContent(
       '6 EA',
     );
-    expect(await within(dialog).findByText(t.prefilled)).toBeVisible();
-    expect(within(dialog).getByRole('button', { name: '설비 고장' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    /*
-     * 폐번될·마감되지 않은 LOT 은 묶음마다 제목·건수·번호·안내로 보인다(사용자 지시 2026-11-16 시안).
-     * 폐번 건수는 서버가 센 값이다.
-     */
+    /* LOT 마감 때 고른 사유가 마감 사유 선택 칸에 이미 골라져 있다(선택 창 칸, 시안). */
+    expect(
+      await within(dialog).findByRole('combobox', { name: new RegExp(t.fields.reason) }),
+    ).toHaveTextContent('설비 고장');
+    /* 폐번될·마감되지 않은 LOT 은 묶음마다 제목·건수·번호로 보인다(시안). 폐번 건수는 서버가 센 값이다. */
     const voided = await within(dialog).findByRole('region', { name: t.voidedTitle });
     expect(within(voided).getByText(t.lotCount(2))).toBeVisible();
     expect(within(voided).getByText('LOT-SYN-WAITING')).toBeVisible();
-    expect(within(voided).getByText(t.voidedNote)).toBeVisible();
     const open = within(dialog).getByRole('region', { name: t.openTitle });
     expect(within(open).getByText(t.lotCount(1))).toBeVisible();
     expect(within(open).getByText('LOT-SYN-ACTIVE')).toBeVisible();
-    expect(within(open).getByText(t.openNote)).toBeVisible();
-    /* 판정은 기본 글자색, 미달량만 빨강(시안). */
+    /* 판정은 노랑 칩, 미달량은 기본 글자색(시안). */
     expect(within(dialog).getByText(t.judgments.UNDER)).not.toHaveAttribute('data-tone');
     expect(within(dialog).getByText(t.needRemainder)).toBeVisible();
     expect(confirmOf(dialog)).toBeDisabled();
@@ -224,6 +218,26 @@ describe('WorkOrderCloseAction — 보내는 순서', () => {
 
     await waitFor(() => expect(writes).toHaveLength(1));
     expect(writes[0]).toMatchObject({ path: CLOSE, body: {} });
+  });
+  it('초과면 마감 사유를 선택 창에서 고르고 그 사유만 보낸다', async () => {
+    const writes: Recorded[] = [];
+    const user = userEvent.setup();
+    renderAction(routes(writes, { judgment: 'OVER' }));
+
+    const dialog = await openDialog(user);
+    await within(dialog).findByText(t.judgments.OVER);
+    expect(within(dialog).queryByText(t.fields.remainder)).toBeNull();
+    const reason = await within(dialog).findByRole('combobox', {
+      name: new RegExp(t.fields.reason),
+    });
+    await user.click(reason);
+    await user.click(await screen.findByRole('option', { name: '자재 부족' }));
+    expect(reason).toHaveTextContent('자재 부족');
+    await waitFor(() => expect(confirmOf(dialog)).toBeEnabled());
+    await user.click(confirmOf(dialog));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0]).toMatchObject({ path: CLOSE, body: { reasonCode: 'MATERIAL_SHORTAGE' } });
   });
 });
 

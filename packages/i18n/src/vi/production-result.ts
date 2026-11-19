@@ -33,9 +33,6 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       closed: 'Đã hoàn tất đóng lệnh sản xuất.',
       completedLots: 'LOT đã đóng',
     },
-    actions: {
-      runningChange: 'Thay linh kiện',
-    },
     next: {
       noWorkOrder:
         'Chưa chỉ định lệnh sản xuất. Vui lòng chọn lệnh sản xuất ở danh sách lệnh sản xuất',
@@ -172,15 +169,14 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       },
       judgments: { UNDER: 'Thiếu', NORMAL: 'Bình thường', OVER: 'Vượt' },
       remainder: { CARRY_OVER: 'Chuyển sang kỳ sau', WRITE_OFF: 'Xóa bỏ' },
-      prefilled: 'Đã lấy lý do đóng LOT. Có thể thay đổi.',
+      /** 마감 사유 선택 칸의 회색 글(시안). */
+      reasonPlaceholder: 'Chọn lý do',
       reasonsLoading: 'Đang tải lý do.',
       reasonsFailed: 'Không tải được lý do. Vui lòng kiểm tra kết nối rồi mở lại cửa sổ.',
       reasonsEmpty: 'Không có lý do nào để chọn. Vui lòng nhờ quản trị viên đăng ký lý do.',
       voidedTitle: 'LOT sẽ bị hủy số',
       openTitle: 'LOT chưa đóng',
       lotCount: (count: number): string => `${String(count)} mục`,
-      voidedNote: 'LOT chưa có kết quả sẽ bị hủy số khi đóng.',
-      openNote: 'LOT chưa đóng sẽ giữ nguyên trạng thái hiện tại.',
       irreversible: 'Sau khi đóng không thể hủy. Kết quả ERP sẽ được đưa vào hàng đợi gửi.',
       needRemainder:
         'Vì thiếu nên phải chọn xử lý lượng còn lại (chuyển sang kỳ sau hoặc xóa bỏ) mới đóng được.',

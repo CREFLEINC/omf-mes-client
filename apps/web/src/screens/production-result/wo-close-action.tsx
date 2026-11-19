@@ -1,4 +1,3 @@
-import { type Column, Table } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState, type CSSProperties } from 'react';
@@ -6,6 +5,7 @@ import { useNavigate } from 'react-router';
 
 import { masterName } from '../../patterns/master-name';
 import { SaveErrorBanner } from '../../patterns/master';
+import { PopSelect } from '../../patterns/pop-select';
 import { PuButton, PuDialog, PuField, PuInput, PuNote, puToast } from '../../patterns/pop-uniform';
 import type { FlowGateVerdict } from './flow-gating';
 import { useVarianceReasons } from './flow-queries';
@@ -133,7 +133,6 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
     (savedReason !== null && reasonList.some((item) => item.code === savedReason)
       ? savedReason
       : null);
-  const isPrefilled = reasonCode === null && effectiveReason !== null;
   const needsDisposition = judgment === 'UNDER';
   const needsReason = judgment === 'UNDER' || judgment === 'OVER';
   const missing =
@@ -190,25 +189,16 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
     sequence.reset();
   };
 
-  const sessionColumns: Column<CloseSessionView>[] = [
-    { key: 'terminal', header: st.terminal, render: (row) => row.terminalCode ?? st.unknown },
-    {
-      key: 'worker',
-      header: st.worker,
-      render: (row) =>
-        row.workerName === null || row.workerNo === null
-          ? st.unknown
-          : st.workerValue(row.workerName, row.workerNo),
-    },
-    { key: 'state', header: st.state, render: (row) => (row.isRunning ? st.RUNNING : st.STOPPED) },
-    {
-      key: 'where',
-      header: st.where,
-      render: (row) =>
-        row.terminalId === terminalId
-          ? st.here(messages.workHoldRegister.title)
-          : st.other(messages.workOrderClose.menuPath),
-    },
+  /** 열린 작업 세션 표의 칸(단말 · 작업자 · 상태 · 끝낼 곳) — 값은 종전 그대로다. */
+  const sessionCells = (row: CloseSessionView): string[] => [
+    row.terminalCode ?? st.unknown,
+    row.workerName === null || row.workerNo === null
+      ? st.unknown
+      : st.workerValue(row.workerName, row.workerNo),
+    row.isRunning ? st.RUNNING : st.STOPPED,
+    row.terminalId === terminalId
+      ? st.here(messages.workHoldRegister.title)
+      : st.other(messages.workOrderClose.menuPath),
   ];
 
   const endFailureText =
@@ -226,6 +216,22 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
   const voidLotNos = openLots.isError ? [] : (openLots.data?.voidLotNos ?? []);
   /** 파란 안내 줄(정보 아이콘 + 한 줄). */
   const infoNote = (text: string) => <PuNote>{text}</PuNote>;
+  /** 폐번될·마감되지 않은 LOT 묶음 — 제목 오른쪽에 건수, 아래 번호 상자. */
+  const lotGroup = (title: string, count: number, lotNos: string[]) => (
+    <section className="pu-stack pr-close-lots" aria-label={title}>
+      <div className="pu-label">
+        <span>{title}</span>
+        <span className="aside">{t.lotCount(count)}</span>
+      </div>
+      {lotNos.length > 0 && (
+        <ul className="pr-close-lot-box">
+          {lotNos.map((lotNo) => (
+            <li key={lotNo}>{lotNo}</li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
   const retryButton = (onClick: () => void) => (
     <PuButton size="sm" onClick={onClick}>
       {messages.common.retry}
@@ -265,7 +271,6 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
       {/* 되돌릴 수 없는 일이라 확인 창을 거친다(규칙 13). 머리 X 없이 아래 [취소] + [마감](규칙 16). */}
       {isOpen && (
         <PuDialog
-          wide
           title={t.title(workOrderNo)}
           onClose={close}
           footer={
@@ -305,13 +310,27 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
           ) : plan !== null && plan.blockers.length > 0 ? (
             <>
               <PuNote tone="warn">{st.blocked}</PuNote>
-              <Table
-                density="compact"
-                caption={st.listLabel}
-                columns={sessionColumns}
-                rows={plan.blockers}
-                getRowId={(row) => String(row.workSessionId)}
-              />
+              <div className="pu-table-wrap pr-close-sessions">
+                <table className="pu-table" aria-label={st.listLabel}>
+                  <thead>
+                    <tr>
+                      <th scope="col">{st.terminal}</th>
+                      <th scope="col">{st.worker}</th>
+                      <th scope="col">{st.state}</th>
+                      <th scope="col">{st.where}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {plan.blockers.map((row) => (
+                      <tr key={row.workSessionId}>
+                        {sessionCells(row).map((cell, index) => (
+                          <td key={index}>{cell}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </>
           ) : null}
 
@@ -331,10 +350,7 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                 <dt>{t.fields.goodQty}</dt>
                 <dd>{`${formatQty(progress?.goodQty ?? 0)} ${uomLabel}`.trim()}</dd>
                 <dt>{t.fields.judgment}</dt>
-                {/*
-                 * 정상은 초록(개선 명세 ⑧-2). 미달·초과는 기본 글자색이고 미달량·초과량만 색으로 보인다
-                 * (사용자 지시 2026-11-16 시안). 값은 서버 판정 그대로다.
-                 */}
+                {/* 정상은 초록, 미달·초과는 노랑(시안). 값은 서버 판정 그대로다. */}
                 <dd>
                   {judgment === null ? (
                     '—'
@@ -350,9 +366,7 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                 {variance !== undefined && variance !== 0 && (
                   <>
                     <dt>{variance > 0 ? t.fields.shortfallQty : t.fields.overageQty}</dt>
-                    <dd data-tone="error" className="pr-close-variance">
-                      {`${formatQty(Math.abs(variance))} ${uomLabel}`.trim()}
-                    </dd>
+                    <dd>{`${formatQty(Math.abs(variance))} ${uomLabel}`.trim()}</dd>
                   </>
                 )}
               </dl>
@@ -388,8 +402,6 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
 
               {needsReason && (
                 <PuField label={t.fields.reason} required labelId={reasonTitleId}>
-                  {/* LOT 마감 때 고른 사유를 가져왔으면 그 안내. */}
-                  {isPrefilled && infoNote(t.prefilled)}
                   {reasons.isLoading ? (
                     <p role="status" className="pu-dialog-text">
                       {t.reasonsLoading}
@@ -399,19 +411,17 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                   ) : reasonList.length === 0 ? (
                     <p className="pu-dialog-text">{t.reasonsEmpty}</p>
                   ) : (
-                    <div className="pu-tiles" role="group" aria-labelledby={reasonTitleId}>
-                      {reasonList.map((item) => (
-                        <button
-                          key={item.code}
-                          type="button"
-                          className={effectiveReason === item.code ? 'pu-tile is-on' : 'pu-tile'}
-                          aria-pressed={effectiveReason === item.code}
-                          onClick={() => setReasonCode(item.code)}
-                        >
-                          {masterName(item, item.codeName)}
-                        </button>
-                      ))}
-                    </div>
+                    /* 기준 정보에서 오는 사유라 선택 창으로 고른다(시안 · 규칙 7 예외). */
+                    <PopSelect
+                      aria-labelledby={reasonTitleId}
+                      placeholder={t.reasonPlaceholder}
+                      options={reasonList.map((item) => ({
+                        value: item.code,
+                        label: masterName(item, item.codeName),
+                      }))}
+                      value={effectiveReason}
+                      onChange={(value) => setReasonCode(value)}
+                    />
                   )}
                 </PuField>
               )}
@@ -427,40 +437,9 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                 </PuField>
               )}
 
-              {/*
-               * 폐번될·마감되지 않은 LOT — 제목 오른쪽에 건수, 번호 상자, 그 아래 안내 한 줄(사용자 지시 2026-11-16
-               * 시안). 폐번 건수는 서버가 센 값(`withoutResultCount`)이 정본이다. 번호는 받은 쪽에서 보인다.
-               */}
-              {voided > 0 && (
-                <section className="pu-stack pr-close-lots" aria-label={t.voidedTitle}>
-                  <div className="pu-label">
-                    <span>{t.voidedTitle}</span>
-                    <span className="aside">{t.lotCount(voided)}</span>
-                  </div>
-                  {voidLotNos.length > 0 && (
-                    <ul className="pr-close-lot-box">
-                      {voidLotNos.map((lotNo) => (
-                        <li key={lotNo}>{lotNo}</li>
-                      ))}
-                    </ul>
-                  )}
-                  {infoNote(t.voidedNote)}
-                </section>
-              )}
-              {openLotNos.length > 0 && (
-                <section className="pu-stack pr-close-lots" aria-label={t.openTitle}>
-                  <div className="pu-label">
-                    <span>{t.openTitle}</span>
-                    <span className="aside">{t.lotCount(openLotNos.length)}</span>
-                  </div>
-                  <ul className="pr-close-lot-box">
-                    {openLotNos.map((lotNo) => (
-                      <li key={lotNo}>{lotNo}</li>
-                    ))}
-                  </ul>
-                  {infoNote(t.openNote)}
-                </section>
-              )}
+              {/* 폐번 건수는 서버가 센 값(`withoutResultCount`)이 정본이다. 번호는 받은 쪽에서 보인다. */}
+              {voided > 0 && lotGroup(t.voidedTitle, voided, voidLotNos)}
+              {openLotNos.length > 0 && lotGroup(t.openTitle, openLotNos.length, openLotNos)}
               {openLots.isError && infoNote(t.openLotsUnknown)}
               {(openLots.data?.uncheckedCount ?? 0) > 0 &&
                 infoNote(t.uncheckedLots(openLots.data?.uncheckedCount ?? 0))}

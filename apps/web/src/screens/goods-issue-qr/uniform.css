@@ -234,6 +234,13 @@
   margin: 0;
 }
 
+.giq-help ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 22px;
+}
+
 .giq-preview {
   display: grid;
   gap: 12px;

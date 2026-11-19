@@ -37,11 +37,16 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
   },
   help: {
     button: 'Trợ giúp',
-    body: [
-      'Số lượng tách ra khi xuất kho một phần sẽ thành LOT tách (LOT quản lý vật tư mới). Xuất kho toàn bộ thì dùng luôn nhãn LOT quản lý vật tư đã dán.',
-      'Nhãn cùng mẫu với nhãn LOT quản lý vật tư (không có dòng đóng gói), mã QR chỉ chứa số LOT tách. Trên nhãn có mặt hàng · số lượng (số lượng tách) · nhà cung cấp.',
-      'Nếu túi chưa dán nhãn thì không quét được khi nhập kho sản xuất (PDA) · đưa vật tư vào (POP). QR xuất kho đã dán vẫn quét được khi nhập kho sản xuất trên PDA.',
-      'Khi in lại, lượt in tăng thêm 1 và lý do được lưu lại.',
+    title: 'Hướng dẫn nhãn LOT tách',
+    intro:
+      'Khi xuất kho tách vật tư, một LOT mới được tạo theo số lượng tách. Khi xuất kho toàn bộ thì dùng LOT hiện có.',
+    items: [
+      { term: 'In nhãn:', text: 'In nhãn LOT tách và dán lên vật tư.' },
+      {
+        term: 'Nhập kho:',
+        text: 'Nhãn LOT tách dùng khi nhập kho sản xuất và khi đưa vật tư vào sản xuất.',
+      },
+      { term: 'Lưu ý:', text: 'Mã QR xuất kho cũ vẫn dùng được khi nhập kho sản xuất.' },
     ],
   },
 

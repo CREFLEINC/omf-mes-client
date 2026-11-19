@@ -472,11 +472,16 @@ export const GoodsIssueQrScreen = () => {
             }
             meta={
               <>
-                <PuHelpButton title={t.help.button}>
+                <PuHelpButton title={t.help.title}>
                   <div className="giq-help">
-                    {t.help.body.map((line) => (
-                      <p key={line}>{line}</p>
-                    ))}
+                    <p>{t.help.intro}</p>
+                    <ul>
+                      {t.help.items.map((item) => (
+                        <li key={item.term}>
+                          <b>{item.term}</b> {item.text}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </PuHelpButton>
                 {isPrintedTab ? null : (

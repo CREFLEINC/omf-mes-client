@@ -131,7 +131,7 @@ export const popChrome = {
     fieldLabel: '사번',
     keypadLabel: '사번 숫자 키패드',
     backspace: '한 자 지움',
-    clear: '전체 지움',
+    clear: '전체 삭제',
     confirm: '확인',
     cancel: '취소',
     checking: '확인 중',

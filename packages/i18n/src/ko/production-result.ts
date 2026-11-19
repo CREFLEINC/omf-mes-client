@@ -51,13 +51,6 @@ export const productionResult = {
       completedLots: '마감된 LOT',
     },
     /**
-     * 보조 동작. 늘 쓸 수 있는 것은 머리줄([작업 중단]), 대상에 딸린 것은 그 정보 곁([부품 교체],
-     * [작업지시 마감]), 다음 단계는 「남은 일」이 낸다.
-     */
-    actions: {
-      runningChange: '부품 교체',
-    },
-    /**
      * 하단 바 「남은 일」(C-5). 머리말 없이 문장만, 끝 마침표 없이 쓴다. 앞의 것이 먼저다.
      */
     next: {
@@ -192,7 +185,7 @@ export const productionResult = {
       loading: '마감할 작업지시를 확인하는 중입니다.',
       loadFailed: '작업지시를 불러오지 못했습니다. 연결을 확인하고 「다시 시도」를 눌러 주세요.',
       fields: {
-        orderQty: '작업 지시량',
+        orderQty: '작업지시량',
         goodQty: '양품 누계',
         judgment: '판정',
         shortfallQty: '미달량',
@@ -203,16 +196,15 @@ export const productionResult = {
       },
       judgments: { UNDER: '미달', NORMAL: '정상', OVER: '초과' },
       remainder: { CARRY_OVER: '이월', WRITE_OFF: '소멸' },
-      prefilled: 'LOT 마감 사유를 가져왔습니다. 변경할 수 있습니다.',
+      /** 마감 사유 선택 칸의 회색 글(시안). */
+      reasonPlaceholder: '사유를 선택하세요',
       reasonsLoading: '사유를 불러오는 중입니다.',
       reasonsFailed: '사유를 불러오지 못했습니다. 연결을 확인하고 창을 다시 열어 주세요.',
       reasonsEmpty: '고를 수 있는 사유가 없습니다. 관리자에게 사유 등록을 요청해 주세요.',
-      /** 폐번될·마감되지 않은 LOT 묶음 — 제목 오른쪽에 건수, 번호 상자 아래 안내 한 줄(사용자 지시 2026-11-16 시안). */
+      /** 폐번될·마감되지 않은 LOT 묶음 — 제목 오른쪽에 건수, 아래 번호 상자. */
       voidedTitle: '폐번될 LOT',
       openTitle: '마감되지 않은 LOT',
       lotCount: (count: number): string => `${String(count)}건`,
-      voidedNote: '실적이 없는 LOT는 마감과 함께 폐번됩니다.',
-      openNote: '마감되지 않은 LOT는 현재 상태로 유지됩니다.',
       /** 경고 한 줄(사용자 지시 2026-11-16 시안 문구 그대로). */
       irreversible: '마감 후에는 취소할 수 없습니다. ERP 실적은 전송 대기열에 등록됩니다.',
       needRemainder: '미달이라 잔량 처리(이월 또는 소멸)를 골라야 마감할 수 있습니다.',
