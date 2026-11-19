@@ -1,7 +1,7 @@
 import type { InspectionSheetJudgment, InspectionSheetStep } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
-const t = messages.popInspectionSheet.step;
+const t = messages.inspectionSheetEntry.step;
 
 export type Judgments = Readonly<Record<number, InspectionSheetJudgment>>;
 

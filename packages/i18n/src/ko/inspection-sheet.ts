@@ -37,6 +37,18 @@ export const inspectionSheet = {
     pickHint: '목록에서 검사표를 선택하면 내용을 확인할 수 있습니다.',
   },
 
+  /* 시리얼로 검사표 작성 — 없으면 새로 만든다(omf-all-around#316). */
+  create: {
+    button: '시리얼로 추가',
+    title: '검사표 작성',
+    serial: '기기 시리얼 번호',
+    placeholder: '시리얼 번호를 스캔하거나 입력하세요',
+    note: '이 시리얼의 검사표가 이미 있으면 그 검사표를 엽니다.',
+    open: '열기',
+    close: '닫기',
+    opened: '검사표를 열었습니다.',
+  },
+
   columns: {
     serialNo: '시리얼 번호',
     model: '모델',
@@ -67,6 +79,8 @@ export const inspectionSheet = {
       /* 탭마다 건수 — 검사 조회·판정 탭과 같은 「이름 N건」(사용자 지시 2026-11-02). */
       ngs: (count: number): string => `불량·조치 이력 ${String(count)}건`,
       events: (count: number): string => `서명·승인 이력 ${String(count)}건`,
+      /* 머리 값 · 단계 판정 · NG 기록 입력(omf-all-around#316) — 작성 중인 검사표에만. */
+      entry: '검사 입력',
     },
     itemsEmpty: '검사 항목이 없습니다.',
     finalizeNote: '서명과 승인이 모두 완료되면 검사표가 확정됩니다.',

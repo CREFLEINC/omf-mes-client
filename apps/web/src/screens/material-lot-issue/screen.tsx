@@ -1,18 +1,28 @@
-import { Button, Checkbox, Chip, EmptyState, Skeleton, TextField, useToast } from '@crefle/web-ui';
+import {
+  Button,
+  Checkbox,
+  Chip,
+  type Column,
+  EmptyState,
+  Skeleton,
+  TextField,
+  useToast,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { BoardFrame } from '../../patterns/board-frame';
+import { BoardTable } from '../../patterns/board-table';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { useUomOptions } from '../../patterns/material-lot-batch';
-import { plantToday } from '../../patterns/plant-time';
 import { Select } from '../../patterns/select';
 import { useSession } from '../../patterns/session';
 import { DefaultsText } from './defaults-text';
-import { DetailDialog } from './detail-dialog';
+import { DetailPane } from './detail-pane';
 import { IssueDialog } from './issue-dialog';
 import { usePlantDefaults, usePlants, useWaitingGroups } from './queries';
-import { defaultsIndex, formatAt, groupKey, parseGroupKey, waitingOf, type Group } from './types';
+import { defaultsIndex, formatAt, groupKey, parseGroupKey, type Group } from './types';
 
 const t = messages.materialLotIssue;
 const tl = t.list;
@@ -88,7 +98,7 @@ export const MaterialLotIssueScreen = () => {
 
   /* 칸마다 이름을 위에 단다 — 시안 「공장 · 공급사 · 품목 · 보기」(G2 L21). */
   const filters = (
-    <section className="filter-bar mlot-issue-filters" aria-label={t.filters.label}>
+    <div className="filter-bar">
       {(plants.data?.length ?? 0) > 1 && (
         <div className="field-cell">
           <label className="field-label" htmlFor={plantFieldId}>
@@ -145,8 +155,81 @@ export const MaterialLotIssueScreen = () => {
           {t.filters.waitingOnly}
         </Checkbox>
       </div>
-    </section>
+      {/* 발행은 조건 줄 끝 — 특정 공급사·품목을 고르지 않고도 연다(발행 창에서 고른다). */}
+      <div className="field-cell field-cell-unlabeled">
+        <Button
+          disabled={plantId === null}
+          loading={groups.isPending}
+          onClick={() => setIssueOpen({ fixed: null })}
+        >
+          {tl.issue}
+        </Button>
+      </div>
+    </div>
   );
+
+  /* 입고 관리 표와 같은 열 짜임 — 공급사 칸이 고르는 단추다. */
+  const columns: Column<Group>[] = [
+    {
+      key: 'supplier',
+      header: tl.columns.supplier,
+      width: '160px',
+      render: (group) => (
+        <>
+          {group.supplierName} <span className="mlot-issue-code">{group.supplierCode}</span>
+        </>
+      ),
+    },
+    {
+      key: 'itemCode',
+      header: tl.columns.itemCode,
+      width: '120px',
+      render: (group) => <span className="mlot-issue-code">{group.itemCode}</span>,
+    },
+    { key: 'itemName', header: tl.columns.item, width: '176px' },
+    { key: 'uomCode', header: tl.columns.baseUom, width: '96px' },
+    {
+      key: 'defaults',
+      header: tl.columns.defaults,
+      render: (group) => (
+        <DefaultsText group={group} defaults={byPair.get(groupKey(group))} uoms={uoms.data} />
+      ),
+    },
+    {
+      key: 'waiting',
+      header: tl.columns.waiting,
+      width: '64px',
+      align: 'end',
+      render: (group) =>
+        group.waitingCount > 0 ? (
+          <Chip size="sm" status="warning">
+            {String(group.waitingCount)}
+          </Chip>
+        ) : (
+          <span className="field-note">0</span>
+        ),
+    },
+    {
+      key: 'unprinted',
+      header: tl.columns.unprinted,
+      width: '96px',
+      align: 'end',
+      render: (group) =>
+        group.unprintedCount > 0 ? (
+          <Chip size="sm" status="info">
+            {String(group.unprintedCount)}
+          </Chip>
+        ) : (
+          <span className="field-note">0</span>
+        ),
+    },
+    {
+      key: 'lastIssued',
+      header: tl.columns.lastIssued,
+      width: '104px',
+      render: (group) => formatAt(group.lastIssuedAt) ?? '—',
+    },
+  ];
 
   const table = (): ReactNode => {
     if (plants.isError || groups.isError) {
@@ -164,122 +247,67 @@ export const MaterialLotIssueScreen = () => {
     if (rows.length === 0) return <EmptyState size="sm" title={tl.empty} />;
 
     return (
-      <div className="mlot-issue-table-scroll">
-        <table className="mlot-issue-table is-wrap-head" aria-label={tl.label}>
-          <thead>
-            <tr>
-              <th scope="col">{tl.columns.supplier}</th>
-              <th scope="col">{tl.columns.item}</th>
-              <th scope="col">{tl.columns.baseUom}</th>
-              <th scope="col">{tl.columns.defaults}</th>
-              <th scope="col" className="is-number">
-                {tl.columns.waiting}
-              </th>
-              <th scope="col" className="is-number">
-                {tl.columns.unprinted}
-              </th>
-              <th scope="col">{tl.columns.lastIssued}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((group) => {
-              const key = groupKey(group);
-              const open = (): void => update({ open: key });
-              return (
-                /* 행 어디를 눌러도 상세 창. 키보드는 공급사 칸의 단추가 맡는다. */
-                <tr
-                  key={key}
-                  className="is-clickable"
-                  aria-selected={openKey === key ? true : undefined}
-                  onClick={open}
-                >
-                  <td>
-                    <button
-                      type="button"
-                      className="link-cell"
-                      aria-label={tl.open(
-                        group.supplierName,
-                        `${group.itemCode} ${group.itemName}`,
-                      )}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        open();
-                      }}
-                    >
-                      {group.supplierName}{' '}
-                      <span className="mlot-issue-code">{group.supplierCode}</span>
-                    </button>
-                  </td>
-                  <td className="is-wrap">
-                    <span className="mlot-issue-code">{group.itemCode}</span> {group.itemName}
-                  </td>
-                  <td>{group.uomCode}</td>
-                  <td className="is-wrap">
-                    <DefaultsText group={group} defaults={byPair.get(key)} uoms={uoms.data} />
-                  </td>
-                  <td className="is-number">
-                    {group.waitingCount > 0 ? (
-                      <Chip size="sm" status="warning">
-                        {String(group.waitingCount)}
-                      </Chip>
-                    ) : (
-                      <span className="field-note">0</span>
-                    )}
-                  </td>
-                  <td className="is-number">
-                    {group.unprintedCount > 0 ? (
-                      <Chip size="sm" status="info">
-                        {String(group.unprintedCount)}
-                      </Chip>
-                    ) : (
-                      <span className="field-note">0</span>
-                    )}
-                  </td>
-                  <td>{formatAt(group.lastIssuedAt) ?? '—'}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <>
+        <h2 className="pane-title">{tl.count(rows.length)}</h2>
+        <BoardTable
+          label={tl.label}
+          widthKey="omf-mes:material-lot-issue:columns:groups"
+          minWidth="56rem"
+          columns={columns}
+          rows={rows}
+          getRowId={groupKey}
+          pick={{
+            columnKey: 'supplier',
+            label: (group) => tl.open(group.supplierName, `${group.itemCode} ${group.itemName}`),
+            currentId: openKey,
+            onPick: (group) => update({ open: groupKey(group) }),
+          }}
+        />
+      </>
     );
   };
 
+  /* 고른 공급사·품목 — 오른쪽 구획. 고르기 전에는 고르라고 말한다(입고 관리와 같다). */
+  const detail = (): ReactNode =>
+    opened === null ? (
+      <EmptyState size="sm" title={t.detail.choose} />
+    ) : (
+      <DetailPane
+        /* 고른 줄이 바뀌면 폐기 선택을 비운다 — 앞 공급사·품목의 LOT 이 남지 않게. */
+        key={groupKey(opened)}
+        group={opened}
+        defaults={byPair.get(groupKey(opened))}
+        uoms={uoms.data}
+        onIssue={() => setIssueOpen({ fixed: opened })}
+        onVoided={(result) => {
+          const done = result.items.filter((item) => item.voided).length;
+          const failed = result.items.length - done;
+          toast.show({
+            variant: failed > 0 ? 'warning' : 'success',
+            description: failed > 0 ? t.toast.voidedPartly(done, failed) : t.toast.voided(done),
+          });
+        }}
+      />
+    );
+
+  /*
+   * **입고 관리 짜임**(사용자 지시 2026-11-19) — 위 조회 조건, 왼쪽 공급사·품목 목록, 오른쪽 고른 공급사·품목의
+   * 대기 자재 관리 LOT. 상세는 덮개 창이 아니라 오른쪽 구획에 늘 나온다(`BoardFrame`).
+   */
   return (
     <div className="mlot-issue">
-      {filters}
-      <div className="mlot-issue-section-head">
-        <h2>{tl.count(rows.length)}</h2>
-        <span className="field-note">{tl.note(plant?.plantName ?? '', plantToday().slice(5))}</span>
-        <span className="mlot-issue-actions">
-          <Button
-            disabled={plantId === null}
-            loading={groups.isPending}
-            onClick={() => setIssueOpen({ fixed: null })}
-          >
-            {tl.issue}
-          </Button>
-        </span>
-      </div>
-      {table()}
+      <BoardFrame
+        splitKey="omf-mes:material-lot-issue:split"
+        initialRatio={0.55}
+        splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
+        above={{
+          label: t.filters.label,
+          content: <div className="pane po-board-filter">{filters}</div>,
+        }}
+        list={{ label: tl.label, content: table() }}
+        detail={{ label: t.detail.label, content: detail() }}
+      />
 
-      {opened !== null && issueOpen === null && (
-        <DetailDialog
-          group={opened}
-          defaults={byPair.get(groupKey(opened))}
-          uoms={uoms.data}
-          onClose={() => update({ open: null })}
-          onIssue={() => setIssueOpen({ fixed: opened })}
-          onVoided={(result) => {
-            const done = result.items.filter((item) => item.voided).length;
-            const failed = result.items.length - done;
-            toast.show({
-              variant: failed > 0 ? 'warning' : 'success',
-              description: failed > 0 ? t.toast.voidedPartly(done, failed) : t.toast.voided(done),
-            });
-          }}
-        />
-      )}
       {issueOpen !== null && plantId !== null && (
         <IssueDialog
           plantId={plantId}

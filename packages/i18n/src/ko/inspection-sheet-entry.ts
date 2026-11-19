@@ -1,27 +1,5 @@
-/** 제품 검사표 입력(POP · P-02-15 · omf-all-around#89). 시리얼 1대의 OA 제품 검사표. */
-export const popInspectionSheet = {
-  title: '제품 검사표 입력',
-
-  serial: {
-    label: '기기 시리얼 번호',
-    placeholder: '시리얼 번호를 스캔하세요',
-    open: '열기',
-    opening: '여는 중…',
-  },
-
-  summary: {
-    heading: '검사표',
-    serial: '시리얼',
-    model: '모델',
-    lot: '생산 LOT',
-    workOrder: '작업지시',
-    status: '상태',
-    writer: '작성자',
-    statuses: { IN_PROGRESS: '작성중', COMPLETED: '완료' } as Record<string, string>,
-    completed: '완료된 검사표입니다. 고치려면 관리자가 관리웹에서 승인을 취소해야 합니다.',
-    loadFailed: '검사표를 불러오지 못했습니다.',
-  },
-
+/** 제품 검사표 입력 부품(관리웹 「제품 검사표 조회」의 검사 입력 탭 · omf-all-around#89 · #316). */
+export const inspectionSheetEntry = {
   header: {
     heading: '머리 값',
     note: '자동으로 채운 값입니다. 다르면 고쳐서 저장하세요.',

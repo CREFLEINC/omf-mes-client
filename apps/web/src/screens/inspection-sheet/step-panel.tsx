@@ -4,7 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
 import { masterName } from '../../patterns/master-name';
-import type { StepWriteVariables } from './queries';
+import type { StepWriteVariables } from './sheet-queries';
 import {
   firstFromItems,
   fullProgress,
@@ -14,7 +14,7 @@ import {
   stepSave,
 } from './step-judgment';
 
-const t = messages.popInspectionSheet.step;
+const t = messages.inspectionSheetEntry.step;
 
 const nameOf = (step: InspectionSheetStep): string =>
   masterName({ nameKo: step.nameKo, nameVi: step.nameVi }, step.nameKo);
@@ -45,13 +45,13 @@ export const StepPanel = ({ steps, disabled, isSaving, onSave }: StepPanelProps)
   const step = steps.find((row) => row.stepCode === selected) ?? null;
 
   return (
-    <section className="pane pop-inspection-sheet-steps" aria-label={t.heading}>
+    <section className="pane inspection-sheet-entry-steps" aria-label={t.heading}>
       <h2 className="pane-title">{t.heading}</h2>
-      <div className="pop-inspection-sheet-tabs" role="group" aria-label={t.tabsLabel}>
+      <div className="inspection-sheet-entry-tabs" role="group" aria-label={t.tabsLabel}>
         {steps.map((row) => (
           <Button
             key={row.stepCode}
-            size="lg"
+            size="md"
             variant={row.stepCode === selected ? 'filled' : 'outlined'}
             aria-pressed={row.stepCode === selected}
             onClick={() => setSelected(row.stepCode)}
@@ -128,19 +128,19 @@ const StepForm = ({ step, disabled, isSaving, onSave }: StepFormProps) => {
   };
 
   return (
-    <div className="pop-inspection-sheet-step">
+    <div className="inspection-sheet-entry-step">
       {oqcLocked && <AlertBanner variant="info">{t.oqcLocked}</AlertBanner>}
       {step.result?.signedAt && !oqcLocked && <p className="field-note">{t.signedWarning}</p>}
       {step.items.length === 0 ? (
         <p className="field-note">{t.noItems}</p>
       ) : (
-        <ul className="pop-inspection-sheet-items" aria-label={t.itemsCaption(name)}>
+        <ul className="inspection-sheet-entry-items" aria-label={t.itemsCaption(name)}>
           {step.items.map((item) => {
             const value = judgments[item.inspectionSheetTemplateItemId];
             return (
               <li key={item.inspectionSheetTemplateItemId}>
-                <span className="pop-inspection-sheet-item-code">{item.checkItemCode}</span>
-                <span className="pop-inspection-sheet-item-name">
+                <span className="inspection-sheet-entry-item-code">{item.checkItemCode}</span>
+                <span className="inspection-sheet-entry-item-name">
                   {masterName(item, item.nameKo)}
                 </span>
                 <Chip size="sm">{t.method[item.methodCode] ?? item.methodCode}</Chip>
@@ -148,7 +148,7 @@ const StepForm = ({ step, disabled, isSaving, onSave }: StepFormProps) => {
                   /* ui-check-ignore: C-4 완료된 검사표이거나 출하검사 화면이 기록한 단계라 잠긴다 — 사유는 위 안내 띠 */
                   <Button
                     key={option}
-                    size="lg"
+                    size="md"
                     variant={value === option ? 'filled' : 'outlined'}
                     aria-pressed={value === option}
                     aria-label={t.itemJudgment(item.checkItemCode, option)}
@@ -164,14 +164,14 @@ const StepForm = ({ step, disabled, isSaving, onSave }: StepFormProps) => {
         </ul>
       )}
 
-      <div className="pop-inspection-sheet-judgment" role="group" aria-label={t.first}>
+      <div className="inspection-sheet-entry-judgment" role="group" aria-label={t.first}>
         <span className="field-label">{t.first}</span>
         {step.items.length === 0 ? (
           (['OK', 'NG'] as const).map((option) => (
             /* ui-check-ignore: C-4 완료된 검사표이거나 출하검사 화면이 기록한 단계라 잠긴다 — 사유는 위 안내 띠 */
             <Button
               key={option}
-              size="lg"
+              size="md"
               variant={manualFirst === option ? 'filled' : 'outlined'}
               aria-pressed={manualFirst === option}
               disabled={locked}
@@ -209,13 +209,13 @@ const StepForm = ({ step, disabled, isSaving, onSave }: StepFormProps) => {
         </div>
         <Button
           variant="filled"
-          size="xl"
+          size="md"
           aria-describedby={noteId}
           disabled={locked || plan.mode === 'blocked' || !changed || isSaving}
           onClick={save}
         >
           {isSaving
-            ? messages.popInspectionSheet.saving
+            ? messages.inspectionSheetEntry.saving
             : changed && plan.mode === 'draft'
               ? t.draftSave
               : t.save}

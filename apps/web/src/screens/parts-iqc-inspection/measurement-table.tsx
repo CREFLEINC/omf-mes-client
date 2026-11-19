@@ -3,6 +3,7 @@ import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useRef, type KeyboardEvent } from 'react';
 
+import { withUom } from '../iqc-inspection/uom-lookup';
 import { numberOf } from './form-state';
 import { acceptanceOf, judgeDimension, judgeValue, type ItemJudgment } from './judgment';
 
@@ -60,6 +61,8 @@ export const rowStateOf = (
 
 export interface MeasurementTableProps {
   items: ItemSpec[];
+  /** 항목 단위 코드 — 규격 값 뒤에 붙인다(사용자 지시 2026-11-19 · omf-all-around#296). 없으면 단위 없이. */
+  uomCodeOf?: (uomId: number) => string | null;
   values: Record<number, string[]>;
   versionAcceptance: number | null;
   /** 자동 판정이 꺼진 항목의 고른 판정(항목 id → OK/NG). */
@@ -118,6 +121,7 @@ export const isManualDimension = (item: ItemSpec): boolean => item.automaticJudg
  */
 export const MeasurementTable = ({
   items,
+  uomCodeOf,
   values,
   versionAcceptance,
   judgments,
@@ -219,6 +223,11 @@ export const MeasurementTable = ({
                       acceptanceOf(item, versionAcceptance),
                     );
                 const [nominal, range] = specLines(item);
+                /* 단위는 규격 값 뒤에(사용자 지시 2026-11-19 · omf-all-around#296). */
+                const unit =
+                  item.uomId == null || uomCodeOf === undefined ? null : uomCodeOf(item.uomId);
+                const withUnit = (value: string): string =>
+                  value === '-' ? value : withUom(value, unit);
                 return (
                   <tr
                     key={item.inspectionItemSpecId}
@@ -232,9 +241,9 @@ export const MeasurementTable = ({
                       <ItemNameCell item={item} />
                     </td>
                     <td className="parts-iqc-spec">
-                      <span>{nominal || range}</span>
+                      <span>{withUnit(nominal || range)}</span>
                       {/* 공차 표기가 없는 규격은 위 줄이 이미 범위다 — 같은 말을 두 번 적지 않는다 */}
-                      {nominal !== '' && range !== nominal && <span>{range}</span>}
+                      {nominal !== '' && range !== nominal && <span>{withUnit(range)}</span>}
                     </td>
                     {Array.from({ length: columns }, (_, i) => {
                       if (i >= item.measurementCount)

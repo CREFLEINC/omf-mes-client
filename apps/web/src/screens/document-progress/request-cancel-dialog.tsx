@@ -67,7 +67,6 @@ export const RequestCancelDialog = ({
     {banner}
 
     <p>{t.cancelDialog.target(documentNo)}</p>
-    <p>{t.cancelDialog.approval}</p>
     <p>{t.cancelDialog.noWithdraw}</p>
   </Dialog>
 );

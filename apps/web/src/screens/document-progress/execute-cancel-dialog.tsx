@@ -73,7 +73,6 @@ export const ExecuteCancelDialog = ({
     {banner}
 
     <p>{t.executeDialog.target(documentNo)}</p>
-    <p>{t.executeDialog.ledgerImpact}</p>
     {/* ⛔ 이 줄이 이 창의 요점이다 — 무를 수 있다고 읽히면 사용자가 가볍게 누른다. */}
     <p>{t.executeDialog.irreversible}</p>
   </Dialog>

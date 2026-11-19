@@ -167,6 +167,7 @@ export const ResultDrawer = ({
               draft,
               onDirtyChange: setFormDirty,
               drawer: {
+                seqNo,
                 matchedLotIds: matched,
                 matchField: (
                   <>
