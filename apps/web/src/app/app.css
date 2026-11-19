@@ -19769,12 +19769,25 @@ dialog.layout-editor-dialog {
   padding: var(--space-3);
 }
 
-.session-menu > .popover-panel > .topbar-link {
-  padding: var(--space-1) var(--space-2);
+/* 판 안의 링크와 로그아웃은 같은 줄 모양 — 같은 글자 · 같은 높이 · 중립 색(주 색은 주 동작에만 · C-19). */
+.session-menu > .popover-panel > .topbar-link,
+.session-menu > .popover-panel > button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: 36px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--on-surface);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  text-decoration: none;
 }
 
-.session-menu > .popover-panel > button {
-  justify-content: flex-start;
+.session-menu > .popover-panel > .topbar-link:hover,
+.session-menu > .popover-panel > button:hover {
+  background: var(--surface-container-high);
+  text-decoration: none;
 }
 
 .more-menu > .popover-trigger {
@@ -28256,9 +28269,16 @@ body.col-reordering * {
   gap: var(--space-1);
 }
 
-.split-orientation-toggle > .split-orientation-option {
+/* 「⋯」 판 안에서는 한 줄씩 판 폭을 채운다(품질 승인 처리 등의 `.po-board-layout-toggle` 가운데 정렬도 덮는다). */
+.more-menu .split-orientation-toggle {
+  align-items: stretch;
+}
+
+.more-menu .split-orientation-option {
   justify-content: flex-start;
-  height: 32px;
+  height: 36px;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
 }
 
 /*
