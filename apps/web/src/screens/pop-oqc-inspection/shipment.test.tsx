@@ -45,7 +45,28 @@ const judgedRequest = shipmentOqcRequest({
   lotJudgmentSummary: { notInspected: 0, accepted: 1, rejected: 0, held: 0 },
 });
 
-const renderPop = (workerNo: string | null = '900028', request = shipmentOqcRequest()) => {
+/** 의뢰 기준 버전 3101 의 검사 항목 — 수치(길이 9.9~10.1) 하나(T052). */
+const lengthSpec = {
+  inspectionItemSpecId: 7911,
+  inspectionPlanVersionId: 3101,
+  sequenceNo: 10,
+  inspectionItemCode: 'LEN',
+  inspectionItemName: '길이',
+  dataTypeCode: 'NUMERIC',
+  targetValue: 10,
+  lowerLimit: 9.9,
+  upperLimit: 10.1,
+  measurementCount: 1,
+  requiredFlag: true,
+  automaticJudgment: true,
+};
+const pr = messages.pqcInspectionRegister.web.items;
+
+const renderPop = (
+  workerNo: string | null = '900028',
+  request = shipmentOqcRequest(),
+  options: { withItems?: boolean } = {},
+) => {
   const saves: Request[] = [];
   const all: InspectionRequestResponse[] = [request, judgedRequest];
 
@@ -73,6 +94,9 @@ const renderPop = (workerNo: string | null = '900028', request = shipmentOqcRequ
           status: 201,
         },
       );
+    }
+    if (options.withItems === true && path === '/quality/inspection-plan-versions/3101/items') {
+      return jsonResponse({ items: [lengthSpec], page: pageOf(1) });
     }
     if (path === '/logistics/shipment-requests/6201') return jsonResponse(shipmentRequestForOqc());
     if (path.startsWith('/mdm/partners/')) {
@@ -195,6 +219,42 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
       statusCode: 'DRAFT',
     });
     expect(await screen.findByText(ps.bar.saved(3))).toBeInTheDocument();
+  });
+
+  it('FR-009·T052 검사 기준 항목이 있으면 측정 칸이 서고, 잰 값(자동 판정)을 측정치로 함께 보낸다', async () => {
+    const user = userEvent.setup();
+    const { saves } = renderPop('900028', shipmentOqcRequest(), { withItems: true });
+
+    await openRequest(user);
+    await user.type(
+      await screen.findByRole('textbox', { name: pr.valueLabel('길이', 1) }),
+      '10.02',
+    );
+    await user.click(screen.getByRole('button', { name: s.judgments.ACCEPTED }));
+    await user.click(screen.getByRole('button', { name: ps.bar.save }));
+
+    await waitFor(() => expect(saves).toHaveLength(1));
+    const body = (await saves[0]?.json()) as { measurements?: Record<string, unknown>[] };
+    expect(body.measurements).toEqual([
+      expect.objectContaining({
+        inspectionItemSpecId: 7911,
+        sampleNo: 1,
+        numericValue: 10.02,
+        judgmentCode: 'ACCEPTED',
+      }),
+    ]);
+  });
+
+  it('FR-009·T052 수치 항목에 숫자가 아닌 값을 넣으면 저장이 잠기고 바닥 띠가 이유를 말한다', async () => {
+    const user = userEvent.setup();
+    renderPop('900028', shipmentOqcRequest(), { withItems: true });
+
+    await openRequest(user);
+    await user.type(await screen.findByRole('textbox', { name: pr.valueLabel('길이', 1) }), 'abc');
+    await user.click(screen.getByRole('button', { name: s.judgments.ACCEPTED }));
+
+    expect(screen.getByText(ps.bar.blocked.measurement)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: ps.bar.save })).toBeDisabled();
   });
 
   it('US3-1 매칭을 모두 풀면 저장이 잠기고 바닥 띠가 이유를 말한다', async () => {

@@ -9,6 +9,7 @@ import { overriddenLotsOf } from '../parts-iqc-inspection/lot-judgment';
 import { ReinspectionReasonField } from '../parts-iqc-inspection/reinspection-reason-field';
 import { SerialJudgments } from './serial-judgments';
 import { toSerialInputs, type SerialRow } from './serials';
+import { ShipmentMeasurementSection, useShipmentMeasurements } from './shipment-measurements';
 import { ruleCodeOf, type PickedLotView } from './shipment-oqc';
 import { LotJudgmentChip } from './shipment-oqc-parts';
 import { useSaveShipmentResult } from './shipment-oqc-queries';
@@ -24,6 +25,8 @@ export interface ShipmentResultDrawerProps {
   itemId: number;
   uomId: number;
   uomCode: string;
+  /** 의뢰의 검사 기준 버전 — 있으면 검사 항목 측정 칸을 둔다(FR-009 · T052). */
+  planVersionId: number | null | undefined;
   /** 매칭 후보 — 지금 피킹된(살아 있는) LOT. 교체된 LOT 은 빠진다(US3-5). */
   views: readonly PickedLotView[];
   results: readonly InspectionResultSummaryForward[];
@@ -41,13 +44,15 @@ export interface ShipmentResultDrawerProps {
  * W-04-03 결과 추가 · 수정 드로어(시안 W0403-After ②③④) — 피킹 LOT 매칭(1개 이상 필수 · [전부 선택]) · 판정 하나(합격 · 불합격
  * · 보류) · 재검 사유(불합격 · 보류를 가볍게 덮을 때만 필수). 수량 칸 · 자동 판정 · 확정이 없다 — 결과는 작성중으로 쌓이고 출하
  * 완료 때 확정된다. IQC 드로어(`parts-iqc-inspection/result-drawer.tsx`)의 매칭 · 사유 부품을 문구만 바꿔 쓴다.
- * ⛔ 측정치 · 불량은 서버가 새 흐름에서 받지 않는다 — 칸을 두지 않는다. 시리얼은 결과를 더할 때만(서버가 작성중 저장에서 받는다).
+ * 검사 항목 측정은 지금처럼(FR-009 · T052 — 지금 OQC 와 같은 표 · 규칙). ⛔ 불량은 서버가 새 흐름에서 받지 않는다 — 칸을 두지 않는다.
+ * 시리얼은 결과를 더할 때만(서버가 작성중 저장에서 받는다).
  */
 export const ShipmentResultDrawer = ({
   inspectionRequestId,
   itemId,
   uomId,
   uomCode,
+  planVersionId,
   views,
   results,
   editing,
@@ -74,6 +79,11 @@ export const ShipmentResultDrawer = ({
   const judgmentNoteId = useId();
 
   const save = useSaveShipmentResult(inspectionRequestId, () => onSaved(seqNo, editing !== null));
+  const measurements = useShipmentMeasurements({
+    planVersionId,
+    resultId,
+    resetKey: `${String(inspectionRequestId)}#${String(resultId)}`,
+  });
 
   const dirty =
     matched.length !== initialMatch.length ||
@@ -110,13 +120,16 @@ export const ShipmentResultDrawer = ({
   const submit = () => {
     setChecked(true);
     if (matched.length === 0 || judgment === null || (needsReason && reason === null)) return;
+    if (measurements.hasError) return;
+    const inspectedAt = new Date().toISOString();
     save.write({
       inspectionRequestId,
       uomId,
       judgmentCode: judgment,
       matchedLotIds: matched,
       reinspectionReasonCode: reason,
-      inspectedAt: new Date().toISOString(),
+      inspectedAt,
+      measurements: measurements.inputs(inspectedAt),
       serials: toSerialInputs(serialRows),
       editing:
         editing === null
@@ -246,6 +259,8 @@ export const ShipmentResultDrawer = ({
               {reasonError}
             </p>
           ) : null}
+          {/* 검사 항목 측정 — 지금 검사 기준대로(시안 W0403-After 「검사 항목 · 측정(그대로)」). */}
+          <ShipmentMeasurementSection form={measurements} locked={save.isSaving} />
           {/* 시리얼별 OK/NG — 지금 부품 그대로(시안 「그대로」). 고침(PUT)은 시리얼을 받지 않아 더할 때만. */}
           {editing === null ? (
             <SerialJudgments

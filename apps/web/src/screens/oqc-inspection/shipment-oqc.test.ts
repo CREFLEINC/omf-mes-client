@@ -175,6 +175,49 @@ describe('결과 저장 몸통', () => {
     expect(body.serials).toEqual([{ serialNumberId: 1, judgmentCode: 'OK' }]);
   });
 
+  it('FR-009·T052 검사 항목 측정치를 싣는다 — 더할 때는 있을 때만, 고칠 때는 실으면 통째로 바꾼다(빈 배열 포함)', () => {
+    const measured = [
+      {
+        inspectionItemSpecId: 31,
+        sampleNo: 1,
+        judgmentCode: 'ACCEPTED',
+        measuredAt: '2026-11-18T03:00:00.000Z',
+        numericValue: 1.5,
+      },
+    ];
+    const created = toShipmentResultBody({
+      inspectionRequestId: 4201,
+      uomId: 10,
+      judgmentCode: 'ACCEPTED',
+      matchedLotIds: [7004],
+      reinspectionReasonCode: null,
+      inspectedAt: '2026-11-18T03:00:00.000Z',
+      serials: [],
+      measurements: measured,
+    });
+    expect(created.measurements).toEqual(measured);
+    expect(
+      toShipmentResultBody({
+        inspectionRequestId: 4201,
+        uomId: 10,
+        judgmentCode: 'ACCEPTED',
+        matchedLotIds: [7004],
+        reinspectionReasonCode: null,
+        inspectedAt: '2026-11-18T03:00:00.000Z',
+        serials: [],
+        measurements: [],
+      }),
+    ).not.toHaveProperty('measurements');
+    expect(
+      toShipmentResultUpdateBody({
+        judgmentCode: 'ACCEPTED',
+        matchedLotIds: [7004],
+        reinspectionReasonCode: null,
+        measurements: [],
+      }),
+    ).toEqual({ overallJudgmentCode: 'ACCEPTED', matchedLotIds: [7004], measurements: [] });
+  });
+
   it('고침은 매칭 · 판정 · 사유만 보낸다', () => {
     expect(
       toShipmentResultUpdateBody({

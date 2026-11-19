@@ -21,6 +21,7 @@ import { lotJudgmentsOf } from '../parts-iqc-inspection/lot-judgment';
 type InspectionResultCreate = components['schemas']['InspectionResultCreate'];
 type InspectionResultUpdate = components['schemas']['InspectionResultUpdate'];
 type SerialInput = components['schemas']['InspectionSerialJudgmentInput'];
+type MeasurementInput = components['schemas']['InspectionMeasurementInput'];
 type LotJudgmentSummary = NonNullable<
   components['schemas']['InspectionRequest']['lotJudgmentSummary']
 >;
@@ -170,10 +171,12 @@ export interface ShipmentResultInput {
   judgmentCode: string;
   matchedLotIds: readonly number[];
   reinspectionReasonCode: string | null;
+  /** 검사 항목 측정치(FR-009 · T052) — 판정한 줄만. 고칠 때 실으면 통째로 바꾼다. 안 실으면(검사 기준 없음) 그대로. */
+  measurements?: readonly MeasurementInput[];
 }
 
 /**
- * 결과 추가 몸통(US3-4) — 판정 · 매칭 · (재검 사유) · (시리얼)만. 수량 칸은 계약상 필수라 0 으로 채우지만 서버가 무시하고
+ * 결과 추가 몸통(US3-4) — 판정 · 매칭 · (재검 사유) · (시리얼) · (검사 항목 측정치 — FR-009 · T052). 수량 칸은 계약상 필수라 0 으로 채우지만 서버가 무시하고
  * 매칭 LOT 피킹 합으로 다시 채운다. 늘 작성중(DRAFT) — 확정 저장은 409 `CONFIRMED_BY_SHIPMENT_COMPLETION` 이다.
  */
 export const toShipmentResultBody = (
@@ -198,15 +201,19 @@ export const toShipmentResultBody = (
     ? {}
     : { reinspectionReasonCode: input.reinspectionReasonCode }),
   ...(input.serials.length === 0 ? {} : { serials: [...input.serials] }),
+  ...(input.measurements === undefined || input.measurements.length === 0
+    ? {}
+    : { measurements: [...input.measurements] }),
 });
 
-/** 결과 고침 몸통 — 작성중만, 매칭 · 판정 · 사유(수량은 서버가 매칭으로 다시 채운다). */
+/** 결과 고침 몸통 — 작성중만, 매칭 · 판정 · 사유 · 측정치(수량은 서버가 매칭으로 다시 채운다). */
 export const toShipmentResultUpdateBody = (input: ShipmentResultInput): InspectionResultUpdate => ({
   overallJudgmentCode: input.judgmentCode,
   matchedLotIds: [...input.matchedLotIds],
   ...(input.reinspectionReasonCode === null
     ? {}
     : { reinspectionReasonCode: input.reinspectionReasonCode }),
+  ...(input.measurements === undefined ? {} : { measurements: [...input.measurements] }),
 });
 
 /** 판정 규칙 · 흐름 오류 코드 — 문구는 화면이 ko · vi 로 낸다. */

@@ -64798,7 +64798,7 @@ export interface components {
         remarks: string;
       } | null;
     };
-    /** @description ⛔ statusCode=확정 이면 acceptedQty + rejectedQty + heldQty = inspectedQty 를 강제한다 (ck_inspection_result_qty · 공유계약 A-3). 작성중은 통과시킨다. ⭐ 검사자·단말은 «보내지 않는다» — 서버가 인증 주체에서 채운다(관리웹은 계정 토큰, 현장 단말·모바일은 사번 귀속 헤더). ⭐ 출하 OQC 새 흐름(피처 010 · omf-all-around#305 — OQC · 대상 SHIPMENT_REQUEST · lotId 없음): matchedLotIds 1개 이상 필수(그 지시서·품목의 PICKED 피킹 LOT 만 — 아니면 400 INVALID), overallJudgmentCode(ACCEPTED·REJECTED·HELD)만 받고 수량 칸은 무시한다 — 서버가 검사 수량 = 매칭 LOT 피킹 합, 판정 칸 하나에 같은 값으로 채운다. statusCode 는 DRAFT 만(CONFIRMED 면 409 CONFIRMED_BY_SHIPMENT_COMPLETION), 순번 = 최대 + 1, 불합격·보류를 가볍게 덮으면 reinspectionReasonCode 필수(400 REINSPECTION_REASON_REQUIRED), 시리얼 판정은 작성중 저장에서도 받는다. 첫 결과가 의뢰를 IN_PROGRESS 로 옮긴다. */
+    /** @description ⛔ statusCode=확정 이면 acceptedQty + rejectedQty + heldQty = inspectedQty 를 강제한다 (ck_inspection_result_qty · 공유계약 A-3). 작성중은 통과시킨다. ⭐ 검사자·단말은 «보내지 않는다» — 서버가 인증 주체에서 채운다(관리웹은 계정 토큰, 현장 단말·모바일은 사번 귀속 헤더). ⭐ 출하 OQC 새 흐름(피처 010 · omf-all-around#305 — OQC · 대상 SHIPMENT_REQUEST · lotId 없음): matchedLotIds 1개 이상 필수(그 지시서·품목의 PICKED 피킹 LOT 만 — 아니면 400 INVALID), overallJudgmentCode(ACCEPTED·REJECTED·HELD)만 받고 수량 칸은 무시한다 — 서버가 검사 수량 = 매칭 LOT 피킹 합, 판정 칸 하나에 같은 값으로 채운다. statusCode 는 DRAFT 만(CONFIRMED 면 409 CONFIRMED_BY_SHIPMENT_COMPLETION), 순번 = 최대 + 1, 불합격·보류를 가볍게 덮으면 reinspectionReasonCode 필수(400 REINSPECTION_REASON_REQUIRED), 시리얼 판정은 작성중 저장에서도 받는다. 검사 항목 측정치(measurements)는 지금처럼 받아 저장한다(FR-009 · T052 — 「판정만」은 수량을 받지 않는다는 뜻). 불량·4M 은 받지 않는다. 첫 결과가 의뢰를 IN_PROGRESS 로 옮긴다. */
     InspectionResultCreate: {
       /**
        * Format: int64
@@ -64888,7 +64888,7 @@ export interface components {
       /** @description 입하 LOT 검사(targetTypeCode=INBOUND_LOT)의 결과만 — 이 결과가 본 자재 관리 LOT. 그 입하 LOT 소속만(아니면 400 INVALID), 한 결과에 같은 LOT 두 번은 400, 다른 결과와 겹치는 것은 된다. 1개 이상 필수 — 빼거나 빈 배열이면 400 MATCHED_LOT_REQUIRED(2026-11-12). 근거: 피처 005 자재 LOT 운영 구조 변경 §8 · omf-all-around#254 · R-10 ⭐ 출하 OQC 새 흐름도 받는다 — 그 지시서·품목의 PICKED 피킹 LOT(피처 010). */
       matchedLotIds?: number[];
     };
-    /** @description 작성중인 결과만 고칠 수 있다. 확정된 것은 409 INVALID_STATE — 고치는 것이 아니라 재검이다(B-10) ⭐ 검사자·단말은 «보내지 않는다» — 서버가 인증 주체에서 채운다(관리웹은 계정 토큰, 현장 단말·모바일은 사번 귀속 헤더). ⭐ 출하 OQC 새 흐름(피처 010): 작성중만 고친다 — matchedLotIds·overallJudgmentCode·reinspectionReasonCode, 수량은 매칭으로 다시 채운다. */
+    /** @description 작성중인 결과만 고칠 수 있다. 확정된 것은 409 INVALID_STATE — 고치는 것이 아니라 재검이다(B-10) ⭐ 검사자·단말은 «보내지 않는다» — 서버가 인증 주체에서 채운다(관리웹은 계정 토큰, 현장 단말·모바일은 사번 귀속 헤더). ⭐ 출하 OQC 새 흐름(피처 010): 작성중만 고친다 — matchedLotIds·overallJudgmentCode·reinspectionReasonCode·measurements(실으면 통째로 바꾼다), 수량은 매칭으로 다시 채운다. */
     InspectionResultUpdate: {
       /**
        * Format: double

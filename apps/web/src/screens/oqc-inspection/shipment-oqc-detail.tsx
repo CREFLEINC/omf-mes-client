@@ -307,6 +307,7 @@ export const ShipmentOqcDetail = ({
           itemId={request.itemId}
           uomId={request.uomId}
           uomCode={uom}
+          planVersionId={request.inspectionPlanVersionId}
           views={active}
           results={results}
           editing={drawer.editing}

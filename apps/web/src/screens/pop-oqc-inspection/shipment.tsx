@@ -30,6 +30,10 @@ import {
   useShipmentRequestRef,
   type ShipmentRequestRef,
 } from '../oqc-inspection/shipment-oqc-queries';
+import {
+  ShipmentMeasurementSection,
+  useShipmentMeasurements,
+} from '../oqc-inspection/shipment-measurements';
 import { SHIPMENT_JUDGMENTS } from '../oqc-inspection/shipment-result-drawer';
 import type { InspectionRequestResponse } from '../oqc-inspection/types';
 
@@ -73,6 +77,12 @@ export const usePopShipmentForm = (inspectionRequestId: number | null, workerNo:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
   useEffect(() => setSavedSeq(null), [inspectionRequestId]);
+  /* 검사 항목 측정(FR-009 · T052) — POP 은 결과를 더하기만 하므로 늘 빈 칸에서 시작한다(결과가 늘면 다시 연다). */
+  const measurements = useShipmentMeasurements({
+    planVersionId: request?.inspectionPlanVersionId,
+    resultId: null,
+    resetKey: resetKey ?? '',
+  });
 
   const seqNo =
     request?.nextResultSeqNo ?? results.reduce((max, result) => Math.max(max, result.seqNo), 0) + 1;
@@ -100,19 +110,22 @@ export const usePopShipmentForm = (inspectionRequestId: number | null, workerNo:
     if (matched.length === 0) return ps.bar.blocked.match;
     if (judgment === null) return ps.bar.blocked.judgment;
     if (needsReason && reason === null) return ps.bar.blocked.reason;
+    if (measurements.hasError) return ps.bar.blocked.measurement;
     return null;
   })();
 
   const submit = () => {
     if (blockedReason !== null || request === undefined || judgment === null) return;
     setSavedSeq(null);
+    const inspectedAt = new Date().toISOString();
     save.write({
       inspectionRequestId: request.inspectionRequestId,
       uomId: request.uomId,
       judgmentCode: judgment,
       matchedLotIds: matched,
       reinspectionReasonCode: needsReason ? reason : null,
-      inspectedAt: new Date().toISOString(),
+      inspectedAt,
+      measurements: measurements.inputs(inspectedAt),
       serials: toSerialInputs(serialRows),
       editing: null,
     });
@@ -133,6 +146,7 @@ export const usePopShipmentForm = (inspectionRequestId: number | null, workerNo:
     setReason,
     serialRows,
     setSerialRows,
+    measurements,
     overridden,
     needsReason,
     blockedReason,
@@ -501,6 +515,8 @@ export const PopShipmentDetail = ({
               lotLabel={(lotNo) => lotNo}
             />
           ) : null}
+          {/* 검사 항목 측정 — 지금 검사 기준대로(FR-009 · 시안 P0406-After 메모 E 「지금처럼」). */}
+          <ShipmentMeasurementSection form={form.measurements} locked={form.save.isSaving} />
           <PopSerialStep
             inspectionRequestId={request.inspectionRequestId}
             itemId={request.itemId}

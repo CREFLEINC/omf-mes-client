@@ -184,6 +184,7 @@ export const popOqcInspection = {
         noLots: 'Chưa có LOT nào được lấy nên không thể ghi kết quả.',
         skipped: 'Yêu cầu này đã đóng do bỏ qua OQC. Không thêm kết quả.',
         completed: 'Phán định đã được xác nhận khi hoàn tất xuất hàng. Không thêm kết quả.',
+        measurement: 'Hãy sửa lỗi giá trị đo của hạng mục kiểm tra rồi mới lưu được.',
       },
     },
   },
