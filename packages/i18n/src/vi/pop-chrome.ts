@@ -67,6 +67,13 @@ export const popChrome: Translated<typeof ko.popChrome> = {
   userSwitch: 'Đổi người dùng',
   switchShort: 'Đổi',
   refresh: 'Làm mới',
+  refreshedAt: (time: string): string => `Cập nhật ${time}`,
+  exit: {
+    button: 'Thoát',
+    title: 'Thoát màn hình POP?',
+    body: 'Nội dung đang nhập sẽ không được lưu.',
+    confirm: 'Thoát',
+  },
   header: {
     terminalUnknown: 'Chưa xác nhận máy trạm',
     terminalLabel: (code: string): string => `Máy trạm ${code}`,

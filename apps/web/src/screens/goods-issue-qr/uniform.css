@@ -104,7 +104,8 @@
   color: var(--pu-bad);
 }
 
-/* 표: 줄 56, 두 줄 묶음 칸. 바깥 칸(`giq-table`)이 남는 높이를 갖고 쪽 건수를 잰다. */
+/* 표: 바깥 칸(`giq-table`)이 남는 높이를 갖고 쪽 건수를 잰다. 칸 폭·줄 높이는 공통 표(`pu-table`) 규칙 —
+ * 선택·수량·분할 일시·라벨은 글자만큼, LOT 번호는 번호만큼(넘치면 말줄임), 남는 폭은 품목·출고가 나눠 갖는다. */
 .giq-table {
   overflow: hidden;
 }
@@ -113,56 +114,20 @@
   max-height: 100%;
 }
 
-.giq-table .pu-table {
-  table-layout: fixed;
-}
-
-.giq-table .pu-table th,
-.giq-table .pu-table td {
-  padding-left: 8px;
-  padding-right: 8px;
-}
-
-.giq-table .pu-table td {
-  height: 56px;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  vertical-align: middle;
-}
-
 .giq-table tbody tr {
   cursor: pointer;
 }
 
-.giq-table .giq-ck {
-  width: 48px;
-  text-align: center;
-}
-
-.giq-table .giq-item {
-  width: 200px;
-}
-
-.giq-table .giq-qty {
-  width: 96px;
-}
-
-.giq-table .giq-issue {
-  width: 200px;
-}
-
-.giq-table .giq-at {
-  width: 120px;
-}
-
-.giq-table .giq-label {
-  width: 130px;
+.giq-table .pu-table td.giq-lotcol {
+  max-width: 340px;
 }
 
 .giq-lotno {
   display: block;
   font-weight: 700;
   font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .giq-seg {
@@ -179,13 +144,15 @@
 .giq-sub {
   display: block;
   font-size: 12px;
+  line-height: 16px;
   color: var(--pu-text-3);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* 기존 LOT 줄은 한 줄로 두고 넘치면 줄인다 — 줄이 늘면 한 쪽에 드는 줄 수가 준다. */
+/* LOT 번호도 기존 LOT 줄도 한 줄로 두고 넘치면 줄인다(전체는 title) — 줄이 늘면 한 쪽에 드는 줄 수가 준다. */
+.giq-lotno wbr,
 .giq-sub wbr {
   display: none;
 }
@@ -299,7 +266,7 @@
   color: var(--pu-text-3);
 }
 
-/* 1024 단말: 고정 칸을 좁혀 LOT 번호 칸이 남는 폭을 갖는다. */
+/* 1024 단말: 기간·보기 바꿈을 좁히고 LOT 번호 글자를 줄인다. */
 @media (max-width: 1100px) {
   .giq-period {
     width: 300px;
@@ -307,36 +274,6 @@
 
   .giq-list .pu-card-head > .pu-seg {
     width: 300px;
-  }
-
-  .giq-table .giq-ck {
-    width: 40px;
-  }
-
-  .giq-table .giq-item {
-    width: 130px;
-  }
-
-  .giq-table .giq-qty {
-    width: 76px;
-  }
-
-  .giq-table .giq-issue {
-    width: 150px;
-  }
-
-  .giq-table .giq-at {
-    width: 92px;
-  }
-
-  .giq-table .giq-label {
-    width: 108px;
-  }
-
-  .giq-table .pu-table th,
-  .giq-table .pu-table td {
-    padding-left: 6px;
-    padding-right: 6px;
   }
 
   .giq-lotno {

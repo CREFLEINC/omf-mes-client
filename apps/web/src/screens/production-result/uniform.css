@@ -273,7 +273,7 @@
 }
 
 /* 작업지시 마감 창(창은 본문 밖에 그려진다) — 열린 작업 세션 표(끝낼 곳은 줄바꿈), 폐번될·마감되지 않은 LOT 번호 상자 */
-.pr-close-sessions .pu-table td {
+.pr-close-sessions .pu-table td.pr-close-where {
   white-space: normal;
   max-width: none;
 }

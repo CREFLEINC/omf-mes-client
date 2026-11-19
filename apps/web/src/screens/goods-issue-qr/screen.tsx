@@ -695,13 +695,13 @@ const SplitTable = ({
       <table className="pu-table">
         <thead>
           <tr>
-            <th className="giq-ck">{t.table.select}</th>
-            <th>{t.table.lotNo}</th>
-            <th className="giq-item">{t.table.item}</th>
-            <th className="num giq-qty">{t.table.qty}</th>
-            <th className="giq-issue">{t.table.issue}</th>
-            <th className="giq-at">{`${t.table.splitAt} ${order === 'oldest' ? '↑' : '↓'}`}</th>
-            <th className="giq-label">{t.table.labelColumn}</th>
+            <th className="fit mid">{t.table.select}</th>
+            <th className="fit">{t.table.lotNo}</th>
+            <th>{t.table.item}</th>
+            <th className="num fit">{t.table.qty}</th>
+            <th>{t.table.issue}</th>
+            <th className="fit">{`${t.table.splitAt} ${order === 'oldest' ? '↑' : '↓'}`}</th>
+            <th className="fit mid">{t.table.labelColumn}</th>
           </tr>
         </thead>
         <tbody>
@@ -720,7 +720,7 @@ const SplitTable = ({
                       }
                 }
               >
-                <td className="giq-ck">
+                <td className="fit mid">
                   <button
                     type="button"
                     role="checkbox"
@@ -736,24 +736,26 @@ const SplitTable = ({
                     {isChecked ? <PuIcon name="check" /> : null}
                   </button>
                 </td>
-                <td>
+                <td className="fit giq-lotcol">
                   <LotNoText className="pu-mono giq-lotno" lotNo={lot.lotNo} />
                   <span className="giq-sub">
                     {t.table.parentLabel} <LotNoText lotNo={lot.parentLot.lotNo} />
                   </span>
                 </td>
-                <td>
+                <td title={`${lot.item.itemCode} ${lot.item.itemName}`}>
                   <b className="giq-one">{lot.item.itemCode}</b>
                   <span className="giq-sub">{lot.item.itemName}</span>
                 </td>
-                <td className="num">{formatBaseQty(lot.qty, lot.uomCode)}</td>
-                <td>
+                <td className="num fit">{formatBaseQty(lot.qty, lot.uomCode)}</td>
+                <td
+                  title={`${lot.goodsIssue.goodsIssueNo} ${t.table.lineDestination(lot.goodsIssue.lineNo, destinationOf(lot))}`}
+                >
                   <span className="giq-one">{lot.goodsIssue.goodsIssueNo}</span>
                   <span className="giq-sub">
                     {t.table.lineDestination(lot.goodsIssue.lineNo, destinationOf(lot))}
                   </span>
                 </td>
-                <td>
+                <td className="fit">
                   <span className="giq-one">{shortAt(lot.splitAt)}</span>
                   {showAge ? (
                     <span
@@ -763,7 +765,7 @@ const SplitTable = ({
                     </span>
                   ) : null}
                 </td>
-                <td>
+                <td className="fit mid">
                   <LabelStatus lot={lot} />
                 </td>
               </tr>

@@ -1006,7 +1006,12 @@ textarea.pu-input {
   font-family: var(--pu-mono);
 }
 
-/* ── 표 ── */
+/* ── 표 ──
+ * 칸 폭은 데이터만큼: 짧은 칸(선택·상태·날짜·수량·버튼)은 `fit` 으로 글자만큼만 차지하고, 표시 없는 칸
+ * (LOT 번호·품목·설명처럼 긴 글)이 남는 폭을 나눠 갖는다 — 폭이 줄어도 `fit` 칸은 그대로다.
+ * 정렬: 수량 `num` 오른쪽 · 선택·상태·버튼 `mid` 가운데 · 그 밖 왼쪽(머리도 같은 정렬).
+ * 줄 높이 44 — 두 줄 칸(주 글 + 작은 흐린 아랫줄)도 이 높이에 든다. 긴 글은 한 줄 말줄임 + title.
+ */
 .pu-table-wrap {
   border: 1px solid var(--pu-line-2);
   border-radius: var(--radius-md, 12px);
@@ -1019,30 +1024,53 @@ textarea.pu-input {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+  line-height: 20px;
 }
 
 .pu-table th {
+  height: 36px;
   background: var(--pu-card-2);
   color: var(--pu-text-2);
+  font-size: 13px;
   font-weight: 600;
   text-align: left;
-  padding: 10px 12px;
+  padding: 0 10px;
   white-space: nowrap;
+  vertical-align: middle;
 }
 
 .pu-table td {
-  padding: 10px 12px;
+  height: 44px;
+  padding: 3px 10px;
   border-top: 1px solid var(--pu-line-2);
   white-space: nowrap;
   max-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  vertical-align: middle;
 }
 
 .pu-table td.num,
 .pu-table th.num {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.pu-table td.fit,
+.pu-table th.fit {
+  width: 1%;
+  max-width: none;
+}
+
+.pu-table td.mid,
+.pu-table th.mid {
+  text-align: center;
+}
+
+/* 표 안 상태 칩은 줄 높이(20)에 맞춘다 — 칩 아래 작은 줄이 붙어도 줄이 44 를 넘지 않는다. */
+.pu-table td .pu-chip {
+  height: 20px;
+  vertical-align: middle;
 }
 
 .pu-table tbody tr.is-pick {

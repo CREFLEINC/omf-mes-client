@@ -85,23 +85,36 @@ describe('POP 라벨 모드 — 돌아갈 길을 숨기지 않는다', () => {
  * 이것도 렌더 테스트로는 잡히지 않는다 — 값은 DOM 에 다 있고 표도 멀쩡히 뜬다. 폭이 실제로
  * 어떻게 나뉘는지는 브라우저가 정하므로, 폭을 «못박았는지»를 원문으로 겨눈다.
  *
- * 현장에서 GS1 스캔값이 그대로 들어오면 LOT 이 32자를 넘는다. `table-layout` 이 기본값이면
- * 열의 `width` 는 희망값에 그쳐, 그 칸이 남의 폭을 가져간다.
+ * 현장에서 GS1 스캔값이 그대로 들어오면 LOT 이 32자를 넘는다. 공통 표(`pu-table`)는 짧은 칸을 글자만큼(`fit`)
+ * 두는 자동 배치라, 번호 칸을 `fit` 으로 두려면 상한(`max-width`)을 못박아야 그 칸이 남의 폭을 가져가지 않는다.
  */
 describe('POP 표 — 긴 번호가 다른 열을 밀어내지 않는다', () => {
   /*
-   * 통일 본문(#295)의 표는 화면 CSS(`screens/<화면>/uniform.css`)가 폭을 못박는다. 옛 `pop.css` 규칙
+   * 통일 본문(#295)의 표는 화면 CSS(`screens/<화면>/uniform.css`)가 번호 칸 상한을 못박는다. 옛 `pop.css` 규칙
    * (`.pop-repack-contents` · `.pop-split-row` · `.pop-slabel-table`)은 화면과 함께 걷었다. 구획 안
    * 스크롤 대신 표 높이에 맞춘 쪽 넘김을 쓰므로 「표가 0 으로 깔림」 감지는 쪽 크기(`useFitTableRows`, 최소 1)가 맡는다.
    */
-  const fixedTable = (scope: string): RegExp =>
-    new RegExp(`\\.${scope}\\s+\\.pu-table\\s*\\{[^}]*table-layout:\\s*fixed`, 'u');
+  const cappedColumn = (scope: string, column: string): RegExp =>
+    new RegExp(`\\.${scope}\\s+\\.pu-table\\s+td\\.${column}\\s*\\{[^}]*max-width:\\s*\\d+px`, 'u');
 
-  it('재구성 신규 라벨의 라벨 표가 폭을 못박는다', () => {
-    expect(read('src/screens/repack-label-issue/uniform.css')).toMatch(fixedTable('rpk-table'));
+  it('재구성 신규 라벨의 라벨 표가 번호 칸 폭을 못박는다', () => {
+    expect(read('src/screens/repack-label-issue/uniform.css')).toMatch(
+      cappedColumn('rpk-table', 'rpk-no'),
+    );
   });
 
-  it('분할 LOT 표가 폭을 못박는다 — 긴 번호가 끝 열을 밀어내지 않는다', () => {
-    expect(read('src/screens/goods-issue-qr/uniform.css')).toMatch(fixedTable('giq-table'));
+  it('분할 LOT 표가 LOT 번호 칸 폭을 못박는다 — 긴 번호가 끝 열을 밀어내지 않는다', () => {
+    expect(read('src/screens/goods-issue-qr/uniform.css')).toMatch(
+      cappedColumn('giq-table', 'giq-lotcol'),
+    );
+  });
+
+  it('자재 관리 LOT 표 · 적재 위치 표도 번호(코드) 칸 폭을 못박는다', () => {
+    expect(read('src/screens/pop-material-lot-label/uniform.css')).toMatch(
+      cappedColumn('mll-table', 'mll-lotcol'),
+    );
+    expect(read('src/screens/pop-location-label/uniform.css')).toMatch(
+      cappedColumn('ll-table', 'll-code'),
+    );
   });
 });

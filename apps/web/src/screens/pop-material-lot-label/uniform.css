@@ -129,7 +129,7 @@
 }
 
 /* 표: 바깥 칸(`mll-table`)이 남는 높이를 갖고 쪽 건수를 잰다. 칸 폭·줄 높이는 공통 표(`pu-table`) 규칙.
- * 발행 대기: LOT 번호 칸은 번호만큼(넘치면 말줄임) — 남는 폭은 마지막 「라벨」 칸이 갖는다. */
+ * LOT 번호 칸은 번호만큼(넘치면 말줄임) — 남는 폭은 발행 대기면 마지막 「라벨」, 재발행이면 「품목」 칸이 갖는다. */
 .mll-table {
   overflow: hidden;
 }
@@ -337,7 +337,7 @@
   font-size: 18px;
 }
 
-/* 1024 단말: 발행 단위 줄은 두 줄로. */
+/* 1024 단말: 발행 단위 줄은 두 줄로, 재발행 표는 LOT 번호 칸을 줄여 품목 칸 자리를 남긴다. */
 @media (max-width: 1100px) {
   .mll-units {
     gap: 6px;
@@ -358,6 +358,10 @@
 
   .mll-units > .pu-btn {
     padding: 0 10px;
+  }
+
+  .mll-table.is-reprint .pu-table td.mll-lotcol {
+    max-width: 180px;
   }
 }
 

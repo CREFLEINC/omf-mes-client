@@ -38,3 +38,80 @@ export const usePopWorkCounts = (enabled: boolean): PopWorkCounts => {
     },
   };
 };
+
+/**
+ * 화면 탭 건수(POP 통일 시안 #295) — `/app/terminal-work-counts` 가 세지 않는 화면의 수.
+ * 그 화면이 이미 쓰는 GET 을 한 쪽(size 1)만 불러 서버가 준 합계를 쓴다. 남은 작업 창에는 넣지 않는다.
+ * - 자재 관리 LOT 라벨: 입하 대기 자재 관리 LOT 수(공급사·품목별 `waitingCount` 합 — 화면 「발행 대기 N」과 같다)
+ * - 분할 LOT 라벨: 라벨 안 찍은 분할 LOT 수(`unprintedCount` — 화면 「발행 대기 N」과 같다)
+ * - 출하 단위 구성: 구성할 상자가 남은 출하 수(`hasUnassignedPackedBox=true` 의 `page.total`)
+ * 갈 수 없는 화면(`paths` 에 없음)은 부르지 않는다. 실패하거나 아직이면 그 화면 수는 없다.
+ */
+export const POP_TAB_COUNT_PATHS = {
+  materialLotLabel: '/pop/material-lot-label',
+  splitLotLabel: '/pop/goods-issue-qr',
+  shippingUnits: '/pop/shipping-units',
+} as const;
+
+export const popTabCountKeys = { all: ['pop-tab-counts'] as const };
+
+export const usePopTabCounts = (
+  enabled: boolean,
+  plantId: number | null,
+  paths: readonly string[],
+): Partial<Record<string, number>> => {
+  const { client } = useApiClient();
+  const can = (path: string): boolean => enabled && paths.includes(path);
+  const common = { refetchInterval: POP_WORK_COUNT_INTERVAL_MS } as const;
+
+  const material = useQuery({
+    ...common,
+    queryKey: [...popTabCountKeys.all, 'material-lot-label', plantId],
+    enabled: can(POP_TAB_COUNT_PATHS.materialLotLabel) && plantId !== null,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/logistics/waiting-material-lots', {
+          params: { query: { plantId: plantId ?? 0 } },
+        }),
+      );
+      return data.items.reduce((sum, group) => sum + group.waitingCount, 0);
+    },
+  });
+  const split = useQuery({
+    ...common,
+    queryKey: [...popTabCountKeys.all, 'split-lot-label', plantId],
+    enabled: can(POP_TAB_COUNT_PATHS.splitLotLabel) && plantId !== null,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/logistics/split-material-lots', {
+          params: {
+            query: { plantId: plantId ?? 0, labelState: 'UNPRINTED', page: 1, size: 1 },
+          },
+        }),
+      );
+      return data.unprintedCount;
+    },
+  });
+  const shipping = useQuery({
+    ...common,
+    queryKey: [...popTabCountKeys.all, 'shipping-units'],
+    enabled: can(POP_TAB_COUNT_PATHS.shippingUnits),
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/logistics/shipments', {
+          params: { query: { hasUnassignedPackedBox: true, page: 1, size: 1 } },
+        }),
+      );
+      return data.page.total;
+    },
+  });
+
+  const valueOf = (query: { isError: boolean; data: number | undefined }) =>
+    query.isError ? undefined : query.data;
+
+  return {
+    [POP_TAB_COUNT_PATHS.materialLotLabel]: valueOf(material),
+    [POP_TAB_COUNT_PATHS.splitLotLabel]: valueOf(split),
+    [POP_TAB_COUNT_PATHS.shippingUnits]: valueOf(shipping),
+  };
+};

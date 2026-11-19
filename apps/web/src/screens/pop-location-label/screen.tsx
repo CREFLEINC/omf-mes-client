@@ -448,10 +448,10 @@ export const PopLocationLabelScreen = () => {
             <table className="pu-table">
               <thead>
                 <tr>
-                  <th className="ll-ck">{t.location.columnSelect}</th>
-                  <th>{t.location.columnCode}</th>
-                  <th className="ll-name">{t.location.columnName}</th>
-                  <th className="ll-state">{t.location.columnState}</th>
+                  <th className="fit mid">{t.location.columnSelect}</th>
+                  <th className="fit">{t.location.columnCode}</th>
+                  <th>{t.location.columnName}</th>
+                  <th className="fit mid">{t.location.columnState}</th>
                 </tr>
               </thead>
               <tbody>
@@ -467,7 +467,7 @@ export const PopLocationLabelScreen = () => {
                         toggle(row.locationId);
                       }}
                     >
-                      <td className="ll-ck">
+                      <td className="fit mid">
                         <button
                           type="button"
                           role="checkbox"
@@ -482,9 +482,11 @@ export const PopLocationLabelScreen = () => {
                           {isSelected ? <PuIcon name="check" /> : null}
                         </button>
                       </td>
-                      <td className="pu-mono">{row.locationCode}</td>
-                      <td>{row.locationName}</td>
-                      <td>
+                      <td className="fit pu-mono ll-code" title={row.locationCode}>
+                        {row.locationCode}
+                      </td>
+                      <td title={row.locationName}>{row.locationName}</td>
+                      <td className="fit mid">
                         {/* 모든 줄에 사용 여부를 적는다 — 사용은 초록, 미사용은 빨강(omf-all-around#11). */}
                         {row.isActive ? (
                           <PuChip tone="ok">{t.location.active}</PuChip>

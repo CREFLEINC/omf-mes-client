@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../test/api-harness';
 import { PopIdentityProvider, UNKNOWN_POP_IDENTITY } from './pop-identity';
 import { POP_SCREENS } from './pop-screen-catalog';
-import { PopScreenNav, destinationOf } from './pop-screen-nav';
+import { PopScreenNav, destinationOf, formatRefreshedAt } from './pop-screen-nav';
 import { POP_WORK_COUNT_INTERVAL_MS } from './pop-work-counts';
 
 type TerminalWorkCounts = components['schemas']['TerminalWorkCounts'];
@@ -47,6 +47,8 @@ const setup = (
     counts?: TerminalWorkCounts | 'fail';
     workerNo?: string | null;
     route?: string;
+    plantId?: number | null;
+    extra?: Parameters<typeof createStubFetch>[0];
   } = {},
 ) => {
   const counted: Request[] = [];
@@ -55,6 +57,7 @@ const setup = (
       value={{
         ...UNKNOWN_POP_IDENTITY,
         workerNo: options.workerNo === undefined ? '2048' : options.workerNo,
+        plantId: options.plantId ?? null,
       }}
     >
       <PopScreenNav terminalCode="POP-OA-01" />
@@ -62,6 +65,7 @@ const setup = (
     </PopIdentityProvider>,
     {
       fetch: createStubFetch([
+        ...(options.extra ?? []),
         {
           match: (request) => request.url.endsWith('/app/sessions/current'),
           respond: () =>
@@ -267,7 +271,133 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     const tab = within(
       screen.getByRole('navigation', { name: nav.screensLabel('품질') }),
     ).getByRole('button', { name: remaining.count('OQC 출하검사', 12) });
-    expect(within(tab).getByText('9+')).toBeInTheDocument();
+    /* 탭 건수는 수 그대로(#295 시안 「창고 29」) — 「9+」로 줄이지 않는다. */
+    expect(within(tab).getByText('12')).toBeInTheDocument();
+  });
+
+  /* #295 시안 — 남은 작업 수가 없는 화면도 그 화면 대기 건수를 탭에 붙이고, 묶음 수는 탭 수의 합이다. */
+  it('창고·출하 화면 탭에 대기 건수가 붙고 묶음 수는 탭 합이며, 남은 작업 창 수는 그대로다', async () => {
+    const user = userEvent.setup();
+    const asked: string[] = [];
+    const path = (request: Request) => new URL(request.url).pathname;
+    setup({
+      plantId: 2,
+      session: { ...SESSION, permissions: [...SESSION.permissions, 'P-01-02', 'P-04-05'] },
+      extra: [
+        {
+          match: (request) => path(request) === '/logistics/waiting-material-lots',
+          respond: (request) => {
+            asked.push(request.url);
+            return jsonResponse({ items: [{ waitingCount: 20 }, { waitingCount: 6 }] });
+          },
+        },
+        {
+          match: (request) => path(request) === '/logistics/split-material-lots',
+          respond: (request) => {
+            asked.push(request.url);
+            return jsonResponse({
+              items: [],
+              page: { page: 1, size: 1, total: 3 },
+              unprintedCount: 3,
+            });
+          },
+        },
+        {
+          match: (request) => path(request) === '/logistics/shipments',
+          respond: (request) => {
+            asked.push(request.url);
+            return jsonResponse({ items: [], page: { page: 1, size: 1, total: 2 } });
+          },
+        },
+      ],
+    });
+
+    expect(
+      await within(groupsNav()).findByRole('button', { name: nav.groupCount('창고', 29) }),
+    ).toBeInTheDocument();
+    /* 출하 = 출하 포장 4 + 출하 단위 구성 2. */
+    expect(
+      await within(groupsNav()).findByRole('button', { name: nav.groupCount('출하', 6) }),
+    ).toBeInTheDocument();
+    expect(asked.some((url) => url.includes('plantId=2'))).toBe(true);
+    expect(asked.some((url) => url.includes('labelState=UNPRINTED'))).toBe(true);
+    expect(asked.some((url) => url.includes('hasUnassignedPackedBox=true'))).toBe(true);
+
+    await user.click(groupButton('창고'));
+    const tabs = within(screen.getByRole('navigation', { name: nav.screensLabel('창고') }));
+    expect(
+      tabs.getByRole('button', { name: remaining.count('자재 관리 LOT 라벨', 26) }),
+    ).toBeInTheDocument();
+    expect(
+      tabs.getByRole('button', { name: remaining.count('분할 LOT 라벨', 3) }),
+    ).toBeInTheDocument();
+    /* 남은 작업 창은 남은 작업 수(`/app/terminal-work-counts`)만 — 3 + 1 + 4 + 12. */
+    expect(
+      await screen.findByRole('button', { name: remaining.buttonLabel(20) }),
+    ).toBeInTheDocument();
+  });
+
+  it('갱신 시각은 「MM-DD HH:mm:ss」다', () => {
+    expect(formatRefreshedAt(new Date(2026, 10, 9, 8, 7, 6))).toBe('11-09 08:07:06');
+  });
+
+  it('[새로고침] 오른쪽에 갱신 시각이 서고, 누르면 화면 자료를 다시 받는다', async () => {
+    const user = userEvent.setup();
+    const { counted } = setup();
+    await waitFor(() => expect(counted).toHaveLength(1));
+    const stamp = () =>
+      screen.getByText(
+        (_, element) =>
+          element?.classList.contains('pop-nav-top__refreshed') === true &&
+          /^갱신 \d{2}-\d{2} \d{2}:\d{2}:\d{2}$/u.test(element.textContent),
+      );
+    expect(stamp()).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.popChrome.refresh }));
+    await waitFor(() => expect(counted).toHaveLength(2));
+    expect(stamp()).toBeInTheDocument();
+  });
+
+  it('[종료]는 확인 창을 거친다 — [취소]는 닫기만, [종료]는 POP 앱이면 앱 종료, 아니면 창 닫기', async () => {
+    const user = userEvent.setup();
+    setup();
+    const exit = messages.popChrome.exit;
+    const close = vi.spyOn(window, 'close').mockImplementation(() => undefined);
+
+    await user.click(screen.getByRole('button', { name: exit.button }));
+    const dialog = screen.getByRole('dialog', { name: exit.title });
+    expect(within(dialog).getByText(exit.body)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: '취소' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(close).not.toHaveBeenCalled();
+
+    /* 브라우저 — 셸 통로가 없으면 창 닫기. */
+    await user.click(screen.getByRole('button', { name: exit.button }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: exit.title })).getByRole('button', {
+        name: exit.confirm,
+      }),
+    );
+    expect(close).toHaveBeenCalledTimes(1);
+
+    /* POP 앱(Electron) — 셸의 앱 종료를 부르고 창 닫기는 하지 않는다. */
+    const quit = vi.fn(() => Promise.resolve());
+    const carrier = globalThis as { pop?: unknown };
+    const before = carrier.pop;
+    carrier.pop = { app: { quit } };
+    try {
+      await user.click(screen.getByRole('button', { name: exit.button }));
+      await user.click(
+        within(screen.getByRole('dialog', { name: exit.title })).getByRole('button', {
+          name: exit.confirm,
+        }),
+      );
+      expect(quit).toHaveBeenCalledTimes(1);
+      expect(close).toHaveBeenCalledTimes(1);
+    } finally {
+      carrier.pop = before;
+      close.mockRestore();
+    }
   });
 
   it('[남은 작업] 창은 수가 있는 화면만 많은 순으로 보이고, 누르면 그 화면으로 간다', async () => {

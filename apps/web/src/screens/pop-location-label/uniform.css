@@ -60,59 +60,13 @@
   max-height: 100%;
 }
 
-.ll-table .pu-table {
-  table-layout: fixed;
-}
-
-.ll-table .pu-table td {
-  height: 52px;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  vertical-align: middle;
-}
-
 .ll-table tbody tr {
   cursor: pointer;
 }
 
-.ll-table .ll-ck {
-  width: 56px;
-  text-align: center;
-}
-
-.ll-table .ll-name {
-  width: 34%;
-}
-
-.ll-table .ll-state {
-  width: 160px;
-}
-
-.ll-table td {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ll-table td.ll-ck {
-  padding-left: 0;
-  padding-right: 0;
-  text-overflow: clip;
-}
-
-/* 1024 단말: 고정 칸을 좁혀 위치 코드 칸이 남는 폭을 갖는다. */
-@media (max-width: 1100px) {
-  .ll-table .ll-ck {
-    width: 44px;
-  }
-
-  .ll-table .ll-name {
-    width: 30%;
-  }
-
-  .ll-table .ll-state {
-    width: 96px;
-  }
+/* 위치 코드는 코드만큼(긴 코드는 말줄임) — 남는 폭은 위치명 칸이 갖는다. */
+.ll-table .pu-table td.ll-code {
+  max-width: 280px;
 }
 
 .ll-table .ll-box.ll-box {

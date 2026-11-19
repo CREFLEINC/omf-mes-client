@@ -4796,11 +4796,19 @@
     padding-inline: 10px;
   }
 
-  .pop-nav-top .pop-logout .pop-nav-icon {
-    margin-inline-end: 2px;
+  /* 사번·새로고침 단추는 글자만 — 아이콘 자리를 단말·설비 칩에 준다. [종료]는 전원 아이콘을 둔다. */
+  .pop-nav-top .pop-logout:not(.pop-nav-top__exit) .pop-nav-icon {
+    display: none;
   }
 
   .pop-nav-top__chip {
     padding-inline: 10px;
+  }
+
+  /* 갱신 시각은 「갱신 MM-DD」 / 「HH:mm:ss」 두 줄로 접는다. */
+  .pop-nav-top__refreshed {
+    display: inline-grid;
+    gap: 2px;
+    font-size: 12px;
   }
 }

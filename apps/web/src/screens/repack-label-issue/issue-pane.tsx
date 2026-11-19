@@ -80,7 +80,7 @@ export const IssuePane = ({
         onToggle(!checked);
       }}
     >
-      <td className="rpk-ck">
+      <td className="fit mid">
         <input
           type="checkbox"
           checked={checked}
@@ -113,11 +113,11 @@ export const IssuePane = ({
         <table className="pu-table" aria-label={t.targetsLabel}>
           <thead>
             <tr>
-              <th className="rpk-ck">{t.colPick}</th>
-              <th>{t.colLabel}</th>
-              <th>{t.colNo}</th>
+              <th className="fit mid">{t.colPick}</th>
+              <th className="fit">{t.colLabel}</th>
+              <th className="fit">{t.colNo}</th>
               <th>{t.colBody}</th>
-              <th>{t.colIssued}</th>
+              <th className="fit">{t.colIssued}</th>
             </tr>
           </thead>
           <tbody>
@@ -127,12 +127,14 @@ export const IssuePane = ({
               onIncludeNewLabelChange,
               t.newLabel(selectedHandlingUnitNo),
               <>
-                <td>
+                <td className="fit">
                   <b>{t.newLabelName}</b>
                 </td>
-                <td className="pu-mono">{selectedHandlingUnitNo}</td>
+                <td className="fit pu-mono rpk-no" title={selectedHandlingUnitNo}>
+                  {selectedHandlingUnitNo}
+                </td>
                 <td title={newLabelBody}>{newLabelBody}</td>
-                <td>
+                <td className="fit">
                   {issuedCell(
                     standing?.issueCount ?? null,
                     last === null ? null : (
@@ -154,12 +156,14 @@ export const IssuePane = ({
                 },
                 t.remainderLabel(handlingUnit.handlingUnitNo, remainderStanding.issueCount ?? 0),
                 <>
-                  <td>
+                  <td className="fit">
                     <b>{t.remainderName}</b>
                   </td>
-                  <td className="pu-mono">{handlingUnit.handlingUnitNo}</td>
+                  <td className="fit pu-mono rpk-no" title={handlingUnit.handlingUnitNo}>
+                    {handlingUnit.handlingUnitNo}
+                  </td>
                   <td title={t.remainderNumberNote}>{t.remainderNumberNote}</td>
-                  <td>
+                  <td className="fit">
                     {issuedCell(
                       remainderStanding.issueCount,
                       <span className="rpk-sub">{t.existingLabel}</span>,

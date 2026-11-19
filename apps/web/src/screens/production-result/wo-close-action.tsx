@@ -22,6 +22,8 @@ import {
 
 const t = messages.productionResult.flow.woClose;
 const st = t.sessions;
+/** 세션 표 칸 모양 — 단말·작업자·상태는 글자만큼, 끝낼 곳이 남는 폭을 갖고 줄을 바꾼다. */
+const SESSION_CELL_CLASS = ['fit', 'fit', 'fit mid', 'pr-close-where'];
 
 type WorkOrderClose = components['schemas']['WorkOrderClose'];
 type Disposition = NonNullable<WorkOrderClose['remainderDispositionCode']>;
@@ -314,9 +316,15 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                 <table className="pu-table" aria-label={st.listLabel}>
                   <thead>
                     <tr>
-                      <th scope="col">{st.terminal}</th>
-                      <th scope="col">{st.worker}</th>
-                      <th scope="col">{st.state}</th>
+                      <th scope="col" className="fit">
+                        {st.terminal}
+                      </th>
+                      <th scope="col" className="fit">
+                        {st.worker}
+                      </th>
+                      <th scope="col" className="fit mid">
+                        {st.state}
+                      </th>
                       <th scope="col">{st.where}</th>
                     </tr>
                   </thead>
@@ -324,7 +332,9 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                     {plan.blockers.map((row) => (
                       <tr key={row.workSessionId}>
                         {sessionCells(row).map((cell, index) => (
-                          <td key={index}>{cell}</td>
+                          <td key={index} className={SESSION_CELL_CLASS[index]}>
+                            {cell}
+                          </td>
                         ))}
                       </tr>
                     ))}

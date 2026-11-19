@@ -89,6 +89,15 @@ export const popChrome = {
   switchShort: '전환',
   /** 맨 위 줄 [새로고침] — 지금 화면 자료를 서버에서 다시 받는다(#291). */
   refresh: '새로고침',
+  /** [새로고침] 오른쪽 갱신 시각 — 화면 자료를 마지막으로 받은 때(MM-DD HH:mm:ss, #295 시안). */
+  refreshedAt: (time: string): string => `갱신 ${time}`,
+  /** 맨 위 줄 오른쪽 끝 [종료](#295 시안 규칙 17). */
+  exit: {
+    button: '종료',
+    title: 'POP 화면을 종료할까요?',
+    body: '입력 중이던 내용은 저장되지 않습니다.',
+    confirm: '종료',
+  },
   /**
    * 공용 머리줄(`patterns/pop-header`, C-11). 설비와 작업자는 「이름 (코드)」, 단말은 단말 코드.
    * 연결 상태 문구는 공용 어휘를 쓴다(`common.connection`).

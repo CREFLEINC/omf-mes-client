@@ -15,7 +15,8 @@ import {
   type PopScreen,
   type PopScreenGroupKey,
 } from './pop-screen-catalog';
-import { usePopWorkCounts, type PopWorkCounts } from './pop-work-counts';
+import { PuConfirm } from './pop-uniform';
+import { usePopTabCounts, usePopWorkCounts, type PopWorkCounts } from './pop-work-counts';
 import { PopWorkSteps } from './pop-work-steps';
 import { setWorkerSession, useWorkerSession } from './worker-session';
 
@@ -28,11 +29,17 @@ const common = messages.common.connection;
 export const countOf = (screen: PopScreen, counts: PopWorkCounts['counts']): number =>
   screen.countKey === undefined ? 0 : (counts?.[screen.countKey] ?? 0);
 
-/** 남은 작업 배지 — 1~9, 10 이상 「9+」, 중립색(빨강 쓰지 않음). 수는 숨은 글이 읽어 준다. */
-const WorkBadge = ({ count }: { count: number }) =>
+/**
+ * 남은 작업 배지 — 중립색(빨강 쓰지 않음). 수는 숨은 글이 읽어 준다. 남은 작업 창은 1~9, 10 이상 「9+」,
+ * 묶음·화면 탭은 수 그대로(POP 통일 시안 #295 — 「창고 29」).
+ */
+const WorkBadge = ({ count, max = 9 }: { count: number; max?: number }) =>
   count > 0 ? (
-    <Badge count={count} max={9} tone="neutral" className="pop-work-badge" aria-hidden="true" />
+    <Badge count={count} max={max} tone="neutral" className="pop-work-badge" aria-hidden="true" />
   ) : null;
+
+/** 묶음·화면 탭 건수의 상한 — 사실상 수 그대로 보인다. */
+const TAB_COUNT_MAX = 999;
 
 /**
  * 갈 곳의 주소.
@@ -69,6 +76,11 @@ export interface PopNavigation {
   workCounts: PopWorkCounts;
   /** 남은 작업이 있는 화면 — 많은 순. */
   pending: { screen: PopScreen; count: number }[];
+  /**
+   * 화면 탭에 붙는 건수 — 남은 작업 수(`countKey`)에 더해, 셀 수 있는 다른 화면의 대기 건수까지(#295 시안).
+   * 묶음 건수는 그 묶음 화면 탭 건수의 합이다. 남은 작업 창(`pending`)에는 넣지 않는다.
+   */
+  tabCount: (screen: PopScreen) => number;
   total: number;
   go: (screen: PopScreen) => void;
 }
@@ -77,9 +89,15 @@ export const usePopNavigation = (): PopNavigation => {
   const { pathname, search } = useLocation();
   const navigate = useNavigate();
   const access = useAccessiblePopScreens();
-  const { workerNo } = usePopIdentity();
+  const { workerNo, plantId = null } = usePopIdentity();
   /* 피처 002 — 사번이 확인되고 갈 화면이 정해진 뒤에만 센다(60초 주기). */
-  const workCounts = usePopWorkCounts(workerNo !== null && access.state === 'ready');
+  const canCount = workerNo !== null && access.state === 'ready';
+  const workCounts = usePopWorkCounts(canCount);
+  const tabCounts = usePopTabCounts(
+    canCount,
+    plantId,
+    access.screens.map((screen) => screen.path),
+  );
   const pending = access.screens
     .map((screen) => ({ screen, count: countOf(screen, workCounts.counts) }))
     .filter((entry) => entry.count > 0)
@@ -92,6 +110,8 @@ export const usePopNavigation = (): PopNavigation => {
     workCounts,
     pending,
     total: pending.reduce((sum, entry) => sum + entry.count, 0),
+    tabCount: (screen: PopScreen) =>
+      countOf(screen, workCounts.counts) + (tabCounts[screen.path] ?? 0),
     go: (screen: PopScreen) => {
       /* ⛔ 저장하지 않은 입력을 묻지 않는다(G-34) — 확인 창은 정작 물어야 할 자리의 확인까지 넘기게 만든다. */
       if (screen.path === pathname) return;
@@ -166,7 +186,38 @@ const REFRESH_ICON = navIcon(
   </>,
 );
 
-/** 맨 위 줄 — 제품 이름 · 단말 | 온라인 · 프린터 · [사번(누르면 사용자 전환)] · [새로고침]. */
+/* 종료 — 전원 단추(#295 시안). */
+const POWER_ICON = navIcon(
+  <>
+    <path d="M12 3v8" />
+    <path d="M6.4 6.4a8 8 0 1 0 11.2 0" />
+  </>,
+);
+
+const pad2 = (value: number): string => String(value).padStart(2, '0');
+
+/** 갱신 시각 글 — 단말 시계 기준 「MM-DD HH:mm:ss」(#295 시안). */
+export const formatRefreshedAt = (at: Date): string =>
+  `${pad2(at.getMonth() + 1)}-${pad2(at.getDate())} ${pad2(at.getHours())}:${pad2(
+    at.getMinutes(),
+  )}:${pad2(at.getSeconds())}`;
+
+/**
+ * POP 화면 끄기(#295 시안 규칙 17). POP 앱(Electron)이면 셸에 앱 종료를 맡기고(`pop.app.quit`), 그 통로가
+ * 없는 브라우저·옛 설치본이면 창 닫기를 시도한다 — 브라우저는 스크립트가 연 창이 아니면 닫지 않는다.
+ */
+export const quitPopScreen = (): void => {
+  const shell = (globalThis as { pop?: { app?: { quit?: () => Promise<void> } } }).pop;
+
+  if (typeof shell?.app?.quit === 'function') {
+    void shell.app.quit();
+    return;
+  }
+
+  window.close();
+};
+
+/** 맨 위 줄 — 제품 이름 · 단말 | 온라인 · 프린터 · [사번(누르면 사용자 전환)] · [새로고침] 갱신 시각 · [종료]. */
 const TopBar = ({
   terminalCode,
   printer,
@@ -184,6 +235,14 @@ const TopBar = ({
   const session = useWorkerSession();
   const isOnline = usePopOnline();
   const queryClient = useQueryClient();
+  /* 화면 자료를 마지막으로 받은 때 — 화면을 열 때와 [새로고침]이 끝날 때 적는다. */
+  const [refreshedAt, setRefreshedAt] = useState(() => new Date());
+  const [isExitOpen, setExitOpen] = useState(false);
+
+  useEffect(() => {
+    setRefreshedAt(new Date());
+  }, [pathname]);
+
   /* 이름은 지금 사번과 같은 사람의 세션일 때만 붙인다 — 다른 사번의 이름을 빌려 오지 않는다. */
   const workerName =
     session !== null && session.worker.workerNo === workerNo ? session.worker.workerName : null;
@@ -254,12 +313,46 @@ const TopBar = ({
         variant="outlined"
         size="md"
         onClick={() => {
-          void queryClient.invalidateQueries();
+          void queryClient.invalidateQueries().then(() => {
+            setRefreshedAt(new Date());
+          });
         }}
       >
         {REFRESH_ICON}
         {messages.popChrome.refresh}
       </Button>
+      {/* 날짜와 시각을 나눠 두어, 좁은 폭(1024)에서는 두 줄로 접어 단말·설비 칩 자리를 남긴다. */}
+      <span className="pop-nav-top__refreshed">
+        <span>{messages.popChrome.refreshedAt(formatRefreshedAt(refreshedAt).slice(0, 5))}</span>{' '}
+        <span>{formatRefreshedAt(refreshedAt).slice(6)}</span>
+      </span>
+      {/* [종료] — 맨 위 줄 오른쪽 끝(#295 시안 규칙 17). 확인 창을 거친다. */}
+      <Button
+        className="pop-logout pop-nav-top__exit"
+        variant="outlined"
+        size="md"
+        onClick={() => {
+          setExitOpen(true);
+        }}
+      >
+        {POWER_ICON}
+        {messages.popChrome.exit.button}
+      </Button>
+      {isExitOpen && (
+        <PuConfirm
+          title={messages.popChrome.exit.title}
+          confirmLabel={messages.popChrome.exit.confirm}
+          onCancel={() => {
+            setExitOpen(false);
+          }}
+          onConfirm={() => {
+            setExitOpen(false);
+            quitPopScreen();
+          }}
+        >
+          {messages.popChrome.exit.body}
+        </PuConfirm>
+      )}
     </div>
   );
 };
@@ -294,7 +387,7 @@ export const PopScreenNav = ({
   printerRef?: (element: HTMLElement | null) => void;
 }): ReactNode => {
   const navigate = useNavigate();
-  const { pathname, search, access, workCounts, pending, total, go } = usePopNavigation();
+  const { pathname, search, access, workCounts, pending, total, go, tabCount } = usePopNavigation();
   const current = access.screens.find((screen) => screen.path === pathname) ?? null;
   const [open, setOpen] = useState(false);
   const currentTab = useRef<HTMLButtonElement | null>(null);
@@ -338,7 +431,7 @@ export const PopScreenNav = ({
   const groups = POP_SCREEN_GROUPS.map((group) => {
     const all = access.screens.filter((screen) => screen.group === group.key);
     const screens = all.filter((screen) => screen.workFlow === undefined);
-    const count = all.reduce((sum, screen) => sum + countOf(screen, workCounts.counts), 0);
+    const count = all.reduce((sum, screen) => sum + tabCount(screen), 0);
     return { ...group, screens, count };
   }).filter((group) => group.screens.length > 0);
   const tabs = groups.find((group) => group.key === shownGroup) ?? null;
@@ -386,7 +479,7 @@ export const PopScreenNav = ({
             >
               {GROUP_ICONS[group.key]}
               {group.name}
-              <WorkBadge count={group.count} />
+              <WorkBadge count={group.count} max={TAB_COUNT_MAX} />
             </button>
           ))}
           {reason !== null && <span className="pop-nav-groups__reason">{reason}</span>}
@@ -475,7 +568,7 @@ export const PopScreenNav = ({
       {tabs !== null && (
         <nav className="pop-nav-tabs" aria-label={nav.screensLabel(tabs.name)}>
           {tabs.screens.map((screen) => {
-            const count = countOf(screen, workCounts.counts);
+            const count = tabCount(screen);
             const on = screen.path === tabPath;
             return (
               <button
@@ -491,7 +584,7 @@ export const PopScreenNav = ({
                 }}
               >
                 {screen.name}
-                <WorkBadge count={count} />
+                <WorkBadge count={count} max={TAB_COUNT_MAX} />
               </button>
             );
           })}

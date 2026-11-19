@@ -121,13 +121,18 @@ export const LabelTable = ({
   const isReprint = mode === 'reprint';
 
   return (
-    <div ref={fitRef} className="mll-table" role="group" aria-label={label}>
+    <div
+      ref={fitRef}
+      className={puCx('mll-table', isReprint && 'is-reprint')}
+      role="group"
+      aria-label={label}
+    >
       <div className="pu-table-wrap">
         <table className="pu-table">
           <thead>
             <tr>
               <th className="fit mid">{t.columns.check}</th>
-              <th className={isReprint ? undefined : 'fit'}>{t.columns.lotNo}</th>
+              <th className="fit">{t.columns.lotNo}</th>
               {isReprint ? <th>{t.columns.item}</th> : null}
               <th className="num fit">{t.columns.qty}</th>
               <th className="fit mid">{t.columns.status}</th>
@@ -190,7 +195,7 @@ export const LabelTable = ({
                       <span className="mll-box is-off" aria-hidden="true" />
                     )}
                   </td>
-                  <td className={isReprint ? undefined : 'fit mll-lotcol'} title={lot.lotNo}>
+                  <td className="fit mll-lotcol" title={lot.lotNo}>
                     <span className="pu-mono mll-lot">{lot.lotNo}</span>
                     <span className="mll-sub">{lotSub}</span>
                   </td>

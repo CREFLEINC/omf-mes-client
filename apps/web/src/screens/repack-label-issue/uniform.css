@@ -80,24 +80,16 @@
   color: var(--pu-text-2);
 }
 
-/* 라벨 표: 선택 체크 칸 */
-.rpk-table td {
-  height: 56px;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  vertical-align: middle;
+/* 라벨 표: 칸 폭·줄 높이는 공통 표(`pu-table`) 규칙 — 번호는 번호만큼(넘치면 말줄임), 남는 폭은 내용 칸이 갖는다. */
+.rpk-table .pu-table td.rpk-no {
+  max-width: 240px;
 }
 
-.rpk-table th.rpk-ck,
-.rpk-table td.rpk-ck {
-  width: 80px;
-  text-align: center;
-}
-
-.rpk-table td.rpk-ck input {
-  width: 22px;
-  height: 22px;
+.rpk-table td.fit input {
+  width: 24px;
+  height: 24px;
   margin: 0;
+  vertical-align: middle;
   accent-color: var(--pu-primary);
   cursor: pointer;
 }
@@ -105,6 +97,7 @@
 .rpk-sub {
   display: block;
   font-size: 12px;
+  line-height: 16px;
   color: var(--pu-text-3);
 }
 
@@ -189,20 +182,4 @@
   border: 1px dashed var(--pu-line);
   border-radius: var(--radius-md, 12px);
   background: #fff;
-}
-
-.rpk-table .pu-table {
-  table-layout: fixed;
-}
-
-.rpk-table th:nth-child(2) {
-  width: 19%;
-}
-
-.rpk-table th:nth-child(3) {
-  width: 24%;
-}
-
-.rpk-table th:nth-child(5) {
-  width: 19%;
 }

@@ -163,18 +163,20 @@ export const TodayPanel = ({
         <table className="pu-table">
           <thead>
             <tr>
-              <th style={{ width: '22%' }}>{t.today.columns.interval}</th>
-              <th style={{ width: '18%' }}>{t.today.columns.duration}</th>
-              <th style={{ width: '20%' }}>{t.today.columns.reason}</th>
+              <th className="fit">{t.today.columns.interval}</th>
+              <th className="fit">{t.today.columns.duration}</th>
+              <th className="fit dt-reason">{t.today.columns.reason}</th>
               <th>{t.today.columns.remarks}</th>
             </tr>
           </thead>
           <tbody>
             {paged.items.map((row) => (
               <tr key={row.key}>
-                <td>{toRangeLabel(row.startedAt, row.endedAt)}</td>
-                <td>{durationCell(row)}</td>
-                <td title={row.reasonLabel}>{row.reasonLabel}</td>
+                <td className="fit">{toRangeLabel(row.startedAt, row.endedAt)}</td>
+                <td className="fit">{durationCell(row)}</td>
+                <td className="fit dt-reason" title={row.reasonLabel}>
+                  {row.reasonLabel}
+                </td>
                 {/* 긴 메모는 한 줄로 줄여 보인다 — 구획 안 스크롤 없음. */}
                 <td title={row.remarks ?? ''}>{row.remarks ?? ''}</td>
               </tr>

@@ -109,14 +109,9 @@
   min-height: 0;
 }
 
-.dt-u .dt-table .pu-table {
-  table-layout: fixed;
-}
-
-.dt-u .dt-table .pu-table th,
-.dt-u .dt-table .pu-table td {
-  padding-top: 8px;
-  padding-bottom: 8px;
+/* 일시·비가동 시간·사유는 글자만큼(긴 사유는 말줄임), 남는 폭은 메모 칸이 갖는다. */
+.dt-u .dt-table .pu-table td.dt-reason {
+  max-width: 200px;
 }
 
 /* 오늘 이 설비 표: 메모(마지막 열)만 왼쪽, 나머지는 가운데(사용자 지시 2026-11-19). */
