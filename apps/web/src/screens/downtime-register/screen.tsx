@@ -415,7 +415,6 @@ export const DowntimeRegisterScreen = () => {
                   <OngoingPanel
                     downtime={ongoing.downtime}
                     isPending={ongoing.isPending}
-                    now={now}
                     canClose={workerNo !== null}
                     onClose={closeOngoing}
                   />

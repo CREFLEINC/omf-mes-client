@@ -11,10 +11,9 @@ export const downtimeRegister: Translated<typeof ko.downtimeRegister> = {
   ongoing: {
     title: 'Dừng máy đang diễn ra',
     loading: 'Đang kiểm tra dừng máy đang diễn ra.',
-    elapsed: (startedAtLabel: string, elapsedLabel: string): string =>
-      `Từ ${startedAtLabel}, đã ${elapsedLabel}`,
+    since: (startedAtLabel: string): string => `Đang diễn ra từ ${startedAtLabel}`,
     reason: (reasonName: string): string => `Lý do: ${reasonName}`,
-    close: 'Kết thúc ngay',
+    close: 'Kết thúc dừng máy',
     closed: 'Đã kết thúc dừng máy',
     closedQueued:
       'Đã lưu kết thúc. Sẽ gửi lên máy chủ khi có kết nối; giờ kết thúc được ghi theo lúc máy chủ nhận.',
@@ -63,7 +62,7 @@ export const downtimeRegister: Translated<typeof ko.downtimeRegister> = {
     loadFailed: 'Không tải được bản ghi hôm nay.',
     retry: 'Thử lại',
     columns: {
-      interval: 'Kết quả dừng máy',
+      interval: 'Thời điểm',
       duration: 'Thời gian dừng máy',
       reason: 'Lý do',
       remarks: 'Ghi chú',

@@ -47,16 +47,3 @@ export const toRangeLabel = (startedAt: string, endedAt: string | null): string 
 
   return `${from}~${toClockLabel(endedAt) ?? endedAt}`;
 };
-
-/**
- * 시작부터 지금까지의 분.
- *
- * ⛔ **저장하지 않는다.** 아무도 아무것도 하지 않아도 계속 바뀌는 값이라, 어딘가에 적는 순간
- * 그 자리가 낡는다. 화면이 매번 다시 센다.
- */
-export const elapsedMinutes = (startedAt: string, now: Date): number | null => {
-  const from = new Date(startedAt).getTime();
-  if (Number.isNaN(from)) return null;
-
-  return Math.max(0, Math.floor((now.getTime() - from) / 60_000));
-};

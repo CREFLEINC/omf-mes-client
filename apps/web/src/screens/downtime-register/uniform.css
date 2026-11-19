@@ -119,14 +119,26 @@
   padding-bottom: 8px;
 }
 
+/* 오늘 이 설비 표: 메모(마지막 열)만 왼쪽, 나머지는 가운데(사용자 지시 2026-11-19). */
+.dt-u .dt-table .pu-table th:not(:last-child),
+.dt-u .dt-table .pu-table td:not(:last-child) {
+  text-align: center;
+}
+
 .dt-u .dt-ongo {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 4px 6px 4px 12px;
+  padding: 10px 12px 10px 16px;
   border-radius: var(--radius-md, 12px);
   background: var(--pu-info-bg);
   flex: none;
+}
+
+.dt-u .dt-ongo-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .dt-u .dt-ongo-t {
@@ -136,13 +148,13 @@
 
 .dt-u .dt-ongo-line {
   display: grid;
+  gap: 2px;
   font-size: 14px;
   color: var(--pu-text-2);
-  margin-left: 8px;
   min-width: 0;
 }
 
-.dt-u .dt-ongo-line b {
+.dt-u .dt-ongo-line > b {
   font-size: 16px;
   color: var(--pu-text);
   white-space: nowrap;

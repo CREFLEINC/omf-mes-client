@@ -25,11 +25,9 @@ export const downtimeRegister = {
   ongoing: {
     title: '진행 중 비가동',
     loading: '진행 중 비가동을 확인하는 중입니다.',
-    /** 경과 시간은 저장값이 아니라 화면이 매 순간 다시 그리는 값이다(스펙 §5-3). */
-    elapsed: (startedAtLabel: string, elapsedLabel: string): string =>
-      `${startedAtLabel}부터 ${elapsedLabel} 진행 중`,
+    since: (startedAtLabel: string): string => `${startedAtLabel}부터 진행 중`,
     reason: (reasonName: string): string => `사유: ${reasonName}`,
-    close: '지금 종료',
+    close: '비가동 종료',
     closed: '비가동을 종료했습니다',
     /*
      * ⭐ **종료 시각은 서버가 «받은» 때다**(통보 109 · #1095). 단말이 단추를 누른 때가 아니라
@@ -132,7 +130,7 @@ export const downtimeRegister = {
     retry: '다시 시도',
     /* ④ 목록의 열 이름 — 스펙 §7 이 이 자리를 `Table` 로 지정했다. */
     columns: {
-      interval: '비가동 실적',
+      interval: '일시',
       duration: '비가동 시간',
       reason: '사유',
       remarks: '메모',
