@@ -551,16 +551,19 @@ export const renderScreen = (
   return { ...rendered, recorded: stubbed.recorded, user: userEvent.setup() };
 };
 
-/** 「전체」 목록의 조회 주소 — 「긴급」 보기·건수 조회(`workOrderTypeCode=EMERGENCY`)는 뺀다. */
+/**
+ * 「전체」 목록의 조회 주소 — 「긴급」 보기·건수 조회(`workOrderTypeCode=EMERGENCY`)는 뺀다.
+ * ⚠ 「전체」가 싣는 `excludeWorkOrderTypeCode=EMERGENCY` 에도 같은 글자가 들어 있어 칸 이름 앞을 함께 본다.
+ */
 export const listUrls = (urls: string[]): string[] =>
   urls.filter(
     (url) =>
-      url.startsWith('/production/work-orders') && !url.includes('workOrderTypeCode=EMERGENCY'),
+      url.startsWith('/production/work-orders') && !/[?&]workOrderTypeCode=EMERGENCY/u.test(url),
   );
 
 /** 「긴급」 보기·건수 조회 주소(#295). */
 export const emergencyListUrls = (urls: string[]): string[] =>
   urls.filter(
     (url) =>
-      url.startsWith('/production/work-orders') && url.includes('workOrderTypeCode=EMERGENCY'),
+      url.startsWith('/production/work-orders') && /[?&]workOrderTypeCode=EMERGENCY/u.test(url),
   );

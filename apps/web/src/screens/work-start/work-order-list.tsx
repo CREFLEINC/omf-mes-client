@@ -5,7 +5,7 @@ import type { EquipmentChoice } from './queries';
 import { WorkOrderInfo } from './work-order-info';
 import type { WorkOrder } from './types';
 import { sortForPick, statusKeyOf, type WorkOrderStatusKey } from './work-order-status';
-import { isEmergency, isRework, pinEmergencyFirst } from './work-order-type';
+import { isEmergency, isRework } from './work-order-type';
 
 import { type PageMetaLike } from '../../patterns/pop-page-nav';
 import { ListOrderFoot, type ListOrder } from '../../patterns/pop-list-order';
@@ -159,10 +159,10 @@ export const WorkOrderList = ({
   onKindChange,
 }: WorkOrderListProps) => {
   /*
-   * 순서: 서버가 계획 시작 일시로 [최신순 | 오래된순] 줄 세워 준 쪽에서(사용자 지시 2026-11-19), 진행 중을 먼저 두고
-   * 맨 끝에 긴급을 위로 올린다. 둘 다 안정 정렬이라 같은 묶음 안은 고른 정렬 그대로다. 긴급은 늘 위다(#295).
+   * 순서: 서버가 계획 시작 일시로 [최신순 | 오래된순] 줄 세워 준 쪽에서(사용자 지시 2026-11-19), 진행 중을 먼저 둔다.
+   * 안정 정렬이라 같은 묶음 안은 고른 정렬 그대로다. 긴급은 「전체 작업지시」에 오지 않는다(서버가 뺀다 · omf-all-around#330).
    */
-  const rows = pinEmergencyFirst(sortForPick(workOrders ?? []));
+  const rows = sortForPick(workOrders ?? []);
   const isEmergencyView = kind === 'emergency';
   const scopeEquipment = equipmentName ?? t.scopeEquipmentUnknown;
   const labelId = useId();

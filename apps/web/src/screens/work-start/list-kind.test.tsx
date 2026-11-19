@@ -52,14 +52,17 @@ describe('P-02-01 작업지시 목록 — 전체 / 긴급 보기(#295)', () => {
     expect(emergencyUrl).not.toContain('plannedEquipmentId');
   });
 
-  it('전체에서는 긴급을 맨 위로 올린다 — 순서만 바뀐다', async () => {
-    renderScreen({ workOrders: [WORK_ORDER, EMERGENCY] });
+  it('전체 작업지시는 서버에 긴급을 빼고 묻는다 — 화면은 따로 거르지 않고 받은 순서 그대로다(omf-all-around#330)', async () => {
+    /* 이 조건을 모르는 옛 서버가 긴급을 실어 보내도 맨 위로 올리지 않고 받은 순서 그대로 둔다. */
+    const { recorded } = renderScreen({ workOrders: [WORK_ORDER, EMERGENCY] });
 
     await screen.findByRole('button', { name: selectName(EMERGENCY.workOrderNo) });
     expect(rowNames()).toEqual([
-      selectName(EMERGENCY.workOrderNo),
       selectName(WORK_ORDER.workOrderNo),
+      selectName(EMERGENCY.workOrderNo),
     ]);
+    const [allUrl = ''] = listUrls(recorded.urls);
+    expect(allUrl).toContain('excludeWorkOrderTypeCode=EMERGENCY');
   });
 
   it('긴급을 누르면 긴급만 보이고 주소에 ?type=emergency 가 실린다 — 설비 칸 대신 안내 한 줄', async () => {

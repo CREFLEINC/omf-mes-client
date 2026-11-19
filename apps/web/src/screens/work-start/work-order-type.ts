@@ -28,16 +28,3 @@ export const REWORK_WORK_ORDER_TYPE_CODE = 'REWORK';
 /** 재작업 W/O 인가. */
 export const isRework = (workOrder: WorkOrder): boolean =>
   (workOrder.workOrderTypeCode ?? '').trim() === REWORK_WORK_ORDER_TYPE_CODE;
-
-/**
- * 긴급 W/O 를 맨 위로 올린다(#295 — 옛 「긴급 작업지시」 화면을 이 목록에 합쳤다). 순서만 바꾼다 —
- * 긴급끼리, 나머지끼리는 들어온 순서를 지킨다.
- *
- * ⭐ **정렬의 마지막 단계로 둔다.** 목록 순서(지금은 진행 중 먼저 · 앞으로 최신순/오래된순 전환이 올 수
- *    있다)를 먼저 정하고 이 함수를 맨 끝에 건다 — 순서를 바꿔도 긴급은 늘 위다.
- * ⚠ 받은 쪽 안에서만 올린다(서버가 유형으로 정렬하지 않는다). 다른 쪽의 긴급은 「긴급」 보기가 모두 보인다.
- */
-export const pinEmergencyFirst = (rows: readonly WorkOrder[]): WorkOrder[] => [
-  ...rows.filter(isEmergency),
-  ...rows.filter((row) => !isEmergency(row)),
-];

@@ -146,6 +146,12 @@ const fetchWorkOrders = (
                 plannedEquipmentId: equipmentId,
                 ...(includeUnplanned ? { includeUnplannedEquipment: true } : {}),
               }),
+          /*
+           * 「전체 작업지시」에는 긴급을 싣지 않는다 — 긴급은 「긴급 작업지시」 탭에만(사용자 지시 2026-11-19,
+           * omf-all-around#330). 쪽·총 건수가 맞도록 서버가 뺀다. 이 조건을 모르는 옛 서버면 긴급이 그대로 오고,
+           * 화면은 따로 거르지 않는다.
+           */
+          excludeWorkOrderTypeCode: EMERGENCY_WORK_ORDER_TYPE_CODE,
           /* 계획 시작 일시로 [최신순 | 오래된순](사용자 지시 2026-11-19) — 쪽을 나누기 전에 서버가 줄 세운다. */
           sort: sortOf(order),
           page,

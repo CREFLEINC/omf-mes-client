@@ -103,8 +103,8 @@ export const workStart = {
     unassignedEquipmentBadge: '설비 미지정',
 
     /** 수량 쌍(C-21). 라벨 「실적」, 값은 「실적 / 지시」 한 쌍이다. 실적을 못 받으면 라벨 「지시」. */
-    goodLabel: '실적',
-    orderLabel: '지시',
+    goodLabel: '양품량',
+    orderLabel: '계획량',
     progress: (good: string, order: string, uom: string | null): string =>
       `${good} / ${order}${uom === null ? '' : ` ${uom}`}`,
     /** 카드의 계획 설비. 「이름 (코드)」 한 줄이고 라벨 「설비」를 붙인다(C-10). */
@@ -141,7 +141,7 @@ export const workStart = {
     title: '선택한 작업지시',
     item: '품목',
     process: '공정',
-    plannedStart: '계획 시작',
+    plannedStart: '계획 시작일시',
     equipment: '설비',
     /** 고르기 전 빈 모양(POP 통일 규칙 9). */
     emptyTitle: '작업지시를 선택하세요',
@@ -150,7 +150,7 @@ export const workStart = {
     terminalEquipment: '이 단말 설비',
     assignedEquipment: '작업지시 지정 설비',
     /** 긴급 작업지시만 — 발행 시각과 점검 통제 우회 안내(옛 「긴급 작업지시」 상세에서 옮김). */
-    releasedAt: '발행',
+    releasedAt: '발행일시',
     bypassTitle: '배정 없음 · 점검 통제 우회',
     bypassTitleAssigned: '점검 통제 우회',
     bypassBody: '긴급 작업지시는 배정과 작업 전 점검 없이 진행합니다.',
