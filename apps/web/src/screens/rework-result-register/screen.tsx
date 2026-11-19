@@ -61,6 +61,7 @@ import {
 } from './result';
 import { useUomLookup } from './uom-lookup';
 import { PopTopStatus } from '../../patterns/pop-top-status';
+import { ListOrderFoot, listDateTimeText, type ListOrder } from '../../patterns/pop-list-order';
 import './uniform.css';
 
 type WorkOrder = components['schemas']['WorkOrder'];
@@ -86,7 +87,13 @@ export const ReworkResultRegisterScreen = () => {
   /* 목록 구획 높이에 들어가는 건수(#295 · 구획 안 스크롤 없음) — 배포된 쪽의 요청 크기가 된다. */
   const listRef = useRef<HTMLDivElement>(null);
   const pageSize = useFitCount(listRef, { fallback: 4 });
-  const { open: releasedOrders, planned: plannedOrders } = useReworkWorkOrders(listPage, pageSize);
+  /* 목록 정렬 [최신순 | 오래된순] — 계획 시작 일시(사용자 지시 2026-11-19). 배포된 것 먼저는 그대로 둔다. */
+  const [listOrder, setListOrder] = useState<ListOrder>('newest');
+  const { open: releasedOrders, planned: plannedOrders } = useReworkWorkOrders(
+    listPage,
+    pageSize,
+    listOrder,
+  );
   /*
    * 배포된 것 뒤에 **배포 전**을 잇는다 — 고를 수 있는 것이 위에 선다. 배포 전 줄은 표식만
    * 달고 고르지 못한다(서버가 그 상태의 실적을 받지 않는다 · omf-all-around#47).
@@ -277,6 +284,18 @@ export const ReworkResultRegisterScreen = () => {
 
   const defectQtyNumber = readQuantity(drafts.defectQty);
 
+  /* 카드의 「계획 시작」 줄 — 목록 정렬 기준(사용자 지시 2026-11-19). 값이 없으면 줄을 두지 않는다. */
+  const plannedStartOf = (row: WorkOrder) => {
+    const at = listDateTimeText(row.plannedStartAt);
+
+    return at === null ? null : (
+      <>
+        <span>{t.list.plannedStart}</span>
+        <b className="w">{at}</b>
+      </>
+    );
+  };
+
   /* ── 왼쪽: 재작업 작업지시 목록 ── */
   const listSection = (
     <PuSection
@@ -312,6 +331,7 @@ export const ReworkResultRegisterScreen = () => {
                   <b>{row.itemCode ?? `#${String(row.itemId)}`}</b>
                   <span>{t.list.qty}</span>
                   <b>{qty}</b>
+                  {plannedStartOf(row)}
                   <span>{t.list.status}</span>
                   <span className="w">{t.notReleased}</span>
                 </div>
@@ -359,6 +379,7 @@ export const ReworkResultRegisterScreen = () => {
                     <b>{qty}</b>
                   </>
                 )}
+                {plannedStartOf(row)}
                 {isSelected && sourceLot.data !== undefined && (
                   <>
                     <span>{t.list.sourceLot}</span>
@@ -387,17 +408,28 @@ export const ReworkResultRegisterScreen = () => {
           );
         })}
       </div>
-      <PuPager
-        total={listTotal}
-        page={listPage}
-        pages={listPages}
-        label={t.pageNav}
-        onPage={(page) => {
-          /* 쪽을 넘기면 고른 것을 놓는다 — 다른 쪽의 지시가 상세에 남지 않게 한다. */
+      <ListOrderFoot
+        order={listOrder}
+        onOrder={(next) => {
+          /* 정렬을 바꾸면 첫 쪽부터 — 쪽을 넘길 때처럼 고른 것을 놓는다. */
           setSelectedId(null);
-          setListPage(page);
+          setListPage(1);
+          setListOrder(next);
         }}
-      />
+        showOrder={listTotal > 0}
+      >
+        <PuPager
+          total={listTotal}
+          page={listPage}
+          pages={listPages}
+          label={t.pageNav}
+          onPage={(page) => {
+            /* 쪽을 넘기면 고른 것을 놓는다 — 다른 쪽의 지시가 상세에 남지 않게 한다. */
+            setSelectedId(null);
+            setListPage(page);
+          }}
+        />
+      </ListOrderFoot>
     </PuSection>
   );
 

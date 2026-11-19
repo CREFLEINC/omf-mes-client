@@ -15,8 +15,8 @@ const tStatus = messages.popMaterialLotLabel.status;
  * 표가 무엇을 보이는가(screens/P-01-01.md · #295 시안).
  *
  * - `waiting` 공급사·품목의 라벨 미발행 입하 대기(+ 폐기, 맨 뒤에 최근 입하된 LOT — 고를 수 없음)
- *   — 선택 · 번호 · 공급사 LOT 번호 · 재고 수량 · 포장 · 상태 · 라벨
- * - `reprint` 재발행 — 선택 · 번호 · 공급사 LOT 번호 · 품목 · 재고 수량 · 포장 · 상태 · 출력(회차) · 최근 출력 일시
+ *   — 선택 · 번호 · 공급사 LOT 번호 · 재고 수량 · 포장 · 상태 · 라벨 · 등록일시
+ * - `reprint` 재발행 — 선택 · 번호 · 공급사 LOT 번호 · 품목 · 재고 수량 · 포장 · 상태 · 출력(회차) · 최근 출력일시
  * ⭐ 칸마다 값 하나(사용자 지시 2026-11-19) — 두 줄 묶음 칸은 두지 않는다.
  *
  * ⭐ 발행 중 · 결과 확인 전에는 마지막 칸이 그 LOT 의 결과다(체크 대신 결과 표식이 제자리에 붙는다).
@@ -136,7 +136,11 @@ export const LabelTable = ({
               <th className="fit">
                 {showResults ? t.columns.result : isReprint ? t.columns.printed : t.columns.label}
               </th>
-              {isReprint ? <th className="fit">{t.columns.lastPrinted}</th> : null}
+              {isReprint ? (
+                <th className="fit">{t.columns.lastPrinted}</th>
+              ) : (
+                <th className="fit">{t.columns.createdAt}</th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -224,7 +228,11 @@ export const LabelTable = ({
                     <td className="fit">
                       {lot.lastIssue === null ? t.none : issuedWhen(lot.lastIssue.issuedAt)}
                     </td>
-                  ) : null}
+                  ) : (
+                    <td className="fit">
+                      {lot.createdAt === undefined ? t.none : issuedWhen(lot.createdAt) || t.none}
+                    </td>
+                  )}
                 </tr>
               );
             })}

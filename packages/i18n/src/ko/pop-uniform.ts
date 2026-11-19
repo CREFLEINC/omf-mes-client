@@ -53,6 +53,12 @@ export const popUniform = {
     fold: (name: string): string => `${name} 접기`,
     open: (name: string): string => `${name} 펼치기`,
   },
+  /** 목록 정렬(사용자 지시 2026-11-19 — 모든 표·목록에 [최신순 | 오래된순]). */
+  order: {
+    label: '정렬',
+    newest: '최신순',
+    oldest: '오래된순',
+  },
   help: '도움말',
   remove: '빼기',
 };

@@ -320,6 +320,26 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
     expect(first).not.toContain('statusCode=');
   });
 
+  /** 목록 정렬 [최신순 | 오래된순](사용자 지시 2026-11-19) — 계획 시작 일시를 서버가 줄 세우고 첫 쪽부터 다시 받는다. */
+  it('목록 정렬은 계획 시작 일시로 서버에 싣는다 — 처음은 최신순', async () => {
+    const { recorded, user } = renderScreen();
+
+    await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+    expect(listUrls(recorded.urls)[0]).toContain('sort=plannedStartAt%2Cdesc');
+    expect(screen.getByRole('tab', { name: messages.popUniform.order.newest })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+
+    await user.click(screen.getByRole('tab', { name: messages.popUniform.order.oldest }));
+
+    await waitFor(() => {
+      const last = listUrls(recorded.urls).at(-1);
+      expect(last).toContain('sort=plannedStartAt%2Casc');
+      expect(last).toContain('page=1');
+    });
+  });
+
   /**
    * ⭐ **누적 양품은 서버가 낸다**(omf-all-around#45). 이 축이 빠지면 「지시 수량을 채웠다」를
    *    화면이 알 길이 없어 마감 안내가 조용히 사라진다.

@@ -14,6 +14,7 @@ import {
   useFitCount,
   type PuChipTone,
 } from '../../patterns/pop-uniform';
+import { ListOrderFoot, listDateTimeText, type ListOrder } from '../../patterns/pop-list-order';
 
 const t = messages.materialInputScan;
 
@@ -187,6 +188,9 @@ export interface MaterialListProps {
   /** 목록 아래 왼쪽 한 줄(투입할 자재 N건, 투입 완료 N건). */
   summary: string | null;
   onSelect: (lotId: number) => void;
+  /** 목록 정렬(수령 일시) — 할 일 먼저 묶음 안에서만 건다. 줄 순서는 화면이 정해 `rows` 로 준다. */
+  order: ListOrder;
+  onOrderChange: (order: ListOrder) => void;
 }
 
 /**
@@ -212,6 +216,8 @@ export const MaterialList = ({
   revealKey,
   summary,
   onSelect,
+  order,
+  onOrderChange,
 }: MaterialListProps) => {
   const fitRef = useRef<HTMLUListElement>(null);
   const fitCount = useFitCount(fitRef, { fallback: 0 });
@@ -261,6 +267,7 @@ export const MaterialList = ({
             const progress = progressStateOf(receipt?.receivedQty ?? null, done?.qty ?? 0);
             /* 최근 것부터(「미전송」이 맨 앞). */
             const records = isSelected ? [...selectedRecords].reverse() : [];
+            const receivedAt = listDateTimeText(receipt?.receivedAt);
             const more = records.length - RECORDS_SHOWN;
 
             return (
@@ -314,6 +321,11 @@ export const MaterialList = ({
                       recorded={done?.qty ?? 0}
                       uom={uom}
                     />
+                    {receivedAt !== null && (
+                      <>
+                        <span>{t.pairs.receivedAtLabel}</span> <b>{receivedAt}</b>
+                      </>
+                    )}
                   </span>
                   {records.length > 0 && (
                     <span className="mi-recs">
@@ -344,7 +356,15 @@ export const MaterialList = ({
           })}
         </ul>
       </div>
-      <div className="pu-foot mi-foot">
+      <ListOrderFoot
+        className="mi-foot"
+        order={order}
+        onOrder={(next) => {
+          onOrderChange(next);
+          paged.setPage(1);
+        }}
+        showOrder={hasRows}
+      >
         {summary !== null && <span className="mi-summary">{summary}</span>}
         <PuPager
           total={rows.length}
@@ -353,7 +373,7 @@ export const MaterialList = ({
           onPage={paged.setPage}
           label={t.scanned.materialsLabel}
         />
-      </div>
+      </ListOrderFoot>
     </>
   );
 };

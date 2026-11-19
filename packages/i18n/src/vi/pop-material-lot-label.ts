@@ -69,6 +69,7 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
       printed: 'Lượt in',
       supplierLot: 'Số LOT nhà cung cấp',
       lastPrinted: 'Lần in gần nhất',
+      createdAt: 'Ngày tạo',
       result: 'Kết quả',
     },
     none: '—',

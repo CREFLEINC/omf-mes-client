@@ -494,6 +494,36 @@ describe('러닝체인지 화면 — 교체 대상 모집단', () => {
     expect(names[1]).toContain(NEW_LOT_NO);
   });
 
+  /* 사용자 지시 2026-11-19 — 현재 투입은 투입일시로 [최신순 | 오래된순]. 처음은 최신순. */
+  it('현재 투입은 투입일시로 줄 세우고 정렬을 바꿀 수 있다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      inputs: [
+        makeConsumption({ occurredAt: '2026-09-02T09:12:00+07:00' }),
+        makeConsumption({
+          materialConsumptionId: 55009,
+          lotId: makeLot().lotId,
+          occurredAt: '2026-09-03T10:30:00+07:00',
+        }),
+      ],
+    });
+
+    await screen.findByText(OLD_LOT_NO);
+    const lots = (): string[] =>
+      within(screen.getByRole('list', { name: t.panes.current }))
+        .getAllByRole('listitem')
+        .map((row) => row.textContent ?? '');
+
+    expect(lots()[0]).toContain(NEW_LOT_NO);
+    expect(lots()[0]).toContain('09-03 10:30');
+    expect(lots()[1]).toContain(OLD_LOT_NO);
+
+    await user.click(screen.getByRole('tab', { name: messages.popUniform.order.oldest }));
+
+    expect(lots()[0]).toContain(OLD_LOT_NO);
+    expect(lots()[0]).toContain('09-02 09:12');
+  });
+
   /* #1045 — 현장은 `INSPECTION_PENDING` 이 무엇인지도, 무엇을 하면 풀리는지도 모른다. */
   it('보류 칩을 공통코드 표시명으로 보인다', async () => {
     const user = userEvent.setup();

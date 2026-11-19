@@ -39,6 +39,7 @@ import {
   type MaterialRow,
 } from './material-list';
 import { materialInputScanKeys, useReceiptLines, useRecordedConsumptions } from './queries';
+import { byTime, type ListOrder } from '../../patterns/pop-list-order';
 import { QtySection } from './qty-editor';
 import { describeRecordError } from './record-error';
 import { useReferenceLabels } from './reference-labels';
@@ -870,16 +871,22 @@ export const MaterialInputScanScreen = () => {
     return state === 'over' ? 2 : state === 'done' ? 3 : 1;
   };
   const isListReady = !receipt.isPending && !recorded.isPending;
+  /*
+   * 수령 일시로 [최신순 | 오래된순](사용자 지시 2026-11-19) — 처음은 최신순. 위 차례(할 일 먼저)는 그대로 두고 같은
+   * 묶음 안에서만 줄 세운다. 받지 않고 스캔만 한 자재는 시각이 없어 묶음 맨 뒤다.
+   */
+  const [listOrder, setListOrder] = useState<ListOrder>('newest');
   useEffect(() => {
     if (!isListReady) return;
+    const byReceived = byTime<MaterialRow>(listOrder, (row) => row.receipt?.receivedAt);
     setRowOrder(
       rows
-        .map((row, index) => ({ key: row.key, rank: rankOf(row), index }))
-        .sort((a, b) => a.rank - b.rank || a.index - b.index)
-        .map((one) => one.key),
+        .map((row, index) => ({ row, rank: rankOf(row), index }))
+        .sort((a, b) => a.rank - b.rank || byReceived(a.row, b.row) || a.index - b.index)
+        .map((one) => one.row.key),
     );
-    /* eslint-disable-next-line react-hooks/exhaustive-deps -- 화면을 열 때와 스캔할 때만 다시 정렬한다. */
-  }, [isListReady, resortTick]);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- 화면을 열 때, 스캔할 때, 정렬을 바꿀 때만 다시 정렬한다. */
+  }, [isListReady, resortTick, listOrder]);
   const orderedRows = [...rows].sort((a, b) => {
     const ai = rowOrder.indexOf(a.key);
     const bi = rowOrder.indexOf(b.key);
@@ -1240,6 +1247,8 @@ export const MaterialInputScanScreen = () => {
               selectedRecords={editingRow === null ? [] : recordsOf(editingRow.lotId)}
               revealKey={resortTick}
               summary={rows.length > 0 ? t.scanned.summary(todoCount, doneCount) : null}
+              order={listOrder}
+              onOrderChange={setListOrder}
               onSelect={(lotId) => {
                 /* 다음 동작을 하면 스캔 결과 한 줄을 지운다(C-21). */
                 scan.reset();

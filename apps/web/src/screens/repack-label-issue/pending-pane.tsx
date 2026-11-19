@@ -9,6 +9,7 @@ import {
   useClientPage,
   useFitCount,
 } from '../../patterns/pop-uniform';
+import { ListOrderFoot, sortByTime, type ListOrder } from '../../patterns/pop-list-order';
 import { PuSearchBox } from '../../patterns/pop-uniform/search-box';
 import { localDateTimeText } from './formatting';
 import type { PendingRepackRow } from './queries';
@@ -66,7 +67,13 @@ export const PendingPane = ({
   const fitRef = useRef<HTMLDivElement>(null);
   const size = useFitCount(fitRef, { fallback: 4 });
   const isReissue = scan !== undefined;
-  const shown = isReissue ? rows : rows.filter((row) => matches(row, query));
+  /* 재구성 일시로 [최신순 | 오래된순](사용자 지시 2026-11-19) — 처음은 최신순. */
+  const [order, setOrder] = useState<ListOrder>('newest');
+  const shown = sortByTime(
+    isReissue ? rows : rows.filter((row) => matches(row, query)),
+    order,
+    (row) => row.occurredAt,
+  );
   const page = useClientPage(shown, size);
   /* 스캔으로 고른 줄이 다른 쪽에 있으면 그 쪽을 보인다. */
   const selectedIndex = shown.findIndex((row) => row.handlingUnitId === selectedId);
@@ -168,13 +175,21 @@ export const PendingPane = ({
               );
             })}
           </div>
-          <PuPager
-            total={page.total}
-            page={page.page}
-            pages={page.pages}
-            onPage={page.setPage}
-            label={t.sectionLabel}
-          />
+          <ListOrderFoot
+            order={order}
+            onOrder={(next) => {
+              setOrder(next);
+              page.setPage(1);
+            }}
+          >
+            <PuPager
+              total={page.total}
+              page={page.page}
+              pages={page.pages}
+              onPage={page.setPage}
+              label={t.sectionLabel}
+            />
+          </ListOrderFoot>
         </>
       )}
     </>

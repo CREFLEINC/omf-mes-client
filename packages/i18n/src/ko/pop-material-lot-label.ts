@@ -83,7 +83,9 @@ export const popMaterialLotLabel = {
       label: '라벨',
       printed: '출력',
       supplierLot: '공급사 LOT 번호',
-      lastPrinted: '최근 출력 일시',
+      lastPrinted: '최근 출력일시',
+      /** 발행 대기 표의 등록 일시 칸 — 목록 정렬 기준(사용자 지시 2026-11-19). */
+      createdAt: '등록일시',
       result: '결과',
     },
     none: '—',

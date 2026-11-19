@@ -23,6 +23,7 @@ import {
   useFitTableRows,
 } from '../../patterns/pop-uniform';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
+import { ListOrderFoot, type ListOrder } from '../../patterns/pop-list-order';
 import { SaveErrorBanner } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -315,7 +316,17 @@ export const PopOqcInspectionScreen = () => {
   useEffect(() => {
     setResultPage(1);
   }, [selectedId]);
-  const results = pageOf(orderedRounds(rounds.data ?? []).reverse(), resultPage, resultSize);
+  /*
+   * 회차 결과 [최신순 | 오래된순](사용자 지시 2026-11-19) — 처음은 지금처럼 최근 회차가 위. 회차는 확정 일시 차례로
+   * 붙으므로 회차 번호로 줄 세운다(아직 확정 안 된 회차도 제 자리에 선다).
+   */
+  const [resultOrder, setResultOrder] = useState<ListOrder>('newest');
+  const ordered = orderedRounds(rounds.data ?? []);
+  const results = pageOf(
+    resultOrder === 'newest' ? ordered.reverse() : ordered,
+    resultPage,
+    resultSize,
+  );
 
   const title = showResult
     ? t.result.resultTitle
@@ -454,14 +465,22 @@ export const PopOqcInspectionScreen = () => {
               </table>
             </div>
           </div>
-          <PuPager
-            total={results.total}
-            page={results.page}
-            pages={results.pages}
-            label={t.result.resultTitle}
-            showTotal={false}
-            onPage={setResultPage}
-          />
+          <ListOrderFoot
+            order={resultOrder}
+            onOrder={(next) => {
+              setResultOrder(next);
+              setResultPage(1);
+            }}
+          >
+            <PuPager
+              total={results.total}
+              page={results.page}
+              pages={results.pages}
+              label={t.result.resultTitle}
+              showTotal={false}
+              onPage={setResultPage}
+            />
+          </ListOrderFoot>
         </>
       );
     }

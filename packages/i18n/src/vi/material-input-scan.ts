@@ -18,6 +18,7 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
   pairs: {
     lotLabel: 'LOT',
     progressLabel: 'Lượng đưa vào',
+    receivedAtLabel: 'Nhận lúc',
     progress: (recorded: string, issued: string | null, uom: string): string =>
       `${recorded}${issued === null ? '' : ` / ${issued}`}${uom === '' ? '' : ` ${uom}`}`,
   },

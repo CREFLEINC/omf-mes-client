@@ -41,6 +41,8 @@ export const runningChange = {
      *    품목인지 LOT 인지, 「100 EA」가 계획인지 투입인지 화면만 보고는 알 수 없다.
      */
     /* IQC 에서 적은 4M 변경품(omf-all-around#63) — 표시만 한다. */
+    /** 현재 투입 줄의 일시 칸 이름(사용자 지시 2026-11-19). */
+    occurredAt: '투입일시',
     fourMChangeMark: '4M 변경품',
     moldSectionLabel: '금형 정보',
     moldNoLabel: '금형 번호',

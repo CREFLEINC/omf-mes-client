@@ -8,6 +8,7 @@ import { sortForPick, statusKeyOf, type WorkOrderStatusKey } from './work-order-
 import { isEmergency, isRework, pinEmergencyFirst } from './work-order-type';
 
 import { type PageMetaLike } from '../../patterns/pop-page-nav';
+import { ListOrderFoot, type ListOrder } from '../../patterns/pop-list-order';
 import { PopSelect } from '../../patterns/pop-select';
 import {
   PuButton,
@@ -106,6 +107,9 @@ export interface WorkOrderListProps {
   uomCodeOf: (uomId: number | undefined) => string | null;
   /** 한 쪽 건수를 재는 목록 칸(구획 높이에 들어가는 만큼, POP 통일 규칙 1). */
   fitRef?: RefObject<HTMLDivElement | null>;
+  /** 목록 정렬(계획 시작 일시 · 서버 정렬). 긴급·진행 중 먼저는 받은 쪽 안에서 그대로 둔다. */
+  order?: ListOrder;
+  onOrderChange?: (order: ListOrder) => void;
   /** 지금 보기 — 전체 / 긴급(#295). */
   kind?: ListKind;
   /** 열린 긴급 작업지시 수(「긴급 N」). 모르면 `undefined` 이고 수를 붙이지 않는다. */
@@ -120,7 +124,7 @@ export interface WorkOrderListProps {
  * - 기본 목록은 단말 설비의 작업지시다. 목록 위 설비 칸(선택 창)에서 「전체 설비」나 다른 설비를
  *   고른다. 기본이 아니면 칸 옆에 [기본 설비로]가 선다(PG-37).
  * - 카드는 행 전체 터치로 고른다(C-1). 제목 줄(W/O 번호, 오른쪽 끝 칩)과 정보(「라벨 값」 쌍).
- * - 진행 중인 W/O를 위에 둔다. 받은 쪽 안에서만 정렬한다(서버 정렬은 계약 대기).
+ * - 서버가 계획 시작 일시로 [최신순 | 오래된순] 줄 세운 쪽에서 진행 중인 W/O를 위에 둔다(받은 쪽 안에서).
  * - 빈 목록은 오류가 아니다. 「받는 중」, 「없다」, 「실패」를 다른 문장으로 말한다.
  * - 제목 줄 끝 [|<]로 왼쪽으로 접는다(접으면 오른쪽 구획이 넓어진다).
  */
@@ -145,13 +149,15 @@ export const WorkOrderList = ({
   onRetry,
   uomCodeOf,
   fitRef,
+  order = 'newest',
+  onOrderChange,
   kind = 'all',
   emergencyCount,
   onKindChange,
 }: WorkOrderListProps) => {
   /*
-   * 순서: 목록 순서를 먼저 정하고(지금은 진행 중 먼저 — 최신순/오래된순 전환이 오면 이 자리를 바꾼다)
-   * 맨 끝에 긴급을 위로 올린다. 순서를 무엇으로 바꾸든 긴급은 늘 위다(#295).
+   * 순서: 서버가 계획 시작 일시로 [최신순 | 오래된순] 줄 세워 준 쪽에서(사용자 지시 2026-11-19), 진행 중을 먼저 두고
+   * 맨 끝에 긴급을 위로 올린다. 둘 다 안정 정렬이라 같은 묶음 안은 고른 정렬 그대로다. 긴급은 늘 위다(#295).
    */
   const rows = pinEmergencyFirst(sortForPick(workOrders ?? []));
   const isEmergencyView = kind === 'emergency';
@@ -327,17 +333,23 @@ export const WorkOrderList = ({
       </div>
 
       {/* 잘렸다고 말하기만 하지 않는다. 키오스크라 주소창도 뒤로가기도 없다(#1005). */}
-      {!isError && pageMeta !== undefined ? (
-        <PuPager
-          total={pageTotal}
-          page={pageMeta.page}
-          pages={pages}
-          label={t.pageNav}
-          onPage={onPageChange}
-        />
-      ) : (
-        <span />
-      )}
+      <ListOrderFoot
+        order={order}
+        onOrder={(next) => {
+          if (next !== order) onOrderChange?.(next);
+        }}
+        showOrder={hasRows}
+      >
+        {!isError && pageMeta !== undefined ? (
+          <PuPager
+            total={pageTotal}
+            page={pageMeta.page}
+            pages={pages}
+            label={t.pageNav}
+            onPage={onPageChange}
+          />
+        ) : null}
+      </ListOrderFoot>
     </PuSection>
   );
 };

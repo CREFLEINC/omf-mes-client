@@ -42,8 +42,19 @@
 
 .rc-row .qty {
   grid-column: 2;
-  grid-row: 1 / span 2;
+  grid-row: 1;
+  justify-self: end;
   font-weight: 700;
+  white-space: nowrap;
+}
+
+/* 투입일시 「11-19 13:35」 — 수량 아래 작게(사용자 지시 2026-11-19 · 정렬 기준). */
+.rc-row .at {
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: end;
+  font-size: 13px;
+  color: var(--pu-text-3);
   white-space: nowrap;
 }
 

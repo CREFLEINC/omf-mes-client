@@ -36,6 +36,8 @@ export interface CurrentInputView {
   replacedConsumptionId: number | null;
   /** 투입 LOT 이 IQC 에서 4M 변경품으로 적혔는가(omf-all-around#63 2단계 · 서버 선행 P-86). 표시만 한다. */
   isFourMChange: boolean;
+  /** 투입일시 — 목록의 일시 칸과 [최신순 | 오래된순]이 이 값으로 선다(사용자 지시 2026-11-19). */
+  occurredAt: string;
 }
 
 /** 응답 한 줄을 화면 타입으로 옮기는 **유일한 지점**이다. */
@@ -47,4 +49,5 @@ export const toCurrentInputView = (row: MaterialConsumptionResponse): CurrentInp
   uomId: row.uomId,
   replacedConsumptionId: row.replacedConsumptionId ?? null,
   isFourMChange: row.fourMChange !== undefined,
+  occurredAt: row.occurredAt,
 });

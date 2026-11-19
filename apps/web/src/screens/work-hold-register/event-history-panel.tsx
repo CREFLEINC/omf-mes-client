@@ -1,7 +1,8 @@
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { PuCount, PuEmpty, PuPager, useClientPage, useFitCount } from '../../patterns/pop-uniform';
+import { ListOrderFoot, sortByTime, type ListOrder } from '../../patterns/pop-list-order';
 import { toClockLabel } from './formatting';
 import { eventTypeName } from './hold-reasons';
 import type { HoldReason } from './reason-options';
@@ -29,13 +30,16 @@ export interface EventHistoryPanelProps {
 export const EventHistoryPanel = ({ events, reasons, isPending }: EventHistoryPanelProps) => {
   const listRef = useRef<HTMLOListElement>(null);
   const per = useFitCount(listRef, { fallback: 4 });
-  const page = useClientPage(events, per);
+  /* 발생 시각으로 [최신순 | 오래된순](사용자 지시 2026-11-19) — 처음은 지금처럼 오래된순(위가 먼저 일어난 것). */
+  const [order, setOrder] = useState<ListOrder>('oldest');
+  const sorted = sortByTime(events, order, (event) => event.occurredAt);
+  const page = useClientPage(sorted, per);
   const { showIndex } = page;
 
-  /* 처음과 새 이벤트가 붙은 뒤에는 가장 최근 쪽 — 마지막 줄이 든 쪽으로 간다. */
+  /* 처음과 새 이벤트가 붙은 뒤, 정렬을 바꾼 뒤에는 가장 최근 줄이 든 쪽을 보인다. */
   useEffect(() => {
-    showIndex(Math.max(0, events.length - 1));
-  }, [events.length, showIndex]);
+    showIndex(order === 'oldest' ? Math.max(0, events.length - 1) : 0);
+  }, [events.length, order, showIndex]);
 
   /**
    * 사유 한 칸을 사람 말로. ⛔ 코드를 그대로 내밀지 않는다 — 그래도 못 풀면 코드를 보인다
@@ -72,13 +76,15 @@ export const EventHistoryPanel = ({ events, reasons, isPending }: EventHistoryPa
         </ol>
       )}
 
-      <PuPager
-        label={t.history.sectionLabel}
-        total={isPending ? 0 : events.length}
-        page={page.page}
-        pages={page.pages}
-        onPage={page.setPage}
-      />
+      <ListOrderFoot order={order} onOrder={setOrder} showOrder={!isPending && events.length > 0}>
+        <PuPager
+          label={t.history.sectionLabel}
+          total={isPending ? 0 : events.length}
+          page={page.page}
+          pages={page.pages}
+          onPage={page.setPage}
+        />
+      </ListOrderFoot>
     </div>
   );
 };

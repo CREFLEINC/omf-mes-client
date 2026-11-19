@@ -1,0 +1,52 @@
+/* POP 목록 정렬 [최신순 | 오래된순] + 쪽 넘김 한 줄(`pop-list-order.tsx`). 모양은 분할 LOT 라벨 목록 아래 줄과 같다. */
+.lo-foot {
+  flex: none;
+  container-type: inline-size;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* 좁은 목록 열(380 · 320): 단추와 쪽 넘김을 조금 줄여 한 줄에 둔다. 그래도 넘치면 쪽 넘김이 다음 줄로 내려간다. */
+.lo-foot > .pu-seg {
+  flex: none;
+}
+
+.lo-foot > .pu-seg button {
+  height: 30px;
+  padding: 0 8px;
+  font-size: 14px;
+}
+
+.lo-foot > .pu-pager {
+  margin-left: auto;
+  gap: 6px;
+}
+
+.lo-foot > .pu-pager .pu-pager-info {
+  margin-right: 2px;
+}
+
+/* 넓은 구획: 분할 LOT 라벨과 같은 크기(단추 줄 200). */
+@container (min-width: 440px) {
+  .lo-foot > .pu-seg {
+    width: 200px;
+  }
+
+  .lo-foot > .pu-seg button {
+    height: 34px;
+    padding: 0 12px;
+    font-size: inherit;
+  }
+
+  .lo-foot > .pu-pager {
+    gap: 8px;
+  }
+
+  .lo-foot > .pu-pager .pu-pager-info {
+    margin-right: 8px;
+  }
+}

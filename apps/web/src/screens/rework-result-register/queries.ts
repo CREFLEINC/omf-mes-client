@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import type { ListOrder } from '../../patterns/pop-list-order';
 import { runRequest } from '../../patterns/request';
 import { REWORK_WORK_ORDER_TYPE_CODE } from './result';
 
@@ -48,21 +49,24 @@ export const PLANNED_STATUS_CODE = 'PLANNED';
  *
  * ⭐ 배포된 쪽의 `size` 는 목록 구획에 들어가는 건수다(#295 · 구획 안 스크롤 없음). 조건·정렬은 그대로.
  */
-export const useReworkWorkOrders = (page = 1, size = 20) => {
+export const useReworkWorkOrders = (page = 1, size = 20, order: ListOrder = 'newest') => {
   const { client } = useApiClient();
+  /* 계획 시작 일시로 [최신순 | 오래된순](사용자 지시 2026-11-19) — 쪽을 나누기 전에 서버가 줄 세운다. */
+  const sort =
+    order === 'newest' ? ('plannedStartAt,desc' as const) : ('plannedStartAt,asc' as const);
   const open = useQuery({
-    queryKey: [...reworkResultKeys.list, 'open', page, size],
+    queryKey: [...reworkResultKeys.list, 'open', page, size, order],
     queryFn: () =>
       runRequest(() =>
         client.GET('/production/work-orders', {
           params: {
-            query: { workOrderTypeCode: REWORK_WORK_ORDER_TYPE_CODE, open: true, page, size },
+            query: { workOrderTypeCode: REWORK_WORK_ORDER_TYPE_CODE, open: true, sort, page, size },
           },
         }),
       ),
   });
   const planned = useQuery({
-    queryKey: [...reworkResultKeys.list, 'planned'],
+    queryKey: [...reworkResultKeys.list, 'planned', order],
     queryFn: () =>
       runRequest(() =>
         client.GET('/production/work-orders', {
@@ -70,6 +74,7 @@ export const useReworkWorkOrders = (page = 1, size = 20) => {
             query: {
               workOrderTypeCode: REWORK_WORK_ORDER_TYPE_CODE,
               statusCode: PLANNED_STATUS_CODE,
+              sort,
               page: 1,
               size: 20,
             },

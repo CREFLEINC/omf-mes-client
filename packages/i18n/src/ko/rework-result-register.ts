@@ -30,6 +30,8 @@ export const reworkResultRegister = {
     progress: '재작업',
     reworkChip: '재작업',
     plannedChip: '배포 전',
+    /** 카드의 계획 시작 일시 — 목록 정렬 기준(사용자 지시 2026-11-19). */
+    plannedStart: '계획 시작',
   },
   /**
    * 배포 전 재작업 지시에 다는 표식(omf-all-around#47). 발행은 됐지만 배포 전이라

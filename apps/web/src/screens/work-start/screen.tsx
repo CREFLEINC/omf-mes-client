@@ -47,6 +47,7 @@ import { toSessionRequest } from './session-request';
 import { assignedAtText, terminalNow } from './terminal-clock';
 import type { ControlOverride, WorkOrder, Worker } from './types';
 import { WorkOrderList, type ListKind, type ListScope } from './work-order-list';
+import type { ListOrder } from '../../patterns/pop-list-order';
 import { isEmergency, isRework } from './work-order-type';
 import { isHeld } from './work-order-status';
 import { WorkerPanel } from './worker-panel';
@@ -230,18 +231,21 @@ export const WorkStartScreen = () => {
   const [listFirstRow, setListFirstRow] = useState(0);
   const listPage = Math.floor(listFirstRow / listSize) + 1;
   /* 설비를 정하지 않은 지시는 단말 설비 목록에만 함께 받는다(PG-38). */
+  /* 목록 정렬 [최신순 | 오래된순] — 계획 시작 일시, 서버가 줄 세운다(사용자 지시 2026-11-19). 처음은 최신순. */
+  const [listOrder, setListOrder] = useState<ListOrder>('newest');
   const allList = useWorkOrders(
     listEquipmentId,
     isListAsked && !isEmergencyView,
     listPage,
     scope === 'default',
     listSize,
+    listOrder,
   );
   /*
    * 「긴급」 보기의 목록이자 「긴급 N」 건수. 옛 화면과 같은 조건(유형 + open, 설비 축 없음)이라 늘 묻는다 —
    * 「전체」를 보는 동안에는 첫 쪽만 받아 건수에 쓴다.
    */
-  const emergencyList = useEmergencyWorkOrders(isEmergencyView ? listPage : 1, listSize);
+  const emergencyList = useEmergencyWorkOrders(isEmergencyView ? listPage : 1, listSize, listOrder);
   /* 지금 보이는 목록 — 고르기·쪽 넘김·충돌 뒤 다시 받기가 모두 이것을 쓴다. */
   const list = isEmergencyView ? emergencyList : allList;
   const listAsked = isEmergencyView || isListAsked;
@@ -924,6 +928,13 @@ export const WorkStartScreen = () => {
             }}
             onRetry={() => {
               void list.refetch();
+            }}
+            order={listOrder}
+            onOrderChange={(next) => {
+              /* 보기를 바꿀 때와 같다 — 고른 것은 새 목록에 있으면 남기고, 첫 쪽부터 본다(PG-30). */
+              scopeCheckRef.current = true;
+              setListFirstRow(0);
+              setListOrder(next);
             }}
             kind={kind}
             emergencyCount={emergencyList.isError ? undefined : emergencyList.data?.page.total}

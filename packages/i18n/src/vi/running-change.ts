@@ -33,6 +33,8 @@ export const runningChange: Translated<typeof ko.runningChange> = {
      * ⭐ **칸마다 이름을 붙인다**(사용자 제안 시안 2026-09-11). 값만 늘어놓으면 「ABC-123」이
      *    품목인지 LOT 인지, 「100 EA」가 계획인지 투입인지 화면만 보고는 알 수 없다.
      */
+    /** 현재 투입 줄의 일시 칸 이름(사용자 지시 2026-11-19). */
+    occurredAt: 'Thời điểm nạp',
     fourMChangeMark: 'Hàng thay đổi 4M',
     moldSectionLabel: 'Thông tin khuôn',
     moldNoLabel: 'Số khuôn',

@@ -83,7 +83,10 @@
 
 .mi-pair.pu-item-sub {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1.3fr);
+  /* LOT · 투입량 · 수령(일시 — 사용자 지시 2026-11-19, 없으면 빈 칸) */
+  grid-template-columns:
+    max-content minmax(0, 1fr) max-content minmax(0, 1.3fr)
+    max-content max-content;
   gap: 4px 10px;
   align-items: center;
 }
@@ -152,11 +155,13 @@
   font-variant-numeric: tabular-nums;
 }
 
-.mi-foot.pu-foot {
+.mi-foot.lo-foot {
   min-height: 36px;
 }
 
 .mi-summary {
+  font-size: 13px;
+  color: var(--pu-text-3);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -46,7 +46,7 @@ const fetchReceiptLines = async (
     }),
   );
 
-  return data.lines.map(toReceiptLineView);
+  return data.lines.map((line) => toReceiptLineView(line, data.shopfloorReceipt.receivedAt));
 };
 
 /** 계획 대비 수령 구획이 읽는 것 전부. */

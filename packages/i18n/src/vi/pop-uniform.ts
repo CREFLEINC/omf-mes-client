@@ -47,6 +47,11 @@ export const popUniform: Translated<typeof ko.popUniform> = {
     fold: (name: string): string => `Thu gọn ${name}`,
     open: (name: string): string => `Mở ${name}`,
   },
+  order: {
+    label: 'Sắp xếp',
+    newest: 'Mới nhất',
+    oldest: 'Cũ nhất',
+  },
   help: 'Trợ giúp',
   remove: 'Bỏ',
 };

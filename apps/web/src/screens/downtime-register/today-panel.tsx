@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 import {
   PuButton,
@@ -11,6 +11,7 @@ import {
   useClientPage,
   useFitTableRows,
 } from '../../patterns/pop-uniform';
+import { ListOrderFoot, sortByTime, type ListOrder } from '../../patterns/pop-list-order';
 import { toClockLabel, toDurationLabel, toRangeLabel } from './formatting';
 import { toLocalDay } from './queries';
 import type { TodayRow } from './today-rows';
@@ -96,7 +97,10 @@ export const TodayPanel = ({
   const tableRef = useRef<HTMLDivElement>(null);
   /* 한 쪽 줄 수 = 구획 높이에 들어가는 만큼(#295 규칙 1) — 구획 안 스크롤 없음. */
   const fit = useFitTableRows(tableRef, { fallback: 3 });
-  const paged = useClientPage(rows, fit);
+  /* 시작 일시로 [최신순 | 오래된순](사용자 지시 2026-11-19) — 처음은 지금처럼 최신순. */
+  const [order, setOrder] = useState<ListOrder>('newest');
+  const sorted = sortByTime(rows, order, (row) => row.startedAt);
+  const paged = useClientPage(sorted, fit);
   const { setPage } = paged;
 
   useEffect(() => {
@@ -194,13 +198,22 @@ export const TodayPanel = ({
         {scope}
         {body}
       </div>
-      <PuPager
-        total={rows.length === 0 ? 0 : paged.total}
-        page={paged.page}
-        pages={paged.pages}
-        label={t.today.title}
-        onPage={setPage}
-      />
+      <ListOrderFoot
+        order={order}
+        onOrder={(next) => {
+          setOrder(next);
+          setPage(1);
+        }}
+        showOrder={!isError && !isPending && rows.length > 0}
+      >
+        <PuPager
+          total={rows.length === 0 ? 0 : paged.total}
+          page={paged.page}
+          pages={paged.pages}
+          label={t.today.title}
+          onPage={setPage}
+        />
+      </ListOrderFoot>
     </PuSection>
   );
 };

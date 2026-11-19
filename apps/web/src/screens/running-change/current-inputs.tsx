@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { useRef, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 
 import {
   PuChip,
@@ -12,6 +12,12 @@ import {
   useFitCount,
   type PuFold,
 } from '../../patterns/pop-uniform';
+import {
+  ListOrderFoot,
+  listDateTimeText,
+  sortByTime,
+  type ListOrder,
+} from '../../patterns/pop-list-order';
 import { isShotCountExceeded, type CurrentMold } from './mold';
 import type { ReferenceLabels } from './reference-labels';
 import type { CurrentInputView } from './types';
@@ -45,7 +51,12 @@ export const CurrentInputs = ({
 }: CurrentInputsProps) => {
   const listRef = useRef<HTMLDivElement>(null);
   const per = useFitCount(listRef, { fallback: 4 });
-  const page = useClientPage(rows, per);
+  /* 투입일시로 [최신순 | 오래된순](사용자 지시 2026-11-19) — 처음은 최신순. */
+  const [order, setOrder] = useState<ListOrder>('newest');
+  const page = useClientPage(
+    sortByTime(rows, order, (row) => row.occurredAt),
+    per,
+  );
   const hasError = error !== null && error !== undefined && error !== false;
   const showList = hasWorkOrder && !hasError && !isPending && rows.length > 0;
 
@@ -81,19 +92,30 @@ export const CurrentInputs = ({
                 <span className="qty">
                   {row.inputQty.toLocaleString('ko-KR')} {labels.describeUom(row.uomId)}
                 </span>
+                <span className="at" title={t.current.occurredAt}>
+                  {listDateTimeText(row.occurredAt) ?? ''}
+                </span>
               </div>
             ))}
           </div>
         )}
       </div>
       {showList && (
-        <PuPager
-          label={t.panes.current}
-          total={rows.length}
-          page={page.page}
-          pages={page.pages}
-          onPage={page.setPage}
-        />
+        <ListOrderFoot
+          order={order}
+          onOrder={(next) => {
+            setOrder(next);
+            page.setPage(1);
+          }}
+        >
+          <PuPager
+            label={t.panes.current}
+            total={rows.length}
+            page={page.page}
+            pages={page.pages}
+            onPage={page.setPage}
+          />
+        </ListOrderFoot>
       )}
     </PuSection>
   );

@@ -35,7 +35,7 @@ export const popOqcInspection = {
     bandLabel: '의뢰 정보',
     fields: {
       requestNo: '의뢰번호',
-      requestedAt: '의뢰 일시',
+      requestedAt: '의뢰일시',
       item: '품목',
       inspectionType: '검사 유형',
       targetQty: '총 검사량',

@@ -5,6 +5,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { usePopIdentity } from '../../patterns/pop-identity';
+import { ListOrderFoot, sortByTime, type ListOrder } from '../../patterns/pop-list-order';
 import { PopTopPrinter } from '../../patterns/pop-top-status';
 import {
   PuButton,
@@ -187,7 +188,17 @@ export const PopMaterialLotLabelScreen = () => {
     groups[0] ??
     null;
   const currentKey = current === null ? null : pairKeyOf(current.supplierId, current.itemId);
-  const currentLots = useMemo(() => (current === null ? [] : toLabelLots(current)), [current]);
+  /*
+   * 표 정렬 [최신순 | 오래된순](사용자 지시 2026-11-19) — 발행 대기는 등록일시, 재발행은 최근 출력일시. 처음은 둘 다
+   * 최신순. 입하 대기 → 폐기 → 최근 입하 묶음 차례는 그대로 두고 묶음 안에서만 줄 세운다.
+   */
+  const [waitOrder, setWaitOrder] = useState<ListOrder>('newest');
+  const [reprintOrder, setReprintOrder] = useState<ListOrder>('newest');
+  const currentLots = useMemo(
+    () =>
+      current === null ? [] : sortByTime(toLabelLots(current), waitOrder, (lot) => lot.createdAt),
+    [current, waitOrder],
+  );
   /*
    * 입하 대기를 위에, 폐기를 아래에 — 폐기는 고를 수 없다(screens/P-01-01.md).
    * ⭐ 라벨을 이미 발행한 LOT 은 발행 대기 표에 두지 않는다 — 재발행 탭에만 선다(사용자 지시 2026-11-19).
@@ -206,7 +217,11 @@ export const PopMaterialLotLabelScreen = () => {
   );
   const allLots = useMemo(() => waiting.groups.flatMap(toLabelLots), [waiting.groups]);
   const reprintLots = useMemo(() => {
-    const list = reprintable(allLots, new Date());
+    const list = sortByTime(
+      reprintable(allLots, new Date()),
+      reprintOrder,
+      (lot) => lot.lastIssue?.issuedAt,
+    );
 
     return normalized === ''
       ? list
@@ -215,7 +230,7 @@ export const PopMaterialLotLabelScreen = () => {
             lot.lotNo.toLocaleLowerCase('en-US').includes(normalized) ||
             lot.itemCode.toLocaleLowerCase('en-US').includes(normalized),
         );
-  }, [allLots, normalized]);
+  }, [allLots, normalized, reprintOrder]);
   /* 탭 건수는 표와 같은 규칙 — 라벨을 아직 발행하지 않은 입하 대기 LOT(사용자 지시 2026-11-19). */
   const waitingTotal = allLots.filter((lot) => isWaiting(lot) && isUnissued(lot)).length;
   const waitingCount = waitingLots.filter(isWaiting).length;
@@ -421,7 +436,12 @@ export const PopMaterialLotLabelScreen = () => {
 
     if (value === '') return;
 
-    const list = reprintable(allLots, new Date());
+    /* 표와 같은 차례로 찾아야 그 줄이 든 쪽으로 넘어간다. */
+    const list = sortByTime(
+      reprintable(allLots, new Date()),
+      reprintOrder,
+      (lot) => lot.lastIssue?.issuedAt,
+    );
     const index = list.findIndex((lot) => lot.lotNo === value);
     const found = list[index];
 
@@ -690,13 +710,22 @@ export const PopMaterialLotLabelScreen = () => {
             fitRef={tableFitRef}
           />
         )}
-        <PuPager
-          label={t.work.waitingTitle}
-          total={waitPage.total}
-          page={waitPage.page}
-          pages={waitPage.pages}
-          onPage={waitPage.setPage}
-        />
+        <ListOrderFoot
+          order={waitOrder}
+          onOrder={(next) => {
+            setWaitOrder(next);
+            waitPage.setPage(1);
+          }}
+          showOrder={!isShowingResults && pairTableLots.length > 0}
+        >
+          <PuPager
+            label={t.work.waitingTitle}
+            total={waitPage.total}
+            page={waitPage.page}
+            pages={waitPage.pages}
+            onPage={waitPage.setPage}
+          />
+        </ListOrderFoot>
       </PuSection>
     );
 
@@ -744,13 +773,22 @@ export const PopMaterialLotLabelScreen = () => {
           fitRef={tableFitRef}
         />
       )}
-      <PuPager
-        label={t.work.reprintTitle}
-        total={reprintPage.total}
-        page={reprintPage.page}
-        pages={reprintPage.pages}
-        onPage={reprintPage.setPage}
-      />
+      <ListOrderFoot
+        order={reprintOrder}
+        onOrder={(next) => {
+          setReprintOrder(next);
+          reprintPage.setPage(1);
+        }}
+        showOrder={!isShowingResults && reprintTableLots.length > 0}
+      >
+        <PuPager
+          label={t.work.reprintTitle}
+          total={reprintPage.total}
+          page={reprintPage.page}
+          pages={reprintPage.pages}
+          onPage={reprintPage.setPage}
+        />
+      </ListOrderFoot>
       {/* 사유는 재인쇄할 LOT을 고른(스캔한) 뒤에만 보인다(사용자 지시 2026-11-19). */}
       {isShowingResults || selected.length === 0 ? null : (
         <ReasonPicker

@@ -13,6 +13,7 @@ import type {
   Worker,
 } from './types';
 import { EMERGENCY_WORK_ORDER_TYPE_CODE } from './work-order-type';
+import type { ListOrder } from '../../patterns/pop-list-order';
 
 /**
  * 이 화면이 부르는 조회.
@@ -47,6 +48,10 @@ const ALL_KEY = ['work-start'] as const;
  */
 export const LIST_SIZE = 20;
 
+/** 목록 정렬 → 서버 정렬 값(계획 시작 일시). */
+const sortOf = (order: ListOrder) =>
+  order === 'newest' ? ('plannedStartAt,desc' as const) : ('plannedStartAt,asc' as const);
+
 export const workStartKeys = {
   all: ALL_KEY,
   terminal: (terminalId: number) => [...ALL_KEY, 'terminal', terminalId] as const,
@@ -59,10 +64,11 @@ export const workStartKeys = {
     includeUnplanned: boolean,
     page: number,
     size: number = LIST_SIZE,
-  ) => [...ALL_KEY, 'work-orders', equipmentId, includeUnplanned, page, size] as const,
+    order: ListOrder = 'newest',
+  ) => [...ALL_KEY, 'work-orders', equipmentId, includeUnplanned, page, size, order] as const,
   /** 「긴급」 보기 — 설비 축이 없는 다른 목록이라 키를 따로 둔다(#295). */
-  emergencyWorkOrders: (page: number, size: number = LIST_SIZE) =>
-    [...ALL_KEY, 'emergency-work-orders', page, size] as const,
+  emergencyWorkOrders: (page: number, size: number = LIST_SIZE, order: ListOrder = 'newest') =>
+    [...ALL_KEY, 'emergency-work-orders', page, size, order] as const,
   /** 설비 고르기 팝업의 공장 설비 목록. */
   equipments: (plantId: number) => [...ALL_KEY, 'equipments', plantId] as const,
   openSession: (workOrderId: number) => [...ALL_KEY, 'open-session', workOrderId] as const,
@@ -106,6 +112,7 @@ const fetchWorkOrders = (
   includeUnplanned: boolean,
   page: number,
   size: number,
+  order: ListOrder,
 ): Promise<WorkOrderListResponse> =>
   runRequest(() =>
     client.GET('/production/work-orders', {
@@ -139,6 +146,8 @@ const fetchWorkOrders = (
                 plannedEquipmentId: equipmentId,
                 ...(includeUnplanned ? { includeUnplannedEquipment: true } : {}),
               }),
+          /* 계획 시작 일시로 [최신순 | 오래된순](사용자 지시 2026-11-19) — 쪽을 나누기 전에 서버가 줄 세운다. */
+          sort: sortOf(order),
           page,
           size,
         },
@@ -159,15 +168,16 @@ export const useWorkOrders = (
   page = 1,
   includeUnplanned = equipmentId !== null,
   size = LIST_SIZE,
+  order: ListOrder = 'newest',
 ): UseQueryResult<WorkOrderListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: workStartKeys.workOrders(equipmentId, includeUnplanned, page, size),
+    queryKey: workStartKeys.workOrders(equipmentId, includeUnplanned, page, size, order),
     enabled,
     /* 쪽 건수·쪽을 바꿔 다시 받는 동안 앞 목록을 그대로 둔다 — 고른 카드가 깜빡 사라지지 않게. */
     placeholderData: keepPreviousData,
-    queryFn: () => fetchWorkOrders(client, equipmentId, includeUnplanned, page, size),
+    queryFn: () => fetchWorkOrders(client, equipmentId, includeUnplanned, page, size, order),
   });
 };
 
@@ -182,11 +192,12 @@ export const useWorkOrders = (
 export const useEmergencyWorkOrders = (
   page = 1,
   size = LIST_SIZE,
+  order: ListOrder = 'newest',
 ): UseQueryResult<WorkOrderListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: workStartKeys.emergencyWorkOrders(page, size),
+    queryKey: workStartKeys.emergencyWorkOrders(page, size, order),
     placeholderData: keepPreviousData,
     queryFn: () =>
       runRequest(() =>
@@ -196,6 +207,7 @@ export const useEmergencyWorkOrders = (
               workOrderTypeCode: EMERGENCY_WORK_ORDER_TYPE_CODE,
               open: true,
               withProgress: true,
+              sort: sortOf(order),
               page,
               size,
             },
