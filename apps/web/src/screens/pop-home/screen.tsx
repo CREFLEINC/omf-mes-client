@@ -7,7 +7,6 @@ import { POP_ENTRY_SCREEN_PATH, type PopScreen } from '../../patterns/pop-screen
 import { countOf, GROUP_ICONS, navIcon, usePopNavigation } from '../../patterns/pop-screen-nav';
 import {
   PuButton,
-  PuChip,
   PuCount,
   PuEmpty,
   PuIcon,
@@ -104,6 +103,21 @@ const CLOCK_ICON = navIcon(
   </>,
 );
 const CHECK_ICON = navIcon(<path d="m5 12 5 5L20 7" />);
+/** [편집] 앞 연필(시안). 공통 아이콘에 연필이 없어 이 화면에 둔다. */
+const PENCIL_ICON = (
+  <svg
+    className="pu-ic"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+  </svg>
+);
 
 const iconOf = (screen: PopScreen): ReactNode =>
   SHORTCUT_ICONS.find((entry) => entry.path === screen.path)?.icon ?? GROUP_ICONS[screen.group];
@@ -227,7 +241,7 @@ const RemainingCard = ({ titleId }: { titleId: string }) => {
       title={t.remainingTitle}
       className="home-remaining"
       split={shown.pages > 1}
-      meta={total > 0 ? <PuChip tone="bad">{total}</PuChip> : undefined}
+      head={total > 0 ? <span className="home-rem-badge">{total}</span> : undefined}
     >
       {pending.length === 0 ? (
         <PuEmpty icon="ok" title={t.remainingNone} />
@@ -305,7 +319,10 @@ export const PopHomeScreen = (): ReactNode => {
         {t.title}
       </h1>
       <div className="home-greet">
-        <h2>{name === '' ? t.greetingAnonymous : t.greeting(name)}</h2>
+        <div>
+          <h2>{name === '' ? t.greetingAnonymous : t.greeting(name)}</h2>
+          <p>{t.greetingSub}</p>
+        </div>
         <span className="when">
           <PuIcon name="clock" />
           {clock}
@@ -360,10 +377,12 @@ export const PopHomeScreen = (): ReactNode => {
           ) : (
             <PuButton
               size="sm"
+              className="home-edit"
               onClick={() => {
                 setIsEditing(true);
               }}
             >
+              {PENCIL_ICON}
               {t.edit}
             </PuButton>
           )

@@ -19,7 +19,13 @@
 
 .home-u .home-greet h2 {
   margin: 0;
-  font-size: 24px;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.home-u .home-greet p {
+  margin: 2px 0 0;
+  font-size: 16px;
 }
 
 .home-u .home-greet .when {
@@ -154,7 +160,21 @@
   font-size: 13px;
 }
 
-/* 남은 작업 */
+/* 남은 작업 — 제목 바로 뒤 빨간 둥근 수 */
+.home-u .home-rem-badge {
+  flex: none;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 7px;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  background: var(--pu-bad);
+  color: var(--pu-field);
+  font-size: 14px;
+  font-weight: 800;
+}
+
 .home-u .home-rows {
   display: grid;
   gap: 10px;
@@ -172,7 +192,6 @@
   background: var(--pu-field);
   color: inherit;
   font: inherit;
-  font-weight: 700;
   cursor: pointer;
   width: 100%;
   min-width: 0;
@@ -192,6 +211,11 @@
 .home-u .home-row-link strong {
   margin-left: auto;
   white-space: nowrap;
+  font-weight: 800;
+}
+
+.home-u .home-row-link svg {
+  color: var(--pu-text-3);
 }
 
 .home-u .home-remaining .pu-empty {
@@ -200,7 +224,19 @@
   height: 100%;
 }
 
-/* 바로가기 */
+/* 바로가기 — [편집]은 연필 + 둥근 테두리 단추 */
+.home-u .pu-btn.home-edit {
+  gap: 6px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.home-u .pu-btn.home-edit svg {
+  width: 16px;
+  height: 16px;
+}
+
 .home-u .home-hint {
   color: var(--pu-text-3);
   font-size: 14px;

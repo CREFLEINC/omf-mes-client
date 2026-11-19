@@ -37,6 +37,7 @@ export const popChrome: Translated<typeof ko.popChrome> = {
     title: 'Trang chủ',
     greeting: (name: string): string => `Xin chào ${name}!`,
     greetingAnonymous: 'Xin chào!',
+    greetingSub: 'Hôm nay hãy làm việc an toàn và chính xác nhé.',
     statusTitle: 'Tình hình công việc hôm nay',
     inProgress: 'Đang làm',
     waiting: 'Chờ',

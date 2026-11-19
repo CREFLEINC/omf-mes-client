@@ -23,16 +23,18 @@ import {
   PuInput,
   PuKeypad,
   PuNote,
+  PuTextKeyboard,
   PuUnit,
   applyKeypadKey,
   type PuKey,
 } from '../../patterns/pop-uniform';
 import { toApiError } from '../../patterns/request';
 import { serverReasonOf } from '../../patterns/server-reason';
-import { Select } from '../../patterns/select';
+import { PopSelect } from '../../patterns/pop-select';
 import { createMaterialLotBatch } from './mutations';
 
 const t = messages.popMaterialLotLabel.batch;
+const tu = messages.popUniform;
 
 export interface BatchDialogProps {
   plantId: number;
@@ -147,6 +149,8 @@ const BatchForm = ({
    * 처음에는 비어 있는 첫 숫자 칸을 잡는다. 공급사 LOT 번호는 글자 칸이라 키패드 대상이 아니다.
    */
   const [target, setTarget] = useState<KeypadTarget>(() => firstEmptyTarget(prefill.draft));
+  /* 공급사 LOT 번호 칸을 누르면 숫자 키패드 자리에 글자판을 세운다(사용자 지시 2026-11-19). */
+  const [textTarget, setTextTarget] = useState(false);
   const activeTarget: KeypadTarget =
     !draft.packageOn && (target === 'count' || target === 'per') ? 'lotQty' : target;
   const targetValue: Record<KeypadTarget, string> = {
@@ -306,61 +310,63 @@ const BatchForm = ({
                 </button>
               </div>
             </div>
-            <div className="mll-batch-grid">
-              {/* 「포장 없음」이면 칸은 보이되 흐리게·입력 불가(사용자 지시 2026-11-19) — 보내는 값은 그대로 포장 없음. */}
-              <PuField label={t.packageUom} required>
-                <Select
-                  disabled={!draft.packageOn}
-                  aria-label={t.packageUom}
-                  placeholder={t.packageUomPlaceholder}
-                  value={draft.packageUomId === null ? null : String(draft.packageUomId)}
-                  options={uoms
-                    .filter((row) => row.uomCode !== uomCode)
-                    /* 패키징 단위는 이름(「봉지」)으로 — 이름이 비면 코드(G2 L17). */
-                    .map((row) => ({
-                      value: String(row.uomId),
-                      label: row.uomName.trim() === '' ? row.uomCode : row.uomName,
-                    }))}
-                  onChange={(value) => {
-                    update({ packageUomId: Number(value) });
-                  }}
-                />
-              </PuField>
-              <PuField label={t.packageCount} required htmlFor={fieldId('count')}>
-                <PuInput
-                  disabled={!draft.packageOn}
-                  id={fieldId('count')}
-                  target={activeTarget === 'count'}
-                  onFocus={() => {
-                    setTarget('count');
-                  }}
-                  inputMode="numeric"
-                  numeric
-                  need={draft.packageOn && draft.packageCount === ''}
-                  value={draft.packageCount}
-                  onChange={(event) => {
-                    update({ packageCount: event.target.value });
-                  }}
-                />
-              </PuField>
-              <PuField label={perLabel} required htmlFor={fieldId('per')}>
-                <PuInput
-                  disabled={!draft.packageOn}
-                  id={fieldId('per')}
-                  target={activeTarget === 'per'}
-                  onFocus={() => {
-                    setTarget('per');
-                  }}
-                  inputMode="decimal"
-                  numeric
-                  need={draft.packageOn && draft.qtyPerPackage === ''}
-                  value={draft.qtyPerPackage}
-                  onChange={(event) => {
-                    update({ qtyPerPackage: event.target.value });
-                  }}
-                />
-              </PuField>
-            </div>
+            {/* 「포장 없음」이면 포장 칸을 보이지 않는다(사용자 지시 2026-11-19). */}
+            {draft.packageOn ? (
+              <div className="mll-batch-grid">
+                <PuField label={t.packageUom} required>
+                  {/* 단위 목록이 길어 공통 고르기 창으로 연다 — 펼침 목록은 창 뒤로 깔려 잘렸다(사용자 지적 2026-11-19). */}
+                  <PopSelect
+                    aria-label={t.packageUom}
+                    placeholder={t.packageUomPlaceholder}
+                    value={draft.packageUomId === null ? null : String(draft.packageUomId)}
+                    options={uoms
+                      .filter((row) => row.uomCode !== uomCode)
+                      /* 패키징 단위는 이름(「봉지」)으로 — 이름이 비면 코드(G2 L17). */
+                      .map((row) => ({
+                        value: String(row.uomId),
+                        label: row.uomName.trim() === '' ? row.uomCode : row.uomName,
+                      }))}
+                    onChange={(value) => {
+                      update({ packageUomId: Number(value) });
+                    }}
+                  />
+                </PuField>
+                <PuField label={t.packageCount} required htmlFor={fieldId('count')}>
+                  <PuInput
+                    id={fieldId('count')}
+                    target={activeTarget === 'count'}
+                    onFocus={() => {
+                      setTarget('count');
+                      setTextTarget(false);
+                    }}
+                    inputMode="numeric"
+                    numeric
+                    need={draft.packageCount === ''}
+                    value={draft.packageCount}
+                    onChange={(event) => {
+                      update({ packageCount: event.target.value });
+                    }}
+                  />
+                </PuField>
+                <PuField label={perLabel} required htmlFor={fieldId('per')}>
+                  <PuInput
+                    id={fieldId('per')}
+                    target={activeTarget === 'per'}
+                    onFocus={() => {
+                      setTarget('per');
+                      setTextTarget(false);
+                    }}
+                    inputMode="decimal"
+                    numeric
+                    need={draft.qtyPerPackage === ''}
+                    value={draft.qtyPerPackage}
+                    onChange={(event) => {
+                      update({ qtyPerPackage: event.target.value });
+                    }}
+                  />
+                </PuField>
+              </div>
+            ) : null}
             {packageError === null ? null : (
               <p className="mll-batch-calc" data-ok="false" role="alert">
                 {packageError}
@@ -376,6 +382,7 @@ const BatchForm = ({
                   target={activeTarget === 'lotQty'}
                   onFocus={() => {
                     setTarget('lotQty');
+                    setTextTarget(false);
                   }}
                   inputMode="decimal"
                   numeric
@@ -408,6 +415,10 @@ const BatchForm = ({
             <PuField label={t.supplierLot} optional={t.optional} htmlFor={fieldId('supplierLot')}>
               <PuInput
                 id={fieldId('supplierLot')}
+                target={textTarget}
+                onFocus={() => {
+                  setTextTarget(true);
+                }}
                 value={draft.supplierLotNo}
                 onChange={(event) => {
                   update({ supplierLotNo: event.target.value });
@@ -421,6 +432,7 @@ const BatchForm = ({
                   target={activeTarget === 'lotCount'}
                   onFocus={() => {
                     setTarget('lotCount');
+                    setTextTarget(false);
                   }}
                   inputMode="numeric"
                   numeric
@@ -455,16 +467,33 @@ const BatchForm = ({
             </p>
           ) : null}
         </div>
-        <div className="mll-batch-keypad">
-          <PuKeypad
-            targetLabel={targetLabel[activeTarget]}
-            decimal={decimalTarget}
-            disabled={isSaving}
-            onKey={onKey}
-            onClearAll={() => {
-              setTargetValue('');
-            }}
-          />
+        <div className="mll-batch-keypad" data-text={textTarget}>
+          {textTarget ? (
+            <div className="pu-stack" role="group" aria-label={t.supplierLot}>
+              <div className="pu-keypad-head">
+                <span className="pu-keypad-target">
+                  {tu.keypad.target} <b>{t.supplierLot}</b>
+                </span>
+              </div>
+              <PuTextKeyboard
+                value={draft.supplierLotNo}
+                disabled={isSaving}
+                onChange={(next) => {
+                  update({ supplierLotNo: next });
+                }}
+              />
+            </div>
+          ) : (
+            <PuKeypad
+              targetLabel={targetLabel[activeTarget]}
+              decimal={decimalTarget}
+              disabled={isSaving}
+              onKey={onKey}
+              onClearAll={() => {
+                setTargetValue('');
+              }}
+            />
+          )}
         </div>
       </div>
     </PuDialog>

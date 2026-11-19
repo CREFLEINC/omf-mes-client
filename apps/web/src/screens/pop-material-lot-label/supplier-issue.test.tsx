@@ -173,8 +173,7 @@ describe('US1-3 기본 정보가 없으면', () => {
     const dialog = await openBatch(user);
 
     expect(within(dialog).getByText(tb.source.none)).toBeInTheDocument();
-    /* 「포장 없음」이면 포장 칸은 보이되 입력할 수 없다(사용자 지시 2026-11-19). */
-    expect(within(dialog).getByRole('textbox', { name: tb.packageCount })).toBeDisabled();
+    expect(within(dialog).queryByRole('textbox', { name: tb.packageCount })).toBeNull();
   });
 
   it('품목 환산이 있으면 패키징당 수량도 채운다(재고 수량은 빈칸)', async () => {

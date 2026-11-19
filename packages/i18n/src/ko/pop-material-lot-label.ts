@@ -41,7 +41,7 @@ export const popMaterialLotLabel = {
   work: {
     meta: (supplier: string, supplierCode: string, uomCode: string, defaults: string) =>
       `${supplier} ${supplierCode} · 기본 단위 ${uomCode} · ${defaults}`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
-    create: '자재 관리 LOT 만들기',
+    create: '자재 관리 LOT 생성',
     /** 상시 할 일 한 줄 — 입하 대기 LOT 을 고르면 출고·투입 제한을 말한다(#295 시안). */
     guide: '입하 전에 자재 관리 LOT을 만들고 라벨을 발행하세요.',
     guidePicked: '입하 대기 LOT은 재고가 없어 입하 스캔 전에는 출고·투입 스캔에서 거부됩니다.',
@@ -58,7 +58,7 @@ export const popMaterialLotLabel = {
     ],
     waitingTitle: '입하 대기 자재 관리 LOT',
     waitingEmpty: '입하 대기 중인 자재 관리 LOT가 없습니다.',
-    waitingEmptyHint: '「자재 관리 LOT 만들기」로 만드세요.',
+    waitingEmptyHint: '「자재 관리 LOT 생성」으로 생성하세요.',
     /** 제목 줄 칩 — 최근 입하된 LOT 은 표 맨 뒤에 흐리게, 라벨은 재발행 탭에서. */
     receivedChip: (count: number) => `입하 ${count} · 재발행 탭`,
     pickPair: '왼쪽에서 공급사·품목을 고르세요.', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
@@ -214,7 +214,7 @@ export const popMaterialLotLabel = {
   },
   /** 자재 관리 LOT 만들기 창(screens/P-01-01.md 「창」 · FR-002·003). */
   batch: {
-    title: '자재 관리 LOT 만들기',
+    title: '자재 관리 LOT 생성',
     close: '닫기',
     supplier: '공급사',
     item: '품목',
@@ -259,8 +259,8 @@ export const popMaterialLotLabel = {
       `자재 관리 LOT ${count}개 · 각 ${each} · 합계 ${total}`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
     summarySupplierLot: (no: string) => ` · 공급사 LOT ${no}`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
     cancel: '취소',
-    submit: (count: number) => `${count}개 만들기`,
-    submitIdle: '만들기',
+    submit: (count: number) => `${count}개 생성`,
+    submitIdle: '생성',
     created: (count: number) =>
       `자재 관리 LOT ${count}개를 입하 대기 상태로 만들었습니다 — 고른 채로 두었으니 라벨을 발행하세요`,
     failed: '자재 관리 LOT를 만들지 못했습니다.',
