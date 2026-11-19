@@ -5,6 +5,8 @@ import {
   EmptyState,
   Icon,
   IconButton,
+  Radio,
+  RadioGroup,
   SearchInput,
   SkeletonText,
 } from '@crefle/web-ui';
@@ -20,6 +22,7 @@ import {
 } from '../../patterns/location-tree-cell';
 import { OneLine } from '../../patterns/po-board';
 import { AliasInlineEdit } from './alias-inline-edit';
+import type { LocationViewMode } from './leaf-rows';
 import type { Location } from './types';
 
 export interface LocationPaneProps {
@@ -60,6 +63,11 @@ export interface LocationPaneProps {
   /** [일괄 생성](#267 FR-001) — 위치 쓰기 권한(W-06-07)이 있을 때만 단추를 둔다. 누를 수 있는지는 구역 추가와 같다. */
   canBulkCreate?: boolean;
   onBulkCreate?: () => void;
+  /** 보기 — 전체 계층(기본) · 적치 위치만(랙 아래 말단). */
+  viewMode?: LocationViewMode;
+  onViewModeChange?: (mode: LocationViewMode) => void;
+  /** 적치 위치만 보기에서 상위 경로(랙부터). */
+  parentPathOf?: (location: Location) => string;
 }
 
 const t = messages.warehouseLocation;
@@ -74,12 +82,16 @@ const LocationPrefixRow = ({ prefix }: { prefix: string }) => (
     <dd>
       <span className="location-items-code">{prefix}</span>
       <Icon name="lock" size={16} aria-hidden="true" />
-      <span className="field-note">
-        {t.locationPrefix.locked} {t.locationPrefix.lockedNote}
-      </span>
     </dd>
   </dl>
 );
+
+/** 코드 칸에 코드 대신 보일 별칭 — 비었거나 코드와 같으면 코드를 그대로 보인다. */
+const aliasOf = (location: Location): string => {
+  const alias = location.aliasName?.trim() ?? '';
+
+  return alias === location.locationCode ? '' : alias;
+};
 
 export const LocationPane = ({
   locationPrefix = null,
@@ -107,8 +119,14 @@ export const LocationPane = ({
   canEditAlias = false,
   canBulkCreate = false,
   onBulkCreate,
+  viewMode = 'tree',
+  onViewModeChange,
+  parentPathOf,
 }: LocationPaneProps) => {
   const addRootNoteId = useId();
+  const viewLabelId = useId();
+  const viewName = useId();
+  const isLeafView = viewMode === 'leaf';
   /** 별칭을 고치는 줄 — 한 번에 하나. */
   const [aliasEditingId, setAliasEditingId] = useState<number | null>(null);
 
@@ -140,7 +158,11 @@ export const LocationPane = ({
           onToggle={onToggleExpand}
         >
           <button type="button" className="link-cell" onClick={() => onEdit(row.location)}>
-            {row.location.locationCode}
+            {/*
+             * 별칭이 있으면 코드 대신 별칭을 보인다(사용자 지시 2026-11-19 — 현장은 코드보다 별칭을 알아본다).
+             * 코드는 수정 창 머리에 있다.
+             */}
+            {aliasOf(row.location) === '' ? row.location.locationCode : aliasOf(row.location)}
           </button>
           {/*
            * 「지정 품목만 받기」를 켠 위치만 — 코드 뒤 작은 자물쇠(사용자 지시 2026-10-29 · 피처 009 시안 결정). 지정 품목이
@@ -159,6 +181,17 @@ export const LocationPane = ({
         </LocationTreeCell>
       ),
     },
+    /* 적치 위치만 보기 — 「1층」 같은 별칭은 랙마다 되풀이되므로 어느 랙의 것인지 함께 보인다. */
+    ...(isLeafView && parentPathOf !== undefined
+      ? [
+          {
+            key: 'parentPath',
+            header: t.view.parentPath,
+            width: '200px',
+            render: (row: LocationTreeRow) => <OneLine text={parentPathOf(row.location)} />,
+          },
+        ]
+      : []),
     {
       /* 별칭이 이름이다(사용자 지시 2026-10-29) — 없으면 저장된 위치명. 열 폭 저장 키는 그대로 둔다. */
       key: 'locationName',
@@ -205,23 +238,25 @@ export const LocationPane = ({
     },
   ];
 
-  const emptySlot =
-    filterText === '' ? (
-      <EmptyState
-        size="sm"
-        live
-        title={t.empty.locationNoneTitle}
-        /* 등록할 수 없는 창고에서 「추가해 주세요」라고 하지 않는다 — 단추 옆 사유와 같은 문장을 쓴다. */
-        description={canAddRoot ? t.empty.locationNoneDescription : addRootDisabledReason}
-      />
-    ) : (
-      <EmptyState
-        size="sm"
-        live
-        title={t.empty.locationNoMatchTitle}
-        description={t.empty.locationNoMatchDescription}
-      />
-    );
+  const emptySlot = isLeafView ? (
+    /* 랙 아래 층 · 셀이 아직 없다 — 전체 계층에서 랙에 층 · 셀을 만든다. */
+    <EmptyState size="sm" live title={t.view.emptyLeaf} />
+  ) : filterText === '' ? (
+    <EmptyState
+      size="sm"
+      live
+      title={t.empty.locationNoneTitle}
+      /* 등록할 수 없는 창고에서 「추가해 주세요」라고 하지 않는다 — 단추 옆 사유와 같은 문장을 쓴다. */
+      description={canAddRoot ? t.empty.locationNoneDescription : addRootDisabledReason}
+    />
+  ) : (
+    <EmptyState
+      size="sm"
+      live
+      title={t.empty.locationNoMatchTitle}
+      description={t.empty.locationNoMatchDescription}
+    />
+  );
 
   /** 조회 실패 → 로딩 → 표 순서로 하나만 낸다. */
   const listSlot = (): ReactNode => {
@@ -275,6 +310,23 @@ export const LocationPane = ({
           onClear={() => onFilterTextChange('')}
           clearLabel={messages.common.clear}
         />
+        {onViewModeChange !== undefined && (
+          <div className="warehouse-location-view" role="group" aria-labelledby={viewLabelId}>
+            <span className="field-label" id={viewLabelId}>
+              {t.view.label}
+            </span>
+            <RadioGroup
+              name={viewName}
+              orientation="horizontal"
+              value={viewMode}
+              aria-labelledby={viewLabelId}
+              onChange={(value) => onViewModeChange(value === 'leaf' ? 'leaf' : 'tree')}
+            >
+              <Radio value="tree">{t.view.tree}</Radio>
+              <Radio value="leaf">{t.view.leaf}</Radio>
+            </RadioGroup>
+          </div>
+        )}
         <div className="warehouse-location-location-create">
           <div className="filter-actions">
             <Button

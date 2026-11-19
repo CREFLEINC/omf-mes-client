@@ -808,9 +808,8 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
 
     expect(row).not.toBeNull();
     expect(within(row!).getByText('K7PM')).toBeInTheDocument();
-    expect(
-      within(row!).getByText('바꿀 수 없습니다. 이 창고의 모든 위치 코드 앞에 붙습니다.'),
-    ).toBeInTheDocument();
+    /* 설명 문장은 걷었다(사용자 지시 2026-11-19) — 자물쇠만 남는다. */
+    expect(within(row!).queryByText(/바꿀 수 없습니다/u)).not.toBeInTheDocument();
     expect(within(panel).queryByRole('textbox', { name: '창고 위치 코드' })).toBeNull();
   });
 
@@ -1755,7 +1754,9 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     expect(within(dialog).getByLabelText('열 (층마다 셀 수)')).toHaveValue('0');
     await user.clear(within(dialog).getByLabelText('행 (층 수)'));
     await user.type(within(dialog).getByLabelText('행 (층 수)'), '0');
-    expect(within(dialog).getByText('1부터 99까지 숫자로 입력하세요.')).toBeInTheDocument();
+    /* 층 0 도 받는다 — 층 없는 랙이 맨 아래 위치가 된다(서버 #1105). 그때 셀 칸은 0 으로 잠긴다. */
+    expect(within(dialog).queryByText(/숫자로 입력하세요/u)).not.toBeInTheDocument();
+    expect(within(dialog).getByLabelText('열 (층마다 셀 수)')).toBeDisabled();
     await user.clear(within(dialog).getByLabelText('행 (층 수)'));
     await user.type(within(dialog).getByLabelText('행 (층 수)'), '2');
     await waitFor(() => expect(within(dialog).getByRole('button', { name: '저장' })).toBeEnabled());
@@ -1816,6 +1817,47 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     const deletes = requests.filter((request) => request.method === 'DELETE');
     expect(deletes).toHaveLength(2);
     expect(deletes[1]?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+  });
+
+  /* 행 0 · 열 0 — 층 없는 랙 하나만 만든다(서버 #1105). 층이 0 이면 셀 칸은 0 으로 잠긴다. */
+  it('행 0 이면 열이 0 으로 잠기고 랙만 만든다(:rack 0 · 0)', async () => {
+    const created = {
+      ...locationFixtures[1]!,
+      locationId: 2009,
+      locationCode: 'A-01-R001',
+      locationName: 'A-01-R001',
+      aliasName: null,
+    };
+    const { requests, user } = renderScreen(
+      locationWriteRoutes(
+        {
+          match: (request) =>
+            request.method === 'POST' && new URL(request.url).pathname === '/mdm/locations:rack',
+          respond: () => jsonResponse(created, { status: 201 }),
+        },
+        locationDetailRoute(created, DEFAULT_EDITABILITY, '"7"'),
+      ),
+      '?wh=1001',
+    );
+
+    const panel = await openLocationTab(user);
+    await user.click(within(panel).getAllByRole('checkbox')[1]!);
+    await user.click(within(panel).getByRole('button', { name: '랙 추가' }));
+
+    const dialog = screen.getByRole('dialog');
+    await user.clear(within(dialog).getByLabelText('행 (층 수)'));
+    await user.type(within(dialog).getByLabelText('행 (층 수)'), '0');
+    expect(within(dialog).getByLabelText('열 (층마다 셀 수)')).toBeDisabled();
+    expect(within(dialog).getByLabelText('열 (층마다 셀 수)')).toHaveValue('0');
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('등록했습니다')).toBeInTheDocument();
+    const rackPost = requests.find((request) => request.url.pathname === '/mdm/locations:rack');
+    expect(JSON.parse(rackPost?.body ?? '{}')).toEqual({
+      parentLocationId: 2001,
+      levelCount: 0,
+      cellCountPerLevel: 0,
+    });
   });
 
   it('랙 추가는 랙 · 층 · 셀을 한 번에 만들고(:rack) 별칭은 만든 뒤 붙인다', async () => {
@@ -2317,7 +2359,8 @@ describe('WarehouseLocationScreen — 서버가 만든 위치', () => {
 
     const panel = await openLocationTab(user);
 
-    expect(within(panel).getByText('입고 대기')).toBeInTheDocument();
+    /* 코드 칸(별칭이 있으면 코드 대신)과 별칭 칸 두 곳에 보인다. */
+    expect(within(panel).getAllByText('입고 대기')).toHaveLength(2);
     expect(within(panel).getByRole('columnheader', { name: /별칭/ })).toBeInTheDocument();
   });
 
@@ -2332,7 +2375,9 @@ describe('WarehouseLocationScreen — 서버가 만든 위치', () => {
     );
 
     const panel = await openLocationTab(user);
-    await user.click(within(panel).getByRole('button', { name: 'SYS-STAGING' }));
+    /* 별칭이 있으면 코드 칸에 코드 대신 별칭이 보인다(사용자 지시 2026-11-19). */
+    expect(within(panel).queryByRole('button', { name: 'SYS-STAGING' })).not.toBeInTheDocument();
+    await user.click(within(panel).getByRole('button', { name: '입고 대기' }));
 
     const dialog = screen.getByRole('dialog');
     await waitFor(() =>

@@ -11563,6 +11563,14 @@ dl.filter-bar.approval-inbox-detail-facts {
     overflow: visible;
   }
 
+  /*
+   * 구획이 통째로 스크롤하면 표 머리줄이 구획 안쪽 여백(.pane 의 --space-4)만큼 내려와 붙어, 그 틈으로 스크롤한 줄이
+   * 비쳐 보였다(창고 · Location 목록 — 사용자 보고 2026-11-19). 머리줄을 구획 윗변에 붙인다.
+   */
+  .po-board-pane.po-board-scroll .po-board-table thead th {
+    top: calc(-1 * var(--space-4));
+  }
+
   .po-board-split {
     /*
      * 발주 목록 : 상세 — 기본 1 : 2, 가운데 막대를 끌어 바꾼다(사용자 지시 2026-10-21).
@@ -12993,6 +13001,13 @@ a.erp-send-chips:focus-visible {
 .warehouse-location-form-actions .form-actions-secondary {
   flex-direction: row;
   flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Location 탭의 보기(전체 계층 · 적치 위치만) — 이름과 단추를 한 줄에. */
+.warehouse-location-view {
+  display: flex;
   align-items: center;
   gap: var(--space-2);
 }
