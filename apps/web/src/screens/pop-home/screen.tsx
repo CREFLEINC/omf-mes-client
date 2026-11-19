@@ -7,6 +7,7 @@ import { POP_ENTRY_SCREEN_PATH, type PopScreen } from '../../patterns/pop-screen
 import { countOf, GROUP_ICONS, navIcon, usePopNavigation } from '../../patterns/pop-screen-nav';
 import {
   PuButton,
+  PuChip,
   PuCount,
   PuEmpty,
   PuIcon,
@@ -21,7 +22,7 @@ import {
   useFitCount,
 } from '../../patterns/pop-uniform';
 import { useWorkerSession } from '../../patterns/worker-session';
-import { useHomeWorkStatus } from './queries';
+import { HOME_STATUS_CODES, useHomeWorkOrders, useHomeWorkStatus } from './queries';
 import {
   DEFAULT_SHORTCUT_PATHS,
   MAX_SHORTCUTS,
@@ -140,10 +141,9 @@ const StatusCard = ({
    * 처음에는 지정 설비 — 이 단말에서 할 일이 먼저다. 설비가 없는 단말은 전체 설비뿐이다.
    */
   const [allEquipment, setAllEquipment] = useState(false);
-  const status = useHomeWorkStatus(
-    equipment === null || allEquipment ? null : equipment.equipmentId,
-    equipment !== null || terminalId !== null,
-  );
+  const scopeEquipmentId = equipment === null || allEquipment ? null : equipment.equipmentId;
+  const isAsked = equipment !== null || terminalId !== null;
+  const status = useHomeWorkStatus(scopeEquipmentId, isAsked);
   const data = status.data;
   const stats = [
     /* 공통 상태 색(#295 규칙 10): 진행 중 파랑 · 대기 회색 · 완료 초록. */
@@ -151,6 +151,35 @@ const StatusCard = ({
     { key: 'wait', label: t.waiting, value: data?.waiting, icon: CLOCK_ICON, tone: 'idle' },
     { key: 'done', label: t.done, value: data?.done, icon: CHECK_ICON, tone: 'ok' },
   ] as const;
+  /*
+   * 칸을 누르면 그 상태의 작업지시를 아래에 보인다(사용자 지시 2026-11-19) — 처음에는 진행 중.
+   * 줄은 카드 높이에 들어가는 만큼, 넘칠 때만 쪽 넘김(남은 작업과 같은 방식 · 구획 안 스크롤 없음).
+   */
+  const [view, setView] = useState<(typeof stats)[number]['key']>('run');
+  const [page, setPage] = useState(1);
+  const listRef = useRef<HTMLDivElement>(null);
+  const fit = useFitCount(listRef, { fallback: 3 });
+  const viewTotal =
+    data === undefined
+      ? undefined
+      : { run: data.inProgress, wait: data.waiting, done: data.done }[view];
+  /* 넘치면 한 자리를 쪽 넘김에 내준다. 한 줄 자리뿐이면(작은 화면의 [편집] 중) 쪽 넘김 없이 한 줄만. */
+  const hasPager = fit >= 2 && (viewTotal === undefined || viewTotal > fit);
+  const size = hasPager ? fit - 1 : fit;
+  /* 칸의 수를 안 뒤에 묻는다 — 쪽 넘김 자리(줄 수)가 정해져야 한 번에 맞는 쪽을 받는다. */
+  const list = useHomeWorkOrders(
+    scopeEquipmentId,
+    HOME_STATUS_CODES[view],
+    page,
+    size,
+    isAsked && viewTotal !== undefined,
+  );
+  const listTotal = list.data?.page.total ?? 0;
+  const pages = Math.max(1, Math.ceil(listTotal / size));
+  /* 줄 수가 바뀌어 쪽이 줄면 마지막 쪽으로 당긴다. */
+  useEffect(() => {
+    if (page > pages) setPage(pages);
+  }, [page, pages]);
   const next = data?.next ?? null;
 
   return (
@@ -165,6 +194,7 @@ const StatusCard = ({
             value={allEquipment ? 'all' : 'mine'}
             onChange={(value) => {
               setAllEquipment(value === 'all');
+              setPage(1);
             }}
             options={[
               {
@@ -188,13 +218,22 @@ const StatusCard = ({
       ) : (
         <div className="home-stats">
           {stats.map((stat) => (
-            <div key={stat.key} className={puCx('home-stat', stat.tone)}>
+            <button
+              key={stat.key}
+              type="button"
+              className={puCx('home-stat', stat.tone, view === stat.key && 'is-on')}
+              aria-pressed={view === stat.key}
+              onClick={() => {
+                setView(stat.key);
+                setPage(1);
+              }}
+            >
               <span className="ico">{stat.icon}</span>
               <span>
                 <small>{stat.label}</small>
                 <strong>{stat.value === undefined ? '–' : t.statusCount(stat.value)}</strong>
               </span>
-            </div>
+            </button>
           ))}
           <button
             type="button"
@@ -224,23 +263,71 @@ const StatusCard = ({
           </button>
         </div>
       )}
+      {!status.isError &&
+        (list.isError ? (
+          <PuNote tone="bad">{t.statusFailed}</PuNote>
+        ) : list.data !== undefined && list.data.items.length === 0 ? (
+          <PuEmpty icon="list" title={t.listEmpty} />
+        ) : (
+          <div ref={listRef} className="home-rows pu-fit">
+            {(list.data?.items ?? []).map((order) => (
+              <button
+                key={order.workOrderId}
+                type="button"
+                className="home-row-link home-wo"
+                disabled={onNext === null}
+                onClick={() => {
+                  onNext?.(order.workOrderId, equipment === null || allEquipment);
+                }}
+              >
+                <b className="pu-mono">{order.workOrderNo}</b>
+                <span className="item">{order.itemCode ?? `#${String(order.itemId)}`}</span>
+                <strong>
+                  {order.progress === undefined
+                    ? t.listPlan(order.orderQty.toLocaleString())
+                    : t.listQty(
+                        order.progress.goodQty.toLocaleString(),
+                        order.orderQty.toLocaleString(),
+                      )}
+                </strong>
+                {onNext !== null && <PuIcon name="chevr" />}
+              </button>
+            ))}
+            {hasPager && pages > 1 && (
+              <PuPager
+                total={listTotal}
+                page={Math.min(page, pages)}
+                pages={pages}
+                label={t.listPageNav}
+                onPage={setPage}
+              />
+            )}
+          </div>
+        ))}
     </PuSection>
   );
 };
 
-/** 남은 작업 구획 — 줄이 구획 높이를 넘으면 쪽으로 나눈다(#295 규칙 15 · 구획 안 스크롤 없음). */
+/**
+ * 남은 작업 구획 — 구획은 화면 높이만큼 늘고, 들어가는 만큼 줄을 보인다. 다 들어가면 쪽 넘김을 두지 않고,
+ * 넘칠 때만 아래에 ‹ › 를 둔다(#295 규칙 15 · 구획 안 스크롤 없음 · 사용자 지시 2026-11-19).
+ *
+ * ⭐ 줄과 쪽 넘김을 한 칸(`home-rows`)에 둬서 «칸 전체에 들어가는 줄 수»를 잰다 — 쪽 넘김이 서고 빠져도 잰
+ *    값이 흔들리지 않는다. 넘치면 한 자리를 쪽 넘김에 내준다(쪽 넘김 높이는 줄보다 낮다).
+ */
 const RemainingCard = ({ titleId }: { titleId: string }) => {
   const { pending, total, go } = usePopNavigation();
   const listRef = useRef<HTMLDivElement>(null);
-  const size = useFitCount(listRef, { fallback: 3 });
-  const shown = useClientPage(pending, size);
+  const fit = useFitCount(listRef, { fallback: 3 });
+  /* 한 줄 자리뿐이면 쪽 넘김 없이 한 줄만(작업 현황 목록과 같다). */
+  const hasPager = fit >= 2 && pending.length > fit;
+  const shown = useClientPage(pending, hasPager ? fit - 1 : fit);
 
   return (
     <PuSection
       labelId={titleId}
       title={t.remainingTitle}
       className="home-remaining"
-      split={shown.pages > 1}
       head={total > 0 ? <span className="home-rem-badge">{total}</span> : undefined}
     >
       {pending.length === 0 ? (
@@ -262,16 +349,16 @@ const RemainingCard = ({ titleId }: { titleId: string }) => {
               <PuIcon name="chevr" />
             </button>
           ))}
+          {hasPager && shown.pages > 1 && (
+            <PuPager
+              total={shown.total}
+              page={shown.page}
+              pages={shown.pages}
+              label={t.remainingPageNav}
+              onPage={shown.setPage}
+            />
+          )}
         </div>
-      )}
-      {shown.pages > 1 && (
-        <PuPager
-          total={shown.total}
-          page={shown.page}
-          pages={shown.pages}
-          label={t.remainingPageNav}
-          onPage={shown.setPage}
-        />
       )}
     </PuSection>
   );
@@ -319,14 +406,12 @@ export const PopHomeScreen = (): ReactNode => {
         {t.title}
       </h1>
       <div className="home-greet">
-        <div>
-          <h2>{name === '' ? t.greetingAnonymous : t.greeting(name)}</h2>
-          <p>{t.greetingSub}</p>
-        </div>
+        <h2>{name === '' ? t.greetingAnonymous : t.greeting(name)}</h2>
         <span className="when">
           <PuIcon name="clock" />
           {clock}
         </span>
+        <p>{t.greetingSub}</p>
       </div>
 
       <div className="home-top">
@@ -350,7 +435,12 @@ export const PopHomeScreen = (): ReactNode => {
         grow={false}
         className="home-shortcuts"
         head={
-          isEditing ? <span className="home-hint">{t.editHint(MAX_SHORTCUTS)}</span> : undefined
+          isEditing ? (
+            <>
+              <PuChip tone="info">{t.editCount(shortcuts.length, MAX_SHORTCUTS)}</PuChip>
+              <span className="home-hint">{t.editHint(MAX_SHORTCUTS)}</span>
+            </>
+          ) : undefined
         }
         meta={
           isEditing ? (

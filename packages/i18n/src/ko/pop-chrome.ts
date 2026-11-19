@@ -78,10 +78,17 @@ export const popChrome = {
     editDone: '완료',
     editReset: '기본으로',
     editHint: (max: number): string => `홈에 둘 화면을 최대 ${String(max)}개까지 선택하세요.`,
+    /** [편집] 중 제목 옆 — 지금 고른 수 / 최대(사용자 지시 2026-11-19). */
+    editCount: (count: number, max: number): string => `선택 ${String(count)} / ${String(max)}`,
     /** [완료]를 누른 뒤 알림(#295 시안). 고른 것은 누를 때마다 단말에 이미 남는다. */
     editSaved: '바로가기를 저장했습니다.',
     /** 남은 작업 쪽 넘김 이름. */
     remainingPageNav: '남은 작업 쪽 넘김',
+    /** 「오늘 작업 현황」에서 고른 칸(진행 중 · 대기 · 완료)의 작업지시 줄(사용자 지시 2026-11-19). */
+    listQty: (good: string, plan: string): string => `실적 ${good} / 계획 ${plan}`,
+    listPlan: (plan: string): string => `계획 ${plan}`,
+    listEmpty: '해당하는 작업지시가 없습니다.',
+    listPageNav: '작업지시 쪽 넘김',
     editPicked: (name: string): string => `${name}, 바로가기에 있음`,
   },
   /** 머리줄의 사번 놓기 단추. */

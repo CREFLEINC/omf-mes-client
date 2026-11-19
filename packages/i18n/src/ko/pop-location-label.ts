@@ -26,6 +26,8 @@ export const popLocationLabel = {
     columnSelect: '선택',
     columnCode: '위치 코드',
     columnName: '위치명',
+    /** 위치 별칭(`Location.aliasName`, 관리웹 창고 위치의 「별칭」) — 없으면 비워 둔다(사용자 지시 2026-11-19). */
+    columnAlias: '별칭',
     /** 사용 여부 열(사용자 지시 2026-09-18 · omf-all-around#11 — 「발행」에서 바꿈). */
     columnState: '상태',
     /** 모든 줄에 사용 여부를 적는다(사용자 문구 그대로 · omf-all-around#11 — 「사용」 / 「미사용」). */

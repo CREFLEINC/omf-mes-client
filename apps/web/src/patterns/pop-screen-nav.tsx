@@ -256,8 +256,8 @@ const TopBar = ({
           ? headerText.terminalUnknown
           : headerText.terminalLabel(terminalCode)}
       </span>
-      {/* 설비는 단말 옆에 늘 보인다 — 홈은 빼고(POP 통일 시안 #295 · 화면 본문 설비 줄을 대신한다). */}
-      {equipment !== null && pathname !== POP_HOME_PATH && (
+      {/* 설비는 단말 옆에 늘 보인다 — 홈 포함(POP 통일 시안 #295 · 사용자 지시 2026-11-19). */}
+      {equipment !== null && (
         <span
           className="pop-nav-top__chip pop-nav-top__equipment"
           title={headerText.equipmentTitle(

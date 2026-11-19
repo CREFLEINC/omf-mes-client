@@ -41,6 +41,7 @@ const location = (locationId: number, locationCode: string, isActive = true) => 
   locationCode,
   locationName: `${locationCode} NAME`,
   isActive,
+  aliasName: locationCode === 'S230-01' ? '입구 선반' : null,
 });
 
 const LOCATIONS = [
@@ -452,12 +453,30 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
 
     const stateOf = (locationCode: string): string | undefined => {
       const row = screen.getByText(locationCode).closest('tr');
-      return row?.querySelectorAll('td')[3]?.textContent ?? undefined;
+      return row?.querySelectorAll('td')[4]?.textContent ?? undefined;
     };
 
     expect(stateOf('S230-01')).toBe('사용');
     expect(stateOf('S230-02')).toBe('사용');
     expect(stateOf('S230-03')).toBe('미사용');
+  });
+
+  /* 위치명 옆에 별칭 열(`aliasName`) — 없으면 「–」(사용자 지시 2026-11-19). */
+  it('별칭 열에 위치 별칭을 적는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await chooseWarehouse(user);
+
+    expect(
+      await screen.findByRole('columnheader', { name: t.location.columnAlias }),
+    ).toBeInTheDocument();
+    const aliasOf = (locationCode: string): string | undefined =>
+      screen.getByText(locationCode).closest('tr')?.querySelectorAll('td')[3]?.textContent ??
+      undefined;
+
+    expect(aliasOf('S230-01')).toBe('입구 선반');
+    expect(aliasOf('S230-02')).toBe('–');
   });
 
   /*

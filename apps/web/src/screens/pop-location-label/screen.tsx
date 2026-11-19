@@ -450,6 +450,7 @@ export const PopLocationLabelScreen = () => {
                   <th className="fit mid">{t.location.columnSelect}</th>
                   <th className="fit">{t.location.columnCode}</th>
                   <th>{t.location.columnName}</th>
+                  <th>{t.location.columnAlias}</th>
                   <th className="fit mid">{t.location.columnState}</th>
                 </tr>
               </thead>
@@ -485,6 +486,9 @@ export const PopLocationLabelScreen = () => {
                         {row.locationCode}
                       </td>
                       <td title={row.locationName}>{row.locationName}</td>
+                      <td className="ll-alias" title={row.aliasName ?? undefined}>
+                        {row.aliasName ?? '–'}
+                      </td>
                       <td className="fit mid">
                         {/* 모든 줄에 사용 여부를 적는다 — 사용은 초록, 미사용은 빨강(omf-all-around#11). */}
                         {row.isActive ? (

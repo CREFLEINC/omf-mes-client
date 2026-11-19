@@ -1,5 +1,5 @@
 import type { ApiClient, components, paths } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -31,10 +31,26 @@ const startOfToday = (): string => {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
 };
 
-const countOf = (
+/** 현황 칸 하나(진행 중 · 대기 · 완료)가 세는 W/O 상태. */
+export type HomeStatusCode = 'IN_PROGRESS' | 'RELEASED' | typeof FINISHED;
+
+export const HOME_STATUS_CODES = {
+  run: 'IN_PROGRESS',
+  wait: 'RELEASED',
+  done: FINISHED,
+} as const satisfies Record<string, HomeStatusCode>;
+
+/**
+ * 현황 칸의 수와 그 아래 목록이 같은 조건으로 묻는다 — 목록 «전체 건수»가 칸의 수와 같다.
+ * 수만 셀 때는 `size: 1`, 목록은 들어가는 만큼(`size`)과 실적(`withProgress`)을 함께 받는다.
+ */
+const listOf = (
   client: Client,
   equipmentId: number | null,
-  statusCode: 'IN_PROGRESS' | 'RELEASED' | typeof FINISHED,
+  statusCode: HomeStatusCode,
+  page = 1,
+  size = 1,
+  withProgress = false,
 ): Promise<WorkOrderListResponse> =>
   runRequest(() =>
     client.GET('/production/work-orders', {
@@ -55,9 +71,10 @@ const countOf = (
            * 골라 연다(#291). 순서가 다르면 다음 작업이 목록 첫 쪽에 없을 수 있다.
            */
           sort: 'priorityNo,asc',
-          page: 1,
-          /* 수는 `page.total` 이 말한다 — 줄은 「다음 작업」 하나만 필요하다. */
-          size: 1,
+          /* 수는 `page.total` 이 말한다 — 수만 셀 때 줄은 「다음 작업」 하나만 필요하다. */
+          page,
+          size,
+          ...(withProgress ? { withProgress: true } : {}),
         },
       },
     }),
@@ -86,9 +103,9 @@ export const useHomeWorkStatus = (
     refetchInterval: HOME_STATUS_INTERVAL_MS,
     queryFn: async () => {
       const [inProgress, waiting, done] = await Promise.all([
-        countOf(client, equipmentId, 'IN_PROGRESS'),
-        countOf(client, equipmentId, 'RELEASED'),
-        countOf(client, equipmentId, FINISHED),
+        listOf(client, equipmentId, 'IN_PROGRESS'),
+        listOf(client, equipmentId, 'RELEASED'),
+        listOf(client, equipmentId, FINISHED),
       ]);
       return {
         inProgress: inProgress.page.total,
@@ -97,5 +114,28 @@ export const useHomeWorkStatus = (
         next: waiting.items[0] ?? null,
       };
     },
+  });
+};
+
+/**
+ * 「오늘 작업 현황」에서 고른 칸(진행 중 · 대기 · 완료)의 작업지시 목록(사용자 지시 2026-11-19).
+ * 칸의 수와 같은 조회 조건에 쪽(`page`·`size` = 카드에 들어가는 줄 수)만 더한다.
+ */
+export const useHomeWorkOrders = (
+  equipmentId: number | null,
+  statusCode: HomeStatusCode,
+  page: number,
+  size: number,
+  enabled: boolean,
+): UseQueryResult<WorkOrderListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['pop-home', 'work-orders', equipmentId, statusCode, page, size],
+    enabled,
+    refetchInterval: HOME_STATUS_INTERVAL_MS,
+    /* 쪽·줄 수를 바꿔 다시 받는 동안 앞 목록을 둔다 — 줄이 깜빡 사라지지 않게. */
+    placeholderData: keepPreviousData,
+    queryFn: () => listOf(client, equipmentId, statusCode, page, size, true),
   });
 };

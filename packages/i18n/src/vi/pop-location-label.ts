@@ -25,6 +25,7 @@ export const popLocationLabel = {
     columnSelect: 'Chọn',
     columnCode: 'Mã vị trí',
     columnName: 'Tên vị trí',
+    columnAlias: 'Bí danh',
     columnState: 'Trạng thái',
     active: 'Sử dụng',
     inactive: 'Không sử dụng',

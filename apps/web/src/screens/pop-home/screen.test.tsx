@@ -161,7 +161,9 @@ describe('PopHomeScreen — 홈(#291)', () => {
      * 진행·대기는 작업지시 목록과 같은 조건(open)·설비 축으로, 완료는 오늘 0시 이후 갱신분(updatedSince)으로
      * 묻는다 — POP 단말은 그 두 길로만 목록을 읽는다(서버 단말 읽기 규칙 · #291).
      */
-    expect(queries.map((url) => url.searchParams.get('statusCode')).sort()).toEqual([
+    /* 수만 세는 조회(목록 줄은 `withProgress` 로 따로 받는다 — 아래 목록 시험). */
+    const counts = queries.filter((url) => url.searchParams.get('withProgress') === null);
+    expect(counts.map((url) => url.searchParams.get('statusCode')).sort()).toEqual([
       'COMPLETED,CLOSED',
       'IN_PROGRESS',
       'RELEASED',
@@ -184,6 +186,40 @@ describe('PopHomeScreen — 홈(#291)', () => {
     ).toBeInTheDocument();
   });
 
+  it('진행 중·대기·완료 칸을 누르면 그 작업지시를 아래에 보이고, 줄을 누르면 작업지시 목록으로 간다', async () => {
+    const user = userEvent.setup();
+    const queries: URL[] = [];
+    setup({}, EQUIPMENT, queries);
+
+    const card = within(await screen.findByRole('region', { name: t.statusTitle }));
+    const tile = (label: string) =>
+      card.getByRole('button', { name: new RegExp(`^${label}`, 'u'), pressed: undefined });
+    /* 처음에는 진행 중 — 이 시험의 진행 중 목록은 비어 있다. */
+    expect(tile(t.inProgress)).toHaveAttribute('aria-pressed', 'true');
+    expect(await card.findByText(t.listEmpty)).toBeInTheDocument();
+
+    await user.click(tile(t.waiting));
+    expect(tile(t.waiting)).toHaveAttribute('aria-pressed', 'true');
+    const row = await card.findByRole('button', { name: new RegExp(`${t.listPlan('200')}$`, 'u') });
+    const listed = queries.filter((url) => url.searchParams.get('withProgress') === 'true');
+    expect(listed.map((url) => url.searchParams.get('statusCode'))).toEqual([
+      'IN_PROGRESS',
+      'RELEASED',
+    ]);
+    for (const url of listed) {
+      expect(url.searchParams.get('open')).toBe('true');
+      expect(url.searchParams.get('plannedEquipmentId')).toBe('31');
+    }
+
+    await user.click(row);
+    expect(screen.getByText('지금: /pop/work-start')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `넘긴 것: ${JSON.stringify({ workOrderId: NEXT.workOrderId, allEquipment: false })}`,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('설비가 지정된 단말은 [전체 설비]로 바꿔 전체를 셀 수 있다', async () => {
     const user = userEvent.setup();
     const queries: URL[] = [];
@@ -194,11 +230,12 @@ describe('PopHomeScreen — 홈(#291)', () => {
       'aria-selected',
       'true',
     );
-    await waitFor(() => expect(queries).toHaveLength(3));
+    /* 수 셋 + 고른 칸(진행 중) 목록 하나. */
+    await waitFor(() => expect(queries).toHaveLength(4));
 
     await user.click(toggle.getByRole('tab', { name: t.statusEveryEquipment }));
-    await waitFor(() => expect(queries).toHaveLength(6));
-    for (const url of queries.slice(3)) {
+    await waitFor(() => expect(queries).toHaveLength(8));
+    for (const url of queries.slice(4)) {
       expect(url.searchParams.get('plannedEquipmentId')).toBeNull();
     }
   });
