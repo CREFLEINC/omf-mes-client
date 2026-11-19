@@ -2,6 +2,9 @@ import { Chip, Icon, IconButton, Table, type Column } from '@crefle/web-ui';
 import type { InspectionLotForward, InspectionResultSummaryForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useColumnWidths } from '../../patterns/column-resize';
 import { formatQty } from '../../patterns/package-qty';
 
 const t = messages.iqcInboundLot.results;
@@ -50,11 +53,12 @@ export const ResultList = ({
   const lotNoOf = (lotId: number): string =>
     lots.find((lot) => lot.lotId === lotId)?.lotNo ?? String(lotId);
 
-  const columns: Column<InspectionResultSummaryForward>[] = [
-    { key: 'seq', header: t.columns.seq, render: (row) => t.seq(row.seqNo) },
+  const baseColumns: Column<InspectionResultSummaryForward>[] = [
+    { key: 'seq', header: t.columns.seq, width: '80px', render: (row) => t.seq(row.seqNo) },
     {
       key: 'judgment',
       header: t.columns.judgment,
+      width: '160px',
       render: (row) => {
         const reason = row.reinspectionReasonName ?? row.reinspectionReasonCode ?? null;
 
@@ -72,12 +76,14 @@ export const ResultList = ({
     {
       key: 'inspectedQty',
       header: t.columns.inspectedQty,
+      width: '110px',
       align: 'end',
       render: (row) => `${formatQty(row.inspectedQty)} ${uomCode}`,
     },
     {
       key: 'defects',
       header: t.columns.defects,
+      width: '180px',
       render: (row) =>
         row.rejectedQty === 0 && row.defectNames.length === 0
           ? t.noDefects
@@ -86,6 +92,7 @@ export const ResultList = ({
     {
       key: 'matched',
       header: t.columns.matched,
+      width: '200px',
       render: (row) =>
         row.matchedLotIds.length === 0 ? (
           <span className="parts-iqc-muted">{t.noMatch}</span>
@@ -99,10 +106,16 @@ export const ResultList = ({
           </span>
         ),
     },
-    { key: 'inspector', header: t.columns.inspector, render: (row) => row.inspectorName ?? '—' },
+    {
+      key: 'inspector',
+      header: t.columns.inspector,
+      width: '110px',
+      render: (row) => row.inspectorName ?? '—',
+    },
     {
       key: 'actions',
       header: t.columns.actions,
+      width: '100px',
       render: (row) =>
         locked ? (
           <span className="parts-iqc-muted iqc-inbound-locked">
@@ -133,16 +146,20 @@ export const ResultList = ({
     },
   ];
 
-  return results.length === 0 ? (
-    <p className="field-note">{t.empty}</p>
-  ) : (
-    <div className="wide-table iqc-inbound-table">
+  const ordered = useColumnOrder('omf-mes:iqc-inbound-results:columns:order', baseColumns);
+  const resizable = useColumnWidths('omf-mes:iqc-inbound-results:columns', ordered);
+  const fit = useFitColumns(resizable.columns, {});
+
+  /* 결과가 없어도 첨부 파일 표처럼 머리줄을 두고 안내는 표 안에(사용자 지시 2026-11-19 · omf-all-around#296). */
+  return (
+    <div ref={fit.ref} className="inspection-queue-table iqc-inbound-table" style={resizable.style}>
       <Table
         density="compact"
-        columns={columns}
+        columns={fit.columns}
         rows={[...results].sort((a, b) => a.seqNo - b.seqNo)}
         getRowId={(row) => String(row.inspectionResultId)}
         aria-label={t.heading(results.length)}
+        empty={<p className="field-note">{t.empty}</p>}
       />
     </div>
   );
