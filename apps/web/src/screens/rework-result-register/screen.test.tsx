@@ -148,7 +148,7 @@ const stubFetch: StubFetch = async (request) => {
   throw new Error(`스텁에 없는 요청입니다: ${url.pathname}`);
 };
 
-const renderScreen = (workerNo: string | null = '100027') => {
+const renderScreen = (workerNo: string | null = '100027', route = '/pop/rework-results') => {
   const rendered = renderWithProviders(
     <PopIdentityProvider
       value={{
@@ -160,7 +160,7 @@ const renderScreen = (workerNo: string | null = '100027') => {
     >
       <ReworkResultRegisterScreen />
     </PopIdentityProvider>,
-    { fetch: stubFetch, route: '/pop/rework-results' },
+    { fetch: stubFetch, route },
   );
 
   return { ...rendered, user: userEvent.setup() };
@@ -254,6 +254,16 @@ describe('ReworkResultRegisterScreen — 본문 통일 시안(#295)', () => {
   afterEach(() => {
     plannedRows = [];
     releasedTotal = 1;
+  });
+
+  /* 작업지시 목록의 [재작업 실적 등록]이 W/O 를 실어 온다(#295) — 그 W/O 를 고른 채로 연다. */
+  it('주소의 workOrderId 로 그 재작업 W/O 를 고른 채로 연다', async () => {
+    renderScreen('100027', `/pop/rework-results?workOrderId=${String(WORK_ORDER.workOrderId)}`);
+
+    await screen.findByRole('list', { name: t.steps.label });
+    expect(
+      screen.getByRole('button', { name: new RegExp(WORK_ORDER.workOrderNo) }),
+    ).toHaveAttribute('aria-pressed', 'true');
   });
 
   /*
@@ -439,12 +449,13 @@ describe('ReworkResultRegisterScreen — 본문 통일 시안(#295)', () => {
     });
   });
 
-  /* ⭐ 비었음 · 부분 · 넘침 안내는 단계 줄 아래 한 줄. 넘치면 저장이 잠긴다. */
+  /* ⭐ 부분 · 넘침 안내는 단계 줄 아래 한 줄. 비었을 때는 안내 없이 저장만 꺼진다(사용자 지시 2026-11-19). */
   it('합계에 따라 안내 줄이 바뀌고 넘치면 저장이 잠긴다', async () => {
     const { user } = renderScreen();
     await pickWorkOrder(user);
 
-    expect(await screen.findByText(t.emptyQuantity)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: t.save })).toBeDisabled();
+    expect(screen.queryByText('실적을 입력해 주세요.')).toBeNull();
 
     await user.click(key('5'));
     expect(await screen.findByText(t.partial(155, 'EA'))).toBeInTheDocument();

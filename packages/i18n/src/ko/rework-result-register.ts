@@ -84,7 +84,6 @@ export const reworkResultRegister = {
     unit: (uom: string): string => `단위 ${uom}`,
   },
   total: '합계',
-  emptyQuantity: '실적을 입력해 주세요.',
   exceeded: (target: number, uom: string) =>
     uom === ''
       ? `처분 수량 ${target}을 넘을 수 없습니다.`

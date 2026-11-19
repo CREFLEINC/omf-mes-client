@@ -20,6 +20,8 @@ export interface ActionBarProps {
   describedBy: string;
   /** 왼쪽 보조 동작. 단말 권한 [다시 확인] 등. */
   leading?: ReactNode;
+  /** 주 버튼 왼쪽에 서는 버튼 — 긴급 작업지시의 [자재 투입]·[실적 입력](#295). */
+  secondary?: ReactNode;
 }
 
 /**
@@ -33,8 +35,10 @@ export const ActionBar = ({
   onSubmit,
   describedBy,
   leading,
+  secondary,
 }: ActionBarProps) => (
   <PuActionBar lead={leading}>
+    {secondary}
     <PuButton
       variant="primary"
       disabled={isBlocked || isSaving}

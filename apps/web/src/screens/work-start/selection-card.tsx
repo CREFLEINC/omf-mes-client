@@ -1,9 +1,17 @@
 import { messages } from '@omf-mes/i18n';
 
-import { dateTimeText, isOtherEquipment, itemText, plannedEquipmentText, qtyText } from './row-view';
+import {
+  dateTimeText,
+  hasNoAssignment,
+  isOtherEquipment,
+  itemText,
+  plannedEquipmentText,
+  qtyText,
+} from './row-view';
 import type { WorkOrder } from './types';
 import { WorkOrderProgress } from './work-order-info';
 import { WorkOrderChips } from './work-order-list';
+import { isEmergency } from './work-order-type';
 
 import { PuChip, PuEmpty, PuKv, PuNote } from '../../patterns/pop-uniform';
 
@@ -58,6 +66,9 @@ export const SelectionCard = ({
   const start = dateTimeText(workOrder.plannedStartAt);
   const hasProgress = workOrder.progress?.goodQty !== undefined;
   const shownEquipment = isEquipmentUnassigned ? null : equipmentText;
+  /* 긴급은 발행 시각을 함께 보인다 — 옛 「긴급 작업지시」 상세에 있던 줄이다(#295). 서버가 `null` 로도 답한다(#1147). */
+  const emergency = isEmergency(workOrder);
+  const released = emergency ? dateTimeText(workOrder.releasedAt ?? undefined) : null;
   const items = [
     { label: t.item, value: itemText(workOrder) },
     { label: t.process, value: (workOrder.processName ?? '').trim() },
@@ -79,13 +90,18 @@ export const SelectionCard = ({
           },
         ]),
     ...(start === null ? [] : [{ label: t.plannedStart, value: start }]),
+    ...(released === null ? [] : [{ label: t.releasedAt, value: released }]),
     hasProgress
       ? { label: list.goodLabel, value: <WorkOrderProgress workOrder={workOrder} uom={uom} /> }
       : { label: list.orderLabel, value: qtyText(workOrder.orderQty, uom) },
   ];
 
   return (
-    <div className="ws-group" role="group" aria-label={t.title}>
+    <div
+      className={emergency ? 'ws-group ws-sel-emergency' : 'ws-group'}
+      role="group"
+      aria-label={t.title}
+    >
       <h3 className="ws-group-title">{t.title}</h3>
       <div className="ws-sel-top">
         <span className="no">{workOrder.workOrderNo}</span>
@@ -96,6 +112,19 @@ export const SelectionCard = ({
 
       {isOtherEquipment(workOrder, equipmentId) && planned !== null && (
         <PuNote>{t.otherEquipment(planned)}</PuNote>
+      )}
+      {/*
+       * 긴급은 점검 통제를 우회한다는 사실을 늘 알린다(옛 「긴급 작업지시」 상세에서 옮김, #295). 설비·금형·교대가
+       * 모두 비었을 때만 「배정 없음」을 앞에 붙인다.
+       */}
+      {emergency && (
+        <PuNote tone="warn">
+          {/* 한 줄(넘치면 말줄임) — 구획 안 스크롤 없이 1024×768 에도 들어가게(#295). */}
+          <span className="ws-bypass" title={t.bypassBody}>
+            <b>{hasNoAssignment(workOrder) ? t.bypassTitle : t.bypassTitleAssigned}</b>{' '}
+            {t.bypassBody}
+          </span>
+        </PuNote>
       )}
       {closeNotice !== null && (
         <PuNote tone="warn" id={closeNoticeId}>

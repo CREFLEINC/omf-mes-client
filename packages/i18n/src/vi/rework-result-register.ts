@@ -58,7 +58,6 @@ export const reworkResultRegister: Translated<typeof ko.reworkResultRegister> = 
     unit: (uom: string): string => `Đơn vị ${uom}`,
   },
   total: 'Tổng',
-  emptyQuantity: 'Hãy nhập kết quả.',
   exceeded: (target: number, uom: string) =>
     uom === ''
       ? `Không được vượt số lượng xử lý ${target}.`

@@ -62,6 +62,7 @@ export const workStart: Translated<typeof ko.workStart> = {
       suspended: 'Tạm dừng',
     },
     emergencyBadge: 'Khẩn',
+    reworkBadge: 'Làm lại',
     unassignedEquipmentBadge: 'Chưa gán thiết bị',
 
     goodLabel: 'Thực tế',
@@ -70,8 +71,7 @@ export const workStart: Translated<typeof ko.workStart> = {
       `${good} / ${order}${uom === null ? '' : ` ${uom}`}`,
     equipment: 'Thiết bị',
 
-    empty: (equipment: string): string =>
-      `Không có lệnh sản xuất nào phát hành cho ${equipment}.`,
+    empty: (equipment: string): string => `Không có lệnh sản xuất nào phát hành cho ${equipment}.`,
     emptyHint: 'Chọn 「Tất cả thiết bị」 ở mục Thiết bị để xem lệnh của thiết bị khác.',
     emptyOther: (equipment: string): string =>
       `Không có lệnh sản xuất nào phát hành cho ${equipment}.`,
@@ -81,6 +81,14 @@ export const workStart: Translated<typeof ko.workStart> = {
     retry: 'Thử lại',
 
     pageNav: 'Chuyển trang danh sách lệnh sản xuất',
+
+    kindLabel: 'Xem lệnh sản xuất',
+    kindAll: 'Tất cả',
+    kindEmergency: 'Khẩn',
+    emergencyScope: 'Lệnh khẩn của mọi thiết bị.',
+    emergencyEmpty: 'Không có lệnh sản xuất khẩn.',
+    emergencyEmptyHint:
+      'Lệnh sản xuất khẩn được phát hành tại 「Phát hành lệnh khẩn」 trên Web quản trị.',
 
     equipmentUnknown:
       'Không xác nhận được thiết bị của máy trạm này. Chọn 「Tất cả thiết bị」 ở mục Thiết bị để tiếp tục.',
@@ -100,6 +108,10 @@ export const workStart: Translated<typeof ko.workStart> = {
     emptyHint: 'Chạm vào lệnh muốn bắt đầu ở danh sách bên trái.',
     terminalEquipment: 'Thiết bị máy trạm',
     assignedEquipment: 'Thiết bị theo lệnh',
+    releasedAt: 'Phát hành',
+    bypassTitle: 'Chưa phân bổ · Bỏ qua kiểm soát kiểm tra định kỳ',
+    bypassTitleAssigned: 'Bỏ qua kiểm soát kiểm tra định kỳ',
+    bypassBody: 'Lệnh sản xuất khẩn tiến hành không cần phân bổ và kiểm tra định kỳ trước khi làm.',
 
     otherEquipment: (equipment: string): string =>
       `Thiết bị theo kế hoạch của lệnh này là ${equipment}. Vẫn có thể bắt đầu trên thiết bị này.`,
@@ -112,6 +124,9 @@ export const workStart: Translated<typeof ko.workStart> = {
     checking: 'Đang kiểm tra',
     starting: 'Đang bắt đầu',
     continueToSession: 'Tiếp tục công việc',
+    materialInput: 'Đưa vật tư vào',
+    productionResult: 'Nhập kết quả',
+    reworkResult: 'Đăng ký kết quả làm lại',
   },
 
   remaining: {

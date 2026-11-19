@@ -12,13 +12,14 @@ import type {
   WorkSessionWorker,
   Worker,
 } from './types';
+import { EMERGENCY_WORK_ORDER_TYPE_CODE } from './work-order-type';
 
 /**
  * 이 화면이 부르는 조회.
  *
  * ```
  * GET /mdm/terminals/{terminalId}                 이 설비가 무엇인가 (equipmentId·Code·Name)
- * GET /production/work-orders                     작업지시 목록 (이 설비 / 전체)
+ * GET /production/work-orders                     작업지시 목록 (이 설비 / 전체 · 긴급)
  * GET /production/work-sessions?workOrderId&open  재개할 «열린» 세션 찾기
  * GET /mdm/workers?workerNo                       사번 확인 (공통 계약 · 귀속이지 인증이 아니다)
  * GET /production/work-sessions/{id}/workers      열린 세션의 지금 참여자
@@ -59,6 +60,9 @@ export const workStartKeys = {
     page: number,
     size: number = LIST_SIZE,
   ) => [...ALL_KEY, 'work-orders', equipmentId, includeUnplanned, page, size] as const,
+  /** 「긴급」 보기 — 설비 축이 없는 다른 목록이라 키를 따로 둔다(#295). */
+  emergencyWorkOrders: (page: number, size: number = LIST_SIZE) =>
+    [...ALL_KEY, 'emergency-work-orders', page, size] as const,
   /** 설비 고르기 팝업의 공장 설비 목록. */
   equipments: (plantId: number) => [...ALL_KEY, 'equipments', plantId] as const,
   openSession: (workOrderId: number) => [...ALL_KEY, 'open-session', workOrderId] as const,
@@ -164,6 +168,40 @@ export const useWorkOrders = (
     /* 쪽 건수·쪽을 바꿔 다시 받는 동안 앞 목록을 그대로 둔다 — 고른 카드가 깜빡 사라지지 않게. */
     placeholderData: keepPreviousData,
     queryFn: () => fetchWorkOrders(client, equipmentId, includeUnplanned, page, size),
+  });
+};
+
+/**
+ * 「긴급」 보기의 목록(#295) — 옛 「긴급 작업지시」 화면(P-02-12)을 이 목록에 합쳤다.
+ *
+ * ⭐ **옛 화면과 같은 조건이다**: 유형 `EMERGENCY` + `open=true`, 설비 축 없음. 단말 설비로 좁히지 않는다 —
+ *    다른 설비에 계획된 긴급도 작업자가 집어 진행할 수 있었으므로 그대로 다 보인다.
+ * ⭐ `withProgress` 는 «더 받는» 것뿐이다(거르지 않는다) — 고른 W/O 의 마감 안내가 이 값으로 선다.
+ * 「긴급 N」 건수도 이 응답의 `page.total` 이다. 「전체」를 보는 동안에는 첫 쪽만 받는다.
+ */
+export const useEmergencyWorkOrders = (
+  page = 1,
+  size = LIST_SIZE,
+): UseQueryResult<WorkOrderListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workStartKeys.emergencyWorkOrders(page, size),
+    placeholderData: keepPreviousData,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/production/work-orders', {
+          params: {
+            query: {
+              workOrderTypeCode: EMERGENCY_WORK_ORDER_TYPE_CODE,
+              open: true,
+              withProgress: true,
+              page,
+              size,
+            },
+          },
+        }),
+      ),
   });
 };
 

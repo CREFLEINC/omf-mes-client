@@ -1,6 +1,6 @@
 import { messages, named } from '@omf-mes/i18n';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 
@@ -38,6 +38,7 @@ import {
   useSessionWorkers,
   useTerminal,
   useUomCodes,
+  useEmergencyWorkOrders,
   useEquipmentChoices,
   useWorkOrders,
   useWorkerLookup,
@@ -45,7 +46,8 @@ import {
 import { toSessionRequest } from './session-request';
 import { assignedAtText, terminalNow } from './terminal-clock';
 import type { ControlOverride, WorkOrder, Worker } from './types';
-import { WorkOrderList, type ListScope } from './work-order-list';
+import { WorkOrderList, type ListKind, type ListScope } from './work-order-list';
+import { isEmergency, isRework } from './work-order-type';
 import { isHeld } from './work-order-status';
 import { WorkerPanel } from './worker-panel';
 import { verifyWorker } from './worker-verify';
@@ -78,6 +80,10 @@ import './uniform.css';
  * ⛔ **재개가 새 세션을 열지 않는다**(§5-4). 중단해도 세션은 열려 있고, 재개는 그 세션 안의
  * 사건이다 — 두 버튼은 **다른 경로**로 간다.
  */
+/** 목록 보기를 싣는 주소 이름 — `?type=emergency` 면 「긴급」 보기로 연다(옛 `/pop/emergency-work-orders` 가 이리로 온다). */
+const LIST_KIND_PARAM = 'type';
+const EMERGENCY_KIND_VALUE = 'emergency';
+
 export const WorkStartScreen = () => {
   const t = messages.workStart;
 
@@ -179,6 +185,14 @@ export const WorkStartScreen = () => {
   /* 설비 팝업을 한 번이라도 열었는가. 다른 설비 목록은 그때 처음 묻는다. */
   const [isPickerOpened, setPickerOpened] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(entry?.workOrderId ?? null);
+  /*
+   * 목록 보기 — 전체 / 긴급(#295). 주소가 정본이다(`?type=emergency`). 옛 「긴급 작업지시」 화면(P-02-12)을
+   * 이 목록에 합쳤다.
+   */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const kind: ListKind =
+    searchParams.get(LIST_KIND_PARAM) === EMERGENCY_KIND_VALUE ? 'emergency' : 'all';
+  const isEmergencyView = kind === 'emergency';
 
   const listEquipmentId = scope === 'default' ? equipmentId : scope === 'all' ? null : scope;
   /*
@@ -191,7 +205,23 @@ export const WorkStartScreen = () => {
    * 줄이 없을 때) `LIST_SIZE` 로 받는다.
    */
   const listFitRef = useRef<HTMLDivElement>(null);
-  const fitCount = useFitCount(listFitRef, { fallback: 0 });
+  const measuredFit = useFitCount(listFitRef, { fallback: 0 });
+  /*
+   * ⚠ 같은 구획 높이에서는 줄어든 건수를 다시 늘리지 않는다. 줄 높이가 쪽마다 달라(설비 줄 있음/없음) 낮은 줄만
+   *    든 쪽에서 2건 → 높은 줄이 섞인 쪽에서 1건 → … 으로 오가며 화면이 멎었다(실측 #295, 「최대 갱신 깊이」).
+   *    구획 높이가 바뀌면(화면 크기·보기 전환) 새로 잰다.
+   */
+  const [fit, setFit] = useState({ count: 0, height: 0 });
+  useLayoutEffect(() => {
+    const height = listFitRef.current?.clientHeight ?? 0;
+    if (measuredFit <= 0 || height <= 0) return;
+    setFit((prev) =>
+      prev.count === 0 || prev.height !== height || measuredFit < prev.count
+        ? { count: measuredFit, height }
+        : prev,
+    );
+  }, [measuredFit]);
+  const fitCount = fit.count;
   const listSize = fitCount > 0 ? fitCount : LIST_SIZE;
   /*
    * 쪽은 «보던 첫 줄»로 든다 — 한 쪽 건수가 바뀌어도(화면 크기·처음 재기) 그 줄이 든 쪽을 본다.
@@ -200,13 +230,21 @@ export const WorkStartScreen = () => {
   const [listFirstRow, setListFirstRow] = useState(0);
   const listPage = Math.floor(listFirstRow / listSize) + 1;
   /* 설비를 정하지 않은 지시는 단말 설비 목록에만 함께 받는다(PG-38). */
-  const list = useWorkOrders(
+  const allList = useWorkOrders(
     listEquipmentId,
-    isListAsked,
+    isListAsked && !isEmergencyView,
     listPage,
     scope === 'default',
     listSize,
   );
+  /*
+   * 「긴급」 보기의 목록이자 「긴급 N」 건수. 옛 화면과 같은 조건(유형 + open, 설비 축 없음)이라 늘 묻는다 —
+   * 「전체」를 보는 동안에는 첫 쪽만 받아 건수에 쓴다.
+   */
+  const emergencyList = useEmergencyWorkOrders(isEmergencyView ? listPage : 1, listSize);
+  /* 지금 보이는 목록 — 고르기·쪽 넘김·충돌 뒤 다시 받기가 모두 이것을 쓴다. */
+  const list = isEmergencyView ? emergencyList : allList;
+  const listAsked = isEmergencyView || isListAsked;
   const equipments = useEquipmentChoices(terminal.data?.plantId ?? null, isPickerOpened);
   const otherEquipments = (equipments.data ?? []).filter(
     (equipment) => equipment.equipmentId !== equipmentId,
@@ -795,6 +833,46 @@ export const WorkStartScreen = () => {
 
               submit();
             }}
+            /*
+             * 긴급 작업지시는 작업 시작 없이도 자재 투입·실적 입력으로 바로 간다 — 옛 「긴급 작업지시」 화면의 두
+             * 버튼을 그대로 옮겼다(#295). 주소에 작업지시만 싣고, 판정은 그 화면과 서버가 한다.
+             */
+            secondary={
+              selected !== null && isEmergency(selected) ? (
+                <>
+                  <PuButton
+                    onClick={() => {
+                      goToMaterialInput(selected.workOrderId);
+                    }}
+                  >
+                    {t.actions.materialInput}
+                  </PuButton>
+                  <PuButton
+                    onClick={() => {
+                      void navigate(
+                        `/pop/production-result?workOrderId=${String(selected.workOrderId)}`,
+                      );
+                    }}
+                  >
+                    {t.actions.productionResult}
+                  </PuButton>
+                </>
+              ) : selected !== null && isRework(selected) ? (
+                /*
+                 * 재작업 W/O 의 실적은 재작업 실적 등록(P-04-03)이 받는다 — 그 W/O 를 고른 채로 연다(#295).
+                 * [작업 시작]은 지금처럼 둔다(이 목록이 재작업 W/O 에 하던 일을 바꾸지 않는다).
+                 */
+                <PuButton
+                  onClick={() => {
+                    void navigate(
+                      `/pop/rework-results?workOrderId=${String(selected.workOrderId)}`,
+                    );
+                  }}
+                >
+                  {t.actions.reworkResult}
+                </PuButton>
+              ) : undefined
+            }
             leading={
               retryLabel === null ? undefined : (
                 <PuButton onClick={gate.retry}>{retryLabel}</PuButton>
@@ -808,8 +886,8 @@ export const WorkStartScreen = () => {
           <WorkOrderList
             uomCodeOf={uomCodeOf}
             workOrders={rows}
-            isAsked={isListAsked}
-            isLoading={isListAsked && list.isPending}
+            isAsked={listAsked}
+            isLoading={listAsked && list.isPending}
             isError={list.isError}
             total={list.data?.page.total}
             pageMeta={list.data?.page}
@@ -846,6 +924,22 @@ export const WorkStartScreen = () => {
             }}
             onRetry={() => {
               void list.refetch();
+            }}
+            kind={kind}
+            emergencyCount={emergencyList.isError ? undefined : emergencyList.data?.page.total}
+            onKindChange={(next) => {
+              /* 설비 범위를 바꿀 때와 같다 — 고른 것은 새 목록에 있으면 남기고, 첫 쪽부터 본다(PG-30). */
+              scopeCheckRef.current = true;
+              setListFirstRow(0);
+              setSearchParams(
+                (current) => {
+                  const params = new URLSearchParams(current);
+                  if (next === 'emergency') params.set(LIST_KIND_PARAM, EMERGENCY_KIND_VALUE);
+                  else params.delete(LIST_KIND_PARAM);
+                  return params;
+                },
+                { replace: true },
+              );
             }}
           />
 

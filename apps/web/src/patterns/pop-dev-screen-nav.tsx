@@ -73,7 +73,6 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
     /* 현재 생산 LOT이 있는 씨앗 작업지시다. */
     query: '?workOrderId=11002',
   },
-  { path: '/pop/emergency-work-orders', label: 'P-02-12 긴급 작업지시' },
   { path: '/pop/material-lot-label', label: 'P-01-01 자재 관리 LOT 라벨' },
   { path: '/pop/rework-results', label: 'P-04-03 재작업 실적 등록' },
   {

@@ -49,3 +49,12 @@ export const isOtherEquipment = (workOrder: WorkOrder, equipmentId: number | nul
   equipmentId !== null &&
   workOrder.plannedEquipmentId !== undefined &&
   workOrder.plannedEquipmentId !== equipmentId;
+
+/**
+ * 4M 배정이 하나도 없는가 — 긴급 W/O 의 「배정 없음」 표시(옛 「긴급 작업지시」 상세에서 옮김, #295).
+ * 설비·금형·교대 셋이 **전부** 비었을 때만 참이다. 서버가 `null` 로 답하는 배정도 «없다»다.
+ */
+export const hasNoAssignment = (workOrder: WorkOrder): boolean =>
+  workOrder.plannedEquipmentId == null &&
+  workOrder.plannedMoldId == null &&
+  workOrder.plannedShiftId == null;

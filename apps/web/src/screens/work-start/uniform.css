@@ -186,6 +186,24 @@
   vertical-align: middle;
 }
 
+/* 긴급 작업지시 상세(#295) — 발행 줄과 우회 안내가 더해져 줄 간격을 좁히고 안내는 한 줄로 둔다. */
+.ws-sel-emergency .pu-kv {
+  row-gap: 0;
+}
+
+.ws-sel-emergency > .pu-note {
+  padding-block: 7px;
+}
+
+.ws-bypass,
+.ws-oneline {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 /* 주 동작 설명(읽어 주기용) — 화면에는 보이지 않는다. */
 .ws-visually-hidden {
   position: absolute;

@@ -120,6 +120,8 @@ export interface StubOptions {
   allWorkOrders?: Record<string, unknown>[];
   /** 단말 설비가 아닌 설비를 걸어 물었을 때의 줄들(설비 번호별). */
   workOrdersByEquipment?: Record<number, Record<string, unknown>[]>;
+  /** 「긴급」 보기(`workOrderTypeCode=EMERGENCY`)의 줄들. 없으면 빈 목록이다(#295). */
+  emergencyWorkOrders?: Record<string, unknown>[];
   /** 설비 고르기 팝업의 공장 설비 목록. 없으면 이 단말 설비 하나다. */
   equipments?: Record<string, unknown>[];
   equipmentsStatus?: number;
@@ -240,6 +242,16 @@ const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch
       ];
 
       return jsonResponse({ items, page: { page: 1, size: 200, total: items.length } });
+    }
+
+    /* 「긴급」 보기·「긴급 N」 건수의 조회(#295) — 설비 축 없는 다른 목록이다. 목록 호출 수에 넣지 않는다. */
+    if (
+      url.pathname === '/production/work-orders' &&
+      url.searchParams.get('workOrderTypeCode') === 'EMERGENCY'
+    ) {
+      const items = options.emergencyWorkOrders ?? [];
+
+      return jsonResponse({ items, page: { page: 1, size: 20, total: items.length } });
     }
 
     if (url.pathname === '/production/work-orders') {
@@ -522,9 +534,9 @@ const LocationProbe = () => {
 };
 
 export const renderScreen = (
-  options: StubOptions & { identity?: PopIdentity; routeState?: unknown } = {},
+  options: StubOptions & { identity?: PopIdentity; routeState?: unknown; route?: string } = {},
 ) => {
-  const { identity = IDENTITY, routeState, ...stubOptions } = options;
+  const { identity = IDENTITY, routeState, route = '/pop/work-start', ...stubOptions } = options;
   const stubbed = stub(stubOptions);
   const rendered = renderWithProviders(
     <PopIdentityProvider value={identity}>
@@ -533,11 +545,22 @@ export const renderScreen = (
       {/* 결과 알림 자리 — 실제로는 POP 셸이 하나 둔다(POP 통일 규칙 13). */}
       <PuToastHost />
     </PopIdentityProvider>,
-    { fetch: stubbed.fetch, route: '/pop/work-start', routeState },
+    { fetch: stubbed.fetch, route, routeState },
   );
 
   return { ...rendered, recorded: stubbed.recorded, user: userEvent.setup() };
 };
 
+/** 「전체」 목록의 조회 주소 — 「긴급」 보기·건수 조회(`workOrderTypeCode=EMERGENCY`)는 뺀다. */
 export const listUrls = (urls: string[]): string[] =>
-  urls.filter((url) => url.startsWith('/production/work-orders'));
+  urls.filter(
+    (url) =>
+      url.startsWith('/production/work-orders') && !url.includes('workOrderTypeCode=EMERGENCY'),
+  );
+
+/** 「긴급」 보기·건수 조회 주소(#295). */
+export const emergencyListUrls = (urls: string[]): string[] =>
+  urls.filter(
+    (url) =>
+      url.startsWith('/production/work-orders') && url.includes('workOrderTypeCode=EMERGENCY'),
+  );

@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
-import { popRoutes } from './pop';
+import { POP_LEGACY_REDIRECTS, popRoutes } from './pop';
 import { POP_ENTRY_SCREEN_PATH, POP_HOME_PATH, POP_SCREENS } from '../patterns/pop-screen-catalog';
 
 /**
@@ -21,6 +21,8 @@ describe('POP 화면 이름표', () => {
     const routed = popRoutes
       .map((route) => route.path)
       .filter((path) => path !== POP_ENTRY_SCREEN_PATH && path !== POP_HOME_PATH)
+      /* 합쳐서 없어진 화면의 옛 주소는 새 자리로 보내는 길일 뿐 화면이 아니다(#295). */
+      .filter((path) => path === undefined || !(path in POP_LEGACY_REDIRECTS))
       .sort();
     const listed = POP_SCREENS.map((screen) => screen.path).sort();
 
@@ -38,6 +40,15 @@ describe('POP 화면 이름표', () => {
   it('진입 화면은 담지 않는다', () => {
     expect(popRoutes.map((route) => route.path)).toContain(POP_ENTRY_SCREEN_PATH);
     expect(POP_SCREENS.map((screen) => screen.path)).not.toContain(POP_ENTRY_SCREEN_PATH);
+  });
+
+  /* 긴급 작업지시(P-02-12)는 작업지시 목록의 「긴급」 보기로 합쳤다 — 옛 주소는 그 보기로 간다(#295). */
+  it('긴급 작업지시는 화면 목록에 없고, 옛 주소는 작업지시 목록 「긴급」 보기로 보낸다', () => {
+    expect(POP_SCREENS.map((screen) => screen.code)).not.toContain('P-02-12');
+    expect(POP_LEGACY_REDIRECTS['/pop/emergency-work-orders']).toBe(
+      '/pop/work-start?type=emergency',
+    );
+    expect(popRoutes.map((route) => route.path)).toContain('/pop/emergency-work-orders');
   });
 
   /* 화면 코드가 권한 대조의 열쇠다 — 겹치면 한 권한이 두 화면을 열고, 비면 아무것도 못 연다. */

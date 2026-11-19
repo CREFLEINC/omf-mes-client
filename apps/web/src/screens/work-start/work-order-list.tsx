@@ -5,18 +5,20 @@ import type { EquipmentChoice } from './queries';
 import { WorkOrderInfo } from './work-order-info';
 import type { WorkOrder } from './types';
 import { sortForPick, statusKeyOf, type WorkOrderStatusKey } from './work-order-status';
-import { isEmergency } from './work-order-type';
+import { isEmergency, isRework, pinEmergencyFirst } from './work-order-type';
 
 import { type PageMetaLike } from '../../patterns/pop-page-nav';
 import { PopSelect } from '../../patterns/pop-select';
 import {
   PuButton,
   PuChip,
+  PuCount,
   PuEmpty,
   PuField,
   PuNote,
   PuPager,
   PuSection,
+  PuSeg,
   type PuChipTone,
 } from '../../patterns/pop-uniform';
 
@@ -30,7 +32,7 @@ export const STATUS_CHIP: Readonly<Record<WorkOrderStatusKey, PuChipTone>> = {
 };
 
 /**
- * W/O 제목 줄의 칩(C-21). 예외 칩(긴급, 설비 미지정)을 먼저, 맨 끝에 상태 칩 하나를 둔다.
+ * W/O 제목 줄의 칩(C-21). 예외 칩(긴급, 재작업, 설비 미지정)을 먼저, 맨 끝에 상태 칩 하나를 둔다.
  * 목록 카드와 「선택한 작업지시」가 같은 칩을 쓴다.
  */
 export const WorkOrderChips = ({
@@ -45,13 +47,18 @@ export const WorkOrderChips = ({
   return (
     <span className="chips">
       {isEmergency(workOrder) && <PuChip tone="bad">{t.emergencyBadge}</PuChip>}
+      {isRework(workOrder) && <PuChip tone="warn">{t.reworkBadge}</PuChip>}
       {isEquipmentUnassigned && <PuChip tone="info">{t.unassignedEquipmentBadge}</PuChip>}
-      {statusKey !== null && (
-        <PuChip tone={STATUS_CHIP[statusKey]}>{t.status[statusKey]}</PuChip>
-      )}
+      {statusKey !== null && <PuChip tone={STATUS_CHIP[statusKey]}>{t.status[statusKey]}</PuChip>}
     </span>
   );
 };
+
+/**
+ * 목록 보기(#295). `emergency` 는 긴급 작업지시만 — 옛 「긴급 작업지시」 화면(P-02-12)과 같은 조건(설비 축 없음)이다.
+ * 주소 `?type=emergency` 로 열 수 있다(옛 주소가 이리로 온다).
+ */
+export type ListKind = 'all' | 'emergency';
 
 /** 목록의 설비 범위(PG-37). */
 export type ListScope = 'default' | 'all' | number;
@@ -99,6 +106,11 @@ export interface WorkOrderListProps {
   uomCodeOf: (uomId: number | undefined) => string | null;
   /** 한 쪽 건수를 재는 목록 칸(구획 높이에 들어가는 만큼, POP 통일 규칙 1). */
   fitRef?: RefObject<HTMLDivElement | null>;
+  /** 지금 보기 — 전체 / 긴급(#295). */
+  kind?: ListKind;
+  /** 열린 긴급 작업지시 수(「긴급 N」). 모르면 `undefined` 이고 수를 붙이지 않는다. */
+  emergencyCount?: number;
+  onKindChange?: (kind: ListKind) => void;
 }
 
 /**
@@ -133,8 +145,16 @@ export const WorkOrderList = ({
   onRetry,
   uomCodeOf,
   fitRef,
+  kind = 'all',
+  emergencyCount,
+  onKindChange,
 }: WorkOrderListProps) => {
-  const rows = sortForPick(workOrders ?? []);
+  /*
+   * 순서: 목록 순서를 먼저 정하고(지금은 진행 중 먼저 — 최신순/오래된순 전환이 오면 이 자리를 바꾼다)
+   * 맨 끝에 긴급을 위로 올린다. 순서를 무엇으로 바꾸든 긴급은 늘 위다(#295).
+   */
+  const rows = pinEmergencyFirst(sortForPick(workOrders ?? []));
+  const isEmergencyView = kind === 'emergency';
   const scopeEquipment = equipmentName ?? t.scopeEquipmentUnknown;
   const labelId = useId();
   const [folded, setFolded] = useState(false);
@@ -160,12 +180,43 @@ export const WorkOrderList = ({
   return (
     <PuSection
       title={t.title}
+      head={
+        /* 제목 옆 보기 탭 [전체 | 긴급 N](#295). 긴급 수는 옛 「긴급 작업지시」 탭 건수와 같다. */
+        <PuSeg<ListKind>
+          label={t.kindLabel}
+          value={kind}
+          onChange={(next) => {
+            if (next !== kind) onKindChange?.(next);
+          }}
+          options={[
+            { value: 'all', label: t.kindAll },
+            {
+              value: 'emergency',
+              label: (
+                <>
+                  {t.kindEmergency}
+                  {emergencyCount !== undefined && <PuCount>{emergencyCount}</PuCount>}
+                </>
+              ),
+            },
+          ]}
+        />
+      }
       className="ws-list"
       bodyClassName="ws-list-body"
       fold={{ label: t.title, folded, onChange: setFolded }}
     >
-      {/* 좁힐 기본 설비가 없는 단말은 처음부터 전체 목록이라 설비 칸을 두지 않는다(PG-37). */}
-      {!isEquipmentMissing ? (
+      {/*
+       * 긴급 보기는 설비와 관계없이 다 보인다(옛 화면 조건) — 설비 칸 대신 그 사실을 한 줄로 말한다.
+       * 좁힐 기본 설비가 없는 단말은 처음부터 전체 목록이라 설비 칸을 두지 않는다(PG-37).
+       */}
+      {isEmergencyView ? (
+        <PuNote>
+          <span className="ws-oneline" title={t.emergencyScope}>
+            {t.emergencyScope}
+          </span>
+        </PuNote>
+      ) : !isEquipmentMissing ? (
         <PuField label={t.equipmentLabel} labelId={labelId}>
           <div className="pu-row ws-equipment-field">
             <PopSelect
@@ -199,7 +250,7 @@ export const WorkOrderList = ({
 
       <div className="ws-list-area">
         {/* 설비를 몰라 기본 목록을 못 세운 상태는 빈 목록이 아니다. 사유와 할 일을 함께 보인다. */}
-        {isEquipmentUnknown && scope === 'default' && (
+        {!isEmergencyView && isEquipmentUnknown && scope === 'default' && (
           <PuNote tone="warn">{t.equipmentUnknown}</PuNote>
         )}
 
@@ -218,7 +269,9 @@ export const WorkOrderList = ({
           isLoading ? (
             <PuEmpty icon="list" title={t.loading} />
           ) : isAsked ? (
-            scope === 'all' ? (
+            isEmergencyView ? (
+              <PuEmpty icon="list" title={t.emergencyEmpty} hint={t.emergencyEmptyHint} />
+            ) : scope === 'all' ? (
               <PuEmpty icon="list" title={t.emptyAll} />
             ) : scope === 'default' ? (
               <PuEmpty icon="list" title={t.empty(scopeEquipment)} hint={t.emptyHint} />

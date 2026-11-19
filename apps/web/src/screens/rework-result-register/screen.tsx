@@ -2,6 +2,7 @@ import type { ApiError, components } from '@omf-mes/api-client';
 import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router';
 
 import { PopSelect as Select } from '../../patterns/pop-select';
 
@@ -106,7 +107,15 @@ export const ReworkResultRegisterScreen = () => {
   const listTotal = releasedTotal + plannedAll.length;
   const listPages = Math.max(1, Math.ceil(listTotal / Math.max(1, pageSize)));
   const defectCodeId = useId();
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  /*
+   * 작업지시 목록의 [재작업 실적 등록]은 그 W/O 를 `?workOrderId=` 로 실어 온다(#295) — 처음 한 번 고른 채로 연다.
+   * 지금 쪽 목록에 없으면 고른 것이 없는 것과 같다(상세가 서지 않는다).
+   */
+  const [searchParams] = useSearchParams();
+  const [selectedId, setSelectedId] = useState<number | null>(() => {
+    const id = Number(searchParams.get('workOrderId'));
+    return Number.isInteger(id) && id > 0 ? id : null;
+  });
   const [step, setStep] = useState<Step>('input');
   /**
    * 지금 치고 있는 칸 — 오른쪽 키패드의 대상. 단계를 바꾸면 그 단계의 첫 칸이 된다(#295).
@@ -393,16 +402,15 @@ export const ReworkResultRegisterScreen = () => {
   );
 
   /* ── 가운데: 단계 줄 · 정보 띠 · 안내 · 수량 칸 ── */
+  /* 비었을 때는 안내 줄을 세우지 않는다 — 꺼진 [실적 저장]이 이미 말한다(사용자 지시 2026-11-19). */
   const verdictNote =
     selected === null || !dispositions.isSuccess
       ? null
-      : verdict === 'empty'
-        ? { tone: 'bad' as const, text: t.emptyQuantity }
-        : verdict === 'exceeded'
-          ? { tone: 'bad' as const, text: t.exceeded(progress.remaining, uomLabel) }
-          : verdict === 'partial'
-            ? { tone: 'warn' as const, text: t.partial(remaining, uomLabel) }
-            : null;
+      : verdict === 'exceeded'
+        ? { tone: 'bad' as const, text: t.exceeded(progress.remaining, uomLabel) }
+        : verdict === 'partial'
+          ? { tone: 'warn' as const, text: t.partial(remaining, uomLabel) }
+          : null;
 
   const quantityField = (key: QuantityKey) => {
     const inputId = `${titleId}-${key}`;

@@ -22,8 +22,8 @@ const SESSION = {
   loginId: 'pop.terminal',
   userName: '합성 단말',
   scopes: [{ businessUnitId: 1001 }],
-  /* 자재 1 · 생산 3 · 출하 2 · 품질 1 — 설비·창고 화면은 없다. */
-  permissions: ['P-01-01', 'P-02-01', 'P-02-03', 'P-02-12', 'P-04-01', 'P-04-03', 'P-04-06'],
+  /* 자재 1 · 생산 3(재작업 실적 등록 포함 · #295) · 출하 1 · 품질 1 — 설비·창고 화면은 없다. */
+  permissions: ['P-01-01', 'P-02-01', 'P-02-03', 'P-04-01', 'P-04-03', 'P-04-06'],
 };
 
 const COUNTS: TerminalWorkCounts = {
@@ -146,7 +146,8 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
       within(tabs)
         .getAllByRole('button')
         .map((tab) => tab.textContent?.replace(/\d+\+?$/u, '')),
-    ).toEqual(['작업지시 목록', '긴급 작업지시']);
+      /* 재작업 실적 등록은 생산 묶음이다(#295) — 작업지시 목록 다음. */
+    ).toEqual(['작업지시 목록', '재작업 실적 등록']);
     expect(within(tabs).getByRole('button', { name: /^작업지시 목록/u })).toHaveAttribute(
       'aria-current',
       'page',
@@ -174,8 +175,10 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     expect(firstTab).toHaveAttribute('aria-current', 'page');
     expect(screen.queryByText('지금: /pop/material-input')).not.toBeInTheDocument();
 
-    await user.click(within(tabs).getByRole('button', { name: /^재작업 실적 등록/u }));
-    expect(screen.getByText('지금: /pop/rework-results')).toBeInTheDocument();
+    await user.click(within(tabs).getByRole('button', { name: /^출하 포장/u }));
+    expect(screen.getByText('지금: /pop/packing')).toBeInTheDocument();
+    /* 재작업 실적 등록은 출하가 아니라 생산 묶음에 선다(#295). */
+    expect(within(tabs).queryByRole('button', { name: /^재작업 실적 등록/u })).toBeNull();
   });
 
   it('[새로고침]은 화면을 다시 읽지 않고 자료만 다시 받는다', async () => {
@@ -202,7 +205,7 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
   it('단계 줄은 고른 W/O 를 다음 단계로 실어 주며(번호는 박스에 보이는 자재 투입·생산 작업에선 숨긴다), 작업지시를 받지 않는 탭에는 싣지 않는다', async () => {
     const user = userEvent.setup();
     setup({
-      session: { ...SESSION, permissions: ['P-02-01', 'P-02-03', 'P-02-04', 'P-02-12'] },
+      session: { ...SESSION, permissions: ['P-02-01', 'P-02-03', 'P-02-04'] },
       route: '/pop/material-input?workOrderId=7801',
     });
 
@@ -214,10 +217,10 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     await user.click(
       within(screen.getByRole('navigation', { name: nav.screensLabel('생산') })).getByRole(
         'button',
-        { name: /^긴급 작업지시/u },
+        { name: /^작업지시 목록/u },
       ),
     );
-    expect(screen.getByText('지금: /pop/emergency-work-orders')).toBeInTheDocument();
+    expect(screen.getByText('지금: /pop/work-start')).toBeInTheDocument();
   });
 
   it('작업지시를 고르기 전(작업 지시 목록)에는 다음 단계와 작업 중 화면 버튼이 잠긴다', async () => {
@@ -263,7 +266,8 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     await waitFor(() => expect(counted).toHaveLength(1));
 
     expect(
-      await within(groupsNav()).findByRole('button', { name: nav.groupCount('생산', 4) }),
+      /* 긴급 작업지시는 작업지시 목록에 합쳐(#295) 따로 세지 않는다 — 서버가 준 긴급 수 1 을 더하지 않는다. */
+      await within(groupsNav()).findByRole('button', { name: nav.groupCount('생산', 3) }),
     ).toBeInTheDocument();
     expect(groupButton('품질')).toHaveAccessibleName(nav.groupCount('품질', 12));
 
@@ -331,9 +335,9 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     expect(
       tabs.getByRole('button', { name: remaining.count('분할 LOT 라벨', 3) }),
     ).toBeInTheDocument();
-    /* 남은 작업 창은 남은 작업 수(`/app/terminal-work-counts`)만 — 3 + 1 + 4 + 12. */
+    /* 남은 작업 창은 남은 작업 수(`/app/terminal-work-counts`)만 — 3 + 4 + 12(긴급 수는 작업지시 목록에 합쳐 빠진다). */
     expect(
-      await screen.findByRole('button', { name: remaining.buttonLabel(20) }),
+      await screen.findByRole('button', { name: remaining.buttonLabel(19) }),
     ).toBeInTheDocument();
   });
 
@@ -405,10 +409,10 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     const { counted } = setup();
     await waitFor(() => expect(counted).toHaveLength(1));
 
-    const button = await screen.findByRole('button', { name: remaining.buttonLabel(20) });
+    const button = await screen.findByRole('button', { name: remaining.buttonLabel(19) });
     await user.click(button);
 
-    const dialog = within(screen.getByRole('dialog', { name: remaining.title(20) }));
+    const dialog = within(screen.getByRole('dialog', { name: remaining.title(19) }));
     expect(
       dialog
         .getAllByRole('button')
@@ -418,7 +422,6 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
       remaining.count('OQC 출하검사', 12),
       remaining.count('출하 포장', 4),
       remaining.count('작업지시 목록', 3),
-      remaining.count('긴급 작업지시', 1),
     ]);
 
     await user.click(dialog.getByRole('button', { name: remaining.count('출하 포장', 4) }));
@@ -518,8 +521,8 @@ describe('destinationOf — 화면으로 가는 주소', () => {
 
   it('작업 흐름 밖의 화면은 W/O 와 상관없이 그 화면으로 간다', () => {
     expect(destinationOf(screenAt('/pop/work-start'), '')).toBe('/pop/work-start');
-    expect(destinationOf(screenAt('/pop/emergency-work-orders'), '?workOrderId=7801')).toBe(
-      '/pop/emergency-work-orders',
+    expect(destinationOf(screenAt('/pop/material-defect'), '?workOrderId=7801')).toBe(
+      '/pop/material-defect',
     );
   });
 });

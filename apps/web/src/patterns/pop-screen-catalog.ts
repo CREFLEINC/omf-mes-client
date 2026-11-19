@@ -145,12 +145,20 @@ export const POP_SCREENS: readonly PopScreen[] = [
     acceptsWorkOrderId: true,
     workFlow: 'during',
   },
+  /*
+   * P-02-12 긴급 작업지시는 「작업지시 목록」의 「긴급」 보기로 합쳤다(#295) — 탭·바로가기·남은 작업에서 뺐다.
+   * 남은 작업 수도 따로 세지 않는다: `workStart` 수가 이미 이 단말 설비·설비 미정의 긴급을 센다(두 번 세지 않게).
+   */
+  /*
+   * 재작업 실적 등록은 생산 묶음이다(사용자 승인 2026-11-19 · #295) — 작업지시 목록의 「재작업」 W/O 가 이 화면으로
+   * 간다. 화면 코드(P-04-03)·주소는 그대로다. 남은 작업 수(`reworkResult`)도 생산 묶음으로 센다.
+   */
   {
-    path: '/pop/emergency-work-orders',
-    code: 'P-02-12',
+    path: '/pop/rework-results',
+    code: 'P-04-03',
     group: 'production',
-    name: '긴급 작업지시',
-    countKey: 'emergencyWorkOrder',
+    name: '재작업 실적 등록',
+    countKey: 'reworkResult',
   },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#108) — 화면 코드는 사용자 결정으로 부여했다. */
   { path: '/pop/material-defect', code: 'P-02-14', group: 'production', name: '자재 불량 등록' },
@@ -177,13 +185,6 @@ export const POP_SCREENS: readonly PopScreen[] = [
     group: 'shipping',
     name: '출하 포장',
     countKey: 'shipmentPacking',
-  },
-  {
-    path: '/pop/rework-results',
-    code: 'P-04-03',
-    group: 'shipping',
-    name: '재작업 실적 등록',
-    countKey: 'reworkResult',
   },
   {
     path: '/pop/repack-label-issue',

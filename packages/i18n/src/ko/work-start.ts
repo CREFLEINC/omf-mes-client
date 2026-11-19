@@ -68,6 +68,16 @@ export const workStart = {
      */
     title: '작업지시',
     /**
+     * 목록 보기(구획 제목 줄의 탭). 「긴급」은 긴급 작업지시만 보인다 — 옛 「긴급 작업지시」 화면(P-02-12)을
+     * 이 목록에 합쳤다(#295). 긴급은 설비와 관계없이 모두 보인다(옛 화면과 같은 조건).
+     */
+    kindLabel: '작업지시 보기',
+    kindAll: '전체',
+    kindEmergency: '긴급',
+    emergencyScope: '모든 설비의 긴급 작업지시입니다.',
+    emergencyEmpty: '긴급 작업지시가 없습니다.',
+    emergencyEmptyHint: '긴급 작업지시는 관리웹 「긴급 작업지시 발행」에서 발행합니다.',
+    /**
      * 설비 고르기(PopSelect 팝업). 단말 설비가 맨 위 기본값이고 「기본 설비:」를 앞에 붙여 표시한다.
      * 그다음 「전체 설비」, 나머지 설비 순서다. 줄은 「이름 (코드)」(C-10). 닫힌 칸은 이름만 보인다.
      * 이름을 아직 모를 때만 `scopeEquipmentUnknown`을 쓴다(PG-37).
@@ -88,6 +98,7 @@ export const workStart = {
       suspended: '중단',
     },
     emergencyBadge: '긴급',
+    reworkBadge: '재작업',
     unassignedEquipmentBadge: '설비 미지정',
 
     /** 수량 쌍(C-21). 라벨 「실적」, 값은 「실적 / 지시」 한 쌍이다. 실적을 못 받으면 라벨 「지시」. */
@@ -137,6 +148,11 @@ export const workStart = {
     /** 설비 줄 옆 칩 — 이 시작이 쓰는 설비가 어디서 왔는가. */
     terminalEquipment: '이 단말 설비',
     assignedEquipment: '작업지시 지정 설비',
+    /** 긴급 작업지시만 — 발행 시각과 점검 통제 우회 안내(옛 「긴급 작업지시」 상세에서 옮김). */
+    releasedAt: '발행',
+    bypassTitle: '배정 없음 · 점검 통제 우회',
+    bypassTitleAssigned: '점검 통제 우회',
+    bypassBody: '긴급 작업지시는 배정과 작업 전 점검 없이 진행합니다.',
 
     /** 계획 설비가 다른 지시는 막지 않는다. 실제 설비는 세션에 기록된다. */
     otherEquipment: (equipment: string): string =>
@@ -153,6 +169,10 @@ export const workStart = {
     starting: '시작 중',
     /** 이미 진행 중인 작업으로 자리를 옮긴다(쓰기 없음). */
     continueToSession: '작업 이어하기',
+    /** 긴급 작업지시만 — 작업 시작 없이 바로 그 화면으로 간다(옛 「긴급 작업지시」 화면의 두 버튼). */
+    materialInput: '자재 투입',
+    productionResult: '실적 입력',
+    reworkResult: '재작업 실적 등록',
   },
 
   /** 하단 바 「남은 일」 자리의 문장(C-5). 머리말 없이 보인다. */
