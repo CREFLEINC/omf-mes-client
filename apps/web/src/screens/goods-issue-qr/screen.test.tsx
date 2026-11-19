@@ -353,12 +353,12 @@ describe('P-01-02 체크박스', () => {
     expect(checkbox(OLD.lotNo).getAttribute('aria-checked')).toBe('false');
   });
 
-  it('분할 시각 머리글을 누르면 차례가 뒤집힌다 — 찍는 차례와는 따로다', async () => {
+  it('정렬을 바꾸면 분할 시각 차례가 뒤집힌다 — 찍는 차례와는 따로다', async () => {
     const user = userEvent.setup();
     render();
 
     await loaded();
-    await user.click(screen.getByRole('button', { name: new RegExp(t.table.splitAt) }));
+    await user.click(screen.getByRole('tab', { name: t.order.newest }));
     expect(screen.getAllByRole('checkbox').map((row) => row.getAttribute('aria-label'))).toEqual([
       t.table.choose(NEW.lotNo),
       t.table.choose(FAILED.lotNo),

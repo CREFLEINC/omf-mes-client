@@ -24,6 +24,11 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
     week: '7 ngày gần đây',
     month: '30 ngày gần đây',
   },
+  order: {
+    label: 'Sắp xếp',
+    newest: 'Mới nhất',
+    oldest: 'Cũ nhất',
+  },
   help: {
     button: 'Trợ giúp',
     title: 'Hướng dẫn nhãn LOT tách',

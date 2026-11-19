@@ -336,11 +336,6 @@ export const GoodsIssueQrScreen = () => {
       today={today}
       selected={selected}
       order={order}
-      onOrder={() => {
-        setOrder(order === 'oldest' ? 'newest' : 'oldest');
-        setOrderPicked(true);
-        page.setPage(1);
-      }}
       showAge={!isPrintedTab}
       isLocked={isBusy}
       onToggle={toggle}
@@ -532,6 +527,20 @@ export const GoodsIssueQrScreen = () => {
             )}
             {list}
             <div className="giq-foot">
+              {/* 정렬은 [최신순·오래된순] 단추로(사용자 지시 2026-11-19) — 머리글 누르기는 두지 않는다. */}
+              <PuSeg
+                label={t.order.label}
+                value={order}
+                options={(['newest', 'oldest'] as const).map((each) => ({
+                  value: each,
+                  label: t.order[each],
+                }))}
+                onChange={(next) => {
+                  setOrder(next);
+                  setOrderPicked(true);
+                  page.setPage(1);
+                }}
+              />
               <PuPager
                 label={t.table.label}
                 total={page.total}
@@ -552,11 +561,12 @@ export const GoodsIssueQrScreen = () => {
                   label={t.reasons.label}
                   hint={
                     reasonCode === null ? (
-                      <span className="giq-reason-hint">
+                      /* 재인쇄 사유 이름 오른쪽 라벨(사용자 지시 2026-11-19). */
+                      <PuChip tone="bad">
                         {isPrintedTab
                           ? t.reasons.need
                           : t.reasons.needFailed(chosenNeedingReason.length)}
-                      </span>
+                      </PuChip>
                     ) : undefined
                   }
                 />
@@ -631,7 +641,6 @@ const SplitTable = ({
   today,
   selected,
   order,
-  onOrder,
   showAge,
   isLocked,
   onToggle,
@@ -641,8 +650,6 @@ const SplitTable = ({
   today: string;
   selected: ReadonlySet<number>;
   order: Order;
-  /** 분할 시각 머리글을 누르면 오름·내림을 바꾼다 — 따로 정렬 단추를 두지 않는다(사용자 지시 2026-11-19). */
-  onOrder: () => void;
   showAge: boolean;
   isLocked: boolean;
   onToggle: (lotId: number) => void;
@@ -658,11 +665,7 @@ const SplitTable = ({
             <th>{t.table.item}</th>
             <th className="num fit">{t.table.qty}</th>
             <th>{t.table.issue}</th>
-            <th className="fit" aria-sort={order === 'oldest' ? 'ascending' : 'descending'}>
-              <button type="button" className="giq-sort" onClick={onOrder}>
-                {`${t.table.splitAt} ${order === 'oldest' ? '↑' : '↓'}`}
-              </button>
-            </th>
+            <th className="fit">{`${t.table.splitAt} ${order === 'oldest' ? '↑' : '↓'}`}</th>
             <th className="fit mid">{t.table.labelColumn}</th>
           </tr>
         </thead>

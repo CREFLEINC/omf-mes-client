@@ -72,6 +72,11 @@
   gap: 12px;
 }
 
+.giq-foot > .pu-seg {
+  flex: none;
+  width: 200px;
+}
+
 .giq-foot > .pu-pager {
   margin-left: auto;
 }
@@ -93,10 +98,8 @@
   display: none;
 }
 
-.giq-reason-hint {
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--pu-bad);
+.giq-reasons .pu-label .aside {
+  margin-left: 8px;
 }
 
 /* 표: 바깥 칸(`giq-table`)이 남는 높이를 갖고 쪽 건수를 잰다. 칸 폭·줄 높이는 공통 표(`pu-table`) 규칙 —
@@ -268,14 +271,4 @@
   .giq-lotno {
     font-size: 12px;
   }
-}
-
-/* 분할 시각 머리글 — 눌러서 오름·내림을 바꾼다. */
-.giq-sort {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
 }

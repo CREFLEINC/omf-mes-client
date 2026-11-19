@@ -32,6 +32,12 @@ export const goodsIssueQr = {
     week: '최근 7일',
     month: '최근 30일',
   },
+  /** 표 구획 왼쪽 아래 정렬(분할 시각). */
+  order: {
+    label: '정렬',
+    newest: '최신순',
+    oldest: '오래된순',
+  },
   help: {
     button: '도움말',
     /** [도움말] 창(사용자 지정 문구 2026-11-19). */
