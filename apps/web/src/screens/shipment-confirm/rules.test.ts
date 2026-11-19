@@ -1,0 +1,98 @@
+import { describe, expect, it } from 'vitest';
+
+import { canConfirm, cancelLockOf, flowOf, warehouseDisplay } from './rules';
+import type { ShipmentRow } from './types';
+
+const row = (overrides: Partial<ShipmentRow> = {}): ShipmentRow => ({
+  shipmentId: 1,
+  shipmentNo: 'SYN-SH-1',
+  shipmentRequestId: 30,
+  shippedAt: null,
+  statusCode: 'CONFIRMED',
+  expedited: false,
+  erpDeliveryNo: null,
+  erpSendStatus: 'PENDING',
+  cancelRequestPending: false,
+  completedTerminalCode: 'SYN-POP',
+  completedWorker: null,
+  warehouses: [],
+  totalQty: null,
+  ...overrides,
+});
+
+describe('flowOf', () => {
+  it('Q9 POP 완료 출하는 「출하 완료」, 옛 흐름 확정분은 「확정」이다', () => {
+    expect(flowOf(row())).toBe('completed');
+    expect(flowOf(row({ completedTerminalCode: null }))).toBe('confirmed');
+  });
+
+  it('Q18 미확정은 옛 흐름과 긴급 직행으로 가른다', () => {
+    expect(flowOf(row({ statusCode: 'UNCONFIRMED', completedTerminalCode: null }))).toBe(
+      'legacyUnconfirmed',
+    );
+    expect(
+      flowOf(row({ statusCode: 'UNCONFIRMED', completedTerminalCode: null, expedited: true })),
+    ).toBe('expeditedUnconfirmed');
+  });
+});
+
+describe('canConfirm', () => {
+  it('Q22 [확정]은 미확정 출하에만 선다', () => {
+    expect(canConfirm(row({ statusCode: 'UNCONFIRMED' }))).toBe(true);
+    expect(canConfirm(row())).toBe(false);
+  });
+});
+
+describe('cancelLockOf', () => {
+  it('US6-1 ERP 로 보내기 전(대기)이면 취소를 요청할 수 있다', () => {
+    expect(cancelLockOf(row())).toBeNull();
+  });
+
+  it('US7-4 수주 없는 출하(송신 안 함)도 취소를 요청할 수 있다', () => {
+    expect(cancelLockOf(row({ erpSendStatus: 'NOT_SENT_NO_SALES_ORDER' }))).toBeNull();
+  });
+
+  it('US6-2 보낸 뒤에는 잠근다', () => {
+    expect(cancelLockOf(row({ erpSendStatus: 'SENT' }))).toBe('sent');
+  });
+
+  it('Q14 취소 상신 중이면 다시 올리지 않는다', () => {
+    expect(cancelLockOf(row({ cancelRequestPending: true }))).toBe('cancelPending');
+  });
+
+  it('송신 오류는 담당자 문의로 잠근다 — 이번 범위에서 정하지 않았다', () => {
+    expect(cancelLockOf(row({ erpSendStatus: 'SEND_ERROR' }))).toBe('sendError');
+  });
+
+  it('옛 흐름 확정분은 지금처럼 취소할 수 없고, 미확정은 요청할 수 있다', () => {
+    expect(cancelLockOf(row({ completedTerminalCode: null }))).toBe('confirmedLegacy');
+    expect(
+      cancelLockOf(row({ statusCode: 'UNCONFIRMED', completedTerminalCode: null })),
+    ).toBeNull();
+  });
+
+  it('취소된 출하는 잠근다', () => {
+    expect(cancelLockOf(row({ statusCode: 'CANCELLED', erpSendStatus: 'CANCELLED' }))).toBe(
+      'cancelled',
+    );
+  });
+});
+
+describe('warehouseDisplay', () => {
+  it('Q18 하나면 이름, 여럿이면 「n곳」과 이름 목록', () => {
+    expect(warehouseDisplay(row({ warehouses: [{ warehouseId: 1, warehouseName: 'A' }] }))).toEqual(
+      { kind: 'one', name: 'A' },
+    );
+    expect(
+      warehouseDisplay(
+        row({
+          warehouses: [
+            { warehouseId: 1, warehouseName: 'A' },
+            { warehouseId: 2, warehouseName: 'B' },
+          ],
+        }),
+      ),
+    ).toEqual({ kind: 'many', count: 2, names: 'A, B' });
+    expect(warehouseDisplay(row())).toEqual({ kind: 'none' });
+  });
+});

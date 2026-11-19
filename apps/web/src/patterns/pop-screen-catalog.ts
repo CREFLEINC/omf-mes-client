@@ -81,6 +81,19 @@ export const POP_SCREEN_GROUPS: readonly { key: PopScreenGroupKey; name: string 
 ];
 
 /**
+ * 라우트는 남기되 [화면 이동] 후보에서 **감춘** POP 화면(피처 010 · omf-all-around#305).
+ *
+ * 출하는 PDA 피킹 → OQC → P-04-07 「출하 완료」로 끝나 포장(P-04-01) · 재구성 라벨(P-04-04) ·
+ * 출하 단위(P-04-05)를 쓰지 않는다. 화면을 지우지 않는 이유는 배포 전 진행분 때문이다 — 주소로는
+ * 여전히 열린다. `routes/pop-screen-catalog.test.ts` 가 이 목록을 라우트 표와 대조한다.
+ */
+export const POP_HIDDEN_SCREEN_PATHS: readonly string[] = [
+  '/pop/packing',
+  '/pop/repack-label-issue',
+  '/pop/shipping-units',
+];
+
+/**
  * 갈 수 있는 POP 화면.
  *
  * ⛔ **진입 화면(`P-CO-01` · `/pop/worker-assignment`)은 담지 않는다.** 그 화면으로 가는 길은
@@ -147,26 +160,12 @@ export const POP_SCREENS: readonly PopScreen[] = [
   { path: '/pop/material-defect', code: 'P-02-14', group: 'production', name: '자재 불량 등록' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#89 · 서버 장부 P-102). */
   {
-    path: '/pop/packing',
-    code: 'P-04-01',
-    group: 'shipping',
-    name: '출하 포장',
-    countKey: 'shipmentPacking',
-  },
-  {
     path: '/pop/rework-results',
     code: 'P-04-03',
     group: 'shipping',
     name: '재작업 실적 등록',
     countKey: 'reworkResult',
   },
-  {
-    path: '/pop/repack-label-issue',
-    code: 'P-04-04',
-    group: 'shipping',
-    name: '재구성 신규 라벨 발행',
-  },
-  { path: '/pop/shipping-units', code: 'P-04-05', group: 'shipping', name: '출하 단위 구성' },
   /* 피처 010(omf-all-around#305) — 출하는 이 화면의 [출하 완료]로 끝난다. 탭 끝 배지는 완료 대기 수다. */
   {
     path: '/pop/shipment-complete',

@@ -46,7 +46,7 @@ describe('toLineQtyTotals', () => {
         LINE,
         { ...LINE, shipmentRequestLineId: 2, requestedQty: 50, allocatedQty: 50, shippedQty: 0 },
       ]),
-    ).toEqual({ requestedQty: 150, allocatedQty: 130, shippedQty: 20 });
+    ).toEqual({ requestedQty: 150, allocatedQty: 130, pickedQty: 80, shippedQty: 20 });
   });
 
   /*
@@ -59,6 +59,7 @@ describe('toLineQtyTotals', () => {
     expect(toLineQtyTotals([LINE, missing])).toEqual({
       requestedQty: null,
       allocatedQty: 160,
+      pickedQty: 80,
       shippedQty: 40,
     });
   });
@@ -83,6 +84,7 @@ describe('toLineQtyTotals', () => {
       {
         requestedQty: 0,
         allocatedQty: 0,
+        pickedQty: 40,
         shippedQty: 0,
       },
     );
@@ -99,7 +101,12 @@ describe('toShipmentRequestView', () => {
       requestedShipDate: '2026-08-13',
       shipmentProgressCode: 'PARTIALLY_SHIPPED',
       inspectionStatus: 'NOT_REQUIRED',
-      lineTotals: { requestedQty: 100, allocatedQty: 80, shippedQty: 20 },
+      lineTotals: { requestedQty: 100, allocatedQty: 80, pickedQty: 40, shippedQty: 20 },
+      overQty: 0,
+      lotJudgmentSummary: { notInspected: 0, accepted: 0, rejected: 0, held: 0 },
+      blockerCount: 0,
+      pickingWarehouseNames: [],
+      replacementCount: 0,
     });
   });
 

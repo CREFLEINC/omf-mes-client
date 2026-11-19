@@ -14,9 +14,14 @@ const BASE_LINE = {
   itemId: 9301,
   requestedQty: 500,
   allocatedQty: 500,
+  pickedQty: 500,
   shippedQty: 500,
   uomId: 9501,
   shippingInspectionRequired: false,
+  picks: [],
+  /* 피처 010 — 초과·피킹 LOT 행. */
+  overQty: 0,
+  lots: [],
 };
 
 const BASE_SHIPMENT_REQUEST = {
@@ -29,6 +34,14 @@ const BASE_SHIPMENT_REQUEST = {
   shipmentProgressCode: 'PICKED',
   shippingInspectionStatusCode: 'NOT_REQUIRED',
   lines: [BASE_LINE],
+  /* 피처 010 — 지시서 코드·피킹 창고·교체·막힘·LOT 판정 요약·완료 출하. */
+  code: 'SHPREQ:SAMPLE-SR-0001',
+  pickingWarehouses: [],
+  replacementCount: 0,
+  completionBlockers: [],
+  blockerSummary: {},
+  lotJudgmentSummary: { notInspected: 0, accepted: 0, rejected: 0, held: 0 },
+  completedShipment: null,
 };
 
 /** 한 항목만 다른 건을 만든다. 무엇을 검사하는 테스트인지 그 인자만 보고 읽히게 한다. */
@@ -60,3 +73,127 @@ export const partnerFixtures = [
   { partnerId: 9111, partnerCode: 'SAMPLE-SHT-01', partnerName: '합성 납품처 가', isActive: true },
   { partnerId: 9112, partnerCode: 'SAMPLE-SHT-02', partnerName: '합성 납품처 나', isActive: false },
 ];
+
+/** 피킹 LOT 행 하나(피처 010). 몫·판정·교체 근거를 덮어쓴다. */
+export const pickedLot = (overrides: Record<string, unknown> = {}) => ({
+  shipmentRequestLotId: 9801,
+  lotId: 9901,
+  lotNo: 'SAMPLE-LOT-0001',
+  itemId: 9301,
+  pickedQty: 40,
+  uomId: 9501,
+  statusCode: 'PICKED',
+  managementCode: 'SAMPLE-PLT-0007',
+  pickedAt: '2026-11-18T09:12:00+07:00',
+  pickedWorker: { workerId: 9601, workerNo: 'SAMPLE-W-01', workerName: '합성 작업자' },
+  shipmentId: null,
+  portions: [
+    {
+      warehouseId: 9401,
+      warehouseCode: 'SAMPLE-WH-A',
+      warehouseName: '합성 완제품 창고 A',
+      locationId: 9411,
+      locationCode: 'SAMPLE-A-01-01',
+      qty: 40,
+    },
+  ],
+  oqcLotStatus: 'ACCEPTED',
+  replacement: null,
+  ...overrides,
+});
+
+/**
+ * 피킹 중인 지시서 — 목표 100 · 피킹 110(초과 10), LOT 셋(하나는 교체됨, 하나는 미검사),
+ * 두 창고, 막는 이유 둘(미검사 · 수주 라인 취소).
+ */
+export const pickingRequest = () =>
+  shipmentRequest({
+    shipmentRequestId: 9010,
+    shipmentRequestNo: 'SAMPLE-SR-0010',
+    shipmentProgressCode: 'PICKED',
+    code: 'SHPREQ:SAMPLE-SR-0010',
+    replacementCount: 1,
+    pickingWarehouses: [
+      { warehouseId: 9401, warehouseCode: 'SAMPLE-WH-A', warehouseName: '합성 완제품 창고 A' },
+      { warehouseId: 9402, warehouseCode: 'SAMPLE-WH-B', warehouseName: '합성 완제품 창고 B' },
+    ],
+    completionBlockers: [
+      { code: 'NOT_INSPECTED', lotNo: 'SAMPLE-LOT-0004' },
+      { code: 'SALES_ORDER_LINE_CANCELLED', lineNo: 1 },
+    ],
+    blockerSummary: { NOT_INSPECTED: 1, SALES_ORDER_LINE_CANCELLED: 1 },
+    lotJudgmentSummary: { notInspected: 1, accepted: 1, rejected: 0, held: 0 },
+    lines: [
+      {
+        ...BASE_LINE,
+        shipmentRequestLineId: 9710,
+        requestedQty: 100,
+        allocatedQty: 100,
+        pickedQty: 110,
+        shippedQty: 0,
+        shippingInspectionRequired: true,
+        overQty: 10,
+        lots: [
+          pickedLot({
+            pickedQty: 80,
+            portions: [
+              {
+                warehouseId: 9401,
+                warehouseCode: 'SAMPLE-WH-A',
+                warehouseName: '합성 완제품 창고 A',
+                locationId: 9411,
+                locationCode: 'SAMPLE-A-01-01',
+                qty: 40,
+              },
+              {
+                warehouseId: 9402,
+                warehouseCode: 'SAMPLE-WH-B',
+                warehouseName: '합성 완제품 창고 B',
+                locationId: 9421,
+                locationCode: 'SAMPLE-B-02-01',
+                qty: 40,
+              },
+            ],
+          }),
+          pickedLot({
+            shipmentRequestLotId: 9803,
+            lotId: 9903,
+            lotNo: 'SAMPLE-LOT-0003',
+            pickedQty: 30,
+            statusCode: 'REPLACED',
+            managementCode: null,
+            oqcLotStatus: 'REJECTED',
+            portions: [],
+            replacement: {
+              inspectionResultId: 9851,
+              resultNo: 'SAMPLE-QR-0002',
+              resultAt: '2026-11-18T10:35:00+07:00',
+              judgment: 'REJECTED',
+              nonconformanceId: 9861,
+              nonconformanceNo: 'SAMPLE-NC-0003',
+              replacedAt: '2026-11-18T10:42:00+07:00',
+              worker: { workerId: 9601, workerNo: 'SAMPLE-W-01', workerName: '합성 작업자' },
+            },
+          }),
+          pickedLot({
+            shipmentRequestLotId: 9804,
+            lotId: 9904,
+            lotNo: 'SAMPLE-LOT-0004',
+            pickedQty: 30,
+            managementCode: null,
+            oqcLotStatus: 'NOT_INSPECTED',
+            portions: [
+              {
+                warehouseId: 9402,
+                warehouseCode: 'SAMPLE-WH-B',
+                warehouseName: '합성 완제품 창고 B',
+                locationId: 9421,
+                locationCode: 'SAMPLE-B-02-01',
+                qty: 30,
+              },
+            ],
+          }),
+        ],
+      },
+    ],
+  });

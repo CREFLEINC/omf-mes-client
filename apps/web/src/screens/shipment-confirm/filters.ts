@@ -11,20 +11,29 @@
  * 값이라 임의로 새 선택지를 만들지 않는다 — 허용 밖 값만 없앤다.
  */
 
+import type { ErpSendStatus } from './types';
+
 export type SortKey = 'elapsed';
+
+/** ERP 송신 거르기 — `all` 이면 걸지 않는다(피처 010). */
+export type ErpFilter = 'all' | ErpSendStatus;
 
 export interface ConfirmFilters {
   from: string;
   to: string;
   sort: SortKey;
+  /** 출하번호 검색(계약 `q` 의 범위는 shipment_no 하나다). */
+  q: string;
+  erp: ErpFilter;
 }
 
 export interface ConfirmListQuery {
   shipDateFrom: string;
   shipDateTo: string;
-  unconfirmedOnly: true;
   /** 계약이 허용하는 값 그대로 — 방향 접미사를 붙이지 않는다(통보 219, 서버가 방향을 받지 않는다). */
   sort: 'shippedAt';
+  q?: string;
+  erpSendStatus?: ErpSendStatus;
   page?: number;
 }
 
@@ -56,7 +65,7 @@ export const isDate = (value: string): boolean => {
  */
 export const defaultFilters = (today: Date): ConfirmFilters => {
   const from = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
-  return { from: toDateString(from), to: toDateString(today), sort: 'elapsed' };
+  return { from: toDateString(from), to: toDateString(today), sort: 'elapsed', q: '', erp: 'all' };
 };
 
 export const isUsable = (filters: ConfirmFilters): boolean =>
@@ -82,9 +91,13 @@ export const toListQuery = (filters: ConfirmFilters, page: number): ConfirmListQ
   return {
     shipDateFrom: filters.from,
     shipDateTo: filters.to,
-    /* ⭐ 이 화면은 미확정만 본다 — 확정된 건은 여기서 할 일이 없다(§5-9). */
-    unconfirmedOnly: true,
+    /*
+     * ⭐ 피처 010 — 「출하 내역」은 미확정만이 아니라 모든 출하를 본다(POP 완료 출하는 처음부터
+     * 확정이다). 그래서 `unconfirmedOnly` 를 싣지 않는다.
+     */
     sort: SORT_VALUES[filters.sort],
+    ...(filters.q.trim() === '' ? {} : { q: filters.q.trim() }),
+    ...(filters.erp === 'all' ? {} : { erpSendStatus: filters.erp }),
     ...(page > 1 ? { page } : {}),
   };
 };

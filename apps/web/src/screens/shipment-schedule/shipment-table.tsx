@@ -33,6 +33,8 @@ export interface ShipmentTableProps {
   onFirstPage: () => void;
   onRetryReferences: () => void;
   onAssignPlant: (shipmentRequestId: number) => void;
+  /** 피처 010 — 지시서 번호를 누르면 상세 창을 연다. */
+  onOpenDetail: (shipmentRequestId: number) => void;
 }
 
 /** 값이 없는 칸은 비워 두지 않는다. */
@@ -46,10 +48,80 @@ const orEmptyMark = (value: string): ReactNode => (value === '' ? t.values.empty
  */
 const qtyText = (value: number | null): string => (value === null ? t.values.empty : String(value));
 
-const renderQty = (totals: LineQtyTotals | null): ReactNode => {
+/**
+ * 피처 010 — 「목표 / 피킹 / 출하」(목표 = 배정, FR-002). 요청은 상세에만. 피킹이 목표를 넘으면
+ * 아래에 「초과 n」(서버가 라인마다 계산한 `overQty` 합).
+ */
+const renderQty = (totals: LineQtyTotals | null, overQty: number): ReactNode => {
   if (totals === null) return t.values.empty;
 
-  return `${qtyText(totals.requestedQty)} / ${qtyText(totals.allocatedQty)} / ${qtyText(totals.shippedQty)}`;
+  const text = `${qtyText(totals.allocatedQty)} / ${qtyText(totals.pickedQty)} / ${qtyText(totals.shippedQty)}`;
+  if (overQty <= 0) return text;
+
+  return (
+    <span className="shipment-schedule-stack">
+      <span>{text}</span>
+      <Chip variant="status" status="warning" size="sm">
+        {t.values.over(overQty)}
+      </Chip>
+    </span>
+  );
+};
+
+/**
+ * 피처 010 — 검사 칸은 가장 나쁜 LOT 판정 하나와 그 수(불합격 > 보류 > 미검사 > 합격).
+ * 살아 있는 피킹 LOT 이 없으면 「—」다(서버 롤업의 「대기」를 쓰지 않는다).
+ */
+const renderJudgment = (summary: ShipmentRequestView['lotJudgmentSummary']): ReactNode => {
+  if (summary === null) return t.values.empty;
+  if (summary.rejected > 0) {
+    return (
+      <Chip variant="status" status="error" size="sm">
+        {t.values.judgmentRejected(summary.rejected)}
+      </Chip>
+    );
+  }
+  if (summary.held > 0) {
+    return (
+      <Chip variant="status" status="warning" size="sm">
+        {t.values.judgmentHeld(summary.held)}
+      </Chip>
+    );
+  }
+  if (summary.notInspected > 0) {
+    return (
+      <Chip variant="status" size="sm">
+        {t.values.judgmentNotInspected(summary.notInspected)}
+      </Chip>
+    );
+  }
+  if (summary.accepted > 0) {
+    return (
+      <Chip variant="status" status="success" size="sm">
+        {t.values.judgmentAccepted}
+      </Chip>
+    );
+  }
+  return t.values.empty;
+};
+
+/**
+ * 피처 010 — 진행 칩 아래 「완료 대기」(막는 이유 없음) / 「막힘 n」. 미편성과 출하 완료에는 달지 않는다.
+ */
+const renderCompletion = (row: ShipmentRequestView): ReactNode => {
+  if (row.blockerCount === null) return null;
+  if (row.shipmentProgressCode === 'NOT_ALLOCATED' || row.shipmentProgressCode === 'SHIPPED') {
+    return null;
+  }
+  return row.blockerCount === 0 ? (
+    <Chip variant="status" status="success" size="sm">
+      {t.values.completionReady}
+    </Chip>
+  ) : (
+    <Chip variant="status" status="error" size="sm">
+      {t.values.blocked(row.blockerCount)}
+    </Chip>
+  );
 };
 
 /**
@@ -61,30 +133,6 @@ const renderQty = (totals: LineQtyTotals | null): ReactNode => {
  */
 const progressTone = (code: string): 'success' | undefined =>
   code === 'SHIPPED' ? 'success' : undefined;
-
-/**
- * 「검사」 열 — 서버 롤업(`ShipmentRequestView.inspectionStatus`)을 그대로 옮긴다.
- * `REJECTED`·`HELD` 전용 배지는 이번 슬라이스에서 두지 않는다 — `PENDING`과 같게 그린다
- * (계약 주석 W-04-02 §5-3 · omf-mes#232 · omf-mes#235, 다음 착수에서 분리). **default 분기가
- * 곧 미지 값 대응이다** — 계약에 값이 늘어도 여기로 떨어져 빈 배지·예외로 이어지지 않는다.
- */
-const renderInspectionStatus = (status: ShipmentRequestView['inspectionStatus']): ReactNode => {
-  if (status === 'NOT_REQUIRED') return t.values.empty;
-
-  if (status === 'PASSED') {
-    return (
-      <Chip variant="status" status="success" size="sm">
-        {t.values.inspectionPassed}
-      </Chip>
-    );
-  }
-
-  return (
-    <Chip variant="status" size="sm">
-      {t.values.inspectionPending}
-    </Chip>
-  );
-};
 
 /**
  * 이 화면이 열 수 있는 정렬 열의 집합. 계약 열거값이 곧 전체다(보기가 하나뿐이라
@@ -120,6 +168,7 @@ export const ShipmentTable = ({
   onFirstPage,
   onRetryReferences,
   onAssignPlant,
+  onOpenDetail,
 }: ShipmentTableProps) => {
   const columns: Column<ShipmentRequestView>[] = [
     {
@@ -133,13 +182,26 @@ export const ShipmentTable = ({
       key: 'shipmentRequestNo',
       align: 'center',
       header: t.table.shipmentRequestNo,
-      width: '13%',
+      width: '11%',
       sortable: SORTABLE_KEYS.has('shipmentRequestNo'),
+      /* 피처 010 — 번호를 누르면 오른쪽 상세 창(피킹 LOT · 교체 이력 · 막는 이유 · 인쇄). */
+      render: (row) => (
+        <Button
+          variant="text"
+          size="sm"
+          aria-label={t.table.openDetail(row.shipmentRequestNo)}
+          onClick={() => {
+            onOpenDetail(row.shipmentRequestId);
+          }}
+        >
+          {row.shipmentRequestNo}
+        </Button>
+      ),
     },
     {
       key: 'customerId',
       align: 'center',
-      width: '18%',
+      width: '14%',
       header: t.table.customer,
       sortable: SORTABLE_KEYS.has('customerId'),
       /* 계약 정렬 키는 번호(customerId)지만 표시는 이름이다 — #44와 같은 이유로 번호를 칸에 담지 않는다. */
@@ -148,23 +210,23 @@ export const ShipmentTable = ({
     {
       key: 'shipToPartnerId',
       align: 'center',
-      width: '18%',
+      width: '14%',
       header: t.table.shipToPartner,
       render: (row) => describeReference(toReference(shipToPartnerLookup, row.shipToPartnerId)),
     },
     {
       key: 'qty',
       header: t.table.qty,
-      width: '14%',
+      width: '12%',
       align: 'center',
-      render: (row) => renderQty(row.lineTotals),
+      render: (row) => renderQty(row.lineTotals, row.overQty),
     },
     {
       key: 'inspection',
       align: 'center',
       header: t.table.inspection,
       width: '7%',
-      render: (row) => renderInspectionStatus(row.inspectionStatus),
+      render: (row) => renderJudgment(row.lotJudgmentSummary),
     },
     {
       key: 'progress',
@@ -176,15 +238,42 @@ export const ShipmentTable = ({
        * ⛔ 모르는 값은 코드를 그대로 보인다 — 계약에 값이 늘어도 빈 칸이 되지 않는다.
        */
       render: (row) => (
-        <Chip variant="status" status={progressTone(row.shipmentProgressCode)} size="sm">
-          {orEmptyMark(progressLabel(row.shipmentProgressCode))}
-        </Chip>
+        <span className="shipment-schedule-stack">
+          <Chip variant="status" status={progressTone(row.shipmentProgressCode)} size="sm">
+            {orEmptyMark(progressLabel(row.shipmentProgressCode))}
+          </Chip>
+          {renderCompletion(row)}
+        </span>
       ),
+    },
+    {
+      key: 'pickingWarehouses',
+      align: 'center',
+      header: t.table.pickingWarehouses,
+      width: '9%',
+      render: (row) =>
+        row.pickingWarehouseNames.length === 0
+          ? t.values.empty
+          : row.pickingWarehouseNames.join(', '),
+    },
+    {
+      key: 'marks',
+      align: 'center',
+      header: t.table.marks,
+      width: '7%',
+      render: (row) =>
+        row.replacementCount > 0 ? (
+          <Chip variant="status" status="warning" size="sm">
+            {t.values.replacement(row.replacementCount)}
+          </Chip>
+        ) : (
+          t.values.empty
+        ),
     },
     {
       key: 'fulfillmentPlant',
       align: 'center',
-      width: '13%',
+      width: '9%',
       header: t.table.fulfillmentPlant,
       render: (row) =>
         row.fulfillmentPlantId == null ? (

@@ -8,6 +8,8 @@ const filters = (overrides: Partial<ConfirmFilters> = {}): ConfirmFilters => ({
   from: '2026-08-01',
   to: '2026-09-01',
   sort: 'elapsed',
+  q: '',
+  erp: 'all',
   ...overrides,
 });
 
@@ -57,9 +59,21 @@ describe('isUsable', () => {
 });
 
 describe('toListQuery', () => {
-  /* ⭐ 이 화면은 미확정만 본다 — 확정된 건은 여기서 할 일이 없다(§5-9). */
-  it('⭐ 미확정만 서버에 싣는다 — 받아서 거르지 않는다(L-11)', () => {
-    expect(toListQuery(filters(), 1)?.unconfirmedOnly).toBe(true);
+  /* 피처 010 — 「출하 내역」은 모든 출하를 본다. 미확정만 거르지 않는다. */
+  it('Q17 미확정만 거르지 않는다 — 모든 출하를 조회한다', () => {
+    expect(toListQuery(filters(), 1)).not.toHaveProperty('unconfirmedOnly');
+  });
+
+  it('US7-3 ERP 송신 거르기를 서버에 싣는다 — 「전체」면 싣지 않는다(L-11)', () => {
+    expect(toListQuery(filters({ erp: 'NOT_SENT_NO_SALES_ORDER' }), 1)?.erpSendStatus).toBe(
+      'NOT_SENT_NO_SALES_ORDER',
+    );
+    expect(toListQuery(filters(), 1)).not.toHaveProperty('erpSendStatus');
+  });
+
+  it('출하번호 검색어는 앞뒤 공백을 걷어 싣고, 비면 싣지 않는다', () => {
+    expect(toListQuery(filters({ q: '  SH-1 ' }), 1)?.q).toBe('SH-1');
+    expect(toListQuery(filters({ q: '  ' }), 1)).not.toHaveProperty('q');
   });
 
   it('기간을 언제나 싣는다 — 계약이 필수로 둔다(L-3)', () => {

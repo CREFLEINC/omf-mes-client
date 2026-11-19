@@ -94,14 +94,15 @@ afterEach(() => {
 });
 
 describe('PopHomeScreen — 홈(#291)', () => {
-  it('인사, 남은 작업, 이 단말이 갈 수 있는 바로가기만 보인다', async () => {
+  /* Q21 피처 010 — 출하 포장(P-04-01)은 감췄다. 수가 와도 남은 작업 · 바로가기에 서지 않는다. */
+  it('Q21 인사, 남은 작업, 이 단말이 갈 수 있는 바로가기만 보인다(감춘 출하 포장 제외)', async () => {
     setup({ shipmentPacking: 4, workStart: 3 });
 
     expect(screen.getByRole('heading', { name: t.greeting('2048') })).toBeInTheDocument();
     const remaining = await within(
       screen.getByRole('region', { name: new RegExp(`^${t.remainingTitle}`, 'u') }),
-    ).findByRole('button', { name: messages.popChrome.remaining.count('출하 포장', 4) });
-    expect(remaining).toHaveTextContent(t.remainingCount(4));
+    ).findByRole('button', { name: messages.popChrome.remaining.count('작업 지시 목록', 3) });
+    expect(remaining).toHaveTextContent(t.remainingCount(3));
 
     const shortcuts = within(screen.getByRole('region', { name: t.shortcutsTitle }));
     expect(
@@ -109,7 +110,8 @@ describe('PopHomeScreen — 홈(#291)', () => {
         .getAllByRole('button')
         .filter((button) => button.classList.contains('pop-home__tile'))
         .map((tile) => tile.querySelector('span:last-child')?.textContent),
-    ).toEqual(['생산 작업', '작업 지시 목록', '출하 포장']);
+    ).toEqual(['생산 작업', '작업 지시 목록']);
+    expect(screen.queryByText('출하 포장')).toBeNull();
   });
 
   it('남은 작업·바로가기를 누르면 그 화면으로 간다', async () => {
@@ -231,7 +233,7 @@ describe('PopHomeScreen — 홈(#291)', () => {
         .map((tile) => tile.querySelector('span:last-child')?.textContent);
 
     await waitFor(() => {
-      expect(tileNames()).toEqual(['생산 작업', '작업 지시 목록', '출하 포장']);
+      expect(tileNames()).toEqual(['생산 작업', '작업 지시 목록']);
     });
 
     await user.click(shortcuts().getByRole('button', { name: t.edit }));
@@ -239,17 +241,16 @@ describe('PopHomeScreen — 홈(#291)', () => {
     await user.click(shortcuts().getByRole('button', { name: '비가동 실적 입력' }));
     await user.click(shortcuts().getByRole('button', { name: t.editDone }));
 
-    expect(tileNames()).toEqual(['작업 지시 목록', '출하 포장', '비가동 실적 입력']);
+    expect(tileNames()).toEqual(['작업 지시 목록', '비가동 실적 입력']);
     expect(JSON.parse(window.localStorage.getItem('omf.pop.home.shortcuts') ?? 'null')).toEqual([
       '/pop/work-start',
-      '/pop/packing',
       '/pop/downtime',
     ]);
 
     await user.click(shortcuts().getByRole('button', { name: t.edit }));
     await user.click(shortcuts().getByRole('button', { name: t.editReset }));
     await user.click(shortcuts().getByRole('button', { name: t.editDone }));
-    expect(tileNames()).toEqual(['생산 작업', '작업 지시 목록', '출하 포장']);
+    expect(tileNames()).toEqual(['생산 작업', '작업 지시 목록']);
     expect(window.localStorage.getItem('omf.pop.home.shortcuts')).toBeNull();
   });
 });

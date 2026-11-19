@@ -35,6 +35,17 @@ describe('readFilters', () => {
       shipToPartner: '9201',
       progress: 'PARTIALLY_SHIPPED',
       inspection: 'true',
+      q: '',
+      ready: '',
+      replaced: '',
+    });
+  });
+
+  it('Q10 검색어 · 완료 대기만 · LOT 교체 있음을 읽고, 「true」 밖의 값은 버린다', () => {
+    expect(readFilters(new URLSearchParams('q=%20SR-1%20&ready=true&replaced=yes'))).toMatchObject({
+      q: 'SR-1',
+      ready: 'true',
+      replaced: '',
     });
   });
 

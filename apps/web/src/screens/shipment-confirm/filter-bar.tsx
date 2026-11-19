@@ -1,11 +1,11 @@
-import { Button, DatePicker } from '@crefle/web-ui';
+import { Button, Chip, DatePicker, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
-import { Select } from '../../patterns/select';
-import { isUsable, type ConfirmFilters, type SortKey } from './filters';
+import { isUsable, type ConfirmFilters, type ErpFilter } from './filters';
+import { ERP_SEND_STATUSES } from './types';
 
-const t = messages.shipmentConfirm.filter;
+const t = messages.shipmentConfirm;
 
 export interface FilterBarProps {
   applied: ConfirmFilters;
@@ -13,37 +13,32 @@ export interface FilterBarProps {
   onReset: () => void;
 }
 
-/*
- * ⛔ **`shipDate`·`customer` 선택지를 없앴다.** 계약이 실제로 받는 `sort`는 `shippedAt`·
- * `shipmentNo`뿐이라(통보 219) 그 둘에 대응할 값이 없다 — 남겨 두면 골라도 400이 난다.
- */
-const SORT_OPTIONS: { value: SortKey; label: string }[] = [
-  { value: 'elapsed', label: t.sortOptions.elapsed },
-];
+const ERP_FILTERS: readonly ErpFilter[] = ['all', ...ERP_SEND_STATUSES];
+
+const erpLabel = (value: ErpFilter): string => (value === 'all' ? t.filter.all : t.erp[value]);
 
 /**
- * 조회 조건.
+ * 조회 조건 — 기간 · 출하번호 · ERP 송신(피처 010).
  *
- * ⚠ **정렬 기본값이 「경과일 긴 순」이다**(§5-7) — 목록의 관행은 최신순인데 적체 관리 화면에서는
- * **오래된 것이 위험하다.** 왜 그런지를 칸 옆에 상시 둔다.
+ * ⭐ ERP 송신 거르기는 칩 한 줄이다(시안 W0412-After) — 6값이 한눈에 보여야 「송신 오류」처럼
+ * 손이 가야 할 건이 숨지 않는다. 칩을 눌러도 바로 조회하지 않고 [조회]로 확정한다(다른 조건과 같다).
+ *
+ * 기본 정렬은 경과일 긴 순 그대로다(§5-7) — 계약이 방향을 받지 않아 선택지를 두지 않는다.
  */
 export const FilterBar = ({ applied, onApply, onReset }: FilterBarProps) => {
   const periodId = useId();
   const periodNoteId = `${periodId}-note`;
-  const sortId = useId();
-  const sortNoteId = `${sortId}-note`;
   const [draft, setDraft] = useState<ConfirmFilters>(applied);
-  const { from, to, sort } = applied;
 
   useEffect(() => {
-    setDraft({ from, to, sort });
-  }, [from, to, sort]);
+    setDraft(applied);
+  }, [applied]);
 
   return (
-    <div className="filter-bar">
+    <div className="filter-bar ship-history-filter">
       <div className="field-cell">
         <label className="field-label" htmlFor={periodId}>
-          {t.shipDate}
+          {t.filter.period}
         </label>
         <DatePicker
           id={periodId}
@@ -55,35 +50,49 @@ export const FilterBar = ({ applied, onApply, onReset }: FilterBarProps) => {
             setDraft((current) => ({ ...current, from: nextFrom, to: nextTo }))
           }
         />
-        {/* L-3 — 기간은 비울 수 없다. 왜 필수인지를 칸 옆에 상시 둔다. */}
         <span id={periodNoteId} className="field-note">
-          {isUsable(draft) ? t.periodRequired : t.periodReversed}
+          {isUsable(draft) ? t.filter.periodRequired : t.filter.periodReversed}
         </span>
       </div>
 
-      <div className="field-cell wide-select">
-        <label className="field-label" htmlFor={sortId}>
-          {t.sort}
-        </label>
-        <Select
-          id={sortId}
-          options={SORT_OPTIONS}
-          value={draft.sort}
-          aria-describedby={sortNoteId}
-          onChange={(value) => setDraft((current) => ({ ...current, sort: value as SortKey }))}
+      <div className="field-cell">
+        <TextField
+          label={t.filter.q}
+          value={draft.q}
+          placeholder={t.filter.qPlaceholder}
+          onChange={(event) => {
+            const q = event.target.value;
+            setDraft((current) => ({ ...current, q }));
+          }}
         />
-        <span id={sortNoteId} className="field-note">
-          {t.sortNote}
+      </div>
+
+      <div className="field-cell">
+        <span className="field-label" id={`${periodId}-erp`}>
+          {t.filter.erp}
         </span>
+        <div className="ship-history-chips" role="group" aria-labelledby={`${periodId}-erp`}>
+          {ERP_FILTERS.map((value) => (
+            <Chip
+              key={value}
+              variant="filter"
+              size="sm"
+              selected={draft.erp === value}
+              onSelectedChange={() => setDraft((current) => ({ ...current, erp: value }))}
+            >
+              {erpLabel(value)}
+            </Chip>
+          ))}
+        </div>
       </div>
 
       <div className="field-cell field-cell-unlabeled">
         <div className="filter-actions">
           <Button disabled={!isUsable(draft)} onClick={() => onApply(draft)}>
-            {t.search}
+            {t.filter.search}
           </Button>
           <Button variant="outlined" onClick={onReset}>
-            {t.reset}
+            {t.filter.reset}
           </Button>
         </div>
       </div>

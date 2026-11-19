@@ -16,8 +16,19 @@ export const cancelReasonError = (raw: string): string | undefined => {
   return undefined;
 };
 
+/**
+ * 취소가 실행되면 일어나는 것(POP 완료 출하만 · 시안 W0412-After 취소 요청 창). 옛 흐름 미확정
+ * 출하는 재고·전표가 아직 확정 전이라 이 목록을 두지 않는다.
+ */
+export interface CancelConsequences {
+  qty: number | null;
+  warehouses: string;
+  shipmentRequestNo: string | null;
+}
+
 export interface CancelRequestDialogProps {
   shipmentNo: string;
+  consequences: CancelConsequences | null;
   reason: string;
   showError: boolean;
   banner: ReactNode;
@@ -38,6 +49,7 @@ export interface CancelRequestDialogProps {
  */
 export const CancelRequestDialog = ({
   shipmentNo,
+  consequences,
   reason,
   showError,
   banner,
@@ -68,6 +80,23 @@ export const CancelRequestDialog = ({
     {banner === null || banner === undefined ? null : <div>{banner}</div>}
     <p>{t.target(shipmentNo)}</p>
     <p className="dialog-lead">{t.approvalNote}</p>
+    {consequences !== null && (
+      <>
+        {/* FR-024 — 상신 중에는 러너가 그 출하를 보내지 않는다. 요청하는 자리에서 말한다. */}
+        <p>{t.hold}</p>
+        <h3 className="field-label">{t.whatTitle}</h3>
+        <ul className="ship-history-consequences">
+          {consequences.qty !== null && (
+            <li>{t.what.stock(consequences.qty, consequences.warehouses)}</li>
+          )}
+          <li>{t.what.documents}</li>
+          <li>{t.what.salesOrder}</li>
+          {consequences.shipmentRequestNo !== null && (
+            <li>{t.what.request(consequences.shipmentRequestNo)}</li>
+          )}
+        </ul>
+      </>
+    )}
     <TextArea
       label={t.reasonLabel}
       value={reason}

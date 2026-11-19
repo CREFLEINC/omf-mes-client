@@ -175,10 +175,16 @@ export const WEB_SCREENS: readonly WebScreen[] = [
    * 「출하 처리(상차·실물 출고)」로 **개칭·범위 축소**하고 ERP PGI 송신을 `W-04-12` 로 옮겼다.
    * 이름은 IA §3-2(최신)를 따르고, 코드는 그대로다.
    */
+  /*
+   * ⚠ **예외 셋째 — 메뉴에서 감췄지만 목록에 남긴다**(피처 010 · omf-all-around#305). 출하는 POP
+   * 「출하 완료」(P-04-07)로 끝나고, 이 화면은 배포 전에 예약만 있던 옛 피킹을 끝내는 관리자용
+   * 링크로만 남는다(배포 공지). 주소와 권한 코드는 그대로다.
+   */
   { path: '/shipment/shipment-processing', code: 'W-04-04', name: '출하 처리(상차·실물 출고)' },
+  /* 피처 010 — 출하 처리 묶음에서 빠져 독립 항목이다. */
   { path: '/shipment/expedited-shipment', code: 'W-04-05', name: '긴급 직행 출하 처리' },
-  /* IA v1.4 신설 — 「확정 후 취소」를 없애는 2단 확정의 뒷단이다. `W-04-04` 와 짝이다. */
-  { path: '/shipment/shipment-confirm', code: 'W-04-12', name: '출하 확정·취소' },
+  /* IA v1.4 신설 · 피처 010 에서 「출하 내역」으로 바뀌었다 — 확정 단계가 없어졌다(옛 흐름만 한 건씩 확정). */
+  { path: '/shipment/shipment-confirm', code: 'W-04-12', name: '출하 내역' },
   { path: '/shipment/return-receipts', code: 'W-04-06', name: '반품·클레임 입고 등록' },
   /*
    * ⚠ **의뢰이지 판정이 아니다.** 판정은 `W-03-10`(처분 판정 처리)이 갖는다 — IA §3-2 가

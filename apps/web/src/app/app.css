@@ -36926,6 +36926,238 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   align-self: flex-start;
 }
 
+/*
+ * W-04-12 출하 내역(피처 010 · omf-all-around#305) — 목록 왼쪽 · 상세 오른쪽(시안 W0412-After).
+ * 좁으면 위아래로 쌓는다. 접두 `ship-` 는 009 의 클래스와 겹치지 않게 둔다.
+ */
+.ship-history {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+}
+
+@media (min-width: 1440px) {
+  .ship-history {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 6fr);
+    align-items: start;
+  }
+}
+
+.ship-history-filter {
+  flex-wrap: wrap;
+}
+
+.ship-history-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.ship-history-cell {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: start;
+  min-width: 0;
+}
+
+.ship-history-detail {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.ship-history-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.ship-history-no {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ship-history-dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.ship-history-dl dt {
+  color: var(--on-surface-variant);
+}
+
+.ship-history-dl dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ship-history-lines {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ship-history-lines th,
+.ship-history-lines td {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
+  text-align: start;
+  vertical-align: top;
+}
+
+.ship-history-line > td {
+  background: var(--surface-container-low);
+  font-weight: 600;
+}
+
+.ship-history-replaced > td {
+  color: var(--on-surface-variant);
+}
+
+.ship-history-num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.ship-history-places {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.ship-history-actions {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ship-history-consequences {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding-inline-start: var(--space-5);
+}
+
+.ship-history-pager {
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/*
+ * W-04-02 출하 예정 목록(피처 010) — 칸 안에 칩을 아래로 쌓고, 지시서 상세 창 · 인쇄 미리 보기.
+ */
+.shipment-schedule-stack {
+  display: inline-grid;
+  gap: var(--space-1);
+  justify-items: center;
+}
+
+.shipment-schedule-flags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.ship-request-detail,
+.ship-request-line {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.ship-print-preview {
+  overflow: auto;
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
+}
+
+/*
+ * 출하 지시서 A4 세로(시안 Print-Preview). 인쇄는 `body > .sheet-print-root` 한 장만 보이는 검사표
+ * 인쇄 규칙을 같이 쓰고, 쪽 방향만 이름 붙은 쪽(`ship-portrait`)으로 세로로 바꾼다.
+ */
+.ship-print {
+  page: ship-portrait;
+  display: grid;
+  gap: 3mm;
+  width: 190mm;
+  margin: 0 auto;
+  padding: 6mm;
+  font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  font-size: 9pt;
+  line-height: 1.35;
+  color: #000; /* ui-check-ignore: COLOR 인쇄 전용 — 종이 양식은 테마와 무관하게 흑백 */
+  background: #fff; /* ui-check-ignore: COLOR 인쇄 전용 — 종이 양식은 테마와 무관하게 흑백 */
+}
+
+.ship-print__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 6mm;
+}
+
+.ship-print__title {
+  margin: 0;
+  font-size: 16pt;
+}
+
+.ship-print__no {
+  margin: 1mm 0 0;
+  font-size: 14pt;
+  font-weight: 700;
+}
+
+.ship-print__hint,
+.ship-print__printed {
+  margin: 0;
+  font-size: 8pt;
+}
+
+.ship-print__qr {
+  display: grid;
+  justify-items: center;
+  gap: 1mm;
+  font-size: 8pt;
+}
+
+.ship-print__section {
+  margin: 2mm 0 0;
+  font-size: 10pt;
+}
+
+.ship-print__table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.ship-print__table th,
+.ship-print__table td {
+  padding: 1mm 1.5mm;
+  border: 0.2mm solid #000; /* ui-check-ignore: COLOR 인쇄 전용 — 종이 양식은 테마와 무관하게 흑백 */
+  text-align: start;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.ship-print__num {
+  text-align: end;
+}
+
+.ship-print__signatures td {
+  height: 18mm;
+}
+
+@page ship-portrait {
+  size: A4 portrait;
+  margin: 8mm;
+}
+
 /* IQC 확정 창의 경고 글 — 위 줄(검사 결과 · LOT 상태)과 같은 크기로 키운다(사용자 지시 2026-11-18 · omf-all-around#296). */
 .iqc-judgment-confirm > .iqc-inspection-action-note {
   font: var(--type-body-lg);
