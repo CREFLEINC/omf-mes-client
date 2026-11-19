@@ -1011,10 +1011,7 @@ export const WarehouseLocationScreen = () => {
   const restriction = {
     checked: restrictionChecked,
     onChange: (checked: boolean) => changeLocationValues({ itemRestricted: checked }),
-    lockReason:
-      !restrictionChecked && itemsDraft !== null && itemsDraft.items.length === 0
-        ? t.itemsSection.restrict.noItems
-        : undefined,
+    locked: !restrictionChecked && itemsDraft !== null && itemsDraft.items.length === 0,
     error:
       locationFieldErrors.itemRestricted ??
       locationWrite.fieldErrors.itemRestricted ??
@@ -1104,10 +1101,7 @@ export const WarehouseLocationScreen = () => {
                   setRackRestricted(checked);
                   setRackRestrictError(undefined);
                 },
-                lockReason:
-                  !rackRestrictedNow && rackItemsEmpty
-                    ? t.itemsSection.restrict.noItems
-                    : undefined,
+                locked: !rackRestrictedNow && rackItemsEmpty,
                 error: rackItemsInvalid ? t.itemsSection.restrict.noItems : rackRestrictError,
                 disabled,
               }}
