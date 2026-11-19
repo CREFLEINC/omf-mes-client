@@ -4,6 +4,7 @@ import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { useSession } from '../../patterns/session';
+import { withUom } from '../iqc-inspection/uom-lookup';
 import { toWebAccess } from '../../patterns/web-access';
 import { specLines } from './measurement-table';
 
@@ -20,8 +21,13 @@ export interface PlanDialogProps {
   itemParts: { code: string; name: string } | null;
   version: PlanVersion;
   specs: ItemSpec[];
-  /** 검사 회차 — 입하 LOT 결과 창에서 열면 그 회차를 보인다(사용자 지시 2026-11-18 · omf-all-around#296). */
-  seqNo?: number;
+  /** 항목 단위 코드 — 규격 값 뒤에 붙인다(사용자 지시 2026-11-19 · omf-all-around#296). 없으면 단위 없이. */
+  uomCodeOf?: (uomId: number) => string | null;
+  /**
+   * 검사 회차 — 입하 LOT 결과 창에서 열면 그 회차, 상세에서 열면 마지막으로 기록한 회차(`null` 이면 「-」 ·
+   * 사용자 지시 2026-11-18 · 11-19 · omf-all-around#296). 넘기지 않으면(옛 흐름) 칸을 두지 않는다.
+   */
+  seqNo?: number | null;
   /** 기준서 도면 — 검사 화면과 같은 그림을 그대로 보인다. */
   drawings: React.ReactNode;
   onClose: () => void;
@@ -38,6 +44,7 @@ export const PlanDialog = ({
   itemParts,
   version,
   specs,
+  uomCodeOf,
   seqNo,
   drawings,
   onClose,
@@ -59,7 +66,9 @@ export const PlanDialog = ({
     { label: t.plan.facts.planCode, value: planCode },
     { label: t.plan.facts.planName, value: planName },
     { label: t.plan.version, value: t.plan.versionNo(version.planVersion) },
-    ...(seqNo === undefined ? [] : [{ label: t.plan.seq, value: t.plan.seqNo(seqNo) }]),
+    ...(seqNo === undefined
+      ? []
+      : [{ label: t.plan.seq, value: seqNo === null ? '-' : t.plan.seqNo(seqNo) }]),
     {
       label: t.target.itemName,
       value: itemParts?.name ?? '-',
@@ -135,6 +144,11 @@ export const PlanDialog = ({
               <tbody>
                 {specs.map((spec, index) => {
                   const [nominal, range] = specLines(spec);
+                  /* 단위는 항목 이름이 아니라 규격 값 뒤에(사용자 지시 2026-11-19 · omf-all-around#296). */
+                  const unit =
+                    spec.uomId == null || uomCodeOf === undefined ? null : uomCodeOf(spec.uomId);
+                  const withUnit = (value: string): string =>
+                    value === '-' ? value : withUom(value, unit);
                   return (
                     <tr key={spec.inspectionItemSpecId}>
                       <td>{index + 1}</td>
@@ -151,8 +165,8 @@ export const PlanDialog = ({
                       <td className="parts-iqc-plan-spec">
                         {spec.dataTypeCode === 'NUMERIC'
                           ? nominal === '' || range === nominal
-                            ? nominal || range
-                            : `${nominal} (${range})`
+                            ? withUnit(nominal || range)
+                            : `${withUnit(nominal)} (${withUnit(range)})`
                           : t.plan.okNg}
                       </td>
                       <td>{spec.measurementCount}</td>
