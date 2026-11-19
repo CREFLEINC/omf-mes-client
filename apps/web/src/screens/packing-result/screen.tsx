@@ -1,6 +1,6 @@
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { soleProcessIdOf } from '../../patterns/pop-identity';
@@ -14,7 +14,7 @@ import {
   PuEmpty,
   PuField,
   PuFlow,
-  PuInput,
+  PuIcon,
   PuKeypad,
   PuKv,
   PuNote,
@@ -27,6 +27,7 @@ import {
   applyKeypadKey,
   puCx,
   puToast,
+  type PuIconName,
   useClientPage,
   useFitCount,
 } from '../../patterns/pop-uniform';
@@ -43,14 +44,7 @@ import {
   usePackingConfirm,
   type OpenHandlingUnit,
 } from './mutations';
-import {
-  addLine,
-  lineOf,
-  nextHandlingUnitTypeCode,
-  qtyError,
-  remainingOf,
-  removeLine,
-} from './packing-draft';
+import { addLine, lineOf, nextHandlingUnitTypeCode, qtyError, removeLine } from './packing-draft';
 import {
   useHandlingUnitTypeOptions,
   useLotScan,
@@ -77,8 +71,9 @@ const t = messages.packingResult;
  * ⛔ **화면이 판정하지 않는다**(공유계약 C-6) — 배분 목록을 받아 비교하면 캐시 상태에서 틀린다.
  * ⛔ **온라인 전용이다.** 판정이 서버에 있으므로 끊긴 상태에서는 확정을 막는다(§6).
  *
- * ⚠ 스캔한 LOT 은 수량 없이 먼저 줄로 쌓이고(#295 시안), 수량은 그 줄을 눌러 키패드로 넣는다.
- *   같은 LOT 을 다시 찍으면 더하지 않고 「이미 담은 LOT」으로 그 줄을 잡는다. 확정 본문은 종전과 같다.
+ * ⚠ 스캔한 LOT 은 수량 없이 먼저 줄로 쌓이고(#295 시안), 수량은 그 줄의 수량 칸을 눌러 오른쪽
+ *   키패드로 넣는다. 같은 LOT 을 다시 찍으면 더하지 않고 「이미 담은 LOT」으로 그 줄을 잡는다.
+ *   확정 본문은 종전과 같다(줄마다 수량 하나).
  */
 /** 작업 줄에 적지 않는 «안내» 사유 — 확정 잠금 판정에는 그대로 쓰인다. */
 const HIDDEN_LOCK_REASONS: ReadonlySet<string> = new Set([
@@ -119,7 +114,12 @@ export const PackingResultScreen = () => {
   const [shipmentScan, setShipmentScan] = useState('');
   const [shipmentScanMiss, setShipmentScanMiss] = useState<string | null>(null);
   const [lines, setLines] = useState<PackedLine[]>([]);
-  const [qty, setQty] = useState('');
+  /** 줄마다 친 수량(배분 식별자 → 키패드 글자). 비어 있으면 아직 넣지 않은 것이다. */
+  const [qtys, setQtys] = useState<Record<number, string>>({});
+  /** 지금 키패드가 수량을 넣는 줄(배분 식별자). */
+  const [activeId, setActiveId] = useState<number | null>(null);
+  /** 이미 목록에 있는 LOT 을 다시 찍었다 — 그 코드. */
+  const [dupCode, setDupCode] = useState<string | null>(null);
   const [handlingUnitTypeCode, setHandlingUnitTypeCode] = useState('');
   /** 담는 동안 열려 있는 포장. 번호는 서버가 매긴다(스펙 §3). 확정이 이 포장을 닫는다. */
   const [openUnit, setOpenUnit] = useState<OpenHandlingUnit | null>(null);
@@ -155,6 +155,13 @@ export const PackingResultScreen = () => {
   /* 확정이 그 자리에서 포장을 만들다 실패한 것 — 확정 실패와 같은 안내 자리에 올린다(omf-all-around#5). */
   const [unitCreateError, setUnitCreateError] = useState<Error | null>(null);
 
+  /** 줄 수량·키패드 대상·「이미 담은 LOT」 안내를 함께 비운다 — 줄이 비워질 때마다 부른다. */
+  const clearQtys = (): void => {
+    setQtys({});
+    setActiveId(null);
+    setDupCode(null);
+  };
+
   const typeLabelOf = (code: string): string =>
     typeOptions.options.find((option) => option.value === code)?.label ?? '';
 
@@ -172,7 +179,7 @@ export const PackingResultScreen = () => {
       /* 확정하면 이 포장은 끝났다 — 같은 출하·유형으로 ② 에 돌아와 다음 포장을 시작한다. */
       setLines([]);
       setMatched(null);
-      setQty('');
+      clearQtys();
       setOpenUnit(null);
       setUnitCreateError(null);
       setStep(2);
@@ -186,6 +193,7 @@ export const PackingResultScreen = () => {
     setEntryError(null);
     setMatched(null);
     setLines([]);
+    clearQtys();
     setAutomaticLabelRun(null);
   };
 
@@ -205,7 +213,7 @@ export const PackingResultScreen = () => {
     setEntryError(null);
     setMatched(null);
     setLines([]);
-    setQty('');
+    clearQtys();
     setAutomaticLabelRun(null);
 
     return true;
@@ -257,20 +265,27 @@ export const PackingResultScreen = () => {
       {
         onSuccess: (outcome) => {
           setMatched(outcome);
-          setQty('');
+          setDupCode(null);
+          const allocation = outcome.verdict.matched ? outcome.allocation : undefined;
+          if (allocation === undefined) return;
+
+          const id = allocation.shipmentLotAllocationId;
+          /* 이미 담은 LOT — 더하지 않고 그 줄을 잡는다(시안: 목록에서 수량을 고친다). */
+          if (lineOf(lines, id) !== undefined) {
+            setDupCode(code);
+            selectRow(lines, id);
+            return;
+          }
+
+          /* 수량 없이 줄부터 쌓는다 — 수량은 그 줄 칸에 키패드로 넣는다. */
+          const next = addLine(lines, allocation, 0).lines;
+          setLines(next);
+          ensureOpenUnit(next, handlingUnitTypeCode);
+          selectRow(next, id);
         },
       },
     );
   };
-
-  /** 담을 수 있는 배분 — **판정이 «맞다»일 때만** 선다. */
-  const packable = matched?.verdict.matched === true ? matched.allocation : undefined;
-  const qtyIssue = packable === undefined ? undefined : qtyError(qty, packable, lines);
-  /** 이 배분에 아직 더 칠 수 있는 수량 — 잔여에서 «이미 담은 줄»을 뺀 값이다(`qtyError` 와 같은 한도). */
-  const qtyRoom =
-    packable === undefined
-      ? 0
-      : remainingOf(packable) - (lineOf(lines, packable.shipmentLotAllocationId)?.qty ?? 0);
 
   /**
    * 아직 포장이 없으면 만든다 — **담을 것과 유형이 정해진 뒤 한 번**.
@@ -291,21 +306,26 @@ export const PackingResultScreen = () => {
   const rowsFit = useFitCount(rowsBoxRef, { fallback: 3 });
   const rowsPage = useClientPage(lines, rowsFit);
 
-  /** [담기] — 같은 배분이 이미 있으면 수량을 더한다(`addLine`). */
-  const addToPacking = (): void => {
-    if (packable === undefined || qtyIssue !== undefined) return;
-
-    const outcome = addLine(lines, packable, Number(qty));
-
-    setLines(outcome.lines);
-    ensureOpenUnit(outcome.lines, handlingUnitTypeCode);
-    setQty('');
-    rowsPage.showIndex(
-      outcome.lines.findIndex(
-        (line) => line.shipmentLotAllocationId === packable.shipmentLotAllocationId,
-      ),
-    );
+  /** 그 줄을 키패드 대상으로 잡고 그 줄이 있는 쪽을 보인다. */
+  const selectRow = (inLines: readonly PackedLine[], id: number): void => {
+    setActiveId(id);
+    rowsPage.showIndex(inLines.findIndex((line) => line.shipmentLotAllocationId === id));
   };
+
+  const qtyTextOf = (line: PackedLine): string => qtys[line.shipmentLotAllocationId] ?? '';
+  /** 줄 수량 — 아직 넣지 않았으면 0. */
+  const qtyOf = (line: PackedLine): number => Number(qtyTextOf(line)) || 0;
+  const rowIssue = (line: PackedLine): string | undefined =>
+    qtyError(qtyTextOf(line), line, uomCodeOf(line.uomId));
+  /** 모든 줄의 수량이 맞는가(비었거나 0 · 포장 가능 수량 초과가 없다). */
+  const allQtyValid = lines.every((line) => rowIssue(line) === undefined);
+  /** 확정 본문에 실을 줄 — 줄마다 친 수량을 싣는다. */
+  const packedLines: PackedLine[] = lines.map((line) => ({ ...line, qty: qtyOf(line) }));
+  const activeLine = lines.find((line) => line.shipmentLotAllocationId === activeId);
+  /** 줄 아래 빨간 한 줄이 하나라도 있는가 — 한 쪽 건수를 그 높이로 잰다. */
+  const hasRowMessage = lines.some(
+    (line) => qtyTextOf(line) !== '' && rowIssue(line) !== undefined,
+  );
 
   const hasWorkerNo = identity.workerNo !== null && identity.workerNo.trim() !== '';
 
@@ -317,11 +337,12 @@ export const PackingResultScreen = () => {
     warehouseId,
     isOpeningUnit: createUnit.isPending,
     handlingUnitTypeCode,
-    lines,
+    lines: packedLines,
   });
 
   const scanError = ((): string | null => {
     if (lotScan.isError) return t.match.lookupFailed;
+    if (dupCode !== null) return t.match.alreadyAdded(dupCode);
     if (matched === null || matched.verdict.matched) return null;
 
     switch (matched.verdict.reasonCode) {
@@ -344,7 +365,6 @@ export const PackingResultScreen = () => {
 
     return [...sums].map(([uomId, sum]) => `${fmt(sum)} ${uomCodeOf(uomId)}`.trim()).join(' · ');
   };
-  const qtyOf = (line: PackedLine): number => line.qty;
 
   const reviewBoxRef = useRef<HTMLDivElement>(null);
   const reviewFit = useFitCount(reviewBoxRef, { fallback: 4 });
@@ -358,17 +378,30 @@ export const PackingResultScreen = () => {
         : unassignedBoxes.count === null
           ? '—'
           : t.band.boxes(unassignedBoxes.count);
-  const bandShipment = { label: t.band.shipment, value: entry?.shipmentNo ?? '—' };
+  /* 정보 띠(시안): 이름 앞 빨간 아이콘, 번호는 고정폭 글꼴. */
+  const bandLabel = (icon: PuIconName, text: string): ReactNode => (
+    <>
+      <PuIcon name={icon} />
+      {text}
+    </>
+  );
+  const bandShipment = {
+    label: bandLabel('list', t.band.shipment),
+    value: <span className="pu-mono">{entry?.shipmentNo ?? '—'}</span>,
+  };
   const bandRest = [
-    { label: t.band.unitNo, value: openUnit?.handlingUnitNo ?? '—' },
-    { label: t.band.unassigned, value: unassignedText },
+    {
+      label: bandLabel('file', t.band.unitNo),
+      value: <span className="pu-mono">{openUnit?.handlingUnitNo ?? '—'}</span>,
+    },
+    { label: bandLabel('clock', t.band.unassigned), value: unassignedText },
   ];
 
   const canNext =
     step === 1
       ? entry !== null && !shipmentSelection.isPending
-      : handlingUnitTypeCode !== '' && lines.length > 0;
-  const canConfirm = lockReason === undefined && !confirm.isPending;
+      : handlingUnitTypeCode !== '' && lines.length > 0 && allQtyValid;
+  const canConfirm = lockReason === undefined && !confirm.isPending && allQtyValid;
 
   const goStep = (next: Step): void => {
     setEntryError(null);
@@ -535,7 +568,7 @@ export const PackingResultScreen = () => {
           onSubmit={scanLot}
           placeholder={t.scan.placeholder}
           disabled={!hasWorkerNo || shipmentId === null || lotScan.isPending}
-          done={matched?.verdict.matched === true && !lotScan.isError}
+          done={matched?.verdict.matched === true && dupCode === null && !lotScan.isError}
           error={scanError}
         />
         {lines.length === 0 ? (
@@ -552,15 +585,15 @@ export const PackingResultScreen = () => {
             {rowsPage.items.map((line) => {
               const id = line.shipmentLotAllocationId;
               const uom = uomCodeOf(line.uomId);
+              const text = qtyTextOf(line);
+              const issue = rowIssue(line);
+              const isActive = activeId === id;
 
               return (
                 <div
                   key={id}
                   role="listitem"
-                  className={puCx(
-                    'pu-item pk-row',
-                    packable?.shipmentLotAllocationId === id && 'is-selected',
-                  )}
+                  className={puCx('pu-item pk-row', isActive && 'is-selected')}
                 >
                   <span className="nm" title={line.itemCode}>
                     {line.itemCode}
@@ -569,19 +602,52 @@ export const PackingResultScreen = () => {
                     <span className="pu-mono">{line.lotNo}</span> ·{' '}
                     {t.rows.available(`${fmt(line.remaining)} ${uom}`.trim())}
                   </span>
-                  <span className="pk-q" aria-label={t.rows.qtyLabel(line.lotNo)}>
-                    {fmt(line.qty)}
+                  {/* 수량은 필수 — 비었거나 맞지 않으면 빨간 테두리, 누르면 키패드가 이 줄로 옮겨 간다. */}
+                  <button
+                    type="button"
+                    className={puCx(
+                      'pu-input pk-q',
+                      text === '' && 'nil',
+                      isActive && 'is-target',
+                      issue !== undefined && 'is-need',
+                    )}
+                    aria-label={t.rows.qtyLabel(line.lotNo)}
+                    aria-invalid={issue !== undefined || undefined}
+                    onClick={() => {
+                      setActiveId(id);
+                    }}
+                  >
+                    {text === ''
+                      ? t.rows.qtyPlaceholder
+                      : /^\d+$/u.test(text)
+                        ? fmt(Number(text))
+                        : text}
                     <small>{uom}</small>
-                  </span>
+                  </button>
                   <PuRemoveButton
                     label={t.rows.remove}
                     onClick={() => {
                       setLines(removeLine(lines, id));
+                      setQtys(({ [id]: _removed, ...rest }) => rest);
+                      if (isActive) setActiveId(null);
                     }}
                   />
+                  {text !== '' && issue !== undefined && <span className="msg">{issue}</span>}
                 </div>
               );
             })}
+            {/*
+             * 줄 아래 빨간 한 줄이 있으면 줄 높이가 달라져 한 쪽 건수가 쪽마다 흔들린다(낮은 줄만 있는 쪽 →
+             * 건수 늘림 → 높은 줄이 들어와 다시 줄임). 그 높이의 보이지 않는 줄을 하나 두어 늘 같은 높이로 잰다.
+             */}
+            {hasRowMessage && (
+              <div className="pu-item pk-row pk-probe" aria-hidden="true">
+                <span className="nm">&nbsp;</span>
+                <span className="lot">&nbsp;</span>
+                <span className="pu-input pk-q">&nbsp;</span>
+                <span className="msg">&nbsp;</span>
+              </div>
+            )}
           </div>
         )}
         <div className="pu-foot">
@@ -602,45 +668,33 @@ export const PackingResultScreen = () => {
       </PuSection>
       <PuSection
         title={t.qty.title}
-        meta={packable === undefined ? undefined : t.qty.room(fmt(qtyRoom))}
-        split
+        meta={activeLine === undefined ? undefined : t.qty.unit(uomCodeOf(activeLine.uomId))}
+        disabled={activeLine === undefined}
       >
-        <div className="pk-qty-top">
-          <PuField label={t.qty.entryLabel}>
-            <PuInput
-              numeric
-              readOnly
-              target={packable !== undefined}
-              disabled={packable === undefined}
-              value={qty}
-              placeholder={packable === undefined ? '' : '0'}
-              aria-label={t.qty.entryLabel}
-            />
-          </PuField>
-        </div>
-        <div className="pk-qty-pad">
-          <PuKeypad
-            targetLabel={packable === undefined ? null : (packable.lotNo ?? '')}
-            decimal={packable !== undefined && allowsDecimal(packable.uomId)}
-            onKey={(key) => {
-              if (packable === undefined) return;
-              const decimal = allowsDecimal(packable.uomId);
-              setQty((prev) => applyKeypadKey(prev, key, { decimal }));
-            }}
-            onClearAll={() => {
-              setQty('');
-            }}
-          />
-          {/* ⛔ 수량 오류 문구(0 초과·배분 한도)는 적지 않는다 — [담기] 잠김만 둔다(사용자 지시 2026-09-17). */}
-          <PuButton
-            variant="primary"
-            className="pk-add"
-            disabled={packable === undefined || qty === '' || qtyIssue !== undefined}
-            onClick={addToPacking}
-          >
-            {t.qty.submit}
-          </PuButton>
-        </div>
+        <PuKeypad
+          targetLabel={
+            activeLine === undefined ? null : <span className="pu-mono">{activeLine.lotNo}</span>
+          }
+          decimal={activeLine !== undefined && allowsDecimal(activeLine.uomId)}
+          /* [전체 삭제]는 키패드 안 맨 아래(← · 0 · 전체 삭제) — 소수 단위 줄은 「.」 키가 필요해 위 줄에 둔다. */
+          clearInPad={activeLine === undefined || !allowsDecimal(activeLine.uomId)}
+          onKey={(key) => {
+            if (activeLine === undefined) return;
+            const decimal = allowsDecimal(activeLine.uomId);
+            setQtys((prev) => ({
+              ...prev,
+              [activeLine.shipmentLotAllocationId]: applyKeypadKey(
+                prev[activeLine.shipmentLotAllocationId] ?? '',
+                key,
+                { decimal },
+              ),
+            }));
+          }}
+          onClearAll={() => {
+            if (activeLine === undefined) return;
+            setQtys((prev) => ({ ...prev, [activeLine.shipmentLotAllocationId]: '' }));
+          }}
+        />
       </PuSection>
     </PuCols>
   );
@@ -652,18 +706,24 @@ export const PackingResultScreen = () => {
         label={t.band.label}
         items={[
           bandShipment,
-          { label: t.band.type, value: typeLabelOf(handlingUnitTypeCode) || '—' },
+          {
+            label: bandLabel('box', t.band.type),
+            value: typeLabelOf(handlingUnitTypeCode) || '—',
+          },
           ...bandRest,
         ]}
       />
       <div className="pu-fit pk-lines pk-fill" ref={reviewBoxRef}>
         {reviewPage.items.map((line) => (
           <div key={line.shipmentLotAllocationId} className="pk-line">
+            <span className="mk">
+              <PuIcon name="check" />
+            </span>
             <span className="nm" title={line.itemCode}>
               {line.itemCode}
             </span>
             <span className="lot pu-mono">{line.lotNo}</span>
-            <span className="q">{`${fmt(line.qty)} ${uomCodeOf(line.uomId)}`.trim()}</span>
+            <span className="q">{`${fmt(qtyOf(line))} ${uomCodeOf(line.uomId)}`.trim()}</span>
           </div>
         ))}
       </div>
@@ -696,7 +756,7 @@ export const PackingResultScreen = () => {
      *    생성은 담는 동안과 «같은» 훅을 쓴다 — 보낼 값이 그대로면 앞 시도의 멱등 키를 다시 쓴다.
      */
     if (openUnit !== null) {
-      confirm.mutate({ handlingUnit: openUnit, lines, workerNo });
+      confirm.mutate({ handlingUnit: openUnit, lines: packedLines, workerNo });
       return;
     }
 
@@ -707,7 +767,7 @@ export const PackingResultScreen = () => {
       {
         onSuccess: (handlingUnit) => {
           setOpenUnit(handlingUnit);
-          confirm.mutate({ handlingUnit, lines, workerNo });
+          confirm.mutate({ handlingUnit, lines: packedLines, workerNo });
         },
         onError: setUnitCreateError,
       },
@@ -723,7 +783,7 @@ export const PackingResultScreen = () => {
           setOpenUnit(null);
           setLines([]);
           setMatched(null);
-          setQty('');
+          clearQtys();
           if (step === 3) setStep(2);
         },
       },
@@ -736,7 +796,11 @@ export const PackingResultScreen = () => {
        * 자동 라벨(확정 직후 포장 라벨 발행·인쇄)은 **늘 같은 자리에 붙어 있다** — 라벨 화면을 오가도
        * 다시 서지 않아 같은 포장의 발행이 두 번 나가지 않는다. 라벨 화면에서는 감춰 둔다.
        */}
-      <div className="pk-auto" hidden={isLabelMode}>
+      {/*
+       * ⚠ `data-pop-fixed` — `.pop-ui` 바로 아래 블록은 남는 높이를 나눠 갖는다(pop.css). 안내 줄은
+       *   제 높이만 쓰고 작업 구획(`.pu-screen`)이 나머지를 채워야 한다(사용자 지적 2026-11-19).
+       */}
+      <div className="pk-auto" data-pop-fixed hidden={isLabelMode}>
         {automaticLabelRun !== null && identity.workerNo !== null ? (
           <AutomaticLabels
             /* 포장마다 새로 선다(리뷰 M3) — 두 번째 포장이 첫 포장의 «출력함» 상태를 물려받지 않게. */
@@ -829,7 +893,10 @@ export const PackingResultScreen = () => {
         >
           <PuKv
             items={[
-              { label: t.confirmDialog.shipment, value: entry?.shipmentNo ?? '—' },
+              {
+                label: t.confirmDialog.shipment,
+                value: <span className="pu-mono">{entry?.shipmentNo ?? '—'}</span>,
+              },
               {
                 label: t.confirmDialog.type,
                 value: typeLabelOf(handlingUnitTypeCode) || '—',

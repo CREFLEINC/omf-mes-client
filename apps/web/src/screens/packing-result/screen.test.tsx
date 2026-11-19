@@ -327,11 +327,8 @@ const typeDigits = async (user: User, digits: string): Promise<void> => {
   }
 };
 
-/** 키패드로 수량을 치고 [담기]. */
-const typeQty = async (user: User, digits: string): Promise<void> => {
-  await typeDigits(user, digits);
-  await user.click(screen.getByRole('button', { name: t.qty.submit }));
-};
+/** 키패드로 지금 잡힌 줄의 수량을 친다 — 스캔한 LOT 은 이미 줄로 담겨 있다(#295 시안). */
+const typeQty = typeDigits;
 
 const rowQty = (lotNo = LOT): HTMLElement => screen.getByLabelText(t.rows.qtyLabel(lotNo));
 
@@ -585,15 +582,21 @@ describe('PackingResultScreen', () => {
     );
   });
 
-  it('매칭되면 키패드가 그 LOT 을 잡고, 수량을 치기 전에는 [담기]가 잠겨 있다', async () => {
+  it('매칭되면 수량 없는 줄이 생기고 키패드가 그 LOT 을 잡으며, 수량을 치기 전에는 [다음]이 잠겨 있다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
     await scanUntilMatched(user);
 
     expect(screen.getByText(messages.popUniform.scan.done)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.qty.submit })).toBeDisabled();
-    expect(screen.queryByLabelText(t.rows.qtyLabel(LOT))).toBeNull();
+    expect(rowQty()).toHaveTextContent(t.rows.qtyPlaceholder);
+    expect(rowQty()).toHaveClass('is-target');
+    expect(screen.getByRole('button', { name: t.actions.next })).toBeDisabled();
+
+    await typeQty(user, '60');
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.actions.next })).toBeEnabled();
+    });
   });
 
   /* ⭐ 스캐너가 Enter 를 붙이지 않아도 생산LOT 이 읽힌다(사용자 지시 2026-09-17). */
@@ -779,40 +782,41 @@ describe('PackingResultScreen — 담기와 확정', () => {
     });
   });
 
-  it('키패드로 친 수량이 「담을 수량」 칸에 보인다 — 누른 값이 어디로 갔는지 보여야 한다', async () => {
+  it('키패드로 친 수량이 그 줄의 수량 칸에 보인다 — 누른 값이 어디로 갔는지 보여야 한다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
     await scanUntilMatched(user);
     await typeDigits(user, '12');
 
-    expect(screen.getByLabelText(t.qty.entryLabel)).toHaveValue('12');
+    expect(rowQty()).toHaveTextContent('12');
   });
 
-  /* ⭐ 합친 사실은 문장이 아니라 담긴 줄의 수량으로 보인다(사용자 지시 2026-09-17). */
-  it('같은 LOT 을 다시 담으면 한 줄로 합쳐 수량이 늘어난다', async () => {
+  /* ⭐ 같은 LOT 은 한 줄 — 다시 찍으면 더하지 않고 그 줄을 잡는다(#295 시안). */
+  it('같은 LOT 을 다시 찍으면 줄을 늘리지 않고 「이미 담은 LOT」으로 그 줄을 잡는다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
     await scanUntilMatched(user);
     await typeQty(user, '120');
-    await matchLot(user);
-    await typeQty(user, '60');
+    await scan(user, LOT);
 
+    expect(await screen.findByText(t.match.alreadyAdded(LOT))).toBeInTheDocument();
     expect(screen.getAllByLabelText(t.rows.qtyLabel(LOT))).toHaveLength(1);
-    expect(rowQty()).toHaveTextContent('180');
+    expect(rowQty()).toHaveTextContent('120');
+    expect(rowQty()).toHaveClass('is-target');
   });
 
-  /* ⭐ 한도 문구는 적지 않고 [담기]만 잠근다(사용자 지시 2026-09-17). */
-  it('⛔ 잔여를 넘기면 담기를 잠근다', async () => {
+  it('⛔ 잔여를 넘기면 그 줄 아래 빨간 한 줄로 말하고 [다음]을 잠근다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
     await scanUntilMatched(user);
     await typeDigits(user, '181');
 
-    expect(screen.getByRole('button', { name: t.qty.submit })).toBeDisabled();
-    expect(screen.queryByText(t.qty.overRemaining(180))).not.toBeInTheDocument();
+    expect(screen.getByText(t.qty.overRemaining('180'))).toBeInTheDocument();
+    expect(rowQty()).toHaveClass('is-need');
+    expect(screen.getByRole('button', { name: t.actions.next })).toBeDisabled();
   });
 
   it('[X]로 줄을 빼면 포장에서 제외된다', async () => {
@@ -831,11 +835,10 @@ describe('PackingResultScreen — 담기와 확정', () => {
     const user = userEvent.setup();
     renderScreen();
 
-    await scanUntilMatched(user);
-    /* 담기 전에는 번호가 아직 없다 — 키패드로 치기만 해서는 포장을 만들지 않는다. */
-    await typeDigits(user, '60');
+    await enterScanStep(user);
+    /* 줄이 생기기 전에는 번호가 아직 없다 — 유형만 골라서는 포장을 만들지 않는다. */
     expect(screen.queryByText('SYN-CTN-0091')).toBeNull();
-    await user.click(screen.getByRole('button', { name: t.qty.submit }));
+    await matchLot(user);
 
     expect(await screen.findByText('SYN-CTN-0091')).toBeTruthy();
   });

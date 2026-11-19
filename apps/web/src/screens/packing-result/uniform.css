@@ -1,13 +1,25 @@
 /* P-04-01 출하 포장 — POP 통일 시안(#295) 화면 전용 모양. 선택자는 `.packing-uniform` 아래만. */
 
+/* 안내 줄은 제 높이만 — 남는 높이는 작업 구획이 갖는다. */
+.packing-uniform .pk-auto {
+  flex: none;
+}
+
 .packing-uniform .pk-auto:not(:has(.pu-note)) {
   display: none;
 }
 
 .packing-uniform .pk-auto-notes {
   display: grid;
-  gap: 8px;
-  padding: 12px 16px 0;
+  gap: 6px;
+  padding: 8px 0 0;
+  /* 그릇 좌우 여백(--pop-pad)을 작업 구획 여백(16px)에 맞춘다 — 안내 줄과 구획 왼쪽 끝을 맞춘다. */
+  margin-inline: calc(16px - var(--pop-pad));
+}
+
+/* 안내 줄이 있으면 그 아래 본문 위 여백을 줄여 작업 구획 높이를 지킨다(1024×768 에서 LOT 줄이 잘리지 않게). */
+.packing-uniform > .pk-auto:not([hidden]):has(.pu-note) + .pu-screen > .pu-main {
+  padding-top: 8px;
 }
 
 .packing-uniform .pk-body {
@@ -48,6 +60,7 @@
 
 /* ② 스캔한 LOT 줄(수량 입력) */
 .packing-uniform .pk-rows {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 6px;
@@ -95,10 +108,14 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  font: inherit;
   font-size: 17px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  padding: 0 4px;
+  text-align: right;
+  padding: 0 12px;
+  color: var(--pu-text);
+  cursor: pointer;
 }
 
 .packing-uniform .pk-row .pk-q small {
@@ -121,6 +138,16 @@
   grid-area: msg;
   font-size: 13px;
   color: var(--pu-bad);
+}
+
+/* 한 쪽 건수를 재는 보이지 않는 줄(빨간 한 줄이 있는 줄 높이) */
+.packing-uniform .pk-row.pk-probe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* ② 목록 아래 왼쪽: 포장 합계 · 포장 가능 */
@@ -150,8 +177,8 @@
 
 .packing-uniform .pk-line {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto;
-  grid-template-areas: 'nm lot q';
+  grid-template-columns: 22px minmax(0, 1.2fr) minmax(0, 1fr) auto;
+  grid-template-areas: 'mk nm lot q';
   align-items: center;
   gap: 2px 10px;
   padding: 8px 14px;
@@ -162,6 +189,12 @@
 
 .packing-uniform .pk-line .lot {
   font-size: 14px;
+}
+
+.packing-uniform .pk-line .mk {
+  grid-area: mk;
+  display: inline-flex;
+  color: var(--pu-ok);
 }
 
 .packing-uniform .pk-line .q {
@@ -207,12 +240,28 @@
   white-space: nowrap;
 }
 
-/* 수량 구획: 위 「담을 수량」 칸, 아래 키패드 + [담기] */
-.packing-uniform .pk-qty-pad {
-  display: grid;
-  gap: 10px;
+/* 정보 띠(시안): 이름 앞 빨간 아이콘 */
+.packing-uniform .pu-band .kv > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.packing-uniform .pk-add {
-  width: 100%;
+.packing-uniform .pu-band .kv > span > .pu-ic {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--pu-primary);
+}
+
+/* 키패드 위 「입력 칸: LOT」 — 긴 LOT 번호는 한 줄 말줄임(구획 폭을 밀어내지 않는다) */
+.packing-uniform .pu-keypad-head {
+  min-width: 0;
+}
+
+.packing-uniform .pu-keypad-target {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

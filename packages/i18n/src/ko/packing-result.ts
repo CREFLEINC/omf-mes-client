@@ -45,6 +45,8 @@ export const packingResult = {
     unknownReason: '이 출하와 맞지 않는 LOT 입니다',
     openUnitBlocksShipmentChange: '진행 중인 포장을 먼저 취소한 뒤 다른 출하를 선택하세요',
     lookupFailed: '조회하지 못했습니다. 다시 읽어 주세요',
+    alreadyAdded: (code: string): string =>
+      `${code} — 이미 포장 목록에 있는 LOT입니다. 목록에서 수량을 고치세요.`,
   },
   rows: {
     region: '포장할 생산 LOT',
@@ -52,6 +54,7 @@ export const packingResult = {
     emptyHint: '포장할 생산 LOT 라벨을 스캔하세요. 여러 개를 이어서 스캔할 수 있습니다.',
     available: (qty: string): string => `가능 ${qty}`,
     qtyLabel: (lotNo: string): string => `${lotNo} 수량`,
+    qtyPlaceholder: '수량',
     remove: '포장에서 제외',
     sum: (qty: string): string => `포장 합계 ${qty}`,
     room: (qty: string): string => `포장 가능 ${qty}`,
@@ -59,11 +62,8 @@ export const packingResult = {
   },
   qty: {
     title: '입력',
-    entryLabel: '담을 수량',
-    room: (qty: string): string => `남은 ${qty}`,
-    submit: '담기',
     unit: (uom: string): string => `단위 ${uom}`,
-    overRemaining: (remaining: number): string => `배분 ${String(remaining)} 을 넘을 수 없습니다`,
+    overRemaining: (qty: string): string => `포장 가능 수량(${qty})을 넘었습니다`,
     notPositive: '수량은 0보다 커야 합니다',
   },
   fields: {

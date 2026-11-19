@@ -40,6 +40,8 @@ export const packingResult: Translated<typeof ko.packingResult> = {
     unknownReason: 'LOT này không khớp với xuất hàng',
     openUnitBlocksShipmentChange: 'Hãy hủy kiện đang đóng rồi mới chọn xuất hàng khác',
     lookupFailed: 'Không tra cứu được. Hãy quét lại',
+    alreadyAdded: (code: string): string =>
+      `${code} — LOT đã có trong danh sách đóng gói. Hãy sửa số lượng trong danh sách.`,
   },
   rows: {
     region: 'LOT sản xuất cần đóng gói',
@@ -47,6 +49,7 @@ export const packingResult: Translated<typeof ko.packingResult> = {
     emptyHint: 'Hãy quét nhãn LOT sản xuất cần đóng gói. Có thể quét liên tiếp nhiều cái.',
     available: (qty: string): string => `Có thể ${qty}`,
     qtyLabel: (lotNo: string): string => `Số lượng ${lotNo}`,
+    qtyPlaceholder: 'SL',
     remove: 'Bỏ khỏi kiện',
     sum: (qty: string): string => `Tổng đóng gói ${qty}`,
     room: (qty: string): string => `Có thể ${qty}`,
@@ -54,11 +57,8 @@ export const packingResult: Translated<typeof ko.packingResult> = {
   },
   qty: {
     title: 'Nhập',
-    entryLabel: 'SL cho vào',
-    room: (qty: string): string => `Còn ${qty}`,
-    submit: 'Cho vào',
     unit: (uom: string): string => `Đơn vị ${uom}`,
-    overRemaining: (remaining: number): string => `Không được vượt số phân bổ ${String(remaining)}`,
+    overRemaining: (qty: string): string => `Vượt SL có thể đóng gói (${qty})`,
     notPositive: 'Số lượng phải lớn hơn 0',
   },
   fields: {

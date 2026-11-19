@@ -165,16 +165,8 @@ export const AutomaticLabels = ({
     <section className="pk-auto-notes" aria-label={t.region}>
       {packingSummaries.isError ? <PuNote tone="bad">{t.failures.summary}</PuNote> : null}
       {historyRecoveryCount > 0 ? (
-        <PuNote
-          tone="warn"
-          action={
-            <PuButton size="sm" onClick={onOpenManagement}>
-              {t.openReissue}
-            </PuButton>
-          }
-        >
-          {t.reissueRequired(historyRecoveryCount)}
-        </PuNote>
+        /* 문장만 둔다 — [라벨 상태·재인쇄]는 아래 작업 줄에 있다(사용자 결정 2026-11-19). */
+        <PuNote tone="warn">{t.reissueRequired(historyRecoveryCount)}</PuNote>
       ) : null}
       {packingFailure !== null ? (
         <PuNote

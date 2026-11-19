@@ -59,26 +59,29 @@ describe('remainingOf', () => {
 
 describe('qtyError', () => {
   it('잔여와 «같은» 수량은 통과한다 — 경계는 넘긴 것이 아니다', () => {
-    expect(qtyError('180', allocation(), [])).toBeUndefined();
+    expect(qtyError('180', lineOfAllocation(allocation(), 0), 'EA')).toBeUndefined();
   });
 
-  it('잔여를 1 넘기면 한도를 말한다', () => {
-    expect(qtyError('181', allocation(), [])).toBe(t.qty.overRemaining(180));
+  it('잔여를 1 넘기면 포장 가능 수량을 말한다', () => {
+    expect(qtyError('181', lineOfAllocation(allocation(), 0), 'EA')).toBe(
+      t.qty.overRemaining('180 EA'),
+    );
   });
 
-  it('이미 담은 몫을 «빼고» 한도를 잰다 — 잔여만 보면 두 번 담아 넘긴다', () => {
-    const source = allocation();
-    const lines = [lineOfAllocation(source, 120)];
+  it('한도는 서버가 준 잔여다 — 이미 포장된 몫은 빠져 있다', () => {
+    const line = lineOfAllocation(allocation({ packedQty: 120 }), 0);
 
-    expect(qtyError('61', source, lines)).toBe(t.qty.overRemaining(60));
-    expect(qtyError('60', source, lines)).toBeUndefined();
+    expect(qtyError('61', line, 'EA')).toBe(t.qty.overRemaining('60 EA'));
+    expect(qtyError('60', line, 'EA')).toBeUndefined();
   });
 
   it('0과 빈 값과 숫자가 아닌 것은 담지 못한다', () => {
-    expect(qtyError('0', allocation(), [])).toBe(t.qty.notPositive);
-    expect(qtyError('', allocation(), [])).toBe(t.qty.notPositive);
-    expect(qtyError('abc', allocation(), [])).toBe(t.qty.notPositive);
-    expect(qtyError('-5', allocation(), [])).toBe(t.qty.notPositive);
+    const line = lineOfAllocation(allocation(), 0);
+
+    expect(qtyError('0', line, 'EA')).toBe(t.qty.notPositive);
+    expect(qtyError('', line, 'EA')).toBe(t.qty.notPositive);
+    expect(qtyError('abc', line, 'EA')).toBe(t.qty.notPositive);
+    expect(qtyError('-5', line, 'EA')).toBe(t.qty.notPositive);
   });
 });
 

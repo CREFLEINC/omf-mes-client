@@ -28,24 +28,19 @@ export const lineOf = (
   lines.find((line) => line.shipmentLotAllocationId === shipmentLotAllocationId);
 
 /**
- * 수량 입력의 잘못을 말한다. 없으면 `undefined`.
+ * 줄 수량의 잘못을 말한다. 없으면 `undefined`.
  *
- * ⭐ **한도는 「이 배분의 잔여 − 이미 담은 것」이다.** 잔여만 보면 120 을 두 번 담아 240 이
- * 되고, 그 초과는 확정 요청이 서버에서 거부될 때에야 드러난다.
+ * ⭐ **한도는 이 배분의 잔여(포장 가능 수량)다.** 같은 배분은 한 줄로만 담기므로(다시 찍으면
+ * 그 줄을 잡는다) 다른 줄과 더할 일이 없다. 넘긴 초과는 확정 요청이 서버에서 거부될 때에야 드러난다.
  */
-export const qtyError = (
-  raw: string,
-  allocation: ShipmentLotAllocation,
-  lines: readonly PackedLine[],
-): string | undefined => {
+export const qtyError = (raw: string, line: PackedLine, uomCode: string): string | undefined => {
   const parsed = Number(raw);
 
   if (raw.trim() === '' || !Number.isFinite(parsed) || parsed <= 0) return t.qty.notPositive;
 
-  const already = lineOf(lines, allocation.shipmentLotAllocationId)?.qty ?? 0;
-  const room = remainingOf(allocation) - already;
-
-  return parsed > room ? t.qty.overRemaining(room) : undefined;
+  return parsed > line.remaining
+    ? t.qty.overRemaining(`${line.remaining.toLocaleString()} ${uomCode}`.trim())
+    : undefined;
 };
 
 /** 담기의 결과 — 새로 담았는가, 있던 줄에 더했는가. 더했으면 화면이 그 사실을 말한다(§5-3). */
