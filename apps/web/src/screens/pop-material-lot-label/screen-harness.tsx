@@ -15,6 +15,7 @@ import type {
 } from '@omf-mes/api-client';
 
 import { PopIdentityProvider, type PopIdentity } from '../../patterns/pop-identity';
+import { PuToastHost } from '../../patterns/pop-uniform';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { PopMaterialLotLabelScreen } from './screen';
 
@@ -534,6 +535,8 @@ export const renderLabelScreen = (options: HarnessOptions = {}) => {
   const result = renderWithProviders(
     <PopIdentityProvider value={identity}>
       <PopMaterialLotLabelScreen />
+      {/* 결과 알림 자리 — 실제로는 POP 셸(`pop-main`)이 둔다. */}
+      <PuToastHost />
     </PopIdentityProvider>,
     { fetch },
   );

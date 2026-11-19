@@ -70,6 +70,13 @@ const box = (handlingUnitId: number, handlingUnitNo: string, seq: number) => ({
   contents: [content('F534F50200', 'SEED-0001')],
 });
 
+/** 「구성 완료」 탭에 서는 마감한 출하 단위. */
+const CLOSED_UNIT = {
+  ...unit({ shippingUnitId: 9100, shippingUnitNo: 'SU-20260916-0003', statusCode: 'CLOSED' }),
+  boxCount: 1,
+  closedAt: '2026-09-16T17:40:00+09:00',
+};
+
 interface Options {
   /** 상세가 돌려줄 판들. 부를 때마다 앞에서 하나씩 꺼낸다 — 쓰기 뒤 갱신을 흉내 낸다. */
   details?: Record<string, unknown>[];
@@ -135,6 +142,18 @@ const renderScreen = (options: Options = {}) => {
             { printerName: 'label-a', displayName: '라벨 A', status: 'READY', isDefault: true },
           ],
         }),
+    },
+    {
+      match: (request) =>
+        request.method === 'GET' && pathOf(request) === '/logistics/shipping-units',
+      respond: async (request) => {
+        await record(request);
+
+        return jsonResponse({
+          items: [CLOSED_UNIT],
+          page: { page: 1, size: 5, total: 1 },
+        });
+      },
     },
     {
       match: (request) =>
@@ -211,7 +230,13 @@ const renderScreen = (options: Options = {}) => {
     {
       match: (request) =>
         request.method === 'GET' && /\/logistics\/shipping-units\/\d+$/u.test(pathOf(request)),
-      respond: () => {
+      respond: (request) => {
+        if (pathOf(request).endsWith(`/${String(CLOSED_UNIT.shippingUnitId)}`)) {
+          return jsonResponse(
+            unit({ ...CLOSED_UNIT, boxes: [box(7101, 'HU-CLOSED-1', 1)] }),
+            { headers: { ETag: '"closed"' } },
+          );
+        }
         const body = details[Math.min(detailCall++, details.length - 1)] ?? unit();
 
         return jsonResponse(body, { headers: { ETag: '"detail"' } });
@@ -231,20 +256,27 @@ const renderScreen = (options: Options = {}) => {
   );
 };
 
-/** POP 의 고르는 자리는 드롭다운이 아니라 팝업이다(G-34) — 여는 것은 `combobox` 다. */
-const pick = async (
-  user: ReturnType<typeof userEvent.setup>,
-  field: string,
-  option: RegExp | string,
-): Promise<void> => {
-  await user.click(await screen.findByRole('combobox', { name: field }));
-  await user.click(await screen.findByRole('option', { name: option }));
+/** 출하는 왼쪽 「구성 대기」 목록 카드를 누르고, 유형은 단추로 고른다(#295 시안). */
+const pickShipment = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(await screen.findByRole('button', { name: /SH-20260917-0003/u }));
+};
+
+const pickType = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(await screen.findByRole('radio', { name: '팔레트' }));
 };
 
 const openUnit = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
-  await pick(user, t.entry.label, /SH-20260917-0003/u);
-  await pick(user, t.unit.typeLabel, '팔레트');
+  await pickShipment(user);
+  await pickType(user);
   await user.click(screen.getByRole('button', { name: t.unit.create }));
+};
+
+/** ② 상자 등록에서 [다음] → ③ 마감 단계. */
+const toCloseStep = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name: t.actions.next })).toBeEnabled();
+  });
+  await user.click(screen.getByRole('button', { name: t.actions.next }));
 };
 
 afterEach(() => {
@@ -256,12 +288,10 @@ describe('P-04-05 출하 단위 구성', () => {
     const user = userEvent.setup();
     renderScreen();
 
+    await pickShipment(user);
     expect(await screen.findByRole('button', { name: t.unit.create })).toBeDisabled();
 
-    await pick(user, t.entry.label, /SH-20260917-0003/u);
-    expect(screen.getByRole('button', { name: t.unit.create })).toBeDisabled();
-
-    await pick(user, t.unit.typeLabel, '팔레트');
+    await pickType(user);
     expect(screen.getByRole('button', { name: t.unit.create })).toBeEnabled();
   });
 
@@ -275,7 +305,7 @@ describe('P-04-05 출하 단위 구성', () => {
     const seen: Options['seen'] = [];
     renderScreen({ seen });
 
-    await screen.findByRole('combobox', { name: t.entry.label });
+    await screen.findByRole('button', { name: /SH-20260917-0003/u });
 
     const list = seen.find((call) => call.path === '/logistics/shipments');
     expect(list).toBeDefined();
@@ -286,15 +316,19 @@ describe('P-04-05 출하 단위 구성', () => {
   });
 
   /*
-   * ⛔ **단위를 만들기 전에는 스캔 칸이 잠긴다.** 열어 두면 담당이 상자 앞에서 읽고 나서야
-   *    막힌 것을 안다 — 스캐너를 든 사람에게 그 한 번은 큰 낭비다.
+   * ⛔ **단위를 만들기 전에는 상자를 읽을 수 없다.** 스캔 칸은 ② 상자 등록에만 서고, 단위가 없으면
+   *    그 단계로 갈 길(단계 줄 · [다음])이 없다 — 담당이 상자 앞에서 읽고 나서야 막힌 것을 알지 않게.
    */
-  it('단위를 만들기 전에는 스캔 칸이 잠기고 사유를 말한다', async () => {
+  it('단위를 만들기 전에는 상자 등록 단계로 갈 수 없다', async () => {
+    const user = userEvent.setup();
     renderScreen();
 
-    const field = await screen.findByLabelText(t.scan.label);
-    expect(field).toBeDisabled();
-    expect(field).toHaveAttribute('placeholder', t.scan.locked);
+    await pickShipment(user);
+    await pickType(user);
+
+    expect(screen.queryByLabelText(t.scan.label)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: new RegExp(t.steps.boxes, 'u') })).toBeNull();
+    expect(screen.queryByRole('button', { name: t.actions.next })).toBeNull();
   });
 
   /* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */
@@ -307,7 +341,7 @@ describe('P-04-05 출하 단위 구성', () => {
   it('사번이 있으면 사번 미확인 띠가 없다', async () => {
     renderScreen();
 
-    await screen.findByRole('combobox', { name: t.entry.label });
+    await screen.findByRole('button', { name: /SH-20260917-0003/u });
     expect(screen.queryByText(messages.popChrome.workerMissing)).not.toBeInTheDocument();
   });
 
@@ -411,15 +445,17 @@ describe('P-04-05 출하 단위 구성', () => {
    * ⛔⛔ **상자가 없으면 마감하지 않는다**(설계 §4-6 — 서버가 400). 화면이 먼저 막아, 되돌릴
    *    수 없는 조작을 눌렀다가 거절당하는 일을 없앤다.
    */
-  it('상자가 하나도 없으면 마감이 잠긴다', async () => {
+  it('상자가 하나도 없으면 마감 단계로 넘어가지 못한다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
     await openUnit(user);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: t.close.action })).toBeDisabled();
+      expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
     });
+    expect(screen.getByRole('button', { name: t.actions.next })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: t.close.action })).toBeNull();
   });
 
   /* ⛔ 되돌릴 수 없다 — 확인창이 그 사실을 «먼저» 말한다. */
@@ -430,6 +466,7 @@ describe('P-04-05 출하 단위 구성', () => {
     renderScreen({ seen, details: [unit({ boxes: [box(7001, 'HU-1', 1)], boxCount: 1 })] });
 
     await openUnit(user);
+    await toCloseStep(user);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t.close.action })).toBeEnabled();
     });
@@ -465,6 +502,7 @@ describe('P-04-05 출하 단위 구성', () => {
     });
     await user.type(screen.getByLabelText(t.scan.label), 'HU-1{Enter}');
 
+    await toCloseStep(user);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t.close.action })).toBeEnabled();
     });
@@ -503,6 +541,7 @@ describe('P-04-05 출하 단위 구성', () => {
     });
 
     await openUnit(user);
+    await toCloseStep(user);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t.close.action })).toBeEnabled();
     });
@@ -551,5 +590,27 @@ describe('P-04-05 출하 단위 구성', () => {
     });
 
     Reflect.deleteProperty(window, 'pop');
+  });
+
+  /*
+   * ⭐ 「구성 완료」 탭은 마감한 출하 단위 목록(`statusCode=CLOSED`)을 보이고, 고르면 마감 결과만
+   *    보인다 — 단계 줄 · 스캔 칸 · 입력 단추가 없다(#295 시안).
+   */
+  it('구성 완료 탭은 마감한 단위를 묻고, 고르면 결과만 보인다', async () => {
+    const user = userEvent.setup();
+    const seen: Options['seen'] = [];
+    renderScreen({ seen });
+
+    await user.click(await screen.findByRole('tab', { name: new RegExp(t.tabs.done, 'u') }));
+    await user.click(await screen.findByRole('button', { name: /SU-20260916-0003/u }));
+
+    expect(await screen.findByText('HU-CLOSED-1')).toBeInTheDocument();
+    const list = seen.find(
+      (call) => call.method === 'GET' && call.path === '/logistics/shipping-units',
+    );
+    expect(new URLSearchParams(list?.query ?? '').get('statusCode')).toBe('CLOSED');
+    expect(screen.queryByLabelText(t.scan.label)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.close.action })).toBeNull();
+    expect(screen.queryByRole('button', { name: t.unit.create })).toBeNull();
   });
 });

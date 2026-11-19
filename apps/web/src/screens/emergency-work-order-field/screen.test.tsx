@@ -14,6 +14,7 @@ describe('긴급 W/O 현장 화면', () => {
     renderScreen({ workOrders: [] });
 
     expect(await screen.findByText(t.list.empty)).toBeInTheDocument();
+    expect(screen.getByText(t.list.emptyHint)).toBeInTheDocument();
     expect(screen.queryByText(t.list.loadError)).not.toBeInTheDocument();
   });
 
@@ -28,29 +29,19 @@ describe('긴급 W/O 현장 화면', () => {
     expect(screen.getByRole('button', { name: t.handoff.productionResult })).toBeDisabled();
   });
 
-  /*
-   * ⭐ **POP 목록 정본** — 표 · 선택 칸 없음 · 줄 전체가 누르는 자리 · 다시 누르면 해제
-   *    (스펙 §7 `Table` · 정본 통일 `913a82c`). 카드 목록으로 되돌아가면 이 감지기가 잡는다.
-   */
-  it('목록이 표이고 줄 아무 데나 눌러 고르며 다시 누르면 해제한다', async () => {
+  /* 목록은 고르기 목록이다(POP 통일 시안) — 항목 아무 데나 누르면 고르고, 다시 누르면 푼다. */
+  it('항목을 눌러 고르며 다시 누르면 해제한다', async () => {
     const { user } = renderScreen();
 
-    const row = await screen.findByRole('row', {
-      name: new RegExp(EMERGENCY_WORK_ORDER.workOrderNo, 'u'),
-    });
     const selectKey = () =>
       screen.getByRole('button', { name: new RegExp(EMERGENCY_WORK_ORDER.workOrderNo, 'u') });
 
-    /* 선택 칸을 따로 두지 않는다 — 조작은 첫 칸의 버튼 하나뿐이다. */
-    expect(within(row).getAllByRole('button')).toHaveLength(1);
-
-    /* 번호가 아닌 칸(수량)을 눌러도 그 줄이 골라진다. */
-    await user.click(within(row).getByText(/EA$/u));
+    await user.click(await screen.findByText(/EA$/u));
 
     await waitFor(() => {
       expect(selectKey()).toHaveAttribute('aria-pressed', 'true');
     });
-    expect(screen.getByRole('link', { name: t.handoff.materialInput })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.handoff.materialInput })).toBeEnabled();
 
     await user.click(selectKey());
 
@@ -61,20 +52,33 @@ describe('긴급 W/O 현장 화면', () => {
   });
 
   it('고르면 두 정상 화면으로 가는 주소에 W/O 를 싣는다', async () => {
-    const { user } = renderScreen();
+    const { user, router } = renderScreen();
 
     await user.click(
       await screen.findByRole('button', { name: selectName(EMERGENCY_WORK_ORDER.workOrderNo) }),
     );
+    await user.click(screen.getByRole('button', { name: t.handoff.materialInput }));
 
-    expect(screen.getByRole('link', { name: t.handoff.materialInput })).toHaveAttribute(
-      'href',
-      `/pop/material-input?workOrderId=${String(EMERGENCY_WORK_ORDER.workOrderId)}`,
+    await waitFor(() => {
+      expect(`${router?.state.location.pathname ?? ''}${router?.state.location.search ?? ''}`).toBe(
+        `/pop/material-input?workOrderId=${String(EMERGENCY_WORK_ORDER.workOrderId)}`,
+      );
+    });
+  });
+
+  it('[실적 입력]은 실적 화면으로 W/O 를 싣고 간다', async () => {
+    const { user, router } = renderScreen();
+
+    await user.click(
+      await screen.findByRole('button', { name: selectName(EMERGENCY_WORK_ORDER.workOrderNo) }),
     );
-    expect(screen.getByRole('link', { name: t.handoff.productionResult })).toHaveAttribute(
-      'href',
-      `/pop/production-result?workOrderId=${String(EMERGENCY_WORK_ORDER.workOrderId)}`,
-    );
+    await user.click(screen.getByRole('button', { name: t.handoff.productionResult }));
+
+    await waitFor(() => {
+      expect(`${router?.state.location.pathname ?? ''}${router?.state.location.search ?? ''}`).toBe(
+        `/pop/production-result?workOrderId=${String(EMERGENCY_WORK_ORDER.workOrderId)}`,
+      );
+    });
   });
 
   it('배정이 없으면 그 사실을 경고로 보인다', async () => {
@@ -131,23 +135,22 @@ describe('「없다」와 「모른다」를 가른다', () => {
 });
 
 describe('목록이 잘렸는지', () => {
-  it('전체 건수가 보이는 수와 같으면 잘림을 알리지 않는다', async () => {
+  it('전체 건수는 목록 아래 쪽 넘김 줄이 말한다', async () => {
     renderScreen({ total: 1 });
 
     await screen.findByRole('button', { name: selectName(EMERGENCY_WORK_ORDER.workOrderNo) });
 
-    expect(screen.queryByText(t.list.truncated(1, 1))).not.toBeInTheDocument();
+    expect(screen.getByText(messages.popUniform.pager.total(1))).toBeInTheDocument();
   });
 });
 
 describe('POP 상단 띠', () => {
-  /* #291 — 단말은 공통 이동 메뉴 맨 위 줄이 보인다. 화면 머리줄에 다시 세우지 않는다. */
-  it('단말은 머리줄에 두지 않는다(공통 메뉴 맨 위 줄이 보인다)', async () => {
+  /* #291 — 단말은 공통 이동 메뉴 맨 위 줄이 보인다. 화면 본문에 다시 세우지 않는다. */
+  it('단말은 본문에 두지 않는다(공통 메뉴 맨 위 줄이 보인다)', async () => {
     renderScreen({ terminalId: 1001 });
 
     expect(await screen.findByRole('heading', { name: t.title })).toBeInTheDocument();
-    expect(screen.queryByText(t.header.terminalLabel('1001'))).not.toBeInTheDocument();
-    expect(screen.queryByText(t.header.terminalUnknown)).not.toBeInTheDocument();
+    expect(screen.queryByText(/단말#/u)).not.toBeInTheDocument();
   });
 });
 
@@ -179,17 +182,19 @@ describe('POP 상단 띠', () => {
   });
 });
 
-describe('상세 구획의 제목', () => {
-  it('고르면 W/O 번호 자체가 제목이 된다', async () => {
+describe('상세 구획의 첫 줄', () => {
+  /* 고른 작업지시 번호는 상세 첫 줄 「작업지시」로 선다(POP 통일 시안) — 구획 제목은 「작업지시 상세」 그대로. */
+  it('고르면 상세 첫 줄에 작업지시 번호가 선다', async () => {
     const { user } = renderScreen();
 
     await user.click(
       await screen.findByRole('button', { name: selectName(EMERGENCY_WORK_ORDER.workOrderNo) }),
     );
 
-    expect(
-      screen.getByRole('heading', { name: new RegExp(EMERGENCY_WORK_ORDER.workOrderNo) }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: t.detail.title })).toBeInTheDocument();
+    expect(screen.getByText(t.detail.workOrder).nextElementSibling).toHaveTextContent(
+      EMERGENCY_WORK_ORDER.workOrderNo,
+    );
   });
 });
 
@@ -204,8 +209,8 @@ describe('연결 표시', () => {
 
     await screen.findByRole('heading', { name: t.list.title });
     await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(screen.queryByText(t.header.connected)).not.toBeInTheDocument();
-    expect(screen.queryByText(t.header.disconnected)).not.toBeInTheDocument();
+    expect(screen.queryByText(messages.common.connection.online)).not.toBeInTheDocument();
+    expect(screen.queryByText(messages.common.connection.offline)).not.toBeInTheDocument();
   });
 
   it('답을 받기 전에는 연결 여부를 말하지 않는다', async () => {
@@ -213,24 +218,18 @@ describe('연결 표시', () => {
 
     await screen.findByRole('heading', { name: t.list.title });
 
-    expect(screen.queryByText(t.header.connected)).not.toBeInTheDocument();
-    expect(screen.queryByText(t.header.disconnected)).not.toBeInTheDocument();
+    expect(screen.queryByText(messages.common.connection.online)).not.toBeInTheDocument();
+    expect(screen.queryByText(messages.common.connection.offline)).not.toBeInTheDocument();
   });
 });
 
 describe('발행 자리 안내', () => {
-  /*
-   * ⛔ **목록이 있을 때도 선다.** 빈 목록 문구 안에 같은 말이 들어 있어 그쪽만 재면, 목록이
-   *    찬 화면에서 안내가 통째로 사라져도 아무 감지기가 울지 않는다.
-   */
-  it('목록이 있어도 어디서 발행하는지 목록 아래에 알린다', async () => {
+  /* 「관리웹에서 발행합니다」 상시 안내는 없앴다(POP 통일 시안) — 목록이 비었을 때 빈 모양만 말한다. */
+  it('목록이 있으면 발행 자리 안내를 상시 세우지 않는다', async () => {
     renderScreen();
 
-    const list = await screen.findByLabelText(t.list.caption);
-    const guide = screen.getByText(t.list.issuedElsewhere);
+    await screen.findByRole('button', { name: selectName(EMERGENCY_WORK_ORDER.workOrderNo) });
 
-    expect(guide).toBeInTheDocument();
-    /* DOM 순서로 「목록 아래」를 잰다 — 위로 올라가면 목록을 훑기 전에 읽게 된다. */
-    expect(list.compareDocumentPosition(guide) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByText(t.list.emptyHint)).not.toBeInTheDocument();
   });
 });

@@ -29,8 +29,8 @@ export const productionFlowKeys = {
   all: ['production-flow'] as const,
   currentLot: (workOrderId: number) => ['production-flow', 'current-lot', workOrderId] as const,
   lotDetail: (lotId: number) => ['production-flow', 'lot-detail', lotId] as const,
-  completedLots: (workOrderId: number, page: number) =>
-    ['production-flow', 'completed-lots', workOrderId, page] as const,
+  completedLots: (workOrderId: number, page: number, size: number = COMPLETED_LOT_PAGE_SIZE) =>
+    ['production-flow', 'completed-lots', workOrderId, page, size] as const,
   item: (itemId: number) => ['production-flow', 'item', itemId] as const,
   serials: (lotId: number) => ['production-flow', 'serials', lotId] as const,
   printers: (documentTypeCode: DocumentTypeCode) =>
@@ -125,19 +125,21 @@ export const useCompletedLots = (
   workOrderId: number | null,
   enabled: boolean,
   page: number,
+  /** 한 쪽 건수 — 화면이 구획 높이에 들어가는 만큼으로 정한다(#295 규칙 1). */
+  size: number = COMPLETED_LOT_PAGE_SIZE,
 ): UseQueryResult<CompletedLotPage> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: productionFlowKeys.completedLots(workOrderId ?? 0, page),
+    queryKey: productionFlowKeys.completedLots(workOrderId ?? 0, page, size),
     enabled: enabled && workOrderId !== null,
     queryFn: async (): Promise<CompletedLotPage> => {
       if (workOrderId === null) throw new Error('작업지시가 없으면 마감 LOT을 조회하지 않습니다.');
 
       const data = await runRequest(() =>
         client.GET('/trace/lots', {
-          /* 한 쪽 5건 — 5건이 넘을 때만 쪽 넘김이 선다(사용자 지시 2026-11-16). */
-          params: { query: { workOrderId, completed: true, page, size: COMPLETED_LOT_PAGE_SIZE } },
+          /* 한 쪽 건수는 부르는 쪽이 정한다(기본 5). 조건·정렬은 그대로다. */
+          params: { query: { workOrderId, completed: true, page, size } },
         }),
       );
 

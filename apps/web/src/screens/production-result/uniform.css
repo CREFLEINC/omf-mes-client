@@ -1,0 +1,322 @@
+/*
+ * P-02-04 생산 작업 — POP 본문 통일 화면 전용 모양(omf-all-around#295). 공통 모양은 `app/pop-uniform.css`.
+ * 선택자는 화면 접두 `pr-` 로만 쓴다.
+ */
+.pr-uniform {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  /* 관리웹 본문 여백(main · 블록 사이 띄움)을 걷는다 — 본문 틀은 `pu-screen` 이 정한다. */
+  padding: 0;
+}
+
+.pr-uniform > .pu-screen {
+  margin: 0;
+}
+
+/*
+ * 머리줄(`PopHeader`)은 프린터 칩·미전송 칩을 맨 위 줄로 보내는 일만 한다 — 본문에 줄을 세우지 않는다(시안).
+ * 화면 이름은 읽는 이름으로만 남는다.
+ */
+.pr-uniform > .pop-header {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.pr-banners {
+  display: grid;
+  gap: 8px;
+}
+
+/* 구획 본문: 위는 내용 높이, 목록 칸(`pu-fit`)이 남는 높이를 갖는다 — 구획 안 스크롤 없음(규칙 1). */
+.pr-uniform .pr-col-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pr-uniform .pr-col-body > * {
+  flex: none;
+}
+
+.pr-uniform .pr-col-body > .pr-completed,
+.pr-uniform .pr-col-body > .pr-defects {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pr-uniform .pr-completed > *,
+.pr-uniform .pr-defects > * {
+  flex: none;
+}
+
+.pr-uniform .pr-completed > .pu-fit,
+.pr-uniform .pr-defects > .pu-fit {
+  flex: 1 1 0;
+}
+
+.pr-uniform .pr-completed > .pu-pager,
+.pr-uniform .pr-defects > .pu-pager {
+  margin-left: auto;
+}
+
+/* 좁은 화면(1024)에서는 가운데 구획이 좁아 단계 줄이 잘린다 — 잘리지 않게 다음 줄로 내린다. */
+.pr-uniform .pu-flow {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+
+/* 왼쪽 「현재 LOT」 */
+.pr-uniform .pr-wo {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: 0;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pr-uniform .pr-wo > .pu-chip {
+  margin-right: 6px;
+}
+
+.pr-uniform .pr-wo > span {
+  white-space: pre;
+}
+
+.pr-uniform .pr-progress {
+  display: grid;
+  gap: 6px;
+}
+
+.pr-uniform .pr-progress-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14px;
+  min-width: 0;
+}
+
+.pr-uniform .pr-progress-head b {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pr-uniform .pr-rest {
+  margin-left: auto;
+  color: var(--pu-text-3);
+  white-space: nowrap;
+}
+
+.pr-uniform .pu-progress.pr-over > i {
+  background: var(--pu-warn);
+}
+
+.pr-uniform .pr-entered-defects {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 14px;
+  color: var(--pu-text-2);
+}
+
+.pr-uniform .pr-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.pr-uniform .pr-sub h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.pr-uniform .pr-sub > .pu-btn,
+.pr-uniform .pr-sub > .pu-count {
+  margin-left: auto;
+}
+
+.pr-uniform .pr-lots {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pr-uniform .pr-lots > li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-field);
+  font-size: 14px;
+  min-width: 0;
+}
+
+.pr-uniform .pr-lots > li .pu-mono {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.pr-uniform .pr-lots > li .pr-at {
+  margin-left: auto;
+  color: var(--pu-text-3);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* 가운데 불량 줄: 유형 고르기 | 수량 | 빼기 */
+.pr-uniform .pr-dhead,
+.pr-uniform .pr-drow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px 48px;
+  gap: 8px;
+  align-items: center;
+}
+
+.pr-uniform .pr-dhead {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--pu-text-2);
+}
+
+.pr-uniform .pr-drows {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pr-uniform .pr-drow .pop-select {
+  min-width: 0;
+}
+
+.pr-uniform .pr-drow .pop-select > .pu-input {
+  width: 100%;
+}
+
+.pr-uniform .pr-drow .pu-row .pu-input {
+  padding: 0 10px;
+}
+
+.pr-uniform .pr-drow .pu-unit {
+  min-width: 0;
+}
+
+.pr-uniform .pr-drow .pu-btn.x {
+  width: 48px;
+  height: 48px;
+}
+
+/* 가운데 구획이 좁으면(1024 화면) 한 줄을 두 단으로 — 위는 유형, 아래는 수량·빼기. 칸 이름 줄은 거둔다. */
+.pr-uniform .pr-defects {
+  container-type: inline-size;
+}
+
+@container (max-width: 380px) {
+  .pr-uniform .pr-dhead {
+    display: none;
+  }
+
+  .pr-uniform .pr-drow {
+    grid-template-columns: minmax(0, 1fr) 48px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--pu-line-2);
+  }
+
+  .pr-uniform .pr-drow > .pop-select {
+    grid-column: 1 / -1;
+  }
+}
+
+/* 이미 있는 유형을 고르면 그 줄을 강조한다(사용자 지시 2026-11-16). */
+.pr-uniform .pr-drow.is-duplicate .pop-select > .pu-input {
+  border-color: var(--pu-info);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pu-info) 25%, transparent);
+}
+
+/* [불량 등록] 확인 창의 줄 */
+.pr-confirm-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+}
+
+.pr-confirm-list > li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* 작업지시 마감 창(창은 본문 밖에 그려진다) — 폐번될·마감되지 않은 LOT 번호 상자, 미달량·초과량 빨강 */
+.pr-close-lots {
+  gap: 6px;
+}
+
+.pr-close-lot-box {
+  margin: 0;
+  padding: 8px 12px;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-field);
+  font-family: var(--pu-mono);
+  font-size: 14px;
+}
+
+.pr-close-variance {
+  color: var(--pu-bad);
+  font-weight: 700;
+}
+
+/* 좁은 가운데 구획(1024 화면): 안내 줄의 단추는 글 아래로 내린다 — 글이 한 글자 폭으로 눌리지 않게. */
+.pr-uniform .pr-step .pr-col-body {
+  container-type: inline-size;
+}
+
+@container (max-width: 380px) {
+  .pr-uniform .pr-step .pu-note {
+    flex-wrap: wrap;
+  }
+
+  .pr-uniform .pr-step .pu-note > .text {
+    flex: 1 1 calc(100% - 32px);
+  }
+
+  .pr-uniform .pr-step .pu-note > .act {
+    margin-left: 24px;
+  }
+}
+
+/* 마감된 LOT 0건 안내는 남는 높이 안에서만 — 아래 [부품 교체]를 덮지 않는다. */
+.pr-uniform .pr-completed > .pu-empty {
+  min-height: 0;
+  padding: 8px;
+}

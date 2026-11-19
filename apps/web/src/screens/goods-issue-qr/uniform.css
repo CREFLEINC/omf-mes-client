@@ -1,0 +1,345 @@
+/* P-01-02 분할 LOT 라벨 — #295 시안 모양(화면 전용 `giq-*`). 공통 모양은 `app/pop-uniform.css`. */
+
+.giq-title {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  margin: 0;
+}
+
+/* ── 위 구획: 스캔 칸 + (재발행) 출고일 ── */
+.giq-top > .pu-card-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.giq-scan {
+  flex: 1;
+  min-width: 0;
+}
+
+.giq-scan .pu-help {
+  margin: 0;
+}
+
+.giq-period {
+  flex: none;
+  width: 360px;
+}
+
+/* 출고일 타일은 글만(동그라미 없이) — 360 폭에 「최근 30일」이 잘리지 않게. */
+.giq-period .pu-tile {
+  justify-content: center;
+  padding: 4px 8px;
+}
+
+.giq-period .pu-tile::before {
+  display: none;
+}
+
+/* ── 아래 구획: 탭 머리 + 표 + 정렬 · 쪽 넘김 + 재인쇄 사유 ── */
+.giq-list .pu-card-head > .pu-seg {
+  flex: none;
+  width: 380px;
+}
+
+.giq-list > .pu-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.giq-list > .pu-card-body > * {
+  flex: none;
+}
+
+.giq-list > .pu-card-body > .giq-table,
+.giq-list > .pu-card-body > .pu-empty {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.giq-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.giq-foot > .pu-seg {
+  flex: none;
+  width: 200px;
+}
+
+.giq-foot > .pu-pager {
+  margin-left: auto;
+}
+
+/* 재인쇄 사유 — 타일은 한 줄로(표 줄 수를 덜 먹게), 왜 필요한지는 이름 줄 오른쪽 빨간 한 줄(시안). */
+.giq-reasons .pu-tiles {
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+}
+
+.giq-reasons .pu-tile {
+  min-height: 48px;
+  padding: 4px 8px;
+  justify-content: center;
+}
+
+.giq-reasons .pu-tile::before {
+  display: none;
+}
+
+.giq-reason-hint {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--pu-bad);
+}
+
+/* 표: 줄 56, 두 줄 묶음 칸. 바깥 칸(`giq-table`)이 남는 높이를 갖고 쪽 건수를 잰다. */
+.giq-table {
+  overflow: hidden;
+}
+
+.giq-table > .pu-table-wrap {
+  max-height: 100%;
+}
+
+.giq-table .pu-table {
+  table-layout: fixed;
+}
+
+.giq-table .pu-table th,
+.giq-table .pu-table td {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.giq-table .pu-table td {
+  height: 56px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  vertical-align: middle;
+}
+
+.giq-table tbody tr {
+  cursor: pointer;
+}
+
+.giq-table .giq-ck {
+  width: 48px;
+  text-align: center;
+}
+
+.giq-table .giq-item {
+  width: 200px;
+}
+
+.giq-table .giq-qty {
+  width: 96px;
+}
+
+.giq-table .giq-issue {
+  width: 200px;
+}
+
+.giq-table .giq-at {
+  width: 120px;
+}
+
+.giq-table .giq-label {
+  width: 130px;
+}
+
+.giq-lotno {
+  display: block;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.giq-seg {
+  white-space: nowrap;
+}
+
+.giq-one {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.giq-sub {
+  display: block;
+  font-size: 12px;
+  color: var(--pu-text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 기존 LOT 줄은 한 줄로 두고 넘치면 줄인다 — 줄이 늘면 한 쪽에 드는 줄 수가 준다. */
+.giq-sub wbr {
+  display: none;
+}
+
+.giq-sub.giq-old {
+  color: var(--pu-bad);
+  font-weight: 700;
+}
+
+.giq-table .giq-box.giq-box {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 0;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 2px solid var(--pu-line);
+  border-radius: 6px;
+  background: var(--pu-field);
+  color: #fff;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.giq-table .giq-box.giq-box[aria-checked='true'] {
+  background: var(--pu-primary);
+  border-color: var(--pu-primary);
+}
+
+.giq-box .pu-ic {
+  width: 16px;
+  height: 16px;
+  stroke-width: 3;
+}
+
+/* ── 창 ── */
+.giq-help {
+  display: grid;
+  gap: 8px;
+  font-size: 15px;
+}
+
+.giq-help p {
+  margin: 0;
+}
+
+.giq-preview {
+  display: grid;
+  gap: 12px;
+}
+
+.giq-preview .pu-help {
+  margin: 0;
+}
+
+/* 라벨 미리 보기 — 80 × 30 mm 를 1 점 = 1 단위로(인쇄와 같은 자리). */
+.giq-preview .pop-split-label {
+  margin: 0;
+  text-align: center;
+}
+
+.giq-preview .pop-split-label > svg {
+  width: 100%;
+  max-width: 639px;
+  border: 1px solid var(--pu-line);
+  font-family: Arial, sans-serif;
+}
+
+.giq-preview .pop-split-label > figcaption {
+  font-size: 13px;
+  color: var(--pu-text-3);
+}
+
+.giq-meta {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  gap: 6px 10px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.giq-meta dt {
+  color: var(--pu-text-3);
+}
+
+.giq-meta dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.giq-preview-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.giq-preview-printer {
+  margin-right: auto;
+  align-self: center;
+  font-size: 13px;
+  color: var(--pu-text-3);
+}
+
+/* 1024 단말: 고정 칸을 좁혀 LOT 번호 칸이 남는 폭을 갖는다. */
+@media (max-width: 1100px) {
+  .giq-period {
+    width: 300px;
+  }
+
+  .giq-list .pu-card-head > .pu-seg {
+    width: 300px;
+  }
+
+  .giq-table .giq-ck {
+    width: 40px;
+  }
+
+  .giq-table .giq-item {
+    width: 130px;
+  }
+
+  .giq-table .giq-qty {
+    width: 76px;
+  }
+
+  .giq-table .giq-issue {
+    width: 150px;
+  }
+
+  .giq-table .giq-at {
+    width: 92px;
+  }
+
+  .giq-table .giq-label {
+    width: 108px;
+  }
+
+  .giq-table .pu-table th,
+  .giq-table .pu-table td {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  .giq-lotno {
+    font-size: 12px;
+  }
+}
+
+/* 발행 대기 요약 한 줄 — 인쇄 실패 · 가장 오래된 것 칩. */
+.giq-band {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

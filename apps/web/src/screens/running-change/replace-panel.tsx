@@ -1,18 +1,23 @@
-import { AlertBanner, Button, Chip, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { NumericKeypad } from '@omf-mes/ui';
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
 
 import { PopSelect as Select } from '../../patterns/pop-select';
-import { popTouchClass } from '../../patterns/pop-touch';
+import {
+  PuButton,
+  PuChip,
+  PuField,
+  PuInput,
+  PuNote,
+  PuSection,
+  PuTiles,
+  PuUnit,
+} from '../../patterns/pop-uniform';
 import { toLookupDisplayState, type LookupSource } from '../../patterns/lookup-display';
 import { validateQty, type QtyDraft, type QtyProblem } from './input-qty';
 import type { ReferenceLabels } from './reference-labels';
 import type { ScannedPart } from './scan';
 import type { PopGateVerdict as GateVerdict } from '../../patterns/pop-process-gate';
 import type { CurrentInputView } from './types';
-
-import { stripLeadingZeros } from './quantity-pad';
 
 const t = messages.runningChange;
 
@@ -44,21 +49,20 @@ export interface ReplacePanelProps {
   labels: ReferenceLabels;
   /** LOT 품질 상태의 표시명. 칩에 코드가 그대로 서지 않게 한다(#1045). */
   lotStatuses: LookupSource;
-  /** 등록을 담은 뒤의 안내. 담지 않았으면 `false`. */
-  recorded: boolean;
   /** 교체 사유 선택지 — 고객이 마스터에서 채운다. 비어 올 수 있다(스펙 §6). */
   reasons: readonly { code: string; codeName: string }[];
   reasonsPending: boolean;
   reasonsFailed: boolean;
   reasonCode: string | null;
   onReasonChange: (code: string) => void;
-
   /** 서버가 거부했으면 그 사유 한 줄. */
   rejection: string | null;
+  /** 구획 맨 위 안내 줄(작업지시 없음 · 사번 없음 · 멈춤). */
+  notes?: ReactNode;
+  /** 신규 부품 LOT 스캔 칸. */
+  scan: ReactNode;
   onClearPart: () => void;
   onSelectTarget: (materialConsumptionId: number) => void;
-  onQtyChange: (value: QtyDraft) => void;
-  onSubmit: () => void;
   /** 게이팅 조회를 다시 건다. **「확인할 수 없다」에만 길을 준다**(G-3). */
   onRetryGate: () => void;
 }
@@ -150,6 +154,8 @@ const describeBlock = (
     case 'workOrderMissing':
     /* 신규 부품 LOT 미스캔 문구도 지운다 — 스캔 칸이 바로 위에 있다(사용자 지시 2026-09-17). */
     case 'partMissing':
+    /* 교체 대상 미선택도 지운다 — 대상 칸의 빨간 테두리가 말한다(POP 통일 시안 규칙 3·5). */
+    case 'targetMissing':
       return null;
     case 'checking':
       return t.disabled.checking;
@@ -159,18 +165,18 @@ const describeBlock = (
       return t.disabled.unavailable;
     case 'unidentified':
       return gateUnidentifiedText;
-    case 'targetMissing':
-      return t.disabled.targetMissing;
   }
 };
 
+/** 교체 사유가 이만큼 이하면 바로 누르는 칸(타일), 넘으면 칸 + 선택 창(시안 규칙 7). */
+const REASON_TILE_MAX = 6;
+
 /**
- * 《부품 교체》 — 스펙 §3 우단. 읽은 부품·교체 대상·수량·사유를 모아 **한 건**을 등록한다.
+ * 《부품 교체》 — 스펙 §3 · POP 통일 시안(#295). 읽은 부품 · 교체 대상 · 수량 · 사유를 모아 **한 건**을 등록한다.
+ * [교체 등록]은 아래 작업 줄이 갖는다. 수량 칸 옆 [투입]은 같은 잠금 · 같은 처리(`onSubmit`)라 하나로 합쳤다.
  *
- * ⭐ **교체 사유는 열려 있다.** 값 목록은 고객이 마스터(`W-06-06`)에서 채우고 받는 곳은 이미
- * 있다(스펙 §4-A · §8 미결 1 · 2026-09-03 판정). 비어서 오면 그때만 잠그고 «왜» 비었는지
- * 말한다 — 칸만 비워 두면 「고를 것이 없다」와 「아직 안 골랐다」가 같은 모양이 된다(`G-2`).
- * 사유 없이도 등록은 선다(스펙 §6 — 권고).
+ * ⭐ **교체 사유는 열려 있다.** 값 목록은 고객이 마스터(`W-06-06`)에서 채운다. 비어서 오면 그때만 잠그고
+ * «왜» 비었는지 말한다(`G-2`). 사유 없이도 등록은 선다(스펙 §6 — 권고).
  */
 export const ReplacePanel = ({
   gate,
@@ -189,21 +195,20 @@ export const ReplacePanel = ({
   onReasonChange,
   labels,
   lotStatuses,
-  recorded,
   rejection,
+  notes,
+  scan,
   onClearPart,
   onSelectTarget,
-  onQtyChange,
-  onSubmit,
   onRetryGate,
 }: ReplacePanelProps) => {
-  const reasonId = useId();
   const targetId = useId();
+  const qtyId = useId();
+  const reasonId = useId();
   const qtyProblem = toQtyProblem({ qty, part, selectedTargetId });
   const blocked = toBlockReason({ gate, hasWorkOrder, hasWorker, part, selectedTargetId, qty });
   /*
-   * 사번 사유는 맨 위 띠가 말하므로, 버튼 옆은 그 다음 사유(부품·대상)를 그대로 말한다.
-   * 잠금(`blocked`)은 바꾸지 않는다.
+   * 사번 사유는 맨 위 줄이 말하므로, 그 다음 사유를 그대로 말한다. 잠금(`blocked`)은 바꾸지 않는다.
    */
   const blockText = describeBlock(
     blocked === 'workerMissing'
@@ -212,172 +217,128 @@ export const ReplacePanel = ({
     gateDeniedText,
     gateUnidentifiedText,
   );
+  const uom = part === null ? '' : labels.describeUom(part.uomId);
+  const useTiles = reasons.length > 0 && reasons.length <= REASON_TILE_MAX;
 
   return (
-    <>
-      {/* 읽어 담은 신규 부품. 하나뿐이라 목록이 아니라 한 줄이다. */}
-      <p className="pop-rc-part">
-        <span className="pop-rc-part-label">{t.replace.partLabel}</span>
-        {part === null ? (
-          <span>{t.replace.partNone}</span>
-        ) : (
-          <>
-            <span>{`${labels.describeItem(part.itemId)} ${part.lotNo}`}</span>
-            {part.isHeld && (
-              <Chip variant="status" size="md" status="warning">
-                {statusText(lotStatuses, part.statusCode)}
-              </Chip>
-            )}
-            <Button variant="text" size="sm" onClick={onClearPart}>
-              {t.replace.clearPart}
-            </Button>
-          </>
-        )}
-      </p>
-
-      <div className="pop-rc-field">
-        <label htmlFor={targetId}>{t.replace.targetLabel}</label>
-        <Select
-          id={targetId}
-          className="pop-rc-select"
-          size="xl"
-          /*
-           * ⭐ **대화상자 제목은 «명사»로 선다**(#1094). 선택기는 제목을 「접근 이름 + 선택」
-           *    으로 만드는데, 접근 이름이 비면 자리글(「교체 대상을 고르세요」)을 집어
-           *    **「교체 대상을 고르세요 선택」**이 됐다 — 다른 대화상자는 전부 「명사 + 선택」이다.
-           *    자리글은 칸 안의 안내로 그대로 두고, 제목에 쓸 이름만 따로 준다.
-           */
-          aria-label={t.replace.targetLabel}
-          placeholder={t.replace.targetPlaceholder}
-          value={selectedTargetId === null ? null : String(selectedTargetId)}
-          options={targets.map((row) => ({
-            value: String(row.materialConsumptionId),
-            label: t.replace.targetOption(
-              labels.describeItem(row.itemId),
-              labels.describeLot(row.lotId),
-            ),
-          }))}
-          disabled={targets.length === 0}
-          onChange={(value) => {
-            onSelectTarget(Number(value));
-          }}
-        />
-      </div>
-
-      {/* 수량도 같은 칸 규격으로 감싼다 — 감싸지 않으면 위 칸과 사이가 다르게 벌어진다. */}
-      <div className="pop-rc-field pop-rc-qty-row">
-        <TextField
-          size="xl"
-          label={t.replace.qtyLabel}
-          value={qty}
-          inputMode="decimal"
-          autoComplete="off"
-          fullWidth
-          error={qtyProblem === null ? undefined : t.replace.qtyProblems[qtyProblem]}
-          /*
-           * ⛔ **칸을 직접 치게 두지 않는다**(전례 `P-02-08` 생산 포장). 포커스가 가면 단말의
-           *    운영체제 키보드가 화면을 덮는다 — 값은 바로 아래 키패드가 넣는다.
-           */
-          readOnly
-          onChange={(event) => {
-            onQtyChange(event.target.value);
-          }}
-        />
-        {/*
-         * ⭐ **수량 칸 오른쪽에 [투입]이 선다**(사용자 지시 2026-09-17 · 전례 `P-02-08` [담기]).
-         *    이 화면에서 투입을 남기는 호출은 교체 등록 하나뿐이라, 같은 잠금·같은 처리로 선다.
-         */}
-        <Button
-          variant="filled"
-          size="xl"
-          className={`${popTouchClass('critical')} pop-rc-qty-submit`}
-          disabled={blocked !== null}
-          onClick={onSubmit}
-        >
-          {t.replace.qtySubmit}
-        </Button>
-      </div>
-
-      {/*
-       * ⭐ **키패드는 수량 칸 바로 아래에 늘 선다**(사용자 지시 2026-09-17 · 전례 `P-02-08` 생산
-       *    포장). 칸을 눌러야 뜨는 팝업(2026-09-07 결정)을 걷었다 — 누른 값이 칸에 곧바로 들어간다.
-       *    넘치는 세로는 구획이 스크롤한다.
-       */}
-      <NumericKeypad
-        className="pop-rc-keypad"
-        label={t.pad.keypadLabel}
-        value={qty}
-        dropLeadingZero
-        onChange={(next) => {
-          onQtyChange(stripLeadingZeros(next));
-        }}
-        /* 소수점 키는 **읽은 부품의 단위**가 정한다 — 개수로 세는 자재에는 그리지 않는다. */
-        allowDecimal={labels.allowsDecimal(part?.uomId ?? null)}
-        decimalLabel={t.pad.decimal}
-        backspaceLabel={t.pad.backspace}
-        backspaceGlyph={<Icon name="backspace" size={24} />}
-        clearLabel={t.pad.clear}
-      />
-
-      <div className="pop-rc-field">
-        <label htmlFor={reasonId}>{t.replace.reasonLabel}</label>
-        <Select
-          id={reasonId}
-          className="pop-rc-select"
-          size="xl"
-          placeholder={
-            reasons.length === 0 && !reasonsPending && !reasonsFailed
-              ? t.replace.reasonEmpty
-              : t.replace.reasonPlaceholder
+    <PuSection title={t.panes.replace} className="rc-work">
+      {notes}
+      {blockText !== null && (
+        <PuNote
+          tone="warn"
+          action={
+            /* ⭐ 「확인할 수 없다」에만 다시 시도를 준다(G-3) — 「권한이 없다」는 다시 물어도 같은 답이다. */
+            blocked === 'unavailable' ? (
+              <PuButton size="sm" onClick={onRetryGate}>
+                {t.retry}
+              </PuButton>
+            ) : undefined
           }
-          value={reasonCode}
-          options={reasons.map((reason) => ({ value: reason.code, label: reason.codeName }))}
-          disabled={reasons.length === 0}
-          onChange={onReasonChange}
-        />
-        {/* 셋을 갈라 말한다 — 받는 중 · 못 받음 · 아직 안 채움. 셋의 다음 행동이 다르다. */}
-        {reasonsPending && <p className="field-note">{t.replace.reasonLoading}</p>}
-        {!reasonsPending && reasonsFailed && <p className="field-note">{t.replace.reasonFailed}</p>}
-      </div>
-
+        >
+          {blockText}
+        </PuNote>
+      )}
       {rejection !== null && (
-        <div className="banner-slot">
-          <AlertBanner variant="error" title={t.replace.rejected}>
-            {rejection}
-          </AlertBanner>
+        <PuNote tone="bad">
+          <b>{t.replace.rejected}</b> {rejection}
+        </PuNote>
+      )}
+
+      {scan}
+
+      {/* 읽어 담은 신규 부품. 하나뿐이라 목록이 아니라 한 줄이다. */}
+      {part !== null && (
+        <div className="rc-part">
+          <span className="lbl">{t.replace.partLabel}</span>
+          <span>
+            {labels.describeItem(part.itemId)} <b className="pu-mono">{part.lotNo}</b>
+          </span>
+          {part.isHeld && <PuChip tone="warn">{statusText(lotStatuses, part.statusCode)}</PuChip>}
+          <PuButton size="sm" variant="ghost" onClick={onClearPart}>
+            {t.replace.clearPart}
+          </PuButton>
         </div>
       )}
 
-      <div className="pop-rc-submit">
-        <Button
-          variant="filled"
-          size="2xl"
-          className="pop-rc-submit-button"
-          disabled={blocked !== null}
-          onClick={onSubmit}
-        >
-          {t.replace.submit}
-        </Button>
-        {/*
-         * 막힌 사유는 **버튼 옆에 항상 보이는 글로** 낸다. 잠긴 버튼만 두면 작업자는 무엇을
-         * 풀어야 하는지 알 수 없다.
-         */}
-        {blockText !== null && <p className="field-note">{blockText}</p>}
-        {/*
-         * ⭐ **「확인할 수 없다」에만 다시 시도를 준다**(G-3). 「권한이 없다」는 같은 권한으로
-         * 다시 물어도 같은 답이 오므로 길을 주면 작업자가 헛되이 반복한다.
-         */}
-        {blocked === 'unavailable' && (
-          <Button variant="outlined" size="sm" onClick={onRetryGate}>
-            {t.retry}
-          </Button>
-        )}
-        {recorded && (
-          <p className="field-note" role="status">
-            {t.replace.recorded}
-          </p>
-        )}
+      <div className="rc-pair">
+        <PuField label={t.replace.targetLabel} required htmlFor={targetId}>
+          <Select
+            id={targetId}
+            /*
+             * ⭐ **대화상자 제목은 «명사»로 선다**(#1094) — 접근 이름이 비면 자리글을 집어 「…고르세요 선택」이 됐다.
+             */
+            aria-label={t.replace.targetLabel}
+            placeholder={t.replace.targetPlaceholder}
+            value={selectedTargetId === null ? null : String(selectedTargetId)}
+            options={targets.map((row) => ({
+              value: String(row.materialConsumptionId),
+              label: t.replace.targetOption(
+                labels.describeItem(row.itemId),
+                labels.describeLot(row.lotId),
+              ),
+            }))}
+            disabled={targets.length === 0}
+            invalid={targets.length > 0 && selectedTargetId === null}
+            onChange={(value) => {
+              onSelectTarget(Number(value));
+            }}
+          />
+        </PuField>
+        <PuField label={t.replace.qtyLabel} required htmlFor={qtyId}>
+          <div className="pu-row">
+            {/*
+             * ⛔ **칸을 직접 치게 두지 않는다**(전례 `P-02-08`). 포커스가 가면 단말의 운영체제 키보드가 화면을
+             *    덮는다 — 값은 오른쪽 「수량」 키패드가 넣는다.
+             */}
+            <PuInput
+              id={qtyId}
+              numeric
+              target
+              readOnly
+              inputMode="none"
+              placeholder="0"
+              value={qty}
+              need={qtyProblem !== null}
+              autoComplete="off"
+            />
+            <PuUnit>{uom === '' ? '—' : uom}</PuUnit>
+          </div>
+        </PuField>
       </div>
-    </>
+      {qtyProblem !== null && <PuNote tone="bad">{t.replace.qtyProblems[qtyProblem]}</PuNote>}
+
+      <PuField
+        label={t.replace.reasonLabel}
+        optional={t.replace.optional}
+        htmlFor={useTiles ? undefined : reasonId}
+      >
+        {useTiles ? (
+          <PuTiles
+            label={t.replace.reasonLabel}
+            cols={4}
+            options={reasons.map((reason) => ({ value: reason.code, label: reason.codeName }))}
+            value={reasonCode}
+            onChange={onReasonChange}
+          />
+        ) : (
+          <Select
+            id={reasonId}
+            aria-label={t.replace.reasonLabel}
+            placeholder={t.replace.reasonPlaceholder}
+            value={reasonCode}
+            options={reasons.map((reason) => ({ value: reason.code, label: reason.codeName }))}
+            disabled={reasons.length === 0}
+            onChange={onReasonChange}
+          />
+        )}
+      </PuField>
+      {/* 셋을 갈라 말한다 — 받는 중 · 못 받음 · 아직 안 채움. 셋의 다음 행동이 다르다. */}
+      {reasonsPending && <p className="pu-help">{t.replace.reasonLoading}</p>}
+      {!reasonsPending && reasonsFailed && <p className="pu-help">{t.replace.reasonFailed}</p>}
+      {/* 사유 목록이 비었다는 말은 칸 안에 넣으면 좁은 화면에서 잘린다 — 칸 아래 한 줄로 둔다. */}
+      {!reasonsPending && !reasonsFailed && reasons.length === 0 && (
+        <p className="pu-help">{t.replace.reasonEmpty}</p>
+      )}
+    </PuSection>
   );
 };

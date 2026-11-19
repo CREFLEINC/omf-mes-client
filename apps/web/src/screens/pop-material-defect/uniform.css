@@ -1,0 +1,84 @@
+/* P-02-14 자재 불량 등록 — POP 통일 시안(#295) 화면 전용 모양. 공통은 app/pop-uniform.css. */
+
+.md-screen {
+  height: 100%;
+}
+
+/* 맨 위 스캔 한 줄 + 그 아래 세 구획(자재 정보 380 · 불량 등록 · 수량 340) */
+.md-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+}
+
+.md-stack > .md-top {
+  flex: none;
+}
+
+/* 스캔 한 줄 구획은 위아래 여백을 줄인다(시안). */
+.md-top > .pu-card-body {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.md-stack > .pu-cols {
+  flex: 1;
+  min-height: 0;
+}
+
+.md-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.md-qrow {
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.md-hold {
+  border-top: 1px solid var(--pu-line-2);
+  padding-top: 14px;
+}
+
+/* 1024 폭: 정보·키패드 열을 조금 줄여 가운데 「불량 등록」이 너무 좁아지지 않게 한다. */
+@media (max-width: 1100px) {
+  .md-screen .pu-cols.lk {
+    grid-template-columns: 260px minmax(0, 1fr) 300px;
+  }
+
+  .md-qrow {
+    grid-template-columns: 160px minmax(0, 1fr);
+  }
+}
+
+/* 768 높이: 구획 안 스크롤이 생기지 않게 칸 사이와 키패드 사이를 줄인다(키 크기는 그대로). */
+@media (max-height: 780px) {
+  .md-stack {
+    gap: 8px;
+  }
+
+  .md-screen .md-form {
+    gap: 8px;
+    padding-bottom: 8px;
+  }
+
+  .md-top > .pu-card-body {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .md-hold {
+    padding-top: 8px;
+  }
+
+  .md-screen .pu-keypad {
+    gap: 6px;
+  }
+
+  .md-screen .pu-card-body {
+    gap: 10px;
+  }
+}

@@ -136,8 +136,8 @@ const setup = (current: InspectionSheet = sheet()) => {
 };
 
 const openSerial = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.type(screen.getByRole('textbox', { name: t.serial.label }), 'AAR4WY1200010');
-  await user.click(screen.getByRole('button', { name: t.serial.open }));
+  /* 스캐너는 번호 뒤에 Enter 를 보낸다(#295 공통 스캔 칸). */
+  await user.type(screen.getByRole('textbox', { name: t.serial.label }), 'AAR4WY1200010{Enter}');
   await screen.findByRole('region', { name: t.step.heading });
 };
 

@@ -1,7 +1,7 @@
-import { AlertBanner, Button } from '@crefle/web-ui';
 import { isForbidden, type ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { PuButton, PuNote, PuRemoveButton } from '../../patterns/pop-uniform';
 import { toApiError } from '../../patterns/request';
 
 /**
@@ -55,29 +55,30 @@ export interface LoadErrorBannerProps {
 }
 
 /**
- * 실패 배너. **실패를 빈 상태로 보이지 않는다** — 「없습니다」로 내면 작업자가 오늘 비가동이
- * 없는 것으로 읽고, 이미 적어 둔 구간을 한 번 더 적는다.
+ * 실패 안내 줄(#295 — 오류 빨강 한 줄). **실패를 빈 상태로 보이지 않는다** — 「없습니다」로 내면
+ * 작업자가 오늘 비가동이 없는 것으로 읽고, 이미 적어 둔 구간을 한 번 더 적는다.
  */
 export const LoadErrorBanner = ({ error, title, onRetry, onDismiss }: LoadErrorBannerProps) => {
   const apiError = toApiError(error);
   const forbidden = isForbidden(apiError);
 
   return (
-    <div className="banner-slot">
-      <AlertBanner
-        variant="error"
-        onDismiss={onDismiss}
-        title={title ?? (forbidden ? messages.httpError.title : messages.httpError.loadTitle)}
-        action={
-          forbidden || onRetry === undefined ? undefined : (
-            <Button variant="outlined" size="sm" onClick={onRetry}>
-              {messages.common.retry}
-            </Button>
+    <PuNote
+      tone="bad"
+      action={
+        forbidden || onRetry === undefined ? (
+          onDismiss === undefined ? undefined : (
+            <PuRemoveButton label={messages.popUniform.dialog.close} onClick={onDismiss} />
           )
-        }
-      >
-        {describeError(apiError)}
-      </AlertBanner>
-    </div>
+        ) : (
+          <PuButton size="sm" onClick={onRetry}>
+            {messages.common.retry}
+          </PuButton>
+        )
+      }
+    >
+      <b>{title ?? (forbidden ? messages.httpError.title : messages.httpError.loadTitle)}</b>{' '}
+      {describeError(apiError)}
+    </PuNote>
   );
 };

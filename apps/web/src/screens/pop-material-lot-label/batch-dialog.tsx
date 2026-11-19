@@ -1,8 +1,7 @@
-import { AlertBanner, Button, Dialog, TextField } from '@crefle/web-ui';
 import type { MaterialLotSummary, WaitingMaterialLotGroup } from '@omf-mes/api-client';
 import { createIdempotencyKey } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import {
@@ -19,7 +18,7 @@ import {
 } from '../../patterns/material-lot-batch';
 import { formatBaseQty, formatPackage } from '../../patterns/package-qty';
 import { plantToday } from '../../patterns/plant-time';
-import { popTouchClass } from '../../patterns/pop-touch';
+import { PuButton, PuDialog, PuField, PuInput, PuNote, PuUnit } from '../../patterns/pop-uniform';
 import { toApiError } from '../../patterns/request';
 import { serverReasonOf } from '../../patterns/server-reason';
 import { Select } from '../../patterns/select';
@@ -52,27 +51,34 @@ export const BatchDialog = (props: BatchDialogProps) => {
   /* 기본값을 못 읽었으면 직접 입력으로 연다 — 막지 않는다. */
   const isLoading = defaults.isPending || (storage.isPending && !storage.isError);
 
+  /* POP 팝업은 바깥을 눌러 닫히지 않는다(#1005) — 공통 창(`PuDialog`)도 바깥 누름으로 닫지 않는다. */
+  if (isLoading) {
+    return (
+      <PuDialog
+        title={t.title}
+        wide
+        onClose={props.onClose}
+        footer={
+          <>
+            <PuButton onClick={props.onClose}>{t.cancel}</PuButton>
+            <PuButton variant="primary" disabled>
+              {t.submitIdle}
+            </PuButton>
+          </>
+        }
+      >
+        <p className="pu-help">{t.loading}</p>
+      </PuDialog>
+    );
+  }
+
   return (
-    <Dialog
-      open
-      /* POP 팝업은 바깥을 눌러 닫히지 않는다(#1005) — 장갑 낀 손이 창 밖을 스치면 사라졌다. */
-      closeOnBackdropClick={false}
-      onClose={props.onClose}
-      title={t.title}
-      size="lg"
-      className="pop-mlot-batch-dialog"
-    >
-      {isLoading ? (
-        <p className="pop-mlot-empty">{t.loading}</p>
-      ) : (
-        <BatchForm
-          {...props}
-          prefill={prefillBatch(defaults.data ?? null, storage.data ?? null)}
-          defaultsFailed={defaults.isError}
-          uoms={uoms.data ?? []}
-        />
-      )}
-    </Dialog>
+    <BatchForm
+      {...props}
+      prefill={prefillBatch(defaults.data ?? null, storage.data ?? null)}
+      defaultsFailed={defaults.isError}
+      uoms={uoms.data ?? []}
+    />
   );
 };
 
@@ -93,6 +99,8 @@ const BatchForm = ({
   uoms,
 }: BatchFormProps) => {
   const { client } = useApiClient();
+  const idBase = useId();
+  const fieldId = (name: string): string => `${idBase}-${name}`;
   const [draft, setDraft] = useState<BatchDraft>(prefill.draft);
   /* 창 하나에 키 하나 — 통신이 끊긴 뒤 다시 눌러도 묶음이 둘 생기지 않는다. */
   const [idempotencyKey] = useState(createIdempotencyKey);
@@ -183,193 +191,216 @@ const BatchForm = ({
           : t.sourceNote.none;
 
   return (
-    <div className="pop-mlot-batch">
-      {defaultsFailed ? <AlertBanner variant="warning">{t.defaultsFailed}</AlertBanner> : null}
-      {error === null ? null : <AlertBanner variant="error">{error}</AlertBanner>}
+    <PuDialog
+      title={t.title}
+      wide
+      onClose={onClose}
+      footer={
+        <>
+          <PuButton onClick={onClose}>{t.cancel}</PuButton>
+          <PuButton
+            variant="primary"
+            icon="plus"
+            disabled={!check.ok || isSaving}
+            onClick={() => {
+              void submit();
+            }}
+          >
+            {check.ok && check.lotCount !== null ? t.submit(check.lotCount) : t.submitIdle}
+          </PuButton>
+        </>
+      }
+    >
+      <div className="mll-batch">
+        {defaultsFailed ? <PuNote tone="warn">{t.defaultsFailed}</PuNote> : null}
+        {error === null ? null : <PuNote tone="bad">{error}</PuNote>}
 
-      <dl className="pop-mlot-batch-pair">
-        <dt>{t.pair}</dt>
-        <dd>
-          {group.supplierName} <span className="pop-mlot-dim">{group.supplierCode}</span>
-          <br />
-          <strong>{group.itemCode}</strong> {group.itemName}
-        </dd>
-      </dl>
-      <span className="pop-mlot-source" data-source={prefill.source}>
-        {t.source[prefill.source]}
-      </span>
-
-      <section className="pop-mlot-package" aria-label={t.package}>
-        <div className="pop-mlot-package-top">
-          <strong>
-            {t.package} <span className="pop-mlot-dim">{t.optional}</span>
-          </strong>
-          <div className="pop-mlot-switch" role="group" aria-label={t.package}>
-            <button
-              type="button"
-              aria-pressed={draft.packageOn}
-              onClick={() => {
-                update({ packageOn: true });
-              }}
-            >
-              {t.packageOn}
-            </button>
-            <button
-              type="button"
-              aria-pressed={!draft.packageOn}
-              onClick={() => {
-                update({ packageOn: false, lotQtyEdited: true, lotQty: shownLotQty });
-              }}
-            >
-              {t.packageOff}
-            </button>
-          </div>
+        <div className="mll-batch-pair">
+          <span className="pu-label">{t.pair}</span>
+          <span>
+            {group.supplierName} <span className="mll-dim">{group.supplierCode}</span>
+            {' · '}
+            <b>{group.itemCode}</b> {group.itemName}
+          </span>
+          <span className="pu-chip mll-batch-source" data-source={prefill.source}>
+            {t.source[prefill.source]}
+          </span>
         </div>
-        {draft.packageOn ? (
-          <div className="pop-mlot-package-fields">
-            <Select
-              aria-label={t.packageUom}
-              placeholder={t.packageUomPlaceholder}
-              value={draft.packageUomId === null ? null : String(draft.packageUomId)}
-              options={uoms
-                .filter((row) => row.uomCode !== uomCode)
-                /* 패키징 단위는 이름(「봉지」)으로 — 이름이 비면 코드(G2 L17). */
-                .map((row) => ({
-                  value: String(row.uomId),
-                  label: row.uomName.trim() === '' ? row.uomCode : row.uomName,
-                }))}
-              onChange={(value) => {
-                update({ packageUomId: Number(value) });
-              }}
-            />
-            <TextField
-              label={t.packageCount}
-              inputMode="numeric"
-              value={draft.packageCount}
-              onChange={(event) => {
-                update({ packageCount: event.target.value });
-              }}
-            />
-            <TextField
-              label={t.qtyPerPackage(uomCode)}
-              inputMode="decimal"
-              value={draft.qtyPerPackage}
-              onChange={(event) => {
-                update({ qtyPerPackage: event.target.value });
-              }}
-            />
-          </div>
-        ) : null}
-        {sourceNote === null ? null : <p className="pop-mlot-hint">{sourceNote}</p>}
-        {packageError === null ? null : (
-          <p className="pop-mlot-calc" data-ok="false" role="alert">
-            {packageError}
-          </p>
-        )}
-      </section>
 
-      <div className="pop-mlot-batch-grid">
-        <div className="pop-mlot-batch-field">
-          <div className="pop-mlot-inrow">
-            <TextField
-              label={t.lotQty}
-              placeholder={t.lotQtyPlaceholder}
-              inputMode="decimal"
-              value={shownLotQty}
-              error={lotQtyError ?? undefined}
-              onChange={(event) => {
-                update({ lotQty: event.target.value, lotQtyEdited: event.target.value !== '' });
-              }}
-            />
-            <span className="pop-mlot-unitfix" title={t.unitLocked}>
-              {uomCode}
+        <section className="mll-batch-package" aria-label={t.package}>
+          <div className="mll-batch-package-top">
+            <span className="pu-label">
+              {t.package} <span className="opt">{t.optional}</span>
             </span>
+            <div className="mll-switch" role="group" aria-label={t.package}>
+              <button
+                type="button"
+                aria-pressed={draft.packageOn}
+                onClick={() => {
+                  update({ packageOn: true });
+                }}
+              >
+                {t.packageOn}
+              </button>
+              <button
+                type="button"
+                aria-pressed={!draft.packageOn}
+                onClick={() => {
+                  update({ packageOn: false, lotQtyEdited: true, lotQty: shownLotQty });
+                }}
+              >
+                {t.packageOff}
+              </button>
+            </div>
           </div>
-          <p className="pop-mlot-hint">
-            {draft.packageOn ? t.lotQtyHelpPackaged(uomCode) : t.lotQtyHelp(uomCode)}
-          </p>
-          {calcLine === null ? null : (
-            <p
-              className="pop-mlot-calc"
-              data-ok={calcLine.ok}
-              role={calcLine.ok ? undefined : 'alert'}
-            >
-              {calcLine.text}
+          {draft.packageOn ? (
+            <div className="mll-batch-grid">
+              <PuField label={t.packageUom} required>
+                <Select
+                  aria-label={t.packageUom}
+                  placeholder={t.packageUomPlaceholder}
+                  value={draft.packageUomId === null ? null : String(draft.packageUomId)}
+                  options={uoms
+                    .filter((row) => row.uomCode !== uomCode)
+                    /* 패키징 단위는 이름(「봉지」)으로 — 이름이 비면 코드(G2 L17). */
+                    .map((row) => ({
+                      value: String(row.uomId),
+                      label: row.uomName.trim() === '' ? row.uomCode : row.uomName,
+                    }))}
+                  onChange={(value) => {
+                    update({ packageUomId: Number(value) });
+                  }}
+                />
+              </PuField>
+              <PuField label={t.packageCount} required htmlFor={fieldId('count')}>
+                <PuInput
+                  id={fieldId('count')}
+                  inputMode="numeric"
+                  numeric
+                  need={draft.packageCount === ''}
+                  value={draft.packageCount}
+                  onChange={(event) => {
+                    update({ packageCount: event.target.value });
+                  }}
+                />
+              </PuField>
+              <PuField label={t.qtyPerPackage(uomCode)} required htmlFor={fieldId('per')}>
+                <PuInput
+                  id={fieldId('per')}
+                  inputMode="decimal"
+                  numeric
+                  need={draft.qtyPerPackage === ''}
+                  value={draft.qtyPerPackage}
+                  onChange={(event) => {
+                    update({ qtyPerPackage: event.target.value });
+                  }}
+                />
+              </PuField>
+            </div>
+          ) : null}
+          {sourceNote === null ? null : <p className="pu-help">{sourceNote}</p>}
+          {packageError === null ? null : (
+            <p className="mll-batch-calc" data-ok="false" role="alert">
+              {packageError}
             </p>
           )}
-        </div>
-        <div className="pop-mlot-batch-field">
-          <TextField
-            label={`${t.supplierLot} ${t.optional}`}
-            placeholder={t.supplierLotPlaceholder}
-            value={draft.supplierLotNo}
-            onChange={(event) => {
-              update({ supplierLotNo: event.target.value });
-            }}
-          />
-          <p className="pop-mlot-hint">{t.supplierLotHelp}</p>
-        </div>
-        <div className="pop-mlot-batch-field">
-          <div className="pop-mlot-inrow">
-            <TextField
-              label={t.lotCount}
-              placeholder="1~200"
-              inputMode="numeric"
-              value={draft.lotCount}
-              error={
-                draft.lotCount !== '' && errors.lotCount !== undefined
-                  ? t.errors.lotCount
-                  : undefined
-              }
+        </section>
+
+        <div className="mll-batch-grid">
+          <PuField label={t.lotQty} required htmlFor={fieldId('lotQty')}>
+            <div className="pu-row">
+              <PuInput
+                id={fieldId('lotQty')}
+                placeholder={t.lotQtyPlaceholder}
+                inputMode="decimal"
+                numeric
+                need={shownLotQty.trim() === ''}
+                aria-invalid={lotQtyError === null ? undefined : true}
+                value={shownLotQty}
+                onChange={(event) => {
+                  update({ lotQty: event.target.value, lotQtyEdited: event.target.value !== '' });
+                }}
+              />
+              <span title={t.unitLocked}>
+                <PuUnit>{uomCode}</PuUnit>
+              </span>
+            </div>
+            {lotQtyError === null ? null : (
+              <p className="mll-batch-calc" data-ok="false" role="alert">
+                {lotQtyError}
+              </p>
+            )}
+            <p className="pu-help">
+              {draft.packageOn ? t.lotQtyHelpPackaged(uomCode) : t.lotQtyHelp(uomCode)}
+            </p>
+            {calcLine === null ? null : (
+              <p
+                className="mll-batch-calc"
+                data-ok={calcLine.ok}
+                role={calcLine.ok ? undefined : 'alert'}
+              >
+                {calcLine.text}
+              </p>
+            )}
+          </PuField>
+          <PuField label={t.supplierLot} optional={t.optional} htmlFor={fieldId('supplierLot')}>
+            <PuInput
+              id={fieldId('supplierLot')}
+              placeholder={t.supplierLotPlaceholder}
+              value={draft.supplierLotNo}
               onChange={(event) => {
-                update({ lotCount: event.target.value });
+                update({ supplierLotNo: event.target.value });
               }}
             />
-            <span className="pop-mlot-unitfix">{t.lotCountUnit}</span>
-          </div>
-          <p className="pop-mlot-hint">{t.lotCountHelp}</p>
+            <p className="pu-help">{t.supplierLotHelp}</p>
+          </PuField>
+          <PuField label={t.lotCount} required htmlFor={fieldId('lotCount')}>
+            <div className="pu-row">
+              <PuInput
+                id={fieldId('lotCount')}
+                placeholder="1~200"
+                inputMode="numeric"
+                numeric
+                need={draft.lotCount === ''}
+                value={draft.lotCount}
+                onChange={(event) => {
+                  update({ lotCount: event.target.value });
+                }}
+              />
+              <PuUnit>{t.lotCountUnit}</PuUnit>
+            </div>
+            {draft.lotCount !== '' && errors.lotCount !== undefined ? (
+              <p className="mll-batch-calc" data-ok="false" role="alert">
+                {t.errors.lotCount}
+              </p>
+            ) : null}
+            <p className="pu-help">{t.lotCountHelp}</p>
+          </PuField>
         </div>
-      </div>
 
-      <p className="pop-mlot-summary" aria-live="polite">
-        {check.ok && check.lotQty !== null && check.lotCount !== null ? (
-          <>
-            <strong>
-              {t.summary(
-                check.lotCount,
-                pkgText === null
-                  ? formatBaseQty(check.lotQty, uomCode)
-                  : `${formatBaseQty(check.lotQty, uomCode)} (${pkgText})`,
-                formatBaseQty(check.lotQty * check.lotCount, uomCode),
+        <p className="mll-batch-summary" aria-live="polite">
+          {check.ok && check.lotQty !== null && check.lotCount !== null ? (
+            <>
+              <b>
+                {t.summary(
+                  check.lotCount,
+                  pkgText === null
+                    ? formatBaseQty(check.lotQty, uomCode)
+                    : `${formatBaseQty(check.lotQty, uomCode)} (${pkgText})`,
+                  formatBaseQty(check.lotQty * check.lotCount, uomCode),
+                )}
+                {check.supplierLotNo === null ? '' : t.summarySupplierLot(check.supplierLotNo)}
+              </b>
+              <br />
+              {t.summaryNote(
+                lotNoPattern(group.itemCode, check.lotQty, group.supplierCode, plantToday()),
               )}
-              {check.supplierLotNo === null ? '' : t.summarySupplierLot(check.supplierLotNo)}
-            </strong>
-            <br />
-            {t.summaryNote(
-              lotNoPattern(group.itemCode, check.lotQty, group.supplierCode, plantToday()),
-            )}
-          </>
-        ) : (
-          t.summaryEmpty
-        )}
-      </p>
-
-      <div className="pop-mlot-batch-foot">
-        <Button className={popTouchClass('normal')} variant="outlined" size="xl" onClick={onClose}>
-          {t.cancel}
-        </Button>
-        <Button
-          className={popTouchClass('primary')}
-          size="xl"
-          disabled={!check.ok}
-          loading={isSaving}
-          onClick={() => {
-            void submit();
-          }}
-        >
-          {check.ok && check.lotCount !== null ? t.submit(check.lotCount) : t.submitIdle}
-        </Button>
+            </>
+          ) : (
+            t.summaryEmpty
+          )}
+        </p>
       </div>
-    </div>
+    </PuDialog>
   );
 };

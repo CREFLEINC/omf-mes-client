@@ -4,28 +4,30 @@ export const materialDefect = {
 
   lot: {
     label: 'LOT vật tư',
-    placeholder: 'Quét hoặc nhập số LOT',
-    find: 'Tra cứu',
-    notFound: 'Không có LOT với số này.',
+    placeholder: 'Quét nhãn LOT của vật tư bị lỗi',
+    notFound: 'Không có LOT số này. Hãy kiểm tra lại số.',
     loadFailed: 'Không tải được LOT. Hãy kiểm tra kết nối rồi thử lại.',
     item: 'Mặt hàng',
-    status: 'Trạng thái',
+    section: 'Thông tin vật tư',
+    empty: 'Quét LOT vật tư để xem thông tin',
+    manualEntry: 'Nhập tay',
   },
 
   code: {
+    section: 'Đăng ký lỗi',
+    placeholder: 'Hãy chọn',
+    optional: '(tùy chọn)',
     major: 'Nhóm lỗi',
     minor: 'Chi tiết lỗi',
-    none: 'Chưa có mã lỗi. Hãy đăng ký danh mục mã lỗi trước.',
+    none: 'Chưa có mã lỗi. Hãy đăng ký tại 「Mã lỗi」 trên Web quản trị trước.',
     loadFailed: 'Không tải được mã lỗi.',
   },
 
   qty: {
+    padTitle: 'Số lượng',
+    padUnit: (uom: string) => `Đơn vị ${uom}`,
     label: 'Số lượng lỗi',
     invalid: 'Hãy nhập số lớn hơn 0.',
-    keypad: 'Bàn phím số lượng lỗi',
-    backspace: 'Xóa một ký tự',
-    clear: 'Xóa',
-    decimal: 'Dấu thập phân',
   },
 
   description: 'Nội dung lỗi',
@@ -33,7 +35,7 @@ export const materialDefect = {
   hold: {
     label: 'Tạm giữ LOT này',
     reason: 'Lý do tạm giữ',
-    reasonPlaceholder: 'Chọn lý do tạm giữ',
+    reasonPlaceholder: 'Hãy chọn',
     releaseCondition: 'Điều kiện gỡ',
     releaseConditionDefault: 'Gỡ sau khi có kết quả đánh giá chất lượng',
     noVersion: 'Không đọc được thông tin khóa của LOT nên không thể tạm giữ. Hãy tra cứu lại LOT.',
@@ -41,6 +43,7 @@ export const materialDefect = {
   },
 
   submit: 'Ghi nhận lỗi vật tư',
+  reset: 'Xóa nhập',
   saving: 'Đang ghi nhận…',
   recorded: 'Đã ghi nhận lỗi vật tư.',
   held: 'Đã tạm giữ LOT.',
@@ -58,12 +61,9 @@ export const materialDefect = {
   },
 
   blocked: {
-    lot: 'Hãy tra cứu LOT trước.',
     code: 'Hãy chọn mã lỗi.',
     qty: 'Hãy nhập số lượng lỗi.',
     uom: 'Không biết đơn vị của LOT nên không thể ghi nhận.',
-    holdReason: 'Hãy chọn lý do tạm giữ.',
-    releaseCondition: 'Hãy nhập điều kiện gỡ.',
   },
 
   pane: {

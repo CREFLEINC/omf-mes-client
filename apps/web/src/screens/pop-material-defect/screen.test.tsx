@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { PopIdentityProvider, UNKNOWN_POP_IDENTITY } from '../../patterns/pop-identity';
+import { PuToastHost } from '../../patterns/pop-uniform';
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
 import { PopMaterialDefectScreen } from './screen';
 
@@ -86,6 +87,7 @@ const renderScreen = (workerNo: string | null, holdResponses: Response[] = [], w
   renderWithProviders(
     <PopIdentityProvider value={{ ...UNKNOWN_POP_IDENTITY, workerNo }}>
       <PopMaterialDefectScreen />
+      <PuToastHost />
     </PopIdentityProvider>,
     { route: '/pop/material-defect', fetch: stubFetch },
   );
@@ -96,8 +98,7 @@ const renderScreen = (workerNo: string | null, holdResponses: Response[] = [], w
 const pathOf = (request: Request): string => new URL(request.url).pathname;
 
 const findAndFill = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.type(screen.getByRole('textbox', { name: t.lot.label }), LOT.lotNo);
-  await user.click(screen.getByRole('button', { name: t.lot.find }));
+  await user.type(screen.getByRole('textbox', { name: t.lot.label }), `${LOT.lotNo}{Enter}`);
   expect(await screen.findByText(LOT.lotNo, { selector: 'dd' })).toBeInTheDocument();
 
   await user.click(screen.getByRole('combobox', { name: t.code.major }));
@@ -141,7 +142,11 @@ describe('PopMaterialDefectScreen (P-02-14)', () => {
     expect(screen.getByRole('textbox', { name: t.description })).toHaveValue('');
     expect(screen.getByRole('combobox', { name: t.code.major })).not.toHaveTextContent('D-SCR');
     expect(screen.getByRole('button', { name: t.submit })).toBeDisabled();
-    expect(screen.getByText(t.blocked.code)).toBeInTheDocument();
+    /* 막힌 사유는 작업 줄 글이 아니라 칸의 빨간 테두리가 말한다(POP 통일 시안). */
+    expect(screen.getByRole('combobox', { name: t.code.major })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
     /* LOT 은 그대로다. */
     expect(screen.getByText(LOT.lotNo, { selector: 'dd' })).toBeInTheDocument();
     expect(writes).toHaveLength(1);
@@ -176,11 +181,11 @@ describe('PopMaterialDefectScreen (P-02-14)', () => {
     const user = userEvent.setup();
     renderScreen('900028');
 
-    await user.type(screen.getByRole('textbox', { name: t.lot.label }), LOT.lotNo);
-    await user.click(screen.getByRole('button', { name: t.lot.find }));
+    await user.type(screen.getByRole('textbox', { name: t.lot.label }), `${LOT.lotNo}{Enter}`);
 
     expect(await screen.findByText('RM-3001 · 볼트', { selector: 'dd' })).toBeInTheDocument();
-    expect(await screen.findByText('정상', { selector: 'dd' })).toBeInTheDocument();
+    /* 상태는 「자재 정보」 제목 줄 오른쪽 알약이다(POP 통일 시안). */
+    expect(await screen.findByText('정상')).toBeInTheDocument();
     expect(screen.getByText(t.lot.item, { selector: 'dt' })).toBeInTheDocument();
     expect(screen.queryByText('NORMAL')).not.toBeInTheDocument();
   });
@@ -280,7 +285,7 @@ describe('PopMaterialDefectScreen (P-02-14)', () => {
     expect(condition).toHaveValue(t.hold.releaseConditionDefault);
 
     await user.clear(condition);
-    expect(screen.getByText(t.blocked.releaseCondition)).toBeInTheDocument();
+    expect(condition).toHaveAttribute('aria-invalid', 'true');
     expect(screen.getByRole('button', { name: t.submit })).toBeDisabled();
 
     await user.type(condition, '재검 합격 후 해제');

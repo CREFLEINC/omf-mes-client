@@ -57,16 +57,17 @@ const IDENTIFIED: PopIdentity = {
 const pathOf = (request: Request): string => new URL(request.url).pathname;
 
 /**
- * 버튼을 **매번 다시 찾는다.**
- *
- * ⚠ 발행 버튼은 막힌 동안 `Tooltip` 에 감싸여 서고 열리면 감싸개가 풀린다 — 그때 엘리먼트가
- * 교체되므로, 처음 잡아 둔 참조는 화면이 열려도 영원히 비활성인 «떨어져 나온 노드»다(실측).
+ * 버튼을 **매번 다시 찾는다.** 이름에 장수가 붙고(「발번·인쇄 (1장)」) 재발행이면 「재발행 (N장)」이다.
  */
-const submitButton = (): HTMLElement => screen.getByRole('button', { name: t.issue.submit });
+const SUBMIT_NAME = new RegExp(
+  `^(${t.issue.submit}|${t.issue.reissueCount(0).split(' (')[0] ?? ''})`,
+);
+const submitButton = (): HTMLElement => screen.getByRole('button', { name: SUBMIT_NAME });
 
-/** 사유 선택 — DS `Select` 의 트리거는 `combobox` 이고, 이름은 붙은 라벨에서 온다. */
-const reasonSelect = (): HTMLElement =>
-  screen.getByRole('combobox', { name: new RegExp(t.issue.reasonLabel) });
+/** 사유 고르기 — 사유가 6개 이하라 타일(`radio`)이다(규칙 7). */
+const pickReason = async (name: string): Promise<void> => {
+  await userEvent.click(await screen.findByRole('radio', { name }));
+};
 
 /** 창 안 [인쇄] — 사유를 고른 뒤 발행·인쇄한다(사용자 지시 2026-09-17). */
 const dialogPrintButton = (): HTMLElement => screen.getByRole('button', { name: t.preview.print });
@@ -654,17 +655,15 @@ describe('RepackLabelIssueScreen — 대상 포장', () => {
   it('최초 발행이면 재발행 사유 칸을 세우지 않는다', async () => {
     await renderSelectedScreen();
 
-    await screen.findByText(t.issue.targetsLabel);
+    await screen.findByRole('table', { name: t.issue.targetsLabel });
 
-    expect(
-      screen.queryByRole('combobox', { name: new RegExp(t.issue.reasonLabel) }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: t.issue.reasonLabel })).not.toBeInTheDocument();
   });
 
   it('포장 번호와 내용물이 선다', async () => {
     await renderSelectedScreen({ lotIds: [LOT_A_ID] });
 
-    expect(await screen.findByText(HANDLING_UNIT_NO)).toBeInTheDocument();
+    expect((await screen.findAllByText(HANDLING_UNIT_NO)).length).toBeGreaterThan(0);
     expect(await screen.findByText(LOT_A_NO)).toBeInTheDocument();
   });
 
@@ -702,7 +701,7 @@ describe('RepackLabelIssueScreen — 대상 포장', () => {
   it('LOT 이 여럿이어도 경고로 세우지 않는다', async () => {
     await renderSelectedScreen({ lotIds: [LOT_A_ID, LOT_B_ID] });
 
-    expect(await screen.findByText(t.handlingUnit.mixedLot(2))).toBeInTheDocument();
+    expect(await screen.findByText(new RegExp(t.handlingUnit.mixedLot(2)))).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
@@ -721,8 +720,7 @@ describe('RepackLabelIssueScreen — 발행 조건', () => {
     await userEvent.click(remainderCheckbox);
     await openReasonDialog();
     expect(issueWrites).toHaveLength(0);
-    await userEvent.click(reasonSelect());
-    await userEvent.click(await screen.findByRole('option', { name: REASON_NAME }));
+    await pickReason(REASON_NAME);
     await clickWhenEnabled(dialogPrintButton);
 
     await waitFor(() => {
@@ -751,7 +749,7 @@ describe('RepackLabelIssueScreen — 발행 조건', () => {
     const issueWrites: Request[] = [];
     await renderSelectedScreen({ issueCount: 0, issueWrites });
 
-    await screen.findByText(HANDLING_UNIT_NO);
+    await screen.findAllByText(HANDLING_UNIT_NO);
     await clickWhenEnabled(submitButton);
 
     await waitFor(() => {
@@ -777,7 +775,7 @@ describe('RepackLabelIssueScreen — 발행 조건', () => {
     const issueWrites: Request[] = [];
     await renderSelectedScreen({ issueCount: 1, issueWrites });
 
-    expect(await screen.findByText(t.issue.reissue(1))).toBeInTheDocument();
+    expect(await screen.findByText(t.issue.standing(1))).toBeInTheDocument();
 
     await openReasonDialog();
 
@@ -789,10 +787,9 @@ describe('RepackLabelIssueScreen — 발행 조건', () => {
     const issueWrites: Request[] = [];
     await renderSelectedScreen({ issueCount: 1, issueWrites });
 
-    await screen.findByText(t.issue.reissue(1));
+    await screen.findByText(t.issue.standing(1));
     await openReasonDialog();
-    await userEvent.click(reasonSelect());
-    await userEvent.click(await screen.findByRole('option', { name: REASON_NAME }));
+    await pickReason(REASON_NAME);
 
     await clickWhenEnabled(dialogPrintButton);
 
@@ -821,8 +818,7 @@ describe('RepackLabelIssueScreen — 발행 조건', () => {
     });
 
     await openReasonDialog();
-    await userEvent.click(reasonSelect());
-    expect(await screen.findByRole('option', { name: nextReason.codeName })).toBeInTheDocument();
+    expect(await screen.findByRole('radio', { name: nextReason.codeName })).toBeInTheDocument();
     expect(reasonRequests).toHaveLength(2);
     expect(new URL(reasonRequests[1]?.url ?? 'http://localhost').searchParams.get('page')).toBe(
       '2',
@@ -833,7 +829,7 @@ describe('RepackLabelIssueScreen — 발행 조건', () => {
   it('단말에 출력 권한이 없으면 발행이 막힌다', async () => {
     await renderSelectedScreen({ canPrintLabel: false });
 
-    await screen.findByText(HANDLING_UNIT_NO);
+    await screen.findAllByText(HANDLING_UNIT_NO);
     await waitFor(() => {
       expect(submitButton()).toBeDisabled();
     });
@@ -852,7 +848,7 @@ describe('RepackLabelIssueScreen — 발행 조건', () => {
     );
 
     await selectPending();
-    await screen.findByText(HANDLING_UNIT_NO);
+    await screen.findAllByText(HANDLING_UNIT_NO);
     expect(submitButton()).toBeDisabled();
   });
 });
@@ -866,7 +862,7 @@ describe('RepackLabelIssueScreen — 연결', () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     await renderSelectedScreen();
 
-    await screen.findByText(HANDLING_UNIT_NO);
+    await screen.findAllByText(HANDLING_UNIT_NO);
     await waitFor(() => {
       expect(submitButton()).toBeDisabled();
     });
@@ -876,7 +872,7 @@ describe('RepackLabelIssueScreen — 연결', () => {
   it('연결돼 있어도 화면 머리에는 연결 표시를 두지 않는다', async () => {
     await renderSelectedScreen();
 
-    await screen.findByText(HANDLING_UNIT_NO);
+    await screen.findAllByText(HANDLING_UNIT_NO);
     expect(screen.queryByText(t.device.online)).not.toBeInTheDocument();
   });
 });
@@ -895,7 +891,7 @@ describe('RepackLabelIssueScreen — 프린터', () => {
     const issueWrites: Request[] = [];
     await renderSelectedScreen({ issueWrites });
 
-    await screen.findByText(HANDLING_UNIT_NO);
+    await screen.findAllByText(HANDLING_UNIT_NO);
     await clickWhenEnabled(submitButton);
 
     await waitFor(() => {
@@ -948,7 +944,7 @@ describe('RepackLabelIssueScreen — 발행 뒤', () => {
     const renditionCalls: number[] = [];
     await renderSelectedScreen({ issueCount: 0, renditionCalls });
 
-    await screen.findByText(HANDLING_UNIT_NO);
+    await screen.findAllByText(HANDLING_UNIT_NO);
     await clickWhenEnabled(submitButton);
 
     expect(await screen.findByText(t.preview.failed)).toBeInTheDocument();
@@ -990,7 +986,7 @@ describe('RepackLabelIssueScreen — 발행 뒤', () => {
 
     await renderSelectedScreen({ issueCount: 0, issueWrites, renditionCalls });
 
-    await screen.findByText(HANDLING_UNIT_NO);
+    await screen.findAllByText(HANDLING_UNIT_NO);
     await clickWhenEnabled(submitButton);
 
     /* 발행 기록은 남는다 — 막힌 것은 그 뒤의 그림 취득이지 발행이 아니다. */
@@ -1060,10 +1056,12 @@ describe('RepackLabelIssueScreen — 발행 뒤', () => {
     expect(renditionCalls).toHaveLength(0);
   });
 
-  it('발행 이력이 없으면 그 사실을 말한다', async () => {
+  /* 시안(#295): 발행 이력은 한 번이라도 발행한 포장에만 선다 — 비어 있으면 자리를 두지 않는다. */
+  it('발행 이력이 없으면 이력 칸을 세우지 않는다', async () => {
     await renderSelectedScreen({ history: [] });
 
-    expect(await screen.findByText(t.history.empty)).toBeInTheDocument();
+    await screen.findByRole('table', { name: t.issue.targetsLabel });
+    expect(screen.queryByText(t.history.sectionLabel)).not.toBeInTheDocument();
   });
 });
 
@@ -1143,8 +1141,7 @@ describe('RepackLabelIssueScreen — 발행 실패', () => {
     await renderSelectedScreen({ issueCount: 1, issueStatus: 500, issueWrites });
 
     await openReasonDialog();
-    await userEvent.click(reasonSelect());
-    await userEvent.click(await screen.findByRole('option', { name: REASON_NAME }));
+    await pickReason(REASON_NAME);
     await clickWhenEnabled(dialogPrintButton);
     expect(await screen.findByText(t.error.issueTitle)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: messages.common.retry }));
@@ -1176,10 +1173,9 @@ describe('RepackLabelIssueScreen — 발행 실패', () => {
       },
     });
 
-    await screen.findByText(t.issue.reissue(1));
+    await screen.findByText(t.issue.standing(1));
     await openReasonDialog();
-    await userEvent.click(reasonSelect());
-    await userEvent.click(await screen.findByRole('option', { name: REASON_NAME }));
+    await pickReason(REASON_NAME);
     await clickWhenEnabled(dialogPrintButton);
 
     /* 창이 다시 열려 사유 칸 아래에 선다. */
@@ -1204,7 +1200,7 @@ describe('RepackLabelIssueScreen — 발행 실패', () => {
       },
     });
 
-    await screen.findByText(HANDLING_UNIT_NO);
+    await screen.findAllByText(HANDLING_UNIT_NO);
     await clickWhenEnabled(submitButton);
 
     expect(await screen.findByText(t.preview.reasonTitle)).toBeVisible();
@@ -1226,7 +1222,7 @@ describe('RepackLabelIssueScreen — 발행 실패', () => {
   it('403 은 권한 사유를 말한다', async () => {
     await renderSelectedScreen({ issueCount: 0, issueStatus: 403 });
 
-    await screen.findByText(HANDLING_UNIT_NO);
+    await screen.findAllByText(HANDLING_UNIT_NO);
     await clickWhenEnabled(submitButton);
 
     expect(await screen.findByText(t.error.forbidden)).toBeInTheDocument();
@@ -1248,7 +1244,7 @@ describe('RepackLabelIssueScreen — 발행 실패', () => {
 
     await renderSelectedScreen({ issueCount: 0, reportWrites });
 
-    await screen.findByText(HANDLING_UNIT_NO);
+    await screen.findAllByText(HANDLING_UNIT_NO);
     await clickWhenEnabled(submitButton);
 
     expect(await screen.findByText(t.preview.failed)).toBeInTheDocument();
@@ -1260,7 +1256,7 @@ describe('RepackLabelIssueScreen — 발행 실패', () => {
   it('이력 조회가 실패해도 방금 발행한 것으로 다시 볼 수 있다', async () => {
     await renderSelectedScreen({ issueCount: 0, historyFails: true, renditionFails: true });
 
-    await screen.findByText(HANDLING_UNIT_NO);
+    await screen.findAllByText(HANDLING_UNIT_NO);
     await clickWhenEnabled(submitButton);
 
     expect(await screen.findByText(t.preview.failed)).toBeInTheDocument();
@@ -1282,7 +1278,7 @@ describe('RepackLabelIssueScreen — 발행 실패', () => {
 
     await renderSelectedScreen({ issueCount: 0, issueWrites });
 
-    await screen.findByText(HANDLING_UNIT_NO);
+    await screen.findAllByText(HANDLING_UNIT_NO);
     await clickWhenEnabled(submitButton);
 
     await waitFor(() => {
@@ -1307,7 +1303,7 @@ describe('RepackLabelIssueScreen — 발행 실패', () => {
   it('실패 사유 원문을 화면에 싣지 않는다', async () => {
     await renderSelectedScreen({ issueCount: 0 });
 
-    await screen.findByText(HANDLING_UNIT_NO);
+    await screen.findAllByText(HANDLING_UNIT_NO);
     await clickWhenEnabled(submitButton);
 
     await screen.findByText(t.preview.failed);

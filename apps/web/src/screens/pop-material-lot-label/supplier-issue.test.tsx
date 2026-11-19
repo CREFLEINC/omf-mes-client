@@ -229,7 +229,13 @@ describe('US1-5 공급사 LOT · 만들기', () => {
     await user.click(within(dialog).getByRole('button', { name: tb.submit(2) }));
 
     expect(await screen.findByText(tb.created(2))).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByText(t.bar.selected(2, 2))).toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole('checkbox', { name: /SYN-ITEM-01\|/u })
+          .filter((row) => row.getAttribute('aria-checked') === 'true'),
+      ).toHaveLength(2),
+    );
     expect(screen.queryByRole('dialog', { name: tb.title })).toBeNull();
     expect(screen.getByRole('button', { name: t.bar.issue(2) })).toBeEnabled();
   });
@@ -260,7 +266,7 @@ describe('US1-5 공급사 LOT · 만들기', () => {
   });
 });
 
-describe('US1-7 대기 LOT 폐기', () => {
+describe('US1-7 입하 대기 LOT 폐기', () => {
   it('US1-7 고른 대기 LOT 을 확인 뒤 폐기한다 — 출력한 LOT 은 라벨을 떼라고 말하고, 폐기는 아래로 내려간다', async () => {
     const user = userEvent.setup();
     const { sent } = renderLabelScreen();
@@ -296,7 +302,7 @@ describe('US1-7 대기 LOT 폐기', () => {
     await waitFor(() =>
       expect(screen.getAllByRole('checkbox', { name: /SYN-ITEM-01\|/u })).toHaveLength(2),
     );
-    await user.click(screen.getByRole('button', { name: t.bar.selectAllWaiting }));
+    await user.click(screen.getByRole('button', { name: t.bar.selectAllWaiting(2) }));
     await user.click(screen.getByRole('button', { name: t.bar.void(2) }));
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', {

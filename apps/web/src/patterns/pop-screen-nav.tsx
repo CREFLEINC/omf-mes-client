@@ -179,7 +179,8 @@ const TopBar = ({
   printerRef?: (element: HTMLElement | null) => void;
 }) => {
   const navigate = useNavigate();
-  const { workerNo } = usePopIdentity();
+  const { pathname } = useLocation();
+  const { workerNo, equipment } = usePopIdentity();
   const session = useWorkerSession();
   const isOnline = usePopOnline();
   const queryClient = useQueryClient();
@@ -196,6 +197,21 @@ const TopBar = ({
           ? headerText.terminalUnknown
           : headerText.terminalLabel(terminalCode)}
       </span>
+      {/* 설비는 단말 옆에 늘 보인다 — 홈은 빼고(POP 통일 시안 #295 · 화면 본문 설비 줄을 대신한다). */}
+      {equipment !== null && pathname !== POP_HOME_PATH && (
+        <span
+          className="pop-nav-top__chip pop-nav-top__equipment"
+          title={headerText.equipmentTitle(
+            equipment.equipmentCode ?? '',
+            equipment.equipmentName ?? '',
+          )}
+        >
+          {headerText.equipmentLabel(
+            equipment.equipmentCode ?? `#${String(equipment.equipmentId)}`,
+            equipment.equipmentName ?? '',
+          )}
+        </span>
+      )}
       {/* 화면이 보내는 미전송 표시(`PopTopStatus`) 자리 — 미전송이 있을 때만 선다. */}
       <span className="pop-nav-top__status" ref={statusRef} />
       {/* 연결 표시는 모든 화면에 같게 선다(사용자 지시 2026-11-17 · #291). */}

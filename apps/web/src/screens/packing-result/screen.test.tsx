@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { PopIdentityProvider } from '../../patterns/pop-identity';
+import { PuToastHost } from '../../patterns/pop-uniform';
 import {
   createStubFetch,
   jsonResponse,
@@ -264,54 +265,99 @@ const renderScreen = (options: Options = {}) => {
       }}
     >
       <PackingResultScreen />
+      <PuToastHost />
     </PopIdentityProvider>,
     { fetch: createStubFetch(routes), route: '/pop/packing' },
   );
 };
 
-const scan = async (
-  user: ReturnType<typeof userEvent.setup>,
-  label: string,
-  code: string,
-): Promise<void> => {
-  /* 스캐너는 코드 끝에 Enter 를 붙여 보낸다 — 화면에 [읽기] 단추가 없으므로 그 길이 전부다. */
-  await user.type(screen.getByLabelText(label), `${code}{Enter}`);
+type User = ReturnType<typeof userEvent.setup>;
+
+const LOT = 'SYN-LOT-000123450';
+const keypadName = messages.popUniform.keypad.region;
+
+const shipmentCard = (shipmentNo: string): Promise<HTMLElement> =>
+  screen.findByRole('button', { name: new RegExp(shipmentNo, 'u') });
+
+/** ① 출하 카드를 누른다. */
+const chooseShipment = async (user: User, shipmentNo = 'SYN-SH-0501'): Promise<void> => {
+  await user.click(await shipmentCard(shipmentNo));
 };
 
-/** 출하대상 팝업을 연다 — 고르는 두 길(누르기·찍기)이 여기서 갈린다. */
-const openShipmentDialog = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
-  await user.click(screen.getByRole('combobox', { name: t.scan.shipmentSelection }));
+const clickNext = async (user: User): Promise<void> => {
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name: t.actions.next })).toBeEnabled();
+  });
+  await user.click(screen.getByRole('button', { name: t.actions.next }));
 };
 
-/** 출하대상 팝업에서 한 건을 «눌러» 고른다. */
-const chooseShipment = async (
-  user: ReturnType<typeof userEvent.setup>,
-  shipmentNo = 'SYN-SH-0501',
-): Promise<void> => {
-  await openShipmentDialog(user);
-  await user.click(await screen.findByRole('option', { name: shipmentNo }));
+/** ① 출하를 고르고 ② 로 넘어간다. */
+const enterScanStep = async (user: User, shipmentNo = 'SYN-SH-0501'): Promise<void> => {
+  await chooseShipment(user, shipmentNo);
+  await clickNext(user);
+  await waitFor(() => {
+    expect(screen.getByLabelText(t.scan.productionLot)).toBeEnabled();
+  });
 };
 
-/**
- * 유형 선택칸에 **보이는** 값.
- *
- * ⚠ **`combobox` 노드의 글을 보지 않는다.** `size="xl"` 트리거는 고른 값을 그 노드 «밖»에
- *   그린다 — 그 노드만 보면 자리표시 글만 읽혀 기능이 되는데도 시험이 문다(실측 2026-09-18).
- * ⚠ **선택지 목록 안의 같은 글자는 세지 않는다.** 목록에도 같은 이름이 있어, 걸러 내지 않으면
- *   「보인다」가 「목록에 있다」와 구별되지 않는다.
- */
-const shownTypeValue = (label: string): HTMLElement[] =>
-  screen.queryAllByText(label).filter((element) => element.closest('[role="listbox"]') === null);
+const scan = async (user: User, code: string): Promise<void> => {
+  await user.type(screen.getByLabelText(t.scan.productionLot), `${code}{Enter}`);
+};
+
+/** 생산 LOT 을 읽어 매칭(키패드가 그 LOT 을 잡음)까지 간다. */
+const matchLot = async (user: User): Promise<void> => {
+  await scan(user, LOT);
+  await waitFor(() => {
+    expect(screen.getByRole('group', { name: keypadName })).toHaveTextContent(LOT);
+  });
+};
+
+/** ② 까지 가서 LOT 을 매칭한 상태를 만든다 — 담기·확정 시험의 공통 전제다. */
+const scanUntilMatched = async (user: User): Promise<void> => {
+  await enterScanStep(user);
+  await matchLot(user);
+};
+
+/** 키패드로 수량만 친다(담지 않는다). */
+const typeDigits = async (user: User, digits: string): Promise<void> => {
+  const pad = screen.getByRole('group', { name: keypadName });
+
+  for (const digit of digits) {
+    await user.click(within(pad).getByRole('button', { name: digit }));
+  }
+};
+
+/** 키패드로 수량을 치고 [담기]. */
+const typeQty = async (user: User, digits: string): Promise<void> => {
+  await typeDigits(user, digits);
+  await user.click(screen.getByRole('button', { name: t.qty.submit }));
+};
+
+const rowQty = (lotNo = LOT): HTMLElement => screen.getByLabelText(t.rows.qtyLabel(lotNo));
+
+/** ③ 으로 넘어가 [포장 확정] → 확인 창 [확정]. */
+const confirmFromReview = async (user: User): Promise<void> => {
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name: t.actions.confirm })).toBeEnabled();
+  });
+  await user.click(screen.getByRole('button', { name: t.actions.confirm }));
+  await user.click(
+    within(await screen.findByRole('dialog', { name: t.confirmDialog.title })).getByRole('button', {
+      name: t.confirmDialog.confirm,
+    }),
+  );
+};
+
+const typeTile = (label: string): HTMLElement => screen.getByRole('radio', { name: label });
 
 describe('PackingResultScreen', () => {
-  /* ⭐ 사번이 없으면 출하대상부터 못 고르고, 맨 위 경고 띠가 사유를 말한다(사용자 지시 2026-09-17). */
-  it('사번이 없으면 출하대상 선택과 스캔 칸이 잠기고 맨 위에 사번 경고가 선다', async () => {
+  /* ⭐ 사번이 없으면 출하대상부터 못 고르고, 맨 위 경고가 사유를 말한다(사용자 지시 2026-09-17). */
+  it('사번이 없으면 출하 카드와 [다음]이 잠기고 사번 경고가 선다', async () => {
     renderScreen({ workerNo: null });
 
     expect(await screen.findByText(messages.popChrome.workerMissing)).toBeInTheDocument();
-    expect(screen.getByLabelText(t.scan.label.productionLot)).toBeDisabled();
-    expect(screen.getByRole('combobox', { name: t.scan.shipmentSelection })).toBeDisabled();
-    expect(screen.getByRole('combobox', { name: t.fields.handlingUnitType })).toBeDisabled();
+    expect(await shipmentCard('SYN-SH-0501')).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.next })).toBeDisabled();
   });
 
   it('출하대상을 고르면 그 출하의 미포장 배분을 이어서 읽는다', async () => {
@@ -319,11 +365,7 @@ describe('PackingResultScreen', () => {
     const reads: Request[] = [];
     renderScreen({ reads });
 
-    await chooseShipment(user);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText(t.scan.label.productionLot)).toBeEnabled();
-    });
+    await enterScanStep(user);
 
     const allocationRequest = reads.find(
       (request) =>
@@ -333,11 +375,7 @@ describe('PackingResultScreen', () => {
 
     expect(queryOf(allocationRequest as Request).get('shipmentId')).toBe('501');
 
-    /*
-     * ⛔ **고른 출하를 «다시» 조회하지 않는다**(#1351). 종전에는 번호로 좁힌 두 번째 조회가
-     *    있었고, 그것이 목록과 다른 기간 필터로 나가 「목록엔 없는데 찍으면 잡히는 출하」를
-     *    만들었다. 목록 조회(`pickedOnly` + 기간)만 남는다.
-     */
+    /* ⛔ 고른 출하를 «다시» 조회하지 않는다(#1351). 목록 조회(`pickedOnly` + 기간)만 남는다. */
     const byNumber = reads.filter(
       (request) =>
         pathOf(request) === '/logistics/shipments' &&
@@ -348,44 +386,53 @@ describe('PackingResultScreen', () => {
     expect(byNumber).toHaveLength(0);
   });
 
-  /*
-   * ⭐ **찍어서도 고른다**(#1351). 스캐너가 쏜 값이 후보 하나와 정확히 같아지면 팝업이 스스로
-   *    닫히고 그 출하가 골라진다 — 찍고 나서 또 눌러야 하면 스캔으로 얻는 것이 없다.
-   */
-  it('출하대상 팝업에 출하번호를 찍으면 스스로 골라진다', async () => {
+  it('출하 카드를 누르면 그 출하가 골라지고 [다음]이 켜진다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
-    await openShipmentDialog(user);
-    await user.type(
-      await screen.findByLabelText(messages.popChrome.selectDialog.scanLabel),
-      'SYN-SH-0502',
-    );
+    expect(screen.getByRole('button', { name: t.actions.next })).toBeDisabled();
+    await chooseShipment(user, 'SYN-SH-0502');
 
     await waitFor(() => {
-      expect(screen.getByText(t.header.shipment(502))).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /SYN-SH-0502/u })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
     });
-    /* 팝업이 닫혔다 — 고른 뒤에도 열려 있으면 다음 걸음(생산LOT)이 가려진다. */
-    expect(
-      screen.queryByLabelText(messages.popChrome.selectDialog.scanLabel),
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.actions.next })).toBeEnabled();
+  });
+
+  /* ⭐ **찍어서도 고른다**(#1351) — 받아 둔 목록 안에서 번호가 같은 것이 골라진다. */
+  it('출하번호를 찍으면 받아 둔 목록에서 그 출하가 골라진다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await shipmentCard('SYN-SH-0502');
+    await user.type(screen.getByLabelText(t.shipments.scan), 'syn-sh-0502{Enter}');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /SYN-SH-0502/u })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+    });
+
+    await user.type(screen.getByLabelText(t.shipments.scan), 'SYN-SH-9999{Enter}');
+    expect(await screen.findByText(t.shipments.notFound('SYN-SH-9999'))).toBeInTheDocument();
   });
 
   /*
-   * ⭐ **다음 걸음이 남았는지 여기서 말한다**(SHIP-UNIT-01 §7). 포장을 마친 담당은 이 화면을
-   *    떠나기 전에 「출하 단위에 담을 상자가 남았나」를 알아야 한다 — 모르면 P-04-05 를 아예
-   *    열지 않고, 상자는 구성되지 않은 채 남는다.
-   *
-   * ⛔ **화면이 배분으로 세지 않는다.** 한 상자가 배분 여럿에 걸릴 수 있어 겹쳐 세거나 빠뜨린다 —
+   * ⭐ **다음 걸음이 남았는지 여기서 말한다**(SHIP-UNIT-01 §7). ⛔ 화면이 배분으로 세지 않는다 —
    *    서버가 상자 기준으로 센 값을 그대로 쓴다.
    */
-  it('아직 출하 단위에 안 들어간 상자 수를 진행에 함께 적는다', async () => {
+  it('아직 출하 단위에 안 들어간 상자 수를 정보 띠에 적는다', async () => {
     const user = userEvent.setup();
     renderScreen({ unassignedBoxes: 3 });
 
-    await chooseShipment(user);
+    await enterScanStep(user);
 
-    expect(await screen.findByText(t.progress.unassigned(3))).toBeInTheDocument();
+    const band = screen.getByRole('group', { name: t.band.label });
+    expect(await within(band).findByText(t.band.boxes(3))).toBeInTheDocument();
   });
 
   /* ⛔ 「없다」와 「모른다」를 같은 모양으로 그리지 않는다(공유계약 G-9). */
@@ -393,21 +440,18 @@ describe('PackingResultScreen', () => {
     const user = userEvent.setup();
     renderScreen({ unassignedBoxes: 'error' });
 
-    await chooseShipment(user);
+    await enterScanStep(user);
 
-    expect(await screen.findByText(t.progress.unassignedUnknown)).toBeInTheDocument();
-    expect(screen.queryByText(t.progress.unassigned(0))).not.toBeInTheDocument();
+    expect(await screen.findByText(t.band.unknown)).toBeInTheDocument();
+    expect(screen.queryByText(t.band.boxes(0))).not.toBeInTheDocument();
   });
 
   /*
-   * ⭐ **열리면 첫 유형이 이미 골라져 있다**(사용자 지시 2026-09-18). 종전에는 빈 칸으로 떠서
-   *    매번 고르게 했다.
-   * ⛔ **「첫 번째」는 서버가 준 순서 그대로다** — 화면이 다시 정렬하지 않는다. 이 코드 그룹은
-   *    고객 관리형이라 값도 순서도 고객이 정한다. 그래서 목이 **사전순과 어긋나는** 순서를
-   *    준다 — 화면이 몰래 정렬하면 이 시험이 문다.
-   * ⚠ 목록이 «도착한 뒤»에 채워지므로 기다린다 — 첫 렌더에서 곧바로 읽으면 빈 칸을 본다.
+   * ⭐ **열리면 첫 유형이 이미 골라져 있다**(사용자 지시 2026-09-18). ⛔ 「첫 번째」는 서버가 준
+   *    순서 그대로다 — 목이 사전순과 어긋나는 순서를 준다.
    */
   it('유형 목록이 오면 첫 값이 이미 골라져 있다', async () => {
+    const user = userEvent.setup();
     renderScreen({
       typeCodes: [
         { code: 'PALLET', codeName: '팔레트' },
@@ -415,15 +459,14 @@ describe('PackingResultScreen', () => {
       ],
     });
 
+    await enterScanStep(user);
+
     await waitFor(() => {
-      expect(shownTypeValue('팔레트').length).toBeGreaterThan(0);
+      expect(typeTile('팔레트')).toHaveAttribute('aria-checked', 'true');
     });
   });
 
-  /*
-   * ⛔ **고른 값을 덮지 않는다.** 재조회나 포커스 복귀로 목록이 다시 와도 이미 고른 값이 있으면
-   *    손대지 않는다 — 덮으면 담당이 고른 유형이 소리 없이 되돌아간다.
-   */
+  /* ⛔ **고른 값을 덮지 않는다.** 단계를 오가도 담당이 고른 유형이 그대로다. */
   it('사용자가 고른 유형을 뒤이은 조작이 덮지 않는다', async () => {
     const user = userEvent.setup();
     renderScreen({
@@ -433,77 +476,65 @@ describe('PackingResultScreen', () => {
       ],
     });
 
-    const select = await screen.findByRole('combobox', { name: t.fields.handlingUnitType });
-
+    await enterScanStep(user);
     await waitFor(() => {
-      expect(shownTypeValue('카톤').length).toBeGreaterThan(0);
+      expect(typeTile('카톤')).toHaveAttribute('aria-checked', 'true');
     });
+    await user.click(typeTile('팔레트'));
 
-    await user.click(select);
-    await user.click(await screen.findByRole('option', { name: '팔레트' }));
+    await user.click(screen.getByRole('button', { name: t.actions.prev }));
+    await clickNext(user);
 
-    expect(shownTypeValue('팔레트').length).toBeGreaterThan(0);
-
-    await chooseShipment(user);
-
-    /* 출하를 고른 뒤에도 고른 유형이 그대로다 — 목록이 다시 와도 덮지 않는다. */
-    await waitFor(() => {
-      expect(shownTypeValue('팔레트').length).toBeGreaterThan(0);
-    });
-    expect(shownTypeValue('카톤')).toHaveLength(0);
+    expect(typeTile('팔레트')).toHaveAttribute('aria-checked', 'true');
+    expect(typeTile('카톤')).toHaveAttribute('aria-checked', 'false');
   });
 
-  /*
-   * ⛔ **`noType` 잠금을 지우지 않았다.** 코드 그룹이 비었거나 조회가 실패하면 여전히 빈 값이다 —
-   *    평소에 안 보일 뿐 그 자리는 살아 있어야 한다.
-   */
+  /* ⛔ `noType` 잠금을 지우지 않았다 — 코드 그룹이 비면 여전히 빈 값이다. */
   it('유형 목록이 비면 채우지 못하고 그 사실을 말한다', async () => {
+    const user = userEvent.setup();
     renderScreen({ typeCodes: [] });
+
+    await enterScanStep(user);
 
     expect(await screen.findByText(t.notes.typeUnavailable)).toBeInTheDocument();
   });
 
-  it('들어오면 출하대상 줄이 서고 생산LOT 칸은 «잠긴 채» 사유를 말한다', () => {
+  it('들어오면 ① 출하 대상 단계에서 시작하고 [다음]은 고르기 전까지 꺼져 있다', async () => {
     renderScreen();
 
-    expect(screen.getByRole('heading', { name: t.title })).toBeTruthy();
-    expect(screen.getByRole('combobox', { name: t.scan.shipmentSelection })).toBeTruthy();
-    /* 잠긴 사유는 칸 «안»에 선다 — 아래 한 줄로 달면 구획이 그만큼 커진다(§3 예산 88). */
-    const lotField = screen.getByLabelText(t.scan.label.productionLot);
-
-    expect(lotField).toHaveProperty('disabled', true);
-    expect(lotField).toHaveAttribute('placeholder', t.scan.lotLocked);
+    const flow = screen.getByRole('list', { name: t.steps.label });
+    expect(within(flow).getByText(t.steps.shipment).closest('[aria-current]')).toHaveAttribute(
+      'aria-current',
+      'step',
+    );
+    expect(await shipmentCard('SYN-SH-0501')).toBeEnabled();
+    expect(screen.getByRole('button', { name: t.actions.next })).toBeDisabled();
+    expect(screen.queryByLabelText(t.scan.productionLot)).not.toBeInTheDocument();
   });
 
-  /*
-   * ⛔ **스캔 칸은 «하나»다**(사용자 지시 2026-09-18 · #1351). 설계 §3 도면은 둘을 그렸지만 ①
-   *    칸이 읽던 납품 라벨이 출하 단위로 옮겨가(P-04-05) 이 화면에서는 읽을 물건이 사라졌다 —
-   *    남은 출하번호는 포장대로 들고 오는 종이가 없어 «채울 수 없는 칸»이었다.
-   */
+  /* ⛔ **출하번호를 따로 받는 칸은 없다**(사용자 지시 2026-09-18 · #1351). */
   it('출하번호를 따로 받는 칸을 두지 않는다', () => {
     renderScreen();
 
     expect(screen.queryByLabelText('출하번호')).not.toBeInTheDocument();
   });
 
-  /*
-   * ⛔ **OQC 상태 줄을 두지 않는다**(#1351). 고정 설계 문서에 그 말이 한 번도 나오지 않고, 값도
-   *    `—` 밖에 못 찍었다 — 서버가 다섯 상태값을 배분 응답에 싣지 않는다.
-   * ⛔ **④ 의 「포장 N 개」·「미포장 N」도 적지 않는다.** 「미구성 상자」만 남는다.
-   */
+  /* ⛔ OQC 상태 줄과 ④ 의 「포장 N 개」·「미포장 N」은 두지 않는다(#1351). 「미구성 상자」만 남는다. */
   it('OQC 상태 줄과 포장·미포장 수치를 그리지 않는다', async () => {
     const user = userEvent.setup();
     renderScreen({ unassignedBoxes: 2 });
 
-    await chooseShipment(user);
-    await screen.findByText(t.progress.unassigned(2));
+    await enterScanStep(user);
+    await screen.findAllByText(t.band.boxes(2));
 
     expect(screen.queryByText(/OQC/u)).not.toBeInTheDocument();
     expect(screen.queryByText(/미포장/u)).not.toBeInTheDocument();
     expect(screen.queryByText(/이 출하 포장/u)).not.toBeInTheDocument();
+    expect(screen.queryByText(/예상/u)).toBeNull();
+    expect(screen.queryByRole('progressbar')).toBeNull();
   });
 
-  it('라벨 모드에 들어가도 돌아오는 단추가 남는다', async () => {
+  it('라벨 화면에 들어가도 [이전]으로 돌아오고, 포장 조작은 함께 서지 않는다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
@@ -514,62 +545,69 @@ describe('PackingResultScreen', () => {
 
     await user.click(screen.getByRole('button', { name: t.actions.labels }));
 
-    const back = await screen.findByRole('button', { name: t.actions.packing });
+    const back = await screen.findByRole('button', { name: t.actions.prev });
     expect(back).toBeEnabled();
-
-    /* ⛔ 포장 조작은 함께 서지 않는다 — 라벨 화면에서 누를 일이 없다. */
+    expect(screen.queryByRole('button', { name: t.actions.next })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.actions.confirm })).not.toBeInTheDocument();
 
-    /* 눌러서 실제로 돌아온다 — 단추가 있는 것과 동작하는 것은 다른 축이다. */
     await user.click(back);
-    expect(await screen.findByRole('button', { name: t.actions.confirm })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: t.actions.next })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /SYN-SH-0501/u })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   });
 
-  /*
-   * ⭐ **다른 출하로 갈아타면 이전 출하 문맥을 버린다.** 남겨 두면 화면에 보이는 출하와 쓰기
-   *    대상이 달라진다 — 담긴 줄이 엉뚱한 출하로 확정될 수 있다.
-   */
+  /* ⭐ 다른 출하로 갈아타면 이전 출하 문맥을 버린다 — 담긴 줄이 엉뚱한 출하로 확정되지 않게. */
   it('다른 출하대상을 고르면 이전 출하 문맥을 폐기한다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
     await chooseShipment(user);
-    await screen.findByText(t.header.shipment(501));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /SYN-SH-0501/u })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+    });
 
     await chooseShipment(user, 'SYN-SH-0502');
 
-    expect(await screen.findByText(t.header.shipment(502))).toBeInTheDocument();
-    expect(screen.queryByText(t.header.shipment(501))).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /SYN-SH-0502/u })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+    });
+    expect(screen.getByRole('button', { name: /SYN-SH-0501/u })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
   });
 
-  it('매칭되면 «서버가 준 판정»을 그대로 보이고 수량 패드가 선다', async () => {
+  it('매칭되면 키패드가 그 LOT 을 잡고, 수량을 치기 전에는 [담기]가 잠겨 있다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
-    await chooseShipment(user);
-    await scan(user, t.scan.label.productionLot, 'SYN-LOT-000123450');
+    await scanUntilMatched(user);
 
-    expect(await screen.findByText(t.match.ok('SYN-LOT-000123450'))).toBeTruthy();
-    expect(screen.getByLabelText(t.qty.label)).toBeTruthy();
+    expect(screen.getByText(messages.popUniform.scan.done)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.qty.submit })).toBeDisabled();
+    expect(screen.queryByLabelText(t.rows.qtyLabel(LOT))).toBeNull();
   });
 
   /* ⭐ 스캐너가 Enter 를 붙이지 않아도 생산LOT 이 읽힌다(사용자 지시 2026-09-17). */
   it('생산LOT 은 Enter 없이 스캐너 속도로 들어오면 읽는다', async () => {
     const user = userEvent.setup();
-    /*
-     * 키 사이 간격을 0 으로 고정한다 — 실제 시계면 부하에 따라 손 속도로 읽힌다. 호출마다
-     * 늘리지 않는 것은 React 스케줄러도 이 시계를 불러 키 사이 간격이 부하만큼 벌어지기 때문이다.
-     */
     const now = vi.spyOn(performance, 'now').mockReturnValue(1000);
     renderScreen();
 
-    await chooseShipment(user);
-    await waitFor(() => {
-      expect(screen.getByLabelText(t.scan.label.productionLot)).toBeEnabled();
-    });
-    await user.type(screen.getByLabelText(t.scan.label.productionLot), 'SYN-LOT-000123450');
+    await enterScanStep(user);
+    await user.type(screen.getByLabelText(t.scan.productionLot), LOT);
 
-    expect(await screen.findByText(t.match.ok('SYN-LOT-000123450'))).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByRole('group', { name: keypadName })).toHaveTextContent(LOT);
+    });
     now.mockRestore();
   });
 
@@ -577,31 +615,34 @@ describe('PackingResultScreen', () => {
     const user = userEvent.setup();
     renderScreen({ match: { matched: false, reasonCode: 'LABEL_ITEM_MISMATCH' } });
 
-    await chooseShipment(user);
-    await scan(user, t.scan.label.productionLot, 'SYN-LOT-다른품목');
+    await enterScanStep(user);
+    await scan(user, 'SYN-LOT-다른품목');
 
     expect(await screen.findByText(t.match.itemMismatch('SYN-FG-1001'))).toBeTruthy();
-    expect(screen.queryByLabelText(t.qty.label)).toBeNull();
+    expect(screen.getByRole('group', { name: keypadName })).not.toHaveTextContent(LOT);
   });
 
   it('⛔ 배분에 없는 LOT 은 그 사유로 막는다', async () => {
     const user = userEvent.setup();
     renderScreen({ match: { matched: false, reasonCode: 'LOT_NOT_ALLOCATED' } });
 
-    await chooseShipment(user);
-    await scan(user, t.scan.label.productionLot, 'SYN-LOT-남의것');
+    await enterScanStep(user);
+    await scan(user, 'SYN-LOT-남의것');
 
     expect(await screen.findByText(t.match.notAllocated)).toBeTruthy();
   });
 
   it('단말 플래그가 닫혀 있으면 확정을 막고 «권한이 없다»고 말한다', async () => {
+    const user = userEvent.setup();
     renderScreen({ canInputResult: false });
 
     expect(await screen.findByText(t.locks.gateDenied)).toBeTruthy();
-    expect(screen.getByRole('button', { name: t.actions.confirm })).toHaveProperty(
-      'disabled',
-      true,
-    );
+
+    await scanUntilMatched(user);
+    await typeQty(user, '60');
+    await clickNext(user);
+
+    expect(screen.getByRole('button', { name: t.actions.confirm })).toBeDisabled();
   });
 
   it('⛔ 그 공정 «행이 없으면» 막는다 — 구성되지 않은 공정을 열어 두지 않는다', async () => {
@@ -609,55 +650,12 @@ describe('PackingResultScreen', () => {
 
     expect(await screen.findByText(t.locks.gateDenied)).toBeTruthy();
   });
-
-  it('진행에 «예상 포장 수»와 진행 막대를 그리지 않는다 — 낼 근거가 없다', async () => {
-    const user = userEvent.setup();
-    renderScreen({ unassignedBoxes: 1 });
-
-    await chooseShipment(user);
-
-    expect(await screen.findByText(t.progress.unassigned(1))).toBeTruthy();
-    expect(screen.queryByText(/예상/u)).toBeNull();
-    expect(screen.queryByRole('progressbar')).toBeNull();
-  });
 });
-
-/**
- * 생산 LOT 을 읽어 매칭까지 간다.
- *
- * ⚠ **출하 진입과 갈라 둔다.** 출하를 다시 읽으면 담긴 것이 비워지므로(`applyEntry`), 같은
- *   LOT 을 두 번 담는 시험은 진입을 한 번만 해야 한다.
- */
-const matchLot = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
-  await scan(user, t.scan.label.productionLot, 'SYN-LOT-000123450');
-  await screen.findByText(t.match.ok('SYN-LOT-000123450'));
-};
-
-/** 매칭까지 마친 상태를 만든다 — 담기·확정 시험의 공통 전제다. */
-const scanUntilMatched = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
-  await chooseShipment(user);
-  await matchLot(user);
-};
-
-/** 키패드로 수량을 치고 담는다. */
-const pack = async (user: ReturnType<typeof userEvent.setup>, digits: string): Promise<void> => {
-  const pad = screen.getByLabelText(t.qty.label);
-
-  for (const digit of digits) {
-    await user.click(within(pad).getByRole('button', { name: digit }));
-  }
-
-  await user.click(within(pad).getByRole('button', { name: /확인|담기/u }));
-};
 
 describe('PackingResultScreen — 담기와 확정', () => {
   /*
-   * ⚠ **동작이 바뀌었다.** 이 시험은 원래 「취소 성공 뒤에만 새 출하를 조회한다」였다.
-   * `DELETE /inventory/handling-units/{id}` 는 설계 공지 3(2026-09-08)이 더한 경로라 이번
-   * 서버 구현 기준(공지 2 · v0.1.2)에 없다(`mutations.ts` 의 `useHandlingUnitCancel` 머리말
-   * 참고) — 그래서 취소는 이제 늘 「준비 중」으로 거부되고, 열린 포장은 거둬지지 않는다.
-   * 다른 출하로의 전환도 그 상태 그대로 계속 막힌다. 서버가 이 경로를 구현하면 이 시험을
-   * 원래의 성공 시나리오로 되돌리면 된다.
+   * ⚠ `DELETE /inventory/handling-units/{id}` 가 서버에 없어(`mutations.ts` 머리말) 취소는 늘
+   * 「준비 중」으로 거부되고, 열린 포장은 거둬지지 않는다 — 다른 출하로의 전환도 계속 막힌다.
    */
   it('열린 포장이 있으면 다른 출하 전환을 막고, 취소는 아직 지원하지 않아 계속 막힌 채로 남는다', async () => {
     const user = userEvent.setup();
@@ -665,15 +663,11 @@ describe('PackingResultScreen — 담기와 확정', () => {
     renderScreen({ reads });
 
     await scanUntilMatched(user);
-    await pack(user, '60');
-    await user.click(screen.getByRole('combobox', { name: t.fields.handlingUnitType }));
-    await user.click(await screen.findByRole('option', { name: '카톤' }));
-    await screen.findByText('SYN-CTN-0091');
+    await typeQty(user, '60');
+    const band = screen.getByRole('group', { name: t.band.label });
+    expect(await within(band).findByText('SYN-CTN-0091')).toBeInTheDocument();
 
-    /*
-     * ⚠ **전환이 막혔음을 «요청»으로도 잰다.** 문구만 보면 화면이 말은 막아 놓고 조회는 이미
-     *   보낸 경우를 놓친다 — 고른 출하의 배분을 받아 오면 담던 줄이 그 출하로 섞인다.
-     */
+    /* ⚠ 전환이 막혔음을 «요청»으로도 잰다 — 고른 출하의 배분을 받아 오면 담던 줄이 섞인다. */
     const sentToOtherShipment = () =>
       reads.some(
         (request) =>
@@ -681,6 +675,8 @@ describe('PackingResultScreen — 담기와 확정', () => {
           queryOf(request).get('shipmentId') === '502',
       );
 
+    await user.click(screen.getByRole('button', { name: t.actions.prev }));
+    expect(screen.getByText(t.shipments.inProgress)).toBeInTheDocument();
     await chooseShipment(user, 'SYN-SH-0502');
     expect(await screen.findByText(t.match.openUnitBlocksShipmentChange)).toBeInTheDocument();
     expect(sentToOtherShipment()).toBe(false);
@@ -689,9 +685,8 @@ describe('PackingResultScreen — 담기와 확정', () => {
 
     /* ⛔ 네트워크 요청이 나가지 않는다 — 경로 자체가 없다. 「준비 중」이 드러나고 포장은 남는다. */
     expect(await screen.findByText(HANDLING_UNIT_CANCEL_NOT_READY_MESSAGE)).toBeInTheDocument();
-    expect(screen.getByText('SYN-CTN-0091')).toBeInTheDocument();
+    expect(screen.getByText(t.shipments.inProgress)).toBeInTheDocument();
 
-    /* 취소가 되지 않았으니 다른 출하 전환도 여전히 막혀 있다. */
     await chooseShipment(user, 'SYN-SH-0502');
     expect(await screen.findByText(t.match.openUnitBlocksShipmentChange)).toBeInTheDocument();
     expect(sentToOtherShipment()).toBe(false);
@@ -699,51 +694,37 @@ describe('PackingResultScreen — 담기와 확정', () => {
 
   /*
    * ⭐ **포장이 없어도 담긴 것이 있으면 확정할 수 있다**(사용자 지시 2026-09-18 · omf-all-around#5).
-   *    예전에는 담는 동안의 포장 만들기가 실패하면 「포장을 만들지 못했습니다. 담긴 것을 다시
-   *    스캔하세요」로 확정을 잠갔다(#1093). 이제 그 문구를 띄우지 않고, 확정이 그 자리에서
-   *    포장을 만들고 담는다. ⛔ 이 시험을 예전 잠금으로 되돌리지 않는다.
+   *    ⛔ 이 시험을 예전 잠금으로 되돌리지 않는다.
    */
   const UNIT_MISSING_TEXT = '포장을 만들지 못했습니다';
 
-  it('담는 동안 포장 만들기가 실패해도 확정은 열려 있고, 하단 「포장을 만들지 못했습니다」를 띄우지 않는다', async () => {
+  it('담는 동안 포장 만들기가 실패해도 확정은 열려 있고, 「포장을 만들지 못했습니다」를 띄우지 않는다', async () => {
     const user = userEvent.setup();
     const writes: Request[] = [];
     renderScreen({ createUnitFails: true, writes });
 
     await scanUntilMatched(user);
-    await pack(user, '60');
-    await user.click(screen.getByRole('combobox', { name: t.fields.handlingUnitType }));
-    await user.click(await screen.findByRole('option', { name: '카톤' }));
+    await typeQty(user, '60');
 
     await waitFor(() => {
       expect(writes.map(pathOf)).toContain('/inventory/handling-units');
     });
+    await clickNext(user);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t.actions.confirm })).toBeEnabled();
     });
     expect(screen.queryByText(new RegExp(UNIT_MISSING_TEXT, 'u'))).toBeNull();
   });
 
-  it('포장이 없으면 확정이 그 자리에서 만들고 담는다 — 생성 재시도는 같은 멱등 키다', async () => {
+  it('포장이 없으면 다시 만들어 담는다 — 생성 재시도는 같은 멱등 키다', async () => {
     const user = userEvent.setup();
     const writes: Request[] = [];
     renderScreen({ createUnitFailures: 1, writes });
 
     await scanUntilMatched(user);
-    await pack(user, '60');
-    await user.click(screen.getByRole('combobox', { name: t.fields.handlingUnitType }));
-    await user.click(await screen.findByRole('option', { name: '카톤' }));
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: t.actions.confirm })).toBeEnabled();
-    });
-
-    await user.click(screen.getByRole('button', { name: t.actions.confirm }));
-    await user.click(
-      within(await screen.findByRole('dialog', { name: t.confirmDialog.title })).getByRole(
-        'button',
-        { name: t.confirmDialog.confirm },
-      ),
-    );
+    await typeQty(user, '60');
+    await clickNext(user);
+    await confirmFromReview(user);
 
     expect(await screen.findByText(t.confirmed('SYN-CTN-0091'))).toBeTruthy();
     expect(writes.map((request) => `${request.method} ${pathOf(request)}`)).toEqual([
@@ -765,31 +746,17 @@ describe('PackingResultScreen — 담기와 확정', () => {
     renderScreen({ createUnitFails: true, createUnitFailStatus: 403, writes });
 
     await scanUntilMatched(user);
-    await pack(user, '60');
-    await user.click(screen.getByRole('combobox', { name: t.fields.handlingUnitType }));
-    await user.click(await screen.findByRole('option', { name: '카톤' }));
+    await typeQty(user, '60');
+    await clickNext(user);
 
-    const confirmOnce = async (): Promise<void> => {
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: t.actions.confirm })).toBeEnabled();
-      });
-      await user.click(screen.getByRole('button', { name: t.actions.confirm }));
-      await user.click(
-        within(await screen.findByRole('dialog', { name: t.confirmDialog.title })).getByRole(
-          'button',
-          { name: t.confirmDialog.confirm },
-        ),
-      );
-    };
-
-    await confirmOnce();
+    await confirmFromReview(user);
     expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();
     /* 서버 원문은 보이지 않는다 — 공통 문구만 낸다. */
     expect(screen.queryByText(/만들지 못했습니다/u)).toBeNull();
     expect(writes.map(pathOf)).not.toContain('/inventory/handling-units/4001:pack');
 
     const before = writes.length;
-    await confirmOnce();
+    await confirmFromReview(user);
     await waitFor(() => {
       expect(writes.length).toBeGreaterThan(before);
     });
@@ -801,30 +768,25 @@ describe('PackingResultScreen — 담기와 확정', () => {
     renderScreen({ createUnitFails: true, rejectLot: 'SYN-LOT-남의것' });
 
     await scanUntilMatched(user);
-    await pack(user, '60');
-    await user.click(screen.getByRole('combobox', { name: t.fields.handlingUnitType }));
-    await user.click(await screen.findByRole('option', { name: '카톤' }));
-    await scan(user, t.scan.label.productionLot, 'SYN-LOT-남의것');
+    await typeQty(user, '60');
+    await scan(user, 'SYN-LOT-남의것');
 
     expect(await screen.findByText(t.match.notAllocated)).toBeTruthy();
     expect(screen.queryByText(new RegExp(UNIT_MISSING_TEXT, 'u'))).toBeNull();
+    await clickNext(user);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t.actions.confirm })).toBeEnabled();
     });
   });
 
-  it('키패드로 친 수량이 화면에 보인다 — 누른 값이 어디로 갔는지 보이지 않으면 오입력을 못 알아챈다', async () => {
+  it('키패드로 친 수량이 「담을 수량」 칸에 보인다 — 누른 값이 어디로 갔는지 보여야 한다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
     await scanUntilMatched(user);
+    await typeDigits(user, '12');
 
-    const pad = screen.getByLabelText(t.qty.label);
-
-    await user.click(within(pad).getByRole('button', { name: '1' }));
-    await user.click(within(pad).getByRole('button', { name: '2' }));
-
-    expect(screen.getByText('12')).toBeTruthy();
+    expect(screen.getByLabelText(t.qty.entryLabel)).toHaveValue('12');
   });
 
   /* ⭐ 합친 사실은 문장이 아니라 담긴 줄의 수량으로 보인다(사용자 지시 2026-09-17). */
@@ -833,71 +795,74 @@ describe('PackingResultScreen — 담기와 확정', () => {
     renderScreen();
 
     await scanUntilMatched(user);
-    await pack(user, '120');
-    /* ⚠ 출하를 다시 읽지 않는다 — 다시 읽으면 담긴 것이 비워져 합칠 것이 사라진다. */
+    await typeQty(user, '120');
     await matchLot(user);
-    await pack(user, '60');
+    await typeQty(user, '60');
 
-    expect(await screen.findByText(t.contents.total(180, 180))).toBeTruthy();
+    expect(screen.getAllByLabelText(t.rows.qtyLabel(LOT))).toHaveLength(1);
+    expect(rowQty()).toHaveTextContent('180');
   });
 
-  /* ⭐ 한도 문구는 적지 않고 [확인]만 잠근다(사용자 지시 2026-09-17). */
+  /* ⭐ 한도 문구는 적지 않고 [담기]만 잠근다(사용자 지시 2026-09-17). */
   it('⛔ 잔여를 넘기면 담기를 잠근다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
     await scanUntilMatched(user);
+    await typeDigits(user, '181');
 
-    const pad = screen.getByLabelText(t.qty.label);
-    for (const digit of '181') {
-      await user.click(within(pad).getByRole('button', { name: digit }));
-    }
-
-    expect(within(pad).getByRole('button', { name: t.qty.submit })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.qty.submit })).toBeDisabled();
     expect(screen.queryByText(t.qty.overRemaining(180))).not.toBeInTheDocument();
+  });
+
+  it('[X]로 줄을 빼면 포장에서 제외된다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await scanUntilMatched(user);
+    await typeQty(user, '60');
+    await user.click(screen.getByRole('button', { name: t.rows.remove }));
+
+    expect(screen.queryByLabelText(t.rows.qtyLabel(LOT))).toBeNull();
+    expect(screen.getByText(t.rows.empty)).toBeInTheDocument();
   });
 
   it('⭐ 담는 동안 «포장 번호»가 선다 — 번호는 서버가 매기므로 먼저 만들어 받아 온다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
-    /* 담기 전에는 번호가 아예 없다 — 서버가 담는 순간 매긴다(사용자 지시로 설명을 걷었다). */
-    expect(screen.queryByText('SYN-CTN-0091')).toBeNull();
-
     await scanUntilMatched(user);
-    await pack(user, '60');
-    await user.click(screen.getByRole('combobox', { name: t.fields.handlingUnitType }));
-    await user.click(await screen.findByRole('option', { name: '카톤' }));
+    /* 담기 전에는 번호가 아직 없다 — 키패드로 치기만 해서는 포장을 만들지 않는다. */
+    await typeDigits(user, '60');
+    expect(screen.queryByText('SYN-CTN-0091')).toBeNull();
+    await user.click(screen.getByRole('button', { name: t.qty.submit }));
 
     expect(await screen.findByText('SYN-CTN-0091')).toBeTruthy();
   });
 
-  it('확정하면 세 단계를 돌고 «포장 번호»를 말한 뒤 담긴 것을 비운다', async () => {
+  it('확정하면 세 단계를 돌고 «포장 번호»를 알린 뒤 ② 로 돌아와 담긴 것을 비운다', async () => {
     const user = userEvent.setup();
     const writes: Request[] = [];
     renderScreen({ writes });
 
     await scanUntilMatched(user);
-    await pack(user, '120');
-
-    await user.click(screen.getByRole('combobox', { name: t.fields.handlingUnitType }));
-    await user.click(await screen.findByRole('option', { name: '카톤' }));
+    await typeQty(user, '120');
+    await clickNext(user);
 
     /* ⭐ 누르면 먼저 되묻는다(사용자 지시 2026-09-17) — [취소]하면 확정 요청이 나가지 않는다. */
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.actions.confirm })).toBeEnabled();
+    });
     await user.click(screen.getByRole('button', { name: t.actions.confirm }));
     const dialog = await screen.findByRole('dialog', { name: t.confirmDialog.title });
     expect(within(dialog).getByText('카톤')).toBeInTheDocument();
     expect(within(dialog).getByText(t.confirmDialog.labelNotice)).toBeInTheDocument();
-    await user.click(within(dialog).getByRole('button', { name: t.confirmDialog.cancel }));
+    await user.click(
+      within(dialog).getByRole('button', { name: messages.popUniform.dialog.cancel }),
+    );
     expect(writes.map(pathOf)).not.toContain('/inventory/handling-units/4001:pack');
 
-    await user.click(screen.getByRole('button', { name: t.actions.confirm }));
-    await user.click(
-      within(await screen.findByRole('dialog', { name: t.confirmDialog.title })).getByRole(
-        'button',
-        { name: t.confirmDialog.confirm },
-      ),
-    );
+    await confirmFromReview(user);
 
     expect(await screen.findByText(t.confirmed('SYN-CTN-0091'))).toBeTruthy();
     expect(writes.map((request) => `${request.method} ${pathOf(request)}`)).toEqual([
@@ -905,30 +870,19 @@ describe('PackingResultScreen — 담기와 확정', () => {
       'POST /inventory/handling-units/4001:pack',
       'PUT /logistics/shipment-lot-allocations/9001',
     ]);
-    expect(screen.getByText(t.contents.empty)).toBeTruthy();
+    expect(await screen.findByText(t.rows.empty)).toBeTruthy();
+    expect(screen.getByLabelText(t.scan.productionLot)).toBeInTheDocument();
   });
 
-  /*
-   * ⛔ **실패를 정규화 갈래 이름으로 말하지 않는다.** 배너가 `conflict` 를 그대로 찍고 있었다 —
-   * 작업자에게 그 낱말은 아무것도 말해 주지 않는다. 공통 규약 문구로 옮겼는지 여기서 붙든다.
-   */
+  /* ⛔ 실패를 정규화 갈래 이름으로 말하지 않는다 — 공통 규약 문구로 옮겼는지 붙든다. */
   it('확정이 실패하면 갈래 이름이 아니라 «무엇을 할 것인가»를 말한다', async () => {
     const user = userEvent.setup();
     renderScreen({ packConflict: true });
 
     await scanUntilMatched(user);
-    await pack(user, '120');
-
-    await user.click(screen.getByRole('combobox', { name: t.fields.handlingUnitType }));
-    await user.click(await screen.findByRole('option', { name: '카톤' }));
-
-    await user.click(screen.getByRole('button', { name: t.actions.confirm }));
-    await user.click(
-      within(await screen.findByRole('dialog', { name: t.confirmDialog.title })).getByRole(
-        'button',
-        { name: t.confirmDialog.confirm },
-      ),
-    );
+    await typeQty(user, '120');
+    await clickNext(user);
+    await confirmFromReview(user);
 
     expect(await screen.findByText(messages.conflict.user)).toBeInTheDocument();
     expect(screen.queryByText('conflict')).toBeNull();

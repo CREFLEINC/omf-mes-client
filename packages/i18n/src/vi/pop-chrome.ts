@@ -53,16 +53,15 @@ export const popChrome: Translated<typeof ko.popChrome> = {
     edit: 'Sửa',
     editDone: 'Xong',
     editReset: 'Mặc định',
-    editHint: (max: number): string =>
-      `Chọn hoặc bỏ chọn mục để thiết lập lối tắt. (Tối đa ${String(max)})`,
+    editHint: (max: number): string => `Chọn tối đa ${String(max)} màn hình để đặt trên trang chủ.`,
+    editSaved: 'Đã lưu lối tắt.',
+    remainingPageNav: 'Chuyển trang việc còn lại',
     editPicked: (name: string): string => `${name}, đã có trong lối tắt`,
     weekdays: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'],
-    sub: 'Hôm nay hãy làm việc an toàn và chính xác nhé.',
     remainingTitle: 'Việc còn lại',
     remainingCount: (count: number): string => `${String(count)} việc`,
     remainingNone: 'Hiện không còn việc nào.',
     shortcutsTitle: 'Lối tắt',
-    shortcutsHint: 'Chuyển nhanh đến các màn hình hay dùng.',
   },
   userSwitch: 'Đổi người dùng',
   switchShort: 'Đổi',
@@ -125,8 +124,5 @@ export const popChrome: Translated<typeof ko.popChrome> = {
     scanPlaceholder: 'Quét hoặc tìm trong danh sách',
     clearSearch: 'Xóa',
     empty: 'Không có mục nào để hiển thị.',
-    position: (page: number, totalPages: number): string =>
-      `${String(page)} / ${String(Math.max(totalPages, 1))}`,
-    total: (count: number): string => `Tổng ${String(count)} mục`,
   },
 };

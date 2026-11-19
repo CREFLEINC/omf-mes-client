@@ -36,7 +36,20 @@ const POP_CSS_FILES = ['app/app.css', 'app/pop.css'] as const;
 
 const readCss = (relative: string): string => readFileSync(join(WEB_ROOT, relative), 'utf8');
 
-const CSS_RULES = POP_CSS_FILES.map(readCss)
+/*
+ * 통일 본문(#295)의 화면 전용 CSS(`screens/<화면>/uniform.css`)도 «정의»로 센다 — 거기서만 모양을 갖는
+ * `pop-*` 클래스(분할 LOT 라벨 그림 등)가 있다.
+ */
+const SCREEN_CSS = readdirSync(join(WEB_ROOT, 'screens')).flatMap((dir) => {
+  const path = join(WEB_ROOT, 'screens', dir, 'uniform.css');
+  try {
+    return [readFileSync(path, 'utf8')];
+  } catch {
+    return [];
+  }
+});
+
+const CSS_RULES = [...POP_CSS_FILES.map(readCss), ...SCREEN_CSS]
   .join('\n')
   .replace(/\/\*[\s\S]*?\*\//gu, '');
 
@@ -165,32 +178,5 @@ describe('POP 배치 클래스', () => {
     const orphans = defined.filter((name) => !used.has(name) && !name.startsWith('pop-touch'));
 
     expect(orphans).toEqual([]);
-  });
-});
-
-/**
- * 액션 줄 형제 간격 감지기 — **자기 배치를 갖는 액션 줄이 구획 간격을 받는지** 본다.
- *
- * `.pop-section > * > * + *`(간격 12)는 구획 안에 쌓이는 블록들을 위한 규칙인데, 격자나
- * flex 로 «자기» 배치를 갖는 액션 줄에도 그대로 닿는다 — 그러면 그 줄의 **둘째 버튼부터**
- * 12 씩 내려앉아 나란히 선 버튼들의 윗변이 어긋난다.
- *
- * ⚠ **렌더 테스트로는 잡히지 않는다** — `vitest.config.ts` 가 `css: false` 라 스타일이
- * 테스트에 닿지 않는다. 화면은 어긋난 채로도 멀쩡히 뜬다.
- *
- * ⚠ 나란히 선 버튼을 갖는 액션 줄을 새로 만들면 **여기 이름을 같이 적는다.** 세로로 쌓는
- * 줄이나 `align-items` 로 세로를 잡는 줄은 대상이 아니다.
- */
-describe('POP 액션 줄', () => {
-  const SIDE_BY_SIDE_ACTION_ROWS = ['pop-repack-actions'] as const;
-
-  it.each(SIDE_BY_SIDE_ACTION_ROWS)('`.%s`가 구획 형제 간격을 턴다', (name) => {
-    /* ⚠ 값 끝을 함께 문다 — `0` 만 보면 `0.5rem` 같은 «다른» 값도 통과한다. */
-    const reset = new RegExp(
-      `\\.${name}\\s*>\\s*\\*\\s*\\+\\s*\\*\\s*\\{[^}]*margin-top:\\s*0\\s*[;}]`,
-      'u',
-    );
-
-    expect(CSS_RULES).toMatch(reset);
   });
 });

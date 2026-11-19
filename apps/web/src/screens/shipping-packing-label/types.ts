@@ -76,6 +76,8 @@ export const toAllocationView = (data: AllocationResponse): AllocationView => ({
 export interface HandlingUnitView {
   handlingUnitId: number;
   handlingUnitNo: string;
+  /** 포장 유형 코드 — 오른쪽 정보 띠의 「포장 유형」에 그대로 보인다. */
+  handlingUnitTypeCode: string;
   statusCode: string;
 }
 
@@ -83,6 +85,7 @@ export interface HandlingUnitView {
 export const toHandlingUnitView = (data: HandlingUnitResponse): HandlingUnitView => ({
   handlingUnitId: data.handlingUnitId,
   handlingUnitNo: data.handlingUnitNo,
+  handlingUnitTypeCode: data.handlingUnitTypeCode,
   statusCode: data.statusCode,
 });
 

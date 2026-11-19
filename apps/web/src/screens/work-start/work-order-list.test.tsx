@@ -11,7 +11,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { WorkOrderList } from './work-order-list';
 
-const nav = messages.popPageNav;
+const nav = messages.popUniform.pager;
 
 const t = messages.workStart.list;
 
@@ -157,16 +157,17 @@ describe('P-02-01 작업지시 카드 — T-P-W 카드 정보', () => {
     );
 
     const card = screen.getByRole('button', { name: t.select('SYN-WO-1') });
-    const head = card.querySelector('.pop-row-head') as HTMLElement;
-    const info = card.querySelector('.pop-row-info') as HTMLElement;
+    const head = card.querySelector('.pu-item-top') as HTMLElement;
+    const info = card.querySelector('.pu-item-sub') as HTMLElement;
 
-    expect(within(head).getByText('SYN-WO-1')).toHaveClass('work-start-wo-no');
+    expect(within(head).getByText('SYN-WO-1')).toHaveClass('no');
     /* 상태 칩은 제목 줄 오른쪽 끝 칩 자리의 마지막이다. */
-    const chips = head.querySelector('.pop-row-chips') as HTMLElement;
+    const chips = head.querySelector('.chips') as HTMLElement;
     expect(chips.lastElementChild).toHaveTextContent(t.status.inProgress);
     expect(within(head).queryByText('SYN-ITEM-01')).toBeNull();
 
-    const labels = [...info.querySelectorAll('.pop-row-info-label')].map((el) => el.textContent);
+    /* 라벨은 정보 격자의 홀수 칸이다(라벨 · 값 · 라벨 · 값). */
+    const labels = [...info.children].filter((_, index) => index % 2 === 0).map((el) => el.textContent);
     expect(labels).toEqual([
       messages.workStart.selection.item,
       messages.workStart.selection.process,
@@ -175,9 +176,8 @@ describe('P-02-01 작업지시 카드 — T-P-W 카드 정보', () => {
       t.goodLabel,
     ]);
     /* 두 열: 품목과 공정은 한 줄, 설비, 계획 시작, 실적은 한 줄을 다 쓴다(PG-31). */
-    expect(info).toHaveClass('pop-row-info-two');
-    const wide = [...info.querySelectorAll('.pop-row-info-label.pop-row-info-wide')].map(
-      (el) => el.textContent,
+    const wide = [...info.querySelectorAll('.w')].map(
+      (el) => el.previousElementSibling?.textContent,
     );
     expect(wide).toEqual([t.equipment, messages.workStart.selection.plannedStart, t.goodLabel]);
     expect(info).toHaveTextContent(`${t.equipment} 합성 프레스 1호기 (SYN-PRS-01)`);
@@ -217,7 +217,7 @@ describe('P-02-01 작업지시 목록 — 건수 줄', () => {
         pageMeta={{ page: 1, size: 20, total: 13 }}
       />,
     );
-    expect(screen.getByText(t.total(13))).toBeInTheDocument();
+    expect(screen.getByText(nav.total(13))).toBeInTheDocument();
 
     rerender(
       <WorkOrderList
@@ -227,6 +227,6 @@ describe('P-02-01 작업지시 목록 — 건수 줄', () => {
         pageMeta={{ page: 2, size: 20, total: 29 }}
       />,
     );
-    expect(screen.getByText(t.total(29))).toBeInTheDocument();
+    expect(screen.getByText(nav.total(29))).toBeInTheDocument();
   });
 });

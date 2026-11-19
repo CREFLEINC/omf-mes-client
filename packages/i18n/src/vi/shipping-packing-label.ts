@@ -18,6 +18,33 @@ export const shippingPackingLabel: Translated<typeof ko.shippingPackingLabel> = 
     delivery: 'Nhãn giao hàng',
     deliveryNote: 'Chỉ phát hành được cho đơn vị giao hàng đã chốt.',
   },
+  tabs: {
+    label: 'Danh sách nhãn',
+    wait: 'Chờ phát hành',
+    reissue: 'Phát hành lại',
+  },
+  list: {
+    notIssued: 'Chưa phát hành',
+    qty: 'Số lượng',
+    lot: 'LOT',
+    lotCount: (count: number) => `${String(count)} mục`,
+    boxes: 'Thùng',
+    waitEmpty: 'Không có nhãn cần phát hành.',
+    reissueEmpty: 'Không có nhãn cần phát hành lại.',
+    pickTitle: 'Hãy chọn nhãn',
+    pickWait: 'Chạm đối tượng cần phát hành ở danh sách bên trái.',
+    pickReissue: 'Chạm đối tượng cần phát hành lại ở danh sách bên trái.',
+  },
+  band: {
+    label: 'Đối tượng nhãn',
+    shipment: 'Xuất hàng',
+    packingNo: 'Số kiện',
+    unitNo: 'Đơn vị giao hàng',
+    type: 'Loại kiện',
+    boxes: 'Số thùng',
+    boxCount: (count: number) => `${String(count)} thùng`,
+    seq: 'Lượt này',
+  },
   targets: {
     paneLabel: 'Đối tượng',
     columns: {
@@ -45,6 +72,7 @@ export const shippingPackingLabel: Translated<typeof ko.shippingPackingLabel> = 
     emptyTitle: 'Không có đối tượng để hiển thị.',
     selectedCount: (count: number) => `Đã chọn ${String(count)} mục`,
     clearSelection: 'Bỏ chọn',
+    selectAll: 'Chọn tất cả',
   },
   recovery: {
     title: 'In tiếp nhãn còn thiếu',
@@ -78,6 +106,8 @@ export const shippingPackingLabel: Translated<typeof ko.shippingPackingLabel> = 
   },
   actions: {
     issue: 'Phát hành · In',
+    reissue: 'Phát hành lại',
+    back: 'Trước',
     preview: 'Xem trước',
     print: 'In',
     previewPending: 'Phát hành rồi mới xem trước được.',
@@ -104,6 +134,8 @@ export const shippingPackingLabel: Translated<typeof ko.shippingPackingLabel> = 
     alt: (name: string, seq: number) => `Nhãn ${name} lượt ${seq}`,
     close: 'Đóng',
     print: 'In',
+    shape: 'Hình nhãn',
+    unavailable: 'Không vẽ được hình nhãn.',
   },
   history: {
     title: 'Lịch sử phát hành',

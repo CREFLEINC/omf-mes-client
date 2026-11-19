@@ -38,8 +38,12 @@ const pairButton = (name: RegExp): HTMLElement =>
 const waitingRows = (): HTMLElement[] =>
   screen.queryAllByRole('checkbox', { name: /SYN-ITEM-01\|/u });
 
+/** 체크 칸이 놓인 표 줄 — 번호 · 수량 · 상태 · 라벨이 한 줄에 있다. */
+const rowOf = (name: RegExp): HTMLElement =>
+  screen.getByRole('checkbox', { name }).closest('tr') as HTMLElement;
+
 describe('PopMaterialLotLabelScreen — 공급사·품목(왼쪽)', () => {
-  it('공급사·품목마다 대기 칩 · 공급사 · 기본 정보 한 줄 · 라벨 미출력을 보인다(입하 LOT 탭 없음)', async () => {
+  it('공급사·품목마다 입하 대기 칩 · 공급사 · 기본 정보 한 줄 · 라벨 미출력을 보인다(입하 LOT 탭 없음)', async () => {
     renderLabelScreen();
 
     const list = await screen.findByRole('list', { name: t.pairs.label });
@@ -49,12 +53,14 @@ describe('PopMaterialLotLabelScreen — 공급사·품목(왼쪽)', () => {
     expect(first).toHaveTextContent(t.pairs.waiting(3));
     expect(first).toHaveTextContent('합성 공급사 가');
     expect(first).toHaveTextContent(t.pairs.defaultPackaged('봉지 10 × 100 = 1,000 EA'));
-    expect(first).toHaveTextContent(t.pairs.unprinted(2));
+    expect(first).toHaveTextContent(
+      t.pairs.withUnprinted(t.pairs.defaultPackaged('봉지 10 × 100 = 1,000 EA'), 2),
+    );
     expect(second).toHaveTextContent(t.pairs.waiting(0));
     expect(second).toHaveTextContent(t.pairs.noDefault);
 
     /* ⛔ 입하 LOT 탭 · 라벨 대기 입하 줄은 없다(FR-036 · D-19·D-25). */
-    const tabs = within(screen.getByRole('group', { name: t.tabs.label })).getAllByRole('button');
+    const tabs = within(screen.getByRole('tablist', { name: t.tabs.label })).getAllByRole('tab');
     expect(tabs.map((tab) => tab.textContent)).toEqual([`${t.tabs.pairs}3`, t.tabs.reprint]);
     expect(screen.queryByText(/입하 줄/u)).toBeNull();
   });
@@ -93,7 +99,7 @@ describe('PopMaterialLotLabelScreen — 공급사·품목(왼쪽)', () => {
 });
 
 describe('PopMaterialLotLabelScreen — 오른쪽 표', () => {
-  it('대기는 위에, 폐기는 아래에(고를 수 없음), 최근 입하된 LOT 은 입하 LOT 번호와 따로 선다', async () => {
+  it('입하 대기는 위에, 폐기는 아래에(고를 수 없음), 최근 입하된 LOT 은 표 맨 뒤에 입하 LOT 번호와 선다', async () => {
     renderLabelScreen();
 
     await waitFor(() => expect(waitingRows()).toHaveLength(3));
@@ -105,18 +111,24 @@ describe('PopMaterialLotLabelScreen — 오른쪽 표', () => {
     /* 폐기 LOT 은 체크 칸이 아니다. */
     expect(screen.queryByRole('checkbox', { name: /\|0004 /u })).toBeNull();
 
-    const received = screen.getByRole('group', { name: t.work.receivedTitle(1) });
-    expect(within(received).getByText(t.table.inboundLot('SYN-IL-0011'))).toBeInTheDocument();
-    expect(within(received).getByText(t.lotState.received('정상'))).toBeInTheDocument();
-    expect(within(received).queryByRole('checkbox')).toBeNull();
+    /* 최근 입하된 LOT — 같은 표 맨 뒤, 고를 수 없다(라벨은 재발행 탭). */
+    const received = within(waitingTable)
+      .getByText(t.table.inboundLot('SYN-IL-0011'))
+      .closest('tr');
+    expect(text.indexOf('|0004')).toBeLessThan(text.indexOf('SYN-IL-0011'));
+    expect(
+      within(received as HTMLElement).getByText(t.lotState.received('정상')),
+    ).toBeInTheDocument();
+    expect(within(received as HTMLElement).queryByRole('checkbox')).toBeNull();
+    expect(screen.getByText(t.work.receivedChip(1))).toBeInTheDocument();
   });
 
-  it('줄은 번호 · 재고 수량 · 패키징 · 공급사 LOT · 상태 · 라벨을 적는다 — 출력한 LOT 은 회차와 시각', async () => {
+  it('줄은 번호 · 재고 수량 · 포장 · 공급사 LOT · 상태 · 라벨을 적는다 — 출력한 LOT 은 회차와 시각', async () => {
     renderLabelScreen();
 
     await waitFor(() => expect(waitingRows()).toHaveLength(3));
-    const unprinted = screen.getByRole('checkbox', { name: /\|0001 /u });
-    const printed = screen.getByRole('checkbox', { name: /\|0003 /u });
+    const unprinted = rowOf(/\|0001 /u);
+    const printed = rowOf(/\|0003 /u);
 
     expect(unprinted).toHaveTextContent('1,000 EA');
     expect(unprinted).toHaveTextContent('봉지 10 × 100');
@@ -124,7 +136,7 @@ describe('PopMaterialLotLabelScreen — 오른쪽 표', () => {
     expect(unprinted).toHaveTextContent(t.lotState.waiting);
     expect(unprinted).toHaveTextContent(t.table.unprinted);
     /* 08:12 는 공장 시각(UTC+7)이다. */
-    expect(printed).toHaveTextContent('1회 11-11 08:12');
+    expect(printed).toHaveTextContent('1회11-11 08:12');
   });
 
   it('머리에 품목 · 공급사 · 기본 단위 · 기본 정보를 적는다', async () => {
@@ -142,7 +154,7 @@ describe('PopMaterialLotLabelScreen — 오른쪽 표', () => {
     ).toBeInTheDocument();
   });
 
-  it('대기가 없으면 만들라고 말한다', async () => {
+  it('입하 대기가 없으면 만들라고 말한다', async () => {
     const user = userEvent.setup();
     renderLabelScreen();
 
@@ -150,6 +162,7 @@ describe('PopMaterialLotLabelScreen — 오른쪽 표', () => {
     await user.click(pairButton(/SYN-ITEM-02/u));
 
     expect(screen.getByText(t.work.waitingEmpty)).toBeInTheDocument();
+    expect(screen.getByText(t.work.waitingEmptyHint)).toBeInTheDocument();
   });
 
   it('목록을 받지 못하면 사유와 다시 불러오기를 함께 보인다', async () => {
@@ -160,34 +173,45 @@ describe('PopMaterialLotLabelScreen — 오른쪽 표', () => {
   });
 });
 
-describe('PopMaterialLotLabelScreen — 고르기와 동작 바', () => {
-  it('줄을 누르면 고르고, 막대가 「N개 선택 · 라벨 미출력 N개」를 말한다', async () => {
+describe('PopMaterialLotLabelScreen — 고르기와 작업 줄', () => {
+  it('줄을 누르면 고르고, 작업 줄 단추가 「라벨 N장 발행」 · 「입하 대기 N개 폐기」로 켜진다', async () => {
     const user = userEvent.setup();
     renderLabelScreen();
 
     await waitFor(() => expect(waitingRows()).toHaveLength(3));
-    expect(screen.getByText(t.bar.empty)).toBeInTheDocument();
+    expect(screen.getByText(t.work.guide)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.bar.issueIdle })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.bar.voidIdle })).toBeDisabled();
 
-    await user.click(screen.getByRole('checkbox', { name: /\|0001 /u }));
-    expect(screen.getByText(t.bar.selected(1, 1))).toBeInTheDocument();
+    /* 줄 어디를 눌러도 고른다. */
+    await user.click(rowOf(/\|0001 /u));
+    expect(screen.getByRole('checkbox', { name: /\|0001 /u })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    expect(screen.getByText(t.work.guidePicked)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.bar.issue(1) })).toBeEnabled();
     expect(screen.getByRole('button', { name: t.bar.void(1) })).toBeEnabled();
   });
 
-  it('「대기 전체 선택」은 대기만 고르고, 이미 출력한 LOT 은 「다시 인쇄」로 안내한다', async () => {
+  it('「입하 대기 전체 선택」은 입하 대기만 고르고, 이미 출력한 LOT 은 「재발행」 탭으로 안내한다', async () => {
     const user = userEvent.setup();
     renderLabelScreen();
 
     await waitFor(() => expect(waitingRows()).toHaveLength(3));
-    await user.click(screen.getByRole('button', { name: t.bar.selectAllWaiting }));
+    await user.click(screen.getByRole('button', { name: t.bar.selectAllWaiting(3) }));
 
-    expect(screen.getByText(t.bar.selected(3, 2))).toBeInTheDocument();
+    expect(waitingRows().filter((row) => row.getAttribute('aria-checked') === 'true')).toHaveLength(
+      3,
+    );
+    expect(screen.getByRole('button', { name: t.bar.void(3) })).toBeEnabled();
     expect(screen.getByText(t.bar.printedNote(1))).toBeInTheDocument();
     /* 첫 발행은 미출력만 — 2장. */
     expect(screen.getByRole('button', { name: t.bar.issue(2) })).toBeEnabled();
 
     await user.click(screen.getByRole('button', { name: t.bar.clear }));
-    expect(screen.getByText(t.bar.empty)).toBeInTheDocument();
+    expect(screen.getByText(t.work.guide)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.bar.issueIdle })).toBeDisabled();
   });
 
   it('다른 공급사·품목을 누르면 고른 것이 풀린다', async () => {
@@ -198,7 +222,8 @@ describe('PopMaterialLotLabelScreen — 고르기와 동작 바', () => {
     await user.click(screen.getByRole('checkbox', { name: /\|0001 /u }));
     await user.click(pairButton(/SYN-ITEM-02/u));
 
-    expect(screen.getByText(t.bar.empty)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.bar.voidIdle })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.bar.issueIdle })).toBeDisabled();
   });
 
   it('⛔ 사번을 모르면 발행 · 폐기 · 만들기를 잠그고 사유는 맨 위 띠가 말한다', async () => {
@@ -226,22 +251,20 @@ describe('PopMaterialLotLabelScreen — 다시 받기', () => {
     await waitFor(() => expect(sentTo(sent, '/logistics/waiting-material-lots')).toHaveLength(2));
   });
 
-  it('새로 고침을 누르면 바로 다시 받고, 옆에 받은 시각을 적는다', async () => {
-    const user = userEvent.setup();
-    const { sent } = renderLabelScreen();
+  it('맨 위 줄 [새로고침](모든 조회 다시 받기)을 누르면 바로 다시 받는다 — 목록 안 새로 고침은 없다(#295)', async () => {
+    const { sent, queryClient } = renderLabelScreen();
 
     await waitFor(() => expect(sentTo(sent, '/logistics/waiting-material-lots')).toHaveLength(1));
-    await user.click(screen.getByRole('button', { name: t.work.refresh }));
+    expect(screen.queryByText(/받음$/u)).toBeNull();
+    await queryClient.invalidateQueries();
     await waitFor(() => expect(sentTo(sent, '/logistics/waiting-material-lots')).toHaveLength(2));
-    expect(screen.getByText(/받음$/u)).toBeInTheDocument();
   });
 });
 
 describe('PopMaterialLotLabelScreen — 새로 고침과 기본 정보', () => {
-  it('G2 L19 새로 고침은 공급사·품목 기본 정보도 다시 받아, W-06-25 에서 고친 「기본 …」 줄이 바로 선다', async () => {
-    const user = userEvent.setup();
+  it('G2 L19 새로고침은 공급사·품목 기본 정보도 다시 받아, W-06-25 에서 고친 「기본 …」 줄이 바로 선다', async () => {
     const defaults = [defaultInfo()];
-    const { sent } = renderLabelScreen({ defaults });
+    const { sent, queryClient } = renderLabelScreen({ defaults });
     const plantWide = () =>
       sentTo(sent, '/mdm/supplier-item-defaults').filter(
         (each) => each.search.get('supplierId') === null,
@@ -260,7 +283,8 @@ describe('PopMaterialLotLabelScreen — 새로 고침과 기본 정보', () => {
       versionNo: 2,
     });
     defaults[0] = changed;
-    await user.click(screen.getByRole('button', { name: t.work.refresh }));
+    /* 맨 위 줄 [새로고침]은 모든 조회를 다시 받는다(`pop-screen-nav`). */
+    await queryClient.invalidateQueries();
 
     await waitFor(() => expect(plantWide().length).toBeGreaterThan(asked));
     await waitFor(async () => expect(await firstPair()).toHaveTextContent(defaultLineOf(changed)));
@@ -283,7 +307,7 @@ describe('PopMaterialLotLabelScreen — 머리줄', () => {
 });
 
 describe('PopMaterialLotLabelScreen — 다른 묶음', () => {
-  it('기본 정보가 「패키징 없음」이면 「기본 1 TON · 패키징 없음」으로 적는다', async () => {
+  it('기본 정보가 「포장 없음」이면 「기본 1 TON · 포장 없음」으로 적는다', async () => {
     renderLabelScreen({
       groups: [
         group([lot(9201, { lotQty: 1, package: null })], {

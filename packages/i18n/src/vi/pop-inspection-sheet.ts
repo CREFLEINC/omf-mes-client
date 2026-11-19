@@ -5,8 +5,6 @@ export const popInspectionSheet = {
   serial: {
     label: 'Số sê-ri máy',
     placeholder: 'Hãy quét số sê-ri',
-    open: 'Mở',
-    opening: 'Đang mở…',
   },
 
   summary: {
@@ -21,6 +19,7 @@ export const popInspectionSheet = {
     completed:
       'Phiếu kiểm tra đã hoàn tất. Muốn sửa thì quản lý phải hủy phê duyệt trên web quản trị.',
     loadFailed: 'Không tải được phiếu kiểm tra.',
+    emptyTitle: 'Quét số sê-ri để mở phiếu kiểm tra',
   },
 
   header: {

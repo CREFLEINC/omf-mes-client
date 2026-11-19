@@ -1,11 +1,23 @@
-import { AlertBanner, Button, Card, Chip, Icon, Progress, Switch, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { NumericKeypad } from '@omf-mes/ui';
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
-import { usePopIdentity } from '../../patterns/pop-identity';
-import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
-import { popTouchClass } from '../../patterns/pop-touch';
+import {
+  PuActionBar,
+  PuButton,
+  PuCols,
+  PuEmpty,
+  PuField,
+  PuInput,
+  PuKeypad,
+  PuKv,
+  PuNote,
+  PuScanField,
+  PuScreen,
+  PuSection,
+  PuUnit,
+  applyKeypadKey,
+  puToast,
+} from '../../patterns/pop-uniform';
 import { toApiError } from '../../patterns/request';
 import { conversionState } from './conversion';
 import { ErrorBanner } from './error-banner';
@@ -22,6 +34,7 @@ import {
 } from './shot-figures';
 import { useToolUsageWrite } from './mutations';
 import { useOnline } from './use-online';
+import { WorkOrderBand, useWorkOrderUom } from './wo-band';
 import {
   canSave,
   decimalOnly,
@@ -39,6 +52,8 @@ import {
   type ToolUsage,
   type UsageDraft,
 } from './types';
+
+import './uniform.css';
 
 const t = messages.toolUsage;
 
@@ -63,7 +78,7 @@ interface SaveResult {
  * ⭐ **초과는 수치 옆에 붙는다** — 「−1,200 회(초과)」(스펙 §6-1). 따로 떨어진 문장으로 두면
  * 어느 숫자가 넘긴 것인지 눈이 다시 찾아야 한다.
  */
-const figureText = (figure: ShotFigure, offlineText: string, missingText: string): string => {
+const figureText = (figure: ShotFigure, offlineText: string): string => {
   switch (figure.kind) {
     case 'value':
       return figure.value < 0
@@ -71,8 +86,9 @@ const figureText = (figure: ShotFigure, offlineText: string, missingText: string
         : `${formatShots(figure.value)} ${t.shot.unit}`;
     case 'offline':
       return offlineText;
+    /* 칸에는 「—」만 — 왜 비었는지는 누계 아래 한 줄이 말한다(칸이 좁아 긴 문장이 넘친다). */
     case 'guaranteedMissing':
-      return missingText;
+      return '—';
   }
 };
 
@@ -84,9 +100,7 @@ const figureText = (figure: ShotFigure, offlineText: string, missingText: string
  * - 화면이 정하는 것: **이번에 더할 타발수**(증분)
  * - 서버가 정하는 것: **누계**. 화면은 저장 전에 예상치를 보일 뿐이고 ④ 안내가 그 사실을 말한다
  *
- * ⛔ **셸(`AppShell`)을 쓰지 않는다.** POP 은 사이드바로 옮겨 다니는 화면이 아니라 작업지시
- * 하나에 매인 태스크 화면이고, 세로 예산이 액션바까지 정해져 있다(스펙 §3). 그래서 배치 규범 8
- * 과 같은 사정으로 **자기 `<main>` 을 직접 렌더한다** — 관리웹에서 로그인 화면이 그렇게 선다.
+ * 본문은 POP 통일 시안(#295) — 작업지시 띠 아래 「툴 스캔 | 타발수 입력 | 수량」 세 구획, 아래 작업 줄.
  *
  * ⚠ **연결이 끊기면 저장을 막는다.** 스펙 §6-2 는 오프라인 버퍼링을 확정했지만 이 저장소에
  * 보낼 것 보관함(outbox)이 아직 없다 — 감추지 않고 사유를 말한다(`use-online.ts`).
@@ -94,29 +108,15 @@ const figureText = (figure: ShotFigure, offlineText: string, missingText: string
 export const ToolUsageScreen = () => {
   const titleId = useId();
   const shotInputId = useId();
+  const baseQtyId = useId();
 
   const entry = usePopEntry();
   /* ⭐ 작업지시가 없으면 입력란·키패드를 잠근다(사용자 지시 2026-09-17) — 넣어도 저장할 곳이 없다. */
   const inputLocked = entry.workOrderId === null;
-  /*
-   * ⭐ 머리줄에는 설비만 둔다. 설비는 단말이 준다(`PopIdentity.equipment` · 사용자 지시 2026-09-14).
-   *    W/O 번호는 단계 줄 오른쪽에 보인다(#291) — 여기 있던 「W/O <내부 id>」는 번호가 아니라 지웠다.
-   */
-  const { equipment } = usePopIdentity();
-  const headerContext = [
-    equipment === null || equipment.equipmentCode === null || equipment.equipmentCode.trim() === ''
-      ? null
-      : t.entry.equipmentLabel(equipment.equipmentCode, equipment.equipmentName ?? ''),
-  ]
-    .filter((part): part is string => part !== null && part.trim() !== '')
-    .join(' · ');
   const isOnline = useOnline();
 
   /** 스캔칸에 치는 중인 값과, 조회를 건 값은 다르다 — 한 글자마다 서버를 부르지 않는다. */
   const [codeInput, setCodeInput] = useState('');
-  /** 손으로 치는 중인가 — 안내 문구만 바뀐다. 스캐너와 입력 자리를 나누지 않는다. */
-  const [isManualEntry, setIsManualEntry] = useState(false);
-  const scanRef = useRef<HTMLInputElement>(null);
   const [submittedCode, setSubmittedCode] = useState('');
   const [draft, setDraft] = useState<UsageDraft>(emptyUsageDraft);
   const [saved, setSaved] = useState<SaveResult | null>(null);
@@ -161,6 +161,8 @@ export const ToolUsageScreen = () => {
         cumulativeShotCount: usage.cumulativeShotCount,
         cumulativeAsOf: usage.cumulativeAsOf,
       });
+      /* 결과는 아래 가운데 알림 한 줄(POP 통일 시안). */
+      puToast(t.save.successTitle);
     },
   });
 
@@ -245,7 +247,6 @@ export const ToolUsageScreen = () => {
         );
 
   const applyCode = (raw: string): void => {
-    cancelScanIdle();
     /* 다른 툴을 읽으면 앞 툴에 확정한 숫자를 풀어 둔다(리뷰) — 새 툴 실적으로 저장되지 않게. */
     setShotConfirmed(false);
     setSubmittedCode(raw.trim());
@@ -254,50 +255,19 @@ export const ToolUsageScreen = () => {
     write.reset();
   };
 
-  const submitCode = (event: FormEvent<HTMLFormElement>): void => {
-    event.preventDefault();
-    applyCode(codeInput);
-  };
-
   /*
-   * ⭐ **바코드를 읽으면 Enter 없이 바로 조회한다**(사용자 지시 2026-09-17 · 전례 출하 포장 스캔 칸).
-   *    스캐너는 글자를 50ms 보다 빠르게 붙여 보내고, 마지막 글자 뒤 150ms 조용하면 끝난 것으로 본다.
-   *    한 글자라도 느리게 들어오면 손 입력으로 보고 Enter 를 기다린다.
+   * ⭐ 못 찾았거나 폐기된 툴이면 칸을 비운다 — 칸 바로 아래 빨간 한 줄이 이유를 말한다(시안 규칙 6).
+   *    바코드를 읽으면 Enter 없이 바로 조회하는 것은 공통 스캔 칸(`PuScanField`)이 맡는다.
    */
-  const lastScanKeyAt = useRef(0);
-  const isScanBurst = useRef(true);
-  const scanIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cancelScanIdle = (): void => {
-    if (scanIdleTimer.current !== null) clearTimeout(scanIdleTimer.current);
-    scanIdleTimer.current = null;
-  };
-  useEffect(() => cancelScanIdle, []);
-  /* 타이머가 옛 렌더의 함수를 부르지 않게 최신 판을 쥔다. */
-  const applyCodeRef = useRef(applyCode);
-  applyCodeRef.current = applyCode;
-
-  const changeCodeInput = (next: string): void => {
-    const now = performance.now();
-    if (codeInput === '') isScanBurst.current = true;
-    else if (next.length < codeInput.length || now - lastScanKeyAt.current > 50) {
-      isScanBurst.current = false;
-    }
-    lastScanKeyAt.current = now;
-    setCodeInput(next);
-
-    cancelScanIdle();
-    if (isScanBurst.current && next.trim().length > 1) {
-      scanIdleTimer.current = setTimeout(() => {
-        applyCodeRef.current(next);
-      }, 150);
-    }
-  };
+  const scanFailed = submittedCode !== '' && !lookup.isPending && (tool === null || isDisposed);
+  useEffect(() => {
+    if (scanFailed) setCodeInput('');
+  }, [scanFailed]);
 
   /**
-   * 「다시 입력」 — **친 값만 지우고 고른 툴은 남긴다.**
+   * [입력 초기화] — **친 값만 지우고 고른 툴은 남긴다.**
    *
-   * ⛔ 툴까지 지우면 타발수 오타 하나에 QR 을 다시 찍게 된다. 툴을 바꾸는 길은 스캔 구획의
-   * 「툴 다시 고르기」로 따로 있다 — 두 액션은 지우는 대상이 다르다(스펙 §5-1).
+   * ⛔ 툴까지 지우면 타발수 오타 하나에 QR 을 다시 찍게 된다. 툴을 바꾸려면 다른 QR 을 읽으면 된다.
    */
   const resetDraft = (): void => {
     setDraft(emptyUsageDraft);
@@ -305,26 +275,6 @@ export const ToolUsageScreen = () => {
     occurredAtRef.current = null;
     setSaved(null);
     write.reset();
-  };
-
-  /**
-   * 「코드 직접 입력」 — **칸을 비우고 커서를 둔다.**
-   *
-   * ⛔ 안내 문구만 바꾸면 **눌러도 아무 일이 없다.** 스캔한 코드가 칸에 남아 있으면 placeholder
-   * 는 보이지 않고, 고른 툴도 그대로여서 사용자는 버튼이 죽은 줄 안다. 이 버튼이 서는 자리는
-   * 「QR 이 안 읽혀 손으로 치겠다」(스펙 §6-1)이므로 **다음 코드를 칠 수 있는 상태**로 만든다.
-   */
-  const startManualEntry = (): void => {
-    clearTool();
-    setIsManualEntry(true);
-    scanRef.current?.focus();
-  };
-
-  const clearTool = (): void => {
-    setCodeInput('');
-    setSubmittedCode('');
-    setIsManualEntry(false);
-    resetDraft();
   };
 
   const save = (): void => {
@@ -348,366 +298,271 @@ export const ToolUsageScreen = () => {
     });
   };
 
+  const uomCode = useWorkOrderUom(entry.workOrderId);
+  /* 키패드가 넣는 칸 — 직접 입력이면 타발수, 생산 수량으로 계산하면 수량이다. */
+  const padValue = isConverted ? draft.baseQty : draft.shotCount;
+  const padUnit = isConverted ? uomCode : t.shot.unit;
+  const usageWidth =
+    usagePercentFigure.kind === 'value' ? Math.min(Math.max(usagePercentFigure.value, 0), 100) : 0;
+
   return (
-    <main className="pop-shell pop-ui tool-usage-screen" aria-labelledby={titleId}>
-      <header className="pop-header">
-        <h1 id={titleId} className="pop-title">
-          {t.title}
-        </h1>
-        {/*
-         * ⭐ **맥락은 왼쪽, 상태는 오른쪽이다**(스펙 §3 머리줄). 「무엇을 보고 있는가」(작업지시)와
-         * 「지금 어떤 상태인가」(사번·연결)는 다른 축이고, 설계 도면은 POP 전 화면에서 둘을
-         * 화면명 쪽과 오른쪽 끝으로 갈라 그린다. 섞으면 화면마다 눈이 다른 곳을 본다.
-         */}
-        {headerContext === '' ? null : <p className="pop-context">{headerContext}</p>}
-      </header>
+    <PuScreen
+      className="tu-screen"
+      labelledBy={titleId}
+      band={entry.workOrderId !== null}
+      actionBar={
+        <PuActionBar label={t.title}>
+          <PuButton icon="reset" disabled={!hasInput(draft)} onClick={resetDraft}>
+            {t.actions.reset}
+          </PuButton>
+          <PuButton variant="primary" disabled={!isSaveOpen} onClick={save}>
+            {t.actions.save}
+          </PuButton>
+        </PuActionBar>
+      }
+    >
+      {/* 표제는 셸 탭이 보인다 — 본문 이름으로만 남긴다. */}
+      <h1 id={titleId} className="visually-hidden">
+        {t.title}
+      </h1>
+      {entry.workOrderId !== null && <WorkOrderBand workOrderId={entry.workOrderId} />}
 
-      <>
-        {/*
-         * ⭐ 저장이 막힌 사유는 본문 맨 위 띠(아이콘+문구)로 선다(사용자 지시 2026-09-17).
-         *    액션바 왼쪽 잔글씨로 두던 자리를 옮겼다.
-         */}
-        {/* ⛔ 「타발수를 1 이상 기입하세요」는 띠로 세우지 않는다(사용자 지시 2026-09-17). 칸이 바로 보인다. */}
-        {blockReason !== undefined && blockReason !== t.actionReasons.noShot && (
-          <div className="banner-slot">
-            <AlertBanner variant="warning">{blockReason}</AlertBanner>
-          </div>
-        )}
-        {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
-        <PopWorkerMissingBanner workerNo={entry.workerNo} />
-        {lookup.isError && (
-          <ErrorBanner
-            error={toApiError(lookup.error)}
-            title={messages.httpError.loadTitle}
-            onRetry={() => void lookup.refetch()}
+      <PuCols variant="lk">
+        {/* 툴 스캔 — QR 이 실패해도 코드를 손으로 칠 수 있어야 한다(스펙 §6-1 · D-3). */}
+        <PuSection title={t.scan.sectionLabel}>
+          {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 말로 알린다(사용자 지시 2026-09-17). */}
+          {entry.workerNo === null && (
+            <PuNote tone="warn">{messages.popChrome.workerMissing}</PuNote>
+          )}
+          {/* ⛔ 「타발수를 1 이상 기입하세요」는 세우지 않는다(사용자 지시 2026-09-17). 칸이 바로 보인다. */}
+          {blockReason !== undefined && blockReason !== t.actionReasons.noShot && (
+            <PuNote tone="warn">{blockReason}</PuNote>
+          )}
+          {lookup.isError && (
+            <ErrorBanner
+              error={toApiError(lookup.error)}
+              title={messages.httpError.loadTitle}
+              onRetry={() => void lookup.refetch()}
+            />
+          )}
+          <PuScanField
+            label={t.scan.inputLabel}
+            ariaLabel={t.scan.inputLabel}
+            required
+            value={codeInput}
+            onChange={setCodeInput}
+            onSubmit={applyCode}
+            placeholder={t.scan.placeholder}
+            done={usableTool !== null}
+            autoFocus
+            disabled={inputLocked}
+            error={!scanFailed ? undefined : isDisposed ? t.scan.disposed : t.scan.notFound}
+            manual={{ title: t.scan.manualEntry, label: t.scan.inputLabel }}
           />
-        )}
-        <ErrorBannerSlot error={write.error} onRetry={save} />
+          {usableTool === null ? (
+            <PuEmpty
+              icon="scan"
+              title={t.scan.empty}
+              hint={saved !== null ? t.scan.nextHint : undefined}
+            />
+          ) : (
+            <PuKv
+              items={[
+                {
+                  label: t.scan.mold,
+                  value: <span className="pu-mono">{usableTool.moldCode}</span>,
+                },
+                { label: t.scan.moldName, value: usableTool.moldName },
+                { label: t.scan.cavity, value: String(usableTool.cavityCount) },
+                { label: t.cumulative.guaranteed, value: guaranteedText },
+                {
+                  label: t.cumulative.current,
+                  value: `${formatShots(serverShotCount)} ${t.shot.unit}`,
+                },
+              ]}
+            />
+          )}
+        </PuSection>
 
-        {saved !== null && (
-          <div className="banner-slot">
-            {/* ⭐ 한 줄만 말한다(사용자 지시 2026-09-17) — 누계는 오른쪽 수치 구획이 이미 보인다. */}
-            <AlertBanner variant="success">{t.save.successTitle}</AlertBanner>
-          </div>
-        )}
-
-        {/* ① 툴 스캔 — QR 이 실패해도 코드를 손으로 칠 수 있어야 한다(스펙 §6-1 · D-3). */}
-        <Card bordered className="pop-section pop-fixed" aria-label={t.scan.sectionLabel}>
-          <Card.Body>
-            <form className="scan-row tool-usage-scan" onSubmit={submitCode}>
-              <TextField
-                ref={scanRef}
-                label={t.scan.inputLabel}
-                placeholder={t.scan.placeholder}
-                size="xl"
-                fullWidth
-                autoFocus
-                disabled={inputLocked}
-                value={codeInput}
+        {/* 타발수 입력 — 타발수 칸은 늘 서고, 환산은 그 아래에서 값을 만든다(스펙 §3). */}
+        <PuSection title={t.shot.sectionLabel} bodyClassName="tu-mid">
+          <PuField label={t.shot.inputLabel} required htmlFor={shotInputId}>
+            <div className="pu-row">
+              {/*
+               * ⭐ **환산을 켜면 이 칸은 «결과»를 보인다.** 사람이 고칠 수 있는 자리가 둘이면
+               * 어느 값이 나가는지 알 수 없다 — 환산 중에는 읽기 전용이다.
+               */}
+              <PuInput
+                id={shotInputId}
+                aria-label={t.shot.inputLabel}
+                numeric
+                target={!shotLocked && !isConverted}
+                need={write.fieldErrors.shotCount !== undefined}
+                inputMode="numeric"
+                placeholder="0"
+                autoComplete="off"
+                disabled={shotLocked}
+                readOnly={isConverted}
+                value={
+                  isConverted ? (increment === null ? '' : formatShots(increment)) : draft.shotCount
+                }
                 onChange={(event) => {
-                  changeCodeInput(event.target.value);
+                  changeDraft({ shotCount: digitsOnly(event.target.value) });
                 }}
               />
+              <PuUnit>{t.shot.unit}</PuUnit>
               {/*
-               * ⭐ **조회 버튼을 두지 않는다.** 스캐너가 코드 끝에 Enter 를 붙여 보내므로 폼이
-               * 그대로 제출된다 — 손으로 칠 때도 같은 길이다. 버튼을 두면 장갑 낀 손이 스캔
-               * 뒤에 한 번 더 눌러야 한다.
+               * ⭐ **타발수 칸 오른쪽에 [확인]이 선다**(사용자 지시 2026-09-17).
+               *    ⛔ 저장하지 않는다 — 친 숫자를 확정만 하고, 저장은 [실적 저장]이다.
                */}
-              {/* ⭐ [직접 입력]은 다른 POP 화면(자재 투입 등)과 같은 모양이다(사용자 지시 2026-09-17). */}
-              <Button
-                type="button"
-                variant="outlined"
-                size="xl"
-                className={popTouchClass('normal')}
-                disabled={inputLocked}
-                onClick={startManualEntry}
+              <PuButton
+                disabled={!canConfirmShot}
+                onClick={() => {
+                  setShotConfirmed(true);
+                }}
               >
-                {t.scan.manualEntry}
-              </Button>
-            </form>
-
-            {/*
-             * ⚠ **안내를 칸 «안»에 넣지 않는다.** `helperText` 는 칸 아래에 붙어 칸 덩어리를
-             * 키우는데, 스캔 줄은 아래끝을 맞춰 세운다(`.scan-row`) — 덩어리가 커지면 옆의
-             * [ 코드 직접 입력 ]이 칸보다 한 층 «내려가» 어긋난다(실측 · 사용자 지적).
-             * 줄 아래에 따로 세우면 두 조각의 높이가 서로를 흔들지 않는다.
-             */}
-            {isManualEntry && <p className="field-note">{t.scan.manualHint}</p>}
-
-            {submittedCode !== '' && !lookup.isPending && tool === null && (
-              <p className="field-note">{t.scan.notFound}</p>
-            )}
-            {isDisposed && <p className="field-error">{t.scan.disposed}</p>}
-
-            {usableTool !== null && (
-              /*
-               * ⭐ 고른 툴은 초록 안내 띠(성공 · 체크 아이콘 + 글)로 선다(사용자 지시 2026-09-17).
-               * ⛔ [툴 다시 고르기]를 두지 않는다(사용자 지시 2026-09-17) — 다른 툴은 다시 스캔하면 된다.
-               */
-              <div className="banner-slot pop-tool-picked">
-                <AlertBanner variant="success">
-                  <span className="pop-tool">
-                    <strong>{usableTool.moldCode}</strong>
-                    <span>{usableTool.moldName}</span>
-                    <span>{`${t.scan.cavity} ${String(usableTool.cavityCount)}`}</span>
-                  </span>
-                </AlertBanner>
-              </div>
-            )}
-          </Card.Body>
-        </Card>
-
-        {/*
-         * ⛔ **스펙 §3-1 의 세로 예산이 터치 규격과 동시에 서지 않는다.**
-         *
-         * §3-1 은 ① 96 · ② 200 · ③ 200 · ④ 88 을 세로로 쌓아 슬랙 0 이라 적었는데, 같은 절이
-         * ② 의 숫자 키패드를 **핵심 등급 64~72px** 로 못박았다. 4행 키패드는 그것만으로 264px
-         * 이라(실측 · 키 60×80) ② 가 200 에 들어가지 못한다. 넷을 그대로 쌓으면 **네 구획이
-         * 모두 잘린다** — 실측으로 키패드는 첫 줄(1·2·3)만, 누계는 두 줄만 보였다.
-         *
-         * ⛔ 키를 줄여 맞추지 않는다(터치 하한을 깨뜨린다) · ⛔ 구획을 접거나 스크롤시키지
-         * 않는다(§3-1 E-4 가 금지한다) · ⛔ 잘린 채 두지 않는다.
-         *
-         * **읽는 차례를 지키면서 가로로 편다** — ① 은 그대로 위에 두고, ② 왼쪽 · ③④ 오른쪽이다.
-         * 도면의 위아래가 왼쪽·오른쪽이 될 뿐 순서와 내용은 그대로다. 설계 회신이 오면 그때
-         * 정한 대로 되돌린다(요청서 2026-09-07-설계개선-P0501세로예산).
-         */}
-        <div className="pop-panes pop-fixed tool-usage-body">
-          {/* ② 타발수 입력 — 타발수 칸은 늘 서고, 환산은 그 아래에서 값을 만든다(스펙 §3). */}
-          <Card bordered className="pop-section" aria-label={t.shot.sectionLabel}>
-            <Card.Body>
-              <div className="pop-shot">
-                <div className="pop-shot-fields">
-                  {/*
-                   * ⭐ **환산을 켜면 이 칸은 «결과»를 보인다.** 사람이 고칠 수 있는 자리가 둘이면
-                   * 어느 값이 나가는지 알 수 없다 — 환산 중에는 읽기 전용이다.
-                   */}
-                  <TextField
-                    id={shotInputId}
-                    label={t.shot.inputLabel}
-                    size="xl"
-                    fullWidth
-                    inputMode="numeric"
-                    disabled={shotLocked}
-                    readOnly={isConverted}
-                    value={
-                      isConverted
-                        ? increment === null
-                          ? ''
-                          : formatShots(increment)
-                        : draft.shotCount
-                    }
-                    error={write.fieldErrors.shotCount}
-                    /* 단위는 칸 오른쪽 안에 붙인다 — 스펙 §3 의 「타발수 [1,250] 회」 */
-                    trailingIcon={t.shot.unit}
-                    onChange={(event) => {
-                      changeDraft({ shotCount: digitsOnly(event.target.value) });
-                    }}
-                  />
-
-                  {/*
-                   * ⭐ **타발수 칸 오른쪽에 [확인]이 선다**(사용자 지시 2026-09-17 · 러닝체인지 [투입]과
-                   *    같은 자리·크기). ⛔ 저장하지 않는다 — 친 숫자를 확정만 하고, 저장은 [실적 저장]이다.
-                   */}
-                  <Button
-                    variant="filled"
-                    size="xl"
-                    className={`${popTouchClass('critical')} tool-usage-confirm`}
-                    disabled={!canConfirmShot}
-                    onClick={() => {
-                      setShotConfirmed(true);
-                    }}
-                  >
-                    {t.actions.confirm}
-                  </Button>
-
-                  <Switch
-                    label={t.shot.convertedLabel}
-                    checked={isConverted}
-                    disabled={shotLocked || conversion.kind !== 'ready'}
-                    onChange={(event) => {
-                      changeDraft({
-                        method: event.target.checked
-                          ? COLLECTION_METHOD.converted
-                          : COLLECTION_METHOD.direct,
-                        shotCount: '',
-                        baseQty: '',
-                      });
-                    }}
-                  />
-
-                  {conversion.kind === 'loading' && (
-                    <p className="field-note">{t.shot.conversionLoading}</p>
-                  )}
-                  {conversion.kind === 'off' && (
-                    <p className="field-note">{t.shot.conversionOff}</p>
-                  )}
-                  {conversion.kind === 'unset' && (
-                    <p className="field-note">{t.shot.conversionUnavailable}</p>
-                  )}
-
-                  {isConverted && conversion.kind === 'ready' && (
-                    <div className="pop-conversion">
-                      <TextField
-                        label={t.shot.baseQtyLabel}
-                        size="xl"
-                        inputMode="decimal"
-                        disabled={shotLocked}
-                        value={draft.baseQty}
-                        error={write.fieldErrors.conversionBaseQty}
-                        onChange={(event) => {
-                          changeDraft({ baseQty: decimalOnly(event.target.value) });
-                        }}
-                      />
-                      <p className="field-note">
-                        {t.shot.convertedExpression(
-                          draft.baseQty === '' ? '—' : draft.baseQty,
-                          String(conversion.ratio),
-                          increment === null ? '—' : formatShots(increment),
-                        )}
-                      </p>
-                      <p className="field-note">{t.shot.roundedNote}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/*
-                 * ⭐ **POP 이 공유하는 키패드를 쓴다**(`@omf-mes/ui`). DS `NumberPad` 는 «전체
-                 * 잠금»만 있어 키마다 조건을 걸 수 없다 — 타발수가 비었는데도 [ C ]·[ ⌫ ]가
-                 * 눌렸다(사용자 지적). 작업실적 등록·인식표 발행이 같은 이유로 먼저 갈아탔고,
-                 * **같은 부품을 써야 POP 안에서 같게 동작한다.**
-                 *
-                 * ⚠ 모양과 자리는 그대로다 — 마지막 줄 [ C ] · [ 0 ] · [ ⌫ ](스펙 §3).
-                 */}
-                <NumericKeypad
-                  className="tool-usage-pad"
-                  disabled={shotLocked}
-                  label={t.shot.keypadLabel}
-                  value={isConverted ? draft.baseQty : draft.shotCount}
-                  dropLeadingZero
-                  maxLength={SHOT_MAX_LENGTH}
-                  /* 스펙 §3-1 — 키는 64px 요구이고 64와 72 사이에 단이 없어 `2xl` 로 올린다. */
-                  keySize="2xl"
-                  /* 환산 기준 수량만 소수를 받는다 — 타발수는 정수다(스펙 §4-A `bigint`). */
-                  allowDecimal={isConverted}
-                  decimalLabel={t.shot.decimalKey}
-                  backspaceLabel={t.shot.backspace}
-                  /* 한 자 지움은 지움 키 모양으로 — 생산 포장 키패드와 같다(사용자 지시 2026-09-17). */
-                  backspaceGlyph={<Icon name="backspace" size={24} />}
-                  clearLabel={t.shot.clearGlyph}
-                  onChange={(value) => {
-                    changeDraft(isConverted ? { baseQty: value } : { shotCount: value });
-                  }}
-                />
-              </div>
-            </Card.Body>
-          </Card>
-
-          {/* ③④ 는 한 기둥으로 선다 — 누계를 보고 그 아래 안내를 읽는 차례가 도면과 같다. */}
-          <div className="tool-usage-side">
-            {/* ③ 누계 — 저장 전에 「저장하면 얼마가 남는가」를 보인다(스펙 §3 · §3-2). */}
-            <Card bordered className="pop-section" aria-label={t.cumulative.sectionLabel}>
-              <Card.Body>
-                <dl className="pop-figures">
-                  <div>
-                    <dt>{t.cumulative.guaranteed}</dt>
-                    <dd>{guaranteedText}</dd>
-                  </div>
-                  <div>
-                    <dt>{t.cumulative.current}</dt>
-                    <dd>
-                      {usableTool === null ? '—' : `${formatShots(serverShotCount)} ${t.shot.unit}`}
-                      {usableTool !== null && asOfText !== null && (
-                        <span className="pop-figure-note">{asOfText}</span>
-                      )}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>{t.cumulative.increment}</dt>
-                    <dd>
-                      {increment === null ? '—' : `+${formatShots(increment)} ${t.shot.unit}`}
-                    </dd>
-                  </div>
-
-                  {/* 구분선 — 위 셋은 「지금 사실」이고 아래 둘은 「저장하면 그렇게 된다」다. */}
-                  <div className="pop-figures-rule" />
-
-                  <div>
-                    <dt>{t.cumulative.projected}</dt>
-                    <dd>
-                      {usableTool === null
-                        ? '—'
-                        : figureText(
-                            projectedTotal(figures),
-                            t.cumulative.offlineProjection,
-                            t.cumulative.guaranteedMissing,
-                          )}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>{t.cumulative.available}</dt>
-                    <dd className="pop-figure-usage">
-                      <span>
-                        {usableTool === null
-                          ? '—'
-                          : figureText(
-                              availableShots(figures),
-                              t.cumulative.offlineProjection,
-                              t.cumulative.guaranteedMissing,
-                            )}
-                      </span>
-                      {/*
-                       * ⛔ **적정타수가 없거나 연결이 끊기면 막대를 그리지 않는다**(스펙 §5-3 · §6-2).
-                       * 0% 로 그리면 「다 썼다」로, 캐시 값으로 그리면 실제보다 여유 있게 읽힌다.
-                       */}
-                      {usagePercentFigure.kind === 'value' && (
-                        <span className="pop-usage-label">{t.cumulative.usageBarLabel}</span>
-                      )}
-                      {usagePercentFigure.kind === 'value' && (
-                        <Progress
-                          label={t.cumulative.usageLabel}
-                          value={usagePercentFigure.value}
-                          showValue
-                          tone={isOver ? 'error' : 'primary'}
-                        />
-                      )}
-                    </dd>
-                  </div>
-                </dl>
-
-                {!isOnline && usableTool !== null && (
-                  <p className="field-note">{t.cumulative.offlineBase}</p>
-                )}
-              </Card.Body>
-            </Card>
-
-            {/* ④ 안내 — 누계를 서버가 더한다는 사실을 상시 밝힌다(스펙 §3-2). */}
-            {/*
-             * ⭐ 정보 아이콘 + 글, 옅은 파란 바탕의 둥근 상자다 — 다른 POP 안내 띠와 같은 모양
-             *    (사용자 지시 2026-09-15). 구획 카드 테두리는 두지 않는다.
-             */}
-            <div className="pop-notice-label" role="note" aria-label={t.notice.sectionLabel}>
-              <AlertBanner variant="info">
-                {t.notice.serverAdds.map((line) => (
-                  <span key={line} className="pop-notice-label__line">
-                    {line}
-                  </span>
-                ))}
-              </AlertBanner>
+                {t.actions.confirm}
+              </PuButton>
             </div>
-          </div>
-        </div>
-      </>
+          </PuField>
+          {write.fieldErrors.shotCount !== undefined && (
+            <PuNote tone="bad">{write.fieldErrors.shotCount}</PuNote>
+          )}
 
-      <div className="pop-actions">
-        <Button variant="outlined" size="2xl" disabled={!hasInput(draft)} onClick={resetDraft}>
-          {t.actions.reset}
-        </Button>
-        <Button size="2xl" loading={write.isSaving} disabled={!isSaveOpen} onClick={save}>
-          {t.actions.save}
-        </Button>
-      </div>
-    </main>
+          <div className="tu-switch">
+            <span className="pu-help">
+              {conversion.kind === 'loading' && t.shot.conversionLoading}
+              {conversion.kind === 'off' && t.shot.conversionOff}
+              {conversion.kind === 'unset' && t.shot.conversionUnavailable}
+            </span>
+            <label className="pu-check">
+              <input
+                type="checkbox"
+                role="switch"
+                checked={isConverted}
+                disabled={shotLocked || conversion.kind !== 'ready'}
+                onChange={(event) => {
+                  changeDraft({
+                    method: event.target.checked
+                      ? COLLECTION_METHOD.converted
+                      : COLLECTION_METHOD.direct,
+                    shotCount: '',
+                    baseQty: '',
+                  });
+                }}
+              />
+              {t.shot.convertedLabel}
+            </label>
+          </div>
+
+          {isConverted && conversion.kind === 'ready' && (
+            <>
+              <PuField label={t.shot.baseQtyLabel} required htmlFor={baseQtyId}>
+                <div className="pu-row">
+                  <PuInput
+                    id={baseQtyId}
+                    aria-label={t.shot.baseQtyLabel}
+                    numeric
+                    target={!shotLocked}
+                    need={write.fieldErrors.conversionBaseQty !== undefined}
+                    inputMode="decimal"
+                    placeholder="0"
+                    autoComplete="off"
+                    disabled={shotLocked}
+                    value={draft.baseQty}
+                    onChange={(event) => {
+                      changeDraft({ baseQty: decimalOnly(event.target.value) });
+                    }}
+                  />
+                  {uomCode !== '' && <PuUnit>{uomCode}</PuUnit>}
+                </div>
+              </PuField>
+              {write.fieldErrors.conversionBaseQty !== undefined && (
+                <PuNote tone="bad">{write.fieldErrors.conversionBaseQty}</PuNote>
+              )}
+              <p className="pu-help">
+                {t.shot.convertedExpression(
+                  draft.baseQty === '' ? '—' : draft.baseQty,
+                  String(conversion.ratio),
+                  increment === null ? '—' : formatShots(increment),
+                )}
+              </p>
+            </>
+          )}
+
+          {/* 누계 — 넣는 값에 따라 바뀌는 것만(이번 입력 · 저장 후 예상 누계 · 사용 가능 · 사용률). */}
+          {usableTool !== null && (
+            <>
+              <hr className="pu-sep" />
+              <h3 className="tu-sub">
+                {t.cumulative.sectionLabel}
+                {asOfText !== null && <span className="asof">{asOfText}</span>}
+              </h3>
+              <dl className="tu-fig">
+                <div>
+                  <dt>{t.cumulative.increment}</dt>
+                  <dd>{increment === null ? '—' : `+${formatShots(increment)} ${t.shot.unit}`}</dd>
+                </div>
+                <div className="is-after">
+                  <dt>{t.cumulative.projected}</dt>
+                  <dd>{figureText(projectedTotal(figures), t.cumulative.offlineProjection)}</dd>
+                </div>
+                <div className={isOver ? 'is-after is-over' : 'is-after'}>
+                  <dt>{t.cumulative.available}</dt>
+                  <dd>{figureText(availableShots(figures), t.cumulative.offlineProjection)}</dd>
+                </div>
+              </dl>
+              {/*
+               * ⛔ **적정타수가 없거나 연결이 끊기면 막대를 그리지 않는다**(스펙 §5-3 · §6-2).
+               * 0% 로 그리면 「다 썼다」로, 캐시 값으로 그리면 실제보다 여유 있게 읽힌다.
+               */}
+              {usagePercentFigure.kind === 'value' && (
+                <div className="tu-usage">
+                  {t.cumulative.usageBarLabel}
+                  <div
+                    className={isOver ? 'pu-progress is-over' : 'pu-progress'}
+                    role="progressbar"
+                    aria-label={t.cumulative.usageLabel}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.round(usagePercentFigure.value)}
+                  >
+                    <i style={{ width: `${String(usageWidth)}%` }} />
+                  </div>
+                  <b>{`${String(Math.round(usagePercentFigure.value))}%`}</b>
+                </div>
+              )}
+              {availableShots(figures).kind === 'guaranteedMissing' && (
+                <p className="pu-help">{t.cumulative.guaranteedMissing}</p>
+              )}
+              {!isOnline && <p className="pu-help">{t.cumulative.offlineBase}</p>}
+            </>
+          )}
+
+          <ErrorBannerSlot error={write.error} onRetry={save} />
+        </PuSection>
+
+        {/* 「수량」 키패드 구획 — 생산 작업 화면과 같은 모양(단위 · 입력 칸 · [전체 삭제]). */}
+        <PuSection title={t.pad.title} meta={t.pad.unit(padUnit === '' ? '—' : padUnit)}>
+          <PuKeypad
+            targetLabel={isConverted ? t.shot.baseQtyLabel : t.shot.inputLabel}
+            /* 환산 기준 수량만 소수를 받는다 — 타발수는 정수다(스펙 §4-A `bigint`). */
+            decimal={isConverted}
+            disabled={shotLocked}
+            onKey={(key) => {
+              const next = applyKeypadKey(padValue, key, { decimal: isConverted });
+              const cleaned = isConverted ? decimalOnly(next) : digitsOnly(next);
+              /* 타발수 상한 — 계약이 정수로 받고, 자릿수를 넘겨 치는 것은 오타다. 그 위를 무시한다. */
+              if (cleaned.length > SHOT_MAX_LENGTH) return;
+              changeDraft(isConverted ? { baseQty: cleaned } : { shotCount: cleaned });
+            }}
+            onClearAll={() => {
+              changeDraft(isConverted ? { baseQty: '' } : { shotCount: '' });
+            }}
+          />
+        </PuSection>
+      </PuCols>
+    </PuScreen>
   );
 };
 

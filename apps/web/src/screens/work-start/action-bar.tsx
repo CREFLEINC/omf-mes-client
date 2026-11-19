@@ -1,9 +1,7 @@
-import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
-import { ActionBar as SharedActionBar } from '../../patterns/action-bar';
-import { POP_TOUCH_SIZE } from './touch-spec';
+import { PuActionBar, PuButton } from '../../patterns/pop-uniform';
 
 const t = messages.workStart.actions;
 
@@ -14,45 +12,36 @@ export interface ActionBarProps {
    * 옮긴다. `checking`은 중단 W/O의 열린 세션을 아직 모르는 동안이다.
    */
   mode: 'start' | 'resume' | 'restart' | 'checking' | 'continue';
-  /** 「남은 일」 문장. 주 동작이 잠기면 이 문장이 사유다(C-4). */
-  remaining: string;
-  /** 막혀 있는가. 사유는 `remaining`이 말한다. */
+  /** 막혀 있는가. 꺼진 버튼은 흐리게만 보인다(POP 통일 규칙 3). */
   isBlocked: boolean;
   isSaving: boolean;
   onSubmit: () => void;
-  /** 바 왼쪽 보조 동작(테두리). 단말 권한 [다시 확인] 등. */
+  /** 주 동작을 설명하는 글(막힘 사유·지금 할 수 있는 일)의 id — 읽어 주기용. */
+  describedBy: string;
+  /** 왼쪽 보조 동작. 단말 권한 [다시 확인] 등. */
   leading?: ReactNode;
 }
 
 /**
- * 하단 동작 바(C-3, C-4, C-5). 공용 `patterns/action-bar`를 POP에서 쓴다. 왼쪽 「남은 일」 한 줄,
- * 오른쪽 주 동작 하나.
- *
- * 버튼 크기는 POP 터치 규격(`touch-spec`)을 그대로 쓴다. 고른 것을 무르는 길은 카드를 한 번 더
- * 누르는 것 하나다(§5-A). [다시 선택]을 따로 두지 않는다.
+ * 아래 작업 줄(POP 통일 규칙 2·3): 버튼만. 왼쪽에 안내 글을 띄우지 않고, 빨간 주 버튼 하나가 오른쪽.
+ * 고른 것을 무르는 길은 카드를 한 번 더 누르는 것 하나다(§5-A). [다시 선택]을 따로 두지 않는다.
  */
 export const ActionBar = ({
   mode,
-  remaining,
   isBlocked,
   isSaving,
   onSubmit,
+  describedBy,
   leading,
-}: ActionBarProps) => {
-  const remainingId = useId();
-
-  return (
-    <SharedActionBar remaining={remaining} remainingId={remainingId} leading={leading}>
-      <Button
-        type="button"
-        variant="filled"
-        size={POP_TOUCH_SIZE}
-        disabled={isBlocked || isSaving}
-        aria-describedby={remainingId}
-        onClick={onSubmit}
-      >
-        {isSaving ? t.starting : mode === 'continue' ? t.continueToSession : t[mode]}
-      </Button>
-    </SharedActionBar>
-  );
-};
+}: ActionBarProps) => (
+  <PuActionBar lead={leading}>
+    <PuButton
+      variant="primary"
+      disabled={isBlocked || isSaving}
+      aria-describedby={describedBy}
+      onClick={onSubmit}
+    >
+      {isSaving ? t.starting : mode === 'continue' ? t.continueToSession : t[mode]}
+    </PuButton>
+  </PuActionBar>
+);

@@ -1,6 +1,6 @@
-import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { PuButton, PuEmpty } from '../../patterns/pop-uniform';
 import { WorkerNoDialog } from '../../patterns/worker-no-dialog';
 
 const t = messages.workStart.worker;
@@ -41,19 +41,18 @@ export const WorkerPanel = ({
 }: WorkerPanelProps) => {
   return (
     /* 오른쪽 「작업 확인」 구획 안의 묶음이다. 제목은 사번 확인 뒤와 같은 「작업자」다. */
-    <div className="work-start-group work-start-worker" role="group" aria-label={t.title}>
-      <h3 className="work-start-group-title">{t.title}</h3>
-      <p className="field-note">{t.empty}</p>
-      <Button
-        type="button"
-        variant="outlined"
-        size="lg"
-        onClick={() => {
-          onOpenChange(true);
-        }}
-      >
-        {t.open}
-      </Button>
+    <div className="ws-group" role="group" aria-label={t.title}>
+      <h3 className="ws-group-title">{t.title}</h3>
+      <PuEmpty icon="keyboard" title={t.empty} hint={t.emptyHint} />
+      <div>
+        <PuButton
+          onClick={() => {
+            onOpenChange(true);
+          }}
+        >
+          {t.open}
+        </PuButton>
+      </div>
 
       <WorkerNoDialog
         open={isOpen}
@@ -65,9 +64,9 @@ export const WorkerPanel = ({
         errorAction={
           /* 조회가 실패한 자리에만 준다. 미등록과 퇴사는 다시 물어도 답이 같다. */
           error === t.lookupFailed ? (
-            <Button type="button" variant="outlined" size="sm" onClick={onRetry}>
+            <PuButton size="sm" onClick={onRetry}>
               {t.retry}
-            </Button>
+            </PuButton>
           ) : undefined
         }
         onCancel={() => {

@@ -10,11 +10,7 @@
 import { common } from './common';
 
 export const downtimeRegister = {
-  title: '비가동 실적 입력',
   header: {
-    /* ⭐ 「설비 <이름>」으로 읽힌다 — 이름이 비면 코드(사용자 지시 2026-09-14). */
-    equipment: (equipmentCode: string, equipmentName: string): string =>
-      `설비 ${equipmentName.trim() === '' ? equipmentCode : equipmentName}`,
     /** 미전송 건수는 즉시 성공 표시의 전제라 상시 보인다(공유계약 C-1 #4). */
     unsent: (count: number): string => `미전송 ${String(count)}건`,
     /*
@@ -28,9 +24,10 @@ export const downtimeRegister = {
   },
   ongoing: {
     title: '진행 중 비가동',
+    loading: '진행 중 비가동을 확인하는 중입니다.',
     /** 경과 시간은 저장값이 아니라 화면이 매 순간 다시 그리는 값이다(스펙 §5-3). */
     elapsed: (startedAtLabel: string, elapsedLabel: string): string =>
-      `${startedAtLabel} 부터 ${elapsedLabel} 진행 중`,
+      `${startedAtLabel}부터 ${elapsedLabel} 진행 중`,
     reason: (reasonName: string): string => `사유: ${reasonName}`,
     close: '지금 종료',
     closed: '비가동을 종료했습니다',
@@ -46,9 +43,12 @@ export const downtimeRegister = {
     blocksNew: '진행 중 비가동을 먼저 종료하세요.',
   },
   interval: {
-    title: '구간',
+    /** 읽어 주는 이름(「시작 날짜」·「시작 시각」)의 앞말. */
     startedAt: '시작',
     endedAt: '종료',
+    /** 칸 위 이름(#295 시안). */
+    startedAtLabel: '시작일시',
+    endedAtLabel: '종료일시',
     date: '날짜',
     time: '시각',
     /** 단말 시각을 그대로 넣는 기본 경로다(스펙 §5-2). */
@@ -62,27 +62,29 @@ export const downtimeRegister = {
      *    (사용자 지적 2026-09-07). 값 없음은 이 저장소의 공용 표기 「—」로 적는다.
      * ⛔ 「0분」으로 채우지 않는다 — 없는 값과 0을 같은 모양으로 만들지 않는다(G-9).
      */
-    /** 사용자 지시 2026-09-17 — 「길이」를 「시작~종료 시간」으로. */
-    duration: (value: string): string => `시작~종료 시간 ${value}`,
+    /** 시작 구획 제목 줄의 「비가동 시간 n분」(#295 시안 — 「구간」 제목 자리). */
+    duration: '비가동 시간',
     durationEmpty: common.reference.empty,
   },
   reason: {
     title: '사유',
     /* ⛔ 대분류를 두지 않는다 — 사유는 평면 1단이다(스펙 §7 확정 2026-09-03). */
     detail: '비가동 사유',
-    detailPlaceholder: '사유 선택',
+    detailPlaceholder: '비가동 사유를 선택하세요',
     remarks: '메모',
-    remarksPlaceholder: '사유 코드 외의 필요 내용을 입력하세요',
+    remarksPlaceholder: '필요한 내용을 입력하세요',
+    optional: '(선택)',
   },
   breakdown: {
     title: '연결된 고장',
     /** 고장 연결은 선택이다 — 비가동의 다수는 고장이 아니다(스펙 §5-4). */
-    select: '고장 연결',
+    select: '고장을 선택하세요',
     detach: '해제',
-    empty: '이 설비에 열린 고장이 없습니다',
+    empty: '처리 중인 고장 내역이 없습니다.',
     /** 고장의 정지 시각을 시작 시각으로 «제안»만 한다. 자동으로 넣지 않는다(스펙 §5-4). */
-    suggestStart: (timeLabel: string): string => `이 고장의 정지 시각 ${timeLabel} 을 넣을까요?`,
-    applySuggestion: '시작 시각에 넣기',
+    suggestStart: (timeLabel: string): string =>
+      `연결된 고장의 시각(${timeLabel})을 시작 시각에 입력하겠습니까?`,
+    applySuggestion: '시작 시각에 입력',
     offlineNotice: '연결이 끊긴 동안 다른 단말이 접수한 고장은 보이지 않습니다.',
   },
   today: {
@@ -130,9 +132,8 @@ export const downtimeRegister = {
     retry: '다시 시도',
     /* ④ 목록의 열 이름 — 스펙 §7 이 이 자리를 `Table` 로 지정했다. */
     columns: {
-      interval: '구간',
-      /** 사용자 지시 2026-09-17. */
-      duration: '시작~종료 시간',
+      interval: '비가동 실적',
+      duration: '비가동 시간',
       reason: '사유',
       remarks: '메모',
     },
@@ -149,7 +150,7 @@ export const downtimeRegister = {
     ongoingRow: '진행 중',
   },
   actions: {
-    reset: '다시 입력',
+    reset: '입력 초기화',
     save: '실적 저장',
     saved: '비가동 실적을 저장했습니다',
     /** 큐에 담긴 순간이 성공이다(공유계약 C-1 #2) — 다만 아직 서버에 닿지 않았음을 밝힌다. */

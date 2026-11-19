@@ -59,8 +59,34 @@
   vertical-align: -0.15em;
 }
 
+/* 시안과 같이 테두리·여백을 너비 안에 넣는다 — 없으면 `width:100%` 칸이 여백만큼 오른쪽 밖으로 나간다. */
+.pu-screen,
+.pu-screen *,
+.pu-overlay,
+.pu-overlay *,
+.pu-toast {
+  box-sizing: border-box;
+}
+
 /* ── 본문 틀: [작업 단계 줄] + 본문 + 아래 작업 줄 ── */
+/* 통일 본문을 담은 옛 그릇(`.pop-ui`)은 바닥 여백·이음매를 주지 않는다 — 본문 틀이 여백을 직접 갖는다. */
+.pop-ui:has(> .pu-screen) {
+  padding: 0;
+  gap: 0;
+}
+
 .pu-screen {
+  /* `.pop-ui` 를 루트로 쓰지 않는 화면도 같은 밀도 겹(POP 치수)을 받는다. */
+  --control-height-lg: var(--control-height-md);
+  --control-height-xl: var(--control-height-md);
+  --control-height-2xl: var(--control-height-md);
+  --pop-header-h: calc(var(--control-height-md) + var(--space-4));
+  --pop-pad: var(--space-5);
+  --pop-text: 16px;
+  --pop-label: 14px;
+  --pop-value: 16px;
+  --pop-value-lg: 16px;
+
   flex: 1;
   min-height: 0;
   display: flex;
@@ -402,6 +428,15 @@ textarea.pu-input {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 긴 값은 ⌄ 앞에서 말줄임한다(값 글자가 화살표와 겹치지 않게). */
+.pu-pickf > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .pu-pickf .ph {
@@ -784,6 +819,7 @@ textarea.pu-input {
 }
 
 .pu-item {
+  box-sizing: border-box;
   border: 1px solid var(--pu-line-2);
   border-radius: var(--radius-md, 12px);
   background: var(--pu-field);
@@ -1067,7 +1103,8 @@ textarea.pu-input {
   padding: 28px 16px;
   text-align: center;
   color: var(--pu-text-3);
-  min-height: 140px;
+  /* 작은 구획에서는 구획 높이를 넘지 않는다. */
+  min-height: min(140px, 100%);
 }
 
 .pu-empty > .pu-ic {
@@ -1161,7 +1198,7 @@ textarea.pu-input {
   min-width: 0;
 }
 
-.pu-flow > .st {
+.pu-flow .st {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1174,7 +1211,7 @@ textarea.pu-input {
   border-radius: 8px;
 }
 
-.pu-flow > .st i {
+.pu-flow .st i {
   font-style: normal;
   width: 24px;
   height: 24px;
@@ -1188,38 +1225,38 @@ textarea.pu-input {
   font-weight: 700;
 }
 
-.pu-flow > .st.is-done {
+.pu-flow .st.is-done {
   color: var(--pu-text-2);
 }
 
-.pu-flow > .st.is-done i {
+.pu-flow .st.is-done i {
   background: var(--pu-ok-bg);
   color: var(--pu-ok);
 }
 
-.pu-flow > .st.is-now {
+.pu-flow .st.is-now {
   color: var(--pu-primary);
   font-weight: 700;
 }
 
-.pu-flow > .st.is-now i {
+.pu-flow .st.is-now i {
   background: var(--pu-primary);
   color: #fff;
 }
 
-.pu-flow > button.st {
+.pu-flow button.st {
   cursor: pointer;
 }
 
-.pu-flow > button.st:hover:not(:disabled) {
+.pu-flow button.st:hover:not(:disabled) {
   background: var(--pu-hover);
 }
 
-.pu-flow > button.st:disabled {
+.pu-flow button.st:disabled {
   cursor: default;
 }
 
-.pu-flow > .sep {
+.pu-flow .sep {
   color: var(--pu-line);
 }
 
@@ -1540,4 +1577,40 @@ textarea.pu-input {
 
 .pu-cols.k3:has(> .is-folded:first-child) {
   grid-template-columns: 56px minmax(0, 1fr) 340px;
+}
+
+/* 좁은 화면(1024 등)에서는 스캔 칸의 「스캔 대기」 표시를 접어 안내 글자 자리를 남긴다. */
+@media (max-width: 1100px) {
+  .pu-scan .ready {
+    display: none;
+  }
+
+  /* 1024 폭: 목록 열 320, 키패드 열 280 으로 줄여 가운데 구획 자리를 남긴다. */
+  .pu-cols.list {
+    grid-template-columns: minmax(320px, 320px) minmax(0, 1fr);
+  }
+
+  .pu-cols.k2 {
+    grid-template-columns: minmax(0, 1fr) 280px;
+  }
+
+  .pu-cols.k3 {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 280px;
+  }
+
+  .pu-cols.lk {
+    grid-template-columns: 320px minmax(0, 1fr) 280px;
+  }
+
+  .pu-cols.lk:has(> .is-folded:first-child),
+  .pu-cols.k3:has(> .is-folded:first-child) {
+    grid-template-columns: 56px minmax(0, 1fr) 280px;
+  }
+}
+
+/* 높이가 낮은 화면(1024×768 등)에서는 키패드 키를 48로 줄여 「수량」 구획이 넘치지 않게 한다. */
+@media (max-height: 780px) {
+  :root {
+    --pu-key: 48px;
+  }
 }

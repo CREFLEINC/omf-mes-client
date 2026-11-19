@@ -1,14 +1,24 @@
 import { messages } from '@omf-mes/i18n';
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 
+import {
+  PuActionBar,
+  PuButton,
+  PuCols,
+  PuScreen,
+  PuSection,
+  useFitCount,
+} from '../../patterns/pop-uniform';
+import { MATERIAL_INPUT_PATH, PRODUCTION_RESULT_PATH, toWorkOrderHref } from './destinations';
 import { DetailPane } from './detail-pane';
-import { PopHeader } from './pop-header';
 import { useEmergencyWorkOrders } from './queries';
-import { reachedServer } from './reached-server';
 import type { WorkOrder } from './types';
 import { useUomLookup } from './uom-lookup';
 import { WorkOrderList } from './work-order-list';
 import { EMERGENCY_WORK_ORDER_TYPE_CODE, isEmergencyTypeCodeKnown } from './work-order-type';
+
+import './uniform.css';
 
 export interface EmergencyWorkOrderFieldScreenProps {
   /**
@@ -34,8 +44,13 @@ export const EmergencyWorkOrderFieldScreen = ({
 }: EmergencyWorkOrderFieldScreenProps) => {
   const t = messages.emergencyWorkOrderField;
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  /* 셸이 없는 화면이라 표제가 본문의 이름이 된다 — 이름 없는 랜드마크로 남기지 않는다. */
+  const [listFolded, setListFolded] = useState(false);
+  const navigate = useNavigate();
+  /* 표제는 셸 탭이 보인다 — 본문의 이름으로만 남긴다(이름 없는 랜드마크로 두지 않는다). */
   const titleId = useId();
+  /* 한 쪽 건수 = 목록 구획 높이에 들어가는 줄 수(POP 통일 시안). 조건·정렬은 그대로다. */
+  const listRef = useRef<HTMLDivElement>(null);
+  const fitSize = useFitCount(listRef, { fallback: 4 });
 
   /*
    * ⛔ **「묻지 않았다」를 「없다」로 흘려보내지 않는다.** 조회를 여는 조건을 화면이 알아야
@@ -44,7 +59,11 @@ export const EmergencyWorkOrderFieldScreen = ({
    */
   const isAsked = isEmergencyTypeCodeKnown(typeCode);
   const [listPage, setListPage] = useState(1);
-  const list = useEmergencyWorkOrders(typeCode, listPage);
+  const list = useEmergencyWorkOrders(typeCode, listPage, fitSize);
+  /* 한 쪽 건수가 바뀌면 쪽 경계가 달라진다 — 첫 쪽부터 다시 본다. */
+  useEffect(() => {
+    setListPage(1);
+  }, [fitSize]);
   const uoms = useUomLookup(t.detail.unknown);
 
   const workOrders = list.data?.items;
@@ -55,52 +74,78 @@ export const EmergencyWorkOrderFieldScreen = ({
   const selected =
     (workOrders ?? []).find((workOrder) => workOrder.workOrderId === selectedId) ?? null;
 
-  return (
-    <main className="pop-shell pop-ui" aria-labelledby={titleId}>
-      <PopHeader
-        titleId={titleId}
-        /*
-         * ⭐ 연결 여부는 «마지막 조회가 서버에 닿았는가»로 말한다 — 브라우저의 온라인
-         *    표시는 산업용 패널 PC 에서 사실과 다르다(같은 기기의 서버에는 랜선 없이도 닿는다).
-         *    아직 답을 못 받았으면 `undefined` 로 두어 «모른다»를 말하지 않는다.
-         *
-         * ⛔ **실패했다는 사실만으로 「오프라인」이라 말하지 않는다**(#883) — 판정은
-         *    `reached-server.ts` 가 갖는다. 서버가 401 로 답한 것을 여기서 「오프라인」으로
-         *    부르면 작업자가 네트워크를 확인하러 간다.
-         */
-        isConnected={reachedServer(list)}
-      />
+  const pageMeta = list.data?.page;
+  const pages =
+    pageMeta === undefined
+      ? 1
+      : Math.max(1, Math.ceil(pageMeta.total / Math.max(1, pageMeta.size)));
+  const listFold = { label: t.list.title, folded: listFolded, onChange: setListFolded };
 
-      {/*
-       * ⭐ 스펙이 **좌 목록 / 우 상세** 2단으로 못박은 배치다. 세로로 쌓으면 1024×768 단말에서
-       *    상세와 이탈 버튼이 접혀 내려가, 고른 뒤 «스크롤해서» 버튼을 찾게 된다.
-       *
-       * ⛔ 관리웹의 `.two-pane` 을 쓰지 않는다 — 접힘 기준점이 1280px 이라 **1024 단말에서는
-       *    언제나 접힌다.** POP 화면들이 함께 쓰는 `.pop-panes`(기준점 900px)를 그대로 쓴다.
-       */}
-      <div className="pop-panes">
-        <WorkOrderList
-          workOrders={workOrders}
-          isAsked={isAsked}
-          isLoading={isAsked && list.isPending}
-          total={list.data?.page.total}
-          pageMeta={list.data?.page}
-          onPageChange={(page) => {
-            /* 쪽을 넘기면 고른 것을 놓는다 — 다른 쪽의 지시가 상세에 남으면 화면이 어긋난다. */
-            setSelectedId(null);
-            setListPage(page);
-          }}
-          isError={list.isError}
-          selectedId={selected?.workOrderId ?? null}
-          uomLabel={(uomId) => uoms.labelOf(uomId)}
-          /* 고른 줄을 다시 누르면 해제한다(`null`) — 정본 목록이 그렇게 동작한다. */
-          onSelect={(workOrder: WorkOrder | null) => {
-            setSelectedId(workOrder?.workOrderId ?? null);
-          }}
-        />
+  return (
+    <PuScreen
+      className="ew-screen"
+      labelledBy={titleId}
+      actionBar={
+        <PuActionBar label={t.title}>
+          {/* 고른 작업지시를 들고 정상 경로 화면으로 간다 — 긴급이라고 화면을 따로 두지 않는다. */}
+          <PuButton
+            disabled={selected === null}
+            onClick={() => {
+              if (selected !== null) {
+                void navigate(toWorkOrderHref(MATERIAL_INPUT_PATH, selected.workOrderId));
+              }
+            }}
+          >
+            {t.handoff.materialInput}
+          </PuButton>
+          <PuButton
+            variant="primary"
+            className="ew-primary"
+            disabled={selected === null}
+            onClick={() => {
+              if (selected !== null) {
+                void navigate(toWorkOrderHref(PRODUCTION_RESULT_PATH, selected.workOrderId));
+              }
+            }}
+          >
+            {t.handoff.productionResult}
+          </PuButton>
+        </PuActionBar>
+      }
+    >
+      <h1 id={titleId} className="visually-hidden">
+        {t.title}
+      </h1>
+      <PuCols variant="list">
+        {listFolded ? (
+          <PuSection fold={listFold} />
+        ) : (
+          <WorkOrderList
+            workOrders={workOrders}
+            isAsked={isAsked}
+            isLoading={isAsked && list.isPending}
+            total={pageMeta?.total}
+            page={pageMeta?.page ?? listPage}
+            pages={pages}
+            onPageChange={(page) => {
+              /* 쪽을 넘기면 고른 것을 놓는다 — 다른 쪽의 지시가 상세에 남으면 화면이 어긋난다. */
+              setSelectedId(null);
+              setListPage(page);
+            }}
+            isError={list.isError}
+            selectedId={selected?.workOrderId ?? null}
+            uomLabel={(uomId) => uoms.labelOf(uomId)}
+            /* 고른 줄을 다시 누르면 해제한다(`null`) — 정본 목록이 그렇게 동작한다. */
+            onSelect={(workOrder: WorkOrder | null) => {
+              setSelectedId(workOrder?.workOrderId ?? null);
+            }}
+            listRef={listRef}
+            fold={listFold}
+          />
+        )}
 
         <DetailPane workOrder={selected} uomLabel={(uomId) => uoms.labelOf(uomId)} />
-      </div>
-    </main>
+      </PuCols>
+    </PuScreen>
   );
 };

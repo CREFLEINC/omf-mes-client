@@ -410,13 +410,17 @@ describe('재발행', () => {
     const { user, sent } = renderFlow({ issued: { [CLOSED_UNIT_ID]: 1 } });
 
     await user.click(await screen.findByRole('radio', { name: /납품라벨/u }));
+    // 한 번 이상 발행한 대상은 「재발행」 탭에 선다.
+    await user.click(
+      await screen.findByRole('tab', { name: messages.shippingPackingLabel.tabs.reissue }),
+    );
     await screen.findByText('SYN-SU-0001');
     await user.click(screen.getAllByRole('checkbox')[1] as HTMLElement);
 
     expect(await screen.findByText('재발행 사유를 고르면 발행할 수 있습니다.')).toBeInTheDocument();
 
     await user.click(
-      screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }),
+      screen.getByRole('button', { name: messages.shippingPackingLabel.actions.reissue }),
     );
 
     /* ⛔ 사유 없이 나가면 DB 제약이 저장을 막는다 — 화면이 먼저 멈춰야 한다. */

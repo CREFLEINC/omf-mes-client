@@ -24,8 +24,6 @@ describe('자재 투입 문구와 화면 용어집', () => {
   it('정한 용어를 쓴다', () => {
     expect(t.pairs.progressLabel).toBe('투입량');
     expect(t.pairs.progress('30', '100', 'KG')).toBe('30 / 100 KG');
-    expect(t.pairs.remaining('70 KG')).toBe('잔량 70 KG');
-    expect(t.pairs.over('5 KG')).toBe('불출량보다 5 KG 더 투입했습니다.');
     expect(t.scanned.overMark('5 KG')).toBe('과투입 5 KG');
     expect(t.scanned.pendingMark).toBe('투입 중');
     expect(t.scanned.completeMark).toBe('투입 완료');

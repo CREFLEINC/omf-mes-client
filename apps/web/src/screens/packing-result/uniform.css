@@ -1,0 +1,218 @@
+/* P-04-01 출하 포장 — POP 통일 시안(#295) 화면 전용 모양. 선택자는 `.packing-uniform` 아래만. */
+
+.packing-uniform .pk-auto:not(:has(.pu-note)) {
+  display: none;
+}
+
+.packing-uniform .pk-auto-notes {
+  display: grid;
+  gap: 8px;
+  padding: 12px 16px 0;
+}
+
+.packing-uniform .pk-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.packing-uniform .pk-body > * {
+  flex: none;
+}
+
+.packing-uniform .pk-body > .pk-fill {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.packing-uniform .pk-body > .pk-fill > .pu-empty {
+  height: 100%;
+}
+
+.packing-uniform .pu-card-head .pu-flow {
+  min-width: 0;
+}
+
+/* ② 포장 유형: 글자 길이에 맞춘 단추(출하 단위 구성의 유형 단추와 같은 모양) */
+.packing-uniform .pk-type .pu-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.packing-uniform .pk-type .pu-tile {
+  flex: none;
+  width: auto;
+  padding: 8px 22px 8px 14px;
+}
+
+/* ② 스캔한 LOT 줄(수량 입력) */
+.packing-uniform .pk-rows {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  align-content: start;
+}
+
+.packing-uniform .pk-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px auto;
+  grid-template-areas:
+    'nm q rm'
+    'lot q rm'
+    'msg msg msg';
+  align-items: center;
+  gap: 2px 12px;
+  padding: 8px 14px;
+  cursor: default;
+}
+
+.packing-uniform .pk-row .nm,
+.packing-uniform .pk-line .nm {
+  grid-area: nm;
+  min-width: 0;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.packing-uniform .pk-row .lot,
+.packing-uniform .pk-line .lot {
+  grid-area: lot;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--pu-text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.packing-uniform .pk-row .pk-q {
+  grid-area: q;
+  width: auto;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 0 4px;
+}
+
+.packing-uniform .pk-row .pk-q small {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--pu-text-3);
+  margin-left: 4px;
+}
+
+.packing-uniform .pk-row .pk-q.nil {
+  color: var(--pu-text-3);
+  font-weight: 500;
+}
+
+.packing-uniform .pk-row .pu-btn.x {
+  grid-area: rm;
+}
+
+.packing-uniform .pk-row .msg {
+  grid-area: msg;
+  font-size: 13px;
+  color: var(--pu-bad);
+}
+
+/* ② 목록 아래 왼쪽: 포장 합계 · 포장 가능 */
+.packing-uniform .pk-sum {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--pu-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.packing-uniform .pk-sum span {
+  margin-left: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--pu-text-3);
+}
+
+/* ③ 읽기 전용 줄 */
+.packing-uniform .pk-lines {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  align-content: start;
+}
+
+.packing-uniform .pk-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto;
+  grid-template-areas: 'nm lot q';
+  align-items: center;
+  gap: 2px 10px;
+  padding: 8px 14px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-field);
+}
+
+.packing-uniform .pk-line .lot {
+  font-size: 14px;
+}
+
+.packing-uniform .pk-line .q {
+  grid-area: q;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.packing-uniform .pk-line .q.nil {
+  color: var(--pu-text-3);
+  font-weight: 500;
+}
+
+.packing-uniform .pk-total {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+
+.packing-uniform .pk-total b {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.packing-uniform .pk-total span {
+  font-size: 13px;
+  color: var(--pu-text-3);
+}
+
+/* 정보 띠는 한 줄로 — 좁은 화면(1024)에서 두 줄이 되면 LOT 줄이 들어갈 자리가 없다. 긴 값은 말줄임. */
+.packing-uniform .pk-body > .pu-band {
+  flex-wrap: nowrap;
+  gap: 8px 20px;
+  overflow: hidden;
+}
+
+.packing-uniform .pk-body > .pu-band .kv {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 수량 구획: 위 「담을 수량」 칸, 아래 키패드 + [담기] */
+.packing-uniform .pk-qty-pad {
+  display: grid;
+  gap: 10px;
+}
+
+.packing-uniform .pk-add {
+  width: 100%;
+}

@@ -1,0 +1,64 @@
+/* P-04-03 재작업 실적 등록 — 본문 통일 시안 전용 모양(#295). 공통 모양은 `app/pop-uniform.css`. */
+
+/* 왼쪽 목록: 작업지시 목록 화면의 「작업지시」 항목과 같은 짜임 */
+.rwu-list {
+  gap: 6px;
+}
+
+.rwu-item .pu-item-top {
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
+
+.rwu-item .pu-item-top .no {
+  white-space: nowrap;
+}
+
+.rwu-sub {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr);
+  gap: 2px 10px;
+}
+
+.rwu-sub > b,
+.rwu-sub > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rwu-sub > .w {
+  grid-column: 2 / -1;
+}
+
+.rwu-prog {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rwu-prog > b {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rwu-prog > .pu-progress {
+  flex: 1;
+  display: block;
+}
+
+.rwu-prog > .pu-progress > i.is-over {
+  background: var(--pu-bad);
+}
+
+/* 가운데 정보 띠: 이름 앞 빨간 아이콘 */
+.rwu-root .pu-band .kv > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rwu-root .pu-band .kv > span > .pu-ic {
+  color: var(--pu-primary);
+}

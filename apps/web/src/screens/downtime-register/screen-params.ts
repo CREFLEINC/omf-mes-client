@@ -14,9 +14,6 @@
 /** 주소가 설비를 담는 키. */
 export const EQUIPMENT_PARAM = 'equipmentId';
 
-/** 주소가 설비 코드를 담는 키 — 표시용이다. 없으면 번호를 보인다. */
-export const EQUIPMENT_CODE_PARAM = 'equipmentCode';
-
 /**
  * 주소에서 설비 번호를 읽는다. 읽을 수 없으면 `null`이다.
  *
@@ -31,11 +28,4 @@ export const readEquipmentId = (params: URLSearchParams): number | null => {
   const value = Number(raw);
 
   return Number.isSafeInteger(value) && value > 0 ? value : null;
-};
-
-/** 표시용 설비 코드. 비어 있으면 `null`이다 — 빈 글자를 이름 자리에 넣지 않는다. */
-export const readEquipmentCode = (params: URLSearchParams): string | null => {
-  const raw = params.get(EQUIPMENT_CODE_PARAM);
-
-  return raw === null || raw.trim() === '' ? null : raw.trim();
 };

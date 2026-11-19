@@ -1,0 +1,183 @@
+/* P-04-05 출하 단위 구성 — #295 시안 화면 전용 모양(`su-*`). 공통 모양은 `app/pop-uniform.css`. */
+
+.su-screen .su-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.su-screen .su-cols {
+  flex: 1;
+  min-height: 0;
+}
+
+/* 왼쪽: 탭 목록(남는 높이) + 쪽 넘김 */
+.su-screen .su-left-body,
+.su-screen .su-center-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.su-screen .su-left-list {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.su-screen .su-left-body > .pu-pager {
+  margin-top: auto;
+}
+
+/* 띠 이름 앞 빨간 아이콘 */
+.su-screen .pu-band .kv > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.su-screen .pu-band .kv > span > .pu-ic {
+  color: var(--pu-primary);
+}
+
+.su-screen .pu-band .kv > b {
+  font-family: var(--pu-mono);
+}
+
+.su-screen .pu-band .kv > b .pu-chip {
+  font-family: inherit;
+  vertical-align: 1px;
+}
+
+/* 유형 단추: 글자 길이에 맞춘 너비 */
+.su-screen .su-types .pu-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.su-screen .su-types .pu-tile {
+  flex: none;
+  width: auto;
+  padding: 8px 22px 8px 14px;
+}
+
+/* 상자 줄 */
+.su-screen .su-rows {
+  flex: 1 1 0;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.su-screen .su-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'mk nm q'
+    'mk sub q';
+  align-items: center;
+  gap: 2px 12px;
+  padding: 8px 14px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-card);
+}
+
+.su-screen .su-row.edit {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'nm q rm'
+    'sub q rm';
+}
+
+.su-screen .su-row.is-on {
+  border-color: var(--pu-info);
+}
+
+.su-screen .su-row .mk {
+  grid-area: mk;
+  color: var(--pu-ok);
+  display: inline-flex;
+}
+
+.su-screen .su-row .nm {
+  grid-area: nm;
+  min-width: 0;
+  font-family: var(--pu-mono);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.su-screen .su-row .sub {
+  grid-area: sub;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--pu-text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.su-screen .su-row .q {
+  grid-area: q;
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.su-screen .su-row .q small {
+  margin-left: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--pu-text-3);
+}
+
+.su-screen .su-row > .pu-btn.x {
+  grid-area: rm;
+}
+
+/* 줄 아래: 왼쪽 합계 · 오른쪽 쪽 넘김 */
+.su-screen .su-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 36px;
+}
+
+.su-screen .su-foot .sum {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.su-screen .su-foot .sum .tot > span {
+  margin-left: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--pu-text-3);
+}
+
+.su-screen .su-foot > .pu-pager {
+  margin-left: auto;
+}
+
+/* 납품 라벨 미리보기: 인쇄될 그림을 구획 폭에 맞춘다 */
+.su-screen .su-preview-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px dashed var(--pu-line);
+  border-radius: var(--radius-md, 12px);
+  background: #fff;
+}

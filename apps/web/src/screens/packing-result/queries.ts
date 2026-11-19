@@ -369,19 +369,35 @@ export const useShipmentAllocations = (
  *
  * ⚠ **모르면 «받지 않는» 쪽으로 둔다** — 못 받은 상태에서 소수를 열어 두면 쓰기가 거부된다.
  */
-export const useUomDecimals = (): ((uomId: number | undefined) => boolean) => {
+const useUoms = () => {
   const { client } = useApiClient();
 
-  const query = useQuery({
+  return useQuery({
     queryKey: packingResultKeys.uoms,
-    queryFn: async (): Promise<Map<number, number>> => {
+    queryFn: async (): Promise<Map<number, { decimalScale: number; uomCode: string }>> => {
       const data = await runRequest(() =>
         client.GET('/mdm/uoms', { params: { query: { size: OPTION_SIZE } } }),
       );
 
-      return new Map(data.items.map((uom) => [uom.uomId, uom.decimalScale]));
+      return new Map(
+        data.items.map((uom) => [
+          uom.uomId,
+          { decimalScale: uom.decimalScale, uomCode: uom.uomCode },
+        ]),
+      );
     },
   });
+};
 
-  return (uomId) => (uomId === undefined ? false : (query.data?.get(uomId) ?? 0) > 0);
+export const useUomDecimals = (): ((uomId: number | undefined) => boolean) => {
+  const query = useUoms();
+
+  return (uomId) => (uomId === undefined ? false : (query.data?.get(uomId)?.decimalScale ?? 0) > 0);
+};
+
+/** 단위 코드(EA 등) — 수량 옆에 붙인다. 같은 단위 조회를 그대로 쓴다(#295). 모르면 빈 글자. */
+export const useUomCodes = (): ((uomId: number | undefined) => string) => {
+  const query = useUoms();
+
+  return (uomId) => (uomId === undefined ? '' : (query.data?.get(uomId)?.uomCode ?? ''));
 };

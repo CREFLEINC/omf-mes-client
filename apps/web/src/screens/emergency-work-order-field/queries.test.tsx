@@ -42,9 +42,21 @@ describe('긴급 W/O 조회 조건', () => {
     expect(screen.queryByText(t.list.empty)).not.toBeInTheDocument();
   });
 
+  /* 잘림 문장 대신 목록 아래 쪽 넘김 줄 「총 N건」이 전체 건수를 말한다(POP 통일 시안). */
   it('목록이 잘리면 전체 건수를 알린다', async () => {
     renderScreen({ total: 31 });
 
-    expect(await screen.findByText(t.list.truncated(1, 31))).toBeInTheDocument();
+    expect(await screen.findByText(messages.popUniform.pager.total(31))).toBeInTheDocument();
+  });
+
+  it('한 쪽 건수는 화면이 정한 크기로 묻는다 — 조건은 그대로다', async () => {
+    const { urls } = renderScreen();
+
+    await waitFor(() => {
+      expect(listUrls(urls)).not.toHaveLength(0);
+    });
+    const query = new URL(listUrls(urls)[0] ?? '', 'http://x').searchParams;
+    expect(query.get('open')).toBe('true');
+    expect(Number(query.get('size'))).toBeGreaterThan(0);
   });
 });

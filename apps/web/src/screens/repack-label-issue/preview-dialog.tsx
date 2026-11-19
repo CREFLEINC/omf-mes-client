@@ -1,19 +1,20 @@
-import { Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState, type ReactNode } from 'react';
+
+import { PuButton, PuDialog, PuNote } from '../../patterns/pop-uniform';
 
 const t = messages.repackLabelIssue.preview;
 
 export interface PreviewDialogProps {
   open: boolean;
   /**
-   * `preview` 는 발행된 라벨을 보여 주는 창, `reason` 은 그림 없이 재발행 사유만 고르는 창이다
+   * `preview` 는 발행된 라벨을 보여 주는 창, `reason` 은 그림 없이 재인쇄 사유만 고르는 창이다
    * ([발번·인쇄]에서 사유가 필요할 때 · 사용자 지시 2026-09-17).
    */
   mode: 'preview' | 'reason';
-  /** 재발행 사유 칸. 두 창 모두 사유를 고른 뒤 [인쇄]가 열린다(사용자 지시 2026-09-17). */
+  /** 재인쇄 사유 칸. 두 창 모두 사유를 고른 뒤 [재인쇄]가 열린다(사용자 지시 2026-09-17). */
   reasonField: ReactNode;
-  /** 사유를 골랐는가 — 안 골랐으면 [인쇄]를 잠근다. */
+  /** 사유를 골랐는가 — 안 골랐으면 [재인쇄]를 잠근다. */
   canPrint: boolean;
   /** 서버가 그린 라벨. 아직 못 받았으면 `null` */
   imageUrl: string | null;
@@ -23,15 +24,13 @@ export interface PreviewDialogProps {
 }
 
 /**
- * 미리보기 — **서버가 그린 것을 그대로 보인다**(결정 18 · K-5 · DS 매핑 G-4).
+ * 미리보기·재인쇄 창 — **서버가 그린 것을 그대로 보인다**(결정 18 · K-5).
  *
  * ⚠ **발행 «뒤에» 선다.** 그리기 경로가 발행 기록 번호를 받으므로 발행 전 미리보기는 계약에
- * 없다(착수 이슈 §6). 그래서 이 창이 열렸다는 것은 **이미 회차가 하나 올랐다**는 뜻이고,
- * [닫기]는 창만 닫고 아무것도 보내지 않는다. 새 기록은 [인쇄]가 사유와 함께 재발행할 때만 생긴다
- * (「닫아도 발행 기록은 남습니다」 문구는 오해를 불러 뺐다 · 사용자 지시 2026-09-17).
+ * 없다. [취소]는 창만 닫고 아무것도 보내지 않는다 — 새 기록은 [재인쇄]가 사유와 함께 재발행할 때만.
  *
- * ⛔ **화면이 라벨을 다시 그리지 않는다.** 받은 바이트를 그대로 걸고, 인쇄도 같은 바이트를
- * 보낸다 — 두 번 받으면 서버가 두 번 그리고, 그 사이 값이 달라지면 본 것과 나온 것이 갈린다.
+ * ⛔ **화면이 라벨을 다시 그리지 않는다.** 받은 바이트를 그대로 걸고, 인쇄도 같은 바이트를 보낸다.
+ * ⛔ 창 머리에 X 가 없고 바깥을 눌러도 닫히지 않는다 — 닫는 길은 아래 [취소]다(규칙 16).
  */
 export const PreviewDialog = ({
   open,
@@ -44,9 +43,8 @@ export const PreviewDialog = ({
   onClose,
 }: PreviewDialogProps) => {
   /*
-   * ⛔ **받았다고 그려지는 것은 아니다.** 응답이 200 이고 `image/png` 여도 내용이 이미지가
-   * 아니면 브라우저는 **깨진 아이콘**을 놓는다 — 실측으로 그 상태가 화면에 그대로 남았다.
-   * 사용자에게는 「못 받았다」와 구분이 안 되므로 말로 대신한다.
+   * ⛔ **받았다고 그려지는 것은 아니다.** 응답이 200 이어도 내용이 이미지가 아니면 깨진 아이콘이
+   * 남는다 — 「못 받았다」와 구분이 안 되므로 말로 대신한다.
    */
   const [isBroken, setIsBroken] = useState(false);
 
@@ -54,56 +52,38 @@ export const PreviewDialog = ({
     setIsBroken(false);
   }, [imageUrl]);
 
+  if (!open) return null;
+
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
+    <PuDialog
       title={mode === 'reason' ? t.reasonTitle : t.title}
-      size="lg"
-      className="pop-repack-preview-dialog"
-      /*
-       * ⛔ **팝업 바깥을 눌러 닫히지 않는다**(사용자 지시 2026-09-10 · #1005). 터치 단말에서
-       *    팝업은 화면 대부분을 덮어 손이 스치기 쉽고, 스크림 클릭이 닫기로 이어지면
-       *    「누른 적 없는데 닫힌다」가 된다. 닫는 길은 아래 단추다.
-       */
-      closeOnBackdropClick={false}
-      /* ⛔ 아래 [닫기]와 같은 일을 하므로 X 를 두지 않는다 — 같은 동작을 두 자리에 두지 않는다. */
-      showCloseButton={false}
+      wide={mode === 'preview'}
+      onClose={onClose}
       footer={
         <>
-          <Button variant="outlined" size="lg" onClick={onClose}>
-            {t.close}
-          </Button>
-          <Button
-            variant="filled"
-            size="lg"
-            onClick={onPrint}
-            loading={isPrinting}
-            disabled={!canPrint}
-          >
+          <PuButton onClick={onClose}>{t.close}</PuButton>
+          <PuButton variant="primary" onClick={onPrint} disabled={!canPrint || isPrinting}>
             {t.print}
-          </Button>
+          </PuButton>
         </>
       }
     >
-      {mode === 'preview' && imageUrl === null && <p className="pop-empty-note">{t.loading}</p>}
-      {imageUrl !== null && isBroken && <p className="pop-repack-error">{t.notDrawable}</p>}
-      {/*
-        ⛔ **`hidden` 으로 감추지 않는다.** 이 이미지의 `display: block` 이 `[hidden]` 의
-        `display: none` 과 명시도가 같고 뒤에 있어 이긴다 — 브라우저에서 깨진 아이콘이 사유
-        문구 옆에 그대로 남았다(실측). 아예 걷어 낸다.
-      */}
-      {imageUrl !== null && !isBroken && (
-        <img
-          className="pop-repack-preview-image"
-          src={imageUrl}
-          alt={t.alt}
-          onError={() => {
-            setIsBroken(true);
-          }}
-        />
-      )}
-      {reasonField}
-    </Dialog>
+      <div className="rpk-dialog">
+        {mode === 'preview' && imageUrl === null && <PuNote>{t.loading}</PuNote>}
+        {imageUrl !== null && isBroken && <PuNote tone="bad">{t.notDrawable}</PuNote>}
+        {/* ⛔ `hidden` 으로 감추지 않는다 — 깨진 아이콘이 남는다(실측). 아예 걷어 낸다. */}
+        {imageUrl !== null && !isBroken && (
+          <img
+            className="rpk-preview-image"
+            src={imageUrl}
+            alt={t.alt}
+            onError={() => {
+              setIsBroken(true);
+            }}
+          />
+        )}
+        {reasonField}
+      </div>
+    </PuDialog>
   );
 };

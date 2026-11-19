@@ -9,13 +9,8 @@
 export const popLocationLabel = {
   title: 'Phát hành nhãn vị trí kho',
 
-  entry: {
-    workerLabel: 'Mã nhân viên',
-  },
-
   warehouse: {
     label: 'Kho',
-    placeholder: 'Hãy chọn kho',
     loadFailed: 'Không tải được danh sách kho. Hãy kiểm tra kết nối rồi thử lại.',
     none: 'Không có kho nào dùng được. Hãy đăng ký kho trước.',
     retry: 'Thử lại',
@@ -23,20 +18,19 @@ export const popLocationLabel = {
 
   location: {
     heading: 'Vị trí',
-    awaitingWarehouse: 'Hãy chọn kho trước.',
+    awaitingWarehouse: 'Hãy chọn kho ở bên trái.',
     empty: 'Kho này chưa có vị trí nào.',
-    loading: 'Đang tải danh sách vị trí',
     loadFailed: 'Không tải được danh sách vị trí. Hãy kiểm tra kết nối rồi thử lại.',
     retry: 'Thử lại',
+    columnSelect: 'Chọn',
     columnCode: 'Mã vị trí',
     columnName: 'Tên vị trí',
     columnState: 'Trạng thái',
-    notIssued: 'Lần đầu',
-    issuedCount: (count: number) => `${String(count)} lượt`,
     active: 'Sử dụng',
     inactive: 'Không sử dụng',
-    pick: 'Chọn',
-    selectAll: 'Chọn tất cả',
+    choose: (locationCode: string) => `Chọn ${locationCode}`,
+    selectAll: (count: number) => `Chọn tất cả (${String(count)})`,
+    clearAll: (count: number) => `Bỏ chọn tất cả (${String(count)})`,
     clearSelection: 'Bỏ chọn',
     tooMany: (max: number) =>
       `Mỗi lần chỉ phát hành được ${String(max)} vị trí. Hãy chia thành nhiều lần.`,
@@ -44,16 +38,11 @@ export const popLocationLabel = {
 
   printer: {
     label: 'Máy in',
-    unknown: 'Không kiểm tra được danh sách máy in',
-    retry: 'Thử lại',
-    unselected: 'Không chọn thì sẽ dùng máy in mặc định của máy chủ.',
-    noStatusMessage: 'Không rõ trạng thái',
   },
 
   issue: {
     action: 'Phát hành nhãn',
-    pending: 'Đang phát hành',
-    succeeded: (count: number) => `Đã phát hành ${String(count)} nhãn.`,
+    actionCount: (count: number) => `Phát hành ${String(count)} nhãn`,
     checkingHistory: 'Đang kiểm tra lịch sử phát hành.',
     summaryFailed:
       'Không kiểm tra được lịch sử phát hành nên không thể phát hành. Hãy kiểm tra kết nối rồi thử lại.',
@@ -61,20 +50,19 @@ export const popLocationLabel = {
   },
 
   reissue: {
-    title: 'Phát hành lại',
+    title: 'In lại',
     notice: (count: number) =>
-      `Trong các mục đã chọn có ${String(count)} vị trí đã được phát hành nhãn. Vui lòng chọn lý do phát hành lại.`,
-    reason: 'Lý do phát hành lại',
-    reasonPlaceholder: 'Chọn lý do. Lý do phát hành lại là bắt buộc.',
-    reasonLoadFailed: 'Không tải được lý do phát hành lại.',
-    confirm: 'Phát hành lại',
+      `${String(count)} vị trí đã chọn đã được phát hành nhãn. Vui lòng chọn lý do in lại.`,
+    reason: 'Lý do in lại',
+    reasonLoadFailed: 'Không tải được lý do in lại.',
+    confirm: 'In lại',
     cancel: 'Hủy',
   },
 
   print: {
-    heading: 'Kết quả in',
     pending: 'Đang gửi nhãn tới máy in',
-    noBridge: 'Máy này không có đường in nên chưa gửi được nhãn. Bản ghi phát hành vẫn lưu.',
+    noBridge: 'Máy này chưa kết nối máy in nên không in được nhãn. Bản ghi phát hành vẫn lưu.',
+    printed: (count: number) => `Đã phát hành ${String(count)} nhãn. Hãy dán vào vị trí.`,
     summary: (printed: number, failed: number) =>
       `In thành công ${String(printed)} · thất bại ${String(failed)}`,
     reportFailed: (count: number) =>

@@ -1,5 +1,5 @@
 import type { ApiClient } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { fetchAllPages } from '../../patterns/fetch-all-pages';
@@ -40,6 +40,12 @@ type Client = ApiClient['client'];
 
 const ALL_KEY = ['work-start'] as const;
 
+/**
+ * 한 쪽 건수를 아직 재지 못했을 때 받는 건수. 목록 구획이 그려지면 구획 높이에 들어가는 만큼으로
+ * 바꿔 묻는다(POP 통일 규칙 1 · #295).
+ */
+export const LIST_SIZE = 20;
+
 export const workStartKeys = {
   all: ALL_KEY,
   terminal: (terminalId: number) => [...ALL_KEY, 'terminal', terminalId] as const,
@@ -47,8 +53,12 @@ export const workStartKeys = {
    * 목록. **설비 축까지 키에 넣는다** — 「이 설비」와 「전체」는 다른 목록이고, 한 키로 묶으면
    * 「전체 보기」를 껐을 때 다른 설비의 지시가 그대로 남는다.
    */
-  workOrders: (equipmentId: number | null, includeUnplanned: boolean, page: number) =>
-    [...ALL_KEY, 'work-orders', equipmentId, includeUnplanned, page] as const,
+  workOrders: (
+    equipmentId: number | null,
+    includeUnplanned: boolean,
+    page: number,
+    size: number = LIST_SIZE,
+  ) => [...ALL_KEY, 'work-orders', equipmentId, includeUnplanned, page, size] as const,
   /** 설비 고르기 팝업의 공장 설비 목록. */
   equipments: (plantId: number) => [...ALL_KEY, 'equipments', plantId] as const,
   openSession: (workOrderId: number) => [...ALL_KEY, 'open-session', workOrderId] as const,
@@ -62,9 +72,6 @@ export const workStartKeys = {
 
 /** PQC 대기 조회의 검사 유형. 요구서 §3-12 가 이 값을 그대로 적었다(자매 화면 `P-02-09` 와 같다). */
 const PQC_TYPE_CODE = 'PQC';
-
-/** 한 번에 받아 볼 최대 건수. 1024×768 단말의 목록 구획에 담기는 만큼만 본다. */
-export const LIST_SIZE = 20;
 
 /**
  * 이 단말 한 건 — **「이 설비」의 출처다**(스펙 §8 미결 8 해소 · omf-mes#262).
@@ -94,6 +101,7 @@ const fetchWorkOrders = (
   equipmentId: number | null,
   includeUnplanned: boolean,
   page: number,
+  size: number,
 ): Promise<WorkOrderListResponse> =>
   runRequest(() =>
     client.GET('/production/work-orders', {
@@ -128,7 +136,7 @@ const fetchWorkOrders = (
                 ...(includeUnplanned ? { includeUnplannedEquipment: true } : {}),
               }),
           page,
-          size: LIST_SIZE,
+          size,
         },
       },
     }),
@@ -146,13 +154,16 @@ export const useWorkOrders = (
   enabled: boolean,
   page = 1,
   includeUnplanned = equipmentId !== null,
+  size = LIST_SIZE,
 ): UseQueryResult<WorkOrderListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: workStartKeys.workOrders(equipmentId, includeUnplanned, page),
+    queryKey: workStartKeys.workOrders(equipmentId, includeUnplanned, page, size),
     enabled,
-    queryFn: () => fetchWorkOrders(client, equipmentId, includeUnplanned, page),
+    /* 쪽 건수·쪽을 바꿔 다시 받는 동안 앞 목록을 그대로 둔다 — 고른 카드가 깜빡 사라지지 않게. */
+    placeholderData: keepPreviousData,
+    queryFn: () => fetchWorkOrders(client, equipmentId, includeUnplanned, page, size),
   });
 };
 

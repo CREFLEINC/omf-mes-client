@@ -1,0 +1,32 @@
+/* P-02-12 긴급 작업지시 — POP 통일 시안(#295) 화면 전용 모양. 공통은 app/pop-uniform.css. */
+
+.ew-screen {
+  height: 100%;
+}
+
+.ew-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.ew-list > .pu-empty {
+  flex: 1;
+}
+
+.ew-list .pu-item {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.ew-qty {
+  margin-left: auto;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 주 버튼 폭은 공통 최소 폭 대신 글 길이만큼 — [자재 투입]과 같은 폭(시안) */
+.ew-screen .ew-primary {
+  min-width: 96px;
+}

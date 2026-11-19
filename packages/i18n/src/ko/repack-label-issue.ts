@@ -4,7 +4,7 @@
  * 고정 설계 P-04-04의 발행 대기 → 대상 선택 → 발행·미리보기·인쇄 흐름.
  */
 export const repackLabelIssue = {
-  /* 설계 §3 머리줄이 「재구성 신규 라벨 발행」이다 — 「신규」가 이 화면이 무엇을 뽑는지 가른다. */
+  /* 화면 이름 — 본문 랜드마크의 읽어 주는 이름. */
   title: '재구성 신규 라벨 발행',
 
   /** 진입 — 작업자만 단말 세션에서 받는다. 대상은 발행 대기 목록에서 고른다. */
@@ -18,15 +18,6 @@ export const repackLabelIssue = {
   pending: {
     sectionLabel: '발행 대기',
     caption: '라벨을 아직 발행하지 않은 신규 포장',
-    /*
-     * ⭐ **열은 설계 §3 ① 도면 그대로다** — 원 포장 · 유형 · 새 포장 · 잔량 · 확정 시각.
-     *
-     * ⛔ 신규 포장 «번호»를 이 표에 두지 않는다. 번호는 아래 ② 발번 구획이 보인다.
-     */
-    /** 줄 오른쪽 [선택] 단추. 줄을 누르는 길과 같은 일을 한다. */
-    pick: '선택',
-    sourceColumn: '원 포장',
-    typeColumn: '유형',
     newColumn: '새 포장',
     remainderColumn: '잔량',
     occurredColumn: '확정 시각',
@@ -83,6 +74,9 @@ export const repackLabelIssue = {
     loading: '발행 대기 포장을 불러오는 중입니다.',
     empty: '현재 발행을 기다리는 포장이 없습니다.',
     loadFailed: '발행 대기 목록을 불러오지 못했습니다.',
+    /** 목록 위 찾기 칸 — 넣는 대로 목록이 줄어든다(#295 시안). */
+    searchPlaceholder: '포장 번호 또는 원 포장',
+    searchEmpty: '찾는 포장이 없습니다.',
     /* 다시 시도해도 풀리지 않는다 — 서버가 이 목록의 조건을 아직 제공하지 않는다(#1095). */
     unsupported:
       '발행 대기 목록은 아직 서버가 지원하지 않습니다. 서버가 준비되면 이 화면에서 대상을 고를 수 있습니다.',
@@ -117,12 +111,8 @@ export const repackLabelIssue = {
   /** 대상 포장 구획 — 무엇에 붙일 라벨인가. */
   handlingUnit: {
     sectionLabel: '대상 포장',
-    noLabel: '포장 번호',
     typeLabel: '유형',
-    contentsLabel: '내용물',
-    lotColumn: 'LOT',
-    itemColumn: '품목',
-    qtyColumn: '수량',
+    contentsLabel: '포장 내용물',
     unknownValue: '—',
     /*
      * 포장 유형 — 공통코드로 표시명을 푼다. ⛔ **코드를 그대로 세우지 않는다**(#1045):
@@ -137,15 +127,21 @@ export const repackLabelIssue = {
     loading: '대상 포장을 불러오는 중입니다.',
     loadFailed: '포장을 불러오지 못했습니다.',
     namesFailed: 'LOT·품목 이름을 불러오지 못해 일부 칸이 비어 있습니다.',
+    /** 정보 띠(#295 시안) — 새 포장 번호 · 구분 · 원 포장 · 유형 · 확정 시각. */
+    bandLabel: '대상 포장 정보',
+    newNoLabel: '새 포장 번호',
+    repackTypeLabel: '구분',
+    sourceLabel: '원 포장',
+    occurredLabel: '확정 시각',
+    /** 포장 내용물 한 줄 — 많으면 「외 N건」. */
+    moreContents: (count: number): string => `외 ${String(count)}건`,
     /** 한 포장에 LOT 이 여럿이어도 라벨은 포장 단위 한 장이다(스펙 §4-B — 대상 LOT 을 비운다). */
     mixedLot: (lotCount: number): string => `LOT ${String(lotCount)}건`,
   },
 
   /** 발행 구획 — 회차·사유·프린터. */
   issue: {
-    sectionLabel: '라벨 발행',
     targetsLabel: '인쇄 대상',
-    newLabelWaiting: '신규 포장을 선택하면 새 라벨이 기본 선택됩니다.',
     newLabel: (handlingUnitNo: string): string => `새 포장 라벨 · ${handlingUnitNo}`,
     remainderLabel: (handlingUnitNo: string, issueCount: number): string =>
       `잔량 라벨 재출력 · ${handlingUnitNo} (기존 ${String(issueCount)}회)`,
@@ -153,22 +149,32 @@ export const repackLabelIssue = {
      * 잔량 줄의 안내 — **한 줄이 둘을 다 말한다**(사용자 지시 2026-09-11). 번호를 새로
      * 매기지 않는다는 것과, 다시 뽑을 까닭이 수량 변경뿐이라는 것이다.
      */
-    remainderNumberNote: '기존 번호 유지 · 수량 변경 시에만 재출력',
+    remainderNumberNote: '기존 번호 유지 · 수량 변경 시에만',
+    /** 인쇄 대상 표(#295 시안 — 자재 관리 LOT 라벨과 같은 표). */
+    colPick: '선택',
+    colLabel: '라벨',
+    colNo: '번호',
+    colBody: '내용',
+    colIssued: '발행',
+    newLabelName: '새 포장 라벨',
+    remainderName: '잔량 라벨 재인쇄',
+    /** 새 포장 줄의 내용 — 유형 · LOT 수 · (단위가 하나면) 수량. */
+    newBody: (type: string, lots: string, qty: string | null): string =>
+      qty === null ? `${type} · ${lots}` : `${type} · ${lots} · ${qty}`,
+    notIssued: '미발행',
+    issuedTimes: (count: number): string => `${String(count)}회`,
+    existingLabel: '기존 라벨',
+    selectAll: (count: number): string => `전체 선택 (${String(count)}건)`,
+    clearSelection: '선택 해제',
+    /** 구획 제목 줄 오른쪽 칩 — 이미 발행한 포장. */
+    standing: (count: number): string => `${String(count)}회 발행`,
     remainderFailed: '잔량 라벨 재출력 대상을 확인하지 못했습니다.',
     targetRequired: '인쇄할 라벨을 하나 이상 선택하세요.',
-    /** 회차는 서버가 매긴다. 화면은 「이번이 몇 번째가 될 것인가」를 세지 않는다. */
-    reissue: (issueCount: number): string =>
-      `이미 ${String(issueCount)}번 발행했습니다. 다시 발행하면 재발행으로 기록되고 사유가 필요합니다.`,
     summaryLoading: '발행 현황을 확인하는 중입니다.',
     summaryFailed: '발행 현황을 불러오지 못했습니다. 사유 입력이 필요한지 알 수 없습니다.',
     lastIssuedAt: '마지막 발행',
-    /** 앞선 인쇄가 실패로 남아 있으면 다시 뽑아야 한다는 사실을 먼저 말한다. */
-    lastPrintFailed:
-      '마지막 인쇄가 실패로 기록돼 있습니다. 라벨이 나오지 않았다면 다시 발행하세요.',
 
     reasonLabel: '재인쇄 사유',
-    /** 사유 칸 이름 바로 아래 안내(사용자 지시 2026-09-17). */
-    reasonRequiredNote: '재인쇄 시 사유 입력은 필수입니다.',
     reasonPlaceholder: '사유를 고르세요',
     reasonRequired: '재발행이라 사유가 필요합니다.',
     reasonsFailed: '재인쇄 사유 목록을 불러오지 못했습니다.',
@@ -181,16 +187,16 @@ export const repackLabelIssue = {
 
     /* 설계 §3 액션바가 「발번·인쇄」다 — 이 화면이 하는 일은 번호를 매기고 뽑는 것이다. */
     submit: '발번·인쇄',
+    submitCount: (count: number): string => `발번·인쇄 (${String(count)}장)`,
+    reissueCount: (count: number): string => `재발행 (${String(count)}장)`,
     preview: '미리보기',
-    /** 렌디션 경로가 발행 기록 번호를 받는다 — 발행 전에는 볼 것이 없다(착수 이슈 §6). */
-    previewBeforeIssue: '발행한 뒤에 볼 수 있습니다.',
     /** 「확인할 수 없다」에만 준다 — 「권한이 없다」에는 다시 물을 것이 없다(G-3). */
     gateRetry: '다시 확인',
   },
 
   /** 미리보기 — 서버가 그린 라벨을 그대로 보인다(결정 18 · K-5). */
   preview: {
-    title: '라벨 미리보기',
+    title: '라벨 미리보기·재인쇄',
     /** [발번·인쇄]에서 사유가 필요할 때 여는 창의 제목. */
     reasonTitle: '재인쇄 사유 선택',
     alt: '발행된 라벨 이미지',
@@ -198,16 +204,15 @@ export const repackLabelIssue = {
     failed: '라벨 이미지를 받지 못했습니다.',
     /** 받기는 했는데 그려지지 않는다 — 「못 받았다」와 다른 사실이라 따로 말한다. */
     notDrawable: '받은 라벨을 화면에 그릴 수 없습니다. 인쇄는 그대로 할 수 있습니다.',
-    print: '인쇄',
-    close: '닫기',
+    print: '재인쇄',
+    close: '취소',
   },
 
   /** 발행 이력 — 회차별로 쌓인다(K-1). */
   history: {
     sectionLabel: '발행 이력',
-    empty: '발행 이력이 없습니다.',
     failed: '발행 이력을 불러오지 못했습니다.',
-    seq: (issueSeq: number): string => `회차 ${String(issueSeq)}`,
+    seq: (issueSeq: number): string => `${String(issueSeq)}회차`,
     /** 읽을 수 없는 시각. ⛔ 지어내지 않는다 — 모르면 모른다고 둔다. */
     unknownAt: '—',
     outcome: {

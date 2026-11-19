@@ -7,13 +7,13 @@
  *    클라이언트 교집합이라 완전하지 않다(검토 B-1). 서버가 축을 내주어 **1회**가 됐다.
  */
 
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest, runRequestWithResponse } from '../../patterns/request';
 
 import type { ComposableShipment, ShippingUnitTypeOption } from './api';
-import type { ShippingUnitDetail } from './types';
+import type { ShippingUnitDetail, ShippingUnitSummary } from './types';
 
 const ROOT = 'shipping-unit';
 
@@ -25,6 +25,7 @@ const OPTION_SIZE = 100;
 
 export const shippingUnitKeys = {
   shipments: [ROOT, 'shipments'] as const,
+  closed: (page: number, size: number) => [ROOT, 'closed', page, size] as const,
   types: [ROOT, 'types'] as const,
   detail: (shippingUnitId: number | null) => [ROOT, 'detail', shippingUnitId] as const,
 };
@@ -135,6 +136,40 @@ export const useComposableShipments = (): UseQueryResult<ComposableShipment[]> =
          */
         unassignedPackedBoxCount: item.unassignedPackedBoxCount ?? 0,
       }));
+    },
+  });
+};
+
+/** 「구성 완료」 탭 한 쪽 — 마감한 출하 단위와 전체 건수. */
+export interface ClosedShippingUnitsPage {
+  items: ShippingUnitSummary[];
+  total: number;
+}
+
+/**
+ * 마감한 출하 단위 — 「구성 완료」 탭(#295).
+ *
+ * ⭐ 출하 단위 목록(`GET /logistics/shipping-units`)을 `statusCode=CLOSED` 로 묻는다. 계약이 그 축을
+ *    두었고, POP 단말이면 서버가 그 단말의 공장으로 좁힌다. 정렬은 서버가 주는 순서 그대로다.
+ * ⭐ 쪽 크기는 구획 높이에 들어가는 건수(`useFitCount`)다.
+ */
+export const useClosedShippingUnits = (
+  page: number,
+  size: number,
+): UseQueryResult<ClosedShippingUnitsPage> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: shippingUnitKeys.closed(page, size),
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/logistics/shipping-units', {
+          params: { query: { statusCode: 'CLOSED', page, size } },
+        }),
+      );
+
+      return { items: data.items, total: data.page.total };
     },
   });
 };

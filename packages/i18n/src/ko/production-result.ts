@@ -19,9 +19,9 @@ export const productionResult = {
         `양품 ${qty}${uom === '' ? '' : ` ${uom}`}`,
       enteredDefect: (qty: string, uom: string): string =>
         `불량 ${qty}${uom === '' ? '' : ` ${uom}`}`,
-      workOrderProgress: 'W/O 전체 진행',
+      workOrderProgress: '작업지시 전체 진행',
       workOrderProgressText: (good: string, target: string, uom: string): string =>
-        `양품 ${good} / 작업 지시량 ${target}${uom === '' ? '' : ` ${uom}`}`,
+        `양품 ${good} / 작업지시량 ${target}${uom === '' ? '' : ` ${uom}`}`,
       /** 단계 표시(C-5). LOT마다 처음부터 반복한다. */
       stepsLabel: 'LOT 작업 단계',
       steps: { input: '실적 입력', defect: '불량 등록', scan: '라벨 스캔' },
@@ -35,9 +35,14 @@ export const productionResult = {
       noLot: '생산 가능한 LOT이 없어 불량 등록만 가능합니다.',
       /** 작업 지시량 달성 + LOT 없음 — 두 안내를 한 줄로(사용자 지시 2026-11-16). */
       planReachedNoLot:
-        '작업 지시량을 달성했고 생산 가능한 LOT이 없습니다. 작업지시 마감 또는 불량 등록만 가능합니다.',
+        '작업지시량을 달성했고 생산 가능한 LOT이 없습니다. 작업지시 마감 또는 불량 등록만 가능합니다.',
       noWorkOrder: '작업지시가 지정되지 않았습니다.',
-      planReached: '작업 지시량을 달성했습니다. 작업지시를 마감할 수 있습니다.',
+      /** 작업지시 없이 들어왔을 때 왼쪽 빈 구획의 할 일(#295 시안). */
+      noWorkOrderHint: '작업지시 목록에서 작업지시를 선택해 주세요.',
+      planReached: '작업지시량을 달성했습니다. 작업지시를 마감할 수 있습니다.',
+      /** ① 실적 입력에서 넣어 둔 불량 줄을 알린다(#295 시안). */
+      defectsPending: (count: number): string =>
+        `불량 ${String(count)}줄을 입력해 두었습니다. [불량 등록 (${String(count)})]에서 확인하세요.`,
       /** 머리줄 프린터 칩 — 짧게(개선 명세 ② 11). */
       printerNone: '프린터 미연결',
       printerUnknown: '프린터 확인 불가',
@@ -73,14 +78,8 @@ export const productionResult = {
       completed: '마감된 LOT',
       /** 이 화면에서 방금 마감한 LOT 표시(사용자 지시 2026-11-16). */
       justCompleted: '마감 완료',
-      completedTotal: (count: number): string => `총 ${String(count)}건`,
       completedEmpty: '마감된 LOT이 없습니다.',
       pageNav: '마감된 LOT 페이지 이동',
-      /* 쪽 이동은 POP 공용과 같은 말이다(`popPageNav`, 화면 용어집). */
-      prev: '이전',
-      next: '다음',
-      pagePosition: (page: number, totalPages: number) =>
-        `${String(page)} / ${String(Math.max(totalPages, 1))}`,
       /** 서버가 현재 LOT 을 한 건으로 정하지 못했다(옛 서버) — 엉뚱한 LOT 에 실적이 붙지 않게 막는다. */
       unreliable: (lotNos: string): string =>
         `서버가 현재 LOT을 하나로 정하지 못했습니다(LOT ${lotNos}). 다른 LOT에 실적이 붙지 않도록 입력을 막았습니다. 관리자에게 서버가 최신 판인지 확인을 요청해 주세요.`,
@@ -99,18 +98,11 @@ export const productionResult = {
       qty: '불량',
       remove: (label: string): string => `${label} 삭제`,
       duplicate: '이미 등록된 불량 유형입니다.',
-      typeMissing: '유형을 골라 주세요',
-      /** 불량 줄의 문제를 목록 아래 한 줄로 말한다. */
-      rowIssue: (row: string, issue: string): string => `${row}: ${issue}`,
-      qtyMissing: '수량을 입력해 주세요',
       noProcess: '공정이 없는 W/O라 불량 유형을 고를 수 없습니다.',
-      /* 키패드 이름 — 지금 어느 칸에 치는지 말한다. 칸 이름과 겹치지 않게 「키패드」를 붙인다. */
-      keypadGood: '양품 수량 키패드',
-      keypadFor: (target: string): string => `${target} 불량 수량 키패드`,
-      pickerTitle: '불량 유형',
-      /** 대분류를 고른 뒤의 창 제목(가운뎃점으로 잇지 않는다, C-13). */
-      pickerTitleFor: (major: string): string => `${major} 불량 유형`,
-      back: '← 대분류로 돌아가기',
+      /** 불량 줄이 하나도 없을 때(#295 시안). */
+      emptyRows: '불량 줄이 없습니다',
+      emptyHint: '[불량 추가]로 줄을 입력하세요.',
+      pageNav: '불량 줄 페이지 이동',
       cancel: '취소',
       loading: '불량 유형을 불러오는 중입니다.',
       loadFailed: '불량 유형을 불러오지 못했습니다.',
@@ -157,7 +149,7 @@ export const productionResult = {
       template: '생산 LOT 라벨',
       issue: 'LOT 라벨 출력',
       /** 라벨 스캔을 기다리는 동안 하단 버튼(사용자 지시 2026-11-16). */
-      reprint: 'LOT 라벨 재출력',
+      reprint: 'LOT 라벨 재인쇄',
       retryIssue: '라벨 발행 다시 시도',
       retryPrint: '라벨 다시 인쇄',
       retryReport: '결과 다시 전송',
@@ -178,8 +170,9 @@ export const productionResult = {
        * ⚠ **한 줄로 합친 문구다**(사용자 지시 2026-09-10). 스캔이 어긋났을 때 「지금 무엇이
        * 잘못됐나」와 「그래서 무엇을 하나」가 두 줄로 갈려 있었다.
        */
-      mismatch:
-        '입력한 LOT과 일치하는 라벨을 찾을 수 없습니다. LOT을 다시 확인한 후, 동일한 라벨을 다시 스캔해 주세요.',
+      mismatch: (lotNo: string): string =>
+        `방금 출력한 LOT 라벨이 아닙니다. ${lotNo} 라벨을 찾아 스캔하세요.`,
+      placeholder: '출력한 LOT 라벨을 스캔하세요',
       completed: 'LOT을 마감했습니다.',
       failed: 'LOT을 마감하지 못했습니다. 같은 라벨을 다시 스캔해 주세요.',
       alreadyCompleted: '이미 마감된 LOT입니다. 현재 LOT 상태를 다시 불러옵니다.',
@@ -322,6 +315,11 @@ export const productionResult = {
     },
     retry: '다시 시도',
     close: '닫기',
+    /** 맨 오른쪽 키패드 구획(#295 규칙 8) — 양품·불량 수량이 같은 키패드를 쓴다. */
+    keypad: {
+      title: '수량',
+      unit: (uom: string): string => `단위 ${uom}`,
+    },
   },
 
   entry: {
@@ -369,11 +367,6 @@ export const productionResult = {
     goodQtyLabel: '양품수량',
     remarksLabel: '비고',
     keypadLabel: '수량 키패드',
-    /* 읽는 기계에는 이름이 가고 눈에는 기호가 보인다 — 인식표 키패드도 같은 규칙이다. */
-    backspace: '한 자 지움',
-    /* 지우기 문구는 「전체 지움」으로 통일한다(C-12). */
-    clearGlyph: '전체 지움',
-    decimalKey: '소수점',
     quickAdd: (step: number) => `＋${String(step)}`,
   },
 
@@ -397,7 +390,7 @@ export const productionResult = {
     /** 잔량이 0인 지시. 「잔량 0보다 …」는 뺄셈처럼 읽힌다. 숫자를 빼고 사실만 적는다. */
     noticeNoRemaining: '이 작업지시에 잔량이 없습니다. 초과 생산도 등록할 수 있습니다.',
     /** 양품 누계가 지시 수량에 이르렀다. 서버의 완료 판정(정상, 초과)이 근거다. 칩 이름이다(C-21). */
-    achieved: '작업 지시량 달성',
+    achieved: '작업지시량 달성',
     /** 음수 대신 넘은 양을 칩으로 보인다(C-21). */
     achievedOver: (over: string): string => `초과 달성 ${over}`,
   },

@@ -20,6 +20,33 @@ export const shippingPackingLabel = {
     /** 출하 단위 한 대에 한 장 — 마감해야 붙는다(SHIP-UNIT-01 설계 §4). */
     deliveryNote: '마감한 출하 단위에만 발행할 수 있습니다.',
   },
+  tabs: {
+    label: '라벨 목록',
+    wait: '발행 대기',
+    reissue: '재발행',
+  },
+  list: {
+    notIssued: '미발행',
+    qty: '수량',
+    lot: 'LOT',
+    lotCount: (count: number) => `${String(count)}건`,
+    boxes: '상자',
+    waitEmpty: '발행할 라벨이 없습니다.',
+    reissueEmpty: '재발행할 라벨이 없습니다.',
+    pickTitle: '라벨을 고르세요',
+    pickWait: '왼쪽 목록에서 발행할 대상을 누르세요.',
+    pickReissue: '왼쪽 목록에서 재발행할 대상을 누르세요.',
+  },
+  band: {
+    label: '라벨 대상',
+    shipment: '출하',
+    packingNo: '포장 번호',
+    unitNo: '출하 단위',
+    type: '포장 유형',
+    boxes: '상자 수',
+    boxCount: (count: number) => `${String(count)}개`,
+    seq: '이번 회차',
+  },
   targets: {
     paneLabel: '대상',
     columns: {
@@ -62,6 +89,7 @@ export const shippingPackingLabel = {
     /** 표 아래 — 지금 몇 건을 들고 있는지. 발행 단추를 누르기 전에 확인하는 자리다. */
     selectedCount: (count: number) => `선택 항목 ${String(count)}건`,
     clearSelection: '선택 해제',
+    selectAll: '전체 선택',
   },
   recovery: {
     title: '누락 라벨 이어서 출력',
@@ -107,6 +135,9 @@ export const shippingPackingLabel = {
   actions: {
     /* 설계 §3 액션바가 「발행·인쇄」다 — 이 조작은 기록을 만들고 프린터로 보내는 두 가지를 한다. */
     issue: '발행·인쇄',
+    reissue: '재발행',
+    /** 포장 등록으로 돌아간다. */
+    back: '이전',
     preview: '미리보기',
     print: '인쇄',
     /** 그리기 경로가 발행 기록 번호를 받는다 — 발행 전에는 볼 것이 없다. */
@@ -145,6 +176,10 @@ export const shippingPackingLabel = {
     alt: (name: string, seq: number) => `${name} ${seq}회차 라벨`,
     close: '닫기',
     print: '인쇄',
+    /** 오른쪽 라벨 모양 — 발행 전 «이번 회차»로 그려 본 그림이다. */
+    shape: '라벨 모양',
+    /** 그릴 값(출하 번호 등)을 아직 받지 못했다. */
+    unavailable: '라벨 모양을 그릴 수 없습니다.',
   },
   history: {
     title: '발행 이력',

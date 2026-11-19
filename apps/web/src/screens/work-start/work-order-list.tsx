@@ -1,6 +1,5 @@
-import { AlertBanner, Button, Card, Chip } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
-import { useId } from 'react';
+import { useId, useState, type RefObject } from 'react';
 
 import type { EquipmentChoice } from './queries';
 import { WorkOrderInfo } from './work-order-info';
@@ -8,16 +7,25 @@ import type { WorkOrder } from './types';
 import { sortForPick, statusKeyOf, type WorkOrderStatusKey } from './work-order-status';
 import { isEmergency } from './work-order-type';
 
-import { PopRowHead } from '../../patterns/pop-list-row';
-import { PopPageNav, pageBoundaryOf, type PageMetaLike } from '../../patterns/pop-page-nav';
+import { type PageMetaLike } from '../../patterns/pop-page-nav';
 import { PopSelect } from '../../patterns/pop-select';
+import {
+  PuButton,
+  PuChip,
+  PuEmpty,
+  PuField,
+  PuNote,
+  PuPager,
+  PuSection,
+  type PuChipTone,
+} from '../../patterns/pop-uniform';
 
 const t = messages.workStart.list;
 
-/** 상태 하나에 색 하나(C-19). */
-export const STATUS_CHIP: Readonly<Record<WorkOrderStatusKey, 'info' | 'warning' | 'idle'>> = {
+/** 상태 하나에 색 하나(POP 통일 규칙 10): 진행 중 파랑 · 중단 노랑 · 미착수 회색. */
+export const STATUS_CHIP: Readonly<Record<WorkOrderStatusKey, PuChipTone>> = {
   inProgress: 'info',
-  suspended: 'warning',
+  suspended: 'warn',
   released: 'idle',
 };
 
@@ -35,23 +43,13 @@ export const WorkOrderChips = ({
   const statusKey = statusKeyOf(workOrder);
 
   return (
-    <>
-      {isEmergency(workOrder) && (
-        <Chip status="error" size="md">
-          {t.emergencyBadge}
-        </Chip>
-      )}
-      {isEquipmentUnassigned && (
-        <Chip status="info" size="md">
-          {t.unassignedEquipmentBadge}
-        </Chip>
-      )}
+    <span className="chips">
+      {isEmergency(workOrder) && <PuChip tone="bad">{t.emergencyBadge}</PuChip>}
+      {isEquipmentUnassigned && <PuChip tone="info">{t.unassignedEquipmentBadge}</PuChip>}
       {statusKey !== null && (
-        <Chip status={STATUS_CHIP[statusKey]} size="md">
-          {t.status[statusKey]}
-        </Chip>
+        <PuChip tone={STATUS_CHIP[statusKey]}>{t.status[statusKey]}</PuChip>
       )}
-    </>
+    </span>
   );
 };
 
@@ -99,18 +97,20 @@ export interface WorkOrderListProps {
   onRetry: () => void;
   /** 단위 번호를 코드로 옮긴다. 못 옮기면 `null`. 수량만 낸다. */
   uomCodeOf: (uomId: number | undefined) => string | null;
+  /** 한 쪽 건수를 재는 목록 칸(구획 높이에 들어가는 만큼, POP 통일 규칙 1). */
+  fitRef?: RefObject<HTMLDivElement | null>;
 }
 
 /**
- * 왼쪽 작업지시 구획(T-P-S 왼쪽 대상 목록). 이 화면에서 스크롤하는 자리는 이 구획의 목록 하나다.
+ * 왼쪽 작업지시 구획(POP 통일 시안 P-02-01). 구획 안 스크롤이 없다 — 구획 높이에 들어가는 만큼만
+ * 받아 보이고 아래 「총 N건 ‹ 1 / 3 ›」으로 넘긴다.
  *
- * - 기본 목록은 단말 설비의 작업지시다. 제목 줄 오른쪽 끝 설비 칸(팝업 선택, C-12)에서 「전체 설비」나
- *   다른 설비를 고른다. 기본이 아니면 제목과 설비 칸 사이에 [기본 설비로]가 선다. 제목 「작업지시」와
- *   설비 칸은 자리를 바꾸지 않는다(C-19, 사용자 결정 2026-10-26, PG-37, PG-39).
- * - 카드는 행 전체 터치로 고른다(C-1). 카드는 제목 줄(W/O 번호, 오른쪽 끝 상태 칩)과 정보 영역
- *   (「라벨 값」 쌍)으로 나뉜다(C-21). 두 목록에서 카드 항목은 같다(C-10, PG-14).
+ * - 기본 목록은 단말 설비의 작업지시다. 목록 위 설비 칸(선택 창)에서 「전체 설비」나 다른 설비를
+ *   고른다. 기본이 아니면 칸 옆에 [기본 설비로]가 선다(PG-37).
+ * - 카드는 행 전체 터치로 고른다(C-1). 제목 줄(W/O 번호, 오른쪽 끝 칩)과 정보(「라벨 값」 쌍).
  * - 진행 중인 W/O를 위에 둔다. 받은 쪽 안에서만 정렬한다(서버 정렬은 계약 대기).
  * - 빈 목록은 오류가 아니다. 「받는 중」, 「없다」, 「실패」를 다른 문장으로 말한다.
+ * - 제목 줄 끝 [|<]로 왼쪽으로 접는다(접으면 오른쪽 구획이 넓어진다).
  */
 export const WorkOrderList = ({
   workOrders,
@@ -132,15 +132,17 @@ export const WorkOrderList = ({
   onEquipmentPickerOpen,
   onRetry,
   uomCodeOf,
+  fitRef,
 }: WorkOrderListProps) => {
   const rows = sortForPick(workOrders ?? []);
   const scopeEquipment = equipmentName ?? t.scopeEquipmentUnknown;
   const labelId = useId();
+  const [folded, setFolded] = useState(false);
   const other =
     typeof scope === 'number' ? otherEquipments.find((e) => e.equipmentId === scope) : undefined;
   const otherName =
     typeof scope === 'number' ? ((other?.equipmentName.trim() || other?.equipmentCode) ?? '') : '';
-  /* 닫힌 칸은 이름만 보인다. 좁은 제목 줄에 「이름 (코드)」와 [선택]이 다 들어가지 않는다(PG-37). */
+  /* 닫힌 칸은 이름만 보인다(PG-37). */
   const current = scope === 'default' ? scopeEquipment : scope === 'all' ? t.allOption : otherName;
   const options = [
     { value: DEFAULT_VALUE, label: t.defaultOption(equipmentText ?? scopeEquipment) },
@@ -150,145 +152,139 @@ export const WorkOrderList = ({
       label: named(equipment.equipmentName, equipment.equipmentCode),
     })),
   ];
+  const pageTotal = pageMeta?.total ?? total ?? 0;
+  const pageSize = Math.max(1, pageMeta?.size ?? 1);
+  const pages = Math.max(1, Math.ceil(pageTotal / pageSize));
+  const hasRows = !isError && rows.length > 0;
 
   return (
-    <section className="pane work-start-list" aria-label={t.title}>
-      {/*
-       * 제목 줄은 흔들리지 않는다(C-19). 제목은 왼쪽, 설비 칸은 오른쪽 끝에 고정하고, 기본 설비가
-       * 아닐 때만 서는 [기본 설비로]는 그 사이에 둔다.
-       */}
-      <div className="work-start-list-head">
-        <h2 className="pane-title">{t.title}</h2>
-        {/* 좁힐 기본 설비가 없는 단말은 처음부터 전체 목록이라 설비 칸을 두지 않는다(PG-37). */}
-        {!isEquipmentMissing && (
-          <div className="work-start-list-controls">
+    <PuSection
+      title={t.title}
+      className="ws-list"
+      bodyClassName="ws-list-body"
+      fold={{ label: t.title, folded, onChange: setFolded }}
+    >
+      {/* 좁힐 기본 설비가 없는 단말은 처음부터 전체 목록이라 설비 칸을 두지 않는다(PG-37). */}
+      {!isEquipmentMissing ? (
+        <PuField label={t.equipmentLabel} labelId={labelId}>
+          <div className="pu-row ws-equipment-field">
+            <PopSelect
+              aria-labelledby={labelId}
+              className="ws-equipment-trigger"
+              options={options}
+              value={valueOf(scope)}
+              actionLabel={current}
+              hideValue
+              onClick={() => onEquipmentPickerOpen?.()}
+              onChange={(value) => {
+                if (value === DEFAULT_VALUE) onScopeChange('default');
+                else if (value === ALL_VALUE) onScopeChange('all');
+                else onScopeChange(Number(value.replace('equipment-', '')));
+              }}
+            />
             {scope !== 'default' && (
-              <Button
-                type="button"
-                variant="outlined"
-                size="lg"
+              <PuButton
                 onClick={() => {
                   onScopeChange('default');
                 }}
               >
                 {t.resetToDefault}
-              </Button>
+              </PuButton>
             )}
-            <div className="work-start-equipment-field">
-              <span id={labelId} className="work-start-equipment-label">
-                {t.equipmentLabel}
-              </span>
-              <PopSelect
-                aria-labelledby={labelId}
-                className="work-start-equipment-trigger"
-                options={options}
-                value={valueOf(scope)}
-                actionLabel={current}
-                hideValue
-                onClick={() => onEquipmentPickerOpen?.()}
-                onChange={(value) => {
-                  if (value === DEFAULT_VALUE) onScopeChange('default');
-                  else if (value === ALL_VALUE) onScopeChange('all');
-                  else onScopeChange(Number(value.replace('equipment-', '')));
-                }}
-              />
-            </div>
           </div>
-        )}
-      </div>
-
-      {/* 설비를 몰라 기본 목록을 못 세운 상태는 빈 목록이 아니다. 사유와 할 일을 함께 보인다. */}
-      {isEquipmentUnknown && scope === 'default' && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.equipmentUnknown}</AlertBanner>
-        </div>
+        </PuField>
+      ) : (
+        <span />
       )}
 
-      {isError ? (
-        <div className="banner-slot">
-          <AlertBanner
-            variant="error"
+      <div className="ws-list-area">
+        {/* 설비를 몰라 기본 목록을 못 세운 상태는 빈 목록이 아니다. 사유와 할 일을 함께 보인다. */}
+        {isEquipmentUnknown && scope === 'default' && (
+          <PuNote tone="warn">{t.equipmentUnknown}</PuNote>
+        )}
+
+        {isError ? (
+          <PuNote
+            tone="bad"
             action={
-              <Button type="button" variant="outlined" size="sm" onClick={onRetry}>
+              <PuButton size="sm" onClick={onRetry}>
                 {t.retry}
-              </Button>
+              </PuButton>
             }
           >
             {t.loadError}
-          </AlertBanner>
-        </div>
-      ) : rows.length === 0 ? (
-        isLoading ? (
-          <p className="field-note">{t.loading}</p>
-        ) : isAsked ? (
-          <p className="field-note">
-            {scope === 'all'
-              ? t.emptyAll
-              : scope === 'default'
-                ? t.empty(scopeEquipment)
-                : t.emptyOther(otherName)}
-          </p>
-        ) : null
-      ) : (
-        <ul className="pop-card-list" aria-label={t.caption}>
-          {rows.map((row) => {
-            const isSelected = selectedId === row.workOrderId;
+          </PuNote>
+        ) : rows.length === 0 ? (
+          isLoading ? (
+            <PuEmpty icon="list" title={t.loading} />
+          ) : isAsked ? (
+            scope === 'all' ? (
+              <PuEmpty icon="list" title={t.emptyAll} />
+            ) : scope === 'default' ? (
+              <PuEmpty icon="list" title={t.empty(scopeEquipment)} hint={t.emptyHint} />
+            ) : (
+              <PuEmpty icon="list" title={t.emptyOther(otherName)} />
+            )
+          ) : null
+        ) : null}
 
-            return (
-              <li key={String(row.workOrderId)}>
-                <Card
-                  interactive
-                  bordered
-                  surface={isSelected ? 'high' : 'low'}
-                  className="work-start-card"
-                  aria-label={t.select(row.workOrderNo)}
-                  aria-pressed={isSelected}
-                  /*
-                   * 사번이 없어도 고른다. 누른 것을 무시하지 않고, 화면이 사번 입력 창을 함께 연다
-                   * (사용자 결정 2026-10-23, PG-27).
-                   */
-                  onClick={() => {
-                    onSelect(row);
-                  }}
-                >
-                  <Card.Body className="work-start-card-body">
-                    {/* 제목 줄(C-21): W/O 번호(굵게, 고정폭)와 오른쪽 끝 칩. */}
-                    <PopRowHead
-                      title={<span className="work-start-wo-no">{row.workOrderNo}</span>}
-                      chips={
-                        <WorkOrderChips
-                          workOrder={row}
-                          isEquipmentUnassigned={row.plannedEquipmentId == null}
-                        />
-                      }
-                    />
-                    {/*
-                     * 정보 영역(C-21). 계획 설비는 두 목록 모두 「설비 이름 (코드)」 쌍으로 보인다(C-10,
-                     * PG-14). 설비가 정해지지 않은 W/O 는 「설비 미지정」 칩이 말한다.
-                     */}
+        {/*
+         * 한 쪽 건수를 재는 칸 — 늘 그려 두고 줄이 없을 때만 감춘다(높이 0 이면 재지 않는다).
+         * ⛔ 빈 안내를 이 칸 안에 넣지 않는다 — 그 높이를 줄 높이로 재 버린다.
+         */}
+        <div
+          ref={fitRef}
+          className="pu-list pu-fit ws-list-rows"
+          role="list"
+          aria-label={t.caption}
+          style={hasRows ? undefined : { display: 'none' }}
+        >
+          {hasRows &&
+            rows.map((row) => {
+              const isSelected = selectedId === row.workOrderId;
+
+              return (
+                <div key={String(row.workOrderId)} role="listitem" className="ws-list-cell">
+                  <button
+                    type="button"
+                    className={isSelected ? 'pu-item ws-item is-selected' : 'pu-item ws-item'}
+                    aria-label={t.select(row.workOrderNo)}
+                    aria-pressed={isSelected}
+                    /*
+                     * 사번이 없어도 고른다. 누른 것을 무시하지 않고, 화면이 사번 입력 창을 함께 연다
+                     * (사용자 결정 2026-10-23, PG-27).
+                     */
+                    onClick={() => {
+                      onSelect(row);
+                    }}
+                  >
+                    <span className="pu-item-top">
+                      <span className="no">{row.workOrderNo}</span>
+                      <WorkOrderChips
+                        workOrder={row}
+                        isEquipmentUnassigned={row.plannedEquipmentId == null}
+                      />
+                    </span>
                     <WorkOrderInfo workOrder={row} uomCodeOf={uomCodeOf} />
-                  </Card.Body>
-                </Card>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      {!isError && (
-        <div className="work-start-list-foot">
-          {total !== undefined && total > 0 && (
-            /* 건수는 관리웹 페이지 이동과 같은 「총 N건」이다. 지금 쪽은 옆 「1 / 2」가 말한다. */
-            <p className="field-note">{t.total(total)}</p>
-          )}
-          {/* 잘렸다고 말하기만 하지 않는다. 키오스크라 주소창도 뒤로가기도 없다(#1005). */}
-          <PopPageNav
-            boundary={pageBoundaryOf(pageMeta)}
-            label={t.pageNav}
-            onChange={onPageChange}
-          />
+                  </button>
+                </div>
+              );
+            })}
         </div>
+      </div>
+
+      {/* 잘렸다고 말하기만 하지 않는다. 키오스크라 주소창도 뒤로가기도 없다(#1005). */}
+      {!isError && pageMeta !== undefined ? (
+        <PuPager
+          total={pageTotal}
+          page={pageMeta.page}
+          pages={pages}
+          label={t.pageNav}
+          onPage={onPageChange}
+        />
+      ) : (
+        <span />
       )}
-    </section>
+    </PuSection>
   );
 };

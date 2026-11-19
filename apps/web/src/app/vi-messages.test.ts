@@ -139,7 +139,6 @@ const TRANSLATED = [
   'materialDefect',
   'popOqcInspection',
   'popMaterialLotLabel',
-  'popPageNav',
   'pqcInspection',
   'productionResult',
   'repackLabelIssue',

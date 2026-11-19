@@ -1,49 +1,56 @@
-import { AlertBanner, Button, Checkbox, Chip, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 
 import { PopTopPrinter } from '../../patterns/pop-top-status';
+import { PuButton, PuNote } from '../../patterns/pop-uniform';
 import { PrinterChip } from '../pop-material-lot-label/printer-chip';
 import { toPrinterView } from '../pop-material-lot-label/types';
+import { localDateTimeText } from './formatting';
 import type { IssueStanding, Printer, RemainderCandidate } from './types';
 
 const t = messages.repackLabelIssue.issue;
+const th = messages.repackLabelIssue.history;
 
 export interface IssuePaneProps {
-  selectedHandlingUnitNo: string | null;
+  selectedHandlingUnitNo: string;
+  /** 새 포장 라벨 줄의 「내용」(유형 · LOT 수 · 수량). */
+  newLabelBody: string;
   includeNewLabel: boolean;
   onIncludeNewLabelChange: (checked: boolean) => void;
   remainderCandidates: readonly RemainderCandidate[];
   selectedRemainderIds: readonly number[];
   onRemainderChange: (handlingUnitId: number, checked: boolean) => void;
   remainderFailed: boolean;
-  /** 인쇄할 라벨을 하나도 고르지 않았는가 — 그 사유를 인쇄 대상 안에서 말한다. */
+  /** 인쇄할 라벨을 하나도 고르지 않았는가 — 표 아래 빨간 한 줄. */
   targetRequired: boolean;
 
-  standing: IssueStanding;
+  /** 새 포장의 발행 현황. 아직 못 받았으면 `null`. */
+  standing: IssueStanding | null;
   standingFailed: boolean;
   onStandingRetry: () => void;
-
-  /** 서버가 사유 칸을 지목해 되돌린 말(422). 배너가 아니라 이 칸 아래에 선다 */
-
-  printers: readonly Printer[];
-  printersFailed: boolean;
-  printerName: string;
-  onPrinterChange: (value: string) => void;
 }
 
+const issuedCell = (count: number | null, sub: ReactNode): ReactNode =>
+  count === null ? (
+    th.unknownAt
+  ) : count === 0 ? (
+    <span className="rpk-sub">{t.notIssued}</span>
+  ) : (
+    <>
+      {t.issuedTimes(count)}
+      {sub}
+    </>
+  );
+
 /**
- * 《라벨 발행》 — ③ 인쇄 대상 · ④ 프린터.
+ * 《대상 포장》 아래쪽 — 인쇄 대상 표(선택 · 라벨 · 번호 · 내용 · 발행)와 그 안내.
  *
- * ⛔ **액션바는 여기 없다.** 설계 §3 은 [ 미리보기 ]·[ 발번·인쇄 ]를 구획 «안»이 아니라
- * **화면 바닥의 띠(88)** 로 그렸다 — 다른 POP 화면도 모두 그 자리다. 구획 안에 두면 구획이
- * 길어질 때 단추가 함께 밀려 내려가 화면 밖으로 나간다.
- *
- * ⛔ **회차를 화면이 세지 않는다**(계약 「서버가 매긴다」). 화면이 발행 현황으로 정하는 것은
- * **사유 칸을 요구할 것인가** 하나이고, 이번이 몇 회차가 될지는 말하지 않는다.
- *
+ * 줄 어디를 눌러도 고르거나 푼다. 새 포장 라벨 한 줄 + (분할이면) 잔량 라벨 재인쇄 줄.
+ * ⛔ **회차를 화면이 세지 않는다**(계약 「서버가 매긴다」) — 지금까지의 횟수만 서버 값으로 보인다.
  */
 export const IssuePane = ({
   selectedHandlingUnitNo,
+  newLabelBody,
   includeNewLabel,
   onIncludeNewLabelChange,
   remainderCandidates,
@@ -54,112 +61,153 @@ export const IssuePane = ({
   standing,
   standingFailed,
   onStandingRetry,
+}: IssuePaneProps) => {
+  const last = standing?.lastIssuedAt ?? null;
+  const lastOutcome = standing?.lastPrintOutcome ?? null;
+
+  const row = (
+    key: string,
+    checked: boolean,
+    onToggle: (next: boolean) => void,
+    ariaLabel: string,
+    cells: ReactNode,
+  ): ReactNode => (
+    <tr
+      key={key}
+      className={checked ? 'is-pick is-selected' : 'is-pick'}
+      onClick={(event) => {
+        if ((event.target as HTMLElement).closest('input') !== null) return;
+        onToggle(!checked);
+      }}
+    >
+      <td className="rpk-ck">
+        <input
+          type="checkbox"
+          checked={checked}
+          aria-label={ariaLabel}
+          onChange={(event) => {
+            onToggle(event.target.checked);
+          }}
+        />
+      </td>
+      {cells}
+    </tr>
+  );
+
+  return (
+    <>
+      {standingFailed && (
+        <PuNote
+          tone="warn"
+          action={
+            <PuButton size="sm" onClick={onStandingRetry}>
+              {messages.common.retry}
+            </PuButton>
+          }
+        >
+          {t.summaryFailed}
+        </PuNote>
+      )}
+
+      <div className="pu-table-wrap rpk-table">
+        <table className="pu-table" aria-label={t.targetsLabel}>
+          <thead>
+            <tr>
+              <th className="rpk-ck">{t.colPick}</th>
+              <th>{t.colLabel}</th>
+              <th>{t.colNo}</th>
+              <th>{t.colBody}</th>
+              <th>{t.colIssued}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {row(
+              'new',
+              includeNewLabel,
+              onIncludeNewLabelChange,
+              t.newLabel(selectedHandlingUnitNo),
+              <>
+                <td>
+                  <b>{t.newLabelName}</b>
+                </td>
+                <td className="pu-mono">{selectedHandlingUnitNo}</td>
+                <td title={newLabelBody}>{newLabelBody}</td>
+                <td>
+                  {issuedCell(
+                    standing?.issueCount ?? null,
+                    last === null ? null : (
+                      <span className={lastOutcome === 'FAILED' ? 'rpk-sub bad' : 'rpk-sub'}>
+                        {localDateTimeText(last, th.unknownAt)}
+                        {lastOutcome === null ? '' : ` · ${th.outcome[lastOutcome]}`}
+                      </span>
+                    ),
+                  )}
+                </td>
+              </>,
+            )}
+            {remainderCandidates.map(({ handlingUnit, standing: remainderStanding }) =>
+              row(
+                String(handlingUnit.handlingUnitId),
+                selectedRemainderIds.includes(handlingUnit.handlingUnitId),
+                (next) => {
+                  onRemainderChange(handlingUnit.handlingUnitId, next);
+                },
+                t.remainderLabel(handlingUnit.handlingUnitNo, remainderStanding.issueCount ?? 0),
+                <>
+                  <td>
+                    <b>{t.remainderName}</b>
+                  </td>
+                  <td className="pu-mono">{handlingUnit.handlingUnitNo}</td>
+                  <td title={t.remainderNumberNote}>{t.remainderNumberNote}</td>
+                  <td>
+                    {issuedCell(
+                      remainderStanding.issueCount,
+                      <span className="rpk-sub">{t.existingLabel}</span>,
+                    )}
+                  </td>
+                </>,
+              ),
+            )}
+          </tbody>
+        </table>
+      </div>
+      {remainderFailed && <PuNote tone="warn">{t.remainderFailed}</PuNote>}
+      {targetRequired && <p className="rpk-err">{t.targetRequired}</p>}
+    </>
+  );
+};
+
+/**
+ * 프린터 칩 — 공통 메뉴 맨 위 줄 프린터 자리에 서고, 누르면 고른다(사용자 지시 2026-11-17 · #291).
+ * ⚠ 화면에 늘 붙어 있어야 한다 — 고른 포장이 바뀔 때마다 빠졌다 붙으면 맨 위 줄 자리가 흔들린다.
+ */
+export const IssuePrinter = ({
   printers,
   printersFailed,
   printerName,
   onPrinterChange,
-}: IssuePaneProps) => {
+}: {
+  printers: readonly Printer[];
+  printersFailed: boolean;
+  printerName: string;
+  onPrinterChange: (value: string) => void;
+}) => {
   const selectedPrinter = printers.find((printer) => printer.printerName === printerName) ?? null;
 
   return (
-    <>
-      {/*
-       * ⭐ **인쇄 대상과 프린터를 한 줄에 나란히 둔다**(사용자 지시 2026-09-17). 무엇을 어디로 찍는지를
-       *    한 줄에서 함께 고른다. 좁으면 격자가 위아래로 접는다(`pop.css`).
-       */}
-      <div className="pop-repack-target-row">
-        <fieldset className="pop-repack-targets">
-          <legend className="pop-repack-targets-legend">
-            {t.targetsLabel}
-            {/*
-             * ⭐ **고를 자리에서 말한다**(사용자 지시 2026-09-17) — 「인쇄 대상」 제목 옆에 선다.
-             *    아래 액션 줄에 두면 고칠 칸과 말하는 자리가 갈린다.
-             */}
-            {targetRequired && (
-              <Chip
-                className="pop-repack-target-required"
-                status="warning"
-                size="md"
-                leadingIcon={<Icon name="info" size={18} />}
-              >
-                {t.targetRequired}
-              </Chip>
-            )}
-          </legend>
-          <Checkbox
-            checked={selectedHandlingUnitNo !== null && includeNewLabel}
-            disabled={selectedHandlingUnitNo === null}
-            onChange={(event) => onIncludeNewLabelChange(event.target.checked)}
-          >
-            {selectedHandlingUnitNo === null
-              ? t.newLabelWaiting
-              : t.newLabel(selectedHandlingUnitNo)}
-          </Checkbox>
-
-          {remainderCandidates.map(({ handlingUnit, standing: remainderStanding }) => (
-            <div className="pop-repack-remainder" key={handlingUnit.handlingUnitId}>
-              <Checkbox
-                checked={selectedRemainderIds.includes(handlingUnit.handlingUnitId)}
-                onChange={(event) =>
-                  onRemainderChange(handlingUnit.handlingUnitId, event.target.checked)
-                }
-              >
-                {t.remainderLabel(handlingUnit.handlingUnitNo, remainderStanding.issueCount ?? 0)}
-              </Checkbox>
-              {/* 잔량 라벨의 성질은 그 항목 «옆» 라벨로 짧게 말한다(사용자 지시 2026-09-17). */}
-              <Chip
-                className="pop-repack-remainder-note"
-                status="info"
-                size="md"
-                leadingIcon={<Icon name="info" size={18} />}
-              >
-                {t.remainderNumberNote}
-              </Chip>
-            </div>
-          ))}
-          {remainderFailed && <p className="pop-repack-note">{t.remainderFailed}</p>}
-        </fieldset>
-        {/* 프린터는 공통 메뉴 맨 위 줄 프린터 자리에 서고, 누르면 고른다(사용자 지시 2026-11-17 · #291). */}
-        <PopTopPrinter>
-          <PrinterChip
-            printers={printers.map(toPrinterView)}
-            selected={selectedPrinter === null ? null : toPrinterView(selectedPrinter)}
-            isLoading={false}
-            isError={printersFailed}
-            isSelectable
-            isLocked={false}
-            onRetry={() => undefined}
-            onSelect={onPrinterChange}
-            showNone
-            noneLabel={messages.productionResult.flow.work.printerNone}
-          />
-        </PopTopPrinter>
-      </div>
-
-      {/*
-        ⚠ **몇 회차인가는 구획 «표제 옆»에 선다**(사용자 지시 2026-09-07) — 이 구획이 무엇을
-        하는 자리인지와 한눈에 함께 읽힌다. 여기 남는 것은 그것을 «못 받았을 때»뿐이다.
-      */}
-      {standingFailed && (
-        <div className="banner-slot">
-          <AlertBanner
-            variant="warning"
-            title={t.summaryFailed}
-            action={
-              <Button variant="outlined" size="sm" onClick={onStandingRetry}>
-                {messages.common.retry}
-              </Button>
-            }
-          />
-        </div>
-      )}
-
-      {/* 앞선 인쇄가 실패로 남아 있다 — 라벨이 안 나왔을 수 있다는 사실을 먼저 말한다. */}
-      {standing.lastPrintOutcome === 'FAILED' && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning" title={t.lastPrintFailed} />
-        </div>
-      )}
-    </>
+    <PopTopPrinter>
+      <PrinterChip
+        printers={printers.map(toPrinterView)}
+        selected={selectedPrinter === null ? null : toPrinterView(selectedPrinter)}
+        isLoading={false}
+        isError={printersFailed}
+        isSelectable
+        isLocked={false}
+        onRetry={() => undefined}
+        onSelect={onPrinterChange}
+        showNone
+        noneLabel={messages.productionResult.flow.work.printerNone}
+      />
+    </PopTopPrinter>
   );
 };

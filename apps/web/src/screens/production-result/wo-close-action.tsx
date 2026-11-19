@@ -1,20 +1,12 @@
-import {
-  AlertBanner,
-  Button,
-  type Column,
-  Dialog,
-  Icon,
-  Table,
-  TextField,
-  useToast,
-} from '@crefle/web-ui';
+import { type Column, Table } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useId, useState } from 'react';
+import { useId, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router';
 
 import { masterName } from '../../patterns/master-name';
 import { SaveErrorBanner } from '../../patterns/master';
+import { PuButton, PuDialog, PuField, PuInput, PuNote, puToast } from '../../patterns/pop-uniform';
 import type { FlowGateVerdict } from './flow-gating';
 import { useVarianceReasons } from './flow-queries';
 import { formatQty } from './quantity-draft';
@@ -89,12 +81,12 @@ export const blockedReason = (props: CloseBlockInput): string | null => {
  */
 export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
   const { workOrderId, workOrderNo, workerNo, terminalId, uomLabel } = props;
-  const toast = useToast();
   const navigate = useNavigate();
   const noteId = useId();
   const submitNoteId = useId();
   const remainderTitleId = useId();
   const reasonTitleId = useId();
+  const remarksId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [disposition, setDisposition] = useState<Disposition | null>(null);
   const [reasonCode, setReasonCode] = useState<string | null>(null);
@@ -114,7 +106,7 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
         props.onClosed();
         return;
       }
-      toast.show({ variant: 'success', description: t.done(workOrderNo) });
+      puToast(t.done(workOrderNo));
       void navigate('/pop/work-start');
     },
     recheckSessions: async () => {
@@ -233,69 +225,58 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
   const openLotNos = openLots.isError ? [] : (openLots.data?.lotNos ?? []);
   const voidLotNos = openLots.isError ? [] : (openLots.data?.voidLotNos ?? []);
   /** 파란 안내 줄(정보 아이콘 + 한 줄). */
-  const infoNote = (text: string) => (
-    <p className="iqc-inspection-action-note" data-tone="info">
-      <Icon name="info" size={14} aria-hidden />
-      {text}
-    </p>
+  const infoNote = (text: string) => <PuNote>{text}</PuNote>;
+  const retryButton = (onClick: () => void) => (
+    <PuButton size="sm" onClick={onClick}>
+      {messages.common.retry}
+    </PuButton>
   );
 
   return (
-    <div className="production-flow-wo-close">
+    <>
+      {/* 작업 줄 버튼(#295 규칙 2·3) — 잠기면 흐리게만, 까닭은 `reasonId` 문장에 잇는다. */}
       {reason === null ? (
-        <Button
-          variant={props.variant ?? 'outlined'}
-          size="xl"
+        <PuButton
+          variant={props.variant === 'filled' ? 'primary' : 'default'}
           aria-describedby={props.reasonId}
           onClick={() => setIsOpen(true)}
         >
           {t.button}
-        </Button>
+        </PuButton>
       ) : props.reasonId !== undefined ? (
-        <Button
-          variant={props.variant ?? 'outlined'}
-          size="xl"
+        <PuButton
+          variant={props.variant === 'filled' ? 'primary' : 'default'}
           disabled
           aria-describedby={props.reasonId}
         >
           {t.button}
-        </Button>
+        </PuButton>
       ) : (
         <div className="field-cell">
-          <Button variant="outlined" size="xl" disabled aria-describedby={noteId}>
+          <PuButton disabled aria-describedby={noteId}>
             {t.button}
-          </Button>
+          </PuButton>
           <span id={noteId} className="field-note">
             {reason}
           </span>
         </div>
       )}
 
+      {/* 되돌릴 수 없는 일이라 확인 창을 거친다(규칙 13). 머리 X 없이 아래 [취소] + [마감](규칙 16). */}
       {isOpen && (
-        <Dialog
-          open
-          size="lg"
-          className="production-flow-wo-end-dialog"
-          /* 제목 왼쪽, W/O 번호 오른쪽 끝(사용자 지시 2026-11-16 시안). 읽는 이름은 「작업지시 마감 WO-…」 그대로. */
-          title={
-            <span className="production-flow-wo-end-title" aria-label={t.title(workOrderNo)}>
-              <span>{t.titleLead}</span>
-              <span className="production-flow-wo-end-no">{workOrderNo}</span>
-            </span>
-          }
-          showCloseButton={false}
-          /* 터치 단말의 오조작 — 바깥을 눌러 닫히지 않는다. */
-          closeOnBackdropClick={false}
+        <PuDialog
+          wide
+          title={t.title(workOrderNo)}
           onClose={close}
           footer={
             <>
-              <Button variant="outlined" size="xl" disabled={sequence.isSaving} onClick={close}>
+              <PuButton disabled={sequence.isSaving} onClick={close}>
                 {t.cancel}
-              </Button>
-              <Button
-                size="xl"
+              </PuButton>
+              <PuButton
+                variant="primary"
                 disabled={!canSubmit}
-                loading={sequence.isSaving}
+                aria-busy={sequence.isSaving || undefined}
                 aria-describedby={submitBlockedReason === null ? undefined : submitNoteId}
                 onClick={() => {
                   const next = body();
@@ -304,38 +285,26 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                 }}
               >
                 {t.confirm}
-              </Button>
+              </PuButton>
             </>
           }
         >
-          {endFailureText !== null && (
-            <div className="banner-slot">
-              <AlertBanner variant="error" title={endFailureText} />
-            </div>
-          )}
-          {sequence.endedButNotClosed && (
-            <div className="banner-slot">
-              <AlertBanner variant="warning" title={t.endedButNotClosed} />
-            </div>
-          )}
+          {endFailureText !== null && <PuNote tone="bad">{endFailureText}</PuNote>}
+          {sequence.endedButNotClosed && <PuNote tone="warn">{t.endedButNotClosed}</PuNote>}
           <SaveErrorBanner error={sequence.endError} />
           <SaveErrorBanner error={sequence.closeError} />
 
           {sessions.isPending ? (
-            <p role="status">{st.checking}</p>
+            <p role="status" className="pu-dialog-text">
+              {st.checking}
+            </p>
           ) : sessions.isError ? (
-            <AlertBanner
-              variant="error"
-              title={st.loadFailed}
-              action={
-                <Button variant="outlined" size="sm" onClick={() => void sessions.refetch()}>
-                  {messages.common.retry}
-                </Button>
-              }
-            />
+            <PuNote tone="bad" action={retryButton(() => void sessions.refetch())}>
+              {st.loadFailed}
+            </PuNote>
           ) : plan !== null && plan.blockers.length > 0 ? (
-            <div className="banner-slot">
-              <AlertBanner variant="warning" title={st.blocked} />
+            <>
+              <PuNote tone="warn">{st.blocked}</PuNote>
               <Table
                 density="compact"
                 caption={st.listLabel}
@@ -343,139 +312,119 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                 rows={plan.blockers}
                 getRowId={(row) => String(row.workSessionId)}
               />
-            </div>
+            </>
           ) : null}
 
           {target.isPending ? (
-            <p role="status">{t.loading}</p>
+            <p role="status" className="pu-dialog-text">
+              {t.loading}
+            </p>
           ) : target.isError || target.data === undefined || target.data.etag === null ? (
-            <AlertBanner
-              variant="error"
-              title={t.loadFailed}
-              action={
-                <Button variant="outlined" size="sm" onClick={() => void target.refetch()}>
-                  {messages.common.retry}
-                </Button>
-              }
-            />
+            <PuNote tone="bad" action={retryButton(() => void target.refetch())}>
+              {t.loadFailed}
+            </PuNote>
           ) : (
             <>
-              <dl className="pop-figures">
-                <div>
-                  <dt>{t.fields.orderQty}</dt>
-                  <dd>{`${formatQty(target.data.workOrder.orderQty)} ${uomLabel}`.trim()}</dd>
-                </div>
-                <div>
-                  <dt>{t.fields.goodQty}</dt>
-                  <dd>{`${formatQty(progress?.goodQty ?? 0)} ${uomLabel}`.trim()}</dd>
-                </div>
-                <div>
-                  <dt>{t.fields.judgment}</dt>
-                  {/*
-                   * 정상은 초록(개선 명세 ⑧-2). 미달·초과는 기본 글자색이고 미달량·초과량만 색으로 보인다
-                   * (사용자 지시 2026-11-16 시안). 값은 서버 판정 그대로다.
-                   */}
-                  <dd data-tone={judgment === 'NORMAL' ? 'success' : undefined}>
-                    {judgment === null ? '—' : t.judgments[judgment]}
-                  </dd>
-                </div>
+              <dl className="pu-kv">
+                <dt>{t.fields.orderQty}</dt>
+                <dd>{`${formatQty(target.data.workOrder.orderQty)} ${uomLabel}`.trim()}</dd>
+                <dt>{t.fields.goodQty}</dt>
+                <dd>{`${formatQty(progress?.goodQty ?? 0)} ${uomLabel}`.trim()}</dd>
+                <dt>{t.fields.judgment}</dt>
+                {/*
+                 * 정상은 초록(개선 명세 ⑧-2). 미달·초과는 기본 글자색이고 미달량·초과량만 색으로 보인다
+                 * (사용자 지시 2026-11-16 시안). 값은 서버 판정 그대로다.
+                 */}
+                <dd>
+                  {judgment === null ? (
+                    '—'
+                  ) : (
+                    <span
+                      className={judgment === 'NORMAL' ? 'pu-chip ok' : 'pu-chip warn'}
+                      data-tone={judgment === 'NORMAL' ? 'success' : undefined}
+                    >
+                      {t.judgments[judgment]}
+                    </span>
+                  )}
+                </dd>
                 {variance !== undefined && variance !== 0 && (
-                  <div>
+                  <>
                     <dt>{variance > 0 ? t.fields.shortfallQty : t.fields.overageQty}</dt>
-                    <dd data-tone="error">
+                    <dd data-tone="error" className="pr-close-variance">
                       {`${formatQty(Math.abs(variance))} ${uomLabel}`.trim()}
                     </dd>
-                  </div>
+                  </>
                 )}
               </dl>
 
               {judgment === null && (
-                <AlertBanner
-                  variant="error"
-                  title={t.judgmentMissing}
-                  action={
-                    <Button variant="outlined" size="sm" onClick={() => void target.refetch()}>
-                      {messages.common.retry}
-                    </Button>
-                  }
-                />
+                <PuNote tone="bad" action={retryButton(() => void target.refetch())}>
+                  {t.judgmentMissing}
+                </PuNote>
               )}
 
               {needsDisposition && (
-                /*
-                 * fieldset·legend 대신 이름 붙은 묶음(role=group)이다 — legend 는 브라우저가 내용 최소 폭으로
-                 * 줄여 제목 옆 안내 줄이 글자마다 꺾였다(사용자 지시 2026-11-16, 명세 ⑧ 그림).
-                 */
-                <div
-                  className="production-flow-wo-end-group"
-                  role="group"
-                  aria-labelledby={remainderTitleId}
-                >
-                  <div className="production-flow-wo-end-legend">
-                    <span id={remainderTitleId}>{t.fields.remainder}</span>
-                    <span className="production-flow-wo-end-required">{t.required}</span>
-                  </div>
-                  <div className="production-flow-reason-tiles">
+                <PuField label={t.fields.remainder} required labelId={remainderTitleId}>
+                  <div
+                    className="pu-tiles"
+                    role="group"
+                    aria-labelledby={remainderTitleId}
+                    style={{ '--cols': '2' } as CSSProperties}
+                  >
                     {(['CARRY_OVER', 'WRITE_OFF'] as const).map((code) => (
-                      <Button
+                      <button
                         key={code}
-                        size="xl"
-                        variant={disposition === code ? 'filled' : 'outlined'}
+                        type="button"
+                        className={disposition === code ? 'pu-tile is-on' : 'pu-tile'}
                         aria-pressed={disposition === code}
                         onClick={() => setDisposition(code)}
                       >
                         {t.remainder[code]}
-                      </Button>
+                      </button>
                     ))}
                   </div>
-                </div>
+                </PuField>
               )}
 
               {needsReason && (
-                <div
-                  className="production-flow-wo-end-group"
-                  role="group"
-                  aria-labelledby={reasonTitleId}
-                >
-                  <div className="production-flow-wo-end-legend">
-                    <span id={reasonTitleId}>{t.fields.reason}</span>
-                    {/* LOT 마감 때 고른 사유를 가져왔으면 그 안내, 아니면 「필수」. */}
-                    {isPrefilled ? (
-                      infoNote(t.prefilled)
-                    ) : (
-                      <span className="production-flow-wo-end-required">{t.required}</span>
-                    )}
-                  </div>
+                <PuField label={t.fields.reason} required labelId={reasonTitleId}>
+                  {/* LOT 마감 때 고른 사유를 가져왔으면 그 안내. */}
+                  {isPrefilled && infoNote(t.prefilled)}
                   {reasons.isLoading ? (
-                    <p role="status">{t.reasonsLoading}</p>
+                    <p role="status" className="pu-dialog-text">
+                      {t.reasonsLoading}
+                    </p>
                   ) : reasons.isError ? (
-                    <AlertBanner variant="error" title={t.reasonsFailed} />
+                    <PuNote tone="bad">{t.reasonsFailed}</PuNote>
                   ) : reasonList.length === 0 ? (
-                    <p>{t.reasonsEmpty}</p>
+                    <p className="pu-dialog-text">{t.reasonsEmpty}</p>
                   ) : (
-                    <div className="production-flow-reason-tiles">
+                    <div className="pu-tiles" role="group" aria-labelledby={reasonTitleId}>
                       {reasonList.map((item) => (
-                        <Button
+                        <button
                           key={item.code}
-                          size="xl"
-                          variant={effectiveReason === item.code ? 'filled' : 'outlined'}
+                          type="button"
+                          className={effectiveReason === item.code ? 'pu-tile is-on' : 'pu-tile'}
                           aria-pressed={effectiveReason === item.code}
                           onClick={() => setReasonCode(item.code)}
                         >
                           {masterName(item, item.codeName)}
-                        </Button>
+                        </button>
                       ))}
                     </div>
                   )}
-                </div>
+                </PuField>
               )}
 
               {needsDisposition && disposition === 'WRITE_OFF' && (
-                <TextField
-                  label={t.fields.remarks}
-                  value={remarks}
-                  onChange={(event) => setRemarks(event.target.value)}
-                />
+                <PuField label={t.fields.remarks} htmlFor={remarksId}>
+                  <PuInput
+                    id={remarksId}
+                    value={remarks}
+                    autoComplete="off"
+                    onChange={(event) => setRemarks(event.target.value)}
+                  />
+                </PuField>
               )}
 
               {/*
@@ -483,13 +432,13 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                * 시안). 폐번 건수는 서버가 센 값(`withoutResultCount`)이 정본이다. 번호는 받은 쪽에서 보인다.
                */}
               {voided > 0 && (
-                <section className="production-flow-wo-end-lots" aria-label={t.voidedTitle}>
-                  <div className="production-flow-wo-end-legend">
+                <section className="pu-stack pr-close-lots" aria-label={t.voidedTitle}>
+                  <div className="pu-label">
                     <span>{t.voidedTitle}</span>
-                    <span className="production-flow-wo-end-count">{t.lotCount(voided)}</span>
+                    <span className="aside">{t.lotCount(voided)}</span>
                   </div>
                   {voidLotNos.length > 0 && (
-                    <ul className="production-flow-wo-end-lot-box">
+                    <ul className="pr-close-lot-box">
                       {voidLotNos.map((lotNo) => (
                         <li key={lotNo}>{lotNo}</li>
                       ))}
@@ -499,14 +448,12 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                 </section>
               )}
               {openLotNos.length > 0 && (
-                <section className="production-flow-wo-end-lots" aria-label={t.openTitle}>
-                  <div className="production-flow-wo-end-legend">
+                <section className="pu-stack pr-close-lots" aria-label={t.openTitle}>
+                  <div className="pu-label">
                     <span>{t.openTitle}</span>
-                    <span className="production-flow-wo-end-count">
-                      {t.lotCount(openLotNos.length)}
-                    </span>
+                    <span className="aside">{t.lotCount(openLotNos.length)}</span>
                   </div>
-                  <ul className="production-flow-wo-end-lot-box">
+                  <ul className="pr-close-lot-box">
                     {openLotNos.map((lotNo) => (
                       <li key={lotNo}>{lotNo}</li>
                     ))}
@@ -517,11 +464,8 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
               {openLots.isError && infoNote(t.openLotsUnknown)}
               {(openLots.data?.uncheckedCount ?? 0) > 0 &&
                 infoNote(t.uncheckedLots(openLots.data?.uncheckedCount ?? 0))}
-              {/* 안내 문구는 시연 문서의 라벨 모양(아이콘 + 바탕 한 줄) — 경고는 노랑(사용자 지시 2026-11-16). */}
-              <p className="iqc-inspection-action-note" data-tone="warning">
-                <Icon name="warning" size={14} aria-hidden />
-                {t.irreversible}
-              </p>
+              {/* 되돌릴 수 없음 안내(시안 문구 그대로) — 주의 노랑. */}
+              <PuNote tone="warn">{t.irreversible}</PuNote>
             </>
           )}
           {/* 창 위에 이미 띠로 선 까닭·고를 칸이 위에 있는 까닭은 단추에만 이어 둔다 — 같은 말을 두 번 보이지 않게. */}
@@ -533,8 +477,8 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
               {submitBlocked.text}
             </p>
           )}
-        </Dialog>
+        </PuDialog>
       )}
-    </div>
+    </>
   );
 };

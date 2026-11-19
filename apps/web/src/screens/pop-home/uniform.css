@@ -1,0 +1,301 @@
+/*
+ * 홈 — 화면 전용 모양(#295 시안). 공통 모양은 `app/pop-uniform.css`. 선택자는 `home-` 접두.
+ * 홈은 저장하는 일이 없어 아래 작업 줄이 없다.
+ */
+.pu-screen.home-u {
+  height: 100%;
+}
+
+.home-u .pu-main {
+  grid-template-rows: auto 200px auto;
+  align-content: start;
+}
+
+.home-u .home-greet {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.home-u .home-greet h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.home-u .home-greet .when {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--pu-text-2);
+}
+
+.home-u .home-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 12px;
+  min-height: 0;
+}
+
+/* 오늘 작업 현황 */
+.home-u .home-status .pu-seg button {
+  height: 32px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.home-u .home-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1.6fr;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-field);
+  overflow: hidden;
+}
+
+.home-u .home-stat {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border-right: 1px solid var(--pu-line-2);
+  min-width: 0;
+}
+
+.home-u .home-stat .ico {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--pu-card-2);
+  color: var(--pu-text-2);
+}
+
+.home-u .home-stat .ico svg {
+  width: 18px;
+  height: 18px;
+}
+
+.home-u .home-stat small {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--pu-text-3);
+}
+
+.home-u .home-stat strong {
+  font-size: 22px;
+  white-space: nowrap;
+}
+
+.home-u .home-stat.info .ico {
+  background: var(--pu-info-bg);
+  color: var(--pu-info);
+}
+
+.home-u .home-stat.info small {
+  color: var(--pu-info);
+}
+
+.home-u .home-stat.ok .ico {
+  background: var(--pu-ok-bg);
+  color: var(--pu-ok);
+}
+
+.home-u .home-stat.ok small {
+  color: var(--pu-ok);
+}
+
+.home-u .home-next {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.home-u .home-next:disabled {
+  cursor: default;
+}
+
+.home-u .home-next:not(:disabled):hover {
+  background: var(--pu-hover);
+}
+
+.home-u .home-next .txt {
+  flex: 1;
+  display: grid;
+  min-width: 0;
+}
+
+.home-u .home-next small {
+  color: var(--pu-primary);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.home-u .home-next b,
+.home-u .home-next .sub {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-u .home-next .sub {
+  color: var(--pu-text-3);
+  font-size: 13px;
+}
+
+/* 남은 작업 */
+.home-u .home-rows {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.home-u .home-row-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-field);
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+  min-width: 0;
+}
+
+.home-u .home-row-link:hover {
+  border-color: var(--pu-line);
+}
+
+.home-u .home-row-link > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-u .home-row-link strong {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.home-u .home-remaining .pu-empty {
+  min-height: 0;
+  padding: 8px;
+  height: 100%;
+}
+
+/* 바로가기 */
+.home-u .home-hint {
+  color: var(--pu-text-3);
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.home-u .home-tiles {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.home-u .home-tiles.is-edit {
+  gap: 8px;
+}
+
+.home-u .home-tile {
+  position: relative;
+  height: 104px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-field);
+  color: inherit;
+  font: inherit;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 15px;
+  padding: 6px;
+  text-align: center;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.home-u .home-tile svg {
+  width: 24px;
+  height: 24px;
+  color: var(--pu-info);
+}
+
+.home-u .home-tile:hover {
+  border-color: var(--pu-line);
+}
+
+.home-u .home-tile .cnt {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+}
+
+.home-u .home-tile.is-on {
+  border-color: var(--pu-primary);
+  background: var(--pu-primary-soft);
+}
+
+.home-u .home-tile .chk {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+.home-u .home-tile .chk svg {
+  width: 18px;
+  height: 18px;
+  color: var(--pu-primary);
+}
+
+.home-u .home-tile:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.home-u .home-tiles.is-edit .home-tile {
+  height: 64px;
+  font-size: 14px;
+  gap: 6px;
+}
+
+.home-u .home-tiles.is-edit .home-tile svg {
+  width: 20px;
+  height: 20px;
+}
+
+@media (max-width: 1100px) {
+  .home-u .home-top {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+
+  .home-u .home-stat {
+    padding: 12px;
+    gap: 8px;
+  }
+}

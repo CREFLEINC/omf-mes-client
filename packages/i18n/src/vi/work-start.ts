@@ -16,6 +16,7 @@ export const workStart: Translated<typeof ko.workStart> = {
     cancel: 'Hủy',
     checking: 'Đang kiểm tra',
     empty: 'Chưa nhập mã nhân viên.',
+    emptyHint: 'Cần nhập mã nhân viên để chọn lệnh sản xuất.',
     open: 'Nhập mã nhân viên',
     dialogTitle: 'Nhập mã nhân viên',
 
@@ -41,6 +42,7 @@ export const workStart: Translated<typeof ko.workStart> = {
     failed: 'Không thay đổi được người làm. Vui lòng thử lại.',
     loadFailed: 'Không tải được danh sách người làm. Vui lòng chọn lại lệnh sản xuất.',
     unknown: 'Chưa đăng ký tên',
+    added: (workerNo: string): string => `Đã thêm người phụ ${workerNo}.`,
   },
 
   list: {
@@ -69,15 +71,14 @@ export const workStart: Translated<typeof ko.workStart> = {
     equipment: 'Thiết bị',
 
     empty: (equipment: string): string =>
-      `Không có lệnh sản xuất nào phát hành cho ${equipment}. Chọn 「Tất cả thiết bị」 ở mục Thiết bị để xem lệnh của thiết bị khác.`,
+      `Không có lệnh sản xuất nào phát hành cho ${equipment}.`,
+    emptyHint: 'Chọn 「Tất cả thiết bị」 ở mục Thiết bị để xem lệnh của thiết bị khác.',
     emptyOther: (equipment: string): string =>
       `Không có lệnh sản xuất nào phát hành cho ${equipment}.`,
     emptyAll: 'Không có lệnh sản xuất nào có thể thực hiện.',
     loading: 'Đang tải lệnh sản xuất.',
     loadError: 'Không tải được lệnh sản xuất. Vui lòng thử lại.',
     retry: 'Thử lại',
-
-    total: (total: number): string => `Tổng ${String(total)} mục`,
 
     pageNav: 'Chuyển trang danh sách lệnh sản xuất',
 
@@ -95,6 +96,10 @@ export const workStart: Translated<typeof ko.workStart> = {
     process: 'Công đoạn',
     plannedStart: 'Bắt đầu theo kế hoạch',
     equipment: 'Thiết bị',
+    emptyTitle: 'Hãy chọn lệnh sản xuất',
+    emptyHint: 'Chạm vào lệnh muốn bắt đầu ở danh sách bên trái.',
+    terminalEquipment: 'Thiết bị máy trạm',
+    assignedEquipment: 'Thiết bị theo lệnh',
 
     otherEquipment: (equipment: string): string =>
       `Thiết bị theo kế hoạch của lệnh này là ${equipment}. Vẫn có thể bắt đầu trên thiết bị này.`,

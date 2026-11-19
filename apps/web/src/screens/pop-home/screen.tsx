@@ -1,11 +1,26 @@
-import { Badge } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { POP_ENTRY_SCREEN_PATH, type PopScreen } from '../../patterns/pop-screen-catalog';
 import { countOf, GROUP_ICONS, navIcon, usePopNavigation } from '../../patterns/pop-screen-nav';
+import {
+  PuButton,
+  PuChip,
+  PuCount,
+  PuEmpty,
+  PuIcon,
+  PuNote,
+  PuPager,
+  PuScreen,
+  PuSection,
+  PuSeg,
+  puCx,
+  puToast,
+  useClientPage,
+  useFitCount,
+} from '../../patterns/pop-uniform';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { useHomeWorkStatus } from './queries';
 import {
@@ -15,6 +30,7 @@ import {
   writeShortcutPaths,
 } from './shortcuts';
 import type { WorkStartEntryState } from '../work-start/entry-state';
+import './uniform.css';
 
 const t = messages.popChrome.home;
 
@@ -62,15 +78,6 @@ const SHORTCUT_ICONS: readonly { path: string; icon: ReactNode }[] = [
   },
 ];
 
-const CALENDAR_ICON = navIcon(
-  <>
-    <rect x="3" y="5" width="18" height="16" rx="2" />
-    <path d="M3 10h18M8 3v4M16 3v4" />
-  </>,
-);
-const BOLT_ICON = navIcon(<path d="M13 2 4 14h7l-1 8 9-12h-7z" />);
-const RIGHT_ICON = navIcon(<path d="m9 6 6 6-6 6" />);
-
 const pad = (value: number) => String(value).padStart(2, '0');
 
 /** 「2026-11-17 (화) 11:58」 — 분이 바뀔 때마다 다시 그린다. */
@@ -97,7 +104,6 @@ const CLOCK_ICON = navIcon(
   </>,
 );
 const CHECK_ICON = navIcon(<path d="m5 12 5 5L20 7" />);
-const PEN_ICON = navIcon(<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" />);
 
 const iconOf = (screen: PopScreen): ReactNode =>
   SHORTCUT_ICONS.find((entry) => entry.path === screen.path)?.icon ?? GROUP_ICONS[screen.group];
@@ -126,54 +132,51 @@ const StatusCard = ({
   );
   const data = status.data;
   const stats = [
-    { key: 'run', label: t.inProgress, value: data?.inProgress, icon: PLAY_ICON, tone: 'run' },
-    { key: 'wait', label: t.waiting, value: data?.waiting, icon: CLOCK_ICON, tone: 'wait' },
-    { key: 'done', label: t.done, value: data?.done, icon: CHECK_ICON, tone: 'done' },
+    /* 공통 상태 색(#295 규칙 10): 진행 중 파랑 · 대기 회색 · 완료 초록. */
+    { key: 'run', label: t.inProgress, value: data?.inProgress, icon: PLAY_ICON, tone: 'info' },
+    { key: 'wait', label: t.waiting, value: data?.waiting, icon: CLOCK_ICON, tone: 'idle' },
+    { key: 'done', label: t.done, value: data?.done, icon: CHECK_ICON, tone: 'ok' },
   ] as const;
   const next = data?.next ?? null;
 
   return (
-    <section className="pop-home__panel pop-home__status" aria-labelledby={titleId}>
-      <h2 id={titleId} className="pop-home__heading">
-        {t.statusTitle}
-        {terminalId !== null && equipment === null && (
-          <span className="pop-home__scope">{t.statusAllEquipment}</span>
-        )}
-      </h2>
-      {equipment !== null && (
-        <div className="pop-home__scope-toggle" role="group" aria-label={t.statusScopeLabel}>
-          {[
-            {
-              all: false,
-              label: t.statusMyEquipment(
-                equipment.equipmentName ??
-                  equipment.equipmentCode ??
-                  `#${String(equipment.equipmentId)}`,
-              ),
-            },
-            { all: true, label: t.statusEveryEquipment },
-          ].map((option) => (
-            <button
-              key={String(option.all)}
-              type="button"
-              aria-pressed={allEquipment === option.all}
-              onClick={() => {
-                setAllEquipment(option.all);
-              }}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      )}
+    <PuSection
+      labelId={titleId}
+      title={t.statusTitle}
+      className="home-status"
+      meta={
+        equipment !== null ? (
+          <PuSeg
+            label={t.statusScopeLabel}
+            value={allEquipment ? 'all' : 'mine'}
+            onChange={(value) => {
+              setAllEquipment(value === 'all');
+            }}
+            options={[
+              {
+                value: 'mine',
+                label: t.statusMyEquipment(
+                  equipment.equipmentName ??
+                    equipment.equipmentCode ??
+                    `#${String(equipment.equipmentId)}`,
+                ),
+              },
+              { value: 'all', label: t.statusEveryEquipment },
+            ]}
+          />
+        ) : terminalId !== null ? (
+          t.statusAllEquipment
+        ) : undefined
+      }
+    >
       {status.isError ? (
-        <p className="pop-home__none">{t.statusFailed}</p>
+        <PuNote tone="bad">{t.statusFailed}</PuNote>
       ) : (
-        <div className="pop-home__stats">
+        <div className="home-stats">
           {stats.map((stat) => (
-            <div key={stat.key} className="pop-home__stat" data-tone={stat.tone}>
-              <span className="pop-home__stat-icon">{stat.icon}</span>
-              <span className="pop-home__stat-text">
+            <div key={stat.key} className={puCx('home-stat', stat.tone)}>
+              <span className="ico">{stat.icon}</span>
+              <span>
                 <small>{stat.label}</small>
                 <strong>{stat.value === undefined ? '–' : t.statusCount(stat.value)}</strong>
               </span>
@@ -181,20 +184,20 @@ const StatusCard = ({
           ))}
           <button
             type="button"
-            className="pop-home__next"
+            className="home-next"
             disabled={onNext === null || next === null}
             onClick={() => {
               if (next !== null) onNext?.(next.workOrderId, equipment === null || allEquipment);
             }}
           >
-            <span className="pop-home__next-text">
+            <span className="txt">
               <small>{t.nextTitle}</small>
               {next === null ? (
-                <span>{data === undefined ? '–' : t.nextNone}</span>
+                <span className="sub">{data === undefined ? '–' : t.nextNone}</span>
               ) : (
                 <>
-                  <b>{next.workOrderNo}</b>
-                  <span>
+                  <b className="pu-mono">{next.workOrderNo}</b>
+                  <span className="sub">
                     {t.nextPlan(
                       next.itemCode ?? `#${String(next.itemId)}`,
                       next.orderQty.toLocaleString(),
@@ -203,11 +206,60 @@ const StatusCard = ({
                 </>
               )}
             </span>
-            {next !== null && onNext !== null && RIGHT_ICON}
+            {next !== null && onNext !== null && <PuIcon name="chevr" />}
           </button>
         </div>
       )}
-    </section>
+    </PuSection>
+  );
+};
+
+/** 남은 작업 구획 — 줄이 구획 높이를 넘으면 쪽으로 나눈다(#295 규칙 15 · 구획 안 스크롤 없음). */
+const RemainingCard = ({ titleId }: { titleId: string }) => {
+  const { pending, total, go } = usePopNavigation();
+  const listRef = useRef<HTMLDivElement>(null);
+  const size = useFitCount(listRef, { fallback: 3 });
+  const shown = useClientPage(pending, size);
+
+  return (
+    <PuSection
+      labelId={titleId}
+      title={t.remainingTitle}
+      className="home-remaining"
+      split={shown.pages > 1}
+      meta={total > 0 ? <PuChip tone="bad">{total}</PuChip> : undefined}
+    >
+      {pending.length === 0 ? (
+        <PuEmpty icon="ok" title={t.remainingNone} />
+      ) : (
+        <div ref={listRef} className="home-rows pu-fit">
+          {shown.items.map(({ screen, count }) => (
+            <button
+              key={screen.path}
+              type="button"
+              className="home-row-link"
+              aria-label={messages.popChrome.remaining.count(screen.name, count)}
+              onClick={() => {
+                go(screen);
+              }}
+            >
+              <span>{screen.name}</span>
+              <strong>{t.remainingCount(count)}</strong>
+              <PuIcon name="chevr" />
+            </button>
+          ))}
+        </div>
+      )}
+      {shown.pages > 1 && (
+        <PuPager
+          total={shown.total}
+          page={shown.page}
+          pages={shown.pages}
+          label={t.remainingPageNav}
+          onPage={shown.setPage}
+        />
+      )}
+    </PuSection>
   );
 };
 
@@ -221,7 +273,7 @@ export const PopHomeScreen = (): ReactNode => {
   const titleId = useId();
   const { workerNo } = usePopIdentity();
   const session = useWorkerSession();
-  const { access, workCounts, pending, total, go } = usePopNavigation();
+  const { access, workCounts, go } = usePopNavigation();
   const navigate = useNavigate();
   const clock = useClock();
   const [pickedPaths, setPickedPaths] = useState<string[] | null>(readShortcutPaths);
@@ -248,22 +300,19 @@ export const PopHomeScreen = (): ReactNode => {
   if (workerNo === null) return <Navigate to={POP_ENTRY_SCREEN_PATH} replace />;
 
   return (
-    <main className="pop-ui pop-home" aria-labelledby={titleId}>
-      <h1 id={titleId} className="pop-visually-hidden pop-fixed">
+    <PuScreen className="home-u" labelledBy={titleId}>
+      <h1 id={titleId} className="pop-visually-hidden">
         {t.title}
       </h1>
-      <section className="pop-home__hello pop-fixed">
-        <div>
-          <h2>{name === '' ? t.greetingAnonymous : t.greeting(name)}</h2>
-          <p>{t.sub}</p>
-        </div>
-        <span className="pop-home__clock">
-          {CALENDAR_ICON}
+      <div className="home-greet">
+        <h2>{name === '' ? t.greetingAnonymous : t.greeting(name)}</h2>
+        <span className="when">
+          <PuIcon name="clock" />
           {clock}
         </span>
-      </section>
+      </div>
 
-      <div className="pop-home__row pop-fixed">
+      <div className="home-top">
         <StatusCard
           titleId={`${titleId}-status`}
           onNext={
@@ -275,71 +324,53 @@ export const PopHomeScreen = (): ReactNode => {
                 }
           }
         />
-
-        <section className="pop-home__panel pop-home__remaining" aria-labelledby={`${titleId}-rem`}>
-          <h2 id={`${titleId}-rem`} className="pop-home__heading">
-            {t.remainingTitle}
-            {total > 0 && <span className="pop-home__total">{total}</span>}
-          </h2>
-          {pending.length === 0 ? (
-            <p className="pop-home__none">{t.remainingNone}</p>
-          ) : (
-            <div className="pop-home__remaining-list">
-              {pending.map(({ screen, count }) => (
-                <button
-                  key={screen.path}
-                  type="button"
-                  className="pop-home__remaining-item"
-                  aria-label={messages.popChrome.remaining.count(screen.name, count)}
-                  onClick={() => {
-                    go(screen);
-                  }}
-                >
-                  <span>{screen.name}</span>
-                  <strong>{t.remainingCount(count)}</strong>
-                  {RIGHT_ICON}
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
+        <RemainingCard titleId={`${titleId}-rem`} />
       </div>
 
-      <section className="pop-home__panel pop-fixed" aria-labelledby={`${titleId}-sc`}>
-        <div className="pop-home__shortcuts-head">
-          <h2 id={`${titleId}-sc`} className="pop-home__heading">
-            {BOLT_ICON}
-            {t.shortcutsTitle}
-          </h2>
-          <p>{isEditing ? t.editHint(MAX_SHORTCUTS) : t.shortcutsHint}</p>
-          <span className="pop-home__edit-tools">
-            {isEditing && (
-              <button
-                type="button"
-                className="pop-home__edit"
+      <PuSection
+        labelId={`${titleId}-sc`}
+        title={t.shortcutsTitle}
+        grow={false}
+        className="home-shortcuts"
+        head={
+          isEditing ? <span className="home-hint">{t.editHint(MAX_SHORTCUTS)}</span> : undefined
+        }
+        meta={
+          isEditing ? (
+            <>
+              <PuButton
+                size="sm"
                 onClick={() => {
                   savePaths(null);
                 }}
               >
                 {t.editReset}
-              </button>
-            )}
-            <button
-              type="button"
-              className="pop-home__edit"
-              aria-pressed={isEditing}
+              </PuButton>
+              <PuButton
+                size="sm"
+                variant="primary"
+                onClick={() => {
+                  setIsEditing(false);
+                  puToast(t.editSaved);
+                }}
+              >
+                {t.editDone}
+              </PuButton>
+            </>
+          ) : (
+            <PuButton
+              size="sm"
               onClick={() => {
-                setIsEditing(!isEditing);
+                setIsEditing(true);
               }}
             >
-              {!isEditing && PEN_ICON}
-              {isEditing ? t.editDone : t.edit}
-            </button>
-          </span>
-        </div>
-
+              {t.edit}
+            </PuButton>
+          )
+        }
+      >
         {isEditing ? (
-          <div className="pop-home__tiles pop-home__tiles--edit">
+          <div className="home-tiles is-edit">
             {access.screens.map((screen) => {
               const picked = paths.includes(screen.path);
               const isFull = !picked && shortcuts.length >= MAX_SHORTCUTS;
@@ -347,7 +378,7 @@ export const PopHomeScreen = (): ReactNode => {
                 <button
                   key={screen.path}
                   type="button"
-                  className="pop-home__tile"
+                  className={puCx('home-tile', picked && 'is-on')}
                   aria-pressed={picked}
                   aria-label={picked ? t.editPicked(screen.name) : screen.name}
                   disabled={isFull}
@@ -360,23 +391,27 @@ export const PopHomeScreen = (): ReactNode => {
                     );
                   }}
                 >
-                  {picked && <span className="pop-home__tile-check">{CHECK_ICON}</span>}
+                  {picked && (
+                    <span className="chk">
+                      <PuIcon name="ok" />
+                    </span>
+                  )}
                   {iconOf(screen)}
-                  <span>{screen.name}</span>
+                  <span className="name">{screen.name}</span>
                 </button>
               );
             })}
           </div>
         ) : (
           shortcuts.length > 0 && (
-            <div className="pop-home__tiles">
+            <div className="home-tiles">
               {shortcuts.map((screen) => {
                 const count = countOf(screen, workCounts.counts);
                 return (
                   <button
                     key={screen.path}
                     type="button"
-                    className="pop-home__tile"
+                    className="home-tile"
                     aria-label={
                       count > 0 ? messages.popChrome.remaining.count(screen.name, count) : undefined
                     }
@@ -385,23 +420,19 @@ export const PopHomeScreen = (): ReactNode => {
                     }}
                   >
                     {count > 0 && (
-                      <Badge
-                        count={count}
-                        max={9}
-                        tone="neutral"
-                        className="pop-work-badge"
-                        aria-hidden="true"
-                      />
+                      <span className="cnt" aria-hidden="true">
+                        <PuCount>{count}</PuCount>
+                      </span>
                     )}
                     {iconOf(screen)}
-                    <span>{screen.name}</span>
+                    <span className="name">{screen.name}</span>
                   </button>
                 );
               })}
             </div>
           )
         )}
-      </section>
-    </main>
+      </PuSection>
+    </PuScreen>
   );
 };

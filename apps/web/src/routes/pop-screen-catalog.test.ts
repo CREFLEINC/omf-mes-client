@@ -53,6 +53,6 @@ describe('POP 화면 이름표', () => {
     const workStart = POP_SCREENS.find((screen) => screen.code === 'P-02-01');
 
     expect(workStart?.name).toBe(messages.workStart.title);
-    expect(workStart?.name).toBe('작업 지시 목록');
+    expect(workStart?.name).toBe('작업지시 목록');
   });
 });

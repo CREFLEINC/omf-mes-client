@@ -1,9 +1,9 @@
-import { AlertBanner, Button, Dialog } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useRef, type KeyboardEvent } from 'react';
+import { useEffect, useRef, type CSSProperties, type KeyboardEvent } from 'react';
 
 import { masterName } from '../../patterns/master-name';
+import { PuButton, PuDialog, PuNote } from '../../patterns/pop-uniform';
 
 const t = messages.productionResult.flow.underReason;
 
@@ -52,70 +52,62 @@ export const UnderReasonDialog = ({
     headRef.current?.focus();
   }, [open]);
 
-  const dropScanTail = (event: KeyboardEvent<HTMLDialogElement>) => {
+  const dropScanTail = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Enter' && Date.now() - openedAt.current < SCAN_TAIL_MS) {
       event.preventDefault();
       event.stopPropagation();
     }
   };
 
+  if (!open) return null;
+
+  /* 머리 X 없이 아래 [취소] 하나(#295 규칙 16). 사유를 고르는 즉시 마감한다 — 지금과 같다. */
   return (
-    <Dialog
-      open={open}
-      onClose={onCancel}
+    <PuDialog
+      wide
       title={t.title}
-      size="lg"
-      className="production-flow-reason-dialog"
-      showCloseButton={false}
-      /* 터치 단말의 오조작 — 바깥을 눌러 닫히지 않는다. */
-      closeOnBackdropClick={false}
-      onKeyDownCapture={dropScanTail}
-      footer={
-        <Button variant="outlined" size="xl" onClick={onCancel}>
-          {t.cancel}
-        </Button>
-      }
+      onClose={onCancel}
+      footer={<PuButton onClick={onCancel}>{t.cancel}</PuButton>}
     >
-      <div ref={headRef} tabIndex={-1} className="production-flow-reason-body">
-        {/* 「LOT 수량 10 EA | 생산 실적 1 EA」 한 줄과 그 아래 구분선(사용자 지시 2026-11-16 시안). */}
+      <div
+        ref={headRef}
+        tabIndex={-1}
+        className="pu-stack pr-reason-body"
+        onKeyDownCapture={dropScanTail}
+      >
+        {/* 「LOT 수량 10 EA | 생산 실적 1 EA」(사용자 지시 2026-11-16 시안). */}
         {summary !== null && (
-          <dl className="production-flow-reason-summary">
-            <div>
-              <dt>{t.lotQty}</dt>
-              <dd>{summary.target}</dd>
-            </div>
-            <div>
-              <dt>{t.actualQty}</dt>
-              <dd>{summary.actual}</dd>
-            </div>
+          <dl className="pu-kv cols2">
+            <dt>{t.lotQty}</dt>
+            <dd>{summary.target}</dd>
+            <dt>{t.actualQty}</dt>
+            <dd>{summary.actual}</dd>
           </dl>
         )}
-        {error !== null && (
-          <div className="banner-slot">
-            <AlertBanner variant="error" title={error} />
-          </div>
-        )}
+        {error !== null && <PuNote tone="bad">{error}</PuNote>}
         {isLoading ? (
-          <p role="status">{t.loading}</p>
+          <p role="status" className="pu-dialog-text">
+            {t.loading}
+          </p>
         ) : isError ? (
-          <AlertBanner variant="error" title={t.loadFailed} />
+          <PuNote tone="bad">{t.loadFailed}</PuNote>
         ) : reasons.length === 0 ? (
-          <p>{t.empty}</p>
+          <p className="pu-dialog-text">{t.empty}</p>
         ) : (
-          <div className="production-flow-reason-tiles">
+          <div className="pu-tiles" style={{ '--cols': '2' } as CSSProperties}>
             {reasons.map((reason) => (
-              <Button
+              <button
                 key={reason.code}
-                variant="outlined"
-                size="xl"
+                type="button"
+                className="pu-tile"
                 onClick={() => onPick(reason.code)}
               >
                 {masterName(reason, reason.codeName)}
-              </Button>
+              </button>
             ))}
           </div>
         )}
       </div>
-    </Dialog>
+    </PuDialog>
   );
 };

@@ -1,12 +1,32 @@
-import { AlertBanner, Button, Chip, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useRef, useState, type RefObject } from 'react';
 
-import { formatPlantClock, formatPlantDateTime, plantToday } from '../../patterns/plant-time';
+import { formatPlantDateTime, plantToday } from '../../patterns/plant-time';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { PopTopPrinter } from '../../patterns/pop-top-status';
-import { popTouchClass } from '../../patterns/pop-touch';
+import {
+  PuActionBar,
+  PuButton,
+  PuChip,
+  PuCount,
+  PuDialog,
+  PuEmpty,
+  PuHelpButton,
+  PuIcon,
+  PuNote,
+  PuPager,
+  PuScanField,
+  PuScreen,
+  PuSection,
+  PuSeg,
+  PuStack,
+  PuTiles,
+  puToast,
+  useClientPage,
+  useFitTableRows,
+  type PuToastTone,
+} from '../../patterns/pop-uniform';
 import { formatBaseQty } from '../../patterns/package-qty';
 import { PrinterChip } from '../pop-material-lot-label/printer-chip';
 import {
@@ -35,8 +55,14 @@ import {
   type SplitMaterialLot,
 } from './split-lots';
 import { useSplitLabelPrint, type SplitPrintResult } from './split-print';
+import './uniform.css';
 
 const t = messages.goodsIssueQr;
+
+/** 표 정렬(분할 시각). 보기마다 처음 차례는 서버가 주던 차례와 같다 — 발행 대기는 오래된 순, 재발행은 최신 순. */
+type Order = 'newest' | 'oldest';
+
+const DEFAULT_ORDER: Record<LabelState, Order> = { UNPRINTED: 'oldest', PRINTED: 'newest' };
 
 /** 분할 시각(공장 시각) `MM-DD HH:mm`. */
 const shortAt = (value: string): string => (formatPlantDateTime(value) ?? value).slice(5);
@@ -60,7 +86,7 @@ const destinationOf = (lot: SplitMaterialLot): string =>
     : `${lot.destination.warehouseCode} / ${lot.destination.locationCode}`;
 
 interface ResultView {
-  tone: 'success' | 'warning' | 'error';
+  tone: PuToastTone;
   text: string;
 }
 
@@ -73,7 +99,7 @@ const toResultView = (results: readonly SplitPrintResult[], isReprint: boolean):
   const notSent = count('notSent');
   const issueFailed = results.filter((each) => each.outcome === 'issueFailed');
 
-  if (count('issueForbidden') > 0) return { tone: 'error', text: t.result.forbidden };
+  if (count('issueForbidden') > 0) return { tone: 'bad', text: t.result.forbidden };
 
   const tail = [
     issueFailed.length > 0
@@ -83,45 +109,48 @@ const toResultView = (results: readonly SplitPrintResult[], isReprint: boolean):
   ].join('');
 
   if (failed > 0) {
-    return { tone: 'warning', text: t.result.partial(results.length, printed, failed) + tail };
+    return { tone: 'warn', text: t.result.partial(results.length, printed, failed) + tail };
   }
 
-  if (printed === 0) return { tone: 'error', text: tail.trim() };
+  if (printed === 0) return { tone: 'bad', text: tail.trim() };
 
   return {
-    tone: tail === '' ? 'success' : 'warning',
+    tone: tail === '' ? 'ok' : 'warn',
     text: (isReprint ? t.result.reprinted(printed) : t.result.printed(printed)) + tail,
   };
 };
 
 /**
- * `P-01-02` 분할 LOT 라벨 (POP) — 008 부분 출고 LOT 분할 · omf-all-around#289 · 확정 시안 P0102-After.
+ * `P-01-02` 분할 LOT 라벨 (POP) — 008 부분 출고 LOT 분할 · omf-all-around#289 · #295 시안.
  *
  * ```
- * ┌ 머리줄: 화면 이름 · 사번 · 프린터 · 단말 ──────────────────────────────────────────────┐
- * │ ▣ 라벨 안 찍은 분할 LOT N건(기간 무관) · 인쇄 실패 · 가장 오래된 것                       │
- * │ [라벨 안 찍음 N | 찍음]  🔍 분할·원래 LOT 번호 스캔 …  (찍음: 출고일 기간)  [새로 고침]     │
- * │ 표: 선택 · 분할 LOT 번호/원래 LOT · 품목 · 수량 · 출고번호/라인 · 도착 · 분할 시각 · 라벨   │
- * │ 재발행 사유(인쇄 실패를 골랐거나 찍음 보기일 때)                                          │
- * ├ 동작 바: 지금 상태 · [전체 선택] [선택 해제] [라벨 N장 찍기] ─────────────────────────────┤
+ * ┌ 위 구획: LOT 번호 · 출고번호 · 품목코드 스캔 [직접 입력]   (재발행: 출고일 오늘 | 최근 7일 | 최근 30일) ┐
+ * ├ 아래 구획: [발행 대기 N | 재발행]                         [?] [전체 선택 (N건)] [선택 해제]       ┤
+ * │ 표: 선택 · 분할 LOT 번호/기존 LOT · 품목 · 수량 · 출고번호/도착 · 분할 시각 · 라벨                    │
+ * │ [최신순 | 오래된순]                                                          총 N건 ‹ 1 / 2 ›      │
+ * │ 재인쇄 사유 *(인쇄 실패를 골랐거나 재발행일 때)                                                     │
+ * ├ 작업 줄: [라벨 N장 발행] / [N장 재인쇄] ───────────────────────────────────────────────────────────┤
  * ```
  *
  * ⭐ 출고 QR(라인·파렛트) 발행은 없다(FR-010 · D-6). 분할 LOT 은 자재 관리 LOT 라벨과 같은 양식으로 찍는다(FR-007).
- * ⭐ 미발행은 기간과 상관없이 모두 보이고 오래된 것이 위다(FR-008 · SC-004). 인쇄 실패는 미발행으로 남는다.
+ * ⭐ 발행 대기는 기간과 상관없이 모두 보인다(FR-008 · SC-004). 인쇄 실패는 발행 대기로 남는다.
  */
 export const GoodsIssueQrScreen = () => {
   const { workerNo, plantId = null } = usePopIdentity();
-  /* 동작 바의 지금 상태 — 막힌 [라벨 찍기]가 그 까닭으로 잇는다(C-4). */
-  const stateId = useId();
   const printing = useSplitLabelPrint(workerNo);
 
   const [tab, setTab] = useState<LabelState>('UNPRINTED');
   const [period, setPeriod] = useState<PrintedPeriod>('week');
+  const [order, setOrder] = useState<Order>(DEFAULT_ORDER.UNPRINTED);
+  /* 재발행 탭은 사용자가 정렬을 고르기 전까지 서버가 준 차례 그대로 보인다. */
+  const [isOrderPicked, setOrderPicked] = useState(false);
+  /* 첫 발행이 다 찍혔다 — 「재발행」으로 옮겨 볼 길을 구획 안에 남긴다(전의 [찍음 보기]). */
+  const [printedNote, setPrintedNote] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [scanError, setScanError] = useState<string | null>(null);
   const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
   const [reasonCode, setReasonCode] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ index: number } | null>(null);
-  const [result, setResult] = useState<{ view: ResultView; isReprint: boolean } | null>(null);
 
   const unprinted = useSplitMaterialLots(plantId, 'UNPRINTED', period);
   const printed = useSplitMaterialLots(
@@ -145,15 +174,26 @@ export const GoodsIssueQrScreen = () => {
   const headPrinter = printerChoice.printer;
 
   const today = plantToday();
-  const unprintedLots = (unprinted.data?.items ?? []).filter(isUnprinted);
   const unprintedCount = unprinted.data?.unprintedCount ?? null;
+  /* 발행 대기 요약 — 인쇄 실패 건수 · 가장 오래된 것(서버가 오래된 순으로 준다). */
+  const unprintedLots = (unprinted.data?.items ?? []).filter(isUnprinted);
   const failedCount = unprintedLots.filter((lot) => lot.labelIssue !== null).length;
   const oldest = unprintedLots[0];
 
-  const rows = useMemo(
-    () => (current.data?.items ?? []).filter((lot) => matchesSplitLot(lot, query)),
-    [current.data, query],
+  /* 표에 보이는 차례 — 분할 시각으로 줄 세운다. 찍는 차례(`printList`)와는 따로다. */
+  const keepsServerOrder = tab === 'PRINTED' && !isOrderPicked;
+  const sorted = useMemo(
+    () =>
+      keepsServerOrder
+        ? (current.data?.items ?? [])
+        : [...(current.data?.items ?? [])].sort((left, right) =>
+            order === 'oldest'
+              ? left.splitAt.localeCompare(right.splitAt)
+              : right.splitAt.localeCompare(left.splitAt),
+          ),
+    [current.data, order, keepsServerOrder],
   );
+  const rows = useMemo(() => sorted.filter((lot) => matchesSplitLot(lot, query)), [sorted, query]);
   const lotById = useMemo(
     () => new Map((current.data?.items ?? []).map((lot) => [lot.lotId, lot] as const)),
     [current.data],
@@ -175,11 +215,19 @@ export const GoodsIssueQrScreen = () => {
     chosen.length > 0 && (!needsReason || reasonCode !== null) && workerNo !== null && !isBusy;
   const allOn = rows.length > 0 && rows.every((lot) => selected.has(lot.lotId));
 
+  const tableFitRef = useRef<HTMLDivElement>(null);
+  const pageSize = useFitTableRows(tableFitRef, { fallback: 5 });
+  const page = useClientPage(rows, pageSize);
+
   const chooseTab = (next: LabelState, keepQuery = false): void => {
     setTab(next);
+    setOrder(DEFAULT_ORDER[next]);
+    setOrderPicked(false);
+    setPrintedNote(null);
     setSelected(new Set());
     setReasonCode(null);
-    setResult(null);
+    setScanError(null);
+    page.setPage(1);
     if (!keepQuery) setQuery('');
   };
 
@@ -200,15 +248,30 @@ export const GoodsIssueQrScreen = () => {
   };
 
   /* 스캐너가 번호를 치고 Enter — 그 번호의 분할 LOT 하나면 고르고 칸을 비운다(다음 봉지를 바로 읽게). */
-  const submitSearch = (event: FormEvent): void => {
-    event.preventDefault();
+  const submitScan = (value: string): void => {
+    const code = value.trim();
+    const matching = sorted.filter((lot) => matchesSplitLot(lot, code));
+    const exact = matching.filter((lot) => lot.lotNo === code);
 
-    const exact = rows.filter((lot) => lot.lotNo === query.trim());
+    if (exact.length === 1 && exact[0] !== undefined) {
+      const lot = exact[0];
 
-    if (exact.length !== 1 || exact[0] === undefined) return;
+      toggle(lot.lotId);
+      setQuery('');
+      page.showIndex(sorted.indexOf(lot));
+      return;
+    }
 
-    toggle(exact[0].lotId);
-    setQuery('');
+    /* 어느 보기에도 없다(다른 보기 목록을 받은 뒤에만 그렇게 말한다) — 칸을 비우고 칸 아래에 알린다. */
+    const isNowhere =
+      matching.length === 0 &&
+      other.data !== undefined &&
+      !other.data.items.some((lot) => matchesSplitLot(lot, code));
+
+    if (isNowhere) {
+      setQuery('');
+      setScanError(t.search.notFound(code));
+    }
   };
 
   /* 찍는 차례는 오래된 순 — 봉지를 쌓아 둔 차례와 같다. */
@@ -227,7 +290,13 @@ export const GoodsIssueQrScreen = () => {
 
     setSelected(new Set());
     setReasonCode(null);
-    setResult({ view: toResultView(results, isReprint), isReprint });
+    const view = toResultView(results, isReprint);
+
+    if (view.tone === 'ok' && !isReprint) setPrintedNote(view.text);
+    else {
+      setPrintedNote(null);
+      puToast(view.text, view.tone);
+    }
   };
 
   const isPrintedTab = tab === 'PRINTED';
@@ -236,296 +305,305 @@ export const GoodsIssueQrScreen = () => {
       ? undefined
       : (other.data?.items ?? []).find((lot) => matchesSplitLot(lot, query));
 
+  const actionBar = (
+    <PuActionBar label={t.bar.label}>
+      <PuButton
+        variant="primary"
+        icon="print"
+        disabled={!canPrint}
+        onClick={() => {
+          setPreview({ index: 0 });
+        }}
+      >
+        {isPrintedTab
+          ? chosen.length === 0
+            ? t.bar.reprintNone
+            : t.bar.reprint(chosen.length)
+          : chosen.length === 0
+            ? t.bar.printNone
+            : t.bar.print(chosen.length)}
+      </PuButton>
+    </PuActionBar>
+  );
+
+  const list = current.isError ? (
+    <PuEmpty icon="bad" title={t.empty.loadFailedTitle} hint={t.empty.loadFailedBody}>
+      <PuButton
+        onClick={() => {
+          void current.refetch();
+        }}
+      >
+        {t.empty.retry}
+      </PuButton>
+    </PuEmpty>
+  ) : current.isPending && plantId !== null ? null : rows.length > 0 ? (
+    <SplitTable
+      lots={page.items}
+      today={today}
+      selected={selected}
+      order={order}
+      showAge={!isPrintedTab}
+      isLocked={isBusy}
+      onToggle={toggle}
+      fitRef={tableFitRef}
+    />
+  ) : (
+    <EmptyList
+      tab={tab}
+      period={period}
+      query={query}
+      elsewhere={searchElsewhere ?? null}
+      onShowElsewhere={() => {
+        chooseTab(isPrintedTab ? 'UNPRINTED' : 'PRINTED', true);
+      }}
+    />
+  );
+
   return (
-    <main className="pop-lot-screen pop-ui pop-split" aria-label={t.title}>
-      <header className="pop-header">
-        <h1 className="pop-title">{t.title}</h1>
-        {/*
-         * 프린터는 공통 메뉴 맨 위 줄 프린터 자리에 서고, 누르면 고른다. 사번·단말도 맨 위 줄이 보인다
-         * (사용자 지시 2026-11-17 · #291).
-         */}
-        <PopTopPrinter>
-          <PrinterChip
-            printers={printers.data}
-            selected={headPrinter}
-            isLoading={printers.isPending}
-            isError={printers.isError}
-            isSelectable={isPrinterSelectable}
-            isLocked={isBusy}
-            onRetry={() => {
-              void printers.refetch();
-            }}
-            onSelect={(name) => {
-              setPickedPrinter(name);
-              rememberPrinterName(name);
-            }}
-          />
-        </PopTopPrinter>
-      </header>
+    <main className="pop-ui giq-screen" aria-label={t.title}>
+      <h1 className="giq-title">{t.title}</h1>
+      {/*
+       * 프린터는 공통 메뉴 맨 위 줄 프린터 자리에 서고, 누르면 고른다. 사번·단말도 맨 위 줄이 보인다
+       * (사용자 지시 2026-11-17 · #291).
+       */}
+      <PopTopPrinter>
+        <PrinterChip
+          printers={printers.data}
+          selected={headPrinter}
+          isLoading={printers.isPending}
+          isError={printers.isError}
+          isSelectable={isPrinterSelectable}
+          isLocked={isBusy}
+          onRetry={() => {
+            void printers.refetch();
+          }}
+          onSelect={(name) => {
+            setPickedPrinter(name);
+            rememberPrinterName(name);
+          }}
+        />
+      </PopTopPrinter>
 
       <PopWorkerMissingBanner workerNo={workerNo} />
 
-      <SplitBand
-        isError={unprinted.isError}
-        count={unprintedCount}
-        failed={failedCount}
-        oldest={oldest === undefined ? null : oldest.splitAt}
-        today={today}
-        showUnprinted={isPrintedTab}
-        onShowUnprinted={() => {
-          chooseTab('UNPRINTED');
-        }}
-      />
-
-      <div className="pop-split-tool">
-        <div className="pop-mlot-tabs" role="group" aria-label={t.tabs.label}>
-          {(['UNPRINTED', 'PRINTED'] as const).map((each) => (
-            <button
-              key={each}
-              type="button"
-              className="pop-mlot-tab"
-              aria-pressed={tab === each}
-              disabled={isBusy}
-              onClick={() => {
-                if (each !== tab) chooseTab(each);
-              }}
-            >
-              {each === 'UNPRINTED' ? t.tabs.unprinted : t.tabs.printed}
-              {each === 'UNPRINTED' ? (
-                <span className="pop-mlot-tab-count">
-                  {unprintedCount === null ? '?' : unprintedCount}
-                </span>
-              ) : null}
-            </button>
-          ))}
-        </div>
-        <form className="pop-mlot-search" role="search" onSubmit={submitSearch}>
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M4 6v12M7 6v12M10.5 6v12M14 6v12M16.5 6v12M20 6v12" />
-          </svg>
-          <input
-            className="pop-mlot-search-input"
-            type="search"
-            aria-label={t.search.label}
-            placeholder={t.search.placeholder}
-            value={query}
-            disabled={isBusy}
-            autoComplete="off"
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setSelected(new Set());
-            }}
-          />
-          {query === '' ? null : (
-            <button
-              type="button"
-              className="pop-mlot-search-clear"
-              aria-label={t.search.clear}
-              onClick={() => {
-                setQuery('');
-              }}
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M7 7l10 10M17 7L7 17" />
-              </svg>
-            </button>
-          )}
-        </form>
-        {isPrintedTab ? (
-          <div className="pop-split-periods" role="group" aria-label={t.periods.label}>
-            {PRINTED_PERIODS.map((each) => (
-              <button
-                key={each}
-                type="button"
-                className="pop-mlot-reason"
-                aria-pressed={period === each}
+      <PuScreen className="giq-body" actionBar={actionBar}>
+        <PuStack fill>
+          <PuSection className="giq-top" grow={false}>
+            <div className="giq-scan">
+              <PuScanField
+                label={t.search.label}
+                value={query}
+                placeholder={t.search.placeholder}
                 disabled={isBusy}
-                onClick={() => {
-                  setPeriod(each);
+                error={scanError}
+                manual={{ title: t.search.manualTitle }}
+                onChange={(value) => {
+                  setQuery(value);
                   setSelected(new Set());
+                  setScanError(null);
+                  page.setPage(1);
                 }}
+                onSubmit={submitScan}
               >
-                {t.periods[each]}
-              </button>
-            ))}
-          </div>
-        ) : null}
-        <div className="pop-mlot-refresh">
-          <button
-            type="button"
-            className="pop-mlot-refresh-button"
-            aria-busy={current.isFetching}
-            disabled={isBusy || plantId === null}
-            onClick={() => {
-              void unprinted.refetch();
-              if (isPrintedTab) void printed.refetch();
-            }}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4.2h-4.2" />
-            </svg>
-            {t.refresh}
-          </button>
-          <span className="pop-mlot-refresh-at">
-            {current.dataUpdatedAt === 0
-              ? ''
-              : t.refreshedAt(formatPlantClock(new Date(current.dataUpdatedAt)))}
-          </span>
-        </div>
-      </div>
+                {query.trim() === '' ? null : (
+                  <PuNote
+                    action={
+                      <PuButton
+                        size="sm"
+                        onClick={() => {
+                          setQuery('');
+                          page.setPage(1);
+                        }}
+                      >
+                        {t.search.clearFilter}
+                      </PuButton>
+                    }
+                  >
+                    {t.search.filtered(query.trim())}
+                  </PuNote>
+                )}
+                {isPrintedTab ? <p className="pu-help">{t.search.reprintHint}</p> : null}
+              </PuScanField>
+            </div>
+            {isPrintedTab ? (
+              <div className="pu-field giq-period">
+                <span className="pu-label">{t.periods.label}</span>
+                <PuTiles
+                  label={t.periods.label}
+                  cols={3}
+                  value={period}
+                  disabled={isBusy}
+                  options={PRINTED_PERIODS.map((each) => ({
+                    value: each,
+                    label: t.periods[each],
+                  }))}
+                  onChange={(next) => {
+                    setPeriod(next);
+                    setSelected(new Set());
+                    page.setPage(1);
+                  }}
+                />
+              </div>
+            ) : null}
+          </PuSection>
 
-      <section className="pop-split-work" aria-label={t.table.label}>
-        {isPrintedTab ? null : <p className="pop-split-info">{t.info}</p>}
-        {result === null ? null : (
-          <div className="banner-slot">
-            <AlertBanner variant={result.view.tone} title={result.view.text}>
-              {result.view.tone === 'success' && !result.isReprint ? (
-                <Button
-                  variant="outlined"
-                  size="md"
+          <PuSection
+            className="giq-list"
+            head={
+              <PuSeg
+                label={t.tabs.label}
+                value={tab}
+                options={(['UNPRINTED', 'PRINTED'] as const).map((each) => ({
+                  value: each,
+                  disabled: isBusy,
+                  label:
+                    each === 'UNPRINTED' ? (
+                      <>
+                        {t.tabs.unprinted}
+                        <PuCount>{unprintedCount === null ? '?' : unprintedCount}</PuCount>
+                      </>
+                    ) : (
+                      t.tabs.printed
+                    ),
+                }))}
+                onChange={(next) => {
+                  if (next !== tab) chooseTab(next);
+                }}
+              />
+            }
+            meta={
+              <>
+                <PuHelpButton title={t.help.button}>
+                  <div className="giq-help">
+                    {t.help.body.map((line) => (
+                      <p key={line}>{line}</p>
+                    ))}
+                  </div>
+                </PuHelpButton>
+                {isPrintedTab ? null : (
+                  <PuButton
+                    size="sm"
+                    disabled={rows.length === 0 || isBusy}
+                    onClick={() => {
+                      selectAll(!allOn);
+                    }}
+                  >
+                    {allOn ? t.bar.clearAll(rows.length) : t.bar.selectAll(rows.length)}
+                  </PuButton>
+                )}
+                <PuButton
+                  size="sm"
+                  disabled={chosen.length === 0 || isBusy}
                   onClick={() => {
-                    chooseTab('PRINTED');
+                    selectAll(false);
                   }}
                 >
-                  {t.result.showPrinted}
-                </Button>
-              ) : null}
-            </AlertBanner>
-          </div>
-        )}
-
-        {current.isError ? (
-          <div className="pop-split-empty" role="alert">
-            <b>{t.empty.loadFailedTitle}</b>
-            <span>{t.empty.loadFailedBody}</span>
-            <Button
-              className={popTouchClass('primary')}
-              size="xl"
-              onClick={() => {
-                void current.refetch();
-              }}
-            >
-              {t.empty.retry}
-            </Button>
-          </div>
-        ) : current.isPending && plantId !== null ? null : rows.length > 0 ? (
-          <div className="pop-split-table" role="list">
-            <div className="pop-split-row pop-split-head" aria-hidden="true">
-              <span>{t.table.select}</span>
-              <span>{t.table.lotNo}</span>
-              <span>{t.table.item}</span>
-              <span className="pop-split-num">{t.table.qty}</span>
-              <span>{t.table.issue}</span>
-              <span>{t.table.destination}</span>
-              <span>{isPrintedTab ? t.table.splitAt : t.table.splitAtOldestFirst}</span>
-              <span>{t.table.labelColumn}</span>
-            </div>
-            {rows.map((lot) => (
-              <SplitRow
-                key={lot.lotId}
-                lot={lot}
-                today={today}
-                isChecked={selected.has(lot.lotId)}
-                showAge={!isPrintedTab}
-                isLocked={isBusy}
-                onToggle={toggle}
-              />
-            ))}
-          </div>
-        ) : (
-          <EmptyList
-            tab={tab}
-            period={period}
-            query={query}
-            elsewhere={searchElsewhere ?? null}
-            onShowElsewhere={() => {
-              chooseTab(isPrintedTab ? 'UNPRINTED' : 'PRINTED', true);
-            }}
-          />
-        )}
-
-        {needsReason || (isPrintedTab && chosen.length > 0) ? (
-          <div className="pop-split-reasons">
-            <ReasonPicker
-              reasons={reasons.data ?? []}
-              isLoading={reasons.isPending}
-              isError={reasons.isError}
-              selected={reasonCode}
-              isLocked={isBusy}
-              onSelect={setReasonCode}
-            />
-            {reasonCode === null ? (
-              <span className="pop-split-hint-bad">
-                {isPrintedTab ? t.reasons.need : t.reasons.needFailed(chosenNeedingReason.length)}
-              </span>
-            ) : null}
-          </div>
-        ) : null}
-      </section>
-
-      <footer className="pop-split-bar">
-        <span id={stateId} className="pop-split-state" role="status">
-          {printing.progress !== null
-            ? t.bar.running(printing.progress.done + 1, printing.progress.total)
-            : current.isError
-              ? t.bar.listFirst
-              : isPrintedTab
-                ? chosen.length === 0
-                  ? t.bar.reprintHint
-                  : t.bar.reprintSelected(chosen.length) +
-                    (reasonName === null ? '' : t.bar.withReason(reasonName))
-                : chosen.length === 0
-                  ? t.bar.pickHint
-                  : t.bar.selected(chosen.length) +
-                    (chosenNeedingReason.length > 0
-                      ? t.bar.withFailed(chosenNeedingReason.length)
-                      : '')}
-          {chosen.length > 0 && needsReason && reasonCode === null ? (
-            <small>{isPrintedTab ? t.bar.reprintNeedsReason : t.bar.failedNeedsReason}</small>
-          ) : null}
-        </span>
-        {isPrintedTab ? null : (
-          <Button
-            className={popTouchClass('normal')}
-            variant="outlined"
-            size="xl"
-            disabled={rows.length === 0 || isBusy}
-            onClick={() => {
-              selectAll(!allOn);
-            }}
+                  {t.bar.clearSelection}
+                </PuButton>
+              </>
+            }
           >
-            {allOn ? t.bar.clearAll : t.bar.selectAll(rows.length)}
-          </Button>
-        )}
-        <Button
-          className={popTouchClass('normal')}
-          variant="outlined"
-          size="xl"
-          disabled={chosen.length === 0 || isBusy}
-          onClick={() => {
-            selectAll(false);
-          }}
-        >
-          {t.bar.clearSelection}
-        </Button>
-        <Button
-          className={popTouchClass('primary')}
-          size="xl"
-          disabled={!canPrint}
-          aria-describedby={stateId}
-          onClick={() => {
-            setPreview({ index: 0 });
-          }}
-        >
-          {isPrintedTab
-            ? chosen.length === 0
-              ? t.bar.reprintNone
-              : t.bar.reprint(chosen.length)
-            : chosen.length === 0
-              ? t.bar.printNone
-              : t.bar.print(chosen.length)}
-        </Button>
-      </footer>
+            {unprintedCount !== null &&
+            unprintedCount > 0 &&
+            (failedCount > 0 || oldest !== undefined) ? (
+              <PuNote
+                tone="warn"
+                action={
+                  isPrintedTab ? (
+                    <PuButton
+                      size="sm"
+                      onClick={() => {
+                        chooseTab('UNPRINTED');
+                      }}
+                    >
+                      {t.band.showUnprinted}
+                    </PuButton>
+                  ) : undefined
+                }
+              >
+                <span className="giq-band">
+                  {failedCount > 0 ? (
+                    <PuChip tone="bad">{t.band.failed(failedCount)}</PuChip>
+                  ) : null}
+                  {oldest === undefined ? null : (
+                    <PuChip tone={daysSince(oldest.splitAt, today) > 0 ? 'bad' : 'warn'}>
+                      {t.band.oldest(shortAt(oldest.splitAt), ageText(oldest.splitAt, today))}
+                    </PuChip>
+                  )}
+                </span>
+              </PuNote>
+            ) : null}
+            {printedNote === null ? null : (
+              <PuNote
+                tone="ok"
+                live
+                action={
+                  <PuButton
+                    size="sm"
+                    onClick={() => {
+                      chooseTab('PRINTED');
+                    }}
+                  >
+                    {t.result.showPrinted}
+                  </PuButton>
+                }
+              >
+                {printedNote}
+              </PuNote>
+            )}
+            {printing.progress === null ? null : (
+              <PuNote live>
+                {t.bar.running(printing.progress.done + 1, printing.progress.total)}
+              </PuNote>
+            )}
+            {list}
+            <div className="giq-foot">
+              <PuSeg
+                label={t.order.label}
+                value={order}
+                options={(['newest', 'oldest'] as const).map((each) => ({
+                  value: each,
+                  label: t.order[each],
+                }))}
+                onChange={(next) => {
+                  setOrder(next);
+                  setOrderPicked(true);
+                  page.setPage(1);
+                }}
+              />
+              <PuPager
+                label={t.table.label}
+                total={page.total}
+                page={page.page}
+                pages={page.pages}
+                onPage={page.setPage}
+              />
+            </div>
+            {needsReason || (isPrintedTab && chosen.length > 0) ? (
+              <div className="giq-reasons">
+                <ReasonPicker
+                  reasons={reasons.data ?? []}
+                  isLoading={reasons.isPending}
+                  isError={reasons.isError}
+                  selected={reasonCode}
+                  isLocked={isBusy}
+                  onSelect={setReasonCode}
+                  label={t.reasons.label}
+                  hint={
+                    reasonCode === null ? (
+                      <span className="giq-reason-hint">
+                        {isPrintedTab
+                          ? t.reasons.need
+                          : t.reasons.needFailed(chosenNeedingReason.length)}
+                      </span>
+                    ) : undefined
+                  }
+                />
+              </div>
+            ) : null}
+          </PuSection>
+        </PuStack>
+      </PuScreen>
 
       {preview === null ? null : (
         <PreviewDialog
@@ -549,71 +627,6 @@ export const GoodsIssueQrScreen = () => {
   );
 };
 
-const SplitBand = ({
-  isError,
-  count,
-  failed,
-  oldest,
-  today,
-  showUnprinted,
-  onShowUnprinted,
-}: {
-  isError: boolean;
-  count: number | null;
-  failed: number;
-  oldest: string | null;
-  today: string;
-  showUnprinted: boolean;
-  onShowUnprinted: () => void;
-}) => {
-  if (isError || count === null) {
-    return (
-      <div className="pop-split-band pop-split-band--unknown" role="status">
-        <span className="pop-split-count">?</span>
-        <span className="pop-split-band-text">
-          <b>{t.band.unknownTitle}</b>
-          <span>{t.band.unknownBody}</span>
-        </span>
-      </div>
-    );
-  }
-
-  if (count === 0) {
-    return (
-      <div className="pop-split-band pop-split-band--ok" role="status">
-        <span className="pop-split-count">0</span>
-        <span className="pop-split-band-text">
-          <b>{t.band.noneTitle}</b>
-          <span>{t.band.noneBody}</span>
-        </span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="pop-split-band pop-split-band--alert" role="status" aria-live="polite">
-      <span className="pop-split-count">{count}</span>
-      <span className="pop-split-band-text">
-        <b>{t.band.title(count)}</b>
-        <span>{t.band.body}</span>
-      </span>
-      <span className="pop-split-band-aside">
-        {failed > 0 ? <Chip status="error">{t.band.failed(failed)}</Chip> : null}
-        {oldest === null ? null : (
-          <Chip status={daysSince(oldest, today) > 0 ? 'error' : 'warning'}>
-            {t.band.oldest(shortAt(oldest), ageText(oldest, today))}
-          </Chip>
-        )}
-        {showUnprinted ? (
-          <Button size="md" onClick={onShowUnprinted}>
-            {t.band.showUnprinted}
-          </Button>
-        ) : null}
-      </span>
-    </div>
-  );
-};
-
 /**
  * LOT 번호 — **`|` 칸 경계에서만 줄을 바꾼다.** 칸(`0001-S1` 등)은 한 덩어리로 둔다 — 칸 가운데서 끊기면 끝 마디
  * (`-S1`)를 원래 LOT 과 대조할 수 없다. `-` 도 줄바꿈 자리라 칸마다 `nowrap` 으로 묶고 `|` 뒤에만 기회를 준다.
@@ -625,7 +638,7 @@ const LotNoText = ({ lotNo, className }: { lotNo: string; className?: string }) 
     <span className={className} title={lotNo}>
       {parts.map((part, index) => (
         <span key={`${String(index)}-${part}`}>
-          <span className="pop-split-seg">{index < parts.length - 1 ? `${part}|` : part}</span>
+          <span className="giq-seg">{index < parts.length - 1 ? `${part}|` : part}</span>
           {index < parts.length - 1 ? <wbr /> : null}
         </span>
       ))}
@@ -636,87 +649,125 @@ const LotNoText = ({ lotNo, className }: { lotNo: string; className?: string }) 
 const LabelStatus = ({ lot }: { lot: SplitMaterialLot }) => {
   const issue = lot.labelIssue;
 
-  if (issue === null) return <Chip status="error">{t.status.unissued}</Chip>;
+  if (issue === null) return <PuChip>{t.status.unissued}</PuChip>;
 
   if (issue.lastPrintOutcomeCode === PRINT_FAILED) {
-    return (
-      <span className="pop-split-two">
-        <Chip status="error">{t.status.failed(issue.issueCount)}</Chip>
-        <small className="pop-split-old">{t.status.failedHint}</small>
-      </span>
-    );
+    return <PuChip tone="bad">{t.status.failed(issue.issueCount)}</PuChip>;
   }
 
   return (
-    <span className="pop-split-two">
-      <Chip status={issue.lastPrintOutcomeCode === 'PENDING' ? 'info' : 'success'}>
+    <>
+      <PuChip tone={issue.lastPrintOutcomeCode === 'PENDING' ? 'info' : 'ok'}>
         {issue.lastPrintOutcomeCode === 'PENDING'
           ? t.status.pending(issue.lastIssueSeq)
           : t.status.printed(issue.lastIssueSeq)}
-      </Chip>
-      <small>{shortAt(issue.lastIssuedAt)}</small>
-    </span>
+      </PuChip>
+      <span className="giq-sub">{shortAt(issue.lastIssuedAt)}</span>
+    </>
   );
 };
 
-const SplitRow = ({
-  lot,
+const SplitTable = ({
+  lots,
   today,
-  isChecked,
+  selected,
+  order,
   showAge,
   isLocked,
   onToggle,
+  fitRef,
 }: {
-  lot: SplitMaterialLot;
+  lots: readonly SplitMaterialLot[];
   today: string;
-  isChecked: boolean;
+  selected: ReadonlySet<number>;
+  order: Order;
   showAge: boolean;
   isLocked: boolean;
   onToggle: (lotId: number) => void;
+  fitRef: RefObject<HTMLDivElement | null>;
 }) => (
-  <div className="pop-split-row" role="listitem">
-    <span>
-      <input
-        type="checkbox"
-        className="pop-split-check"
-        aria-label={t.table.choose(lot.lotNo)}
-        checked={isChecked}
-        disabled={isLocked}
-        onChange={() => {
-          onToggle(lot.lotId);
-        }}
-      />
-    </span>
-    <span className="pop-split-two">
-      <LotNoText className="pop-split-lotno" lotNo={lot.lotNo} />
-      <span className="pop-split-parent">
-        {t.table.parentLabel} <LotNoText lotNo={lot.parentLot.lotNo} />
-      </span>
-    </span>
-    <span className="pop-split-two">
-      <b>{lot.item.itemCode}</b>
-      <small>{lot.item.itemName}</small>
-    </span>
-    <span className="pop-split-num">{formatBaseQty(lot.qty, lot.uomCode)}</span>
-    <span className="pop-split-two">
-      <span>{lot.goodsIssue.goodsIssueNo}</span>
-      <small>{t.table.line(lot.goodsIssue.lineNo)}</small>
-    </span>
-    <span className="pop-split-two">
-      <span>{lot.destination?.warehouseCode ?? ''}</span>
-      <small>{lot.destination?.locationCode ?? ''}</small>
-    </span>
-    <span className="pop-split-two">
-      <span>{shortAt(lot.splitAt)}</span>
-      {showAge ? (
-        <small className={daysSince(lot.splitAt, today) > 0 ? 'pop-split-old' : undefined}>
-          {ageText(lot.splitAt, today)}
-        </small>
-      ) : null}
-    </span>
-    <span>
-      <LabelStatus lot={lot} />
-    </span>
+  <div ref={fitRef} className="giq-table" role="group" aria-label={t.table.label}>
+    <div className="pu-table-wrap">
+      <table className="pu-table">
+        <thead>
+          <tr>
+            <th className="giq-ck">{t.table.select}</th>
+            <th>{t.table.lotNo}</th>
+            <th className="giq-item">{t.table.item}</th>
+            <th className="num giq-qty">{t.table.qty}</th>
+            <th className="giq-issue">{t.table.issue}</th>
+            <th className="giq-at">{`${t.table.splitAt} ${order === 'oldest' ? '↑' : '↓'}`}</th>
+            <th className="giq-label">{t.table.labelColumn}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {lots.map((lot) => {
+            const isChecked = selected.has(lot.lotId);
+
+            return (
+              <tr
+                key={lot.lotId}
+                className={isChecked ? 'is-on' : undefined}
+                onClick={
+                  isLocked
+                    ? undefined
+                    : () => {
+                        onToggle(lot.lotId);
+                      }
+                }
+              >
+                <td className="giq-ck">
+                  <button
+                    type="button"
+                    role="checkbox"
+                    className="giq-box"
+                    aria-checked={isChecked}
+                    aria-label={t.table.choose(lot.lotNo)}
+                    disabled={isLocked}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onToggle(lot.lotId);
+                    }}
+                  >
+                    {isChecked ? <PuIcon name="check" /> : null}
+                  </button>
+                </td>
+                <td>
+                  <LotNoText className="pu-mono giq-lotno" lotNo={lot.lotNo} />
+                  <span className="giq-sub">
+                    {t.table.parentLabel} <LotNoText lotNo={lot.parentLot.lotNo} />
+                  </span>
+                </td>
+                <td>
+                  <b className="giq-one">{lot.item.itemCode}</b>
+                  <span className="giq-sub">{lot.item.itemName}</span>
+                </td>
+                <td className="num">{formatBaseQty(lot.qty, lot.uomCode)}</td>
+                <td>
+                  <span className="giq-one">{lot.goodsIssue.goodsIssueNo}</span>
+                  <span className="giq-sub">
+                    {t.table.lineDestination(lot.goodsIssue.lineNo, destinationOf(lot))}
+                  </span>
+                </td>
+                <td>
+                  <span className="giq-one">{shortAt(lot.splitAt)}</span>
+                  {showAge ? (
+                    <span
+                      className={daysSince(lot.splitAt, today) > 0 ? 'giq-sub giq-old' : 'giq-sub'}
+                    >
+                      {ageText(lot.splitAt, today)}
+                    </span>
+                  ) : null}
+                </td>
+                <td>
+                  <LabelStatus lot={lot} />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   </div>
 );
 
@@ -735,36 +786,34 @@ const EmptyList = ({
 }) => {
   if (query.trim() !== '') {
     return (
-      <div className="pop-split-empty">
-        <b>{t.empty.searchTitle}</b>
-        {elsewhere === null ? (
-          <span>{t.empty.searchNone}</span>
-        ) : (
-          <>
-            <span>
-              {tab === 'UNPRINTED'
-                ? t.empty.searchInPrinted(elsewhere.lotNo)
-                : t.empty.searchInUnprinted(elsewhere.lotNo)}
-            </span>
-            <Button variant="outlined" size="xl" onClick={onShowElsewhere}>
-              {tab === 'UNPRINTED' ? t.empty.showInPrinted : t.empty.showInUnprinted}
-            </Button>
-          </>
+      <PuEmpty
+        icon="search"
+        title={t.empty.searchTitle(tab === 'UNPRINTED' ? t.tabs.unprinted : t.tabs.printed)}
+        hint={
+          elsewhere === null
+            ? t.empty.searchNone
+            : tab === 'UNPRINTED'
+              ? t.empty.searchInPrinted(elsewhere.lotNo)
+              : t.empty.searchInUnprinted(elsewhere.lotNo)
+        }
+      >
+        {elsewhere === null ? null : (
+          <PuButton onClick={onShowElsewhere}>
+            {tab === 'UNPRINTED' ? t.empty.showInPrinted : t.empty.showInUnprinted}
+          </PuButton>
         )}
-      </div>
+      </PuEmpty>
     );
   }
 
   return tab === 'UNPRINTED' ? (
-    <div className="pop-split-empty">
-      <b>{t.empty.unprintedTitle}</b>
-      <span>{t.empty.unprintedBody}</span>
-    </div>
+    <PuEmpty icon="box" title={t.empty.unprintedTitle} hint={t.empty.unprintedBody} />
   ) : (
-    <div className="pop-split-empty">
-      <b>{t.empty.printedTitle(t.periods[period])}</b>
-      <span>{t.empty.printedBody}</span>
-    </div>
+    <PuEmpty
+      icon="print"
+      title={t.empty.printedTitle(t.periods[period])}
+      hint={t.empty.printedBody}
+    />
   );
 };
 
@@ -794,93 +843,79 @@ const PreviewDialog = ({
   const label = toLabelLot(lot);
 
   return (
-    <Dialog
-      open
-      /* POP 팝업은 바깥을 눌러 닫히지 않는다(#1005). */
-      closeOnBackdropClick={false}
-      onClose={onCancel}
+    <PuDialog
+      /* POP 팝업은 바깥을 눌러 닫히지 않는다(#1005) — 공통 창도 같다. */
       title={isReprint ? t.preview.reprintTitle : t.preview.title}
-      size="lg"
-      className="pop-split-preview"
+      wide
+      onClose={onCancel}
       footer={
         <>
-          <span className="pop-mlot-hint">
+          <span className="giq-preview-printer">
             {printerName === null ? t.preview.printerDefault : t.preview.printer(printerName)}
           </span>
-          <Button
-            className={popTouchClass('normal')}
-            variant="outlined"
-            size="xl"
-            onClick={onCancel}
-          >
-            {t.preview.cancel}
-          </Button>
-          <Button className={popTouchClass('primary')} size="xl" onClick={onPrint}>
+          <PuButton onClick={onCancel}>{t.preview.cancel}</PuButton>
+          <PuButton variant="primary" icon="print" onClick={onPrint}>
             {isReprint ? t.preview.reprint(lots.length) : t.preview.print(lots.length)}
-          </Button>
+          </PuButton>
         </>
       }
     >
-      <p className="pop-mlot-hint">
-        {t.preview.note}
-        {reasonName === null ? '' : t.preview.reissueNote(reasonName)}
-      </p>
-      <LabelPreview
-        fields={{
-          itemCode: label.itemCode,
-          itemName: label.itemName,
-          lotNo: label.lotNo,
-          qty: label.lotQty,
-          uomCode: label.uomCode,
-          issueSeq: nextIssueSeq(lot),
-          supplier:
-            label.supplierName === null || label.supplierCode === null
-              ? null
-              : `${label.supplierName} (${label.supplierCode})`,
-          receipt: null,
-          kind: 'material',
-        }}
-      />
-      <dl className="pop-split-meta">
-        <dt>{t.preview.bag}</dt>
-        <dd>
-          {t.preview.bagValue(
-            formatBaseQty(lot.qty, lot.uomCode),
-            lot.goodsIssue.goodsIssueNo,
-            lot.goodsIssue.lineNo,
-            destinationOf(lot),
-          )}
-        </dd>
-        <dt>{t.preview.parent}</dt>
-        <dd className="pop-split-parent">
-          <LotNoText lotNo={lot.parentLot.lotNo} />
-        </dd>
-      </dl>
-      <nav className="pop-mlot-preview-pager" aria-label={t.preview.page(index + 1, lots.length)}>
-        <Button
-          className={popTouchClass('normal')}
-          variant="outlined"
-          size="xl"
-          disabled={index <= 0}
-          onClick={() => {
-            onMove(index - 1);
+      <div className="giq-preview">
+        <p className="pu-help">
+          {t.preview.note}
+          {reasonName === null ? '' : t.preview.reissueNote(reasonName)}
+        </p>
+        <LabelPreview
+          fields={{
+            itemCode: label.itemCode,
+            itemName: label.itemName,
+            lotNo: label.lotNo,
+            qty: label.lotQty,
+            uomCode: label.uomCode,
+            issueSeq: nextIssueSeq(lot),
+            supplier:
+              label.supplierName === null || label.supplierCode === null
+                ? null
+                : `${label.supplierName} (${label.supplierCode})`,
+            receipt: null,
+            kind: 'material',
           }}
-        >
-          {t.preview.prev}
-        </Button>
-        <span className="pop-mlot-preview-page">{t.preview.page(index + 1, lots.length)}</span>
-        <Button
-          className={popTouchClass('normal')}
-          variant="outlined"
-          size="xl"
-          disabled={index >= lots.length - 1}
-          onClick={() => {
-            onMove(index + 1);
-          }}
-        >
-          {t.preview.next}
-        </Button>
-      </nav>
-    </Dialog>
+        />
+        <dl className="giq-meta">
+          <dt>{t.preview.bag}</dt>
+          <dd>
+            {t.preview.bagValue(
+              formatBaseQty(lot.qty, lot.uomCode),
+              lot.goodsIssue.goodsIssueNo,
+              lot.goodsIssue.lineNo,
+              destinationOf(lot),
+            )}
+          </dd>
+          <dt>{t.preview.parent}</dt>
+          <dd className="pu-mono">
+            <LotNoText lotNo={lot.parentLot.lotNo} />
+          </dd>
+        </dl>
+        <nav className="giq-preview-pager" aria-label={t.preview.page(index + 1, lots.length)}>
+          <PuButton
+            disabled={index <= 0}
+            onClick={() => {
+              onMove(index - 1);
+            }}
+          >
+            {t.preview.prev}
+          </PuButton>
+          <span>{t.preview.page(index + 1, lots.length)}</span>
+          <PuButton
+            disabled={index >= lots.length - 1}
+            onClick={() => {
+              onMove(index + 1);
+            }}
+          >
+            {t.preview.next}
+          </PuButton>
+        </nav>
+      </div>
+    </PuDialog>
   );
 };

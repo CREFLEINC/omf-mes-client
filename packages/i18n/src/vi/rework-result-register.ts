@@ -3,31 +3,34 @@ import type { Translated } from './translated';
 
 export const reworkResultRegister: Translated<typeof ko.reworkResultRegister> = {
   title: 'Đăng ký kết quả làm lại',
-  workOrders: 'W/O làm lại',
-  empty: 'Không có W/O làm lại cần tiến hành.',
+  workOrders: 'Lệnh sản xuất làm lại',
+  empty: 'Không có lệnh sản xuất làm lại cần tiến hành.',
   loadError: 'Không tải được thông tin làm lại.',
   selectWorkOrder: 'Hãy chọn W/O làm lại.',
+  pickTitle: 'Hãy chọn lệnh sản xuất làm lại',
+  pickHint: 'Chọn ở danh sách bên trái để nhập kết quả.',
 
-  headerContext: (workOrderNo: string, itemCode: string): string => `${workOrderNo} · ${itemCode}`,
   workOrderUnknown: 'W/O —',
 
   workerLabel: (workerNo: string): string => `Mã nhân viên ${workerNo}`,
   workerUnknown: 'Mã nhân viên —',
-  changeWorkOrder: 'Đổi',
-  workOrderCaption: 'Lệnh sản xuất làm lại có thể tiến hành',
   pageNav: 'Chuyển trang danh sách lệnh sản xuất làm lại',
-  columns: {
-    workOrder: 'Lệnh sản xuất',
+  list: {
     item: 'Mặt hàng',
-    quantity: 'Số lượng',
+    qty: 'Số lượng',
+    status: 'Trạng thái',
+    disposition: 'Xử lý',
+    sourceLot: 'LOT gốc',
+    nonconformance: 'Không phù hợp',
+    progress: 'Làm lại',
+    reworkChip: 'Làm lại',
+    plannedChip: 'Chưa phát',
   },
   /** 배포 전 표식 — 있다는 사실만 알린다(omf-all-around#47). */
-  notReleased: 'Hãy phát đi trước',
-  selectRow: (workOrderNo: string): string => `Chọn ${workOrderNo}`,
-  target: 'Đối tượng làm lại',
+  notReleased: 'Hãy phát lệnh trước',
   sourceLot: 'LOT gốc',
   nonconformance: 'Căn cứ',
-  disposition: 'Quyết định xử lý',
+  disposition: 'Xử lý',
 
   sourceLotValue: (lotNo: string, qty: string, uom: string): string =>
     uom === '' ? `${lotNo} ${qty}` : `${lotNo} ${qty} ${uom}`,
@@ -35,52 +38,47 @@ export const reworkResultRegister: Translated<typeof ko.reworkResultRegister> = 
     `Không phù hợp ${no} · ${description}`,
   dispositionValue: (qty: string, uom: string, decidedOn: string): string =>
     `Làm lại ${uom === '' ? qty : `${qty} ${uom}`} (${decidedOn})`,
+  qtyWithUom: (qty: string, uom: string): string => (uom === '' ? qty : `${qty} ${uom}`),
+  progressValue: (done: string, target: string, uom: string): string =>
+    uom === '' ? `${done} / ${target}` : `${done} / ${target} ${uom}`,
   unknown: 'Đang kiểm tra',
+  steps: {
+    label: 'Các bước làm lại',
+    input: 'Nhập kết quả',
+    defect: 'Ghi lỗi',
+  },
   quantities: {
-    title: 'Nhập kết quả',
-    keypadLabel: 'Bàn phím số lượng',
-    /**
-     * ⭐ 키패드를 «상시» 두지 않는 것은 스펙 §3 ②가 그 자리를 그리지 않았기 때문이다.
-     * 도면은 구획 전체 폭을 입력 칸이 쓰고 280px 로 검산돼 있다 — 키패드를 옆에 붙이면
-     * 그 예산이 성립하지 않는다(사용자 결정 2026-09-07).
-     */
-    keypadDone: 'Xác nhận',
-    keypadCancel: 'Hủy',
-    backspace: 'Xóa một ký tự',
-    clearGlyph: 'Xóa',
-    decimalKey: 'Dấu thập phân',
     goodQty: 'Hàng đạt',
-    defectQty: 'Lỗi',
+    defectQty: 'Số lượng lỗi',
     holdQty: 'Tạm giữ',
-    scrapQty: 'Hủy',
+    scrapQty: 'Hủy bỏ',
+  },
+  keypad: {
+    title: 'Số lượng',
+    unit: (uom: string): string => `Đơn vị ${uom}`,
   },
   total: 'Tổng',
-  remaining: 'Chưa xử lý',
-
-  resultLot: {
-    title: 'LOT kết quả',
-    good: (qty: string): string => `Hàng đạt ${qty} → giữ LOT gốc`,
-    keep: 'Không tạo LOT mới.',
-    rest: (defect: string, hold: string): string =>
-      `Lỗi ${defect} · tạm giữ ${hold} → vẫn ở LOT gốc, chỉ đổi trạng thái`,
-  },
-
-  progress: {
-    title: 'Tiến độ',
-    line: (done: string, target: string): string => `Làm lại W/O này ${done} / ${target}`,
-  },
-  emptyQuantity: 'Hãy nhập ít nhất một số lượng.',
-  exceeded: (target: number) => `Không được vượt số lượng xử lý ${target}.`,
-  partial: (remaining: number) => `Đây là kết quả một phần. Còn ${remaining} chưa xử lý.`,
+  emptyQuantity: 'Hãy nhập kết quả.',
+  exceeded: (target: number, uom: string) =>
+    uom === ''
+      ? `Không được vượt số lượng xử lý ${target}.`
+      : `Không được vượt số lượng xử lý ${target} ${uom}.`,
+  partial: (remaining: number, uom: string) =>
+    uom === ''
+      ? `Kết quả một phần. Còn ${remaining} chưa xử lý.`
+      : `Kết quả một phần. Còn ${remaining} ${uom} chưa xử lý.`,
+  helpTitle: 'Nhập kết quả làm lại',
   reworkHint: 'Làm lại xong mà vẫn lỗi thì nhập vào lỗi, không phải số lượng làm lại.',
   lotHint: 'Kết quả vẫn ở LOT gốc, không tạo LOT mới.',
   defectCode: 'Mã lỗi',
-  defectCodePlaceholder: 'Không chọn được',
-  defectCodeReason: 'Nếu có lỗi, hãy nhập mã lỗi.',
+  defectCodePlaceholder: 'Hãy chọn mã lỗi',
   defectCodeLoadFailed: 'Không tải được mã lỗi. Vẫn có thể lưu mà không cần mã.',
-  defectCodeEmpty: 'Chưa có mã lỗi nào được đăng ký. Vẫn có thể lưu mà không cần mã.',
+  defectCodeEmpty: 'Chưa có mã lỗi · lưu được không cần mã',
   defectCodeRetry: 'Tải lại',
-  reset: 'Nhập lại',
+  reset: 'Xóa nhập',
+  toDefect: 'Ghi lỗi',
+  toDefectWithQty: (qty: string): string => `Ghi lỗi (${qty})`,
+  prev: 'Trước',
   save: 'Lưu kết quả',
   queued: 'Đã lưu kết quả.',
   queueError: 'Không lưu được kết quả vào máy trạm. Hãy thử lại.',

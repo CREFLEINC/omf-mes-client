@@ -9,6 +9,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { PuToastHost } from '../../patterns/pop-uniform';
 import { PopLocationLabelScreen } from './screen';
 
 const t = messages.popLocationLabel;
@@ -74,6 +75,10 @@ interface Options {
   renditionFails?: boolean;
   /** 발행 이력 요약 조회가 실패하는 경우 — 발행이 막히고 사유가 보여야 한다 */
   summaryFails?: boolean;
+  /** 위치 목록을 바꾼다 — 서버 한 쪽(50건 묶음) 시험용. */
+  locations?: ReturnType<typeof location>[];
+  /** 위치 조회 요청을 담아 둔다 */
+  locationCalls?: URLSearchParams[];
 }
 
 const routes = (options: Options): StubRoute[] => [
@@ -83,7 +88,19 @@ const routes = (options: Options): StubRoute[] => [
   },
   {
     match: (request) => pathOf(request) === '/mdm/locations',
-    respond: () => jsonResponse({ items: LOCATIONS, page: { total: LOCATIONS.length } }),
+    respond: (request) => {
+      const search = new URL(request.url).searchParams;
+      const all = options.locations ?? LOCATIONS;
+      const page = Number(search.get('page') ?? '1');
+      const size = Number(search.get('size') ?? '50');
+
+      options.locationCalls?.push(search);
+
+      return jsonResponse({
+        items: all.slice((page - 1) * size, page * size),
+        page: { total: all.length },
+      });
+    },
   },
   {
     match: (request) => pathOf(request) === '/app/printers',
@@ -183,10 +200,16 @@ const routes = (options: Options): StubRoute[] => [
 ];
 
 const renderScreen = (options: Options = {}) =>
-  renderWithProviders(<PopLocationLabelScreen />, {
-    route: ENTRY_ROUTE,
-    fetch: createStubFetch(routes(options)),
-  });
+  renderWithProviders(
+    <>
+      <PopLocationLabelScreen />
+      <PuToastHost />
+    </>,
+    {
+      route: ENTRY_ROUTE,
+      fetch: createStubFetch(routes(options)),
+    },
+  );
 
 /** 셸 인쇄 통로를 세운다. 실기에서는 preload 가 `window.pop` 을 심는다. */
 const installPrintBridge = (save: (...args: unknown[]) => Promise<string>) => {
@@ -199,15 +222,11 @@ afterEach(() => {
 });
 
 const chooseWarehouse = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(await screen.findByRole('combobox', { name: t.warehouse.label }));
-  await user.click(await screen.findByRole('option', { name: /S230/u }));
+  await user.click(await screen.findByRole('button', { name: /S230/u }));
 };
 
 const chooseLocation = async (user: ReturnType<typeof userEvent.setup>, locationCode: string) => {
-  const row = (await screen.findByText(locationCode)).closest('tr');
-  if (row === null) throw new Error(`${locationCode} 줄을 찾지 못했습니다.`);
-
-  await user.click(within(row).getByRole('button', { name: t.location.pick }));
+  await user.click(await screen.findByRole('checkbox', { name: t.location.choose(locationCode) }));
 };
 
 /**
@@ -218,7 +237,8 @@ const chooseLocation = async (user: ReturnType<typeof userEvent.setup>, location
  *   일어나지 않은 것**을 시험이 「보내지 않았다」로 잘못 읽는다.
  */
 const clickIssue = async (user: ReturnType<typeof userEvent.setup>) => {
-  const button = await screen.findByRole('button', { name: t.issue.action });
+  /* 고른 수가 단추 이름에 붙는다 — 「라벨 N장 발행」. */
+  const button = await screen.findByRole('button', { name: /^라벨 \d+장 발행$/u });
 
   await waitFor(() => {
     expect(button).toBeEnabled();
@@ -268,7 +288,7 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
       expect(reports).toHaveLength(1);
     });
     await expect(reports[0]?.clone().json()).resolves.toEqual({ outcome: 'SUCCEEDED' });
-    expect(await screen.findByText(t.print.summary(1, 0))).toBeInTheDocument();
+    expect(await screen.findByText(t.print.printed(1))).toBeInTheDocument();
   });
 
   it('이미 찍은 자리가 섞이면 사유를 받은 뒤에야 발행한다', async () => {
@@ -286,8 +306,7 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
     expect(await screen.findByText(t.reissue.notice(1))).toBeInTheDocument();
     expect(writes).toHaveLength(0);
 
-    await user.click(await screen.findByRole('combobox', { name: t.reissue.reason }));
-    await user.click(await screen.findByRole('option', { name: '라벨 훼손' }));
+    await user.click(await screen.findByRole('radio', { name: '라벨 훼손' }));
     await user.click(await screen.findByRole('button', { name: t.reissue.confirm }));
 
     await waitFor(() => {
@@ -398,7 +417,7 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
      */
     expect(await screen.findByText(t.issue.summaryFailed)).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: t.issue.retrySummary })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.issue.action })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.issue.actionCount(1) })).toBeDisabled();
   });
 
   it('서버 렌디션이 실패해도 라벨은 찍힌다 — 렌디션을 부르지 않는다', async () => {
@@ -418,7 +437,7 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
     });
     expect(save).toHaveBeenCalledTimes(1);
     await expect(reports[0]?.clone().json()).resolves.toEqual({ outcome: 'SUCCEEDED' });
-    expect(await screen.findByText(t.print.summary(1, 0))).toBeInTheDocument();
+    expect(await screen.findByText(t.print.printed(1))).toBeInTheDocument();
   });
 
   /* 세 번째 열은 「상태」 — 모든 줄에 사용 여부를 적는다(사용자 지시 2026-09-18 · omf-all-around#11). */
@@ -433,7 +452,7 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
 
     const stateOf = (locationCode: string): string | undefined => {
       const row = screen.getByText(locationCode).closest('tr');
-      return row?.querySelectorAll('td')[2]?.textContent ?? undefined;
+      return row?.querySelectorAll('td')[3]?.textContent ?? undefined;
     };
 
     expect(stateOf('S230-01')).toBe('사용');
@@ -465,5 +484,40 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
 
     expect(await screen.findByText(messages.popChrome.workerMissing)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.issue.action })).toBeDisabled();
+  });
+
+  /*
+   * 서버에서는 전처럼 50건 묶음으로 받고 화면에서 쪽으로 나눈다. 「전체 선택」은 받은 묶음 50건을 모두 고른다 —
+   * 한 화면 쪽(표 높이)만 고르면 많이 뽑는 일이 불편해진다(main 결정 #295).
+   */
+  it('전체 선택은 받은 50건 묶음을 모두 고르고, 다음 묶음에서 다시 누르면 더해진다', async () => {
+    const user = userEvent.setup();
+    const many = Array.from({ length: 60 }, (_, index) =>
+      location(1000 + index, `S230-${String(index + 1).padStart(3, '0')}`),
+    );
+    const locationCalls: URLSearchParams[] = [];
+    renderScreen({ locations: many, locationCalls });
+
+    await chooseWarehouse(user);
+    await screen.findByRole('checkbox', { name: t.location.choose('S230-001') });
+
+    expect(locationCalls[0]?.get('size')).toBe('50');
+    expect(locationCalls[0]?.get('page')).toBe('1');
+    /* 한 화면 쪽에는 표 높이만큼만(시험 환경 기본 5줄) 보인다. */
+    expect(screen.getAllByRole('checkbox')).toHaveLength(5);
+
+    await user.click(screen.getByRole('button', { name: t.location.selectAll(50) }));
+    expect(screen.getByRole('button', { name: t.issue.actionCount(50) })).toBeInTheDocument();
+
+    /* 마지막 화면 쪽으로 가면 다음 묶음(51~60)을 받는다 — 쪽 번호는 전체 기준 하나다. */
+    await user.click(screen.getByRole('button', { name: messages.popUniform.pager.next }));
+    for (let index = 0; index < 9; index += 1) {
+      await user.click(screen.getByRole('button', { name: messages.popUniform.pager.next }));
+    }
+    await screen.findByRole('checkbox', { name: t.location.choose('S230-051') });
+    expect(locationCalls.some((each) => each.get('page') === '2')).toBe(true);
+
+    await user.click(screen.getByRole('button', { name: t.location.selectAll(10) }));
+    expect(screen.getByRole('button', { name: t.issue.actionCount(60) })).toBeInTheDocument();
   });
 });

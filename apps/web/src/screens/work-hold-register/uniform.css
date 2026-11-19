@@ -1,0 +1,82 @@
+/* P-02-10 작업 중단 — POP 통일 시안(#295) 화면 전용 모양. 공통은 app/pop-uniform.css. */
+
+.wh-screen {
+  height: 100%;
+}
+
+/* 왼쪽 「현재 세션」: 시작·경과 → 가는 선 → 이벤트 이력(남는 높이) → [세션 종료] */
+.wh-session-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wh-history {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wh-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.wh-sub .pu-count {
+  margin-left: auto;
+}
+
+.wh-history > .pu-empty {
+  flex: 1;
+}
+
+.wh-evs {
+  flex: 1;
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  align-content: start;
+}
+
+.wh-evs li {
+  display: grid;
+  grid-template-columns: 56px 76px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-field);
+  font-size: 14px;
+}
+
+.wh-evs li .r {
+  color: var(--pu-text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wh-history > .pu-pager {
+  align-self: flex-end;
+}
+
+.wh-end {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.wh-end > .pu-note {
+  flex: 1;
+  min-width: 0;
+}

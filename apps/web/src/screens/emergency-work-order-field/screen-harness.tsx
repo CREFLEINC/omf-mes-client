@@ -95,7 +95,7 @@ export const renderScreen = (
     <PopIdentityProvider value={{ ...UNKNOWN_POP_IDENTITY, terminalId: terminalId ?? null }}>
       <EmergencyWorkOrderFieldScreen typeCode={typeCode} />
     </PopIdentityProvider>,
-    { fetch: stubbed.fetch, route: '/pop/emergency-work-orders' },
+    { fetch: stubbed.fetch, route: '/pop/emergency-work-orders', dataRouter: true },
   );
 
   return { ...rendered, urls: stubbed.urls, user: userEvent.setup() };

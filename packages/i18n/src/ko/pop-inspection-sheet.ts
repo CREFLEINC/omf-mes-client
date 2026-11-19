@@ -5,8 +5,6 @@ export const popInspectionSheet = {
   serial: {
     label: '기기 시리얼 번호',
     placeholder: '시리얼 번호를 스캔하세요',
-    open: '열기',
-    opening: '여는 중…',
   },
 
   summary: {
@@ -20,6 +18,8 @@ export const popInspectionSheet = {
     statuses: { IN_PROGRESS: '작성중', COMPLETED: '완료' } as Record<string, string>,
     completed: '완료된 검사표입니다. 고치려면 관리자가 관리웹에서 승인을 취소해야 합니다.',
     loadFailed: '검사표를 불러오지 못했습니다.',
+    /** 아직 연 검사표가 없을 때(#295 공통 빈 화면). */
+    emptyTitle: '시리얼을 스캔하면 검사표가 열립니다',
   },
 
   header: {

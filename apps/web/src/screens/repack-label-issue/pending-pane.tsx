@@ -1,6 +1,15 @@
-import { Button, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useRef, useState, type ReactNode } from 'react';
 
+import {
+  PuButton,
+  PuChip,
+  PuEmpty,
+  PuIcon,
+  PuPager,
+  useClientPage,
+  useFitCount,
+} from '../../patterns/pop-uniform';
 import { localDateTimeText } from './formatting';
 import type { PendingRepackRow } from './queries';
 
@@ -11,19 +20,34 @@ export interface PendingPaneProps {
   selectedId: number | null;
   isLoading: boolean;
   isError: boolean;
-  /** 배포본에서 서버에 목록 조건이 없어 표 자체를 세울 수 없는 상태인가(#1095). */
+  /** 배포본에서 서버에 목록 조건이 없어 목록 자체를 세울 수 없는 상태인가(#1095). */
   isUnsupported: boolean;
   disabled: boolean;
-  onSelect: (handlingUnitId: number) => void;
+  onSelect: (row: PendingRepackRow) => void;
   onRetry: () => void;
 }
 
+/** 줄의 첫 글자 — 원 포장(합병은 `+` 로 잇는다). 재구성 사건을 못 찾은 줄은 번호와 사유. */
+export const sourceTextOf = (row: PendingRepackRow): string =>
+  row.repackEvent === 'none'
+    ? t.noEvent(row.handlingUnitNo)
+    : row.repackEvent === 'unmatched'
+      ? t.unknownEvent(row.handlingUnitNo)
+      : row.sourceNos.length === 0
+        ? t.unknown
+        : row.sourceNos.join(t.sourceJoin);
+
+/** 찾기 칸: 새 포장 번호 · 원 포장 번호에 넣은 글자가 들어 있는 줄만 남긴다(화면 안 거르기). */
+const matches = (row: PendingRepackRow, query: string): boolean => {
+  const q = query.trim().toLowerCase();
+  if (q === '') return true;
+
+  return [row.handlingUnitNo, ...row.sourceNos].some((no) => no.toLowerCase().includes(q));
+};
+
 /**
- * ① 발행 대기 — **재구성 사건 목록이다**(스펙 §3 ① 도면 · 사용자 지적 2026-09-11).
- *
- * ⭐ **줄 오른쪽에 [ 선택 ] 단추를 둔다**(사용자 지시 2026-09-17). 줄을 눌러 고르는 길은 그대로
- *    두고, 무엇을 누르면 고르는지가 눈에 보이게 단추를 더한다. 고르는 것은 여전히 한 포장이다 —
- *    다른 줄의 [ 선택 ]을 누르면 앞 선택이 바뀐다.
+ * 왼쪽 「발행 대기」 목록 — 자재 관리 LOT 라벨과 같은 카드 목록(#295 시안).
+ * 목록은 서버가 한 번에 다 주므로(`labelIssued=false` 전 쪽) 화면이 구획 높이만큼 잘라 보인다.
  */
 export const PendingPane = ({
   rows,
@@ -35,180 +59,106 @@ export const PendingPane = ({
   onSelect,
   onRetry,
 }: PendingPaneProps) => {
-  const columns: Column<PendingRepackRow>[] = [
-    {
-      key: 'source',
-      header: t.sourceColumn,
-      /* 값은 열 가운데에 선다 — 다른 POP 목록과 같다(사용자 지시 2026-09-07 · 2026-09-11). */
-      align: 'center',
-      /*
-       * ⚠ **폭을 비율로 나눈다**(사용자 지시 2026-09-11). 폭을 글자에 맡기면 첫 열이 남는
-       *   자리를 통째로 먹어(실측 751px) 나머지 넷이 오른쪽 끝에 몰려 붙는다. 합병은 번호
-       *   둘이 이어 붙으므로 첫 열이 가장 넓되, 혼자 절반을 넘기지는 않는다.
-       */
-      width: '30%',
-      /*
-       * ⭐ **조작은 첫 칸의 단추 하나가 갖는다**(POP 목록 정본 · `P-02-12` 와 같은 형태).
-       *    칸마다 단추를 두면 한 줄에 탭 정지가 여럿 생기고 읽어 주는 이름도 여럿이 된다.
-       *
-       * 합병은 원 포장이 여럿이다 — 도면이 한 칸 안에서 잇는다(`CTN-…-0088+89`).
-       */
-      render: (row) => {
-        const selected = row.handlingUnitId === selectedId;
-        /*
-         * ⛔ **아무 말도 안 하는 줄을 세우지 않는다**(#1044). 재구성 사건이 없으면 원 포장을
-         *    모르지만 **이 포장의 번호는 안다** — 번호와 「왜 나머지가 비었는지」를 함께 적어,
-         *    눌러 보기 전에 무엇인지 알 수 있게 한다.
-         */
-        const sourceText =
-          row.repackEvent === 'none'
-            ? t.noEvent(row.handlingUnitNo)
-            : row.repackEvent === 'unmatched'
-              ? t.unknownEvent(row.handlingUnitNo)
-              : row.sourceNos.length === 0
-                ? t.unknown
-                : row.sourceNos.join(t.sourceJoin);
+  const [query, setQuery] = useState('');
+  const fitRef = useRef<HTMLDivElement>(null);
+  const size = useFitCount(fitRef, { fallback: 4 });
+  const shown = rows.filter((row) => matches(row, query));
+  const page = useClientPage(shown, size);
 
-        return (
-          <button
-            type="button"
-            className={`pop-row-select${selected ? ' pop-row-select-on' : ''}`}
-            disabled={disabled}
-            aria-pressed={selected}
-            /*
-             * ⚠ **읽어 주는 이름은 «보이는 글자»로 시작한다**(리뷰 지적 2026-09-11 · WCAG
-             *   2.5.3). 새 포장 번호만 읽어 주면 화면에는 원 포장이 서 있는데 귀에는 다른
-             *   번호가 들려, 목소리로 조작하는 사용자가 누를 것을 가리킬 수 없다.
-             */
-            aria-label={t.selectRow(sourceText, row.handlingUnitNo)}
-            onClick={() => onSelect(row.handlingUnitId)}
-          >
-            <span>{sourceText}</span>
-          </button>
-        );
-      },
-    },
-    {
-      key: 'repackType',
-      header: t.typeColumn,
-      align: 'center',
-      width: '10%',
-      /*
-       * ⛔ **포장 유형(박스·팔레트)이 아니다.** 도면의 이 열은 «재구성» 유형(분할·합병)이고,
-       *    한때 포장 유형 코드(`BOX`)가 그대로 서 있었다 — 다른 축의 값이었다.
-       */
-      render: (row) => (row.repackTypeCode === null ? t.unknown : t.repackType(row.repackTypeCode)),
-    },
-    {
-      key: 'newCount',
-      header: t.newColumn,
-      align: 'center',
-      width: '10%',
-      render: (row) => t.newCount(row.newCount),
-    },
-    {
-      key: 'remainder',
-      header: t.remainderColumn,
-      align: 'center',
-      /* 잔량은 포장 번호 한 개가 통째로 들어간다 — 접히지 않을 만큼 준다. */
-      width: '20%',
-      /* 분할은 원 번호가 잔량으로 남고, 합병은 남지 않는다 — 둘을 가르는 칸이다. */
-      render: (row) => row.remainderNo ?? t.noRemainder,
-    },
-    {
-      key: 'occurredAt',
-      header: t.occurredColumn,
-      align: 'center',
-      width: '18%',
-      render: (row) => localDateTimeText(row.occurredAt, t.unknown),
-    },
-    {
-      key: 'pick',
-      header: '',
-      align: 'center',
-      width: '12%',
-      /* 고른 줄은 채운 단추다 — 줄 강조와 함께 «지금 이것»이 두 번 보인다. */
-      render: (row) => {
-        const selected = row.handlingUnitId === selectedId;
+  const body = ((): ReactNode => {
+    /* 서버가 아직 이 목록 조건을 주지 않는다 — 다시 해도 같으므로 재시도 단추를 두지 않는다. */
+    if (isUnsupported) return <PuEmpty icon="list" title={t.unsupported} />;
+    if (isError) {
+      return (
+        <PuEmpty icon="bad" title={t.loadFailed}>
+          <PuButton size="sm" onClick={onRetry}>
+            {messages.common.retry}
+          </PuButton>
+        </PuEmpty>
+      );
+    }
+    if (shown.length === 0) {
+      if (isLoading) return <PuEmpty icon="list" title={t.loading} />;
+      return query.trim() !== '' && rows.length > 0 ? (
+        <PuEmpty icon="search" title={t.searchEmpty} />
+      ) : (
+        <PuEmpty icon="box" title={t.empty} />
+      );
+    }
 
-        return (
-          <Button
-            type="button"
-            variant={selected ? 'filled' : 'outlined'}
-            size="2xl"
-            className="pop-touch-target pop-repack-pick"
-            disabled={disabled}
-            aria-pressed={selected}
-            onClick={() => onSelect(row.handlingUnitId)}
-          >
-            {t.pick}
-          </Button>
-        );
-      },
-    },
-  ];
-
-  /*
-   * ⛔ **재시도 단추를 붙이지 않는다** — 눌러도 같은 자리로 돌아온다. 사용자가 할 수 있는
-   *    일이 없을 때 단추를 세우면 「내가 뭘 잘못했나」로 읽힌다.
-   *
-   * ⛔ **오류 색을 쓰지 않는다**(`pop-repack-pending-state` 는 붉다). 이것은 실패가 아니라
-   *    아직 서 있지 않은 자리다 — 표가 비었을 때와 같은 색으로 적는다.
-   */
-  if (isUnsupported) {
-    return (
-      <div role="status">
-        <p className="pop-empty-note">{t.unsupported}</p>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="pop-repack-pending-state" role="alert">
-        <p>{t.loadFailed}</p>
-        <Button variant="outlined" size="sm" onClick={onRetry}>
-          {messages.common.retry}
-        </Button>
-      </div>
-    );
-  }
+    return null;
+  })();
 
   return (
-    /*
-     * 줄의 어느 칸을 눌러도 그 줄을 고른다 — POP 목록 정본이다.
-     *
-     * 디자인 시스템의 `Table` 은 줄 클릭을 받지 않으므로, 눌린 자리에서 «위로» 줄을 찾아
-     * 그 줄이 들고 있는 식별자를 읽는다.
-     */
-    <div
-      role="presentation"
-      className="pop-repack-pending-table pop-row-target"
-      onClick={(event) => {
-        const from = event.target as HTMLElement;
+    <>
+      <div className="pu-input pu-search">
+        <PuIcon name="search" />
+        <input
+          value={query}
+          placeholder={t.searchPlaceholder}
+          aria-label={t.searchPlaceholder}
+          autoComplete="off"
+          onChange={(event) => {
+            setQuery(event.target.value);
+            page.setPage(1);
+          }}
+        />
+      </div>
+      {body ?? (
+        <>
+          <div ref={fitRef} className="pu-list pu-fit rpk-list" role="group" aria-label={t.caption}>
+            {page.items.map((row) => {
+              const selected = row.handlingUnitId === selectedId;
+              const sourceText = sourceTextOf(row);
 
-        // 단추를 직접 눌렀으면 그쪽이 이미 처리한다 — 여기서 또 누르면 두 번 뒤집힌다.
-        if (from.closest('.pop-row-select') !== null) return;
-
-        from.closest('tr')?.querySelector<HTMLButtonElement>('.pop-row-select')?.click();
-      }}
-    >
-      <Table
-        rows={[...rows]}
-        columns={columns}
-        getRowId={(row) => String(row.handlingUnitId)}
-        density="compact"
-        /*
-         * ⛔ **보이는 이름표를 달지 않는다**(사용자 지시 2026-09-11). 표 위 가운데에 서던
-         *    「라벨을 아직 발행하지 않은 신규 포장」이 구획 표제 「발행 대기」와 같은 말을
-         *    두 번 하고, 가운데 정렬이라 표의 머리글처럼 읽혔다.
-         *
-         * ⚠ 읽어 주는 이름은 남긴다 — 표가 이름 없이 서면 화면을 듣는 사용자에게는 무엇을
-         *   담은 표인지 알 길이 없다.
-         */
-        aria-label={t.caption}
-        empty={<p className="pop-empty-note">{isLoading ? t.loading : t.empty}</p>}
-      />
-    </div>
+              return (
+                <button
+                  key={row.handlingUnitId}
+                  type="button"
+                  className={selected ? 'pu-item is-selected' : 'pu-item'}
+                  disabled={disabled}
+                  aria-pressed={selected}
+                  aria-label={t.selectRow(sourceText, row.handlingUnitNo)}
+                  onClick={() => {
+                    onSelect(row);
+                  }}
+                >
+                  <span className="pu-item-top">
+                    <span className="no" title={sourceText}>
+                      {sourceText}
+                    </span>
+                    {row.repackTypeCode !== null && (
+                      <span className="chips">
+                        <PuChip tone="info">{t.repackType(row.repackTypeCode)}</PuChip>
+                      </span>
+                    )}
+                  </span>
+                  <span className="pu-item-sub">
+                    <span>
+                      {t.newColumn} <b>{t.newCount(row.newCount)}</b>
+                    </span>
+                    <span>
+                      {t.remainderColumn} <b>{row.remainderNo ?? t.noRemainder}</b>
+                    </span>
+                  </span>
+                  <span className="pu-item-sub">
+                    <span>
+                      {t.occurredColumn} <b>{localDateTimeText(row.occurredAt, t.unknown)}</b>
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <PuPager
+            total={page.total}
+            page={page.page}
+            pages={page.pages}
+            onPage={page.setPage}
+            label={t.sectionLabel}
+          />
+        </>
+      )}
+    </>
   );
 };

@@ -1,16 +1,33 @@
-import { AlertBanner, Button, Chip, EmptyState, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
-import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
-/*
- * ⛔ **DS 드롭다운을 직접 쓰지 않는다**(공유계약 G-34 · `routes/pop-common-rules.test.ts` 가
- *    지킨다). 장갑 낀 손에는 좁은 목록보다 큰 버튼이 선 팝업이 낫다.
- */
-import { PopSelect as Select } from '../../patterns/pop-select';
-import { ScanField } from '../packing-result/scan-field';
-import { useOnline } from '../packing-result/use-online';
+import { PopSelect } from '../../patterns/pop-select';
+import {
+  PuActionBar,
+  PuBand,
+  PuButton,
+  PuChip,
+  PuCols,
+  PuCount,
+  PuEmpty,
+  PuField,
+  PuFlow,
+  PuIcon,
+  PuNote,
+  PuPager,
+  PuRemoveButton,
+  PuScanField,
+  PuScreen,
+  PuSection,
+  PuSeg,
+  PuTiles,
+  puCx,
+  puToast,
+  useClientPage,
+  useFitCount,
+  type PuIconName,
+} from '../../patterns/pop-uniform';
 import { DELIVERY_LABEL } from '../shipping-packing-label/codes';
 import { usePrinters } from '../shipping-packing-label/queries';
 import { toDefaultPrinterName } from '../shipping-packing-label/types';
@@ -28,8 +45,14 @@ import { useDeliveryIssue, type DeliveryIssueOutcome } from './delivery-issue';
 import { toDeliveryLabelFields } from './delivery-label-fields';
 import { renderDeliveryLabel } from './delivery-label-image';
 import { useShippingUnitWrites } from './mutations';
-import { useComposableShipments, useShippingUnitDetail, useShippingUnitTypes } from './queries';
-import type { AddBoxRejection, ShippingUnitBox } from './types';
+import {
+  useClosedShippingUnits,
+  useComposableShipments,
+  useShippingUnitDetail,
+  useShippingUnitTypes,
+} from './queries';
+import type { AddBoxRejection, ShippingUnitBox, ShippingUnitDetail } from './types';
+import './uniform.css';
 
 const t = messages.shippingUnit;
 
@@ -73,65 +96,115 @@ const issueText = (outcome: DeliveryIssueOutcome): string => {
   return `${issued} · ${t.close.printFailed(outcome.reason)}`;
 };
 
-/**
- * **P-04-05 출하 단위 구성** — 포장이 끝난 상자를 스캔해 묶고, 마감하면 납품 라벨이 나간다
- * (SHIP-UNIT-01 · 설계 §6).
- *
- * ⚠ **세로 예산이 슬랙 0 이다**(헤더 64 + 본문 616 + 액션바 88 = 768). ① 72 · ② 72 ·
- *   ③ 남는 것 · ④ 88 이고 **스크롤은 ③ 하나**다. ①②④ 는 `pop-fixed` 로 높이 배분에서
- *   빠진다 — 그러지 않으면 넷이 남는 높이를 나눠 갖고 목록이 세 줄로 눌린다(#1092 전례).
- *
- * ⛔ **마감은 되돌릴 수 없다**(설계 §4-6). 확인창이 그 사실을 먼저 말하고, 「지금 마감할 수
- *    있는가」는 `compose-state` 가 판정한다 — 렌더 코드에 흩어 두면 시험이 못 붙든다.
- */
-export const ShippingUnitScreen = () => {
-  const identity = usePopIdentity();
-  const isOnline = useOnline();
-  const [shipmentId, setShipmentId] = useState<number | null>(null);
-  const [typeCode, setTypeCode] = useState<string | null>(null);
-  const [shippingUnitId, setShippingUnitId] = useState<number | null>(null);
-  const [busy, setBusy] = useState<ComposeBusy>('idle');
-  const [notice, setNotice] = useState<string | null>(null);
-  /**
-   * 포장 라벨 스캔 결과 — 맨 위 띠가 아니라 **스캔 칸 바로 아래**에 선다(사용자 지시 2026-09-17).
-   * 등록은 초록 체크, 거절은 붉은 띠다. 어느 스캔의 답인지 칸에서 떨어지면 흐려진다.
-   */
-  const [scanResult, setScanResult] = useState<{ ok: boolean; text: string } | null>(null);
-  const [outcome, setOutcome] = useState<DeliveryIssueOutcome | null>(null);
-  /**
-   * 마지막 쓰기가 준 판 번호.
-   *
-   * ⛔ **상세가 준 것만 믿지 않는다.** `:add-box`·`DELETE` 도 판을 올리므로 **쓰기 응답의 값이
-   *    가장 새것**이다 — 낡은 값으로 마감을 걸면 409 다.
-   */
-  const [etag, setEtag] = useState<string | null>(null);
+const pad2 = (value: number): string => String(value).padStart(2, '0');
 
-  const shipments = useComposableShipments();
-  const types = useShippingUnitTypes();
-  const detail = useShippingUnitDetail(shippingUnitId);
-  const printers = usePrinters(DELIVERY_LABEL);
-  const writes = useShippingUnitWrites(identity.workerNo);
-  const issueDeliveryLabel = useDeliveryIssue(identity.workerNo);
+/** 마감 시각 `YYYY-MM-DD HH:mm`(단말 시각대). */
+const formatAt = (iso: string | null | undefined): string => {
+  if (iso === null || iso === undefined) return '—';
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return '—';
 
-  const unit = detail.data?.unit ?? null;
-  const state: ComposeState = useMemo(
-    () => ({ ...INITIAL_STATE, shipmentId, typeCode, busy, unit }),
-    [busy, shipmentId, typeCode, unit],
+  return `${String(at.getFullYear())}-${pad2(at.getMonth() + 1)}-${pad2(at.getDate())} ${pad2(at.getHours())}:${pad2(at.getMinutes())}`;
+};
+
+/** 띠 이름 앞 빨간 아이콘. */
+const bandLabel = (icon: PuIconName, text: string): ReactNode => (
+  <>
+    <PuIcon name={icon} />
+    {text}
+  </>
+);
+
+/** 한 상자의 수량 — 내용물 단위가 하나일 때만 더한다(다른 단위의 합은 뜻이 없다). */
+const boxQty = (box: ShippingUnitBox): string | null => {
+  const uoms = new Set(box.contents.map((content) => content.uomCode));
+  if (uoms.size !== 1) return null;
+
+  return box.contents.reduce((sum, content) => sum + content.qty, 0).toLocaleString('ko-KR');
+};
+
+const BoxRow = ({
+  box,
+  editable,
+  isLatest,
+  removeDisabled,
+  onRemove,
+}: {
+  box: ShippingUnitBox;
+  editable: boolean;
+  isLatest: boolean;
+  removeDisabled: boolean;
+  onRemove: (handlingUnitId: number) => void;
+}) => {
+  const contents = box.contents
+    .map((content) =>
+      t.boxes.content(
+        content.itemCode,
+        content.lotNo,
+        `${content.qty.toLocaleString('ko-KR')} ${content.uomCode}`,
+      ),
+    )
+    .join(' / ');
+  const qty = boxQty(box);
+
+  return (
+    <div className={puCx('su-row', editable && 'edit', editable && isLatest && 'is-on')}>
+      {!editable && (
+        <span className="mk">
+          <PuIcon name="check" />
+        </span>
+      )}
+      <span className="nm" title={box.handlingUnitNo}>
+        {box.handlingUnitNo}
+      </span>
+      <span className="sub" title={contents}>
+        {contents}
+      </span>
+      <span className="q">
+        {qty !== null && (
+          <>
+            {qty}
+            <small>{box.contents[0]?.uomCode}</small>
+          </>
+        )}
+      </span>
+      {editable && (
+        <PuRemoveButton
+          label={t.boxes.remove(box.handlingUnitNo)}
+          disabled={removeDisabled}
+          onClick={() => {
+            onRemove(box.handlingUnitId);
+          }}
+        />
+      )}
+    </div>
   );
-  /*
-   * ⭐ **미리보기는 인쇄될 라벨 그림 그대로다**(사용자 지시 2026-09-17). 전에는 품목별 합을 글자
-   *    목록으로 적어 라벨처럼 보이지 않았다. 마감 때 인쇄에 넘기는 같은 그리기(`renderDeliveryLabel`)를
-   *    쓴다 — 다른 그림을 보여 주면 담당이 본 것과 종이가 달라진다.
-   *
-   * ⚠ 발행 회차는 마감·발행 전에는 없다 — 첫 발행인 1 로 그린다. 재발행이면 종이의 회차만 다르다.
-   */
-  /*
-   * ⚠ **그림 주소는 effect 안에서 만들고 같은 effect 가 해제한다**(리뷰 M2). 렌더 중에 만들면
-   *    StrictMode 의 «실행→정리→재실행»에서 쓰던 주소가 해제돼 빈 그림이 선다. 그리기가 실패해도
-   *    화면 전체를 멈추지 않고 미리보기만 비운다.
-   */
+};
+
+/** 목록 아래 합계 — 품목별 합은 서버가 준 `itemTotals` 그대로다(화면이 세지 않는다). */
+const SumText = ({ unit }: { unit: ShippingUnitDetail }) =>
+  unit.boxes.length === 0 ? null : (
+    <div className="sum">
+      {t.boxes.sum(unit.boxes.length)}{' '}
+      {unit.itemTotals.map((total, index) => (
+        <span key={`${total.itemCode}-${total.uomCode}`} className="tot">
+          {index > 0 && ' · '}
+          {`${total.qty.toLocaleString('ko-KR')} ${total.uomCode}`}
+          <span>{total.itemCode}</span>
+        </span>
+      ))}
+    </div>
+  );
+
+/** 납품 라벨 그림 — 마감 때 인쇄에 넘기는 같은 그리기. 실패하면 비운다. */
+const usePreviewSrc = (unit: ShippingUnitDetail | null): string | null => {
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
 
+  /*
+   * ⚠ **그림 주소는 effect 안에서 만들고 같은 effect 가 해제한다**(리뷰 M2). 렌더 중에 만들면
+   *    StrictMode 의 «실행→정리→재실행»에서 쓰던 주소가 해제돼 빈 그림이 선다.
+   * ⚠ 발행 회차는 마감·발행 전에는 없다 — 첫 발행인 1 로 그린다.
+   */
   useEffect(() => {
     if (unit === null || unit.boxCount === 0) {
       setPreviewSrc(null);
@@ -156,10 +229,83 @@ export const ShippingUnitScreen = () => {
       URL.revokeObjectURL(src);
     };
   }, [unit]);
+
+  return previewSrc;
+};
+
+type Tab = 'wait' | 'done';
+type Step = 1 | 2 | 3;
+
+/**
+ * **P-04-05 출하 단위 구성** — 포장이 끝난 상자를 스캔해 묶고, 마감하면 납품 라벨이 나간다
+ * (SHIP-UNIT-01 · 설계 §6). 본문은 #295 통일 시안: 왼쪽 「구성 대기 / 구성 완료」 탭 목록,
+ * 가운데 세 단계(① 유형 → ② 상자 등록 → ③ 마감 납품 라벨 발행), 오른쪽 납품 라벨 미리보기.
+ *
+ * ⛔ **마감은 되돌릴 수 없다**(설계 §4-6). 「지금 마감할 수 있는가」는 `compose-state` 가 판정한다.
+ */
+export const ShippingUnitScreen = () => {
+  const identity = usePopIdentity();
+  const [tab, setTab] = useState<Tab>('wait');
+  const [folded, setFolded] = useState(false);
+  const [step, setStep] = useState<Step>(1);
+  const [shipment, setShipment] = useState<{ shipmentId: number; shipmentNo: string } | null>(null);
+  const shipmentId = shipment?.shipmentId ?? null;
+  const [typeCode, setTypeCode] = useState<string | null>(null);
+  const [shippingUnitId, setShippingUnitId] = useState<number | null>(null);
+  const [busy, setBusy] = useState<ComposeBusy>('idle');
+  const [notice, setNotice] = useState<string | null>(null);
+  /** 포장 라벨 스캔 칸 — 거절은 칸 바로 아래 빨간 한 줄, 등록은 「스캔 완료」와 파란 테두리 줄. */
+  const [scanValue, setScanValue] = useState('');
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [lastBoxNo, setLastBoxNo] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<DeliveryIssueOutcome | null>(null);
+  /**
+   * 마지막 쓰기가 준 판 번호.
+   *
+   * ⛔ **상세가 준 것만 믿지 않는다.** `:add-box`·`DELETE` 도 판을 올리므로 **쓰기 응답의 값이
+   *    가장 새것**이다 — 낡은 값으로 마감을 걸면 409 다.
+   */
+  const [etag, setEtag] = useState<string | null>(null);
+  /** 「구성 완료」 탭에서 고른 마감 단위. */
+  const [doneUnitId, setDoneUnitId] = useState<number | null>(null);
+  const [donePage, setDonePage] = useState(1);
+
+  const leftRef = useRef<HTMLDivElement>(null);
+  const rowsRef = useRef<HTMLDivElement>(null);
+  const scanRef = useRef<HTMLInputElement>(null);
+  const leftSize = useFitCount(leftRef, { fallback: 5 });
+  const rowSize = useFitCount(rowsRef, { fallback: 4 });
+
+  const shipments = useComposableShipments();
+  const closedUnits = useClosedShippingUnits(donePage, leftSize);
+  const types = useShippingUnitTypes();
+  const detail = useShippingUnitDetail(shippingUnitId);
+  const doneDetail = useShippingUnitDetail(doneUnitId);
+  const printers = usePrinters(DELIVERY_LABEL);
+  const writes = useShippingUnitWrites(identity.workerNo);
+  const issueDeliveryLabel = useDeliveryIssue(identity.workerNo);
+
+  const unit = detail.data?.unit ?? null;
+  const doneUnit = doneDetail.data?.unit ?? null;
+  const state: ComposeState = useMemo(
+    () => ({ ...INITIAL_STATE, shipmentId, typeCode, busy, unit }),
+    [busy, shipmentId, typeCode, unit],
+  );
+  const closed = isClosed(state);
+  const unitOpen = unit !== null && !closed;
+  const scanOpen = canScanBox(state);
   const currentEtag = etag ?? detail.data?.etag ?? null;
 
-  /* ⛔ 한 번에 하나만 나간다 — 장갑 낀 손이 빠르게 두 번 누르면 같은 렌더에서 두 번 들어온다. */
-  /* ⚠ 렌더 시점 `busy` 가 아니라 ref 로 막는다(리뷰) — 같은 렌더 안의 연타는 둘 다 'idle' 을 읽었다. */
+  const isDone = tab === 'done';
+  const viewUnit = isDone ? doneUnit : unit;
+  const previewSrc = usePreviewSrc(viewUnit);
+
+  /* 상자 등록이 끝나 칸이 다시 열리면 다음 스캔을 받도록 칸을 잡는다. */
+  useEffect(() => {
+    if (scanOpen && step === 2) scanRef.current?.focus();
+  }, [scanOpen, step]);
+
+  /* ⛔ 한 번에 하나만 나간다 — 같은 렌더 안의 연타도 ref 로 막는다(리뷰). */
   const runningRef = useRef(false);
   const run = useCallback(async (kind: ComposeBusy, work: () => Promise<void>): Promise<void> => {
     if (runningRef.current) return;
@@ -174,17 +320,35 @@ export const ShippingUnitScreen = () => {
     }
   }, []);
 
+  const resetScan = (): void => {
+    setScanValue('');
+    setScanError(null);
+    setLastBoxNo(null);
+  };
+
+  const onPickShipment = (next: { shipmentId: number; shipmentNo: string }): void => {
+    setNotice(null);
+    resetScan();
+    setOutcome(null);
+    /* 출하를 바꾸면 만들던 단위는 그 출하의 것이 아니다 — 함께 비운다. */
+    setShipment(next);
+    setShippingUnitId(null);
+    setEtag(null);
+    setStep(1);
+  };
+
   const onCreate = (): void => {
     if (shipmentId === null || typeCode === null) return;
 
     void run('creating', async () => {
       setNotice(null);
-      setScanResult(null);
+      resetScan();
       setOutcome(null);
       try {
         const created = await writes.createUnit(shipmentId, typeCode);
         setShippingUnitId(created.unit.shippingUnitId);
         setEtag(created.etag);
+        setStep(2);
       } catch {
         setNotice(t.unit.failed);
       }
@@ -196,18 +360,20 @@ export const ShippingUnitScreen = () => {
 
     void run('adding', async () => {
       setNotice(null);
-      setScanResult(null);
+      setScanError(null);
       const result = await writes.addBox(shippingUnitId, handlingUnitNo);
 
       if (result.kind === 'rejected') {
-        setScanResult({ ok: false, text: rejectionText(result.rejection) });
+        setScanValue('');
+        setLastBoxNo(null);
+        setScanError(rejectionText(result.rejection));
 
         return;
       }
 
       setEtag(result.snapshot.etag);
       await detail.refetch();
-      setScanResult({ ok: true, text: t.scan.added(handlingUnitNo.trim()) });
+      setLastBoxNo(handlingUnitNo.trim());
     });
   };
 
@@ -240,267 +406,466 @@ export const ShippingUnitScreen = () => {
          *    없던 일로 만들 수 없다 — 갈라 두어야 「마감은 됐고 라벨만 다시 뽑으면 된다」를
          *    말할 수 있다.
          */
-        setOutcome(
-          await issueDeliveryLabel(snapshot.unit, toDefaultPrinterName(printers.data ?? [])),
+        const issued = await issueDeliveryLabel(
+          snapshot.unit,
+          toDefaultPrinterName(printers.data ?? []),
+        );
+        setOutcome(issued);
+        puToast(
+          issued.kind === 'printed' ? t.close.done : issueText(issued),
+          issued.kind === 'printed' ? 'ok' : 'warn',
         );
         /* 방금 묶은 상자가 미구성에서 빠진다 — 목록을 다시 받는다. */
         await shipments.refetch();
+        void closedUnits.refetch();
       } catch {
         setNotice(t.close.failed);
       }
     });
   };
 
-  /*
-   * ⭐ 머리글·값 모두 가운데 정렬, 상자 번호 열은 넓게·내용물 열은 좁게(사용자 지시 2026-09-17).
-   */
-  const boxColumns: Column<ShippingUnitBox>[] = [
-    {
-      key: 'seq',
-      header: t.boxes.columnSeq,
-      align: 'center',
-      width: '10%',
-      render: (row) => String(row.seq),
-    },
-    {
-      key: 'no',
-      header: t.boxes.columnNo,
-      align: 'center',
-      width: '35%',
-      render: (row) => row.handlingUnitNo,
-    },
-    {
-      key: 'contents',
-      header: t.boxes.columnContents,
-      align: 'center',
-      width: '35%',
-      render: (row) =>
-        row.contents
-          .map((content) =>
-            t.boxes.content(
-              content.itemCode,
-              content.lotNo,
-              `${content.qty.toLocaleString('ko-KR')} ${content.uomCode}`,
-            ),
-          )
-          .join(' / '),
-    },
-    {
-      key: 'remove',
-      header: t.boxes.columnAction,
-      align: 'center',
-      width: '20%',
-      render: (row) => (
-        <Button
-          variant="outlined"
-          size="md"
-          className="pop-touch-target"
-          disabled={!canScanBox(state)}
-          onClick={() => {
-            onRemove(row.handlingUnitId);
-          }}
-        >
-          {busy === 'removing' ? t.boxes.removing : t.boxes.remove}
-        </Button>
-      ),
-    },
-  ];
+  const onNextUnit = (): void => {
+    /* 같은 출하에 이어서 구성한다(설계 §5-5) — 출하만 남기고 나머지를 비운다. */
+    setShippingUnitId(null);
+    setEtag(null);
+    setNotice(null);
+    resetScan();
+    setOutcome(null);
+    setStep(1);
+  };
 
-  return (
-    <main className="pop-shell pop-ui shipping-unit-shell" aria-labelledby="shipping-unit-title">
-      <header className="pop-header">
-        <h1 id="shipping-unit-title" className="pop-title">
-          {t.title}
-        </h1>
-        {unit !== null && (
-          /* ⭐ 번호만 적는다 — 「구성 중/마감」 상태 표시는 두지 않는다(사용자 지시 2026-09-17). */
-          <p className="pop-context">{unit.shippingUnitNo}</p>
-        )}
-        {/*
-         * ⭐ **POP 공통 헤더를 따른다**(사용자 지시 2026-09-17 · 공유계약 D-5·G-34) — 현재 작업자
-         *    사번과 온라인/오프라인. [화면 이동]·[사용자 전환]은 셸이 모든 POP 화면 머리줄에
-         *    세운다. 전용 화면 스펙이 설계 고정 커밋에 없어 형제 화면 P-04-01 머리줄과 같게 둔다.
-         */}
-      </header>
+  /* ── 왼쪽 목록 ── */
+  const shipmentList = shipments.data ?? [];
+  const waitPage = useClientPage(shipmentList, leftSize);
+  const closedTotal = closedUnits.data?.total ?? 0;
+  const closedPages = Math.max(1, Math.ceil(closedTotal / Math.max(1, leftSize)));
 
-      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
-      <PopWorkerMissingBanner workerNo={identity.workerNo} />
+  const typeName = (code: string | null | undefined): string =>
+    code === null || code === undefined
+      ? '—'
+      : (types.data?.find((type) => type.code === code)?.codeName ?? code);
 
-      {notice !== null && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{notice}</AlertBanner>
+  const leftList = (): ReactNode => {
+    if (!isDone) {
+      if (shipments.isError) return <PuNote tone="bad">{t.entry.failed}</PuNote>;
+      if (shipments.isPending) return <PuEmpty title={t.entry.loading} />;
+      if (shipmentList.length === 0) return <PuEmpty title={t.entry.empty} />;
+
+      return (
+        <div ref={leftRef} className="pu-list pu-fit su-left-list">
+          {waitPage.items.map((item) => (
+            <button
+              key={item.shipmentId}
+              type="button"
+              className={puCx('pu-item', item.shipmentId === shipmentId && 'is-selected')}
+              aria-pressed={item.shipmentId === shipmentId}
+              onClick={() => {
+                onPickShipment({ shipmentId: item.shipmentId, shipmentNo: item.shipmentNo });
+              }}
+            >
+              <div className="pu-item-top">
+                <span className="no">{item.shipmentNo}</span>
+                <span className="chips">
+                  <PuChip tone={item.unassignedPackedBoxCount > 0 ? 'warn' : 'idle'}>
+                    {t.entry.boxes(item.unassignedPackedBoxCount)}
+                  </PuChip>
+                </span>
+              </div>
+            </button>
+          ))}
         </div>
-      )}
-      {outcome !== null && (
-        <div className="banner-slot">
-          {/* ⚠ 기록은 남고 종이만 안 나온 상태가 있다 — 그때는 재발행으로 가는 길을 함께 말한다. */}
-          <AlertBanner variant={outcome.kind === 'printed' ? 'success' : 'warning'}>
-            {outcome.kind === 'printed'
-              ? issueText(outcome)
-              : `${issueText(outcome)} ${t.close.reissueHint}`}
-          </AlertBanner>
-        </div>
-      )}
+      );
+    }
 
-      {/* ① 출하 선택 — 서버가 「미구성 PACKED 상자가 있는 출하」만 걸러 준다(설계 §5-1). */}
-      {/*
-       * ⭐ **본문은 상자 다섯이다**(사용자 지시 2026-09-17) — 출하 · 유형 · 포장 라벨 · 등록된 상자 ·
-       *    납품 라벨 미리보기. 각 상자가 테두리를 갖고 위에서 아래로 작업 순서대로 선다.
-       */}
-      <section
-        className="pop-section pop-fixed shipping-unit-box shipping-unit-entry"
-        aria-label={t.entry.label}
-      >
-        <span className="field-label" id="shipping-unit-entry-label">
-          {t.entry.label}
-        </span>
-        <Select
-          size="xl"
-          aria-labelledby="shipping-unit-entry-label"
-          placeholder={t.entry.placeholder}
-          value={shipmentId === null ? null : String(shipmentId)}
-          onChange={(value) => {
-            setNotice(null);
-            setScanResult(null);
-            setOutcome(null);
-            /* 출하를 바꾸면 만들던 단위는 그 출하의 것이 아니다 — 함께 비운다. */
-            setShipmentId(value === null ? null : Number(value));
-            setShippingUnitId(null);
-            setEtag(null);
-          }}
-          options={(shipments.data ?? []).map((shipment) => ({
-            value: String(shipment.shipmentId),
-            label: `${shipment.shipmentNo} · ${t.entry.boxes(shipment.unassignedPackedBoxCount)}`,
-          }))}
-        />
-        {shipments.isError ? (
-          <p className="field-note">{t.entry.failed}</p>
-        ) : shipments.isPending ? (
-          <p className="field-note">{t.entry.loading}</p>
-        ) : /* ⛔ 「구성할 상자가 남은 출하가 없습니다」는 두지 않는다(사용자 지시 2026-09-17). */ null}
-      </section>
+    if (closedUnits.isError) return <PuNote tone="bad">{t.closed.failed}</PuNote>;
+    if (closedUnits.isPending) return <PuEmpty title={t.closed.loading} />;
+    if (closedTotal === 0) return <PuEmpty title={t.closed.empty} />;
 
-      {/* ② 유형 — 유형을 고르고 새 출하 단위를 만든다. */}
-      <section
-        className="pop-section pop-fixed shipping-unit-box shipping-unit-unit"
-        aria-label={t.unit.label}
-      >
-        <span className="field-label" id="shipping-unit-type-label">
-          {t.unit.typeLabel}
-        </span>
-        <Select
-          size="xl"
-          aria-labelledby="shipping-unit-type-label"
-          placeholder={t.unit.typePlaceholder}
-          value={typeCode}
-          onChange={setTypeCode}
-          options={(types.data ?? []).map((type) => ({ value: type.code, label: type.codeName }))}
-        />
-        <Button
-          variant="filled"
-          size="xl"
-          className="pop-touch-target"
-          disabled={!canCreateUnit(state)}
-          onClick={onCreate}
-        >
-          {busy === 'creating' ? t.unit.creating : t.unit.create}
-        </Button>
-        {/* ⛔ 「아직 만들지 않았습니다…」 안내는 두지 않는다(사용자 지시 2026-09-17). */}
-      </section>
-
-      {/* ③ 포장 라벨 스캔 */}
-      {/* ⛔ 구획에 칸과 «같은 이름»을 달지 않는다 — 이름이 겹치면 무엇을 가리키는지 흐려진다. */}
-      <section className="pop-section pop-fixed shipping-unit-box shipping-unit-scan">
-        <ScanField
-          label={t.scan.label}
-          isScanning={busy === 'adding'}
-          /* ⭐ 스캐너가 Enter 를 붙이지 않아도 읽는다(사용자 지시 2026-09-17 · P-04-01 생산LOT 과 같다). */
-          autoSubmit
-          lockReason={canScanBox(state) ? undefined : t.scan.locked}
-          onScan={onScan}
-        />
-        {scanResult !== null && (
-          <div className="shipping-unit-verdict" role="status">
-            <AlertBanner variant={scanResult.ok ? 'success' : 'error'}>
-              {scanResult.text}
-            </AlertBanner>
-          </div>
-        )}
-      </section>
-
-      {/*
-       * ⭐ **등록된 상자와 미리보기는 한 줄에 나란히 선다**(사용자 지적 2026-09-17 · 잘림). 위아래로
-       *    쌓았더니 창 높이가 모자라 목록이 표 머리줄만 남기고 잘리고 마감 단추가 화면 밖으로 밀렸다.
-       *    이 줄이 남는 높이를 갖고, 두 상자는 넘치면 제 안에서 굴린다.
-       */}
-      <div className="shipping-unit-lower">
-        {/* ④ 등록된 상자 — **스크롤은 여기 하나**다. */}
-        <section
-          className="pop-section shipping-unit-box shipping-unit-boxes"
-          aria-label={t.boxes.sectionLabel}
-        >
-          <h2 className="pane-title">{t.boxes.sectionLabel}</h2>
-          {(unit?.boxes.length ?? 0) === 0 ? (
-            /* ⭐ 가운데에 선다 — P-04-01 포장 구성의 빈 목록과 같은 부품(사용자 지시 2026-09-17). */
-            <EmptyState size="sm" className="shipping-unit-empty" title={t.boxes.empty} />
-          ) : (
-            <Table
-              density="compact"
-              getRowId={(row: ShippingUnitBox) => String(row.handlingUnitId)}
-              columns={boxColumns}
-              rows={unit?.boxes ?? []}
-            />
-          )}
-        </section>
-
-        {/* ⑤ 납품 라벨 미리보기 — 인쇄될 그림 그대로. */}
-        <section
-          className="pop-section shipping-unit-box shipping-unit-preview"
-          aria-label={t.preview.sectionLabel}
-        >
-          <h2 className="pane-title">{t.preview.sectionLabel}</h2>
-          {previewSrc === null ? (
-            <EmptyState size="sm" className="shipping-unit-empty" title={t.preview.empty} />
-          ) : (
-            <img
-              className="shipping-unit-preview-image"
-              src={previewSrc}
-              alt={t.preview.sectionLabel}
-            />
-          )}
-        </section>
+    return (
+      <div ref={leftRef} className="pu-list pu-fit su-left-list">
+        {(closedUnits.data?.items ?? []).map((item) => (
+          <button
+            key={item.shippingUnitId}
+            type="button"
+            className={puCx('pu-item', item.shippingUnitId === doneUnitId && 'is-selected')}
+            aria-pressed={item.shippingUnitId === doneUnitId}
+            onClick={() => {
+              setDoneUnitId(item.shippingUnitId);
+            }}
+          >
+            <div className="pu-item-top">
+              <span className="no">{item.shippingUnitNo}</span>
+              <span className="chips">
+                <PuChip tone="ok">{t.closed.chip}</PuChip>
+              </span>
+            </div>
+            <div className="pu-item-sub">
+              <span>
+                {t.closed.shipment} <b>{item.shipmentNo}</b>
+              </span>
+              <span>
+                {typeName(item.shippingUnitTypeCode)} · <b>{t.closed.boxes(item.boxCount)}</b>
+              </span>
+            </div>
+            <div className="pu-item-sub">
+              <span>
+                {t.closed.closedAt} <b>{formatAt(item.closedAt)}</b>
+              </span>
+            </div>
+          </button>
+        ))}
       </div>
+    );
+  };
 
-      <div className="pop-action-bar shipping-unit-actions">
-        <Button
-          variant="filled"
-          size="xl"
-          className="pop-touch-target"
+  const leftPager = isDone ? (
+    <PuPager
+      total={closedTotal}
+      page={Math.min(donePage, closedPages)}
+      pages={closedPages}
+      onPage={setDonePage}
+      label={t.tabs.done}
+    />
+  ) : (
+    <PuPager
+      total={waitPage.total}
+      page={waitPage.page}
+      pages={waitPage.pages}
+      onPage={waitPage.setPage}
+      label={t.tabs.wait}
+    />
+  );
+
+  /* ── 가운데 상자 줄 ── */
+  const rowBoxes: ShippingUnitBox[] = isDone
+    ? (doneUnit?.boxes ?? [])
+    : step === 1
+      ? []
+      : (unit?.boxes ?? []);
+  const rowPage = useClientPage(rowBoxes, rowSize);
+  const { showIndex } = rowPage;
+  /* 방금 넣은 상자가 든 쪽으로 넘긴다. */
+  useEffect(() => {
+    if (lastBoxNo === null) return;
+    const index = (unit?.boxes ?? []).findIndex((box) => box.handlingUnitNo === lastBoxNo);
+    if (index >= 0) showIndex(index);
+  }, [lastBoxNo, unit, showIndex]);
+
+  const editable = !isDone && step === 2 && scanOpen;
+  const rowsBlock = (sumUnit: ShippingUnitDetail | null, emptyHint?: string): ReactNode => (
+    <>
+      {rowBoxes.length === 0 ? (
+        <PuEmpty icon="box" title={t.boxes.empty} hint={emptyHint} />
+      ) : (
+        <div ref={rowsRef} className="pu-fit su-rows">
+          {rowPage.items.map((box) => (
+            <BoxRow
+              key={box.handlingUnitId}
+              box={box}
+              editable={editable}
+              isLatest={box.handlingUnitNo === lastBoxNo}
+              removeDisabled={!scanOpen}
+              onRemove={onRemove}
+            />
+          ))}
+        </div>
+      )}
+      <div className="su-foot">
+        {sumUnit !== null && <SumText unit={sumUnit} />}
+        <PuPager
+          total={rowPage.total}
+          page={rowPage.page}
+          pages={rowPage.pages}
+          onPage={rowPage.setPage}
+          label={t.steps.boxes}
+        />
+      </div>
+    </>
+  );
+
+  const boxCount = unit?.boxes.length ?? 0;
+  const doneTo = unit === null ? 0 : closed ? 3 : boxCount > 0 ? 2 : 1;
+  const canGo = (target: Step): boolean =>
+    target === 1 || (unitOpen && (target === 2 || boxCount > 0));
+  const flowSteps = ([1, 2, 3] as const).map((target) => ({
+    label: target === 1 ? t.steps.type : target === 2 ? t.steps.boxes : t.steps.close,
+    done: target <= doneTo || target < step,
+    onGo:
+      !closed && target !== step && canGo(target)
+        ? () => {
+            setStep(target);
+          }
+        : undefined,
+  }));
+
+  const unassigned = shipments.isSuccess
+    ? (shipmentList.find((item) => item.shipmentId === shipmentId)?.unassignedPackedBoxCount ?? 0)
+    : null;
+
+  const center = (): ReactNode => {
+    if (isDone) {
+      if (doneUnit === null) {
+        return <PuEmpty icon="file" title={t.closed.pick} hint={t.closed.pickHint} />;
+      }
+
+      return (
+        <>
+          <PuBand
+            label={t.band.unit}
+            items={[
+              {
+                label: bandLabel('file', t.band.unit),
+                value: (
+                  <>
+                    {doneUnit.shippingUnitNo} <PuChip tone="ok">{t.closed.chip}</PuChip>
+                  </>
+                ),
+              },
+              { label: bandLabel('list', t.band.shipment), value: doneUnit.shipmentNo },
+              {
+                label: bandLabel('box', t.band.type),
+                value: typeName(doneUnit.shippingUnitTypeCode),
+              },
+              { label: bandLabel('clock', t.band.closedAt), value: formatAt(doneUnit.closedAt) },
+            ]}
+          />
+          {rowsBlock(doneUnit)}
+        </>
+      );
+    }
+
+    if (shipment === null) {
+      return <PuEmpty icon="list" title={t.entry.pick} hint={t.entry.pickHint} />;
+    }
+
+    const typeOptions = (types.data ?? []).map((type) => ({
+      value: type.code,
+      label: type.codeName,
+    }));
+
+    return (
+      <>
+        <PuFlow steps={flowSteps} current={step - 1} label={t.steps.label} />
+        <PuBand
+          label={t.band.shipment}
+          items={[
+            { label: bandLabel('list', t.band.shipment), value: shipment.shipmentNo },
+            ...(step === 1
+              ? []
+              : [
+                  {
+                    label: bandLabel('box', t.band.type),
+                    value: typeName(unit?.shippingUnitTypeCode ?? typeCode),
+                  },
+                ]),
+            {
+              label: bandLabel('file', t.band.unit),
+              value:
+                unit === null ? (
+                  '—'
+                ) : (
+                  <>
+                    {unit.shippingUnitNo}
+                    {closed && (
+                      <>
+                        {' '}
+                        <PuChip tone="ok">{t.closed.chip}</PuChip>
+                      </>
+                    )}
+                  </>
+                ),
+            },
+            {
+              label: bandLabel('clock', t.band.unassigned),
+              value: unassigned === null ? '—' : t.band.count(unassigned),
+            },
+          ]}
+        />
+        {notice !== null && <PuNote tone="bad">{notice}</PuNote>}
+        {outcome !== null && outcome.kind !== 'printed' && (
+          /* ⚠ 기록은 남고 종이만 안 나온 상태 — 재발행으로 가는 길을 함께 말한다. */
+          <PuNote tone="warn">{`${issueText(outcome)} ${t.close.reissueHint}`}</PuNote>
+        )}
+        {step === 1 && (
+          <PuField label={t.unit.typeLabel} required labelId="shipping-unit-type-label">
+            {typeOptions.length > 6 ? (
+              <PopSelect
+                aria-labelledby="shipping-unit-type-label"
+                value={typeCode}
+                onChange={setTypeCode}
+                options={typeOptions}
+              />
+            ) : (
+              <div className="su-types">
+                <PuTiles
+                  label={t.unit.typeLabel}
+                  options={typeOptions}
+                  value={typeCode}
+                  onChange={setTypeCode}
+                />
+              </div>
+            )}
+          </PuField>
+        )}
+        {step === 2 && (
+          <>
+            <PuScanField
+              label={t.scan.label}
+              inputRef={scanRef}
+              value={scanValue}
+              onChange={(value) => {
+                setScanValue(value);
+                setScanError(null);
+              }}
+              onSubmit={(value) => {
+                setScanValue(value);
+                onScan(value);
+              }}
+              placeholder={unitOpen ? t.scan.placeholder : t.scan.locked}
+              disabled={!scanOpen}
+              done={lastBoxNo !== null && lastBoxNo === scanValue.trim()}
+              error={scanError}
+            />
+            {rowsBlock(unit, scanOpen ? t.boxes.emptyHint : undefined)}
+          </>
+        )}
+        {step === 3 && rowsBlock(unit)}
+      </>
+    );
+  };
+
+  /* ── 작업 줄 ── */
+  const actions = (): ReactNode => {
+    if (isDone || shipment === null) return null;
+
+    if (step === 1) {
+      return unitOpen ? (
+        <PuButton
+          variant="primary"
+          onClick={() => {
+            setStep(2);
+          }}
+        >
+          {t.actions.next}
+        </PuButton>
+      ) : (
+        <PuButton variant="primary" disabled={!canCreateUnit(state)} onClick={onCreate}>
+          {busy === 'creating' ? t.unit.creating : t.unit.create}
+        </PuButton>
+      );
+    }
+
+    if (step === 2) {
+      return (
+        <>
+          <PuButton
+            onClick={() => {
+              setStep(1);
+            }}
+          >
+            {t.actions.prev}
+          </PuButton>
+          <PuButton
+            variant="primary"
+            disabled={!unitOpen || boxCount === 0}
+            onClick={() => {
+              setStep(3);
+            }}
+          >
+            {t.actions.next}
+          </PuButton>
+        </>
+      );
+    }
+
+    if (closed) {
+      return (
+        <PuButton variant="primary" onClick={onNextUnit}>
+          {t.next}
+        </PuButton>
+      );
+    }
+
+    return (
+      <>
+        <PuButton
+          onClick={() => {
+            setStep(2);
+          }}
+        >
+          {t.actions.prev}
+        </PuButton>
+        <PuButton
+          variant="primary"
           disabled={!canClose(state) || identity.workerNo === null}
-          /* ⭐ 누르면 바로 마감하고 납품 라벨을 출력한다 — 되묻는 단계는 두지 않는다(사용자 지시 2026-09-17). */
+          /* ⭐ 누르면 바로 마감하고 납품 라벨을 출력한다 — 되묻지 않는다(사용자 지시 2026-09-17). */
           onClick={onClose}
         >
           {busy === 'closing' ? t.close.closing : t.close.action}
-        </Button>
-        {isClosed(state) && (
-          <Button
-            variant="outlined"
-            size="xl"
-            className="pop-touch-target"
-            onClick={() => {
-              /* 같은 출하에 이어서 구성한다(설계 §5-5) — 출하만 남기고 나머지를 비운다. */
-              setShippingUnitId(null);
-              setEtag(null);
-              setNotice(null);
-              setScanResult(null);
-              setOutcome(null);
-            }}
-          >
-            {t.next}
-          </Button>
-        )}
-        {/* ⛔ 「상자를 하나 이상 등록해야…」 같은 하단 안내는 두지 않는다(사용자 지시 2026-09-17). */}
-      </div>
+        </PuButton>
+      </>
+    );
+  };
+
+  const showPreview = isDone ? doneUnit !== null : shipment !== null && step > 1;
+  const workerMissing = identity.workerNo === null || identity.workerNo.trim() === '';
+
+  return (
+    /* ⚠ POP 라우트는 관리웹 셸을 지나지 않는다 — 이 화면이 최상위 랜드마크다. */
+    <main className="pop-ui" aria-label={t.title}>
+      <PuScreen className="su-screen" actionBar={<PuActionBar>{actions()}</PuActionBar>}>
+        <div className="su-body">
+          {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 말로 맨 위에 알린다(사용자 지시 2026-09-17). */}
+          {workerMissing && <PuNote tone="warn">{messages.popChrome.workerMissing}</PuNote>}
+          <PuCols variant={showPreview ? 'lk' : 'list'} className="su-cols">
+            <PuSection
+              className="su-left"
+              bodyClassName="su-left-body"
+              head={
+                <PuSeg
+                  label={t.tabs.label}
+                  value={tab}
+                  onChange={setTab}
+                  options={[
+                    {
+                      value: 'wait',
+                      label: (
+                        <>
+                          {t.tabs.wait} <PuCount>{shipmentList.length}</PuCount>
+                        </>
+                      ),
+                    },
+                    {
+                      value: 'done',
+                      label: (
+                        <>
+                          {t.tabs.done} <PuCount>{closedTotal}</PuCount>
+                        </>
+                      ),
+                    },
+                  ]}
+                />
+              }
+              fold={{ label: t.tabs.label, folded, onChange: setFolded }}
+            >
+              {leftList()}
+              {leftPager}
+            </PuSection>
+            <PuSection className="su-center" bodyClassName="su-center-body">
+              {center()}
+            </PuSection>
+            {showPreview && (
+              <PuSection title={t.preview.sectionLabel} className="su-preview-card">
+                {previewSrc === null ? (
+                  <PuEmpty icon="file" title={t.preview.empty} />
+                ) : (
+                  <img className="su-preview-image" src={previewSrc} alt={t.preview.sectionLabel} />
+                )}
+              </PuSection>
+            )}
+          </PuCols>
+        </div>
+      </PuScreen>
     </main>
   );
 };

@@ -1,15 +1,25 @@
-import { AlertBanner, Button, Card, Chip, Tooltip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
-import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
+import {
+  PuActionBar,
+  PuButton,
+  PuChip,
+  PuCols,
+  PuCount,
+  PuEmpty,
+  PuNote,
+  PuScreen,
+  PuSection,
+  puToast,
+} from '../../patterns/pop-uniform';
 import { useIsOnline } from './connection';
 import { useRepackLabelEntry } from './entry-context';
 import { ErrorBanner } from './error-banner';
-import { HandlingUnitPane } from './handling-unit-pane';
+import { HandlingUnitPane, typeText } from './handling-unit-pane';
 import { HistoryPane } from './history-pane';
-import { IssuePane } from './issue-pane';
+import { IssuePane, IssuePrinter } from './issue-pane';
 import { issueBody } from './issue-body';
 import { useDocumentIssue } from './mutations';
 import { PendingPane } from './pending-pane';
@@ -22,6 +32,7 @@ import {
   useIssueStanding,
   isPendingListUnsupported,
   usePendingRepackRows,
+  type PendingRepackRow,
   usePrinters,
   useHandlingUnitTypes,
   useReissueReasons,
@@ -31,12 +42,14 @@ import { useTerminalGate } from './terminal-gating';
 import {
   needsReason,
   PRINT_FAILURE_REASON_CODE,
+  lotCount,
   type DocumentIssue,
   type DocumentIssueCreate,
   type IssueStanding,
   type Printer,
 } from './types';
 import { useIssuePrintRunner, type IssuePrintTarget } from './use-issue-print';
+import './uniform.css';
 
 const t = messages.repackLabelIssue;
 
@@ -57,13 +70,15 @@ const defaultPrinter = (printers: readonly Printer[]): Printer | null =>
  * SPLIT 사건의 기존 RESULT 중 발행 이력이 있는 포장만 선택 재출력 대상으로 둔다.
  */
 export const RepackLabelIssueScreen = () => {
-  const titleId = useId();
   const entry = useRepackLabelEntry();
   const identity = usePopIdentity();
   const gate = useTerminalGate(identity.terminalId, soleProcessIdOf(identity.processes));
   const isOnline = useIsOnline();
 
-  const [selectedHandlingUnitId, setSelectedHandlingUnitId] = useState<number | null>(null);
+  /** 고른 발행 대기 줄 — 발행 뒤 목록에서 빠져도 정보 띠는 고를 때의 값을 그대로 보인다. */
+  const [selectedRow, setSelectedRow] = useState<PendingRepackRow | null>(null);
+  const selectedHandlingUnitId = selectedRow?.handlingUnitId ?? null;
+  const [isListFolded, setListFolded] = useState(false);
   const [includeNewLabel, setIncludeNewLabel] = useState(true);
   const [selectedRemainderIds, setSelectedRemainderIds] = useState<number[]>([]);
   const [reasonCode, setReasonCode] = useState('');
@@ -222,8 +237,8 @@ export const RepackLabelIssueScreen = () => {
     issue.write(body);
   };
 
-  const selectHandlingUnit = (handlingUnitId: number): void => {
-    setSelectedHandlingUnitId(handlingUnitId);
+  const selectHandlingUnit = (row: PendingRepackRow): void => {
+    setSelectedRow(row);
     setIncludeNewLabel(true);
     setSelectedRemainderIds([]);
     setReasonCode('');
@@ -271,271 +286,300 @@ export const RepackLabelIssueScreen = () => {
   const canPreview = isOnline && (latestIssue !== null || printRunner.state.target !== null);
   const isBlocked = blockedReason !== null || isSubmitting;
 
+  /* 인쇄까지 끝났으면 결과 알림 한 줄(규칙 13 · 사용자 지시 2026-09-17 「그 한 줄만」). */
+  const allPrinted = phase === 'succeeded' && printQueue.length === 0;
+  useEffect(() => {
+    if (allPrinted) puToast(t.print.succeeded, 'ok');
+  }, [allPrinted]);
+
+  const typeSource = {
+    entries: (handlingUnitTypes.data ?? []).map((value) => ({
+      value: value.code,
+      label: value.codeName,
+      isActive: value.isActive,
+    })),
+    isError: handlingUnitTypes.isError,
+    isLoading: handlingUnitTypes.isPending,
+  };
+  const newLabelBody = ((): string => {
+    if (handlingUnit.data === undefined) return t.handlingUnit.unknownValue;
+    const rows = contents.rows;
+    const uoms = new Set(rows.map((row) => row.uomCode));
+    const [uom] = [...uoms];
+    /* 단위가 섞이면 수량을 더하지 않는다 — 다른 단위의 합은 뜻이 없다. */
+    const qtyText =
+      rows.length > 0 && uoms.size === 1
+        ? `${String(rows.reduce((sum, row) => sum + row.qty, 0))} ${uom ?? t.handlingUnit.unknownValue}`
+        : null;
+
+    return t.issue.newBody(
+      typeText(typeSource, handlingUnit.data.handlingUnit.handlingUnitTypeCode),
+      t.handlingUnit.mixedLot(lotCount(rows)),
+      qtyText,
+    );
+  })();
+  const labelCount = selectedIds.length;
+  const remainderList = remainder.data ?? [];
+  const allSelectable = 1 + remainderList.length;
+  /* 처음 발행이 아니면 [재발행] — 사유를 받아 회차가 하나 오른다(시안 「재발행 (N장)」). */
+  const isReissue = standingQuery.data !== undefined && needsReason(standing);
+
+  /*
+   * ⛔ **작업 줄에는 안내 글을 두지 않는다**(규칙 3). 대상 미선택 · 사번 미확인 · 인쇄 대상 미선택은
+   *    다른 자리가 이미 말하므로 빼고, 남은 막힘(회차 조회 · 단말 권한 · 오프라인)만 구획 안 한 줄로.
+   */
+  const blockedNote =
+    blockedReason !== null &&
+    blockedReason !== t.entry.missingHandlingUnit &&
+    blockedReason !== t.entry.missingWorker &&
+    blockedReason !== t.issue.targetRequired
+      ? blockedReason
+      : null;
+
   return (
-    <main className="pop-shell pop-ui" aria-labelledby={titleId}>
-      <header className="pop-header">
-        <h1 id={titleId} className="pop-title">
-          {t.title}
-        </h1>
-      </header>
-
-      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
-      <PopWorkerMissingBanner workerNo={entry.workerNo} />
-
-      {issue.error !== null && lastIssueBody !== null && (
-        <ErrorBanner
-          error={issue.error}
-          title={t.error.issueTitle}
-          onRetry={() => issue.write(lastIssueBody)}
-        />
-      )}
-
-      {phase === 'renditionFailed' && (
-        <div className="banner-slot">
-          <AlertBanner
-            variant="error"
-            title={t.preview.failed}
-            action={
-              /*
-               * ⚠ 같은 발행 기록의 그림을 «다시 받는다». [미리보기]로 부르면 창이 떠 [인쇄]가
-               *   재발행을 하나 더 만든다 — 바로 인쇄 중이던 흐름이면 바로 인쇄로 이어 간다.
-               */
-              <Button
-                variant="outlined"
-                size="sm"
-                onClick={() => {
-                  const target = printRunner.state.target;
-                  if (target !== null) void printRunner.begin(target);
-                }}
-              >
-                {messages.common.retry}
-              </Button>
-            }
-          >
-            {t.print.failedBody}
-          </AlertBanner>
-        </div>
-      )}
-
-      {phase === 'shellUnavailable' && (
-        <div className="banner-slot">
-          <AlertBanner variant="info" title={t.print.issued}>
-            {t.print.shellUnavailable}
-          </AlertBanner>
-        </div>
-      )}
-
-      {phase === 'failed' && (
-        <div className="banner-slot">
-          <AlertBanner
-            variant="error"
-            title={t.print.failedTitle}
-            action={
-              /*
-               * ⛔ **눌러도 안 되면 비활성으로 보인다**(#1093 · 사용자 지시). 처리기가 대상 ·
-               *    사번 없이는 조용히 되돌아온다.
-               */
-              <Button
-                variant="outlined"
-                size="sm"
-                disabled={printRunner.state.target === null || entry.workerNo === null}
-                onClick={retryFailedPrint}
-              >
-                {t.print.retry}
-              </Button>
-            }
-          >
-            {t.print.failedBody}
-          </AlertBanner>
-        </div>
-      )}
-
-      {phase === 'reportFailed' && (
-        <div className="banner-slot">
-          <AlertBanner
-            variant="warning"
-            title={t.print.reportFailedTitle}
-            action={
-              <Button
-                variant="outlined"
-                size="sm"
-                onClick={() => {
-                  void printRunner.retryReport();
-                }}
-              >
-                {t.print.reportRetry}
-              </Button>
-            }
-          >
-            {t.print.reportFailedBody}
-          </AlertBanner>
-        </div>
-      )}
-
-      {phase === 'succeeded' && printQueue.length === 0 && (
-        <div className="banner-slot">
-          {/* 인쇄까지 끝났으면 그 한 줄만 말한다(사용자 지시 2026-09-17). */}
-          <AlertBanner variant="success" title={t.print.succeeded} />
-        </div>
-      )}
-
-      {/* 이 화면이 세 카드의 세로 예산을 직접 나눈다. 공통 자식 min-height:0 대상에서 뺀다. */}
-      <div className="pop-repack-panes pop-fixed">
-        <Card
-          bordered
-          className="pop-section pop-repack-pending"
-          aria-label={t.pending.sectionLabel}
-        >
-          <h2 className="pane-title">{t.pending.sectionLabel}</h2>
-          <PendingPane
-            rows={pending.data ?? []}
-            selectedId={selectedHandlingUnitId}
-            isLoading={pending.isPending}
-            isError={pending.isError}
-            isUnsupported={isPendingListUnsupported()}
-            disabled={isSubmitting}
-            onSelect={selectHandlingUnit}
-            onRetry={() => {
-              void pending.refetch();
+    /* ⚠ POP 라우트는 관리웹 셸을 지나지 않는다 — 이 화면이 최상위 랜드마크다. */
+    <main className="pop-ui" aria-label={t.title}>
+      <PuScreen
+        actionBar={
+          <PuActionBar>
+            <PuButton disabled={!canPreview} onClick={openPreview}>
+              {t.issue.preview}
+            </PuButton>
+            <PuButton variant="primary" onClick={submit} disabled={isBlocked}>
+              {isReissue
+                ? t.issue.reissueCount(labelCount)
+                : labelCount > 0
+                  ? t.issue.submitCount(labelCount)
+                  : t.issue.submit}
+            </PuButton>
+          </PuActionBar>
+        }
+      >
+        <PuCols variant="list" className="rpk-cols">
+          <PuSection
+            title={t.pending.sectionLabel}
+            meta={<PuCount>{(pending.data ?? []).length}</PuCount>}
+            fold={{
+              label: t.pending.sectionLabel,
+              folded: isListFolded,
+              onChange: setListFolded,
             }}
-          />
-        </Card>
-
-        <Card
-          bordered
-          className="pop-section pop-repack-numbering"
-          aria-label={t.handlingUnit.sectionLabel}
-        >
-          <h2 className="pane-title">{t.handlingUnit.sectionLabel}</h2>
-          {selectedHandlingUnitId === null ? (
-            <p className="pop-empty-note">{t.entry.missingHandlingUnit}</p>
-          ) : handlingUnit.data === undefined ? (
-            <p className="pop-empty-note">
-              {handlingUnit.isError ? t.handlingUnit.loadFailed : t.handlingUnit.loading}
-            </p>
-          ) : (
-            <HandlingUnitPane
-              handlingUnit={handlingUnit.data.handlingUnit}
-              rows={contents.rows}
-              namesFailed={contents.isNameError}
-              types={{
-                entries: (handlingUnitTypes.data ?? []).map((value) => ({
-                  value: value.code,
-                  label: value.codeName,
-                  isActive: value.isActive,
-                })),
-                isError: handlingUnitTypes.isError,
-                isLoading: handlingUnitTypes.isPending,
+            bodyClassName="rpk-left"
+          >
+            <PendingPane
+              rows={pending.data ?? []}
+              selectedId={selectedHandlingUnitId}
+              isLoading={pending.isPending}
+              isError={pending.isError}
+              isUnsupported={isPendingListUnsupported()}
+              disabled={isSubmitting}
+              onSelect={selectHandlingUnit}
+              onRetry={() => {
+                void pending.refetch();
               }}
             />
-          )}
-        </Card>
+          </PuSection>
 
-        <Card bordered className="pop-section pop-repack-issue" aria-label={t.issue.sectionLabel}>
-          <div className="pane-title pop-repack-head">
-            <h2 className="pop-repack-head-name">{t.issue.sectionLabel}</h2>
-            {/*
-             * ⛔ **처음 발행이라는 말을 적지 않는다**(사용자 지시 2026-09-11). 라벨이 없는
-             *    포장을 골라 들어온 자리라 「처음」이 기본값이고, 기본값을 적어 두면 정작
-             *    달라진 것(재발행 n회)이 그 자리에 묻힌다.
-             */}
-            {standingQuery.data !== undefined && (standing.issueCount ?? 0) > 0 && (
-              <span className="pop-repack-standing">
-                {t.issue.reissue(standing.issueCount ?? 0)}
-              </span>
+          <PuSection
+            title={t.handlingUnit.sectionLabel}
+            meta={
+              selectedRow === null ? undefined : (
+                <>
+                  {standingQuery.data !== undefined && (standing.issueCount ?? 0) > 0 && (
+                    <PuChip tone="warn">{t.issue.standing(standing.issueCount ?? 0)}</PuChip>
+                  )}
+                  <PuButton
+                    size="sm"
+                    disabled={labelCount === allSelectable}
+                    onClick={() => {
+                      setIncludeNewLabel(true);
+                      setSelectedRemainderIds(
+                        remainderList.map((candidate) => candidate.handlingUnit.handlingUnitId),
+                      );
+                    }}
+                  >
+                    {t.issue.selectAll(allSelectable)}
+                  </PuButton>
+                  <PuButton
+                    size="sm"
+                    disabled={labelCount === 0}
+                    onClick={() => {
+                      setIncludeNewLabel(false);
+                      setSelectedRemainderIds([]);
+                    }}
+                  >
+                    {t.issue.clearSelection}
+                  </PuButton>
+                </>
+              )
+            }
+            bodyClassName="rpk-right"
+          >
+            {(entry.workerNo === null || entry.workerNo.trim() === '') && (
+              <PuNote tone="warn">{messages.popChrome.workerMissing}</PuNote>
             )}
-          </div>
-          <IssuePane
-            selectedHandlingUnitNo={handlingUnit.data?.handlingUnit.handlingUnitNo ?? null}
-            includeNewLabel={includeNewLabel}
-            onIncludeNewLabelChange={setIncludeNewLabel}
-            remainderCandidates={remainder.data ?? []}
-            selectedRemainderIds={selectedRemainderIds}
-            onRemainderChange={toggleRemainder}
-            remainderFailed={remainder.isError}
-            targetRequired={blockedReason === t.issue.targetRequired}
-            standing={standing}
-            standingFailed={standingQuery.isError}
-            onStandingRetry={() => {
-              void standingQuery.refetch();
-            }}
-            printers={printerList}
-            printersFailed={printers.isError}
-            printerName={printerName}
-            onPrinterChange={setPickedPrinter}
-          />
 
-          <h2 className="pane-title">{t.history.sectionLabel}</h2>
-          <HistoryPane issues={history.data ?? []} isFailed={history.isError} />
-        </Card>
-      </div>
+            {issue.error !== null && lastIssueBody !== null && (
+              <ErrorBanner
+                error={issue.error}
+                title={t.error.issueTitle}
+                onRetry={() => issue.write(lastIssueBody)}
+              />
+            )}
 
-      <div className="pop-action-bar pop-repack-actions">
-        {/*
-         * ⛔ **《대상 포장》 구획이 이미 말하고 있는 사유는 여기서 되풀이하지 않는다**
-         *    (사용자 지적 2026-09-12). 「발행 대기 목록에서 대상 포장을 선택하세요」가 구획
-         *    한가운데와 이 줄에 동시에 서 있었다 — 들어오자마자 같은 문장이 둘이라, 정작
-         *    다른 사유(회차 조회 실패·단말 권한·오프라인)가 떴을 때 그 자리가 늘 차 있던
-         *    자리로 읽힌다.
-         *
-         * ⚠ 잠그는 것과 말하는 것은 다른 축이다 — [발번·인쇄]는 그대로 잠긴다.
-         */}
-        {/* 사번 미확인은 맨 위 공용 띠가 말한다 — 여기서 되풀이하지 않는다(사용자 지시 2026-09-17). */}
-        {/* 인쇄 대상 미선택은 인쇄 대상 칸이 말한다(사용자 지시 2026-09-17). */}
-        {blockedReason !== null &&
-          blockedReason !== t.entry.missingHandlingUnit &&
-          blockedReason !== t.entry.missingWorker &&
-          blockedReason !== t.issue.targetRequired && (
-            <p className="pop-repack-blocked" role="status">
-              {blockedReason}
-              {gate.verdict === 'unavailable' && (
-                <Button variant="outlined" size="sm" onClick={gate.retry}>
-                  {t.issue.gateRetry}
-                </Button>
-              )}
-            </p>
-          )}
+            {phase === 'renditionFailed' && (
+              <PuNote
+                tone="bad"
+                action={
+                  /*
+                   * ⚠ 같은 발행 기록의 그림을 «다시 받는다». [미리보기]로 부르면 창이 떠 [재인쇄]가
+                   *   재발행을 하나 더 만든다 — 바로 인쇄 중이던 흐름이면 바로 인쇄로 이어 간다.
+                   */
+                  <PuButton
+                    size="sm"
+                    onClick={() => {
+                      const target = printRunner.state.target;
+                      if (target !== null) void printRunner.begin(target);
+                    }}
+                  >
+                    {messages.common.retry}
+                  </PuButton>
+                }
+              >
+                <b>{t.preview.failed}</b> {t.print.failedBody}
+              </PuNote>
+            )}
 
-        {canPreview ? (
-          <Button variant="outlined" onClick={openPreview}>
-            {t.issue.preview}
-          </Button>
-        ) : (
-          <Tooltip content={t.issue.previewBeforeIssue}>
-            <Button variant="outlined" disabled>
-              {t.issue.preview}
-            </Button>
-          </Tooltip>
-        )}
+            {phase === 'shellUnavailable' && (
+              <PuNote>
+                <b>{t.print.issued}</b> {t.print.shellUnavailable}
+              </PuNote>
+            )}
 
-        <Button variant="filled" onClick={submit} loading={isSubmitting} disabled={isBlocked}>
-          {t.issue.submit}
-        </Button>
-      </div>
+            {phase === 'failed' && (
+              <PuNote
+                tone="bad"
+                action={
+                  /* ⛔ 눌러도 안 되면 비활성으로 보인다(#1093) — 대상 · 사번 없이는 되돌아온다. */
+                  <PuButton
+                    size="sm"
+                    disabled={printRunner.state.target === null || entry.workerNo === null}
+                    onClick={retryFailedPrint}
+                  >
+                    {t.print.retry}
+                  </PuButton>
+                }
+              >
+                <b>{t.print.failedTitle}</b> {t.print.failedBody}
+              </PuNote>
+            )}
 
-      <PreviewDialog
-        open={dialog !== null && (dialog.mode === 'reason' || phase !== 'renditionFailed')}
-        mode={dialog?.mode ?? 'preview'}
-        reasonField={
-          <ReasonField
-            reasons={reasons.data ?? []}
-            reasonsFailed={reasons.isError}
-            reasonCode={reasonCode}
-            onReasonChange={setReasonCode}
-            serverError={reasonServerError}
-          />
-        }
-        canPrint={reasonCode !== '' && !isSubmitting}
-        imageUrl={printRunner.state.imageUrl}
-        isPrinting={isSubmitting}
-        onPrint={() => {
-          if (dialog !== null) sendIssue(dialog.ids, true);
-        }}
-        onClose={() => {
-          if (dialog?.mode === 'preview') printRunner.dismiss();
-          setDialog(null);
-        }}
-      />
+            {phase === 'reportFailed' && (
+              <PuNote
+                tone="warn"
+                action={
+                  <PuButton
+                    size="sm"
+                    onClick={() => {
+                      void printRunner.retryReport();
+                    }}
+                  >
+                    {t.print.reportRetry}
+                  </PuButton>
+                }
+              >
+                <b>{t.print.reportFailedTitle}</b> {t.print.reportFailedBody}
+              </PuNote>
+            )}
+
+            {blockedNote !== null && (
+              <PuNote
+                tone="warn"
+                live
+                action={
+                  gate.verdict === 'unavailable' ? (
+                    <PuButton size="sm" onClick={gate.retry}>
+                      {t.issue.gateRetry}
+                    </PuButton>
+                  ) : undefined
+                }
+              >
+                {blockedNote}
+              </PuNote>
+            )}
+
+            {selectedRow === null ? (
+              <PuEmpty icon="list" title={t.entry.missingHandlingUnit} />
+            ) : handlingUnit.data === undefined ? (
+              <PuEmpty
+                icon={handlingUnit.isError ? 'bad' : 'box'}
+                title={handlingUnit.isError ? t.handlingUnit.loadFailed : t.handlingUnit.loading}
+              />
+            ) : (
+              <>
+                <HandlingUnitPane
+                  handlingUnit={handlingUnit.data.handlingUnit}
+                  row={selectedRow}
+                  rows={contents.rows}
+                  namesFailed={contents.isNameError}
+                  types={typeSource}
+                />
+                <IssuePane
+                  selectedHandlingUnitNo={handlingUnit.data.handlingUnit.handlingUnitNo}
+                  newLabelBody={newLabelBody}
+                  includeNewLabel={includeNewLabel}
+                  onIncludeNewLabelChange={setIncludeNewLabel}
+                  remainderCandidates={remainderList}
+                  selectedRemainderIds={selectedRemainderIds}
+                  onRemainderChange={toggleRemainder}
+                  remainderFailed={remainder.isError}
+                  targetRequired={blockedReason === t.issue.targetRequired}
+                  standing={standingQuery.data ?? null}
+                  standingFailed={standingQuery.isError}
+                  onStandingRetry={() => {
+                    void standingQuery.refetch();
+                  }}
+                />
+                {/* 발행 이력은 한 번이라도 발행한 포장에만 선다 — 발행 대기에서는 늘 비어 있다(시안). */}
+                {(history.isError || (history.data ?? []).length > 0) && (
+                  <HistoryPane issues={history.data ?? []} isFailed={history.isError} />
+                )}
+              </>
+            )}
+          </PuSection>
+        </PuCols>
+
+        <IssuePrinter
+          printers={printerList}
+          printersFailed={printers.isError}
+          printerName={printerName}
+          onPrinterChange={setPickedPrinter}
+        />
+
+        <PreviewDialog
+          open={dialog !== null && (dialog.mode === 'reason' || phase !== 'renditionFailed')}
+          mode={dialog?.mode ?? 'preview'}
+          reasonField={
+            <ReasonField
+              reasons={reasons.data ?? []}
+              reasonsFailed={reasons.isError}
+              reasonCode={reasonCode}
+              onReasonChange={setReasonCode}
+              serverError={reasonServerError}
+            />
+          }
+          canPrint={reasonCode !== '' && !isSubmitting}
+          imageUrl={printRunner.state.imageUrl}
+          isPrinting={isSubmitting}
+          onPrint={() => {
+            if (dialog !== null) sendIssue(dialog.ids, true);
+          }}
+          onClose={() => {
+            if (dialog?.mode === 'preview') printRunner.dismiss();
+            setDialog(null);
+          }}
+        />
+      </PuScreen>
     </main>
   );
 };

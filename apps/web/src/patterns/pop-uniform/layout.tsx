@@ -85,6 +85,7 @@ export const PuSection = ({
   className,
   bodyClassName,
   labelId,
+  label,
 }: {
   title?: ReactNode;
   /** 제목 대신 제목 줄을 채우는 것(탭 등). */
@@ -101,6 +102,8 @@ export const PuSection = ({
   className?: string;
   bodyClassName?: string;
   labelId?: string;
+  /** 제목이 없는 구획의 읽는 이름(시안이 제목을 지운 구획). */
+  label?: string;
 }) => {
   if (fold?.folded === true) {
     return (
@@ -129,6 +132,7 @@ export const PuSection = ({
     <section
       className={cx('pu-card', disabled && 'is-off', className)}
       aria-labelledby={labelId}
+      aria-label={labelId === undefined ? label : undefined}
       aria-disabled={disabled || undefined}
     >
       {hasHead && (

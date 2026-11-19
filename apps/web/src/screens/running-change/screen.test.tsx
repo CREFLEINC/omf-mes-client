@@ -25,6 +25,7 @@ import {
   makeLot,
   makeMold,
 } from './fixtures';
+import { PuToastHost } from '../../patterns/pop-uniform';
 import { RunningChangeScreen } from './screen';
 import { popGateDeniedText, popGateUnidentifiedText } from '../../patterns/pop-process-gate';
 
@@ -270,6 +271,7 @@ const renderScreen = (options: Options = {}, identity: PopIdentity = IDENTIFIED)
   renderWithProviders(
     <PopIdentityProvider value={identity}>
       <RunningChangeScreen />
+      <PuToastHost />
     </PopIdentityProvider>,
     { fetch: createStubFetch(routes(options)), route: ENTRY_ROUTE },
   );
@@ -280,7 +282,7 @@ const submitButton = (): HTMLElement => screen.getByRole('button', { name: t.rep
 const fillReplacement = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
   /* 스캐너는 코드 끝에 Enter 를 붙여 보낸다 — 화면에 [읽기] 단추가 없으므로 그 길이 전부다. */
   await user.type(screen.getByLabelText(t.scan.label), `${NEW_LOT_NO}{Enter}`);
-  await screen.findByText(t.scan.outcomes.part(NEW_LOT_NO));
+  await screen.findByText(t.replace.partLabel);
 
   await user.click(screen.getByLabelText(t.replace.targetLabel));
   await user.click(await screen.findByRole('option', { name: /ITEM-SAMPLE/ }));
@@ -289,7 +291,7 @@ const fillReplacement = async (user: ReturnType<typeof userEvent.setup>): Promis
    * 수량은 **키패드로** 넣는다(공유계약 D-4) — 수량 칸 아래에 늘 서 있는 키패드를 누르면 값이
    * 칸에 곧바로 들어간다. 단말에는 자판이 없어 이것이 현장에서 실제로 가능한 유일한 경로다.
    */
-  const pad = screen.getByRole('group', { name: t.pad.keypadLabel });
+  const pad = screen.getByRole('group', { name: messages.popUniform.keypad.region });
 
   for (const digit of ['1', '2', '0']) {
     await user.click(within(pad).getByRole('button', { name: digit }));
@@ -397,7 +399,7 @@ describe('러닝체인지 화면 — 수량 키패드', () => {
 
     const qty = await screen.findByRole('textbox', { name: t.replace.qtyLabel });
     /* ⭐ 칸을 누르지 않아도 키패드가 있다 — 팝업을 걷었다(사용자 지시 2026-09-17). */
-    const pad = screen.getByRole('group', { name: t.pad.keypadLabel });
+    const pad = screen.getByRole('group', { name: messages.popUniform.keypad.region });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
     await user.click(within(pad).getByRole('button', { name: '7' }));
@@ -536,7 +538,7 @@ describe('러닝체인지 화면 — 교체 대상 모집단', () => {
     await screen.findByText(OLD_LOT_NO);
     await user.type(screen.getByLabelText(t.scan.label), `${NEW_LOT_NO}{Enter}`);
 
-    expect(await screen.findByText(t.scan.outcomes.part(NEW_LOT_NO))).toBeInTheDocument();
+    expect(await screen.findByText(t.replace.partLabel)).toBeInTheDocument();
     expect(screen.queryByText(/→/)).not.toBeInTheDocument();
   });
 
@@ -569,9 +571,13 @@ describe('러닝체인지 화면 — 교체 등록', () => {
 
     await screen.findByText(OLD_LOT_NO);
     await user.type(screen.getByLabelText(t.scan.label), `${NEW_LOT_NO}{Enter}`);
-    await screen.findByText(t.scan.outcomes.part(NEW_LOT_NO));
+    await screen.findByText(t.replace.partLabel);
 
-    expect(screen.getByText(t.disabled.targetMissing)).toBeInTheDocument();
+    /* 막힌 사유는 대상 칸의 빨간 테두리가 말한다(POP 통일 시안 규칙 3·5). */
+    expect(screen.getByRole('combobox', { name: t.replace.targetLabel })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
     expect(submitButton()).toBeDisabled();
   });
 
@@ -607,7 +613,7 @@ describe('러닝체인지 화면 — 교체 등록', () => {
     await fillReplacement(user);
     await user.click(submitButton());
 
-    expect(await screen.findByText(t.replace.recorded)).toBeInTheDocument();
+    expect(await screen.findByText(t.replace.done)).toBeInTheDocument();
   });
 
   it('단말 권한으로 서버가 거부하면(401) 서버 문구를 그대로 낸다', async () => {
@@ -689,12 +695,12 @@ describe('러닝체인지 화면 — 교체 등록', () => {
     renderScreen();
 
     await user.type(screen.getByLabelText(t.scan.label), `${NEW_LOT_NO}{Enter}`);
-    await screen.findByText(t.scan.outcomes.part(NEW_LOT_NO));
+    await screen.findByText(t.replace.partLabel);
 
     await user.type(screen.getByLabelText(t.scan.label), 'LOT-SAMPLE-NONE{Enter}');
-    await screen.findByText(t.scan.outcomes.notFound('LOT-SAMPLE-NONE'));
+    await screen.findByText(t.scan.outcomes.notFound);
 
-    expect(screen.getByText(t.replace.partNone)).toBeInTheDocument();
+    expect(screen.queryByText(t.replace.partLabel)).not.toBeInTheDocument();
     expect(submitButton()).toBeDisabled();
   });
 
@@ -710,7 +716,7 @@ describe('러닝체인지 화면 — 교체 등록', () => {
       expect(writes).toHaveLength(1);
     });
 
-    expect(screen.getByText(t.replace.partNone)).toBeInTheDocument();
+    expect(screen.queryByText(t.replace.partLabel)).not.toBeInTheDocument();
     expect(submitButton()).toBeDisabled();
   });
 });

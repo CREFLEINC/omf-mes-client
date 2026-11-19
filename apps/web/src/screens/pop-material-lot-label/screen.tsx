@@ -1,22 +1,39 @@
-import { AlertBanner, Button, useToast } from '@crefle/web-ui';
 import type { MaterialLotSummary, WaitingMaterialLotGroup } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useId, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
-import { formatPlantClock } from '../../patterns/plant-time';
 import { usePopIdentity } from '../../patterns/pop-identity';
+import { PopTopPrinter } from '../../patterns/pop-top-status';
+import {
+  PuButton,
+  PuChip,
+  PuCols,
+  PuCount,
+  PuEmpty,
+  PuHelpButton,
+  PuIcon,
+  PuNote,
+  PuPager,
+  PuScanField,
+  PuScreen,
+  PuSection,
+  PuSeg,
+  PuTiles,
+  puToast,
+  useClientPage,
+  useFitCount,
+  useFitTableRows,
+} from '../../patterns/pop-uniform';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
-import { popTouchClass } from '../../patterns/pop-touch';
 import { toApiError } from '../../patterns/request';
 import { serverReasonOf } from '../../patterns/server-reason';
-import { PopTopPrinter } from '../../patterns/pop-top-status';
 import { BatchDialog } from './batch-dialog';
 import { retryCommands, summarize } from './batch-view';
 import { PRINT_FAILURE_REASON_CODE } from './codes';
-import { IssueBar, type BarState } from './issue-bar';
-import { rememberIssueUnit, storedIssueUnit, type IssueUnit } from './issue-unit';
+import { IssueBar, IssueStatusNote, type BarState } from './issue-bar';
+import { ISSUE_UNITS, rememberIssueUnit, storedIssueUnit, type IssueUnit } from './issue-unit';
 import { LabelTable } from './label-table';
 import { useBatchIssue, voidMaterialLots, type IssueCommand } from './mutations';
 import { PreviewDialog } from './preview-dialog';
@@ -34,12 +51,11 @@ import { ReasonPicker } from './reason-picker';
 import { defaultLineOf, SupplierList } from './supplier-list';
 import { isVoided, isWaiting, pairKeyOf, toLabelLots, type LabelLot } from './types';
 import { VoidDialog } from './void-dialog';
+import './uniform.css';
 
 const t = messages.popMaterialLotLabel;
 
 type Tab = 'pairs' | 'reprint';
-
-const TABS: readonly Tab[] = ['pairs', 'reprint'];
 
 /** 라벨을 낼 수 없는 LOT 품질 상태 — 서버 `qualifyDocumentIssueTarget`(MATERIAL_LOT_LABEL)이 검사 대기·정상만 받는다. */
 const LABEL_LOCKED_LOT_STATUS: readonly string[] = ['DEFECTIVE', 'SCRAPPED'];
@@ -56,6 +72,9 @@ type DialogState =
   | { kind: 'preview'; lots: LabelLot[]; reprint: boolean }
   | null;
 
+/** 발행 단위 타일 값 — 「전체」는 `all`. */
+const unitValue = (unit: IssueUnit): string => (unit === null ? 'all' : String(unit));
+
 const normalize = (value: string): string => value.trim().toLocaleLowerCase('en-US');
 
 const matchesPair = (group: WaitingMaterialLotGroup, query: string): boolean =>
@@ -64,7 +83,7 @@ const matchesPair = (group: WaitingMaterialLotGroup, query: string): boolean =>
     value.toLocaleLowerCase('en-US').includes(query),
   );
 
-/** 다시 인쇄 대상 — 최근 2주 안에 출력했고 폐기되지 않은 LOT(screens/P-01-01.md 「다시 인쇄」 탭). */
+/** 재인쇄 대상 — 최근 2주 안에 출력했고 폐기되지 않은 LOT(screens/P-01-01.md 「재발행」 탭). */
 const reprintable = (lots: readonly LabelLot[], now: Date): LabelLot[] => {
   const since = now.getTime() - REPRINT_DAYS * 24 * 60 * 60 * 1000;
 
@@ -79,33 +98,31 @@ const reprintable = (lots: readonly LabelLot[], now: Date): LabelLot[] => {
 };
 
 /**
- * `P-01-01` 자재 관리 LOT 라벨 (POP) — 005 · omf-all-around#254 · screens/P-01-01.md.
+ * `P-01-01` 자재 관리 LOT 라벨 (POP) — 005 · omf-all-around#254 · screens/P-01-01.md · #295 시안.
  *
  * ```
- * ┌ 머리줄: 화면 이름 · 사번 · 프린터(누르면 바꾼다) · 단말 ────────────────────────────────────┐
- * │ [공급사·품목 N | 다시 인쇄] │ CAP-2041 사출 캡 원자재                [자재 관리 LOT 만들기] │
- * │ 🔍 공급사 또는 품목          │ (주)한빛소재 HB01 · 기본 단위 EA · 기본 봉지 10 × 100 = 1,000 EA│
- * │ [⟳ 새로 고침] 10:42:05 받음  │ ⓘ 안내                                                        │
- * │ ▣ 품목 · 공급사 [대기 3]      │ 대기 자재 관리 LOT — 표(체크 · 번호 · 수량 · 패키징 · 공급사 LOT · 상태 · 라벨)│
- * │ ▢ …                         │ 최근 입하된 자재 관리 LOT — 같은 표(고를 수 없음)              │
- * ├ 동작 바: 지금 상태 · 발행 단위 · [대기 전체 선택] [선택 해제] [대기 N개 폐기] [라벨 N장 발행] ┤
+ * ┌ [발행 대기 N | 재발행] [|<] ┐┌ V144030603 SCREW            [입하 대기 25] [?] [+ 자재 관리 LOT 만들기] ┐
+ * │ 🔍 공급사 또는 품목          ││ CMS VINA 100569 · 기본 단위 EA · 기본 BOX 10 × 100 = 1,000 EA          │
+ * │ ▣ 품목 · 공급사 [입하 대기 3] ││ ⓘ 할 일 한 줄                                                         │
+ * │ ▢ …                         ││ 발행 단위 [전체|10장|20장|50장] [입하 대기 전체 선택 (N건)] [선택 해제] │
+ * │            총 N건 ‹ 1 / 2 ›  ││ 표(선택 · 번호 · 재고 수량·포장 · 상태 · 라벨) — 맨 뒤 최근 입하(흐림)    │
+ * └─────────────────────────────┘└──────────────────────────────────────────────── 총 N건 ‹ 1 / 7 › ┘
+ * 작업 줄: [입하 대기 N개 폐기] [라벨 N장 발행]  (재발행 탭: [N장 재인쇄])
  * ```
  *
- * ⭐ **005 에서 왼쪽 목록이 「라벨 대기 입하 줄」에서 「공급사·품목」으로 바뀌었다**(기존 화면 디자인 변경 — PR 에 고지).
- *    라벨은 입하 전 대기 자재 관리 LOT 에 찍는다. 입하 LOT 탭 · 입하 LOT 고르기는 없다(FR-036 · D-19·D-25).
- * ⭐ 인쇄 길(발행 기록 → 라벨 짜기 → 셸 인쇄 → 결과 보고) · 발행 단위 · 결과 표 · 다시 발행은 옛 화면 그대로다
- *    (개편안 2026-10-24 · omf-all-around#184). 「LOT 등록」 걸음만 없어졌다.
- * ⚠ **E-3(POP 관리웹 기본 밀도)과 다르게 정한 곳** — 줄 56px, 단추 48px, 주 동작 56px(사용자 승인 #184).
+ * ⭐ 라벨은 입하 전 입하 대기 자재 관리 LOT 에 찍는다. 입하 LOT 탭 · 입하 LOT 고르기는 없다(FR-036 · D-19·D-25).
+ * ⭐ 인쇄 길(발행 기록 → 라벨 짜기 → 셸 인쇄 → 결과 보고) · 발행 단위 · 결과 표 · 다시 발행은 그대로다
+ *    (개편안 2026-10-24 · omf-all-around#184). #295 는 모양 · 배치 · 문구만 시안에 맞췄다.
  */
 export const PopMaterialLotLabelScreen = () => {
   const { client } = useApiClient();
-  const toast = useToast();
   const createNoteId = useId();
   const { workerNo, plantId = null } = usePopIdentity();
   const batch = useBatchIssue({ workerNo });
   const isIssuing = batch.isRunning;
 
   const [tab, setTab] = useState<Tab>('pairs');
+  const [folded, setFolded] = useState(false);
   const [query, setQuery] = useState('');
   const [scanNote, setScanNote] = useState<string | null>(null);
   const [pairKey, setPairKey] = useState<string | null>(null);
@@ -122,8 +139,8 @@ export const PopMaterialLotLabelScreen = () => {
   const defaultsMap = defaults.data ?? new Map();
   const queryClient = useQueryClient();
   /*
-   * [새로 고침]은 목록과 함께 공급사·품목 기본 정보도 다시 받는다 — 기본 정보는 오래 들고 있어(60초)
-   * W-06-25 에서 고친 값이 「기본 …」 줄 · 머리에 늦게 섰다. 발행 창이 그 조합 하나로 읽는 값도 낡은 것으로 둔다(G2 L19).
+   * 다시 불러오기는 목록과 함께 공급사·품목 기본 정보도 다시 받는다 — 기본 정보는 오래 들고 있어(60초)
+   * W-06-25 에서 고친 값이 「기본 …」 줄 · 머리에 늦게 섰다(G2 L19).
    */
   const refreshAll = (): void => {
     waiting.refetch();
@@ -168,7 +185,7 @@ export const PopMaterialLotLabelScreen = () => {
     null;
   const currentKey = current === null ? null : pairKeyOf(current.supplierId, current.itemId);
   const currentLots = useMemo(() => (current === null ? [] : toLabelLots(current)), [current]);
-  /* 대기를 위에, 폐기를 아래에 — 폐기는 고를 수 없다(screens/P-01-01.md). */
+  /* 입하 대기를 위에, 폐기를 아래에 — 폐기는 고를 수 없다(screens/P-01-01.md). */
   const waitingLots = useMemo(
     () =>
       currentLots
@@ -176,7 +193,10 @@ export const PopMaterialLotLabelScreen = () => {
         .sort((left, right) => Number(isVoided(left)) - Number(isVoided(right))),
     [currentLots],
   );
-  const receivedLots = currentLots.filter((lot) => !isWaiting(lot) && !isVoided(lot));
+  const receivedLots = useMemo(
+    () => currentLots.filter((lot) => !isWaiting(lot) && !isVoided(lot)),
+    [currentLots],
+  );
   const allLots = useMemo(() => waiting.groups.flatMap(toLabelLots), [waiting.groups]);
   const reprintLots = useMemo(() => {
     const list = reprintable(allLots, new Date());
@@ -190,6 +210,7 @@ export const PopMaterialLotLabelScreen = () => {
         );
   }, [allLots, normalized]);
   const waitingTotal = waiting.groups.reduce((sum, group) => sum + group.waitingCount, 0);
+  const waitingCount = waitingLots.filter(isWaiting).length;
 
   const lotById = useMemo(
     () => new Map(allLots.map((lot) => [lot.lotId, lot] as const)),
@@ -210,6 +231,18 @@ export const PopMaterialLotLabelScreen = () => {
   const isLocked = isIssuing;
   const isShowingResults = snapshot !== null;
 
+  /* 쪽 넘김(규칙 1) — 한 쪽 건수는 구획 높이에 들어가는 만큼. */
+  const pairFitRef = useRef<HTMLUListElement>(null);
+  const tableFitRef = useRef<HTMLDivElement>(null);
+  const pairSize = useFitCount(pairFitRef, { fallback: 4 });
+  const rowSize = useFitTableRows(tableFitRef, { fallback: 5 });
+  /* 입하 대기 · 폐기 다음에 최근 입하된 LOT(흐림, 고를 수 없음) — 결과를 그리는 동안은 그때 표 그대로. */
+  const pairTableLots = snapshot?.lots ?? [...waitingLots, ...receivedLots];
+  const reprintTableLots = snapshot?.lots ?? reprintLots;
+  const pairPage = useClientPage(groups, pairSize);
+  const waitPage = useClientPage(pairTableLots, rowSize);
+  const reprintPage = useClientPage(reprintTableLots, rowSize);
+
   const clearSelection = (): void => {
     setChecked(new Set());
   };
@@ -221,12 +254,16 @@ export const PopMaterialLotLabelScreen = () => {
     setScanNote(null);
     setReasonCode(null);
     clearSelection();
+    pairPage.setPage(1);
+    waitPage.setPage(1);
+    reprintPage.setPage(1);
   };
 
   const choosePair = (key: string): void => {
     if (key === currentKey) return;
     setPairKey(key);
     clearSelection();
+    waitPage.setPage(1);
   };
 
   const toggle = (lotId: number): void => {
@@ -254,7 +291,7 @@ export const PopMaterialLotLabelScreen = () => {
       ? null
       : (reasons.data?.find((reason) => reason.code === reasonCode)?.name ?? null);
 
-  /** 미리 보기에서 [인쇄] — 첫 발행은 미출력 대기 LOT 만, 다시 인쇄는 고른 LOT 을 사유와 함께. */
+  /** 미리 보기에서 [인쇄] — 첫 발행은 미출력 입하 대기 LOT 만, 재인쇄는 고른 LOT 을 사유와 함께. */
   const startPrint = (lots: readonly LabelLot[], reprint: boolean): void => {
     if (workerNo === null || lots.length === 0) return;
 
@@ -331,7 +368,6 @@ export const PopMaterialLotLabelScreen = () => {
             kind: 'pending',
             count: selectedWaiting.length,
             unprinted: selectedUnprinted.length,
-            hasWaiting: waitingLots.some(isWaiting),
             unit,
             isBlocked: workerNo === null || plantId === null,
           }
@@ -348,20 +384,32 @@ export const PopMaterialLotLabelScreen = () => {
             isBlocked: workerNo === null,
           };
 
-  /** 다시 인쇄의 찾기 칸에서 Enter — **라벨 스캔**이다. 번호가 정확히 맞는 LOT 을 고른다. */
-  const submitSearch = (event: FormEvent): void => {
-    event.preventDefault();
+  /* 발행 · 재인쇄 결과는 아래 가운데 알림으로도 낸다(규칙 13) — 안내 줄은 「확인」 전까지 남는다. */
+  const doneMessage =
+    barState.kind === 'done' && barState.unfinished === 0
+      ? barState.isReprint
+        ? t.bar.reprinted(barState.printed)
+        : t.bar.done(barState.printed)
+      : null;
+  useEffect(() => {
+    if (doneMessage !== null) puToast(doneMessage);
+  }, [doneMessage]);
 
+  /** 재발행 탭 스캔 칸 — **라벨 스캔**이다. 번호가 정확히 맞는 LOT 을 고르고 그 줄이 있는 쪽으로 넘긴다. */
+  const submitScan = (scanned: string): void => {
     if (tab !== 'reprint') return;
 
-    const value = query.trim();
+    const value = scanned.trim();
 
     if (value === '') return;
 
-    const found = reprintable(allLots, new Date()).find((lot) => lot.lotNo === value);
+    const list = reprintable(allLots, new Date());
+    const index = list.findIndex((lot) => lot.lotNo === value);
+    const found = list[index];
 
     if (found === undefined) {
-      setScanNote(t.reprint.notFound);
+      setQuery('');
+      setScanNote(t.reprint.notFound(value));
 
       return;
     }
@@ -369,6 +417,7 @@ export const PopMaterialLotLabelScreen = () => {
     setScanNote(null);
     setQuery('');
     setChecked((previous) => new Set([...previous, found.lotId]));
+    reprintPage.showIndex(index);
   };
 
   const onCreated = (lots: MaterialLotSummary[]): void => {
@@ -376,7 +425,8 @@ export const PopMaterialLotLabelScreen = () => {
     waiting.refetch();
     /* 만든 LOT 을 고른 채로 둔다 — 바로 라벨을 발행하게(screens/P-01-01.md). */
     setChecked(new Set(lots.map((lot) => lot.lotId)));
-    toast.show({ variant: 'success', description: t.batch.created(lots.length) });
+    waitPage.setPage(1);
+    puToast(t.batch.created(lots.length));
   };
 
   const confirmVoid = async (lots: readonly LabelLot[]): Promise<void> => {
@@ -396,11 +446,10 @@ export const PopMaterialLotLabelScreen = () => {
       setDialog(null);
       clearSelection();
       waiting.refetch();
-      toast.show({
-        variant: failed === 0 ? 'success' : 'warning',
-        description:
-          failed === 0 ? t.voidDialog.done(voided) : t.voidDialog.partial(voided, failed),
-      });
+      puToast(
+        failed === 0 ? t.voidDialog.done(voided) : t.voidDialog.partial(voided, failed),
+        failed === 0 ? 'ok' : 'warn',
+      );
     } catch (cause) {
       setVoidError(serverReasonOf(toApiError(cause)) ?? t.voidDialog.failed);
     } finally {
@@ -408,328 +457,355 @@ export const PopMaterialLotLabelScreen = () => {
     }
   };
 
-  const emptyPairs = normalized !== '' && groups.length === 0;
+  const isFrozen = isLocked || isShowingResults;
+  const printedPicked = selectedWaiting.length - selectedUnprinted.length;
+  const statusNote = <IssueStatusNote state={barState} />;
+  const hasStatusNote =
+    barState.kind === 'running' || barState.kind === 'paused' || barState.kind === 'done';
+
+  const loadProblem =
+    plantId === null ? (
+      <PuEmpty icon="info" title={t.work.noPlant} />
+    ) : waiting.isError ? (
+      <PuNote
+        tone="bad"
+        action={
+          <PuButton size="sm" onClick={refreshAll}>
+            {t.work.retry}
+          </PuButton>
+        }
+      >
+        {t.work.loadFailed}
+      </PuNote>
+    ) : null;
+
+  const leftSection = (
+    <PuSection
+      className="mll-left"
+      head={
+        <PuSeg
+          label={t.tabs.label}
+          value={tab}
+          options={(['pairs', 'reprint'] as const).map((each) => ({
+            value: each,
+            /* 결과를 「확인」하기 전에는 보기를 바꾸지 않는다 — 결과가 어느 보기의 것인지 흐려진다. */
+            disabled: isFrozen,
+            label:
+              each === 'pairs' ? (
+                <>
+                  {t.tabs.pairs}
+                  {waiting.isPending ? null : <PuCount>{waitingTotal}</PuCount>}
+                </>
+              ) : (
+                t.tabs.reprint
+              ),
+          }))}
+          onChange={chooseTab}
+        />
+      }
+      fold={{ label: t.tabs[tab], folded, onChange: setFolded }}
+      split={tab === 'pairs'}
+    >
+      {tab === 'pairs' ? (
+        <>
+          <div className="mll-left-top">
+            <label className="pu-input pu-search mll-search">
+              <PuIcon name="search" />
+              <input
+                type="search"
+                aria-label={t.search.label}
+                placeholder={t.search.pairsPlaceholder}
+                value={query}
+                disabled={isFrozen}
+                autoComplete="off"
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  pairPage.setPage(1);
+                }}
+              />
+            </label>
+            {waiting.isPending ? null : groups.length === 0 ? (
+              <PuEmpty icon="search" title={normalized === '' ? t.pairs.empty : t.pairs.noMatch} />
+            ) : (
+              <SupplierList
+                groups={pairPage.items}
+                defaults={defaultsMap}
+                selectedKey={currentKey}
+                isLocked={isFrozen}
+                onSelect={choosePair}
+                fitRef={pairFitRef}
+              />
+            )}
+          </div>
+          <PuPager
+            label={t.pairs.label}
+            total={pairPage.total}
+            page={pairPage.page}
+            pages={pairPage.pages}
+            onPage={pairPage.setPage}
+          />
+        </>
+      ) : (
+        <>
+          <PuScanField
+            label={t.search.scanLabel}
+            value={query}
+            placeholder={t.search.reprintPlaceholder}
+            disabled={isFrozen}
+            error={scanNote}
+            manual={{ title: t.search.manualTitle }}
+            onChange={(value) => {
+              setQuery(value);
+              setScanNote(null);
+              reprintPage.setPage(1);
+            }}
+            onSubmit={submitScan}
+          />
+          <p className="pu-help">{t.reprintInfo}</p>
+        </>
+      )}
+    </PuSection>
+  );
+
+  const pairSection =
+    current === null ? (
+      <PuSection>
+        {loadProblem ??
+          (waiting.isPending ? null : <PuEmpty icon="list" title={t.work.pickPair} />)}
+      </PuSection>
+    ) : (
+      <PuSection
+        className="mll-right"
+        labelId={`${createNoteId}-pair`}
+        title={pairName}
+        meta={
+          isShowingResults ? (
+            <b>{t.work.resultSummary(summary.printed, summary.unfinished.length)}</b>
+          ) : (
+            <>
+              <PuChip tone={waitingCount > 0 ? 'warn' : 'idle'}>
+                {t.pairs.waiting(waitingCount)}
+              </PuChip>
+              {receivedLots.length > 0 ? (
+                <PuChip tone="ok">{t.work.receivedChip(receivedLots.length)}</PuChip>
+              ) : null}
+              <PuHelpButton title={t.work.help}>
+                <div className="mll-help">
+                  {t.work.helpBody.map((line) => (
+                    <p key={line}>{line}</p>
+                  ))}
+                </div>
+              </PuHelpButton>
+              {/* C-4 — 사번이 없어 잠긴 까닭은 맨 위 띠와 같은 말이다. */}
+              {workerNo === null ? (
+                <span id={createNoteId} hidden>
+                  {messages.popChrome.workerMissing}
+                </span>
+              ) : null}
+              <PuButton
+                size="sm"
+                icon="plus"
+                disabled={isLocked || workerNo === null}
+                aria-describedby={workerNo === null ? createNoteId : undefined}
+                onClick={() => {
+                  setDialog({ kind: 'batch' });
+                }}
+              >
+                {t.work.create}
+              </PuButton>
+            </>
+          )
+        }
+      >
+        <div className="mll-head-sub">
+          {t.work.meta(
+            current.supplierName,
+            current.supplierCode,
+            current.uomCode,
+            defaultLineOf(defaultsMap.get(currentKey ?? '')),
+          )}
+        </div>
+        {loadProblem}
+        {hasStatusNote ? (
+          statusNote
+        ) : printedPicked > 0 ? (
+          <PuNote tone="warn">{t.bar.printedNote(printedPicked)}</PuNote>
+        ) : (
+          <PuNote>{selectedWaiting.length > 0 ? t.work.guidePicked : t.work.guide}</PuNote>
+        )}
+        <div className="mll-units">
+          <span className="pu-label">{t.bar.unit.label}</span>
+          <PuTiles
+            label={t.bar.unit.label}
+            cols={4}
+            value={unitValue(unit)}
+            disabled={isFrozen}
+            options={ISSUE_UNITS.map((each) => ({
+              value: unitValue(each),
+              label: each === null ? t.bar.unit.all : t.bar.unit.each(each),
+            }))}
+            onChange={(value) => {
+              chooseUnit(value === 'all' ? null : Number(value));
+            }}
+          />
+          <PuButton size="sm" disabled={isFrozen || waitingCount === 0} onClick={selectAllWaiting}>
+            {t.bar.selectAllWaiting(waitingCount)}
+          </PuButton>
+          <PuButton size="sm" disabled={isFrozen || checked.size === 0} onClick={clearSelection}>
+            {t.bar.clear}
+          </PuButton>
+        </div>
+        {pairTableLots.length === 0 ? (
+          <PuEmpty icon="box" title={t.work.waitingEmpty} hint={t.work.waitingEmptyHint} />
+        ) : (
+          <LabelTable
+            mode="waiting"
+            lots={waitPage.items}
+            checked={checked}
+            onToggle={toggle}
+            isLocked={isLocked}
+            showResults={isShowingResults}
+            batch={batch}
+            label={t.work.waitingTitle}
+            fitRef={tableFitRef}
+          />
+        )}
+        <PuPager
+          label={t.work.waitingTitle}
+          total={waitPage.total}
+          page={waitPage.page}
+          pages={waitPage.pages}
+          onPage={waitPage.setPage}
+        />
+      </PuSection>
+    );
+
+  const reprintSection = (
+    <PuSection
+      className="mll-right"
+      meta={
+        <>
+          <span>
+            {isShowingResults
+              ? t.work.resultSummary(summary.printed, summary.unfinished.length)
+              : t.work.reprintCount(reprintLots.length)}
+          </span>
+          <PuButton size="sm" disabled={isFrozen || checked.size === 0} onClick={clearSelection}>
+            {t.bar.clear}
+          </PuButton>
+        </>
+      }
+    >
+      {loadProblem}
+      {hasStatusNote ? statusNote : null}
+      {barState.kind === 'reprint' && barState.blockedReason !== null ? (
+        <PuNote tone="bad">{barState.blockedReason}</PuNote>
+      ) : null}
+      {reprintTableLots.length === 0 ? (
+        waiting.isPending ? null : (
+          <PuEmpty icon="print" title={t.work.reprintEmpty} />
+        )
+      ) : (
+        <LabelTable
+          mode="reprint"
+          lots={reprintPage.items}
+          checked={checked}
+          onToggle={toggle}
+          isLocked={isLocked}
+          showResults={isShowingResults}
+          batch={batch}
+          label={t.work.reprintTitle}
+          fitRef={tableFitRef}
+        />
+      )}
+      <PuPager
+        label={t.work.reprintTitle}
+        total={reprintPage.total}
+        page={reprintPage.page}
+        pages={reprintPage.pages}
+        onPage={reprintPage.setPage}
+      />
+      {isShowingResults ? null : (
+        <ReasonPicker
+          reasons={reasons.data ?? []}
+          isLoading={reasons.isPending}
+          isError={reasons.isError}
+          selected={reasonCode}
+          isLocked={isLocked}
+          onSelect={setReasonCode}
+        />
+      )}
+    </PuSection>
+  );
 
   return (
     /*
      * ⚠ **이 화면이 최상위 랜드마크다.** POP 라우트는 관리웹 셸을 지나지 않으므로(`routes/pop`)
      * `main`을 세워 주는 바깥이 없다 — 먼저 선 POP 화면들과 같은 형태다.
      */
-    <main className="pop-lot-screen pop-ui" aria-label={t.title}>
-      <header className="pop-header">
-        <h1 className="pop-title">{t.title}</h1>
-        {/* 프린터는 공통 메뉴 맨 위 줄 프린터 자리에 서고, 누르면 고른다(사용자 지시 2026-11-17 · #291). */}
-        <PopTopPrinter>
-          <PrinterChip
-            printers={printers.data}
-            selected={headPrinter}
-            isLoading={printers.isPending}
-            isError={printers.isError}
-            isSelectable={isPrinterSelectable}
-            isLocked={isLocked}
-            onRetry={() => {
-              void printers.refetch();
-            }}
-            onSelect={(name) => {
-              setPickedPrinter(name);
-              rememberPrinterName(name);
-            }}
-            showNone
-            noneLabel={messages.productionResult.flow.work.printerNone}
-          />
-        </PopTopPrinter>
-      </header>
+    <main className="pop-ui mll-screen" aria-label={t.title}>
+      <h1 className="mll-title">{t.title}</h1>
+      {/* 프린터는 공통 메뉴 맨 위 줄 프린터 자리에 서고, 누르면 고른다(사용자 지시 2026-11-17 · #291). */}
+      <PopTopPrinter>
+        <PrinterChip
+          printers={printers.data}
+          selected={headPrinter}
+          isLoading={printers.isPending}
+          isError={printers.isError}
+          isSelectable={isPrinterSelectable}
+          isLocked={isLocked}
+          onRetry={() => {
+            void printers.refetch();
+          }}
+          onSelect={(name) => {
+            setPickedPrinter(name);
+            rememberPrinterName(name);
+          }}
+          showNone
+          noneLabel={messages.productionResult.flow.work.printerNone}
+        />
+      </PopTopPrinter>
 
       {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
       <PopWorkerMissingBanner workerNo={workerNo} />
       {printerChoice.missingStoredName === null ? null : (
-        <div className="banner-slot">
-          <AlertBanner
-            variant="warning"
-            title={t.printer.storedMissing(printerChoice.missingStoredName)}
-          />
+        <div className="mll-banner">
+          <PuNote tone="warn">{t.printer.storedMissing(printerChoice.missingStoredName)}</PuNote>
         </div>
       )}
 
-      <div className="pop-mlot-body">
-        <aside className="pop-mlot-side">
-          <div className="pop-mlot-tabs" role="group" aria-label={t.tabs.label}>
-            {TABS.map((each) => (
-              <button
-                key={each}
-                type="button"
-                className="pop-mlot-tab"
-                aria-pressed={tab === each}
-                /* 결과를 「확인」하기 전에는 보기를 바꾸지 않는다 — 결과가 어느 보기의 것인지 흐려진다. */
-                disabled={isLocked || isShowingResults}
-                onClick={() => {
-                  chooseTab(each);
-                }}
-              >
-                {t.tabs[each]}
-                {each === 'pairs' && !waiting.isPending ? (
-                  <span className="pop-mlot-tab-count">{waitingTotal}</span>
-                ) : null}
-              </button>
-            ))}
-          </div>
-
-          <form className="pop-mlot-search" role="search" onSubmit={submitSearch}>
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              {tab === 'reprint' ? (
-                <path d="M4 6v12M7 6v12M10.5 6v12M14 6v12M16.5 6v12M20 6v12" />
-              ) : (
-                <path d="M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM15.5 15.5L20 20" />
-              )}
-            </svg>
-            <input
-              id="pop-mlot-search"
-              className="pop-mlot-search-input"
-              type="search"
-              aria-label={t.search.label}
-              placeholder={
-                tab === 'pairs' ? t.search.pairsPlaceholder : t.search.reprintPlaceholder
+      <PuScreen
+        className="mll-body"
+        actionBar={
+          <IssueBar
+            state={barState}
+            onIssue={() => {
+              if (tab === 'reprint') {
+                if (reasonCode === null || blockedLot !== undefined || selected.length === 0)
+                  return;
+                setDialog({ kind: 'preview', lots: selected, reprint: true });
+              } else if (selectedUnprinted.length > 0) {
+                setDialog({ kind: 'preview', lots: selectedUnprinted, reprint: false });
               }
-              value={query}
-              disabled={isLocked || isShowingResults}
-              autoComplete="off"
-              onChange={(event) => {
-                setQuery(event.target.value);
-                setScanNote(null);
-              }}
-            />
-            {query === '' ? null : (
-              <button
-                type="button"
-                className="pop-mlot-search-clear"
-                aria-label={t.search.clear}
-                onClick={() => {
-                  setQuery('');
-                  setScanNote(null);
-                }}
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M7 7l10 10M17 7L7 17" />
-                </svg>
-              </button>
-            )}
-          </form>
-          {scanNote === null ? null : (
-            <p className="pop-mlot-scan-note" role="status">
-              {scanNote}
-            </p>
-          )}
-
-          <div className="pop-mlot-refresh">
-            <button
-              type="button"
-              className="pop-mlot-refresh-button"
-              aria-busy={waiting.isFetching}
-              disabled={isLocked || plantId === null}
-              onClick={refreshAll}
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4.2h-4.2" />
-              </svg>
-              {t.work.refresh}
-            </button>
-            <span className="pop-mlot-refresh-at">
-              {waiting.updatedAt === 0
-                ? ''
-                : t.work.refreshedAt(formatPlantClock(new Date(waiting.updatedAt)))}
-            </span>
-          </div>
-
-          {tab === 'pairs' ? (
-            <>
-              {waiting.isPending ? null : (
-                <SupplierList
-                  groups={groups}
-                  defaults={defaultsMap}
-                  selectedKey={currentKey}
-                  isLocked={isLocked || isShowingResults}
-                  isFiltered={emptyPairs}
-                  onSelect={choosePair}
-                />
-              )}
-              <p className="pop-mlot-hint">{t.pairs.hint}</p>
-            </>
-          ) : (
-            <p className="pop-mlot-info">{t.reprintInfo}</p>
-          )}
-        </aside>
-
-        <section
-          className="pop-mlot-work"
-          data-reprint={tab === 'reprint' && !isShowingResults}
-          aria-label={tab === 'reprint' ? t.work.reprintTitle : (pairName ?? t.title)}
-        >
-          {plantId === null ? (
-            <p className="pop-mlot-empty">{t.work.noPlant}</p>
-          ) : waiting.isError ? (
-            <div className="banner-slot">
-              <AlertBanner
-                variant="error"
-                title={t.work.loadFailed}
-                action={
-                  <Button
-                    className={popTouchClass('normal')}
-                    variant="outlined"
-                    size="xl"
-                    onClick={waiting.refetch}
-                  >
-                    {t.work.retry}
-                  </Button>
-                }
-              />
-            </div>
-          ) : tab === 'reprint' ? (
-            <>
-              <div className="pop-mlot-work-head">
-                <div className="pop-mlot-work-title">
-                  <h2>{t.work.reprintTitle}</h2>
-                  <span className="pop-mlot-work-code">
-                    {isShowingResults
-                      ? t.work.resultSummary(summary.printed, summary.unfinished.length)
-                      : t.work.reprintCount(reprintLots.length)}
-                  </span>
-                </div>
-              </div>
-              <div className="pop-mlot-scroll">
-                <LabelTable
-                  mode="reprint"
-                  lots={snapshot?.lots ?? reprintLots}
-                  checked={checked}
-                  onToggle={toggle}
-                  isLocked={isLocked}
-                  showResults={isShowingResults}
-                  batch={batch}
-                  empty={waiting.isPending ? null : t.work.reprintEmpty}
-                  label={t.work.reprintTitle}
-                />
-              </div>
-              {isShowingResults ? null : (
-                <ReasonPicker
-                  reasons={reasons.data ?? []}
-                  isLoading={reasons.isPending}
-                  isError={reasons.isError}
-                  selected={reasonCode}
-                  isLocked={isLocked}
-                  onSelect={setReasonCode}
-                />
-              )}
-            </>
-          ) : current === null ? (
-            <p className="pop-mlot-empty">{waiting.isPending ? '' : t.work.pickPair}</p>
-          ) : (
-            <>
-              <div className="pop-mlot-work-head pop-mlot-pair-head">
-                <div className="pop-mlot-work-title">
-                  <h2>
-                    {current.itemCode}{' '}
-                    <span className="pop-mlot-pair-name">{current.itemName}</span>
-                  </h2>
-                  <span className="pop-mlot-work-code">
-                    {t.work.meta(
-                      current.supplierName,
-                      current.supplierCode,
-                      current.uomCode,
-                      defaultLineOf(defaultsMap.get(currentKey ?? '')),
-                    )}
-                  </span>
-                </div>
-                {isShowingResults ? (
-                  <span className="pop-mlot-work-sum">
-                    {t.work.resultSummary(summary.printed, summary.unfinished.length)}
-                  </span>
-                ) : (
-                  <>
-                    {/* C-4 — 사번이 없어 잠긴 까닭은 맨 위 띠와 같은 말이다. */}
-                    {workerNo === null ? (
-                      <span id={createNoteId} hidden>
-                        {messages.popChrome.workerMissing}
-                      </span>
-                    ) : null}
-                    <Button
-                      className={popTouchClass('primary')}
-                      size="xl"
-                      disabled={isLocked || workerNo === null}
-                      aria-describedby={workerNo === null ? createNoteId : undefined}
-                      onClick={() => {
-                        setDialog({ kind: 'batch' });
-                      }}
-                    >
-                      {t.work.create}
-                    </Button>
-                  </>
-                )}
-              </div>
-              <p className="pop-mlot-info">{t.work.info}</p>
-              <div className="pop-mlot-scroll">
-                <h3 className="pop-mlot-section">
-                  {t.work.waitingTitle}{' '}
-                  <small>{t.work.waitingSub(current.itemCode, current.supplierName)}</small>
-                </h3>
-                <LabelTable
-                  mode="waiting"
-                  lots={snapshot?.lots ?? waitingLots}
-                  checked={checked}
-                  onToggle={toggle}
-                  isLocked={isLocked}
-                  showResults={isShowingResults}
-                  batch={batch}
-                  empty={t.work.waitingEmpty}
-                  label={t.work.waitingTitle}
-                />
-                {receivedLots.length === 0 || isShowingResults ? null : (
-                  <>
-                    <h3 className="pop-mlot-section">
-                      {t.work.receivedTitle(receivedLots.length)}{' '}
-                      <small>{t.work.receivedSub}</small>
-                    </h3>
-                    <LabelTable
-                      mode="received"
-                      lots={receivedLots}
-                      checked={checked}
-                      onToggle={toggle}
-                      isLocked={isLocked}
-                      showResults={false}
-                      batch={batch}
-                      empty={null}
-                      label={t.work.receivedTitle(receivedLots.length)}
-                    />
-                  </>
-                )}
-              </div>
-            </>
-          )}
-        </section>
-      </div>
-
-      <IssueBar
-        state={barState}
-        onIssue={() => {
-          if (tab === 'reprint') {
-            if (reasonCode === null || blockedLot !== undefined || selected.length === 0) return;
-            setDialog({ kind: 'preview', lots: selected, reprint: true });
-          } else if (selectedUnprinted.length > 0) {
-            setDialog({ kind: 'preview', lots: selectedUnprinted, reprint: false });
-          }
-        }}
-        onClear={clearSelection}
-        onSelectAllWaiting={selectAllWaiting}
-        onVoid={() => {
-          setVoidError(null);
-          setDialog({ kind: 'void', lots: selectedWaiting });
-        }}
-        onStop={batch.stop}
-        onResume={batch.resume}
-        onConfirm={confirmResults}
-        onRetry={() => {
-          batch.run(retry.commands, snapshot?.isReprint === true ? null : unit);
-        }}
-        onUnitChange={chooseUnit}
-      />
+            }}
+            onVoid={() => {
+              setVoidError(null);
+              setDialog({ kind: 'void', lots: selectedWaiting });
+            }}
+            onStop={batch.stop}
+            onResume={batch.resume}
+            onConfirm={confirmResults}
+            onRetry={() => {
+              batch.run(retry.commands, snapshot?.isReprint === true ? null : unit);
+            }}
+          />
+        }
+      >
+        <PuCols variant="list">
+          {leftSection}
+          {tab === 'pairs' ? pairSection : reprintSection}
+        </PuCols>
+      </PuScreen>
 
       {dialog?.kind === 'batch' && current !== null && plantId !== null && workerNo !== null ? (
         <BatchDialog

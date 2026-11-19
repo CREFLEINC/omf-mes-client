@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { PopIdentityProvider, type PopIdentity } from '../../patterns/pop-identity';
+import { PuToastHost } from '../../patterns/pop-uniform';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { FAILED_ISSUE, PRINTED_ISSUE, splitLot } from './split-fixtures';
 import type { SplitMaterialLot } from './split-lots';
@@ -156,6 +157,7 @@ const render = (
   renderWithProviders(
     <PopIdentityProvider value={identity}>
       <GoodsIssueQrScreen />
+      <PuToastHost />
     </PopIdentityProvider>,
     { fetch },
   );
@@ -172,12 +174,17 @@ const shellPrints = (fail = false) => {
 };
 
 const checkbox = (lotNo: string) => screen.getByRole('checkbox', { name: t.table.choose(lotNo) });
+const loaded = () => screen.findByRole('checkbox', { name: t.table.choose(OLD.lotNo) });
+/* 발행 대기 탭의 건수(서버가 센 것) — 받지 못하면 「?」. */
+const unprintedTab = () => screen.getByRole('tab', { name: new RegExp(t.tabs.unprinted, 'u') });
 
 describe('P-01-02 분할 LOT 라벨', () => {
   it('Q7 · US2-1 라벨 안 찍은 분할 LOT 이 건수와 함께 오래된 순으로 맨 위에 선다 — 기간 조건 없이 묻는다', async () => {
     const { sent } = render();
 
-    expect(await screen.findByText(t.band.title(3))).toBeTruthy();
+    await loaded();
+    expect(within(unprintedTab()).getByText('3')).toBeTruthy();
+    expect(screen.getByText(t.status.failed(1))).toBeTruthy();
     expect(screen.getByText(t.band.failed(1))).toBeTruthy();
     const rows = screen.getAllByRole('checkbox');
     expect(rows.map((row) => row.getAttribute('aria-label'))).toEqual([
@@ -191,11 +198,11 @@ describe('P-01-02 분할 LOT 라벨', () => {
     expect(list?.search.has('issuedFrom')).toBe(false);
   });
 
-  it('US2-5 미발행이 없으면 「없음」 띠와 빈 안내를 보인다', async () => {
+  it('US2-5 미발행이 없으면 건수 0 과 빈 안내를 보인다', async () => {
     render({ unprinted: [] });
 
-    expect(await screen.findByText(t.band.noneTitle)).toBeTruthy();
-    expect(screen.getByText(t.empty.unprintedTitle)).toBeTruthy();
+    expect(await screen.findByText(t.empty.unprintedTitle)).toBeTruthy();
+    expect(within(unprintedTab()).getByText('0')).toBeTruthy();
   });
 
   it('Q8 · US2-2 고른 분할 LOT 을 미리 보고 자재 LOT 라벨로 찍는다 — 출고 QR 이 아니다', async () => {
@@ -213,6 +220,11 @@ describe('P-01-02 분할 LOT 라벨', () => {
     await user.click(within(dialog).getByRole('button', { name: t.preview.print(1) }));
 
     expect(await screen.findByText(t.result.printed(1))).toBeTruthy();
+    /* 다 찍히면 구획 안 결과 줄에서 「재발행」으로 옮겨 본다(전의 [찍음 보기]). */
+    await user.click(screen.getByRole('button', { name: t.result.showPrinted }));
+    expect(screen.getByRole('tab', { name: t.tabs.printed }).getAttribute('aria-selected')).toBe(
+      'true',
+    );
     expect(
       sent.filter((each) => each.path === '/app/document-issues').map((each) => each.body),
     ).toEqual([
@@ -235,7 +247,7 @@ describe('P-01-02 분할 LOT 라벨', () => {
     expect(print).toHaveProperty('disabled', true);
     expect(screen.getByText(t.reasons.needFailed(1))).toBeTruthy();
 
-    await user.click(await screen.findByRole('button', { name: '훼손' }));
+    await user.click(await screen.findByRole('radio', { name: '훼손' }));
     await user.click(screen.getByRole('button', { name: t.bar.print(1) }));
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', { name: t.preview.print(1) }),
@@ -253,7 +265,7 @@ describe('P-01-02 분할 LOT 라벨', () => {
     const { sent } = render();
 
     await user.click(await screen.findByRole('button', { name: t.bar.selectAll(3) }));
-    await user.click(await screen.findByRole('button', { name: '훼손' }));
+    await user.click(await screen.findByRole('radio', { name: '훼손' }));
     await user.click(screen.getByRole('button', { name: t.bar.print(3) }));
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', { name: t.preview.print(3) }),
@@ -268,8 +280,8 @@ describe('P-01-02 분할 LOT 라벨', () => {
     const user = userEvent.setup();
     const { sent } = render();
 
-    await screen.findByText(t.band.title(3));
-    await user.click(screen.getByRole('button', { name: t.tabs.printed }));
+    await loaded();
+    await user.click(screen.getByRole('tab', { name: t.tabs.printed }));
 
     await user.click(await screen.findByRole('checkbox', { name: t.table.choose(DONE.lotNo) }));
     expect(screen.getByRole('button', { name: t.bar.reprint(1) })).toHaveProperty('disabled', true);
@@ -285,8 +297,8 @@ describe('P-01-02 분할 LOT 라벨', () => {
     const user = userEvent.setup();
     render();
 
-    await screen.findByText(t.band.title(3));
-    await user.type(screen.getByRole('searchbox', { name: t.search.label }), DONE.lotNo);
+    await loaded();
+    await user.type(screen.getByRole('textbox', { name: t.search.label }), DONE.lotNo);
 
     expect(await screen.findByText(t.empty.searchInPrinted(DONE.lotNo))).toBeTruthy();
     await user.click(screen.getByRole('button', { name: t.empty.showInPrinted }));
@@ -297,14 +309,14 @@ describe('P-01-02 분할 LOT 라벨', () => {
     render({ listFails: true });
 
     expect(await screen.findByText(t.empty.loadFailedTitle)).toBeTruthy();
-    expect(screen.getByText(t.band.unknownTitle)).toBeTruthy();
-    expect(screen.queryByText(t.band.noneTitle)).toBeNull();
+    expect(within(unprintedTab()).getByText('?')).toBeTruthy();
+    expect(screen.queryByText(t.empty.unprintedTitle)).toBeNull();
   });
 
   it('FR-010 출고 QR(라인·파렛트) 발행은 없다', async () => {
     render();
 
-    await screen.findByText(t.band.title(3));
+    await loaded();
     expect(screen.queryByText(/출고 QR 발행|파렛트/u)).toBeNull();
     expect(screen.getByRole('heading', { name: t.title })).toBeTruthy();
   });
@@ -315,14 +327,14 @@ describe('P-01-02 LOT 번호 줄바꿈', () => {
   it('분할 LOT·원래 LOT 번호는 `|` 칸 경계에서만 줄바꿈 기회를 두고 칸은 한 덩어리다', async () => {
     render();
 
-    await screen.findByText(t.band.title(3));
+    await loaded();
     const lotNo = screen
       .getAllByTitle(NEW.lotNo)
-      .find((each) => each.classList.contains('pop-split-lotno'));
+      .find((each) => each.classList.contains('giq-lotno'));
 
     expect(lotNo?.querySelectorAll('wbr')).toHaveLength(4);
     expect(
-      [...(lotNo?.querySelectorAll('.pop-split-seg') ?? [])].map((each) => each.textContent),
+      [...(lotNo?.querySelectorAll('.giq-seg') ?? [])].map((each) => each.textContent),
     ).toEqual(['SYN-ITEM-A|', '300|', '261117|', '100330|', '0001-S1']);
     const parent = screen.getAllByTitle(NEW.parentLot.lotNo)[0];
     expect(parent?.querySelectorAll('wbr')).toHaveLength(4);
@@ -335,10 +347,23 @@ describe('P-01-02 체크박스', () => {
     render();
 
     await user.click(await screen.findByRole('button', { name: t.bar.selectAll(3) }));
-    expect(checkbox(OLD.lotNo)).toHaveProperty('checked', true);
-    expect(checkbox(NEW.lotNo)).toHaveProperty('checked', true);
+    expect(checkbox(OLD.lotNo).getAttribute('aria-checked')).toBe('true');
+    expect(checkbox(NEW.lotNo).getAttribute('aria-checked')).toBe('true');
 
-    await user.click(screen.getByRole('button', { name: t.bar.clearAll }));
-    expect(checkbox(OLD.lotNo)).toHaveProperty('checked', false);
+    await user.click(screen.getByRole('button', { name: t.bar.clearAll(3) }));
+    expect(checkbox(OLD.lotNo).getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('정렬을 바꾸면 분할 시각 차례가 뒤집힌다 — 찍는 차례와는 따로다', async () => {
+    const user = userEvent.setup();
+    render();
+
+    await loaded();
+    await user.click(screen.getByRole('tab', { name: t.order.newest }));
+    expect(screen.getAllByRole('checkbox').map((row) => row.getAttribute('aria-label'))).toEqual([
+      t.table.choose(NEW.lotNo),
+      t.table.choose(FAILED.lotNo),
+      t.table.choose(OLD.lotNo),
+    ]);
   });
 });

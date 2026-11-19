@@ -1,12 +1,19 @@
-import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 
-import { PopHeader } from '../../patterns/pop-header';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
+import {
+  PuButton,
+  PuCols,
+  PuNote,
+  PuScreen,
+  PuSection,
+  puToast,
+  useFitCount,
+} from '../../patterns/pop-uniform';
 import { serverReasonOf } from '../../patterns/server-reason';
 import { PrecheckGate } from '../work-precheck-gate/gate';
 import { setWorkerSession, useWorkerSession } from '../../patterns/worker-session';
@@ -25,6 +32,7 @@ import { plannedEquipmentText } from './row-view';
 import { isOrderQtyFulfilled } from './quantity-fulfilled';
 import { SelectionCard } from './selection-card';
 import {
+  LIST_SIZE,
   fetchWorkersByNo,
   useOpenSession,
   useSessionWorkers,
@@ -34,7 +42,6 @@ import {
   useWorkOrders,
   useWorkerLookup,
 } from './queries';
-import { POP_TOUCH_SIZE } from './touch-spec';
 import { toSessionRequest } from './session-request';
 import { assignedAtText, terminalNow } from './terminal-clock';
 import type { ControlOverride, WorkOrder, Worker } from './types';
@@ -43,13 +50,13 @@ import { isHeld } from './work-order-status';
 import { WorkerPanel } from './worker-panel';
 import { verifyWorker } from './worker-verify';
 import { entryStateOf } from './entry-state';
+import './uniform.css';
 
 /**
  * `P-02-01` 작업 시작(작업지시 선택).
  *
- * 유형: T-P-S 단독형의 틀(머리줄, 본문 좌우 2단, 하단 동작 바). W/O 를 정하는 앞 단계 화면이라
- *       POP 질문표가 유형을 정하지 않는다. 왼쪽 작업지시 목록, 오른쪽 작업 확인(작업자, 선택한
- *       작업지시, 다른 작업), 하단 바 「남은 일」과 주 동작 하나.
+ * 모양: POP 통일 시안(#295) — 왼쪽 380 작업지시 목록(구획 높이만큼 · 쪽 넘김), 오른쪽 작업 확인
+ *       (작업자, 선택한 작업지시), 아래 작업 줄은 주 동작 버튼 하나(글 없음).
  * 이탈: C-3 주 동작 이름이 W/O 상태에 따라 [작업 시작], [재개], [작업 다시 시작], [작업 이어하기]로
  *       바뀐다(경로가 다른 네 동작이라 한 이름으로 둘 수 없다). C-11 머리줄을 화면이 조립한다(셸 공용 머리줄은
  *       POP 화면 전체 작업, omf-all-around#169). C-10 품목명과 금형은 계약에 없어 보이지 않는다
@@ -73,8 +80,6 @@ import { entryStateOf } from './entry-state';
  */
 export const WorkStartScreen = () => {
   const t = messages.workStart;
-  /* 셸이 없는 화면이라 표제가 본문의 이름이 된다 — 이름 없는 랜드마크로 남기지 않는다. */
-  const titleId = useId();
 
   /* ⛔ 단말·공정·사번은 셸이 채운다 — 화면이 토큰을 열어 읽지 않는다(F-2). */
   const identity = usePopIdentity();
@@ -174,7 +179,6 @@ export const WorkStartScreen = () => {
   /* 설비 팝업을 한 번이라도 열었는가. 다른 설비 목록은 그때 처음 묻는다. */
   const [isPickerOpened, setPickerOpened] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(entry?.workOrderId ?? null);
-  const [outcome, setOutcome] = useState<string | null>(null);
 
   const listEquipmentId = scope === 'default' ? equipmentId : scope === 'all' ? null : scope;
   /*
@@ -182,10 +186,27 @@ export const WorkStartScreen = () => {
    *    그린 화면에 다른 설비의 지시가 실린다. 그 상태는 목록 구획이 사유와 함께 말한다.
    */
   const isListAsked = scope !== 'default' || equipmentId !== null || isEquipmentMissing;
-  /* 쪽 번호. 축(설비·전체 보기)이 바뀌면 첫 쪽으로 되돌린다 — 아래 전환 자리에서 함께 맞춘다. */
-  const [listPage, setListPage] = useState(1);
+  /*
+   * 한 쪽 건수 — 목록 구획 높이에 들어가는 만큼(POP 통일 규칙 1). 아직 재지 못했으면(처음 그리기 ·
+   * 줄이 없을 때) `LIST_SIZE` 로 받는다.
+   */
+  const listFitRef = useRef<HTMLDivElement>(null);
+  const fitCount = useFitCount(listFitRef, { fallback: 0 });
+  const listSize = fitCount > 0 ? fitCount : LIST_SIZE;
+  /*
+   * 쪽은 «보던 첫 줄»로 든다 — 한 쪽 건수가 바뀌어도(화면 크기·처음 재기) 그 줄이 든 쪽을 본다.
+   * 축(설비·전체 보기)이 바뀌면 첫 줄로 되돌린다 — 아래 전환 자리에서 함께 맞춘다.
+   */
+  const [listFirstRow, setListFirstRow] = useState(0);
+  const listPage = Math.floor(listFirstRow / listSize) + 1;
   /* 설비를 정하지 않은 지시는 단말 설비 목록에만 함께 받는다(PG-38). */
-  const list = useWorkOrders(listEquipmentId, isListAsked, listPage, scope === 'default');
+  const list = useWorkOrders(
+    listEquipmentId,
+    isListAsked,
+    listPage,
+    scope === 'default',
+    listSize,
+  );
   const equipments = useEquipmentChoices(terminal.data?.plantId ?? null, isPickerOpened);
   const otherEquipments = (equipments.data ?? []).filter(
     (equipment) => equipment.equipmentId !== equipmentId,
@@ -236,10 +257,15 @@ export const WorkStartScreen = () => {
   const crewSessionId = selected === null ? null : (openSession.data?.workSessionId ?? null);
   const sessionCrew = useSessionWorkers(crewSessionId);
   const [pendingCrew, setPendingCrew] = useState<Worker[]>([]);
+  /* 참여 요청을 보낸 사번 — 서버가 받으면 그 사번으로 결과를 알린다(POP 통일 규칙 13). */
+  const joiningNoRef = useRef<string | null>(null);
   const joinCrew = useJoinSession({
     workSessionId: crewSessionId,
     workerNo: confirmedNo ?? '',
-    onSuccess: () => undefined,
+    onSuccess: () => {
+      if (joiningNoRef.current !== null) puToast(t.coWorkers.added(joiningNoRef.current));
+      joiningNoRef.current = null;
+    },
   });
   const leaveCrew = useLeaveSession({
     workSessionId: crewSessionId,
@@ -326,8 +352,10 @@ export const WorkStartScreen = () => {
 
     if (crewSessionId === null) {
       setPendingCrew((current) => [...current, result.worker]);
+      puToast(t.coWorkers.added(workerNo));
     } else {
       leaveCrew.reset();
+      joiningNoRef.current = workerNo;
       joinCrew.write({ workerId: result.worker.workerId, joinedAt: terminalNow(new Date()) });
     }
 
@@ -366,19 +394,28 @@ export const WorkStartScreen = () => {
    *
    * 홈 「다음 작업」에서 W/O 를 받아 열었을 때도 첫 목록에서 한 번 같은 확인을 한다(#291) — 받은 W/O 가
    * 첫 쪽에 없으면 «보이지 않는 선택»이 남지 않게 놓는다.
+   *
+   * ⭐ 받은 목록에 있으면 «보던 첫 줄»을 그 W/O 로 둔다 — 한 쪽 건수를 구획 높이로 줄여(#295) 다시
+   *    받아도 그 W/O 가 든 쪽을 본다. 앞 목록을 잠시 보이는 동안(`isPlaceholderData`)에는 재지 않는다.
    */
   const scopeCheckRef = useRef(entry !== null);
+  const isListPlaceholder = list.isPlaceholderData;
   useEffect(() => {
-    if (!scopeCheckRef.current || rows === undefined) return;
+    if (!scopeCheckRef.current || rows === undefined || isListPlaceholder) return;
 
     scopeCheckRef.current = false;
-    if (selectedId !== null && !rows.some((row) => row.workOrderId === selectedId)) {
+    if (selectedId === null) return;
+    const index = rows.findIndex((row) => row.workOrderId === selectedId);
+    if (index < 0) {
       submitAtRef.current = null;
       /* 놓은 W/O 의 거절 문구가 남지 않게 한다. */
       setWriteMode(null);
       setSelectedId(null);
+      return;
     }
-  }, [rows, selectedId]);
+    setListFirstRow((listPage - 1) * listSize + index);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- 받은 목록이 바뀔 때만 잰다. */
+  }, [rows, selectedId, isListPlaceholder]);
 
   /**
    * 지금 시작을 시도하고 있는 것 — **누른 순간의 작업지시와 시각을 통째로 붙든다.**
@@ -422,7 +459,7 @@ export const WorkStartScreen = () => {
     onSuccess: () => {
       submitAtRef.current = null;
       setPendingCrew([]);
-      setOutcome((isRestart ? t.result.restarted : t.result.started)(selected?.workOrderNo ?? ''));
+      puToast((isRestart ? t.result.restarted : t.result.started)(selected?.workOrderNo ?? ''));
       setSelectedId(null);
 
       /*
@@ -440,7 +477,7 @@ export const WorkStartScreen = () => {
     workerNo: confirmedNo ?? '',
     onSuccess: () => {
       submitAtRef.current = null;
-      setOutcome(t.result.resumed(selected?.workOrderNo ?? ''));
+      puToast(t.result.resumed(selected?.workOrderNo ?? ''));
       setSelectedId(null);
 
       /*
@@ -593,7 +630,6 @@ export const WorkStartScreen = () => {
     /* 열린 세션을 모르면 재개할지 다시 시작할지 정할 수 없다 — 막힘 사유가 이미 선다. */
     if (isHeldSelected && !isResume && !isRestart) return;
 
-    setOutcome(null);
     setChainError(null);
 
     /* 붙들고 있던 시각이 있으면 그대로 쓴다 — 같은 시도의 재시도이기 때문이다. */
@@ -664,7 +700,6 @@ export const WorkStartScreen = () => {
     submitAtRef.current = null;
     setAttempt(null);
     setChainError(null);
-    setOutcome(null);
     forgetWrite();
     setSelectedId(null);
   };
@@ -686,7 +721,6 @@ export const WorkStartScreen = () => {
     submitAtRef.current = null;
     setAttempt(null);
     setChainError(null);
-    setOutcome(null);
     forgetWrite();
     setSelectedId(workOrder.workOrderId);
 
@@ -696,12 +730,6 @@ export const WorkStartScreen = () => {
      */
     if (confirmedNo === null) setWorkerDialogOpen(true);
   };
-
-  /**
-   * 연결됐다고 말할 수 있는가. ⛔ **아직 답을 못 받았으면 `undefined`(모른다)다** — 셋을
-   * 삼항 두 겹으로 겹쳐 쓰면 「모른다」가 「끊겼다」로 읽히기 쉬운 자리라 따로 세운다.
-   */
-  const connectionVerdict = list.isError ? false : list.isSuccess ? true : undefined;
 
   const isContinue = block?.code === 'alreadyOpen' && selected !== null;
 
@@ -731,84 +759,102 @@ export const WorkStartScreen = () => {
         ? null
         : named(equipmentName, equipmentCode);
 
+  /*
+   * ⭐ 아래 작업 줄에는 글을 띄우지 않는다(POP 통일 규칙 3) — 꺼진 버튼은 흐리게만 보인다.
+   *    다만 단말·권한·연결처럼 «화면 어디에도 드러나지 않는» 막힘은 「작업 확인」 구획 안 안내 줄로
+   *    보인다(사번 없음 · 미선택은 그 묶음의 빈 모양이 말하고, 마감 안내는 「선택한 작업지시」 안).
+   *    확인 중인 동안은 잠깐이라 띄우지 않는다. 나머지는 버튼 설명(읽어 주기)으로만 남는다.
+   */
+  const isTransientBlock =
+    remaining.text === t.blocked.checking || remaining.text === t.resume.checking;
+  const showBlockNote = block !== null && block.code === 'other' && !isTransientBlock;
+  /* 마감 안내는 「선택한 작업지시」 안 주의 줄이 말한다 — 같은 글을 두 번 두지 않는다. */
+  const isCloseNoticeDescription = !showBlockNote && remaining.text === closeNotice;
+  const describeId = useId();
+
   return (
-    <main className="pop-shell pop-ui work-start-screen" aria-labelledby={titleId}>
-      <PopHeader
-        titleId={titleId}
-        title={t.title}
-        equipmentCode={equipmentCode}
-        equipmentName={equipmentName}
-        /*
-         * 연결 여부는 마지막 조회가 서버에 닿았는가로 말한다. 브라우저의 온라인 표시는 산업용
-         * 패널 PC 에서 사실과 다르다. 아직 답을 못 받았으면 모르는 것으로 둔다.
-         */
-        isConnected={connectionVerdict}
-      />
+    <main className="pop-shell pop-ui ws-root" aria-label={t.title}>
+      <PuScreen
+        actionBar={
+          <ActionBar
+            mode={isContinue ? 'continue' : actionMode()}
+            isBlocked={block !== null && !isContinue}
+            describedBy={describeId}
+            /*
+             * 판정을 기록하는 동안도 「시작 중」이다(#1148). 통과 판정이면 게이트가 아무것도 그리지
+             * 않으므로, 이 사이에 표시가 없으면 화면이 멎은 것처럼 보인다.
+             */
+            isSaving={isResume ? resumeWork.isSaving : startWork.isSaving || attempt !== null}
+            onSubmit={() => {
+              /* 진행 중인 작업은 쓰기 없이 자재 투입으로 자리만 옮긴다. 재개(`RESUME` 적재)가 아니다. */
+              if (isContinue) {
+                goToMaterialInput(selected.workOrderId);
 
-      {/* 본문 좌우 2단(T-P-S). 왼쪽 대상 목록, 오른쪽 확인. 고른 결과를 목록 아래에 쌓지 않는다(C-2). */}
-      <div className="pop-panes work-start-panes">
-        <WorkOrderList
-          uomCodeOf={uomCodeOf}
-          workOrders={rows}
-          isAsked={isListAsked}
-          isLoading={isListAsked && list.isPending}
-          isError={list.isError}
-          total={list.data?.page.total}
-          pageMeta={list.data?.page}
-          onPageChange={(page) => {
-            /* 쪽을 넘기면 고른 것을 놓는다. 다른 쪽의 지시를 고른 채로 두면 화면과 어긋난다. */
-            setSelectedId(null);
-            submitAtRef.current = null;
-            forgetWrite();
-            setListPage(page);
-          }}
-          scope={scope}
-          equipmentName={equipmentName?.trim() || equipmentCode?.trim() || null}
-          equipmentText={
-            equipmentCode === null || equipmentCode.trim() === ''
-              ? null
-              : named(equipmentName, equipmentCode)
-          }
-          otherEquipments={otherEquipments}
-          onEquipmentPickerOpen={() => {
-            setPickerOpened(true);
-          }}
-          isEquipmentMissing={isEquipmentMissing}
-          isEquipmentUnknown={equipmentId === null && !isEquipmentMissing}
-          selectedId={selectedId}
-          onSelect={selectWorkOrder}
-          onScopeChange={(next) => {
-            if (next === scope) return;
-            /* 고른 것은 새 목록에 있으면 남긴다. 새 목록이 오면 위 확인이 정한다(PG-30). */
-            scopeCheckRef.current = true;
-            /* 축이 바뀌면 첫 쪽으로. 3쪽을 보던 중 전체 설비로 옮기면 빈 쪽이 뜬다. */
-            setListPage(1);
-            setScope(next);
-          }}
-          onRetry={() => {
-            void list.refetch();
-          }}
-        />
+                return;
+              }
 
-        <section className="pane work-start-side" aria-label={t.side.title}>
-          <h2 className="pane-title">{t.side.title}</h2>
+              submit();
+            }}
+            leading={
+              retryLabel === null ? undefined : (
+                <PuButton onClick={gate.retry}>{retryLabel}</PuButton>
+              )
+            }
+          />
+        }
+      >
+        {/* 왼쪽 380 작업지시 목록, 오른쪽 작업 확인(POP 통일 규칙 1). */}
+        <PuCols variant="list">
+          <WorkOrderList
+            uomCodeOf={uomCodeOf}
+            workOrders={rows}
+            isAsked={isListAsked}
+            isLoading={isListAsked && list.isPending}
+            isError={list.isError}
+            total={list.data?.page.total}
+            pageMeta={list.data?.page}
+            fitRef={listFitRef}
+            onPageChange={(page) => {
+              /* 쪽을 넘기면 고른 것을 놓는다. 다른 쪽의 지시를 고른 채로 두면 화면과 어긋난다. */
+              setSelectedId(null);
+              submitAtRef.current = null;
+              forgetWrite();
+              setListFirstRow((page - 1) * listSize);
+            }}
+            scope={scope}
+            equipmentName={equipmentName?.trim() || equipmentCode?.trim() || null}
+            equipmentText={
+              equipmentCode === null || equipmentCode.trim() === ''
+                ? null
+                : named(equipmentName, equipmentCode)
+            }
+            otherEquipments={otherEquipments}
+            onEquipmentPickerOpen={() => {
+              setPickerOpened(true);
+            }}
+            isEquipmentMissing={isEquipmentMissing}
+            isEquipmentUnknown={equipmentId === null && !isEquipmentMissing}
+            selectedId={selectedId}
+            onSelect={selectWorkOrder}
+            onScopeChange={(next) => {
+              if (next === scope) return;
+              /* 고른 것은 새 목록에 있으면 남긴다. 새 목록이 오면 위 확인이 정한다(PG-30). */
+              scopeCheckRef.current = true;
+              /* 축이 바뀌면 첫 쪽으로. 3쪽을 보던 중 전체 설비로 옮기면 빈 쪽이 뜬다. */
+              setListFirstRow(0);
+              setScope(next);
+            }}
+            onRetry={() => {
+              void list.refetch();
+            }}
+          />
 
-          {/* 결과와 오류는 구획 맨 위 전체 폭에 둔다(C-19 안내 상자). */}
-          {outcome !== null && (
-            <div className="banner-slot">
-              <AlertBanner variant="success">{outcome}</AlertBanner>
-            </div>
-          )}
+          <PuSection title={t.side.title} className="ws-side" bodyClassName="ws-side-body">
+            {/* 오류는 구획 맨 위 전체 폭에 둔다(규칙 9 안내 줄). 처리 결과는 아래 가운데 알림이다. */}
+            {chainError !== null && <PuNote tone="bad">{chainError}</PuNote>}
 
-          {chainError !== null && (
-            <div className="banner-slot">
-              <AlertBanner variant="error">{chainError}</AlertBanner>
-            </div>
-          )}
-
-          {writeError !== null && (
-            <div className="banner-slot">
-              <AlertBanner variant="error">
+            {writeError !== null && (
+              <PuNote tone="bad">
                 {isConflict(writeError)
                   ? /* 다시 시작이 충돌하는 까닭(이미 열린 세션)과 조치는 서버가 안다. */
                     writeMode === 'restart'
@@ -821,77 +867,66 @@ export const WorkStartScreen = () => {
                     ]
                       .filter((line) => line !== null)
                       .join(' ')}
-              </AlertBanner>
-            </div>
-          )}
+              </PuNote>
+            )}
 
-          {/*
-           * 사번을 이미 아는 자리에서는 사번 입력을 세우지 않는다(사용자 지시 2026-09-08). 사번 경량
-           * 인증(P-CO-01)이 정해 오므로 다시 묻지 않는다. 못 받았을 때만 사번 입력 창을 여는 버튼을 세운다.
-           */}
-          {confirmedNo === null ? (
-            <WorkerPanel
-              isOpen={isWorkerDialogOpen}
-              onOpenChange={setWorkerDialogOpen}
-              onSubmit={setSubmittedNo}
-              onDiscard={() => {
-                setSubmittedNo(null);
-              }}
-              onRetry={() => {
-                void lookup.refetch();
-              }}
-              isChecking={submittedNo !== null && confirmedNo === null && lookup.isFetching}
-              error={workerError}
+            {showBlockNote && (
+              <PuNote tone="warn" id={describeId}>
+                {remaining.text}
+              </PuNote>
+            )}
+
+            {/*
+             * 사번을 이미 아는 자리에서는 사번 입력을 세우지 않는다(사용자 지시 2026-09-08). 사번 경량
+             * 인증(P-CO-01)이 정해 오므로 다시 묻지 않는다. 못 받았을 때만 사번 입력 창을 여는 버튼을 세운다.
+             */}
+            {confirmedNo === null ? (
+              <WorkerPanel
+                isOpen={isWorkerDialogOpen}
+                onOpenChange={setWorkerDialogOpen}
+                onSubmit={setSubmittedNo}
+                onDiscard={() => {
+                  setSubmittedNo(null);
+                }}
+                onRetry={() => {
+                  void lookup.refetch();
+                }}
+                isChecking={submittedNo !== null && confirmedNo === null && lookup.isFetching}
+                error={workerError}
+              />
+            ) : (
+              <CrewPanel
+                members={crew}
+                disabled={!isOnline || joinCrew.isSaving || leaveCrew.isSaving}
+                error={crewError}
+                onAdd={addCrew}
+                onRemove={removeCrew}
+              />
+            )}
+
+            <hr className="pu-sep" />
+
+            <SelectionCard
+              workOrder={selected}
+              equipmentId={equipmentId}
+              equipmentText={selectionEquipmentText}
+              isEquipmentUnassigned={
+                isEquipmentMissing && selected !== null && selected.plannedEquipmentId == null
+              }
+              uomCodeOf={uomCodeOf}
+              closeNotice={closeNotice}
+              closeNoticeId={isCloseNoticeDescription ? describeId : undefined}
             />
-          ) : (
-            <CrewPanel
-              members={crew}
-              disabled={!isOnline || joinCrew.isSaving || leaveCrew.isSaving}
-              error={crewError}
-              onAdd={addCrew}
-              onRemove={removeCrew}
-            />
-          )}
 
-          <SelectionCard
-            workOrder={selected}
-            equipmentId={equipmentId}
-            equipmentText={selectionEquipmentText}
-            isEquipmentUnassigned={
-              isEquipmentMissing && selected !== null && selected.plannedEquipmentId == null
-            }
-            uomCodeOf={uomCodeOf}
-          />
-        </section>
-      </div>
-
-      <ActionBar
-        mode={isContinue ? 'continue' : actionMode()}
-        remaining={remaining.text}
-        isBlocked={block !== null && !isContinue}
-        /*
-         * 판정을 기록하는 동안도 「시작 중」이다(#1148). 통과 판정이면 게이트가 아무것도 그리지
-         * 않으므로, 이 사이에 표시가 없으면 화면이 멎은 것처럼 보인다.
-         */
-        isSaving={isResume ? resumeWork.isSaving : startWork.isSaving || attempt !== null}
-        onSubmit={() => {
-          /* 진행 중인 작업은 쓰기 없이 자재 투입으로 자리만 옮긴다. 재개(`RESUME` 적재)가 아니다. */
-          if (isContinue) {
-            goToMaterialInput(selected.workOrderId);
-
-            return;
-          }
-
-          submit();
-        }}
-        leading={
-          retryLabel === null ? undefined : (
-            <Button type="button" variant="outlined" size={POP_TOUCH_SIZE} onClick={gate.retry}>
-              {retryLabel}
-            </Button>
-          )
-        }
-      />
+            {/* 주 동작 설명(읽어 주기) — 화면에는 띄우지 않는다(규칙 3). */}
+            {!showBlockNote && !isCloseNoticeDescription && (
+              <span id={describeId} className="ws-visually-hidden">
+                {remaining.text}
+              </span>
+            )}
+          </PuSection>
+        </PuCols>
+      </PuScreen>
 
       {/*
         점검 통제 게이트 — ⭐ **막을 때만 보인다**(`P-02-02` §9-3). 통과면 아무것도 그리지

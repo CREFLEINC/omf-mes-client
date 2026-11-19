@@ -52,12 +52,10 @@ export const popChrome = {
     greetingAnonymous: '안녕하세요!',
     /** 인사 줄 오른쪽 시계의 요일(일요일부터). */
     weekdays: ['일', '월', '화', '수', '목', '금', '토'],
-    sub: '오늘도 안전하고 정확한 작업을 진행해 주세요.',
     remainingTitle: '남은 작업',
     remainingCount: (count: number): string => `${String(count)}건`,
     remainingNone: '지금 남은 작업이 없습니다.',
     shortcutsTitle: '바로가기',
-    shortcutsHint: '자주 쓰는 화면으로 바로 이동합니다.',
     /** 오늘 작업 현황 — 이 단말 설비의 작업지시 수(작업지시 목록과 같은 조회). */
     statusTitle: '오늘 작업 현황',
     inProgress: '진행 중',
@@ -77,8 +75,11 @@ export const popChrome = {
     edit: '편집',
     editDone: '완료',
     editReset: '기본으로',
-    editHint: (max: number): string =>
-      `항목을 선택하거나 해제하여 바로가기를 설정하세요. (최대 ${String(max)}개)`,
+    editHint: (max: number): string => `홈에 둘 화면을 최대 ${String(max)}개까지 선택하세요.`,
+    /** [완료]를 누른 뒤 알림(#295 시안). 고른 것은 누를 때마다 단말에 이미 남는다. */
+    editSaved: '바로가기를 저장했습니다.',
+    /** 남은 작업 쪽 넘김 이름. */
+    remainingPageNav: '남은 작업 쪽 넘김',
     editPicked: (name: string): string => `${name}, 바로가기에 있음`,
   },
   /** 머리줄의 사번 놓기 단추. */
@@ -156,7 +157,7 @@ export const popChrome = {
   /** 선택 단추가 따로 이름을 받지 않았을 때의 기본 이름. */
   select: '선택',
 
-  /** 선택 팝업(`patterns/pop-select`). 쪽 넘김 단추는 `popPageNav` 를 쓴다. */
+  /** 선택 팝업(`patterns/pop-select`). 쪽 넘김은 POP 공통 쪽 넘김(`popUniform.pager`)을 쓴다. */
   selectDialog: {
     /** 무엇을 고르는지 이름을 알 수 없을 때. */
     fallbackName: '항목',
@@ -173,9 +174,5 @@ export const popChrome = {
     scanPlaceholder: '스캔하거나 목록에서 검색',
     clearSearch: '검색어 지우기',
     empty: '표시할 항목이 없습니다.',
-    /** 관리웹 페이지 이동과 같은 꼴: 위치 「1 / 3」, 건수 「총 7건」. */
-    position: (page: number, totalPages: number): string =>
-      `${String(page)} / ${String(Math.max(totalPages, 1))}`,
-    total: (count: number): string => `총 ${String(count)}건`,
   },
 };

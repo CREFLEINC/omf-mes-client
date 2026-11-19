@@ -3,6 +3,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PopIdentityProvider, type PopIdentity } from '../../patterns/pop-identity';
+import { PuToastHost } from '../../patterns/pop-uniform';
 import {
   createStubFetch,
   jsonResponse,
@@ -155,6 +156,8 @@ const renderScreen = (
   const result = renderWithProviders(
     <PopIdentityProvider value={identity}>
       <DowntimeRegisterScreen />
+      {/* 저장 결과 알림 자리 — 셸이 하나 둔다(#295 규칙 13). */}
+      <PuToastHost />
     </PopIdentityProvider>,
     { fetch, route },
   );
@@ -323,8 +326,11 @@ describe('DowntimeRegisterScreen — 진행 중 구획', () => {
       gateRoute(),
     ]);
 
-    expect(await screen.findByText(t.ongoing.blocksNew)).toBeTruthy();
-    expect(screen.getByRole('button', { name: t.actions.save })).toBeDisabled();
+    /* 먼저 할 일은 꺼진 [실적 저장]에 손을 올리면 보이고, 진행 중 줄의 [지금 종료]가 그 길이다. */
+    await screen.findByRole('region', { name: t.ongoing.title });
+    const saveButton = screen.getByRole('button', { name: t.actions.save });
+    expect(saveButton).toBeDisabled();
+    expect(saveButton).toHaveAttribute('title', t.ongoing.blocksNew);
   });
 });
 
@@ -427,7 +433,11 @@ describe('DowntimeRegisterScreen — 저장', () => {
     await flush();
     await chooseReason();
 
-    expect(await screen.findByText(t.actions.needStarted)).toBeInTheDocument();
+    /* 작업 줄에 글을 띄우지 않는다(#295) — 꺼진 [실적 저장]에 손을 올리면 보인다. */
+    expect(screen.getByRole('button', { name: t.actions.save })).toHaveAttribute(
+      'title',
+      t.actions.needStarted,
+    );
   });
 
   it('시작 시각만 차면 이번엔 사유를 말한다 — 한 번에 하나씩 가리킨다', async () => {
@@ -436,7 +446,10 @@ describe('DowntimeRegisterScreen — 저장', () => {
     await flush();
     typeInterval(['2026-08-11', '14:20'], ['2026-08-11', '15:07']);
 
-    expect(await screen.findByText(t.actions.needReason)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.actions.save })).toHaveAttribute(
+      'title',
+      t.actions.needReason,
+    );
   });
 
   it('아직 아무것도 적지 않았으면 「다시 입력」이 잠긴다 — 비울 것이 없다', async () => {
@@ -885,6 +898,10 @@ describe('DowntimeRegisterScreen — 시간이 흐른 뒤', () => {
   }, 15_000);
 });
 
+/** 시작 구획 제목 줄의 「비가동 시간 n분」(#295 — 「구간」 제목 자리). */
+const durationText = (): string | undefined =>
+  document.querySelector('.dt-dur')?.textContent ?? undefined;
+
 describe('DowntimeRegisterScreen — 구간을 치기 전', () => {
   it('산출할 수 없으면 이유를 적지 않고 「—」로 둔다 — 0분과도 갈라진다', async () => {
     renderScreen([downtimeListRoute(), summaryRoute(), breakdownsRoute(), gateRoute()]);
@@ -896,15 +913,15 @@ describe('DowntimeRegisterScreen — 구간을 치기 전', () => {
      *    오류 문구와 같은 줄이라 경고처럼 읽혔다(사용자 지적).
      * ⚠ 자리 자체는 늘 남는다 — 글자가 들고 날 때마다 줄이 흔들리면 손가락이 빗나간다.
      */
-    const empty = t.interval.duration(t.interval.durationEmpty);
-    expect(screen.getByText(empty)).toBeTruthy();
+    const empty = `${t.interval.duration} ${t.interval.durationEmpty}`;
+    expect(durationText()).toBe(empty);
 
     /* 시작만 찍어도, 「아직 진행 중」을 켜도 여전히 산출할 수 없다 — 표기는 같다. */
     typeInterval(['2026-08-11', '14:20']);
-    expect(screen.getByText(empty)).toBeTruthy();
+    expect(durationText()).toBe(empty);
 
     fireEvent.click(screen.getByLabelText(t.interval.stillOngoing));
-    expect(screen.getByText(empty)).toBeTruthy();
+    expect(durationText()).toBe(empty);
   });
 
   it('구간이 갖춰지면 길이를 낸다', async () => {
@@ -913,7 +930,7 @@ describe('DowntimeRegisterScreen — 구간을 치기 전', () => {
     await flush();
     typeInterval(['2026-08-11', '14:20'], ['2026-08-11', '15:07']);
 
-    expect(screen.getByText(t.interval.duration('47분'))).toBeTruthy();
+    expect(durationText()).toBe(`${t.interval.duration} 47분`);
   });
 });
 
@@ -941,7 +958,7 @@ describe('DowntimeRegisterScreen — 덜 친 종료 시각', () => {
     expect(screen.getByText(t.errors.endedIncomplete)).toBeTruthy();
   });
 
-  it('오류가 떠도 구간 줄의 높이가 변하지 않는다 — 치는 동안 아래가 밀리면 안 된다', async () => {
+  it('오류는 그 칸 바로 아래 한 줄로 서고, 칸과 읽어 주는 연결로 이어진다', async () => {
     renderScreen([downtimeListRoute(), summaryRoute(), breakdownsRoute(), gateRoute()]);
 
     await flush();
@@ -950,13 +967,10 @@ describe('DowntimeRegisterScreen — 덜 친 종료 시각', () => {
       target: { value: '2026-08-11' },
     });
 
-    /*
-     * ⛔ 문구는 칸 «아래»가 아니라 줄 «안»에 선다 — 부품이 그리는 자리를 쓰면 줄이 60 에서
-     *    120 으로 뛴다(실측). 시험 환경에는 스타일이 없으므로 **어디에 붙었는지**로 잰다.
-     */
+    /* #295 시안: 칸 이름은 칸 위, 오류는 칸 바로 아래 빨간 한 줄(같은 칸 묶음 안). */
     const message = screen.getByText(t.errors.startedIncomplete);
-    expect(message.closest('.downtime-time-row')).not.toBeNull();
-    expect(message.parentElement).toHaveClass('downtime-time-row');
+    const dateField0 = screen.getByLabelText(`${t.interval.startedAt} ${t.interval.date}`);
+    expect(message.closest('.pu-field')).toBe(dateField0.closest('.pu-field'));
 
     /* 읽어 주는 연결은 유지한다 — 자리를 옮겼다고 관계까지 끊지 않는다. */
     const dateField = screen.getByLabelText(`${t.interval.startedAt} ${t.interval.date}`);
@@ -977,16 +991,12 @@ describe('DowntimeRegisterScreen — 덜 친 종료 시각', () => {
   });
 });
 
-describe('DowntimeRegisterScreen — 터치 타겟', () => {
+describe('DowntimeRegisterScreen — 작업 줄', () => {
   /**
-   * 장갑 낀 손으로 누르는 버튼은 72픽셀 급이다 — 디자인 시스템의 `2xl`이 그 크기를 낸다.
-   *
-   * ⚠ 클래스 이름으로 재는 것은 차선이다. 스타일이 CSS 모듈이라 시험 환경에서는 계산된
-   * 크기를 읽을 수 없고, 크기를 정하는 것이 그 클래스 하나뿐이라 여기서는 그것이 잣대가 된다.
+   * #295 규칙 2·3: 버튼 크기는 한 모양(48)이고, 일을 끝내는 [실적 저장]이 오른쪽의 빨간 주 버튼 하나다.
+   * ⚠ 시험 환경에는 스타일이 없으므로 클래스로 잰다.
    */
-  const isExtraLarge = (button: HTMLElement): boolean => /xxl/.test(button.className);
-
-  it('구획을 닫고 저장하는 버튼이 72픽셀 급으로 선다', async () => {
+  it('[실적 저장]만 주 버튼이고 [지금 종료]·[지금]·[입력 초기화]는 보조 버튼이다', async () => {
     renderScreen([
       downtimeListRoute({ ongoing: [ongoingDowntime()] }),
       summaryRoute(),
@@ -996,18 +1006,13 @@ describe('DowntimeRegisterScreen — 터치 타겟', () => {
 
     await screen.findByRole('region', { name: t.ongoing.title });
 
-    /*
-     * ⚠ **`[지금]`은 여기서 빠진다**(사용자 결정 2026-09-07). 스펙 §7 은 72픽셀 급으로
-     *    적었지만, 같은 줄에 선 날짜·시각 칸이 56 이라 버튼만 커 보이고 줄 높이도 그 버튼이
-     *    정해 ② 구획이 몫을 넘긴다. 터치 하한(일반 등급 56)은 지킨다.
-     */
+    const isPrimary = (button: HTMLElement): boolean => button.classList.contains('primary');
     screen.getAllByRole('button', { name: t.interval.now }).forEach((button) => {
-      expect(isExtraLarge(button)).toBe(false);
+      expect(isPrimary(button)).toBe(false);
     });
-
-    expect(isExtraLarge(screen.getByRole('button', { name: t.ongoing.close }))).toBe(true);
-    expect(isExtraLarge(screen.getByRole('button', { name: t.actions.save }))).toBe(true);
-    expect(isExtraLarge(screen.getByRole('button', { name: t.actions.reset }))).toBe(true);
+    expect(isPrimary(screen.getByRole('button', { name: t.ongoing.close }))).toBe(false);
+    expect(isPrimary(screen.getByRole('button', { name: t.actions.reset }))).toBe(false);
+    expect(isPrimary(screen.getByRole('button', { name: t.actions.save }))).toBe(true);
   });
 });
 
@@ -1076,7 +1081,6 @@ describe('DowntimeRegisterScreen — 단말에 붙은 설비', () => {
 
     /* 막히지 않는다 — 고를 수 없는 일을 시키지 않는다. */
     expect(screen.queryByText(t.errors.equipmentMissing)).toBeNull();
-    expect(screen.getByText('설비 합성 설비')).toBeTruthy();
 
     const asked = requests.find((request) => request.url.pathname === DOWNTIMES_PATH);
     expect(asked?.url.searchParams.get('equipmentId')).toBe(String(TERMINAL_EQUIPMENT_ID));
@@ -1093,8 +1097,6 @@ describe('DowntimeRegisterScreen — 단말에 붙은 설비', () => {
     );
 
     await flush();
-
-    expect(screen.getByText(`설비 ${EQUIPMENT_CODE}`)).toBeTruthy();
 
     const asked = requests.find((request) => request.url.pathname === DOWNTIMES_PATH);
     expect(asked?.url.searchParams.get('equipmentId')).toBe(String(EQUIPMENT_ID));

@@ -11,6 +11,7 @@ import userEvent from '@testing-library/user-event';
 import { useLocation } from 'react-router';
 
 import { PopIdentityProvider, type PopIdentity } from '../../patterns/pop-identity';
+import { PuToastHost } from '../../patterns/pop-uniform';
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
 import { WorkStartScreen } from './screen';
 
@@ -529,6 +530,8 @@ export const renderScreen = (
     <PopIdentityProvider value={identity}>
       <WorkStartScreen />
       <LocationProbe />
+      {/* 결과 알림 자리 — 실제로는 POP 셸이 하나 둔다(POP 통일 규칙 13). */}
+      <PuToastHost />
     </PopIdentityProvider>,
     { fetch: stubbed.fetch, route: '/pop/work-start', routeState },
   );

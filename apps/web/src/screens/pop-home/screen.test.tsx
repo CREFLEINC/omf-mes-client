@@ -107,9 +107,9 @@ describe('PopHomeScreen — 홈(#291)', () => {
     expect(
       shortcuts
         .getAllByRole('button')
-        .filter((button) => button.classList.contains('pop-home__tile'))
-        .map((tile) => tile.querySelector('span:last-child')?.textContent),
-    ).toEqual(['생산 작업', '작업 지시 목록', '출하 포장']);
+        .filter((button) => button.classList.contains('home-tile'))
+        .map((tile) => tile.querySelector('.name')?.textContent),
+    ).toEqual(['생산 작업', '작업지시 목록', '출하 포장']);
   });
 
   it('남은 작업·바로가기를 누르면 그 화면으로 간다', async () => {
@@ -119,7 +119,7 @@ describe('PopHomeScreen — 홈(#291)', () => {
     await user.click(
       await within(
         screen.getByRole('region', { name: new RegExp(`^${t.remainingTitle}`, 'u') }),
-      ).findByRole('button', { name: messages.popChrome.remaining.count('작업 지시 목록', 3) }),
+      ).findByRole('button', { name: messages.popChrome.remaining.count('작업지시 목록', 3) }),
     );
     expect(screen.getByText('지금: /pop/work-start')).toBeInTheDocument();
   });
@@ -158,7 +158,7 @@ describe('PopHomeScreen — 홈(#291)', () => {
     expect(card.getByText(t.nextPlan('FG-COVER', '200'))).toBeInTheDocument();
 
     /*
-     * 진행·대기는 작업 지시 목록과 같은 조건(open)·설비 축으로, 완료는 오늘 0시 이후 갱신분(updatedSince)으로
+     * 진행·대기는 작업지시 목록과 같은 조건(open)·설비 축으로, 완료는 오늘 0시 이후 갱신분(updatedSince)으로
      * 묻는다 — POP 단말은 그 두 길로만 목록을 읽는다(서버 단말 읽기 규칙 · #291).
      */
     expect(queries.map((url) => url.searchParams.get('statusCode')).sort()).toEqual([
@@ -174,7 +174,7 @@ describe('PopHomeScreen — 홈(#291)', () => {
       expect(url.searchParams.get('includeUnplannedEquipment')).toBe('true');
     }
 
-    /* 다음 작업을 누르면 그 W/O 를 고른 채로 작업 지시 목록을 연다 — 홈에서 보던 설비 범위(지정 설비)와 함께. */
+    /* 다음 작업을 누르면 그 W/O 를 고른 채로 작업지시 목록을 연다 — 홈에서 보던 설비 범위(지정 설비)와 함께. */
     await user.click(card.getByRole('button', { name: new RegExp(NEXT.workOrderNo, 'u') }));
     expect(screen.getByText('지금: /pop/work-start')).toBeInTheDocument();
     expect(
@@ -189,14 +189,14 @@ describe('PopHomeScreen — 홈(#291)', () => {
     const queries: URL[] = [];
     setup({}, EQUIPMENT, queries, 7);
 
-    const toggle = within(await screen.findByRole('group', { name: t.statusScopeLabel }));
-    expect(toggle.getByRole('button', { name: t.statusMyEquipment('조립 1호기') })).toHaveAttribute(
-      'aria-pressed',
+    const toggle = within(await screen.findByRole('tablist', { name: t.statusScopeLabel }));
+    expect(toggle.getByRole('tab', { name: t.statusMyEquipment('조립 1호기') })).toHaveAttribute(
+      'aria-selected',
       'true',
     );
     await waitFor(() => expect(queries).toHaveLength(3));
 
-    await user.click(toggle.getByRole('button', { name: t.statusEveryEquipment }));
+    await user.click(toggle.getByRole('tab', { name: t.statusEveryEquipment }));
     await waitFor(() => expect(queries).toHaveLength(6));
     for (const url of queries.slice(3)) {
       expect(url.searchParams.get('plannedEquipmentId')).toBeNull();
@@ -227,11 +227,11 @@ describe('PopHomeScreen — 홈(#291)', () => {
     const tileNames = () =>
       shortcuts()
         .getAllByRole('button')
-        .filter((button) => button.classList.contains('pop-home__tile'))
-        .map((tile) => tile.querySelector('span:last-child')?.textContent);
+        .filter((button) => button.classList.contains('home-tile'))
+        .map((tile) => tile.querySelector('.name')?.textContent);
 
     await waitFor(() => {
-      expect(tileNames()).toEqual(['생산 작업', '작업 지시 목록', '출하 포장']);
+      expect(tileNames()).toEqual(['생산 작업', '작업지시 목록', '출하 포장']);
     });
 
     await user.click(shortcuts().getByRole('button', { name: t.edit }));
@@ -239,7 +239,7 @@ describe('PopHomeScreen — 홈(#291)', () => {
     await user.click(shortcuts().getByRole('button', { name: '비가동 실적 입력' }));
     await user.click(shortcuts().getByRole('button', { name: t.editDone }));
 
-    expect(tileNames()).toEqual(['작업 지시 목록', '출하 포장', '비가동 실적 입력']);
+    expect(tileNames()).toEqual(['작업지시 목록', '출하 포장', '비가동 실적 입력']);
     expect(JSON.parse(window.localStorage.getItem('omf.pop.home.shortcuts') ?? 'null')).toEqual([
       '/pop/work-start',
       '/pop/packing',
@@ -249,7 +249,7 @@ describe('PopHomeScreen — 홈(#291)', () => {
     await user.click(shortcuts().getByRole('button', { name: t.edit }));
     await user.click(shortcuts().getByRole('button', { name: t.editReset }));
     await user.click(shortcuts().getByRole('button', { name: t.editDone }));
-    expect(tileNames()).toEqual(['생산 작업', '작업 지시 목록', '출하 포장']);
+    expect(tileNames()).toEqual(['생산 작업', '작업지시 목록', '출하 포장']);
     expect(window.localStorage.getItem('omf.pop.home.shortcuts')).toBeNull();
   });
 });

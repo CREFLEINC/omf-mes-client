@@ -13,19 +13,29 @@ export const workHoldRegister = {
     workerLabel: '사번',
     workerUnknown: '사번 미확인',
     /** 작업지시 없이 들어온 자리. 목록을 스스로 열지 않는 화면이라 되돌아갈 곳을 말한다. */
-    missingWorkOrder: '작업지시를 받지 못했습니다. 작업지시 목록에서 지시를 고른 뒤 들어오세요.',
+    missingWorkOrder:
+      '작업지시를 받지 못했습니다. 작업지시 목록에서 작업지시를 선택한 뒤 들어오세요.',
   },
 
   /**
    * 세션 구획 — 이 화면은 **세션이 열려 있어야만 성립한다**(스펙 §5-2).
    * 세션이 없는 것은 오류가 아니라 「아직 시작하지 않았다」이므로 그렇게 말한다.
    */
+  /** 본문 맨 위 작업지시 띠(POP 통일 시안 #295). */
+  band: {
+    title: '작업지시 (W/O)',
+    process: '공정',
+    item: '제품',
+    planQty: '계획수량',
+  },
+
   session: {
     sectionLabel: '현재 세션',
+    /** 세션이 없을 때 「현재 세션」 구획의 빈 모양. */
+    empty: '진행 중인 작업 세션이 없습니다.',
     sessionNo: (no: number) => `세션 #${String(no)}`,
     startedLabel: '시작',
     elapsedLabel: '경과',
-    statusLabel: '상태',
     loading: '세션을 확인하는 중입니다.',
     loadFailed: '현재 세션을 불러오지 못했습니다.',
     /** ⛔ 진입 차단 — 세션이 없으면 중단을 기록할 수 없다(스펙 §6). */
@@ -39,9 +49,6 @@ export const workHoldRegister = {
   /** 이벤트 이력 — 기록 전용이다. 정정 경로가 없다는 사실을 목록 옆에 세운다. */
   history: {
     sectionLabel: '이벤트 이력',
-    timeColumn: '시각',
-    typeColumn: '구분',
-    reasonColumn: '사유',
     empty: '기록된 이벤트가 없습니다.',
     loadFailed: '이벤트 이력을 불러오지 못했습니다.',
   },
@@ -64,6 +71,9 @@ export const workHoldRegister = {
       '연결이 끊겨 이전에 받아 둔 사유 목록을 보이고 있습니다. 최신이 아닐 수 있습니다.',
     /** ⭐ 비고는 작업지시 중단 본문이 받는다 — 적은 것이 실제로 저장된다. */
     remarksLabel: '비고',
+    optional: '(선택)',
+    reasonPlaceholder: '중단 사유를 선택하세요',
+    reset: '입력 초기화',
     stopAction: '중단 등록',
     resumeAction: '재개',
     /** 세션이 이미 중단 상태면 중단을 한 번 더 걸지 않는다(스펙 §6). */
@@ -125,6 +135,13 @@ export const workHoldRegister = {
    * 서버가 내려 준다(2026-09-06 개정). 화면이 이름표를 들고 있으면 고객이 늘린 사유가 코드로만
    * 보이거나, 이름을 바꿔도 화면이 옛 이름을 계속 말한다.
    */
+
+  /** 처리 결과 알림(아래 가운데) — 누른 동작에 맞는 말로. */
+  toast: {
+    stopped: '중단을 등록했습니다.',
+    resumed: '재개를 등록했습니다.',
+    ended: '세션을 종료했습니다.',
+  },
 
   errors: {
     retry: '다시 시도',

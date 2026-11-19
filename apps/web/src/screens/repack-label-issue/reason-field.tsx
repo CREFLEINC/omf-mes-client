@@ -2,9 +2,13 @@ import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
 import { PopSelect as Select } from '../../patterns/pop-select';
+import { PuField, PuNote, PuTiles } from '../../patterns/pop-uniform';
 import type { CodeValue } from './types';
 
 const t = messages.repackLabelIssue.issue;
+
+/** 이만큼까지는 타일로 고른다(규칙 7). 넘으면 고르기 창. */
+const TILE_LIMIT = 6;
 
 export interface ReasonFieldProps {
   reasons: readonly CodeValue[];
@@ -16,8 +20,8 @@ export interface ReasonFieldProps {
 }
 
 /**
- * 재발행 사유 칸 — **인쇄 창 안에 선다**(사용자 지시 2026-09-17). 사유가 필요한 인쇄는 창에서
- * 사유를 고르고 [인쇄]를 누른다. 구획에 늘 서 있으면 최초 발행에도 칸이 자리를 차지했다.
+ * 재인쇄 사유 칸 — **인쇄 창 안에 선다**(사용자 지시 2026-09-17). 사유가 필요한 인쇄는 창에서
+ * 사유를 고르고 [재인쇄]를 누른다.
  */
 export const ReasonField = ({
   reasons,
@@ -27,32 +31,34 @@ export const ReasonField = ({
   serverError,
 }: ReasonFieldProps) => {
   const reasonId = useId();
-  const reasonErrorId = useId();
+  const options = reasons.map((reason) => ({ value: reason.code, label: reason.codeName }));
 
   return (
-    <div className="pop-repack-field pop-repack-reason">
-      <label htmlFor={reasonId}>{t.reasonLabel}</label>
-      <p className="pop-repack-reason-note">{t.reasonRequiredNote}</p>
-      <Select
-        id={reasonId}
-        options={reasons.map((reason) => ({ value: reason.code, label: reason.codeName }))}
-        value={reasonCode === '' ? null : reasonCode}
-        onChange={onReasonChange}
-        placeholder={t.reasonPlaceholder}
-        className="pop-repack-select"
-        disabled={reasons.length === 0}
-        invalid={serverError !== null}
-        aria-describedby={serverError === null ? undefined : reasonErrorId}
-      />
-      {reasonsFailed && <p className="pop-repack-note">{t.reasonsFailed}</p>}
-      {!reasonsFailed && reasons.length === 0 && (
-        <p className="pop-repack-note">{t.reasonsEmpty}</p>
+    <PuField label={t.reasonLabel} required htmlFor={reasonId}>
+      {options.length <= TILE_LIMIT ? (
+        options.length > 0 && (
+          <PuTiles
+            label={t.reasonLabel}
+            cols={2}
+            options={options}
+            value={reasonCode === '' ? null : reasonCode}
+            onChange={onReasonChange}
+          />
+        )
+      ) : (
+        <Select
+          id={reasonId}
+          aria-label={t.reasonLabel}
+          options={options}
+          value={reasonCode === '' ? null : reasonCode}
+          onChange={onReasonChange}
+          placeholder={t.reasonPlaceholder}
+          invalid={serverError !== null || reasonCode === ''}
+        />
       )}
-      {serverError !== null && (
-        <p className="pop-repack-error" id={reasonErrorId} role="alert">
-          {serverError}
-        </p>
-      )}
-    </div>
+      {reasonsFailed && <PuNote tone="warn">{t.reasonsFailed}</PuNote>}
+      {!reasonsFailed && reasons.length === 0 && <PuNote tone="warn">{t.reasonsEmpty}</PuNote>}
+      {serverError !== null && <PuNote tone="bad">{serverError}</PuNote>}
+    </PuField>
   );
 };

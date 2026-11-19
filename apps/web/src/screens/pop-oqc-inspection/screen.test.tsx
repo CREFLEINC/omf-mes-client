@@ -75,12 +75,18 @@ const openWaitingRequest = async (user: ReturnType<typeof userEvent.setup>) => {
   await screen.findByLabelText(pop.result.fields.accepted);
 };
 
-const fillJudgment = async (user: ReturnType<typeof userEvent.setup>) => {
+const fillQuantities = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.type(screen.getByLabelText(pop.result.fields.accepted), '480');
   await user.type(screen.getByLabelText(pop.result.fields.rejected), '15');
   await user.type(screen.getByLabelText(pop.result.fields.held), '5');
+};
+
+/* 1 수량 입력 → [저장](2단계로) → 2 최종 판정에서 종합 판정을 고른다(#295 두 단계). */
+const fillJudgment = async (user: ReturnType<typeof userEvent.setup>) => {
+  await fillQuantities(user);
+  await user.click(screen.getByRole('button', { name: pop.bar.next }));
   await user.click(
-    within(screen.getByRole('group', { name: pop.result.judgmentStep })).getByRole('button', {
+    within(screen.getByRole('radiogroup', { name: pop.result.judgmentStep })).getByRole('radio', {
       name: '합격',
     }),
   );
@@ -92,8 +98,8 @@ describe('PopOqcInspectionScreen (P-04-06)', () => {
     const { queueQueries } = renderScreen('900028');
 
     expect(
-      await screen.findByRole('button', { name: new RegExp(pop.queue.heading, 'u') }),
-    ).toHaveAttribute('aria-pressed', 'true');
+      await screen.findByRole('tab', { name: new RegExp(pop.queue.heading, 'u') }),
+    ).toHaveAttribute('aria-selected', 'true');
     await waitFor(() => expect(queueQueries).toHaveLength(2));
     for (const query of queueQueries) expect(query.get('inspectionTypeCode')).toBe('OQC');
     expect(queueQueries.map((query) => query.get('pendingOnly')).sort()).toEqual(['false', 'true']);
@@ -108,7 +114,7 @@ describe('PopOqcInspectionScreen (P-04-06)', () => {
 
     await openWaitingRequest(user);
     await fillJudgment(user);
-    expect(screen.getByRole('button', { name: '합격' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('radio', { name: '합격' })).toHaveAttribute('aria-checked', 'true');
 
     await user.click(screen.getByRole('button', { name: pop.bar.save }));
     await user.click(
@@ -124,23 +130,33 @@ describe('PopOqcInspectionScreen (P-04-06)', () => {
     expect(body.statusCode).toBe('CONFIRMED');
   });
 
-  it('바닥 띠가 저장을 막는 이유를 말하고, 판정을 고르면 저장할 수 있다고 말한다', async () => {
+  it('꺼진 단추에 손을 올리면 막는 이유가 보이고, 판정을 고르면 저장할 수 있다', async () => {
     const user = userEvent.setup();
     renderScreen('900028');
 
-    expect(await screen.findByText(pop.bar.blocked.noSelection)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: pop.bar.next })).toHaveAttribute(
+      'title',
+      pop.bar.blocked.noSelection,
+    );
     await openWaitingRequest(user);
-    expect(screen.getByText(pop.bar.blocked.totals)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: pop.bar.next })).toBeDisabled();
+    expect(screen.getByRole('button', { name: pop.bar.next })).toHaveAttribute(
+      'title',
+      pop.bar.blocked.totals,
+    );
 
-    await user.type(screen.getByLabelText(pop.result.fields.accepted), '480');
-    await user.type(screen.getByLabelText(pop.result.fields.rejected), '15');
-    await user.type(screen.getByLabelText(pop.result.fields.held), '5');
-    expect(screen.getByText(pop.bar.blocked.judgment)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: pop.bar.save })).toBeDisabled();
+    await fillQuantities(user);
+    await user.click(screen.getByRole('button', { name: pop.bar.next }));
+    const save = screen.getByRole('button', { name: pop.bar.save });
+    expect(save).toBeDisabled();
+    expect(save).toHaveAttribute('title', pop.bar.blocked.judgment);
 
-    await user.click(screen.getByRole('button', { name: '합격' }));
-    expect(screen.getByText(pop.bar.ready)).toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: '합격' }));
     expect(screen.getByRole('button', { name: pop.bar.save })).toBeEnabled();
+
+    /* [이전]으로 돌아가도 넣은 값은 그대로다. */
+    await user.click(screen.getByRole('button', { name: pop.bar.prev }));
+    expect(screen.getByLabelText(pop.result.fields.accepted)).toHaveValue('480');
   });
 
   it('판정별 LOT 상태를 서버 전이와 같은 말로 미리 말한다(합격 → 정상 · 보류 → 검사 대기 · 불합격 → 불량)', async () => {
@@ -151,10 +167,10 @@ describe('PopOqcInspectionScreen (P-04-06)', () => {
     await fillJudgment(user);
     expect(screen.getByText(pop.warning.directionRelease)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '보류' }));
+    await user.click(screen.getByRole('radio', { name: '보류' }));
     expect(screen.getByText(pop.warning.directionPending)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '불합격' }));
+    await user.click(screen.getByRole('radio', { name: '불합격' }));
     expect(screen.getByText(pop.warning.directionHold)).toBeInTheDocument();
   });
 
@@ -167,7 +183,10 @@ describe('PopOqcInspectionScreen (P-04-06)', () => {
 
     expect(screen.getByRole('button', { name: pop.bar.save })).toBeDisabled();
     expect(screen.getAllByText(messages.popChrome.workerMissing).length).toBeGreaterThan(0);
-    expect(screen.getByText(pop.bar.blocked.worker)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: pop.bar.save })).toHaveAttribute(
+      'title',
+      pop.bar.blocked.worker,
+    );
     expect(saves).toHaveLength(0);
   });
 });

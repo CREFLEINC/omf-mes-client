@@ -45,16 +45,18 @@ export const PLANNED_STATUS_CODE = 'PLANNED';
  * ⚠ **질의 축이 하나라 두 번 묻는다.** `open` 은 「배포됐고 안 끝났다」이고 `statusCode` 는
  * 한 값만 받는다. 두 답을 합치되 **쪽 나누기는 배포된 쪽을 따른다** — 배포 전은 건수가 적고,
  * 고를 수 없는 줄이 쪽을 밀어내면 정작 고를 것이 뒤로 넘어간다.
+ *
+ * ⭐ 배포된 쪽의 `size` 는 목록 구획에 들어가는 건수다(#295 · 구획 안 스크롤 없음). 조건·정렬은 그대로.
  */
-export const useReworkWorkOrders = (page = 1) => {
+export const useReworkWorkOrders = (page = 1, size = 20) => {
   const { client } = useApiClient();
   const open = useQuery({
-    queryKey: [...reworkResultKeys.list, 'open', page],
+    queryKey: [...reworkResultKeys.list, 'open', page, size],
     queryFn: () =>
       runRequest(() =>
         client.GET('/production/work-orders', {
           params: {
-            query: { workOrderTypeCode: REWORK_WORK_ORDER_TYPE_CODE, open: true, page, size: 20 },
+            query: { workOrderTypeCode: REWORK_WORK_ORDER_TYPE_CODE, open: true, page, size },
           },
         }),
       ),

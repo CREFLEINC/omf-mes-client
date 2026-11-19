@@ -1,15 +1,24 @@
-import { AlertBanner, Button, TextField, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, useRef, useState, type FormEvent } from 'react';
+import { useId, useRef, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { usePopIdentity } from '../../patterns/pop-identity';
+import {
+  PuBand,
+  PuEmpty,
+  PuNote,
+  PuScanField,
+  PuScreen,
+  PuSection,
+  puToast,
+} from '../../patterns/pop-uniform';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { HeaderPanel } from './header-panel';
 import { NgPanel } from './ng-panel';
 import { useOpenSheet, useSaveHeader, useSaveNgs, useSaveStep, useSheet } from './queries';
 import { StepPanel } from './step-panel';
+import './uniform.css';
 
 const t = messages.popInspectionSheet;
 
@@ -23,7 +32,7 @@ const t = messages.popInspectionSheet;
  */
 export const PopInspectionSheetScreen = () => {
   const titleId = useId();
-  const toast = useToast();
+  const sectionId = `${titleId}-top`;
   const identity = usePopIdentity();
   const workerSession = useWorkerSession();
   const workerNo = identity.workerNo?.trim() || workerSession?.worker.workerNo?.trim() || null;
@@ -34,106 +43,80 @@ export const PopInspectionSheetScreen = () => {
 
   const sheet = useSheet(sheetId, worker);
   const open = useOpenSheet((opened) => setSheetId(opened.inspectionSheetId), worker);
-  const saveHeader = useSaveHeader(
-    sheetId,
-    () => toast.show({ variant: 'success', description: t.header.saved }),
-    worker,
-  );
+  const saveHeader = useSaveHeader(sheetId, () => puToast(t.header.saved), worker);
   // 임시 저장(판정 없이 항목만)이었는지 — 알림 문구를 가른다.
   const draftSave = useRef(false);
   const saveStep = useSaveStep(
     sheetId,
-    () =>
-      toast.show({
-        variant: 'success',
-        description: draftSave.current ? t.step.draftSaved : messages.common.saved,
-      }),
+    () => puToast(draftSave.current ? t.step.draftSaved : messages.common.saved),
     worker,
   );
-  const saveNgs = useSaveNgs(
-    sheetId,
-    () => toast.show({ variant: 'success', description: t.ng.saved }),
-    worker,
-  );
+  const saveNgs = useSaveNgs(sheetId, () => puToast(t.ng.saved), worker);
 
   const data = sheet.data ?? null;
   const completed = data?.statusCode === 'COMPLETED';
   const disabled = workerNo === null || completed;
 
-  const submit = (event: FormEvent<HTMLFormElement>): void => {
-    event.preventDefault();
-    const serialNo = serialDraft.trim();
+  /* 스캐너의 Enter · [직접 입력] — 종전 [열기]와 같은 일(#295 규칙 7: 스캔 칸 한 모양). */
+  const submit = (value: string): void => {
+    const serialNo = value.trim();
     if (serialNo === '' || workerNo === null) return;
     setSheetId(null);
     open.write({ serialNo });
   };
 
   return (
-    <main className="pop-shell pop-ui pop-inspection-sheet" aria-labelledby={titleId}>
-      <header className="pop-header">
-        <h1 id={titleId} className="pop-title">
-          {t.title}
-        </h1>
-      </header>
+    <PuScreen className="isheet-u" labelledBy={titleId}>
+      <h1 id={titleId} className="pop-visually-hidden">
+        {t.title}
+      </h1>
 
       <PopWorkerMissingBanner workerNo={workerNo} />
 
-      <section className="pane pop-fixed pop-inspection-sheet-top" aria-label={t.serial.label}>
-        <form onSubmit={submit} className="pop-inspection-sheet-serial">
-          <TextField
-            label={t.serial.label}
-            placeholder={t.serial.placeholder}
-            size="lg"
-            value={serialDraft}
-            error={open.fieldErrors.serialNo}
-            onChange={(event) => setSerialDraft(event.target.value)}
-          />
-          <Button
-            type="submit"
-            variant="outlined"
-            size="lg"
-            disabled={workerNo === null || open.isSaving}
-          >
-            {open.isSaving ? t.serial.opening : t.serial.open}
-          </Button>
-        </form>
+      <PuSection title={t.summary.heading} grow={false} className="isheet-top" labelId={sectionId}>
+        <PuScanField
+          label={t.serial.label}
+          placeholder={t.serial.placeholder}
+          value={serialDraft}
+          onChange={setSerialDraft}
+          onSubmit={submit}
+          done={data !== null && data.serialNo === serialDraft.trim()}
+          error={open.fieldErrors.serialNo}
+          disabled={workerNo === null || open.isSaving}
+          autoFocus
+        />
         <SaveErrorBanner error={open.error} />
-        {sheet.isError && <AlertBanner variant="error">{t.summary.loadFailed}</AlertBanner>}
+        {sheet.isError && <PuNote tone="bad">{t.summary.loadFailed}</PuNote>}
         {data !== null && (
-          <dl className="pop-figures pop-inspection-sheet-summary">
-            <div>
-              <dt>{t.summary.serial}</dt>
-              <dd>{data.serialNo}</dd>
-            </div>
-            <div>
-              <dt>{t.summary.model}</dt>
-              <dd>{`${data.itemName} (${data.itemCode})`}</dd>
-            </div>
-            <div>
-              <dt>{t.summary.lot}</dt>
-              <dd>{data.lotNo}</dd>
-            </div>
-            <div>
-              <dt>{t.summary.workOrder}</dt>
-              <dd>{data.workOrderNo ?? '-'}</dd>
-            </div>
-            <div>
-              <dt>{t.summary.status}</dt>
-              <dd>{t.summary.statuses[data.statusCode] ?? data.statusCode}</dd>
-            </div>
-            <div>
-              <dt>{t.summary.writer}</dt>
-              <dd>{data.writtenWorkerName ?? '-'}</dd>
-            </div>
-          </dl>
+          <PuBand
+            grid={3}
+            label={t.summary.heading}
+            items={[
+              { label: t.summary.serial, value: <span className="pu-mono">{data.serialNo}</span> },
+              { label: t.summary.model, value: `${data.itemName} (${data.itemCode})` },
+              { label: t.summary.lot, value: data.lotNo },
+              { label: t.summary.workOrder, value: data.workOrderNo ?? '-' },
+              {
+                label: t.summary.status,
+                value: t.summary.statuses[data.statusCode] ?? data.statusCode,
+              },
+              { label: t.summary.writer, value: data.writtenWorkerName ?? '-' },
+            ]}
+          />
         )}
-        {completed && <AlertBanner variant="info">{t.summary.completed}</AlertBanner>}
-      </section>
+        {completed && <PuNote>{t.summary.completed}</PuNote>}
+      </PuSection>
 
-      {data !== null && (
-        <div className="pop-panes">
+      {data === null ? (
+        !sheet.isError && (
+          <section className="pu-card isheet-empty" aria-label={t.summary.heading}>
+            <PuEmpty icon="scan" title={t.summary.emptyTitle} />
+          </section>
+        )
+      ) : (
+        <div className="isheet-panes">
           {/* 저장 뒤 다시 받은 검사표로 입력을 새로 채운다 — 서버가 정리한 값(공백 → 비움)이 화면과 같아지게. */}
-          <div key={sheet.dataUpdatedAt}>
+          <div key={sheet.dataUpdatedAt} className="isheet-col">
             <SaveErrorBanner
               error={saveHeader.error ?? saveStep.error ?? saveNgs.error}
               onReload={() => void sheet.refetch()}
@@ -162,6 +145,6 @@ export const PopInspectionSheetScreen = () => {
           />
         </div>
       )}
-    </main>
+    </PuScreen>
   );
 };

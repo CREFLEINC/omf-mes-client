@@ -1,57 +1,31 @@
-import { Button, Card, Chip, Skeleton, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 
+import {
+  PuButton,
+  PuChip,
+  PuEmpty,
+  PuNote,
+  PuPager,
+  PuSection,
+  useClientPage,
+  useFitTableRows,
+} from '../../patterns/pop-uniform';
 import { toClockLabel, toDurationLabel, toRangeLabel } from './formatting';
+import { toLocalDay } from './queries';
 import type { TodayRow } from './today-rows';
 
 const t = messages.downtimeRegister;
 
-/*
- * ⚠ **열은 모두 가운데로 세운다**(사용자 결정 2026-09-07 · 다섯 POP 목록에 같은 처리). 열을
- *    양 끝에 붙여 두면 첫 열이 남는 폭을 다 가져가 값과 값 사이가 손바닥만큼 벌어진다.
- */
-const TODAY_COLUMNS: Column<TodayRow>[] = [
-  {
-    key: 'interval',
-    header: t.today.columns.interval,
-    align: 'center',
-    /* ⭐ 열 폭: 구간·길이·사유를 줄이고 메모를 넓힌다(사용자 지시 2026-09-17). */
-    width: '22%',
-    render: (row) => toRangeLabel(row.startedAt, row.endedAt),
-  },
-  {
-    key: 'duration',
-    header: t.today.columns.duration,
-    align: 'center',
-    width: '10%',
-    /*
-     * 끝나지 않은 줄에는 길이 대신 「진행 중」이 선다 — 서버가 그 값을 내지 않고(끝나지
-     * 않았다), 화면이 지어내면 아직 늘고 있는 구간이 끝난 것처럼 보인다.
-     */
-    render: (row) =>
-      row.endedAt === null
-        ? t.today.ongoingRow
-        : row.durationMinutes === null
-          ? ''
-          : toDurationLabel(row.durationMinutes),
-  },
-  {
-    key: 'reason',
-    header: t.today.columns.reason,
-    align: 'center',
-    width: '20%',
-    render: (row) => row.reasonLabel,
-  },
-  /* ⭐ 메모 열(사용자 지시 2026-09-17). 적지 않았으면 비워 둔다. */
-  {
-    key: 'remarks',
-    header: t.today.columns.remarks,
-    /* ⭐ 메모는 헤더·데이터 모두 왼쪽 정렬(사용자 지시 2026-09-17) — 긴 글이라 가운데면 읽기 어렵다. */
-    align: 'start',
-    width: '48%',
-    render: (row) => row.remarks ?? '',
-  },
-];
+/** 줄의 「비가동 시간」 칸 — 끝나지 않은 줄에는 길이 대신 「진행 중」(서버가 그 값을 내지 않는다). */
+const durationCell = (row: TodayRow): ReactNode =>
+  row.endedAt === null ? (
+    <PuChip tone="info">{t.today.ongoingRow}</PuChip>
+  ) : row.durationMinutes === null ? (
+    ''
+  ) : (
+    toDurationLabel(row.durationMinutes)
+  );
 
 export interface TodayPanelProps {
   rows: readonly TodayRow[];
@@ -87,6 +61,10 @@ export interface TodayPanelProps {
    */
   unsettledCount: number;
   now: Date;
+  /** 위쪽에 서는 진행 중 비가동 줄 · 막힘 안내(있으면). 서면 한 쪽 건수가 저절로 줄어든다. */
+  lead?: ReactNode;
+  /** 바뀌면 첫 쪽(가장 최근)을 보인다 — 새로 저장했을 때. */
+  firstPageKey: number;
 }
 
 /**
@@ -111,7 +89,20 @@ export const TodayPanel = ({
   isLocalOnly,
   unsettledCount,
   now,
+  lead,
+  firstPageKey,
 }: TodayPanelProps) => {
+  const titleId = useId();
+  const tableRef = useRef<HTMLDivElement>(null);
+  /* 한 쪽 줄 수 = 구획 높이에 들어가는 만큼(#295 규칙 1) — 구획 안 스크롤 없음. */
+  const fit = useFitTableRows(tableRef, { fallback: 3 });
+  const paged = useClientPage(rows, fit);
+  const { setPage } = paged;
+
+  useEffect(() => {
+    setPage(1);
+  }, [firstPageKey, setPage]);
+
   /*
    * 합계를 못 받은 이유가 둘이다 — 끊겨서 아예 부르지 않았거나, 불렀는데 실패했거나.
    * **0으로 채우지 않는다**: 없는 값과 모르는 값을 같은 모양으로 그리면 오늘 비가동이 없었던
@@ -123,82 +114,91 @@ export const TodayPanel = ({
         ? t.today.localOnly
         : t.errors.summaryUnavailable
       : toDurationLabel(totalMinutes);
-  const basisLabel = toClockLabel(now.toISOString());
+  const clock = toClockLabel(now.toISOString());
+  const basisLabel = clock === null ? null : `${toLocalDay(now)} ${clock}`;
+
+  /*
+   * ⛔ 묻지 않았으면 건수를 말하지 않는다 — `0건` 은 「없었다」로 읽힌다.
+   *    합계 자리가 이미 지키는 구분을 건수에도 그대로 적용한다.
+   */
+  const meta =
+    isError || isPending || !isAsked ? undefined : (
+      <span className="dt-today-meta">
+        {t.today.summary(rows.length, totalLabel)}
+        {basisLabel !== null && <span>{t.today.basis(basisLabel)}</span>}
+      </span>
+    );
+
+  /*
+   * ⭐ **범위를 말하는 자리는 하나다.** 끊겼으면 「내 단말 입력분만」이고, 붙어 있는데 아직 서버
+   *    합계에 안 들어간 줄이 있으면 그 사실이다(#1149). 끊긴 상태에서 둘을 함께 말하지 않는다.
+   */
+  const scope = isLocalOnly ? (
+    <PuNote tone="warn">
+      <b>{t.today.localOnly}</b> {t.today.localOnlyDescription}
+    </PuNote>
+  ) : isAsked && unsettledCount > 0 ? (
+    <PuNote tone="warn">
+      <b>{t.today.unsettled(unsettledCount)}</b> {t.today.unsettledDescription}
+    </PuNote>
+  ) : null;
+
+  const body = isError ? (
+    /* ⛔ 실패했다고 구획을 걷지 않는다 — 자리는 그대로 두고 내용만 바꾼다(#1094). */
+    <PuNote
+      tone="bad"
+      action={
+        <PuButton size="sm" onClick={onRetry}>
+          {t.today.retry}
+        </PuButton>
+      }
+    >
+      {t.today.loadFailed}
+    </PuNote>
+  ) : isPending ? null : rows.length === 0 ? (
+    <PuEmpty icon="clock" title={isAsked ? t.today.empty : notAskedLabel} />
+  ) : (
+    <div ref={tableRef} className="dt-table pu-fit">
+      <div className="pu-table-wrap">
+        <table className="pu-table">
+          <thead>
+            <tr>
+              <th style={{ width: '22%' }}>{t.today.columns.interval}</th>
+              <th style={{ width: '18%' }}>{t.today.columns.duration}</th>
+              <th style={{ width: '20%' }}>{t.today.columns.reason}</th>
+              <th>{t.today.columns.remarks}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paged.items.map((row) => (
+              <tr key={row.key}>
+                <td>{toRangeLabel(row.startedAt, row.endedAt)}</td>
+                <td>{durationCell(row)}</td>
+                <td title={row.reasonLabel}>{row.reasonLabel}</td>
+                {/* 긴 메모는 한 줄로 줄여 보인다 — 구획 안 스크롤 없음. */}
+                <td title={row.remarks ?? ''}>{row.remarks ?? ''}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 
   return (
-    <Card bordered className="pop-section pop-fixed downtime-today">
-      <section className="downtime-section" aria-label={t.today.title}>
-        <h2 className="pane-title">{t.today.title}</h2>
-
-        {isError ? (
-          <p className="downtime-today-summary">
-            {t.today.loadFailed}{' '}
-            <Button variant="text" size="md" onClick={onRetry}>
-              {t.today.retry}
-            </Button>
-          </p>
-        ) : isPending ? (
-          <Skeleton height="72px" aria-label={t.today.title} />
-        ) : (
-          <>
-            <p className="downtime-today-summary">
-              {/*
-               * ⛔ 묻지 않았으면 건수를 말하지 않는다 — `0건` 은 「없었다」로 읽힌다.
-               *    합계 자리가 이미 지키는 구분을 건수에도 그대로 적용한다.
-               */}
-              {isAsked ? t.today.summary(rows.length, totalLabel) : notAskedLabel}
-              {isAsked && basisLabel !== null && (
-                <span className="downtime-today-basis">{t.today.basis(basisLabel)}</span>
-              )}
-            </p>
-
-            {/*
-             * ⭐ **범위를 말하는 자리는 하나다.** 끊겼으면 「내 단말 입력분만」이고, 붙어
-             *    있는데 아직 서버 합계에 안 들어간 줄이 있으면 그 사실이다(#1149).
-             *
-             * ⛔ **끊긴 상태에서 둘을 함께 말하지 않는다** — 끊겨 있으면 목록 전체가 이 단말
-             *    것이라 앞 문장이 이미 그 말을 하고 있다.
-             */}
-            {isLocalOnly ? (
-              <p className="downtime-today-scope">
-                <Chip variant="status" size="md" status="warning">
-                  {t.today.localOnly}
-                </Chip>
-                <span>{t.today.localOnlyDescription}</span>
-              </p>
-            ) : (
-              isAsked &&
-              unsettledCount > 0 && (
-                <p className="downtime-today-scope">
-                  <Chip variant="status" size="md" status="warning">
-                    {t.today.unsettled(unsettledCount)}
-                  </Chip>
-                  <span>{t.today.unsettledDescription}</span>
-                </p>
-              )
-            )}
-
-            {/*
-             * ⭐ **목록은 `Table` 이다**(스펙 §7 DS 매핑 —「오늘 목록 | a | `Table`」). 줄을
-             *    `<ul>` 로 직접 그리면 열 폭·줄무늬·빈 상태가 다른 POP 목록과 따로 놀고,
-             *    같은 화면 안에서 열이 어긋나 보인다.
-             *
-             * ⚠ 스펙 §3 도면에는 열 이름 줄이 없다. DS `Table` 은 머리 줄을 끄지 못하므로
-             *    그대로 서고, 그만큼(약 40px) ④ 의 몫을 더 쓴다 — 이 구획은 남는 높이를
-             *    갖고 제 안에서 굴리므로 잘리지는 않는다(§3-1 예산은 요청서로 올렸다).
-             */}
-            <div className="downtime-today-list">
-              <Table
-                columns={TODAY_COLUMNS}
-                rows={[...rows]}
-                getRowId={(row) => row.key}
-                density="compact"
-                empty={isAsked ? t.today.empty : notAskedLabel}
-              />
-            </div>
-          </>
-        )}
-      </section>
-    </Card>
+    <PuSection title={t.today.title} labelId={titleId} meta={meta} split className="dt-today">
+      <div className="dt-today-top">
+        {lead}
+        {scope}
+        {body}
+      </div>
+      <PuPager
+        total={rows.length === 0 ? 0 : paged.total}
+        page={paged.page}
+        pages={paged.pages}
+        label={t.today.title}
+        onPage={setPage}
+      />
+    </PuSection>
   );
 };

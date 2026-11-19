@@ -8,8 +8,8 @@ import { isEmergencyTypeCodeKnown } from './work-order-type';
 /** 이 화면이 소유하는 캐시 키. 다른 화면 슬라이스의 키 모듈을 참조하지 않는다. */
 export const emergencyWorkOrderFieldKeys = {
   all: ['emergency-work-order-field'] as const,
-  list: (typeCode: string, page: number) =>
-    ['emergency-work-order-field', 'list', typeCode, page] as const,
+  list: (typeCode: string, page: number, size: number) =>
+    ['emergency-work-order-field', 'list', typeCode, page, size] as const,
 };
 
 /** 한 번에 되찾아 볼 최대 건수. 현장에서 한 화면에 담기는 만큼만 본다. */
@@ -30,6 +30,8 @@ export const LIST_SIZE = 20;
 export const useEmergencyWorkOrders = (
   typeCode: string,
   page = 1,
+  /** 한 쪽 건수 — 화면은 구획 높이에 들어가는 만큼(`useFitCount`)을 준다(POP 통일 시안 #295). */
+  size = LIST_SIZE,
 ): UseQueryResult<WorkOrderListResponse> => {
   const { client } = useApiClient();
   /*
@@ -39,14 +41,14 @@ export const useEmergencyWorkOrders = (
   const isKnown = isEmergencyTypeCodeKnown(typeCode);
 
   return useQuery({
-    queryKey: emergencyWorkOrderFieldKeys.list(typeCode, page),
+    queryKey: emergencyWorkOrderFieldKeys.list(typeCode, page, size),
     enabled: isKnown,
     queryFn: () => {
       if (!isKnown) throw new Error('긴급 유형 값을 모르는 채로는 조회하지 않습니다.');
 
       return runRequest(() =>
         client.GET('/production/work-orders', {
-          params: { query: { workOrderTypeCode: typeCode, open: true, page, size: LIST_SIZE } },
+          params: { query: { workOrderTypeCode: typeCode, open: true, page, size } },
         }),
       );
     },

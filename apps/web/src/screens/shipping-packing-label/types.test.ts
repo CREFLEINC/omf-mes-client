@@ -69,7 +69,12 @@ describe('toDeliveryRow', () => {
 describe('toPackingRow', () => {
   it('LOT 을 비운다 — 한 포장에 여러 LOT 이 섞여 하나로 정하면 계보가 거짓이 된다', () => {
     expect(
-      toPackingRow({ handlingUnitId: 9601, handlingUnitNo: 'SYN-CTN-0001', statusCode: 'SYN_HU' }),
+      toPackingRow({
+        handlingUnitId: 9601,
+        handlingUnitNo: 'SYN-CTN-0001',
+        handlingUnitTypeCode: 'SYN_TYPE',
+        statusCode: 'SYN_HU',
+      }),
     ).toEqual({
       targetId: 9601,
       issueTargetId: 9601,
