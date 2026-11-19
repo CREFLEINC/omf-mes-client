@@ -130,9 +130,9 @@ const BatchForm = ({
   const uomCode = group.uomCode;
   const isCountUom = isIntegerUom(uoms, uomCode);
   const check = checkBatch(draft, isCountUom);
-  /* kg 같은 개수 아닌 단위는 「수량」 대신 「양」(사용자 지시 2026-11-19). */
+  /* kg 같은 개수 아닌 단위는 「수」 대신 「양」(사용자 지시 2026-11-19). 단위는 칸 오른쪽에 붙인다. */
   const lotQtyLabel = isCountUom ? t.lotQty : t.lotQtyAmount;
-  const perLabel = isCountUom ? t.qtyPerPackage(uomCode) : t.qtyPerPackageAmount(uomCode);
+  const perLabel = isCountUom ? t.qtyPerPackage : t.qtyPerPackageAmount;
   const shownLotQty =
     draft.packageOn && !draft.lotQtyEdited && check.product !== null
       ? String(check.product)
@@ -159,9 +159,13 @@ const BatchForm = ({
     lotQty: shownLotQty,
     lotCount: draft.lotCount,
   };
+  /*
+   * 포장 수 · 포장당 수를 바꾸면 LOT 1개 수를 곱으로 다시 채운다(사용자 지시 2026-11-19 「자동 키인」).
+   * 손으로 친 LOT 1개 수는 포장 칸을 다시 바꾸기 전까지 그대로 두고, 곱과 다르면 빨간 줄로 막는다.
+   */
   const setTargetValue = (next: string): void => {
-    if (activeTarget === 'count') update({ packageCount: next });
-    else if (activeTarget === 'per') update({ qtyPerPackage: next });
+    if (activeTarget === 'count') update({ packageCount: next, lotQtyEdited: false });
+    else if (activeTarget === 'per') update({ qtyPerPackage: next, lotQtyEdited: false });
     else if (activeTarget === 'lotQty') update({ lotQty: next, lotQtyEdited: next !== '' });
     else update({ lotCount: next });
   };
@@ -226,18 +230,11 @@ const BatchForm = ({
           count: check.package.count,
           qtyPerPackage: check.package.qtyPerPackage,
         });
-  const calcLine =
+  const calcText =
     pkgText === null || check.product === null
       ? null
-      : errors.mismatch === true && check.lotQty !== null
-        ? {
-            ok: false,
-            text: (isCountUom ? t.errors.mismatch : t.errors.mismatchAmount)(
-              formatBaseQty(check.lotQty, uomCode),
-              `${pkgText} = ${formatBaseQty(check.product, uomCode)}`,
-            ),
-          }
-        : { ok: true, text: `${pkgText} = ${formatBaseQty(check.product, uomCode)}` };
+      : `${pkgText} = ${formatBaseQty(check.product, uomCode)}`;
+  const isMismatch = errors.mismatch === true;
   return (
     <PuDialog
       title={t.title}
@@ -278,11 +275,10 @@ const BatchForm = ({
               </span>
             </div>
           </div>
-          <div>
-            <span className="pu-chip mll-batch-source" data-source={prefill.source}>
-              {t.source[prefill.source]}
-            </span>
-          </div>
+          {/* 출처 칩은 창 머리 오른쪽(제목 줄)에 세운다(사용자 지시 2026-11-19) — 자리는 `uniform.css`. */}
+          <span className="pu-chip mll-batch-source" data-source={prefill.source}>
+            {t.source[prefill.source]}
+          </span>
 
           <section className="mll-batch-package" aria-label={t.package}>
             <div className="mll-batch-package-top">
@@ -294,7 +290,7 @@ const BatchForm = ({
                   type="button"
                   aria-pressed={draft.packageOn}
                   onClick={() => {
-                    update({ packageOn: true });
+                    update({ packageOn: true, lotQtyEdited: false });
                   }}
                 >
                   {t.packageOn}
@@ -344,26 +340,29 @@ const BatchForm = ({
                     need={draft.packageCount === ''}
                     value={draft.packageCount}
                     onChange={(event) => {
-                      update({ packageCount: event.target.value });
+                      update({ packageCount: event.target.value, lotQtyEdited: false });
                     }}
                   />
                 </PuField>
                 <PuField label={perLabel} required htmlFor={fieldId('per')}>
-                  <PuInput
-                    id={fieldId('per')}
-                    target={activeTarget === 'per'}
-                    onFocus={() => {
-                      setTarget('per');
-                      setTextTarget(false);
-                    }}
-                    inputMode="decimal"
-                    numeric
-                    need={draft.qtyPerPackage === ''}
-                    value={draft.qtyPerPackage}
-                    onChange={(event) => {
-                      update({ qtyPerPackage: event.target.value });
-                    }}
-                  />
+                  <div className="pu-row">
+                    <PuInput
+                      id={fieldId('per')}
+                      target={activeTarget === 'per'}
+                      onFocus={() => {
+                        setTarget('per');
+                        setTextTarget(false);
+                      }}
+                      inputMode="decimal"
+                      numeric
+                      need={draft.qtyPerPackage === ''}
+                      value={draft.qtyPerPackage}
+                      onChange={(event) => {
+                        update({ qtyPerPackage: event.target.value, lotQtyEdited: false });
+                      }}
+                    />
+                    <PuUnit>{uomCode}</PuUnit>
+                  </div>
                 </PuField>
               </div>
             ) : null}
@@ -374,7 +373,7 @@ const BatchForm = ({
             )}
           </section>
 
-          <div className="mll-batch-grid">
+          <div className="mll-batch-grid is-lot">
             <PuField label={lotQtyLabel} required htmlFor={fieldId('lotQty')}>
               <div className="pu-row">
                 <PuInput
@@ -396,21 +395,26 @@ const BatchForm = ({
                 <span title={t.unitLocked}>
                   <PuUnit>{uomCode}</PuUnit>
                 </span>
+                {/* 포장 곱은 칸 오른쪽 칩으로(사용자 지시 2026-11-19) — 곱과 다르면 칩은 빨갛고 까닭은 칸 아래. */}
+                {calcText === null ? null : (
+                  <span className="pu-chip mll-batch-calc-chip" data-ok={!isMismatch}>
+                    {calcText}
+                  </span>
+                )}
               </div>
               {lotQtyError === null ? null : (
                 <p className="mll-batch-calc" data-ok="false" role="alert">
                   {lotQtyError}
                 </p>
               )}
-              {calcLine === null ? null : (
-                <p
-                  className="mll-batch-calc"
-                  data-ok={calcLine.ok}
-                  role={calcLine.ok ? undefined : 'alert'}
-                >
-                  {calcLine.text}
+              {isMismatch && calcText !== null && check.lotQty !== null ? (
+                <p className="mll-batch-calc" data-ok="false" role="alert">
+                  {(isCountUom ? t.errors.mismatch : t.errors.mismatchAmount)(
+                    formatBaseQty(check.lotQty, uomCode),
+                    calcText,
+                  )}
                 </p>
-              )}
+              ) : null}
             </PuField>
             <PuField label={t.supplierLot} optional={t.optional} htmlFor={fieldId('supplierLot')}>
               <PuInput

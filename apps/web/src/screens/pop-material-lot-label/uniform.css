@@ -139,23 +139,31 @@
 }
 
 .mll-table .pu-table td.mll-lotcol {
-  max-width: 280px;
+  font-size: 12px;
 }
 
-.mll-sub {
-  display: block;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--pu-text-3);
+/* 긴 칸(번호 · 공급사 LOT · 품목)은 남는 폭을 나눠 갖고 넘치면 말줄임 + title — 머리 글도 같이 줄어든다(1024). */
+.mll-table .pu-table th.mll-lotcol,
+.mll-table .pu-table th.mll-slotcol {
+  max-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.mll-lot {
-  display: block;
-  font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.mll-table .pu-table th.mll-lotcol {
+  width: 72%;
+}
+
+.mll-table .pu-table th.mll-slotcol {
+  width: 28%;
+}
+
+.mll-table.is-reprint .pu-table th.mll-lotcol {
+  width: 31%;
+}
+
+.mll-table.is-reprint .pu-table th.mll-slotcol {
+  width: 9%;
 }
 
 .mll-table tr.mll-dis td {
@@ -359,16 +367,19 @@
   .mll-units > .pu-btn {
     padding: 0 10px;
   }
-
-  .mll-table.is-reprint .pu-table td.mll-lotcol {
-    max-width: 180px;
-  }
 }
 
 /* 자재 관리 LOT 만들기 창 — 칸 이름은 위, 필수는 빨간 *(규칙 5). */
 .mll-batch {
   display: grid;
   gap: 12px;
+  /* 입력 칸은 창 위에서부터(사용자 지시 2026-11-19) — 키패드만 아래에 붙는다. */
+  align-self: start;
+}
+
+/* 단위(EA · 개)는 칸마다 입력 칸 높이 가운데에 선다. */
+.mll-batch-grid .pu-row {
+  align-items: center;
 }
 
 .mll-batch-pair {
@@ -503,4 +514,99 @@
 /* 공급사 LOT 번호를 칠 때는 글자판(열 칸)이 들어가도록 오른쪽 칸을 넓힌다. */
 .mll-batch-wrap:has(.mll-batch-keypad[data-text='true']) {
   grid-template-columns: minmax(0, 1fr) 440px;
+}
+
+/* 만들기 창 머리 오른쪽 출처 칩(사용자 지시 2026-11-19) — 제목 줄(`pu-dialog-head`)에 맞춰 세운다. */
+.pu-dialog:has(.mll-batch-wrap) {
+  position: relative;
+}
+
+.mll-batch-source {
+  position: absolute;
+  top: 14px;
+  right: 20px;
+  max-width: calc(100% - 280px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* LOT 1개 수 칸은 오른쪽에 포장 곱 칩을 같은 줄에 둔다 — 그 칸을 넓힌다. */
+.mll-batch-grid.is-lot {
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 0.8fr);
+}
+
+.mll-batch-grid .pu-row > .pu-input {
+  flex: 1 1 0;
+  min-width: 72px;
+}
+
+.mll-batch-calc-chip {
+  flex: none;
+  align-self: center;
+  white-space: nowrap;
+  background: var(--pu-ok-bg);
+  color: var(--pu-ok);
+}
+
+.mll-batch-calc-chip[data-ok='false'] {
+  background: var(--pu-bad-bg);
+  color: var(--pu-bad);
+}
+
+/* 왼쪽 찾기 칸을 누르면 칸 바로 아래에 글자판(사용자 지시 2026-11-19) — 그동안 왼쪽 열을 넓힌다. */
+.mll-body .pu-cols.list:has(.mll-kbd) {
+  grid-template-columns: 480px minmax(0, 1fr);
+}
+
+.mll-left-top:has(> .mll-kbd) {
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+/* 글자판이 열린 동안 목록은 이름 한 줄로 — 낮은 화면(768)에서도 한 건이 잘리지 않는다. */
+.mll-left-top:has(> .mll-kbd) .mll-pairs .pu-item {
+  padding-top: 6px;
+  padding-bottom: 6px;
+  gap: 2px;
+}
+
+.mll-left-top:has(> .mll-kbd) .mll-pairs .pu-item-sub {
+  display: none;
+}
+
+/* 꺼진 키를 눌러도 칸에서 초점이 빠져 글자판이 닫히지 않게 누름을 글자판 바탕으로 넘긴다. */
+.mll-kbd .pu-tkbd button:disabled {
+  pointer-events: none;
+}
+
+/* 1024 단말 재발행 표는 칸이 아홉 개라 칸 안 여백을 줄이고 짧은 칸 머리 글(재고 수량)은 두 줄로 — 번호 칸 폭을 남긴다. */
+@media (max-width: 1100px) {
+  .mll-table.is-reprint .pu-table th,
+  .mll-table.is-reprint .pu-table td {
+    padding-inline: 6px;
+  }
+
+  .mll-table.is-reprint .pu-table th.fit:not(.mid) {
+    white-space: normal;
+    line-height: 15px;
+  }
+
+  .mll-table.is-reprint .pu-table th.mll-lotcol {
+    width: 30%;
+  }
+
+  .mll-table.is-reprint .pu-table th.mll-slotcol {
+    width: 11%;
+  }
+}
+
+/* 1024 에서 글자판(공급사 LOT 번호)이 열리면 입력 열이 좁아진다 — LOT 1개 수는 한 줄을 다 쓰고, 공급사 LOT 번호 · 개수는 다음 줄에 나란히. */
+@media (max-width: 1100px) {
+  .mll-batch-wrap:has(.mll-batch-keypad[data-text='true']) .mll-batch-grid.is-lot {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mll-batch-wrap:has(.mll-batch-keypad[data-text='true']) .mll-batch-grid.is-lot > :first-child {
+    grid-column: 1 / -1;
+  }
 }

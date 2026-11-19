@@ -151,7 +151,7 @@ describe('US1-4 라벨 발행 — 차례로 보낸다', () => {
     expect(commands).toContain('PRINT 1,1');
   });
 
-  it('다 나오면 LOT 마다 「인쇄됨」을 남기고, 「확인」을 누르면 라벨 칸이 회차로 바뀐다', async () => {
+  it('다 나오면 LOT 마다 「인쇄됨」을 남기고, 「확인」을 누르면 발행 대기에서 빠져 재발행 탭에 회차로 선다', async () => {
     const user = userEvent.setup();
     installShell();
     renderLabelScreen(waitingOnly(2));
@@ -163,8 +163,12 @@ describe('US1-4 라벨 발행 — 차례로 보낸다', () => {
 
     await user.click(screen.getByRole('button', { name: t.bar.confirm }));
 
-    await waitFor(() => expect(rows()[0]?.closest('tr')).toHaveTextContent('1회'));
-    expect(screen.getByText(t.work.guide)).toBeInTheDocument();
+    /* 발행한 LOT 은 발행 대기에 남지 않는다(사용자 지시 2026-11-19) — 재발행 탭에만 선다. */
+    await waitFor(() => expect(rows()).toHaveLength(0));
+    expect(screen.getByText(t.work.waitingEmpty)).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: t.tabs.reprint }));
+    const reprintTable = await screen.findByRole('group', { name: t.work.reprintTitle });
+    expect(within(reprintTable).getAllByText(t.table.issuedSeq(1))).toHaveLength(2);
   });
 
   it('⛔ 보내기 직전에 보니 다른 단말이 먼저 찍은 LOT 은 보내지 않고 「이미 발행됨」으로 둔다', async () => {
@@ -356,6 +360,20 @@ describe('US1-4 다시 인쇄', () => {
     await waitFor(() => expect(reprintRows()).toHaveLength(2));
     expect(reprintRows()[0]?.closest('tr')).toHaveTextContent('|0001');
     expect(reprintRows()[1]?.closest('tr')).toHaveTextContent('|0002');
+  });
+
+  it('[전체 선택 (N건)]은 재발행 목록 전부를 고른다 — [선택 해제]로 푼다', async () => {
+    const user = userEvent.setup();
+    renderLabelScreen(PRINTED());
+
+    await user.click(await screen.findByRole('tab', { name: t.tabs.reprint }));
+    await waitFor(() => expect(reprintRows()).toHaveLength(2));
+    await user.click(screen.getByRole('button', { name: t.bar.selectAllReprint(2) }));
+
+    expect(reprintRows().every((row) => row.getAttribute('aria-checked') === 'true')).toBe(true);
+
+    await user.click(screen.getByRole('button', { name: t.bar.clear }));
+    expect(reprintRows().some((row) => row.getAttribute('aria-checked') === 'true')).toBe(false);
   });
 
   it('US1-4 사유를 고르기 전에는 보내지 않고, 고른 사유를 본문에 실어 출력 차수를 올린다', async () => {

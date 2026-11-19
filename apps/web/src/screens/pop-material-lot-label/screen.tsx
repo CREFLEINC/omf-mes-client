@@ -20,6 +20,7 @@ import {
   PuScreen,
   PuSection,
   PuSeg,
+  PuTextKeyboard,
   PuTiles,
   puToast,
   useClientPage,
@@ -83,6 +84,9 @@ const matchesPair = (group: WaitingMaterialLotGroup, query: string): boolean =>
     value.toLocaleLowerCase('en-US').includes(query),
   );
 
+/** 라벨을 아직 발행하지 않았다 — 발행 대기 탭의 대상. 발행 기록이 하나라도 있으면 재발행 탭이다. */
+const isUnissued = (lot: LabelLot): boolean => lot.lastIssue === null;
+
 /** 재인쇄 대상 — 최근 2주 안에 출력했고 폐기되지 않은 LOT(screens/P-01-01.md 「재발행」 탭). */
 const reprintable = (lots: readonly LabelLot[], now: Date): LabelLot[] => {
   const since = now.getTime() - REPRINT_DAYS * 24 * 60 * 60 * 1000;
@@ -124,6 +128,8 @@ export const PopMaterialLotLabelScreen = () => {
   const [tab, setTab] = useState<Tab>('pairs');
   const [folded, setFolded] = useState(false);
   const [query, setQuery] = useState('');
+  /* 왼쪽 찾기 칸을 누르면 글자판을 연다(사용자 지시 2026-11-19) — 글자판으로 쳐도 손으로 친 것과 같다. */
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [scanNote, setScanNote] = useState<string | null>(null);
   const [pairKey, setPairKey] = useState<string | null>(null);
   const [checked, setChecked] = useState<ReadonlySet<number>>(new Set());
@@ -185,10 +191,14 @@ export const PopMaterialLotLabelScreen = () => {
     null;
   const currentKey = current === null ? null : pairKeyOf(current.supplierId, current.itemId);
   const currentLots = useMemo(() => (current === null ? [] : toLabelLots(current)), [current]);
-  /* 입하 대기를 위에, 폐기를 아래에 — 폐기는 고를 수 없다(screens/P-01-01.md). */
+  /*
+   * 입하 대기를 위에, 폐기를 아래에 — 폐기는 고를 수 없다(screens/P-01-01.md).
+   * ⭐ 라벨을 이미 발행한 LOT 은 발행 대기 표에 두지 않는다 — 재발행 탭에만 선다(사용자 지시 2026-11-19).
+   */
   const waitingLots = useMemo(
     () =>
       currentLots
+        .filter(isUnissued)
         .filter((lot) => isWaiting(lot) || isVoided(lot))
         .sort((left, right) => Number(isVoided(left)) - Number(isVoided(right))),
     [currentLots],
@@ -209,7 +219,8 @@ export const PopMaterialLotLabelScreen = () => {
             lot.itemCode.toLocaleLowerCase('en-US').includes(normalized),
         );
   }, [allLots, normalized]);
-  const waitingTotal = waiting.groups.reduce((sum, group) => sum + group.waitingCount, 0);
+  /* 탭 건수는 표와 같은 규칙 — 라벨을 아직 발행하지 않은 입하 대기 LOT(사용자 지시 2026-11-19). */
+  const waitingTotal = allLots.filter((lot) => isWaiting(lot) && isUnissued(lot)).length;
   const waitingCount = waitingLots.filter(isWaiting).length;
 
   const lotById = useMemo(
@@ -237,7 +248,7 @@ export const PopMaterialLotLabelScreen = () => {
   const pairSize = useFitCount(pairFitRef, { fallback: 4 });
   const rowSize = useFitTableRows(tableFitRef, { fallback: 5 });
   /* 입하 대기 · 폐기 다음에 최근 입하된 LOT(흐림, 고를 수 없음) — 결과를 그리는 동안은 그때 표 그대로. */
-  const pairTableLots = snapshot?.lots ?? [...waitingLots, ...receivedLots];
+  const pairTableLots = snapshot?.lots ?? [...waitingLots, ...receivedLots.filter(isUnissued)];
   const reprintTableLots = snapshot?.lots ?? reprintLots;
   const pairPage = useClientPage(groups, pairSize);
   const waitPage = useClientPage(pairTableLots, rowSize);
@@ -257,6 +268,11 @@ export const PopMaterialLotLabelScreen = () => {
     pairPage.setPage(1);
     waitPage.setPage(1);
     reprintPage.setPage(1);
+  };
+
+  const changePairQuery = (next: string): void => {
+    setQuery(next);
+    pairPage.setPage(1);
   };
 
   const choosePair = (key: string): void => {
@@ -279,6 +295,11 @@ export const PopMaterialLotLabelScreen = () => {
 
   const selectAllWaiting = (): void => {
     setChecked(new Set(waitingLots.filter(isWaiting).map((lot) => lot.lotId)));
+  };
+
+  /* 재발행 탭 전체 선택 — 지금 보이는 목록(찾기 반영) 전부(사용자 지시 2026-11-19). */
+  const selectAllReprint = (): void => {
+    setChecked(new Set(reprintLots.map((lot) => lot.lotId)));
   };
 
   const chooseUnit = (next: IssueUnit): void => {
@@ -518,12 +539,28 @@ export const PopMaterialLotLabelScreen = () => {
                 value={query}
                 disabled={isFrozen}
                 autoComplete="off"
+                onFocus={() => {
+                  setKeyboardOpen(true);
+                }}
+                onBlur={() => {
+                  setKeyboardOpen(false);
+                }}
                 onChange={(event) => {
-                  setQuery(event.target.value);
-                  pairPage.setPage(1);
+                  changePairQuery(event.target.value);
                 }}
               />
             </label>
+            {keyboardOpen && !isFrozen ? (
+              /* 글자판의 빈 곳을 눌러도 칸에서 초점이 빠져 닫히지 않게 한다. */
+              <div
+                className="mll-kbd"
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                }}
+              >
+                <PuTextKeyboard value={query} onChange={changePairQuery} />
+              </div>
+            ) : null}
             {waiting.isPending ? null : groups.length === 0 ? (
               <PuEmpty icon="search" title={normalized === '' ? t.pairs.empty : t.pairs.noMatch} />
             ) : (
@@ -687,11 +724,17 @@ export const PopMaterialLotLabelScreen = () => {
       className="mll-right"
       meta={
         <>
-          <span>
-            {isShowingResults
-              ? t.work.resultSummary(summary.printed, summary.unfinished.length)
-              : t.work.reprintCount(reprintLots.length)}
-          </span>
+          {/* 「출력한 자재 관리 LOT N개」는 두지 않는다 — 건수는 아래 쪽 넘김이 말한다(사용자 지시 2026-11-19). */}
+          {isShowingResults ? (
+            <span>{t.work.resultSummary(summary.printed, summary.unfinished.length)}</span>
+          ) : null}
+          <PuButton
+            size="sm"
+            disabled={isFrozen || reprintLots.length === 0}
+            onClick={selectAllReprint}
+          >
+            {t.bar.selectAllReprint(reprintLots.length)}
+          </PuButton>
           <PuButton size="sm" disabled={isFrozen || checked.size === 0} onClick={clearSelection}>
             {t.bar.clear}
           </PuButton>

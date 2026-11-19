@@ -73,7 +73,7 @@ describe('US1-1 기본 정보로 채운다', () => {
 
     expect(within(dialog).getByText(tb.source.default)).toBeInTheDocument();
     expect(field(dialog, tb.packageCount).value).toBe('10');
-    expect(field(dialog, tb.qtyPerPackage('EA')).value).toBe('100');
+    expect(field(dialog, tb.qtyPerPackage).value).toBe('100');
     expect(field(dialog, tb.lotQty).value).toBe('1000');
     expect(within(dialog).getByText('봉지 10 × 100 = 1,000 EA')).toBeInTheDocument();
   });
@@ -122,6 +122,22 @@ describe('US1-1 기본 정보로 채운다', () => {
     expect(within(dialog).getByRole('button', { name: tb.submitIdle })).toBeDisabled();
   });
 
+  it('LOT 1개 수를 손으로 바꿔도 포장 수 · 포장당 수를 다시 바꾸면 곱으로 다시 채운다(자동 키인)', async () => {
+    const user = userEvent.setup();
+    renderLabelScreen();
+
+    const dialog = await openBatch(user);
+    await user.tripleClick(field(dialog, tb.lotQty));
+    await user.keyboard('950');
+    expect(field(dialog, tb.lotQty).value).toBe('950');
+
+    await user.clear(field(dialog, tb.qtyPerPackage));
+    await user.type(field(dialog, tb.qtyPerPackage), '50');
+
+    expect(field(dialog, tb.lotQty).value).toBe('500');
+    expect(within(dialog).getByText('봉지 10 × 50 = 500 EA')).toBeInTheDocument();
+  });
+
   it('개수는 1~200 정수다 — 201 이면 막는다', async () => {
     const user = userEvent.setup();
     renderLabelScreen();
@@ -147,7 +163,7 @@ describe('US1-3 기본 정보가 없으면', () => {
 
     expect(within(dialog).getByText(tb.source.itemStorage)).toBeInTheDocument();
     expect(field(dialog, tb.packageCount).value).toBe('');
-    expect(field(dialog, tb.qtyPerPackageAmount('TON')).value).toBe('');
+    expect(field(dialog, tb.qtyPerPackageAmount).value).toBe('');
     expect(field(dialog, tb.lotQtyAmount).value).toBe('');
 
     await user.click(within(dialog).getByRole('button', { name: tb.packageOff }));
@@ -185,7 +201,7 @@ describe('US1-3 기본 정보가 없으면', () => {
 
     const dialog = await openBatch(user);
 
-    expect(field(dialog, tb.qtyPerPackageAmount('TON')).value).toBe('0.5');
+    expect(field(dialog, tb.qtyPerPackageAmount).value).toBe('0.5');
     expect(field(dialog, tb.packageCount).value).toBe('');
   });
 });
@@ -267,27 +283,26 @@ describe('US1-5 공급사 LOT · 만들기', () => {
 });
 
 describe('US1-7 입하 대기 LOT 폐기', () => {
-  it('US1-7 고른 대기 LOT 을 확인 뒤 폐기한다 — 출력한 LOT 은 라벨을 떼라고 말하고, 폐기는 아래로 내려간다', async () => {
+  it('US1-7 고른 대기 LOT 을 확인 뒤 폐기한다 — 폐기는 아래로 내려간다', async () => {
     const user = userEvent.setup();
     const { sent } = renderLabelScreen();
 
     await waitFor(() =>
-      expect(screen.getAllByRole('checkbox', { name: /SYN-ITEM-01\|/u })).toHaveLength(3),
+      expect(screen.getAllByRole('checkbox', { name: /SYN-ITEM-01\|/u })).toHaveLength(2),
     );
+    await user.click(screen.getByRole('checkbox', { name: /\|0001 /u }));
     await user.click(screen.getByRole('checkbox', { name: /\|0002 /u }));
-    await user.click(screen.getByRole('checkbox', { name: /\|0003 /u }));
     await user.click(screen.getByRole('button', { name: t.bar.void(2) }));
 
     const dialog = await screen.findByRole('dialog', { name: t.voidDialog.title });
     expect(within(dialog).getByText(t.voidDialog.target(2))).toBeInTheDocument();
     expect(within(dialog).getByText(t.voidDialog.body, { exact: false })).toBeInTheDocument();
-    expect(within(dialog).getByText(t.voidDialog.printed(1), { exact: false })).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: t.voidDialog.confirm }));
 
     expect(await screen.findByText(t.voidDialog.done(2))).toBeInTheDocument();
-    expect(sentTo(sent, '/trace/lots:void')[0]?.body).toEqual({ lotIds: [9002, 9003] });
+    expect(sentTo(sent, '/trace/lots:void')[0]?.body).toEqual({ lotIds: [9001, 9002] });
     await waitFor(() =>
-      expect(screen.getAllByRole('checkbox', { name: /SYN-ITEM-01\|/u })).toHaveLength(1),
+      expect(screen.queryAllByRole('checkbox', { name: /SYN-ITEM-01\|/u })).toHaveLength(0),
     );
     const table = screen.getByRole('group', { name: t.work.waitingTitle });
     expect(within(table).getAllByText(t.lotState.voided)).toHaveLength(3);

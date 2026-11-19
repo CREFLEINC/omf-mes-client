@@ -110,8 +110,9 @@ describe('POP 표 — 긴 번호가 다른 열을 밀어내지 않는다', () =>
   });
 
   it('자재 관리 LOT 표 · 적재 위치 표도 번호(코드) 칸 폭을 못박는다', () => {
+    // 자재 관리 LOT 표는 칸마다 값 하나(#295) — 번호 칸은 남는 폭 비율 + `max-width: 0` 말줄임으로 묶는다.
     expect(read('src/screens/pop-material-lot-label/uniform.css')).toMatch(
-      cappedColumn('mll-table', 'mll-lotcol'),
+      /\.mll-table\s+\.pu-table\s+th\.mll-lotcol[^{]*\{[^}]*max-width:\s*0/u,
     );
     expect(read('src/screens/pop-location-label/uniform.css')).toMatch(
       cappedColumn('ll-table', 'll-code'),

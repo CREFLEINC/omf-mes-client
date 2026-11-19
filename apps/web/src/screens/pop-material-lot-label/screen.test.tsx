@@ -61,7 +61,8 @@ describe('PopMaterialLotLabelScreen — 공급사·품목(왼쪽)', () => {
 
     /* ⛔ 입하 LOT 탭 · 라벨 대기 입하 줄은 없다(FR-036 · D-19·D-25). */
     const tabs = within(screen.getByRole('tablist', { name: t.tabs.label })).getAllByRole('tab');
-    expect(tabs.map((tab) => tab.textContent)).toEqual([`${t.tabs.pairs}3`, t.tabs.reprint]);
+    /* 탭 건수는 라벨을 아직 발행하지 않은 입하 대기만 — 출력한 9003 은 재발행 탭이다(사용자 지시 2026-11-19). */
+    expect(tabs.map((tab) => tab.textContent)).toEqual([`${t.tabs.pairs}2`, t.tabs.reprint]);
     expect(screen.queryByText(/입하 줄/u)).toBeNull();
   });
 
@@ -99,10 +100,10 @@ describe('PopMaterialLotLabelScreen — 공급사·품목(왼쪽)', () => {
 });
 
 describe('PopMaterialLotLabelScreen — 오른쪽 표', () => {
-  it('입하 대기는 위에, 폐기는 아래에(고를 수 없음), 최근 입하된 LOT 은 표 맨 뒤에 입하 LOT 번호와 선다', async () => {
+  it('입하 대기는 위에, 폐기는 아래에(고를 수 없음) — 라벨을 발행한 LOT(입하 대기 · 입하됨)은 표에 없다', async () => {
     renderLabelScreen();
 
-    await waitFor(() => expect(waitingRows()).toHaveLength(3));
+    await waitFor(() => expect(waitingRows()).toHaveLength(2));
     const waitingTable = screen.getByRole('group', { name: t.work.waitingTitle });
     const text = waitingTable.textContent ?? '';
 
@@ -111,32 +112,38 @@ describe('PopMaterialLotLabelScreen — 오른쪽 표', () => {
     /* 폐기 LOT 은 체크 칸이 아니다. */
     expect(screen.queryByRole('checkbox', { name: /\|0004 /u })).toBeNull();
 
-    /* 최근 입하된 LOT — 같은 표 맨 뒤, 고를 수 없다(라벨은 재발행 탭). */
-    const received = within(waitingTable)
-      .getByText(t.table.inboundLot('SYN-IL-0011'))
-      .closest('tr');
-    expect(text.indexOf('|0004')).toBeLessThan(text.indexOf('SYN-IL-0011'));
-    expect(
-      within(received as HTMLElement).getByText(t.lotState.received('정상')),
-    ).toBeInTheDocument();
-    expect(within(received as HTMLElement).queryByRole('checkbox')).toBeNull();
+    /* 라벨을 발행한 LOT 은 발행 대기 표에 서지 않는다 — 재발행 탭에만(사용자 지시 2026-11-19). */
+    expect(text).not.toContain('|0003');
+    expect(text).not.toContain('SYN-IL-0011');
     expect(screen.getByText(t.work.receivedChip(1))).toBeInTheDocument();
   });
 
-  it('줄은 번호 · 재고 수량 · 포장 · 공급사 LOT · 상태 · 라벨을 적는다 — 출력한 LOT 은 회차와 시각', async () => {
+  it('줄은 번호 · 재고 수량 · 포장 · 공급사 LOT · 상태 · 라벨을 적는다 — 출력한 LOT 은 재발행 탭에 회차 · 시각 · 공급사 LOT 칸으로', async () => {
+    const user = userEvent.setup();
     renderLabelScreen();
 
-    await waitFor(() => expect(waitingRows()).toHaveLength(3));
+    await waitFor(() => expect(waitingRows()).toHaveLength(2));
     const unprinted = rowOf(/\|0001 /u);
-    const printed = rowOf(/\|0003 /u);
 
     expect(unprinted).toHaveTextContent('1,000 EA');
     expect(unprinted).toHaveTextContent('봉지 10 × 100');
     expect(unprinted).toHaveTextContent('SYN-SL-77');
     expect(unprinted).toHaveTextContent(t.lotState.waiting);
     expect(unprinted).toHaveTextContent(t.table.unprinted);
-    /* 08:12 는 공장 시각(UTC+7)이다. */
-    expect(printed).toHaveTextContent('1회11-11 08:12');
+    expect(screen.queryByRole('checkbox', { name: /\|0003 /u })).toBeNull();
+
+    await user.click(screen.getByRole('tab', { name: t.tabs.reprint }));
+    const printed = (await screen.findByRole('checkbox', { name: /\|0003 /u })).closest(
+      'tr',
+    ) as HTMLElement;
+    const cells = within(printed)
+      .getAllByRole('cell')
+      .map((cell) => cell.textContent);
+    /* 공급사 LOT · 출력(회차) · 최근 출력 일시는 제 칸에 따로 — 08:12 는 공장 시각(UTC+7)이다. */
+    expect(cells).toContain('SYN-SL-77');
+    expect(cells).toContain(t.table.issuedSeq(1));
+    expect(cells).toContain('11-11 08:12');
+    expect(screen.queryByText(/출력한 자재 관리 LOT/u)).toBeNull();
   });
 
   it('머리에 품목 · 공급사 · 기본 단위 · 기본 정보를 적는다', async () => {
@@ -178,7 +185,7 @@ describe('PopMaterialLotLabelScreen — 고르기와 작업 줄', () => {
     const user = userEvent.setup();
     renderLabelScreen();
 
-    await waitFor(() => expect(waitingRows()).toHaveLength(3));
+    await waitFor(() => expect(waitingRows()).toHaveLength(2));
     expect(screen.getByText(t.work.guide)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.bar.issueIdle })).toBeDisabled();
     expect(screen.getByRole('button', { name: t.bar.voidIdle })).toBeDisabled();
@@ -194,19 +201,18 @@ describe('PopMaterialLotLabelScreen — 고르기와 작업 줄', () => {
     expect(screen.getByRole('button', { name: t.bar.void(1) })).toBeEnabled();
   });
 
-  it('「입하 대기 전체 선택」은 입하 대기만 고르고, 이미 출력한 LOT 은 「재발행」 탭으로 안내한다', async () => {
+  it('「입하 대기 전체 선택」은 표에 선 미출력 입하 대기만 고른다', async () => {
     const user = userEvent.setup();
     renderLabelScreen();
 
-    await waitFor(() => expect(waitingRows()).toHaveLength(3));
-    await user.click(screen.getByRole('button', { name: t.bar.selectAllWaiting(3) }));
+    await waitFor(() => expect(waitingRows()).toHaveLength(2));
+    await user.click(screen.getByRole('button', { name: t.bar.selectAllWaiting(2) }));
 
     expect(waitingRows().filter((row) => row.getAttribute('aria-checked') === 'true')).toHaveLength(
-      3,
+      2,
     );
-    expect(screen.getByRole('button', { name: t.bar.void(3) })).toBeEnabled();
-    expect(screen.getByText(t.bar.printedNote(1))).toBeInTheDocument();
-    /* 첫 발행은 미출력만 — 2장. */
+    expect(screen.getByRole('button', { name: t.bar.void(2) })).toBeEnabled();
+    expect(screen.queryByText(t.bar.printedNote(1))).toBeNull();
     expect(screen.getByRole('button', { name: t.bar.issue(2) })).toBeEnabled();
 
     await user.click(screen.getByRole('button', { name: t.bar.clear }));
@@ -218,7 +224,7 @@ describe('PopMaterialLotLabelScreen — 고르기와 작업 줄', () => {
     const user = userEvent.setup();
     renderLabelScreen();
 
-    await waitFor(() => expect(waitingRows()).toHaveLength(3));
+    await waitFor(() => expect(waitingRows()).toHaveLength(2));
     await user.click(screen.getByRole('checkbox', { name: /\|0001 /u }));
     await user.click(pairButton(/SYN-ITEM-02/u));
 
@@ -230,7 +236,7 @@ describe('PopMaterialLotLabelScreen — 고르기와 작업 줄', () => {
     const user = userEvent.setup();
     renderLabelScreen({ identity: { workerNo: null } });
 
-    await waitFor(() => expect(waitingRows()).toHaveLength(3));
+    await waitFor(() => expect(waitingRows()).toHaveLength(2));
     await user.click(screen.getByRole('checkbox', { name: /\|0001 /u }));
 
     expect(screen.getByRole('button', { name: t.bar.issue(1) })).toBeDisabled();
@@ -302,7 +308,7 @@ describe('PopMaterialLotLabelScreen — 머리줄', () => {
   it('프린터 조회가 실패해도 목록은 그대로 쓴다', async () => {
     renderLabelScreen({ printersFail: true });
 
-    await waitFor(() => expect(waitingRows()).toHaveLength(3));
+    await waitFor(() => expect(waitingRows()).toHaveLength(2));
   });
 });
 

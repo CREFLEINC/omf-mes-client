@@ -14,9 +14,10 @@ const tStatus = messages.popMaterialLotLabel.status;
 /**
  * 표가 무엇을 보이는가(screens/P-01-01.md · #295 시안).
  *
- * - `waiting` 공급사·품목의 입하 대기(+ 폐기, 맨 뒤에 최근 입하된 LOT — 고를 수 없음)
- *   — 선택 · 번호(아래 공급사 LOT / 입하 LOT) · 재고 수량 · 포장 · 상태 · 라벨
- * - `reprint` 재발행 — 선택 · 번호 · 품목 · 재고 수량 · 포장 · 상태 · 출력
+ * - `waiting` 공급사·품목의 라벨 미발행 입하 대기(+ 폐기, 맨 뒤에 최근 입하된 LOT — 고를 수 없음)
+ *   — 선택 · 번호 · 공급사 LOT 번호 · 재고 수량 · 포장 · 상태 · 라벨
+ * - `reprint` 재발행 — 선택 · 번호 · 공급사 LOT 번호 · 품목 · 재고 수량 · 포장 · 상태 · 출력(회차) · 최근 출력 일시
+ * ⭐ 칸마다 값 하나(사용자 지시 2026-11-19) — 두 줄 묶음 칸은 두지 않는다.
  *
  * ⭐ 발행 중 · 결과 확인 전에는 마지막 칸이 그 LOT 의 결과다(체크 대신 결과 표식이 제자리에 붙는다).
  * ⭐ 줄 어디를 눌러도 고른다 — 첫 칸의 체크 단추가 읽어 주는 도구의 이름(번호·수량)을 갖는다.
@@ -93,18 +94,8 @@ export const LotStateChip = ({ lot }: { lot: LabelLot }) => {
   );
 };
 
-const LabelCell = ({ lot }: { lot: LabelLot }) =>
-  lot.lastIssue === null ? (
-    <span className="mll-sub">{t.unprinted}</span>
-  ) : (
-    <>
-      {`${String(lot.lastIssue.issueSeq)}회`}
-      <span className="mll-sub">{issuedWhen(lot.lastIssue.issuedAt)}</span>
-    </>
-  );
-
 /**
- * 자재 관리 LOT 표 — 줄은 두 줄 묶음(「재고 수량 · 포장」 등)이라 가로로 넘치지 않는다.
+ * 자재 관리 LOT 표 — 칸마다 값 하나, 긴 칸(번호 · 공급사 LOT · 품목)은 한 줄 말줄임이라 가로로 넘치지 않는다.
  * ⭐ LOT 번호는 저장된 그대로, 고정폭으로(규범 C-10).
  */
 export const LabelTable = ({
@@ -132,13 +123,20 @@ export const LabelTable = ({
           <thead>
             <tr>
               <th className="fit mid">{t.columns.check}</th>
-              <th className="fit">{t.columns.lotNo}</th>
-              {isReprint ? <th>{t.columns.item}</th> : null}
+              <th className="mll-lotcol" title={t.columns.lotNo}>
+                {t.columns.lotNo}
+              </th>
+              <th className="mll-slotcol" title={t.columns.supplierLot}>
+                {t.columns.supplierLot}
+              </th>
+              {isReprint ? <th className="mll-itemcol">{t.columns.item}</th> : null}
               <th className="num fit">{t.columns.qty}</th>
+              <th className="fit">{t.columns.package}</th>
               <th className="fit mid">{t.columns.status}</th>
-              <th className={isReprint ? 'fit' : undefined}>
+              <th className="fit">
                 {showResults ? t.columns.result : isReprint ? t.columns.printed : t.columns.label}
               </th>
+              {isReprint ? <th className="fit">{t.columns.lastPrinted}</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -147,11 +145,8 @@ export const LabelTable = ({
               const selectable = !showResults && (isReprint ? !isVoided(lot) : isWaiting(lot));
               const isChecked = checked.has(lot.lotId);
               const canToggle = selectable && !isLocked;
-              const packageText = formatPackage(lot.package);
-              const lotSub =
-                lot.inboundLotNo === null
-                  ? t.supplierLot(lot.supplierLotNo ?? t.none)
-                  : t.inboundLot(lot.inboundLotNo);
+              const packageText = formatPackage(lot.package) ?? t.noPackage;
+              const qtyText = `${formatQty(lot.lotQty)} ${lot.uomCode}`;
 
               return (
                 <tr
@@ -182,7 +177,7 @@ export const LabelTable = ({
                         role="checkbox"
                         className="mll-box"
                         aria-checked={isChecked}
-                        aria-label={t.rowName(lot.lotNo, `${formatQty(lot.lotQty)} ${lot.uomCode}`)}
+                        aria-label={t.rowName(lot.lotNo, qtyText)}
                         disabled={isLocked}
                         onClick={(event) => {
                           event.stopPropagation();
@@ -195,30 +190,41 @@ export const LabelTable = ({
                       <span className="mll-box is-off" aria-hidden="true" />
                     )}
                   </td>
-                  <td className="fit mll-lotcol" title={lot.lotNo}>
-                    <span className="pu-mono mll-lot">{lot.lotNo}</span>
-                    <span className="mll-sub">{lotSub}</span>
+                  {/* 칸마다 값 하나 — 넘치면 한 줄 말줄임 + title(사용자 지시 2026-11-19). */}
+                  <td className="pu-mono mll-lotcol" title={lot.lotNo}>
+                    {lot.lotNo}
+                  </td>
+                  <td className="mll-slotcol" title={lot.supplierLotNo ?? undefined}>
+                    {lot.supplierLotNo ?? t.none}
                   </td>
                   {isReprint ? (
                     <td title={`${lot.itemCode} ${lot.itemName}`}>
-                      {lot.itemCode}
-                      <span className="mll-sub">{lot.itemName}</span>
+                      <b>{lot.itemCode}</b> {lot.itemName}
                     </td>
                   ) : null}
-                  <td className="num fit">
-                    {`${formatQty(lot.lotQty)} ${lot.uomCode}`}
-                    <span className="mll-sub">{packageText ?? t.noPackage}</span>
-                  </td>
+                  <td className="num fit">{qtyText}</td>
+                  <td className="fit">{packageText}</td>
                   <td className="fit mid">
                     <LotStateChip lot={lot} />
                   </td>
-                  <td className={isReprint ? 'fit' : undefined}>
-                    {status === null ? (
-                      <LabelCell lot={lot} />
-                    ) : (
+                  <td className="fit">
+                    {status !== null ? (
                       <PuChip tone={statusTone(status)}>{statusText(status)}</PuChip>
+                    ) : lot.lastIssue === null ? (
+                      isReprint ? (
+                        t.none
+                      ) : (
+                        <span className="mll-dim">{t.unprinted}</span>
+                      )
+                    ) : (
+                      t.issuedSeq(lot.lastIssue.issueSeq)
                     )}
                   </td>
+                  {isReprint ? (
+                    <td className="fit">
+                      {lot.lastIssue === null ? t.none : issuedWhen(lot.lastIssue.issuedAt)}
+                    </td>
+                  ) : null}
                 </tr>
               );
             })}

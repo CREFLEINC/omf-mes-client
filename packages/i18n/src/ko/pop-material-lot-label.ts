@@ -63,7 +63,6 @@ export const popMaterialLotLabel = {
     receivedChip: (count: number) => `입하 ${count} · 재발행 탭`,
     pickPair: '왼쪽에서 공급사·품목을 고르세요.', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
     reprintTitle: '재발행',
-    reprintCount: (count: number) => `출력한 자재 관리 LOT ${count}개`,
     reprintEmpty: '최근 2주 안에 출력한 라벨이 없습니다.',
     /** 결과 표 머리 오른쪽 — 몇 장이 나왔고 몇 장이 안 나왔는가. */
     resultSummary: (printed: number, unfinished: number) =>
@@ -78,20 +77,22 @@ export const popMaterialLotLabel = {
       check: '선택',
       lotNo: '자재 관리 LOT 번호',
       item: '품목',
-      qty: '재고 수량 · 포장',
+      qty: '재고 수량',
+      package: '포장',
       status: '상태',
       label: '라벨',
       printed: '출력',
+      supplierLot: '공급사 LOT 번호',
+      lastPrinted: '최근 출력 일시',
       result: '결과',
     },
-    /** 최근 입하된 LOT 번호 아래 줄. */
-    inboundLot: (no: string) => `입하 LOT ${no}`,
-    supplierLot: (no: string) => `공급사 LOT ${no}`,
     none: '—',
     noPackage: '포장 없음',
     unprinted: '미출력',
     /** 라벨 칸 — 마지막 회차와 시각. */
     issuedAt: (seq: number, when: string) => `${seq}회 ${when}`,
+    /** 재발행 표 「출력」 칸 — 마지막 회차. */
+    issuedSeq: (seq: number) => `${seq}회`,
     /** 줄 전체가 체크 칸이다 — 읽어 주는 도구가 줄을 가를 수 있게 번호·수량을 이름에 싣는다. */
     rowName: (lotNo: string, qty: string) => `${lotNo} ${qty}`,
   },
@@ -133,6 +134,7 @@ export const popMaterialLotLabel = {
     printedNote: (count: number) =>
       `이미 출력한 ${count}장은 「재발행」 탭에서 사유를 선택해 재인쇄하세요`,
     selectAllWaiting: (count: number) => `입하 대기 전체 선택 (${count}건)`,
+    selectAllReprint: (count: number) => `전체 선택 (${count}건)`,
     voidIdle: '폐기',
     void: (count: number) => `입하 대기 ${count}개 폐기`,
     clear: '선택 해제',
@@ -233,10 +235,10 @@ export const popMaterialLotLabel = {
     packageUom: '포장 단위',
     packageUomPlaceholder: '고르세요',
     packageCount: '포장 수',
-    qtyPerPackage: (uomCode: string) => `포장당 수량 (${uomCode})`,
+    qtyPerPackage: '포장당 수',
     lotQtyAmount: 'LOT 1개 양',
-    qtyPerPackageAmount: (uomCode: string) => `포장당 양 (${uomCode})`,
-    lotQty: 'LOT 1개 수량',
+    qtyPerPackageAmount: '포장당 양',
+    lotQty: 'LOT 1개 수',
     unitLocked: '품목 기본 단위로 고정',
     supplierLot: '공급사 LOT 번호',
     lotCount: '개수',
@@ -247,13 +249,13 @@ export const popMaterialLotLabel = {
       mismatchAmount: (qty: string, product: string) =>
         `LOT 1개 양 ${qty} ≠ ${product} — 맞춰야 만들 수 있습니다`,
       packageCount: '포장 수는 1 이상 정수입니다',
-      qtyPerPackage: '포장당 수량은 0보다 커야 합니다',
+      qtyPerPackage: '포장당 수는 0보다 커야 합니다',
       packageUom: '포장 단위를 고르세요',
-      lotQty: 'LOT 1개 수량을 넣으세요(0보다 큰 수)',
+      lotQty: 'LOT 1개 수를 넣으세요(0보다 큰 수)',
       integer: (uomCode: string) => `${uomCode}는 정수로 넣습니다`,
       lotCount: '개수는 1~200 사이 정수입니다',
       mismatch: (qty: string, product: string) =>
-        `LOT 1개 수량 ${qty} ≠ ${product} — 맞춰야 만들 수 있습니다`,
+        `LOT 1개 수 ${qty} ≠ ${product} — 맞춰야 만들 수 있습니다`,
     },
     summary: (count: number, each: string, total: string) =>
       `자재 관리 LOT ${count}개 · 각 ${each} · 합계 ${total}`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
