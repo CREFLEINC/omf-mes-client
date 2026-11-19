@@ -929,6 +929,7 @@ export const WorkStartScreen = () => {
             onRetry={() => {
               void list.refetch();
             }}
+            terminalEquipmentId={equipmentId}
             order={listOrder}
             onOrderChange={(next) => {
               /* 보기를 바꿀 때와 같다 — 고른 것은 새 목록에 있으면 남기고, 첫 쪽부터 본다(PG-30). */

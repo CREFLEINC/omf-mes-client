@@ -42,6 +42,13 @@
   min-width: 0;
 }
 
+/* 설비 칸은 이름을 칸 왼쪽에 둔다 — 이름 줄 높이만큼 목록에 한 장 더 들인다(1280 은 3장 · 사용자 지시 2026-11-19). */
+.ws-equipment.pu-field {
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  column-gap: 10px;
+}
+
 .ws-equipment-field .pop-select {
   flex: 1;
   min-width: 0;
@@ -56,22 +63,50 @@
   white-space: nowrap;
 }
 
+.ws-item.pu-item {
+  padding: 8px 12px;
+  gap: 4px;
+}
+
+/* 카드 정보는 두 줄(사용자 지시 2026-11-19 — 한 쪽에 1280 은 3건, 1024 는 2건 이상):
+ * 「품목 · 공정 · (다른 설비일 때만) 설비」, 「계획 시작 · 실적 막대」. 넘치면 값이 한 줄 말줄임. */
 .ws-item-sub.pu-item-sub {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr);
-  gap: 2px 10px;
-  align-items: center;
+  gap: 2px;
 }
 
-.ws-item-sub > * {
+.ws-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.ws-line > span {
+  flex: none;
+}
+
+.ws-line > b {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-right: 6px;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.ws-item-sub .w {
-  grid-column: 2 / -1;
+/* 둘째 줄의 일시·수량은 줄이지 않는다 — 좁으면 진행 막대가 먼저 줄어든다. */
+.ws-line + .ws-line > b {
+  flex: none;
+}
+
+.ws-line > .ws-prog {
+  flex: 1 1 auto;
+}
+
+.ws-line > .ws-prog .pu-progress {
+  min-width: 0;
 }
 
 .ws-prog {
@@ -219,4 +254,17 @@
 /* 접기 단추는 제목 줄 오른쪽 끝(시안) */
 .ws-list .pu-fold-btn {
   margin-left: auto;
+}
+
+/* 머리 보기 탭 [전체 작업지시 | 긴급 작업지시 N] — 제목 없이 탭이 머리 폭을 갖는다. 글자만큼 나눠 가져 잘리지 않게. */
+.ws-list > .pu-card-head > .pu-seg button {
+  flex: 1 1 auto;
+  padding: 0 10px;
+}
+
+@media (max-width: 1100px) {
+  .ws-list > .pu-card-head > .pu-seg button {
+    padding: 0 6px;
+    font-size: 14px;
+  }
 }

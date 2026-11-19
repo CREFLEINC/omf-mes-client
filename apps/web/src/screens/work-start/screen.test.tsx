@@ -374,7 +374,7 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
       ...WORK_ORDER,
       workOrderId: 8201,
       workOrderNo: 'SYN-WO-0201',
-      plannedEquipmentId: OTHER_EQUIPMENT.equipmentId,
+      plannedEquipmentId: TERMINAL.equipmentId + 1,
     };
     const resetButton = () => screen.queryByRole('button', { name: t.list.resetToDefault });
 
@@ -382,7 +382,7 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
       const { recorded } = renderScreen();
 
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-      expect(screen.getByRole('heading', { level: 2, name: t.list.title })).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: t.list.title })).toBeInTheDocument();
       expect(equipmentSelect()).toHaveTextContent(TERMINAL.equipmentName);
       expect(resetButton()).toBeNull();
       expect(screen.queryByRole('radio')).toBeNull();
@@ -432,7 +432,7 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
       /* 설비를 정하지 않은 지시는 단말 설비 목록에만 함께 온다(PG-38). */
       expect(last).not.toContain('includeUnplannedEquipment');
       expect(equipmentSelect()).toHaveTextContent('합성 프레스 2호기');
-      expect(screen.getByRole('heading', { level: 2, name: t.list.title })).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: t.list.title })).toBeInTheDocument();
 
       const reset = resetButton();
       expect(reset).not.toBeNull();
@@ -600,16 +600,18 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
   });
 
   /** 카드의 계획 설비는 코드만 든 칩이 아니라 「설비 이름 (코드)」 라벨 값 쌍이다(C-10). */
-  it('두 목록 모두 계획 설비를 「설비 이름 (코드)」로 달고, 설비가 없으면 설비 미지정 칩을 단다', async () => {
+  it('두 목록 모두 이 단말과 다른 계획 설비를 「설비 이름 (코드)」로 달고, 설비가 없으면 설비 미지정 칩을 단다', async () => {
     const { plannedEquipmentId: _ignored, ...withoutEquipment } = WORK_ORDER;
     const { user } = renderScreen({
       workOrders: [
         { ...withoutEquipment, workOrderId: 8102, workOrderNo: 'SYN-WO-0102' },
         {
           ...WORK_ORDER,
+          plannedEquipmentId: TERMINAL.equipmentId + 1,
           plannedEquipmentCode: 'SYN-PRS-01',
           plannedEquipmentName: '합성 프레스 1호기',
         },
+        { ...WORK_ORDER, workOrderId: 8103, workOrderNo: 'SYN-WO-0103' },
       ],
     });
     const equipmentPair = `${t.list.equipment} 합성 프레스 1호기 (SYN-PRS-01)`;
@@ -624,6 +626,8 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
     expect(
       within(card(WORK_ORDER.workOrderNo)).queryByText(t.list.unassignedEquipmentBadge),
     ).toBeNull();
+    /* 이 단말 설비와 같은 계획 설비는 카드마다 되풀이하지 않는다(사용자 지시 2026-11-19). */
+    expect(card('SYN-WO-0103')).not.toHaveTextContent(t.list.equipment);
 
     await chooseEquipment(user, t.list.allOption);
 

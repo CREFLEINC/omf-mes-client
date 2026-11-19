@@ -166,20 +166,18 @@ describe('P-02-01 작업지시 카드 — T-P-W 카드 정보', () => {
     expect(chips.lastElementChild).toHaveTextContent(t.status.inProgress);
     expect(within(head).queryByText('SYN-ITEM-01')).toBeNull();
 
-    /* 라벨은 정보 격자의 홀수 칸이다(라벨 · 값 · 라벨 · 값). */
-    const labels = [...info.children].filter((_, index) => index % 2 === 0).map((el) => el.textContent);
-    expect(labels).toEqual([
-      messages.workStart.selection.item,
-      messages.workStart.selection.process,
-      t.equipment,
-      messages.workStart.selection.plannedStart,
-      t.goodLabel,
-    ]);
-    /* 두 열: 품목과 공정은 한 줄, 설비, 계획 시작, 실적은 한 줄을 다 쓴다(PG-31). */
-    const wide = [...info.querySelectorAll('.w')].map(
-      (el) => el.previousElementSibling?.textContent,
+    /* 두 줄: 「품목 · 공정 · 설비」, 「계획 시작 · 실적」 — 라벨은 줄마다 값 앞에 선다(사용자 지시 2026-11-19). */
+    const lines = [...info.querySelectorAll('.ws-line')].map((line) =>
+      [...line.children]
+        .filter((el) => el.tagName === 'SPAN' && !el.classList.contains('ws-prog'))
+        .map((el) => el.textContent),
     );
-    expect(wide).toEqual([t.equipment, messages.workStart.selection.plannedStart, t.goodLabel]);
+    expect(lines).toEqual([
+      [messages.workStart.selection.item, messages.workStart.selection.process, t.equipment],
+      [messages.workStart.selection.plannedStart, t.goodLabel],
+    ]);
+    /* 계획 시작은 목록 일시 모양(공장 시각 MM-DD HH:mm — +09:00 08시는 공장 06시)이다. */
+    expect(info).toHaveTextContent(`${messages.workStart.selection.plannedStart} 09-02 06:00`);
     expect(info).toHaveTextContent(`${t.equipment} 합성 프레스 1호기 (SYN-PRS-01)`);
     /* 수량은 「실적 / 지시」 한 쌍과 막대다. 가운뎃점이나 「지시」 글자를 잇지 않는다. */
     expect(within(info).getByText(t.progress('120', '500', 'EA'))).toBeInTheDocument();

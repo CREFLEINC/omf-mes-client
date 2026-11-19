@@ -107,6 +107,8 @@ export interface WorkOrderListProps {
   uomCodeOf: (uomId: number | undefined) => string | null;
   /** 한 쪽 건수를 재는 목록 칸(구획 높이에 들어가는 만큼, POP 통일 규칙 1). */
   fitRef?: RefObject<HTMLDivElement | null>;
+  /** 이 단말의 설비 — 카드는 계획 설비가 이것과 다를 때만 설비를 적는다. 모르면 `null`. */
+  terminalEquipmentId?: number | null;
   /** 목록 정렬(계획 시작 일시 · 서버 정렬). 긴급·진행 중 먼저는 받은 쪽 안에서 그대로 둔다. */
   order?: ListOrder;
   onOrderChange?: (order: ListOrder) => void;
@@ -149,6 +151,7 @@ export const WorkOrderList = ({
   onRetry,
   uomCodeOf,
   fitRef,
+  terminalEquipmentId = null,
   order = 'newest',
   onOrderChange,
   kind = 'all',
@@ -185,9 +188,10 @@ export const WorkOrderList = ({
 
   return (
     <PuSection
-      title={t.title}
+      /* 「작업지시」 제목 글은 두지 않는다 — 탭이 그 폭을 갖는다(사용자 지시 2026-11-19). 구획 이름은 읽는 이름으로 남긴다. */
+      label={t.title}
       head={
-        /* 제목 옆 보기 탭 [전체 | 긴급 N](#295). 긴급 수는 옛 「긴급 작업지시」 탭 건수와 같다. */
+        /* 보기 탭 [전체 작업지시 | 긴급 작업지시 N](#295). 긴급 수는 옛 「긴급 작업지시」 탭 건수와 같다. */
         <PuSeg<ListKind>
           label={t.kindLabel}
           value={kind}
@@ -223,7 +227,7 @@ export const WorkOrderList = ({
           </span>
         </PuNote>
       ) : !isEquipmentMissing ? (
-        <PuField label={t.equipmentLabel} labelId={labelId}>
+        <PuField label={t.equipmentLabel} labelId={labelId} className="ws-equipment">
           <div className="pu-row ws-equipment-field">
             <PopSelect
               aria-labelledby={labelId}
@@ -324,7 +328,11 @@ export const WorkOrderList = ({
                         isEquipmentUnassigned={row.plannedEquipmentId == null}
                       />
                     </span>
-                    <WorkOrderInfo workOrder={row} uomCodeOf={uomCodeOf} />
+                    <WorkOrderInfo
+                      workOrder={row}
+                      uomCodeOf={uomCodeOf}
+                      terminalEquipmentId={terminalEquipmentId}
+                    />
                   </button>
                 </div>
               );

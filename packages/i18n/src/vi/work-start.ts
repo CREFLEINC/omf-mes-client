@@ -83,8 +83,8 @@ export const workStart: Translated<typeof ko.workStart> = {
     pageNav: 'Chuyển trang danh sách lệnh sản xuất',
 
     kindLabel: 'Xem lệnh sản xuất',
-    kindAll: 'Tất cả',
-    kindEmergency: 'Khẩn',
+    kindAll: 'Tất cả lệnh',
+    kindEmergency: 'Lệnh khẩn',
     emergencyScope: 'Lệnh khẩn của mọi thiết bị.',
     emergencyEmpty: 'Không có lệnh sản xuất khẩn.',
     emergencyEmptyHint:

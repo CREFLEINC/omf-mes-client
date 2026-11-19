@@ -72,8 +72,9 @@ export const workStart = {
      * 이 목록에 합쳤다(#295). 긴급은 설비와 관계없이 모두 보인다(옛 화면과 같은 조건).
      */
     kindLabel: '작업지시 보기',
-    kindAll: '전체',
-    kindEmergency: '긴급',
+    /* 탭 이름(사용자 지시 2026-11-19 — 「전체 작업지시」·「긴급 작업지시」, 앞의 「작업지시」 제목은 지움). */
+    kindAll: '전체 작업지시',
+    kindEmergency: '긴급 작업지시',
     emergencyScope: '모든 설비의 긴급 작업지시입니다.',
     emergencyEmpty: '긴급 작업지시가 없습니다.',
     emergencyEmptyHint: '긴급 작업지시는 관리웹 「긴급 작업지시 발행」에서 발행합니다.',
