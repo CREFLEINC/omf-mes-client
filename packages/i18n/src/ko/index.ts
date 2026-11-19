@@ -17,6 +17,7 @@
 import { common } from './common';
 import { popChrome } from './pop-chrome';
 import { popPageNav } from './pop-page-nav';
+import { popUniform } from './pop-uniform';
 import { conflict } from './conflict';
 import { stateLocked } from './state-locked';
 import { httpError } from './http-error';
@@ -181,6 +182,7 @@ import { erpWorkOrderFlow } from './erp-work-order-flow';
 export const ko = {
   popChrome,
   popPageNav,
+  popUniform,
   common,
   conflict,
   stateLocked,

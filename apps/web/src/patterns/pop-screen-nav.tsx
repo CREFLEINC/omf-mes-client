@@ -121,10 +121,10 @@ const HOME_ICON = navIcon(
 );
 
 export const GROUP_ICONS: Record<PopScreenGroupKey, ReactNode> = {
-  material: navIcon(
+  warehouse: navIcon(
     <>
-      <path d="M21 8 12 3 3 8v8l9 5 9-5z" />
-      <path d="m3 8 9 5 9-5M12 13v8" />
+      <path d="M3 21V9l9-5 9 5v12" />
+      <path d="M7 21v-8h10v8M7 17h10" />
     </>,
   ),
   production: navIcon(
@@ -144,12 +144,6 @@ export const GROUP_ICONS: Record<PopScreenGroupKey, ReactNode> = {
       <path d="M3 6h11v10H3zM14 10h4l3 3v3h-7" />
       <circle cx="7" cy="18" r="2" />
       <circle cx="17" cy="18" r="2" />
-    </>,
-  ),
-  facility: navIcon(
-    <>
-      <path d="M3 21V9l9-5 9 5v12" />
-      <path d="M7 21v-8h10v8M7 17h10" />
     </>,
   ),
 };
@@ -316,7 +310,7 @@ export const PopScreenNav = ({
   const isHome = pathname === POP_HOME_PATH;
   /*
    * ⭐ 작업지시를 고른 뒤 거치는 화면(`workFlow`)은 탭에 두지 않는다(#291 · 사용자 승인 2026-11-17) —
-   *    「작업 지시 목록」 탭 아래 작업 단계 줄이 연다. 그 화면에 있을 때는 생산 묶음·작업 지시 목록 탭이 켜진다.
+   *    「작업지시 목록」 탭 아래 작업 단계 줄이 연다. 그 화면에 있을 때는 생산 묶음·작업지시 목록 탭이 켜진다.
    */
   const entryScreen = access.screens.find((screen) => screen.path === POP_WORK_ENTRY_PATH) ?? null;
   const inWorkFlow =

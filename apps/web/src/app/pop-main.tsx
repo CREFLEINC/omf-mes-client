@@ -33,6 +33,7 @@ import './app.css';
  * 근거는 그 파일 머리말에 있다.
  */
 import './pop.css';
+import './pop-uniform.css';
 /* ⛔ 화면을 싣는 import 보다 위에 둔다 — 아래 import 들이 문구를 붙잡기 전에 언어를 정한다. */
 import './pop-locale';
 
@@ -45,6 +46,7 @@ import { applyPopFit } from '../patterns/pop-fit';
 import { usePopIdentity } from '../patterns/pop-identity';
 import { useLegacyOutboxDrain } from '../patterns/pop-legacy-outbox';
 import { PopScreenNav } from '../patterns/pop-screen-nav';
+import { PuToastHost } from '../patterns/pop-uniform';
 import { PopTopPrinterTarget, PopTopStatusTarget } from '../patterns/pop-top-status';
 import {
   PopRegistrationProvider,
@@ -248,6 +250,8 @@ const PopChrome = () => {
           </PopTopPrinterTarget.Provider>
         </PopTopStatusTarget.Provider>
       </div>
+      {/* 처리 결과 알림 자리 — 작업 줄 위 가운데(POP 통일 규칙 13 · #295). */}
+      <PuToastHost />
     </div>
   );
 };

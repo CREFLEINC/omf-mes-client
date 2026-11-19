@@ -34,7 +34,7 @@ export const popChrome = {
     count: (name: string, count: number): string => `${name}, 남은 작업 ${String(count)}건`,
   },
   /** 홈 화면(#291) — 사번 확인 뒤 처음 서는 화면. */
-  /** 작업 단계 줄(#291) — 작업 지시 목록 탭 아래 ①②③. */
+  /** 작업 단계 줄(#291) — 작업지시 목록 탭 아래 ①②③. */
   workSteps: {
     label: '작업 단계',
     pickWorkOrder: '작업지시 선택',
@@ -58,7 +58,7 @@ export const popChrome = {
     remainingNone: '지금 남은 작업이 없습니다.',
     shortcutsTitle: '바로가기',
     shortcutsHint: '자주 쓰는 화면으로 바로 이동합니다.',
-    /** 오늘 작업 현황 — 이 단말 설비의 작업지시 수(작업 지시 목록과 같은 조회). */
+    /** 오늘 작업 현황 — 이 단말 설비의 작업지시 수(작업지시 목록과 같은 조회). */
     statusTitle: '오늘 작업 현황',
     inProgress: '진행 중',
     waiting: '대기',
@@ -67,7 +67,7 @@ export const popChrome = {
     nextTitle: '다음 작업',
     nextNone: '대기 중인 작업이 없습니다',
     nextPlan: (item: string, qty: string): string => `${item} · 계획 ${qty}개`,
-    /** 설비가 없는 단말은 전체 설비로 센다(작업 지시 목록의 「전체 설비」). */
+    /** 설비가 없는 단말은 전체 설비로 센다(작업지시 목록의 「전체 설비」). */
     statusAllEquipment: '전체 설비 기준',
     /** 설비가 지정된 단말의 현황 범위 고르기 — 지정 설비 / 전체 설비. */
     statusScopeLabel: '현황 범위',

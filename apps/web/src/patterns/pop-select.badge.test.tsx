@@ -76,6 +76,6 @@ describe('PopSelect — 항목 뒤 표시·맨 위 묶음(D-10)', () => {
       '항목 5',
     ]);
     const list = screen.getByRole('listbox');
-    expect(list.previousElementSibling).toHaveClass('pop-select-dialog__search');
+    expect(list.previousElementSibling).toHaveClass('pu-search');
   });
 });

@@ -107,6 +107,7 @@ import { popOqcInspection } from './pop-oqc-inspection';
 import { popMaterialLotLabel } from './pop-material-lot-label';
 import { popChrome } from './pop-chrome';
 import { popPageNav } from './pop-page-nav';
+import { popUniform } from './pop-uniform';
 import { pqcInspection } from './pqc-inspection';
 import { productDisposalRequest } from './product-disposal-request';
 import { productPicking } from './product-picking';
@@ -277,6 +278,7 @@ export const vi: Translated<Messages> = {
   popMaterialLotLabel,
   popChrome,
   popPageNav,
+  popUniform,
   poRegister,
   pqcInspection,
   productDisposalRequest,

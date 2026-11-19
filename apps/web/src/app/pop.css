@@ -10003,6 +10003,14 @@
 .pop-work-step[data-on='true'] {
   color: var(--primary);
   font-weight: 800;
+  border: 1px solid var(--primary);
+  background: var(--pu-primary-soft);
+}
+
+/* 지난 단계: 초록 ✓(POP 통일 규칙 12 · #295). */
+.pop-work-step[data-done='true'] .pop-work-step__no {
+  background: var(--pu-ok-bg);
+  color: var(--pu-ok);
 }
 
 .pop-work-step[data-on='true'] .pop-work-step__no {

@@ -12,13 +12,13 @@ const OPTIONS = Array.from({ length: 7 }, (_, index) => ({
 }));
 
 describe('PopSelect — G-34 선택 팝업', () => {
-  it('닫힌 상태에서 현재 값과 선택 버튼을 함께 보인다', () => {
+  /* 칸 하나(고른 값 + ⌄)를 누르면 선택 창 — 따로 [선택] 단추가 없다(POP 통일 규칙 7 · #295). */
+  it('닫힌 상태에서 고른 값을 칸 하나에 보인다', () => {
     renderWithProviders(
       <PopSelect aria-label="사유" options={OPTIONS} value="value-2" onChange={vi.fn()} />,
     );
 
-    expect(screen.getByText('항목 2')).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: '사유' })).toHaveTextContent('선택');
+    expect(screen.getByRole('combobox', { name: '사유' })).toHaveTextContent(/^항목 2$/u);
   });
 
   it('hideValue 이면 값 글자를 따로 세우지 않고 버튼 문구가 값을 말한다', () => {
@@ -57,7 +57,7 @@ describe('PopSelect — G-34 선택 팝업', () => {
     expect(screen.getByText('항목 3')).toBeInTheDocument();
   });
 
-  it('[이전]과 [다음], 현재 페이지와 전체 건수를 관리웹 페이지 이동과 같은 꼴로 제공한다', async () => {
+  it('쪽 넘김 ‹ › 와 현재 쪽 · 전체 건수를 POP 공통 쪽 넘김 꼴로 제공한다', async () => {
     const user = userEvent.setup();
 
     renderWithProviders(<PopSelect aria-label="사유" options={OPTIONS} />);
@@ -65,10 +65,10 @@ describe('PopSelect — G-34 선택 팝업', () => {
 
     expect(screen.getByText('1 / 2')).toBeInTheDocument();
     expect(screen.getByText('총 7건')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '다음' }));
+    await user.click(screen.getByRole('button', { name: '다음 쪽' }));
     expect(screen.getByRole('option', { name: '항목 7' })).toBeInTheDocument();
     expect(screen.getByText('2 / 2')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '이전' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '이전 쪽' })).toBeEnabled();
   });
 
   /**
@@ -84,7 +84,7 @@ describe('PopSelect — G-34 선택 팝업', () => {
 
     expect(screen.getAllByRole('option')).toHaveLength(5);
 
-    await user.click(screen.getByRole('button', { name: '다음' }));
+    await user.click(screen.getByRole('button', { name: '다음 쪽' }));
     expect(screen.getAllByRole('option')).toHaveLength(2);
   });
 
@@ -133,10 +133,11 @@ describe('PopSelect — 팝업을 닫는 길 (#1005)', () => {
     expect(screen.getByRole('searchbox', { name: '목록 검색' })).toBeInTheDocument();
   });
 
-  it('닫기 단추를 누르면 닫힌다', async () => {
+  /* 창 머리 X 는 없다 — 아래 [취소]로 닫는다(POP 통일 규칙 16 · #295). */
+  it('[취소] 단추를 누르면 닫힌다', async () => {
     const user = await openPopup();
 
-    await user.click(screen.getByRole('button', { name: /닫기|close/iu }));
+    await user.click(screen.getByRole('button', { name: '취소' }));
 
     expect(screen.queryByRole('searchbox', { name: '목록 검색' })).not.toBeInTheDocument();
   });

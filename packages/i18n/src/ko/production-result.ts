@@ -56,7 +56,7 @@ export const productionResult = {
      * 하단 바 「남은 일」(C-5). 머리말 없이 문장만, 끝 마침표 없이 쓴다. 앞의 것이 먼저다.
      */
     next: {
-      noWorkOrder: '작업지시가 지정되지 않았습니다. 작업 지시 목록에서 작업지시를 골라 주세요',
+      noWorkOrder: '작업지시가 지정되지 않았습니다. 작업지시 목록에서 작업지시를 골라 주세요',
       noWorker: '사번을 입력해 주세요',
       queued: '실적을 단말에 저장했습니다. 연결되면 보내고 LOT 라벨을 발행합니다',
       saving: '실적을 저장하고 있습니다',
@@ -257,7 +257,7 @@ export const productionResult = {
       cancel: '취소',
       confirm: '마감',
       done: (workOrderNo: string): string =>
-        `${workOrderNo}를 마감했습니다. 작업 지시 목록으로 돌아갑니다.`,
+        `${workOrderNo}를 마감했습니다. 작업지시 목록으로 돌아갑니다.`,
       blocked: {
         denied: (webMenu: string, terminalMenu: string): string =>
           `이 단말은 작업지시 마감이 허용되지 않았습니다. 관리웹 ${webMenu}에서 마감하거나, 관리자에게 ${terminalMenu}에서 「작업지시 마감」을 켜 달라고 요청해 주세요.`,
@@ -336,7 +336,7 @@ export const productionResult = {
      *   보인다. 문장은 `work-hold-register` 와 같은 꼴로 맞춘다.
      */
     missingWorkOrder:
-      '작업지시를 받지 못해 실적을 등록할 수 없습니다. 작업 지시 목록에서 작업지시를 고른 뒤 들어와 주세요.',
+      '작업지시를 받지 못해 실적을 등록할 수 없습니다. 작업지시 목록에서 작업지시를 고른 뒤 들어와 주세요.',
     loadFailed: '작업지시를 불러오지 못했습니다.',
   },
 

@@ -137,13 +137,13 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
       within(groupsNav())
         .getAllByRole('button')
         .map((button) => button.textContent?.replace(/\d+\+?$/u, '')),
-    ).toEqual(['홈', '자재', '생산', '품질', '출하']);
+    ).toEqual(['홈', '창고', '생산', '품질', '출하']);
     expect(
       within(tabs)
         .getAllByRole('button')
         .map((tab) => tab.textContent?.replace(/\d+\+?$/u, '')),
-    ).toEqual(['작업 지시 목록', '긴급 W/O']);
-    expect(within(tabs).getByRole('button', { name: /^작업 지시 목록/u })).toHaveAttribute(
+    ).toEqual(['작업지시 목록', '긴급 작업지시']);
+    expect(within(tabs).getByRole('button', { name: /^작업지시 목록/u })).toHaveAttribute(
       'aria-current',
       'page',
     );
@@ -210,7 +210,7 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     await user.click(
       within(screen.getByRole('navigation', { name: nav.screensLabel('생산') })).getByRole(
         'button',
-        { name: /^긴급 W\/O/u },
+        { name: /^긴급 작업지시/u },
       ),
     );
     expect(screen.getByText('지금: /pop/emergency-work-orders')).toBeInTheDocument();
@@ -235,7 +235,7 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
 
   it('마감된 W/O 에서는 작업 중 화면 버튼이 잠긴다', async () => {
     const permissions = ['P-02-01', 'P-02-03', 'P-02-10', 'P-02-11'];
-    setup({ session: { ...SESSION, permissions }, route: '/pop/running-change?workOrderId=7802' });
+    setup({ session: { ...SESSION, permissions }, route: '/pop/work-start?workOrderId=7802' });
     await waitFor(() => expect(screen.getByRole('button', { name: '작업 중단' })).toBeDisabled());
     expect(await screen.findByText('WO-SYN-7802')).toBeInTheDocument();
   });
@@ -248,7 +248,7 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
 
   it('열린 W/O 에서는 작업 중 화면 버튼이 열린다', async () => {
     const permissions = ['P-02-01', 'P-02-03', 'P-02-10', 'P-02-11'];
-    setup({ session: { ...SESSION, permissions }, route: '/pop/running-change?workOrderId=7801' });
+    setup({ session: { ...SESSION, permissions }, route: '/pop/work-start?workOrderId=7801' });
     expect(await screen.findByText('WO-SYN-7801')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '작업 중단' })).toBeEnabled();
   });
@@ -266,7 +266,7 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     await user.click(groupButton('품질'));
     const tab = within(
       screen.getByRole('navigation', { name: nav.screensLabel('품질') }),
-    ).getByRole('button', { name: remaining.count('OQC 출하검사 판정', 12) });
+    ).getByRole('button', { name: remaining.count('OQC 출하검사', 12) });
     expect(within(tab).getByText('9+')).toBeInTheDocument();
   });
 
@@ -285,10 +285,10 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
         .filter((item) => item.classList.contains('pop-remaining__item'))
         .map((item) => item.getAttribute('aria-label')),
     ).toEqual([
-      remaining.count('OQC 출하검사 판정', 12),
+      remaining.count('OQC 출하검사', 12),
       remaining.count('출하 포장', 4),
-      remaining.count('작업 지시 목록', 3),
-      remaining.count('긴급 W/O', 1),
+      remaining.count('작업지시 목록', 3),
+      remaining.count('긴급 작업지시', 1),
     ]);
 
     await user.click(dialog.getByRole('button', { name: remaining.count('출하 포장', 4) }));

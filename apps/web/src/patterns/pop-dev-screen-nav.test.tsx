@@ -30,7 +30,7 @@ describe('PopDevScreenNav — 개발용 POP 화면 이동', () => {
     renderNav();
 
     await userEvent.click(trigger());
-    await userEvent.click(screen.getByRole('option', { name: 'P-02-01 작업 지시 목록' }));
+    await userEvent.click(screen.getByRole('option', { name: 'P-02-01 작업지시 목록' }));
 
     await waitFor(() => {
       expect(screen.getByRole('status').textContent).toBe('/pop/work-start');

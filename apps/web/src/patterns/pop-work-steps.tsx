@@ -16,7 +16,14 @@ export const workOrderIdOf = (search: string): number | null => {
 };
 
 /** 박스 제목에 W/O 를 이미 보이는 화면 — 단계 줄에는 번호를 겹쳐 적지 않는다(사용자 지시 2026-11-17). */
-const WO_IN_PANE: ReadonlySet<string> = new Set(['/pop/material-input', '/pop/production-result']);
+const WO_IN_PANE: ReadonlySet<string> = new Set([
+  '/pop/material-input',
+  '/pop/production-result',
+  /* 작업 중 화면도 본문 맨 위 작업지시 띠에 번호를 보인다(POP 통일 시안 #295). */
+  '/pop/work-hold',
+  '/pop/running-change',
+  '/pop/tool-usage',
+]);
 
 /** 작업 중 화면을 열 수 없는 W/O 상태 — 생산 작업 화면이 마감 W/O 에 [작업 중단]을 두지 않던 것과 같다. */
 const ENDED_STATUSES: ReadonlySet<string> = new Set(['CLOSED', 'CANCELLED']);
@@ -56,7 +63,7 @@ const useStepWorkOrder = (workOrderId: number | null): StepWorkOrder => {
 };
 
 /**
- * 작업 단계 줄(#291 · 사용자 승인 2026-11-17) — 「작업 지시 목록」 탭 아래에 ① 작업지시 선택 › ② 자재 투입 ›
+ * 작업 단계 줄(#291 · 사용자 승인 2026-11-17) — 「작업지시 목록」 탭 아래에 ① 작업지시 선택 › ② 자재 투입 ›
  * ③ 생산 작업 을 차례로 보이고(④ 생산 포장은 omf-all-around#293 에서 없앴다), 오른쪽에 고른 W/O 와 작업 중 화면(작업 중단 등) 버튼을 둔다.
  *
  * ⭐ 작업지시를 고르기 전(주소에 `workOrderId` 가 없다)에는 ② 이후와 작업 중 버튼을 잠근다 — 그 화면들은
@@ -71,7 +78,7 @@ export const PopWorkSteps = ({
   search,
   go,
 }: {
-  /** ① 작업지시 선택 화면(작업 지시 목록). 이 단말이 못 가면 `null`. */
+  /** ① 작업지시 선택 화면(작업지시 목록). 이 단말이 못 가면 `null`. */
   entry: PopScreen | null;
   steps: readonly PopScreen[];
   during: readonly PopScreen[];
@@ -84,6 +91,13 @@ export const PopWorkSteps = ({
   const { workOrderNo, isEnded } = useStepWorkOrder(workOrderId);
   const all = entry === null ? steps : [entry, ...steps];
   const hasWorkOrder = workOrderId !== null;
+  /*
+   * 지난 단계는 초록 ✓(POP 통일 규칙 12 · #295). 작업 중 화면(작업 중단 등)에 있으면 앞 두 단계(작업지시 선택 ·
+   * 자재 투입)를 지난 단계로 본다 — 그 화면들은 자재 투입 뒤에 연다.
+   */
+  const nowIndex = all.findIndex((screen) => screen.path === pathname);
+  const isDuring = during.some((screen) => screen.path === pathname);
+  const doneBefore = nowIndex >= 0 ? nowIndex : isDuring ? Math.min(2, all.length) : 0;
 
   return (
     <div className="pop-work-steps">
@@ -104,13 +118,14 @@ export const PopWorkSteps = ({
                 className="pop-work-step"
                 aria-current={on ? 'step' : undefined}
                 data-on={on ? 'true' : undefined}
+                data-done={index < doneBefore ? 'true' : undefined}
                 disabled={locked}
                 onClick={() => {
                   if (!on) go(screen);
                 }}
               >
                 <span className="pop-work-step__no" aria-hidden="true">
-                  {index + 1}
+                  {index < doneBefore ? '✓' : index + 1}
                 </span>
                 {isEntry ? t.pickWorkOrder : screen.name}
               </button>
