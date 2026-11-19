@@ -1,5 +1,5 @@
 import type { components } from '@omf-mes/api-client';
-import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { INSPECTION_HUB_COUNTS_KEY } from '../../patterns/inspection-hub-counts';
@@ -29,7 +29,6 @@ export const shipmentOqcKeys = {
     [...oqcInspectionKeys.all, 'shipment-detail', inspectionRequestId] as const,
   shipmentRequest: (shipmentRequestId: number) =>
     [...oqcInspectionKeys.all, 'shipment-request', shipmentRequestId] as const,
-  partner: (partnerId: number) => [...oqcInspectionKeys.all, 'partner', partnerId] as const,
 };
 
 export const useShipmentOqcRequest = (
@@ -54,6 +53,9 @@ export interface ShipmentRequestRef {
   shipmentRequestNo: string;
   customerName: string | null;
   shipToName: string | null;
+  /** 이 품목 라인의 품목 코드 · 이름 — 의뢰 응답에 없을 때(옛 서버) 머리 품목 칸이 쓴다. */
+  itemCode: string | null;
+  itemName: string | null;
   targetQty: number;
   pickedQty: number;
   overQty: number;
@@ -75,6 +77,8 @@ export const toShipmentRequestRef = (
     shipmentRequestNo: request.shipmentRequestNo,
     customerName: names.customer,
     shipToName: names.shipTo,
+    itemCode: lines[0]?.itemCode ?? null,
+    itemName: lines[0]?.itemName ?? null,
     targetQty,
     pickedQty,
     overQty: Math.max(0, pickedQty - targetQty),
@@ -107,25 +111,15 @@ export const useShipmentRequestRef = (
         }),
       ),
   });
-  const partnerIds =
-    request.data === undefined ? [] : [request.data.customerId, request.data.shipToPartnerId];
-  const partners = useQueries({
-    queries: partnerIds.map((partnerId) => ({
-      queryKey: shipmentOqcKeys.partner(partnerId),
-      staleTime: 5 * 60_000,
-      queryFn: () =>
-        runRequest(() =>
-          client.GET('/mdm/partners/{partnerId}', { params: { path: { partnerId } } }),
-        ),
-    })),
-  });
-  const nameOf = (index: number): string | null => partners[index]?.data?.partnerName ?? null;
-
+  /* 고객 · 납품처 이름은 지시서 응답의 `customer` · `shipTo` 다 — POP 은 거래처 마스터를 못 읽는다(검증 1회차). */
   return {
     data:
       request.data === undefined
         ? undefined
-        : toShipmentRequestRef(request.data, itemId, { customer: nameOf(0), shipTo: nameOf(1) }),
+        : toShipmentRequestRef(request.data, itemId, {
+            customer: request.data.customer?.partnerName ?? null,
+            shipTo: request.data.shipTo?.partnerName ?? null,
+          }),
     isError: request.isError,
   };
 };

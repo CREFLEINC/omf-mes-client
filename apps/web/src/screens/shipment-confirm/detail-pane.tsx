@@ -31,6 +31,9 @@ export interface DetailPaneProps {
   isConfirming: boolean;
   onConfirm: () => void;
   onRequestCancel: () => void;
+  /** 이 출하의 취소가 승인돼 실행을 기다린다(마지막 `SHIPMENT_CANCEL` 결재 = 승인). */
+  cancelApproved: boolean;
+  onExecuteCancel: () => void;
 }
 
 /**
@@ -40,6 +43,7 @@ export interface DetailPaneProps {
  * 창고·위치별 몫으로 적는다(D-15 — 출하 하나에 창고 여럿).
  *
  * ⭐ [취소 요청]은 «ERP 로 보내기 전» 기준이다(FR-023). 막히면 단추를 잠그고 이유를 옆에 적는다.
+ * ⭐ 취소가 승인되면 [취소 실행]이 선다 — 결재함은 승인만 하고 실행은 이 화면에서 한다(Q13 · 계약 `:cancel`).
  * [확정]은 옛 흐름·긴급 직행 미확정에만 선다(한 건씩 — 일괄 확정 없음).
  */
 export const DetailPane = ({
@@ -51,6 +55,8 @@ export const DetailPane = ({
   isConfirming,
   onConfirm,
   onRequestCancel,
+  cancelApproved,
+  onExecuteCancel,
 }: DetailPaneProps) => {
   const actionNoteId = useId();
 
@@ -81,7 +87,11 @@ export const DetailPane = ({
 
   const { row } = detail;
   const flow = flowOf(row);
-  const lock = cancelLockOf(row);
+  const lock = cancelLockOf(row, cancelApproved);
+  const canExecuteCancel = lock === 'cancelApproved';
+  /* 송신 대기 안내 — 다음 송신 때 나갈 수주 연결 라인 수와 수주 번호(시안). 모르면 일반 문구. */
+  const salesOrderLines = detail.lines.filter((line) => line.salesOrderNo !== null);
+  const salesOrderNos = [...new Set(salesOrderLines.map((line) => line.salesOrderNo))].join(', ');
   const erpStatus = row.erpSendStatus;
 
   return (
@@ -102,6 +112,18 @@ export const DetailPane = ({
         <div>
           <dt>{t.detail.fields.shipmentRequest}</dt>
           <dd>{detail.shipmentRequestNo ?? t.detail.noValue}</dd>
+        </div>
+        <div>
+          <dt>{t.detail.fields.salesOrder}</dt>
+          <dd>{row.salesOrderNo ?? t.detail.noSalesOrder}</dd>
+        </div>
+        <div>
+          <dt>{t.detail.fields.customer}</dt>
+          <dd>{row.customerName ?? t.detail.noValue}</dd>
+        </div>
+        <div>
+          <dt>{t.detail.fields.shipTo}</dt>
+          <dd>{row.shipToName ?? t.detail.noValue}</dd>
         </div>
         <div>
           <dt>{t.detail.fields.completedAt}</dt>
@@ -155,7 +177,14 @@ export const DetailPane = ({
                 <Fragment key={line.lineNo}>
                   <tr className="ship-history-line">
                     <td colSpan={5}>
-                      <span>{t.detail.line(line.lineNo, line.itemCode)}</span>{' '}
+                      <span>
+                        {t.detail.line(
+                          line.lineNo,
+                          line.itemName === ''
+                            ? line.itemCode
+                            : `${line.itemCode} ${line.itemName}`,
+                        )}
+                      </span>{' '}
                       <span>
                         {t.detail.lineQty(
                           line.targetQty === null ? t.detail.noValue : String(line.targetQty),
@@ -165,6 +194,12 @@ export const DetailPane = ({
                       {line.overQty > 0 && (
                         <Chip status="warning" size="sm">
                           {t.detail.over(line.overQty)}
+                        </Chip>
+                      )}{' '}
+                      {/* 수주 없는 라인은 ERP 로 보내지 않는다(US7-4) — 지시서를 받았을 때만 가른다. */}
+                      {line.targetQty !== null && line.salesOrderNo === null && (
+                        <Chip status="idle" size="sm">
+                          {t.detail.lineNotSent}
                         </Chip>
                       )}
                     </td>
@@ -212,10 +247,45 @@ export const DetailPane = ({
         </div>
       </section>
 
+      {row.warehouses.some((warehouse) => warehouse.qty !== null) && (
+        <section aria-label={t.detail.warehouses}>
+          <h4 className="field-label">{t.detail.warehouses}</h4>
+          <p className="field-note">{t.detail.warehousesNote}</p>
+          <ul className="ship-history-warehouses">
+            {row.warehouses.map((warehouse) => (
+              <li key={warehouse.warehouseId}>
+                <div className="ship-history-warehouse-head">
+                  <strong>{warehouse.warehouseName}</strong>
+                  <span className="field-note">{warehouse.warehouseCode}</span>
+                  <span className="ship-history-num">{warehouse.qty ?? t.detail.noValue}</span>
+                </div>
+                <div className="field-note">
+                  {warehouse.goodsIssueNos.length === 0
+                    ? t.detail.noGoodsIssue
+                    : t.detail.goodsIssue(warehouse.goodsIssueNos.join(', '))}
+                </div>
+                <span className="ship-history-places">
+                  {warehouse.locations.map((location) => (
+                    <span key={location.locationCode}>
+                      {`${location.locationCode} ${String(location.qty)}`}
+                      {location.staging ? ` (${t.detail.staging})` : ''}
+                    </span>
+                  ))}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {erpStatus !== null && (
         <section aria-label={t.detail.erp}>
           <h4 className="field-label">{t.detail.erp}</h4>
-          <p>{t.detail.erpMessage[erpStatus]}</p>
+          <p>
+            {erpStatus === 'PENDING' && salesOrderLines.length > 0
+              ? t.detail.erpPending(salesOrderLines.length, salesOrderNos)
+              : t.detail.erpMessage[erpStatus]}
+          </p>
         </section>
       )}
 
@@ -232,6 +302,11 @@ export const DetailPane = ({
             onClick={onRequestCancel}
           >
             {t.actions.requestCancel}
+          </Button>
+        )}
+        {canExecuteCancel && (
+          <Button disabled={isConfirming} aria-describedby={actionNoteId} onClick={onExecuteCancel}>
+            {t.actions.executeCancel}
           </Button>
         )}
         {canConfirm(row) && (

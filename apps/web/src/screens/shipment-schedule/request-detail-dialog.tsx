@@ -1,6 +1,7 @@
-import { AlertBanner, Button, Chip, Dialog, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, Dialog, Icon, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { Fragment, useId } from 'react';
+import { Link } from 'react-router';
 
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { LoadErrorBanner } from './load-error-banner';
@@ -9,6 +10,8 @@ import {
   linesOf,
   portionText,
   replacementsOf,
+  salesOrderRemainingOf,
+  uomOfDetail,
   warehouseSummary,
   type ShipmentRequestDetail,
 } from './request-detail';
@@ -29,6 +32,37 @@ const OQC_TONE: Record<string, ChipStatus> = {
 
 const dateTime = (value: string): string => formatPlantDateTime(value) ?? value;
 
+/** 수주 잔량 칸 — 「100」 + 「수주 100」, 넘으면 「0 + 초과 10」 + 「수주 100, 출하 110」. */
+const SalesOrderRemainingCell = ({
+  line,
+}: {
+  line: Parameters<typeof salesOrderRemainingOf>[0];
+}) => {
+  const value = salesOrderRemainingOf(line);
+  switch (value.kind) {
+    case 'none':
+      return <>{t.values.empty}</>;
+    case 'cancelled':
+      return <>{t.detail.salesOrderCancelled}</>;
+    case 'remaining':
+      return (
+        <span className="ship-history-places">
+          <span>{t.detail.salesOrderRemaining(value.remaining)}</span>
+          <span className="field-note">{t.detail.salesOrderQty(value.ordered)}</span>
+        </span>
+      );
+    case 'over':
+      return (
+        <span className="ship-history-places">
+          <span>{t.detail.salesOrderOver(value.over)}</span>
+          <span className="field-note">
+            {t.detail.salesOrderQtyShipped(value.ordered, value.shipped)}
+          </span>
+        </span>
+      );
+  }
+};
+
 export interface RequestDetailDialogProps {
   detail: ShipmentRequestDetail | undefined;
   isLoading: boolean;
@@ -48,7 +82,7 @@ export interface RequestDetailDialogProps {
  * 막는 이유(수주 라인 취소는 「담당자에게 문의」 · FR-028b)를 보이고, [지시서 인쇄]를 연다.
  *
  * ⛔ ERP 송신 여부를 보이지 않는다(출하 완료 단계 화면 · 결정 2026-11-18).
- * ⚠ 수주 라인의 수주 · 출하 수량(「0 + 초과 n」)은 계약 라인에 칸이 없어 이번에는 그리지 않는다.
+ * 수주 라인의 수주 · 출하 수량으로 「수주 잔량」을 보인다 — 출하가 수주를 넘으면 「0 + 초과 n」(D-16).
  */
 export const RequestDetailDialog = ({
   detail,
@@ -73,21 +107,25 @@ export const RequestDetailDialog = ({
       title={t.detail.title}
       onClose={onClose}
       footer={
-        <>
-          <Button variant="outlined" onClick={onClose}>
-            {t.detail.close}
-          </Button>
-          {/* 인쇄는 받은 상세 값으로 그린다 — 상세가 없으면 잠근다. 피킹 전에도 열어 둔다. */}
-          <Button
-            disabled={detail === undefined}
-            aria-describedby={detail === undefined ? printNoteId : undefined}
-            onClick={onPrint}
-          >
-            {t.detail.print}
-          </Button>
-        </>
+        <Button variant="outlined" onClick={onClose}>
+          {t.detail.close}
+        </Button>
       }
     >
+      {/*
+       * [지시서 인쇄]는 창 머리(시안 W0402-After). 인쇄는 받은 상세 값으로 그린다 — 상세가 없으면 잠근다. 피킹 전에도 열어 둔다.
+       * 완료 뒤에는 다시 찍기용이라 보조 단추로 둔다(시안 ⑨).
+       */}
+      <div className="ship-request-head-actions">
+        <Button
+          variant={detail?.completedShipment == null ? 'filled' : 'outlined'}
+          disabled={detail === undefined}
+          aria-describedby={detail === undefined ? printNoteId : undefined}
+          onClick={onPrint}
+        >
+          {t.detail.print}
+        </Button>
+      </div>
       {error !== null && error !== undefined && <LoadErrorBanner error={error} onRetry={onRetry} />}
       {detail === undefined && (
         <p id={printNoteId} className="field-note">
@@ -115,6 +153,10 @@ export const RequestDetailDialog = ({
               <dd>{shipToPartnerName}</dd>
             </div>
             <div>
+              <dt>{t.detail.fields.salesOrder}</dt>
+              <dd>{detail.salesOrderNo ?? t.detail.noSalesOrder}</dd>
+            </div>
+            <div>
               <dt>{t.detail.fields.shipDate}</dt>
               <dd>{detail.requestedShipDate}</dd>
             </div>
@@ -130,13 +172,43 @@ export const RequestDetailDialog = ({
               <dt>{t.detail.fields.code}</dt>
               <dd>{detail.code}</dd>
             </div>
+            {detail.completedShipment !== null && (
+              <>
+                <div>
+                  <dt>{t.detail.fields.completedShipment}</dt>
+                  <dd>
+                    {/* 출하 내역(W-04-12)의 그 출하를 연다 — 그 화면이 `?shipmentId=` 로 상세를 고른다. */}
+                    <Link
+                      className="link-cell"
+                      to={`/shipment/shipment-confirm?shipmentId=${String(detail.completedShipment.shipmentId)}`}
+                    >
+                      {t.detail.shipmentLink(detail.completedShipment.shipmentNo)}
+                    </Link>
+                  </dd>
+                </div>
+                <div>
+                  <dt>{t.detail.fields.completedBy}</dt>
+                  <dd>
+                    {t.detail.completedBy(
+                      dateTime(detail.completedShipment.completedAt),
+                      detail.completedShipment.completedTerminal?.terminalCode ?? t.values.empty,
+                      detail.completedShipment.completedWorker === null
+                        ? t.values.empty
+                        : `${detail.completedShipment.completedWorker.workerName} (${detail.completedShipment.completedWorker.workerNo})`,
+                    )}
+                  </dd>
+                </div>
+              </>
+            )}
             <div>
               <dt>{t.detail.fields.pickingWarehouses}</dt>
               <dd>
                 {warehouseSummary(detail).length === 0
                   ? t.detail.noPickingWarehouse
                   : warehouseSummary(detail)
-                      .map((w) => `${w.warehouseName} LOT ${String(w.lotCount)}, ${String(w.qty)}`)
+                      .map((w) =>
+                        `${w.warehouseName} LOT ${String(w.lotCount)}, ${String(w.qty)} ${uomOfDetail(detail)}`.trim(),
+                      )
                       .join(' / ')}
               </dd>
             </div>
@@ -149,6 +221,10 @@ export const RequestDetailDialog = ({
                 dateTime(detail.completedShipment.completedAt),
               )}
             </AlertBanner>
+          )}
+
+          {linesOf(detail).every((line) => line.lots.length === 0) && (
+            <AlertBanner variant="info">{t.detail.noLotsBanner}</AlertBanner>
           )}
 
           {detail.completionBlockers.length > 0 && (
@@ -179,18 +255,22 @@ export const RequestDetailDialog = ({
                     <tr>
                       <th scope="col">{t.detail.lineColumns.lineNo}</th>
                       <th scope="col">{t.detail.lineColumns.item}</th>
+                      <th scope="col">{t.detail.lineColumns.uom}</th>
                       <th scope="col">{t.detail.lineColumns.inspection}</th>
                       <th scope="col">{t.detail.lineColumns.requested}</th>
                       <th scope="col">{t.detail.lineColumns.target}</th>
                       <th scope="col">{t.detail.lineColumns.picked}</th>
                       <th scope="col">{t.detail.lineColumns.over}</th>
                       <th scope="col">{t.detail.lineColumns.shipped}</th>
+                      <th scope="col">{t.detail.lineColumns.salesOrderLine}</th>
+                      <th scope="col">{t.detail.lineColumns.salesOrderRemaining}</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
                       <td>{line.lineNo}</td>
                       <td>{item(line.itemId)}</td>
+                      <td>{line.uomCode === '' ? t.values.empty : line.uomCode}</td>
                       <td>
                         {line.shippingInspectionRequired
                           ? t.detail.inspectionRequired
@@ -207,6 +287,17 @@ export const RequestDetailDialog = ({
                             : t.values.empty}
                       </td>
                       <td className="ship-history-num">{line.shippedQty}</td>
+                      <td>
+                        {line.salesOrderLine === null
+                          ? t.values.empty
+                          : t.detail.salesOrderLine(
+                              line.salesOrderLine.salesOrderNo,
+                              line.salesOrderLine.lineNo,
+                            )}
+                      </td>
+                      <td>
+                        <SalesOrderRemainingCell line={line} />
+                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -243,7 +334,7 @@ export const RequestDetailDialog = ({
                                 <span
                                   key={`${String(portion.warehouseId)}-${String(portion.locationId)}`}
                                 >
-                                  {portionText(portion)}
+                                  {portionText(portion, t.detail.staging)}
                                 </span>
                               ))}
                             </span>
@@ -258,7 +349,20 @@ export const RequestDetailDialog = ({
                               </Chip>
                             )}
                           </td>
-                          <td>{lot.managementCode ?? t.values.empty}</td>
+                          <td>
+                            {lot.managementCode ?? t.values.empty}
+                            {/* 완료 뒤에는 고칠 수 없다(FR-021 · 시안 ⑨ 코드 옆 자물쇠). */}
+                            {detail.completedShipment !== null && (
+                              <span
+                                className="ship-request-code-lock"
+                                role="img"
+                                aria-label={t.detail.codeLocked}
+                                title={t.detail.codeLocked}
+                              >
+                                <Icon name="lock" size={16} />
+                              </span>
+                            )}
+                          </td>
                           <td>
                             {lot.replacement === null ? (
                               `${dateTime(lot.pickedAt)}${lot.pickedWorker === null ? '' : `, ${lot.pickedWorker.workerName}`}`
@@ -294,6 +398,7 @@ export const RequestDetailDialog = ({
                     <th scope="col">{t.detail.replacementColumns.lot}</th>
                     <th scope="col">{t.detail.replacementColumns.result}</th>
                     <th scope="col">{t.detail.replacementColumns.nonconformance}</th>
+                    <th scope="col">{t.detail.replacementColumns.next}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -308,7 +413,7 @@ export const RequestDetailDialog = ({
                       <td>{`${String(row.lineNo)}, ${item(row.itemId)}`}</td>
                       <td>{`${row.lotNo}, ${String(row.qty)}`}</td>
                       <td>
-                        {`${row.resultNo}, ${
+                        {`${t.detail.resultRound(row.resultRound)}, ${
                           row.judgment === null
                             ? t.values.empty
                             : (t.detail.oqc[row.judgment as keyof typeof t.detail.oqc] ??
@@ -316,6 +421,7 @@ export const RequestDetailDialog = ({
                         }, ${dateTime(row.resultAt)}`}
                       </td>
                       <td>{row.nonconformanceNo ?? t.values.empty}</td>
+                      <td>{row.nextLotNo ?? t.values.empty}</td>
                     </tr>
                   ))}
                 </tbody>

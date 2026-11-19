@@ -249,7 +249,7 @@ export const ShipmentOqcDetail = ({
             description={s.lots.emptyDescription}
           />
         ) : (
-          <div className="wide-table iqc-inbound-table">
+          <div className="wide-table iqc-inbound-table oqc-shipment-lots">
             <Table
               density="compact"
               columns={lotColumns}
@@ -310,6 +310,7 @@ export const ShipmentOqcDetail = ({
           itemId={request.itemId}
           uomId={request.uomId}
           uomCode={uom}
+          planVersionId={request.inspectionPlanVersionId}
           views={active}
           results={results}
           editing={drawer.editing}

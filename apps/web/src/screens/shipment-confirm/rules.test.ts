@@ -11,6 +11,10 @@ const row = (overrides: Partial<ShipmentRow> = {}): ShipmentRow => ({
   statusCode: 'CONFIRMED',
   expedited: false,
   erpDeliveryNo: null,
+  shipmentRequestNo: null,
+  customerName: null,
+  shipToName: null,
+  salesOrderNo: null,
   erpSendStatus: 'PENDING',
   cancelRequestPending: false,
   completedTerminalCode: 'SYN-POP',
@@ -60,8 +64,9 @@ describe('cancelLockOf', () => {
     expect(cancelLockOf(row({ cancelRequestPending: true }))).toBe('cancelPending');
   });
 
-  it('송신 오류는 담당자 문의로 잠근다 — 이번 범위에서 정하지 않았다', () => {
-    expect(cancelLockOf(row({ erpSendStatus: 'SEND_ERROR' }))).toBe('sendError');
+  it('FR-023·Q14 송신 오류는 잠그지 않는다 — ERP 에 반영된 행이 있으면 서버가 409 로 막는다', () => {
+    /* 송신 오류는 아직 ERP 에 반영되지 않은 출하다 — 취소를 요청할 수 있다(2026-11-19 사용자 결정 · FR-023). */
+    expect(cancelLockOf(row({ erpSendStatus: 'SEND_ERROR' }))).toBeNull();
   });
 
   it('옛 흐름 확정분은 지금처럼 취소할 수 없고, 미확정은 요청할 수 있다', () => {
@@ -78,18 +83,25 @@ describe('cancelLockOf', () => {
   });
 });
 
+const warehouse = (warehouseId: number, warehouseName: string) => ({
+  warehouseId,
+  warehouseName,
+  warehouseCode: warehouseName,
+  goodsIssueNos: [],
+  qty: null,
+  locations: [],
+});
+
 describe('warehouseDisplay', () => {
   it('Q18 하나면 이름, 여럿이면 「n곳」과 이름 목록', () => {
-    expect(warehouseDisplay(row({ warehouses: [{ warehouseId: 1, warehouseName: 'A' }] }))).toEqual(
-      { kind: 'one', name: 'A' },
-    );
+    expect(warehouseDisplay(row({ warehouses: [warehouse(1, 'A')] }))).toEqual({
+      kind: 'one',
+      name: 'A',
+    });
     expect(
       warehouseDisplay(
         row({
-          warehouses: [
-            { warehouseId: 1, warehouseName: 'A' },
-            { warehouseId: 2, warehouseName: 'B' },
-          ],
+          warehouses: [warehouse(1, 'A'), warehouse(2, 'B')],
         }),
       ),
     ).toEqual({ kind: 'many', count: 2, names: 'A, B' });

@@ -2,7 +2,14 @@ import { AlertBanner, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { formatPlantDateTime } from '../../patterns/plant-time';
-import { formatQty, totalsOf, type Completion, type CompletionResult } from './model';
+import {
+  formatQty,
+  qtyWithUom,
+  totalsOf,
+  uomOf,
+  type Completion,
+  type CompletionResult,
+} from './model';
 
 const t = messages.popShipmentComplete;
 
@@ -34,6 +41,18 @@ export const IdleView = () => (
 const requestLine = (completion: Completion): string =>
   `${completion.shipmentRequestNo}, ${completion.customer.partnerName}`;
 
+/** 완료한 POP 단말과 작업자(시안 ⑥⑦). 서버가 둘 다 실었을 때만 — 없으면 `null`. */
+export const completedByOf = (completion: Completion): string | null => {
+  const done = completion.completedShipment;
+  if (done === null || done.completedTerminal === null || done.completedWorker === null)
+    return null;
+  return t.result.who(
+    done.completedTerminal.terminalCode,
+    done.completedWorker.workerName,
+    done.completedWorker.workerNo,
+  );
+};
+
 export interface ResultViewProps {
   result: CompletionResult;
   workerNo: string | null;
@@ -45,6 +64,7 @@ export interface ResultViewProps {
  */
 export const ResultView = ({ result, workerNo }: ResultViewProps) => {
   const totals = totalsOf(result.completion);
+  const completedBy = completedByOf(result.completion);
 
   return (
     <section className="pop-ship-outcome pop-ship-outcome--done" aria-label={t.result.title}>
@@ -67,17 +87,24 @@ export const ResultView = ({ result, workerNo }: ResultViewProps) => {
           <dt>{t.result.completedAt}</dt>
           <dd>{formatPlantDateTime(result.completedAt) ?? ''}</dd>
         </div>
-        {workerNo !== null && (
+        {completedBy !== null ? (
           <div>
-            <dt>{t.result.worker}</dt>
-            <dd>{workerNo}</dd>
+            <dt>{t.result.completedBy}</dt>
+            <dd>{completedBy}</dd>
           </div>
+        ) : (
+          workerNo !== null && (
+            <div>
+              <dt>{t.result.worker}</dt>
+              <dd>{workerNo}</dd>
+            </div>
+          )
         )}
         <div>
           <dt>{t.result.qty}</dt>
           <dd>
             {t.result.qtyValue(
-              formatQty(totals.qty),
+              qtyWithUom(totals.qty, uomOf(result.completion)),
               totals.lineCount,
               totals.lotCount,
               totals.over > 0 ? formatQty(totals.over) : null,
@@ -90,7 +117,10 @@ export const ResultView = ({ result, workerNo }: ResultViewProps) => {
             <dd>
               {result.completion.warehouses
                 .map((warehouse) =>
-                  t.result.warehouseValue(warehouse.warehouseName, formatQty(warehouse.qty)),
+                  t.result.warehouseValue(
+                    warehouse.warehouseName,
+                    qtyWithUom(warehouse.qty, uomOf(result.completion)),
+                  ),
                 )
                 .join(', ')}
             </dd>
@@ -125,6 +155,12 @@ export const AlreadyView = ({ completion }: { completion: Completion }) => (
           <dt>{t.already.completedAt}</dt>
           <dd>{formatPlantDateTime(completion.completedShipment.completedAt) ?? ''}</dd>
         </div>
+        {completedByOf(completion) !== null && (
+          <div>
+            <dt>{t.result.completedBy}</dt>
+            <dd>{completedByOf(completion)}</dd>
+          </div>
+        )}
       </dl>
     )}
     <p className="field-note">{t.already.historyHint}</p>

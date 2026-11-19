@@ -23,6 +23,7 @@ import {
   codeProblem,
   isNotRejected,
   lineTiles,
+  partiesText,
   pickRejectionOf,
   replaceEffect,
   replacedLots,
@@ -91,7 +92,16 @@ const useKeyRing = () => {
   };
 };
 
-const NoticeBanner = ({ notice, uomOf }: { notice: Notice; uomOf: (uomId: number) => string }) => {
+const NoticeBanner = ({
+  notice,
+  uomOf,
+  onRetry,
+}: {
+  notice: Notice;
+  uomOf: (uomId: number) => string;
+  /** 전송 실패 띠의 [다시 시도] — 그 LOT 을 같은 멱등 키로 다시 보낸다. */
+  onRetry: (lotNo: string) => void;
+}) => {
   if (notice.kind === 'picked') {
     const { pickedLot, line } = notice.result;
     const tiles = lineTiles(line);
@@ -168,7 +178,12 @@ const NoticeBanner = ({ notice, uomOf }: { notice: Notice; uomOf: (uomId: number
       ) : null}
       {rejection.kind === 'notFound' ? <p>{t.rejected.notFoundDetail}</p> : null}
       {rejection.kind === 'failed' ? (
-        <p>{t.rejected.failedDetail}</p>
+        <>
+          <p>{t.rejected.failedDetail}</p>
+          <Button variant="outlined" onClick={() => onRetry(notice.lotNo)}>
+            {t.rejected.retry}
+          </Button>
+        </>
       ) : (
         <p>{t.rejected.notPicked}</p>
       )}
@@ -389,6 +404,11 @@ export const ProductPickingScreen = () => {
   }
 
   const customerOf = (partnerId: number) => customers.data?.get(partnerId) ?? null;
+  /* 단말은 거래처 마스터를 못 읽는다 — 지시서 응답의 이름을 먼저 쓰고, 없을 때만 조회값을 쓴다. */
+  const namesOf = (request: ShipmentRequest) => ({
+    customer: request.customer?.partnerName ?? customerOf(request.customerId),
+    shipTo: request.shipTo?.partnerName ?? customerOf(request.shipToPartnerId),
+  });
 
   if (target === null) {
     return (
@@ -411,8 +431,7 @@ export const ProductPickingScreen = () => {
                 (sum, line) => sum + activeLots(line).length,
                 0,
               );
-              const customer = customerOf(request.customerId);
-              const shipTo = customerOf(request.shipToPartnerId);
+              const { customer, shipTo } = namesOf(request);
 
               return (
                 <li key={request.shipmentRequestId}>
@@ -427,17 +446,13 @@ export const ProductPickingScreen = () => {
                   >
                     <Card.Body className="card-body picking__target">
                       <strong>{request.shipmentRequestNo}</strong>
-                      {customer === null ? null : (
-                        <p>
-                          {shipTo === null || shipTo === customer
-                            ? customer
-                            : `${customer}, ${shipTo}`}
-                        </p>
-                      )}
+                      {customer === null ? null : <p>{partiesText(customer, shipTo)}</p>}
                       <p className="picking__note">
-                        {request.salesOrderId === null || request.salesOrderId === undefined
-                          ? `${t.requests.noSalesOrder}, ${t.requests.shipDate(request.requestedShipDate)}`
-                          : t.requests.shipDate(request.requestedShipDate)}
+                        {`${
+                          request.salesOrderNo === null
+                            ? t.requests.noSalesOrder
+                            : t.requests.salesOrder(request.salesOrderNo)
+                        }, ${t.requests.shipDate(request.requestedShipDate)}`}
                       </p>
                       {(request.lines ?? []).map((line) => (
                         <p key={line.shipmentRequestLineId}>
@@ -463,13 +478,13 @@ export const ProductPickingScreen = () => {
     );
   }
 
-  const customerName = customerOf(target.customerId);
+  const { customer: customerName, shipTo: shipToName } = namesOf(target);
 
   if (qrOpen) {
     return (
       <CodeSheet
         request={target}
-        customerName={customerName}
+        customerName={customerName === null ? null : partiesText(customerName, shipToName)}
         onClose={() => {
           setQrOpen(false);
         }}
@@ -480,7 +495,6 @@ export const ProductPickingScreen = () => {
   const rejectedLot = lines
     .flatMap((line) => activeLots(line).map((lot) => ({ line, lot })))
     .find(({ lot }) => canReplace(lot));
-  const shipToName = customerOf(target.shipToPartnerId);
 
   const codeStateOf = (lot: ShipmentRequestLot): CodeFieldState => ({
     mode: codeTarget?.lotId === lot.shipmentRequestLotId ? codeTarget.mode : null,
@@ -510,12 +524,8 @@ export const ProductPickingScreen = () => {
                   <dd>{shipToName}</dd>
                 </>
               )}
-              {target.salesOrderId === null || target.salesOrderId === undefined ? (
-                <>
-                  <dt>{t.request.salesOrder}</dt>
-                  <dd>{t.requests.noSalesOrder}</dd>
-                </>
-              ) : null}
+              <dt>{t.request.salesOrder}</dt>
+              <dd>{target.salesOrderNo ?? t.requests.noSalesOrder}</dd>
               <dt>{t.request.shipDate}</dt>
               <dd>{target.requestedShipDate}</dd>
             </dl>
@@ -562,7 +572,13 @@ export const ProductPickingScreen = () => {
           </Button>
         )}
         {pick.isPending ? <p role="status">{t.scan.pending(pick.variables.lotNo)}</p> : null}
-        {notice === null ? null : <NoticeBanner notice={notice} uomOf={uomOf} />}
+        {notice === null ? null : (
+          <NoticeBanner
+            notice={notice}
+            uomOf={uomOf}
+            onRetry={(lotNo) => void pickScanned(lotNo)}
+          />
+        )}
         {rejectedLot === undefined || notice?.kind === 'replaced' ? null : (
           <AlertBanner variant="error" title={t.replace.rejectedNotice}>
             {t.line.title(rejectedLot.line.lineNo, itemCodeOf(rejectedLot.line.itemId))},{' '}

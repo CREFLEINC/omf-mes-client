@@ -21,6 +21,11 @@ export const popShipmentComplete = {
       `출하 지시서 코드가 아닙니다. 읽은 값: ${value}. LOT 라벨이 아니라 지시서 QR 을 스캔하세요.`,
     notFound: (value: string): string => `찾을 수 없는 출하 지시서입니다. 읽은 값: ${value}`,
     failed: '지시서를 열지 못했습니다. 연결을 확인한 뒤 다시 스캔하세요.',
+    /* [직접 입력] — 손으로 친 지시서 번호(SR-…)만으로도 연다. 못 찾으면 친 값을 그대로 보인다(둘러보기 W-2). */
+    directNotFound: (value: string): string =>
+      `찾을 수 없는 출하 지시서입니다. 입력한 값: ${value}. 지시서 번호(SR-…)를 확인하세요.`,
+    /* 새 코드가 열리지 않았을 때 — 아래 확인 화면은 앞서 연 지시서다(둘러보기 W-3). */
+    previousStill: (requestNo: string): string => `아래 화면은 앞서 연 지시서 ${requestNo} 입니다.`,
   },
 
   entry: {
@@ -50,6 +55,7 @@ export const popShipmentComplete = {
     blocked: '완료 불가',
     openedByScan: '스캔으로 엶',
     openedBySearch: '찾기로 엶',
+    openedByDirect: '직접 입력으로 엶',
     /** 「이름 (코드)」(C-10). */
     named: (name: string, code: string): string => `${name} (${code})`,
   },
@@ -101,6 +107,8 @@ export const popShipmentComplete = {
     heading: '재고가 빠질 창고',
     note: '정보로만 보입니다. 출하는 하나로 기록됩니다.',
     entry: (lotCount: number, qty: string): string => `LOT ${String(lotCount)}개, 수량 ${qty}`,
+    /** 두 창고 이상에 몫이 있는 LOT — 창고마다 LOT 수를 세면 그 LOT 이 양쪽에 들어간다(시안 ③). */
+    splitLot: (lotNo: string): string => `${lotNo} 는 두 창고에 나뉘어 있어 양쪽에 모두 셉니다.`,
   },
 
   lots: {
@@ -114,6 +122,16 @@ export const popShipmentComplete = {
       oqc: 'OQC',
       managementCode: '출하 관리 코드',
     },
+    /* 여러 창고·적치 대기 자리에 나뉜 LOT 의 몫 — 「창고 A 20, 창고 B 20」. */
+    portion: (warehouse: string, qty: string): string => `${warehouse} ${qty}`,
+    stagingIncluded: (qty: string): string => `적치 대기 ${qty} 포함`,
+    /* 교체로 빠진 LOT — 확인 화면에서 출하에 들지 않는다는 것을 한 줄로 알린다. */
+    replaced: (count: number, lots: string): string =>
+      `교체로 빠진 LOT ${String(count)}: ${lots}. 출하에 들지 않습니다.`,
+    replacedLot: (lotNo: string, judgment: string | null): string =>
+      judgment === null ? lotNo : `${lotNo}(${judgment})`,
+    /* 확인 화면이 더 아래로 이어질 때 바닥에 붙는 단서(둘러보기 W-8). */
+    moreBelow: '아래로 밀면 라인과 LOT 표가 더 있습니다',
     oqc: {
       NOT_REQUIRED: '검사 불필요',
       SKIPPED: '검사 생략',
@@ -130,6 +148,10 @@ export const popShipmentComplete = {
     request: '출하 지시서',
     completedAt: '완료 시각',
     worker: '작업자',
+    /** 완료한 POP 단말과 작업자(시안 ⑥⑦ 「단말 · 작업자」 — C-13 으로 쉼표). */
+    completedBy: '단말과 작업자',
+    who: (terminalCode: string, workerName: string, workerNo: string): string =>
+      `${terminalCode}, ${workerName} (${workerNo})`,
     qty: '출하 수량',
     qtyValue: (qty: string, lineCount: number, lotCount: number, over: string | null): string =>
       `${qty}, 라인 ${String(lineCount)}, LOT ${String(lotCount)}${over === null ? '' : ` (초과 ${over} 포함)`}`,
@@ -163,6 +185,9 @@ export const popShipmentComplete = {
     blocked: (count: number): string => `막힘 ${String(count)}`,
     shipDate: '출하일',
     customer: '고객',
+    items: '품목',
+    itemsValue: (code: string, name: string, more: number): string =>
+      more > 0 ? `${code} ${name} 외 ${String(more)}` : `${code} ${name}`,
     summary: '내용',
     summaryValue: (lineCount: number, lotCount: number, picked: string, target: string): string =>
       `라인 ${String(lineCount)}, LOT ${String(lotCount)}, 피킹 ${picked} / 목표 ${target}`,
@@ -187,13 +212,25 @@ export const popShipmentComplete = {
 
   bar: {
     idle: '지시서를 스캔하거나 찾으면 확인 화면이 열립니다.',
-    ready: (qty: string, lotCount: number): string =>
-      `합계 ${qty}, LOT ${String(lotCount)}개. 누르면 재고 차감과 출고 전표가 한 번에 생깁니다.`,
+    /* 시안 바닥 띠 — 굵은 요약(「160 EA · LOT 4」) + 무엇이 생기는지. */
+    readyLead: (qty: string, lotCount: number): string => `${qty} · LOT ${String(lotCount)}`, // ui-check-ignore: C-13 시안 P0407 바닥 띠
+    readyNote: '누르면 재고 차감·출고 전표가 한 번에 생깁니다.', // ui-check-ignore: C-13 시안 P0407 바닥 띠 문구
     blocked: (count: number): string =>
       `막는 이유 ${String(count)}건을 해결해야 완료할 수 있습니다.`,
     done: '완료했습니다. 다음 지시서를 스캔하거나 찾으세요.',
     already: '이미 완료된 지시서는 다시 완료할 수 없습니다.',
     workerMissing: '사번을 확인해야 완료할 수 있습니다.',
+    /*
+     * 잠긴 [출하 완료] 옆 한 줄(둘러보기 W-9) — 안내 문장이 아니라 잠긴 까닭이다. 하단 안내 문장은 POP 공통 규칙으로
+     * 숨는다(#291) — 이 줄은 그 자리가 아니다.
+     */
+    lock: {
+      idle: '지시서를 열면 완료할 수 있습니다',
+      blocked: (count: number): string => `막는 이유 ${String(count)}건`,
+      done: '완료했습니다',
+      already: '이미 완료된 지시서',
+      worker: '사번 확인 필요',
+    },
     recheck: '다시 확인',
     close: '닫기',
     complete: '출하 완료',
@@ -201,6 +238,11 @@ export const popShipmentComplete = {
   },
 
   failure: {
+    /* 409 ALREADY_COMPLETED 인데 다시 읽어도 완료되지 않은 지시서(검증 1회차 F-3) — 아무 말 없이 두지 않는다. */
+    alreadyNotDone:
+      '서버가 「이미 출하 완료」로 거절했지만 이 지시서는 아직 완료되지 않았습니다. [다시 확인]을 누르고, 그래도 안 되면 담당자에게 알리세요.',
+    /* 서버 문구를 함께 보인다 — 작업자가 담당자에게 그대로 전할 수 있게. */
+    withMessage: (base: string, message: string): string => `${base} (서버: ${message})`,
     blocked: '완료를 막는 이유가 새로 생겼습니다. 이유를 확인하세요.',
     changed: '그사이 지시서가 바뀌었습니다. 다시 확인한 뒤 완료하세요.',
     network: '연결이 끊겨 완료하지 못했습니다. 연결을 확인한 뒤 다시 누르세요.',

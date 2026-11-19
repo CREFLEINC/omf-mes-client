@@ -17,6 +17,7 @@ export const productPicking: Translated<typeof ko.productPicking> = {
     none: 'Hôm nay không có phiếu xuất hàng nào cần lấy hàng',
     completedHidden: 'Phiếu đã hoàn tất xuất hàng sẽ không hiện trong danh sách',
     noSalesOrder: 'Không có đơn hàng',
+    salesOrder: (salesOrderNo: string) => `Đơn hàng ${salesOrderNo}`,
     shipDate: (date: string) => `Dự kiến xuất ${date}`,
     lineSummary: (lineNo: number, item: string, picked: string, target: string) =>
       `${String(lineNo)}. ${item} đã lấy ${picked} / mục tiêu ${target}`,
@@ -49,6 +50,8 @@ export const productPicking: Translated<typeof ko.productPicking> = {
     qty: (qty: string, uom: string) => `${qty} ${uom}`,
     portion: (warehouse: string, location: string | null) =>
       location === null ? warehouse : `${warehouse}, ${location}`,
+    staging: 'Chờ xếp kệ',
+    oqcResult: (round: number, at: string) => `Kết quả OQC ${String(round)}, ${at}`,
     replace: 'Thay thế',
     replaced: 'Đã thay thế',
     replacedDetail: (nonconformanceNo: string | null, worker: string, at: string) =>
@@ -94,6 +97,7 @@ export const productPicking: Translated<typeof ko.productPicking> = {
     notFoundDetail: 'Hãy kiểm tra số và quét lại',
     failed: 'Không ghi nhận được việc lấy hàng',
     failedDetail: 'Hãy kiểm tra kết nối rồi quét lại cùng LOT đó. Sẽ không bị ghi hai lần',
+    retry: 'Thử lại',
   },
   replace: {
     confirmTitle: (lotNo: string) => `Thay thế ${lotNo}?`,

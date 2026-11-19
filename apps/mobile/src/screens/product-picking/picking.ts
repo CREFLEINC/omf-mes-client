@@ -143,3 +143,7 @@ export const pickRejectionOf = (error: ApiError): PickRejection => {
 /** 교체를 서버가 물렸는가(재검 합격이 먼저 들어옴 등) — 다시 눌러도 풀리지 않는다. */
 export const isNotRejected = (error: ApiError): boolean =>
   error.kind !== 'network' && 'code' in error && error.code === 'LOT_NOT_REJECTED';
+
+/** 카드·코드 화면의 「고객, 납품처」 — 납품처가 없거나 고객과 같으면 고객만 쓴다(가운뎃점 대신 쉼표, C-13). */
+export const partiesText = (customer: string, shipTo: string | null): string =>
+  shipTo === null || shipTo === customer ? customer : `${customer}, ${shipTo}`;

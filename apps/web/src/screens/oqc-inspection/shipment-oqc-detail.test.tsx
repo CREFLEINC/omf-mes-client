@@ -35,8 +35,26 @@ const reasonValues = [
   },
 ];
 
+/** 검사 기준 항목 하나(육안 · 글 입력) — 의뢰 기준 버전 3101 의 것. */
+const appearanceSpec = {
+  inspectionItemSpecId: 7902,
+  inspectionPlanVersionId: 3101,
+  sequenceNo: 10,
+  inspectionItemCode: 'APPEAR',
+  inspectionItemName: '외관',
+  dataTypeCode: 'TEXT',
+  measurementCount: 1,
+  requiredFlag: true,
+  automaticJudgment: false,
+};
+const pr = messages.pqcInspectionRegister.web.items;
+
 interface Options {
   request?: InspectionRequestResponse;
+  /** 검사 기준 항목을 내린다(T052) — 없으면 항목 조회가 404(측정 칸 없음). */
+  withItems?: boolean;
+  /** 결과마다 저장된 측정치. */
+  savedMeasurements?: Record<number, unknown[]>;
   /** 결과 저장 응답 — 기본 201. */
   save?: (request: Request) => Response | undefined;
 }
@@ -81,6 +99,14 @@ const renderShipmentOqc = (options: Options = {}) => {
     if (path.startsWith('/quality/inspection-results/') && req.method === 'PUT') {
       writes.push(req.clone());
       return jsonResponse({ ...shipmentResult(1, 'REJECTED', [7001]), inspectionRound: 1 });
+    }
+    if (options.withItems === true && path === '/quality/inspection-plan-versions/3101/items') {
+      return jsonResponse({ items: [appearanceSpec], page: pageOf(1) });
+    }
+    const measured = /^\/quality\/inspection-results\/(\d+)\/measurements$/u.exec(path);
+    if (measured !== null && options.savedMeasurements !== undefined) {
+      const items = options.savedMeasurements[Number(measured[1])] ?? [];
+      return jsonResponse({ items, page: pageOf(items.length) });
     }
     if (path === '/logistics/shipment-requests/6201') return jsonResponse(shipmentRequestForOqc());
     if (path.startsWith('/mdm/partners/')) {
@@ -138,7 +164,11 @@ describe('W-04-03 출하 OQC 새 흐름 — 상세', () => {
     expect(row3.getByText(s.lots.replaceHint)).toBeInTheDocument();
     /* 지시서에서 읽은 창고 · 위치 몫. */
     const row1 = within(lots.getByText('P2611-0001').closest('tr') as HTMLElement);
-    expect(row1.getByText(s.lots.portion('창고A', 'A-01-01', '40'))).toBeInTheDocument();
+    expect(
+      row1.getByText(
+        `${s.lots.portion('창고A', 'A-01-01', '30')} · ${s.lots.portion('창고A', 'K7QX-SYS-STAGING', '10')}`,
+      ),
+    ).toBeInTheDocument();
     /* 고객 · 지시서 번호. */
     expect(await screen.findByText(partnerNames[501] as string)).toBeInTheDocument();
     expect(screen.getAllByText('SR-261118-001').length).toBeGreaterThan(0);
@@ -277,6 +307,73 @@ describe('W-04-03 출하 OQC 새 흐름 — 상세', () => {
     ).toBeInTheDocument();
   });
 
+  it('FR-009·T052 검사 기준 항목이 있으면 결과 서랍에 측정 칸이 서고, 판정한 항목만 측정치로 싣는다', async () => {
+    const user = userEvent.setup();
+    const { writes } = renderShipmentOqc({ withItems: true });
+
+    const drawer = await openAddDrawer(user);
+    await user.type(
+      await drawer.findByRole('textbox', { name: pr.valueLabel('외관', 1) }),
+      '긁힘 없음',
+    );
+    await user.click(
+      within(drawer.getByRole('group', { name: pr.judgmentLabel('외관', 1) })).getByRole('button', {
+        name: pr.judgmentShort.ACCEPTED,
+      }),
+    );
+    await user.click(drawer.getByRole('button', { name: s.judgments.ACCEPTED }));
+    await user.click(drawer.getByRole('button', { name: s.drawer.save }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    const body = (await writes[0]?.json()) as { measurements?: Record<string, unknown>[] };
+    expect(body.measurements).toEqual([
+      expect.objectContaining({
+        inspectionItemSpecId: 7902,
+        sampleNo: 1,
+        textValue: '긁힘 없음',
+        judgmentCode: 'ACCEPTED',
+      }),
+    ]);
+  });
+
+  it('FR-009·T052 작성중 결과를 고치면 저장된 측정치가 칸에 되살아나고 PUT 에 그대로 실린다', async () => {
+    const user = userEvent.setup();
+    const { writes } = renderShipmentOqc({
+      withItems: true,
+      savedMeasurements: {
+        9201: [
+          {
+            inspectionMeasurementId: 1,
+            inspectionResultId: 9201,
+            inspectionItemSpecId: 7902,
+            sampleNo: 1,
+            textValue: '찍힘',
+            judgmentCode: 'REJECTED',
+            measuredAt: '2026-11-18T03:00:00.000Z',
+          },
+        ],
+      },
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: `${s.results.seq(1)} ${s.results.edit}` }),
+    );
+    const drawer = within(await screen.findByRole('dialog', { name: s.drawer.editTitle(1) }));
+    expect(await drawer.findByDisplayValue('찍힘')).toBeInTheDocument();
+    await user.click(drawer.getByRole('button', { name: s.judgments.REJECTED }));
+    await user.click(drawer.getByRole('button', { name: s.drawer.save }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    const body = (await writes[0]?.json()) as { measurements?: Record<string, unknown>[] };
+    expect(body.measurements).toEqual([
+      expect.objectContaining({
+        inspectionItemSpecId: 7902,
+        textValue: '찍힘',
+        judgmentCode: 'REJECTED',
+      }),
+    ]);
+  });
+
   it('작성중 결과를 고치면 PUT 으로 매칭 · 판정만 보낸다', async () => {
     const user = userEvent.setup();
     const { writes } = renderShipmentOqc();
@@ -336,6 +433,30 @@ describe('W-04-03 출하 OQC 새 흐름 — 목록', () => {
     expect(row.getByText('SR-261118-001')).toBeInTheDocument();
     expect(row.getByText(s.queue.pickedLots(4))).toBeInTheDocument();
     expect(row.getByText(s.overview.rejected(1))).toBeInTheDocument();
+  });
+
+  it('T054·FR-012 진행 중(IN_PROGRESS) 의뢰에는 회차 목록이 비어 와도 [생략 요청]이 없다 — 결과 1건 이상이라는 뜻이다', async () => {
+    renderShipmentOqc({
+      request: { ...shipmentOqcRequest(), statusCode: 'IN_PROGRESS', results: [] },
+    });
+
+    const open = await screen.findByRole('button', { name: t.queue.openRow('IR-OQC-0201') });
+    const row = within(open.closest('tr') as HTMLElement);
+    expect(
+      row.queryByRole('button', { name: messages.iqcInspection.queue.skipRequest }),
+    ).toBeNull();
+  });
+
+  it('T054·FR-012 결과 0건(대기 REQUESTED) 의뢰에만 [생략 요청]이 선다', async () => {
+    renderShipmentOqc({
+      request: { ...shipmentOqcRequest(), statusCode: 'REQUESTED', results: [] },
+    });
+
+    const open = await screen.findByRole('button', { name: t.queue.openRow('IR-OQC-0201') });
+    const row = within(open.closest('tr') as HTMLElement);
+    expect(
+      await row.findByRole('button', { name: messages.iqcInspection.queue.skipRequest }),
+    ).toBeInTheDocument();
   });
 
   it('FR-012 결과가 있는 의뢰에는 [생략 요청]이 없다', async () => {

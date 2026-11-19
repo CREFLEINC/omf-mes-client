@@ -1,5 +1,5 @@
 import { Button, Chip, EmptyState, Icon } from '@crefle/web-ui';
-import type { InspectionResultSummaryForward } from '@omf-mes/api-client';
+import type { components, InspectionResultSummaryForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
@@ -30,8 +30,14 @@ import {
   useShipmentRequestRef,
   type ShipmentRequestRef,
 } from '../oqc-inspection/shipment-oqc-queries';
+import {
+  ShipmentMeasurementSection,
+  useShipmentMeasurements,
+} from '../oqc-inspection/shipment-measurements';
 import { SHIPMENT_JUDGMENTS } from '../oqc-inspection/shipment-result-drawer';
 import type { InspectionRequestResponse } from '../oqc-inspection/types';
+
+type ShipmentRequestLot = components['schemas']['ShipmentRequestLot'];
 import { formatDateTime } from '../oqc-inspection/types';
 import { PopSerialStep } from './serial-step';
 
@@ -71,6 +77,12 @@ export const usePopShipmentForm = (inspectionRequestId: number | null, workerNo:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
   useEffect(() => setSavedSeq(null), [inspectionRequestId]);
+  /* 검사 항목 측정(FR-009 · T052) — POP 은 결과를 더하기만 하므로 늘 빈 칸에서 시작한다(결과가 늘면 다시 연다). */
+  const measurements = useShipmentMeasurements({
+    planVersionId: request?.inspectionPlanVersionId,
+    resultId: null,
+    resetKey: resetKey ?? '',
+  });
 
   const seqNo =
     request?.nextResultSeqNo ?? results.reduce((max, result) => Math.max(max, result.seqNo), 0) + 1;
@@ -98,19 +110,22 @@ export const usePopShipmentForm = (inspectionRequestId: number | null, workerNo:
     if (matched.length === 0) return ps.bar.blocked.match;
     if (judgment === null) return ps.bar.blocked.judgment;
     if (needsReason && reason === null) return ps.bar.blocked.reason;
+    if (measurements.hasError) return ps.bar.blocked.measurement;
     return null;
   })();
 
   const submit = () => {
     if (blockedReason !== null || request === undefined || judgment === null) return;
     setSavedSeq(null);
+    const inspectedAt = new Date().toISOString();
     save.write({
       inspectionRequestId: request.inspectionRequestId,
       uomId: request.uomId,
       judgmentCode: judgment,
       matchedLotIds: matched,
       reinspectionReasonCode: needsReason ? reason : null,
-      inspectedAt: new Date().toISOString(),
+      inspectedAt,
+      measurements: measurements.inputs(inspectedAt),
       serials: toSerialInputs(serialRows),
       editing: null,
     });
@@ -131,6 +146,7 @@ export const usePopShipmentForm = (inspectionRequestId: number | null, workerNo:
     setReason,
     serialRows,
     setSerialRows,
+    measurements,
     overridden,
     needsReason,
     blockedReason,
@@ -141,6 +157,34 @@ export const usePopShipmentForm = (inspectionRequestId: number | null, workerNo:
 };
 
 export type PopShipmentForm = ReturnType<typeof usePopShipmentForm>;
+
+/** 머리 품목 칸 — 의뢰 응답의 코드·이름, 없으면 지시서 라인, 그래도 없으면 품목 번호. */
+const itemText = (
+  request: InspectionRequestResponse,
+  refData: ShipmentRequestRef | undefined,
+): string => {
+  const code = request.itemCode ?? refData?.itemCode ?? null;
+  if (code === null || code === '') return pop.detail.idValue(request.itemId);
+  return ps.itemValue(code, request.itemName ?? refData?.itemName ?? '');
+};
+
+/** 교체로 빠진 LOT 줄 — 「2회차 불합격 · PDA 교체 11-18 11:02 작업자 · 부적합 NC-…」(시안 P0406). */
+const popReplacedText = (lot: ShipmentRequestLot | null): string => {
+  const replacement = lot?.replacement ?? null;
+  if (replacement === null) return replacedText(lot);
+  const names: Readonly<Record<string, string>> = s.judgments;
+  const judgment =
+    replacement.judgment === null
+      ? s.judgments.REJECTED
+      : (names[replacement.judgment] ?? replacement.judgment);
+  return ps.replacedLine(
+    replacement.resultRound,
+    judgment,
+    formatPlantDateTime(replacement.replacedAt) ?? replacement.replacedAt,
+    replacement.worker?.workerName ?? '',
+    replacement.nonconformanceNo,
+  );
+};
 
 const Summary = ({
   request,
@@ -175,7 +219,7 @@ const Summary = ({
         <dl className="pop-oqc-summary__figures">
           <div>
             <dt>{pop.detail.fields.item}</dt>
-            <dd>{pop.detail.idValue(request.itemId)}</dd>
+            <dd>{itemText(request, refData)}</dd>
           </div>
           <div>
             <dt>{ps.target}</dt>
@@ -217,7 +261,7 @@ const LotLine = ({
   refData: ShipmentRequestRef | undefined;
   uom: string;
 }) => {
-  const portions = portionsText(refData?.lotOf(view.lot.lotId) ?? null);
+  const portions = portionsText(refData?.lotOf(view.lot.lotId) ?? null, ps.staging);
 
   return (
     <li className="pop-oqc-shipment-lot">
@@ -307,7 +351,8 @@ export const PopShipmentDetail = ({
     return <p className="field-note">{pop.detail.loading}</p>;
   }
 
-  const uom = uomCode ?? '';
+  /* 단위는 의뢰 응답의 코드를 먼저 쓴다 — POP 은 단위 마스터를 못 읽을 수 있다. */
+  const uom = request.uomCode ?? uomCode ?? '';
   const refData = form.ref;
   const lots = request.lots ?? [];
   const lotNoOf = (lotId: number): string =>
@@ -366,7 +411,7 @@ export const PopShipmentDetail = ({
                     </span>
                     <Chip size="md">{s.lots.replaced}</Chip>
                     <span className="pop-oqc-shipment-muted">
-                      {replacedText(refData?.lotOf(lot.lotId) ?? null)}
+                      {popReplacedText(refData?.lotOf(lot.lotId) ?? null)}
                     </span>
                   </li>
                 ))}
@@ -470,6 +515,8 @@ export const PopShipmentDetail = ({
               lotLabel={(lotNo) => lotNo}
             />
           ) : null}
+          {/* 검사 항목 측정 — 지금 검사 기준대로(FR-009 · 시안 P0406-After 메모 E 「지금처럼」). */}
+          <ShipmentMeasurementSection form={form.measurements} locked={form.save.isSaving} />
           <PopSerialStep
             inspectionRequestId={request.inspectionRequestId}
             itemId={request.itemId}

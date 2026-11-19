@@ -26,6 +26,8 @@ export type ScreenRouteTable = Readonly<Record<string, ScreenRouteDescriptor>>;
 /** 화면 ID → 주소와 선택 규약. W-03-10은 실제 route가 공개되기 전까지 일부러 없다. */
 export const SCREEN_ROUTES: ScreenRouteTable = {
   'W-03-09': { path: '/quality/approvals', selectionKey: 'approvalRequestId' },
+  /* 출하 취소 결재(피처 010 Q13) — 출하 내역이 결재를 읽어 대상 출하를 고르고, 승인됐으면 [취소 실행]을 세운다. */
+  'W-04-12': { path: '/shipment/shipment-confirm', selectionKey: 'approvalRequestId' },
 };
 
 /**

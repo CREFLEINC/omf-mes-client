@@ -17,12 +17,14 @@ export const shipmentConfirm = {
   },
   filter: {
     period: '완료(출하)일',
-    q: '출하번호',
-    qPlaceholder: '출하번호 입력',
+    q: '출하번호, 지시서, 고객',
+    qPlaceholder: '검색어 입력',
     erp: 'ERP 송신',
     all: '전체',
     search: '조회',
     reset: '초기화',
+    /** 거르기 칩 — 이름과 건수(시안 「대기 2」). */
+    chip: (label: string, count: number): string => `${label} ${String(count)}`,
     /** L-3 — 기간은 비울 수 없다. */
     periodRequired: '기간을 선택해야 조회할 수 있습니다',
     periodReversed: '시작일이 종료일보다 뒤입니다. 두 날짜를 바꿔 주세요',
@@ -55,6 +57,7 @@ export const shipmentConfirm = {
     fields: {
       shipmentNo: '출하번호',
       shippedAt: '완료(출하) 시각',
+      customerRequest: '고객과 지시서',
       warehouse: '창고',
       completedBy: '완료 단말과 작업자',
       erp: 'ERP 송신',
@@ -80,12 +83,22 @@ export const shipmentConfirm = {
     loadFailed: '출하 상세를 불러오지 못했습니다',
     fields: {
       shipmentRequest: '출하 지시서',
+      salesOrder: '수주',
+      customer: '고객',
+      shipTo: '납품처',
       completedAt: '완료(출하) 시각',
       terminal: 'POP 단말',
       worker: '작업자',
       erpDeliveryNo: 'ERP 납품번호',
     },
     erpDeliveryNone: '— (아직 송신 전)',
+    noSalesOrder: '수주 없음',
+    /* 재고가 빠진 창고(시안 W0412) — 출고 전표는 창고마다 한 장이다. */
+    warehouses: '재고가 빠진 창고',
+    warehousesNote: '출고 전표는 창고마다 한 장입니다.',
+    goodsIssue: (goodsIssueNos: string): string => `출고 전표 ${goodsIssueNos}`,
+    noGoodsIssue: '출고 전표 없음(확정 전)',
+    staging: '적치 대기',
     lines: '라인과 LOT',
     linesNote: '출하 수량은 LOT 통째입니다. 출하 관리 코드는 보기만 합니다.',
     columns: {
@@ -98,6 +111,11 @@ export const shipmentConfirm = {
     line: (lineNo: number, itemCode: string): string => `라인 ${String(lineNo)}: ${itemCode}`,
     lineQty: (target: string, shipped: number): string => `목표 ${target}, 출하 ${String(shipped)}`,
     over: (qty: number): string => `초과 +${String(qty)}`,
+    /** 수주 없는 라인 — 이 라인은 ERP 로 보내지 않는다(US7-4 · FR-026). */
+    lineNotSent: 'ERP 송신 안 함',
+    /** 송신 대기 — 다음 송신 때 나갈 수주 연결 라인 수와 수주 번호(시안 「라인 n행(수주 SO-…)」). */
+    erpPending: (lineCount: number, salesOrderNos: string): string =>
+      `아직 ERP 로 보내지 않았습니다. 다음 송신 때 수주 연결 라인 ${String(lineCount)}행(수주 ${salesOrderNos})이 나갑니다.`,
     replaced: '교체됨 — 출하에 들지 않음',
     replacedNote: (replacedAt: string, nonconformanceNo: string | null): string =>
       nonconformanceNo === null
@@ -110,7 +128,8 @@ export const shipmentConfirm = {
         '확정 전입니다. 확정하면 ERP 전표 송신이 대기열에 실립니다 — 즉시 전송이 아닙니다.',
       PENDING: '아직 ERP 로 보내지 않았습니다. 다음 송신 때 수주 연결 라인이 나갑니다.',
       SENT: 'ERP 로 보냈습니다.',
-      SEND_ERROR: 'ERP 송신에 실패했습니다. 담당자에게 문의하세요.',
+      SEND_ERROR:
+        'ERP 송신에 실패해 아직 ERP 에 반영되지 않았습니다. 취소를 요청할 수 있습니다 — 취소가 실행되면 이 송신은 다시 시도하지 않습니다.',
       NOT_SENT_NO_SALES_ORDER: '수주 없이 나간 출하라 ERP 로 보내지 않습니다.',
       CANCELLED: '취소된 출하입니다. ERP 송신 대기도 지워졌습니다.',
     },
@@ -132,18 +151,20 @@ export const shipmentConfirm = {
   },
   /** 취소는 ERP 로 보내기 전에만 된다 — 그 사실을 취소 요청 옆에 둔다. */
   cancelNote:
-    'ERP 로 보내기 전에만 취소할 수 있습니다. 승인된 취소의 실행은 결재함에서 진행하세요.',
+    'ERP 로 보내기 전(송신 오류 포함)에만 취소할 수 있습니다. 취소가 승인되면 이 화면에서 [취소 실행]으로 실행합니다.',
   actions: {
     confirm: '확정',
     requestCancel: '취소 요청',
+    executeCancel: '취소 실행',
   },
   lock: {
     sent: 'ERP 로 이미 보냈습니다. ERP 에서 처리하세요',
     cancelPending: '취소 요청이 결재 중입니다',
-    sendError: 'ERP 송신 오류가 난 출하입니다. 담당자에게 문의하세요',
     confirmedLegacy: '확정 후에는 취소할 수 없습니다',
     cancelled: '취소된 출하입니다',
     running: '확정을 처리하는 중입니다',
+    /** 승인된 취소가 아직 실행되지 않았다 — 다시 요청하지 않고 실행한다. */
+    cancelApproved: '취소가 승인됐습니다. [취소 실행]으로 실행하세요',
   },
   confirmDialog: {
     title: '출하 확정',
@@ -182,6 +203,16 @@ export const shipmentConfirm = {
     cancel: '닫기',
     submit: '취소 요청',
   },
+  /** 승인된 취소의 실행 확인 창(FR-023 — 결재함은 승인만 하고 실행은 이 화면에서 한다). */
+  executeDialog: {
+    title: '출하 취소 실행',
+    target: (shipmentNo: string): string => `${shipmentNo}의 승인된 취소를 실행합니다.`,
+    irreversible: '실행하면 되돌릴 수 없습니다. 다시 내보내려면 POP 에서 출하를 다시 완료하세요.',
+    erpAlreadySent: '실행하지 못했습니다. 그 사이 ERP 로 이미 보냈습니다. ERP 에서 처리하세요.',
+    failed: (message: string): string => `실행하지 못했습니다. ${message}`,
+    cancel: '닫기',
+    submit: '취소 실행',
+  },
   result: {
     allConfirmed: (count: number): string => `출하 ${String(count)}건을 확정했습니다.`,
     partial: (confirmed: number, failed: number): string =>
@@ -194,6 +225,8 @@ export const shipmentConfirm = {
       lockUnavailable: '확정에 필요한 정보를 받지 못했습니다. 다시 시도하세요',
       unknown: '확정하지 못했습니다',
     },
+    executeCancelDone: (shipmentNo: string): string =>
+      `${shipmentNo}의 취소를 실행했습니다. 재고와 출고 전표가 되돌려졌습니다.`,
     requestCancelDone: (shipmentNo: string): string =>
       `${shipmentNo}의 취소 요청을 올렸습니다. 승인 뒤에 취소가 실행됩니다.`,
   },

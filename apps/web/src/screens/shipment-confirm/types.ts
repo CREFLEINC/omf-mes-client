@@ -22,10 +22,19 @@ export const ERP_SEND_STATUSES: readonly ErpSendStatus[] = [
   'NOT_QUEUED',
 ];
 
+/** 재고가 빠진 창고 하나 — 출고 전표(창고마다 한 장)·빠진 수량·위치별 수량(시안 W0412 「재고가 빠진 창고」). */
 export interface WarehouseRef {
   warehouseId: number;
   warehouseName: string;
+  warehouseCode: string;
+  goodsIssueNos: string[];
+  /** 빠진 수량. 응답에 칸이 없으면(옛 서버) null — 0 으로 지어내지 않는다. */
+  qty: number | null;
+  locations: { locationCode: string; staging: boolean; qty: number }[];
 }
+
+/** 적치 대기 자리(위치 시스템 역할). */
+const STAGING_ROLE = 'PUTAWAY_STAGING';
 
 /**
  * 출하 한 건(목록 행).
@@ -41,6 +50,11 @@ export interface ShipmentRow {
   statusCode: string;
   expedited: boolean;
   erpDeliveryNo: string | null;
+  /** 출하 지시서·고객·납품처·수주(목록 「고객 · 지시서」 칸). 옛 응답이면 null. */
+  shipmentRequestNo: string | null;
+  customerName: string | null;
+  shipToName: string | null;
+  salesOrderNo: string | null;
   /** 서버 판정 그대로. 옛 서버가 안 내리면 `null` — 화면이 지어내지 않는다. */
   erpSendStatus: ErpSendStatus | null;
   cancelRequestPending: boolean;
@@ -65,6 +79,10 @@ export const toShipmentRow = (data: ShipmentResponse): ShipmentRow => ({
   statusCode: data.statusCode,
   expedited: data.expedited,
   erpDeliveryNo: data.erpDeliveryNo ?? null,
+  shipmentRequestNo: data.shipmentRequestNo ?? null,
+  customerName: data.customer?.partnerName ?? null,
+  shipToName: data.shipTo?.partnerName ?? null,
+  salesOrderNo: data.salesOrderNo ?? null,
   erpSendStatus: data.erpSendStatus ?? null,
   cancelRequestPending: data.cancelRequestPending ?? false,
   completedTerminalCode: data.completedTerminal?.terminalCode ?? null,
@@ -75,6 +93,14 @@ export const toShipmentRow = (data: ShipmentResponse): ShipmentRow => ({
   warehouses: (data.warehouses ?? []).map((warehouse) => ({
     warehouseId: warehouse.warehouseId,
     warehouseName: warehouse.warehouseName,
+    warehouseCode: warehouse.warehouseCode,
+    goodsIssueNos: warehouse.goodsIssueNos ?? [],
+    qty: warehouse.qty ?? null,
+    locations: (warehouse.locations ?? []).map((location) => ({
+      locationCode: location.locationCode,
+      staging: location.locationSystemRoleCode === STAGING_ROLE,
+      qty: location.qty,
+    })),
   })),
   totalQty: sumShippedQty(data.lines),
 });
@@ -101,6 +127,10 @@ export interface ReplacedLot {
 export interface ShipmentDetailLine {
   lineNo: number;
   itemCode: string;
+  /** 품목 이름 — 지시서 라인에서 읽는다(시안 「라인 1 · FG-A100 센서 모듈 A」). 모르면 빈 값. */
+  itemName: string;
+  /** 수주 연결 라인이면 수주 번호 — ERP 송신 안내가 센다. 수주 없는 라인은 `null`. */
+  salesOrderNo: string | null;
   shippedQty: number;
   /** 목표(지시서 라인 배정 수량). 지시서를 못 받았으면 `null`. */
   targetQty: number | null;
@@ -186,12 +216,17 @@ export const toShipmentDetail = (
       }
     }
 
+    const targetQty = requestLine?.allocatedQty ?? null;
     return {
       lineNo: line.lineNo,
-      itemCode,
+      itemCode: itemCode === '' ? (requestLine?.itemCode ?? '') : itemCode,
+      itemName: requestLine?.itemName ?? '',
+      salesOrderNo: requestLine?.salesOrderLine?.salesOrderNo ?? null,
       shippedQty: line.shippedQty,
-      targetQty: requestLine?.allocatedQty ?? null,
-      overQty: requestLine?.overQty ?? 0,
+      targetQty,
+      /* 초과는 이 출하가 낸 양 기준이다 — 완료 뒤 지시서의 살아 있는 피킹(overQty)은 0 이 된다. */
+      overQty:
+        targetQty === null ? (requestLine?.overQty ?? 0) : Math.max(0, line.shippedQty - targetQty),
       lots: [...lots.values()],
       replaced: requestLots
         .filter((lot) => lot.statusCode === 'REPLACED' && lot.replacement !== null)
@@ -203,5 +238,9 @@ export const toShipmentDetail = (
     };
   });
 
-  return { row, shipmentRequestNo: request?.shipmentRequestNo ?? null, lines };
+  return {
+    row,
+    shipmentRequestNo: row.shipmentRequestNo ?? request?.shipmentRequestNo ?? null,
+    lines,
+  };
 };

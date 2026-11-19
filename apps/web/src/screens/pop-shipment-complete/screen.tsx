@@ -1,6 +1,6 @@
-import { AlertBanner, Button, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { useScannerSubmit } from '../../patterns/pop-scanner-submit';
@@ -9,13 +9,18 @@ import { toApiError } from '../../patterns/request';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { ConfirmView } from './confirm-view';
 import {
+  blockersOfConflict,
   completeFailureOf,
-  formatQty,
+  directCodeOf,
   groupBlockers,
+  hasMoreBelow,
   isAlreadyCompleted,
   isCompletable,
   lookupFailureOf,
+  qtyWithUom,
+  serverMessageOf,
   totalsOf,
+  uomOf,
   type Completion,
   type CompletionResult,
 } from './model';
@@ -25,7 +30,7 @@ import { SearchDialog } from './search-dialog';
 
 const t = messages.popShipmentComplete;
 
-type Via = 'scan' | 'search';
+type Via = 'scan' | 'search' | 'direct';
 
 type View =
   | { kind: 'idle' }
@@ -37,6 +42,8 @@ type View =
 interface ScanNotice {
   tone: 'error' | 'warning';
   text: string;
+  /** 아래에 남은 화면이 앞서 연 지시서라는 것을 밝힌다(둘러보기 W-3). */
+  detail?: string;
 }
 
 /**
@@ -56,6 +63,13 @@ export const PopShipmentCompleteScreen = () => {
   const identity = usePopIdentity();
   const workerSession = useWorkerSession();
   const workerNo = identity.workerNo?.trim() || workerSession?.worker.workerNo?.trim() || null;
+  /* 결과 「작업자」는 이름(사번) — 세션 작업자가 같은 사번일 때만 이름을 안다(POP 홈과 같은 규칙). */
+  const workerLabel =
+    workerNo !== null &&
+    workerSession?.worker.workerNo === workerNo &&
+    workerSession.worker.workerName
+      ? `${workerSession.worker.workerName} (${workerNo})`
+      : workerNo;
 
   const [view, setView] = useState<View>({ kind: 'idle' });
   const [notice, setNotice] = useState<ScanNotice | null>(null);
@@ -63,6 +77,13 @@ export const PopShipmentCompleteScreen = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [draft, setDraft] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  /* 확인 화면이 아래로 더 이어지는가 — 바닥에 「아래로 밀면…」 단서를 붙인다(둘러보기 W-8). */
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [moreBelow, setMoreBelow] = useState(false);
+  const measureMore = useCallback(() => {
+    const box = contentRef.current;
+    setMoreBelow(box !== null && hasMoreBelow(box));
+  }, []);
 
   const lookup = useLookupShipmentRequest();
   const complete = useCompleteShipment();
@@ -82,7 +103,21 @@ export const PopShipmentCompleteScreen = () => {
    *
    * @param keepFailure 완료 실패 뒤 다시 읽는 경우 — 실패 까닭을 남겨 둔다.
    */
-  const open = (code: string, via: Via, keepFailure = false): void => {
+  /** 지금 화면에 남은 지시서 번호 — 새 코드 조회가 실패했을 때 띠에 밝힌다(W-3). */
+  const shownRequestNo =
+    view.kind === 'confirm' || view.kind === 'already'
+      ? view.completion.shipmentRequestNo
+      : view.kind === 'done'
+        ? view.result.completion.shipmentRequestNo
+        : null;
+
+  const open = (
+    code: string,
+    via: Via,
+    keepFailure = false,
+    onOpened?: (completion: Completion) => void,
+    typed?: string,
+  ): void => {
     if (lookup.isPending || complete.isPending) return;
     setNotice(null);
     if (!keepFailure) setFailure(null);
@@ -90,17 +125,22 @@ export const PopShipmentCompleteScreen = () => {
       onSuccess: (completion) => {
         complete.resetKey();
         show(completion, via);
+        onOpened?.(completion);
       },
       onError: (error) => {
         const reason = lookupFailureOf(toApiError(error));
-        setNotice({
-          tone: 'error',
-          text:
-            reason === 'notCode'
+        const text =
+          via === 'direct' && reason !== 'failed'
+            ? t.scan.directNotFound(typed ?? code)
+            : reason === 'notCode'
               ? t.scan.notCode(code)
               : reason === 'notFound'
                 ? t.scan.notFound(code)
-                : t.scan.failed,
+                : t.scan.failed;
+        setNotice({
+          tone: 'error',
+          text,
+          ...(shownRequestNo === null ? {} : { detail: t.scan.previousStill(shownRequestNo) }),
         });
       },
     });
@@ -115,6 +155,22 @@ export const PopShipmentCompleteScreen = () => {
     inputRef.current?.focus();
   };
   const scanner = useScannerSubmit(send, () => inputRef.current?.value ?? '');
+
+  /** [직접 입력] — 손으로 친 지시서 번호(SR-…)도 연다. 앞머리 `SHPREQ:` 는 화면이 붙인다(W-2). */
+  const sendDirect = (): void => {
+    const typed = (inputRef.current?.value ?? draft).trim();
+    if (typed === '') return;
+    setDraft('');
+    open(directCodeOf(typed), 'direct', false, undefined, typed);
+    inputRef.current?.focus();
+  };
+
+  /* 화면이 바뀌거나 창 크기가 바뀌면 다시 잰다. 구를 때는 `onScroll` 이 잰다. */
+  useEffect(() => {
+    measureMore();
+    window.addEventListener('resize', measureMore);
+    return () => window.removeEventListener('resize', measureMore);
+  }, [view, failure, measureMore]);
 
   /* 조회·완료가 끝나고 찾기 창이 닫혀 있으면 스캔 칸이 포커스를 되찾는다 — 다음 스캔이 사라지지 않게. */
   useEffect(() => {
@@ -143,16 +199,36 @@ export const PopShipmentCompleteScreen = () => {
           setView({ kind: 'done', result });
         },
         onError: (error) => {
-          const reason = completeFailureOf(toApiError(error));
+          const apiError = toApiError(error);
+          const reason = completeFailureOf(apiError);
+          /* 서버 문구를 함께 보인다 — 막힌 까닭을 작업자가 그대로 전할 수 있게(검증 1회차 F-3). */
+          const message = serverMessageOf(apiError);
+          const withMessage = (base: string): string =>
+            message === null || message === base ? base : t.failure.withMessage(base, message);
           if (reason === 'network' || reason === 'other') {
             /* 같은 멱등 키로 다시 누른다 — 서버가 받았는지 모른다. */
-            setFailure(reason === 'network' ? t.failure.network : t.failure.other);
+            setFailure(reason === 'network' ? t.failure.network : withMessage(t.failure.other));
             return;
           }
           complete.resetKey();
+          /* 409 가 실어 온 막는 이유를 그대로 그린다 — 다시 조회하지 않는다. 다른 단말이 바꾼 판정은 [다시 확인]으로 읽는다. */
+          const blockers = reason === 'blocked' ? blockersOfConflict(apiError) : null;
+          if (blockers !== null) {
+            setFailure(t.failure.blocked);
+            setView({ ...confirm, completion: { ...confirm.completion, blockers } });
+            return;
+          }
           if (reason === 'blocked') setFailure(t.failure.blocked);
-          if (reason === 'changed') setFailure(t.failure.changed);
-          open(confirm.completion.code, confirm.via, true);
+          if (reason === 'changed') setFailure(withMessage(t.failure.changed));
+          /*
+           * 「이미 완료」는 다시 읽어 정말 완료됐으면 안내 화면으로 가고(오류 띠 없음), 완료되지 않았으면 서버가 다른
+           * 까닭으로 거절한 것이다 — 확인 화면에 남아 오류를 알린다.
+           */
+          open(confirm.completion.code, confirm.via, true, (reread) => {
+            if (reason === 'alreadyCompleted' && !isAlreadyCompleted(reread)) {
+              setFailure(withMessage(t.failure.alreadyNotDone));
+            }
+          });
         },
       },
     );
@@ -176,10 +252,27 @@ export const PopShipmentCompleteScreen = () => {
             ? t.bar.blocked(groups.length)
             : workerNo === null
               ? t.bar.workerMissing
-              : t.bar.ready(
-                  formatQty(totalsOf(view.completion).qty),
-                  totalsOf(view.completion).lotCount,
-                );
+              : null;
+  const lockReason =
+    view.kind === 'idle'
+      ? t.bar.lock.idle
+      : view.kind === 'already'
+        ? t.bar.lock.already
+        : view.kind === 'done'
+          ? t.bar.lock.done
+          : groups.length > 0
+            ? t.bar.lock.blocked(groups.length)
+            : workerNo === null
+              ? t.bar.lock.worker
+              : null;
+  /* 완료 가능 — 시안 바닥 띠: 굵은 요약(「160 EA · LOT 4」) + 무엇이 생기는지. */
+  const readyLead =
+    barNote === null && confirm !== null
+      ? t.bar.readyLead(
+          qtyWithUom(totalsOf(confirm.completion).qty, uomOf(confirm.completion)),
+          totalsOf(confirm.completion).lotCount,
+        )
+      : null;
 
   return (
     <main className="pop-shell pop-ui pop-ship" aria-labelledby={titleId}>
@@ -207,7 +300,7 @@ export const PopShipmentCompleteScreen = () => {
               scanner.noteInput(event.target.value);
             }}
           />
-          <Button type="submit" variant="outlined" size="xl">
+          <Button type="button" variant="outlined" size="xl" onClick={sendDirect}>
             {t.scan.submit}
           </Button>
           <Button
@@ -226,11 +319,13 @@ export const PopShipmentCompleteScreen = () => {
           {lookup.isPending ? (
             <p className="field-note">{t.scan.looking}</p>
           ) : notice !== null ? (
-            <AlertBanner variant={notice.tone} title={notice.text} />
+            <AlertBanner variant={notice.tone} title={notice.text}>
+              {notice.detail}
+            </AlertBanner>
           ) : null}
         </div>
 
-        <div className="pop-ship-content">
+        <div className="pop-ship-content" ref={contentRef} onScroll={measureMore}>
           {failure !== null && (
             <div className="banner-slot">
               <AlertBanner variant="error">{failure}</AlertBanner>
@@ -239,13 +334,42 @@ export const PopShipmentCompleteScreen = () => {
           {view.kind === 'idle' && <IdleView />}
           {view.kind === 'confirm' && <ConfirmView completion={view.completion} via={view.via} />}
           {view.kind === 'already' && <AlreadyView completion={view.completion} />}
-          {view.kind === 'done' && <ResultView result={view.result} workerNo={workerNo} />}
+          {view.kind === 'done' && <ResultView result={view.result} workerNo={workerLabel} />}
+          {moreBelow && view.kind === 'confirm' && (
+            <p className="pop-ship-more" aria-hidden="true">
+              <Icon name="expand_more" size={20} />
+              {t.lots.moreBelow}
+            </p>
+          )}
         </div>
       </div>
 
       <div className="pop-action-bar">
         <div className="pop-action-note" id={barNoteId} aria-live="polite">
-          <p className="field-note">{barNote}</p>
+          {readyLead !== null ? (
+            /* ⚠ `field-note` 가 아니다 — POP 하단 안내 문장은 공통 규칙으로 숨지만(#291), 이 줄은 안내가 아니라
+               누르면 무엇이 일어나는지의 요약이다(시안 P0407-After 바닥 띠 · 검증 1회차). */
+            <p className="pop-ship-bar-ready">
+              <Icon name="inventory" size={20} aria-hidden />
+              <strong>{readyLead}</strong>
+              <span aria-hidden="true">—</span>
+              <span>{t.bar.readyNote}</span>
+            </p>
+          ) : (
+            <>
+              {/*
+               * 잠긴 까닭 한 줄(둘러보기 W-9) — `field-note` 가 아니다. 긴 안내 문장(아래 field-note)은 POP 공통
+               * 규칙으로 숨고(#291), 이 줄은 [출하 완료]가 왜 잠겼는지만 짧게 말한다.
+               */}
+              {lockReason !== null && (
+                <p className="pop-ship-bar-lock">
+                  <Icon name="lock" size={18} aria-hidden />
+                  <span>{lockReason}</span>
+                </p>
+              )}
+              <p className="field-note">{barNote}</p>
+            </>
+          )}
         </div>
         {confirm !== null && (
           <>

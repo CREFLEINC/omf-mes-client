@@ -41299,7 +41299,7 @@ export interface paths {
     };
     /**
      * 출하작업지시 한 건
-     * @description 라인을 함께 내린다
+     * @description 라인을 함께 내린다 · POP 단말도 읽는다(P-04-06 머리·피킹 LOT 몫 — 단말 공장 지시서만, 피처 010)
      */
     get: {
       parameters: {
@@ -41733,7 +41733,7 @@ export interface paths {
           shipDateFrom?: string;
           /** @description 서버 구현 기준: 끝 날짜를 포함하며 다음 날 공장 자정 미만으로 비교한다(통보 219). */
           shipDateTo?: string;
-          /** @description 출하 번호 검색. ⛔ 범위는 shipment_no 하나다 — 고객은 customerId 를, LOT 은 lotId 를 쓴다(omf-mes#170 과 같은 처리). 근거: W-04-06 §3 */
+          /** @description 검색어 — 출하 번호 · 출하 지시서 번호 · 고객 코드·이름 부분 일치(피처 010 W-04-12 시안 「출하번호·지시서·고객」). ⛔ LOT 은 lotId 를 쓴다. 근거: W-04-06 §3 · 010 시안 W-04-12 */
           q?: string;
           /** @description 이 제품 LOT 이 배분된 출하만. ⭐ 반품에서 라벨만 남았을 때 원 출하를 찾는 경로다(W-04-06 §5-3) — 조인은 서버 몫이다 */
           lotId?: number;
@@ -41771,6 +41771,17 @@ export interface paths {
             'application/json': {
               items: components['schemas']['Shipment'][];
               page: components['schemas']['PageMeta'];
+              /**
+               * @description ERP 송신 상태별 건수(W-04-12 거르기 칩 · 피처 010) — erpSendStatus 를 뺀 나머지 조건으로 센다. 키는 erpSendStatus 값(NOT_QUEUED·PENDING·SENT·SEND_ERROR·CANCELLED·NOT_SENT_NO_SALES_ORDER) — 0건인 상태는 빠진다
+               * @example {
+               *       "PENDING": 2,
+               *       "SENT": 5,
+               *       "NOT_SENT_NO_SALES_ORDER": 1
+               *     }
+               */
+              erpSendStatusCounts?: {
+                [key: string]: number;
+              };
             };
           };
         };
@@ -41944,7 +41955,7 @@ export interface paths {
     put?: never;
     /**
      * 출하 취소 실행
-     * @description 승인 완료 후 실행한다. ⭐ 승인만으로 통과시키지 않는다 — 실행 시점에 후속을 다시 판정한다(공유계약 J-8). 그 사이 확정됐으면 409 다. 근거: W-04-12 §5-8 ⭐ 피처 010: POP 완료 출하는 송신 전이면 실행한다 — 창고마다의 내부 재고 차감 기록 전부를 역전기·취소, 지시·수주 출하 수량을 내리고, 메시지를 CANCELLED 로, 피킹 LOT 을 PICKED 로 되돌려 같은 잔액 행에 예약을 다시 건다(다시 잡을 수 없는 LOT 은 풀린 채 피킹 LOT 행을 지운다). 지시서는 「출하 완료 전」이 된다. OQC 결과는 그대로. 보낸 뒤는 409 ERP_ALREADY_SENT.
+     * @description 승인 완료 후 실행한다. ⭐ 승인만으로 통과시키지 않는다 — 실행 시점에 후속을 다시 판정한다(공유계약 J-8). 그 사이 확정됐으면 409 다. 근거: W-04-12 §5-8 ⭐ 피처 010: POP 완료 출하는 송신 전이면 실행한다 — 창고마다의 내부 재고 차감 기록 전부를 역전기·취소, 지시·수주 출하 수량을 내리고, 메시지를 CANCELLED 로, 피킹 LOT 을 PICKED 로 되돌려 같은 잔액 행에 예약을 다시 건다(다시 잡을 수 없는 LOT 은 풀린 채 피킹 LOT 행을 지운다). 지시서는 「출하 완료 전」이 된다. OQC 결과는 그대로. 보낸 뒤는 409 ERP_ALREADY_SENT. ⭐ 2026-11-19 사용자 결정: 송신 오류(메시지 FAILED — 재처리로 다시 대기가 된 것 포함)라도 ERP 가 거절한 행만 있으면(ERP 에 들어갔거나 반영된 행이 없으면) 보내기 전으로 본다 — 실행이 그 메시지를 CANCELLED 로 둬 다시 시도하지 않는다. 실행은 그 지시서의 출하 OQC 의뢰(완료)를 진행으로 다시 연다 — 종합 판정·확정 시각을 비우고, 확정된 결과는 판정 근거로 그대로 둔다. 새로 피킹한 LOT 의 결과는 작성중으로 쌓이고 다시 출하 완료할 때 확정된다.
      */
     post: {
       parameters: {
@@ -42134,7 +42145,7 @@ export interface paths {
     put?: never;
     /**
      * 출하 취소 요청
-     * @description 미확정 구간에서만 된다. 사유가 필수다. 승인은 공통 계약이 소유한다. 01 자재창고가 쓰는 :request-cancel 과 같은 형태다. 근거: W-04-12 §5-8 ⭐ 피처 010: POP 출하 완료로 확정된 출하도 ERP 로 보내기 전(메시지 PENDING · sentAt 없음 · 바깥 행 0 · 수주 없는 출하는 늘)이면 상신한다 — 보낸 뒤는 409 ERP_ALREADY_SENT. 상신 중에는 러너가 그 출하를 보내지 않는다.
+     * @description 미확정 구간에서만 된다. 사유가 필수다. 승인은 공통 계약이 소유한다. 01 자재창고가 쓰는 :request-cancel 과 같은 형태다. 근거: W-04-12 §5-8 ⭐ 피처 010: POP 출하 완료로 확정된 출하도 ERP 로 보내기 전(메시지 PENDING · sentAt 없음 · 바깥 행 0 · 수주 없는 출하는 늘)이면 상신한다 — 보낸 뒤는 409 ERP_ALREADY_SENT. 상신 중에는 러너가 그 출하를 보내지 않는다. ⭐ 2026-11-19 사용자 결정: 송신 오류(메시지 FAILED — 재처리로 다시 대기가 된 것 포함)라도 ERP 가 거절한 행만 있으면(ERP 에 들어갔거나 반영된 행이 없으면) 보내기 전으로 본다 — 실행이 그 메시지를 CANCELLED 로 둬 다시 시도하지 않는다.
      */
     post: {
       parameters: {
@@ -64694,6 +64705,26 @@ export interface components {
         /** @example 3 */
         held: number;
       };
+      /**
+       * @description 출하 OQC 새 흐름 — 품목 코드(P-04-06 목록·머리 · 피처 010)
+       * @example FG-A100
+       */
+      itemCode?: string;
+      /**
+       * @description 출하 OQC 새 흐름 — 품목 이름
+       * @example 센서 모듈 A
+       */
+      itemName?: string;
+      /**
+       * @description 출하 OQC 새 흐름 — 살아 있는 피킹 LOT 수량 합(목록)
+       * @example 110
+       */
+      pickedQty?: number;
+      /**
+       * @description 출하 OQC 새 흐름 — 단위 코드
+       * @example EA
+       */
+      uomCode?: string;
     };
     /** @description 검사 결과 — 3계층의 2층. ⭐ 라인이 아니라 문서다 — 자체 번호·상태·잠금·자식·멱등키를 갖는다. */
     InspectionResult: {
@@ -64865,7 +64896,7 @@ export interface components {
         remarks: string;
       } | null;
     };
-    /** @description ⛔ statusCode=확정 이면 acceptedQty + rejectedQty + heldQty = inspectedQty 를 강제한다 (ck_inspection_result_qty · 공유계약 A-3). 작성중은 통과시킨다. ⭐ 검사자·단말은 «보내지 않는다» — 서버가 인증 주체에서 채운다(관리웹은 계정 토큰, 현장 단말·모바일은 사번 귀속 헤더). ⭐ 출하 OQC 새 흐름(피처 010 · omf-all-around#305 — OQC · 대상 SHIPMENT_REQUEST · lotId 없음): matchedLotIds 1개 이상 필수(그 지시서·품목의 PICKED 피킹 LOT 만 — 아니면 400 INVALID), overallJudgmentCode(ACCEPTED·REJECTED·HELD)만 받고 수량 칸은 무시한다 — 서버가 검사 수량 = 매칭 LOT 피킹 합, 판정 칸 하나에 같은 값으로 채운다. statusCode 는 DRAFT 만(CONFIRMED 면 409 CONFIRMED_BY_SHIPMENT_COMPLETION), 순번 = 최대 + 1, 불합격·보류를 가볍게 덮으면 reinspectionReasonCode 필수(400 REINSPECTION_REASON_REQUIRED), 시리얼 판정은 작성중 저장에서도 받는다. 첫 결과가 의뢰를 IN_PROGRESS 로 옮긴다. */
+    /** @description ⛔ statusCode=확정 이면 acceptedQty + rejectedQty + heldQty = inspectedQty 를 강제한다 (ck_inspection_result_qty · 공유계약 A-3). 작성중은 통과시킨다. ⭐ 검사자·단말은 «보내지 않는다» — 서버가 인증 주체에서 채운다(관리웹은 계정 토큰, 현장 단말·모바일은 사번 귀속 헤더). ⭐ 출하 OQC 새 흐름(피처 010 · omf-all-around#305 — OQC · 대상 SHIPMENT_REQUEST · lotId 없음): matchedLotIds 1개 이상 필수(그 지시서·품목의 PICKED 피킹 LOT 만 — 아니면 400 INVALID), overallJudgmentCode(ACCEPTED·REJECTED·HELD)만 받고 수량 칸은 무시한다 — 서버가 검사 수량 = 매칭 LOT 피킹 합, 판정 칸 하나에 같은 값으로 채운다. statusCode 는 DRAFT 만(CONFIRMED 면 409 CONFIRMED_BY_SHIPMENT_COMPLETION), 순번 = 최대 + 1, 불합격·보류를 가볍게 덮으면 reinspectionReasonCode 필수(400 REINSPECTION_REASON_REQUIRED), 시리얼 판정은 작성중 저장에서도 받는다. 검사 항목 측정치(measurements)는 지금처럼 받아 저장한다(FR-009 · T052 — 「판정만」은 수량을 받지 않는다는 뜻). 불량·4M 은 받지 않는다. 첫 결과가 의뢰를 IN_PROGRESS 로 옮긴다. */
     InspectionResultCreate: {
       /**
        * Format: int64
@@ -64955,7 +64986,7 @@ export interface components {
       /** @description 입하 LOT 검사(targetTypeCode=INBOUND_LOT)의 결과만 — 이 결과가 본 자재 관리 LOT. 그 입하 LOT 소속만(아니면 400 INVALID), 한 결과에 같은 LOT 두 번은 400, 다른 결과와 겹치는 것은 된다. 1개 이상 필수 — 빼거나 빈 배열이면 400 MATCHED_LOT_REQUIRED(2026-11-12). 근거: 피처 005 자재 LOT 운영 구조 변경 §8 · omf-all-around#254 · R-10 ⭐ 출하 OQC 새 흐름도 받는다 — 그 지시서·품목의 PICKED 피킹 LOT(피처 010). */
       matchedLotIds?: number[];
     };
-    /** @description 작성중인 결과만 고칠 수 있다. 확정된 것은 409 INVALID_STATE — 고치는 것이 아니라 재검이다(B-10) ⭐ 검사자·단말은 «보내지 않는다» — 서버가 인증 주체에서 채운다(관리웹은 계정 토큰, 현장 단말·모바일은 사번 귀속 헤더). ⭐ 출하 OQC 새 흐름(피처 010): 작성중만 고친다 — matchedLotIds·overallJudgmentCode·reinspectionReasonCode, 수량은 매칭으로 다시 채운다. */
+    /** @description 작성중인 결과만 고칠 수 있다. 확정된 것은 409 INVALID_STATE — 고치는 것이 아니라 재검이다(B-10) ⭐ 검사자·단말은 «보내지 않는다» — 서버가 인증 주체에서 채운다(관리웹은 계정 토큰, 현장 단말·모바일은 사번 귀속 헤더). ⭐ 출하 OQC 새 흐름(피처 010): 작성중만 고친다 — matchedLotIds·overallJudgmentCode·reinspectionReasonCode·measurements(실으면 통째로 바꾼다), 수량은 매칭으로 다시 채운다. */
     InspectionResultUpdate: {
       /**
        * Format: double
@@ -66749,7 +66780,69 @@ export interface components {
         warehouseCode: string;
         /** @example 완제품창고 */
         warehouseName: string;
+        /** @description 그 창고의 출고 전표(내부 재고 차감 기록) 번호 — 창고마다 한 장. 확정 전이면 빈 배열 */
+        goodsIssueNos: string[];
+        /**
+         * Format: double
+         * @description 그 창고에서 빠진 수량(출고 전표 합). 확정 전이면 0
+         * @example 90
+         */
+        qty: number;
+        /** @description 위치별 빠진 수량 */
+        locations: {
+          /**
+           * Format: int64
+           * @example 1001
+           */
+          locationId: number;
+          /** @example A-01-01 */
+          locationCode: string;
+          /**
+           * @description 위치의 시스템 역할 — PUTAWAY_STAGING 이면 적치 대기 자리(화면 「적치 대기」). 보통 자리는 null
+           * @example PUTAWAY_STAGING
+           */
+          locationSystemRoleCode: string | null;
+          /**
+           * Format: double
+           * @example 70
+           */
+          qty: number;
+        }[];
       }[];
+      /**
+       * @description 출하 지시서 번호(출하 내역 W-04-12 「고객 · 지시서」 · 피처 010)
+       * @example SR-20261118-0001
+       */
+      shipmentRequestNo?: string;
+      /** @description 고객(출하 지시서 기준 · 피처 010) */
+      customer?: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        partnerId: number;
+        /** @example C001 */
+        partnerCode: string;
+        /** @example 고객사 */
+        partnerName: string;
+      };
+      /** @description 납품처(출하 지시서 기준 · 피처 010) */
+      shipTo?: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        partnerId: number;
+        /** @example C001 */
+        partnerCode: string;
+        /** @example 고객사 */
+        partnerName: string;
+      };
+      /**
+       * @description 수주 번호 — 수주 없는 지시서는 null(피처 010)
+       * @example SO-0001
+       */
+      salesOrderNo?: string | null;
     };
     /** @description 취소 실행. ⭐ 승인 완료만으로 통과시키지 않는다 — 실행 시점에 후속을 다시 판정한다(공유계약 J-8). 그 사이에 확정됐으면 409 ALREADY_CONFIRMED 다 */
     ShipmentCancel: {
@@ -67085,6 +67178,33 @@ export interface components {
       };
       lotJudgmentSummary: components['schemas']['ShipmentLotJudgmentSummary'];
       completedShipment: components['schemas']['ShipmentCompletedShipment'] | null;
+      /**
+       * @description 수주 번호(피처 010 시안 — PDA 피킹 머리·W-04-02 상세). 수주 없는 지시서는 null
+       * @example SO-0001
+       */
+      salesOrderNo: string | null;
+      customer: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        partnerId: number;
+        /** @example C001 */
+        partnerCode: string;
+        /** @example 고객사 */
+        partnerName: string;
+      } | null;
+      shipTo: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        partnerId: number;
+        /** @example C001 */
+        partnerCode: string;
+        /** @example 고객사 */
+        partnerName: string;
+      } | null;
     };
     /** @description W-04-02 요약 구획 — 필터 전체 기준(목록 페이지와 다른 모집단). 근거: W-04-02 §4-B · omf-mes#232 */
     ShipmentRequestSummary: {
@@ -67243,6 +67363,49 @@ export interface components {
       overQty: number;
       /** @description 피킹 LOT 행(교체 이력 포함 · 피처 010). picks 는 예약 행 그대로다. */
       lots: components['schemas']['ShipmentRequestLot'][];
+      /**
+       * @description 품목 코드(표시용 · 피처 010)
+       * @example FG-A100
+       */
+      itemCode: string;
+      /**
+       * @description 품목 이름(표시용 · POP 찾기 줄·W-04-02 · 피처 010)
+       * @example 센서 모듈 A
+       */
+      itemName: string;
+      /**
+       * @description 단위 코드(표시용 · 피처 010)
+       * @example EA
+       */
+      uomCode: string;
+      /** @description 수주 라인(피처 010 W-04-02 「SO · 라인」·「수주 잔량」) — 수주 잔량 = orderedQty − shippedQty 이고 음수면 화면이 「0 + 초과 n」으로 보인다(D-16). 수주 없는 라인은 null */
+      salesOrderLine: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        salesOrderLineId: number;
+        /** @example SO-0001 */
+        salesOrderNo: string;
+        /** @example 1 */
+        lineNo: number;
+        /**
+         * Format: double
+         * @example 100
+         */
+        orderedQty: number;
+        /**
+         * Format: double
+         * @description 수주 출하 수량 — 수주 수량을 넘을 수 있다(D-16)
+         * @example 110
+         */
+        shippedQty: number;
+        /**
+         * @description ERP 에서 취소된 수주 라인
+         * @example false
+         */
+        cancelled: boolean;
+      } | null;
     };
     ShipmentRequestLineCreate: {
       /**
@@ -67703,6 +67866,11 @@ export interface components {
        * @example 40
        */
       qty: number;
+      /**
+       * @description 위치의 시스템 역할 — PUTAWAY_STAGING 이면 적치 대기 자리(화면 「적치 대기」). 보통 자리는 null
+       * @example PUTAWAY_STAGING
+       */
+      locationSystemRoleCode: string | null;
     };
     /** @description 출하 지시서 피킹 LOT(logistics.shipment_request_lot) — 지시서 라인 × LOT 한 행. 교체된 행(REPLACED)도 이력으로 싣는다. */
     ShipmentRequestLot: {
@@ -67776,6 +67944,27 @@ export interface components {
         'NOT_REQUIRED' | 'SKIPPED' | 'NOT_INSPECTED' | 'ACCEPTED' | 'REJECTED' | 'HELD' | null;
       /** @description 교체된 행(REPLACED)만 — 그 밖은 null */
       replacement: components['schemas']['ShipmentLotReplacement'] | null;
+      /** @description OQC 판정을 정한 결과(이 지시서에서 그 LOT 을 매칭한 마지막 결과) — PDA 불합격 줄 「OQC 결과 n · HH:mm」. 판정이 합격·불합격·보류일 때만, 미검사·검사 불필요·생략·교체된 행은 null */
+      oqcResult: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        inspectionResultId: number;
+        /** @example IRS-20261118-0001 */
+        resultNo: string;
+        /**
+         * @description 결과 회차(의뢰 안 순번)
+         * @example 2
+         */
+        round: number;
+        /**
+         * Format: date-time
+         * @description 검사 시각
+         * @example 2026-11-18T07:10:00Z
+         */
+        resultAt: string;
+      } | null;
     };
     ShipmentPickingWarehouse: {
       /**
@@ -67832,6 +68021,11 @@ export interface components {
         /** @example 작업자 */
         workerName: string;
       } | null;
+      /**
+       * @description 근거 결과의 회차(의뢰 안 순번) — 「결과 #n」
+       * @example 2
+       */
+      resultRound: number;
     };
     /** @description 교체 결과 — 교체된 피킹 LOT 행(이력), 교체가 만든 부적합 번호(그 LOT 에 열린 부적합이 이미 있으면 null), 다시 피킹을 받는 라인. */
     ShipmentLotReplaceResult: {
@@ -67894,6 +68088,26 @@ export interface components {
        * @example 2026-11-18T05:00:00Z
        */
       completedAt: string;
+      completedTerminal: {
+        /**
+         * Format: int64
+         * @example 61
+         */
+        terminalId: number;
+        /** @example POP-SHIP-01 */
+        terminalCode: string;
+      } | null;
+      completedWorker: {
+        /**
+         * Format: int64
+         * @example 71
+         */
+        workerId: number;
+        /** @example W-0102 */
+        workerNo: string;
+        /** @example 김작업 */
+        workerName: string;
+      } | null;
     };
     /** @description POP 출하 완료 확인 값(P-04-07) — 지시서 코드 스캔과 찾기가 같은 값을 본다. ⛔ ERP 송신 여부는 싣지 않는다(출하 완료 단계 화면에 표시하지 않는다 · 2026-11-18). */
     ShipmentRequestCompletion: {
@@ -68009,6 +68223,8 @@ export interface components {
          * @example 1001
          */
         salesOrderLineId: number | null;
+        /** @example EA */
+        uomCode: string;
       }[];
       /** @description 살아 있는(또는 출하된) 피킹 LOT — 교체된 LOT 은 빠진다 */
       lots: {
@@ -68050,10 +68266,61 @@ export interface components {
           'NOT_REQUIRED' | 'SKIPPED' | 'NOT_INSPECTED' | 'ACCEPTED' | 'REJECTED' | 'HELD' | null;
         /** @example BOX-0001 */
         managementCode: string | null;
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        uomId: number;
+        /** @example EA */
+        uomCode: string;
+        /** @description 창고·위치별 몫(적치 대기 자리 포함) — 「창고 A 20 · B 20」 */
+        portions: components['schemas']['ShipmentLotPortion'][];
       }[];
       /** @description 비면 완료 가능 */
       blockers: components['schemas']['ShipmentCompletionBlocker'][];
       completedShipment: components['schemas']['ShipmentCompletedShipment'] | null;
+      /** @description 교체로 빠진 LOT(REPLACED) — 출하에 들지 않는다. 확인 화면 「교체로 빠진 LOT n」 */
+      replacedLots: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        shipmentRequestLotId: number;
+        /** @example 1 */
+        lineNo: number;
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        lotId: number;
+        /** @example LOT-0003 */
+        lotNo: string;
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        itemId: number;
+        /**
+         * Format: double
+         * @example 30
+         */
+        qty: number;
+        /** @example EA */
+        uomCode: string;
+        portions: components['schemas']['ShipmentLotPortion'][];
+        /**
+         * @description 교체 근거 결과의 판정
+         * @example REJECTED
+         */
+        judgment: string | null;
+        /** @example NC-20261118-0001 */
+        nonconformanceNo: string | null;
+        /**
+         * Format: date-time
+         * @example 2026-11-18T04:00:00Z
+         */
+        replacedAt: string;
+      }[];
     };
     /** @description 출하 완료 본문 — 영업일은 단말이 보낸다(서버가 수신 시각으로 다시 잡지 않는다 · C-8). 시각을 빼면 서버 시각. */
     ShipmentCompletion: {

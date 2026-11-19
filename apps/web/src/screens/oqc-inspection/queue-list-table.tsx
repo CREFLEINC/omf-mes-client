@@ -35,7 +35,11 @@ import { formatDateTime, type InspectionQueueRow } from './types';
 
 const t = messages.oqcInspection.queue;
 const shipmentT = messages.oqcInspection.shipment.queue;
-const SKIPPABLE: readonly string[] = ['REQUESTED', 'IN_PROGRESS'];
+/*
+ * 생략은 결과 0건 의뢰만(피처 010 FR-012 · T020) — 새 흐름에서 진행(IN_PROGRESS)은 결과가 1건 이상이라는 뜻이다(첫 결과 저장이
+ * 진행으로 올리고, 송신 전 취소로 다시 연 의뢰도 결과가 있다). 서버도 결과 있는 의뢰의 생략 요청을 거절한다(converge C-3).
+ */
+const SKIPPABLE: readonly string[] = ['REQUESTED'];
 
 const columnsOf = (
   selectedId: number | null,
@@ -168,7 +172,7 @@ const columnsOf = (
     align: 'center',
     header: t.columns.skip,
     width: '120px',
-    /* 대기 · 진행 중인 출하작업지시 의뢰에만 둔다 — 끝난 의뢰는 생략할 것이 없다(사용자 지시 2026-11-09). */
+    /* 대기(결과 0건) 출하작업지시 의뢰에만 둔다 — 끝났거나 결과가 있는 의뢰는 생략할 것이 없다(사용자 지시 2026-11-09 · T054). */
     render: (row) =>
       row.targetTypeCode === 'SHIPMENT_REQUEST' && SKIPPABLE.includes(row.statusCode) ? (
         <OqcQueueSkipCell

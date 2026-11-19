@@ -1,10 +1,10 @@
 import { createIdempotencyKey } from '@omf-mes/api-client';
-import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
-import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { plantToday } from '../../patterns/plant-time';
+import { popWorkCountKeys } from '../../patterns/pop-work-counts';
 import { runRequest } from '../../patterns/request';
 import {
   searchQueryOf,
@@ -52,6 +52,7 @@ export interface CompleteInput {
  * ⭐ `If-Match` 는 확인 값의 `versionNo` 다 — 확인한 뒤 피킹이 바뀌었으면 서버가 409 로 돌려보낸다.
  */
 export const useCompleteShipment = () => {
+  const queryClient = useQueryClient();
   const { client } = useApiClient();
   const attempt = useRef<{ target: string; key: string } | null>(null);
 
@@ -81,6 +82,10 @@ export const useCompleteShipment = () => {
         }),
       );
     },
+    /* 완료하면 탭 배지·남은 작업 수가 줄어야 한다 — 다음 주기(60초)를 기다리지 않고 다시 읽는다(둘러보기 W-4). */
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: popWorkCountKeys.all });
+    },
   });
 
   return {
@@ -105,29 +110,5 @@ export const useShipmentRequestSearch = (criteria: SearchCriteria, enabled: bool
           params: { query: searchQueryOf(criteria, plantToday()) },
         }),
       ),
-  });
-};
-
-/**
- * 찾기 줄의 고객 이름 — 목록 줄은 고객 번호만 싣는다. 단말이 읽을 수 있는 거래처 목록(고객 역할)을 한 번 받아
- * 둔다. 못 받으면 고객 줄을 숨긴다(번호를 보이지 않는다).
- */
-export const useCustomerNames = (enabled: boolean) => {
-  const { client } = useApiClient();
-
-  return useQuery({
-    queryKey: ['pop-shipment-complete', 'customers'],
-    enabled,
-    staleTime: 5 * 60 * 1000,
-    queryFn: async (): Promise<Map<number, string>> => {
-      const all = await fetchAllPages((page, size) =>
-        runRequest(() =>
-          client.GET('/mdm/partners', {
-            params: { query: { roleTypeCode: 'CUSTOMER', includeInactive: true, page, size } },
-          }),
-        ),
-      );
-      return new Map(all.items.map((partner) => [partner.partnerId, partner.partnerName]));
-    },
   });
 };

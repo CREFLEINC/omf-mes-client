@@ -8,9 +8,14 @@ import {
   groupBlockers,
   itemCodeOfLot,
   overText,
+  portionSummaryOf,
+  qtyWithUom,
+  splitLotsOf,
+  uomOf,
   type BlockerCode,
   type BlockerGroup,
   type Completion,
+  type CompletionLot,
 } from './model';
 
 const t = messages.popShipmentComplete;
@@ -37,9 +42,30 @@ const targetOf = (completion: Completion, group: BlockerGroup): string => {
   return [...lines, ...group.lotNos].join(', ');
 };
 
+/** LOT 몫 요약 글 — 「완제품 창고 A 20 (적치 대기 10 포함), 완제품 창고 B 20」. 한 창고 한 자리면 null. */
+const portionText = (lot: CompletionLot): string | null => {
+  const summary = portionSummaryOf(lot.portions);
+  if (summary === null) return null;
+  /* 적치 대기 몫은 그 몫이 있는 창고 바로 뒤에만 붙인다 — 「창고1 30 (적치 대기 5 포함), 창고2 10」. */
+  return summary.warehouses
+    .map((entry) => {
+      const text = t.lots.portion(entry.name, formatQty(entry.qty));
+      return entry.staging > 0
+        ? `${text} (${t.lots.stagingIncluded(formatQty(entry.staging))})`
+        : text;
+    })
+    .join(', ');
+};
+
+/** 교체 근거 판정 글 — 판정 코드가 OQC 판정 이름에 있으면 그 이름. */
+const judgmentText = (judgment: string | null): string | null =>
+  judgment !== null && judgment in t.lots.oqc
+    ? t.lots.oqc[judgment as keyof typeof t.lots.oqc]
+    : judgment;
+
 export interface ConfirmViewProps {
   completion: Completion;
-  via: 'scan' | 'search';
+  via: 'scan' | 'search' | 'direct';
 }
 
 /**
@@ -53,6 +79,7 @@ export const ConfirmView = ({ completion, via }: ConfirmViewProps) => {
   const groups = groupBlockers(completion.blockers);
   const blocked = groups.length > 0;
   const targets = blockedTargetsOf(completion);
+  const uom = uomOf(completion);
 
   return (
     <div className="pop-ship-confirm">
@@ -69,7 +96,11 @@ export const ConfirmView = ({ completion, via }: ConfirmViewProps) => {
             {blocked ? t.head.blocked : t.head.ready}
           </Chip>
           <span className="pop-ship-head__via">
-            {via === 'scan' ? t.head.openedByScan : t.head.openedBySearch}
+            {via === 'scan'
+              ? t.head.openedByScan
+              : via === 'direct'
+                ? t.head.openedByDirect
+                : t.head.openedBySearch}
           </span>
         </div>
         <dl className="pop-ship-head__facts">
@@ -177,11 +208,17 @@ export const ConfirmView = ({ completion, via }: ConfirmViewProps) => {
                       {t.head.named(warehouse.warehouseName, warehouse.warehouseCode)}
                     </span>
                     <span className="pop-ship-warehouse__qty">
-                      {t.warehouses.entry(warehouse.lotCount, formatQty(warehouse.qty))}
+                      {t.warehouses.entry(warehouse.lotCount, qtyWithUom(warehouse.qty, uom))}
                     </span>
                   </li>
                 ))}
               </ul>
+              {splitLotsOf(completion).map((lotNo) => (
+                <p key={lotNo} className="field-note pop-ship-split-lot">
+                  <Icon name="info" size={18} aria-hidden />
+                  <span>{t.warehouses.splitLot(lotNo)}</span>
+                </p>
+              ))}
             </section>
           )}
         </div>
@@ -207,7 +244,12 @@ export const ConfirmView = ({ completion, via }: ConfirmViewProps) => {
                   key={lot.shipmentRequestLotId}
                   className={targets.lotNos.has(lot.lotNo) ? 'pop-ship-row-blocked' : undefined}
                 >
-                  <td className="pop-ship-lot">{lot.lotNo}</td>
+                  <td className="pop-ship-lot">
+                    {lot.lotNo}
+                    {portionText(lot) !== null && (
+                      <span className="pop-ship-lot__portions">{portionText(lot)}</span>
+                    )}
+                  </td>
                   <td className="pop-ship-code">{itemCodeOfLot(completion, lot)}</td>
                   <td className="pop-ship-num">{formatQty(lot.qty)}</td>
                   <td>
@@ -222,6 +264,19 @@ export const ConfirmView = ({ completion, via }: ConfirmViewProps) => {
               ))}
             </tbody>
           </table>
+          {completion.replacedLots.length > 0 && (
+            <p className="pop-ship-replaced">
+              <Icon name="swap_horiz" size={20} aria-hidden />
+              <span>
+                {t.lots.replaced(
+                  completion.replacedLots.length,
+                  completion.replacedLots
+                    .map((lot) => t.lots.replacedLot(lot.lotNo, judgmentText(lot.judgment)))
+                    .join(', '),
+                )}
+              </span>
+            </p>
+          )}
         </section>
       </div>
     </div>

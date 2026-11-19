@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { jsonResponse, renderWithProviders } from '../../test/api-harness';
 import {
+  cancelExecuteRequests,
   cancelRequests,
   confirmRequests,
   confirmStub,
@@ -16,10 +17,10 @@ import { ShipmentConfirmScreen } from './screen';
 const t = messages.shipmentConfirm;
 const NOW = new Date('2026-11-18T12:00:00+07:00');
 
-const renderScreen = (options: ConfirmStubOptions = {}) => {
+const renderScreen = (options: ConfirmStubOptions = {}, route = '/shipment/shipment-confirm') => {
   renderWithProviders(<ShipmentConfirmScreen now={NOW} />, {
     fetch: confirmStub(options),
-    route: '/shipment/shipment-confirm',
+    route,
   });
 
   return { user: userEvent.setup() };
@@ -108,6 +109,19 @@ describe('ShipmentConfirmScreen — W-04-12 출하 내역', () => {
     expect(within(await rowOf('SYN-SH-108')).getByText(t.flow.cancelled)).toBeInTheDocument();
   });
 
+  it('US7-1 목록에 「고객 · 지시서」 칸 — 고객 이름 아래 지시서 번호', async () => {
+    renderScreen();
+
+    const row = (
+      await within(listPane()).findByRole('button', { name: t.list.open('SYN-SH-101') })
+    ).closest('tr') as HTMLElement;
+    expect(row).toHaveTextContent('합성 고객 가');
+    expect(row).toHaveTextContent('SYN-SR-3001');
+    expect(
+      within(listPane()).getByRole('columnheader', { name: t.list.fields.customerRequest }),
+    ).toBeInTheDocument();
+  });
+
   it('Q22 일괄 확정·체크 칸·「모두 선택」이 없다', async () => {
     renderScreen();
     await rowOf('SYN-SH-105');
@@ -125,6 +139,9 @@ describe('ShipmentConfirmScreen — W-04-12 출하 내역', () => {
     expect(await within(detail).findByText('SYN-SR-3001')).toBeInTheDocument();
     expect(within(detail).getByText('SYN-POP-01')).toBeInTheDocument();
     expect(within(detail).getByText(/합성 작업자/)).toBeInTheDocument();
+    expect(
+      within(detail).getByText(t.detail.line(1, 'SYN-FG-A100 합성 센서 모듈')),
+    ).toBeInTheDocument();
     expect(within(detail).getByText(t.detail.lineQty('100', 110))).toBeInTheDocument();
     expect(within(detail).getByText(t.detail.over(10))).toBeInTheDocument();
 
@@ -145,9 +162,134 @@ describe('ShipmentConfirmScreen — W-04-12 출하 내역', () => {
     expect(replaced).toHaveTextContent(t.detail.replaced);
     expect(replaced).toHaveTextContent('SYN-NC-0004');
 
+    /* 머리: 수주·고객·납품처. 수주 없는 출하는 「수주 없음」. */
+    expect(within(detail).getByText('SYN-SO-01')).toBeInTheDocument();
+    expect(within(detail).getByText('합성 고객 가')).toBeInTheDocument();
+    expect(within(detail).getByText('합성 납품처 가')).toBeInTheDocument();
+
+    /* 재고가 빠진 창고 — 창고마다 출고 전표·빠진 수량·위치별 수량, 적치 대기 자리는 따로 적는다. */
+    const warehouses = within(detail).getByRole('region', { name: t.detail.warehouses });
+    expect(warehouses).toHaveTextContent(t.detail.goodsIssue('SYN-GI-0011'));
+    expect(warehouses).toHaveTextContent(t.detail.goodsIssue('SYN-GI-0012'));
+    expect(warehouses).toHaveTextContent('SYN-B-02-01');
+    expect(warehouses).toHaveTextContent(t.detail.staging);
+
     /* 출하 관리 코드는 보기만 한다 — 입력칸이 없다. */
     expect(within(detail).queryByRole('textbox')).toBeNull();
-    expect(within(detail).getByText(t.detail.erpMessage.PENDING)).toBeInTheDocument();
+    /* 다음 송신 때 나갈 수주 연결 라인 수와 수주 번호(시안 「라인 n행(수주 SO-…)」). */
+    expect(within(detail).getByText(t.detail.erpPending(1, 'SYN-SO-01'))).toBeInTheDocument();
+  });
+
+  it('T053·US7-4·Q15 수주 라인과 수주 없는 라인이 섞인 출하는 수주 없는 라인 머리에 「ERP 송신 안 함」이 보인다', async () => {
+    const { user } = renderScreen({ mixedLines: true });
+    await openDetail(user, 'SYN-SH-101');
+
+    const line2 = (
+      await within(detailPane()).findByText(t.detail.line(2, 'SYN-FG-B200 합성 브래킷'))
+    ).closest('tr');
+    expect(line2).toHaveTextContent(t.detail.lineNotSent);
+    const line1 = within(detailPane())
+      .getByText(t.detail.line(1, 'SYN-FG-A100 합성 센서 모듈'))
+      .closest('tr');
+    expect(line1).not.toHaveTextContent(t.detail.lineNotSent);
+    expect(within(detailPane()).getByText(t.detail.erpPending(1, 'SYN-SO-01'))).toBeInTheDocument();
+  });
+
+  it('Q15·US7-2 ERP 송신 거르기 칩에 상태별 건수와 전체 건수를 보인다', async () => {
+    renderScreen({
+      erpSendStatusCounts: { PENDING: 2, SENT: 1, NOT_SENT_NO_SALES_ORDER: 1, NOT_QUEUED: 2 },
+    });
+
+    const group = await screen.findByRole('group', { name: t.filter.erp });
+    expect(await within(group).findByText(t.filter.chip(t.erp.PENDING, 2))).toBeInTheDocument();
+    expect(within(group).getByText(t.filter.chip(t.filter.all, 6))).toBeInTheDocument();
+    expect(within(group).getByText(t.filter.chip(t.erp.SEND_ERROR, 0))).toBeInTheDocument();
+  });
+
+  it('US6-1·Q13 취소가 승인된 출하는 상세에서 [취소 실행]한다 — 확인 창을 거쳐 잠금 토큰·영업일과 함께 실행한다', async () => {
+    const { user } = renderScreen({ cancelApprovals: { 101: 'APPROVED' } });
+    await openDetail(user, 'SYN-SH-101');
+
+    const execute = await within(detailPane()).findByRole('button', {
+      name: t.actions.executeCancel,
+    });
+    expect(
+      within(detailPane()).getByRole('button', { name: t.actions.requestCancel }),
+    ).toBeDisabled();
+    expect(within(detailPane()).getByText(t.lock.cancelApproved)).toBeInTheDocument();
+
+    await user.click(execute);
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveTextContent(t.executeDialog.target('SYN-SH-101'));
+    await user.click(within(dialog).getByRole('button', { name: t.executeDialog.submit }));
+
+    await waitFor(() => {
+      expect(cancelExecuteRequests()).toHaveLength(1);
+    });
+    const request = cancelExecuteRequests()[0]!;
+    expect(request.headers.get('If-Match')).toBe('"v101"');
+    expect(request.headers.get('Idempotency-Key')).not.toBeNull();
+    const body = (await request.json()) as { businessDate: string; occurredAt: string };
+    expect(body.businessDate).toMatch(/^\d{4}-\d{2}-\d{2}$/u);
+    expect(body.occurredAt).toMatch(/T/u);
+    expect(await screen.findByText(t.result.executeCancelDone('SYN-SH-101'))).toBeInTheDocument();
+  });
+
+  it('Q13 결재 중이거나 반려된 취소에는 [취소 실행]이 없다', async () => {
+    const { user } = renderScreen({ cancelApprovals: { 101: 'REJECTED', 104: 'PENDING' } });
+    await openDetail(user, 'SYN-SH-101');
+    expect(
+      within(detailPane()).getByRole('button', { name: t.actions.requestCancel }),
+    ).toBeEnabled();
+    expect(
+      within(detailPane()).queryByRole('button', { name: t.actions.executeCancel }),
+    ).toBeNull();
+
+    await openDetail(user, 'SYN-SH-104');
+    expect(
+      within(detailPane()).queryByRole('button', { name: t.actions.executeCancel }),
+    ).toBeNull();
+  });
+
+  it('Q13 실행 사이 ERP 로 보내졌으면(409 ERP_ALREADY_SENT) 창에 그 이유를 보인다', async () => {
+    const { user } = renderScreen({
+      cancelApprovals: { 101: 'APPROVED' },
+      cancelExecuteResponse: () =>
+        jsonResponse(
+          {
+            code: 'ERP_ALREADY_SENT',
+            message: 'ERP 로 이미 보냈습니다. ERP 에서 처리하세요.',
+            conflictCause: 'user',
+          },
+          { status: 409 },
+        ),
+    });
+    await openDetail(user, 'SYN-SH-101');
+    await user.click(
+      await within(detailPane()).findByRole('button', { name: t.actions.executeCancel }),
+    );
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: t.executeDialog.submit }));
+
+    expect(await within(dialog).findByText(t.executeDialog.erpAlreadySent)).toBeInTheDocument();
+  });
+
+  it('US2-7 W-04-02 완료 지시서의 출하 링크(?shipmentId=)로 열면 그 출하 상세가 열린다', async () => {
+    renderScreen({}, '/shipment/shipment-confirm?shipmentId=101');
+
+    expect(await within(detailPane()).findByText('SYN-SH-101')).toBeInTheDocument();
+  });
+
+  it('Q13 결재함 대상 링크(?approvalRequestId=)로 열면 그 결재의 출하 상세가 열린다', async () => {
+    renderScreen(
+      { cancelApprovals: { 101: 'APPROVED' } },
+      '/shipment/shipment-confirm?approvalRequestId=9101',
+    );
+
+    expect(await within(detailPane()).findByText('SYN-SH-101')).toBeInTheDocument();
+    expect(
+      await within(detailPane()).findByRole('button', { name: t.actions.executeCancel }),
+    ).toBeInTheDocument();
   });
 
   it('Q18 옛 흐름 미확정은 상세에서 한 건씩 확정한다 — 잠금 토큰을 싣는다', async () => {
@@ -186,7 +328,7 @@ describe('ShipmentConfirmScreen — W-04-12 출하 내역', () => {
     expect(dialog).toHaveTextContent(t.cancelDialog.hold);
     expect(dialog).toHaveTextContent(t.cancelDialog.whatTitle);
     expect(dialog).toHaveTextContent(
-      t.cancelDialog.what.stock(110, '합성 완제품 창고 A, 합성 완제품 창고 B'),
+      t.cancelDialog.what.stock(110, '합성 완제품 창고 A 60, 합성 완제품 창고 B 50'),
     );
     expect(dialog).toHaveTextContent(t.cancelDialog.what.request('SYN-SR-3001'));
 
@@ -200,6 +342,17 @@ describe('ShipmentConfirmScreen — W-04-12 출하 내역', () => {
       expect(cancelRequests()).toHaveLength(1);
     });
     expect(cancelRequests()[0]?.headers.get('If-Match')).toBe('"v101"');
+  });
+
+  it('FR-023·Q14 송신 오류 출하도 취소를 요청할 수 있다 — 안내는 「아직 ERP 에 반영되지 않았으면 취소할 수 있다」', async () => {
+    const { user } = renderScreen();
+    await openDetail(user, 'SYN-SH-107');
+
+    expect(
+      within(detailPane()).getByRole('button', { name: t.actions.requestCancel }),
+    ).toBeEnabled();
+    expect(within(detailPane()).getByText(t.detail.erpMessage.SEND_ERROR)).toBeInTheDocument();
+    expect(within(detailPane()).getByText(t.cancelNote)).toBeInTheDocument();
   });
 
   it('US7-4 수주 없이 나간 출하(송신 안 함)도 취소를 요청할 수 있다', async () => {

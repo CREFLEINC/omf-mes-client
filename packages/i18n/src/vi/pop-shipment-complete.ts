@@ -14,6 +14,10 @@ export const popShipmentComplete = {
       `Đây không phải mã lệnh xuất hàng. Giá trị đã đọc: ${value}. Hãy quét QR của lệnh, không phải nhãn LOT.`,
     notFound: (value: string): string => `Không tìm thấy lệnh xuất hàng. Giá trị đã đọc: ${value}`,
     failed: 'Không mở được lệnh xuất hàng. Hãy kiểm tra kết nối rồi quét lại.',
+    directNotFound: (value: string): string =>
+      `Không tìm thấy lệnh xuất hàng. Giá trị đã nhập: ${value}. Hãy kiểm tra số lệnh (SR-…).`,
+    previousStill: (requestNo: string): string =>
+      `Màn hình bên dưới là lệnh ${requestNo} đã mở trước đó.`,
   },
 
   entry: {
@@ -43,6 +47,7 @@ export const popShipmentComplete = {
     blocked: 'Không thể hoàn tất',
     openedByScan: 'Mở bằng quét mã',
     openedBySearch: 'Mở bằng tìm kiếm',
+    openedByDirect: 'Mở bằng nhập trực tiếp',
     named: (name: string, code: string): string => `${name} (${code})`,
   },
 
@@ -92,10 +97,17 @@ export const popShipmentComplete = {
     heading: 'Kho sẽ bị trừ tồn',
     note: 'Chỉ để tham khảo. Xuất hàng được ghi thành một lần.',
     entry: (lotCount: number, qty: string): string => `${String(lotCount)} LOT, SL ${qty}`,
+    splitLot: (lotNo: string): string => `${lotNo} nằm ở hai kho nên được tính ở cả hai kho.`,
   },
 
   lots: {
     heading: (count: number): string => `${String(count)} LOT`,
+    portion: (warehouse: string, qty: string): string => `${warehouse} ${qty}`,
+    stagingIncluded: (qty: string): string => `gồm ${qty} chờ xếp kệ`,
+    replaced: (count: number, lots: string): string =>
+      `${String(count)} LOT bị loại do thay thế: ${lots}. Không tính vào lô xuất hàng.`,
+    replacedLot: (lotNo: string, judgment: string | null): string =>
+      judgment === null ? lotNo : `${lotNo} (${judgment})`,
     caption: 'LOT đã lấy và phán định OQC',
     note: 'Phán định OQC là kết quả cuối cùng của lệnh này.',
     columns: {
@@ -105,6 +117,7 @@ export const popShipmentComplete = {
       oqc: 'OQC',
       managementCode: 'Mã quản lý xuất hàng',
     },
+    moreBelow: 'Kéo xuống để xem thêm bảng dòng và LOT',
     oqc: {
       NOT_REQUIRED: 'Không cần kiểm tra',
       SKIPPED: 'Bỏ qua kiểm tra',
@@ -121,6 +134,9 @@ export const popShipmentComplete = {
     request: 'Lệnh xuất hàng',
     completedAt: 'Thời điểm hoàn tất',
     worker: 'Công nhân',
+    completedBy: 'Thiết bị và công nhân',
+    who: (terminalCode: string, workerName: string, workerNo: string): string =>
+      `${terminalCode}, ${workerName} (${workerNo})`,
     qty: 'SL xuất hàng',
     qtyValue: (qty: string, lineCount: number, lotCount: number, over: string | null): string =>
       `${qty}, ${String(lineCount)} dòng, ${String(lotCount)} LOT${over === null ? '' : ` (gồm vượt ${over})`}`,
@@ -144,7 +160,7 @@ export const popShipmentComplete = {
     title: 'Tìm lệnh xuất hàng',
     close: 'Đóng',
     queryLabel: 'Từ khóa',
-    queryPlaceholder: 'Một phần số lệnh, khách hàng hoặc mặt hàng (mã hoặc tên)',
+    queryPlaceholder: 'Số lệnh, khách hàng, mặt hàng',
     find: 'Tìm',
     readyOnly: 'Chỉ lệnh chờ hoàn tất',
     count: (total: number): string => `${String(total)} lệnh`,
@@ -156,6 +172,9 @@ export const popShipmentComplete = {
     shipDate: 'Ngày xuất',
     customer: 'Khách hàng',
     summary: 'Nội dung',
+    items: 'Mặt hàng',
+    itemsValue: (code: string, name: string, more: number): string =>
+      more > 0 ? `${code} ${name} và ${String(more)} mặt hàng khác` : `${code} ${name}`,
     summaryValue: (lineCount: number, lotCount: number, picked: string, target: string): string =>
       `${String(lineCount)} dòng, ${String(lotCount)} LOT, đã lấy ${picked} / mục tiêu ${target}`,
     blockedWhy: 'Lý do chặn',
@@ -181,13 +200,21 @@ export const popShipmentComplete = {
 
   bar: {
     idle: 'Quét hoặc tìm lệnh xuất hàng để mở màn hình xác nhận.',
-    ready: (qty: string, lotCount: number): string =>
-      `Tổng ${qty}, ${String(lotCount)} LOT. Khi nhấn, việc trừ tồn kho và phiếu xuất kho được tạo cùng lúc.`,
+    /* 시안 바닥 띠 — 굵은 요약(「160 EA · LOT 4」) + 무엇이 생기는지. */
+    readyLead: (qty: string, lotCount: number): string => `${qty} · ${String(lotCount)} LOT`,
+    readyNote: 'Khi nhấn, việc trừ tồn kho và phiếu xuất kho được tạo cùng lúc.',
     blocked: (count: number): string =>
       `Cần xử lý ${String(count)} lý do trên mới có thể hoàn tất xuất hàng.`,
     done: 'Đã hoàn tất. Hãy quét hoặc tìm lệnh tiếp theo.',
     already: 'Lệnh đã hoàn tất thì không thể hoàn tất lại.',
     workerMissing: 'Cần xác nhận mã nhân viên mới có thể hoàn tất.',
+    lock: {
+      idle: 'Mở lệnh để có thể hoàn tất',
+      blocked: (count: number): string => `${String(count)} lý do chặn`,
+      done: 'Đã hoàn tất',
+      already: 'Lệnh đã hoàn tất',
+      worker: 'Cần xác nhận mã nhân viên',
+    },
     recheck: 'Kiểm tra lại',
     close: 'Đóng',
     complete: 'Hoàn tất xuất hàng',
@@ -195,6 +222,11 @@ export const popShipmentComplete = {
   },
 
   failure: {
+    /* 409 ALREADY_COMPLETED 인데 다시 읽어도 완료되지 않은 지시서(검증 1회차 F-3) — 아무 말 없이 두지 않는다. */
+    alreadyNotDone:
+      'Máy chủ từ chối vì «đã hoàn tất xuất hàng» nhưng lệnh này vẫn chưa hoàn tất. Hãy nhấn [Kiểm tra lại], nếu vẫn không được hãy báo người phụ trách.',
+    /* 서버 문구를 함께 보인다 — 작업자가 담당자에게 그대로 전할 수 있게. */
+    withMessage: (base: string, message: string): string => `${base} (Máy chủ: ${message})`,
     blocked: 'Vừa phát sinh lý do chặn hoàn tất. Hãy xem lại các lý do.',
     changed: 'Lệnh xuất hàng vừa thay đổi. Hãy kiểm tra lại rồi hoàn tất.',
     network: 'Mất kết nối nên chưa hoàn tất được. Hãy kiểm tra kết nối rồi nhấn lại.',

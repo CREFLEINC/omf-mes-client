@@ -50,10 +50,12 @@ const pickedLot = (overrides: Partial<ShipmentRequestLot> = {}): ShipmentRequest
       warehouseName: '창고 A',
       locationId: 11,
       locationCode: 'A-01-01',
+      locationSystemRoleCode: null,
       qty: 40,
     },
   ],
   oqcLotStatus: 'ACCEPTED',
+  oqcResult: null,
   replacement: null,
   ...overrides,
 });
@@ -62,11 +64,15 @@ const line = (overrides: Partial<ShipmentRequestLine> = {}): ShipmentRequestLine
   shipmentRequestLineId: 77,
   lineNo: 1,
   itemId: 31,
+  itemCode: 'FG-A100',
+  itemName: '센서 모듈',
   requestedQty: 100,
   allocatedQty: 100,
   pickedQty: 40,
   shippedQty: 0,
   uomId: 9,
+  uomCode: 'EA',
+  salesOrderLine: null,
   shippingInspectionRequired: true,
   picks: [],
   overQty: 0,
@@ -78,6 +84,7 @@ const request = (overrides: Partial<ShipmentRequest> = {}): ShipmentRequest =>
   ({
     shipmentRequestId: 5,
     shipmentRequestNo: 'SR-261118-001',
+    salesOrderNo: null,
     customerId: 1,
     shipToPartnerId: 1,
     requestedShipDate: '2026-11-18',
@@ -256,6 +263,17 @@ describe('M-04-01 제품 피킹 — 지시서 목록', () => {
     expect(within(card).getByText('피킹 중, LOT 1')).toBeTruthy();
   });
 
+  it('US1-1 수주가 있는 지시서는 카드와 머리에 수주 번호를 보인다', async () => {
+    const user = userEvent.setup();
+    mount([], { requests: [request({ salesOrderId: 70, salesOrderNo: 'SO-T1' })] });
+
+    const card = await screen.findByRole('button', { name: /SR-261118-001/ });
+
+    expect(within(card).getByText('수주 SO-T1, 출하 예정 2026-11-18')).toBeTruthy();
+    await openRequest(user);
+    expect(screen.getByText('SO-T1')).toBeTruthy();
+  });
+
   it('Q9 빈 목록이면 지시서가 없다고 말한다', async () => {
     mount([], { requests: [] });
 
@@ -294,6 +312,7 @@ describe('M-04-01 제품 피킹 — LOT 통째 피킹', () => {
                       warehouseName: '창고 A',
                       locationId: 1,
                       locationCode: 'A-01-02',
+                      locationSystemRoleCode: null,
                       qty: 20,
                     },
                     {
@@ -302,6 +321,7 @@ describe('M-04-01 제품 피킹 — LOT 통째 피킹', () => {
                       warehouseName: '창고 B',
                       locationId: 2,
                       locationCode: 'B-02-01',
+                      locationSystemRoleCode: null,
                       qty: 20,
                     },
                   ],
@@ -316,6 +336,41 @@ describe('M-04-01 제품 피킹 — LOT 통째 피킹', () => {
 
     expect(await screen.findByText('창고 A, A-01-02')).toBeTruthy();
     expect(screen.getByText('창고 B, B-02-01')).toBeTruthy();
+    expect(screen.queryByText('적치 대기')).toBeNull();
+  });
+
+  it('R-2·Q2 적치 대기 자리 몫은 위치 코드(창고 접두가 붙은 시스템 코드) 대신 「적치 대기」로 보인다', async () => {
+    const user = userEvent.setup();
+    mount([], {
+      requests: [
+        request({
+          lines: [
+            line({
+              lots: [
+                pickedLot({
+                  portions: [
+                    {
+                      warehouseId: 1,
+                      warehouseCode: 'A',
+                      warehouseName: '창고 A',
+                      locationId: 9,
+                      locationCode: '89YE-SYS-STAGING',
+                      locationSystemRoleCode: 'PUTAWAY_STAGING',
+                      qty: 10,
+                    },
+                  ],
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+    await openRequest(user);
+
+    expect(await screen.findByText('창고 A')).toBeTruthy();
+    expect(screen.getByText('적치 대기')).toBeTruthy();
+    expect(screen.queryByText(/SYS-STAGING/)).toBeNull();
   });
 
   it('US1-1 LOT 스캔이 바로 :pick-lot 을 부르고 수량 없이 LOT 번호만 싣는다', async () => {
@@ -503,6 +558,38 @@ describe('M-04-01 제품 피킹 — LOT 통째 피킹', () => {
     expect(seen[1]?.headers.get('Idempotency-Key')).toBe(seen[0]?.headers.get('Idempotency-Key'));
   });
 
+  it('US1-1 전송 실패 띠의 [다시 시도]는 실패한 그 LOT 을 같은 멱등 키로 다시 보낸다(시안 ⑩)', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    let reachable = false;
+    mount([
+      capture(
+        '/logistics/shipment-requests/5/lines/77:pick-lot',
+        'POST',
+        () => {
+          if (!reachable) {
+            throw new TypeError('Failed to fetch');
+          }
+
+          return jsonResponse({ pickedLot: pickedLot(), line: line() });
+        },
+        seen,
+      ),
+    ]);
+    await openRequest(user);
+    await scan(user, 'P2611-0003');
+    const banner = await screen.findByRole('alert', { name: '피킹을 기록하지 못했습니다' });
+
+    reachable = true;
+    await user.click(within(banner).getByRole('button', { name: '다시 시도' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    expect(seen[1]?.headers.get('Idempotency-Key')).toBe(seen[0]?.headers.get('Idempotency-Key'));
+    expect(((await seen[1]?.clone().json()) as { lotNo: string }).lotNo).toBe('P2611-0003');
+  });
+
   it('뒤로가기는 연 지시서를 먼저 닫는다', async () => {
     const user = userEvent.setup();
     mount();
@@ -588,6 +675,37 @@ describe('M-04-01 제품 피킹 — OQC 판정과 [교체]', () => {
     expect(screen.getByText('불합격 LOT 이 있습니다. 교체하세요')).toBeTruthy();
   });
 
+  it('US2-1 불합격 줄에 판정을 정한 「OQC 결과 n, 시각」을 보인다', async () => {
+    const user = userEvent.setup();
+    mount([], {
+      requests: [
+        request({
+          lines: [
+            line({
+              lots: [
+                pickedLot({
+                  shipmentRequestLotId: 503,
+                  lotId: 3,
+                  lotNo: 'P2611-0003',
+                  oqcLotStatus: 'REJECTED',
+                  oqcResult: {
+                    inspectionResultId: 2,
+                    resultNo: 'IRS-2',
+                    round: 2,
+                    resultAt: '2026-11-18T07:10:00Z',
+                  },
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+    await openRequest(user);
+
+    expect(await screen.findByText('OQC 결과 2, 14:10')).toBeTruthy();
+  });
+
   it('US2-2 [교체]는 확인 상자 뒤 :replace 를 부르고 부적합 번호와 다시 받는 수량을 보인다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
@@ -630,6 +748,7 @@ describe('M-04-01 제품 피킹 — OQC 판정과 [교체]', () => {
                   replacement: {
                     inspectionResultId: 1,
                     resultNo: '2',
+                    resultRound: 2,
                     resultAt: '2026-11-18T07:10:00Z',
                     judgment: 'REJECTED',
                     nonconformanceId: 4,
@@ -851,6 +970,64 @@ describe('M-04-01 제품 피킹 — 지시서 코드 보기', () => {
 
     await user.click(screen.getByRole('button', { name: '닫기' }));
     expect(await screen.findByLabelText('제품 LOT 스캔')).toBeTruthy();
+  });
+
+  describe('US4-4·Q9 고객·납품처 — 단말은 거래처 마스터를 못 읽으므로 지시서 응답의 이름을 쓴다', () => {
+    const partnersDenied: StubRoute = {
+      match: (req) => new URL(req.url).pathname.startsWith('/mdm/partners'),
+      respond: () => new Response(JSON.stringify({ message: 'denied' }), { status: 401 }),
+    };
+    const named = () =>
+      request({
+        customerId: 1,
+        shipToPartnerId: 2,
+        customer: { partnerId: 1, partnerCode: 'C1', partnerName: '가나전자' },
+        shipTo: { partnerId: 2, partnerCode: 'S2', partnerName: '가나전자 2공장' },
+      });
+
+    it('US4-4 목록 카드에 「고객, 납품처」를 보인다', async () => {
+      mount([partnersDenied], { requests: [named()] });
+
+      const card = await screen.findByRole('button', { name: /SR-261118-001/ });
+
+      expect(within(card).getByText('가나전자, 가나전자 2공장')).toBeTruthy();
+    });
+
+    it('US4-4 상세 머리에 고객·납품처를 보인다', async () => {
+      const user = userEvent.setup();
+      mount([partnersDenied], { requests: [named()] });
+      await openRequest(user);
+
+      expect(screen.getByText('고객')).toBeTruthy();
+      expect(screen.getByText('가나전자')).toBeTruthy();
+      expect(screen.getByText('납품처')).toBeTruthy();
+      expect(screen.getByText('가나전자 2공장')).toBeTruthy();
+    });
+
+    it('US4-1·Q9 「지시서 코드 보기」에 고객·납품처를 보인다', async () => {
+      const user = userEvent.setup();
+      mount([partnersDenied], { requests: [named()] });
+      await openRequest(user);
+      await user.click(screen.getByRole('button', { name: '지시서 코드 보기' }));
+
+      await screen.findByRole('img', { name: '출하 지시서 SR-261118-001 QR' });
+      expect(screen.getByText('가나전자, 가나전자 2공장')).toBeTruthy();
+    });
+
+    it('US4-4 고객과 납품처가 같으면 한 번만 쓴다', async () => {
+      mount([partnersDenied], {
+        requests: [
+          request({
+            customer: { partnerId: 1, partnerCode: 'C1', partnerName: '다라상사' },
+            shipTo: { partnerId: 1, partnerCode: 'C1', partnerName: '다라상사' },
+          }),
+        ],
+      });
+
+      const card = await screen.findByRole('button', { name: /SR-261118-001/ });
+
+      expect(within(card).getByText('다라상사')).toBeTruthy();
+    });
   });
 
   it('US4-1 막는 이유가 없으면 「아직 완료할 수 없습니다」를 보이지 않는다', async () => {

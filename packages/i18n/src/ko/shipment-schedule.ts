@@ -156,17 +156,29 @@ export const shipmentSchedule = {
       shipmentRequestNo: '작업지시번호',
       customer: '고객',
       shipToPartner: '납품처',
+      salesOrder: '수주',
       shipDate: '출하일',
       fulfillmentPlant: '출하 담당 공장',
       progress: '진행',
       code: '지시서 코드',
       pickingWarehouses: '피킹 창고',
       completedShipment: '출하',
+      completedBy: '완료',
     },
+    /** 완료된 지시서의 출하 번호 — 출하 내역(W-04-12)의 그 출하를 연다(시안 「SH-… → 출하 내역」). */
+    shipmentLink: (shipmentNo: string): string => `${shipmentNo} → 출하 내역`,
+    /** 완료 줄 — 완료 시각, POP 단말, 작업자(시안 「2026-11-18 14:05 · POP-출하-01 · 김작업」). */
+    completedBy: (at: string, terminal: string, worker: string): string =>
+      `${at}, ${terminal}, ${worker}`,
+    /** 출하 관리 코드 옆 자물쇠 — 완료 뒤에는 고칠 수 없다(FR-021). */
+    codeLocked: '출하 완료 뒤에는 출하 관리 코드를 고칠 수 없습니다',
+    /** 피킹 전 지시서 상세의 안내 띠(시안 W0402-After 빈 상세). */
+    noLotsBanner:
+      '아직 피킹한 LOT 이 없습니다. 출하 담당 공장을 지정하고 배정한 뒤, PDA 「제품 피킹」에서 LOT 라벨을 스캔하면 여기에 LOT 이 보입니다.',
     noPickingWarehouse: '아직 없음',
     popOnly: '출하 완료는 POP 「출하 완료」(P-04-07)에서 합니다. 이 화면은 보기만 합니다.',
     completed: (shipmentNo: string, completedAt: string): string =>
-      `POP 에서 출하 완료했습니다(${shipmentNo}, ${completedAt}). 취소는 「출하 내역」에서 요청합니다.`,
+      `POP 에서 출하 완료했습니다(${shipmentNo}, ${completedAt}). 재고 차감과 수주 출하 수량이 함께 기록됐습니다. 출하 관리 코드는 이제 고칠 수 없습니다. 취소는 「출하 내역」에서 상신합니다.`,
     blockersTitle: (count: number): string => `출하 완료를 막는 이유 ${String(count)}건`,
     blockers: {
       PICKING_SHORT: (lineNo: string): string =>
@@ -192,7 +204,23 @@ export const shipmentSchedule = {
       picked: '피킹',
       over: '초과',
       shipped: '출하',
+      uom: '단위',
+      salesOrderLine: '수주 라인',
+      salesOrderRemaining: '수주 잔량',
     },
+    noSalesOrder: '수주 없음',
+    salesOrderLine: (salesOrderNo: string, lineNo: number): string =>
+      `${salesOrderNo}, ${String(lineNo)}`,
+    /* 수주 잔량 = 수주 − 출하. 음수면 「0 + 초과 n」(ERP 는 초과 출고를 받는다 · D-16). */
+    salesOrderRemaining: (remaining: number): string => String(remaining),
+    salesOrderOver: (over: number): string => `0 + 초과 ${String(over)}`,
+    salesOrderQty: (ordered: number): string => `수주 ${String(ordered)}`,
+    salesOrderQtyShipped: (ordered: number, shipped: number): string =>
+      `수주 ${String(ordered)}, 출하 ${String(shipped)}`,
+    salesOrderCancelled: '수주 취소',
+    /* 적치 대기 자리(PUTAWAY_STAGING) 몫 표시. */
+    staging: '적치 대기',
+    resultRound: (round: number): string => `결과 #${String(round)}`,
     inspectionRequired: '필요',
     inspectionNotRequired: '불필요',
     short: (qty: number): string => `부족 ${String(qty)}`,
@@ -229,6 +257,7 @@ export const shipmentSchedule = {
       lot: '뺀 LOT, 수량',
       result: '근거 OQC 결과',
       nonconformance: '부적합',
+      next: '다음 피킹 LOT',
     },
     noReplacements: '교체한 LOT 이 없습니다.',
   },
@@ -249,11 +278,14 @@ export const shipmentSchedule = {
     shipToPartner: '납품처',
     shipDate: '출하일',
     fulfillmentPlant: '출하 담당 공장',
+    salesOrder: '수주',
+    printedBy: '인쇄',
     items: '품목',
     lineNo: '라인',
     item: '품목',
     target: '목표',
     picked: '피킹',
+    uom: '단위',
     inspection: '출하 검사',
     inspectionRequired: '필요',
     inspectionNotRequired: '불필요',
@@ -262,8 +294,25 @@ export const shipmentSchedule = {
     qty: '수량',
     places: '창고, 위치',
     managementCode: '출하 관리 코드',
+    oqc: 'OQC 판정',
+    oqcStatus: {
+      NOT_REQUIRED: '—',
+      SKIPPED: '검사 생략',
+      NOT_INSPECTED: '미검사',
+      ACCEPTED: '합격',
+      REJECTED: '불합격',
+      HELD: '보류',
+    },
+    /** 라인마다 피킹 LOT 아래 합계 줄(시안 「합계 110 · 초과 10」). */
+    lineTotal: (total: number, over: number): string =>
+      over > 0 ? `합계 ${String(total)}, 초과 ${String(over)}` : `합계 ${String(total)}`,
     noLots: '아직 피킹한 LOT 이 없습니다.',
     signatures: ['작성', '피킹', '출하 검사', '출하 확인'],
     printedAt: (value: string): string => `인쇄 ${value}`,
+    /** 머리 표 「인쇄」 칸 — 인쇄 시각과 인쇄한 사람(관리웹 · 세션 사용자, 시안). */
+    printedByValue: (at: string, user: string): string => `${at}, 관리웹 ${user}`,
+    /** 아래 안내 문장(시안 Print-Preview). */
+    footnote:
+      'POP 「출하 완료」(P-04-07)에서 위 QR 을 스캔하면 이 지시서가 열립니다. 완료할 수 있는지는 그때 지시서 상태로 정해집니다.',
   },
 } as const;

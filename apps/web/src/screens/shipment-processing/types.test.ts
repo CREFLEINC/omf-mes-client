@@ -6,6 +6,11 @@ const line = (overrides: Partial<Parameters<typeof toShipmentRequestLineCandidat
   shipmentRequestLineId: 701,
   lineNo: 1,
   itemId: 910001,
+  /* 피처 010 시안 보완 — 품목·단위·수주 라인 표시 칸. 이 시험은 읽지 않는다. */
+  itemCode: 'SYN-ITEM',
+  itemName: '합성 품목',
+  uomCode: 'SYN-EA',
+  salesOrderLine: null,
   requestedQty: 120,
   allocatedQty: 120,
   pickedQty: 120,
@@ -23,8 +28,11 @@ const line = (overrides: Partial<Parameters<typeof toShipmentRequestLineCandidat
 const request = (overrides: Partial<Parameters<typeof toShipmentRequestCandidate>[0]> = {}) => ({
   shipmentRequestId: 501,
   shipmentRequestNo: 'SYN-SR-501',
+  salesOrderNo: null,
   customerId: 601,
   shipToPartnerId: 602,
+  customer: null,
+  shipTo: null,
   requestedShipDate: '2026-08-31',
   statusCode: 'SYN-STATUS',
   shipmentProgressCode: 'PICKED' as const,

@@ -10370,11 +10370,52 @@
   min-height: 0;
 }
 
+.pop-ui .pop-ship-bar-ready {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
 .pop-ui .pop-ship-scan {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: end;
   gap: var(--space-3);
+}
+
+/*
+ * 스캔 줄과 그 아래 띠는 줄어들지 않는다(둘러보기 W-1) — 본문이 길면 열(flex column)이 이 줄까지 눌러 줄 높이가
+ * 60 → 39 로 줄었고, 넘친 위쪽(라벨·칸·단추 윗부분)이 탭 띠 밑으로 잘려 보였다. 구르는 것은 본문뿐이다.
+ */
+.pop-ui.pop-ship .pop-ship-scan,
+.pop-ui.pop-ship .scan-outcome {
+  flex-shrink: 0;
+}
+
+/* 확인 화면이 아래로 더 이어진다는 단서(둘러보기 W-8) — 본문 바닥에 붙어 따라 내려간다. */
+.pop-ui .pop-ship-more {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-2) 0;
+  background: linear-gradient(to bottom, transparent, var(--surface) 40%);
+  color: var(--on-surface-variant);
+  font-size: var(--pop-label);
+  pointer-events: none;
+}
+
+/* 잠긴 [출하 완료]의 까닭 한 줄(둘러보기 W-9) — 하단 안내 문장(.field-note, #291 로 숨김)과 다른 자리다. */
+.pop-ui .pop-ship-bar-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--on-surface-variant);
 }
 
 .pop-ui .pop-ship-content {
@@ -10598,6 +10639,22 @@
   text-overflow: ellipsis;
 }
 
+/* LOT 번호 아래 몫 요약 — 여러 창고·적치 대기 자리에 나뉜 LOT 만(시안 ③·④). */
+.pop-ui .pop-ship-table .pop-ship-lot__portions {
+  display: block;
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+
+/* 교체로 빠진 LOT 한 줄(시안 ③) — 출하에 들지 않는다는 알림. */
+.pop-ui .pop-ship-replaced {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  color: var(--on-surface-variant);
+}
+
 /* 초과는 경고가 아니라 정보다 — 노란 글자만(시안 ③). */
 .pop-ui .pop-ship-table .pop-ship-over {
   color: var(--on-semantic-warning-container);
@@ -10606,6 +10663,14 @@
 
 .pop-ui .pop-ship-table .pop-ship-row-blocked > td {
   background: var(--semantic-error-container);
+}
+
+/* 두 창고에 나뉜 LOT 안내(시안 P0407-After ③) — 창고 목록 아래 한 줄씩. */
+.pop-ui .pop-ship-split-lot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: var(--space-2) 0 0;
 }
 
 .pop-ui .pop-ship-warehouses {

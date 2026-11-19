@@ -23965,8 +23965,16 @@ main:has(> .oqc-inspection-panes) {
  */
 .shipment-schedule-pane {
   display: grid;
+  /* 한 칸을 창 폭에 묶는다 — auto 칸은 목록 표 하한(58rem)만큼 늘어 1024 폭에서 조건 줄이 창 밖으로 나갔다(검증 3회차). */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
   align-content: start;
+}
+
+/* 목록 표가 창보다 넓으면 표 안에서 가로로 구른다(T-W-A). */
+.shipment-schedule-pane > .wide-table {
+  min-width: 0;
+  overflow-x: auto;
 }
 
 /* 조건 칸들은 같은 윗선에서 시작하고, 칸 높이와 이름 간격을 하나로 맞춘다. */
@@ -34091,6 +34099,17 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   white-space: nowrap;
 }
 
+/* W-04-03 출하 OQC 의 피킹 LOT 표(피처 010) — 상세 창 폭 안에 든다(T-W-A). 창고·위치 몫은 칸 안에서 줄을 바꾼다.
+   검증 3회차: 입하 표 하한(48rem)·줄 안 바꿈을 그대로 받아 판정 대상 창 밖으로 60px 넘쳤다. */
+.wide-table.oqc-shipment-lots table {
+  min-width: 0;
+}
+
+.oqc-shipment-lots td,
+.oqc-shipment-lots th {
+  white-space: normal;
+}
+
 .iqc-inbound-po {
   max-width: none;
 }
@@ -36930,18 +36949,40 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
  * W-04-12 출하 내역(피처 010 · omf-all-around#305) — 목록 왼쪽 · 상세 오른쪽(시안 W0412-After).
  * 좁으면 위아래로 쌓는다. 접두 `ship-` 는 009 의 클래스와 겹치지 않게 둔다.
  */
-.ship-history {
-  display: grid;
-  gap: var(--space-4);
-  grid-template-columns: minmax(0, 1fr);
+/*
+ * W-04-12 목록 · 상세(T-W-A) — 배치는 `.po-board-split`(좌우 · 상하, 막대). 머리 안내 옆에 배치 단추를 둔다.
+ * 검증 2회차: 상세 표가 넓은 표 하한(58rem)을 끌고 와 창 밖으로 나갔고, 목록 표는 오른쪽 칸이 잘렸다.
+ */
+.ship-history-lead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.ship-history-lead > :first-child {
+  flex: 1 1 32rem;
   min-width: 0;
 }
 
-@media (min-width: 1440px) {
-  .ship-history {
-    grid-template-columns: minmax(0, 7fr) minmax(0, 6fr);
-    align-items: start;
-  }
+/* 목록 표는 창보다 넓으면 표 안에서 가로로 구른다(T-W-A). */
+.ship-history-split .wide-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* 상세 안 표는 상세 창 폭 안에 든다 — 가로로 구르지 않고 칸 안에서 줄을 바꾼다(T-W-A 「하위 목록」). */
+.ship-history-detail-pane {
+  min-width: 0;
+}
+
+.ship-history-detail-pane .wide-table table {
+  min-width: 0;
+}
+
+.ship-history-detail-pane .wide-table th {
+  white-space: normal;
 }
 
 .ship-history-filter {
@@ -36964,6 +37005,8 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 .ship-history-detail {
   display: grid;
+  /* 한 칸을 창 폭에 묶는다 — 기본(auto) 칸은 안의 넓은 내용만큼 늘어 창 밖으로 나간다. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
   min-width: 0;
 }
@@ -37034,6 +37077,34 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   flex-wrap: wrap;
 }
 
+/* 재고가 빠진 창고(시안 W0412) — 창고마다 한 칸: 이름·코드·빠진 수량, 출고 전표, 위치별 수량. */
+.ship-history-warehouses {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ship-history-warehouses > li {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.ship-history-warehouse-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.ship-history-warehouse-head > .ship-history-num {
+  margin-inline-start: auto;
+}
+
 .ship-history-consequences {
   display: grid;
   gap: var(--space-1);
@@ -37065,8 +37136,36 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .ship-request-detail,
 .ship-request-line {
   display: grid;
+  /* 한 칸을 서랍 폭에 묶는다 — 기본(auto) 칸은 넓은 표의 하한(58rem)만큼 늘어 1280 폭에서 오른쪽 칸이 잘렸다(검증 1회차). */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
   min-width: 0;
+}
+
+/* 서랍 안 표는 서랍 폭에 맞추고, 그래도 넘치면 표만 옆으로 민다(머리·안내는 잘리지 않는다). */
+.ship-request-detail .wide-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.ship-request-detail .wide-table table {
+  min-width: 0;
+}
+
+/* W-04-02 상세 창 머리의 [지시서 인쇄](시안 W0402-After) — 본문 맨 위 오른쪽. */
+.ship-request-head-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-3);
+}
+
+/* 출하 관리 코드 옆 자물쇠 — 완료 뒤에는 고칠 수 없다(FR-021). */
+.ship-request-code-lock {
+  display: inline-flex;
+  margin-inline-start: var(--space-1);
+  color: var(--on-surface-variant);
+  vertical-align: middle;
 }
 
 .ship-print-preview {
@@ -37147,6 +37246,12 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 .ship-print__num {
   text-align: end;
+}
+
+/* 라인 합계·초과 줄(시안 Print-Preview) — 굵게, 가운데. */
+.ship-print__total td {
+  font-weight: 700;
+  text-align: center;
 }
 
 .ship-print__signatures td {

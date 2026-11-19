@@ -151,7 +151,25 @@ export const popOqcInspection = {
    */
   shipment: {
     /** 목록 카드 둘째 줄 — 「FG-A100 · 피킹 LOT 3개」. */
-    card: (item: string, count: number): string => `${item} · 피킹 LOT ${String(count)}개`, // ui-check-ignore: C-13 시안 P0406 목록 카드
+    card: (item: string, count: number, qty: string): string =>
+      `${item} · 피킹 LOT ${String(count)}개 · ${qty}`, // ui-check-ignore: C-13 시안 P0406 목록 카드
+    /** 머리 품목 칸 — 「FG-A100 센서 모듈 A」. */
+    itemValue: (code: string, name: string): string => (name === '' ? code : `${code} ${name}`),
+    /** 적치 대기 자리 몫의 위치 이름(시스템 코드 대신). */
+    staging: '적치 대기',
+    /** 교체로 빠진 LOT 줄 — 시안 「2회차 불합격 · PDA 교체 11-18 11:02 김작업 · 부적합 NC-…」. */
+    replacedLine: (
+      round: number | null,
+      judgment: string,
+      at: string,
+      worker: string,
+      nonconformanceNo: string | null,
+    ): string =>
+      [
+        round === null ? judgment : `${String(round)}회차 ${judgment}`,
+        `PDA 교체 ${at}${worker === '' ? '' : ` ${worker}`}`,
+        ...(nonconformanceNo === null ? [] : [`부적합 ${nonconformanceNo}`]),
+      ].join(' · '), // ui-check-ignore: C-13 시안 P0406 교체로 빠진 LOT 줄
     cardEmpty: (item: string): string => `${item} · 피킹 LOT 없음`, // ui-check-ignore: C-13 시안 P0406 목록 카드
     target: '목표',
     picked: '피킹',
@@ -184,6 +202,8 @@ export const popOqcInspection = {
         noLots: '피킹된 LOT 이 없어 결과를 기록할 수 없습니다.',
         skipped: '이 의뢰는 OQC 생략으로 닫혔습니다. 결과를 더하지 않습니다.',
         completed: '출하 완료로 판정이 확정된 의뢰입니다. 결과를 더하지 않습니다.',
+        /** 검사 항목 측정 값 오류(FR-009 · T052) — 수치 항목에 숫자가 아닌 값 등. */
+        measurement: '검사 항목 측정 값의 오류를 고친 뒤 저장할 수 있습니다.',
       },
     },
   },

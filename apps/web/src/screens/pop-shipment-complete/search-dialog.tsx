@@ -14,7 +14,7 @@ import { useState, type FormEvent } from 'react';
 import { PopRowHead, PopRowInfo, PopRowPair } from '../../patterns/pop-list-row';
 import { PopPageNav, pageBoundaryOf } from '../../patterns/pop-page-nav';
 import { formatQty, orderSearchRows, toSearchRow, type SearchRowView } from './model';
-import { useCustomerNames, useShipmentRequestSearch } from './queries';
+import { useShipmentRequestSearch } from './queries';
 
 const t = messages.popShipmentComplete.search;
 
@@ -41,7 +41,6 @@ export const SearchDialog = ({ onClose, onPick }: SearchDialogProps) => {
   const [page, setPage] = useState(1);
 
   const search = useShipmentRequestSearch({ q, readyOnly, page }, true);
-  const customers = useCustomerNames(true);
   const rows = orderSearchRows((search.data?.items ?? []).map(toSearchRow));
 
   const submit = (event: FormEvent<HTMLFormElement>): void => {
@@ -111,8 +110,15 @@ export const SearchDialog = ({ onClose, onPick }: SearchDialogProps) => {
               }
             />
             <PopRowInfo>
-              <PopRowPair label={t.customer}>{customers.data?.get(row.customerId)}</PopRowPair>
+              {row.customerName !== '' && (
+                <PopRowPair label={t.customer}>{row.customerName}</PopRowPair>
+              )}
               <PopRowPair label={t.shipDate}>{row.requestedShipDate}</PopRowPair>
+              {row.firstItem !== null && (
+                <PopRowPair label={t.items}>
+                  {t.itemsValue(row.firstItem.code, row.firstItem.name, row.moreItems)}
+                </PopRowPair>
+              )}
               <PopRowPair label={t.summary}>
                 {t.summaryValue(
                   row.lineCount,
