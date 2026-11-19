@@ -1,12 +1,17 @@
 import type { ApiError } from '@omf-mes/api-client';
+import { ko, setLocale, vi } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
+
+import { POP_SCREENS } from '../../patterns/pop-screen-catalog';
 
 import { completion, requestRow } from './fixtures';
 import {
   STAGING_ROLE,
   blockersOfConflict,
   completeFailureOf,
+  directCodeOf,
   groupBlockers,
+  hasMoreBelow,
   isAlreadyCompleted,
   isCompletable,
   lookupFailureOf,
@@ -227,5 +232,32 @@ describe('LOT 몫 요약·단위·409 막는 이유', () => {
     ).toEqual([{ code: 'REJECTED', lotNo: 'P-1' }]);
     expect(blockersOfConflict({ kind: 'conflict', cause: 'user', message: '' })).toBeNull();
     expect(blockersOfConflict({ kind: 'network' })).toBeNull();
+  });
+});
+
+describe('둘러보기 보완(T055)', () => {
+  it('US4-3·W-2 [직접 입력] 값 — 지시서 번호만이면 SHPREQ: 를 붙이고, 이미 코드면 그대로', () => {
+    expect(directCodeOf(' SR-261118-001 ')).toBe('SHPREQ:SR-261118-001');
+    expect(directCodeOf('SHPREQ:SR-261118-001')).toBe('SHPREQ:SR-261118-001');
+    expect(directCodeOf('shpreq:SR-261118-001')).toBe('SHPREQ:SR-261118-001');
+  });
+
+  it('W-8 아래로 더 이어지는가 — 끝에서 8px 안이면 다 본 것', () => {
+    expect(hasMoreBelow({ scrollTop: 0, clientHeight: 400, scrollHeight: 900 })).toBe(true);
+    expect(hasMoreBelow({ scrollTop: 495, clientHeight: 400, scrollHeight: 900 })).toBe(false);
+    expect(hasMoreBelow({ scrollTop: 0, clientHeight: 400, scrollHeight: 400 })).toBe(false);
+  });
+
+  it('W-7 「출하 완료」 탭 이름은 단말 언어를 따른다 — 다른 탭은 그대로', () => {
+    const entry = POP_SCREENS.find((screen) => screen.code === 'P-04-07');
+    const rework = POP_SCREENS.find((screen) => screen.code === 'P-04-03');
+    try {
+      setLocale('vi');
+      expect(entry?.name).toBe(vi.popShipmentComplete.title);
+      expect(rework?.name).toBe('재작업 실적 등록');
+    } finally {
+      setLocale('ko');
+    }
+    expect(entry?.name).toBe(ko.popShipmentComplete.title);
   });
 });

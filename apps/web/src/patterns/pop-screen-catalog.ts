@@ -1,4 +1,5 @@
 import type { components } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 
 type TerminalWorkCountKey = keyof components['schemas']['TerminalWorkCounts'];
 
@@ -172,7 +173,13 @@ export const POP_SCREENS: readonly PopScreen[] = [
     path: '/pop/shipment-complete',
     code: 'P-04-07',
     group: 'shipping',
-    name: '출하 완료',
+    /*
+     * 단말 언어를 따른다(둘러보기 W-7) — 화면 머리줄 이름(`popShipmentComplete.title`)과 같은 말이다. 읽을 때 고른
+     * 언어로 읽는다(모듈이 실릴 때 붙잡지 않는다). ⚠ 다른 탭 이름은 010 전부터 한국어 고정이라 이번에 손대지 않았다.
+     */
+    get name(): string {
+      return messages.popShipmentComplete.title;
+    },
     countKey: 'shipmentCompletion',
   },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#109) — 화면 코드는 사용자 결정으로 부여했다. */

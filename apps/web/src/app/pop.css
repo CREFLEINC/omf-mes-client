@@ -10513,6 +10513,40 @@
   gap: var(--space-3);
 }
 
+/*
+ * 스캔 줄과 그 아래 띠는 줄어들지 않는다(둘러보기 W-1) — 본문이 길면 열(flex column)이 이 줄까지 눌러 줄 높이가
+ * 60 → 39 로 줄었고, 넘친 위쪽(라벨·칸·단추 윗부분)이 탭 띠 밑으로 잘려 보였다. 구르는 것은 본문뿐이다.
+ */
+.pop-ui.pop-ship .pop-ship-scan,
+.pop-ui.pop-ship .scan-outcome {
+  flex-shrink: 0;
+}
+
+/* 확인 화면이 아래로 더 이어진다는 단서(둘러보기 W-8) — 본문 바닥에 붙어 따라 내려간다. */
+.pop-ui .pop-ship-more {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-2) 0;
+  background: linear-gradient(to bottom, transparent, var(--surface) 40%);
+  color: var(--on-surface-variant);
+  font-size: var(--pop-label);
+  pointer-events: none;
+}
+
+/* 잠긴 [출하 완료]의 까닭 한 줄(둘러보기 W-9) — 하단 안내 문장(.field-note, #291 로 숨김)과 다른 자리다. */
+.pop-ui .pop-ship-bar-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
 .pop-ui .pop-ship-content {
   flex: 1 1 auto;
   min-height: 0;

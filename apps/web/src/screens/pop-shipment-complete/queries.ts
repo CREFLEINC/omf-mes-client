@@ -1,9 +1,10 @@
 import { createIdempotencyKey } from '@omf-mes/api-client';
-import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { plantToday } from '../../patterns/plant-time';
+import { popWorkCountKeys } from '../../patterns/pop-work-counts';
 import { runRequest } from '../../patterns/request';
 import {
   searchQueryOf,
@@ -51,6 +52,7 @@ export interface CompleteInput {
  * ⭐ `If-Match` 는 확인 값의 `versionNo` 다 — 확인한 뒤 피킹이 바뀌었으면 서버가 409 로 돌려보낸다.
  */
 export const useCompleteShipment = () => {
+  const queryClient = useQueryClient();
   const { client } = useApiClient();
   const attempt = useRef<{ target: string; key: string } | null>(null);
 
@@ -79,6 +81,10 @@ export const useCompleteShipment = () => {
           body: { businessDate: plantToday(now), occurredAt: now.toISOString() },
         }),
       );
+    },
+    /* 완료하면 탭 배지·남은 작업 수가 줄어야 한다 — 다음 주기(60초)를 기다리지 않고 다시 읽는다(둘러보기 W-4). */
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: popWorkCountKeys.all });
     },
   });
 

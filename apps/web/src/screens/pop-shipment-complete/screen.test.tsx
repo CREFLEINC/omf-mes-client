@@ -69,7 +69,7 @@ const renderScreen = (stub: Stub = {}, workerNo: string | null = '100027') => {
     throw new Error(`스텁에 없는 요청입니다: ${request.method} ${request.url}`);
   };
 
-  renderWithProviders(
+  const { queryClient } = renderWithProviders(
     <PopIdentityProvider value={{ ...UNKNOWN_POP_IDENTITY, workerNo }}>
       <PopShipmentCompleteScreen />
     </PopIdentityProvider>,
@@ -79,6 +79,7 @@ const renderScreen = (stub: Stub = {}, workerNo: string | null = '100027') => {
   const pathOf = (request: Request) => decodeURIComponent(new URL(request.url).pathname);
 
   return {
+    queryClient,
     requests,
     lookupCalls: () => requests.filter((r) => pathOf(r) === '/logistics/shipment-requests:lookup'),
     completeCalls: () => requests.filter((r) => pathOf(r).endsWith(':complete')),
@@ -94,7 +95,84 @@ const scan = async (user: ReturnType<typeof userEvent.setup>, value: string) => 
 
 const completeButton = () => screen.getByRole('button', { name: t.bar.complete });
 
+/** [직접 입력] — 칸에 값을 치고 단추를 누른다(Enter 가 아니다 — Enter 는 스캔 길이다). */
+const typeDirect = async (user: ReturnType<typeof userEvent.setup>, value: string) => {
+  const field = screen.getByRole('textbox', { name: t.scan.label });
+  await user.clear(field);
+  await user.type(field, value);
+  await user.click(screen.getByRole('button', { name: t.scan.submit }));
+};
+
 describe('PopShipmentCompleteScreen (P-04-07)', () => {
+  it('US4-3·W-2 — [직접 입력]은 지시서 번호만 쳐도 연다(앞머리 SHPREQ: 를 붙여 조회) — 「직접 입력으로 엶」(W-6)', async () => {
+    const user = userEvent.setup();
+    const { lookupCalls } = renderScreen();
+
+    await typeDirect(user, 'SR-261118-001');
+
+    expect(await screen.findByText(t.head.ready)).toBeInTheDocument();
+    expect(new URL(lookupCalls()[0]?.url ?? '').searchParams.get('code')).toBe(CODE);
+    expect(screen.getByText(t.head.openedByDirect)).toBeInTheDocument();
+  });
+
+  it('US4-3·W-2 — [직접 입력]에 코드 전체를 쳐도 그대로 연다. 없는 번호면 직접 입력용 문구로 알린다', async () => {
+    const user = userEvent.setup();
+    const { lookupCalls } = renderScreen({
+      lookups: [jsonResponse(completion()), errorEnvelope('SHIPMENT_REQUEST_NOT_FOUND', 404)],
+    });
+
+    await typeDirect(user, CODE);
+    expect(await screen.findByText(t.head.ready)).toBeInTheDocument();
+    expect(new URL(lookupCalls()[0]?.url ?? '').searchParams.get('code')).toBe(CODE);
+
+    await typeDirect(user, 'SR-261118-099');
+    expect(await screen.findByText(t.scan.directNotFound('SR-261118-099'))).toBeInTheDocument();
+  });
+
+  it('Q10·W-3 — 새 코드가 열리지 않으면 아래 확인 화면이 앞서 연 지시서라는 것을 띠에 밝힌다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      lookups: [jsonResponse(completion()), errorEnvelope('NOT_SHIPMENT_REQUEST_CODE', 400)],
+    });
+
+    await scan(user, CODE);
+    expect(await screen.findByText(t.head.ready)).toBeInTheDocument();
+    await scan(user, 'P2611-0001');
+
+    expect(await screen.findByText(t.scan.notCode('P2611-0001'))).toBeInTheDocument();
+    expect(screen.getByText(t.scan.previousStill('SR-261118-001'))).toBeInTheDocument();
+  });
+
+  it('Q9·W-4·W-5 — 완료하면 단말 작업 수(탭 배지·남은 작업)를 다시 읽고, 결과 수량에 단위를 붙인다', async () => {
+    const user = userEvent.setup();
+    const { queryClient } = renderScreen();
+    const invalidated: unknown[] = [];
+    const original = queryClient.invalidateQueries.bind(queryClient);
+    queryClient.invalidateQueries = ((filters?: { queryKey?: unknown }) => {
+      invalidated.push(filters?.queryKey);
+      return original(filters as never);
+    }) as typeof queryClient.invalidateQueries;
+
+    await scan(user, CODE);
+    await user.click(await screen.findByRole('button', { name: t.bar.complete }));
+
+    expect(await screen.findByText(t.result.title)).toBeInTheDocument();
+    expect(invalidated).toContainEqual(['terminal-work-counts', 'pop']);
+    expect(screen.getByText(/^160 EA/u)).toBeInTheDocument();
+  });
+
+  it('Q8·W-9 — 잠긴 [출하 완료] 옆에 잠긴 까닭 한 줄이 보인다(하단 안내 숨김과 다른 자리)', async () => {
+    const user = userEvent.setup();
+    renderScreen({ lookups: [jsonResponse(blockedCompletion())] });
+
+    expect(screen.getByText(t.bar.lock.idle)).toBeInTheDocument();
+    expect(screen.getByText(t.bar.lock.idle).closest('.field-note')).toBeNull();
+
+    await scan(user, CODE);
+    expect(await screen.findByText(t.bar.lock.blocked(3))).toBeInTheDocument();
+    expect(completeButton()).toBeDisabled();
+  });
+
   it('스캔 대기 — 세 입구 안내가 보이고 [출하 완료]는 잠겨 있다', () => {
     renderScreen();
 

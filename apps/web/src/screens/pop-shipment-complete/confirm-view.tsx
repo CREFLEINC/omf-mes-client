@@ -64,7 +64,7 @@ const judgmentText = (judgment: string | null): string | null =>
 
 export interface ConfirmViewProps {
   completion: Completion;
-  via: 'scan' | 'search';
+  via: 'scan' | 'search' | 'direct';
 }
 
 /**
@@ -95,7 +95,11 @@ export const ConfirmView = ({ completion, via }: ConfirmViewProps) => {
             {blocked ? t.head.blocked : t.head.ready}
           </Chip>
           <span className="pop-ship-head__via">
-            {via === 'scan' ? t.head.openedByScan : t.head.openedBySearch}
+            {via === 'scan'
+              ? t.head.openedByScan
+              : via === 'direct'
+                ? t.head.openedByDirect
+                : t.head.openedBySearch}
           </span>
         </div>
         <dl className="pop-ship-head__facts">

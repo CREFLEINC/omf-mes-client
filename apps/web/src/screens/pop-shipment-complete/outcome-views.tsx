@@ -2,7 +2,14 @@ import { AlertBanner, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { formatPlantDateTime } from '../../patterns/plant-time';
-import { formatQty, totalsOf, type Completion, type CompletionResult } from './model';
+import {
+  formatQty,
+  qtyWithUom,
+  totalsOf,
+  uomOf,
+  type Completion,
+  type CompletionResult,
+} from './model';
 
 const t = messages.popShipmentComplete;
 
@@ -77,7 +84,7 @@ export const ResultView = ({ result, workerNo }: ResultViewProps) => {
           <dt>{t.result.qty}</dt>
           <dd>
             {t.result.qtyValue(
-              formatQty(totals.qty),
+              qtyWithUom(totals.qty, uomOf(result.completion)),
               totals.lineCount,
               totals.lotCount,
               totals.over > 0 ? formatQty(totals.over) : null,
@@ -90,7 +97,10 @@ export const ResultView = ({ result, workerNo }: ResultViewProps) => {
             <dd>
               {result.completion.warehouses
                 .map((warehouse) =>
-                  t.result.warehouseValue(warehouse.warehouseName, formatQty(warehouse.qty)),
+                  t.result.warehouseValue(
+                    warehouse.warehouseName,
+                    qtyWithUom(warehouse.qty, uomOf(result.completion)),
+                  ),
                 )
                 .join(', ')}
             </dd>

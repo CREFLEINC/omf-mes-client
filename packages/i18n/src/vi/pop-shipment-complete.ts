@@ -14,6 +14,10 @@ export const popShipmentComplete = {
       `Đây không phải mã lệnh xuất hàng. Giá trị đã đọc: ${value}. Hãy quét QR của lệnh, không phải nhãn LOT.`,
     notFound: (value: string): string => `Không tìm thấy lệnh xuất hàng. Giá trị đã đọc: ${value}`,
     failed: 'Không mở được lệnh xuất hàng. Hãy kiểm tra kết nối rồi quét lại.',
+    directNotFound: (value: string): string =>
+      `Không tìm thấy lệnh xuất hàng. Giá trị đã nhập: ${value}. Hãy kiểm tra số lệnh (SR-…).`,
+    previousStill: (requestNo: string): string =>
+      `Màn hình bên dưới là lệnh ${requestNo} đã mở trước đó.`,
   },
 
   entry: {
@@ -43,6 +47,7 @@ export const popShipmentComplete = {
     blocked: 'Không thể hoàn tất',
     openedByScan: 'Mở bằng quét mã',
     openedBySearch: 'Mở bằng tìm kiếm',
+    openedByDirect: 'Mở bằng nhập trực tiếp',
     named: (name: string, code: string): string => `${name} (${code})`,
   },
 
@@ -111,6 +116,7 @@ export const popShipmentComplete = {
       oqc: 'OQC',
       managementCode: 'Mã quản lý xuất hàng',
     },
+    moreBelow: 'Kéo xuống để xem thêm bảng dòng và LOT',
     oqc: {
       NOT_REQUIRED: 'Không cần kiểm tra',
       SKIPPED: 'Bỏ qua kiểm tra',
@@ -150,7 +156,7 @@ export const popShipmentComplete = {
     title: 'Tìm lệnh xuất hàng',
     close: 'Đóng',
     queryLabel: 'Từ khóa',
-    queryPlaceholder: 'Một phần số lệnh, khách hàng hoặc mặt hàng (mã hoặc tên)',
+    queryPlaceholder: 'Số lệnh, khách hàng, mặt hàng',
     find: 'Tìm',
     readyOnly: 'Chỉ lệnh chờ hoàn tất',
     count: (total: number): string => `${String(total)} lệnh`,
@@ -198,6 +204,13 @@ export const popShipmentComplete = {
     done: 'Đã hoàn tất. Hãy quét hoặc tìm lệnh tiếp theo.',
     already: 'Lệnh đã hoàn tất thì không thể hoàn tất lại.',
     workerMissing: 'Cần xác nhận mã nhân viên mới có thể hoàn tất.',
+    lock: {
+      idle: 'Mở lệnh để có thể hoàn tất',
+      blocked: (count: number): string => `${String(count)} lý do chặn`,
+      done: 'Đã hoàn tất',
+      already: 'Lệnh đã hoàn tất',
+      worker: 'Cần xác nhận mã nhân viên',
+    },
     recheck: 'Kiểm tra lại',
     close: 'Đóng',
     complete: 'Hoàn tất xuất hàng',

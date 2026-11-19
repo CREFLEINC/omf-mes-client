@@ -85,6 +85,25 @@ export const uomOf = (completion: Completion): string => {
 export const qtyWithUom = (qty: number, uom: string): string =>
   uom === '' ? formatQty(qty) : `${formatQty(qty)} ${uom}`;
 
+/**
+ * [직접 입력] 값 → 조회 코드(둘러보기 W-2). 손으로 친 지시서 번호(SR-…)는 앞머리 `SHPREQ:` 를 붙인다 — 서버
+ * `:lookup` 은 코드만 받는다. 이미 코드면 그대로 둔다. 스캔 칸은 이 변환을 하지 않는다(스캔은 코드만).
+ */
+export const SHIPMENT_REQUEST_CODE_PREFIX = 'SHPREQ:';
+export const directCodeOf = (raw: string): string => {
+  const value = raw.trim();
+  return value.toUpperCase().startsWith(SHIPMENT_REQUEST_CODE_PREFIX)
+    ? `${SHIPMENT_REQUEST_CODE_PREFIX}${value.slice(SHIPMENT_REQUEST_CODE_PREFIX.length)}`
+    : `${SHIPMENT_REQUEST_CODE_PREFIX}${value}`;
+};
+
+/** 구르는 상자가 아래로 더 이어지는가(둘러보기 W-8) — 끝에서 몇 px 안이면 다 본 것으로 친다. */
+export const hasMoreBelow = (box: {
+  scrollTop: number;
+  clientHeight: number;
+  scrollHeight: number;
+}): boolean => box.scrollHeight - box.clientHeight - box.scrollTop > 8;
+
 /** 적치 대기 자리(위치 시스템 역할). */
 export const STAGING_ROLE = 'PUTAWAY_STAGING';
 

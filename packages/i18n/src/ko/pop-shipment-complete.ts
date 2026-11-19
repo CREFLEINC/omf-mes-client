@@ -21,6 +21,11 @@ export const popShipmentComplete = {
       `출하 지시서 코드가 아닙니다. 읽은 값: ${value}. LOT 라벨이 아니라 지시서 QR 을 스캔하세요.`,
     notFound: (value: string): string => `찾을 수 없는 출하 지시서입니다. 읽은 값: ${value}`,
     failed: '지시서를 열지 못했습니다. 연결을 확인한 뒤 다시 스캔하세요.',
+    /* [직접 입력] — 손으로 친 지시서 번호(SR-…)만으로도 연다. 못 찾으면 친 값을 그대로 보인다(둘러보기 W-2). */
+    directNotFound: (value: string): string =>
+      `찾을 수 없는 출하 지시서입니다. 입력한 값: ${value}. 지시서 번호(SR-…)를 확인하세요.`,
+    /* 새 코드가 열리지 않았을 때 — 아래 확인 화면은 앞서 연 지시서다(둘러보기 W-3). */
+    previousStill: (requestNo: string): string => `아래 화면은 앞서 연 지시서 ${requestNo} 입니다.`,
   },
 
   entry: {
@@ -50,6 +55,7 @@ export const popShipmentComplete = {
     blocked: '완료 불가',
     openedByScan: '스캔으로 엶',
     openedBySearch: '찾기로 엶',
+    openedByDirect: '직접 입력으로 엶',
     /** 「이름 (코드)」(C-10). */
     named: (name: string, code: string): string => `${name} (${code})`,
   },
@@ -122,6 +128,8 @@ export const popShipmentComplete = {
       `교체로 빠진 LOT ${String(count)}: ${lots}. 출하에 들지 않습니다.`,
     replacedLot: (lotNo: string, judgment: string | null): string =>
       judgment === null ? lotNo : `${lotNo}(${judgment})`,
+    /* 확인 화면이 더 아래로 이어질 때 바닥에 붙는 단서(둘러보기 W-8). */
+    moreBelow: '아래로 밀면 라인과 LOT 표가 더 있습니다',
     oqc: {
       NOT_REQUIRED: '검사 불필요',
       SKIPPED: '검사 생략',
@@ -206,6 +214,17 @@ export const popShipmentComplete = {
     done: '완료했습니다. 다음 지시서를 스캔하거나 찾으세요.',
     already: '이미 완료된 지시서는 다시 완료할 수 없습니다.',
     workerMissing: '사번을 확인해야 완료할 수 있습니다.',
+    /*
+     * 잠긴 [출하 완료] 옆 한 줄(둘러보기 W-9) — 안내 문장이 아니라 잠긴 까닭이다. 하단 안내 문장은 POP 공통 규칙으로
+     * 숨는다(#291) — 이 줄은 그 자리가 아니다.
+     */
+    lock: {
+      idle: '지시서를 열면 완료할 수 있습니다',
+      blocked: (count: number): string => `막는 이유 ${String(count)}건`,
+      done: '완료했습니다',
+      already: '이미 완료된 지시서',
+      worker: '사번 확인 필요',
+    },
     recheck: '다시 확인',
     close: '닫기',
     complete: '출하 완료',
