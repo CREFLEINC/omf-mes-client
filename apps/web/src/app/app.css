@@ -19757,6 +19757,26 @@ dialog.layout-editor-dialog {
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.16);
 }
 
+/* 상단 바 이름 메뉴 — 이름을 누르면 비밀번호 변경 · 언어 · 로그아웃이 아래로 펼친다. */
+.session-menu > .popover-trigger {
+  height: 32px;
+  padding: 0 var(--space-2) 0 var(--space-3);
+}
+
+.session-menu > .popover-panel {
+  align-items: stretch;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.session-menu > .popover-panel > .topbar-link {
+  padding: var(--space-1) var(--space-2);
+}
+
+.session-menu > .popover-panel > button {
+  justify-content: flex-start;
+}
+
 .more-menu > .popover-trigger {
   justify-content: center;
   width: 32px;

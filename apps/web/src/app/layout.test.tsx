@@ -82,6 +82,20 @@ const renderLayout = (
 
 const topbar = (): HTMLElement => screen.getByRole('banner');
 
+/**
+ * 상단 바 이름 메뉴를 펼치고 그 판을 돌려준다 — 비밀번호 변경 · 언어 · 로그아웃은 이름을 눌러야 보인다
+ * (관리웹 화면 정리 시안 A · 2026-11-20). 판은 이름 단추가 `aria-controls` 로 가리키는 자리다.
+ */
+const openSessionMenu = async (user: {
+  click: (element: Element) => Promise<void>;
+}): Promise<HTMLElement> => {
+  const trigger = within(topbar()).getByRole('button', { name: SYNTHETIC_USER_NAME });
+  await user.click(trigger);
+  const panel = document.getElementById(trigger.getAttribute('aria-controls') ?? '');
+  if (panel === null) throw new Error('이름 메뉴가 펼쳐지지 않았습니다');
+  return panel;
+};
+
 const navSidebar = (): HTMLElement => screen.getByRole('navigation', { name: '주 메뉴' });
 
 /**
@@ -1243,13 +1257,19 @@ describe('AppLayout — 로그인 사용자 표시', () => {
  * 사실상의 로그아웃이었지만, 이제 그렇게 해도 세션 쿠키가 살아 있어 그대로 다시 들어온다.
  */
 describe('AppLayout — 로그아웃', () => {
-  it('세션이 있으면 상단 바에 로그아웃이 선다', async () => {
+  it('세션이 있으면 상단 바 이름 메뉴에 로그아웃이 선다', async () => {
     const { user } = renderLayout('본문 내용');
 
     await user.click(screen.getByRole('button', { name: '세션 담기' }));
 
+    /* 펼치기 전에는 이름만 보인다. */
     expect(
-      within(topbar()).getByRole('button', { name: messages.session.actions.signOut }),
+      within(topbar()).queryByRole('button', { name: messages.session.actions.signOut }),
+    ).toBeNull();
+    const panel = await openSessionMenu(user);
+
+    expect(
+      within(panel).getByRole('button', { name: messages.session.actions.signOut }),
     ).toBeEnabled();
   });
 
@@ -1263,18 +1283,31 @@ describe('AppLayout — 로그아웃', () => {
   });
 
   /** ⭐ **이름 없이 로그아웃만 두지 않는다** — 나가기 전에 지금 누구로 있는지 확인해야 한다. */
-  it('이름과 로그아웃이 같은 자리에 함께 선다', async () => {
+  it('이름과 로그아웃이 같은 자리에 함께 선다 — 로그아웃은 이름을 누르면 펼치는 판에 있다', async () => {
     const { user } = renderLayout('본문 내용');
 
     await user.click(screen.getByRole('button', { name: '세션 담기' }));
 
-    const actions = within(topbar()).getByText(SYNTHETIC_USER_NAME).parentElement;
-
-    if (actions === null) throw new Error('이름을 담은 자리를 찾지 못했습니다');
+    const panel = await openSessionMenu(user);
 
     expect(
-      within(actions).getByRole('button', { name: messages.session.actions.signOut }),
+      within(panel).getByRole('button', { name: messages.session.actions.signOut }),
     ).toBeInTheDocument();
+  });
+
+  it('이름 메뉴는 Esc 로 닫히고 초점이 이름으로 돌아간다', async () => {
+    const { user } = renderLayout('본문 내용');
+
+    await user.click(screen.getByRole('button', { name: '세션 담기' }));
+    await openSessionMenu(user);
+    await user.keyboard('{Escape}');
+
+    const trigger = within(topbar()).getByRole('button', { name: SYNTHETIC_USER_NAME });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(trigger).toHaveFocus();
+    expect(
+      within(topbar()).queryByRole('button', { name: messages.session.actions.signOut }),
+    ).toBeNull();
   });
 });
 
@@ -1293,11 +1326,9 @@ describe('AppLayout — 언어 선택', () => {
 
     await user.click(screen.getByRole('button', { name: '세션 담기' }));
 
-    const actions = within(topbar()).getByText(SYNTHETIC_USER_NAME).parentElement;
+    const panel = await openSessionMenu(user);
 
-    if (actions === null) throw new Error('이름을 담은 자리를 찾지 못했습니다');
-
-    expect(within(actions).getByRole('combobox', { name: '언어' })).toBeInTheDocument();
+    expect(within(panel).getByRole('combobox', { name: '언어' })).toBeInTheDocument();
   });
 
   /**
@@ -1903,11 +1934,12 @@ describe('셸 — 기능 권한으로 사이드바 거르기', () => {
    * 아니라 **상단 바**에 서고, 상단 바는 권한 판정 없이 늘 선다.
    */
   it('권한이 하나도 없어도 대시보드가 메뉴에 남고 비밀번호 변경은 상단 바에 남는다', async () => {
-    await renderWithPermissions([], { expandGroups: false });
+    const { user } = await renderWithPermissions([], { expandGroups: false });
 
     expect(hasMenu('통합 대시보드')).toBe(true);
+    const panel = await openSessionMenu(user);
     expect(
-      within(topbar()).getByRole('link', { name: messages.session.actions.changePassword }),
+      within(panel).getByRole('link', { name: messages.session.actions.changePassword }),
     ).toHaveAttribute('href', '/system/password-change');
     expect(hasMenu('사용자·역할·권한')).toBe(false);
   });
@@ -2174,17 +2206,15 @@ describe('AppLayout — 탭 묶음 검색', () => {
  * 늘 서므로 관리자가 아닌 사용자도 바꿀 길이 남는다.
  */
 describe('AppLayout — 상단 바의 비밀번호 변경', () => {
-  it('세션이 있으면 이름 옆에 비밀번호 변경 링크가 선다', async () => {
+  it('세션이 있으면 이름 메뉴에 비밀번호 변경 링크가 선다', async () => {
     const { user } = renderLayout('본문 내용');
 
     await user.click(screen.getByRole('button', { name: '세션 담기' }));
 
-    const actions = within(topbar()).getByText(SYNTHETIC_USER_NAME).parentElement;
-
-    if (actions === null) throw new Error('이름을 담은 자리를 찾지 못했습니다');
+    const panel = await openSessionMenu(user);
 
     expect(
-      within(actions).getByRole('link', { name: messages.session.actions.changePassword }),
+      within(panel).getByRole('link', { name: messages.session.actions.changePassword }),
     ).toHaveAttribute('href', '/system/password-change');
     /* 사이드바에는 없다 — 같은 길을 두 자리에 두지 않는다. */
     expect(
@@ -2196,9 +2226,12 @@ describe('AppLayout — 상단 바의 비밀번호 변경', () => {
     const { user } = renderLayout('본문 내용', { route: '/dashboard' });
 
     await user.click(screen.getByRole('button', { name: '세션 담기' }));
+    const panel = await openSessionMenu(user);
     await user.click(
-      within(topbar()).getByRole('link', { name: messages.session.actions.changePassword }),
+      within(panel).getByRole('link', { name: messages.session.actions.changePassword }),
     );
+    /* 고르면 판이 닫힌다. */
+    expect(panel).not.toBeInTheDocument();
 
     /* 셸이 주소를 읽어 대시보드 줄을 끈다 — 주소가 실제로 옮겨 갔다는 표시다. */
     expect(within(navSidebar()).getByRole('link', { name: '통합 대시보드' })).not.toHaveAttribute(

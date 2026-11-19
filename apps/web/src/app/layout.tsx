@@ -2,6 +2,7 @@ import {
   AppShell,
   Badge,
   Button,
+  Icon,
   SearchInput,
   Sidebar,
   SidebarItem,
@@ -17,6 +18,7 @@ import { localizedLabel } from '../patterns/localized-label';
 import { useSession, useSignOut } from '../patterns/session';
 import { OA_ONLY_PATHS, useOaAccess } from '../patterns/oa-access';
 import { PageHubContext, type PageHub } from '../patterns/page-hub';
+import { PopoverButton } from '../patterns/popover-button';
 import { toWebAccess } from '../patterns/web-access';
 import { readAppVersion } from './app-version';
 import {
@@ -212,21 +214,46 @@ const SessionActions = ({ userName }: { userName: string }) => {
   const passwordHref = useHref(PASSWORD_CHANGE_PATH);
   const handlePasswordClick = useLinkClickHandler(PASSWORD_CHANGE_PATH);
 
+  /*
+   * 상단 바에는 이름 하나만 보인다 — 비밀번호 변경 · 언어 · 로그아웃은 하루에 한 번 쓸까 말까 한 일이라
+   * 이름을 누르면 펼치는 판에 접어 둔다(관리웹 화면 정리 시안 A · 2026-11-20). 「지금 누구로 있는가」 바로 아래라
+   * 이름과 나가는 길이 여전히 한 자리다.
+   */
   return (
     <div className="topbar-session">
-      <span>{userName}</span>
-      {/*
-       * W-CO-10 — **사이드바가 아니라 여기다**(사용자 2026-10-20 · `docs/decisions.md` #9).
-       * 누구나 자기 것을 바꾸는 자리라 「지금 누구로 있는가」 바로 옆이 맞고, 상단 바는 권한
-       * 판정 없이 늘 서므로 관리자가 아닌 사용자도 바꿀 길이 남는다.
-       */}
-      <a className="topbar-link" href={passwordHref} onClick={handlePasswordClick}>
-        {messages.session.actions.changePassword}
-      </a>
-      <LocaleSelect />
-      <Button variant="text" size="sm" onClick={signOut} disabled={isSigningOut}>
-        {messages.session.actions.signOut}
-      </Button>
+      <PopoverButton
+        className="session-menu"
+        trigger={
+          <>
+            <span>{userName}</span>
+            <Icon name="expand_more" size={18} />
+          </>
+        }
+      >
+        {(close) => (
+          <>
+            {/*
+             * W-CO-10 — **사이드바가 아니라 여기다**(사용자 2026-10-20 · `docs/decisions.md` #9).
+             * 누구나 자기 것을 바꾸는 자리라 「지금 누구로 있는가」 바로 옆이 맞고, 상단 바는 권한
+             * 판정 없이 늘 서므로 관리자가 아닌 사용자도 바꿀 길이 남는다.
+             */}
+            <a
+              className="topbar-link"
+              href={passwordHref}
+              onClick={(event) => {
+                handlePasswordClick(event);
+                close();
+              }}
+            >
+              {messages.session.actions.changePassword}
+            </a>
+            <LocaleSelect />
+            <Button variant="text" size="sm" onClick={signOut} disabled={isSigningOut}>
+              {messages.session.actions.signOut}
+            </Button>
+          </>
+        )}
+      </PopoverButton>
     </div>
   );
 };
