@@ -126,7 +126,11 @@ const BatchForm = ({
   const [error, setError] = useState<string | null>(null);
 
   const uomCode = group.uomCode;
-  const check = checkBatch(draft, isIntegerUom(uoms, uomCode));
+  const isCountUom = isIntegerUom(uoms, uomCode);
+  const check = checkBatch(draft, isCountUom);
+  /* kg 같은 개수 아닌 단위는 「수량」 대신 「양」(사용자 지시 2026-11-19). */
+  const lotQtyLabel = isCountUom ? t.lotQty : t.lotQtyAmount;
+  const perLabel = isCountUom ? t.qtyPerPackage(uomCode) : t.qtyPerPackageAmount(uomCode);
   const shownLotQty =
     draft.packageOn && !draft.lotQtyEdited && check.product !== null
       ? String(check.product)
@@ -159,8 +163,8 @@ const BatchForm = ({
   };
   const targetLabel: Record<KeypadTarget, string> = {
     count: t.packageCount,
-    per: t.qtyPerPackage(uomCode),
-    lotQty: t.lotQty,
+    per: perLabel,
+    lotQty: lotQtyLabel,
     lotCount: t.lotCount,
   };
   /* 정수 칸(포장 수 · 개수)은 「.」을 끈다 — 손으로 칠 때의 `inputMode` 와 같다. */
@@ -196,13 +200,17 @@ const BatchForm = ({
     lotQtyTouched && errors.lotQty !== undefined
       ? errors.lotQty === 'integer'
         ? t.errors.integer(uomCode)
-        : t.errors.lotQty
+        : isCountUom
+          ? t.errors.lotQty
+          : t.errors.lotQtyAmount
       : null;
   const packageError = draft.packageOn
     ? draft.packageCount !== '' && errors.packageCount !== undefined
       ? t.errors.packageCount
       : draft.qtyPerPackage !== '' && errors.qtyPerPackage !== undefined
-        ? t.errors.qtyPerPackage
+        ? isCountUom
+          ? t.errors.qtyPerPackage
+          : t.errors.qtyPerPackageAmount
         : null
     : null;
   const pkgText =
@@ -220,7 +228,7 @@ const BatchForm = ({
       : errors.mismatch === true && check.lotQty !== null
         ? {
             ok: false,
-            text: t.errors.mismatch(
+            text: (isCountUom ? t.errors.mismatch : t.errors.mismatchAmount)(
               formatBaseQty(check.lotQty, uomCode),
               `${pkgText} = ${formatBaseQty(check.product, uomCode)}`,
             ),
@@ -298,59 +306,61 @@ const BatchForm = ({
                 </button>
               </div>
             </div>
-            {draft.packageOn ? (
-              <div className="mll-batch-grid">
-                <PuField label={t.packageUom} required>
-                  <Select
-                    aria-label={t.packageUom}
-                    placeholder={t.packageUomPlaceholder}
-                    value={draft.packageUomId === null ? null : String(draft.packageUomId)}
-                    options={uoms
-                      .filter((row) => row.uomCode !== uomCode)
-                      /* 패키징 단위는 이름(「봉지」)으로 — 이름이 비면 코드(G2 L17). */
-                      .map((row) => ({
-                        value: String(row.uomId),
-                        label: row.uomName.trim() === '' ? row.uomCode : row.uomName,
-                      }))}
-                    onChange={(value) => {
-                      update({ packageUomId: Number(value) });
-                    }}
-                  />
-                </PuField>
-                <PuField label={t.packageCount} required htmlFor={fieldId('count')}>
-                  <PuInput
-                    id={fieldId('count')}
-                    target={activeTarget === 'count'}
-                    onFocus={() => {
-                      setTarget('count');
-                    }}
-                    inputMode="numeric"
-                    numeric
-                    need={draft.packageCount === ''}
-                    value={draft.packageCount}
-                    onChange={(event) => {
-                      update({ packageCount: event.target.value });
-                    }}
-                  />
-                </PuField>
-                <PuField label={t.qtyPerPackage(uomCode)} required htmlFor={fieldId('per')}>
-                  <PuInput
-                    id={fieldId('per')}
-                    target={activeTarget === 'per'}
-                    onFocus={() => {
-                      setTarget('per');
-                    }}
-                    inputMode="decimal"
-                    numeric
-                    need={draft.qtyPerPackage === ''}
-                    value={draft.qtyPerPackage}
-                    onChange={(event) => {
-                      update({ qtyPerPackage: event.target.value });
-                    }}
-                  />
-                </PuField>
-              </div>
-            ) : null}
+            <div className="mll-batch-grid">
+              {/* 「포장 없음」이면 칸은 보이되 흐리게·입력 불가(사용자 지시 2026-11-19) — 보내는 값은 그대로 포장 없음. */}
+              <PuField label={t.packageUom} required>
+                <Select
+                  disabled={!draft.packageOn}
+                  aria-label={t.packageUom}
+                  placeholder={t.packageUomPlaceholder}
+                  value={draft.packageUomId === null ? null : String(draft.packageUomId)}
+                  options={uoms
+                    .filter((row) => row.uomCode !== uomCode)
+                    /* 패키징 단위는 이름(「봉지」)으로 — 이름이 비면 코드(G2 L17). */
+                    .map((row) => ({
+                      value: String(row.uomId),
+                      label: row.uomName.trim() === '' ? row.uomCode : row.uomName,
+                    }))}
+                  onChange={(value) => {
+                    update({ packageUomId: Number(value) });
+                  }}
+                />
+              </PuField>
+              <PuField label={t.packageCount} required htmlFor={fieldId('count')}>
+                <PuInput
+                  disabled={!draft.packageOn}
+                  id={fieldId('count')}
+                  target={activeTarget === 'count'}
+                  onFocus={() => {
+                    setTarget('count');
+                  }}
+                  inputMode="numeric"
+                  numeric
+                  need={draft.packageOn && draft.packageCount === ''}
+                  value={draft.packageCount}
+                  onChange={(event) => {
+                    update({ packageCount: event.target.value });
+                  }}
+                />
+              </PuField>
+              <PuField label={perLabel} required htmlFor={fieldId('per')}>
+                <PuInput
+                  disabled={!draft.packageOn}
+                  id={fieldId('per')}
+                  target={activeTarget === 'per'}
+                  onFocus={() => {
+                    setTarget('per');
+                  }}
+                  inputMode="decimal"
+                  numeric
+                  need={draft.packageOn && draft.qtyPerPackage === ''}
+                  value={draft.qtyPerPackage}
+                  onChange={(event) => {
+                    update({ qtyPerPackage: event.target.value });
+                  }}
+                />
+              </PuField>
+            </div>
             {packageError === null ? null : (
               <p className="mll-batch-calc" data-ok="false" role="alert">
                 {packageError}
@@ -359,7 +369,7 @@ const BatchForm = ({
           </section>
 
           <div className="mll-batch-grid">
-            <PuField label={t.lotQty} required htmlFor={fieldId('lotQty')}>
+            <PuField label={lotQtyLabel} required htmlFor={fieldId('lotQty')}>
               <div className="pu-row">
                 <PuInput
                   id={fieldId('lotQty')}

@@ -234,12 +234,18 @@ export const popMaterialLotLabel = {
     packageUomPlaceholder: '고르세요',
     packageCount: '포장 수',
     qtyPerPackage: (uomCode: string) => `포장당 수량 (${uomCode})`,
+    lotQtyAmount: 'LOT 1개 양',
+    qtyPerPackageAmount: (uomCode: string) => `포장당 양 (${uomCode})`,
     lotQty: 'LOT 1개 수량',
     unitLocked: '품목 기본 단위로 고정',
     supplierLot: '공급사 LOT 번호',
     lotCount: '개수',
     lotCountUnit: '개',
     errors: {
+      lotQtyAmount: 'LOT 1개 양을 넣으세요(0보다 큰 수)',
+      qtyPerPackageAmount: '포장당 양은 0보다 커야 합니다',
+      mismatchAmount: (qty: string, product: string) =>
+        `LOT 1개 양 ${qty} ≠ ${product} — 맞춰야 만들 수 있습니다`,
       packageCount: '포장 수는 1 이상 정수입니다',
       qtyPerPackage: '포장당 수량은 0보다 커야 합니다',
       packageUom: '포장 단위를 고르세요',

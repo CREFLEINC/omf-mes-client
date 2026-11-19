@@ -190,12 +190,18 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     packageUomPlaceholder: 'Hãy chọn',
     packageCount: 'Số kiện đóng gói',
     qtyPerPackage: (uomCode: string) => `Số lượng mỗi kiện đóng gói (${uomCode})`,
+    lotQtyAmount: 'Lượng 1 LOT',
+    qtyPerPackageAmount: (uomCode: string) => `Lượng mỗi kiện (${uomCode})`,
     lotQty: 'Số lượng 1 LOT',
     unitLocked: 'Cố định theo đơn vị cơ sở của mặt hàng',
     supplierLot: 'Số LOT nhà cung cấp',
     lotCount: 'Số lượng LOT',
     lotCountUnit: 'LOT',
     errors: {
+      lotQtyAmount: 'Hãy nhập lượng 1 LOT (số lớn hơn 0)',
+      qtyPerPackageAmount: 'Lượng mỗi kiện phải lớn hơn 0',
+      mismatchAmount: (qty: string, product: string) =>
+        `Lượng 1 LOT ${qty} ≠ ${product} — phải khớp thì mới tạo được`,
       packageCount: 'Số kiện đóng gói phải là số nguyên từ 1 trở lên',
       qtyPerPackage: 'Số lượng mỗi kiện đóng gói phải lớn hơn 0',
       packageUom: 'Hãy chọn đơn vị đóng gói',

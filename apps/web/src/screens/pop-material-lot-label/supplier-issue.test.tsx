@@ -36,7 +36,9 @@ afterEach(() => {
 const openBatch = async (user: ReturnType<typeof userEvent.setup>): Promise<HTMLElement> => {
   await user.click(await screen.findByRole('button', { name: t.work.create }));
   const dialog = await screen.findByRole('dialog', { name: tb.title });
-  await within(dialog).findByText(tb.lotQty, { selector: 'label' });
+  await within(dialog).findByText((text) => text === tb.lotQty || text === tb.lotQtyAmount, {
+    selector: 'label',
+  });
 
   return dialog;
 };
@@ -145,11 +147,11 @@ describe('US1-3 기본 정보가 없으면', () => {
 
     expect(within(dialog).getByText(tb.source.itemStorage)).toBeInTheDocument();
     expect(field(dialog, tb.packageCount).value).toBe('');
-    expect(field(dialog, tb.qtyPerPackage('TON')).value).toBe('');
-    expect(field(dialog, tb.lotQty).value).toBe('');
+    expect(field(dialog, tb.qtyPerPackageAmount('TON')).value).toBe('');
+    expect(field(dialog, tb.lotQtyAmount).value).toBe('');
 
     await user.click(within(dialog).getByRole('button', { name: tb.packageOff }));
-    await user.type(field(dialog, tb.lotQty), '1');
+    await user.type(field(dialog, tb.lotQtyAmount), '1');
     await user.type(field(dialog, tb.lotCount), '5');
     await user.click(within(dialog).getByRole('button', { name: tb.submit(5) }));
 
@@ -171,7 +173,8 @@ describe('US1-3 기본 정보가 없으면', () => {
     const dialog = await openBatch(user);
 
     expect(within(dialog).getByText(tb.source.none)).toBeInTheDocument();
-    expect(within(dialog).queryByRole('textbox', { name: tb.packageCount })).toBeNull();
+    /* 「포장 없음」이면 포장 칸은 보이되 입력할 수 없다(사용자 지시 2026-11-19). */
+    expect(within(dialog).getByRole('textbox', { name: tb.packageCount })).toBeDisabled();
   });
 
   it('품목 환산이 있으면 패키징당 수량도 채운다(재고 수량은 빈칸)', async () => {
@@ -183,7 +186,7 @@ describe('US1-3 기본 정보가 없으면', () => {
 
     const dialog = await openBatch(user);
 
-    expect(field(dialog, tb.qtyPerPackage('TON')).value).toBe('0.5');
+    expect(field(dialog, tb.qtyPerPackageAmount('TON')).value).toBe('0.5');
     expect(field(dialog, tb.packageCount).value).toBe('');
   });
 });
@@ -280,9 +283,7 @@ describe('US1-7 입하 대기 LOT 폐기', () => {
     expect(within(dialog).getByText(t.voidDialog.target(2))).toBeInTheDocument();
     expect(within(dialog).getByText(t.voidDialog.body, { exact: false })).toBeInTheDocument();
     expect(within(dialog).getByText(t.voidDialog.printed(1), { exact: false })).toBeInTheDocument();
-    await user.click(
-      within(dialog).getByRole('button', { name: t.voidDialog.confirm }),
-    );
+    await user.click(within(dialog).getByRole('button', { name: t.voidDialog.confirm }));
 
     expect(await screen.findByText(t.voidDialog.done(2))).toBeInTheDocument();
     expect(sentTo(sent, '/trace/lots:void')[0]?.body).toEqual({ lotIds: [9002, 9003] });
