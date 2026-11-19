@@ -15,7 +15,7 @@ const tStatus = messages.popMaterialLotLabel.status;
  * 표가 무엇을 보이는가(screens/P-01-01.md · #295 시안).
  *
  * - `waiting` 공급사·품목의 라벨 미발행 입하 대기(+ 폐기, 맨 뒤에 최근 입하된 LOT — 고를 수 없음)
- *   — 선택 · 번호 · 공급사 LOT 번호 · 재고 수량 · 포장 · 상태 · 라벨 · 등록일시
+ *   — 선택 · 번호 · 공급사 LOT 번호 · 품목 · 재고 수량 · 포장 · 상태 · 라벨 · 등록일시
  * - `reprint` 재발행 — 선택 · 번호 · 공급사 LOT 번호 · 품목 · 재고 수량 · 포장 · 상태 · 출력(회차) · 최근 출력일시
  * ⭐ 칸마다 값 하나(사용자 지시 2026-11-19) — 두 줄 묶음 칸은 두지 않는다.
  *
@@ -129,7 +129,7 @@ export const LabelTable = ({
               <th className="mll-slotcol" title={t.columns.supplierLot}>
                 {t.columns.supplierLot}
               </th>
-              {isReprint ? <th className="mll-itemcol">{t.columns.item}</th> : null}
+              <th className="mll-itemcol">{t.columns.item}</th>
               <th className="num fit">{t.columns.qty}</th>
               <th className="fit">{t.columns.package}</th>
               <th className="fit mid">{t.columns.status}</th>
@@ -201,11 +201,9 @@ export const LabelTable = ({
                   <td className="mll-slotcol" title={lot.supplierLotNo ?? undefined}>
                     {lot.supplierLotNo ?? t.none}
                   </td>
-                  {isReprint ? (
-                    <td title={`${lot.itemCode} ${lot.itemName}`}>
-                      <b>{lot.itemCode}</b> {lot.itemName}
-                    </td>
-                  ) : null}
+                  <td title={`${lot.itemCode} ${lot.itemName}`}>
+                    <b>{lot.itemCode}</b> {lot.itemName}
+                  </td>
                   <td className="num fit">{qtyText}</td>
                   <td className="fit">{packageText}</td>
                   <td className="fit mid">

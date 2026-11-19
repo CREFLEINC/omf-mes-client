@@ -608,3 +608,41 @@
     grid-column: 1 / -1;
   }
 }
+
+/*
+ * 발행 대기 · 재발행 표의 품목 칸(사용자 지시 2026-11-19 「여기 표도 품목 데이터 보여야 할 거 같아」):
+ * 짧은 칸(재고량 · 포장 · 상태 · 라벨/출력 · 일시)은 글자만큼, 공급사 LOT 번호는 머리 글 폭만.
+ * LOT 번호 칸은 화면 폭에 따라 줄고(넘치면 말줄임 + title), 남는 폭은 품목이 갖는다 — 1280 에서 품목 약 220 · 1024 에서 약 130.
+ */
+.mll-table .pu-table th.mll-slotcol {
+  width: 108px;
+}
+
+.mll-table .pu-table th.mll-lotcol {
+  width: clamp(112px, calc(100vw - 1170px), 260px);
+}
+
+.mll-table.mll-table .pu-table th,
+.mll-table.mll-table .pu-table td {
+  padding-inline: 4px;
+}
+
+@media (max-width: 1100px) {
+  .mll-table .pu-table th.fit:not(.mid) {
+    white-space: normal;
+    line-height: 15px;
+  }
+
+  .mll-table.mll-table .pu-table th.mll-slotcol {
+    width: 72px;
+    white-space: normal;
+    line-height: 15px;
+  }
+
+  /* LOT 번호 머리 글도 두 줄로 — 값은 말줄임 + title. */
+  .mll-table .pu-table th.mll-lotcol {
+    width: 72px;
+    white-space: normal;
+    line-height: 15px;
+  }
+}
