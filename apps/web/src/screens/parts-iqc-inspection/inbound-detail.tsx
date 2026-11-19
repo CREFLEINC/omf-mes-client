@@ -462,16 +462,6 @@ export const InboundDetail = ({
                         <span className="parts-iqc-muted">{tr.count(results.length)}</span>
                       </h3>
                       <span className="parts-iqc-footer-gap" />
-                      {/* 파일 첨부 — [검사 결과 추가] 왼쪽, 확정 뒤에도 붙일 수 있다(사용자 지시 2026-11-18 · omf-all-around#296). */}
-                      <Button
-                        variant="outlined"
-                        size="md"
-                        disabled={lots.length === 0}
-                        leadingIcon={<Icon name="attach_file" size={18} aria-hidden />}
-                        onClick={() => setAttachOpen(true)}
-                      >
-                        {ta.open}
-                      </Button>
                       {/* 확정 뒤에는 단추만 감춘다 — 확정은 위 배너가 알린다(omf-all-around#286). */}
                       {confirmed ? null : (
                         <Button
@@ -495,7 +485,21 @@ export const InboundDetail = ({
                         setDeleting(result);
                       }}
                     />
-                    <InboundAttachmentTable lots={lots} />
+                    <InboundAttachmentTable
+                      lots={lots}
+                      action={
+                        /* 파일 첨부 — 첨부 파일 표 위 오른쪽, 확정 뒤에도 붙일 수 있다(사용자 지시 2026-11-19 · omf-all-around#296). */
+                        <Button
+                          variant="outlined"
+                          size="md"
+                          disabled={lots.length === 0}
+                          leadingIcon={<Icon name="attach_file" size={18} aria-hidden />}
+                          onClick={() => setAttachOpen(true)}
+                        >
+                          {ta.open}
+                        </Button>
+                      }
+                    />
                   </section>
 
                   {/* 분리 · 판정 확정 단추는 상세 내용 맨 아래(사용자 지시 2026-11-16 · #274). */}

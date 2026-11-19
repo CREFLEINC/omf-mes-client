@@ -2,6 +2,7 @@ import {
   AlertBanner,
   Button,
   Dialog,
+  EmptyState,
   Icon,
   IconButton,
   Table,
@@ -16,7 +17,7 @@ import {
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
-import { useRef, useState, type ChangeEvent } from 'react';
+import { useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useFitColumns } from '../../patterns/column-fit';
@@ -92,7 +93,14 @@ const useLotAttachments = (lots: readonly InspectionLotForward[]) => {
  * 검사 결과 상자의 첨부 파일 표(사용자 지시 2026-11-18 · omf-all-around#296) — 파일명 · 연결 LOT · 크기 · 등록 일시,
  * 파일명 옆 단추로 내려받는다. 열 폭 끌기 · 순서 바꾸기는 다른 표와 같다.
  */
-export const InboundAttachmentTable = ({ lots }: { lots: readonly InspectionLotForward[] }) => {
+export const InboundAttachmentTable = ({
+  lots,
+  action,
+}: {
+  lots: readonly InspectionLotForward[];
+  /** 제목 줄 오른쪽 단추([파일 첨부]). */
+  action?: ReactNode;
+}) => {
   const { client } = useApiClient();
   const list = useLotAttachments(lots);
   const [notice, setNotice] = useState<string | null>(null);
@@ -171,9 +179,13 @@ export const InboundAttachmentTable = ({ lots }: { lots: readonly InspectionLotF
 
   return (
     <div className="iqc-inbound-attachments">
-      <h4 className="parts-iqc-sub-title">
-        {t.tableTitle} <span className="parts-iqc-muted">{t.count(list.rows.length)}</span>
-      </h4>
+      <div className="parts-iqc-block-head">
+        <h4 className="parts-iqc-sub-title">
+          {t.tableTitle} <span className="parts-iqc-muted">{t.count(list.rows.length)}</span>
+        </h4>
+        <span className="parts-iqc-footer-gap" />
+        {action}
+      </div>
       {list.isError ? (
         <p className="field-note">{t.loadFailed}</p>
       ) : (
@@ -184,7 +196,22 @@ export const InboundAttachmentTable = ({ lots }: { lots: readonly InspectionLotF
             columns={fit.columns}
             rows={list.rows}
             getRowId={(row) => row.key}
-            empty={<p className="field-note">{list.isPending ? td.loading : t.empty}</p>}
+            empty={
+              list.isPending ? (
+                <p className="field-note">{td.loading}</p>
+              ) : (
+                /* 빈 표 안내는 목록과 같은 모양(아이콘 + 글)으로(사용자 지시 2026-11-19 · omf-all-around#296). */
+                <EmptyState
+                  size="sm"
+                  icon={
+                    <span className="inspection-standard-empty-icon">
+                      <Icon name="attach_file" size={20} />
+                    </span>
+                  }
+                  title={t.empty}
+                />
+              )
+            }
           />
         </div>
       )}

@@ -1,4 +1,4 @@
-import { Chip, Icon, IconButton, Table, type Column } from '@crefle/web-ui';
+import { Chip, EmptyState, Icon, IconButton, Table, type Column } from '@crefle/web-ui';
 import type { InspectionLotForward, InspectionResultSummaryForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
@@ -159,7 +159,18 @@ export const ResultList = ({
         rows={[...results].sort((a, b) => a.seqNo - b.seqNo)}
         getRowId={(row) => String(row.inspectionResultId)}
         aria-label={t.heading(results.length)}
-        empty={<p className="field-note">{t.empty}</p>}
+        empty={
+          /* 빈 표 안내는 목록과 같은 모양(아이콘 + 글)으로(사용자 지시 2026-11-19 · omf-all-around#296). */
+          <EmptyState
+            size="sm"
+            icon={
+              <span className="inspection-standard-empty-icon">
+                <Icon name="assignment" size={20} />
+              </span>
+            }
+            title={t.empty}
+          />
+        }
       />
     </div>
   );

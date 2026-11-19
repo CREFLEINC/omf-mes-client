@@ -36926,7 +36926,7 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   margin-top: var(--space-3);
 }
 
-.iqc-inbound-attachments > h4 {
+.iqc-inbound-attachments h4 {
   margin: 0;
 }
 
