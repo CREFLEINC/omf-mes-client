@@ -224,6 +224,12 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
     loadFailed: 'Không tải được tệp đính kèm.',
     download: (name: string) => `Tải ${name}`,
     downloadFailed: 'Không tải được tệp. Hãy thử lại.',
+    link: 'Liên kết LOT',
+    linkLabel: (name: string) => `Liên kết ${name} với LOT quản lý vật tư`,
+    linkTitle: 'Liên kết LOT quản lý vật tư',
+    lotRequired: 'Hãy chọn ít nhất 1 LOT quản lý vật tư',
+    linked: (count: number) => `Đã liên kết với ${count} LOT quản lý vật tư.`,
+    linkFailed: 'Không liên kết được LOT. Hãy thử lại.',
   },
   split: {
     open: 'Tách LOT quản lý vật tư',

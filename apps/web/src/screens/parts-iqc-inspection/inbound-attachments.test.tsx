@@ -153,7 +153,13 @@ describe('IQC 입하 LOT 파일 첨부', () => {
       },
     ]);
     renderWithProviders(
-      <InboundAttachmentTable inspectionRequestId={501} lots={LOTS} confirmedAt={null} />,
+      <InboundAttachmentTable
+        inspectionRequestId={501}
+        lots={LOTS}
+        confirmedAt={null}
+        uomCode="EA"
+        canLink={false}
+      />,
       {
         fetch,
         session: null,
@@ -169,5 +175,69 @@ describe('IQC 입하 LOT 파일 첨부', () => {
     /* LOT 없이 검사 의뢰에 붙은 파일은 연결 LOT 번호 칸이 「-」. */
     expect(within(table).getByText('summary.xlsx').closest('tr')).toHaveTextContent('-');
     expect(screen.getByText(t.count(3))).toBeInTheDocument();
+  });
+
+  it('LOT 없이 올린 파일은 [LOT 연결]로 고른 LOT 에 연결한다 — 확정 뒤에는 단추가 없다', async () => {
+    const user = userEvent.setup();
+    let linked: unknown = null;
+    const fetch = createStubFetch([
+      {
+        match: (request) => request.method === 'GET' && path(request) === '/app/attachments',
+        respond: (request) =>
+          jsonResponse({
+            items:
+              new URL(request.url).searchParams.get('targetTypeCode') === 'INSPECTION_REQUEST' &&
+              linked === null
+                ? [attachment(20, 501, 'summary.xlsx')]
+                : [],
+          }),
+      },
+      {
+        match: (request) =>
+          request.method === 'POST' && path(request) === '/app/attachments/20:link-lots',
+        respond: async (request) => {
+          linked = await request.json();
+          return jsonResponse({ items: [] });
+        },
+      },
+    ]);
+    const { unmount } = renderWithProviders(
+      <InboundAttachmentTable
+        inspectionRequestId={501}
+        lots={LOTS}
+        confirmedAt={null}
+        uomCode="EA"
+        canLink
+      />,
+      { fetch, session: null },
+    );
+
+    await user.click(await screen.findByRole('button', { name: t.linkLabel('summary.xlsx') }));
+    const dialog = await screen.findByRole('dialog', { name: t.linkTitle });
+    await user.click(
+      within(dialog).getByRole('button', { name: messages.iqcInboundLot.drawer.selectNone }),
+    );
+    await user.click(within(dialog).getByRole('button', { name: t.save }));
+    expect(within(dialog).getByRole('alert')).toHaveTextContent(t.lotRequired);
+    expect(linked).toBeNull();
+
+    await user.click(within(dialog).getByRole('checkbox', { name: /0002/ }));
+    await user.click(within(dialog).getByRole('button', { name: t.save }));
+    await waitFor(() => expect(linked).toEqual({ lotIds: [2] }));
+    unmount();
+
+    linked = null;
+    renderWithProviders(
+      <InboundAttachmentTable
+        inspectionRequestId={501}
+        lots={LOTS}
+        confirmedAt="2099-11-11T02:00:00Z"
+        uomCode="EA"
+        canLink={false}
+      />,
+      { fetch, session: null },
+    );
+    await screen.findByText('summary.xlsx');
+    expect(screen.queryByRole('button', { name: t.linkLabel('summary.xlsx') })).toBeNull();
   });
 });

@@ -30602,6 +30602,92 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/app/attachments/{attachmentId}:link-lots': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 검사 의뢰 첨부를 자재 관리 LOT 에 연결
+     * @description IQC 파일 첨부에서 자재 관리 LOT 을 고르지 않아 검사 의뢰(INSPECTION_REQUEST)에 붙은 첨부를, 나중에 고른 자재 관리 LOT 마다의 첨부(LOT)로 옮긴다. 근거: omf-all-around#296
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path: {
+          attachmentId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['AttachmentLotLink'];
+        };
+      };
+      responses: {
+        /** @description 연결됨 — 새로 만든 LOT 첨부들(고른 LOT 순서). */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: components['schemas']['Attachment'][];
+            };
+          };
+        };
+        /** @description 검증 실패 — lotIds 형식·이 검사 의뢰 밖의 LOT · 검사 의뢰 첨부가 아님 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — IQC(W-01-01)·OQC(W-04-03) 판정 화면. 근거: omf-all-around#296 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 첨부 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/app/notices/{noticeId}:dismiss': {
     parameters: {
       query?: never;
@@ -59900,6 +59986,11 @@ export interface components {
        * @enum {string|null}
        */
       matchedScopeCode?: 'ITEM' | 'PROCESS' | 'PLANT' | 'BUSINESS_UNIT' | 'ALL' | null;
+    };
+    /** @description 검사 의뢰 첨부를 연결할 자재 관리 LOT(omf-all-around#296). */
+    AttachmentLotLink: {
+      /** @description 연결할 자재 관리 LOT — 그 검사 의뢰의 입하 LOT 에서 나온 것만. */
+      lotIds: number[];
     };
     /** @description 다형 참조다 — 창고 도면, 공지 첨부, 설비 고장 사진에 사용한다. */
     Attachment: {

@@ -108,10 +108,15 @@ export const InboundAttachmentTable = ({
   inspectionRequestId,
   lots,
   confirmedAt,
+  uomCode,
+  canLink,
   action,
 }: {
   inspectionRequestId: number;
   lots: readonly InspectionLotForward[];
+  uomCode: string;
+  /** LOT 없이 올린 파일에 [LOT 연결]을 보일지 — 확정 전(작성 중·대기)만(omf-all-around#296). */
+  canLink: boolean;
   /** 이 의뢰의 판정 확정 일시 — 확정 전은 `null`(「-」 · omf-all-around#296). */
   confirmedAt: string | null;
   /** 제목 줄 오른쪽 단추([파일 첨부]). */
@@ -120,6 +125,7 @@ export const InboundAttachmentTable = ({
   const { client } = useApiClient();
   const list = useLotAttachments(inspectionRequestId, lots);
   const [notice, setNotice] = useState<string | null>(null);
+  const [linking, setLinking] = useState<Attachment | null>(null);
 
   const download = async (row: Attachment): Promise<void> => {
     setNotice(null);
@@ -170,7 +176,18 @@ export const InboundAttachmentTable = ({
       render: (row) =>
         /* LOT 을 고르지 않고 올린 파일 — 연결 LOT 없음. */
         row.lotNos.length === 0 ? (
-          '-'
+          canLink ? (
+            <Button
+              variant="outlined"
+              size="sm"
+              aria-label={t.linkLabel(row.first.fileName)}
+              onClick={() => setLinking(row.first)}
+            >
+              {t.link}
+            </Button>
+          ) : (
+            '-'
+          )
         ) : (
           <span className="iqc-inbound-attach-lots">
             {row.lotNos.map((lotNo) => (
@@ -244,7 +261,116 @@ export const InboundAttachmentTable = ({
         </div>
       )}
       {notice === null ? null : <p className="field-note">{notice}</p>}
+      {linking === null ? null : (
+        <LinkLotsDialog
+          attachment={linking}
+          inspectionRequestId={inspectionRequestId}
+          lots={lots}
+          uomCode={uomCode}
+          onClose={() => setLinking(null)}
+        />
+      )}
     </div>
+  );
+};
+
+/**
+ * [LOT 연결] 창(사용자 지시 2026-11-19 · omf-all-around#296) — LOT 없이 올린 파일을 고른 자재 관리 LOT 에 연결한다.
+ * 서버가 LOT 마다 같은 파일의 첨부를 만들고 검사 의뢰 첨부는 지운다.
+ */
+const LinkLotsDialog = ({
+  attachment,
+  inspectionRequestId,
+  lots,
+  uomCode,
+  onClose,
+}: {
+  attachment: Attachment;
+  inspectionRequestId: number;
+  lots: readonly InspectionLotForward[];
+  uomCode: string;
+  onClose: () => void;
+}) => {
+  const { client } = useApiClient();
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const [lotIds, setLotIds] = useState<number[]>(lots.map((lot) => lot.lotId));
+  const [tried, setTried] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [failed, setFailed] = useState(false);
+  /* 같은 저장 시도의 재전송은 같은 키로 — 서버가 앞 응답을 돌려준다. */
+  const idempotencyKey = useRef(createIdempotencyKey());
+
+  const save = async (): Promise<void> => {
+    setTried(true);
+    if (lotIds.length === 0) return;
+    setSaving(true);
+    setFailed(false);
+    const result = await client.POST('/app/attachments/{attachmentId}:link-lots', {
+      params: {
+        path: { attachmentId: attachment.attachmentId },
+        header: { 'Idempotency-Key': idempotencyKey.current },
+      },
+      body: { lotIds },
+    });
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: attachmentKeys.list('INSPECTION_REQUEST', inspectionRequestId),
+      }),
+      ...lots.map((lot) =>
+        queryClient.invalidateQueries({ queryKey: attachmentKeys.list('LOT', lot.lotId) }),
+      ),
+    ]);
+    setSaving(false);
+    if (result.error !== undefined) {
+      idempotencyKey.current = createIdempotencyKey();
+      setFailed(true);
+      return;
+    }
+    toast.show({ variant: 'success', description: t.linked(lotIds.length) });
+    onClose();
+  };
+
+  return (
+    <Dialog
+      open
+      size="md"
+      showCloseButton={false}
+      closeOnBackdropClick={false}
+      title={t.linkTitle}
+      onClose={() => {
+        if (!saving) onClose();
+      }}
+      footer={
+        <>
+          <Button variant="outlined" disabled={saving} onClick={onClose}>
+            {t.cancel}
+          </Button>
+          <Button loading={saving} onClick={() => void save()}>
+            {t.save}
+          </Button>
+        </>
+      }
+    >
+      <div className="iqc-inbound-attach-dialog">
+        <p className="iqc-inbound-link-file">{attachment.fileName}</p>
+        <LotMatchField
+          lots={lots}
+          otherResults={[]}
+          uomCode={uomCode}
+          value={lotIds}
+          heading={t.lotHeading}
+          disabled={saving}
+          onChange={setLotIds}
+        />
+        {tried && lotIds.length === 0 ? (
+          <p className="field-error" role="alert">
+            {t.lotRequired}
+          </p>
+        ) : null}
+        {failed ? <AlertBanner variant="error">{t.linkFailed}</AlertBanner> : null}
+      </div>
+    </Dialog>
   );
 };
 

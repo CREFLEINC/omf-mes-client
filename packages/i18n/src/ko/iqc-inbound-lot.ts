@@ -267,6 +267,13 @@ export const iqcInboundLot = {
     loadFailed: '첨부 파일을 불러오지 못했습니다.',
     download: (name: string) => `${name} 내려받기`,
     downloadFailed: '파일을 내려받지 못했습니다. 다시 시도하세요.',
+    /* LOT 없이 올린 파일을 나중에 자재 관리 LOT 에 연결(사용자 지시 2026-11-19 · omf-all-around#296). */
+    link: 'LOT 연결',
+    linkLabel: (name: string) => `${name} 자재 관리 LOT 연결`,
+    linkTitle: '자재 관리 LOT 연결',
+    lotRequired: '자재 관리 LOT를 1개 이상 고르세요',
+    linked: (count: number) => `자재 관리 LOT ${count}개에 연결했습니다.`,
+    linkFailed: 'LOT에 연결하지 못했습니다. 다시 시도하세요.',
   },
   /** 자재 관리 LOT 분리 창(권한 W-01-01 · 확정 전만 · T092 · T093). */
   split: {
