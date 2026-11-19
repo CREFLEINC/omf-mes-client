@@ -59,8 +59,6 @@ export const shippingUnit = {
 
   unit: {
     typeLabel: '유형',
-    create: '새 출하 단위',
-    creating: '만드는 중…',
     failed: '출하 단위를 만들지 못했습니다.',
   },
 
@@ -68,7 +66,6 @@ export const shippingUnit = {
     /** 포장 라벨 스캔. 스캐너와 직접 입력이 같은 칸을 쓴다(설계 §5-2). */
     label: '포장 라벨 스캔',
     placeholder: '상자 번호를 스캔하거나 입력하세요',
-    locked: '출하 단위를 먼저 만드세요',
   },
 
   /**

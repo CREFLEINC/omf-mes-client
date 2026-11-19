@@ -57,15 +57,12 @@ export const shippingUnit: Translated<typeof ko.shippingUnit> = {
 
   unit: {
     typeLabel: 'Loại',
-    create: 'Đơn vị mới',
-    creating: 'Đang tạo…',
     failed: 'Không tạo được đơn vị giao hàng.',
   },
 
   scan: {
     label: 'Quét nhãn kiện',
     placeholder: 'Hãy quét hoặc nhập số kiện',
-    locked: 'Hãy tạo đơn vị giao hàng trước',
   },
 
   rejection: {

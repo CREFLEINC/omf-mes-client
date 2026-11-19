@@ -246,7 +246,7 @@ const TYPE_TILE_MAX = 5;
  * **P-04-05 출하 단위 구성** — 포장이 끝난 상자를 스캔해 묶고, 마감하면 납품 라벨이 나간다
  * (SHIP-UNIT-01 · 설계 §6). 본문은 #295 통일 시안: 왼쪽 「구성 대기 / 구성 완료」 탭 목록,
  * 가운데 두 단계(① 유형·상자 등록 → ② 마감 납품 라벨 발행), 오른쪽 납품 라벨 미리보기.
- * ① 은 위에 유형, 바로 아래 스캔 칸·상자 줄이다 — 단위는 지금처럼 [새 출하 단위] 를 눌렀을 때 만든다.
+ * ① 은 위에 유형, 바로 아래 스캔 칸·상자 줄이다 — 유형을 고르면 스캔 칸이 열리고, 첫 상자가 단위를 만든다.
  *
  * ⛔ **마감은 되돌릴 수 없다**(설계 §4-6). 「지금 마감할 수 있는가」는 `compose-state` 가 판정한다.
  */
@@ -300,7 +300,11 @@ export const ShippingUnitScreen = () => {
   );
   const closed = isClosed(state);
   const unitOpen = unit !== null && !closed;
-  const scanOpen = canScanBox(state);
+  /*
+   * 스캔 칸이 열리는가 — 단위가 없으면 출하·유형만 골랐으면 열린다(첫 상자가 단위를 만든다),
+   * 단위가 있으면 지금처럼 열린 단위일 때만.
+   */
+  const scanOpen = shippingUnitId === null ? canCreateUnit(state) : canScanBox(state);
   const currentEtag = etag ?? detail.data?.etag ?? null;
 
   const isDone = tab === 'done';
@@ -344,42 +348,56 @@ export const ShippingUnitScreen = () => {
     setStep(1);
   };
 
-  const onCreate = (): void => {
-    if (shipmentId === null || typeCode === null) return;
-
-    void run('creating', async () => {
-      setNotice(null);
-      resetScan();
-      setOutcome(null);
-      try {
-        const created = await writes.createUnit(shipmentId, typeCode);
-        setShippingUnitId(created.unit.shippingUnitId);
-        setEtag(created.etag);
-      } catch {
-        setNotice(t.unit.failed);
-      }
-    });
-  };
-
+  /**
+   * 상자 한 개를 읽는다.
+   *
+   * ⭐ **단위가 없으면 첫 상자가 단위를 만든다**(사용자 지시 2026-11-19 — [새 출하 단위] 단추 없음).
+   *    부르는 순서·값은 예전과 같다: `POST /logistics/shipping-units`(출하·유형) → `:add-box`.
+   *    그다음 상자부터는 `:add-box` 만 나간다.
+   * ⛔ 만들기는 됐는데 상자가 거절되면 단위는 이미 있다 — 그 단위를 잡아 두어 다음 스캔에서
+   *    다시 만들지 않는다. 연타는 `run` 이 한 번에 하나로 막는다.
+   */
   const onScan = (handlingUnitNo: string): void => {
-    if (shippingUnitId === null) return;
+    if (shippingUnitId === null && (shipmentId === null || typeCode === null)) return;
 
     void run('adding', async () => {
       setNotice(null);
       setScanError(null);
-      const result = await writes.addBox(shippingUnitId, handlingUnitNo);
 
-      if (result.kind === 'rejected') {
-        setScanValue('');
-        setLastBoxNo(null);
-        setScanError(rejectionText(result.rejection));
-
-        return;
+      let unitId = shippingUnitId;
+      const creating = unitId === null;
+      if (unitId === null) {
+        if (shipmentId === null || typeCode === null) return;
+        setOutcome(null);
+        try {
+          const created = await writes.createUnit(shipmentId, typeCode);
+          unitId = created.unit.shippingUnitId;
+          setEtag(created.etag);
+        } catch {
+          setNotice(t.unit.failed);
+          return;
+        }
       }
 
-      setEtag(result.snapshot.etag);
-      await detail.refetch();
-      setLastBoxNo(handlingUnitNo.trim());
+      try {
+        const result = await writes.addBox(unitId, handlingUnitNo);
+
+        if (result.kind === 'rejected') {
+          setScanValue('');
+          setLastBoxNo(null);
+          setScanError(rejectionText(result.rejection));
+
+          return;
+        }
+
+        setEtag(result.snapshot.etag);
+        /* 방금 만든 단위는 아래에서 단위 번호를 잡을 때 상세를 새로 받는다(상자가 든 뒤라 함께 온다). */
+        if (!creating) await detail.refetch();
+        setLastBoxNo(handlingUnitNo.trim());
+      } finally {
+        /* ⚠ 상자 결과와 상관없이 만든 단위를 잡는다 — 상자를 넣은 «뒤»에 잡아야 상세가 상자까지 담아 온다. */
+        if (creating) setShippingUnitId(unitId);
+      }
     });
   };
 
@@ -689,7 +707,7 @@ export const ShippingUnitScreen = () => {
         )}
         {step === 1 && (
           <>
-            {/* ⛔ 단위를 만들면 유형은 그 단위의 것이다(생성 때 보냄) — 그 뒤로는 바꿀 수 없게 잠근다. */}
+            {/* ⛔ 첫 상자로 단위가 서면 유형은 그 단위의 것이다(생성 때 보냄) — 그 뒤로는 바꿀 수 없게 잠근다. */}
             <PuField label={t.unit.typeLabel} required labelId="shipping-unit-type-label">
               {typeOptions.length > TYPE_TILE_MAX ? (
                 <PopSelect
@@ -697,7 +715,7 @@ export const ShippingUnitScreen = () => {
                   value={unit?.shippingUnitTypeCode ?? typeCode}
                   onChange={setTypeCode}
                   options={typeOptions}
-                  disabled={unit !== null}
+                  disabled={shippingUnitId !== null || busy !== 'idle'}
                 />
               ) : (
                 <div className="su-types">
@@ -706,7 +724,7 @@ export const ShippingUnitScreen = () => {
                     options={typeOptions}
                     value={unit?.shippingUnitTypeCode ?? typeCode}
                     onChange={setTypeCode}
-                    disabled={unit !== null}
+                    disabled={shippingUnitId !== null || busy !== 'idle'}
                   />
                 </div>
               )}
@@ -723,7 +741,7 @@ export const ShippingUnitScreen = () => {
                 setScanValue(value);
                 onScan(value);
               }}
-              placeholder={unitOpen ? t.scan.placeholder : t.scan.locked}
+              placeholder={t.scan.placeholder}
               disabled={!scanOpen}
               done={lastBoxNo !== null && lastBoxNo === scanValue.trim()}
               error={scanError}
@@ -741,12 +759,8 @@ export const ShippingUnitScreen = () => {
     if (isDone || shipment === null) return null;
 
     if (step === 1) {
-      /* 단위가 없으면 [새 출하 단위](지금과 같은 때 만든다), 있으면 상자를 담은 뒤 [다음]. */
-      return unit === null ? (
-        <PuButton variant="primary" disabled={!canCreateUnit(state)} onClick={onCreate}>
-          {busy === 'creating' ? t.unit.creating : t.unit.create}
-        </PuButton>
-      ) : (
+      /* 단위는 첫 상자가 만든다 — 상자를 담은 뒤 [다음]. */
+      return (
         <PuButton
           variant="primary"
           disabled={!unitOpen || boxCount === 0}

@@ -235,10 +235,9 @@ const renderScreen = (options: Options = {}) => {
         request.method === 'GET' && /\/logistics\/shipping-units\/\d+$/u.test(pathOf(request)),
       respond: (request) => {
         if (pathOf(request).endsWith(`/${String(CLOSED_UNIT.shippingUnitId)}`)) {
-          return jsonResponse(
-            unit({ ...CLOSED_UNIT, boxes: [box(7101, 'HU-CLOSED-1', 1)] }),
-            { headers: { ETag: '"closed"' } },
-          );
+          return jsonResponse(unit({ ...CLOSED_UNIT, boxes: [box(7101, 'HU-CLOSED-1', 1)] }), {
+            headers: { ETag: '"closed"' },
+          });
         }
         const body = details[Math.min(detailCall++, details.length - 1)] ?? unit();
 
@@ -268,10 +267,28 @@ const pickType = async (user: ReturnType<typeof userEvent.setup>): Promise<void>
   await user.click(await screen.findByRole('radio', { name: '팔레트' }));
 };
 
-const openUnit = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+/** 출하와 유형을 고르면 스캔 칸이 열린다 — 단위는 아직 없다(첫 상자가 만든다). */
+const ready = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
   await pickShipment(user);
   await pickType(user);
-  await user.click(screen.getByRole('button', { name: t.unit.create }));
+  await waitFor(() => {
+    expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
+  });
+};
+
+/** 스캔 칸이 다시 열리기를 기다려 상자 하나를 읽는다(Enter). */
+const scanBox = async (user: ReturnType<typeof userEvent.setup>, no: string): Promise<void> => {
+  await waitFor(() => {
+    expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
+  });
+  await user.clear(screen.getByLabelText(t.scan.label));
+  await user.type(screen.getByLabelText(t.scan.label), `${no}{Enter}`);
+};
+
+/** 첫 상자를 읽어 단위를 세운다(만들기 → 상자 넣기). */
+const openUnit = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await ready(user);
+  await scanBox(user, 'HU-1');
 };
 
 /** ① 유형·상자 등록에서 [다음] → ② 마감 단계. */
@@ -287,15 +304,84 @@ afterEach(() => {
 });
 
 describe('P-04-05 출하 단위 구성', () => {
-  it('출하와 유형을 모두 골라야 새 단위를 만들 수 있다', async () => {
+  /*
+   * ⭐ **유형을 고르면 스캔 칸이 바로 열린다**(사용자 지시 2026-11-19 — [새 출하 단위] 단추 없음).
+   * ⛔ 고르기만으로는 아무것도 만들지 않는다 — 단위는 첫 상자가 만든다. 그 전에는 마감 단계로
+   *    갈 길(단계 줄 · [다음])이 없다.
+   */
+  it('유형을 고르면 스캔 칸이 열리고, 고르기만으로는 단위를 만들지 않는다', async () => {
     const user = userEvent.setup();
-    renderScreen();
+    const seen: Options['seen'] = [];
+    renderScreen({ seen });
 
     await pickShipment(user);
-    expect(await screen.findByRole('button', { name: t.unit.create })).toBeDisabled();
+    expect(await screen.findByLabelText(t.scan.label)).toBeDisabled();
 
     await pickType(user);
-    expect(screen.getByRole('button', { name: t.unit.create })).toBeEnabled();
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
+    });
+    expect(screen.getByRole('radio', { name: '팔레트' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: t.actions.next })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: new RegExp(t.steps.close, 'u') })).toBeNull();
+    expect(seen.some((call) => call.method === 'POST')).toBe(false);
+  });
+
+  /*
+   * ⛔⛔ **부르는 순서·값은 예전과 같다.** 첫 상자가 `POST /logistics/shipping-units`(출하·유형)
+   *    → `:add-box` 를 차례로 부르고, 둘째 상자부터는 `:add-box` 만 — 단위를 둘 만들지 않는다.
+   */
+  it('첫 상자는 단위를 만들고 넣고, 둘째 상자는 넣기만 한다', async () => {
+    const user = userEvent.setup();
+    const seen: Options['seen'] = [];
+    renderScreen({
+      seen,
+      details: [
+        unit({ boxes: [box(7001, 'HU-1', 1)], boxCount: 1 }),
+        unit({ boxes: [box(7001, 'HU-1', 1), box(7002, 'HU-2', 2)], boxCount: 2 }),
+      ],
+    });
+
+    await openUnit(user);
+    expect(await screen.findByText('HU-1', { selector: '.nm' })).toBeInTheDocument();
+    await scanBox(user, 'HU-2');
+
+    await waitFor(() => {
+      expect(seen.filter((call) => call.path.endsWith(':add-box'))).toHaveLength(2);
+    });
+    const writes = seen.filter((call) => call.method === 'POST');
+    expect(writes.map((call) => call.path)).toEqual([
+      '/logistics/shipping-units',
+      '/logistics/shipping-units/9001:add-box',
+      '/logistics/shipping-units/9001:add-box',
+    ]);
+    expect(writes[0]?.body).toEqual({ shipmentId: 501, shippingUnitTypeCode: 'PALLET' });
+    expect(writes[1]?.body).toMatchObject({ handlingUnitNo: 'HU-1' });
+    expect(writes[2]?.body).toMatchObject({ handlingUnitNo: 'HU-2' });
+  });
+
+  /*
+   * ⛔ 만들기는 됐는데 상자가 거절되면 단위는 이미 있다 — 거절 사유를 보이고 유형을 잠그며,
+   *    다시 읽어도 단위를 또 만들지 않는다.
+   */
+  it('단위를 만든 뒤 상자가 거절되면 다시 읽어도 단위를 또 만들지 않는다', async () => {
+    const user = userEvent.setup();
+    const seen: Options['seen'] = [];
+    renderScreen({ seen, reject: { code: 'PAIR', field: 'handlingUnitNo' } });
+
+    await openUnit(user);
+    expect(await screen.findByText(t.rejection.otherShipment)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('radio', { name: '팔레트' })).toBeDisabled();
+    });
+
+    await scanBox(user, 'HU-2');
+    await waitFor(() => {
+      expect(seen.filter((call) => call.path.endsWith(':add-box'))).toHaveLength(2);
+    });
+    expect(
+      seen.filter((call) => call.method === 'POST' && call.path === '/logistics/shipping-units'),
+    ).toHaveLength(1);
   });
 
   /*
@@ -318,37 +404,19 @@ describe('P-04-05 출하 단위 구성', () => {
     expect([...query.keys()].filter((key) => key.startsWith('shipDate'))).toEqual([]);
   });
 
-  /*
-   * ⛔ **단위를 만들기 전에는 상자를 읽을 수 없다.** 스캔 칸은 유형 바로 아래에 서지만 단위가 없으면
-   *    잠겨 있고, 마감 단계로 갈 길(단계 줄 · [다음])도 없다 — 담당이 상자 앞에서 읽고 나서야 막힌
-   *    것을 알지 않게. 단위는 지금처럼 [새 출하 단위] 를 눌렀을 때만 만든다.
-   */
-  it('단위를 만들기 전에는 스캔 칸이 잠겨 있고 마감 단계로 갈 수 없다', async () => {
+  /* ⛔ 첫 상자로 단위가 서면 유형은 그 단위의 것이다 — 같은 단계의 유형 단추를 잠근다. */
+  it('첫 상자로 단위가 서면 유형 단추가 잠기고 스캔 칸은 열려 있다', async () => {
     const user = userEvent.setup();
-    const seen: Options['seen'] = [];
-    renderScreen({ seen });
-
-    await pickShipment(user);
-    await pickType(user);
-
-    expect(screen.getByLabelText(t.scan.label)).toBeDisabled();
-    expect(screen.queryByRole('button', { name: new RegExp(t.steps.close, 'u') })).toBeNull();
-    expect(screen.queryByRole('button', { name: t.actions.next })).toBeNull();
-    /* 유형만 골라서는 아무것도 만들지 않는다. */
-    expect(seen.some((call) => call.method === 'POST')).toBe(false);
-  });
-
-  /* ⛔ 단위를 만들면 유형은 그 단위의 것이다 — 같은 단계에 남은 유형 단추를 잠근다. */
-  it('단위를 만들면 같은 단계의 유형 단추가 잠기고 스캔 칸이 열린다', async () => {
-    const user = userEvent.setup();
-    renderScreen();
+    renderScreen({ details: [unit({ boxes: [box(7001, 'HU-1', 1)], boxCount: 1 })] });
 
     await openUnit(user);
 
     await waitFor(() => {
+      expect(screen.getByRole('radio', { name: '팔레트' })).toBeDisabled();
+    });
+    await waitFor(() => {
       expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
     });
-    expect(screen.getByRole('radio', { name: '팔레트' })).toBeDisabled();
   });
 
   /*
@@ -406,17 +474,6 @@ describe('P-04-05 출하 단위 구성', () => {
     expect(screen.queryByText(messages.popChrome.workerMissing)).not.toBeInTheDocument();
   });
 
-  it('단위를 만들면 스캔 칸이 열린다', async () => {
-    const user = userEvent.setup();
-    renderScreen();
-
-    await openUnit(user);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
-    });
-  });
-
   /*
    * ⛔⛔ **거절 다섯 갈래가 «서로 다른» 말을 해야 한다.** 코드만 보면 「마감된 단위」와
    *    「포장 안 된 상자」가 둘 다 `STATE_LOCKED` 로 뭉개진다 — `field` 를 함께 봐야 갈린다.
@@ -433,7 +490,7 @@ describe('P-04-05 출하 단위 구성', () => {
     const user = userEvent.setup();
     renderScreen({ reject: { code, field } });
 
-    await openUnit(user);
+    await ready(user);
     await waitFor(() => {
       expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
     });
@@ -453,7 +510,7 @@ describe('P-04-05 출하 단위 구성', () => {
     const seen: Options['seen'] = [];
     renderScreen({ seen });
 
-    await openUnit(user);
+    await ready(user);
     await waitFor(() => {
       expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
     });
@@ -476,7 +533,7 @@ describe('P-04-05 출하 단위 구성', () => {
     const seen: Options['seen'] = [];
     renderScreen({ seen });
 
-    await openUnit(user);
+    await ready(user);
     await waitFor(() => {
       expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
     });
@@ -491,7 +548,7 @@ describe('P-04-05 출하 단위 구성', () => {
     const user = userEvent.setup();
     renderScreen({ reject: { code: 'NEW_RULE', field: 'x', message: '아직 모르는 규칙입니다' } });
 
-    await openUnit(user);
+    await ready(user);
     await waitFor(() => {
       expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
     });
@@ -510,7 +567,7 @@ describe('P-04-05 출하 단위 구성', () => {
     const user = userEvent.setup();
     renderScreen();
 
-    await openUnit(user);
+    await ready(user);
 
     await waitFor(() => {
       expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
@@ -550,18 +607,14 @@ describe('P-04-05 출하 단위 구성', () => {
       seen,
       etags: ['"1"', '"2"', '"3"'],
       details: [
-        unit(),
         unit({ boxes: [box(7001, 'HU-1', 1)], boxCount: 1 }),
         unit({ boxes: [box(7001, 'HU-1', 1)], boxCount: 1 }),
         unit({ statusCode: 'CLOSED', boxes: [box(7001, 'HU-1', 1)], boxCount: 1 }),
       ],
     });
 
+    /* 첫 상자가 만들기(`"1"`) → 넣기(`"2"`)를 부른다. */
     await openUnit(user);
-    await waitFor(() => {
-      expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
-    });
-    await user.type(screen.getByLabelText(t.scan.label), 'HU-1{Enter}');
 
     await toCloseStep(user);
     await waitFor(() => {
@@ -672,6 +725,6 @@ describe('P-04-05 출하 단위 구성', () => {
     expect(new URLSearchParams(list?.query ?? '').get('statusCode')).toBe('CLOSED');
     expect(screen.queryByLabelText(t.scan.label)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.close.action })).toBeNull();
-    expect(screen.queryByRole('button', { name: t.unit.create })).toBeNull();
+    expect(screen.queryByRole('button', { name: t.actions.next })).toBeNull();
   });
 });
