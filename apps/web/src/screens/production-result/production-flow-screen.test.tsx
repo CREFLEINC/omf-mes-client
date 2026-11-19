@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { PopIdentityProvider } from '../../patterns/pop-identity';
+import { setPrinterTerminal, terminalPrinterKey } from '../../patterns/pop-printer-choice';
 import {
   createStubFetch,
   jsonResponse,
@@ -256,6 +257,34 @@ const renderScreen = (
   });
 };
 
+/*
+ * 작업 줄 단계 버튼(사용자 지시 2026-11-19): ① [확인] → ② [이전] + [확인] → ③ [이전] + 그 단계의 일.
+ * ② 의 [확인]이 종전 ① 의 [LOT 라벨 출력]이다 — 실적 저장 → 발행 → 인쇄가 여기서 나간다.
+ */
+const CONFIRM = messages.common.confirm;
+const actionBarNow = (): HTMLElement =>
+  screen.getByRole('region', { name: messages.screenPatterns.actionBar.region });
+const actionBar = async (): Promise<HTMLElement> =>
+  screen.findByRole('region', { name: messages.screenPatterns.actionBar.region });
+/** ① [확인]. 양품 수량만 보고 ② 로 넘긴다 — 저장하지 않는다. */
+const goDefectStep = async (): Promise<void> => {
+  const bar = await actionBar();
+  const go = await within(bar).findByRole('button', { name: CONFIRM });
+  await waitFor(() => expect(go).toBeEnabled());
+  fireEvent.click(go);
+  await within(bar).findByRole('button', { name: t.flow.work.toGood });
+};
+/** ② 의 [확인](저장 버튼). */
+const outputNow = (): HTMLElement => within(actionBarNow()).getByRole('button', { name: CONFIRM });
+/** ② 의 [확인](저장 버튼)을 찾는다. ① 이면 먼저 ① [확인]으로 ② 에 간다. */
+const findOutput = async (): Promise<HTMLElement> => {
+  const bar = await actionBar();
+  if (within(bar).queryByRole('button', { name: t.flow.work.toGood }) === null) {
+    await goDefectStep();
+  }
+  return within(bar).getByRole('button', { name: CONFIRM });
+};
+
 describe('ProductionFlowScreen', () => {
   beforeEach(() => {
     globalThis.localStorage.clear();
@@ -286,13 +315,17 @@ describe('ProductionFlowScreen', () => {
       await screen.findByRole('dialog', { name: messages.popChrome.workerNoDialog.title }),
     ).toBeInTheDocument();
     expect(screen.getByText(t.flow.next.noWorker)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.flow.output.issue, hidden: true })).toBeDisabled();
+    const bar = screen.getByRole('region', {
+      name: messages.screenPatterns.actionBar.region,
+      hidden: true,
+    });
+    expect(within(bar).getByRole('button', { name: CONFIRM, hidden: true })).toBeDisabled();
   });
 
   it('사번이 있으면 사번 미확인 띠를 세우지 않는다', async () => {
     renderScreen([]);
 
-    expect(await screen.findByRole('button', { name: t.flow.output.issue })).toBeInTheDocument();
+    expect(await findOutput()).toBeInTheDocument();
     expect(screen.queryByText(messages.popChrome.workerMissing)).not.toBeInTheDocument();
   });
 
@@ -301,7 +334,7 @@ describe('ProductionFlowScreen', () => {
     const user = userEvent.setup();
     renderScreen(writes);
 
-    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    const output = await findOutput();
     await waitFor(() => expect(output).toBeEnabled());
     await user.click(output);
     await user.click(output);
@@ -329,6 +362,59 @@ describe('ProductionFlowScreen', () => {
     });
   });
 
+  /* 단계는 차례로만 간다(사용자 지시 2026-11-19). ① [확인]은 저장하지 않고 ② 로 넘기기만 한다. */
+  it('① [확인]은 저장하지 않고 ② 로만 넘기며, 단계 줄로 앞 단계를 건너뛰지 못한다', async () => {
+    const writes: Request[] = [];
+    renderScreen(writes);
+
+    const steps = await screen.findByRole('list', { name: t.flow.work.stepsLabel });
+    /* ① 에서는 단계 줄에 누를 곳이 없고 [이전]도 없다 — ② · ③ 은 앞 단계가 끝나야 열린다. */
+    expect(within(steps).queryAllByRole('button')).toHaveLength(0);
+    expect(within(actionBarNow()).queryByRole('button', { name: t.flow.work.toGood })).toBeNull();
+    expect(screen.queryByRole('region', { name: t.flow.defects.title })).not.toBeInTheDocument();
+
+    await goDefectStep();
+    expect(screen.getByRole('region', { name: t.flow.defects.title })).toBeInTheDocument();
+    expect(writes).toHaveLength(0);
+    /* ② 에서는 끝난 ① 만 눌러 돌아간다. ③ 은 ② 의 [확인](저장)으로만 열린다. */
+    expect(
+      within(screen.getByRole('list', { name: t.flow.work.stepsLabel }))
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual([`✓${t.flow.work.steps.input}`]);
+    expect(screen.queryByLabelText(t.flow.scan.label)).not.toBeInTheDocument();
+  });
+
+  /* ③ 에도 [이전]이 있다(사용자 지시 2026-11-19). 실적은 이미 보냈으므로 앞 단계는 보기만 하고, 다시 보내지 않는다. */
+  it('③ 에서 [이전]으로 ② · ① 을 보기만 하고 [확인]으로 돌아오며 다시 저장하지 않는다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes);
+
+    const output = await findOutput();
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+    await waitFor(() => expect(screen.getByLabelText(t.flow.scan.label)).toBeEnabled());
+    const writesBefore = writes.map(pathOf);
+
+    await user.click(within(actionBarNow()).getByRole('button', { name: t.flow.work.toGood }));
+    expect(screen.queryByLabelText(t.flow.scan.label)).not.toBeInTheDocument();
+    const defects = screen.getByRole('region', { name: t.flow.defects.title });
+    expect(within(defects).getByText(t.flow.defects.emptyRows)).toBeInTheDocument();
+    expect(within(defects).queryByRole('button')).toBeNull();
+
+    await user.click(within(actionBarNow()).getByRole('button', { name: t.flow.work.toGood }));
+    const good = screen.getByLabelText(t.flow.quantity.actual);
+    expect(good).toHaveValue('12');
+    expect(good).toBeDisabled();
+    expect(within(actionBarNow()).queryByRole('button', { name: t.flow.work.toGood })).toBeNull();
+
+    await user.click(outputNow());
+    await user.click(outputNow());
+    await waitFor(() => expect(screen.getByLabelText(t.flow.scan.label)).toBeEnabled());
+    expect(writes.map(pathOf)).toEqual(writesBefore);
+  });
+
   /* 다른 라벨을 읽으면 방금 출력한 LOT 번호를 대며 그 라벨을 찾으라고 한다 — 마감은 나가지 않는다(#295 시안). */
   it('다른 LOT 라벨을 스캔하면 방금 출력한 LOT 번호로 안내하고 마감하지 않는다', async () => {
     Object.defineProperty(window, 'pop', {
@@ -339,7 +425,7 @@ describe('ProductionFlowScreen', () => {
     const user = userEvent.setup();
     renderScreen(writes);
 
-    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    const output = await findOutput();
     await waitFor(() => expect(output).toBeEnabled());
     await user.click(output);
     const scan = await screen.findByLabelText(t.flow.scan.label);
@@ -359,7 +445,7 @@ describe('ProductionFlowScreen', () => {
     renderScreen(writes);
 
     expect(screen.queryByText(t.flow.work.enteredResult)).not.toBeInTheDocument();
-    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    const output = await findOutput();
     await waitFor(() => expect(output).toBeEnabled());
     await user.click(output);
     await waitFor(() => expect(screen.getByLabelText(t.flow.scan.label)).toBeEnabled());
@@ -406,7 +492,7 @@ describe('ProductionFlowScreen', () => {
     const user = userEvent.setup();
     renderScreen(writes, [completeRoute]);
 
-    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    const output = await findOutput();
     await waitFor(() => expect(output).toBeEnabled());
     await user.click(output);
     const scan = await screen.findByLabelText(t.flow.scan.label);
@@ -469,7 +555,7 @@ describe('ProductionFlowScreen', () => {
     const user = userEvent.setup();
     renderScreen([], [completeRoute, completedRoute]);
 
-    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    const output = await findOutput();
     await waitFor(() => expect(output).toBeEnabled());
     await user.click(output);
     const scan = await screen.findByLabelText(t.flow.scan.label);
@@ -553,7 +639,7 @@ describe('ProductionFlowScreen', () => {
     const user = userEvent.setup();
     renderScreen(writes, [renditionSpy]);
 
-    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    const output = await findOutput();
     await waitFor(() => expect(output).toBeEnabled());
     await user.click(output);
 
@@ -588,7 +674,7 @@ describe('ProductionFlowScreen', () => {
     const user = userEvent.setup();
     renderScreen(writes);
 
-    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    const output = await findOutput();
     await waitFor(() => expect(output).toBeEnabled());
     await user.click(output);
 
@@ -898,7 +984,7 @@ describe('ProductionFlowScreen', () => {
     const user = userEvent.setup();
     renderScreen(writes, [completeRoute]);
 
-    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    const output = await findOutput();
     await waitFor(() => expect(output).toBeEnabled());
     await user.click(output);
 
@@ -1270,7 +1356,7 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
     };
     renderScreen(writes, [progressAfterSave]);
 
-    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    const output = await findOutput();
     await waitFor(() => expect(output).toBeEnabled());
     expect(screen.queryByText(t.overrun.achieved)).toBeNull();
     await user.click(output);
@@ -1330,10 +1416,11 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
 
     const close = await screen.findByRole('button', { name: t.flow.woClose.button });
     await waitFor(() => expect(close).toBeEnabled());
-    const output = screen.getByRole('button', { name: t.flow.output.issue });
-    expect(output).toBeDisabled();
     /* 달성 사실은 오른쪽 위 파란 안내 줄이, 막힌 이유는 하단 바가 말한다(개선 명세 ④-1). */
     expect(await screen.findByText(t.flow.work.planReached)).toBeInTheDocument();
+    /* 프린터는 ② 의 [확인](저장 → 라벨 출력)에서 본다 — ① 의 [확인]은 넘기기만 한다(사용자 지시 2026-11-19). */
+    const output = await findOutput();
+    expect(output).toBeDisabled();
     /* 프린터가 없다는 사실은 공통 메뉴 맨 위 줄 프린터 칩 한 곳만 말한다(#291) — 하단에 같은 말을 두지 않는다. */
     expect(screen.getAllByText(t.flow.work.printerNone)).toHaveLength(1);
     expect(output).not.toHaveAccessibleDescription();
@@ -1375,7 +1462,7 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
     };
     renderScreen(writes, [progressAfterSave]);
 
-    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    const output = await findOutput();
     await waitFor(() => expect(output).toBeEnabled());
     await user.click(output);
 
@@ -1392,7 +1479,7 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
 
     expect(await screen.findByText(t.overrun.notice('10 EA', '2 EA'))).toBeInTheDocument();
 
-    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    const output = await findOutput();
     await waitFor(() => expect(output).toBeEnabled());
     await user.click(output);
 
@@ -1419,7 +1506,7 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
     const user = userEvent.setup();
     renderScreen(writes, [workOrderWith({ goodQty: 0, varianceQty: 12 })]);
 
-    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    const output = await findOutput();
     await waitFor(() => expect(output).toBeEnabled());
 
     expect(screen.queryByText(/초과 달성/u)).not.toBeInTheDocument();
@@ -1436,8 +1523,9 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
     const writes: Request[] = [];
     renderScreen(writes, [workOrderWith({ goodQty: 16, varianceQty: -4 })]);
 
-    const output = await screen.findByRole('button', { name: t.flow.output.issue });
-    await waitFor(() => expect(output).toBeEnabled());
+    /* 초과 안내는 양품을 치는 ① 에 선다. */
+    const go = await within(await actionBar()).findByRole('button', { name: CONFIRM });
+    await waitFor(() => expect(go).toBeEnabled());
 
     /* W/O 실적은 「실적 / 지시」로 보이고 잔량은 0 이하라 두지 않는다(C-21). */
     expect(
@@ -1457,7 +1545,7 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
     const user = userEvent.setup();
     renderScreen(writes, [workOrderWith(undefined)]);
 
-    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    const output = await findOutput();
     await waitFor(() => expect(output).toBeEnabled());
     /* 값이 없으면 그 줄을 숨긴다(C-10). 0 으로 그리면 잔량이 없다는 뜻이 된다. */
     expect(screen.queryByText(/잔량 /u)).not.toBeInTheDocument();
@@ -1473,7 +1561,7 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
     renderScreen([], [], { route: '/pop/production-result' });
 
     expect(await screen.findByText(t.flow.next.noWorkOrder)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
+    expect(outputNow()).toBeDisabled();
   });
 
   it('작업지시를 받고 들어오면 그 안내를 세우지 않는다', async () => {
@@ -1610,7 +1698,7 @@ describe('ProductionFlowScreen · 작업 세션 자동 종료', () => {
 
   /** 발행 → 인쇄 → 스캔까지 몰고 가 LOT 하나를 마감시킨다. */
   const completeCurrentLot = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
-    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    const output = await findOutput();
     await waitFor(() => expect(output).toBeEnabled());
     await user.click(output);
 
@@ -1786,7 +1874,7 @@ describe('ProductionFlowScreen · 작업 세션 자동 종료', () => {
       lotsDrainedAfterComplete(state),
     ]);
 
-    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    const output = await findOutput();
     await waitFor(() => expect(output).toBeEnabled());
     await user.click(output);
 
@@ -1976,7 +2064,7 @@ describe('ProductionFlowScreen · 자동 종료는 한 번만 나간다', () => 
     const user = userEvent.setup();
     renderScreen(writes, [endRoute, completeRoute, lotsRoute], { strict: true });
 
-    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    const output = await findOutput();
     await waitFor(() => expect(output).toBeEnabled());
     await user.click(output);
 
@@ -2057,6 +2145,7 @@ describe('ProductionFlowScreen · 자동 종료는 한 번만 나간다', () => 
  */
 describe('ProductionFlowScreen — 프린터 선택', () => {
   const LOT_PRINTER_KEY = 'omf-mes.production-result.lot-printer';
+  const picker = messages.popChrome.printerPicker;
   const installShell = (selectable: boolean) => {
     const save = vi.fn(async (..._args: unknown[]) => '/tmp/lot.prn');
     Object.defineProperty(window, 'pop', {
@@ -2079,7 +2168,7 @@ describe('ProductionFlowScreen — 프린터 선택', () => {
     return save;
   };
   const issueOnce = async (user: ReturnType<typeof userEvent.setup>) => {
-    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    const output = await findOutput();
     await waitFor(() => expect(output).toBeEnabled());
     await user.click(output);
   };
@@ -2105,13 +2194,11 @@ describe('ProductionFlowScreen — 프린터 선택', () => {
         name: `${messages.popMaterialLotLabel.printer.choose}: 합성 라벨 프린터`,
       }),
     );
-    /* 창은 [닫기] 하나로 닫고(✕ 없음), 모든 줄에 같은 「이 프린터로 나갑니다」를 붙이지 않는다(사용자 지시 2026-11-16). */
-    const dialog = await screen.findByRole('dialog');
-    expect(
-      within(dialog).getAllByRole('button', { name: messages.popMaterialLotLabel.printer.close }),
-    ).toHaveLength(1);
+    /* 「프린터 선택」 창: 줄을 누르고 [선택](사용자 지시 2026-11-19). 모든 줄에 같은 「이 프린터로 나갑니다」를 붙이지 않는다. */
+    const dialog = await screen.findByRole('dialog', { name: picker.title });
     expect(within(dialog).queryByText(/나갑니다/u)).not.toBeInTheDocument();
-    await user.click(await screen.findByRole('button', { name: /합성 라벨 프린터 2/u }));
+    await user.click(within(dialog).getByRole('option', { name: /합성 라벨 프린터 2/u }));
+    await user.click(within(dialog).getByRole('button', { name: picker.select }));
     expect(globalThis.localStorage.getItem(LOT_PRINTER_KEY)).toBe('printer-syn-2');
 
     await issueOnce(user);
@@ -2133,14 +2220,72 @@ describe('ProductionFlowScreen — 프린터 선택', () => {
 
     const header = screen.getAllByRole('banner')[0] as HTMLElement;
     expect(
-      await within(header).findByText(
-        `${messages.popMaterialLotLabel.printer.label} 합성 라벨 프린터`,
-      ),
+      await within(header).findByRole('button', {
+        name: `${messages.popMaterialLotLabel.printer.choose}: 합성 라벨 프린터`,
+      }),
     ).toBeInTheDocument();
     await issueOnce(user);
 
     await waitFor(() => expect(save).toHaveBeenCalled());
     expect(save.mock.calls.at(-1)).toHaveLength(4);
+  });
+
+  /*
+   * 맨 위 줄에서 이 단말이 고른 프린터(`pop-printer-choice`, 단말 코드마다 기억)를 발행의 `printerName` 으로 쓴다.
+   * 셸이 고른 프린터를 받지 못하면 셸 인쇄에는 이름을 싣지 않는다(종전 규칙 그대로).
+   */
+  describe('이 단말이 고른 프린터', () => {
+    beforeEach(() => {
+      setPrinterTerminal('T-SYN');
+    });
+
+    afterEach(() => {
+      setPrinterTerminal(null);
+    });
+
+    const issuedPrinterName = async (writes: Request[]) => {
+      await waitFor(() =>
+        expect(
+          writes.some(
+            (request) => request.method === 'POST' && pathOf(request) === '/app/document-issues',
+          ),
+        ).toBe(true),
+      );
+      const issue = writes.find(
+        (request) => request.method === 'POST' && pathOf(request) === '/app/document-issues',
+      );
+      return ((await issue?.clone().json()) as { printerName?: string }).printerName;
+    };
+
+    it('기억한 프린터가 목록에 있으면 그것으로 발행한다', async () => {
+      globalThis.localStorage.setItem(terminalPrinterKey('T-SYN'), 'printer-syn-2');
+      const writes: Request[] = [];
+      const user = userEvent.setup();
+      installShell(false);
+      renderScreen(writes);
+
+      const header = screen.getAllByRole('banner')[0] as HTMLElement;
+      expect(
+        await within(header).findByRole('button', {
+          name: `${messages.popMaterialLotLabel.printer.choose}: 합성 라벨 프린터 2`,
+        }),
+      ).toBeInTheDocument();
+      await issueOnce(user);
+
+      expect(await issuedPrinterName(writes)).toBe('printer-syn-2');
+    });
+
+    it('기억한 프린터가 목록에 없으면 기본 프린터로 발행한다', async () => {
+      globalThis.localStorage.setItem(terminalPrinterKey('T-SYN'), 'printer-gone');
+      const writes: Request[] = [];
+      const user = userEvent.setup();
+      installShell(false);
+      renderScreen(writes);
+
+      await issueOnce(user);
+
+      expect(await issuedPrinterName(writes)).toBe('printer-syn');
+    });
   });
 });
 
@@ -2265,19 +2410,15 @@ describe('ProductionFlowScreen 불량', () => {
   const addDefectButton = () =>
     emptyTypeFields()[0] ??
     within(defectSection()).getByRole('button', { name: t.flow.defects.add });
-  /* 넣어 둔 불량이 있으면 「불량 등록 (N)」이다. */
-  const toDefectName = new RegExp(`^${t.flow.work.toDefect}`);
   const openDefectStep = async () => {
-    const go = await screen.findByRole('button', { name: toDefectName });
-    await waitFor(() => expect(go).toBeEnabled());
-    fireEvent.click(go);
+    await goDefectStep();
     await screen.findByRole('region', { name: t.flow.defects.title });
   };
-  /* 불량은 ② 불량 등록 단계에 있다(2026-11-16) — ① 이면 [불량 등록]으로 넘어간 뒤 구획을 준다. */
+  /* 불량은 ② 불량 등록 단계에 있다(2026-11-16) — ① 이면 ① [확인]으로 넘어간 뒤 구획을 준다(2026-11-19). */
   const defectSection = () => {
     const region = screen.queryByRole('region', { name: t.flow.defects.title });
     if (region !== null) return region;
-    fireEvent.click(screen.getByRole('button', { name: toDefectName }));
+    fireEvent.click(within(actionBarNow()).getByRole('button', { name: CONFIRM }));
     return screen.getByRole('region', { name: t.flow.defects.title });
   };
   const savedBody = async (writes: Request[]) => {
@@ -2301,7 +2442,7 @@ describe('ProductionFlowScreen 불량', () => {
     await user.click(screen.getByRole('button', { name: '3' }));
     expect(within(row).getByLabelText(t.flow.defects.qty)).toHaveValue('3');
 
-    const output = screen.getByRole('button', { name: t.flow.output.issue });
+    const output = outputNow();
     await waitFor(() => expect(output).toBeEnabled());
     await user.click(output);
 
@@ -2332,9 +2473,9 @@ describe('ProductionFlowScreen 불량', () => {
     await pickDefect(user, '찍힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
 
-    /* 양품 없이 불량만이면 하단 [LOT 라벨 출력] 자리에 [불량 등록]이 선다(사용자 지시 2026-11-16). */
+    /* 양품 없이 불량만이면 ② 의 [확인]이 라벨 없이 불량만 등록한다(사용자 지시 2026-11-16 · 2026-11-19). */
     expect(screen.queryByRole('button', { name: t.flow.output.issue })).not.toBeInTheDocument();
-    const saveOnly = screen.getByRole('button', { name: t.flow.defects.saveOnly });
+    const saveOnly = outputNow();
     expect(
       within(defectSection()).queryByRole('button', { name: t.flow.defects.saveOnly }),
     ).toBeNull();
@@ -2369,7 +2510,7 @@ describe('ProductionFlowScreen 불량', () => {
     await pickDefect(user, '찍힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
 
-    const saveOnly = screen.getByRole('button', { name: t.flow.defects.saveOnly });
+    const saveOnly = outputNow();
     await waitFor(() => expect(saveOnly).toBeEnabled());
     await user.click(saveOnly);
     const dialog = await screen.findByRole('dialog');
@@ -2397,7 +2538,7 @@ describe('ProductionFlowScreen 불량', () => {
     await pickDefect(user, '찍힘');
     expect(within(defectSection()).getByRole('status')).toHaveTextContent(t.flow.defects.duplicate);
 
-    const saveOnly = screen.getByRole('button', { name: t.flow.defects.saveOnly });
+    const saveOnly = outputNow();
     await waitFor(() => expect(saveOnly).toBeEnabled());
     await user.click(saveOnly);
     await user.click(
@@ -2499,7 +2640,7 @@ describe('ProductionFlowScreen 불량', () => {
       within(defectSection()).getByRole('listitem', { name: t.flow.defects.row(1) }),
     ).toHaveClass('is-duplicate');
     expect(within(defectSection()).getByRole('status')).toHaveTextContent(t.flow.defects.duplicate);
-    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeEnabled();
+    expect(outputNow()).toBeEnabled();
   });
 
   it('연결이 끊겨도 불량만 저장은 큐에 넣는 즉시 끝나고 다음 입력을 받는다', async () => {
@@ -2515,7 +2656,7 @@ describe('ProductionFlowScreen 불량', () => {
     await user.click(addDefectButton());
     await pickDefect(user, '긁힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
-    await user.click(screen.getByRole('button', { name: t.flow.defects.saveOnly }));
+    await user.click(outputNow());
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', {
         name: t.flow.defects.confirmSave,
@@ -2553,9 +2694,17 @@ describe('ProductionFlowScreen 불량', () => {
     expect(screen.getByRole('button', { name: '.' })).toBeDisabled();
     await user.click(screen.getByRole('button', { name: '1' }));
     expect(goodAgain).toHaveValue('121');
+
+    /* ① [확인]으로 다시 ② 에 가면 넣어 둔 불량 줄이 그대로 있다(사용자 지시 2026-11-19 — [이전]은 값을 지킨다). */
+    await user.click(within(actionBarNow()).getByRole('button', { name: CONFIRM }));
+    expect(within(defectSection()).getAllByRole('listitem')).toHaveLength(1);
+    expect(within(defectSection()).getByLabelText(t.flow.defects.qty)).toHaveValue('5');
     expect(
-      screen.getByRole('button', { name: t.flow.work.toDefectWithCount(1) }),
-    ).toBeInTheDocument();
+      within(defectSection()).getByRole('combobox', { name: t.flow.defects.type }),
+    ).toHaveTextContent('외관 › 긁힘');
+    /* 돌아가도 양품은 ① 에서 고친 값이다. */
+    await user.click(screen.getByRole('button', { name: t.flow.work.toGood }));
+    expect(screen.getByLabelText(t.flow.quantity.actual)).toHaveValue('121');
   });
 
   /*
@@ -2566,11 +2715,14 @@ describe('ProductionFlowScreen 불량', () => {
     const user = userEvent.setup();
     renderScreen([], defectRoutes);
     await openDefectStep();
-    /* ② 로 넘어오면 빈 줄 1개가 미리 있다(사용자 지시 2026-11-16). 출력은 잠긴다. */
+    /*
+     * ② 로 넘어오면 빈 줄 1개가 미리 있다(사용자 지시 2026-11-16). 손대지 않은 빈 줄은 없는 줄로 본다 — 불량이
+     * 없으면 그대로 [확인]을 누른다(사용자 지시 2026-11-19).
+     */
     expect(within(defectSection()).getAllByRole('listitem')).toHaveLength(1);
     expect(screen.queryByText('불량 유형을 골라 주세요')).not.toBeInTheDocument();
     expect(screen.queryByText(/불량 1:/u)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
+    await waitFor(() => expect(outputNow()).toBeEnabled());
     const row = () =>
       within(defectSection()).getByRole('listitem', { name: t.flow.defects.row(1) });
     expect(within(row()).getByRole('combobox', { name: t.flow.defects.type })).toHaveAttribute(
@@ -2586,10 +2738,8 @@ describe('ProductionFlowScreen 불량', () => {
     await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
     expect(within(defectSection()).getAllByRole('listitem')).toHaveLength(2);
     await user.click(screen.getByRole('button', { name: t.flow.work.toGood }));
-    expect(screen.getByRole('button', { name: t.flow.work.toDefect })).toBeInTheDocument();
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeEnabled(),
-    );
+    expect(screen.queryByRole('button', { name: t.flow.work.toGood })).not.toBeInTheDocument();
+    await waitFor(() => expect(outputNow()).toBeEnabled());
 
     await user.click(addDefectButton());
     await pickDefect(user, '긁힘');
@@ -2601,13 +2751,11 @@ describe('ProductionFlowScreen 불량', () => {
       'aria-invalid',
       'true',
     );
-    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
+    expect(outputNow()).toBeDisabled();
 
     await user.click(screen.getByRole('button', { name: '2' }));
     expect(within(row()).getByLabelText(t.flow.defects.qty)).not.toHaveAttribute('aria-invalid');
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeEnabled(),
-    );
+    await waitFor(() => expect(outputNow()).toBeEnabled());
   });
 
   it('앞서 쌓인 다른 저장이 적용돼도 지금 치는 불량 줄은 남는다', async () => {
@@ -2693,7 +2841,7 @@ describe('ProductionFlowScreen 불량', () => {
     await user.click(addDefectButton());
     await pickDefect(user, '긁힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
-    await user.click(screen.getByRole('button', { name: t.flow.defects.saveOnly }));
+    await user.click(outputNow());
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', {
         name: t.flow.defects.confirmSave,
@@ -2729,7 +2877,7 @@ describe('ProductionFlowScreen 불량', () => {
     await user.click(addDefectButton());
     await pickDefect(user, '긁힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
-    const output = screen.getByRole('button', { name: t.flow.output.issue });
+    const output = outputNow();
     await waitFor(() => expect(output).toBeEnabled());
     await user.click(output);
 
@@ -2771,7 +2919,7 @@ describe('ProductionFlowScreen 불량', () => {
     await user.click(addDefectButton());
     await pickDefect(user, '긁힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
-    await user.click(screen.getByRole('button', { name: t.flow.defects.saveOnly }));
+    await user.click(outputNow());
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', {
         name: t.flow.defects.confirmSave,
@@ -2817,7 +2965,7 @@ describe('ProductionFlowScreen 불량', () => {
     renderScreen(writes, [sessionWithResources, ...defectRoutes]);
 
     await enterDefectOnly(user);
-    const saveOnly = screen.getByRole('button', { name: t.flow.defects.saveOnly });
+    const saveOnly = outputNow();
     await waitFor(() => expect(saveOnly).toBeEnabled());
     await user.click(saveOnly);
     await user.click(
@@ -2840,9 +2988,7 @@ describe('ProductionFlowScreen 불량', () => {
 
     await enterDefectOnly(user);
 
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: t.flow.defects.saveOnly })).toBeEnabled(),
-    );
+    await waitFor(() => expect(outputNow()).toBeEnabled());
   });
 
   it('불량 저장이 꺼지면 까닭을 그 단추에 잇는다', async () => {
@@ -2861,11 +3007,14 @@ describe('ProductionFlowScreen 불량', () => {
       ],
     );
 
-    await enterDefectOnly(user);
-
-    const saveOnly = screen.getByRole('button', { name: t.flow.defects.saveOnly });
-    expect(saveOnly).toBeDisabled();
-    await waitFor(() => expect(saveOnly).toHaveAccessibleDescription(t.gate.denied));
+    /* 실적 입력이 꺼진 단말은 ① 의 [확인]부터 잠기고, 까닭을 그 단추에 잇는다(사용자 지시 2026-11-19). */
+    const good = await screen.findByLabelText(t.flow.quantity.actual);
+    await user.clear(good);
+    await user.type(good, '0');
+    const confirm = outputNow();
+    expect(confirm).toBeDisabled();
+    await waitFor(() => expect(confirm).toHaveAccessibleDescription(t.gate.denied));
+    expect(screen.queryByRole('region', { name: t.flow.defects.title })).not.toBeInTheDocument();
   });
 });
 
@@ -2956,7 +3105,7 @@ describe('ProductionFlowScreen 미달 LOT 마감', () => {
     },
   });
   const reachScan = async (user: ReturnType<typeof userEvent.setup>) => {
-    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    const output = await findOutput();
     await waitFor(() => expect(output).toBeEnabled());
     await user.click(output);
     const scan = await screen.findByLabelText(t.flow.scan.label);
@@ -3344,7 +3493,7 @@ describe('ProductionFlowScreen 현재 LOT', () => {
       },
     ]);
 
-    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    const output = await findOutput();
     await waitFor(() => expect(output).toBeEnabled());
     await user.click(output);
     const scan = await screen.findByLabelText(t.flow.scan.label);
@@ -3393,7 +3542,7 @@ describe('ProductionFlowScreen 현재 LOT', () => {
     const lotNos = items.map((item) => item.lotNo).join(', ');
     expect(await screen.findByText(t.flow.currentLot.unreliable(lotNos))).toBeInTheDocument();
     expect(screen.queryByLabelText(t.flow.quantity.actual)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
+    expect(outputNow()).toBeDisabled();
   });
 
   it('다시 읽은 현재 LOT 을 쓸 수 없으면 앞서 읽은 LOT 도 쓰지 않는다', async () => {
@@ -3419,7 +3568,7 @@ describe('ProductionFlowScreen 현재 LOT', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(LOT_NO)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(t.flow.quantity.actual)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
+    expect(outputNow()).toBeDisabled();
   });
 
   it('현재 LOT 을 못 불러오면 다시 시도할 길을 준다', async () => {
@@ -3485,7 +3634,7 @@ describe('ProductionFlowScreen — 보조 동작 자리', () => {
     const header = screen.getAllByRole('banner')[0] as HTMLElement;
     const lotPane = await findLotPane();
     /* 작업지시를 받은 뒤에 잰다(종전에는 [부품 교체]가 그 표시였다). */
-    await within(bar()).findByRole('button', { name: t.flow.work.toDefect });
+    await within(bar()).findByRole('button', { name: CONFIRM });
     expect(screen.queryByRole('button', { name: '부품 교체' })).toBeNull();
     /* 마감할 수 없는 상태에서 늘 잠긴 버튼을 두지 않는다(C-3 보조 동작의 자리). */
     expect(within(lotPane).queryByRole('button', { name: t.flow.woClose.button })).toBeNull();
@@ -3495,9 +3644,14 @@ describe('ProductionFlowScreen — 보조 동작 자리', () => {
       within(bar())
         .getAllByRole('button')
         .map((button) => button.textContent),
-    ).toEqual([t.flow.work.toDefect, t.flow.output.issue]);
+    ).toEqual([CONFIRM]);
     /* 입력이 다 되면 하단 바는 비운다 — 「~출력할 수 있습니다」 같은 문장을 두지 않는다(개선 명세 §1). */
-    const output = within(bar()).getByRole('button', { name: t.flow.output.issue });
+    const output = await findOutput();
+    expect(
+      within(bar())
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual([t.flow.work.toGood, CONFIRM]);
     await waitFor(() => expect(output).toBeEnabled());
     expect(output).not.toHaveAccessibleDescription();
   });
@@ -3530,13 +3684,13 @@ describe('ProductionFlowScreen — 보조 동작 자리', () => {
     );
 
     const early = await within(bar()).findByRole('button', { name: t.flow.woClose.button });
-    /* 빨간 주 버튼은 [LOT 라벨 출력] 하나 — 이른 마감은 테두리다. */
+    /* 빨간 주 버튼은 ① 의 [확인] 하나 — 이른 마감은 테두리다. */
     expect(early).not.toHaveClass('primary');
     expect(
       within(bar())
         .getAllByRole('button')
         .map((button) => button.textContent),
-    ).toEqual([t.flow.woClose.button, t.flow.work.toDefect, t.flow.output.issue]);
+    ).toEqual([t.flow.woClose.button, CONFIRM]);
     const lotPane = await findLotPane();
     expect(within(lotPane).queryByRole('button', { name: t.flow.woClose.button })).toBeNull();
   });

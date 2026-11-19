@@ -321,10 +321,16 @@ export const ProductionFlowScreen = () => {
    */
   const [isLabelInHand, setIsLabelInHand] = useState(false);
   /*
-   * 실적 입력 단계 안의 화면 쪽(사용자 지시 2026-11-16): ① 양품 → ② 불량. 화면 단계일 뿐이다 — 저장은 지금처럼
-   * [LOT 라벨 출력]·[불량 등록] 때 양품·불량을 한 번에 보낸다. LOT 이 바뀌면 ① 로 돌아간다.
+   * 실적 입력 단계 안의 화면 쪽(사용자 지시 2026-11-16): ① 양품 → ② 불량. 화면 단계일 뿐이다 — 저장은
+   * ② 의 [확인](종전 [LOT 라벨 출력])·불량만이면 [확인] → 확인 창 때 양품·불량을 한 번에 보낸다(사용자 지시
+   * 2026-11-19). LOT 이 바뀌면 ① 로 돌아간다.
    */
   const [inputPage, setInputPage] = useState<'good' | 'defect'>('good');
+  /*
+   * ③ 라벨 스캔에서 [이전]으로 돌아가 보는 쪽(사용자 지시 2026-11-19). 실적은 이미 보냈으므로 보기만 한다 —
+   * 칸은 잠겨 있고 [확인]은 다시 ③ 으로 간다. `null` 이면 ③ 을 본다.
+   */
+  const [scanBackPage, setScanBackPage] = useState<'good' | 'defect' | null>(null);
   /**
    * 이 LOT 에 보낸 불량 줄(유형 이름 · 수량). 라벨 스캔 단계에서 왼쪽 「입력한 실적」에 보인다(사용자 지시
    * 2026-11-16). 보낸 줄은 입력 칸에서 비워지므로 보낼 때 따로 적어 둔다. 단말 저장소에도 남겨 화면을 다시
@@ -449,7 +455,12 @@ export const ProductionFlowScreen = () => {
   const parsedQty = parseGoodQty(actualQty);
   const defectChecks = checkDefectRows(defectRows);
   const defectInputs = toDefectInputs(defectRows);
-  const areDefectsReady = areDefectRowsReady(defectRows);
+  /*
+   * 손대지 않은 빈 줄(유형·수량 모두 없음)은 없는 줄로 본다 — ② 에 들어오면 빈 줄 1개를 미리 두므로, 불량이
+   * 없으면 그대로 [확인]을 누를 수 있어야 한다(사용자 지시 2026-11-19). 빈 줄은 본래 보내지 않는다.
+   */
+  const filledDefectRows = defectRows.filter((row) => row.defectCodeId !== null || row.qty !== '');
+  const areDefectsReady = areDefectRowsReady(filledDefectRows);
   /** 양품 없이 불량만 적는다 — LOT·라벨로 이어지지 않는다. */
   const isDefectOnly = (parsedQty === null || parsedQty === 0) && defectInputs.length > 0;
   /*
@@ -909,6 +920,7 @@ export const ProductionFlowScreen = () => {
     setOutputPhase('idle');
     setSentDefects(nextLotId === null ? null : storedSentDefects(nextLotId));
     setInputPage('good');
+    setScanBackPage(null);
     isLotLabelPrinted.current = false;
     setIsLabelInHand(false);
     setDuplicateRowKey(null);
@@ -1141,7 +1153,8 @@ export const ProductionFlowScreen = () => {
     if (entry.workerNo === null) return;
 
     setOutputPhase('queued');
-    const sentRows = defectRows.map((row) => ({
+    setScanBackPage(null);
+    const sentRows = filledDefectRows.map((row) => ({
       label: defectLabelOf(defectMajors, row.defectCodeId) ?? '',
       qty: row.qty,
     }));
@@ -1160,10 +1173,10 @@ export const ProductionFlowScreen = () => {
         session: openSession.session,
       }),
     );
-    if (defectRows.length > 0) {
+    if (filledDefectRows.length > 0) {
       sentDefectRowKeys.current.set(
         sentKey,
-        defectRows.map((row) => row.key),
+        filledDefectRows.map((row) => row.key),
       );
     }
   };
@@ -1440,7 +1453,7 @@ export const ProductionFlowScreen = () => {
    * 않는다(사용자 지시 2026-11-16). 빈 칸은 칸 자체가 보여 준다. 저장이 잠기는 기준은 그대로다.
    */
   const defectTodo = ((): string | null | undefined => {
-    for (const row of defectRows) {
+    for (const row of filledDefectRows) {
       const check = defectChecks.get(row.key);
       if (check === undefined || check.complete) continue;
       if (check.typeMissing) return null;
@@ -1586,6 +1599,8 @@ export const ProductionFlowScreen = () => {
     itemCode === null ? t.flow.currentLot.current : named(item.data?.itemName, itemCode);
   const workOrderGoodQty = workOrder.data?.progress?.goodQty ?? null;
   const isScanStep = step === 'scan';
+  /** ③ 라벨 스캔을 보고 있다 — [이전]으로 앞 단계를 보는 중이 아니다. */
+  const isScanView = isScanStep && scanBackPage === null;
   /*
    * 이른 작업지시 마감은 마감할 수 있는 상태일 때만 선다(C-3 보조 동작의 자리): 작업이 시작된 W/O이고
    * 실적이 하나라도 있다. #295 부터 아래 작업 줄 왼쪽(테두리)에 선다 — 종전에는 현재 LOT 구획 아래.
@@ -1637,15 +1652,18 @@ export const ProductionFlowScreen = () => {
   );
 
   /**
-   * 작업 줄 [LOT 라벨 출력]. 라벨을 출력해 스캔을 기다리는 동안은 [LOT 라벨 재인쇄]로 바뀐다(사용자 지시
-   * 2026-11-16). 재인쇄는 이미 발행한 같은 라벨을 지금 고른 프린터로 다시 찍을 뿐이다 — 실적·발행 기록을
-   * 새로 만들지 않고, 인쇄 결과도 다시 보고하지 않는다(서버는 성공한 발행에 두 번째 보고를 거절한다).
+   * 작업 줄의 저장 버튼. ② 불량 등록에서는 [확인]이다(사용자 지시 2026-11-19 — 종전 ① 의 [LOT 라벨 출력]):
+   * 누르는 조건(`canOutput`)·보내는 값·이어지는 발행·인쇄는 그대로다. LOT 을 아직 못 읽었거나 쓸 수 없을
+   * 때(단계 없음)도 잠긴 [확인]이고, ③ 에서 라벨이 나오기 전에는 잠긴 [LOT 라벨 출력]이다(종전 그대로). 라벨을 출력해 스캔을 기다리는 동안은
+   * [LOT 라벨 재인쇄]로 바뀐다(사용자 지시 2026-11-16). 재인쇄는 이미 발행한 같은 라벨을 지금 고른 프린터로
+   * 다시 찍을 뿐이다 — 실적·발행 기록을 새로 만들지 않고, 인쇄 결과도 다시 보고하지 않는다(서버는 성공한
+   * 발행에 두 번째 보고를 거절한다).
    */
   const outputButton = (variant: 'filled' | 'outlined'): ReactNode => {
     const look = variant === 'filled' ? 'primary' : 'default';
     /*
-     * 양품 없이 불량만 넣었으면 라벨로 이어지지 않는다 — [LOT 라벨 출력] 자리에 [불량 등록]이 선다(사용자 지시
-     * 2026-11-16). 누르는 조건·보내는 값은 그대로다.
+     * 양품 없이 불량만 넣었으면 라벨로 이어지지 않는다 — 불량만 등록한다(확인 창을 거친다). 누르는 조건·보내는
+     * 값은 그대로다. LOT 이 없을 때(단계 없음)는 이름이 [불량 등록]이다.
      */
     if (isDefectOnly && outputPhase === 'idle' && !(step === 'input' && inputPage === 'good')) {
       return (
@@ -1655,7 +1673,7 @@ export const ProductionFlowScreen = () => {
           aria-describedby={remainingId}
           onClick={() => setIsDefectConfirmOpen(true)}
         >
-          {t.flow.defects.saveOnly}
+          {step === 'input' ? messages.common.confirm : t.flow.defects.saveOnly}
         </PuButton>
       );
     }
@@ -1673,52 +1691,102 @@ export const ProductionFlowScreen = () => {
         aria-describedby={remainingId}
         onClick={queueOutput}
       >
-        {t.flow.output.issue}
+        {step === 'scan' ? t.flow.output.issue : messages.common.confirm}
       </PuButton>
     );
   };
 
-  /* ② 불량 → ① 양품. 넣은 불량 줄은 그대로 둔다. */
+  /* ② 불량 → ① 양품. 넣은 양품·불량 줄은 그대로 둔다. */
   const goGood = (): void => {
-    /* 손대지 않은 빈 줄(유형·수량 모두 없음)은 두고 가지 않는다 — ① 에서 [LOT 라벨 출력]을 막지 않게. */
+    /* 손대지 않은 빈 줄(유형·수량 모두 없음)은 두고 가지 않는다 — ② 에 다시 오면 새 빈 줄을 둔다. */
     setDefectRows((rows) => rows.filter((row) => row.defectCodeId !== null || row.qty !== ''));
     setActiveQty('good');
     setInputPage('good');
   };
-  const toGoodButton: ReactNode =
-    step === 'input' && inputPage === 'defect' && !isWorkOrderClosed ? (
-      <PuButton onClick={goGood}>{t.flow.work.toGood}</PuButton>
-    ) : null;
+  /* ① 양품 → ② 불량. 넘어오면 불량 줄 1개를 미리 둔다(사용자 지시 2026-11-16). 이미 있으면 첫 줄을 고른다. */
+  const goDefect = (): void => {
+    setInputPage('defect');
+    const first = defectRows[0];
+    if (first !== undefined) {
+      setActiveQty(first.key);
+      defectPage.showIndex(0);
+      return;
+    }
+    const key = `defect-${String(nextDefectKey.current)}`;
+    nextDefectKey.current += 1;
+    setDefectNotice(null);
+    setDefectRows([{ key, defectCodeId: null, qty: '' }]);
+    setActiveQty(key);
+    defectPage.showIndex(0);
+  };
+  /* ③ 에서 [이전]으로 본 쪽을 지나 다시 ③ 으로 — 라벨을 붙이고 바로 스캔하도록 스캔 칸에 포커스를 둔다. */
+  const returnToScan = (): void => {
+    setScanBackPage(null);
+    requestAnimationFrame(() => scanInputRef.current?.focus());
+  };
   /*
-   * ① 양품 → ② 불량(사용자 지시 2026-11-16). 불량이 없으면 누르지 않고 [LOT 라벨 출력]으로 바로 ③ 라벨 스캔에
-   * 간다. 넣어 둔 불량이 있으면 건수를 붙여 빠뜨리지 않게 한다.
+   * ① 의 [확인] — 양품 수량을 넣었는지만 보고 ② 로 넘긴다(사용자 지시 2026-11-19). 저장하지 않는다. 0 도 넘긴다 —
+   * 양품 없이 불량만 등록하는 길(② 에서 [확인] → 확인 창)이 그대로 있어야 한다.
    */
-  const toDefectButton: ReactNode =
-    step === 'input' && inputPage === 'good' && !isWorkOrderClosed ? (
-      <PuButton
-        disabled={areDefectsLocked}
-        onClick={() => {
-          setInputPage('defect');
-          /* 넘어오면 불량 줄 1개를 미리 둔다(사용자 지시 2026-11-16). 이미 있으면 첫 줄을 고른다. */
-          const first = defectRows[0];
-          if (first !== undefined) {
-            setActiveQty(first.key);
-            defectPage.showIndex(0);
-            return;
-          }
-          const key = `defect-${String(nextDefectKey.current)}`;
-          nextDefectKey.current += 1;
-          setDefectNotice(null);
-          setDefectRows([{ key, defectCodeId: null, qty: '' }]);
-          setActiveQty(key);
-          defectPage.showIndex(0);
-        }}
-      >
-        {defectRows.length === 0
-          ? t.flow.work.toDefect
-          : t.flow.work.toDefectWithCount(defectRows.length)}
-      </PuButton>
-    ) : null;
+  const canConfirmGood =
+    parsedQty !== null &&
+    parsedQty >= 0 &&
+    entry.workerNo !== null &&
+    gates.input === 'allowed' &&
+    !areDefectsLocked;
+  /*
+   * 작업 줄의 단계 버튼(사용자 지시 2026-11-19): ① [확인] · ② [이전] + [확인] · ③ [이전] + 그 단계의 주 동작.
+   * 단계는 차례로만 나아간다 — ② 는 ① 의 [확인]으로만, ③ 은 ② 의 [확인](저장)으로만 열린다.
+   */
+  const stepButtons = (variant: 'filled' | 'outlined'): ReactNode => {
+    const look = variant === 'filled' ? 'primary' : 'default';
+    if (step === 'scan') {
+      if (scanBackPage === 'good') {
+        return (
+          <PuButton variant={look} onClick={() => setScanBackPage('defect')}>
+            {messages.common.confirm}
+          </PuButton>
+        );
+      }
+      if (scanBackPage === 'defect') {
+        return (
+          <>
+            <PuButton onClick={() => setScanBackPage('good')}>{t.flow.work.toGood}</PuButton>
+            <PuButton variant={look} onClick={returnToScan}>
+              {messages.common.confirm}
+            </PuButton>
+          </>
+        );
+      }
+      return (
+        <>
+          <PuButton onClick={() => setScanBackPage('defect')}>{t.flow.work.toGood}</PuButton>
+          {outputButton(variant)}
+        </>
+      );
+    }
+    if (step === 'input' && inputPage === 'good') {
+      return (
+        <PuButton
+          variant={look}
+          disabled={!canConfirmGood}
+          aria-describedby={remainingId}
+          onClick={goDefect}
+        >
+          {messages.common.confirm}
+        </PuButton>
+      );
+    }
+    if (step === 'input') {
+      return (
+        <>
+          <PuButton onClick={goGood}>{t.flow.work.toGood}</PuButton>
+          {outputButton(variant)}
+        </>
+      );
+    }
+    return outputButton(variant);
+  };
 
   /** 불량 유형 고르기 칸의 후보 — 대분류 › 상세. 고르는 것은 상세다(`groupDefectCodes`). */
   const defectOptions = defectMajors.flatMap((major) =>
@@ -1881,19 +1949,35 @@ export const ProductionFlowScreen = () => {
     </section>
   );
 
-  /** 구획 안 단계 줄(규칙 4). 불량 등록 중에는 끝난 「실적 입력」을 눌러 돌아간다. 라벨 출력 뒤에는 돌아가지 않는다. */
+  /*
+   * 구획 안 단계 줄(규칙 4). 지금 단계보다 앞의 끝난 단계만 눌러 돌아간다 — 앞으로 건너뛰는 길은 없다(사용자 지시
+   * 2026-11-19). 라벨 출력 뒤(③)에 돌아간 쪽은 보기만 한다.
+   */
+  const viewIndex = isScanStep
+    ? scanBackPage === 'good'
+      ? 0
+      : scanBackPage === 'defect'
+        ? 1
+        : 2
+    : isDefectPage
+      ? 1
+      : 0;
   const flow =
     step === null || isWorkOrderClosed ? null : (
       <PuFlow
         label={t.flow.work.stepsLabel}
-        current={isScanStep ? 2 : isDefectPage ? 1 : 0}
+        current={viewIndex}
         steps={[
           {
             label: t.flow.work.steps.input,
             done: isScanStep || isDefectPage,
-            onGo: isDefectPage ? goGood : undefined,
+            onGo: viewIndex === 0 ? undefined : isScanStep ? () => setScanBackPage('good') : goGood,
           },
-          { label: t.flow.work.steps.defect, done: isScanStep },
+          {
+            label: t.flow.work.steps.defect,
+            done: isScanStep,
+            onGo: viewIndex === 2 ? () => setScanBackPage('defect') : undefined,
+          },
           { label: t.flow.work.steps.scan, done: outputPhase === 'completed' },
         ]}
       />
@@ -1925,9 +2009,9 @@ export const ProductionFlowScreen = () => {
 
   const stepTitle = workerEntry.isMissing
     ? t.flow.work.steps.input
-    : isScanStep && !isWorkOrderClosed
+    : isScanView && !isWorkOrderClosed
       ? t.flow.work.steps.scan
-      : isDefectPage || isNoLotDefectMode
+      : isDefectPage || isNoLotDefectMode || (isScanStep && scanBackPage === 'defect')
         ? t.flow.work.steps.defect
         : t.flow.work.steps.input;
 
@@ -1944,7 +2028,7 @@ export const ProductionFlowScreen = () => {
         </>
       );
     }
-    if (isScanStep && !isWorkOrderClosed) {
+    if (isScanView && !isWorkOrderClosed) {
       return (
         <>
           {flow}
@@ -1984,10 +2068,8 @@ export const ProductionFlowScreen = () => {
             inputId={scanId}
             inputRef={scanInputRef}
             value={scanValue}
-            placeholder={t.flow.scan.placeholder}
             disabled={!canScan || gates.complete !== 'allowed'}
             error={scanMismatch && lot !== null ? t.flow.scan.mismatch(lot.lotNo) : undefined}
-            manual={{ title: t.flow.scan.label }}
             onChange={changeScan}
             onSubmit={() => undefined}
           />
@@ -2019,7 +2101,33 @@ export const ProductionFlowScreen = () => {
         </>
       );
     }
-    if (inputPage === 'defect') {
+    /* ③ 에서 돌아와 보는 ② — 이 LOT 에 보낸 불량(단말이 기억한 것)을 보기만 한다. 기억이 없으면 목록을 두지 않는다. */
+    if (isScanStep && scanBackPage === 'defect') {
+      return (
+        <>
+          {flow}
+          {statusNote}
+          <section className="pr-defects" aria-label={t.flow.defects.title}>
+            <div className="pr-sub">
+              <h3>{t.flow.defects.title}</h3>
+            </div>
+            {sentDefects === null ? null : sentDefects.length === 0 ? (
+              <PuEmpty icon="list" title={t.flow.defects.emptyRows} />
+            ) : (
+              <ul className="pr-confirm-list">
+                {sentDefects.map((row, index) => (
+                  <li key={index}>
+                    <span>{row.label}</span>
+                    <b>{`${row.qty} ${uomLabel}`.trim()}</b>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </>
+      );
+    }
+    if (inputPage === 'defect' && !isScanStep) {
       return (
         <>
           {flow}
@@ -2067,9 +2175,6 @@ export const ProductionFlowScreen = () => {
         {!isDefectOnly && parsedQty !== null && parsedQty <= 0 && (
           <PuNote tone="bad">{t.flow.quantity.invalid}</PuNote>
         )}
-        {defectRows.length > 0 && (
-          <p className="pu-help">{t.flow.work.defectsPending(defectRows.length)}</p>
-        )}
       </>
     );
   })();
@@ -2113,8 +2218,6 @@ export const ProductionFlowScreen = () => {
             showNone
             unknownLabel={t.flow.work.printerUnknown}
             retryLabel={messages.common.retry}
-            showCloseButton={false}
-            hideReadyNote
             onSelect={(name) => {
               setPickedPrinter(name);
               rememberPrinterName(name, LOT_PRINTER_STORAGE_KEY);
@@ -2128,18 +2231,16 @@ export const ProductionFlowScreen = () => {
         actionBar={
           /*
            * 버튼만(규칙 2·3). 일을 끝내는 버튼은 오른쪽, 빨간 주 버튼은 그때 할 일 하나 — 생산 중에는
-           * [LOT 라벨 출력], 계획 수량을 달성했거나 남은 LOT이 없으면 [작업지시 마감]. 마감했으면 버튼이 없다.
+           * 단계의 [확인](③ 은 그 단계의 일), 계획 수량을 달성했거나 남은 LOT이 없으면 [작업지시 마감]. 마감했으면 버튼이 없다.
            * ⛔ 초과라고 끄지도, 되묻지도 않는다 — 초과 생산은 허용이다(✓확정 QA #27).
            */
           <PuActionBar lead={leadRetry} label={messages.screenPatterns.actionBar.region}>
             {isWorkOrderClosed ? null : (
               <>
                 {canCloseEarly && closeAction('outlined')}
-                {toGoodButton}
-                {toDefectButton}
                 {isCloseMode
-                  ? (lot !== null || isDefectOnly) && outputButton('outlined')
-                  : outputButton('filled')}
+                  ? (lot !== null || isDefectOnly) && stepButtons('outlined')
+                  : stepButtons('filled')}
                 {isCloseMode && closeAction('filled')}
               </>
             )}
@@ -2516,7 +2617,7 @@ export const ProductionFlowScreen = () => {
         >
           <p className="pu-dialog-text">{t.flow.defects.confirmLead}</p>
           <ul className="pr-confirm-list">
-            {defectRows.map((row) => (
+            {filledDefectRows.map((row) => (
               <li key={row.key}>
                 <span>{defectLabelOf(defectMajors, row.defectCodeId) ?? ''}</span>
                 <b>{`${row.qty} ${uomLabel}`.trim()}</b>

@@ -16,8 +16,6 @@ export const productionResult: Translated<typeof ko.productionResult> = {
         `Đạt ${good} / Số lượng lệnh ${target}${uom === '' ? '' : ` ${uom}`}`,
       stepsLabel: 'Các bước làm LOT',
       steps: { input: 'Nhập kết quả', defect: 'Đăng ký lỗi', scan: 'Quét nhãn' },
-      toDefect: 'Đăng ký lỗi',
-      toDefectWithCount: (count: number): string => `Đăng ký lỗi (${String(count)})`,
       toGood: 'Quay lại',
       remaining: (qty: string): string => `Còn lại ${qty}`,
       noLot: 'Không có LOT có thể sản xuất nên chỉ có thể đăng ký lỗi.',
@@ -26,8 +24,6 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       noWorkOrder: 'Chưa chỉ định lệnh sản xuất.',
       noWorkOrderHint: 'Vui lòng chọn lệnh ở danh sách lệnh sản xuất.',
       planReached: 'Đã đạt số lượng lệnh. Có thể đóng lệnh sản xuất.',
-      defectsPending: (count: number): string =>
-        `Đã nhập ${String(count)} dòng lỗi. Kiểm tra ở [Đăng ký lỗi (${String(count)})].`,
       printerNone: 'Chưa kết nối máy in',
       printerUnknown: 'Không xác định máy in',
       closed: 'Đã hoàn tất đóng lệnh sản xuất.',
@@ -139,11 +135,10 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     },
     scan: {
       title: 'Quét nhãn',
-      label: 'Quét nhãn LOT',
+      label: 'Số LOT',
       /* ⚠ 한 줄로 합친 문구다(사용자 지시 2026-09-10). */
       mismatch: (lotNo: string): string =>
         `Không phải nhãn LOT vừa in. Hãy tìm nhãn ${lotNo} rồi quét.`,
-      placeholder: 'Quét nhãn LOT đã in',
       completed: 'Đã đóng LOT.',
       failed: 'Không đóng được LOT. Vui lòng quét lại cùng nhãn.',
       alreadyCompleted: 'LOT này đã đóng. Đang tải lại trạng thái LOT hiện tại.',

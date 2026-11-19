@@ -21,13 +21,11 @@ export const productionResult = {
         `불량 ${qty}${uom === '' ? '' : ` ${uom}`}`,
       workOrderProgress: '작업지시 전체 진행',
       workOrderProgressText: (good: string, target: string, uom: string): string =>
-        `양품 ${good} / 작업지시량 ${target}${uom === '' ? '' : ` ${uom}`}`,
+        `양품 ${good} / 계획량 ${target}${uom === '' ? '' : ` ${uom}`}`,
       /** 단계 표시(C-5). LOT마다 처음부터 반복한다. */
       stepsLabel: 'LOT 작업 단계',
       steps: { input: '실적 입력', defect: '불량 등록', scan: '라벨 스캔' },
-      /** ① 양품 ↔ ② 불량 이동(사용자 지시 2026-11-16). */
-      toDefect: '불량 등록',
-      toDefectWithCount: (count: number): string => `불량 등록 (${String(count)})`,
+      /** ② · ③ 의 [이전](사용자 지시 2026-11-19). ① · ② 의 [확인]은 공통 문구(`common.confirm`)다. */
       toGood: '이전',
       /** 잔량은 지금 넣을 칸 곁에만 둔다(C-21). */
       remaining: (qty: string): string => `잔량 ${qty}`,
@@ -35,14 +33,11 @@ export const productionResult = {
       noLot: '생산 가능한 LOT이 없어 불량 등록만 가능합니다.',
       /** 작업 지시량 달성 + LOT 없음 — 두 안내를 한 줄로(사용자 지시 2026-11-16). */
       planReachedNoLot:
-        '작업지시량을 달성했고 생산 가능한 LOT이 없습니다. 작업지시 마감 또는 불량 등록만 가능합니다.',
+        '계획량을 달성했고 생산 가능한 LOT이 없습니다. 작업지시 마감 또는 불량 등록만 가능합니다.',
       noWorkOrder: '작업지시가 지정되지 않았습니다.',
       /** 작업지시 없이 들어왔을 때 왼쪽 빈 구획의 할 일(#295 시안). */
       noWorkOrderHint: '작업지시 목록에서 작업지시를 선택해 주세요.',
-      planReached: '작업지시량을 달성했습니다. 작업지시를 마감할 수 있습니다.',
-      /** ① 실적 입력에서 넣어 둔 불량 줄을 알린다(#295 시안). */
-      defectsPending: (count: number): string =>
-        `불량 ${String(count)}줄을 입력해 두었습니다. [불량 등록 (${String(count)})]에서 확인하세요.`,
+      planReached: '계획량을 달성했습니다. 작업지시를 마감할 수 있습니다.',
       /** 머리줄 프린터 칩 — 짧게(개선 명세 ② 11). */
       printerNone: '프린터 미연결',
       printerUnknown: '프린터 확인 불가',
@@ -85,7 +80,7 @@ export const productionResult = {
       loadFailed: '현재 LOT을 불러오지 못했습니다. 연결을 확인하고 「다시 시도」를 눌러 주세요.',
     },
     quantity: {
-      actual: '양품',
+      actual: '양품량',
       invalid: '0보다 큰 수량을 입력해 주세요.',
     },
     defects: {
@@ -94,7 +89,7 @@ export const productionResult = {
       row: (index: number): string => `불량 ${String(index)}`,
       type: '불량 유형',
       choose: '유형 선택',
-      qty: '불량',
+      qty: '불량량',
       remove: (label: string): string => `${label} 삭제`,
       duplicate: '이미 등록된 불량 유형입니다.',
       noProcess: '공정이 없는 W/O라 불량 유형을 고를 수 없습니다.',
@@ -164,14 +159,13 @@ export const productionResult = {
     },
     scan: {
       title: '라벨 스캔',
-      label: 'LOT 라벨 스캔',
+      label: 'LOT 번호',
       /*
        * ⚠ **한 줄로 합친 문구다**(사용자 지시 2026-09-10). 스캔이 어긋났을 때 「지금 무엇이
        * 잘못됐나」와 「그래서 무엇을 하나」가 두 줄로 갈려 있었다.
        */
       mismatch: (lotNo: string): string =>
         `방금 출력한 LOT 라벨이 아닙니다. ${lotNo} 라벨을 찾아 스캔하세요.`,
-      placeholder: '출력한 LOT 라벨을 스캔하세요',
       completed: 'LOT을 마감했습니다.',
       failed: 'LOT을 마감하지 못했습니다. 같은 라벨을 다시 스캔해 주세요.',
       alreadyCompleted: '이미 마감된 LOT입니다. 현재 LOT 상태를 다시 불러옵니다.',
@@ -191,7 +185,7 @@ export const productionResult = {
       loading: '마감할 작업지시를 확인하는 중입니다.',
       loadFailed: '작업지시를 불러오지 못했습니다. 연결을 확인하고 「다시 시도」를 눌러 주세요.',
       fields: {
-        orderQty: '작업지시량',
+        orderQty: '계획량',
         goodQty: '양품 누계',
         judgment: '판정',
         shortfallQty: '미달량',
@@ -230,9 +224,9 @@ export const productionResult = {
         listLabel: '열린 작업 세션',
         terminal: '단말',
         worker: '작업자',
-        state: '상태',
+        state: '세션 상태',
         where: '끝낼 곳',
-        RUNNING: '진행',
+        RUNNING: '진행 중',
         STOPPED: '중단',
         unknown: '확인할 수 없음',
         workerValue: (name: string, workerNo: string): string => `${name}(${workerNo})`,
@@ -388,7 +382,7 @@ export const productionResult = {
     /** 잔량이 0인 지시. 「잔량 0보다 …」는 뺄셈처럼 읽힌다. 숫자를 빼고 사실만 적는다. */
     noticeNoRemaining: '이 작업지시에 잔량이 없습니다. 초과 생산도 등록할 수 있습니다.',
     /** 양품 누계가 지시 수량에 이르렀다. 서버의 완료 판정(정상, 초과)이 근거다. 칩 이름이다(C-21). */
-    achieved: '작업지시량 달성',
+    achieved: '계획량 달성',
     /** 음수 대신 넘은 양을 칩으로 보인다(C-21). */
     achievedOver: (over: string): string => `초과 달성 ${over}`,
   },
