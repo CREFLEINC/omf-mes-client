@@ -181,3 +181,16 @@
   border-radius: var(--radius-md, 12px);
   background: #fff;
 }
+
+/* 1024 폭: 가운데 구획이 좁아 두 단계 이름이 한 줄에 들어가도록 단계 알약만 조금 좁힌다 */
+@media (max-width: 1100px) {
+  .su-screen .pu-flow {
+    gap: 2px;
+  }
+
+  .su-screen .pu-flow .st {
+    gap: 6px;
+    padding: 0 8px;
+    font-size: 15px;
+  }
+}

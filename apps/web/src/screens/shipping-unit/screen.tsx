@@ -234,12 +234,19 @@ const usePreviewSrc = (unit: ShippingUnitDetail | null): string | null => {
 };
 
 type Tab = 'wait' | 'done';
-type Step = 1 | 2 | 3;
+type Step = 1 | 2;
+
+/**
+ * 유형 고르기 모양 — 이만큼까지는 한 줄 단추, 넘으면 칸 하나(PopSelect)로 접는다.
+ * 유형은 고객사가 늘릴 수 있는 코드(SHIPPING_UNIT_TYPE)라, 늘어도 아래 상자 자리를 지킨다.
+ */
+const TYPE_TILE_MAX = 5;
 
 /**
  * **P-04-05 출하 단위 구성** — 포장이 끝난 상자를 스캔해 묶고, 마감하면 납품 라벨이 나간다
  * (SHIP-UNIT-01 · 설계 §6). 본문은 #295 통일 시안: 왼쪽 「구성 대기 / 구성 완료」 탭 목록,
- * 가운데 세 단계(① 유형 → ② 상자 등록 → ③ 마감 납품 라벨 발행), 오른쪽 납품 라벨 미리보기.
+ * 가운데 두 단계(① 유형·상자 등록 → ② 마감 납품 라벨 발행), 오른쪽 납품 라벨 미리보기.
+ * ① 은 위에 유형, 바로 아래 스캔 칸·상자 줄이다 — 단위는 지금처럼 [새 출하 단위] 를 눌렀을 때 만든다.
  *
  * ⛔ **마감은 되돌릴 수 없다**(설계 §4-6). 「지금 마감할 수 있는가」는 `compose-state` 가 판정한다.
  */
@@ -302,7 +309,7 @@ export const ShippingUnitScreen = () => {
 
   /* 상자 등록이 끝나 칸이 다시 열리면 다음 스캔을 받도록 칸을 잡는다. */
   useEffect(() => {
-    if (scanOpen && step === 2) scanRef.current?.focus();
+    if (scanOpen && step === 1) scanRef.current?.focus();
   }, [scanOpen, step]);
 
   /* ⛔ 한 번에 하나만 나간다 — 같은 렌더 안의 연타도 ref 로 막는다(리뷰). */
@@ -348,7 +355,6 @@ export const ShippingUnitScreen = () => {
         const created = await writes.createUnit(shipmentId, typeCode);
         setShippingUnitId(created.unit.shippingUnitId);
         setEtag(created.etag);
-        setStep(2);
       } catch {
         setNotice(t.unit.failed);
       }
@@ -537,11 +543,7 @@ export const ShippingUnitScreen = () => {
   );
 
   /* ── 가운데 상자 줄 ── */
-  const rowBoxes: ShippingUnitBox[] = isDone
-    ? (doneUnit?.boxes ?? [])
-    : step === 1
-      ? []
-      : (unit?.boxes ?? []);
+  const rowBoxes: ShippingUnitBox[] = isDone ? (doneUnit?.boxes ?? []) : (unit?.boxes ?? []);
   const rowPage = useClientPage(rowBoxes, rowSize);
   const { showIndex } = rowPage;
   /* 방금 넣은 상자가 든 쪽으로 넘긴다. */
@@ -551,7 +553,7 @@ export const ShippingUnitScreen = () => {
     if (index >= 0) showIndex(index);
   }, [lastBoxNo, unit, showIndex]);
 
-  const editable = !isDone && step === 2 && scanOpen;
+  const editable = !isDone && step === 1 && scanOpen;
   const rowsBlock = (sumUnit: ShippingUnitDetail | null, emptyHint?: string): ReactNode => (
     <>
       {rowBoxes.length === 0 ? (
@@ -584,11 +586,10 @@ export const ShippingUnitScreen = () => {
   );
 
   const boxCount = unit?.boxes.length ?? 0;
-  const doneTo = unit === null ? 0 : closed ? 3 : boxCount > 0 ? 2 : 1;
-  const canGo = (target: Step): boolean =>
-    target === 1 || (unitOpen && (target === 2 || boxCount > 0));
-  const flowSteps = ([1, 2, 3] as const).map((target) => ({
-    label: target === 1 ? t.steps.type : target === 2 ? t.steps.boxes : t.steps.close,
+  const doneTo = closed ? 2 : unitOpen && boxCount > 0 ? 1 : 0;
+  const canGo = (target: Step): boolean => target === 1 || (unitOpen && boxCount > 0);
+  const flowSteps = ([1, 2] as const).map((target) => ({
+    label: target === 1 ? t.steps.compose : t.steps.close,
     done: target <= doneTo || target < step,
     onGo:
       !closed && target !== step && canGo(target)
@@ -687,28 +688,29 @@ export const ShippingUnitScreen = () => {
           <PuNote tone="warn">{`${issueText(outcome)} ${t.close.reissueHint}`}</PuNote>
         )}
         {step === 1 && (
-          <PuField label={t.unit.typeLabel} required labelId="shipping-unit-type-label">
-            {typeOptions.length > 6 ? (
-              <PopSelect
-                aria-labelledby="shipping-unit-type-label"
-                value={typeCode}
-                onChange={setTypeCode}
-                options={typeOptions}
-              />
-            ) : (
-              <div className="su-types">
-                <PuTiles
-                  label={t.unit.typeLabel}
-                  options={typeOptions}
-                  value={typeCode}
-                  onChange={setTypeCode}
-                />
-              </div>
-            )}
-          </PuField>
-        )}
-        {step === 2 && (
           <>
+            {/* ⛔ 단위를 만들면 유형은 그 단위의 것이다(생성 때 보냄) — 그 뒤로는 바꿀 수 없게 잠근다. */}
+            <PuField label={t.unit.typeLabel} required labelId="shipping-unit-type-label">
+              {typeOptions.length > TYPE_TILE_MAX ? (
+                <PopSelect
+                  aria-labelledby="shipping-unit-type-label"
+                  value={unit?.shippingUnitTypeCode ?? typeCode}
+                  onChange={setTypeCode}
+                  options={typeOptions}
+                  disabled={unit !== null}
+                />
+              ) : (
+                <div className="su-types">
+                  <PuTiles
+                    label={t.unit.typeLabel}
+                    options={typeOptions}
+                    value={unit?.shippingUnitTypeCode ?? typeCode}
+                    onChange={setTypeCode}
+                    disabled={unit !== null}
+                  />
+                </div>
+              )}
+            </PuField>
             <PuScanField
               label={t.scan.label}
               inputRef={scanRef}
@@ -729,7 +731,7 @@ export const ShippingUnitScreen = () => {
             {rowsBlock(unit, scanOpen ? t.boxes.emptyHint : undefined)}
           </>
         )}
-        {step === 3 && rowsBlock(unit)}
+        {step === 2 && rowsBlock(unit)}
       </>
     );
   };
@@ -739,42 +741,21 @@ export const ShippingUnitScreen = () => {
     if (isDone || shipment === null) return null;
 
     if (step === 1) {
-      return unitOpen ? (
+      /* 단위가 없으면 [새 출하 단위](지금과 같은 때 만든다), 있으면 상자를 담은 뒤 [다음]. */
+      return unit === null ? (
+        <PuButton variant="primary" disabled={!canCreateUnit(state)} onClick={onCreate}>
+          {busy === 'creating' ? t.unit.creating : t.unit.create}
+        </PuButton>
+      ) : (
         <PuButton
           variant="primary"
+          disabled={!unitOpen || boxCount === 0}
           onClick={() => {
             setStep(2);
           }}
         >
           {t.actions.next}
         </PuButton>
-      ) : (
-        <PuButton variant="primary" disabled={!canCreateUnit(state)} onClick={onCreate}>
-          {busy === 'creating' ? t.unit.creating : t.unit.create}
-        </PuButton>
-      );
-    }
-
-    if (step === 2) {
-      return (
-        <>
-          <PuButton
-            onClick={() => {
-              setStep(1);
-            }}
-          >
-            {t.actions.prev}
-          </PuButton>
-          <PuButton
-            variant="primary"
-            disabled={!unitOpen || boxCount === 0}
-            onClick={() => {
-              setStep(3);
-            }}
-          >
-            {t.actions.next}
-          </PuButton>
-        </>
       );
     }
 
@@ -790,7 +771,7 @@ export const ShippingUnitScreen = () => {
       <>
         <PuButton
           onClick={() => {
-            setStep(2);
+            setStep(1);
           }}
         >
           {t.actions.prev}
@@ -807,7 +788,7 @@ export const ShippingUnitScreen = () => {
     );
   };
 
-  const showPreview = isDone ? doneUnit !== null : shipment !== null && step > 1;
+  const showPreview = isDone ? doneUnit !== null : shipment !== null;
   const workerMissing = identity.workerNo === null || identity.workerNo.trim() === '';
 
   return (

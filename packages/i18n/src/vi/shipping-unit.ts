@@ -41,7 +41,7 @@ export const shippingUnit: Translated<typeof ko.shippingUnit> = {
 
   steps: {
     label: 'Các bước đơn vị giao hàng',
-    type: 'Chọn loại',
+    compose: 'Loại · đăng ký kiện',
     boxes: 'Đăng ký kiện',
     close: 'Chốt · phát hành nhãn giao hàng',
   },

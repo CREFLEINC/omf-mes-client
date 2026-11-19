@@ -43,7 +43,7 @@ export const shippingUnit = {
 
   steps: {
     label: '출하 단위 단계',
-    type: '출하 유형 선택',
+    compose: '유형·상자 등록',
     boxes: '상자 등록',
     close: '마감 납품 라벨 발행',
   },

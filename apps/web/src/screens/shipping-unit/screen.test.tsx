@@ -88,6 +88,8 @@ interface Options {
   etags?: string[];
   /** 셸 문맥의 사번. 주지 않으면 `IDENTITY` 의 것. */
   workerNo?: string | null;
+  /** 출하 단위 유형(SHIPPING_UNIT_TYPE). 주지 않으면 팔레트 하나. */
+  types?: { code: string; codeName: string }[];
 }
 
 const renderScreen = (options: Options = {}) => {
@@ -119,20 +121,21 @@ const renderScreen = (options: Options = {}) => {
     },
     {
       match: (request) => pathOf(request) === '/mdm/code-values',
-      respond: () =>
-        jsonResponse({
-          items: [
-            {
-              codeValueId: 1,
-              codeGroupId: 1,
-              code: 'PALLET',
-              codeName: '팔레트',
-              displayOrder: 1,
-              isActive: true,
-            },
-          ],
-          page: { page: 1, size: 100, total: 1 },
-        }),
+      respond: () => {
+        const types = options.types ?? [{ code: 'PALLET', codeName: '팔레트' }];
+
+        return jsonResponse({
+          items: types.map((type, index) => ({
+            codeValueId: index + 1,
+            codeGroupId: 1,
+            code: type.code,
+            codeName: type.codeName,
+            displayOrder: index + 1,
+            isActive: true,
+          })),
+          page: { page: 1, size: 100, total: types.length },
+        });
+      },
     },
     {
       match: (request) => pathOf(request) === '/app/printers',
@@ -271,7 +274,7 @@ const openUnit = async (user: ReturnType<typeof userEvent.setup>): Promise<void>
   await user.click(screen.getByRole('button', { name: t.unit.create }));
 };
 
-/** ② 상자 등록에서 [다음] → ③ 마감 단계. */
+/** ① 유형·상자 등록에서 [다음] → ② 마감 단계. */
 const toCloseStep = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
   await waitFor(() => {
     expect(screen.getByRole('button', { name: t.actions.next })).toBeEnabled();
@@ -316,19 +319,77 @@ describe('P-04-05 출하 단위 구성', () => {
   });
 
   /*
-   * ⛔ **단위를 만들기 전에는 상자를 읽을 수 없다.** 스캔 칸은 ② 상자 등록에만 서고, 단위가 없으면
-   *    그 단계로 갈 길(단계 줄 · [다음])이 없다 — 담당이 상자 앞에서 읽고 나서야 막힌 것을 알지 않게.
+   * ⛔ **단위를 만들기 전에는 상자를 읽을 수 없다.** 스캔 칸은 유형 바로 아래에 서지만 단위가 없으면
+   *    잠겨 있고, 마감 단계로 갈 길(단계 줄 · [다음])도 없다 — 담당이 상자 앞에서 읽고 나서야 막힌
+   *    것을 알지 않게. 단위는 지금처럼 [새 출하 단위] 를 눌렀을 때만 만든다.
    */
-  it('단위를 만들기 전에는 상자 등록 단계로 갈 수 없다', async () => {
+  it('단위를 만들기 전에는 스캔 칸이 잠겨 있고 마감 단계로 갈 수 없다', async () => {
     const user = userEvent.setup();
-    renderScreen();
+    const seen: Options['seen'] = [];
+    renderScreen({ seen });
 
     await pickShipment(user);
     await pickType(user);
 
-    expect(screen.queryByLabelText(t.scan.label)).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: new RegExp(t.steps.boxes, 'u') })).toBeNull();
+    expect(screen.getByLabelText(t.scan.label)).toBeDisabled();
+    expect(screen.queryByRole('button', { name: new RegExp(t.steps.close, 'u') })).toBeNull();
     expect(screen.queryByRole('button', { name: t.actions.next })).toBeNull();
+    /* 유형만 골라서는 아무것도 만들지 않는다. */
+    expect(seen.some((call) => call.method === 'POST')).toBe(false);
+  });
+
+  /* ⛔ 단위를 만들면 유형은 그 단위의 것이다 — 같은 단계에 남은 유형 단추를 잠근다. */
+  it('단위를 만들면 같은 단계의 유형 단추가 잠기고 스캔 칸이 열린다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await openUnit(user);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
+    });
+    expect(screen.getByRole('radio', { name: '팔레트' })).toBeDisabled();
+  });
+
+  /*
+   * ⭐ 유형은 고객사가 늘리는 코드다 — 5개까지는 한 줄 단추, 넘으면 칸 하나(고르기 창)로 접어
+   *    아래 상자 자리를 지킨다.
+   */
+  it('유형이 5개를 넘으면 단추 대신 고르기 칸 하나로 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      types: [
+        { code: 'PALLET', codeName: '팔레트' },
+        { code: 'BUNDLE', codeName: '번들' },
+        { code: 'CASE', codeName: '케이스' },
+        { code: 'DRUM', codeName: '드럼' },
+        { code: 'BAG', codeName: '포대' },
+        { code: 'CRATE', codeName: '크레이트' },
+      ],
+    });
+
+    await pickShipment(user);
+
+    expect(await screen.findByRole('combobox', { name: t.unit.typeLabel })).toBeInTheDocument();
+    expect(screen.queryByRole('radio')).toBeNull();
+  });
+
+  it('유형이 5개면 한 줄 단추로 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      types: [
+        { code: 'PALLET', codeName: '팔레트' },
+        { code: 'BUNDLE', codeName: '번들' },
+        { code: 'CASE', codeName: '케이스' },
+        { code: 'DRUM', codeName: '드럼' },
+        { code: 'BAG', codeName: '포대' },
+      ],
+    });
+
+    await pickShipment(user);
+
+    expect(await screen.findAllByRole('radio')).toHaveLength(5);
+    expect(screen.queryByRole('combobox', { name: t.unit.typeLabel })).toBeNull();
   });
 
   /* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */
