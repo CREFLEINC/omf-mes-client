@@ -34343,7 +34343,8 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   white-space: nowrap;
 }
 
-.iqc-inbound-history td:last-child {
+/* 상세 내용(둘째 칸)만 줄바꿈 — 일시는 맨 끝 칸이라 한 줄로 둔다(#274 순서 · omf-all-around#296). */
+.iqc-inbound-history td:nth-child(2) {
   white-space: normal;
 }
 
