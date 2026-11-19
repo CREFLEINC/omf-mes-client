@@ -16,6 +16,7 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import {
   putawayRecordKeys,
   usePutawayRecords,
+  useTerminalCode,
   type PutawayRecord,
   type PutawayRecordScope,
 } from './queries';
@@ -107,6 +108,7 @@ export const PutawayHistoryScreen = () => {
 
   const today = plantToday();
   const day = shiftDay(today, back);
+  const terminalCode = useTerminalCode();
   const records = usePutawayRecords(scope, worker?.workerNo ?? null, day.date);
 
   /* 이 화면에서 적치로 담긴 것 — 적치 · 입고 완료와 임시 위치 적재 둘 다(FR-009 범위). */
@@ -136,7 +138,7 @@ export const PutawayHistoryScreen = () => {
       ? worker === null
         ? null
         : t.basis.mine(worker.workerNo, worker.workerName, count)
-      : t.basis.terminal(list?.items[0]?.terminalCode ?? null, count);
+      : t.basis.terminal(terminalCode, count);
 
   const body: ReactNode = (
     <div className="putaway-history__body">

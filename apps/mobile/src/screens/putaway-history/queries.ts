@@ -1,12 +1,15 @@
 import type { components } from '@omf-mes/api-client';
 import {
   useInfiniteQuery,
+  useQuery,
   type InfiniteData,
   type UseInfiniteQueryResult,
 } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { currentDeviceToken } from '../../patterns/device-token';
 import { runRequest } from '../../patterns/request';
+import { readTerminalClaims } from '../../patterns/token-claims';
 
 export type PutawayRecord = components['schemas']['PutawayRecord'];
 
@@ -19,6 +22,7 @@ const PAGE_SIZE = 50;
 export const putawayRecordKeys = {
   /** 기준 · 사번 · 날짜를 가리지 않고 전부 — 전송 대기가 보내졌을 때 다시 부르는 데 쓴다. */
   all: ['putaway-records'] as const,
+  terminal: (terminalId: number | null) => ['putaway-records-terminal', terminalId] as const,
   /*
    * 「내 기록」은 사번이 열쇠에 든다 - 교대로 사번이 바뀌면 다른 목록이라 앞 작업자의 줄이 남지 않는다.
    * 「이 단말」은 사번과 무관해 null 로 둔다 - 사번이 바뀌어도 받아 둔 목록을 그대로 쓴다.
@@ -91,4 +95,32 @@ export const usePutawayRecords = (
     },
     select: toList,
   });
+};
+
+/**
+ * 「이 기기」의 코드 — 기록이 없는 날 · 불러오기 전에도 기준 줄에 서야 한다(T032).
+ *
+ * 토큰에 코드가 실려 있으면 그것을, 없으면 토큰의 단말 번호로 기기 정보를 묻는다(홈의 수의 기준과 같은 길).
+ * 서버가 서명해 넣는 클레임은 번호뿐이라 대개 묻게 된다. 모르면 null — 코드 없이 「이 기기」로 보인다.
+ */
+export const useTerminalCode = (): string | null => {
+  const { client } = useApiClient();
+  const token = currentDeviceToken();
+  const claims = token === null ? null : readTerminalClaims(token);
+  const terminalId = claims?.terminalId ?? null;
+  const fromToken = claims?.terminalCode ?? null;
+
+  const query = useQuery({
+    queryKey: putawayRecordKeys.terminal(terminalId),
+    enabled: fromToken === null && terminalId !== null,
+    staleTime: Infinity,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/terminals/{terminalId}', {
+          params: { path: { terminalId: terminalId ?? 0 } },
+        }),
+      ),
+  });
+
+  return fromToken ?? query.data?.terminalCode ?? null;
 };
