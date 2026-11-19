@@ -62,34 +62,111 @@
   padding: 8px 22px 8px 14px;
 }
 
-/* 상자 줄 */
+/* 세 열: 왼쪽 목록 380 · 가운데 작업 · 오른쪽 미리보기 — 미리보기를 넓혀 라벨이 읽히는 크기로(사용자 지시 2026-11-19) */
+.su-screen .su-cols.lk {
+  grid-template-columns: 320px minmax(0, 1.4fr) minmax(0, 1fr);
+}
+
+.su-screen .su-cols.lk:has(> .is-folded:first-child) {
+  grid-template-columns: 56px minmax(0, 1.5fr) minmax(0, 1fr);
+}
+
+/* 정보 띠: 칸마다 위 작은 이름 · 아래 굵은 값, 칸 사이 세로 줄 */
+.su-screen .pu-band.grid {
+  gap: 10px 0;
+  padding: 10px 0;
+}
+
+/* 세 칸: 번호 두 칸은 글자 폭대로, 남는 폭은 마지막 칸 */
+.su-screen .pu-band.grid:not(.c4) {
+  grid-template-columns: max-content max-content minmax(0, 1fr);
+}
+
+/* 네 칸(② · 구성 완료)은 2 × 2 — 한 줄 네 칸이면 번호가 잘린다 */
+.su-screen .pu-band.grid.c4 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.su-screen .pu-band.grid .kv {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 0 16px;
+  border-left: 1px solid var(--pu-line-2);
+}
+
+.su-screen .pu-band.grid:not(.c4) .kv:nth-child(3n + 1),
+.su-screen .pu-band.grid.c4 .kv:nth-child(odd) {
+  border-left: 0;
+}
+
+.su-screen .pu-band.grid .kv > span {
+  font-size: 13px;
+}
+
+.su-screen .pu-band.grid .kv > b {
+  max-width: 100%;
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* 등록된 상자: 구획 안 작은 카드(제목 · 개수) + 줄 */
+.su-screen .su-boxes {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--pu-card-2);
+}
+
+.su-screen .su-boxes-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.su-screen .su-boxes-head .ttl {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.su-screen .su-boxes > .pu-empty {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
 .su-screen .su-rows {
   flex: 1 1 0;
+  min-height: 0;
   display: grid;
   gap: 6px;
   align-content: start;
   grid-template-columns: minmax(0, 1fr);
+  container-type: inline-size;
 }
 
+/* 한 줄: ✓ | 상자 번호 | 품목코드 | 수량 | [×] */
 .su-screen .su-row {
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) auto;
-  grid-template-areas:
-    'mk nm q'
-    'mk sub q';
+  grid-template-columns: 22px auto minmax(0, 1fr) minmax(64px, auto);
   align-items: center;
-  gap: 2px 12px;
-  padding: 8px 14px;
+  gap: 12px;
+  min-height: 56px;
+  padding: 6px 12px;
   border: 1px solid var(--pu-line-2);
   border-radius: var(--radius-md, 12px);
   background: var(--pu-card);
 }
 
 .su-screen .su-row.edit {
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  grid-template-areas:
-    'nm q rm'
-    'sub q rm';
+  grid-template-columns: 22px auto minmax(0, 1fr) minmax(64px, auto) auto;
 }
 
 .su-screen .su-row.is-on {
@@ -97,59 +174,94 @@
 }
 
 .su-screen .su-row .mk {
-  grid-area: mk;
   color: var(--pu-ok);
   display: inline-flex;
 }
 
 .su-screen .su-row .nm {
-  grid-area: nm;
   min-width: 0;
   font-family: var(--pu-mono);
+  font-size: 16px;
   font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.su-screen .su-row .sub {
-  grid-area: sub;
-  min-width: 0;
-  font-size: 13px;
-  color: var(--pu-text-3);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
+.su-screen .su-row .it,
 .su-screen .su-row .q {
-  grid-area: q;
-  font-size: 17px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 12px;
+  border-left: 1px solid var(--pu-line-2);
   white-space: nowrap;
-  text-align: right;
 }
 
-.su-screen .su-row .q small {
-  margin-left: 4px;
-  font-size: 13px;
-  font-weight: 500;
+.su-screen .su-row .it > small,
+.su-screen .su-row .q > small {
+  font-size: 12px;
   color: var(--pu-text-3);
 }
 
-.su-screen .su-row > .pu-btn.x {
-  grid-area: rm;
+.su-screen .su-row .it > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+  color: var(--pu-text-2);
 }
 
-/* 줄 아래: 왼쪽 합계 · 오른쪽 쪽 넘김 */
+.su-screen .su-row .q > span {
+  font-size: 14px;
+  color: var(--pu-text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.su-screen .su-row .q b {
+  font-size: 17px;
+  color: var(--pu-text);
+}
+
+/* 좁은 칸(1024 등): 품목코드 칸을 접고 상자 번호 · 수량만 */
+@container (max-width: 380px) {
+  .su-screen .su-row,
+  .su-screen .su-row.edit {
+    grid-template-columns: 22px minmax(0, 1fr) auto auto;
+    gap: 8px;
+    min-height: 46px;
+    padding: 3px 10px;
+  }
+
+  .su-screen .su-row:not(.edit) {
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+  }
+
+  .su-screen .su-row .nm {
+    font-size: 15px;
+  }
+
+  .su-screen .su-row .q {
+    padding-left: 8px;
+  }
+
+  .su-screen .su-row .it {
+    display: none;
+  }
+}
+
+/* 아래 합계 줄: 왼쪽 「등록 N개 · 총 N EA」 · 오른쪽 쪽 넘김 */
 .su-screen .su-foot {
   flex: none;
   display: flex;
   align-items: center;
   gap: 12px;
   min-width: 0;
-  min-height: 36px;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--pu-card);
 }
 
 .su-screen .su-foot .sum {
@@ -157,15 +269,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
-}
-
-.su-screen .su-foot .sum .tot > span {
-  margin-left: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--pu-text-3);
 }
 
 .su-screen .su-foot > .pu-pager {
@@ -184,6 +289,52 @@
 
 /* 1024 폭: 가운데 구획이 좁아 두 단계 이름이 한 줄에 들어가도록 단계 알약만 조금 좁힌다 */
 @media (max-width: 1100px) {
+  /* 1024 폭: 왼쪽 목록을 조금 줄여 가운데·미리보기에 나눠 준다(목록은 [|<] 로 더 접을 수 있다) */
+  .su-screen .su-cols.lk {
+    grid-template-columns: 320px minmax(0, 1.25fr) minmax(0, 1fr);
+  }
+
+  /* 높이도 빠듯하다 — 칸 사이·띠·합계 줄을 조금씩 줄인다 */
+  .su-screen .su-center-body {
+    gap: 8px;
+  }
+
+  .su-screen .pu-band.grid {
+    gap: 6px 0;
+    padding: 6px 0;
+  }
+
+  .su-screen .pu-band.grid .kv {
+    gap: 2px;
+    padding: 0 10px;
+  }
+
+  .su-screen .pu-band.grid .kv > b {
+    font-size: 14px;
+  }
+
+  .su-screen .su-boxes {
+    gap: 6px;
+    padding: 8px 10px 10px;
+  }
+
+  .su-screen .su-foot {
+    min-height: 40px;
+  }
+
+  /* 세 칸 띠도 두 칸씩 — 좁은 칸에서는 번호가 잘린다 */
+  .su-screen .pu-band.grid:not(.c4) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .su-screen .pu-band.grid:not(.c4) .kv:nth-child(3n + 1) {
+    border-left: 1px solid var(--pu-line-2);
+  }
+
+  .su-screen .pu-band.grid:not(.c4) .kv:nth-child(odd) {
+    border-left: 0;
+  }
+
   .su-screen .pu-flow {
     gap: 2px;
   }

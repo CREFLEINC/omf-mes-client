@@ -10,6 +10,7 @@ import {
   PuChip,
   PuCols,
   PuCount,
+  PuDialog,
   PuEmpty,
   PuField,
   PuFlow,
@@ -29,7 +30,7 @@ import {
   type PuIconName,
 } from '../../patterns/pop-uniform';
 import { DELIVERY_LABEL } from '../shipping-packing-label/codes';
-import { usePrinters } from '../shipping-packing-label/queries';
+import { usePrinters, useReissueReasons } from '../shipping-packing-label/queries';
 import { toDefaultPrinterName } from '../shipping-packing-label/types';
 
 import {
@@ -107,11 +108,12 @@ const formatAt = (iso: string | null | undefined): string => {
   return `${String(at.getFullYear())}-${pad2(at.getMonth() + 1)}-${pad2(at.getDate())} ${pad2(at.getHours())}:${pad2(at.getMinutes())}`;
 };
 
-/** 띠 이름 앞 빨간 아이콘. */
-const bandLabel = (icon: PuIconName, text: string): ReactNode => (
+/** 띠 이름 앞 빨간 아이콘. 「마감」 같은 표시는 이름 옆에 붙여 값(번호)이 잘리지 않게 한다. */
+const bandLabel = (icon: PuIconName, text: string, mark?: ReactNode): ReactNode => (
   <>
     <PuIcon name={icon} />
     {text}
+    {mark}
   </>
 );
 
@@ -122,6 +124,10 @@ const boxQty = (box: ShippingUnitBox): string | null => {
 
   return box.contents.reduce((sum, content) => sum + content.qty, 0).toLocaleString('ko-KR');
 };
+
+/** 한 상자의 품목코드 — 여러 품목이면 « · » 로 잇는다. */
+const boxItems = (box: ShippingUnitBox): string =>
+  [...new Set(box.contents.map((content) => content.itemCode))].join(' · ');
 
 const BoxRow = ({
   box,
@@ -136,6 +142,7 @@ const BoxRow = ({
   removeDisabled: boolean;
   onRemove: (handlingUnitId: number) => void;
 }) => {
+  /* 줄에는 품목코드·수량만 — LOT 까지 든 내용 전체는 손가락을 올리면 보인다. */
   const contents = box.contents
     .map((content) =>
       t.boxes.content(
@@ -146,27 +153,32 @@ const BoxRow = ({
     )
     .join(' / ');
   const qty = boxQty(box);
+  const items = boxItems(box);
 
   return (
-    <div className={puCx('su-row', editable && 'edit', editable && isLatest && 'is-on')}>
-      {!editable && (
-        <span className="mk">
-          <PuIcon name="check" />
-        </span>
-      )}
-      <span className="nm" title={box.handlingUnitNo}>
-        {box.handlingUnitNo}
+    <div
+      className={puCx('su-row', editable && 'edit', editable && isLatest && 'is-on')}
+      title={contents}
+    >
+      <span className="mk">
+        <PuIcon name="ok" />
       </span>
-      <span className="sub" title={contents}>
-        {contents}
+      <span className="nm">{box.handlingUnitNo}</span>
+      <span className="it">
+        <small>{t.boxes.itemCode}</small>
+        <span>{items}</span>
       </span>
       <span className="q">
-        {qty !== null && (
-          <>
-            {qty}
-            <small>{box.contents[0]?.uomCode}</small>
-          </>
-        )}
+        <small>{t.boxes.qty}</small>
+        <span>
+          {qty === null ? (
+            '—'
+          ) : (
+            <>
+              <b>{qty}</b> {box.contents[0]?.uomCode}
+            </>
+          )}
+        </span>
       </span>
       {editable && (
         <PuRemoveButton
@@ -181,20 +193,21 @@ const BoxRow = ({
   );
 };
 
-/** 목록 아래 합계 — 품목별 합은 서버가 준 `itemTotals` 그대로다(화면이 세지 않는다). */
-const SumText = ({ unit }: { unit: ShippingUnitDetail }) =>
-  unit.boxes.length === 0 ? null : (
-    <div className="sum">
-      {t.boxes.sum(unit.boxes.length)}{' '}
-      {unit.itemTotals.map((total, index) => (
-        <span key={`${total.itemCode}-${total.uomCode}`} className="tot">
-          {index > 0 && ' · '}
-          {`${total.qty.toLocaleString('ko-KR')} ${total.uomCode}`}
-          <span>{total.itemCode}</span>
-        </span>
-      ))}
-    </div>
-  );
+/**
+ * 아래 합계 줄 「등록 N개 · 총 20 EA」.
+ *
+ * ⭐ 합은 서버가 준 `itemTotals` 를 단위(EA 등)별로 더한 것이다 — 받은 상자 줄을 세지 않는다
+ *    (목록이 일부일 때도 라벨과 같은 수를 말한다). 다른 단위끼리는 더하지 않고 « · » 로 잇는다.
+ */
+const sumText = (unit: ShippingUnitDetail): string => {
+  const byUom = new Map<string, number>();
+  for (const total of unit.itemTotals) {
+    byUom.set(total.uomCode, (byUom.get(total.uomCode) ?? 0) + total.qty);
+  }
+  const totals = [...byUom].map(([uom, qty]) => `${qty.toLocaleString('ko-KR')} ${uom}`);
+
+  return t.boxes.sum(unit.boxes.length, totals.join(' · '));
+};
 
 /** 납품 라벨 그림 — 마감 때 인쇄에 넘기는 같은 그리기. 실패하면 비운다. */
 const usePreviewSrc = (unit: ShippingUnitDetail | null): string | null => {
@@ -276,6 +289,9 @@ export const ShippingUnitScreen = () => {
   /** 「구성 완료」 탭에서 고른 마감 단위. */
   const [doneUnitId, setDoneUnitId] = useState<number | null>(null);
   const [donePage, setDonePage] = useState(1);
+  /** 「구성 완료」 재발행 창 — 열렸을 때만 사유를 묻는다. */
+  const [reissueOpen, setReissueOpen] = useState(false);
+  const [reissueReason, setReissueReason] = useState<string | null>(null);
 
   const leftRef = useRef<HTMLDivElement>(null);
   const rowsRef = useRef<HTMLDivElement>(null);
@@ -291,6 +307,7 @@ export const ShippingUnitScreen = () => {
   const printers = usePrinters(DELIVERY_LABEL);
   const writes = useShippingUnitWrites(identity.workerNo);
   const issueDeliveryLabel = useDeliveryIssue(identity.workerNo);
+  const reissueReasons = useReissueReasons(reissueOpen);
 
   const unit = detail.data?.unit ?? null;
   const doneUnit = doneDetail.data?.unit ?? null;
@@ -391,6 +408,11 @@ export const ShippingUnitScreen = () => {
         }
 
         setEtag(result.snapshot.etag);
+        /*
+         * ⛔ 띠의 「미등록 상자」는 왼쪽 목록 응답의 수다 — 상자를 넣을 때마다 다시 받아야 줄어든다
+         *    (전에는 마감 뒤에만 받아 넣은 뒤에도 처음 수가 남았다).
+         */
+        void shipments.refetch();
         /* 방금 만든 단위는 아래에서 단위 번호를 잡을 때 상세를 새로 받는다(상자가 든 뒤라 함께 온다). */
         if (!creating) await detail.refetch();
         setLastBoxNo(handlingUnitNo.trim());
@@ -409,6 +431,7 @@ export const ShippingUnitScreen = () => {
       try {
         const snapshot = await writes.removeBox(shippingUnitId, handlingUnitId);
         setEtag(snapshot.etag);
+        void shipments.refetch();
         await detail.refetch();
       } catch {
         setNotice(t.boxes.removeFailed);
@@ -445,6 +468,28 @@ export const ShippingUnitScreen = () => {
       } catch {
         setNotice(t.close.failed);
       }
+    });
+  };
+
+  /**
+   * 「구성 완료」 단위의 납품 라벨 재발행 — 출하 라벨 화면 재발행과 같은 길이다
+   * (`POST /app/document-issues` + 재발행 사유 → 그리기 · 인쇄 · 결과 보고). 회차는 서버가 올린다.
+   */
+  const onReissue = (): void => {
+    if (doneUnit === null || reissueReason === null) return;
+
+    void run('closing', async () => {
+      const issued = await issueDeliveryLabel(
+        doneUnit,
+        toDefaultPrinterName(printers.data ?? []),
+        reissueReason,
+      );
+      setReissueOpen(false);
+      setReissueReason(null);
+      puToast(
+        issued.kind === 'printed' ? t.reissue.done : issueText(issued),
+        issued.kind === 'printed' ? 'ok' : 'warn',
+      );
     });
   };
 
@@ -571,27 +616,36 @@ export const ShippingUnitScreen = () => {
     if (index >= 0) showIndex(index);
   }, [lastBoxNo, unit, showIndex]);
 
-  const editable = !isDone && step === 1 && scanOpen;
+  /* [×] 는 상자를 담는 ① 의 열린 단위에서만 — 처리 중에는 흐리게만 꺼 둔다(줄이 깜빡이지 않게). */
+  const editable = !isDone && step === 1 && unitOpen;
   const rowsBlock = (sumUnit: ShippingUnitDetail | null, emptyHint?: string): ReactNode => (
     <>
-      {rowBoxes.length === 0 ? (
-        <PuEmpty icon="box" title={t.boxes.empty} hint={emptyHint} />
-      ) : (
-        <div ref={rowsRef} className="pu-fit su-rows">
-          {rowPage.items.map((box) => (
-            <BoxRow
-              key={box.handlingUnitId}
-              box={box}
-              editable={editable}
-              isLatest={box.handlingUnitNo === lastBoxNo}
-              removeDisabled={!scanOpen}
-              onRemove={onRemove}
-            />
-          ))}
+      <div className="su-boxes" role="group" aria-label={t.boxes.title}>
+        <div className="su-boxes-head">
+          <span className="ttl">{t.boxes.title}</span>
+          <PuCount>{t.band.count(rowBoxes.length)}</PuCount>
         </div>
-      )}
+        {rowBoxes.length === 0 ? (
+          <PuEmpty icon="box" title={t.boxes.empty} hint={emptyHint} />
+        ) : (
+          <div ref={rowsRef} className="pu-fit su-rows">
+            {rowPage.items.map((box) => (
+              <BoxRow
+                key={box.handlingUnitId}
+                box={box}
+                editable={editable}
+                isLatest={box.handlingUnitNo === lastBoxNo}
+                removeDisabled={!scanOpen}
+                onRemove={onRemove}
+              />
+            ))}
+          </div>
+        )}
+      </div>
       <div className="su-foot">
-        {sumUnit !== null && <SumText unit={sumUnit} />}
+        <span className="sum">
+          {sumUnit !== null && sumUnit.boxes.length > 0 ? sumText(sumUnit) : ''}
+        </span>
         <PuPager
           total={rowPage.total}
           page={rowPage.page}
@@ -607,7 +661,7 @@ export const ShippingUnitScreen = () => {
   const doneTo = closed ? 2 : unitOpen && boxCount > 0 ? 1 : 0;
   const canGo = (target: Step): boolean => target === 1 || (unitOpen && boxCount > 0);
   const flowSteps = ([1, 2] as const).map((target) => ({
-    label: target === 1 ? t.steps.compose : t.steps.close,
+    label: target === 1 ? t.steps.boxes : t.steps.close,
     done: target <= doneTo || target < step,
     onGo:
       !closed && target !== step && canGo(target)
@@ -631,18 +685,15 @@ export const ShippingUnitScreen = () => {
         <>
           <PuBand
             label={t.band.unit}
+            grid={4}
             items={[
-              {
-                label: bandLabel('file', t.band.unit),
-                value: (
-                  <>
-                    {doneUnit.shippingUnitNo} <PuChip tone="ok">{t.closed.chip}</PuChip>
-                  </>
-                ),
-              },
               { label: bandLabel('list', t.band.shipment), value: doneUnit.shipmentNo },
               {
-                label: bandLabel('box', t.band.type),
+                label: bandLabel('file', t.band.unit, <PuChip tone="ok">{t.closed.chip}</PuChip>),
+                value: doneUnit.shippingUnitNo,
+              },
+              {
+                label: bandLabel('pin', t.band.type),
                 value: typeName(doneUnit.shippingUnitTypeCode),
               },
               { label: bandLabel('clock', t.band.closedAt), value: formatAt(doneUnit.closedAt) },
@@ -665,37 +716,30 @@ export const ShippingUnitScreen = () => {
     return (
       <>
         <PuFlow steps={flowSteps} current={step - 1} label={t.steps.label} />
+        {/* ① 은 세 칸(유형은 바로 아래 단추에서 보인다), ② 는 유형까지 네 칸. */}
         <PuBand
           label={t.band.shipment}
+          grid={step === 1 ? 3 : 4}
           items={[
             { label: bandLabel('list', t.band.shipment), value: shipment.shipmentNo },
+            {
+              label: bandLabel(
+                'file',
+                t.band.unit,
+                closed ? <PuChip tone="ok">{t.closed.chip}</PuChip> : undefined,
+              ),
+              value: unit === null ? '—' : unit.shippingUnitNo,
+            },
             ...(step === 1
               ? []
               : [
                   {
-                    label: bandLabel('box', t.band.type),
+                    label: bandLabel('pin', t.band.type),
                     value: typeName(unit?.shippingUnitTypeCode ?? typeCode),
                   },
                 ]),
             {
-              label: bandLabel('file', t.band.unit),
-              value:
-                unit === null ? (
-                  '—'
-                ) : (
-                  <>
-                    {unit.shippingUnitNo}
-                    {closed && (
-                      <>
-                        {' '}
-                        <PuChip tone="ok">{t.closed.chip}</PuChip>
-                      </>
-                    )}
-                  </>
-                ),
-            },
-            {
-              label: bandLabel('clock', t.band.unassigned),
+              label: bandLabel('box', t.band.unassigned),
               value: unassigned === null ? '—' : t.band.count(unassigned),
             },
           ]}
@@ -741,7 +785,6 @@ export const ShippingUnitScreen = () => {
                 setScanValue(value);
                 onScan(value);
               }}
-              placeholder={t.scan.placeholder}
               disabled={!scanOpen}
               done={lastBoxNo !== null && lastBoxNo === scanValue.trim()}
               error={scanError}
@@ -756,7 +799,21 @@ export const ShippingUnitScreen = () => {
 
   /* ── 작업 줄 ── */
   const actions = (): ReactNode => {
-    if (isDone || shipment === null) return null;
+    if (isDone) {
+      return doneUnit === null ? null : (
+        <PuButton
+          variant="primary"
+          disabled={identity.workerNo === null || busy !== 'idle'}
+          onClick={() => {
+            setReissueReason(null);
+            setReissueOpen(true);
+          }}
+        >
+          {t.reissue.action}
+        </PuButton>
+      );
+    }
+    if (shipment === null) return null;
 
     if (step === 1) {
       /* 단위는 첫 상자가 만든다 — 상자를 담은 뒤 [다음]. */
@@ -850,7 +907,11 @@ export const ShippingUnitScreen = () => {
               {center()}
             </PuSection>
             {showPreview && (
-              <PuSection title={t.preview.sectionLabel} className="su-preview-card">
+              <PuSection
+                title={t.preview.sectionLabel}
+                meta={previewSrc === null ? undefined : <PuCount>{t.preview.sheets(1)}</PuCount>}
+                className="su-preview-card"
+              >
                 {previewSrc === null ? (
                   <PuEmpty icon="file" title={t.preview.empty} />
                 ) : (
@@ -859,6 +920,65 @@ export const ShippingUnitScreen = () => {
               </PuSection>
             )}
           </PuCols>
+          {reissueOpen && doneUnit !== null && (
+            <PuDialog
+              title={t.reissue.title(doneUnit.shippingUnitNo)}
+              onClose={() => {
+                if (busy === 'idle') setReissueOpen(false);
+              }}
+              footer={
+                <>
+                  <PuButton
+                    disabled={busy !== 'idle'}
+                    onClick={() => {
+                      setReissueOpen(false);
+                    }}
+                  >
+                    {t.reissue.cancel}
+                  </PuButton>
+                  <PuButton
+                    variant="primary"
+                    disabled={reissueReason === null || busy !== 'idle'}
+                    onClick={onReissue}
+                  >
+                    {busy === 'closing' ? t.reissue.issuing : t.reissue.action}
+                  </PuButton>
+                </>
+              }
+            >
+              <PuNote tone="warn">{t.reissue.guide}</PuNote>
+              {reissueReasons.isError && <PuNote tone="bad">{t.reissue.loadFailed}</PuNote>}
+              {reissueReasons.isSuccess && reissueReasons.data.length === 0 && (
+                <PuNote tone="warn">{t.reissue.empty}</PuNote>
+              )}
+              {(reissueReasons.data ?? []).length > 0 && (
+                <PuField label={t.reissue.label} required labelId="shipping-unit-reissue-label">
+                  {(reissueReasons.data ?? []).length > TYPE_TILE_MAX ? (
+                    <PopSelect
+                      aria-labelledby="shipping-unit-reissue-label"
+                      value={reissueReason}
+                      onChange={setReissueReason}
+                      options={(reissueReasons.data ?? []).map((each) => ({
+                        value: each.code,
+                        label: each.name,
+                      }))}
+                    />
+                  ) : (
+                    <PuTiles
+                      label={t.reissue.label}
+                      cols={2}
+                      options={(reissueReasons.data ?? []).map((each) => ({
+                        value: each.code,
+                        label: each.name,
+                      }))}
+                      value={reissueReason}
+                      onChange={setReissueReason}
+                    />
+                  )}
+                </PuField>
+              )}
+            </PuDialog>
+          )}
         </div>
       </PuScreen>
     </main>

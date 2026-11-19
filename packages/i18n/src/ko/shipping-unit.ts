@@ -24,7 +24,7 @@ export const shippingUnit = {
     loading: '출하를 불러오는 중입니다…',
     failed: '출하 목록을 불러오지 못했습니다.',
     empty: '구성할 출하가 없습니다',
-    boxes: (count: number): string => `미구성 상자 ${String(count)}개`,
+    boxes: (count: number): string => `미등록 상자 ${String(count)}개`,
     pick: '출하를 선택하세요',
     pickHint: '왼쪽 「구성 대기」 목록에서 출하를 누르세요.',
   },
@@ -43,16 +43,15 @@ export const shippingUnit = {
 
   steps: {
     label: '출하 단위 단계',
-    compose: '유형·상자 등록',
     boxes: '상자 등록',
-    close: '마감 납품 라벨 발행',
+    close: '납품 라벨 발행',
   },
 
   band: {
     shipment: '출하번호',
     type: '출하 단위 유형',
     unit: '출하 단위 번호',
-    unassigned: '미구성 상자',
+    unassigned: '미등록 상자',
     closedAt: '마감일시',
     count: (count: number): string => `${String(count)}개`,
   },
@@ -64,8 +63,7 @@ export const shippingUnit = {
 
   scan: {
     /** 포장 라벨 스캔. 스캐너와 직접 입력이 같은 칸을 쓴다(설계 §5-2). */
-    label: '포장 라벨 스캔',
-    placeholder: '상자 번호를 스캔하거나 입력하세요',
+    label: '상자 번호',
   },
 
   /**
@@ -88,6 +86,10 @@ export const shippingUnit = {
   },
 
   boxes: {
+    /** 상자 목록 구획 이름 · 줄 안 작은 칸 이름. */
+    title: '등록된 상자',
+    itemCode: '품목코드',
+    qty: '수량',
     empty: '등록된 상자가 없습니다',
     emptyHint: '포장 라벨을 스캔하세요.',
     remove: (no: string): string => `${no} 빼기`,
@@ -95,14 +97,16 @@ export const shippingUnit = {
     /** 한 상자에 여러 줄이 들어갈 수 있다 — 줄 하나의 모양. */
     content: (itemCode: string, lotNo: string, qty: string): string =>
       `${itemCode} ${qty} · ${lotNo}`,
-    /** 목록 아래 합계 — 품목별 합은 서버가 준 값이다. */
-    sum: (count: number): string => `상자 ${String(count)}개 · 합계`,
+    /** 아래 합계 줄 — 합은 서버가 준 품목별 합을 단위별로 더한 값이다. */
+    sum: (count: number, total: string): string => `등록 ${String(count)}개 · 총 ${total}`,
   },
 
   preview: {
     /** 납품 라벨 미리보기 — 인쇄될 라벨 그림 그대로다. */
     sectionLabel: '납품 라벨 미리보기',
     empty: '상자를 먼저 등록해 주세요',
+    /** 미리보기 제목 줄 오른쪽 — 발행될 라벨 장수. */
+    sheets: (count: number): string => `${String(count)}장`,
   },
 
   close: {
@@ -123,6 +127,19 @@ export const shippingUnit = {
   actions: {
     prev: '이전',
     next: '다음',
+  },
+
+  /** 「구성 완료」 단위의 납품 라벨 재발행 — 출하 라벨 화면 재발행과 같은 사유 코드(REISSUE_REASON). */
+  reissue: {
+    action: '재발행',
+    title: (no: string): string => `납품 라벨 재발행 · ${no}`,
+    label: '재발행 사유',
+    guide: '재발행하면 회차가 올라가고 이전 기록은 지워지지 않습니다. 인쇄면에도 회차가 찍힙니다.',
+    empty: '고를 수 있는 재발행 사유가 아직 없습니다. 사유 없이는 재발행할 수 없습니다.',
+    loadFailed: '재발행 사유를 불러오지 못했습니다.',
+    cancel: '취소',
+    issuing: '발행하는 중…',
+    done: '납품 라벨을 재발행했습니다. 출하 단위에 부착하세요.',
   },
 
   next: '새 단위',

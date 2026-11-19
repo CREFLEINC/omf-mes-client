@@ -22,7 +22,7 @@ export const shippingUnit: Translated<typeof ko.shippingUnit> = {
     loading: 'Đang tải lô xuất hàng…',
     failed: 'Không tải được danh sách lô xuất hàng.',
     empty: 'Không có lô xuất hàng cần cấu thành',
-    boxes: (count: number): string => `${String(count)} kiện chưa cấu thành`,
+    boxes: (count: number): string => `${String(count)} kiện chưa đăng ký`,
     pick: 'Hãy chọn lô xuất hàng',
     pickHint: 'Chạm vào lô xuất hàng ở danh sách 「Chờ cấu thành」 bên trái.',
   },
@@ -41,16 +41,15 @@ export const shippingUnit: Translated<typeof ko.shippingUnit> = {
 
   steps: {
     label: 'Các bước đơn vị giao hàng',
-    compose: 'Loại · đăng ký kiện',
     boxes: 'Đăng ký kiện',
-    close: 'Chốt · phát hành nhãn giao hàng',
+    close: 'Phát hành nhãn giao hàng',
   },
 
   band: {
     shipment: 'Xuất hàng',
     type: 'Loại',
     unit: 'Đơn vị giao hàng',
-    unassigned: 'Kiện chưa cấu thành',
+    unassigned: 'Kiện chưa đăng ký',
     closedAt: 'Giờ chốt',
     count: (count: number): string => `${String(count)} kiện`,
   },
@@ -61,8 +60,7 @@ export const shippingUnit: Translated<typeof ko.shippingUnit> = {
   },
 
   scan: {
-    label: 'Quét nhãn kiện',
-    placeholder: 'Hãy quét hoặc nhập số kiện',
+    label: 'Số kiện',
   },
 
   rejection: {
@@ -78,18 +76,23 @@ export const shippingUnit: Translated<typeof ko.shippingUnit> = {
   },
 
   boxes: {
+    title: 'Kiện đã đăng ký',
+    itemCode: 'Mã hàng',
+    qty: 'Số lượng',
     empty: 'Không có kiện đã đăng ký',
     emptyHint: 'Hãy quét nhãn kiện.',
     remove: (no: string): string => `Bỏ ${no} ra`,
     removeFailed: 'Không bỏ kiện ra được.',
     content: (itemCode: string, lotNo: string, qty: string): string =>
       `${itemCode} ${qty} · ${lotNo}`,
-    sum: (count: number): string => `${String(count)} kiện · Tổng`,
+    sum: (count: number, total: string): string =>
+      `Đã đăng ký ${String(count)} kiện · Tổng ${total}`,
   },
 
   preview: {
     sectionLabel: 'Xem trước nhãn giao hàng',
     empty: 'Hãy đăng ký kiện trước',
+    sheets: (count: number): string => `${String(count)} tờ`,
   },
 
   close: {
@@ -108,6 +111,18 @@ export const shippingUnit: Translated<typeof ko.shippingUnit> = {
   actions: {
     prev: 'Trước',
     next: 'Tiếp',
+  },
+
+  reissue: {
+    action: 'Phát hành lại',
+    title: (no: string): string => `Phát hành lại nhãn giao hàng · ${no}`,
+    label: 'Lý do phát hành lại',
+    guide: 'Phát hành lại thì lượt tăng lên, bản ghi cũ không bị xóa. Lượt cũng được in trên nhãn.',
+    empty: 'Chưa có lý do phát hành lại nào để chọn. Không có lý do thì không phát hành lại được.',
+    loadFailed: 'Không tải được lý do phát hành lại.',
+    cancel: 'Hủy',
+    issuing: 'Đang phát hành…',
+    done: 'Đã phát hành lại nhãn giao hàng. Hãy dán lên đơn vị giao hàng.',
   },
 
   next: 'Đơn vị mới',

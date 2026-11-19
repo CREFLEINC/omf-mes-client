@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -88,6 +88,8 @@ interface Options {
   etags?: string[];
   /** 셸 문맥의 사번. 주지 않으면 `IDENTITY` 의 것. */
   workerNo?: string | null;
+  /** 출하 목록이 부를 때마다 돌려줄 미등록 상자 수 차례. 주지 않으면 늘 4. */
+  unassigned?: number[];
   /** 출하 단위 유형(SHIPPING_UNIT_TYPE). 주지 않으면 팔레트 하나. */
   types?: { code: string; codeName: string }[];
 }
@@ -96,6 +98,7 @@ const renderScreen = (options: Options = {}) => {
   const details = options.details ?? [unit()];
   const etags = options.etags ?? ['"1"'];
   let detailCall = 0;
+  let shipmentCall = 0;
   let etagCall = 0;
 
   const nextEtag = (): string => etags[Math.min(etagCall++, etags.length - 1)] ?? '"1"';
@@ -116,13 +119,22 @@ const renderScreen = (options: Options = {}) => {
       respond: async (request) => {
         await record(request);
 
-        return jsonResponse({ items: [SHIPMENT], page: { page: 1, size: 50, total: 1 } });
+        const counts = options.unassigned ?? [SHIPMENT.unassignedPackedBoxCount];
+        const count = counts[Math.min(shipmentCall++, counts.length - 1)] ?? 0;
+
+        return jsonResponse({
+          items: [{ ...SHIPMENT, unassignedPackedBoxCount: count }],
+          page: { page: 1, size: 50, total: 1 },
+        });
       },
     },
     {
       match: (request) => pathOf(request) === '/mdm/code-values',
-      respond: () => {
-        const types = options.types ?? [{ code: 'PALLET', codeName: '팔레트' }];
+      respond: (request) => {
+        const reissue = new URL(request.url).searchParams.get('codeGroupCode') === 'REISSUE_REASON';
+        const types = reissue
+          ? [{ code: 'DAMAGED', codeName: '라벨 훼손' }]
+          : (options.types ?? [{ code: 'PALLET', codeName: '팔레트' }]);
 
         return jsonResponse({
           items: types.map((type, index) => ({
@@ -358,6 +370,35 @@ describe('P-04-05 출하 단위 구성', () => {
     expect(writes[0]?.body).toEqual({ shipmentId: 501, shippingUnitTypeCode: 'PALLET' });
     expect(writes[1]?.body).toMatchObject({ handlingUnitNo: 'HU-1' });
     expect(writes[2]?.body).toMatchObject({ handlingUnitNo: 'HU-2' });
+  });
+
+  /*
+   * ⛔ 띠의 「미등록 상자」는 상자를 넣을 때마다 서버 수로 줄어야 한다 — 전에는 처음 받은 수가
+   *    마감 때까지 남았다. 아래 합계 줄은 「등록 N개 · 총 N EA」다.
+   */
+  it('상자를 넣으면 미등록 상자 수를 다시 받고 합계 줄을 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      unassigned: [2, 1],
+      details: [
+        unit({
+          boxes: [box(7001, 'HU-1', 1)],
+          boxCount: 1,
+          itemTotals: [{ itemCode: 'F534F50200', itemName: 'COVER', qty: 240, uomCode: 'EA' }],
+        }),
+      ],
+    });
+
+    await ready(user);
+    const band = screen.getByRole('group', { name: t.band.shipment });
+    expect(within(band).getByText(t.band.count(2))).toBeInTheDocument();
+
+    await scanBox(user, 'HU-1');
+
+    await waitFor(() => {
+      expect(within(band).getByText(t.band.count(1))).toBeInTheDocument();
+    });
+    expect(await screen.findByText(t.boxes.sum(1, '240 EA'))).toBeInTheDocument();
   });
 
   /*
@@ -726,5 +767,38 @@ describe('P-04-05 출하 단위 구성', () => {
     expect(screen.queryByLabelText(t.scan.label)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.close.action })).toBeNull();
     expect(screen.queryByRole('button', { name: t.actions.next })).toBeNull();
+  });
+
+  /*
+   * ⭐ 「구성 완료」 단위도 납품 라벨을 다시 뽑는다 — 출하 라벨 화면 재발행과 같은 길
+   *    (`POST /app/document-issues` + 재발행 사유). 사유를 고르기 전에는 나가지 않는다.
+   */
+  it('구성 완료 단위는 사유를 골라 납품 라벨을 재발행한다', async () => {
+    const user = userEvent.setup();
+    const seen: Options['seen'] = [];
+    renderScreen({ seen });
+
+    await user.click(await screen.findByRole('tab', { name: new RegExp(t.tabs.done, 'u') }));
+    await user.click(await screen.findByRole('button', { name: /SU-20260916-0003/u }));
+    await screen.findByText('HU-CLOSED-1');
+
+    await user.click(screen.getByRole('button', { name: t.reissue.action }));
+    const dialog = await screen.findByRole('dialog');
+    const confirm = within(dialog).getByRole('button', { name: t.reissue.action });
+    expect(confirm).toBeDisabled();
+    expect(seen.some((call) => call.path === '/app/document-issues')).toBe(false);
+
+    await user.click(await within(dialog).findByRole('radio', { name: '라벨 훼손' }));
+    await user.click(confirm);
+
+    await waitFor(() => {
+      expect(seen.some((call) => call.path === '/app/document-issues')).toBe(true);
+    });
+    expect(seen.find((call) => call.path === '/app/document-issues')?.body).toMatchObject({
+      documentTypeCode: 'DELIVERY_LABEL',
+      targets: [{ targetTypeCode: 'SHIPPING_UNIT', targetId: 9100 }],
+      reissueReasonCode: 'DAMAGED',
+    });
+    expect(seen.some((call) => call.path.endsWith(':close'))).toBe(false);
   });
 });
