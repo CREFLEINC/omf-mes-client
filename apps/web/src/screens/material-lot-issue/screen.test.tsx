@@ -142,6 +142,60 @@ const OTHER_PLANT = {
 /** 대기 LOT 을 부른 공장 — 어느 공장으로 열렸는지 요청으로 잰다. */
 const waitingPlantIds: (string | null)[] = [];
 
+/**
+ * 합성 캡(8201 · 601)의 미입고 P/O 라인 — 서버 차례(납기순)로 온다. 채우는 차례(발주일 → P/O 번호 → 라인)는
+ * 0001-1 → 0001-2 → 0002-1 이고, 납기가 가장 이른 0002-1 이 맨 뒤다. 0003-1 은 단위(BAG)가 달라 배정 대상이 아니다.
+ */
+const PO_LINES = [
+  {
+    purchaseOrderLineId: 91,
+    purchaseOrderNo: 'PO-SYN-0002',
+    lineNo: 1,
+    orderDate: '2026-11-03',
+    expectedReceiptDate: '2026-11-10',
+    remainingQty: 300,
+    uomId: 1,
+    supplierId: 8201,
+    itemId: 601,
+  },
+  {
+    purchaseOrderLineId: 92,
+    purchaseOrderNo: 'PO-SYN-0001',
+    lineNo: 2,
+    orderDate: '2026-11-01',
+    expectedReceiptDate: '2026-11-20',
+    remainingQty: 200,
+    uomId: 1,
+    supplierId: 8201,
+    itemId: 601,
+  },
+  {
+    purchaseOrderLineId: 93,
+    purchaseOrderNo: 'PO-SYN-0001',
+    lineNo: 1,
+    orderDate: '2026-11-01',
+    expectedReceiptDate: null,
+    remainingQty: 1000,
+    uomId: 1,
+    supplierId: 8201,
+    itemId: 601,
+  },
+  {
+    purchaseOrderLineId: 94,
+    purchaseOrderNo: 'PO-SYN-0003',
+    lineNo: 1,
+    orderDate: '2026-11-02',
+    expectedReceiptDate: '2026-11-05',
+    remainingQty: 5,
+    uomId: 3,
+    supplierId: 8201,
+    itemId: 601,
+  },
+];
+
+/** 미입고 P/O 를 부른 조건 — 공장 · 공급사 · 품목 · 미입고만으로 부르는지 잰다. */
+const poLineQueries: URLSearchParams[] = [];
+
 const setup = (
   options: {
     voidFails?: number[];
@@ -151,6 +205,7 @@ const setup = (
 ) => {
   const writes: Write[] = [];
   waitingPlantIds.length = 0;
+  poLineQueries.length = 0;
   const fetch = createStubFetch([
     {
       match: (r) => isGet(r, '/mdm/plants'),
@@ -200,6 +255,22 @@ const setup = (
     {
       match: (r) => isGet(r, /^\/mdm\/items\/\d+\/uom-conversions$/),
       respond: () => jsonResponse({ items: [] }),
+    },
+    {
+      match: (r) => isGet(r, '/logistics/purchase-order-lines'),
+      respond: (r) => {
+        const query = new URL(r.url).searchParams;
+        poLineQueries.push(query);
+        return jsonResponse(
+          page(
+            PO_LINES.filter(
+              (line) =>
+                String(line.supplierId) === query.get('supplierId') &&
+                String(line.itemId) === query.get('itemId'),
+            ),
+          ),
+        );
+      },
     },
     {
       match: (r) => r.method !== 'GET',
@@ -363,6 +434,38 @@ describe('W-01-14 자재 관리 LOT 발행', () => {
     expect(table.getByText(/^관리웹 /)).toBeInTheDocument();
     expect(detail.getByText(t.detail.waitingCount(3))).toBeInTheDocument();
     expect(detail.queryByRole('button', { name: /라벨|인쇄/ })).not.toBeInTheDocument();
+  });
+
+  it('미입고 P/O 는 입하 마감이 채우는 차례(발주일 → P/O 번호 → 라인)로 보이고, 단위가 다른 라인은 뺀다', async () => {
+    const { user } = setup();
+
+    const pane = await openDetail(user, 'SYN-CAP');
+    const table = within(await pane.findByRole('table', { name: t.poLines.title }));
+    const rows = table
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) =>
+        within(row)
+          .getAllByRole('cell')
+          .map((cell) => cell.textContent),
+      );
+    /* 납기가 가장 이른 0002 가 맨 뒤다 — 납기순이 아니다. 단위가 BAG 인 0003 은 없다. */
+    expect(rows).toEqual([
+      ['PO-SYN-0001', '1', '2026.11.01', '—', '1,000 EA'],
+      ['PO-SYN-0001', '2', '2026.11.01', '2026.11.20', '200 EA'],
+      ['PO-SYN-0002', '1', '2026.11.03', '2026.11.10', '300 EA'],
+    ]);
+    expect(pane.getByText(t.poLines.count(3))).toBeInTheDocument();
+    expect(pane.getByText(t.poLines.fillOrder)).toBeInTheDocument();
+    expect(Object.fromEntries(poLineQueries[0] ?? [])).toMatchObject({
+      plantId: '8401',
+      supplierId: '8201',
+      itemId: '601',
+      openOnly: 'true',
+    });
+
+    const resin = await openDetail(user, 'SYN-RES');
+    expect(await resin.findByText(t.poLines.empty)).toBeInTheDocument();
   });
 
   it('US1-8 대기 LOT 폐기 — 고른 LOT 를 :void 로 보내고 건별 실패는 「N개 폐기 · 실패 N」으로 묶는다', async () => {

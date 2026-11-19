@@ -8,6 +8,7 @@ import { useItemStorageUnit, type UomOption } from '../../patterns/material-lot-
 import { formatBaseQty, formatPackage } from '../../patterns/package-qty';
 import { DefaultsText, storageText } from './defaults-text';
 import { useVoidLots } from './mutations';
+import { PoLines } from './po-lines';
 import { detailLots, formatAt, waitingOf, type Defaults, type Group, type Lot } from './types';
 
 const t = messages.materialLotIssue;
@@ -16,6 +17,7 @@ const td = t.detail;
 const STATUS_CHIP = { WAITING: 'warning', VOIDED: 'error', ACTIVE: 'success' } as const;
 
 export interface DetailPaneProps {
+  plantId: number;
   group: Group;
   defaults: Defaults | undefined;
   uoms: readonly UomOption[] | undefined;
@@ -25,10 +27,17 @@ export interface DetailPaneProps {
 
 /**
  * 고른 공급사·품목 — **입고 관리 짜임의 오른쪽 구획**(사용자 지시 2026-11-19 — 덮개 창이던 것을 옮겼다).
- * 머리(공급사 · 품목 + 사실 칸) 다음에 대기 자재 관리 LOT 표 · 폐기 · 발행.
+ * 머리(공급사 · 품목 + 사실 칸) 다음에 미입고 P/O(입하 마감이 채우는 차례), 그다음 대기 자재 관리 LOT 표 · 폐기 · 발행.
  * ⛔ 라벨 단추는 없다 — 라벨은 POP 에서만 찍는다.
  */
-export const DetailPane = ({ group, defaults, uoms, onIssue, onVoided }: DetailPaneProps) => {
+export const DetailPane = ({
+  plantId,
+  group,
+  defaults,
+  uoms,
+  onIssue,
+  onVoided,
+}: DetailPaneProps) => {
   const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
   const [confirming, setConfirming] = useState(false);
   const storage = useItemStorageUnit(group.itemId);
@@ -82,6 +91,8 @@ export const DetailPane = ({ group, defaults, uoms, onIssue, onVoided }: DetailP
           </div>
         </dl>
       </header>
+
+      <PoLines plantId={plantId} group={group} />
 
       <div className="mlot-issue-section-head">
         <h2 className="pane-title">
