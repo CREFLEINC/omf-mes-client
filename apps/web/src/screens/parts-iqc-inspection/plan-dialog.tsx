@@ -169,6 +169,7 @@ export const PlanDialog = ({
                             : `${withUnit(nominal)} (${withUnit(range)})`
                           : t.plan.okNg}
                       </td>
+                      {/* 「차수」 — 항목마다 정한 측정 횟수를 숫자만(사용자 지시 2026-11-19 · omf-all-around#296). */}
                       <td>{spec.measurementCount}</td>
                       <td>{spec.acceptanceNumber ?? '—'}</td>
                     </tr>

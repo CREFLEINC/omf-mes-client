@@ -6,6 +6,7 @@ import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { formatQty } from '../../patterns/package-qty';
+import { LotNo } from './lot-match-field';
 
 const t = messages.iqcInboundLot.results;
 const judgmentLabel = messages.partsIqcInspection.judgment as Record<string, string | undefined>;
@@ -54,7 +55,7 @@ export const ResultList = ({
     lots.find((lot) => lot.lotId === lotId)?.lotNo ?? String(lotId);
 
   const baseColumns: Column<InspectionResultSummaryForward>[] = [
-    { key: 'seq', header: t.columns.seq, width: '80px', render: (row) => t.seq(row.seqNo) },
+    { key: 'seq', header: t.columns.seq, width: '110px', render: (row) => t.seq(row.seqNo) },
     {
       key: 'judgment',
       header: t.columns.judgment,
@@ -92,16 +93,15 @@ export const ResultList = ({
     {
       key: 'matched',
       header: t.columns.matched,
-      width: '200px',
+      width: '300px',
       render: (row) =>
         row.matchedLotIds.length === 0 ? (
           <span className="parts-iqc-muted">{t.noMatch}</span>
         ) : (
-          <span className="iqc-inbound-chips">
+          /* LOT 번호 전체를 줄마다(끝 마디만 굵게) — 끝 마디만 칩으로 보이지 않는다(사용자 지시 2026-11-19 · omf-all-around#296). */
+          <span className="iqc-inbound-attach-lots">
             {row.matchedLotIds.map((lotId) => (
-              <Chip key={lotId} size="sm" title={lotNoOf(lotId)}>
-                {lotTail(lotNoOf(lotId))}
-              </Chip>
+              <LotNo key={lotId} lotNo={lotNoOf(lotId)} />
             ))}
           </span>
         ),
@@ -118,10 +118,8 @@ export const ResultList = ({
       width: '100px',
       render: (row) =>
         locked ? (
-          <span className="parts-iqc-muted iqc-inbound-locked">
-            <Icon name="lock" size={14} aria-hidden />
-            {t.lockedRow}
-          </span>
+          /* 「상태」 칸 — 확정된 결과는 라벨 하나(아이콘 없이 · 사용자 지시 2026-11-19 · omf-all-around#296). */
+          <Chip size="sm">{t.lockedRow}</Chip>
         ) : (
           <span className="iqc-inbound-actions">
             {/* 수정 · 삭제는 아이콘 단추(사용자 지시 2026-11-16 · #274) — 이름은 마우스를 올리면 보인다. */}

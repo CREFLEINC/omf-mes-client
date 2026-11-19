@@ -348,17 +348,16 @@ describe('W-01-01 확정 취소', () => {
     await user.click(await screen.findByRole('button', { name: t.cancel.open }));
     const dialog = await screen.findByRole('dialog', { name: t.cancel.title });
     expect(dialog).toHaveTextContent(t.cancel.target('IL-20991111-0003'));
-    expect(dialog).toHaveTextContent(t.cancel.lots(2));
+    expect(dialog).toHaveTextContent(`${t.cancel.lotsLabel}${t.cancel.lotsCount(2)}`);
     expect(dialog).toHaveTextContent(t.cancel.lotsTo);
     /* 검사 결과는 그대로 · 적용 검사 회차와 그 검사 일시(omf-all-around#296). */
-    expect(dialog).toHaveTextContent(`${t.cancel.results(2)}${t.cancel.resultsTo}`);
+    expect(dialog).toHaveTextContent(`${t.cancel.resultsLabel}${t.cancel.resultsKept(2)}`);
     expect(dialog).toHaveTextContent(
       t.cancel.appliedValue(1, formatPlantDateTime('2099-11-11T01:00:00Z') ?? ''),
     );
     expect(dialog).toHaveTextContent(
       t.cancel.appliedValue(2, formatPlantDateTime('2099-11-12T02:30:00Z') ?? ''),
     );
-    expect(dialog).toHaveTextContent(t.cancel.keepNote);
     expect(dialog).toHaveTextContent(t.cancel.note);
     await user.type(within(dialog).getByLabelText(t.cancel.reason), '합성 사유');
     await user.click(within(dialog).getByRole('button', { name: t.cancel.proceed }));

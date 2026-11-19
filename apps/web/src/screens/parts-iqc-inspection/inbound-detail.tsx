@@ -490,15 +490,19 @@ export const InboundDetail = ({
                     <InboundAttachmentTable
                       lots={lots}
                       action={
-                        /* 파일 첨부 — 첨부 파일 표 위 오른쪽, 확정 뒤에도 붙일 수 있다(사용자 지시 2026-11-19 · omf-all-around#296). */
-                        <Button
-                          size="md"
-                          disabled={lots.length === 0}
-                          leadingIcon={<Icon name="attach_file" size={18} aria-hidden />}
-                          onClick={() => setAttachOpen(true)}
-                        >
-                          {ta.open}
-                        </Button>
+                        /* 파일 첨부 — 첨부 파일 표 위 오른쪽. 대기 · 진행 중에만, 판정 확정(완료) 뒤에는 감춘다(사용자 지시 2026-11-19 · omf-all-around#296). */
+                        confirmed ? null : (
+                          <Button
+                            size="md"
+                            disabled={
+                              lots.length === 0 // ui-check-ignore: C-4 붙일 LOT 이 없으면 바로 위 「자재 관리 LOT (0건)」이 사유다
+                            }
+                            leadingIcon={<Icon name="attach_file" size={18} aria-hidden />}
+                            onClick={() => setAttachOpen(true)}
+                          >
+                            {ta.open}
+                          </Button>
+                        )
                       }
                     />
                   </section>

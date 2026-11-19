@@ -33735,8 +33735,8 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 }
 
 /*
- * 기준 상세 창의 정보 — 검사 화면 기본 정보와 같은 상자를 창 폭에 맞춰 고르게 나눈다(#247 · 사용자 지시 2026-11-10).
- * 넓으면 여섯 칸 한 줄, 보통은 세 칸 두 줄, 좁으면 두 칸 · 한 칸. 줄 첫 칸에는 세로선을 두지 않는다.
+ * 기준 상세 창의 정보 — 같은 폭의 칸을 창 폭에 들어가는 만큼 한 줄에 놓고 넘치면 다음 줄로(창 폭에 따라 칸 수가 바뀐다 ·
+ * 사용자 지시 2026-11-19 · omf-all-around#296). 칸마다 왼쪽 세로선, 줄 첫 칸의 선은 상자 밖으로 숨긴다(입하 LOT 요약 줄과 같은 방식).
  */
 .parts-iqc-plan {
   container: parts-iqc-plan / inline-size;
@@ -33744,50 +33744,24 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 
 .parts-iqc-plan .parts-iqc-facts {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.parts-iqc-plan .parts-iqc-fact:nth-child(3n + 1) {
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
   padding-left: 0;
-  border-left: 0;
+  overflow: hidden;
 }
 
-@container parts-iqc-plan (min-width: 60rem) {
-  .parts-iqc-plan .parts-iqc-facts {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
-
-  .parts-iqc-plan .parts-iqc-fact:nth-child(3n + 1):not(:first-child) {
-    padding-left: var(--space-4);
-    border-left: 1px solid var(--outline-variant);
-  }
+.parts-iqc-plan .parts-iqc-fact,
+.parts-iqc-plan .parts-iqc-fact:first-child {
+  align-content: start;
+  margin-left: -1px;
+  padding: 0 var(--space-4);
+  border-left: 1px solid var(--outline-variant);
+  overflow-wrap: normal;
+  word-break: keep-all;
 }
 
-@container parts-iqc-plan (max-width: 36rem) {
-  .parts-iqc-plan .parts-iqc-facts {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .parts-iqc-plan .parts-iqc-fact:nth-child(n) {
-    padding-left: var(--space-4);
-    border-left: 1px solid var(--outline-variant);
-  }
-
-  .parts-iqc-plan .parts-iqc-fact:nth-child(2n + 1) {
-    padding-left: 0;
-    border-left: 0;
-  }
-}
-
-@container parts-iqc-plan (max-width: 22rem) {
-  .parts-iqc-plan .parts-iqc-facts {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .parts-iqc-plan .parts-iqc-fact:nth-child(n) {
-    padding-left: 0;
-    border-left: 0;
-  }
+/* 항목 표 칸 이름은 꺾지 않는다 — 좁으면 표 상자 안에서 가로로 민다(사용자 지시 2026-11-19 · omf-all-around#296). */
+.parts-iqc-plan-table th {
+  white-space: nowrap;
 }
 
 /* 항목 표 — 검사 화면 표(`.parts-iqc-grid`)와 같은 칸 선 · 가운데 정렬, 테두리 상자 모서리만 둥글게. */
@@ -34257,8 +34231,9 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--outline-variant);
   color: var(--on-surface-variant);
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
+  /* 창 안 글은 한 크기로(사용자 지시 2026-11-19 · omf-all-around#296). */
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
 }
 
 .iqc-cancel-confirm-heading {
@@ -34273,8 +34248,21 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   flex-direction: column;
   margin: 0;
   padding: 0 var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--surface-container-high);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container-lowest, var(--surface));
+}
+
+/* 묶음(LOT · 결과) 사이만 선을 긋는다(사용자 시안 2026-11-19 · omf-all-around#296). */
+.iqc-cancel-confirm-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4) 0;
+}
+
+.iqc-cancel-confirm-group + .iqc-cancel-confirm-group {
+  border-top: 1px solid var(--outline-variant);
 }
 
 .iqc-cancel-confirm-change {
@@ -34283,7 +34271,24 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2) var(--space-4);
-  padding: var(--space-3) 0;
+}
+
+/* 안내 한 줄 — 파란 라벨 띠(사용자 지시 2026-11-19), 글자는 창의 다른 글과 같은 크기. */
+.iqc-inspection-action-note.iqc-cancel-confirm-note {
+  align-items: flex-start;
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.iqc-cancel-confirm-note > :first-child {
+  flex: none;
+  margin-top: 0.2em;
+}
+
+.iqc-cancel-confirm-reason label,
+.iqc-cancel-confirm-reason .field-label {
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
 }
 
 /* 적용 검사가 여러 회차면 한 줄에 하나씩 오른쪽 맞춤(omf-all-around#296). */
@@ -34291,10 +34296,6 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   flex-direction: column;
   align-items: flex-end;
   gap: var(--space-1);
-}
-
-.iqc-cancel-confirm-change + .iqc-cancel-confirm-change {
-  border-top: 1px solid var(--outline-variant);
 }
 
 .iqc-cancel-confirm-change dt {
