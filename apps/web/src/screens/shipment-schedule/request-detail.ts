@@ -24,7 +24,18 @@ export interface ReplacementRow {
   judgment: string | null;
   resultAt: string;
   nonconformanceNo: string | null;
+  /** 같은 라인에서 교체 시각 뒤에 처음 피킹한 LOT — 없으면 `null`(시안 「다음 피킹 LOT」). */
+  nextLotNo: string | null;
 }
+
+/** 같은 라인의 LOT 중 `after` 뒤에 가장 먼저 피킹한 것. */
+const nextPickedAfter = (lots: readonly RequestLot[], after: string): string | null => {
+  const at = Date.parse(after);
+  const later = lots
+    .filter((lot) => Date.parse(lot.pickedAt) > at)
+    .sort((a, b) => Date.parse(a.pickedAt) - Date.parse(b.pickedAt));
+  return later[0]?.lotNo ?? null;
+};
 
 export const linesOf = (detail: ShipmentRequestDetail): RequestLine[] => detail.lines ?? [];
 
@@ -57,6 +68,7 @@ export const replacementsOf = (detail: ShipmentRequestDetail): ReplacementRow[] 
                 judgment: lot.replacement.judgment,
                 resultAt: lot.replacement.resultAt,
                 nonconformanceNo: lot.replacement.nonconformanceNo,
+                nextLotNo: nextPickedAfter(line.lots, lot.replacement.replacedAt),
               },
             ],
       ),

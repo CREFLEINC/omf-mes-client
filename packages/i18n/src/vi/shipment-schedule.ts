@@ -135,12 +135,19 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
       code: 'Mã lệnh xuất hàng',
       pickingWarehouses: 'Kho lấy hàng',
       completedShipment: 'Lô xuất hàng',
+      completedBy: 'Hoàn tất',
     },
     noPickingWarehouse: 'Chưa có',
     popOnly:
       'Việc hoàn tất xuất hàng chỉ thực hiện trên POP 「Hoàn tất xuất hàng」 (P-04-07). Màn hình này chỉ để xem.',
     completed: (shipmentNo: string, completedAt: string): string =>
-      `Đã hoàn tất xuất hàng trên POP (${shipmentNo}, ${completedAt}). Yêu cầu hủy được thực hiện ở 「Lịch sử xuất hàng」.`,
+      `Đã hoàn tất xuất hàng trên POP (${shipmentNo}, ${completedAt}). Trừ tồn kho và số lượng đã xuất của đơn bán hàng đã được ghi cùng lúc. Mã quản lý xuất hàng không thể sửa nữa. Yêu cầu hủy được trình ở 「Lịch sử xuất hàng」.`,
+    shipmentLink: (shipmentNo: string): string => `${shipmentNo} → Lịch sử xuất hàng`,
+    completedBy: (at: string, terminal: string, worker: string): string =>
+      `${at}, ${terminal}, ${worker}`,
+    codeLocked: 'Sau khi hoàn tất xuất hàng thì không thể sửa mã quản lý xuất hàng',
+    noLotsBanner:
+      'Chưa lấy LOT nào. Sau khi chỉ định nhà máy phụ trách xuất hàng và phân bổ, quét nhãn LOT ở PDA 「Lấy hàng thành phẩm」 thì LOT sẽ hiện ở đây.',
     blockersTitle: (count: number): string =>
       `Có ${String(count)} lý do khiến chưa thể hoàn tất xuất hàng`,
     blockers: {
@@ -217,6 +224,7 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
       lot: 'LOT bị loại, số lượng',
       result: 'Kết quả OQC làm căn cứ',
       nonconformance: 'Không phù hợp',
+      next: 'LOT lấy tiếp theo',
     },
     noReplacements: 'Chưa thay LOT nào.',
   },
@@ -235,11 +243,14 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
     shipToPartner: 'Nơi giao hàng',
     shipDate: 'Ngày xuất hàng',
     fulfillmentPlant: 'Nhà máy phụ trách xuất hàng',
+    salesOrder: 'Đơn bán hàng',
+    printedBy: 'In',
     items: 'Mặt hàng',
     lineNo: 'Dòng',
     item: 'Mặt hàng',
     target: 'Mục tiêu',
     picked: 'Đã lấy',
+    uom: 'Đơn vị',
     inspection: 'Kiểm tra xuất hàng',
     inspectionRequired: 'Cần',
     inspectionNotRequired: 'Không cần',
@@ -262,5 +273,8 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
     noLots: 'Chưa lấy LOT nào.',
     signatures: ['Người lập', 'Lấy hàng', 'Kiểm tra xuất hàng', 'Xác nhận xuất hàng'],
     printedAt: (value: string): string => `In lúc ${value}`,
+    printedByValue: (at: string, user: string): string => `${at}, web quản lý ${user}`,
+    footnote:
+      'Quét QR ở trên tại POP 「Hoàn tất xuất hàng」 (P-04-07) thì lệnh xuất hàng này sẽ mở ra. Có hoàn tất được hay không sẽ do trạng thái lệnh xuất hàng lúc đó quyết định.',
   },
 };

@@ -1,6 +1,7 @@
-import { AlertBanner, Button, Chip, Dialog, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, Dialog, Icon, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { Fragment, useId } from 'react';
+import { Link } from 'react-router';
 
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { LoadErrorBanner } from './load-error-banner';
@@ -106,21 +107,25 @@ export const RequestDetailDialog = ({
       title={t.detail.title}
       onClose={onClose}
       footer={
-        <>
-          <Button variant="outlined" onClick={onClose}>
-            {t.detail.close}
-          </Button>
-          {/* 인쇄는 받은 상세 값으로 그린다 — 상세가 없으면 잠근다. 피킹 전에도 열어 둔다. */}
-          <Button
-            disabled={detail === undefined}
-            aria-describedby={detail === undefined ? printNoteId : undefined}
-            onClick={onPrint}
-          >
-            {t.detail.print}
-          </Button>
-        </>
+        <Button variant="outlined" onClick={onClose}>
+          {t.detail.close}
+        </Button>
       }
     >
+      {/*
+       * [지시서 인쇄]는 창 머리(시안 W0402-After). 인쇄는 받은 상세 값으로 그린다 — 상세가 없으면 잠근다. 피킹 전에도 열어 둔다.
+       * 완료 뒤에는 다시 찍기용이라 보조 단추로 둔다(시안 ⑨).
+       */}
+      <div className="ship-request-head-actions">
+        <Button
+          variant={detail?.completedShipment == null ? 'filled' : 'outlined'}
+          disabled={detail === undefined}
+          aria-describedby={detail === undefined ? printNoteId : undefined}
+          onClick={onPrint}
+        >
+          {t.detail.print}
+        </Button>
+      </div>
       {error !== null && error !== undefined && <LoadErrorBanner error={error} onRetry={onRetry} />}
       {detail === undefined && (
         <p id={printNoteId} className="field-note">
@@ -167,6 +172,34 @@ export const RequestDetailDialog = ({
               <dt>{t.detail.fields.code}</dt>
               <dd>{detail.code}</dd>
             </div>
+            {detail.completedShipment !== null && (
+              <>
+                <div>
+                  <dt>{t.detail.fields.completedShipment}</dt>
+                  <dd>
+                    {/* 출하 내역(W-04-12)의 그 출하를 연다 — 그 화면이 `?shipmentId=` 로 상세를 고른다. */}
+                    <Link
+                      className="link-cell"
+                      to={`/shipment/shipment-confirm?shipmentId=${String(detail.completedShipment.shipmentId)}`}
+                    >
+                      {t.detail.shipmentLink(detail.completedShipment.shipmentNo)}
+                    </Link>
+                  </dd>
+                </div>
+                <div>
+                  <dt>{t.detail.fields.completedBy}</dt>
+                  <dd>
+                    {t.detail.completedBy(
+                      dateTime(detail.completedShipment.completedAt),
+                      detail.completedShipment.completedTerminal?.terminalCode ?? t.values.empty,
+                      detail.completedShipment.completedWorker === null
+                        ? t.values.empty
+                        : `${detail.completedShipment.completedWorker.workerName} (${detail.completedShipment.completedWorker.workerNo})`,
+                    )}
+                  </dd>
+                </div>
+              </>
+            )}
             <div>
               <dt>{t.detail.fields.pickingWarehouses}</dt>
               <dd>
@@ -188,6 +221,10 @@ export const RequestDetailDialog = ({
                 dateTime(detail.completedShipment.completedAt),
               )}
             </AlertBanner>
+          )}
+
+          {linesOf(detail).every((line) => line.lots.length === 0) && (
+            <AlertBanner variant="info">{t.detail.noLotsBanner}</AlertBanner>
           )}
 
           {detail.completionBlockers.length > 0 && (
@@ -312,7 +349,20 @@ export const RequestDetailDialog = ({
                               </Chip>
                             )}
                           </td>
-                          <td>{lot.managementCode ?? t.values.empty}</td>
+                          <td>
+                            {lot.managementCode ?? t.values.empty}
+                            {/* 완료 뒤에는 고칠 수 없다(FR-021 · 시안 ⑨ 코드 옆 자물쇠). */}
+                            {detail.completedShipment !== null && (
+                              <span
+                                className="ship-request-code-lock"
+                                role="img"
+                                aria-label={t.detail.codeLocked}
+                                title={t.detail.codeLocked}
+                              >
+                                <Icon name="lock" size={16} />
+                              </span>
+                            )}
+                          </td>
                           <td>
                             {lot.replacement === null ? (
                               `${dateTime(lot.pickedAt)}${lot.pickedWorker === null ? '' : `, ${lot.pickedWorker.workerName}`}`
@@ -348,6 +398,7 @@ export const RequestDetailDialog = ({
                     <th scope="col">{t.detail.replacementColumns.lot}</th>
                     <th scope="col">{t.detail.replacementColumns.result}</th>
                     <th scope="col">{t.detail.replacementColumns.nonconformance}</th>
+                    <th scope="col">{t.detail.replacementColumns.next}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -370,6 +421,7 @@ export const RequestDetailDialog = ({
                         }, ${dateTime(row.resultAt)}`}
                       </td>
                       <td>{row.nonconformanceNo ?? t.values.empty}</td>
+                      <td>{row.nextLotNo ?? t.values.empty}</td>
                     </tr>
                   ))}
                 </tbody>

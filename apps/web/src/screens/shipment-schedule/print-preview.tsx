@@ -19,6 +19,8 @@ export interface PrintNames {
   shipToPartner: string;
   fulfillmentPlant: string;
   item: (itemId: number) => string;
+  /** 인쇄한 사람 — 관리웹 세션 사용자 이름(시안 「관리웹 · 1공장 출하 관리자」). 모르면 빈 값. */
+  printedBy: string;
 }
 
 export interface ShipmentRequestSheetProps {
@@ -72,8 +74,14 @@ export const ShipmentRequestSheet = ({
             <td>{names.shipToPartner}</td>
           </tr>
           <tr>
+            <th scope="row">{l.salesOrder}</th>
+            <td>{detail.salesOrderNo ?? '—'}</td>
             <th scope="row">{l.fulfillmentPlant}</th>
-            <td colSpan={3}>{names.fulfillmentPlant}</td>
+            <td>{names.fulfillmentPlant}</td>
+          </tr>
+          <tr>
+            <th scope="row">{l.printedBy}</th>
+            <td colSpan={3}>{l.printedByValue(printedAt, names.printedBy)}</td>
           </tr>
         </tbody>
       </table>
@@ -84,8 +92,8 @@ export const ShipmentRequestSheet = ({
           <tr>
             <th scope="col">{l.lineNo}</th>
             <th scope="col">{l.item}</th>
+            <th scope="col">{l.uom}</th>
             <th scope="col">{l.target}</th>
-            <th scope="col">{l.picked}</th>
             <th scope="col">{l.inspection}</th>
           </tr>
         </thead>
@@ -94,8 +102,8 @@ export const ShipmentRequestSheet = ({
             <tr key={line.shipmentRequestLineId}>
               <td>{line.lineNo}</td>
               <td>{names.item(line.itemId)}</td>
+              <td>{line.uomCode}</td>
               <td className="ship-print__num">{line.allocatedQty}</td>
-              <td className="ship-print__num">{line.pickedQty}</td>
               <td>
                 {line.shippingInspectionRequired ? l.inspectionRequired : l.inspectionNotRequired}
               </td>
@@ -167,7 +175,7 @@ export const ShipmentRequestSheet = ({
           </tr>
         </tbody>
       </table>
-      <p className="ship-print__printed">{l.printedAt(printedAt)}</p>
+      <p className="ship-print__printed">{l.footnote}</p>
     </article>
   );
 };

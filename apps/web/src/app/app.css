@@ -37039,6 +37039,21 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   min-width: 0;
 }
 
+/* W-04-02 상세 창 머리의 [지시서 인쇄](시안 W0402-After) — 본문 맨 위 오른쪽. */
+.ship-request-head-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-3);
+}
+
+/* 출하 관리 코드 옆 자물쇠 — 완료 뒤에는 고칠 수 없다(FR-021). */
+.ship-request-code-lock {
+  display: inline-flex;
+  margin-inline-start: var(--space-1);
+  color: var(--on-surface-variant);
+  vertical-align: middle;
+}
+
 .ship-print-preview {
   overflow: auto;
   padding: var(--space-3);

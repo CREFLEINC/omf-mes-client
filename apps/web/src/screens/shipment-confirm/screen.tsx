@@ -78,6 +78,13 @@ export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) 
     if (typeof linked.data === 'number') setSelectedId(linked.data);
   }, [linked.data]);
 
+  /* W-04-02 완료 지시서의 출하 링크(`?shipmentId=`)로 열리면 그 출하를 고른다(시안 W0402-After ⑨). */
+  const linkedShipmentId = Number(searchParams.get('shipmentId') ?? '');
+  useEffect(() => {
+    if (Number.isSafeInteger(linkedShipmentId) && linkedShipmentId > 0)
+      setSelectedId(linkedShipmentId);
+  }, [linkedShipmentId]);
+
   const query = useMemo(() => toListQuery(filters, page), [filters, page]);
   const list = useShipmentList(query);
   const rows = useMemo(() => list.data?.items ?? [], [list.data]);

@@ -5,6 +5,7 @@ import { useLocation, useSearchParams } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import { pickDate } from '../../test/date-picker';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 
 import {
   createStubFetch,
@@ -133,7 +134,7 @@ const renderScreen = (
       <LocationProbe />
       <SearchProbe to={navigateTo} />
     </>,
-    { fetch, route: `${ROUTE}${search}` },
+    { fetch, route: `${ROUTE}${search}`, session: SYNTHETIC_SESSION },
   );
 
   return { requests, user: userEvent.setup() };
@@ -731,6 +732,111 @@ describe('ShipmentScheduleScreen — 피처 010 지시서 상세', () => {
     expect(await within(dialog).findAllByText(/SAMPLE-FG-A100/)).not.toHaveLength(0);
     /* ⛔ 출하 완료 단계 화면에는 ERP 송신 여부를 보이지 않는다. */
     expect(dialog).not.toHaveTextContent('송신');
+  });
+
+  it('US2-7·Q19·Q11 완료된 지시서 상세 — 출하 번호가 출하 내역(W-04-12)의 그 출하로 가는 링크, 완료 시각·POP 단말·작업자, 코드 옆 자물쇠', async () => {
+    const base = pickingRequest();
+    const request = {
+      ...base,
+      shipmentProgressCode: 'SHIPPED',
+      completionBlockers: [],
+      blockerSummary: {},
+      completedShipment: {
+        shipmentId: 7701,
+        shipmentNo: 'SAMPLE-SH-0001',
+        completedAt: '2026-11-18T14:05:00+07:00',
+        completedTerminal: { terminalId: 61, terminalCode: 'SAMPLE-POP-01' },
+        completedWorker: { workerId: 9601, workerNo: 'SAMPLE-W-01', workerName: '합성 작업자' },
+      },
+    };
+    const { user } = renderScreen(
+      [listRoute([request]), detailOf(request), itemRoute(), ...partnerRoutes()],
+      SHIP_DATE_FROM,
+    );
+
+    const dialog = await openDetail(user);
+
+    const link = await within(dialog).findByRole('link', {
+      name: t.detail.shipmentLink('SAMPLE-SH-0001'),
+    });
+    expect(link).toHaveAttribute('href', '/shipment/shipment-confirm?shipmentId=7701');
+    expect(
+      within(dialog).getByText(
+        t.detail.completedBy('2026-11-18 14:05', 'SAMPLE-POP-01', '합성 작업자 (SAMPLE-W-01)'),
+      ),
+    ).toBeInTheDocument();
+    const lot1 = within(dialog).getAllByText('SAMPLE-LOT-0001')[0]?.closest('tr') as HTMLElement;
+    expect(within(lot1).getByRole('img', { name: t.detail.codeLocked })).toBeInTheDocument();
+  });
+
+  it('US2-7·Q19 「LOT 교체 이력」의 「다음 피킹 LOT」 — 같은 라인에서 교체 뒤 처음 피킹한 LOT, 없으면 「—」', async () => {
+    const base = pickingRequest();
+    const line = (base.lines as Record<string, unknown>[])[0] as Record<string, unknown>;
+    const lots = line.lots as Record<string, unknown>[];
+    const request = {
+      ...base,
+      lines: [
+        {
+          ...line,
+          lots: lots.map((lot) =>
+            lot.lotNo === 'SAMPLE-LOT-0004'
+              ? { ...lot, pickedAt: '2026-11-18T10:50:00+07:00' }
+              : lot,
+          ),
+        },
+      ],
+    };
+    const { user } = renderScreen(
+      [listRoute([request]), detailOf(request), itemRoute(), ...partnerRoutes()],
+      SHIP_DATE_FROM,
+    );
+
+    const dialog = await openDetail(user);
+    const history = await within(dialog).findByRole('table', { name: t.detail.replacements });
+
+    expect(
+      within(history).getByRole('columnheader', { name: t.detail.replacementColumns.next }),
+    ).toBeInTheDocument();
+    const row = within(history)
+      .getByText(/SAMPLE-LOT-0003/)
+      .closest('tr') as HTMLElement;
+    expect(row).toHaveTextContent('SAMPLE-LOT-0004');
+  });
+
+  it('US2-7 피킹 전 지시서 상세는 시안의 안내 띠를 보이고, [지시서 인쇄]는 창 머리에 있다', async () => {
+    const request = shipmentRequest({
+      shipmentRequestId: 9010,
+      shipmentRequestNo: 'SAMPLE-SR-0010',
+    });
+    const { user } = renderScreen(
+      [listRoute([request]), detailOf(request), itemRoute(), ...partnerRoutes()],
+      SHIP_DATE_FROM,
+    );
+
+    const dialog = await openDetail(user);
+
+    expect(await within(dialog).findByText(t.detail.noLotsBanner)).toBeInTheDocument();
+    const print = within(dialog).getByRole('button', { name: t.detail.print });
+    expect(print.closest('.ship-request-head-actions')).not.toBeNull();
+  });
+
+  it('US4-2·Q10 인쇄본 머리 표에 수주, 품목 표에 단위, 인쇄한 사람(관리웹 · 세션 사용자)과 아래 안내 문장', async () => {
+    const request = { ...pickingRequest(), salesOrderNo: 'SAMPLE-SO-0001' };
+    const { user } = renderScreen(
+      [listRoute([request]), detailOf(request), itemRoute(), ...partnerRoutes()],
+      SHIP_DATE_FROM,
+    );
+    const dialog = await openDetail(user);
+    await within(dialog).findByText('SHPREQ:SAMPLE-SR-0010');
+    await user.click(within(dialog).getByRole('button', { name: t.detail.print }));
+
+    const preview = await screen.findByRole('dialog', { name: t.printPreview.title });
+    const sheet = within(preview);
+    expect(sheet.getByRole('rowheader', { name: t.print.salesOrder })).toBeInTheDocument();
+    expect(sheet.getByText('SAMPLE-SO-0001')).toBeInTheDocument();
+    expect(sheet.getByRole('columnheader', { name: t.print.uom })).toBeInTheDocument();
+    expect(sheet.getByText(/합성 사용자 가/)).toBeInTheDocument();
+    expect(sheet.getByText(t.print.footnote)).toBeInTheDocument();
   });
 
   it('D-16·Q3 상세 머리에 수주 번호, 라인에 단위·수주 라인·수주 잔량 — 넘으면 「0 + 초과 n」, 적치 대기 몫은 따로 적는다', async () => {

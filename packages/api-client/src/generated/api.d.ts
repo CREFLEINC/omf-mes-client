@@ -67990,6 +67990,26 @@ export interface components {
        * @example 2026-11-18T05:00:00Z
        */
       completedAt: string;
+      completedTerminal: {
+        /**
+         * Format: int64
+         * @example 61
+         */
+        terminalId: number;
+        /** @example POP-SHIP-01 */
+        terminalCode: string;
+      } | null;
+      completedWorker: {
+        /**
+         * Format: int64
+         * @example 71
+         */
+        workerId: number;
+        /** @example W-0102 */
+        workerNo: string;
+        /** @example 김작업 */
+        workerName: string;
+      } | null;
     };
     /** @description POP 출하 완료 확인 값(P-04-07) — 지시서 코드 스캔과 찾기가 같은 값을 본다. ⛔ ERP 송신 여부는 싣지 않는다(출하 완료 단계 화면에 표시하지 않는다 · 2026-11-18). */
     ShipmentRequestCompletion: {

@@ -274,6 +274,12 @@ describe('ShipmentConfirmScreen — W-04-12 출하 내역', () => {
     expect(await within(dialog).findByText(t.executeDialog.erpAlreadySent)).toBeInTheDocument();
   });
 
+  it('US2-7 W-04-02 완료 지시서의 출하 링크(?shipmentId=)로 열면 그 출하 상세가 열린다', async () => {
+    renderScreen({}, '/shipment/shipment-confirm?shipmentId=101');
+
+    expect(await within(detailPane()).findByText('SYN-SH-101')).toBeInTheDocument();
+  });
+
   it('Q13 결재함 대상 링크(?approvalRequestId=)로 열면 그 결재의 출하 상세가 열린다', async () => {
     renderScreen(
       { cancelApprovals: { 101: 'APPROVED' } },
