@@ -4,7 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
 import { masterName } from '../../patterns/master-name';
-import type { StepWriteVariables } from './queries';
+import type { StepWriteVariables } from './sheet-queries';
 import {
   firstFromItems,
   fullProgress,
@@ -34,26 +34,24 @@ export interface StepPanelProps {
   disabled: boolean;
   isSaving: boolean;
   onSave: (variables: StepWriteVariables) => void;
-  /** 관리웹 「제품 검사표 조회」의 입력 탭(omf-all-around#316) — 관리웹 크기로 그린다. */
-  web?: boolean;
 }
 
 /**
  * 단계별 검사 — 단계를 고르고 항목마다 OK/NG 를 누른다. 1차 판정은 항목이 정한다(하나라도 NG 면 NG).
  * NG 단계는 수리 뒤 재검이 OK 면 「NG → OK」로 저장한다(양식의 판정 칸과 같다).
  */
-export const StepPanel = ({ steps, disabled, isSaving, onSave, web = false }: StepPanelProps) => {
+export const StepPanel = ({ steps, disabled, isSaving, onSave }: StepPanelProps) => {
   const [selected, setSelected] = useState(steps[0]?.stepCode ?? null);
   const step = steps.find((row) => row.stepCode === selected) ?? null;
 
   return (
-    <section className="pane pop-inspection-sheet-steps" aria-label={t.heading}>
+    <section className="pane inspection-sheet-entry-steps" aria-label={t.heading}>
       <h2 className="pane-title">{t.heading}</h2>
-      <div className="pop-inspection-sheet-tabs" role="group" aria-label={t.tabsLabel}>
+      <div className="inspection-sheet-entry-tabs" role="group" aria-label={t.tabsLabel}>
         {steps.map((row) => (
           <Button
             key={row.stepCode}
-            size={web ? 'md' : 'lg'}
+            size="md"
             variant={row.stepCode === selected ? 'filled' : 'outlined'}
             aria-pressed={row.stepCode === selected}
             onClick={() => setSelected(row.stepCode)}
@@ -70,7 +68,6 @@ export const StepPanel = ({ steps, disabled, isSaving, onSave, web = false }: St
           disabled={disabled}
           isSaving={isSaving}
           onSave={onSave}
-          web={web}
         />
       )}
     </section>
@@ -82,11 +79,9 @@ interface StepFormProps {
   disabled: boolean;
   isSaving: boolean;
   onSave: (variables: StepWriteVariables) => void;
-  web: boolean;
 }
 
-const StepForm = ({ step, disabled, isSaving, onSave, web }: StepFormProps) => {
-  const size = web ? 'md' : 'lg';
+const StepForm = ({ step, disabled, isSaving, onSave }: StepFormProps) => {
   const [judgments, setJudgments] = useState<Judgments>(() => savedJudgments(step));
   const [manualFirst, setManualFirst] = useState<InspectionSheetJudgment | null>(
     step.items.length === 0 ? (step.result?.firstJudgmentCode ?? null) : null,
@@ -133,19 +128,19 @@ const StepForm = ({ step, disabled, isSaving, onSave, web }: StepFormProps) => {
   };
 
   return (
-    <div className="pop-inspection-sheet-step">
+    <div className="inspection-sheet-entry-step">
       {oqcLocked && <AlertBanner variant="info">{t.oqcLocked}</AlertBanner>}
       {step.result?.signedAt && !oqcLocked && <p className="field-note">{t.signedWarning}</p>}
       {step.items.length === 0 ? (
         <p className="field-note">{t.noItems}</p>
       ) : (
-        <ul className="pop-inspection-sheet-items" aria-label={t.itemsCaption(name)}>
+        <ul className="inspection-sheet-entry-items" aria-label={t.itemsCaption(name)}>
           {step.items.map((item) => {
             const value = judgments[item.inspectionSheetTemplateItemId];
             return (
               <li key={item.inspectionSheetTemplateItemId}>
-                <span className="pop-inspection-sheet-item-code">{item.checkItemCode}</span>
-                <span className="pop-inspection-sheet-item-name">
+                <span className="inspection-sheet-entry-item-code">{item.checkItemCode}</span>
+                <span className="inspection-sheet-entry-item-name">
                   {masterName(item, item.nameKo)}
                 </span>
                 <Chip size="sm">{t.method[item.methodCode] ?? item.methodCode}</Chip>
@@ -153,7 +148,7 @@ const StepForm = ({ step, disabled, isSaving, onSave, web }: StepFormProps) => {
                   /* ui-check-ignore: C-4 완료된 검사표이거나 출하검사 화면이 기록한 단계라 잠긴다 — 사유는 위 안내 띠 */
                   <Button
                     key={option}
-                    size={size}
+                    size="md"
                     variant={value === option ? 'filled' : 'outlined'}
                     aria-pressed={value === option}
                     aria-label={t.itemJudgment(item.checkItemCode, option)}
@@ -169,14 +164,14 @@ const StepForm = ({ step, disabled, isSaving, onSave, web }: StepFormProps) => {
         </ul>
       )}
 
-      <div className="pop-inspection-sheet-judgment" role="group" aria-label={t.first}>
+      <div className="inspection-sheet-entry-judgment" role="group" aria-label={t.first}>
         <span className="field-label">{t.first}</span>
         {step.items.length === 0 ? (
           (['OK', 'NG'] as const).map((option) => (
             /* ui-check-ignore: C-4 완료된 검사표이거나 출하검사 화면이 기록한 단계라 잠긴다 — 사유는 위 안내 띠 */
             <Button
               key={option}
-              size={size}
+              size="md"
               variant={manualFirst === option ? 'filled' : 'outlined'}
               aria-pressed={manualFirst === option}
               disabled={locked}
@@ -214,7 +209,7 @@ const StepForm = ({ step, disabled, isSaving, onSave, web }: StepFormProps) => {
         </div>
         <Button
           variant="filled"
-          size={web ? 'md' : 'xl'}
+          size="md"
           aria-describedby={noteId}
           disabled={locked || plan.mode === 'blocked' || !changed || isSaving}
           onClick={save}

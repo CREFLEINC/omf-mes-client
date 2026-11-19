@@ -1,28 +1,5 @@
-/** Nhập phiếu kiểm tra sản phẩm (POP · P-02-15). */
+/** Phần nhập phiếu kiểm tra sản phẩm (tab nhập trên web quản trị · #316). */
 export const popInspectionSheet = {
-  title: 'Nhập phiếu kiểm tra sản phẩm',
-
-  serial: {
-    label: 'Số sê-ri máy',
-    placeholder: 'Hãy quét số sê-ri',
-    open: 'Mở',
-    opening: 'Đang mở…',
-  },
-
-  summary: {
-    heading: 'Phiếu kiểm tra',
-    serial: 'Sê-ri',
-    model: 'Model',
-    lot: 'LOT sản xuất',
-    workOrder: 'Lệnh sản xuất',
-    status: 'Trạng thái',
-    writer: 'Người lập',
-    statuses: { IN_PROGRESS: 'Đang soạn', COMPLETED: 'Hoàn tất' } as Record<string, string>,
-    completed:
-      'Phiếu kiểm tra đã hoàn tất. Muốn sửa thì quản lý phải hủy phê duyệt trên web quản trị.',
-    loadFailed: 'Không tải được phiếu kiểm tra.',
-  },
-
   header: {
     heading: 'Thông tin phần đầu',
     note: 'Giá trị được điền tự động. Nếu khác hãy sửa rồi lưu.',

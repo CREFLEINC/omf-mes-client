@@ -37,7 +37,7 @@ export const inspectionSheet = {
     pickHint: '목록에서 검사표를 선택하면 내용을 확인할 수 있습니다.',
   },
 
-  /* 시리얼로 검사표 작성 — POP 「제품 검사표 입력」과 같은 경로(omf-all-around#316). */
+  /* 시리얼로 검사표 작성 — 없으면 새로 만든다(omf-all-around#316). */
   create: {
     button: '시리얼로 작성',
     title: '검사표 작성',

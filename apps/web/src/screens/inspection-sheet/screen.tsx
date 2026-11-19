@@ -32,7 +32,7 @@ import {
   SplitOrientationToggle,
   useSplitOrientation,
 } from '../../patterns/split-orientation';
-import { useOpenSheet, useSheet } from '../pop-inspection-sheet/queries';
+import { useOpenSheet, useSheet } from './sheet-queries';
 import {
   type Decision,
   type InspectionSheetListQuery,
@@ -238,9 +238,9 @@ const StatusChips = ({
 };
 
 /**
- * 제품 검사표 조회(관리웹 · 품질 관리 · W-03-13 · omf-all-around#89). POP 에서 입력한 시리얼별 검사표를 LOT·시리얼로
+ * 제품 검사표 조회(관리웹 · 품질 관리 · W-03-13 · omf-all-around#89). 시리얼별 검사표를 LOT·시리얼로
  * 찾아 본다(후속 공정·품질 부서 조회). 서명 권한(W-03-14)이 있는 관리자는 단계 서명·승인·확인·승인 취소를 한다.
- * 시리얼로 검사표를 열고(없으면 서버가 만든다) 검사 입력 탭에서 POP 와 같이 입력한다(omf-all-around#316).
+ * 시리얼로 검사표를 열고(없으면 서버가 만든다) 검사 입력 탭에서 입력한다(omf-all-around#316).
  */
 /** OA 공장 전용(omf-all-around#89) — 계정 범위에 OA 공장이 없으면 안내만 보이고 조회를 보내지 않는다. */
 export const InspectionSheetScreen = () => (

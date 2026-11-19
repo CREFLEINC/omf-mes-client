@@ -7,8 +7,7 @@ import type {
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
-import { PopSelect } from '../../patterns/pop-select';
-import { Select as WebSelect } from '../../patterns/select';
+import { Select } from '../../patterns/select';
 
 const t = messages.popInspectionSheet.header;
 
@@ -67,20 +66,10 @@ export interface HeaderPanelProps {
   disabled: boolean;
   isSaving: boolean;
   onSave: (header: InspectionSheetHeaderUpdate) => void;
-  /** 관리웹 「제품 검사표 조회」의 입력 탭(omf-all-around#316) — 관리웹 크기 · 펼침 선택 칸으로 그린다. */
-  web?: boolean;
 }
 
 /** 머리 값 — 서버가 만들 때 자동으로 채운 값을 사람이 고친다(담당자 결정 ①). 보낸 값으로 통째로 바뀐다. */
-export const HeaderPanel = ({
-  sheet,
-  disabled,
-  isSaving,
-  onSave,
-  web = false,
-}: HeaderPanelProps) => {
-  const size = web ? 'md' : 'lg';
-  const Select = web ? WebSelect : PopSelect;
+export const HeaderPanel = ({ sheet, disabled, isSaving, onSave }: HeaderPanelProps) => {
   const [header, setHeader] = useState<InspectionSheetHeaderUpdate>(() => headerOf(sheet));
   const set = (patch: Partial<InspectionSheetHeaderUpdate>) =>
     setHeader((prev) => ({ ...prev, ...patch }));
@@ -88,7 +77,7 @@ export const HeaderPanel = ({
   const changed = JSON.stringify(trimmed(header)) !== JSON.stringify(trimmed(headerOf(sheet)));
 
   return (
-    <section className="pane pop-inspection-sheet-header" aria-label={t.heading}>
+    <section className="pane inspection-sheet-entry-header" aria-label={t.heading}>
       <h2 className="pane-title">{t.heading}</h2>
       <p className="field-note">{t.note}</p>
       <div className="form-grid">
@@ -110,7 +99,7 @@ export const HeaderPanel = ({
             <TextField
               key={key}
               label={t[key]}
-              size={size}
+              size="md"
               maxLength={100}
               value={header[key] ?? ''}
               disabled={disabled}
@@ -122,7 +111,7 @@ export const HeaderPanel = ({
           <TextField
             key={key}
             label={t[key]}
-            size={size}
+            size="md"
             maxLength={max}
             value={header[key] ?? ''}
             disabled={disabled}
@@ -155,7 +144,7 @@ export const HeaderPanel = ({
       </div>
       <div className="form-actions">
         <Button
-          size={size}
+          size="md"
           variant="outlined"
           disabled={disabled || isSaving || !changed}
           onClick={() => onSave(trimmed(header))}

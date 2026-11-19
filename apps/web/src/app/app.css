@@ -26873,20 +26873,20 @@ body:has(.page-nav-size [aria-expanded="true"])
   min-width: 0;
 }
 
-.inspection-sheet-entry .pop-inspection-sheet-tabs {
+.inspection-sheet-entry .inspection-sheet-entry-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
   margin-bottom: var(--space-3);
 }
 
-.inspection-sheet-entry .pop-inspection-sheet-step {
+.inspection-sheet-entry .inspection-sheet-entry-step {
   display: grid;
   gap: var(--space-2);
 }
 
 /* 항목 한 줄 — 번호 · 이름 · 전수/발취 · OK · NG. */
-.inspection-sheet-entry .pop-inspection-sheet-items {
+.inspection-sheet-entry .inspection-sheet-entry-items {
   display: grid;
   gap: var(--space-1);
   margin: 0;
@@ -26894,7 +26894,7 @@ body:has(.page-nav-size [aria-expanded="true"])
   list-style: none;
 }
 
-.inspection-sheet-entry .pop-inspection-sheet-items > li {
+.inspection-sheet-entry .inspection-sheet-entry-items > li {
   display: grid;
   grid-template-columns: 5rem minmax(0, 1fr) auto 4.5rem 4.5rem;
   align-items: center;
@@ -26903,17 +26903,17 @@ body:has(.page-nav-size [aria-expanded="true"])
   border-bottom: 1px solid var(--outline-variant);
 }
 
-.inspection-sheet-entry .pop-inspection-sheet-item-code {
+.inspection-sheet-entry .inspection-sheet-entry-item-code {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
 
-.inspection-sheet-entry .pop-inspection-sheet-item-name {
+.inspection-sheet-entry .inspection-sheet-entry-item-name {
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
-.inspection-sheet-entry .pop-inspection-sheet-judgment {
+.inspection-sheet-entry .inspection-sheet-entry-judgment {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -26937,7 +26937,7 @@ body:has(.page-nav-size [aria-expanded="true"])
 }
 
 /* NG 블록 — 한 건씩 테두리로 묶는다. 날짜 칸 옆에 「지금」 단추. */
-.inspection-sheet-entry .pop-inspection-sheet-ng {
+.inspection-sheet-entry .inspection-sheet-entry-ng {
   display: grid;
   gap: var(--space-2);
   margin: 0 0 var(--space-3);
@@ -26946,14 +26946,14 @@ body:has(.page-nav-size [aria-expanded="true"])
   border-radius: var(--radius-md);
 }
 
-.inspection-sheet-entry .pop-inspection-sheet-when {
+.inspection-sheet-entry .inspection-sheet-entry-when {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
   gap: var(--space-2);
 }
 
-.inspection-sheet-entry .pop-inspection-sheet-ng-summary {
+.inspection-sheet-entry .inspection-sheet-entry-ng-summary {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -26964,7 +26964,7 @@ body:has(.page-nav-size [aria-expanded="true"])
   border-radius: var(--radius-md);
 }
 
-.inspection-sheet-entry .pop-inspection-sheet-ng-summary p {
+.inspection-sheet-entry .inspection-sheet-entry-ng-summary p {
   margin: var(--space-1) 0 0;
   overflow-wrap: anywhere;
 }

@@ -139,7 +139,7 @@ const LabelRows = ({ rows }: { rows: readonly (readonly [string, ReactNode])[] }
 /**
  * 제품 검사표 한 장 — 탭 넷: 기본 정보(요약 · 머리 값 · 단계별 검사 · 변경품) / 검사 항목 / NG·수리·재검 기록 / 서명·승인 이력
  * (사용자 시안 2026-11-02 · #217). 단계 줄의 「항목」은 검사 항목 탭으로 옮긴다. 넷은 읽기 전용이고, 작성 중이면 맨 뒤
- * 「검사 입력」 탭에서 POP 와 같이 입력한다(omf-all-around#316).
+ * 「검사 입력」 탭에서 입력한다(omf-all-around#316).
  */
 export const SheetDetail = ({
   sheet,

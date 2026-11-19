@@ -5,8 +5,7 @@ import { useState } from 'react';
 
 import { DateTimeField } from '../../patterns/date-time-field';
 import { masterName } from '../../patterns/master-name';
-import { PopSelect } from '../../patterns/pop-select';
-import { Select as WebSelect } from '../../patterns/select';
+import { Select } from '../../patterns/select';
 
 const t = messages.popInspectionSheet.ng;
 
@@ -91,17 +90,13 @@ export interface NgPanelProps {
   disabled: boolean;
   isSaving: boolean;
   onSave: (ngs: InspectionSheetNgWrite[]) => void;
-  /** 관리웹 「제품 검사표 조회」의 입력 탭(omf-all-around#316) — 관리웹 크기 · 펼침 선택 칸으로 그린다. */
-  web?: boolean;
 }
 
 /**
  * NG·수리·재검 블록 — 양식의 NG 칸(발견 부문·공정, 발생 공정, 표준서·항목 번호, 내용, 조사·수리, 구분, 수리 부문·담당·일,
  * 재검 결과·담당·일)을 한 건씩 적는다. 저장은 통째로 바뀐다. ⛔ 불량 기록(defect_record)은 만들지 않는다(담당자 결정 ⑥).
  */
-export const NgPanel = ({ sheet, disabled, isSaving, onSave, web = false }: NgPanelProps) => {
-  const size = web ? 'md' : 'lg';
-  const Select = web ? WebSelect : PopSelect;
+export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => {
   const [initial] = useState<NgDraft[]>(() => toNgDrafts(sheet));
   const [drafts, setDrafts] = useState<NgDraft[]>(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -145,7 +140,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave, web = false }: NgPa
   };
 
   return (
-    <section className="pane pop-inspection-sheet-ngs" aria-label={t.heading}>
+    <section className="pane inspection-sheet-entry-ngs" aria-label={t.heading}>
       <h2 className="pane-title">{t.heading}</h2>
       <p className="field-note">{t.note}</p>
       {drafts.length === 0 && <p className="field-note">{t.empty}</p>}
@@ -164,7 +159,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave, web = false }: NgPa
                 ? [t.statusRepaired, 'info' as const]
                 : [t.statusOpen, 'warning' as const];
           return (
-            <div key={draft.key} className="pop-inspection-sheet-ng-summary">
+            <div key={draft.key} className="inspection-sheet-entry-ng-summary">
               <div>
                 <strong>{t.block(n)}</strong>{' '}
                 <Chip size="sm" status={tone}>
@@ -176,7 +171,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave, web = false }: NgPa
                 <p>{draft.ngContent || t.none}</p>
               </div>
               <Button
-                size={size}
+                size="md"
                 variant="outlined"
                 aria-label={`${t.block(n)} ${t.edit}`}
                 onClick={() => toggle(draft.key, true)}
@@ -194,7 +189,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave, web = false }: NgPa
         ) => (
           <TextField
             label={label}
-            size={size}
+            size="md"
             maxLength={max}
             value={value ?? ''}
             disabled={disabled}
@@ -219,7 +214,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave, web = false }: NgPa
           </div>
         );
         const when = (label: string, value: string, patch: (v: string) => Partial<NgDraft>) => (
-          <div className="field-cell pop-inspection-sheet-when">
+          <div className="field-cell inspection-sheet-entry-when">
             <DateTimeField
               label={label}
               value={value}
@@ -227,7 +222,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave, web = false }: NgPa
               onChange={(next) => set(draft.key, patch(next))}
             />
             <Button
-              size={size}
+              size="md"
               variant="outlined"
               disabled={disabled}
               onClick={() => set(draft.key, patch(nowInput()))}
@@ -237,7 +232,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave, web = false }: NgPa
           </div>
         );
         return (
-          <fieldset key={draft.key} className="pop-inspection-sheet-ng">
+          <fieldset key={draft.key} className="inspection-sheet-entry-ng">
             <legend>{t.block(n)}</legend>
             <div className="form-grid">
               {pick(
@@ -258,7 +253,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave, web = false }: NgPa
             </div>
             <TextField
               label={t.ngContent}
-              size={size}
+              size="md"
               maxLength={1000}
               value={draft.ngContent}
               disabled={disabled}
@@ -293,14 +288,14 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave, web = false }: NgPa
             <div className="form-actions">
               {!disabled && (
                 <Button
-                  size={size}
+                  size="md"
                   variant="text"
                   onClick={() => setDrafts((prev) => prev.filter((d) => d.key !== draft.key))}
                 >
                   {t.remove(n)}
                 </Button>
               )}
-              <Button size={size} variant="outlined" onClick={() => toggle(draft.key, false)}>
+              <Button size="md" variant="outlined" onClick={() => toggle(draft.key, false)}>
                 {t.collapse}
               </Button>
             </div>
@@ -309,7 +304,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave, web = false }: NgPa
       })}
       <div className="form-actions">
         <Button
-          size={size}
+          size="md"
           variant="outlined"
           disabled={disabled}
           onClick={() => {
@@ -321,7 +316,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave, web = false }: NgPa
           {t.add}
         </Button>
         <Button
-          size={size}
+          size="md"
           // ui-check-ignore: C-4 바뀐 값이 없거나 저장 중일 때만 잠긴다 — 고칠 것이 없다는 것 말고 사유가 없다
           disabled={disabled || isSaving || !changed}
           onClick={save}
