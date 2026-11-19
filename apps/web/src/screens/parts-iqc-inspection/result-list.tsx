@@ -171,7 +171,7 @@ export const ResultList = ({
 
   const ordered = useColumnOrder('omf-mes:iqc-inbound-results:columns:order', baseColumns);
   const resizable = useColumnWidths('omf-mes:iqc-inbound-results:columns', ordered);
-  const fit = useFitColumns(resizable.columns, {});
+  const fit = useFitColumns(resizable.columns, { scrollX: true });
 
   /* 결과가 없어도 첨부 파일 표처럼 머리줄을 두고 안내는 표 안에(사용자 지시 2026-11-19 · omf-all-around#296). */
   return (

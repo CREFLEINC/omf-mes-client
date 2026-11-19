@@ -213,7 +213,7 @@ export const InboundAttachmentTable = ({
   ];
   const ordered = useColumnOrder('omf-mes:iqc-inbound-attachments:columns:order', baseColumns);
   const resizable = useColumnWidths('omf-mes:iqc-inbound-attachments:columns', ordered);
-  const fit = useFitColumns(resizable.columns, {});
+  const fit = useFitColumns(resizable.columns, { scrollX: true });
 
   return (
     <div className="iqc-inbound-attachments">
