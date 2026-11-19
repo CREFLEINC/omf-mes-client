@@ -36,7 +36,7 @@ export const lotStatusTransition = {
       item: '품목',
       status: '상태',
       onHand: '보유 수량',
-      held: '보류 수량',
+      held: '보류량',
     },
     /** 행을 고르는 단추의 접근성 이름 — 표 안에서는 LOT 번호만 보이므로 이름에 붙여 준다. */
     select: (lotNo: string): string => `${lotNo} 선택`,
@@ -78,8 +78,8 @@ export const lotStatusTransition = {
       pane: '열린 보류 목록',
       title: '해제할 보류',
       reason: '보류 사유',
-      heldAt: '보류 시각',
-      quantity: '보류 수량',
+      heldAt: '보류일시',
+      quantity: '보류량',
       full: '전량',
       target: '해제 대상',
       select: '선택',
@@ -101,7 +101,7 @@ export const lotStatusTransition = {
     scope: '보류 범위',
     full: '전량 보류',
     partial: '일부 보류',
-    quantity: '보류 수량',
+    quantity: '보류량',
     remarks: '보류 비고',
     confirm: '등록 확인',
     dialogTitle: (lotNo: string): string => `LOT 보류 등록 — ${lotNo}`,
@@ -109,10 +109,10 @@ export const lotStatusTransition = {
     register: '보류 등록',
     reload: '최신 불러오기',
     success: 'LOT 보류를 등록했습니다.',
-    quantityPositive: '보류 수량은 0보다 커야 합니다.',
+    quantityPositive: '보류량은 0보다 커야 합니다.',
     quantityUnknown: '보류 가능 수량을 확인하지 못했습니다.',
     quantityMax: (maximum: string): string =>
-      `보류 수량은 보류 가능 수량 ${maximum} 이하여야 합니다.`,
+      `보류량은 보류 가능 수량 ${maximum} 이하여야 합니다.`,
     /** 확인 대화상자가 미리 보여 주는 「이 전이가 무엇을 막는가」. */
     impact: {
       title: '이 전이가 하는 일',
@@ -150,8 +150,8 @@ export const lotStatusTransition = {
     reload: '최신 불러오기',
     success: 'LOT 보류를 해제했습니다.',
     quantityPositive: '해제 수량은 0보다 커야 합니다.',
-    quantityUnknown: '해제 가능한 보류 수량을 확인하지 못했습니다.',
-    quantityMax: (maximum: string): string => `해제 수량은 보류 수량 ${maximum} 이하여야 합니다.`,
+    quantityUnknown: '해제 가능한 보류량을 확인하지 못했습니다.',
+    quantityMax: (maximum: string): string => `해제 수량은 보류량 ${maximum} 이하여야 합니다.`,
     remarksRequired: '비고를 입력하세요.',
     /** 확인 창 — 해제 정보(대상 수량·위치·결과 설명)와 주의(두 줄)를 가른다. */
     impact: {

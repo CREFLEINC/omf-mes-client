@@ -1,14 +1,25 @@
-import { Button, Dialog, Icon, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import {
+  PuButton,
+  PuChip,
+  PuDialog,
+  PuField,
+  PuInput,
+  PuKv,
+  PuNote,
+  PuTiles,
+  PuUnit,
+  type PuChipTone,
+  type PuTileOption,
+} from '../../patterns/pop-uniform';
 import { isKnownCode, labelOfCode, type CodeOption } from '../oqc-inspection/code-options';
 import { CONFIRMED_STATUS } from '../oqc-inspection/inspection-status';
 import {
   canConfirm,
-  formatMicro,
   hasQuantityError,
   toTotals,
   validateQuantities,
@@ -18,21 +29,21 @@ import {
 } from '../oqc-inspection/quantity-draft';
 import { toTransitionPreview, type TransitionPreview } from '../oqc-inspection/transition-preview';
 import type { InspectionResultRound } from '../oqc-inspection/types';
+import { withUom } from '../oqc-inspection/uom-lookup';
 
 /*
- * P-04-06 판정 입력 · 바닥 저장 띠 · 저장 확인 창(omf-all-around#109 UI/UX 개선).
+ * P-04-06 판정 입력(1 수량 입력 › 2 최종 판정) · 저장 확인 창(omf-all-around#109 · #295 POP 통일).
  *
  * ⭐ **판정 규칙은 W-04-03 `ResultFormPane` 과 같다** — 같은 계산 부품(`quantity-draft` ·
  * `transition-preview`)을 쓰고, 저장을 막는 사유의 순서·확인 창을 여는 조건·검사 시각을 창을 여는
  * 순간 한 번 읽는 것(멱등 키)까지 그대로 옮겼다. 다른 것은 배치와 문구뿐이다. 판정 규칙을 고치면
  * 두 곳을 함께 고친다.
  *
- * POP 은 저장 단추가 화면 바닥 띠에 선다(다른 POP 화면과 같은 자리) — 그래서 상태를 훅 하나에
- * 두고, 입력 구획과 바닥 띠가 같은 값을 읽는다.
+ * 저장 단추는 화면 아래 작업 줄에 선다 — 그래서 상태를 훅 하나에 두고, 입력 구획과 작업 줄이 같은
+ * 값을 읽는다.
  */
 
 const t = messages.popOqcInspection;
-const unknownValue = messages.oqcInspection.queue.emptyValue;
 
 /** 계약이 짚어 줄 수 있는 칸 이름 ↔ 화면의 초안 칸. */
 const FIELD_OF: Record<keyof QuantityDraft, string> = {
@@ -40,6 +51,8 @@ const FIELD_OF: Record<keyof QuantityDraft, string> = {
   rejected: 'rejectedQty',
   held: 'heldQty',
 };
+
+export const QUANTITY_KEYS: readonly (keyof QuantityDraft)[] = ['accepted', 'rejected', 'held'];
 
 const DIRECTION_TEXT = {
   release: t.warning.directionRelease,
@@ -56,15 +69,12 @@ const PICKED_DIRECTION_TEXT = {
   unknown: t.warning.directionUnknown,
 } as const;
 
-/** 판정 단추의 색 — 뜻이 정해진 코드만 색을 갖는다. 모르는 코드는 무채색이다. */
-const toneOf = (code: string): 'accepted' | 'rejected' | 'held' | 'neutral' =>
-  code === 'ACCEPTED'
-    ? 'accepted'
-    : code === 'REJECTED'
-      ? 'rejected'
-      : code === 'HELD'
-        ? 'held'
-        : 'neutral';
+/** 판정 색 — 뜻이 정해진 코드만 색을 갖는다. 모르는 코드는 무채색이다. */
+const judgeOf = (code: string): PuTileOption['judge'] =>
+  code === 'ACCEPTED' ? 'ok' : code === 'REJECTED' ? 'ng' : code === 'HELD' ? 'hold' : undefined;
+
+export const judgmentTone = (code: string): PuChipTone =>
+  code === 'ACCEPTED' ? 'ok' : code === 'REJECTED' ? 'bad' : code === 'HELD' ? 'warn' : 'idle';
 
 export interface PopJudgmentInput {
   /** 입력 구획이 서 있는가(의뢰·회차를 다 받았다). 아니면 `idleReason` 이 저장을 막는다. */
@@ -159,315 +169,182 @@ export const usePopJudgment = (input: PopJudgmentInput): PopJudgmentState => {
   };
 };
 
-export interface PopJudgmentFormProps {
+/** 넣은 수량 요약 줄(검사 · 합격 · 불합격 · 보류). */
+export const PopQtySummary = ({
+  inspected,
+  accepted,
+  rejected,
+  held,
+  uom,
+}: {
+  inspected: string;
+  accepted: string;
+  rejected: string;
+  held: string;
+  /** 수량 옆 단위 코드 — 모르면 숫자만. */
+  uom: string | null;
+}) => (
+  <div className="oqc-qsum">
+    <span>
+      {t.result.summary.inspectedQty} <b>{withUom(inspected, uom)}</b>
+    </span>
+    <span>
+      {t.result.summary.accepted} <b>{withUom(accepted, uom)}</b>
+    </span>
+    <span>
+      {t.result.summary.rejected} <b>{withUom(rejected, uom)}</b>
+    </span>
+    <span>
+      {t.result.summary.held} <b>{withUom(held, uom)}</b>
+    </span>
+  </div>
+);
+
+export interface PopQuantityStepProps {
   formId: string;
-  state: PopJudgmentState;
-  isReinspecting: boolean;
-  round: InspectionResultRound | null;
-  inspectedQty: number;
   draft: QuantityDraft;
   onChange: (draft: QuantityDraft) => void;
+  disabled: boolean;
+  /** 키패드가 지금 넣는 칸. */
+  target: keyof QuantityDraft | null;
+  onTarget: (key: keyof QuantityDraft) => void;
+  fieldErrors: Record<string, string>;
+  /** 칸 오른쪽 단위 코드 — 모르면 붙이지 않는다. */
+  uom: string | null;
+}
+
+/** 1단계 — 합격 · 불합격 · 보류 수량. 숫자는 오른쪽 「수량 키패드」로도 넣는다. */
+export const PopQuantityStep = ({
+  formId,
+  draft,
+  onChange,
+  disabled,
+  target,
+  onTarget,
+  fieldErrors,
+  uom,
+}: PopQuantityStepProps) => (
+  <div className="oqc-qgrid">
+    {QUANTITY_KEYS.map((key) => {
+      const id = `${formId}-${key}`;
+      const error = fieldErrors[FIELD_OF[key]];
+
+      return (
+        <PuField key={key} label={t.result.fields[key]} htmlFor={id}>
+          <div className="pu-row">
+            <PuInput
+              id={id}
+              numeric
+              inputMode="decimal"
+              autoComplete="off"
+              placeholder="0"
+              value={draft[key]}
+              disabled={disabled}
+              target={target === key}
+              need={error !== undefined}
+              onFocus={() => {
+                onTarget(key);
+              }}
+              onChange={(event) => {
+                onChange({ ...draft, [key]: event.target.value });
+              }}
+            />
+            {uom !== null && <PuUnit>{uom}</PuUnit>}
+          </div>
+          {error !== undefined && <span className="oqc-field-err">{error}</span>}
+        </PuField>
+      );
+    })}
+  </div>
+);
+
+export interface PopJudgmentStepProps {
+  formId: string;
+  state: PopJudgmentState;
+  /** 재검사면 새로 쌓일 회차 번호, 아니면 `null`. */
+  reinspectRound: number | null;
+  inspectedQty: number;
+  /** 수량 옆 단위 코드 — 모르면 숫자만. */
+  uom: string | null;
   judgmentOptions: CodeOption[];
   judgment: string;
   onJudgmentChange: (code: string) => void;
-  isSaving: boolean;
-  fieldErrors: Record<string, string>;
+  disabled: boolean;
   /** 의뢰에 대상 LOT 이 있는가. 없으면 출하작업지시 OQC 다 — 서버가 그 지시가 집은 LOT 에 판정을 남긴다(#119). */
   hasLot: boolean;
-  /** 「검사한 시리얼」 단계(omf-all-around#68) — 출하작업지시 의뢰의 열린 회차에서만 부모가 넘긴다. */
-  serialStep?: ReactNode;
-  /** 회차 이력 등 입력 구획 아래에 붙는 것. */
-  children?: ReactNode;
+  fieldErrors: Record<string, string>;
+  /** 「시리얼 검사 기록」 줄 — 출하작업지시 의뢰에서만 부모가 넘긴다(omf-all-around#68). */
+  serials?: ReactNode;
 }
 
-export const PopJudgmentForm = ({
+/** 2단계 — 넣은 수량 요약 · 종합 판정 · 시리얼 검사 기록. 저장은 작업 줄의 [판정 저장](이 폼 제출). */
+export const PopJudgmentStep = ({
   formId,
   state,
-  isReinspecting,
-  round,
+  reinspectRound,
   inspectedQty,
-  draft,
-  onChange,
+  uom,
   judgmentOptions,
   judgment,
   onJudgmentChange,
-  isSaving,
-  fieldErrors,
+  disabled,
   hasLot,
-  serialStep,
-  children,
-}: PopJudgmentFormProps) => {
-  const { isLocked, isConfirmed, errors, totals, preview, showErrors } = state;
-  const lockNoteId = `${formId}-lock`;
-  const disabled = isLocked || isSaving;
-
-  const roundLabel = isReinspecting
-    ? t.result.reinspectRound
-    : round === null
-      ? t.result.firstRound
-      : t.result.round(round.inspectionRound);
-
-  /* 셀 수 없으면 합계를 말하지 않는다 — 0 으로 읽은 합은 거짓이다(W-04-03 과 같다). */
-  const totalsState =
-    totals.kind === 'uncountable'
-      ? 'uncountable'
-      : totals.matches
-        ? 'matched'
-        : totals.remaining > 0n
-          ? 'short'
-          : 'over';
-  const totalsNote =
-    totals.kind === 'uncountable'
-      ? t.result.uncountable
-      : totals.matches
-        ? t.result.matched
-        : totals.remaining > 0n
-          ? t.result.short(formatMicro(totals.remaining))
-          : t.result.over(formatMicro(-totals.remaining));
-
-  const field = (key: keyof QuantityDraft, label: string) => (
-    <TextField
-      label={label}
-      size="xl"
-      inputMode="decimal"
-      autoComplete="off"
-      value={draft[key]}
-      disabled={disabled}
-      aria-describedby={isLocked ? lockNoteId : undefined}
-      error={
-        fieldErrors[FIELD_OF[key]] ??
-        (showErrors && errors[key] ? t.result.quantityInvalid : undefined)
-      }
-      onChange={(event) => onChange({ ...draft, [key]: event.target.value })}
-    />
-  );
+  fieldErrors,
+  serials,
+}: PopJudgmentStepProps) => {
+  const { preview, showErrors, errors } = state;
+  const quantityError =
+    QUANTITY_KEYS.map((key) => fieldErrors[FIELD_OF[key]]).find((error) => error !== undefined) ??
+    (showErrors && hasQuantityError(errors) ? t.result.quantityInvalid : undefined);
 
   return (
     <form
       id={formId}
-      className="pop-oqc-form"
-      aria-label={t.result.heading}
+      className="oqc-jstep"
+      aria-label={t.result.judgmentTitle}
       onSubmit={state.submit}
     >
-      <div className="pop-oqc-form__head">
-        <h3>{t.result.heading}</h3>
-        <span className="pop-oqc-round">{roundLabel}</span>
-      </div>
-
-      {isReinspecting && (
-        <p className="field-note">
-          {t.result.reinspectNote} {t.result.reinspectReasonPending}
-        </p>
+      {reinspectRound !== null && <PuNote>{t.result.reinspectNote(reinspectRound)}</PuNote>}
+      {preview !== null && (
+        <PopQtySummary
+          inspected={String(inspectedQty)}
+          accepted={preview.accepted}
+          rejected={preview.rejected}
+          held={preview.held}
+          uom={uom}
+        />
       )}
-
-      {isLocked && (
-        <p className="pop-oqc-lock" id={lockNoteId}>
-          <Icon name="lock" size={20} aria-hidden />
-          <span>{isConfirmed ? t.result.confirmed : t.result.draftElsewhere}</span>
-        </p>
+      {quantityError !== undefined && <PuNote tone="bad">{quantityError}</PuNote>}
+      <PuField label={t.result.judgmentStep} required>
+        <PuTiles
+          label={t.result.judgmentStep}
+          cols={3}
+          value={judgment === '' ? null : judgment}
+          disabled={disabled}
+          options={judgmentOptions.map((option) => ({
+            value: option.value,
+            label: option.label,
+            judge: judgeOf(option.value),
+          }))}
+          onChange={onJudgmentChange}
+        />
+      </PuField>
+      {judgmentOptions.length === 0 && <PuNote tone="warn">{t.result.judgmentUnavailable}</PuNote>}
+      {!isKnownCode(judgmentOptions, judgment) && (
+        <PuNote tone="warn">{t.result.judgmentUnknown(judgment)}</PuNote>
       )}
-
-      <section className="pop-oqc-step" aria-label={t.result.quantityStep}>
-        <p className="pop-oqc-step__title">
-          <span className="pop-oqc-step__no" aria-hidden>
-            1
-          </span>
-          <span>{t.result.quantityStep}</span>
-          <span className="pop-oqc-step__hint">{t.result.quantityHint}</span>
-        </p>
-        <div className="pop-oqc-qty">
-          {field('accepted', t.result.fields.accepted)}
-          {field('rejected', t.result.fields.rejected)}
-          {field('held', t.result.fields.held)}
-        </div>
-        <div
-          className={[
-            'pop-oqc-total',
-            {
-              short: 'pop-oqc-total--short',
-              uncountable: 'pop-oqc-total--uncountable',
-              matched: 'pop-oqc-total--matched',
-              over: 'pop-oqc-total--over',
-            }[totalsState],
-          ].join(' ')}
-        >
-          <dl>
-            <div>
-              <dt>{t.result.inspectedQty}</dt>
-              <dd className="pop-oqc-num">{String(inspectedQty)}</dd>
-            </div>
-            <div>
-              <dt>{t.result.sum}</dt>
-              <dd className="pop-oqc-num">
-                {totals.kind === 'counted' ? formatMicro(totals.sum) : unknownValue}
-              </dd>
-            </div>
-            <div>
-              <dt>{t.result.remaining}</dt>
-              <dd className="pop-oqc-num">
-                {totals.kind === 'counted' ? formatMicro(totals.remaining) : unknownValue}
-              </dd>
-            </div>
-          </dl>
-          {!isLocked && (
-            <p role="status">
-              <Icon
-                name={totalsState === 'matched' ? 'check_circle' : 'info'}
-                size={20}
-                aria-hidden
-              />
-              <span>{totalsNote}</span>
-            </p>
-          )}
-        </div>
-      </section>
-
-      <section className="pop-oqc-step" aria-label={t.result.judgmentStep}>
-        <p className="pop-oqc-step__title">
-          <span className="pop-oqc-step__no" aria-hidden>
-            2
-          </span>
-          <span>{t.result.judgmentStep}</span>
-          <span className="pop-oqc-step__hint">{t.result.judgmentHint}</span>
-        </p>
-        <div role="group" aria-label={t.result.judgmentStep} className="pop-oqc-judge-row">
-          {judgmentOptions.map((option) => {
-            const pressed = option.value === judgment;
-
-            return (
-              <button
-                key={option.value}
-                type="button"
-                className={[
-                  'pop-oqc-judge',
-                  {
-                    accepted: 'pop-oqc-judge--accepted',
-                    rejected: 'pop-oqc-judge--rejected',
-                    held: 'pop-oqc-judge--held',
-                    neutral: 'pop-oqc-judge--neutral',
-                  }[toneOf(option.value)],
-                ].join(' ')}
-                aria-pressed={pressed}
-                disabled={disabled}
-                onClick={() => onJudgmentChange(option.value)}
-              >
-                {pressed && <Icon name="check_circle" size={24} aria-hidden />}
-                <span>{option.label}</span>
-              </button>
-            );
-          })}
-        </div>
-        {judgmentOptions.length === 0 && (
-          <p className="field-note">{t.result.judgmentUnavailable}</p>
-        )}
-        {!isKnownCode(judgmentOptions, judgment) && (
-          <p className="field-note">{t.result.judgmentUnknown(judgment)}</p>
-        )}
-      </section>
-
-      {!isLocked && serialStep}
-
       {/*
-       * 저장 전에 LOT 이 어떻게 되는지 한 줄로 보인다 — 조건은 W-04-03 의 전이 경고와 같다(잠기지 않았고
-       * 셀 수 있을 때). 피킹·처분 같은 나머지 고지는 확인 창이 맡는다(같은 말을 두 번 하지 않는다).
+       * 고른 판정으로 저장하면 LOT 이 어떻게 되는지 한 줄 — 문장은 W-04-03 의 전이 경고와 같다.
+       * 피킹·처분 같은 나머지 고지는 확인 창이 맡는다(같은 말을 두 번 하지 않는다).
        */}
-      {!isLocked && preview !== null && (
-        <section className="pop-oqc-effect" aria-label={t.warning.title}>
-          <p className="pop-oqc-effect__lead">
-            <Icon name="warning" size={20} aria-hidden />
-            <span>{(hasLot ? DIRECTION_TEXT : PICKED_DIRECTION_TEXT)[preview.direction]}</span>
-          </p>
-          <p className="pop-oqc-effect__sub">{t.warning.noAmendment}</p>
-        </section>
+      {preview !== null && judgment !== '' && (
+        <PuNote tone="warn">
+          <span>{(hasLot ? DIRECTION_TEXT : PICKED_DIRECTION_TEXT)[preview.direction]}</span>{' '}
+          {t.warning.noAmendment}
+        </PuNote>
       )}
-
-      {children}
+      {serials}
     </form>
-  );
-};
-
-export interface PopJudgmentBarProps {
-  formId: string;
-  state: PopJudgmentState;
-  isSaving: boolean;
-  isJustSaved: boolean;
-  saveError: ApiError | null;
-  onReload: () => void;
-  isReinspecting: boolean;
-  onStartReinspection: () => void;
-  onCancelReinspection: () => void;
-}
-
-/** 화면 바닥 띠 — 지금 저장할 수 있는지와 그 이유가 늘 같은 자리에 선다. */
-export const PopJudgmentBar = ({
-  formId,
-  state,
-  isSaving,
-  isJustSaved,
-  saveError,
-  onReload,
-  isReinspecting,
-  onStartReinspection,
-  onCancelReinspection,
-}: PopJudgmentBarProps) => {
-  const { isLocked, blockedReason, showErrors, errors, openedAt } = state;
-  const invalid = showErrors && hasQuantityError(errors);
-  const canSave = blockedReason === null && !isSaving;
-
-  const note = isSaving ? (
-    <p className="pop-oqc-bar-note">{t.bar.saving}</p>
-  ) : isJustSaved ? (
-    <p className="pop-oqc-bar-note pop-oqc-bar-note--success">
-      <Icon name="check_circle" size={24} aria-hidden />
-      <span>{t.bar.saved}</span>
-    </p>
-  ) : saveError !== null && openedAt === null ? (
-    <SaveErrorBanner error={saveError} onReload={onReload} />
-  ) : invalid ? (
-    <p className="pop-oqc-bar-note pop-oqc-bar-note--blocked">
-      <Icon name="error" size={24} aria-hidden />
-      <span>{t.bar.blocked.invalid}</span>
-    </p>
-  ) : blockedReason !== null ? (
-    <p className="pop-oqc-bar-note pop-oqc-bar-note--blocked">
-      <Icon name="info" size={24} aria-hidden />
-      <span>{blockedReason}</span>
-    </p>
-  ) : (
-    <p className="pop-oqc-bar-note pop-oqc-bar-note--ready">
-      <Icon name="check_circle" size={24} aria-hidden />
-      <span>{t.bar.ready}</span>
-    </p>
-  );
-
-  return (
-    <div className="pop-action-bar">
-      <div className="pop-action-note" aria-live="polite">
-        {note}
-      </div>
-      {isLocked ? (
-        <Button type="button" size="2xl" variant="outlined" onClick={onStartReinspection}>
-          {t.bar.reinspect}
-        </Button>
-      ) : (
-        <>
-          {isReinspecting && (
-            <Button
-              type="button"
-              size="2xl"
-              variant="outlined"
-              disabled={isSaving}
-              onClick={onCancelReinspection}
-            >
-              {t.bar.reinspectCancel}
-            </Button>
-          )}
-          <Button type="submit" form={formId} size="2xl" variant="filled" disabled={!canSave}>
-            {isSaving ? t.bar.saving : t.bar.save}
-          </Button>
-        </>
-      )}
-    </div>
   );
 };
 
@@ -476,8 +353,12 @@ export interface PopConfirmDialogProps {
   judgmentOptions: CodeOption[];
   judgment: string;
   inspectedQty: number;
+  /** 수량 옆 단위 코드 — 모르면 숫자만. */
+  uom: string | null;
   preview: TransitionPreview | null;
   hasLot: boolean;
+  /** 「시리얼 n대 · NG n대」 — 출하작업지시 의뢰에서만. */
+  serialSummary?: string;
   saveError: ApiError | null;
   onReload: () => void;
   isSaving: boolean;
@@ -487,100 +368,76 @@ export interface PopConfirmDialogProps {
 
 /**
  * 저장 확인 창 — ⭐ **쓰기는 이 창의 [판정 저장]에서만 나간다**(W-04-03 `ConfirmDialog` 와 같은 규칙).
- * 바깥을 눌러도 닫히지 않고, 저장 중에는 닫히지 않으며, 실패해도 닫지 않는다(같은 멱등 키로 다시 누른다).
+ * 저장 중에는 닫히지 않으며, 실패해도 닫지 않는다(같은 멱등 키로 다시 누른다).
  */
 export const PopConfirmDialog = ({
   inspectionRequestNo,
   judgmentOptions,
   judgment,
   inspectedQty,
+  uom,
   preview,
   hasLot,
+  serialSummary,
   saveError,
   onReload,
   isSaving,
   onClose,
   onConfirm,
-}: PopConfirmDialogProps) => (
-  <Dialog
-    open
-    size="lg"
-    className="pop-oqc-confirm"
-    closeOnBackdropClick={false}
-    showCloseButton={false}
-    title={t.confirm.title}
-    footer={
-      <>
-        <Button size="xl" disabled={isSaving} variant="outlined" onClick={onClose}>
-          {t.confirm.cancel}
-        </Button>
-        <Button size="xl" loading={isSaving} variant="filled" onClick={onConfirm}>
-          {t.confirm.confirm}
-        </Button>
-      </>
-    }
-    onClose={() => {
-      if (!isSaving) onClose();
-    }}
-  >
-    <SaveErrorBanner error={saveError} onReload={onReload} />
-    <dl className="pop-oqc-confirm__facts">
-      <div>
-        <dt>{t.confirm.request}</dt>
-        <dd>{inspectionRequestNo}</dd>
-      </div>
-      <div>
-        <dt>{t.confirm.judgment}</dt>
-        <dd className={`pop-oqc-confirm__judgment pop-oqc-confirm__judgment--${toneOf(judgment)}`}>
-          {labelOfCode(judgmentOptions, judgment)}
-        </dd>
-      </div>
-    </dl>
-    {preview !== null && (
-      <dl className="pop-oqc-confirm__qty">
-        <div>
-          <dt>{t.confirm.inspectedQty}</dt>
-          <dd className="pop-oqc-num">{String(inspectedQty)}</dd>
-        </div>
-        <div>
-          <dt>{t.confirm.accepted}</dt>
-          <dd className="pop-oqc-num">{preview.accepted}</dd>
-        </div>
-        <div>
-          <dt>{t.confirm.rejected}</dt>
-          <dd className="pop-oqc-num">{preview.rejected}</dd>
-        </div>
-        <div>
-          <dt>{t.confirm.held}</dt>
-          <dd className="pop-oqc-num">{preview.held}</dd>
-        </div>
-      </dl>
-    )}
-    {preview !== null && (
-      <section className="pop-oqc-confirm__block" aria-label={t.confirm.effects}>
-        <h4>{t.confirm.effects}</h4>
-        <ul>
-          <li>
-            <strong>{(hasLot ? DIRECTION_TEXT : PICKED_DIRECTION_TEXT)[preview.direction]}</strong>
-          </li>
-          <li>{t.warning.picking}</li>
-        </ul>
-      </section>
-    )}
-    <section
-      className="pop-oqc-confirm__block pop-oqc-confirm__block--caution"
-      aria-label={t.confirm.caution}
+}: PopConfirmDialogProps) => {
+  const close = (): void => {
+    if (!isSaving) onClose();
+  };
+  const facts = [
+    { label: t.confirm.request, value: <span className="pu-mono">{inspectionRequestNo}</span> },
+    {
+      label: t.confirm.judgment,
+      value: (
+        <PuChip tone={judgmentTone(judgment)}>{labelOfCode(judgmentOptions, judgment)}</PuChip>
+      ),
+    },
+    { label: t.confirm.inspectedQty, value: withUom(String(inspectedQty), uom) },
+    ...(preview === null
+      ? []
+      : [
+          { label: t.confirm.accepted, value: withUom(preview.accepted, uom) },
+          { label: t.confirm.rejected, value: withUom(preview.rejected, uom) },
+          { label: t.confirm.held, value: withUom(preview.held, uom) },
+        ]),
+    ...(serialSummary === undefined ? [] : [{ label: t.confirm.serials, value: serialSummary }]),
+  ];
+
+  return (
+    <PuDialog
+      title={t.confirm.title}
+      onClose={close}
+      footer={
+        <>
+          <PuButton disabled={isSaving} onClick={close}>
+            {t.confirm.cancel}
+          </PuButton>
+          <PuButton variant="primary" disabled={isSaving} onClick={onConfirm}>
+            {isSaving ? t.bar.saving : t.confirm.confirm}
+          </PuButton>
+        </>
+      }
     >
-      <h4>
-        <Icon name="warning" size={20} aria-hidden />
-        <span>{t.confirm.caution}</span>
-      </h4>
-      <ul>
-        <li>
-          <strong>{t.warning.noAmendment}</strong>
-        </li>
-        <li>{t.warning.dispositionPath}</li>
-      </ul>
-    </section>
-  </Dialog>
-);
+      <SaveErrorBanner error={saveError} onReload={onReload} />
+      <PuKv cols2 items={facts} />
+      {preview !== null && (
+        <div className="oqc-confirm-effects">
+          <div className="pu-label">{t.confirm.effects}</div>
+          <ul>
+            <li>
+              <b>{(hasLot ? DIRECTION_TEXT : PICKED_DIRECTION_TEXT)[preview.direction]}</b>
+            </li>
+            <li>{t.warning.picking}</li>
+          </ul>
+        </div>
+      )}
+      <PuNote tone="warn">
+        <b>{t.confirm.caution}</b> — {t.warning.noAmendment} {t.warning.dispositionPath}
+      </PuNote>
+    </PuDialog>
+  );
+};

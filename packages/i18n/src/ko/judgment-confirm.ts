@@ -27,7 +27,7 @@ export const judgmentConfirm = {
   /** PQC — 작업지시 단위 전이(서버 inspection-confirm.service: 합격 → 검사 대기 생산 LOT 정상, 불합격은 합격판정개수를 넘을 때만 검사 대기, 보류는 그대로). */
   pqcLotState: {
     release: '정상',
-    hold: '불합격 수량이 허용 기준을 넘으면 검사 대기',
+    hold: '불합격량이 허용 기준을 넘으면 검사 대기',
     pending: '변경 없음',
     unknown: '변경',
   },

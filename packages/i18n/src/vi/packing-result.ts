@@ -1,90 +1,80 @@
 import type { ko } from '../ko';
 import type { Translated } from './translated';
 
-/** P-04-01 Packing(P&P) 실적 등록 — POP. */
 export const packingResult: Translated<typeof ko.packingResult> = {
-  title: 'Đóng gói xuất hàng',
-  panes: {
-    scan: 'Quét',
-    packing: 'Cấu thành kiện',
-    progress: 'Tiến độ',
+  steps: {
+    label: 'Các bước đóng gói',
+    shipment: 'Chọn xuất hàng',
+    scan: 'Loại kiện·quét LOT',
+    review: 'Kiểm tra nội dung',
   },
-  header: {
-    shipment: (shipmentId: number): string => `Xuất hàng #${String(shipmentId)}`,
-    shipmentContext: (shipmentRequestNo: string, customerName: string): string =>
-      `${shipmentRequestNo} · ${customerName}`,
-    worker: (workerNo: string): string => `Mã nhân viên ${workerNo}`,
-    workerUnknown: 'Chưa xác nhận mã nhân viên',
-    terminalUnknown: 'Chưa xác nhận máy trạm',
-    online: 'Trực tuyến',
-    offline: 'Ngoại tuyến',
+  shipments: {
+    region: 'Đối tượng xuất hàng',
+    loading: 'Đang tải danh sách…',
+    empty: 'Hôm nay chưa có xuất hàng đã lấy hàng xong.',
+    failed: 'Không nhận được danh sách xuất hàng. Hãy thử lại',
+    inProgress: 'Đang đóng gói',
+    allocations: (count: number): string => `${String(count)} LOT phân bổ`,
+    item: 'Mặt hàng',
+    scan: 'Số xuất hàng',
+    notFound: (code: string): string => `${code} — không có trong danh sách xuất hàng hôm nay.`,
+    unassigned: 'Kiện chưa cấu thành',
+    blockedChip: 'Không thể xác nhận',
+    status: 'Trạng thái',
+    noLots: 'Không còn LOT cần đóng gói',
+  },
+  band: {
+    label: 'Thông tin đóng gói',
+    shipment: 'Xuất hàng',
+    type: 'Loại kiện',
+    unitNo: 'Số kiện',
+    unassigned: 'Kiện chưa cấu thành',
+    boxes: (count: number): string => `${String(count)} kiện`,
+    unknown: 'Không rõ',
   },
   scan: {
-    label: {
-      productionLot: 'LOT sản xuất',
-    },
-    manualEntry: 'Nhập tay',
-    shipmentSelection: 'Đối tượng xuất hàng',
-    shipmentListLoading: 'Đang tải danh sách…',
-    todayPickedShipments: 'Xuất hàng đã lấy hàng xong hôm nay',
-    lotLocked: 'Hãy chọn đối tượng xuất hàng trước',
+    productionLot: 'Số LOT sản xuất',
   },
   match: {
-    ok: (lotNo: string): string => `${lotNo} là LOT thuộc lô xuất hàng đã chọn.`,
     itemMismatch: (itemCode: string): string => `Mặt hàng của xuất hàng đã chọn là ${itemCode}`,
     notAllocated: 'Số LOT sản xuất không thuộc lô xuất hàng đã chọn.',
-    unknownReason: 'LOT này không khớp với nhãn giao hàng',
-    openUnitBlocksShipmentChange: 'Hãy hủy kiện đang mở rồi mới quét xuất hàng khác',
+    unknownReason: 'LOT này không khớp với xuất hàng',
+    openUnitBlocksShipmentChange: 'Hãy hủy kiện đang đóng rồi mới chọn xuất hàng khác',
     lookupFailed: 'Không tra cứu được. Hãy quét lại',
+    alreadyAdded: (code: string): string =>
+      `${code} — LOT đã có trong danh sách đóng gói. Hãy sửa số lượng trong danh sách.`,
   },
-  contents: {
-    total: (packed: number, allocated: number): string =>
-      `Tổng ${String(packed)} / ${String(allocated)}`,
-    empty: 'Chưa có cấu hình đóng gói nào được thêm.',
-    remove: 'Bỏ',
+  rows: {
+    region: 'LOT sản xuất cần đóng gói',
+    empty: 'Chưa quét LOT sản xuất nào.',
+    emptyHint: 'Hãy quét nhãn LOT sản xuất cần đóng gói. Có thể quét liên tiếp nhiều cái.',
+    available: (qty: string): string => `Có thể ${qty}`,
+    qtyLabel: (lotNo: string): string => `Số lượng ${lotNo}`,
+    qtyPlaceholder: 'SL',
+    remove: 'Bỏ khỏi kiện',
+    sum: (qty: string): string => `Tổng đóng gói ${qty}`,
+    room: (qty: string): string => `Có thể ${qty}`,
+    reviewRoom: (qty: string): string => `SL có thể đóng của các LOT ${qty}`,
   },
   qty: {
-    label: 'Số lượng',
-    entryLabel: 'Số lượng cho vào',
-    entryEmpty: '—',
-    keypad: 'Bàn phím số lượng',
-    backspace: 'Xóa một ký tự',
-    clear: 'Xóa',
-    decimal: 'Dấu thập phân',
-    submit: 'Xác nhận',
-    room: (room: number): string => `Còn ${String(room)}`,
-    overRemaining: (remaining: number): string => `Không được vượt số phân bổ ${String(remaining)}`,
+    title: 'Nhập',
+    unit: (uom: string): string => `Đơn vị ${uom}`,
+    overRemaining: (qty: string): string => `Vượt SL có thể đóng gói (${qty})`,
     notPositive: 'Số lượng phải lớn hơn 0',
   },
   fields: {
-    handlingUnitType: 'Loại',
-    typePlaceholder: 'Hãy chọn loại',
+    handlingUnitType: 'Loại kiện',
   },
   notes: {
     typeUnavailable: 'Không nhận được loại kiện. Hãy thử lại',
-  },
-  progress: {
-    packed: (count: number): string => `Xuất hàng này có ${String(count)} kiện`,
-    unpacked: (qty: number): string => `Chưa đóng gói ${String(qty)}`,
-    unassigned: (count: number): string => `${String(count)} kiện chưa cấu thành`,
-    unassignedUnknown: 'Không xác nhận được số kiện chưa cấu thành',
-  },
-  oqc: {
-    label: 'Trạng thái OQC',
-    status: {
-      NOT_REQUIRED: 'Không áp dụng',
-      PENDING: 'Chờ',
-      PASSED: 'Đạt',
-      REJECTED: 'Không đạt',
-      HELD: 'Tạm giữ',
-    },
   },
   actions: {
     confirm: 'Xác nhận kiện',
     confirming: 'Đang xác nhận…',
     retry: 'Thử lại',
-    labels: 'Trạng thái nhãn · in lại',
-    packing: 'Quay lại đăng ký đóng gói',
+    labels: 'Trạng thái nhãn·in lại',
+    prev: 'Trước',
+    next: 'Tiếp',
     cancelUnit: 'Hủy kiện',
   },
   automaticLabels: {
@@ -99,17 +89,13 @@ export const packingResult: Translated<typeof ko.packingResult> = {
     },
     packingFailure: (reason: string): string => `Nhãn kiện: ${reason}`,
     complete: (handlingUnitNo: string): string =>
-      `Đã in nhãn đóng gói - đã xác nhận kiện ${handlingUnitNo}.`,
+      `Đã xác nhận kiện ${handlingUnitNo} và gửi lệnh in nhãn.`,
     reissueRequired: (count: number): string =>
-      `${String(count)} mục đã có bản ghi phát hành nhưng chưa in xong. Hãy vào in lại nhãn, chọn lý do rồi xử lý.`,
-    retryPackingIssue: 'Phát hành lại nhãn kiện',
-    retryPackingRendition: 'Nhận lại hình ảnh nhãn kiện',
-    openReissue: 'Mở in lại nhãn',
+      `${String(count)} mục đã có bản ghi phát hành nhưng chưa in xong. Hãy vào trạng thái nhãn·in lại, chọn lý do rồi xử lý.`,
+    retryPackingIssue: 'Phát hành lại',
+    retryPackingRendition: 'Nhận lại hình ảnh',
+    openReissue: 'Trạng thái nhãn·in lại',
   },
-  /*
-   * ⛔ **조작 이름(「포장 확정 —」)을 앞에 붙이지 않는다.** 이 문구는 [ 포장 확정 ] 바로 옆에
-   * 서므로 무엇에 대한 말인지는 «자리»가 말한다(사용자 지시 2026-09-07 · 전례 `P-01-02`).
-   */
   locks: {
     noContents: 'Kiện chưa có gì bên trong',
     noType: 'Hãy chọn loại',
@@ -132,7 +118,6 @@ export const packingResult: Translated<typeof ko.packingResult> = {
     lotCount: (count: number): string => `${count} LOT`,
     lotCountWithQty: (count: number, qty: string): string => `${count} LOT · SL ${qty}`,
     labelNotice: 'Sau khi xác nhận, nhãn kiện sẽ được in ngay.',
-    cancel: 'Hủy',
     confirm: 'Xác nhận',
   },
 };

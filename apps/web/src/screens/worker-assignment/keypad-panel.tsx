@@ -1,18 +1,22 @@
-import { AlertBanner, Button, TextField } from '@crefle/web-ui';
-import { NumericKeypad } from '@omf-mes/ui';
 import { messages } from '@omf-mes/i18n';
+import { useId } from 'react';
 
-import { POP_TOUCH_SIZE } from './touch-spec';
+import {
+  PuButton,
+  PuField,
+  PuInput,
+  PuKeypad,
+  PuNote,
+  applyKeypadKey,
+  type PuTone,
+} from '../../patterns/pop-uniform';
 import { canSubmit } from './worker-no';
 
 /**
- * 좌측 《사번 입력》 구획 — 화면 스펙 §3 의 왼쪽 512 다.
+ * 좌측 《사번 입력》 구획(#295 로그인 시안) — 사번 칸 · 한 줄 안내 · 키패드 · [사번 확인].
  *
  * ⛔ **비밀번호 칸이 없다. 그것이 이 화면의 요점이다**(§5-1). 로그인 실패 잠금도, 세션
  * 만료도 두지 않는다 — 셋 다 「로그인 생략」 요구를 우회로 되살리는 것이고, 담을 자리도 없다.
- *
- * ⚠ **사번 칸은 읽기 전용이다.** 값은 키패드로만 들어온다 — 현장 단말은 전체 화면 키오스크라
- * 운영체제 키보드가 뜨면 화면을 덮는다.
  *
  * ⚠ **6자리 숫자가 아니면 [사번 확인] 때 다시 입력하게 한다**(사용자 지시 2026-11-17 ·
  * omf-all-around#288). 판정은 화면(`screen.tsx`)이 하고, 이 구획은 안내만 보인다.
@@ -49,101 +53,86 @@ export const KeypadPanel = ({
   offlineNote,
   confirmedWorkerNo,
   isUnusualShown,
-}: KeypadPanelProps) => (
-  <section className="pane pop-pane" aria-label={t.heading}>
-    <h2 className="field-label">{t.heading}</h2>
+}: KeypadPanelProps) => {
+  const titleId = useId();
+  const inputId = useId();
+  const isConfirmed = confirmedWorkerNo !== null;
+  /*
+   * 사번 칸 바로 아래 한 줄 — 6자리 아님(노랑) · 확인 결과 오류(빨강) · 오프라인(파랑) 중 하나.
+   * 확인을 마친 뒤에는 세우지 않는다(키패드와 함께 접힌다).
+   */
+  const note: { tone: PuTone; text: string } | null = isConfirmed
+    ? null
+    : isUnusualShown
+      ? { tone: 'warn', text: t.unusual }
+      : error !== null
+        ? { tone: 'bad', text: error }
+        : offlineNote !== null
+          ? { tone: 'info', text: offlineNote }
+          : null;
 
-    {/*
-     * 높이는 `xl`(60px) — 터치 규격의 「56~60픽셀 급」이며, ⚠ 「큰 글자」는 글자 크기 요구이지
-     * 높이 요구가 아니다(§7).
-     *
-     * ⭐ **키보드로도 칠 수 있다.** 한때 읽기 전용이라 키패드로만 값이 들어왔는데, 자판이 붙은
-     * 단말과 개발 중 확인에서 **숫자를 쳐도 아무 일이 없었다.** 넣는 길이 둘이어도 값의 주인은
-     * 하나(`workerNo`)라 서로 어긋나지 않는다.
-     *
-     * ⛔ **숫자만 받는다.** 사번은 숫자라 그 밖의 글자는 «치는 순간» 버린다 — 받아 두고 나중에
-     *    「형식이 다릅니다」로 되돌리면, 다 치고 나서야 틀린 것을 안다.
-     */}
-    <TextField
-      label={t.workerNo}
-      value={confirmedWorkerNo ?? workerNo}
-      placeholder={t.placeholder}
-      size="xl"
-      inputMode="numeric"
-      autoComplete="off"
-      className="worker-no-field"
-      readOnly={confirmedWorkerNo !== null}
-      onChange={(event) => {
-        onChange(event.target.value.replace(/\D/gu, ''));
-      }}
-    />
-
-    {confirmedWorkerNo === null ? (
-      <>
+  return (
+    <section className="pu-card wa-left" aria-labelledby={titleId}>
+      <div className="pu-card-head">
+        <h2 id={titleId}>{t.heading}</h2>
+      </div>
+      <div className="pu-card-body wa-left-body">
         {/*
-         * 알림 자리 — **비어 있을 때도 높이를 지킨다.**
+         * ⭐ **키보드로도 칠 수 있다.** 자판이 붙은 단말과 개발 중 확인에서 숫자를 쳐도 받는다.
+         * 넣는 길이 둘이어도 값의 주인은 하나(`workerNo`)라 서로 어긋나지 않는다.
          *
-         * 배너가 뜨고 지는 대로 키패드가 위아래로 움직이면, 다음 숫자를 누르려던 손가락이 한 줄
-         * 옆의 키를 누른다(실측으로 잡았다: 「6자리와 다릅니다」 경고가 뜬 순간 키패드가 밀렸다).
-         * `.scan-outcome` 이 스캔 결과 줄에서 같은 문제를 같은 방법으로 막고 있다.
+         * ⛔ **숫자만 받는다.** 사번은 숫자라 그 밖의 글자는 «치는 순간» 버린다.
          */}
-        <div className="worker-no-notice">
-          {/* 6자리 숫자가 아닌 채로 [사번 확인]을 눌렀다 — 다시 입력하게 한다. */}
-          {isUnusualShown && (
-            <div className="banner-slot">
-              <AlertBanner variant="warning">{t.unusual}</AlertBanner>
-            </div>
-          )}
+        <PuField label={t.workerNo} required htmlFor={inputId}>
+          <PuInput
+            id={inputId}
+            className="wa-no"
+            aria-label={t.workerNo}
+            value={confirmedWorkerNo ?? workerNo}
+            need={!isConfirmed && workerNo === ''}
+            inputMode="numeric"
+            autoComplete="off"
+            readOnly={isConfirmed}
+            onChange={(event) => {
+              onChange(event.target.value.replace(/\D/gu, ''));
+            }}
+          />
+        </PuField>
 
-          {/* ⚠ 오프라인이어도 확인은 눌린다 — 미리 받아 둔 목록으로 본다(§5-6). */}
-          {offlineNote !== null && (
-            <div className="banner-slot">
-              <AlertBanner variant="info">{offlineNote}</AlertBanner>
-            </div>
-          )}
-
-          {error !== null && (
-            <div className="banner-slot">
-              <AlertBanner variant="error">{error}</AlertBanner>
-            </div>
-          )}
+        {/*
+         * 알림 자리 — **비어 있을 때도 높이를 지킨다.** 안내가 뜨고 지는 대로 키패드가 위아래로
+         * 움직이면, 다음 숫자를 누르려던 손가락이 한 줄 옆의 키를 누른다(실측으로 잡았다).
+         */}
+        <div className="wa-slot">
+          {note !== null && <PuNote tone={note.tone}>{note.text}</PuNote>}
         </div>
 
-        {/*
-         * ⭐ **키 높이를 아래 [ 확인 ]과 같게 세운다**(사용자 지시 2026-09-11). POP 이 컨트롤
-         * 높이를 관리웹 기본(40)으로 수렴시킨 뒤로 키패드만 40 으로 섰는데, 장갑 낀 손이 찍기에
-         * 작았다. 높이는 `pop.css` 가 이 이름으로 준다 — 이 화면 전용 이름이라 다른 화면의
-         * 키패드는 따라 바뀌지 않는다.
-         */}
-        <NumericKeypad
-          value={workerNo}
-          onChange={onChange}
-          className="worker-no-keypad"
-          label={t.keypad}
-          backspaceLabel={t.backspace}
-          clearLabel={t.clear}
-          disabled={isChecking}
-          keySize={POP_TOUCH_SIZE}
-        />
-
-        {/*
-         * 터치 규격 — 핵심 조작이라 72px(`2xl`)이다(E-3).
-         *
-         * ⭐ **구획 폭 전체를 쓰고 오른쪽 구획의 [교대]·[이동]과 같은 크기로 선다**(설계 §3
-         * 도면). 두 구획의 폭이 같으므로, 저쪽 둘이 한 줄에 하나씩 서면 셋이 같은 크기가 된다.
-         * 높이 맞춤은 `pop.css` 가 이 이름으로 한다.
-         */}
-        <Button
-          type="button"
-          variant="filled"
-          size={POP_TOUCH_SIZE}
-          className="worker-no-submit"
-          disabled={!canSubmit(workerNo) || isChecking}
-          onClick={onSubmit}
-        >
-          {isChecking ? t.checking : t.submit}
-        </Button>
-      </>
-    ) : null}
-  </section>
-);
+        {!isConfirmed && (
+          <div className="wa-pad">
+            <PuKeypad
+              targetLabel={t.workerNo}
+              showTarget={false}
+              decimal={false}
+              clearInPad
+              disabled={isChecking}
+              onKey={(key) => {
+                onChange(applyKeypadKey(workerNo, key, { decimal: false }));
+              }}
+              onClearAll={() => {
+                onChange('');
+              }}
+            />
+            <PuButton
+              variant="primary"
+              className="wa-submit"
+              disabled={!canSubmit(workerNo) || isChecking}
+              onClick={onSubmit}
+            >
+              {isChecking ? t.checking : t.submit}
+            </PuButton>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+};

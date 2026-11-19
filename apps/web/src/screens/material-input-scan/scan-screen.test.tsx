@@ -20,6 +20,7 @@ import {
 } from '../../patterns/pop-identity';
 import { lot, mold, receipt, receiptLineFixtures, WORK_ORDER_ID } from './fixtures';
 import { MaterialInputScanScreen } from './screen';
+import { PuToastHost } from '../../patterns/pop-uniform';
 import { popGateDeniedText, popGateUnidentifiedText } from '../../patterns/pop-process-gate';
 
 const DENIED_TEXT = popGateDeniedText({ processName: null }, 'canInputMaterial');
@@ -59,7 +60,10 @@ const scannedHas = (lotNo: string): boolean => {
 };
 
 /** 투입 수량 편집 영역(고른 LOT의 상세). */
-const editor = (): HTMLElement => screen.getByRole('region', { name: t.panes.noSelection });
+const editor = (): HTMLElement =>
+  within(screen.getByRole('list', { name: t.scanned.materialsLabel })).getByRole('button', {
+    pressed: true,
+  });
 
 const ROUTE = `/pop/material-input?workOrderId=${String(WORK_ORDER_ID)}`;
 const RECEIPTS_PATH = '/logistics/shopfloor-receipts';
@@ -189,7 +193,10 @@ const renderScreen = (
 
   const view = renderWithProviders(
     <PopIdentityProvider value={identity}>
-      <MaterialInputScanScreen />
+      <>
+        <PuToastHost />
+        <MaterialInputScanScreen />
+      </>
     </PopIdentityProvider>,
     { fetch, route: ROUTE },
   );
@@ -476,7 +483,10 @@ describe('MaterialInputScanScreen — 스캔', () => {
 
     renderWithProviders(
       <PopIdentityProvider value={{ ...UNKNOWN_POP_IDENTITY, workerNo: WORKER_NO }}>
-        <MaterialInputScanScreen />
+        <>
+          <PuToastHost />
+          <MaterialInputScanScreen />
+        </>
       </PopIdentityProvider>,
       { fetch, route: ROUTE },
     );
@@ -522,7 +532,10 @@ describe('MaterialInputScanScreen — 스캔', () => {
 
     renderWithProviders(
       <PopIdentityProvider value={{ ...UNKNOWN_POP_IDENTITY, workerNo: WORKER_NO }}>
-        <MaterialInputScanScreen />
+        <>
+          <PuToastHost />
+          <MaterialInputScanScreen />
+        </>
       </PopIdentityProvider>,
       { fetch, route: ROUTE },
     );
@@ -579,7 +592,10 @@ describe('MaterialInputScanScreen — 스캔', () => {
 
     renderWithProviders(
       <PopIdentityProvider value={{ ...UNKNOWN_POP_IDENTITY, workerNo: WORKER_NO }}>
-        <MaterialInputScanScreen />
+        <>
+          <PuToastHost />
+          <MaterialInputScanScreen />
+        </>
       </PopIdentityProvider>,
       { fetch, route: ROUTE },
     );
@@ -770,7 +786,7 @@ describe('MaterialInputScanScreen — 사번 없이 들어왔을 때', () => {
     );
     /* 스캔 칸은 받지 않고, 칠 수도 없다. */
     expect(screen.getByLabelText(t.scan.label)).toHaveProperty('readOnly', true);
-    expect(screen.queryByRole('button', { name: t.scanned.keypadSubmit })).toBeNull();
+    expect(screen.getByRole('button', { name: t.scanned.keypadSubmit })).toBeDisabled();
 
     /* 다시 여는 길: 「작업자」 빈 상태의 [사번 입력], 목록 줄, 스캔 칸. */
     await user.click(screen.getByRole('button', { name: dialogText.open }));
@@ -780,7 +796,7 @@ describe('MaterialInputScanScreen — 사번 없이 들어왔을 때', () => {
     const row = await within(scannedList()).findByText('SAMPLE-LOT-0001');
     await user.click(row);
     expect(await screen.findByRole('dialog', { name: dialogText.title })).toBeTruthy();
-    expect(screen.queryByRole('region', { name: t.panes.noSelection })).not.toBeNull();
+    expect(screen.getByRole('region', { name: t.qty.title })).toBeTruthy();
   });
 
   it('사번을 확인하면 창이 닫히고 같은 W/O에서 스캔을 받는다', async () => {
@@ -843,9 +859,9 @@ describe('MaterialInputScanScreen — 터치 타겟', () => {
 });
 
 describe('MaterialInputScanScreen — 금형', () => {
-  const header = (): HTMLElement => screen.getAllByRole('banner')[0] as HTMLElement;
+  const header = (): HTMLElement => screen.getByRole('group', { name: t.band.title });
 
-  /* 금형은 W/O 맥락이라 머리줄에 둔다(C-21). 적정 타수를 넘으면 경고하되 막지 않는다. */
+  /* 금형은 W/O 맥락이라 본문 맨 위 작업지시 띠에 둔다(C-21). 적정 타수를 넘으면 경고하되 막지 않는다. */
   it('지정한 금형을 머리줄에 보이고, 타수를 넘었으면 경고한다 — 다만 막지 않는다', async () => {
     const user = userEvent.setup();
     renderScreen(
@@ -859,11 +875,7 @@ describe('MaterialInputScanScreen — 금형', () => {
 
     await scanCode(user, 'SAMPLE-MLD-01');
 
-    expect(
-      await within(header()).findByText(
-        messages.popChrome.header.moldLabel('합성 금형 가 (SAMPLE-MLD-01)'),
-      ),
-    ).toBeTruthy();
+    expect(await within(header()).findByText('합성 금형 가 (SAMPLE-MLD-01)')).toBeTruthy();
     expect(await screen.findByText(t.scanned.shotCountExceeded('합성 금형 가'))).toBeTruthy();
     expect(screen.queryByText(DENIED_TEXT)).toBeNull();
     /* 자재 목록에는 금형 줄이 없다. */
@@ -1032,7 +1044,10 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
 
     renderWithProviders(
       <PopIdentityProvider value={GATED}>
-        <MaterialInputScanScreen />
+        <>
+          <PuToastHost />
+          <MaterialInputScanScreen />
+        </>
       </PopIdentityProvider>,
       { fetch, route: ROUTE },
     );
@@ -1130,17 +1145,17 @@ describe('MaterialInputScanScreen — 자재 상태 표시', () => {
 
 describe('MaterialInputScanScreen — 스캔 실패의 대체 경로', () => {
   /*
-   * 스캐너가 죽으면 같은 칸에 코드를 바로 친다(공유계약 D-3). 칸에 칠 수 있으므로 [직접 입력]
-   * 버튼을 두지 않고(C-19 「값을 넣는 칸을 버튼으로 대신하지 않는다」), 받는 대상은 안내 문구에
-   * 적는다(C-13).
+   * 스캐너가 죽으면 같은 칸에 코드를 바로 친다(공유계약 D-3). 라벨이 상해 못 읽으면 옆 [직접 입력]
+   * 창에 번호를 넣는다(POP 통일 규칙 6). 받는 대상은 안내 문구에 적는다(C-13).
    */
   it('칸에 바로 친 코드를 Enter로 담고, 받는 대상을 안내 문구로 알린다', async () => {
     const user = userEvent.setup();
     renderScreen([lotsRoute([lot()])]);
 
     const field = screen.getByLabelText(t.scan.label);
-    expect(field.getAttribute('placeholder')).toBe(t.scan.placeholder);
-    expect(screen.queryByRole('button', { name: '직접 입력' })).toBeNull();
+    /* 칸 안 흐린 안내는 없다 — 받는 대상은 칸 위 이름이 말한다(#295 · 2026-11-19). */
+    expect(field.getAttribute('placeholder')).toBeNull();
+    expect(screen.getByRole('button', { name: messages.popUniform.scan.manual })).toBeTruthy();
 
     await user.type(field, 'SAMPLE-LOT-0001{Enter}');
 
@@ -1161,8 +1176,8 @@ describe('MaterialInputScanScreen — 머리줄', () => {
       }),
   });
 
-  /* W/O·공정·긴급은 머리줄이 아니라 투입 자재 상자 제목에 선다(사용자 지시 2026-11-17 · #291). */
-  const header = (): HTMLElement => screen.getByRole('region', { name: t.panes.input });
+  /* W/O·공정·긴급은 본문 맨 위 작업지시 띠에 선다(POP 통일 시안 #295). */
+  const header = (): HTMLElement => screen.getByRole('group', { name: t.band.title });
 
   /* C-11 — 현재 W/O와 공정. 작업지시 번호는 사용자가 보는 번호다. */
   it('현재 W/O 번호와 공정을 보인다', async () => {
@@ -1204,7 +1219,10 @@ describe('MaterialInputScanScreen — 끊겼을 때의 스캔', () => {
 
     renderWithProviders(
       <PopIdentityProvider value={GATED}>
-        <MaterialInputScanScreen />
+        <>
+          <PuToastHost />
+          <MaterialInputScanScreen />
+        </>
       </PopIdentityProvider>,
       { fetch, route: ROUTE },
     );
@@ -1246,7 +1264,10 @@ describe('MaterialInputScanScreen — 게이팅 캐시', () => {
         >
           공정 바꾸기
         </button>
-        <MaterialInputScanScreen />
+        <>
+          <PuToastHost />
+          <MaterialInputScanScreen />
+        </>
       </PopIdentityProvider>
     );
   };

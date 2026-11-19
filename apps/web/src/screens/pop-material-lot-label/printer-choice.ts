@@ -1,3 +1,4 @@
+import { terminalPrinterName } from '../../patterns/pop-printer-choice';
 import { toHeadPrinter, type PrinterView } from './types';
 
 /**
@@ -41,7 +42,8 @@ export interface PrinterChoice {
 }
 
 /**
- * 고른 것(이번 실행) → 기억해 둔 것 → 셸의 출력 대상(`isDefault`) → 첫 대 순으로 정한다.
+ * 고른 것(이번 실행) → 맨 위 줄에서 이 단말이 고른 것(`pop-printer-choice`) → 기억해 둔 것 → 셸의 출력
+ * 대상(`isDefault`) → 첫 대 순으로 정한다.
  *
  * ⛔ 기억해 둔 이름이 목록에 없으면 그 이름으로 보내지 않는다 — 셸이 「목록에 없는 이름」을 다른
  *    프린터로 대신 보내지 않으므로 인쇄가 통째로 실패한다. 기본으로 돌아가고 그 사실을 말한다.
@@ -55,7 +57,7 @@ export const choosePrinter = (
     name === null ? undefined : printers.find((printer) => printer.printerName === name);
   const fallback = toHeadPrinter([...printers]);
 
-  const chosen = byName(picked) ?? byName(stored);
+  const chosen = byName(picked) ?? byName(terminalPrinterName()) ?? byName(stored);
   if (chosen !== undefined) return { printer: chosen, missingStoredName: null };
 
   return {

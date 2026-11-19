@@ -1,4 +1,3 @@
-import { Chip, type ChipStatus, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useRef } from 'react';
 
@@ -6,7 +5,16 @@ import type { RecordedNote } from './mutations';
 import type { ScannedMaterial } from './scan';
 import type { ReceiptLineStatus, ReceiptLineView } from './types';
 
-import { PopQtyProgress, PopRowHead, PopRowInfo, PopRowPair } from '../../patterns/pop-list-row';
+import {
+  PuChip,
+  PuEmpty,
+  PuPager,
+  puCx,
+  useClientPage,
+  useFitCount,
+  type PuChipTone,
+} from '../../patterns/pop-uniform';
+import { ListOrderFoot, listDateTimeText, type ListOrder } from '../../patterns/pop-list-order';
 
 const t = messages.materialInputScan;
 
@@ -14,13 +22,13 @@ const t = messages.materialInputScan;
 const reference = messages.common.reference;
 
 /**
- * 수령 상태 → 칩의 시맨틱 색. 미수령을 `error`로 칠하되 그것이 「막혔다」는 뜻은 아니다.
- * 부족이나 미수령은 투입을 막지 않는다(스펙 §6) — 막지 않는다는 사실은 구획 맨 위 안내가 말한다.
+ * 수령 상태 → 칩의 색(POP 통일 규칙 10). 덜 받음과 못 받음은 노랑 — 투입을 막지 않는다(스펙 §6).
+ * `matched` 는 화면에 두지 않는다(C-21 정상은 숨김).
  */
-export const RECEIPT_STATUS_TONE: Record<ReceiptLineStatus, ChipStatus> = {
-  matched: 'success',
-  short: 'warning',
-  none: 'error',
+export const RECEIPT_STATUS_TONE: Record<ReceiptLineStatus, PuChipTone> = {
+  matched: 'ok',
+  short: 'warn',
+  none: 'warn',
 };
 
 export const RECEIPT_STATUS_LABEL: Record<ReceiptLineStatus, string> = {
@@ -42,18 +50,34 @@ export interface QtyProgressProps {
 }
 
 /**
- * 투입량의 값 「30 / 100 KG」(투입량 / 불출량)과 진행 막대(C-21). 라벨 「투입량」은 정보 영역이 붙인다.
- * 목록 줄과 편집 영역이 같은 부품이다. 잔량과 음수는 여기서 보이지 않는다. 막대의 색은 공용
- * `PopQtyProgress` 가 정한다.
+ * 투입량의 값 「30 / 100 KG」(투입량 / 불출량)과 진행 막대(C-21). 불출량에 닿으면 초록, 넘으면 노랑.
+ * 잔량과 음수는 보이지 않는다.
  */
-export const QtyProgress = ({ received, recorded, uom }: QtyProgressProps) => (
-  <PopQtyProgress
-    current={recorded}
-    target={received}
-    text={t.pairs.progress(String(recorded), received === null ? null : String(received), uom)}
-    label={t.pairs.progressLabel}
-  />
-);
+export const QtyProgress = ({ received, recorded, uom }: QtyProgressProps) => {
+  const text = t.pairs.progress(String(recorded), received === null ? null : String(received), uom);
+  const isOver = received !== null && recorded > received;
+  const max = received !== null && received > 0 ? received : 1;
+  const ratio = received === null ? 0 : Math.min(1, recorded / max);
+
+  return (
+    <span className="mi-prog">
+      <b className="mi-prog-text">{text}</b>
+      {received !== null && (
+        <span
+          className={puCx('pu-progress', isOver && 'mi-over')}
+          role="progressbar"
+          aria-label={t.pairs.progressLabel}
+          aria-valuemin={0}
+          aria-valuemax={max}
+          aria-valuenow={Math.min(recorded, max)}
+          aria-valuetext={text}
+        >
+          <i style={{ width: `${String(Math.round(ratio * 100))}%` }} />
+        </span>
+      )}
+    </span>
+  );
+};
 
 /** 불출량에 대한 진행 상태(C-21 끝난 항목). 음수를 만들지 않는다. */
 export const progressStateOf = (
@@ -109,13 +133,41 @@ export const toMaterialRows = (
     })),
 ];
 
+/** 고른 줄 안 투입 기록 한 건(PI-30). */
+export interface InputRecordView {
+  key: string;
+  qty: number;
+  uomId: number;
+  occurredAt: string;
+  /** 「미전송」(단말에 있음) 또는 「전송 완료」. */
+  state: 'pending' | 'sent';
+}
+
+const pad2 = (value: number): string => String(value).padStart(2, '0');
+
+/** 투입 기록의 시각. 오늘이면 「HH:mm」, 아니면 「MM-DD HH:mm」. */
+const timeOf = (iso: string, now: Date = new Date()): string => {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return '';
+  const time = `${pad2(at.getHours())}:${pad2(at.getMinutes())}`;
+  const isToday =
+    at.getFullYear() === now.getFullYear() &&
+    at.getMonth() === now.getMonth() &&
+    at.getDate() === now.getDate();
+
+  return isToday ? time : `${pad2(at.getMonth() + 1)}-${pad2(at.getDate())} ${time}`;
+};
+
+/** 고른 줄에 보이는 투입 내역 건수(시안: 최근 3건 + 「외 N건」). */
+const RECORDS_SHOWN = 3;
+
 export interface MaterialListProps {
   rows: readonly MaterialRow[];
   /** 수령 내역을 불러오는 중인가. 담은 자재는 그동안에도 보인다. */
   isLoading: boolean;
   /** 작업지시가 있어 수령 내역을 물었는가. */
   hasWorkOrder: boolean;
-  /** 수령 내역을 불러오지 못했는가. 실패는 구획 맨 위 배너가 말하고 빈 상태를 내지 않는다. */
+  /** 수령 내역을 불러오지 못했는가. 실패는 스캔 칸 아래 안내가 말하고 빈 상태를 내지 않는다. */
   isError: boolean;
   /** 품목 번호를 코드로 옮긴다. 응답에 품목 코드가 없을 때만 쓴다. */
   describeItem: (itemId: number) => string;
@@ -127,22 +179,27 @@ export interface MaterialListProps {
   pendingLotIds: readonly number[];
   /** 이 W/O에 기록된 투입 수량(LOT별 합). 없으면 `null`. */
   recordedQtyOf: (lotId: number) => { qty: number; uomId: number } | null;
-  /** 편집 영역에 연 LOT. 없으면 `null`. */
+  /** 고른 LOT. 없으면 `null`. */
   selectedLotId: number | null;
+  /** 고른 LOT의 투입 기록(시각 순, 「미전송」은 끝). */
+  selectedRecords: readonly InputRecordView[];
+  /** 바뀌면 고른 줄이 든 쪽으로 넘긴다(스캔할 때 올린다). */
+  revealKey: number;
+  /** 목록 아래 왼쪽 한 줄(투입할 자재 N건, 투입 완료 N건). */
+  summary: string | null;
   onSelect: (lotId: number) => void;
+  /** 목록 정렬(수령 일시) — 할 일 먼저 묶음 안에서만 건다. 줄 순서는 화면이 정해 `rows` 로 준다. */
+  order: ListOrder;
+  onOrderChange: (order: ListOrder) => void;
 }
 
 /**
- * 자재 목록.
+ * 자재 목록(POP 통일 시안 P-02-03) — 제목 없음(위 작업지시 띠가 무엇의 목록인지 말한다).
  *
- * 수령한 LOT(계획 대비 수령)과 스캔해 담은 LOT을 한 목록에 둔다. 작업자는 이 목록으로 받은 자재를
- * 확인하고, 라벨을 스캔하면 그 줄이 담기고 골라진다. 행 전체를 눌러 LOT 하나를 고르고(C-1), 고른
- * LOT은 오른쪽 편집 영역에서 수량을 넣는다. 카드 목록이라 선택은 `aria-pressed`로 알린다(PG-10).
- *
- * 줄은 제목 줄(품목 「이름 (코드)」, 오른쪽 끝에 예외 칩과 진행 칩 하나: 투입 중, 투입 완료, 과투입)과
- * 정보 영역(「LOT 번호」, 「투입량 30 / 100 KG」과 막대)으로 나뉜다(C-21). 금형은 W/O 맥락이라 머리줄에
- * 있다. 수령 상태는 덜 받음이나 못 받음일 때만 칩으로 세운다. 모든 줄에 같은 「수령 완료」가 서면
- * 구분이 사라진다. 줄 순서는 화면이 정한다(PI-32).
+ * 수령한 LOT(계획 대비 수령)과 스캔해 담은 LOT을 한 목록에 둔다. 모든 줄을 펼친 채(LOT · 투입량이 늘 보임)
+ * 구획 높이에 들어가는 만큼 보이고, 아래 쪽 넘김으로 본다 — 구획 안 스크롤 없음(규칙 1). LOT을 스캔하면
+ * 그 자재가 든 쪽으로 넘어간다. 줄 전체를 눌러 LOT 하나를 고르고(C-1), 고른 줄에는 투입 내역(최근 3건)이
+ * 한 줄로 붙는다. 카드 목록이라 선택은 `aria-pressed`로 알린다(PG-10). 줄 순서는 화면이 정한다(PI-32).
  */
 export const MaterialList = ({
   rows,
@@ -155,40 +212,48 @@ export const MaterialList = ({
   pendingLotIds,
   recordedQtyOf,
   selectedLotId,
+  selectedRecords,
+  revealKey,
+  summary,
   onSelect,
+  order,
+  onOrderChange,
 }: MaterialListProps) => {
-  const listRef = useRef<HTMLUListElement>(null);
+  const fitRef = useRef<HTMLUListElement>(null);
+  const fitCount = useFitCount(fitRef, { fallback: 0 });
+  /* 재기 전(시험 환경 포함)에는 한 쪽에 다 둔다 — 줄이 없으면 잴 수 없다. */
+  const size = fitCount > 0 ? fitCount : Math.max(1, rows.length);
+  const paged = useClientPage(rows, size);
+  const { showIndex } = paged;
 
-  /* 새로 담겨 골라진 줄이 목록 아래에 있어도 보이게 한다. */
+  /* 스캔으로 골라진 줄이 다른 쪽에 있으면 그 쪽으로 넘긴다. */
+  const selectedIndex = rows.findIndex((row) => row.lotId === selectedLotId);
   useEffect(() => {
-    if (selectedLotId === null) return;
+    if (selectedIndex >= 0) showIndex(selectedIndex);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- 고른 LOT이 바뀌거나 스캔할 때만 넘긴다. */
+  }, [selectedLotId, revealKey]);
 
-    const row = listRef.current?.querySelector<HTMLElement>(
-      `[data-lot-id="${String(selectedLotId)}"]`,
-    );
-    /* 시험 환경(jsdom)에는 스크롤 함수가 없다. */
-    if (typeof row?.scrollIntoView === 'function') row.scrollIntoView({ block: 'nearest' });
-  }, [selectedLotId]);
+  const hasRows = rows.length > 0;
 
   return (
     <>
-      {isLoading && rows.length === 0 ? (
-        <div role="status" aria-label={t.loading.receipt} className="material-input-lots">
-          <SkeletonText lines={3} />
-        </div>
-      ) : rows.length === 0 && isError ? (
-        <div className="material-input-lots" />
-      ) : rows.length === 0 ? (
-        <div className="material-input-lots">
-          {hasWorkOrder ? (
-            <EmptyState size="sm" live title={t.empty.receiptTitle} />
+      <div className="mi-list-area">
+        {isLoading && !hasRows ? (
+          <PuEmpty icon="clock" title={t.loading.receipt} />
+        ) : !hasRows && isError ? null : !hasRows ? (
+          hasWorkOrder ? (
+            <PuEmpty icon="box" title={t.empty.receiptTitle} hint={t.empty.receiptHint} />
           ) : (
-            <EmptyState size="sm" title={t.empty.notQueriedTitle} />
-          )}
-        </div>
-      ) : (
-        <ul ref={listRef} className="material-input-lots" aria-label={t.scanned.materialsLabel}>
-          {rows.map((row) => {
+            <PuEmpty icon="list" title={t.empty.notQueriedTitle} hint={t.empty.notQueriedHint} />
+          )
+        ) : null}
+        <ul
+          ref={fitRef}
+          className="pu-list pu-fit mi-rows"
+          aria-label={t.scanned.materialsLabel}
+          style={hasRows ? undefined : { display: 'none' }}
+        >
+          {paged.items.map((row) => {
             const { material, receipt } = row;
             const isPending = material !== undefined && pendingLotIds.includes(row.lotId);
             const done = recordedQtyOf(row.lotId);
@@ -200,107 +265,115 @@ export const MaterialList = ({
             const isUnitMismatch =
               material !== undefined && receipt !== undefined && material.uomId !== receipt.uomId;
             const progress = progressStateOf(receipt?.receivedQty ?? null, done?.qty ?? 0);
+            /* 최근 것부터(「미전송」이 맨 앞). */
+            const records = isSelected ? [...selectedRecords].reverse() : [];
+            const receivedAt = listDateTimeText(receipt?.receivedAt);
+            const more = records.length - RECORDS_SHOWN;
 
             return (
-              <li
-                key={row.key}
-                data-lot-id={row.lotId}
-                className={[
-                  'material-input-lot',
-                  isSelected ? 'material-input-lot-selected' : '',
-                  progress.kind === 'done' || progress.kind === 'over'
-                    ? 'material-input-lot-done'
-                    : '',
-                ]
-                  .filter((name) => name !== '')
-                  .join(' ')}
-              >
+              <li key={row.key} data-lot-id={row.lotId} className="mi-row">
                 <button
                   type="button"
-                  className="material-input-lot-select"
+                  className={puCx('pu-item mi-item', isSelected && 'is-selected')}
                   aria-pressed={isSelected}
                   onClick={() => {
                     onSelect(row.lotId);
                   }}
                 >
-                  {/*
-                   * 제목 줄(C-21): 품목 「이름 (코드)」(굵게)와 오른쪽 끝 칩(예외 칩, 맨 끝에 진행 칩 하나).
-                   */}
-                  <PopRowHead
-                    title={named(receipt?.itemName, itemCode)}
-                    chips={
+                  {/* 제목 줄(C-21): 품목 「이름 (코드)」와 오른쪽 끝 칩(예외 칩, 맨 끝에 진행 칩 하나). */}
+                  <span className="pu-item-top">
+                    <span className="no">{named(receipt?.itemName, itemCode)}</span>
+                    <span className="chips">
+                      {/* 예외만 칩으로 보인다(C-21 정상은 숨김). */}
+                      {receipt !== undefined && receipt.status !== 'matched' && (
+                        <PuChip tone={RECEIPT_STATUS_TONE[receipt.status]}>
+                          {RECEIPT_STATUS_LABEL[receipt.status]}
+                        </PuChip>
+                      )}
+                      {isUnitMismatch && <PuChip tone="warn">{t.scanned.unitMismatch}</PuChip>}
+                      {material?.isHeld === true && (
+                        <PuChip tone="warn">{t.scanned.heldMark}</PuChip>
+                      )}
+                      {/* IQC 에서 적은 4M 변경품 — 투입은 막지 않고 알린다(omf-all-around#63). */}
+                      {material !== undefined && material.fourMChange !== null && (
+                        <PuChip tone="warn">{t.scanned.fourMChangeMark}</PuChip>
+                      )}
+                      {/* 서버가 통과시키되 기록만 한 것(스펙 §5-3). 보내기 전에는 없다. */}
+                      {isUnlinked && <PuChip tone="info">{t.scanned.unlinkedIssue}</PuChip>}
+                      {/* 진행 칩은 하나(C-21): 투입 중(파랑), 과투입(노랑), 투입 완료(초록). */}
+                      {isPending ? (
+                        <PuChip tone="info">{t.scanned.pendingMark}</PuChip>
+                      ) : progress.kind === 'over' ? (
+                        <PuChip tone="warn">
+                          {t.scanned.overMark(withUnit(progress.over, uom))}
+                        </PuChip>
+                      ) : progress.kind === 'done' ? (
+                        <PuChip tone="ok">{t.scanned.completeMark}</PuChip>
+                      ) : null}
+                    </span>
+                  </span>
+                  {/* 정보 영역(C-21): LOT 번호(라벨 대조용, C-10)와 투입량 막대. */}
+                  <span className="pu-item-sub mi-pair">
+                    <span>{t.pairs.lotLabel}</span> <b className="mi-lot-no">{row.lotNo}</b>{' '}
+                    <span>{t.pairs.progressLabel}</span>{' '}
+                    <QtyProgress
+                      received={receipt?.receivedQty ?? null}
+                      recorded={done?.qty ?? 0}
+                      uom={uom}
+                    />
+                    {receivedAt !== null && (
                       <>
-                        {/* 예외만 칩으로 보인다(C-21 정상은 숨김). */}
-                        {receipt !== undefined && receipt.status !== 'matched' && (
-                          <Chip
-                            variant="status"
-                            size="md"
-                            status={RECEIPT_STATUS_TONE[receipt.status]}
-                          >
-                            {RECEIPT_STATUS_LABEL[receipt.status]}
-                          </Chip>
-                        )}
-                        {isUnitMismatch && (
-                          <Chip variant="status" size="md" status="warning">
-                            {t.scanned.unitMismatch}
-                          </Chip>
-                        )}
-                        {material?.isHeld === true && (
-                          <Chip variant="status" size="md" status="warning">
-                            {t.scanned.heldMark}
-                          </Chip>
-                        )}
-                        {/* IQC 에서 적은 4M 변경품 — 투입은 막지 않고 알린다(omf-all-around#63). */}
-                        {material !== undefined && material.fourMChange !== null && (
-                          <Chip variant="status" size="md" status="warning">
-                            {t.scanned.fourMChangeMark}
-                          </Chip>
-                        )}
-                        {/* 서버가 통과시키되 기록만 한 것(스펙 §5-3). 보내기 전에는 없다. */}
-                        {isUnlinked && (
-                          <Chip variant="status" size="md" status="info">
-                            {t.scanned.unlinkedIssue}
-                          </Chip>
-                        )}
-                        {/*
-                         * 진행 칩은 하나(C-21): 투입 중, 투입 완료, 과투입 N. 진행 중이거나 아직 넣지 않은 줄은
-                         * 칩 없이 투입량과 막대가 말한다.
-                         */}
-                        {isPending ? (
-                          <Chip variant="status" size="md" status="info">
-                            {t.scanned.pendingMark}
-                          </Chip>
-                        ) : progress.kind === 'over' ? (
-                          <Chip variant="status" size="md" status="warning">
-                            {t.scanned.overMark(withUnit(progress.over, uom))}
-                          </Chip>
-                        ) : progress.kind === 'done' ? (
-                          <Chip variant="status" size="md" status="success">
-                            {t.scanned.completeMark}
-                          </Chip>
-                        ) : null}
+                        <span>{t.pairs.receivedAtLabel}</span> <b>{receivedAt}</b>
                       </>
-                    }
-                  />
-                  {/* 정보 영역(C-21): 「라벨 값」 쌍을 같은 열에 맞춘다. LOT 번호는 라벨 대조용이다(C-10). */}
-                  <PopRowInfo>
-                    <PopRowPair label={t.pairs.lotLabel}>
-                      <span className="material-input-lot-no">{row.lotNo}</span>
-                    </PopRowPair>
-                    <PopRowPair label={t.pairs.progressLabel}>
-                      <QtyProgress
-                        received={receipt?.receivedQty ?? null}
-                        recorded={done?.qty ?? 0}
-                        uom={uom}
-                      />
-                    </PopRowPair>
-                  </PopRowInfo>
+                    )}
+                  </span>
+                  {records.length > 0 && (
+                    <span className="mi-recs">
+                      <span>{t.scanned.recordsTitle}</span>
+                      {records.slice(0, RECORDS_SHOWN).map((record) => {
+                        const unit = describeUom(record.uomId);
+
+                        return (
+                          <span key={record.key} className="mi-rec">
+                            <span className="q">
+                              {unit === '' ? String(record.qty) : `${String(record.qty)} ${unit}`}
+                            </span>
+                            <span className="t">{timeOf(record.occurredAt)}</span>
+                            <PuChip tone={record.state === 'pending' ? 'info' : 'ok'}>
+                              {record.state === 'pending'
+                                ? t.scanned.pendingState
+                                : t.scanned.sentState}
+                            </PuChip>
+                          </span>
+                        );
+                      })}
+                      {more > 0 && <span>{t.scanned.recordsMore(more)}</span>}
+                    </span>
+                  )}
                 </button>
               </li>
             );
           })}
         </ul>
-      )}
+      </div>
+      <ListOrderFoot
+        className="mi-foot"
+        order={order}
+        onOrder={(next) => {
+          onOrderChange(next);
+          paged.setPage(1);
+        }}
+        showOrder={hasRows}
+      >
+        {summary !== null && <span className="mi-summary">{summary}</span>}
+        <PuPager
+          total={rows.length}
+          page={paged.page}
+          pages={paged.pages}
+          onPage={paged.setPage}
+          label={t.scanned.materialsLabel}
+        />
+      </ListOrderFoot>
     </>
   );
 };

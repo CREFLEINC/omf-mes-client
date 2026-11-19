@@ -5,6 +5,7 @@ import { useEffect, useId, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { formatQty } from '../../patterns/package-qty';
+import { PuActionBar, PuButton } from '../../patterns/pop-uniform';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { overriddenLotsOf } from '../parts-iqc-inspection/lot-judgment';
 import { LotMatchField } from '../parts-iqc-inspection/lot-match-field';
@@ -39,7 +40,7 @@ import type { InspectionRequestResponse } from '../oqc-inspection/types';
 
 type ShipmentRequestLot = components['schemas']['ShipmentRequestLot'];
 import { formatDateTime } from '../oqc-inspection/types';
-import { PopSerialStep } from './serial-step';
+import { PopSerialDialog, PopSerialSummary } from './serial-step';
 
 const pop = messages.popOqcInspection;
 const ps = messages.popOqcInspection.shipment;
@@ -205,7 +206,7 @@ const Summary = ({
       value:
         request.inspectionPlanVersionId == null
           ? pop.detail.noPlanVersion
-          : pop.detail.planValue(request.inspectionPlanVersionId),
+          : pop.detail.planValue(pop.detail.idValue(request.inspectionPlanVersionId)),
     },
     { key: 'at', label: ps.refs.requestedAt, value: formatDateTime(request.requestedAt) },
   ];
@@ -347,6 +348,8 @@ export const PopShipmentDetail = ({
 }) => {
   const { request, views } = form;
   const judgmentHintId = useId();
+  /* 시리얼 기록은 옛 흐름과 같은 창으로 적는다(#295 — 요약 줄 + [시리얼 검사 기록] 창). */
+  const [serialOpen, setSerialOpen] = useState(false);
   if (request === undefined || views === null) {
     return <p className="field-note">{pop.detail.loading}</p>;
   }
@@ -517,13 +520,25 @@ export const PopShipmentDetail = ({
           ) : null}
           {/* 검사 항목 측정 — 지금 검사 기준대로(FR-009 · 시안 P0406-After 메모 E 「지금처럼」). */}
           <ShipmentMeasurementSection form={form.measurements} locked={form.save.isSaving} />
-          <PopSerialStep
-            inspectionRequestId={request.inspectionRequestId}
-            itemId={request.itemId}
+          <PopSerialSummary
             rows={form.serialRows}
-            onChange={form.setSerialRows}
             disabled={form.save.isSaving}
+            onOpen={() => {
+              setSerialOpen(true);
+            }}
           />
+          {serialOpen && (
+            <PopSerialDialog
+              inspectionRequestId={request.inspectionRequestId}
+              itemId={request.itemId}
+              rows={form.serialRows}
+              onChange={form.setSerialRows}
+              disabled={form.save.isSaving}
+              onClose={() => {
+                setSerialOpen(false);
+              }}
+            />
+          )}
         </div>
       ) : null}
     </div>
@@ -568,22 +583,24 @@ export const PopShipmentBar = ({ form }: { form: PopShipmentForm }) => {
     </p>
   );
 
+  /* #295 — 공통 작업 줄(`PuActionBar`)에 선다: 왼쪽 띠 글, 오른쪽 [결과 저장]. */
   return (
-    <div className="pop-action-bar">
-      <div id={noteId} className="pop-action-note" aria-live="polite">
-        {note}
-      </div>
+    <PuActionBar
+      lead={
+        <div id={noteId} className="pop-action-note" aria-live="polite">
+          {note}
+        </div>
+      }
+    >
       {/* 잠긴 까닭은 바로 옆 띠 글이다(C-4). */}
-      <Button
-        type="button"
-        size="2xl"
-        variant="filled"
+      <PuButton
+        variant="primary"
         disabled={!canSave}
         aria-describedby={canSave ? undefined : noteId}
         onClick={form.submit}
       >
         {save.isSaving ? ps.bar.saving : ps.bar.save}
-      </Button>
-    </div>
+      </PuButton>
+    </PuActionBar>
   );
 };

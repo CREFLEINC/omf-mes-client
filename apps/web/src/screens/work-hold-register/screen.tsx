@@ -1,10 +1,16 @@
-import { AlertBanner, Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { useEffect, useId, useRef, useState } from 'react';
 
-import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
+import {
+  PuActionBar,
+  PuButton,
+  PuCols,
+  PuNote,
+  PuScreen,
+  puToast,
+} from '../../patterns/pop-uniform';
 import { ApiRequestError } from '../../patterns/request';
 
 import { resolveActions } from './actions';
@@ -18,10 +24,13 @@ import { EndConfirmDialog } from './end-confirm-dialog';
 import { toEndGroup, toResumeGroup, toStopGroup, type HoldTarget } from './event-request';
 import { useWorkHoldOutbox, type OutboxDraft } from './outbox';
 import { DIRECTION_END } from './codes';
-import { useOpenSession, useSessionEvents, useWorkOrderNo, workHoldKeys } from './queries';
+import { useOpenSession, useSessionEvents, workHoldKeys } from './queries';
 import { useHoldReasons } from './reason-options';
 import { SessionPanel } from './session-panel';
 import { isRunningSession, isStoppedSession } from './types';
+import { WorkOrderBand } from './wo-band';
+
+import './uniform.css';
 
 const t = messages.workHoldRegister;
 
@@ -61,9 +70,10 @@ export const WorkHoldRegisterScreen = () => {
   const [draftError, setDraftError] = useState<string | null>(null);
 
   const [isEndConfirmOpen, setEndConfirmOpen] = useState(false);
+  /* 왼쪽 「현재 세션」 구획 접기(시안) — 접으면 오른쪽이 그 폭만큼 넓어진다. */
+  const [sessionFolded, setSessionFolded] = useState(false);
 
   const session = useOpenSession(workOrderId);
-  const workOrderNo = useWorkOrderNo(workOrderId);
   const events = useSessionEvents(session.session?.workSessionId ?? null);
   const reasons = useHoldReasons();
   const outbox = useWorkHoldOutbox();
@@ -72,6 +82,11 @@ export const WorkHoldRegisterScreen = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const isLockedRejection = outbox.rejection?.kind === 'stateLocked';
+
+  /* ⭐ 「세션을 종료했습니다」는 종료가 서버에 닿은 뒤에만 알린다 — 담기만 한 동안은 세션이 아직 열려 있다. */
+  useEffect(() => {
+    if (endedHere) puToast(t.toast.ended);
+  }, [endedHere]);
 
   /* 끝난 세션이라 거부됐으면 화면의 세션을 다시 읽어 「세션 없음」으로 맞춘다. */
   useEffect(() => {
@@ -139,8 +154,8 @@ export const WorkHoldRegisterScreen = () => {
    *
    * ⛔ **두 호출을 «따로» 담지 않는다** — 그 사이에 다른 조작이 끼어들면 순서가 뜻을 잃는다.
    */
-  const submit = (toGroup: (target: HoldTarget) => OutboxDraft[] | null): void => {
-    if (session.session === null || workerNo === null) return;
+  const submit = (toGroup: (target: HoldTarget) => OutboxDraft[] | null): boolean => {
+    if (session.session === null || workerNo === null) return false;
 
     const group = toGroup({
       workOrderId: session.session.workOrderId,
@@ -152,12 +167,14 @@ export const WorkHoldRegisterScreen = () => {
     if (group === null) {
       setDraftError(t.form.reasonRequired);
 
-      return;
+      return false;
     }
 
     outbox.enqueueGroup(group);
     setDraft(EMPTY_HOLD_DRAFT);
     setDraftError(null);
+
+    return true;
   };
 
   const handleStop = (): void => {
@@ -172,14 +189,14 @@ export const WorkHoldRegisterScreen = () => {
 
     const occurredAt = new Date().toISOString();
 
-    submit((target) => toStopGroup(draft, occurredAt, target));
+    if (submit((target) => toStopGroup(draft, occurredAt, target))) puToast(t.toast.stopped);
   };
 
   /* ⛔ 재개는 사유를 비운다(§5-4) — 초안에 남은 사유를 실어 보내지 않는다. */
   const handleResume = (): void => {
     const occurredAt = new Date().toISOString();
 
-    submit((target) => toResumeGroup(occurredAt, target));
+    if (submit((target) => toResumeGroup(occurredAt, target))) puToast(t.toast.resumed);
   };
 
   /* ⭐ 확인 창을 거친 뒤에만 닫는다 — 되돌릴 수 없다(§5-4). */
@@ -190,73 +207,58 @@ export const WorkHoldRegisterScreen = () => {
     submit((target) => toEndGroup(endedAt, target));
   };
 
-  return (
-    /* 표제가 본문의 이름이 된다 — 셸이 없어 줄 사람이 이 화면뿐이다. */
-    <main className="pop-shell pop-ui" aria-labelledby={titleId}>
-      <header className="pop-header">
-        <h1 id={titleId} className="pop-title">
-          {t.title}
-        </h1>
-        {/* W/O 번호는 「중단 등록」 상자 제목 옆에 선다(사용자 지시 2026-11-17 · #291). */}
+  /** [입력 초기화] — 고른 사유 · 비고를 한 번에 지운다(시안). */
+  const resetDraft = (): void => {
+    setDraft(EMPTY_HOLD_DRAFT);
+    setDraftError(null);
+  };
 
-        <p className="pop-context pop-context-right">
-          {session.session !== null && (
-            <Chip variant="status" size="md" status="success">
-              {t.session.sessionNo(session.session.sessionNo)}
-            </Chip>
-          )}
-        </p>
-      </header>
+  /*
+   * 「중단 등록」 구획 맨 위 안내 줄들(시안 규칙 9) — 작업지시 없음 · 세션 없음 · 미전송 · 거부.
+   *
+   * ⛔ **미전송 건수와 연결 상태를 상시 세운다**(C-1 #4). 이것이 없으면 「등록했습니다」가 서버에 닿았다는
+   *    뜻으로 읽히고, 단말이 꺼지면 그 사실이 아무 데도 남지 않는다.
+   */
+  const notes = (
+    <>
+      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 말로 알린다(사용자 지시 2026-09-17). */}
+      {workerNo === null && <PuNote tone="warn">{messages.popChrome.workerMissing}</PuNote>}
 
-      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
-      <PopWorkerMissingBanner workerNo={workerNo} />
+      {/* 작업지시가 없으면 **조회가 나가지 않는다.** 그 사실을 먼저 말한다. */}
+      {workOrderId === null && <PuNote tone="warn">{t.entry.missingWorkOrder}</PuNote>}
 
       {/*
-       * 작업지시가 없으면 **조회가 나가지 않는다.** 그 사실을 배너로 먼저 말한다 — 빈 화면만
-       * 으로는 「세션이 없다」와 「무엇을 볼지 정해지지 않았다」가 같은 모양이 된다.
+       * ⭐ 「현재 세션 없음」 — 조회 실패·조회 중에는 「없다」가 아니므로 세우지 않는다.
+       * ⭐ 작업지시를 못 받았으면 세우지 않는다 — 위 「작업지시를 고르라」 줄 하나만 남긴다.
        */}
-      {workOrderId === null && (
-        <div className="banner-slot">
-          {/* ⭐ 제목(「작업 중단」) 없이 문구만 선다(사용자 지시 2026-09-17). */}
-          <AlertBanner variant="warning">{t.entry.missingWorkOrder}</AlertBanner>
-        </div>
-      )}
+      {workOrderId !== null &&
+        !session.isError &&
+        !session.isPending &&
+        session.session === null && (
+          <PuNote tone="warn">
+            {endedHere ? t.session.ended(messages.workStart.title) : t.session.none}
+          </PuNote>
+        )}
 
-      {session.isError && (
-        <LoadErrorBanner
-          error={session.error}
-          title={t.session.loadFailed}
-          onRetry={session.refetch}
-        />
-      )}
-
-      {/*
-        ⛔ **미전송 건수와 연결 상태를 상시 세운다**(C-1 #4). 이것이 없으면 「등록했습니다」가
-        서버에 닿았다는 뜻으로 읽히고, 단말이 꺼지면 그 사실이 아무 데도 남지 않는다.
-      */}
       {(outbox.pendingCount > 0 || !outbox.isOnline) && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning" title={t.outbox.pending(outbox.pendingCount)}>
-            {outbox.isOnline ? t.outbox.queued : t.outbox.offline}
-          </AlertBanner>
-        </div>
+        <PuNote tone="warn">
+          <b>{t.outbox.pending(outbox.pendingCount)}</b>{' '}
+          {outbox.isOnline ? t.outbox.queued : t.outbox.offline}
+        </PuNote>
       )}
 
       {/* 보낼 것이 남아 있을 때만 다시 보내기를 권한다 — 0건에 [다시 보내기]는 할 일이 아니다. */}
       {outbox.isStalled && outbox.pendingCount > 0 && !isLockedRejection && (
-        <div className="banner-slot">
-          <AlertBanner
-            variant="warning"
-            title={t.outbox.stalled}
-            action={
-              <Button variant="outlined" size="sm" onClick={outbox.retryNow}>
-                {t.outbox.retryNow}
-              </Button>
-            }
-          >
-            {t.outbox.pending(outbox.pendingCount)}
-          </AlertBanner>
-        </div>
+        <PuNote
+          tone="warn"
+          action={
+            <PuButton size="sm" onClick={outbox.retryNow}>
+              {t.outbox.retryNow}
+            </PuButton>
+          }
+        >
+          <b>{t.outbox.stalled}</b> {t.outbox.pending(outbox.pendingCount)}
+        </PuNote>
       )}
 
       {outbox.rejection !== null &&
@@ -265,23 +267,16 @@ export const WorkHoldRegisterScreen = () => {
            * 이미 끝난 세션(관리웹 강제 종료 등)이나 더 바꿀 수 없는 작업지시다 — 다시 보내도 같은
            * 답이 온다. 다시 시도를 권하지 않고 작업을 새로 시작할 곳으로 보낸다.
            */
-          <div className="banner-slot">
-            <AlertBanner
-              variant="error"
-              title={t.outbox.locked}
-              action={
-                <Button
-                  variant="outlined"
-                  size="sm"
-                  onClick={() => void navigate('/pop/work-start')}
-                >
-                  {t.outbox.toWorkStart(messages.workStart.title)}
-                </Button>
-              }
-            >
-              {describeError(outbox.rejection)}
-            </AlertBanner>
-          </div>
+          <PuNote
+            tone="bad"
+            action={
+              <PuButton size="sm" onClick={() => void navigate('/pop/work-start')}>
+                {t.outbox.toWorkStart(messages.workStart.title)}
+              </PuButton>
+            }
+          >
+            <b>{t.outbox.locked}</b> {describeError(outbox.rejection)}
+          </PuNote>
         ) : (
           /* 큐가 들고 있는 것은 이미 정규화된 오류다 — 다시 정규화하면 서버 문구가 사라진다. */
           <LoadErrorBanner
@@ -290,52 +285,83 @@ export const WorkHoldRegisterScreen = () => {
             onRetry={outbox.clearRejection}
           />
         ))}
+    </>
+  );
 
-      {/*
-       * ⭐ **「현재 세션 없음」은 다른 안내 띠와 같이 본문 맨 위 전체 폭에 선다**(사용자 지시
-       *    2026-09-17). 왼쪽 단 안에 두었더니 이력만 아래로 밀려 오른쪽 [중단 등록]과 머리가
-       *    어긋났다. 조회 실패·조회 중에는 「없다」가 아니므로 세우지 않는다.
-       * ⭐ 작업지시를 못 받았으면 세우지 않는다 — 세션은 작업지시를 고른 뒤의 이야기라 위
-       *    「작업지시를 고르라」는 띠 하나만 남긴다(사용자 지시 2026-09-17).
-       */}
-      {workOrderId !== null &&
-        !session.isError &&
-        !session.isPending &&
-        session.session === null && (
-          <div className="banner-slot">
-            <AlertBanner variant="warning" title={t.session.sectionLabel}>
-              {endedHere ? t.session.ended(messages.workStart.title) : t.session.none}
-            </AlertBanner>
-          </div>
-        )}
+  return (
+    <PuScreen
+      className="wh-screen"
+      labelledBy={titleId}
+      band={workOrderId !== null}
+      actionBar={
+        /*
+         * ⭐ **두 버튼을 함께 세우고 상태로 가른다.** 하나를 숨기면 지금 세션이 어느 쪽인지 화면에서
+         * 사라진다(스펙 §6 — 「이미 중단 상태면 재개만 활성」). 사번을 모르면 서버가 거부한다(D-5) —
+         * 큐에 담긴 뒤의 거부는 작업자가 떠난 뒤에 오므로 버튼을 잠근다.
+         */
+        <PuActionBar label={t.title}>
+          <PuButton
+            icon="reset"
+            disabled={inputDisabled || (draft.reasonCode === null && draft.remarks === '')}
+            onClick={resetDraft}
+          >
+            {t.form.reset}
+          </PuButton>
+          <PuButton
+            disabled={inputDisabled || workerNo === null || !canResume}
+            onClick={handleResume}
+          >
+            {t.form.resumeAction}
+          </PuButton>
+          {/* 사유를 고르기 전에는 흐리게만 — 막힌 사유는 사유 칸의 빨간 테두리가 말한다(시안 규칙 3·5). */}
+          <PuButton
+            variant="primary"
+            disabled={inputDisabled || workerNo === null || !canStop || draft.reasonCode === null}
+            onClick={handleStop}
+          >
+            {t.form.stopAction}
+          </PuButton>
+        </PuActionBar>
+      }
+    >
+      {/* 표제는 셸 탭이 보인다 — 본문 이름으로만 남긴다. */}
+      <h1 id={titleId} className="visually-hidden">
+        {t.title}
+      </h1>
 
-      <div className="pop-panes pop-fixed">
-        <div className="pop-hold-column">
-          {/*
-           * ⛔ **실패했을 때 「세션이 없습니다」를 함께 말하지 않는다.** 조회가 실패하면 세션은
-           * `null` 이지만 그것은 「없다」가 아니라 **「모른다」**다 — 둘을 같이 내면 한 화면이
-           * 서로 다른 두 사실을 동시에 말하고, 작업자는 이미 연 세션을 한 번 더 연다.
-           */}
-          {!session.isError && (
-            <SessionPanel
-              session={session.session}
-              isPending={session.isPending}
-              now={now}
-              canEnd={canEnd && workerNo !== null}
-              isStopped={stopped}
-              onEnd={() => {
-                setEndConfirmOpen(true);
-              }}
-            />
-          )}
+      {workOrderId !== null && <WorkOrderBand workOrderId={workOrderId} />}
 
-          {/*
-           * ⛔ **세션을 모르면 이력도 모른다.** 세션 조회가 실패하면 이력 조회는 나가지도
-           * 않는데, 그때 「기록된 이벤트가 없습니다」를 세우면 조회하지 못한 것을 «비어 있다»고
-           * 단정하게 된다 — 세션 구획과 같은 이유로 세우지 않는다.
-           */}
-          {!session.isError &&
-            (events.isError ? (
+      <PuCols variant="list">
+        {/*
+         * ⛔ **실패했을 때 「세션이 없습니다」를 함께 말하지 않는다.** 조회가 실패하면 세션은 `null` 이지만
+         * 그것은 「없다」가 아니라 **「모른다」**다.
+         * ⛔ **세션을 모르면 이력도 모른다** — 이력 조회가 실패하면 「기록된 이벤트가 없습니다」를 세우지 않는다.
+         */}
+        <SessionPanel
+          session={session.session}
+          isPending={workOrderId !== null && session.isPending}
+          error={
+            session.isError ? (
+              <LoadErrorBanner
+                error={session.error}
+                title={t.session.loadFailed}
+                onRetry={session.refetch}
+              />
+            ) : null
+          }
+          now={now}
+          canEnd={canEnd && workerNo !== null}
+          isStopped={stopped}
+          onEnd={() => {
+            setEndConfirmOpen(true);
+          }}
+          fold={{
+            label: t.session.sectionLabel,
+            folded: sessionFolded,
+            onChange: setSessionFolded,
+          }}
+          history={
+            events.isError ? (
               <LoadErrorBanner
                 error={events.error}
                 title={t.history.loadFailed}
@@ -347,15 +373,16 @@ export const WorkHoldRegisterScreen = () => {
                 reasons={reasons.reasons}
                 isPending={events.isPending}
               />
-            ))}
-        </div>
+            )
+          }
+        />
 
         <HoldForm
-          workOrderNo={workOrderId === null ? null : workOrderNo}
           draft={draft}
           disabled={inputDisabled}
           reasons={reasons}
           error={draftError}
+          notes={notes}
           onReasonChange={(code) => {
             setDraft((prev) => ({ ...prev, reasonCode: code }));
             setDraftError(null);
@@ -364,34 +391,7 @@ export const WorkHoldRegisterScreen = () => {
             setDraft((prev) => ({ ...prev, remarks }));
           }}
         />
-      </div>
-      {/*
-       * ⭐ **조작은 화면 바닥에 선다.** 구획 안에 두었더니 사유 7값이 칸을 넘겨 [ 중단 등록 ]이
-       * 화면 밖(761~833)으로 밀렸다 — 중단을 등록할 수 없는 화면이었다(실측). 액션바는 늘
-       * 같은 자리에 있고 본문이 아무리 길어져도 밀리지 않는다(다른 POP 화면과 같은 어휘).
-       *
-       * ⭐ **두 버튼을 함께 세우고 상태로 가른다.** 하나를 숨기면 지금 세션이 어느 쪽인지
-       * 화면에서 사라져, 눌러 본 뒤에야 안다(스펙 §6 — 「이미 중단 상태면 재개만 활성」).
-       */}
-      <div className="pop-actions">
-        {/* 사번을 모르면 서버가 거부한다(D-5) — 큐에 담긴 뒤의 거부는 작업자가 떠난 뒤에 온다.
-            그 사유는 맨 위 공용 띠가 말하고 여기서는 버튼만 잠근다. */}
-        <Button
-          variant="outlined"
-          size="2xl"
-          disabled={inputDisabled || workerNo === null || !canResume}
-          onClick={handleResume}
-        >
-          {t.form.resumeAction}
-        </Button>
-        <Button
-          size="2xl"
-          disabled={inputDisabled || workerNo === null || !canStop}
-          onClick={handleStop}
-        >
-          {t.form.stopAction}
-        </Button>
-      </div>
+      </PuCols>
 
       {isEndConfirmOpen && session.session !== null && (
         <EndConfirmDialog
@@ -402,6 +402,6 @@ export const WorkHoldRegisterScreen = () => {
           }}
         />
       )}
-    </main>
+    </PuScreen>
   );
 };

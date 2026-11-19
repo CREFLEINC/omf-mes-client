@@ -1,0 +1,185 @@
+/* P-04-04 재구성 신규 라벨 — 화면 전용 모양(#295). 공통은 app/pop-uniform.css. */
+
+/* 왼쪽: 찾기 칸 · 목록(남는 높이) · 쪽 넘김 */
+.rpk-left {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  align-content: stretch;
+}
+
+.rpk-left > .pu-search {
+  width: 100%;
+  height: 48px;
+}
+
+/* 빈 구획 안내는 남는 칸만 채운다(구획 높이를 넘지 않게) */
+.rpk-left > .pu-empty,
+.pu-card-body.grow.rpk-right > .pu-empty {
+  height: auto;
+  min-height: 0;
+}
+
+.rpk-right > .pu-empty {
+  flex: 1 1 0;
+}
+
+.rpk-list .pu-item {
+  padding: 10px 12px;
+  gap: 4px;
+}
+
+/* 오른쪽: 위에서 아래로 쌓고, 발행 이력이 남는 높이를 갖는다 */
+.rpk-right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rpk-right > * {
+  flex: none;
+  min-width: 0;
+}
+
+.rpk-band .pu-band .kv > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rpk-band .pu-band .kv > span > .pu-ic {
+  width: 16px;
+  height: 16px;
+  color: var(--pu-primary);
+}
+
+.rpk-band .pu-band .kv > b .pu-mono,
+.rpk-band .pu-band .kv > b {
+  font-weight: 700;
+}
+
+/* 포장 내용물 한 줄 — 넘치면 말줄임, 전부는 title 로 */
+.rpk-contents {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.rpk-contents > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rpk-contents > span:first-child,
+.rpk-sec {
+  flex: none;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--pu-text-2);
+}
+
+/* 라벨 표: 칸 폭·줄 높이는 공통 표(`pu-table`) 규칙 — 번호는 번호만큼(넘치면 말줄임), 남는 폭은 내용 칸이 갖는다. */
+.rpk-table .pu-table td.rpk-no {
+  max-width: 240px;
+}
+
+.rpk-table td.fit input {
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  vertical-align: middle;
+  accent-color: var(--pu-primary);
+  cursor: pointer;
+}
+
+.rpk-sub {
+  display: block;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--pu-text-3);
+}
+
+.rpk-sub.bad {
+  color: var(--pu-bad);
+}
+
+.rpk-err {
+  margin: 0;
+  color: var(--pu-bad);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* 발행 이력: 남는 높이만큼, 넘치면 쪽 넘김 */
+.rpk-right > .rpk-hist {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rpk-hist-list {
+  flex: 1 1 0;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.rpk-step {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 10px;
+  align-items: center;
+  font-size: 14px;
+  padding: 8px 12px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-card);
+}
+
+.rpk-step > i {
+  font-style: normal;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pu-ok-bg);
+  color: var(--pu-ok);
+}
+
+.rpk-step > i .pu-ic {
+  width: 14px;
+  height: 14px;
+}
+
+.rpk-step.bad > i {
+  background: var(--pu-bad-bg);
+  color: var(--pu-bad);
+}
+
+.rpk-step small {
+  margin-left: 8px;
+  color: var(--pu-text-3);
+  font-size: 13px;
+}
+
+/* 미리보기 창 */
+.rpk-dialog {
+  display: grid;
+  gap: 12px;
+}
+
+.rpk-preview-image {
+  display: block;
+  max-width: 100%;
+  max-height: 320px;
+  margin: 0 auto;
+  border: 1px dashed var(--pu-line);
+  border-radius: var(--radius-md, 12px);
+  background: #fff;
+}

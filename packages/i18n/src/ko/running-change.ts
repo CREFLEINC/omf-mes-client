@@ -13,36 +13,41 @@ export const runningChange = {
   header: {
     /* ⚠ 머리줄의 작업지시 표기는 화면마다 「W/O」로 통일한다(사용자 지시 2026-09-10). */
     workOrderMissing: '작업지시를 받지 못해 현재 투입을 불러올 수 없습니다.',
-    session: (workSessionId: number) => `세션 ${workSessionId}`,
-    /** ⭐ 번호가 뒤에 붙는다 — 「단말# 5」(사용자 지시 2026-09-15). */
-    terminal: (terminalId: number) => `단말# ${terminalId}`,
-    terminalUnknown: '단말 확인되지 않음',
     unsynced: (count: number) => `미전송 ${count}건`,
-    offline: '오프라인',
+  },
+
+  /** 본문 맨 위 작업지시 띠(POP 통일 시안 #295). */
+  band: {
+    title: '작업지시 (W/O)',
+    process: '공정',
+    item: '품목',
+    currentLot: '현재 생산 LOT 번호',
+    progress: '양품량',
+    progressValue: (goodQty: number, targetQty: number) => `${goodQty}/${targetQty}`,
   },
 
   panes: {
     current: '현재 투입',
-    currentLot: '현재 생산LOT',
     replace: '부품 교체',
   },
 
   current: {
     loading: '현재 투입을 불러오는 중입니다.',
     empty: '이 작업지시에 등록된 투입이 없습니다. 교체할 대상이 없습니다.',
+    noWorkOrderTitle: '작업지시를 받지 못했습니다.',
     noWorkOrder: '작업지시가 정해지면 현재 투입이 표시됩니다.',
     /*
      * ⭐ **칸마다 이름을 붙인다**(사용자 제안 시안 2026-09-11). 값만 늘어놓으면 「ABC-123」이
      *    품목인지 LOT 인지, 「100 EA」가 계획인지 투입인지 화면만 보고는 알 수 없다.
      */
-    itemCodeLabel: '제품 코드',
-    inputQtyLabel: '투입 수량',
     /* IQC 에서 적은 4M 변경품(omf-all-around#63) — 표시만 한다. */
+    /** 현재 투입 줄의 일시 칸 이름(사용자 지시 2026-11-19). */
+    occurredAt: '투입일시',
     fourMChangeMark: '4M 변경품',
     moldSectionLabel: '금형 정보',
-    moldNoLabel: '금형 번호',
+    moldNoLabel: '금형 코드',
     moldNameLabel: '금형명',
-    shotCountLabel: '타발수',
+    shotCountLabel: '누계 타발수',
     shotRemainingLabel: '잔여 타발수',
     moldUnknown: '금형을 확인할 수 없습니다',
     moldNone: '이 세션에 물린 금형이 없습니다',
@@ -66,25 +71,14 @@ export const runningChange = {
    * 들어와야 풀리고, 뒤는 다시 읽으면 풀린다.
    */
   currentLot: {
-    loading: '현재 생산LOT 을 불러오는 중입니다.',
-    missing: '현재 생산LOT 을 받지 못했습니다. 작업 화면에서 다시 들어오세요.',
+    /** 현재 생산 LOT 을 못 읽었을 때 — 교체는 막지 않는다(띠의 「—」만으로는 실패인지 알 수 없다). */
     failed: '현재 생산LOT 을 불러오지 못했습니다. 교체 등록은 그대로 할 수 있습니다.',
-    progress: (goodQty: number, targetQty: number) => `진행 ${goodQty}/${targetQty}`,
     /** 진척은 선택 필드다 — 못 받았으면 0 으로 적지 않고 모른다고 적는다. */
     progressUnknown: (targetQty: number) => `목표 ${targetQty} · 진행 확인 불가`,
   },
 
-  /**
-   * W/O 가 나뉘지 않는다는 것 — 스펙 §3 도면이
-   * 화면에 상시 세워 둔 안내다.
-   */
-  notices: {
-    noWorkOrderSplit: 'W/O 는 나뉘지 않습니다. 생산LOT 만 BOM 스냅샷별로 갈립니다.',
-  },
-
   scan: {
-    label: '신규 부품 LOT 스캔',
-    manualEntry: '직접 입력',
+    label: '신규 부품 LOT 번호',
     outcomes: {
       /**
        * 읽은 코드와 찾은 LOT 이 «다를 때»만 둘을 잇는다 — 검색이 번호의 일부·외부 식별자로도
@@ -95,10 +89,9 @@ export const runningChange = {
        * 읽은 코드가 곧 LOT 번호인 경우. ⛔ **화살표 양쪽에 같은 값을 적지 않는다** — 무엇이
        * 무엇으로 바뀌는지 읽히지 않고, 실제로는 바뀐 것이 없다.
        */
-      part: (lotNo: string) => `${lotNo} 을(를) 담았습니다.`,
       ambiguous: (count: number) =>
         `여러 건이 걸렸습니다(${count}건). LOT 번호를 그대로 읽어 주세요.`,
-      notFound: (code: string) => `${code} 에 해당하는 LOT 을 찾지 못했습니다.`,
+      notFound: '이 번호의 LOT이 없습니다. 번호를 다시 확인하세요.',
       failed: '조회에 실패했습니다. 다시 읽어 주세요.',
       offline: '연결이 끊겨 조회할 수 없습니다. 연결되면 다시 읽어 주세요.',
     },
@@ -106,7 +99,6 @@ export const runningChange = {
 
   replace: {
     partLabel: '신규 부품',
-    partNone: '신규 부품 LOT 을 먼저 스캔 해주세요.',
     /*
      * 보류 칩의 품질 상태 — 공통코드로 표시명을 푼다. ⛔ **코드를 그대로 세우지 않는다**:
      * 현장은 `INSPECTION_PENDING` 이 무엇인지도, 무엇을 하면 풀리는지도 모른다.
@@ -119,15 +111,16 @@ export const runningChange = {
     statusUnknown: (code: string) => `${code} (표시명 없음)`,
     clearPart: '지우기',
     targetLabel: '교체 대상',
-    targetPlaceholder: '교체 대상을 고르세요',
+    targetPlaceholder: '교체 대상을 선택하세요',
     targetOption: (itemCode: string, lotNo: string) => `${itemCode} (${lotNo})`,
-    qtyLabel: '투입 수량',
+    qtyLabel: '투입량',
     qtyProblems: {
-      empty: '투입 수량을 입력하세요.',
+      empty: '투입량을 입력하세요.',
       format: '숫자만 입력하세요.',
-      notPositive: '투입 수량은 0보다 커야 합니다.',
+      notPositive: '투입량은 0보다 커야 합니다.',
     },
     reasonLabel: '교체 사유',
+    optional: '(선택)',
     reasonPlaceholder: '사유를 고르세요',
     /**
      * ⚠ 사유를 고르지 않아도 등록은 막히지 않는다(스펙 §6 — 권고).
@@ -147,9 +140,9 @@ export const runningChange = {
     reasonFailed: '교체 사유를 불러오지 못했습니다. 사유 없이 등록됩니다.',
     reasonLoading: '교체 사유를 불러오는 중입니다.',
     submit: '교체 등록',
-    /** 수량 칸 오른쪽 단추(사용자 지시 2026-09-17). 교체 등록과 같은 일을 한다. */
-    qtySubmit: '투입',
-    recorded: '교체를 담았습니다. 서버에 전송되면 미전송 건수가 줄어듭니다.',
+    reset: '입력 초기화',
+    /** 결과 알림(아래 가운데). */
+    done: '부품 교체를 등록했습니다.',
     rejected: '서버가 이 교체를 받지 않았습니다.',
   },
 
@@ -159,10 +152,8 @@ export const runningChange = {
    * 단말에는 자판이 없다. 칸만 두면 값을 넣을 방법이 없다.
    */
   pad: {
-    keypadLabel: '수량 키패드',
-    backspace: '한 자 지움',
-    clear: '지움',
-    decimal: '소수점',
+    title: '입력',
+    unit: (uom: string) => `단위 ${uom}`,
   },
 
   /** 등록이 막힌 사유. 「확인할 수 없다」와 「권한이 없다」를 다르게 말한다. */
@@ -170,8 +161,7 @@ export const runningChange = {
     checking: '교체 권한을 확인하는 중입니다.',
     unavailable: '교체 권한을 확인할 수 없습니다. 잠시 후 다시 시도하세요.',
     unidentified:
-      '단말이나 이 작업지시의 공정을 확인하지 못해 교체를 등록할 수 없습니다. 작업 지시 목록에서 작업지시를 다시 고른 뒤 들어오세요.',
-    targetMissing: '교체 대상을 골라야 등록할 수 있습니다.',
+      '단말이나 이 작업지시의 공정을 확인하지 못해 교체를 등록할 수 없습니다. 작업지시 목록에서 작업지시를 다시 고른 뒤 들어오세요.',
   },
 
   retry: '다시 시도',

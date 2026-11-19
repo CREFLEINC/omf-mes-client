@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { popRoutes } from './pop';
+import { POP_LEGACY_REDIRECTS, popRoutes } from './pop';
 import { POP_DEV_ENTRY_PATH, POP_DEV_SCREENS } from '../patterns/pop-dev-screen-nav';
 
 /**
@@ -21,6 +21,8 @@ describe('개발용 화면 이동 목록', () => {
     const routed = popRoutes
       .map((route) => route.path)
       .filter((path) => path !== POP_DEV_ENTRY_PATH)
+      /* 합쳐서 없어진 화면의 옛 주소는 화면이 아니다(#295). */
+      .filter((path) => path === undefined || !(path in POP_LEGACY_REDIRECTS))
       .sort();
     const listed = POP_DEV_SCREENS.map((screen) => screen.path).sort();
 

@@ -109,7 +109,7 @@ export const terminalProcessMap = {
     copyUnavailable:
       '이 주소에서는 브라우저가 복사를 막아 등록 코드를 복사할 수 없습니다. 기기에서 QR을 스캔해 등록하세요.',
     copyError: '복사하지 못했습니다. 다시 시도하거나 기기에서 QR을 스캔해 등록하세요.',
-    issuedAt: '발급 시각',
+    issuedAt: '발급일시',
     expiresAt: '만료',
     noExpiry: '만료 없음',
     close: '닫기',

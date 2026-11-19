@@ -1,13 +1,12 @@
-import {
-  Button,
-  Dialog,
-  TextField,
-  type SelectItems,
-  type SelectOption,
-  type SelectProps,
-} from '@crefle/web-ui';
+import { type SelectItems, type SelectOption, type SelectProps } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { forwardRef, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+
+import { PuDialog } from './pop-uniform/dialog';
+import { PuIcon } from './pop-uniform/icon';
+import { PuEmpty } from './pop-uniform/layout';
+import { PuPager, useFitCount } from './pop-uniform/pager';
+import { PuTextKeyboard } from './pop-uniform/text-keyboard';
 
 /**
  * 한 쪽에 놓는 항목 수.
@@ -24,13 +23,28 @@ const PAGE_SIZE = 5;
 const flattenOptions = (items: SelectItems): SelectOption[] =>
   items.flatMap((item) => ('options' in item ? item.options : [item]));
 
+/** 칸 이름표(`<label for>`)의 글 — 별표·(선택) 같은 덧붙임은 뺀다. */
+const fieldLabelOf = (id: string | undefined): string => {
+  if (id === undefined) return '';
+  const label = document.querySelector(`label[for="${CSS.escape(id)}"]`);
+  if (label === null) return '';
+
+  return [...label.childNodes]
+    .filter((node) => !(node instanceof HTMLElement && node.matches('.req, .opt, .aside')))
+    .map((node) => node.textContent ?? '')
+    .join('')
+    .trim();
+};
+
 const accessibleName = ({
   ariaLabel,
   labelledBy,
+  id,
   placeholder,
 }: {
   ariaLabel?: string;
   labelledBy?: string;
+  id?: string;
   placeholder?: string;
 }): string => {
   if (ariaLabel !== undefined) return ariaLabel;
@@ -41,7 +55,10 @@ const accessibleName = ({
     .filter(Boolean)
     .join(' ');
 
-  return labelled || placeholder || messages.popChrome.selectDialog.fallbackName;
+  /* 창 제목은 칸 이름을 먼저 쓴다 — 안내 문구(「…를 선택하세요」)를 쓰면 「…선택하세요 선택」이 된다(사용자 지적 2026-11-19). */
+  return (
+    labelled || fieldLabelOf(id) || placeholder || messages.popChrome.selectDialog.fallbackName
+  );
 };
 
 export interface PopSelectProps extends SelectProps {
@@ -88,8 +105,7 @@ export interface PopSelectProps extends SelectProps {
 }
 
 /**
- * 마지막 글자 뒤 이만큼 조용하면 스캔이 끝난 것으로 본다 —
- * `screens/packing-result/scan-field` 와 같은 값이다.
+ * 마지막 글자 뒤 이만큼 조용하면 스캔이 끝난 것으로 본다.
  *
  * ⛔ **곧바로 대조하지 않는 이유가 있다.** 스캐너는 글자를 하나씩 붙여 보내므로 `SH-10` 을
  *    쏘는 도중 `SH-1` 이 잠깐 만들어진다 — 그 값이 다른 후보와 정확히 같으면 **엉뚱한 출하를
@@ -171,9 +187,16 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
    *    바로 그 모양이라, 두 자리를 가르고 이름도 뜻대로 붙인다.
    */
   const showSearch = !isShortList || scannable;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  /*
+   * ⭐ 검색 칸이 있으면 창 맨 아래에 화면 글자판을 둔다 — POP 단말에는 실물 자판이 없다(#295).
+   *    글자판이 자리를 차지하므로 한 쪽 건수는 남은 목록 칸 높이로 잰다(창 안 스크롤 없음).
+   */
+  const listRef = useRef<HTMLDivElement>(null);
+  const fitCount = useFitCount(listRef, { fallback: 4, max: PAGE_SIZE });
+  const pageSize = showSearch ? fitCount : PAGE_SIZE;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages - 1);
-  const visibleOptions = filtered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+  const visibleOptions = filtered.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const close = () => {
@@ -246,25 +269,25 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
     };
   }, [scannable, isOpen, normalizedQuery]);
 
+  /*
+   * ⭐ 모양은 POP 통일 규칙 7·16(#295) — 칸 하나(고른 값 또는 회색 「○○ 선택」 + 오른쪽 ⌄)를 누르면 선택 창.
+   *    창 머리에 닫기(X)가 없고 아래 [취소] 하나로 닫는다. 쪽 넘김은 「총 N건 ‹ 1 / 2 ›」.
+   *    고르는 동작(검색 · 스캔 자동 선택 · 5개씩 쪽)은 그대로다.
+   */
+  const shownLabel = hideValue ? actionLabel : (selected?.label ?? placeholder);
+  const isPlaceholder = !hideValue && selected === null;
+
   return (
     <div className="pop-select">
-      {!hideValue && (
-        <span className="pop-select__value" aria-hidden="true">
-          {leadingIcon}
-          <span className={selected === null ? 'pop-select__placeholder' : undefined}>
-            {selected?.label ?? placeholder}
-          </span>
-        </span>
-      )}
-      <Button
+      <button
         {...buttonProps}
         ref={ref}
         id={id}
         type="button"
         role="combobox"
-        variant="outlined"
-        size="md"
-        className={['pop-select__trigger', className].filter(Boolean).join(' ')}
+        className={['pu-input', 'pu-pickf', 'pop-select__trigger', invalid && 'is-need', className]
+          .filter(Boolean)
+          .join(' ')}
         disabled={disabled}
         aria-label={ariaLabel}
         aria-labelledby={ariaLabelledBy}
@@ -282,6 +305,7 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
               accessibleName({
                 ariaLabel,
                 labelledBy: ariaLabelledBy,
+                id,
                 placeholder,
               }),
             ),
@@ -289,36 +313,26 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
           setIsOpen(true);
         }}
       >
-        {actionLabel}
+        {leadingIcon}
+        <span className={isPlaceholder ? 'ph' : undefined}>
+          {shownLabel === '' ? actionLabel : shownLabel}
+        </span>
         {actionBadge}
-      </Button>
+        <PuIcon name="chevron" />
+      </button>
 
       {name !== undefined ? <input type="hidden" name={name} value={selectedValue ?? ''} /> : null}
 
       {isOpen ? (
-        <Dialog
-          open
-          onClose={close}
+        /*
+         * ⛔ **창 바깥을 눌러 닫히지 않는다**(사용자 지시 2026-09-10) — 터치 단말에서 손이 스치면 고르려던
+         *    항목과 검색어가 사라진다. 닫는 길은 아래 [취소]와 Esc 다.
+         */
+        <PuDialog
           title={title}
-          size="md"
-          className="pop-select-dialog"
-          /*
-           * ⛔ **팝업 바깥을 눌러 닫히지 않는다**(사용자 지시 2026-09-10). 닫는 길은 우상단
-           *    [✕] 하나다.
-           *
-           * ⭐ **터치 단말이라서다.** 목록 팝업은 화면 대부분을 덮고, 손이 스치거나 장갑 낀
-           *    손가락이 가장자리를 짚는 일이 잦다. 스크림 클릭이 닫기로 이어지면 고르려던
-           *    항목을 놓치고 검색어와 쪽 위치까지 함께 사라진다 — 고르려고 연 팝업이
-           *    「누른 적 없는데 닫힌다」가 된다.
-           *
-           * ⚠ **설계는 이 자리를 정하지 않았다.** G-34 는 팝업의 «내용»(목록 스크롤 ·
-           *   이전과 다음, 현재 쪽, 검색어 지우기)만 정하고 닫는 방법을 적지 않았다.
-           *   회신이 오면 그때 맞춘다.
-           *
-           * ⚠ Escape 는 그대로 둔다 — 자판이 붙은 단말과 개발 중 확인에서 쓰는 길이고,
-           *   손이 스쳐 눌리는 자리가 아니다.
-           */
-          closeOnBackdropClick={false}
+          wide={showSearch}
+          onClose={close}
+          closeLabel={messages.popUniform.dialog.cancel}
         >
           {dialogLead?.((chosen) => {
             const option = flatOptions.find((candidate) => candidate.value === chosen);
@@ -326,12 +340,11 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
           })}
 
           {showSearch && (
-            <div className="pop-select-dialog__search">
-              <TextField
+            <div className="pu-input pu-search">
+              <PuIcon name="search" />
+              <input
                 ref={searchRef}
                 type="search"
-                size="md"
-                fullWidth
                 aria-label={
                   scannable
                     ? messages.popChrome.selectDialog.scanLabel
@@ -348,77 +361,70 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
                   setPage(0);
                 }}
               />
-              <Button
-                type="button"
-                variant="outlined"
-                size="md"
-                disabled={query === ''}
-                onClick={() => {
-                  setQuery('');
-                  setPage(0);
-                }}
-              >
-                {messages.popChrome.selectDialog.clearSearch}
-              </Button>
+              {query !== '' && (
+                <button
+                  type="button"
+                  className="pu-btn sm ghost icon"
+                  aria-label={messages.popChrome.selectDialog.clearSearch}
+                  title={messages.popChrome.selectDialog.clearSearch}
+                  onClick={() => {
+                    setQuery('');
+                    setPage(0);
+                  }}
+                >
+                  <PuIcon name="x" />
+                </button>
+              )}
             </div>
           )}
 
-          <div className="pop-select-dialog__list" role="listbox" aria-label={title}>
+          <div ref={listRef} className="pu-list" role="listbox" aria-label={title}>
             {visibleOptions.length === 0 ? (
-              <p className="pop-select-dialog__empty">{messages.popChrome.selectDialog.empty}</p>
+              <PuEmpty icon="search" title={messages.popChrome.selectDialog.empty} />
             ) : (
               visibleOptions.map((option) => (
-                <Button
+                <button
                   key={option.value}
                   type="button"
                   role="option"
-                  variant={option.value === selectedValue ? 'tonal' : 'text'}
-                  size="md"
-                  className="pop-select-dialog__option"
+                  className={option.value === selectedValue ? 'pu-opt is-on' : 'pu-opt'}
                   disabled={option.disabled}
                   aria-selected={option.value === selectedValue}
                   onClick={() => {
                     choose(option);
                   }}
                 >
-                  {option.label}
-                  {optionTrailing?.(option)}
-                </Button>
+                  <span>{option.label}</span>
+                  {optionTrailing === undefined ? null : (
+                    <span className="tail">{optionTrailing(option)}</span>
+                  )}
+                </button>
               ))
             )}
           </div>
 
-          {!isShortList && (
-            <div className="pop-select-dialog__paging">
-              <Button
-                type="button"
-                variant="outlined"
-                size="md"
-                disabled={currentPage === 0}
-                onClick={() => {
-                  setPage((previous) => Math.max(0, previous - 1));
-                }}
-              >
-                {messages.popPageNav.prev}
-              </Button>
-              <output aria-live="polite">
-                <span>{messages.popChrome.selectDialog.position(currentPage + 1, totalPages)}</span>{' '}
-                <span>{messages.popChrome.selectDialog.total(filtered.length)}</span>
-              </output>
-              <Button
-                type="button"
-                variant="outlined"
-                size="md"
-                disabled={currentPage >= totalPages - 1}
-                onClick={() => {
-                  setPage((previous) => Math.min(totalPages - 1, previous + 1));
-                }}
-              >
-                {messages.popPageNav.next}
-              </Button>
-            </div>
+          {(!isShortList || totalPages > 1) && (
+            <PuPager
+              label={title}
+              total={filtered.length}
+              page={currentPage + 1}
+              pages={totalPages}
+              onPage={(next) => {
+                setPage(Math.min(totalPages - 1, Math.max(0, next - 1)));
+              }}
+            />
           )}
-        </Dialog>
+          {/* 글자판은 맨 아래 — 목록·쪽 넘김 다음(사용자 지시 2026-11-19). */}
+          {showSearch && (
+            <PuTextKeyboard
+              value={query}
+              onChange={(next) => {
+                setQuery(next);
+                setPage(0);
+              }}
+            />
+          )}
+        </PuDialog>
       ) : null}
     </div>
   );

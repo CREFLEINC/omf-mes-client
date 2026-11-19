@@ -227,10 +227,27 @@ const nth = <T,>(items: readonly T[], index: number): T => {
   return item;
 };
 
+/** 목록 줄의 고르기 — 머리의 「전체 선택」은 빼고 센다. */
 const rowCheckbox = async (index: number) =>
-  nth(await screen.findAllByRole('checkbox', { name: '행 선택' }), index);
+  waitFor(() =>
+    nth(
+      screen
+        .getAllByRole('checkbox')
+        .filter((box) => box.getAttribute('aria-label') !== t.targets.selectAll),
+      index,
+    ),
+  );
 
-const issueButton = () => screen.getByRole('button', { name: t.actions.issue });
+/** 한 번 이상 발행한 대상은 「재발행」 탭에 선다(발행 횟수는 서버 값). */
+const openReissueTab = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(await screen.findByRole('tab', { name: t.tabs.reissue }));
+};
+
+/** 주 단추 — 고른 대상이 이미 발행된 것이면 이름이 [재발행]이 된다. */
+const issueButton = () =>
+  screen.getByRole('button', {
+    name: new RegExp(`^(${t.actions.issue}|${t.actions.reissue})$`, 'u'),
+  });
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -312,23 +329,33 @@ describe('ShippingPackingLabelScreen — 대상 목록', () => {
     expect(screen.queryByRole('combobox', { name: t.printer.label })).toBeNull();
   });
 
-  it('납품라벨은 구성 중인 단위도 목록에 남기되 고를 수 없게 한다', async () => {
+  /* 발행할 수 없는 줄은 발행 대기에 보일 필요가 없다(사용자 지시 2026-11-19). */
+  it('납품라벨은 구성 중인 단위를 발행 대기에 두지 않는다 — 탭 건수·총 건수가 같다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
     await chooseKind(user, '납품라벨');
 
-    // 빠지지 않는다 — 빠지면 「구성 중」과 「이 출하에 없다」가 같은 모양이 된다.
-    expect(await screen.findByText('SYN-SU-0002')).toBeInTheDocument();
-    expect(screen.getByText(t.targets.status.blocked)).toBeInTheDocument();
+    expect(await screen.findByText('SYN-SU-0001')).toBeInTheDocument();
+    expect(screen.queryByText('SYN-SU-0002')).not.toBeInTheDocument();
+    expect(screen.queryByText(t.targets.status.blockedNote)).not.toBeInTheDocument();
+    expect(await rowCheckbox(0)).toBeEnabled();
+    expect(
+      screen
+        .getAllByRole('checkbox')
+        .filter((box) => box.getAttribute('aria-label') !== t.targets.selectAll),
+    ).toHaveLength(1);
+  });
 
-    // 구성 중인 줄(두 번째)을 눌러도 선택으로 남지 않아 발행이 열리지 않는다.
-    await user.click(await rowCheckbox(1));
+  it('납품라벨의 출하 단위가 모두 구성 중이면 빈 목록을 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ units: [OPEN_UNIT] });
 
-    await waitFor(() => {
-      expect(issueButton()).toBeDisabled();
-    });
-    expect(screen.queryByText(t.actions.needsTarget)).not.toBeInTheDocument();
+    await chooseKind(user, '납품라벨');
+
+    expect(await screen.findByText(t.list.waitEmpty)).toBeInTheDocument();
+    expect(screen.queryByText('SYN-SU-0002')).not.toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: t.targets.selectAll })).toBeDisabled();
   });
 
   it('납품라벨은 마감된 단위를 고르면 발행 단추가 열린다', async () => {
@@ -385,6 +412,7 @@ describe('ShippingPackingLabelScreen — 재발행', () => {
     renderScreen({ summaries: [summary(7001, 2, '2026-09-02T04:20:00Z')] });
 
     await chooseKind(user, '납품라벨');
+    await openReissueTab(user);
     await user.click(await rowCheckbox(0));
 
     expect(await screen.findByText(t.reissue.notice(1))).toBeInTheDocument();
@@ -397,6 +425,7 @@ describe('ShippingPackingLabelScreen — 재발행', () => {
     renderScreen({ summaries: [summary(7001, 1)], reasons: [] });
 
     await chooseKind(user, '납품라벨');
+    await openReissueTab(user);
     await user.click(await rowCheckbox(0));
 
     expect(await screen.findByText(t.reissue.empty)).toBeInTheDocument();
@@ -410,7 +439,10 @@ describe('ShippingPackingLabelScreen — 재발행', () => {
     });
 
     await chooseKind(user, '납품라벨');
-    await user.click(await screen.findByRole('checkbox', { name: '전체 선택' }));
+    // 발행 대기 탭에서 전체 선택(7002) 뒤 재발행 탭의 7001 을 더 고른다 — 한 번에 섞어 고른 상태.
+    await user.click(await screen.findByRole('checkbox', { name: t.targets.selectAll }));
+    await openReissueTab(user);
+    await user.click(await rowCheckbox(0));
 
     expect(await screen.findByText(t.actions.mixedIssueModes)).toBeInTheDocument();
     expect(issueButton()).toBeDisabled();
@@ -685,6 +717,11 @@ describe('ShippingPackingLabelScreen — 재진입 복구', () => {
      * ⚠ **카드가 서는 것과 수가 채워지는 것은 다른 순간이다.** 이름은 첫 렌더부터 있고 수는
      *   발행 현황이 온 뒤에 바뀐다 — 이름만 기다리고 수를 바로 읽으면 0 을 본다(실측).
      */
+    // 「누락 라벨 이어서 출력」은 작업 줄 단추로 연다.
+    // 누락 라벨이 셈해져야 눌린다 — 확인 중에는 잠긴다.
+    const recoveryOpen = await screen.findByRole('button', { name: t.recovery.title });
+    await waitFor(() => expect(recoveryOpen).toBeEnabled());
+    await user.click(recoveryOpen);
     await waitFor(() => {
       const card = screen.getByText(t.recovery.deliveryLabel).closest('[role="group"]');
 

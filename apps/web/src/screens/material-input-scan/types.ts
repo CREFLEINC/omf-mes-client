@@ -67,10 +67,18 @@ export interface ReceiptLineView {
   varianceQty: number;
   uomId: number;
   status: ReceiptLineStatus;
+  /**
+   * 수령 일시 — 줄이 속한 전표의 `receivedAt`(줄에는 시각이 없다). 목록의 일시와 [최신순 | 오래된순]이 이 값으로
+   * 선다(사용자 지시 2026-11-19). 전표를 모르고 만든 줄(시험 등)에는 없다.
+   */
+  receivedAt?: string;
 }
 
-/** 응답 한 줄을 화면 타입으로 옮기는 **유일한 지점**이다. */
-export const toReceiptLineView = (line: ShopfloorReceiptLineResponse): ReceiptLineView => ({
+/** 응답 한 줄을 화면 타입으로 옮기는 **유일한 지점**이다. `receivedAt` 은 그 줄의 전표 수령 일시다. */
+export const toReceiptLineView = (
+  line: ShopfloorReceiptLineResponse,
+  receivedAt?: string,
+): ReceiptLineView => ({
   shopfloorReceiptLineId: line.shopfloorReceiptLineId,
   itemId: line.itemId,
   lotId: line.lotId,
@@ -82,6 +90,7 @@ export const toReceiptLineView = (line: ShopfloorReceiptLineResponse): ReceiptLi
   varianceQty: line.varianceQty,
   uomId: line.uomId,
   status: toReceiptLineStatus(line),
+  ...(receivedAt === undefined ? {} : { receivedAt }),
 });
 
 /** 화면이 다루는 생산창고 입고 전표 한 건. 줄은 상세 조회에서만 온다. */

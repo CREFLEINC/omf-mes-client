@@ -70,6 +70,11 @@ export interface LabelLot {
   /** IQC 대상 품목 — 자재 관리 LOT 라벨 뒤에 IQC 라벨을 함께 찍는다(omf-all-around#110). */
   inspectionRequired: boolean;
   lastIssue: { issueSeq: number; issuedAt: string } | null;
+  /**
+   * 등록일시 — 발행 대기 표의 일시 칸과 [최신순 | 오래된순]이 이 값으로 선다(사용자 지시 2026-11-19).
+   * 선택인 까닭: 분할 LOT 라벨(`goods-issue-qr`)도 이 줄 타입을 쓰는데 그쪽은 분할 일시로 따로 줄 세운다.
+   */
+  createdAt?: string;
 }
 
 /** 공급사·품목 묶음의 열쇠 — 왼쪽 목록의 한 줄. */
@@ -96,6 +101,7 @@ export const toLabelLots = (group: WaitingMaterialLotGroup): LabelLot[] =>
     inboundLotNo: lot.inboundLotNo,
     inspectionRequired: group.inspectionRequired,
     lastIssue: lot.lastLabelIssue,
+    createdAt: lot.createdAt,
   }));
 
 /** 대기(입하 전) 자재 관리 LOT 인가 — 고르기 · 폐기 · 첫 발행의 대상. */

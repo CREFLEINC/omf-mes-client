@@ -98,8 +98,12 @@ export interface DeliveryLabelFields {
   shipTo: DeliveryLabelPartner;
   /** 이 출하 단위에 담긴 상자 수(설계 §8). */
   boxCount: number;
-  /** 회차(공유계약 K-6). 재발행이면 2 이상이다. */
-  issueSeq: number;
+  /**
+   * 회차(공유계약 K-6). 재발행이면 2 이상이다.
+   * ⛔ 모르면(미리보기에서 발행 이력을 못 읽음) `null` — 1 로 채우지 않고 「-」로 그린다(G-9).
+   *    인쇄로 나가는 라벨은 늘 발행 응답이 준 값이다.
+   */
+  issueSeq: number | null;
   itemTotals: readonly DeliveryLabelItemTotal[];
 }
 
@@ -135,7 +139,7 @@ export const drawDeliveryLabel = (
 
   /* ⚠ **제품 출하다** — 자재 출고·포장 라벨과 현장에서 섞이지 않게 머리에 밝힌다. */
   codeLine(
-    `DELIVERY  SEQ ${String(fields.issueSeq)}  BOX ${String(fields.boxCount)}`,
+    `DELIVERY  SEQ ${fields.issueSeq === null ? UNKNOWN : String(fields.issueSeq)}  BOX ${String(fields.boxCount)}`,
     ROWS.head,
     SCALE_HEAD,
     besideQr,

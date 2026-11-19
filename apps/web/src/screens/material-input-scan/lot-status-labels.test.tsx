@@ -14,6 +14,7 @@ import {
 } from '../../test/api-harness';
 import { lot, receipt, receiptLineFixtures, WORK_ORDER_ID } from './fixtures';
 import { MaterialInputScanScreen } from './screen';
+import { PuToastHost } from '../../patterns/pop-uniform';
 import { popGateUnidentifiedText } from '../../patterns/pop-process-gate';
 
 const t = messages.materialInputScan;
@@ -68,7 +69,13 @@ const renderScreen = (codeValuesRoute: StubRoute) => {
     return stub(request);
   };
 
-  renderWithProviders(<MaterialInputScanScreen />, { fetch, route: ROUTE });
+  renderWithProviders(
+    <>
+      <PuToastHost />
+      <MaterialInputScanScreen />
+    </>,
+    { fetch, route: ROUTE },
+  );
 
   return requests;
 };
@@ -81,7 +88,10 @@ const flush = async (): Promise<void> => {
 };
 
 /** 투입 수량 편집 영역. 담으면 그 LOT이 골라져 상태 이름이 여기 선다. */
-const editor = (): HTMLElement => screen.getByRole('region', { name: t.panes.noSelection });
+const editor = (): HTMLElement =>
+  within(screen.getByRole('list', { name: t.scanned.materialsLabel })).getByRole('button', {
+    pressed: true,
+  });
 
 const scanOnce = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
   await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');

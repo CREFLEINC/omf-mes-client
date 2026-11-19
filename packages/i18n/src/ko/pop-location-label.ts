@@ -8,13 +8,8 @@
 export const popLocationLabel = {
   title: '창고 적재 위치 라벨 발행',
 
-  entry: {
-    workerLabel: '사번',
-  },
-
   warehouse: {
     label: '창고',
-    placeholder: '창고를 선택해 주세요',
     loadFailed: '창고 목록을 불러오지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
     /** 쓰는 창고가 하나도 없다. 마스터가 비어 있다는 뜻이라 이 화면에서 할 수 있는 일이 없다. */
     none: '쓸 수 있는 창고가 없습니다. 창고 마스터를 먼저 등록하세요.',
@@ -24,25 +19,26 @@ export const popLocationLabel = {
   location: {
     heading: '적재 위치',
     /** 창고를 고르기 전. 목록 자리를 비워 두지 않고 무엇을 더 해야 하는지 적는다. */
-    awaitingWarehouse: '창고를 먼저 선택해주세요.',
+    awaitingWarehouse: '왼쪽에서 창고를 선택하세요.',
     empty: '이 창고에는 등록된 적재 위치가 없습니다.',
-    loading: '적재 위치를 불러오는 중',
     loadFailed: '적재 위치를 불러오지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
     retry: '다시 시도',
+    columnSelect: '선택',
     columnCode: '위치 코드',
     columnName: '위치명',
+    /** 위치 별칭(`Location.aliasName`, 관리웹 창고 위치의 「별칭」) — 없으면 비워 둔다(사용자 지시 2026-11-19). */
+    columnAlias: '별칭',
     /** 사용 여부 열(사용자 지시 2026-09-18 · omf-all-around#11 — 「발행」에서 바꿈). */
     columnState: '상태',
-    /** 아직 한 번도 안 찍은 자리. 「0회」보다 「처음」이 현장에서 빨리 읽힌다. */
-    notIssued: '처음',
-    issuedCount: (count: number) => `${String(count)}회`,
     /** 모든 줄에 사용 여부를 적는다(사용자 문구 그대로 · omf-all-around#11 — 「사용」 / 「미사용」). */
     active: '사용',
     /** 사용 중지된 위치도 찍는다 — 선반은 그 자리에 그대로 있다. */
     inactive: '미사용',
-    /** 줄 오른쪽 [선택]과 목록 머리의 전체 선택(사용자 지시 2026-09-17). */
-    pick: '선택',
-    selectAll: '전체 선택',
+    /** 줄 맨 앞 체크 칸 이름. */
+    choose: (locationCode: string) => `${locationCode} 고르기`,
+    /** 제목 줄 오른쪽 — 이 쪽(보이는 줄)을 한 번에 고르거나 푼다. */
+    selectAll: (count: number) => `전체 선택 (${String(count)}건)`,
+    clearAll: (count: number) => `전체 해제 (${String(count)}건)`,
     clearSelection: '선택 해제',
     /** 계약이 한 번에 받는 상한. 넘으면 전건이 실패하므로 미리 막는다. */
     tooMany: (max: number) => `한 번에 ${String(max)}곳까지 발행할 수 있습니다. 나눠서 찍으세요.`,
@@ -50,19 +46,12 @@ export const popLocationLabel = {
 
   printer: {
     label: '프린터',
-    unknown: '프린터 목록을 확인하지 못했습니다',
-    retry: '다시 시도',
-    unselected: '고르지 않으면 서버 기본 프린터로 나갑니다.',
-    noStatusMessage: '상태를 알 수 없음',
   },
 
   issue: {
     action: '라벨 발행',
-    pending: '발행하는 중',
-    /** 고른 것이 없을 때는 단추가 이미 말한다 — 문구를 덧붙이지 않는다. */
-    succeeded: (count: number) => `${String(count)}건을 발행했습니다.`,
+    actionCount: (count: number) => `라벨 ${String(count)}장 발행`,
     /** 회차를 서버에 묻는 동안. 잠깐이라도 단추가 잠기는 까닭을 말한다. */
-    checkingHistory: '발행 이력을 확인하는 중입니다.',
     /**
      * 회차를 못 물었다.
      *
@@ -74,29 +63,29 @@ export const popLocationLabel = {
   },
 
   reissue: {
-    title: '재발행',
+    title: '재인쇄',
     /**
      * 이미 찍은 자리가 섞여 있다. **회차는 서버가 센다** — 화면은 물어서 알 뿐이다.
      */
     notice: (count: number) =>
-      `선택한 항목 중 ${String(count)}곳은 이미 라벨이 발행되었습니다. 다시 발행할 사유를 선택해 주세요.`,
-    reason: '재발행 사유',
-    /** 필수 안내를 칸 안에 함께 적는다(사용자 지시 2026-09-18) — 칸 아래 줄은 두지 않는다. */
-    reasonPlaceholder: '사유를 선택하세요. 재발행 사유는 필수입니다.',
-    reasonLoadFailed: '재발행 사유를 불러오지 못했습니다.',
-    confirm: '재발행',
+      `선택한 ${String(count)}곳은 이미 라벨이 발행되었습니다. 재인쇄 사유를 선택해 주세요.`,
+    reason: '재인쇄 사유',
+    reasonLoadFailed: '재인쇄 사유를 불러오지 못했습니다.',
+    confirm: '재인쇄',
     cancel: '취소',
   },
 
   print: {
-    heading: '인쇄 결과',
     pending: '라벨을 프린터로 보내는 중',
     /**
      * 셸 밖(브라우저)에서 열었다.
      *
-     * ⛔ **「인쇄했다」고 말하지 않는다** — 통로가 없어 시도조차 하지 않았다. 발행 기록은 남았다.
+     * ⛔ **「인쇄했다」고 말하지 않는다** — 통로가 없어 시도조차 하지 않았다. 발행 기록은 남는다.
      */
-    noBridge: '이 단말에는 인쇄 통로가 없어 라벨을 보내지 못했습니다. 발행 기록은 남았습니다.',
+    noBridge:
+      '이 단말에 프린터가 연결되어 있지 않아 라벨을 인쇄하지 못했습니다. 발행 기록은 남았습니다.',
+    /** 모두 찍혔다(아래 가운데 알림). */
+    printed: (count: number) => `라벨 ${String(count)}장을 발행했습니다. 적재 위치에 부착하세요.`,
     summary: (printed: number, failed: number) =>
       `인쇄 성공 ${String(printed)}건 · 실패 ${String(failed)}건`,
     /** 보고가 실패해도 발행·인쇄는 그대로다 — 서버의 기록만 뒤처진다. */

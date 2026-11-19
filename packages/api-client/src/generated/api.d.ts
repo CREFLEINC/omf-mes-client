@@ -34359,6 +34359,8 @@ export interface paths {
           includeUnplannedEquipment?: boolean;
           /** @description 작업지시 유형으로 거른다 — NORMAL(양산) · EMERGENCY(긴급) · REWORK(재작업). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_ORDER_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⛔ 시스템 소유다 — 고객이 W-06-06 공통코드 마스터에서 이 값을 편집하면 안 된다. 계약 자신이 「이 값으로 갈리는 것이 셋」이라 적어 두었다. */
           workOrderTypeCode?: string;
+          /** @description 이 작업지시 유형을 뺀다 — workOrderTypeCode 의 반대쪽이다. POP 작업 시작 화면(P-02-01)의 「전체 작업지시」 탭이 EMERGENCY 를 빼고 묻는다 — 긴급은 「긴급 작업지시」 탭에만 보인다(사용자 지시 2026-11-19). ⛔ 응답을 화면이 거르는 것으로는 성립하지 않는다 — 목록이 쪽 단위다. 근거: omf-all-around#330 */
+          excludeWorkOrderTypeCode?: string;
           /** @description 기간 필터. ⚠ 진행현황 조회는 이 쌍을 «비울 수 없다» — 무제한 조회를 허용하면 실적이 쌓인 뒤 화면이 멎는다. 기본값은 최근 1개월이고 그 강제는 «화면» 규칙이다 — 다른 화면이 같은 경로를 기간 없이 부르기 때문에 계약에서 필수로 올리지 않았다. 끝 경계는 date-time 이라 반열림이다(From 이상 · To 미만). ⚠ 이 축은 W/O 의 «계획 시작 시각»이다 — 실적의 발생 시각이 아니다. 이 쌍으로 좁힌 요약의 수량 합계는 «이 기간에 시작 계획된 W/O» 의 전 기간 실적 합이며 「그 기간에 생산된 양」이 아니다. 실적 발생 시각으로 세려면 GET /production/production-results 의 occurredFrom·occurredTo 다. */
           plannedStartFrom?: string;
           /** @description 기간 필터. ⚠ 진행현황 조회는 이 쌍을 «비울 수 없다» — 무제한 조회를 허용하면 실적이 쌓인 뒤 화면이 멎는다. 기본값은 최근 1개월이고 그 강제는 «화면» 규칙이다 — 다른 화면이 같은 경로를 기간 없이 부르기 때문에 계약에서 필수로 올리지 않았다. 끝 경계는 date-time 이라 반열림이다(From 이상 · To 미만). ⚠ 이 축은 W/O 의 «계획 시작 시각»이다 — 실적의 발생 시각이 아니다. 이 쌍으로 좁힌 요약의 수량 합계는 «이 기간에 시작 계획된 W/O» 의 전 기간 실적 합이며 「그 기간에 생산된 양」이 아니다. 실적 발생 시각으로 세려면 GET /production/production-results 의 occurredFrom·occurredTo 다. */
@@ -66872,6 +66874,11 @@ export interface components {
        * @example 2
        */
       unassignedPackedBoxCount?: number;
+      /**
+       * @description 아직 포장하지 않은 LOT 배분 수 — `GET /logistics/shipment-lot-allocations?shipmentId=&unpackedOnly=true` 의 건수와 같은 기준(포장 단위가 안 붙은 배분). 0 이면 포장할 LOT 이 남지 않았다. 목록에서만 채운다(상세는 세지 않는다). 근거: P-04-03 출하 포장 「확정 불가」 표시 (omf-all-around#329)
+       * @example 3
+       */
+      unpackedLotCount?: number;
       /**
        * @description 긴급 직행 출하로 만들어진 건인가(W-04-05).
        * @default false

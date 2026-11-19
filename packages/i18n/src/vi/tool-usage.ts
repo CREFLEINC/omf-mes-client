@@ -5,20 +5,27 @@ import type { Translated } from './translated';
 export const toolUsage: Translated<typeof ko.toolUsage> = {
   title: 'Nhập kết quả sử dụng công cụ',
 
-  entry: {
-    /* ⭐ 「설비 <이름>」으로 읽힌다 — 이름이 비면 코드(사용자 지시 2026-09-14). */
-    equipmentLabel: (code: string, name: string): string =>
-      `Thiết bị ${name.trim() === '' ? code : name}`,
+  band: {
+    title: 'Lệnh sản xuất (W/O)',
+    process: 'Công đoạn',
+    item: 'Sản phẩm',
+    planQty: 'SL kế hoạch',
+  },
+
+  pad: {
+    title: 'Nhập',
+    unit: (uom: string) => `Đơn vị ${uom}`,
   },
 
   scan: {
     sectionLabel: 'Quét công cụ',
-    inputLabel: 'QR khuôn',
-    placeholder: 'Hãy quét QR khuôn',
-    manualEntry: 'Nhập tay',
-    manualHint: 'Nhập mã khuôn rồi bấm Enter.',
+    inputLabel: 'Mã khuôn',
     cavity: 'Khoang khuôn',
-    notFound: 'Không có công cụ với mã này. Hãy kiểm tra lại mã.',
+    mold: 'Khuôn',
+    moldName: 'Tên khuôn',
+    empty: 'Quét QR khuôn',
+    nextHint: 'Lần ghi kế tiếp hãy quét QR khuôn trước.',
+    notFound: 'Không có công cụ mã này. Hãy kiểm tra lại mã.',
     disposed: 'Công cụ đã thanh lý. Hãy quét công cụ khác.',
   },
 
@@ -26,15 +33,10 @@ export const toolUsage: Translated<typeof ko.toolUsage> = {
     sectionLabel: 'Nhập số nhát dập',
     inputLabel: 'Số nhát dập',
     unit: 'nhát',
-    keypadLabel: 'Bàn phím số nhập số nhát dập',
-    clearGlyph: 'Xóa',
-    backspace: 'Xóa một ký tự',
-    decimalKey: 'Dấu thập phân',
-    convertedLabel: 'Quy đổi từ số lượng sản xuất',
+    convertedLabel: 'Tính số nhát dập từ số lượng sản xuất',
     baseQtyLabel: 'Số lượng',
     convertedExpression: (baseQty: string, ratio: string, shots: string) =>
-      `Số lượng ${baseQty} × ${ratio} = ${shots} nhát`,
-    roundedNote: 'Kết quả quy đổi được làm tròn đến số nguyên gần nhất rồi gửi.',
+      `SL ${baseQty} × ${ratio} = ${shots} nhát · làm tròn đến số nguyên gần nhất`,
     conversionUnavailable: 'Chưa thiết lập tỷ lệ quy đổi.',
     conversionLoading: 'Đang tải tỷ lệ quy đổi.',
     conversionOff: 'Phạm vi này được thiết lập không dùng quy đổi. Hãy nhập tay.',
@@ -43,9 +45,9 @@ export const toolUsage: Translated<typeof ko.toolUsage> = {
   cumulative: {
     sectionLabel: 'Lũy kế',
     guaranteed: 'Số nhát dập đảm bảo',
-    current: 'Lũy kế (máy chủ)',
+    current: 'Lũy kế hiện tại',
     increment: 'Lần nhập này',
-    projected: 'Lũy kế sau khi lưu',
+    projected: 'Lũy kế dự kiến sau khi lưu',
     available: 'Còn dùng được',
     asOf: (time: string) => `Tính đến ${time}`,
     usageLabel: 'Tỷ lệ đã dùng so với số nhát dập đảm bảo',
@@ -56,15 +58,10 @@ export const toolUsage: Translated<typeof ko.toolUsage> = {
     overSuffix: '(vượt)',
   },
 
-  notice: {
-    sectionLabel: 'Hướng dẫn',
-    serverAdds: ['Lũy kế do máy chủ tính khi lưu.'],
-  },
-
   actions: {
     save: 'Lưu kết quả',
     confirm: 'Xác nhận',
-    reset: 'Nhập lại',
+    reset: 'Xóa nhập',
   },
 
   actionReasons: {

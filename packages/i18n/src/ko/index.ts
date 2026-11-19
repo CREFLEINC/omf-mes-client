@@ -16,7 +16,7 @@
 
 import { common } from './common';
 import { popChrome } from './pop-chrome';
-import { popPageNav } from './pop-page-nav';
+import { popUniform } from './pop-uniform';
 import { conflict } from './conflict';
 import { stateLocked } from './state-locked';
 import { httpError } from './http-error';
@@ -96,7 +96,6 @@ import { dispositionRequest } from './disposition-request';
 import { stockReinstatement } from './stock-reinstatement';
 import { returnReceipt } from './return-receipt';
 import { emergencyWorkOrder } from './emergency-work-order';
-import { emergencyWorkOrderField } from './emergency-work-order-field';
 import { workStart } from './work-start';
 import { workPrecheckGate } from './work-precheck-gate';
 import { workOrderProgress } from './work-order-progress';
@@ -182,7 +181,7 @@ import { erpWorkOrderFlow } from './erp-work-order-flow';
 
 export const ko = {
   popChrome,
-  popPageNav,
+  popUniform,
   common,
   conflict,
   stateLocked,
@@ -263,7 +262,6 @@ export const ko = {
   stockReinstatement,
   returnReceipt,
   emergencyWorkOrder,
-  emergencyWorkOrderField,
   workOrderProgress,
   lotTrace,
   materialLocation,

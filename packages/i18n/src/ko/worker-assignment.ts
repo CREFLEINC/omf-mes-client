@@ -21,9 +21,9 @@ export const workerAssignment = {
     title: '단말 등록',
     guide: '관리 웹에서 발급받은 단말 토큰을 입력해 주세요.',
     tokenLabel: '단말 토큰',
-    tokenPlaceholder: '단말 토큰 입력',
     paste: '붙여넣기',
-    clear: '다시 입력',
+    /** 토큰 칸 비우기 — 다른 POP 화면과 같은 이름(#295 로그인 시안). */
+    clear: '입력 초기화',
     verify: '단말 등록',
     verifying: '확인하는 중…',
     /** 검증 200 뒤 확인 단계의 제목(omf-all-around#288). */
@@ -113,8 +113,7 @@ export const workerAssignment = {
     brand: 'OMF-MES POP',
     /** 단말 이름과 설치 위치. 값을 못 받으면 없음 표시를 낸다 — 지어내지 않는다. */
     label: '단말',
-    /** 값이 없는 칸. 빈 칸으로 두면 「없음」인지 「못 불러왔는지」 구분되지 않는다. */
-    emptyValue: '—',
+
     /*
      * ⚠ **연결 상태 문구는 공용 어휘를 쓴다**(`common.connection`). 화면마다 자기 낱말을
      * 가지고 있어 「연결됨/오프라인」·「연결됨/연결 끊김」·「온라인/오프라인」 셋으로 갈려
@@ -130,11 +129,6 @@ export const workerAssignment = {
     heading: '사번 입력',
     /** 읽기 전용 표시 칸이다 — 값은 키패드로만 들어온다. */
     workerNo: '사번',
-    keypad: '사번 숫자 키패드',
-    backspace: '한 자 지움',
-    clear: '전체 삭제',
-    /** 사번 칸 안내(omf-all-around#288). */
-    placeholder: '사번 입력',
     submit: '사번 확인',
     checking: '확인 중',
     /** [사번 확인]을 눌렀는데 6자리 숫자가 아닐 때 — 조회하지 않고 다시 입력하게 한다(omf-all-around#288). */
@@ -154,7 +148,7 @@ export const workerAssignment = {
     /** 사번 확인을 마친 작업자 표시(omf-all-around#288). */
     confirmed: '확인 완료',
     workerNo: '사번',
-    assignedAt: '지정 시각',
+    assignedAt: '지정일시',
     shift: '작업자 변경',
     /**
      * ⚠ **큐의 사번을 바꾸지 않는다**(§6 · B-3 이력 불변). 이미 쌓인 기록은 그때 그 사람의

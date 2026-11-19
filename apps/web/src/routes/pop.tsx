@@ -1,7 +1,6 @@
-import type { RouteObject } from 'react-router';
+import { Navigate, type RouteObject } from 'react-router';
 
 import { DowntimeRegisterScreen } from '../screens/downtime-register/screen';
-import { EmergencyWorkOrderFieldScreen } from '../screens/emergency-work-order-field/screen';
 import { GoodsIssueQrScreen } from '../screens/goods-issue-qr/screen';
 import { ShippingUnitScreen } from '../screens/shipping-unit/screen';
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
@@ -20,6 +19,14 @@ import { ToolUsageScreen } from '../screens/tool-usage/screen';
 import { WorkHoldRegisterScreen } from '../screens/work-hold-register/screen';
 import { WorkerAssignmentScreen } from '../screens/worker-assignment/screen';
 import { WorkStartScreen } from '../screens/work-start/screen';
+
+/**
+ * 합쳐서 없어진 POP 화면의 옛 주소 → 새 자리. 라우트 표에는 서지만 화면이 아니라서 화면 목록(이름표 ·
+ * 개발용 이동)과 대조할 때 뺀다(`pop-screen-catalog.test.ts` · `pop-dev-screen-nav.test.ts`).
+ */
+export const POP_LEGACY_REDIRECTS: Readonly<Record<string, string>> = {
+  '/pop/emergency-work-orders': '/pop/work-start?type=emergency',
+};
 
 /**
  * POP(현장 단말) 화면의 라우트 표.
@@ -94,14 +101,13 @@ export const popRoutes: RouteObject[] = [
    */
   { path: '/pop/tool-usage', element: <ToolUsageScreen /> },
   /*
-   * P-02-12 — 긴급 W/O 를 현장에서 «집는» 자리다. 관리웹의 `W-02-07`
-   * (`production/emergency-work-orders`)이 «만드는» 화면이고, 이 주소는 그렇게 만들어진
-   * 지시를 골라 정상 경로 화면(위 `/pop/material-input` 등)으로 넘긴다.
-   *
-   * ⚠ **진입 컨텍스트를 받지 않는다** — 목록이 곧 진입이라 주소에 실을 것이 없다. 나가는
-   * 쪽에만 `?workOrderId=` 를 싣는다.
+   * P-02-12 긴급 작업지시는 「작업지시 목록」(P-02-01)의 「긴급」 보기로 합쳤다(#295). 옛 주소는 그 보기로
+   * 보낸다 — 단말에 남은 즐겨찾기·바로가기가 진입 화면으로 튕기지 않게. 화면 목록에는 넣지 않는다.
    */
-  { path: '/pop/emergency-work-orders', element: <EmergencyWorkOrderFieldScreen /> },
+  ...Object.entries(POP_LEGACY_REDIRECTS).map(([path, to]) => ({
+    path,
+    element: <Navigate to={to} replace />,
+  })),
   /*
    * P-05-02 — 비가동은 **설비에 붙지 작업에 붙지 않는다.** 그래서 진입 컨텍스트가 앞의
    * 것들과 다르다: 작업지시가 아니라 설비를 주소로 받는다(`?equipmentId=`).

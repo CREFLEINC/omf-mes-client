@@ -11,29 +11,56 @@ export const shippingUnit: Translated<typeof ko.shippingUnit> = {
     offline: 'Ngoại tuyến',
   },
 
+  tabs: {
+    label: 'Danh sách xuất hàng',
+    wait: 'Chờ cấu thành',
+    done: 'Đã cấu thành',
+  },
+
   entry: {
     label: 'Lô xuất hàng',
-    placeholder: 'Hãy chọn lô xuất hàng',
     loading: 'Đang tải lô xuất hàng…',
     failed: 'Không tải được danh sách lô xuất hàng.',
-    boxes: (count: number): string => `${String(count)} kiện chưa cấu thành`,
+    empty: 'Không có lô xuất hàng cần cấu thành',
+    boxes: (count: number): string => `${String(count)} kiện chưa đăng ký`,
+    pick: 'Hãy chọn lô xuất hàng',
+    pickHint: 'Chạm vào lô xuất hàng ở danh sách 「Chờ cấu thành」 bên trái.',
+  },
+
+  closed: {
+    loading: 'Đang tải đơn vị đã chốt…',
+    failed: 'Không tải được đơn vị đã chốt.',
+    empty: 'Không có đơn vị giao hàng đã chốt',
+    chip: 'Đã chốt',
+    shipment: 'Xuất hàng',
+    boxes: (count: number): string => `${String(count)} kiện`,
+    closedAt: 'Chốt',
+    pick: 'Hãy chọn đơn vị giao hàng',
+    pickHint: 'Chạm vào đơn vị ở danh sách 「Đã cấu thành」 bên trái để xem kết quả chốt.',
+  },
+
+  steps: {
+    label: 'Các bước đơn vị giao hàng',
+    boxes: 'Đăng ký kiện',
+    close: 'Phát hành nhãn giao hàng',
+  },
+
+  band: {
+    shipment: 'Xuất hàng',
+    type: 'Loại',
+    unit: 'Đơn vị giao hàng',
+    unassigned: 'Kiện chưa đăng ký',
+    closedAt: 'Giờ chốt',
+    count: (count: number): string => `${String(count)} kiện`,
   },
 
   unit: {
-    label: 'Đơn vị giao hàng',
     typeLabel: 'Loại',
-    typePlaceholder: 'Hãy chọn loại',
-    create: 'Đơn vị mới',
-    creating: 'Đang tạo…',
     failed: 'Không tạo được đơn vị giao hàng.',
   },
 
   scan: {
-    label: 'Nhãn kiện',
-    placeholder: 'Hãy quét hoặc nhập số kiện',
-    locked: 'Hãy tạo đơn vị giao hàng trước',
-    scanning: 'Đang đăng ký…',
-    added: (no: string): string => `Đã đăng ký ${no}.`,
+    label: 'Số kiện',
   },
 
   rejection: {
@@ -49,34 +76,65 @@ export const shippingUnit: Translated<typeof ko.shippingUnit> = {
   },
 
   boxes: {
-    sectionLabel: 'Kiện đã đăng ký',
+    title: 'Kiện đã đăng ký',
+    itemCode: 'Mã hàng',
+    qty: 'Số lượng',
     empty: 'Không có kiện đã đăng ký',
-    columnSeq: '#',
-    columnNo: 'Số kiện',
-    columnContents: 'Nội dung',
-    columnAction: '',
-    remove: 'Bỏ ra',
-    removing: 'Đang bỏ ra…',
+    emptyHint: 'Hãy quét nhãn kiện.',
+    remove: (no: string): string => `Bỏ ${no} ra`,
     removeFailed: 'Không bỏ kiện ra được.',
     content: (itemCode: string, lotNo: string, qty: string): string =>
-      `${itemCode} · ${lotNo} · ${qty}`,
+      `${itemCode} ${qty} · ${lotNo}`,
+    sum: (count: number, total: string): string =>
+      `Đã đăng ký ${String(count)} kiện · Tổng ${total}`,
   },
 
   preview: {
     sectionLabel: 'Xem trước nhãn giao hàng',
     empty: 'Hãy đăng ký kiện trước',
+    sheets: (count: number): string => `${String(count)} tờ`,
   },
 
   close: {
     action: 'In nhãn giao hàng sau khi chốt',
     closing: 'Đang chốt…',
     failed: 'Không chốt được.',
+    done: 'Đã phát hành 1 nhãn giao hàng. Hãy dán lên đơn vị giao hàng.',
     issued: (seq: number): string => `Đã phát hành 1 nhãn giao hàng · lần ${String(seq)}`,
     printed: 'In thành công',
     printFailed: (reason: string): string => `In thất bại — ${reason}`,
     noPrinter: 'Không có máy in nên chưa in được. Bản ghi phát hành vẫn còn.',
     noBridge: 'Ở đây không gửi ra máy in được. Bản ghi phát hành vẫn còn.',
-    reissueHint: 'Nếu nhãn chưa ra, hãy vào màn hình in lại, chọn lý do rồi in lại.',
+    reissueHint: 'Nếu nhãn chưa ra, hãy vào tab «Đã cấu thành», chọn lý do rồi in lại.',
+  },
+
+  actions: {
+    prev: 'Trước',
+    next: 'Tiếp',
+  },
+
+  reissue: {
+    action: 'Phát hành lại',
+    title: (no: string): string => `Phát hành lại nhãn giao hàng · ${no}`,
+    label: 'Lý do phát hành lại',
+    guide: 'Phát hành lại thì lượt tăng lên, bản ghi cũ không bị xóa. Lượt cũng được in trên nhãn.',
+    empty: 'Chưa có lý do phát hành lại nào để chọn. Không có lý do thì không phát hành lại được.',
+    loadFailed: 'Không tải được lý do phát hành lại.',
+    cancel: 'Hủy',
+    issuing: 'Đang phát hành…',
+    done: 'Đã phát hành lại nhãn giao hàng. Hãy dán lên đơn vị giao hàng.',
+    failed: 'Không thể phát hành lại nhãn giao hàng.',
+    nextSeq: 'Lượt lần này',
+    last: 'Phát hành gần nhất',
+    seq: (seq: number): string => `Lượt ${String(seq)}`,
+    unknown: 'Không rõ',
+    none: 'Chưa phát hành',
+    historyFailed: 'Không tải được lịch sử phát hành',
+    outcome: {
+      PENDING: 'Chưa có kết quả in',
+      SUCCEEDED: 'Đã in',
+      FAILED: 'In thất bại',
+    },
   },
 
   next: 'Đơn vị mới',

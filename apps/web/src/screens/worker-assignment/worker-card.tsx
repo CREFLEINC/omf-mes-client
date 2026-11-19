@@ -1,12 +1,11 @@
-import { AlertBanner, Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 
-import { POP_TOUCH_SIZE } from './touch-spec';
+import { PuButton, PuChip, PuKv, PuNote } from '../../patterns/pop-uniform';
 import type { WorkerResponse } from './verify';
 
 /**
- * 우측 《현재 작업자》 구획 — 화면 스펙 §3 의 오른쪽 512 다.
+ * 우측 《현재 작업자》 구획(#295 로그인 시안).
  *
  * ⭐ **현재 작업자를 크게 상시 표시한다.** 이 화면은 도용 위험을 수용한 설계이고, 「지금
  * 누구로 기록되는가」를 늘 보이는 것이 **화면이 할 수 있는 유일한 방어**다(§5-4 · §9-1).
@@ -35,12 +34,29 @@ export interface WorkerCardProps {
   onShift: () => void;
   onGoToWork: () => void;
   /**
-   * ⚠ **개발 빌드에서만 채워지는 자리다.** 주면 「작업 화면으로 이동」 버튼 «대신» 선다
+   * ⚠ **개발 빌드에서만 채워지는 자리다.** 주면 [작업 화면으로 →] «대신» 선다
    * (`patterns/pop-dev-screen-nav`). 배포 번들에서는 호출부의 조건이 상수로 접혀 이 값이
    * 늘 `undefined`이므로 버튼이 그대로 남는다 — 화면의 제품 동작은 바뀌지 않는다.
    */
   devScreenNav?: ReactNode;
 }
+
+/** 빈 상태의 사람 그림 — 통일 아이콘(`PuIcon`)에 사람 모양이 없어 이 구획만 그린다. */
+const PERSON_ICON = (
+  <svg
+    className="pu-ic"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <circle cx="12" cy="8" r="3.5" />
+    <path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" />
+  </svg>
+);
 
 export const WorkerCard = ({
   worker,
@@ -50,91 +66,67 @@ export const WorkerCard = ({
   onShift,
   onGoToWork,
   devScreenNav,
-}: WorkerCardProps) => (
-  <section className="pane pop-pane" aria-label={t.heading}>
-    <h2 className="field-label">{t.heading}</h2>
+}: WorkerCardProps) => {
+  const titleId = useId();
 
-    {worker === null ? (
-      <div className="worker-card__none">
-        <svg
-          className="worker-card__none-icon"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-        >
-          <circle cx="12" cy="8" r="3.5" />
-          <path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" />
-        </svg>
-        <p className="worker-card__none-title">{t.none}</p>
-        <p className="worker-card__none-help">{t.noneHelp}</p>
+  return (
+    <section className="pu-card wa-right" aria-labelledby={titleId}>
+      <div className="pu-card-head">
+        <h2 id={titleId}>{t.heading}</h2>
       </div>
-    ) : (
-      <>
-        {/*
-         * ⚠ **소속을 그리지 못한다**(§3 도면 · §4-A 「확인 후 표시」). 계약의 작업자는
-         * `departmentId`(숫자)만 주고 이름을 주지 않으며, 부서를 푸는 경로가 계약에 없다 —
-         * 설치 위치와 **같은 종류의 공백**이다. ⛔ 숫자를 소속인 척 그리지 않는다(G-9
-         * 「모르는 값과 없는 값을 같은 모양으로 그리지 않는다」).
-         */}
-        <div className="worker-card__info">
-          <div className="worker-card__head">
-            <p className="worker-card__name">{worker.workerName}</p>
-            <Chip variant="status" size="md" status="success">
-              {t.confirmed}
-            </Chip>
+
+      <div className="pu-card-body wa-right-body">
+        {worker === null ? (
+          <div className="pu-empty wa-none" role="status">
+            {PERSON_ICON}
+            <b>{t.none}</b>
+            <span>{t.noneHelp}</span>
           </div>
-          <dl className="worker-card__facts">
-            <dt>{t.workerNo}</dt>
-            <dd>{worker.workerNo}</dd>
-            {assignedAt !== null && (
-              <>
-                <dt>{t.assignedAt}</dt>
-                <dd>{assignedAt}</dd>
-              </>
-            )}
-          </dl>
-        </div>
+        ) : (
+          /*
+           * ⚠ **소속을 그리지 못한다**(§3 도면 · §4-A 「확인 후 표시」). 계약의 작업자는
+           * `departmentId`(숫자)만 주고 이름을 주지 않으며, 부서를 푸는 경로가 계약에 없다.
+           * ⛔ 숫자를 소속인 척 그리지 않는다(G-9).
+           */
+          <div className="wa-who">
+            <div className="wa-who-head">
+              <b>{worker.workerName}</b>
+              <PuChip tone="ok">{t.confirmed}</PuChip>
+            </div>
+            <PuKv
+              items={[
+                { label: t.workerNo, value: worker.workerNo },
+                ...(assignedAt === null ? [] : [{ label: t.assignedAt, value: assignedAt }]),
+              ]}
+            />
+          </div>
+        )}
 
         {/* ⚠ 막지 않는다 — 사번이 전역 유일이라 조회되고 사람이 옮겨 다닌다. */}
-        {isOtherPlant && (
-          <div className="banner-slot">
-            <AlertBanner variant="warning">{t.otherPlant}</AlertBanner>
-          </div>
-        )}
-      </>
-    )}
+        {worker !== null && isOtherPlant && <PuNote tone="warn">{t.otherPlant}</PuNote>}
 
-    {/*
-     * ⚠ 교대해도 이미 쌓인 기록은 이전 사번으로 남는다 — 그 사실을 알린다(§6).
-     *
-     * ⛔ **새 작업자가 정해지면 내린다.** 이 경고는 «교대라는 사건»에 붙는 것이지 단말의
-     * 상태가 아니다 — 남겨 두면 새 작업자 카드 아래에 이전 사람 이야기가 붙어, 지금 누구로
-     * 기록되는지를 정확히 보여야 하는 화면이 틀린 귀속을 말하게 된다(§5-4).
-     */}
-    {worker === null && pendingQueue > 0 && (
-      <div className="banner-slot">
-        <AlertBanner variant="warning">{t.pendingQueue(pendingQueue)}</AlertBanner>
-      </div>
-    )}
-
-    {/*
-     * 변경·이동은 **현재 작업자가 있을 때만** 보인다(§5-8 · omf-all-around#288 시안 — 작업자가
-     * 없을 때는 단추 없이 안내만 선다). 작업자 정보 바로 아래에 둔다.
-     */}
-    {worker !== null && (
-      <div className="pop-ui-actions">
-        <Button type="button" variant="outlined" size={POP_TOUCH_SIZE} onClick={onShift}>
-          {t.shift}
-        </Button>
-        {devScreenNav ?? (
-          <Button type="button" variant="filled" size={POP_TOUCH_SIZE} onClick={onGoToWork}>
-            {t.toWork}
-          </Button>
+        {/*
+         * ⚠ 교대해도 이미 쌓인 기록은 이전 사번으로 남는다 — 그 사실을 알린다(§6).
+         *
+         * ⛔ **새 작업자가 정해지면 내린다.** 이 경고는 «교대라는 사건»에 붙는 것이지 단말의
+         * 상태가 아니다 — 남겨 두면 새 작업자 카드 아래에 이전 사람 이야기가 붙는다(§5-4).
+         */}
+        {worker === null && pendingQueue > 0 && (
+          <PuNote tone="warn">{t.pendingQueue(pendingQueue)}</PuNote>
         )}
       </div>
-    )}
-  </section>
-);
+
+      {/* 변경·이동은 **현재 작업자가 있을 때만** 구획 아래 작업 줄에 선다(§5-8 · 시안). */}
+      {worker !== null && (
+        <div className="wa-right-actions">
+          <PuButton onClick={onShift}>{t.shift}</PuButton>
+          {devScreenNav ?? (
+            <PuButton variant="primary" onClick={onGoToWork}>
+              {t.toWork}
+            </PuButton>
+          )}
+        </div>
+      )}
+    </section>
+  );
+};

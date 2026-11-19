@@ -1,0 +1,119 @@
+/* P-06-01 창고 적재 위치 라벨 — #295 시안 모양(화면 전용 `ll-*`). 공통 모양은 `app/pop-uniform.css`. */
+
+.ll-title {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  margin: 0;
+}
+
+/* ── 왼쪽: 창고 목록 ── */
+/* 창고 이름이 길어 왼쪽을 넓힌다(공통 list 380 → 460 · 사용자 지시 2026-11-19). 1024 폭에서는 표 자리를 남기려 400. */
+.ll-body .pu-cols.list:not(:has(> .is-folded:first-child)) {
+  grid-template-columns: minmax(0, 460px) minmax(0, 1fr);
+}
+
+@media (max-width: 1100px) {
+  .ll-body .pu-cols.list:not(:has(> .is-folded:first-child)) {
+    grid-template-columns: minmax(0, 400px) minmax(0, 1fr);
+  }
+}
+
+.ll-warehouses {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ll-warehouses .pu-item {
+  font-weight: 400;
+  padding: 12px;
+}
+
+.ll-warehouse-name {
+  font-weight: 700;
+  font-size: 15px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 오른쪽: 안내 + 표 + 쪽 넘김 ── */
+.ll-right > .pu-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ll-right > .pu-card-body > * {
+  flex: none;
+}
+
+.ll-right > .pu-card-body > .ll-table,
+.ll-right > .pu-card-body > .pu-empty {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.ll-right > .pu-card-body > .pu-pager {
+  margin-top: auto;
+}
+
+.ll-table {
+  overflow: hidden;
+}
+
+.ll-table > .pu-table-wrap {
+  max-height: 100%;
+}
+
+.ll-table tbody tr {
+  cursor: pointer;
+}
+
+/* 위치 코드는 코드만큼(긴 코드는 말줄임) — 남는 폭은 위치명·별칭 칸이 나눠 갖는다. */
+.ll-table .pu-table td.ll-code {
+  max-width: 280px;
+}
+
+.ll-table .pu-table td.ll-alias {
+  color: var(--pu-text-2);
+}
+
+.ll-table .ll-box.ll-box {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 0;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 2px solid var(--pu-line);
+  border-radius: 6px;
+  background: var(--pu-field);
+  color: #fff;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.ll-table .ll-box.ll-box[aria-checked='true'] {
+  background: var(--pu-primary);
+  border-color: var(--pu-primary);
+}
+
+.ll-box .pu-ic {
+  width: 16px;
+  height: 16px;
+  stroke-width: 3;
+}
+
+/* ── 재인쇄 사유 창 ── */
+.ll-reissue {
+  display: grid;
+  gap: 12px;
+}

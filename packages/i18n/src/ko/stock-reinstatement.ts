@@ -22,7 +22,7 @@ export const stockReinstatement = {
     item: '품목',
     qty: '수량',
     disposition: '처분',
-    decidedAt: '판정 시각',
+    decidedAt: '판정일시',
     expiry: '유효기간',
     hold: '해제할 보류',
     releaseReason: '해제 사유',

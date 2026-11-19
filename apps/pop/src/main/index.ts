@@ -627,6 +627,14 @@ async function main(): Promise<void> {
     selectable: true,
   }));
 
+  /*
+   * 화면 맨 위 줄 [종료](POP 통일 시안 #295 규칙 17) — 확인 창을 거친 뒤 앱을 끝낸다. `app.quit()` 은
+   * `before-quit` 을 거치므로 대기열 저장(persist)과 키오스크 빗장 풀기가 정상 종료와 같다.
+   */
+  ipcMain.handle('app:quit', () => {
+    app.quit();
+  });
+
   ipcMain.handle('device-token:get', () => secureStore.get());
   ipcMain.handle('device-token:set', (_e, value: string) => secureStore.set(value));
   ipcMain.handle('cache:get', (_e, key: string) => localDb.getCache(key));

@@ -1,81 +1,95 @@
-import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import type { Ref } from 'react';
 
 import { formatQty } from '../../patterns/package-qty';
-import { lotOverviewOf } from '../oqc-inspection/shipment-oqc';
-import { OverviewChip } from '../oqc-inspection/shipment-oqc-parts';
-import { toStatusBadge } from '../oqc-inspection/status-badge';
+import { PuChip, puCx, type PuChipTone } from '../../patterns/pop-uniform';
+import { lotOverviewOf, overviewStatus } from '../oqc-inspection/shipment-oqc';
+import { overviewText } from '../oqc-inspection/shipment-oqc-parts';
+import { toStatusBadge, type StatusTone } from '../oqc-inspection/status-badge';
 import type { InspectionQueueRow } from '../oqc-inspection/types';
+import { withUom, type UomLookup } from '../oqc-inspection/uom-lookup';
 
 const t = messages.popOqcInspection.queue;
 const detail = messages.popOqcInspection.detail;
 const ps = messages.popOqcInspection.shipment;
 
+const CHIP_TONE: Record<StatusTone, PuChipTone> = {
+  idle: 'idle',
+  info: 'info',
+  success: 'ok',
+  warning: 'warn',
+  error: 'bad',
+};
+
 export interface PopQueueListProps {
   rows: InspectionQueueRow[];
   selectedId: number | null;
   onSelect: (inspectionRequestId: number) => void;
-  /** 줄이 없을 때 목록 자리에 서는 것(불러오는 중·없음·실패). */
-  empty: ReactNode;
+  /** 한 쪽 건수를 재는 칸(구획 높이에 들어가는 만큼 · #295). */
+  listRef: Ref<HTMLDivElement>;
+  /** 수량 옆 단위 코드 — 모르면 숫자만. */
+  uomOf: UomLookup['codeOf'];
 }
 
 /**
- * 판정 목록 — 자재 관리 LOT 라벨 화면 왼쪽 목록과 같은 카드 모양(사용자 지시 2026-11-17 · #291).
- * 카드 전체가 누르는 자리이고, 고른 카드는 차콜 바탕으로 드러난다(`pop-mlot-supplier`).
+ * 판정 목록(#295) — 항목마다 의뢰번호 · 상태 · 품목 · 검사 수량. 고른 의뢰는 빨간 선택 표시.
  *
  * ⚠ 관리웹 W-04-03 의 `QueueTable` 을 쓰지 않는다 — 그쪽은 밑줄 링크 한 칸만 눌리는 관리웹 관용구다.
  */
-export const PopQueueList = ({ rows, selectedId, onSelect, empty }: PopQueueListProps) => {
-  if (rows.length === 0) return <div className="pop-mlot-empty">{empty}</div>;
+export const PopQueueList = ({ rows, selectedId, onSelect, listRef, uomOf }: PopQueueListProps) => (
+  <div ref={listRef} className="pu-list pu-fit" role="group" aria-label={t.caption}>
+    {rows.map((row) => {
+      const selected = row.inspectionRequestId === selectedId;
+      const badge = toStatusBadge(row.statusCode);
 
-  return (
-    <ul className="pop-mlot-suppliers pop-oqc-queue" aria-label={t.caption}>
-      {rows.map((row) => {
-        const selected = row.inspectionRequestId === selectedId;
-        const badge = toStatusBadge(row.statusCode);
-        const overview = lotOverviewOf(row);
+      const overview = lotOverviewOf(row);
+      const itemLabel = row.itemCode ?? detail.idValue(row.itemId);
 
-        return (
-          <li key={row.inspectionRequestId}>
-            <button
-              type="button"
-              className="pop-mlot-supplier"
-              aria-pressed={selected}
-              aria-label={t.selectRow(row.inspectionRequestNo)}
-              onClick={() => {
-                onSelect(row.inspectionRequestId);
-              }}
-            >
-              {/* 출하 OQC 새 흐름은 지시서 번호 · 피킹 LOT 수 · LOT 판정 요약(피처 010 · 시안 P0406 목록). */}
-              <span className="pop-mlot-supplier-name">
-                {row.shipmentRequestNo ?? row.inspectionRequestNo}
-              </span>
-              <Chip variant="status" size="md" status={badge.tone}>
-                {badge.label}
-              </Chip>
-              {overview === null ? (
-                <span className="pop-mlot-supplier-sub">
-                  {`${t.columns.item} ${detail.idValue(row.itemId)} · ${t.columns.qty} ${String(row.targetQty)}`}
-                </span>
-              ) : (
-                <span className="pop-mlot-supplier-sub pop-oqc-shipment-card">
-                  <span>
-                    {(row.pickedLotCount ?? 0) === 0
-                      ? ps.cardEmpty(row.itemCode ?? detail.idValue(row.itemId))
-                      : ps.card(
-                          row.itemCode ?? detail.idValue(row.itemId),
-                          row.pickedLotCount ?? 0,
-                          `${formatQty(row.pickedQty ?? 0)} ${row.uomCode ?? ''}`.trim(),
-                        )}
-                  </span>
-                  <OverviewChip overview={overview} />
-                </span>
+      return (
+        <button
+          key={row.inspectionRequestId}
+          type="button"
+          className={puCx('pu-item', selected && 'is-selected')}
+          aria-pressed={selected}
+          aria-label={t.selectRow(row.inspectionRequestNo)}
+          onClick={() => {
+            onSelect(row.inspectionRequestId);
+          }}
+        >
+          {/* 출하 OQC 새 흐름은 지시서 번호 · 피킹 LOT 수 · LOT 판정 요약(피처 010 · 시안 P0406 목록). */}
+          <span className="pu-item-top">
+            <span className="no">{row.shipmentRequestNo ?? row.inspectionRequestNo}</span>
+            <span className="chips">
+              <PuChip tone={CHIP_TONE[badge.tone]}>{badge.label}</PuChip>
+              {overview !== null && (
+                <PuChip tone={CHIP_TONE[overviewStatus(overview)]}>{overviewText(overview)}</PuChip>
               )}
-            </button>
-          </li>
-        );
-      })}
-    </ul>
-  );
-};
+            </span>
+          </span>
+          {overview === null ? (
+            <span className="pu-item-sub">
+              <span>
+                {t.columns.item} <b>{detail.idValue(row.itemId)}</b>
+              </span>
+              <span>
+                {t.columns.qty} <b>{withUom(String(row.targetQty), uomOf(row.uomId))}</b>
+              </span>
+            </span>
+          ) : (
+            <span className="pu-item-sub">
+              <span>
+                {(row.pickedLotCount ?? 0) === 0
+                  ? ps.cardEmpty(itemLabel)
+                  : ps.card(
+                      itemLabel,
+                      row.pickedLotCount ?? 0,
+                      `${formatQty(row.pickedQty ?? 0)} ${row.uomCode ?? ''}`.trim(),
+                    )}
+              </span>
+            </span>
+          )}
+        </button>
+      );
+    })}
+  </div>
+);

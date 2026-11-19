@@ -1,11 +1,12 @@
-import { AlertBanner, Chip } from '@crefle/web-ui';
+import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
+import { PuCols, PuNote, PuScreen, puToast } from '../../patterns/pop-uniform';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 
 import { ActionBar, describeSaveBlock, resolveSaveBlock } from './action-bar';
@@ -21,7 +22,7 @@ import {
   type IntervalErrors,
 } from './interval';
 import { IntervalFields } from './interval-fields';
-import { LoadErrorBanner } from './load-error-banner';
+import { LoadErrorBanner, describeError } from './load-error-banner';
 import { OngoingPanel } from './ongoing-panel';
 import { useOutbox } from './outbox';
 import { isDraftEmpty, toDowntimeCreate, type DowntimeDraft } from './post-request';
@@ -34,7 +35,7 @@ import {
   useTodayDowntimes,
 } from './queries';
 import { ReasonFields } from './reason-fields';
-import { readEquipmentCode, readEquipmentId } from './screen-params';
+import { readEquipmentId } from './screen-params';
 import { TodayPanel } from './today-panel';
 import {
   byStartedAtDesc,
@@ -47,6 +48,8 @@ import {
 import { useTerminalGate } from './terminal-gating';
 import { useNow } from './use-now';
 import { PopTopStatus } from '../../patterns/pop-top-status';
+import { toApiError } from '../../patterns/request';
+import './uniform.css';
 
 const t = messages.downtimeRegister;
 
@@ -101,21 +104,9 @@ export const DowntimeRegisterScreen = () => {
    */
   const paramEquipmentId = readEquipmentId(searchParams);
   const equipmentId = paramEquipmentId ?? equipment?.equipmentId ?? null;
-  /*
-   * ⛔ **이름표는 번호와 «같은 출처»에서 가져온다.** 주소가 단말과 다른 설비를 가리킬 때
-   *    코드만 단말 것을 쓰면 **다른 설비의 이름표를 단 화면**이 된다.
-   */
-  const equipmentCode =
-    paramEquipmentId === null
-      ? (equipment?.equipmentCode ?? null)
-      : readEquipmentCode(searchParams);
-  /* 주소가 가리킨 설비는 이름을 모른다 — 코드로 대신한다. */
-  const equipmentName = paramEquipmentId === null ? (equipment?.equipmentName ?? null) : null;
-
-  const titleId = useId();
-
   const [draft, setDraft] = useState<DowntimeDraft>(EMPTY_DRAFT);
-  const [savedNotice, setSavedNotice] = useState<string | null>(null);
+  /* 새로 저장하면 「오늘 이 설비」 첫 쪽(가장 최근)을 보인다. */
+  const [savedCount, setSavedCount] = useState(0);
 
   const outbox = useOutbox();
   const gate = useTerminalGate(terminalId, processId);
@@ -206,16 +197,11 @@ export const DowntimeRegisterScreen = () => {
   const saveBlockReason = describeSaveBlock(block);
 
   /**
-   * 저장이 «덜 차서» 잠겼다면 무엇이 모자란지(#1094).
-   *
-   * ⭐ **버튼이 잠겨 있어도 이유는 말한다.** 꺼진 버튼만으로는 무엇이 모자란지 알 수 없었던
-   *    것이 이 이슈의 출발점이다 — 88단계 2회차에서 작업자가 「수량 때문」이라 잘못 읽었다.
-   *
-   * ⛔ **아무것도 손대지 않은 화면은 조용히 맞이한다**(2026-09-07 판단). 한 칸이라도 건드린
-   *    뒤에야 말한다 — 빈 화면을 경고로 맞이하면 「늘 그런 것」으로 읽혀 정작 볼 때 안 본다.
+   * 저장이 잠긴 이유(#1094) — 꺼진 [실적 저장]에 손을 올리면 보인다(#295 규칙 3: 작업 줄에 글을
+   * 띄우지 않는다). 화면이 고칠 수 없는 막힘이 먼저, 덜 채운 칸이 다음이다.
    */
-  const blockedNotice = ((): string | null => {
-    if (block !== null || isDraftEmpty(draft)) return null;
+  const blockedReason = ((): string | null => {
+    if (saveBlockReason !== null) return saveBlockReason;
     if (moments.started === null) return t.actions.needStarted;
     if (reasonMissing) return t.actions.needReason;
 
@@ -242,7 +228,6 @@ export const DowntimeRegisterScreen = () => {
 
   const resetDraft = (): void => {
     setDraft(EMPTY_DRAFT);
-    setSavedNotice(null);
   };
 
   /**
@@ -263,8 +248,10 @@ export const DowntimeRegisterScreen = () => {
     if (body === null) return;
 
     outbox.enqueueCreate(workerNo, body);
-    setSavedNotice(outbox.isOnline ? t.actions.saved : t.actions.queued);
+    /* 저장 결과는 작업 줄 위 알림으로(#295 규칙 13). */
+    puToast(outbox.isOnline ? t.actions.saved : t.actions.queued, outbox.isOnline ? 'ok' : 'info');
     setDraft(EMPTY_DRAFT);
+    setSavedCount((count) => count + 1);
   };
 
   /** 「지금 종료」 — 끝 시각은 서버가 지금으로 박는다. 화면이 시각을 실어 보내지 않는다. */
@@ -272,7 +259,10 @@ export const DowntimeRegisterScreen = () => {
     if (workerNo === null || ongoing.downtime === null) return;
 
     outbox.enqueueClose(workerNo, ongoing.downtime.downtimeId);
-    setSavedNotice(outbox.isOnline ? t.ongoing.closed : t.ongoing.closedQueued);
+    puToast(
+      outbox.isOnline ? t.ongoing.closed : t.ongoing.closedQueued,
+      outbox.isOnline ? 'ok' : 'info',
+    );
   };
 
   /*
@@ -299,211 +289,171 @@ export const DowntimeRegisterScreen = () => {
   const rejection = outbox.rejections.at(-1);
 
   /*
-   * ⛔ **거부가 돌아오면 성공 알림을 내린다.** 큐에 담긴 순간을 성공으로 보이는 것은 조항이
-   * 정한 바이지만, 서버가 그 건을 받지 않기로 판정한 뒤에도 「저장했습니다」가 남아 있으면
-   * **한 화면이 성공과 실패를 동시에 말한다.**
+   * ⛔ **거부가 돌아오면 성공 알림을 거부 알림으로 바꾼다.** 큐에 담긴 순간을 성공으로 보이는 것은
+   * 조항이 정한 바이지만, 서버가 그 건을 받지 않기로 판정한 뒤에도 「저장했습니다」가 남아 있으면
+   * **한 화면이 성공과 실패를 동시에 말한다.** 거부 사유는 맨 위 안내 줄에도 남는다.
    */
   useEffect(() => {
     if (rejection === undefined) return;
 
-    setSavedNotice(null);
+    puToast(describeError(toApiError(rejection.error)), 'bad');
   }, [rejection]);
 
+  /*
+   * 맨 위 안내 줄 — 화면 전체에 걸리는 것만(멈춘 큐 · 사번 · 진행 중 조회 실패 · 쓰기 거부).
+   * ⭐ 「밀리는 중」과 「멈춤」은 다르다 — 건수만으로는 그 차이가 보이지 않는다.
+   */
+  const alerts = [
+    outbox.isStalled && <OutboxStallBanner key="stall" onRetry={outbox.retryNow} />,
+    workerNo === null && <PopWorkerMissingBanner key="worker" workerNo={workerNo} />,
+    ongoing.isError && (
+      <LoadErrorBanner key="ongoing" error={ongoing.error} onRetry={ongoing.refetch} />
+    ),
+    /* 등록이 거부된 것과 종료가 거부된 것은 다음에 할 일이 다르다 — 제목을 가른다. */
+    rejection !== undefined && (
+      <LoadErrorBanner
+        key="rejection"
+        error={rejection.error}
+        title={rejection.entry.kind === 'close' ? t.errors.closeFailed : t.errors.saveFailed}
+        onDismiss={outbox.clearRejections}
+      />
+    ),
+  ].filter((node) => node !== false);
+
+  /*
+   * **화면에서 고칠 수 없는 막힘**(설비·단말·권한)은 「오늘 이 설비」 구획 안 안내 줄 하나로
+   * 말한다(#295 시안 — 주의 노랑). 설비가 없으면 조회 자체가 나가지 않으므로 그 사실을 먼저 말해야
+   * 빈 목록이 「오늘 비가동이 없다」로 읽히지 않는다.
+   * ⚠ 사번 갈래는 맨 위 공용 띠가, 진행 중 갈래는 바로 아래 진행 중 줄이 말한다.
+   */
+  const blockNote =
+    saveBlockReason !== null && block !== 'worker-missing' && block !== 'ongoing-exists' ? (
+      <PuNote tone="warn">{saveBlockReason}</PuNote>
+    ) : null;
+
   return (
-    /* 표제가 본문의 이름이 된다 — 셸이 없어 줄 사람이 이 화면뿐이다. */
-    <main className="pop-shell pop-ui downtime-screen" aria-labelledby={titleId}>
-      <header className="pop-header">
-        <h1 id={titleId} className="pop-title">
-          {t.title}
-        </h1>
-        {equipmentId !== null && (
-          <p className="pop-context">
-            {t.header.equipment(equipmentCode ?? `#${String(equipmentId)}`, equipmentName ?? '')}
-          </p>
+    <>
+      <PopTopStatus>
+        {/* 연결(온라인·오프라인)은 공통 메뉴 맨 위 줄이 모든 화면에 같게 보인다(#291) — 여기서는 미전송이 있을 때만 알린다. */}
+        {outbox.pendingCount > 0 && (
+          <Chip variant="status" size="md" status="warning">
+            {t.header.unsent(outbox.pendingCount)}
+          </Chip>
         )}
+      </PopTopStatus>
 
-        <PopTopStatus>
-          {/* 연결(온라인·오프라인)은 공통 메뉴 맨 위 줄이 모든 화면에 같게 보인다(#291) — 여기서는 미전송이 있을 때만 알린다. */}
-          {outbox.pendingCount > 0 && (
-            <Chip variant="status" size="md" status="warning">
-              {t.header.unsent(outbox.pendingCount)}
-            </Chip>
-          )}
-        </PopTopStatus>
-      </header>
-
-      {/* ⭐ 「밀리는 중」과 「멈춤」은 다르다 — 건수만으로는 그 차이가 보이지 않는다. */}
-      {outbox.isStalled && <OutboxStallBanner onRetry={outbox.retryNow} />}
-
-      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
-      <PopWorkerMissingBanner workerNo={workerNo} />
-
-      {/*
-       * **저장이 막힌 사유는 머리에서 한 번 말한다.**
-       *
-       * 설비가 없으면 조회 자체가 나가지 않으므로 그 사실을 먼저 말해야 한다 — 빈 목록만으로는
-       * 「오늘 비가동이 없다」와 「무엇을 볼지 정해지지 않았다」가 같은 모양이 된다. 권한·단말
-       * 갈래도 같다: 작업자가 **화면에서 고칠 수 없는** 사유라 글로 말하지 않으면 「버튼이
-       * 고장 났다」로 읽힌다.
-       *
-       * ⛔ **액션바 옆의 붉은 상주 문구를 여기로 옮긴 것이다**(사용자 지시 2026-09-12).
-       *    같은 말을 아래에서 붉게 한 번 더 하지 않는다 — 선례 `P-02-04` 도 그 자리의 상주
-       *    사유를 걷었다(2026-09-07).
-       *
-       * ⛔ **제목을 달지 않는다.** 제목이 붙으면 아이콘이 제목 줄에 서고 정작 읽어야 할 문장이
-       *    다음 줄로 내려간다 — 아이콘과 문장은 같은 줄에 선다(사용자 지시 2026-09-12).
-       *
-       * ⚠ 사번 갈래는 위의 공용 띠가 말한다 — 여기서 한 번 더 세우지 않는다(사용자 지시 2026-09-17).
-       */}
-      {saveBlockReason !== null && block !== 'worker-missing' && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{saveBlockReason}</AlertBanner>
-        </div>
-      )}
-
-      {ongoing.isError && <LoadErrorBanner error={ongoing.error} onRetry={ongoing.refetch} />}
-      {/* 등록이 거부된 것과 종료가 거부된 것은 다음에 할 일이 다르다 — 제목을 가른다. */}
-      {rejection !== undefined && (
-        <LoadErrorBanner
-          error={rejection.error}
-          title={rejection.entry.kind === 'close' ? t.errors.closeFailed : t.errors.saveFailed}
-          onDismiss={outbox.clearRejections}
-        />
-      )}
-
-      <OngoingPanel
-        downtime={ongoing.downtime}
-        isPending={ongoing.isPending}
-        now={now}
-        canClose={workerNo !== null}
-        onClose={closeOngoing}
-      />
-
-      <IntervalFields
-        draft={draft.interval}
-        errors={shownIntervalErrors}
-        onChange={(interval: IntervalDraft) => {
-          setDraft((prev) => ({ ...prev, interval }));
-        }}
-      />
-
-      {/*
-       * 겹침 경고 — **막지 않는다.** 그대로 저장된다는 사실까지 함께 적어야 작업자가 멈춰
-       * 서지 않는다.
-       */}
-      {overlaps.length > 0 && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">
-            {t.errors.overlapWarning(
-              overlaps.map((row) => toRangeLabel(row.startedAt, row.endedAt)).join(', '),
-            )}
-          </AlertBanner>
-        </div>
-      )}
-
-      <ReasonFields
-        reasonCode={draft.reasonCode}
-        reasons={reasonOptions.options}
-        reasonsUnavailable={reasonOptions.isUnavailable}
-        reasonsFailed={reasonOptions.isError}
-        remarks={draft.remarks}
-        breakdownId={draft.breakdownId}
-        breakdowns={breakdowns.breakdowns}
-        breakdownsUnavailable={breakdowns.isError}
-        isOffline={!outbox.isOnline}
-        onReasonChange={(code) => {
-          setDraft((prev) => ({ ...prev, reasonCode: code }));
-        }}
-        onRemarksChange={(value) => {
-          setDraft((prev) => ({ ...prev, remarks: value }));
-        }}
-        onBreakdownChange={(id) => {
-          setDraft((prev) => ({ ...prev, breakdownId: id }));
-        }}
-        onApplyStoppedAt={(stoppedAt) => {
-          const at = new Date(stoppedAt);
-          if (Number.isNaN(at.getTime())) return;
-
-          setDraft((prev) => ({
-            ...prev,
-            interval: { ...prev.interval, startedAt: toTimeFieldDraft(at) },
-          }));
-        }}
-      />
-
-      {/*
-       * ⛔ **실패했다고 이 구획을 배너로 갈아 끼우지 않는다**(#1094). 종전에는 제목과 집계가
-       *    함께 사라져 화면의 구조가 서버 상태에 따라 바뀌었고, 같은 문구의 배너가 위에도
-       *    서 있어 **한 화면에 같은 말이 둘** 있었다. 자리는 지키고 내용만 바꾼다.
-       */}
-      <TodayPanel
-        rows={rows}
-        totalMinutes={today.totalMinutes}
-        isPending={today.isPending}
-        isAsked={today.isAsked}
-        /*
-         * ⭐ **조회를 못 건 이유를 가려 말한다**(#1094). 설비를 골라 둔 채 끊겼는데도
-         *    「설비를 고르면…」이 떠서, 머리줄에 설비 번호가 보이는데 고르라고 말했다.
-         *
-         * ⛔ **한 화면이 해법을 둘 말하지 않는다**(#1149 · 독립 검증 지적). 단말이 아직
-         *    서지 않았으면 위 배너는 「단말 등록」을 말하는데 여기만 「설비 지정」을 말해,
-         *    작업자가 둘 중 무엇을 요청해야 하는지 알 수 없었다. 막는 사유와 같은 순서로
-         *    가른다(`resolveSaveBlock`).
-         */
-        notAskedLabel={
-          equipmentId !== null
-            ? t.today.notAskedOffline
-            : terminalId === null
-              ? t.today.notAskedUnidentified
-              : t.today.notAsked
+      <PuScreen
+        className="dt-u"
+        band={alerts.length > 0}
+        actionBar={
+          <ActionBar
+            block={block}
+            isEmpty={isDraftEmpty(draft)}
+            isIncomplete={moments.started === null || reasonMissing}
+            blockedReason={blockedReason}
+            onReset={resetDraft}
+            onSave={save}
+          />
         }
-        isLocalOnly={isLocalOnly}
-        /*
-         * ⭐ **건수와 합계가 다른 것을 세는 동안 그 사실을 말한다**(#1149). 88단계 3회차에서
-         *    저장 뒤 「1건 · 합계 그대로」가 떴고, 어느 쪽을 믿어야 하는지 화면이 말해 주지
-         *    않았다 — 건수는 이 목록이고 합계는 서버 집계다.
-         */
-        unsettledCount={unsettledCount}
-        isError={today.isError}
-        onRetry={today.refetch}
-        now={now}
-      />
+      >
+        {alerts.length > 0 && <div className="dt-alerts">{alerts}</div>}
 
-      {blockedNotice !== null && (
-        <div className="banner-slot">
-          <AlertBanner className="downtime-notice" variant="warning">
-            {blockedNotice}
-          </AlertBanner>
-        </div>
-      )}
+        <PuCols variant="c2" className="dt-cols">
+          <div className="dt-left">
+            <IntervalFields
+              draft={draft.interval}
+              errors={shownIntervalErrors}
+              onChange={(interval: IntervalDraft) => {
+                setDraft((prev) => ({ ...prev, interval }));
+              }}
+            >
+              {/*
+               * 겹침 경고 — **막지 않는다.** 그대로 저장된다는 사실까지 함께 적어야 작업자가 멈춰
+               * 서지 않는다.
+               */}
+              {overlaps.length > 0 && (
+                <PuNote tone="warn">
+                  {t.errors.overlapWarning(
+                    overlaps.map((row) => toRangeLabel(row.startedAt, row.endedAt)).join(', '),
+                  )}
+                </PuNote>
+              )}
+            </IntervalFields>
 
-      {savedNotice !== null && (
-        <div className="banner-slot">
-          <AlertBanner
-            variant="success"
-            onDismiss={() => {
-              setSavedNotice(null);
+            {/*
+             * ⛔ **실패했다고 이 구획을 배너로 갈아 끼우지 않는다**(#1094). 자리는 지키고 내용만 바꾼다.
+             */}
+            <TodayPanel
+              rows={rows}
+              totalMinutes={today.totalMinutes}
+              isPending={today.isPending}
+              isAsked={today.isAsked}
+              /*
+               * ⭐ **조회를 못 건 이유를 가려 말한다**(#1094 · #1149) — 막는 사유와 같은 순서로
+               *    가른다(`resolveSaveBlock`). 한 화면이 해법을 둘 말하지 않는다.
+               */
+              notAskedLabel={
+                equipmentId !== null
+                  ? t.today.notAskedOffline
+                  : terminalId === null
+                    ? t.today.notAskedUnidentified
+                    : t.today.notAsked
+              }
+              isLocalOnly={isLocalOnly}
+              /*
+               * ⭐ **건수와 합계가 다른 것을 세는 동안 그 사실을 말한다**(#1149) — 건수는 이 목록이고
+               *    합계는 서버 집계다.
+               */
+              unsettledCount={unsettledCount}
+              isError={today.isError}
+              onRetry={today.refetch}
+              now={now}
+              firstPageKey={savedCount}
+              lead={
+                <>
+                  {blockNote}
+                  <OngoingPanel
+                    downtime={ongoing.downtime}
+                    isPending={ongoing.isPending}
+                    canClose={workerNo !== null}
+                    onClose={closeOngoing}
+                  />
+                </>
+              }
+            />
+          </div>
+
+          <ReasonFields
+            reasonCode={draft.reasonCode}
+            reasons={reasonOptions.options}
+            reasonsUnavailable={reasonOptions.isUnavailable}
+            reasonsFailed={reasonOptions.isError}
+            remarks={draft.remarks}
+            breakdownId={draft.breakdownId}
+            breakdowns={breakdowns.breakdowns}
+            breakdownsUnavailable={breakdowns.isError}
+            isOffline={!outbox.isOnline}
+            onReasonChange={(code) => {
+              setDraft((prev) => ({ ...prev, reasonCode: code }));
             }}
-          >
-            {savedNotice}
-          </AlertBanner>
-        </div>
-      )}
+            onRemarksChange={(value) => {
+              setDraft((prev) => ({ ...prev, remarks: value }));
+            }}
+            onBreakdownChange={(id) => {
+              setDraft((prev) => ({ ...prev, breakdownId: id }));
+            }}
+            onApplyStoppedAt={(stoppedAt) => {
+              const at = new Date(stoppedAt);
+              if (Number.isNaN(at.getTime())) return;
 
-      <ActionBar
-        block={block}
-        isEmpty={isDraftEmpty(draft)}
-        isIncomplete={moments.started === null || reasonMissing}
-        /*
-         * 스펙 §5-1 의 활성 조건은 **시작 시각 + 사유** 둘이다.
-         *
-         * ⚠ 「시작 시각」은 «온전한» 것을 말한다 — 날짜만 치고 시각을 비운 상태는 아직 시각이
-         *    아니다(`readInterval` 이 `null` 을 낸다). ⛔ 끝 시각·겹침처럼 «누른 뒤에 말할»
-         *    것은 여기 넣지 않는다: 그것들은 눌러야 무엇이 문제인지 칸 옆에서 말할 수 있다.
-         */
-        onReset={resetDraft}
-        onSave={save}
-      />
-    </main>
+              setDraft((prev) => ({
+                ...prev,
+                interval: { ...prev.interval, startedAt: toTimeFieldDraft(at) },
+              }));
+            }}
+          />
+        </PuCols>
+      </PuScreen>
+    </>
   );
 };

@@ -116,7 +116,7 @@ describe('검사 결과 요약·목록', () => {
     await user.click(screen.getByRole('button', { name: '다음' }));
     expect(onPageChange).toHaveBeenCalledWith(2);
     const cards = screen.getByRole('group', { name: '검사실적 요약 카드' });
-    for (const label of ['검사 횟수', '검사 제품 수량', '합격 수량', '불합격 수량', '불량률']) {
+    for (const label of ['검사 횟수', '검사 제품 수량', '합격량', '불합격량', '불량률']) {
       expect(within(cards).getByText(label)).toBeInTheDocument();
     }
     // 「기준 …」은 빼고 머리 오른쪽에 마지막 갱신 + [갱신](사용자 2026-10-30).

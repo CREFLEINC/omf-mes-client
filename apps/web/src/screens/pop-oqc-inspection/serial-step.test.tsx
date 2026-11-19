@@ -7,13 +7,14 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
 import type { SerialRow } from '../oqc-inspection/serials';
-import { PopSerialStep } from './serial-step';
+import { PopSerialDialog } from './serial-step';
 
 type OqcSerialScan = components['schemas']['OqcSerialScan'];
 
 /** P-04-06 검사한 시리얼(omf-all-around#68) — 스캐너로 찍고 OK/NG 를 누른다. */
 
 const t = messages.oqcInspection.serials;
+const pop = messages.popOqcInspection.serial;
 
 const scan: OqcSerialScan = {
   serialNumberId: 11,
@@ -42,18 +43,19 @@ const Harness = ({ onSubmit }: { onSubmit: () => void }) => {
         onSubmit();
       }}
     >
-      <PopSerialStep
+      <PopSerialDialog
         inspectionRequestId={1}
         itemId={7}
         rows={rows}
         onChange={setRows}
         disabled={false}
+        onClose={() => undefined}
       />
     </form>
   );
 };
 
-describe('POP 검사한 시리얼', () => {
+describe('POP 시리얼 검사 기록 창', () => {
   it('스캔(Enter)하면 한 줄이 붙고 판정 폼은 제출되지 않는다 — NG 로 바꿀 수 있다', async () => {
     const stubFetch: StubFetch = async (request) =>
       new URL(request.url).pathname === '/quality/oqc-serials/SN-0011'
@@ -69,6 +71,6 @@ describe('POP 검사한 시리얼', () => {
     expect(onSubmit).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: t.ng }));
     expect(screen.getByRole('button', { name: t.ng })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText(t.count(1, 1))).toBeInTheDocument();
+    expect(screen.getByText(pop.count(1, 1))).toBeInTheDocument();
   });
 });

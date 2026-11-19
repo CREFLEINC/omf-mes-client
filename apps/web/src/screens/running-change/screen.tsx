@@ -1,9 +1,8 @@
-import { AlertBanner, Button, Chip } from '@crefle/web-ui';
+import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
-import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import {
   popGateDeniedText,
@@ -12,16 +11,27 @@ import {
   usePopProcessGate,
   usePopWorkOrderProcess,
 } from '../../patterns/pop-process-gate';
-import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
+import {
+  PuActionBar,
+  PuButton,
+  PuCols,
+  PuKeypad,
+  PuNote,
+  PuScreen,
+  PuSection,
+  applyKeypadKey,
+  puToast,
+} from '../../patterns/pop-uniform';
 
-import { CurrentInputs } from './current-inputs';
-import { CurrentLot } from './current-lot';
+import { CurrentInputs, MoldInfo } from './current-inputs';
+import { WorkOrderBand } from './current-lot';
 import { LoadErrorBanner, describeLoadError } from './load-error-banner';
 import { useCurrentMold } from './mold';
 import { toReplacementConsumption } from './post-request';
 import { useOutbox } from './outbox';
 import { useChangeReasons, useCurrentInputs, useCurrentLot, useLotStatusNames } from './queries';
-import { ReplacePanel } from './replace-panel';
+import { stripLeadingZeros } from './quantity-pad';
+import { ReplacePanel, toBlockReason } from './replace-panel';
 import { type ScanOutcome, type ScannedPart } from './scan';
 import { ScanField, type ScanOutcomeView } from './scan-field';
 import { useScanLookup } from './scan-queries';
@@ -31,20 +41,25 @@ import { useReferenceLabels } from './reference-labels';
 import { toApiError } from '../../patterns/request';
 import { PopTopStatus } from '../../patterns/pop-top-status';
 
+import './uniform.css';
+
 const t = messages.runningChange;
 
 /** 스캔 한 번의 결과를 사람의 말로 옮긴다. 실패도 성공과 **같은 자리**에 선다. */
-const describeOutcome = (outcome: ScanOutcome): string => {
+const describeOutcome = (outcome: ScanOutcome): string | null => {
   switch (outcome.kind) {
     case 'part':
-      /* 읽은 것과 찾은 것이 같으면 한 번만 적는다 — 화살표 양쪽이 같은 문장은 읽히지 않는다. */
+      /*
+       * 담은 것은 칸의 초록 「스캔 완료」와 「신규 부품」 줄이 말한다(POP 통일 시안). 읽은 코드와 찾은 번호가
+       * 다를 때만 둘을 함께 적는다 — 부분 검색으로 다른 번호가 걸렸는지 작업자가 판단한다.
+       */
       return outcome.code === outcome.part.lotNo
-        ? t.scan.outcomes.part(outcome.part.lotNo)
+        ? null
         : t.scan.outcomes.partResolved(outcome.code, outcome.part.lotNo);
     case 'ambiguous':
       return t.scan.outcomes.ambiguous(outcome.count);
     case 'not-found':
-      return t.scan.outcomes.notFound(outcome.code);
+      return t.scan.outcomes.notFound;
   }
 };
 
@@ -110,7 +125,10 @@ export const RunningChangeScreen = () => {
   const [qty, setQty] = useState('');
   /* 교체 사유는 고르지 않아도 등록이 선다(스펙 §6) — 고르지 않은 상태가 `null` 이다. */
   const [reasonCode, setReasonCode] = useState<string | null>(null);
-  const [recorded, setRecorded] = useState(false);
+  /* 스캔 칸에 든 글자 — [입력 초기화]·등록 뒤에 비운다. */
+  const [scanValue, setScanValue] = useState('');
+  /* 왼쪽 「현재 투입 · 금형 정보」 접기(시안) — 접으면 오른쪽이 그만큼 넓어진다. */
+  const [leftFolded, setLeftFolded] = useState(false);
 
   const scan = useScanLookup();
   /*
@@ -137,7 +155,6 @@ export const RunningChangeScreen = () => {
      * 남아 계속 나가고, 미전송 건수도 그대로 선다.
      */
     outbox.clearResults();
-    setRecorded(false);
 
     scan.mutate(code, {
       onSuccess: (outcome) => {
@@ -150,10 +167,13 @@ export const RunningChangeScreen = () => {
          * 잇는 것이라 그 잘못이 그대로 계보에 남는다(§5-2).
          */
         setPart(outcome.kind === 'part' ? outcome.part : null);
+        /* 못 찾았으면 칸을 비운다 — 칸 바로 아래 빨간 한 줄이 이유를 말한다(시안 규칙 6). */
+        if (outcome.kind !== 'part') setScanValue('');
       },
       /* 조회가 실패한 것도 「집지 못한 것」이다 — 무엇을 담고 있는지 모르는 채로 두지 않는다. */
       onError: () => {
         setPart(null);
+        setScanValue('');
       },
     });
   };
@@ -189,13 +209,20 @@ export const RunningChangeScreen = () => {
      * 상시 말한다(C-1 #4 — 이 표시가 위 결정의 전제다).
      */
     outbox.enqueue(workerNo, body);
-    setRecorded(true);
+    puToast(t.replace.done);
     /* 담은 뒤에는 이 회차의 입력을 비운다 — 남겨 두면 같은 교체가 두 번 담긴다. */
+    resetInput();
+  };
+
+  /** [입력 초기화] — 스캔한 LOT · 교체 대상 · 수량 · 사유를 한 번에 지운다(시안). */
+  function resetInput(): void {
     setPart(null);
+    setScanValue('');
     setSelectedTargetId(null);
     setQty('');
     setReasonCode(null);
-  };
+    scan.reset();
+  }
 
   /*
    * 서버가 받아 준 건이 있으면 《현재 투입》을 다시 읽는다 — 새 줄이 목록에 서야 이전 투입에
@@ -221,12 +248,13 @@ export const RunningChangeScreen = () => {
    * 실패를 놓친다. 끊긴 것과 조회가 실패한 것도 갈라 말한다(G-3) — 앞은 기다려야 풀리고
    * 뒤는 다시 읽으면 풀린다.
    */
+  const outcomeText = outcome === undefined ? null : describeOutcome(outcome);
   const outcomeView: ScanOutcomeView | null = scan.isError
     ? {
         tone: 'error',
         text: outbox.isOnline ? t.scan.outcomes.failed : t.scan.outcomes.offline,
       }
-    : outcome === undefined
+    : outcome === undefined || outcomeText === null
       ? null
       : {
           /*
@@ -240,144 +268,176 @@ export const RunningChangeScreen = () => {
               : outcome.kind === 'ambiguous'
                 ? 'warning'
                 : 'error',
-          text: describeOutcome(outcome),
+          text: outcomeText,
         };
+  const blocked = toBlockReason({
+    gate: gate.verdict,
+    hasWorkOrder: workOrderId !== null,
+    hasWorker: workerNo !== null,
+    part,
+    selectedTargetId,
+    qty,
+  });
+  const allowDecimal = labels.allowsDecimal(part?.uomId ?? null);
+  const uom = part === null ? '' : labels.describeUom(part.uomId);
+  const hasInput =
+    part !== null ||
+    scanValue !== '' ||
+    selectedTargetId !== null ||
+    qty !== '' ||
+    reasonCode !== null;
   const rejection = outbox.rejections.at(-1);
 
   return (
-    /*
-     * **표제가 본문의 이름이 된다.** 셸이 있는 화면은 셸이 본문 이름을 주지만 이 화면에는
-     * 줄 사람이 없다 — 이름 없는 랜드마크로 남으면 무엇인지 알 수 없다.
-     */
-    <main className="pop-shell pop-ui" aria-labelledby={titleId}>
-      <header className="pop-header">
-        <h1 id={titleId} className="pop-title">
-          {t.title}
-        </h1>
-        {/* W/O 번호는 단계 줄 오른쪽에 보인다(#291) — 여기 있던 「W/O <내부 id>」는 번호가 아니라 지웠다. */}
-
-        {/*
-         * 세션은 있을 때만 W/O 옆에 적는다 — 「세션 없음」 줄은 두지 않는다(사용자 지시 2026-11-17 · #291).
-         * 등록이 잠긴 이유는 본문이 말한다.
-         */}
-        {session.workSessionId !== null && (
-          <p className="pop-context">{t.header.session(session.workSessionId)}</p>
+    <PuScreen
+      className="rc-screen"
+      labelledBy={titleId}
+      band={workOrderId !== null}
+      actionBar={
+        <PuActionBar label={t.title}>
+          <PuButton icon="reset" disabled={!hasInput} onClick={resetInput}>
+            {t.replace.reset}
+          </PuButton>
+          {/*
+           * ⭐ 수량 칸 옆 [투입]과 같은 일(같은 잠금 · 같은 `submit`)이라 하나로 합쳤다(시안). 막힌 사유는
+           *    「부품 교체」 구획 위 주의 줄과 칸의 빨간 테두리가 말한다 — 이 줄에는 버튼만.
+           */}
+          <PuButton variant="primary" disabled={blocked !== null} onClick={submit}>
+            {t.replace.submit}
+          </PuButton>
+        </PuActionBar>
+      }
+    >
+      {/* 표제는 셸 탭이 보인다 — 본문 이름으로만 남긴다. */}
+      <h1 id={titleId} className="visually-hidden">
+        {t.title}
+      </h1>
+      <PopTopStatus>
+        {/* 연결(온라인·오프라인)은 공통 메뉴 맨 위 줄이 모든 화면에 같게 보인다(#291) — 여기서는 미전송이 있을 때만 알린다. */}
+        {outbox.pendingCount > 0 && (
+          <Chip variant="status" size="md" status="warning">
+            {t.header.unsynced(outbox.pendingCount)}
+          </Chip>
         )}
-        <PopTopStatus>
-          {/* 연결(온라인·오프라인)은 공통 메뉴 맨 위 줄이 모든 화면에 같게 보인다(#291) — 여기서는 미전송이 있을 때만 알린다. */}
-          {outbox.pendingCount > 0 && (
-            <Chip variant="status" size="md" status="warning">
-              {t.header.unsynced(outbox.pendingCount)}
-            </Chip>
-          )}
-        </PopTopStatus>
-      </header>
+      </PopTopStatus>
 
-      {/* ⭐ 「밀리는 중」과 「멈춤」은 다르다 — 건수만으로는 그 차이가 보이지 않는다. */}
-      {outbox.isStalled && <OutboxStallBanner onRetry={outbox.retryNow} />}
-
-      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
-      <PopWorkerMissingBanner workerNo={workerNo} />
-
-      {/*
-       * 작업지시가 없으면 **조회가 나가지 않는다.** 그 사실을 배너로 먼저 말한다 — 빈 목록만
-       * 으로는 「투입이 없다」와 「무엇을 볼지 정해지지 않았다」가 같은 모양이 된다.
-       */}
-      {workOrderId === null && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning" title={t.title}>
-            {t.header.workOrderMissing}
-          </AlertBanner>
-        </div>
+      {workOrderId !== null && (
+        <WorkOrderBand
+          workOrderId={workOrderId}
+          processName={workOrderProcess.processName}
+          lot={currentLot.isError ? null : currentLot.lot}
+        />
       )}
+      {lotId !== null && currentLot.isError && <PuNote tone="warn">{t.currentLot.failed}</PuNote>}
 
-      {current.isError && <LoadErrorBanner error={current.error} onRetry={current.refetch} />}
-
-      <div className="pop-panes">
-        <section className="pane" aria-label={t.panes.current}>
-          <h2 className="pane-title">{t.panes.current}</h2>
-          {!current.isError && (
+      <PuCols variant="lk">
+        {leftFolded ? (
+          <PuSection fold={{ label: t.panes.current, folded: true, onChange: setLeftFolded }} />
+        ) : (
+          <div className="rc-left">
             <CurrentInputs
               rows={current.rows}
               isPending={current.isPending}
               hasWorkOrder={workOrderId !== null}
+              error={
+                current.isError ? (
+                  <LoadErrorBanner error={current.error} onRetry={current.refetch} />
+                ) : null
+              }
+              labels={labels}
+              fold={{ label: t.panes.current, folded: false, onChange: setLeftFolded }}
+            />
+            <MoldInfo
               mold={mold.mold}
               moldFailed={mold.isError}
               hasSession={session.workSessionId !== null}
-              labels={labels}
             />
-          )}
-
-          {/*
-           * 《현재 생산LOT》 — 원천이 달라 위 구획과 조회가 갈린다(스펙 §3). 위가 실패해도
-           * 이 구획은 선다 — 둘은 서로의 전제가 아니다.
-           */}
-          <section aria-label={t.panes.currentLot}>
-            <h3 className="pane-title">{t.panes.currentLot}</h3>
-            <CurrentLot
-              lot={currentLot.lot}
-              isPending={currentLot.isPending}
-              isError={currentLot.isError}
-              hasLot={lotId !== null}
-            />
-          </section>
-
-          {/*
-           * ⛔ 「설비를 멈추지 않습니다」 띠를 두지 않는다(사용자 지시 2026-09-17). 스펙 §3 도면이
-           *    좌단에 상시 세운 안내였지만 사용자가 걷었다.
-           */}
-        </section>
-
-        <section className="pane scan-pane" aria-label={t.panes.replace}>
-          <h2 className="pane-title">{t.panes.replace}</h2>
-
-          {/*
-           * W/O 가 나뉘지 않는다는 안내 — 스펙 §3 은 등록 버튼 위에 세웠다.
-           * ⭐ **구획 맨 위로 올린다**(사용자 지시 2026-09-17). 수량 칸 옆 [투입]이 생기며 누르는
-           *    자리가 안내보다 위로 올라가, 누른 «뒤»에야 보이는 자리가 됐다 — 작업을 시작하기
-           *    전에 읽히도록 스캔 칸 위에 선다.
-           */}
-          <div className="banner-slot pop-rc-split-notice">
-            <AlertBanner variant="info">{t.notices.noWorkOrderSplit}</AlertBanner>
           </div>
+        )}
 
-          {/* 스캔 결과는 부품이 자기 자리에 세운다 — 자매 화면 `P-02-03` 과 같은 구조다. */}
-          <ScanField isScanning={scan.isPending} onScan={handleScan} outcome={outcomeView} />
+        <ReplacePanel
+          gate={gate.verdict}
+          gateDeniedText={popGateDeniedText(gate, 'canInputMaterial')}
+          gateUnidentifiedText={popGateUnidentifiedText(
+            t.disabled.unidentified,
+            workOrderProcess.failureReason,
+          )}
+          hasWorkOrder={workOrderId !== null}
+          hasWorker={workerNo !== null}
+          part={part}
+          targets={current.rows}
+          selectedTargetId={selectedTargetId}
+          qty={qty}
+          lotStatuses={lotStatuses}
+          reasons={reasons.reasons}
+          reasonsPending={reasons.isPending}
+          reasonsFailed={reasons.isError}
+          reasonCode={reasonCode}
+          onReasonChange={setReasonCode}
+          labels={labels}
+          rejection={
+            rejection === undefined ? null : describeLoadError(toApiError(rejection.error))
+          }
+          notes={
+            <>
+              {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 말로 알린다(사용자 지시 2026-09-17). */}
+              {workerNo === null && <PuNote tone="warn">{messages.popChrome.workerMissing}</PuNote>}
+              {/*
+               * 작업지시가 없으면 **조회가 나가지 않는다.** 그 사실을 먼저 말한다 — 빈 목록만으로는 「투입이
+               * 없다」와 「무엇을 볼지 정해지지 않았다」가 같은 모양이 된다.
+               */}
+              {workOrderId === null && <PuNote tone="warn">{t.header.workOrderMissing}</PuNote>}
+              {/* ⭐ 「밀리는 중」과 「멈춤」은 다르다 — 건수만으로는 그 차이가 보이지 않는다. */}
+              {outbox.isStalled && (
+                <PuNote
+                  tone="bad"
+                  action={
+                    <PuButton size="sm" onClick={outbox.retryNow}>
+                      {messages.common.connection.stalledRetry}
+                    </PuButton>
+                  }
+                >
+                  <b>{messages.common.connection.stalledTitle}</b>{' '}
+                  {messages.common.connection.stalledBody}
+                </PuNote>
+              )}
+            </>
+          }
+          scan={
+            <ScanField
+              value={scanValue}
+              onChange={setScanValue}
+              isScanning={scan.isPending}
+              onScan={handleScan}
+              done={part !== null}
+              outcome={outcomeView}
+            />
+          }
+          onClearPart={() => {
+            setPart(null);
+            setScanValue('');
+          }}
+          onSelectTarget={setSelectedTargetId}
+          onRetryGate={gate.retry}
+        />
 
-          <ReplacePanel
-            gate={gate.verdict}
-            gateDeniedText={popGateDeniedText(gate, 'canInputMaterial')}
-            gateUnidentifiedText={popGateUnidentifiedText(
-              t.disabled.unidentified,
-              workOrderProcess.failureReason,
-            )}
-            hasWorkOrder={workOrderId !== null}
-            hasWorker={workerNo !== null}
-            part={part}
-            targets={current.rows}
-            selectedTargetId={selectedTargetId}
-            qty={qty}
-            lotStatuses={lotStatuses}
-            reasons={reasons.reasons}
-            reasonsPending={reasons.isPending}
-            reasonsFailed={reasons.isError}
-            reasonCode={reasonCode}
-            onReasonChange={setReasonCode}
-            labels={labels}
-            recorded={recorded}
-            rejection={
-              rejection === undefined ? null : describeLoadError(toApiError(rejection.error))
-            }
-            onClearPart={() => {
-              setPart(null);
+        {/* 「수량」 키패드 구획 — 생산 작업 화면과 같은 모양(단위 · 입력 칸 · [전체 삭제]). */}
+        <PuSection title={t.pad.title} meta={t.pad.unit(uom === '' ? '—' : uom)}>
+          <PuKeypad
+            targetLabel={t.replace.qtyLabel}
+            /* 소수점 키는 **읽은 부품의 단위**가 정한다 — 개수로 세는 자재에는 쓰지 않는다. */
+            decimal={allowDecimal}
+            onKey={(key) => {
+              setQty((prev) =>
+                stripLeadingZeros(applyKeypadKey(prev, key, { decimal: allowDecimal })),
+              );
             }}
-            onSelectTarget={setSelectedTargetId}
-            onQtyChange={setQty}
-            onSubmit={submit}
-            onRetryGate={gate.retry}
+            onClearAll={() => {
+              setQty('');
+            }}
           />
-        </section>
-      </div>
-    </main>
+        </PuSection>
+      </PuCols>
+    </PuScreen>
   );
 };

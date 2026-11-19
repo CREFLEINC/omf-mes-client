@@ -34,7 +34,7 @@ export const popChrome = {
     count: (name: string, count: number): string => `${name}, 남은 작업 ${String(count)}건`,
   },
   /** 홈 화면(#291) — 사번 확인 뒤 처음 서는 화면. */
-  /** 작업 단계 줄(#291) — 작업 지시 목록 탭 아래 ①②③. */
+  /** 작업 단계 줄(#291) — 작업지시 목록 탭 아래 ①②③. */
   workSteps: {
     label: '작업 단계',
     pickWorkOrder: '작업지시 선택',
@@ -50,15 +50,15 @@ export const popChrome = {
     greeting: (name: string): string => `${name} 님, 안녕하세요!`,
     /** 사번을 아직 모를 때 — 이름 자리를 비워 「님,」만 남기지 않는다. */
     greetingAnonymous: '안녕하세요!',
+    /** 인사 아래 한 줄(시안). */
+    greetingSub: '오늘도 안전하고 정확한 작업을 진행해 주세요.',
     /** 인사 줄 오른쪽 시계의 요일(일요일부터). */
     weekdays: ['일', '월', '화', '수', '목', '금', '토'],
-    sub: '오늘도 안전하고 정확한 작업을 진행해 주세요.',
     remainingTitle: '남은 작업',
     remainingCount: (count: number): string => `${String(count)}건`,
     remainingNone: '지금 남은 작업이 없습니다.',
     shortcutsTitle: '바로가기',
-    shortcutsHint: '자주 쓰는 화면으로 바로 이동합니다.',
-    /** 오늘 작업 현황 — 이 단말 설비의 작업지시 수(작업 지시 목록과 같은 조회). */
+    /** 오늘 작업 현황 — 이 단말 설비의 작업지시 수(작업지시 목록과 같은 조회). */
     statusTitle: '오늘 작업 현황',
     inProgress: '진행 중',
     waiting: '대기',
@@ -67,7 +67,7 @@ export const popChrome = {
     nextTitle: '다음 작업',
     nextNone: '대기 중인 작업이 없습니다',
     nextPlan: (item: string, qty: string): string => `${item} · 계획 ${qty}개`,
-    /** 설비가 없는 단말은 전체 설비로 센다(작업 지시 목록의 「전체 설비」). */
+    /** 설비가 없는 단말은 전체 설비로 센다(작업지시 목록의 「전체 설비」). */
     statusAllEquipment: '전체 설비 기준',
     /** 설비가 지정된 단말의 현황 범위 고르기 — 지정 설비 / 전체 설비. */
     statusScopeLabel: '현황 범위',
@@ -76,9 +76,19 @@ export const popChrome = {
     statusFailed: '작업 현황을 불러오지 못했습니다.',
     edit: '편집',
     editDone: '완료',
-    editReset: '기본으로',
-    editHint: (max: number): string =>
-      `항목을 선택하거나 해제하여 바로가기를 설정하세요. (최대 ${String(max)}개)`,
+    editReset: '기본 설정',
+    editHint: (max: number): string => `홈에 둘 화면을 최대 ${String(max)}개까지 선택하세요.`,
+    /** [편집] 중 제목 옆 — 지금 고른 수 / 최대(사용자 지시 2026-11-19). */
+    editCount: (count: number, max: number): string => `선택 ${String(count)} / ${String(max)}`,
+    /** [완료]를 누른 뒤 알림(#295 시안). 고른 것은 누를 때마다 단말에 이미 남는다. */
+    editSaved: '바로가기를 저장했습니다.',
+    /** 남은 작업 쪽 넘김 이름. */
+    remainingPageNav: '남은 작업 쪽 넘김',
+    /** 「오늘 작업 현황」에서 고른 칸(진행 중 · 대기 · 완료)의 작업지시 줄(사용자 지시 2026-11-19). */
+    listQty: (good: string, plan: string): string => `실적 ${good} / 계획 ${plan}`,
+    listPlan: (plan: string): string => `계획 ${plan}`,
+    listEmpty: '해당하는 작업지시가 없습니다.',
+    listPageNav: '작업지시 쪽 넘김',
     editPicked: (name: string): string => `${name}, 바로가기에 있음`,
   },
   /** 머리줄의 사번 놓기 단추. */
@@ -86,6 +96,15 @@ export const popChrome = {
   switchShort: '전환',
   /** 맨 위 줄 [새로고침] — 지금 화면 자료를 서버에서 다시 받는다(#291). */
   refresh: '새로고침',
+  /** [새로고침] 오른쪽 갱신 시각 — 화면 자료를 마지막으로 받은 때(MM-DD HH:mm:ss, #295 시안). */
+  refreshedAt: (time: string): string => `갱신 ${time}`,
+  /** 맨 위 줄 오른쪽 끝 [종료](#295 시안 규칙 17). */
+  exit: {
+    button: '종료',
+    title: 'POP 화면을 종료할까요?',
+    body: '입력 중이던 내용은 저장되지 않습니다.',
+    confirm: '종료',
+  },
   /**
    * 공용 머리줄(`patterns/pop-header`, C-11). 설비와 작업자는 「이름 (코드)」, 단말은 단말 코드.
    * 연결 상태 문구는 공용 어휘를 쓴다(`common.connection`).
@@ -130,12 +149,10 @@ export const popChrome = {
     fieldLabel: '사번',
     keypadLabel: '사번 숫자 키패드',
     backspace: '한 자 지움',
-    clear: '전체 지움',
+    clear: '전체 삭제',
     confirm: '확인',
     cancel: '취소',
     checking: '확인 중',
-    /** 사번이 없을 때의 빈 상태와 창을 여는 버튼(작업 시작 「작업자」 묶음과 같은 말). */
-    groupTitle: '작업자',
     empty: '사번이 입력되지 않았습니다.',
     open: '사번 입력',
     unknown: '이 공장에 등록되지 않은 사번입니다. 사번을 다시 입력해 주세요.',
@@ -156,7 +173,7 @@ export const popChrome = {
   /** 선택 단추가 따로 이름을 받지 않았을 때의 기본 이름. */
   select: '선택',
 
-  /** 선택 팝업(`patterns/pop-select`). 쪽 넘김 단추는 `popPageNav` 를 쓴다. */
+  /** 선택 팝업(`patterns/pop-select`). 쪽 넘김은 POP 공통 쪽 넘김(`popUniform.pager`)을 쓴다. */
   selectDialog: {
     /** 무엇을 고르는지 이름을 알 수 없을 때. */
     fallbackName: '항목',
@@ -173,9 +190,26 @@ export const popChrome = {
     scanPlaceholder: '스캔하거나 목록에서 검색',
     clearSearch: '검색어 지우기',
     empty: '표시할 항목이 없습니다.',
-    /** 관리웹 페이지 이동과 같은 꼴: 위치 「1 / 3」, 건수 「총 7건」. */
-    position: (page: number, totalPages: number): string =>
-      `${String(page)} / ${String(Math.max(totalPages, 1))}`,
-    total: (count: number): string => `총 ${String(count)}건`,
+  },
+  /**
+   * 맨 위 줄 프린터 칩을 누르면 뜨는 창(사용자 지시 2026-11-19). 고른 프린터는 이 단말의 모든 발행이 따른다
+   * (`patterns/pop-printer-choice`).
+   */
+  printerPicker: {
+    title: '프린터 선택',
+    /** 맨 위 줄 칩 끝 세로선 뒤 글 — 사번 칩의 「전환」과 같은 자리. */
+    change: '변경',
+    cancel: '취소',
+    select: '선택',
+    /** 기본 프린터 표시. */
+    defaultMark: '기본',
+    empty: '이 단말에서 쓸 수 있는 프린터가 없습니다.',
+    /** 상태 칩 — 코드값(READY 등)을 그대로 내지 않는다. */
+    status: {
+      READY: '사용 가능',
+      BUSY: '사용 중',
+      OFFLINE: '꺼짐',
+      ERROR: '오류',
+    },
   },
 };

@@ -23,7 +23,7 @@ export const workOrderClose = {
       orderQty: '지시 수량',
       goodQty: '양품 수량',
       defectQty: '불량 수량',
-      holdQty: '보류 수량',
+      holdQty: '보류량',
       scrapQty: '스크랩 수량',
       reworkQty: '재작업 수량',
       achievementRate: '달성률',
@@ -331,7 +331,7 @@ export const workOrderClose = {
     },
     fields: {
       sequence: '순번',
-      occurredAt: '발생 시각',
+      occurredAt: '발생일시',
       goodQty: '양품',
       defectQty: '불량',
       holdQty: '보류',

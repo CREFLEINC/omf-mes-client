@@ -58,9 +58,9 @@ export const suspiciousMaterialHold = {
     range: '보류 범위',
     full: '전량 보류',
     partial: '일부 보류',
-    quantity: '보류 수량',
+    quantity: '보류량',
     quantityOverLimit: (limit: string): string =>
-      `보류 수량은 보류 가능 수량 ${limit} 이하여야 합니다.`,
+      `보류량은 보류 가능 수량 ${limit} 이하여야 합니다.`,
     quantityPlaceholder: '수량을 입력하세요',
     reason: '보류 사유',
     /* 칸 안 흐린 글자 — 사용자 시안(2026-11-02) 글자 그대로. */

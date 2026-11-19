@@ -325,7 +325,7 @@ const fillCreate = async (
   remarks = '외관 이상으로 보류',
 ) => {
   await user.click(screen.getByRole('radio', { name: '일부 보류' }));
-  await user.type(screen.getByLabelText('보류 수량'), quantity);
+  await user.type(screen.getByLabelText('보류량'), quantity);
   if (reason !== '') await chooseReason(user, '보류 사유', reason);
   if (remarks !== '') await user.type(screen.getByLabelText('보류 비고'), remarks);
 };
@@ -383,15 +383,15 @@ describe('Lot Status 전이 준비', () => {
     }
     expect(urls.some((url) => url.pathname === HOLDS)).toBe(false);
     if (versionNo === undefined) {
-      expect(screen.queryByLabelText('보류 수량')).toBeNull();
+      expect(screen.queryByLabelText('보류량')).toBeNull();
       expect(screen.getByRole('button', { name: '상태 변경 검토' })).toBeDisabled();
       expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
     }
   });
 
   it.each([
-    ['0', 'SYN_REASON', '보류 수량은 0보다 커야 합니다.'],
-    ['21', 'SYN_REASON', '보류 수량은 보류 가능 수량 20 이하여야 합니다.'],
+    ['0', 'SYN_REASON', '보류량은 0보다 커야 합니다.'],
+    ['21', 'SYN_REASON', '보류량은 보류 가능 수량 20 이하여야 합니다.'],
     ['5', '', '사유를 선택하세요.'],
   ])('CREATE_HOLD 입력 %s/%s를 fail-closed한다', async (quantity, reason, message) => {
     const { requests, user } = await prepareCreate();
@@ -410,7 +410,7 @@ describe('Lot Status 전이 준비', () => {
     expect(screen.getByRole('button', { name: '등록 확인' })).toBeEnabled();
 
     await user.click(screen.getByRole('radio', { name: '전량 보류' }));
-    expect(screen.queryByLabelText('보류 수량')).toBeNull();
+    expect(screen.queryByLabelText('보류량')).toBeNull();
     expect(screen.getByLabelText('보류 사유')).toHaveTextContent('사유를 선택하세요');
     expect(screen.getByLabelText('보류 비고')).toHaveValue('');
     expect(screen.getByRole('button', { name: '등록 확인' })).toBeDisabled();
@@ -422,7 +422,7 @@ describe('Lot Status 전이 준비', () => {
       lot({ availableQty: undefined, warehouseId: undefined, locationId: undefined }),
     );
     expect(screen.getByRole('radio', { name: '전량 보류' })).toBeChecked();
-    expect(screen.queryByLabelText('보류 수량')).toBeNull();
+    expect(screen.queryByLabelText('보류량')).toBeNull();
     expect(screen.getByRole('button', { name: '등록 확인' })).toBeDisabled();
     await fillFullCreate(user);
     await user.click(screen.getByRole('button', { name: '등록 확인' }));
@@ -600,7 +600,7 @@ describe('Lot Status 전이 준비', () => {
     await fillCreate(view.user);
     await view.user.click(screen.getByRole('button', { name: 'LOT 버전 갱신' }));
     expect(await screen.findByRole('radio', { name: '전량 보류' })).toBeChecked();
-    expect(screen.queryByLabelText('보류 수량')).toBeNull();
+    expect(screen.queryByLabelText('보류량')).toBeNull();
     expect(screen.getByLabelText('보류 사유')).toHaveTextContent('사유를 선택하세요');
   });
 
@@ -868,7 +868,7 @@ describe('Lot Status 전이 준비', () => {
       '11',
       'SYN_RELEASE_REASON',
       '재검사 합격으로 해제',
-      '해제 수량은 보류 수량 10 이하여야 합니다.',
+      '해제 수량은 보류량 10 이하여야 합니다.',
     ],
     ['5', '', '재검사 합격으로 해제', '사유를 선택하세요.'],
     ['5', 'SYN_RELEASE_REASON', '', '비고를 입력하세요.'],

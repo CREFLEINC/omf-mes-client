@@ -1,6 +1,15 @@
-import { Button, Card, Skeleton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useId, type ReactNode } from 'react';
 
+import {
+  PuButton,
+  PuChip,
+  PuEmpty,
+  PuKv,
+  PuNote,
+  PuSection,
+  type PuFold,
+} from '../../patterns/pop-uniform';
 import { elapsedMinutes, toDateTimeLabel, toDurationLabel } from './formatting';
 import { sessionStatusName } from './hold-reasons';
 import type { WorkSessionView } from './types';
@@ -10,6 +19,8 @@ const t = messages.workHoldRegister;
 export interface SessionPanelProps {
   session: WorkSessionView | null;
   isPending: boolean;
+  /** 세션을 읽지 못했다 — 「없다」가 아니라 「모른다」다. 구획에는 `error` 가 대신 선다. */
+  error: ReactNode;
   now: Date;
   /** 세션을 닫을 수 있는가 — 진행 중일 때만 열린다(스펙 §5-4). */
   canEnd: boolean;
@@ -18,99 +29,97 @@ export interface SessionPanelProps {
    *
    * ⛔ **잠긴 이유를 하나로 뭉뚱그리지 않는다.** 종료는 「중단 중」·「사번 없음」·「보내는 중」
    * 셋 다에서 잠기는데, 언제나 「중단 중이면 먼저 재개하세요」로 말하면 **사번이 없어 잠긴
-   * 사람에게 틀린 안내를 한다**(그 사유는 액션바가 따로 말한다).
+   * 사람에게 틀린 안내를 한다**.
    */
   isStopped: boolean;
   onEnd: () => void;
+  fold: PuFold;
+  /** 이벤트 이력 줄(구획 안 가는 선 아래). */
+  history: ReactNode;
 }
 
+const statusChip = (statusCode: string) => {
+  const tone = statusCode === 'RUNNING' ? 'info' : statusCode === 'STOPPED' ? 'warn' : 'idle';
+
+  return <PuChip tone={tone}>{sessionStatusName(statusCode)}</PuChip>;
+};
+
 /**
- * 《현재 세션》 구획(스펙 §3).
- *
- * ⛔ **세션이 없는 것을 빈 카드로 그리지 않는다.** 이 화면은 세션이 열려 있어야만 성립하므로
- * (스펙 §5-2 — `work_session_event.work_session_id` 가 NOT NULL) 그 사실을 **차단 안내로**
- * 말한다. 빈 칸으로 두면 작업자가 사유만 고르고 눌러 본 뒤에야 막힌 것을 안다.
+ * 《현재 세션》 구획(스펙 §3 · POP 통일 시안 #295) — 위에 시작 · 경과, 가는 선 아래 이벤트 이력,
+ * 맨 아래 [세션 종료]. 세션 번호와 상태는 제목 줄 오른쪽.
  *
  * ⭐ **경과 시간은 저장값이 아니다.** 화면이 지금과 시작의 차를 매번 다시 센다.
  *
- * ⭐ **[세션 종료]가 이 구획에 선다**(스펙 §3 도면 좌단 · 2026-09-06 게이트 승인). 중단·재개와
- * 달리 **세션 자체를 닫는 일**이라 《중단 등록》 구획이나 액션바에 섞지 않는다 — 섞으면 멈추려던
- * 손이 닫는 버튼을 누른다.
- *
- * ⛔ **이 단추를 지우지 않는다.** 「도면에 없다」는 지적이 두 번 왔고 두 번 다 틀렸다
- *    (2026-09-11 설계 회신). 스펙 변경 이력 v0.6 이 「① 세션 종료 버튼을 이 화면에 둔다」로
- *    되살린 자리이고(2:1 다수 · omf-mes#79 확정 기록), §3 도면·§7 매핑표(Button 큰 타겟 +
- *    확인 Dialog)·§6 예외표(이미 종료된 세션 → 비활성)에 모두 들어 있다. **이 화면은 중단·
- *    재개·종료 셋을 다 다룬다.**
- *
- * ⚠ 「세션 수준 중단 사유를 쓰지 않는다」는 공유계약과 헷갈리지 않는다 — 그쪽은 «사유 칸»
- *   이야기이고 이 단추는 «세션을 닫는 조작»이다. 다른 축이다.
+ * ⛔ **[세션 종료]를 지우지 않는다.** 스펙 변경 이력 v0.6 이 「① 세션 종료 버튼을 이 화면에 둔다」로
+ *    되살린 자리다(2:1 다수 · omf-mes#79 확정 기록). 중단·재개와 달리 **세션 자체를 닫는 일**이라
+ *    아래 작업 줄에 섞지 않는다 — 섞으면 멈추려던 손이 닫는 버튼을 누른다.
  */
 export const SessionPanel = ({
   session,
   isPending,
+  error,
   now,
   canEnd,
   isStopped,
   onEnd,
+  fold,
+  history,
 }: SessionPanelProps) => {
-  if (isPending) {
+  const labelId = useId();
+  const hasError = error !== null && error !== undefined && error !== false;
+
+  const body = (() => {
+    if (hasError) return error;
+    if (isPending) return <p className="pu-help">{t.session.loading}</p>;
+    /* 세션이 없으면 빈 구획 모양 — 막힌 사유는 「중단 등록」 구획 위 주의 줄이 말한다. */
+    if (session === null) return <PuEmpty icon="clock" title={t.session.empty} />;
+
+    const startedLabel = toDateTimeLabel(session.startedAt) ?? session.startedAt;
+    const minutes = elapsedMinutes(session.startedAt, now);
+    /* 시작 시각을 읽을 수 없으면 경과도 말하지 않는다 — 0분이라고 하면 방금 선 것으로 읽힌다. */
+    const elapsedLabel = minutes === null ? null : toDurationLabel(minutes);
+
     return (
-      /*
-       * ⚠ **기다리는 카드에 구획 이름을 붙이지 않는다.** 붙이면 이름으로 구획을 찾는 검사가
-       * «내용이 오기 전» 이 카드에 먼저 걸려 빈 상자 안에서 값을 찾는다(실측). 기다리는
-       * 중이라는 것은 안쪽 `Skeleton` 이 이미 말한다.
-       */
-      <Card bordered className="pop-section">
-        <Skeleton height="96px" aria-label={t.session.loading} />
-      </Card>
+      <>
+        <PuKv
+          items={[
+            { label: t.session.startedLabel, value: startedLabel },
+            { label: t.session.elapsedLabel, value: elapsedLabel ?? t.session.unknownValue },
+          ]}
+        />
+        <hr className="pu-sep" />
+        {history}
+        <div className="wh-end">
+          {/*
+           * ⛔ **중단 중에는 잠근다** — 스펙이 「세션이 열려 있고 지금 중단 상태가 아니다」로 좁혔다.
+           * ⭐ **숨기지 않고 잠근다**: 숨기면 「이 화면에서 못 닫는다」로 읽힌다. 잠긴 이유는 옆 줄이 말한다.
+           */}
+          <PuButton disabled={!canEnd} onClick={onEnd}>
+            {t.end.action}
+          </PuButton>
+          {!canEnd && isStopped && <PuNote tone="warn">{t.end.blocked}</PuNote>}
+        </div>
+      </>
     );
-  }
-
-  /* ⭐ 세션이 없다는 띠는 화면 맨 위(`screen.tsx`)가 말한다(사용자 지시 2026-09-17). */
-  if (session === null) return null;
-
-  const startedLabel = toDateTimeLabel(session.startedAt) ?? session.startedAt;
-  const minutes = elapsedMinutes(session.startedAt, now);
-  /* 시작 시각을 읽을 수 없으면 경과도 말하지 않는다 — 0분이라고 하면 방금 선 것으로 읽힌다. */
-  const elapsedLabel = minutes === null ? null : toDurationLabel(minutes);
+  })();
 
   return (
-    <Card bordered className="pop-section" aria-label={t.session.sectionLabel}>
-      {/*
-       * ⭐ **세션 번호는 표제 옆에 선다**(사용자 지시 2026-09-11). 이름 없는 값이라 아래
-       *    이름-값 목록에 끼우면 첫 줄만 이름 칸이 비어, 그 줄이 무엇인지 화면이 말하지
-       *    못한 채 자리만 차지했다. 「어느 세션을 보고 있는가」는 구획의 이름에 붙는 말이다.
-       */}
-      <div className="pane-title pop-hold-head">
-        <h2 className="pop-hold-head-name">{t.session.sectionLabel}</h2>
-        <span className="pop-hold-head-session">{t.session.sessionNo(session.sessionNo)}</span>
-      </div>
-
-      <dl className="pop-hold-facts">
-        <dt>{t.session.startedLabel}</dt>
-        <dd>{startedLabel}</dd>
-
-        <dt>{t.session.elapsedLabel}</dt>
-        <dd>{elapsedLabel ?? t.session.unknownValue}</dd>
-
-        {/*
-         * 상태 문자열은 계약이 셋으로 확정했다 — 사람 말로 옮겨 보이고, **모르는 값이면
-         * 코드를 그대로 보인다**(임의로 「진행」으로 접으면 화면이 없는 사실을 말한다).
-         */}
-        <dt>{t.session.statusLabel}</dt>
-        <dd>{sessionStatusName(session.statusCode)}</dd>
-      </dl>
-
-      {/*
-       * ⛔ **중단 중에는 잠근다** — 스펙이 「세션이 열려 있고 지금 중단 상태가 아니다」로 좁혔다.
-       * ⭐ **숨기지 않고 잠근다**: 숨기면 「이 화면에서 못 닫는다」로 읽혀 작업자가 닫을 자리를
-       * 찾아 헤맨다. 잠긴 이유는 아래 문장이 말한다.
-       */}
-      <Button className="pop-session-end" variant="outlined" disabled={!canEnd} onClick={onEnd}>
-        {t.end.action}
-      </Button>
-      {!canEnd && isStopped && <p className="field-note">{t.end.blocked}</p>}
-    </Card>
+    <PuSection
+      className="wh-session"
+      labelId={labelId}
+      bodyClassName="wh-session-body"
+      title={t.session.sectionLabel}
+      fold={fold}
+      meta={
+        session === null || hasError ? undefined : (
+          <>
+            <span>{t.session.sessionNo(session.sessionNo)}</span>
+            {statusChip(session.statusCode)}
+          </>
+        )
+      }
+    >
+      {body}
+    </PuSection>
   );
 };

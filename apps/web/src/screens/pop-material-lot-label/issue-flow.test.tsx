@@ -67,7 +67,7 @@ const rows = (): HTMLElement[] => screen.queryAllByRole('checkbox', { name: /SYN
 /** 대기를 모두 고르고 [라벨 N장 발행] → 미리 보기 [N장 인쇄]. */
 const issueAll = async (user: ReturnType<typeof userEvent.setup>, count: number): Promise<void> => {
   await waitFor(() => expect(rows().length).toBeGreaterThan(0));
-  await user.click(screen.getByRole('button', { name: t.bar.selectAllWaiting }));
+  await user.click(screen.getByRole('button', { name: t.bar.selectAllWaiting(count) }));
   await user.click(screen.getByRole('button', { name: t.bar.issue(count) }));
   const dialog = await screen.findByRole('dialog', { name: t.preview.title });
   await user.click(within(dialog).getByRole('button', { name: t.preview.print(count) }));
@@ -91,7 +91,7 @@ describe('US1-4 라벨 발행 — 차례로 보낸다', () => {
 
     await issueAll(user, 3);
 
-    await waitFor(() => expect(screen.getByText(t.bar.done(3))).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText(t.bar.done(3)).length).toBeGreaterThan(0));
     expect(posts(sent)).toEqual([
       '/app/document-issues',
       '/app/document-issues/REPORT',
@@ -122,13 +122,12 @@ describe('US1-4 라벨 발행 — 차례로 보낸다', () => {
     await user.click(screen.getByRole('button', { name: t.bar.issue(1) }));
 
     const dialog = await screen.findByRole('dialog', { name: t.preview.title });
-    expect(within(dialog).getByText(t.preview.note)).toBeInTheDocument();
     const label = within(dialog).getByRole('figure');
     expect(label).toHaveTextContent('SYN-ITEM-01|1000|261111|SYN-P-01|0001');
     expect(label).toHaveTextContent('1,000 EA');
     expect(label).toHaveTextContent('봉지 10 × 100');
     expect(label).toHaveTextContent('합성 공급사 가 (SYN-P-01)');
-    expect(within(dialog).getByText(t.preview.page(1, 1))).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: t.preview.print(1) })).toBeInTheDocument();
   });
 
   it('US1-4 셸에 80 × 30 TSPL 라벨을 넘기고 QR 에는 LOT 번호만, 수량 줄 옆에 패키징을 싣는다', async () => {
@@ -152,20 +151,24 @@ describe('US1-4 라벨 발행 — 차례로 보낸다', () => {
     expect(commands).toContain('PRINT 1,1');
   });
 
-  it('다 나오면 LOT 마다 「인쇄됨」을 남기고, 「확인」을 누르면 라벨 칸이 회차로 바뀐다', async () => {
+  it('다 나오면 LOT 마다 「인쇄됨」을 남기고, 「확인」을 누르면 발행 대기에서 빠져 재발행 탭에 회차로 선다', async () => {
     const user = userEvent.setup();
     installShell();
     renderLabelScreen(waitingOnly(2));
 
     await issueAll(user, 2);
 
-    await waitFor(() => expect(screen.getByText(t.bar.done(2))).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText(t.bar.done(2)).length).toBeGreaterThan(0));
     expect(screen.getAllByText(t.status.printed)).toHaveLength(2);
 
     await user.click(screen.getByRole('button', { name: t.bar.confirm }));
 
-    await waitFor(() => expect(rows()[0]).toHaveTextContent('1회'));
-    expect(screen.getByText(t.bar.empty)).toBeInTheDocument();
+    /* 발행한 LOT 은 발행 대기에 남지 않는다(사용자 지시 2026-11-19) — 재발행 탭에만 선다. */
+    await waitFor(() => expect(rows()).toHaveLength(0));
+    expect(screen.getByText(t.work.waitingEmpty)).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: t.tabs.reprint }));
+    const reprintTable = await screen.findByRole('group', { name: t.work.reprintTitle });
+    expect(within(reprintTable).getAllByText(t.table.issuedSeq(1))).toHaveLength(2);
   });
 
   it('⛔ 보내기 직전에 보니 다른 단말이 먼저 찍은 LOT 은 보내지 않고 「이미 발행됨」으로 둔다', async () => {
@@ -174,7 +177,7 @@ describe('US1-4 라벨 발행 — 차례로 보낸다', () => {
     const { findLot, sent } = renderLabelScreen(waitingOnly(2));
 
     await waitFor(() => expect(rows()).toHaveLength(2));
-    await user.click(screen.getByRole('button', { name: t.bar.selectAllWaiting }));
+    await user.click(screen.getByRole('button', { name: t.bar.selectAllWaiting(2) }));
     /* 다른 단말이 그사이 9002 를 찍었다. */
     const other = findLot(9002);
     if (other !== undefined)
@@ -225,7 +228,7 @@ describe('라벨 발행 — 멈추는 자리', () => {
     await waitFor(() => expect(screen.getByText(t.bar.retry(2))).toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: t.bar.retry(2) }));
 
-    await waitFor(() => expect(screen.getByText(t.bar.done(2))).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText(t.bar.done(2)).length).toBeGreaterThan(0));
     const issues = sentTo(sent, '/app/document-issues').map((entry) => entry.body);
     expect(issues).toEqual([
       expect.objectContaining({ targets: [expect.objectContaining({ lotId: 9001 })] }),
@@ -284,7 +287,7 @@ describe('라벨 발행 — 멈추는 자리', () => {
 
     expect(await screen.findByRole('button', { name: t.bar.stop })).toBeInTheDocument();
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.tabs.reprint })).toBeDisabled();
+    expect(screen.getByRole('tab', { name: t.tabs.reprint })).toBeDisabled();
   });
 });
 
@@ -294,15 +297,23 @@ describe('라벨 발행 — N장마다 멈추고 이어서', () => {
     installShell();
     const { sent } = renderLabelScreen(waitingOnly(12));
 
-    await waitFor(() => expect(rows()).toHaveLength(12));
-    await user.click(screen.getByRole('button', { name: t.bar.unit.each(10) }));
-    await issueAll(user, 12);
+    /* 표는 구획 높이만큼 한 쪽에 보이고(쪽 넘김) 나머지는 다음 쪽 — 「입하 대기 전체 선택」은 쪽과 상관없이 모두 고른다. */
+    await waitFor(() =>
+      expect(screen.getByText(messages.popUniform.pager.total(12))).toBeInTheDocument(),
+    );
+    await user.click(screen.getByRole('radio', { name: t.bar.unit.each(10) }));
+    await user.click(screen.getByRole('button', { name: t.bar.selectAllWaiting(12) }));
+    /* 단위보다 많이 골랐다 — 단추와 안내 줄이 10장마다 멈춘다고 말한다. */
+    expect(screen.getByText(t.bar.unitNote(10))).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.bar.issueEach(12, 10) }));
+    const dialog = await screen.findByRole('dialog', { name: t.preview.title });
+    await user.click(within(dialog).getByRole('button', { name: t.preview.print(12) }));
 
     await waitFor(() => expect(screen.getByText(t.bar.paused(10, 12))).toBeInTheDocument());
     expect(sentTo(sent, '/app/document-issues')).toHaveLength(10);
 
     await user.click(screen.getByRole('button', { name: t.bar.resume(2) }));
-    await waitFor(() => expect(screen.getByText(t.bar.done(12))).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText(t.bar.done(12)).length).toBeGreaterThan(0));
     expect(window.localStorage.getItem(ISSUE_UNIT_STORAGE_KEY)).toBe('10');
   });
 });
@@ -315,7 +326,7 @@ describe('라벨 발행 — IQC 라벨', () => {
 
     await issueAll(user, 1);
 
-    await waitFor(() => expect(screen.getByText(t.bar.done(1))).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText(t.bar.done(1)).length).toBeGreaterThan(0));
     expect(docTypes(sent)).toEqual(['MATERIAL_LOT_LABEL', 'IQC_LABEL']);
     expect(save).toHaveBeenCalledTimes(2);
   });
@@ -349,12 +360,25 @@ describe('US1-4 다시 인쇄', () => {
     const user = userEvent.setup();
     renderLabelScreen(PRINTED());
 
-    await user.click(await screen.findByRole('button', { name: t.tabs.reprint }));
+    await user.click(await screen.findByRole('tab', { name: t.tabs.reprint }));
 
     await waitFor(() => expect(reprintRows()).toHaveLength(2));
-    expect(reprintRows()[0]).toHaveTextContent('|0001');
-    expect(reprintRows()[1]).toHaveTextContent('|0002');
-    expect(screen.getByText(t.reprintInfo)).toBeInTheDocument();
+    expect(reprintRows()[0]?.closest('tr')).toHaveTextContent('|0001');
+    expect(reprintRows()[1]?.closest('tr')).toHaveTextContent('|0002');
+  });
+
+  it('[전체 선택 (N건)]은 재발행 목록 전부를 고른다 — [선택 해제]로 푼다', async () => {
+    const user = userEvent.setup();
+    renderLabelScreen(PRINTED());
+
+    await user.click(await screen.findByRole('tab', { name: t.tabs.reprint }));
+    await waitFor(() => expect(reprintRows()).toHaveLength(2));
+    await user.click(screen.getByRole('button', { name: t.bar.selectAllReprint(2) }));
+
+    expect(reprintRows().every((row) => row.getAttribute('aria-checked') === 'true')).toBe(true);
+
+    await user.click(screen.getByRole('button', { name: t.bar.clear }));
+    expect(reprintRows().some((row) => row.getAttribute('aria-checked') === 'true')).toBe(false);
   });
 
   it('US1-4 사유를 고르기 전에는 보내지 않고, 고른 사유를 본문에 실어 출력 차수를 올린다', async () => {
@@ -362,20 +386,20 @@ describe('US1-4 다시 인쇄', () => {
     installShell();
     const { sent } = renderLabelScreen(PRINTED());
 
-    await user.click(await screen.findByRole('button', { name: t.tabs.reprint }));
+    await user.click(await screen.findByRole('tab', { name: t.tabs.reprint }));
     await waitFor(() => expect(reprintRows()).toHaveLength(2));
     await user.click(reprintRows()[0] as HTMLElement);
 
-    expect(screen.getByText(t.reprint.needsReason)).toBeInTheDocument();
+    /* 사유는 필수 칸 — 고르기 전에는 [N장 재인쇄]가 흐리게 꺼져 있다. */
     expect(screen.getByRole('button', { name: t.reprint.action(1) })).toBeDisabled();
 
-    await user.click(screen.getByRole('button', { name: '훼손' }));
+    await user.click(screen.getByRole('radio', { name: '훼손' }));
     await user.click(screen.getByRole('button', { name: t.reprint.action(1) }));
     const dialog = await screen.findByRole('dialog', { name: t.preview.reprintTitle });
     expect(within(dialog).getByText(t.preview.reissue(2))).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: t.preview.reprint(1) }));
 
-    await waitFor(() => expect(screen.getByText(t.bar.reprinted(1))).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText(t.bar.reprinted(1)).length).toBeGreaterThan(0));
     expect(sentTo(sent, '/app/document-issues')[0]?.body).toMatchObject({
       targets: [{ lotId: 9001 }],
       reissueReasonCode: 'DAMAGED',
@@ -386,8 +410,8 @@ describe('US1-4 다시 인쇄', () => {
     const user = userEvent.setup();
     renderLabelScreen(PRINTED());
 
-    await user.click(await screen.findByRole('button', { name: t.tabs.reprint }));
-    const search = screen.getByRole('searchbox', { name: t.search.label });
+    await user.click(await screen.findByRole('tab', { name: t.tabs.reprint }));
+    const search = screen.getByRole('textbox', { name: t.search.scanLabel });
     await user.type(search, 'SYN-ITEM-01|1000|261111|SYN-P-01|0001{Enter}');
 
     expect(screen.getByRole('checkbox', { name: /\|0001 /u })).toHaveAttribute(
@@ -396,17 +420,19 @@ describe('US1-4 다시 인쇄', () => {
     );
 
     await user.type(search, 'SYN-ITEM-01|1000|261111|SYN-P-01|0003{Enter}');
-    expect(screen.getByText(t.reprint.notFound)).toBeInTheDocument();
+    expect(
+      screen.getByText(t.reprint.notFound('SYN-ITEM-01|1000|261111|SYN-P-01|0003')),
+    ).toBeInTheDocument();
   });
 
   it('⛔ 불량 LOT 은 누르기 전에 막고 그 까닭을 말한다', async () => {
     const user = userEvent.setup();
     renderLabelScreen(PRINTED());
 
-    await user.click(await screen.findByRole('button', { name: t.tabs.reprint }));
+    await user.click(await screen.findByRole('tab', { name: t.tabs.reprint }));
     await waitFor(() => expect(reprintRows()).toHaveLength(2));
     await user.click(reprintRows()[1] as HTMLElement);
-    await user.click(screen.getByRole('button', { name: '훼손' }));
+    await user.click(screen.getByRole('radio', { name: '훼손' }));
 
     expect(screen.getByText(t.reprint.lotBlocked('불량'))).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.reprint.action(1) })).toBeDisabled();
@@ -416,7 +442,11 @@ describe('US1-4 다시 인쇄', () => {
     const user = userEvent.setup();
     renderLabelScreen({ ...PRINTED(), reissueReasons: [] });
 
-    await user.click(await screen.findByRole('button', { name: t.tabs.reprint }));
+    await user.click(await screen.findByRole('tab', { name: t.tabs.reprint }));
+    /* 사유 칸은 LOT을 고른 뒤에만 선다. */
+    expect(screen.queryByText(t.reprint.reasonsEmpty)).toBeNull();
+    await waitFor(() => expect(reprintRows()).toHaveLength(2));
+    await user.click(reprintRows()[0] as HTMLElement);
 
     expect(await screen.findByText(t.reprint.reasonsEmpty)).toBeInTheDocument();
   });
@@ -446,7 +476,9 @@ describe('프린터 선택', () => {
     const save = installSelectableShell(true);
     renderLabelScreen(waitingOnly(1));
 
-    expect(await screen.findByText(`${t.printer.label} HT800`)).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: `${t.printer.choose}: HT800` }),
+    ).toBeInTheDocument();
     await issueAll(user, 1);
 
     await waitFor(() => expect(save).toHaveBeenCalled());
@@ -459,7 +491,8 @@ describe('프린터 선택', () => {
     const { sent } = renderLabelScreen(waitingOnly(1));
 
     await user.click(await screen.findByRole('button', { name: `${t.printer.choose}: HT800` }));
-    await user.click(await screen.findByRole('button', { name: /HT800 #2/u }));
+    await user.click(await screen.findByRole('option', { name: /HT800 #2/u }));
+    await user.click(screen.getByRole('button', { name: messages.popChrome.printerPicker.select }));
 
     expect(window.localStorage.getItem(PRINTER_STORAGE_KEY)).toBe('HT800 #2');
 
@@ -478,7 +511,9 @@ describe('프린터 선택', () => {
     const save = installSelectableShell(false);
     renderLabelScreen(waitingOnly(1));
 
-    expect(await screen.findByText(`${t.printer.label} HT800`)).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: `${t.printer.choose}: HT800` }),
+    ).toBeInTheDocument();
     await issueAll(user, 1);
 
     await waitFor(() => expect(save).toHaveBeenCalled());

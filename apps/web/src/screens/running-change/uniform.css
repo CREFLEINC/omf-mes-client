@@ -1,0 +1,129 @@
+/* P-02-11 러닝체인지 부품 교체 — POP 통일 시안(#295) 화면 전용 모양. 공통은 app/pop-uniform.css. */
+
+.rc-screen {
+  height: 100%;
+}
+
+/* 왼쪽 열: 「현재 투입」(남는 높이) 위, 「금형 정보」 아래 */
+.rc-left {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 12px;
+  min-height: 0;
+  min-width: 0;
+}
+
+.rc-cur {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rc-cur > .pu-empty {
+  flex: 1;
+  min-height: 0;
+  padding: 8px 16px;
+}
+
+.rc-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  align-items: center;
+}
+
+.rc-row .lot {
+  grid-column: 1;
+  color: var(--pu-text-2);
+  font-size: 14px;
+}
+
+.rc-row .qty {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* 투입일시 「11-19 13:35」 — 수량 아래 작게(사용자 지시 2026-11-19 · 정렬 기준). */
+.rc-row .at {
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: end;
+  font-size: 13px;
+  color: var(--pu-text-3);
+  white-space: nowrap;
+}
+
+.rc-fig {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  margin: 0;
+}
+
+.rc-fig dt {
+  font-size: 13px;
+  color: var(--pu-text-2);
+}
+
+.rc-fig dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+/* 가운데 「부품 교체」: 읽은 부품 한 줄 · 대상 + 수량 두 칸 */
+.rc-part {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-field);
+}
+
+.rc-part .lbl {
+  font-size: 13px;
+  color: var(--pu-text-2);
+}
+
+.rc-part > :last-child {
+  margin-left: auto;
+}
+
+.rc-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+/* 1024 폭: 목록·키패드 열을 조금 줄여 가운데 「부품 교체」가 너무 좁아지지 않게 한다. */
+@media (max-width: 1100px) {
+  .rc-screen .pu-cols.lk {
+    grid-template-columns: 300px minmax(0, 1fr) 300px;
+  }
+
+  .rc-screen .pu-cols.lk:has(> .is-folded:first-child) {
+    grid-template-columns: 56px minmax(0, 1fr) 300px;
+  }
+
+  /* 교체 대상 칸이 안내 글을 다 보이게 투입 수량 칸을 고정 폭으로 둔다. */
+  .rc-pair {
+    grid-template-columns: minmax(0, 1fr) 116px;
+  }
+}
+
+/* 768 높이: 키(56)는 그대로 두고 키 사이 · 구획 안 틈만 줄여 키패드 다섯 줄이 구획 안에 들어가게 한다. */
+@media (max-height: 780px) {
+  .rc-screen .pu-keypad {
+    gap: 6px;
+  }
+
+  .rc-screen .pu-card-body {
+    gap: 10px;
+  }
+}

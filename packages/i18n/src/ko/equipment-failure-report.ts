@@ -49,7 +49,7 @@ export const equipmentFailureReport = {
     abnormal: '돌지만 이상하다',
     /** 이 화면은 비가동을 만들지 않는다. 안내만 한다. */
     downtimeNotice: '비가동 실적은 POP에서 따로 입력합니다.',
-    stoppedAtLabel: '정지 시각',
+    stoppedAtLabel: '정지일시',
     stoppedAtHint: '모르면 비워 두세요.',
   },
   notify: {

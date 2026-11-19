@@ -148,7 +148,7 @@ const stubFetch: StubFetch = async (request) => {
   throw new Error(`스텁에 없는 요청입니다: ${url.pathname}`);
 };
 
-const renderScreen = (workerNo: string | null = '100027') => {
+const renderScreen = (workerNo: string | null = '100027', route = '/pop/rework-results') => {
   const rendered = renderWithProviders(
     <PopIdentityProvider
       value={{
@@ -160,7 +160,7 @@ const renderScreen = (workerNo: string | null = '100027') => {
     >
       <ReworkResultRegisterScreen />
     </PopIdentityProvider>,
-    { fetch: stubFetch, route: '/pop/rework-results' },
+    { fetch: stubFetch, route },
   );
 
   return { ...rendered, user: userEvent.setup() };
@@ -237,417 +237,358 @@ const renderWithoutDisposition = () => {
   return { ...rendered, user: userEvent.setup() };
 };
 
-/**
- * 수량 칸을 눌러 **키패드 창을 연다.**
- *
- * ⭐ 키패드는 상시가 아니다 — 스펙 §3 ②가 구획 전체 폭을 입력 칸에 주고 280px 로 검산했기
- * 때문이다(사용자 결정 2026-09-07). 칸을 누르면 뜬다.
- */
-/** 칸 하나를 키패드의 대상으로 고른다 — 키패드는 늘 서 있다(설계 2차 공지 §3-2). */
-const openKeypad = async (
-  user: ReturnType<typeof userEvent.setup>,
-  field: string = t.quantities.goodQty,
-) => {
-  await user.click(await screen.findByLabelText(field));
-  await screen.findByRole('button', { name: t.quantities.clearGlyph });
-};
-
 const pickWorkOrder = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(await screen.findByText(WORK_ORDER.workOrderNo));
+  await user.click(await screen.findByRole('button', { name: new RegExp(WORK_ORDER.workOrderNo) }));
+  await screen.findByRole('list', { name: t.steps.label });
 };
 
-describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
+/** ② 불량 등록 단계로 간다 — ①의 아래 작업 줄 [확인]. */
+const goDefectStep = async (user: ReturnType<typeof userEvent.setup>) => {
+  await waitFor(() => expect(screen.getByRole('button', { name: t.confirm })).toBeEnabled());
+  await user.click(screen.getByRole('button', { name: t.confirm }));
+  await screen.findByLabelText(t.quantities.defectQty);
+};
+
+const key = (name: string) => screen.getByRole('button', { name });
+
+describe('ReworkResultRegisterScreen — 본문 통일 시안(#295)', () => {
   afterEach(() => {
     plannedRows = [];
     releasedTotal = 1;
   });
 
+  /* 작업지시 목록의 [재작업 실적 등록]이 W/O 를 실어 온다(#295) — 그 W/O 를 고른 채로 연다. */
+  it('주소의 workOrderId 로 그 재작업 W/O 를 고른 채로 연다', async () => {
+    renderScreen('100027', `/pop/rework-results?workOrderId=${String(WORK_ORDER.workOrderId)}`);
+
+    await screen.findByRole('list', { name: t.steps.label });
+    expect(
+      screen.getByRole('button', { name: new RegExp(WORK_ORDER.workOrderNo) }),
+    ).toHaveAttribute('aria-pressed', 'true');
+  });
+
   /*
-   * ⭐ **배포 전 지시도 목록에 선다**(사용자 결정 2026-09-21 · omf-all-around#47). 품질 담당이
-   *    발행하고 배포는 그 뒤 단계라, 배포된 것만 보이면 현장은 지시가 난 줄도 모른다.
-   * ⛔ **고르지는 못한다** — 서버가 `PLANNED` 의 실적을 받지 않는다. 고르게 두면 수량까지
-   *    넣은 뒤 저장에서 막힌다.
+   * ⭐ **배포 전 지시도 목록에 선다**(사용자 결정 2026-09-21 · omf-all-around#47).
+   * ⛔ **고르지는 못한다** — 서버가 `PLANNED` 의 실적을 받지 않는다.
    */
   it('배포 전 지시는 표식과 함께 보이되 고를 수 없다', async () => {
     plannedRows = [
-      {
-        ...WORK_ORDER,
-        workOrderId: 8802,
-        workOrderNo: 'SYN-WO-R013',
-        statusCode: 'PLANNED',
-      },
+      { ...WORK_ORDER, workOrderId: 8802, workOrderNo: 'SYN-WO-R013', statusCode: 'PLANNED' },
     ];
     const { user } = renderScreen();
 
     expect(await screen.findByText('SYN-WO-R013')).toBeInTheDocument();
     expect(screen.getByText(t.notReleased)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: t.selectRow('SYN-WO-R013') })).toBeNull();
-    /* 배포된 것은 그대로 고를 수 있다 — 함께 보이는 것이 요점이다. */
-    expect(screen.getByRole('button', { name: t.selectRow('SYN-WO-R012') })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: /SYN-WO-R013/ })).toBeNull();
+    expect(screen.getByRole('button', { name: /SYN-WO-R012/ })).toBeEnabled();
 
-    /*
-     * ⛔ **줄 전체를 눌러도 열리지 않는다.** POP 목록은 줄의 어느 칸을 눌러도 그 줄의 선택
-     *    버튼을 대신 누르는데(`913a82c`), 배포 전 줄에는 그 버튼이 없어야 아무 일도 없다.
-     *    버튼만 지우고 다른 경로로 열리면 수량까지 넣은 뒤 저장에서 막힌다.
-     */
+    /* 줄을 눌러도 열리지 않는다 — 가운데는 그대로 「고르세요」다. */
     await user.click(screen.getByText(t.notReleased));
 
-    /* 목록 구획은 고르기 «전»에만 선다 — 아직 서 있다면 아무것도 고르지 않은 것이다. */
-    expect(screen.getByRole('region', { name: t.workOrders })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.selectRow('SYN-WO-R012') })).toBeInTheDocument();
+    expect(screen.getByText(t.pickTitle)).toBeInTheDocument();
   });
 
   /*
-   * ⛔ **배포 전 줄은 첫 쪽에만 선다.** 쪽 나누기는 배포된 쪽을 따르고 배포 전 조회는 쪽을
-   *    나누지 않아 늘 같은 답이다 — 매 쪽 꼬리에 다시 세우면 「2쪽인데 왜 아까 그 줄이 또」가
-   *    된다.
+   * ⭐ 배포 전 줄은 배포된 줄이 끝난 다음 자리부터 잇는다 — 한 쪽 건수가 구획 높이로 정해져
+   *    한 쪽에 더 얹으면 넘친다. 배포된 쪽의 요청 크기는 그 건수다.
    */
-  it('둘째 쪽에는 배포 전 줄을 다시 세우지 않는다', async () => {
-    releasedTotal = 21;
+  it('배포 전 줄은 배포된 줄 다음 쪽에 이어 선다', async () => {
+    releasedTotal = 5;
     plannedRows = [
-      {
-        ...WORK_ORDER,
-        workOrderId: 8802,
-        workOrderNo: 'SYN-WO-R013',
-        statusCode: 'PLANNED',
-      },
+      { ...WORK_ORDER, workOrderId: 8802, workOrderNo: 'SYN-WO-R013', statusCode: 'PLANNED' },
     ];
     const { user } = renderScreen();
 
-    expect(await screen.findByText('SYN-WO-R013')).toBeInTheDocument();
+    expect(await screen.findByText(WORK_ORDER.workOrderNo)).toBeInTheDocument();
+    expect(screen.queryByText('SYN-WO-R013')).toBeNull();
+    expect(screen.getByText(messages.popUniform.pager.total(6))).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: messages.popPageNav.next }));
+    await user.click(screen.getByRole('button', { name: messages.popUniform.pager.next }));
 
     expect(await screen.findByText('SYN-WO-R099')).toBeInTheDocument();
-    expect(screen.queryByText('SYN-WO-R013')).toBeNull();
-    expect(screen.queryByText(t.notReleased)).toBeNull();
+    expect(screen.getByText('SYN-WO-R013')).toBeInTheDocument();
   });
 
-  it('사번을 모르면 맨 위 공용 띠로 말하고 액션바에는 옛 문구가 없다', async () => {
+  it('사번을 모르면 맨 위 공용 띠로 말하고 저장이 잠긴다', async () => {
     const { user } = renderScreen(null);
     await pickWorkOrder(user);
 
     expect(await screen.findByText(messages.popChrome.workerMissing)).toBeInTheDocument();
-    expect(
-      screen.queryByText('작업자 사번이 확인되지 않아 저장할 수 없습니다.'),
-    ).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.save })).toBeDisabled();
+    /* ①에서 이미 [확인]이 잠긴다 — 저장 단계로 넘어가지 못한다. */
+    expect(screen.getByRole('button', { name: t.confirm })).toBeDisabled();
   });
 
-  /* ⭐ 미전송이 없으면 머리줄에 「미전송 0건」을 두지 않는다(사용자 지시 2026-09-15). */
-  it('미전송 건이 없으면 머리줄에 미전송 표시가 없다', async () => {
+  /* ⭐ 미전송이 없으면 「미전송 0건」을 두지 않는다(사용자 지시 2026-09-15). */
+  it('미전송 건이 없으면 미전송 표시가 없다', async () => {
     const { user } = renderScreen();
     await pickWorkOrder(user);
 
-    expect(await screen.findByRole('heading', { name: t.target })).toBeInTheDocument();
     expect(screen.queryByText(t.pending(0))).not.toBeInTheDocument();
   });
 
-  /*
-   * ⭐ 스펙 §3 은 본문을 ① 재작업 대상 · ② 실적 입력 · ③ 결과 LOT · ④ 진행으로 갈랐다.
-   *    ③ 이 없으면 「새 LOT 이 생기나」를 화면이 답하지 못한다(§5-4 가 답을 정해 두었다).
-   */
-  it('본문이 대상 · 입력 · 결과 LOT · 진행 네 구획으로 선다', async () => {
-    const { user } = renderScreen();
-    await pickWorkOrder(user);
-
-    expect(await screen.findByRole('heading', { name: t.target })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: t.quantities.title })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: t.resultLot.title })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: t.progress.title })).toBeInTheDocument();
-  });
-
-  /*
-   * ⛔ **네 구획이 남는 높이를 나눠 가지면 안 된다.** POP 규격의 기본이 그렇게 배분하는데,
-   *    본문이 구획 넷인 이 화면에서는 각자 1/4 을 받아 **한 구획이 90px 로 눌리고 그 안에서
-   *    또 잘린다**(실측 — 대상 카드가 두 줄, 실적 입력이 라벨 줄만 남았다).
-   *
-   *    네 구획을 **한 겹**으로 묶어 그 겹만 스크롤한다. 머리줄과 액션바는 제자리에 선다.
-   *    겹에 붙인 `pop-fixed` 는 「내용만큼만」이 아니라 «규격의 높이 배분에서 뺀다»는 뜻이다 —
-   *    그 규칙이 걸리면 `overflow: hidden` 이 스크롤을 죽인다.
-   */
-  it('네 구획이 한 겹에 묶여 그 겹만 스크롤한다', async () => {
-    const { container, user } = renderScreen();
-    await pickWorkOrder(user);
-
-    await screen.findByRole('heading', { name: t.quantities.title });
-
-    const body = container.querySelector('.rework-result-body');
-
-    expect(body).toHaveClass('pop-fixed');
-    expect(body?.parentElement).toBe(container.querySelector('.pop-ui'));
-    /* 네 구획이 전부 그 겹 «안»에 있다 — 하나라도 밖에 나가면 규격이 그것만 늘린다. */
-    for (const selector of [
-      '.rework-target-card',
-      '.rework-result-input',
-      '.rework-result-lot',
-      '.rework-result-summary',
-    ]) {
-      expect(body?.querySelector(selector)).not.toBeNull();
-    }
-  });
-
-  /*
-   * ⭐ **머리줄 왼쪽은 «값»이다** — 스펙 §3 의 `W/O-2026-R012 · FG-1001`.
-   *    ⛔ 「고르세요」 같은 안내문을 두지 않는다(본문 목록이 이미 말한다) · 사번에는 라벨을
-   *    붙인다(숫자만 두면 무슨 번호인지 알 수 없다 · `P-02-01`·`P-02-02` §3).
-   */
-  /* #291 — 사번은 공통 메뉴 맨 위 줄이 보인다. 머리줄에는 W/O·품목만 남는다. */
-  it('머리줄이 W/O·품목을 값으로 보이고 사번은 두지 않는다', async () => {
-    const { container, user } = renderScreen();
-
-    const header = container.querySelector('.pop-header');
-
-    expect(header).not.toHaveTextContent(t.workerLabel('100027'));
-    /* W/O 를 고르기 전에는 W/O 줄을 세우지 않는다(사용자 지시 2026-11-17 · #291). */
-    expect(header).not.toHaveTextContent(t.workOrderUnknown);
-    expect(header).not.toHaveTextContent(t.selectWorkOrder);
-
-    await pickWorkOrder(user);
-
-    expect(header).toHaveTextContent(t.headerContext(WORK_ORDER.workOrderNo, WORK_ORDER.itemCode));
-  });
-
-  /*
-   * ⭐ **목록은 고르기 «전»에만 선다** — §5-6 이 W/O 선택을 「진입 시」로 적었고 §3 도면에는
-   *    목록 구획이 없다. 좌우 2단으로 목록을 상시 두면 왼쪽 절반이 늘 목록이라 §3-1 의 세로
-   *    검산(① 120 + ② 280 + ③ 96 + ④ 88 = 616)이 성립하지 않는다.
-   */
-  it('고르기 전에는 목록만, 고른 뒤에는 목록이 접히고 「변경」이 선다', async () => {
+  /* 목록은 늘 왼쪽에 서고, 고른 작업지시는 선택 표시와 가운데 정보 띠로 보인다. */
+  it('고르기 전에는 가운데가 빈 화면, 고른 뒤에도 목록이 남고 고른 줄이 표시된다', async () => {
     const { user } = renderScreen();
 
     expect(await screen.findByRole('heading', { name: t.workOrders })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: t.quantities.title })).not.toBeInTheDocument();
+    expect(screen.getByText(t.pickTitle)).toBeInTheDocument();
+    expect(key('7')).toBeDisabled();
 
     await pickWorkOrder(user);
 
-    expect(await screen.findByRole('heading', { name: t.quantities.title })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: t.workOrders })).not.toBeInTheDocument();
-
-    /* 다른 W/O 로 옮기려면 ① 구획의 [ 변경 ] 이 목록을 다시 편다. */
-    await user.click(screen.getByRole('button', { name: t.changeWorkOrder }));
-
-    expect(await screen.findByRole('heading', { name: t.workOrders })).toBeInTheDocument();
-  });
-
-  /*
-   * ⛔ **칸이 비면 [ C ]·[ ⌫ ] 는 잠긴다**(사용자 지적). 지울 것이 없는데 열려 있으면 눌러도
-   *    아무 일이 없어 「눌리는데 안 되는 키」가 된다. DS `NumberPad` 는 «전체 잠금»만 있어
-   *    키마다 조건을 걸 수 없다 — POP 이 공유하는 키패드로 바꿔야 풀린다.
-   */
-  it('칸이 비면 지움 키 둘이 잠기고 값이 들어오면 열린다', async () => {
-    const { user } = renderScreen();
-    await pickWorkOrder(user);
-
-    await openKeypad(user);
-    const clearKey = () => screen.getByRole('button', { name: t.quantities.clearGlyph });
-    const backspaceKey = () => screen.getByRole('button', { name: t.quantities.backspace });
-
-    await waitFor(() => {
-      expect(clearKey()).toBeDisabled();
-    });
-    expect(backspaceKey()).toBeDisabled();
-
-    await user.click(screen.getByRole('button', { name: '7' }));
-
-    await waitFor(() => {
-      expect(clearKey()).toBeEnabled();
-    });
-    expect(backspaceKey()).toBeEnabled();
-  });
-
-  /*
-   * ⭐ **수량 칸에 단위를 붙인다**(사용자 결정) — 네 칸이 모두 수량이라 단위 없이 숫자만
-   *    서면 무엇의 몫인지가 칸 이름에만 걸린다. 전례는 `P-02-04` 의 「양품수량 [ 120 ] EA」.
-   *
-   * ⚠ **[ 변경 ] 은 ① 구획의 오른쪽 «아래»다**(사용자 결정). 스펙에는 없는 조작이라 자리를
-   *    우리가 정한다 — 오른쪽 위는 120px 짜리 구획에서 세 줄을 왼쪽으로 몰아붙인다.
-   */
-  it('수량 칸에 단위가 붙고 「변경」이 대상 구획의 발치에 선다', async () => {
-    const { container, user } = renderScreen();
-    await pickWorkOrder(user);
-
-    await screen.findByRole('heading', { name: t.quantities.title });
-
-    expect(await screen.findAllByText('EA')).toHaveLength(4);
-
-    const change = screen.getByRole('button', { name: t.changeWorkOrder });
-
-    expect(change.closest('.rework-target-foot')).not.toBeNull();
-    expect(change.closest('.rework-target-card')).toBe(
-      container.querySelector('.rework-target-card'),
+    expect(screen.getByRole('heading', { name: t.workOrders })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /SYN-WO-R012/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
     );
-
-    /*
-     * ⛔ DS `Card` 는 여백을 «본문 상자»에만 주고 그 위쪽이 0 이라, 카드에 직접 놓인 제목이
-     *    모서리에 붙는다. POP 규격의 `pop-section` 이 그 자리를 고친다 — 빠지면 제목이 다시
-     *    붙는다(사용자 지적).
-     */
-    expect(container.querySelector('.rework-target-card')).toHaveClass('pop-section');
+    expect(screen.queryByText(t.pickTitle)).toBeNull();
   });
 
-  /*
-   * ⭐ **네 구획이 모두 상자다** — 스펙 §3 이 ①②③④를 전부 `┌ … ┐` 로 그렸다. §7 이 `Card` 를
-   *    ① 에만 적은 것은 «어떤 DS 부품을 쓰는가»의 표이기 때문이고, 구획 상자는 화면 골격이라
-   *    그 표에 나오지 않는다 — 자매 화면(`P-02-01`)도 같은 도면을 실제 테두리로 구현했다.
-   *
-   * ⭐ 합계는 §7 이 지정한 `Chip` 이다(「합계 표시 | Chip + AlertBanner」).
-   */
-  it('네 구획이 모두 상자로 서고 합계가 칩으로 든다', async () => {
-    const { container, user } = renderScreen();
-    await pickWorkOrder(user);
-
-    await screen.findByRole('heading', { name: t.quantities.title });
-
-    for (const selector of [
-      '.rework-target-card',
-      '.rework-input-card',
-      '.rework-lot-card',
-      '.rework-progress-card',
-    ]) {
-      expect(container.querySelector(selector)).toHaveClass('pop-section');
-    }
-
-    const total = container.querySelector('.rework-qty-total');
-
-    expect(total?.firstElementChild).not.toBeNull();
-    expect(total).toHaveTextContent(`${t.total} 0 / 160`);
-  });
-
-  /*
-   * ⛔ **되돌릴 것이 없으면 「다시 입력」이 잠긴다**(사용자 지적). 빈 화면에서 열려 있으면
-   *    «되돌릴 것이 없는데 되돌리는 버튼»이 선다. 지우는 것과 여는 조건이 짝을 이뤄야 한다.
-   */
-  it('입력이 없으면 「다시 입력」이 잠기고 수량을 치면 열린다', async () => {
+  /* ⭐ 정보 띠는 스펙 §3 ①의 세 줄이다 — 기존 LOT 번호(번호+수량) · 처분 · 근거. 식별자 숫자는 새지 않는다. */
+  it('정보 띠가 기존 LOT 번호 · 처분 · 근거 세 줄로 선다', async () => {
     const { user } = renderScreen();
     await pickWorkOrder(user);
 
-    const resetButton = () => screen.getByRole('button', { name: t.reset });
-
-    await waitFor(() => {
-      expect(resetButton()).toBeDisabled();
-    });
-
-    await openKeypad(user);
-    await user.click(screen.getByRole('button', { name: '7' }));
-
-    await waitFor(() => {
-      expect(resetButton()).toBeEnabled();
-    });
-
-    await user.click(resetButton());
-
-    await waitFor(() => {
-      expect(resetButton()).toBeDisabled();
-    });
+    await screen.findByText(t.sourceLotValue('SYN-LOT-0288', '160', 'EA'));
+    const band = screen.getByRole('group', { name: t.workOrders });
+    expect(band).toHaveTextContent(t.nonconformanceValue('SYN-NC-0071', '합성 외관 결함'));
+    expect(band).toHaveTextContent(t.dispositionValue('160', 'EA', '08-07'));
+    expect(band).not.toHaveTextContent('6001');
   });
 
-  /*
-   * ⛔ **불량 코드 라벨은 칸에 이어져 있어야 한다** — 맨 `<label>` 이면 눌러도 칸으로 가지
-   *    않고, 위의 수량 칸들이 DS 라벨을 쓰는 것과 줄이 어긋난다(사용자 지적).
-   */
-  it('불량 코드 라벨이 칸에 이어져 있다', async () => {
+  /* ⭐ 두 단계: ① 양품·보류·폐기 › ② 불량 수량·불량 코드. [이전]으로 돌아가도 넣은 값은 남는다. */
+  it('① [확인]으로 ②에 가고, [이전]·단계 줄로 돌아가도 값이 남는다', async () => {
     const { user } = renderScreen();
     await pickWorkOrder(user);
 
-    const field = await screen.findByLabelText(t.defectCode);
+    expect(screen.getByLabelText(t.quantities.goodQty)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.quantities.holdQty)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.quantities.scrapQty)).toBeInTheDocument();
+    expect(screen.queryByLabelText(t.quantities.defectQty)).toBeNull();
+    /* ① 작업 줄: [입력 초기화] + [확인]. [실적 저장]·[이전]·[불량 등록]은 없다. */
+    expect(screen.getByRole('button', { name: t.reset })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.save })).toBeNull();
+    expect(screen.queryByRole('button', { name: t.prev })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^불량 등록/ })).toBeNull();
 
-    expect(field).toBeInTheDocument();
-  });
+    await user.click(key('7'));
+    await goDefectStep(user);
 
-  /*
-   * ⭐ **① 은 스펙 §3 의 세 줄이다** — 원 LOT(번호+수량) · 근거(부적합) · 처분(수량+판정일).
-   *
-   * ⛔ 앞선 판은 원 LOT 에 **내부 식별자 숫자**를 그대로 보였다 — 작업자가 실물 라벨과 대조할
-   *    수 없다. 「원 W/O」 행도 스펙에 없는데 세워 두었다(반품 재작업은 원본 W/O 가 아예 없는
-   *    것이 정상이다 · §5-1).
-   */
-  it('재작업 대상이 LOT 번호·근거·처분 세 줄로 선다', async () => {
-    const { container, user } = renderScreen();
-    await pickWorkOrder(user);
-
-    await screen.findByText(/SYN-LOT-0288/u);
-    const card = container.querySelector('.rework-target-card') as HTMLElement;
-    expect(card).toHaveTextContent(t.sourceLotValue('SYN-LOT-0288', '160', 'EA'));
-    expect(card).toHaveTextContent(t.nonconformanceValue('SYN-NC-0071', '합성 외관 결함'));
-    expect(card).toHaveTextContent(t.dispositionValue('160', 'EA', '08-07'));
-
-    /* ⛔ 식별자 숫자가 새어 나오지 않는다. */
-    expect(card).not.toHaveTextContent('6001');
-    /* ⛔ 스펙에 없는 「원 W/O」 행을 두지 않는다 — 세 줄뿐이다. */
-    expect(container.querySelectorAll('.rework-target-card dt')).toHaveLength(3);
-  });
-
-  /*
-   * ⭐ **키패드는 ② 구획 안에 «상시로» 선다**(설계 2차 공지 `a6a87e1` · `omf-mes#286` §3-2).
-   *
-   * 앞선 판은 팝업이었다 — 도면이 키패드 자리를 비워 두었기 때문이다. 그 판이 자리를 못
-   * 박으면서(② 안, 수량 칸 오른쪽) 팝업일 이유가 사라졌고, **열고 닫는 일 자체가 없어졌다.**
-   * 확인·취소·X 를 두고 씨름하던 문제들도 여기서 원인째 사라진다.
-   */
-  it('키패드가 구획 안에 늘 서 있다', async () => {
-    const { user } = renderScreen();
-    await pickWorkOrder(user);
-
-    await screen.findByRole('heading', { name: t.quantities.title });
-
-    /* 칸을 고르기 «전»에도 키가 보인다 — 팝업이 아니다. */
-    expect(screen.getByRole('button', { name: '7' })).toBeInTheDocument();
-
-    /* ⛔ 열고 닫는 조작이 없다. */
-    expect(screen.queryByRole('button', { name: t.quantities.keypadDone })).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: t.quantities.keypadCancel }),
-    ).not.toBeInTheDocument();
-  });
-
-  /* ⭐ D-4 골격 — **포커스된 칸에 연동되는 입력 버퍼**다. 네 칸이 패드 하나를 나눠 쓴다. */
-  it('고른 칸에 숫자가 들어간다', async () => {
-    const { user } = renderScreen();
-    await pickWorkOrder(user);
-
-    await user.click(await screen.findByLabelText(t.quantities.goodQty));
-    await user.click(screen.getByRole('button', { name: '7' }));
-
-    expect(screen.getByLabelText(t.quantities.goodQty)).toHaveValue('7');
-
-    /* 다른 칸을 고르면 그 칸으로 간다 — 앞 칸의 값은 그대로 남는다. */
-    await user.click(screen.getByLabelText(t.quantities.defectQty));
-    await user.click(screen.getByRole('button', { name: '3' }));
-
+    expect(screen.queryByLabelText(t.quantities.goodQty)).toBeNull();
+    expect(screen.getByLabelText(t.defectCode)).toBeInTheDocument();
+    /* ② 작업 줄: [이전] + [실적 저장]. */
+    expect(screen.getByRole('button', { name: t.save })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.confirm })).toBeNull();
+    expect(screen.queryByRole('button', { name: t.reset })).toBeNull();
+    /* 단계를 바꾸면 그 단계의 첫 칸에 입력된다. */
+    await user.click(key('3'));
     expect(screen.getByLabelText(t.quantities.defectQty)).toHaveValue('3');
+
+    await user.click(screen.getByRole('button', { name: t.prev }));
+    expect(screen.getByLabelText(t.quantities.goodQty)).toHaveValue('7');
+
+    /* 다시 ②로 가면 불량 수량도 남아 있다. 단계 줄의 끝난 ①을 눌러도 돌아간다. */
+    await goDefectStep(user);
+    expect(screen.getByLabelText(t.quantities.defectQty)).toHaveValue('3');
+    await user.click(
+      within(screen.getByRole('list', { name: t.steps.label })).getByRole('button', {
+        name: new RegExp(t.steps.input),
+      }),
+    );
+    expect(screen.getByLabelText(t.quantities.goodQty)).toHaveValue('7');
+  });
+
+  /* ⛔ 차례대로만 — 단계 줄의 ②는 눌러 앞질러 갈 수 없다. */
+  it('단계 줄로 ②에 앞질러 갈 수 없다', async () => {
+    const { user } = renderScreen();
+    await pickWorkOrder(user);
+    await user.click(key('7'));
+
+    const flow = screen.getByRole('list', { name: t.steps.label });
+    expect(within(flow).queryByRole('button')).toBeNull();
+    await user.click(within(flow).getByText(t.steps.defect));
+    expect(screen.queryByLabelText(t.quantities.defectQty)).toBeNull();
     expect(screen.getByLabelText(t.quantities.goodQty)).toHaveValue('7');
   });
 
   /*
-   * ⛔ **어느 칸에 넣을지 모르면 누를 것이 없다.** 고르지 않았는데 키가 살아 있으면 그 숫자가
-   *    어디로 갔는지 알 수 없다.
+   * ⭐ 저장 요청은 그대로 하나 — ① [확인]은 서버를 부르지 않고, ② [실적 저장]이 불량 수량까지
+   *    실어 한 번 보낸다. ①을 비워 두고 불량만 넣어도 저장된다(지금과 같다).
    */
+  it('[확인]은 저장하지 않고, [실적 저장]이 불량 수량까지 실어 한 번 보낸다', async () => {
+    const posts: Record<string, unknown>[] = [];
+    const user = userEvent.setup();
+    renderWithProviders(
+      <PopIdentityProvider
+        value={{
+          terminalId: TERMINAL_ID,
+          processes: [{ processId: PROCESS_ID }],
+          equipment: null,
+          workerNo: '100027',
+        }}
+      >
+        <ReworkResultRegisterScreen />
+      </PopIdentityProvider>,
+      {
+        fetch: async (request) => {
+          if (request.method === 'POST') {
+            posts.push((await request.clone().json()) as Record<string, unknown>);
+            return jsonResponse({ productionResultId: 1 }, { status: 201 });
+          }
+          return stubFetch(request);
+        },
+        route: '/pop/rework-results',
+      },
+    );
+    await pickWorkOrder(user);
+
+    /* ① 합계 0 이어도 [확인]은 열린다 — 불량이 ②에서 합계를 채울 수 있다. */
+    await goDefectStep(user);
+    expect(posts).toHaveLength(0);
+    expect(screen.getByRole('button', { name: t.save })).toBeDisabled();
+
+    await user.click(key('4'));
+    await user.click(screen.getByLabelText(new RegExp(`^${t.defectCode}`)));
+    await user.click(await screen.findByRole('option', { name: /D-SCR/ }));
+    await waitFor(() => expect(screen.getByRole('button', { name: t.save })).toBeEnabled());
+    await user.click(screen.getByRole('button', { name: t.save }));
+
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0]).toMatchObject({ workOrderId: WORK_ORDER.workOrderId, defectQty: 4 });
+    globalThis.localStorage.clear();
+  });
+
+  /* ⭐ 키패드는 오른쪽 「수량」 구획에 늘 선다 — 누른 칸이 대상이 되고 다른 칸 값은 남는다. */
+  it('키패드는 고른 칸에 숫자를 넣는다', async () => {
+    const { user } = renderScreen();
+    await pickWorkOrder(user);
+
+    await user.click(key('7'));
+    expect(screen.getByLabelText(t.quantities.goodQty)).toHaveValue('7');
+
+    await user.click(screen.getByLabelText(t.quantities.holdQty));
+    await user.click(key('3'));
+
+    expect(screen.getByLabelText(t.quantities.holdQty)).toHaveValue('3');
+    expect(screen.getByLabelText(t.quantities.goodQty)).toHaveValue('7');
+
+    await user.click(screen.getByRole('button', { name: messages.popUniform.keypad.clearAll }));
+    expect(screen.getByLabelText(t.quantities.holdQty)).toHaveValue('');
+    expect(screen.getByLabelText(t.quantities.goodQty)).toHaveValue('7');
+  });
+
   /* ⭐ 키보드로도 친다(사용자 지시 2026-09-17) — 숫자만 남고, 개 단위에는 소수점이 들어가지 않는다. */
   it('키보드로 친 수량이 칸에 들어간다', async () => {
     const { user } = renderScreen();
     await pickWorkOrder(user);
 
-    await user.type(await screen.findByLabelText(t.quantities.goodQty), '01a2.5');
+    await user.type(screen.getByLabelText(t.quantities.goodQty), '01a2.5');
 
     expect(screen.getByLabelText(t.quantities.goodQty)).toHaveValue('125');
   });
 
-  /* ⭐ 불량이 있으면 불량 코드가 필수다(스펙 §5-3 · 사용자 지시 2026-09-17). */
-  it('불량이 있으면 불량 코드를 골라야 저장이 열린다', async () => {
+  it('개 단위에는 소수점 키가 꺼져 있다', async () => {
     const { user } = renderScreen();
     await pickWorkOrder(user);
 
-    await user.type(await screen.findByLabelText(t.quantities.defectQty), '3');
+    expect(key('.')).toBeDisabled();
+  });
+
+  it('소수를 받는 단위에는 소수점 키가 켜진다', async () => {
+    const { user } = renderWithFractionalUom();
+    await pickWorkOrder(user);
+
+    await waitFor(() => {
+      expect(key('.')).toBeEnabled();
+    });
+  });
+
+  /* ⭐ 수량 칸에 단위가 붙는다 — ① 세 칸. */
+  it('수량 칸에 단위가 붙고 합계가 칩으로 든다', async () => {
+    const { user } = renderScreen();
+    await pickWorkOrder(user);
+
+    await screen.findByText(t.keypad.unit('EA'));
+    expect(document.querySelectorAll('.pu-unit')).toHaveLength(3);
+    await waitFor(() => {
+      expect(screen.getByText(`${t.total} 0 / 160`)).toBeInTheDocument();
+    });
+  });
+
+  /* ⭐ 부분 · 넘침 안내는 단계 줄 아래 한 줄. 비었을 때는 안내 없이 저장만 꺼진다(사용자 지시 2026-11-19). */
+  it('합계에 따라 안내 줄이 바뀌고 넘치면 [확인]·저장이 잠긴다', async () => {
+    const { user } = renderScreen();
+    await pickWorkOrder(user);
+
+    expect(screen.queryByText('실적을 입력해 주세요.')).toBeNull();
+
+    await user.click(key('5'));
+    expect(await screen.findByText(t.partial(155, 'EA'))).toBeInTheDocument();
+    /* 고른 작업지시의 재작업 진행이 넣는 수량을 따라 움직인다. */
+    expect(screen.getByText(t.progressValue('5', '160', 'EA'))).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(t.quantities.goodQty), '00');
+    expect(await screen.findByText(t.exceeded(160, 'EA'))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.confirm })).toBeDisabled();
+
+    /* 넘치지 않게 고치면 ②로 가서 저장이 열리고, ②에서 불량으로 넘치면 다시 잠긴다. */
+    await user.clear(screen.getByLabelText(t.quantities.goodQty));
+    await user.type(screen.getByLabelText(t.quantities.goodQty), '150');
+    await goDefectStep(user);
+    await waitFor(() => expect(screen.getByRole('button', { name: t.save })).toBeEnabled());
+    await user.type(screen.getByLabelText(t.quantities.defectQty), '20');
+    expect(await screen.findByText(t.exceeded(160, 'EA'))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.save })).toBeDisabled();
+  });
+
+  it('처분이 없으면 넣는 대로 넘침으로 막힌다', async () => {
+    const { user } = renderWithoutDisposition();
+    await pickWorkOrder(user);
+
+    await user.click(key('7'));
+
+    expect(await screen.findByText(t.exceeded(0, 'EA'))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.confirm })).toBeDisabled();
+  });
+
+  /* ⛔ 되돌릴 것이 없으면 [입력 초기화]가 잠긴다(사용자 지적). */
+  it('입력이 없으면 「입력 초기화」가 잠기고 수량을 치면 열린다', async () => {
+    const { user } = renderScreen();
+    await pickWorkOrder(user);
+
+    const resetButton = () => screen.getByRole('button', { name: t.reset });
+
+    expect(resetButton()).toBeDisabled();
+
+    await user.click(key('7'));
+    expect(resetButton()).toBeEnabled();
+
+    await user.click(resetButton());
+    expect(resetButton()).toBeDisabled();
+    expect(screen.getByLabelText(t.quantities.goodQty)).toHaveValue('');
+  });
+
+  /* ⭐ 불량이 있으면 불량 코드가 필수다(스펙 §5-3) — 이름 옆 빨간 *, 칸 테두리가 빨갛다. */
+  it('불량이 있으면 불량 코드를 골라야 저장이 열린다', async () => {
+    const { user } = renderScreen();
+    await pickWorkOrder(user);
+    await goDefectStep(user);
+
+    await user.type(screen.getByLabelText(t.quantities.defectQty), '3');
 
     expect(screen.getByRole('button', { name: t.save })).toBeDisabled();
+    /* 이름 옆에 필수 * 가 붙는다(읽는 기계에는 감춘 글자). */
+    const codeField = () => screen.getByLabelText(new RegExp(`^${t.defectCode}`));
+    expect(codeField().closest('.pu-field')?.querySelector('.req')).not.toBeNull();
+    expect(codeField()).toHaveAttribute('aria-invalid', 'true');
 
-    await user.click(screen.getByLabelText(t.defectCode));
+    await user.click(codeField());
     await user.click(await screen.findByRole('option', { name: /D-SCR/ }));
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t.save })).toBeEnabled();
     });
+    expect(codeField()).not.toHaveAttribute('aria-invalid');
   });
 
   /* ⚠ 불량 코드를 못 받으면 필수로 막지 않는다 — 저장이 영영 열리지 않게 되기 때문이다(리뷰 M1). */
@@ -676,135 +617,17 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
       },
     );
     await pickWorkOrder(user);
+    await goDefectStep(user);
 
     expect(await screen.findByText(t.defectCodeLoadFailed)).toBeInTheDocument();
-    await user.type(await screen.findByLabelText(t.quantities.defectQty), '3');
+    await user.type(screen.getByLabelText(t.quantities.defectQty), '3');
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t.save })).toBeEnabled();
     });
   });
 
-  it('칸을 고르기 전에는 키가 눌리지 않는다', async () => {
-    const { user } = renderScreen();
-    await pickWorkOrder(user);
-
-    expect(await screen.findByRole('button', { name: '7' })).toBeDisabled();
-  });
-
-  it('처분이 없어도 키가 살아 있다 — 넘침은 배너가 말한다', async () => {
-    const { user } = renderScreen();
-    await pickWorkOrder(user);
-
-    await user.click(await screen.findByLabelText(t.quantities.goodQty));
-
-    expect(screen.getByRole('button', { name: '7' })).toBeEnabled();
-  });
-
-  it('개 단위에는 소수점 키를 세우지 않는다', async () => {
-    const { user } = renderScreen();
-    await pickWorkOrder(user);
-
-    await openKeypad(user);
-
-    expect(screen.queryByRole('button', { name: t.quantities.decimalKey })).not.toBeInTheDocument();
-  });
-
-  it('소수를 받는 단위에는 소수점 키가 선다', async () => {
-    const { user } = renderWithFractionalUom();
-    await pickWorkOrder(user);
-
-    await openKeypad(user);
-
-    expect(
-      await screen.findByRole('button', { name: t.quantities.decimalKey }),
-    ).toBeInTheDocument();
-  });
-
-  /*
-   * ⛔ **네 제목이 같은 자리에서 시작해야 한다** — 카드 본문 바로 아래다. ②의 제목만 «입력 칸
-   *    묶음 안»에 있으면 좌우 2단(칸 · 키패드)의 왼쪽 칸 폭에 갇혀 혼자 안쪽으로 들어간다
-   *    (사용자 지적).
-   */
-  it('네 구획의 제목이 모두 카드 본문 바로 아래에 선다', async () => {
-    const { container, user } = renderScreen();
-    await pickWorkOrder(user);
-
-    await screen.findByRole('heading', { name: t.quantities.title });
-
-    for (const [selector, title] of [
-      ['.rework-target-card', t.target],
-      ['.rework-input-card', t.quantities.title],
-      ['.rework-lot-card', t.resultLot.title],
-      ['.rework-progress-card', t.progress.title],
-    ] as const) {
-      const card = container.querySelector(selector) as HTMLElement;
-      const heading = within(card).getByRole('heading', { name: title });
-
-      /*
-       * ⛔ 좌우 2단(칸 · 키패드) «안»에 들어가면 왼쪽 칸 폭에 갇혀 혼자 안쪽에서 시작한다 —
-       *    ②가 그랬다. 구획을 나누는 `section` 은 여백이 없어 자리를 밀지 않는다.
-       */
-      expect(heading.closest('.rework-result-input')).toBeNull();
-      expect(heading.closest('.rework-result-fields')).toBeNull();
-      /* 카드 본문에서 «맨 처음» 나온다 — 앞에 무엇이 오면 제목이 그만큼 밀린다. */
-      expect(card.querySelector('.pane-title')).toBe(heading);
-    }
-  });
-
-  /*
-   * ⛔ **액션바는 화면의 최상위 자식이어야 한다** — POP 규격의 바닥 띠 규칙이 그 자리만
-   *    겨냥한다(`.pop-ui > [class*='action']`). 구획 안으로 들어가면 띠가 서지 않고 본문의
-   *    일부로 흐른다. 스펙 §3 의 세로 예산(헤더 64 + 본문 616 + 액션바 88)이 그 전제다.
-   */
-  it('액션바가 화면 바닥의 띠로 서고, 고르기 전에도 자리를 지킨다', async () => {
-    const { container } = renderScreen();
-
-    const bar = await screen.findByRole('button', { name: t.save });
-    const actionBar = bar.closest('.pop-action-bar');
-
-    expect(actionBar?.parentElement).toBe(container.querySelector('.pop-ui'));
-    /* 고르기 전에도 사라지지 않는다 — 조작이 나타났다 사라지면 본문이 그만큼 움직인다. */
-    expect(screen.getByRole('button', { name: t.reset })).toBeDisabled();
-  });
-
-  /*
-   * ③ 결과 LOT — **넣은 수량으로 즉시 바뀐다**(§3 ⚠ E-4 「③은 접지 않는다」).
-   * 재작업은 LOT 을 가르지 않는다(§5-4) — 선별과 다른 자리다.
-   */
-  it('결과 LOT 구획이 넣은 양품 수량을 그대로 말한다', async () => {
-    const { user } = renderScreen();
-    await pickWorkOrder(user);
-
-    const section = await screen.findByRole('region', { name: t.resultLot.title });
-
-    /* ⚠ 문장이 여러 요소로 쪼개져 있다 — 구획의 글자 전체로 본다. */
-    expect(section).toHaveTextContent(t.resultLot.keep);
-    expect(section).toHaveTextContent(t.resultLot.good('0'));
-
-    await openKeypad(user);
-    await user.click(await screen.findByRole('button', { name: '5' }));
-
-    expect(section).toHaveTextContent(t.resultLot.good('5'));
-  });
-
-  /* ② 수량 네 칸은 2×2 다 — 세로로 쌓으면 280px 예산을 넘어 ③·④가 밀린다(§3-1 슬랙 0). */
-  it('수량 네 칸이 한 격자에 함께 선다', async () => {
-    const { container, user } = renderScreen();
-    await pickWorkOrder(user);
-
-    await screen.findByRole('heading', { name: t.quantities.title });
-    const grid = container.querySelector('.rework-qty-grid');
-
-    expect(grid).not.toBeNull();
-    expect(grid?.querySelectorAll('input')).toHaveLength(4);
-  });
-
-  /*
-   * ⛔ **단위를 첫 쪽만 받지 않는다.** `/mdm/uoms` 는 쪽 응답이라 상한이 없으면 서버 기본
-   * 크기에서 잘리고, 잘린 단위는 소수 자릿수를 0 으로 떨어뜨려 **소수점 키를 지운다** —
-   * `KG` 자리에서 값을 넣을 길이 사라지는데 화면은 멀쩡해 보인다.
-   */
+  /* ⛔ 단위를 첫 쪽만 받지 않는다 — 잘린 단위는 소수점 키를 지운다. */
   it('단위 조회가 상한을 실어 첫 쪽에서 잘리지 않는다', async () => {
     const { user } = renderScreen();
     await pickWorkOrder(user);
@@ -814,6 +637,19 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
     });
 
     expect(Number(uomQuery?.get('size'))).toBeGreaterThanOrEqual(100);
+  });
+
+  /* 저장하면 같은 실적을 두 번 보내지 않게 저장이 잠긴다. */
+  it('저장하면 저장 단추가 잠긴다', async () => {
+    const { user } = renderScreen();
+    await pickWorkOrder(user);
+
+    await user.click(key('5'));
+    await goDefectStep(user);
+    await waitFor(() => expect(screen.getByRole('button', { name: t.save })).toBeEnabled());
+    await user.click(screen.getByRole('button', { name: t.save }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: t.save })).toBeDisabled());
   });
 });
 
@@ -879,6 +715,7 @@ describe('ReworkResultRegisterScreen — 공정이 여럿인 단말', () => {
     await pickWorkOrder(user);
 
     await user.type(await screen.findByLabelText(t.quantities.goodQty), '3');
+    await goDefectStep(user);
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t.save })).toBeEnabled();
@@ -894,7 +731,7 @@ describe('ReworkResultRegisterScreen — 공정이 여럿인 단말', () => {
       await screen.findByText(popGateDeniedText({ processName: '합성 재작업' }, 'canInputResult')),
     ).toBeInTheDocument();
     await user.type(await screen.findByLabelText(t.quantities.goodQty), '3');
-    expect(screen.getByRole('button', { name: t.save })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.confirm })).toBeDisabled();
   });
 });
 
@@ -936,6 +773,7 @@ describe('ReworkResultRegisterScreen — 서버 거부', () => {
     );
     await pickWorkOrder(user);
     await user.type(await screen.findByLabelText(t.quantities.goodQty), '3');
+    await goDefectStep(user);
     await waitFor(() => expect(screen.getByRole('button', { name: t.save })).toBeEnabled());
     await user.click(screen.getByRole('button', { name: t.save }));
 
@@ -971,6 +809,7 @@ describe('ReworkResultRegisterScreen — 서버 거부', () => {
     );
     await pickWorkOrder(user);
     await user.type(await screen.findByLabelText(t.quantities.goodQty), '3');
+    await goDefectStep(user);
     await waitFor(() => expect(screen.getByRole('button', { name: t.save })).toBeEnabled());
     await user.click(screen.getByRole('button', { name: t.save }));
 

@@ -14,6 +14,7 @@ import {
 import { PopIdentityProvider, type PopIdentity } from '../../patterns/pop-identity';
 import { lot, receipt, receiptLineFixtures, WORK_ORDER_ID } from './fixtures';
 import { MaterialInputScanScreen } from './screen';
+import { PuToastHost } from '../../patterns/pop-uniform';
 import { popGateDeniedText } from '../../patterns/pop-process-gate';
 
 const DENIED_TEXT = popGateDeniedText({ processName: null }, 'canInputMaterial');
@@ -33,7 +34,7 @@ const unsent = messages.popChrome.header.unsent;
 const qtyPart =
   (text: string) =>
   (_content: string, element: Element | null): boolean =>
-    element?.classList.contains('pop-qty-progress-text') === true && element.textContent === text;
+    element?.classList.contains('mi-prog-text') === true && element.textContent === text;
 
 /** 투입량이 0보다 큰 줄의 값(「12 / 100 EA」). 투입한 것이 있다는 표시다. */
 const RECORDED = /^[1-9]\d* \/ /;
@@ -215,7 +216,10 @@ const renderScreen = (lots: unknown[], postRoute: StubRoute, extra: StubRoute[] 
 
   renderWithProviders(
     <PopIdentityProvider value={GATED}>
-      <MaterialInputScanScreen />
+      <>
+        <PuToastHost />
+        <MaterialInputScanScreen />
+      </>
       <Here />
     </PopIdentityProvider>,
     { fetch, route: ROUTE },
@@ -232,8 +236,11 @@ const Here = () => {
 };
 
 /** 담은 자재 목록. 화면에 목록이 여럿이라 이름으로 집는다. */
-/** 투입 수량 편집 영역. */
-const editor = (): HTMLElement => screen.getByRole('region', { name: t.panes.noSelection });
+/** 고른 자재 줄(투입 내역이 이 줄 안에 붙는다). */
+const editor = (): HTMLElement =>
+  within(screen.getByRole('list', { name: t.scanned.materialsLabel })).getByRole('button', {
+    pressed: true,
+  });
 
 const scannedList = (): HTMLElement => screen.getByRole('list', { name: t.scanned.materialsLabel });
 
@@ -441,13 +448,13 @@ describe('투입 기록 — 결과를 어떻게 말하는가', () => {
     expect(screen.getByText(t.scan.outcomes.recorded('예시 자재 A', '12 EA'))).toBeTruthy();
     expect(screen.queryByText(/SAMPLE-LOT-0001 /)).toBeNull();
 
-    /* 보낸 투입은 고치지 않는다(서버 취소 미구현). 칸과 [투입 등록], [스캔 취소]가 없고 안내 한 줄. */
+    /* 보낸 투입은 고치지 않는다(서버 취소 미구현). 칸이 꺼지고 [투입 등록]이 잠기며 [스캔 취소]가 없다. */
     expect(
       screen.queryByRole('button', { name: t.scanned.removeMaterial('SAMPLE-LOT-0001') }),
     ).toBeNull();
     expect(screen.queryByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'))).toBeNull();
-    expect(screen.queryByRole('button', { name: t.scanned.keypadSubmit })).toBeNull();
-    expect(within(editor()).getByText(t.scanned.sentReadOnly)).toBeTruthy();
+    expect(screen.getByRole('textbox', { name: t.qty.title })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.scanned.keypadSubmit })).toBeDisabled();
   });
 
   /*
@@ -538,7 +545,10 @@ describe('투입 기록 — 보내지 않는 경우', () => {
 
     renderWithProviders(
       <PopIdentityProvider value={GATED}>
-        <MaterialInputScanScreen />
+        <>
+          <PuToastHost />
+          <MaterialInputScanScreen />
+        </>
       </PopIdentityProvider>,
       { fetch, route: ROUTE },
     );
@@ -553,7 +563,7 @@ describe('투입 기록 — 보내지 않는 경우', () => {
      * 기록하면 칸이 비어 [투입 등록]이 잠긴다. 같은 칸으로 한 번 더 눌러 같은 양이 두 번 들어가지
      * 않는다(추가 투입은 다시 스캔해 잔량을 채운 뒤의 새 기록이다, PI-18).
      */
-    expect(screen.queryByRole('button', { name: t.scanned.keypadSubmit })).toBeNull();
+    expect(screen.getByRole('button', { name: t.scanned.keypadSubmit })).toBeDisabled();
 
     releasePost();
     await waitFor(() => {
@@ -736,7 +746,7 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
     );
 
     await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0099{Enter}');
-    expect(await within(editor()).findByText(t.scanned.manualReasons.unknown)).toBeTruthy();
+    expect(await screen.findByText(t.scanned.manualReasons.unknown)).toBeTruthy();
     expect(screen.queryByText(t.scanned.pendingHint)).toBeNull();
     expect(screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0099'))).toHaveProperty(
       'value',
@@ -772,10 +782,9 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
     await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
     const field = await screen.findByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
     expect(field).toHaveProperty('value', '70');
-    /* 편집 영역에 투입량과 잔량이 선다. */
+    /* 고른 줄에 투입량이 서고, 잔량은 투입 수량 칸에 미리 채워진다(위). */
     expect(within(editor()).getByText(t.pairs.progressLabel)).toBeTruthy();
     expect(within(editor()).getByText(qtyPart('30 / 100 EA'))).toBeTruthy();
-    expect(within(editor()).getByText(t.pairs.remaining('70 EA'))).toBeTruthy();
   });
 
   it('기록 목록을 못 받으면 수령 수량을 미리 채운다', async () => {
@@ -808,11 +817,9 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
     expect(await within(scannedList()).findByText(qtyPart('12 / 100 EA'))).toBeTruthy();
 
     await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
-    expect(await screen.findByText(t.scan.outcomes.again('예시 자재 A'))).toBeTruthy();
-    const field = screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
+    const field = await screen.findByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
     expect(field).toHaveProperty('value', '88');
     expect(within(editor()).getByText(qtyPart('12 / 100 EA'))).toBeTruthy();
-    expect(within(editor()).getByText(t.pairs.remaining('88 EA'))).toBeTruthy();
     /* 다시 스캔하면 같은 규칙으로 잔량을 곧 보낸다(PI-26). */
     expect(screen.getByText(t.remaining.sending('예시 자재 A', '88 EA'))).toBeTruthy();
 
@@ -847,7 +854,7 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
     await user.click(row);
     /* 입력은 스캔에서만 시작한다(PI-29). */
     expect(screen.queryByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'))).toBeNull();
-    expect(within(editor()).getByText(t.scanned.sentReadOnly)).toBeTruthy();
+    expect(screen.getByRole('textbox', { name: t.qty.title })).toBeDisabled();
     const next = screen.getByRole('button', { name: t.confirm.goToProductionResult });
     expect(next).toHaveProperty('disabled', false);
     expect(screen.getByText(t.remaining.done)).toBeTruthy();
@@ -865,9 +872,9 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
     await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
     const field = await screen.findByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
     expect(field).toHaveProperty('value', '100');
-    expect(within(editor()).getByText(t.scanned.pendingHint)).toBeTruthy();
+    expect(screen.getByText(t.scanned.pendingHint)).toBeTruthy();
     expect(
-      within(editor()).getByRole('button', { name: t.scanned.undoMaterial('SAMPLE-LOT-0001') }),
+      screen.getByRole('button', { name: t.scanned.undoMaterial('SAMPLE-LOT-0001') }),
     ).toBeTruthy();
     /* 창 안에서는 아직 보내지 않는다. */
     expect(sent).toHaveLength(0);
@@ -1042,8 +1049,8 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
     await screen.findByText(qtyPart('100 / 100 EA'));
     await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
 
+    /* 스캔 칸 아래 한 줄: 「불출량을 모두 투입했습니다」와 [추가 투입]. */
     expect(await screen.findByText(t.scan.outcomes.allInput('예시 자재 A'))).toBeTruthy();
-    expect(within(editor()).getByText(t.scanned.allInput)).toBeTruthy();
     expect(screen.queryByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'))).toBeNull();
     const next = screen.getByRole('button', { name: t.confirm.goToProductionResult });
     expect(next).toHaveProperty('disabled', false);
@@ -1094,13 +1101,12 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
     expect(screen.queryByText(/(^|\s|\/)-\d/)).toBeNull();
     expect(within(scannedList()).queryByText(/잔량/)).toBeNull();
 
-    /* 과투입한 줄을 고르면 편집 영역이 한 줄로 말한다. */
-    await user.click(within(rowOf('SAMPLE-LOT-0002')).getByRole('button'));
-    expect(within(editor()).getByText(t.pairs.over('5 EA'))).toBeTruthy();
-
-    /* 진행 중인 LOT을 스캔하면 이번 투입 곁에 잔량. */
+    /* 진행 중인 LOT을 스캔하면 잔량이 투입 수량 칸에 채워진다(잔량 글자는 따로 두지 않는다). */
     await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
-    expect(await within(editor()).findByText(t.pairs.remaining('70 EA'))).toBeTruthy();
+    expect(await screen.findByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'))).toHaveProperty(
+      'value',
+      '70',
+    );
   });
 
   it('불출량에 닿은 줄은 「투입 완료」다', async () => {
@@ -1217,8 +1223,8 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
 
     await screen.findByText(qtyPart('100 / 100 EA'));
     const row = within(scannedList()).getByText('SAMPLE-LOT-0001').closest('li') as HTMLElement;
-    const head = row.querySelector('.pop-row-head') as HTMLElement;
-    const info = row.querySelector('.pop-row-info') as HTMLElement;
+    const head = row.querySelector('.pu-item-top') as HTMLElement;
+    const info = row.querySelector('.pu-item-sub') as HTMLElement;
     expect(within(head).getByText(/^예시 자재 A/)).toBeTruthy();
     expect(within(head).getByText(t.scanned.completeMark)).toBeTruthy();
     expect(within(head).queryByText('SAMPLE-LOT-0001')).toBeNull();
@@ -1228,13 +1234,9 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
     expect(within(info).getByText(qtyPart('100 / 100 EA'))).toBeTruthy();
     expect(within(info).getByRole('progressbar')).toBeTruthy();
 
+    /* 고르면 그 줄이 강조된다(따로 「선택한 자재」 구획을 두지 않는다). */
     await user.click(within(row).getByRole('button'));
-    const editHead = editor().querySelector('.material-input-qty-head') as HTMLElement;
-    expect(within(editHead).getByRole('heading', { name: /^예시 자재 A/ })).toBeTruthy();
-    const editInfo = editor().querySelector('.pop-row-info') as HTMLElement;
-    expect(within(editInfo).getByText(t.pairs.progressLabel)).toBeTruthy();
-    expect(within(editInfo).getByText(qtyPart('100 / 100 EA'))).toBeTruthy();
-    expect(within(editor()).queryByText('SAMPLE-LOT-0001')).toBeNull();
+    expect(within(row).getByRole('button')).toHaveAttribute('aria-pressed', 'true');
   });
 
   /* 서버가 받아 준 기록이 늘면 투입 합을 다시 읽는다. */
@@ -1323,7 +1325,10 @@ describe('MaterialInputScanScreen — 미전송 큐', () => {
 
     renderWithProviders(
       <PopIdentityProvider value={GATED}>
-        <MaterialInputScanScreen />
+        <>
+          <PuToastHost />
+          <MaterialInputScanScreen />
+        </>
       </PopIdentityProvider>,
       { fetch, route: ROUTE },
     );
@@ -1371,7 +1376,10 @@ describe('MaterialInputScanScreen — 미전송 큐', () => {
 
     renderWithProviders(
       <PopIdentityProvider value={GATED}>
-        <MaterialInputScanScreen />
+        <>
+          <PuToastHost />
+          <MaterialInputScanScreen />
+        </>
       </PopIdentityProvider>,
       { fetch, route: ROUTE },
     );
@@ -1513,7 +1521,10 @@ describe('MaterialInputScanScreen — 게이트와 쓰기', () => {
 
     renderWithProviders(
       <PopIdentityProvider value={GATED}>
-        <MaterialInputScanScreen />
+        <>
+          <PuToastHost />
+          <MaterialInputScanScreen />
+        </>
       </PopIdentityProvider>,
       { fetch, route: ROUTE },
     );
@@ -1540,7 +1551,10 @@ describe('MaterialInputScanScreen — 게이트와 쓰기', () => {
 
     renderWithProviders(
       <PopIdentityProvider value={GATED}>
-        <MaterialInputScanScreen />
+        <>
+          <PuToastHost />
+          <MaterialInputScanScreen />
+        </>
       </PopIdentityProvider>,
       { fetch: stub, route: ROUTE },
     );
@@ -1574,7 +1588,10 @@ describe('MaterialInputScanScreen — 큐가 살아남는가', () => {
 
     renderWithProviders(
       <PopIdentityProvider value={GATED}>
-        <MaterialInputScanScreen />
+        <>
+          <PuToastHost />
+          <MaterialInputScanScreen />
+        </>
       </PopIdentityProvider>,
       { fetch, route: ROUTE },
     );
@@ -1619,7 +1636,10 @@ describe('MaterialInputScanScreen — 큐가 살아남는가', () => {
 
     renderWithProviders(
       <PopIdentityProvider value={GATED}>
-        <MaterialInputScanScreen />
+        <>
+          <PuToastHost />
+          <MaterialInputScanScreen />
+        </>
       </PopIdentityProvider>,
       { fetch, route: ROUTE },
     );

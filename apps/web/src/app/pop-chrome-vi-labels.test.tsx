@@ -77,12 +77,22 @@ describe('POP 공통 조작 문구 — 베트남어', () => {
     expect(
       screen.getByRole('searchbox', { name: viMessages.popChrome.selectDialog.searchLabel }),
     ).toBeInTheDocument();
+    /* 쪽 넘김은 POP 공통 쪽 넘김(「총 N건 ‹ 1 / 2 ›」 · #295). */
+    expect(
+      screen.getByRole('button', { name: viMessages.popUniform.pager.next }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(viMessages.popUniform.pager.total(7))).toBeInTheDocument();
+    expect(screen.queryByText(/다음|총 7건/u)).not.toBeInTheDocument();
+
+    /* 검색어 지우기 X 는 검색어가 있을 때 선다(#295 시안). */
+    await user.type(
+      screen.getByRole('searchbox', { name: viMessages.popChrome.selectDialog.searchLabel }),
+      '1',
+    );
     expect(
       screen.getByRole('button', { name: viMessages.popChrome.selectDialog.clearSearch }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: viMessages.popPageNav.next })).toBeInTheDocument();
-    expect(screen.getByText(viMessages.popChrome.selectDialog.total(7))).toBeInTheDocument();
-    expect(screen.queryByText(/검색어 지우기|다음|총 7건/u)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '검색어 지우기' })).not.toBeInTheDocument();
   });
 
   it('비가동 시간 표시가 베트남어 단위로 선다', () => {

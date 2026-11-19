@@ -1,0 +1,160 @@
+/* P-04-01 「라벨 상태·재인쇄」 — #295 시안 모양(화면 전용). */
+.spl-screen .spl-list-body {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  align-content: stretch;
+}
+
+.spl-screen .spl-work-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.spl-screen .spl-work-body > .pu-empty {
+  flex: 1;
+}
+
+.spl-screen .spl-work-body > * {
+  flex: none;
+}
+
+.spl-screen .spl-work-body > .spl-preview,
+.spl-screen .spl-work-body > .pu-empty {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.spl-screen .spl-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-field);
+  overflow: hidden;
+}
+
+.spl-preview-img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  background: #fff;
+  border: 1px dashed var(--pu-line);
+  border-radius: var(--radius-sm, 8px);
+}
+
+.spl-screen .spl-sec {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--pu-text-2);
+}
+
+.spl-history-empty {
+  font-size: 13px;
+  color: var(--pu-text-3);
+}
+
+.spl-history-row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  font-size: 14px;
+  padding: 8px 12px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-card, var(--pu-field));
+  min-width: 0;
+}
+
+.spl-history-row b,
+.spl-history-row small {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spl-history-row small {
+  color: var(--pu-text-3);
+  font-size: 13px;
+}
+
+.spl-history-row i {
+  font-style: normal;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pu-ok-bg);
+  color: var(--pu-ok);
+}
+
+.spl-history-row i svg {
+  width: 14px;
+  height: 14px;
+}
+
+.spl-history-row.bad i {
+  background: var(--pu-bad-bg);
+  color: var(--pu-bad);
+}
+
+.spl-dialog-body {
+  display: grid;
+  gap: 12px;
+}
+
+.spl-screen .spl-select-row,
+.spl-screen .spl-shape-head,
+.spl-recovery-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.spl-screen .spl-select-count,
+.spl-screen .spl-sec {
+  margin-right: auto;
+}
+
+.spl-screen .spl-select-count {
+  font-size: 14px;
+  color: var(--pu-text-2);
+}
+
+.spl-recovery-row {
+  font-size: 15px;
+}
+
+.spl-recovery-row > .spl-recovery-name {
+  flex: 1;
+}
+
+.spl-previews {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.spl-preview-fig {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  font-size: 13px;
+  color: var(--pu-text-3);
+}
+
+.spl-screen .spl-reissue {
+  display: grid;
+  gap: 8px;
+}

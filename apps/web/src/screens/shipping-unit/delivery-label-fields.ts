@@ -53,7 +53,7 @@ const toItemTotal = (total: ShippingUnitItemTotal): DeliveryLabelItemTotal => ({
  */
 export const toDeliveryLabelFields = (
   detail: ShippingUnitDetail,
-  issueSeq: number,
+  issueSeq: number | null,
 ): DeliveryLabelFields => ({
   shippingUnitNo: detail.shippingUnitNo,
   customer: toPartner(detail.customer),

@@ -1,0 +1,198 @@
+/*
+ * P-05-02 비가동 실적 입력 — 화면 전용 모양(#295 시안). 공통 모양은 `app/pop-uniform.css`.
+ * 선택자는 `dt-` 접두로 이 화면에만 건다.
+ */
+.pu-screen.dt-u {
+  height: 100%;
+}
+
+.dt-u .dt-alerts {
+  display: grid;
+  gap: 8px;
+}
+
+/* 왼쪽(시작·종료일시 + 오늘 기록)이 조금 넓다. */
+.dt-u .pu-cols.dt-cols {
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+}
+
+.dt-u .dt-left {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.dt-u .dt-interval {
+  flex: none;
+}
+
+.dt-u .dt-today {
+  flex: 1 1 0;
+}
+
+.dt-u .dt-dur {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--pu-text-2);
+}
+
+.dt-u .dt-dur .pu-chip {
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.dt-u .dt-tm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.dt-u .dt-tm .pu-btn {
+  min-width: 0;
+  padding: 0 16px;
+}
+
+.dt-u .dt-lbl-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 22px;
+}
+
+.dt-u .dt-lbl-row .pu-check {
+  min-height: 0;
+}
+
+.dt-u .dt-err {
+  font-size: 13px;
+  color: var(--pu-bad);
+}
+
+.dt-u .dt-plain {
+  margin: 0;
+  font-size: 15px;
+  color: var(--pu-text-3);
+}
+
+.dt-u textarea.pu-input.dt-memo {
+  min-height: 0;
+  height: var(--pu-ctl);
+  padding: 12px 14px;
+}
+
+/* 오늘 이 설비 */
+.dt-u .dt-today-meta {
+  display: inline-flex;
+  gap: 8px;
+  color: var(--pu-text-2);
+}
+
+.dt-u .dt-today-meta > span {
+  color: var(--pu-text-3);
+}
+
+.dt-u .dt-today-top {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.dt-u .dt-today-top > .pu-empty {
+  flex: 1;
+  min-height: 0;
+  padding: 12px 16px;
+}
+
+.dt-u .dt-table {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+/* 일시·비가동 시간·사유는 글자만큼(긴 사유는 말줄임), 남는 폭은 메모 칸이 갖는다. */
+.dt-u .dt-table .pu-table td.dt-reason {
+  max-width: 200px;
+}
+
+/* 오늘 이 설비 표: 메모(마지막 열)만 왼쪽, 나머지는 가운데(사용자 지시 2026-11-19). */
+.dt-u .dt-table .pu-table th:not(:last-child),
+.dt-u .dt-table .pu-table td:not(:last-child) {
+  text-align: center;
+}
+
+.dt-u .dt-ongo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 10px 16px;
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-info-bg);
+  flex: none;
+}
+
+.dt-u .dt-ongo-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dt-u .dt-ongo-t {
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.dt-u .dt-ongo-line {
+  display: grid;
+  gap: 2px;
+  font-size: 14px;
+  color: var(--pu-text-2);
+  min-width: 0;
+}
+
+.dt-u .dt-ongo-line > b {
+  font-size: 16px;
+  color: var(--pu-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dt-u .dt-ongo .pu-btn {
+  margin-left: auto;
+}
+
+/* 「사유」 구획: 평소에는 사유·고장이 위아래. 메모 글자판이 열리면 둘을 나란히 두어 글자판 자리를 만든다. */
+.dt-u .dt-pair {
+  display: contents;
+}
+
+.dt-u .dt-pair.is-kbd {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+@media (max-height: 780px) {
+  .dt-u .pu-card-body:has(.dt-pair.is-kbd) {
+    gap: 8px;
+  }
+}
+
+/* 꺼진 키(예: 빈 칸의 전체 삭제)를 눌러도 칸에서 초점이 빠져 글자판이 닫히지 않게, 누름을 글자판 바탕으로 넘긴다. */
+.dt-kbd .pu-tkbd button:disabled {
+  pointer-events: none;
+}
+
+/* 글자판이 다섯 줄(맨 위 숫자 줄)이라 칸 아래에 펼 때는 키를 조금 낮춰 구획 안에 들어가게 한다. */
+.dt-kbd .pu-tkbd {
+  --pu-key: 44px;
+  gap: 4px;
+}
+
+@media (max-height: 780px) {
+  .dt-kbd .pu-tkbd {
+    --pu-key: 40px;
+  }
+}

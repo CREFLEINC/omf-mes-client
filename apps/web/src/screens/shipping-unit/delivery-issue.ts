@@ -56,7 +56,15 @@ export const useDeliveryIssue = (workerNo: string | null) => {
   const { client } = useApiClient();
 
   return useCallback(
-    async (unit: ShippingUnitDetail, printerName: string | null): Promise<DeliveryIssueOutcome> => {
+    async (
+      unit: ShippingUnitDetail,
+      printerName: string | null,
+      /**
+       * 재발행 사유 — 「구성 완료」에서 다시 뽑을 때만 준다(출하 라벨 화면 재발행과 같은 본문 ·
+       * 코드 그룹 `REISSUE_REASON`). 마감 직후 첫 발행에는 싣지 않는다.
+       */
+      reissueReasonCode: string | null = null,
+    ): Promise<DeliveryIssueOutcome> => {
       if (workerNo === null) throw new Error('사번이 없어 납품 라벨을 발행할 수 없습니다.');
 
       let documentIssueLogId: number;
@@ -71,6 +79,7 @@ export const useDeliveryIssue = (workerNo: string | null) => {
             body: {
               documentTypeCode: DOCUMENT_TYPE_CODE,
               targets: [{ targetTypeCode: TARGET_TYPE_CODE, targetId: unit.shippingUnitId }],
+              ...(reissueReasonCode === null ? {} : { reissueReasonCode }),
               ...(printerName === null ? {} : { printerName }),
             },
           }),

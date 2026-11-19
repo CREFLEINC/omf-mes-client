@@ -1,20 +1,20 @@
-import {
-  AlertBanner,
-  Button,
-  type Column,
-  Dialog,
-  Icon,
-  Table,
-  TextField,
-  useToast,
-} from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useId, useState } from 'react';
+import { useId, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router';
 
 import { masterName } from '../../patterns/master-name';
 import { SaveErrorBanner } from '../../patterns/master';
+import { PopSelect } from '../../patterns/pop-select';
+import {
+  PuButton,
+  PuDialog,
+  PuField,
+  PuInput,
+  PuNote,
+  PuTextKeyboard,
+  puToast,
+} from '../../patterns/pop-uniform';
 import type { FlowGateVerdict } from './flow-gating';
 import { useVarianceReasons } from './flow-queries';
 import { formatQty } from './quantity-draft';
@@ -30,6 +30,8 @@ import {
 
 const t = messages.productionResult.flow.woClose;
 const st = t.sessions;
+/** 세션 표 칸 모양 — 단말·작업자·상태는 글자만큼, 끝낼 곳이 남는 폭을 갖고 줄을 바꾼다. */
+const SESSION_CELL_CLASS = ['fit', 'fit', 'fit mid', 'pr-close-where'];
 
 type WorkOrderClose = components['schemas']['WorkOrderClose'];
 type Disposition = NonNullable<WorkOrderClose['remainderDispositionCode']>;
@@ -89,16 +91,18 @@ export const blockedReason = (props: CloseBlockInput): string | null => {
  */
 export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
   const { workOrderId, workOrderNo, workerNo, terminalId, uomLabel } = props;
-  const toast = useToast();
   const navigate = useNavigate();
   const noteId = useId();
   const submitNoteId = useId();
   const remainderTitleId = useId();
   const reasonTitleId = useId();
+  const remarksId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [disposition, setDisposition] = useState<Disposition | null>(null);
   const [reasonCode, setReasonCode] = useState<string | null>(null);
   const [remarks, setRemarks] = useState('');
+  /* 비고 칸을 누르면 칸 바로 아래에 글자판을 연다(사용자 지시 2026-11-19 · 이 창은 키패드 자리가 없다). */
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
 
   const target = useCloseTarget(workOrderId, isOpen);
   const openLots = useCloseOpenLots(workOrderId, isOpen);
@@ -114,7 +118,7 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
         props.onClosed();
         return;
       }
-      toast.show({ variant: 'success', description: t.done(workOrderNo) });
+      puToast(t.done(workOrderNo));
       void navigate('/pop/work-start');
     },
     recheckSessions: async () => {
@@ -141,8 +145,8 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
     (savedReason !== null && reasonList.some((item) => item.code === savedReason)
       ? savedReason
       : null);
-  const isPrefilled = reasonCode === null && effectiveReason !== null;
   const needsDisposition = judgment === 'UNDER';
+  const showKeyboard = keyboardOpen && needsDisposition && disposition === 'WRITE_OFF';
   const needsReason = judgment === 'UNDER' || judgment === 'OVER';
   const missing =
     judgment === null
@@ -195,28 +199,20 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
   const close = () => {
     if (sequence.isSaving) return;
     setIsOpen(false);
+    setKeyboardOpen(false);
     sequence.reset();
   };
 
-  const sessionColumns: Column<CloseSessionView>[] = [
-    { key: 'terminal', header: st.terminal, render: (row) => row.terminalCode ?? st.unknown },
-    {
-      key: 'worker',
-      header: st.worker,
-      render: (row) =>
-        row.workerName === null || row.workerNo === null
-          ? st.unknown
-          : st.workerValue(row.workerName, row.workerNo),
-    },
-    { key: 'state', header: st.state, render: (row) => (row.isRunning ? st.RUNNING : st.STOPPED) },
-    {
-      key: 'where',
-      header: st.where,
-      render: (row) =>
-        row.terminalId === terminalId
-          ? st.here(messages.workHoldRegister.title)
-          : st.other(messages.workOrderClose.menuPath),
-    },
+  /** 열린 작업 세션 표의 칸(단말 · 작업자 · 상태 · 끝낼 곳) — 값은 종전 그대로다. */
+  const sessionCells = (row: CloseSessionView): string[] => [
+    row.terminalCode ?? st.unknown,
+    row.workerName === null || row.workerNo === null
+      ? st.unknown
+      : st.workerValue(row.workerName, row.workerNo),
+    row.isRunning ? st.RUNNING : st.STOPPED,
+    row.terminalId === terminalId
+      ? st.here(messages.workHoldRegister.title)
+      : st.other(messages.workOrderClose.menuPath),
   ];
 
   const endFailureText =
@@ -233,69 +229,73 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
   const openLotNos = openLots.isError ? [] : (openLots.data?.lotNos ?? []);
   const voidLotNos = openLots.isError ? [] : (openLots.data?.voidLotNos ?? []);
   /** 파란 안내 줄(정보 아이콘 + 한 줄). */
-  const infoNote = (text: string) => (
-    <p className="iqc-inspection-action-note" data-tone="info">
-      <Icon name="info" size={14} aria-hidden />
-      {text}
-    </p>
+  const infoNote = (text: string) => <PuNote>{text}</PuNote>;
+  /** 폐번될·마감되지 않은 LOT 묶음 — 제목 오른쪽에 건수, 아래 번호 상자. */
+  const lotGroup = (title: string, count: number, lotNos: string[]) => (
+    <section className="pu-stack pr-close-lots" aria-label={title}>
+      <div className="pu-label">
+        <span>{title}</span>
+        <span className="aside">{t.lotCount(count)}</span>
+      </div>
+      {lotNos.length > 0 && (
+        <ul className="pr-close-lot-box">
+          {lotNos.map((lotNo) => (
+            <li key={lotNo}>{lotNo}</li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+  const retryButton = (onClick: () => void) => (
+    <PuButton size="sm" onClick={onClick}>
+      {messages.common.retry}
+    </PuButton>
   );
 
   return (
-    <div className="production-flow-wo-close">
+    <>
+      {/* 작업 줄 버튼(#295 규칙 2·3) — 잠기면 흐리게만, 까닭은 `reasonId` 문장에 잇는다. */}
       {reason === null ? (
-        <Button
-          variant={props.variant ?? 'outlined'}
-          size="xl"
+        <PuButton
+          variant={props.variant === 'filled' ? 'primary' : 'default'}
           aria-describedby={props.reasonId}
           onClick={() => setIsOpen(true)}
         >
           {t.button}
-        </Button>
+        </PuButton>
       ) : props.reasonId !== undefined ? (
-        <Button
-          variant={props.variant ?? 'outlined'}
-          size="xl"
+        <PuButton
+          variant={props.variant === 'filled' ? 'primary' : 'default'}
           disabled
           aria-describedby={props.reasonId}
         >
           {t.button}
-        </Button>
+        </PuButton>
       ) : (
         <div className="field-cell">
-          <Button variant="outlined" size="xl" disabled aria-describedby={noteId}>
+          <PuButton disabled aria-describedby={noteId}>
             {t.button}
-          </Button>
+          </PuButton>
           <span id={noteId} className="field-note">
             {reason}
           </span>
         </div>
       )}
 
+      {/* 되돌릴 수 없는 일이라 확인 창을 거친다(규칙 13). 머리 X 없이 아래 [취소] + [마감](규칙 16). */}
       {isOpen && (
-        <Dialog
-          open
-          size="lg"
-          className="production-flow-wo-end-dialog"
-          /* 제목 왼쪽, W/O 번호 오른쪽 끝(사용자 지시 2026-11-16 시안). 읽는 이름은 「작업지시 마감 WO-…」 그대로. */
-          title={
-            <span className="production-flow-wo-end-title" aria-label={t.title(workOrderNo)}>
-              <span>{t.titleLead}</span>
-              <span className="production-flow-wo-end-no">{workOrderNo}</span>
-            </span>
-          }
-          showCloseButton={false}
-          /* 터치 단말의 오조작 — 바깥을 눌러 닫히지 않는다. */
-          closeOnBackdropClick={false}
+        <PuDialog
+          title={t.title(workOrderNo)}
           onClose={close}
           footer={
             <>
-              <Button variant="outlined" size="xl" disabled={sequence.isSaving} onClick={close}>
+              <PuButton disabled={sequence.isSaving} onClick={close}>
                 {t.cancel}
-              </Button>
-              <Button
-                size="xl"
+              </PuButton>
+              <PuButton
+                variant="primary"
                 disabled={!canSubmit}
-                loading={sequence.isSaving}
+                aria-busy={sequence.isSaving || undefined}
                 aria-describedby={submitBlockedReason === null ? undefined : submitNoteId}
                 onClick={() => {
                   const next = body();
@@ -304,237 +304,206 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                 }}
               >
                 {t.confirm}
-              </Button>
+              </PuButton>
             </>
           }
         >
-          {endFailureText !== null && (
-            <div className="banner-slot">
-              <AlertBanner variant="error" title={endFailureText} />
-            </div>
-          )}
-          {sequence.endedButNotClosed && (
-            <div className="banner-slot">
-              <AlertBanner variant="warning" title={t.endedButNotClosed} />
-            </div>
-          )}
-          <SaveErrorBanner error={sequence.endError} />
-          <SaveErrorBanner error={sequence.closeError} />
+          {/* 비고 글자판이 열린 동안은 창을 넓혀 오른쪽 열에 글자판을 둔다(자재 관리 LOT 만들기 창과 같은 방식). */}
+          <div className={showKeyboard ? 'wc-wrap is-kbd' : 'wc-wrap'}>
+            <div className="wc-main">
+              {endFailureText !== null && <PuNote tone="bad">{endFailureText}</PuNote>}
+              {sequence.endedButNotClosed && <PuNote tone="warn">{t.endedButNotClosed}</PuNote>}
+              <SaveErrorBanner error={sequence.endError} />
+              <SaveErrorBanner error={sequence.closeError} />
 
-          {sessions.isPending ? (
-            <p role="status">{st.checking}</p>
-          ) : sessions.isError ? (
-            <AlertBanner
-              variant="error"
-              title={st.loadFailed}
-              action={
-                <Button variant="outlined" size="sm" onClick={() => void sessions.refetch()}>
-                  {messages.common.retry}
-                </Button>
-              }
-            />
-          ) : plan !== null && plan.blockers.length > 0 ? (
-            <div className="banner-slot">
-              <AlertBanner variant="warning" title={st.blocked} />
-              <Table
-                density="compact"
-                caption={st.listLabel}
-                columns={sessionColumns}
-                rows={plan.blockers}
-                getRowId={(row) => String(row.workSessionId)}
-              />
-            </div>
-          ) : null}
-
-          {target.isPending ? (
-            <p role="status">{t.loading}</p>
-          ) : target.isError || target.data === undefined || target.data.etag === null ? (
-            <AlertBanner
-              variant="error"
-              title={t.loadFailed}
-              action={
-                <Button variant="outlined" size="sm" onClick={() => void target.refetch()}>
-                  {messages.common.retry}
-                </Button>
-              }
-            />
-          ) : (
-            <>
-              <dl className="pop-figures">
-                <div>
-                  <dt>{t.fields.orderQty}</dt>
-                  <dd>{`${formatQty(target.data.workOrder.orderQty)} ${uomLabel}`.trim()}</dd>
-                </div>
-                <div>
-                  <dt>{t.fields.goodQty}</dt>
-                  <dd>{`${formatQty(progress?.goodQty ?? 0)} ${uomLabel}`.trim()}</dd>
-                </div>
-                <div>
-                  <dt>{t.fields.judgment}</dt>
-                  {/*
-                   * 정상은 초록(개선 명세 ⑧-2). 미달·초과는 기본 글자색이고 미달량·초과량만 색으로 보인다
-                   * (사용자 지시 2026-11-16 시안). 값은 서버 판정 그대로다.
-                   */}
-                  <dd data-tone={judgment === 'NORMAL' ? 'success' : undefined}>
-                    {judgment === null ? '—' : t.judgments[judgment]}
-                  </dd>
-                </div>
-                {variance !== undefined && variance !== 0 && (
-                  <div>
-                    <dt>{variance > 0 ? t.fields.shortfallQty : t.fields.overageQty}</dt>
-                    <dd data-tone="error">
-                      {`${formatQty(Math.abs(variance))} ${uomLabel}`.trim()}
-                    </dd>
+              {sessions.isPending ? (
+                <p role="status" className="pu-dialog-text">
+                  {st.checking}
+                </p>
+              ) : sessions.isError ? (
+                <PuNote tone="bad" action={retryButton(() => void sessions.refetch())}>
+                  {st.loadFailed}
+                </PuNote>
+              ) : plan !== null && plan.blockers.length > 0 ? (
+                <>
+                  <PuNote tone="warn">{st.blocked}</PuNote>
+                  <div className="pu-table-wrap pr-close-sessions">
+                    <table className="pu-table" aria-label={st.listLabel}>
+                      <thead>
+                        <tr>
+                          <th scope="col" className="fit">
+                            {st.terminal}
+                          </th>
+                          <th scope="col" className="fit">
+                            {st.worker}
+                          </th>
+                          <th scope="col" className="fit mid">
+                            {st.state}
+                          </th>
+                          <th scope="col">{st.where}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {plan.blockers.map((row) => (
+                          <tr key={row.workSessionId}>
+                            {sessionCells(row).map((cell, index) => (
+                              <td key={index} className={SESSION_CELL_CLASS[index]}>
+                                {cell}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                )}
-              </dl>
+                </>
+              ) : null}
 
-              {judgment === null && (
-                <AlertBanner
-                  variant="error"
-                  title={t.judgmentMissing}
-                  action={
-                    <Button variant="outlined" size="sm" onClick={() => void target.refetch()}>
-                      {messages.common.retry}
-                    </Button>
-                  }
-                />
-              )}
-
-              {needsDisposition && (
-                /*
-                 * fieldset·legend 대신 이름 붙은 묶음(role=group)이다 — legend 는 브라우저가 내용 최소 폭으로
-                 * 줄여 제목 옆 안내 줄이 글자마다 꺾였다(사용자 지시 2026-11-16, 명세 ⑧ 그림).
-                 */
-                <div
-                  className="production-flow-wo-end-group"
-                  role="group"
-                  aria-labelledby={remainderTitleId}
-                >
-                  <div className="production-flow-wo-end-legend">
-                    <span id={remainderTitleId}>{t.fields.remainder}</span>
-                    <span className="production-flow-wo-end-required">{t.required}</span>
-                  </div>
-                  <div className="production-flow-reason-tiles">
-                    {(['CARRY_OVER', 'WRITE_OFF'] as const).map((code) => (
-                      <Button
-                        key={code}
-                        size="xl"
-                        variant={disposition === code ? 'filled' : 'outlined'}
-                        aria-pressed={disposition === code}
-                        onClick={() => setDisposition(code)}
-                      >
-                        {t.remainder[code]}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {needsReason && (
-                <div
-                  className="production-flow-wo-end-group"
-                  role="group"
-                  aria-labelledby={reasonTitleId}
-                >
-                  <div className="production-flow-wo-end-legend">
-                    <span id={reasonTitleId}>{t.fields.reason}</span>
-                    {/* LOT 마감 때 고른 사유를 가져왔으면 그 안내, 아니면 「필수」. */}
-                    {isPrefilled ? (
-                      infoNote(t.prefilled)
-                    ) : (
-                      <span className="production-flow-wo-end-required">{t.required}</span>
-                    )}
-                  </div>
-                  {reasons.isLoading ? (
-                    <p role="status">{t.reasonsLoading}</p>
-                  ) : reasons.isError ? (
-                    <AlertBanner variant="error" title={t.reasonsFailed} />
-                  ) : reasonList.length === 0 ? (
-                    <p>{t.reasonsEmpty}</p>
-                  ) : (
-                    <div className="production-flow-reason-tiles">
-                      {reasonList.map((item) => (
-                        <Button
-                          key={item.code}
-                          size="xl"
-                          variant={effectiveReason === item.code ? 'filled' : 'outlined'}
-                          aria-pressed={effectiveReason === item.code}
-                          onClick={() => setReasonCode(item.code)}
+              {target.isPending ? (
+                <p role="status" className="pu-dialog-text">
+                  {t.loading}
+                </p>
+              ) : target.isError || target.data === undefined || target.data.etag === null ? (
+                <PuNote tone="bad" action={retryButton(() => void target.refetch())}>
+                  {t.loadFailed}
+                </PuNote>
+              ) : (
+                <>
+                  <dl className="pu-kv">
+                    <dt>{t.fields.orderQty}</dt>
+                    <dd>{`${formatQty(target.data.workOrder.orderQty)} ${uomLabel}`.trim()}</dd>
+                    <dt>{t.fields.goodQty}</dt>
+                    <dd>{`${formatQty(progress?.goodQty ?? 0)} ${uomLabel}`.trim()}</dd>
+                    <dt>{t.fields.judgment}</dt>
+                    {/* 정상은 초록, 미달·초과는 노랑(시안). 값은 서버 판정 그대로다. */}
+                    <dd>
+                      {judgment === null ? (
+                        '—'
+                      ) : (
+                        <span
+                          className={judgment === 'NORMAL' ? 'pu-chip ok' : 'pu-chip warn'}
+                          data-tone={judgment === 'NORMAL' ? 'success' : undefined}
                         >
-                          {masterName(item, item.codeName)}
-                        </Button>
-                      ))}
-                    </div>
+                          {t.judgments[judgment]}
+                        </span>
+                      )}
+                    </dd>
+                    {variance !== undefined && variance !== 0 && (
+                      <>
+                        <dt>{variance > 0 ? t.fields.shortfallQty : t.fields.overageQty}</dt>
+                        <dd>{`${formatQty(Math.abs(variance))} ${uomLabel}`.trim()}</dd>
+                      </>
+                    )}
+                  </dl>
+
+                  {judgment === null && (
+                    <PuNote tone="bad" action={retryButton(() => void target.refetch())}>
+                      {t.judgmentMissing}
+                    </PuNote>
                   )}
+
+                  {needsDisposition && (
+                    <PuField label={t.fields.remainder} required labelId={remainderTitleId}>
+                      <div
+                        className="pu-tiles"
+                        role="group"
+                        aria-labelledby={remainderTitleId}
+                        style={{ '--cols': '2' } as CSSProperties}
+                      >
+                        {(['CARRY_OVER', 'WRITE_OFF'] as const).map((code) => (
+                          <button
+                            key={code}
+                            type="button"
+                            className={disposition === code ? 'pu-tile is-on' : 'pu-tile'}
+                            aria-pressed={disposition === code}
+                            onClick={() => setDisposition(code)}
+                          >
+                            {t.remainder[code]}
+                          </button>
+                        ))}
+                      </div>
+                    </PuField>
+                  )}
+
+                  {needsReason && (
+                    <PuField label={t.fields.reason} required labelId={reasonTitleId}>
+                      {reasons.isLoading ? (
+                        <p role="status" className="pu-dialog-text">
+                          {t.reasonsLoading}
+                        </p>
+                      ) : reasons.isError ? (
+                        <PuNote tone="bad">{t.reasonsFailed}</PuNote>
+                      ) : reasonList.length === 0 ? (
+                        <p className="pu-dialog-text">{t.reasonsEmpty}</p>
+                      ) : (
+                        /* 기준 정보에서 오는 사유라 선택 창으로 고른다(시안 · 규칙 7 예외). */
+                        <PopSelect
+                          aria-labelledby={reasonTitleId}
+                          placeholder={t.reasonPlaceholder}
+                          options={reasonList.map((item) => ({
+                            value: item.code,
+                            label: masterName(item, item.codeName),
+                          }))}
+                          value={effectiveReason}
+                          onChange={(value) => setReasonCode(value)}
+                        />
+                      )}
+                    </PuField>
+                  )}
+
+                  {needsDisposition && disposition === 'WRITE_OFF' && (
+                    <PuField label={t.fields.remarks} htmlFor={remarksId}>
+                      <PuInput
+                        id={remarksId}
+                        value={remarks}
+                        autoComplete="off"
+                        target={showKeyboard}
+                        onFocus={() => setKeyboardOpen(true)}
+                        onBlur={() => setKeyboardOpen(false)}
+                        onChange={(event) => setRemarks(event.target.value)}
+                      />
+                    </PuField>
+                  )}
+
+                  {/* 폐번 건수는 서버가 센 값(`withoutResultCount`)이 정본이다. 번호는 받은 쪽에서 보인다. */}
+                  {voided > 0 && lotGroup(t.voidedTitle, voided, voidLotNos)}
+                  {openLotNos.length > 0 && lotGroup(t.openTitle, openLotNos.length, openLotNos)}
+                  {openLots.isError && infoNote(t.openLotsUnknown)}
+                  {(openLots.data?.uncheckedCount ?? 0) > 0 &&
+                    infoNote(t.uncheckedLots(openLots.data?.uncheckedCount ?? 0))}
+                  {/* 되돌릴 수 없음 안내(시안 문구 그대로) — 주의 노랑. */}
+                  <PuNote tone="warn">{t.irreversible}</PuNote>
+                </>
+              )}
+              {/* 창 위에 이미 띠로 선 까닭·고를 칸이 위에 있는 까닭은 단추에만 이어 둔다 — 같은 말을 두 번 보이지 않게. */}
+              {submitBlocked !== null && (
+                <p
+                  className={submitBlocked.shownAbove ? 'visually-hidden' : 'field-note'}
+                  id={submitNoteId}
+                >
+                  {submitBlocked.text}
+                </p>
+              )}
+            </div>
+            {showKeyboard && (
+              /* 글자판의 빈 곳·꺼진 키를 눌러도 칸에서 초점이 빠져 닫히지 않게 한다. */
+              <div
+                className="pu-stack wc-kbd"
+                role="group"
+                aria-label={t.fields.remarks}
+                onMouseDown={(event) => event.preventDefault()}
+              >
+                <div className="pu-keypad-head">
+                  <span className="pu-keypad-target">
+                    <b>{t.fields.remarks}</b>
+                  </span>
                 </div>
-              )}
-
-              {needsDisposition && disposition === 'WRITE_OFF' && (
-                <TextField
-                  label={t.fields.remarks}
-                  value={remarks}
-                  onChange={(event) => setRemarks(event.target.value)}
-                />
-              )}
-
-              {/*
-               * 폐번될·마감되지 않은 LOT — 제목 오른쪽에 건수, 번호 상자, 그 아래 안내 한 줄(사용자 지시 2026-11-16
-               * 시안). 폐번 건수는 서버가 센 값(`withoutResultCount`)이 정본이다. 번호는 받은 쪽에서 보인다.
-               */}
-              {voided > 0 && (
-                <section className="production-flow-wo-end-lots" aria-label={t.voidedTitle}>
-                  <div className="production-flow-wo-end-legend">
-                    <span>{t.voidedTitle}</span>
-                    <span className="production-flow-wo-end-count">{t.lotCount(voided)}</span>
-                  </div>
-                  {voidLotNos.length > 0 && (
-                    <ul className="production-flow-wo-end-lot-box">
-                      {voidLotNos.map((lotNo) => (
-                        <li key={lotNo}>{lotNo}</li>
-                      ))}
-                    </ul>
-                  )}
-                  {infoNote(t.voidedNote)}
-                </section>
-              )}
-              {openLotNos.length > 0 && (
-                <section className="production-flow-wo-end-lots" aria-label={t.openTitle}>
-                  <div className="production-flow-wo-end-legend">
-                    <span>{t.openTitle}</span>
-                    <span className="production-flow-wo-end-count">
-                      {t.lotCount(openLotNos.length)}
-                    </span>
-                  </div>
-                  <ul className="production-flow-wo-end-lot-box">
-                    {openLotNos.map((lotNo) => (
-                      <li key={lotNo}>{lotNo}</li>
-                    ))}
-                  </ul>
-                  {infoNote(t.openNote)}
-                </section>
-              )}
-              {openLots.isError && infoNote(t.openLotsUnknown)}
-              {(openLots.data?.uncheckedCount ?? 0) > 0 &&
-                infoNote(t.uncheckedLots(openLots.data?.uncheckedCount ?? 0))}
-              {/* 안내 문구는 시연 문서의 라벨 모양(아이콘 + 바탕 한 줄) — 경고는 노랑(사용자 지시 2026-11-16). */}
-              <p className="iqc-inspection-action-note" data-tone="warning">
-                <Icon name="warning" size={14} aria-hidden />
-                {t.irreversible}
-              </p>
-            </>
-          )}
-          {/* 창 위에 이미 띠로 선 까닭·고를 칸이 위에 있는 까닭은 단추에만 이어 둔다 — 같은 말을 두 번 보이지 않게. */}
-          {submitBlocked !== null && (
-            <p
-              className={submitBlocked.shownAbove ? 'visually-hidden' : 'field-note'}
-              id={submitNoteId}
-            >
-              {submitBlocked.text}
-            </p>
-          )}
-        </Dialog>
+                <PuTextKeyboard value={remarks} onChange={setRemarks} />
+              </div>
+            )}
+          </div>
+        </PuDialog>
       )}
-    </div>
+    </>
   );
 };

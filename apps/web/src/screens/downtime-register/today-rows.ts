@@ -39,11 +39,8 @@ export interface TodayRow {
  */
 export type ReasonNames = ReadonlyMap<string, string>;
 
-const toReasonLabel = (
-  reasonCode: string,
-  serverName: string | null,
-  names: ReasonNames,
-): string => serverName ?? names.get(reasonCode) ?? reasonCode;
+const toReasonLabel = (reasonCode: string, serverName: string | null, names: ReasonNames): string =>
+  serverName ?? names.get(reasonCode) ?? reasonCode;
 
 export const fromDowntimeView = (downtime: DowntimeView, names: ReasonNames): TodayRow => ({
   key: `downtime:${String(downtime.downtimeId)}`,

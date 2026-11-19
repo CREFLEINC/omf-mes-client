@@ -52,7 +52,7 @@ export interface PopScreen {
   group: PopScreenGroupKey;
   /**
    * 작업지시를 고른 뒤 거치는 화면인가(#291 · 사용자 승인 2026-11-17). 이런 화면은 탭에 두지 않고
-   * 「작업 지시 목록」 탭 아래 작업 단계 줄에서 연다.
+   * 「작업지시 목록」 탭 아래 작업 단계 줄에서 연다.
    * - `step`: 차례대로 거치는 단계(이 목록 순서가 단계 순서다 — ② 자재 투입 · ③ 생산 작업 · ④ 생산 포장).
    * - `during`: 작업 중 언제든 여는 화면(작업 중단 · 러닝체인지 · 툴 사용실적) — 단계 줄 오른쪽 버튼.
    */
@@ -67,18 +67,17 @@ export interface PopScreen {
 /** 작업 단계 ①(작업지시 고르기) 화면. */
 export const POP_WORK_ENTRY_PATH = '/pop/work-start';
 
-export type PopScreenGroupKey = 'material' | 'production' | 'quality' | 'shipping' | 'facility';
+export type PopScreenGroupKey = 'warehouse' | 'production' | 'quality' | 'shipping';
 
 /**
  * 묶음 줄의 순서와 이름(#291). 화면 코드 앞자리로 나누되, 품질 검사 화면(P-02-13·P-04-06)은
  * 생산·출하가 아니라 품질에 둔다.
  */
 export const POP_SCREEN_GROUPS: readonly { key: PopScreenGroupKey; name: string }[] = [
-  { key: 'material', name: '자재' },
+  { key: 'warehouse', name: '창고' },
   { key: 'production', name: '생산' },
   { key: 'quality', name: '품질' },
   { key: 'shipping', name: '출하' },
-  { key: 'facility', name: '설비·창고' },
 ];
 
 /**
@@ -107,15 +106,25 @@ export const POP_SCREENS: readonly PopScreen[] = [
   {
     path: '/pop/material-lot-label',
     code: 'P-01-01',
-    group: 'material',
+    group: 'warehouse',
     name: '자재 관리 LOT 라벨',
   },
-  { path: '/pop/goods-issue-qr', code: 'P-01-02', group: 'material', name: '분할 LOT 라벨' },
+  { path: '/pop/goods-issue-qr', code: 'P-01-02', group: 'warehouse', name: '분할 LOT 라벨' },
+  /*
+   * ⭐ **설계보다 앞선 화면이다**(`docs/decisions.md` 결정 16) — 화면 코드도 클라이언트가
+   *    부여했다. 도메인 06(기준정보연계)에 POP 화면이 없어 번호 체계를 그대로 이었다.
+   */
+  {
+    path: '/pop/location-label',
+    code: 'P-06-01',
+    group: 'warehouse',
+    name: '창고 적재 위치 라벨',
+  },
   {
     path: '/pop/work-start',
     code: 'P-02-01',
     group: 'production',
-    name: '작업 지시 목록',
+    name: '작업지시 목록',
     countKey: 'workStart',
   },
   {
@@ -150,22 +159,38 @@ export const POP_SCREENS: readonly PopScreen[] = [
     acceptsWorkOrderId: true,
     workFlow: 'during',
   },
-  {
-    path: '/pop/emergency-work-orders',
-    code: 'P-02-12',
-    group: 'production',
-    name: '긴급 W/O',
-    countKey: 'emergencyWorkOrder',
-  },
-  /* ⭐ 설계보다 앞선 화면이다(omf-all-around#108) — 화면 코드는 사용자 결정으로 부여했다. */
-  { path: '/pop/material-defect', code: 'P-02-14', group: 'production', name: '자재 불량 등록' },
-  /* ⭐ 설계보다 앞선 화면이다(omf-all-around#89 · 서버 장부 P-102). */
+  /*
+   * P-02-12 긴급 작업지시는 「작업지시 목록」의 「긴급」 보기로 합쳤다(#295) — 탭·바로가기·남은 작업에서 뺐다.
+   * 남은 작업 수도 따로 세지 않는다: `workStart` 수가 이미 이 단말 설비·설비 미정의 긴급을 센다(두 번 세지 않게).
+   */
+  /*
+   * 재작업 실적 등록은 생산 묶음이다(사용자 승인 2026-11-19 · #295) — 작업지시 목록의 「재작업」 W/O 가 이 화면으로
+   * 간다. 화면 코드(P-04-03)·주소는 그대로다. 남은 작업 수(`reworkResult`)도 생산 묶음으로 센다.
+   */
   {
     path: '/pop/rework-results',
     code: 'P-04-03',
-    group: 'shipping',
+    group: 'production',
     name: '재작업 실적 등록',
     countKey: 'reworkResult',
+  },
+  /* ⭐ 설계보다 앞선 화면이다(omf-all-around#108) — 화면 코드는 사용자 결정으로 부여했다. */
+  { path: '/pop/material-defect', code: 'P-02-14', group: 'production', name: '자재 불량 등록' },
+  /* 작업지시를 주소로 받는다(`tool-usage/entry-context`) — 작업 단계 줄에서 고른 W/O 를 싣는다(#291). */
+  {
+    path: '/pop/tool-usage',
+    code: 'P-05-01',
+    group: 'production',
+    name: '툴 사용실적 입력',
+    acceptsWorkOrderId: true,
+    workFlow: 'during',
+  },
+  {
+    path: '/pop/downtime',
+    code: 'P-05-02',
+    group: 'production',
+    name: '비가동 실적 입력',
+    needsEquipment: true,
   },
   /* 피처 010(omf-all-around#305) — 출하는 이 화면의 [출하 완료]로 끝난다. 탭 끝 배지는 완료 대기 수다. */
   {
@@ -186,34 +211,8 @@ export const POP_SCREENS: readonly PopScreen[] = [
     path: '/pop/oqc-inspection',
     code: 'P-04-06',
     group: 'quality',
-    name: 'OQC 출하검사 판정',
+    name: 'OQC 출하검사',
     countKey: 'oqcInspection',
-  },
-  /* 작업지시를 주소로 받는다(`tool-usage/entry-context`) — 작업 단계 줄에서 고른 W/O 를 싣는다(#291). */
-  {
-    path: '/pop/tool-usage',
-    code: 'P-05-01',
-    group: 'facility',
-    name: '툴 사용실적 입력',
-    acceptsWorkOrderId: true,
-    workFlow: 'during',
-  },
-  {
-    path: '/pop/downtime',
-    code: 'P-05-02',
-    group: 'facility',
-    name: '비가동 실적 입력',
-    needsEquipment: true,
-  },
-  /*
-   * ⭐ **설계보다 앞선 화면이다**(`docs/decisions.md` 결정 16) — 화면 코드도 클라이언트가
-   *    부여했다. 도메인 06(기준정보연계)에 POP 화면이 없어 번호 체계를 그대로 이었다.
-   */
-  {
-    path: '/pop/location-label',
-    code: 'P-06-01',
-    group: 'facility',
-    name: '창고 적재 위치 라벨 발행',
   },
 ];
 

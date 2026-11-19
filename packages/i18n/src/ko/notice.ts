@@ -130,7 +130,7 @@ export const notice = {
     /** ⭐ 확인을 요구한 공지는 닫을 수 없다 — 서버가 거부한다. */
     dismissLocked: '이 공지는 확인을 요구해 그냥 닫을 수 없습니다. 확인을 눌러 주세요.',
     createdBy: '작성자',
-    publishedAt: '게시 시각',
+    publishedAt: '게시일시',
     period: '게시 기간',
     noEndDate: '종료일 없음',
     loadFailed: '공지를 불러오지 못했습니다.',

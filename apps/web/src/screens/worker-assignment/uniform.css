@@ -1,0 +1,238 @@
+/*
+ * P-CO-01 단말 등록 · 사번 입력 — POP 로그인 시안(#295, `POP-로그인-시안-20261119`) 전용 모양.
+ * 공통 모양은 `app/pop-uniform.css`(`pu-*`), 짙은 머리줄은 `app/pop.css`(`pop-nav-top`)를 그대로 쓴다.
+ * 선택자는 이 화면 접두(`wa-`)로만 건다.
+ */
+
+/* ── 단말 등록 ── */
+.wa-reg,
+.wa-screen {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--pu-bg);
+}
+
+/* 가운데 구획 하나 — 위에서 조금 내려 가운데 선다(시안). */
+.wa-reg-main > .pu-main {
+  grid-template-rows: auto;
+  justify-items: center;
+  align-content: start;
+  padding: 120px 16px 16px;
+}
+
+/* 단말 화면에 맞춘 상자 배율(`panel-scale`) — 글자·버튼·여백이 같은 비율로 커진다. */
+.wa-reg-card {
+  width: min(760px, 100%);
+  zoom: var(--pop-reg-scale, 1);
+}
+
+.wa-reg-card > .pu-card-body {
+  gap: 16px;
+  padding: 14px 20px 20px;
+}
+
+.wa-reg-card .pu-scan {
+  height: 60px;
+}
+
+.wa-reg-card .pu-scan input {
+  font-family: var(--pu-mono);
+  font-size: 17px;
+}
+
+/* 확인 단계의 단말 코드 · 설비 · 공정 — 이름 위, 값 크게. */
+.wa-reg-card .pu-band.grid {
+  padding: 14px 20px;
+  gap: 10px 24px;
+}
+
+.wa-reg-card .pu-band .kv {
+  display: grid;
+  gap: 4px;
+}
+
+.wa-reg-card .pu-band .kv > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wa-reg-card .pu-band .kv > b {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* 구획 아래 작업 줄 — 버튼만, 주 버튼은 맨 오른쪽. */
+.wa-reg-actions,
+.wa-right-actions {
+  flex: none;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--pu-line-2);
+}
+
+.wa-reg-actions > .pu-btn {
+  height: 56px;
+  min-width: 140px;
+  font-size: 17px;
+}
+
+/* ── 사번 입력 ── */
+
+/* 옛 그릇(`.pop-ui`)은 짙은 머리줄 아래 남는 높이만 갖는다. */
+.wa-screen > .wa-body {
+  flex: 1 1 auto;
+  height: auto;
+}
+
+.wa-left-body {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wa-no.pu-input {
+  height: 72px;
+  font-family: var(--pu-mono);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.wa-no.pu-input[readonly] {
+  cursor: default;
+}
+
+/*
+ * 한 줄 안내 자리 — 비어 있어도 높이를 지켜 키패드가 밀리지 않는다. 좁은 화면에서 긴 문구는 두 줄까지
+ * 같은 높이 안에 접힌다.
+ */
+.wa-slot {
+  flex: none;
+  height: 44px;
+}
+
+.wa-slot > .pu-note {
+  height: 100%;
+  align-items: center;
+  padding: 5px 14px;
+  line-height: 17px;
+}
+
+.wa-slot > .pu-note > .pu-ic {
+  margin-top: 0;
+}
+
+.wa-slot > .pu-note > .text {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.wa-pad {
+  margin-top: auto;
+  display: grid;
+  gap: 8px;
+}
+
+.wa-pad .pu-keypad button {
+  height: 64px;
+  font-size: 22px;
+}
+
+/* 맨 아래 [전체 삭제]는 글자 키라 숫자보다 작게. */
+.wa-pad .pu-keypad .pu-keypad-clear {
+  font-size: 17px;
+}
+
+.wa-pad .wa-submit {
+  width: 100%;
+  height: 64px;
+  font-size: 18px;
+}
+
+.wa-right-body {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wa-none.pu-empty {
+  flex: 1;
+}
+
+.wa-none.pu-empty > .pu-ic {
+  width: 44px;
+  height: 44px;
+  color: var(--pu-text-3);
+}
+
+.wa-who {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-field);
+}
+
+.wa-who-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.wa-who-head > b {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 26px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wa-who .pu-kv {
+  gap: 8px 24px;
+  font-size: 17px;
+}
+
+.wa-who .pu-kv dt {
+  font-size: 15px;
+}
+
+.wa-who .pu-kv dd {
+  font-family: var(--pu-mono);
+  font-weight: 700;
+}
+
+/* [작업자 변경]과 이동(제품: [작업 화면으로 →] · 개발: 화면 이동 셀렉터)을 반반으로. */
+.wa-right-actions {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  padding: 14px 16px;
+}
+
+.wa-right-actions > .pu-btn {
+  height: 64px;
+  font-size: 17px;
+}
+
+/* 머리줄 [단말 재등록]의 아이콘과 글자 사이. */
+.wa-screen .pop-logout .pu-ic {
+  margin-inline-end: 6px;
+}
+
+/* [단말 재등록] — 아이콘과 글자 사이를 띄운다(셸의 [새로고침]과 같은 간격). */
+.pop-logout .pu-ic {
+  margin-inline-end: 6px;
+}

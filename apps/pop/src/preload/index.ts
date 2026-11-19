@@ -15,6 +15,10 @@ export interface QueuedRequest {
 }
 
 const api = {
+  app: {
+    /** 앱 종료 — 화면 [종료] 확인 뒤에만 부른다(#295 규칙 17). */
+    quit: (): Promise<void> => ipcRenderer.invoke('app:quit'),
+  },
   deviceToken: {
     get: (): Promise<string | undefined> => ipcRenderer.invoke('device-token:get'),
     set: (value: string): Promise<void> => ipcRenderer.invoke('device-token:set', value),

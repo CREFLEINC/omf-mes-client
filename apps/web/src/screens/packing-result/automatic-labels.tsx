@@ -1,7 +1,7 @@
-import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo } from 'react';
 
+import { PuButton, PuNote, puToast } from '../../patterns/pop-uniform';
 import { PACKING_LABEL } from '../shipping-packing-label/codes';
 import { useLabelIssue, type LabelIssueHandle } from '../shipping-packing-label/mutations';
 import {
@@ -156,49 +156,49 @@ export const AutomaticLabels = ({
     onCompleteChange?.(isComplete);
   }, [isComplete, onCompleteChange]);
 
+  /* ⭐ 확정과 라벨 출력을 한 알림으로 말한다(#295 시안 「확정 · 라벨 인쇄를 보냈습니다」). */
+  useEffect(() => {
+    if (isComplete) puToast(t.complete(run.handlingUnit.handlingUnitNo));
+  }, [isComplete, run.handlingUnit.handlingUnitNo]);
+
   return (
-    <section className="packing-label-status" aria-label={t.region}>
-      {packingSummaries.isError ? (
-        <AlertBanner variant="error">{t.failures.summary}</AlertBanner>
-      ) : null}
+    <section className="pk-auto-notes" aria-label={t.region}>
+      {packingSummaries.isError ? <PuNote tone="bad">{t.failures.summary}</PuNote> : null}
       {historyRecoveryCount > 0 ? (
-        <AlertBanner variant="warning">{t.reissueRequired(historyRecoveryCount)}</AlertBanner>
+        /* 문장만 둔다 — [라벨 상태·재인쇄]는 아래 작업 줄에 있다(사용자 결정 2026-11-19). */
+        <PuNote tone="warn">{t.reissueRequired(historyRecoveryCount)}</PuNote>
       ) : null}
       {packingFailure !== null ? (
-        <AlertBanner variant="error">{t.packingFailure(packingFailure)}</AlertBanner>
-      ) : null}
-      {/* ⭐ 확정과 라벨 출력을 한 띠로 말한다(사용자 지시 2026-09-17) — 화면의 확정 띠는 이때 서지 않는다. */}
-      {isComplete ? (
-        <AlertBanner variant="success">{t.complete(run.handlingUnit.handlingUnitNo)}</AlertBanner>
-      ) : null}
-      {packing.result.failedAt === 'issue' ? (
-        <Button
-          type="button"
-          variant="outlined"
-          size="md"
-          onClick={() => {
-            packing.issue({
-              kind: PACKING_LABEL,
-              rows: missingPackingRows,
-              printerName: toDefaultPrinterName(packingPrinters.data ?? []),
-              reissueReasonCode: null,
-            });
-          }}
+        <PuNote
+          tone="bad"
+          action={
+            packing.result.failedAt === 'issue' ? (
+              <PuButton
+                size="sm"
+                onClick={() => {
+                  packing.issue({
+                    kind: PACKING_LABEL,
+                    rows: missingPackingRows,
+                    printerName: toDefaultPrinterName(packingPrinters.data ?? []),
+                    reissueReasonCode: null,
+                  });
+                }}
+              >
+                {t.retryPackingIssue}
+              </PuButton>
+            ) : packing.result.failedAt === 'render' ? (
+              <PuButton size="sm" onClick={packing.retryRendition}>
+                {t.retryPackingRendition}
+              </PuButton>
+            ) : historyRecoveryCount === 0 ? (
+              <PuButton size="sm" onClick={onOpenManagement}>
+                {t.openReissue}
+              </PuButton>
+            ) : undefined
+          }
         >
-          {t.retryPackingIssue}
-        </Button>
-      ) : null}
-      {packing.result.failedAt === 'render' ? (
-        <Button type="button" variant="outlined" size="md" onClick={packing.retryRendition}>
-          {t.retryPackingRendition}
-        </Button>
-      ) : null}
-      {packing.result.failedAt === 'print' ||
-      packing.result.failedAt === 'report' ||
-      historyRecoveryCount > 0 ? (
-        <Button type="button" variant="outlined" size="md" onClick={onOpenManagement}>
-          {t.openReissue}
-        </Button>
+          {t.packingFailure(packingFailure)}
+        </PuNote>
       ) : null}
     </section>
   );

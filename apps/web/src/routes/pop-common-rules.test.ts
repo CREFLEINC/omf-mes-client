@@ -32,7 +32,11 @@ describe('POP 공개 라우트 공통 규칙', () => {
   it('모든 공개 화면의 루트가 관리웹 기본 밀도 겹을 쓴다', () => {
     const missing = screenDirectories
       .map((directory) => join(directory, 'screen.tsx'))
-      .filter((path) => !readFileSync(path, 'utf8').includes('pop-ui'))
+      /* 통일 본문(`PuScreen` · #295)은 `.pu-screen` 이 같은 밀도 겹을 준다. */
+      .filter((path) => {
+        const source = readFileSync(path, 'utf8');
+        return !source.includes('pop-ui') && !source.includes('PuScreen');
+      })
       .map((path) => path.slice(SOURCE_ROOT.length + 1));
 
     expect(missing).toEqual([]);

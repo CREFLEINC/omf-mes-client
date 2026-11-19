@@ -1,6 +1,7 @@
-import { Button, Card, Checkbox, TextField } from '@crefle/web-ui';
-import { useId } from 'react';
 import { messages } from '@omf-mes/i18n';
+import { useId, type ReactNode } from 'react';
+
+import { PuButton, PuChip, PuInput, PuSection } from '../../patterns/pop-uniform';
 
 import { toDurationLabel } from './formatting';
 import {
@@ -52,10 +53,12 @@ export interface IntervalFieldsProps {
   draft: IntervalDraft;
   errors: IntervalErrors;
   onChange: (next: IntervalDraft) => void;
+  /** 구획 아래에 붙는 것(겹침 경고 등). */
+  children?: ReactNode;
 }
 
 /**
- * ② 구간.
+ * 시작·종료일시 구획(#295 시안 — 「구간」 제목 자리에 「비가동 시간」).
  *
  * ⭐ **`[지금]`이 기본 경로다**(스펙 §5-2 · §7-1). 날짜·시각 칸의 네이티브 피커는 단말의
  * 브라우저 판에 따라 다르게 뜨고 터치 타겟도 우리 규격을 따르지 않는다 — 손으로 고르는 것은
@@ -67,41 +70,25 @@ export interface IntervalFieldsProps {
  * ⛔ **「아직 진행 중」은 끝 시각과 상호 배타다.** 체크하면 끝 칸을 잠그고 값을 보내지 않는다 —
  * 「진행 중」이라는 별도 값이 있는 것이 아니라 **끝이 비어 있는 것**이 그 뜻이다.
  */
-export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps) => {
+export const IntervalFields = ({ draft, errors, onChange, children }: IntervalFieldsProps) => {
   const startedErrorId = useId();
   const endedErrorId = useId();
+  const startedLabelId = useId();
+  const endedLabelId = useId();
   const moments = readInterval(draft);
   const minutes = intervalMinutes(moments);
 
-  /*
-   * ⭐ **오류 문구를 칸 «아래»에 두지 않는다**(사용자 지적 2026-09-07).
-   *
-   * DS `TextField` 는 `error` 를 받으면 칸 밑에 한 줄을 «더» 그린다 — 줄 높이가 60 에서 120 으로
-   * 뛰고 구간 구획이 188 → 248 로 부풀어, 글자를 치는 동안 아래 것들이 밀려 내려간다(실측).
-   * 터치 화면에서는 누르려던 자리가 손가락 아래에서 움직인다.
-   *
-   * 그래서 **줄 오른쪽 빈자리**에 세운다 — `[지금]` 뒤가 비어 있어 높이가 늘지 않는다. 칸에는
-   * `error` 로 붉은 테두리(`aria-invalid`)만 남기고, 읽어 주는 연결은 `aria-describedby` 가
-   * 우리 문장을 가리켜 유지한다.
-   */
+  /* 오류는 칸 바로 아래 빨간 한 줄 — 칸에는 붉은 테두리(`aria-invalid`)를 함께 단다. */
   const startedError = describeStartedError(errors.startedAt);
+  /* 오류 줄은 한 번에 하나 — 시작 칸이 먼저다(시안). 끝 칸의 테두리는 그대로 붉다. */
   const endedError = describeEndedError(errors.endedAt);
 
   /*
-   * 길이 — 도면이 「길이 47 분」으로 그린 자리다(스펙 §3).
-   *
-   * ⛔ **산출할 수 없는 «이유»를 문장으로 적지 않는다.** 끝 시각이 비어 있는 것은 옆의
-   *    「아직 진행 중」이 이미 말하고, 오류 문구와 같은 줄에 서니 경고처럼 읽혔다(사용자 지적
-   *    2026-09-07). 값 없음은 공용 표기 「—」다.
-   *
+   * 비가동 시간 — **입력 확인용**이다. 저장되는 값은 서버가 낸다(§4-A · L-2).
    * ⛔ **0분으로 채우지 않는다** — 없는 값과 0을 같은 모양으로 만들지 않는다(`G-9`).
-   *
-   * ⚠ 값이 들고 나도 **자리는 늘 지킨다** — 글자가 생길 때마다 줄이 흔들리면 터치 화면에서
-   *    손가락이 빗나간다.
+   * ⭐ 제목 옆 라벨로 보인다 — 값이 없으면 「자동 계산」, 있으면 길이(사용자 지시 2026-11-19).
    */
-  const durationLabel = t.interval.duration(
-    minutes === null ? t.interval.durationEmpty : toDurationLabel(minutes),
-  );
+  const durationValue = minutes === null ? t.interval.durationAuto : toDurationLabel(minutes);
 
   const setStarted = (part: 'date' | 'time', value: string): void => {
     onChange({ ...draft, startedAt: { ...draft.startedAt, [part]: value } });
@@ -112,140 +99,118 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
   };
 
   return (
-    <Card bordered className="pop-section pop-fixed downtime-pane">
-      <section className="downtime-section" aria-label={t.interval.title}>
-        <h2 className="pane-title">{t.interval.title}</h2>
-
-        <div className="downtime-time-row">
-          {/*
-           * ⭐ **라벨은 칸 «위»가 아니라 줄 «왼쪽»이다**(스펙 §3 도면 —「시작 [08-11] [14:20]
-           *    [지금]」). 칸 위에 얹으면 줄마다 라벨 층 20px 이 더 붙어 두 줄이 184px 을 쓰고,
-           *    ② 의 몫 160px 을 넘겨 아래 ④ 가 통째로 밀려 사라진다(실측 — 오늘 목록 높이 0).
-           *
-           * ⚠ 읽어 주는 이름은 그대로 「시작 날짜」·「시작 시각」이다 — 눈에 보이는 「시작」
-           *    하나로는 두 칸이 같은 이름이 되어 무엇을 고치라는 것인지 말하지 못한다.
-           */}
-          <span className="downtime-time-label">{t.interval.startedAt}</span>
-          <TextField
+    <PuSection
+      className="dt-interval"
+      grow={false}
+      title={
+        <span className="dt-dur">
+          {t.interval.duration} <PuChip tone="info">{durationValue}</PuChip>
+        </span>
+      }
+    >
+      <div className="pu-field">
+        <span className="pu-label" id={startedLabelId}>
+          {t.interval.startedAtLabel}
+          <span className="req" aria-hidden>
+            *
+          </span>
+        </span>
+        <div className="dt-tm">
+          {/* ⚠ 읽어 주는 이름은 「시작 날짜」·「시작 시각」이다 — 두 칸이 같은 이름이 되지 않게. */}
+          <PuInput
             type="date"
-            size="xl"
-            containerClassName="downtime-time-field"
             aria-label={`${t.interval.startedAt} ${t.interval.date}`}
             aria-describedby={startedError === undefined ? undefined : startedErrorId}
             value={draft.startedAt.date}
-            /* 칸에는 붉은 테두리만 남긴다 — 문장은 줄 오른쪽에 한 번만 선다. */
-            error={startedError === undefined ? undefined : ' '}
+            need={draft.startedAt.date === '' || startedError !== undefined}
             onChange={(event) => {
               setStarted('date', event.target.value);
             }}
           />
-          <TextField
+          <PuInput
             type="time"
-            size="xl"
-            containerClassName="downtime-time-field"
             aria-label={`${t.interval.startedAt} ${t.interval.time}`}
             aria-describedby={startedError === undefined ? undefined : startedErrorId}
             value={draft.startedAt.time}
-            /* 짝 제약이라 두 칸에 함께 붙는다(스펙 §6-1) — 다만 문장은 한 번만 낸다. */
-            error={startedError === undefined ? undefined : ' '}
+            need={draft.startedAt.time === '' || startedError !== undefined}
             onChange={(event) => {
               setStarted('time', event.target.value);
             }}
           />
-          {/*
-           * ⚠ **`xl`(56) 이다 — 스펙 §7 이 적은 `2xl`(72) 이 아니다**(사용자 결정 2026-09-07).
-           *    옆의 날짜·시각 칸이 56 이라 버튼만 72 면 줄 안에서 혼자 커 보이고, 줄 높이도
-           *    그 버튼이 정해 ② 가 몫을 넘긴다. 터치 하한(일반 등급 56)은 지킨다.
-           *    ⛔ 되돌리려면 사용자에게 묻는다 — 스펙 값과 다른 것은 알고 한 것이다.
-           */}
-          <Button
-            variant="outlined"
-            size="xl"
-            className="downtime-now"
+          <PuButton
             onClick={() => {
               onChange({ ...draft, startedAt: toTimeFieldDraft(new Date()) });
             }}
           >
             {t.interval.now}
-          </Button>
-
-          {startedError !== undefined && (
-            <p id={startedErrorId} className="downtime-field-error downtime-time-error">
-              {startedError}
-            </p>
-          )}
+          </PuButton>
         </div>
+        {startedError !== undefined && (
+          <span id={startedErrorId} className="dt-err">
+            {startedError}
+          </span>
+        )}
+      </div>
 
-        <div className="downtime-time-row">
-          <span className="downtime-time-label">{t.interval.endedAt}</span>
-          <TextField
+      <div className="pu-field">
+        <div className="dt-lbl-row">
+          <span className="pu-label" id={endedLabelId}>
+            {t.interval.endedAtLabel}
+            {/* 선택 칸은 늘 「(선택)」을 붙인다(사용자 지시 2026-11-19). */}
+            <span className="opt">{t.reason.optional}</span>
+          </span>
+          <label className="pu-check">
+            <input
+              type="checkbox"
+              checked={draft.stillOngoing}
+              onChange={(event) => {
+                /* 체크하면 끝 칸에 남은 글자는 그대로 두되 **읽지 않는다**(`readInterval`) —
+                   지워 버리면 체크를 잘못 눌렀을 때 작업자가 다시 쳐야 한다. */
+                onChange({ ...draft, stillOngoing: event.target.checked });
+              }}
+            />
+            {t.interval.stillOngoing}
+          </label>
+        </div>
+        <div className="dt-tm">
+          <PuInput
             type="date"
-            size="xl"
-            containerClassName="downtime-time-field"
             aria-label={`${t.interval.endedAt} ${t.interval.date}`}
             aria-describedby={endedError === undefined ? undefined : endedErrorId}
             value={draft.endedAt.date}
             disabled={draft.stillOngoing}
-            error={endedError === undefined ? undefined : ' '}
+            need={endedError !== undefined}
             onChange={(event) => {
               setEnded('date', event.target.value);
             }}
           />
-          <TextField
+          <PuInput
             type="time"
-            size="xl"
-            containerClassName="downtime-time-field"
             aria-label={`${t.interval.endedAt} ${t.interval.time}`}
             aria-describedby={endedError === undefined ? undefined : endedErrorId}
             value={draft.endedAt.time}
             disabled={draft.stillOngoing}
-            error={endedError === undefined ? undefined : ' '}
+            need={endedError !== undefined}
             onChange={(event) => {
               setEnded('time', event.target.value);
             }}
           />
-          <Button
-            variant="outlined"
-            size="xl"
-            className="downtime-now"
+          <PuButton
             disabled={draft.stillOngoing}
             onClick={() => {
               onChange({ ...draft, endedAt: toTimeFieldDraft(new Date()) });
             }}
           >
             {t.interval.now}
-          </Button>
-
-          <Checkbox
-            checked={draft.stillOngoing}
-            onChange={(event) => {
-              /* 체크하면 끝 칸에 남은 글자는 그대로 두되 **읽지 않는다**(`readInterval`) —
-                 지워 버리면 체크를 잘못 눌렀을 때 작업자가 다시 쳐야 한다. */
-              onChange({ ...draft, stillOngoing: event.target.checked });
-            }}
-          >
-            {t.interval.stillOngoing}
-          </Checkbox>
-
-          {endedError !== undefined && (
-            <p id={endedErrorId} className="downtime-field-error downtime-time-error">
-              {endedError}
-            </p>
-          )}
-
-          {/*
-           * 길이는 **입력 확인용**이다 — 저장되는 값은 서버가 낸다(§4-A · L-2).
-           *
-           * ⭐ **끝 시각 줄의 오른쪽 끝에 선다** — 제 줄을 가지면 36px 을 쓰는데, 이 화면은
-           *    그만큼이 아래 「오늘 이 설비」에서 나온다(§3-1 예산 초과 · 요청서). 값이 나오는
-           *    바탕이 바로 이 줄의 두 시각이라 옆에 두어도 읽히는 자리가 흐려지지 않는다.
-           *
-           * ⚠ 오류 문구도 같은 줄 오른쪽에 서므로 **길이가 늘 맨 끝**이다 — 둘이 함께 뜰 때
-           *    자리가 바뀌면 눈이 값을 다시 찾는다.
-           */}
-          <p className="downtime-duration">{durationLabel}</p>
+          </PuButton>
         </div>
-      </section>
-    </Card>
+        {endedError !== undefined && (
+          <span id={endedErrorId} className="dt-err">
+            {endedError}
+          </span>
+        )}
+      </div>
+      {children}
+    </PuSection>
   );
 };

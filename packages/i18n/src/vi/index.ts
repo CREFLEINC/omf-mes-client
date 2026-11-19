@@ -34,7 +34,6 @@ import { downtimeRegister } from './downtime-register';
 import { downtimeSummary } from './downtime-summary';
 import { editability } from './editability';
 import { emergencyWorkOrder } from './emergency-work-order';
-import { emergencyWorkOrderField } from './emergency-work-order-field';
 import { equipmentFailure } from './equipment-failure';
 import { equipmentFailureReport } from './equipment-failure-report';
 import { equipmentInspection } from './equipment-inspection';
@@ -107,7 +106,7 @@ import { popOqcInspection } from './pop-oqc-inspection';
 import { popShipmentComplete } from './pop-shipment-complete';
 import { popMaterialLotLabel } from './pop-material-lot-label';
 import { popChrome } from './pop-chrome';
-import { popPageNav } from './pop-page-nav';
+import { popUniform } from './pop-uniform';
 import { pqcInspection } from './pqc-inspection';
 import { productDisposalRequest } from './product-disposal-request';
 import { productPicking } from './product-picking';
@@ -207,7 +206,6 @@ export const vi: Translated<Messages> = {
   downtimeSummary,
   editability,
   emergencyWorkOrder,
-  emergencyWorkOrderField,
   equipmentFailure,
   equipmentFailureReport,
   equipmentInspection,
@@ -279,7 +277,7 @@ export const vi: Translated<Messages> = {
   popShipmentComplete,
   popMaterialLotLabel,
   popChrome,
-  popPageNav,
+  popUniform,
   poRegister,
   pqcInspection,
   productDisposalRequest,

@@ -25,7 +25,6 @@ const WEB_SRC = resolve(process.cwd(), 'src');
 /** POP 화면이 사는 폴더. `routes/pop.tsx` 가 데려가는 것들이다. */
 const POP_SCREENS = [
   'downtime-register',
-  'emergency-work-order-field',
   'goods-issue-qr',
   'material-input-scan',
   'packing-result',

@@ -11,27 +11,23 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       enteredGood: (qty: string, uom: string): string => `Đạt ${qty}${uom === '' ? '' : ` ${uom}`}`,
       enteredDefect: (qty: string, uom: string): string =>
         `Lỗi ${qty}${uom === '' ? '' : ` ${uom}`}`,
-      workOrderProgress: 'Tiến độ toàn W/O',
+      workOrderProgress: 'Tiến độ toàn lệnh',
       workOrderProgressText: (good: string, target: string, uom: string): string =>
         `Đạt ${good} / Số lượng lệnh ${target}${uom === '' ? '' : ` ${uom}`}`,
       stepsLabel: 'Các bước làm LOT',
       steps: { input: 'Nhập kết quả', defect: 'Đăng ký lỗi', scan: 'Quét nhãn' },
-      toDefect: 'Đăng ký lỗi',
-      toDefectWithCount: (count: number): string => `Đăng ký lỗi (${String(count)})`,
       toGood: 'Quay lại',
       remaining: (qty: string): string => `Còn lại ${qty}`,
       noLot: 'Không có LOT có thể sản xuất nên chỉ có thể đăng ký lỗi.',
       planReachedNoLot:
         'Đã đạt số lượng lệnh và không còn LOT có thể sản xuất. Chỉ có thể đóng lệnh sản xuất hoặc đăng ký lỗi.',
       noWorkOrder: 'Chưa chỉ định lệnh sản xuất.',
+      noWorkOrderHint: 'Vui lòng chọn lệnh ở danh sách lệnh sản xuất.',
       planReached: 'Đã đạt số lượng lệnh. Có thể đóng lệnh sản xuất.',
       printerNone: 'Chưa kết nối máy in',
       printerUnknown: 'Không xác định máy in',
       closed: 'Đã hoàn tất đóng lệnh sản xuất.',
       completedLots: 'LOT đã đóng',
-    },
-    actions: {
-      runningChange: 'Thay linh kiện',
     },
     next: {
       noWorkOrder:
@@ -53,13 +49,8 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       completed: 'LOT đã đóng',
       /** 이 화면에서 방금 마감한 LOT 표시(사용자 지시 2026-11-16). */
       justCompleted: 'Đã đóng',
-      completedTotal: (count: number): string => `Tổng ${String(count)}`,
       completedEmpty: 'Không có LOT đã đóng.',
       pageNav: 'Chuyển trang LOT đã đóng',
-      prev: 'Trước',
-      next: 'Sau',
-      pagePosition: (page: number, totalPages: number) =>
-        `${String(page)} / ${String(Math.max(totalPages, 1))}`,
       unreliable: (lotNos: string): string =>
         `Máy chủ không xác định được một LOT hiện tại (LOT ${lotNos}). Đã chặn nhập để kết quả không gắn vào LOT khác. Vui lòng nhờ quản trị viên kiểm tra máy chủ đã là bản mới nhất chưa.`,
       loadFailed: 'Không tải được LOT hiện tại. Vui lòng kiểm tra kết nối rồi bấm «Thử lại».',
@@ -77,15 +68,10 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       qty: 'Lỗi',
       remove: (label: string): string => `Xóa ${label}`,
       duplicate: 'Loại lỗi này đã có.',
-      typeMissing: 'Vui lòng chọn loại',
-      rowIssue: (row: string, issue: string): string => `${row}: ${issue}`,
-      qtyMissing: 'Vui lòng nhập số lượng',
       noProcess: 'W/O không có công đoạn nên không chọn được loại lỗi.',
-      keypadGood: 'Bàn phím số lượng đạt',
-      keypadFor: (target: string): string => `Bàn phím số lượng lỗi ${target}`,
-      pickerTitle: 'Loại lỗi',
-      pickerTitleFor: (major: string): string => `Loại lỗi ${major}`,
-      back: '← Quay lại nhóm lớn',
+      emptyRows: 'Chưa có dòng lỗi',
+      emptyHint: 'Nhập dòng bằng [Thêm lỗi].',
+      pageNav: 'Chuyển trang dòng lỗi',
       cancel: 'Hủy',
       loading: 'Đang tải loại lỗi.',
       loadFailed: 'Không tải được loại lỗi.',
@@ -147,10 +133,10 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     },
     scan: {
       title: 'Quét nhãn',
-      label: 'Quét nhãn LOT',
+      label: 'Số LOT',
       /* ⚠ 한 줄로 합친 문구다(사용자 지시 2026-09-10). */
-      mismatch:
-        'Không tìm thấy nhãn khớp với LOT đã nhập. Vui lòng kiểm tra lại LOT rồi quét lại đúng nhãn đó.',
+      mismatch: (lotNo: string): string =>
+        `Không phải nhãn LOT vừa in. Hãy tìm nhãn ${lotNo} rồi quét.`,
       completed: 'Đã đóng LOT.',
       failed: 'Không đóng được LOT. Vui lòng quét lại cùng nhãn.',
       alreadyCompleted: 'LOT này đã đóng. Đang tải lại trạng thái LOT hiện tại.',
@@ -162,8 +148,6 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     woClose: {
       button: 'Đóng lệnh sản xuất',
       title: (workOrderNo: string): string => `Đóng lệnh sản xuất ${workOrderNo}`,
-      titleLead: 'Đóng lệnh sản xuất',
-      required: 'Bắt buộc',
       loading: 'Đang kiểm tra lệnh sản xuất cần đóng.',
       loadFailed: 'Không tải được lệnh sản xuất. Vui lòng kiểm tra kết nối rồi bấm «Thử lại».',
       fields: {
@@ -178,15 +162,14 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       },
       judgments: { UNDER: 'Thiếu', NORMAL: 'Bình thường', OVER: 'Vượt' },
       remainder: { CARRY_OVER: 'Chuyển sang kỳ sau', WRITE_OFF: 'Xóa bỏ' },
-      prefilled: 'Đã lấy lý do đóng LOT. Có thể thay đổi.',
+      /** 마감 사유 선택 칸의 회색 글(시안). */
+      reasonPlaceholder: 'Chọn lý do',
       reasonsLoading: 'Đang tải lý do.',
       reasonsFailed: 'Không tải được lý do. Vui lòng kiểm tra kết nối rồi mở lại cửa sổ.',
       reasonsEmpty: 'Không có lý do nào để chọn. Vui lòng nhờ quản trị viên đăng ký lý do.',
       voidedTitle: 'LOT sẽ bị hủy số',
       openTitle: 'LOT chưa đóng',
       lotCount: (count: number): string => `${String(count)} mục`,
-      voidedNote: 'LOT chưa có kết quả sẽ bị hủy số khi đóng.',
-      openNote: 'LOT chưa đóng sẽ giữ nguyên trạng thái hiện tại.',
       irreversible: 'Sau khi đóng không thể hủy. Kết quả ERP sẽ được đưa vào hàng đợi gửi.',
       needRemainder:
         'Vì thiếu nên phải chọn xử lý lượng còn lại (chuyển sang kỳ sau hoặc xóa bỏ) mới đóng được.',
@@ -272,6 +255,10 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     },
     retry: 'Thử lại',
     close: 'Đóng',
+    keypad: {
+      title: 'Nhập',
+      unit: (uom: string): string => `Đơn vị ${uom}`,
+    },
   },
   entry: {
     workOrderLabel: 'Lệnh sản xuất',
@@ -306,9 +293,6 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     goodQtyLabel: 'Số lượng đạt',
     remarksLabel: 'Ghi chú',
     keypadLabel: 'Bàn phím số lượng',
-    backspace: 'Xóa một ký tự',
-    clearGlyph: 'Xóa hết',
-    decimalKey: 'Dấu thập phân',
     quickAdd: (step: number) => `＋${String(step)}`,
   },
   overrun: {

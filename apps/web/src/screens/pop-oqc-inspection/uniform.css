@@ -1,0 +1,382 @@
+/*
+ * P-04-06 OQC 출하검사 — 화면 전용 모양(#295 시안). 공통 모양은 `app/pop-uniform.css`.
+ * 선택자는 `oqc-` 접두로 이 화면에만 건다.
+ */
+.pu-screen.oqc-u {
+  height: 100%;
+}
+
+/* 판정 대기 · 판정 완료 탭이 제목 줄을 채운다(구획 제목 없음). */
+.oqc-u .oqc-list-card .pu-card-head > .pu-seg {
+  flex: 1;
+  min-width: 0;
+}
+
+/*
+ * 판정 완료 첫 쪽은 판정을 마친 열린 의뢰가 서버 쪽 앞에 더 서므로(피처 010) 한 쪽 건수를 넘을 수 있다 —
+ * 넘친 줄이 가려지지 않게 목록 칸은 굴린다.
+ */
+.oqc-u .oqc-list-card .pu-list.pu-fit {
+  overflow-y: auto;
+}
+
+.oqc-u .oqc-work > .pu-card-body {
+  gap: 8px;
+}
+
+/* 의뢰 정보 띠: 이름을 값 위에 작게 — 1단계 2열, 2단계·판정 결과(넓음) 4열. */
+.oqc-band > .pu-band.grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 16px;
+  background: var(--pu-field);
+}
+
+.oqc-band.is-wide > .pu-band.grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.oqc-band .pu-band .kv {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.oqc-band .pu-band .kv > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.oqc-band .pu-band .kv > span > .pu-ic {
+  color: var(--pu-primary);
+}
+
+.oqc-band .pu-band .kv > b {
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.oqc-band .oqc-vrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.oqc-band .oqc-vrow .pu-btn.sm {
+  height: 28px;
+  min-width: 0;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.oqc-band .oqc-hist {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: 13px;
+  font-weight: 400;
+  white-space: normal;
+}
+
+.oqc-band .oqc-hist-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.oqc-band .oqc-hist small {
+  color: var(--pu-text-3);
+}
+
+/* 1단계 수량 칸 3개 */
+.oqc-qgrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px 12px;
+}
+
+.oqc-qgrid .pu-input {
+  padding: 0 10px;
+}
+
+.oqc-field-err {
+  font-size: 13px;
+  color: var(--pu-bad);
+}
+
+/* 2단계 */
+.oqc-jstep {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  min-height: 0;
+}
+
+.oqc-qsum {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  align-items: center;
+  padding: 6px 12px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-field);
+  font-size: 14px;
+  color: var(--pu-text-3);
+}
+
+.oqc-qsum b {
+  color: var(--pu-text);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.oqc-sersum {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 14px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-field);
+}
+
+.oqc-sersum .t {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.oqc-sersum .t small {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--pu-text-3);
+}
+
+/* 판정 결과(회차별) */
+/* 회차 결과 표(사용자 지시 2026-11-19) — 수량 색: 합격 초록 · 불합격 빨강 · 보류 노랑. */
+.oqc-res-table .pu-table td.oqc-q-ok {
+  color: var(--pu-ok);
+  font-weight: 700;
+}
+
+.oqc-res-table .pu-table td.oqc-q-bad {
+  color: var(--pu-bad);
+  font-weight: 700;
+}
+
+.oqc-res-table .pu-table td.oqc-q-warn {
+  color: var(--pu-warn);
+  font-weight: 700;
+}
+
+/* 시리얼 검사 기록 창 */
+.oqc-ser {
+  display: grid;
+  gap: 10px;
+}
+
+.oqc-ser-count {
+  font-weight: 400;
+  color: var(--pu-text-3);
+  margin-left: 4px;
+}
+
+.oqc-ser-list {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  min-height: 238px;
+}
+
+.oqc-serial {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-field);
+}
+
+.oqc-serial .n {
+  display: grid;
+  font-size: 13px;
+  color: var(--pu-text-3);
+  min-width: 0;
+}
+
+.oqc-serial .n b {
+  font-family: var(--pu-mono);
+  color: var(--pu-text);
+  font-size: 15px;
+}
+
+.oqc-serial .pu-judge-pair {
+  margin-left: auto;
+}
+
+/* 저장 확인 창 · 적용 기준 창 */
+.oqc-confirm-effects ul {
+  margin: 4px 0 0;
+  padding-left: 20px;
+  font-size: 15px;
+}
+
+.oqc-guide {
+  display: grid;
+  gap: 6px;
+  white-space: pre-wrap;
+}
+
+.oqc-guide b {
+  display: block;
+  font-size: 13px;
+  color: var(--pu-text-3);
+}
+
+.oqc-qgrid .pu-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 1024 폭: 목록·키패드 열을 조금 줄여 가운데 작업 구획이 너무 좁아지지 않게 한다. */
+@media (max-width: 1100px) {
+  .oqc-u .pu-cols.lk {
+    grid-template-columns: 320px minmax(0, 1fr) 280px;
+  }
+
+  .oqc-u .pu-cols.lk:has(> .is-folded:first-child) {
+    grid-template-columns: 56px minmax(0, 1fr) 280px;
+  }
+
+  .oqc-u .pu-cols.list {
+    grid-template-columns: 320px minmax(0, 1fr);
+  }
+
+  .oqc-u .pu-cols.list:has(> .is-folded:first-child) {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+}
+
+/*
+ * 출하 OQC 새 흐름(피처 010) 상세 · 바닥 띠 — main 의 옛 `.pop-ui` 규칙을 이 화면 뿌리(`.oqc-u`)로 옮겼다.
+ * 나머지 `pop-oqc-shipment*` 모양은 `app/pop.css` 의 피처 010 구획에 있다.
+ */
+.oqc-u .pop-oqc-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.oqc-u .pop-oqc-summary {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-block-end: var(--space-3);
+  border-block-end: 1px solid var(--outline-variant);
+}
+
+.oqc-u .pop-oqc-summary__key {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-6);
+}
+
+.oqc-u .pop-oqc-summary__no {
+  margin: 0;
+  font: 700 24px / 32px var(--font-sans);
+  letter-spacing: -0.01em;
+}
+
+.oqc-u .pop-oqc-summary__figures {
+  display: flex;
+  gap: var(--space-6);
+  margin: 0;
+}
+
+.oqc-u .pop-oqc-summary dt {
+  font-size: var(--pop-label);
+  line-height: 20px;
+  color: var(--on-surface-variant);
+}
+
+.oqc-u .pop-oqc-summary dd {
+  margin: 0;
+}
+
+.oqc-u .pop-oqc-summary__figures dd {
+  font: 700 24px / 32px var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+.oqc-u .pop-oqc-summary__ref {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
+}
+
+.oqc-u .pop-oqc-summary__ref > div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.oqc-u .pop-oqc-summary__ref dd {
+  font-weight: 600;
+}
+
+.oqc-u .pop-oqc-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.oqc-u .pop-oqc-step__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font: 600 18px / 26px var(--font-sans);
+}
+
+.oqc-u .pop-oqc-step__hint {
+  margin-inline-start: var(--space-2);
+  font: 400 var(--pop-label) / 22px var(--font-sans);
+  color: var(--on-surface-variant);
+}
+
+.oqc-u .pop-oqc-bar-note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font: 600 17px / 24px var(--font-sans);
+}
+
+.oqc-u .pop-oqc-bar-note--blocked > :first-child {
+  color: var(--semantic-warning);
+}
+
+.oqc-u .pop-oqc-bar-note--ready,
+.oqc-u .pop-oqc-bar-note--success {
+  color: var(--semantic-success-text);
+}
+
+/* 잠긴 까닭 · 준비됨 안내는 공통 메뉴 아래에서 감춘다(main 과 같다) — 저장 중 · 저장됨 · 실패는 그대로 보인다. */
+.pop-frame .oqc-u .pop-oqc-bar-note--blocked,
+.pop-frame .oqc-u .pop-oqc-bar-note--ready {
+  display: none;
+}

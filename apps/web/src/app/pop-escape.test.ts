@@ -85,65 +85,41 @@ describe('POP 라벨 모드 — 돌아갈 길을 숨기지 않는다', () => {
  * 이것도 렌더 테스트로는 잡히지 않는다 — 값은 DOM 에 다 있고 표도 멀쩡히 뜬다. 폭이 실제로
  * 어떻게 나뉘는지는 브라우저가 정하므로, 폭을 «못박았는지»를 원문으로 겨눈다.
  *
- * 현장에서 GS1 스캔값이 그대로 들어오면 LOT 이 32자를 넘는다. `table-layout` 이 기본값이면
- * 열의 `width` 는 희망값에 그쳐, 그 칸이 남의 폭을 가져간다.
+ * 현장에서 GS1 스캔값이 그대로 들어오면 LOT 이 32자를 넘는다. 공통 표(`pu-table`)는 짧은 칸을 글자만큼(`fit`)
+ * 두는 자동 배치라, 번호 칸을 `fit` 으로 두려면 상한(`max-width`)을 못박아야 그 칸이 남의 폭을 가져가지 않는다.
  */
 describe('POP 표 — 긴 번호가 다른 열을 밀어내지 않는다', () => {
-  const fixedLayout = (selector: string): RegExp =>
-    new RegExp(`\\.pop-ui\\s+\\.${selector}\\s*\\{[^}]*table-layout:\\s*fixed`, 'u');
-
-  /* 포장 라벨 재출력(P-02-09)의 내용물 표는 화면과 함께 없앴다(omf-all-around#293). */
-  it('재구성 라벨 발행의 내용물 표가 폭을 못박는다', () => {
-    expect(popCss).toMatch(fixedLayout('pop-repack-contents'));
-  });
-
   /*
-   * ⚠ **줄이지 않고 접는다.** 꼬리를 잘라 감추면 어느 자리에서 끊을지를 정해야 하는데, 그것은
-   * 제품 LOT 번호 체계가 정할 일이다(E-2 는 자재 LOT 전용이고 다른 체계에 쓰지 말라고 단서를
-   * 달았다). 접으면 아무것도 감추지 않는다.
+   * 통일 본문(#295)의 표는 화면 CSS(`screens/<화면>/uniform.css`)가 번호 칸 상한을 못박는다. 옛 `pop.css` 규칙
+   * (`.pop-repack-contents` · `.pop-split-row` · `.pop-slabel-table`)은 화면과 함께 걷었다. 구획 안
+   * 스크롤 대신 표 높이에 맞춘 쪽 넘김을 쓰므로 「표가 0 으로 깔림」 감지는 쪽 크기(`useFitTableRows`, 최소 1)가 맡는다.
    */
-  it('긴 번호를 감추지 않고 접는다', () => {
-    /* 008 — 출고 QR 라인 표는 걷었다. P-01-02 분할 LOT 번호는 `|` 칸 경계에서만 접고 칸 하나는 끊지 않는다. */
-    expect(popCss).toMatch(/\.pop-ui\s+\.pop-split-seg\s*\{[^}]*white-space:\s*nowrap/u);
+  const cappedColumn = (scope: string, column: string): RegExp =>
+    new RegExp(`\\.${scope}\\s+\\.pu-table\\s+td\\.${column}\\s*\\{[^}]*max-width:\\s*\\d+px`, 'u');
+
+  it('재구성 신규 라벨의 라벨 표가 번호 칸 폭을 못박는다', () => {
+    expect(read('src/screens/repack-label-issue/uniform.css')).toMatch(
+      cappedColumn('rpk-table', 'rpk-no'),
+    );
   });
 
-  /*
-   * 008 P-01-02 분할 LOT 표 — 1024 × 768 에서 가로로 넘쳐 끝 열(라벨 상태)이 잘렸다(실제 앱 검증 2026-11-17).
-   * 열은 모두 줄어들 수 있어야 하고(정한 최소 폭이 없다) 표는 가로 스크롤을 두지 않는다.
-   */
-  it('분할 LOT 표가 가로로 넘치지 않는다 — 열은 minmax(0, …) 로 줄고 글은 칸 안에서 접는다', () => {
-    const columns =
-      /\.pop-ui\s+\.pop-split-row\s*\{[^}]*grid-template-columns:([^;]*);/u.exec(popCss)?.[1] ?? '';
-
-    expect(columns).not.toBe('');
-    expect(columns).not.toMatch(/minmax\(\s*[1-9]/u);
-    expect(popCss).toMatch(/\.pop-ui\s+\.pop-split-table\s*\{[^}]*overflow:\s*hidden auto/u);
-    expect(popCss).toMatch(/\.pop-ui\s+\.pop-split-row\s*>\s*\*\s*\{[^}]*min-width:\s*0/u);
+  it('분할 LOT 표가 LOT 번호 칸 폭을 못박는다 — 긴 번호가 끝 열을 밀어내지 않는다', () => {
+    expect(read('src/screens/goods-issue-qr/uniform.css')).toMatch(
+      cappedColumn('giq-table', 'giq-lotcol'),
+    );
   });
-});
 
-/*
- * ⛔ **남는 높이를 받는 구획이 0 으로 깔리지 않는다**(#1092).
- *
- * `flex: 1 1 auto` 에 `min-height: 0` 만 두면, 형제들이 높이를 다 쓴 순간 그 구획이 **통째로
- * 사라진다** — 스크롤도 생기지 않아 「없는 것」이 된다. 라벨 모드의 「대상」 표가 실제로 그렇게
- * 0 이 됐고 현장에서 라벨을 뽑을 수 없었다(88단계 2회차 실측).
- *
- * ⚠ 렌더 시험으로는 잡히지 않는다(`css: false`) — 표는 DOM 에 멀쩡히 있다.
- */
-describe('POP 목록 — 남는 높이를 받는 표에 바닥이 있다', () => {
-  it('라벨 모드의 「대상」 표가 0 으로 깔리지 않는다', () => {
-    const rule = /\.pop-ui\s+\.pop-slabel-table\s*\{([^}]*)\}/u.exec(popCss)?.[1] ?? '';
-
-    expect(rule).toMatch(/flex:\s*1\s+1\s+auto/u);
-    /*
-     * ⛔ **값을 «수»로 견준다.** 한때 `(?!0\b)\d+px` 로 적었는데 `0px` 는 `0` 과 `p` 사이에
-     * 단어 경계가 없어 부정 선읽기가 성립하지 않는다 — **`min-height: 0px` 가 그대로
-     * 합격했다**(리뷰 실측). 정규식으로 「0 이 아님」을 쓰려다 아무것도 지키지 못했다.
-     */
-    const floor = Number(/min-height:\s*(\d+)px/u.exec(rule)?.[1] ?? '0');
-
-    /* 세 줄이 보일 만큼 — 한 줄만 보이면 고를 수가 없다. */
-    expect(floor).toBeGreaterThanOrEqual(96);
+  it('자재 관리 LOT 표 · 적재 위치 표도 번호(코드) 칸 폭을 못박는다', () => {
+    // 자재 관리 LOT 표는 칸마다 값 하나(#295) — 번호 칸 머리에 폭(px)을 주고, 값 칸은 공통 표의
+    // `max-width: 0` 말줄임을 그대로 받는다(풀어 버리면 긴 LOT 번호가 다른 칸을 밀어낸다).
+    const mllCss = read('src/screens/pop-material-lot-label/uniform.css');
+    expect(mllCss).toMatch(
+      /\.mll-table\s+\.pu-table\s+th\.mll-lotcol\s*\{[^}]*(?<![-\w])width:\s*\d+px/u,
+    );
+    expect(mllCss).not.toMatch(/td\.mll-lotcol[^{]*\{[^}]*max-width:\s*none/u);
+    expect(read('src/app/pop-uniform.css')).toMatch(/\.pu-table\s+td\s*\{[^}]*max-width:\s*0/u);
+    expect(read('src/screens/pop-location-label/uniform.css')).toMatch(
+      cappedColumn('ll-table', 'll-code'),
+    );
   });
 });

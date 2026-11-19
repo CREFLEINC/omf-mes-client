@@ -14,6 +14,7 @@ import {
 } from '../../test/api-harness';
 import { receipt, receiptLineFixtures, WORK_ORDER_ID } from './fixtures';
 import { MaterialInputScanScreen } from './screen';
+import { PuToastHost } from '../../patterns/pop-uniform';
 
 const t = messages.materialInputScan;
 
@@ -86,7 +87,13 @@ const receiptRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
 
 const renderScreen = (routes: StubRoute[], route = ROUTE) => {
   const { fetch, requests } = createRecordingFetch([...routes, codeValuesRoute()]);
-  const result = renderWithProviders(<MaterialInputScanScreen />, { fetch, route });
+  const result = renderWithProviders(
+    <>
+      <PuToastHost />
+      <MaterialInputScanScreen />
+    </>,
+    { fetch, route },
+  );
 
   return { ...result, requests };
 };
@@ -108,7 +115,10 @@ const bodyRows = (): HTMLElement[] =>
   within(screen.getByRole('list', { name: t.scanned.materialsLabel })).getAllByRole('listitem');
 
 /** 투입 수량 편집 영역(고른 줄의 상세). */
-const editor = (): HTMLElement => screen.getByRole('region', { name: t.panes.noSelection });
+const editor = (): HTMLElement =>
+  within(screen.getByRole('list', { name: t.scanned.materialsLabel })).getByRole('button', {
+    pressed: true,
+  });
 
 /* 사번이 없으면 화면이 줄 선택을 받지 않는다(PI-17). 이 감지기들은 단말이 사번을 들고 있는 상태에서 잰다. */
 beforeEach(() => {
@@ -204,22 +214,17 @@ describe('MaterialInputScanScreen — 계획 대비 수령', () => {
   });
 
   /*
-   * 부족이나 미수령이 투입을 막지 않는다는 사실을 화면이 «말해야» 한다. 그런 줄이 있을 때만
-   * 구획 맨 위 안내 상자로 말한다(C-7, C-19).
+   * 덜 받음 · 못 받음은 목록 줄 칩이 말한다 — 상시 안내 상자를 따로 세우지 않는다(POP 통일 시안 #295).
+   * 투입을 막지도 않는다(스펙 §6).
    */
-  it('부족이나 미수령이 있으면 투입할 수 있다고 화면이 말한다', async () => {
+  it('부족이나 미수령이 있어도 상시 안내 상자 없이 줄 칩으로만 말한다', async () => {
     renderScreen([listRoute(), detailRoute(7001, receiptLineFixtures)]);
 
-    expect(await screen.findByText(t.notes.shortAllowed)).toBeTruthy();
-  });
-
-  it('모두 수령했으면 그 안내를 세우지 않는다', async () => {
-    renderScreen([listRoute(), detailRoute(7001, [receiptLineFixtures[0]])]);
-
     await waitFor(() => {
-      expect(bodyRows()).toHaveLength(1);
+      expect(bodyRows()).toHaveLength(3);
     });
-    expect(screen.queryByText(t.notes.shortAllowed)).toBeNull();
+    expect(screen.getAllByText(t.receiptStatus.short).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/투입할 수 있습니다/)).toBeNull();
   });
 
   it('전표가 여럿이면 상세를 각각 불러 줄을 모은다', async () => {
@@ -345,7 +350,7 @@ describe('MaterialInputScanScreen — 작업지시가 없을 때', () => {
      */
     expect(screen.getByText(t.empty.notQueriedTitle)).toBeTruthy();
     expect(screen.queryByText(t.empty.receiptTitle)).toBeNull();
-    expect(screen.queryByRole('status', { name: t.loading.receipt })).toBeNull();
+    expect(screen.queryByText(t.loading.receipt)).toBeNull();
   });
 
   it('작업지시 표시를 세우지 않는다', async () => {
@@ -398,7 +403,13 @@ describe('MaterialInputScanScreen — 상세를 기다리는 동안', () => {
       return jsonResponse({ shopfloorReceipt: receipt(), lines: receiptLineFixtures });
     };
 
-    renderWithProviders(<MaterialInputScanScreen />, { fetch, route: ROUTE });
+    renderWithProviders(
+      <>
+        <PuToastHost />
+        <MaterialInputScanScreen />
+      </>,
+      { fetch, route: ROUTE },
+    );
 
     /*
      * **목록이 도착한 뒤에 재야 한다.** 렌더 직후에 재면 아직 목록조차 오지 않은 상태를
@@ -410,7 +421,7 @@ describe('MaterialInputScanScreen — 상세를 기다리는 동안', () => {
     await flush();
 
     // 상세가 붙잡혀 있는 동안 화면이 무엇을 말하는지 잰다.
-    expect(screen.getByRole('status', { name: t.loading.receipt })).toBeTruthy();
+    expect(screen.getByText(t.loading.receipt)).toBeTruthy();
     expect(screen.queryByText(t.empty.receiptTitle)).toBeNull();
 
     releaseDetail();
@@ -497,8 +508,8 @@ describe('MaterialInputScanScreen — 긴급 표식', () => {
       }),
   });
 
-  /* W/O·공정·긴급은 머리줄이 아니라 투입 자재 상자 제목에 선다(사용자 지시 2026-11-17 · #291). */
-  const header = (): HTMLElement => screen.getByRole('region', { name: t.panes.input });
+  /* W/O·공정·긴급은 본문 맨 위 작업지시 띠에 선다(POP 통일 시안 #295). */
+  const header = (): HTMLElement => screen.getByRole('group', { name: t.band.title });
 
   it('긴급 작업지시면 머리줄에 긴급을 세운다', async () => {
     renderScreen([listRoute([]), workOrderRoute('EMERGENCY')]);

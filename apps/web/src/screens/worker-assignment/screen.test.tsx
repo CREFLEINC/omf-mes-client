@@ -70,7 +70,7 @@ const renderScreen = (items: WorkerResponse[] = [workerOf()]) => {
 
 /** 키패드로 사번을 친다 — 이 화면에는 손으로 칠 수 있는 입력칸이 없다. */
 const typeWorkerNo = async (digits: string) => {
-  const keypad = screen.getByRole('group', { name: t.input.keypad });
+  const keypad = screen.getByRole('group', { name: messages.popUniform.keypad.region });
 
   for (const digit of digits) {
     await userEvent.click(within(keypad).getByRole('button', { name: digit }));
@@ -182,15 +182,16 @@ describe('WorkerAssignmentScreen — 현재 작업자', () => {
     expect(screen.getByRole('button', { name: t.input.submit })).toBeInTheDocument();
   });
 
-  it('사번을 확인하면 바로 홈으로 간다(#291)', async () => {
+  it('사번을 확인해도 홈으로 넘기지 않고 이 화면에서 확인 완료를 보인다(로그인 시안)', async () => {
     renderScreen();
 
     await typeWorkerNo('900028');
     await userEvent.click(screen.getByRole('button', { name: t.input.submit }));
 
-    await waitFor(() => {
-      expect(screen.getByRole('status', { name: '현재 경로' })).toHaveTextContent('/pop/home');
-    });
+    expect(await screen.findByText(t.current.confirmed)).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: '현재 경로' })).toHaveTextContent(
+      '/pop/worker-assignment',
+    );
   });
 
   it('다른 공장 소속이면 홈으로 넘기지 않고 경고를 보인다', async () => {
@@ -281,9 +282,38 @@ describe('헤더', () => {
      * ⛔ **`단말` 만으로 찾지 않는다.** 머리줄에는 [단말 재등록] 도 서 있어 「단말」 을
      *    품은 글이 둘이다 — 값까지 함께 재야 «단말 줄» 을 집는다.
      */
+    expect(within(header).getByText(messages.popChrome.header.terminalUnknown)).toBeInTheDocument();
+  });
+
+  /* 사용자 지시(2026-11-19) — 본문 정보 띠 대신 맨 위 줄에 단말·설비 칩(다른 POP 화면과 같은 문구). */
+  it('단말에 붙은 설비를 머리줄 칩으로 보이고, 설비가 없으면 세우지 않는다', async () => {
+    renderWithProviders(
+      <PopRegistrationProvider>
+        <PopIdentityProvider
+          value={{
+            ...UNKNOWN_POP_IDENTITY,
+            equipment: { equipmentId: 5, equipmentCode: 'EQ-05', equipmentName: '조립기 1호기' },
+          }}
+        >
+          <WorkerAssignmentScreen />
+        </PopIdentityProvider>
+      </PopRegistrationProvider>,
+      { fetch: createStubFetch([]), route: '/pop/worker-assignment' },
+    );
+
+    const header = await screen.findByRole('region', { name: t.header.label });
+
     expect(
-      within(header).getByText(`${t.header.label} ${t.header.emptyValue}`),
+      within(header).getByText(messages.popChrome.header.equipmentLabel('EQ-05', '조립기 1호기')),
     ).toBeInTheDocument();
+  });
+
+  it('설비가 없는 단말이면 설비 칩이 없다', async () => {
+    renderScreen();
+
+    const header = await screen.findByRole('region', { name: t.header.label });
+
+    expect(within(header).queryByText(/^설비 /u)).not.toBeInTheDocument();
   });
 });
 
@@ -322,22 +352,20 @@ describe('지정 시각', () => {
 });
 
 /**
- * 터치 규격 — 스펙 §3/E-3 은 키패드와 확인을 **72px(`2xl`)** 로 못박았다. 값을 돌려놓아도
- * 아무도 울지 않던 자리라 감지기를 둔다(뮤테이션 생존 2건). 실제 픽셀은 jsdom 에서 재지
- * 못하므로 **크기 등급이 그대로 넘어가는지**를 잰다.
+ * 터치 규격 — 시안(#295 로그인)은 사번 키패드 키와 [사번 확인]을 공통 키(56)보다 큰 **64px** 로
+ * 그렸다. 크기는 이 화면 모양(`uniform.css` 의 `.wa-pad`)이 주므로, jsdom 에서 픽셀 대신
+ * **그 자리에 서는지**를 잰다 — 자리를 벗어나면 키가 공통 크기로 조용히 줄어든다.
  */
 describe('터치 규격', () => {
-  /** 디자인 시스템이 `2xl` 등급을 `xxl` 클래스로 낸다 — 실측으로 확인한 이름이다. */
-  const isTouchGrade = (element: Element): boolean =>
-    [...element.classList].some((name) => /_xxl_/.test(name));
-
-  it('키패드 키와 확인 버튼이 72px 등급으로 선다', async () => {
+  it('키패드 키와 확인 버튼이 큰 터치 자리에 선다', async () => {
     renderScreen();
 
-    const keypad = await screen.findByRole('group', { name: t.input.keypad });
+    const keypad = await screen.findByRole('group', { name: messages.popUniform.keypad.region });
+    const submit = screen.getByRole('button', { name: t.input.submit });
 
-    expect(isTouchGrade(within(keypad).getByRole('button', { name: '1' }))).toBe(true);
-    expect(isTouchGrade(screen.getByRole('button', { name: t.input.submit }))).toBe(true);
+    expect(within(keypad).getByRole('button', { name: '1' }).closest('.wa-pad')).not.toBeNull();
+    expect(submit.closest('.wa-pad')).not.toBeNull();
+    expect(submit).toHaveClass('wa-submit');
   });
 });
 

@@ -86,13 +86,7 @@
  * .worker-no-field  사번 표시칸 — 글자만 키운다(높이는 xl 그대로)
  * .worker-card__name  현재 작업자 이름·사번 — 늘 크게 보인다
  * POP(1024×768 터치 키오스크) — 관리웹과 폼팩터가 다르다
- * .pop-lot-screen   자재LOT 화면 최상위 — 남은 높이를 그대로 쓴다
- *                  ⚠ 이 화면 전용 이름이다. `.pop-screen`(P-CO-01)과 규칙이 다르다
  * .pop-pane         2단의 각 칸 — 안에서 표가 스크롤한다
- * .pop-empty-note   표가 비었을 때의 안내 — 칸 가운데
- * .pop-row-select(-on) 목록에서 한 줄을 고르는 자리 — 줄 전체가 누르는 곳
- * .pop-row-target 그 표를 감싸 줄 클릭을 버튼으로 넘기는 자리
- * .pop-page-nav     쪽 이동 줄 — 위치 표시와 이전·다음
  * .pop-touch(-등급) 업무 중요도 표식 — 크기를 키우지 않는다
  */
 
@@ -2853,7 +2847,6 @@ dialog.routing-history-dialog {
  * 이 칸만 줄어 말줄임한다. 기준 글자 오른쪽에 「검사 기준 수정」 단추(사용자 지시 2026-11-05).
  */
 
-
 .routing-pqc-plan-value {
   flex-wrap: nowrap;
   min-width: 0;
@@ -5509,7 +5502,6 @@ dialog.routing-history-dialog {
 .lot-status-history-filter .lot-status-history-actor {
   width: clamp(10rem, 14vw, 15rem);
 }
-
 
 .lot-status-filter .field-cell > .field-note {
   max-width: 100%;
@@ -8921,8 +8913,6 @@ main:has(.iqc-skip-approval-detail) {
   border-radius: var(--radius-md);
 }
 
-
-
 /* 처분 라디오 묶음의 이름 — 머리 「처분 판정」이 말하므로 눈에는 감춘다(낭독기는 읽는다). */
 .disposition-visually-hidden {
   position: absolute;
@@ -8944,15 +8934,6 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 /* W-03-10 입하 LOT 단위 처분 · 선별 · 「지금」 띠 (005) */
-
-
-
-
-
-
-
-
-
 
 /* 특채 상자의 단추([특채 적용] · [반려 확인])는 글이 길어도 한 줄로(omf-all-around#275). */
 .disposition-pending-concession > button {
@@ -9141,7 +9122,6 @@ main:has(.iqc-skip-approval-detail) {
 .disposition-reason-field [class*='_meta_'] > p {
   margin: 0;
 }
-
 
 .disposition-sort {
   display: grid;
@@ -14212,17 +14192,6 @@ dialog.layout-editor-dialog {
   margin-block-start: var(--space-3);
 }
 
-/*
- * 스펙 §3 — **스캔이 주 입력이라 좌우로 편다.** 1024×768에서 세로 여유가 119px뿐이라
- * 위아래로 쌓으면 스캔 칸이 접힌 아래로 내려간다.
- */
-.pop-panes {
-  display: grid;
-  grid-template-columns: minmax(320px, 2fr) 3fr;
-  gap: var(--space-4);
-  align-items: start;
-}
-
 .rework-result-pane {
   display: grid;
   grid-template-rows: 176px 224px minmax(96px, 1fr) 88px;
@@ -14236,11 +14205,6 @@ dialog.layout-editor-dialog {
   grid-template-rows: 44px minmax(0, 1fr);
   height: 100%;
   overflow: hidden;
-}
-
-.rework-result-screen > .pop-panes {
-  min-height: 0;
-  margin-top: 0;
 }
 
 .rework-target-card {
@@ -14284,12 +14248,6 @@ dialog.layout-editor-dialog {
 .rework-result-pane > .pop-action-bar {
   margin-top: 0;
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-}
-
-@media (max-width: 900px) {
-  .pop-panes {
-    grid-template-columns: 1fr;
-  }
 }
 
 .pane-title {
@@ -17965,27 +17923,6 @@ dialog.layout-editor-dialog {
   }
 }
 
-/*
- * ── POP(1024×768 터치 키오스크) ────────────────────────────────────────────
- *
- * 관리웹과 폼팩터가 다르다. **세로 여유가 119px뿐이라** 구획을 쌓지 않고 좌우로 편다.
- *
- * ⚠ docs/layout-conventions.md 에 규범으로 올리지 않는다 — 그 문서의 갱신 규칙이
- * 「두 번째 화면에서 같은 결정을 또 하게 될 때 규범을 추가한다」이고, POP 화면은 아직
- * 이것 하나다. 두 번째 POP 화면이 같은 결정을 되풀이하면 그때 옮긴다.
- */
-
-/*
- * 화면 최상위 — 남은 높이를 그대로 쓴다. 세로로 흐르면 1024×768에서 아래가 잘린다.
- * 최상위 블록을 하나만 두어 관리웹의 `main > * + *` 이음매를 받지 않는다.
- */
-.pop-lot-screen {
-  display: flex;
-  min-height: 0;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
 .alert-code {
   font-weight: 600;
 }
@@ -18320,109 +18257,6 @@ dialog.layout-editor-dialog {
   margin: var(--space-2) 0;
 }
 
-/* 쪽 이동 줄 — 위치 표시를 왼쪽 끝에 두고 이동 버튼을 오른쪽에 모은다. */
-.pop-page-nav {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-3);
-}
-
-.pop-page-nav > .field-note {
-  margin-right: auto;
-}
-
-/* 줄 안 글자의 문단 여백을 턴다. 여백이 남으면 글자가 버튼과 같은 세로 가운데에 서지 않는다. */
-.pop-page-nav > p {
-  margin-block: 0;
-}
-
-/*
- * 목록에서 한 줄을 고르는 자리 — **칸 전체가 누르는 곳이다.**
- *
- * 스펙의 목록에는 선택 칸이 없다. 줄을 눌러 고르는 모양이라, 첫 칸을 채우는 버튼으로 둔다.
- * 장갑 낀 손으로 누르므로 타겟을 칸 크기까지 넓힌다.
- */
-/*
- * ⛔ **자기 상자를 그리지 않는다.** 누르는 자리는 줄 전체인데 이 칸만 테두리·배경을 가지면
- * 「여기만 눌린다」로 읽힌다. 이 요소가 갖는 것은 «조작»이지 «표시»가 아니다 — 골라진 모양은
- * 아래 `tr` 규칙이 줄 전체에 그린다.
- */
-.pop-row-select {
-  display: flex;
-  width: 100%;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: var(--space-1);
-  /*
-   * 여백은 남긴다 — 보이지 않지만 **줄 높이와 글자 위치**를 만든다. 지우면 줄이 터치 하한
-   * 아래로 내려앉고, 글자가 칸 머리글과 어긋나 왼쪽으로 밀린다(실기에서 드러났다).
-   */
-  padding: var(--space-2) var(--space-3);
-  border: none;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-/* 값이 하이픈 뒤에서 갈리면 다른 코드로 읽힌다 — 줄마다 끊지 않는다. */
-.pop-row-select > span {
-  white-space: nowrap;
-}
-
-.pop-row-select:focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: 2px;
-}
-
-/*
- * 고른 줄 — **눈에 남아야 하고, 상자는 줄 전체다.** 앞선 판은 눌린 상태를 화면 읽기
- * 프로그램에만 알려 누른 사람이 골랐는지 알 수 없었고, 그다음 판은 첫 칸만 물들여 첫 칸만 물들이면 「이 칸이 눌린 것」으로 읽혀,
- * 「이 칸이 눌린 것」으로 읽혔다(스펙 §3 의 목록은 한 줄이 상자 하나다).
- *
- * 디자인 시스템의 `Table` 이 행에 선택 표시를 주지 않으므로(`selectable` 을 쓰지 않는다)
- * 안쪽 버튼의 상태로 그 줄을 짚는다.
- */
-.pop-row-target tbody tr:has(.pop-row-select-on) {
-  background: var(--primary-container);
-  color: var(--on-primary-container);
-}
-
-/*
- * 줄 앞의 강조 막대 — **배경만으로는 약하다.** 어두운 배색에서 골라진 줄과 그렇지 않은 줄의
- * 밝기 차가 작아, 배경만 두면 「조금 밝은 줄」로 스쳐 지나간다.
- *
- * ⛔ 테두리를 `tr` 에 두지 않는다 — 표의 행은 테두리·그림자를 그리지 않는 브라우저가 있어
- * 조용히 사라진다. 칸에 안쪽 그림자로 그린다.
- */
-.pop-row-target tbody tr:has(.pop-row-select-on) > td:first-child {
-  box-shadow: inset 3px 0 var(--primary);
-}
-
-/* 줄 어디를 눌러도 골라지므로 줄 전체가 누를 수 있는 것으로 보여야 한다. */
-.pop-row-target tbody tr {
-  cursor: pointer;
-}
-
-.pop-row-target tbody tr:hover:not(:has(.pop-row-select-on)) {
-  background: var(--state-hover-neutral);
-}
-
-/*
- * 표가 비었을 때의 안내 — **칸 가운데에 세운다.**
- *
- * `.field-note`를 그대로 쓰면 왼쪽 끝에 붙어 표 머리 아래 빈 넓이와 어긋나 보인다
- * (실기에서 드러났다). 폭 상한도 풀어 문장이 한 줄로 선다.
- */
-.pop-empty-note {
-  max-width: none;
-  padding: var(--space-6) var(--space-4);
-  text-align: center;
-}
-
 /*
  * 업무 중요도 등급은 색·문구·배치 검증을 위한 이름만 남긴다. E-3 개정 뒤에는 네 등급 모두
  * 관리웹 기본 hit area를 사용하며 이 클래스가 픽셀 크기를 만들지 않는다.
@@ -18448,229 +18282,6 @@ dialog.layout-editor-dialog {
 }
 
 /*
- * P-05-01 이 더하는 자리들.
- *
- * ⭐ **셸·머리·표제·스캔 줄은 이미 있는 것을 쓴다** — `.pop-shell`·`.pop-header`·`.pop-title`·
- * `.pop-context-right`·`.scan-row` 는 먼저 선 POP 화면이 세웠다. 같은 이름을 다시 선언하면
- * **나중 선언이 이겨** 그 화면의 배치가 조용히 바뀐다 — 게이트가 잡지 못하는 종류의 사고다.
- *
- * 여기 남는 것은 이 화면에만 있는 것이다 — 액션 줄 · 툴 정보 줄 · 타발수와 키패드 · 누계 표.
- */
-
-/*
- * 액션 줄 — 마지막 블록이라 화면 아래에 선다. 오른쪽 정렬이되 사유는 줄 왼쪽에 남는다.
- *
- * ⛔ **구획 높이를 픽셀로 못박지 않는다.** 스펙의 세로 예산(64 + 616 + 88)은 1024×768 을
- * 전제로 도출한 값이라, 그대로 박으면 다른 크기에서 잘린 자리에 저장 버튼이 들어간다.
- */
-.pop-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-3);
-}
-
-.pop-actions > .field-note {
-  flex-basis: 100%;
-  margin: 0;
-  text-align: right;
-}
-
-/* 구획 하나. 내부 블록 사이 간격은 구획이 소유한다 — 전역 `main > * + *`는 여기 닿지 않는다. */
-.pop-section > * > * + * {
-  margin-top: var(--space-3);
-}
-
-/* 스캔된 툴의 코드·이름·캐비티가 한 줄에 선다. 좁으면 접힌다. */
-.pop-tool {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-  margin: 0;
-}
-
-/* 입력칸과 숫자 키패드를 나란히 — 키패드가 자기 폭을 갖고 입력칸이 나머지를 쓴다. */
-.pop-shot {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-5);
-}
-
-.pop-conversion {
-  display: grid;
-  gap: var(--space-2);
-}
-
-/*
- * 누계 다섯 줄 — **세로로 쌓는다**(화면 스펙 §3). 이름과 값이 한 줄에서 짝을 이루고, 줄이
- * 위에서 아래로 「지금 → 저장하면」의 순서를 만든다. 가로로 늘어놓으면 그 순서가 사라진다.
- */
-.pop-figures {
-  display: grid;
-  gap: var(--space-2);
-  margin: 0;
-}
-
-.pop-figures > div {
-  display: grid;
-  grid-template-columns: 8rem 1fr;
-  align-items: baseline;
-  gap: var(--space-4);
-}
-
-.pop-figures dt {
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
-  color: var(--on-surface-muted);
-}
-
-.pop-figures dd {
-  margin: 0;
-  font: var(--type-title-sm);
-}
-
-/*
- * 구분선 — 위 셋은 「지금 사실」이고 아래 둘은 「저장하면 그렇게 된다」다.
- * 선 하나가 그 경계를 말한다(화면 스펙 §3).
- */
-.pop-figures-rule {
-  height: 1px;
-  margin: var(--space-1) 0;
-  background: var(--outline-variant);
-}
-
-/* 사용 가능 줄 — 값 오른쪽에 진행 막대가 붙는다. 막대가 없으면 값만 선다. */
-.pop-figure-usage {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-}
-
-.pop-figure-usage > *:last-child {
-  flex: 1;
-}
-
-/* 「이 숫자가 언제 것인가」 — 값보다 약하게 읽혀야 한다. */
-.pop-figure-note {
-  margin-left: var(--space-3);
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
-  color: var(--on-surface-muted);
-}
-
-/* 입력칸 묶음이 남는 폭을 쓰고 키패드가 자기 폭을 갖는다. */
-.pop-shot-fields {
-  display: grid;
-  gap: var(--space-3);
-  flex: 1;
-}
-
-/*
- * 사용률 막대의 이름 — 막대가 「남은 비율」이 아니라 「쓴 비율」임을 그 자리에서 말한다.
- * 이름이 없으면 사용 가능 줄의 백분율이 「사용 가능이 0%」로 읽힌다.
- */
-.pop-usage-label {
-  flex: none;
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
-  color: var(--on-surface-muted);
-}
-
-/* 이탈 버튼 둘은 나란히 선다 — 스펙이 좌우로 둔 자리다. */
-.pop-handoff {
-  display: flex;
-  gap: var(--space-3);
-}
-
-/*
- * 상세의 이름–값 목록. 스펙 목업이 「품목    XYZ-999」처럼 한 줄에 나란히 두므로 두 열로 세운다.
- * 이름 열을 고정 폭으로 두면 값들이 같은 세로선에서 시작해 눈이 훑기 쉽다.
- */
-.pop-detail-list {
-  display: grid;
-  grid-template-columns: 6rem 1fr;
-  gap: var(--space-2) var(--space-4);
-  margin: 0 0 var(--space-4);
-}
-
-.pop-detail-list > dt {
-  color: var(--on-surface-variant);
-}
-
-.pop-detail-list > dd {
-  margin: 0;
-}
-
-/*
- * 누를 자리가 줄 전체인 목록. 장갑 낀 손을 전제하므로 줄 사이를 벌려 오조작을 줄인다.
- */
-.pop-card-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/*
- * POP 화면 한 벌 — 헤더 64 + 본문 704 = **768**(스펙 §3/E-1 「슬랙이 0」).
- *
- * ⛔ **둘을 한 껍데기로 묶는 이유가 있다.** 따로 두면 감싸는 레이아웃이 자식 사이에 여백을
- * 넣어 합이 768을 넘는다 — 실측으로 20픽셀 넘쳤다.
- *
- * ⚠ 이 예산은 **셸 밖에 설 때만** 성립한다 — 관리웹 셸 안에 두면 상단 바와 본문 여백이
- * 위에 얹힌다. 그래서 이 화면의 라우트는 `AppLayout` 자식이 아니다.
- */
-.pop-screen {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-/*
- * 작업자 지정 배치 — 화면 스펙 §3 의 도면을 그대로 옮긴다.
- *
- * 좌 512 / 우 512 는 1024 폭 단말의 비율이고, 본문 704 는 세로 예산(E-1)이다 —
- * **액션바가 없다.** 확인은 키패드 옆에 둔다.
- *
- * ⚠ 접힘 기준을 대상 단말(1024)보다 넓게 두면 실기기에서 도면의 2단이 서지 않는다.
- */
-.pop-assign {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-4);
-  align-items: stretch;
-  min-height: 704px;
-}
-
-.pop-pane {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  min-width: 0;
-}
-
-/* 단말 이름과 연결 상태 — 도면의 머리줄이다. */
-.pop-terminal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  min-height: 64px;
-  padding: 0 var(--space-4);
-}
-
-/*
- * 제품 이름 — 헤더 왼쪽 끝. 관리웹 상단 바의 상표 자리와 같은 무게로 세운다.
- */
-.pop-terminal-header__brand {
-  font-size: var(--font-size-lg, 1.125rem);
-}
-
-/*
  * 사번 표시 — **글자를 크게 한다.** 「큰 글자」는 글자 크기 요구이지 높이 요구가 아니라
  * (§7) 칸 높이는 그대로 두고 글자만 키운다.
  *
@@ -18690,13 +18301,6 @@ dialog.layout-editor-dialog {
   margin: 0;
   font-size: var(--font-size-2xl, 2rem);
   font-weight: 600;
-}
-
-@media (max-width: 900px) {
-  .pop-assign {
-    grid-template-columns: 1fr;
-    min-height: 0;
-  }
 }
 
 /*
@@ -18929,10 +18533,6 @@ dialog.layout-editor-dialog {
 .material-input-screen {
   /* 본문이 늘어나도 동작 바가 밀려 나가지 않게 한 열로 세운다. */
   grid-template-columns: 1fr;
-}
-
-.pop-ui > .pop-panes.material-input-panes {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
 /* 두 구획 모두 블록 사이를 같은 간격 하나로 띄운다. 제목과 안내 상자의 자기 여백을 턴다. */
@@ -19230,10 +18830,6 @@ dialog.layout-editor-dialog {
   grid-template-columns: 1fr;
 }
 
-.pop-ui > .pop-panes.production-work-panes {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-}
-
 /* 두 구획 모두 블록 사이를 같은 간격 하나로 띄운다. 제목과 안내 상자의 자기 여백을 턴다. */
 .production-work-lot,
 .production-work-step {
@@ -19369,13 +18965,6 @@ dialog.layout-editor-dialog {
   margin-bottom: var(--space-4);
 }
 
-/* 목록만 스크롤한다. 구획이 준 높이를 그대로 쓴다(픽셀 상한을 두지 않는다). */
-.work-start-list .pop-card-list {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-}
-
 /*
  * 쪽 이동 줄은 스크롤 영역 아래 제 줄이다. 구분선과 간격으로 목록과 나눠, 잘린 카드가 줄 뒤에 숨은 것처럼
  * 보이지 않게 한다. 건수, 버튼, 위치 표시는 한 세로 가운데에 선다.
@@ -19491,395 +19080,6 @@ dialog.layout-editor-dialog {
  */
 .worker-no-dialog .worker-no-dialog-field {
   gap: var(--space-2);
-}
-
-/* ──────────────────────────────────────────────────────────────────────────
- * P-04-02 납품·포장 라벨 출력 (POP)
- *
- * ⚠ **이 화면 전용 이름(`pop-slabel-`)이다.** 앞선 POP 화면들이 `pop-lot-`·`pop-`
- * 어휘를 이미 쓰고 있어, 같은 뜻이라도 이름을 나눈다 — 겹치면 한쪽을 고칠 때 다른 화면이
- * 조용히 함께 바뀐다.
- *
- * 스펙 §3 의 세로 예산은 헤더 64 + 본문 616 + 액션바 88 = 768 이고 **슬랙이 0**이다.
- * 그래서 ③ 재출력 구획은 필요할 때만 서고, 넘치는 것은 ② 목록 «안에서» 스크롤한다.
- * ────────────────────────────────────────────────────────────────────────── */
-
-.pop-slabel-screen {
-  display: flex;
-  min-height: 0;
-  flex-direction: column;
-  gap: var(--space-3);
-  /*
-   * ⛔ **자기 높이를 갖는다.** `min-height: 0` 만 있고 높이도 `flex` 도 없으면, 이 화면이
-   * 다른 화면 «안»에 얹혔을 때(출하 실적의 라벨 모드) 부모가 준 칸을 받지 못한다 — 안쪽의
-   * 「대상」 표까지 `min-height: 0` 사슬이 셋 이어지는데 어디에도 하한이 없어 **표가 0 으로
-   * 깔렸다**(1024×768 실측 · #1092). 스크롤도 생기지 않아 현장에서 라벨을 뽑을 수 없었다.
-   */
-  height: 100%;
-}
-
-/*
- * ① 라벨 종류 구획 — 스펙 §3 의 72px 한 칸이다. 위아래 숨을 주지 않는다(슬랙 0).
- */
-.pop-slabel-kind {
-  display: flex;
-  align-items: center;
-}
-
-/*
- * 그 안의 라디오 두 개 — 가로 한 줄. 세로 예산이 72px 라 두 줄로 쌓을 자리가 없다.
- */
-.pop-slabel-kinds {
-  display: flex;
-  gap: var(--space-5);
-  align-items: flex-start;
-}
-
-.pop-slabel-kind-name {
-  font-weight: 600;
-}
-
-/*
- * 종류마다 「언제 발행하는가」가 붙는다. 이름 옆이 아니라 «아래»에 두어, 멀리서 볼 때
- * 이름 두 개가 먼저 읽히게 한다 — 고르는 것은 종류이지 설명이 아니다.
- */
-.pop-slabel-kind-note {
-  display: block;
-  color: var(--on-surface-muted);
-}
-
-/*
- * ② 대상 — **이 구획 «안에서» 스크롤한다.**
- * 화면 전체를 스크롤시키면 라벨 종류와 액션바가 함께 밀려, 지금 무엇을 뽑는 중인지가
- * 화면 밖으로 나간다.
- */
-.pop-slabel-targets {
-  display: flex;
-  min-height: 0;
-  flex-direction: column;
-  gap: var(--space-2);
-  overflow-y: auto;
-}
-
-.pop-slabel-empty {
-  padding: var(--space-4) 0;
-  text-align: center;
-}
-
-/* ③ 재출력 — 재발행일 때만 선다. 서는 순간 세로를 차지하므로 안쪽 여백을 아낀다. */
-.pop-slabel-reissue {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.pop-slabel-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-/* 「필수」는 라벨 옆에서 가장 강하게 읽혀야 한다 — 빠뜨리면 저장이 DB 제약에 막힌다. */
-.pop-slabel-required {
-  color: var(--semantic-error);
-  font-weight: 600;
-}
-
-/*
- * 액션바 — 오른쪽에 모은다. 막힌 사유는 왼쪽 끝에 두어 단추와 같은 줄에서 읽히게 한다.
- */
-.pop-slabel-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-3);
-}
-
-.pop-slabel-actions > .field-note {
-  margin-right: auto;
-}
-
-/*
- * 구획 폭을 그대로 쓰는 보조 안내. `.field-note` 는 규범 4가 **비활성 사유**용으로 정의해
- * `max-width: 20rem` 에 갇히는데, 이쪽은 구획 전체에 걸리는 안내다.
- */
-.pop-slabel-wide-note {
-  max-width: none;
-}
-
-/*
- * 미리보기 — 여러 장을 한 창에 편다. 라벨 이미지는 서버가 그린 것이라 크기를 모른다.
- * 폭을 묶고 비율을 유지해, 큰 그림이 와도 창이 화면 밖으로 자라지 않게 한다.
- */
-.pop-slabel-previews {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  max-height: 60vh;
-  overflow-y: auto;
-}
-
-.pop-slabel-preview {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  margin: 0;
-}
-
-/*
- * ⛔ 배경을 칠하지 않는다 — 라벨은 흰 바탕을 스스로 그리고, 칠하면 어두운 테마에서
- * 그림 테두리가 배경에 먹힌다(전례 `.token-figure`).
- */
-.pop-slabel-preview-image {
-  max-width: 20rem;
-  height: auto;
-  border: 1px solid var(--outline-variant);
-}
-
-/* ───────────────────────────────────────────────────────────────────────────
- * P-04-04 재구성 신규 라벨 발행 (`screens/repack-label-issue`)
- *
- * ⚠ 이름을 `pop-repack-` 으로 묶는다 — 이 파일은 접촉이 가장 몰리는 자리라 짧은 이름은
- * 다른 POP 슬라이스와 겹친다(전례 실측).
- * ─────────────────────────────────────────────────────────────────────────── */
-
-/* 대상 포장의 사실 세 줄 — 번호·유형·내용물. 읽는 값이라 입력처럼 보이지 않게 둔다. */
-.pop-repack-facts {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--space-2) var(--space-4);
-  margin: 0 0 var(--space-3);
-}
-
-.pop-repack-facts > dt {
-  color: var(--on-surface-muted);
-}
-
-.pop-repack-facts > dd {
-  margin: 0;
-  font-weight: 600;
-}
-
-/* 발행 현황 한 줄 — 「사유가 필요한가」를 사용자가 먼저 읽는 자리다. */
-.pop-repack-standing {
-  margin: 0 0 var(--space-3);
-}
-
-.pop-repack-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-}
-
-/* 칸 아래에 붙는 사유·오류. 배너로 올리지 않는다 — 고칠 자리가 바로 위다. */
-.pop-repack-note {
-  margin: 0;
-  color: var(--on-surface-muted);
-}
-
-/*
- * 미리보기 이미지 — 서버가 그린 것을 그대로 건다.
- * ⛔ 늘리지 않는다(`max-width`만 건다) — 라벨을 확대하면 실제 인쇄면과 달라 보인다.
- */
-.pop-repack-preview-image {
-  display: block;
-  max-width: 100%;
-  margin: 0 auto;
-}
-
-/* 막힌 사유 — ⛔ 툴팁에만 두면 터치 패널에서 읽히지 않는다(독립 검증 실측). */
-.pop-repack-blocked {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin: 0 0 var(--space-3);
-  color: var(--semantic-error);
-}
-
-/* 칸 아래의 오류 — 위 `.pop-repack-note`(도움말)와 색으로 갈린다. */
-.pop-repack-error {
-  margin: 0;
-  color: var(--semantic-error);
-}
-
-/*
- * ⛔ `.pop-section > * > * + *`(구획 안 형제 간격 12)가 액션바의 둘째 버튼까지 때린다 —
- * 실측으로 두 버튼의 윗변이 12 어긋났다. 이 띠는 `align-items: center` 로 세로를 잡으므로
- * 형제 간격을 턴다.
- */
-.pop-repack-actions > * + * {
-  margin-top: 0;
-}
-
-/*
- * P-02-11 러닝체인지 부품 교체 — **슬라이스 전용 이름(`pop-rc-`)을 쓴다.**
- *
- * ⛔ `.pop-pane`·`.pop-screen` 같은 일반명은 이미 임자가 있다. 같은 이름을 다른 값으로 다시
- * 정의하면 **나중 정의가 앞 화면의 배치를 통째로 덮는데**, 시험이 스타일을 읽지 않아
- * (`vitest.config.ts`의 `css: false`) 게이트가 잡지 못한다.
- *
- * 셸·머리·2단 배치는 먼저 선 POP 화면들의 `.pop-shell`·`.pop-header`·`.pop-panes`를 그대로
- * 쓴다 — **다시 정의하지 않고 쓰기만 한다.**
- */
-.pop-rc-inputs {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: var(--space-2);
-}
-
-/*
- * 한 줄에 품목·LOT·수량이 선다. LOT 번호가 34자리까지 가므로(계약) 줄바꿈을 허용하되,
- * 수량은 오른쪽 끝에 붙여 여러 줄을 위아래로 훑을 때 자릿수가 한 열에 서게 한다.
- */
-.pop-rc-input {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-3);
-  font: var(--type-body-lg);
-  letter-spacing: var(--type-body-lg-tracking);
-}
-
-.pop-rc-input-item {
-  font-weight: 600;
-}
-
-.pop-rc-input-lot {
-  color: var(--on-surface-muted);
-  word-break: break-all;
-}
-
-.pop-rc-input-qty {
-  margin-inline-start: auto;
-}
-
-/* 지금 물린 금형·신규 부품. 목록과 붙되 한 덩이로 읽히게 사이를 둔다. */
-.pop-rc-mold,
-.pop-rc-part {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-  margin: var(--space-4) 0 0;
-  font: var(--type-body-lg);
-  letter-spacing: var(--type-body-lg-tracking);
-}
-
-/* ⚠ 금형 줄은 이름표를 칸마다 갖게 되어(`pop.css`) 줄 앞 이름표를 쓰지 않는다. */
-.pop-rc-part-label {
-  font-weight: 600;
-  color: var(--on-surface-muted);
-}
-
-/*
- * 라벨과 컨트롤을 위아래로 둔다 — `Select`은 `TextField`와 달리 라벨 층을 스스로 갖지 않아
- * 외부 `<label htmlFor>`와 짝을 이룬다.
- */
-.pop-rc-field {
-  display: grid;
-  gap: var(--space-1);
-  margin-block-start: var(--space-4);
-}
-
-.pop-rc-field > label {
-  font: var(--type-label-lg);
-  color: var(--on-surface-variant);
-}
-
-/*
- * 등록 버튼과 그 사유. **버튼과 사유가 늘 한 덩이로 붙어 있어야** 무엇이 왜 잠겼는지
- * 시각적으로 끊기지 않는다.
- */
-.pop-rc-submit {
-  display: grid;
-  justify-items: start;
-  gap: var(--space-2);
-  margin-block-start: var(--space-4);
-}
-
-/*
- * P-02-10 작업 중단(홀드) 등록 — 슬라이스 전용 이름을 쓴다.
- *
- * ⛔ **`.pop-pane`·`.pop-screen` 류의 일반명을 쓰지 않는다.** 이 파일은 POP 화면 전부가 함께
- * 쓰고, 같은 이름을 다른 값으로 다시 선언하면 나중 정의가 앞 화면의 배치를 통째로 덮는다 —
- * 시험이 `css: false` 라 게이트가 잡지 못한다.
- *
- * 셸·머리·표제·2단 배치는 이미 있는 것을 쓴다 — `.pop-shell`·`.pop-header`·`.pop-title`·
- * `.pop-context`·`.pop-context-right`·`.pop-panes`·`.pane-title`·`.banner-slot`.
- */
-
-/* 왼쪽 단은 두 카드(세션·이력)를 세로로 쌓는다 — `.pop-panes` 는 좌우만 가른다. */
-.pop-hold-column {
-  display: grid;
-  gap: var(--space-4);
-  align-content: start;
-}
-
-/*
- * 세션 요약은 이름-값 쌍이라 정의 목록으로 그린다. 두 열로 두면 값이 이름 옆에 붙어
- * 1024 폭에서 좌측 단(2fr)에 들어간다.
- */
-.pop-hold-facts {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--space-1) var(--space-4);
-  margin: 0;
-}
-
-.pop-hold-facts > dt {
-  color: var(--on-surface-muted);
-  font: var(--type-body-lg);
-}
-
-.pop-hold-facts > dd {
-  margin: 0;
-  font: var(--type-body-lg);
-}
-
-/* 이력은 줄 수가 적고 열이 셋뿐이라 표를 그대로 쓴다. */
-.pop-hold-history {
-  width: 100%;
-  border-collapse: collapse;
-  font: var(--type-body-lg);
-}
-
-.pop-hold-history th,
-.pop-hold-history td {
-  padding: var(--space-2) var(--space-3);
-  text-align: start;
-  border-bottom: 1px solid var(--outline-variant);
-}
-
-.pop-hold-history th {
-  color: var(--on-surface-muted);
-  font: var(--type-label-lg);
-}
-
-/* 라디오 묶음의 이름 — `RadioGroup` 이 `aria-labelledby` 로 이 문단을 가리킨다. */
-.pop-hold-field-label {
-  margin: 0 0 var(--space-2);
-  font: var(--type-label-lg);
-}
-
-/* 등록을 누른 뒤에만 서는 자리라 여백을 위쪽에만 준다. */
-.pop-hold-error {
-  margin: var(--space-2) 0 0;
-  color: var(--semantic-error-text);
-  font: var(--type-body-lg);
-}
-
-/*
- * 《현재 세션》 구획의 [세션 종료] — 요약 목록 아래에 한 줄로 선다.
- *
- * ⛔ **액션바로 내리지 않는다.** 중단·재개와 나란히 두면 멈추려던 손이 닫는 버튼을 누른다 —
- * 세션 종료는 되돌릴 수 없다(스펙 §5-4).
- */
-.pop-session-end {
-  margin-block-start: var(--space-3);
-  justify-self: start;
 }
 
 /*
@@ -20188,17 +19388,6 @@ dialog.layout-editor-dialog {
  */
 .packing-shell--labels > .packing-body {
   display: none;
-}
-
-/*
- * ⛔ **얹힌 라벨 화면은 자기 칸을 «가득» 채운다.** `min-height: 0` 만으로는 내용이 정하는
- * 높이가 되어, 안쪽 표가 남는 높이를 나눠 가질 근거가 없다 — 표가 0 이 된다(#1092).
- * 셸이 준 한 칸(`minmax(0, 1fr)`)을 그대로 받고, 넘치면 그 안에서 스크롤한다.
- */
-.packing-shell--labels > .pop-slabel-screen--embedded {
-  min-height: 0;
-  height: 100%;
-  overflow-y: auto;
 }
 
 .packing-body {
@@ -24542,7 +23731,6 @@ main:has(> .oqc-inspection-panes) {
   inset-inline-start: calc(100% - var(--tip-inset, 0px) + var(--space-2));
 }
 
-
 .dash-tip-left[data-tip]::after {
   inset-inline-end: calc(100% - var(--tip-inset, 0px) + var(--space-2));
 }
@@ -26075,7 +25263,6 @@ body:has(.page-nav-size [aria-expanded="true"])
   }
 }
 
-
 /* 내용 없는 탭 패널 여백은 빼고 현재 단계 본문 한 곳에만 내용을 둔다. */
 .erp-wo-stage-tabs [role="tabpanel"],
 .erp-wo-plan-toolbar [role="tabpanel"] {
@@ -26341,7 +25528,6 @@ body:has(.page-nav-size [aria-expanded="true"])
   }
 }
 
-
 /* 작업계획 시안: 번호보다 업무 제목과 선택한 오더의 정보를 먼저 읽도록 둔다. */
 .process-page:has(.erp-wo-summary) .process-page-title-row {
   display: grid;
@@ -26462,7 +25648,6 @@ body:has(.page-nav-size [aria-expanded="true"])
     gap: var(--space-1);
   }
 }
-
 
 /* 4M은 위치·계획 시간도 처음부터 표시한다. */
 .erp-wo-assign-editor .assign-form > .assign-group-title,
@@ -33846,7 +33031,6 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   flex-wrap: wrap;
 }
 
-
 /* 작업자 미연결 경고 — 문구 왼쪽 · 「작업자 연결」 오른쪽 끝, 한 줄(사용자 지시 2026-10-30). */
 .parts-iqc-worker-alert {
   display: flex;
@@ -34751,8 +33935,6 @@ ul.iqc-inbound-superseded {
   font: var(--type-body-sm);
 }
 
-
-
 @media (max-width: 720px) {
   .result-detail-meta {
     grid-template-columns: minmax(0, 1fr);
@@ -34994,7 +34176,6 @@ ul.iqc-inbound-superseded {
   border-top: 1px solid var(--outline-variant);
 }
 
-
 /* 검사 상세 및 이력 카드 — 소제목, LOT 이력 표의 자체 제목은 감춘다(「LOT 처리 이력」을 쓴다). */
 .result-detail-extra.result-detail-card {
   display: block;
@@ -35033,7 +34214,6 @@ ul.iqc-inbound-superseded {
 .inspection-results-trend-chart svg {
   overflow: visible;
 }
-
 
 /* 항목별 측정 결과(검사 결과 상세의 탭 안) — 표 위 오른쪽에 「교정 상태 [전체]」(사용자 시안 2026-11-02). */
 .measurement-section-tools {
@@ -35163,8 +34343,6 @@ ul.iqc-inbound-superseded {
 .erp-wo-selection-info p { margin: var(--space-1) 0 0; font: var(--type-body-sm); color: var(--on-surface-variant); }
 .erp-wo-selection-toolbar .erp-wo-bulk-actions { align-self: center; gap: var(--space-2); }
 @media (max-width: 1100px) { .erp-wo-selection-toolbar { grid-template-columns: minmax(0, 1fr); } .erp-wo-selection-toolbar .erp-wo-bulk-actions { justify-content: flex-start; } }
-
-
 
 .erp-wo-status-filter:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .erp-wo-status-filter:hover { border-color: var(--primary); }

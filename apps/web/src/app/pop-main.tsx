@@ -33,6 +33,7 @@ import './app.css';
  * 근거는 그 파일 머리말에 있다.
  */
 import './pop.css';
+import './pop-uniform.css';
 /* ⛔ 화면을 싣는 import 보다 위에 둔다 — 아래 import 들이 문구를 붙잡기 전에 언어를 정한다. */
 import './pop-locale';
 
@@ -45,6 +46,8 @@ import { applyPopFit } from '../patterns/pop-fit';
 import { usePopIdentity } from '../patterns/pop-identity';
 import { useLegacyOutboxDrain } from '../patterns/pop-legacy-outbox';
 import { PopScreenNav } from '../patterns/pop-screen-nav';
+import { PuToastHost } from '../patterns/pop-uniform';
+import { setPrinterTerminal } from '../patterns/pop-printer-choice';
 import { PopTopPrinterTarget, PopTopStatusTarget } from '../patterns/pop-top-status';
 import {
   PopRegistrationProvider,
@@ -212,6 +215,8 @@ const PopChrome = () => {
   /* ⭐ 관리웹에서 바꾼 단말 공정·설비가 단말을 다시 켜지 않아도 보이게 한다(#1202). */
   useRefreshPopTerminalOnScreenEntry();
   const { terminal } = usePopRegistration();
+  /* 맨 위 줄에서 고른 프린터는 단말 코드마다 기억한다 — 발행 화면이 읽기 전에 알려 둔다. */
+  setPrinterTerminal(terminal?.terminalCode ?? null);
   const { workerNo } = usePopIdentity();
   /* 없앤 생산 포장·PQC 제품 검사 화면이 단말에 남긴 확정을 마저 보낸다(#293). */
   useLegacyOutboxDrain(terminal !== null);
@@ -248,6 +253,8 @@ const PopChrome = () => {
           </PopTopPrinterTarget.Provider>
         </PopTopStatusTarget.Provider>
       </div>
+      {/* 처리 결과 알림 자리 — 작업 줄 위 가운데(POP 통일 규칙 13 · #295). */}
+      <PuToastHost />
     </div>
   );
 };

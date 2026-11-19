@@ -68,14 +68,16 @@ describe('PopSelect — 항목 뒤 표시·맨 위 묶음(D-10)', () => {
     expect(trigger).toHaveTextContent(/^선택$/);
     await user.click(trigger);
     const options = screen.getAllByRole('option');
+    /* 검색 칸 아래 글자판이 자리를 차지해 한 쪽 건수는 남은 칸 높이로 잰다 — 높이가 없는 시험 환경에서는 넷(#295). */
     expect(options.map((option) => option.textContent)).toEqual([
       '항목 1',
       '항목 2',
       '항목 3',
       '항목 4',
-      '항목 5',
     ]);
     const list = screen.getByRole('listbox');
-    expect(list.previousElementSibling).toHaveClass('pop-select-dialog__search');
+    // 검색 칸 → 목록 → 쪽 넘김 → 글자판(맨 아래, 사용자 지시 2026-11-19).
+    expect(list.previousElementSibling).toHaveClass('pu-search');
+    expect(list.parentElement?.lastElementChild).toHaveClass('pu-tkbd');
   });
 });

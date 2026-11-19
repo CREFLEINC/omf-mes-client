@@ -1,0 +1,27 @@
+/* 왼쪽 목록 위 찾기 칸(`PuSearchBox`) — 누르면 찾기 창이 뜬다. 거르는 글자는 [×]로 비운다. */
+.pu-search > input[readonly] {
+  cursor: pointer;
+}
+
+.pu-search > input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.pu-search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--pu-text-2);
+  cursor: pointer;
+}
+
+.pu-search-clear:hover {
+  background: var(--pu-hover);
+}

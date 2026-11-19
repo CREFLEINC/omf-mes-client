@@ -1,7 +1,6 @@
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
-import { isServerBaselineBuild } from '../../patterns/pop-server-baseline';
 import { terminalPrinters } from '../../patterns/pop-terminal-printers';
 import { runRequest } from '../../patterns/request';
 import {
@@ -71,7 +70,8 @@ export const repackLabelKeys = {
   handlingUnitTypes: ['repack-label-issue', 'handling-unit-types'] as const,
   remainderCandidates: (handlingUnitId: number) =>
     ['repack-label-issue', 'remainder-candidates', handlingUnitId] as const,
-  pendingRows: ['repack-label-issue', 'pending-rows'] as const,
+  /** 발행 대기(`false`) · 재발행(`true`) 목록(#295 시안 탭 · omf-all-around#327). */
+  repackRows: (labelIssued: boolean) => ['repack-label-issue', 'repack-rows', labelIssued] as const,
 };
 
 export interface HandlingUnitView {
@@ -122,6 +122,8 @@ export interface PendingRepackRow {
    * 말해야 작업자가 눌러 보기 전에 무엇인지 안다.
    */
   repackEvent: 'found' | 'none' | 'unmatched';
+  /** 재발행 목록에서만 — 이 포장의 발행 횟수(서버 요약). 발행 대기 목록은 `null`. */
+  issueCount: number | null;
 }
 
 /**
@@ -158,33 +160,39 @@ const newestEventFor = (
  *
  * ⚠ **다만 모르는 줄이 아무 말도 안 하게 두지 않는다**(#1044). 사건이 없거나 못 맞췄다는 사실을
  * 줄에 실어, 화면이 번호와 사유를 함께 적을 수 있게 한다.
- */
-/**
- * 발행 대기 목록을 **배포본에서는 세울 수 없다**(#1095 · `patterns/pop-server-baseline`).
  *
- * 이 목록의 정의는 계약의 `labelIssued=false` 하나인데(§5-1 · 2026-09-06 게이트 승인), 서버
- * 구현 기준선의 `GET /inventory/handling-units` 에는 그 축이 없다. 실서버는 없는 축을 거부하지
- * 않고 **무시하므로**, 그대로 부르면 「발행 대기」 표에 **창고의 모든 취급 단위**가 선다 —
- * 발행은 되돌릴 수 없는 쓰기라 이미 라벨이 붙은 포장에 새 라벨이 나간다.
- *
- * ⭐ 목은 고정 설계대로 이 축을 답한다 — 개발 서버와 시험에서는 화면이 설계대로 선다.
+ * ⭐ `labelIssued=true` 는 「재발행」 탭 목록이다(#295 시안). 서버가 이 축을 받게 되어
+ *    (omf-all-around#327) 배포본에서 목록을 막던 우회(#1095)를 걷었다.
  */
-export const isPendingListUnsupported = (): boolean => isServerBaselineBuild();
-
-export const usePendingRepackRows = (): UseQueryResult<PendingRepackRow[]> => {
+export const useRepackRows = (labelIssued: boolean): UseQueryResult<PendingRepackRow[]> => {
   const { client } = useApiClient();
 
   return useQuery({
-    enabled: !isPendingListUnsupported(),
-    queryKey: repackLabelKeys.pendingRows,
+    queryKey: repackLabelKeys.repackRows(labelIssued),
     queryFn: async (): Promise<PendingRepackRow[]> => {
       const units = await readAllPages<HandlingUnit>(PENDING_PAGE_SIZE, (page, size) =>
         runRequest(() =>
           client.GET('/inventory/handling-units', {
-            params: { query: { labelIssued: false, page, size } },
+            params: { query: { labelIssued, page, size } },
           }),
         ),
       );
+      /* 재발행 목록 줄의 「발행 N회」 — 요약 한 번으로 받는다(서버가 미발행도 0으로 답한다). */
+      const issueCounts = new Map<number, number>();
+      if (labelIssued && units.length > 0) {
+        const summary = await runRequest(() =>
+          client.GET('/app/document-issues/summary', {
+            params: {
+              query: {
+                targetTypeCode: TARGET_TYPE_CODE,
+                targetIds: units.map((unit) => unit.handlingUnitId),
+                documentTypeCode: DOCUMENT_TYPE_CODE,
+              },
+            },
+          }),
+        );
+        summary.items.forEach((item) => issueCounts.set(item.targetId, item.issueCount));
+      }
 
       /* 번호를 여러 줄이 함께 쓰므로 한 번 읽어 두고 나눠 쓴다. */
       const numbers = new Map<number, string>(
@@ -231,6 +239,7 @@ export const usePendingRepackRows = (): UseQueryResult<PendingRepackRow[]> => {
             remainderNo: null,
             occurredAt: null,
             repackEvent: events.items.length === 0 ? 'none' : 'unmatched',
+            issueCount: issueCounts.get(unit.handlingUnitId) ?? null,
           });
           continue;
         }
@@ -275,6 +284,7 @@ export const usePendingRepackRows = (): UseQueryResult<PendingRepackRow[]> => {
           remainderNo: remainderId === undefined ? null : await numberOf(remainderId),
           occurredAt: event.occurredAt,
           repackEvent: 'found',
+          issueCount: issueCounts.get(unit.handlingUnitId) ?? null,
         });
       }
 

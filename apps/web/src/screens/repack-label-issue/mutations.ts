@@ -50,7 +50,7 @@ export const useDocumentIssue = ({
         body,
       }),
     etagPath: null,
-    /* 회차가 올랐다 — 발행 현황·이력을 다시 받아야 방금 찍은 것이 반영된다. */
+    /* 회차가 올랐다 — 발행 현황·이력을 다시 받는다. */
     invalidateKeys: [repackLabelKeys.all],
     knownFields: ISSUE_FIELDS,
     keyLifetime: 'until-applied',

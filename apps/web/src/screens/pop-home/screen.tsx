@@ -1,13 +1,28 @@
-import { Badge } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { POP_ENTRY_SCREEN_PATH, type PopScreen } from '../../patterns/pop-screen-catalog';
 import { countOf, GROUP_ICONS, navIcon, usePopNavigation } from '../../patterns/pop-screen-nav';
+import {
+  PuButton,
+  PuChip,
+  PuCount,
+  PuEmpty,
+  PuIcon,
+  PuNote,
+  PuPager,
+  PuScreen,
+  PuSection,
+  PuSeg,
+  puCx,
+  puToast,
+  useClientPage,
+} from '../../patterns/pop-uniform';
 import { useWorkerSession } from '../../patterns/worker-session';
-import { useHomeWorkStatus } from './queries';
+import { useFitRows } from './fit-rows';
+import { HOME_STATUS_CODES, useHomeWorkOrders, useHomeWorkStatus } from './queries';
 import {
   DEFAULT_SHORTCUT_PATHS,
   MAX_SHORTCUTS,
@@ -15,6 +30,12 @@ import {
   writeShortcutPaths,
 } from './shortcuts';
 import type { WorkStartEntryState } from '../work-start/entry-state';
+import './uniform.css';
+
+/** 긴급 W/O 유형 코드 — 작업지시 목록(`work-start/work-order-type.ts`)과 같은 값의 사본(슬라이스 규칙). */
+const EMERGENCY_WORK_ORDER_TYPE_CODE = 'EMERGENCY';
+const isEmergencyOrder = (typeCode: string | null | undefined): boolean =>
+  (typeCode ?? '').trim() === EMERGENCY_WORK_ORDER_TYPE_CODE;
 
 const t = messages.popChrome.home;
 
@@ -53,14 +74,8 @@ const SHORTCUT_ICONS: readonly { path: string; icon: ReactNode }[] = [
   },
 ];
 
-const CALENDAR_ICON = navIcon(
-  <>
-    <rect x="3" y="5" width="18" height="16" rx="2" />
-    <path d="M3 10h18M8 3v4M16 3v4" />
-  </>,
-);
-const BOLT_ICON = navIcon(<path d="M13 2 4 14h7l-1 8 9-12h-7z" />);
-const RIGHT_ICON = navIcon(<path d="m9 6 6 6-6 6" />);
+/** 바로가기 칸 열 수(`uniform.css` 의 `.home-tiles` 와 같다). */
+const TILE_COLUMNS = 6;
 
 const pad = (value: number) => String(value).padStart(2, '0');
 
@@ -88,7 +103,21 @@ const CLOCK_ICON = navIcon(
   </>,
 );
 const CHECK_ICON = navIcon(<path d="m5 12 5 5L20 7" />);
-const PEN_ICON = navIcon(<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" />);
+/** [편집] 앞 연필(시안). 공통 아이콘에 연필이 없어 이 화면에 둔다. */
+const PENCIL_ICON = (
+  <svg
+    className="pu-ic"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+  </svg>
+);
 
 const iconOf = (screen: PopScreen): ReactNode =>
   SHORTCUT_ICONS.find((entry) => entry.path === screen.path)?.icon ?? GROUP_ICONS[screen.group];
@@ -103,7 +132,7 @@ const StatusCard = ({
    * 다음 작업을 누르면 그 W/O 를 고른 채로 작업 지시 목록을 연다(사용자 지시 2026-11-17 · #291) —
    * 바로 [작업 시작]을 누를 수 있게. `allEquipment` 는 홈에서 보던 설비 범위다. 그 화면에 못 가면 `null`.
    */
-  onNext: ((workOrderId: number, allEquipment: boolean) => void) | null;
+  onNext: ((workOrderId: number, allEquipment: boolean, isEmergency: boolean) => void) | null;
 }) => {
   const { equipment, terminalId } = usePopIdentity();
   /*
@@ -111,81 +140,121 @@ const StatusCard = ({
    * 처음에는 지정 설비 — 이 단말에서 할 일이 먼저다. 설비가 없는 단말은 전체 설비뿐이다.
    */
   const [allEquipment, setAllEquipment] = useState(false);
-  const status = useHomeWorkStatus(
-    equipment === null || allEquipment ? null : equipment.equipmentId,
-    equipment !== null || terminalId !== null,
-  );
+  const scopeEquipmentId = equipment === null || allEquipment ? null : equipment.equipmentId;
+  const isAsked = equipment !== null || terminalId !== null;
+  const status = useHomeWorkStatus(scopeEquipmentId, isAsked);
   const data = status.data;
   const stats = [
-    { key: 'run', label: t.inProgress, value: data?.inProgress, icon: PLAY_ICON, tone: 'run' },
-    { key: 'wait', label: t.waiting, value: data?.waiting, icon: CLOCK_ICON, tone: 'wait' },
-    { key: 'done', label: t.done, value: data?.done, icon: CHECK_ICON, tone: 'done' },
+    /* 공통 상태 색(#295 규칙 10): 진행 중 파랑 · 대기 회색 · 완료 초록. */
+    { key: 'run', label: t.inProgress, value: data?.inProgress, icon: PLAY_ICON, tone: 'info' },
+    { key: 'wait', label: t.waiting, value: data?.waiting, icon: CLOCK_ICON, tone: 'idle' },
+    { key: 'done', label: t.done, value: data?.done, icon: CHECK_ICON, tone: 'ok' },
   ] as const;
+  /*
+   * 칸을 누르면 그 상태의 작업지시를 아래에 보인다(사용자 지시 2026-11-19) — 처음에는 진행 중.
+   * 줄은 카드 높이에 들어가는 만큼, 넘칠 때만 쪽 넘김(남은 작업과 같은 방식 · 구획 안 스크롤 없음).
+   */
+  const [view, setView] = useState<(typeof stats)[number]['key']>('run');
+  const [page, setPage] = useState(1);
+  const listRef = useRef<HTMLDivElement>(null);
+  const fit = useFitRows(listRef, { rowSelector: '.home-row-link' });
+  const viewTotal =
+    data === undefined
+      ? undefined
+      : { run: data.inProgress, wait: data.waiting, done: data.done }[view];
+  /* 넘치면 쪽 넘김을 두고 그 아래 남는 만큼 줄을 보인다. 쪽 넘김 자리가 없으면 쪽 넘김 없이 들어가는 만큼만. */
+  const hasPager = fit.paged >= 1 && (viewTotal === undefined || viewTotal > fit.all);
+  const size = hasPager ? fit.paged : fit.all;
+  /* 칸의 수를 안 뒤에 묻는다 — 쪽 넘김 자리(줄 수)가 정해져야 한 번에 맞는 쪽을 받는다. */
+  const list = useHomeWorkOrders(
+    scopeEquipmentId,
+    HOME_STATUS_CODES[view],
+    page,
+    size,
+    isAsked && viewTotal !== undefined,
+  );
+  const listTotal = list.data?.page.total ?? 0;
+  const pages = Math.max(1, Math.ceil(listTotal / size));
+  /* 줄 수가 바뀌어 쪽이 줄면 마지막 쪽으로 당긴다. */
+  useEffect(() => {
+    if (page > pages) setPage(pages);
+  }, [page, pages]);
   const next = data?.next ?? null;
 
   return (
-    <section className="pop-home__panel pop-home__status" aria-labelledby={titleId}>
-      <h2 id={titleId} className="pop-home__heading">
-        {t.statusTitle}
-        {terminalId !== null && equipment === null && (
-          <span className="pop-home__scope">{t.statusAllEquipment}</span>
-        )}
-      </h2>
-      {equipment !== null && (
-        <div className="pop-home__scope-toggle" role="group" aria-label={t.statusScopeLabel}>
-          {[
-            {
-              all: false,
-              label: t.statusMyEquipment(
-                equipment.equipmentName ??
-                  equipment.equipmentCode ??
-                  `#${String(equipment.equipmentId)}`,
-              ),
-            },
-            { all: true, label: t.statusEveryEquipment },
-          ].map((option) => (
+    <PuSection
+      labelId={titleId}
+      title={t.statusTitle}
+      className="home-status"
+      meta={
+        equipment !== null ? (
+          <PuSeg
+            label={t.statusScopeLabel}
+            value={allEquipment ? 'all' : 'mine'}
+            onChange={(value) => {
+              setAllEquipment(value === 'all');
+              setPage(1);
+            }}
+            options={[
+              {
+                value: 'mine',
+                label: t.statusMyEquipment(
+                  equipment.equipmentName ??
+                    equipment.equipmentCode ??
+                    `#${String(equipment.equipmentId)}`,
+                ),
+              },
+              { value: 'all', label: t.statusEveryEquipment },
+            ]}
+          />
+        ) : terminalId !== null ? (
+          t.statusAllEquipment
+        ) : undefined
+      }
+    >
+      {status.isError ? (
+        <PuNote tone="bad">{t.statusFailed}</PuNote>
+      ) : (
+        <div className="home-stats">
+          {stats.map((stat) => (
             <button
-              key={String(option.all)}
+              key={stat.key}
               type="button"
-              aria-pressed={allEquipment === option.all}
+              className={puCx('home-stat', stat.tone, view === stat.key && 'is-on')}
+              aria-pressed={view === stat.key}
               onClick={() => {
-                setAllEquipment(option.all);
+                setView(stat.key);
+                setPage(1);
               }}
             >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      )}
-      {status.isError ? (
-        <p className="pop-home__none">{t.statusFailed}</p>
-      ) : (
-        <div className="pop-home__stats">
-          {stats.map((stat) => (
-            <div key={stat.key} className="pop-home__stat" data-tone={stat.tone}>
-              <span className="pop-home__stat-icon">{stat.icon}</span>
-              <span className="pop-home__stat-text">
+              <span className="ico">{stat.icon}</span>
+              <span>
                 <small>{stat.label}</small>
                 <strong>{stat.value === undefined ? '–' : t.statusCount(stat.value)}</strong>
               </span>
-            </div>
+            </button>
           ))}
           <button
             type="button"
-            className="pop-home__next"
+            className="home-next"
             disabled={onNext === null || next === null}
             onClick={() => {
-              if (next !== null) onNext?.(next.workOrderId, equipment === null || allEquipment);
+              if (next !== null)
+                onNext?.(
+                  next.workOrderId,
+                  equipment === null || allEquipment,
+                  isEmergencyOrder(next.workOrderTypeCode),
+                );
             }}
           >
-            <span className="pop-home__next-text">
+            <span className="txt">
               <small>{t.nextTitle}</small>
               {next === null ? (
-                <span>{data === undefined ? '–' : t.nextNone}</span>
+                <span className="sub">{data === undefined ? '–' : t.nextNone}</span>
               ) : (
                 <>
-                  <b>{next.workOrderNo}</b>
-                  <span>
+                  <b className="pu-mono">{next.workOrderNo}</b>
+                  <span className="sub">
                     {t.nextPlan(
                       next.itemCode ?? `#${String(next.itemId)}`,
                       next.orderQty.toLocaleString(),
@@ -194,11 +263,112 @@ const StatusCard = ({
                 </>
               )}
             </span>
-            {next !== null && onNext !== null && RIGHT_ICON}
+            {next !== null && onNext !== null && <PuIcon name="chevr" />}
           </button>
         </div>
       )}
-    </section>
+      {!status.isError &&
+        (list.isError ? (
+          <PuNote tone="bad">{t.statusFailed}</PuNote>
+        ) : list.data !== undefined && list.data.items.length === 0 ? (
+          <PuEmpty icon="list" title={t.listEmpty} />
+        ) : (
+          <div ref={listRef} className="home-rows pu-fit">
+            {(list.data?.items ?? []).map((order) => (
+              <button
+                key={order.workOrderId}
+                type="button"
+                className="home-row-link home-wo"
+                disabled={onNext === null}
+                onClick={() => {
+                  onNext?.(
+                    order.workOrderId,
+                    equipment === null || allEquipment,
+                    isEmergencyOrder(order.workOrderTypeCode),
+                  );
+                }}
+              >
+                <b className="pu-mono">{order.workOrderNo}</b>
+                <span className="item">{order.itemCode ?? `#${String(order.itemId)}`}</span>
+                <strong>
+                  {order.progress === undefined
+                    ? t.listPlan(order.orderQty.toLocaleString())
+                    : t.listQty(
+                        order.progress.goodQty.toLocaleString(),
+                        order.orderQty.toLocaleString(),
+                      )}
+                </strong>
+                {onNext !== null && <PuIcon name="chevr" />}
+              </button>
+            ))}
+            {hasPager && pages > 1 && (
+              <PuPager
+                total={listTotal}
+                page={Math.min(page, pages)}
+                pages={pages}
+                label={t.listPageNav}
+                onPage={setPage}
+              />
+            )}
+          </div>
+        ))}
+    </PuSection>
+  );
+};
+
+/**
+ * 남은 작업 구획 — 구획은 화면 높이만큼 늘고, 들어가는 만큼 줄을 보인다. 다 들어가면 쪽 넘김을 두지 않고,
+ * 넘칠 때만 아래에 ‹ › 를 둔다(#295 규칙 15 · 구획 안 스크롤 없음 · 사용자 지시 2026-11-19).
+ *
+ * ⭐ 줄과 쪽 넘김을 한 칸(`home-rows`)에 두고, 쪽 넘김이 «없을 때»와 «있을 때» 들어가는 줄 수를 따로 잰다
+ *    (`useFitRows`) — 쪽 넘김이 서고 빠져도 잰 값이 흔들리지 않고, 쪽 넘김 아래 남는 자리도 줄로 쓴다.
+ */
+const RemainingCard = ({ titleId }: { titleId: string }) => {
+  const { pending, total, go } = usePopNavigation();
+  const listRef = useRef<HTMLDivElement>(null);
+  const fit = useFitRows(listRef, { rowSelector: '.home-row-link' });
+  /* 쪽 넘김 자리가 없으면 쪽 넘김 없이 들어가는 만큼만(작업 현황 목록과 같다). */
+  const hasPager = fit.paged >= 1 && pending.length > fit.all;
+  const shown = useClientPage(pending, hasPager ? fit.paged : fit.all);
+
+  return (
+    <PuSection
+      labelId={titleId}
+      title={t.remainingTitle}
+      className="home-remaining"
+      head={total > 0 ? <span className="home-rem-badge">{total}</span> : undefined}
+    >
+      {pending.length === 0 ? (
+        <PuEmpty icon="ok" title={t.remainingNone} />
+      ) : (
+        <div ref={listRef} className="home-rows pu-fit">
+          {shown.items.map(({ screen, count }) => (
+            <button
+              key={screen.path}
+              type="button"
+              className="home-row-link"
+              aria-label={messages.popChrome.remaining.count(screen.name, count)}
+              onClick={() => {
+                go(screen);
+              }}
+            >
+              <span>{screen.name}</span>
+              <strong>{t.remainingCount(count)}</strong>
+              <PuIcon name="chevr" />
+            </button>
+          ))}
+          {hasPager && shown.pages > 1 && (
+            <PuPager
+              total={shown.total}
+              page={shown.page}
+              pages={shown.pages}
+              label={t.remainingPageNav}
+              onPage={shown.setPage}
+            />
+          )}
+        </div>
+      )}
+    </PuSection>
   );
 };
 
@@ -212,7 +382,7 @@ export const PopHomeScreen = (): ReactNode => {
   const titleId = useId();
   const { workerNo } = usePopIdentity();
   const session = useWorkerSession();
-  const { access, workCounts, pending, total, go } = usePopNavigation();
+  const { access, workCounts, go } = usePopNavigation();
   const navigate = useNavigate();
   const clock = useClock();
   const [pickedPaths, setPickedPaths] = useState<string[] | null>(readShortcutPaths);
@@ -227,6 +397,14 @@ export const PopHomeScreen = (): ReactNode => {
   });
   const workStart = access.screens.find((screen) => screen.path === '/pop/work-start') ?? null;
 
+  /*
+   * 바로가기 구획은 [편집] 중과 끝낸 뒤 높이가 같다(사용자 지시 2026-11-19) — 위 두 구획이 움직이지 않게.
+   * 높이는 [편집]의 모든 화면 칸(6열 · 낮은 칸)이 들어가는 만큼이고, 평소 칸은 그 높이로 늘어난다.
+   */
+  const tilesStyle = {
+    '--home-tile-rows': String(Math.max(1, Math.ceil(access.screens.length / TILE_COLUMNS))),
+  } as CSSProperties;
+
   const savePaths = (next: string[] | null) => {
     setPickedPaths(next);
     writeShortcutPaths(next);
@@ -239,98 +417,88 @@ export const PopHomeScreen = (): ReactNode => {
   if (workerNo === null) return <Navigate to={POP_ENTRY_SCREEN_PATH} replace />;
 
   return (
-    <main className="pop-ui pop-home" aria-labelledby={titleId}>
-      <h1 id={titleId} className="pop-visually-hidden pop-fixed">
+    <PuScreen className="home-u" labelledBy={titleId}>
+      <h1 id={titleId} className="pop-visually-hidden">
         {t.title}
       </h1>
-      <section className="pop-home__hello pop-fixed">
-        <div>
-          <h2>{name === '' ? t.greetingAnonymous : t.greeting(name)}</h2>
-          <p>{t.sub}</p>
-        </div>
-        <span className="pop-home__clock">
-          {CALENDAR_ICON}
+      <div className="home-greet">
+        <h2>{name === '' ? t.greetingAnonymous : t.greeting(name)}</h2>
+        <span className="when">
+          <PuIcon name="clock" />
           {clock}
         </span>
-      </section>
+        <p>{t.greetingSub}</p>
+      </div>
 
-      <div className="pop-home__row pop-fixed">
+      <div className="home-top">
         <StatusCard
           titleId={`${titleId}-status`}
           onNext={
             workStart === null
               ? null
-              : (workOrderId, allEquipment) => {
+              : (workOrderId, allEquipment, isEmergency) => {
                   const state: WorkStartEntryState = { workOrderId, allEquipment };
-                  void navigate(workStart.path, { state });
+                  /* 작업지시 목록 「전체」는 긴급을 빼므로(#330) 긴급 W/O 는 「긴급」 보기로 연다. */
+                  void navigate(isEmergency ? `${workStart.path}?type=emergency` : workStart.path, {
+                    state,
+                  });
                 }
           }
         />
-
-        <section className="pop-home__panel pop-home__remaining" aria-labelledby={`${titleId}-rem`}>
-          <h2 id={`${titleId}-rem`} className="pop-home__heading">
-            {t.remainingTitle}
-            {total > 0 && <span className="pop-home__total">{total}</span>}
-          </h2>
-          {pending.length === 0 ? (
-            <p className="pop-home__none">{t.remainingNone}</p>
-          ) : (
-            <div className="pop-home__remaining-list">
-              {pending.map(({ screen, count }) => (
-                <button
-                  key={screen.path}
-                  type="button"
-                  className="pop-home__remaining-item"
-                  aria-label={messages.popChrome.remaining.count(screen.name, count)}
-                  onClick={() => {
-                    go(screen);
-                  }}
-                >
-                  <span>{screen.name}</span>
-                  <strong>{t.remainingCount(count)}</strong>
-                  {RIGHT_ICON}
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
+        <RemainingCard titleId={`${titleId}-rem`} />
       </div>
 
-      <section className="pop-home__panel pop-fixed" aria-labelledby={`${titleId}-sc`}>
-        <div className="pop-home__shortcuts-head">
-          <h2 id={`${titleId}-sc`} className="pop-home__heading">
-            {BOLT_ICON}
-            {t.shortcutsTitle}
-          </h2>
-          <p>{isEditing ? t.editHint(MAX_SHORTCUTS) : t.shortcutsHint}</p>
-          <span className="pop-home__edit-tools">
-            {isEditing && (
-              <button
-                type="button"
-                className="pop-home__edit"
+      <PuSection
+        labelId={`${titleId}-sc`}
+        title={t.shortcutsTitle}
+        grow={false}
+        className="home-shortcuts"
+        head={
+          isEditing ? (
+            <>
+              <PuChip tone="info">{t.editCount(shortcuts.length, MAX_SHORTCUTS)}</PuChip>
+              <span className="home-hint">{t.editHint(MAX_SHORTCUTS)}</span>
+            </>
+          ) : undefined
+        }
+        meta={
+          isEditing ? (
+            <>
+              <PuButton
+                size="sm"
                 onClick={() => {
                   savePaths(null);
                 }}
               >
                 {t.editReset}
-              </button>
-            )}
-            <button
-              type="button"
-              className="pop-home__edit"
-              aria-pressed={isEditing}
+              </PuButton>
+              <PuButton
+                size="sm"
+                variant="primary"
+                onClick={() => {
+                  setIsEditing(false);
+                  puToast(t.editSaved);
+                }}
+              >
+                {t.editDone}
+              </PuButton>
+            </>
+          ) : (
+            <PuButton
+              size="sm"
+              className="home-edit"
               onClick={() => {
-                setIsEditing(!isEditing);
+                setIsEditing(true);
               }}
             >
-              {!isEditing && PEN_ICON}
-              {isEditing ? t.editDone : t.edit}
-            </button>
-          </span>
-        </div>
-
+              {PENCIL_ICON}
+              {t.edit}
+            </PuButton>
+          )
+        }
+      >
         {isEditing ? (
-          <div className="pop-home__tiles pop-home__tiles--edit">
+          <div className="home-tiles is-edit" style={tilesStyle}>
             {access.screens.map((screen) => {
               const picked = paths.includes(screen.path);
               const isFull = !picked && shortcuts.length >= MAX_SHORTCUTS;
@@ -338,7 +506,7 @@ export const PopHomeScreen = (): ReactNode => {
                 <button
                   key={screen.path}
                   type="button"
-                  className="pop-home__tile"
+                  className={puCx('home-tile', picked && 'is-on')}
                   aria-pressed={picked}
                   aria-label={picked ? t.editPicked(screen.name) : screen.name}
                   disabled={isFull}
@@ -351,48 +519,46 @@ export const PopHomeScreen = (): ReactNode => {
                     );
                   }}
                 >
-                  {picked && <span className="pop-home__tile-check">{CHECK_ICON}</span>}
+                  {picked && (
+                    <span className="chk">
+                      <PuIcon name="ok" />
+                    </span>
+                  )}
                   {iconOf(screen)}
-                  <span>{screen.name}</span>
+                  <span className="name">{screen.name}</span>
                 </button>
               );
             })}
           </div>
         ) : (
-          shortcuts.length > 0 && (
-            <div className="pop-home__tiles">
-              {shortcuts.map((screen) => {
-                const count = countOf(screen, workCounts.counts);
-                return (
-                  <button
-                    key={screen.path}
-                    type="button"
-                    className="pop-home__tile"
-                    aria-label={
-                      count > 0 ? messages.popChrome.remaining.count(screen.name, count) : undefined
-                    }
-                    onClick={() => {
-                      go(screen);
-                    }}
-                  >
-                    {count > 0 && (
-                      <Badge
-                        count={count}
-                        max={9}
-                        tone="neutral"
-                        className="pop-work-badge"
-                        aria-hidden="true"
-                      />
-                    )}
-                    {iconOf(screen)}
-                    <span>{screen.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )
+          <div className="home-tiles" style={tilesStyle}>
+            {shortcuts.map((screen) => {
+              const count = countOf(screen, workCounts.counts);
+              return (
+                <button
+                  key={screen.path}
+                  type="button"
+                  className="home-tile"
+                  aria-label={
+                    count > 0 ? messages.popChrome.remaining.count(screen.name, count) : undefined
+                  }
+                  onClick={() => {
+                    go(screen);
+                  }}
+                >
+                  {count > 0 && (
+                    <span className="cnt" aria-hidden="true">
+                      <PuCount>{count}</PuCount>
+                    </span>
+                  )}
+                  {iconOf(screen)}
+                  <span className="name">{screen.name}</span>
+                </button>
+              );
+            })}
+          </div>
         )}
-      </section>
-    </main>
+      </PuSection>
+    </PuScreen>
   );
 };

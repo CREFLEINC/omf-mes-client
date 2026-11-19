@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { readEquipmentCode, readEquipmentId } from './screen-params';
+import { readEquipmentId } from './screen-params';
 
 const params = (query: string): URLSearchParams => new URLSearchParams(query);
 
@@ -36,16 +36,5 @@ describe('readEquipmentId', () => {
     expect(readEquipmentId(params('equipmentId=0x10'))).toBeNull();
     expect(readEquipmentId(params('equipmentId=1e3'))).toBeNull();
     expect(readEquipmentId(params('equipmentId=%2B5101'))).toBeNull();
-  });
-});
-
-describe('readEquipmentCode', () => {
-  it('표시용 코드를 다듬어 낸다', () => {
-    expect(readEquipmentCode(params('equipmentCode=%20SAMPLE-PRS-01%20'))).toBe('SAMPLE-PRS-01');
-  });
-
-  it('빈 글자를 이름 자리에 넣지 않는다', () => {
-    expect(readEquipmentCode(params('equipmentCode=%20%20'))).toBeNull();
-    expect(readEquipmentCode(params(''))).toBeNull();
   });
 });

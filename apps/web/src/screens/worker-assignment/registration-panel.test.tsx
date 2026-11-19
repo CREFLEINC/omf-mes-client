@@ -118,7 +118,10 @@ describe('RegistrationPanel — 판정이 누구 이야기인가', () => {
     await waitFor(() => {
       expect(screen.getByText(t.failure.wrongType)).toBeInTheDocument();
     });
-    expect(field).toHaveValue('');
+    /* 칸 비우기는 거절 문구가 선 «다음» 렌더에서 일어난다 — 그것까지 기다린다. */
+    await waitFor(() => {
+      expect(field).toHaveValue('');
+    });
   });
 
   it('사람이 붙여넣은 값이 거절당하면 그 값의 말을 한다', async () => {

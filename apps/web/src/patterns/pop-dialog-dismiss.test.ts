@@ -41,7 +41,6 @@ const POP_SCREEN_DIRS = [
   'work-precheck-gate',
   'material-input-scan',
   'tool-usage',
-  'emergency-work-order-field',
   'downtime-register',
   'pop-material-lot-label',
   'goods-issue-qr',

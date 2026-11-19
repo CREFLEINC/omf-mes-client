@@ -1,7 +1,7 @@
-import { AlertBanner, Button } from '@crefle/web-ui';
 import { isForbidden, type ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { PuButton, PuNote } from '../../patterns/pop-uniform';
 import { toApiError } from '../../patterns/request';
 
 /**
@@ -50,20 +50,18 @@ export const LoadErrorBanner = ({ error, onRetry }: LoadErrorBannerProps) => {
   const forbidden = isForbidden(apiError);
 
   return (
-    <div className="banner-slot">
-      <AlertBanner
-        variant="error"
-        title={forbidden ? messages.httpError.title : messages.httpError.loadTitle}
-        action={
-          forbidden ? undefined : (
-            <Button variant="outlined" size="sm" onClick={onRetry}>
-              {messages.common.retry}
-            </Button>
-          )
-        }
-      >
-        {describeLoadError(apiError)}
-      </AlertBanner>
-    </div>
+    <PuNote
+      tone="bad"
+      action={
+        forbidden ? undefined : (
+          <PuButton size="sm" onClick={onRetry}>
+            {messages.common.retry}
+          </PuButton>
+        )
+      }
+    >
+      <b>{forbidden ? messages.httpError.title : messages.httpError.loadTitle}</b>{' '}
+      {describeLoadError(apiError)}
+    </PuNote>
   );
 };

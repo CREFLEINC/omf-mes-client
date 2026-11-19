@@ -145,7 +145,7 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     expect(within(card).getByText(s.overview.rejected(1))).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: pop.queue.selectRow('IR-OQC-0202') })).toBeNull();
 
-    await user.click(screen.getByRole('button', { name: new RegExp(pop.queue.doneHeading, 'u') }));
+    await user.click(screen.getByRole('tab', { name: new RegExp(pop.queue.doneHeading, 'u') }));
     expect(
       await screen.findByRole('button', { name: pop.queue.selectRow('IR-OQC-0202') }),
     ).toBeInTheDocument();

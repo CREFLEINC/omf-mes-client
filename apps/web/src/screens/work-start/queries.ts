@@ -1,5 +1,5 @@
 import type { ApiClient } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { fetchAllPages } from '../../patterns/fetch-all-pages';
@@ -12,13 +12,15 @@ import type {
   WorkSessionWorker,
   Worker,
 } from './types';
+import { EMERGENCY_WORK_ORDER_TYPE_CODE } from './work-order-type';
+import type { ListOrder } from '../../patterns/pop-list-order';
 
 /**
  * 이 화면이 부르는 조회.
  *
  * ```
  * GET /mdm/terminals/{terminalId}                 이 설비가 무엇인가 (equipmentId·Code·Name)
- * GET /production/work-orders                     작업지시 목록 (이 설비 / 전체)
+ * GET /production/work-orders                     작업지시 목록 (이 설비 / 전체 · 긴급)
  * GET /production/work-sessions?workOrderId&open  재개할 «열린» 세션 찾기
  * GET /mdm/workers?workerNo                       사번 확인 (공통 계약 · 귀속이지 인증이 아니다)
  * GET /production/work-sessions/{id}/workers      열린 세션의 지금 참여자
@@ -40,6 +42,16 @@ type Client = ApiClient['client'];
 
 const ALL_KEY = ['work-start'] as const;
 
+/**
+ * 한 쪽 건수를 아직 재지 못했을 때 받는 건수. 목록 구획이 그려지면 구획 높이에 들어가는 만큼으로
+ * 바꿔 묻는다(POP 통일 규칙 1 · #295).
+ */
+export const LIST_SIZE = 20;
+
+/** 목록 정렬 → 서버 정렬 값(계획 시작 일시). */
+const sortOf = (order: ListOrder) =>
+  order === 'newest' ? ('plannedStartAt,desc' as const) : ('plannedStartAt,asc' as const);
+
 export const workStartKeys = {
   all: ALL_KEY,
   terminal: (terminalId: number) => [...ALL_KEY, 'terminal', terminalId] as const,
@@ -47,8 +59,16 @@ export const workStartKeys = {
    * 목록. **설비 축까지 키에 넣는다** — 「이 설비」와 「전체」는 다른 목록이고, 한 키로 묶으면
    * 「전체 보기」를 껐을 때 다른 설비의 지시가 그대로 남는다.
    */
-  workOrders: (equipmentId: number | null, includeUnplanned: boolean, page: number) =>
-    [...ALL_KEY, 'work-orders', equipmentId, includeUnplanned, page] as const,
+  workOrders: (
+    equipmentId: number | null,
+    includeUnplanned: boolean,
+    page: number,
+    size: number = LIST_SIZE,
+    order: ListOrder = 'newest',
+  ) => [...ALL_KEY, 'work-orders', equipmentId, includeUnplanned, page, size, order] as const,
+  /** 「긴급」 보기 — 설비 축이 없는 다른 목록이라 키를 따로 둔다(#295). */
+  emergencyWorkOrders: (page: number, size: number = LIST_SIZE, order: ListOrder = 'newest') =>
+    [...ALL_KEY, 'emergency-work-orders', page, size, order] as const,
   /** 설비 고르기 팝업의 공장 설비 목록. */
   equipments: (plantId: number) => [...ALL_KEY, 'equipments', plantId] as const,
   openSession: (workOrderId: number) => [...ALL_KEY, 'open-session', workOrderId] as const,
@@ -62,9 +82,6 @@ export const workStartKeys = {
 
 /** PQC 대기 조회의 검사 유형. 요구서 §3-12 가 이 값을 그대로 적었다(자매 화면 `P-02-09` 와 같다). */
 const PQC_TYPE_CODE = 'PQC';
-
-/** 한 번에 받아 볼 최대 건수. 1024×768 단말의 목록 구획에 담기는 만큼만 본다. */
-export const LIST_SIZE = 20;
 
 /**
  * 이 단말 한 건 — **「이 설비」의 출처다**(스펙 §8 미결 8 해소 · omf-mes#262).
@@ -94,6 +111,8 @@ const fetchWorkOrders = (
   equipmentId: number | null,
   includeUnplanned: boolean,
   page: number,
+  size: number,
+  order: ListOrder,
 ): Promise<WorkOrderListResponse> =>
   runRequest(() =>
     client.GET('/production/work-orders', {
@@ -127,8 +146,16 @@ const fetchWorkOrders = (
                 plannedEquipmentId: equipmentId,
                 ...(includeUnplanned ? { includeUnplannedEquipment: true } : {}),
               }),
+          /*
+           * 「전체 작업지시」에는 긴급을 싣지 않는다 — 긴급은 「긴급 작업지시」 탭에만(사용자 지시 2026-11-19,
+           * omf-all-around#330). 쪽·총 건수가 맞도록 서버가 뺀다. 이 조건을 모르는 옛 서버면 긴급이 그대로 오고,
+           * 화면은 따로 거르지 않는다.
+           */
+          excludeWorkOrderTypeCode: EMERGENCY_WORK_ORDER_TYPE_CODE,
+          /* 계획 시작 일시로 [최신순 | 오래된순](사용자 지시 2026-11-19) — 쪽을 나누기 전에 서버가 줄 세운다. */
+          sort: sortOf(order),
           page,
-          size: LIST_SIZE,
+          size,
         },
       },
     }),
@@ -146,13 +173,53 @@ export const useWorkOrders = (
   enabled: boolean,
   page = 1,
   includeUnplanned = equipmentId !== null,
+  size = LIST_SIZE,
+  order: ListOrder = 'newest',
 ): UseQueryResult<WorkOrderListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: workStartKeys.workOrders(equipmentId, includeUnplanned, page),
+    queryKey: workStartKeys.workOrders(equipmentId, includeUnplanned, page, size, order),
     enabled,
-    queryFn: () => fetchWorkOrders(client, equipmentId, includeUnplanned, page),
+    /* 쪽 건수·쪽을 바꿔 다시 받는 동안 앞 목록을 그대로 둔다 — 고른 카드가 깜빡 사라지지 않게. */
+    placeholderData: keepPreviousData,
+    queryFn: () => fetchWorkOrders(client, equipmentId, includeUnplanned, page, size, order),
+  });
+};
+
+/**
+ * 「긴급」 보기의 목록(#295) — 옛 「긴급 작업지시」 화면(P-02-12)을 이 목록에 합쳤다.
+ *
+ * ⭐ **옛 화면과 같은 조건이다**: 유형 `EMERGENCY` + `open=true`, 설비 축 없음. 단말 설비로 좁히지 않는다 —
+ *    다른 설비에 계획된 긴급도 작업자가 집어 진행할 수 있었으므로 그대로 다 보인다.
+ * ⭐ `withProgress` 는 «더 받는» 것뿐이다(거르지 않는다) — 고른 W/O 의 마감 안내가 이 값으로 선다.
+ * 「긴급 N」 건수도 이 응답의 `page.total` 이다. 「전체」를 보는 동안에는 첫 쪽만 받는다.
+ */
+export const useEmergencyWorkOrders = (
+  page = 1,
+  size = LIST_SIZE,
+  order: ListOrder = 'newest',
+): UseQueryResult<WorkOrderListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workStartKeys.emergencyWorkOrders(page, size, order),
+    placeholderData: keepPreviousData,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/production/work-orders', {
+          params: {
+            query: {
+              workOrderTypeCode: EMERGENCY_WORK_ORDER_TYPE_CODE,
+              open: true,
+              withProgress: true,
+              sort: sortOf(order),
+              page,
+              size,
+            },
+          },
+        }),
+      ),
   });
 };
 

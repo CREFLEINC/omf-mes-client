@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import type { ListOrder } from '../../patterns/pop-list-order';
 import { runRequest } from '../../patterns/request';
 import { REWORK_WORK_ORDER_TYPE_CODE } from './result';
 
@@ -45,22 +46,29 @@ export const PLANNED_STATUS_CODE = 'PLANNED';
  * ⚠ **질의 축이 하나라 두 번 묻는다.** `open` 은 「배포됐고 안 끝났다」이고 `statusCode` 는
  * 한 값만 받는다. 두 답을 합치되 **쪽 나누기는 배포된 쪽을 따른다** — 배포 전은 건수가 적고,
  * 고를 수 없는 줄이 쪽을 밀어내면 정작 고를 것이 뒤로 넘어간다.
+ *
+ * ⭐ 배포된 쪽의 `size` 는 목록 구획에 들어가는 건수다(#295 · 구획 안 스크롤 없음). 조건·정렬은 그대로.
  */
-export const useReworkWorkOrders = (page = 1) => {
+export const useReworkWorkOrders = (page = 1, size = 20, order: ListOrder = 'newest') => {
   const { client } = useApiClient();
+  /* 계획 시작 일시로 [최신순 | 오래된순](사용자 지시 2026-11-19) — 쪽을 나누기 전에 서버가 줄 세운다. */
+  const sort =
+    order === 'newest' ? ('plannedStartAt,desc' as const) : ('plannedStartAt,asc' as const);
   const open = useQuery({
-    queryKey: [...reworkResultKeys.list, 'open', page],
+    queryKey: [...reworkResultKeys.list, 'open', page, size, order],
+    /* 구획 높이로 쪽 크기가 바뀌어 다시 받는 동안 앞 목록을 그대로 보인다 — 목록·고른 카드가 비어 보이지 않게. */
+    placeholderData: keepPreviousData,
     queryFn: () =>
       runRequest(() =>
         client.GET('/production/work-orders', {
           params: {
-            query: { workOrderTypeCode: REWORK_WORK_ORDER_TYPE_CODE, open: true, page, size: 20 },
+            query: { workOrderTypeCode: REWORK_WORK_ORDER_TYPE_CODE, open: true, sort, page, size },
           },
         }),
       ),
   });
   const planned = useQuery({
-    queryKey: [...reworkResultKeys.list, 'planned'],
+    queryKey: [...reworkResultKeys.list, 'planned', order],
     queryFn: () =>
       runRequest(() =>
         client.GET('/production/work-orders', {
@@ -68,6 +76,7 @@ export const useReworkWorkOrders = (page = 1) => {
             query: {
               workOrderTypeCode: REWORK_WORK_ORDER_TYPE_CODE,
               statusCode: PLANNED_STATUS_CODE,
+              sort,
               page: 1,
               size: 20,
             },

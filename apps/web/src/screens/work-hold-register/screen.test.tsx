@@ -34,6 +34,24 @@ const REASON_ITEMS = [
 ];
 const MOLD_CHANGE_NAME = '금형 교체';
 
+type User = ReturnType<typeof userEvent.setup>;
+
+/** 사유 칸 — 7가지라 칸을 눌러 선택 창으로 고른다(POP 통일 시안 #295 규칙 7). */
+const reasonField = () => screen.findByRole('combobox', { name: t.form.reasonLabel });
+
+/** 사유 칸을 눌러 선택 창에서 사유를 고른다. 목록을 받아 칸이 켜질 때까지 기다린다. */
+const pickReason = async (user: User, name = MOLD_CHANGE_NAME): Promise<void> => {
+  const field = await reasonField();
+  await waitFor(() => {
+    expect(field).toBeEnabled();
+  });
+  await user.click(field);
+  await user.click(await screen.findByRole('option', { name }));
+};
+
+/** 비고 칸 — 이름 옆에 「(선택)」이 붙는다. */
+const remarksField = () => screen.getByLabelText(new RegExp(`^${t.form.remarksLabel}`, 'u'));
+
 const ROUTE = `/pop/work-hold?workOrderId=${String(WORK_ORDER_ID)}&workerNo=${WORKER_NO}`;
 
 const isGet = (request: Request, pathname: string): boolean =>
@@ -102,7 +120,7 @@ describe('P-02-10 작업 중단 등록', () => {
      */
     const panel = await screen.findByLabelText(t.session.sectionLabel);
 
-    expect(within(panel).getByText(t.session.sessionNo(2))).toBeInTheDocument();
+    expect(await within(panel).findByText(t.session.sessionNo(2))).toBeInTheDocument();
     expect(within(panel).getByText('09-02 08:00')).toBeInTheDocument();
   });
 
@@ -114,13 +132,9 @@ describe('P-02-10 작업 중단 등록', () => {
     renderScreen([sessionsRoute([])]);
 
     expect(await screen.findByText(t.session.none)).toBeInTheDocument();
-
-    await waitFor(() => {
-      expect(screen.getAllByRole('radio').length).toBeGreaterThan(0);
-    });
-    for (const radio of screen.getAllByRole('radio')) {
-      expect(radio).toBeDisabled();
-    }
+    /* 「현재 세션」 구획은 빈 모양으로 선다(시안). */
+    expect(screen.getByText(t.session.empty)).toBeInTheDocument();
+    expect(await reasonField()).toBeDisabled();
   });
 
   /**
@@ -166,7 +180,7 @@ describe('P-02-10 작업 중단 등록', () => {
     ]);
 
     const history = await screen.findByLabelText(t.history.sectionLabel);
-    const rows = (await within(history).findAllByRole('row')).slice(1);
+    const rows = await within(history).findAllByRole('listitem');
 
     expect(rows).toHaveLength(3);
     expect(within(rows[1]!).getByText('10:30')).toBeInTheDocument();
@@ -239,17 +253,19 @@ describe('P-02-10 작업 중단 등록', () => {
   it('사유를 서버가 준 차례 그대로 세운다', async () => {
     renderScreen([sessionsRoute([workSession()]), eventsRoute([])]);
 
+    const user = userEvent.setup();
+
     await screen.findByLabelText(t.form.sectionLabel);
-
+    const field = await reasonField();
     await waitFor(() => {
-      expect(screen.getAllByRole('radio')).toHaveLength(REASON_ITEMS.length);
+      expect(field).toBeEnabled();
     });
+    await user.click(field);
 
-    const values = screen.getAllByRole('radio').map((radio) => radio.getAttribute('value'));
-
-    expect(values).toEqual(REASON_ITEMS.map((item) => item.code));
     /* 이름도 서버 것이다 — 화면이 이름표를 들고 있지 않다. */
-    expect(screen.getByRole('radio', { name: MOLD_CHANGE_NAME })).toBeInTheDocument();
+    const names = (await screen.findAllByRole('option')).map((option) => option.textContent);
+
+    expect(names).toEqual(REASON_ITEMS.map((item) => item.codeName));
   });
 
   /*
@@ -277,7 +293,10 @@ describe('P-02-10 작업 중단 등록', () => {
   it('다 받았으면 잘렸다고 말하지 않는다', async () => {
     renderScreen([sessionsRoute([workSession()]), eventsRoute([])]);
 
-    await screen.findByRole('radio', { name: MOLD_CHANGE_NAME });
+    const field = await reasonField();
+    await waitFor(() => {
+      expect(field).toBeEnabled();
+    });
     expect(screen.queryByText(t.form.reasonTruncated)).not.toBeInTheDocument();
   });
 
@@ -304,8 +323,9 @@ describe('P-02-10 작업 중단 등록', () => {
     renderScreen([sessionsRoute([workSession()]), failingRoute(EVENTS_PATH)]);
 
     expect(await screen.findByText(t.history.loadFailed)).toBeInTheDocument();
+    const field = await reasonField();
     await waitFor(() => {
-      expect(screen.getAllByRole('radio')[0]).toBeEnabled();
+      expect(field).toBeEnabled();
     });
   });
 
@@ -333,8 +353,8 @@ describe('P-02-10 작업 중단 등록', () => {
       `/pop/work-hold?workOrderId=${String(WORK_ORDER_ID)}`,
     );
 
-    const header = (await screen.findByRole('heading', { name: t.title })).closest('header');
-    expect(header).not.toHaveTextContent(t.entry.workerUnknown);
+    await screen.findByRole('heading', { name: t.title });
+    expect(screen.queryByText(t.entry.workerUnknown)).toBeNull();
   });
 
   /**
@@ -375,7 +395,7 @@ describe('P-02-10 작업 중단 등록', () => {
 
       renderScreen([sessionsRoute([workSession()]), eventsRoute([]), writePost(sent)]);
 
-      await user.click(await screen.findByRole('radio', { name: MOLD_CHANGE_NAME }));
+      await pickReason(user);
       await user.click(screen.getByRole('button', { name: t.form.stopAction }));
 
       await waitFor(() => {
@@ -419,11 +439,11 @@ describe('P-02-10 작업 중단 등록', () => {
         },
       ]);
 
-      await user.click(await screen.findByRole('radio', { name: MOLD_CHANGE_NAME }));
+      await pickReason(user);
       await user.click(screen.getByRole('button', { name: t.form.stopAction }));
       expect(await screen.findByText('합성 거부 사유입니다.')).toBeVisible();
 
-      await user.click(screen.getByRole('radio', { name: MOLD_CHANGE_NAME }));
+      await pickReason(user);
       await user.click(screen.getByRole('button', { name: t.form.stopAction }));
 
       await waitFor(() => expect(paths(sent)).toEqual([HOLD_PATH, HOLD_PATH, EVENTS_PATH]));
@@ -440,10 +460,8 @@ describe('P-02-10 작업 중단 등록', () => {
 
       renderScreen([sessionsRoute([workSession()]), eventsRoute([]), writePost(sent)]);
 
-      const chosen = await screen.findByRole('radio', { name: MOLD_CHANGE_NAME });
-
-      await user.click(chosen);
-      expect(chosen).toBeChecked();
+      await pickReason(user);
+      expect(await reasonField()).toHaveTextContent(MOLD_CHANGE_NAME);
 
       await user.click(screen.getByRole('button', { name: t.form.stopAction }));
 
@@ -451,7 +469,9 @@ describe('P-02-10 작업 중단 등록', () => {
         expect(sent).toHaveLength(2);
       });
       await waitFor(() => {
-        expect(screen.getByRole('radio', { name: MOLD_CHANGE_NAME })).not.toBeChecked();
+        expect(screen.getByRole('combobox', { name: t.form.reasonLabel })).toHaveTextContent(
+          t.form.reasonPlaceholder,
+        );
       });
     });
 
@@ -465,8 +485,8 @@ describe('P-02-10 작업 중단 등록', () => {
 
       renderScreen([sessionsRoute([workSession()]), eventsRoute([]), writePost(sent)]);
 
-      await user.click(await screen.findByRole('radio', { name: MOLD_CHANGE_NAME }));
-      await user.type(screen.getByLabelText(t.form.remarksLabel), '금형 교체 대기');
+      await pickReason(user);
+      await user.type(remarksField(), '금형 교체 대기');
       await user.click(screen.getByRole('button', { name: t.form.stopAction }));
 
       await waitFor(() => {
@@ -478,16 +498,25 @@ describe('P-02-10 작업 중단 등록', () => {
       expect(await sent[1]!.json()).not.toHaveProperty('note');
     });
 
-    /* ⛔ ⓐ 차단(스펙 §6) — 사유 없이 보내면 정정할 수 없는 기록이 사유 없이 남는다. */
-    it('사유를 고르지 않으면 보내지 않고 말한다', async () => {
+    /*
+     * ⛔ ⓐ 차단(스펙 §6) — 사유 없이 보내면 정정할 수 없는 기록이 사유 없이 남는다.
+     * ⭐ 시안 규칙 3·5 — [중단 등록]은 사유를 고르기 전 흐리게 꺼져 있고, 사유 칸이 빨간 테두리로 말한다.
+     */
+    it('사유를 고르지 않으면 보내지 않는다 — 중단 등록이 꺼져 있고 사유 칸이 빨갛다', async () => {
       const user = userEvent.setup();
       const sent: Request[] = [];
 
       renderScreen([sessionsRoute([workSession()]), eventsRoute([]), writePost(sent)]);
 
-      await user.click(await screen.findByRole('button', { name: t.form.stopAction }));
+      const field = await reasonField();
+      await waitFor(() => {
+        expect(field).toBeEnabled();
+      });
+      expect(field).toHaveAttribute('aria-invalid', 'true');
+      expect(screen.getByRole('button', { name: t.form.stopAction })).toBeDisabled();
 
-      expect(await screen.findByRole('alert')).toHaveTextContent(t.form.reasonRequired);
+      await pickReason(user);
+      expect(screen.getByRole('button', { name: t.form.stopAction })).toBeEnabled();
       expect(sent).toHaveLength(0);
     });
 
@@ -554,7 +583,7 @@ describe('P-02-10 작업 중단 등록', () => {
         },
       ]);
 
-      await user.click(await screen.findByRole('radio', { name: MOLD_CHANGE_NAME }));
+      await pickReason(user);
       await user.click(screen.getByRole('button', { name: t.form.stopAction }));
 
       await waitFor(() => {
@@ -587,7 +616,7 @@ describe('P-02-10 작업 중단 등록', () => {
         },
       ]);
 
-      await user.click(await screen.findByRole('radio', { name: MOLD_CHANGE_NAME }));
+      await pickReason(user);
       const before = sessionReads;
 
       await user.click(screen.getByRole('button', { name: t.form.stopAction }));
@@ -625,10 +654,14 @@ describe('P-02-10 작업 중단 등록', () => {
         writePost([]),
       ]);
 
-      await user.click(await screen.findByRole('radio', { name: MOLD_CHANGE_NAME }));
+      await pickReason(user);
       await user.click(screen.getByRole('button', { name: t.form.stopAction }));
 
-      /* 전송이 닿고 다시 읽기가 끝나 서버 상태(진행 중)로 돌아온 지점. */
+      /* 전송이 닿고 다시 읽기가 끝나 서버 상태(진행 중)로 돌아온 지점 — 등록 뒤 비워진 사유를 다시 고른다. */
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: t.form.resumeAction })).toBeDisabled();
+      });
+      await pickReason(user);
       await waitFor(() => {
         expect(screen.getByRole('button', { name: t.form.stopAction })).toBeEnabled();
       });
@@ -672,8 +705,10 @@ describe('P-02-10 작업 중단 등록', () => {
     });
 
     it('진행 중인 세션에서는 재개가 막힌다', async () => {
+      const user = userEvent.setup();
       renderScreen([sessionsRoute([workSession()]), eventsRoute([])]);
 
+      await pickReason(user);
       await waitFor(() => {
         expect(screen.getByRole('button', { name: t.form.stopAction })).toBeEnabled();
       });
@@ -704,7 +739,7 @@ describe('P-02-10 작업 중단 등록', () => {
     it('비고 칸을 세운다', async () => {
       renderScreen([sessionsRoute([workSession()]), eventsRoute([])]);
 
-      expect(await screen.findByLabelText(t.form.remarksLabel)).toBeInTheDocument();
+      expect(await Promise.resolve(remarksField())).toBeInTheDocument();
     });
   });
 
@@ -859,7 +894,7 @@ describe('P-02-10 작업 중단 등록', () => {
           },
         );
 
-        await user.click(await screen.findByRole('radio', { name: MOLD_CHANGE_NAME }));
+        await pickReason(user);
         await user.click(screen.getByRole('button', { name: t.form.stopAction }));
 
         expect(await screen.findByText(message)).toBeVisible();
@@ -993,7 +1028,9 @@ describe('P-02-10 사유 목록을 받아 두면 끊겨도 고를 수 있다 (#1
 
     renderScreen([failingRoute(CODE_VALUES_PATH), sessionsRoute([workSession()]), eventsRoute([])]);
 
-    expect(await screen.findByRole('radio', { name: MOLD_CHANGE_NAME })).toBeTruthy();
+    const user = userEvent.setup();
+    await pickReason(user);
+    expect(await reasonField()).toHaveTextContent(MOLD_CHANGE_NAME);
   });
 
   /* ⚠ 최신이 아닐 수 있다는 사실을 숨기지 않는다 — 마스터의 증감이 여기 비치지 않는다. */

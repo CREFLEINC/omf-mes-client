@@ -4,51 +4,49 @@ import { common } from './common';
 
 /** P-05-02 비가동 실적 입력(POP). */
 export const downtimeRegister: Translated<typeof ko.downtimeRegister> = {
-  title: 'Nhập kết quả dừng máy',
   header: {
-    /* ⭐ 「설비 <이름>」으로 읽힌다 — 이름이 비면 코드(사용자 지시 2026-09-14). */
-    equipment: (equipmentCode: string, equipmentName: string): string =>
-      `Thiết bị ${equipmentName.trim() === '' ? equipmentCode : equipmentName}`,
     unsent: (count: number): string => `Chờ gửi ${String(count)} mục`,
     offline: common.connection.offline,
   },
   ongoing: {
     title: 'Dừng máy đang diễn ra',
-    elapsed: (startedAtLabel: string, elapsedLabel: string): string =>
-      `Từ ${startedAtLabel}, đã ${elapsedLabel}`,
+    loading: 'Đang kiểm tra dừng máy đang diễn ra.',
+    since: (startedAtLabel: string): string => `Đang diễn ra từ ${startedAtLabel}`,
     reason: (reasonName: string): string => `Lý do: ${reasonName}`,
-    close: 'Kết thúc ngay',
+    close: 'Kết thúc dừng máy',
     closed: 'Đã kết thúc dừng máy',
     closedQueued:
       'Đã lưu kết thúc. Sẽ gửi lên máy chủ khi có kết nối; giờ kết thúc được ghi theo lúc máy chủ nhận.',
     blocksNew: 'Hãy kết thúc dừng máy đang diễn ra trước.',
   },
   interval: {
-    title: 'Khoảng',
     startedAt: 'Bắt đầu',
     endedAt: 'Kết thúc',
+    startedAtLabel: 'Thời điểm bắt đầu',
+    endedAtLabel: 'Thời điểm kết thúc',
     date: 'Ngày',
     time: 'Giờ',
     now: 'Bây giờ',
     stillOngoing: 'Vẫn đang diễn ra',
-    duration: (value: string): string => `Thời gian bắt đầu~kết thúc ${value}`,
-    durationEmpty: common.reference.empty,
+    duration: 'Thời gian dừng máy',
+    durationAuto: 'Tự tính',
   },
   reason: {
     title: 'Lý do',
     detail: 'Lý do dừng máy',
-    detailPlaceholder: 'Chọn lý do',
+    detailPlaceholder: 'Hãy chọn lý do dừng máy',
     remarks: 'Ghi chú',
-    remarksPlaceholder: 'Nhập nội dung cần thiết ngoài mã lý do',
+    remarksPlaceholder: 'Nhập nội dung cần thiết',
+    optional: '(tùy chọn)',
   },
   breakdown: {
     title: 'Sự cố liên kết',
-    select: 'Liên kết sự cố',
+    select: 'Hãy chọn sự cố',
     detach: 'Gỡ',
-    empty: 'Thiết bị này không có sự cố đang mở',
+    empty: 'Không có sự cố đang xử lý.',
     suggestStart: (timeLabel: string): string =>
-      `Dùng giờ dừng ${timeLabel} của sự cố này làm giờ bắt đầu?`,
-    applySuggestion: 'Đưa vào giờ bắt đầu',
+      `Nhập thời điểm của sự cố liên kết (${timeLabel}) vào giờ bắt đầu?`,
+    applySuggestion: 'Nhập vào giờ bắt đầu',
     offlineNotice: 'Trong lúc mất kết nối, không thấy sự cố do máy trạm khác tiếp nhận.',
   },
   today: {
@@ -64,8 +62,8 @@ export const downtimeRegister: Translated<typeof ko.downtimeRegister> = {
     loadFailed: 'Không tải được bản ghi hôm nay.',
     retry: 'Thử lại',
     columns: {
-      interval: 'Khoảng',
-      duration: 'Thời gian bắt đầu~kết thúc',
+      interval: 'Thời điểm',
+      duration: 'Thời gian dừng máy',
       reason: 'Lý do',
       remarks: 'Ghi chú',
     },
@@ -76,7 +74,7 @@ export const downtimeRegister: Translated<typeof ko.downtimeRegister> = {
     ongoingRow: 'Đang diễn ra',
   },
   actions: {
-    reset: 'Nhập lại',
+    reset: 'Xóa nhập liệu',
     save: 'Lưu kết quả',
     saved: 'Đã lưu kết quả dừng máy',
     queued: 'Đã lưu. Sẽ gửi lên máy chủ khi có kết nối.',

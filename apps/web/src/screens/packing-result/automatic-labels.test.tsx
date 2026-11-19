@@ -317,7 +317,8 @@ describe('AutomaticLabels', () => {
 
       expect(await screen.findByText(t.reissueRequired(1))).toBeInTheDocument();
       expect(screen.queryByText(/포장 라벨 출력 -/u)).not.toBeInTheDocument();
-      expect(screen.getByRole('button', { name: t.openReissue })).toBeEnabled();
+      /* 안내 줄은 문장만 — [라벨 상태·재인쇄]는 화면 아래 작업 줄에 있다(사용자 결정 2026-11-19). */
+      expect(screen.queryByRole('button', { name: t.openReissue })).not.toBeInTheDocument();
       expect(issued).toHaveLength(0);
     },
   );

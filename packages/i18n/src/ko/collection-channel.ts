@@ -183,7 +183,7 @@ export const collectionChannel = {
     fields: {
       channelKey: '신호 이름',
       lastValue: '최근 값',
-      observedAt: '받은 시각',
+      observedAt: '받은 일시',
     },
     /** ⚠ 시각을 아는 척 다듬지 않는다 — 서버가 준 표기를 그대로 세운다. */
     notRecorded: '기록 없음',

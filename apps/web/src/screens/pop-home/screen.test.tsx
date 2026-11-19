@@ -19,10 +19,11 @@ const SESSION = {
 };
 
 const Here = () => {
-  const { pathname, state } = useLocation();
+  const { pathname, search, state } = useLocation();
   return (
     <>
       <p>지금: {pathname}</p>
+      {search !== '' && <p>주소 조건: {search}</p>}
       {state !== null && <p>넘긴 것: {JSON.stringify(state)}</p>}
     </>
   );
@@ -46,6 +47,7 @@ const setup = (
   equipment: typeof EQUIPMENT | null = null,
   workOrderQueries: URL[] = [],
   terminalId: number | null = null,
+  next: Record<string, unknown> = NEXT,
 ) =>
   renderWithProviders(
     <PopIdentityProvider
@@ -67,7 +69,7 @@ const setup = (
             workOrderQueries.push(url);
             const status = url.searchParams.get('statusCode') ?? '';
             return jsonResponse({
-              items: status === 'RELEASED' ? [NEXT] : [],
+              items: status === 'RELEASED' ? [next] : [],
               page: { page: 1, size: 1, total: TOTALS[status] ?? 0 },
             });
           },
@@ -101,16 +103,16 @@ describe('PopHomeScreen — 홈(#291)', () => {
     expect(screen.getByRole('heading', { name: t.greeting('2048') })).toBeInTheDocument();
     const remaining = await within(
       screen.getByRole('region', { name: new RegExp(`^${t.remainingTitle}`, 'u') }),
-    ).findByRole('button', { name: messages.popChrome.remaining.count('작업 지시 목록', 3) });
+    ).findByRole('button', { name: messages.popChrome.remaining.count('작업지시 목록', 3) });
     expect(remaining).toHaveTextContent(t.remainingCount(3));
 
     const shortcuts = within(screen.getByRole('region', { name: t.shortcutsTitle }));
     expect(
       shortcuts
         .getAllByRole('button')
-        .filter((button) => button.classList.contains('pop-home__tile'))
-        .map((tile) => tile.querySelector('span:last-child')?.textContent),
-    ).toEqual(['생산 작업', '작업 지시 목록']);
+        .filter((button) => button.classList.contains('home-tile'))
+        .map((tile) => tile.querySelector('.name')?.textContent),
+    ).toEqual(['생산 작업', '작업지시 목록']);
     expect(screen.queryByText('출하 포장')).toBeNull();
   });
 
@@ -121,7 +123,7 @@ describe('PopHomeScreen — 홈(#291)', () => {
     await user.click(
       await within(
         screen.getByRole('region', { name: new RegExp(`^${t.remainingTitle}`, 'u') }),
-      ).findByRole('button', { name: messages.popChrome.remaining.count('작업 지시 목록', 3) }),
+      ).findByRole('button', { name: messages.popChrome.remaining.count('작업지시 목록', 3) }),
     );
     expect(screen.getByText('지금: /pop/work-start')).toBeInTheDocument();
   });
@@ -160,10 +162,12 @@ describe('PopHomeScreen — 홈(#291)', () => {
     expect(card.getByText(t.nextPlan('FG-COVER', '200'))).toBeInTheDocument();
 
     /*
-     * 진행·대기는 작업 지시 목록과 같은 조건(open)·설비 축으로, 완료는 오늘 0시 이후 갱신분(updatedSince)으로
+     * 진행·대기는 작업지시 목록과 같은 조건(open)·설비 축으로, 완료는 오늘 0시 이후 갱신분(updatedSince)으로
      * 묻는다 — POP 단말은 그 두 길로만 목록을 읽는다(서버 단말 읽기 규칙 · #291).
      */
-    expect(queries.map((url) => url.searchParams.get('statusCode')).sort()).toEqual([
+    /* 수만 세는 조회(목록 줄은 `withProgress` 로 따로 받는다 — 아래 목록 시험). */
+    const counts = queries.filter((url) => url.searchParams.get('withProgress') === null);
+    expect(counts.map((url) => url.searchParams.get('statusCode')).sort()).toEqual([
       'COMPLETED,CLOSED',
       'IN_PROGRESS',
       'RELEASED',
@@ -176,8 +180,58 @@ describe('PopHomeScreen — 홈(#291)', () => {
       expect(url.searchParams.get('includeUnplannedEquipment')).toBe('true');
     }
 
-    /* 다음 작업을 누르면 그 W/O 를 고른 채로 작업 지시 목록을 연다 — 홈에서 보던 설비 범위(지정 설비)와 함께. */
+    /* 다음 작업을 누르면 그 W/O 를 고른 채로 작업지시 목록을 연다 — 홈에서 보던 설비 범위(지정 설비)와 함께. */
     await user.click(card.getByRole('button', { name: new RegExp(NEXT.workOrderNo, 'u') }));
+    expect(screen.getByText('지금: /pop/work-start')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `넘긴 것: ${JSON.stringify({ workOrderId: NEXT.workOrderId, allEquipment: false })}`,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /* 작업지시 목록 「전체」는 긴급을 뺀다(#330) — 긴급 다음 작업은 「긴급」 보기로 열어야 고른 채로 보인다. */
+  it('다음 작업이 긴급 W/O 면 작업지시 목록을 「긴급」 보기로 연다', async () => {
+    const user = userEvent.setup();
+    setup({}, EQUIPMENT, [], null, { ...NEXT, workOrderTypeCode: 'EMERGENCY' });
+
+    const card = within(await screen.findByRole('region', { name: t.statusTitle }));
+    await user.click(await card.findByRole('button', { name: new RegExp(NEXT.workOrderNo, 'u') }));
+    expect(screen.getByText('지금: /pop/work-start')).toBeInTheDocument();
+    expect(screen.getByText('주소 조건: ?type=emergency')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `넘긴 것: ${JSON.stringify({ workOrderId: NEXT.workOrderId, allEquipment: false })}`,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('진행 중·대기·완료 칸을 누르면 그 작업지시를 아래에 보이고, 줄을 누르면 작업지시 목록으로 간다', async () => {
+    const user = userEvent.setup();
+    const queries: URL[] = [];
+    setup({}, EQUIPMENT, queries);
+
+    const card = within(await screen.findByRole('region', { name: t.statusTitle }));
+    const tile = (label: string) =>
+      card.getByRole('button', { name: new RegExp(`^${label}`, 'u'), pressed: undefined });
+    /* 처음에는 진행 중 — 이 시험의 진행 중 목록은 비어 있다. */
+    expect(tile(t.inProgress)).toHaveAttribute('aria-pressed', 'true');
+    expect(await card.findByText(t.listEmpty)).toBeInTheDocument();
+
+    await user.click(tile(t.waiting));
+    expect(tile(t.waiting)).toHaveAttribute('aria-pressed', 'true');
+    const row = await card.findByRole('button', { name: new RegExp(`${t.listPlan('200')}$`, 'u') });
+    const listed = queries.filter((url) => url.searchParams.get('withProgress') === 'true');
+    expect(listed.map((url) => url.searchParams.get('statusCode'))).toEqual([
+      'IN_PROGRESS',
+      'RELEASED',
+    ]);
+    for (const url of listed) {
+      expect(url.searchParams.get('open')).toBe('true');
+      expect(url.searchParams.get('plannedEquipmentId')).toBe('31');
+    }
+
+    await user.click(row);
     expect(screen.getByText('지금: /pop/work-start')).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -191,16 +245,17 @@ describe('PopHomeScreen — 홈(#291)', () => {
     const queries: URL[] = [];
     setup({}, EQUIPMENT, queries, 7);
 
-    const toggle = within(await screen.findByRole('group', { name: t.statusScopeLabel }));
-    expect(toggle.getByRole('button', { name: t.statusMyEquipment('조립 1호기') })).toHaveAttribute(
-      'aria-pressed',
+    const toggle = within(await screen.findByRole('tablist', { name: t.statusScopeLabel }));
+    expect(toggle.getByRole('tab', { name: t.statusMyEquipment('조립 1호기') })).toHaveAttribute(
+      'aria-selected',
       'true',
     );
-    await waitFor(() => expect(queries).toHaveLength(3));
+    /* 수 셋 + 고른 칸(진행 중) 목록 하나. */
+    await waitFor(() => expect(queries).toHaveLength(4));
 
-    await user.click(toggle.getByRole('button', { name: t.statusEveryEquipment }));
-    await waitFor(() => expect(queries).toHaveLength(6));
-    for (const url of queries.slice(3)) {
+    await user.click(toggle.getByRole('tab', { name: t.statusEveryEquipment }));
+    await waitFor(() => expect(queries).toHaveLength(8));
+    for (const url of queries.slice(4)) {
       expect(url.searchParams.get('plannedEquipmentId')).toBeNull();
     }
   });
@@ -219,7 +274,7 @@ describe('PopHomeScreen — 홈(#291)', () => {
     }
   });
 
-  it('[편집]으로 바로가기를 빼고 넣으면 단말에 남고, [기본으로] 되돌린다', async () => {
+  it('[편집]으로 바로가기를 빼고 넣으면 단말에 남고, [기본 설정]으로 되돌린다', async () => {
     const user = userEvent.setup();
     /* 비가동 실적 입력은 설비가 지정된 단말에만 선다(#291) — 그래서 설비를 준다. */
     setup({}, EQUIPMENT);
@@ -229,11 +284,11 @@ describe('PopHomeScreen — 홈(#291)', () => {
     const tileNames = () =>
       shortcuts()
         .getAllByRole('button')
-        .filter((button) => button.classList.contains('pop-home__tile'))
-        .map((tile) => tile.querySelector('span:last-child')?.textContent);
+        .filter((button) => button.classList.contains('home-tile'))
+        .map((tile) => tile.querySelector('.name')?.textContent);
 
     await waitFor(() => {
-      expect(tileNames()).toEqual(['생산 작업', '작업 지시 목록']);
+      expect(tileNames()).toEqual(['생산 작업', '작업지시 목록']);
     });
 
     await user.click(shortcuts().getByRole('button', { name: t.edit }));
@@ -241,7 +296,7 @@ describe('PopHomeScreen — 홈(#291)', () => {
     await user.click(shortcuts().getByRole('button', { name: '비가동 실적 입력' }));
     await user.click(shortcuts().getByRole('button', { name: t.editDone }));
 
-    expect(tileNames()).toEqual(['작업 지시 목록', '비가동 실적 입력']);
+    expect(tileNames()).toEqual(['작업지시 목록', '비가동 실적 입력']);
     expect(JSON.parse(window.localStorage.getItem('omf.pop.home.shortcuts') ?? 'null')).toEqual([
       '/pop/work-start',
       '/pop/downtime',
@@ -250,7 +305,7 @@ describe('PopHomeScreen — 홈(#291)', () => {
     await user.click(shortcuts().getByRole('button', { name: t.edit }));
     await user.click(shortcuts().getByRole('button', { name: t.editReset }));
     await user.click(shortcuts().getByRole('button', { name: t.editDone }));
-    expect(tileNames()).toEqual(['생산 작업', '작업 지시 목록']);
+    expect(tileNames()).toEqual(['생산 작업', '작업지시 목록']);
     expect(window.localStorage.getItem('omf.pop.home.shortcuts')).toBeNull();
   });
 });

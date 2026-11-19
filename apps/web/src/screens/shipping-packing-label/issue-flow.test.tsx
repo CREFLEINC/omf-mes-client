@@ -247,27 +247,20 @@ describe('진입', () => {
 });
 
 describe('대상 고르기', () => {
-  it('마감하지 않은 출하 단위는 골라도 선택으로 남지 않는다', async () => {
+  /* 발행할 수 없는 대상은 발행 대기에 두지 않는다(사용자 지시 2026-11-19). */
+  it('마감하지 않은 출하 단위는 발행 대기에 서지 않아 선택으로 남을 수 없다', async () => {
     const { user } = renderFlow();
 
     await user.click(await screen.findByRole('radio', { name: /납품라벨/u }));
-    await screen.findByText('SYN-SU-0002');
-
-    const boxes = screen.getAllByRole('checkbox');
-    /* 첫 칸은 전체 선택이라 건너뛴다 — 줄 상자는 그 뒤에 온다. */
-    const waitingRow = boxes[2];
-
-    expect(waitingRow).toBeDefined();
-    await user.click(waitingRow as HTMLElement);
+    await screen.findByText('SYN-SU-0001');
 
     /*
      * ⛔ 고를 수 없는 대상이 선택으로 남으면 발행 본문에 실려 **전건 실패**가 된다 —
      * 「하나라도 실패하면 전건 실패」라 고를 수 있었던 대상까지 함께 못 나간다.
      */
+    expect(screen.queryByText('SYN-SU-0002')).not.toBeInTheDocument();
     /* ⭐ 「발행할 대상을 고르세요」 문구는 적지 않는다 — 발행 단추 잠김으로 본다(사용자 지시 2026-09-17). */
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: '발행·인쇄' })).toBeDisabled();
-    });
+    expect(screen.getByRole('button', { name: '발행·인쇄' })).toBeDisabled();
     expect(screen.queryByText('발행할 대상을 고르세요.')).not.toBeInTheDocument();
   });
 });
@@ -410,13 +403,17 @@ describe('재발행', () => {
     const { user, sent } = renderFlow({ issued: { [CLOSED_UNIT_ID]: 1 } });
 
     await user.click(await screen.findByRole('radio', { name: /납품라벨/u }));
+    // 한 번 이상 발행한 대상은 「재발행」 탭에 선다.
+    await user.click(
+      await screen.findByRole('tab', { name: messages.shippingPackingLabel.tabs.reissue }),
+    );
     await screen.findByText('SYN-SU-0001');
     await user.click(screen.getAllByRole('checkbox')[1] as HTMLElement);
 
     expect(await screen.findByText('재발행 사유를 고르면 발행할 수 있습니다.')).toBeInTheDocument();
 
     await user.click(
-      screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }),
+      screen.getByRole('button', { name: messages.shippingPackingLabel.actions.reissue }),
     );
 
     /* ⛔ 사유 없이 나가면 DB 제약이 저장을 막는다 — 화면이 먼저 멈춰야 한다. */

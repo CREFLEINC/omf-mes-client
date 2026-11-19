@@ -10,14 +10,20 @@ export const workHoldRegister: Translated<typeof ko.workHoldRegister> = {
     workerLabel: 'Mã nhân viên',
     workerUnknown: 'Chưa xác nhận mã nhân viên',
     missingWorkOrder:
-      'Chưa nhận được lệnh sản xuất. Hãy chọn lệnh ở màn hình danh sách lệnh sản xuất rồi vào lại.',
+      'Chưa nhận được lệnh sản xuất. Hãy chọn lệnh sản xuất ở danh sách lệnh sản xuất rồi vào lại.',
+  },
+  band: {
+    title: 'Lệnh sản xuất (W/O)',
+    process: 'Công đoạn',
+    item: 'Sản phẩm',
+    planQty: 'SL kế hoạch',
   },
   session: {
     sectionLabel: 'Phiên hiện tại',
+    empty: 'Không có phiên làm việc đang chạy.',
     sessionNo: (no: number) => `Phiên #${String(no)}`,
     startedLabel: 'Bắt đầu',
     elapsedLabel: 'Đã qua',
-    statusLabel: 'Trạng thái',
     loading: 'Đang kiểm tra phiên.',
     loadFailed: 'Không tải được phiên hiện tại.',
     none: 'Không có phiên làm việc đang chạy nên không đăng ký tạm dừng được. Hãy bắt đầu công việc trước.',
@@ -27,9 +33,6 @@ export const workHoldRegister: Translated<typeof ko.workHoldRegister> = {
   },
   history: {
     sectionLabel: 'Lịch sử sự kiện',
-    timeColumn: 'Giờ',
-    typeColumn: 'Loại',
-    reasonColumn: 'Lý do',
     empty: 'Chưa có sự kiện nào được ghi.',
     loadFailed: 'Không tải được lịch sử sự kiện.',
   },
@@ -47,6 +50,9 @@ export const workHoldRegister: Translated<typeof ko.workHoldRegister> = {
       'Mất kết nối nên đang hiện danh sách lý do đã nhận trước đó. Có thể không phải mới nhất.',
     /** ⭐ 비고는 작업지시 중단 본문이 받는다 — 적은 것이 실제로 저장된다. */
     remarksLabel: 'Ghi chú',
+    optional: '(tùy chọn)',
+    reasonPlaceholder: 'Chọn lý do tạm dừng',
+    reset: 'Xóa nhập',
     stopAction: 'Đăng ký tạm dừng',
     resumeAction: 'Tiếp tục',
     alreadyStopped: 'Phiên này đã tạm dừng. Có thể tiếp tục.',
@@ -81,6 +87,11 @@ export const workHoldRegister: Translated<typeof ko.workHoldRegister> = {
     RUNNING: 'Đang chạy',
     STOPPED: 'Tạm dừng',
     ENDED: 'Đã kết thúc',
+  },
+  toast: {
+    stopped: 'Đã đăng ký tạm dừng.',
+    resumed: 'Đã đăng ký tiếp tục.',
+    ended: 'Đã kết thúc phiên.',
   },
   errors: {
     retry: 'Thử lại',

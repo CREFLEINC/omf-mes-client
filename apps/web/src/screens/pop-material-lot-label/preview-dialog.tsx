@@ -1,42 +1,28 @@
-import { Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
 import { formatBaseQty, formatPackage } from '../../patterns/package-qty';
 import { plantToday } from '../../patterns/plant-time';
-import { popTouchClass } from '../../patterns/pop-touch';
+import { PuButton, PuDialog } from '../../patterns/pop-uniform';
 import type { LabelLot } from './types';
 
 const t = messages.popMaterialLotLabel.preview;
 
 export interface PreviewDialogProps {
   lots: readonly LabelLot[];
-  /** 다시 인쇄면 고른 사유 이름 — 첫 발행이면 null. */
+  /** 재인쇄면 고른 사유 이름 — 첫 발행이면 null. */
   reasonName: string | null;
-  printerName: string | null;
   onCancel: () => void;
   onPrint: () => void;
 }
 
-const QrMark = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-    <path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM18 18h3v3h-3zM5 5h3v3H5zM16 5h3v3h-3zM5 16h3v3H5z" />
-  </svg>
-);
-
 /**
- * 라벨 미리 보기(screens/P-01-01.md 「라벨 미리 보기」 · FR-007·008).
+ * 라벨 미리 보기(screens/P-01-01.md 「라벨 미리 보기」 · FR-007·008 · 규칙 16 — 머리 X 없이 [취소] + [N장 인쇄]).
  *
  * ⭐ 실제 라벨은 POP 이 TSPL 로 짠다(`label-tspl`) — 여기는 **무엇이 실리는가**를 보이는 그림이다. QR 에는
- *    자재 관리 LOT 번호만 실린다(지금 규칙). 다시 인쇄면 「재발행 N회」(다음 회차)를 함께 보인다.
+ *    자재 관리 LOT 번호만 실린다(지금 규칙). 재인쇄면 「재인쇄 N회」(다음 회차)를 함께 보인다.
  */
-export const PreviewDialog = ({
-  lots,
-  reasonName,
-  printerName,
-  onCancel,
-  onPrint,
-}: PreviewDialogProps) => {
+export const PreviewDialog = ({ lots, reasonName, onCancel, onPrint }: PreviewDialogProps) => {
   const [index, setIndex] = useState(0);
   const lot = lots[Math.min(index, lots.length - 1)];
   const isReprint = reasonName !== null;
@@ -46,95 +32,58 @@ export const PreviewDialog = ({
   const packageText = formatPackage(lot.package);
 
   return (
-    <Dialog
-      open
-      /* POP 팝업은 바깥을 눌러 닫히지 않는다(#1005) — 장갑 낀 손이 창 밖을 스치면 사라졌다. */
-      closeOnBackdropClick={false}
-      onClose={onCancel}
+    <PuDialog
       title={isReprint ? t.reprintTitle : t.title}
-      size="lg"
-      className="pop-mlot-preview-dialog"
+      onClose={onCancel}
       footer={
         <>
-          <span className="pop-mlot-hint pop-mlot-preview-printer">
-            {printerName === null ? t.printerDefault : t.printer(printerName)}
-          </span>
-          <Button
-            className={popTouchClass('normal')}
-            variant="outlined"
-            size="xl"
-            onClick={onCancel}
-          >
-            {t.cancel}
-          </Button>
-          <Button className={popTouchClass('primary')} size="xl" onClick={onPrint}>
+          {/* 장 수는 [N장 인쇄]가 이미 말한다 — 따로 두지 않는다(사용자 지시 2026-11-19). */}
+          <PuButton onClick={onCancel}>{t.close}</PuButton>
+          <PuButton variant="primary" icon="print" onClick={onPrint}>
             {isReprint ? t.reprint(lots.length) : t.print(lots.length)}
-          </Button>
+          </PuButton>
         </>
       }
     >
-      <p className="pop-mlot-hint">
-        {t.note}
-        {reasonName === null ? '' : t.reprintNote(reasonName)}
-      </p>
-      <figure className="pop-mlot-label-preview" aria-label={lot.lotNo}>
-        <div className="pop-mlot-label-qr">
-          <QrMark />
-          <span className="pop-mlot-cell-lot">{lot.lotNo}</span>
-        </div>
-        <dl className="pop-mlot-label-fields">
-          <div className="pop-mlot-label-head">
-            <span>{t.kind}</span>
-            <span>{plantToday()}</span>
-          </div>
-          <dt>{t.item}</dt>
-          <dd>
-            <strong>{lot.itemCode}</strong>
-            <br />
-            {lot.itemName}
-          </dd>
-          <dt>{t.qty}</dt>
-          <dd className="pop-mlot-label-big">{formatBaseQty(lot.lotQty, lot.uomCode)}</dd>
-          {packageText === null ? null : (
-            <>
-              <dt>{t.package}</dt>
-              <dd className="pop-mlot-label-pkg">{packageText}</dd>
-            </>
-          )}
-          <dt>{t.supplier}</dt>
-          <dd>{`${lot.supplierName} (${lot.supplierCode})`}</dd>
-        </dl>
+      <figure className="pu-label-preview mll-preview" aria-label={lot.lotNo}>
+        <b>{`${t.kind} · ${plantToday()}`}</b>
+        <div className="qr" aria-hidden="true" />
+        <b className="mll-preview-code">{lot.itemCode}</b>
+        <span>{lot.itemName}</span>
+        <span>
+          {`${t.qty} `}
+          <b className="mll-preview-qty">{formatBaseQty(lot.lotQty, lot.uomCode)}</b>
+          {packageText === null ? null : ` · ${packageText}`}
+        </span>
+        <span>{`${lot.supplierName} (${lot.supplierCode})`}</span>
+        <span className="pu-mono mll-preview-lot">{lot.lotNo}</span>
         {isReprint ? (
-          <span className="pop-mlot-label-reissue">
+          <span className="mll-preview-reissue">
             {t.reissue((lot.lastIssue?.issueSeq ?? 0) + 1)}
           </span>
         ) : null}
       </figure>
-      <nav className="pop-mlot-preview-pager" aria-label={t.page(index + 1, lots.length)}>
-        <Button
-          className={popTouchClass('normal')}
-          variant="outlined"
-          size="xl"
-          disabled={index <= 0}
-          onClick={() => {
-            setIndex(index - 1);
-          }}
-        >
-          {t.prev}
-        </Button>
-        <span className="pop-mlot-preview-page">{t.page(index + 1, lots.length)}</span>
-        <Button
-          className={popTouchClass('normal')}
-          variant="outlined"
-          size="xl"
-          disabled={index >= lots.length - 1}
-          onClick={() => {
-            setIndex(index + 1);
-          }}
-        >
-          {t.next}
-        </Button>
-      </nav>
-    </Dialog>
+      {lots.length > 1 ? (
+        <nav className="mll-preview-pager" aria-label={t.page(index + 1, lots.length)}>
+          <PuButton
+            disabled={index <= 0}
+            onClick={() => {
+              setIndex(index - 1);
+            }}
+          >
+            {t.prev}
+          </PuButton>
+          <span>{t.page(index + 1, lots.length)}</span>
+          <PuButton
+            disabled={index >= lots.length - 1}
+            onClick={() => {
+              setIndex(index + 1);
+            }}
+          >
+            {t.next}
+          </PuButton>
+        </nav>
+      ) : null}
+    </PuDialog>
   );
 };

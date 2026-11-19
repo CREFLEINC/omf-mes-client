@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -70,6 +70,13 @@ const box = (handlingUnitId: number, handlingUnitNo: string, seq: number) => ({
   contents: [content('F534F50200', 'SEED-0001')],
 });
 
+/** 「구성 완료」 탭에 서는 마감한 출하 단위. */
+const CLOSED_UNIT = {
+  ...unit({ shippingUnitId: 9100, shippingUnitNo: 'SU-20260916-0003', statusCode: 'CLOSED' }),
+  boxCount: 1,
+  closedAt: '2026-09-16T17:40:00+09:00',
+};
+
 interface Options {
   /** 상세가 돌려줄 판들. 부를 때마다 앞에서 하나씩 꺼낸다 — 쓰기 뒤 갱신을 흉내 낸다. */
   details?: Record<string, unknown>[];
@@ -81,12 +88,19 @@ interface Options {
   etags?: string[];
   /** 셸 문맥의 사번. 주지 않으면 `IDENTITY` 의 것. */
   workerNo?: string | null;
+  /** 납품 라벨 발행 이력(`GET /app/document-issues`) — 회차·인쇄 결과. `'fail'` 이면 500. */
+  history?: { issueSeq: number; printOutcome: string }[] | 'fail';
+  /** 출하 목록이 부를 때마다 돌려줄 미등록 상자 수 차례. 주지 않으면 늘 4. */
+  unassigned?: number[];
+  /** 출하 단위 유형(SHIPPING_UNIT_TYPE). 주지 않으면 팔레트 하나. */
+  types?: { code: string; codeName: string }[];
 }
 
 const renderScreen = (options: Options = {}) => {
   const details = options.details ?? [unit()];
   const etags = options.etags ?? ['"1"'];
   let detailCall = 0;
+  let shipmentCall = 0;
   let etagCall = 0;
 
   const nextEtag = (): string => etags[Math.min(etagCall++, etags.length - 1)] ?? '"1"';
@@ -107,25 +121,35 @@ const renderScreen = (options: Options = {}) => {
       respond: async (request) => {
         await record(request);
 
-        return jsonResponse({ items: [SHIPMENT], page: { page: 1, size: 50, total: 1 } });
+        const counts = options.unassigned ?? [SHIPMENT.unassignedPackedBoxCount];
+        const count = counts[Math.min(shipmentCall++, counts.length - 1)] ?? 0;
+
+        return jsonResponse({
+          items: [{ ...SHIPMENT, unassignedPackedBoxCount: count }],
+          page: { page: 1, size: 50, total: 1 },
+        });
       },
     },
     {
       match: (request) => pathOf(request) === '/mdm/code-values',
-      respond: () =>
-        jsonResponse({
-          items: [
-            {
-              codeValueId: 1,
-              codeGroupId: 1,
-              code: 'PALLET',
-              codeName: '팔레트',
-              displayOrder: 1,
-              isActive: true,
-            },
-          ],
-          page: { page: 1, size: 100, total: 1 },
-        }),
+      respond: (request) => {
+        const reissue = new URL(request.url).searchParams.get('codeGroupCode') === 'REISSUE_REASON';
+        const types = reissue
+          ? [{ code: 'DAMAGED', codeName: '라벨 훼손' }]
+          : (options.types ?? [{ code: 'PALLET', codeName: '팔레트' }]);
+
+        return jsonResponse({
+          items: types.map((type, index) => ({
+            codeValueId: index + 1,
+            codeGroupId: 1,
+            code: type.code,
+            codeName: type.codeName,
+            displayOrder: index + 1,
+            isActive: true,
+          })),
+          page: { page: 1, size: 100, total: types.length },
+        });
+      },
     },
     {
       match: (request) => pathOf(request) === '/app/printers',
@@ -135,6 +159,18 @@ const renderScreen = (options: Options = {}) => {
             { printerName: 'label-a', displayName: '라벨 A', status: 'READY', isDefault: true },
           ],
         }),
+    },
+    {
+      match: (request) =>
+        request.method === 'GET' && pathOf(request) === '/logistics/shipping-units',
+      respond: async (request) => {
+        await record(request);
+
+        return jsonResponse({
+          items: [CLOSED_UNIT],
+          page: { page: 1, size: 5, total: 1 },
+        });
+      },
     },
     {
       match: (request) =>
@@ -175,6 +211,28 @@ const renderScreen = (options: Options = {}) => {
       },
     },
     {
+      match: (request) => request.method === 'GET' && pathOf(request) === '/app/document-issues',
+      respond: () => {
+        if (options.history === 'fail') {
+          return jsonResponse({ errors: [{ scope: 'global', message: '실패' }] }, { status: 500 });
+        }
+        const items = (options.history ?? []).map((each, index) => ({
+          documentIssueLogId: 60 + index,
+          documentTypeCode: 'DELIVERY_LABEL',
+          target: {
+            targetId: 9100,
+            targetTypeCode: 'SHIPPING_UNIT',
+            displayName: 'SU-20260916-0003',
+          },
+          issueSeq: each.issueSeq,
+          issuedAt: '2026-09-16T17:40:00+09:00',
+          printOutcome: each.printOutcome,
+        }));
+
+        return jsonResponse({ items, page: { page: 1, size: 100, total: items.length } });
+      },
+    },
+    {
       match: (request) => pathOf(request) === '/app/document-issues',
       respond: async (request) => {
         await record(request);
@@ -211,7 +269,12 @@ const renderScreen = (options: Options = {}) => {
     {
       match: (request) =>
         request.method === 'GET' && /\/logistics\/shipping-units\/\d+$/u.test(pathOf(request)),
-      respond: () => {
+      respond: (request) => {
+        if (pathOf(request).endsWith(`/${String(CLOSED_UNIT.shippingUnitId)}`)) {
+          return jsonResponse(unit({ ...CLOSED_UNIT, boxes: [box(7101, 'HU-CLOSED-1', 1)] }), {
+            headers: { ETag: '"closed"' },
+          });
+        }
         const body = details[Math.min(detailCall++, details.length - 1)] ?? unit();
 
         return jsonResponse(body, { headers: { ETag: '"detail"' } });
@@ -231,20 +294,45 @@ const renderScreen = (options: Options = {}) => {
   );
 };
 
-/** POP 의 고르는 자리는 드롭다운이 아니라 팝업이다(G-34) — 여는 것은 `combobox` 다. */
-const pick = async (
-  user: ReturnType<typeof userEvent.setup>,
-  field: string,
-  option: RegExp | string,
-): Promise<void> => {
-  await user.click(await screen.findByRole('combobox', { name: field }));
-  await user.click(await screen.findByRole('option', { name: option }));
+/** 출하는 왼쪽 「구성 대기」 목록 카드를 누르고, 유형은 단추로 고른다(#295 시안). */
+const pickShipment = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(await screen.findByRole('button', { name: /SH-20260917-0003/u }));
 };
 
+const pickType = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(await screen.findByRole('radio', { name: '팔레트' }));
+};
+
+/** 출하와 유형을 고르면 스캔 칸이 열린다 — 단위는 아직 없다(첫 상자가 만든다). */
+const ready = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await pickShipment(user);
+  await pickType(user);
+  await waitFor(() => {
+    expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
+  });
+};
+
+/** 스캔 칸이 다시 열리기를 기다려 상자 하나를 읽는다(Enter). */
+const scanBox = async (user: ReturnType<typeof userEvent.setup>, no: string): Promise<void> => {
+  await waitFor(() => {
+    expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
+  });
+  await user.clear(screen.getByLabelText(t.scan.label));
+  await user.type(screen.getByLabelText(t.scan.label), `${no}{Enter}`);
+};
+
+/** 첫 상자를 읽어 단위를 세운다(만들기 → 상자 넣기). */
 const openUnit = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
-  await pick(user, t.entry.label, /SH-20260917-0003/u);
-  await pick(user, t.unit.typeLabel, '팔레트');
-  await user.click(screen.getByRole('button', { name: t.unit.create }));
+  await ready(user);
+  await scanBox(user, 'HU-1');
+};
+
+/** ① 유형·상자 등록에서 [다음] → ② 마감 단계. */
+const toCloseStep = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name: t.actions.next })).toBeEnabled();
+  });
+  await user.click(screen.getByRole('button', { name: t.actions.next }));
 };
 
 afterEach(() => {
@@ -252,17 +340,113 @@ afterEach(() => {
 });
 
 describe('P-04-05 출하 단위 구성', () => {
-  it('출하와 유형을 모두 골라야 새 단위를 만들 수 있다', async () => {
+  /*
+   * ⭐ **유형을 고르면 스캔 칸이 바로 열린다**(사용자 지시 2026-11-19 — [새 출하 단위] 단추 없음).
+   * ⛔ 고르기만으로는 아무것도 만들지 않는다 — 단위는 첫 상자가 만든다. 그 전에는 마감 단계로
+   *    갈 길(단계 줄 · [다음])이 없다.
+   */
+  it('유형을 고르면 스캔 칸이 열리고, 고르기만으로는 단위를 만들지 않는다', async () => {
     const user = userEvent.setup();
-    renderScreen();
+    const seen: Options['seen'] = [];
+    renderScreen({ seen });
 
-    expect(await screen.findByRole('button', { name: t.unit.create })).toBeDisabled();
+    await pickShipment(user);
+    expect(await screen.findByLabelText(t.scan.label)).toBeDisabled();
 
-    await pick(user, t.entry.label, /SH-20260917-0003/u);
-    expect(screen.getByRole('button', { name: t.unit.create })).toBeDisabled();
+    await pickType(user);
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
+    });
+    expect(screen.getByRole('radio', { name: '팔레트' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: t.actions.next })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: new RegExp(t.steps.close, 'u') })).toBeNull();
+    expect(seen.some((call) => call.method === 'POST')).toBe(false);
+  });
 
-    await pick(user, t.unit.typeLabel, '팔레트');
-    expect(screen.getByRole('button', { name: t.unit.create })).toBeEnabled();
+  /*
+   * ⛔⛔ **부르는 순서·값은 예전과 같다.** 첫 상자가 `POST /logistics/shipping-units`(출하·유형)
+   *    → `:add-box` 를 차례로 부르고, 둘째 상자부터는 `:add-box` 만 — 단위를 둘 만들지 않는다.
+   */
+  it('첫 상자는 단위를 만들고 넣고, 둘째 상자는 넣기만 한다', async () => {
+    const user = userEvent.setup();
+    const seen: Options['seen'] = [];
+    renderScreen({
+      seen,
+      details: [
+        unit({ boxes: [box(7001, 'HU-1', 1)], boxCount: 1 }),
+        unit({ boxes: [box(7001, 'HU-1', 1), box(7002, 'HU-2', 2)], boxCount: 2 }),
+      ],
+    });
+
+    await openUnit(user);
+    expect(await screen.findByText('HU-1', { selector: '.nm' })).toBeInTheDocument();
+    await scanBox(user, 'HU-2');
+
+    await waitFor(() => {
+      expect(seen.filter((call) => call.path.endsWith(':add-box'))).toHaveLength(2);
+    });
+    const writes = seen.filter((call) => call.method === 'POST');
+    expect(writes.map((call) => call.path)).toEqual([
+      '/logistics/shipping-units',
+      '/logistics/shipping-units/9001:add-box',
+      '/logistics/shipping-units/9001:add-box',
+    ]);
+    expect(writes[0]?.body).toEqual({ shipmentId: 501, shippingUnitTypeCode: 'PALLET' });
+    expect(writes[1]?.body).toMatchObject({ handlingUnitNo: 'HU-1' });
+    expect(writes[2]?.body).toMatchObject({ handlingUnitNo: 'HU-2' });
+  });
+
+  /*
+   * ⛔ 띠의 「미등록 상자」는 상자를 넣을 때마다 서버 수로 줄어야 한다 — 전에는 처음 받은 수가
+   *    마감 때까지 남았다. 아래 합계 줄은 「등록 N개 · 총 N EA」다.
+   */
+  it('상자를 넣으면 미등록 상자 수를 다시 받고 합계 줄을 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      unassigned: [2, 1],
+      details: [
+        unit({
+          boxes: [box(7001, 'HU-1', 1)],
+          boxCount: 1,
+          itemTotals: [{ itemCode: 'F534F50200', itemName: 'COVER', qty: 240, uomCode: 'EA' }],
+        }),
+      ],
+    });
+
+    await ready(user);
+    const band = screen.getByRole('group', { name: t.band.shipment });
+    expect(within(band).getByText(t.band.count(2))).toBeInTheDocument();
+
+    await scanBox(user, 'HU-1');
+
+    await waitFor(() => {
+      expect(within(band).getByText(t.band.count(1))).toBeInTheDocument();
+    });
+    expect(await screen.findByText(t.boxes.sum(1, '240 EA'))).toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ 만들기는 됐는데 상자가 거절되면 단위는 이미 있다 — 거절 사유를 보이고 유형을 잠그며,
+   *    다시 읽어도 단위를 또 만들지 않는다.
+   */
+  it('단위를 만든 뒤 상자가 거절되면 다시 읽어도 단위를 또 만들지 않는다', async () => {
+    const user = userEvent.setup();
+    const seen: Options['seen'] = [];
+    renderScreen({ seen, reject: { code: 'PAIR', field: 'handlingUnitNo' } });
+
+    await openUnit(user);
+    expect(await screen.findByText(t.rejection.otherShipment)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('radio', { name: '팔레트' })).toBeDisabled();
+    });
+
+    await scanBox(user, 'HU-2');
+    await waitFor(() => {
+      expect(seen.filter((call) => call.path.endsWith(':add-box'))).toHaveLength(2);
+    });
+    expect(
+      seen.filter((call) => call.method === 'POST' && call.path === '/logistics/shipping-units'),
+    ).toHaveLength(1);
   });
 
   /*
@@ -275,7 +459,7 @@ describe('P-04-05 출하 단위 구성', () => {
     const seen: Options['seen'] = [];
     renderScreen({ seen });
 
-    await screen.findByRole('combobox', { name: t.entry.label });
+    await screen.findByRole('button', { name: /SH-20260917-0003/u });
 
     const list = seen.find((call) => call.path === '/logistics/shipments');
     expect(list).toBeDefined();
@@ -285,16 +469,60 @@ describe('P-04-05 출하 단위 구성', () => {
     expect([...query.keys()].filter((key) => key.startsWith('shipDate'))).toEqual([]);
   });
 
-  /*
-   * ⛔ **단위를 만들기 전에는 스캔 칸이 잠긴다.** 열어 두면 담당이 상자 앞에서 읽고 나서야
-   *    막힌 것을 안다 — 스캐너를 든 사람에게 그 한 번은 큰 낭비다.
-   */
-  it('단위를 만들기 전에는 스캔 칸이 잠기고 사유를 말한다', async () => {
-    renderScreen();
+  /* ⛔ 첫 상자로 단위가 서면 유형은 그 단위의 것이다 — 같은 단계의 유형 단추를 잠근다. */
+  it('첫 상자로 단위가 서면 유형 단추가 잠기고 스캔 칸은 열려 있다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ details: [unit({ boxes: [box(7001, 'HU-1', 1)], boxCount: 1 })] });
 
-    const field = await screen.findByLabelText(t.scan.label);
-    expect(field).toBeDisabled();
-    expect(field).toHaveAttribute('placeholder', t.scan.locked);
+    await openUnit(user);
+
+    await waitFor(() => {
+      expect(screen.getByRole('radio', { name: '팔레트' })).toBeDisabled();
+    });
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
+    });
+  });
+
+  /*
+   * ⭐ 유형은 고객사가 늘리는 코드다 — 5개까지는 한 줄 단추, 넘으면 칸 하나(고르기 창)로 접어
+   *    아래 상자 자리를 지킨다.
+   */
+  it('유형이 5개를 넘으면 단추 대신 고르기 칸 하나로 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      types: [
+        { code: 'PALLET', codeName: '팔레트' },
+        { code: 'BUNDLE', codeName: '번들' },
+        { code: 'CASE', codeName: '케이스' },
+        { code: 'DRUM', codeName: '드럼' },
+        { code: 'BAG', codeName: '포대' },
+        { code: 'CRATE', codeName: '크레이트' },
+      ],
+    });
+
+    await pickShipment(user);
+
+    expect(await screen.findByRole('combobox', { name: t.unit.typeLabel })).toBeInTheDocument();
+    expect(screen.queryByRole('radio')).toBeNull();
+  });
+
+  it('유형이 5개면 한 줄 단추로 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      types: [
+        { code: 'PALLET', codeName: '팔레트' },
+        { code: 'BUNDLE', codeName: '번들' },
+        { code: 'CASE', codeName: '케이스' },
+        { code: 'DRUM', codeName: '드럼' },
+        { code: 'BAG', codeName: '포대' },
+      ],
+    });
+
+    await pickShipment(user);
+
+    expect(await screen.findAllByRole('radio')).toHaveLength(5);
+    expect(screen.queryByRole('combobox', { name: t.unit.typeLabel })).toBeNull();
   });
 
   /* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */
@@ -307,19 +535,8 @@ describe('P-04-05 출하 단위 구성', () => {
   it('사번이 있으면 사번 미확인 띠가 없다', async () => {
     renderScreen();
 
-    await screen.findByRole('combobox', { name: t.entry.label });
+    await screen.findByRole('button', { name: /SH-20260917-0003/u });
     expect(screen.queryByText(messages.popChrome.workerMissing)).not.toBeInTheDocument();
-  });
-
-  it('단위를 만들면 스캔 칸이 열린다', async () => {
-    const user = userEvent.setup();
-    renderScreen();
-
-    await openUnit(user);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
-    });
   });
 
   /*
@@ -338,7 +555,7 @@ describe('P-04-05 출하 단위 구성', () => {
     const user = userEvent.setup();
     renderScreen({ reject: { code, field } });
 
-    await openUnit(user);
+    await ready(user);
     await waitFor(() => {
       expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
     });
@@ -358,7 +575,7 @@ describe('P-04-05 출하 단위 구성', () => {
     const seen: Options['seen'] = [];
     renderScreen({ seen });
 
-    await openUnit(user);
+    await ready(user);
     await waitFor(() => {
       expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
     });
@@ -381,7 +598,7 @@ describe('P-04-05 출하 단위 구성', () => {
     const seen: Options['seen'] = [];
     renderScreen({ seen });
 
-    await openUnit(user);
+    await ready(user);
     await waitFor(() => {
       expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
     });
@@ -396,7 +613,7 @@ describe('P-04-05 출하 단위 구성', () => {
     const user = userEvent.setup();
     renderScreen({ reject: { code: 'NEW_RULE', field: 'x', message: '아직 모르는 규칙입니다' } });
 
-    await openUnit(user);
+    await ready(user);
     await waitFor(() => {
       expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
     });
@@ -411,15 +628,17 @@ describe('P-04-05 출하 단위 구성', () => {
    * ⛔⛔ **상자가 없으면 마감하지 않는다**(설계 §4-6 — 서버가 400). 화면이 먼저 막아, 되돌릴
    *    수 없는 조작을 눌렀다가 거절당하는 일을 없앤다.
    */
-  it('상자가 하나도 없으면 마감이 잠긴다', async () => {
+  it('상자가 하나도 없으면 마감 단계로 넘어가지 못한다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
-    await openUnit(user);
+    await ready(user);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: t.close.action })).toBeDisabled();
+      expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
     });
+    expect(screen.getByRole('button', { name: t.actions.next })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: t.close.action })).toBeNull();
   });
 
   /* ⛔ 되돌릴 수 없다 — 확인창이 그 사실을 «먼저» 말한다. */
@@ -430,6 +649,7 @@ describe('P-04-05 출하 단위 구성', () => {
     renderScreen({ seen, details: [unit({ boxes: [box(7001, 'HU-1', 1)], boxCount: 1 })] });
 
     await openUnit(user);
+    await toCloseStep(user);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t.close.action })).toBeEnabled();
     });
@@ -452,19 +672,16 @@ describe('P-04-05 출하 단위 구성', () => {
       seen,
       etags: ['"1"', '"2"', '"3"'],
       details: [
-        unit(),
         unit({ boxes: [box(7001, 'HU-1', 1)], boxCount: 1 }),
         unit({ boxes: [box(7001, 'HU-1', 1)], boxCount: 1 }),
         unit({ statusCode: 'CLOSED', boxes: [box(7001, 'HU-1', 1)], boxCount: 1 }),
       ],
     });
 
+    /* 첫 상자가 만들기(`"1"`) → 넣기(`"2"`)를 부른다. */
     await openUnit(user);
-    await waitFor(() => {
-      expect(screen.getByLabelText(t.scan.label)).toBeEnabled();
-    });
-    await user.type(screen.getByLabelText(t.scan.label), 'HU-1{Enter}');
 
+    await toCloseStep(user);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t.close.action })).toBeEnabled();
     });
@@ -503,6 +720,7 @@ describe('P-04-05 출하 단위 구성', () => {
     });
 
     await openUnit(user);
+    await toCloseStep(user);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t.close.action })).toBeEnabled();
     });
@@ -551,5 +769,91 @@ describe('P-04-05 출하 단위 구성', () => {
     });
 
     Reflect.deleteProperty(window, 'pop');
+  });
+
+  /*
+   * ⭐ 「구성 완료」 탭은 마감한 출하 단위 목록(`statusCode=CLOSED`)을 보이고, 고르면 마감 결과만
+   *    보인다 — 단계 줄 · 스캔 칸 · 입력 단추가 없다(#295 시안).
+   */
+  it('구성 완료 탭은 마감한 단위를 묻고, 고르면 결과만 보인다', async () => {
+    const user = userEvent.setup();
+    const seen: Options['seen'] = [];
+    renderScreen({ seen });
+
+    await user.click(await screen.findByRole('tab', { name: new RegExp(t.tabs.done, 'u') }));
+    await user.click(await screen.findByRole('button', { name: /SU-20260916-0003/u }));
+
+    expect(await screen.findByText('HU-CLOSED-1')).toBeInTheDocument();
+    const list = seen.find(
+      (call) => call.method === 'GET' && call.path === '/logistics/shipping-units',
+    );
+    expect(new URLSearchParams(list?.query ?? '').get('statusCode')).toBe('CLOSED');
+    expect(screen.queryByLabelText(t.scan.label)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.close.action })).toBeNull();
+    expect(screen.queryByRole('button', { name: t.actions.next })).toBeNull();
+  });
+
+  /*
+   * ⭐ 「구성 완료」 단위도 납품 라벨을 다시 뽑는다 — 출하 라벨 화면 재발행과 같은 길
+   *    (`POST /app/document-issues` + 재발행 사유). 사유를 고르기 전에는 나가지 않는다.
+   */
+  it('구성 완료 단위는 사유를 골라 납품 라벨을 재발행한다', async () => {
+    const user = userEvent.setup();
+    const seen: Options['seen'] = [];
+    renderScreen({
+      seen,
+      history: [
+        { issueSeq: 1, printOutcome: 'SUCCEEDED' },
+        { issueSeq: 2, printOutcome: 'FAILED' },
+      ],
+    });
+
+    await user.click(await screen.findByRole('tab', { name: new RegExp(t.tabs.done, 'u') }));
+    await user.click(await screen.findByRole('button', { name: /SU-20260916-0003/u }));
+    await screen.findByText('HU-CLOSED-1');
+
+    await user.click(screen.getByRole('button', { name: t.reissue.action }));
+    const dialog = await screen.findByRole('dialog');
+    /* 이번 회차는 이력의 가장 높은 회차 + 1, 최근 발행은 그 회차와 인쇄 결과. */
+    expect(await within(dialog).findByText(t.reissue.seq(3))).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(`${t.reissue.seq(2)} · ${t.reissue.outcome.FAILED}`),
+    ).toBeInTheDocument();
+    const confirm = within(dialog).getByRole('button', { name: t.reissue.action });
+    expect(confirm).toBeDisabled();
+    expect(
+      seen.some((call) => call.method === 'POST' && call.path === '/app/document-issues'),
+    ).toBe(false);
+
+    await user.click(await within(dialog).findByRole('radio', { name: '라벨 훼손' }));
+    await user.click(confirm);
+
+    await waitFor(() => {
+      expect(seen.some((call) => call.path === '/app/document-issues')).toBe(true);
+    });
+    expect(
+      seen.find((call) => call.method === 'POST' && call.path === '/app/document-issues')?.body,
+    ).toMatchObject({
+      documentTypeCode: 'DELIVERY_LABEL',
+      targets: [{ targetTypeCode: 'SHIPPING_UNIT', targetId: 9100 }],
+      reissueReasonCode: 'DAMAGED',
+    });
+    expect(seen.some((call) => call.path.endsWith(':close'))).toBe(false);
+  });
+
+  /* ⛔ 발행 이력을 못 읽으면 회차를 1 로 채우지 않는다 — 「알 수 없음」(G-9). */
+  it('발행 이력을 못 읽으면 재발행 회차를 알 수 없음으로 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ history: 'fail' });
+
+    await user.click(await screen.findByRole('tab', { name: new RegExp(t.tabs.done, 'u') }));
+    await user.click(await screen.findByRole('button', { name: /SU-20260916-0003/u }));
+    await screen.findByText('HU-CLOSED-1');
+
+    await user.click(screen.getByRole('button', { name: t.reissue.action }));
+    const dialog = await screen.findByRole('dialog');
+    expect(await within(dialog).findByText(t.reissue.historyFailed)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.reissue.unknown)).toBeInTheDocument();
+    expect(within(dialog).queryByText(t.reissue.seq(1))).toBeNull();
   });
 });

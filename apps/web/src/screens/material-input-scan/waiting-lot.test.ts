@@ -14,6 +14,7 @@ import {
 } from '../../test/api-harness';
 import { lot, receipt, receiptLineFixtures, WORK_ORDER_ID } from './fixtures';
 import { MaterialInputScanScreen } from './screen';
+import { PuToastHost } from '../../patterns/pop-uniform';
 
 /*
  * 005 US1-6 — POP 투입(P-02-03)에서 대기 · 폐기 자재 관리 LOT 을 스캔하면 담지 않고 그 사실을 말한다.
@@ -93,7 +94,10 @@ const renderScreen = (scanned: unknown) => {
   renderWithProviders(
     createElement(PopIdentityProvider, {
       value: { ...UNKNOWN_POP_IDENTITY, workerNo: WORKER_NO },
-      children: createElement(MaterialInputScanScreen),
+      children: [
+        createElement(PuToastHost, { key: 'toast' }),
+        createElement(MaterialInputScanScreen, { key: 'screen' }),
+      ],
     }),
     { fetch, route: ROUTE },
   );

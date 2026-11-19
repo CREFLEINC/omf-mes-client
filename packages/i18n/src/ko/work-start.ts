@@ -1,5 +1,5 @@
 /**
- * P-02-01 작업 지시 목록(작업지시를 골라 작업을 시작하는 화면).
+ * P-02-01 작업지시 목록(작업지시를 골라 작업을 시작하는 화면).
  *
  * 화면 구성 규범 C-5, C-13을 따른다. 하단 바 「남은 일」 자리의 문장은 머리말 없이 그대로 보인다
  * (사용자 결정 2026-10-23). 안내와 오류는 상황과 할 일을 한두 문장으로 쓴다.
@@ -10,7 +10,7 @@ import { named } from '../named';
 
 export const workStart = {
   /** 화면 이름. 하단 주 동작 [작업 시작]과 다른 말이다(사용자 결정 2026-10-26). */
-  title: '작업 지시 목록',
+  title: '작업지시 목록',
 
   /** 머리줄. 설비와 작업자는 「이름 (코드)」로 보인다(C-10). */
 
@@ -22,12 +22,13 @@ export const workStart = {
     fieldLabel: '사번',
     keypadLabel: '사번 숫자 키패드',
     backspace: '한 자 지움',
-    clear: '전체 지움',
+    clear: '전체 삭제',
     confirm: '확인',
     cancel: '취소',
     checking: '확인 중',
     /** 사번이 없을 때의 빈 상태와 사번 입력 창을 여는 버튼(사용자 결정 2026-10-23). */
     empty: '사번이 입력되지 않았습니다.',
+    emptyHint: '사번을 입력해야 작업지시를 고를 수 있습니다.',
     open: '사번 입력',
     dialogTitle: '사번 입력',
 
@@ -55,6 +56,8 @@ export const workStart = {
     failed: '작업자를 바꾸지 못했습니다. 다시 시도해 주세요.',
     loadFailed: '작업자를 불러오지 못했습니다. 작업지시를 다시 골라 주세요.',
     unknown: '이름 미등록',
+    /** 결과 알림(POP 통일 규칙 13). */
+    added: (workerNo: string): string => `부 작업자 ${workerNo}를 추가했습니다.`,
   },
 
   /** 왼쪽 작업지시 구획. */
@@ -64,6 +67,17 @@ export const workStart = {
      * (사용자 결정 2026-10-26, PG-39).
      */
     title: '작업지시',
+    /**
+     * 목록 보기(구획 제목 줄의 탭). 「긴급」은 긴급 작업지시만 보인다 — 옛 「긴급 작업지시」 화면(P-02-12)을
+     * 이 목록에 합쳤다(#295). 긴급은 설비와 관계없이 모두 보인다(옛 화면과 같은 조건).
+     */
+    kindLabel: '작업지시 보기',
+    /* 탭 이름(사용자 지시 2026-11-19 — 「전체 작업지시」·「긴급 작업지시」, 앞의 「작업지시」 제목은 지움). */
+    kindAll: '전체 작업지시',
+    kindEmergency: '긴급 작업지시',
+    emergencyScope: '모든 설비의 긴급 작업지시입니다.',
+    emergencyEmpty: '긴급 작업지시가 없습니다.',
+    emergencyEmptyHint: '긴급 작업지시는 관리웹 「긴급 작업지시 발행」에서 발행합니다.',
     /**
      * 설비 고르기(PopSelect 팝업). 단말 설비가 맨 위 기본값이고 「기본 설비:」를 앞에 붙여 표시한다.
      * 그다음 「전체 설비」, 나머지 설비 순서다. 줄은 「이름 (코드)」(C-10). 닫힌 칸은 이름만 보인다.
@@ -85,19 +99,20 @@ export const workStart = {
       suspended: '중단',
     },
     emergencyBadge: '긴급',
+    reworkBadge: '재작업',
     unassignedEquipmentBadge: '설비 미지정',
 
     /** 수량 쌍(C-21). 라벨 「실적」, 값은 「실적 / 지시」 한 쌍이다. 실적을 못 받으면 라벨 「지시」. */
-    goodLabel: '실적',
-    orderLabel: '지시',
+    goodLabel: '양품량',
+    orderLabel: '계획량',
     progress: (good: string, order: string, uom: string | null): string =>
       `${good} / ${order}${uom === null ? '' : ` ${uom}`}`,
     /** 카드의 계획 설비. 「이름 (코드)」 한 줄이고 라벨 「설비」를 붙인다(C-10). */
     equipment: '설비',
 
-    /** 빈 목록은 오류가 아니다. 다음에 할 일까지 적는다. */
-    empty: (equipment: string): string =>
-      `${equipment}에 배포된 작업지시가 없습니다. 설비에서 「전체 설비」를 고르면 다른 설비의 작업지시가 보입니다.`,
+    /** 빈 목록은 오류가 아니다. 한 줄 + 할 일(POP 통일 규칙 9). */
+    empty: (equipment: string): string => `${equipment}에 배포된 작업지시가 없습니다.`,
+    emptyHint: '설비에서 「전체 설비」를 고르면 다른 설비의 작업지시가 보입니다.',
     /** 다른 설비를 골랐을 때의 빈 목록. */
     emptyOther: (equipment: string): string => `${equipment}에 배포된 작업지시가 없습니다.`,
     emptyAll: '진행할 수 있는 작업지시가 없습니다.',
@@ -105,9 +120,6 @@ export const workStart = {
     loading: '작업지시를 불러오는 중입니다.',
     loadError: '작업지시를 불러오지 못했습니다. 다시 시도해 주세요.',
     retry: '다시 시도',
-
-    /** 관리웹 페이지 이동과 같은 꼴(`screenPatterns.pageNav.total`). */
-    total: (total: number): string => `총 ${String(total)}건`,
 
     pageNav: '작업지시 목록 페이지 이동',
 
@@ -129,8 +141,19 @@ export const workStart = {
     title: '선택한 작업지시',
     item: '품목',
     process: '공정',
-    plannedStart: '계획 시작',
+    plannedStart: '계획 시작일시',
     equipment: '설비',
+    /** 고르기 전 빈 모양(POP 통일 규칙 9). */
+    emptyTitle: '작업지시를 선택하세요',
+    emptyHint: '왼쪽 목록에서 시작할 작업지시를 누르세요.',
+    /** 설비 줄 옆 칩 — 이 시작이 쓰는 설비가 어디서 왔는가. */
+    terminalEquipment: '이 단말 설비',
+    assignedEquipment: '작업지시 지정 설비',
+    /** 긴급 작업지시만 — 발행 시각과 점검 통제 우회 안내(옛 「긴급 작업지시」 상세에서 옮김). */
+    releasedAt: '발행일시',
+    bypassTitle: '배정 없음 · 점검 통제 우회',
+    bypassTitleAssigned: '점검 통제 우회',
+    bypassBody: '긴급 작업지시는 배정과 작업 전 점검 없이 진행합니다.',
 
     /** 계획 설비가 다른 지시는 막지 않는다. 실제 설비는 세션에 기록된다. */
     otherEquipment: (equipment: string): string =>
@@ -147,6 +170,7 @@ export const workStart = {
     starting: '시작 중',
     /** 이미 진행 중인 작업으로 자리를 옮긴다(쓰기 없음). */
     continueToSession: '작업 이어하기',
+    reworkResult: '재작업 실적 등록',
   },
 
   /** 하단 바 「남은 일」 자리의 문장(C-5). 머리말 없이 보인다. */

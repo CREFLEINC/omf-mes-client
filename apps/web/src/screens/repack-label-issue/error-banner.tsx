@@ -1,7 +1,8 @@
-import { AlertBanner, Button } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
+
+import { PuButton, PuNote } from '../../patterns/pop-uniform';
 
 /**
  * 이 화면의 발행 실패를 말하는 배너.
@@ -82,16 +83,14 @@ export const ErrorBanner = ({ error, title, onRetry }: ErrorBannerProps) => {
   const content = toContent(error);
 
   const action: ReactNode = content.canRetry ? (
-    <Button variant="outlined" size="sm" onClick={onRetry}>
+    <PuButton size="sm" onClick={onRetry}>
       {messages.common.retry}
-    </Button>
+    </PuButton>
   ) : undefined;
 
   return (
-    <div className="banner-slot">
-      <AlertBanner variant="error" title={title} action={action}>
-        {content.lines.join(' ')}
-      </AlertBanner>
-    </div>
+    <PuNote tone="bad" action={action}>
+      <b>{title}</b> {content.lines.join(' ')}
+    </PuNote>
   );
 };

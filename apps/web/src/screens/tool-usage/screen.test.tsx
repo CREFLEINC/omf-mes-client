@@ -17,6 +17,7 @@ import {
   unresolvedPolicies,
 } from './fixtures';
 import { PopIdentityProvider, UNKNOWN_POP_IDENTITY } from '../../patterns/pop-identity';
+import { PuToastHost } from '../../patterns/pop-uniform';
 import { ToolUsageScreen } from './screen';
 import type { Mold } from './types';
 
@@ -110,7 +111,13 @@ afterEach(() => {
 });
 
 const renderScreen = (options: Options = {}, route: string = ENTRY_ROUTE) =>
-  renderWithProviders(<ToolUsageScreen />, { fetch: createStubFetch(routes(options)), route });
+  renderWithProviders(
+    <>
+      <ToolUsageScreen />
+      <PuToastHost />
+    </>,
+    { fetch: createStubFetch(routes(options)), route },
+  );
 
 /**
  * 코드를 찍는다 — **스캐너가 값을 밀어 넣고 끝에 Enter 를 붙이는 것과 같은 경로다.**
@@ -126,42 +133,27 @@ const confirmShot = async (user: ReturnType<typeof userEvent.setup>) => {
   if (!(confirm as HTMLButtonElement).disabled) await user.click(confirm);
 };
 
-/** ⭐ 사용자 지시 2026-09-14 — 도면 머리줄 「W/O · 설비」. 설비는 단말이 준다. */
+/* POP 통일 시안(#295) — 「누계는 저장 시 서버가 계산합니다」 설명 줄은 없앴다. 설비는 셸 맨 위 줄이 보인다. */
 describe('ToolUsageScreen — 안내', () => {
-  /* ⭐ 누계 안내는 파란 라벨(칩)로 선다 — 구획 카드가 아니다(사용자 지시 2026-09-15). */
-  it('누계 안내를 정보 띠 안에 두 줄로 보인다', async () => {
-    renderScreen();
-
-    const note = await screen.findByRole('note', { name: t.notice.sectionLabel });
-    /* ⭐ 두 줄로 나눠 보인다(사용자 지시 2026-09-15). */
-    for (const line of t.notice.serverAdds)
-      expect(within(note).getByText(line)).toBeInTheDocument();
-    expect(note.closest('.pop-section')).toBeNull();
-  });
-});
-
-describe('ToolUsageScreen — 머리줄', () => {
-  it('타이틀 옆에 W/O 와 단말 설비를 함께 보인다', async () => {
-    renderWithProviders(
-      <PopIdentityProvider
-        value={{
-          ...UNKNOWN_POP_IDENTITY,
-          equipment: { equipmentId: 6, equipmentCode: 'PRS-01', equipmentName: '프레스 1호기' },
-        }}
-      >
-        <ToolUsageScreen />
-      </PopIdentityProvider>,
-      { fetch: createStubFetch(routes({})), route: ENTRY_ROUTE },
-    );
-
-    expect(await screen.findByText('설비 프레스 1호기')).toBeInTheDocument();
-  });
-
-  it('머리줄에 W/O 내부 id 를 적지 않는다 — W/O 번호는 단계 줄이 보인다', async () => {
+  it('누계 설명 줄을 따로 세우지 않는다', async () => {
     renderScreen();
 
     await screen.findByRole('button', { name: t.actions.confirm });
+    expect(screen.queryByText('누계는 저장 시 서버가 계산합니다.')).not.toBeInTheDocument();
+  });
+
+  it('본문 맨 위에 작업지시 띠를 세우고, W/O 내부 id 는 적지 않는다', async () => {
+    renderScreen();
+
+    expect(await screen.findByRole('group', { name: t.band.title })).toBeInTheDocument();
     expect(screen.queryByText('W/O 1001')).toBeNull();
+  });
+
+  it('작업지시 없이 들어오면 작업지시 띠를 세우지 않는다', async () => {
+    renderScreen({}, '/pop/tool-usage?workerNo=3391');
+
+    await screen.findByRole('button', { name: t.actions.confirm });
+    expect(screen.queryByRole('group', { name: t.band.title })).not.toBeInTheDocument();
   });
 });
 
@@ -173,7 +165,7 @@ describe('ToolUsageScreen — 툴 스캔', () => {
     await scanTool(user);
 
     expect(await screen.findByText(TOOL_CODE)).toBeInTheDocument();
-    expect(screen.getByText(`${t.scan.cavity} 4`)).toBeInTheDocument();
+    expect(screen.getByText(t.scan.cavity).nextElementSibling).toHaveTextContent('4');
   });
 
   it('코드가 «그대로» 같지 않으면 없는 것으로 다룬다 — 부분 일치로 남의 툴에 실적을 달지 않는다', async () => {
@@ -183,7 +175,9 @@ describe('ToolUsageScreen — 툴 스캔', () => {
     await scanTool(user);
 
     expect(await screen.findByText(t.scan.notFound)).toBeInTheDocument();
-    expect(screen.queryByText(`${t.scan.cavity} 4`)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.scan.cavity)).not.toBeInTheDocument();
+    /* 못 찾으면 칸을 비운다 — 이유는 칸 아래 빨간 한 줄이 말한다(시안 규칙 6). */
+    expect(screen.getByLabelText(t.scan.inputLabel)).toHaveValue('');
   });
 
   it('같은 코드가 둘 이상 오면 고르지 않는다 — 어느 공장 것인지 가릴 근거가 없다', async () => {
@@ -221,22 +215,22 @@ describe('ToolUsageScreen — 툴 스캔', () => {
     expect(screen.queryByText(t.actionReasons.noShot)).not.toBeInTheDocument();
   });
 
-  it('「코드 직접 입력」은 칸을 비우고 안내를 «보이는 자리»에 세운다 — 눌렀는데 아무 일도 없으면 안 된다', async () => {
+  /* [직접 입력]은 공통 입력 창으로 연다(POP 통일 시안 규칙 6) — 친 코드로 같은 조회가 나간다. */
+  it('[직접 입력] 창에 친 코드로 툴을 고른다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
-    await scanTool(user);
+    await screen.findByRole('button', { name: t.actions.confirm });
+    await user.click(screen.getByRole('button', { name: messages.popUniform.scan.manual }));
+
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByRole('textbox'), TOOL_CODE);
+    await user.click(
+      within(dialog).getByRole('button', { name: messages.popUniform.dialog.confirm }),
+    );
+
     expect(await screen.findByText(TOOL_CODE)).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: t.scan.manualEntry }));
-
-    const field = screen.getByLabelText(t.scan.inputLabel);
-
-    expect(field).toHaveValue('');
-    expect(field).toHaveFocus();
-    /* 안내는 칸이 비어 있을 때만 보이는 placeholder 가 아니라 늘 보이는 자리에 선다. */
-    expect(screen.getByText(t.scan.manualHint)).toBeInTheDocument();
-    expect(screen.queryByText(TOOL_CODE)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(t.shot.inputLabel)).toBeEnabled();
   });
 
   /* ⛔ [툴 다시 고르기]를 두지 않는다(사용자 지시 2026-09-17) — 다른 툴은 다시 스캔하거나 [직접 입력]으로 바꾼다. */
@@ -404,36 +398,30 @@ describe('ToolUsageScreen — 키패드', () => {
     expect(screen.getByRole('button', { name: '7' })).toBeDisabled();
   });
 
-  it('타발수가 비면 지움 키 둘이 잠기고, 값이 들어오면 열린다', async () => {
+  it('키패드 ← 는 한 자, [전체 삭제]는 칸 전체를 지운다', async () => {
     const user = userEvent.setup();
     renderScreen();
     await scanTool(user);
+    await screen.findByText(TOOL_CODE);
 
-    const clearKey = () => screen.getByRole('button', { name: t.shot.clearGlyph });
-    const backspaceKey = () => screen.getByRole('button', { name: t.shot.backspace });
+    for (const key of ['7', '2']) await user.click(screen.getByRole('button', { name: key }));
+    expect(screen.getByLabelText(t.shot.inputLabel)).toHaveValue('72');
 
-    await waitFor(() => {
-      expect(clearKey()).toBeDisabled();
-    });
-    expect(backspaceKey()).toBeDisabled();
-
-    await user.click(screen.getByRole('button', { name: '7' }));
-
-    await waitFor(() => {
-      expect(clearKey()).toBeEnabled();
-    });
-    expect(backspaceKey()).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: messages.popUniform.keypad.backspace }));
     expect(screen.getByLabelText(t.shot.inputLabel)).toHaveValue('7');
+
+    await user.click(screen.getByRole('button', { name: messages.popUniform.keypad.clearAll }));
+    expect(screen.getByLabelText(t.shot.inputLabel)).toHaveValue('');
   });
 
-  /* 타발수는 정수다(스펙 §4-A `bigint`) — 직접 입력에서는 소수점 키를 그리지 않는다. */
-  it('직접 입력에서는 소수점 키가 없다', async () => {
+  /* 타발수는 정수다(스펙 §4-A `bigint`) — 직접 입력에서는 소수점 키를 쓸 수 없다. */
+  it('직접 입력에서는 소수점 키가 꺼져 있다', async () => {
+    const user = userEvent.setup();
     renderScreen();
+    await scanTool(user);
+    await screen.findByText(TOOL_CODE);
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: '7' })).toBeInTheDocument();
-    });
-    expect(screen.queryByRole('button', { name: t.shot.decimalKey })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '.' })).toBeDisabled();
   });
 });
 

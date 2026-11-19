@@ -19,7 +19,7 @@ export const lotGenealogy = {
     lotsCaption: '들어간 생산 LOT',
     serialsCaption: '들어간 시리얼',
     lotColumns: { lotNo: '생산 LOT', workOrderNo: '작업지시' },
-    serialColumns: { serialNo: '시리얼', lotNo: '생산 LOT', producedAt: '생산 시각' },
+    serialColumns: { serialNo: '시리얼', lotNo: '생산 LOT', producedAt: '생산일시' },
     serialRange: (from: number, to: number, total: number): string =>
       `시리얼 ${total}건 중 ${from}–${to}`,
     prev: '이전 시리얼',

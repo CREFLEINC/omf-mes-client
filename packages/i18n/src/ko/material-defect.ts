@@ -7,37 +7,37 @@ export const materialDefect = {
   title: '자재 불량 등록',
 
   lot: {
-    label: '자재 LOT',
-    placeholder: 'LOT 번호를 스캔하거나 입력하세요',
-    find: '조회',
-    notFound: '이 번호의 LOT 이 없습니다.',
+    label: '자재 LOT 번호',
+    notFound: '이 번호의 LOT이 없습니다. 번호를 다시 확인하세요.',
     loadFailed: 'LOT 을 불러오지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
     item: '품목',
-    status: '상태',
+    section: '자재 정보',
+    empty: '자재 LOT을 스캔하면 자재 정보가 나옵니다',
   },
 
   code: {
+    section: '불량 등록',
+    placeholder: '선택하세요',
+    optional: '(선택)',
     major: '불량 대분류',
     minor: '불량 상세',
-    none: '등록된 불량 코드가 없습니다. 불량 코드 마스터를 먼저 등록하세요.',
+    none: '등록된 불량 코드가 없습니다. 관리 웹 「불량 코드」에서 먼저 등록하세요.',
     loadFailed: '불량 코드를 불러오지 못했습니다.',
   },
 
   qty: {
-    label: '불량 수량',
+    padTitle: '입력',
+    padUnit: (uom: string) => `단위 ${uom}`,
+    label: '불량량',
     invalid: '0보다 큰 수를 넣으세요.',
-    keypad: '불량 수량 키패드',
-    backspace: '한 자 지움',
-    clear: '지움',
-    decimal: '소수점',
   },
 
   description: '불량 내용',
 
   hold: {
-    label: '이 LOT 을 보류합니다',
+    label: '이 LOT을 보류합니다',
     reason: '보류 사유',
-    reasonPlaceholder: '보류 사유를 고르세요',
+    reasonPlaceholder: '선택하세요',
     releaseCondition: '해제 조건',
     releaseConditionDefault: '품질 판정 후 해제',
     /** LOT 상세의 잠금 값(ETag)을 못 읽었을 때 — 보류를 보내지 않는다. */
@@ -47,6 +47,7 @@ export const materialDefect = {
   },
 
   submit: '자재 불량 기록',
+  reset: '입력 초기화',
   saving: '기록하는 중…',
   recorded: '자재 불량을 기록했습니다.',
   held: 'LOT 을 보류했습니다.',
@@ -63,12 +64,9 @@ export const materialDefect = {
   },
 
   blocked: {
-    lot: 'LOT 을 먼저 조회하세요.',
     code: '불량 코드를 고르세요.',
-    qty: '불량 수량을 넣으세요.',
+    qty: '불량량을 넣으세요.',
     uom: 'LOT 의 단위를 알 수 없어 기록할 수 없습니다.',
-    holdReason: '보류 사유를 고르세요.',
-    releaseCondition: '해제 조건을 넣으세요.',
   },
 
   pane: {

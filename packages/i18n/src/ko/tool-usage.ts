@@ -6,29 +6,32 @@
 export const toolUsage = {
   title: '툴 사용실적 입력',
 
-  entry: {
-    /** 헤더에 작업지시·사번을 세운다. 없으면 그 자리를 비운다 — 「알 수 없음」을 쓰지 않는다. */
-    /* ⭐ 「설비 <이름>」으로 읽힌다 — 이름이 비면 코드(사용자 지시 2026-09-14). */
-    equipmentLabel: (code: string, name: string): string =>
-      `설비 ${name.trim() === '' ? code : name}`,
+  /** 본문 맨 위 작업지시 띠(POP 통일 시안 #295). */
+  band: {
+    title: '작업지시 (W/O)',
+    process: '공정',
+    item: '품목',
+    planQty: '계획량',
+  },
+
+  /** 맨 오른쪽 「수량」 키패드 구획. */
+  pad: {
+    title: '입력',
+    unit: (uom: string) => `단위 ${uom}`,
   },
 
   scan: {
     sectionLabel: '툴 스캔',
-    inputLabel: '금형 QR',
-    /*
-     * ⚠ **스펙 §3 도면은 「금형 QR 을 비추세요」다.** 사용자 지시로 「읽혀주세요」로 바꿨다
-     * (2026-09-07) — 스캐너에 «대는» 동작을 현장 말로 옮긴 것이다. 설계 문구와 갈리므로
-     * 되돌릴 일이 생기면 여기다.
-     */
-    placeholder: '금형 QR 을 읽혀주세요',
+    /* 칸 위 이름 = 넣을 값(#295 · 사용자 지시 2026-11-19 — 흐린 문구 없이 칸 위에). */
+    inputLabel: '금형 코드',
     /** QR 이 안 읽힐 때의 폴백. 같은 칸에 손으로 친다 — 스캐너와 입력 자리를 나누지 않는다. */
     /** 다른 POP 화면과 같은 이름(사용자 지시 2026-09-17). */
-    manualEntry: '직접 입력',
-    /** 버튼을 누른 뒤 칸 아래에 «계속» 보이는 안내. placeholder 는 칸이 비었을 때만 보인다. */
-    manualHint: '금형 코드를 치고 Enter 를 누르세요.',
     cavity: '캐비티',
-    notFound: '그 코드의 툴이 없습니다. 코드를 다시 확인하세요.',
+    mold: '금형 코드',
+    moldName: '금형명',
+    empty: '금형 QR을 스캔하세요',
+    nextHint: '다음 실적은 금형 QR부터 스캔합니다.',
+    notFound: '이 코드의 툴이 없습니다. 코드를 다시 확인하세요.',
     disposed: '폐기된 툴입니다. 다른 툴을 스캔하세요.',
   },
 
@@ -36,18 +39,11 @@ export const toolUsage = {
     sectionLabel: '타발수 입력',
     inputLabel: '타발수',
     unit: '회',
-    keypadLabel: '타발수 숫자 키패드',
-    /** 키패드 키 — 화면에 보이는 기호와 읽어 주는 이름을 가른다. */
-    clearGlyph: '지움',
-    backspace: '한 자 지움',
-    decimalKey: '소수점',
-    convertedLabel: '생산 수량으로 환산',
-    baseQtyLabel: '수량',
+    convertedLabel: '생산량으로 타발수 계산',
+    baseQtyLabel: '생산량',
     /** 환산이 어떻게 나온 값인지 식 그대로 보인다 — 「수량 500 × 2.5 = 1,250 회」 */
     convertedExpression: (baseQty: string, ratio: string, shots: string) =>
-      `수량 ${baseQty} × ${ratio} = ${shots} 회`,
-    /** 환산 결과는 정수로 맞춰 보낸다 — 계약이 타발수를 정수로 받는다. */
-    roundedNote: '환산 결과는 가장 가까운 정수로 맞춰 보냅니다.',
+      `수량 ${baseQty} × ${ratio} = ${shots} 회 · 가장 가까운 정수로 맞춥니다`,
     /** 사용자 지시 2026-09-17 — 뒤 안내 문장을 걷었다. */
     conversionUnavailable: '환산 비율이 설정되어 있지 않습니다.',
     conversionLoading: '환산 비율을 불러오는 중입니다.',
@@ -57,10 +53,10 @@ export const toolUsage = {
   cumulative: {
     sectionLabel: '누계',
     guaranteed: '적정타수',
-    current: '누계(서버)',
+    current: '현재 누계',
     increment: '이번 입력',
-    projected: '저장 후 누계',
-    available: '사용 가능',
+    projected: '저장 후 예상 누계',
+    available: '잔여 타발수',
     /** 누계를 언제 받은 값인지. 서버가 시각을 주지 않아 «화면이 받은 시각»을 적는다. */
     asOf: (time: string) => `${time} 기준`,
     usageLabel: '적정타수 대비 사용률',
@@ -80,29 +76,18 @@ export const toolUsage = {
     overSuffix: '(초과)',
   },
 
-  notice: {
-    sectionLabel: '안내',
-    /** 화면이 누계를 계산해 보내지 않는다는 사실을 상시 밝힌다. */
-    /* 스펙 §3 도면 ④ 의 문구에서 왔다 — 사용자 지시로만 고친다. */
-    /**
-     * ⭐ 한 줄만 둔다(사용자 지시 2026-09-17) — 「이 화면은 미리 계산만 합니다」를 걷고
-     *    「더합니다」를 「계산합니다」로 바꿨다. 스펙 §3 ④ 문장과 달라졌다.
-     */
-    serverAdds: ['누계는 저장 시 서버가 계산합니다.'] as readonly string[],
-  },
-
   actions: {
     save: '실적 저장',
     /** 타발수 칸 오른쪽 단추(사용자 지시 2026-09-17). 실적 저장과 같은 일을 한다. */
     confirm: '확인',
-    reset: '다시 입력',
+    reset: '입력 초기화',
   },
 
   /** 맨 위 띠로 선다 — 「실적 저장 —」 머리말은 걷었다(사용자 지시 2026-09-17). */
   actionReasons: {
     saving: '저장하는 중입니다.',
     noShot: '타발수를 1 이상 기입하세요.',
-    noEntry: '작업지시와 사번이 있어야 저장할 수 있습니다. 작업 지시 목록을 거쳐 들어오세요.',
+    noEntry: '작업지시와 사번이 있어야 저장할 수 있습니다. 작업지시 목록을 거쳐 들어오세요.',
     offline: '연결이 끊겨 저장할 수 없습니다. 연결이 돌아오면 다시 저장하세요.',
   },
 

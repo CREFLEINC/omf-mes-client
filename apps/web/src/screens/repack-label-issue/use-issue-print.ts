@@ -2,12 +2,15 @@ import { createIdempotencyKey } from '@omf-mes/api-client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
-import { fetchLabelRendition } from '../../patterns/pop-label-rendition';
+import {
+  labelRenditionFormat,
+  type LabelRenditionFormat,
+} from '../../patterns/pop-label-rendition';
 import { runRequest } from '../../patterns/request';
 import { renditionShell } from '../../patterns/pop-print';
 
+import type { PackingLabelDraw } from './packing-label';
 import { printFailureReason } from './print';
-import { labelRenditionFormat } from '../../patterns/pop-label-rendition';
 
 /**
  * 발행 뒤의 절차를 화면에 붙인다 — **받기 → 미리보기 → 보내기 → 보고.**
@@ -20,7 +23,7 @@ import { labelRenditionFormat } from '../../patterns/pop-label-rendition';
 export type IssuePrintPhase =
   /** 아직 발행하지 않았다 */
   | 'idle'
-  /** 발행됐고 그린 것을 받는 중 */
+  /** 발행됐고 라벨을 그리는 중 */
   | 'fetching'
   /** 받았다 — 사용자가 보고 인쇄를 누를 차례 */
   | 'preview'
@@ -36,7 +39,7 @@ export type IssuePrintPhase =
    * 인쇄를 권해 **같은 라벨이 한 장 더 나온다.** 여기서 할 일은 보고 재시도다.
    */
   | 'reportFailed'
-  /** 그린 것을 받지 못했다. 발행 기록은 남아 있다 */
+  /** 라벨을 그리지 못했다(그릴 값을 못 받았다). 발행 기록은 남아 있다 */
   | 'renditionFailed'
   /** 셸 밖(브라우저)이라 프린터로 보낼 수 없다 */
   | 'shellUnavailable';
@@ -45,6 +48,8 @@ export interface IssuePrintTarget {
   documentIssueLogId: number;
   /** 물리 인쇄 실패 때 `PRINT_FAILURE` 사유의 새 회차를 발행할 계약 대상. */
   targetId: number;
+  /** 라벨에 찍는 회차(서버가 매긴 값 — 화면이 세지 않는다). */
+  issueSeq: number;
   /** 인쇄 작업 이름. 현장에서 어느 출력물인지 가리는 값이라 포장 번호를 쓴다. */
   label: string;
 }
@@ -74,12 +79,16 @@ export interface IssuePrintRunner {
   reset: () => void;
 }
 
-export const useIssuePrintRunner = (workerNo: string | null): IssuePrintRunner => {
+export const useIssuePrintRunner = (
+  workerNo: string | null,
+  draw: PackingLabelDraw,
+): IssuePrintRunner => {
   const { client } = useApiClient();
   const [state, setState] = useState<IssuePrintState>(IDLE);
 
-  /** 받은 바이트. 미리보기와 인쇄가 **같은 것**을 써야 한다 — 두 번 받으면 서버가 두 번 그린다. */
+  /** 프린터로 보낼 바이트와 그 형식. 미리보기를 연 뒤 인쇄해도 같은 것을 보낸다. */
   const bytes = useRef<Uint8Array | null>(null);
+  const format = useRef<LabelRenditionFormat>('png');
   /** 만든 이미지 주소. 화면에서 사라질 때 반드시 거둔다 — 안 거두면 단말 메모리에 쌓인다. */
   const objectUrl = useRef<string | null>(null);
 
@@ -146,45 +155,21 @@ export const useIssuePrintRunner = (workerNo: string | null): IssuePrintRunner =
 
       try {
         /*
-         * ⛔ **배포본에서는 요청이 만들어지지 않는다**(`patterns/pop-label-rendition` 머리말 —
-         * 실서버에 경로가 없어 개발 모드에서만 부른다). 아래 `catch` 가 «renditionFailed» 로
-         * 받아, «발행 실패»와 뒤섞이지 않게 한다.
+         * ⭐ **POP 이 그린다**(`packing-label.ts`). 종이는 셸이 있으면 TSPL 명령, 없으면 그림으로
+         *    보내고(`labelRenditionFormat` — 다른 라벨 화면과 같은 갈래), 미리보기는 늘 그림이다.
          */
-        const data = await fetchLabelRendition(client, target.documentIssueLogId);
+        const drawn = await draw(target.targetId, target.issueSeq);
+        format.current = labelRenditionFormat();
+        bytes.current =
+          format.current === 'tspl' ? new TextEncoder().encode(drawn.command) : drawn.png;
 
-        const received = new Uint8Array(data);
-        bytes.current = received;
-
-        /*
-         * ⛔ **미리보기는 «그림»으로 따로 받는다.** 인쇄로 나가는 것은 명령형(`tspl`)인데,
-         *    그 바이트를 `<img>` 에 넣으면 언제나 「그릴 수 없습니다」가 뜬다 — 그리고
-         *    명령형을 쓰는 자리는 실기 단말뿐이라, **확인해야 할 그 단말에서만** 미리보기가
-         *    통째로 죽는다(리뷰 지적 2026-09-08).
-         *
-         * ⚠ 그림을 못 받아도 인쇄는 막지 않는다 — 종이로 나갈 바이트는 이미 손에 있다.
-         */
-        const previewBytes =
-          labelRenditionFormat() === 'png'
-            ? received
-            : /*
-               * ⛔ 여기도 같은 경로다 — 배포본에서는 위 줄에서 이미 던져 이 자리까지 오지
-               * 않는다. 서버가 구현해 첫 호출이 성공하게 되는 날에도 «명령형 인쇄용 프린터
-               * 형식은 png 로 다시 받는다»는 이 갈래의 뜻은 그대로 남아야 한다.
-               */
-              await fetchLabelRendition(client, target.documentIssueLogId, 'png')
-                .then((drawn) => new Uint8Array(drawn))
-                .catch(() => null);
-
-        const url =
-          previewBytes === null
-            ? null
-            : URL.createObjectURL(new Blob([previewBytes], { type: 'image/png' }));
+        const url = URL.createObjectURL(new Blob([drawn.png], { type: 'image/png' }));
         objectUrl.current = url;
 
         setState({ phase: 'preview', imageUrl: url, reason: null, target });
       } catch (error) {
         /*
-         * ⛔ **발행이 실패한 것이 아니다.** 기록은 남았고 그림만 못 받았다 — 화면이 이 둘을
+         * ⛔ **발행이 실패한 것이 아니다.** 기록은 남았고 라벨만 못 그렸다 — 화면이 이 둘을
          * 뭉뚱그리면 사용자가 다시 «발행»을 눌러 회차를 하나 더 올린다.
          */
         setState({
@@ -195,7 +180,7 @@ export const useIssuePrintRunner = (workerNo: string | null): IssuePrintRunner =
         });
       }
     },
-    [client, releaseImage],
+    [draw, releaseImage],
   );
 
   const print = useCallback(async (): Promise<void> => {
@@ -215,7 +200,7 @@ export const useIssuePrintRunner = (workerNo: string | null): IssuePrintRunner =
     setState((current) => ({ ...current, phase: 'printing', reason: null }));
 
     try {
-      await shell.save(payload, target.label, new Date().toISOString(), labelRenditionFormat());
+      await shell.save(payload, target.label, new Date().toISOString(), format.current);
     } catch (error) {
       const reason = printFailureReason(error);
 

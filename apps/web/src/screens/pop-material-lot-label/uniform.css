@@ -1,0 +1,648 @@
+/* P-01-01 자재 관리 LOT 라벨 — #295 시안 모양(화면 전용 `mll-*`). 공통 모양은 `app/pop-uniform.css`. */
+
+/* 맨 위 띠 칸은 옛 `.pop-ui > *` 좌우 여백(20)을 받지 않는다 — 본문과 같은 16 을 직접 둔다. */
+.pop-ui.mll-screen.mll-screen > .mll-banner.mll-banner {
+  margin-inline: 0;
+}
+
+.mll-title {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  margin: 0;
+}
+
+.mll-banner {
+  flex: none;
+  padding: 12px 16px 0;
+}
+
+/* ── 왼쪽: 탭 줄 + 찾기 + 목록 + 쪽 넘김 ── */
+.mll-left .pu-card-head > .pu-seg button {
+  height: 40px;
+}
+
+.mll-left-top {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+}
+
+.mll-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: text;
+}
+
+.mll-search > input {
+  font-size: 16px;
+}
+
+.mll-pairs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mll-pairs .pu-item {
+  font-weight: 400;
+  padding: 10px 12px;
+  gap: 4px;
+}
+
+.mll-pair-name {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.mll-pairs .pu-item-sub > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mll-miss {
+  color: var(--pu-warn);
+}
+
+/* ── 오른쪽: 머리 아래 한 줄 + 안내 + 발행 단위 + 표 + 쪽 넘김 ── */
+.mll-right > .pu-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mll-right > .pu-card-body > * {
+  flex: none;
+}
+
+.mll-right > .pu-card-body > .mll-table,
+.mll-right > .pu-card-body > .pu-empty {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.mll-right > .pu-card-body > .pu-pager {
+  margin-top: auto;
+}
+
+.mll-right > .pu-card-head h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.mll-head-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 제목이 먼저 자리를 갖고, 남는 폭만 이 줄이 쓴다(넘치면 말줄임). */
+.mll-head-sub {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--pu-text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mll-units {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.mll-units > .pu-label {
+  flex: none;
+  white-space: nowrap;
+}
+
+.mll-units > .pu-tiles {
+  flex: 1;
+  min-width: 0;
+}
+
+.mll-units .pu-tile {
+  min-height: 48px;
+  padding: 4px 10px;
+}
+
+.mll-units > .pu-btn {
+  flex: none;
+  height: 48px;
+}
+
+/* 표: 바깥 칸(`mll-table`)이 남는 높이를 갖고 쪽 건수를 잰다. 칸 폭·줄 높이는 공통 표(`pu-table`) 규칙.
+ * LOT 번호 칸은 번호만큼(넘치면 말줄임) — 남는 폭은 발행 대기면 마지막 「라벨」, 재발행이면 「품목」 칸이 갖는다. */
+.mll-table {
+  overflow: hidden;
+}
+
+.mll-table > .pu-table-wrap {
+  max-height: 100%;
+}
+
+.mll-table .pu-table td.mll-lotcol {
+  font-size: 12px;
+}
+
+/*
+ * 칸 폭(사용자 지시 2026-11-19 「잘리지 않게 적절히 배치」): 칸 머리 글은 줄이지 않는다(머리 글 폭이 칸의 최소 폭).
+ * LOT 번호 칸은 번호 길이만큼(약 32자)만 갖고, 남는 폭은 발행 대기면 공급사 LOT 번호, 재발행이면 품목 칸이 갖는다.
+ * 좁은 화면(1024)에서 모자라면 품목 값 → LOT 번호 값 순으로 말줄임이 된다.
+ */
+.mll-table .pu-table th.mll-lotcol {
+  width: 260px;
+}
+
+.mll-table .pu-table th.mll-slotcol {
+  width: auto;
+}
+
+.mll-table.is-reprint .pu-table th.mll-slotcol {
+  width: 108px;
+}
+
+/* 재발행 표는 칸이 아홉 개라 칸 안 여백을 줄인다 — 1280 에서 LOT 번호가 다 보이고 품목 칸에 폭이 남는다. */
+.mll-table.is-reprint .pu-table th,
+.mll-table.is-reprint .pu-table td {
+  padding-inline: 6px;
+}
+
+.mll-table tr.mll-dis td {
+  color: var(--pu-text-3);
+}
+
+.mll-table tr.mll-dis td > .pu-chip,
+.mll-table tr.mll-dis td > .mll-box {
+  opacity: 0.55;
+}
+
+.mll-table .mll-box.mll-box {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 0;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 2px solid var(--pu-line);
+  border-radius: 6px;
+  background: var(--pu-field);
+  color: #fff;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.mll-table .mll-box.mll-box[aria-checked='true'] {
+  background: var(--pu-primary);
+  border-color: var(--pu-primary);
+}
+
+.mll-table .mll-box.mll-box.is-off {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.mll-box .pu-ic {
+  width: 16px;
+  height: 16px;
+  stroke-width: 3;
+}
+
+.mll-mark {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  background: var(--pu-card-2);
+  color: var(--pu-text-2);
+  vertical-align: middle;
+}
+
+.mll-mark[data-tone='ok'] {
+  background: var(--pu-ok-bg);
+  color: var(--pu-ok);
+}
+
+.mll-mark[data-tone='bad'] {
+  background: var(--pu-bad-bg);
+  color: var(--pu-bad);
+}
+
+.mll-mark[data-tone='warn'] {
+  background: var(--pu-warn-bg);
+  color: var(--pu-warn);
+}
+
+.mll-mark[data-tone='info'] {
+  background: var(--pu-info-bg);
+  color: var(--pu-info);
+}
+
+.mll-mark .pu-ic {
+  width: 16px;
+  height: 16px;
+  stroke-width: 3;
+}
+
+/* 진행 줄(발행 중) */
+.mll-progress-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.mll-progress {
+  flex: 0 1 220px;
+  height: 8px;
+}
+
+/* ── 창 ── */
+.mll-help {
+  display: grid;
+  gap: 8px;
+  font-size: 15px;
+}
+
+.mll-help p {
+  margin: 0;
+}
+
+.mll-help ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 22px;
+}
+
+.mll-void {
+  display: grid;
+  gap: 8px;
+}
+
+.mll-void .pu-label {
+  margin: 0;
+}
+
+.mll-void-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 18px;
+  font-weight: 600;
+  max-height: 120px;
+  overflow: hidden;
+}
+
+.mll-void-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 4px 0 0;
+  font-size: 15px;
+}
+
+.mll-void-warn .pu-ic {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--pu-bad);
+}
+
+.mll-warn-text {
+  color: var(--pu-warn);
+}
+
+.mll-preview > span {
+  grid-column: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.mll-preview-qty {
+  font-size: 18px;
+}
+
+.mll-preview-lot {
+  font-size: 11px;
+}
+
+.mll-preview-reissue {
+  color: #b3261e;
+  font-weight: 700;
+}
+
+.mll-preview-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.mll-preview-code {
+  font-size: 18px;
+}
+
+/* 1024 단말: 발행 단위 줄은 두 줄로, 재발행 표는 LOT 번호 칸을 줄여 품목 칸 자리를 남긴다. */
+@media (max-width: 1100px) {
+  .mll-units {
+    gap: 6px;
+  }
+
+  .mll-units .pu-tiles {
+    gap: 6px;
+  }
+
+  .mll-units .pu-tile {
+    padding: 4px 6px;
+    justify-content: center;
+  }
+
+  .mll-units .pu-tile::before {
+    display: none;
+  }
+
+  .mll-units > .pu-btn {
+    padding: 0 10px;
+  }
+}
+
+/* 자재 관리 LOT 만들기 창 — 칸 이름은 위, 필수는 빨간 *(규칙 5). */
+.mll-batch {
+  display: grid;
+  gap: 12px;
+  /* 입력 칸은 창 위에서부터(사용자 지시 2026-11-19) — 키패드만 아래에 붙는다. */
+  align-self: start;
+}
+
+/* 단위(EA · 개)는 칸마다 입력 칸 높이 가운데에 선다. */
+.mll-batch-grid .pu-row {
+  align-items: center;
+}
+
+.mll-batch-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.mll-batch-pair > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.mll-batch-pair .pu-label {
+  margin: 0;
+}
+
+.mll-batch-pair-value {
+  overflow: hidden;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mll-dim {
+  color: var(--pu-text-3);
+}
+
+.mll-batch-source[data-source='default'] {
+  background: var(--pu-ok-bg);
+  color: var(--pu-ok);
+}
+
+.mll-batch-source[data-source='itemStorage'],
+.mll-batch-source[data-source='none'] {
+  background: var(--pu-warn-bg);
+  color: var(--pu-warn);
+}
+
+.mll-batch-package {
+  display: grid;
+  gap: 8px;
+}
+
+.mll-batch-package-top {
+  display: grid;
+  gap: 6px;
+}
+
+.mll-batch-package-top > .pu-label {
+  margin: 0;
+}
+
+.mll-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px;
+  gap: 4px;
+  border-radius: 10px;
+  background: var(--pu-card-2);
+}
+
+.mll-switch > button {
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--pu-text-2);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mll-switch > button[aria-pressed='true'] {
+  background: var(--pu-card);
+  color: var(--pu-text);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+}
+
+.mll-batch-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.mll-batch .pu-help {
+  margin: 4px 0 0;
+}
+
+.mll-batch-calc {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--pu-ok);
+}
+
+.mll-batch-calc[data-ok='false'] {
+  color: var(--pu-bad);
+}
+
+.mll-batch-summary {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--pu-card-2);
+  font-size: 14px;
+}
+
+/* 자재 관리 LOT 만들기 창: 왼쪽 입력 · 오른쪽 키패드(POP 통일 규칙 8). */
+.pu-dialog:has(.mll-batch-wrap) {
+  width: min(1120px, calc(100vw - 32px));
+}
+
+.mll-batch-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 20px;
+  /* 키패드는 창 아래쪽에 붙인다(사용자 지시 2026-11-19). */
+  align-items: end;
+}
+
+@media (max-width: 1100px) {
+  .mll-batch-wrap {
+    grid-template-columns: minmax(0, 1fr) 260px;
+    gap: 16px;
+  }
+}
+
+/* 공급사 LOT 번호를 칠 때는 글자판(열 칸)이 들어가도록 오른쪽 칸을 넓힌다. */
+.mll-batch-wrap:has(.mll-batch-keypad[data-text='true']) {
+  grid-template-columns: minmax(0, 1fr) 440px;
+}
+
+/* 만들기 창 머리 오른쪽 출처 칩(사용자 지시 2026-11-19) — 제목 줄(`pu-dialog-head`)에 맞춰 세운다. */
+.pu-dialog:has(.mll-batch-wrap) {
+  position: relative;
+}
+
+.mll-batch-source {
+  position: absolute;
+  top: 14px;
+  right: 20px;
+  max-width: calc(100% - 280px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* LOT 1개 수 칸은 오른쪽에 포장 곱 칩을 같은 줄에 둔다 — 그 칸을 넓힌다. */
+.mll-batch-grid.is-lot {
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 0.8fr);
+}
+
+.mll-batch-grid .pu-row > .pu-input {
+  flex: 1 1 0;
+  min-width: 72px;
+}
+
+.mll-batch-calc-chip {
+  flex: none;
+  align-self: center;
+  white-space: nowrap;
+  background: var(--pu-ok-bg);
+  color: var(--pu-ok);
+}
+
+.mll-batch-calc-chip[data-ok='false'] {
+  background: var(--pu-bad-bg);
+  color: var(--pu-bad);
+}
+
+/* 1024 단말: 칸 안 여백을 줄이고 짧은 칸 머리 글(재고 수량 · 최근 출력 일시)은 두 줄로 — LOT 번호 칸이 남는 폭을 나눠 갖는다. */
+@media (max-width: 1100px) {
+  .mll-table .pu-table th,
+  .mll-table .pu-table td {
+    padding-inline: 6px;
+  }
+
+  .mll-table.is-reprint .pu-table th.fit:not(.mid) {
+    white-space: normal;
+    line-height: 15px;
+  }
+
+  .mll-table .pu-table th.mll-lotcol {
+    width: auto;
+  }
+
+  /* 공급사 LOT 번호는 머리 글 폭만 — 남는 폭은 LOT 번호가 갖는다. 재발행 표는 머리 글을 두 줄로(마지막 수단). */
+  .mll-table .pu-table th.mll-slotcol {
+    width: 1%;
+  }
+
+  .mll-table.is-reprint .pu-table th.mll-slotcol {
+    width: 80px;
+    white-space: normal;
+    line-height: 15px;
+  }
+}
+
+/* 1024 에서 글자판(공급사 LOT 번호)이 열리면 입력 열이 좁아진다 — LOT 1개 수는 한 줄을 다 쓰고, 공급사 LOT 번호 · 개수는 다음 줄에 나란히. */
+@media (max-width: 1100px) {
+  .mll-batch-wrap:has(.mll-batch-keypad[data-text='true']) .mll-batch-grid.is-lot {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mll-batch-wrap:has(.mll-batch-keypad[data-text='true']) .mll-batch-grid.is-lot > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+/*
+ * 발행 대기 · 재발행 표의 품목 칸(사용자 지시 2026-11-19 「여기 표도 품목 데이터 보여야 할 거 같아」):
+ * 짧은 칸(재고량 · 포장 · 상태 · 라벨/출력 · 일시)은 글자만큼, 공급사 LOT 번호는 머리 글 폭만.
+ * LOT 번호 칸은 화면 폭에 따라 줄고(넘치면 말줄임 + title), 남는 폭은 품목이 갖는다 — 1280 에서 품목 약 220 · 1024 에서 약 130.
+ */
+.mll-table .pu-table th.mll-slotcol {
+  width: 108px;
+}
+
+.mll-table .pu-table th.mll-lotcol {
+  width: clamp(112px, calc(100vw - 1170px), 260px);
+}
+
+.mll-table.mll-table .pu-table th,
+.mll-table.mll-table .pu-table td {
+  padding-inline: 4px;
+}
+
+@media (max-width: 1100px) {
+  .mll-table .pu-table th.fit:not(.mid) {
+    white-space: normal;
+    line-height: 15px;
+  }
+
+  .mll-table.mll-table .pu-table th.mll-slotcol {
+    width: 72px;
+    white-space: normal;
+    line-height: 15px;
+  }
+
+  /* LOT 번호 머리 글도 두 줄로 — 값은 말줄임 + title. */
+  .mll-table .pu-table th.mll-lotcol {
+    width: 72px;
+    white-space: normal;
+    line-height: 15px;
+  }
+}

@@ -1,0 +1,117 @@
+/* P-02-10 작업 중단 — POP 통일 시안(#295) 화면 전용 모양. 공통은 app/pop-uniform.css. */
+
+.wh-screen {
+  height: 100%;
+}
+
+/* 왼쪽 「현재 세션」: 시작·경과 → 가는 선 → 이벤트 이력(남는 높이) → [세션 종료] */
+.wh-session-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wh-history {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wh-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.wh-sub .pu-count {
+  margin-left: auto;
+}
+
+.wh-history > .pu-empty {
+  flex: 1;
+}
+
+.wh-evs {
+  flex: 1;
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  align-content: start;
+}
+
+.wh-evs li {
+  display: grid;
+  grid-template-columns: 56px 76px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-field);
+  font-size: 14px;
+}
+
+.wh-evs li .r {
+  color: var(--pu-text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wh-end {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.wh-end > .pu-note {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 《중단 등록》: 평소에는 사유·비고가 위아래. 비고 글자판이 열리면 둘을 나란히 두고 그 아래에 글자판. */
+.wh-fields {
+  display: contents;
+}
+
+.wh-fields.is-kbd {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.wh-fields.is-kbd > .pu-note {
+  grid-column: 1 / -1;
+}
+
+/* 꺼진 키(예: 빈 칸의 전체 삭제)를 눌러도 칸에서 초점이 빠져 글자판이 닫히지 않게, 누름을 글자판 바탕으로 넘긴다. */
+.wh-kbd .pu-tkbd button:disabled {
+  pointer-events: none;
+}
+
+/* 글자판이 다섯 줄(맨 위 숫자 줄)이라 칸 아래에 펼 때는 키를 조금 낮춰 구획 안에 들어가게 한다. */
+.wh-kbd .pu-tkbd {
+  --pu-key: 44px;
+  gap: 4px;
+}
+
+@media (max-height: 780px) {
+  .wh-kbd .pu-tkbd {
+    --pu-key: 40px;
+  }
+}
+
+@media (max-height: 780px) {
+  .pu-card-body:has(> .wh-kbd) {
+    gap: 8px;
+  }
+}

@@ -12,7 +12,7 @@ import { messages } from '@omf-mes/i18n';
 import { useState, type FormEvent } from 'react';
 
 import { PopRowHead, PopRowInfo, PopRowPair } from '../../patterns/pop-list-row';
-import { PopPageNav, pageBoundaryOf } from '../../patterns/pop-page-nav';
+import { PuPager } from '../../patterns/pop-uniform';
 import { formatQty, orderSearchRows, toSearchRow, type SearchRowView } from './model';
 import { useShipmentRequestSearch } from './queries';
 
@@ -176,10 +176,17 @@ export const SearchDialog = ({ onClose, onPick }: SearchDialogProps) => {
       </form>
       <p className="field-note">{t.note}</p>
       {body}
-      <PopPageNav
-        boundary={pageBoundaryOf(search.data?.page)}
+      {/* POP 쪽 넘김은 공통 `PuPager` 로 옮겼다(#295) — 건수는 위 칸이 이미 보인다. */}
+      <PuPager
+        total={search.data?.page.total ?? null}
+        page={Math.max(1, search.data?.page.page ?? page)}
+        pages={Math.max(
+          1,
+          Math.ceil((search.data?.page.total ?? 0) / Math.max(1, search.data?.page.size ?? 1)),
+        )}
         label={t.pageNav}
-        onChange={setPage}
+        showTotal={false}
+        onPage={setPage}
       />
     </Dialog>
   );

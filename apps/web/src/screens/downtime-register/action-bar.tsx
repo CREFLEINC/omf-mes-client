@@ -1,5 +1,6 @@
-import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+
+import { PuActionBar, PuButton } from '../../patterns/pop-uniform';
 
 import type { GateVerdict } from './terminal-gating';
 
@@ -99,61 +100,45 @@ export const describeSaveBlock = (block: SaveBlock): string | null => {
 
 export interface ActionBarProps {
   block: SaveBlock;
-  /** 아직 아무것도 적지 않았다 — 비울 것이 없으면 「다시 입력」을 잠근다. */
+  /** 아직 아무것도 적지 않았다 — 비울 것이 없으면 「입력 초기화」를 잠근다. */
   isEmpty: boolean;
-  /** 시작 시각·사유가 아직 덜 찼는가. 잠그되 사유는 화면이 말한다(#1094). */
+  /** 시작 시각·사유가 아직 덜 찼는가(스펙 §5-1 활성 조건). */
   isIncomplete: boolean;
-  /** 저장에 필요한 것이 덜 찼다 — **시작 시각과 사유**다(스펙 §5-1 활성 조건). */
+  /** 꺼진 [실적 저장]에 손을 올리면 보이는 이유(#295 — 작업 줄에 글을 띄우지 않는다). */
+  blockedReason: string | null;
   onReset: () => void;
   onSave: () => void;
 }
 
 /**
- * 액션바 — 「다시 입력」과 「실적 저장」.
+ * 아래 작업 줄 — [입력 초기화]와 [실적 저장]. 버튼만 둔다(#295 규칙 3): 꺼진 버튼은 흐리게만,
+ * 이유는 손을 올리면 보인다. 화면이 고칠 수 없는 막힘(설비·단말·권한)은 「오늘 이 설비」 구획 안 안내 줄이 말한다.
  *
- * ⛔ **「다시 입력」은 서버를 부르지 않는다.** 저장 전 화면 안의 초기화이고, 계약에 대응하는
- * 오퍼레이션이 없는 것도 그래서다.
+ * ⛔ **「입력 초기화」는 서버를 부르지 않는다.** 저장 전 화면 안의 초기화이고, 계약에 대응하는
+ * 오퍼레이션이 없는 것도 그래서다. 비울 것이 없으면 잠근다(선례 `P-02-04` §5-2 「입력 있음」).
+ *
+ * ⛔ **덜 차면 저장을 잠근다**(스펙 §5-1 활성 조건 · 사용자 확인 2026-09-12 실화면). 큐에 담는
+ * 것이 곧 성공이라 「저장하는 중」이 없다.
  */
-export const ActionBar = ({ block, isEmpty, isIncomplete, onReset, onSave }: ActionBarProps) => {
-  return (
-    <div className="downtime-actions">
-      {/*
-       * ⛔ **막힌 사유를 이 자리에 붉은 글자로 두지 않는다**(사용자 지시 2026-09-12).
-       *    말하지 않는 것이 아니라 **자리를 옮긴 것이다** — 화면 머리의 배너가 같은 문장을
-       *    낸다(`screen.tsx`). 아래에서 붉게 한 번 더 하면 같은 말이 두 곳에 서고, 상시 붉은
-       *    글자는 「늘 그런 것」으로 읽혀 정작 막혔을 때 아무도 보지 않는다.
-       *
-       * ⚠ **`describeSaveBlock` 은 그대로 쓴다** — 문장을 만드는 자리는 여전히 하나다.
-       */}
-
-      {/*
-       * ⛔ **비울 것이 없으면 잠근다**(사용자 지적 2026-09-07 · 선례 `P-02-04` §5-2 「입력 있음」).
-       *    아무것도 적지 않은 채로 눌리면 눌러도 아무 일이 없어 버튼이 고장 난 것처럼 보인다.
-       *
-       * ⚠ 저장 버튼과 달리 **사유를 적지 않는다** — 비울 것이 없다는 사실은 화면이 이미
-       *    보이고 있고, 「입력이 없습니다」는 작업자가 할 일을 말하지 않는다.
-       */}
-      <Button variant="outlined" size="2xl" disabled={isEmpty} onClick={onReset}>
-        {t.actions.reset}
-      </Button>
-      {/*
-       * 큐에 담는 것이 곧 성공이라 「저장하는 중」이 없다 — 통신을 기다리지 않는다.
-       *
-       * ⛔ **덜 차면 잠근다**(스펙 §5-1 활성 조건 · 사용자 확인 2026-09-12 실화면).
-       *
-       * ⚠ 한 회차 동안 「잠그지 않고 누르면 말한다」로 갔다가 되돌렸다 — 실제 화면에서
-       *    **눌리는 붉은 버튼**이 「지금 저장된다」로 읽혔다. 잠그되, 종전과 달리 **왜 잠겼는지는
-       *    화면이 말한다**(`screen.tsx` 의 `blockedNotice`) — 꺼진 버튼만으로는 무엇이 모자란지
-       *    알 수 없었던 것이 이 이슈의 출발점이다.
-       */}
-      <Button
-        variant="filled"
-        size="2xl"
-        disabled={block !== null || isIncomplete}
-        onClick={onSave}
-      >
-        {t.actions.save}
-      </Button>
-    </div>
-  );
-};
+export const ActionBar = ({
+  block,
+  isEmpty,
+  isIncomplete,
+  blockedReason,
+  onReset,
+  onSave,
+}: ActionBarProps) => (
+  <PuActionBar>
+    <PuButton icon="reset" disabled={isEmpty} onClick={onReset}>
+      {t.actions.reset}
+    </PuButton>
+    <PuButton
+      variant="primary"
+      disabled={block !== null || isIncomplete}
+      title={blockedReason ?? undefined}
+      onClick={onSave}
+    >
+      {t.actions.save}
+    </PuButton>
+  </PuActionBar>
+);
