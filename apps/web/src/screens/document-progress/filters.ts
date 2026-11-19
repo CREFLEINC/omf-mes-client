@@ -13,23 +13,19 @@ import { findSelectableDocumentType, type DocumentTypeEntry } from './document-t
  * 자기 파일을 갖는다. 조건이 바뀌면 고른 문서가 새 결과에 없을 수 있어 함께 비워져야 하고,
  * 고르는 쪽만 이 결과에 덧붙인다.
  *
+ * 품목 · 자재 LOT · 창고 번호 조건은 걷었다(사용자 지시 2026-11-19) — 내부 번호를 쳐야 해서 쓰이지 않았다.
+ *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
 export interface ProgressFilters {
   /** 문서 유형 코드. **조건이 아니라 전제다** — 없으면 조회가 성립하지 않는다. */
   documentType: string;
-  /** 상태 코드. 선택지가 자리표시라 지금은 주소를 손으로 고칠 때만 들어온다. */
+  /** 상태 코드. 선택지는 공통코드 `LOGISTICS_DOCUMENT_STATUS` 다. */
   status: string;
   /** 문서 일자 범위. `DatePicker mode="range"` 한 컨트롤이 `YYYY-MM-DD` 두 값을 준다. */
   from: string;
   to: string;
-  /** 품목 번호. 정수만 뜻이 있다 — 계약이 `itemId`를 정수로 요구한다. */
-  item: string;
-  /** 자재 LOT 번호. 같은 위. */
-  lot: string;
-  /** 창고 번호. 같은 위. */
-  warehouse: string;
   /**
    * 지금 취소 가능한 것만 볼 것인가.
    *
@@ -56,9 +52,6 @@ export const DEFAULT_PROGRESS_FILTERS: ProgressFilters = {
   status: '',
   from: '',
   to: '',
-  item: '',
-  lot: '',
-  warehouse: '',
   cancellableOnly: false,
   q: '',
 };
@@ -69,9 +62,6 @@ const URL_KEYS = {
   status: 'st',
   from: 'from',
   to: 'to',
-  item: 'item',
-  lot: 'lot',
-  warehouse: 'wh',
   cancellableOnly: 'conly',
   q: 'q',
   page: 'page',
@@ -135,9 +125,6 @@ export const readFilters = (params: URLSearchParams): ProgressFilters => ({
   status: normalizeText(params.get(URL_KEYS.status) ?? ''),
   from: readDateFilter(params.get(URL_KEYS.from) ?? ''),
   to: readDateFilter(params.get(URL_KEYS.to) ?? ''),
-  item: readNumberFilter(params.get(URL_KEYS.item) ?? ''),
-  lot: readNumberFilter(params.get(URL_KEYS.lot) ?? ''),
-  warehouse: readNumberFilter(params.get(URL_KEYS.warehouse) ?? ''),
   cancellableOnly: readFlagFilter(params.get(URL_KEYS.cancellableOnly) ?? ''),
   /*
    * **검색어만 원문 그대로 읽는다** — 다듬지 않는 것이 빠뜨린 것이 아니다. 이 값은 검색칸에
@@ -171,9 +158,6 @@ export const toSearchParams = (filters: ProgressFilters, page: number): URLSearc
     [URL_KEYS.status, normalizeText(filters.status)],
     [URL_KEYS.from, readDateFilter(filters.from)],
     [URL_KEYS.to, readDateFilter(filters.to)],
-    [URL_KEYS.item, readNumberFilter(filters.item)],
-    [URL_KEYS.lot, readNumberFilter(filters.lot)],
-    [URL_KEYS.warehouse, readNumberFilter(filters.warehouse)],
     [URL_KEYS.q, normalizeText(filters.q)],
   ];
 
@@ -201,9 +185,6 @@ export interface DocumentProgressListQuery {
   statusCode?: string;
   documentDateFrom?: string;
   documentDateTo?: string;
-  itemId?: number;
-  lotId?: number;
-  warehouseId?: number;
   cancellableOnly: boolean;
   q?: string;
   /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
@@ -232,9 +213,6 @@ export const toListQuery = (
   const status = normalizeText(filters.status);
   const from = readDateFilter(filters.from);
   const to = readDateFilter(filters.to);
-  const item = readNumberFilter(filters.item);
-  const lot = readNumberFilter(filters.lot);
-  const warehouse = readNumberFilter(filters.warehouse);
   const query = normalizeText(filters.q);
 
   return {
@@ -242,9 +220,6 @@ export const toListQuery = (
     ...(status === '' ? {} : { statusCode: status }),
     ...(from === '' ? {} : { documentDateFrom: from }),
     ...(to === '' ? {} : { documentDateTo: to }),
-    ...(item === '' ? {} : { itemId: Number(item) }),
-    ...(lot === '' ? {} : { lotId: Number(lot) }),
-    ...(warehouse === '' ? {} : { warehouseId: Number(warehouse) }),
     cancellableOnly: filters.cancellableOnly,
     ...(query === '' ? {} : { q: query }),
     ...(page > 1 ? { page } : {}),

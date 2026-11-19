@@ -73,8 +73,7 @@ export const ExecuteCancelPane = ({
   /**
    * 버튼이 왜 잠겼는지 한 줄.
    *
-   * **요청이 없을 때는 `null`이다** — 그 갈래에는 버튼 자체가 없고, 대신 아래에서 무엇을 해야
-   * 하는지 문장으로 말한다. 잠긴 손잡이에 붙는 설명과 없는 손잡이를 대신하는 설명은 다른 글이다.
+   * **요청이 없을 때는 `null`이다** — 그 갈래에는 버튼 자체가 없다.
    */
   const blockNote = ((): string | null => {
     if (!hasCancelRequest) return null;
@@ -83,9 +82,12 @@ export const ExecuteCancelPane = ({
     return lock.kind === 'failed' ? t.executeCancel.lockFailedNote : null;
   })();
 
+  /* 요청이 없으면(결과도 없으면) 구획을 그리지 않는다 — 실행할 것이 없다. */
+  if (!hasCancelRequest && result === null && banner === null) return null;
+
   return (
-    <section className="pane" aria-label={t.executeCancel.label}>
-      <p>{t.executeCancel.lead}</p>
+    <section className="board-frame-sub" aria-label={t.executeCancel.label}>
+      <h2 className="pane-title">{t.executeCancel.label}</h2>
 
       {banner}
 
@@ -95,7 +97,7 @@ export const ExecuteCancelPane = ({
        */}
       {result !== null && <CancelResultPane result={result} statusName={statusName} />}
 
-      {hasCancelRequest ? (
+      {hasCancelRequest && (
         <div className="form-actions">
           <div className="field-cell">
             {/*
@@ -119,8 +121,6 @@ export const ExecuteCancelPane = ({
             )}
           </div>
         </div>
-      ) : (
-        <p className="field-note">{t.executeCancel.notRequestedNote}</p>
       )}
     </section>
   );

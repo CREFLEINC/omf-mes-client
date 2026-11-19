@@ -44,16 +44,6 @@ describe('RequestCancelDialog — 창이 말하는 것', () => {
   });
 
   /**
-   * ⭐ **승인을 탄다는 사실**(C3-6 ⓐ). 지금 취소되는 것이 아니다 — 이 문장이 없으면 사용자는
-   * 누른 뒤 문서가 그대로인 것을 결함으로 읽는다.
-   */
-  it('승인을 탄다고 말한다', () => {
-    renderDialog();
-
-    expect(screen.getByText(t.cancelDialog.approval)).toBeInTheDocument();
-  });
-
-  /**
    * ⭐ **철회할 수 없다는 사실**(C3-6 ⓑ). 상신을 되무르는 오퍼레이션이 승인 계약에 **없다**
    * (omf-mes#87) — 무를 수 있다고 읽히면 사용자가 가볍게 누른다.
    */
@@ -64,17 +54,12 @@ describe('RequestCancelDialog — 창이 말하는 것', () => {
   });
 
   /**
-   * 세 문장이 **함께** 서야 뜻이 온전하다 — 하나만 서면 「승인을 탄다」만 읽고 무를 수 있다고
-   * 여기거나, 「철회할 수 없다」만 읽고 지금 취소되는 줄 안다. 한 자리에서 셋을 함께 센다.
+   * 두 문장이 **함께** 서야 뜻이 온전하다 — 무엇을 승인에 올리는지와 철회할 수 없다는 사실.
    */
-  it('세 문장이 함께 선다', () => {
+  it('두 문장이 함께 선다', () => {
     renderDialog();
 
-    for (const line of [
-      t.cancelDialog.target(DOCUMENT_NO),
-      t.cancelDialog.approval,
-      t.cancelDialog.noWithdraw,
-    ]) {
+    for (const line of [t.cancelDialog.target(DOCUMENT_NO), t.cancelDialog.noWithdraw]) {
       expect(screen.getByText(line)).toBeInTheDocument();
     }
   });

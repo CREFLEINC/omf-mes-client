@@ -110,14 +110,11 @@ export const ApprovalProgressPane = ({
   isJudgePending,
   onRetry,
 }: ApprovalProgressPaneProps) => (
-  <section className="pane" aria-label={t.approval.label}>
+  <section className="board-frame-sub" aria-label={t.approval.label}>
+    <h2 className="pane-title">{t.approval.label}</h2>
+
     {state.kind === 'notSubmitted' && (
-      <EmptyState
-        size="sm"
-        live
-        title={t.approval.notSubmittedTitle}
-        description={t.approval.notSubmittedDescription}
-      />
+      <EmptyState size="sm" live title={t.approval.notSubmittedTitle} />
     )}
 
     {state.kind === 'unusable' && (
@@ -194,12 +191,6 @@ const FailedProgress = ({ error, onRetry }: FailedProgressProps) => {
           )
         }
       />
-      {/*
-       * ⭐ **못 읽어도 실행을 막지 않는다**(완료 조건 C4-8). 잠금의 정본은 서버이고 계약이
-       * 「승인 전이면 400」이라 적었다 — 화면이 모르는 것을 「승인되지 않았다」로 접으면
-       * 승인된 건까지 실행할 수 없어진다.
-       */}
-      <p className="field-note">{t.approval.loadFailedNote}</p>
     </>
   );
 };
@@ -220,26 +211,26 @@ const ReadyProgress = ({ view, isJudgePending }: ReadyProgressProps) => {
 
   return (
     <>
-      <dl className="filter-bar">
-        <div className="field-cell">
-          <dt className="field-label">{t.approval.requestNo}</dt>
+      <dl className="po-board-order-facts">
+        <div>
+          <dt>{t.approval.requestNo}</dt>
           {/* 업무 번호라 그대로 낸다 — 조회에만 쓰는 내부 식별자와 다른 값이다. */}
           <dd>{view.requestNo}</dd>
         </div>
-        <div className="field-cell">
-          <dt className="field-label">{t.approval.approvalType}</dt>
+        <div>
+          <dt>{t.approval.approvalType}</dt>
           <dd>{view.approvalTypeCode}</dd>
         </div>
-        <div className="field-cell">
-          <dt className="field-label">{t.approval.status}</dt>
+        <div>
+          <dt>{t.approval.status}</dt>
           <dd>{view.statusCode}</dd>
         </div>
-        <div className="field-cell">
-          <dt className="field-label">{t.approval.requester}</dt>
+        <div>
+          <dt>{t.approval.requester}</dt>
           <dd>{view.requesterLabel}</dd>
         </div>
-        <div className="field-cell">
-          <dt className="field-label">{t.approval.requestedAt}</dt>
+        <div>
+          <dt>{t.approval.requestedAt}</dt>
           <dd>{view.requestedAtText}</dd>
         </div>
       </dl>
@@ -270,18 +261,6 @@ const ReadyProgress = ({ view, isJudgePending }: ReadyProgressProps) => {
         <Stepper orientation="vertical" size="sm" steps={items} />
       )}
 
-      {/*
-       * **승인 뒤에 무엇이 남았는지 밝히는 자리.**
-       *
-       * 세 문장이 서는 조건이 서로 다르다 —
-       * ① 「승인이 끝나도 저절로 취소되지 않는다」는 **계약이 못 박은 사실**이라 늘 선다.
-       * ② 「승인이 끝났는지 판정하지 못한다」는 **자리표시가 비어 있는 동안**만 선다.
-       * ③ 「승인이 끝났습니다」는 **자리표시가 채워졌고 그 요청이 승인일 때**만 선다.
-       *
-       * ⛔ **셋 중 어느 것도 실행 버튼을 잠그지 않는다**(완료 조건 C4-8) — 말하는 것과 막는 것은
-       * 다른 일이고, 막는 것은 서버다.
-       */}
-      <p className="field-note">{t.approval.manualExecuteNote}</p>
       {isJudgePending && <p className="field-note">{t.approval.unjudgeableNote}</p>}
       {!isJudgePending && view.isApproved && (
         <p className="field-note">{t.approval.approvedNote}</p>
