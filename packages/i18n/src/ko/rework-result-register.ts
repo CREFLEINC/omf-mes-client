@@ -22,23 +22,23 @@ export const reworkResultRegister = {
   /** 목록 항목의 이름들. */
   list: {
     item: '품목',
-    qty: '수량',
+    qty: '계획량',
     status: '상태',
-    disposition: '처분',
-    sourceLot: '원 LOT',
-    nonconformance: '부적합',
+    disposition: '처분량',
+    sourceLot: '기존 LOT 번호',
+    nonconformance: '부적합 내용',
     progress: '재작업',
     reworkChip: '재작업',
     plannedChip: '배포 전',
     /** 카드의 계획 시작 일시 — 목록 정렬 기준(사용자 지시 2026-11-19). */
-    plannedStart: '계획 시작',
+    plannedStart: '계획 시작일시',
   },
   /**
    * 배포 전 재작업 지시에 다는 표식(omf-all-around#47). 발행은 됐지만 배포 전이라
    * 실적을 받지 못한다 — 있다는 사실은 알리고 고르지는 못하게 한다.
    */
   notReleased: '배포를 먼저 진행해 주세요',
-  sourceLot: '원 LOT',
+  sourceLot: '기존 LOT 번호',
   /**
    * 근거·처분 — **스펙 §3 ①의 라벨 그대로다**(「근거」·「처분」). 앞선 판은 「근거 부적합」·
    * 「처분 수량」이었는데, 값이 이미 「부적합 NC-… 」·「재작업 160 EA」로 무엇인지 말한다.
@@ -75,10 +75,10 @@ export const reworkResultRegister = {
     defect: '불량 등록',
   },
   quantities: {
-    goodQty: '양품',
+    goodQty: '양품량',
     defectQty: '불량량',
-    holdQty: '보류',
-    scrapQty: '폐기',
+    holdQty: '보류량',
+    scrapQty: '폐기량',
   },
   /** 오른쪽 키패드 구획. */
   keypad: {

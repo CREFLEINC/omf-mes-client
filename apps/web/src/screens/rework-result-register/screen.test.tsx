@@ -344,8 +344,8 @@ describe('ReworkResultRegisterScreen — 본문 통일 시안(#295)', () => {
     expect(screen.queryByText(t.pickTitle)).toBeNull();
   });
 
-  /* ⭐ 정보 띠는 스펙 §3 ①의 세 줄이다 — 원 LOT(번호+수량) · 처분 · 근거. 식별자 숫자는 새지 않는다. */
-  it('정보 띠가 원 LOT · 처분 · 근거 세 줄로 선다', async () => {
+  /* ⭐ 정보 띠는 스펙 §3 ①의 세 줄이다 — 기존 LOT 번호(번호+수량) · 처분 · 근거. 식별자 숫자는 새지 않는다. */
+  it('정보 띠가 기존 LOT 번호 · 처분 · 근거 세 줄로 선다', async () => {
     const { user } = renderScreen();
     await pickWorkOrder(user);
 
