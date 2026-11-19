@@ -1,14 +1,24 @@
-import { AlertBanner, Button, Card, TextField } from '@crefle/web-ui';
+import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useId, useState, type CSSProperties } from 'react';
 
 import {
   usePopRegistration,
   type FailureSource,
   type RegistrationFailure,
 } from '../../patterns/pop-registration';
-import { useScannerSubmit } from '../../patterns/pop-scanner-submit';
+import {
+  PuBand,
+  PuButton,
+  PuIcon,
+  PuNote,
+  PuScanField,
+  PuScreen,
+} from '../../patterns/pop-uniform';
+import { useIsOnline } from './connection';
 import { panelScale } from './panel-scale';
+import { equipmentText, processText } from './terminal-facts';
+import './uniform.css';
 
 /**
  * P-CO-01 §3-A — **미등록·재등록 패널**(공유계약 F-4).
@@ -103,6 +113,8 @@ const usePanelScale = (): number => {
 export const RegistrationPanel = () => {
   const registration = usePopRegistration();
   const [token, setToken] = useState('');
+  const isOnline = useIsOnline();
+  const titleId = useId();
 
   /* 이탈 시 후보 입력을 지운다 — 값이 화면에 남지 않게 한다(F-4). */
   useEffect(() => () => setToken(''), []);
@@ -116,129 +128,158 @@ export const RegistrationPanel = () => {
   useEffect(() => {
     if (failure === 'wrong-type' && failureSource === 'entered') setToken('');
   }, [failure, failureSource]);
-  const tokenRef = useRef<HTMLInputElement>(null);
 
-  const scanner = useScannerSubmit(
-    (value) => {
-      const trimmed = value.trim();
+  /** ⛔ 빈 값·확인 중에는 보내지 않는다 — 단추의 잠금과 같은 판정이다. */
+  const send = (value: string): void => {
+    const trimmed = value.trim();
 
-      /* ⛔ 빈 값·확인 중에는 보내지 않는다 — 단추의 잠금과 같은 판정이다. */
-      if (trimmed === '' || busy) return;
+    if (trimmed === '' || busy) return;
 
-      void registration.verify(trimmed);
-    },
-    () => tokenRef.current?.value ?? '',
-  );
+    void registration.verify(trimmed);
+  };
+
+  const isInput = phase === 'unregistered' || phase === 'verifying';
+  const isConfirm = phase === 'verified' && terminal !== null;
+  const failureText =
+    failure === null ? null : failureMessage(failure, pendingCount, failureSource);
+  const guide = isInput
+    ? t.guide
+    : isConfirm
+      ? t.confirmTitle
+      : phase === 'preparing'
+        ? t.preparing
+        : null;
 
   return (
-    <div className="pop-registration" style={{ '--pop-reg-scale': scale } as CSSProperties}>
-      <Card className="pop-registration__card">
-        <h1 className="pop-registration__title">
-          {phase === 'verified' && terminal !== null ? t.confirmHeading : t.title}
-        </h1>
+    <div className="wa-reg">
+      {/* 다른 POP 화면과 같은 짙은 머리줄 — 제품 이름 · 「단말 확인 전」 · 연결 상태(#295 로그인 시안). */}
+      <div className="pop-nav">
+        <div className="pop-nav-top">
+          <span className="pop-nav-top__brand">{messages.workerAssignment.header.brand}</span>
+          <span className="pop-nav-top__chip pop-nav-top__terminal">
+            {messages.popChrome.header.terminalUnknown}
+          </span>
+          <Chip variant="status" size="md" status={isOnline ? 'success' : 'warning'}>
+            {isOnline
+              ? messages.workerAssignment.header.online
+              : messages.workerAssignment.header.offline}
+          </Chip>
+        </div>
+      </div>
 
-        {failure !== null ? (
-          <AlertBanner variant="error">
-            {failureMessage(failure, pendingCount, failureSource)}
-          </AlertBanner>
-        ) : null}
+      <PuScreen className="wa-reg-main">
+        <section
+          className="pu-card wa-reg-card"
+          style={{ '--pop-reg-scale': scale } as CSSProperties}
+          aria-labelledby={titleId}
+        >
+          <div className="pu-card-head">
+            <h2 id={titleId}>{isConfirm ? t.confirmHeading : t.title}</h2>
+          </div>
 
-        {phase === 'verified' && terminal !== null ? (
-          <>
-            <p className="pop-registration__guide">{t.confirmTitle}</p>
-            <dl className="pop-registration__facts">
-              <dt>{t.terminalCode}</dt>
-              <dd>{terminal.terminalCode}</dd>
-              <dt>{t.equipment}</dt>
-              {/* ⛔ 이름이 없으면 코드·번호를 보이고, 어느 것도 없으면 미지정이다 — 지어내지 않는다. */}
-              <dd>
-                {terminal.equipmentName ??
-                  terminal.equipmentCode ??
-                  (terminal.equipmentId === null ? t.unassigned : String(terminal.equipmentId))}
-              </dd>
-              <dt>{t.process}</dt>
-              <dd>
-                {verifiedProcessNames === null
-                  ? t.processUnknown
-                  : verifiedProcessNames.length === 0
-                    ? t.unassigned
-                    : verifiedProcessNames.join(', ')}
-              </dd>
-            </dl>
-            <div className="pop-registration__actions">
-              <Button size="xl" variant="outlined" onClick={registration.restart}>
-                {t.restart}
-              </Button>
-              <Button size="xl" onClick={() => void registration.apply()}>
-                {t.apply}
-              </Button>
-            </div>
-          </>
-        ) : null}
+          <div className="pu-card-body">
+            {guide !== null && <PuNote tone="info">{guide}</PuNote>}
 
-        {phase === 'prepare-failed' ? (
-          <>
-            <AlertBanner variant="warning">{t.prepareFailedTitle}</AlertBanner>
-            <p className="pop-registration__guide">{t.prepareFailedBody}</p>
-            <div className="pop-registration__actions">
-              <Button size="xl" variant="outlined" onClick={registration.restart}>
-                {t.restart}
-              </Button>
-              <Button size="xl" onClick={() => void registration.retryPrepare()}>
-                {t.retryPrepare}
-              </Button>
-            </div>
-          </>
-        ) : null}
+            {isInput && (
+              /*
+               * ⭐ **바코드로 읽으면 그대로 확인까지 간다**(사용자 지시 2026-09-19 · omf-all-around#35).
+               *    스캐너가 값 끝에 Enter 를 붙이지 않아도, 글자가 멈추면 [단말 등록]을 누른 것과
+               *    같다 — 판정은 `patterns/pop-scanner-submit` 한 곳이다(스캔 칸이 부른다). 손으로 친
+               *    값은 그대로 Enter·단추로만 나간다. 등록이 안 된 이유는 칸 바로 아래 빨간 줄이다.
+               */
+              <PuScanField
+                label={t.tokenLabel}
+                ariaLabel={t.tokenLabel}
+                required
+                value={token}
+                onChange={setToken}
+                onSubmit={send}
+                manual={false}
+                disabled={busy}
+                error={failureText}
+              />
+            )}
 
-        {phase === 'unregistered' || phase === 'verifying' ? (
-          <>
-            <p className="pop-registration__guide">{t.guide}</p>
-            {/*
-             * ⭐ **바코드로 읽으면 그대로 확인까지 간다**(사용자 지시 2026-09-19 · omf-all-around#35).
-             *    스캐너가 값 끝에 Enter 를 붙이지 않아도, 글자가 멈추면 [등록 확인]을 누른 것과
-             *    같다 — 판정은 `patterns/pop-scanner-submit` 한 곳이다. 손으로 친 값은 그대로
-             *    Enter·단추로만 나간다.
-             */}
-            <TextField
-              ref={tokenRef}
-              size="xl"
-              fullWidth
-              label={t.tokenLabel}
-              placeholder={t.tokenPlaceholder}
-              value={token}
-              onKeyDown={scanner.onKeyDown}
-              onChange={(event) => {
-                setToken(event.target.value);
-                scanner.noteInput(event.target.value);
-              }}
-              disabled={busy}
-            />
-            {/* 보조(지우기)는 왼쪽, 주 조작(등록 확인)은 오른쪽 끝 — 확인·적용 단계와 같은 순서다. */}
-            <div className="pop-registration__actions">
-              <Button
-                size="xl"
-                variant="outlined"
-                onClick={() => setToken('')}
-                disabled={busy || token === ''}
-              >
+            {!isInput && failureText !== null && <PuNote tone="bad">{failureText}</PuNote>}
+
+            {phase === 'prepare-failed' && (
+              <PuNote tone="warn">
+                <b>{t.prepareFailedTitle}</b>
+                <br />
+                {t.prepareFailedBody}
+              </PuNote>
+            )}
+
+            {isConfirm && (
+              <PuBand
+                grid={3}
+                label={t.confirmHeading}
+                items={[
+                  {
+                    label: (
+                      <>
+                        <PuIcon name="pin" />
+                        {t.terminalCode}
+                      </>
+                    ),
+                    value: terminal.terminalCode,
+                  },
+                  {
+                    label: (
+                      <>
+                        <PuIcon name="tool" />
+                        {t.equipment}
+                      </>
+                    ),
+                    value: equipmentText(terminal),
+                  },
+                  {
+                    label: (
+                      <>
+                        <PuIcon name="list" />
+                        {t.process}
+                      </>
+                    ),
+                    value: processText(verifiedProcessNames),
+                  },
+                ]}
+              />
+            )}
+          </div>
+
+          {/* 구획 아래 작업 줄 — 보조는 왼쪽, 주 조작은 오른쪽 끝(확인·적용 단계와 같은 순서). */}
+          {isInput && (
+            <div className="wa-reg-actions">
+              <PuButton icon="reset" onClick={() => setToken('')} disabled={busy || token === ''}>
                 {t.clear}
-              </Button>
-              <Button
-                size="xl"
+              </PuButton>
+              <PuButton
+                variant="primary"
                 onClick={() => {
-                  scanner.submit(token);
+                  send(token);
                 }}
                 disabled={busy || token.trim() === ''}
               >
                 {phase === 'verifying' ? t.verifying : t.verify}
-              </Button>
+              </PuButton>
             </div>
-          </>
-        ) : null}
+          )}
 
-        {phase === 'preparing' ? <p className="pop-registration__guide">{t.preparing}</p> : null}
-      </Card>
+          {(isConfirm || phase === 'prepare-failed') && (
+            <div className="wa-reg-actions">
+              <PuButton onClick={registration.restart}>{t.restart}</PuButton>
+              <PuButton
+                variant="primary"
+                onClick={() => {
+                  void (isConfirm ? registration.apply() : registration.retryPrepare());
+                }}
+              >
+                {isConfirm ? t.apply : t.retryPrepare}
+              </PuButton>
+            </div>
+          )}
+        </section>
+      </PuScreen>
     </div>
   );
 };
