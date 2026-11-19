@@ -19,6 +19,17 @@ const t = messages.putawayHistory;
 
 const store = vi.hoisted(() => new Map<string, string>());
 
+/* 기기 토큰 — 「이 기기」 코드를 묻는 단말 번호(sub)가 여기서 나온다. 기본은 없음. */
+const token = vi.hoisted(() => ({ value: null as string | null }));
+vi.mock('../../patterns/device-token', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../patterns/device-token')>()),
+  currentDeviceToken: () => token.value,
+}));
+
+/** 단말 번호(sub)만 든 합성 토큰. 서명은 보지 않는다. */
+const tokenFor = (terminalId: number): string =>
+  `x.${btoa(JSON.stringify({ sub: String(terminalId) })).replaceAll('=', '')}.y`;
+
 vi.mock('../../patterns/local-store', () => ({
   readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
   writeLocal: (key: string, value: string) => {
@@ -113,6 +124,19 @@ const backend = (options: BackendOptions = {}) => {
         });
       },
     },
+    {
+      match: (request) => new URL(request.url).pathname === '/mdm/terminals/9001',
+      respond: () =>
+        jsonResponse({
+          terminalId: 9001,
+          terminalCode: 'V11-MOB1',
+          plantId: 1,
+          terminalTypeCode: 'MOBILE',
+          statusCode: 'RUNNING',
+          isActive: true,
+          versionNo: 1,
+        }),
+    },
     /* 셸이 큐를 읽자마자 보내 본다. 닿지 않게 두어야 대기 건이 남는다. */
     {
       match: (request) => new URL(request.url).pathname.startsWith('/logistics/putaway-tasks/'),
@@ -191,6 +215,7 @@ const listOf = () => screen.getByRole('list', { name: t.listLabel });
 
 beforeEach(() => {
   store.clear();
+  token.value = null;
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(NOW);
 });
@@ -239,7 +264,8 @@ describe('적치 기록 화면', () => {
     expect(await screen.findByText('GR-20261118-0006', { exact: false })).toBeInTheDocument();
     const terminal = state.seen.find((each) => each.scope === 'TERMINAL');
     expect(terminal).toMatchObject({ businessDate: '2026-11-18', workerNo: null });
-    expect(screen.getByText(t.basis.terminal('V9-MOB1', 2))).toBeInTheDocument();
+    /* 기기 코드는 줄이 아니라 기기 등록에서 읽는다(T032) — 토큰이 없는 시험이라 코드 없이. */
+    expect(screen.getByText(t.basis.terminal(null, 2))).toBeInTheDocument();
   });
 
   it('US1-4 기록이 없는 날은 빈 상태 문구와 함께 기준과 날짜가 보인다', async () => {
@@ -250,6 +276,18 @@ describe('적치 기록 화면', () => {
     expect(screen.getByText(t.empty.mine)).toBeInTheDocument();
     expect(screen.getByText(t.basis.mine(KIM.workerNo, KIM.workerName, 0))).toBeInTheDocument();
     expect(screen.getByText(t.dateLabel('2026-11-18', t.weekdays[3]!, true))).toBeInTheDocument();
+  });
+
+  it('US1-4 빈 날에도 이 기기 코드를 보인다', async () => {
+    token.value = tokenFor(9001);
+    const { fetch } = backend({ rows: () => [] });
+    const user = userEvent.setup();
+    render(fetch);
+    await screen.findByText(t.empty.title);
+
+    await user.click(screen.getByRole('tab', { name: t.tabs.terminal }));
+
+    expect(await screen.findByText(t.basis.terminal('V11-MOB1', 0))).toBeInTheDocument();
   });
 
   it('FR-006 ‹ 로 6일 전까지 가고 거기서 막히며, › 는 오늘에서 막힌다', async () => {
