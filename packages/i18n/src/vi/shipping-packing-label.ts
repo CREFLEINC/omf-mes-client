@@ -31,7 +31,6 @@ export const shippingPackingLabel: Translated<typeof ko.shippingPackingLabel> = 
     boxes: 'Thùng',
     waitEmpty: 'Không có nhãn cần phát hành.',
     reissueEmpty: 'Không có nhãn cần phát hành lại.',
-    pickTitle: 'Hãy chọn nhãn',
     pickWait: 'Chạm đối tượng cần phát hành ở danh sách bên trái.',
     pickReissue: 'Chạm đối tượng cần phát hành lại ở danh sách bên trái.',
   },
@@ -159,8 +158,7 @@ export const shippingPackingLabel: Translated<typeof ko.shippingPackingLabel> = 
   outcome: {
     issued: (count: number) => `Đã phát hành ${count} mục. Hãy xem trước rồi in.`,
     printed: (count: number) => `Đã in ${count} mục.`,
-    printFailed: (printed: number) =>
-      `Đã in được ${printed} mục. Nhãn không ra — hãy kiểm tra máy in rồi phát hành lại với lý do 「In thất bại」.`,
+    printFailed: (_printed: number) => 'Không in được nhãn. Hãy kiểm tra máy in rồi phát hành lại.',
     renderFailed: 'Bản ghi phát hành đã được lưu. Đừng phát hành lại, hãy nhận lại nhãn.',
     issueFailed: 'Không phát hành được.',
     reportFailed: 'Đã in nhưng không báo được kết quả.',

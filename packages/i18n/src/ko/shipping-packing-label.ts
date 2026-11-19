@@ -33,9 +33,8 @@ export const shippingPackingLabel = {
     boxes: '상자',
     waitEmpty: '발행할 라벨이 없습니다.',
     reissueEmpty: '재발행할 라벨이 없습니다.',
-    pickTitle: '라벨을 고르세요',
-    pickWait: '왼쪽 목록에서 발행할 대상을 누르세요.',
-    pickReissue: '왼쪽 목록에서 재발행할 대상을 누르세요.',
+    pickWait: '왼쪽에서 발행할 라벨을 선택해 주세요.',
+    pickReissue: '왼쪽에서 재발행할 라벨을 선택해 주세요.',
   },
   band: {
     label: '라벨 대상',
@@ -71,7 +70,7 @@ export const shippingPackingLabel = {
      */
     seqNotice: '회차와 최근 인쇄 결과는 서버 발행 이력을 기준으로 표시합니다.',
     /** ⛔ 「없다」와 「아직 고르지 않았다」를 같은 모양으로 그리지 않는다(공유계약 G-9). */
-    beforeKind: '라벨 종류를 먼저 고르세요.',
+    beforeKind: '라벨 종류를 선택해 주세요.',
     empty: '이 출하에는 아직 출하 단위가 없습니다. 「출하 단위 구성」에서 먼저 만드세요.',
     emptyPacking: '이 출하에는 포장이 없습니다. 포장 실적을 먼저 등록하세요.',
     loadFailed: '대상 목록을 불러오지 못했습니다.',
@@ -160,7 +159,7 @@ export const shippingPackingLabel = {
     mixedIssueModes: '최초 발행 대상과 재출력 대상은 나누어 선택하세요.',
     /** 사번은 진입점 화면이 단말에 두는 값이다 — 없다는 것은 아직 사번을 대지 않았다는 뜻. */
     needsWorker: '사번을 확인한 뒤에 발행할 수 있습니다.',
-    finishCurrentIssue: '현재 발행 결과를 확인한 뒤 다음 라벨을 발행하세요.',
+    finishCurrentIssue: '이전 발행 결과를 확인해 주세요.',
     running: {
       issue: '발행 기록을 만들고 있습니다…',
       render: '라벨을 받고 있습니다…',
@@ -210,8 +209,8 @@ export const shippingPackingLabel = {
     issued: (count: number) => `${count}건을 발행했습니다. 미리보기로 확인한 뒤 인쇄하세요.`,
     printed: (count: number) => `${count}건을 인쇄했습니다.`,
     /** 기록은 남았고 종이만 안 나온 상태다 — 되돌리지 않고 재발행으로 처리한다. */
-    printFailed: (printed: number) =>
-      `${printed}건까지 인쇄했습니다. 라벨이 나오지 않았습니다 — 프린터를 확인한 뒤 「인쇄 실패」 사유로 다시 발행하세요.`,
+    printFailed: (_printed: number) =>
+      '라벨을 인쇄하지 못했습니다. 프린터를 확인한 후 다시 발행해 주세요.',
     /** 발행은 됐는데 그림을 못 받은 상태. 다시 발행하면 회차가 하나 더 오른다. */
     renderFailed: '발행 기록은 남았습니다. 다시 발행하지 마시고 라벨을 다시 받아 보세요.',
     issueFailed: '발행하지 못했습니다.',

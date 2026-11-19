@@ -868,8 +868,14 @@ export const ShippingPackingLabelScreen = ({
               {tabRows.length === 0 && (kind === null || !isListPending) ? (
                 <PuEmpty
                   icon="print"
-                  title={tab === 'WAIT' ? t.list.waitEmpty : t.list.reissueEmpty}
-                  hint={emptyHint}
+                  title={
+                    kind === null
+                      ? t.targets.beforeKind
+                      : tab === 'WAIT'
+                        ? t.list.waitEmpty
+                        : t.list.reissueEmpty
+                  }
+                  hint={kind === null ? undefined : emptyHint}
                 />
               ) : null}
               {listPage.items.map((row) => {
@@ -964,11 +970,7 @@ export const ShippingPackingLabelScreen = ({
             </PuNote>
           )}
           {focusRow === null ? (
-            <PuEmpty
-              icon="print"
-              title={t.list.pickTitle}
-              hint={tab === 'WAIT' ? t.list.pickWait : t.list.pickReissue}
-            />
+            <PuEmpty icon="print" title={tab === 'WAIT' ? t.list.pickWait : t.list.pickReissue} />
           ) : (
             <>
               <div className="spl-shape-head">
