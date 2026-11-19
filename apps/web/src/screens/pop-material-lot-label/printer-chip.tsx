@@ -1,12 +1,16 @@
-import { Button, Chip, Dialog } from '@crefle/web-ui';
+import { Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
+import { chooseTerminalPrinter } from '../../patterns/pop-printer-choice';
+import { PopPrinterPicker } from '../../patterns/pop-printer-picker';
+import { PuIcon } from '../../patterns/pop-uniform';
 import { isServerBaselineBuild } from '../../patterns/pop-server-baseline';
 import { popTouchClass } from '../../patterns/pop-touch';
 import type { PrinterStatus, PrinterView } from './types';
 
 const t = messages.popMaterialLotLabel.printer;
+const pickerText = messages.popChrome.printerPicker;
 
 const CHIP_STATUS: Record<PrinterStatus, 'success' | 'warning' | 'error'> = {
   READY: 'success',
@@ -27,8 +31,11 @@ export interface PrinterChipProps {
   selected: PrinterView | null;
   isLoading: boolean;
   isError: boolean;
-  /** 셸이 고른 프린터를 받는가. 아니면 칩을 눌러도 창을 열지 않는다(브라우저 · 옛 설치본). */
-  isSelectable: boolean;
+  /**
+   * @deprecated 쓰지 않는다 — 창은 셸과 상관없이 늘 열린다(사용자 지시 2026-11-19). 고른 프린터를 셸 인쇄에
+   * 싣는지는 화면이 따로 정한다(`shellSelectsPrinter`). 부르는 쪽이 아직 넘겨 남겨 둔다.
+   */
+  isSelectable?: boolean;
   /** 발행 중에는 바꾸지 못한다. */
   isLocked: boolean;
   onRetry: () => void;
@@ -38,16 +45,6 @@ export interface PrinterChipProps {
   unknownLabel?: string;
   retryLabel?: string;
   /**
-   * 생산 작업 창(사용자 지시 2026-11-16)만 끈다 — 창 오른쪽 위 ✕ 를 두지 않고 [닫기] 하나로 닫는다.
-   * 넘기지 않으면 종전대로 ✕ 가 보인다.
-   */
-  showCloseButton?: boolean;
-  /**
-   * 「사용 가능」 프린터 줄의 안내 문장을 숨긴다(생산 작업, 사용자 지시 2026-11-16) — 단말 셸이 모든 줄에
-   * 같은 문장(「이 프린터로 나갑니다」)을 붙여 읽을 거리가 없다. 끊김·오류 등 다른 상태의 문장은 그대로 보인다.
-   */
-  hideReadyNote?: boolean;
-  /**
    * 「프린터 없음」 칩을 보일까. 공통 메뉴 맨 위 줄(`HeaderPrinter`)만 켠다 — 화면마다 다시 세우지 않는다
    * (사용자 지시 2026-11-17 · #291). 넘기지 않으면 없을 때 아무것도 그리지 않는다.
    */
@@ -55,10 +52,10 @@ export interface PrinterChipProps {
 }
 
 /**
- * 머리줄의 프린터 — **지금 나갈 프린터와 상태를 늘 보이고, 누르면 바꾼다**(개편안 2026-10-24).
+ * 맨 위 줄의 프린터 — **지금 나갈 프린터와 상태를 늘 보이고, 누르면 바꾼다**(개편안 2026-10-24).
  *
- * ⭐ 옛 화면은 오른쪽 구획에 입력칸 모양의 프린터 칸을 두었다 — 글자를 치는 칸처럼 보였고, 바꿀 일이
- *    드문 값이 주 동작 위 좋은 자리를 차지했다. 인쇄가 안 될 때 가장 먼저 보는 머리줄로 옮긴다(스펙 §3).
+ * ⭐ 누르면 「프린터 선택」 창(`PopPrinterPicker`)이 뜬다 — 한 대뿐이어도, 없어도(빈 안내) 열린다(사용자 지시
+ *    2026-11-19). 고른 프린터는 이 단말에 기억되고(`pop-printer-choice`) 이 단말의 모든 발행이 따른다.
  * ⛔ 「없다」와 「모른다」를 같은 모양으로 그리지 않는다(공유계약 G-9). 조회 중에는 아무것도 단정하지 않는다.
  */
 export const PrinterChip = ({
@@ -66,15 +63,12 @@ export const PrinterChip = ({
   selected,
   isLoading,
   isError,
-  isSelectable,
   isLocked,
   onRetry,
   onSelect,
   noneLabel = t.none,
   unknownLabel = t.unknown,
   retryLabel = t.retry,
-  showCloseButton = true,
-  hideReadyNote = false,
   showNone = false,
 }: PrinterChipProps) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -91,76 +85,52 @@ export const PrinterChip = ({
   }
 
   if (isLoading || printers === undefined) return null;
-  if (selected === null) return showNone ? <Chip status="warning">{noneLabel}</Chip> : null;
+  if (selected === null && !showNone) return null;
 
-  const chip = (
-    <Chip status={chipStatusOf(selected.status)}>{`${t.label} ${selected.displayName}`}</Chip>
-  );
-
-  if (!isSelectable || printers.length < 2) return chip;
-
+  /*
+   * ⭐ 맨 위 줄 사번 칩(「👥 이름 (사번) | 전환」)과 같은 단추·같은 클래스(`pop-logout`)다 — 「🖨 이름 | 변경」
+   *    (사용자 지시 2026-11-19). 칩 자체는 초록이 아니고, 상태 색은 이름 앞 작은 점으로만 보인다.
+   */
   return (
     <>
-      <button
-        type="button"
-        className="pop-mlot-printer-button"
+      <Button
+        className="pop-logout"
+        variant="outlined"
+        size="md"
         aria-haspopup="dialog"
-        aria-label={`${t.choose}: ${selected.displayName}`}
+        aria-label={selected === null ? t.choose : `${t.choose}: ${selected.displayName}`}
+        title={selected === null ? noneLabel : `${t.label} ${selected.displayName}`}
         disabled={isLocked}
         onClick={() => {
           setIsOpen(true);
         }}
       >
-        {chip}
-      </button>
+        <PuIcon name="print" className="pop-nav-icon" />
+        <span
+          className="prn-chip__dot"
+          data-status={selected === null ? 'warning' : chipStatusOf(selected.status)}
+          aria-hidden="true"
+        >
+          ●
+        </span>
+        {selected === null ? noneLabel : selected.displayName}
+        <span className="pop-nav-top__switch" aria-hidden>
+          {pickerText.change}
+        </span>
+      </Button>
       {isOpen ? (
-        <Dialog
-          open
+        <PopPrinterPicker
+          printers={printers}
+          selectedName={selected?.printerName ?? null}
           onClose={() => {
             setIsOpen(false);
           }}
-          className="pop-mlot-printer-dialog"
-          size="lg"
-          /* POP 팝업은 바깥을 눌러 닫히지 않는다(#1005) — 장갑 낀 손이 창 밖을 스치면 사라졌다. */
-          closeOnBackdropClick={false}
-          showCloseButton={showCloseButton}
-          title={t.choose}
-          footer={
-            <Button
-              className={popTouchClass('normal')}
-              variant="outlined"
-              size="xl"
-              onClick={() => {
-                setIsOpen(false);
-              }}
-            >
-              {t.close}
-            </Button>
-          }
-        >
-          <ul className="pop-mlot-printer-list">
-            {printers.map((printer) => (
-              <li key={printer.printerName}>
-                <button
-                  type="button"
-                  className="pop-mlot-printer-option"
-                  aria-pressed={printer.printerName === selected.printerName}
-                  onClick={() => {
-                    onSelect(printer.printerName);
-                    setIsOpen(false);
-                  }}
-                >
-                  <span className="pop-mlot-printer-name">{printer.displayName}</span>
-                  {/* 상태 설명은 서버가 준 문장만 보인다 — 코드값(READY 등)을 화면에 내지 않는다(규범 C-13). */}
-                  {printer.statusMessage === null ||
-                  (hideReadyNote && printer.status === 'READY') ? null : (
-                    <Chip status={chipStatusOf(printer.status)}>{printer.statusMessage}</Chip>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </Dialog>
+          onSelect={(name) => {
+            chooseTerminalPrinter(name);
+            onSelect(name);
+            setIsOpen(false);
+          }}
+        />
       ) : null}
     </>
   );

@@ -138,4 +138,18 @@ export const popChrome: Translated<typeof ko.popChrome> = {
     clearSearch: 'Xóa',
     empty: 'Không có mục nào để hiển thị.',
   },
+  printerPicker: {
+    title: 'Chọn máy in',
+    change: 'Đổi',
+    cancel: 'Hủy',
+    select: 'Chọn',
+    defaultMark: 'Mặc định',
+    empty: 'Không có máy in nào dùng được trên thiết bị này.',
+    status: {
+      READY: 'Sẵn sàng',
+      BUSY: 'Đang in',
+      OFFLINE: 'Tắt',
+      ERROR: 'Lỗi',
+    },
+  },
 };

@@ -193,4 +193,25 @@ export const popChrome = {
     clearSearch: '검색어 지우기',
     empty: '표시할 항목이 없습니다.',
   },
+  /**
+   * 맨 위 줄 프린터 칩을 누르면 뜨는 창(사용자 지시 2026-11-19). 고른 프린터는 이 단말의 모든 발행이 따른다
+   * (`patterns/pop-printer-choice`).
+   */
+  printerPicker: {
+    title: '프린터 선택',
+    /** 맨 위 줄 칩 끝 세로선 뒤 글 — 사번 칩의 「전환」과 같은 자리. */
+    change: '변경',
+    cancel: '취소',
+    select: '선택',
+    /** 기본 프린터 표시. */
+    defaultMark: '기본',
+    empty: '이 단말에서 쓸 수 있는 프린터가 없습니다.',
+    /** 상태 칩 — 코드값(READY 등)을 그대로 내지 않는다. */
+    status: {
+      READY: '사용 가능',
+      BUSY: '사용 중',
+      OFFLINE: '꺼짐',
+      ERROR: '오류',
+    },
+  },
 };

@@ -2,6 +2,7 @@ import type { components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { preferPrinter } from '../../patterns/pop-printer-choice';
 import { terminalPrinters } from '../../patterns/pop-terminal-printers';
 import { runRequest } from '../../patterns/request';
 import { CONTRACT_BATCH_SIZE, chunkTargets } from './flow-state';
@@ -350,7 +351,8 @@ export const usePrinters = (documentTypeCode: DocumentTypeCode): UseQueryResult<
 export const defaultPrinter = (printers: readonly Printer[] | undefined): Printer | null => {
   if (printers === undefined || printers.length === 0) return null;
 
-  return printers.find((printer) => printer.isDefault) ?? printers[0] ?? null;
+  /* 맨 위 줄에서 이 단말이 고른 프린터가 이 문서 유형 목록에 있으면 그것, 아니면 기본 → 첫 대. */
+  return preferPrinter(printers);
 };
 
 /** 회차가 가장 큰 발행 건이 현재 상태다. 배열 순서를 신뢰하지 않는다. */

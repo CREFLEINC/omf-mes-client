@@ -1,0 +1,33 @@
+/* 프린터 고르는 창(`pop-printer-picker.tsx`) — 줄 모양은 POP 고르기 창의 `pu-opt` 그대로, 이름은 한 줄 말줄임. */
+.prn-pick__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prn-pick__tail {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 맨 위 줄 프린터 칩(`printer-chip.tsx`, 사번 칩과 같은 `pop-logout`) — 이름 앞 상태 점만 색을 갖는다. */
+.prn-chip__dot {
+  margin-inline-end: 2px;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.prn-chip__dot[data-status='success'] {
+  color: var(--semantic-success);
+}
+
+.prn-chip__dot[data-status='warning'] {
+  color: var(--semantic-warning);
+}
+
+.prn-chip__dot[data-status='error'] {
+  color: var(--semantic-error);
+}

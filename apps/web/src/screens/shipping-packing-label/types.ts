@@ -1,5 +1,6 @@
 import type { components } from '@omf-mes/api-client';
 
+import { preferPrinter } from '../../patterns/pop-printer-choice';
 import type { ShippingUnitDetail } from '../shipping-unit/types';
 
 import { DELIVERY_LABEL, type LabelKind } from './codes';
@@ -221,9 +222,12 @@ export const toPrinterView = (data: PrinterResponse): PrinterView => ({
   isDefault: data.isDefault,
 });
 
-/** 처음 고를 한 대 — 기본 프린터가 있으면 그것, 없으면 첫 번째. 없으면 `null`. */
+/**
+ * 처음 고를 한 대 — 맨 위 줄에서 이 단말이 고른 프린터가 목록에 있으면 그것, 아니면 기본 프린터, 없으면 첫
+ * 번째(`pop-printer-choice`). 없으면 `null`.
+ */
 export const toDefaultPrinterName = (printers: PrinterView[]): string | null =>
-  (printers.find((printer) => printer.isDefault) ?? printers[0])?.printerName ?? null;
+  preferPrinter(printers)?.printerName ?? null;
 
 /** 인쇄 결과. 계약의 enum 을 그대로 쓴다 — 보고 전에는 `PENDING` 이다. */
 export type PrintOutcome = DocumentIssueResponse['printOutcome'];

@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
+import { preferPrinter } from '../../patterns/pop-printer-choice';
 import {
   PuActionBar,
   PuButton,
@@ -62,8 +63,8 @@ const UNKNOWN_STANDING: IssueStanding = {
   lastPrintOutcome: null,
 };
 
-const defaultPrinter = (printers: readonly Printer[]): Printer | null =>
-  printers.find((printer) => printer.isDefault) ?? printers[0] ?? null;
+/* 맨 위 줄에서 이 단말이 고른 프린터가 목록에 있으면 그것, 아니면 기본 → 첫 대(`pop-printer-choice`). */
+const defaultPrinter = (printers: readonly Printer[]): Printer | null => preferPrinter(printers);
 
 /**
  * P-04-04 재구성 신규 라벨 발행.

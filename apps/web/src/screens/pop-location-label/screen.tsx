@@ -23,6 +23,7 @@ import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner
 import { usePopLocationLabelEntry } from './entry-context';
 import { useLocationLabelWrite, usePrintFlow, type PrintReport } from './mutations';
 import { hasPrintBridge } from '../../patterns/pop-print';
+import { terminalPrinterName } from '../../patterns/pop-printer-choice';
 import { PopTopPrinter } from '../../patterns/pop-top-status';
 import { PrinterChip } from '../pop-material-lot-label/printer-chip';
 import { toPrinterView } from '../pop-material-lot-label/types';
@@ -118,8 +119,12 @@ export const PopLocationLabelScreen = () => {
    *    없는 채로 선반 앞에 선다. 어느 프린터로 나가는지 칸에도 그대로 보인다.
    */
   const printerViews = useMemo(() => printers.data?.map(toPrinterView), [printers.data]);
+  /* 맨 위 줄에서 이 단말이 고른 프린터가 목록에 있으면 그것, 아니면 기본(`pop-printer-choice`). */
   const printerName =
-    chosenPrinter ?? printers.data?.find((each) => each.isDefault)?.printerName ?? null;
+    chosenPrinter ??
+    printers.data?.find((each) => each.printerName === terminalPrinterName())?.printerName ??
+    printers.data?.find((each) => each.isDefault)?.printerName ??
+    null;
 
   const reasons = useReissueReasons(reissueAsked);
 

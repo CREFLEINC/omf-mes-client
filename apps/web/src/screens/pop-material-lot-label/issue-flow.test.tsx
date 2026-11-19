@@ -476,7 +476,9 @@ describe('프린터 선택', () => {
     const save = installSelectableShell(true);
     renderLabelScreen(waitingOnly(1));
 
-    expect(await screen.findByText(`${t.printer.label} HT800`)).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: `${t.printer.choose}: HT800` }),
+    ).toBeInTheDocument();
     await issueAll(user, 1);
 
     await waitFor(() => expect(save).toHaveBeenCalled());
@@ -489,7 +491,8 @@ describe('프린터 선택', () => {
     const { sent } = renderLabelScreen(waitingOnly(1));
 
     await user.click(await screen.findByRole('button', { name: `${t.printer.choose}: HT800` }));
-    await user.click(await screen.findByRole('button', { name: /HT800 #2/u }));
+    await user.click(await screen.findByRole('option', { name: /HT800 #2/u }));
+    await user.click(screen.getByRole('button', { name: messages.popChrome.printerPicker.select }));
 
     expect(window.localStorage.getItem(PRINTER_STORAGE_KEY)).toBe('HT800 #2');
 
@@ -508,7 +511,9 @@ describe('프린터 선택', () => {
     const save = installSelectableShell(false);
     renderLabelScreen(waitingOnly(1));
 
-    expect(await screen.findByText(`${t.printer.label} HT800`)).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: `${t.printer.choose}: HT800` }),
+    ).toBeInTheDocument();
     await issueAll(user, 1);
 
     await waitFor(() => expect(save).toHaveBeenCalled());

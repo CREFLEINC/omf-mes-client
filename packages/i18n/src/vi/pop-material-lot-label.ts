@@ -155,7 +155,6 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
   printer: {
     label: 'Máy in',
     choose: 'Chọn máy in',
-    close: 'Đóng',
     shellOnly: 'Chỉ chọn được máy in trên bản cài đặt.',
     storedMissing: (name: string) =>
       `Không tìm thấy máy in đã lưu 「${name}」 nên sẽ in bằng máy in mặc định.`,
