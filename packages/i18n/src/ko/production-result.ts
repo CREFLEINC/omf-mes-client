@@ -16,12 +16,12 @@ export const productionResult = {
       /** 라벨을 낸 뒤 왼쪽에 보이는 이 LOT 실적(사용자 지시 2026-11-16). */
       enteredResult: '입력한 실적',
       enteredGood: (qty: string, uom: string): string =>
-        `양품 ${qty}${uom === '' ? '' : ` ${uom}`}`,
+        `양품량 ${qty}${uom === '' ? '' : ` ${uom}`}`,
       enteredDefect: (qty: string, uom: string): string =>
-        `불량 ${qty}${uom === '' ? '' : ` ${uom}`}`,
+        `불량량 ${qty}${uom === '' ? '' : ` ${uom}`}`,
       workOrderProgress: '작업지시 전체 진행',
       workOrderProgressText: (good: string, target: string, uom: string): string =>
-        `양품 ${good} / 계획량 ${target}${uom === '' ? '' : ` ${uom}`}`,
+        `양품량 ${good} / 계획량 ${target}${uom === '' ? '' : ` ${uom}`}`,
       /** 단계 표시(C-5). LOT마다 처음부터 반복한다. */
       stepsLabel: 'LOT 작업 단계',
       steps: { input: '실적 입력', defect: '불량 등록', scan: '라벨 스캔' },
@@ -186,7 +186,7 @@ export const productionResult = {
       loadFailed: '작업지시를 불러오지 못했습니다. 연결을 확인하고 「다시 시도」를 눌러 주세요.',
       fields: {
         orderQty: '계획량',
-        goodQty: '양품 누계',
+        goodQty: '양품량 누계',
         judgment: '판정',
         shortfallQty: '미달량',
         overageQty: '초과량',
