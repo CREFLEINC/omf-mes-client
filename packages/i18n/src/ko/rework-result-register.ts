@@ -106,8 +106,8 @@ export const reworkResultRegister = {
   defectCodeEmpty: '등록된 불량 코드 없음 · 코드 없이 저장 가능',
   defectCodeRetry: '다시 불러오기',
   reset: '입력 초기화',
-  toDefect: '불량 등록',
-  toDefectWithQty: (qty: string): string => `불량 등록 (${qty})`,
+  /** ① 작업 줄의 주 버튼 — ②로 넘어간다(생산 작업과 같은 말 · 사용자 지시 2026-11-19). */
+  confirm: '확인',
   prev: '이전',
   save: '실적 저장',
   queued: '실적을 저장했습니다.',

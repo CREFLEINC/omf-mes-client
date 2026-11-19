@@ -242,9 +242,10 @@ const pickWorkOrder = async (user: ReturnType<typeof userEvent.setup>) => {
   await screen.findByRole('list', { name: t.steps.label });
 };
 
-/** ② 불량 등록 단계로 간다 — 아래 작업 줄 [불량 등록]. */
+/** ② 불량 등록 단계로 간다 — ①의 아래 작업 줄 [확인]. */
 const goDefectStep = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(screen.getByRole('button', { name: new RegExp(`^${t.toDefect}`) }));
+  await waitFor(() => expect(screen.getByRole('button', { name: t.confirm })).toBeEnabled());
+  await user.click(screen.getByRole('button', { name: t.confirm }));
   await screen.findByLabelText(t.quantities.defectQty);
 };
 
@@ -313,7 +314,8 @@ describe('ReworkResultRegisterScreen — 본문 통일 시안(#295)', () => {
     await pickWorkOrder(user);
 
     expect(await screen.findByText(messages.popChrome.workerMissing)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.save })).toBeDisabled();
+    /* ①에서 이미 [확인]이 잠긴다 — 저장 단계로 넘어가지 못한다. */
+    expect(screen.getByRole('button', { name: t.confirm })).toBeDisabled();
   });
 
   /* ⭐ 미전송이 없으면 「미전송 0건」을 두지 않는다(사용자 지시 2026-09-15). */
@@ -354,8 +356,8 @@ describe('ReworkResultRegisterScreen — 본문 통일 시안(#295)', () => {
     expect(band).not.toHaveTextContent('6001');
   });
 
-  /* ⭐ 두 단계: ① 양품·보류·폐기 › ② 불량 수량·불량 코드. 돌아가도 넣은 값은 남는다. */
-  it('① 실적 입력과 ② 불량 등록을 오가며 값이 남는다', async () => {
+  /* ⭐ 두 단계: ① 양품·보류·폐기 › ② 불량 수량·불량 코드. [이전]으로 돌아가도 넣은 값은 남는다. */
+  it('① [확인]으로 ②에 가고, [이전]·단계 줄로 돌아가도 값이 남는다', async () => {
     const { user } = renderScreen();
     await pickWorkOrder(user);
 
@@ -363,33 +365,97 @@ describe('ReworkResultRegisterScreen — 본문 통일 시안(#295)', () => {
     expect(screen.getByLabelText(t.quantities.holdQty)).toBeInTheDocument();
     expect(screen.getByLabelText(t.quantities.scrapQty)).toBeInTheDocument();
     expect(screen.queryByLabelText(t.quantities.defectQty)).toBeNull();
+    /* ① 작업 줄: [입력 초기화] + [확인]. [실적 저장]·[이전]·[불량 등록]은 없다. */
+    expect(screen.getByRole('button', { name: t.reset })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.save })).toBeNull();
+    expect(screen.queryByRole('button', { name: t.prev })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^불량 등록/ })).toBeNull();
 
     await user.click(key('7'));
     await goDefectStep(user);
 
     expect(screen.queryByLabelText(t.quantities.goodQty)).toBeNull();
     expect(screen.getByLabelText(t.defectCode)).toBeInTheDocument();
+    /* ② 작업 줄: [이전] + [실적 저장]. */
+    expect(screen.getByRole('button', { name: t.save })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.confirm })).toBeNull();
+    expect(screen.queryByRole('button', { name: t.reset })).toBeNull();
     /* 단계를 바꾸면 그 단계의 첫 칸에 입력된다. */
     await user.click(key('3'));
     expect(screen.getByLabelText(t.quantities.defectQty)).toHaveValue('3');
 
-    /* 단계 줄의 끝난 「실적 입력」을 눌러 돌아간다. */
+    await user.click(screen.getByRole('button', { name: t.prev }));
+    expect(screen.getByLabelText(t.quantities.goodQty)).toHaveValue('7');
+
+    /* 다시 ②로 가면 불량 수량도 남아 있다. 단계 줄의 끝난 ①을 눌러도 돌아간다. */
+    await goDefectStep(user);
+    expect(screen.getByLabelText(t.quantities.defectQty)).toHaveValue('3');
     await user.click(
       within(screen.getByRole('list', { name: t.steps.label })).getByRole('button', {
         name: new RegExp(t.steps.input),
       }),
     );
-
     expect(screen.getByLabelText(t.quantities.goodQty)).toHaveValue('7');
-    /* 불량을 넣어 두면 ①의 단추가 수량을 함께 말한다. */
-    expect(
-      screen.getByRole('button', { name: t.toDefectWithQty(t.qtyWithUom('3', 'EA')) }),
-    ).toBeInTheDocument();
+  });
 
+  /* ⛔ 차례대로만 — 단계 줄의 ②는 눌러 앞질러 갈 수 없다. */
+  it('단계 줄로 ②에 앞질러 갈 수 없다', async () => {
+    const { user } = renderScreen();
+    await pickWorkOrder(user);
+    await user.click(key('7'));
+
+    const flow = screen.getByRole('list', { name: t.steps.label });
+    expect(within(flow).queryByRole('button')).toBeNull();
+    await user.click(within(flow).getByText(t.steps.defect));
+    expect(screen.queryByLabelText(t.quantities.defectQty)).toBeNull();
+    expect(screen.getByLabelText(t.quantities.goodQty)).toHaveValue('7');
+  });
+
+  /*
+   * ⭐ 저장 요청은 그대로 하나 — ① [확인]은 서버를 부르지 않고, ② [실적 저장]이 불량 수량까지
+   *    실어 한 번 보낸다. ①을 비워 두고 불량만 넣어도 저장된다(지금과 같다).
+   */
+  it('[확인]은 저장하지 않고, [실적 저장]이 불량 수량까지 실어 한 번 보낸다', async () => {
+    const posts: Record<string, unknown>[] = [];
+    const user = userEvent.setup();
+    renderWithProviders(
+      <PopIdentityProvider
+        value={{
+          terminalId: TERMINAL_ID,
+          processes: [{ processId: PROCESS_ID }],
+          equipment: null,
+          workerNo: '100027',
+        }}
+      >
+        <ReworkResultRegisterScreen />
+      </PopIdentityProvider>,
+      {
+        fetch: async (request) => {
+          if (request.method === 'POST') {
+            posts.push((await request.clone().json()) as Record<string, unknown>);
+            return jsonResponse({ productionResultId: 1 }, { status: 201 });
+          }
+          return stubFetch(request);
+        },
+        route: '/pop/rework-results',
+      },
+    );
+    await pickWorkOrder(user);
+
+    /* ① 합계 0 이어도 [확인]은 열린다 — 불량이 ②에서 합계를 채울 수 있다. */
     await goDefectStep(user);
-    await user.click(screen.getByRole('button', { name: t.prev }));
+    expect(posts).toHaveLength(0);
+    expect(screen.getByRole('button', { name: t.save })).toBeDisabled();
 
-    expect(screen.getByLabelText(t.quantities.goodQty)).toHaveValue('7');
+    await user.click(key('4'));
+    await user.click(screen.getByLabelText(new RegExp(`^${t.defectCode}`)));
+    await user.click(await screen.findByRole('option', { name: /D-SCR/ }));
+    await waitFor(() => expect(screen.getByRole('button', { name: t.save })).toBeEnabled());
+    await user.click(screen.getByRole('button', { name: t.save }));
+
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0]).toMatchObject({ workOrderId: WORK_ORDER.workOrderId, defectQty: 4 });
+    globalThis.localStorage.clear();
   });
 
   /* ⭐ 키패드는 오른쪽 「수량」 구획에 늘 선다 — 누른 칸이 대상이 되고 다른 칸 값은 남는다. */
@@ -450,20 +516,27 @@ describe('ReworkResultRegisterScreen — 본문 통일 시안(#295)', () => {
   });
 
   /* ⭐ 부분 · 넘침 안내는 단계 줄 아래 한 줄. 비었을 때는 안내 없이 저장만 꺼진다(사용자 지시 2026-11-19). */
-  it('합계에 따라 안내 줄이 바뀌고 넘치면 저장이 잠긴다', async () => {
+  it('합계에 따라 안내 줄이 바뀌고 넘치면 [확인]·저장이 잠긴다', async () => {
     const { user } = renderScreen();
     await pickWorkOrder(user);
 
-    expect(await screen.findByRole('button', { name: t.save })).toBeDisabled();
     expect(screen.queryByText('실적을 입력해 주세요.')).toBeNull();
 
     await user.click(key('5'));
     expect(await screen.findByText(t.partial(155, 'EA'))).toBeInTheDocument();
     /* 고른 작업지시의 재작업 진행이 넣는 수량을 따라 움직인다. */
     expect(screen.getByText(t.progressValue('5', '160', 'EA'))).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole('button', { name: t.save })).toBeEnabled());
 
     await user.type(screen.getByLabelText(t.quantities.goodQty), '00');
+    expect(await screen.findByText(t.exceeded(160, 'EA'))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.confirm })).toBeDisabled();
+
+    /* 넘치지 않게 고치면 ②로 가서 저장이 열리고, ②에서 불량으로 넘치면 다시 잠긴다. */
+    await user.clear(screen.getByLabelText(t.quantities.goodQty));
+    await user.type(screen.getByLabelText(t.quantities.goodQty), '150');
+    await goDefectStep(user);
+    await waitFor(() => expect(screen.getByRole('button', { name: t.save })).toBeEnabled());
+    await user.type(screen.getByLabelText(t.quantities.defectQty), '20');
     expect(await screen.findByText(t.exceeded(160, 'EA'))).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.save })).toBeDisabled();
   });
@@ -475,7 +548,7 @@ describe('ReworkResultRegisterScreen — 본문 통일 시안(#295)', () => {
     await user.click(key('7'));
 
     expect(await screen.findByText(t.exceeded(0, 'EA'))).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.save })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.confirm })).toBeDisabled();
   });
 
   /* ⛔ 되돌릴 것이 없으면 [입력 초기화]가 잠긴다(사용자 지적). */
@@ -572,6 +645,7 @@ describe('ReworkResultRegisterScreen — 본문 통일 시안(#295)', () => {
     await pickWorkOrder(user);
 
     await user.click(key('5'));
+    await goDefectStep(user);
     await waitFor(() => expect(screen.getByRole('button', { name: t.save })).toBeEnabled());
     await user.click(screen.getByRole('button', { name: t.save }));
 
@@ -641,6 +715,7 @@ describe('ReworkResultRegisterScreen — 공정이 여럿인 단말', () => {
     await pickWorkOrder(user);
 
     await user.type(await screen.findByLabelText(t.quantities.goodQty), '3');
+    await goDefectStep(user);
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t.save })).toBeEnabled();
@@ -656,7 +731,7 @@ describe('ReworkResultRegisterScreen — 공정이 여럿인 단말', () => {
       await screen.findByText(popGateDeniedText({ processName: '합성 재작업' }, 'canInputResult')),
     ).toBeInTheDocument();
     await user.type(await screen.findByLabelText(t.quantities.goodQty), '3');
-    expect(screen.getByRole('button', { name: t.save })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.confirm })).toBeDisabled();
   });
 });
 
@@ -698,6 +773,7 @@ describe('ReworkResultRegisterScreen — 서버 거부', () => {
     );
     await pickWorkOrder(user);
     await user.type(await screen.findByLabelText(t.quantities.goodQty), '3');
+    await goDefectStep(user);
     await waitFor(() => expect(screen.getByRole('button', { name: t.save })).toBeEnabled());
     await user.click(screen.getByRole('button', { name: t.save }));
 
@@ -733,6 +809,7 @@ describe('ReworkResultRegisterScreen — 서버 거부', () => {
     );
     await pickWorkOrder(user);
     await user.type(await screen.findByLabelText(t.quantities.goodQty), '3');
+    await goDefectStep(user);
     await waitFor(() => expect(screen.getByRole('button', { name: t.save })).toBeEnabled());
     await user.click(screen.getByRole('button', { name: t.save }));
 

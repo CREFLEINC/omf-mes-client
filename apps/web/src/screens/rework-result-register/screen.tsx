@@ -68,7 +68,13 @@ type WorkOrder = components['schemas']['WorkOrder'];
 
 const quantityKeys: QuantityKey[] = ['goodQty', 'defectQty', 'holdQty', 'scrapQty'];
 
-/** 구획 안 두 단계(#295): ① 실적 입력(양품·보류·폐기) › ② 불량 등록(불량 수량·불량 코드). */
+/**
+ * 구획 안 두 단계(#295): ① 실적 입력(양품·보류·폐기) › ② 불량 등록(불량 수량·불량 코드).
+ *
+ * ⭐ 차례대로만 간다(사용자 지시 2026-11-19 — 생산 작업과 같은 모양). ① [확인] → ②, ② [이전] → ①.
+ *    저장 요청 하나(`POST /production/production-results`)가 불량 수량까지 싣기 때문에
+ *    저장은 ②의 [실적 저장]에서 한 번만 나간다 — ① [확인]은 서버를 부르지 않는다.
+ */
 type Step = 'input' | 'defect';
 
 const STEP_KEYS: Record<Step, QuantityKey[]> = {
@@ -231,6 +237,19 @@ export const ReworkResultRegisterScreen = () => {
     /* 사번이 없어 막힌 사유는 화면 맨 위 공용 띠가 말한다(사용자 지시 2026-09-17). */
     identity.workerNo !== null &&
     !queued;
+  /*
+   * ① [확인] — 저장 전 단계라 합계 «넘침»과 저장을 막는 사정만 본다. 합계 0 은 막지 않는다 —
+   * 불량 수량이 ②에서 합계를 채울 수 있다(불량만 있는 실적도 지금 저장된다). 저장 조건은 ②의 `canSave` 그대로.
+   */
+  const canConfirm =
+    selected !== null &&
+    source.isSuccess &&
+    dispositions.isSuccess &&
+    progress.remaining > 0 &&
+    verdict !== 'exceeded' &&
+    gateReason === null &&
+    identity.workerNo !== null &&
+    !queued;
   const save = () => {
     if (!canSave || selected === null || identity.workerNo === null) return;
     try {
@@ -281,8 +300,6 @@ export const ReworkResultRegisterScreen = () => {
   const setDraft = (key: QuantityKey, value: string) => {
     setDrafts((current) => ({ ...current, [key]: value }));
   };
-
-  const defectQtyNumber = readQuantity(drafts.defectQty);
 
   /* 카드의 「계획 시작」 줄 — 목록 정렬 기준(사용자 지시 2026-11-19). 값이 없으면 줄을 두지 않는다. */
   const plannedStartOf = (row: WorkOrder) => {
@@ -487,17 +504,14 @@ export const ReworkResultRegisterScreen = () => {
             label={t.steps.label}
             current={step === 'defect' ? 1 : 0}
             steps={[
+              /* 끝난 ①로는 눌러 돌아간다(값은 남는다). */
               {
                 label: t.steps.input,
                 done: step === 'defect',
                 onGo: step === 'defect' ? () => goStep('input') : undefined,
               },
-              /* 수량 단계에서 [다음]과 같은 조건으로 눌러 넘어간다(사용자 지시 2026-11-19). */
-              {
-                label: t.steps.defect,
-                disabled: step === 'input' && selected === null,
-                onGo: step === 'input' ? () => goStep('defect') : undefined,
-              },
+              /* ⛔ 단계 줄로 앞질러 가지 않는다 — ②는 ① [확인]으로만 간다(사용자 지시 2026-11-19). */
+              { label: t.steps.defect },
             ]}
           />
         }
@@ -659,21 +673,24 @@ export const ReworkResultRegisterScreen = () => {
       <PuScreen
         actionBar={
           <PuActionBar>
-            <PuButton icon="reset" disabled={!hasSomethingToReset} onClick={reset}>
-              {t.reset}
-            </PuButton>
-            {step === 'defect' ? (
-              <PuButton onClick={() => goStep('input')}>{t.prev}</PuButton>
+            {/* ① [입력 초기화] + [확인] · ② [이전] + [실적 저장](생산 작업과 같은 모양 · 사용자 지시 2026-11-19). */}
+            {step === 'input' ? (
+              <>
+                <PuButton icon="reset" disabled={!hasSomethingToReset} onClick={reset}>
+                  {t.reset}
+                </PuButton>
+                <PuButton variant="primary" disabled={!canConfirm} onClick={() => goStep('defect')}>
+                  {t.confirm}
+                </PuButton>
+              </>
             ) : (
-              <PuButton disabled={selected === null} onClick={() => goStep('defect')}>
-                {defectQtyNumber > 0
-                  ? t.toDefectWithQty(t.qtyWithUom(drafts.defectQty, uomLabel))
-                  : t.toDefect}
-              </PuButton>
+              <>
+                <PuButton onClick={() => goStep('input')}>{t.prev}</PuButton>
+                <PuButton variant="primary" disabled={!canSave} onClick={save}>
+                  {t.save}
+                </PuButton>
+              </>
             )}
-            <PuButton variant="primary" disabled={!canSave} onClick={save}>
-              {t.save}
-            </PuButton>
           </PuActionBar>
         }
       >
