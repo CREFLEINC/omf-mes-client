@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { progressStep, progressStepFixtures } from './fixtures';
-import { buildStepColumns, formatStepAt, StepsPane, STEPS_TABLE_MIN_WIDTH_PX } from './steps-pane';
+import { buildStepColumns, formatStepAt, StepsPane } from './steps-pane';
 
 const t = messages.documentProgress;
 
@@ -24,49 +24,11 @@ describe('buildStepColumns — 열 구성과 폭', () => {
     ]);
   });
 
-  /**
-   * **모든 열이 폭을 지정하고 합을 표 하한 아래로 누르지 않는다.** 고정 배치에서 미지정 열은
-   * 남는 폭의 잔여분을 받아 선언과 실렌더가 어긋난다(전례 `balance-table`의 실측 근거).
-   */
-  it('모든 열이 폭을 지정하고 합이 표 하한 이상이다', () => {
-    expect(columns.filter((column) => column.width === undefined)).toHaveLength(0);
-
-    const fixed = columns.reduce(
-      (sum, column) => sum + Number.parseInt(column.width ?? '0px', 10),
-      0,
-    );
-
-    expect(fixed).toBe(928);
-    expect(fixed).toBeGreaterThanOrEqual(STEPS_TABLE_MIN_WIDTH_PX);
-  });
-
-  /**
-   * ⭐ **원장 열이 이 표에서 가장 긴 문면을 담는다** — 번호와 영업일이 **한 칸에 짝으로** 서기
-   * 때문이다. 하한을 i18n의 실제 문면에서 계산해 리터럴 동어반복을 피한다.
-   */
-  it('원장 열이 반쪽 사실 문면을 담는다', () => {
-    const CHAR_WIDTH_PX = 7.5;
-    const CELL_PADDING_PX = 32;
-    /*
-     * ⚠ **i18n에서 계산하는 것은 문면의 틀이고, 인자 길이는 시험 자료가 정한다.**
-     * 그래서 인자도 리터럴로 적지 않고 **픽스처에서 가장 긴 값**을 뽑는다 — 더 긴 원장 번호를
-     * 픽스처에 넣는 순간 이 하한이 함께 올라간다. 서버가 그보다 더 긴 번호를 낼 수 있다는
-     * 사실까지 이 단언이 덮지는 못한다(코드 문자열과 같은 사정 — 도출표가 그렇게 적었다).
-     */
-    const longestTransactionNo = progressStepFixtures
-      .map((step) => step.inventoryTransactionNo ?? '')
-      .reduce((longest, value) => (value.length > longest.length ? value : longest), '');
-    const businessDate = '2026-08-06';
-    const longest = Math.max(
-      t.ledger.pair(longestTransactionNo, businessDate).length,
-      t.ledger.noBusinessDate(longestTransactionNo).length,
-      t.ledger.noTransactionNo(businessDate).length,
-    );
-    const ledgerColumn = columns.find((column) => column.key === 'ledger');
-
-    expect(Number.parseInt(ledgerColumn?.width ?? '0px', 10)).toBeGreaterThanOrEqual(
-      longest * CHAR_WIDTH_PX + CELL_PADDING_PX,
-    );
+  /* 원장 칸은 번호와 영업일이 짝으로 나와 가장 길다 — 그 열만 남는 폭을 받는다. */
+  it('원장 열만 남는 폭을 받는다', () => {
+    expect(
+      columns.filter((column) => column.width === undefined).map((column) => column.key),
+    ).toEqual(['ledger']);
   });
 
   it('선언한 폭이 렌더 산출물의 열 폭과 같다', () => {
@@ -164,11 +126,11 @@ describe('StepsPane', () => {
     expect(rowTexts('SYN_STEP_CLOSED').at(-1)).toBe(t.values.empty);
   });
 
-  /* 원장 **진입을 만들지 않는다** — 원장 조회 화면이 이 저장소에 없다. 그 사실을 밝힌다. */
-  it('원장으로 가는 손잡이가 없고 그 사실을 밝힌다', () => {
-    render(<StepsPane steps={progressStepFixtures} />);
+  /* 원장 **진입을 만들지 않는다** — 원장 조회 화면이 이 저장소에 없다. 그 사실을 적던 안내 줄도 걷었다. */
+  it('원장으로 가는 손잡이와 안내 줄이 없다', () => {
+    const { container } = render(<StepsPane steps={progressStepFixtures} />);
 
-    expect(screen.getByText(t.steps.ledgerNote)).toBeInTheDocument();
+    expect(container.querySelector('p.field-note')).toBeNull();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });

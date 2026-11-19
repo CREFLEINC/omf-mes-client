@@ -56,7 +56,6 @@ describe('취소 경로가 없는 유형 — C3-1', () => {
     renderPane({ hasCancelResource: false });
 
     expect(screen.getByText(t.cancelRequest.unsupportedTitle)).toBeInTheDocument();
-    expect(screen.getByText(t.cancelRequest.unsupportedDescription)).toBeInTheDocument();
   });
 
   /* 짝 방향 — 경로가 있으면 조작이 선다. 아니면 위 단언이 「늘 그리지 않는다」와 같아진다. */
@@ -166,10 +165,11 @@ describe('잠금 토큰 실패 — C3-4의 세 갈래', () => {
   });
 
   /** 못 읽어도 이 문서로 할 수 있는 다른 일은 달라지지 않는다 — 그 사실을 함께 적는다. */
-  it('진행현황은 그대로 볼 수 있다는 사실을 함께 적는다', () => {
-    renderPane({ lock: { kind: 'failed', error: httpError(500) } });
+  /* 「진행현황은 그대로 볼 수 있다」는 덧붙임 줄은 걷었다(사용자 지시 2026-11-19). */
+  it('실패 안내에 덧붙인 설명 줄이 없다', () => {
+    const { container } = renderPane({ lock: { kind: 'failed', error: httpError(500) } });
 
-    expect(screen.getByText(t.cancelRequest.lockFailedNote)).toBeInTheDocument();
+    expect(container.querySelector('p.field-note')).toBeNull();
   });
 });
 
@@ -178,10 +178,11 @@ describe('서버가 막은 상태 — C3-2', () => {
    * ⭐ **판정을 화면이 다시 하지 않는다.** 「지금 취소 요청을 낼 수 있는가」는 서버가 후속·전기·
    * 진행 중 요청을 함께 보고 내린 값이고, 문면을 고르는 자리는 목록 열과 **같은 하나**다.
    */
-  it('잠기고 계약이 열거한 사유가 우리말로 보인다', () => {
+  /* 이 문서로는 못 보낸다 — 잠긴 단추 · 칸을 두지 않고 사유 한 줄만 낸다(사용자 지시 2026-11-19). */
+  it('사유 한 줄만 내고 계약이 열거한 사유가 우리말로 보인다', () => {
     renderPane({ availability: blockedBy('SUCCESSOR_EXISTS') });
 
-    expect(requestButton()).toBeDisabled();
+    expect(screen.queryByRole('button', { name: t.cancelRequest.label })).not.toBeInTheDocument();
     expect(
       screen.getByText(t.cancelRequest.blocked(t.blockReasons.SUCCESSOR_EXISTS)),
     ).toBeInTheDocument();
@@ -203,14 +204,11 @@ describe('서버가 막은 상태 — C3-2', () => {
     expect(screen.getByText(t.cancelRequest.blocked(t.values.noBlockReason))).toBeInTheDocument();
   });
 
-  /**
-   * **막힌 상태에서는 사유 칸도 잠근다** — 칠 수 있는데 보낼 수 없는 칸은 사용자가 쓴 글을
-   * 버리게 만든다(전례 `disposal-issue/resubmit-pane`의 같은 규율).
-   */
-  it('막혔으면 사유 칸도 잠긴다', () => {
+  /** **막힌 상태에서는 사유 칸이 없다** — 칠 수 있는데 보낼 수 없는 칸은 사용자가 쓴 글을 버리게 만든다. */
+  it('막혔으면 사유 칸이 없다', () => {
     renderPane({ availability: blockedBy('ALREADY_CANCELLED') });
 
-    expect(screen.getByLabelText(t.cancelRequest.reason)).toBeDisabled();
+    expect(screen.queryByLabelText(t.cancelRequest.reason)).not.toBeInTheDocument();
   });
 
   /**
@@ -240,7 +238,7 @@ describe('서버가 막은 상태 — C3-2', () => {
    * ⭐ **두 축이 서로 다른 자리에서 말한다.** 서버 판정은 버튼 옆 한 줄이, 토큰 실패는 자기
    * 구획이 말한다 — 뭉개면 「다시 시도」가 풀 수 있는 것과 풀 수 없는 것이 한 문장이 된다.
    */
-  it('서버 판정과 토큰 실패가 함께 참이면 둘 다 보인다', () => {
+  it('서버 판정과 토큰 실패가 함께 참이면 서버 사유만 보인다 — 다시 시도해도 보낼 수 없다', () => {
     renderPane({
       availability: blockedBy('SUCCESSOR_EXISTS'),
       lock: { kind: 'failed', error: httpError(500) },
@@ -249,7 +247,7 @@ describe('서버가 막은 상태 — C3-2', () => {
     expect(
       screen.getByText(t.cancelRequest.blocked(t.blockReasons.SUCCESSOR_EXISTS)),
     ).toBeInTheDocument();
-    expect(screen.getByText(t.cancelRequest.lockFailedTitle)).toBeInTheDocument();
+    expect(screen.queryByText(t.cancelRequest.lockFailedTitle)).not.toBeInTheDocument();
   });
 });
 
@@ -328,9 +326,11 @@ describe('사유와 요청', () => {
   });
 
   /** 이 구획이 무엇을 하는 자리인지 첫 문장이 말한다 — 승인을 탄다는 사실이 먼저다. */
-  it('승인을 탄다는 사실을 구획이 먼저 말한다', () => {
+  /* 구획 머리 안내문은 걷었다 — 승인을 탄다는 사실은 확인 창이 말한다(사용자 지시 2026-11-19). */
+  it('구획 머리에 안내문이 없다', () => {
     renderPane();
 
-    expect(screen.getByText(t.cancelRequest.lead)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: t.cancelRequest.label })).toBeInTheDocument();
+    expect(screen.queryByText(/승인에 올립니다/u)).not.toBeInTheDocument();
   });
 });

@@ -21000,12 +21000,12 @@ dialog.layout-editor-dialog {
   background: none;
 }
 
+/* 품목 이름 · 코드는 자르지 않고 줄을 바꿔 모두 보인다(사용자 지시 2026-11-18 · omf-all-around#296). */
 .iqc-inspection-panes .iqc-inspection-queue-item-name,
 .iqc-inspection-panes .iqc-inspection-queue-item-code {
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* 품목명은 두 줄까지, 넘치면 말줄임(#133). */
@@ -21017,12 +21017,6 @@ dialog.layout-editor-dialog {
 }
 
 .iqc-inspection-panes .iqc-inspection-queue-item-name {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  white-space: normal;
-  overflow-wrap: anywhere;
   font-weight: 600;
 }
 
@@ -26859,6 +26853,116 @@ body:has(.page-nav-size [aria-expanded="true"])
   white-space: nowrap;
 }
 
+/*
+ * 검사 입력 탭(omf-all-around#316) — POP 「제품 검사표 입력」 부품을 관리웹 크기로 쓴다. POP 규칙(`pop.css`)은 관리웹에
+ * 실리지 않으므로 같은 배치를 이 탭 안으로만 다시 둔다. 머리 값 → 단계별 검사 → NG 기록을 위에서 아래로.
+ */
+.inspection-sheet-entry {
+  display: grid;
+  gap: var(--space-4);
+  padding-block-start: var(--space-3);
+}
+
+.inspection-sheet-entry > .pane {
+  min-width: 0;
+}
+
+.inspection-sheet-entry .inspection-sheet-entry-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.inspection-sheet-entry .inspection-sheet-entry-step {
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* 항목 한 줄 — 번호 · 이름 · 전수/발취 · OK · NG. */
+.inspection-sheet-entry .inspection-sheet-entry-items {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inspection-sheet-entry .inspection-sheet-entry-items > li {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr) auto 4.5rem 4.5rem;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.inspection-sheet-entry .inspection-sheet-entry-item-code {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.inspection-sheet-entry .inspection-sheet-entry-item-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.inspection-sheet-entry .inspection-sheet-entry-judgment {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+/* 저장 줄 — 안내는 왼쪽, [저장]은 오른쪽. POP 띠(높이 88 · 바탕색)는 관리웹 크기로 줄인다. */
+.inspection-sheet-entry .pop-action-bar {
+  justify-content: space-between;
+  min-height: 0;
+  padding: var(--space-2) 0 0;
+  margin-top: var(--space-2);
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+
+.inspection-sheet-entry .pop-action-note > .field-note {
+  margin: 0;
+}
+
+/* NG 블록 — 한 건씩 테두리로 묶는다. 날짜 칸 옆에 「지금」 단추. */
+.inspection-sheet-entry .inspection-sheet-entry-ng {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.inspection-sheet-entry .inspection-sheet-entry-when {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-2);
+}
+
+.inspection-sheet-entry .inspection-sheet-entry-ng-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.inspection-sheet-entry .inspection-sheet-entry-ng-summary p {
+  margin: var(--space-1) 0 0;
+  overflow-wrap: anywhere;
+}
+
 /* 상세 조건 — 모델 · 작업지시 칸은 흐린 글자(「모델을 입력하세요」 · 「작업지시 번호를 입력하세요」)가 다 보이는 폭(담당자 지시 2026-11-02). */
 .inspection-results-filter-detail > .inspection-sheet-model {
   flex: 0 0 12rem;
@@ -32261,6 +32365,28 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 }
 
 /*
+ * IQC 목록의 품목 칸은 자르지 않는다 — 이름 · 코드가 칸보다 길면 줄을 바꿔 모두 보인다(사용자 지시 2026-11-18 ·
+ * omf-all-around#296). OQC · PQC 목록은 종전 한 줄 말줄임 그대로다.
+ */
+.inspection-queue-table td:has(.iqc-inspection-queue-item) {
+  overflow: visible;
+  white-space: normal;
+}
+
+.inspection-queue-table .iqc-inspection-queue-item {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+.inspection-queue-table .iqc-inspection-queue-item-name,
+.inspection-queue-table .iqc-inspection-queue-item-code {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/*
  * 검색되는 선택 칸(#197 · 불량 대분류 · 상세) — 모양은 DS 선택 칸과 같은 값(테두리 · 높이 · 글자 · 펼친 목록). 펼치면 맨 위에 검색 칸,
  * 그 아래 목록. 목록은 칸 폭을 다 쓰고 길면 안에서 굴린다.
  */
@@ -33609,8 +33735,8 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 }
 
 /*
- * 기준 상세 창의 정보 — 검사 화면 기본 정보와 같은 상자를 창 폭에 맞춰 고르게 나눈다(#247 · 사용자 지시 2026-11-10).
- * 넓으면 여섯 칸 한 줄, 보통은 세 칸 두 줄, 좁으면 두 칸 · 한 칸. 줄 첫 칸에는 세로선을 두지 않는다.
+ * 기준 상세 창의 정보 — 같은 폭의 칸을 창 폭에 들어가는 만큼 한 줄에 놓고 넘치면 다음 줄로(창 폭에 따라 칸 수가 바뀐다 ·
+ * 사용자 지시 2026-11-19 · omf-all-around#296). 칸마다 왼쪽 세로선, 줄 첫 칸의 선은 상자 밖으로 숨긴다(입하 LOT 요약 줄과 같은 방식).
  */
 .parts-iqc-plan {
   container: parts-iqc-plan / inline-size;
@@ -33618,50 +33744,24 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 
 .parts-iqc-plan .parts-iqc-facts {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.parts-iqc-plan .parts-iqc-fact:nth-child(3n + 1) {
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
   padding-left: 0;
-  border-left: 0;
+  overflow: hidden;
 }
 
-@container parts-iqc-plan (min-width: 60rem) {
-  .parts-iqc-plan .parts-iqc-facts {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
-
-  .parts-iqc-plan .parts-iqc-fact:nth-child(3n + 1):not(:first-child) {
-    padding-left: var(--space-4);
-    border-left: 1px solid var(--outline-variant);
-  }
+.parts-iqc-plan .parts-iqc-fact,
+.parts-iqc-plan .parts-iqc-fact:first-child {
+  align-content: start;
+  margin-left: -1px;
+  padding: 0 var(--space-4);
+  border-left: 1px solid var(--outline-variant);
+  overflow-wrap: normal;
+  word-break: keep-all;
 }
 
-@container parts-iqc-plan (max-width: 36rem) {
-  .parts-iqc-plan .parts-iqc-facts {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .parts-iqc-plan .parts-iqc-fact:nth-child(n) {
-    padding-left: var(--space-4);
-    border-left: 1px solid var(--outline-variant);
-  }
-
-  .parts-iqc-plan .parts-iqc-fact:nth-child(2n + 1) {
-    padding-left: 0;
-    border-left: 0;
-  }
-}
-
-@container parts-iqc-plan (max-width: 22rem) {
-  .parts-iqc-plan .parts-iqc-facts {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .parts-iqc-plan .parts-iqc-fact:nth-child(n) {
-    padding-left: 0;
-    border-left: 0;
-  }
+/* 항목 표 칸 이름은 꺾지 않는다 — 좁으면 표 상자 안에서 가로로 민다(사용자 지시 2026-11-19 · omf-all-around#296). */
+.parts-iqc-plan-table th {
+  white-space: nowrap;
 }
 
 /* 항목 표 — 검사 화면 표(`.parts-iqc-grid`)와 같은 칸 선 · 가운데 정렬, 테두리 상자 모서리만 둥글게. */
@@ -34131,8 +34231,9 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--outline-variant);
   color: var(--on-surface-variant);
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
+  /* 창 안 글은 한 크기로(사용자 지시 2026-11-19 · omf-all-around#296). */
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
 }
 
 .iqc-cancel-confirm-heading {
@@ -34147,8 +34248,21 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   flex-direction: column;
   margin: 0;
   padding: 0 var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--surface-container-high);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container-low);
+}
+
+/* 묶음(LOT · 결과) 사이만 선을 긋는다(사용자 시안 2026-11-19 · omf-all-around#296). */
+.iqc-cancel-confirm-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4) 0;
+}
+
+.iqc-cancel-confirm-group + .iqc-cancel-confirm-group {
+  border-top: 1px solid var(--outline-variant);
 }
 
 .iqc-cancel-confirm-change {
@@ -34157,11 +34271,31 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2) var(--space-4);
-  padding: var(--space-3) 0;
 }
 
-.iqc-cancel-confirm-change + .iqc-cancel-confirm-change {
-  border-top: 1px solid var(--outline-variant);
+/* 안내 한 줄 — 파란 라벨 띠(사용자 지시 2026-11-19), 글자는 창의 다른 글과 같은 크기. */
+.iqc-inspection-action-note.iqc-cancel-confirm-note {
+  align-items: flex-start;
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.iqc-cancel-confirm-note > :first-child {
+  flex: none;
+  margin-top: 0.2em;
+}
+
+.iqc-cancel-confirm-reason label,
+.iqc-cancel-confirm-reason .field-label {
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+/* 적용 검사가 여러 회차면 한 줄에 하나씩 오른쪽 맞춤(omf-all-around#296). */
+.iqc-cancel-confirm-change dd.iqc-cancel-confirm-applied {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
 }
 
 .iqc-cancel-confirm-change dt {
@@ -34209,7 +34343,8 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   white-space: nowrap;
 }
 
-.iqc-inbound-history td:last-child {
+/* 상세 내용(둘째 칸)만 줄바꿈 — 일시는 맨 끝 칸이라 한 줄로 둔다(#274 순서 · omf-all-around#296). */
+.iqc-inbound-history td:nth-child(2) {
   white-space: normal;
 }
 
@@ -35815,17 +35950,6 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   gap: var(--space-3);
 }
 
-/* 칸마다 이름을 위에 단다(G2 L21) — 이름 줄 아래 칸들의 밑선을 맞춘다. */
-.mlot-issue-filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-lg);
-}
-
 .mlot-issue-section-head {
   display: flex;
   flex-wrap: wrap;
@@ -35868,21 +35992,10 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   white-space: nowrap;
 }
 
-/* 머리와 품목 · 기본 정보 칸은 두 줄까지(베트남어 긴 글 — 시안 #vi). */
-.mlot-issue-table.is-wrap-head th,
-.mlot-issue-table .is-wrap {
-  white-space: normal;
-}
-
 .mlot-issue-table .is-number {
   text-align: end;
 }
 
-.mlot-issue-table tr.is-clickable {
-  cursor: pointer;
-}
-
-.mlot-issue-table tr.is-clickable:hover > td,
 .mlot-issue-table tr[aria-selected='true'] > td {
   background: var(--surface-container-high);
 }
@@ -35910,6 +36023,11 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   gap: var(--space-1);
 }
 
+/* 목록 표(입고 관리 짜임)는 한 줄 — 기본 정보 칩과 안내가 줄을 바꾸지 않는다. */
+.board-table .mlot-issue-defaults {
+  flex-wrap: nowrap;
+}
+
 .mlot-issue-facts {
   display: grid;
   grid-template-columns: max-content 1fr;
@@ -35923,12 +36041,6 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 .mlot-issue-facts > dd {
   margin: 0;
-}
-
-.mlot-issue-detail-foot {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: var(--space-3);
 }
 
 .mlot-issue-form {
@@ -36774,4 +36886,57 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 .judgment-confirm > .iqc-inspection-action-note {
   align-self: flex-start;
+}
+
+/* IQC 확정 창의 경고 글 — 위 줄(검사 결과 · LOT 상태)과 같은 크기로 키운다(사용자 지시 2026-11-18 · omf-all-around#296). */
+.iqc-judgment-confirm > .iqc-inspection-action-note {
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+/*
+ * IQC 입하 LOT 검사 결과 상자의 첨부 파일(사용자 지시 2026-11-18 · omf-all-around#296) — 결과 표 아래 작은 제목과 표,
+ * [파일 첨부] 창은 파일 상자 · LOT 고르기 상자를 위아래로.
+ */
+.iqc-inbound-attachments {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.iqc-inbound-attachments h4 {
+  margin: 0;
+}
+
+.iqc-inbound-attach-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.iqc-inbound-attach-lots {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-1) var(--space-2);
+}
+
+.iqc-inbound-attach-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* [LOT 연결] 창의 파일명(omf-all-around#296). */
+.iqc-inbound-link-file {
+  margin: 0;
+  font: var(--type-body-lg);
+  overflow-wrap: anywhere;
+}
+
+/* 파일 안내(형식 · 크기 제한)는 한 줄로 — 공용 안내 폭 제한(20rem)을 풀어 준다(사용자 지시 2026-11-19 · omf-all-around#296). */
+.iqc-inbound-attach-dialog .field-note {
+  max-width: none;
 }

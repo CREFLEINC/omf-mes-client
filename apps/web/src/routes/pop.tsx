@@ -7,7 +7,6 @@ import { ShippingUnitScreen } from '../screens/shipping-unit/screen';
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
 import { PopLocationLabelScreen } from '../screens/pop-location-label/screen';
 import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
-import { PopInspectionSheetScreen } from '../screens/pop-inspection-sheet/screen';
 import { PopMaterialDefectScreen } from '../screens/pop-material-defect/screen';
 import { PopOqcInspectionScreen } from '../screens/pop-oqc-inspection/screen';
 import { RepackLabelIssueScreen } from '../screens/repack-label-issue/screen';
@@ -131,11 +130,6 @@ export const popRoutes: RouteObject[] = [
    * ⚠ **진입에 질의 문자열이 없다** — LOT 스캔부터 시작한다. 메뉴는 검사 입력 공정 단말에만 뜬다.
    */
   { path: '/pop/material-defect', element: <PopMaterialDefectScreen /> },
-  /*
-   * P-02-15 — 제품 검사표 입력(omf-all-around#89 · 설계보다 앞선 화면, 서버 장부 P-102). 시리얼 1대의 OA 제품
-   * 검사표 — 머리 값과 단계별 항목 판정. ⚠ 진입에 질의 문자열이 없다 — 시리얼 스캔부터 시작한다.
-   */
-  { path: '/pop/inspection-sheet', element: <PopInspectionSheetScreen /> },
   /*
    * P-01-02 분할 LOT 라벨(008 · omf-all-around#289) — 창고 스테이션 모드의 화면이다. 부분 출고가 만든 분할 LOT 에
    * 자재 LOT 라벨을 찍는다(출고 QR 발행은 없앴다). 진입 컨텍스트 없이 단말 공장의 목록을 연다. 주소는 그대로 둔다

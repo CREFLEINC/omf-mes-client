@@ -168,20 +168,20 @@ export const InboundHistory = ({
   const columns: Column<InspectionRequestEventForward>[] = [
     {
       key: 'what',
-      align: 'start',
+      align: 'center',
       header: t.columns.what,
       render: (row) => t.events[row.eventCode] ?? row.eventCode,
     },
     {
       key: 'detail',
-      align: 'start',
+      align: 'center',
       header: t.columns.detail,
       render: (row) => eventDetailOf(row, context),
     },
-    { key: 'who', align: 'start', header: t.columns.who, render: (row) => row.actorName ?? '—' },
+    { key: 'who', align: 'center', header: t.columns.who, render: (row) => row.actorName ?? '—' },
     {
       key: 'when',
-      align: 'start',
+      align: 'center',
       header: t.columns.when,
       render: (row) => formatPlantDateTime(row.occurredAt) ?? row.occurredAt,
     },

@@ -69,7 +69,7 @@ export const POP_WORK_ENTRY_PATH = '/pop/work-start';
 export type PopScreenGroupKey = 'material' | 'production' | 'quality' | 'shipping' | 'facility';
 
 /**
- * 묶음 줄의 순서와 이름(#291). 화면 코드 앞자리로 나누되, 품질 검사 화면(P-02-13·P-02-15·P-04-06)은
+ * 묶음 줄의 순서와 이름(#291). 화면 코드 앞자리로 나누되, 품질 검사 화면(P-02-13·P-04-06)은
  * 생산·출하가 아니라 품질에 둔다.
  */
 export const POP_SCREEN_GROUPS: readonly { key: PopScreenGroupKey; name: string }[] = [
@@ -146,7 +146,6 @@ export const POP_SCREENS: readonly PopScreen[] = [
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#108) — 화면 코드는 사용자 결정으로 부여했다. */
   { path: '/pop/material-defect', code: 'P-02-14', group: 'production', name: '자재 불량 등록' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#89 · 서버 장부 P-102). */
-  { path: '/pop/inspection-sheet', code: 'P-02-15', group: 'quality', name: '제품 검사표 입력' },
   {
     path: '/pop/packing',
     code: 'P-04-01',
