@@ -13,7 +13,7 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
   search: {
     label: 'Số LOT · số phiếu xuất · mã hàng',
     placeholder: 'Hãy quét nhãn',
-    manualTitle: 'Tìm LOT tách',
+    manualTitle: 'Nhập LOT tách',
     filtered: (query: string) => `Kết quả tìm theo 「${query}」.`,
     clearFilter: 'Xóa hết',
     notFound: (code: string) => `Không có LOT tách nào ứng với 「${code}」 — hãy kiểm tra lại số.`,
@@ -83,11 +83,12 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
     label: 'Lý do in lại',
     needFailed: (count: number) => `Hãy chọn lý do in lại cho ${String(count)} LOT in lỗi`,
     need: 'Hãy chọn lý do',
+    title: 'Chọn lý do in lại',
+    confirm: (count: number) => `Phát hành ${String(count)} nhãn`,
   },
   bar: {
     label: 'Thao tác',
     selectAll: (count: number) => `Chọn tất cả (${String(count)})`,
-    clearAll: (count: number) => `Bỏ chọn tất cả (${String(count)})`,
     clearSelection: 'Bỏ chọn',
     print: (count: number) => `Phát hành ${String(count)} nhãn`,
     printNone: 'Phát hành nhãn',

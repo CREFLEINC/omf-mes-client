@@ -5,12 +5,11 @@ import {
   PuButton,
   PuChip,
   PuEmpty,
-  PuIcon,
   PuPager,
-  PuTextKeyboard,
   useClientPage,
   useFitCount,
 } from '../../patterns/pop-uniform';
+import { PuSearchBox } from '../../patterns/pop-uniform/search-box';
 import { localDateTimeText } from './formatting';
 import type { PendingRepackRow } from './queries';
 
@@ -75,8 +74,6 @@ export const PendingPane = ({
   useEffect(() => {
     if (selectedIndex >= 0) showIndex(selectedIndex - (selectedIndex % Math.max(1, size)));
   }, [selectedIndex, showIndex, size]);
-  /* 검색 칸을 누르면 칸 바로 아래에 글자판을 연다(사용자 지시 2026-11-19). 글자판으로 쳐도 손으로 친 것과 같다. */
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
   const changeQuery = (next: string): void => {
     setQuery(next);
     page.setPage(1);
@@ -107,35 +104,13 @@ export const PendingPane = ({
   return (
     <>
       {scan ?? (
-        <div className="pu-input pu-search">
-          <PuIcon name="search" />
-          <input
-            value={query}
-            placeholder={t.searchPlaceholder}
-            aria-label={t.searchPlaceholder}
-            autoComplete="off"
-            onFocus={() => {
-              setKeyboardOpen(true);
-            }}
-            onBlur={() => {
-              setKeyboardOpen(false);
-            }}
-            onChange={(event) => {
-              changeQuery(event.target.value);
-            }}
-          />
-        </div>
-      )}
-      {!isReissue && keyboardOpen && (
-        /* 글자판의 빈 곳·꺼진 키를 눌러도 칸에서 초점이 빠져 닫히지 않게 한다. */
-        <div
-          className="rpk-kbd"
-          onMouseDown={(event) => {
-            event.preventDefault();
-          }}
-        >
-          <PuTextKeyboard value={query} onChange={changeQuery} />
-        </div>
+        <PuSearchBox
+          label={t.searchPlaceholder}
+          title={t.searchTitle}
+          placeholder={t.searchPlaceholder}
+          value={query}
+          onChange={changeQuery}
+        />
       )}
       {body ?? (
         <>

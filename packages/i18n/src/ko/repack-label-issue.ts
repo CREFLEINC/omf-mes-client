@@ -78,6 +78,8 @@ export const repackLabelIssue = {
     loadFailed: '발행 대기 목록을 불러오지 못했습니다.',
     /** 목록 위 찾기 칸 — 넣는 대로 목록이 줄어든다(#295 시안). */
     searchPlaceholder: '포장 번호 또는 원 포장',
+    /** 찾기 칸을 누르면 뜨는 창의 제목. */
+    searchTitle: '포장 검색',
     searchEmpty: '찾는 포장이 없습니다.',
     /** 왼쪽 탭(#295 시안) — 발행 대기 = 발행 기록 없는 포장, 재발행 = 한 번 이상 발행한 포장. */
     tabsLabel: '목록 보기',
@@ -91,7 +93,7 @@ export const repackLabelIssue = {
     /** 재발행 탭의 포장 라벨 스캔 칸. */
     scanLabel: '포장 번호',
     scanPlaceholder: '포장 라벨을 스캔하세요',
-    manualTitle: '재발행 포장 찾기',
+    manualTitle: '재발행 포장 입력',
     scanNotIssued: (code: string): string =>
       `「${code}」 — 아직 발행하지 않은 포장입니다. 「발행 대기」에서 발행하세요.`,
     scanMissing: (code: string): string => `「${code}」 — 재발행할 포장에 없습니다.`,

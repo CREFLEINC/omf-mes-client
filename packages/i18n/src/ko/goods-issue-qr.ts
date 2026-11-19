@@ -18,7 +18,7 @@ export const goodsIssueQr = {
   search: {
     label: 'LOT 번호 · 출고번호 · 품목코드',
     placeholder: '라벨을 스캔하세요',
-    manualTitle: '분할 LOT 찾기',
+    manualTitle: '분할 LOT 입력',
     /** 찾는 말로 거른 표 — 칸 아래 안내 줄. */
     filtered: (query: string) => `「${query}」(으)로 찾은 결과입니다.`,
     clearFilter: '전체 삭제',
@@ -91,11 +91,13 @@ export const goodsIssueQr = {
     needFailed: (count: number) =>
       `인쇄가 실패한 LOT ${String(count)}건의 재인쇄 사유를 선택하세요`,
     need: '사유를 선택하세요',
+    /** [라벨 N장 발행]·[재인쇄]를 누르면 뜨는 사유 창(사용자 지시 2026-11-19). */
+    title: '재인쇄 사유 선택',
+    confirm: (count: number) => `${String(count)}장 발행`,
   },
   bar: {
     label: '작업',
     selectAll: (count: number) => `전체 선택 (${String(count)}건)`,
-    clearAll: (count: number) => `전체 해제 (${String(count)}건)`,
     clearSelection: '선택 해제',
     print: (count: number) => `라벨 ${String(count)}장 발행`,
     printNone: '라벨 발행',

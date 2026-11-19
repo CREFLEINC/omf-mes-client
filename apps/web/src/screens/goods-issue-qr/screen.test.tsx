@@ -235,19 +235,23 @@ describe('P-01-02 분할 LOT 라벨', () => {
     ]);
   });
 
-  it('Q10 · US2-4 인쇄 실패로 남은 LOT 을 고르면 재발행 사유를 골라야 찍는다', async () => {
+  it('Q10 · US2-4 인쇄 실패로 남은 LOT 을 고르면 사유 창에서 사유를 골라야 찍는다', async () => {
     shellPrints();
     const user = userEvent.setup();
     const { sent } = render();
 
     await user.click(await screen.findByRole('checkbox', { name: t.table.choose(FAILED.lotNo) }));
 
-    const print = screen.getByRole('button', { name: t.bar.print(1) });
-    expect(print).toHaveProperty('disabled', true);
-    expect(screen.getByText(t.reasons.needFailed(1))).toBeTruthy();
-
-    await user.click(await screen.findByRole('radio', { name: '훼손' }));
+    /* 표 아래 사유 칸은 없다 — [라벨 1장 발행]을 누르면 사유 창이 뜬다(사용자 지시 2026-11-19). */
+    expect(screen.queryByRole('radio', { name: '훼손' })).toBeNull();
     await user.click(screen.getByRole('button', { name: t.bar.print(1) }));
+    const reasonDialog = await screen.findByRole('dialog', { name: t.reasons.title });
+    expect(within(reasonDialog).getByText(t.reasons.needFailed(1))).toBeTruthy();
+    const confirm = within(reasonDialog).getByRole('button', { name: t.reasons.confirm(1) });
+    expect(confirm).toHaveProperty('disabled', true);
+
+    await user.click(await within(reasonDialog).findByRole('radio', { name: '훼손' }));
+    await user.click(confirm);
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', { name: t.preview.print(1) }),
     );
@@ -264,8 +268,10 @@ describe('P-01-02 분할 LOT 라벨', () => {
     const { sent } = render();
 
     await user.click(await screen.findByRole('button', { name: t.bar.selectAll(3) }));
-    await user.click(await screen.findByRole('radio', { name: '훼손' }));
     await user.click(screen.getByRole('button', { name: t.bar.print(3) }));
+    const reasonDialog = await screen.findByRole('dialog', { name: t.reasons.title });
+    await user.click(await within(reasonDialog).findByRole('radio', { name: '훼손' }));
+    await user.click(within(reasonDialog).getByRole('button', { name: t.reasons.confirm(3) }));
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', { name: t.preview.print(3) }),
     );
@@ -283,7 +289,17 @@ describe('P-01-02 분할 LOT 라벨', () => {
     await user.click(screen.getByRole('tab', { name: t.tabs.printed }));
 
     await user.click(await screen.findByRole('checkbox', { name: t.table.choose(DONE.lotNo) }));
-    expect(screen.getByRole('button', { name: t.bar.reprint(1) })).toHaveProperty('disabled', true);
+    /* [재인쇄]는 사유 창을 연다 — 사유를 고르기 전에는 창의 [1장 재인쇄]가 꺼져 있다. */
+    await user.click(screen.getByRole('button', { name: t.bar.reprint(1) }));
+    const reasonDialog = await screen.findByRole('dialog', { name: t.reasons.title });
+    expect(within(reasonDialog).getByRole('button', { name: t.bar.reprint(1) })).toHaveProperty(
+      'disabled',
+      true,
+    );
+    await user.click(
+      within(reasonDialog).getByRole('button', { name: messages.popUniform.dialog.cancel }),
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
     await waitFor(() => {
       expect(sent.some((each) => each.search.get('labelState') === 'PRINTED')).toBe(true);
     });
@@ -341,15 +357,19 @@ describe('P-01-02 LOT 번호 줄바꿈', () => {
 });
 
 describe('P-01-02 체크박스', () => {
-  it('전체 선택은 보이는 줄을 모두 고르고, 다시 누르면 모두 푼다', async () => {
+  it('전체 선택은 보이는 줄을 모두 고르고, 푸는 것은 [선택 해제]가 한다', async () => {
     const user = userEvent.setup();
     render();
 
     await user.click(await screen.findByRole('button', { name: t.bar.selectAll(3) }));
     expect(checkbox(OLD.lotNo).getAttribute('aria-checked')).toBe('true');
     expect(checkbox(NEW.lotNo).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByRole('button', { name: t.bar.selectAll(3) })).toHaveProperty(
+      'disabled',
+      true,
+    );
 
-    await user.click(screen.getByRole('button', { name: t.bar.clearAll(3) }));
+    await user.click(screen.getByRole('button', { name: t.bar.clearSelection }));
     expect(checkbox(OLD.lotNo).getAttribute('aria-checked')).toBe('false');
   });
 

@@ -7,9 +7,16 @@ export const popUniform = {
     ready: '스캔 대기',
     done: '스캔 완료',
     manual: '직접 입력',
+    /** 찾기 창의 [검색] 단추(#295 · 사용자 지시 2026-11-19 — 찾기 창은 [확인] 대신 [검색]). */
+    search: '검색',
+    /** 찾기 창 칸 안의 흐린 안내 — 「자재 관리 LOT 번호 · 품목코드로 검색」. 받침이 있으면(ㄹ 빼고) 「으로」. */
+    searchPlaceholder: (label: string): string => {
+      const code = label.charCodeAt(label.length - 1) - 0xac00;
+      const final = code >= 0 && code <= 11171 ? code % 28 : 0;
+      return `${label}${final === 0 || final === 8 ? '로' : '으로'} 검색`;
+    },
   },
   keypad: {
-    target: '입력 칸:',
     noTarget: '입력할 칸을 누르세요',
     clearAll: '전체 삭제',
     backspace: '한 자 지움',
@@ -21,6 +28,10 @@ export const popUniform = {
     lang: '한/영',
     symbols: '기호',
     space: '띄어쓰기',
+  },
+  /** 왼쪽 목록 위 찾기 칸(`PuSearchBox`). */
+  search: {
+    clear: '찾는 글자 지우기',
   },
   pager: {
     total: (total: number): string => `총 ${String(total)}건`,

@@ -81,23 +81,7 @@
   margin-left: auto;
 }
 
-/* 재인쇄 사유 — 타일은 한 줄로(표 줄 수를 덜 먹게), 왜 필요한지는 이름 줄 오른쪽 빨간 한 줄(시안). */
-.giq-reasons .pu-tiles {
-  grid-template-columns: none;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-}
-
-.giq-reasons .pu-tile {
-  min-height: 48px;
-  padding: 4px 8px;
-  justify-content: center;
-}
-
-.giq-reasons .pu-tile::before {
-  display: none;
-}
-
+/* 재인쇄 사유 창 — 왜 필요한지는 이름 줄 오른쪽 빨간 한 줄(시안). */
 .giq-reasons .pu-label .aside {
   margin-left: 8px;
 }

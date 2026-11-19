@@ -183,37 +183,3 @@
   border-radius: var(--radius-md, 12px);
   background: #fff;
 }
-
-/* 발행 대기 검색 칸의 글자판: 열린 동안은 왼쪽 목록 열을 넓혀 키가 손가락에 맞는 크기가 되게 한다. */
-.rpk-cols.pu-cols.list:has(.rpk-kbd) {
-  grid-template-columns: 480px minmax(0, 1fr);
-}
-
-/* 글자판이 열리면 검색 칸 · 글자판 · 목록(남는 높이) · 쪽 넘김 네 줄. */
-.rpk-left:has(> .rpk-kbd) {
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-}
-
-/* 글자판이 열린 동안은 목록 한 줄을 조금 좁혀 낮은 화면(768)에서도 한 건이 잘리지 않게 한다. */
-.rpk-left:has(> .rpk-kbd) .rpk-list .pu-item {
-  padding-top: 6px;
-  padding-bottom: 6px;
-  gap: 2px;
-}
-
-/* 꺼진 키(예: 빈 칸의 전체 삭제)를 눌러도 칸에서 초점이 빠져 글자판이 닫히지 않게, 누름을 글자판 바탕으로 넘긴다. */
-.rpk-kbd .pu-tkbd button:disabled {
-  pointer-events: none;
-}
-
-/* 글자판이 다섯 줄(맨 위 숫자 줄)이라 칸 아래에 펼 때는 키를 조금 낮춰 구획 안에 들어가게 한다. */
-.rpk-kbd .pu-tkbd {
-  --pu-key: 44px;
-  gap: 4px;
-}
-
-@media (max-height: 780px) {
-  .rpk-kbd .pu-tkbd {
-    --pu-key: 40px;
-  }
-}

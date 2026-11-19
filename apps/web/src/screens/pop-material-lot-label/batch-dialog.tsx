@@ -34,7 +34,6 @@ import { PopSelect } from '../../patterns/pop-select';
 import { createMaterialLotBatch } from './mutations';
 
 const t = messages.popMaterialLotLabel.batch;
-const tu = messages.popUniform;
 
 export interface BatchDialogProps {
   plantId: number;
@@ -476,7 +475,7 @@ const BatchForm = ({
             <div className="pu-stack" role="group" aria-label={t.supplierLot}>
               <div className="pu-keypad-head">
                 <span className="pu-keypad-target">
-                  {tu.keypad.target} <b>{t.supplierLot}</b>
+                  <b>{t.supplierLot}</b>
                 </span>
               </div>
               <PuTextKeyboard

@@ -7,9 +7,10 @@ export const popUniform: Translated<typeof ko.popUniform> = {
     ready: 'Chờ quét',
     done: 'Đã quét',
     manual: 'Nhập tay',
+    search: 'Tìm',
+    searchPlaceholder: (label: string): string => `Tìm theo ${label}`,
   },
   keypad: {
-    target: 'Ô nhập:',
     noTarget: 'Hãy chạm vào ô cần nhập',
     clearAll: 'Xóa hết',
     backspace: 'Xóa một ký tự',
@@ -21,6 +22,10 @@ export const popUniform: Translated<typeof ko.popUniform> = {
     lang: '한/EN',
     symbols: 'Ký hiệu',
     space: 'Dấu cách',
+  },
+  /** 왼쪽 목록 위 찾기 칸(`PuSearchBox`). */
+  search: {
+    clear: 'Xóa từ khóa',
   },
   pager: {
     total: (total: number): string => `Tổng ${String(total)}`,

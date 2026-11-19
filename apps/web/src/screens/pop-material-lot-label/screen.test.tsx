@@ -80,15 +80,32 @@ describe('PopMaterialLotLabelScreen — 공급사·품목(왼쪽)', () => {
     renderLabelScreen();
 
     await screen.findByRole('list', { name: t.pairs.label });
-    await user.type(screen.getByRole('searchbox', { name: t.search.label }), '공급사 나');
+    /* 칸을 누르면 찾기 창이 뜬다 — [검색]으로 거른다(사용자 지시 2026-11-19). */
+    await user.click(screen.getByRole('searchbox', { name: t.search.label }));
+    await user.type(screen.getByRole('textbox', { name: t.search.label }), '공급사 나');
+    await user.click(screen.getByRole('button', { name: messages.popUniform.scan.search }));
 
     const list = screen.getByRole('list', { name: t.pairs.label });
     expect(within(list).getAllByRole('button')).toHaveLength(1);
     expect(within(list).getByRole('button')).toHaveTextContent('SYN-ITEM-02');
 
-    await user.clear(screen.getByRole('searchbox', { name: t.search.label }));
-    await user.type(screen.getByRole('searchbox', { name: t.search.label }), '없는말');
+    expect(screen.getByRole('searchbox', { name: t.search.label })).toHaveValue('공급사 나');
+
+    /* [취소]는 지금 거르는 글자를 그대로 둔다. */
+    await user.click(screen.getByRole('searchbox', { name: t.search.label }));
+    await user.clear(screen.getByRole('textbox', { name: t.search.label }));
+    await user.type(screen.getByRole('textbox', { name: t.search.label }), '없는말');
+    await user.click(screen.getByRole('button', { name: messages.popUniform.dialog.cancel }));
+    expect(within(list).getAllByRole('button')).toHaveLength(1);
+
+    await user.click(screen.getByRole('searchbox', { name: t.search.label }));
+    await user.clear(screen.getByRole('textbox', { name: t.search.label }));
+    await user.type(screen.getByRole('textbox', { name: t.search.label }), '없는말{Enter}');
     expect(screen.getByText(t.pairs.noMatch)).toBeInTheDocument();
+
+    /* [×]로 비우면 다시 모두 보인다. */
+    await user.click(screen.getByRole('button', { name: messages.popUniform.search.clear }));
+    expect(screen.getByRole('searchbox', { name: t.search.label })).toHaveValue('');
   });
 
   it('⛔ 단말의 공장을 모르면 목록을 부르지 않는다', async () => {
@@ -186,7 +203,6 @@ describe('PopMaterialLotLabelScreen — 고르기와 작업 줄', () => {
     renderLabelScreen();
 
     await waitFor(() => expect(waitingRows()).toHaveLength(2));
-    expect(screen.getByText(t.work.guide)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.bar.issueIdle })).toBeDisabled();
     expect(screen.getByRole('button', { name: t.bar.voidIdle })).toBeDisabled();
 
@@ -196,7 +212,6 @@ describe('PopMaterialLotLabelScreen — 고르기와 작업 줄', () => {
       'aria-checked',
       'true',
     );
-    expect(screen.getByText(t.work.guidePicked)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.bar.issue(1) })).toBeEnabled();
     expect(screen.getByRole('button', { name: t.bar.void(1) })).toBeEnabled();
   });
@@ -216,7 +231,6 @@ describe('PopMaterialLotLabelScreen — 고르기와 작업 줄', () => {
     expect(screen.getByRole('button', { name: t.bar.issue(2) })).toBeEnabled();
 
     await user.click(screen.getByRole('button', { name: t.bar.clear }));
-    expect(screen.getByText(t.work.guide)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.bar.issueIdle })).toBeDisabled();
   });
 

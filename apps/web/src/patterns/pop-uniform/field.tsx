@@ -125,8 +125,11 @@ export interface PuScanFieldProps {
   doneText?: string;
   /** 못 찾음 등: 칸 바로 아래 빨간 한 줄. */
   error?: ReactNode;
-  /** [직접 입력] 창 제목·칸 이름. 비우면 칸 이름을 쓴다. 단추를 감추려면 `manual={false}`. */
-  manual?: false | { title?: string; label?: string; keypad?: boolean };
+  /**
+   * [직접 입력] 창 제목·칸 이름. 비우면 칸 이름을 쓴다. 단추를 감추려면 `manual={false}`.
+   * `search` 면 찾기 창이다 — 칸 안 안내가 「… 로 검색」, 단추가 [검색].
+   */
+  manual?: false | { title?: string; label?: string; keypad?: boolean; search?: boolean };
   disabled?: boolean;
   inputRef?: Ref<HTMLInputElement>;
   inputId?: string;
@@ -228,6 +231,7 @@ export const PuScanField = ({
           title={manual?.title ?? manual?.label ?? labelText}
           label={manual?.label ?? labelText}
           keypad={manual?.keypad ?? false}
+          search={manual?.search ?? false}
           onClose={() => {
             setManualOpen(false);
           }}
@@ -245,24 +249,35 @@ export const PuScanField = ({
 /**
  * [직접 입력] 창: 칸 하나 + [취소] · [확인]. 숫자만 넣는 칸(사번 등)은 키패드를,
  * 그 밖의 칸은 칸 아래에 글자판(`PuTextKeyboard`)을 함께 보인다(사용자 지시 2026-11-19 · 단말에 실물 자판이 없다).
+ * 칸 이름은 칸 위에 따로 두지 않고 칸 안 흐린 안내로 보인다. 찾기 창(`search`)은 안내가 「… 로 검색」이고
+ * 단추가 [검색]이다(사용자 지시 2026-11-19).
  */
 export const PuManualDialog = ({
   title,
   label,
   keypad = false,
+  search = false,
+  placeholder,
+  initialValue = '',
   onSubmit,
   onClose,
   confirmLabel,
 }: {
   title: ReactNode;
+  /** 칸 이름 — 칸 안 흐린 안내와 읽어 주는 이름이 된다. */
   label: string;
   keypad?: boolean;
+  /** 찾기 창 — 안내 「… 로 검색」 · 단추 [검색]. */
+  search?: boolean;
+  /** 칸 안 안내를 따로 줄 때. */
+  placeholder?: string;
+  /** 창을 열 때 칸에 들어 있는 값(지금 거르고 있는 글자 등). */
+  initialValue?: string;
   onSubmit: (value: string) => void;
   onClose: () => void;
   confirmLabel?: string;
 }) => {
-  const [value, setValue] = useState('');
-  const id = useId();
+  const [value, setValue] = useState(initialValue);
   const submit = (): void => {
     const trimmed = value.trim();
     if (trimmed !== '') onSubmit(trimmed);
@@ -277,28 +292,27 @@ export const PuManualDialog = ({
         <>
           <PuButton onClick={onClose}>{t.dialog.cancel}</PuButton>
           <PuButton variant="primary" disabled={value.trim() === ''} onClick={submit}>
-            {confirmLabel ?? t.dialog.confirm}
+            {confirmLabel ?? (search ? t.scan.search : t.dialog.confirm)}
           </PuButton>
         </>
       }
     >
-      <PuField label={label} htmlFor={id}>
-        <PuInput
-          id={id}
-          value={value}
-          numeric={keypad}
-          target={keypad}
-          inputMode={keypad ? 'none' : undefined}
-          autoFocus
-          autoComplete="off"
-          onChange={(event) => {
-            setValue(event.target.value);
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') submit();
-          }}
-        />
-      </PuField>
+      <PuInput
+        value={value}
+        aria-label={label}
+        placeholder={placeholder ?? (search ? t.scan.searchPlaceholder(label) : label)}
+        numeric={keypad}
+        target={keypad}
+        inputMode={keypad ? 'none' : undefined}
+        autoFocus
+        autoComplete="off"
+        onChange={(event) => {
+          setValue(event.target.value);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') submit();
+        }}
+      />
       {!keypad && (
         /* 글자판의 빈 곳을 눌러도 칸에서 초점이 빠지지 않게 한다(Enter 로 확인이 그대로 된다). */
         <div

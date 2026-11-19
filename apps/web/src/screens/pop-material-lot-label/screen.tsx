@@ -13,20 +13,19 @@ import {
   PuCount,
   PuEmpty,
   PuHelpButton,
-  PuIcon,
   PuNote,
   PuPager,
   PuScanField,
   PuScreen,
   PuSection,
   PuSeg,
-  PuTextKeyboard,
   PuTiles,
   puToast,
   useClientPage,
   useFitCount,
   useFitTableRows,
 } from '../../patterns/pop-uniform';
+import { PuSearchBox } from '../../patterns/pop-uniform/search-box';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { toApiError } from '../../patterns/request';
 import { serverReasonOf } from '../../patterns/server-reason';
@@ -128,8 +127,6 @@ export const PopMaterialLotLabelScreen = () => {
   const [tab, setTab] = useState<Tab>('pairs');
   const [folded, setFolded] = useState(false);
   const [query, setQuery] = useState('');
-  /* 왼쪽 찾기 칸을 누르면 글자판을 연다(사용자 지시 2026-11-19) — 글자판으로 쳐도 손으로 친 것과 같다. */
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [scanNote, setScanNote] = useState<string | null>(null);
   const [pairKey, setPairKey] = useState<string | null>(null);
   const [checked, setChecked] = useState<ReadonlySet<number>>(new Set());
@@ -530,37 +527,15 @@ export const PopMaterialLotLabelScreen = () => {
       {tab === 'pairs' ? (
         <>
           <div className="mll-left-top">
-            <label className="pu-input pu-search mll-search">
-              <PuIcon name="search" />
-              <input
-                type="search"
-                aria-label={t.search.label}
-                placeholder={t.search.pairsPlaceholder}
-                value={query}
-                disabled={isFrozen}
-                autoComplete="off"
-                onFocus={() => {
-                  setKeyboardOpen(true);
-                }}
-                onBlur={() => {
-                  setKeyboardOpen(false);
-                }}
-                onChange={(event) => {
-                  changePairQuery(event.target.value);
-                }}
-              />
-            </label>
-            {keyboardOpen && !isFrozen ? (
-              /* 글자판의 빈 곳을 눌러도 칸에서 초점이 빠져 닫히지 않게 한다. */
-              <div
-                className="mll-kbd"
-                onMouseDown={(event) => {
-                  event.preventDefault();
-                }}
-              >
-                <PuTextKeyboard value={query} onChange={changePairQuery} />
-              </div>
-            ) : null}
+            <PuSearchBox
+              className="mll-search"
+              label={t.search.label}
+              title={t.search.pairsTitle}
+              placeholder={t.search.pairsPlaceholder}
+              value={query}
+              disabled={isFrozen}
+              onChange={changePairQuery}
+            />
             {waiting.isPending ? null : groups.length === 0 ? (
               <PuEmpty icon="search" title={normalized === '' ? t.pairs.empty : t.pairs.noMatch} />
             ) : (
@@ -590,7 +565,7 @@ export const PopMaterialLotLabelScreen = () => {
             placeholder={t.search.reprintPlaceholder}
             disabled={isFrozen}
             error={scanNote}
-            manual={{ title: t.search.manualTitle }}
+            manual={{ title: t.search.manualTitle, search: true }}
             onChange={(value) => {
               setQuery(value);
               setScanNote(null);
@@ -613,7 +588,20 @@ export const PopMaterialLotLabelScreen = () => {
       <PuSection
         className="mll-right"
         labelId={`${createNoteId}-pair`}
-        title={pairName}
+        /* 공급사 · 기본 단위 · 기본 정보는 제목 오른쪽에 작고 흐리게 한 줄 — 넘치면 말줄임(사용자 지시 2026-11-19). */
+        title={
+          <>
+            <span className="mll-head-name">{pairName}</span>
+            <span className="mll-head-sub">
+              {t.work.meta(
+                current.supplierName,
+                current.supplierCode,
+                current.uomCode,
+                defaultLineOf(defaultsMap.get(currentKey ?? '')),
+              )}
+            </span>
+          </>
+        }
         meta={
           isShowingResults ? (
             <b>{t.work.resultSummary(summary.printed, summary.unfinished.length)}</b>
@@ -656,22 +644,15 @@ export const PopMaterialLotLabelScreen = () => {
           )
         }
       >
-        <div className="mll-head-sub">
-          {t.work.meta(
-            current.supplierName,
-            current.supplierCode,
-            current.uomCode,
-            defaultLineOf(defaultsMap.get(currentKey ?? '')),
-          )}
-        </div>
         {loadProblem}
         {hasStatusNote ? (
           statusNote
         ) : printedPicked > 0 ? (
           <PuNote tone="warn">{t.bar.printedNote(printedPicked)}</PuNote>
-        ) : (
-          <PuNote>{selectedWaiting.length > 0 ? t.work.guidePicked : t.work.guide}</PuNote>
-        )}
+        ) : unit !== null && selectedUnprinted.length > unit ? (
+          /* 발행 단위보다 많이 골랐다 — N장마다 멈춘다(사용자 지시 2026-11-19 · 타일이 아무 일도 안 하는 것처럼 보였다). */
+          <PuNote>{t.bar.unitNote(unit)}</PuNote>
+        ) : null}
         <div className="mll-units">
           <span className="pu-label">{t.bar.unit.label}</span>
           <PuTiles

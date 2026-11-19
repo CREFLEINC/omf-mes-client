@@ -472,7 +472,11 @@ export const RepackLabelIssueScreen = () => {
                     placeholder={t.pending.scanPlaceholder}
                     disabled={isSubmitting}
                     error={scanError ?? undefined}
-                    manual={{ title: t.pending.manualTitle, label: t.pending.scanLabel }}
+                    manual={{
+                      title: t.pending.manualTitle,
+                      label: t.pending.scanLabel,
+                      search: true,
+                    }}
                     onChange={(value) => {
                       setScanValue(value);
                       setScanError(null);

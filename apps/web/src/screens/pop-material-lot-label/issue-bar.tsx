@@ -148,7 +148,11 @@ export const IssueBar = ({
         disabled={state.unprinted === 0 || state.isBlocked}
         onClick={onIssue}
       >
-        {state.unprinted > 0 ? t.issue(state.unprinted) : t.issueIdle}
+        {state.unprinted === 0
+          ? t.issueIdle
+          : state.unit !== null && state.unprinted > state.unit
+            ? t.issueEach(state.unprinted, state.unit)
+            : t.issue(state.unprinted)}
       </PuButton>
     </PuActionBar>
   );

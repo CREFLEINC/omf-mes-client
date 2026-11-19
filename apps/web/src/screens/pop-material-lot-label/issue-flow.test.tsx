@@ -302,7 +302,12 @@ describe('라벨 발행 — N장마다 멈추고 이어서', () => {
       expect(screen.getByText(messages.popUniform.pager.total(12))).toBeInTheDocument(),
     );
     await user.click(screen.getByRole('radio', { name: t.bar.unit.each(10) }));
-    await issueAll(user, 12);
+    await user.click(screen.getByRole('button', { name: t.bar.selectAllWaiting(12) }));
+    /* 단위보다 많이 골랐다 — 단추와 안내 줄이 10장마다 멈춘다고 말한다. */
+    expect(screen.getByText(t.bar.unitNote(10))).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.bar.issueEach(12, 10) }));
+    const dialog = await screen.findByRole('dialog', { name: t.preview.title });
+    await user.click(within(dialog).getByRole('button', { name: t.preview.print(12) }));
 
     await waitFor(() => expect(screen.getByText(t.bar.paused(10, 12))).toBeInTheDocument());
     expect(sentTo(sent, '/app/document-issues')).toHaveLength(10);

@@ -92,11 +92,28 @@
   margin-top: auto;
 }
 
+.mll-right > .pu-card-head h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.mll-head-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 제목이 먼저 자리를 갖고, 남는 폭만 이 줄이 쓴다(넘치면 말줄임). */
 .mll-head-sub {
-  margin-top: -10px;
+  flex: 1 1 0;
+  min-width: 0;
   font-size: 13px;
+  font-weight: 400;
   color: var(--pu-text-3);
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -142,28 +159,27 @@
   font-size: 12px;
 }
 
-/* 긴 칸(번호 · 공급사 LOT · 품목)은 남는 폭을 나눠 갖고 넘치면 말줄임 + title — 머리 글도 같이 줄어든다(1024). */
-.mll-table .pu-table th.mll-lotcol,
-.mll-table .pu-table th.mll-slotcol {
-  max-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
+/*
+ * 칸 폭(사용자 지시 2026-11-19 「잘리지 않게 적절히 배치」): 칸 머리 글은 줄이지 않는다(머리 글 폭이 칸의 최소 폭).
+ * LOT 번호 칸은 번호 길이만큼(약 32자)만 갖고, 남는 폭은 발행 대기면 공급사 LOT 번호, 재발행이면 품목 칸이 갖는다.
+ * 좁은 화면(1024)에서 모자라면 품목 값 → LOT 번호 값 순으로 말줄임이 된다.
+ */
 .mll-table .pu-table th.mll-lotcol {
-  width: 72%;
+  width: 260px;
 }
 
 .mll-table .pu-table th.mll-slotcol {
-  width: 28%;
-}
-
-.mll-table.is-reprint .pu-table th.mll-lotcol {
-  width: 31%;
+  width: auto;
 }
 
 .mll-table.is-reprint .pu-table th.mll-slotcol {
-  width: 9%;
+  width: 108px;
+}
+
+/* 재발행 표는 칸이 아홉 개라 칸 안 여백을 줄인다 — 1280 에서 LOT 번호가 다 보이고 품목 칸에 폭이 남는다. */
+.mll-table.is-reprint .pu-table th,
+.mll-table.is-reprint .pu-table td {
+  padding-inline: 6px;
 }
 
 .mll-table tr.mll-dis td {
@@ -554,35 +570,10 @@
   color: var(--pu-bad);
 }
 
-/* 왼쪽 찾기 칸을 누르면 칸 바로 아래에 글자판(사용자 지시 2026-11-19) — 그동안 왼쪽 열을 넓힌다. */
-.mll-body .pu-cols.list:has(.mll-kbd) {
-  grid-template-columns: 480px minmax(0, 1fr);
-}
-
-.mll-left-top:has(> .mll-kbd) {
-  grid-template-rows: auto auto minmax(0, 1fr);
-}
-
-/* 글자판이 열린 동안 목록은 이름 한 줄로 — 낮은 화면(768)에서도 한 건이 잘리지 않는다. */
-.mll-left-top:has(> .mll-kbd) .mll-pairs .pu-item {
-  padding-top: 6px;
-  padding-bottom: 6px;
-  gap: 2px;
-}
-
-.mll-left-top:has(> .mll-kbd) .mll-pairs .pu-item-sub {
-  display: none;
-}
-
-/* 꺼진 키를 눌러도 칸에서 초점이 빠져 글자판이 닫히지 않게 누름을 글자판 바탕으로 넘긴다. */
-.mll-kbd .pu-tkbd button:disabled {
-  pointer-events: none;
-}
-
-/* 1024 단말 재발행 표는 칸이 아홉 개라 칸 안 여백을 줄이고 짧은 칸 머리 글(재고 수량)은 두 줄로 — 번호 칸 폭을 남긴다. */
+/* 1024 단말: 칸 안 여백을 줄이고 짧은 칸 머리 글(재고 수량 · 최근 출력 일시)은 두 줄로 — LOT 번호 칸이 남는 폭을 나눠 갖는다. */
 @media (max-width: 1100px) {
-  .mll-table.is-reprint .pu-table th,
-  .mll-table.is-reprint .pu-table td {
+  .mll-table .pu-table th,
+  .mll-table .pu-table td {
     padding-inline: 6px;
   }
 
@@ -591,12 +582,19 @@
     line-height: 15px;
   }
 
-  .mll-table.is-reprint .pu-table th.mll-lotcol {
-    width: 30%;
+  .mll-table .pu-table th.mll-lotcol {
+    width: auto;
+  }
+
+  /* 공급사 LOT 번호는 머리 글 폭만 — 남는 폭은 LOT 번호가 갖는다. 재발행 표는 머리 글을 두 줄로(마지막 수단). */
+  .mll-table .pu-table th.mll-slotcol {
+    width: 1%;
   }
 
   .mll-table.is-reprint .pu-table th.mll-slotcol {
-    width: 11%;
+    width: 80px;
+    white-space: normal;
+    line-height: 15px;
   }
 }
 

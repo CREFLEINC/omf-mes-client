@@ -10,10 +10,11 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
   },
   search: {
     label: 'Tìm',
+    pairsTitle: 'Tìm nhà cung cấp · mặt hàng',
     pairsPlaceholder: 'Nhà cung cấp hoặc mặt hàng (mã · tên)',
     scanLabel: 'Số LOT quản lý vật tư · mã mặt hàng',
     reprintPlaceholder: 'Hãy quét nhãn',
-    manualTitle: 'Tìm LOT in lại',
+    manualTitle: 'Nhập LOT in lại',
   },
   pairs: {
     label: 'Nhà cung cấp · mặt hàng',
@@ -30,9 +31,6 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     meta: (supplier: string, supplierCode: string, uomCode: string, defaults: string) =>
       `${supplier} ${supplierCode} · Đơn vị cơ sở ${uomCode} · ${defaults}`,
     create: 'Tạo LOT quản lý vật tư',
-    guide: 'Hãy tạo LOT quản lý vật tư và phát hành nhãn trước khi nhập hàng.',
-    guidePicked:
-      'LOT chờ nhập chưa có tồn kho nên bị từ chối khi quét xuất kho · đưa vào sản xuất trước khi quét nhập hàng.',
     help: 'Hướng dẫn LOT quản lý vật tư',
     helpIntro: 'Có thể tạo LOT và in nhãn trước khi vật tư nhập kho.',
     helpItems: [
@@ -117,6 +115,9 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     void: (count: number) => `Hủy ${count} LOT chờ nhập`,
     clear: 'Bỏ chọn',
     issue: (count: number) => `Phát hành ${count} nhãn`,
+    issueEach: (count: number, unit: number) => `Phát hành ${count} nhãn (mỗi lần ${unit})`,
+    unitNote: (unit: number) =>
+      `Dừng sau mỗi ${unit} nhãn. Dán nhãn xong, bấm [Phát hành ${unit} nhãn tiếp theo]`,
     issueIdle: 'Phát hành nhãn',
     running: (supplier: string) => `Đang phát hành ${supplier}`,
     progress: (done: number, total: number) => `${done} / ${total} nhãn`,

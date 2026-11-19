@@ -41,6 +41,7 @@ export const repackLabelIssue: Translated<typeof ko.repackLabelIssue> = {
     empty: 'Hiện không có kiện nào chờ phát hành.',
     loadFailed: 'Không tải được danh sách chờ phát hành.',
     searchPlaceholder: 'Số kiện hoặc kiện gốc',
+    searchTitle: 'Tìm kiện',
     searchEmpty: 'Không có kiện cần tìm.',
     tabsLabel: 'Xem danh sách',
     reissueTab: 'Phát hành lại',
@@ -51,7 +52,7 @@ export const repackLabelIssue: Translated<typeof ko.repackLabelIssue> = {
     issuedCount: (count: number): string => `${String(count)} lần`,
     scanLabel: 'Số kiện',
     scanPlaceholder: 'Quét nhãn kiện',
-    manualTitle: 'Tìm kiện phát hành lại',
+    manualTitle: 'Nhập kiện phát hành lại',
     scanNotIssued: (code: string): string =>
       `「${code}」 — Kiện chưa phát hành. Hãy phát hành ở 「Chờ phát hành」.`,
     scanMissing: (code: string): string => `「${code}」 — Không có trong danh sách phát hành lại.`,

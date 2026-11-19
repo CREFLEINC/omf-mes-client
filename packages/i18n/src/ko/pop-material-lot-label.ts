@@ -17,11 +17,13 @@ export const popMaterialLotLabel = {
   /** 찾기 칸 — 다시 인쇄에서는 스캐너 입력도 받는다(Enter = 그 LOT 고르기). */
   search: {
     label: '찾기',
+    /** 찾기 칸을 누르면 뜨는 창의 제목. */
+    pairsTitle: '공급사 · 품목 검색',
     pairsPlaceholder: '공급사 또는 품목(코드·이름)', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
     /** 재발행 탭의 스캔 칸 — 번호가 맞으면 그 LOT 을 고르고, 적는 동안은 번호·품목코드로 거른다. */
     scanLabel: '자재 관리 LOT 번호 · 품목코드',
     reprintPlaceholder: '라벨을 스캔하세요',
-    manualTitle: '재인쇄 LOT 찾기',
+    manualTitle: '재인쇄 LOT 입력',
   },
   /** 왼쪽 공급사·품목 목록. 칩은 대기 자재 관리 LOT 수다. */
   pairs: {
@@ -43,8 +45,6 @@ export const popMaterialLotLabel = {
       `${supplier} ${supplierCode} · 기본 단위 ${uomCode} · ${defaults}`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
     create: '자재 관리 LOT 생성',
     /** 상시 할 일 한 줄 — 입하 대기 LOT 을 고르면 출고·투입 제한을 말한다(#295 시안). */
-    guide: '입하 전에 자재 관리 LOT을 만들고 라벨을 발행하세요.',
-    guidePicked: '입하 대기 LOT은 재고가 없어 입하 스캔 전에는 출고·투입 스캔에서 거부됩니다.',
     help: '자재 관리 LOT 안내',
     /** 제목 줄 [도움말] 창(사용자 지정 문구 2026-11-19). */
     helpIntro: '자재 입고 전에 LOT를 미리 생성하고 라벨을 출력할 수 있습니다.',
@@ -139,6 +139,10 @@ export const popMaterialLotLabel = {
     void: (count: number) => `입하 대기 ${count}개 폐기`,
     clear: '선택 해제',
     issue: (count: number) => `라벨 ${count}장 발행`,
+    /** 발행 단위보다 많이 골랐다 — N장마다 멈춘다는 것을 단추가 함께 말한다(#295 · 사용자 지시 2026-11-19). */
+    issueEach: (count: number, unit: number) => `라벨 ${count}장 발행 (${unit}장씩)`,
+    unitNote: (unit: number) =>
+      `${unit}장마다 멈춥니다. 라벨을 붙인 뒤 [다음 ${unit}장 발행]으로 이어 가세요`,
     issueIdle: '라벨 발행',
     running: (supplier: string) => `${supplier} 발행 중`,
     progress: (done: number, total: number) => `${total}장 중 ${done}장`,

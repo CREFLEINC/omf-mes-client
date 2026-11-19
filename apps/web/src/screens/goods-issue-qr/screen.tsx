@@ -136,6 +136,8 @@ export const GoodsIssueQrScreen = () => {
   const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
   const [reasonCode, setReasonCode] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ index: number } | null>(null);
+  /* 재인쇄 사유 창 — [라벨 N장 발행]·[재인쇄]를 누르면 사유가 필요할 때 먼저 뜬다(사용자 지시 2026-11-19). */
+  const [isReasonOpen, setReasonOpen] = useState(false);
 
   const unprinted = useSplitMaterialLots(plantId, 'UNPRINTED', period);
   const printed = useSplitMaterialLots(
@@ -185,14 +187,16 @@ export const GoodsIssueQrScreen = () => {
   });
   const chosenNeedingReason = chosen.filter(needsReissueReason);
   const needsReason = chosenNeedingReason.length > 0;
-  const reasons = useReissueReasons(needsReason);
+  /* 재발행 탭은 늘 사유가 있어야 한다. 발행 대기 탭은 인쇄가 실패한 LOT 을 골랐을 때만. */
+  const asksReason = needsReason || (tab === 'PRINTED' && chosen.length > 0);
+  const reasons = useReissueReasons(asksReason);
   const reasonName =
     reasonCode === null
       ? null
       : (reasons.data?.find((reason) => reason.code === reasonCode)?.name ?? reasonCode);
   const isBusy = printing.isRunning;
-  const canPrint =
-    chosen.length > 0 && (!needsReason || reasonCode !== null) && workerNo !== null && !isBusy;
+  /* 사유는 단추를 누른 뒤 뜨는 사유 창이 받는다 — 단추는 고른 것이 있으면 켜진다. */
+  const canPrint = chosen.length > 0 && workerNo !== null && !isBusy;
   const allOn = rows.length > 0 && rows.every((lot) => selected.has(lot.lotId));
 
   const tableFitRef = useRef<HTMLDivElement>(null);
@@ -292,7 +296,10 @@ export const GoodsIssueQrScreen = () => {
         icon="print"
         disabled={!canPrint}
         onClick={() => {
-          setPreview({ index: 0 });
+          /* 사유가 필요하면 사유 창 → 미리 보기 → 인쇄. 아니면 사유 없이(null) 바로 미리 보기. */
+          setReasonCode(null);
+          if (asksReason) setReasonOpen(true);
+          else setPreview({ index: 0 });
         }}
       >
         {isPrintedTab
@@ -373,7 +380,7 @@ export const GoodsIssueQrScreen = () => {
                 placeholder={t.search.placeholder}
                 disabled={isBusy}
                 error={scanError}
-                manual={{ title: t.search.manualTitle }}
+                manual={{ title: t.search.manualTitle, search: true }}
                 onChange={(value) => {
                   setQuery(value);
                   setSelected(new Set());
@@ -464,12 +471,13 @@ export const GoodsIssueQrScreen = () => {
                 {isPrintedTab ? null : (
                   <PuButton
                     size="sm"
-                    disabled={rows.length === 0 || isBusy}
+                    disabled={rows.length === 0 || allOn || isBusy}
                     onClick={() => {
-                      selectAll(!allOn);
+                      selectAll(true);
                     }}
                   >
-                    {allOn ? t.bar.clearAll(rows.length) : t.bar.selectAll(rows.length)}
+                    {/* 해제는 옆 [선택 해제]가 한다 — 이 단추는 이름을 바꾸지 않는다(자재 관리 LOT 라벨과 같다). */}
+                    {t.bar.selectAll(rows.length)}
                   </PuButton>
                 )}
                 <PuButton
@@ -532,33 +540,26 @@ export const GoodsIssueQrScreen = () => {
                 onPage={page.setPage}
               />
             </div>
-            {needsReason || (isPrintedTab && chosen.length > 0) ? (
-              <div className="giq-reasons">
-                <ReasonPicker
-                  reasons={reasons.data ?? []}
-                  isLoading={reasons.isPending}
-                  isError={reasons.isError}
-                  selected={reasonCode}
-                  isLocked={isBusy}
-                  onSelect={setReasonCode}
-                  label={t.reasons.label}
-                  hint={
-                    reasonCode === null ? (
-                      /* 재인쇄 사유 이름 오른쪽 라벨(사용자 지시 2026-11-19). */
-                      <PuChip tone="bad">
-                        {isPrintedTab
-                          ? t.reasons.need
-                          : t.reasons.needFailed(chosenNeedingReason.length)}
-                      </PuChip>
-                    ) : undefined
-                  }
-                />
-              </div>
-            ) : null}
           </PuSection>
         </PuStack>
       </PuScreen>
 
+      {isReasonOpen ? (
+        <ReasonDialog
+          reasons={reasons}
+          count={chosen.length}
+          needCount={isPrintedTab ? null : chosenNeedingReason.length}
+          isReprint={isPrintedTab}
+          onCancel={() => {
+            setReasonOpen(false);
+          }}
+          onConfirm={(code) => {
+            setReasonCode(code);
+            setReasonOpen(false);
+            setPreview({ index: 0 });
+          }}
+        />
+      ) : null}
       {preview === null ? null : (
         <PreviewDialog
           lots={printList}
@@ -757,6 +758,71 @@ const EmptyList = ({
       title={t.empty.printedTitle(t.periods[period])}
       hint={t.empty.printedBody}
     />
+  );
+};
+
+/**
+ * 재인쇄 사유 창(사용자 지시 2026-11-19) — 머리 X 없이 사유 타일 + [취소] · [N장 발행]. 사유를 골라야 켜진다.
+ * 고른 사유는 미리 보기 → 인쇄로 그대로 이어진다(보내는 값은 전과 같다).
+ */
+const ReasonDialog = ({
+  reasons,
+  count,
+  needCount,
+  isReprint,
+  onCancel,
+  onConfirm,
+}: {
+  reasons: ReturnType<typeof useReissueReasons>;
+  count: number;
+  /** 발행 대기 탭에서 인쇄가 실패한 LOT 수 — 재발행 탭이면 null. */
+  needCount: number | null;
+  isReprint: boolean;
+  onCancel: () => void;
+  onConfirm: (code: string) => void;
+}) => {
+  const [code, setCode] = useState<string | null>(null);
+
+  return (
+    <PuDialog
+      title={t.reasons.title}
+      wide
+      onClose={onCancel}
+      footer={
+        <>
+          <PuButton onClick={onCancel}>{messages.popUniform.dialog.cancel}</PuButton>
+          <PuButton
+            variant="primary"
+            icon="print"
+            disabled={code === null}
+            onClick={() => {
+              if (code !== null) onConfirm(code);
+            }}
+          >
+            {isReprint ? t.bar.reprint(count) : t.reasons.confirm(count)}
+          </PuButton>
+        </>
+      }
+    >
+      <div className="giq-reasons">
+        <ReasonPicker
+          reasons={reasons.data ?? []}
+          isLoading={reasons.isPending}
+          isError={reasons.isError}
+          selected={code}
+          isLocked={false}
+          onSelect={setCode}
+          label={t.reasons.label}
+          hint={
+            code === null ? (
+              <PuChip tone="bad">
+                {needCount === null ? t.reasons.need : t.reasons.needFailed(needCount)}
+              </PuChip>
+            ) : undefined
+          }
+        />
+      </div>
+    </PuDialog>
   );
 };
 
