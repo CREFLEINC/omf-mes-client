@@ -47,17 +47,15 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
   table: {
     label: 'LOT tách',
     select: 'Chọn',
-    lotNo: 'Số LOT tách · LOT gốc',
+    lotNo: 'Số LOT tách',
+    parentLot: 'Số LOT gốc',
     item: 'Mặt hàng',
     qty: 'Số lượng',
-    issue: 'Số phiếu xuất · nơi đến',
+    issue: 'Số phiếu xuất',
+    destination: 'Nơi đến',
     splitAt: 'Thời điểm tách',
     labelColumn: 'Nhãn',
-    parentLabel: 'Gốc',
-    lineDestination: (lineNo: number, destination: string) =>
-      destination === '' ? `Dòng ${String(lineNo)}` : `Dòng ${String(lineNo)} · ${destination}`,
-    today: 'Hôm nay',
-    daysAgo: (days: number) => `${String(days)} ngày trước`,
+    issueLine: (issueNo: string, lineNo: number) => `${issueNo} · dòng ${String(lineNo)}`,
     choose: (lotNo: string) => `Chọn ${lotNo}`,
   },
   status: {

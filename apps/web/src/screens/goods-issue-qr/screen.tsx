@@ -65,19 +65,6 @@ const DEFAULT_ORDER: Record<LabelState, Order> = { UNPRINTED: 'oldest', PRINTED:
 /** 분할 시각(공장 시각) `MM-DD HH:mm`. */
 const shortAt = (value: string): string => (formatPlantDateTime(value) ?? value).slice(5);
 
-/** 분할 뒤 며칠 지났나 — 공장 날짜로 센다. */
-const daysSince = (value: string, today: string): number => {
-  const date = (formatPlantDateTime(value) ?? value).slice(0, 10);
-
-  return Math.max(0, Math.round((Date.parse(today) - Date.parse(date)) / 86_400_000));
-};
-
-const ageText = (value: string, today: string): string => {
-  const days = daysSince(value, today);
-
-  return days === 0 ? t.table.today : t.table.daysAgo(days);
-};
-
 const destinationOf = (lot: SplitMaterialLot): string =>
   lot.destination === null
     ? ''
@@ -171,7 +158,6 @@ export const GoodsIssueQrScreen = () => {
   );
   const headPrinter = printerChoice.printer;
 
-  const today = plantToday();
   const unprintedCount = unprinted.data?.unprintedCount ?? null;
 
   /* 표에 보이는 차례 — 분할 시각으로 줄 세운다. 찍는 차례(`printList`)와는 따로다. */
@@ -333,10 +319,7 @@ export const GoodsIssueQrScreen = () => {
   ) : current.isPending && plantId !== null ? null : rows.length > 0 ? (
     <SplitTable
       lots={page.items}
-      today={today}
       selected={selected}
-      order={order}
-      showAge={!isPrintedTab}
       isLocked={isBusy}
       onToggle={toggle}
       fitRef={tableFitRef}
@@ -638,19 +621,13 @@ const LabelStatus = ({ lot }: { lot: SplitMaterialLot }) => {
 
 const SplitTable = ({
   lots,
-  today,
   selected,
-  order,
-  showAge,
   isLocked,
   onToggle,
   fitRef,
 }: {
   lots: readonly SplitMaterialLot[];
-  today: string;
   selected: ReadonlySet<number>;
-  order: Order;
-  showAge: boolean;
   isLocked: boolean;
   onToggle: (lotId: number) => void;
   fitRef: RefObject<HTMLDivElement | null>;
@@ -661,11 +638,14 @@ const SplitTable = ({
         <thead>
           <tr>
             <th className="fit mid">{t.table.select}</th>
+            {/* 칸마다 값 하나(사용자 지시 2026-11-19) — 분할 LOT·기존 LOT, 출고번호·도착을 나눈다. */}
             <th className="fit">{t.table.lotNo}</th>
+            <th className="fit">{t.table.parentLot}</th>
             <th>{t.table.item}</th>
             <th className="num fit">{t.table.qty}</th>
-            <th>{t.table.issue}</th>
-            <th className="fit">{`${t.table.splitAt} ${order === 'oldest' ? '↑' : '↓'}`}</th>
+            <th className="fit">{t.table.issue}</th>
+            <th>{t.table.destination}</th>
+            <th className="fit">{t.table.splitAt}</th>
             <th className="fit mid">{t.table.labelColumn}</th>
           </tr>
         </thead>
@@ -703,33 +683,25 @@ const SplitTable = ({
                 </td>
                 <td className="fit giq-lotcol">
                   <LotNoText className="pu-mono giq-lotno" lotNo={lot.lotNo} />
-                  <span className="giq-sub">
-                    {t.table.parentLabel} <LotNoText lotNo={lot.parentLot.lotNo} />
-                  </span>
+                </td>
+                <td className="fit giq-lotcol">
+                  <LotNoText className="pu-mono giq-one" lotNo={lot.parentLot.lotNo} />
                 </td>
                 <td title={`${lot.item.itemCode} ${lot.item.itemName}`}>
-                  <b className="giq-one">{lot.item.itemCode}</b>
-                  <span className="giq-sub">{lot.item.itemName}</span>
-                </td>
-                <td className="num fit">{formatBaseQty(lot.qty, lot.uomCode)}</td>
-                <td
-                  title={`${lot.goodsIssue.goodsIssueNo} ${t.table.lineDestination(lot.goodsIssue.lineNo, destinationOf(lot))}`}
-                >
-                  <span className="giq-one">{lot.goodsIssue.goodsIssueNo}</span>
-                  <span className="giq-sub">
-                    {t.table.lineDestination(lot.goodsIssue.lineNo, destinationOf(lot))}
+                  <span className="giq-one">
+                    <b>{lot.item.itemCode}</b> {lot.item.itemName}
                   </span>
                 </td>
+                <td className="num fit">{formatBaseQty(lot.qty, lot.uomCode)}</td>
                 <td className="fit">
-                  <span className="giq-one">{shortAt(lot.splitAt)}</span>
-                  {showAge ? (
-                    <span
-                      className={daysSince(lot.splitAt, today) > 0 ? 'giq-sub giq-old' : 'giq-sub'}
-                    >
-                      {ageText(lot.splitAt, today)}
-                    </span>
-                  ) : null}
+                  {t.table.issueLine(lot.goodsIssue.goodsIssueNo, lot.goodsIssue.lineNo)}
                 </td>
+                <td title={destinationOf(lot)}>
+                  <span className="giq-one">
+                    {destinationOf(lot) === '' ? '—' : destinationOf(lot)}
+                  </span>
+                </td>
+                <td className="fit">{shortAt(lot.splitAt)}</td>
                 <td className="fit mid">
                   <LabelStatus lot={lot} />
                 </td>

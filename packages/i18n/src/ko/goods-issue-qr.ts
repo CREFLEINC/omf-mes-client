@@ -54,18 +54,15 @@ export const goodsIssueQr = {
   table: {
     label: '분할 LOT',
     select: '선택',
-    lotNo: '분할 LOT 번호 · 기존 LOT',
+    lotNo: '분할 LOT 번호',
+    parentLot: '기존 LOT 번호',
     item: '품목',
     qty: '수량',
-    issue: '출고번호 · 도착',
+    issue: '출고번호',
+    destination: '도착',
     splitAt: '분할 시각',
     labelColumn: '라벨',
-    parentLabel: '원래',
-    /** 출고번호 아래 줄 — 「라인 1 · WH-P1 / S220-WIP」. */
-    lineDestination: (lineNo: number, destination: string) =>
-      destination === '' ? `라인 ${String(lineNo)}` : `라인 ${String(lineNo)} · ${destination}`,
-    today: '오늘',
-    daysAgo: (days: number) => `${String(days)}일 지남`,
+    issueLine: (issueNo: string, lineNo: number) => `${issueNo} · 라인 ${String(lineNo)}`,
     choose: (lotNo: string) => `${lotNo} 고르기`,
   },
   status: {
