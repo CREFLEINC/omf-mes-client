@@ -15,6 +15,7 @@ import {
   PuField,
   PuFlow,
   PuIcon,
+  PuKv,
   PuNote,
   PuPager,
   PuRemoveButton,
@@ -30,8 +31,8 @@ import {
   type PuIconName,
 } from '../../patterns/pop-uniform';
 import { DELIVERY_LABEL } from '../shipping-packing-label/codes';
-import { usePrinters, useReissueReasons } from '../shipping-packing-label/queries';
-import { toDefaultPrinterName } from '../shipping-packing-label/types';
+import { useIssueHistory, usePrinters, useReissueReasons } from '../shipping-packing-label/queries';
+import { toDefaultPrinterName, type IssueView } from '../shipping-packing-label/types';
 
 import {
   INITIAL_STATE,
@@ -210,13 +211,14 @@ const sumText = (unit: ShippingUnitDetail): string => {
 };
 
 /** 납품 라벨 그림 — 마감 때 인쇄에 넘기는 같은 그리기. 실패하면 비운다. */
-const usePreviewSrc = (unit: ShippingUnitDetail | null): string | null => {
+const usePreviewSrc = (unit: ShippingUnitDetail | null, issueSeq: number | null): string | null => {
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
 
   /*
    * ⚠ **그림 주소는 effect 안에서 만들고 같은 effect 가 해제한다**(리뷰 M2). 렌더 중에 만들면
    *    StrictMode 의 «실행→정리→재실행»에서 쓰던 주소가 해제돼 빈 그림이 선다.
-   * ⚠ 발행 회차는 마감·발행 전에는 없다 — 첫 발행인 1 로 그린다.
+   * ⚠ 회차는 부르는 쪽이 준다 — 구성 중이면 첫 발행인 1, 「구성 완료」면 발행 이력의 다음 회차,
+   *   이력을 못 읽었으면 `null`(라벨에 「-」).
    */
   useEffect(() => {
     if (unit === null || unit.boxCount === 0) {
@@ -226,7 +228,7 @@ const usePreviewSrc = (unit: ShippingUnitDetail | null): string | null => {
 
     let src: string;
     try {
-      const bytes = renderDeliveryLabel(toDeliveryLabelFields(unit, 1));
+      const bytes = renderDeliveryLabel(toDeliveryLabelFields(unit, issueSeq));
       src = URL.createObjectURL(
         new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)], {
           type: 'image/png',
@@ -241,7 +243,7 @@ const usePreviewSrc = (unit: ShippingUnitDetail | null): string | null => {
     return () => {
       URL.revokeObjectURL(src);
     };
-  }, [unit]);
+  }, [unit, issueSeq]);
 
   return previewSrc;
 };
@@ -308,6 +310,17 @@ export const ShippingUnitScreen = () => {
   const writes = useShippingUnitWrites(identity.workerNo);
   const issueDeliveryLabel = useDeliveryIssue(identity.workerNo);
   const reissueReasons = useReissueReasons(reissueOpen);
+  /**
+   * 「구성 완료」 단위의 납품 라벨 발행 이력 — 출하 라벨 화면이 회차·인쇄 결과를 보이는 같은 조회
+   * (`GET /app/document-issues`). 가장 높은 회차가 지금 회차, 다음 재발행은 그 + 1 이다.
+   */
+  const doneHistory = useIssueHistory(tab === 'done' ? DELIVERY_LABEL : null, doneUnitId);
+  const lastIssue = (doneHistory.data ?? []).reduce<IssueView | null>(
+    (last, each) => (last === null || each.issueSeq > last.issueSeq ? each : last),
+    null,
+  );
+  /* ⛔ 이력을 못 읽었으면(읽는 중 포함) 회차를 모른다 — 1 로 채우지 않는다(G-9). */
+  const nextSeq = doneHistory.isSuccess ? (lastIssue?.issueSeq ?? 0) + 1 : null;
 
   const unit = detail.data?.unit ?? null;
   const doneUnit = doneDetail.data?.unit ?? null;
@@ -326,7 +339,8 @@ export const ShippingUnitScreen = () => {
 
   const isDone = tab === 'done';
   const viewUnit = isDone ? doneUnit : unit;
-  const previewSrc = usePreviewSrc(viewUnit);
+  /* 미리보기 회차 = 실제로 찍힐 회차: 구성 중이면 첫 발행 1, 「구성 완료」면 다음 재발행 회차. */
+  const previewSrc = usePreviewSrc(viewUnit, isDone ? nextSeq : 1);
 
   /* 상자 등록이 끝나 칸이 다시 열리면 다음 스캔을 받도록 칸을 잡는다. */
   useEffect(() => {
@@ -486,6 +500,8 @@ export const ShippingUnitScreen = () => {
       );
       setReissueOpen(false);
       setReissueReason(null);
+      /* 회차가 올랐다 — 미리보기·다음 회차를 새 이력으로. */
+      void doneHistory.refetch();
       puToast(
         issued.kind === 'printed' ? t.reissue.done : issueText(issued),
         issued.kind === 'printed' ? 'ok' : 'warn',
@@ -947,6 +963,25 @@ export const ShippingUnitScreen = () => {
               }
             >
               <PuNote tone="warn">{t.reissue.guide}</PuNote>
+              <PuKv
+                cols2
+                items={[
+                  {
+                    label: t.reissue.nextSeq,
+                    value: nextSeq === null ? t.reissue.unknown : t.reissue.seq(nextSeq),
+                  },
+                  {
+                    label: t.reissue.last,
+                    value: doneHistory.isError
+                      ? t.reissue.historyFailed
+                      : !doneHistory.isSuccess
+                        ? t.reissue.unknown
+                        : lastIssue === null
+                          ? t.reissue.none
+                          : `${t.reissue.seq(lastIssue.issueSeq)} · ${t.reissue.outcome[lastIssue.printOutcome]}`,
+                  },
+                ]}
+              />
               {reissueReasons.isError && <PuNote tone="bad">{t.reissue.loadFailed}</PuNote>}
               {reissueReasons.isSuccess && reissueReasons.data.length === 0 && (
                 <PuNote tone="warn">{t.reissue.empty}</PuNote>

@@ -140,6 +140,18 @@ export const shippingUnit = {
     cancel: '취소',
     issuing: '발행하는 중…',
     done: '납품 라벨을 재발행했습니다. 출하 단위에 부착하세요.',
+    /** 회차 — 발행 이력(출하 라벨 화면과 같은 조회)에서 읽는다. 못 읽으면 「알 수 없음」. */
+    nextSeq: '이번 회차',
+    last: '최근 발행',
+    seq: (seq: number): string => `${String(seq)}회차`,
+    unknown: '알 수 없음',
+    none: '발행 기록 없음',
+    historyFailed: '발행 이력을 불러오지 못했습니다',
+    outcome: {
+      PENDING: '인쇄 결과 없음',
+      SUCCEEDED: '인쇄됨',
+      FAILED: '인쇄 실패',
+    },
   },
 
   next: '새 단위',

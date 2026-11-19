@@ -71,6 +71,8 @@ describe('납품 라벨 — 점판', () => {
   /* 설계 §8 이 라벨 면에 싣기로 한 것들 — 하나라도 안 실리면 여기서 걸린다. */
   it.each([
     ['회차', { issueSeq: 2 }],
+    /* ⛔ 모르는 회차(미리보기 이력 조회 실패)는 1 로 그리지 않는다 — 「SEQ -」(G-9). */
+    ['회차 모름', { issueSeq: null }],
     ['상자 수', { boxCount: 9 }],
     ['고객 코드', { customer: { partnerCode: '999999', partnerName: 'Cong doan Samjin' } }],
     ['고객 명', { customer: { partnerCode: '100003', partnerName: 'Other Name' } }],

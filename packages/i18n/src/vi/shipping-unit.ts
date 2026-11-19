@@ -123,6 +123,17 @@ export const shippingUnit: Translated<typeof ko.shippingUnit> = {
     cancel: 'Hủy',
     issuing: 'Đang phát hành…',
     done: 'Đã phát hành lại nhãn giao hàng. Hãy dán lên đơn vị giao hàng.',
+    nextSeq: 'Lượt lần này',
+    last: 'Phát hành gần nhất',
+    seq: (seq: number): string => `Lượt ${String(seq)}`,
+    unknown: 'Không rõ',
+    none: 'Chưa phát hành',
+    historyFailed: 'Không tải được lịch sử phát hành',
+    outcome: {
+      PENDING: 'Chưa có kết quả in',
+      SUCCEEDED: 'Đã in',
+      FAILED: 'In thất bại',
+    },
   },
 
   next: 'Đơn vị mới',
