@@ -1,6 +1,9 @@
 import { messages } from '@omf-mes/i18n';
 
-import type { ShipmentRow } from './types';
+/** 경과를 셀 원천 — 실물 출하 시각 하나다. */
+export interface ElapsedSource {
+  shippedAt: string | null;
+}
 
 /**
  * 경과 — **적체를 보이는 것이 이 화면의 절반**이다(§5-7).
@@ -33,7 +36,7 @@ export interface Elapsed {
  * ⚠ **셀 수 없는 것을 0으로 접지 않는다.** `shippedAt`이 없으면 `unknown`이고, 그때 화면은
  * 「방금 나갔다」가 아니라 **「셀 수 없다」**를 적는다.
  */
-export const elapsedOf = (row: ShipmentRow, now: Date): Elapsed => {
+export const elapsedOf = (row: ElapsedSource, now: Date): Elapsed => {
   if (row.shippedAt === null) return { level: 'unknown', ms: null };
 
   const shipped = new Date(row.shippedAt).getTime();
@@ -72,7 +75,7 @@ export interface ElapsedSummary {
   critical: number;
 }
 
-export const summarize = (rows: readonly ShipmentRow[], now: Date): ElapsedSummary => {
+export const summarize = (rows: readonly ElapsedSource[], now: Date): ElapsedSummary => {
   let overdue = 0;
   let critical = 0;
 

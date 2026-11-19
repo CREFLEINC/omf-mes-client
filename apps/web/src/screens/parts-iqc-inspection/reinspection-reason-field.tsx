@@ -11,6 +11,15 @@ import { judgmentText, lotTail } from './result-list';
 
 const t = messages.iqcInboundLot.drawer;
 
+/** 재검 사유 칸의 문구 — 기본은 IQC(자재 관리 LOT). 출하 OQC 는 피킹 LOT 문구를 넘긴다(피처 010). */
+export interface ReinspectionReasonText {
+  reasonHeading: string;
+  reasonHelp: string;
+  reasonLine: (lotTail: string, seqNo: number, before: string, after: string) => string;
+  reasonPlaceholder: string;
+  reasonLoadFailed: string;
+}
+
 /** 재검 사유 공통코드 그룹 — 고객이 늘릴 수 있는 열린 그룹(계약 `REINSPECTION_REASON` · 공유계약 G-32). */
 export const REINSPECTION_REASON_GROUP = 'REINSPECTION_REASON';
 
@@ -47,6 +56,10 @@ export interface ReinspectionReasonFieldProps {
   error: string | null;
   disabled?: boolean;
   onChange: (code: string) => void;
+  /** 문구 — 기본은 IQC. */
+  text?: ReinspectionReasonText;
+  /** LOT 번호 표기 — 기본은 끝 마디(같은 입하 LOT 의 LOT 은 끝만 다르다). 출하 OQC 는 번호 전체. */
+  lotLabel?: (lotNo: string) => string;
 }
 
 /**
@@ -61,6 +74,8 @@ export const ReinspectionReasonField = ({
   error,
   disabled = false,
   onChange,
+  text = t,
+  lotLabel = lotTail,
 }: ReinspectionReasonFieldProps) => {
   const id = useId();
   const helpId = `${id}-help`;
@@ -71,15 +86,15 @@ export const ReinspectionReasonField = ({
   return (
     <section className="parts-iqc-card iqc-inbound-reason" aria-labelledby={`${id}-head`}>
       <h3 id={`${id}-head`} className="parts-iqc-sub-title">
-        {t.reasonHeading}
+        {text.reasonHeading}
       </h3>
       <div id={helpId} className="field-note">
-        <p>{t.reasonHelp}</p>
+        <p>{text.reasonHelp}</p>
         <ul className="iqc-inbound-reason-lines">
           {overridden.map((lot) => (
             <li key={lot.lotId}>
-              {t.reasonLine(
-                lotTail(lotNoOf(lot.lotId)),
+              {text.reasonLine(
+                lotLabel(lotNoOf(lot.lotId)),
                 lot.previousSeqNo,
                 judgmentText(lot.previousJudgmentCode),
                 judgmentText(judgmentCode),
@@ -89,19 +104,19 @@ export const ReinspectionReasonField = ({
         </ul>
       </div>
       <div className="field-cell">
-        <FieldLabel htmlFor={id} label={t.reasonHeading} required />
+        <FieldLabel htmlFor={id} label={text.reasonHeading} required />
         <Select
           id={id}
           options={reasons.data ?? []}
           value={value}
-          placeholder={t.reasonPlaceholder}
+          placeholder={text.reasonPlaceholder}
           disabled={disabled || reasons.data === undefined}
           invalid={error !== null}
           aria-required
           aria-describedby={describedBy}
           onChange={onChange}
         />
-        {reasons.isError ? <span className="field-error">{t.reasonLoadFailed}</span> : null}
+        {reasons.isError ? <span className="field-error">{text.reasonLoadFailed}</span> : null}
         {error === null ? null : (
           <span id={errorId} className="field-error" role="alert">
             {error}

@@ -15,6 +15,7 @@ import { shipmentConfirmKeys, shipmentDetailPath } from './queries';
 import type { ShipmentRow } from './types';
 
 type ShipmentCancelRequestBody = components['schemas']['ShipmentCancelRequest'];
+type ShipmentCancelBody = components['schemas']['ShipmentCancel'];
 
 /**
  * 이 화면의 쓰기.
@@ -160,8 +161,8 @@ export interface CancelRequestOptions {
 /**
  * 취소 «요청» — 결재로 올라간다(§5-8).
  *
- * ⛔ 이 호출이 취소를 «실행»하지 않는다. 승인된 뒤의 실행(`:cancel`)은 이 화면에 두지 않았다 —
- * 승인 완료를 가릴 축이 계약에 없어(G-2) 화면이 그 조건을 판정할 수 없다.
+ * ⛔ 이 호출이 취소를 «실행»하지 않는다. 승인된 뒤의 실행(`:cancel`)은 `useCancelExecuteMutation` 이 한다 —
+ * 승인 여부는 결재 목록(`SHIPMENT_CANCEL` · 대상 출하)으로 가린다(Q13 · OQC 생략과 같은 방식).
  *
  * ⭐ `keyLifetime: 'until-applied'` — 되돌리기 어려운 쓰기다. 결재가 두 벌 올라가면 승인자가
  * 무엇을 보는지 알 수 없다.
@@ -194,6 +195,44 @@ export const useCancelRequestMutation = (
     etagPath: shipmentId === null ? null : shipmentDetailPath(shipmentId),
     invalidateKeys: [shipmentConfirmKeys.all],
     knownFields: ['reason'],
+    keyLifetime: 'until-applied',
+    onSuccess: options.onSuccess,
+  });
+};
+
+/**
+ * 승인된 취소의 «실행»(`:cancel` · FR-023). 결재함은 승인만 하고, 실행은 이 화면 상세의 [취소 실행]이 한다
+ * (계약 `:cancel` 근거 「W-04-12 §5-8」 · 검증 1회차 F-2). 서버가 실행 시점에 다시 판정한다 — 그 사이 ERP 로
+ * 보냈으면 409 `ERP_ALREADY_SENT`.
+ *
+ * ⭐ `keyLifetime: 'until-applied'` — 되돌릴 수 없는 쓰기다. 재시도는 같은 키로 나가야 두 번 실행되지 않는다.
+ */
+export const useCancelExecuteMutation = (
+  options: CancelRequestOptions,
+): MasterWriteResult<ShipmentCancelBody> => {
+  const { client } = useApiClient();
+  const { shipmentId } = options;
+
+  return useMasterWrite<ShipmentCancelBody, unknown>({
+    request: (body, headers) => {
+      if (shipmentId === null) {
+        throw new Error('출하를 고르기 전에는 취소를 실행하지 않습니다.');
+      }
+
+      return client.POST('/logistics/shipments/{shipmentId}:cancel', {
+        params: {
+          path: { shipmentId },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': requireIfMatch(headers),
+          },
+        },
+        body,
+      });
+    },
+    etagPath: shipmentId === null ? null : shipmentDetailPath(shipmentId),
+    invalidateKeys: [shipmentConfirmKeys.all],
+    knownFields: ['remarks', 'businessDate', 'occurredAt'],
     keyLifetime: 'until-applied',
     onSuccess: options.onSuccess,
   });

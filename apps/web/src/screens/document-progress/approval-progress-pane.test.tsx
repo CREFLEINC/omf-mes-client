@@ -76,7 +76,6 @@ describe('ApprovalProgressPane — 다섯 갈래 · C4-3 · C4-4', () => {
     renderPane({ state: { kind: 'notSubmitted' } });
 
     expect(screen.getByText(t.approval.notSubmittedTitle)).toBeInTheDocument();
-    expect(screen.getByText(t.approval.notSubmittedDescription)).toBeInTheDocument();
   });
 
   /** 값은 왔는데 조회할 수 없다 — 「요청이 없다」와 다른 사실이라 문면을 가른다. */
@@ -129,10 +128,11 @@ describe('ApprovalProgressPane — 다섯 갈래 · C4-3 · C4-4', () => {
    * ⭐ **못 읽어도 실행을 막지 않는다**(C4-8). 잠금의 정본은 서버이고 계약이 「승인 전이면 400」
    * 이라 적었다 — 화면이 모르는 것을 「승인되지 않았다」로 접으면 승인된 건까지 실행할 수 없어진다.
    */
-  it('실패해도 실행이 그대로임을 밝힌다', () => {
-    renderPane({ state: { kind: 'failed', error: httpError(500) } });
+  /* 실패해도 실행은 막지 않는다 — 그 사실을 적던 안내 줄은 걷었다(사용자 지시 2026-11-19). */
+  it('실패 안내에 덧붙인 설명 줄이 없다', () => {
+    const { container } = renderPane({ state: { kind: 'failed', error: httpError(500) } });
 
-    expect(screen.getByText(t.approval.loadFailedNote)).toBeInTheDocument();
+    expect(container.querySelector('p.field-note')).toBeNull();
   });
 });
 
@@ -262,9 +262,10 @@ describe('ApprovalProgressPane — 자리표시가 안내를 가른다 · C4-6',
    * **계약이 못 박은 사실**이라 늘 선다 — 승인이 끝나도 문서는 저절로 취소되지 않는다.
    * 이 줄이 없으면 사용자는 승인만 받아 놓고 실행을 잊는다.
    */
-  it('승인이 끝나도 사람이 다시 눌러야 한다는 사실이 늘 선다', () => {
+  /* 「승인이 끝나도 다시 눌러야 한다」 안내 줄은 걷었다 — 아래 「취소 실행」 단추가 그 사실을 말한다. */
+  it('다시 눌러야 한다는 안내 줄이 없다', () => {
     renderPane();
 
-    expect(screen.getByText(t.approval.manualExecuteNote)).toBeInTheDocument();
+    expect(screen.queryByText(/다시 눌러야/u)).not.toBeInTheDocument();
   });
 });

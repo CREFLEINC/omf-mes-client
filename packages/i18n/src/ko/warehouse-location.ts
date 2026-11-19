@@ -41,8 +41,6 @@ export const warehouseLocation = {
     invalid: '대문자와 숫자 2~6자로 입력하세요.',
     /** 서버 400 `UNIQUE_VIOLATION`(field `locationPrefix`). */
     taken: '이미 다른 창고가 쓰는 코드입니다 — 다른 코드를 넣거나 [다시 만들기]를 누르세요.',
-    locked: '바꿀 수 없습니다.',
-    lockedNote: '이 창고의 모든 위치 코드 앞에 붙습니다.',
   },
   /** 정보 판의 불량 창고 스위치 — 바꾸기 전에 한 번 묻는다(사용자 지시 2026-10-30). 설명문 없이 제목만. */
   externalConfirm: {
@@ -79,6 +77,14 @@ export const warehouseLocation = {
     /* 창고를 고르기 전 오른쪽 자리 — 제목 + 안내(사용자 지시 2026-09-18 · omf-all-around#17). */
     warehouseNotSelectedTitle: '창고 정보',
     warehouseNotSelectedDescription: '창고를 먼저 선택하세요',
+  },
+  /** Location 탭의 보기(사용자 지시 2026-11-19). 목록 = 랙 아래 말단(층 · 셀)만 한 줄씩. */
+  view: {
+    label: '보기',
+    tree: '계층',
+    leaf: '목록',
+    parentPath: '상위 위치',
+    emptyLeaf: '적치 위치가 없습니다',
   },
   filters: {
     searchLabel: '창고 검색',
@@ -208,8 +214,6 @@ export const warehouseLocation = {
    */
   itemsSection: {
     title: '보관 품목(안내)',
-    guide:
-      'PDA 미지정 위치 적치 때 자동으로 더해집니다. 「지정 품목만 받기」를 켜지 않으면 다른 품목도 막지 않습니다.',
     list: '지정 품목',
     none: '지정 품목 없음',
     addItem: '품목 추가',
@@ -221,8 +225,8 @@ export const warehouseLocation = {
     /** 위치 옵션 스위치. 창의 [저장]으로 품목과 함께 저장한다. */
     restrict: {
       label: '지정 품목만 받기',
-      help: '켜면 지정한 품목만 이 위치에 들어옵니다(모든 경로). 끄면 지정 품목은 안내이고 어떤 품목이든 둘 수 있습니다.',
-      noItems: '지정 품목이 없어 켤 수 없습니다. 품목을 먼저 더합니다.',
+      /** 켠 채 지정 품목을 다 뺀 저장 — 저장 때만 칸 아래에 선다. */
+      noItems: '지정 품목이 없습니다.',
       system: '창고 전체와 적치 대기 위치는 켤 수 없습니다.',
     },
   },

@@ -6,6 +6,8 @@ import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { OqcQueueSkipCell } from './queue-skip-cell';
+import { lotOverviewOf } from './shipment-oqc';
+import { OverviewChip } from './shipment-oqc-parts';
 import type { ItemNameLookup } from './reference-lookup';
 import { toStatusBadge } from './status-badge';
 import { formatDateTime, type InspectionQueueRow } from './types';
@@ -32,7 +34,12 @@ import { formatDateTime, type InspectionQueueRow } from './types';
  */
 
 const t = messages.oqcInspection.queue;
-const SKIPPABLE: readonly string[] = ['REQUESTED', 'IN_PROGRESS'];
+const shipmentT = messages.oqcInspection.shipment.queue;
+/*
+ * 생략은 결과 0건 의뢰만(피처 010 FR-012 · T020) — 새 흐름에서 진행(IN_PROGRESS)은 결과가 1건 이상이라는 뜻이다(첫 결과 저장이
+ * 진행으로 올리고, 송신 전 취소로 다시 연 의뢰도 결과가 있다). 서버도 결과 있는 의뢰의 생략 요청을 거절한다(converge C-3).
+ */
+const SKIPPABLE: readonly string[] = ['REQUESTED'];
 
 const columnsOf = (
   selectedId: number | null,
@@ -94,7 +101,9 @@ const columnsOf = (
           {row.inspectionRequestNo}
         </button>
         <span className="oqc-inspection-queue-sub">
-          {t.target(t.targetTypes[row.targetTypeCode] ?? row.targetTypeCode, row.targetId)}
+          {/* 출하 OQC 새 흐름은 지시서 번호를 그대로(피처 010 · 시안 W0403 목록). */}
+          {row.shipmentRequestNo ??
+            t.target(t.targetTypes[row.targetTypeCode] ?? row.targetTypeCode, row.targetId)}
         </span>
       </span>
     ),
@@ -102,9 +111,17 @@ const columnsOf = (
   {
     key: 'targetQty',
     align: 'center',
-    header: t.targetQtyColumn,
+    /* 출하 OQC 새 흐름은 검사 수량 대신 피킹 LOT 수(피처 010) — 수량은 서버가 매칭 LOT 합으로 채운다. */
+    header: shipmentT.pickedLotsColumn,
     width: '100px',
     render: (row) => {
+      if (row.pickedLotCount !== undefined) {
+        return (
+          <span className="oqc-inspection-num">
+            {row.pickedLotCount === 0 ? shipmentT.noLots : shipmentT.pickedLots(row.pickedLotCount)}
+          </span>
+        );
+      }
       const code = uomCodeOf(row);
 
       return (
@@ -112,6 +129,17 @@ const columnsOf = (
           {code === null ? String(row.targetQty) : `${String(row.targetQty)} ${code}`}
         </span>
       );
+    },
+  },
+  {
+    key: 'lotJudgment',
+    align: 'center',
+    header: shipmentT.judgmentColumn,
+    width: '120px',
+    /* LOT 판정 요약(시안 W0403 C) — 출하 완료 관문과 같은 말. 옛 흐름 줄은 빈 값. */
+    render: (row) => {
+      const overview = lotOverviewOf(row);
+      return overview === null ? t.emptyValue : <OverviewChip overview={overview} />;
     },
   },
   {
@@ -144,7 +172,7 @@ const columnsOf = (
     align: 'center',
     header: t.columns.skip,
     width: '120px',
-    /* 대기 · 진행 중인 출하작업지시 의뢰에만 둔다 — 끝난 의뢰는 생략할 것이 없다(사용자 지시 2026-11-09). */
+    /* 대기(결과 0건) 출하작업지시 의뢰에만 둔다 — 끝났거나 결과가 있는 의뢰는 생략할 것이 없다(사용자 지시 2026-11-09 · T054). */
     render: (row) =>
       row.targetTypeCode === 'SHIPMENT_REQUEST' && SKIPPABLE.includes(row.statusCode) ? (
         <OqcQueueSkipCell

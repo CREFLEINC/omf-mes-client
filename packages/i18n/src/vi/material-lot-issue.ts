@@ -3,6 +3,9 @@ import type { Translated } from './translated';
 
 export const materialLotIssue: Translated<typeof ko.materialLotIssue> = {
   title: 'Phát hành LOT quản lý vật tư',
+  splitter: 'Kéo để điều chỉnh độ rộng danh sách và chi tiết',
+  listCollapse: 'Thu gọn danh sách nhà cung cấp và mặt hàng',
+  listExpand: 'Mở rộng danh sách nhà cung cấp và mặt hàng',
   filters: {
     label: 'Điều kiện tra cứu',
     plant: 'Nhà máy',
@@ -16,13 +19,13 @@ export const materialLotIssue: Translated<typeof ko.materialLotIssue> = {
   list: {
     label: 'Nhà cung cấp · mặt hàng',
     count: (count: number) => `${count} nhà cung cấp · mặt hàng`,
-    note: (plant: string, today: string) => `${plant} · Hôm nay ${today}`,
     issue: 'Phát hành LOT quản lý vật tư',
     columns: {
       supplier: 'Nhà cung cấp',
+      itemCode: 'Mã mặt hàng',
       item: 'Mặt hàng',
       baseUom: 'Đơn vị cơ sở',
-      defaults: 'Thông tin mặc định (đóng gói · số lượng tồn kho mỗi LOT quản lý vật tư)',
+      defaults: 'Thông tin mặc định',
       waiting: 'Chờ',
       unprinted: 'Chưa in nhãn',
       lastIssued: 'Phát hành gần nhất',
@@ -38,6 +41,7 @@ export const materialLotIssue: Translated<typeof ko.materialLotIssue> = {
   },
   detail: {
     label: 'Chi tiết nhà cung cấp · mặt hàng',
+    choose: 'Hãy chọn nhà cung cấp và mặt hàng',
     baseUom: 'Đơn vị cơ sở',
     storageUom: 'Đơn vị bảo quản mặc định của mặt hàng',
     storageNone: 'Không có',
@@ -61,7 +65,6 @@ export const materialLotIssue: Translated<typeof ko.materialLotIssue> = {
     unprinted: 'Chưa in',
     channel: { POP: 'POP', WEB: 'Quản trị' },
     empty: 'Không có LOT quản lý vật tư nào đang chờ.',
-    close: 'Đóng',
   },
   dialog: {
     title: 'Phát hành LOT quản lý vật tư',

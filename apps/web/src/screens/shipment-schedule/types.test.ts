@@ -6,26 +6,44 @@ const LINE = {
   shipmentRequestLineId: 1,
   lineNo: 1,
   itemId: 9301,
+  itemCode: 'SAMPLE-ITEM-01',
+  itemName: '합성 품목',
   requestedQty: 100,
   allocatedQty: 80,
   pickedQty: 40,
   shippedQty: 20,
   uomId: 9501,
+  uomCode: 'SAMPLE-EA',
+  salesOrderLine: null,
   shippingInspectionRequired: false,
   /* client#601 1-5 — 집은 LOT 신설. 이 시험은 아직 이 값을 읽지 않는다. */
   picks: [],
+  /* 피처 010 — 초과·피킹 LOT 행. 이 시험은 아직 이 값을 읽지 않는다. */
+  overQty: 0,
+  lots: [],
 };
 
 const RESPONSE = {
   shipmentRequestId: 1001,
   shipmentRequestNo: 'SR-2026-0001',
+  salesOrderNo: null,
   customerId: 9101,
   shipToPartnerId: 9201,
+  customer: null,
+  shipTo: null,
   requestedShipDate: '2026-08-13',
   statusCode: 'SAMPLE_STATUS_A',
   shipmentProgressCode: 'PARTIALLY_SHIPPED' as const,
   shippingInspectionStatusCode: 'NOT_REQUIRED' as const,
   lines: [LINE],
+  /* 피처 010 — 지시서 코드·피킹 창고·교체·막힘·판정 요약·완료 출하. 이 시험은 아직 읽지 않는다. */
+  code: 'SHPREQ:SYN',
+  pickingWarehouses: [],
+  replacementCount: 0,
+  completionBlockers: [],
+  blockerSummary: {},
+  lotJudgmentSummary: { notInspected: 0, accepted: 0, rejected: 0, held: 0 },
+  completedShipment: null,
 };
 
 describe('toLineQtyTotals', () => {
@@ -35,7 +53,7 @@ describe('toLineQtyTotals', () => {
         LINE,
         { ...LINE, shipmentRequestLineId: 2, requestedQty: 50, allocatedQty: 50, shippedQty: 0 },
       ]),
-    ).toEqual({ requestedQty: 150, allocatedQty: 130, shippedQty: 20 });
+    ).toEqual({ requestedQty: 150, allocatedQty: 130, pickedQty: 80, shippedQty: 20 });
   });
 
   /*
@@ -48,6 +66,7 @@ describe('toLineQtyTotals', () => {
     expect(toLineQtyTotals([LINE, missing])).toEqual({
       requestedQty: null,
       allocatedQty: 160,
+      pickedQty: 80,
       shippedQty: 40,
     });
   });
@@ -72,6 +91,7 @@ describe('toLineQtyTotals', () => {
       {
         requestedQty: 0,
         allocatedQty: 0,
+        pickedQty: 40,
         shippedQty: 0,
       },
     );
@@ -88,7 +108,12 @@ describe('toShipmentRequestView', () => {
       requestedShipDate: '2026-08-13',
       shipmentProgressCode: 'PARTIALLY_SHIPPED',
       inspectionStatus: 'NOT_REQUIRED',
-      lineTotals: { requestedQty: 100, allocatedQty: 80, shippedQty: 20 },
+      lineTotals: { requestedQty: 100, allocatedQty: 80, pickedQty: 40, shippedQty: 20 },
+      overQty: 0,
+      lotJudgmentSummary: { notInspected: 0, accepted: 0, rejected: 0, held: 0 },
+      blockerCount: 0,
+      pickingWarehouseNames: [],
+      replacementCount: 0,
     });
   });
 

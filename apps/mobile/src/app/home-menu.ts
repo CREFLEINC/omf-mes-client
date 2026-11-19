@@ -189,13 +189,23 @@ export const homeAreas: HomeArea[] = [
         icon: 'inventory',
         description: t.screens.productPicking,
       },
-      {
-        to: '/packing-repack',
-        label: messages.packingRepack.title,
-        icon: 'inventory_2',
-        description: t.screens.packingRepack,
-      },
     ],
+  },
+];
+
+/**
+ * 라우트는 남기되 업무 목록에서 **감춘** 작업 화면(피처 010 · omf-all-around#305).
+ *
+ * 출하는 PDA 피킹(LOT 통째) → OQC → POP 출하 완료로 끝나 포장·재포장을 쓰지 않는다. 화면을 지우지
+ * 않는 이유는 배포 전 진행분이다 — 주소로는 열리고, 열리면 사번 확인은 다른 작업 화면과 같다
+ * (`isWorkScreen`). 「자주 쓰는 작업」에는 서지 않는다(`screenOf` 는 목록만 찾는다).
+ */
+export const hiddenScreens: HomeScreen[] = [
+  {
+    to: '/packing-repack',
+    label: messages.packingRepack.title,
+    icon: 'inventory_2',
+    description: t.screens.packingRepack,
   },
 ];
 
@@ -204,6 +214,10 @@ export const homeScreens: HomeScreen[] = homeAreas.flatMap((area) => area.screen
 
 export const screenOf = (path: string): HomeScreen | undefined =>
   homeScreens.find((screen) => screen.to === path);
+
+/** 사번이 있어야 하는 작업 화면인가 — 목록의 화면과 감춘 화면 둘 다. */
+export const isWorkScreen = (path: string): boolean =>
+  screenOf(path) !== undefined || hiddenScreens.some((screen) => screen.to === path);
 
 export const areaOf = (id: string | undefined): HomeArea | undefined =>
   homeAreas.find((area) => area.id === id);

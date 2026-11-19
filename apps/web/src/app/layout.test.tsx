@@ -607,7 +607,7 @@ describe('AppLayout', () => {
     ]);
   });
 
-  it('영업 / 출하 관리 섹션(출하지시 → 예정 → 출하 처리 → 확정 → 반품 갈래)이 생산 관리 뒤·업무함 앞에 있다', () => {
+  it('Q17·Q21 영업 / 출하 관리 섹션(출하지시 → 예정 → 긴급 직행 → 출하 내역 → 반품 갈래)이 생산 관리 뒤·업무함 앞에 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
@@ -623,15 +623,22 @@ describe('AppLayout', () => {
       'href',
       '/shipment/shipment-schedule',
     );
-    /* 정상·긴급 직행 출하는 「출하 처리」 묶음 한 줄이다 — 줄은 정상 흐름(첫 탭)을 건다. */
-    expect(within(sidebar).getByRole('link', { name: '출하 처리' })).toHaveAttribute(
+    /*
+     * 피처 010 — 출하는 POP 「출하 완료」(P-04-07)로 끝난다. 관리웹 출하 처리(W-04-04)는 메뉴에서
+     * 감추고(주소는 남김 — 배포 전 진행분용), 긴급 직행(W-04-05)은 독립 항목이다.
+     */
+    expect(within(sidebar).queryByRole('link', { name: '출하 처리' })).toBeNull();
+    expect(links).not.toContain('/shipment/shipment-processing');
+    expect(within(sidebar).getByRole('link', { name: '긴급 직행 출하 처리' })).toHaveAttribute(
       'href',
-      '/shipment/shipment-processing',
+      '/shipment/expedited-shipment',
     );
-    expect(within(sidebar).getByRole('link', { name: '출하 확정·취소' })).toHaveAttribute(
+    /* W-04-12 이름은 「출하 내역」이다 — 확정 단계가 없어졌다. */
+    expect(within(sidebar).getByRole('link', { name: '출하 내역' })).toHaveAttribute(
       'href',
       '/shipment/shipment-confirm',
     );
+    expect(within(sidebar).queryByRole('link', { name: '출하 확정·취소' })).toBeNull();
     /* 반품·재고 갈래는 「반품·클레임」 묶음 한 줄이다 — 줄은 입고 등록(첫 탭)을 건다. */
     expect(within(sidebar).getByRole('link', { name: '반품·클레임' })).toHaveAttribute(
       'href',
@@ -646,49 +653,22 @@ describe('AppLayout', () => {
     expect(links.indexOf('/shipment/shipment-schedule')).toBe(
       links.indexOf('/shipment/shipment-request-create') + 1,
     );
-    /*
-     * OQC 판정이 「품질 관리」로 옮겨 가서 예정 목록 바로 뒤가 출하 처리다. OQC 는 이 섹션에
-     * 없다 — 검사는 품질 한 곳에 모았다.
-     */
-    expect(links.indexOf('/shipment/shipment-processing')).toBe(
+    /* 예정 목록 바로 뒤가 긴급 직행이다. OQC 는 「품질 관리」에 있다. */
+    expect(links.indexOf('/shipment/expedited-shipment')).toBe(
       links.indexOf('/shipment/shipment-schedule') + 1,
     );
     expect(links.indexOf('/shipment/oqc-inspection')).toBeLessThan(
       links.indexOf('/shipment/shipment-request-create'),
     );
-    /* 확정은 «만드는» 묶음 뒤다 — 되돌릴 수 있는 구간이 여기서 끝난다(W-04-12). */
     expect(links.indexOf('/shipment/shipment-confirm')).toBe(
-      links.indexOf('/shipment/shipment-processing') + 1,
+      links.indexOf('/shipment/expedited-shipment') + 1,
     );
-    /* W-04-06 — 반품·재고 갈래. 확정된 출하는 취소되지 않고 여기로 돌아오므로 확정·취소 바로 뒤다. */
+    /* W-04-06 — 반품·재고 갈래는 출하 내역 바로 뒤다. */
     expect(links.indexOf('/shipment/return-receipts')).toBe(
       links.indexOf('/shipment/shipment-confirm') + 1,
     );
     /* 섹션 끝 — 바로 뒤가 「업무함」의 결재함이다. */
     expect(links.indexOf('/approval/inbox')).toBe(links.indexOf('/shipment/return-receipts') + 1);
-  });
-
-  /*
-   * ⭐ 예외 흐름은 정상 흐름 «뒤»다 — 앞에 두면 창고 경유·피킹·포장을 건너뛰는 화면이 기본으로
-   * 읽힌다(W-04-05). 그래서 정상 출하가 첫 탭이고 묶음 줄이 그 주소를 건다.
-   */
-  it('출하 처리 탭 막대가 정상 출하 → 긴급 직행 출하 차례다', () => {
-    renderLayout('본문 내용', { route: '/shipment/expedited-shipment' });
-
-    const tabs = screen.getByRole('navigation', { name: '출하 처리' });
-
-    expect(within(tabs).getByRole('link', { name: '출하 처리(상차·실물 출고)' })).toHaveAttribute(
-      'href',
-      '/shipment/shipment-processing',
-    );
-    expect(within(tabs).getByRole('link', { name: '긴급 직행 출하 처리' })).toHaveAttribute(
-      'href',
-      '/shipment/expedited-shipment',
-    );
-    expect(hubTabHrefs('출하 처리')).toEqual([
-      '/shipment/shipment-processing',
-      '/shipment/expedited-shipment',
-    ]);
   });
 
   /*
@@ -1013,10 +993,10 @@ describe('AppLayout', () => {
       '/production/work-order-progress',
       '/production/lot-trace',
       '/production/work-order-close',
-      /* 영업 / 출하 관리 — 편성 → 예정 → 출하 처리 → 확정 → 반품·클레임. */
+      /* 영업 / 출하 관리 — 편성 → 예정 → 긴급 직행 → 출하 내역 → 반품·클레임(피처 010). */
       '/shipment/shipment-request-create',
       '/shipment/shipment-schedule',
-      '/shipment/shipment-processing' /* ← 출하 처리 */,
+      '/shipment/expedited-shipment',
       '/shipment/shipment-confirm',
       '/shipment/return-receipts' /* ← 반품·클레임 */,
       /* 업무함 — 결재함 → 알림센터(받는 자리) → 공지·전달(보내는 자리). */
@@ -1071,14 +1051,8 @@ describe('AppLayout', () => {
         '/logistics/supplier-return',
         '/logistics/disposal-issue',
       ],
-      '품질 기준 정보': [
-        '/master-data/inspection-standard',
-        '/quality/inspection-levels',
-      ],
-      '품질 코드 관리': [
-        '/master-data/defect-cause-code',
-        '/master-data/defect-process-mapping',
-      ],
+      '품질 기준 정보': ['/master-data/inspection-standard', '/quality/inspection-levels'],
+      '품질 코드 관리': ['/master-data/defect-cause-code', '/master-data/defect-process-mapping'],
       '검사 실적·결과': ['/quality/inspection-results', '/quality/inspection-sheets'],
       'LOT 상태': [
         '/quality/lot-status',
@@ -1093,7 +1067,6 @@ describe('AppLayout', () => {
         '/equipment/maintenance-results',
       ],
       '툴 보전': ['/equipment/tool-pm-order', '/equipment/tool-pm-result'],
-      '출하 처리': ['/shipment/shipment-processing', '/shipment/expedited-shipment'],
       '반품·클레임': [
         '/shipment/return-receipts',
         '/shipment/disposition-requests',

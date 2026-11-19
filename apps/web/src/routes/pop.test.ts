@@ -72,6 +72,11 @@ describe('POP 라우트 분리', () => {
     expect(paths).not.toContain('/pop/shipping-label');
   });
 
+  /* 피처 010(omf-all-around#305) — 출하는 이 화면의 [출하 완료]로 끝난다. 사라지면 출하가 막힌다. */
+  it('P-04-07 출하 완료 주소가 서 있다', () => {
+    expect(popRoutes.map(({ path }) => path)).toContain('/pop/shipment-complete');
+  });
+
   it('P-04-05 출하 단위 구성 주소가 서 있다', () => {
     expect(popRoutes.map(({ path }) => path)).toContain('/pop/shipping-units');
   });

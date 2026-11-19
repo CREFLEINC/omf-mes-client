@@ -39,8 +39,6 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
       'Đã tạo ngẫu nhiên. Có thể sửa thành 2–6 chữ in hoa hoặc số; sau khi lưu thì không thể thay đổi.',
     invalid: 'Hãy nhập 2–6 chữ in hoa hoặc số.',
     taken: 'Mã này đã được kho khác sử dụng — hãy nhập mã khác hoặc bấm [Tạo lại].',
-    locked: 'Không thể thay đổi.',
-    lockedNote: 'Được gắn vào đầu mọi mã vị trí của kho này.',
   },
   externalConfirm: {
     on: 'Chuyển thành kho bên ngoài?',
@@ -76,6 +74,13 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     locationNoMatchDescription: 'Xóa từ khóa thì thấy lại toàn bộ phân cấp.',
     warehouseNotSelectedTitle: 'Thông tin kho',
     warehouseNotSelectedDescription: 'Hãy chọn kho trước',
+  },
+  view: {
+    label: 'Cách xem',
+    tree: 'Phân cấp',
+    leaf: 'Danh sách',
+    parentPath: 'Vị trí cấp trên',
+    emptyLeaf: 'Chưa có vị trí cất hàng',
   },
   filters: {
     searchLabel: 'Tìm kho',
@@ -196,8 +201,6 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   },
   itemsSection: {
     title: 'Mặt hàng lưu trữ (hướng dẫn)',
-    guide:
-      'Tự động được thêm khi cất vào vị trí không chỉ định trên PDA. Nếu không bật «Chỉ nhận mặt hàng chỉ định», mặt hàng khác cũng không bị chặn.',
     list: 'Mặt hàng chỉ định',
     none: 'Chưa có mặt hàng chỉ định',
     addItem: 'Thêm mặt hàng',
@@ -208,8 +211,7 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     restricted: 'Chỉ nhận mặt hàng chỉ định',
     restrict: {
       label: 'Chỉ nhận mặt hàng chỉ định',
-      help: 'Bật thì chỉ mặt hàng chỉ định được vào vị trí này (mọi luồng). Tắt thì mặt hàng chỉ định chỉ là hướng dẫn, mặt hàng nào cũng để được.',
-      noItems: 'Chưa có mặt hàng chỉ định nên không bật được. Hãy thêm mặt hàng trước.',
+      noItems: 'Chưa có mặt hàng chỉ định.',
       system: 'Không bật được cho vị trí toàn kho và khu chờ cất.',
     },
   },

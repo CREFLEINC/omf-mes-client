@@ -1,5 +1,5 @@
 import type { ApiClient } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest, runRequestWithResponse } from '../../patterns/request';
@@ -128,4 +128,34 @@ export const useFulfillmentPlantUpdate = (
     invalidateKeys: [shipmentScheduleKeys.all],
     knownFields: ['fulfillmentPlantId'],
   });
+};
+
+/**
+ * 피처 010 — 상세 창 · 인쇄의 품목 표기(「코드 이름」). 지시서 라인은 품목 번호만 실어 번호로
+ * 하나씩 푼다(`GET /mdm/items/{itemId}`). 같은 품목은 한 번만 묻는다. 못 풀면 `null` — 화면이
+ * 번호를 대신 적는다.
+ */
+export const useItemLabels = (itemIds: readonly number[]): ((itemId: number) => string | null) => {
+  const { client } = useApiClient();
+  const uniqueIds = [...new Set(itemIds)];
+
+  const results = useQueries({
+    queries: uniqueIds.map((itemId) => ({
+      queryKey: ['shipment-schedule', 'item', itemId] as const,
+      queryFn: async () => {
+        const data = await runRequest(() =>
+          client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } }),
+        );
+        return `${data.item.itemCode} ${data.item.itemName}`;
+      },
+    })),
+  });
+
+  const labels = new Map<number, string>();
+  uniqueIds.forEach((itemId, index) => {
+    const label = results[index]?.data;
+    if (label !== undefined) labels.set(itemId, label);
+  });
+
+  return (itemId) => labels.get(itemId) ?? null;
 };

@@ -7,7 +7,7 @@ import type { paths } from '@omf-mes/api-client';
  * | --- | --- |
  * | `cust` | 고객(거래처 번호) |
  * | `from` · `to` | 출하일 기간 — 비울 수 없다(L-3). 주소에 없으면 최근 한 달 |
- * | `q` | 출하번호·LOT 번호 검색어 |
+ * | `q` | 검색어 — 출하번호·출하 지시서 번호·고객(코드·이름). LOT 은 찾지 않는다(decisions #49) |
  * | `page` | 쪽 |
  * | `shipment` | 고른 원 출하 |
  * | `mode=direct` | 원 출하 없이 등록 |
