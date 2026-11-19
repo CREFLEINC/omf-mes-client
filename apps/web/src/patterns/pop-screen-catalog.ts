@@ -167,6 +167,14 @@ export const POP_SCREENS: readonly PopScreen[] = [
     name: '재구성 신규 라벨 발행',
   },
   { path: '/pop/shipping-units', code: 'P-04-05', group: 'shipping', name: '출하 단위 구성' },
+  /* 피처 010(omf-all-around#305) — 출하는 이 화면의 [출하 완료]로 끝난다. 탭 끝 배지는 완료 대기 수다. */
+  {
+    path: '/pop/shipment-complete',
+    code: 'P-04-07',
+    group: 'shipping',
+    name: '출하 완료',
+    countKey: 'shipmentCompletion',
+  },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#109) — 화면 코드는 사용자 결정으로 부여했다. */
   {
     path: '/pop/oqc-inspection',

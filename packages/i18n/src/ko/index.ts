@@ -161,6 +161,7 @@ import { inspectionSheetTemplate } from './inspection-sheet-template';
 import { inspectionSheetEntry } from './inspection-sheet-entry';
 import { materialDefect } from './material-defect';
 import { popOqcInspection } from './pop-oqc-inspection';
+import { popShipmentComplete } from './pop-shipment-complete';
 import { popMaterialLotLabel } from './pop-material-lot-label';
 import { reworkResultRegister } from './rework-result-register';
 import { shippingPackingLabel } from './shipping-packing-label';
@@ -323,6 +324,7 @@ export const ko = {
   inspectionSheetEntry,
   materialDefect,
   popOqcInspection,
+  popShipmentComplete,
   popMaterialLotLabel,
   workStart,
   workPrecheckGate,

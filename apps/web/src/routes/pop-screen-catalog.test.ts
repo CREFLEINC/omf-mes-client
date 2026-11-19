@@ -55,4 +55,16 @@ describe('POP 화면 이름표', () => {
     expect(workStart?.name).toBe(messages.workStart.title);
     expect(workStart?.name).toBe('작업 지시 목록');
   });
+
+  /* 피처 010 — 출하 묶음에 서고, 탭 끝 배지는 완료 대기 수(`shipmentCompletion`)다. */
+  it('출하 완료(P-04-07)는 출하 묶음이고 이름이 그 화면 머리줄 제목과 같다', () => {
+    const complete = POP_SCREENS.find((screen) => screen.code === 'P-04-07');
+
+    expect(complete).toMatchObject({
+      path: '/pop/shipment-complete',
+      group: 'shipping',
+      countKey: 'shipmentCompletion',
+    });
+    expect(complete?.name).toBe(messages.popShipmentComplete.title);
+  });
 });

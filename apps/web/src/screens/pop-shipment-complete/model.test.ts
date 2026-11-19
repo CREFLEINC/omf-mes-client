@@ -1,0 +1,156 @@
+import type { ApiError } from '@omf-mes/api-client';
+import { describe, expect, it } from 'vitest';
+
+import { completion, requestRow } from './fixtures';
+import {
+  completeFailureOf,
+  groupBlockers,
+  isAlreadyCompleted,
+  isCompletable,
+  lookupFailureOf,
+  minusDays,
+  orderSearchRows,
+  overText,
+  searchQueryOf,
+  toSearchRow,
+  totalsOf,
+} from './model';
+
+/** P-04-07 출하 완료 — 화면 규칙(피처 010 · omf-all-around#305). */
+
+describe('P-04-07 막는 이유 묶기', () => {
+  it('US1-4·US1-7·Q8 — 같은 이유는 한 카드로 묶고 피킹 → 미검사 → 불합격 순서로 선다', () => {
+    const groups = groupBlockers([
+      { code: 'REJECTED', lotNo: 'P-3' },
+      { code: 'NOT_INSPECTED', lotNo: 'P-2' },
+      { code: 'PICKING_SHORT', lineNo: 2 },
+      { code: 'NOT_INSPECTED', lotNo: 'P-5' },
+    ]);
+
+    expect(groups).toEqual([
+      { code: 'PICKING_SHORT', lineNos: [2], lotNos: [] },
+      { code: 'NOT_INSPECTED', lineNos: [], lotNos: ['P-2', 'P-5'] },
+      { code: 'REJECTED', lineNos: [], lotNos: ['P-3'] },
+    ]);
+  });
+
+  it('US1-6·Q11 — 이미 완료는 막는 이유 카드가 아니다', () => {
+    expect(groupBlockers([{ code: 'ALREADY_COMPLETED' }])).toEqual([]);
+  });
+
+  it('US1-3 — 막는 이유가 없으면 완료할 수 있고, 완료된 출하가 있으면 이미 완료다', () => {
+    expect(isCompletable(completion())).toBe(true);
+    expect(isCompletable(completion({ blockers: [{ code: 'HELD', lotNo: 'P-1' }] }))).toBe(false);
+
+    const done = completion({
+      completedShipment: {
+        shipmentId: 9,
+        shipmentNo: 'SH-1',
+        completedAt: '2026-11-18T07:32:00Z',
+      },
+    });
+    expect(isAlreadyCompleted(done)).toBe(true);
+    expect(isCompletable(done)).toBe(false);
+  });
+});
+
+describe('P-04-07 합계와 초과', () => {
+  it('US4-5 — 합계는 라인 피킹 합, 초과는 넘은 라인만 더한다', () => {
+    expect(totalsOf(completion())).toEqual({ qty: 160, over: 10, lineCount: 2, lotCount: 4 });
+  });
+
+  it('US1-1 — 초과는 「+n」, 못 미치거나 같으면 「0」', () => {
+    expect(overText(10)).toBe('+10');
+    expect(overText(0)).toBe('0');
+    expect(overText(-20)).toBe('0');
+  });
+});
+
+describe('P-04-07 실패 가르기', () => {
+  const validation = (code: string, status: number): ApiError => ({
+    kind: 'validation',
+    status,
+    errors: [{ code, message: '' }] as never,
+  });
+
+  it('US4-3·Q10 — 지시서 코드가 아닌 값과 없는 지시서를 가른다', () => {
+    expect(lookupFailureOf(validation('NOT_SHIPMENT_REQUEST_CODE', 400))).toBe('notCode');
+    expect(lookupFailureOf(validation('SHIPMENT_REQUEST_NOT_FOUND', 404))).toBe('notFound');
+    expect(lookupFailureOf({ kind: 'network' })).toBe('failed');
+  });
+
+  it('Q11 — 이미 완료 · 막힘 · 바뀜 · 연결 끊김을 가른다', () => {
+    const conflict = (code: string): ApiError => ({
+      kind: 'conflict',
+      cause: 'user',
+      code,
+      message: '',
+    });
+
+    expect(completeFailureOf(conflict('ALREADY_COMPLETED'))).toBe('alreadyCompleted');
+    expect(completeFailureOf(conflict('COMPLETION_BLOCKED'))).toBe('blocked');
+    expect(completeFailureOf(conflict('VERSION_CONFLICT'))).toBe('changed');
+    expect(completeFailureOf(conflict('INVALID_STATE'))).toBe('changed');
+    expect(completeFailureOf({ kind: 'network' })).toBe('network');
+    expect(completeFailureOf({ kind: 'http', status: 500 })).toBe('other');
+  });
+});
+
+describe('P-04-07 찾기 조건', () => {
+  it('US4-4·Q10 — 「완료 대기만」이면 completionReadyOnly, 끄면 출하가 남은 지시서만 본다', () => {
+    expect(searchQueryOf({ q: ' 가나 ', readyOnly: true, page: 1 }, '2026-11-18')).toEqual({
+      shipDateFrom: '2026-10-19',
+      q: '가나',
+      completionReadyOnly: true,
+      sort: 'requestedShipDate',
+      page: 1,
+      size: 20,
+    });
+    expect(searchQueryOf({ q: '', readyOnly: false, page: 2 }, '2026-11-18')).toEqual({
+      shipDateFrom: '2026-10-19',
+      shippableRemainderOnly: true,
+      sort: 'requestedShipDate',
+      page: 2,
+      size: 20,
+    });
+  });
+
+  it('달력 날짜를 시간대와 무관하게 뺀다(달·해 넘김)', () => {
+    expect(minusDays('2026-01-05', 30)).toBe('2025-12-06');
+  });
+
+  it('US4-4 — 목록 줄은 막는 이유 요약과 피킹 합계를 갖고, 완료 대기가 먼저 선다', () => {
+    const blocked = toSearchRow(
+      requestRow({
+        shipmentRequestId: 2,
+        shipmentRequestNo: 'SR-2',
+        completionBlockers: [
+          { code: 'NOT_INSPECTED', lotNo: 'P-2' },
+          { code: 'PICKING_SHORT', lineNo: 2 },
+        ],
+        blockerSummary: { NOT_INSPECTED: 1, PICKING_SHORT: 1 },
+      }),
+    );
+    const ready = toSearchRow(requestRow());
+
+    expect(blocked).toMatchObject({
+      ready: false,
+      blockedCount: 2,
+      blockerSummary: [
+        { code: 'PICKING_SHORT', count: 1 },
+        { code: 'NOT_INSPECTED', count: 1 },
+      ],
+    });
+    expect(ready).toMatchObject({
+      ready: true,
+      lineCount: 2,
+      lotCount: 4,
+      picked: 160,
+      target: 150,
+    });
+    expect(orderSearchRows([blocked, ready]).map((row) => row.shipmentRequestNo)).toEqual([
+      'SR-261118-001',
+      'SR-2',
+    ]);
+  });
+});
