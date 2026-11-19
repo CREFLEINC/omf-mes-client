@@ -185,7 +185,6 @@ describe('P-01-02 분할 LOT 라벨', () => {
     await loaded();
     expect(within(unprintedTab()).getByText('3')).toBeTruthy();
     expect(screen.getByText(t.status.failed(1))).toBeTruthy();
-    expect(screen.getByText(t.band.failed(1))).toBeTruthy();
     const rows = screen.getAllByRole('checkbox');
     expect(rows.map((row) => row.getAttribute('aria-label'))).toEqual([
       t.table.choose(OLD.lotNo),
@@ -354,12 +353,12 @@ describe('P-01-02 체크박스', () => {
     expect(checkbox(OLD.lotNo).getAttribute('aria-checked')).toBe('false');
   });
 
-  it('정렬을 바꾸면 분할 시각 차례가 뒤집힌다 — 찍는 차례와는 따로다', async () => {
+  it('분할 시각 머리글을 누르면 차례가 뒤집힌다 — 찍는 차례와는 따로다', async () => {
     const user = userEvent.setup();
     render();
 
     await loaded();
-    await user.click(screen.getByRole('tab', { name: t.order.newest }));
+    await user.click(screen.getByRole('button', { name: new RegExp(t.table.splitAt) }));
     expect(screen.getAllByRole('checkbox').map((row) => row.getAttribute('aria-label'))).toEqual([
       t.table.choose(NEW.lotNo),
       t.table.choose(FAILED.lotNo),

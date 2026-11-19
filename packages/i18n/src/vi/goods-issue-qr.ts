@@ -5,12 +5,6 @@ import type { Translated } from './translated';
 export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
   title: 'Nhãn LOT tách',
 
-  band: {
-    failed: (count: number) => `In lỗi ${String(count)} mục`,
-    oldest: (at: string, age: string) => `Cũ nhất ${at} · ${age}`,
-    showUnprinted: 'Xem chờ phát hành',
-  },
-
   tabs: {
     label: 'Chế độ xem',
     unprinted: 'Chờ phát hành',
@@ -29,11 +23,6 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
     today: 'Hôm nay',
     week: '7 ngày gần đây',
     month: '30 ngày gần đây',
-  },
-  order: {
-    label: 'Sắp xếp',
-    newest: 'Mới nhất',
-    oldest: 'Cũ nhất',
   },
   help: {
     button: 'Trợ giúp',

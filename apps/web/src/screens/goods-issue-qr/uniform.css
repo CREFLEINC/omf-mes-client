@@ -72,11 +72,6 @@
   gap: 12px;
 }
 
-.giq-foot > .pu-seg {
-  flex: none;
-  width: 200px;
-}
-
 .giq-foot > .pu-pager {
   margin-left: auto;
 }
@@ -275,9 +270,12 @@
   }
 }
 
-/* 발행 대기 요약 한 줄 — 인쇄 실패 · 가장 오래된 것 칩. */
-.giq-band {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 8px;
+/* 분할 시각 머리글 — 눌러서 오름·내림을 바꾼다. */
+.giq-sort {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
 }

@@ -43,7 +43,6 @@ import { ReasonPicker } from '../pop-material-lot-label/reason-picker';
 import {
   PRINTED_PERIODS,
   PRINT_FAILED,
-  isUnprinted,
   matchesSplitLot,
   needsReissueReason,
   nextIssueSeq,
@@ -174,10 +173,6 @@ export const GoodsIssueQrScreen = () => {
 
   const today = plantToday();
   const unprintedCount = unprinted.data?.unprintedCount ?? null;
-  /* 발행 대기 요약 — 인쇄 실패 건수 · 가장 오래된 것(서버가 오래된 순으로 준다). */
-  const unprintedLots = (unprinted.data?.items ?? []).filter(isUnprinted);
-  const failedCount = unprintedLots.filter((lot) => lot.labelIssue !== null).length;
-  const oldest = unprintedLots[0];
 
   /* 표에 보이는 차례 — 분할 시각으로 줄 세운다. 찍는 차례(`printList`)와는 따로다. */
   const keepsServerOrder = tab === 'PRINTED' && !isOrderPicked;
@@ -341,6 +336,11 @@ export const GoodsIssueQrScreen = () => {
       today={today}
       selected={selected}
       order={order}
+      onOrder={() => {
+        setOrder(order === 'oldest' ? 'newest' : 'oldest');
+        setOrderPicked(true);
+        page.setPage(1);
+      }}
       showAge={!isPrintedTab}
       isLocked={isBusy}
       onToggle={toggle}
@@ -506,36 +506,7 @@ export const GoodsIssueQrScreen = () => {
               </>
             }
           >
-            {unprintedCount !== null &&
-            unprintedCount > 0 &&
-            (failedCount > 0 || oldest !== undefined) ? (
-              <PuNote
-                tone="warn"
-                action={
-                  isPrintedTab ? (
-                    <PuButton
-                      size="sm"
-                      onClick={() => {
-                        chooseTab('UNPRINTED');
-                      }}
-                    >
-                      {t.band.showUnprinted}
-                    </PuButton>
-                  ) : undefined
-                }
-              >
-                <span className="giq-band">
-                  {failedCount > 0 ? (
-                    <PuChip tone="bad">{t.band.failed(failedCount)}</PuChip>
-                  ) : null}
-                  {oldest === undefined ? null : (
-                    <PuChip tone={daysSince(oldest.splitAt, today) > 0 ? 'bad' : 'warn'}>
-                      {t.band.oldest(shortAt(oldest.splitAt), ageText(oldest.splitAt, today))}
-                    </PuChip>
-                  )}
-                </span>
-              </PuNote>
-            ) : null}
+            {/* 인쇄 실패·가장 오래된 것 요약 줄은 두지 않는다(사용자 지시 2026-11-19). */}
             {printedNote === null ? null : (
               <PuNote
                 tone="ok"
@@ -561,19 +532,6 @@ export const GoodsIssueQrScreen = () => {
             )}
             {list}
             <div className="giq-foot">
-              <PuSeg
-                label={t.order.label}
-                value={order}
-                options={(['newest', 'oldest'] as const).map((each) => ({
-                  value: each,
-                  label: t.order[each],
-                }))}
-                onChange={(next) => {
-                  setOrder(next);
-                  setOrderPicked(true);
-                  page.setPage(1);
-                }}
-              />
               <PuPager
                 label={t.table.label}
                 total={page.total}
@@ -673,6 +631,7 @@ const SplitTable = ({
   today,
   selected,
   order,
+  onOrder,
   showAge,
   isLocked,
   onToggle,
@@ -682,6 +641,8 @@ const SplitTable = ({
   today: string;
   selected: ReadonlySet<number>;
   order: Order;
+  /** 분할 시각 머리글을 누르면 오름·내림을 바꾼다 — 따로 정렬 단추를 두지 않는다(사용자 지시 2026-11-19). */
+  onOrder: () => void;
   showAge: boolean;
   isLocked: boolean;
   onToggle: (lotId: number) => void;
@@ -697,7 +658,11 @@ const SplitTable = ({
             <th>{t.table.item}</th>
             <th className="num fit">{t.table.qty}</th>
             <th>{t.table.issue}</th>
-            <th className="fit">{`${t.table.splitAt} ${order === 'oldest' ? '↑' : '↓'}`}</th>
+            <th className="fit" aria-sort={order === 'oldest' ? 'ascending' : 'descending'}>
+              <button type="button" className="giq-sort" onClick={onOrder}>
+                {`${t.table.splitAt} ${order === 'oldest' ? '↑' : '↓'}`}
+              </button>
+            </th>
             <th className="fit mid">{t.table.labelColumn}</th>
           </tr>
         </thead>

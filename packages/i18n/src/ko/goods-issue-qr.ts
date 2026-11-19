@@ -8,12 +8,6 @@ export const goodsIssueQr = {
   title: '분할 LOT 라벨',
 
   /** 라벨 발행 화면 공통 탭 이름 — 발행 대기(라벨 안 찍음 · 인쇄 실패) / 재발행(찍음). */
-  /** 발행 대기 요약 한 줄 — 인쇄 실패 · 가장 오래된 것(기간과 상관없이). */
-  band: {
-    failed: (count: number) => `인쇄 실패 ${String(count)}건`,
-    oldest: (at: string, age: string) => `가장 오래된 것 ${at} · ${age}`,
-    showUnprinted: '발행 대기 보기',
-  },
 
   tabs: {
     label: '보기',
@@ -37,12 +31,6 @@ export const goodsIssueQr = {
     today: '오늘',
     week: '최근 7일',
     month: '최근 30일',
-  },
-  /** 표 구획 왼쪽 아래 정렬(분할 시각). */
-  order: {
-    label: '정렬',
-    newest: '최신순',
-    oldest: '오래된순',
   },
   help: {
     button: '도움말',
