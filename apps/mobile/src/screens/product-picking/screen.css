@@ -29,18 +29,10 @@
   color: var(--on-surface-muted, inherit);
 }
 
-.picking__card,
-.picking__candidate {
+.picking__card {
   display: flex;
   flex-direction: column;
   gap: var(--space-2, 8px);
-}
-
-.picking__candidate-head {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2, 8px);
-  align-items: center;
 }
 
 .picking__pick {
@@ -48,7 +40,10 @@
 }
 
 .picking__targets,
-.picking__candidates {
+.picking__lots,
+.picking__portions,
+.picking__blockers,
+.picking__effects {
   display: flex;
   flex-direction: column;
   gap: var(--space-2, 8px);
@@ -68,4 +63,181 @@
 
 .picking__target > p {
   margin: 0;
+}
+
+/* 지시서 머리: 고객 · 납품처 · 수주 · 출하 예정을 두 칸 표로. */
+.picking__facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1, 4px) var(--space-3, 12px);
+  margin: 0;
+}
+
+.picking__facts dt {
+  color: var(--on-surface-muted, inherit);
+}
+
+.picking__facts dd {
+  margin: 0;
+}
+
+.picking__line {
+  padding-top: var(--space-3, 12px);
+  border-top: 1px solid var(--outline-variant, currentColor);
+}
+
+/* 긴 칩(베트남어)은 줄을 넘긴다. */
+.picking__line-head,
+.picking__lot-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+  align-items: center;
+}
+
+/* 목표 타일 3칸: 목표 · 피킹 · 남음(파랑) 또는 초과(노랑). */
+.picking__tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2, 8px);
+}
+
+.picking__tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border-radius: var(--radius-md, 8px);
+  background: var(--surface-container-low, transparent);
+}
+
+.picking__tile span {
+  color: var(--on-surface-muted, inherit);
+}
+
+.picking__tile strong {
+  font-size: 1.5rem;
+}
+
+.picking__tile--remaining {
+  background: var(--semantic-info-container, var(--surface-container));
+  color: var(--on-semantic-info-container, inherit);
+}
+
+.picking__tile--over {
+  background: var(--semantic-warning-container, var(--surface-container));
+  color: var(--on-semantic-warning-container, inherit);
+}
+
+.picking__lot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  padding: var(--space-3, 12px);
+  border: 1px solid var(--outline-variant, currentColor);
+  border-radius: var(--radius-md, 8px);
+  background: var(--surface, transparent);
+}
+
+/* 방금 집은 LOT — 붉은 테. */
+.picking__lot--fresh {
+  border-color: var(--semantic-error, currentColor);
+  border-width: 2px;
+}
+
+/* 교체로 빠진 LOT — 흐린 이력 줄. */
+.picking__lot--replaced {
+  opacity: 0.6;
+  background: var(--surface-container-low, transparent);
+}
+
+.picking__lot-qty {
+  margin-inline-start: auto;
+  font-weight: 600;
+}
+
+.picking__portions > li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2, 8px);
+  color: var(--on-surface-variant, inherit);
+}
+
+.picking__replace {
+  align-self: flex-start;
+  background: var(--semantic-error, currentColor);
+  border-color: var(--semantic-error, currentColor);
+}
+
+.picking__code {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+.picking__code-label {
+  color: var(--on-surface-muted, inherit);
+}
+
+.picking__code-row,
+.picking__code-actions {
+  display: flex;
+  gap: var(--space-2, 8px);
+}
+
+.picking__code-value {
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-start;
+  overflow-wrap: anywhere;
+}
+
+/* 다음 스캔이 이 칸으로 간다 — 받는 중임을 테로. */
+.picking__code-value--waiting {
+  border-color: var(--primary, currentColor);
+  border-width: 2px;
+}
+
+.picking__code-edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+.picking__code-actions > * {
+  flex: 1;
+}
+
+.picking__effects {
+  gap: var(--space-1, 4px);
+  list-style: disc;
+  padding-inline-start: var(--space-5, 20px);
+}
+
+/* 「지시서 코드 보기」 — 흰 바탕 전체 화면, QR 은 화면 폭의 70% 쯤. */
+.picking--qr {
+  align-items: center;
+  min-height: 100%;
+  text-align: center;
+  background: var(--surface, transparent);
+}
+
+.picking__qr-title {
+  margin: 0;
+}
+
+.picking__qr {
+  max-width: 70vw;
+  height: auto;
+}
+
+.picking__qr-no {
+  font-size: 1.5rem;
+}
+
+.picking--qr > .picking__pick,
+.picking--qr > [role='alert'],
+.picking--qr > div {
+  align-self: stretch;
+  text-align: start;
 }
