@@ -3,7 +3,6 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { LABEL_RENDITION_NOT_READY_REASON } from '../../patterns/pop-label-rendition';
 import { PopIdentityProvider, type PopIdentity } from '../../patterns/pop-identity';
 import {
   createStubFetch,
@@ -104,8 +103,10 @@ interface Options {
   issueWrites?: Request[];
   /** 발행 이력 조회가 실패한다 */
   historyFails?: boolean;
-  /** 렌디션 조회가 실패한다 */
+  /** 렌디션 조회가 실패한다(이 화면은 부르지 않는다 — 부르면 잡으려고 둔다) */
   renditionFails?: boolean;
+  /** 라벨에 실을 출하 배분 조회가 실패한다 — 라벨을 그리지 못한다 */
+  drawFails?: boolean;
   /** 인쇄 결과 보고가 실패한다 */
   reportFails?: boolean;
   /** 어느 발행 기록의 렌디션을 받았는지 담아 둔다 */
@@ -118,6 +119,8 @@ interface Options {
   pendingFails?: boolean;
   /** 발행 대기 요청을 검사한다 */
   pendingRequests?: Request[];
+  /** 재발행 목록(`labelIssued=true`) 응답. 주지 않으면 발행 대기와 같은 포장을 준다 */
+  issuedUnits?: HandlingUnit[];
   /** 발행 대기 서버 쪽별 응답 */
   pendingPages?: HandlingUnit[][];
   /** 선택 포장과 같은 SPLIT 사건에 기존 번호 잔량이 있다 */
@@ -175,9 +178,13 @@ const routes = (options: Options): StubRoute[] => [
   {
     match: (request) => request.method === 'GET' && pathOf(request) === '/inventory/handling-units',
     respond: (request) => {
-      options.pendingRequests?.push(request.clone());
+      const issued = new URL(request.url).searchParams.get('labelIssued') === 'true';
+      if (!issued) options.pendingRequests?.push(request.clone());
       const page = Number(new URL(request.url).searchParams.get('page') ?? '1');
-      const pendingPages = options.pendingPages ?? [[{ ...handlingUnit }]];
+      const pendingPages =
+        issued && options.issuedUnits !== undefined
+          ? [options.issuedUnits]
+          : (options.pendingPages ?? [[{ ...handlingUnit }]]);
       const total = pendingPages.reduce((count, rows) => count + rows.length, 0);
 
       return options.pendingFails === true
@@ -483,6 +490,13 @@ const routes = (options: Options): StubRoute[] => [
     },
   },
   {
+    match: (request) => pathOf(request) === '/logistics/shipment-lot-allocations',
+    respond: () =>
+      options.drawFails === true
+        ? jsonResponse({ message: '조회 실패' }, { status: 500 })
+        : jsonResponse({ items: [], page: { page: 1, size: 1, total: 0 } }),
+  },
+  {
     match: (request) => pathOf(request).endsWith('/rendition'),
     respond: (request) => {
       const id = Number(pathOf(request).split('/').at(-2));
@@ -528,6 +542,13 @@ const renderSelectedScreen = async (
   await selectPending();
 };
 
+/** 「재발행」 탭에서 고른다 — 발행 이력은 이 탭에서만 선다(#295 시안). */
+const renderReissueScreen = async (options: Options = {}): Promise<void> => {
+  renderScreen(options);
+  await userEvent.click(await screen.findByRole('tab', { name: t.pending.reissueTab }));
+  await selectPending();
+};
+
 beforeEach(() => {
   URL.createObjectURL = vi.fn(() => 'blob:label');
   URL.revokeObjectURL = vi.fn();
@@ -539,24 +560,23 @@ afterEach(() => {
 });
 
 /**
- * ⛔ **배포본은 발행 대기 목록을 «부르지 않는다»**(#1095). 서버 구현 기준선에 `labelIssued`
- *    축이 없고 실서버는 없는 축을 거부하지 않고 무시한다 — 그대로 부르면 「발행 대기」 표에
- *    창고의 모든 취급 단위가 서고, 이미 라벨이 붙은 포장에 새 라벨이 나간다.
- *
- * ⚠ **요청이 나가지 않는 것까지 본다.** 표가 비어 보이는 것만으로는 부르지 않았다는 증거가
- *    되지 못한다 — 부르고 나서 응답을 버려도 표는 똑같이 비어 보인다.
+ * 서버가 `labelIssued` 축을 받게 되어(omf-all-around#327) 배포본에서도 목록을 부른다 — 예전에는
+ * 축이 무시돼 전체 포장이 서므로 부르지 않았다(#1095).
  */
-describe('RepackLabelIssueScreen — 서버 구현 기준선', () => {
+describe('RepackLabelIssueScreen — 배포본', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
   });
 
-  it('배포본에서는 발행 대기 목록을 부르지 않고 사유를 적는다', async () => {
+  it('배포본에서도 발행 대기 · 재발행 목록을 labelIssued 로 부른다', async () => {
     vi.stubEnv('MODE', 'production');
     const asked: string[] = [];
     const watched: StubRoute = {
       match: (request) => {
-        asked.push(new URL(request.url).pathname);
+        const url = new URL(request.url);
+        if (url.pathname === '/inventory/handling-units') {
+          asked.push(url.searchParams.get('labelIssued') ?? '');
+        }
 
         return false;
       },
@@ -569,8 +589,8 @@ describe('RepackLabelIssueScreen — 서버 구현 기준선', () => {
       { fetch: createStubFetch([watched, ...routes({})]), route: ENTRY_ROUTE },
     );
 
-    expect(await screen.findByText(t.pending.unsupported)).toBeInTheDocument();
-    expect(asked.some((path) => path === '/inventory/handling-units')).toBe(false);
+    expect(await screen.findByRole('button', { name: new RegExp(HANDLING_UNIT_NO) })).toBeEnabled();
+    expect([...new Set(asked)].sort()).toEqual(['false', 'true']);
   });
 });
 
@@ -909,11 +929,25 @@ describe('RepackLabelIssueScreen — 프린터', () => {
 });
 
 describe('RepackLabelIssueScreen — 발행 뒤', () => {
-  /* ⚠ 미리보기가 발행 «뒤에» 온다(착수 이슈 §6) — 발행 전에는 볼 것이 없다. */
-  it('발행 이력이 없으면 미리보기를 열 수 없다', async () => {
-    await renderSelectedScreen({ history: [] });
+  /* 발행 대기의 [미리보기]는 발행 «전» 라벨 모양이다(#295 시안) — 기록을 만들지 않는다. */
+  it('발행 전 미리보기는 라벨 모양만 보이고 창에서 발번·인쇄한다', async () => {
+    const issueWrites: Request[] = [];
+    const renditionCalls: number[] = [];
+    await renderSelectedScreen({ history: [], issueWrites, renditionCalls });
 
-    expect(await screen.findByRole('button', { name: PREVIEW_NAME })).toBeDisabled();
+    await clickWhenEnabled(() => screen.getByRole('button', { name: PREVIEW_NAME }));
+
+    expect(await screen.findByText(t.preview.issueTitle)).toBeInTheDocument();
+    expect(await screen.findByAltText(t.preview.alt)).toBeInTheDocument();
+    expect(issueWrites).toHaveLength(0);
+
+    await clickWhenEnabled(
+      () => screen.getAllByRole('button', { name: t.issue.submitCount(1) }).at(-1) as HTMLElement,
+    );
+    await waitFor(() => {
+      expect(issueWrites).toHaveLength(1);
+    });
+    expect(renditionCalls).toHaveLength(0);
   });
 
   /*
@@ -922,11 +956,11 @@ describe('RepackLabelIssueScreen — 발행 뒤', () => {
    */
   it('발행 이력의 시각을 현지 시각 한 꼴로 적는다', async () => {
     const issuedAt = '2026-09-03T01:20:00Z';
-    await renderSelectedScreen({ history: [makeIssue({ issuedAt })] });
+    await renderReissueScreen({ issueCount: 1, history: [makeIssue({ issuedAt })] });
 
     expect(
-      await screen.findByText(new RegExp(localDateTimeText(issuedAt, '—'))),
-    ).toBeInTheDocument();
+      (await screen.findAllByText(new RegExp(localDateTimeText(issuedAt, '—')))).length,
+    ).toBeGreaterThan(0);
     expect(screen.queryByText(new RegExp(issuedAt))).not.toBeInTheDocument();
   });
 
@@ -949,87 +983,84 @@ describe('RepackLabelIssueScreen — 발행 뒤', () => {
   });
 
   /*
-   * ⛔⛔ **서버에 이 경로가 없다**(`patterns/pop-label-rendition` 머리말 · 대응표 P1 「미구현
-   * 5건」). 원래 이 시험은 「200·image/png 여도 내용이 그림이 아니면 깨진 아이콘 대신 사유를
-   * 말한다」를 쟀다 — 그 갈래는 그림을 «받았을 때만» 성립하는데, 이제는 아예 받으러 가지
-   * 않아 항상 `renditionFailed` 로 정착한다. 그림이 오지 않는다는 사실 자체(네트워크 요청도
-   * 나가지 않는다)로 다시 잰다.
+   * 버그(omf-all-around#327) — 이미 발행한 포장의 [미리보기·재인쇄]가 서버 렌디션을 불러 401 로
+   * 「라벨 이미지를 받지 못했습니다」에 멈췄다. 포장 라벨은 POP 이 그린다.
    */
-  it('그림을 받으러 가지 않고 renditionFailed 로 정착한다 — 네트워크 요청도 나가지 않는다', async () => {
+  it('미리보기·재인쇄는 서버 렌디션 없이 라벨 그림과 사유 칸을 연다', async () => {
     const renditionCalls: number[] = [];
-    await renderSelectedScreen({ issueCount: 0, renditionCalls });
+    await renderReissueScreen({
+      issueCount: 1,
+      renditionCalls,
+      history: [makeIssue({ printOutcome: 'PENDING' })],
+    });
+
+    await clickWhenEnabled(() => screen.getByRole('button', { name: PREVIEW_NAME }));
+
+    expect(await screen.findByAltText(t.preview.alt)).toBeInTheDocument();
+    expect(screen.getByText(t.preview.title)).toBeInTheDocument();
+    expect(screen.queryByText(t.preview.failed)).not.toBeInTheDocument();
+    expect(renditionCalls).toHaveLength(0);
+  });
+
+  it('발행하면 셸에 TSPL 명령을 보내고 인쇄 성공을 보고한다', async () => {
+    const save = vi.fn<RenditionShell['save']>(async () => 'ok');
+    (window as unknown as { pop?: { rendition?: RenditionShell } }).pop = {
+      rendition: { save },
+    };
+    const issueWrites: Request[] = [];
+    const reportWrites: Request[] = [];
+    const renditionCalls: number[] = [];
+
+    await renderSelectedScreen({ issueCount: 0, issueWrites, reportWrites, renditionCalls });
 
     await screen.findAllByText(HANDLING_UNIT_NO);
     await clickWhenEnabled(submitButton);
 
-    expect(await screen.findByText(t.preview.failed)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(reportWrites).toHaveLength(1);
+    });
+    expect(issueWrites).toHaveLength(1);
+    expect(save).toHaveBeenCalledTimes(1);
+    const [payload, , , format] = save.mock.calls[0] ?? [];
+    expect(format).toBe('tspl');
+    expect(new TextDecoder().decode(payload)).toContain(HANDLING_UNIT_NO);
+    expect(((await reportWrites[0]?.json()) as { outcome: string }).outcome).toBe('SUCCEEDED');
     expect(renditionCalls).toHaveLength(0);
-    expect(screen.queryByAltText(t.preview.alt)).not.toBeInTheDocument();
   });
 
-  /*
-   * ⛔⛔ **서버에 이 경로가 없다**(대응표 P1 「미구현 5건」). 미리보기 창(`PreviewDialog`)은
-   * 그림을 받았을 때만 열린다(`screen.tsx` 의 `open={phase === 'preview' || phase ===
-   * 'printing'}`) — 그림을 아예 받지 않으니 이 창 자체가 더는 뜨지 않는다. 「닫기가 한
-   * 자리만 있다」는 원래 뜻(같은 동작을 두 군데 두지 않는다)은, 창이 안 뜨니 복구 동작
-   * (재시도)이 정말 하나뿐인가로 옮겨 잰다.
-   */
-  it('그림을 받지 못하면 미리보기 창 자체가 뜨지 않는다 — 복구 동작은 재시도 하나뿐이다', async () => {
-    await renderSelectedScreen({ history: [makeIssue({ printOutcome: 'SUCCEEDED' })] });
+  /* 그리지 못하면 미리보기 창이 뜨지 않고 복구 동작은 재시도 하나뿐이다. */
+  it('라벨을 그리지 못하면 미리보기 창 대신 재시도 하나만 선다', async () => {
+    await renderReissueScreen({
+      issueCount: 1,
+      drawFails: true,
+      history: [makeIssue({ printOutcome: 'SUCCEEDED' })],
+    });
 
     await clickWhenEnabled(() => screen.getByRole('button', { name: PREVIEW_NAME }));
 
     expect(await screen.findByText(t.preview.failed)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: DIALOG_PRINT_NAME })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: t.preview.close })).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: messages.common.retry })).toHaveLength(1);
-  });
-
-  /*
-   * ⛔⛔ **서버에 이 경로가 없다**(대응표 P1 「미구현 5건」). 원래 이 시험은 미리보기가 뜨고
-   * 인쇄까지 이어지는 정상 경로를 쟀다 — 그림을 받는 걸음이 막혀 이제 그 경로 자체가 없다.
-   * ⭐ **발행(`POST /app/document-issues`)은 그대로 된다** — 막힌 것은 그 뒤의 그림 취득뿐임을
-   * 함께 짚는다.
-   */
-  it('발행은 되어도 미리보기·인쇄는 막힌다 — 셸에 아무것도 보내지 않는다', async () => {
-    const save = vi.fn(async () => 'ok');
-    (window as unknown as { pop?: { rendition?: RenditionShell } }).pop = {
-      rendition: { save },
-    };
-    const issueWrites: Request[] = [];
-    const renditionCalls: number[] = [];
-
-    await renderSelectedScreen({ issueCount: 0, issueWrites, renditionCalls });
-
-    await screen.findAllByText(HANDLING_UNIT_NO);
-    await clickWhenEnabled(submitButton);
-
-    /* 발행 기록은 남는다 — 막힌 것은 그 뒤의 그림 취득이지 발행이 아니다. */
-    await waitFor(() => {
-      expect(issueWrites).toHaveLength(1);
-    });
-    expect(await screen.findByText(t.preview.failed)).toBeInTheDocument();
-    expect(screen.queryByAltText(t.preview.alt)).not.toBeInTheDocument();
-    expect(renditionCalls).toHaveLength(0);
-    expect(save).not.toHaveBeenCalled();
   });
 
   /* 발행 이력은 회차로 쌓인다(K-1) — 앞 회차를 덮지 않는다. */
   it('발행 이력이 회차별로 선다', async () => {
-    await renderSelectedScreen({
+    await renderReissueScreen({
+      issueCount: 2,
       history: [
         makeIssue({ issueSeq: 2, printOutcome: 'FAILED', documentIssueLogId: 44202 }),
         makeIssue({ issueSeq: 1, printOutcome: 'SUCCEEDED' }),
       ],
     });
 
-    expect(await screen.findByText(t.history.seq(2))).toBeInTheDocument();
-    expect(screen.getByText(t.history.seq(1))).toBeInTheDocument();
+    expect(await screen.findByText(new RegExp(t.history.seq(2)))).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(t.history.seq(1)))).toBeInTheDocument();
   });
 
   it('발행 이력은 계약의 전체 건수까지 다음 쪽을 이어 받는다', async () => {
     const historyRequests: Request[] = [];
-    await renderSelectedScreen({
+    await renderReissueScreen({
+      issueCount: 2,
       historyRequests,
       historyPages: [
         [makeIssue({ issueSeq: 1, documentIssueLogId: 44001 })],
@@ -1037,46 +1068,48 @@ describe('RepackLabelIssueScreen — 발행 뒤', () => {
       ],
     });
 
-    expect(await screen.findByText(t.history.seq(2))).toBeInTheDocument();
-    expect(screen.getByText(t.history.seq(1))).toBeInTheDocument();
+    expect(await screen.findByText(new RegExp(t.history.seq(2)))).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(t.history.seq(1)))).toBeInTheDocument();
     expect(historyRequests).toHaveLength(2);
     expect(new URL(historyRequests[1]?.url ?? 'http://localhost').searchParams.get('page')).toBe(
       '2',
     );
   });
 
-  /*
-   * ⛔ **목록의 첫 줄이 최신이라고 가정하지 않는다** — 계약이 정렬을 보장하지 않아 오름차순으로
-   * 오면 첫 줄이 1회차다(독립 검증 실측).
-   *
-   * ⛔⛔ **서버에 이 경로가 없다**(대응표 P1 「미구현 5건」). 원래 이 시험은 실제 렌디션
-   * 요청이 «어느 회차의 documentIssueLogId 로» 나가는지를 보고 최고 회차 선택을 확인했다 —
-   * 이제 그 요청 자체가 나가지 않아 그 방법으로는 더 잴 수 없다. 대신 최고 회차를 골라도(즉
-   * 미리보기가 열려도) 순서와 무관하게 네트워크 요청은 여전히 0건임을 잰다 — 회차 선택
-   * 로직이 남아 있다는 것은 미리보기 단추가 활성화된다는 사실로 이미 확인된다(바로 위 시험).
-   */
-  it('이력이 오름차순으로 와도 미리보기 시도가 네트워크를 부르지 않는다', async () => {
-    const renditionCalls: number[] = [];
-    await renderSelectedScreen({
-      renditionCalls,
-      history: [
-        makeIssue({ issueSeq: 1, printOutcome: 'SUCCEEDED', documentIssueLogId: 44301 }),
-        makeIssue({ issueSeq: 2, printOutcome: 'SUCCEEDED', documentIssueLogId: 44302 }),
-      ],
-    });
-
-    await clickWhenEnabled(() => screen.getByRole('button', { name: PREVIEW_NAME }));
-
-    expect(await screen.findByText(t.preview.failed)).toBeInTheDocument();
-    expect(renditionCalls).toHaveLength(0);
-  });
-
-  /* 시안(#295): 발행 이력은 한 번이라도 발행한 포장에만 선다 — 비어 있으면 자리를 두지 않는다. */
-  it('발행 이력이 없으면 이력 칸을 세우지 않는다', async () => {
-    await renderSelectedScreen({ history: [] });
+  /* 시안(#295): 발행 대기 탭에는 발행 이력을 두지 않는다. */
+  it('발행 대기 탭에서는 이력 칸을 세우지 않는다', async () => {
+    await renderSelectedScreen({ history: [makeIssue()] });
 
     await screen.findByRole('table', { name: t.issue.targetsLabel });
     expect(screen.queryByText(t.history.sectionLabel)).not.toBeInTheDocument();
+  });
+});
+
+describe('RepackLabelIssueScreen — 재발행 탭 스캔', () => {
+  it('스캔한 포장 번호를 재발행 목록에서 고른다', async () => {
+    renderScreen({ issueCount: 1, history: [makeIssue()] });
+    await userEvent.click(await screen.findByRole('tab', { name: t.pending.reissueTab }));
+    await screen.findByRole('button', { name: new RegExp(HANDLING_UNIT_NO) });
+
+    await userEvent.type(
+      screen.getByPlaceholderText(t.pending.scanPlaceholder),
+      `${HANDLING_UNIT_NO}{Enter}`,
+    );
+
+    expect(await screen.findByRole('table', { name: t.issue.targetsLabel })).toBeInTheDocument();
+  });
+
+  it('아직 발행하지 않은 포장을 스캔하면 발행 대기에서 하라고 말한다', async () => {
+    renderScreen({ issuedUnits: [] });
+    await userEvent.click(await screen.findByRole('tab', { name: t.pending.reissueTab }));
+    await screen.findByText(t.pending.reissueEmpty);
+
+    await userEvent.type(
+      screen.getByPlaceholderText(t.pending.scanPlaceholder),
+      `${HANDLING_UNIT_NO}{Enter}`,
+    );
+
+    expect(await screen.findByText(t.pending.scanNotIssued(HANDLING_UNIT_NO))).toBeInTheDocument();
   });
 });
 
@@ -1246,18 +1279,14 @@ describe('RepackLabelIssueScreen — 발행 실패', () => {
   /*
    * ⛔ **종이는 나왔다.** 「인쇄하지 못했다」고 말하고 「다시 인쇄」를 권하면 같은 라벨이 한
    * 장 더 나온다(독립 검증 실측).
-   *
-   * ⛔⛔ **서버에 이 경로가 없다**(대응표 P1 「미구현 5건」). 「보고만 실패」는 «인쇄까지는
-   * 됐다»는 전제가 있어야 하는데 그림을 못 받으니 인쇄 자체가 없다 — 그 전제가 성립하는
-   * `reportFailed` 상태는 이제 이 화면에서 이를 수 없다. 대신 그림을 못 받으면 셸에도(인쇄)
-   * 서버 보고에도 아예 닿지 않는다는, 지금 실제로 성립하는 사실을 잰다.
+
    */
-  it('그림을 받지 못하면 셸에도 인쇄 결과 보고에도 닿지 않는다', async () => {
+  it('라벨을 그리지 못하면 셸에도 인쇄 결과 보고에도 닿지 않는다', async () => {
     const save = vi.fn(async () => 'ok');
     (window as unknown as { pop?: { rendition?: RenditionShell } }).pop = { rendition: { save } };
     const reportWrites: Request[] = [];
 
-    await renderSelectedScreen({ issueCount: 0, reportWrites });
+    await renderSelectedScreen({ issueCount: 0, reportWrites, drawFails: true });
 
     await screen.findAllByText(HANDLING_UNIT_NO);
     await clickWhenEnabled(submitButton);
@@ -1269,7 +1298,7 @@ describe('RepackLabelIssueScreen — 발행 실패', () => {
 
   /* ⛔ 회차만 오르고 빠져나갈 길이 없는 자리를 두지 않는다. */
   it('이력 조회가 실패해도 방금 발행한 것으로 다시 볼 수 있다', async () => {
-    await renderSelectedScreen({ issueCount: 0, historyFails: true, renditionFails: true });
+    await renderSelectedScreen({ issueCount: 0, historyFails: true, drawFails: true });
 
     await screen.findAllByText(HANDLING_UNIT_NO);
     await clickWhenEnabled(submitButton);
@@ -1280,18 +1309,12 @@ describe('RepackLabelIssueScreen — 발행 실패', () => {
 
   /*
    * ⛔ 인쇄 실패를 발행 실패로 말하지 않는다(K-4) — 복구는 실패 사유의 새 회차다(K-7).
-   *
-   * ⛔⛔ **서버에 이 경로가 없다**(대응표 P1 「미구현 5건」). 원래 이 시험은 셸이 인쇄에
-   * 실패한 뒤 「다시 발행」이 `PRINT_FAILURE` 사유의 새 회차를 만드는 것을 쟀다 — 이제
-   * 그림을 못 받아 인쇄까지 가지 못하므로 그 실패 사유 자체가 나지 않는다. 대신 그림을 못
-   * 받은 것도 **발행 실패로 말하지 않는다**는 같은 원칙을, 지금 실제로 있는 자리
-   * (`renditionFailed` 배너의 «재시도»)에서 잰다 — 재시도는 미리보기를 다시 열 뿐 새 발행
-   * 요청을 보내지 않는다(회차가 이유 없이 오르지 않는다).
+
    */
-  it('그림을 받지 못해도 발행 실패로 말하지 않는다 — 재시도가 새 회차를 만들지 않는다', async () => {
+  it('라벨을 그리지 못해도 발행 실패로 말하지 않는다 — 재시도가 새 회차를 만들지 않는다', async () => {
     const issueWrites: Request[] = [];
 
-    await renderSelectedScreen({ issueCount: 0, issueWrites });
+    await renderSelectedScreen({ issueCount: 0, issueWrites, drawFails: true });
 
     await screen.findAllByText(HANDLING_UNIT_NO);
     await clickWhenEnabled(submitButton);
@@ -1309,20 +1332,16 @@ describe('RepackLabelIssueScreen — 발행 실패', () => {
    * ⛔ **셸·서버가 준 오류 문구를 작업자에게 보이지 않는다.** 현장에서 할 일은 프린터를
    *    확인한 뒤 실패 사유로 재발행하는 것이고, 기술 사유는 그 판단을 돕지 않으면서 화면만
    *    어지럽힌다.
-   *
-   * ⛔⛔ **서버에 이 경로가 없다**(대응표 P1 「미구현 5건」). 원래 이 시험은 셸이 던진 실패
-   * 문구('용지 걸림')가 새지 않는지를 쟀다 — 이제는 그림을 못 받는 내부 사유
-   * (`LABEL_RENDITION_NOT_READY_REASON`)가 그 자리를 대신한다. 같은 원칙(내부 사유 문자열이
-   * 화면에 그대로 새지 않는다)이 이 사유에도 지켜지는지로 다시 잰다.
+
    */
   it('실패 사유 원문을 화면에 싣지 않는다', async () => {
-    await renderSelectedScreen({ issueCount: 0 });
+    await renderSelectedScreen({ issueCount: 0, drawFails: true });
 
     await screen.findAllByText(HANDLING_UNIT_NO);
     await clickWhenEnabled(submitButton);
 
     await screen.findByText(t.preview.failed);
     expect(screen.getByText(t.print.failedBody)).toBeInTheDocument();
-    expect(screen.queryByText(LABEL_RENDITION_NOT_READY_REASON)).not.toBeInTheDocument();
+    expect(screen.queryByText(/조회 실패/)).not.toBeInTheDocument();
   });
 });

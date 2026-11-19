@@ -45,12 +45,14 @@ export const usePopWorkCounts = (enabled: boolean): PopWorkCounts => {
  * - 자재 관리 LOT 라벨: 입하 대기 자재 관리 LOT 수(공급사·품목별 `waitingCount` 합 — 화면 「발행 대기 N」과 같다)
  * - 분할 LOT 라벨: 라벨 안 찍은 분할 LOT 수(`unprintedCount` — 화면 「발행 대기 N」과 같다)
  * - 출하 단위 구성: 구성할 상자가 남은 출하 수(`hasUnassignedPackedBox=true` 의 `page.total`)
+ * - 재구성 신규 라벨: 포장 라벨 발행 기록이 없는 포장 수(`labelIssued=false` 의 `page.total` — 화면 「발행 대기 N」과 같다 · omf-all-around#327)
  * 갈 수 없는 화면(`paths` 에 없음)은 부르지 않는다. 실패하거나 아직이면 그 화면 수는 없다.
  */
 export const POP_TAB_COUNT_PATHS = {
   materialLotLabel: '/pop/material-lot-label',
   splitLotLabel: '/pop/goods-issue-qr',
   shippingUnits: '/pop/shipping-units',
+  repackLabelIssue: '/pop/repack-label-issue',
 } as const;
 
 export const popTabCountKeys = { all: ['pop-tab-counts'] as const };
@@ -106,6 +108,20 @@ export const usePopTabCounts = (
     },
   });
 
+  const repack = useQuery({
+    ...common,
+    queryKey: [...popTabCountKeys.all, 'repack-label-issue'],
+    enabled: can(POP_TAB_COUNT_PATHS.repackLabelIssue),
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/inventory/handling-units', {
+          params: { query: { labelIssued: false, page: 1, size: 1 } },
+        }),
+      );
+      return data.page.total;
+    },
+  });
+
   const valueOf = (query: { isError: boolean; data: number | undefined }) =>
     query.isError ? undefined : query.data;
 
@@ -113,5 +129,6 @@ export const usePopTabCounts = (
     [POP_TAB_COUNT_PATHS.materialLotLabel]: valueOf(material),
     [POP_TAB_COUNT_PATHS.splitLotLabel]: valueOf(split),
     [POP_TAB_COUNT_PATHS.shippingUnits]: valueOf(shipping),
+    [POP_TAB_COUNT_PATHS.repackLabelIssue]: valueOf(repack),
   };
 };

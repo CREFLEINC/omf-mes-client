@@ -1,5 +1,6 @@
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
+import { popTabCountKeys } from '../../patterns/pop-work-counts';
 import { repackLabelKeys } from './queries';
 import type { DocumentIssueBatchResult, DocumentIssueCreate } from './types';
 
@@ -50,8 +51,8 @@ export const useDocumentIssue = ({
         body,
       }),
     etagPath: null,
-    /* 회차가 올랐다 — 발행 현황·이력을 다시 받아야 방금 찍은 것이 반영된다. */
-    invalidateKeys: [repackLabelKeys.all],
+    /* 회차가 올랐다 — 발행 현황·이력·화면 탭 「발행 대기」 건수를 다시 받는다. */
+    invalidateKeys: [repackLabelKeys.all, popTabCountKeys.all],
     knownFields: ISSUE_FIELDS,
     keyLifetime: 'until-applied',
     onSuccess,

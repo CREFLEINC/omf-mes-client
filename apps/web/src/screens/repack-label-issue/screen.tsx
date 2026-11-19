@@ -10,8 +10,10 @@ import {
   PuCount,
   PuEmpty,
   PuNote,
+  PuScanField,
   PuScreen,
   PuSection,
+  PuSeg,
   puToast,
 } from '../../patterns/pop-uniform';
 import { useIsOnline } from './connection';
@@ -21,7 +23,9 @@ import { HandlingUnitPane, typeText } from './handling-unit-pane';
 import { HistoryPane } from './history-pane';
 import { IssuePane, IssuePrinter } from './issue-pane';
 import { issueBody } from './issue-body';
+import { IssuePreviewDialog } from './issue-preview-dialog';
 import { useDocumentIssue } from './mutations';
+import { usePackingLabelDraw } from './packing-label';
 import { PendingPane } from './pending-pane';
 import { PreviewDialog } from './preview-dialog';
 import { ReasonField } from './reason-field';
@@ -30,8 +34,7 @@ import {
   useHandlingUnit,
   useIssueHistory,
   useIssueStanding,
-  isPendingListUnsupported,
-  usePendingRepackRows,
+  useRepackRows,
   type PendingRepackRow,
   usePrinters,
   useHandlingUnitTypes,
@@ -75,6 +78,12 @@ export const RepackLabelIssueScreen = () => {
   const gate = useTerminalGate(identity.terminalId, soleProcessIdOf(identity.processes));
   const isOnline = useIsOnline();
 
+  /** 왼쪽 탭(#295 시안) — 발행 대기 = 발행 기록 없는 포장, 재발행 = 한 번 이상 발행한 포장. */
+  const [tab, setTab] = useState<'WAIT' | 'REISSUE'>('WAIT');
+  const [scanValue, setScanValue] = useState('');
+  const [scanError, setScanError] = useState<string | null>(null);
+  /** 발행 대기의 발행 전 미리보기 창 — 기록을 만들지 않는다. */
+  const [issuePreviewOpen, setIssuePreviewOpen] = useState(false);
   /** 고른 발행 대기 줄 — 발행 뒤 목록에서 빠져도 정보 띠는 고를 때의 값을 그대로 보인다. */
   const [selectedRow, setSelectedRow] = useState<PendingRepackRow | null>(null);
   const selectedHandlingUnitId = selectedRow?.handlingUnitId ?? null;
@@ -101,7 +110,9 @@ export const RepackLabelIssueScreen = () => {
   /** 마지막으로 사유와 함께 보낸 포장 — 서버가 사유를 지목해 돌려주면 그 창을 다시 연다. */
   const lastReasonIds = useRef<number[]>([]);
 
-  const pending = usePendingRepackRows();
+  const pending = useRepackRows(false);
+  const reissued = useRepackRows(true);
+  const listQuery = tab === 'WAIT' ? pending : reissued;
   const handlingUnit = useHandlingUnit(selectedHandlingUnitId);
   const contents = useContentRows(handlingUnit.data?.contents ?? []);
   const standingQuery = useIssueStanding(selectedHandlingUnitId);
@@ -111,7 +122,8 @@ export const RepackLabelIssueScreen = () => {
   const reasons = useReissueReasons();
   /* 《대상 포장》의 유형 칸이 코드가 아니라 표시명으로 서게 한다(#1045). */
   const handlingUnitTypes = useHandlingUnitTypes();
-  const printRunner = useIssuePrintRunner(entry.workerNo);
+  const drawLabel = usePackingLabelDraw();
+  const printRunner = useIssuePrintRunner(entry.workerNo, drawLabel);
 
   const standing = standingQuery.data ?? UNKNOWN_STANDING;
   const printerList = printers.data ?? [];
@@ -124,6 +136,7 @@ export const RepackLabelIssueScreen = () => {
       const targets = result.items.map<IssuePrintTarget>((issued) => ({
         documentIssueLogId: issued.documentIssueLogId,
         targetId: issued.target.targetId,
+        issueSeq: issued.issueSeq,
         label: issued.target.displayName,
       }));
       const [first, ...rest] = targets;
@@ -170,7 +183,9 @@ export const RepackLabelIssueScreen = () => {
   const isSubmitting = issue.isSaving || phase === 'fetching' || phase === 'printing';
 
   const blockedReason = ((): string | null => {
-    if (selectedHandlingUnitId === null) return t.entry.missingHandlingUnit;
+    if (selectedHandlingUnitId === null) {
+      return tab === 'WAIT' ? t.entry.missingHandlingUnit : t.entry.missingReissue;
+    }
     if (standingQuery.isPending) return t.issue.summaryLoading;
     if (standingQuery.isError) return t.issue.summaryFailed;
     if (selectedIds.length === 0) return t.issue.targetRequired;
@@ -251,6 +266,40 @@ export const RepackLabelIssueScreen = () => {
     issue.discardIdempotencyKey();
   };
 
+  const clearSelection = (): void => {
+    setSelectedRow(null);
+    setDialog(null);
+    setPrintQueue([]);
+    setLastIssueBody(null);
+    queueAfterRetry.current = [];
+    printRunner.reset();
+    issue.reset();
+  };
+
+  const chooseTab = (next: 'WAIT' | 'REISSUE'): void => {
+    if (next === tab) return;
+    setTab(next);
+    setScanValue('');
+    setScanError(null);
+    clearSelection();
+  };
+
+  /* 재발행 탭 스캔 — 새 포장 · 원 포장 · 잔량 번호 중 하나로 찾는다(#295 시안). */
+  const submitScan = (code: string): void => {
+    const has = (row: PendingRepackRow): boolean =>
+      row.handlingUnitNo === code || row.sourceNos.includes(code) || row.remainderNo === code;
+    const found = (reissued.data ?? []).find(has);
+    setScanValue('');
+    if (found !== undefined) {
+      setScanError(null);
+      selectHandlingUnit(found);
+      return;
+    }
+    setScanError(
+      (pending.data ?? []).some(has) ? t.pending.scanNotIssued(code) : t.pending.scanMissing(code),
+    );
+  };
+
   const toggleRemainder = (handlingUnitId: number, checked: boolean): void => {
     setSelectedRemainderIds((current) =>
       checked
@@ -272,6 +321,7 @@ export const RepackLabelIssueScreen = () => {
         : {
             documentIssueLogId: latestIssue.documentIssueLogId,
             targetId: latestIssue.target.targetId,
+            issueSeq: latestIssue.issueSeq,
             label: latestIssue.target.displayName,
           });
 
@@ -283,8 +333,16 @@ export const RepackLabelIssueScreen = () => {
     void printRunner.begin(target);
   };
 
-  const canPreview = isOnline && (latestIssue !== null || printRunner.state.target !== null);
   const isBlocked = blockedReason !== null || isSubmitting;
+  /* 처음 발행이 아니면 [재발행] — 사유를 받아 회차가 하나 오른다(시안 「재발행 (N장)」). */
+  const isReissue =
+    tab === 'REISSUE' || (standingQuery.data !== undefined && needsReason(standing));
+  /*
+   * 발행 대기는 발행 «전» 미리보기(라벨 모양만, 기록 없음), 재발행은 발행된 라벨 미리보기·재인쇄.
+   */
+  const canPreview = isReissue
+    ? isOnline && (latestIssue !== null || printRunner.state.target !== null)
+    : isOnline && handlingUnit.data !== undefined && selectedIds.length > 0 && !isSubmitting;
 
   /* 인쇄까지 끝났으면 결과 알림 한 줄(규칙 13 · 사용자 지시 2026-09-17 「그 한 줄만」). */
   const allPrinted = phase === 'succeeded' && printQueue.length === 0;
@@ -321,8 +379,6 @@ export const RepackLabelIssueScreen = () => {
   const labelCount = selectedIds.length;
   const remainderList = remainder.data ?? [];
   const allSelectable = 1 + remainderList.length;
-  /* 처음 발행이 아니면 [재발행] — 사유를 받아 회차가 하나 오른다(시안 「재발행 (N장)」). */
-  const isReissue = standingQuery.data !== undefined && needsReason(standing);
 
   /*
    * ⛔ **작업 줄에는 안내 글을 두지 않는다**(규칙 3). 대상 미선택 · 사번 미확인 · 인쇄 대상 미선택은
@@ -331,6 +387,7 @@ export const RepackLabelIssueScreen = () => {
   const blockedNote =
     blockedReason !== null &&
     blockedReason !== t.entry.missingHandlingUnit &&
+    blockedReason !== t.entry.missingReissue &&
     blockedReason !== t.entry.missingWorker &&
     blockedReason !== t.issue.targetRequired
       ? blockedReason
@@ -342,7 +399,16 @@ export const RepackLabelIssueScreen = () => {
       <PuScreen
         actionBar={
           <PuActionBar>
-            <PuButton disabled={!canPreview} onClick={openPreview}>
+            <PuButton
+              disabled={!canPreview}
+              onClick={
+                isReissue
+                  ? openPreview
+                  : () => {
+                      setIssuePreviewOpen(true);
+                    }
+              }
+            >
               {isReissue ? t.issue.previewReissue : t.issue.preview}
             </PuButton>
             <PuButton variant="primary" onClick={submit} disabled={isBlocked}>
@@ -359,25 +425,69 @@ export const RepackLabelIssueScreen = () => {
       >
         <PuCols variant="list" className="rpk-cols">
           <PuSection
-            title={t.pending.sectionLabel}
-            meta={<PuCount>{(pending.data ?? []).length}</PuCount>}
+            head={
+              <PuSeg
+                label={t.pending.tabsLabel}
+                value={tab}
+                options={[
+                  {
+                    value: 'WAIT' as const,
+                    disabled: isSubmitting,
+                    label: (
+                      <>
+                        {t.pending.sectionLabel}
+                        {pending.data === undefined ? null : (
+                          <PuCount>{pending.data.length}</PuCount>
+                        )}
+                      </>
+                    ),
+                  },
+                  {
+                    value: 'REISSUE' as const,
+                    disabled: isSubmitting,
+                    label: t.pending.reissueTab,
+                  },
+                ]}
+                onChange={chooseTab}
+              />
+            }
             fold={{
-              label: t.pending.sectionLabel,
+              label: tab === 'WAIT' ? t.pending.sectionLabel : t.pending.reissueTab,
               folded: isListFolded,
               onChange: setListFolded,
             }}
             bodyClassName="rpk-left"
           >
             <PendingPane
-              rows={pending.data ?? []}
+              key={tab}
+              rows={listQuery.data ?? []}
               selectedId={selectedHandlingUnitId}
-              isLoading={pending.isPending}
-              isError={pending.isError}
-              isUnsupported={isPendingListUnsupported()}
+              isLoading={listQuery.isPending}
+              isError={listQuery.isError}
+              scan={
+                tab === 'REISSUE' ? (
+                  <PuScanField
+                    label={t.pending.scanLabel}
+                    value={scanValue}
+                    placeholder={t.pending.scanPlaceholder}
+                    disabled={isSubmitting}
+                    error={scanError ?? undefined}
+                    manual={{ title: t.pending.manualTitle, label: t.pending.scanLabel }}
+                    onChange={(value) => {
+                      setScanValue(value);
+                      setScanError(null);
+                    }}
+                    onSubmit={submitScan}
+                  />
+                ) : undefined
+              }
               disabled={isSubmitting}
-              onSelect={selectHandlingUnit}
+              onSelect={(row) => {
+                setScanError(null);
+                selectHandlingUnit(row);
+              }}
               onRetry={() => {
-                void pending.refetch();
+                void listQuery.refetch();
               }}
             />
           </PuSection>
@@ -511,7 +621,10 @@ export const RepackLabelIssueScreen = () => {
             )}
 
             {selectedRow === null ? (
-              <PuEmpty icon="list" title={t.entry.missingHandlingUnit} />
+              <PuEmpty
+                icon="list"
+                title={tab === 'WAIT' ? t.entry.missingHandlingUnit : t.entry.missingReissue}
+              />
             ) : handlingUnit.data === undefined ? (
               <PuEmpty
                 icon={handlingUnit.isError ? 'bad' : 'box'}
@@ -542,8 +655,8 @@ export const RepackLabelIssueScreen = () => {
                     void standingQuery.refetch();
                   }}
                 />
-                {/* 발행 이력은 한 번이라도 발행한 포장에만 선다 — 발행 대기에서는 늘 비어 있다(시안). */}
-                {(history.isError || (history.data ?? []).length > 0) && (
+                {/* 발행 이력은 「재발행」 탭에서만 선다 — 발행 대기에서는 늘 비어 있다(시안). */}
+                {tab === 'REISSUE' && (history.isError || (history.data ?? []).length > 0) && (
                   <HistoryPane issues={history.data ?? []} isFailed={history.isError} />
                 )}
               </>
@@ -557,6 +670,29 @@ export const RepackLabelIssueScreen = () => {
           printerName={printerName}
           onPrinterChange={setPickedPrinter}
         />
+
+        {issuePreviewOpen && selectedHandlingUnitId !== null && (
+          <IssuePreviewDialog
+            draw={drawLabel}
+            targets={selectedIds.map((handlingUnitId) => ({
+              handlingUnitId,
+              /* 미리보기에 찍는 회차는 «다음» 회차 — 실제 회차는 서버가 매긴다. */
+              issueSeq:
+                (handlingUnitId === selectedHandlingUnitId
+                  ? (standing.issueCount ?? 0)
+                  : (remainderList.find((c) => c.handlingUnit.handlingUnitId === handlingUnitId)
+                      ?.standing.issueCount ?? 0)) + 1,
+            }))}
+            canIssue={!isBlocked}
+            onIssue={() => {
+              setIssuePreviewOpen(false);
+              submit();
+            }}
+            onClose={() => {
+              setIssuePreviewOpen(false);
+            }}
+          />
+        )}
 
         <PreviewDialog
           open={dialog !== null && (dialog.mode === 'reason' || phase !== 'renditionFailed')}

@@ -12,6 +12,8 @@ export const repackLabelIssue = {
     handlingUnitLabel: '포장',
     workerLabel: '사번',
     missingHandlingUnit: '발행 대기 목록에서 대상 포장을 선택하세요.',
+    /** 재발행 탭에서 아직 고르지 않았다(#295 시안). */
+    missingReissue: '재발행 목록에서 포장을 고르거나 포장 번호를 스캔하세요.',
     missingWorker: '사번이 확인되지 않아 라벨을 발행할 수 없습니다. 사번 인증을 먼저 하세요.',
   },
 
@@ -77,9 +79,22 @@ export const repackLabelIssue = {
     /** 목록 위 찾기 칸 — 넣는 대로 목록이 줄어든다(#295 시안). */
     searchPlaceholder: '포장 번호 또는 원 포장',
     searchEmpty: '찾는 포장이 없습니다.',
-    /* 다시 시도해도 풀리지 않는다 — 서버가 이 목록의 조건을 아직 제공하지 않는다(#1095). */
-    unsupported:
-      '발행 대기 목록은 아직 서버가 지원하지 않습니다. 서버가 준비되면 이 화면에서 대상을 고를 수 있습니다.',
+    /** 왼쪽 탭(#295 시안) — 발행 대기 = 발행 기록 없는 포장, 재발행 = 한 번 이상 발행한 포장. */
+    tabsLabel: '목록 보기',
+    reissueTab: '재발행',
+    reissueCaption: '라벨을 한 번 이상 발행한 포장',
+    reissueEmpty: '재발행할 포장이 없습니다.',
+    reissueLoadFailed: '재발행 목록을 불러오지 못했습니다.',
+    /** 재발행 목록 줄의 발행 횟수. */
+    issuedColumn: '발행',
+    issuedCount: (count: number): string => `${String(count)}회`,
+    /** 재발행 탭의 포장 라벨 스캔 칸. */
+    scanLabel: '포장 번호',
+    scanPlaceholder: '포장 라벨을 스캔하세요',
+    manualTitle: '재발행 포장 찾기',
+    scanNotIssued: (code: string): string =>
+      `「${code}」 — 아직 발행하지 않은 포장입니다. 「발행 대기」에서 발행하세요.`,
+    scanMissing: (code: string): string => `「${code}」 — 재발행할 포장에 없습니다.`,
   },
 
   /** 단말 기능 구성 판정. 「확인할 수 없다」와 「권한이 없다」를 다르게 말한다. */
@@ -89,11 +104,10 @@ export const repackLabelIssue = {
     unavailable: '출력 권한을 확인할 수 없습니다. 잠시 후 다시 시도하세요.',
     unidentified: '단말이 확인되지 않아 라벨을 발행할 수 없습니다.',
     /**
-     * ⛔ 온라인 전용이다(스펙 §6) — 라벨을 서버가 그리므로 끊긴 채로는 발행해도 인쇄할 것이
-     * 오지 않는다. 큐에 쌓아 두는 갈래를 두지 않는다.
+     * ⛔ 온라인 전용이다(스펙 §6) — 발행 기록과 라벨에 실을 값을 서버에서 받아야 한다.
+     * 큐에 쌓아 두는 갈래를 두지 않는다.
      */
-    offline:
-      '연결이 끊겨 라벨을 발행할 수 없습니다. 라벨은 서버가 그립니다 — 연결된 뒤에 다시 하세요.',
+    offline: '연결이 끊겨 라벨을 발행할 수 없습니다. 연결된 뒤에 다시 하세요.',
   },
 
   /** 화면 머리의 장비 상태 — 인쇄가 안 될 때 가장 먼저 보는 자리다. */
@@ -197,16 +211,18 @@ export const repackLabelIssue = {
     gateRetry: '다시 확인',
   },
 
-  /** 미리보기 — 서버가 그린 라벨을 그대로 보인다(결정 18 · K-5). */
+  /** 미리보기 — 포장 라벨은 POP 이 그린다(omf-all-around#327). */
   preview: {
     title: '라벨 미리보기·재인쇄',
+    /** 발행 대기 — 발행 전에 라벨 모양을 보고 창에서 바로 발번·인쇄(#295 시안). */
+    issueTitle: '라벨 발행 미리 보기',
     /** [발번·인쇄]에서 사유가 필요할 때 여는 창의 제목. */
     reasonTitle: '재인쇄 사유 선택',
-    alt: '발행된 라벨 이미지',
-    loading: '라벨을 받는 중입니다.',
-    failed: '라벨 이미지를 받지 못했습니다.',
-    /** 받기는 했는데 그려지지 않는다 — 「못 받았다」와 다른 사실이라 따로 말한다. */
-    notDrawable: '받은 라벨을 화면에 그릴 수 없습니다. 인쇄는 그대로 할 수 있습니다.',
+    alt: '라벨 이미지',
+    loading: '라벨을 그리는 중입니다.',
+    failed: '라벨을 그리지 못했습니다.',
+    /** 만들기는 했는데 화면에 그려지지 않는다 — 「못 그렸다」와 다른 사실이라 따로 말한다. */
+    notDrawable: '라벨을 화면에 보일 수 없습니다. 인쇄는 그대로 할 수 있습니다.',
     printCount: (count: number): string => `${String(count)}장 재인쇄`,
     close: '취소',
   },

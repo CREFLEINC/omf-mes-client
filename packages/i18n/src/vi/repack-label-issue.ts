@@ -8,6 +8,7 @@ export const repackLabelIssue: Translated<typeof ko.repackLabelIssue> = {
     handlingUnitLabel: 'Kiện',
     workerLabel: 'Mã nhân viên',
     missingHandlingUnit: 'Hãy chọn kiện trong danh sách chờ phát hành.',
+    missingReissue: 'Hãy chọn kiện trong danh sách phát hành lại hoặc quét số kiện.',
     missingWorker:
       'Chưa xác nhận mã nhân viên nên không phát hành nhãn được. Hãy xác nhận mã nhân viên trước.',
   },
@@ -41,8 +42,19 @@ export const repackLabelIssue: Translated<typeof ko.repackLabelIssue> = {
     loadFailed: 'Không tải được danh sách chờ phát hành.',
     searchPlaceholder: 'Số kiện hoặc kiện gốc',
     searchEmpty: 'Không có kiện cần tìm.',
-    unsupported:
-      'Máy chủ chưa hỗ trợ danh sách chờ phát hành. Khi máy chủ sẵn sàng, có thể chọn đối tượng ở màn hình này.',
+    tabsLabel: 'Xem danh sách',
+    reissueTab: 'Phát hành lại',
+    reissueCaption: 'Kiện đã phát hành nhãn ít nhất một lần',
+    reissueEmpty: 'Không có kiện để phát hành lại.',
+    reissueLoadFailed: 'Không tải được danh sách phát hành lại.',
+    issuedColumn: 'Phát hành',
+    issuedCount: (count: number): string => `${String(count)} lần`,
+    scanLabel: 'Số kiện',
+    scanPlaceholder: 'Quét nhãn kiện',
+    manualTitle: 'Tìm kiện phát hành lại',
+    scanNotIssued: (code: string): string =>
+      `「${code}」 — Kiện chưa phát hành. Hãy phát hành ở 「Chờ phát hành」.`,
+    scanMissing: (code: string): string => `「${code}」 — Không có trong danh sách phát hành lại.`,
   },
 
   gate: {
@@ -50,8 +62,7 @@ export const repackLabelIssue: Translated<typeof ko.repackLabelIssue> = {
     denied: 'Máy trạm này không in nhãn được. Hãy hỏi người phụ trách.',
     unavailable: 'Không kiểm tra được quyền in. Hãy thử lại sau.',
     unidentified: 'Chưa xác nhận được máy trạm nên không phát hành nhãn được.',
-    offline:
-      'Mất kết nối nên không phát hành nhãn được. Nhãn do máy chủ tạo — hãy làm lại khi có kết nối.',
+    offline: 'Mất kết nối nên không phát hành nhãn được. Hãy làm lại khi có kết nối.',
   },
 
   device: {
@@ -137,11 +148,12 @@ export const repackLabelIssue: Translated<typeof ko.repackLabelIssue> = {
 
   preview: {
     title: 'Xem trước · In lại nhãn',
+    issueTitle: 'Xem trước nhãn phát hành',
     reasonTitle: 'Chọn lý do in lại',
-    alt: 'Hình ảnh nhãn đã phát hành',
-    loading: 'Đang nhận nhãn.',
-    failed: 'Không nhận được hình ảnh nhãn.',
-    notDrawable: 'Không hiện được nhãn đã nhận lên màn hình. Vẫn in được bình thường.',
+    alt: 'Hình ảnh nhãn',
+    loading: 'Đang tạo nhãn.',
+    failed: 'Không tạo được nhãn.',
+    notDrawable: 'Không hiện được nhãn lên màn hình. Vẫn in được bình thường.',
     printCount: (count: number): string => `In lại ${String(count)} tờ`,
     close: 'Hủy',
   },

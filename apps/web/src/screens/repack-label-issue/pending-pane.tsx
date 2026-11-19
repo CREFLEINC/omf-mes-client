@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import {
   PuButton,
@@ -7,6 +7,7 @@ import {
   PuEmpty,
   PuIcon,
   PuPager,
+  PuTextKeyboard,
   useClientPage,
   useFitCount,
 } from '../../patterns/pop-uniform';
@@ -20,8 +21,11 @@ export interface PendingPaneProps {
   selectedId: number | null;
   isLoading: boolean;
   isError: boolean;
-  /** 배포본에서 서버에 목록 조건이 없어 목록 자체를 세울 수 없는 상태인가(#1095). */
-  isUnsupported: boolean;
+  /**
+   * 재발행 탭이면 찾기 칸 대신 `scan`(포장 라벨 스캔 칸)을 세우고, 줄에 발행 횟수를 보인다
+   * (#295 시안).
+   */
+  scan?: ReactNode;
   disabled: boolean;
   onSelect: (row: PendingRepackRow) => void;
   onRetry: () => void;
@@ -54,7 +58,7 @@ export const PendingPane = ({
   selectedId,
   isLoading,
   isError,
-  isUnsupported,
+  scan,
   disabled,
   onSelect,
   onRetry,
@@ -62,15 +66,26 @@ export const PendingPane = ({
   const [query, setQuery] = useState('');
   const fitRef = useRef<HTMLDivElement>(null);
   const size = useFitCount(fitRef, { fallback: 4 });
-  const shown = rows.filter((row) => matches(row, query));
+  const isReissue = scan !== undefined;
+  const shown = isReissue ? rows : rows.filter((row) => matches(row, query));
   const page = useClientPage(shown, size);
+  /* 스캔으로 고른 줄이 다른 쪽에 있으면 그 쪽을 보인다. */
+  const selectedIndex = shown.findIndex((row) => row.handlingUnitId === selectedId);
+  const { showIndex } = page;
+  useEffect(() => {
+    if (selectedIndex >= 0) showIndex(selectedIndex - (selectedIndex % Math.max(1, size)));
+  }, [selectedIndex, showIndex, size]);
+  /* 검색 칸을 누르면 칸 바로 아래에 글자판을 연다(사용자 지시 2026-11-19). 글자판으로 쳐도 손으로 친 것과 같다. */
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const changeQuery = (next: string): void => {
+    setQuery(next);
+    page.setPage(1);
+  };
 
   const body = ((): ReactNode => {
-    /* 서버가 아직 이 목록 조건을 주지 않는다 — 다시 해도 같으므로 재시도 단추를 두지 않는다. */
-    if (isUnsupported) return <PuEmpty icon="list" title={t.unsupported} />;
     if (isError) {
       return (
-        <PuEmpty icon="bad" title={t.loadFailed}>
+        <PuEmpty icon="bad" title={isReissue ? t.reissueLoadFailed : t.loadFailed}>
           <PuButton size="sm" onClick={onRetry}>
             {messages.common.retry}
           </PuButton>
@@ -79,10 +94,10 @@ export const PendingPane = ({
     }
     if (shown.length === 0) {
       if (isLoading) return <PuEmpty icon="list" title={t.loading} />;
-      return query.trim() !== '' && rows.length > 0 ? (
+      return !isReissue && query.trim() !== '' && rows.length > 0 ? (
         <PuEmpty icon="search" title={t.searchEmpty} />
       ) : (
-        <PuEmpty icon="box" title={t.empty} />
+        <PuEmpty icon="box" title={isReissue ? t.reissueEmpty : t.empty} />
       );
     }
 
@@ -91,22 +106,45 @@ export const PendingPane = ({
 
   return (
     <>
-      <div className="pu-input pu-search">
-        <PuIcon name="search" />
-        <input
-          value={query}
-          placeholder={t.searchPlaceholder}
-          aria-label={t.searchPlaceholder}
-          autoComplete="off"
-          onChange={(event) => {
-            setQuery(event.target.value);
-            page.setPage(1);
+      {scan ?? (
+        <div className="pu-input pu-search">
+          <PuIcon name="search" />
+          <input
+            value={query}
+            placeholder={t.searchPlaceholder}
+            aria-label={t.searchPlaceholder}
+            autoComplete="off"
+            onFocus={() => {
+              setKeyboardOpen(true);
+            }}
+            onBlur={() => {
+              setKeyboardOpen(false);
+            }}
+            onChange={(event) => {
+              changeQuery(event.target.value);
+            }}
+          />
+        </div>
+      )}
+      {!isReissue && keyboardOpen && (
+        /* 글자판의 빈 곳·꺼진 키를 눌러도 칸에서 초점이 빠져 닫히지 않게 한다. */
+        <div
+          className="rpk-kbd"
+          onMouseDown={(event) => {
+            event.preventDefault();
           }}
-        />
-      </div>
+        >
+          <PuTextKeyboard value={query} onChange={changeQuery} />
+        </div>
+      )}
       {body ?? (
         <>
-          <div ref={fitRef} className="pu-list pu-fit rpk-list" role="group" aria-label={t.caption}>
+          <div
+            ref={fitRef}
+            className="pu-list pu-fit rpk-list"
+            role="group"
+            aria-label={isReissue ? t.reissueCaption : t.caption}
+          >
             {page.items.map((row) => {
               const selected = row.handlingUnitId === selectedId;
               const sourceText = sourceTextOf(row);
@@ -145,6 +183,11 @@ export const PendingPane = ({
                     <span>
                       {t.occurredColumn} <b>{localDateTimeText(row.occurredAt, t.unknown)}</b>
                     </span>
+                    {row.issueCount !== null && (
+                      <span>
+                        {t.issuedColumn} <b>{t.issuedCount(row.issueCount)}</b>
+                      </span>
+                    )}
                   </span>
                 </button>
               );
