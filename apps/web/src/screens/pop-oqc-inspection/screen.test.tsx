@@ -159,6 +159,26 @@ describe('PopOqcInspectionScreen (P-04-06)', () => {
     expect(screen.getByLabelText(pop.result.fields.accepted)).toHaveValue('480');
   });
 
+  it('합격 수량 = 검사 수량이면 2단계에서 종합 판정이 「합격」으로 골라져 있고, 수량을 바꾸면 지워진다', async () => {
+    const user = userEvent.setup();
+    renderScreen('900028');
+
+    await openWaitingRequest(user);
+    await user.type(screen.getByLabelText(pop.result.fields.accepted), '500');
+    await user.type(screen.getByLabelText(pop.result.fields.rejected), '0');
+    await user.type(screen.getByLabelText(pop.result.fields.held), '0');
+    await user.click(screen.getByRole('button', { name: pop.bar.next }));
+    expect(screen.getByRole('radio', { name: '합격' })).toHaveAttribute('aria-checked', 'true');
+
+    await user.click(screen.getByRole('button', { name: pop.bar.prev }));
+    await user.clear(screen.getByLabelText(pop.result.fields.accepted));
+    await user.type(screen.getByLabelText(pop.result.fields.accepted), '490');
+    await user.clear(screen.getByLabelText(pop.result.fields.rejected));
+    await user.type(screen.getByLabelText(pop.result.fields.rejected), '10');
+    await user.click(screen.getByRole('button', { name: pop.bar.next }));
+    expect(screen.getByRole('radio', { name: '합격' })).toHaveAttribute('aria-checked', 'false');
+  });
+
   it('판정별 LOT 상태를 서버 전이와 같은 말로 미리 말한다(합격 → 정상 · 보류 → 검사 대기 · 불합격 → 불량)', async () => {
     const user = userEvent.setup();
     renderScreen('900028');

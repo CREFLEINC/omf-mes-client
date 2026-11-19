@@ -20,6 +20,7 @@ import {
   pageOf,
   puToast,
   useFitCount,
+  useFitTableRows,
 } from '../../patterns/pop-uniform';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -43,17 +44,11 @@ import {
   useSaveInspectionResult,
 } from '../oqc-inspection/queries';
 import { serialBlockedReason, toSerialInputs, type SerialRow } from '../oqc-inspection/serials';
-import {
-  formatDateTime,
-  latestRound,
-  orderedRounds,
-  type InspectionResultRound,
-} from '../oqc-inspection/types';
+import { formatDateTime, latestRound, orderedRounds } from '../oqc-inspection/types';
 import { targetSignatureOf, type WriteTargetSignature } from '../oqc-inspection/write-target';
 import {
   PopConfirmDialog,
   PopJudgmentStep,
-  PopQtySummary,
   PopQuantityStep,
   judgmentTone,
   usePopJudgment,
@@ -66,49 +61,6 @@ import './uniform.css';
 const t = messages.popOqcInspection;
 
 type Step = 'quantity' | 'judgment';
-
-/** 판정 결과(회차별) 한 줄 — 최근 회차가 위. */
-const RoundResult = ({
-  round,
-  latest,
-  judgmentOptions,
-}: {
-  round: InspectionResultRound;
-  latest: boolean;
-  judgmentOptions: Parameters<typeof labelOfCode>[0];
-}) => (
-  <div className={latest ? 'oqc-res' : 'oqc-res is-old'}>
-    <div className="oqc-res-top">
-      <span className="oqc-res-r">{t.result.round(round.inspectionRound)}</span>
-      <PuChip tone={judgmentTone(round.overallJudgmentCode)}>
-        {labelOfCode(judgmentOptions, round.overallJudgmentCode)}
-      </PuChip>
-      {round.confirmedAt !== null && (
-        <span className="oqc-res-at">
-          {t.result.confirmedAt(formatDateTime(round.confirmedAt))}
-        </span>
-      )}
-    </div>
-    {/* 회차 결과는 네 칸 카드(사용자 시안 2026-11-19) — 합격 초록 · 불합격 빨강, 숫자 뒤에 단위. */}
-    <div className="oqc-res-cards">
-      {(
-        [
-          ['inspected', t.result.summary.inspectedQty, round.inspectedQty],
-          ['accepted', t.result.summary.accepted, round.acceptedQty],
-          ['rejected', t.result.summary.rejected, round.rejectedQty],
-          ['held', t.result.summary.held, round.heldQty],
-        ] as const
-      ).map(([key, label, qty]) => (
-        <div key={key} className="oqc-res-card" data-kind={key}>
-          <span className="oqc-res-card-label">{label}</span>
-          <span className="oqc-res-card-value">
-            <b>{String(qty)}</b> {t.result.summary.unit}
-          </span>
-        </div>
-      ))}
-    </div>
-  </div>
-);
 
 /**
  * P-04-06 OQC 출하검사 판정(POP · omf-all-around#109 · #295 POP 통일).
@@ -177,6 +129,8 @@ export const PopOqcInspectionScreen = () => {
   const judgmentValues = useCodeValues(CODE_GROUPS.overallJudgment);
   const judgmentOptions = toCodeOptions(judgmentValues.data ?? []);
   const [judgment, setJudgment] = useState('');
+  /* 종합 판정을 화면이 스스로 「합격」으로 넣었는가 — 수량이 바뀌면 그것만 되돌린다. */
+  const autoJudgmentRef = useRef(false);
   /* 검사한 시리얼(omf-all-around#68) — 의뢰를 바꾸거나 저장에 성공하거나 재검사를 열고 닫으면 비운다. */
   const [serialRows, setSerialRows] = useState<SerialRow[]>([]);
 
@@ -220,6 +174,7 @@ export const PopOqcInspectionScreen = () => {
   /* R1·R2 — 값으로 되돌리고, 의존성에 `selectedId` 가 반드시 든다(회차 없는 의뢰끼리 옮길 때). */
   useEffect(() => {
     setIsReinspecting(false);
+    autoJudgmentRef.current = false;
     setJudgment(storedJudgment);
     setDraft(draftOf(roundId === null ? null : { acceptedQty, rejectedQty, heldQty }));
     /* 다른 의뢰·새 회차면 1단계부터. */
@@ -241,6 +196,14 @@ export const PopOqcInspectionScreen = () => {
     puToast(savedToastRef.current);
     savedToastRef.current = null;
   }, [isJustSaved]);
+
+  useEffect(() => {
+    if (!autoJudgmentRef.current) return;
+    if (draft.accepted.trim() !== '' && Number(draft.accepted) === inspectedQty) return;
+    autoJudgmentRef.current = false;
+    setJudgment('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.accepted]);
 
   const rows = queue.data?.rows ?? [];
 
@@ -323,15 +286,27 @@ export const PopOqcInspectionScreen = () => {
     : !canConfirm(judgmentState.totals) || hasQuantityError(judgmentState.errors)
       ? t.bar.blocked.totals
       : null;
+  /*
+   * 합격 수량 = 검사 수량이면 2단계에 들어갈 때 종합 판정을 「합격」으로 미리 고른다(시안 · 사용자 지적
+   * 2026-11-19). 다른 판정으로 바꿀 수 있고, 수량을 바꿔 전부 합격이 아니게 되면 자동으로 넣은 합격만 지운다.
+   */
+  const allAccepted =
+    draft.accepted.trim() !== '' && Number(draft.accepted) === inspectedQty && inspectedQty > 0;
   const goJudgment = (): void => {
-    if (nextReason === null) setStep('judgment');
+    if (nextReason !== null) return;
+    if (judgment === '' && allAccepted && judgmentOptions.some((o) => o.value === 'ACCEPTED')) {
+      setJudgment('ACCEPTED');
+      autoJudgmentRef.current = true;
+    }
+    setStep('judgment');
   };
   const keypadOn = editable && inQuantity && !save.isSaving;
   const isShipment = detail.data?.targetTypeCode === 'SHIPMENT_REQUEST';
   const ngSerials = serialRows.filter((row) => row.judgment === 'NG').length;
 
   const resultRef = useRef<HTMLDivElement>(null);
-  const resultSize = useFitCount(resultRef, { fallback: 3 });
+  /* 회차 결과는 표 — 한 쪽 줄 수는 구획 높이만큼(사용자 지시 2026-11-19). */
+  const resultSize = useFitTableRows(resultRef, { fallback: 5 });
   const [resultPage, setResultPage] = useState(1);
   useEffect(() => {
     setResultPage(1);
@@ -434,15 +409,43 @@ export const PopOqcInspectionScreen = () => {
         <>
           {band}
           {!judgmentState.isConfirmed && <PuNote tone="warn">{t.result.draftElsewhere}</PuNote>}
-          <div ref={resultRef} className="oqc-res-list pu-fit">
-            {results.items.map((item, index) => (
-              <RoundResult
-                key={item.inspectionResultId}
-                round={item}
-                latest={results.page === 1 && index === 0}
-                judgmentOptions={judgmentOptions}
-              />
-            ))}
+          {/* 회차 결과 표(사용자 지시 2026-11-19) — 합격 초록 · 불합격 빨강 · 보류 노랑. 최근 회차가 위. */}
+          {/* 표 전체 가운데 정렬(사용자 지시 2026-11-19). */}
+          <div ref={resultRef} className="oqc-res-table pu-fit">
+            <div className="pu-table-wrap">
+              <table className="pu-table">
+                <thead>
+                  <tr>
+                    <th className="mid">{t.result.columns.round}</th>
+                    <th className="mid">{t.result.columns.judgment}</th>
+                    <th className="mid">{t.result.summary.inspectedQty}</th>
+                    <th className="mid">{t.result.summary.accepted}</th>
+                    <th className="mid">{t.result.summary.rejected}</th>
+                    <th className="mid">{t.result.summary.held}</th>
+                    <th className="fit mid">{t.result.columns.confirmedAt}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {results.items.map((item) => (
+                    <tr key={item.inspectionResultId}>
+                      <td className="mid">{t.result.round(item.inspectionRound)}</td>
+                      <td className="mid">
+                        <PuChip tone={judgmentTone(item.overallJudgmentCode)}>
+                          {labelOfCode(judgmentOptions, item.overallJudgmentCode)}
+                        </PuChip>
+                      </td>
+                      <td className="mid">{String(item.inspectedQty)}</td>
+                      <td className="mid oqc-q-ok">{String(item.acceptedQty)}</td>
+                      <td className="mid oqc-q-bad">{String(item.rejectedQty)}</td>
+                      <td className="mid oqc-q-warn">{String(item.heldQty)}</td>
+                      <td className="fit mid">
+                        {item.confirmedAt === null ? '—' : formatDateTime(item.confirmedAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
           <PuPager
             total={results.total}
@@ -477,7 +480,10 @@ export const PopOqcInspectionScreen = () => {
             inspectedQty={inspectedQty}
             judgmentOptions={judgmentOptions}
             judgment={judgment}
-            onJudgmentChange={setJudgment}
+            onJudgmentChange={(code) => {
+              autoJudgmentRef.current = false;
+              setJudgment(code);
+            }}
             disabled={!editable || save.isSaving}
             hasLot={detail.data.lotId !== null}
             fieldErrors={save.fieldErrors}

@@ -78,8 +78,8 @@ export const popOqcInspection = {
       accepted: 'Đạt',
       rejected: 'Không đạt',
       held: 'Tạm giữ',
-      unit: 'cái',
     },
+    columns: { round: 'Lượt', judgment: 'Kết luận', confirmedAt: 'Thời điểm xác nhận' },
     confirmedAt: (at: string): string => `Xác nhận ${at}`,
   },
 
