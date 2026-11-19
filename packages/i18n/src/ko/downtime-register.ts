@@ -130,7 +130,7 @@ export const downtimeRegister = {
     retry: '다시 시도',
     /* ④ 목록의 열 이름 — 스펙 §7 이 이 자리를 `Table` 로 지정했다. */
     columns: {
-      interval: '일시',
+      interval: '시각',
       duration: '비가동 시간',
       reason: '사유',
       remarks: '메모',
