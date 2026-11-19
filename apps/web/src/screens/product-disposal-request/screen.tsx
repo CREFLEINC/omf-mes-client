@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { ScreenHeader } from '../../patterns/screen-header';
 import { progressSummary, toProgressSteps } from './approval-progress';
 import { HistoryPane, type ApprovalView } from './history-pane';
 import { useIssueReasonCodes, useIssueTypeCodes, useItemNames, useUomLookup } from './lookups';
@@ -425,7 +426,7 @@ export const ProductDisposalRequestScreen = () => {
 
   return (
     <>
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb

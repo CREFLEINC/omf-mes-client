@@ -6,6 +6,7 @@ import { useApiClient } from '../../patterns/api-context';
 import type { LookupSource } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
+import { ScreenHeader } from '../../patterns/screen-header';
 import {
   deactivateAvailability,
   disposeAvailability,
@@ -343,7 +344,7 @@ export const ToolMasterScreen = () => {
 
   return (
     <div className="screen tool-master-screen">
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb

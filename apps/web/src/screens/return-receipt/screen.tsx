@@ -55,6 +55,7 @@ import {
 import { SearchPane } from './search-pane';
 import { ShipmentList } from './shipment-list';
 import { toLotLineSource, toReturnLineSources, type ShipmentRow } from './types';
+import { ScreenHeader } from '../../patterns/screen-header';
 
 const selectionKeyOf = (selection: Selection): string =>
   selection.kind === 'shipment' ? `shipment:${String(selection.shipmentId)}` : selection.kind;
@@ -221,7 +222,7 @@ export const ReturnReceiptScreen = () => {
 
   return (
     <>
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb

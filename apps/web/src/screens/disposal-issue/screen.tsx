@@ -12,6 +12,7 @@ import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'rea
 import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { ScreenHeader } from '../../patterns/screen-header';
 
 import {
   hasPostedLine,
@@ -1415,14 +1416,12 @@ export const DisposalIssueScreen = () => {
   const toResultSummary = (created: IssueDetailResult) => ({
     goodsIssueNo: created.issue.goodsIssueNo,
     statusCode: created.issue.statusCode,
-    lines: created.lines.map(
-      (line, index): ResultLineSummary => ({
-        ordinal: index + 1,
-        item: itemNameOf(line.itemId),
-        lot: lotNameOf(line.lotId),
-        qty: qtyTextOf(line.issueQty, line.uomId),
-      }),
-    ),
+    lines: created.lines.map((line, index): ResultLineSummary => ({
+      ordinal: index + 1,
+      item: itemNameOf(line.itemId),
+      lot: lotNameOf(line.lotId),
+      qty: qtyTextOf(line.issueQty, line.uomId),
+    })),
   });
 
   /**
@@ -1664,7 +1663,10 @@ export const DisposalIssueScreen = () => {
   };
 
   /** 이력 탭의 재상신 — 판정도 본문도 발의 자리와 **같은 파일**에서 나온다. */
-  const resubmitBlock = resubmitBlockReason({ submission: submission.kind, reason: resubmitReason });
+  const resubmitBlock = resubmitBlockReason({
+    submission: submission.kind,
+    reason: resubmitReason,
+  });
 
   const findResubmitBlocked = (): string | undefined => {
     if (readReason(resubmitReason).kind === 'empty') return t.errors.reasonRequired;
@@ -1800,8 +1802,7 @@ export const DisposalIssueScreen = () => {
    * 이력 라인 표의 참조 실패. **넷을 하나로 접어 넘긴다** — 안내 문구가 넷을 함께 적고
    * 「다시 시도」가 넷을 함께 부르므로, 판정도 같은 범위여야 문구와 조치가 어긋나지 않는다.
    */
-  const hasLineReferenceError =
-    items.isError || uoms.isError || lots.isError || locations.isError;
+  const hasLineReferenceError = items.isError || uoms.isError || lots.isError || locations.isError;
 
   const disposalTabContent: ReactNode = (
     <>
@@ -2386,7 +2387,7 @@ export const DisposalIssueScreen = () => {
 
   return (
     <>
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb

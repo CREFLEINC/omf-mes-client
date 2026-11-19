@@ -17,6 +17,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
+import { ScreenHeader } from '../../patterns/screen-header';
 import {
   CODE_GROUPS,
   type CodeOption,
@@ -1383,7 +1384,7 @@ export const EquipmentMasterScreen = () => {
 
   return (
     <>
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb

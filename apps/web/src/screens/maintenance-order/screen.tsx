@@ -14,6 +14,7 @@ import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { ScreenHeader } from '../../patterns/screen-header';
 import { LoadErrorBanner } from './load-error-banner';
 import {
   lookupNote,
@@ -212,7 +213,7 @@ export const MaintenanceOrderScreen = () => {
 
   return (
     <>
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb

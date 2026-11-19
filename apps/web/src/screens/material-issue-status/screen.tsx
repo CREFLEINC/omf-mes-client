@@ -15,6 +15,7 @@ import { useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { plantToday } from '../../patterns/plant-time';
+import { ScreenHeader } from '../../patterns/screen-header';
 import { Select } from '../../patterns/select';
 import { DetailPanel } from './detail-panel';
 import {
@@ -380,7 +381,7 @@ export const MaterialIssueStatusScreen = () => {
 
   return (
     <>
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb

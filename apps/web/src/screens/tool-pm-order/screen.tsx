@@ -18,6 +18,7 @@ import { useId, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { createLocalKey } from '../../patterns/local-key';
+import { ScreenHeader } from '../../patterns/screen-header';
 import { FieldLabel } from './field-label';
 import { LoadErrorBanner } from './load-error-banner';
 import { lookupNote, usePlantOptions, useUserOptions } from './lookups';
@@ -222,7 +223,7 @@ export const ToolPmOrderScreen = () => {
 
   return (
     <>
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb

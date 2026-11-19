@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { ScreenHeader } from '../../patterns/screen-header';
 import { resolveLineOrigins } from './bom-origin';
 import { ExistingRequestBanner } from './existing-request-banner';
 import { addLineDraft, patchLineDraft, removeLineDraft, replaceShortageDrafts } from './line-draft';
@@ -634,7 +635,7 @@ export const MaterialIssueRequestScreen = () => {
 
   return (
     <>
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb

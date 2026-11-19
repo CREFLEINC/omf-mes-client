@@ -20,6 +20,7 @@ import { useId, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { BulkResult, type BulkResultFilter } from '../../patterns/bulk-result';
+import { ScreenHeader } from '../../patterns/screen-header';
 import { Select } from '../../patterns/select';
 import { PageNav } from '../../patterns/page-nav';
 import { SelectableTable } from '../../patterns/selectable-table';
@@ -300,7 +301,7 @@ export const ProductionOrderScreen = ({
 
   return (
     <>
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb
