@@ -4,3 +4,4 @@ export * from './field';
 export * from './icon';
 export * from './layout';
 export * from './pager';
+export * from './text-keyboard';

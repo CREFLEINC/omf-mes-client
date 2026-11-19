@@ -261,11 +261,12 @@ export const popMaterialLotLabel = {
   },
   /** 대기 LOT 폐기 확인(US1-7 · FR-005). */
   voidDialog: {
-    title: (count: number) => `입하 대기 자재 관리 LOT ${count}개를 폐기할까요?`,
-    body: '폐기하면 PDA 입하 스캔에서 거부되고, 번호는 다시 매기지 않습니다.',
+    title: '자재 관리 LOT를 폐기하시겠습니까?',
+    target: (count: number) => `폐기 대상 · ${count}건`,
+    body: '폐기 후에는 해당 LOT로 입하 처리할 수 없으며, 폐기한 LOT 번호는 재사용할 수 없습니다.',
     printed: (count: number) => `라벨을 이미 출력한 ${count}개는 라벨을 떼어 버리세요.`,
     cancel: '취소',
-    confirm: (count: number) => `${count}개 폐기`,
+    confirm: '폐기',
     done: (count: number) => `자재 관리 LOT ${count}개를 폐기했습니다`,
     partial: (count: number, failed: number) => `자재 관리 LOT ${count}개 폐기 · 실패 ${failed}`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
     failed: '폐기하지 못했습니다.',

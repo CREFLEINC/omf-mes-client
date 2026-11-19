@@ -15,6 +15,13 @@ export const popUniform = {
     backspace: '한 자 지움',
     region: '숫자 키패드',
   },
+  textKeyboard: {
+    region: '글자판',
+    shift: '쌍자음·대문자',
+    lang: '한/영',
+    numbers: '123',
+    space: '띄어쓰기',
+  },
   pager: {
     total: (total: number): string => `총 ${String(total)}건`,
     position: (page: number, pages: number): string =>

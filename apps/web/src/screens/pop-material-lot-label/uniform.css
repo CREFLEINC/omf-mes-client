@@ -294,12 +294,38 @@
   padding-left: 22px;
 }
 
+.mll-void {
+  display: grid;
+  gap: 8px;
+}
+
+.mll-void .pu-label {
+  margin: 0;
+}
+
 .mll-void-list {
-  margin: 0 0 10px;
-  padding-left: 18px;
-  font-size: 13px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 18px;
+  font-weight: 600;
   max-height: 120px;
   overflow: hidden;
+}
+
+.mll-void-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 4px 0 0;
+  font-size: 15px;
+}
+
+.mll-void-warn .pu-ic {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--pu-bad);
 }
 
 .mll-warn-text {

@@ -276,10 +276,13 @@ describe('US1-7 입하 대기 LOT 폐기', () => {
     await user.click(screen.getByRole('checkbox', { name: /\|0003 /u }));
     await user.click(screen.getByRole('button', { name: t.bar.void(2) }));
 
-    const dialog = await screen.findByRole('dialog', { name: t.voidDialog.title(2) });
+    const dialog = await screen.findByRole('dialog', { name: t.voidDialog.title });
+    expect(within(dialog).getByText(t.voidDialog.target(2))).toBeInTheDocument();
     expect(within(dialog).getByText(t.voidDialog.body, { exact: false })).toBeInTheDocument();
     expect(within(dialog).getByText(t.voidDialog.printed(1), { exact: false })).toBeInTheDocument();
-    await user.click(within(dialog).getByRole('button', { name: t.voidDialog.confirm(2) }));
+    await user.click(
+      within(dialog).getByRole('button', { name: t.voidDialog.confirm }),
+    );
 
     expect(await screen.findByText(t.voidDialog.done(2))).toBeInTheDocument();
     expect(sentTo(sent, '/trace/lots:void')[0]?.body).toEqual({ lotIds: [9002, 9003] });
@@ -304,7 +307,7 @@ describe('US1-7 입하 대기 LOT 폐기', () => {
     await user.click(screen.getByRole('button', { name: t.bar.void(2) }));
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', {
-        name: t.voidDialog.confirm(2),
+        name: t.voidDialog.confirm,
       }),
     );
 

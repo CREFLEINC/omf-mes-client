@@ -15,6 +15,13 @@ export const popUniform: Translated<typeof ko.popUniform> = {
     backspace: 'Xóa một ký tự',
     region: 'Bàn phím số',
   },
+  textKeyboard: {
+    region: 'Bàn phím chữ',
+    shift: 'Chữ hoa',
+    lang: '한/EN',
+    numbers: '123',
+    space: 'Dấu cách',
+  },
   pager: {
     total: (total: number): string => `Tổng ${String(total)}`,
     position: (page: number, pages: number): string =>

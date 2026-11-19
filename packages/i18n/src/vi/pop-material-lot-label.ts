@@ -216,11 +216,12 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     failed: 'Không tạo được LOT quản lý vật tư.',
   },
   voidDialog: {
-    title: (count: number) => `Hủy ${count} LOT quản lý vật tư chờ nhập?`,
-    body: 'Sau khi hủy, LOT sẽ bị từ chối khi quét nhập hàng trên PDA và số LOT không được cấp lại.',
+    title: 'Hủy LOT quản lý vật tư?',
+    target: (count: number) => `Đối tượng hủy · ${count} LOT`,
+    body: 'Sau khi hủy, không thể nhập hàng bằng LOT này và số LOT đã hủy không được dùng lại.',
     printed: (count: number) => `Nhãn đã in của ${count} LOT này, hãy bóc nhãn và bỏ đi.`,
     cancel: 'Hủy bỏ',
-    confirm: (count: number) => `Hủy ${count} LOT`,
+    confirm: 'Hủy',
     done: (count: number) => `Đã hủy ${count} LOT quản lý vật tư`,
     partial: (count: number, failed: number) =>
       `Đã hủy ${count} LOT quản lý vật tư · thất bại ${failed}`,

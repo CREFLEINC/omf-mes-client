@@ -1,4 +1,4 @@
-import { act, fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -75,17 +75,53 @@ describe('PopSelect — G-34 선택 팝업', () => {
    * ⛔ **한 쪽에 다섯을 넘겨 담지 않는다**(사용자 지시 2026-09-09). 목록이 스크롤하지 않으므로
    * 한 쪽이 팝업보다 길어지면 **마지막 줄이 잘린 채 고를 수 없게 된다** — 앞서 여섯을 담아
    * 실제로 그랬다. 잘림은 화면에서만 보이고 시험에서는 안 보이므로, 여기서는 «수»를 못박는다.
+   * 검색 칸이 서면 글자판이 자리를 차지해 남은 목록 칸 높이로 잰다 — 높이가 없는 시험 환경에서는 넷.
    */
-  it('한 쪽에 다섯 줄까지만 놓는다', async () => {
+  it('한 쪽에 다섯 줄을 넘기지 않는다(글자판이 서면 남은 칸만큼)', async () => {
     const user = userEvent.setup();
 
     renderWithProviders(<PopSelect aria-label="사유" options={OPTIONS} />);
     await user.click(screen.getByRole('combobox', { name: '사유' }));
 
-    expect(screen.getAllByRole('option')).toHaveLength(5);
+    expect(screen.getAllByRole('option')).toHaveLength(4);
 
     await user.click(screen.getByRole('button', { name: '다음 쪽' }));
-    expect(screen.getAllByRole('option')).toHaveLength(2);
+    expect(screen.getAllByRole('option')).toHaveLength(3);
+  });
+
+  it('검색 칸 아래 글자판으로 친 한글이 같은 검색어가 된다', async () => {
+    const user = userEvent.setup();
+    const options = [
+      { value: 'a', label: '설비 고장' },
+      { value: 'b', label: '금형 교체' },
+      ...OPTIONS,
+    ];
+
+    renderWithProviders(<PopSelect aria-label="사유" options={options} />);
+    await user.click(screen.getByRole('combobox', { name: '사유' }));
+    const keyboard = screen.getByRole('group', { name: '글자판' });
+    for (const key of ['ㅅ', 'ㅓ', 'ㄹ', 'ㅂ', 'ㅣ']) {
+      await user.click(within(keyboard).getByRole('button', { name: key }));
+    }
+
+    expect(screen.getByRole('searchbox', { name: '목록 검색' })).toHaveValue('설비');
+    expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+      '설비 고장',
+    ]);
+
+    await user.click(within(keyboard).getByRole('button', { name: '한 자 지움' }));
+    expect(screen.getByRole('searchbox', { name: '목록 검색' })).toHaveValue('설ㅂ');
+    await user.click(within(keyboard).getByRole('button', { name: '전체 삭제' }));
+    expect(screen.getByRole('searchbox', { name: '목록 검색' })).toHaveValue('');
+  });
+
+  it('검색 칸이 없는 짧은 목록에는 글자판도 없다', async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(<PopSelect aria-label="사유" options={OPTIONS.slice(0, 3)} />);
+    await user.click(screen.getByRole('combobox', { name: '사유' }));
+
+    expect(screen.queryByRole('group', { name: '글자판' })).toBeNull();
   });
 
   it('검색어를 한 번에 지운다', async () => {

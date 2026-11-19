@@ -1259,6 +1259,7 @@ textarea.pu-input {
 }
 
 .pu-flow button.st:disabled {
+  opacity: 0.4;
   cursor: default;
 }
 
@@ -1620,4 +1621,99 @@ textarea.pu-input {
   :root {
     --pu-key: 48px;
   }
+}
+
+/* ── 화면 글자판(한글 2벌식 · 영문 · 숫자): 검색 칸 아래, 키패드와 같은 키 모양 ── */
+.pu-tkbd {
+  display: grid;
+  grid-template-columns: repeat(20, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.pu-tkbd button {
+  grid-column: span 2;
+  height: var(--pu-key);
+  min-width: 0;
+  padding: 0;
+  border: 1px solid var(--pu-line);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-field);
+  color: var(--pu-text);
+  font: inherit;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.pu-tkbd button.row2 {
+  grid-column: 2 / span 2;
+}
+
+.pu-tkbd button.w3 {
+  grid-column: span 3;
+}
+
+.pu-tkbd button.w4 {
+  grid-column: span 4;
+}
+
+.pu-tkbd button.w10 {
+  grid-column: span 10;
+}
+
+.pu-tkbd-gap {
+  grid-column: 1 / span 17;
+}
+
+.pu-tkbd button.fn {
+  font-size: 15px;
+  color: var(--pu-text-2);
+  white-space: nowrap;
+}
+
+.pu-tkbd button.is-on {
+  border-color: var(--pu-primary);
+  background: var(--pu-primary-soft);
+  color: var(--pu-text);
+}
+
+.pu-tkbd button:hover:not(:disabled) {
+  background: var(--pu-hover);
+}
+
+.pu-tkbd button:active:not(:disabled) {
+  background: var(--pu-primary-soft);
+}
+
+.pu-tkbd button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/*
+ * 글자판이 든 선택 창: 넓은 창(760)에 높이를 화면에 맞춰 고정하고, 목록 칸이 남은 높이를 갖는다.
+ * 한 쪽 건수는 그 칸 높이로 잰다(`useFitCount`) — 창 안 스크롤 없음.
+ */
+.pu-dialog:has(.pu-tkbd) {
+  height: min(760px, calc(100vh - 24px));
+  max-height: none;
+}
+
+.pu-dialog:has(.pu-tkbd) > .pu-dialog-body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+}
+
+.pu-dialog:has(.pu-tkbd) > .pu-dialog-body > * {
+  flex: none;
+}
+
+.pu-dialog:has(.pu-tkbd) > .pu-dialog-body > .pu-list {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }

@@ -1,6 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
-import { PuConfirm, PuNote } from '../../patterns/pop-uniform';
+import { PuButton, PuDialog, PuIcon, PuNote } from '../../patterns/pop-uniform';
 import type { LabelLot } from './types';
 
 const t = messages.popMaterialLotLabel.voidDialog;
@@ -23,25 +23,38 @@ export interface VoidDialogProps {
 export const VoidDialog = ({ lots, isSaving, error, onCancel, onConfirm }: VoidDialogProps) => {
   const printed = lots.filter((lot) => lot.lastIssue !== null).length;
 
+  /* 모양은 사용자 지정(2026-11-19): 제목 · 「폐기 대상 · N건」 · LOT 번호 · 경고 한 줄 · [취소] [폐기]. */
   return (
-    <PuConfirm
-      title={t.title(lots.length)}
-      confirmLabel={t.confirm(lots.length)}
-      cancelLabel={t.cancel}
-      busy={isSaving}
-      onCancel={onCancel}
-      onConfirm={onConfirm}
+    <PuDialog
+      title={t.title}
+      onClose={onCancel}
+      footer={
+        <>
+          <PuButton onClick={onCancel} disabled={isSaving}>
+            {t.cancel}
+          </PuButton>
+          <PuButton variant="danger" onClick={onConfirm} disabled={isSaving}>
+            {t.confirm}
+          </PuButton>
+        </>
+      }
     >
-      <ul className="pu-mono mll-void-list">
-        {lots.map((lot) => (
-          <li key={lot.lotId}>{lot.lotNo}</li>
-        ))}
-      </ul>
-      <p className="pu-dialog-text">
-        {t.body}
-        {printed > 0 ? <strong className="mll-warn-text"> {t.printed(printed)}</strong> : null}
-      </p>
-      {error === null ? null : <PuNote tone="bad">{error}</PuNote>}
-    </PuConfirm>
+      <div className="mll-void">
+        <span className="pu-label">{t.target(lots.length)}</span>
+        <ul className="pu-mono mll-void-list">
+          {lots.map((lot) => (
+            <li key={lot.lotId}>{lot.lotNo}</li>
+          ))}
+        </ul>
+        <p className="mll-void-warn">
+          <PuIcon name="warn" />
+          <span>
+            {t.body}
+            {printed > 0 ? <strong> {t.printed(printed)}</strong> : null}
+          </span>
+        </p>
+        {error === null ? null : <PuNote tone="bad">{error}</PuNote>}
+      </div>
+    </PuDialog>
   );
 };

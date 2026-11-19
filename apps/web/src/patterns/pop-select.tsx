@@ -5,7 +5,8 @@ import { forwardRef, useEffect, useMemo, useRef, useState, type ReactNode } from
 import { PuDialog } from './pop-uniform/dialog';
 import { PuIcon } from './pop-uniform/icon';
 import { PuEmpty } from './pop-uniform/layout';
-import { PuPager } from './pop-uniform/pager';
+import { PuPager, useFitCount } from './pop-uniform/pager';
+import { PuTextKeyboard } from './pop-uniform/text-keyboard';
 
 /**
  * 한 쪽에 놓는 항목 수.
@@ -169,9 +170,16 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
    *    바로 그 모양이라, 두 자리를 가르고 이름도 뜻대로 붙인다.
    */
   const showSearch = !isShortList || scannable;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  /*
+   * ⭐ 검색 칸이 있으면 그 아래에 화면 글자판을 둔다 — POP 단말에는 실물 자판이 없다(#295).
+   *    글자판이 자리를 차지하므로 한 쪽 건수는 남은 목록 칸 높이로 잰다(창 안 스크롤 없음).
+   */
+  const listRef = useRef<HTMLDivElement>(null);
+  const fitCount = useFitCount(listRef, { fallback: 4, max: PAGE_SIZE });
+  const pageSize = showSearch ? fitCount : PAGE_SIZE;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages - 1);
-  const visibleOptions = filtered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+  const visibleOptions = filtered.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const close = () => {
@@ -302,7 +310,12 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
          * ⛔ **창 바깥을 눌러 닫히지 않는다**(사용자 지시 2026-09-10) — 터치 단말에서 손이 스치면 고르려던
          *    항목과 검색어가 사라진다. 닫는 길은 아래 [취소]와 Esc 다.
          */
-        <PuDialog title={title} onClose={close} closeLabel={messages.popUniform.dialog.cancel}>
+        <PuDialog
+          title={title}
+          wide={showSearch}
+          onClose={close}
+          closeLabel={messages.popUniform.dialog.cancel}
+        >
           {dialogLead?.((chosen) => {
             const option = flatOptions.find((candidate) => candidate.value === chosen);
             if (option !== undefined) choose(option);
@@ -347,7 +360,17 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
             </div>
           )}
 
-          <div className="pu-list" role="listbox" aria-label={title}>
+          {showSearch && (
+            <PuTextKeyboard
+              value={query}
+              onChange={(next) => {
+                setQuery(next);
+                setPage(0);
+              }}
+            />
+          )}
+
+          <div ref={listRef} className="pu-list" role="listbox" aria-label={title}>
             {visibleOptions.length === 0 ? (
               <PuEmpty icon="search" title={messages.popChrome.selectDialog.empty} />
             ) : (
@@ -372,7 +395,7 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
             )}
           </div>
 
-          {!isShortList && (
+          {(!isShortList || totalPages > 1) && (
             <PuPager
               label={title}
               total={filtered.length}
