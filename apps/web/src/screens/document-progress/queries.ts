@@ -1,6 +1,6 @@
 import { isForbidden, type ApiClient, type components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { masterName } from '../../patterns/master-name';
@@ -19,6 +19,7 @@ import {
   type CancelExecutionView,
   type DocumentProgressDetailView,
   type DocumentProgressListResult,
+  type SelectOption,
 } from './types';
 
 /**
@@ -44,8 +45,7 @@ import {
  * 잘못된 경로로 꺼내면 언제나 비어 있고 훅이 요청을 **보내지 않은 채** 멈춘다. 두 조회의 캐시
  * 키를 가르는 이유도 같다 — 하나로 묶으면 한쪽 무효화가 다른 쪽을 끌고 간다.
  *
- * **참조 조회를 두지 않는다.** 품목·자재 LOT·창고는 번호로만 좁힌다 — 이름 목록을 얹으면 그
- * 조회의 좁힘·잘림 규칙이 함께 따라오는데, 이 회차의 목록은 그 이름을 그리지 않는다.
+ * **참조 조회는 공통코드뿐이다** — 상태 · 세부구분 이름과 상태 선택지.
  *
  * 경로 리터럴은 이 파일에만 둔다 — `openapi-fetch`가 경로를 리터럴 타입으로 요구해
  * 문자열 변수로 넘기면 타입 검사가 풀린다.
@@ -57,14 +57,22 @@ type Client = ApiClient['client'];
 
 export type CodeNameOf = (code: string) => string;
 
+/** 코드 한 줄 — 이름과 사용 여부. 서버가 준 차례(정렬 순서) 그대로다. */
+interface CodeValueRow {
+  code: string;
+  name: string;
+  isActive: boolean;
+}
+
 /**
- * 코드 이름. 사용 중지된 코드로 만든 전표도 있어 사용 중지까지 받는다. 이름을 못 찾으면(조회 실패 포함)
- * 코드를 그대로 보인다 — 이름 때문에 목록을 막지 않는다. 그룹이 없으면 부르지 않는다.
+ * 코드 값 목록. 사용 중지된 코드로 만든 전표도 있어 사용 중지까지 받는다. 그룹이 없으면 부르지 않는다.
+ * 이름(`useCodeNames`)과 조건 선택지(`useCodeOptions`)가 같은 조회를 나눠 쓴다.
  */
-export const useCodeNames = (group: string | null): CodeNameOf => {
+const useCodeValues = (group: string | null): UseQueryResult<CodeValueRow[]> => {
   const { client } = useApiClient();
-  const query = useQuery({
-    queryKey: ['document-progress', 'code-names', group],
+
+  return useQuery({
+    queryKey: ['document-progress', 'code-values', group],
     enabled: group !== null,
     queryFn: async () => {
       const data = await runRequest(() =>
@@ -73,12 +81,34 @@ export const useCodeNames = (group: string | null): CodeNameOf => {
         }),
       );
 
-      return new Map(data.items.map((value) => [value.code, masterName(value, value.codeName)]));
+      return data.items.map((value) => ({
+        code: value.code,
+        name: masterName(value, value.codeName),
+        isActive: value.isActive,
+      }));
     },
   });
-  const names = query.data;
+};
 
-  return useCallback((code) => names?.get(code) ?? code, [names]);
+/** 코드 이름. 이름을 못 찾으면(조회 실패 포함) 코드를 그대로 보인다 — 이름 때문에 목록을 막지 않는다. */
+export const useCodeNames = (group: string | null): CodeNameOf => {
+  const rows = useCodeValues(group).data;
+  const names = useMemo(() => new Map(rows?.map((row) => [row.code, row.name])), [rows]);
+
+  return useCallback((code) => names.get(code) ?? code, [names]);
+};
+
+/** 조건 선택지 — 사용 중인 코드만. 못 받았으면 빈 목록이다(「전체」로만 조회한다). */
+export const useCodeOptions = (group: string): SelectOption[] => {
+  const rows = useCodeValues(group).data;
+
+  return useMemo(
+    () =>
+      (rows ?? [])
+        .filter((row) => row.isActive)
+        .map((row) => ({ value: row.code, label: row.name })),
+    [rows],
+  );
 };
 
 type ApprovalRequestCreate = components['schemas']['ApprovalRequestCreate'];

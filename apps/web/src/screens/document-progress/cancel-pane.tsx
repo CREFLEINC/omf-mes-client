@@ -111,8 +111,6 @@ const LockFailure = ({ error, onRetry }: LockFailureProps) => {
           )
         }
       />
-      {/* 못 읽어도 이 문서로 할 수 있는 다른 일은 달라지지 않는다. */}
-      <p className="field-note">{t.cancelRequest.lockFailedNote}</p>
     </>
   );
 };
@@ -162,12 +160,9 @@ export const CancelPane = ({
 
   if (!hasCancelResource) {
     return (
-      <section className="pane" aria-label={t.cancelRequest.label}>
-        <EmptyState
-          size="sm"
-          title={t.cancelRequest.unsupportedTitle}
-          description={t.cancelRequest.unsupportedDescription}
-        />
+      <section className="board-frame-sub" aria-label={t.cancelRequest.label}>
+        <h2 className="pane-title">{t.cancelRequest.label}</h2>
+        <EmptyState size="sm" title={t.cancelRequest.unsupportedTitle} />
       </section>
     );
   }
@@ -188,9 +183,23 @@ export const CancelPane = ({
     return lock.kind === 'preparing' ? t.cancelRequest.preparing : null;
   })();
 
+  /*
+   * 서버가 막았으면 사유 한 줄만 낸다 — 이 문서로는 못 보내므로 잠긴 사유 칸과 버튼을 두지 않는다
+   * (사용자 지시 2026-11-19 — 쓸 수 없는 입력은 걷는다).
+   */
+  if (isBlocked) {
+    return (
+      <section className="board-frame-sub" aria-label={t.cancelRequest.label}>
+        <h2 className="pane-title">{t.cancelRequest.label}</h2>
+        {banner}
+        <p className="field-note">{blockNote}</p>
+      </section>
+    );
+  }
+
   return (
-    <section className="pane" aria-label={t.cancelRequest.label}>
-      <p>{t.cancelRequest.lead}</p>
+    <section className="board-frame-sub" aria-label={t.cancelRequest.label}>
+      <h2 className="pane-title">{t.cancelRequest.label}</h2>
 
       {banner}
 
@@ -202,8 +211,7 @@ export const CancelPane = ({
           label={t.cancelRequest.reason}
           value={reason}
           placeholder={t.cancelRequest.reasonPlaceholder}
-          helperText={t.cancelRequest.reasonHelper}
-          disabled={isBlocked || isLocked}
+          disabled={isLocked}
           error={reasonError}
           onChange={(event) => {
             onChangeReason(event.target.value);
