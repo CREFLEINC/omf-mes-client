@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { useCallback, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useLayoutEffect, useState, type RefObject } from 'react';
 
 /**
  * 쪽 넘김(규칙 1·15) — #295.
@@ -183,10 +183,6 @@ export const pageOf = <T,>(list: readonly T[], page: number, size: number): PuPa
   };
 };
 
-/** `index` 번째 항목이 든 쪽(1부터). 스캔한 항목이 있는 쪽으로 넘길 때 쓴다. */
-export const pageContaining = (index: number, size: number): number =>
-  index < 0 ? 1 : Math.floor(index / Math.max(1, size)) + 1;
-
 /**
  * 화면에서 자르는 목록의 쪽 상태 — 한 쪽 건수가 바뀌어도 «보던 첫 줄이 든 쪽»을 지킨다(규칙 15).
  */
@@ -209,6 +205,3 @@ export const useClientPage = <T,>(
   }, []);
   return { ...result, setPage, showIndex };
 };
-
-/** 쪽 크기를 재는 칸의 ref. */
-export const useFitRef = <E extends HTMLElement = HTMLDivElement>() => useRef<E>(null);

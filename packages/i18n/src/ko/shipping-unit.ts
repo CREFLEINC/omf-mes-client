@@ -121,7 +121,7 @@ export const shippingUnit = {
     printFailed: (reason: string): string => `인쇄 실패 — ${reason}`,
     noPrinter: '프린터가 없어 인쇄하지 못했습니다. 발행 기록은 남았습니다.',
     noBridge: '이 자리에서는 프린터로 보낼 수 없습니다. 발행 기록은 남았습니다.',
-    reissueHint: '라벨이 나오지 않았으면 재발행 화면에서 사유를 골라 다시 뽑으세요.',
+    reissueHint: '라벨이 나오지 않았으면 「구성 완료」 탭에서 사유를 골라 다시 뽑으세요.',
   },
 
   actions: {
@@ -140,6 +140,7 @@ export const shippingUnit = {
     cancel: '취소',
     issuing: '발행하는 중…',
     done: '납품 라벨을 재발행했습니다. 출하 단위에 부착하세요.',
+    failed: '납품 라벨을 재발행하지 못했습니다.',
     /** 회차 — 발행 이력(출하 라벨 화면과 같은 조회)에서 읽는다. 못 읽으면 「알 수 없음」. */
     nextSeq: '이번 회차',
     last: '최근 발행',

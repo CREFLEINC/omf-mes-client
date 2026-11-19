@@ -37,7 +37,6 @@ export const goodsIssueQr = {
     oldest: '오래된순',
   },
   help: {
-    button: '도움말',
     /** [도움말] 창(사용자 지정 문구 2026-11-19). */
     title: '분할 LOT 라벨 안내',
     intro:

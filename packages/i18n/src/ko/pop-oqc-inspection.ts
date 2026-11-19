@@ -23,7 +23,6 @@ export const popOqcInspection = {
     loading: '판정 대기 목록을 불러오는 중입니다.',
     empty: '판정할 출하검사 의뢰가 없습니다.',
     doneEmpty: '판정을 마친 출하검사 의뢰가 없습니다.',
-    unavailable: '판정 대기 목록을 불러오지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
     pageNav: '판정 대기 목록 쪽 이동',
   },
 

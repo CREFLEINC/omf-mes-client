@@ -463,6 +463,28 @@ describe('PackingResultScreen', () => {
     });
   });
 
+  /* 잠근 뒤 새로 받은 목록이 「포장할 LOT 이 남았다」고 하면 그 출하를 다시 고를 수 있다. */
+  it('눌러서 잠근 출하도 새 목록에 미포장 LOT 이 있으면 다시 풀린다', async () => {
+    const user = userEvent.setup();
+    const listedUnpackedLotCounts: Record<number, number> = {};
+    const { queryClient } = renderScreen({ noUnpackedShipmentId: 502, listedUnpackedLotCounts });
+
+    await chooseShipment(user, 'SYN-SH-0502');
+    expect(
+      await screen.findByRole('button', { name: new RegExp(t.shipments.blockedChip, 'u') }),
+    ).toBeDisabled();
+
+    listedUnpackedLotCounts[502] = 2;
+    await queryClient.invalidateQueries();
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('button', { name: new RegExp(t.shipments.blockedChip, 'u') }),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: /SYN-SH-0502/u })).toBeEnabled();
+  });
+
   /* ⭐ omf-all-around#329 — 목록의 미포장 배분 수가 0 이면 누르기 «전», 처음 그릴 때부터 잠근다. */
   it('목록의 unpackedLotCount 가 0 인 출하는 처음부터 「확정 불가」·사유로 잠겨 있다', async () => {
     const user = userEvent.setup();

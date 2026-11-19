@@ -13,6 +13,13 @@ import { PuButton } from './layout';
  */
 const t = messages.popUniform;
 
+/**
+ * 지금 떠 있는 `PuDialog` 들의 차례 번호. 나중에 그린 창(겹친 안쪽 창 포함)일수록 크다 — Esc 는 가장 큰
+ * 번호(맨 위) 창만 받는다.
+ */
+let dialogSeq = 0;
+const openDialogs = new Set<number>();
+
 export const PuDialog = ({
   title,
   children,
@@ -37,15 +44,27 @@ export const PuDialog = ({
   const titleId = useId();
   const hasTitle = title !== undefined && title !== null;
 
+  /* 겹쳐 뜬 창 중 맨 위 창만 Esc 로 닫는다 — 아래 창까지 한꺼번에 닫히지 않게. */
+  const [seq] = useState(() => {
+    dialogSeq += 1;
+    return dialogSeq;
+  });
+  useEffect(() => {
+    openDialogs.add(seq);
+    return () => {
+      openDialogs.delete(seq);
+    };
+  }, [seq]);
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape' && Math.max(...openDialogs) === seq) onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('keydown', onKey);
     };
-  }, [onClose]);
+  }, [onClose, seq]);
 
   return createPortal(
     <div className="pu-overlay">

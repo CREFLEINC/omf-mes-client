@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 const keypad = messages.popChrome.workerNoDialog;
 
-/** POP 터치 규격(작업 시작 `touch-spec` 의 `POP_TOUCH_SIZE` 와 같은 값). 공용 부품이 화면 폴더를 읽지 않게 여기 둔다. */
+/** POP 터치 규격(작업 전 점검 `touch-spec` 의 `POP_TOUCH_SIZE` 와 같은 값). 공용 부품이 화면 폴더를 읽지 않게 여기 둔다. */
 const POP_TOUCH_SIZE: ButtonSize = '2xl';
 
 export interface WorkerNoDialogProps {

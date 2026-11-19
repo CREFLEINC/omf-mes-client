@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import type { ListOrder } from '../../patterns/pop-list-order';
@@ -56,6 +56,8 @@ export const useReworkWorkOrders = (page = 1, size = 20, order: ListOrder = 'new
     order === 'newest' ? ('plannedStartAt,desc' as const) : ('plannedStartAt,asc' as const);
   const open = useQuery({
     queryKey: [...reworkResultKeys.list, 'open', page, size, order],
+    /* 구획 높이로 쪽 크기가 바뀌어 다시 받는 동안 앞 목록을 그대로 보인다 — 목록·고른 카드가 비어 보이지 않게. */
+    placeholderData: keepPreviousData,
     queryFn: () =>
       runRequest(() =>
         client.GET('/production/work-orders', {

@@ -34,7 +34,6 @@ import { downtimeRegister } from './downtime-register';
 import { downtimeSummary } from './downtime-summary';
 import { editability } from './editability';
 import { emergencyWorkOrder } from './emergency-work-order';
-import { emergencyWorkOrderField } from './emergency-work-order-field';
 import { equipmentFailure } from './equipment-failure';
 import { equipmentFailureReport } from './equipment-failure-report';
 import { equipmentInspection } from './equipment-inspection';
@@ -207,7 +206,6 @@ export const vi: Translated<Messages> = {
   downtimeSummary,
   editability,
   emergencyWorkOrder,
-  emergencyWorkOrderField,
   equipmentFailure,
   equipmentFailureReport,
   equipmentInspection,

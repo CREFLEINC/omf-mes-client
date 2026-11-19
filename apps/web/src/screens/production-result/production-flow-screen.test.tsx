@@ -415,6 +415,32 @@ describe('ProductionFlowScreen', () => {
     expect(writes.map(pathOf)).toEqual(writesBefore);
   });
 
+  /* ① → ② → [이전] → ① → ② 를 오가도 저장은 ② 의 [확인] 한 번뿐이고 보내는 값은 그대로다. */
+  it('① · ② 를 오간 뒤 ② [확인]으로 실적을 한 번만 저장한다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes);
+
+    await goDefectStep();
+    await user.click(within(actionBarNow()).getByRole('button', { name: t.flow.work.toGood }));
+    expect(screen.queryByRole('region', { name: t.flow.defects.title })).not.toBeInTheDocument();
+    await goDefectStep();
+    expect(writes).toHaveLength(0);
+
+    const output = outputNow();
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+
+    await waitFor(() =>
+      expect(writes.some((write) => pathOf(write) === '/production/production-results')).toBe(true),
+    );
+    const saved = writes.filter((write) => pathOf(write) === '/production/production-results');
+    expect(saved).toHaveLength(1);
+    expect(await saved[0]?.clone().json()).toEqual(
+      expect.objectContaining({ goodQty: 12, workSessionId: WORK_SESSION_ID }),
+    );
+  });
+
   /* 다른 라벨을 읽으면 방금 출력한 LOT 번호를 대며 그 라벨을 찾으라고 한다 — 마감은 나가지 않는다(#295 시안). */
   it('다른 LOT 라벨을 스캔하면 방금 출력한 LOT 번호로 안내하고 마감하지 않는다', async () => {
     Object.defineProperty(window, 'pop', {

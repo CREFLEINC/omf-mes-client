@@ -205,7 +205,6 @@ export const IssuePrinter = ({
         selected={selectedPrinter === null ? null : toPrinterView(selectedPrinter)}
         isLoading={false}
         isError={printersFailed}
-        isSelectable
         isLocked={false}
         onRetry={() => undefined}
         onSelect={onPrinterChange}

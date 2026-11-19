@@ -48,12 +48,6 @@ export const productionResult = {
     /**
      * 하단 바 「남은 일」(C-5). 머리말 없이 문장만, 끝 마침표 없이 쓴다. 앞의 것이 먼저다.
      */
-    /**
-     * 생산 작업 화면에서는 [부품 교체]를 뺐다(맨 위 [러닝체인지]와 같은 일, 사용자 지시 2026-11-19).
-     * 작업 시작 화면 시험(`work-start/screen.test.tsx`)이 아직 이 문구로 「버튼이 없음」을 재므로 남겨 둔다.
-     */
-    actions: {
-    },
     next: {
       noWorkOrder: '작업지시가 지정되지 않았습니다. 작업지시 목록에서 작업지시를 골라 주세요',
       noWorker: '사번을 입력해 주세요',
@@ -178,10 +172,6 @@ export const productionResult = {
     woClose: {
       button: '작업지시 마감',
       title: (workOrderNo: string): string => `작업지시 마감 ${workOrderNo}`,
-      /** 창 제목 왼쪽 글자 — W/O 번호는 오른쪽 끝에 따로 선다(사용자 지시 2026-11-16 시안). */
-      titleLead: '작업지시 마감',
-      /** 고르지 않으면 마감할 수 없는 묶음 제목 옆 빨간 표시. */
-      required: '필수',
       loading: '마감할 작업지시를 확인하는 중입니다.',
       loadFailed: '작업지시를 불러오지 못했습니다. 연결을 확인하고 「다시 시도」를 눌러 주세요.',
       fields: {

@@ -748,7 +748,6 @@ export const ShippingPackingLabelScreen = ({
         }
         isLoading={kind !== null && printers.isPending}
         isError={printers.isError}
-        isSelectable
         isLocked={isBusy}
         onRetry={() => {
           void printers.refetch();

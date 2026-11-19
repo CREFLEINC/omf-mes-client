@@ -109,7 +109,6 @@ export const popChrome: Translated<typeof ko.popChrome> = {
     confirm: 'Xác nhận',
     cancel: 'Hủy',
     checking: 'Đang kiểm tra',
-    groupTitle: 'Người làm',
     empty: 'Chưa nhập mã nhân viên.',
     open: 'Nhập mã nhân viên',
     unknown: 'Mã nhân viên chưa được đăng ký ở nhà máy này. Vui lòng nhập lại mã nhân viên.',

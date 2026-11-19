@@ -815,7 +815,6 @@ export const PopMaterialLotLabelScreen = () => {
           selected={headPrinter}
           isLoading={printers.isPending}
           isError={printers.isError}
-          isSelectable={isPrinterSelectable}
           isLocked={isLocked}
           onRetry={() => {
             void printers.refetch();

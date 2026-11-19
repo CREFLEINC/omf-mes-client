@@ -128,6 +128,11 @@ export const ReworkResultRegisterScreen = () => {
     );
   }, [releasedTotal, plannedAll.length]);
   const listPages = Math.max(1, Math.ceil(listTotal / Math.max(1, pageSize)));
+  /* 쪽 크기가 커져 쪽 수가 줄면 마지막 쪽으로 맞춘다 — 빈 쪽이 남지 않게. */
+  const isListLoaded = releasedOrders.isSuccess && plannedOrders.isSuccess;
+  useEffect(() => {
+    if (isListLoaded && listPage > listPages) setListPage(listPages);
+  }, [isListLoaded, listPage, listPages]);
   const defectCodeId = useId();
   /*
    * 작업지시 목록의 [재작업 실적 등록]은 그 W/O 를 `?workOrderId=` 로 실어 온다(#295) — 처음 한 번 고른 채로 연다.
@@ -154,7 +159,17 @@ export const ReworkResultRegisterScreen = () => {
   const [pendingCount, setPendingCount] = useState(pendingReworkResultCount);
   const [isOnline, setIsOnline] = useState(() => globalThis.navigator.onLine);
 
-  const selected = rows.find((row) => row.workOrderId === selectedId) ?? null;
+  /*
+   * 고른 W/O — 지금 쪽 목록에서 찾는다. 쪽 크기가 바뀌어 그 카드가 다른 쪽으로 밀려도 고른 것을 놓지 않게
+   * 마지막으로 찾은 것을 붙든다(목록에서 처음부터 못 찾은 W/O 는 종전처럼 고른 것이 없는 것과 같다).
+   */
+  const foundSelected = rows.find((row) => row.workOrderId === selectedId) ?? null;
+  const [heldSelected, setHeldSelected] = useState<WorkOrder | null>(null);
+  useEffect(() => {
+    if (foundSelected !== null) setHeldSelected(foundSelected);
+  }, [foundSelected]);
+  const selected =
+    foundSelected ?? (heldSelected?.workOrderId === selectedId ? heldSelected : null);
   const nonconformanceId = selected?.reworkSourceNonconformanceId ?? null;
   const source = useReworkSource(nonconformanceId);
   const dispositions = useDispositionDecisions(nonconformanceId);

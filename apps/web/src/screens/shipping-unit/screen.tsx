@@ -493,19 +493,27 @@ export const ShippingUnitScreen = () => {
     if (doneUnit === null || reissueReason === null) return;
 
     void run('closing', async () => {
-      const issued = await issueDeliveryLabel(
-        doneUnit,
-        toDefaultPrinterName(printers.data ?? []),
-        reissueReason,
-      );
-      setReissueOpen(false);
-      setReissueReason(null);
-      /* 회차가 올랐다 — 미리보기·다음 회차를 새 이력으로. */
-      void doneHistory.refetch();
-      puToast(
-        issued.kind === 'printed' ? t.reissue.done : issueText(issued),
-        issued.kind === 'printed' ? 'ok' : 'warn',
-      );
+      try {
+        const issued = await issueDeliveryLabel(
+          doneUnit,
+          toDefaultPrinterName(printers.data ?? []),
+          reissueReason,
+        );
+        if (issued.kind === 'issueFailed') {
+          puToast(t.reissue.failed, 'warn');
+          return;
+        }
+        setReissueOpen(false);
+        setReissueReason(null);
+        /* 회차가 올랐다 — 미리보기·다음 회차를 새 이력으로. */
+        void doneHistory.refetch();
+        puToast(
+          issued.kind === 'printed' ? t.reissue.done : issueText(issued),
+          issued.kind === 'printed' ? 'ok' : 'warn',
+        );
+      } catch {
+        puToast(t.reissue.failed, 'warn');
+      }
     });
   };
 
@@ -524,6 +532,11 @@ export const ShippingUnitScreen = () => {
   const waitPage = useClientPage(shipmentList, leftSize);
   const closedTotal = closedUnits.data?.total ?? 0;
   const closedPages = Math.max(1, Math.ceil(closedTotal / Math.max(1, leftSize)));
+  /* 구획이 커져 쪽 수가 줄면 받는 쪽도 마지막 쪽으로 맞춘다 — 빈 쪽을 받지 않게. */
+  const hasClosedUnits = closedUnits.data !== undefined;
+  useEffect(() => {
+    if (hasClosedUnits && donePage > closedPages) setDonePage(closedPages);
+  }, [hasClosedUnits, donePage, closedPages]);
 
   const typeName = (code: string | null | undefined): string =>
     code === null || code === undefined

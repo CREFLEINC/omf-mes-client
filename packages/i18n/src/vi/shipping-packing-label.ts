@@ -6,17 +6,12 @@ export const shippingPackingLabel: Translated<typeof ko.shippingPackingLabel> = 
   title: 'Trạng thái nhãn · in lại',
   shipment: {
     label: 'Xuất hàng',
-    context: (shipmentNo: string) => `Xuất hàng ${shipmentNo}`,
-    loading: 'Đang xác nhận thông tin xuất hàng.',
-    loadFailed: 'Không xác nhận được thông tin xuất hàng.',
     missing: 'Hãy chọn đối tượng xuất hàng ở màn hình đóng gói xuất hàng trước.',
   },
   kind: {
     legend: 'Loại nhãn',
     packing: 'Nhãn kiện',
-    packingNote: 'Đóng gói xong là phát hành ngay.',
     delivery: 'Nhãn giao hàng',
-    deliveryNote: 'Chỉ phát hành được cho đơn vị giao hàng đã chốt.',
   },
   tabs: {
     label: 'Danh sách nhãn',
@@ -45,20 +40,11 @@ export const shippingPackingLabel: Translated<typeof ko.shippingPackingLabel> = 
     seq: 'Lượt này',
   },
   targets: {
-    paneLabel: 'Đối tượng',
-    columns: {
-      no: 'No.',
-      target: 'Đối tượng',
-      status: 'Trạng thái',
-      lastIssued: 'Phát hành gần nhất',
-      seq: 'Lượt',
-    },
     status: {
       closed: 'Đã chốt',
       composing: 'Đang cấu thành',
       blockedNote: 'Chốt đơn vị giao hàng thì phát hành được.',
     },
-    neverIssued: '—',
     seqNotice: 'Lượt và kết quả in gần nhất hiển thị theo lịch sử phát hành trên máy chủ.',
     beforeKind: 'Hãy chọn loại nhãn trước.',
     empty:
@@ -67,7 +53,6 @@ export const shippingPackingLabel: Translated<typeof ko.shippingPackingLabel> = 
     loadFailed: 'Không tải được danh sách đối tượng.',
     retry: 'Tải lại',
     selectionLimited: 'Không chọn được đơn vị giao hàng chưa chốt.',
-    emptyTitle: 'Không có đối tượng để hiển thị.',
     selectedCount: (count: number) => `Đã chọn ${String(count)} mục`,
     clearSelection: 'Bỏ chọn',
     selectAll: 'Chọn tất cả',
@@ -89,8 +74,6 @@ export const shippingPackingLabel: Translated<typeof ko.shippingPackingLabel> = 
     title: 'In lại',
     notice: (count: number) => `Trong các đối tượng đã chọn, ${count} mục đã được phát hành.`,
     label: 'Lý do phát hành lại',
-    placeholder: 'Chọn lý do',
-    required: 'Bắt buộc',
     guide: 'Phát hành lại thì lượt tăng lên, bản ghi cũ không bị xóa. Lượt cũng được in trên nhãn.',
     empty: 'Chưa có lý do phát hành lại nào để chọn. Không có lý do thì không phát hành lại được.',
     loadFailed: 'Không tải được lý do phát hành lại.',

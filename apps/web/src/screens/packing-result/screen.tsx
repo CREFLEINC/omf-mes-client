@@ -158,6 +158,21 @@ export const PackingResultScreen = () => {
 
   const shipmentSelection = useShipmentSelection();
   const todayShipments = useTodayShipments();
+  /*
+   * 새로 받은 목록이 「포장할 LOT 이 남았다」(`unpackedLotCount > 0`)고 하면 앞서 잠근 그 출하를 푼다 —
+   * 나중에 배분이 생긴 출하가 화면을 다시 열 때까지 잠겨 있지 않게.
+   */
+  useEffect(() => {
+    setBlockedShipments((prev) => {
+      const reopened = new Set(
+        todayShipments.shipments
+          .filter((shipment) => shipment.shipmentId in prev && (shipment.unpackedLotCount ?? 0) > 0)
+          .map((shipment) => String(shipment.shipmentId)),
+      );
+      if (reopened.size === 0) return prev;
+      return Object.fromEntries(Object.entries(prev).filter(([id]) => !reopened.has(id)));
+    });
+  }, [todayShipments.shipments]);
   const lotScan = useLotScan();
   const typeOptions = useHandlingUnitTypeOptions();
   /**
@@ -343,7 +358,7 @@ export const PackingResultScreen = () => {
           }
 
           /* 수량 없이 줄부터 쌓는다 — 수량은 그 줄 칸에 키패드로 넣는다. */
-          const next = addLine(lines, allocation, 0).lines;
+          const next = addLine(lines, allocation, 0);
           setLines(next);
           ensureOpenUnit(next, handlingUnitTypeCode);
           selectRow(next, id);

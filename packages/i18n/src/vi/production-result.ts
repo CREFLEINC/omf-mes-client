@@ -29,8 +29,6 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       closed: 'Đã hoàn tất đóng lệnh sản xuất.',
       completedLots: 'LOT đã đóng',
     },
-    actions: {
-    },
     next: {
       noWorkOrder:
         'Chưa chỉ định lệnh sản xuất. Vui lòng chọn lệnh sản xuất ở danh sách lệnh sản xuất',
@@ -150,8 +148,6 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     woClose: {
       button: 'Đóng lệnh sản xuất',
       title: (workOrderNo: string): string => `Đóng lệnh sản xuất ${workOrderNo}`,
-      titleLead: 'Đóng lệnh sản xuất',
-      required: 'Bắt buộc',
       loading: 'Đang kiểm tra lệnh sản xuất cần đóng.',
       loadFailed: 'Không tải được lệnh sản xuất. Vui lòng kiểm tra kết nối rồi bấm «Thử lại».',
       fields: {

@@ -310,7 +310,10 @@ export const PuManualDialog = ({
           setValue(event.target.value);
         }}
         onKeyDown={(event) => {
-          if (event.key === 'Enter') submit();
+          /* 한/영 입력기가 조합 중이면 Enter 가 `key: 'Process'` 로 온다 — 키 위치(`code`)로도 본다(`pop-scanner-submit`). */
+          if (event.key === 'Enter' || event.code === 'Enter' || event.code === 'NumpadEnter') {
+            submit();
+          }
         }}
       />
       {!keypad && (
@@ -485,13 +488,7 @@ export const PuKeypad = ({
     {showTarget || !clearInPad ? (
       <div className="pu-keypad-head">
         <span className="pu-keypad-target">
-          {!showTarget ? null : targetLabel === null ? (
-            t.keypad.noTarget
-          ) : (
-            <>
-              <b>{targetLabel}</b>
-            </>
-          )}
+          {!showTarget ? null : targetLabel === null ? t.keypad.noTarget : <b>{targetLabel}</b>}
         </span>
         {clearInPad ? null : (
           <PuButton size="sm" disabled={disabled || targetLabel === null} onClick={onClearAll}>

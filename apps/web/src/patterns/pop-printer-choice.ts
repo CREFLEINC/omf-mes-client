@@ -14,6 +14,8 @@ import { useSyncExternalStore } from 'react';
 const KEY_PREFIX = 'omf-mes.pop.terminal-printer.';
 
 let terminalCode: string | null = null;
+/** 저장소 쓰기가 막혔을 때 이번 실행 동안 고른 것(단말 코드 → 이름). */
+const unsavedChoices = new Map<string, string>();
 const listeners = new Set<() => void>();
 
 export const terminalPrinterKey = (code: string): string => `${KEY_PREFIX}${code}`;
@@ -26,6 +28,9 @@ export const setPrinterTerminal = (code: string | null): void => {
 /** 이 단말이 고른 프린터 이름. 고른 적이 없거나 단말을 모르면 `null`. */
 export const terminalPrinterName = (): string | null => {
   if (terminalCode === null) return null;
+
+  const unsaved = unsavedChoices.get(terminalCode) ?? null;
+  if (unsaved !== null) return unsaved;
 
   try {
     const raw = globalThis.localStorage.getItem(terminalPrinterKey(terminalCode));
@@ -41,8 +46,10 @@ export const chooseTerminalPrinter = (name: string): void => {
   if (terminalCode !== null) {
     try {
       globalThis.localStorage.setItem(terminalPrinterKey(terminalCode), name);
+      unsavedChoices.delete(terminalCode);
     } catch {
-      /* 저장이 막혔다 — 이번 실행 동안은 화면이 받은 값(`onSelect`)으로 나간다. */
+      /* 저장이 막혔다 — 이번 실행 동안은 기억해 두고 그것을 쓴다(칩이 예전 값으로 돌아가지 않게). */
+      unsavedChoices.set(terminalCode, name);
     }
   }
   listeners.forEach((listener) => {
@@ -52,8 +59,11 @@ export const chooseTerminalPrinter = (name: string): void => {
 
 const subscribe = (listener: () => void): (() => void) => {
   listeners.add(listener);
+  /* 같은 단말의 다른 창에서 바꾼 것도 따른다. */
+  globalThis.addEventListener('storage', listener);
   return () => {
     listeners.delete(listener);
+    globalThis.removeEventListener('storage', listener);
   };
 };
 

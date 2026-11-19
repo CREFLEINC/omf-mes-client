@@ -3,9 +3,6 @@ export const shippingPackingLabel = {
   /** 머리에 출하를 고정으로 그린다 — 어느 출하의 라벨을 뽑는 중인지가 항상 보여야 한다. */
   shipment: {
     label: '출하',
-    context: (shipmentNo: string) => `출하 ${shipmentNo}`,
-    loading: '출하 정보를 확인하고 있습니다.',
-    loadFailed: '출하 정보를 확인하지 못했습니다.',
     /**
      * 골라서 들어오는 화면이라 화면 안에 출하를 고르는 자리가 없다(세로 예산 슬랙 0).
      * ⛔ 아무 출하나 골라 보이지 않는다 — 다른 출하의 라벨을 뽑게 된다.
@@ -15,10 +12,7 @@ export const shippingPackingLabel = {
   kind: {
     legend: '라벨 종류',
     packing: '포장라벨',
-    packingNote: '포장하면 바로 발행합니다.',
     delivery: '납품라벨',
-    /** 출하 단위 한 대에 한 장 — 마감해야 붙는다(SHIP-UNIT-01 설계 §4). */
-    deliveryNote: '마감한 출하 단위에만 발행할 수 있습니다.',
   },
   tabs: {
     label: '라벨 목록',
@@ -47,23 +41,12 @@ export const shippingPackingLabel = {
     seq: '이번 회차',
   },
   targets: {
-    paneLabel: '대상',
-    columns: {
-      /** 줄 번호. 서버 값이 아니라 **보이는 차례**다 — 대상을 말로 가리킬 때 쓴다. */
-      no: 'NO',
-      target: '대상',
-      status: '상태',
-      lastIssued: '최근 발행',
-      seq: '회차',
-    },
     status: {
       closed: '마감',
       /** ⚠ 「왜 안 되는지」가 아니라 「어떻게 풀 것인가」를 담는다. */
       composing: '구성 중',
       blockedNote: '출하 단위를 마감하면 발행할 수 있습니다.',
     },
-    /** 아직 한 번도 안 뽑은 대상 — 「없음」과 「모름」을 같은 모양으로 그리지 않는다. */
-    neverIssued: '—',
     /**
      * ⚠ 발행 현황 조회가 대상 유형 코드를 조건으로 받는데 그 값이 아직 확정되지 않았다.
      * 값이 서버와 다르면 이미 뽑은 것도 「없음」으로 보인다 — 감추지 않고 밝힌다.
@@ -76,14 +59,6 @@ export const shippingPackingLabel = {
     loadFailed: '대상 목록을 불러오지 못했습니다.',
     retry: '다시 불러오기',
     selectionLimited: '마감하지 않은 출하 단위는 고를 수 없습니다.',
-    /**
-     * 빈 목록의 첫 줄.
-     *
-     * ⛔ **왜 비었는지는 이 줄이 말하지 않는다** — 아래 설명 줄이 그 자리다(`beforeKind` ·
-     * `empty` · `emptyPacking`). 「아직 고르지 않았다」와 「없다」를 이 줄로 합치면 공유계약
-     * G-9 가 갈라 놓은 두 상태가 같은 모양이 된다.
-     */
-    emptyTitle: '표시할 대상이 없습니다.',
     /** 표 아래 — 지금 몇 건을 들고 있는지. 발행 단추를 누르기 전에 확인하는 자리다. */
     selectedCount: (count: number) => `선택 항목 ${String(count)}건`,
     clearSelection: '선택 해제',
@@ -113,8 +88,6 @@ export const shippingPackingLabel = {
     title: '재출력',
     notice: (count: number) => `고른 대상 중 ${count}건은 이미 발행됐습니다.`,
     label: '재발행 사유',
-    placeholder: '사유를 고르세요',
-    required: '필수',
     /** 회차가 쌓이는 것과 인쇄면에도 찍힌다는 것을 함께 말한다. */
     guide: '재발행하면 회차가 올라가고 이전 기록은 지워지지 않습니다. 인쇄면에도 회차가 찍힙니다.',
     empty: '고를 수 있는 재발행 사유가 아직 없습니다. 사유 없이는 재발행할 수 없습니다.',

@@ -1758,9 +1758,17 @@ export const ProductionFlowScreen = () => {
           </>
         );
       }
+      /* 발행·인쇄·마감이 도는 동안에는 [이전]을 막는다 — 지나간 쪽에서는 그 결과·다시 시도가 보이지 않는다. */
+      const isOutputRunning =
+        outputPhase === 'queued' ||
+        outputPhase === 'issuing' ||
+        outputPhase === 'printing' ||
+        outputPhase === 'completing';
       return (
         <>
-          <PuButton onClick={() => setScanBackPage('defect')}>{t.flow.work.toGood}</PuButton>
+          <PuButton disabled={isOutputRunning} onClick={() => setScanBackPage('defect')}>
+            {t.flow.work.toGood}
+          </PuButton>
           {outputButton(variant)}
         </>
       );
@@ -2209,7 +2217,6 @@ export const ProductionFlowScreen = () => {
             selected={printerChoice.printer}
             isLoading={lotPrinters.isPending}
             isError={lotPrinters.isError}
-            isSelectable={isPrinterSelectable}
             isLocked={isPrinterLocked}
             onRetry={() => {
               void lotPrinters.refetch();

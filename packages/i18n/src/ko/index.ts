@@ -96,7 +96,6 @@ import { dispositionRequest } from './disposition-request';
 import { stockReinstatement } from './stock-reinstatement';
 import { returnReceipt } from './return-receipt';
 import { emergencyWorkOrder } from './emergency-work-order';
-import { emergencyWorkOrderField } from './emergency-work-order-field';
 import { workStart } from './work-start';
 import { workPrecheckGate } from './work-precheck-gate';
 import { workOrderProgress } from './work-order-progress';
@@ -263,7 +262,6 @@ export const ko = {
   stockReinstatement,
   returnReceipt,
   emergencyWorkOrder,
-  emergencyWorkOrderField,
   workOrderProgress,
   lotTrace,
   materialLocation,

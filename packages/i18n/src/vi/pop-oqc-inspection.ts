@@ -14,7 +14,6 @@ export const popOqcInspection = {
     loading: 'Đang tải danh sách chờ phán định.',
     doneEmpty: 'Không có yêu cầu kiểm tra xuất hàng đã phán định.',
     empty: 'Không có yêu cầu kiểm tra xuất hàng cần phán định.',
-    unavailable: 'Không tải được danh sách chờ phán định. Hãy kiểm tra kết nối rồi thử lại.',
     pageNav: 'Chuyển trang danh sách chờ phán định',
   },
 

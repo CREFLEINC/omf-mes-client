@@ -31,11 +31,6 @@ export interface PrinterChipProps {
   selected: PrinterView | null;
   isLoading: boolean;
   isError: boolean;
-  /**
-   * @deprecated 쓰지 않는다 — 창은 셸과 상관없이 늘 열린다(사용자 지시 2026-11-19). 고른 프린터를 셸 인쇄에
-   * 싣는지는 화면이 따로 정한다(`shellSelectsPrinter`). 부르는 쪽이 아직 넘겨 남겨 둔다.
-   */
-  isSelectable?: boolean;
   /** 발행 중에는 바꾸지 못한다. */
   isLocked: boolean;
   onRetry: () => void;

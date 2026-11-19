@@ -105,8 +105,7 @@ export interface PopSelectProps extends SelectProps {
 }
 
 /**
- * 마지막 글자 뒤 이만큼 조용하면 스캔이 끝난 것으로 본다 —
- * `screens/packing-result/scan-field` 와 같은 값이다.
+ * 마지막 글자 뒤 이만큼 조용하면 스캔이 끝난 것으로 본다.
  *
  * ⛔ **곧바로 대조하지 않는 이유가 있다.** 스캐너는 글자를 하나씩 붙여 보내므로 `SH-10` 을
  *    쏘는 도중 `SH-1` 이 잠깐 만들어진다 — 그 값이 다른 후보와 정확히 같으면 **엉뚱한 출하를

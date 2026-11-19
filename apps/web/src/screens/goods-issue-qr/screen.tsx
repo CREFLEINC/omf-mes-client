@@ -356,7 +356,6 @@ export const GoodsIssueQrScreen = () => {
           selected={headPrinter}
           isLoading={printers.isPending}
           isError={printers.isError}
-          isSelectable={isPrinterSelectable}
           isLocked={isBusy}
           onRetry={() => {
             void printers.refetch();

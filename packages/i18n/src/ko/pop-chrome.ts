@@ -153,8 +153,6 @@ export const popChrome = {
     confirm: '확인',
     cancel: '취소',
     checking: '확인 중',
-    /** 사번이 없을 때의 빈 상태와 창을 여는 버튼(작업 시작 「작업자」 묶음과 같은 말). */
-    groupTitle: '작업자',
     empty: '사번이 입력되지 않았습니다.',
     open: '사번 입력',
     unknown: '이 공장에 등록되지 않은 사번입니다. 사번을 다시 입력해 주세요.',

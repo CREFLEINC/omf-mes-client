@@ -8,7 +8,7 @@ import type { WorkOrder } from './types';
  * 여기는 표시만 한다(스펙 §5-3).
  *
  * ⛔ **다른 화면 슬라이스의 상수를 참조하지 않는다.** 슬라이스는 서로 import 하지 않고 사본을
- * 소유한다 — 긴급 현장 투입 화면(`emergency-work-order-field`)이 같은 값을 따로 갖는다.
+ * 소유한다.
  *
  * ⭐ 「긴급」 보기(#295)의 조회 조건(`workOrderTypeCode`)도 이 값을 쓴다 — 옛 긴급 현장 투입 화면을 이
  * 목록에 합쳤다.

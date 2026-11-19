@@ -127,7 +127,6 @@ const TRANSLATED = [
   'warehouseLocation',
   /* POP 현장 화면 22개 슬라이스 — 단말이 Windows 표시 언어를 따른다. */
   'downtimeRegister',
-  'emergencyWorkOrderField',
   'goodsIssueQr',
   'shippingUnit',
   'materialInputScan',

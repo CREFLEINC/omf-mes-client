@@ -105,7 +105,7 @@ export const shippingUnit: Translated<typeof ko.shippingUnit> = {
     printFailed: (reason: string): string => `In thất bại — ${reason}`,
     noPrinter: 'Không có máy in nên chưa in được. Bản ghi phát hành vẫn còn.',
     noBridge: 'Ở đây không gửi ra máy in được. Bản ghi phát hành vẫn còn.',
-    reissueHint: 'Nếu nhãn chưa ra, hãy vào màn hình in lại, chọn lý do rồi in lại.',
+    reissueHint: 'Nếu nhãn chưa ra, hãy vào tab «Đã cấu thành», chọn lý do rồi in lại.',
   },
 
   actions: {
@@ -123,6 +123,7 @@ export const shippingUnit: Translated<typeof ko.shippingUnit> = {
     cancel: 'Hủy',
     issuing: 'Đang phát hành…',
     done: 'Đã phát hành lại nhãn giao hàng. Hãy dán lên đơn vị giao hàng.',
+    failed: 'Không thể phát hành lại nhãn giao hàng.',
     nextSeq: 'Lượt lần này',
     last: 'Phát hành gần nhất',
     seq: (seq: number): string => `Lượt ${String(seq)}`,

@@ -32,6 +32,11 @@ import {
 import type { WorkStartEntryState } from '../work-start/entry-state';
 import './uniform.css';
 
+/** 긴급 W/O 유형 코드 — 작업지시 목록(`work-start/work-order-type.ts`)과 같은 값의 사본(슬라이스 규칙). */
+const EMERGENCY_WORK_ORDER_TYPE_CODE = 'EMERGENCY';
+const isEmergencyOrder = (typeCode: string | null | undefined): boolean =>
+  (typeCode ?? '').trim() === EMERGENCY_WORK_ORDER_TYPE_CODE;
+
 const t = messages.popChrome.home;
 
 /** 바로가기 타일 아이콘(#291 확정 시안). 여기 없는 화면은 업무 묶음 아이콘을 쓴다. */
@@ -127,7 +132,7 @@ const StatusCard = ({
    * 다음 작업을 누르면 그 W/O 를 고른 채로 작업 지시 목록을 연다(사용자 지시 2026-11-17 · #291) —
    * 바로 [작업 시작]을 누를 수 있게. `allEquipment` 는 홈에서 보던 설비 범위다. 그 화면에 못 가면 `null`.
    */
-  onNext: ((workOrderId: number, allEquipment: boolean) => void) | null;
+  onNext: ((workOrderId: number, allEquipment: boolean, isEmergency: boolean) => void) | null;
 }) => {
   const { equipment, terminalId } = usePopIdentity();
   /*
@@ -234,7 +239,12 @@ const StatusCard = ({
             className="home-next"
             disabled={onNext === null || next === null}
             onClick={() => {
-              if (next !== null) onNext?.(next.workOrderId, equipment === null || allEquipment);
+              if (next !== null)
+                onNext?.(
+                  next.workOrderId,
+                  equipment === null || allEquipment,
+                  isEmergencyOrder(next.workOrderTypeCode),
+                );
             }}
           >
             <span className="txt">
@@ -271,7 +281,11 @@ const StatusCard = ({
                 className="home-row-link home-wo"
                 disabled={onNext === null}
                 onClick={() => {
-                  onNext?.(order.workOrderId, equipment === null || allEquipment);
+                  onNext?.(
+                    order.workOrderId,
+                    equipment === null || allEquipment,
+                    isEmergencyOrder(order.workOrderTypeCode),
+                  );
                 }}
               >
                 <b className="pu-mono">{order.workOrderNo}</b>
@@ -422,9 +436,12 @@ export const PopHomeScreen = (): ReactNode => {
           onNext={
             workStart === null
               ? null
-              : (workOrderId, allEquipment) => {
+              : (workOrderId, allEquipment, isEmergency) => {
                   const state: WorkStartEntryState = { workOrderId, allEquipment };
-                  void navigate(workStart.path, { state });
+                  /* 작업지시 목록 「전체」는 긴급을 빼므로(#330) 긴급 W/O 는 「긴급」 보기로 연다. */
+                  void navigate(isEmergency ? `${workStart.path}?type=emergency` : workStart.path, {
+                    state,
+                  });
                 }
           }
         />

@@ -28,7 +28,6 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
     oldest: 'Cũ nhất',
   },
   help: {
-    button: 'Trợ giúp',
     title: 'Hướng dẫn nhãn LOT tách',
     intro:
       'Khi xuất kho tách vật tư, một LOT mới được tạo theo số lượng tách. Khi xuất kho toàn bộ thì dùng LOT hiện có.',

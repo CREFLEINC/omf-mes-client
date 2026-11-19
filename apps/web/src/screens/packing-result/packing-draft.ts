@@ -43,48 +43,29 @@ export const qtyError = (raw: string, line: PackedLine, uomCode: string): string
     : undefined;
 };
 
-/** 담기의 결과 — 새로 담았는가, 있던 줄에 더했는가. 더했으면 화면이 그 사실을 말한다(§5-3). */
-export interface AddOutcome {
-  lines: PackedLine[];
-  merged?: { before: number; added: number; after: number };
-}
-
 /**
- * 한 줄을 담는다. **같은 배분이 이미 있으면 수량을 더한다** — `uq_handling_unit_content` 가
- * 같은 포장에 같은 LOT 을 두 행으로 두지 못하게 하므로, 화면이 미리 합쳐 보낸다.
+ * 한 줄을 담는다. **같은 배분이 이미 있으면 그대로 둔다** — `uq_handling_unit_content` 가 같은 포장에
+ * 같은 LOT 을 두 행으로 두지 못한다. 화면은 이미 담은 LOT 을 다시 스캔하면 그 줄을 잡을 뿐 더하지 않는다.
  */
 export const addLine = (
   lines: readonly PackedLine[],
   allocation: ShipmentLotAllocation,
   qty: number,
-): AddOutcome => {
-  const existing = lineOf(lines, allocation.shipmentLotAllocationId);
+): PackedLine[] => {
+  if (lineOf(lines, allocation.shipmentLotAllocationId) !== undefined) return [...lines];
 
-  if (existing === undefined) {
-    const line: PackedLine = {
-      shipmentLotAllocationId: allocation.shipmentLotAllocationId,
-      itemId: allocation.itemId,
-      itemCode: allocation.itemCode,
-      lotId: allocation.lotId,
-      lotNo: allocation.lotNo ?? '',
-      uomId: allocation.uomId,
-      qty,
-      remaining: remainingOf(allocation),
-    };
-
-    return { lines: [...lines, line] };
-  }
-
-  const after = existing.qty + qty;
-
-  return {
-    lines: lines.map((line) =>
-      line.shipmentLotAllocationId === allocation.shipmentLotAllocationId
-        ? { ...line, qty: after }
-        : line,
-    ),
-    merged: { before: existing.qty, added: qty, after },
+  const line: PackedLine = {
+    shipmentLotAllocationId: allocation.shipmentLotAllocationId,
+    itemId: allocation.itemId,
+    itemCode: allocation.itemCode,
+    lotId: allocation.lotId,
+    lotNo: allocation.lotNo ?? '',
+    uomId: allocation.uomId,
+    qty,
+    remaining: remainingOf(allocation),
   };
+
+  return [...lines, line];
 };
 
 /** 마지막으로 담은 줄을 뺀다 — 「다시 스캔」이 부른다. */
@@ -92,14 +73,6 @@ export const removeLine = (
   lines: readonly PackedLine[],
   shipmentLotAllocationId: number,
 ): PackedLine[] => lines.filter((line) => line.shipmentLotAllocationId !== shipmentLotAllocationId);
-
-/** 담긴 수량의 합. */
-export const packedTotal = (lines: readonly PackedLine[]): number =>
-  lines.reduce((sum, line) => sum + line.qty, 0);
-
-/** 담긴 줄들이 걸린 배분 잔여의 합 — 표의 「합계 N / N」의 분모다. */
-export const remainingTotal = (lines: readonly PackedLine[]): number =>
-  lines.reduce((sum, line) => sum + line.remaining, 0);
 
 /*
  * ⛔ **이 출하의 진행(포장 개수·미포장 수량)을 세지 않는다**(사용자 지시 2026-09-18 · #1351).
@@ -109,13 +82,6 @@ export const remainingTotal = (lines: readonly PackedLine[]): number =>
  *
  * ⚠ 되돌릴 때 함께 돌아오는 것은 **셈 하나가 아니라 줄 하나**다 — `docs/decisions.md` 18.
  */
-
-/** 스캔값 정리 — 앞뒤 공백만 턴다. ⛔ 대소문자를 건드리지 않는다(서버 규칙을 화면이 정하지 않는다). */
-export const normalizeScanCode = (raw: string): string | null => {
-  const trimmed = raw.trim();
-
-  return trimmed === '' ? null : trimmed;
-};
 
 /**
  * 유형 선택칸에 세울 값 — **아직 아무것도 고르지 않았을 때만 첫 값을 채운다**

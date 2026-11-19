@@ -19,10 +19,11 @@ const SESSION = {
 };
 
 const Here = () => {
-  const { pathname, state } = useLocation();
+  const { pathname, search, state } = useLocation();
   return (
     <>
       <p>지금: {pathname}</p>
+      {search !== '' && <p>주소 조건: {search}</p>}
       {state !== null && <p>넘긴 것: {JSON.stringify(state)}</p>}
     </>
   );
@@ -46,6 +47,7 @@ const setup = (
   equipment: typeof EQUIPMENT | null = null,
   workOrderQueries: URL[] = [],
   terminalId: number | null = null,
+  next: Record<string, unknown> = NEXT,
 ) =>
   renderWithProviders(
     <PopIdentityProvider
@@ -67,7 +69,7 @@ const setup = (
             workOrderQueries.push(url);
             const status = url.searchParams.get('statusCode') ?? '';
             return jsonResponse({
-              items: status === 'RELEASED' ? [NEXT] : [],
+              items: status === 'RELEASED' ? [next] : [],
               page: { page: 1, size: 1, total: TOTALS[status] ?? 0 },
             });
           },
@@ -181,6 +183,22 @@ describe('PopHomeScreen — 홈(#291)', () => {
     /* 다음 작업을 누르면 그 W/O 를 고른 채로 작업지시 목록을 연다 — 홈에서 보던 설비 범위(지정 설비)와 함께. */
     await user.click(card.getByRole('button', { name: new RegExp(NEXT.workOrderNo, 'u') }));
     expect(screen.getByText('지금: /pop/work-start')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `넘긴 것: ${JSON.stringify({ workOrderId: NEXT.workOrderId, allEquipment: false })}`,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /* 작업지시 목록 「전체」는 긴급을 뺀다(#330) — 긴급 다음 작업은 「긴급」 보기로 열어야 고른 채로 보인다. */
+  it('다음 작업이 긴급 W/O 면 작업지시 목록을 「긴급」 보기로 연다', async () => {
+    const user = userEvent.setup();
+    setup({}, EQUIPMENT, [], null, { ...NEXT, workOrderTypeCode: 'EMERGENCY' });
+
+    const card = within(await screen.findByRole('region', { name: t.statusTitle }));
+    await user.click(await card.findByRole('button', { name: new RegExp(NEXT.workOrderNo, 'u') }));
+    expect(screen.getByText('지금: /pop/work-start')).toBeInTheDocument();
+    expect(screen.getByText('주소 조건: ?type=emergency')).toBeInTheDocument();
     expect(
       screen.getByText(
         `넘긴 것: ${JSON.stringify({ workOrderId: NEXT.workOrderId, allEquipment: false })}`,

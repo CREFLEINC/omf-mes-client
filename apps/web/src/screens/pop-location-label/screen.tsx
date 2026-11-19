@@ -542,7 +542,6 @@ export const PopLocationLabelScreen = () => {
           selected={printerViews?.find((each) => each.printerName === printerName) ?? null}
           isLoading={printers.isPending}
           isError={printers.isError}
-          isSelectable
           isLocked={isBusy}
           onRetry={() => void printers.refetch()}
           onSelect={setChosenPrinter}
