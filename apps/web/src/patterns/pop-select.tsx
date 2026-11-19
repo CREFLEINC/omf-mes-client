@@ -23,13 +23,28 @@ const PAGE_SIZE = 5;
 const flattenOptions = (items: SelectItems): SelectOption[] =>
   items.flatMap((item) => ('options' in item ? item.options : [item]));
 
+/** 칸 이름표(`<label for>`)의 글 — 별표·(선택) 같은 덧붙임은 뺀다. */
+const fieldLabelOf = (id: string | undefined): string => {
+  if (id === undefined) return '';
+  const label = document.querySelector(`label[for="${CSS.escape(id)}"]`);
+  if (label === null) return '';
+
+  return [...label.childNodes]
+    .filter((node) => !(node instanceof HTMLElement && node.matches('.req, .opt, .aside')))
+    .map((node) => node.textContent ?? '')
+    .join('')
+    .trim();
+};
+
 const accessibleName = ({
   ariaLabel,
   labelledBy,
+  id,
   placeholder,
 }: {
   ariaLabel?: string;
   labelledBy?: string;
+  id?: string;
   placeholder?: string;
 }): string => {
   if (ariaLabel !== undefined) return ariaLabel;
@@ -40,7 +55,10 @@ const accessibleName = ({
     .filter(Boolean)
     .join(' ');
 
-  return labelled || placeholder || messages.popChrome.selectDialog.fallbackName;
+  /* 창 제목은 칸 이름을 먼저 쓴다 — 안내 문구(「…를 선택하세요」)를 쓰면 「…선택하세요 선택」이 된다(사용자 지적 2026-11-19). */
+  return (
+    labelled || fieldLabelOf(id) || placeholder || messages.popChrome.selectDialog.fallbackName
+  );
 };
 
 export interface PopSelectProps extends SelectProps {
@@ -171,7 +189,7 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
    */
   const showSearch = !isShortList || scannable;
   /*
-   * ⭐ 검색 칸이 있으면 그 아래에 화면 글자판을 둔다 — POP 단말에는 실물 자판이 없다(#295).
+   * ⭐ 검색 칸이 있으면 창 맨 아래에 화면 글자판을 둔다 — POP 단말에는 실물 자판이 없다(#295).
    *    글자판이 자리를 차지하므로 한 쪽 건수는 남은 목록 칸 높이로 잰다(창 안 스크롤 없음).
    */
   const listRef = useRef<HTMLDivElement>(null);
@@ -288,6 +306,7 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
               accessibleName({
                 ariaLabel,
                 labelledBy: ariaLabelledBy,
+                id,
                 placeholder,
               }),
             ),
@@ -360,16 +379,6 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
             </div>
           )}
 
-          {showSearch && (
-            <PuTextKeyboard
-              value={query}
-              onChange={(next) => {
-                setQuery(next);
-                setPage(0);
-              }}
-            />
-          )}
-
           <div ref={listRef} className="pu-list" role="listbox" aria-label={title}>
             {visibleOptions.length === 0 ? (
               <PuEmpty icon="search" title={messages.popChrome.selectDialog.empty} />
@@ -403,6 +412,16 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
               pages={totalPages}
               onPage={(next) => {
                 setPage(Math.min(totalPages - 1, Math.max(0, next - 1)));
+              }}
+            />
+          )}
+          {/* 글자판은 맨 아래 — 목록·쪽 넘김 다음(사용자 지시 2026-11-19). */}
+          {showSearch && (
+            <PuTextKeyboard
+              value={query}
+              onChange={(next) => {
+                setQuery(next);
+                setPage(0);
               }}
             />
           )}
