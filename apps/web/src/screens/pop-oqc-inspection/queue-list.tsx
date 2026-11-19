@@ -4,6 +4,7 @@ import type { Ref } from 'react';
 import { PuChip, puCx, type PuChipTone } from '../../patterns/pop-uniform';
 import { toStatusBadge, type StatusTone } from '../oqc-inspection/status-badge';
 import type { InspectionQueueRow } from '../oqc-inspection/types';
+import { withUom, type UomLookup } from '../oqc-inspection/uom-lookup';
 
 const t = messages.popOqcInspection.queue;
 const detail = messages.popOqcInspection.detail;
@@ -22,6 +23,8 @@ export interface PopQueueListProps {
   onSelect: (inspectionRequestId: number) => void;
   /** 한 쪽 건수를 재는 칸(구획 높이에 들어가는 만큼 · #295). */
   listRef: Ref<HTMLDivElement>;
+  /** 수량 옆 단위 코드 — 모르면 숫자만. */
+  uomOf: UomLookup['codeOf'];
 }
 
 /**
@@ -29,7 +32,7 @@ export interface PopQueueListProps {
  *
  * ⚠ 관리웹 W-04-03 의 `QueueTable` 을 쓰지 않는다 — 그쪽은 밑줄 링크 한 칸만 눌리는 관리웹 관용구다.
  */
-export const PopQueueList = ({ rows, selectedId, onSelect, listRef }: PopQueueListProps) => (
+export const PopQueueList = ({ rows, selectedId, onSelect, listRef, uomOf }: PopQueueListProps) => (
   <div ref={listRef} className="pu-list pu-fit" role="group" aria-label={t.caption}>
     {rows.map((row) => {
       const selected = row.inspectionRequestId === selectedId;
@@ -57,7 +60,7 @@ export const PopQueueList = ({ rows, selectedId, onSelect, listRef }: PopQueueLi
               {t.columns.item} <b>{detail.idValue(row.itemId)}</b>
             </span>
             <span>
-              {t.columns.qty} <b>{String(row.targetQty)}</b>
+              {t.columns.qty} <b>{withUom(String(row.targetQty), uomOf(row.uomId))}</b>
             </span>
           </span>
         </button>

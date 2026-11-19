@@ -74,7 +74,7 @@ export const reworkResultRegister = {
   },
   quantities: {
     goodQty: '양품',
-    defectQty: '불량 수량',
+    defectQty: '불량량',
     holdQty: '보류',
     scrapQty: '폐기',
   },
@@ -86,8 +86,8 @@ export const reworkResultRegister = {
   total: '합계',
   exceeded: (target: number, uom: string) =>
     uom === ''
-      ? `처분 수량 ${target}을 넘을 수 없습니다.`
-      : `처분 수량 ${target} ${uom}를 넘을 수 없습니다.`,
+      ? `처분량 ${target}을 넘을 수 없습니다.`
+      : `처분량 ${target} ${uom}를 넘을 수 없습니다.`,
   partial: (remaining: number, uom: string) =>
     uom === ''
       ? `부분 실적입니다. 미처리 ${remaining}이 남습니다.`

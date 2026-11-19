@@ -12,6 +12,7 @@ import {
   PuKv,
   PuNote,
   PuTiles,
+  PuUnit,
   type PuChipTone,
   type PuTileOption,
 } from '../../patterns/pop-uniform';
@@ -28,6 +29,7 @@ import {
 } from '../oqc-inspection/quantity-draft';
 import { toTransitionPreview, type TransitionPreview } from '../oqc-inspection/transition-preview';
 import type { InspectionResultRound } from '../oqc-inspection/types';
+import { withUom } from '../oqc-inspection/uom-lookup';
 
 /*
  * P-04-06 판정 입력(1 수량 입력 › 2 최종 판정) · 저장 확인 창(omf-all-around#109 · #295 POP 통일).
@@ -173,24 +175,27 @@ export const PopQtySummary = ({
   accepted,
   rejected,
   held,
+  uom,
 }: {
   inspected: string;
   accepted: string;
   rejected: string;
   held: string;
+  /** 수량 옆 단위 코드 — 모르면 숫자만. */
+  uom: string | null;
 }) => (
   <div className="oqc-qsum">
     <span>
-      {t.result.summary.inspectedQty} <b>{inspected}</b>
+      {t.result.summary.inspectedQty} <b>{withUom(inspected, uom)}</b>
     </span>
     <span>
-      {t.result.summary.accepted} <b>{accepted}</b>
+      {t.result.summary.accepted} <b>{withUom(accepted, uom)}</b>
     </span>
     <span>
-      {t.result.summary.rejected} <b>{rejected}</b>
+      {t.result.summary.rejected} <b>{withUom(rejected, uom)}</b>
     </span>
     <span>
-      {t.result.summary.held} <b>{held}</b>
+      {t.result.summary.held} <b>{withUom(held, uom)}</b>
     </span>
   </div>
 );
@@ -204,6 +209,8 @@ export interface PopQuantityStepProps {
   target: keyof QuantityDraft | null;
   onTarget: (key: keyof QuantityDraft) => void;
   fieldErrors: Record<string, string>;
+  /** 칸 오른쪽 단위 코드 — 모르면 붙이지 않는다. */
+  uom: string | null;
 }
 
 /** 1단계 — 합격 · 불합격 · 보류 수량. 숫자는 오른쪽 「수량 키패드」로도 넣는다. */
@@ -215,6 +222,7 @@ export const PopQuantityStep = ({
   target,
   onTarget,
   fieldErrors,
+  uom,
 }: PopQuantityStepProps) => (
   <div className="oqc-qgrid">
     {QUANTITY_KEYS.map((key) => {
@@ -223,23 +231,26 @@ export const PopQuantityStep = ({
 
       return (
         <PuField key={key} label={t.result.fields[key]} htmlFor={id}>
-          <PuInput
-            id={id}
-            numeric
-            inputMode="decimal"
-            autoComplete="off"
-            placeholder="0"
-            value={draft[key]}
-            disabled={disabled}
-            target={target === key}
-            need={error !== undefined}
-            onFocus={() => {
-              onTarget(key);
-            }}
-            onChange={(event) => {
-              onChange({ ...draft, [key]: event.target.value });
-            }}
-          />
+          <div className="pu-row">
+            <PuInput
+              id={id}
+              numeric
+              inputMode="decimal"
+              autoComplete="off"
+              placeholder="0"
+              value={draft[key]}
+              disabled={disabled}
+              target={target === key}
+              need={error !== undefined}
+              onFocus={() => {
+                onTarget(key);
+              }}
+              onChange={(event) => {
+                onChange({ ...draft, [key]: event.target.value });
+              }}
+            />
+            {uom !== null && <PuUnit>{uom}</PuUnit>}
+          </div>
           {error !== undefined && <span className="oqc-field-err">{error}</span>}
         </PuField>
       );
@@ -253,6 +264,8 @@ export interface PopJudgmentStepProps {
   /** 재검사면 새로 쌓일 회차 번호, 아니면 `null`. */
   reinspectRound: number | null;
   inspectedQty: number;
+  /** 수량 옆 단위 코드 — 모르면 숫자만. */
+  uom: string | null;
   judgmentOptions: CodeOption[];
   judgment: string;
   onJudgmentChange: (code: string) => void;
@@ -270,6 +283,7 @@ export const PopJudgmentStep = ({
   state,
   reinspectRound,
   inspectedQty,
+  uom,
   judgmentOptions,
   judgment,
   onJudgmentChange,
@@ -297,6 +311,7 @@ export const PopJudgmentStep = ({
           accepted={preview.accepted}
           rejected={preview.rejected}
           held={preview.held}
+          uom={uom}
         />
       )}
       {quantityError !== undefined && <PuNote tone="bad">{quantityError}</PuNote>}
@@ -338,6 +353,8 @@ export interface PopConfirmDialogProps {
   judgmentOptions: CodeOption[];
   judgment: string;
   inspectedQty: number;
+  /** 수량 옆 단위 코드 — 모르면 숫자만. */
+  uom: string | null;
   preview: TransitionPreview | null;
   hasLot: boolean;
   /** 「시리얼 n대 · NG n대」 — 출하작업지시 의뢰에서만. */
@@ -358,6 +375,7 @@ export const PopConfirmDialog = ({
   judgmentOptions,
   judgment,
   inspectedQty,
+  uom,
   preview,
   hasLot,
   serialSummary,
@@ -378,13 +396,13 @@ export const PopConfirmDialog = ({
         <PuChip tone={judgmentTone(judgment)}>{labelOfCode(judgmentOptions, judgment)}</PuChip>
       ),
     },
-    { label: t.confirm.inspectedQty, value: String(inspectedQty) },
+    { label: t.confirm.inspectedQty, value: withUom(String(inspectedQty), uom) },
     ...(preview === null
       ? []
       : [
-          { label: t.confirm.accepted, value: preview.accepted },
-          { label: t.confirm.rejected, value: preview.rejected },
-          { label: t.confirm.held, value: preview.held },
+          { label: t.confirm.accepted, value: withUom(preview.accepted, uom) },
+          { label: t.confirm.rejected, value: withUom(preview.rejected, uom) },
+          { label: t.confirm.held, value: withUom(preview.held, uom) },
         ]),
     ...(serialSummary === undefined ? [] : [{ label: t.confirm.serials, value: serialSummary }]),
   ];

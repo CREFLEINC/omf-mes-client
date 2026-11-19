@@ -45,6 +45,7 @@ import {
 } from '../oqc-inspection/queries';
 import { serialBlockedReason, toSerialInputs, type SerialRow } from '../oqc-inspection/serials';
 import { formatDateTime, latestRound, orderedRounds } from '../oqc-inspection/types';
+import { useUomLookup, withUom } from '../oqc-inspection/uom-lookup';
 import { targetSignatureOf, type WriteTargetSignature } from '../oqc-inspection/write-target';
 import {
   PopConfirmDialog,
@@ -108,6 +109,9 @@ export const PopOqcInspectionScreen = () => {
   });
   const queue = view === 'pending' ? pendingQueue : doneQueue;
   const detail = useInspectionRequestDetail(selectedId);
+  /* 수량 옆 단위 코드(표시 전용) — 못 받으면 숫자만 둔다. */
+  const uoms = useUomLookup();
+  const uomCode = uoms.codeOf(detail.data?.uomId);
   const rounds = useInspectionRounds(selectedId);
   const round = latestRound(rounds.data ?? []);
 
@@ -381,6 +385,7 @@ export const PopOqcInspectionScreen = () => {
         history={isReinspectingNow ? (rounds.data ?? []) : undefined}
         judgmentOptions={judgmentOptions}
         wide={!inQuantity}
+        uom={uomCode}
       />
     );
 
@@ -434,10 +439,12 @@ export const PopOqcInspectionScreen = () => {
                           {labelOfCode(judgmentOptions, item.overallJudgmentCode)}
                         </PuChip>
                       </td>
-                      <td className="mid">{String(item.inspectedQty)}</td>
-                      <td className="mid oqc-q-ok">{String(item.acceptedQty)}</td>
-                      <td className="mid oqc-q-bad">{String(item.rejectedQty)}</td>
-                      <td className="mid oqc-q-warn">{String(item.heldQty)}</td>
+                      <td className="mid">{withUom(String(item.inspectedQty), uomCode)}</td>
+                      <td className="mid oqc-q-ok">{withUom(String(item.acceptedQty), uomCode)}</td>
+                      <td className="mid oqc-q-bad">
+                        {withUom(String(item.rejectedQty), uomCode)}
+                      </td>
+                      <td className="mid oqc-q-warn">{withUom(String(item.heldQty), uomCode)}</td>
                       <td className="fit mid">
                         {item.confirmedAt === null ? '—' : formatDateTime(item.confirmedAt)}
                       </td>
@@ -471,6 +478,7 @@ export const PopOqcInspectionScreen = () => {
             target={keypadOn ? keypadTarget : null}
             onTarget={setKeypadTarget}
             fieldErrors={save.fieldErrors}
+            uom={uomCode}
           />
         ) : (
           <PopJudgmentStep
@@ -478,6 +486,7 @@ export const PopOqcInspectionScreen = () => {
             state={judgmentState}
             reinspectRound={isReinspectingNow ? (rounds.data?.length ?? 0) + 1 : null}
             inspectedQty={inspectedQty}
+            uom={uomCode}
             judgmentOptions={judgmentOptions}
             judgment={judgment}
             onJudgmentChange={(code) => {
@@ -610,6 +619,7 @@ export const PopOqcInspectionScreen = () => {
               rows={rows}
               selectedId={selectedId}
               listRef={listRef}
+              uomOf={uoms.codeOf}
               onSelect={(id) => {
                 if (!save.isSaving) setSelectedId(id);
               }}
@@ -686,6 +696,7 @@ export const PopOqcInspectionScreen = () => {
           judgmentOptions={judgmentOptions}
           judgment={judgment}
           inspectedQty={inspectedQty}
+          uom={uomCode}
           preview={judgmentState.preview}
           hasLot={detail.data.lotId !== null}
           serialSummary={isShipment ? t.serial.count(serialRows.length, ngSerials) : undefined}

@@ -21,6 +21,7 @@ import {
 } from '../oqc-inspection/types';
 import { judgmentTone } from './judgment';
 import { usePlanVersion } from '../parts-iqc-inspection/queries';
+import { withUom } from '../oqc-inspection/uom-lookup';
 
 const t = messages.popOqcInspection.detail;
 const r = messages.popOqcInspection.result;
@@ -34,6 +35,8 @@ export interface PopRequestBandProps {
   judgmentOptions: readonly CodeOption[];
   /** 작업 구획이 넓은가(2단계 · 판정 결과) — 한 줄에 넷씩. */
   wide: boolean;
+  /** 수량 옆 단위 코드 — 모르면 숫자만. */
+  uom: string | null;
 }
 
 const label = (icon: PuIconName, text: string): ReactNode => (
@@ -50,7 +53,13 @@ const label = (icon: PuIconName, text: string): ReactNode => (
  * 이름을 받지 못하는 식별자(품목·대상·LOT·기준)는 번호임을 `#` 으로 드러낸다.
  * [기준 조회]는 적용 기준 창 — 검사 안내 문구(omf-all-around#252)를 그 안에 보인다.
  */
-export const PopRequestBand = ({ detail, history, judgmentOptions, wide }: PopRequestBandProps) => {
+export const PopRequestBand = ({
+  detail,
+  history,
+  judgmentOptions,
+  wide,
+  uom,
+}: PopRequestBandProps) => {
   const [planOpen, setPlanOpen] = useState(false);
   const guides = useInspectionGuide(detail.inspectionRequestId).data ?? [];
   const typeLabel = t.targetTypes[detail.targetTypeCode] ?? detail.targetTypeCode;
@@ -73,7 +82,7 @@ export const PopRequestBand = ({ detail, history, judgmentOptions, wide }: PopRe
     { label: label('clock', t.fields.requestedAt), value: formatDateTime(detail.requestedAt) },
     { label: label('box', t.fields.item), value: t.idValue(detail.itemId) },
     { label: label('shield', t.fields.inspectionType), value: detail.inspectionTypeCode },
-    { label: label('check', t.fields.targetQty), value: String(detail.targetQty) },
+    { label: label('check', t.fields.targetQty), value: withUom(String(detail.targetQty), uom) },
     {
       label: label('swap', t.fields.target),
       value: t.target(typeLabel, detail.targetId),
@@ -115,8 +124,9 @@ export const PopRequestBand = ({ detail, history, judgmentOptions, wide }: PopRe
                 {labelOfCode(judgmentOptions, round.overallJudgmentCode)}
               </PuChip>
               <small>
-                {r.summary.accepted} {String(round.acceptedQty)} · {r.summary.rejected}{' '}
-                {String(round.rejectedQty)} · {r.summary.held} {String(round.heldQty)}
+                {r.summary.accepted} {withUom(String(round.acceptedQty), uom)} ·{' '}
+                {r.summary.rejected} {withUom(String(round.rejectedQty), uom)} · {r.summary.held}{' '}
+                {withUom(String(round.heldQty), uom)}
                 {round.confirmedAt !== null &&
                   ` · ${r.confirmedAt(formatDateTime(round.confirmedAt))}`}
               </small>
