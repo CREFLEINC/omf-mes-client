@@ -111,6 +111,7 @@ export const KeypadPanel = ({
           <div className="wa-pad">
             <PuKeypad
               targetLabel={t.workerNo}
+              showTarget={false}
               decimal={false}
               clearInPad
               disabled={isChecking}

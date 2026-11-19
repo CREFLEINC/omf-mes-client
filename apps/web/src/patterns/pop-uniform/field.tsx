@@ -327,6 +327,7 @@ export const PuManualDialog = ({
       {keypad && (
         <PuKeypad
           targetLabel={label}
+          showTarget={false}
           decimal={false}
           onKey={(key) => {
             setValue((prev) => applyKeypadKey(prev, key, { decimal: false }));
@@ -464,6 +465,7 @@ export const PuKeypad = ({
   decimal = true,
   disabled = false,
   clearInPad = false,
+  showTarget = true,
 }: {
   /** 지금 숫자가 들어갈 칸 이름. 없으면 「입력할 칸을 누르세요」. */
   targetLabel: ReactNode | null;
@@ -476,24 +478,28 @@ export const PuKeypad = ({
    * 사용자 지시 2026-11-19). 이때 「.」 키는 없다.
    */
   clearInPad?: boolean;
+  /** 칸이 하나뿐이라 어느 칸인지 말할 필요가 없을 때 위 칸 이름을 감춘다(사용자 지시 2026-11-19 「사번」 문구 삭제). */
+  showTarget?: boolean;
 }) => (
   <div className="pu-stack" role="group" aria-label={t.keypad.region}>
-    <div className="pu-keypad-head">
-      <span className="pu-keypad-target">
-        {targetLabel === null ? (
-          t.keypad.noTarget
-        ) : (
-          <>
-            <b>{targetLabel}</b>
-          </>
+    {showTarget || !clearInPad ? (
+      <div className="pu-keypad-head">
+        <span className="pu-keypad-target">
+          {!showTarget ? null : targetLabel === null ? (
+            t.keypad.noTarget
+          ) : (
+            <>
+              <b>{targetLabel}</b>
+            </>
+          )}
+        </span>
+        {clearInPad ? null : (
+          <PuButton size="sm" disabled={disabled || targetLabel === null} onClick={onClearAll}>
+            {t.keypad.clearAll}
+          </PuButton>
         )}
-      </span>
-      {clearInPad ? null : (
-        <PuButton size="sm" disabled={disabled || targetLabel === null} onClick={onClearAll}>
-          {t.keypad.clearAll}
-        </PuButton>
-      )}
-    </div>
+      </div>
+    ) : null}
     <div className="pu-keypad">
       {(clearInPad ? PAD_KEYS : KEYS).map((key) => (
         <button
