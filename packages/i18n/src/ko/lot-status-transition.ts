@@ -78,7 +78,7 @@ export const lotStatusTransition = {
       pane: '열린 보류 목록',
       title: '해제할 보류',
       reason: '보류 사유',
-      heldAt: '보류 시각',
+      heldAt: '보류일시',
       quantity: '보류량',
       full: '전량',
       target: '해제 대상',

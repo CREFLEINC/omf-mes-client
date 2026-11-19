@@ -331,7 +331,7 @@ export const workOrderClose = {
     },
     fields: {
       sequence: '순번',
-      occurredAt: '발생 시각',
+      occurredAt: '발생일시',
       goodQty: '양품',
       defectQty: '불량',
       holdQty: '보류',

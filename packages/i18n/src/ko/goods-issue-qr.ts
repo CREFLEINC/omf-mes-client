@@ -60,7 +60,7 @@ export const goodsIssueQr = {
     qty: '수량',
     issue: '출고번호',
     destination: '도착',
-    splitAt: '분할 시각',
+    splitAt: '분할일시',
     labelColumn: '라벨',
     issueLine: (issueNo: string, lineNo: number) => `${issueNo} · 라인 ${String(lineNo)}`,
     choose: (lotNo: string) => `${lotNo} 고르기`,

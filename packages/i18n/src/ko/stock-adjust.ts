@@ -620,7 +620,7 @@ export const stockAdjust = {
      */
     postedTitle: (adjustmentNo: string): string => `조정 전표 ${adjustmentNo}를 전기했습니다.`,
     postedDescription: '재고가 움직였습니다. 되돌리려면 반대 방향의 조정을 새로 세워야 합니다.',
-    adjustedAt: '전기 시각',
+    adjustedAt: '전기일시',
     /**
      * 200은 왔는데 **전기 시각이 실려 오지 않았다**(계약이 그 값을 nullable로 두었다).
      * 빈 자리로 두면 「불러오지 못한 것」처럼 보이고, 지어내면 없는 사실을 말하게 된다.

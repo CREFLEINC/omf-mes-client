@@ -30,7 +30,7 @@ export const materialIssueRequest = {
     warehouse: '창고',
     destinationLocation: '도착 위치',
     requiredDate: '필요 일자',
-    requiredTime: '필요 시각',
+    requiredTime: '필요일시',
     reason: '요청 사유',
     remarks: '비고',
   },

@@ -23,7 +23,7 @@ export const erpOutbound = {
     /** 메시지 키에서 연계 코드를 뗀 번호 — 입고 번호 같은 업무 번호(연동 현황·이력의 「번호」와 같다). */
     messageKey: '번호',
     createdAt: '생성',
-    availableAt: '보낼 시각',
+    availableAt: '보낼 일시',
     retryCount: '시도',
     lastErrorMessage: '마지막 오류',
   },

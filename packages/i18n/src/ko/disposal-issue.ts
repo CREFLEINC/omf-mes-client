@@ -371,7 +371,7 @@ export const disposalIssue = {
     sourceDocumentType: '원천 문서 유형',
     reason: '폐기 사유',
     issuedDate: '출고 일자',
-    issuedTime: '출고 시각',
+    issuedTime: '출고일시',
     /** 확인 창에만 나오는 라벨 — 폼에는 칸이 없다(출고 일자에서 파생한다). */
     businessDate: '영업일',
     remarks: '비고',

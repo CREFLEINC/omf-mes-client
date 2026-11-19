@@ -269,7 +269,7 @@ export const lotTrace = {
       qty: '분할 수량',
       fromSection: '분할된 원래 LOT',
       parentLotNo: '원래 LOT 번호',
-      at: '분할 시각',
+      at: '분할일시',
       issueNo: '출고번호',
       issueText: (goodsIssueNo: string, lineNo: number): string =>
         `${goodsIssueNo} · 라인 ${String(lineNo)}`,

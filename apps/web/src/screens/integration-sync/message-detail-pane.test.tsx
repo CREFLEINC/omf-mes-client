@@ -41,8 +41,8 @@ describe('MessageDetailPane — 항목', () => {
     });
 
     expect(fieldValue('구분')).toBe('수신');
-    expect(fieldValue('보낸 시각')).toBe('2026-08-04 07:13');
-    expect(fieldValue('완료 시각')).toBe('2026-08-04 07:15');
+    expect(fieldValue('보낸 일시')).toBe('2026-08-04 07:13');
+    expect(fieldValue('완료일시')).toBe('2026-08-04 07:15');
     // 처리하는 워커 이름 · 대상 코드 같은 시스템 값은 보이지 않는다(사용자 지시 2026-10-27).
     expect(fieldValue('처리 중')).toBe('2026-08-04 09:20부터 처리 중');
     expect(fieldValue('다음 시도')).toBe('2026-08-04 07:20');
@@ -62,8 +62,8 @@ describe('MessageDetailPane — 항목', () => {
       }),
     });
 
-    expect(fieldValue('보낸 시각')).toBe('—');
-    expect(fieldValue('완료 시각')).toBe('—');
+    expect(fieldValue('보낸 일시')).toBe('—');
+    expect(fieldValue('완료일시')).toBe('—');
     expect(fieldValue('처리 중')).toBe('—');
     expect(fieldValue('오류 내용')).toBe('—');
   });

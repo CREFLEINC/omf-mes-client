@@ -249,7 +249,7 @@ export const lotStatusHistory = {
       parentView: '원래 LOT 상세 보기',
       parentAlsoSplit: '이것도 분할 LOT',
       qty: '분할 수량',
-      at: '분할 시각',
+      at: '분할일시',
       issue: '분할 출고',
       issueText: (goodsIssueNo: string, lineNo: number): string =>
         `${goodsIssueNo} · 라인 ${String(lineNo)}`,
@@ -262,7 +262,7 @@ export const lotStatusHistory = {
       status: '상태',
       initialQty: '초기 수량',
       expiryDate: '유효기한',
-      manufacturedAt: '제조 시각',
+      manufacturedAt: '제조일시',
       fourMChange: '4M 변경품',
     },
   },

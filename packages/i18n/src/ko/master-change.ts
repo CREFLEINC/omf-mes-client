@@ -50,7 +50,7 @@ export const masterChange = {
   },
   /** 목록 표의 머리글. 열 구성의 근거는 screens/master-change/event-table.tsx에 있다. */
   table: {
-    occurredAt: '발생 시각',
+    occurredAt: '발생일시',
     targetType: '대상 종류',
     targetId: '대상',
     eventType: '사건 종류',

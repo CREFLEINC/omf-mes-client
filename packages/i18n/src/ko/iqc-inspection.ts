@@ -263,7 +263,7 @@ export const iqcInspection = {
       title: '검사 완료',
       finalJudgment: '최종 판정',
       round: '회차',
-      confirmedAt: '확정 시각',
+      confirmedAt: '확정일시',
       fourMChange: '4M 변경품',
     },
     fields: {
@@ -461,7 +461,7 @@ export const iqcInspection = {
       accepted: '합격',
       rejected: '불합격',
       held: '보류',
-      confirmedAt: '확정 시각',
+      confirmedAt: '확정일시',
     },
     /** 아직 확정되지 않은 회차의 확정 시각 — 없는 것을 빈칸으로 두지 않는다. */
     notConfirmed: '미확정',

@@ -545,7 +545,7 @@ describe('MasterChangeScreen — 목록 표시', () => {
       .map((cell) => cell.textContent);
 
     expect(headers).toEqual([
-      '발생 시각',
+      '발생일시',
       '대상 종류',
       '대상',
       '사건 종류',

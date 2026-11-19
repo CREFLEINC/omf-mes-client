@@ -93,7 +93,7 @@ export const popOqcInspection = {
       rejected: '불합격',
       held: '보류',
     },
-    columns: { round: '회차', judgment: '종합 판정', confirmedAt: '확정 시각' },
+    columns: { round: '회차', judgment: '종합 판정', confirmedAt: '확정일시' },
     confirmedAt: (at: string): string => `확정 ${at}`,
   },
 

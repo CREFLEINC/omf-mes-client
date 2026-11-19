@@ -223,7 +223,7 @@ export const stockStatus = {
     uom: '단위',
     lotType: 'LOT 유형',
     status: '상태',
-    manufacturedAt: '제조 시각',
+    manufacturedAt: '제조일시',
     expiryDate: '유효기한',
     initialQty: '초기 수량',
     remarks: '비고',
@@ -252,7 +252,7 @@ export const stockStatus = {
       status: '상태',
       holdQty: '보류량',
       uom: '단위',
-      heldAt: '보류 시각',
+      heldAt: '보류일시',
       releaseCondition: '해제 조건',
       remarks: '비고',
       /* 계약이 「비어 있으면 전량 보류」로 정했다. 빈칸이나 0으로 두면 정반대로 읽힌다. */
@@ -280,7 +280,7 @@ export const stockStatus = {
       sourceDocumentType: '원천 전표',
       status: '상태',
       /** 단말에서 행위가 일어난 시각이다. 서버가 받은 시각과 벌어질 수 있다. */
-      occurredAt: '발생 시각',
+      occurredAt: '발생일시',
       /** 고르면 그 거래의 라인이 아래에 열린다. 「상세」가 아니라 무엇이 열리는지 적는다. */
       select: '라인',
     },

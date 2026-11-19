@@ -53,7 +53,7 @@ export const shippingUnit = {
     type: '유형',
     unit: '출하 단위',
     unassigned: '미구성 상자',
-    closedAt: '마감 시각',
+    closedAt: '마감일시',
     count: (count: number): string => `${String(count)}개`,
   },
 

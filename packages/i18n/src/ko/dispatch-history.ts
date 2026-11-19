@@ -37,7 +37,7 @@ export const dispatchHistory = {
   ): string =>
     `성공 ${String(sent)}, 실패 ${String(failed)}, 대기 ${String(pending)}, 만료 ${String(expired)}, 번호없음 ${String(noPhone)}`,
   columns: {
-    occurredAt: '발생 시각',
+    occurredAt: '발생일시',
     event: '이벤트',
     department: '부서',
     target: '대상',
@@ -49,7 +49,7 @@ export const dispatchHistory = {
     status: '상태',
     attempts: '시도',
     error: '오류',
-    sentAt: '발송 시각',
+    sentAt: '발송일시',
     trackingId: 'tracking id',
   },
   actions: { prevPage: '이전 쪽', nextPage: '다음 쪽' },

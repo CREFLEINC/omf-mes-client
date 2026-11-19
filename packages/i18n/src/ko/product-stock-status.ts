@@ -128,7 +128,7 @@ export const productStockStatus = {
       title: '해제되지 않은 보류',
       reason: '사유',
       status: '상태',
-      heldAt: '보류 시각',
+      heldAt: '보류일시',
       releaseCondition: '해제 조건',
       emptyTitle: '해제되지 않은 보류가 없습니다',
       emptyDescription: '이 LOT에 걸린 보류가 없거나 모두 해제되었습니다.',

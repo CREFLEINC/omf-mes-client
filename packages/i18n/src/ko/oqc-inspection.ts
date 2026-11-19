@@ -471,7 +471,7 @@ export const oqcInspection = {
       final: '최종 판정',
       round: '검사 회차',
       inspector: '검사자',
-      inspectedAt: '검사 시각',
+      inspectedAt: '검사일시',
     },
     round: (round: number): string => `${round}회차`,
   },

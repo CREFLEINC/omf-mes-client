@@ -36,7 +36,7 @@ export const goodsReceipt = {
     receiptDatetime: '입고 일시',
     /** 입고 일시를 날짜(달력)와 시각(24시간 HH:mm)으로 나눠 받는다 — 보내는 값은 합친 `입고 일시` 하나다. */
     receiptDate: '입고 일자',
-    receiptTime: '입고 시각',
+    receiptTime: '입고일시',
     receiptHour: '입고 시각(시)',
     receiptMinute: '입고 시각(분)',
     remarks: '비고',

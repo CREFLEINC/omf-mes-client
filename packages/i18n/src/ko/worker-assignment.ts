@@ -148,7 +148,7 @@ export const workerAssignment = {
     /** 사번 확인을 마친 작업자 표시(omf-all-around#288). */
     confirmed: '확인 완료',
     workerNo: '사번',
-    assignedAt: '지정 시각',
+    assignedAt: '지정일시',
     shift: '작업자 변경',
     /**
      * ⚠ **큐의 사번을 바꾸지 않는다**(§6 · B-3 이력 불변). 이미 쌓인 기록은 그때 그 사람의

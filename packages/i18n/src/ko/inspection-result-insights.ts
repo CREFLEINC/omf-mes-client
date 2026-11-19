@@ -243,7 +243,7 @@ export const inspectionResultInsights = {
       columns: {
         dispositionType: '처분',
         qty: '수량',
-        decidedAt: '판정 시각',
+        decidedAt: '판정일시',
         reason: '사유',
       },
     },

@@ -124,7 +124,7 @@ export const dashboard = {
     /** 경과 시간. 1시간이 안 되면 분만 적는다. */
     elapsedText: (hours: number, minutes: number): string =>
       hours === 0 ? `${String(minutes)}분` : `${String(hours)}시간 ${String(minutes)}분`,
-    since: '상태 시작 시각',
+    since: '상태 시작일시',
     /** 값이 없는 칸. 0과 다르다 — 0을 적으면 「잰 결과가 0」으로 읽힌다. */
     none: '—',
     reasonUnknown: '사유 미등록',
@@ -461,7 +461,7 @@ export const dashboard = {
       empty: '해당하는 LOT 이 없습니다.',
       lotColumn: 'LOT · 품목',
       infoColumn: '상세',
-      qtyColumn: '수량 · 시각',
+      qtyColumn: '수량 · 일시',
       noLot: 'LOT 번호 없음',
       listLabel: (status: string): string => `${status} 목록`,
     },
