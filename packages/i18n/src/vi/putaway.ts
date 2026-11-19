@@ -92,7 +92,6 @@ export const putaway: Translated<typeof ko.putaway> = {
     lot: 'Quét nhãn LOT vật tư để tiếp tục',
   },
   done: {
-    count: (count: string) => `Đã cất ${count} lượt`,
     row: (lotNo: string, code: string, qty: string) => `${lotNo} → ${code} ${qty}`,
     movedPartial: (qty: string) =>
       `Chỉ chuyển ${qty} còn lại ở khu chờ cất (phần còn lại đã xuất trước)`,
@@ -116,6 +115,7 @@ export const putaway: Translated<typeof ko.putaway> = {
     description: 'Chưa được ghi nhận. Hãy thử lại.',
   },
   noWorker: 'Hãy xác nhận mã nhân viên trước',
+  historyLink: 'Lịch sử cất hàng',
   direct: {
     summary: (lots: string, tasks: string) => `${lots} LOT chờ cất, ${tasks} lệnh cất hàng`,
     lotsLegend: 'LOT chờ cất',

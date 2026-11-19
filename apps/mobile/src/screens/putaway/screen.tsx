@@ -547,7 +547,10 @@ export const PutawayScreen = () => {
     />
   );
 
-  const done = registered.filter((each) => each.outcome !== 'rejected');
+  /*
+   * 서버가 거절한 것만 화면에 모은다 — 서버에 없으므로 「적치 기록」(M-01-14)이 대신 보이지 못한다. 받거나 담긴 것은
+   * 이 화면에 쌓지 않는다(피처 011): 직전 1건은 위 결과 띠가, 지난 기록은 「적치 기록」이 서버 이력으로 보인다.
+   */
   const failed = registered.filter((each) => each.outcome === 'rejected');
   const doneRow = (each: Registered) => (
     <li key={each.key}>
@@ -637,7 +640,11 @@ export const PutawayScreen = () => {
               {lastRecorded.reason === undefined || lastRecorded.reason === null ? null : (
                 <span className="putaway__verdict-line">{lastRecorded.reason}</span>
               )}
-              {lastRecorded.mode === undefined || lastRecorded.note === null ? null : (
+              {/*
+               * 지시 없는 적치는 입고 번호 · 창고, 창고 보충 지시는 덜 옮겼거나 닫은 까닭(004). 보충 지시의 까닭은
+               * 「적치됨」 줄이 말했는데 그 목록을 지워(피처 011) 이 띠가 함께 말한다.
+               */}
+              {lastRecorded.note === null ? null : (
                 <span className="putaway__verdict-line">{lastRecorded.note}</span>
               )}
             </AlertBanner>
@@ -704,10 +711,17 @@ export const PutawayScreen = () => {
             </AlertBanner>
           ) : null}
 
+          {/* 머리 줄 오른쪽이 「적치 기록」(M-01-14) 입구다 — 지난 적치는 거기서 본다(피처 011). */}
           {lookup?.kind !== 'many' && tasks.data !== undefined && pendingLots.data !== undefined ? (
-            <p className="putaway__note">
-              {d.summary(String(pendingLots.data.total), String(tasks.data.length))}
-            </p>
+            <div className="putaway__head">
+              <p className="putaway__note">
+                {d.summary(String(pendingLots.data.total), String(tasks.data.length))}
+              </p>
+              <Link className="putaway__history-link" to="/putaway-history">
+                {t.historyLink}
+                <Icon name="chevron_right" size={18} />
+              </Link>
+            </div>
           ) : null}
 
           {/*
@@ -1100,16 +1114,10 @@ export const PutawayScreen = () => {
       )}
 
       {/*
-       * 기록한 것 — 「적치됨」은 서버가 받았거나 대기열에 담긴 것만 센다. 서버가 거절한 것은 적치되지 않았으므로 따로
-       * 「전송하지 못한 적치」로 모아 「전송 실패한 기록」으로 안내한다(실제 앱 확인 2026-11-18). 줄은 「LOT → 위치」 글이 한 줄
-       * 폭을 다 쓰고, 방식 · 결과 칩은 그 아래에 선다.
+       * 서버가 거절한 것 — 적치되지 않았으므로 「전송하지 못한 적치」로 모아 「전송 실패한 기록」으로 안내한다(실제 앱 확인
+       * 2026-11-18). 줄은 「LOT → 위치」 글이 한 줄 폭을 다 쓰고, 방식 · 결과 칩은 그 아래에 선다. 받거나 담긴 것을 세던
+       * 「적치됨」 목록은 지웠다(피처 011).
        */}
-      {done.length === 0 ? null : (
-        <section className="putaway__section">
-          <h2>{t.done.count(String(done.length))}</h2>
-          <ul className="putaway__done">{done.map(doneRow)}</ul>
-        </section>
-      )}
       {failed.length === 0 ? null : (
         <section className="putaway__section">
           <h2>{t.rejected.count(String(failed.length))}</h2>
