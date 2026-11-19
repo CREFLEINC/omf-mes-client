@@ -39,10 +39,12 @@ describe('ExecuteCancelPane — 요청이 없으면 · C4-7의 짝', () => {
   });
 
   /** 조작이 없는 이유를 **글자로** 밝힌다 — 빈 자리는 화면이 고장 난 것으로 읽힌다. */
-  it('무엇을 하면 서는지 말한다', () => {
+  /* 실행할 것이 없으면 구획을 그리지 않는다 — 안내 줄도 두지 않는다(사용자 지시 2026-11-19). */
+  it('구획을 그리지 않는다', () => {
     renderPane({ hasCancelRequest: false });
 
-    expect(screen.getByText(t.executeCancel.notRequestedNote)).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.executeCancel.label })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: t.executeCancel.label })).not.toBeInTheDocument();
   });
 
   /* 짝 방향 — 요청이 있으면 버튼이 선다. 아니면 위 단언이 「늘 그리지 않는다」와 같아진다. */
@@ -50,7 +52,6 @@ describe('ExecuteCancelPane — 요청이 없으면 · C4-7의 짝', () => {
     renderPane();
 
     expect(executeButton()).toBeInTheDocument();
-    expect(screen.queryByText(t.executeCancel.notRequestedNote)).not.toBeInTheDocument();
   });
 });
 

@@ -24,10 +24,14 @@ export interface LotMatchFieldProps {
   uomCode: string;
   value: readonly number[];
   disabled?: boolean;
+  /** 머리 글 — 기본 「자재 관리 LOT 매칭」. 파일 첨부 창은 「연결할 자재 관리 LOT」(omf-all-around#296). */
+  heading?: string;
+  /** 필수 표시(빨간 *) — 파일 첨부 창은 LOT 고르기가 선택이라 끈다(omf-all-around#296). 기본 켬. */
+  required?: boolean;
   /** 「자재 관리 LOT를 1개 이상 고르세요」 — [저장]을 눌렀는데 비었을 때. */
   error?: string | null;
   onChange: (next: number[]) => void;
-  /** 문구 — 기본은 IQC. */
+  /** 문구 — 기본은 IQC. `heading` 을 주면 머리 글은 그것이 이긴다. */
   text?: LotMatchText;
   /** 줄 끝에 더 붙일 것 — 출하 OQC 는 그 LOT 의 지금 판정 배지(피처 010). */
   renderExtra?: (lot: InspectionLotForward) => ReactNode;
@@ -56,19 +60,26 @@ export const LotMatchField = ({
   otherResults,
   uomCode,
   value,
+  text = t,
+  heading = text.matchHeading,
+  required = true,
   disabled = false,
   error = null,
   onChange,
-  text = t,
   renderExtra,
 }: LotMatchFieldProps) => (
   <section className="parts-iqc-card iqc-inbound-match" aria-labelledby="iqc-inbound-match-head">
     <div className="parts-iqc-block-head">
       <h3 id="iqc-inbound-match-head" className="parts-iqc-sub-title">
-        {text.matchHeading}{' '}
-        <span className="required-mark" aria-hidden="true">
-          *
-        </span>
+        {heading}
+        {required ? (
+          <>
+            {' '}
+            <span className="required-mark" aria-hidden="true">
+              *
+            </span>
+          </>
+        ) : null}
       </h3>
       <span className="parts-iqc-footer-gap" />
       <Button

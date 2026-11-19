@@ -54,9 +54,13 @@ export interface SheetDetailProps {
   onSign: (step: InspectionSheetStep) => void;
   /** 고른 탭을 알린다 — 꼬리 단추(엑셀 · 승인 · 확인)는 기본 정보 탭에서만(사용자 지시 2026-11-02). */
   onTabChange?: (tab: DetailTab) => void;
+  /** 검사 입력 탭의 내용(omf-all-around#316) — 주면 맨 뒤에 탭이 붙는다. 작성 중인 검사표에만 준다. */
+  entry?: ReactNode;
+  /** 처음 고를 탭 — 시리얼로 추가해 연 검사표는 검사 입력 탭으로 연다(omf-all-around#316). */
+  initialTab?: DetailTab;
 }
 
-export type DetailTab = 'basic' | 'items' | 'ngs' | 'events';
+export type DetailTab = 'basic' | 'items' | 'ngs' | 'events' | 'entry';
 
 /** 서명 권한(W-03-14)을 역할에 주는 화면 — 시스템 관리 › 사용자·역할·권한. */
 const PERMISSION_SETTINGS_PATH = '/system/users-roles';
@@ -134,7 +138,8 @@ const LabelRows = ({ rows }: { rows: readonly (readonly [string, ReactNode])[] }
 
 /**
  * 제품 검사표 한 장 — 탭 넷: 기본 정보(요약 · 머리 값 · 단계별 검사 · 변경품) / 검사 항목 / NG·수리·재검 기록 / 서명·승인 이력
- * (사용자 시안 2026-11-02 · #217). 단계 줄의 「항목」은 검사 항목 탭으로 옮긴다. 읽기 전용이다(입력은 POP).
+ * (사용자 시안 2026-11-02 · #217). 단계 줄의 「항목」은 검사 항목 탭으로 옮긴다. 넷은 읽기 전용이고, 작성 중이면 맨 뒤
+ * 「검사 입력」 탭에서 입력한다(omf-all-around#316).
  */
 export const SheetDetail = ({
   sheet,
@@ -144,8 +149,12 @@ export const SheetDetail = ({
   changeTypeLabel,
   onSign,
   onTabChange,
+  entry,
+  initialTab = 'basic',
 }: SheetDetailProps) => {
-  const [tab, setTab] = useState<DetailTab>('basic');
+  const [picked, setTab] = useState<DetailTab>(initialTab);
+  /* 보는 사이 완료되면(다른 사람의 승인 등) 검사 입력 탭이 사라진다 — 기본 정보로 돌린다. */
+  const tab: DetailTab = picked === 'entry' && entry === undefined ? 'basic' : picked;
   const navigate = useNavigate();
   /* 「상세 보기」로 연 공정 — 코드로 들고 있어 검사표가 새로 와도 최신 값을 그린다. */
   const [detailStep, setDetailStep] = useState<string | null>(null);
@@ -302,7 +311,7 @@ export const SheetDetail = ({
       render: (ng) =>
         [
           ng.foundDepartmentCode &&
-            messages.popInspectionSheet.ng.departments[ng.foundDepartmentCode],
+            messages.inspectionSheetEntry.ng.departments[ng.foundDepartmentCode],
           ng.foundStepCode && sheet.steps.find((s) => s.stepCode === ng.foundStepCode)?.nameKo,
           ng.checkItemCode,
         ]
@@ -317,7 +326,7 @@ export const SheetDetail = ({
         <>
           {ng.ngContent}
           {ng.ngTypeCode &&
-            ` (${messages.popInspectionSheet.ng.types[ng.ngTypeCode] ?? ng.ngTypeCode})`}
+            ` (${messages.inspectionSheetEntry.ng.types[ng.ngTypeCode] ?? ng.ngTypeCode})`}
           {ng.investigationText && <div className="field-note">{ng.investigationText}</div>}
         </>
       ),
@@ -329,7 +338,7 @@ export const SheetDetail = ({
       render: (ng) =>
         [
           ng.repairDepartmentCode &&
-            messages.popInspectionSheet.ng.departments[ng.repairDepartmentCode],
+            messages.inspectionSheetEntry.ng.departments[ng.repairDepartmentCode],
           ng.repairWorkerName,
           ng.repairedAt && when(ng.repairedAt),
         ]
@@ -617,6 +626,7 @@ export const SheetDetail = ({
           { value: 'items', label: d.tabs.items(itemCount), content: items },
           { value: 'ngs', label: d.tabs.ngs(sheet.ngs.length), content: ngs },
           { value: 'events', label: d.tabs.events(sheet.events.length), content: events },
+          ...(entry === undefined ? [] : [{ value: 'entry', label: d.tabs.entry, content: entry }]),
         ]}
       />
       {signingStep !== null && (

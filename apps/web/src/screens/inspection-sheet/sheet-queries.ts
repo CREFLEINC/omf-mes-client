@@ -19,11 +19,9 @@ export const sheetKeys = {
 /** 상세 GET 의 주소 — 응답 ETag 가 이 주소로 기억되고, 머리·단계 쓰기의 If-Match 가 여기서 나온다. */
 export const sheetDetailPath = (id: number): string => `/quality/inspection-sheets/${id}`;
 
-/** ⭐ POP 은 사번을 싣는다 — 단말 요청은 서버가 그 사번의 작업자를 작성자·검사자로 정한다. 관리웹은 계정이다. */
-const workerHeaders = (workerNo: string | undefined) =>
-  workerNo === undefined ? {} : { headers: { 'X-Worker-No': workerNo } };
+/* 사번을 싣지 않는다 — 서버가 로그인 계정을 작성자·검사자로 남긴다. */
 
-export const useSheet = (id: number | null, workerNo?: string) => {
+export const useSheet = (id: number | null) => {
   const { client } = useApiClient();
 
   return useQuery({
@@ -33,21 +31,19 @@ export const useSheet = (id: number | null, workerNo?: string) => {
       runRequest(() =>
         client.GET('/quality/inspection-sheets/{inspectionSheetId}', {
           params: { path: { inspectionSheetId: id ?? 0 } },
-          ...workerHeaders(workerNo),
         }),
       ),
   });
 };
 
 /** 시리얼로 열기 — 없으면 서버가 만든다. 성공하면 검사표 id 를 넘긴다(상세는 GET 이 다시 받아 ETag 를 남긴다). */
-export const useOpenSheet = (onOpened: (sheet: InspectionSheet) => void, workerNo?: string) => {
+export const useOpenSheet = (onOpened: (sheet: InspectionSheet) => void) => {
   const { client } = useApiClient();
 
   return useMasterWrite<{ serialNo: string }, InspectionSheet>({
     request: ({ serialNo }, headers) =>
       client.POST('/quality/inspection-sheets:open-by-serial', {
         params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
-        ...workerHeaders(workerNo),
         body: { serialNo },
       }),
     etagPath: null,
@@ -57,7 +53,7 @@ export const useOpenSheet = (onOpened: (sheet: InspectionSheet) => void, workerN
   });
 };
 
-export const useSaveHeader = (id: number | null, onSaved: () => void, workerNo?: string) => {
+export const useSaveHeader = (id: number | null, onSaved: () => void) => {
   const { client } = useApiClient();
 
   return useMasterWrite<InspectionSheetHeaderUpdate, InspectionSheet>({
@@ -70,7 +66,6 @@ export const useSaveHeader = (id: number | null, onSaved: () => void, workerNo?:
             'If-Match': requireIfMatch(headers),
           },
         },
-        ...workerHeaders(workerNo),
         body,
       }),
     etagPath: id === null ? null : sheetDetailPath(id),
@@ -85,7 +80,7 @@ export interface StepWriteVariables {
   body: InspectionSheetStepWrite;
 }
 
-export const useSaveStep = (id: number | null, onSaved: () => void, workerNo?: string) => {
+export const useSaveStep = (id: number | null, onSaved: () => void) => {
   const { client } = useApiClient();
 
   return useMasterWrite<StepWriteVariables, InspectionSheet>({
@@ -98,7 +93,6 @@ export const useSaveStep = (id: number | null, onSaved: () => void, workerNo?: s
             'If-Match': requireIfMatch(headers),
           },
         },
-        ...workerHeaders(workerNo),
         body,
       }),
     etagPath: id === null ? null : sheetDetailPath(id),
@@ -108,8 +102,8 @@ export const useSaveStep = (id: number | null, onSaved: () => void, workerNo?: s
   });
 };
 
-/** NG 블록 통째로 — 배열 순서가 순번이다. 작업자는 사번으로 보낸다. */
-export const useSaveNgs = (id: number | null, onSaved: () => void, workerNo?: string) => {
+/** NG 블록 통째로 — 배열 순서가 순번이다. */
+export const useSaveNgs = (id: number | null, onSaved: () => void) => {
   const { client } = useApiClient();
 
   return useMasterWrite<InspectionSheetNgWrite[], InspectionSheet>({
@@ -122,7 +116,6 @@ export const useSaveNgs = (id: number | null, onSaved: () => void, workerNo?: st
             'If-Match': requireIfMatch(headers),
           },
         },
-        ...workerHeaders(workerNo),
         body: { ngs },
       }),
     etagPath: id === null ? null : sheetDetailPath(id),

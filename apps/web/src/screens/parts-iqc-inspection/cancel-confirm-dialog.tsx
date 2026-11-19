@@ -2,8 +2,10 @@ import { AlertBanner, Button, Dialog, Icon, TextArea } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { formatPlantDateTime } from '../../patterns/plant-time';
 import { FieldLabel } from '../iqc-inspection/field-label';
 import type { InboundInspection } from './inbound-queries';
+import { lotJudgmentsOf } from './lot-judgment';
 
 const t = messages.iqcInboundLot.cancel;
 
@@ -28,7 +30,7 @@ export const blockerDetailOf = (blocker: ConfirmBlocker, label: string): string 
 };
 
 /**
- * 판정 확정 취소 확인 창(권한 W-01-15 · screens/W-01-01.md 「확정 취소」 · US5-1). 사유는 선택.
+ * 판정 수정(확정 취소) 확인 창(권한 W-01-15 · screens/W-01-01.md 「확정 취소」 · US5-1). 사유는 선택.
  */
 export const CancelConfirmDialog = ({
   inspection,
@@ -46,6 +48,16 @@ export const CancelConfirmDialog = ({
   const [reason, setReason] = useState('');
   const reasonId = useId();
   const inboundLotNo = inspection.inboundLotNo ?? inspection.inspectionRequestNo;
+  const results = inspection.results ?? [];
+  /* 적용 검사 — LOT 판정에 쓰인 회차(상세 표 「적용 검사」와 같은 값)와 그 검사 일시(사용자 지시 2026-11-18 · #296). */
+  const appliedSeqs = new Set(
+    lotJudgmentsOf(inspection).flatMap((each) =>
+      each.resultSeqNo === null ? [] : [each.resultSeqNo],
+    ),
+  );
+  const applied = results
+    .filter((result) => appliedSeqs.has(result.seqNo))
+    .sort((a, b) => a.seqNo - b.seqNo);
 
   return (
     <Dialog
@@ -70,27 +82,54 @@ export const CancelConfirmDialog = ({
       <div className="iqc-cancel-confirm">
         <p className="iqc-cancel-confirm-target">{t.target(inboundLotNo)}</p>
         <h3 className="iqc-cancel-confirm-heading">{t.changesHeading}</h3>
-        <dl className="iqc-cancel-confirm-changes">
-          <div className="iqc-cancel-confirm-change">
-            <dt>{t.lots((inspection.lots ?? []).length)}</dt>
-            <dd>
-              <span className="iqc-cancel-confirm-from">{t.lotsFrom}</span>
-              <Icon name="arrow_forward" size={14} aria-hidden />
-              <strong>{t.lotsTo}</strong>
-            </dd>
-          </div>
-          {inspection.nonconformanceNo == null ? null : (
+        {/* 시안(사용자 지시 2026-11-19 · omf-all-around#296) — LOT 묶음 · 결과 묶음을 한 상자에, 묶음 사이만 선. 안내는 한 줄. */}
+        <div className="iqc-cancel-confirm-changes">
+          <dl className="iqc-cancel-confirm-group">
             <div className="iqc-cancel-confirm-change">
-              <dt>{t.nonconformance(inspection.nonconformanceNo)}</dt>
+              <dt>{t.lotsLabel}</dt>
+              <dd>{t.lotsCount((inspection.lots ?? []).length)}</dd>
+            </div>
+            <div className="iqc-cancel-confirm-change">
+              <dt>{t.qualityState}</dt>
               <dd>
-                <strong>{t.nonconformanceTo}</strong>
+                <span className="iqc-cancel-confirm-from">{t.lotsFrom}</span>
+                <Icon name="arrow_forward" size={14} aria-hidden />
+                <strong>{t.lotsTo}</strong>
               </dd>
             </div>
-          )}
-        </dl>
-        <p className="iqc-inspection-action-note" data-tone="info">
-          <Icon name="info" size={14} aria-hidden />
-          {t.note}
+          </dl>
+          <dl className="iqc-cancel-confirm-group">
+            <div className="iqc-cancel-confirm-change">
+              <dt>{t.resultsLabel}</dt>
+              <dd>
+                <strong>{t.resultsKept(results.length)}</strong>
+              </dd>
+            </div>
+            {applied.length === 0 ? null : (
+              <div className="iqc-cancel-confirm-change">
+                <dt>{t.applied}</dt>
+                <dd className="iqc-cancel-confirm-applied">
+                  {applied.map((result) => (
+                    <span key={result.inspectionResultId}>
+                      {t.appliedValue(result.seqNo, formatPlantDateTime(result.inspectedAt) ?? '-')}
+                    </span>
+                  ))}
+                </dd>
+              </div>
+            )}
+            {inspection.nonconformanceNo == null ? null : (
+              <div className="iqc-cancel-confirm-change">
+                <dt>{t.nonconformance(inspection.nonconformanceNo)}</dt>
+                <dd>
+                  <strong>{t.nonconformanceTo}</strong>
+                </dd>
+              </div>
+            )}
+          </dl>
+        </div>
+        <p className="iqc-inspection-action-note iqc-cancel-confirm-note" data-tone="info">
+          <Icon name="info" size={16} aria-hidden />
+          <span>{t.note}</span>
         </p>
         <div className="iqc-cancel-confirm-reason">
           <FieldLabel htmlFor={reasonId} label={t.reason} />
