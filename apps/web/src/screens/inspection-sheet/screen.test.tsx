@@ -703,7 +703,7 @@ describe('제품 검사표 조회', () => {
   });
 
   /* 관리웹에서도 시리얼로 검사표를 만들고 입력한다(omf-all-around#316). */
-  it('시리얼로 작성하면 시리얼로 검사표를 열고(사번 없이) 검사 입력 탭으로 연다', async () => {
+  it('시리얼로 추가하면 시리얼로 검사표를 열고(사번 없이) 검사 입력 탭으로 연다', async () => {
     const { user, requests } = setup(['W-03-13']);
     await user.click(await screen.findByRole('button', { name: t.create.button }));
     const dialog = await screen.findByRole('dialog', { name: t.create.title });

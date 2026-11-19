@@ -283,7 +283,7 @@ const InspectionSheetScreenBody = () => {
   const [reasonError, setReasonError] = useState('');
   const lastDecision = useRef<Decision | null>(null);
   const changeTypeLabel = useFourMChangeTypeLabel();
-  /* 시리얼로 작성 창(omf-all-around#316) — 열면 그 검사표를 고르고 검사 입력 탭으로 연다. */
+  /* 시리얼로 추가 창(omf-all-around#316) — 열면 그 검사표를 고르고 검사 입력 탭으로 연다. */
   const [creating, setCreating] = useState(false);
   const [serialDraft, setSerialDraft] = useState('');
   const openSheet = useOpenSheet((opened) => {

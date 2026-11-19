@@ -56,7 +56,7 @@ export interface SheetDetailProps {
   onTabChange?: (tab: DetailTab) => void;
   /** 검사 입력 탭의 내용(omf-all-around#316) — 주면 맨 뒤에 탭이 붙는다. 작성 중인 검사표에만 준다. */
   entry?: ReactNode;
-  /** 처음 고를 탭 — 시리얼로 작성해 연 검사표는 검사 입력 탭으로 연다(omf-all-around#316). */
+  /** 처음 고를 탭 — 시리얼로 추가해 연 검사표는 검사 입력 탭으로 연다(omf-all-around#316). */
   initialTab?: DetailTab;
 }
 

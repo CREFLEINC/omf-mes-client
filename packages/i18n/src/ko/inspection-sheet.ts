@@ -39,7 +39,7 @@ export const inspectionSheet = {
 
   /* 시리얼로 검사표 작성 — 없으면 새로 만든다(omf-all-around#316). */
   create: {
-    button: '시리얼로 작성',
+    button: '시리얼로 추가',
     title: '검사표 작성',
     serial: '기기 시리얼 번호',
     placeholder: '시리얼 번호를 스캔하거나 입력하세요',

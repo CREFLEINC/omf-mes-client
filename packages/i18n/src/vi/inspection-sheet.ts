@@ -35,7 +35,7 @@ export const inspectionSheet = {
   },
 
   create: {
-    button: 'Lập theo số sê-ri',
+    button: 'Thêm theo số sê-ri',
     title: 'Lập phiếu kiểm tra',
     serial: 'Số sê-ri thiết bị',
     placeholder: 'Quét hoặc nhập số sê-ri',
