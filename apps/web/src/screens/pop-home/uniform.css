@@ -169,8 +169,9 @@
   border-radius: 999px;
   display: inline-grid;
   place-items: center;
-  background: var(--pu-bad);
-  color: var(--pu-field);
+  /* 위 [남은 작업] 단추의 수와 같은 진한 빨강 · 흰 글자(어두운 화면에서도). */
+  background: var(--pu-primary);
+  color: var(--pu-on-primary);
   font-size: 14px;
   font-weight: 800;
 }

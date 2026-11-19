@@ -78,6 +78,7 @@ export const popOqcInspection = {
       accepted: 'Đạt',
       rejected: 'Không đạt',
       held: 'Tạm giữ',
+      unit: 'cái',
     },
     confirmedAt: (at: string): string => `Xác nhận ${at}`,
   },

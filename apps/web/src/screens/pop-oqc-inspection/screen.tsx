@@ -89,12 +89,24 @@ const RoundResult = ({
         </span>
       )}
     </div>
-    <PopQtySummary
-      inspected={String(round.inspectedQty)}
-      accepted={String(round.acceptedQty)}
-      rejected={String(round.rejectedQty)}
-      held={String(round.heldQty)}
-    />
+    {/* 회차 결과는 네 칸 카드(사용자 시안 2026-11-19) — 합격 초록 · 불합격 빨강, 숫자 뒤에 단위. */}
+    <div className="oqc-res-cards">
+      {(
+        [
+          ['inspected', t.result.summary.inspectedQty, round.inspectedQty],
+          ['accepted', t.result.summary.accepted, round.acceptedQty],
+          ['rejected', t.result.summary.rejected, round.rejectedQty],
+          ['held', t.result.summary.held, round.heldQty],
+        ] as const
+      ).map(([key, label, qty]) => (
+        <div key={key} className="oqc-res-card" data-kind={key}>
+          <span className="oqc-res-card-label">{label}</span>
+          <span className="oqc-res-card-value">
+            <b>{String(qty)}</b> {t.result.summary.unit}
+          </span>
+        </div>
+      ))}
+    </div>
   </div>
 );
 

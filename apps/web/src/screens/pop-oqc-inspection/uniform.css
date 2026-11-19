@@ -191,6 +191,47 @@
   white-space: nowrap;
 }
 
+/* 회차 결과 네 칸 카드(사용자 시안 2026-11-19). */
+.oqc-res-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.oqc-res-card {
+  display: grid;
+  gap: 6px;
+  padding: 12px 16px;
+  border-radius: var(--radius-lg, 16px);
+  background: var(--pu-card-2);
+}
+
+.oqc-res-card-label {
+  font-size: 14px;
+  color: var(--pu-text-2);
+}
+
+.oqc-res-card-value {
+  font-size: 14px;
+  color: var(--pu-text-3);
+}
+
+.oqc-res-card-value b {
+  margin-right: 2px;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--pu-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.oqc-res-card[data-kind='accepted'] .oqc-res-card-value b {
+  color: var(--pu-ok);
+}
+
+.oqc-res-card[data-kind='rejected'] .oqc-res-card-value b {
+  color: var(--pu-bad);
+}
+
 /* 시리얼 검사 기록 창 */
 .oqc-ser {
   display: grid;

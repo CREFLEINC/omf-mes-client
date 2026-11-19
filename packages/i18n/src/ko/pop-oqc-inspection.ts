@@ -92,6 +92,7 @@ export const popOqcInspection = {
       accepted: '합격',
       rejected: '불합격',
       held: '보류',
+      unit: '개',
     },
     confirmedAt: (at: string): string => `확정 ${at}`,
   },
