@@ -1743,8 +1743,7 @@ describe('P-02-01 작업 시작 — 진행 중인 작업지시(omf-all-around#42
     expect(
       await screen.findByRole('button', { name: t.actions.continueToSession }),
     ).toBeInTheDocument();
-    const other = messages.productionResult.flow.actions;
-    for (const label of ['작업 중단', other.runningChange, '포장 작업', 'PQC 검사']) {
+    for (const label of ['작업 중단', '부품 교체', '포장 작업', 'PQC 검사']) {
       expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument();
     }
   });

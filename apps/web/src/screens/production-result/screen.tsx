@@ -2454,7 +2454,6 @@ export const ProductionFlowScreen = () => {
                     )}
                   </div>
                 )}
-
               </>
             )}
           </PuSection>

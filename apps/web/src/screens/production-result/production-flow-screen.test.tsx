@@ -3472,21 +3472,21 @@ describe('ProductionFlowScreen — 보조 동작 자리', () => {
   });
 
   const bar = () => screen.getByRole('region', { name: messages.screenPatterns.actionBar.region });
-  /* 왼쪽 「현재 LOT」 구획 — 제목은 품목 이름이라 [부품 교체]가 든 구획으로 찾는다. */
+  /* 왼쪽 「현재 LOT」 구획 — 제목은 품목 이름이라 「마감된 LOT」 목록이 든 구획으로 찾는다. */
   const findLotPane = async (): Promise<HTMLElement> =>
-    (await screen.findByRole('button', { name: t.flow.actions.runningChange })).closest(
+    (await screen.findByRole('region', { name: t.flow.work.completedLots })).parentElement?.closest(
       'section',
     ) as HTMLElement;
 
   /* #291 — [작업 중단]은 머리줄에서 뺐다. 작업 중단 화면은 공통 메뉴의 탭으로 간다. */
-  it('[작업 중단]은 머리줄에 없고, [부품 교체]는 현재 LOT 구획 아래에 서고, 실적 전에는 이른 마감을 두지 않는다', async () => {
+  it('[작업 중단]은 머리줄에 없고, 현재 LOT 구획에 [부품 교체]가 없고(맨 위 [러닝체인지]와 같은 일), 실적 전에는 이른 마감을 두지 않는다', async () => {
     renderScreen([]);
 
     const header = screen.getAllByRole('banner')[0] as HTMLElement;
     const lotPane = await findLotPane();
-    expect(
-      within(lotPane).getByRole('button', { name: t.flow.actions.runningChange }),
-    ).toBeInTheDocument();
+    /* 작업지시를 받은 뒤에 잰다(종전에는 [부품 교체]가 그 표시였다). */
+    await within(bar()).findByRole('button', { name: t.flow.work.toDefect });
+    expect(screen.queryByRole('button', { name: '부품 교체' })).toBeNull();
     /* 마감할 수 없는 상태에서 늘 잠긴 버튼을 두지 않는다(C-3 보조 동작의 자리). */
     expect(within(lotPane).queryByRole('button', { name: t.flow.woClose.button })).toBeNull();
     expect(within(bar()).queryByRole('button', { name: t.flow.woClose.button })).toBeNull();
