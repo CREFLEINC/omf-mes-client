@@ -10,11 +10,8 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
   },
   search: {
     label: 'Tìm',
-    pairsTitle: 'Tìm nhà cung cấp · mặt hàng',
-    pairsPlaceholder: 'Nhà cung cấp hoặc mặt hàng (mã · tên)',
-    scanLabel: 'Số LOT quản lý vật tư · mã mặt hàng',
-    reprintPlaceholder: 'Hãy quét nhãn',
-    manualTitle: 'Nhập LOT in lại',
+    pairsLabel: 'Mã hoặc tên nhà cung cấp / mặt hàng',
+    scanLabel: 'Số LOT quản lý vật tư hoặc mã/tên mặt hàng',
   },
   pairs: {
     label: 'Nhà cung cấp · mặt hàng',

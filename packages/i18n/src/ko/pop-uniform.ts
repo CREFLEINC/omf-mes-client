@@ -1,3 +1,9 @@
+/** 끝 글자의 받침 번호(없으면 0). 한글 음절이 아니면(LOT · 숫자 등) 받침 없음으로 본다. */
+const finalOf = (label: string): number => {
+  const code = label.charCodeAt(label.length - 1) - 0xac00;
+  return code >= 0 && code <= 11171 ? code % 28 : 0;
+};
+
 /**
  * POP 본문 통일 부품 문구(omf-all-around#295) — 화면 여럿이 함께 쓴다.
  * 시안 공통 규칙(스캔 칸 · 키패드 · 쪽 넘김 · 창 · 접기)의 말 그대로다.
@@ -9,12 +15,17 @@ export const popUniform = {
     manual: '직접 입력',
     /** 찾기 창의 [검색] 단추(#295 · 사용자 지시 2026-11-19 — 찾기 창은 [확인] 대신 [검색]). */
     search: '검색',
-    /** 찾기 창 칸 안의 흐린 안내 — 「자재 관리 LOT 번호 · 품목코드로 검색」. 받침이 있으면(ㄹ 빼고) 「으로」. */
-    searchPlaceholder: (label: string): string => {
-      const code = label.charCodeAt(label.length - 1) - 0xac00;
-      const final = code >= 0 && code <= 11171 ? code % 28 : 0;
-      return `${label}${final === 0 || final === 8 ? '로' : '으로'} 검색`;
-    },
+    /**
+     * [직접 입력] 창을 읽어 주는 이름 — 「출하번호 입력」. 창에는 제목을 보이지 않는다
+     * (사용자 지시 2026-11-19 「모든 직접 입력 팝업의 타이틀을 없애고」).
+     */
+    manualTitle: (label: string): string => `${label} 입력`,
+    /**
+     * [직접 입력] · 찾기 창 칸 안의 흐린 안내 — 「출하번호를 입력하세요」(사용자 지시 2026-11-19).
+     * 화면 칸에는 흐린 안내가 없고 같은 이름이 칸 위에 선다. 받침이 있으면 「을」.
+     */
+    manualPlaceholder: (label: string): string =>
+      `${label}${finalOf(label) === 0 ? '를' : '을'} 입력하세요`,
   },
   keypad: {
     noTarget: '입력할 칸을 누르세요',

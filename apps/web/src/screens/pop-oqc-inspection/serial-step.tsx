@@ -158,7 +158,6 @@ export const PopSerialDialog = ({
             setLastOk(false);
           }}
           onSubmit={send}
-          placeholder={t.placeholder}
           done={lastOk}
           error={isScanning ? null : (scanError ?? serverError ?? null)}
           manual={{ label: t.manualLabel }}

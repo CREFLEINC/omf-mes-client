@@ -550,8 +550,7 @@ export const PopMaterialLotLabelScreen = () => {
             <PuSearchBox
               className="mll-search"
               label={t.search.label}
-              title={t.search.pairsTitle}
-              placeholder={t.search.pairsPlaceholder}
+              heading={t.search.pairsLabel}
               value={query}
               disabled={isFrozen}
               onChange={changePairQuery}
@@ -582,10 +581,9 @@ export const PopMaterialLotLabelScreen = () => {
           <PuScanField
             label={t.search.scanLabel}
             value={query}
-            placeholder={t.search.reprintPlaceholder}
             disabled={isFrozen}
             error={scanNote}
-            manual={{ title: t.search.manualTitle, search: true }}
+            manual={{ search: true }}
             onChange={(value) => {
               setQuery(value);
               setScanNote(null);

@@ -3,8 +3,7 @@ export const materialDefect = {
   title: 'Đăng ký lỗi vật tư',
 
   lot: {
-    label: 'LOT vật tư',
-    placeholder: 'Quét nhãn LOT của vật tư bị lỗi',
+    label: 'Số LOT vật tư',
     notFound: 'Không có LOT số này. Hãy kiểm tra lại số.',
     loadFailed: 'Không tải được LOT. Hãy kiểm tra kết nối rồi thử lại.',
     item: 'Mặt hàng',

@@ -353,7 +353,6 @@ export const PopMaterialDefectScreen = () => {
             value={lotNoDraft}
             onChange={setLotNoDraft}
             onSubmit={find}
-            placeholder={t.lot.placeholder}
             done={lot !== null}
             autoFocus
             error={lotMissing ? t.lot.notFound : found.isError ? t.lot.loadFailed : undefined}

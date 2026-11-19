@@ -16,9 +16,7 @@ export const goodsIssueQr = {
   },
   /** 맨 위 스캔 칸 — 분할·원래 LOT 번호 스캔, [직접 입력]으로 출고번호·품목코드. */
   search: {
-    label: 'LOT 번호 · 출고번호 · 품목코드',
-    placeholder: '라벨을 스캔하세요',
-    manualTitle: '분할 LOT 입력',
+    label: 'LOT 번호, 출고번호 또는 품목코드',
     /** 찾는 말로 거른 표 — 칸 아래 안내 줄. */
     filtered: (query: string) => `「${query}」(으)로 찾은 결과입니다.`,
     clearFilter: '전체 삭제',

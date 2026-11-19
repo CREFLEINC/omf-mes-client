@@ -20,8 +20,10 @@ export const PuDialog = ({
   footer,
   wide = false,
   closeLabel,
+  ariaLabel,
 }: {
-  title: ReactNode;
+  /** 비우면 머리줄 없이 본문만 — 읽어 주는 이름은 `ariaLabel`. */
+  title?: ReactNode;
   children: ReactNode;
   /** [취소]·[닫기]·Esc. */
   onClose: () => void;
@@ -29,8 +31,11 @@ export const PuDialog = ({
   footer?: ReactNode;
   wide?: boolean;
   closeLabel?: string;
+  /** 제목이 없는 창의 읽어 주는 이름. */
+  ariaLabel?: string;
 }) => {
   const titleId = useId();
+  const hasTitle = title !== undefined && title !== null;
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -45,14 +50,17 @@ export const PuDialog = ({
   return createPortal(
     <div className="pu-overlay">
       <div
-        className={wide ? 'pu-dialog wide' : 'pu-dialog'}
+        className={['pu-dialog', wide && 'wide', !hasTitle && 'no-head'].filter(Boolean).join(' ')}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={titleId}
+        aria-labelledby={hasTitle ? titleId : undefined}
+        aria-label={hasTitle ? undefined : ariaLabel}
       >
-        <div className="pu-dialog-head">
-          <h3 id={titleId}>{title}</h3>
-        </div>
+        {hasTitle && (
+          <div className="pu-dialog-head">
+            <h3 id={titleId}>{title}</h3>
+          </div>
+        )}
         <div className="pu-dialog-body">{children}</div>
         <div className="pu-dialog-foot">
           {footer ?? <PuButton onClick={onClose}>{closeLabel ?? t.dialog.close}</PuButton>}

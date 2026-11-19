@@ -117,7 +117,6 @@ export const ScanField = ({
             ref={inputRef}
             id={inputId}
             value={value}
-            placeholder={t.scan.placeholder}
             autoComplete="off"
             readOnly={isLocked}
             aria-describedby={problem === null ? undefined : outcomeId}
@@ -166,7 +165,6 @@ export const ScanField = ({
 
       {isManualOpen && (
         <PuManualDialog
-          title={t.scan.label}
           label={t.scan.label}
           onClose={() => {
             setManualOpen(false);

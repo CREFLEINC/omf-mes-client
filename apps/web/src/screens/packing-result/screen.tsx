@@ -535,7 +535,6 @@ export const PackingResultScreen = () => {
         value={shipmentScan}
         onChange={setShipmentScan}
         onSubmit={scanShipment}
-        placeholder={t.shipments.scanPlaceholder}
         disabled={!hasWorkerNo || todayShipments.isError || shipmentSelection.isPending}
         error={shipmentScanError ?? undefined}
       />
@@ -656,7 +655,6 @@ export const PackingResultScreen = () => {
           value={scanValue}
           onChange={setScanValue}
           onSubmit={scanLot}
-          placeholder={t.scan.placeholder}
           disabled={!hasWorkerNo || shipmentId === null || lotScan.isPending}
           done={matched?.verdict.matched === true && dupCode === null && !lotScan.isError}
           error={scanError}

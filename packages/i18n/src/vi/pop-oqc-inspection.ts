@@ -88,9 +88,8 @@ export const popOqcInspection = {
     summary: (count: number, ng: number): string =>
       `Đã kiểm ${String(count)} máy · NG ${String(ng)} máy`,
     summaryHint: 'Được lưu cùng phán định',
-    label: 'Serial',
+    label: 'Số serial',
     count: (count: number, ng: number): string => `${String(count)} máy · NG ${String(ng)} máy`,
-    placeholder: 'Hãy quét số serial',
     manualLabel: 'Số serial',
     emptyTitle: 'Chưa quét serial nào',
     emptyHint: 'Có thể chỉ lưu phán định LOT mà không cần serial.',

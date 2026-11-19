@@ -110,15 +110,7 @@ export const PendingPane = ({
 
   return (
     <>
-      {scan ?? (
-        <PuSearchBox
-          label={t.searchPlaceholder}
-          title={t.searchTitle}
-          placeholder={t.searchPlaceholder}
-          value={query}
-          onChange={changeQuery}
-        />
-      )}
+      {scan ?? <PuSearchBox label={t.searchLabel} value={query} onChange={changeQuery} />}
       {body ?? (
         <>
           <div

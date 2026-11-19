@@ -8,7 +8,8 @@ export const popUniform: Translated<typeof ko.popUniform> = {
     done: 'Đã quét',
     manual: 'Nhập tay',
     search: 'Tìm',
-    searchPlaceholder: (label: string): string => `Tìm theo ${label}`,
+    manualTitle: (label: string): string => `Nhập ${label}`,
+    manualPlaceholder: (label: string): string => `Hãy nhập ${label}`,
   },
   keypad: {
     noTarget: 'Hãy chạm vào ô cần nhập',

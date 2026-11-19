@@ -1153,7 +1153,8 @@ describe('MaterialInputScanScreen — 스캔 실패의 대체 경로', () => {
     renderScreen([lotsRoute([lot()])]);
 
     const field = screen.getByLabelText(t.scan.label);
-    expect(field.getAttribute('placeholder')).toBe(t.scan.placeholder);
+    /* 칸 안 흐린 안내는 없다 — 받는 대상은 칸 위 이름이 말한다(#295 · 2026-11-19). */
+    expect(field.getAttribute('placeholder')).toBeNull();
     expect(screen.getByRole('button', { name: messages.popUniform.scan.manual })).toBeTruthy();
 
     await user.type(field, 'SAMPLE-LOT-0001{Enter}');

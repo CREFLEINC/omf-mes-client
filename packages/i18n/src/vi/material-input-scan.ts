@@ -37,8 +37,7 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     notQueriedHint: 'Vui lòng chọn lệnh sản xuất trong danh sách lệnh sản xuất.',
   },
   scan: {
-    label: 'LOT vật tư · Mã khuôn',
-    placeholder: 'Quét LOT vật tư hoặc mã khuôn',
+    label: 'Số LOT vật tư hoặc mã khuôn',
     outcomes: {
       material: (itemWithObject: string): string => `Đã thêm ${itemWithObject}.`,
       mold: (moldWithObject: string): string => `Đã chỉ định khuôn ${moldWithObject}.`,

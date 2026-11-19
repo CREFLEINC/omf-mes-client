@@ -1091,10 +1091,7 @@ describe('RepackLabelIssueScreen — 재발행 탭 스캔', () => {
     await userEvent.click(await screen.findByRole('tab', { name: t.pending.reissueTab }));
     await screen.findByRole('button', { name: new RegExp(HANDLING_UNIT_NO) });
 
-    await userEvent.type(
-      screen.getByPlaceholderText(t.pending.scanPlaceholder),
-      `${HANDLING_UNIT_NO}{Enter}`,
-    );
+    await userEvent.type(screen.getByLabelText(t.pending.scanLabel), `${HANDLING_UNIT_NO}{Enter}`);
 
     expect(await screen.findByRole('table', { name: t.issue.targetsLabel })).toBeInTheDocument();
   });
@@ -1104,10 +1101,7 @@ describe('RepackLabelIssueScreen — 재발행 탭 스캔', () => {
     await userEvent.click(await screen.findByRole('tab', { name: t.pending.reissueTab }));
     await screen.findByText(t.pending.reissueEmpty);
 
-    await userEvent.type(
-      screen.getByPlaceholderText(t.pending.scanPlaceholder),
-      `${HANDLING_UNIT_NO}{Enter}`,
-    );
+    await userEvent.type(screen.getByLabelText(t.pending.scanLabel), `${HANDLING_UNIT_NO}{Enter}`);
 
     expect(await screen.findByText(t.pending.scanNotIssued(HANDLING_UNIT_NO))).toBeInTheDocument();
   });

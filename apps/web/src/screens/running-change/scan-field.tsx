@@ -72,7 +72,6 @@ export const ScanField = ({
       value={value}
       onChange={onChange}
       onSubmit={submit}
-      placeholder={t.scan.placeholder}
       done={done}
       inputRef={inputRef}
       error={outcome?.tone === 'error' ? outcome.text : undefined}

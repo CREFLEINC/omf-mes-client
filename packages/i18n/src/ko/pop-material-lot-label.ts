@@ -17,13 +17,10 @@ export const popMaterialLotLabel = {
   /** 찾기 칸 — 다시 인쇄에서는 스캐너 입력도 받는다(Enter = 그 LOT 고르기). */
   search: {
     label: '찾기',
-    /** 찾기 칸을 누르면 뜨는 창의 제목. */
-    pairsTitle: '공급사 · 품목 검색',
-    pairsPlaceholder: '공급사 또는 품목(코드·이름)', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    /** 발행 대기 찾기 칸 위 이름 — 칸을 누르면 뜨는 창 안 칸 안내도 같은 글. */
+    pairsLabel: '공급사 또는 품목의 코드나 이름', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
     /** 재발행 탭의 스캔 칸 — 번호가 맞으면 그 LOT 을 고르고, 적는 동안은 번호·품목코드로 거른다. */
-    scanLabel: '자재 관리 LOT 번호 · 품목코드',
-    reprintPlaceholder: '라벨을 스캔하세요',
-    manualTitle: '재인쇄 LOT 입력',
+    scanLabel: '자재 관리 LOT 번호 또는 품목의 코드나 이름',
   },
   /** 왼쪽 공급사·품목 목록. 칩은 대기 자재 관리 LOT 수다. */
   pairs: {

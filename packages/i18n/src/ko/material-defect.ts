@@ -7,8 +7,7 @@ export const materialDefect = {
   title: '자재 불량 등록',
 
   lot: {
-    label: '자재 LOT',
-    placeholder: '불량이 난 자재의 LOT 라벨을 스캔하세요',
+    label: '자재 LOT 번호',
     notFound: '이 번호의 LOT이 없습니다. 번호를 다시 확인하세요.',
     loadFailed: 'LOT 을 불러오지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
     item: '품목',

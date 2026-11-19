@@ -119,17 +119,17 @@ export interface PuScanFieldProps {
   onChange: (value: string) => void;
   /** 스캔(Enter · 스캐너 끝)·직접 입력으로 들어온 값. */
   onSubmit: (value: string) => void;
-  placeholder?: string;
   /** 읽었는가 — 초록 「스캔 완료」. */
   done?: boolean;
   doneText?: string;
   /** 못 찾음 등: 칸 바로 아래 빨간 한 줄. */
   error?: ReactNode;
   /**
-   * [직접 입력] 창 제목·칸 이름. 비우면 칸 이름을 쓴다. 단추를 감추려면 `manual={false}`.
-   * `search` 면 찾기 창이다 — 칸 안 안내가 「… 로 검색」, 단추가 [검색].
+   * [직접 입력] 창. 창에는 제목이 없고 창 칸 안 흐린 안내가 「<label>을/를 입력하세요」다(사용자 지시 2026-11-19).
+   * `label` 은 넣을 값의 이름 — 비우면 칸 이름(칸 위 글자)을 쓴다. 칸 이름이 글자가 아니면(개수 등이 붙은 칸)
+   * 값 이름을 여기에 준다. 단추를 감추려면 `manual={false}`. `search` 면 단추가 [확인] 대신 [검색].
    */
-  manual?: false | { title?: string; label?: string; keypad?: boolean; search?: boolean };
+  manual?: false | { label?: string; keypad?: boolean; search?: boolean };
   disabled?: boolean;
   inputRef?: Ref<HTMLInputElement>;
   inputId?: string;
@@ -137,10 +137,13 @@ export interface PuScanFieldProps {
   /** 칸 아래 덧붙임(스캔으로 담긴 줄 등). */
   children?: ReactNode;
   ariaLabel?: string;
+  /** 바깥 `.pu-field` 에 덧붙이는 이름(화면별 배치용). */
+  className?: string;
 }
 
 /**
- * 스캔 칸 한 모양: 빨간 테두리 + 「스캔 대기」 점멸 → 읽으면 초록 「스캔 완료」.
+ * 스캔 칸 한 모양: 빨간 테두리 + 「스캔 대기」 점멸 → 읽으면 초록 「스캔 완료」. 칸 안 흐린 안내는 없다 —
+ * 넣을 값의 이름(「출하번호」)이 칸 위 이름(`label`)으로 선다(사용자 지시 2026-11-19).
  * 옆 단추는 [직접 입력] 하나 — 라벨이 상해 못 읽으면 번호를 넣는다.
  * 못 찾으면 부르는 쪽이 칸을 비우고 `error` 를 준다(칸 바로 아래 빨간 한 줄).
  */
@@ -150,7 +153,6 @@ export const PuScanField = ({
   value,
   onChange,
   onSubmit,
-  placeholder,
   done = false,
   doneText,
   error,
@@ -161,6 +163,7 @@ export const PuScanField = ({
   autoFocus,
   children,
   ariaLabel,
+  className,
 }: PuScanFieldProps) => {
   const fallbackId = useId();
   const id = inputId ?? fallbackId;
@@ -178,7 +181,7 @@ export const PuScanField = ({
   const labelText = typeof label === 'string' ? label : (ariaLabel ?? '');
 
   return (
-    <div className="pu-field">
+    <div className={puCx('pu-field', className)}>
       <label className="pu-label" htmlFor={id}>
         {label}
         {required && (
@@ -194,7 +197,6 @@ export const PuScanField = ({
             ref={inputRef}
             id={id}
             value={value}
-            placeholder={placeholder}
             disabled={disabled}
             autoFocus={autoFocus}
             autoComplete="off"
@@ -228,7 +230,6 @@ export const PuScanField = ({
       {children}
       {manualOpen && manual !== false && (
         <PuManualDialog
-          title={manual?.title ?? manual?.label ?? labelText}
           label={manual?.label ?? labelText}
           keypad={manual?.keypad ?? false}
           search={manual?.search ?? false}
@@ -249,11 +250,11 @@ export const PuScanField = ({
 /**
  * [직접 입력] 창: 칸 하나 + [취소] · [확인]. 숫자만 넣는 칸(사번 등)은 키패드를,
  * 그 밖의 칸은 칸 아래에 글자판(`PuTextKeyboard`)을 함께 보인다(사용자 지시 2026-11-19 · 단말에 실물 자판이 없다).
- * 칸 이름은 칸 위에 따로 두지 않고 칸 안 흐린 안내로 보인다. 찾기 창(`search`)은 안내가 「… 로 검색」이고
- * 단추가 [검색]이다(사용자 지시 2026-11-19).
+ * 창에는 제목이 없다 — 칸 · 글자판(키패드) · 단추만 보인다(사용자 지시 2026-11-19 「모든 직접 입력 팝업의
+ * 타이틀을 없애고」). 칸 안 흐린 안내는 「출하번호를 입력하세요」, 창을 읽어 주는 이름은 「출하번호 입력」이다.
+ * 찾기 창(`search`)은 단추가 [검색]이다.
  */
 export const PuManualDialog = ({
-  title,
   label,
   keypad = false,
   search = false,
@@ -263,11 +264,10 @@ export const PuManualDialog = ({
   onClose,
   confirmLabel,
 }: {
-  title: ReactNode;
-  /** 칸 이름 — 칸 안 흐린 안내와 읽어 주는 이름이 된다. */
+  /** 넣을 값의 이름(「출하번호」) — 칸 안 흐린 안내 · 읽어 주는 이름이 된다. */
   label: string;
   keypad?: boolean;
-  /** 찾기 창 — 안내 「… 로 검색」 · 단추 [검색]. */
+  /** 찾기 창 — 단추 [검색]. */
   search?: boolean;
   /** 칸 안 안내를 따로 줄 때. */
   placeholder?: string;
@@ -285,7 +285,7 @@ export const PuManualDialog = ({
 
   return (
     <PuDialog
-      title={title}
+      ariaLabel={t.scan.manualTitle(label)}
       onClose={onClose}
       wide={!keypad}
       footer={
@@ -300,7 +300,7 @@ export const PuManualDialog = ({
       <PuInput
         value={value}
         aria-label={label}
-        placeholder={placeholder ?? (search ? t.scan.searchPlaceholder(label) : label)}
+        placeholder={placeholder ?? t.scan.manualPlaceholder(label)}
         numeric={keypad}
         target={keypad}
         inputMode={keypad ? 'none' : undefined}

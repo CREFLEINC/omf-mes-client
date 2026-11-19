@@ -21,8 +21,7 @@ export const packingResult = {
     inProgress: '포장 진행 중',
     allocations: (count: number): string => `배분 LOT ${String(count)}건`,
     item: '품목',
-    scan: '출하 스캔',
-    scanPlaceholder: '출하 번호를 스캔하세요',
+    scan: '출하번호',
     notFound: (code: string): string => `${code} — 오늘 피킹을 마친 출하 목록에 없습니다.`,
     unassigned: '미구성 상자',
     /** 확정할 수 없는 출하 카드의 표식 — 흐리게 잠기고 고를 수 없다. */
@@ -41,8 +40,7 @@ export const packingResult = {
     unknown: '확인 못 함',
   },
   scan: {
-    productionLot: '생산 LOT 라벨 스캔',
-    placeholder: '생산 LOT 라벨을 스캔하세요',
+    productionLot: '생산 LOT 번호',
   },
   match: {
     itemMismatch: (itemCode: string): string => `선택한 출하의 대상 품목은 ${itemCode} 입니다`,

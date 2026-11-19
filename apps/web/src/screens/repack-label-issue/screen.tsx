@@ -470,14 +470,9 @@ export const RepackLabelIssueScreen = () => {
                   <PuScanField
                     label={t.pending.scanLabel}
                     value={scanValue}
-                    placeholder={t.pending.scanPlaceholder}
                     disabled={isSubmitting}
                     error={scanError ?? undefined}
-                    manual={{
-                      title: t.pending.manualTitle,
-                      label: t.pending.scanLabel,
-                      search: true,
-                    }}
+                    manual={{ search: true }}
                     onChange={(value) => {
                       setScanValue(value);
                       setScanError(null);

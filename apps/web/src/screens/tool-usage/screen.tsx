@@ -352,7 +352,6 @@ export const ToolUsageScreen = () => {
             value={codeInput}
             onChange={setCodeInput}
             onSubmit={applyCode}
-            placeholder={t.scan.placeholder}
             done={usableTool !== null}
             autoFocus
             disabled={inputLocked}

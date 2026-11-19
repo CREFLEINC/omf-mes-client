@@ -16,8 +16,7 @@ export const packingResult: Translated<typeof ko.packingResult> = {
     inProgress: 'Đang đóng gói',
     allocations: (count: number): string => `${String(count)} LOT phân bổ`,
     item: 'Mặt hàng',
-    scan: 'Quét xuất hàng',
-    scanPlaceholder: 'Hãy quét số xuất hàng',
+    scan: 'Số xuất hàng',
     notFound: (code: string): string => `${code} — không có trong danh sách xuất hàng hôm nay.`,
     unassigned: 'Kiện chưa cấu thành',
     blockedChip: 'Không thể xác nhận',
@@ -34,8 +33,7 @@ export const packingResult: Translated<typeof ko.packingResult> = {
     unknown: 'Không rõ',
   },
   scan: {
-    productionLot: 'Quét nhãn LOT sản xuất',
-    placeholder: 'Hãy quét nhãn LOT sản xuất',
+    productionLot: 'Số LOT sản xuất',
   },
   match: {
     itemMismatch: (itemCode: string): string => `Mặt hàng của xuất hàng đã chọn là ${itemCode}`,

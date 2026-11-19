@@ -377,10 +377,9 @@ export const GoodsIssueQrScreen = () => {
               <PuScanField
                 label={t.search.label}
                 value={query}
-                placeholder={t.search.placeholder}
                 disabled={isBusy}
                 error={scanError}
-                manual={{ title: t.search.manualTitle, search: true }}
+                manual={{ search: true }}
                 onChange={(value) => {
                   setQuery(value);
                   setSelected(new Set());

@@ -640,11 +640,16 @@ describe('PackingResultScreen', () => {
     expect(screen.queryByLabelText(t.scan.productionLot)).not.toBeInTheDocument();
   });
 
-  /* ⛔ **출하번호를 따로 받는 칸은 없다**(사용자 지시 2026-09-18 · #1351). */
+  /*
+   * ⛔ **출하번호를 따로 받는 칸은 없다**(사용자 지시 2026-09-18 · #1351). 「출하번호」라는 이름은 출하 스캔 칸
+   * 하나에만 붙는다(칸 위 이름 = 넣을 값 · #295 사용자 지시 2026-11-19).
+   */
   it('출하번호를 따로 받는 칸을 두지 않는다', () => {
     renderScreen();
 
-    expect(screen.queryByLabelText('출하번호')).not.toBeInTheDocument();
+    const fields = screen.getAllByLabelText(t.shipments.scan);
+    expect(fields).toHaveLength(1);
+    expect(fields[0]?.closest('.pu-scan')).not.toBeNull();
   });
 
   /* ⛔ OQC 상태 줄과 ④ 의 「포장 N 개」·「미포장 N」은 두지 않는다(#1351). 「미구성 상자」만 남는다. */

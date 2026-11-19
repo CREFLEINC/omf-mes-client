@@ -11,9 +11,7 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
     printed: 'Phát hành lại',
   },
   search: {
-    label: 'Số LOT · số phiếu xuất · mã hàng',
-    placeholder: 'Hãy quét nhãn',
-    manualTitle: 'Nhập LOT tách',
+    label: 'Số LOT, số phiếu xuất hoặc mã hàng',
     filtered: (query: string) => `Kết quả tìm theo 「${query}」.`,
     clearFilter: 'Xóa hết',
     notFound: (code: string) => `Không có LOT tách nào ứng với 「${code}」 — hãy kiểm tra lại số.`,

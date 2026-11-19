@@ -1437,6 +1437,11 @@ textarea.pu-input {
   grid-template-columns: minmax(0, 1fr);
 }
 
+/* 머리줄 없는 창([직접 입력] 창 · 사용자 지시 2026-11-19) — 본문이 창 위 가장자리에 붙지 않게. */
+.pu-dialog.no-head > .pu-dialog-body {
+  padding-top: 20px;
+}
+
 .pu-dialog-text {
   font-size: 15px;
   color: var(--pu-text-2);

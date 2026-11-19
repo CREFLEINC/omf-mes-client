@@ -103,9 +103,8 @@ export const popOqcInspection = {
     summary: (count: number, ng: number): string =>
       `검사 기기 ${String(count)}대 · NG ${String(ng)}대`,
     summaryHint: '판정과 함께 저장됩니다',
-    label: '시리얼',
+    label: '시리얼 번호',
     count: (count: number, ng: number): string => `${String(count)}대 · NG ${String(ng)}대`,
-    placeholder: '시리얼 번호를 스캔하세요',
     manualLabel: '시리얼 번호',
     emptyTitle: '스캔한 시리얼이 없습니다',
     emptyHint: '시리얼 없이 LOT 판정만 저장할 수도 있습니다.',
