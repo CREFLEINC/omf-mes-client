@@ -702,6 +702,83 @@ describe('제품 검사표 조회', () => {
     expect(within(dialog).getByText(t.reopenDialog.body[kind])).toBeInTheDocument();
   });
 
+  /* 관리웹에서도 시리얼로 검사표를 만들고 입력한다(omf-all-around#316). */
+  it('시리얼로 추가하면 시리얼로 검사표를 열고(사번 없이) 검사 입력 탭으로 연다', async () => {
+    const { user, requests } = setup(['W-03-13']);
+    await user.click(await screen.findByRole('button', { name: t.create.button }));
+    const dialog = await screen.findByRole('dialog', { name: t.create.title });
+    // 시리얼이 비면 열 수 없다.
+    expect(within(dialog).getByRole('button', { name: t.create.open })).toBeDisabled();
+
+    await user.type(within(dialog).getByRole('textbox', { name: t.create.serial }), ' SN-0001 ');
+    await user.click(within(dialog).getByRole('button', { name: t.create.open }));
+
+    await waitFor(() =>
+      expect(requests.some((r) => r.path.endsWith('/inspection-sheets:open-by-serial'))).toBe(true),
+    );
+    const opened = requests.find((r) => r.path.endsWith(':open-by-serial'))!;
+    expect(JSON.parse(opened.body)).toEqual({ serialNo: 'SN-0001' });
+    // 관리웹은 계정으로 남긴다 — 사번을 싣지 않는다.
+    expect(opened.headers.get('X-Worker-No')).toBeNull();
+    expect(await screen.findByRole('tab', { name: d.tabs.entry })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(screen.queryByRole('dialog', { name: t.create.title })).not.toBeInTheDocument();
+  });
+
+  it('검사 입력 탭에서 머리 값과 단계 판정을 상세의 ETag 로 잠가 저장한다', async () => {
+    const p = messages.inspectionSheetEntry;
+    const { user, requests } = setup(['W-03-13']);
+    await open(user);
+    await user.click(screen.getByRole('tab', { name: d.tabs.entry }));
+
+    await user.type(screen.getByRole('textbox', { name: p.header.destinationText }), '일본');
+    await user.click(screen.getByRole('button', { name: p.header.save }));
+    await waitFor(() =>
+      expect(requests.some((r) => r.path.endsWith('/inspection-sheets/9/header'))).toBe(true),
+    );
+    const header = requests.find((r) => r.path.endsWith('/header'))!;
+    expect(header.method).toBe('PUT');
+    expect(header.headers.get('If-Match')).toBe('"6"');
+    expect(header.headers.get('X-Worker-No')).toBeNull();
+    expect(JSON.parse(header.body)).toMatchObject({ destinationText: '일본', pcbLotNo: 'PCB-1' });
+
+    await user.click(screen.getByRole('button', { name: p.step.itemJudgment('S 403', 'OK') }));
+    await user.click(screen.getByRole('button', { name: p.step.save }));
+    await waitFor(() =>
+      expect(requests.some((r) => r.path.endsWith('/inspection-sheets/9/steps/PROCESS_1'))).toBe(
+        true,
+      ),
+    );
+    const step = requests.find((r) => r.path.endsWith('/steps/PROCESS_1'))!;
+    expect(step.headers.get('If-Match')).toBe('"6"');
+    expect(JSON.parse(step.body)).toEqual({
+      firstJudgmentCode: 'OK',
+      finalJudgmentCode: 'OK',
+      items: [{ inspectionSheetTemplateItemId: 101, judgmentCode: 'OK' }],
+    });
+  });
+
+  it('완료된 검사표에는 검사 입력 탭이 없다', async () => {
+    const { user } = setup(
+      ['W-03-13'],
+      sheet({
+        statusCode: 'COMPLETED',
+        approvedBy: 1,
+        approvedByName: '관리자',
+        approvedAt: '2026-10-21T03:00:00Z',
+        checkedBy: 2,
+        checkedByName: '확인자',
+        checkedAt: '2026-10-21T04:00:00Z',
+      }),
+    );
+    await open(user);
+
+    expect(screen.getByRole('tab', { name: d.tabs.basic })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: d.tabs.entry })).not.toBeInTheDocument();
+  });
+
   it('부품 공장 범위만 있는 계정은 「OA 사업부 전용」 안내만 보이고 목록을 조회하지 않는다', async () => {
     const { requests } = setup(['W-03-13', 'W-03-14'], sheet(), 'PL11');
 

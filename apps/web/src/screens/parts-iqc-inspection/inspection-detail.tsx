@@ -425,6 +425,8 @@ export const InspectionDetail = ({
    * 고른 탭은 의뢰마다 처음부터. 확정이 끝난 의뢰는 「검사 진행」 탭을 두지 않고 이력만 보인다(사용자 지시 2026-11-04).
    */
   const [picked, setPicked] = useState<{ requestId: number; tab: string } | null>(null);
+  /* 새 흐름 상세의 [기준 조회] 창(사용자 지시 2026-11-19 · omf-all-around#296). */
+  const [inboundPlanOpen, setInboundPlanOpen] = useState(false);
 
   if (inboundFlow && detail.data !== undefined) {
     const aql = version.data?.aqlValue;
@@ -435,18 +437,45 @@ export const InspectionDetail = ({
       .filter((part): part is string => part !== null && part !== '')
       .join(' · '); // ui-check-ignore: C-13 설계 확정 표기 「AQL 1.0 · 육안 검사」(screens/W-01-01.md)
 
+    /* 기준 조회 창은 요약 칸 밖에 둔다 — 요약 칸의 한 줄 · 말줄임 모양이 창 안까지 번지지 않게. 회차는 마지막으로 기록한 검사 회차(없으면 「-」). */
+    const latestSeqNo = (inboundInspection.data?.results ?? []).reduce<number | null>(
+      (max, result) => (max === null || result.seqNo > max ? result.seqNo : max),
+      null,
+    );
     return (
-      <InboundDetail
-        inspectionRequestId={inspectionRequestId}
-        itemParts={items.partsOf(detail.data.itemId)}
-        planText={planText === '' ? '-' : planText}
-        uomCode={uoms.codeOf(detail.data.uomId) ?? ''}
-        renderForm={renderInboundForm}
-        headActions={inboundHead?.headActions}
-        headNote={inboundHead?.headNote}
-        scanOpen={scanOpen}
-        onConfirmed={savePendingLevel}
-      />
+      <>
+        <InboundDetail
+          inspectionRequestId={inspectionRequestId}
+          itemParts={items.partsOf(detail.data.itemId)}
+          planText={planText === '' ? '-' : planText}
+          planAction={
+            version.data === undefined || specs.data === undefined ? null : (
+              <Button variant="outlined" size="sm" onClick={() => setInboundPlanOpen(true)}>
+                {t.plan.open}
+              </Button>
+            )
+          }
+          uomCode={uoms.codeOf(detail.data.uomId) ?? ''}
+          renderForm={renderInboundForm}
+          headActions={inboundHead?.headActions}
+          headNote={inboundHead?.headNote}
+          scanOpen={scanOpen}
+          onConfirmed={savePendingLevel}
+        />
+        {inboundPlanOpen && version.data !== undefined && specs.data !== undefined && (
+          <PlanDialog
+            planCode={plan.data === undefined ? '-' : plan.data.inspectionPlanCode}
+            planName={plan.data?.inspectionPlanName ?? '-'}
+            itemParts={items.partsOf(detail.data.itemId)}
+            version={version.data}
+            specs={[...specs.data].sort((a, b) => a.sequenceNo - b.sequenceNo)}
+            uomCodeOf={uoms.codeOf}
+            seqNo={latestSeqNo}
+            drawings={<DrawingImages drawings={drawings.data ?? []} />}
+            onClose={() => setInboundPlanOpen(false)}
+          />
+        )}
+      </>
     );
   }
 
@@ -665,6 +694,8 @@ const SkippedSummary = (props: {
 
 /** 결과 드로어 모드(005 새 흐름). */
 export interface InspectionFormDrawer {
+  /** 이 결과의 검사 회차 — 검사 기준 상세 창에 보인다(사용자 지시 2026-11-18 · omf-all-around#296). */
+  seqNo: number;
   /** 고른 자재 관리 LOT — 저장 때 `matchedLotIds` 로 싣는다. */
   matchedLotIds: number[];
   /** 매칭 칸 · 재검 사유 칸(드로어가 그린다). */
@@ -757,6 +788,8 @@ const DrawingImages = ({ drawings }: { drawings: { attachmentId: number; blob: B
 );
 
 const InspectionForm = (props: FormProps) => {
+  /* 측정 표 규격 칸의 단위(omf-all-around#296). */
+  const uoms = useUomLookup();
   const { request, version, specs, draft } = props;
   const versionAcceptance = version.acceptanceNumber ?? null;
   /* AQL 샘플링이면 시료 수 · 합격 판정 수(Ac)를 표에서 낸 값으로 쓴다 — 서버 자동 판정도 같은 값이다(omf-all-around#264). */
@@ -1144,6 +1177,8 @@ const InspectionForm = (props: FormProps) => {
           itemParts={props.itemParts}
           version={version}
           specs={specs}
+          uomCodeOf={uoms.codeOf}
+          {...(props.drawer == null ? {} : { seqNo: props.drawer.seqNo })}
           drawings={<DrawingImages drawings={props.drawings} />}
           onClose={() => setPlanOpen(false)}
         />
@@ -1303,6 +1338,7 @@ const InspectionForm = (props: FormProps) => {
 
       <MeasurementTable
         items={dimensions}
+        uomCodeOf={uoms.codeOf}
         values={form.values}
         versionAcceptance={versionAcceptance}
         judgments={form.checks}

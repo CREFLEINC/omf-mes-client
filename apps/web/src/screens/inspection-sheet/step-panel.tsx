@@ -1,18 +1,10 @@
+import { AlertBanner, Button, Checkbox, Chip } from '@crefle/web-ui';
 import type { InspectionSheetJudgment, InspectionSheetStep } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
 import { masterName } from '../../patterns/master-name';
-import {
-  PuButton,
-  PuChip,
-  PuEmpty,
-  PuNote,
-  PuSection,
-  PuSeg,
-  puCx,
-} from '../../patterns/pop-uniform';
-import type { StepWriteVariables } from './queries';
+import type { StepWriteVariables } from './sheet-queries';
 import {
   firstFromItems,
   fullProgress,
@@ -22,7 +14,7 @@ import {
   stepSave,
 } from './step-judgment';
 
-const t = messages.popInspectionSheet.step;
+const t = messages.inspectionSheetEntry.step;
 
 const nameOf = (step: InspectionSheetStep): string =>
   masterName({ nameKo: step.nameKo, nameVi: step.nameVi }, step.nameKo);
@@ -50,25 +42,24 @@ export interface StepPanelProps {
  */
 export const StepPanel = ({ steps, disabled, isSaving, onSave }: StepPanelProps) => {
   const [selected, setSelected] = useState(steps[0]?.stepCode ?? null);
-  const sectionId = useId();
   const step = steps.find((row) => row.stepCode === selected) ?? null;
 
   return (
-    <PuSection title={t.heading} grow={false} className="isheet-steps" labelId={sectionId}>
-      {/* 단계 고르기 — 공통 보기 바꿈 모양(#295 규칙 7). */}
-      {selected !== null && (
-        <div className="isheet-tabs">
-          <PuSeg
-            label={t.tabsLabel}
-            value={selected}
-            onChange={setSelected}
-            options={steps.map((row) => ({
-              value: row.stepCode,
-              label: `${nameOf(row)} (${stateLabel(row)}${row.result?.signedAt ? `, ${t.signed}` : ''})`,
-            }))}
-          />
-        </div>
-      )}
+    <section className="pane inspection-sheet-entry-steps" aria-label={t.heading}>
+      <h2 className="pane-title">{t.heading}</h2>
+      <div className="inspection-sheet-entry-tabs" role="group" aria-label={t.tabsLabel}>
+        {steps.map((row) => (
+          <Button
+            key={row.stepCode}
+            size="md"
+            variant={row.stepCode === selected ? 'filled' : 'outlined'}
+            aria-pressed={row.stepCode === selected}
+            onClick={() => setSelected(row.stepCode)}
+          >
+            {`${nameOf(row)} (${stateLabel(row)}${row.result?.signedAt ? `, ${t.signed}` : ''})`}
+          </Button>
+        ))}
+      </div>
       {step !== null && (
         /* 단계를 바꾸면 그 단계의 저장값으로 입력을 새로 채운다. */
         <StepForm
@@ -79,7 +70,7 @@ export const StepPanel = ({ steps, disabled, isSaving, onSave }: StepPanelProps)
           onSave={onSave}
         />
       )}
-    </PuSection>
+    </section>
   );
 };
 
@@ -89,32 +80,6 @@ interface StepFormProps {
   isSaving: boolean;
   onSave: (variables: StepWriteVariables) => void;
 }
-
-/** OK/NG 판정 단추 — 공통 판정 모양(합격 초록 · 불합격 빨강). */
-const JudgeButton = ({
-  option,
-  on,
-  label,
-  disabled,
-  onClick,
-}: {
-  option: InspectionSheetJudgment;
-  on: boolean;
-  label?: string;
-  disabled: boolean;
-  onClick: () => void;
-}) => (
-  <button
-    type="button"
-    className={puCx('pu-judge', option === 'OK' ? 'j-ok' : 'j-ng', on && 'is-on')}
-    aria-pressed={on}
-    aria-label={label}
-    disabled={disabled}
-    onClick={onClick}
-  >
-    {option === 'OK' ? t.ok : t.ng}
-  </button>
-);
 
 const StepForm = ({ step, disabled, isSaving, onSave }: StepFormProps) => {
   const [judgments, setJudgments] = useState<Judgments>(() => savedJudgments(step));
@@ -163,94 +128,98 @@ const StepForm = ({ step, disabled, isSaving, onSave }: StepFormProps) => {
   };
 
   return (
-    <div className="isheet-step">
-      {oqcLocked && <PuNote>{t.oqcLocked}</PuNote>}
-      {step.result?.signedAt && !oqcLocked && <PuNote tone="warn">{t.signedWarning}</PuNote>}
+    <div className="inspection-sheet-entry-step">
+      {oqcLocked && <AlertBanner variant="info">{t.oqcLocked}</AlertBanner>}
+      {step.result?.signedAt && !oqcLocked && <p className="field-note">{t.signedWarning}</p>}
       {step.items.length === 0 ? (
-        <PuEmpty icon="list" title={t.noItems} />
+        <p className="field-note">{t.noItems}</p>
       ) : (
-        <ul className="isheet-items" aria-label={t.itemsCaption(name)}>
+        <ul className="inspection-sheet-entry-items" aria-label={t.itemsCaption(name)}>
           {step.items.map((item) => {
             const value = judgments[item.inspectionSheetTemplateItemId];
             return (
               <li key={item.inspectionSheetTemplateItemId}>
-                <span className="code pu-mono">{item.checkItemCode}</span>
-                <span className="name">{masterName(item, item.nameKo)}</span>
-                <PuChip>{t.method[item.methodCode] ?? item.methodCode}</PuChip>
-                <span className="pu-judge-pair">
-                  {(['OK', 'NG'] as const).map((option) => (
-                    /* ui-check-ignore: C-4 완료된 검사표이거나 출하검사 화면이 기록한 단계라 잠긴다 — 사유는 위 안내 띠 */
-                    <JudgeButton
-                      key={option}
-                      option={option}
-                      on={value === option}
-                      label={t.itemJudgment(item.checkItemCode, option)}
-                      disabled={locked}
-                      onClick={() => judge(item.inspectionSheetTemplateItemId, option)}
-                    />
-                  ))}
+                <span className="inspection-sheet-entry-item-code">{item.checkItemCode}</span>
+                <span className="inspection-sheet-entry-item-name">
+                  {masterName(item, item.nameKo)}
                 </span>
+                <Chip size="sm">{t.method[item.methodCode] ?? item.methodCode}</Chip>
+                {(['OK', 'NG'] as const).map((option) => (
+                  /* ui-check-ignore: C-4 완료된 검사표이거나 출하검사 화면이 기록한 단계라 잠긴다 — 사유는 위 안내 띠 */
+                  <Button
+                    key={option}
+                    size="md"
+                    variant={value === option ? 'filled' : 'outlined'}
+                    aria-pressed={value === option}
+                    aria-label={t.itemJudgment(item.checkItemCode, option)}
+                    disabled={locked}
+                    onClick={() => judge(item.inspectionSheetTemplateItemId, option)}
+                  >
+                    {option === 'OK' ? t.ok : t.ng}
+                  </Button>
+                ))}
               </li>
             );
           })}
         </ul>
       )}
 
-      <div className="isheet-first" role="group" aria-label={t.first}>
-        <span className="pu-label">{t.first}</span>
+      <div className="inspection-sheet-entry-judgment" role="group" aria-label={t.first}>
+        <span className="field-label">{t.first}</span>
         {step.items.length === 0 ? (
-          <span className="pu-judge-pair">
-            {(['OK', 'NG'] as const).map((option) => (
-              /* ui-check-ignore: C-4 완료된 검사표이거나 출하검사 화면이 기록한 단계라 잠긴다 — 사유는 위 안내 띠 */
-              <JudgeButton
-                key={option}
-                option={option}
-                on={manualFirst === option}
-                disabled={locked}
-                onClick={() => setManualFirst(option)}
-              />
-            ))}
-          </span>
+          (['OK', 'NG'] as const).map((option) => (
+            /* ui-check-ignore: C-4 완료된 검사표이거나 출하검사 화면이 기록한 단계라 잠긴다 — 사유는 위 안내 띠 */
+            <Button
+              key={option}
+              size="md"
+              variant={manualFirst === option ? 'filled' : 'outlined'}
+              aria-pressed={manualFirst === option}
+              disabled={locked}
+              onClick={() => setManualFirst(option)}
+            >
+              {option}
+            </Button>
+          ))
         ) : (
           <strong>{first ?? '—'}</strong>
         )}
-        {step.items.length > 0 && <span className="hint">{t.firstFromItems}</span>}
+        {step.items.length > 0 && <span className="field-note">{t.firstFromItems}</span>}
       </div>
       {first === 'NG' && (
-        <label className="pu-check">
-          <input
-            type="checkbox"
-            checked={recheckOk}
-            disabled={locked}
-            onChange={(event) => setRecheckOk(event.target.checked)}
-          />
+        <Checkbox
+          checked={recheckOk}
+          disabled={locked}
+          onChange={(event) => setRecheckOk(event.target.checked)}
+        >
           {t.recheckOk}
-        </label>
+        </Checkbox>
       )}
 
-      {/* 저장 단추 줄에는 단추만(#295 규칙 2) — 진행·임시 저장 안내는 단추 위 안내 줄로. */}
-      <div id={noteId} className="isheet-notes">
-        {!locked && progress.total > 0 && (
-          <PuNote>{t.progress(progress.done, progress.total)}</PuNote>
-        )}
-        {!locked && changed && plan.mode === 'draft' && <PuNote>{t.draftNote}</PuNote>}
-        {!locked && changed && plan.mode === 'blocked' && (
-          <PuNote tone="warn">{plan.reason}</PuNote>
-        )}
-      </div>
-      <div className="isheet-actions">
-        <PuButton
-          variant="primary"
+      <div className="pop-action-bar">
+        <div className="pop-action-note" id={noteId}>
+          {!locked && progress.total > 0 && (
+            <p className="field-note">{t.progress(progress.done, progress.total)}</p>
+          )}
+          {!locked && changed && plan.mode === 'draft' && (
+            <p className="field-note">{t.draftNote}</p>
+          )}
+          {!locked && changed && plan.mode === 'blocked' && (
+            <p className="field-note">{plan.reason}</p>
+          )}
+        </div>
+        <Button
+          variant="filled"
+          size="md"
           aria-describedby={noteId}
           disabled={locked || plan.mode === 'blocked' || !changed || isSaving}
           onClick={save}
         >
           {isSaving
-            ? messages.popInspectionSheet.saving
+            ? messages.inspectionSheetEntry.saving
             : changed && plan.mode === 'draft'
               ? t.draftSave
               : t.save}
-        </PuButton>
+        </Button>
       </div>
     </div>
   );

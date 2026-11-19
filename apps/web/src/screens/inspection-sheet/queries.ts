@@ -4,7 +4,7 @@ import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { requireIfMatch, useMasterWrite } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
-import { sheetDetailPath, sheetKeys } from '../pop-inspection-sheet/queries';
+import { sheetDetailPath, sheetKeys } from './sheet-queries';
 
 /** 목록 조건 — 생성 타입(서버 계약)에서 꺼낸다(omf-all-around#210 이후 앞선 계약 사본을 걷었다). */
 export type InspectionSheetListQuery = NonNullable<

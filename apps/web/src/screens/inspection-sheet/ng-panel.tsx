@@ -1,22 +1,13 @@
+import { Button, Chip, TextField } from '@crefle/web-ui';
 import type { InspectionSheet, InspectionSheetNgWrite } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useId, useState } from 'react';
+import { useState } from 'react';
 
 import { DateTimeField } from '../../patterns/date-time-field';
 import { masterName } from '../../patterns/master-name';
-import { PopSelect as Select } from '../../patterns/pop-select';
-import {
-  PuButton,
-  PuChip,
-  PuEmpty,
-  PuField,
-  PuInput,
-  PuNote,
-  PuSection,
-  type PuChipTone,
-} from '../../patterns/pop-uniform';
+import { Select } from '../../patterns/select';
 
-const t = messages.popInspectionSheet.ng;
+const t = messages.inspectionSheetEntry.ng;
 
 /** 화면 안의 한 블록 — 날짜는 입력칸 글자(로컬 시각)로 들고, 보낼 때 ISO 로 바꾼다. */
 export interface NgDraft extends Omit<InspectionSheetNgWrite, 'repairedAt' | 'recheckedAt'> {
@@ -106,8 +97,6 @@ export interface NgPanelProps {
  * 재검 결과·담당·일)을 한 건씩 적는다. 저장은 통째로 바뀐다. ⛔ 불량 기록(defect_record)은 만들지 않는다(담당자 결정 ⑥).
  */
 export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => {
-  const formId = useId();
-  const sectionId = `${formId}-title`;
   const [initial] = useState<NgDraft[]>(() => toNgDrafts(sheet));
   const [drafts, setDrafts] = useState<NgDraft[]>(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -151,39 +140,44 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
   };
 
   return (
-    <PuSection title={t.heading} grow={false} className="isheet-ngs" labelId={sectionId}>
-      <PuNote>{t.note}</PuNote>
-      {drafts.length === 0 && <PuEmpty icon="list" title={t.empty} />}
+    <section className="pane inspection-sheet-entry-ngs" aria-label={t.heading}>
+      <h2 className="pane-title">{t.heading}</h2>
+      <p className="field-note">{t.note}</p>
+      {drafts.length === 0 && <p className="field-note">{t.empty}</p>}
       {drafts.map((draft, index) => {
         const n = index + 1;
         if (!open.has(draft.key)) {
           const saved = savedKeys.has(draft.key);
-          const [label, tone]: [string, PuChipTone] = !saved
-            ? [t.unsaved, 'warn']
+          const [label, tone] = !saved
+            ? [t.unsaved, 'warning' as const]
             : draft.recheckResultCode
               ? [
                   t.statusRecheck(draft.recheckResultCode),
-                  draft.recheckResultCode === 'OK' ? 'ok' : 'bad',
+                  draft.recheckResultCode === 'OK' ? ('success' as const) : ('error' as const),
                 ]
               : draft.repairedAt
-                ? [t.statusRepaired, 'info']
-                : [t.statusOpen, 'warn'];
+                ? [t.statusRepaired, 'info' as const]
+                : [t.statusOpen, 'warning' as const];
           return (
-            <div key={draft.key} className="isheet-ng-row">
+            <div key={draft.key} className="inspection-sheet-entry-ng-summary">
               <div>
-                <strong>{t.block(n)}</strong> <PuChip tone={tone}>{label}</PuChip>{' '}
-                <span className="hint">
+                <strong>{t.block(n)}</strong>{' '}
+                <Chip size="sm" status={tone}>
+                  {label}
+                </Chip>{' '}
+                <span className="field-note">
                   {t.summaryWhere(stepName(draft.foundStepCode), draft.checkItemCode || t.none)}
                 </span>
                 <p>{draft.ngContent || t.none}</p>
               </div>
-              <PuButton
-                size="sm"
+              <Button
+                size="md"
+                variant="outlined"
                 aria-label={`${t.block(n)} ${t.edit}`}
                 onClick={() => toggle(draft.key, true)}
               >
                 {t.edit}
-              </PuButton>
+              </Button>
             </div>
           );
         }
@@ -193,15 +187,14 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
           patch: (v: string) => Partial<NgDraft>,
           max = 200,
         ) => (
-          <PuField label={label} htmlFor={`${formId}-${draft.key}-${label}`}>
-            <PuInput
-              id={`${formId}-${draft.key}-${label}`}
-              maxLength={max}
-              value={value ?? ''}
-              disabled={disabled}
-              onChange={(event) => set(draft.key, patch(event.target.value))}
-            />
-          </PuField>
+          <TextField
+            label={label}
+            size="md"
+            maxLength={max}
+            value={value ?? ''}
+            disabled={disabled}
+            onChange={(event) => set(draft.key, patch(event.target.value))}
+          />
         );
         const pick = (
           label: string,
@@ -209,7 +202,8 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
           options: { value: string; label: string }[],
           patch: (v: string | null) => Partial<NgDraft>,
         ) => (
-          <PuField label={label}>
+          <div className="field-cell">
+            <span className="field-label">{label}</span>
             <Select
               aria-label={`${t.block(n)} ${label}`}
               options={options}
@@ -217,25 +211,30 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
               disabled={disabled}
               onChange={(next) => set(draft.key, patch(next === '' ? null : next))}
             />
-          </PuField>
+          </div>
         );
         const when = (label: string, value: string, patch: (v: string) => Partial<NgDraft>) => (
-          <div className="isheet-when">
+          <div className="field-cell inspection-sheet-entry-when">
             <DateTimeField
               label={label}
               value={value}
               disabled={disabled}
               onChange={(next) => set(draft.key, patch(next))}
             />
-            <PuButton disabled={disabled} onClick={() => set(draft.key, patch(nowInput()))}>
+            <Button
+              size="md"
+              variant="outlined"
+              disabled={disabled}
+              onClick={() => set(draft.key, patch(nowInput()))}
+            >
               {t.now}
-            </PuButton>
+            </Button>
           </div>
         );
         return (
-          <fieldset key={draft.key} className="isheet-ng">
+          <fieldset key={draft.key} className="inspection-sheet-entry-ng">
             <legend>{t.block(n)}</legend>
-            <div className="isheet-grid">
+            <div className="form-grid">
               {pick(
                 t.foundDepartment,
                 draft.foundDepartmentCode,
@@ -252,32 +251,23 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
                 ngTypeCode: v as NgDraft['ngTypeCode'],
               }))}
             </div>
-            <PuField label={t.ngContent} required htmlFor={`${formId}-${draft.key}-content`}>
-              <PuInput
-                id={`${formId}-${draft.key}-content`}
-                maxLength={1000}
-                value={draft.ngContent}
-                disabled={disabled}
-                required
-                need={draft.ngContent.trim() === ''}
-                aria-describedby={
-                  errors[draft.key] ? `${formId}-${draft.key}-content-err` : undefined
-                }
-                onChange={(event) => set(draft.key, { ngContent: event.target.value })}
-              />
-              {errors[draft.key] && (
-                <span id={`${formId}-${draft.key}-content-err`} className="isheet-err">
-                  {errors[draft.key]}
-                </span>
-              )}
-            </PuField>
+            <TextField
+              label={t.ngContent}
+              size="md"
+              maxLength={1000}
+              value={draft.ngContent}
+              disabled={disabled}
+              error={errors[draft.key] || undefined}
+              aria-required
+              onChange={(event) => set(draft.key, { ngContent: event.target.value })}
+            />
             {field(
               t.investigation,
               draft.investigationText,
               (v) => ({ investigationText: v }),
               1000,
             )}
-            <div className="isheet-grid">
+            <div className="form-grid">
               {pick(
                 t.repairDepartment,
                 draft.repairDepartmentCode,
@@ -295,22 +285,27 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
               {field(t.recheckWorkerNo, draft.recheckWorkerNo, (v) => ({ recheckWorkerNo: v }), 50)}
               {when(t.recheckedAt, draft.recheckedAt, (v) => ({ recheckedAt: v }))}
             </div>
-            <div className="isheet-actions">
+            <div className="form-actions">
               {!disabled && (
-                <PuButton
-                  variant="ghost"
+                <Button
+                  size="md"
+                  variant="text"
                   onClick={() => setDrafts((prev) => prev.filter((d) => d.key !== draft.key))}
                 >
                   {t.remove(n)}
-                </PuButton>
+                </Button>
               )}
-              <PuButton onClick={() => toggle(draft.key, false)}>{t.collapse}</PuButton>
+              <Button size="md" variant="outlined" onClick={() => toggle(draft.key, false)}>
+                {t.collapse}
+              </Button>
             </div>
           </fieldset>
         );
       })}
-      <div className="isheet-actions">
-        <PuButton
+      <div className="form-actions">
+        <Button
+          size="md"
+          variant="outlined"
           disabled={disabled}
           onClick={() => {
             const added = emptyDraft();
@@ -319,15 +314,16 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
           }}
         >
           {t.add}
-        </PuButton>
-        <PuButton
+        </Button>
+        <Button
+          size="md"
           // ui-check-ignore: C-4 바뀐 값이 없거나 저장 중일 때만 잠긴다 — 고칠 것이 없다는 것 말고 사유가 없다
           disabled={disabled || isSaving || !changed}
           onClick={save}
         >
-          {isSaving ? messages.popInspectionSheet.saving : t.save}
-        </PuButton>
+          {isSaving ? messages.inspectionSheetEntry.saving : t.save}
+        </Button>
       </div>
-    </PuSection>
+    </section>
   );
 };

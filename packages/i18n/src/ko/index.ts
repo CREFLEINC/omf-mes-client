@@ -158,7 +158,7 @@ import { inspectionLevel } from './inspection-level';
 import { inspectionSheet } from './inspection-sheet';
 import { inspectionSheetPrint } from './inspection-sheet-print';
 import { inspectionSheetTemplate } from './inspection-sheet-template';
-import { popInspectionSheet } from './pop-inspection-sheet';
+import { inspectionSheetEntry } from './inspection-sheet-entry';
 import { materialDefect } from './material-defect';
 import { popOqcInspection } from './pop-oqc-inspection';
 import { popMaterialLotLabel } from './pop-material-lot-label';
@@ -320,7 +320,7 @@ export const ko = {
   inspectionSheet,
   inspectionSheetPrint,
   inspectionSheetTemplate,
-  popInspectionSheet,
+  inspectionSheetEntry,
   materialDefect,
   popOqcInspection,
   popMaterialLotLabel,

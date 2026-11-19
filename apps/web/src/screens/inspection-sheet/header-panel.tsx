@@ -1,15 +1,15 @@
+import { Button, Checkbox, TextField } from '@crefle/web-ui';
 import type {
   InspectionSheet,
   InspectionSheetHeaderUpdate,
   InspectionSheetJudgment,
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useId, useState } from 'react';
+import { useState } from 'react';
 
-import { PopSelect as Select } from '../../patterns/pop-select';
-import { PuButton, PuField, PuInput, PuNote, PuSection } from '../../patterns/pop-uniform';
+import { Select } from '../../patterns/select';
 
-const t = messages.popInspectionSheet.header;
+const t = messages.inspectionSheetEntry.header;
 
 type TextKey = Exclude<keyof InspectionSheetHeaderUpdate, 'rohsFlag' | 'overallResultCode'>;
 
@@ -75,29 +75,17 @@ export const HeaderPanel = ({ sheet, disabled, isSaving, onSave }: HeaderPanelPr
     setHeader((prev) => ({ ...prev, ...patch }));
   const pp = sheet.formLayoutCode === 'PP';
   const changed = JSON.stringify(trimmed(header)) !== JSON.stringify(trimmed(headerOf(sheet)));
-  const formId = useId();
-  const sectionId = `${formId}-title`;
-  /* 칸 이름은 칸 위(#295 규칙 6). */
-  const text = (key: TextKey | (typeof LOT_FIELDS)[number]['key'], max: number) => (
-    <PuField key={key} label={t[key]} htmlFor={`${formId}-${key}`}>
-      <PuInput
-        id={`${formId}-${key}`}
-        maxLength={max}
-        value={header[key] ?? ''}
-        disabled={disabled}
-        onChange={(event) => set({ [key]: event.target.value })}
-      />
-    </PuField>
-  );
 
   return (
-    <PuSection title={t.heading} grow={false} className="isheet-header" labelId={sectionId}>
-      <PuNote>{t.note}</PuNote>
-      <div className="isheet-grid">
+    <section className="pane inspection-sheet-entry-header" aria-label={t.heading}>
+      <h2 className="pane-title">{t.heading}</h2>
+      <p className="field-note">{t.note}</p>
+      <div className="form-grid">
         {LOT_FIELDS.map(({ key, candidates }) => {
           const options = sheet.lotCandidates[candidates];
           return options.length > 1 ? (
-            <PuField key={key} label={t[key]}>
+            <div className="field-cell" key={key}>
+              <span className="field-label">{t[key]}</span>
               <Select
                 aria-label={t[key]}
                 placeholder={t.candidates(options.length)}
@@ -106,22 +94,39 @@ export const HeaderPanel = ({ sheet, disabled, isSaving, onSave }: HeaderPanelPr
                 disabled={disabled}
                 onChange={(value) => set({ [key]: value })}
               />
-            </PuField>
+            </div>
           ) : (
-            text(key, 100)
+            <TextField
+              key={key}
+              label={t[key]}
+              size="md"
+              maxLength={100}
+              value={header[key] ?? ''}
+              disabled={disabled}
+              onChange={(event) => set({ [key]: event.target.value })}
+            />
           );
         })}
-        {TEXT_FIELDS.filter((field) => pp || !field.ppOnly).map(({ key, max }) => text(key, max))}
-        <label className="pu-check isheet-check">
-          <input
-            type="checkbox"
-            checked={header.rohsFlag}
+        {TEXT_FIELDS.filter((field) => pp || !field.ppOnly).map(({ key, max }) => (
+          <TextField
+            key={key}
+            label={t[key]}
+            size="md"
+            maxLength={max}
+            value={header[key] ?? ''}
             disabled={disabled}
-            onChange={(event) => set({ rohsFlag: event.target.checked })}
+            onChange={(event) => set({ [key]: event.target.value })}
           />
+        ))}
+        <Checkbox
+          checked={header.rohsFlag}
+          disabled={disabled}
+          onChange={(event) => set({ rohsFlag: event.target.checked })}
+        >
           {t.rohsFlag}
-        </label>
-        <PuField label={t.overallResult}>
+        </Checkbox>
+        <div className="field-cell">
+          <span className="field-label">{t.overallResult}</span>
           <Select
             aria-label={t.overallResult}
             options={[
@@ -135,16 +140,18 @@ export const HeaderPanel = ({ sheet, disabled, isSaving, onSave }: HeaderPanelPr
               set({ overallResultCode: value === '' ? null : (value as InspectionSheetJudgment) })
             }
           />
-        </PuField>
+        </div>
       </div>
-      <div className="isheet-actions">
-        <PuButton
+      <div className="form-actions">
+        <Button
+          size="md"
+          variant="outlined"
           disabled={disabled || isSaving || !changed}
           onClick={() => onSave(trimmed(header))}
         >
-          {isSaving ? messages.popInspectionSheet.saving : t.save}
-        </PuButton>
+          {isSaving ? messages.inspectionSheetEntry.saving : t.save}
+        </Button>
       </div>
-    </PuSection>
+    </section>
   );
 };
