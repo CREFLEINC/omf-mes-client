@@ -33,6 +33,7 @@ export const shellHome = {
     iqcSkipRequest: '요청만 올림 · 승인은 관리웹',
     putaway: '입하한 자재를 적치 위치에 넣고 입고 완료',
     temporaryPutaway: '적치 위치에 못 넣을 때 임시 위치에 먼저 둠',
+    putawayHistory: '내가 한 적치, 이 기기로 한 적치를 날짜별로 봄',
     stockTransfer: '위치 사이 재고 옮기기 · 반출 뒤 도착 스캔',
     materialPicking: '출고 요청대로 자재를 꺼냄',
     physicalCount: '위치의 실물을 세어 기록',

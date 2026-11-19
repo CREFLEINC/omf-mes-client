@@ -97,6 +97,13 @@ export const homeAreas: HomeArea[] = [
         icon: 'move_to_inbox',
         description: t.screens.temporaryPutaway,
       },
+      /* M-01-14 적치 기록(011) — 임시 위치 적재 다음. 남은 일이 아니라 지난 기록이라 배지를 두지 않는다. */
+      {
+        to: '/putaway-history',
+        label: messages.putawayHistory.title,
+        icon: 'history',
+        description: t.screens.putawayHistory,
+      },
       {
         to: '/stock-transfer',
         countKey: 'stockTransferArrival',

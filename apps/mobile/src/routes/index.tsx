@@ -21,6 +21,7 @@ import { StockTransferScreen } from '../screens/stock-transfer/screen';
 import { ProductPickingScreen } from '../screens/product-picking/screen';
 import { ProductReceiptScreen } from '../screens/product-receipt/screen';
 import { PutawayScreen } from '../screens/putaway/screen';
+import { PutawayHistoryScreen } from '../screens/putaway-history/screen';
 import { RecycleEntryScreen } from '../screens/recycle-entry/screen';
 import { TemporaryPutawayScreen } from '../screens/temporary-putaway/screen';
 import { RepairRoundtripScreen } from '../screens/repair-roundtrip/screen';
@@ -47,6 +48,8 @@ export const appRoutes: RouteObject[] = [
       { path: 'inbound-variance', element: <InboundVarianceScreen /> },
       { path: 'putaway', element: <PutawayScreen /> },
       { path: 'temporary-putaway', element: <TemporaryPutawayScreen /> },
+      /* M-01-14 적치 기록(011 · omf-all-around#325) — 서버에 남은 적치를 내 기록 / 이 단말로. */
+      { path: 'putaway-history', element: <PutawayHistoryScreen /> },
       { path: 'recycle-entry', element: <RecycleEntryScreen /> },
       { path: 'material-location', element: <MaterialLocationScreen /> },
       { path: 'material-picking', element: <MaterialPickingScreen /> },
