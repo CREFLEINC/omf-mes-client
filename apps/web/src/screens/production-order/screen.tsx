@@ -326,27 +326,41 @@ export const ProductionOrderScreen = ({
           />
         </div>
         <div className="erp-wo-status-filters">
-          {stateFilters.map((entry) => (
-            <button
-              type="button"
-              key={entry.state}
-              className="erp-wo-status-filter"
-              aria-label={entry.count === undefined ? entry.name : `${entry.name} ${entry.count}건`}
-              aria-pressed={!showingResultRows && filters.state === entry.state}
-              onClick={() => apply({ ...filters, state: entry.state, page: 1 })}
-            >
-              <span className="erp-wo-status-name">{entry.name}</span>
-              {entry.count !== undefined && (
-                <>
-                  {' '}
-                  <span className="erp-wo-status-number">
-                    {quantity(entry.count)}
-                    <small>{t.counts.unit}</small>
-                  </span>
-                </>
-              )}
-            </button>
-          ))}
+          {/*
+           * 0 건으로 센 상태는 세우지 않는다 — 「취소 0」 같은 탭이 늘 서 있어도 할 일이 없다는 말뿐이다(관리웹 화면 정리 시안 A ·
+           * 2026-11-20). 「전체」와 지금 고른 상태는 0 이어도 남긴다. 건수를 아직 · 끝내 모르면(권한 없음) 이름만으로 세운다 —
+           * 감추면 상태를 고를 길이 없다. 좁은 창의 선택 칸은 모든 상태를 그대로 둔다.
+           */}
+          {stateFilters
+            .filter(
+              (entry) =>
+                entry.state === 'ALL' ||
+                (!showingResultRows && filters.state === entry.state) ||
+                entry.count !== 0,
+            )
+            .map((entry) => (
+              <button
+                type="button"
+                key={entry.state}
+                className="erp-wo-status-filter"
+                aria-label={
+                  entry.count === undefined ? entry.name : `${entry.name} ${entry.count}건`
+                }
+                aria-pressed={!showingResultRows && filters.state === entry.state}
+                onClick={() => apply({ ...filters, state: entry.state, page: 1 })}
+              >
+                <span className="erp-wo-status-name">{entry.name}</span>
+                {entry.count !== undefined && (
+                  <>
+                    {' '}
+                    <span className="erp-wo-status-number">
+                      {quantity(entry.count)}
+                      <small>{t.counts.unit}</small>
+                    </span>
+                  </>
+                )}
+              </button>
+            ))}
         </div>
       </section>
       <section className="pane erp-wo-filter-pane" aria-label={t.filters.pane}>

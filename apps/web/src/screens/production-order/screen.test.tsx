@@ -318,7 +318,16 @@ describe('작업지시 목록 작업함', () => {
   });
 
   it('조건 칩은 「전체」가 맨 앞이고 처리 순서대로 서며, 보이는 묶음 이름 없이 접근명을 갖는다(C-17)', async () => {
-    render({ orders: [REVIEW, DONE_BLOCKED, DONE_READY] });
+    render({
+      orders: [
+        REVIEW,
+        DONE_BLOCKED,
+        DONE_READY,
+        order(721, 'SYN-PO-721', null, 0, 'BEFORE_PLAN'),
+        order(722, 'SYN-PO-722', { status: 'DONE', reasons: [] }, 1, 'RELEASED'),
+        order(723, 'SYN-PO-723', null, 0, 'CANCELLED'),
+      ],
+    });
 
     const group = await screen.findByRole('group', { name: t.counts.label });
     await waitFor(() =>
@@ -339,17 +348,36 @@ describe('작업지시 목록 작업함', () => {
     expect(within(group).queryByText('생산계획 자동 전개', { exact: true })).toBeNull();
   });
 
+  it('0 건으로 센 상태 칩은 세우지 않는다 — 「전체」는 0 이어도 남는다', async () => {
+    render({ orders: [REVIEW] });
+
+    const group = await screen.findByRole('group', { name: t.counts.label });
+    await waitFor(() =>
+      expect(
+        within(group)
+          .getAllByRole('button')
+          .filter((button) => button.hasAttribute('aria-pressed'))
+          .map((chip) => chip.textContent),
+      ).toEqual([
+        expect.stringMatching(/^전체 /),
+        expect.stringMatching(new RegExp(`^${t.status.ACTION_REQUIRED} `)),
+      ]),
+    );
+  });
+
   it.each(['BEFORE_PLAN', 'RELEASED', 'CANCELLED'] as const)(
     '새 상태 %s로 전환하고 검색 조건을 건수 조회에도 유지한다',
     async (state) => {
       const user = userEvent.setup();
       const { requests } = render(
-        { orders: [REVIEW] },
+        { orders: [REVIEW, order(731, 'SYN-PO-731', null, 0, state)] },
         '/production/production-orders?q=SYN&dueFrom=2026-10-01&dueTo=2026-10-31',
       );
       const group = await screen.findByRole('group', { name: t.counts.label });
       await user.click(
-        within(group).getByRole('button', { name: new RegExp(`^${t.status[state]}(?: |$)`) }),
+        await within(group).findByRole('button', {
+          name: new RegExp(`^${t.status[state]}(?: |$)`),
+        }),
       );
       await waitFor(() =>
         expect(

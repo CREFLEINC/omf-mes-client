@@ -69,7 +69,7 @@ describe('StatusChips(#186)', () => {
   const pending = t.statusLabels.PENDING;
   const approved = t.statusLabels.APPROVED;
 
-  it('세 상태를 건수와 함께 세우고, 켜진 칩은 누르면 끈다', async () => {
+  it('건수가 있는 상태를 건수와 함께 세우고(0 건은 세우지 않는다), 켜진 칩은 누르면 끈다', async () => {
     const onChange = vi.fn();
     render(
       <StatusChips
@@ -82,9 +82,7 @@ describe('StatusChips(#186)', () => {
 
     expect(chip).toHaveTextContent(t.statusChips.count(pending, 3));
     expect(chip).toHaveAttribute('aria-pressed', 'true');
-    expect(
-      screen.getByRole('button', { name: t.statusChips.filterOn(approved) }),
-    ).toHaveTextContent(t.statusChips.count(approved, 0));
+    expect(screen.queryByRole('button', { name: t.statusChips.filterOn(approved) })).toBeNull();
     expect(
       screen.getByRole('button', { name: t.statusChips.filterOn(t.statusLabels.REJECTED) }),
     ).toHaveTextContent(t.statusChips.count(t.statusLabels.REJECTED, 1));
@@ -92,6 +90,16 @@ describe('StatusChips(#186)', () => {
     await userEvent.setup().click(chip);
 
     expect(onChange).toHaveBeenCalledWith('');
+  });
+
+  it('켜진 칩은 0 건이어도 남아 풀 수 있다', () => {
+    render(
+      <StatusChips active="APPROVED" counts={{ PENDING: 3, APPROVED: 0 }} onChange={vi.fn()} />,
+    );
+
+    expect(
+      screen.getByRole('button', { name: t.statusChips.filterOff(approved) }),
+    ).toHaveTextContent(t.statusChips.count(approved, 0));
   });
 
   it('꺼진 칩을 누르면 그 상태를 켠다 — 건수를 아직 모르면 이름만 보인다', async () => {
