@@ -23,7 +23,6 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
     filtered: (query: string) => `Kết quả tìm theo 「${query}」.`,
     clearFilter: 'Xóa hết',
     notFound: (code: string) => `Không có LOT tách nào ứng với 「${code}」 — hãy kiểm tra lại số.`,
-    reprintHint: 'Hãy quét hoặc chọn nhãn cần in lại.',
   },
   periods: {
     label: 'Ngày xuất kho',

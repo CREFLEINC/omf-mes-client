@@ -422,7 +422,6 @@ export const GoodsIssueQrScreen = () => {
                     {t.search.filtered(query.trim())}
                   </PuNote>
                 )}
-                {isPrintedTab ? <p className="pu-help">{t.search.reprintHint}</p> : null}
               </PuScanField>
             </div>
             {isPrintedTab ? (

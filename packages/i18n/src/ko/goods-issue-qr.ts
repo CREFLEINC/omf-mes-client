@@ -30,7 +30,6 @@ export const goodsIssueQr = {
     clearFilter: '전체 삭제',
     notFound: (code: string) => `「${code}」에 해당하는 분할 LOT이 없습니다 — 번호를 확인하세요.`,
     /** 재발행 탭 할 일 한 줄. */
-    reprintHint: '재인쇄할 라벨을 스캔하거나 선택하세요.',
   },
   /** 재발행 보기의 기간 — 서버가 출고일로 거른다(contracts §4). */
   periods: {
