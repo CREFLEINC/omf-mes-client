@@ -34,7 +34,6 @@ import {
   PuUnit,
   applyKeypadKey,
   puToast,
-  useFitCount,
 } from '../../patterns/pop-uniform';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { toApiError } from '../../patterns/request';
@@ -59,6 +58,7 @@ import {
   type QuantityDrafts,
   type QuantityKey,
 } from './result';
+import { useFitCardCount } from './fit-cards';
 import { useUomLookup } from './uom-lookup';
 import { PopTopStatus } from '../../patterns/pop-top-status';
 import { ListOrderFoot, listDateTimeText, type ListOrder } from '../../patterns/pop-list-order';
@@ -92,7 +92,9 @@ export const ReworkResultRegisterScreen = () => {
   const [folded, setFolded] = useState(false);
   /* 목록 구획 높이에 들어가는 건수(#295 · 구획 안 스크롤 없음) — 배포된 쪽의 요청 크기가 된다. */
   const listRef = useRef<HTMLDivElement>(null);
-  const pageSize = useFitCount(listRef, { fallback: 4 });
+  /* 고른 카드 한 장을 늘 큰 카드로 잡고 나머지는 접힌 카드로 센다 — 고르기 전·후 건수가 같다. */
+  const [listTotals, setListTotals] = useState({ releasedTotal: 0, plannedTotal: 0 });
+  const pageSize = useFitCardCount(listRef, listTotals, { fallback: 4 });
   /* 목록 정렬 [최신순 | 오래된순] — 계획 시작 일시(사용자 지시 2026-11-19). 배포된 것 먼저는 그대로 둔다. */
   const [listOrder, setListOrder] = useState<ListOrder>('newest');
   const { open: releasedOrders, planned: plannedOrders } = useReworkWorkOrders(
@@ -118,6 +120,13 @@ export const ReworkResultRegisterScreen = () => {
   const plannedIds = new Set(plannedRows.map((row) => row.workOrderId));
   const rows = [...releasedItems, ...plannedRows];
   const listTotal = releasedTotal + plannedAll.length;
+  useEffect(() => {
+    setListTotals((prev) =>
+      prev.releasedTotal === releasedTotal && prev.plannedTotal === plannedAll.length
+        ? prev
+        : { releasedTotal, plannedTotal: plannedAll.length },
+    );
+  }, [releasedTotal, plannedAll.length]);
   const listPages = Math.max(1, Math.ceil(listTotal / Math.max(1, pageSize)));
   const defectCodeId = useId();
   /*
