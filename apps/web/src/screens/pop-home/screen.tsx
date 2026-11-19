@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
@@ -19,9 +19,9 @@ import {
   puCx,
   puToast,
   useClientPage,
-  useFitCount,
 } from '../../patterns/pop-uniform';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { useFitRows } from './fit-rows';
 import { HOME_STATUS_CODES, useHomeWorkOrders, useHomeWorkStatus } from './queries';
 import {
   DEFAULT_SHORTCUT_PATHS,
@@ -77,6 +77,9 @@ const SHORTCUT_ICONS: readonly { path: string; icon: ReactNode }[] = [
     icon: navIcon(<path d="M12 3v12m-5-5 5 5 5-5M5 21h14" />),
   },
 ];
+
+/** 바로가기 칸 열 수(`uniform.css` 의 `.home-tiles` 와 같다). */
+const TILE_COLUMNS = 6;
 
 const pad = (value: number) => String(value).padStart(2, '0');
 
@@ -158,14 +161,14 @@ const StatusCard = ({
   const [view, setView] = useState<(typeof stats)[number]['key']>('run');
   const [page, setPage] = useState(1);
   const listRef = useRef<HTMLDivElement>(null);
-  const fit = useFitCount(listRef, { fallback: 3 });
+  const fit = useFitRows(listRef, { rowSelector: '.home-row-link' });
   const viewTotal =
     data === undefined
       ? undefined
       : { run: data.inProgress, wait: data.waiting, done: data.done }[view];
-  /* 넘치면 한 자리를 쪽 넘김에 내준다. 한 줄 자리뿐이면(작은 화면의 [편집] 중) 쪽 넘김 없이 한 줄만. */
-  const hasPager = fit >= 2 && (viewTotal === undefined || viewTotal > fit);
-  const size = hasPager ? fit - 1 : fit;
+  /* 넘치면 쪽 넘김을 두고 그 아래 남는 만큼 줄을 보인다. 쪽 넘김 자리가 없으면 쪽 넘김 없이 들어가는 만큼만. */
+  const hasPager = fit.paged >= 1 && (viewTotal === undefined || viewTotal > fit.all);
+  const size = hasPager ? fit.paged : fit.all;
   /* 칸의 수를 안 뒤에 묻는다 — 쪽 넘김 자리(줄 수)가 정해져야 한 번에 맞는 쪽을 받는다. */
   const list = useHomeWorkOrders(
     scopeEquipmentId,
@@ -312,16 +315,16 @@ const StatusCard = ({
  * 남은 작업 구획 — 구획은 화면 높이만큼 늘고, 들어가는 만큼 줄을 보인다. 다 들어가면 쪽 넘김을 두지 않고,
  * 넘칠 때만 아래에 ‹ › 를 둔다(#295 규칙 15 · 구획 안 스크롤 없음 · 사용자 지시 2026-11-19).
  *
- * ⭐ 줄과 쪽 넘김을 한 칸(`home-rows`)에 둬서 «칸 전체에 들어가는 줄 수»를 잰다 — 쪽 넘김이 서고 빠져도 잰
- *    값이 흔들리지 않는다. 넘치면 한 자리를 쪽 넘김에 내준다(쪽 넘김 높이는 줄보다 낮다).
+ * ⭐ 줄과 쪽 넘김을 한 칸(`home-rows`)에 두고, 쪽 넘김이 «없을 때»와 «있을 때» 들어가는 줄 수를 따로 잰다
+ *    (`useFitRows`) — 쪽 넘김이 서고 빠져도 잰 값이 흔들리지 않고, 쪽 넘김 아래 남는 자리도 줄로 쓴다.
  */
 const RemainingCard = ({ titleId }: { titleId: string }) => {
   const { pending, total, go } = usePopNavigation();
   const listRef = useRef<HTMLDivElement>(null);
-  const fit = useFitCount(listRef, { fallback: 3 });
-  /* 한 줄 자리뿐이면 쪽 넘김 없이 한 줄만(작업 현황 목록과 같다). */
-  const hasPager = fit >= 2 && pending.length > fit;
-  const shown = useClientPage(pending, hasPager ? fit - 1 : fit);
+  const fit = useFitRows(listRef, { rowSelector: '.home-row-link' });
+  /* 쪽 넘김 자리가 없으면 쪽 넘김 없이 들어가는 만큼만(작업 현황 목록과 같다). */
+  const hasPager = fit.paged >= 1 && pending.length > fit.all;
+  const shown = useClientPage(pending, hasPager ? fit.paged : fit.all);
 
   return (
     <PuSection
@@ -388,6 +391,14 @@ export const PopHomeScreen = (): ReactNode => {
     return screen === undefined ? [] : [screen];
   });
   const workStart = access.screens.find((screen) => screen.path === '/pop/work-start') ?? null;
+
+  /*
+   * 바로가기 구획은 [편집] 중과 끝낸 뒤 높이가 같다(사용자 지시 2026-11-19) — 위 두 구획이 움직이지 않게.
+   * 높이는 [편집]의 모든 화면 칸(6열 · 낮은 칸)이 들어가는 만큼이고, 평소 칸은 그 높이로 늘어난다.
+   */
+  const tilesStyle = {
+    '--home-tile-rows': String(Math.max(1, Math.ceil(access.screens.length / TILE_COLUMNS))),
+  } as CSSProperties;
 
   const savePaths = (next: string[] | null) => {
     setPickedPaths(next);
@@ -479,7 +490,7 @@ export const PopHomeScreen = (): ReactNode => {
         }
       >
         {isEditing ? (
-          <div className="home-tiles is-edit">
+          <div className="home-tiles is-edit" style={tilesStyle}>
             {access.screens.map((screen) => {
               const picked = paths.includes(screen.path);
               const isFull = !picked && shortcuts.length >= MAX_SHORTCUTS;
@@ -512,34 +523,32 @@ export const PopHomeScreen = (): ReactNode => {
             })}
           </div>
         ) : (
-          shortcuts.length > 0 && (
-            <div className="home-tiles">
-              {shortcuts.map((screen) => {
-                const count = countOf(screen, workCounts.counts);
-                return (
-                  <button
-                    key={screen.path}
-                    type="button"
-                    className="home-tile"
-                    aria-label={
-                      count > 0 ? messages.popChrome.remaining.count(screen.name, count) : undefined
-                    }
-                    onClick={() => {
-                      go(screen);
-                    }}
-                  >
-                    {count > 0 && (
-                      <span className="cnt" aria-hidden="true">
-                        <PuCount>{count}</PuCount>
-                      </span>
-                    )}
-                    {iconOf(screen)}
-                    <span className="name">{screen.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )
+          <div className="home-tiles" style={tilesStyle}>
+            {shortcuts.map((screen) => {
+              const count = countOf(screen, workCounts.counts);
+              return (
+                <button
+                  key={screen.path}
+                  type="button"
+                  className="home-tile"
+                  aria-label={
+                    count > 0 ? messages.popChrome.remaining.count(screen.name, count) : undefined
+                  }
+                  onClick={() => {
+                    go(screen);
+                  }}
+                >
+                  {count > 0 && (
+                    <span className="cnt" aria-hidden="true">
+                      <PuCount>{count}</PuCount>
+                    </span>
+                  )}
+                  {iconOf(screen)}
+                  <span className="name">{screen.name}</span>
+                </button>
+              );
+            })}
+          </div>
         )}
       </PuSection>
     </PuScreen>

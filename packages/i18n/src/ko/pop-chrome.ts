@@ -76,7 +76,7 @@ export const popChrome = {
     statusFailed: '작업 현황을 불러오지 못했습니다.',
     edit: '편집',
     editDone: '완료',
-    editReset: '기본으로',
+    editReset: '기본 설정',
     editHint: (max: number): string => `홈에 둘 화면을 최대 ${String(max)}개까지 선택하세요.`,
     /** [편집] 중 제목 옆 — 지금 고른 수 / 최대(사용자 지시 2026-11-19). */
     editCount: (count: number, max: number): string => `선택 ${String(count)} / ${String(max)}`,
