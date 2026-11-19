@@ -146,12 +146,13 @@ export const RackCreateDialog = ({
   }
 
   /*
-   * 층은 1 이상, 셀은 0 이상(0 이면 층이 맨 아래 위치) — 서버 한도(위치 ③b)와 같다. 지금 층이 없는 랙은 0 도 받는다 —
-   * 랙이 맨 아래 위치로 남는다(#1673, 열면서 층이 생기지 않게).
+   * 층 · 셀 모두 0 이상 — 서버 한도(위치 ③b · 서버 #1105)와 같다. 층 0 이면 랙이 맨 아래 위치이고, 그때 셀은 둘 수 없어
+   * 0 으로 보낸다(층 0 · 셀 1 이상은 서버가 400 으로 거절한다). 셀 칸은 잠근다.
    */
-  const minLevels = current !== null && current.levelCount === 0 ? 0 : 1;
+  const minLevels = 0;
   const levelCount = parseCount(levelText, minLevels, RACK_LAYOUT_MAX_LEVELS);
-  const cellCount = parseCount(cellText, 0, RACK_LAYOUT_MAX_CELLS);
+  const rackOnly = levelCount === 0;
+  const cellCount = rackOnly ? 0 : parseCount(cellText, 0, RACK_LAYOUT_MAX_CELLS);
   const levelError =
     levelCount === null ? t.rackLayout.countInvalid(minLevels, RACK_LAYOUT_MAX_LEVELS) : undefined;
   const cellError =
@@ -446,9 +447,9 @@ export const RackCreateDialog = ({
               <TextField
                 label={t.rackLayout.cellCount}
                 inputMode="numeric"
-                value={cellText}
+                value={rackOnly ? '0' : cellText}
                 onChange={(event) => setCellText(event.target.value)}
-                disabled={saving}
+                disabled={saving || rackOnly}
                 error={cellError}
               />
             </div>

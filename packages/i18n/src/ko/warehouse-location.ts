@@ -41,8 +41,6 @@ export const warehouseLocation = {
     invalid: '대문자와 숫자 2~6자로 입력하세요.',
     /** 서버 400 `UNIQUE_VIOLATION`(field `locationPrefix`). */
     taken: '이미 다른 창고가 쓰는 코드입니다 — 다른 코드를 넣거나 [다시 만들기]를 누르세요.',
-    locked: '바꿀 수 없습니다.',
-    lockedNote: '이 창고의 모든 위치 코드 앞에 붙습니다.',
   },
   /** 정보 판의 불량 창고 스위치 — 바꾸기 전에 한 번 묻는다(사용자 지시 2026-10-30). 설명문 없이 제목만. */
   externalConfirm: {
@@ -79,6 +77,14 @@ export const warehouseLocation = {
     /* 창고를 고르기 전 오른쪽 자리 — 제목 + 안내(사용자 지시 2026-09-18 · omf-all-around#17). */
     warehouseNotSelectedTitle: '창고 정보',
     warehouseNotSelectedDescription: '창고를 먼저 선택하세요',
+  },
+  /** Location 탭의 보기(사용자 지시 2026-11-19). 목록 = 랙 아래 말단(층 · 셀)만 한 줄씩. */
+  view: {
+    label: '보기',
+    tree: '계층',
+    leaf: '목록',
+    parentPath: '상위 위치',
+    emptyLeaf: '적치 위치가 없습니다',
   },
   filters: {
     searchLabel: '창고 검색',
