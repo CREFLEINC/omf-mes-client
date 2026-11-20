@@ -2,6 +2,12 @@ import { Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type FormEvent, useEffect, useId, useState } from 'react';
 
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  hasChangedFilters,
+  useFilterMore,
+} from '../../patterns/filter-more';
 import { FilterSelect } from './filter-select';
 import type { ProgressFilters } from './filters';
 import { LOOKUP_SIZE, type NameLookup } from './lookups';
@@ -13,6 +19,8 @@ const t = messages.workOrderProgress.filters;
 export interface ProgressFilterBarProps {
   /** 지금 조회에 걸려 있는 조건. 주소에서 읽은 값이다. */
   appliedFilters: ProgressFilters;
+  /** 「초기화」가 되돌리는 처음 값(최근 한 달, 나머지 비움). 이와 다를 때만 「초기화」가 보인다. */
+  initialFilters: ProgressFilters;
   lineLookup: NameLookup;
   productionOrderLookup: NameLookup;
   statusOptions: StatusOptions;
@@ -46,9 +54,13 @@ const truncationNote = (lookup: NameLookup): string | null =>
  *
  * ⛔ **공정 칸을 만들지 않는다.** 계약에 공정으로 거를 파라미터가 없다. 자리만 만들어 두고
  * 늘 비활성이면 「고장 났나」로 읽힌다 — 대신 **한 문장으로 적는다**(A-11).
+ *
+ * **보이는 조건은 셋이다**(C-6) — 기간 · 라인 · W/O 번호. 상태와 P/O 는 「조건 더보기」에 접고,
+ * 접힌 칸에 걸린 조건은 칩으로만 알린다. 「초기화」는 처음 값과 다를 때만 보인다.
  */
 export const ProgressFilterBar = ({
   appliedFilters,
+  initialFilters,
   lineLookup,
   productionOrderLookup,
   statusOptions,
@@ -57,6 +69,7 @@ export const ProgressFilterBar = ({
 }: ProgressFilterBarProps) => {
   const [draft, setDraft] = useState(appliedFilters);
   const periodNoteId = useId();
+  const more = useFilterMore();
 
   const { from, to, productionLineId, statusCode, productionOrderId, keyword } = appliedFilters;
 
@@ -73,6 +86,22 @@ export const ProgressFilterBar = ({
     event.preventDefault();
     if (blockedReason === null) onSearch({ ...draft });
   };
+
+  const isChanged = hasChangedFilters(initialFilters, draft, appliedFilters);
+  /* 접힌 칸(상태 · P/O)의 조건만 칩으로 — 보이는 칸의 값을 칩으로 겹쳐 적지 않는다. */
+  const hiddenChips = [
+    ...(statusCode === ''
+      ? []
+      : [{ key: 'statusCode' as const, label: t.chipStatus(statusOptions.labelOf(statusCode)) }]),
+    ...(productionOrderId === ''
+      ? []
+      : [
+          {
+            key: 'productionOrderId' as const,
+            label: t.chipProductionOrder(productionOrderLookup.labelOf(productionOrderId)),
+          },
+        ]),
+  ];
 
   return (
     <form aria-label={t.legend} className="filter-bar work-order-progress-filter" onSubmit={submit}>
@@ -113,28 +142,6 @@ export const ProgressFilterBar = ({
         }}
       />
 
-      <FilterSelect
-        label={t.status}
-        note={null}
-        options={statusOptions.options}
-        unavailableReason={statusOptions.isUnavailable ? t.statusUnavailable : null}
-        value={draft.statusCode}
-        onChange={(statusCode) => {
-          setDraft((current) => ({ ...current, statusCode }));
-        }}
-      />
-
-      <FilterSelect
-        label={t.productionOrder}
-        note={truncationNote(productionOrderLookup)}
-        options={productionOrderLookup.options}
-        unavailableReason={lookupReason(productionOrderLookup)}
-        value={draft.productionOrderId}
-        onChange={(productionOrderId) => {
-          setDraft((current) => ({ ...current, productionOrderId }));
-        }}
-      />
-
       <div className="field-cell">
         <TextField
           label={t.keyword}
@@ -145,6 +152,41 @@ export const ProgressFilterBar = ({
           }}
         />
       </div>
+
+      {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+      <div id={more.id} className="work-order-progress-filter-more" hidden={!more.isOpen}>
+        <div className="filter-bar work-order-progress-filter">
+          <FilterSelect
+            label={t.status}
+            note={null}
+            options={statusOptions.options}
+            unavailableReason={statusOptions.isUnavailable ? t.statusUnavailable : null}
+            value={draft.statusCode}
+            onChange={(statusCode) => {
+              setDraft((current) => ({ ...current, statusCode }));
+            }}
+          />
+
+          <FilterSelect
+            label={t.productionOrder}
+            note={truncationNote(productionOrderLookup)}
+            options={productionOrderLookup.options}
+            unavailableReason={lookupReason(productionOrderLookup)}
+            value={draft.productionOrderId}
+            onChange={(productionOrderId) => {
+              setDraft((current) => ({ ...current, productionOrderId }));
+            }}
+          />
+        </div>
+      </div>
+
+      <HiddenFilterChips
+        open={more.isOpen}
+        chips={hiddenChips}
+        onRemove={(key) => {
+          onSearch({ ...appliedFilters, [key]: '' });
+        }}
+      />
 
       <div className="work-order-progress-filter-footer">
         {/* A-11 — 만들지 않은 조건을 한 문장으로 밝힌다. */}
@@ -158,9 +200,12 @@ export const ProgressFilterBar = ({
           >
             {t.search}
           </Button>
-          <Button type="button" variant="outlined" onClick={onReset}>
-            {t.reset}
-          </Button>
+          {isChanged && (
+            <Button type="button" variant="outlined" onClick={onReset}>
+              {t.reset}
+            </Button>
+          )}
+          <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
         </div>
 
         {blockedReason === null ? null : (

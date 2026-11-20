@@ -6,8 +6,9 @@ import { useState, type ReactNode } from 'react';
 import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
 import type { ReplenishmentOriginCode, ReplenishmentSettings } from './api-types';
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { DetailPanel } from './detail-panel';
-import type { ProgressFilters } from './filters';
+import { EMPTY_PROGRESS, type ProgressFilters } from './filters';
 import { PAGE_SIZE, replenishmentKeys, useProgressList } from './queries';
 import { RunTable } from './run-table';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
@@ -113,6 +114,13 @@ export const ProgressView = ({
     onSearch(next);
   };
 
+  /* 「초기화」는 처음 값과 다를 때만 보인다(C-6). 주소가 그대로여도 고친 값은 되돌린다. */
+  const isChanged = hasChangedFilters(EMPTY_PROGRESS, draft, filters);
+  const reset = (): void => {
+    setDraft(EMPTY_PROGRESS);
+    onReset();
+  };
+
   const toggleOrigin = (origin: ReplenishmentOriginCode): void =>
     onSearch({ ...filters, origin: filters.origin === origin ? '' : origin });
   const toggleStatus = (status: ReplenishmentStatus): void =>
@@ -154,9 +162,11 @@ export const ProgressView = ({
           onChange={(value) => setDraft({ ...draft, from: value?.[0] ?? '', to: value?.[1] ?? '' })}
         />
         <Button onClick={() => search(draft)}>{t.common.search}</Button>
-        <Button variant="outlined" onClick={onReset}>
-          {t.common.reset}
-        </Button>
+        {isChanged && (
+          <Button variant="outlined" onClick={reset}>
+            {t.common.reset}
+          </Button>
+        )}
       </div>
       <div className="replenishment-filter-row">
         <span className="field-note">{tp.filters.origin}</span>

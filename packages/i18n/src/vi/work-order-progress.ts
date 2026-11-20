@@ -26,6 +26,8 @@ export const workOrderProgress: Translated<typeof ko.workOrderProgress> = {
     keywordPlaceholder: 'Một phần của số W/O',
     search: 'Tra cứu',
     reset: 'Đặt lại',
+    chipStatus: (value: string): string => `Trạng thái: ${value}`,
+    chipProductionOrder: (value: string): string => `P/O: ${value}`,
 
     /** ⛔ 「고르지 않음」이 아니라 무엇이 조회되는지를 적는다. */
     all: 'Tất cả',

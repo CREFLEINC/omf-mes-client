@@ -14,6 +14,12 @@ import { messages } from '@omf-mes/i18n';
 import { useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  hasChangedFilters,
+  useFilterMore,
+} from '../../patterns/filter-more';
 import { plantToday } from '../../patterns/plant-time';
 import { ScreenHeader } from '../../patterns/screen-header';
 import { Select } from '../../patterns/select';
@@ -81,9 +87,16 @@ const groupByPlan = (rows: readonly MaterialIssueRequestView[]): PlanGroup[] => 
   );
 };
 
+/** 「조건 더보기」에 접힌 칸 — 칩의 키. */
+type HiddenFilterKey = 'plant' | 'warehouse' | 'shortageOnly' | 'failedOnly' | 'groupByPlan';
+
 /**
  * W-02-11 출고 요청 현황(003 계획 기반 출고 요청 · US5 · US6). 「구매 / 자재 관리 › 출고 관리」의 탭.
  * 보기(`view`) · 조건 · 쪽 · 고른 요청(`id`)은 주소가 갖는다(screens/W-02-11.md 「진입」).
+ *
+ * **조회 조건 줄에 보이는 칸은 셋이다**(C-6) — 출고 작업일 · 생산일 · W/O. 공장 · 출발 생산 창고와 세 확인칸은
+ * 「조건 더보기」에 접고, 처음 값과 다른 것만 칩으로 알린다(공장은 첫 공장이 처음 값이다). 상태 줄은 그대로 둔다.
+ * 「초기화」는 처음 값(공장은 지금 공장)과 다를 때만 보인다.
  */
 export const MaterialIssueStatusScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -109,6 +122,8 @@ export const MaterialIssueStatusScreen = () => {
     setDraftSource(searchParams.toString());
     setDraft(filters);
   }
+
+  const more = useFilterMore();
 
   const list = useRequestList(filters, page, view === 'list' && plantId !== null);
   const shortage = usePlannedShortage(plantId);
@@ -139,6 +154,54 @@ export const MaterialIssueStatusScreen = () => {
     setSearchParams(params);
   };
 
+  /* 초기화는 공장을 남긴다. 주소가 그대로여도(이미 처음 값) 조건 줄의 고친 값은 되돌린다. */
+  const resetFilters: StatusFilters = { ...EMPTY_FILTERS, plant: filters.plant };
+  const reset = (): void => {
+    setDraft(resetFilters);
+    go(view, resetFilters);
+  };
+  const isChanged = hasChangedFilters(
+    resetFilters,
+    { ...draft, plant: draft.plant === '' ? filters.plant : draft.plant },
+    filters,
+  );
+
+  /* 접힌 칸의 조건만 칩으로 — 보이는 칸(출고 작업일 · 생산일 · W/O)은 칩으로 겹쳐 적지 않는다. */
+  const firstPlant = plants.data?.[0];
+  const plantName = plants.data?.find((plant) => plant.plantId === plantId)?.plantName;
+  const warehouseName =
+    warehouses.data?.find((option) => option.value === filters.warehouse)?.label ??
+    filters.warehouse;
+  const hiddenChips = [
+    ...(firstPlant !== undefined && plantId !== firstPlant.plantId
+      ? [{ key: 'plant' as const, label: t.filters.chipPlant(plantName ?? filters.plant) }]
+      : []),
+    ...(filters.warehouse === ''
+      ? []
+      : [{ key: 'warehouse' as const, label: t.filters.chipSourceWarehouse(warehouseName) }]),
+    ...(filters.shortageOnly
+      ? [{ key: 'shortageOnly' as const, label: t.filters.hasShortage }]
+      : []),
+    ...(filters.failedOnly ? [{ key: 'failedOnly' as const, label: t.filters.releaseFailed }] : []),
+    ...(filters.groupByPlan ? [{ key: 'groupByPlan' as const, label: t.filters.groupByPlan }] : []),
+  ];
+  const removeHidden = (key: HiddenFilterKey): void => {
+    switch (key) {
+      /* 공장을 풀면 첫 공장으로 돌아간다. 출발 생산 창고는 공장에 딸려 함께 비운다. */
+      case 'plant':
+        go(view, { ...filters, plant: '', warehouse: '' });
+        return;
+      case 'warehouse':
+        go(view, { ...filters, warehouse: '' });
+        return;
+      case 'groupByPlan':
+        go(view, { ...filters, groupByPlan: false }, page);
+        return;
+      default:
+        go(view, { ...filters, [key]: false });
+    }
+  };
+
   const toggleStatus = (status: (typeof DISPLAY_STATUSES)[number]): void => {
     const statuses = draft.statuses.includes(status)
       ? draft.statuses.filter((value) => value !== status)
@@ -149,16 +212,6 @@ export const MaterialIssueStatusScreen = () => {
   const filterBar = (
     <section className="material-issue-status-filters" aria-label={t.filters.label}>
       <div className="material-issue-status-filter-row">
-        <Select
-          aria-label={t.filters.plant}
-          /* 처음 열 때(주소에 공장이 없거나 목록을 받기 전)도 실제 조회 중인 공장을 보인다(G2 2). */
-          value={draft.plant === '' ? filters.plant : draft.plant}
-          options={(plants.data ?? []).map((plant) => ({
-            value: String(plant.plantId),
-            label: plant.plantName,
-          }))}
-          onChange={(value) => setDraft({ ...draft, plant: value, warehouse: '' })}
-        />
         <DatePicker
           mode="range"
           clearable
@@ -188,20 +241,53 @@ export const MaterialIssueStatusScreen = () => {
             if (event.key === 'Enter') search();
           }}
         />
-        <Select
-          aria-label={t.filters.sourceWarehouse}
-          value={draft.warehouse}
-          options={[{ value: '', label: t.filters.all }, ...(warehouses.data ?? [])]}
-          onChange={(value) => setDraft({ ...draft, warehouse: value })}
-        />
         <Button onClick={search}>{t.filters.search}</Button>
-        <Button
-          variant="outlined"
-          onClick={() => go(view, { ...EMPTY_FILTERS, plant: filters.plant })}
-        >
-          {t.filters.reset}
-        </Button>
+        {isChanged && (
+          <Button variant="outlined" onClick={reset}>
+            {t.filters.reset}
+          </Button>
+        )}
+        <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
       </div>
+      {/* `hidden` 은 감싸는 상자에 둔다 — 줄의 display 가 속성을 덮는다. */}
+      <div id={more.id} hidden={!more.isOpen}>
+        <div className="material-issue-status-filter-row">
+          <Select
+            aria-label={t.filters.plant}
+            /* 처음 열 때(주소에 공장이 없거나 목록을 받기 전)도 실제 조회 중인 공장을 보인다(G2 2). */
+            value={draft.plant === '' ? filters.plant : draft.plant}
+            options={(plants.data ?? []).map((plant) => ({
+              value: String(plant.plantId),
+              label: plant.plantName,
+            }))}
+            onChange={(value) => setDraft({ ...draft, plant: value, warehouse: '' })}
+          />
+          <Select
+            aria-label={t.filters.sourceWarehouse}
+            value={draft.warehouse}
+            options={[{ value: '', label: t.filters.all }, ...(warehouses.data ?? [])]}
+            onChange={(value) => setDraft({ ...draft, warehouse: value })}
+          />
+          <Checkbox
+            checked={filters.shortageOnly}
+            onChange={(event) => go(view, { ...filters, shortageOnly: event.target.checked })}
+          >
+            {t.filters.hasShortage}
+          </Checkbox>
+          <Checkbox
+            checked={filters.failedOnly}
+            onChange={(event) => go(view, { ...filters, failedOnly: event.target.checked })}
+          >
+            {t.filters.releaseFailed}
+          </Checkbox>
+          <Switch
+            label={t.filters.groupByPlan}
+            checked={filters.groupByPlan}
+            onChange={(event) => go(view, { ...filters, groupByPlan: event.target.checked }, page)}
+          />
+        </div>
+      </div>
+      <HiddenFilterChips open={more.isOpen} chips={hiddenChips} onRemove={removeHidden} />
       <div className="material-issue-status-filter-row" role="group" aria-label={t.filters.status}>
         <span className="field-note">{t.filters.status}</span>
         {DISPLAY_STATUSES.map((status) => (
@@ -215,23 +301,6 @@ export const MaterialIssueStatusScreen = () => {
             {t.status[status]}
           </Button>
         ))}
-        <Checkbox
-          checked={filters.shortageOnly}
-          onChange={(event) => go(view, { ...filters, shortageOnly: event.target.checked })}
-        >
-          {t.filters.hasShortage}
-        </Checkbox>
-        <Checkbox
-          checked={filters.failedOnly}
-          onChange={(event) => go(view, { ...filters, failedOnly: event.target.checked })}
-        >
-          {t.filters.releaseFailed}
-        </Checkbox>
-        <Switch
-          label={t.filters.groupByPlan}
-          checked={filters.groupByPlan}
-          onChange={(event) => go(view, { ...filters, groupByPlan: event.target.checked }, page)}
-        />
       </div>
     </section>
   );

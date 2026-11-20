@@ -1,9 +1,16 @@
-import { Button, TextField, type SelectItems } from '@crefle/web-ui';
+import { Button, DatePicker, type SelectItems } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type JSX, useEffect, useId, useState } from 'react';
 
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  hasChangedFilters,
+  useFilterMore,
+} from '../../patterns/filter-more';
 import { Select } from '../../patterns/select';
 import { canFilterByJudgment } from './filter-initialization';
+
 export interface WorkOrderCloseFilterValues {
   productionOrderId: string;
   plannedStartFrom: string;
@@ -14,6 +21,8 @@ export interface WorkOrderCloseFilterValues {
 }
 export interface WorkOrderCloseFilterBarProps {
   appliedFilters: WorkOrderCloseFilterValues;
+  /** 「초기화」가 되돌리는 처음 값(상태 목록이 준비되면 「진행 또는 중단」). 이와 다를 때만 「초기화」가 보인다. */
+  initialFilters: WorkOrderCloseFilterValues;
   productionOrderOptions: SelectItems;
   statusOptions: SelectItems;
   productionOrderUnavailableReason: string | null;
@@ -21,8 +30,21 @@ export interface WorkOrderCloseFilterBarProps {
   onSearch: (filters: WorkOrderCloseFilterValues) => void;
   onReset: () => void;
 }
+const judgmentLabels = messages.workOrderClose.detailSummary.judgments;
+const isJudgmentKey = (code: string): code is keyof typeof judgmentLabels =>
+  Object.hasOwn(judgmentLabels, code);
+
+/**
+ * 마감 후보 조회 조건.
+ *
+ * **보이는 조건은 셋이다**(C-6) — P/O · 계획 시작일 · 마감 상태. 마감 상태는 조회에 꼭 있어야 해 늘 보인다.
+ * 판정은 「조건 더보기」에 접고, 걸려 있으면 칩으로만 알린다. 「초기화」는 처음 값과 다를 때만 보인다.
+ *
+ * 계획 시작일은 DS `DatePicker` 기간 모드 한 칸이다(C-12). 값과 요청 파라미터는 그대로 시작 · 끝 두 값이다.
+ */
 export const WorkOrderCloseFilterBar = ({
   appliedFilters,
+  initialFilters,
   productionOrderOptions,
   statusOptions,
   productionOrderUnavailableReason,
@@ -45,6 +67,8 @@ export const WorkOrderCloseFilterBar = ({
   } = appliedFilters;
   const judgmentId = useId();
   const judgmentNoteId = `${judgmentId}-note`;
+  const plannedStartId = useId();
+  const more = useFilterMore();
 
   useEffect(() => {
     setDraft({
@@ -76,6 +100,21 @@ export const WorkOrderCloseFilterBar = ({
     if (!searchDisabled) onSearch({ ...draft });
   };
 
+  const isChanged = hasChangedFilters(initialFilters, draft, appliedFilters);
+  /* 접힌 칸(판정)의 조건만 칩으로 — 보이는 칸의 값을 칩으로 겹쳐 적지 않는다. */
+  const hiddenChips = [
+    ...(judgmentCode === ''
+      ? []
+      : [
+          {
+            key: 'judgmentCode' as const,
+            label: t.chipJudgment(
+              isJudgmentKey(judgmentCode) ? judgmentLabels[judgmentCode] : judgmentCode,
+            ),
+          },
+        ]),
+  ];
+
   return (
     <section className="pane work-order-close-filter-pane" aria-label={t.pane}>
       <h2 className="pane-title">{t.pane}</h2>
@@ -100,23 +139,25 @@ export const WorkOrderCloseFilterBar = ({
             </p>
           )}
         </div>
-        <div className="field-cell">
-          <TextField
-            label={t.plannedStartFrom}
-            type="date"
-            value={draft.plannedStartFrom}
-            onChange={(event) =>
-              setDraft((current) => ({ ...current, plannedStartFrom: event.target.value }))
-            }
-          />
-        </div>
-        <div className="field-cell">
-          <TextField
-            label={t.plannedStartTo}
-            type="date"
-            value={draft.plannedStartTo}
-            onChange={(event) =>
-              setDraft((current) => ({ ...current, plannedStartTo: event.target.value }))
+        <div className="field-cell filter-field-md">
+          <label className="field-label" htmlFor={plannedStartId}>
+            {t.plannedStart}
+          </label>
+          <DatePicker
+            id={plannedStartId}
+            mode="range"
+            clearable
+            value={[
+              draft.plannedStartFrom === '' ? null : draft.plannedStartFrom,
+              draft.plannedStartTo === '' ? null : draft.plannedStartTo,
+            ]}
+            placeholder={t.plannedStartPlaceholder}
+            onChange={(value) =>
+              setDraft((current) => ({
+                ...current,
+                plannedStartFrom: value === null ? '' : value[0],
+                plannedStartTo: value === null ? '' : value[1],
+              }))
             }
           />
         </div>
@@ -146,29 +187,6 @@ export const WorkOrderCloseFilterBar = ({
             </p>
           )}
         </div>
-        <div className="field-cell">
-          <label className="field-label" htmlFor={judgmentId}>
-            {t.judgment}
-          </label>
-          <Select
-            aria-describedby={judgmentEnabled ? undefined : judgmentNoteId}
-            disabled={!judgmentEnabled}
-            id={judgmentId}
-            options={[
-              { value: '', label: t.all },
-              { value: 'UNDER', label: messages.workOrderClose.detailSummary.judgments.UNDER },
-              { value: 'NORMAL', label: messages.workOrderClose.detailSummary.judgments.NORMAL },
-              { value: 'OVER', label: messages.workOrderClose.detailSummary.judgments.OVER },
-            ]}
-            value={judgmentEnabled ? draft.judgmentCode : ''}
-            onChange={(value) => setDraft((current) => ({ ...current, judgmentCode: value }))}
-          />
-          {judgmentEnabled ? null : (
-            <p className="field-note" id={judgmentNoteId}>
-              {t.judgmentUnavailable}
-            </p>
-          )}
-        </div>
         <div className="field-cell field-cell-unlabeled">
           <div className="filter-actions">
             <Button
@@ -178,9 +196,12 @@ export const WorkOrderCloseFilterBar = ({
             >
               {t.search}
             </Button>
-            <Button type="button" variant="outlined" onClick={onReset}>
-              {t.reset}
-            </Button>
+            {isChanged && (
+              <Button type="button" variant="outlined" onClick={onReset}>
+                {t.reset}
+              </Button>
+            )}
+            <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
           </div>
           {searchDisabled ? (
             <p className="field-error" id={validationId}>
@@ -189,6 +210,41 @@ export const WorkOrderCloseFilterBar = ({
           ) : null}
         </div>
       </form>
+
+      {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+      <div id={more.id} hidden={!more.isOpen}>
+        <div className="filter-bar work-order-close-filter">
+          <div className="field-cell">
+            <label className="field-label" htmlFor={judgmentId}>
+              {t.judgment}
+            </label>
+            <Select
+              aria-describedby={judgmentEnabled ? undefined : judgmentNoteId}
+              disabled={!judgmentEnabled}
+              id={judgmentId}
+              options={[
+                { value: '', label: t.all },
+                { value: 'UNDER', label: messages.workOrderClose.detailSummary.judgments.UNDER },
+                { value: 'NORMAL', label: messages.workOrderClose.detailSummary.judgments.NORMAL },
+                { value: 'OVER', label: messages.workOrderClose.detailSummary.judgments.OVER },
+              ]}
+              value={judgmentEnabled ? draft.judgmentCode : ''}
+              onChange={(value) => setDraft((current) => ({ ...current, judgmentCode: value }))}
+            />
+            {judgmentEnabled ? null : (
+              <p className="field-note" id={judgmentNoteId}>
+                {t.judgmentUnavailable}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <HiddenFilterChips
+        open={more.isOpen}
+        chips={hiddenChips}
+        onRemove={() => onSearch({ ...appliedFilters, judgmentCode: '' })}
+      />
     </section>
   );
 };

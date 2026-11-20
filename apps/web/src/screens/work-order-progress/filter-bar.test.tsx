@@ -39,6 +39,7 @@ const statusOptions = (overrides: Partial<StatusOptions> = {}): StatusOptions =>
 
 const propsOf = (overrides: Partial<ProgressFilterBarProps> = {}): ProgressFilterBarProps => ({
   appliedFilters: APPLIED,
+  initialFilters: APPLIED,
   lineLookup: lookup(),
   productionOrderLookup: lookup({ options: [{ value: '31', label: 'SYN-PO-0031' }] }),
   statusOptions: statusOptions(),
@@ -84,12 +85,80 @@ describe('ProgressFilterBar', () => {
     expect(onSearch).toHaveBeenCalledWith({ ...APPLIED, keyword: 'SYN-WO' });
   });
 
-  it('「초기화」를 누르면 알린다', async () => {
+  it('「초기화」는 처음 값과 다를 때만 보이고, 누르면 알린다', async () => {
     const { onReset, user } = renderBar();
 
+    expect(screen.queryByRole('button', { name: t.reset })).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(t.keyword), 'S');
     await user.click(screen.getByRole('button', { name: t.reset }));
 
     expect(onReset).toHaveBeenCalledTimes(1);
+  });
+
+  it('걸린 조건이 처음 값과 다르면 고치지 않아도 「초기화」가 보인다', () => {
+    renderBar({ appliedFilters: { ...APPLIED, productionLineId: '7' } });
+
+    expect(screen.getByRole('button', { name: t.reset })).toBeVisible();
+  });
+
+  describe('조건 더보기', () => {
+    it('상태와 P/O 는 「조건 더보기」 안에 접혀 있다', async () => {
+      const { user } = renderBar();
+      const more = screen.getByRole('button', { name: messages.common.filterMore.open });
+
+      expect(more).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.getByLabelText(t.status)).not.toBeVisible();
+      expect(screen.getByLabelText(t.productionOrder)).not.toBeVisible();
+      expect(screen.getByLabelText(t.productionLine)).toBeVisible();
+
+      await user.click(more);
+
+      expect(screen.getByLabelText(t.status)).toBeVisible();
+      expect(screen.getByLabelText(t.productionOrder)).toBeVisible();
+      expect(
+        screen.getByRole('button', { name: messages.common.filterMore.close }),
+      ).toHaveAttribute('aria-expanded', 'true');
+    });
+
+    it('접힌 칸(상태 · P/O)에 걸린 조건만 칩이 되고 ×가 그 조건만 풀어 조회한다', async () => {
+      const applied = {
+        ...APPLIED,
+        productionLineId: '7',
+        statusCode: 'SYN_RUN',
+        productionOrderId: '31',
+        keyword: 'SYN-WO',
+      };
+      const { onSearch, user } = renderBar({
+        appliedFilters: applied,
+        statusOptions: statusOptions({ labelOf: () => '진행중' }),
+        productionOrderLookup: lookup({ labelOf: () => 'SYN-PO-0031' }),
+      });
+
+      expect(screen.getByText(t.chipStatus('진행중'))).toBeVisible();
+      expect(screen.getByText(t.chipProductionOrder('SYN-PO-0031'))).toBeVisible();
+      /* 보이는 칸(라인 · W/O 번호)은 칩으로 겹쳐 적지 않는다. */
+      expect(screen.getAllByRole('button', { name: /조건 제거$/ })).toHaveLength(2);
+
+      await user.click(
+        screen.getByRole('button', {
+          name: messages.common.filterMore.remove(t.chipStatus('진행중')),
+        }),
+      );
+
+      expect(onSearch).toHaveBeenCalledWith({ ...applied, statusCode: '' });
+    });
+
+    it('펼치면 칸에 값이 보이므로 칩을 거둔다', async () => {
+      const { user } = renderBar({
+        appliedFilters: { ...APPLIED, statusCode: 'SYN_RUN' },
+        statusOptions: statusOptions({ labelOf: () => '진행중' }),
+      });
+
+      await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+
+      expect(screen.queryByText(t.chipStatus('진행중'))).not.toBeInTheDocument();
+    });
   });
 
   /*
@@ -171,11 +240,15 @@ describe('ProgressFilterBar', () => {
     });
 
     /* G-1·G-2 — 감추지 않고 끄고 사유를 적는다. */
-    it('⛔ 상태 선택지를 세울 수 없으면 감추지 않고 끄고 사유를 적는다', () => {
-      renderBar({ statusOptions: statusOptions({ options: [], isUnavailable: true }) });
+    it('⛔ 상태 선택지를 세울 수 없으면 감추지 않고 끄고 사유를 적는다', async () => {
+      const { user } = renderBar({
+        statusOptions: statusOptions({ options: [], isUnavailable: true }),
+      });
+
+      await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
 
       expect(screen.getByLabelText(t.status)).toBeDisabled();
-      expect(screen.getByText(t.statusUnavailable)).toBeInTheDocument();
+      expect(screen.getByText(t.statusUnavailable)).toBeVisible();
     });
 
     it('⛔ 선택지 조회가 실패하면 끄고 사유를 적는다', () => {
@@ -196,10 +269,12 @@ describe('ProgressFilterBar', () => {
     });
 
     /* ⛔ 적지 않으면 「여기 없으면 없는 것」으로 읽힌다. */
-    it('⛔ 선택지가 잘렸으면 그 사실을 적는다', () => {
-      renderBar({ productionOrderLookup: lookup({ isTruncated: true }) });
+    it('⛔ 선택지가 잘렸으면 그 사실을 적는다', async () => {
+      const { user } = renderBar({ productionOrderLookup: lookup({ isTruncated: true }) });
 
-      expect(screen.getByText(t.optionsTruncated(LOOKUP_SIZE))).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+
+      expect(screen.getByText(t.optionsTruncated(LOOKUP_SIZE))).toBeVisible();
     });
 
     it('잘리지 않았으면 적지 않는다 — 없는 걱정을 만들지 않는다', () => {

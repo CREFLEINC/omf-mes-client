@@ -25,6 +25,8 @@ export const materialIssueStatus: Translated<typeof ko.materialIssueStatus> = {
     hasShortage: 'Chỉ yêu cầu có thiếu',
     releaseFailed: 'Chỉ phát hành lỗi',
     groupByPlan: 'Nhóm theo kế hoạch',
+    chipPlant: (name: string): string => `Nhà máy: ${name}`,
+    chipSourceWarehouse: (name: string): string => `Kho sản xuất xuất đi: ${name}`,
     search: 'Tra cứu',
     reset: 'Đặt lại',
   },

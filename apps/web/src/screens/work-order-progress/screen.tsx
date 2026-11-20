@@ -136,6 +136,9 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
   ]);
   const pageView = toPageView(list.data?.page ?? { page, size: PAGE_SIZE, total: 0 }, rows.length);
 
+  /* 「초기화」가 되돌리는 값 — 오늘에 기대므로 같은 함수로 만든다. 이와 다를 때만 「초기화」가 보인다. */
+  const initialFilters: ProgressFilters = { ...defaultPeriod(today), ...EMPTY_CONDITIONS };
+
   const apply = (next: ProgressFilters): void => {
     setSearchParams(toAppliedSearchParams(searchParams, next, 1));
   };
@@ -159,11 +162,12 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
           {/* ⛔ 결과가 없어도 조건 줄을 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
           <ProgressFilterBar
             appliedFilters={filters}
+            initialFilters={initialFilters}
             lineLookup={lines}
             productionOrderLookup={orders}
             statusOptions={statuses}
             onReset={() => {
-              apply({ ...defaultPeriod(today), ...EMPTY_CONDITIONS });
+              apply(initialFilters);
             }}
             onSearch={apply}
           />

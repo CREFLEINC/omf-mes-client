@@ -356,6 +356,8 @@ describe('W-02-11 출고 요청 현황 — 목록', () => {
 
     expect((await rowOf('SYN-MIR-03')).getByText(t.shortageChip('20'))).toBeInTheDocument();
 
+    /* 확인칸은 「조건 더보기」에 접혀 있다(C-6). */
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     await user.click(screen.getByRole('checkbox', { name: t.filters.hasShortage }));
     await waitFor(() => expect(lists.at(-1)?.searchParams.get('hasShortage')).toBe('true'));
     expect(lists.at(-1)?.searchParams.get('plantId')).toBe('8401');
@@ -370,6 +372,7 @@ describe('W-02-11 출고 요청 현황 — 목록', () => {
     const { user } = setup();
     await listTable();
 
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     await user.click(screen.getByRole('switch', { name: t.filters.groupByPlan }));
 
     const table = await listTable();
@@ -566,10 +569,67 @@ describe('W-02-11 출고 요청 현황 — 부족', () => {
 
 describe('W-02-11 출고 요청 현황 — G2 확인', () => {
   it('US6-1 처음 열 때도 조회 중인 공장을 공장 칸에 보인다', async () => {
-    setup();
+    const { user } = setup();
     await listTable();
 
+    /* 공장 칸은 「조건 더보기」에 접혀 있다(C-6). 펼치면 조회 중인 공장이 보인다. */
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+    expect(screen.getByLabelText(t.filters.plant)).toBeVisible();
     expect(screen.getByLabelText(t.filters.plant)).toHaveTextContent('합성 1공장');
+  });
+
+  it('C-6 공장 · 출발 생산 창고 · 확인칸은 접혀 있고, 처음 값과 다른 것만 칩이 되어 ×로 푼다', async () => {
+    const first = { ...PLANT, plantId: 8400, plantCode: 'A0', plantName: '합성 0공장' };
+    const { user, lists } = setup({
+      route: '/production/material-issue-status?plant=8401&q=SYN-WO&short=1',
+      extraPlants: [first],
+    });
+    await listTable();
+
+    expect(screen.getByLabelText(t.filters.plant)).not.toBeVisible();
+    expect(screen.queryByRole('checkbox', { name: t.filters.hasShortage })).toBeNull();
+    const filters = within(screen.getByRole('region', { name: t.filters.label }));
+    expect(await filters.findByText(t.filters.chipPlant('합성 1공장'))).toBeVisible();
+    expect(
+      filters.getByRole('button', {
+        name: messages.common.filterMore.remove(t.filters.hasShortage),
+      }),
+    ).toBeVisible();
+    /* 보이는 칸(W/O)은 칩으로 겹쳐 적지 않는다. */
+    expect(filters.getAllByRole('button', { name: /조건 제거$/ })).toHaveLength(2);
+
+    await user.click(
+      filters.getByRole('button', {
+        name: messages.common.filterMore.remove(t.filters.hasShortage),
+      }),
+    );
+    await waitFor(() => expect(lists.at(-1)?.searchParams.has('hasShortage')).toBe(false));
+    expect(lists.at(-1)?.searchParams.get('plantId')).toBe('8401');
+    expect(lists.at(-1)?.searchParams.get('q')).toBe('SYN-WO');
+
+    await user.click(
+      filters.getByRole('button', {
+        name: messages.common.filterMore.remove(t.filters.chipPlant('합성 1공장')),
+      }),
+    );
+    await waitFor(() => expect(lists.at(-1)?.searchParams.get('plantId')).toBe('8400'));
+    expect(filters.queryByText(t.filters.chipPlant('합성 1공장'))).toBeNull();
+  });
+
+  it('C-6 「초기화」는 처음 값과 다를 때만 보이고, 공장은 남긴다', async () => {
+    const { user, lists } = setup();
+    await listTable();
+
+    expect(screen.queryByRole('button', { name: t.filters.reset })).toBeNull();
+
+    await user.type(screen.getByLabelText(t.filters.workOrder), 'SYN-WO-3{Enter}');
+    await waitFor(() => expect(lists.at(-1)?.searchParams.get('q')).toBe('SYN-WO-3'));
+    await user.click(screen.getByRole('button', { name: t.filters.reset }));
+
+    await waitFor(() => expect(lists.at(-1)?.searchParams.has('q')).toBe(false));
+    expect(lists.at(-1)?.searchParams.get('plantId')).toBe('8401');
+    expect(screen.getByLabelText(t.filters.workOrder)).toHaveValue('');
+    expect(screen.queryByRole('button', { name: t.filters.reset })).toBeNull();
   });
 
   it('#232 1 주소로 고른 공장에서 W/O 번호를 검색해도 공장이 첫 공장으로 바뀌지 않는다', async () => {
