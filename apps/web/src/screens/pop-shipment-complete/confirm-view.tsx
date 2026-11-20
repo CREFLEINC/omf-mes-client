@@ -1,6 +1,13 @@
-import { Chip, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import {
+  PuChip,
+  PuIcon,
+  PuKv,
+  PuNote,
+  PuSection,
+  type PuChipTone,
+} from '../../patterns/pop-uniform';
 import {
   OQC_TONE,
   blockedTargetsOf,
@@ -12,22 +19,31 @@ import {
   qtyWithUom,
   splitLotsOf,
   uomOf,
-  type BlockerCode,
   type BlockerGroup,
+  type ChipTone,
   type Completion,
   type CompletionLot,
 } from './model';
 
 const t = messages.popShipmentComplete;
 
-/** 이유마다 앞에 서는 그림 — 시안 ④의 표식(피킹·대기·불합격·보류·취소). */
-const BLOCKER_ICON: Record<BlockerCode, string> = {
-  PICKING_SHORT: 'inventory_2',
-  NOT_INSPECTED: 'pending',
-  REJECTED: 'cancel',
-  HELD: 'pause_circle',
-  SALES_ORDER_LINE_CANCELLED: 'block',
+/** 판정 칩 색 → POP 통일 칩 색. */
+const PU_TONE: Record<ChipTone, PuChipTone> = {
+  idle: 'idle',
+  info: 'info',
+  success: 'ok',
+  warning: 'warn',
+  error: 'bad',
 };
+
+/**
+ * 이유 글. 라인을 짚지 않은 피킹 부족은 서버가 «낼 피킹 LOT 이 하나도 없을 때» 내는 것이라(라인 수량이 다 차도
+ * 난다 — 서버 `completionBlockers`) 「피킹된 출하 LOT 이 없습니다」로 쓴다. 판정은 서버 그대로다.
+ */
+const reasonOf = (group: BlockerGroup): { title: string; hint: string } =>
+  group.code === 'PICKING_SHORT' && group.lineNos.length === 0
+    ? t.blockers.noPickedLot
+    : t.blockers[group.code];
 
 /** 이유가 짚는 곳 — 라인은 「라인 2 FG-B200, 피킹 0 / 목표 50」, LOT 은 번호(쉼표로 잇는다). */
 const targetOf = (completion: Completion, group: BlockerGroup): string => {
@@ -69,11 +85,11 @@ export interface ConfirmViewProps {
 }
 
 /**
- * 확인 화면 = `:lookup` 값 그대로(시안 ③·④·⑤). 머리(지시서·고객·납품처·수주·상태), 막는 이유, 라인,
- * 재고가 빠질 창고(정보로만), LOT(판정·코드 — 보기만).
+ * 확인 화면 = `:lookup` 값 그대로(시안 ③·④·⑤). 머리(지시서 번호 · 출하 가능 여부 · 고객·납품처·수주),
+ * 출하 불가 사유, 출하 품목, 재고가 빠질 창고(정보로만), 피킹 LOT(판정·코드 — 보기만).
  *
  * ⛔ ERP 송신 여부는 어디에도 보이지 않는다(사용자 결정 2026-11-18). 수주 없는 지시서는 수주 칸만 「없음」이다.
- * ⛔ [출하 완료]는 바닥 띠에 있다 — 이 화면이 곧 확인 창이라 따로 묻지 않는다.
+ * ⛔ [출하 완료]는 아래 작업 줄에 있다 — 이 화면이 곧 확인 창이라 따로 묻지 않는다.
  */
 export const ConfirmView = ({ completion, via }: ConfirmViewProps) => {
   const groups = groupBlockers(completion.blockers);
@@ -82,203 +98,212 @@ export const ConfirmView = ({ completion, via }: ConfirmViewProps) => {
   const uom = uomOf(completion);
 
   return (
-    <div className="pop-ship-confirm">
-      <section className="pop-ship-head" aria-label={t.head.request}>
-        <div className="pop-ship-head__key">
-          <span className="pop-ship-head__label">{t.head.request}</span>
-          <strong className="pop-ship-head__no">{completion.shipmentRequestNo}</strong>
-          <Chip
-            variant="status"
-            size="md"
-            status={blocked ? 'error' : 'success'}
-            leadingIcon={<Icon name={blocked ? 'block' : 'check_circle'} size={18} aria-hidden />}
-          >
-            {blocked ? t.head.blocked : t.head.ready}
-          </Chip>
-          <span className="pop-ship-head__via">
-            {via === 'scan'
-              ? t.head.openedByScan
-              : via === 'direct'
-                ? t.head.openedByDirect
-                : t.head.openedBySearch}
-          </span>
-        </div>
-        <dl className="pop-ship-head__facts">
-          <div>
-            <dt>{t.head.customer}</dt>
-            <dd>
-              {t.head.named(completion.customer.partnerName, completion.customer.partnerCode)}
-            </dd>
-          </div>
-          <div>
-            <dt>{t.head.shipTo}</dt>
-            <dd>{t.head.named(completion.shipTo.partnerName, completion.shipTo.partnerCode)}</dd>
-          </div>
-          <div>
-            <dt>{t.head.salesOrder}</dt>
-            <dd>{completion.salesOrderNo ?? t.head.noSalesOrder}</dd>
-          </div>
-        </dl>
-      </section>
+    <>
+      <PuSection
+        className="psc-head"
+        grow={false}
+        label={t.head.request}
+        head={
+          <h2 className="psc-head-key">
+            <span className="psc-head-label">{t.head.request}</span>
+            <span className="pu-mono">{completion.shipmentRequestNo}</span>
+          </h2>
+        }
+        meta={
+          <>
+            <span className="psc-via">
+              {via === 'scan'
+                ? t.head.openedByScan
+                : via === 'direct'
+                  ? t.head.openedByDirect
+                  : t.head.openedBySearch}
+            </span>
+            <PuChip tone={blocked ? 'bad' : 'ok'}>{blocked ? t.head.blocked : t.head.ready}</PuChip>
+          </>
+        }
+      >
+        <PuKv
+          cols2
+          items={[
+            {
+              label: t.head.customer,
+              value: t.head.named(completion.customer.partnerName, completion.customer.partnerCode),
+            },
+            {
+              label: t.head.shipTo,
+              value: t.head.named(completion.shipTo.partnerName, completion.shipTo.partnerCode),
+            },
+            { label: t.head.salesOrder, value: completion.salesOrderNo ?? t.head.noSalesOrder },
+          ]}
+        />
+      </PuSection>
 
       {blocked && (
-        <section className="pop-ship-blockers" aria-label={t.blockers.heading(groups.length)}>
-          <h2 className="pop-ship-section-title pop-ship-section-title--error">
-            <Icon name="block" size={20} aria-hidden />
-            <span>{t.blockers.heading(groups.length)}</span>
-          </h2>
-          <ul>
-            {groups.map((group) => (
-              <li key={group.code} className="pop-ship-blocker">
-                <Icon name={BLOCKER_ICON[group.code]} size={24} aria-hidden />
-                <span className="pop-ship-blocker__text">
-                  <strong>{t.blockers[group.code].title}</strong>
-                  {targetOf(completion, group) !== '' && (
-                    <span className="pop-ship-blocker__target">{targetOf(completion, group)}</span>
-                  )}
-                  <span className="pop-ship-blocker__hint">{t.blockers[group.code].hint}</span>
-                </span>
-              </li>
-            ))}
+        <PuSection
+          className="psc-blockers"
+          grow={false}
+          title={
+            <>
+              <PuIcon name="bad" />
+              {t.blockers.heading}
+            </>
+          }
+          meta={t.blockers.count(groups.length)}
+          label={t.blockers.heading}
+        >
+          <ul className="psc-blocker-list">
+            {groups.map((group) => {
+              const reason = reasonOf(group);
+              const target = targetOf(completion, group);
+              return (
+                <li key={group.code}>
+                  <b>{reason.title}</b>
+                  {target !== '' && <span className="psc-blocker-target">{target}</span>}
+                  <span className="psc-blocker-hint">{reason.hint}</span>
+                </li>
+              );
+            })}
           </ul>
-        </section>
+        </PuSection>
       )}
 
-      <div className="pop-ship-body">
-        <div className="pop-ship-col">
-          <section aria-label={t.lines.heading}>
-            <h2 className="pop-ship-section-title">{t.lines.heading}</h2>
-            <p className="field-note">{t.lines.note}</p>
-            <table className="pop-ship-table" aria-label={t.lines.caption}>
-              <thead>
-                <tr>
-                  <th scope="col">{t.lines.columns.lineNo}</th>
-                  <th scope="col">{t.lines.columns.itemCode}</th>
-                  <th scope="col">{t.lines.columns.itemName}</th>
-                  <th scope="col" className="pop-ship-num">
-                    {t.lines.columns.target}
-                  </th>
-                  <th scope="col" className="pop-ship-num">
-                    {t.lines.columns.picked}
-                  </th>
-                  <th scope="col" className="pop-ship-num">
-                    {t.lines.columns.over}
-                  </th>
-                  <th scope="col" className="pop-ship-num">
-                    {t.lines.columns.lotCount}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {completion.lines.map((line) => (
-                  <tr
-                    key={line.shipmentRequestLineId}
-                    className={
-                      targets.lineNos.has(line.lineNo) ? 'pop-ship-row-blocked' : undefined
-                    }
-                  >
-                    <td className="pop-ship-num">{line.lineNo}</td>
-                    <td className="pop-ship-code">{line.itemCode}</td>
-                    <td className="pop-ship-name" title={line.itemName}>
-                      {line.itemName}
-                    </td>
-                    <td className="pop-ship-num">{formatQty(line.targetQty)}</td>
-                    <td className="pop-ship-num">{formatQty(line.pickedQty)}</td>
-                    <td
-                      className={line.overQty > 0 ? 'pop-ship-num pop-ship-over' : 'pop-ship-num'}
-                    >
-                      {overText(line.overQty)}
-                    </td>
-                    <td className="pop-ship-num">{line.lotCount}</td>
+      <div className="psc-tables">
+        <div className="psc-col">
+          <PuSection grow={false} title={t.lines.heading} label={t.lines.heading}>
+            <div className="pu-table-wrap">
+              <table className="pu-table" aria-label={t.lines.caption}>
+                <thead>
+                  <tr>
+                    <th scope="col" className="fit num">
+                      {t.lines.columns.lineNo}
+                    </th>
+                    <th scope="col" className="fit">
+                      {t.lines.columns.itemCode}
+                    </th>
+                    <th scope="col">{t.lines.columns.itemName}</th>
+                    <th scope="col" className="fit num">
+                      {t.lines.columns.target}
+                    </th>
+                    <th scope="col" className="fit num">
+                      {t.lines.columns.picked}
+                    </th>
+                    <th scope="col" className="fit num">
+                      {t.lines.columns.over}
+                    </th>
+                    <th scope="col" className="fit num">
+                      {t.lines.columns.lotCount}
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
+                </thead>
+                <tbody>
+                  {completion.lines.map((line) => (
+                    <tr
+                      key={line.shipmentRequestLineId}
+                      className={targets.lineNos.has(line.lineNo) ? 'psc-row-blocked' : undefined}
+                    >
+                      <td className="fit num">{line.lineNo}</td>
+                      <td className="fit pu-mono">{line.itemCode}</td>
+                      <td title={line.itemName}>{line.itemName}</td>
+                      <td className="fit num">{formatQty(line.targetQty)}</td>
+                      <td className="fit num">{formatQty(line.pickedQty)}</td>
+                      <td className={line.overQty > 0 ? 'fit num psc-over' : 'fit num'}>
+                        {overText(line.overQty)}
+                      </td>
+                      <td className="fit num">{line.lotCount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </PuSection>
 
           {completion.warehouses.length > 0 && (
-            <section aria-label={t.warehouses.heading}>
-              <h2 className="pop-ship-section-title">{t.warehouses.heading}</h2>
-              <p className="field-note">{t.warehouses.note}</p>
-              <ul className="pop-ship-warehouses">
+            <PuSection grow={false} title={t.warehouses.heading} label={t.warehouses.heading}>
+              <ul className="psc-warehouses">
                 {completion.warehouses.map((warehouse) => (
                   <li key={warehouse.warehouseId}>
-                    <Icon name="warehouse" size={20} aria-hidden />
-                    <span className="pop-ship-warehouse__name">
-                      {t.head.named(warehouse.warehouseName, warehouse.warehouseCode)}
-                    </span>
-                    <span className="pop-ship-warehouse__qty">
+                    <span>{t.head.named(warehouse.warehouseName, warehouse.warehouseCode)}</span>
+                    <span className="psc-warehouse-qty">
                       {t.warehouses.entry(warehouse.lotCount, qtyWithUom(warehouse.qty, uom))}
                     </span>
                   </li>
                 ))}
               </ul>
               {splitLotsOf(completion).map((lotNo) => (
-                <p key={lotNo} className="field-note pop-ship-split-lot">
-                  <Icon name="info" size={18} aria-hidden />
-                  <span>{t.warehouses.splitLot(lotNo)}</span>
-                </p>
+                <PuNote key={lotNo}>{t.warehouses.splitLot(lotNo)}</PuNote>
               ))}
-            </section>
+            </PuSection>
           )}
         </div>
 
-        <section className="pop-ship-col" aria-label={t.lots.heading(completion.lots.length)}>
-          <h2 className="pop-ship-section-title">{t.lots.heading(completion.lots.length)}</h2>
-          <p className="field-note">{t.lots.note}</p>
-          <table className="pop-ship-table" aria-label={t.lots.caption}>
-            <thead>
-              <tr>
-                <th scope="col">{t.lots.columns.lotNo}</th>
-                <th scope="col">{t.lots.columns.itemCode}</th>
-                <th scope="col" className="pop-ship-num">
-                  {t.lots.columns.qty}
-                </th>
-                <th scope="col">{t.lots.columns.oqc}</th>
-                <th scope="col">{t.lots.columns.managementCode}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {completion.lots.map((lot) => (
-                <tr
-                  key={lot.shipmentRequestLotId}
-                  className={targets.lotNos.has(lot.lotNo) ? 'pop-ship-row-blocked' : undefined}
-                >
-                  <td className="pop-ship-lot">
-                    {lot.lotNo}
-                    {portionText(lot) !== null && (
-                      <span className="pop-ship-lot__portions">{portionText(lot)}</span>
-                    )}
-                  </td>
-                  <td className="pop-ship-code">{itemCodeOfLot(completion, lot)}</td>
-                  <td className="pop-ship-num">{formatQty(lot.qty)}</td>
-                  <td>
-                    {lot.oqcLotStatus !== null && (
-                      <Chip variant="status" size="sm" status={OQC_TONE[lot.oqcLotStatus]}>
-                        {t.lots.oqc[lot.oqcLotStatus]}
-                      </Chip>
-                    )}
-                  </td>
-                  <td className="pop-ship-code">{lot.managementCode ?? ''}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {completion.replacedLots.length > 0 && (
-            <p className="pop-ship-replaced">
-              <Icon name="swap_horiz" size={20} aria-hidden />
-              <span>
-                {t.lots.replaced(
-                  completion.replacedLots.length,
-                  completion.replacedLots
-                    .map((lot) => t.lots.replacedLot(lot.lotNo, judgmentText(lot.judgment)))
-                    .join(', '),
-                )}
-              </span>
-            </p>
+        <PuSection
+          className="psc-lots"
+          grow={false}
+          title={t.lots.heading(completion.lots.length)}
+          label={t.lots.heading(completion.lots.length)}
+        >
+          {completion.lots.length === 0 ? (
+            <p className="psc-empty-row">{t.lots.empty}</p>
+          ) : (
+            <div className="pu-table-wrap">
+              <table className="pu-table" aria-label={t.lots.caption}>
+                <thead>
+                  <tr>
+                    <th scope="col">{t.lots.columns.lotNo}</th>
+                    <th scope="col" className="fit">
+                      {t.lots.columns.itemCode}
+                    </th>
+                    <th scope="col" className="fit num">
+                      {t.lots.columns.qty}
+                    </th>
+                    <th scope="col" className="fit">
+                      {t.lots.columns.oqc}
+                    </th>
+                    <th scope="col" className="fit">
+                      {t.lots.columns.managementCode}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {completion.lots.map((lot) => (
+                    <tr
+                      key={lot.shipmentRequestLotId}
+                      className={targets.lotNos.has(lot.lotNo) ? 'psc-row-blocked' : undefined}
+                    >
+                      <td className="pu-mono" title={lot.lotNo}>
+                        {lot.lotNo}
+                        {portionText(lot) !== null && (
+                          <span className="psc-lot-portions">{portionText(lot)}</span>
+                        )}
+                      </td>
+                      <td className="fit pu-mono">{itemCodeOfLot(completion, lot)}</td>
+                      <td className="fit num">{formatQty(lot.qty)}</td>
+                      <td className="fit">
+                        {lot.oqcLotStatus !== null && (
+                          <PuChip tone={PU_TONE[OQC_TONE[lot.oqcLotStatus]]}>
+                            {t.lots.oqc[lot.oqcLotStatus]}
+                          </PuChip>
+                        )}
+                      </td>
+                      <td className="fit pu-mono">{lot.managementCode ?? ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
-        </section>
+          {completion.replacedLots.length > 0 && (
+            <PuNote>
+              {t.lots.replaced(
+                completion.replacedLots.length,
+                completion.replacedLots
+                  .map((lot) => t.lots.replacedLot(lot.lotNo, judgmentText(lot.judgment)))
+                  .join(', '),
+              )}
+            </PuNote>
+          )}
+        </PuSection>
       </div>
-    </div>
+    </>
   );
 };

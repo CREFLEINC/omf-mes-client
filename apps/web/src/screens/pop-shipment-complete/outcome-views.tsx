@@ -1,7 +1,7 @@
-import { AlertBanner, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { PuKv, PuNote, PuSection } from '../../patterns/pop-uniform';
 import {
   formatQty,
   qtyWithUom,
@@ -12,31 +12,6 @@ import {
 } from './model';
 
 const t = messages.popShipmentComplete;
-
-/** 스캔 대기 — 지시서를 여는 세 입구(시안 ①). 스캔 대기 때만 보인다. */
-export const IdleView = () => (
-  <section className="pop-ship-idle" aria-label={t.entry.heading}>
-    <ul className="pop-ship-entries">
-      {(
-        [
-          ['smartphone', t.entry.pda],
-          ['print', t.entry.print],
-          ['search', t.entry.search],
-        ] as const
-      ).map(([icon, entry]) => (
-        <li key={icon} className="pop-ship-entry">
-          <Icon name={icon} size={32} aria-hidden />
-          <strong>{entry.title}</strong>
-          <span>{entry.body}</span>
-        </li>
-      ))}
-    </ul>
-    <p className="pop-ship-idle__same">
-      <Icon name="local_shipping" size={24} aria-hidden />
-      <span>{t.entry.same}</span>
-    </p>
-  </section>
-);
 
 const requestLine = (completion: Completion): string =>
   `${completion.shipmentRequestNo}, ${completion.customer.partnerName}`;
@@ -65,70 +40,50 @@ export interface ResultViewProps {
 export const ResultView = ({ result, workerNo }: ResultViewProps) => {
   const totals = totalsOf(result.completion);
   const completedBy = completedByOf(result.completion);
+  const items = [
+    {
+      label: t.result.shipmentNo,
+      value: <b className="pu-mono">{result.shipmentNo}</b>,
+    },
+    { label: t.result.request, value: requestLine(result.completion) },
+    { label: t.result.completedAt, value: formatPlantDateTime(result.completedAt) ?? '' },
+    ...(completedBy !== null
+      ? [{ label: t.result.completedBy, value: completedBy }]
+      : workerNo !== null
+        ? [{ label: t.result.worker, value: workerNo }]
+        : []),
+    {
+      label: t.result.qty,
+      value: t.result.qtyValue(
+        qtyWithUom(totals.qty, uomOf(result.completion)),
+        totals.lineCount,
+        totals.lotCount,
+        totals.over > 0 ? formatQty(totals.over) : null,
+      ),
+    },
+    ...(result.completion.warehouses.length > 0
+      ? [
+          {
+            label: t.result.warehouses,
+            value: result.completion.warehouses
+              .map((warehouse) =>
+                t.result.warehouseValue(
+                  warehouse.warehouseName,
+                  qtyWithUom(warehouse.qty, uomOf(result.completion)),
+                ),
+              )
+              .join(', '),
+          },
+        ]
+      : []),
+  ];
 
   return (
-    <section className="pop-ship-outcome pop-ship-outcome--done" aria-label={t.result.title}>
-      <div className="pop-ship-outcome__head">
-        <Icon name="task_alt" size={40} aria-hidden />
-        <div>
-          <h2>{t.result.title}</h2>
-          <p>
-            <span className="pop-ship-outcome__label">{t.result.shipmentNo}</span>{' '}
-            <strong className="pop-ship-outcome__no">{result.shipmentNo}</strong>
-          </p>
-        </div>
-      </div>
-      <dl className="pop-ship-outcome__facts">
-        <div>
-          <dt>{t.result.request}</dt>
-          <dd>{requestLine(result.completion)}</dd>
-        </div>
-        <div>
-          <dt>{t.result.completedAt}</dt>
-          <dd>{formatPlantDateTime(result.completedAt) ?? ''}</dd>
-        </div>
-        {completedBy !== null ? (
-          <div>
-            <dt>{t.result.completedBy}</dt>
-            <dd>{completedBy}</dd>
-          </div>
-        ) : (
-          workerNo !== null && (
-            <div>
-              <dt>{t.result.worker}</dt>
-              <dd>{workerNo}</dd>
-            </div>
-          )
-        )}
-        <div>
-          <dt>{t.result.qty}</dt>
-          <dd>
-            {t.result.qtyValue(
-              qtyWithUom(totals.qty, uomOf(result.completion)),
-              totals.lineCount,
-              totals.lotCount,
-              totals.over > 0 ? formatQty(totals.over) : null,
-            )}
-          </dd>
-        </div>
-        {result.completion.warehouses.length > 0 && (
-          <div>
-            <dt>{t.result.warehouses}</dt>
-            <dd>
-              {result.completion.warehouses
-                .map((warehouse) =>
-                  t.result.warehouseValue(
-                    warehouse.warehouseName,
-                    qtyWithUom(warehouse.qty, uomOf(result.completion)),
-                  ),
-                )
-                .join(', ')}
-            </dd>
-          </div>
-        )}
-      </dl>
-      <p className="field-note">{t.result.cancelHint}</p>
-    </section>
+    <PuSection grow={false} label={t.result.title}>
+      <PuNote tone="ok">{t.result.title}</PuNote>
+      <PuKv items={items} />
+      <p className="pu-help">{t.result.cancelHint}</p>
+    </PuSection>
   );
 };
 
@@ -136,33 +91,26 @@ export const ResultView = ({ result, workerNo }: ResultViewProps) => {
  * 이미 출하 완료된 지시서(시안 ⑦) — 막힘이 아니라 끝난 일이라 노란 안내다(붉은 오류가 아니다). 확인 화면을
  * 열지 않고 완료된 출하 요약만 둔다.
  */
-export const AlreadyView = ({ completion }: { completion: Completion }) => (
-  <section className="pop-ship-outcome" aria-label={t.already.heading}>
-    <AlertBanner variant="warning" icon="task_alt" title={t.already.title}>
-      {t.already.body}
-    </AlertBanner>
-    {completion.completedShipment !== null && (
-      <dl className="pop-ship-outcome__facts">
-        <div>
-          <dt>{t.already.shipmentNo}</dt>
-          <dd className="pop-ship-outcome__no">{completion.completedShipment.shipmentNo}</dd>
-        </div>
-        <div>
-          <dt>{t.already.request}</dt>
-          <dd>{requestLine(completion)}</dd>
-        </div>
-        <div>
-          <dt>{t.already.completedAt}</dt>
-          <dd>{formatPlantDateTime(completion.completedShipment.completedAt) ?? ''}</dd>
-        </div>
-        {completedByOf(completion) !== null && (
-          <div>
-            <dt>{t.result.completedBy}</dt>
-            <dd>{completedByOf(completion)}</dd>
-          </div>
-        )}
-      </dl>
-    )}
-    <p className="field-note">{t.already.historyHint}</p>
-  </section>
-);
+export const AlreadyView = ({ completion }: { completion: Completion }) => {
+  const done = completion.completedShipment;
+  const completedBy = completedByOf(completion);
+
+  return (
+    <PuSection grow={false} label={t.already.heading}>
+      <PuNote tone="warn">
+        <b>{t.already.title}</b> {t.already.body}
+      </PuNote>
+      {done !== null && (
+        <PuKv
+          items={[
+            { label: t.already.shipmentNo, value: <b className="pu-mono">{done.shipmentNo}</b> },
+            { label: t.already.request, value: requestLine(completion) },
+            { label: t.already.completedAt, value: formatPlantDateTime(done.completedAt) ?? '' },
+            ...(completedBy !== null ? [{ label: t.result.completedBy, value: completedBy }] : []),
+          ]}
+        />
+      )}
+      <p className="pu-help">{t.already.historyHint}</p>
+    </PuSection>
+  );
+};

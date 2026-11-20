@@ -1,9 +1,20 @@
-import { AlertBanner, Button, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { useScannerSubmit } from '../../patterns/pop-scanner-submit';
+import {
+  PuActionBar,
+  PuButton,
+  PuEmpty,
+  PuIcon,
+  PuManualDialog,
+  PuNote,
+  PuScreen,
+  PuSection,
+  PuStack,
+  puCx,
+} from '../../patterns/pop-uniform';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { toApiError } from '../../patterns/request';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -12,23 +23,21 @@ import {
   blockersOfConflict,
   completeFailureOf,
   directCodeOf,
-  groupBlockers,
   hasMoreBelow,
   isAlreadyCompleted,
   isCompletable,
   lookupFailureOf,
-  qtyWithUom,
   serverMessageOf,
-  totalsOf,
-  uomOf,
   type Completion,
   type CompletionResult,
 } from './model';
-import { AlreadyView, IdleView, ResultView } from './outcome-views';
+import { AlreadyView, ResultView } from './outcome-views';
 import { useCompleteShipment, useLookupShipmentRequest } from './queries';
 import { SearchDialog } from './search-dialog';
+import './uniform.css';
 
 const t = messages.popShipmentComplete;
+const u = messages.popUniform;
 
 type Via = 'scan' | 'search' | 'direct';
 
@@ -49,8 +58,8 @@ interface ScanNotice {
 /**
  * P-04-07 출하 완료(POP · 피처 010 · omf-all-around#305) — 관리웹 W-04-04 출하 처리를 대신한다.
  *
- * 화면 유형은 T-P-S 단독형이다: 머리줄, 스캔 칸, 본문(입구 안내 → 확인 화면 → 결과), 바닥 띠의 [출하 완료].
- * 지시서는 세 입구(PDA 화면 QR · 인쇄 QR · [찾기])로 열고, 모두 같은 확인 값(`:lookup`)을 본다.
+ * 화면 유형은 T-P-S 단독형이다: 머리줄, 스캔 칸, 본문(빈 안내 → 확인 화면 → 결과), 아래 작업 줄의 [출하 완료].
+ * 지시서는 세 입구(PDA 화면 QR · 인쇄 QR · [지시서 검색])로 열고, 모두 같은 확인 값(`:lookup`)을 본다.
  *
  * - [출하 완료]는 한 번 누르면 끝난다 — 확인 화면이 곧 확인 창이다(C-9 의 「마지막 확인 단계」).
  * - 완료 결과는 다음 스캔까지 남는다. 「이미 출하 완료」는 붉은 오류가 아니라 노란 안내다.
@@ -59,7 +68,7 @@ interface ScanNotice {
  */
 export const PopShipmentCompleteScreen = () => {
   const titleId = useId();
-  const barNoteId = useId();
+  const inputId = useId();
   const identity = usePopIdentity();
   const workerSession = useWorkerSession();
   const workerNo = identity.workerNo?.trim() || workerSession?.worker.workerNo?.trim() || null;
@@ -75,6 +84,7 @@ export const PopShipmentCompleteScreen = () => {
   const [notice, setNotice] = useState<ScanNotice | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [isManualOpen, setManualOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   /* 확인 화면이 아래로 더 이어지는가 — 바닥에 「아래로 밀면…」 단서를 붙인다(둘러보기 W-8). */
@@ -98,7 +108,7 @@ export const PopShipmentCompleteScreen = () => {
   };
 
   /**
-   * 지시서를 연다(스캔·찾기·[다시 확인]). 실패하면 열려 있던 화면은 그대로 두고 칸 아래 띠만 낸다 — 잘못
+   * 지시서를 연다(스캔·검색·[상태 새로고침]). 실패하면 열려 있던 화면은 그대로 두고 칸 아래 띠만 낸다 — 잘못
    * 찍은 LOT 라벨 하나로 보던 확인 화면이 닫히면 다시 스캔해야 한다.
    *
    * @param keepFailure 완료 실패 뒤 다시 읽는 경우 — 실패 까닭을 남겨 둔다.
@@ -156,9 +166,12 @@ export const PopShipmentCompleteScreen = () => {
   };
   const scanner = useScannerSubmit(send, () => inputRef.current?.value ?? '');
 
-  /** [직접 입력] — 손으로 친 지시서 번호(SR-…)도 연다. 앞머리 `SHPREQ:` 는 화면이 붙인다(W-2). */
-  const sendDirect = (): void => {
-    const typed = (inputRef.current?.value ?? draft).trim();
+  /**
+   * [직접 입력] 창 — 손으로 친 지시서 번호(SR-…)도 연다. 앞머리 `SHPREQ:` 는 화면이 붙인다(W-2).
+   * 창은 POP 공통 [직접 입력] 창(`PuManualDialog` · 제목 없음 · 글자판)이다.
+   */
+  const sendDirect = (entered: string): void => {
+    const typed = entered.trim();
     if (typed === '') return;
     setDraft('');
     open(directCodeOf(typed), 'direct', false, undefined, typed);
@@ -172,10 +185,12 @@ export const PopShipmentCompleteScreen = () => {
     return () => window.removeEventListener('resize', measureMore);
   }, [view, failure, measureMore]);
 
-  /* 조회·완료가 끝나고 찾기 창이 닫혀 있으면 스캔 칸이 포커스를 되찾는다 — 다음 스캔이 사라지지 않게. */
+  /* 조회·완료가 끝나고 검색 창·직접 입력 창이 닫혀 있으면 스캔 칸이 포커스를 되찾는다 — 다음 스캔이 사라지지 않게. */
   useEffect(() => {
-    if (!lookup.isPending && !complete.isPending && !isSearching) inputRef.current?.focus();
-  }, [lookup.isPending, complete.isPending, isSearching]);
+    if (!lookup.isPending && !complete.isPending && !isSearching && !isManualOpen) {
+      inputRef.current?.focus();
+    }
+  }, [lookup.isPending, complete.isPending, isSearching, isManualOpen]);
 
   const submitScan = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
@@ -183,7 +198,6 @@ export const PopShipmentCompleteScreen = () => {
   };
 
   const confirm = view.kind === 'confirm' ? view : null;
-  const groups = confirm === null ? [] : groupBlockers(confirm.completion.blockers);
   const canComplete =
     confirm !== null && isCompletable(confirm.completion) && workerNo !== null && !lookup.isPending;
 
@@ -211,7 +225,7 @@ export const PopShipmentCompleteScreen = () => {
             return;
           }
           complete.resetKey();
-          /* 409 가 실어 온 막는 이유를 그대로 그린다 — 다시 조회하지 않는다. 다른 단말이 바꾼 판정은 [다시 확인]으로 읽는다. */
+          /* 409 가 실어 온 막는 이유를 그대로 그린다 — 다시 조회하지 않는다. 다른 단말이 바꾼 판정은 [상태 새로고침]으로 읽는다. */
           const blockers = reason === 'blocked' ? blockersOfConflict(apiError) : null;
           if (blockers !== null) {
             setFailure(t.failure.blocked);
@@ -234,180 +248,133 @@ export const PopShipmentCompleteScreen = () => {
     );
   };
 
-  const placeholder =
-    view.kind === 'confirm'
-      ? t.scan.replacePlaceholder
-      : view.kind === 'done'
-        ? t.scan.nextPlaceholder
-        : t.scan.placeholder;
+  /* 지시서를 연 동안 스캔 칸이 초록 「스캔 완료」다(POP 스캔 칸 공통). */
+  const isOpened = view.kind !== 'idle';
 
-  const barNote =
-    view.kind === 'idle'
-      ? t.bar.idle
-      : view.kind === 'already'
-        ? t.bar.already
-        : view.kind === 'done'
-          ? t.bar.done
-          : groups.length > 0
-            ? t.bar.blocked(groups.length)
-            : workerNo === null
-              ? t.bar.workerMissing
-              : null;
-  const lockReason =
-    view.kind === 'idle'
-      ? t.bar.lock.idle
-      : view.kind === 'already'
-        ? t.bar.lock.already
-        : view.kind === 'done'
-          ? t.bar.lock.done
-          : groups.length > 0
-            ? t.bar.lock.blocked(groups.length)
-            : workerNo === null
-              ? t.bar.lock.worker
-              : null;
-  /* 완료 가능 — 시안 바닥 띠: 굵은 요약(「160 EA · LOT 4」) + 무엇이 생기는지. */
-  const readyLead =
-    barNote === null && confirm !== null
-      ? t.bar.readyLead(
-          qtyWithUom(totalsOf(confirm.completion).qty, uomOf(confirm.completion)),
-          totalsOf(confirm.completion).lotCount,
-        )
-      : null;
+  const actionBar = (
+    <PuActionBar label={t.bar.label}>
+      {confirm !== null && (
+        <>
+          <PuButton
+            icon="reset"
+            disabled={lookup.isPending || complete.isPending}
+            onClick={() => open(confirm.completion.code, confirm.via)}
+          >
+            {t.bar.recheck}
+          </PuButton>
+          <PuButton
+            disabled={complete.isPending}
+            onClick={() => {
+              setFailure(null);
+              setNotice(null);
+              setView({ kind: 'idle' });
+            }}
+          >
+            {t.bar.close}
+          </PuButton>
+        </>
+      )}
+      <PuButton
+        variant="primary"
+        disabled={!canComplete || complete.isPending}
+        onClick={runComplete}
+      >
+        {complete.isPending ? t.bar.completing : t.bar.complete}
+      </PuButton>
+    </PuActionBar>
+  );
 
   return (
-    <main className="pop-shell pop-ui pop-ship" aria-labelledby={titleId}>
-      <header className="pop-header">
-        <h1 id={titleId} className="pop-title">
-          {t.title}
-        </h1>
-      </header>
+    <main className="pop-ui psc-screen" aria-labelledby={titleId}>
+      <h1 id={titleId} className="psc-title">
+        {t.title}
+      </h1>
 
       <PopWorkerMissingBanner workerNo={workerNo} />
 
-      <div className="pop-ship-main">
-        <form className="pop-ship-scan" onSubmit={submitScan}>
-          <TextField
-            ref={inputRef}
-            size="xl"
-            label={t.scan.label}
-            placeholder={placeholder}
-            value={draft}
-            fullWidth
-            autoComplete="off"
-            onKeyDown={scanner.onKeyDown}
-            onChange={(event) => {
-              setDraft(event.target.value);
-              scanner.noteInput(event.target.value);
-            }}
-          />
-          <Button type="button" variant="outlined" size="xl" onClick={sendDirect}>
-            {t.scan.submit}
-          </Button>
-          <Button
-            type="button"
-            variant="outlined"
-            size="xl"
-            onClick={() => {
-              setIsSearching(true);
-            }}
-          >
-            {t.scan.search}
-          </Button>
-        </form>
+      <PuScreen className="psc-body" actionBar={actionBar}>
+        <PuStack fill>
+          <PuSection className="psc-top" grow={false} label={t.scan.label}>
+            <form className="pu-field" onSubmit={submitScan}>
+              <label className="pu-label" htmlFor={inputId}>
+                {t.scan.label}
+              </label>
+              <div className="pu-row">
+                <div className={puCx('pu-scan', isOpened && 'is-done')}>
+                  <PuIcon name="scan" />
+                  <input
+                    ref={inputRef}
+                    id={inputId}
+                    value={draft}
+                    autoComplete="off"
+                    onKeyDown={scanner.onKeyDown}
+                    onChange={(event) => {
+                      setDraft(event.target.value);
+                      scanner.noteInput(event.target.value);
+                    }}
+                  />
+                  <span className="ready">{isOpened ? u.scan.done : u.scan.ready}</span>
+                </div>
+                <PuButton
+                  onClick={() => {
+                    setManualOpen(true);
+                  }}
+                >
+                  {u.scan.manual}
+                </PuButton>
+                <PuButton
+                  icon="search"
+                  onClick={() => {
+                    setIsSearching(true);
+                  }}
+                >
+                  {t.scan.search}
+                </PuButton>
+              </div>
+              <p className="pu-help psc-guide">{t.scan.guide}</p>
+              {lookup.isPending ? (
+                <PuNote live>{t.scan.looking}</PuNote>
+              ) : notice !== null ? (
+                <PuNote tone={notice.tone === 'error' ? 'bad' : 'warn'}>
+                  <span>{notice.text}</span>
+                  {notice.detail !== undefined && <span> {notice.detail}</span>}
+                </PuNote>
+              ) : null}
+            </form>
+          </PuSection>
 
-        <div className="scan-outcome">
-          {lookup.isPending ? (
-            <p className="field-note">{t.scan.looking}</p>
-          ) : notice !== null ? (
-            <AlertBanner variant={notice.tone} title={notice.text}>
-              {notice.detail}
-            </AlertBanner>
-          ) : null}
-        </div>
+          <div className="psc-content" ref={contentRef} onScroll={measureMore}>
+            {failure !== null && <PuNote tone="bad">{failure}</PuNote>}
+            {view.kind === 'idle' && (
+              <PuSection className="psc-idle" label={t.scan.label}>
+                <PuEmpty icon="file" title={t.idle.empty} />
+              </PuSection>
+            )}
+            {view.kind === 'confirm' && <ConfirmView completion={view.completion} via={view.via} />}
+            {view.kind === 'already' && <AlreadyView completion={view.completion} />}
+            {view.kind === 'done' && <ResultView result={view.result} workerNo={workerLabel} />}
+            {moreBelow && view.kind === 'confirm' && (
+              <p className="psc-more" aria-hidden="true">
+                <PuIcon name="chevron" />
+                {t.lots.moreBelow}
+              </p>
+            )}
+          </div>
+        </PuStack>
+      </PuScreen>
 
-        <div className="pop-ship-content" ref={contentRef} onScroll={measureMore}>
-          {failure !== null && (
-            <div className="banner-slot">
-              <AlertBanner variant="error">{failure}</AlertBanner>
-            </div>
-          )}
-          {view.kind === 'idle' && <IdleView />}
-          {view.kind === 'confirm' && <ConfirmView completion={view.completion} via={view.via} />}
-          {view.kind === 'already' && <AlreadyView completion={view.completion} />}
-          {view.kind === 'done' && <ResultView result={view.result} workerNo={workerLabel} />}
-          {moreBelow && view.kind === 'confirm' && (
-            <p className="pop-ship-more" aria-hidden="true">
-              <Icon name="expand_more" size={20} />
-              {t.lots.moreBelow}
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="pop-action-bar">
-        <div className="pop-action-note" id={barNoteId} aria-live="polite">
-          {readyLead !== null ? (
-            /* ⚠ `field-note` 가 아니다 — POP 하단 안내 문장은 공통 규칙으로 숨지만(#291), 이 줄은 안내가 아니라
-               누르면 무엇이 일어나는지의 요약이다(시안 P0407-After 바닥 띠 · 검증 1회차). */
-            <p className="pop-ship-bar-ready">
-              <Icon name="inventory" size={20} aria-hidden />
-              <strong>{readyLead}</strong>
-              <span aria-hidden="true">—</span>
-              <span>{t.bar.readyNote}</span>
-            </p>
-          ) : (
-            <>
-              {/*
-               * 잠긴 까닭 한 줄(둘러보기 W-9) — `field-note` 가 아니다. 긴 안내 문장(아래 field-note)은 POP 공통
-               * 규칙으로 숨고(#291), 이 줄은 [출하 완료]가 왜 잠겼는지만 짧게 말한다.
-               */}
-              {lockReason !== null && (
-                <p className="pop-ship-bar-lock">
-                  <Icon name="lock" size={18} aria-hidden />
-                  <span>{lockReason}</span>
-                </p>
-              )}
-              <p className="field-note">{barNote}</p>
-            </>
-          )}
-        </div>
-        {confirm !== null && (
-          <>
-            <Button
-              type="button"
-              size="2xl"
-              variant="outlined"
-              disabled={lookup.isPending || complete.isPending}
-              onClick={() => open(confirm.completion.code, confirm.via)}
-            >
-              {t.bar.recheck}
-            </Button>
-            <Button
-              type="button"
-              size="2xl"
-              variant="outlined"
-              disabled={complete.isPending}
-              onClick={() => {
-                setFailure(null);
-                setNotice(null);
-                setView({ kind: 'idle' });
-              }}
-            >
-              {t.bar.close}
-            </Button>
-          </>
-        )}
-        <Button
-          type="button"
-          size="2xl"
-          variant="filled"
-          disabled={!canComplete || complete.isPending}
-          aria-describedby={barNoteId}
-          onClick={runComplete}
-        >
-          {complete.isPending ? t.bar.completing : t.bar.complete}
-        </Button>
-      </div>
+      {isManualOpen && (
+        <PuManualDialog
+          label={t.scan.manualLabel}
+          onClose={() => {
+            setManualOpen(false);
+          }}
+          onSubmit={(entered) => {
+            setManualOpen(false);
+            sendDirect(entered);
+          }}
+        />
+      )}
 
       {isSearching && (
         <SearchDialog

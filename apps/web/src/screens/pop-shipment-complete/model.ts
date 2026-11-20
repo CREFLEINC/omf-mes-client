@@ -293,6 +293,8 @@ export interface SearchRowView {
   ready: boolean;
   /** 막는 이유 수(이유 코드별 합). */
   blockedCount: number;
+  /** 라인을 짚지 않은 피킹 부족이 있다 — 서버가 «낼 피킹 LOT 이 없을 때» 내는 것(보이는 글만 가른다). */
+  noPickedLot: boolean;
   blockerSummary: { code: BlockerCode; count: number }[];
   /** 첫 품목(코드·이름)과 그 밖의 품목 수 — 찾기 줄 「FG-A100 센서 모듈 A 외 1」. 라인이 없으면 null. */
   firstItem: { code: string; name: string } | null;
@@ -324,6 +326,9 @@ export const toSearchRow = (row: ShipmentRequestRow): SearchRowView => {
     requestedShipDate: row.requestedShipDate,
     ready: row.completionBlockers.length === 0,
     blockedCount: blockerSummary.reduce((sum, entry) => sum + entry.count, 0),
+    noPickedLot: row.completionBlockers.some(
+      (blocker) => blocker.code === 'PICKING_SHORT' && blocker.lineNo === undefined,
+    ),
     blockerSummary,
     lineCount: lines.length,
     lotCount: lines.reduce(

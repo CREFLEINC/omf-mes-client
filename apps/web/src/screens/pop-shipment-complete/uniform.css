@@ -1,0 +1,290 @@
+/*
+ * P-04-07 출하 완료 — #295 POP 통일 모양(화면 전용 `psc-*`, omf-all-around#334). 공통 모양은 `app/pop-uniform.css`.
+ *
+ * 위 구획(스캔 칸 · [직접 입력] · [지시서 검색] · 안내 한 줄) → 본문(빈 안내 · 확인 화면 · 결과) → 아래 작업 줄.
+ * 본문만 구르고 스캔 칸과 [출하 완료]는 늘 보인다. 확인 화면 표는 넓은 배치(1200 이상)에서 좌우 2단(왼쪽 출하 품목·창고,
+ * 오른쪽 피킹 LOT), 1024 배치는 한 단으로 쌓는다. 표 높이는 데이터만큼이다.
+ */
+
+.psc-title {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  margin: 0;
+}
+
+/* ── 위 구획: 스캔 칸 ── */
+.psc-top > .pu-card-body {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.psc-guide {
+  margin: 0;
+}
+
+/* ── 본문: 이 칸만 구른다 ── */
+.psc-content {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.psc-content > * {
+  flex: none;
+}
+
+/* 조회 전 — 빈 구획이 남는 높이를 채워 조회 뒤 확인 화면과 같은 자리에 선다. */
+.psc-content > .psc-idle {
+  flex: 1 1 auto;
+}
+
+/* 확인 화면이 아래로 더 이어진다는 단서(둘러보기 W-8) — 본문 바닥에 붙어 따라 내려간다. */
+.psc-more {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 8px 0;
+  background: linear-gradient(to bottom, transparent, var(--pu-bg) 40%);
+  color: var(--pu-text-3);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+/* ── 확인 화면: 머리(지시서 번호 · 출하 가능 여부) ── */
+.psc-head-key {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.psc-head-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--pu-text-3);
+}
+
+.psc-via {
+  font-size: 13px;
+}
+
+/* 머리·사유 구획은 제목 줄 바로 아래에 붙인다 — 표가 한 화면에 더 들게(스크롤 최소화). */
+.psc-head > .pu-card-body,
+.psc-blockers > .pu-card-body {
+  padding-top: 6px;
+  padding-bottom: 12px;
+}
+
+/* 고객 · 납품처 · 수주 — 1000 이상 배치는 한 줄, 좁으면 두 줄(이름 · 값 두 쌍씩). */
+@media (min-width: 1000px) {
+  .psc-head .pu-kv.cols2 {
+    grid-template-columns:
+      max-content minmax(0, 1fr) max-content minmax(0, 1fr)
+      max-content minmax(0, 1fr);
+  }
+}
+
+/* ── 출하 불가 사유: 빨간 구획 하나에 사유를 줄로 나눈다(큰 경고 카드를 되풀이하지 않는다) ── */
+.psc-blockers {
+  border-color: color-mix(in srgb, var(--pu-bad) 45%, var(--pu-line-2));
+}
+
+.psc-blockers .pu-card-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pu-bad);
+}
+
+.psc-blocker-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 사유 · 대상 · 할 일을 한 줄에 잇고, 넘치면 줄을 바꾼다(잘라 내지 않는다 — 베트남어가 길어도). */
+.psc-blocker-list > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-bad-bg);
+  color: var(--pu-text);
+  overflow-wrap: anywhere;
+}
+
+.psc-blocker-list b {
+  color: var(--pu-bad);
+}
+
+.psc-blocker-target {
+  font-family: var(--pu-mono);
+  font-size: 14px;
+}
+
+.psc-blocker-hint {
+  font-size: 14px;
+  color: var(--pu-text-2);
+}
+
+/* ── 표 두 개: 출하 품목 · 피킹 LOT ── */
+.psc-tables {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.psc-col {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* 막는 이유가 짚는 줄 — 연한 빨강. */
+.psc-row-blocked > td {
+  background: var(--pu-bad-bg);
+}
+
+/* 초과는 경고가 아니라 정보다 — 노란 글자만. */
+.pu-table td.psc-over {
+  color: var(--pu-warn);
+  font-weight: 700;
+}
+
+/* LOT 번호 아래 몫 요약 — 여러 창고·적치 대기 자리에 나뉜 LOT 만. */
+.psc-lot-portions {
+  display: block;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--pu-text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.psc-empty-row {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-field);
+  color: var(--pu-text-3);
+  font-size: 14px;
+  text-align: center;
+}
+
+.psc-warehouses {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.psc-warehouses > li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-card-2);
+  font-size: 14px;
+}
+
+.psc-warehouse-qty {
+  margin-left: auto;
+  color: var(--pu-text-3);
+}
+
+/* ── 지시서 검색 창: 찾기 칸 · 거르기 줄은 늘 보이고, 결과가 많을 때만 목록이 구른다 ── */
+/* 창 본문이 통째로 구르지 않게 — 남는 높이는 목록이 갖고, 목록만 구른다. */
+.pu-dialog-body:has(> .psc-search) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.psc-search {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+.psc-search > * {
+  flex: none;
+}
+
+/* 한 쪽뿐이면 쪽 넘김이 비어 있다(건수는 거르기 줄 오른쪽) — 빈 줄 높이를 남기지 않는다. */
+.psc-search > .pu-pager:empty {
+  display: none;
+}
+
+.psc-search-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.psc-search-count {
+  color: var(--pu-text-3);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.psc-search .pu-help {
+  margin: 0;
+}
+
+.psc-search-list {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 420px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.psc-search-blocked,
+.psc-search-blocked b {
+  color: var(--pu-bad);
+}
+
+.psc-search-empty {
+  display: grid;
+  gap: 2px;
+  padding: 12px 0;
+  text-align: center;
+  color: var(--pu-text-3);
+  font-size: 14px;
+}
+
+.psc-search-empty b {
+  color: var(--pu-text-2);
+  font-size: 15px;
+}
+
+/* 1024 배치에서는 두 표를 한 단으로 쌓는다 — 반 폭에는 출하 품목 표의 수량 칸이 다 들지 않아 잘린다. */
+@media (max-width: 1199px) {
+  .psc-tables {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

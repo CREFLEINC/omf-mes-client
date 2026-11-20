@@ -1,22 +1,12 @@
-import {
-  AlertBanner,
-  Button,
-  Checkbox,
-  Chip,
-  Dialog,
-  EmptyState,
-  Icon,
-  TextField,
-} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState, type FormEvent } from 'react';
 
-import { PopRowHead, PopRowInfo, PopRowPair } from '../../patterns/pop-list-row';
-import { PuPager } from '../../patterns/pop-uniform';
+import { PuButton, PuChip, PuDialog, PuInput, PuNote, PuPager } from '../../patterns/pop-uniform';
 import { formatQty, orderSearchRows, toSearchRow, type SearchRowView } from './model';
 import { useShipmentRequestSearch } from './queries';
 
 const t = messages.popShipmentComplete.search;
+const u = messages.popUniform;
 
 export interface SearchDialogProps {
   onClose: () => void;
@@ -24,15 +14,21 @@ export interface SearchDialogProps {
   onPick: (code: string) => void;
 }
 
+/** 출하 불가 사유 요약 — 라인을 짚지 않은 피킹 부족(낼 피킹 LOT 없음)은 그 뜻대로 쓴다. */
 const blockerText = (row: SearchRowView): string =>
-  row.blockerSummary.map(({ code, count }) => t.blockerCount[code](count)).join(', ');
+  row.blockerSummary
+    .map(({ code, count }) =>
+      code === 'PICKING_SHORT' && row.noPickedLot ? t.noPickedLot : t.blockerCount[code](count),
+    )
+    .join(', ');
 
 /**
- * 찾기(시안 ②) — 지시서 번호·고객·품목 일부로 찾는다. 「완료 대기만」은 켠 채로 열린다. 줄을 누르면 스캔과
- * 같은 확인 화면으로 간다.
+ * 지시서 검색(시안 ②) — 지시서 번호·고객·품목 일부로 찾는다. 「출하 가능만 표시」는 켠 채로 열린다. 줄을 누르면
+ * 스캔과 같은 확인 화면으로 간다.
  *
- * ⚠ 출하 완료된 지시서는 나오지 않는다 — 「완료 대기만」이 켜졌으면 서버의 완료 대기 조건이, 꺼졌으면
+ * ⚠ 출하 완료된 지시서는 나오지 않는다 — 「출하 가능만 표시」가 켜졌으면 서버의 완료 대기 조건이, 꺼졌으면
  *   「출하가 남은 지시서만」이 거른다(`model.searchQueryOf`).
+ * 창은 화면 안에 들고, 결과가 많을 때만 목록이 구른다(찾기 칸 · 거르기 줄 · 쪽 넘김은 늘 보인다).
  */
 export const SearchDialog = ({ onClose, onPick }: SearchDialogProps) => {
   const [draft, setDraft] = useState('');
@@ -50,89 +46,71 @@ export const SearchDialog = ({ onClose, onPick }: SearchDialogProps) => {
   };
 
   const body = search.isError ? (
-    <AlertBanner
-      variant="error"
+    <PuNote
+      tone="bad"
       action={
-        <Button variant="outlined" onClick={() => void search.refetch()}>
+        <PuButton size="sm" onClick={() => void search.refetch()}>
           {t.retry}
-        </Button>
+        </PuButton>
       }
     >
       {t.failed}
-    </AlertBanner>
+    </PuNote>
   ) : search.data === undefined ? (
-    <p className="field-note">{t.loading}</p>
+    <PuNote>{t.loading}</PuNote>
   ) : rows.length === 0 ? (
-    readyOnly ? (
-      <EmptyState
-        size="sm"
-        icon={<Icon name="inventory_2" size={32} aria-hidden />}
-        title={t.emptyReady}
-        description={t.emptyReadyHint}
-        action={
-          <Button
-            variant="outlined"
-            onClick={() => {
-              setPage(1);
-              setReadyOnly(false);
-            }}
-          >
-            {t.turnOffReadyOnly}
-          </Button>
-        }
-      />
-    ) : (
-      <EmptyState size="sm" title={t.empty} description={t.emptyHint} />
-    )
+    <div className="psc-search-empty" role="status">
+      <b>{t.empty}</b>
+      <span>{readyOnly ? t.emptyHintFiltered : t.emptyHint}</span>
+    </div>
   ) : (
-    <ul className="pop-ship-search-list" aria-label={t.caption}>
+    <ul className="pu-list psc-search-list" aria-label={t.caption}>
       {rows.map((row) => (
         <li key={row.shipmentRequestId}>
           <button
             type="button"
-            className="pop-ship-search-row"
+            className="pu-item"
             aria-label={t.select(row.shipmentRequestNo)}
             onClick={() => onPick(row.code)}
           >
-            <PopRowHead
-              title={row.shipmentRequestNo}
-              chips={
-                <Chip
-                  variant="status"
-                  size="md"
-                  status={row.ready ? 'success' : 'error'}
-                  leadingIcon={
-                    <Icon name={row.ready ? 'check_circle' : 'block'} size={18} aria-hidden />
-                  }
-                >
-                  {row.ready ? t.ready : t.blocked(row.blockedCount)}
-                </Chip>
-              }
-            />
-            <PopRowInfo>
+            <span className="pu-item-top">
+              <span className="no">{row.shipmentRequestNo}</span>
+              <span className="chips">
+                <PuChip tone={row.ready ? 'ok' : 'bad'}>{row.ready ? t.ready : t.blocked}</PuChip>
+              </span>
+            </span>
+            <span className="pu-item-sub">
               {row.customerName !== '' && (
-                <PopRowPair label={t.customer}>{row.customerName}</PopRowPair>
+                <span>
+                  {t.customer} <b>{row.customerName}</b>
+                </span>
               )}
-              <PopRowPair label={t.shipDate}>{row.requestedShipDate}</PopRowPair>
+              <span>
+                {t.shipDate} <b>{row.requestedShipDate}</b>
+              </span>
               {row.firstItem !== null && (
-                <PopRowPair label={t.items}>
-                  {t.itemsValue(row.firstItem.code, row.firstItem.name, row.moreItems)}
-                </PopRowPair>
+                <span>
+                  {t.items}{' '}
+                  <b>{t.itemsValue(row.firstItem.code, row.firstItem.name, row.moreItems)}</b>
+                </span>
               )}
-              <PopRowPair label={t.summary}>
-                {t.summaryValue(
-                  row.lineCount,
-                  row.lotCount,
-                  formatQty(row.picked),
-                  formatQty(row.target),
-                )}
-              </PopRowPair>
+              <span>
+                {t.summary}{' '}
+                <b>
+                  {t.summaryValue(
+                    row.lineCount,
+                    row.lotCount,
+                    formatQty(row.picked),
+                    formatQty(row.target),
+                  )}
+                </b>
+              </span>
               {!row.ready && (
-                <PopRowPair label={t.blockedWhy}>
-                  <span className="pop-ship-search-row__blocked">{blockerText(row)}</span>
-                </PopRowPair>
+                <span className="psc-search-blocked">
+                  {t.blockedWhy} <b>{blockerText(row)}</b>
+                </span>
               )}
-            </PopRowInfo>
+            </span>
           </button>
         </li>
       ))}
@@ -140,54 +118,54 @@ export const SearchDialog = ({ onClose, onPick }: SearchDialogProps) => {
   );
 
   return (
-    <Dialog
-      open
-      size="lg"
-      className="pop-ship-search"
+    <PuDialog
       title={t.title}
+      wide
       onClose={onClose}
-      footer={
-        <Button size="xl" variant="outlined" onClick={onClose}>
-          {t.close}
-        </Button>
-      }
+      footer={<PuButton onClick={onClose}>{t.close}</PuButton>}
     >
-      <form className="pop-ship-search-bar" onSubmit={submit}>
-        <TextField
-          label={t.queryLabel}
-          placeholder={t.queryPlaceholder}
-          value={draft}
-          autoComplete="off"
-          onChange={(event) => setDraft(event.target.value)}
+      <div className="psc-search">
+        <form className="pu-row" onSubmit={submit}>
+          <PuInput
+            value={draft}
+            aria-label={t.queryLabel}
+            placeholder={t.queryPlaceholder}
+            autoComplete="off"
+            onChange={(event) => setDraft(event.target.value)}
+          />
+          <PuButton type="submit" icon="search">
+            {u.scan.search}
+          </PuButton>
+        </form>
+        <div className="psc-search-filter">
+          <label className="pu-check">
+            <input
+              type="checkbox"
+              checked={readyOnly}
+              onChange={(event) => {
+                setPage(1);
+                setReadyOnly(event.target.checked);
+              }}
+            />
+            {t.readyOnly}
+          </label>
+          <span className="psc-search-count">{t.count(search.data?.page.total ?? 0)}</span>
+        </div>
+        <p className="pu-help">{t.note}</p>
+        {body}
+        {/* POP 쪽 넘김은 공통 `PuPager` 로 옮겼다(#295) — 건수는 거르기 줄 오른쪽이 이미 보인다. */}
+        <PuPager
+          total={search.data?.page.total ?? null}
+          page={Math.max(1, search.data?.page.page ?? page)}
+          pages={Math.max(
+            1,
+            Math.ceil((search.data?.page.total ?? 0) / Math.max(1, search.data?.page.size ?? 1)),
+          )}
+          label={t.pageNav}
+          showTotal={false}
+          onPage={setPage}
         />
-        <Button type="submit" variant="outlined">
-          {t.find}
-        </Button>
-        <Checkbox
-          checked={readyOnly}
-          onChange={(event) => {
-            setPage(1);
-            setReadyOnly(event.target.checked);
-          }}
-        >
-          {t.readyOnly}
-        </Checkbox>
-        <span className="pop-ship-search-count">{t.count(search.data?.page.total ?? 0)}</span>
-      </form>
-      <p className="field-note">{t.note}</p>
-      {body}
-      {/* POP 쪽 넘김은 공통 `PuPager` 로 옮겼다(#295) — 건수는 위 칸이 이미 보인다. */}
-      <PuPager
-        total={search.data?.page.total ?? null}
-        page={Math.max(1, search.data?.page.page ?? page)}
-        pages={Math.max(
-          1,
-          Math.ceil((search.data?.page.total ?? 0) / Math.max(1, search.data?.page.size ?? 1)),
-        )}
-        label={t.pageNav}
-        showTotal={false}
-        onPage={setPage}
-      />
-    </Dialog>
+      </div>
+    </PuDialog>
   );
 };
