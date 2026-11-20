@@ -30,6 +30,9 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     includeInactive: 'Gồm cả không sử dụng',
     apply: 'Tra cứu',
     clear: 'Đặt lại',
+    type: 'Loại thiết bị',
+    equipment: 'Thiết bị lắp đặt',
+    all: 'Tất cả',
   },
 
   list: {
@@ -55,7 +58,7 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
   },
 
   chips: {
-    label: 'Trạng thái sử dụng',
+    label: 'Trạng thái đăng ký',
     filterOn: (label: string): string => `Chỉ xem ${label}`,
     filterOff: (label: string): string => `Bỏ lọc ${label}`,
   },
@@ -92,6 +95,8 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     cancel: 'Hủy',
     deactivate: 'Ngừng sử dụng',
     deactivated: 'Đã ngừng máy quét. Bản ghi vẫn còn.',
+    activate: 'Dùng lại',
+    activated: 'Đã dùng lại thiết bị đầu cuối.',
     deactivateTitle: 'Ngừng sử dụng máy quét',
     deactivateCaption: 'Đối tượng ngừng sử dụng',
     deactivateMeta: (type: string): string => `Loại máy quét: ${type}`,

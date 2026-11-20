@@ -47,17 +47,27 @@ import {
 import { ActiveChips } from './active-chips';
 import { LayoutToggle } from './layout-toggle';
 import { LoadErrorBanner } from './load-error-banner';
-import { lookupNote, usePlantOptions, useProcessOptions, useTerminalCodeNames } from './lookups';
+import {
+  codeSelectOptions,
+  lookupNote,
+  usePlantOptions,
+  useProcessOptions,
+  useTerminalCodeNames,
+} from './lookups';
+import { PagedSelectField } from './paged-select-field';
 import { ProcessGrid } from './process-grid';
 import {
   useProcessesReplace,
   useTerminalCreate,
+  useEquipmentLabel,
+  useEquipmentPages,
+  useTerminalActivate,
   useTerminalDeactivate,
   useTerminalDetail,
   useTerminalProcesses,
   useTerminals,
   useNextTerminalCode,
-  useTerminalStatusCounts,
+  useTerminalRegistrationCounts,
   useTerminalUpdate,
   useTokenIssue,
 } from './queries';
@@ -170,7 +180,9 @@ export const TerminalProcessMapScreen = () => {
   }
 
   const terminals = useTerminals(filters);
-  const statusCounts = useTerminalStatusCounts(filters);
+  const registrationCounts = useTerminalRegistrationCounts(filters);
+  const fetchEquipments = useEquipmentPages();
+  const equipmentFilterLabel = useEquipmentLabel(filters.equipment);
   const detail = useTerminalDetail(selectedId);
   const processRows = useTerminalProcesses(selectedId);
 
@@ -198,6 +210,10 @@ export const TerminalProcessMapScreen = () => {
   const update = useTerminalUpdate(selectedId, () => {
     setFormMode('closed');
     notify(t.terminal.saved);
+  });
+
+  const activate = useTerminalActivate(selectedId, () => {
+    notify(t.terminal.activated);
   });
 
   const deactivate = useTerminalDeactivate(selectedId, () => {
@@ -509,16 +525,31 @@ export const TerminalProcessMapScreen = () => {
           <div className="terminal-map-settings-head">
             <h3 className="terminal-map-settings-title">{t.panes.terminal}</h3>
             <div className="terminal-map-info-actions">
-              <Button
-                variant="outlined"
-                leadingIcon={<Icon name="block" size={18} aria-hidden />}
-                disabled={!selected.isActive || deactivate.isSaving}
-                onClick={() => {
-                  setDeactivating(true);
-                }}
-              >
-                {t.terminal.deactivate}
-              </Button>
+              {/* 사용 중이면 「사용 중지」, 중지된 단말이면 「사용 재개」(사용자 지시 2026-11-20 · #333). */}
+              {selected.isActive ? (
+                <Button
+                  variant="outlined"
+                  leadingIcon={<Icon name="block" size={18} aria-hidden />}
+                  disabled={deactivate.isSaving}
+                  onClick={() => {
+                    setDeactivating(true);
+                  }}
+                >
+                  {t.terminal.deactivate}
+                </Button>
+              ) : (
+                <Button
+                  variant="outlined"
+                  leadingIcon={<Icon name="restart_alt" size={18} aria-hidden />}
+                  loading={activate.isSaving}
+                  disabled={activate.isSaving}
+                  onClick={() => {
+                    activate.write({});
+                  }}
+                >
+                  {t.terminal.activate}
+                </Button>
+              )}
               <Button
                 variant="outlined"
                 leadingIcon={<Icon name="edit" size={18} aria-hidden />}
@@ -539,6 +570,7 @@ export const TerminalProcessMapScreen = () => {
           </div>
           <SaveErrorBanner error={issueToken.error} />
           <SaveErrorBanner error={deactivate.error} />
+          <SaveErrorBanner error={activate.error} />
           {/* 항목명 위·값 아래의 3열 격자 — 순서는 그대로(코드 · 유형 · 운영 상태 · 등록 상태 · 설비 · 창고). */}
           <dl className="parts-iqc-facts iqc-inbound-facts terminal-map-info">
             <div className="parts-iqc-fact">
@@ -678,14 +710,14 @@ export const TerminalProcessMapScreen = () => {
        * 사용자 역할 권한 관리와 같은 틀(omf-all-around#333) — 위 조회 묶음, 아래 목록 | 고른 단말의 한 카드.
        * 머리글(경로 · 화면 이름)은 두지 않는다 — 사이드바가 위치를 말한다.
        */}
-      {/* 위 줄 오른쪽 — 사용 · 미사용 라벨과 좌우 · 상하 배치 단추(사용자 지시 2026-11-20 · #333). */}
+      {/* 위 줄 오른쪽 — 등록 · 미등록 라벨과 좌우 · 상하 배치 단추(사용자 지시 2026-11-20 · #333). */}
       <div className="terminal-map-top-actions">
         <ActiveChips
-          counts={statusCounts}
-          active={filters.status}
-          onChange={(status) => {
+          counts={registrationCounts}
+          active={filters.registration}
+          onChange={(registration) => {
             leaveSafely(() => {
-              apply({ status }, true);
+              apply({ registration }, true);
             });
           }}
         />
@@ -710,6 +742,37 @@ export const TerminalProcessMapScreen = () => {
               }}
               clearLabel={messages.common.clear}
             />
+            {/* 단말 유형 · 설치 설비 — 고르는 즉시 적용한다(사용자 지시 2026-11-20 · #333). */}
+            <SelectField
+              label={t.filters.type}
+              options={[
+                { value: '', label: t.filters.all },
+                ...codeSelectOptions(codeNames.typeLookup, filters.type),
+              ]}
+              value={filters.type}
+              placeholder={t.filters.all}
+              className="terminal-map-filter-field"
+              onChange={(type) => {
+                leaveSafely(() => {
+                  apply({ type }, true);
+                });
+              }}
+            />
+            <div className="terminal-map-filter-field">
+              <PagedSelectField
+                label={t.filters.equipment}
+                emptyLabel={t.filters.all}
+                value={filters.equipment}
+                valueLabel={equipmentFilterLabel}
+                queryKey={['terminal-process-map', 'equipment-filter']}
+                fetchPage={fetchEquipments}
+                onChange={(equipment) => {
+                  leaveSafely(() => {
+                    apply({ equipment }, true);
+                  });
+                }}
+              />
+            </div>
             {/* 해제 축이라 누르는 즉시 적용한다. */}
             <div className="field-cell field-cell-unlabeled">
               <Checkbox

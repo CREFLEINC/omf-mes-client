@@ -169,7 +169,7 @@ describe('TerminalProcessMapScreen 조회 조건', () => {
     expect(document.querySelector('.po-board-split.is-stacked')).not.toBeNull();
   });
 
-  it('사용 · 미사용 라벨에 건수가 붙고, 미사용을 누르면 미사용만 서버에 묻는다', async () => {
+  it('등록 · 미등록 라벨에 건수가 붙고, 미등록을 누르면 미등록만 서버에 묻는다', async () => {
     const user = userEvent.setup();
     const listQueries: string[] = [];
     renderWithProviders(<TerminalProcessMapScreen />, {
@@ -179,9 +179,9 @@ describe('TerminalProcessMapScreen 조회 조건', () => {
           respond: (request) => {
             const params = new URL(request.url).searchParams;
             if (params.get('size') !== '1') listQueries.push(params.toString());
-            /* 사용 2건 · 미사용 1건인 단말 목록 */
-            if (params.get('isActive') === 'false') {
-              return jsonResponse(page([terminal(703, 'SYN-TERM-03', { isActive: false })]));
+            /* 미등록만 물으면 미등록 단말 하나 */
+            if (params.get('registrationStatusCode') === 'UNREGISTERED') {
+              return jsonResponse(page([terminal(703, 'SYN-TERM-03', {})]));
             }
             return jsonResponse(page([unregistered, registered]));
           },
@@ -193,14 +193,14 @@ describe('TerminalProcessMapScreen 조회 조건', () => {
     });
     await screen.findByRole('button', { name: 'SYN-TERM-01' });
 
-    const inactive = await screen.findByRole('button', {
-      name: t.chips.filterOn(t.list.inactive),
+    const pending = await screen.findByRole('button', {
+      name: t.chips.filterOn(t.list.registrationPending),
     });
-    expect(inactive).toHaveTextContent('1');
-    await user.click(inactive);
+    expect(pending).toHaveTextContent('1');
+    await user.click(pending);
 
     expect(await screen.findByRole('button', { name: 'SYN-TERM-03' })).toBeInTheDocument();
-    expect(listQueries.at(-1)).toContain('isActive=false');
+    expect(listQueries.at(-1)).toContain('registrationStatusCode=UNREGISTERED');
   });
 
   it('단말 추가 팝업은 닫기(X) 없이 [취소]로만 닫히고, 칸을 고치면 그 칸의 오류가 지워진다', async () => {

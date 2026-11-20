@@ -26,6 +26,9 @@ export const terminalProcessMap = {
     includeInactive: '미사용 포함',
     apply: '조회',
     clear: '초기화',
+    type: '단말 유형',
+    equipment: '설치 설비',
+    all: '전체',
   },
 
   list: {
@@ -52,7 +55,7 @@ export const terminalProcessMap = {
   },
 
   chips: {
-    label: '사용 상태',
+    label: '등록 상태',
     filterOn: (label: string): string => `${label}만 보기`,
     filterOff: (label: string): string => `${label} 거르기 해제`,
   },
@@ -89,6 +92,8 @@ export const terminalProcessMap = {
     cancel: '취소',
     deactivate: '사용 중지',
     deactivated: '단말 사용을 중지했습니다. 기존 작업 기록은 유지됩니다.',
+    activate: '사용 재개',
+    activated: '단말 사용을 재개했습니다.',
     /* 사용자 · 역할 사용 중지 창과 같은 모양(#333). */
     deactivateTitle: '단말 사용 중지',
     deactivateCaption: '사용 중지 대상',

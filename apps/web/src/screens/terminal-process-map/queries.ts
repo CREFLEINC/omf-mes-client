@@ -51,7 +51,9 @@ export const terminalKeys = {
       'list',
       filters.q,
       filters.includeInactive,
-      filters.status,
+      filters.registration,
+      filters.type,
+      filters.equipment,
       filters.page,
       filters.size,
     ] as const,
@@ -74,8 +76,17 @@ const toListQuery = (filters: TerminalFilters) => ({
   ...(filters.q === '' ? {} : { q: filters.q }),
   /* 끄면 보내지 않는다 — 기본이 「사용 중만」이다. */
   ...(filters.includeInactive ? { includeInactive: true } : {}),
-  /* 사용 · 미사용 라벨(#333) — 걸면 그 값만. 「미사용 포함」보다 앞선다(서버 규칙). */
-  ...(filters.status === '' ? {} : { isActive: filters.status === 'active' }),
+  /* 등록 · 미등록 라벨, 단말 유형 · 설치 설비 조건(사용자 지시 2026-11-20 · #333). */
+  ...(filters.registration === ''
+    ? {}
+    : {
+        registrationStatusCode:
+          filters.registration === 'registered'
+            ? ('REGISTERED' as const)
+            : ('UNREGISTERED' as const),
+      }),
+  ...(filters.type === '' ? {} : { terminalTypeCode: filters.type }),
+  ...(filters.equipment === '' ? {} : { equipmentId: Number(filters.equipment) }),
   page: filters.page,
   size: filters.size,
 });
@@ -130,14 +141,14 @@ export const useNextTerminalCode = (typeCode: string): string | null => {
 };
 
 /**
- * 사용 · 미사용 라벨의 건수 — 걸린 다른 조건(검색어)은 두고 상태만 바꿔 센다(사용자 역할 권한 관리와 같다 · #333).
- * 반환 순서는 [사용, 미사용]이다.
+ * 등록 · 미등록 라벨의 건수 — 걸린 다른 조건은 두고 등록 여부만 바꿔 센다(#333).
+ * 반환 순서는 [등록, 미등록]이다.
  */
-export const useTerminalStatusCounts = (filters: TerminalFilters): (number | undefined)[] => {
+export const useTerminalRegistrationCounts = (filters: TerminalFilters): (number | undefined)[] => {
   const { client } = useApiClient();
   const results = useQueries({
-    queries: (['active', 'inactive'] as const).map((status) => {
-      const next: TerminalFilters = { ...filters, status, page: 1 };
+    queries: (['registered', 'unregistered'] as const).map((registration) => {
+      const next: TerminalFilters = { ...filters, registration, page: 1 };
 
       return {
         queryKey: [...terminalKeys.list(next), 'count'] as const,
@@ -252,6 +263,75 @@ export const useTerminalUpdate = (
     keyLifetime: 'per-attempt',
     onSuccess,
   });
+};
+
+/** 사용 재개 — 사용 중지한 단말을 다시 켠다(#333). 본문이 없는 액션이라 중지와 같은 방식. */
+export const useTerminalActivate = (
+  terminalId: number | null,
+  onSuccess: () => void,
+): MasterWriteResult<Record<string, never>> => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<Record<string, never>, Terminal>({
+    request: (_body, headers) =>
+      client.POST('/mdm/terminals/{terminalId}:activate', {
+        params: {
+          path: { terminalId: terminalId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': requireIfMatch(headers),
+          },
+        },
+      }),
+    etagPath: terminalId === null ? null : terminalDetailPath(terminalId),
+    invalidateKeys: [terminalKeys.all],
+    knownFields: [],
+    keyLifetime: 'per-attempt',
+    onSuccess,
+  });
+};
+
+/** 설치 설비 선택칸이 한 번에 받는 건수. */
+const EQUIPMENT_PAGE_SIZE = 50;
+
+/** 설치 설비 선택칸의 쪽 받기 — 사용 중인 설비만, 검색은 서버(코드 · 이름). 폼과 조회 줄이 함께 쓴다. */
+export const useEquipmentPages = () => {
+  const { client } = useApiClient();
+
+  return async (q: string, page: number) => {
+    const data = await runRequest(() =>
+      client.GET('/mdm/equipments', {
+        params: { query: { ...(q === '' ? {} : { q }), page, size: EQUIPMENT_PAGE_SIZE } },
+      }),
+    );
+    return {
+      options: data.items
+        .filter((item) => item.isActive)
+        .map((item) => ({
+          value: String(item.equipmentId),
+          label: `${item.equipmentCode} · ${item.equipmentName}`,
+        })),
+      total: data.page.total,
+    };
+  };
+};
+
+/** 주소에 실린 설치 설비 조건의 이름 — 새로고침해도 칸에 이름이 보이게. */
+export const useEquipmentLabel = (equipmentId: string): string => {
+  const { client } = useApiClient();
+  const query = useQuery({
+    queryKey: ['terminal-process-map', 'equipment-label', equipmentId],
+    enabled: equipmentId !== '',
+    staleTime: 300_000,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/equipments/{equipmentId}', {
+          params: { path: { equipmentId: Number(equipmentId) } },
+        }),
+      ).then(({ equipment }) => `${equipment.equipmentCode} · ${equipment.equipmentName}`),
+  });
+
+  return query.data ?? '';
 };
 
 /**

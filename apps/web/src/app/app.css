@@ -18303,7 +18303,8 @@ dialog.layout-editor-dialog {
 }
 
 /* 열 폭은 정한 값 그대로, 남는 폭은 기능 칸이 나눠 갖는다(열 끌기 없음 · #333). */
-.terminal-map-matrix table {
+/* 공용 표의 min-width: 0 보다 무거워야 선다 — 좁으면 기능 칸이 눌리지 않고 가로로 구른다. */
+.inspection-queue-table.terminal-map-matrix table:nth-child(n) {
   width: 100%;
   min-width: 56rem;
   table-layout: fixed;

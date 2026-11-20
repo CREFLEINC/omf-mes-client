@@ -15,6 +15,7 @@ import {
   type TerminalCodeNames,
 } from './lookups';
 import { PagedSelectField } from './paged-select-field';
+import { useEquipmentPages } from './queries';
 import { SelectField } from './select-field';
 import type { TerminalDraft, TerminalErrors } from './terminal-draft';
 import type { SelectOption } from './types';
@@ -88,22 +89,7 @@ export const TerminalForm = ({
     target.current.focus();
   });
   /* 사용 중인 설비 · 창고만, 서버 검색(코드 · 이름) · 쪽 넘김. */
-  const fetchEquipments = async (q: string, page: number) => {
-    const data = await runRequest(() =>
-      client.GET('/mdm/equipments', {
-        params: { query: { ...(q === '' ? {} : { q }), page, size: PICK_PAGE_SIZE } },
-      }),
-    );
-    return {
-      options: data.items
-        .filter((item) => item.isActive)
-        .map((item) => ({
-          value: String(item.equipmentId),
-          label: `${item.equipmentCode} · ${item.equipmentName}`,
-        })),
-      total: data.page.total,
-    };
-  };
+  const fetchEquipments = useEquipmentPages();
   const fetchWarehouses = async (q: string, page: number) => {
     const plantId = Number(draft.plant);
     const data = await runRequest(() =>

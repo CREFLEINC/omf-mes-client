@@ -9934,6 +9934,10 @@ export interface paths {
           includeInactive?: boolean;
           /** @description 사용 여부 — 주면 그 값만 준다(true=사용, false=미사용). includeInactive 의 기본(사용만)보다 앞선다. 근거: omf-all-around#333 */
           isActive?: boolean;
+          /** @description 설치 설비 — 주면 그 설비에 붙은 단말만. 근거: omf-all-around#333 */
+          equipmentId?: number;
+          /** @description 등록 여부 — REGISTERED=기기 등록 완료(지금 세대 토큰으로 확인됨), UNREGISTERED=그 밖. 근거: omf-all-around#333 */
+          registrationStatusCode?: 'REGISTERED' | 'UNREGISTERED';
           /** @description 단말 코드 검색 */
           q?: string;
           page?: number;
@@ -10173,6 +10177,88 @@ export interface paths {
       };
     };
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/mdm/terminals/{terminalId}:activate': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 단말 다시 사용
+     * @description 사용 중지한 단말을 다시 켠다. 물리 삭제를 두지 않으므로 되돌리는 경로가 이 하나다. 근거: omf-all-around#333
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+          'If-Match': components['parameters']['IfMatchVersion'];
+        };
+        path: {
+          terminalId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 재사용됨 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Terminal'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한에 막혔다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없다 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 충돌 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ConflictResponse'];
+          };
+        };
+      };
+    };
     delete?: never;
     options?: never;
     head?: never;
