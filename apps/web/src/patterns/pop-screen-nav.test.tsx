@@ -127,10 +127,11 @@ afterEach(() => {
 });
 
 describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
-  /* 사번 칩이 곧 [사용자 전환] 버튼이다(사용자 지시 2026-11-17 · #291). */
-  it('맨 위 줄에 단말·사번 버튼이 서고, 사번을 누르면 사용자 전환으로 간다', async () => {
+  /* 사번 칩이 곧 [사용자 전환] 버튼이다(사용자 지시 2026-11-17 · #291) — 누르면 사번을 지우고 사번 입력 창을 연다(2026-11-20). */
+  it('맨 위 줄에 단말·사번 버튼이 서고, 사번을 누르면 사번을 지우고 홈에서 사번 입력 창을 연다', async () => {
     const user = userEvent.setup();
-    setup();
+    const onLogin = vi.fn();
+    setup({ onLogin });
 
     expect(screen.getByText(header.terminalLabel('POP-OA-01'))).toBeInTheDocument();
     expect(screen.getByText(header.workerLabel('2048', null))).toBeInTheDocument();
@@ -139,6 +140,7 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
       screen.getByRole('button', { name: new RegExp(`^${messages.popChrome.userSwitch}`, 'u') }),
     );
     expect(screen.getByText('지금: /pop/home')).toBeInTheDocument();
+    expect(onLogin).toHaveBeenCalledOnce();
   });
 
   /* 작업 단계 화면(자재 투입 등)은 탭에 두지 않고 작업 지시 목록 탭 아래 단계 줄이 연다(#291 · 사용자 승인 2026-11-17). */
@@ -524,6 +526,8 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
       name: new RegExp(`^${messages.popChrome.login}`, 'u'),
     });
     expect(login).toBeEnabled();
+    /* 사번이 없으면 빨강 강조. */
+    expect(login).toHaveClass('pop-nav-top__login');
     expect(login).toHaveTextContent(header.workerUnset);
     expect(login).toHaveTextContent(messages.popChrome.login);
     await user.click(login);

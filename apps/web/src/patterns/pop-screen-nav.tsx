@@ -258,6 +258,10 @@ const TopBar = ({
 
   return (
     <div className="pop-nav-top">
+      {/* 연결 표시는 모든 화면에 같게 선다(사용자 지시 2026-11-17 · #291) — 줄 맨 앞, 제품 이름 왼쪽(사용자 지시 2026-11-20 · #334). */}
+      <Chip variant="status" size="md" status={isOnline ? 'success' : 'warning'}>
+        {isOnline ? common.online : common.offline}
+      </Chip>
       <span className="pop-nav-top__brand">{nav.brand}</span>
       {/* 단말은 제품 이름 바로 오른쪽(사용자 지시 2026-11-17). 나머지 상태·작업자는 오른쪽 끝에 모은다. */}
       <span className="pop-nav-top__chip pop-nav-top__terminal">
@@ -282,10 +286,6 @@ const TopBar = ({
       )}
       {/* 화면이 보내는 미전송 표시(`PopTopStatus`) 자리 — 미전송이 있을 때만 선다. */}
       <span className="pop-nav-top__status" ref={statusRef} />
-      {/* 연결 표시는 모든 화면에 같게 선다(사용자 지시 2026-11-17 · #291). */}
-      <Chip variant="status" size="md" status={isOnline ? 'success' : 'warning'}>
-        {isOnline ? common.online : common.offline}
-      </Chip>
       {/* 화면이 보내는 프린터 칩(`PopTopPrinter`) 자리 — 서면 아래 기본 프린터 표시는 감춘다. */}
       <span className="pop-nav-top__screen-printer" ref={printerRef} />
       {printer !== null && <span className="pop-nav-top__printer">{printer}</span>}
@@ -295,7 +295,8 @@ const TopBar = ({
        * 없으면 「사번 미입력 | 로그인」: 누르면 사번 입력 창을 연다(사용자 지시 2026-11-20 · #334). 사번 전 잠금을 받지 않는다.
        */}
       <Button
-        className="pop-logout"
+        /* 사번이 없으면 빨강 강조(남은 작업 단추와 같은 빨간 테두리 · 글자 — 사용자 지시 2026-11-20). */
+        className={workerNo === null ? 'pop-logout pop-nav-top__login' : 'pop-logout'}
         variant="outlined"
         size="md"
         title={workerNo === null ? undefined : headerText.workerTitle(workerNo, workerName)}
@@ -308,8 +309,10 @@ const TopBar = ({
             onLogin?.();
             return;
           }
+          /* [전환] — 지금 작업자를 지우고 바로 사번 입력 창을 연다(사용자 지시 2026-11-20). [취소]하면 사번 없는 채로 둔다. */
           setWorkerSession(null);
           void navigate(POP_ENTRY_SCREEN_PATH, { replace: true });
+          onLogin?.();
         }}
       >
         {USER_ICON}

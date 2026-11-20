@@ -201,7 +201,7 @@ export const popOqcInspection = {
     },
     bar: {
       save: 'Lưu kết quả',
-      reinspect: 'Tái kiểm tra',
+      reinspect: 'Thêm tái kiểm tra',
       saving: 'Đang lưu…',
       saved: (seqNo: number): string => `Đã lưu kết quả lần ${String(seqNo)}.`,
       ready: 'Có thể lưu. Phán định sẽ được xác nhận khi hoàn tất xuất hàng.',

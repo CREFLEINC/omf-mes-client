@@ -235,7 +235,7 @@ export const popOqcInspection = {
       save: '결과 저장',
       saving: '저장 중…',
       saved: (seqNo: number): string => `${String(seqNo)}회차 결과를 저장했습니다.`,
-      reinspect: '재검사',
+      reinspect: '재검사 추가',
       ready: '저장할 수 있습니다. 판정은 출하 완료 때 확정됩니다.',
       blocked: {
         match: '검사 대상 LOT을 1개 이상 고르세요.',

@@ -168,11 +168,11 @@ export const PopLoginDialog = ({ onClose }: { onClose: () => void }) => {
   }, [submitted, lookup.isError]);
 
   return (
-    /* 제목 · 닫기(X) 없는 창 — 안의 「사번 입력」 카드가 제목을 대신하고, 아래 [취소]로 닫는다. */
+    /* 제목 · 닫기(X) 없는 창 — 안의 「사번 입력」 카드가 제목을 대신하고, 아래 [닫기]로 닫는다. */
     <PuDialog
       ariaLabel={t.input.heading}
       onClose={onClose}
-      footer={<PuButton onClick={onClose}>{messages.common.cancel}</PuButton>}
+      footer={<PuButton onClick={onClose}>{messages.common.close}</PuButton>}
     >
       <div className="wa-login">
         <KeypadPanel

@@ -446,6 +446,11 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     );
     const reinspect = await screen.findByRole('button', { name: ps.bar.reinspect });
     expect(screen.queryByRole('region', { name: /회차 (재)?검사 결과 등록/u })).toBeNull();
+    /* 판정 완료는 탭 대신 피킹 LOT 현황 · 검사 결과 두 카드(2026-11-20). */
+    expect(screen.getByRole('region', { name: ps.lotsTitle })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: s.results.title })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: new RegExp(s.results.title, 'u') })).toBeNull();
+    expect(reinspect).toHaveClass('pu-btn', 'primary');
     expect(screen.queryByRole('button', { name: ps.bar.save })).toBeNull();
     expect(screen.queryByRole('button', { name: pop.serial.open })).toBeNull();
 
@@ -470,5 +475,14 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     expect(screen.getByRole('region', { name: ps.form.heading(3) })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: ps.bar.reinspect })).toBeNull();
     expect(screen.queryByRole('button', { name: messages.common.cancel })).toBeNull();
+  });
+
+  it('#334 판정 대기인데 저장된 결과가 없으면 「검사 결과」 탭 없이 피킹 LOT 현황 제목만 선다', async () => {
+    const user = userEvent.setup();
+    renderPop('900028', shipmentOqcRequest({ results: [] }));
+
+    await openRequest(user);
+    expect(screen.getByRole('region', { name: ps.lotsTitle })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: new RegExp(s.results.title, 'u') })).toBeNull();
   });
 });

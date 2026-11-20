@@ -292,6 +292,41 @@
   overflow: hidden;
 }
 
+/*
+ * 판정 완료 — 피킹 LOT 현황 | 검사 결과 두 카드를 나란히(사용자 지시 2026-11-20). 탭 카드와 같은 몫(4)을 갖고 두 카드는 같은 높이.
+ * 좁은 화면(≤1100)은 위아래로 쌓는다.
+ */
+.oqc-u .pop-oqc-shipment > .pop-oqc-shipment-split {
+  flex: 4 1 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  min-height: min-content;
+}
+
+.oqc-u .pop-oqc-shipment-split > .pop-oqc-shipment-box {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 나눈 카드는 좁다 — 회차 줄의 LOT 칩은 칸 안에서 줄이고, 「검사자 · 시각」은 다음 줄 오른쪽으로 내린다(겹치지 않게). */
+.oqc-u .pop-oqc-shipment-split .pop-oqc-shipment-result__body {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.oqc-u .pop-oqc-shipment-split .pop-oqc-shipment-result__body > * {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.oqc-u .pop-oqc-shipment-split .pop-oqc-shipment-result > :last-child {
+  flex-basis: 100%;
+  text-align: end;
+}
+
 /* 두 카드는 4 : 6 으로 나누되 줄 한 개는 늘 든다(목록 칸 최소 높이 = 첫 줄 높이 · `useFitPage`). */
 .oqc-u .pop-oqc-shipment > .pop-oqc-entry-card {
   flex: 6 1 0;
@@ -309,6 +344,22 @@
 .oqc-u .pop-oqc-entry-card > .pu-card-body > .pu-fit {
   flex: 1 1 0;
   min-height: 0;
+}
+
+/* 결과가 없을 때 탭 대신 서는 제목 — 보통 카드 제목(`pu-card-head h2`)과 같은 글자. */
+.oqc-u .pop-oqc-shipment-box__title {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 17px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* 결과 등록의 두 구획 탭은 글자 폭만큼 — 위 카드의 [피킹 LOT 현황 | 검사 결과] 탭과 같은 모양(사용자 지시 2026-11-20). */
+.oqc-u .pop-oqc-entry-card > .pu-card-head > .pu-seg {
+  flex: none;
 }
 
 .oqc-u .pop-oqc-shipment-box__head .pu-pager,
@@ -525,6 +576,12 @@
 
 /* 좁은 화면 — 판정 타일 셋이 다 보이게 두 칸을 반씩. */
 @media (max-width: 1100px) {
+  /* 결과 등록이 열려 있으면 나란히 둔다 — 위아래로 쌓으면 결과 등록 칸이 남지 않는다(1024 실측). */
+  .oqc-u .pop-oqc-shipment > .pop-oqc-shipment-split:not(.is-entry) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
   .oqc-u .pop-oqc-entry {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }

@@ -148,11 +148,11 @@ describe('홈 사번 입력 — 확인', () => {
     expect(screen.getByRole('status', { name: '현재 경로' })).toHaveTextContent('/pop/home');
   });
 
-  it('[취소]는 정하지 않고 창을 닫는다', async () => {
+  it('[닫기]는 정하지 않고 창을 닫는다', async () => {
     renderLogin();
 
     await typeWorkerNo('900028');
-    await userEvent.click(screen.getByRole('button', { name: messages.common.cancel }));
+    await userEvent.click(screen.getByRole('button', { name: messages.common.close }));
 
     expect(closed).toHaveBeenCalledOnce();
     expect(current()).toHaveTextContent('');

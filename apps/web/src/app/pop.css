@@ -4176,6 +4176,26 @@
   font-weight: 700;
 }
 
+/* 사번이 없을 때 「사번 미입력 | 로그인」 — 빨강 채움 · 흰 글자(홈 탭 · 주 동작과 같은 빨강 · 사용자 지시 2026-11-20). */
+.pop-nav-top .pop-logout.pop-nav-top__login {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.pop-nav-top .pop-logout.pop-nav-top__login:hover {
+  background: color-mix(in srgb, var(--primary) 85%, var(--on-primary));
+}
+
+.pop-nav-top .pop-logout.pop-nav-top__login:focus-visible {
+  outline: 2px solid var(--on-primary);
+  outline-offset: 2px;
+}
+
+.pop-nav-top__login .pop-nav-top__switch {
+  border-inline-start-color: color-mix(in srgb, var(--on-primary) 60%, transparent);
+}
+
 .pop-nav-top .pop-logout .pop-nav-icon {
   inline-size: 16px;
   block-size: 16px;
