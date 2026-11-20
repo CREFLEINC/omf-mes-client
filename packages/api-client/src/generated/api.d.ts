@@ -419,7 +419,7 @@ export interface paths {
         query?: {
           /** @description locationCode 가 없으면 필수(없으면 400 REQUIRED). Location 은 창고를 고른 뒤에 본다 — W-06-07 §3. 위치 코드는 창고 위치 코드(Warehouse.locationPrefix)로 시작하고 모든 창고를 통틀어 유일하다(omf-all-around#292) — 위치 «코드» 스캔은 locationCode 만 보내도 한 건이 집힌다. 함께 보내면 그 창고 안에서만 찾는다. */
           warehouseId?: number;
-          /** @description 코드·명칭 검색 */
+          /** @description 코드·명칭·별칭(aliasName) 검색 */
           q?: string;
           /** @description 위치 코드 정확 일치. 스캔한 코드로 한 건을 집을 때 쓰며 0건 또는 1건이 나온다 — 부분 일치 검색은 q 를 쓴다. ⛔ q 로 받은 페이지를 화면이 걸러 쓰는 것으로는 성립하지 않는다 — 부분 일치가 여러 건을 낸다 */
           locationCode?: string;
@@ -536,7 +536,7 @@ export interface paths {
     put?: never;
     /**
      * 랙 하나 만들기 — 랙과 그 밑 층·셀
-     * @description 구역 밑에 랙 1개와 층 levelCount 개, 층마다 셀 cellCountPerLevel 개를 한 번에 만든다. 응답은 만든 랙이다 — 층·셀은 GET /mdm/locations?parentLocationId= 로 받는다. 400: 구역이 아니거나(사람이 만든 켜진 구역만) 구역에 재고가 있을 때(parentLocationId)
+     * @description 구역 밑에 랙 1개와 층 levelCount 개, 층마다 셀 cellCountPerLevel 개를 한 번에 만든다. 응답은 만든 랙이다 — 층·셀은 GET /mdm/locations?parentLocationId= 로 받는다. 400: 구역이 아니거나(사람이 만든 켜진 구역만) 구역에 재고가 있을 때(parentLocationId) · 층 수가 0 인데 셀 수가 0 이 아닐 때(cellCountPerLevel)
      */
     post: {
       parameters: {
@@ -1138,8 +1138,6 @@ export interface paths {
     /**
      * 사용자 등록
      * @description 근거: W-CO-02 §5-1 「사용자 추가」 · 공유계약 A-1
-     *
-     *     서버 구현 기준: 비밀번호를 함께 정할 수 있다. 생략하면 응답 temporaryPassword로 임시 비밀번호가 한 번만 내려온다 — 화면은 이 값을 그 자리에서 관리자에게 보여 주어야 한다. 다시 받을 길은 :reset-password로 새로 뽑는 것뿐이다.
      *
      *     서버 구현 기준: 비밀번호를 함께 정할 수 있다. 생략하면 응답 temporaryPassword로 임시 비밀번호가 한 번만 내려온다 — 화면은 이 값을 그 자리에서 관리자에게 보여 주어야 한다. 다시 받을 길은 :reset-password로 새로 뽑는 것뿐이다.
      */
@@ -8831,7 +8829,7 @@ export interface paths {
           /** @description 필수 — 파티션 스캔 방지 */
           occurredFrom: string;
           occurredTo: string;
-          /** @description 감사 대상으로 거른다. 감사 대상 유형 — 사용자(APP_USER) · 역할(ROLE) · 작업자(WORKER) · 단말(TERMINAL) · 품목(ITEM) · 라우팅(ROUTING) · 검사기준 버전(INSPECTION_PLAN_VERSION) · 검사표 기준 버전(INSPECTION_SHEET_TEMPLATE · omf-all-around#214). ⭐ 값 일곱은 사용자와 협의해 확정했다(2026-09-03) — 변경 이력이 «남아야 하는» 마스터만 든다. ⛔ 다형 참조 판별자라 값이 «우리 계약의 대상 표 이름»이다 — 고객이 늘릴 수 없고 공통코드 그룹으로 받지 않는다(A-10 · A-16 「가르는 물음 넷」 — 「가」·「나」 참). ⚠ 대상이 늘면 «화면이 문자열을 정해 넣기 전에» 계약이 먼저 값을 갖는다(A-16). ⚠ 개체 마스터(창고·위치·설비·금형·거래처 등)는 여기 들지 않는다 — 「무엇이 있나」가 바뀔 뿐 과거 판정이 소급해 달라지지 않고, B-4 물리 삭제 금지와 version_no 낙관적 잠금이 이미 받는다. 버전을 가진 마스터도 빠진다 — 결정 07 이 「변경 이력 요구는 Rev 이력 그 자체로 충족」이라 했다. */
+          /** @description 감사 대상으로 거른다. 감사 대상 유형 — 사용자(APP_USER) · 역할(ROLE) · 작업자(WORKER) · 단말(TERMINAL) · 품목(ITEM) · 라우팅(ROUTING) · 검사기준 버전(INSPECTION_PLAN_VERSION) · 검사표 기준 버전(INSPECTION_SHEET_TEMPLATE · omf-all-around#214). ⭐ 값 일곱은 사용자와 협의해 확정했다(2026-09-03) — 변경 이력이 «남아야 하는» 마스터만 든다. ⛔ 다형 참조 판별자라 값이 «우리 계약의 대상 표 이름»이다 — 고객이 늘릴 수 없고 공통코드 그룹으로 받지 않는다(A-10 · A-16 「가르는 물음 넷」 — 「가」·「나」 참). ⚠ 대상이 늘면 «화면이 문자열을 정해 넣기 전에» 계약이 먼저 값을 갖는다(A-16). ⚠ 개체 마스터(창고·위치·설비·금형·거래처 등)는 여기 들지 않는다 — 「무엇이 있나」가 바뀔 뿐 과거 판정이 소급해 달라지지 않고, B-4 물리 삭제 금지와 version_no 낙관적 잠금이 이미 받는다. 버전을 가진 마스터도 빠진다 — 결정 07 이 「변경 이력 요구는 Rev 이력 그 자체로 충족」이라 했다. ⭐ ERP W/O(PRODUCTION_ORDER)는 마스터가 아니지만 사람이 «알고 허용한 것»의 기록이 남아야 해서 든다(사용자 결정 — 기록·추적 필수) — 계획 제안 확정이 남긴다. eventTypeCode 는 시스템 소유 값 DELETE(작성중 계획 대체)·UPDATE(나머지)이고 사건은 afterValue.eventCode, 내용은 afterValue.detail 이다: PLAN_DRAFT_REPLACED(beforeValue.drafts 지운 작성중 계획의 id·번호·판·계획일·수량 · detail.newPlanIds) · FG_WAREHOUSE_OVERRIDDEN(beforeValue SL_CD·그 MES 창고·입고 위치 · detail 계획·적용 창고·W/O 마다 완제품 위치·확인 응답) · PLAN_DATE_USER_ON_HOLIDAY(beforeValue.systemDate · detail 계획·계획일·근무일 판정). performedBy 는 확정한 사용자, correlationId 는 확정 요청의 Idempotency-Key 다. ⭐ 품목(ITEM)에는 W/O 배포 확인에서 넣은 단위 환산이 남는다 — eventTypeCode CREATE · afterValue.eventCode ITEM_UOM_CONVERSION_ENTERED_AT_RELEASE · detail 은 itemUomConversionId·fromUomId(재고 단위)·toUomId(BOM 단위)·conversionRate·effectiveFrom·replacedSource(COMMON|NONE)·workOrderId·bomComponentIds · performedBy 는 배포한 사용자 · correlationId 는 배포 요청의 Idempotency-Key 다(omf-all-around#297). 생산계획·작업지시 화면은 이 횡단 조회가 아니라 ERP W/O 한 건의 조회(GET /planning/production-orders/{productionOrderId}/audit-events)를 부른다 — 이 조회의 권한은 원래 화면 그대로다. */
           targetTypeCode?:
             | 'APP_USER'
             | 'ROLE'
@@ -8840,12 +8838,13 @@ export interface paths {
             | 'ITEM'
             | 'ROUTING'
             | 'INSPECTION_PLAN_VERSION'
-            | 'INSPECTION_SHEET_TEMPLATE';
+            | 'INSPECTION_SHEET_TEMPLATE'
+            | 'PRODUCTION_ORDER';
           targetId?: number;
           /** @description 감사 이벤트 유형 — 생성(CREATE) · 수정(UPDATE) · 삭제(DELETE) · 권한 부여(GRANT) · 권한 회수(REVOKE). ⭐ GRANT·REVOKE 를 둔 근거는 W-CO-02 §8-8 이다 — 「누가 언제 권한을 줬나」가 남는 곳이 그동안 하나도 없었고 감사 이력이 그것을 받기로 했다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 무엇을 기록할지는 시스템이 정한다 — 고객이 늘리면 기록되지 않는 유형이 생긴다. 값 목록은 GET /mdm/code-values?codeGroupCode=AUDIT_EVENT_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
           eventTypeCode?: string;
           performedBy?: number;
-          /** @description 한 트랜잭션의 여러 이벤트를 묶는다[추정] */
+          /** @description 한 트랜잭션의 여러 이벤트를 묶는다[추정]. ERP W/O(PRODUCTION_ORDER) 기록은 그것을 남긴 계획 제안 확정 요청의 Idempotency-Key 다 */
           correlationId?: string;
           page?: number;
           size?: number;
@@ -9929,7 +9928,7 @@ export interface paths {
       parameters: {
         query?: {
           plantId?: number;
-          /** @description 단말 유형 — 고정 스테이션(POP · Electron 키오스크 · 산업용 패널 PC)과 손에 드는 기기(MOBILE · Capacitor Android)가 여기서 갈린다. ⭐ 폼팩터는 결정 16 이 확정한 아키텍처 축이라 고객 관행으로 늘지 않는다. ⚠ 관리웹은 단말 마스터에 등록하지 않는다 — 현장 단말만 여기 든다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 값 목록은 GET /mdm/code-values?codeGroupCode=TERMINAL_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
+          /** @description 단말 유형 — 고정 스테이션(POP · Electron 키오스크 · 산업용 패널 PC) · 손에 드는 기기(MOBILE · Capacitor Android) · 추적 시스템 연동(TRACKING_SYSTEM · 2026-11-12). ⚠ 관리웹은 단말 마스터에 등록하지 않는다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 값 목록은 GET /mdm/code-values?codeGroupCode=TERMINAL_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
           terminalTypeCode?: string;
           includeInactive?: boolean;
           /** @description 사용 여부 — 주면 그 값만 준다(true=사용, false=미사용). includeInactive 의 기본(사용만)보다 앞선다. 근거: omf-all-around#333 */
@@ -14490,6 +14489,207 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/integration/tracking-system/stock-moves': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 추적 시스템 포장 입고이동 받기
+     * @description 추적 시스템 연동(TRACKING_SYSTEM) 단말 토큰 전용 — 계정 세션·POP·MOBILE 토큰은 401. flowtrack 이 W/O 하나의 포장 묶음을 보낸다. 한 트랜잭션에서 실적(양품 = 시리얼 수 · PL13 시스템 작업자) → 시리얼 등록(보낸 번호 그대로) → 제품 입고(W/O 완제품 위치 · 정상·가용 · 적치 지시 없음) → 자재 차감(W/O 계획 BOM 을 PL13 기본 BOM 이 있는 구성품까지 풀어 운영 정책 BACKFLUSH_WAREHOUSE 창고의 맨 아래 위치에서 오래된 LOT 부터 · 소수 6자리 · 모자란 몫은 미차감으로 남기고 입고는 막지 않는다) → 양품 합이 지시수량이면 W/O 마감. W/O 는 단말 공장에서만 찾는다. Idempotency-Key 는 transmissionId 와 같아야 한다. 처리한 transmissionId 는 기한 없이 기억해, 다시 오면 아무것도 하지 않고 200(replayed=true)이다. 거절한 전송은 기억하지 않는다 — 원인을 고친 뒤 같은 전송을 다시 보내면 처리한다. 근거: flowtrack 연동 제안 §3-3 · 사용자 결정 2026-11-16
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['TrackingStockMove'];
+        };
+      };
+      responses: {
+        /** @description 처리함 · 이미 처리한 전송(replayed=true) */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['TrackingTransmissionResult'];
+          };
+        };
+        /** @description INVALID — Idempotency-Key ≠ transmissionId · 모르는 W/O(다른 공장 W/O 도) · 품목이 W/O 와 다름 · qty ≠ 시리얼 수 · 본문 안에서 겹친 시리얼 · W/O 에 완제품 위치가 없음 · 생산 LOT 이 하나가 아님 · 시스템 작업자가 없음 · 자재 차감 창고(운영 정책 BACKFLUSH_WAREHOUSE)가 없음. STATE_LOCKED — 마감·취소된 W/O · 실적 뒤에도 생산 LOT 이 정상이 아님(MES 공정 검사 기준·LOT 보류). RANGE — 양품 합이 지시수량을 넘음. UNIQUE_VIOLATION — MES 에 이미 있는 시리얼 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 토큰이 없거나 추적 시스템 연동 단말 토큰이 아니다(계정 세션 포함) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/integration/tracking-system/stock-issues': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 추적 시스템 출하 출고 받기
+     * @description 추적 시스템 연동(TRACKING_SYSTEM) 단말 토큰 전용 — 계정 세션·POP·MOBILE 토큰은 401. flowtrack 이 컨테이너 하나의 출하를 보낸다(그 컨테이너 시리얼의 입고이동을 모두 보낸 뒤). 한 트랜잭션에서 시리얼 → LOT → 그 W/O 완제품 창고의 정상·가용 재고(W/O 완제품 위치 먼저)를 D/O 마다 출고 전표 하나(유형 SHIPMENT · 원천 TRACKING_TRANSMISSION · 비고에 컨테이너·VI·인보이스·D/O 번호)로 빼고 시리얼을 SHIPPED 로 바꾼다. 시리얼은 단말 공장에서만 찾는다. 출고 시각은 받은 시각이다. ERP 로 보내지 않는다. Idempotency-Key 는 transmissionId 와 같아야 한다. 처리한 transmissionId 는 기한 없이 기억해, 다시 오면 아무것도 하지 않고 200(replayed=true)이다. 거절한 전송은 기억하지 않는다 — 원인을 고친 뒤 같은 전송을 다시 보내면 처리한다. 근거: flowtrack 연동 제안 §3-4 · 사용자 결정 2026-11-17
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['TrackingStockIssue'];
+        };
+      };
+      responses: {
+        /** @description 처리함 · 이미 처리한 전송(replayed=true) */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['TrackingTransmissionResult'];
+          };
+        };
+        /** @description INVALID — Idempotency-Key ≠ transmissionId · qty ≠ 줄 qty 합 · 줄 qty ≠ 시리얼 수 · 본문 안에서 겹친 시리얼 · MES 에 없는 시리얼(다른 공장 시리얼도) · 시리얼의 품목이 줄의 품목과 다름 · LOT 의 W/O 에 완제품 위치가 없음 · 한 D/O 의 제품이 창고 둘 이상. STATE_LOCKED — 이미 출고된 시리얼 · LOT 이 정상이 아니거나 보류 중. NEGATIVE_BALANCE — 출고할 수 있는 재고가 모자람 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 토큰이 없거나 추적 시스템 연동 단말 토큰이 아니다(계정 세션 포함) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/integration/tracking-system/work-order-closes': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 추적 시스템 마감 보고 받기
+     * @description 추적 시스템 연동(TRACKING_SYSTEM) 단말 토큰 전용 — 계정 세션·POP·MOBILE 토큰은 401. flowtrack 이 W/O 를 닫으며 보낸다(그 W/O 의 입고이동을 모두 보낸 뒤). 한 트랜잭션에서 qty 만큼 실적(PL13 시스템 작업자) → 제품 입고(W/O 완제품 위치 · 정상·가용) → 자재 차감(입고이동과 같다) → 마감(마감자 PL13 시스템 작업자). S410(시리얼 없음)은 만든 수, 시리얼 품목은 0 이다 — 시리얼 품목의 양품은 입고이동으로 온다. 처분·사유는 관리웹 마감과 같은 규칙이다: 양품 합이 지시수량보다 적으면 remainderDispositionCode·reasonCode 가 둘 다 필요하고, 지시수량이면 둘 다 비운다. reasonCode 는 WORK_ORDER_COMPLETION_VARIANCE_REASON 의 사용 중인 코드다. remarks 는 W/O 비고에 그대로 남긴다. 양품 합이 0 이면 마감하지 않고 W/O 를 취소한다(생산 LOT 폐번) — 취소 사유는 reasonCode 가 WORK_ORDER_CANCEL_REASON 에도 있으면 같은 값, 없으면 OTHER 다. 실적·입고 시각은 받은 시각이다. ERP 로 보내지 않는다. W/O 는 단말 공장에서만 찾는다. Idempotency-Key 는 transmissionId 와 같아야 한다. 처리한 transmissionId 는 기한 없이 기억해, 다시 오면 아무것도 하지 않고 200(replayed=true)이다. 거절한 전송은 기억하지 않는다. 근거: flowtrack 연동 제안 §3-5 · 사용자 결정 2026-11-12 · 2026-11-17
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['TrackingWorkOrderClose'];
+        };
+      };
+      responses: {
+        /** @description 처리함 · 이미 처리한 전송(replayed=true) */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['TrackingTransmissionResult'];
+          };
+        };
+        /** @description INVALID — Idempotency-Key ≠ transmissionId · 모르는 W/O(다른 공장 W/O 도) · 품목이 W/O 와 다름 · W/O 에 완제품 위치가 없음 · 생산 LOT 이 하나가 아님 · 시스템 작업자가 없음 · 자재 차감 창고가 없음 · 시리얼 품목 W/O 에 qty 가 1 이상 · 정상 마감에 사유 · 사용하지 않는 사유 코드. STATE_LOCKED — 마감·취소된 W/O · 생산 LOT 이 정상이 아님. RANGE — 양품 합이 지시수량을 넘음. REMAINDER_DISPOSITION_REQUIRED — 미달인데 처분이 없음. REMAINDER_DISPOSITION_NOT_ALLOWED — 정상인데 처분이 있음. REQUIRED — 미달인데 사유가 없음 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 토큰이 없거나 추적 시스템 연동 단말 토큰이 아니다(계정 세션 포함) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description OPEN_SESSION_EXISTS — 그 W/O 에 열린 작업 세션(POP)이 있다 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/mdm/shifts': {
     parameters: {
       query?: never;
@@ -16212,7 +16412,7 @@ export interface paths {
           inboundLotId?: number;
           /** @description 입하 LOT 번호 정확 일치 — inboundLotId 와 같은 범위 조건. 근거: 피처 005 FR-035 · D-29 부분 출고 분할 LOT(피처 008)은 입하 LOT 칸이 비어 있어 원래 LOT(조상)의 입하 LOT 으로 내고, 입하 LOT 으로 거르면 원래 LOT 에서 나온 분할 LOT 도 함께 나온다. */
           inboundLotNo?: string;
-          /** @description 품질 상태로 거른다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED · 공유계약 G-32). ⛔ 목록은 서버가 갖는다 — 값을 화면에 박지 않는다(고객이 W-06-06 에서 바꾼다 · 공유계약 G-31 마스터안전형). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
+          /** @description 품질 상태로 거른다 — 응답 qualityStatusCode 와 같은 기준(LOT 판정 · omf-all-around#302). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED · 공유계약 G-32). ⛔ 목록은 서버가 갖는다 — 값을 화면에 박지 않는다(고객이 W-06-06 에서 바꾼다 · 공유계약 G-31 마스터안전형). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
           qualityStatusCode?: string;
           inventoryStatusCode?: 'AVAILABLE' | 'BLOCKED' | 'IN_TRANSIT' | 'ON_HOLD';
           /** @description 소유 구분으로 거른다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=OWNERSHIP_TYPE 로 받는다(공유계약 G-32 · omf-mes#198). ⛔ 목록은 서버가 갖는다 — 값을 화면에 박지 않는다(고객이 W-06-06 에서 바꾼다 · 공유계약 G-31 마스터안전형). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
@@ -16724,6 +16924,8 @@ export interface paths {
           statusCode?: string;
           /** @description 취급 단위 번호 검색 */
           q?: string;
+          /** @description 포장 라벨(PACKING_LABEL) 발행 기록이 있는 포장만(true) · 없는 포장만(false). 인쇄 결과와 무관하게 발행 기록이 한 건이라도 있으면 발행된 것이다. 생략하면 거르지 않는다. 근거: P-04-04 발행 대기 · 재발행 (omf-all-around#327) */
+          labelIssued?: boolean;
           page?: number;
           size?: number;
         };
@@ -19880,7 +20082,7 @@ export interface paths {
     put?: never;
     /**
      * 추가 자재 출고 요청 발행
-     * @description 현장이 BOM 소요량 밖의 자재를 수동으로 요청한다. 라인 1건 이상이고 각 수량이 0 보다 커야 한다. BOM 밖 품목도 담을 수 있다. ⛔ 오프라인 대상이 아니다 — 이 오퍼레이션을 부르는 추가 자재 출고 요청(W-02-10)은 관리웹이고, 관리웹 셸에는 오프라인이 없다(공유계약 C-5 · W-02-10 §1). Idempotency-Key 는 필수이나 오프라인 큐 때문이 아니라 재시도 중복을 막기 위해서다(C-8) — Idempotency-Key 는 필수이고 If-Match 는 선택이다(공유계약 C-9). 근거: W-02-10 §5-6 ⭐ 생산 창고를 쓰는 공장(피처 003): 출발 생산 창고별로 요청을 나눠 만들고 바로 배포한다. 쓸 수 있는 양(가용 − 예정)을 넘으면 409 PLANNED_STOCK_CONFLICT — 사유가 긴급 대응·부족 보충이면 overridable=true(acceptPlannedOverride 로 다시 보내면 실제 가용까지 가져가고 다른 요청에 동적 부족이 생기며 이력이 남는다), 그 밖 사유는 쓸 수 있는 양까지만 담고(나머지 부족) 쓸 수 있는 양이 0 이면 overridable=false. 「자동」인데 어느 부서 생산 창고에도 가용 재고가 없는 자재는 noStockedWarehouse=true · overridable=false. 응답에 만든 요청 전부 requests(하나여도 배열 · 지금 방식 공장도 싣는다). 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66
+     * @description 현장이 BOM 소요량 밖의 자재를 수동으로 요청한다. 라인 1건 이상이고 각 수량이 0 보다 커야 한다. BOM 밖 품목도 담을 수 있다. ⛔ 오프라인 대상이 아니다 — 이 오퍼레이션을 부르는 추가 자재 출고 요청(W-02-10)은 관리웹이고, 관리웹 셸에는 오프라인이 없다(공유계약 C-5 · W-02-10 §1). Idempotency-Key 는 필수이나 오프라인 큐 때문이 아니라 재시도 중복을 막기 위해서다(C-8) — Idempotency-Key 는 필수이고 If-Match 는 선택이다(공유계약 C-9). 근거: W-02-10 §5-6 ⭐ 생산 창고를 쓰는 공장(피처 003): 출발 생산 창고별로 요청을 나눠 만들고 바로 배포한다. 쓸 수 있는 양(가용 − 예정)을 넘으면 409 PLANNED_STOCK_CONFLICT — 사유가 긴급 대응·부족 보충이면 overridable=true(acceptPlannedOverride 로 다시 보내면 실제 가용까지 가져가고 다른 요청에 동적 부족이 생기며 이력이 남는다), 그 밖 사유는 쓸 수 있는 양까지만 담고(나머지 부족) 쓸 수 있는 양이 0 이면 overridable=false. 「자동」인데 어느 부서 생산 창고에도 가용 재고가 없는 자재는 noStockedWarehouse=true · overridable=false. 응답에 만든 요청 전부 requests(하나여도 배열 · 지금 방식 공장도 싣는다). 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 ⭐ 라인은 재고 단위(품목 기본 단위)로 바꿔 담는다 — 다른 단위로 온 라인은 W/O 배포와 같은 환산(품목 환산 → 공통 환산)으로 바꾸고 재고 단위 decimal_scale 로 올림한다. 환산이 없으면 400 INVALID(lines[i].uomId). 근거: omf-all-around#297
      */
     post: {
       parameters: {
@@ -19964,7 +20166,7 @@ export interface paths {
     };
     /**
      * W/O 품목별 소요·기출고·부족
-     * @description 추가 자재 출고 요청 화면(W-02-10 §3 ②)의 표를 이 한 호출이 채운다 — 「BOM 소요량 불러오기」 버튼이 부르는 것이 이 경로다. 자재 명세(BOM) 조회를 화면이 따로 하지 않는다. 근거: W-02-10 §5 · 공유계약 L-2
+     * @description 추가 자재 출고 요청 화면(W-02-10 §3 ②)의 표를 이 한 호출이 채운다 — 「BOM 소요량 불러오기」 버튼이 부르는 것이 이 경로다. 자재 명세(BOM) 조회를 화면이 따로 하지 않는다. 근거: W-02-10 §5 · 공유계약 L-2 ⭐ 소요·부족은 재고 단위(품목 기본 단위)로 낸다 — W/O 배포와 같은 환산(품목 환산 → 공통 환산)을 쓴다. 근거: omf-all-around#297
      */
     get: {
       parameters: {
@@ -21572,7 +21774,7 @@ export interface paths {
     put?: never;
     /**
      * 적치 완료
-     * @description `allowedLocations` 는 안내다 — 이 창고의 켜진 맨 아래 위치 어디든 둘 수 있고(목록 밖이라고 막지 않는다), 실제 위치는 반드시 남는다. 막는 것은 「지정 품목만 받기」를 켠 위치의 지정 밖 품목(400 LOCATION_ITEM_RESTRICTED)과 맨 아래 위치·창고 일치 검사다. 근거: 피처 009 T054 · 사용자 결정 2026-11-18 · omf-all-around#294. 근거: M-01-05 §5-2-1 · 사용자 결정 2026-10-29(적치 규칙 제거) 창고 보충 수령 원천 지시는 적치 대기에 남은 만큼만 옮기고 끝낸다(0 이면 원장 없이 완료) — 응답 movedQty. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+     * @description `allowedLocations` 는 안내다 — 이 창고의 켜진 맨 아래 위치 어디든 둘 수 있고(목록 밖이라고 막지 않는다), 실제 위치는 반드시 남는다. 막는 것은 「지정 품목만 받기」를 켠 위치의 지정 밖 품목(400 LOCATION_ITEM_RESTRICTED)과 맨 아래 위치·창고 일치 검사다. 근거: 피처 009 T054 · 사용자 결정 2026-11-18 · omf-all-around#294. 근거: M-01-05 §5-2-1 · 사용자 결정 2026-10-29(적치 규칙 제거) 창고 보충 수령 원천 지시는 적치 대기에 남은 만큼만 옮기고 끝낸다(0 이면 원장 없이 완료) — 응답 movedQty. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 단말 요청이면 지시에 완료 작업자·단말(completed_worker_id·completed_terminal_id)을 남긴다 — 적치 기록(GET /logistics/putaway-records)이 이 둘로 거른다. 세션 완료는 비운다. 근거: M-01-14 · 피처 011 PDA 적치 기록 · omf-all-around#325
      */
     post: {
       parameters: {
@@ -21665,7 +21867,7 @@ export interface paths {
     put?: never;
     /**
      * 임시 위치 적재
-     * @description 정상 적치와 상태가 구분된다. 사유 코드와 비고 중 적어도 하나는 있어야 한다. 근거: M-01-07 §5-5 창고 보충 수령 원천 지시는 적치 대기에 남은 만큼만 옮기고 끝낸다(0 이면 원장 없이 완료) — 응답 movedQty. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+     * @description 정상 적치와 상태가 구분된다. 사유 코드와 비고 중 적어도 하나는 있어야 한다. 근거: M-01-07 §5-5 창고 보충 수령 원천 지시는 적치 대기에 남은 만큼만 옮기고 끝낸다(0 이면 원장 없이 완료) — 응답 movedQty. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 단말 요청이면 지시에 완료 작업자·단말(completed_worker_id·completed_terminal_id)을 남긴다 — 적치 기록(GET /logistics/putaway-records)이 이 둘로 거른다. 세션 완료는 비운다. 근거: M-01-14 · 피처 011 PDA 적치 기록 · omf-all-around#325
      */
     post: {
       parameters: {
@@ -27289,7 +27491,7 @@ export interface paths {
     put?: never;
     /**
      * 적치(입고)
-     * @description LOT 을 잠근 뒤 적치 대기 조건과 위치 판정을 다시 하고, 입고 1건(라인 1줄 · 수량 = 입고 가능 수량)을 적치 지시 없이 전기한다. 재고는 적치 대기 자리를 거치지 않고 그 위치로 바로 들어간다. DESIGNATED → 모드 DESIGNATED. UNDESIGNATED 는 confirmUndesignated=true 일 때만 모드 UNDESIGNATED 로 기록하고, 같은 트랜잭션에서 그 위치의 보관 품목에 이 품목을 더한다(이미 있으면 그대로 · 시스템 자리 제외 · FR-017a). 그 밖 판정은 400. 코어가 「지정 품목만 받기」로 거절하면(잠금 사이에 옵션이 켜짐) RESTRICTED_LOCATION 으로 돌려준다. 입고 상태: 정상 LOT NORMAL/AVAILABLE, 불량 LOT DEFECTIVE/ON_HOLD. ERP 구매입고 적재 규칙은 웹 입고와 같다(새 흐름 입하 LOT 은 최종 마감 때). 처리자는 단말 작업자 감사(대상 GOODS_RECEIPT·LOCATION_ITEM)로 남는다. 근거: M-01-05 · 근거: 피처 009 적치 지시 없는 구매 입고 적치 · omf-all-around#294
+     * @description LOT 을 잠근 뒤 적치 대기 조건과 위치 판정을 다시 하고, 입고 1건(라인 1줄 · 수량 = 입고 가능 수량)을 적치 지시 없이 전기한다. 재고는 적치 대기 자리를 거치지 않고 그 위치로 바로 들어간다. DESIGNATED → 모드 DESIGNATED. UNDESIGNATED 는 confirmUndesignated=true 일 때만 모드 UNDESIGNATED 로 기록하고, 같은 트랜잭션에서 그 위치의 보관 품목에 이 품목을 더한다(이미 있으면 그대로 · 시스템 자리 제외 · FR-017a). 그 밖 판정은 400. 코어가 「지정 품목만 받기」로 거절하면(잠금 사이에 옵션이 켜짐) RESTRICTED_LOCATION 으로 돌려준다. 입고 상태: 정상 LOT NORMAL/AVAILABLE, 불량 LOT DEFECTIVE/ON_HOLD. ERP 구매입고 적재 규칙은 웹 입고와 같다(새 흐름 입하 LOT 은 최종 마감 때). 처리자는 단말 작업자 감사(대상 GOODS_RECEIPT·LOCATION_ITEM)로 남는다. 근거: M-01-05 · 근거: 피처 009 적치 지시 없는 구매 입고 적치 · omf-all-around#294 만든 입고 전표에 단말 작업자·단말(putaway_worker_id·putaway_terminal_id)을 남긴다 — 적치 기록(GET /logistics/putaway-records)이 이 둘로 거른다. 세션 호출은 비운다. 근거: M-01-14 · 피처 011 PDA 적치 기록 · omf-all-around#325
      */
     post: {
       parameters: {
@@ -27389,7 +27591,7 @@ export interface paths {
     put?: never;
     /**
      * 임시 적치(창고만)
-     * @description 창고만 골라 그 창고의 「창고 전체」 자리로 입고한다(모드 TEMPORARY · 사유 없음 · 보관 품목 지정은 더하지 않는다). 창고 판정: 없음(NOT_FOUND)·꺼짐(INACTIVE)·다른 공장(OTHER_PLANT)·불량 규칙(DEFECT_LOT_NEEDS_DEFECT_WAREHOUSE·NORMAL_LOT_IN_DEFECT_WAREHOUSE)이면 400. 같은 창고 안 정위치 이동 화면은 별도(omf-all-around#304). 근거: M-01-07 · 근거: 피처 009 적치 지시 없는 구매 입고 적치 · omf-all-around#294
+     * @description 창고만 골라 그 창고의 「창고 전체」 자리로 입고한다(모드 TEMPORARY · 사유 없음 · 보관 품목 지정은 더하지 않는다). 창고 판정: 없음(NOT_FOUND)·꺼짐(INACTIVE)·다른 공장(OTHER_PLANT)·불량 규칙(DEFECT_LOT_NEEDS_DEFECT_WAREHOUSE·NORMAL_LOT_IN_DEFECT_WAREHOUSE)이면 400. 같은 창고 안 정위치 이동 화면은 별도(omf-all-around#304). 근거: M-01-07 · 근거: 피처 009 적치 지시 없는 구매 입고 적치 · omf-all-around#294 만든 입고 전표에 단말 작업자·단말(putaway_worker_id·putaway_terminal_id)을 남긴다 — 적치 기록(GET /logistics/putaway-records)이 이 둘로 거른다. 세션 호출은 비운다. 근거: M-01-14 · 피처 011 PDA 적치 기록 · omf-all-around#325
      */
     post: {
       parameters: {
@@ -28574,9 +28776,7 @@ export interface paths {
      *
      *     인쇄하지 않는다 — 이 호출은 기록만 만든다. 이미지는 별도로 받아 프린터로 보내고 결과를 따로 보고한다. 프린터가 죽어도 기록은 남는다.
      *
-     *     서버 구현 기준: IDENTIFICATION_TAG는 항상 422 STATE_LOCKED다. DELIVERY_LABEL은 대상이 SHIPPING_UNIT이어야 하고 마감(CLOSED)된 출하 단위에만 발행된다 — 다른 대상 유형은 422 INVALID, 안 닫힌 단위는 422 STATE_LOCKED다. MATERIAL_LOT_LABEL은 품질 상태가 검사 대기·정상인 자재 LOT에 발행되고, 생애가 폐기(VOIDED)인 자재 관리 LOT은 422 STATE_LOCKED다 — 미리 만든 대기(WAITING) 자재 관리 LOT은 입하 전에 라벨을 찍으므로 발행된다(피처 005). 패키징이 있는 LOT은 렌디션 QTY 줄 뒤에 「봉지 10 × 100」 꼴(패키징 단위 이름 · 패키징 수 × 패키징당 수량)을 덧붙인다 — 없으면 지금 출력 그대로다.
-     *
-     *     서버 구현 기준: IDENTIFICATION_TAG는 항상 422 STATE_LOCKED다. DELIVERY_LABEL은 SHIP-UNIT-01로 대상이 SHIPPING_UNIT이 되어 마감(CLOSED)된 출하 단위에 발행된다 — 다른 대상 유형은 422 INVALID, 안 닫힌 단위는 422 STATE_LOCKED다. 종전의 「DELIVERY_LABEL은 항상 422」는 대상이 출하 LOT 배분이던 때의 설명이다. 피처 013(omf-all-around#303): 생산 LOT 라벨 단말 권한 — W/O 공정 단말(can_print_label) 규칙에 더해, 제품 분리 가족 LOT(원래·자식)은 라벨 공정이 하나라도 있는 단말(POP P-04-08)도 낸다. 재발행 사유 LOT_SPLIT 은 서버(분리)만 쓰므로 요청이 보내면 422 INVALID 다.
+     *     서버 구현 기준: IDENTIFICATION_TAG는 항상 422 STATE_LOCKED다. DELIVERY_LABEL은 대상이 SHIPPING_UNIT이어야 하고 마감(CLOSED)된 출하 단위에만 발행된다 — 다른 대상 유형은 422 INVALID, 안 닫힌 단위는 422 STATE_LOCKED다. MATERIAL_LOT_LABEL은 품질 상태가 검사 대기·정상인 자재 LOT에 발행되고, 생애가 폐기(VOIDED)인 자재 관리 LOT은 422 STATE_LOCKED다 — 미리 만든 대기(WAITING) 자재 관리 LOT은 입하 전에 라벨을 찍으므로 발행된다(피처 005). 패키징이 있는 LOT은 렌디션 QTY 줄 뒤에 「봉지 10 × 100」 꼴(패키징 단위 이름 · 패키징 수 × 패키징당 수량)을 덧붙인다 — 없으면 지금 출력 그대로다. 피처 013(omf-all-around#303): 생산 LOT 라벨 단말 권한 — W/O 공정 단말(can_print_label) 규칙에 더해, 제품 분리 가족 LOT(원래·자식)은 라벨 공정이 하나라도 있는 단말(POP P-04-08)도 낸다. 재발행 사유 LOT_SPLIT 은 서버(분리)만 쓰므로 요청이 보내면 422 INVALID 다.
      */
     post: operations['createDocumentIssues'];
     delete?: never;
@@ -28678,8 +28878,6 @@ export interface paths {
     /**
      * 프린터 목록 · 상태
      * @description 이 단말이 쓸 수 있는 프린터와 그 상태. 화면 머리에 상시 보인다 — 인쇄가 안 될 때 사용자가 가장 먼저 보는 곳이다.
-     *
-     *     서버 구현 기준: 실제 상태 수집 경로가 없어 statusCode를 OFFLINE으로 고정 반환한다. 연결 상태 판정에 사용하지 않는다.
      */
     get: operations['listPrinters'];
     put?: never;
@@ -30268,7 +30466,9 @@ export interface paths {
             | 'PRECHECK_CONTROL_LEVEL'
             | 'FIFO_ENFORCEMENT_LEVEL'
             | 'WEEKLY_WORKING_DAYS'
-            | 'REPLENISHMENT_RUN_TIME';
+            | 'REPLENISHMENT_RUN_TIME'
+            | 'AUTO_ROUTING_PROCESS'
+            | 'BACKFLUSH_WAREHOUSE';
           businessUnitId?: number;
           plantId?: number;
           itemId?: number;
@@ -30393,7 +30593,9 @@ export interface paths {
             | 'PRECHECK_CONTROL_LEVEL'
             | 'FIFO_ENFORCEMENT_LEVEL'
             | 'WEEKLY_WORKING_DAYS'
-            | 'REPLENISHMENT_RUN_TIME';
+            | 'REPLENISHMENT_RUN_TIME'
+            | 'AUTO_ROUTING_PROCESS'
+            | 'BACKFLUSH_WAREHOUSE';
           businessUnitId?: number;
           plantId?: number;
           itemId?: number;
@@ -30626,7 +30828,7 @@ export interface paths {
     put?: never;
     /**
      * 첨부 올리기
-     * @description 파일을 올리고 첨부 식별자를 돌려준다. 다형 참조라 대상 유형과 대상 식별자를 함께 받는다.
+     * @description 파일을 올리고 첨부 식별자를 돌려준다. 다형 참조라 대상 유형과 대상 식별자를 함께 받는다. 검사 의뢰(INSPECTION_REQUEST) 대상은 판정 확정 전(작성 중·대기)에만 — 확정된 의뢰면 targetId 의 400(omf-all-around#296).
      */
     post: {
       parameters: {
@@ -30647,11 +30849,7 @@ export interface paths {
              * @enum {string}
              */
             targetTypeCode:
-              | 'WAREHOUSE'
-              | 'NOTICE'
-              | 'LOT'
-              | 'INSPECTION_RESULT'
-              | 'INSPECTION_REQUEST';
+              'WAREHOUSE' | 'NOTICE' | 'LOT' | 'INSPECTION_RESULT' | 'INSPECTION_REQUEST';
             /** Format: int64 */
             targetId: number;
             /** Format: binary */
@@ -30789,7 +30987,7 @@ export interface paths {
     put?: never;
     /**
      * 검사 의뢰 첨부를 자재 관리 LOT 에 연결
-     * @description IQC 파일 첨부에서 자재 관리 LOT 을 고르지 않아 검사 의뢰(INSPECTION_REQUEST)에 붙은 첨부를, 나중에 고른 자재 관리 LOT 마다의 첨부(LOT)로 옮긴다. 근거: omf-all-around#296
+     * @description IQC 파일 첨부에서 자재 관리 LOT 을 고르지 않아 검사 의뢰(INSPECTION_REQUEST)에 붙은 첨부를, 나중에 고른 자재 관리 LOT 마다의 첨부(LOT)로 옮긴다. 효과(한 트랜잭션): 고른 LOT 마다 같은 파일(저장 위치·이름·크기·올린 사람·올린 시각 그대로)의 LOT 첨부를 만들고, 검사 의뢰 첨부 행은 지운다(파일은 LOT 첨부가 그대로 쓴다). 고를 수 있는 LOT 은 그 검사 의뢰의 입하 LOT 에서 나온 자재 관리 LOT 뿐이다 — 밖이면 lotIds 칸의 400. 검사 의뢰 첨부가 아니거나(이미 LOT 에 붙은 첨부 등) 그 검사 의뢰의 판정이 확정됐으면 attachmentId 의 400(확정 전 작성 중·대기에만 연결한다). 근거: omf-all-around#296(사용자 지시 2026-11-19)
      */
     post: {
       parameters: {
@@ -30820,7 +31018,7 @@ export interface paths {
             };
           };
         };
-        /** @description 검증 실패 — lotIds 형식·이 검사 의뢰 밖의 LOT · 검사 의뢰 첨부가 아님 */
+        /** @description 검증 실패 — lotIds 형식·이 검사 의뢰 밖의 LOT · 검사 의뢰 첨부가 아님 · 판정 확정됨 */
         400: {
           headers: {
             [name: string]: unknown;
@@ -32177,6 +32375,10 @@ export interface paths {
      *     구분(kind)·상태(status)·사유(reasons)의 판정은 ProductionPlanProposal 설명에 있다. 기준정보와 저장된 계획이 그대로면 다시 불러도 같은 결과다(임시 식별자 proposalPlanKey 와 basis 도 같다) — 4M 점검 WARN 만 다른 W/O 의 배정에 따라 달라질 수 있다.
      *
      *     ⭐ 사용자 데이터 범위 — 범위 밖 공장의 ERP W/O 와 없는 id 는 items 에 넣지 않고 notFoundProductionOrderIds 에 담는다. 둘을 가르지 않는다 — 존재를 드러내지 않는다(규칙은 목록 설명).
+     *
+     *     ⭐ OA 자동 W/O 공장 — 오늘(공장 현지) 자동 라우팅 공정 정책(AUTO_ROUTING_PROCESS)이 걸린 공장의 ERP W/O 는 자동 W/O 실행기가 사람 없이 계획·확정·배포한다(실행기와 같은 판정). 제안 조회는 표시만 한다(kind AUTO_WORK_ORDER · status NO_CHANGE · plans 빈 배열 · autoWorkOrder 에 마지막 시도 시각·실패 까닭). 확정은 400 screen AUTO_WORK_ORDER_PLANT 로 거부한다 — 사람이 세운 계획이 하나라도 있으면 실행기가 그 ERP W/O 를 다시 고르지 않는다. 사람이 예전에 세운 계획이 있는 ERP W/O 도 같다(계획 화면에서 다룬다).
+     *
+     *     ⭐ 기존 작성중 계획 — 작성중 계획이 있는 ERP W/O 는 질의 existingDraftAction 이 계획의 바탕을 정한다: 생략·REPLACE 는 대체 기준의 새 계획(NEW_PLAN), CONTINUE 는 작성중 계획(REVIEW_DRAFT). 둘 다 existingDrafts 에 요약을 싣는다. 확정 때 사람이 고른 값을 본문 existingDraftAction 에 싣는다(ProductionPlanProposalConfirm).
      */
     get: {
       parameters: {
@@ -32189,6 +32391,11 @@ export interface paths {
            *     ]
            */
           productionOrderIds: number[];
+          /**
+           * @description 작성중 계획이 있는 ERP W/O 의 계획 바탕 — 생략·REPLACE 는 새 계획, CONTINUE 는 작성중 계획. 작성중 계획이 없는 ERP W/O 에는 영향이 없다. 묶음의 모든 ERP W/O 에 같이 건다 — 「이어서」를 고른 ERP W/O 하나만 다시 부를 때 쓴다
+           * @example CONTINUE
+           */
+          existingDraftAction?: 'CONTINUE' | 'REPLACE';
         };
         header?: never;
         path?: never;
@@ -32429,7 +32636,7 @@ export interface paths {
     /**
      * ERP W/O 자동 계획 (재)시도
      * @deprecated
-     * @description ⛔ 대체 예정 — 제안 조회(GET /planning/production-orders:plan-proposals)와 선택 확정(POST /planning/production-orders/{productionOrderId}:confirm-plan-proposal)이 대신한다. 화면이 옮겨 간 뒤 지운다. 새 화면은 쓰지 않는다. ERP W/O 수신·수기 등록 뒤의 자동 계획은 멈춘다 — 아래 「받으면 계획을 세운다」는 멈추기 전 동작이고, 이제는 이 오퍼레이션을 부를 때만 같은 일을 한다. ⚠ 개발팀 선행(docs/계약-선행-수정항목.md P-67). ERP W/O 를 받으면(상태가 RECEIVED 이고 납기 — 없으면 계획 시작일 — 가 공장 현지 오늘 이후이거나 둘 다 없을 때) 서버가 계획 하나를 세우고 정할 수 있으면 확정·전개한다. 이 오퍼레이션은 그 조건 없이 그것을 다시 시도한다 — 계획이 없으면 세우고(BOM 은 품목의 기본 Rev, Routing 은 쓸 수 있는 Rev 가 하나면 그것·여럿이면 기본 Rev, 수량은 오더 수량, 계획일은 ERP 계획 시작일이 오늘 이후면 그날·아니면 공장 현지 오늘, 라인은 비움), 작성중 계획이 있고 이제 W/O 라인이 정해지면(계획 라인을 골랐거나 기본 매핑 설비가 라인에 속함) 확정한다. 확정 계획이 오더 수량을 채웠으면 바꾸지 않고 CONFIRMED 를 낸다. 확정에서 막히면 확정(POST /planning/production-plans/{productionPlanId}:confirm)의 400·409 를 그대로 낸다. 취소된 ERP W/O 는 400 STATE_LOCKED, 같은 ERP W/O 의 자동 계획이 이미 돌고 있으면 409 INVALID_STATE 다(다시 누르면 된다).
+     * @description ⛔ 대체 예정 — 제안 조회(GET /planning/production-orders:plan-proposals)와 선택 확정(POST /planning/production-orders/{productionOrderId}:confirm-plan-proposal)이 대신한다. 화면이 옮겨 간 뒤 지운다. 새 화면은 쓰지 않는다. ⛔ 이 경로는 휴일 보정을 하지 않는다 — 계획일이 휴일이어도 그대로 세우고 날짜 출처는 USER 로 남는다. ERP W/O 수신·수기 등록 뒤의 자동 계획은 멈춘다 — 아래 「받으면 계획을 세운다」는 멈추기 전 동작이고, 이제는 이 오퍼레이션을 부를 때만 같은 일을 한다. ⚠ 개발팀 선행(docs/계약-선행-수정항목.md P-67). ERP W/O 를 받으면(상태가 RECEIVED 이고 납기 — 없으면 계획 시작일 — 가 공장 현지 오늘 이후이거나 둘 다 없을 때) 서버가 계획 하나를 세우고 정할 수 있으면 확정·전개한다. 이 오퍼레이션은 그 조건 없이 그것을 다시 시도한다 — 계획이 없으면 세우고(BOM 은 품목의 기본 Rev, Routing 은 쓸 수 있는 Rev 가 하나면 그것·여럿이면 기본 Rev, 수량은 오더 수량, 계획일은 ERP 계획 시작일이 오늘 이후면 그날·아니면 공장 현지 오늘, 라인은 비움), 작성중 계획이 있고 이제 W/O 라인이 정해지면(계획 라인을 골랐거나 기본 매핑 설비가 라인에 속함) 확정한다. 확정 계획이 오더 수량을 채웠으면 바꾸지 않고 CONFIRMED 를 낸다. 확정에서 막히면 확정(POST /planning/production-plans/{productionPlanId}:confirm)의 400·409 를 그대로 낸다. 취소된 ERP W/O 는 400 STATE_LOCKED, 같은 ERP W/O 의 자동 계획이 이미 돌고 있으면 409 INVALID_STATE 다(다시 누르면 된다).
      *
      *     ⭐ 사용자 데이터 범위 — 범위 밖 공장의 ERP W/O 는 404 다. 멱등 처리 전에 막는다(규칙은 목록 설명).
      */
@@ -32522,9 +32729,9 @@ export interface paths {
      * ERP W/O 계획 제안 확정
      * @description 제안 조회(GET /planning/production-orders:plan-proposals)에서 사람이 고른 ERP W/O 하나를 확정한다 — 요청 하나 = ERP W/O 하나. 여러 건은 건마다 따로 부르고, 한 건의 실패가 다른 건을 되돌리지 않는다.
      *
-     *     한 트랜잭션 안에서 ⓐ 작성중 계획(planSource EXISTING_DRAFT)은 본문 값(계획일·수량·BOM·Routing·라인)으로 고친 뒤 확정하고, 새 계획(NEW)은 등록해 바로 확정한다 ⓑ 계획마다 Routing 공정별 W/O 와 공정 의존을 만든다 — 수량·유형·우선순위는 POST /planning/production-plans/{productionPlanId}:confirm 의 전개와 같다 ⓒ 본문의 보완 4M(라인·설비·금형·작업자·교대·기본 위치)과 그 교대로 정한 계획 시각을 W/O 에 저장한다. 하나라도 실패하면 전부 롤백된다 — 부분 성공은 없다.
+     *     한 트랜잭션 안에서 ⓐ REPLACE 면 replacedDrafts 의 작성중 계획을 지우고, 작성중 계획(plan-{id})은 본문 값(계획일·수량·BOM·Routing·라인)으로 고친 뒤 확정하고, 새 계획(new-N)은 등록해 바로 확정한다 ⓑ 계획마다 Routing 공정별 W/O 와 공정 의존을 만든다 — 수량·유형·우선순위는 POST /planning/production-plans/{productionPlanId}:confirm 의 전개와 같다 ⓒ 본문의 보완 4M(라인·설비·금형·작업자·교대·기본 위치)과 계획 시각(USER 는 본문 그대로, SYSTEM 은 계획일·교대로 정한 값)을 W/O 에 저장한다. 하나라도 실패하면 전부 롤백된다 — 부분 성공은 없다.
      *
-     *     처리 순서 — ① 없거나 범위 밖인 ERP W/O 는 404 ② 같은 Idempotency-Key 재전송은 처음 응답을 그대로 낸다(새 계획·W/O·번호 없음) ③ ERP W/O 행을 잠그고 제안을 조회와 같은 식으로 다시 계산한다 ④ 취소된 ERP W/O 는 400 STATE_LOCKED ⑤ 확정 계획량이 이미 ERP W/O 수량을 채웠으면 저장하지 않고 200 outcome ALREADY_PROCESSED 와 지금의 확정 계획·W/O 를 낸다 — 다른 키로 다시 눌렀거나 다른 사람이 먼저 확정한 경우다 ⑥ 본문 basis 가 다시 계산한 basis 와 하나라도 다르면 저장하지 않고 409 PROPOSAL_CHANGED — proposalChanges 에 바뀐 기준, currentProposal 에 지금 제안을 싣는다 ⑦ 본문 검증 실패는 400 이고 오류 field 는 본문 경로다(예: plans[0].workOrders[1].productionLineId) ⑧ 저장하고 200 outcome CONFIRMED.
+     *     처리 순서 — ① 없거나 범위 밖인 ERP W/O 는 404 ② 같은 Idempotency-Key 재전송은 처음 응답을 그대로 낸다(새 계획·W/O·번호 없음) ③ ERP W/O 의 작성중 계획들과 ERP W/O 행을 잠그고 제안을 조회와 같은 식으로(본문 existingDraftAction 기준) 다시 계산한다 ④ 취소된 ERP W/O 는 400 STATE_LOCKED · OA 자동 W/O 공장의 ERP W/O 는 400 screen AUTO_WORK_ORDER_PLANT ⑤ 확정 계획량이 이미 ERP W/O 수량을 채웠으면 저장하지 않고 200 outcome ALREADY_PROCESSED 와 지금의 확정 계획·W/O 를 낸다 — 다른 키로 다시 눌렀거나 다른 사람이 먼저 확정한 경우다 ⑤-1 작성중 계획이 있는데 existingDraftAction 이 없으면 400 EXISTING_DRAFT_ACTION_REQUIRED(REPLACE 인데 replacedDrafts 가 비면 400 REQUIRED) ⑥ 본문 basis 가 다시 계산한 basis 와 하나라도 다르거나 사람이 본 작성중 계획(replacedDrafts·savedVersionNo)이 지금과 다르면 저장하지 않고 409 PROPOSAL_CHANGED — proposalChanges 에 바뀐 기준, currentProposal 에 지금 제안을 싣는다 ⑦ 본문 검증 실패는 400 이고 오류 field 는 본문 경로다(예: plans[0].workOrders[1].productionLineId) ⑧ 저장하고 200 outcome CONFIRMED.
      *
      *     ⭐ 본문 값은 제안과 같지 않아도 된다(사람이 고칠 수 있다). 변경 감지는 값이 아니라 basis 로 하고, 값은 수기 등록·확정과 같은 규칙으로 검증한다 — 계획일이 공장 현지 오늘 이후(RANGE) · 수량 합계(PLAN_QTY_EXCEEDS_ORDER — 본문의 모든 계획을 반영한 합계로 한 번 본다, 본문 순서와 무관) · ERP 기본 BOM(BOM_NOT_DEFAULT) · 확정·유효 기간 안의 이 품목 Routing(INVALID) · Routing 공정과 같은 W/O 집합(INVALID) · 라인·설비·금형·기본 위치는 제안의 사유와 같은 판정·같은 코드(LINE_PLANT_MISMATCH·RESOURCE_PLANT_MISMATCH·EQUIPMENT_NOT_IN_SERVICE·EQUIPMENT_LINE_MISMATCH·MOLD_NOT_IN_SERVICE·LOCATION_INVALID) · 완제품 위치는 ERP W/O 의 입고 창고(SL_CD) 안의 위치만(FG_LOCATION_OUTSIDE_WAREHOUSE — 창고를 정하지 못하면 FG_WAREHOUSE_UNMAPPED·FG_WAREHOUSE_INACTIVE·FG_WAREHOUSE_OTHER_PLANT·FG_WAREHOUSE_NOT_ALLOWED, SL_CD 가 없으면 외부·불량 창고 위치는 LOCATION_INVALID). 수량이 같아도 SL_CD 나 그 창고·입고 위치가 바뀌었으면 ⑥에서 409 PROPOSAL_CHANGED 다. ERP 목적지의 의미는 마지막 공정에 있고 중간 공정 값은 배포 필수 검사를 위해 같은 값을 둔다 · 작업자·교대가 그 공장의 사용 중인 것(INVALID).
      *
@@ -32533,6 +32740,24 @@ export interface paths {
      *     ⭐ If-Match 를 받지 않는다 — 작성중 계획의 판은 basis.plans 가 대신 본다.
      *
      *     ⭐ 사용자 데이터 범위 — 범위 밖 공장의 ERP W/O 는 404 다. 멱등 처리 전에 막는다(규칙은 목록 설명).
+     *
+     *     ⭐ OA 자동 W/O 공장 — 오늘(공장 현지) 자동 라우팅 공정 정책(AUTO_ROUTING_PROCESS)이 걸린 공장의 ERP W/O 는 자동 W/O 실행기가 사람 없이 계획·확정·배포한다(실행기와 같은 판정). 제안 조회는 표시만 한다(kind AUTO_WORK_ORDER · status NO_CHANGE · plans 빈 배열 · autoWorkOrder 에 마지막 시도 시각·실패 까닭). 확정은 400 screen AUTO_WORK_ORDER_PLANT 로 거부한다 — 사람이 세운 계획이 하나라도 있으면 실행기가 그 ERP W/O 를 다시 고르지 않는다. 사람이 예전에 세운 계획이 있는 ERP W/O 도 같다(계획 화면에서 다룬다).
+     *
+     *     ⭐ 재검증과 같은 판정 — 본문 검증과 수량 합계는 POST …:revalidate-plan-proposal 과 한 함수다. 재검증이 errors·proposalChanges 를 비워 낸 본문은 그 사이 기준이 바뀌지 않았다면 여기서 400·409 가 나지 않는다. WARN(교정 기한·금형 수명·작업자 자격·설비 시간 중복·계획일 휴일)은 여기서 다시 보지 않고 막지 않는다.
+     *
+     *     ⭐ 기존 작성중 계획 — ERP W/O 에 작성중 계획이 있으면 사람이 「이어서 한다(CONTINUE)」와 「지금 편집한 계획으로 새로 한다(REPLACE)」 가운데 하나를 골라 existingDraftAction 에 싣는다. 비우면 작성중 계획을 건드리지 않고 400 field existingDraftAction EXISTING_DRAFT_ACTION_REQUIRED 다(묵시적 기본값 없음). CONTINUE — 작성중 계획(plan-{id})을 편집 기준으로 쓴다(제안 조회 existingDraftAction=CONTINUE 의 REVIEW_DRAFT): 작성중 계획 전부를 savedVersionNo 와 함께 싣고, 새 계획(new-N)을 더할 수 있다(나누기·추가). 작성중 계획을 빼고 보내면 400 field plans INVALID — 지우려면 REPLACE 다. savedVersionNo 가 없으면 400 REQUIRED, 지금 판과 다르면 409 PROPOSAL_CHANGED(basis plans). REPLACE — 작성중 계획 전부를 replacedDrafts 에 id·판으로 적고(비면 400 field replacedDrafts REQUIRED) 본문 계획은 모두 새 계획(new-N)이다. 한 트랜잭션에서 작성중 계획을 지우고 새 계획을 등록·확정한다. replacedDrafts 가 지금의 작성중 계획 집합·판과 다르면 저장하지 않고 409 PROPOSAL_CHANGED(basis plans)다 — 다시 검토한다. 수량 한도(확정 계획량 + 작성 수량 ≤ ERP W/O 수량)는 대체 «후» 기준이다 — 지워질 작성중 계획의 수량은 세지 않는다. 작성중 계획이 없으면 existingDraftAction·replacedDrafts 는 보지 않는다.
+     *
+     *     ⭐ 기록 — REPLACE 로 작성중 계획을 지우면 같은 트랜잭션에서 감사 기록(audit.audit_event · targetTypeCode PRODUCTION_ORDER · targetId ERP W/O · eventTypeCode DELETE · afterValue.eventCode PLAN_DRAFT_REPLACED · beforeValue 지운 계획의 id·번호·판·계획일·수량 · afterValue.detail.newPlanIds · performedBy 확정한 사용자 · correlationId 이 요청의 Idempotency-Key)을 남긴다. 롤백되면 기록도 없고 같은 키 재전송은 다시 기록하지 않는다. 다른 계획이 지울 작성중 계획을 분할 원본으로 가리키면 지우지 않고 409 INVALID_STATE 다 — 번호를 뽑기 전에 판정한다(⑥ 다음). 재검증은 같은 문장을 errors 에 screen INVALID_STATE 로 싣는다.
+     *
+     *     추가 400 코드 — EXISTING_DRAFT_ACTION_REQUIRED(field existingDraftAction) · REQUIRED(field replacedDrafts · plans[i].savedVersionNo) · DUPLICATE_PLAN_KEY(field plans[i].proposalPlanKey) · INVALID(field plans[i].proposalPlanKey · plans[i].splitFromPlanKey · plans).
+     *
+     *     ⭐ 날짜 출처·계획 시각 — 계획마다 planDateSourceCode, 공정 W/O 마다 plannedTimeSourceCode 를 명시한다(필수). 규칙은 ProductionPlanProposalConfirmPlan.planDateSourceCode 와 ProductionPlanProposalConfirmWorkOrder 설명. USER 계획일이 휴일인 계획은 같은 트랜잭션에서 감사 기록(targetTypeCode PRODUCTION_ORDER · eventTypeCode UPDATE · afterValue.eventCode PLAN_DATE_USER_ON_HOLIDAY · afterValue.detail 계획 id·번호·계획일·판정 · beforeValue.systemDate · correlationId 이 요청의 Idempotency-Key)을 계획마다 남긴다.
+     *
+     *     추가 400 코드(날짜·시각) — PLAN_DATE_SOURCE_MISMATCH(field plans[i].planDateSourceCode) · PLAN_TIME_OUTSIDE_PLAN_DATE(field plans[i].workOrders[j].plannedStartAt) · RANGE(field plans[i].workOrders[j].plannedEndAt) · REQUIRED(USER 인데 빈 plannedStartAt·plannedEndAt).
+     *
+     *     ⭐ 입고 창고 수동 변경(계획 단위) — ERP 는 오더의 SL_CD 창고로 입고하고 MES 생산입고 송신은 창고를 싣지 않으므로, 바꾸면 MES 와 ERP 의 재고 위치가 달라진다. 사람이 그것을 알고 허용할 때만 쓴다. 바꾼 창고가 정해지면 그 계획의 모든 공정 W/O 의 defaultFgLocationId 는 그 창고 안의 위치여야 한다(SL_CD 창고 대신 — 아니면 400 FG_LOCATION_OUTSIDE_WAREHOUSE). 위치는 공정 W/O 마다 고르고, 재검증 plans[].fgWarehouse.arrivalLocationId 가 그 창고의 입고 위치(나뉜 창고는 적치 대기, 아니면 창고 전체 — 제안이 SL_CD 창고에 쓰는 규칙)를 기본값으로 준다. 받는 조건: ERP W/O 에 SL_CD 가 있고 MES 창고로 연결됐다 — SL_CD 가 없으면 400 field fgWarehouseOverride INVALID(바꿀 ERP 창고가 없다 — 완제품 위치를 그대로 고른다), SL_CD 연결이 실패했으면 400 field fgWarehouseOverride FG_OVERRIDE_LINK_FAILED(우회하지 않는다 — 창고 연결을 먼저 고친다). 창고는 이 공장의 사용 중인, 자재·불량·외부 창고가 아닌 창고(ERP 입고 창고 연결과 같은 기준 — 아니면 400 field fgWarehouseOverride.warehouseId FG_WAREHOUSE_OTHER_PLANT·FG_WAREHOUSE_INACTIVE·FG_WAREHOUSE_NOT_ALLOWED)이고 SL_CD 창고와 같으면 400 INVALID(바꾼 것이 없다). 생산 라인을 바꿔도 그대로다 — 서버가 라인 기본 위치로 되돌리지 않는다. 재검증은 WARN FG_WAREHOUSE_DIFFERS_FROM_ERP 를 내고, 확정은 같은 트랜잭션에서 감사 기록(PRODUCTION_ORDER · FG_WAREHOUSE_OVERRIDDEN)을 남긴다. 기록은 계획마다 한 줄이다(eventTypeCode UPDATE · afterValue.eventCode FG_WAREHOUSE_OVERRIDDEN · beforeValue SL_CD·그 MES 창고·입고 위치 · afterValue.detail 계획 id·번호·적용 창고·W/O 마다 완제품 위치·erpMismatchAcknowledged · performedBy · correlationId 이 요청의 Idempotency-Key).
+     *
+     *     추가 400 코드(입고 창고) — FG_OVERRIDE_LINK_FAILED·INVALID(field plans[i].fgWarehouseOverride) · FG_WAREHOUSE_OTHER_PLANT·FG_WAREHOUSE_INACTIVE·FG_WAREHOUSE_NOT_ALLOWED·INVALID(field plans[i].fgWarehouseOverride.warehouseId).
      */
     post: {
       parameters: {
@@ -32548,6 +32773,73 @@ export interface paths {
       };
       requestBody: {
         content: {
+          /**
+           * @example {
+           *       "basis": {
+           *         "productionOrder": "a1…",
+           *         "plans": "b2…",
+           *         "bom": "c3…",
+           *         "routing": "d4…",
+           *         "resources": "e5…",
+           *         "calendar": "f6…"
+           *       },
+           *       "existingDraftAction": "REPLACE",
+           *       "replacedDrafts": [
+           *         {
+           *           "productionPlanId": 3001,
+           *           "versionNo": 2
+           *         }
+           *       ],
+           *       "plans": [
+           *         {
+           *           "proposalPlanKey": "new-1",
+           *           "planDate": "2026-11-18",
+           *           "plannedQty": 60,
+           *           "bomId": 401,
+           *           "routingId": 601,
+           *           "plannedLineId": 11,
+           *           "workOrders": [
+           *             {
+           *               "routingOperationId": 701,
+           *               "productionLineId": 11,
+           *               "plannedEquipmentId": 2001,
+           *               "defaultWipLocationId": 1101,
+           *               "defaultFgLocationId": 5201,
+           *               "defaultScrapLocationId": 1103,
+           *               "plannedTimeSourceCode": "USER",
+           *               "plannedStartAt": "2026-11-18T13:00:00+07:00",
+           *               "plannedEndAt": "2026-11-18T21:00:00+07:00"
+           *             }
+           *           ],
+           *           "planDateSourceCode": "SYSTEM",
+           *           "fgWarehouseOverride": {
+           *             "warehouseId": 52,
+           *             "erpMismatchAcknowledged": true
+           *           }
+           *         },
+           *         {
+           *           "proposalPlanKey": "new-2",
+           *           "splitFromPlanKey": "new-1",
+           *           "planDate": "2026-11-19",
+           *           "plannedQty": 60,
+           *           "bomId": 401,
+           *           "routingId": 601,
+           *           "plannedLineId": 12,
+           *           "workOrders": [
+           *             {
+           *               "routingOperationId": 701,
+           *               "productionLineId": 12,
+           *               "defaultWipLocationId": 1201,
+           *               "defaultFgLocationId": 5101,
+           *               "defaultScrapLocationId": 1203,
+           *               "plannedTimeSourceCode": "SYSTEM"
+           *             }
+           *           ],
+           *           "planDateSourceCode": "USER"
+           *         }
+           *       ]
+           *     }
+           */
           'application/json': components['schemas']['ProductionPlanProposalConfirm'];
         };
       };
@@ -32558,15 +32850,91 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
+            /**
+             * @example {
+             *       "productionOrderId": 1001,
+             *       "outcome": "CONFIRMED",
+             *       "replacedDrafts": [
+             *         {
+             *           "productionPlanId": 3001,
+             *           "planNo": "PP-20261116-0003"
+             *         }
+             *       ],
+             *       "plans": [
+             *         {
+             *           "proposalPlanKey": "new-1",
+             *           "splitFromPlanKey": null,
+             *           "productionPlanId": 3002,
+             *           "planNo": "PP-20261117-0004",
+             *           "statusCode": "CONFIRMED",
+             *           "versionNo": 2,
+             *           "planDateCalendar": {
+             *             "date": "2026-11-18",
+             *             "statusCode": "WORKING"
+             *           },
+             *           "workOrders": [
+             *             {
+             *               "workOrderId": 5001,
+             *               "workOrderNo": "WO-20261117-0011",
+             *               "routingOperationId": 701
+             *             }
+             *           ]
+             *         },
+             *         {
+             *           "proposalPlanKey": "new-2",
+             *           "splitFromPlanKey": "new-1",
+             *           "productionPlanId": 3003,
+             *           "planNo": "PP-20261117-0005",
+             *           "statusCode": "CONFIRMED",
+             *           "versionNo": 2,
+             *           "planDateCalendar": {
+             *             "date": "2026-11-19",
+             *             "statusCode": "WORKING"
+             *           },
+             *           "workOrders": [
+             *             {
+             *               "workOrderId": 5002,
+             *               "workOrderNo": "WO-20261117-0012",
+             *               "routingOperationId": 701
+             *             }
+             *           ]
+             *         }
+             *       ]
+             *     }
+             */
             'application/json': components['schemas']['ProductionPlanProposalConfirmResult'];
           };
         };
-        /** @description 검증 실패 — 저장하지 않았다. 고쳐야 풀린다. 취소된 ERP W/O(STATE_LOCKED) · 수량 합계 초과(PLAN_QTY_EXCEEDS_ORDER) · ERP 기본 BOM 이 아님(BOM_NOT_DEFAULT) · 필수 4M 누락(REQUIRED) 등. field 는 본문 경로다. */
+        /** @description 검증 실패 — 저장하지 않았다. 고쳐야 풀린다. 취소된 ERP W/O(STATE_LOCKED) · OA 자동 W/O 공장(AUTO_WORK_ORDER_PLANT) · 수량 합계 초과(PLAN_QTY_EXCEEDS_ORDER) · ERP 기본 BOM 이 아님(BOM_NOT_DEFAULT) · 필수 4M 누락(REQUIRED) 등. field 는 본문 경로다. */
         400: {
           headers: {
             [name: string]: unknown;
           };
           content: {
+            /**
+             * @example {
+             *       "errors": [
+             *         {
+             *           "scope": "field",
+             *           "field": "existingDraftAction",
+             *           "code": "EXISTING_DRAFT_ACTION_REQUIRED",
+             *           "message": "이 ERP W/O 에 작성중 계획(PP-20261116-0003)이 있습니다. 「이어서 한다」와 「새로 한다」 가운데 하나를 고르세요."
+             *         },
+             *         {
+             *           "scope": "field",
+             *           "field": "plans[1].planDateSourceCode",
+             *           "code": "PLAN_DATE_SOURCE_MISMATCH",
+             *           "message": "시스템이 정한 날짜는 2026-11-18 입니다 — 날짜를 바꿨으면 출처를 USER 로 보내세요."
+             *         },
+             *         {
+             *           "scope": "field",
+             *           "field": "plans[0].workOrders[0].plannedStartAt",
+             *           "code": "PLAN_TIME_OUTSIDE_PLAN_DATE",
+             *           "message": "계획 시작 시각이 계획일(2026-11-18)의 근무일(11-18 07:00 ~ 다음 날 11-19 07:00) 밖입니다. 시각이나 계획일을 고치세요."
+             *         }
+             *       ]
+             *     }
+             */
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
@@ -32597,13 +32965,380 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description 충돌 — 저장하지 않았다. 검토한 뒤 기준이 바뀌었다(PROPOSAL_CHANGED — 다시 검토하고 새 키로 보낸다) · 같은 키의 처리가 진행 중(INVALID_STATE) · 같은 키로 다른 본문 또는 번호 채번 실패(DUPLICATE_KEY) */
+        /** @description 충돌 — 저장하지 않았다. 검토한 뒤 기준이 바뀌었거나 사람이 본 작성중 계획의 id·판이 지금과 다르다(PROPOSAL_CHANGED — 다시 검토하고 새 키로 보낸다) · 지울 작성중 계획에 분할 계획이 매달렸다(INVALID_STATE) · 같은 키의 처리가 진행 중(INVALID_STATE) · 같은 키로 다른 본문 또는 번호 채번 실패(DUPLICATE_KEY) */
         409: {
           headers: {
             [name: string]: unknown;
           };
           content: {
             'application/json': components['schemas']['ProductionConflictResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/planning/production-orders/{productionOrderId}/audit-events': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * ERP W/O 감사 기록 조회
+     * @description ERP W/O 한 건에 남은 감사 기록 — 계획 제안 확정이 사람이 «알고 허용한 것»을 남긴다(작성중 계획 대체 PLAN_DRAFT_REPLACED · 입고 창고 수동 변경 FG_WAREHOUSE_OVERRIDDEN · 휴일 직접 지정 PLAN_DATE_USER_ON_HOLIDAY). 생산계획(W-02-01·W-02-02)·작업지시(W-02-03·W-02-04) 화면이 부른다 — 작업지시는 W/O 의 productionOrderId 로 찾는다. ⛔ 대상은 늘 경로의 ERP W/O 다 — 다른 ERP W/O·다른 대상의 기록은 나오지 않는다. 횡단 감사 조회(GET /audit/events)의 권한은 이 화면들에 주지 않는다. 최신순(발생 시각 내림차순, 같으면 기록 id 내림차순). 기간은 선택이다 — 대상·시각 인덱스로 찾는다.
+     *
+     *     ⭐ 사용자 데이터 범위 — 범위 밖 공장의 ERP W/O 와 없는 id 는 404 다(규칙은 목록 설명).
+     */
+    get: {
+      parameters: {
+        query?: {
+          /** @description 이 시각 이후(포함). 생략하면 처음부터 */
+          occurredFrom?: string;
+          /** @description 이 시각 전(미포함). 생략하면 지금까지 */
+          occurredTo?: string;
+          page?: number;
+          size?: number;
+        };
+        header?: never;
+        path: {
+          productionOrderId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 — 최신순 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            /**
+             * @example {
+             *       "items": [
+             *         {
+             *           "auditEventId": 9001,
+             *           "occurredAt": "2026-11-17T10:12:00+07:00",
+             *           "targetTypeCode": "PRODUCTION_ORDER",
+             *           "targetId": 1001,
+             *           "eventTypeCode": "UPDATE",
+             *           "beforeValue": {
+             *             "erpStorageLocationCode": "S510",
+             *             "warehouseId": 51,
+             *             "warehouseCode": "S510",
+             *             "locationId": 5101
+             *           },
+             *           "afterValue": {
+             *             "eventCode": "FG_WAREHOUSE_OVERRIDDEN",
+             *             "detail": {
+             *               "productionPlanId": 3002,
+             *               "planNo": "PP-20261117-0004",
+             *               "warehouseId": 52,
+             *               "warehouseCode": "S520",
+             *               "workOrders": [
+             *                 {
+             *                   "workOrderId": 5001,
+             *                   "defaultFgLocationId": 5201
+             *                 }
+             *               ],
+             *               "erpMismatchAcknowledged": true
+             *             }
+             *           },
+             *           "reason": null,
+             *           "performedBy": 77,
+             *           "terminalId": null,
+             *           "correlationId": "7b4c8f0e-2f3a-4b8e-9d7c-5a1e2b3c4d5e"
+             *         }
+             *       ],
+             *       "page": {
+             *         "page": 1,
+             *         "size": 50,
+             *         "total": 1
+             *       }
+             *     }
+             */
+            'application/json': {
+              items: components['schemas']['ProductionOrderAuditEvent'][];
+              page: components['schemas']['PageMeta'];
+            };
+          };
+        };
+        /** @description 질의 형식 위반 — 계약 가드 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 단말·권한 게이팅에 막혔다 — 생산계획·작업지시 화면 권한 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없다 · 데이터 범위 밖 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/planning/production-orders/{productionOrderId}:revalidate-plan-proposal': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * ERP W/O 계획 제안 보완값 재검증
+     * @description 사람이 고친 계획(계획일·수량·BOM·Routing·생산 라인·4M·교대)을 저장하지 않고 확정과 같은 판정·같은 계산으로 다시 계산·검증한다. ⛔ 부작용이 없다 — 잠그지 않고, 계획·W/O·4M 을 저장하지 않고, 계획번호·MES W/O 번호를 뽑지 않고, 수량·목록 상태·멱등 기록을 바꾸지 않는다. Idempotency-Key 를 받지 않는다. 본문은 확정 본문(ProductionPlanProposalConfirm)과 같되 생산 라인·생산품 입고 위치을 비워도 받는다(ProductionPlanProposalRevalidate — 빈 칸은 errors 에 REQUIRED). 칸을 다 채운 본문은 화면이 그대로 확정에 보낸다.
+     *
+     *     ⭐ 새 오퍼레이션으로 둔 까닭 — 조회(GET)는 본문을 싣지 못하고(계획 여럿 × 공정별 4M), 확정에 미리 보기 칸을 두면 멱등 기록·채번·409 와 한 경로에 섞여 「저장하지 않음」을 확정 안에서 갈라 지켜야 한다. 판정 함수는 하나다 — 확정은 같은 함수를 잠근 트랜잭션에서 다시 부르고 오류가 있으면 400 으로 던진다.
+     *
+     *     처리 — ① 없거나 범위 밖이면 404 ② 형식 위반(계약 가드)만 400 ③ 그 밖의 판정은 모두 200 이다: 확정이 400 으로 낼 오류는 errors, 409 PROPOSAL_CHANGED 로 낼 것은 proposalChanges·currentProposal, 확정을 막지 않는 경고는 warnings. 확정 계획량이 이미 수량을 채웠으면 alreadyProcessed 다. 취소된 ERP W/O 는 errors 에 screen STATE_LOCKED, OA 자동 W/O 공장의 ERP W/O 는 screen AUTO_WORK_ORDER_PLANT 하나다(확정과 같은 순서·같은 문장).
+     *
+     *     ⭐ basis 연결 — 응답 basis 는 지금 다시 계산한 basis 다. 화면은 proposalChanges 를 사람에게 보인 뒤에만 응답 basis 를 확정 본문에 옮겨 싣는다. 잠그지 않으므로 재검증과 확정 사이에 기준이 바뀌면 확정이 409 PROPOSAL_CHANGED 다.
+     *
+     *     ⭐ 판정 시점 — BLOCK(errors): 재검증·확정 둘 다(한 함수). WARN(warnings: 교정 기한·금형 수명·작업자 자격·설비 시간 중복·계획일 휴일·판정 불가): 제안 조회·재검증만 계산하고 확정은 다시 보지 않으며 막지 않는다. 설비 시간 중복은 지금 저장된 다른 MES W/O 와 이 본문의 다른 공정 W/O 의 시각을 함께 본다 — 재검증 뒤 남이 만든 W/O 와의 중복은 확정이 잡지 않는다. 금형 시간 중복은 판정하지 않는다(4M 점검에 없는 규칙).
+     *
+     *     ⭐ 사용자 데이터 범위 — 범위 밖 공장의 ERP W/O 는 404 다. 권한은 확정과 같다.
+     *
+     *     ⭐ 기존 작성중 계획 — ERP W/O 에 작성중 계획이 있으면 사람이 「이어서 한다(CONTINUE)」와 「지금 편집한 계획으로 새로 한다(REPLACE)」 가운데 하나를 골라 existingDraftAction 에 싣는다. 비우면 작성중 계획을 건드리지 않고 400 field existingDraftAction EXISTING_DRAFT_ACTION_REQUIRED 다(묵시적 기본값 없음). CONTINUE — 작성중 계획(plan-{id})을 편집 기준으로 쓴다(제안 조회 existingDraftAction=CONTINUE 의 REVIEW_DRAFT): 작성중 계획 전부를 savedVersionNo 와 함께 싣고, 새 계획(new-N)을 더할 수 있다(나누기·추가). 작성중 계획을 빼고 보내면 400 field plans INVALID — 지우려면 REPLACE 다. savedVersionNo 가 없으면 400 REQUIRED, 지금 판과 다르면 409 PROPOSAL_CHANGED(basis plans). REPLACE — 작성중 계획 전부를 replacedDrafts 에 id·판으로 적고(비면 400 field replacedDrafts REQUIRED) 본문 계획은 모두 새 계획(new-N)이다. 한 트랜잭션에서 작성중 계획을 지우고 새 계획을 등록·확정한다. replacedDrafts 가 지금의 작성중 계획 집합·판과 다르면 저장하지 않고 409 PROPOSAL_CHANGED(basis plans)다 — 다시 검토한다. 수량 한도(확정 계획량 + 작성 수량 ≤ ERP W/O 수량)는 대체 «후» 기준이다 — 지워질 작성중 계획의 수량은 세지 않는다. 작성중 계획이 없으면 existingDraftAction·replacedDrafts 는 보지 않는다. 재검증은 이 판정도 확정과 같은 code·field 로 errors 에, 판 차이는 proposalChanges(plans)에 싣고 existingDrafts 에 요약을 싣는다.
+     *
+     *     ⭐ 날짜 출처·계획 시각 — 확정과 같은 판정이다. 최종 시각과 출처는 plans[].workOrders[] 에, SYSTEM 시각을 다시 계산해 본문과 달라진 칸은 corrections 에, 교대 밖·선후관계 경고는 warnings 에 싣는다.
+     *
+     *     ⭐ 입고 창고 — 확정과 같은 판정이다. plans[].fgWarehouse 에 ERP 원본과 적용 창고·그 입고 위치를 싣고, 바꿨으면 WARN FG_WAREHOUSE_DIFFERS_FROM_ERP 를 낸다.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          productionOrderId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ProductionPlanProposalRevalidate'];
+        };
+      };
+      responses: {
+        /** @description 재검증 결과 — 저장하지 않았다. 확정할 수 있는지는 confirmable */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            /**
+             * @example {
+             *       "productionOrderId": 1001,
+             *       "confirmable": false,
+             *       "alreadyProcessed": false,
+             *       "basis": {
+             *         "productionOrder": "a1…",
+             *         "plans": "b2…",
+             *         "bom": "c3…",
+             *         "routing": "d4…",
+             *         "resources": "e5…",
+             *         "calendar": "f6…"
+             *       },
+             *       "proposalChanges": [],
+             *       "errors": [
+             *         {
+             *           "scope": "field",
+             *           "field": "plans[0].workOrders[1].productionLineId",
+             *           "code": "LINE_PLANT_MISMATCH",
+             *           "message": "이 ERP W/O 공장의 사용 중인 라인이 아닙니다. 라인을 다시 고르세요."
+             *         },
+             *         {
+             *           "scope": "field",
+             *           "field": "plans[0].plannedQty",
+             *           "code": "PLAN_QTY_EXCEEDS_ORDER",
+             *           "message": "계획 수량 합계가 ERP W/O 수량을 넘습니다."
+             *         }
+             *       ],
+             *       "warnings": [
+             *         {
+             *           "code": "EQUIPMENT_DOUBLE_BOOKED",
+             *           "field": "plans[0].workOrders[0].plannedEquipmentId",
+             *           "message": "설비(2001)가 같은 시간대의 다른 MES W/O 에 배정돼 있습니다."
+             *         },
+             *         {
+             *           "code": "PLAN_DATE_HOLIDAY",
+             *           "field": "plans[0].planDate",
+             *           "message": "계획일 2026-11-18 은 휴일입니다. 그대로 확정할 수 있습니다."
+             *         },
+             *         {
+             *           "code": "PLAN_TIME_OUTSIDE_SHIFT",
+             *           "field": "plans[0].workOrders[1].plannedStartAt",
+             *           "message": "계획 시각이 고른 교대(11-18 19:00 ~ 11-19 07:00) 밖입니다."
+             *         },
+             *         {
+             *           "code": "FG_WAREHOUSE_DIFFERS_FROM_ERP",
+             *           "field": "plans[0].fgWarehouseOverride",
+             *           "message": "입고 창고를 ERP(SL_CD S510)와 다른 S520(완제품 2창고)로 바꿨습니다 — ERP 는 S510 로 입고합니다."
+             *         }
+             *       ],
+             *       "plans": [
+             *         {
+             *           "proposalPlanKey": "new-1",
+             *           "planSource": "NEW",
+             *           "planDate": "2026-11-18",
+             *           "planDateSourceCode": "USER",
+             *           "planDateCalendar": {
+             *             "date": "2026-11-18",
+             *             "statusCode": "HOLIDAY"
+             *           },
+             *           "plannedQty": 130,
+             *           "routingId": 601,
+             *           "plannedLineId": 11,
+             *           "workOrders": [
+             *             {
+             *               "routingOperationId": 701,
+             *               "operationSeq": 10,
+             *               "orderQty": 130,
+             *               "predecessors": [],
+             *               "plannedStartAt": "2026-11-18T07:00:00+07:00",
+             *               "plannedEndAt": "2026-11-19T07:00:00+07:00",
+             *               "plannedShiftId": null,
+             *               "productionLineId": 11,
+             *               "plannedEquipmentId": 2001,
+             *               "plannedMoldId": null,
+             *               "responsibleWorkerId": null,
+             *               "defaultWipLocationId": 1101,
+             *               "defaultFgLocationId": 5101,
+             *               "defaultScrapLocationId": 1103,
+             *               "equipmentRequired": true,
+             *               "moldRequired": true,
+             *               "missingFields": [
+             *                 "plannedMoldId"
+             *               ],
+             *               "plannedTimeSourceCode": "SYSTEM"
+             *             },
+             *             {
+             *               "routingOperationId": 702,
+             *               "operationSeq": 20,
+             *               "orderQty": 130,
+             *               "predecessors": [
+             *                 {
+             *                   "routingOperationId": 701,
+             *                   "dependencyTypeCode": "FINISH_TO_START"
+             *                 }
+             *               ],
+             *               "plannedStartAt": "2026-11-18T13:00:00+07:00",
+             *               "plannedEndAt": "2026-11-18T21:00:00+07:00",
+             *               "plannedShiftId": 32,
+             *               "productionLineId": 99,
+             *               "plannedEquipmentId": null,
+             *               "plannedMoldId": null,
+             *               "responsibleWorkerId": 501,
+             *               "defaultWipLocationId": 1101,
+             *               "defaultFgLocationId": 5101,
+             *               "defaultScrapLocationId": 1103,
+             *               "equipmentRequired": false,
+             *               "moldRequired": false,
+             *               "missingFields": [],
+             *               "plannedTimeSourceCode": "USER"
+             *             }
+             *           ],
+             *           "splitFromPlanKey": null,
+             *           "bomId": 401,
+             *           "remarks": null,
+             *           "fgWarehouse": {
+             *             "erpStorageLocationCode": "S510",
+             *             "erpWarehouseId": 51,
+             *             "appliedWarehouseId": 52,
+             *             "arrivalLocationId": 5201,
+             *             "overridden": true,
+             *             "differsFromErp": true
+             *           }
+             *         }
+             *       ],
+             *       "existingDrafts": [],
+             *       "corrections": [
+             *         {
+             *           "field": "plans[0].workOrders[0].plannedStartAt",
+             *           "reasonCode": "SYSTEM_TIME_RECALCULATED",
+             *           "from": "2026-11-17T07:00:00+07:00",
+             *           "to": "2026-11-18T07:00:00+07:00",
+             *           "message": "계획일·교대에 맞춰 계획 시각을 다시 계산했습니다(11-18 07:00)."
+             *         }
+             *       ]
+             *     }
+             */
+            'application/json': components['schemas']['ProductionPlanProposalRevalidation'];
+          };
+        };
+        /** @description 형식 위반 — 계약 가드(타입·필수·enum·pattern). 업무 판정은 200 의 errors 다 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 단말·권한 게이팅에 막혔다 — 선택 확정과 같은 권한 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없다 · 데이터 범위 밖 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
       };
@@ -32672,6 +33407,82 @@ export interface paths {
         };
         /** @description 없다 */
         404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/planning/working-days:resolve': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 공장·생산 라인·기간 묶음의 근무일 판정
+     * @description 묶음(targets)마다 기간의 날짜별 근무일 판정(PlanningCalendarDay)을 돌려준다. 판정 규칙은 PlanningCalendarDay 설명에 있다 — 설비 가동 정지 요약과 같은 캘린더 규칙에 공장 근무일 정책을 더한 것이다.
+     *
+     *     화면의 자동 분배·계획 분할(순차 생성)은 이 응답으로 날짜를 고른다 — statusCode 가 HOLIDAY 인 날만 건너뛴다. UNDETERMINED(판정 불가)는 건너뛰지 않고 그대로 쓰되 판정 불가로 표시한다(제안 계획일 보정과 같은 규칙). 「다음 N 근무일」 같은 서버 탐색은 따로 없다 — 기간이 모자라면 다음 기간으로 다시 부른다.
+     *
+     *     ⛔ 한도 — targets 는 1~50개, 묶음마다 from ≤ to 이고 기간은 92일 이하(양 끝 포함). 넘으면 400 RANGE.
+     *     없는 공장은 400 { field: targets[i].plantId, code: INVALID }, productionLineId 가 그 공장의 라인이 아니면 400 { field: targets[i].productionLineId, code: INVALID } 다. ⭐ 사용자 데이터 범위 — 400 이 없을 때 범위 밖 공장이 있으면 403 { field: targets[i].plantId, code: PERMISSION_DENIED } 다(공장을 고르는 다른 조회와 같은 모양).
+     *     ⛔ 부작용이 없다 — 읽기지만 묶음을 본문에 실어야 해서 POST 다. 저장하지 않으므로 Idempotency-Key 를 받지 않는다.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['PlanningWorkingDayResolve'];
+        };
+      };
+      responses: {
+        /** @description 묶음마다 날짜별 판정 — 요청 순서대로 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['PlanningWorkingDayResolveResult'];
+          };
+        };
+        /** @description targets 가 없거나 50개를 넘는다 · 기간이 거꾸로이거나 92일을 넘는다 · 공장·라인이 없다 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 단말·권한 게이팅에 막혔다 — 계획 제안 조회와 같은 권한(W-02-01·W-02-02). 또는 사용자 데이터 범위 밖 공장(PERMISSION_DENIED) */
+        403: {
           headers: {
             [name: string]: unknown;
           };
@@ -34447,7 +35258,7 @@ export interface paths {
           /** @description 공정으로 거른다. 진행현황 조회의 「공정」 필터가 이 축으로 선다 — 선택 목록은 GET /mdm/processes 의 processId·processName 이다. work_order 에 직접 컬럼이 아니라 routingOperationId → routing_operation.process_id 1단 조인이므로 잇는 것은 서버 몫이다(같은 목록의 productionOrderId 도 같은 방식이다). ⛔ 응답의 routingOperationId 를 화면이 거르는 것으로는 성립하지 않는다 — 목록이 쪽 단위라 쪽 안에서만 걸러진다 */
           processId?: number;
           productionLineId?: number;
-          /** @description 계획 설비로 거른다. POP 작업 시작 화면(P-02-01 §4 ②)의 기본 목록 「이 설비 · 배포됨」이 이 축으로 선다 — 응답의 plannedEquipmentId 를 클라이언트가 거르는 것으로는 성립하지 않는다(목록이 페이지 단위라 페이지 안에서만 걸러진다). 저장 자리가 실재하므로 필터를 둔다(공유계약 L-11 의 반대쪽). 근거: P-02-01 §4·§5-5 · omf-mes#247 */
+          /** @description 계획 설비 또는 EQUIPMENT 추가 자원 배정으로 거른다. POP 작업 시작 화면(P-02-01 §4 ②)의 기본 목록 「이 설비 · 배포됨」이 이 축으로 선다 — 응답의 plannedEquipmentId 를 클라이언트가 거르는 것으로는 성립하지 않는다(목록이 페이지 단위라 페이지 안에서만 걸러진다). 저장 자리가 실재하므로 필터를 둔다(공유계약 L-11 의 반대쪽). 근거: P-02-01 §4·§5-5 · omf-mes#247 */
           plannedEquipmentId?: number;
           /** @description plannedEquipmentId 와 함께 쓴다 — 참이면 그 설비의 W/O 와 아직 설비가 정해지지 않은 W/O 를 함께 낸다(그 설비에서 시작할 수 있다). plannedEquipmentId 가 없으면 무시한다. ⚠ 개발팀 선행(docs/계약-선행-수정항목.md P-84) */
           includeUnplannedEquipment?: boolean;
@@ -34459,6 +35270,8 @@ export interface paths {
           plannedStartFrom?: string;
           /** @description 기간 필터. ⚠ 진행현황 조회는 이 쌍을 «비울 수 없다» — 무제한 조회를 허용하면 실적이 쌓인 뒤 화면이 멎는다. 기본값은 최근 1개월이고 그 강제는 «화면» 규칙이다 — 다른 화면이 같은 경로를 기간 없이 부르기 때문에 계약에서 필수로 올리지 않았다. 끝 경계는 date-time 이라 반열림이다(From 이상 · To 미만). ⚠ 이 축은 W/O 의 «계획 시작 시각»이다 — 실적의 발생 시각이 아니다. 이 쌍으로 좁힌 요약의 수량 합계는 «이 기간에 시작 계획된 W/O» 의 전 기간 실적 합이며 「그 기간에 생산된 양」이 아니다. 실적 발생 시각으로 세려면 GET /production/production-results 의 occurredFrom·occurredTo 다. */
           plannedStartTo?: string;
+          /** @description 이 시각 이후(같은 시각 포함)에 바뀐 W/O 만 낸다 — 기준은 응답의 updatedAt 이다. 완료·마감·취소된 W/O 도 실린다. 추적 시스템 연동(flowtrack)이 닫힌 W/O 를 옮겨 받는 축이다(2026-11-16). ⚠ updatedAt 은 커밋 시각이 아니라 행을 고친 순간이다 — 긴 트랜잭션이 늦게 커밋하면 지난 시각으로 보인다. 마지막으로 받은 시각보다 앞당겨 겹쳐 읽는다 */
+          updatedSince?: string;
           /** @description W/O 번호 검색. ⚠ P/O 번호는 이 축으로 검색되지 않는다 — P/O 는 productionOrderId 로 좁힌다 */
           q?: string;
           /** @description W/O 번호·계획 시작 시각·상태·우선순위 및 달성률(achievementRate)을 받는다. 방향은 asc·desc이며 생략하면 asc다. 달성률 정렬은 plannedStartFrom과 plannedStartTo를 모두 지정한 92일 이하의 계획 시작기간에서만 허용한다. 전체 필터 결과의 실적 합계/지시량으로 정렬한 다음 페이지를 나눈다. */
@@ -34907,6 +35720,83 @@ export interface paths {
         };
       };
     };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/production/work-orders/{workOrderId}/material-requirements': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 배포 전 자재 소요·단위 환산
+     * @description W/O 확정·배포(W-02-04) 확인 단계의 자재 소요 표. :release 가 담을 BOM 구성 행(이 공정의 것 · 소요량 0 제외 · 긴급 W/O 는 빈 목록)마다 BOM 소요·BOM 단위·재고 단위(품목 기본 단위)·변환 수량·환산 출처·비율·확인 필요 여부를 낸다. :release 와 같은 함수로 계산하므로 확인한 수량이 그대로 출고요청 수량이 된다. 저장하지 않으므로 상태 전이가 아니다 — :동사 를 쓰지 않는다(validation 과 같은 자리). 출고요청 부족 조회(GET /logistics/material-issue-requests/shortage)를 넓히지 않은 까닭 — 그것은 품목으로 합친 행(bomComponentId 가 비기도 한다)이고 배포의 자동 발행 조건(긴급 제외)을 걸지 않아, 배포 확인의 BOM 구성 행 단위 확인과 맞지 않는다. 근거: omf-all-around#297
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          workOrderId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 자재 소요 표 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['WorkOrderMaterialRequirementList'];
+          };
+        };
+        /** @description 검증 실패 — 공장을 풀 계획이 없는 W/O(productionPlanId · REQUIRED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 단말·권한 게이팅에 막혔다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없다 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -35440,6 +36330,8 @@ export interface paths {
      *
      *     ⭐ 이 오퍼레이션을 부르는 화면은 둘이다 — W-02-04(확정 대기 목록에서 고른 W/O 를 확정·배포한다)와 W-02-07(방금 발행한 긴급 W/O 를 이어서 배포한다). ⛔ 긴급 경로에서도 선발행은 일어난다 — 현장 실행이 정상 경로 화면을 재사용하므로 생산LOT 슬롯이 있어야 한다(P-02-12 §5-1). ⭐ 두 화면의 lotSize 출처가 다르다 — W-02-04 는 사용자 입력이고, W-02-07 은 지시수량 전량을 한 슬롯으로 보낸다(W-02-07 §5-7). 어느 쪽이든 화면이 «명시적으로» 싣는다 — 비우면 서버가 채우는 기본값을 두지 않는다(omf-mes#206 정정). ⭐ 확정·배포가 자재 출고요청을 자동으로 발행한다(R29 — 자재 명세(BOM) 소요량 자동 산정 · 담당자 개입 없음 · 근거 W-02-04 §5-5 ④). ⛔ 단 긴급 W/O 는 제외한다 — 부족분은 추가 자재 출고 요청 화면(W-02-10)으로 정식 경유한다(2026-07-14 확정 #4·#5·#7·#8 · W-02-07 §5-4). 제외 판정은 서버가 workOrderTypeCode 로 한다 — 화면이 요청 본문으로 켜고 끄지 않는다(공유계약 G-4).
      *
+     *     ⭐ 추적 시스템(flowtrack) 연동이 사람 없이 세운 계획의 W/O 는 생산 라인·WIP·스크랩 위치 없이 배포한다 — 현장 단말이 다루지 않는다. 완제품 위치는 그대로 필요하다. 그 W/O 의 배포는 작업 시작 인계 알림을 보내지 않는다(사용자 결정 2026-11-12 · 11-16).
+     *
      *     ⭐ 저장 충돌 보호 — If-Match 는 필수다. 토큰은 GET /production/work-orders/{workOrderId} 의 ETag 를 그대로 싣는다. ⭐ 발행 직후 이어서 부르는 경우(W-02-07)는 POST /production/work-orders 201 의 ETag 를 그대로 쓴다 — 토큰을 받으려고 상세를 다시 조회하지 않는다(omf-mes#258). 확정·배포는 관리웹 온라인 전제이고 배포 후에는 현장으로 내려가 되돌리기 어려운 전이라 :close 와 같은 정책이다 — :hold·:resume 처럼 선택으로 두지 않는다(그 둘은 POP 오프라인 대상 · 공유계약 C-9). 두 관리자가 같은 W/O 를 동시에 확정하면 늦은 쪽이 409 를 받는다. 근거: W-02-04 §6(동시 확정 — version_no 낙관적 잠금 B-1) · omf-mes#205
      */
     post: {
@@ -35471,7 +36363,7 @@ export interface paths {
             'application/json': components['schemas']['WorkOrderReleaseResult'];
           };
         };
-        /** @description 검증 실패. 고쳐야 풀린다. 생산 창고를 쓰는 공장(피처 003)은 빠진 기준정보를 errors 에 모아 낸다 — LINE_DEPARTMENT_MISSING(productionLineId · 라인에 담당 부서 없음) · PRODUCTION_WAREHOUSE_MISSING(departmentId · 부서에 이 공장의 활성 생산 창고 없음) · PRODUCTION_FLOOR_LOCATION_MISSING(productionLineId · 라인에 생산 현장 위치 없음). 재고 부족은 배포를 막지 않는다. 근거: omf-all-around#66 */
+        /** @description 검증 실패. 고쳐야 풀린다. 생산 창고를 쓰는 공장(피처 003)은 빠진 기준정보를 errors 에 모아 낸다 — LINE_DEPARTMENT_MISSING(productionLineId · 라인에 담당 부서 없음) · PRODUCTION_WAREHOUSE_MISSING(departmentId · 부서에 이 공장의 활성 생산 창고 없음) · PRODUCTION_FLOOR_LOCATION_MISSING(productionLineId · 라인에 생산 현장 위치 없음). 재고 부족은 배포를 막지 않는다. 근거: omf-all-around#66 · BOM 단위 ≠ 재고 단위 자재: MATERIAL_UOM_CONFIRMATION_REQUIRED(materialUomConfirmations[bomComponentId=…].confirmed — 확인 안 함 · .conversionRate — 환산이 없는데 비율 없음) · INVALID(.conversionRate — 이미 있는 품목 환산과 다른 비율 · 질량 공통 환산과 다른 비율 · 같은 품목·단위에 서로 다른 비율 · 배포하는 사이 다른 환산이 등록됨) · RANGE(.conversionRate — 소수 8자리로 반올림하면 0). 근거: omf-all-around#297 */
         400: {
           headers: {
             [name: string]: unknown;
@@ -37060,7 +37952,7 @@ export interface paths {
      */
     get: {
       parameters: {
-        query: {
+        query?: {
           workOrderId?: number;
           lotId?: number;
           /** @description 그 검사 결과에 붙은 불량만. 주면 기간(detectedFrom·detectedTo)이 필요 없다. 서버 선행 · 장부 P-42 · omf-all-around#106 */
@@ -37075,9 +37967,9 @@ export interface paths {
            *
            *     서버 구현 기준: inspectionResultId 없이 조회하면 detectedFrom·detectedTo가 모두 필요하고 빠지면 400 REQUIRED다. 조건부라서 required로 선언하지 못한다(통보 074).
            */
-          detectedFrom: string;
+          detectedFrom?: string;
           /** @description 서버 구현 기준: inspectionResultId 없이 조회하면 detectedFrom·detectedTo가 모두 필요하고 빠지면 400 REQUIRED다. 조건부라서 required로 선언하지 못한다(통보 074). */
-          detectedTo: string;
+          detectedTo?: string;
           /** @description 1 부터 */
           page?: number;
           /** @description 기본 50 */
@@ -44292,7 +45184,7 @@ export interface paths {
     put?: never;
     /**
      * 고장 보고 등록
-     * @description 설비고장 현장보고 화면이 부른다. 사진은 이 요청에 싣지 않으며 현재 첨부 API도 미구현이므로 사진 첨부를 제공하지 않는다. 오프라인 큐에서 올라올 수 있어 멱등키가 필수다.
+     * @description 설비고장 현장보고 화면이 부른다. 사진은 이 요청에 싣지 않는다 — 만들어진 건에 따로 붙인다. 오프라인 큐에서 올라올 수 있어 멱등키가 필수다.
      */
     post: {
       parameters: {
@@ -45184,7 +46076,7 @@ export interface paths {
     put?: never;
     /**
      * 보전 실적 등록
-     * @description 지시에서 이어받거나 고장에서 바로 등록한다. 지시가 없어도 성립한다. 서버 v0.1.2는 closed=true·resetCounter=true를 항상 422 INVALID로 거부하므로 마감하지 않고 누계를 초기화하지 않는 실적만 등록한다(통보 113·114).
+     * @description 지시에서 이어받거나 고장에서 바로 등록한다. 지시가 없어도 성립한다. 서버는 closed=true·resetCounter=true를 항상 422 INVALID로 거부하므로 마감하지 않고 누계를 초기화하지 않는 실적만 등록한다(통보 113·114).
      */
     post: {
       parameters: {
@@ -45324,8 +46216,6 @@ export interface paths {
      * @description 마감 전까지 고칠 수 있다.
      *
      *     서버는 closed=true를 항상 422 INVALID로 거부한다(통보 113).
-     *
-     *     서버 v0.1.2는 closed=true를 항상 422 INVALID로 거부한다(통보 113).
      */
     put: {
       parameters: {
@@ -45731,8 +46621,6 @@ export interface paths {
     /**
      * 비가동 지금 종료
      * @description 진행 중인 구간을 지금 시각으로 끝낸다. ⚠ 현장 단말(P-05-02)이 오프라인 큐로 보내는 자리라 잠금 토큰은 선택이다 — 큐에 쌓인 요청은 토큰을 싣지 않는다(공유계약 C-9).
-     *
-     *     서버 구현 기준: 종료시각은 이 API에 한해 서버의 최초 처리시각을 사용한다. 오프라인 전송 지연을 허용하며 같은 Idempotency-Key 재전송에는 최초 종료시각과 응답을 재생한다(통보 109).
      *
      *     서버 구현 기준: 종료시각은 이 API에 한해 서버의 최초 처리시각을 사용한다. 오프라인 전송 지연을 허용하며 같은 Idempotency-Key 재전송에는 최초 종료시각과 응답을 재생한다(통보 109).
      */
@@ -47067,8 +47955,6 @@ export interface components {
      * @description 사용자 등록 요청. isActive 는 받지 않는다(신규는 항상 사용 중). loginId 는 등록 시에만 지정하고 이후 편집은 항상 잠긴다(참조를 셀 수 없어 NOT_COUNTABLE — 공유계약 B-4). 근거: W-CO-02 §4-A · §5-1 「사용자 추가」
      *
      *     서버 구현 기준: 등록은 계정과 자격을 한 트랜잭션으로 만든다. password를 생략해도 계정은 즉시 로그인할 수 있다. 8자 미만은 400 RANGE, 문자열이 아니면 400 INVALID이며 null은 「보내지 않음」으로 읽는다.
-     *
-     *     서버 구현 기준: 등록은 계정과 자격을 한 트랜잭션으로 만든다. password를 생략해도 계정은 즉시 로그인할 수 있다. 8자 미만은 400 RANGE, 문자열이 아니면 400 INVALID이며 null은 「보내지 않음」으로 읽는다.
      */
     AppUserCreate: {
       /**
@@ -47103,9 +47989,9 @@ export interface components {
       statusCode?: string;
       /**
        * Format: password
-       * @description 관리자가 직접 정하는 초기 비밀번호. 보내면 그 값이 계정의 비밀번호가 되고 첫 로그인 강제 변경이 걸리지 않는다(Session.mustChangePassword=false). 생략하면 서버가 임시 비밀번호를 만들어 응답 temporaryPassword로 한 번만 내려주고 강제 변경을 건다. 최소 길이 8만 검사하며 조합 규칙은 없다 — PasswordChangeRequest.newPassword와 같은 기준이다.
+       * @description 관리자가 직접 정하는 초기 비밀번호. 보내면 그 값이 계정의 비밀번호가 되고 첫 로그인 강제 변경이 걸리지 않는다(Session.mustChangePassword=false). 생략하거나 null이면 서버가 임시 비밀번호를 만들어 응답 temporaryPassword로 한 번만 내려주고 강제 변경을 건다. 최소 길이 8만 검사하며 조합 규칙은 없다 — PasswordChangeRequest.newPassword와 같은 기준이다.
        */
-      password?: string;
+      password?: string | null;
     };
     /** @description 사용자 수정 요청. loginId 는 항상 잠김(NOT_COUNTABLE)이라 요청에 포함하지 않는다. isActive 는 별도 액션(:deactivate / :activate)으로만 바꾼다. 낙관적 잠금은 공유계약 B-1. 근거: W-CO-02 §5-2 ⛔ **loginId 는 이 본문에 없다 — 한 번 만들면 고치지 않는다**(사용자 결정 2026-09-01 · W-CO-02 §8-5 해소). B-4 의 「참조 건수 0 일 때만 코드 수정」 규칙을 loginId 에는 적용할 수 없다 — 작성자 기록류에 흩어져 있고 FK 를 의도적으로 걸지 않아 **참조를 셀 수 없기 때문**이다. 셀 수 없는 조건은 규칙이 될 수 없다. 바꿔야 하면 새 계정을 만든다. ⚠ roleCode 는 참조를 셀 수 있어 기존 B-4 규칙을 그대로 쓴다. */
     AppUserUpdate: {
@@ -49247,6 +50133,109 @@ export interface components {
       defectCode: components['schemas']['DefectCode'];
       editability: components['schemas']['Editability'];
     };
+    /** @description W/O 하나의 포장 묶음(flowtrack 연동 제안 §3-3) */
+    TrackingStockMove: {
+      /**
+       * Format: uuid
+       * @description flowtrack 전송 번호 — Idempotency-Key 와 같다
+       */
+      transmissionId: string;
+      workOrderNo: string;
+      /**
+       * Format: int64
+       * @description null 이면 workOrderNo 로 찾는다
+       */
+      mesWorkOrderId: number | null;
+      itemCode: string;
+      /** @description 양품 수 — serialNos 개수와 같다 */
+      qty: number;
+      /** @description flowtrack 이 매긴 시리얼. 그 W/O 의 생산 LOT 에 등록한다 */
+      serialNos: string[];
+      /** Format: date-time */
+      packedFrom: string;
+      /**
+       * Format: date-time
+       * @description 실적 시각·입고 시각
+       */
+      packedTo: string;
+      /**
+       * Format: date
+       * @description 입고 업무일자(공유계약 C-8)
+       */
+      businessDate: string;
+    };
+    /** @description 컨테이너 하나의 출하(flowtrack 연동 제안 §3-4) */
+    TrackingStockIssue: {
+      /**
+       * Format: uuid
+       * @description flowtrack 전송 번호 — Idempotency-Key 와 같다
+       */
+      transmissionId: string;
+      containerNo: string;
+      /** @description VI 번호 — 출고 전표 비고에 남긴다 */
+      viNo: string | null;
+      /** @description 인보이스 번호 — 출고 전표 비고에 남긴다 */
+      invoiceNo: string | null;
+      /**
+       * Format: date
+       * @description 선적일 — 출고 전표 비고에 남긴다. 출고 시각은 받은 시각이다
+       */
+      shipDate: string | null;
+      /** @description 목적지 — 출고 전표 비고에 남긴다 */
+      destination: string | null;
+      /** @description 줄 qty 의 합 */
+      qty: number;
+      /** @description 같은 doNo 의 줄은 출고 전표 하나로 모인다 */
+      lines: components['schemas']['TrackingStockIssueLine'][];
+      /**
+       * Format: date
+       * @description 출고 업무일자(공유계약 C-8)
+       */
+      businessDate: string;
+    };
+    TrackingStockIssueLine: {
+      doNo: string;
+      itemCode: string;
+      /** @description serialNos 개수와 같다 */
+      qty: number;
+      /** @description 입고이동으로 MES 에 등록된 시리얼 */
+      serialNos: string[];
+    };
+    /** @description W/O 하나의 마감 보고(flowtrack 연동 제안 §3-5) */
+    TrackingWorkOrderClose: {
+      /**
+       * Format: uuid
+       * @description flowtrack 전송 번호 — Idempotency-Key 와 같다
+       */
+      transmissionId: string;
+      workOrderNo: string;
+      /**
+       * Format: int64
+       * @description null 이면 workOrderNo 로 찾는다
+       */
+      mesWorkOrderId: number | null;
+      itemCode: string;
+      /** @description 시리얼 없이 올릴 양품 수 — S410 은 만든 수, 시리얼 품목은 0 */
+      qty: number;
+      /**
+       * @description 잔량 처분 — 양품 합이 지시수량보다 적을 때만 보낸다
+       * @enum {string|null}
+       */
+      remainderDispositionCode?: 'CARRY_OVER' | 'WRITE_OFF' | null;
+      /** @description 미달·초과 사유 — GET /mdm/code-values?codeGroupCode=WORK_ORDER_COMPLETION_VARIANCE_REASON 의 사용 중인 코드 */
+      reasonCode?: string | null;
+      /** @description W/O 비고에 남긴다(flowtrack 마감자) */
+      remarks?: string | null;
+      /**
+       * Format: date
+       * @description 제품 입고·자재 차감의 업무일자(공유계약 C-8)
+       */
+      businessDate: string;
+    };
+    TrackingTransmissionResult: {
+      /** @description 이미 처리한 전송 번호라 아무것도 하지 않았다 */
+      replayed: boolean;
+    };
     /** @description message_key 가 UNIQUE 라 재처리는 중복 전송이 아니다. lockedBy 가 있으면 워커가 처리 중이므로 재처리를 거부하고 409 conflictCause=workerLease 로 응답한다. version_no 가 없어 낙관적 잠금 대신 리스 충돌이다 — 공유계약 B-1·C-4. payload 는 이 스키마에 없다 — 대외비 노출 범위가 확정되지 않아 목록이 전 행의 payload 를 나르지 않도록 상세 전용 IntegrationMessageDetail 로 분리했다 */
     IntegrationMessage: {
       /**
@@ -49965,7 +50954,7 @@ export interface components {
        * @example 프레스 1호기
        */
       equipmentName?: string | null;
-      /** @description 단말 유형 — 고정 스테이션(POP · Electron 키오스크 · 산업용 패널 PC)과 손에 드는 기기(MOBILE · Capacitor Android)가 여기서 갈린다. ⭐ 폼팩터는 결정 16 이 확정한 아키텍처 축이라 고객 관행으로 늘지 않는다. ⚠ 관리웹은 단말 마스터에 등록하지 않는다 — 현장 단말만 여기 든다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 값 목록은 GET /mdm/code-values?codeGroupCode=TERMINAL_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
+      /** @description 단말 유형 — 고정 스테이션(POP · Electron 키오스크 · 산업용 패널 PC) · 손에 드는 기기(MOBILE · Capacitor Android) · 추적 시스템 연동(TRACKING_SYSTEM · 2026-11-12). ⚠ 관리웹은 단말 마스터에 등록하지 않는다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 값 목록은 GET /mdm/code-values?codeGroupCode=TERMINAL_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
       terminalTypeCode: string;
       /** @description 단말의 가동 상태 — 가동중(RUNNING) · 정지(STOPPED) 둘뿐이다(사용자 결정 2026-09-02 — 폐기·분실은 이 축이 아니다). ⛔ isActive 와 «다른 축»이다 — isActive 는 켬/끔 스위치이고 폐기 수단이 아니다(W-CO-06 §5-4 — 끄고 다시 켜면 유출 토큰이 되살아난다. 실측 200 → 401 → 200). 분실·폐기는 이 값도 isActive 도 아닌 «재발급»이 담당한다(§5-4). ⛔ 시스템 소유다 — 고객이 W-06-06 공통코드 마스터에서 이 값을 편집하면 안 된다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=TERMINAL_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. 근거: W-CO-06 §3 목업이 「가동중」을 그린다. */
       statusCode: string;
@@ -50010,7 +50999,7 @@ export interface components {
        * @example 2001
        */
       equipmentId?: number | null;
-      /** @description 단말 유형 — 고정 스테이션(POP)과 손에 드는 기기(MOBILE). 값 목록은 GET /mdm/code-values?codeGroupCode=TERMINAL_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
+      /** @description 단말 유형 — 고정 스테이션(POP) · 손에 드는 기기(MOBILE) · 추적 시스템 연동(TRACKING_SYSTEM). 값 목록은 GET /mdm/code-values?codeGroupCode=TERMINAL_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
       terminalTypeCode: string;
       /** @description 값 = `RUNNING`·`STOPPED`. 값 목록은 `GET /mdm/code-values?codeGroupCode=TERMINAL_STATUS` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
       statusCode: string;
@@ -50039,7 +51028,7 @@ export interface components {
        * @example 2001
        */
       equipmentId?: number | null;
-      /** @description 단말 유형 — 고정 스테이션(POP)과 손에 드는 기기(MOBILE). 값 목록은 GET /mdm/code-values?codeGroupCode=TERMINAL_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
+      /** @description 단말 유형 — 고정 스테이션(POP) · 손에 드는 기기(MOBILE) · 추적 시스템 연동(TRACKING_SYSTEM). 값 목록은 GET /mdm/code-values?codeGroupCode=TERMINAL_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. 바꾸면 그 단말의 토큰이 끊긴다 — 다시 발급한다(`:issue-token`). */
       terminalTypeCode: string;
       /** @description 값 = `RUNNING`·`STOPPED`. 값 목록은 `GET /mdm/code-values?codeGroupCode=TERMINAL_STATUS` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
       statusCode: string;
@@ -51981,12 +52970,12 @@ export interface components {
        */
       parentLocationId: number;
       /**
-       * @description 층 수
+       * @description 층 수 — 0 이면 랙이 맨 아래 위치다(사용자 결정 2026-11-19)
        * @example 5
        */
       levelCount: number;
       /**
-       * @description 층마다 셀 수 — 0 이면 층이 맨 아래 위치다
+       * @description 층마다 셀 수 — 0 이면 층이 맨 아래 위치다. 층 수가 0 이면 0 이어야 한다
        * @example 10
        */
       cellCountPerLevel: number;
@@ -52320,8 +53309,6 @@ export interface components {
        *     서버 구현 기준: 출하가 소유한 하위 입고·출고 전표의 개별 취소 차단도 현재 STATE_LOCKED로 반환한다(통보 217).
        *
        *     피처 005 R-24: 그 문서(입하·입고)의 자재 관리 LOT 중 최종 마감된 입하 LOT 소속이 있으면 INBOUND_LOT_FINALIZED — 요청·실행 409 의 코드와 같다.
-       *
-       *     서버 구현 기준: 출하가 소유한 하위 입고·출고 전표의 개별 취소 차단도 현재 STATE_LOCKED로 반환한다(통보 217).
        * @example SUCCESSOR_EXISTS
        * @enum {string|null}
        */
@@ -52552,13 +53539,16 @@ export interface components {
       /**
        * @description 원천 문서 유형. **A-10 다형 참조 판별자**이고 값은 **대상 테이블 이름**이다 — 피킹 지시(`PICKING_ORDER` → `logistics.picking_order`, 생산 투입) · 입고 전표(`GOODS_RECEIPT` → `logistics.goods_receipt`, 공급사 반품·자재 폐기) · 처분 결정(`DISPOSITION_DECISION` → `quality.disposition_decision`, 제품 폐기) · 출하(`SHIPMENT` → `logistics.shipment`, 출하 확정) 넷이다. `sourceDocumentId` 는 그 표의 식별자다. ⛔ 공통코드 그룹으로 받지 않는다 — 값이 우리 계약의 리소스 이름이라 **고객이 늘릴 수 있는 값이 아니다**(공유계약 A-10·A-16, `GoodsIssue.destinationTypeCode` 와 같은 처리). 새 대상이 생기면 화면이 문자열을 정하기 전에 이 목록에 등재한다(A-16). ⚠ 같은 이름의 다른 자리(`GoodsReceipt`·`InventoryTransaction` 등)는 값 집합이 다르다 — 자리마다 닫는다.
        *
-       *     서버 구현 기준 추가값: SHIPMENT → logistics.shipment. 출하 등록이 내부에서 만든 출고 전표의 원천이다(통보 217).
-       *
-       *     서버 구현 기준 추가값: SHIPMENT → logistics.shipment. 출하 등록이 내부에서 만든 출고 전표의 원천이다(통보 217).
+       *     서버 구현 기준 추가값: SHIPMENT → logistics.shipment. 출하 등록이 내부에서 만든 출고 전표의 원천이다(통보 217). PRODUCTION_RESULT → production.production_result. 추적 시스템(flowtrack) 연동의 자재 차감이 만든 출고 전표의 원천이다. TRACKING_TRANSMISSION → integration.tracking_transmission. 추적 시스템 연동의 출하(컨테이너 하나)가 D/O 마다 만든 출고 전표의 원천이다.
        * @enum {string}
        */
       sourceDocumentTypeCode:
-        'PICKING_ORDER' | 'GOODS_RECEIPT' | 'DISPOSITION_DECISION' | 'SHIPMENT';
+        | 'PICKING_ORDER'
+        | 'GOODS_RECEIPT'
+        | 'DISPOSITION_DECISION'
+        | 'SHIPMENT'
+        | 'PRODUCTION_RESULT'
+        | 'TRACKING_TRANSMISSION';
       /**
        * Format: int64
        * @example 1001
@@ -53102,7 +54092,7 @@ export interface components {
        * @example 1001
        */
       destinationLocationId: number | null;
-      /** @example SYS-STAGING */
+      /** @example K7QX-SYS-STAGING */
       destinationLocationCode: string | null;
       /**
        * @description NORMAL · DEFECTIVE
@@ -54217,7 +55207,7 @@ export interface components {
        */
       lotId?: number | null;
       /**
-       * @description 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). 근거: 공유계약 G-32
+       * @description 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). ⭐ LOT 이 있고 행 값이 정상·검사 대기면 LOT 의 현재 판정을 싣는다 — 검사 대기로 입고된 재고가 합격 뒤에도 「검사 대기」로 보이지 않게(omf-all-around#302). 근거: 공유계약 G-32
        * @example NORMAL
        */
       qualityStatusCode?: string | null;
@@ -54254,12 +55244,12 @@ export interface components {
        */
       pickedQty: number;
       /**
-       * @description 내보낼 수 없게 묶인 수량. ⚠ 출고·출하·피킹의 차단 판정 정본은 이 값이 아니라 Lot Status 단일 지점이다(결정 10 · M-01-08 §5-2). 근거: M-01-08 §5-5
+       * @description 내보낼 수 없게 묶인 수량. 묶인 수량에 더해 출고 할당이 집지 않는 잔액(정상 품질이 아님 · 가용 상태가 아님 · 풀리지 않은 LOT 보류)의 나머지(보유 − 예약 − 피킹)를 센다(omf-all-around#285). LOT 이 있는 잔액의 품질은 LOT 판정을 따른다(omf-all-around#302). ⚠ 출고·출하·피킹의 차단 판정 정본은 이 값이 아니라 Lot Status 단일 지점이다(결정 10 · M-01-08 §5-2). 근거: M-01-08 §5-5
        * @example 0
        */
       blockedQty: number;
       /**
-       * @description 보유 − 예약 − 피킹 − 보류. 서버가 계산해 내려보내며 화면도 서버도 다시 빼지 않는다
+       * @description 보유 − 예약 − 피킹 − 보류. 보류에 집을 수 없는 잔액이 들어가므로 출고 할당(정상 품질 · 가용 상태 · LOT 보류 아님)과 같은 기준이다(omf-all-around#285). LOT 이 있는 잔액의 정상 품질은 LOT 판정이 정상이고 행 품질이 정상 또는 검사 대기인 것이다 — 검사 대기로 입고된 재고는 PQC 합격으로 가용이 되고, 정상 LOT 이 검사 대기 · 불량으로 바뀌면 보류가 된다(omf-all-around#302). 서버가 계산해 내려보내며 화면도 서버도 다시 빼지 않는다
        * @example 80
        */
       readonly availableQty: number;
@@ -54459,8 +55449,6 @@ export interface components {
       lotId?: number | null;
       /**
        * @description 장부 수량. 블라인드 실사에서는 내려보내지 않는다
-       *
-       *     서버 구현 기준: 블라인드 실사이면 counted 값과 관계없이 이 키를 생략한다(통보 273 및 구현 코드 대조).
        *
        *     서버 구현 기준: 블라인드 실사이면 counted 값과 관계없이 이 키를 생략한다(통보 273 및 구현 코드 대조).
        * @example 100
@@ -55329,11 +56317,9 @@ export interface components {
       /** @description 전이 «후» 상태. LOT 상태. 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
       toStatusCode: string;
       /**
-       * @description 원본 설계 원본 설계 전이 9종 — 도식스펙03 §1.3 · W-03-01 §5-1 표. 서버 구현 기준 C17·C18·C19·C20을 더해 응답은 13종이다. 서버 구현 기준 C17·C18·C19·C20을 더해 응답은 13종이다
+       * @description 원본 설계 전이 9종 — 도식스펙03 §1.3 · W-03-01 §5-1 표. 서버 구현 기준 C17·C18·C19·C20을 더해 응답은 13종이다
        *
        *     서버 구현 기준 추가값: C17·C18·C19=처분 전이, C20=재고 재등록 후 정상 전이(통보 089·218). C31=입하 등록 해제로 정상 → 검사 대기(피처 005). C30=입하 마감 취소로 IQC 생략 무효 → 검사 대기(피처 005). C29=IQC 판정 확정 취소로 정상·불량 → 검사 대기(피처 005).
-       *
-       *     서버 구현 기준 추가값: C17·C18·C19=처분 전이, C20=재고 재등록 후 정상 전이(통보 089·218).
        * @example C7
        * @enum {string}
        */
@@ -55357,9 +56343,7 @@ export interface components {
       /** @example 값 */
       reason?: string | null;
       /**
-       * @description A-10 다형 참조 판별자 — 값이 «대상 리소스 이름»이고 짝 id 가 그 리소스의 식별자다. ⭐ 대응표는 «설계»가 정한다(A-10 규칙 1 · 2026-09-03 사용자 결정). 이 전이를 일으킨 것 — 검사 결과(INSPECTION_RESULT) · LOT 보류/해제(LOT_HOLD) · 부적합(NONCONFORMANCE). ⭐ 기존 기존 전이 9종에서 도출했다(W-03-01 §5-1 표) — C4「합격」·C6「불합격」·C14「합격판정개수 초과」·C15「전수 재검 양품」은 검사 결과가, C5·C10「의심자재등록」은 보류가, C7·C8「재판정」은 검사 결과가, C9「클레임·리콜」은 부적합이 일으킨다.
-       *
-       *     서버 구현 기준 추가값: DISPOSITION_DECISION=C17~C19의 원천, STOCK_TRANSFER=C20의 원천(통보 089·218 및 구현 코드 대조).
+       * @description A-10 다형 참조 판별자 — 값이 «대상 리소스 이름»이고 짝 id 가 그 리소스의 식별자다. ⭐ 대응표는 «설계»가 정한다(A-10 규칙 1 · 2026-09-03 사용자 결정). 이 전이를 일으킨 것 — 검사 결과(INSPECTION_RESULT) · LOT 보류/해제(LOT_HOLD) · 부적합(NONCONFORMANCE). ⭐ 기존 전이 9종에서 도출했다(W-03-01 §5-1 표) — C4「합격」·C6「불합격」·C14「합격판정개수 초과」·C15「전수 재검 양품」은 검사 결과가, C5·C10「의심자재등록」은 보류가, C7·C8「재판정」은 검사 결과가, C9「클레임·리콜」은 부적합이 일으킨다.
        *
        *     서버 구현 기준 추가값: DISPOSITION_DECISION=C17~C19의 원천, STOCK_TRANSFER=C20의 원천(통보 089·218 및 구현 코드 대조).
        * @example INSPECTION_RESULT
@@ -55785,7 +56769,7 @@ export interface components {
       /** @description 단위 코드. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
       uomCode?: string;
     };
-    /** @description 한 W/O 의 품목별 소요·기출고·부족 한 줄 */
+    /** @description 한 W/O 의 품목별 소요·기출고·부족 한 줄. 같은 품목이라도 환산이 없어(NONE) BOM 단위로 남은 소요는 단위가 달라 따로 한 줄이다 — 그 줄의 기출고는 0 으로 낸다(기출고는 재고 단위) */
     MaterialIssueShortageLine: {
       /**
        * Format: int64
@@ -55799,11 +56783,12 @@ export interface components {
       bomComponentId?: number | null;
       /**
        * Format: int64
+       * @description 재고 단위(품목 기본 단위). 환산이 없는 자재(conversionSource = NONE)만 BOM 단위로 남는다. 근거: omf-all-around#297
        * @example 1001
        */
       uomId: number;
       /**
-       * @description 자재 명세(BOM) 소요량 — 이 W/O 의 지시수량 기준
+       * @description 자재 명세(BOM) 소요량 — 이 W/O 의 지시수량 기준. W/O 배포와 같은 함수로 재고 단위로 바꿔(재고 단위 decimal_scale 로 올림) 낸다 — 배포 출고요청 수량과 같다
        * @example 200
        */
       requiredQty: number;
@@ -55817,6 +56802,12 @@ export interface components {
        * @example 80
        */
       shortageQty: number;
+      /**
+       * @description 재고 단위 환산 출처 — ITEM(품목 환산) · COMMON(공통 환산 상수) · NONE(환산 없음 — 수량·단위가 BOM 단위 그대로다. 그대로 요청하면 400). BOM 단위와 재고 단위가 같으면 null. 근거: omf-all-around#297 — 줄마다 낸다
+       * @example ITEM
+       * @enum {string|null}
+       */
+      conversionSource: 'ITEM' | 'COMMON' | 'NONE' | null;
     };
     /** @description 추가 자재 출고 요청 화면(W-02-10 §3 ②)의 표를 이 한 응답이 채운다 — 「BOM 소요량 불러오기」 버튼이 부르는 것이 이 경로다. 자재 명세(BOM) 조회를 화면이 따로 하지 않는다 */
     MaterialIssueShortageList: {
@@ -59444,8 +60435,6 @@ export interface components {
      * @description 로그인 결과이자 「지금 나는 누구이고 어디까지 보는가」.
      *
      *     서버 구현 기준: mustChangePassword는 로그인 응답과 GET /app/sessions/current 양쪽에 항상 실린다.
-     *
-     *     서버 구현 기준: mustChangePassword는 로그인 응답과 GET /app/sessions/current 양쪽에 항상 실린다.
      */
     Session: {
       /**
@@ -59468,7 +60457,7 @@ export interface components {
        * @example 2026-08-13T09:12:00+09:00
        */
       lastLoginAt?: string;
-      /** @description 권한 범위는 사업부·공장 두 축이다. 근거: W-CO-01 §5-3 */
+      /** @description 권한 범위는 사업부·공장 두 축이다. 줄이 없으면 제한 없음(모든 공장). 공장만 지정한 범위는 그 공장의 사업부를 채워 싣는다(omf-all-around#336). 근거: W-CO-01 §5-3 */
       scopes: components['schemas']['SessionScope'][];
       roles?: string[];
       /** @description 이 사용자가 지금 가진 기능 권한 코드 전부. 부여된 역할들의 권한을 서버가 합집합으로 풀어 내린다 — 화면이 역할에서 권한을 다시 계산하지 않는다. 화면은 이 배열로 액션을 활성·비활성한다: 403 을 받아 보고 아는 것이 아니라 «누르기 전에» 판정한다. ⚠ 이 필드가 «없으면» 값 목록이 아직 정해지지 않았다는 뜻이다 — 그때 화면은 판정하지 않고 컨트롤을 비활성으로 두고 사유를 보인다. 빈 배열은 「아무 기능 권한도 없다」이며 「모른다」가 아니다. */
@@ -60877,7 +61866,7 @@ export interface components {
        */
       operationPolicyId: number;
       /**
-       * @description 무엇을 정하는 정책인가. SHOT_CONVERSION_ENABLED = 생산 수량으로 타발수를 환산할지(valueBoolean). SHOT_CONVERSION_RATIO = 수량 대비 타발수 비율(valueNumeric · 0 보다 커야 한다). MINOR_STOP_THRESHOLD_MINUTES = 경미 정지로 볼 시간 임계(valueNumeric · 기본 5). PRECHECK_CONTROL_LEVEL = 작업 전 점검 통제 수준(valueText · BLOCK | WARN | OFF). ⭐ resolved 가 거짓이면 화면이 기본값을 지어내지 않고 WARN 으로 다룬다 — 통제 수준이 없다고 무통제로 열지 않는다(P-02-02 §6 확정). 코드는 화면이 붙인다 — 사용자가 만들지 않는다 FIFO_ENFORCEMENT_LEVEL = 선출(FEFO/FIFO) 위반을 어떻게 다루는가(valueText · BLOCK | WARN | OFF). 「선택적 적용 + 강제 옵션」 요구를 담고 화면은 기본 WARN 으로 시작한다. WEEKLY_WORKING_DAYS = 공장의 주간 근무일(valueNumeric · 5 = 월~금 | 6 = 월~토). 범위는 공장만 받는다 — plantId 를 주고 itemId·processId 는 비운다(아니면 400). ⭐ 이 코드만 예외로, 맞는 정책이 없으면 서버가 5 로 계산한다(출고 요청의 출고 작업일 = 생산일의 직전 근무일). effective 는 그대로 resolved=false 를 낸다. 설정 화면은 W-CO-15(공장 근무일 설정). 근거: 피처 003 · omf-all-around#66 REPLENISHMENT_RUN_TIME = 자동 보충 실행 시각(valueText · 공장 현지 HH:MM, 00:00~23:59 — 아니면 400 RANGE). 범위는 공장만 받는다. 맞는 정책이 없으면 서버가 01:00 으로 돈다(effective 는 그대로 resolved=false). 설정 화면은 W-02-12(생산 창고 보충) — W-02-12 권한은 이 코드 행만 읽고 쓴다. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+       * @description 무엇을 정하는 정책인가. SHOT_CONVERSION_ENABLED = 생산 수량으로 타발수를 환산할지(valueBoolean). SHOT_CONVERSION_RATIO = 수량 대비 타발수 비율(valueNumeric · 0 보다 커야 한다). MINOR_STOP_THRESHOLD_MINUTES = 경미 정지로 볼 시간 임계(valueNumeric · 기본 5). PRECHECK_CONTROL_LEVEL = 작업 전 점검 통제 수준(valueText · BLOCK | WARN | OFF). ⭐ resolved 가 거짓이면 화면이 기본값을 지어내지 않고 WARN 으로 다룬다 — 통제 수준이 없다고 무통제로 열지 않는다(P-02-02 §6 확정). 코드는 화면이 붙인다 — 사용자가 만들지 않는다 FIFO_ENFORCEMENT_LEVEL = 선출(FEFO/FIFO) 위반을 어떻게 다루는가(valueText · BLOCK | WARN | OFF). 「선택적 적용 + 강제 옵션」 요구를 담고 화면은 기본 WARN 으로 시작한다. WEEKLY_WORKING_DAYS = 공장의 주간 근무일(valueNumeric · 5 = 월~금 | 6 = 월~토). 범위는 공장만 받는다 — plantId 를 주고 itemId·processId 는 비운다(아니면 400). ⭐ 이 코드만 예외로, 맞는 정책이 없으면 서버가 5 로 계산한다(출고 요청의 출고 작업일 = 생산일의 직전 근무일). effective 는 그대로 resolved=false 를 낸다. 설정 화면은 W-CO-15(공장 근무일 설정). 근거: 피처 003 · omf-all-around#66 REPLENISHMENT_RUN_TIME = 자동 보충 실행 시각(valueText · 공장 현지 HH:MM, 00:00~23:59 — 아니면 400 RANGE). 범위는 공장만 받는다. 맞는 정책이 없으면 서버가 01:00 으로 돈다(effective 는 그대로 resolved=false). 설정 화면은 W-02-12(생산 창고 보충) — W-02-12 권한은 이 코드 행만 읽고 쓴다. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 AUTO_ROUTING_PROCESS = 라우팅이 없는 품목에 서버가 만드는 1공정 라우팅의 공정 코드(valueText · 사용 중인 공정이어야 한다 — 아니면 400 INVALID). BACKFLUSH_WAREHOUSE = 추적 시스템 연동이 자재를 빼는 창고 코드(valueText · 그 공장의 사용 중인 창고여야 한다 — 아니면 400 INVALID). 둘 다 범위는 공장만 받는다. 설정 화면은 없고 초기 데이터로 넣는다. 근거: flowtrack 연동(OA · PL13) · 사용자 결정 2026-11-12
        * @example SHOT_CONVERSION_RATIO
        * @enum {string}
        */
@@ -60888,7 +61877,9 @@ export interface components {
         | 'PRECHECK_CONTROL_LEVEL'
         | 'FIFO_ENFORCEMENT_LEVEL'
         | 'WEEKLY_WORKING_DAYS'
-        | 'REPLENISHMENT_RUN_TIME';
+        | 'REPLENISHMENT_RUN_TIME'
+        | 'AUTO_ROUTING_PROCESS'
+        | 'BACKFLUSH_WAREHOUSE';
       /**
        * Format: int64
        * @example 1001
@@ -60930,7 +61921,7 @@ export interface components {
     /** @description 값 칸은 셋 중 하나만 쓴다. 물리 제약은 「셋 중 하나 이상」이라 셋 다 채워도 통과하지만, 어느 칸을 쓰는지는 정책 코드가 정한다 — 쓰지 않는 칸을 채우면 읽는 쪽이 헷갈린다. 범위 축은 넷 다 비울 수 있고 비면 전체를 뜻한다. 여럿이 동시에 맞으면 더 좁은 것이 이기며 축 우선순위는 품목 · 공정 · 공장 · 사업부 차례다. 이 판정은 서버가 하고 화면은 effective 경로로 결과를 받는다 */
     OperationPolicyCreate: {
       /**
-       * @description 무엇을 정하는 정책인가. SHOT_CONVERSION_ENABLED = 생산 수량으로 타발수를 환산할지(valueBoolean). SHOT_CONVERSION_RATIO = 수량 대비 타발수 비율(valueNumeric · 0 보다 커야 한다). MINOR_STOP_THRESHOLD_MINUTES = 경미 정지로 볼 시간 임계(valueNumeric · 기본 5). PRECHECK_CONTROL_LEVEL = 작업 전 점검 통제 수준(valueText · BLOCK | WARN | OFF). ⭐ resolved 가 거짓이면 화면이 기본값을 지어내지 않고 WARN 으로 다룬다 — 통제 수준이 없다고 무통제로 열지 않는다(P-02-02 §6 확정). 코드는 화면이 붙인다 — 사용자가 만들지 않는다 FIFO_ENFORCEMENT_LEVEL = 선출(FEFO/FIFO) 위반을 어떻게 다루는가(valueText · BLOCK | WARN | OFF). 「선택적 적용 + 강제 옵션」 요구를 담고 화면은 기본 WARN 으로 시작한다. WEEKLY_WORKING_DAYS = 공장의 주간 근무일(valueNumeric · 5 = 월~금 | 6 = 월~토). 범위는 공장만 받는다 — plantId 를 주고 itemId·processId 는 비운다(아니면 400). ⭐ 이 코드만 예외로, 맞는 정책이 없으면 서버가 5 로 계산한다(출고 요청의 출고 작업일 = 생산일의 직전 근무일). effective 는 그대로 resolved=false 를 낸다. 설정 화면은 W-CO-15(공장 근무일 설정). 근거: 피처 003 · omf-all-around#66 REPLENISHMENT_RUN_TIME = 자동 보충 실행 시각(valueText · 공장 현지 HH:MM, 00:00~23:59 — 아니면 400 RANGE). 범위는 공장만 받는다. 맞는 정책이 없으면 서버가 01:00 으로 돈다(effective 는 그대로 resolved=false). 설정 화면은 W-02-12(생산 창고 보충) — W-02-12 권한은 이 코드 행만 읽고 쓴다. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+       * @description 무엇을 정하는 정책인가. SHOT_CONVERSION_ENABLED = 생산 수량으로 타발수를 환산할지(valueBoolean). SHOT_CONVERSION_RATIO = 수량 대비 타발수 비율(valueNumeric · 0 보다 커야 한다). MINOR_STOP_THRESHOLD_MINUTES = 경미 정지로 볼 시간 임계(valueNumeric · 기본 5). PRECHECK_CONTROL_LEVEL = 작업 전 점검 통제 수준(valueText · BLOCK | WARN | OFF). ⭐ resolved 가 거짓이면 화면이 기본값을 지어내지 않고 WARN 으로 다룬다 — 통제 수준이 없다고 무통제로 열지 않는다(P-02-02 §6 확정). 코드는 화면이 붙인다 — 사용자가 만들지 않는다 FIFO_ENFORCEMENT_LEVEL = 선출(FEFO/FIFO) 위반을 어떻게 다루는가(valueText · BLOCK | WARN | OFF). 「선택적 적용 + 강제 옵션」 요구를 담고 화면은 기본 WARN 으로 시작한다. WEEKLY_WORKING_DAYS = 공장의 주간 근무일(valueNumeric · 5 = 월~금 | 6 = 월~토). 범위는 공장만 받는다 — plantId 를 주고 itemId·processId 는 비운다(아니면 400). ⭐ 이 코드만 예외로, 맞는 정책이 없으면 서버가 5 로 계산한다(출고 요청의 출고 작업일 = 생산일의 직전 근무일). effective 는 그대로 resolved=false 를 낸다. 설정 화면은 W-CO-15(공장 근무일 설정). 근거: 피처 003 · omf-all-around#66 REPLENISHMENT_RUN_TIME = 자동 보충 실행 시각(valueText · 공장 현지 HH:MM, 00:00~23:59 — 아니면 400 RANGE). 범위는 공장만 받는다. 맞는 정책이 없으면 서버가 01:00 으로 돈다(effective 는 그대로 resolved=false). 설정 화면은 W-02-12(생산 창고 보충) — W-02-12 권한은 이 코드 행만 읽고 쓴다. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 AUTO_ROUTING_PROCESS = 라우팅이 없는 품목에 서버가 만드는 1공정 라우팅의 공정 코드(valueText · 사용 중인 공정이어야 한다 — 아니면 400 INVALID). BACKFLUSH_WAREHOUSE = 추적 시스템 연동이 자재를 빼는 창고 코드(valueText · 그 공장의 사용 중인 창고여야 한다 — 아니면 400 INVALID). 둘 다 범위는 공장만 받는다. 설정 화면은 없고 초기 데이터로 넣는다. 근거: flowtrack 연동(OA · PL13) · 사용자 결정 2026-11-12
        * @example SHOT_CONVERSION_RATIO
        * @enum {string}
        */
@@ -60941,7 +61932,9 @@ export interface components {
         | 'PRECHECK_CONTROL_LEVEL'
         | 'FIFO_ENFORCEMENT_LEVEL'
         | 'WEEKLY_WORKING_DAYS'
-        | 'REPLENISHMENT_RUN_TIME';
+        | 'REPLENISHMENT_RUN_TIME'
+        | 'AUTO_ROUTING_PROCESS'
+        | 'BACKFLUSH_WAREHOUSE';
       /**
        * Format: int64
        * @example 1001
@@ -61013,7 +62006,9 @@ export interface components {
         | 'PRECHECK_CONTROL_LEVEL'
         | 'FIFO_ENFORCEMENT_LEVEL'
         | 'WEEKLY_WORKING_DAYS'
-        | 'REPLENISHMENT_RUN_TIME';
+        | 'REPLENISHMENT_RUN_TIME'
+        | 'AUTO_ROUTING_PROCESS'
+        | 'BACKFLUSH_WAREHOUSE';
       /**
        * @description 거짓이면 맞는 정책이 없다. 화면은 기본값을 지어내 그리지 않고 「적용 정책 없음」으로 밝힌다
        * @example true
@@ -61037,11 +62032,6 @@ export interface components {
        */
       matchedScopeCode?: 'ITEM' | 'PROCESS' | 'PLANT' | 'BUSINESS_UNIT' | 'ALL' | null;
     };
-    /** @description 검사 의뢰 첨부를 연결할 자재 관리 LOT(omf-all-around#296). */
-    AttachmentLotLink: {
-      /** @description 연결할 자재 관리 LOT — 그 검사 의뢰의 입하 LOT 에서 나온 것만. */
-      lotIds: number[];
-    };
     /** @description 다형 참조다 — 창고 도면, 공지 첨부, 설비 고장 사진에 사용한다. */
     Attachment: {
       /**
@@ -61050,7 +62040,7 @@ export interface components {
        */
       attachmentId: number;
       /**
-       * @description 무엇에 붙은 첨부인가 — WAREHOUSE 창고 도면, NOTICE 공지, BREAKDOWN 설비 고장 사진. BREAKDOWN은 전용 업로드 경로에서만 등록한다.
+       * @description 무엇에 붙은 첨부인가 — WAREHOUSE 창고 도면, NOTICE 공지, BREAKDOWN 설비 고장 사진, INSPECTION_REQUEST 검사 의뢰(IQC 입하 LOT) 문서. BREAKDOWN은 전용 업로드 경로에서만 등록한다.
        * @example WAREHOUSE
        * @enum {string}
        */
@@ -61086,6 +62076,11 @@ export interface components {
        * @example 1001
        */
       uploadedBy?: number | null;
+    };
+    /** @description 검사 의뢰 첨부를 연결할 자재 관리 LOT(omf-all-around#296). */
+    AttachmentLotLink: {
+      /** @description 연결할 자재 관리 LOT — 그 검사 의뢰의 입하 LOT 에서 나온 것만. */
+      lotIds: number[];
     };
     /** @description 작업 전 점검 통제를 우회하고 시작할 때 함께 보낸다. 서버가 세션과 work_session_event(통제 우회)를 한 트랜잭션으로 만든다. 별도 액션을 두지 않는 이유는 「우회만 하고 세션을 안 여는」 상태를 없애기 위함이다. 근거: QA #9 · P-02-02 §4 · 공유계약 F-6 */
     ControlOverride: {
@@ -61768,7 +62763,7 @@ export interface components {
        */
       worklistState?:
         'BEFORE_PLAN' | 'ACTION_REQUIRED' | 'RELEASE_PENDING' | 'RELEASED' | 'CANCELLED';
-      /** @description 조치 필요(worklistState ACTION_REQUIRED)의 까닭. 그 밖에는 키가 없다. 화면 문구는 코드로 정한다. DRAFT_PLAN_PENDING 작성중 계획이 있다(workOrderCount 0) · PLAN_QTY_REMAINING 확정 계획량이 ERP W/O 수량에 못 미친다(workOrderCount 0 — W/O 가 모두 취소된 확정 계획은 확정 계획량에서 빠진다) · NO_LIVE_WORK_ORDER 확정 계획량은 채웠는데 살아 있는 W/O 가 없음(workOrderCount 0) · WORK_ORDER_LINE_MISSING 배포 전 W/O 중 생산 라인이 빔 · WORK_ORDER_LOCATION_MISSING 배포 전 W/O 중 기본 위치(WIP·완제품·스크랩) 가운데 빈 것이 있음 · LINE_PLANT_MISMATCH 배포 전 W/O 의 라인 공장이 ERP W/O 공장과 다름. 하나의 ERP W/O 에 여럿이 함께 올 수 있고, W/O 하나가 여러 까닭에 함께 세일 수 있다. ⚠ 개발팀 선행(docs/계약-선행-수정항목.md P-142) */
+      /** @description 조치 필요(worklistState ACTION_REQUIRED)의 까닭. 그 밖에는 키가 없다. 화면 문구는 코드로 정한다. DRAFT_PLAN_PENDING 작성중 계획이 있다(workOrderCount 0) · PLAN_QTY_REMAINING 확정 계획량이 ERP W/O 수량에 못 미친다(workOrderCount 0 — W/O 가 모두 취소된 확정 계획은 확정 계획량에서 빠진다) · NO_LIVE_WORK_ORDER 확정 계획량은 채웠는데 살아 있는 W/O 가 없음(workOrderCount 0) · WORK_ORDER_LINE_MISSING 배포 전 W/O 중 생산 라인이 빔 · WORK_ORDER_LOCATION_MISSING 배포 전 W/O 중 기본 위치(WIP·완제품·스크랩) 가운데 빈 것이 있음(추적 시스템 연동이 세운 계획의 라인 없는 W/O 는 라인·WIP·스크랩을 보지 않고 완제품 위치만 본다 — 배포와 같다) ·LINE_PLANT_MISMATCH 배포 전 W/O 의 라인 공장이 ERP W/O 공장과 다름. 하나의 ERP W/O 에 여럿이 함께 올 수 있고, W/O 하나가 여러 까닭에 함께 세일 수 있다. ⚠ 개발팀 선행(docs/계약-선행-수정항목.md P-142) */
       worklistReasons?: {
         /**
          * @example WORK_ORDER_LINE_MISSING
@@ -61918,7 +62913,7 @@ export interface components {
       | 'PLAN_NOT_CONFIRMED'
       | 'QTY_REMAINING'
       | 'AUTO_PLAN_RERUN_NEEDED';
-    /** @description ERP W/O 하나의 계획 제안 — 서버가 조회 때 계산만 하고 저장하지 않는다. 판정 순서: 취소된 ERP W/O → NOT_PROPOSABLE·NO_CHANGE(ORDER_CANCELLED) · 확정 계획량 ≥ ERP W/O 수량 → KEEP_CONFIRMED·NO_CHANGE(작성중 계획이 남았으면 NEEDS_INPUT·DRAFT_PLAN_EXCEEDS_ORDER) · 작성중 계획이 있으면 REVIEW_DRAFT · 없으면 NEW_PLAN. REVIEW_DRAFT·NEW_PLAN 인데 BOM·Routing 사유(BOM_DEFAULT_REQUIRED·ROUTING_REQUIRED·ROUTING_DEFAULT_REQUIRED·ROUTING_OPERATION_REQUIRED)가 있으면 NOT_PROPOSABLE·NEEDS_INPUT 이고 plans 는 빈 배열이다. category BLOCKED 는 표시 분류일 뿐 plans 를 비우지 않는다(예: 입고 창고 연결 실패는 BLOCKED 이지만 계획·4M 은 그대로 낸다). 그 밖에는 BLOCK 문제가 하나라도 있으면 NEEDS_INPUT, 없으면 CONFIRMABLE 이다. */
+    /** @description ERP W/O 하나의 계획 제안 — 서버가 조회 때 계산만 하고 저장하지 않는다. 판정 순서: 취소된 ERP W/O → NOT_PROPOSABLE·NO_CHANGE(ORDER_CANCELLED) · OA 자동 W/O 공장 → AUTO_WORK_ORDER·NO_CHANGE · 확정 계획량 ≥ ERP W/O 수량 → KEEP_CONFIRMED·NO_CHANGE(작성중 계획이 남았으면 NEEDS_INPUT·DRAFT_PLAN_EXCEEDS_ORDER) · 작성중 계획이 있으면 REVIEW_DRAFT · 없으면 NEW_PLAN. REVIEW_DRAFT·NEW_PLAN 인데 BOM·Routing 사유(BOM_DEFAULT_REQUIRED·ROUTING_REQUIRED·ROUTING_DEFAULT_REQUIRED·ROUTING_OPERATION_REQUIRED)가 있으면 NOT_PROPOSABLE·NEEDS_INPUT 이고 plans 는 빈 배열이다. category BLOCKED 는 표시 분류일 뿐 plans 를 비우지 않는다(예: 입고 창고 연결 실패는 BLOCKED 이지만 계획·4M 은 그대로 낸다). 그 밖에는 BLOCK 문제가 하나라도 있으면 NEEDS_INPUT, 없으면 CONFIRMABLE 이다. 작성중 계획이 있으면 질의 existingDraftAction 이 계획의 바탕을 정한다 — 생략·REPLACE 면 작성중 계획을 대체한다고 보고 새 계획 하나(수량 = ERP W/O 수량 − 확정 계획량)를 NEW_PLAN 으로, CONTINUE 면 작성중 계획마다 하나를 REVIEW_DRAFT 로 낸다. 어느 쪽이든 existingDrafts 에 작성중 계획 요약을 싣는다. */
     ProductionPlanProposal: {
       /**
        * Format: int64
@@ -61973,11 +62968,27 @@ export interface components {
        */
       remainingQty: number;
       erpStorage: components['schemas']['ProductionPlanProposalErpStorage'];
-      /** @description 확정하면 저장될 계획. NEW_PLAN 은 새 계획 하나, REVIEW_DRAFT 는 작성중 계획마다 하나(새 계획을 더하지 않는다 — 남는 수량은 remainingQty). KEEP_CONFIRMED·NOT_PROPOSABLE 은 빈 배열 */
+      /** @description 확정하면 저장될 계획. NEW_PLAN 은 새 계획 하나(작성중 계획이 있어도 — 대체 기준), REVIEW_DRAFT(existingDraftAction=CONTINUE)는 작성중 계획마다 하나(새 계획을 더하지 않는다 — 남는 수량은 remainingQty). KEEP_CONFIRMED·NOT_PROPOSABLE·AUTO_WORK_ORDER 는 빈 배열. 사람은 확정 본문에서 계획을 나누거나 더할 수 있다(ProductionPlanProposalConfirm.plans) */
       plans: components['schemas']['ProductionPlanProposalPlan'][];
       /** @description ERP W/O 단위 문제 — 취소·기준정보(BOM·Routing). 없으면 빈 배열 */
       issues: components['schemas']['ProductionPlanProposalIssue'][];
       basis: components['schemas']['ProductionPlanProposalBasis'];
+      /** @description kind AUTO_WORK_ORDER 만 — 자동 W/O 실행기의 마지막 처리(ERP W/O 의 시도 기록). 그 밖에는 null */
+      autoWorkOrder: {
+        /**
+         * Format: date-time
+         * @description 아직 시도하지 않았으면 null
+         * @example 2026-11-16T09:15:00+07:00
+         */
+        lastAttemptedAt: string | null;
+        /**
+         * @description 마지막 시도가 실패한 까닭. 성공했거나 시도 전이면 null
+         * @example null
+         */
+        errorText: string | null;
+      } | null;
+      /** @description 이 ERP W/O 의 작성중 계획 요약 — 없으면 빈 배열. 비지 않으면 확정 본문에 existingDraftAction 이 필수다 */
+      existingDrafts: components['schemas']['ProductionPlanProposalExistingDraft'][];
     };
     /** @description ERP W/O 의 입고 창고(SL_CD) 판정 — 공정 W/O 의 완제품 위치(defaultFgLocationId)가 이것을 따른다. 창고는 SL_CD 와 코드가 같은 이 ERP W/O 공장의 MES 창고(구매입고의 ERP 창고 연결과 같은 판정)이고, 위치는 그 창고의 입고 위치다 — 나뉘지 않은 창고는 「창고 전체」, 나뉜 창고는 「적치 대기」. 창고 유형은 PRODUCT 로 제한하지 않는다. 연결하지 못하면(reasonCode) 라인 기본 위치로 대체하지 않고 완제품 위치를 비운다. SL_CD 가 없으면 세 칸이 모두 null 이고 완제품 위치는 라인 기본값이다(공정 W/O 의 defaultFgLocationSource). ERP 목적지의 의미는 마지막 공정에 있고 중간 공정 값은 배포 필수 검사를 위해 같은 값을 둔다. */
     ProductionPlanProposalErpStorage: {
@@ -62029,10 +63040,11 @@ export interface components {
         | null;
     };
     /**
-     * @description 제안 구분. NEW_PLAN 신규 제안(작성중 계획이 없고 확정 계획량이 모자라다 — 잔량으로 새 계획 하나) · REVIEW_DRAFT 기존 작성중 계획 검토(작성중 계획을 지금 기준으로 다시 맞춘 확정 제안) · KEEP_CONFIRMED 기존 확정 계획 유지(확정 계획량이 ERP W/O 수량을 채웠다 — 확정된 계획의 BOM·Routing 개정도 그대로 둔다. 작성중 계획이 남아 있으면 DRAFT_PLAN_EXCEEDS_ORDER 로 보완 필요다) · NOT_PROPOSABLE 제안 불가(취소된 ERP W/O, 또는 기준정보 때문에 계획을 세울 수 없다 — reasons 의 BLOCKED 사유)
+     * @description 제안 구분. NEW_PLAN 신규 제안(확정 계획량이 모자라다 — ERP W/O 수량 − 확정 계획량으로 새 계획 하나. 작성중 계획이 있으면 그것을 대체하는 기준이다) · REVIEW_DRAFT 기존 작성중 계획 이어서(질의 existingDraftAction=CONTINUE — 작성중 계획을 지금 기준으로 다시 맞춘 확정 제안) · KEEP_CONFIRMED 기존 확정 계획 유지(확정 계획량이 ERP W/O 수량을 채웠다 — 확정된 계획의 BOM·Routing 개정도 그대로 둔다. 작성중 계획이 남아 있으면 DRAFT_PLAN_EXCEEDS_ORDER 로 보완 필요다) · NOT_PROPOSABLE 제안 불가(취소된 ERP W/O, 또는 기준정보 때문에 계획을 세울 수 없다 — reasons 의 BLOCKED 사유) · AUTO_WORK_ORDER OA 자동 W/O 공장의 ERP W/O — 실행기가 처리하므로 사람이 확정하지 않는다(status NO_CHANGE · plans 빈 배열 · autoWorkOrder). 취소된 ERP W/O 는 이것보다 먼저 NOT_PROPOSABLE 이다
      * @enum {string}
      */
-    ProductionPlanProposalKind: 'NEW_PLAN' | 'REVIEW_DRAFT' | 'KEEP_CONFIRMED' | 'NOT_PROPOSABLE';
+    ProductionPlanProposalKind:
+      'NEW_PLAN' | 'REVIEW_DRAFT' | 'KEEP_CONFIRMED' | 'NOT_PROPOSABLE' | 'AUTO_WORK_ORDER';
     /**
      * @description 제안 상태. CONFIRMABLE 확정 가능(BLOCK 문제가 없다 — WARN 은 있을 수 있다) · NEEDS_INPUT 보완 필요(BLOCK 문제가 하나 이상 — reasons 의 category 가 INPUT 이면 화면에서 4M·수량을 채워 확정 본문에 실으면 풀리고, BLOCKED 면 기준정보를 고친 뒤 다시 조회해야 한다) · NO_CHANGE 변경 없음(남은 작성중 계획이 없는 KEEP_CONFIRMED, 또는 취소된 ERP W/O)
      * @enum {string}
@@ -62062,7 +63074,8 @@ export interface components {
       | 'FG_WAREHOUSE_OTHER_PLANT'
       | 'FG_WAREHOUSE_NOT_ALLOWED'
       | 'FG_LOCATION_OUTSIDE_WAREHOUSE'
-      | 'PLAN_QTY_EXCEEDS_ORDER';
+      | 'PLAN_QTY_EXCEEDS_ORDER'
+      | 'EQUIPMENT_DOUBLE_BOOKED';
     ProductionPlanProposalReason: {
       code: components['schemas']['ProductionPlanProposalReasonCode'];
       /**
@@ -62087,7 +63100,7 @@ export interface components {
        */
       category: 'INPUT' | 'BLOCKED';
       /**
-       * @description BLOCK 은 ProductionPlanProposalReasonCode 의 값. WARN 은 4M 점검(GET /production/work-orders/{workOrderId}/validation)의 WARN 코드와 같은 판정이다
+       * @description BLOCK 은 ProductionPlanProposalReasonCode 의 값. WARN 은 4M 점검(GET /production/work-orders/{workOrderId}/validation)의 WARN 코드와 같은 판정이다. 예외로 PLAN_DATE_HOLIDAY(계획일이 휴일)·PLAN_DATE_UNDETERMINED(계획일 판정 불가)는 계획 단위 WARN 이고 field 는 planDate 다 — 확정을 막지 않는다. EQUIPMENT_DOUBLE_BOOKED 는 BLOCK이며 저장된 다른 MES W/O(단일/N 설비 배정)와 이 제안의 다른 공정 W/O 를 함께 본다(재검증과 같은 비교)
        * @example WORK_ORDER_LINE_REQUIRED
        * @enum {string}
        */
@@ -62115,7 +63128,9 @@ export interface components {
         | 'EQUIPMENT_CALIBRATION_EXPIRED'
         | 'WORKER_QUALIFICATION_EXPIRED'
         | 'MOLD_LIFE_EXCEEDED'
-        | 'EQUIPMENT_DOUBLE_BOOKED';
+        | 'EQUIPMENT_DOUBLE_BOOKED'
+        | 'PLAN_DATE_HOLIDAY'
+        | 'PLAN_DATE_UNDETERMINED';
       /**
        * @description 대상 칸 — 확정 본문의 같은 단위·같은 이름 칸에 값을 채우면 풀린다. ERP W/O 단위 기준정보 문제처럼 칸이 없으면 키가 없다
        * @example productionLineId
@@ -62129,6 +63144,15 @@ export interface components {
     };
     /** @description 계획 하나의 제안. ⛔ 새 계획(NEW)은 아직 계획이 아니다 — productionPlanId·planNo 가 없고 proposalPlanKey 로만 가리킨다. */
     ProductionPlanProposalPlan: {
+      /**
+       * @description NEW 는 SYSTEM. EXISTING_DRAFT 는 저장된 출처 — 단 저장 날짜가 지나 오늘로 옮겼으면 SYSTEM. SYSTEM 이면 휴일 보정을 하고(planDateAdjustment), USER 면 보정하지 않고 경고만 낸다
+       * @example SYSTEM
+       * @enum {string}
+       */
+      planDateSourceCode: 'SYSTEM' | 'USER';
+      planDateAdjustment: components['schemas']['ProductionPlanDateAdjustment'];
+      /** @description 보정 뒤 planDate 의 판정. 공장은 ERP W/O 의 공장, 라인은 plannedLineId(null 이면 공장 층 — 공정 W/O 의 라인은 보지 않는다). HOLIDAY 면 계획 issues 에 WARN PLAN_DATE_HOLIDAY, UNDETERMINED 면 WARN PLAN_DATE_UNDETERMINED */
+      planDateCalendar: components['schemas']['PlanningCalendarDay'];
       /**
        * @description 임시 식별자 — 새 계획은 new-1·new-2…, 작성중 계획은 plan-{productionPlanId}. 계획번호(planNo)도 저장된 id 도 아니다. 확정 본문에 그대로 돌려 싣는다
        * @example new-1
@@ -62153,7 +63177,7 @@ export interface components {
       planNo?: string;
       /**
        * Format: date
-       * @description NEW 는 ERP 계획 시작일이 공장 현지 오늘 이후면 그날, 없거나 지났으면 오늘. EXISTING_DRAFT 는 저장값, 지났으면 오늘(저장값은 saved.planDate). 늘 공장 현지 오늘 이후다
+       * @description NEW 는 ERP 계획 시작일이 공장 현지 오늘 이후면 그날, 없거나 지났으면 오늘. EXISTING_DRAFT 는 저장값, 지났으면 오늘(저장값은 saved.planDate). 늘 공장 현지 오늘 이후다. 그 날짜가 시스템이 정한 날(planDateSourceCode SYSTEM)이고 휴일이면 보정한 날이다 — 경위는 planDateAdjustment
        * @example 2026-08-11
        */
       planDate: string;
@@ -62329,7 +63353,7 @@ export interface components {
       plannedShiftId: number | null;
       /**
        * Format: int64
-       * @description W/O 라인의 기본 WIP 위치. 셋 중 하나라도 비면 WORK_ORDER_LOCATION_REQUIRED 다
+       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
        * @example 1001
        */
       defaultWipLocationId: number | null;
@@ -62347,15 +63371,184 @@ export interface components {
       defaultFgLocationSource: 'ERP_STORAGE_LOCATION' | 'LINE_DEFAULT' | 'NONE';
       /**
        * Format: int64
-       * @description W/O 라인의 기본 스크랩 위치
+       * @description 과거 기록 호환용 선택값입니다. 작업계획 확정·배포의 필수값이 아니며 창고 불량품 이동 위치를 결정하지 않습니다.
        * @example 1001
        */
       defaultScrapLocationId: number | null;
       /** @description 이 공정 W/O 의 문제 — 미지정(라인·위치)과 4M 점검 WARN. 없으면 빈 배열 */
       issues: components['schemas']['ProductionPlanProposalIssue'][];
     };
+    /**
+     * @description 하루의 근무일 판정 — 생산계획의 날짜 판단이 모두 이 한 벌을 쓴다. 판정 순서:
+     *     ① 그 날짜에 적용되는 작업 캘린더 하나를 고른다 — 생산 라인 → 상위 라인(가까운 순) → 공장 순으로 적용(작업 캘린더 적용)이 있는 첫 층. 적용 기간이 그 날짜를 덮는 적용만 보고, 같은 층에 여럿이면 적용 시작일이 늦은 것. 라인이 없으면(productionLineId null) 공장 층만 본다. 설비 가동 정지 요약과 같은 규칙이다.
+     *     ② 고른 캘린더가 사용 중이고 그 날짜를 등록했으면 그 날의 구분을 따른다 — 공장 근무일 정책과 관계없다(주말 특별근무 WORKING 은 가동, 평일 공휴일 HOLIDAY 는 휴일, PARTIAL 은 부분 가동과 그 시각).
+     *     ③ 고른 캘린더가 없거나, 사용 중지됐거나, 그 날짜를 등록하지 않았으면(부분 가동인데 시각이 없거나 종료가 시작보다 이르면 등록하지 않은 것으로 본다) ⛔ 상위 층 캘린더로 내려가지 않고 공장 근무일 정책(WEEKLY_WORKING_DAYS · 그 날짜에 유효한 정책)의 요일로 본다 — 5 = 월~금, 6 = 월~토, 일요일은 늘 휴일.
+     *     ④ 그 날짜에 유효한 근무일 정책이 없는 공장은 요일로 휴일을 정하지 않는다 — UNDETERMINED(판정 불가)다. ⛔ 정책 미등록 공장에 주 5일 기본값을 쓰지 않는다 — 기본값 5 는 정책이 등록된 공장(값이 5·6 이 아닌 경우)에서만 쓴다. 정책 등록 여부와 관계없이 캘린더에 등록된 날짜(②)는 늘 적용한다.
+     *     ⛔ 휴일(HOLIDAY)·판정 불가(UNDETERMINED)는 오류가 아니라 정보다 — 계획 저장·확정을 막지 않는다. 판정 불가는 휴일 경고와 다른 코드로 낸다.
+     */
+    PlanningCalendarDay: {
+      /**
+       * Format: date
+       * @description 공장 현지 날짜
+       * @example 2026-09-02
+       */
+      date: string;
+      /**
+       * @description WORKING 가동 · HOLIDAY 휴일 · PARTIAL 부분 가동(가동일이다 — 시각만 startTime·endTime 으로 보인다, 수량 환산은 하지 않는다) · UNDETERMINED 판정 불가(캘린더에 날짜가 없고 공장 근무일 정책이 없다). 시스템이 날짜를 고를 때는 HOLIDAY 만 건너뛴다
+       * @example HOLIDAY
+       * @enum {string}
+       */
+      statusCode: 'WORKING' | 'HOLIDAY' | 'PARTIAL' | 'UNDETERMINED';
+      /**
+       * @description 판정 출처 — LINE_CALENDAR 그 라인에 적용한 캘린더 · PARENT_LINE_CALENDAR 상위 라인에 적용한 캘린더 · PLANT_CALENDAR 공장에 적용한 캘린더 · WEEKLY_POLICY 공장 근무일 정책의 요일 · NOT_CONFIGURED 미설정(statusCode UNDETERMINED)
+       * @example PLANT_CALENDAR
+       * @enum {string}
+       */
+      sourceCode:
+        | 'LINE_CALENDAR'
+        | 'PARENT_LINE_CALENDAR'
+        | 'PLANT_CALENDAR'
+        | 'WEEKLY_POLICY'
+        | 'NOT_CONFIGURED';
+      /**
+       * Format: int64
+       * @description ① 에서 고른 캘린더 — 출처가 WEEKLY_POLICY·NOT_CONFIGURED 여도(그 캘린더가 날짜를 등록하지 않았거나 사용 중지됐다) 고른 캘린더가 있으면 채운다. 적용된 캘린더가 없으면 null
+       * @example 3
+       */
+      workCalendarId: number | null;
+      /**
+       * @description workCalendarId 의 코드
+       * @example VN-2026
+       */
+      calendarCode: string | null;
+      /**
+       * Format: int64
+       * @description ① 에서 캘린더를 고른 라인 — 그 라인 층이면 그 라인, 상위 라인 층이면 적용이 있던 상위 라인. 출처가 WEEKLY_POLICY 여도(그 캘린더가 날짜를 등록하지 않았다) 채운다. 공장 층에서 골랐거나 고른 캘린더가 없으면 null
+       * @example 12
+       */
+      appliedProductionLineId: number | null;
+      /**
+       * @description 캘린더 날짜의 사유(공통코드 WORK_CALENDAR_DAY_REASON). 출처가 캘린더가 아니면 null
+       * @example PUBLIC_HOLIDAY
+       */
+      reasonCode: string | null;
+      /**
+       * @description 캘린더 날짜의 비고. 출처가 캘린더가 아니면 null
+       * @example 독립기념일
+       */
+      remarks: string | null;
+      /**
+       * @description PARTIAL 만 — 가동 시작 시각(공장 현지). 아니면 null
+       * @example 08:00:00
+       */
+      startTime: string | null;
+      /**
+       * @description PARTIAL 만 — 가동 종료 시각(공장 현지). 아니면 null
+       * @example 12:00:00
+       */
+      endTime: string | null;
+      /**
+       * @description WEEKLY_POLICY 만 — 그 날짜에 유효한 공장 근무일 정책 값. 아니면 null
+       * @example 5
+       * @enum {integer|null}
+       */
+      weeklyWorkingDays: 5 | 6 | null;
+    };
+    PlanningWorkingDayTarget: {
+      /**
+       * Format: int64
+       * @example 1
+       */
+      plantId: number;
+      /**
+       * Format: int64
+       * @description 생략·null 이면 공장 층만 본다(라인·상위 라인 캘린더를 보지 않는다)
+       * @example 12
+       */
+      productionLineId?: number | null;
+      /**
+       * Format: date
+       * @example 2026-09-01
+       */
+      from: string;
+      /**
+       * Format: date
+       * @description from 이상 · 기간 92일 이하(양 끝 포함)
+       * @example 2026-09-30
+       */
+      to: string;
+    };
+    PlanningWorkingDayResolve: {
+      /** @description 같은 묶음을 거듭 보내도 거르지 않고 요청 순서대로 낸다 */
+      targets: components['schemas']['PlanningWorkingDayTarget'][];
+    };
+    PlanningWorkingDayResolveResult: {
+      /** @description targets 와 같은 순서·같은 수 */
+      items: {
+        /**
+         * Format: int64
+         * @example 1
+         */
+        plantId: number;
+        /**
+         * Format: int64
+         * @example 12
+         */
+        productionLineId: number | null;
+        /**
+         * Format: date
+         * @example 2026-09-01
+         */
+        from: string;
+        /**
+         * Format: date
+         * @example 2026-09-30
+         */
+        to: string;
+        /** @description from 부터 to 까지 하루도 빠짐없이 날짜 순 */
+        days: components['schemas']['PlanningCalendarDay'][];
+      }[];
+    };
+    /** @description 제안 계획일 보정 경위. 시스템이 정한 계획일이 휴일(HOLIDAY)이면 다음 날부터 31일 안에서 휴일이 아닌 첫날로 옮긴다 — UNDETERMINED 는 건너뛰지 않는다(그 날로 옮기고 planDateCalendar 가 판정 불가를 보인다). 원래 날짜가 판정 불가면 보정하지 않는다. 사용자가 고른 날짜는 보정하지 않는다. */
+    ProductionPlanDateAdjustment: {
+      /**
+       * Format: date
+       * @description 보정 전 날짜 — NEW 는 ERP 계획 시작일(지났거나 없으면 공장 현지 오늘), EXISTING_DRAFT 는 저장값(지났으면 오늘)
+       * @example 2026-09-02
+       */
+      originalDate: string;
+      /**
+       * Format: date
+       * @description ADJUSTED 일 때만 — 계획의 planDate 와 같다. 아니면 null
+       * @example 2026-08-11
+       */
+      adjustedDate: string | null;
+      /**
+       * @description NOT_NEEDED 원래 날짜가 휴일이 아니다 · ADJUSTED 휴일이라 옮겼다 · NOT_ADJUSTED_UNDETERMINED 원래 날짜가 판정 불가라 옮기지 않았다 · NOT_ADJUSTED_SEARCH_LIMIT 31일 안에 휴일 아닌 날이 없어 옮기지 않았다(원래 날짜 그대로, 휴일 경고) · USER_SPECIFIED 사용자가 고른 날짜라 보정하지 않는다(휴일이면 경고만)
+       * @example ADJUSTED
+       * @enum {string}
+       */
+      outcomeCode:
+        | 'NOT_NEEDED'
+        | 'ADJUSTED'
+        | 'NOT_ADJUSTED_UNDETERMINED'
+        | 'NOT_ADJUSTED_SEARCH_LIMIT'
+        | 'USER_SPECIFIED';
+      /**
+       * @description 원래 날짜 다음 날부터 몇 날까지 보는가
+       * @example 31
+       */
+      searchLimitDays: number;
+      /** @description 보정 사유 — 건너뛴 휴일의 판정(원래 날짜부터 날짜 순). ADJUSTED·NOT_ADJUSTED_SEARCH_LIMIT 만, 아니면 빈 배열 */
+      skippedDays: components['schemas']['PlanningCalendarDay'][];
+    };
     /** @description 변경 감지 값 — 제안을 계산할 때 본 기준의 판. 서버가 만드는 불투명 문자열이라 화면은 해석·비교하지 않고 확정 본문 basis 에 그대로 돌려 싣는다. 확정은 같은 식으로 다시 계산해 하나라도 다르면 저장하지 않고 409 PROPOSAL_CHANGED 다. ⛔ 다른 W/O 의 작업자 배정처럼 수시로 바뀌는 값은 넣지 않는다 — 기준정보·저장된 계획만 본다. */
     ProductionPlanProposalBasis: {
+      /**
+       * @description 시스템이 정한 계획일(planDateSourceCode SYSTEM)마다 보정에 쓴 날짜들 — 원래 날짜부터 고른 날짜까지(한도에 걸렸으면 한도까지) — 의 statusCode. ⛔ 사용자가 고른 날짜의 판정은 넣지 않는다 — 그 날이 휴일이 돼도 경고만 바뀌고 409 가 나지 않는다. 캘린더 전체의 판이 아니라 쓴 날짜만 보므로 다른 날짜를 고쳐도 바뀌지 않는다
+       * @example 값
+       */
+      calendar: string;
       /**
        * @description ERP W/O 의 판·수량·상태·입고 창고(SL_CD) — ERP 재수신·확인 처리로 바뀐다. 수량이 같아도 SL_CD 만 바뀌면 달라진다
        * @example 값
@@ -62389,31 +63582,55 @@ export interface components {
        * @example productionOrder
        * @enum {string}
        */
-      basis: 'productionOrder' | 'plans' | 'bom' | 'routing' | 'resources';
+      basis: 'productionOrder' | 'plans' | 'bom' | 'routing' | 'resources' | 'calendar';
       /**
        * @description 무엇이 바뀌었나 — 화면이 그대로 보여도 되는 문장(예: ERP W/O 수량 100 → 80)
        * @example 값
        */
       message: string;
     };
-    /** @description 한 ERP W/O 의 제안 확정 본문 — 제안의 plans 와 보완값, 검토한 basis. */
+    /** @description 한 ERP W/O 의 제안 확정 본문 — 사람이 고친 계획 구성과 보완값, 검토한 basis. 재검증은 이 본문에서 생산 라인·생산품 입고 위치을 비워도 받는 ProductionPlanProposalRevalidate 를 받는다. ⭐ 기존 작성중 계획 — ERP W/O 에 작성중 계획이 있으면 사람이 「이어서 한다(CONTINUE)」와 「지금 편집한 계획으로 새로 한다(REPLACE)」 가운데 하나를 골라 existingDraftAction 에 싣는다. 비우면 작성중 계획을 건드리지 않고 400 field existingDraftAction EXISTING_DRAFT_ACTION_REQUIRED 다(묵시적 기본값 없음). CONTINUE — 작성중 계획(plan-{id})을 편집 기준으로 쓴다(제안 조회 existingDraftAction=CONTINUE 의 REVIEW_DRAFT): 작성중 계획 전부를 savedVersionNo 와 함께 싣고, 새 계획(new-N)을 더할 수 있다(나누기·추가). 작성중 계획을 빼고 보내면 400 field plans INVALID — 지우려면 REPLACE 다. savedVersionNo 가 없으면 400 REQUIRED, 지금 판과 다르면 409 PROPOSAL_CHANGED(basis plans). REPLACE — 작성중 계획 전부를 replacedDrafts 에 id·판으로 적고(비면 400 field replacedDrafts REQUIRED) 본문 계획은 모두 새 계획(new-N)이다. 한 트랜잭션에서 작성중 계획을 지우고 새 계획을 등록·확정한다. replacedDrafts 가 지금의 작성중 계획 집합·판과 다르면 저장하지 않고 409 PROPOSAL_CHANGED(basis plans)다 — 다시 검토한다. 수량 한도(확정 계획량 + 작성 수량 ≤ ERP W/O 수량)는 대체 «후» 기준이다 — 지워질 작성중 계획의 수량은 세지 않는다. 작성중 계획이 없으면 existingDraftAction·replacedDrafts 는 보지 않는다. */
     ProductionPlanProposalConfirm: {
       basis: components['schemas']['ProductionPlanProposalBasis'];
-      /** @description 제안의 plans 전부를 싣는다 — proposalPlanKey 집합이 다시 계산한 제안과 같아야 한다. 빠지거나, 제안에 없는 키로 계획을 더하면 400 field plans INVALID(한 ERP W/O 는 전부 확정하거나 아무것도 하지 않는다 · 본문으로 새 계획을 만들 수 없다). 수량은 줄일 수 있다 — plannedQty 를 줄여 확정하면 나머지는 잔량으로 남는다 */
+      /**
+       * @description 기존 작성중 계획을 어떻게 할지 — 사람이 팝업에서 고른 값. 작성중 계획이 있는데 비면 400 EXISTING_DRAFT_ACTION_REQUIRED. 작성중 계획이 없으면 보지 않는다(생략해도 된다). 규칙은 ProductionPlanProposalConfirm 설명
+       * @example REPLACE
+       * @enum {string|null}
+       */
+      existingDraftAction?: 'CONTINUE' | 'REPLACE' | null;
+      /** @description REPLACE 만 — 지울 작성중 계획 전부(사람이 본 id·판). REPLACE 인데 비었으면 400 REQUIRED. 지금의 작성중 계획 집합·판과 다르면 409 PROPOSAL_CHANGED(basis plans) */
+      replacedDrafts?: components['schemas']['ProductionPlanProposalDraftRef'][];
+      /** @description 확정할 계획 전부 — 한 ERP W/O 는 전부 확정하거나 아무것도 하지 않는다(일부 계획만 확정하는 정책 없음). 사람이 계획을 나누거나 더해도 된다. 키 — plan-{id} 는 이 ERP W/O 의 작성중 계획(CONTINUE 만 · savedVersionNo 필수), new-N 은 새 계획(화면이 정하는 임시 키 — 제안의 new-1 을 그대로 쓰고 나눈·더한 계획은 new-2…). 제안에 없는 new-N 은 새 계획 제안과 같은 기준(시스템 계획일·ERP 기본 BOM·기본 Routing)으로 판정한다. 400 — 같은 키가 둘(plans[i].proposalPlanKey DUPLICATE_PLAN_KEY) · 이 ERP W/O 의 작성중 계획이 아닌 plan-{id}(다른 ERP W/O·확정 계획 포함 — plans[i].proposalPlanKey INVALID) · REPLACE 인데 plan-{id}(같은 칸 INVALID) · CONTINUE 인데 작성중 계획이 빠짐(plans INVALID) · splitFromPlanKey 가 본문에 없는 키·자기 자신(plans[i].splitFromPlanKey INVALID) · 확정할 제안이 없는 ERP W/O(plans INVALID). 같은 Routing 을 쓰는 계획이 여럿이어도 공정 W/O 는 (proposalPlanKey, routingOperationId)로 갈린다. 수량 합계(확정 계획량 + 본문 계획 수량, REPLACE 면 지울 작성중 계획은 빼고)가 ERP W/O 수량을 넘으면 400 PLAN_QTY_EXCEEDS_ORDER — 본문 순서와 무관하게 한 번 본다. 하나라도 실패하면 전부 롤백된다 */
       plans: components['schemas']['ProductionPlanProposalConfirmPlan'][];
     };
     ProductionPlanProposalConfirmPlan: {
       /**
-       * @description 제안의 값 그대로
+       * @description plan-{id}(작성중 계획 · CONTINUE) 또는 new-N(새 계획). 본문 안에서 유일하다. 응답(재검증·확정)이 이 키로 계획을 돌려준다
        * @example new-1
        */
       proposalPlanKey: string;
       /**
+       * @description plan-{id} 만 필수 — 편집 기준으로 쓴 작성중 계획의 판(제안의 saved.versionNo). 비면 400 REQUIRED, 지금 판과 다르면 409 PROPOSAL_CHANGED(basis plans). new-N 은 비운다(보지 않는다)
+       * @example 2
+       */
+      savedVersionNo?: number | null;
+      /**
+       * @description 사람이 나눈 계획이면 나누기 전 계획의 키(본문 안의 다른 계획 키). 화면이 두 행을 잇는 데 쓰고 응답에 그대로 돌려준다 — 러닝체인지 분할(splitOfPlanId)로 저장하지 않는다. 나누지 않았으면 null·생략
+       * @example new-1
+       */
+      splitFromPlanKey?: string | null;
+      /**
        * Format: date
-       * @description 공장 현지 오늘 이후여야 한다 — 지났으면 400 RANGE(자정을 넘겨 확정하면 검토 때의 날짜가 지났을 수 있다)
+       * @description 공장 현지 오늘 이후여야 한다 — 지났으면 400 RANGE(자정을 넘겨 확정하면 검토 때의 날짜가 지났을 수 있다). 휴일이어도 거부하지 않는다. 출처는 planDateSourceCode 로 명시한다
        * @example 2026-08-11
        */
       planDate: string;
+      /**
+       * @description 날짜 출처 — 서버가 추측하지 않고 이 값을 저장한다. SYSTEM 은 시스템이 정한 날짜를 그대로 둘 때만이다: 제안이 SYSTEM 으로 낸 계획은 그 planDate(휴일 보정 뒤), 사람이 고른 날짜의 작성중 계획과 나누거나 더한 new-N 은 새 계획 제안의 시스템 날짜. 다르면 400 field planDateSourceCode PLAN_DATE_SOURCE_MISMATCH(사람이 고친 날짜는 USER). SYSTEM 날짜는 근무일 보정을 거친 날이고 basis.calendar 가 보정에 쓴 날을 본다. USER 는 어떤 날짜든(오늘 이후) 받고 보정하지 않는다 — 휴일이면 WARN PLAN_DATE_HOLIDAY 뿐이고, 확정하면 감사 기록(PRODUCTION_ORDER · PLAN_DATE_USER_ON_HOLIDAY)을 남긴다
+       * @example SYSTEM
+       * @enum {string}
+       */
+      planDateSourceCode: 'SYSTEM' | 'USER';
       /**
        * Format: double
        * @description 저장할 계획 수량 — 제안 proposedQty 를 그대로 싣거나 고친다. 확정 계획량 + 작성 수량 합계가 ERP W/O 수량을 넘으면 400 PLAN_QTY_EXCEEDS_ORDER
@@ -62438,12 +63655,27 @@ export interface components {
        * @example 1001
        */
       plannedLineId: number | null;
+      /** @description 입고 창고 수동 변경 — 없으면 생략·null(SL_CD 규칙 그대로). 입고 창고 수동 변경(계획 단위) — ERP 는 오더의 SL_CD 창고로 입고하고 MES 생산입고 송신은 창고를 싣지 않으므로, 바꾸면 MES 와 ERP 의 재고 위치가 달라진다. 사람이 그것을 알고 허용할 때만 쓴다. 바꾼 창고가 정해지면 그 계획의 모든 공정 W/O 의 defaultFgLocationId 는 그 창고 안의 위치여야 한다(SL_CD 창고 대신 — 아니면 400 FG_LOCATION_OUTSIDE_WAREHOUSE). 위치는 공정 W/O 마다 고르고, 재검증 plans[].fgWarehouse.arrivalLocationId 가 그 창고의 입고 위치(나뉜 창고는 적치 대기, 아니면 창고 전체 — 제안이 SL_CD 창고에 쓰는 규칙)를 기본값으로 준다. 받는 조건: ERP W/O 에 SL_CD 가 있고 MES 창고로 연결됐다 — SL_CD 가 없으면 400 field fgWarehouseOverride INVALID(바꿀 ERP 창고가 없다 — 완제품 위치를 그대로 고른다), SL_CD 연결이 실패했으면 400 field fgWarehouseOverride FG_OVERRIDE_LINK_FAILED(우회하지 않는다 — 창고 연결을 먼저 고친다). 창고는 이 공장의 사용 중인, 자재·불량·외부 창고가 아닌 창고(ERP 입고 창고 연결과 같은 기준 — 아니면 400 field fgWarehouseOverride.warehouseId FG_WAREHOUSE_OTHER_PLANT·FG_WAREHOUSE_INACTIVE·FG_WAREHOUSE_NOT_ALLOWED)이고 SL_CD 창고와 같으면 400 INVALID(바꾼 것이 없다). 생산 라인을 바꿔도 그대로다 — 서버가 라인 기본 위치로 되돌리지 않는다. 재검증은 WARN FG_WAREHOUSE_DIFFERS_FROM_ERP 를 내고, 확정은 같은 트랜잭션에서 감사 기록(PRODUCTION_ORDER · FG_WAREHOUSE_OVERRIDDEN)을 남긴다. */
+      fgWarehouseOverride?: {
+        /**
+         * Format: int64
+         * @description 사람이 고른 MES 입고 창고
+         * @example 52
+         */
+        warehouseId: number;
+        /**
+         * @description 확인 응답 — 「ERP 입고 창고와 MES 입고 창고가 달라진다」는 화면 확인 메시지에 사람이 동의했다. true 만 받는다(아니면 400)
+         * @example true
+         * @enum {boolean}
+         */
+        erpMismatchAcknowledged: true;
+      } | null;
       /** @example 값 */
       remarks?: string;
       /** @description Routing 공정마다 하나 — routingOperationId 집합이 routingId 의 공정과 같아야 한다. 다르면 400 INVALID */
       workOrders: components['schemas']['ProductionPlanProposalConfirmWorkOrder'][];
     };
-    /** @description 공정 W/O 하나의 보완 4M. 생산 라인과 기본 위치 셋은 필수다 — 배포가 요구하므로 확정 때 막는다. 계획 시각은 싣지 않는다 — 서버가 계획일과 plannedShiftId 로 정한다(ProductionPlanProposalWorkOrder.plannedStartAt 의 규칙). 기본 위치 셋은 이 공장의, 자재창고가 아닌 사용 중인 창고의 사용 중인 위치여야 한다 — 아니면 400 LOCATION_INVALID. 완제품 위치는 더해, ERP W/O 에 SL_CD 가 있으면 그 창고(제안의 erpStorage.warehouse) 안의 위치여야 한다 — 다른 창고면 400 FG_LOCATION_OUTSIDE_WAREHOUSE, SL_CD 의 창고를 정하지 못하면 어떤 위치도 400 FG_WAREHOUSE_*(FG_WAREHOUSE_UNMAPPED·FG_WAREHOUSE_INACTIVE·FG_WAREHOUSE_OTHER_PLANT·FG_WAREHOUSE_NOT_ALLOWED). SL_CD 가 없으면 외부창고·불량창고 위치도 400 LOCATION_INVALID 다. 라인·설비·금형·위치는 제안의 사유와 같은 판정·같은 코드다. */
+    /** @description 공정 W/O 하나의 보완 4M. 생산 라인과 생산품 입고 위치는 필수다. WIP는 현재 생산 라인 기본값으로 서버가 정하며, 기본값이 없으면 WORK_ORDER_LOCATION_REQUIRED다. 스크랩 위치는 필수가 아니다. 계획 시각 — plannedTimeSourceCode 가 SYSTEM 이면 서버가 계획일과 plannedShiftId 로 정한다(ProductionPlanProposalWorkOrder.plannedStartAt 의 규칙 — 교대를 바꾸면 다시 계산한다). 화면이 보던 시각을 plannedStartAt·plannedEndAt 에 실어도 되고, 다시 계산한 값과 다르면 재검증 corrections 에 SYSTEM_TIME_RECALCULATED 로 알린다(확정은 다시 계산한 값을 저장한다). USER 면 plannedStartAt·plannedEndAt 둘 다 필수(비면 400 REQUIRED)이고 서버는 그대로 저장한다 — 계획일·교대를 바꿔도 다시 계산하지 않는다. 판정: 시작 < 종료(아니면 400 field plannedEndAt RANGE) · 시작이 계획일의 근무일 하루(가장 이른 활성 교대 시작부터 24시간 — 자정을 넘긴 야간도 그날) 안이거나 고른 교대 창 안(다음 근무일 시작을 넘겨 끝나는 교대 — 아니면 400 field plannedStartAt PLAN_TIME_OUTSIDE_PLAN_DATE — 계획일을 바꿔 시작이 벗어나도 옮기지 않고 이 오류를 낸다) · 교대를 정했는데 시각이 그 교대 창(자정을 넘는 교대는 다음 날 종료) 밖이면 WARN PLAN_TIME_OUTSIDE_SHIFT · 선행 공정(FINISH_TO_START)이 끝나기 전에 시작하면 WARN PLAN_TIME_PRECEDENCE(둘 다 SYSTEM 이면 보지 않는다 — 근무일 하루끼리는 늘 겹친다). 시각은 오프셋을 붙인 순간이고 공장 시간대(plant.timezone_code)로 푼다. 시각을 직접 고친 것은 감사 기록에 남기지 않는다. WIP와 생산품 입고 위치는 이 공장의, 자재창고가 아닌 사용 중인 창고의 사용 중인 위치여야 한다 — 아니면 400 LOCATION_INVALID. 완제품 위치는 더해, 계획에 fgWarehouseOverride 가 있으면 바꾼 그 창고 안, 없고 ERP W/O 에 SL_CD 가 있으면 그 창고(제안의 erpStorage.warehouse) 안의 위치여야 한다 — 다른 창고면 400 FG_LOCATION_OUTSIDE_WAREHOUSE, SL_CD 의 창고를 정하지 못하면 어떤 위치도 400 FG_WAREHOUSE_*(FG_WAREHOUSE_UNMAPPED·FG_WAREHOUSE_INACTIVE·FG_WAREHOUSE_OTHER_PLANT·FG_WAREHOUSE_NOT_ALLOWED). SL_CD 가 없으면 외부창고·불량창고 위치도 400 LOCATION_INVALID 다. 라인·설비·금형·위치는 제안의 사유와 같은 판정·같은 코드다. */
     ProductionPlanProposalConfirmWorkOrder: {
       /**
        * Format: int64
@@ -62476,26 +63708,46 @@ export interface components {
       responsibleWorkerId?: number | null;
       /**
        * Format: int64
-       * @description 생략·null = 근무일 하루. 그 공장의 활성 교대가 아니면 400 INVALID
+       * @description 생략·null = 근무일 하루. 그 공장의 활성 교대가 아니면 400 INVALID. SYSTEM 시각은 이 교대로 정한다
        * @example 1001
        */
       plannedShiftId?: number | null;
       /**
-       * Format: int64
-       * @example 1001
+       * @description SYSTEM 서버가 계획일·교대로 정한다 · USER 사람이 정한 plannedStartAt·plannedEndAt 를 그대로 저장한다. 규칙은 ProductionPlanProposalConfirmWorkOrder 설명
+       * @example USER
+       * @enum {string}
        */
-      defaultWipLocationId: number;
+      plannedTimeSourceCode: 'SYSTEM' | 'USER';
+      /**
+       * Format: date-time
+       * @description USER 면 필수. SYSTEM 이면 화면이 보던 값을 실어도 되고 쓰지 않는다(달라졌으면 재검증 corrections)
+       * @example 2026-11-18T13:00:00+07:00
+       */
+      plannedStartAt?: string | null;
+      /**
+       * Format: date-time
+       * @description USER 면 필수 · 시작보다 늦어야 한다(아니면 400 RANGE)
+       * @example 2026-11-18T21:00:00+07:00
+       */
+      plannedEndAt?: string | null;
       /**
        * Format: int64
-       * @description SL_CD 창고 안의 위치(제안의 defaultFgLocationId). 규칙은 ProductionPlanProposalConfirmWorkOrder 설명. ERP 목적지의 의미는 마지막 공정에 있고 중간 공정 값은 배포 필수 검사를 위해 같은 값을 둔다.
+       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
+       * @example 1001
+       */
+      defaultWipLocationId?: number;
+      /**
+       * Format: int64
+       * @description SL_CD 창고 안의 위치(제안의 defaultFgLocationId), 계획에 fgWarehouseOverride 가 있으면 바꾼 창고 안의 위치. 규칙은 ProductionPlanProposalConfirmWorkOrder 설명. ERP 목적지의 의미는 마지막 공정에 있고 중간 공정 값은 배포 필수 검사를 위해 같은 값을 둔다.
        * @example 1001
        */
       defaultFgLocationId: number;
       /**
        * Format: int64
+       * @description 과거 기록 호환용 선택값입니다. 작업계획 확정·배포의 필수값이 아니며 창고 불량품 이동 위치를 결정하지 않습니다.
        * @example 1001
        */
-      defaultScrapLocationId: number;
+      defaultScrapLocationId?: number;
     };
     /** @description POST /planning/production-orders/{productionOrderId}:confirm-plan-proposal 의 200 결과. 같은 Idempotency-Key 재전송은 처음 결과 그대로다. */
     ProductionPlanProposalConfirmResult: {
@@ -62512,8 +63764,12 @@ export interface components {
       outcome: 'CONFIRMED' | 'ALREADY_PROCESSED';
       /** @description CONFIRMED 는 이번에 확정한 계획(본문 순서), ALREADY_PROCESSED 는 W/O 가 모두 취소되지 않은 확정 계획 전부 */
       plans: components['schemas']['ProductionPlanProposalConfirmedPlan'][];
+      /** @description CONFIRMED 이고 REPLACE 였으면 이번에 지운 작성중 계획. 그 밖에는 빈 배열(같은 키 재전송은 처음 결과 그대로) */
+      replacedDrafts: components['schemas']['ProductionPlanProposalReplacedDraft'][];
     };
     ProductionPlanProposalConfirmedPlan: {
+      /** @description 확정한 계획일의 판정 — 휴일·판정 불가 경고 정보(ProductionPlan.planDateCalendar 와 같다) */
+      planDateCalendar: components['schemas']['PlanningCalendarDay'];
       /**
        * @description CONFIRMED 만 — 본문의 임시 식별자. 화면이 제안 행과 실제 계획을 잇는다
        * @example new-1
@@ -62545,6 +63801,585 @@ export interface components {
          */
         routingOperationId: number;
       }[];
+      /**
+       * @description CONFIRMED 만 — 본문의 splitFromPlanKey(없으면 null)
+       * @example new-1
+       */
+      splitFromPlanKey?: string | null;
+    };
+    /** @description ERP W/O 한 건의 감사 기록 하나 — 횡단 감사 조회(GET /audit/events)의 AuditEvent 와 같은 모양이고 대상은 늘 이 ERP W/O 다. */
+    ProductionOrderAuditEvent: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      auditEventId: number;
+      /**
+       * Format: date-time
+       * @example 2026-11-17T10:12:00+07:00
+       */
+      occurredAt: string;
+      /**
+       * @example PRODUCTION_ORDER
+       * @enum {string}
+       */
+      targetTypeCode: 'PRODUCTION_ORDER';
+      /**
+       * Format: int64
+       * @description ERP W/O id — 경로의 productionOrderId
+       * @example 1001
+       */
+      targetId: number;
+      /**
+       * @description 시스템 소유 감사 이벤트 유형 — DELETE(작성중 계획 대체) · UPDATE(입고 창고 수동 변경 · 휴일 직접 지정)
+       * @example UPDATE
+       */
+      eventTypeCode: string;
+      /** @description 사건마다 다르다 — PLAN_DRAFT_REPLACED drafts(지운 작성중 계획의 id·번호·판·계획일·수량) · FG_WAREHOUSE_OVERRIDDEN SL_CD·그 MES 창고·입고 위치 · PLAN_DATE_USER_ON_HOLIDAY systemDate(시스템이 냈을 날짜) */
+      beforeValue: Record<string, never> | null;
+      /** @description {eventCode, detail} — eventCode 는 PLAN_DRAFT_REPLACED · FG_WAREHOUSE_OVERRIDDEN · PLAN_DATE_USER_ON_HOLIDAY. detail 은 각각 newPlanIds · 계획·적용 창고·W/O 마다 완제품 위치·erpMismatchAcknowledged · 계획·계획일·근무일 판정 */
+      afterValue: Record<string, never> | null;
+      /** @example null */
+      reason: string | null;
+      /**
+       * Format: int64
+       * @description 확정한 사용자
+       * @example 77
+       */
+      performedBy: number | null;
+      /**
+       * Format: int64
+       * @example null
+       */
+      terminalId: number | null;
+      /**
+       * @description 그 기록을 남긴 계획 제안 확정 요청의 Idempotency-Key — 한 확정의 기록을 묶는다
+       * @example 7b4c8f0e-2f3a-4b8e-9d7c-5a1e2b3c4d5e
+       */
+      correlationId: string | null;
+    };
+    /** @description 이 ERP W/O 의 작성중 계획 요약 — 확정 전에 「이어서 / 새로」를 고르는 팝업이 보인다. 제안 조회·재검증 응답에 같은 모양으로 싣는다. */
+    ProductionPlanProposalExistingDraft: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      productionPlanId: number;
+      /**
+       * @description REPLACE 의 replacedDrafts·CONTINUE 의 savedVersionNo 에 그대로 싣는다
+       * @example 2
+       */
+      versionNo: number;
+      /** @example PP-20261116-0003 */
+      planNo: string;
+      /**
+       * Format: date
+       * @description 저장된 계획일
+       * @example 2026-11-18
+       */
+      planDate: string;
+      /**
+       * Format: double
+       * @example 120
+       */
+      plannedQty: number;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      uomId: number;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      plannedLineId: number | null;
+      /** @example L-01 */
+      plannedLineCode: string | null;
+      /** @example 조립 1라인 */
+      plannedLineName: string | null;
+      /** @example DRAFT */
+      statusCode: string;
+      /**
+       * Format: int64
+       * @description 작성자(사용자 id). 자동 흐름이 세웠으면 null
+       * @example 1001
+       */
+      createdBy: number | null;
+      /** @example 김계획 */
+      createdByName: string | null;
+      /**
+       * Format: date-time
+       * @example 2026-11-16T09:12:00+07:00
+       */
+      createdAt: string;
+      /**
+       * Format: date-time
+       * @example 2026-11-16T10:02:00+07:00
+       */
+      updatedAt: string;
+      /**
+       * @description 자동 흐름(OA 자동 W/O)이 세운 계획인가
+       * @example false
+       */
+      createdAutomatically: boolean;
+    };
+    /** @description REPLACE 로 지울 작성중 계획 하나 — 사람이 팝업에서 본 id·판 */
+    ProductionPlanProposalDraftRef: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      productionPlanId: number;
+      /** @example 2 */
+      versionNo: number;
+    };
+    /** @description 확정이 지운 작성중 계획 하나 */
+    ProductionPlanProposalReplacedDraft: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      productionPlanId: number;
+      /** @example PP-20261116-0003 */
+      planNo: string;
+    };
+    /** @description 재검증 본문 — 확정 본문(ProductionPlanProposalConfirm)과 같고 생산 라인·생산품 입고 위치을 비워도 받는다. 칸을 채우면 화면은 같은 본문을 그대로 확정에 보낸다. */
+    ProductionPlanProposalRevalidate: {
+      basis: components['schemas']['ProductionPlanProposalBasis'];
+      /**
+       * @description 기존 작성중 계획을 어떻게 할지 — 사람이 팝업에서 고른 값. 작성중 계획이 있는데 비면 400 EXISTING_DRAFT_ACTION_REQUIRED. 작성중 계획이 없으면 보지 않는다(생략해도 된다). 규칙은 ProductionPlanProposalConfirm 설명
+       * @example REPLACE
+       * @enum {string|null}
+       */
+      existingDraftAction?: 'CONTINUE' | 'REPLACE' | null;
+      /** @description REPLACE 만 — 지울 작성중 계획 전부(사람이 본 id·판). REPLACE 인데 비었으면 400 REQUIRED. 지금의 작성중 계획 집합·판과 다르면 409 PROPOSAL_CHANGED(basis plans) */
+      replacedDrafts?: components['schemas']['ProductionPlanProposalDraftRef'][];
+      /** @description 확정 본문의 plans 와 같은 규칙 */
+      plans: components['schemas']['ProductionPlanProposalRevalidatePlan'][];
+    };
+    /** @description 재검증 계획 하나 — ProductionPlanProposalConfirmPlan 과 같고 공정 W/O 만 ProductionPlanProposalRevalidateWorkOrder 다. */
+    ProductionPlanProposalRevalidatePlan: {
+      /**
+       * @description plan-{id}(작성중 계획 · CONTINUE) 또는 new-N(새 계획). 본문 안에서 유일하다. 응답(재검증·확정)이 이 키로 계획을 돌려준다
+       * @example new-1
+       */
+      proposalPlanKey: string;
+      /**
+       * @description plan-{id} 만 필수 — 편집 기준으로 쓴 작성중 계획의 판(제안의 saved.versionNo). 비면 400 REQUIRED, 지금 판과 다르면 409 PROPOSAL_CHANGED(basis plans). new-N 은 비운다(보지 않는다)
+       * @example 2
+       */
+      savedVersionNo?: number | null;
+      /**
+       * @description 사람이 나눈 계획이면 나누기 전 계획의 키(본문 안의 다른 계획 키). 화면이 두 행을 잇는 데 쓰고 응답에 그대로 돌려준다 — 러닝체인지 분할(splitOfPlanId)로 저장하지 않는다. 나누지 않았으면 null·생략
+       * @example new-1
+       */
+      splitFromPlanKey?: string | null;
+      /**
+       * Format: date
+       * @description 공장 현지 오늘 이후여야 한다 — 지났으면 400 RANGE(자정을 넘겨 확정하면 검토 때의 날짜가 지났을 수 있다). 휴일이어도 거부하지 않는다. 출처는 planDateSourceCode 로 명시한다
+       * @example 2026-08-11
+       */
+      planDate: string;
+      /**
+       * @description 날짜 출처 — 서버가 추측하지 않고 이 값을 저장한다. SYSTEM 은 시스템이 정한 날짜를 그대로 둘 때만이다: 제안이 SYSTEM 으로 낸 계획은 그 planDate(휴일 보정 뒤), 사람이 고른 날짜의 작성중 계획과 나누거나 더한 new-N 은 새 계획 제안의 시스템 날짜. 다르면 400 field planDateSourceCode PLAN_DATE_SOURCE_MISMATCH(사람이 고친 날짜는 USER). SYSTEM 날짜는 근무일 보정을 거친 날이고 basis.calendar 가 보정에 쓴 날을 본다. USER 는 어떤 날짜든(오늘 이후) 받고 보정하지 않는다 — 휴일이면 WARN PLAN_DATE_HOLIDAY 뿐이고, 확정하면 감사 기록(PRODUCTION_ORDER · PLAN_DATE_USER_ON_HOLIDAY)을 남긴다
+       * @example SYSTEM
+       * @enum {string}
+       */
+      planDateSourceCode: 'SYSTEM' | 'USER';
+      /**
+       * Format: double
+       * @description 저장할 계획 수량 — 제안 proposedQty 를 그대로 싣거나 고친다. 확정 계획량 + 작성 수량 합계가 ERP W/O 수량을 넘으면 400 PLAN_QTY_EXCEEDS_ORDER
+       * @example 120
+       */
+      plannedQty: number;
+      /**
+       * Format: int64
+       * @description 지금 ERP 기본 BOM 이어야 한다. 다르면 400 BOM_NOT_DEFAULT
+       * @example 1001
+       */
+      bomId: number;
+      /**
+       * Format: int64
+       * @description 확정·유효 기간 안의 이 품목 Routing. 아니면 400 INVALID
+       * @example 1001
+       */
+      routingId: number;
+      /**
+       * Format: int64
+       * @description 계획 라인. null 이면 라인을 공정 W/O 마다 정한다
+       * @example 1001
+       */
+      plannedLineId: number | null;
+      /** @description 입고 창고 수동 변경 — 없으면 생략·null(SL_CD 규칙 그대로). 입고 창고 수동 변경(계획 단위) — ERP 는 오더의 SL_CD 창고로 입고하고 MES 생산입고 송신은 창고를 싣지 않으므로, 바꾸면 MES 와 ERP 의 재고 위치가 달라진다. 사람이 그것을 알고 허용할 때만 쓴다. 바꾼 창고가 정해지면 그 계획의 모든 공정 W/O 의 defaultFgLocationId 는 그 창고 안의 위치여야 한다(SL_CD 창고 대신 — 아니면 400 FG_LOCATION_OUTSIDE_WAREHOUSE). 위치는 공정 W/O 마다 고르고, 재검증 plans[].fgWarehouse.arrivalLocationId 가 그 창고의 입고 위치(나뉜 창고는 적치 대기, 아니면 창고 전체 — 제안이 SL_CD 창고에 쓰는 규칙)를 기본값으로 준다. 받는 조건: ERP W/O 에 SL_CD 가 있고 MES 창고로 연결됐다 — SL_CD 가 없으면 400 field fgWarehouseOverride INVALID(바꿀 ERP 창고가 없다 — 완제품 위치를 그대로 고른다), SL_CD 연결이 실패했으면 400 field fgWarehouseOverride FG_OVERRIDE_LINK_FAILED(우회하지 않는다 — 창고 연결을 먼저 고친다). 창고는 이 공장의 사용 중인, 자재·불량·외부 창고가 아닌 창고(ERP 입고 창고 연결과 같은 기준 — 아니면 400 field fgWarehouseOverride.warehouseId FG_WAREHOUSE_OTHER_PLANT·FG_WAREHOUSE_INACTIVE·FG_WAREHOUSE_NOT_ALLOWED)이고 SL_CD 창고와 같으면 400 INVALID(바꾼 것이 없다). 생산 라인을 바꿔도 그대로다 — 서버가 라인 기본 위치로 되돌리지 않는다. 재검증은 WARN FG_WAREHOUSE_DIFFERS_FROM_ERP 를 내고, 확정은 같은 트랜잭션에서 감사 기록(PRODUCTION_ORDER · FG_WAREHOUSE_OVERRIDDEN)을 남긴다. */
+      fgWarehouseOverride?: {
+        /**
+         * Format: int64
+         * @description 사람이 고른 MES 입고 창고
+         * @example 52
+         */
+        warehouseId: number;
+        /**
+         * @description 확인 응답 — 「ERP 입고 창고와 MES 입고 창고가 달라진다」는 화면 확인 메시지에 사람이 동의했다. true 만 받는다(아니면 400)
+         * @example true
+         * @enum {boolean}
+         */
+        erpMismatchAcknowledged: true;
+      } | null;
+      /** @example 값 */
+      remarks?: string;
+      /** @description Routing 공정마다 하나 — routingOperationId 집합이 routingId 의 공정과 같아야 한다. 다르면 400 INVALID */
+      workOrders: components['schemas']['ProductionPlanProposalRevalidateWorkOrder'][];
+    };
+    /** @description 재검증 공정 W/O 하나 — ProductionPlanProposalConfirmWorkOrder 와 같고 생산 라인·생산품 입고 위치은 비워도(null·생략) 받는다. 빈 칸은 재검증 errors 에 그 칸 REQUIRED 로 낸다 — 제안이 정하지 못한 칸을 그대로 보내 확정 전에 무엇을 채울지 본다. 계획 시각 규칙은 ProductionPlanProposalConfirmWorkOrder 와 같다. */
+    ProductionPlanProposalRevalidateWorkOrder: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      routingOperationId: number;
+      /**
+       * Format: int64
+       * @description ERP W/O 공장의 사용 중인 라인. 아니면 400 LINE_PLANT_MISMATCH
+       * @example 1001
+       */
+      productionLineId?: number | null;
+      /**
+       * Format: int64
+       * @description 생략·null = 비움. 이 공장의 설비가 아니면 400 RESOURCE_PLANT_MISMATCH, 가동 상태가 아니면 400 EQUIPMENT_NOT_IN_SERVICE, 다른 라인에 속한 설비면 400 EQUIPMENT_LINE_MISMATCH(라인이 없는 설비는 된다)
+       * @example 1001
+       */
+      plannedEquipmentId?: number | null;
+      /**
+       * Format: int64
+       * @description 생략·null = 비움. 이 공장의 금형이 아니면 400 RESOURCE_PLANT_MISMATCH, 가동 상태가 아니면 400 MOLD_NOT_IN_SERVICE
+       * @example 1001
+       */
+      plannedMoldId?: number | null;
+      /**
+       * Format: int64
+       * @description 생략·null = 비움. 이 공장의 사용 중인 작업자가 아니면 400 INVALID
+       * @example 1001
+       */
+      responsibleWorkerId?: number | null;
+      /**
+       * Format: int64
+       * @description 생략·null = 근무일 하루. 그 공장의 활성 교대가 아니면 400 INVALID
+       * @example 1001
+       */
+      plannedShiftId?: number | null;
+      /**
+       * @description SYSTEM 서버가 계획일·교대로 정한다 · USER 사람이 정한 plannedStartAt·plannedEndAt 를 그대로 저장한다. 규칙은 ProductionPlanProposalConfirmWorkOrder 설명
+       * @example USER
+       * @enum {string}
+       */
+      plannedTimeSourceCode: 'SYSTEM' | 'USER';
+      /**
+       * Format: date-time
+       * @description USER 면 필수. SYSTEM 이면 화면이 보던 값을 실어도 되고 쓰지 않는다(달라졌으면 재검증 corrections)
+       * @example 2026-11-18T13:00:00+07:00
+       */
+      plannedStartAt?: string | null;
+      /**
+       * Format: date-time
+       * @description USER 면 필수 · 시작보다 늦어야 한다(아니면 400 RANGE)
+       * @example 2026-11-18T21:00:00+07:00
+       */
+      plannedEndAt?: string | null;
+      /**
+       * Format: int64
+       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
+       * @example 1001
+       */
+      defaultWipLocationId?: number | null;
+      /**
+       * Format: int64
+       * @description SL_CD 창고 안의 위치(제안의 defaultFgLocationId). 규칙은 ProductionPlanProposalConfirmWorkOrder 설명. ERP 목적지의 의미는 마지막 공정에 있고 중간 공정 값은 배포 필수 검사를 위해 같은 값을 둔다.
+       * @example 1001
+       */
+      defaultFgLocationId?: number | null;
+      /**
+       * Format: int64
+       * @description 과거 기록 호환용 선택값입니다. 작업계획 확정·배포의 필수값이 아니며 창고 불량품 이동 위치를 결정하지 않습니다.
+       * @example 1001
+       */
+      defaultScrapLocationId?: number | null;
+    };
+    /** @description POST /planning/production-orders/{productionOrderId}:revalidate-plan-proposal 의 200 결과 — 저장하지 않았다. */
+    ProductionPlanProposalRevalidation: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      productionOrderId: number;
+      /**
+       * @description errors·proposalChanges 가 모두 비었고 이미 처리된 ERP W/O 가 아니다 — 이 본문(basis 포함)을 그대로 확정하면 그 사이 기준이 바뀌지 않는 한 400·409 PROPOSAL_CHANGED 가 나지 않는다
+       * @example false
+       */
+      confirmable: boolean;
+      /**
+       * @description 확정 계획량이 이미 ERP W/O 수량을 채웠다 — 확정하면 저장하지 않고 ALREADY_PROCESSED 다. 참이면 plans·errors 는 빈 배열이다
+       * @example false
+       */
+      alreadyProcessed: boolean;
+      /** @description 지금 다시 계산한 basis */
+      basis: components['schemas']['ProductionPlanProposalBasis'];
+      /** @description 본문 basis 와 지금 basis 가 다른 칸 — 확정이었다면 409 PROPOSAL_CHANGED. 비면 같다. ⛔ 화면은 이것을 사람에게 보인 뒤에만 응답 basis 를 확정 본문에 옮겨 싣는다 — 사람이 보지 않은 기준 변화를 새 basis 로 덮어 확정하지 않는다. 사람이 본 작성중 계획(replacedDrafts·savedVersionNo)과 지금이 달라도 plans 로 싣는다 */
+      proposalChanges: components['schemas']['ProductionPlanProposalChange'][];
+      /** @description proposalChanges 가 있을 때만 — 지금 기준의 제안(409 의 currentProposal 과 같다) */
+      currentProposal?: components['schemas']['ProductionPlanProposal'];
+      /** @description 확정이 400 으로 낼 오류 — 같은 code·같은 field(본문 경로)·같은 문장. 확정은 첫 단계에서 멈추지만 재검증은 본문 검증과 수량 합계(PLAN_QTY_EXCEEDS_ORDER)를 함께 낸다. 취소된 ERP W/O 는 screen STATE_LOCKED, OA 자동 W/O 공장의 ERP W/O 는 screen AUTO_WORK_ORDER_PLANT 하나다. 비면 검증을 통과했다. 생산 라인·생산품 입고 위치이 비었으면 그 칸 REQUIRED(확정 본문은 계약 가드가 막는다). 확정이 409 INVALID_STATE 로 낼 「지울 작성중 계획에 분할 계획이 매달림」도 같은 문장의 screen INVALID_STATE 로 싣는다 */
+      errors: components['schemas']['ErrorItem'][];
+      warnings: components['schemas']['ProductionPlanProposalWarning'][];
+      /** @description 서버가 시스템 값을 다시 계산해 본문(화면이 보던 값)과 달라진 칸 — 무엇이 왜 바뀌었나. 확정은 다시 계산한 값을 저장한다. 비면 바뀐 것이 없다 */
+      corrections: components['schemas']['ProductionPlanProposalCorrection'][];
+      /** @description 최종 계획 — 본문 순서. 계획 집합이 제안과 달라(field plans) 계획별로 판정하지 못했거나, 취소·OA 자동 W/O 공장·이미 처리된 ERP W/O 면 빈 배열이다 */
+      plans: components['schemas']['ProductionPlanProposalRevalidatedPlan'][];
+      /** @description 지금의 작성중 계획 요약 — 없으면 빈 배열 */
+      existingDrafts: components['schemas']['ProductionPlanProposalExistingDraft'][];
+    };
+    /** @description 계획의 입고 창고 — ERP 원본(SL_CD)과 MES 적용 창고 */
+    ProductionPlanProposalFgWarehouse: {
+      /**
+       * @description ERP W/O 의 SL_CD. 없으면 null
+       * @example S510
+       */
+      erpStorageLocationCode: string | null;
+      /**
+       * Format: int64
+       * @description SL_CD 로 정한 MES 창고. 연결하지 못했거나 SL_CD 가 없으면 null
+       * @example 51
+       */
+      erpWarehouseId: number | null;
+      /**
+       * Format: int64
+       * @description 공정 W/O 완제품 위치가 들어야 할 창고 — 바꿨으면 그 창고, 아니면 SL_CD 창고
+       * @example 52
+       */
+      appliedWarehouseId: number | null;
+      /**
+       * Format: int64
+       * @description 적용 창고의 입고 위치 — 공정 W/O 완제품 위치의 기본값. 정하지 못하면 null
+       * @example 5201
+       */
+      arrivalLocationId: number | null;
+      /**
+       * @description 본문 fgWarehouseOverride 로 사람이 바꿨다
+       * @example true
+       */
+      overridden: boolean;
+      /**
+       * @description 적용 창고가 SL_CD 창고와 다르다 — 확정하면 W/O 의 fgWarehouseDiffersFromErp 가 참이다
+       * @example true
+       */
+      differsFromErp: boolean;
+    };
+    /** @description 서버가 시스템 값을 다시 계산해 본문(화면이 보던 값)과 달라진 칸. ⛔ 사람이 정한 값(출처 USER·사람이 고른 4M)은 보정하지 않는다 — 맞지 않으면 errors 다. */
+    ProductionPlanProposalCorrection: {
+      /** @example plans[0].workOrders[0].plannedStartAt */
+      field: string;
+      /**
+       * @description SYSTEM_TIME_RECALCULATED 출처 SYSTEM 인 계획 시각을 지금 계획일·교대로 다시 계산했다
+       * @example SYSTEM_TIME_RECALCULATED
+       * @enum {string}
+       */
+      reasonCode: 'SYSTEM_TIME_RECALCULATED';
+      /**
+       * @description 본문 값
+       * @example 2026-11-18T07:00:00+07:00
+       */
+      from: string | null;
+      /**
+       * @description 다시 계산한 값 — 확정이 저장한다
+       * @example 2026-11-18T19:00:00+07:00
+       */
+      to: string;
+      /** @example 계획일·교대에 맞춰 계획 시각을 다시 계산했습니다(11-18 19:00). */
+      message: string;
+    };
+    /** @description 재검증한 계획 하나 — 확정하면 저장될 값. 계획은 proposalPlanKey, 공정 W/O 는 그 안의 routingOperationId 로 가리킨다. */
+    ProductionPlanProposalRevalidatedPlan: {
+      /** @example new-1 */
+      proposalPlanKey: string;
+      /**
+       * @example NEW
+       * @enum {string}
+       */
+      planSource: 'NEW' | 'EXISTING_DRAFT';
+      /**
+       * Format: int64
+       * @description EXISTING_DRAFT 만
+       * @example 1001
+       */
+      productionPlanId?: number;
+      /**
+       * Format: date
+       * @example 2026-11-18
+       */
+      planDate: string;
+      /**
+       * @description 확정이 저장할 날짜 출처 — 본문 값
+       * @example SYSTEM
+       * @enum {string}
+       */
+      planDateSourceCode: 'SYSTEM' | 'USER';
+      /** @description 본문 계획일·계획 라인의 근무일 판정 */
+      planDateCalendar: components['schemas']['PlanningCalendarDay'];
+      /**
+       * Format: double
+       * @example 60
+       */
+      plannedQty: number;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      routingId: number;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      plannedLineId: number | null;
+      workOrders: components['schemas']['ProductionPlanProposalRevalidatedWorkOrder'][];
+      /**
+       * @description 본문의 splitFromPlanKey
+       * @example null
+       */
+      splitFromPlanKey: string | null;
+      /**
+       * Format: int64
+       * @description 본문 값
+       * @example 1001
+       */
+      bomId: number;
+      /**
+       * @description 본문 값 — 없으면 null
+       * @example null
+       */
+      remarks: string | null;
+      fgWarehouse: components['schemas']['ProductionPlanProposalFgWarehouse'];
+    };
+    /** @description 재검증한 공정 W/O 하나 — 확정하면 저장될 값. 본문 값은 그대로 두고 서버가 정하는 칸(수량·선후관계·계획 시각·라인 기본 WIP)만 계산해 채운다. 본문 순서다. */
+    ProductionPlanProposalRevalidatedWorkOrder: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      routingOperationId: number;
+      /**
+       * @description 고른 Routing 의 공정이 아니면 null(그 오류는 errors 에 있다)
+       * @example 10
+       */
+      operationSeq: number | null;
+      /**
+       * Format: double
+       * @description 계획 수량과 같다 — 공정마다 같은 양
+       * @example 60
+       */
+      orderQty: number;
+      /** @description 이 계획 안의 선행 공정 — Routing 공정 의존 그대로 */
+      predecessors: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        routingOperationId: number;
+        /** @example FINISH_TO_START */
+        dependencyTypeCode: string;
+      }[];
+      /**
+       * Format: date-time
+       * @description 확정이 저장할 시각 — SYSTEM 은 계획일과 plannedShiftId 로 다시 계산한 값, USER 는 본문 그대로
+       * @example 2026-11-18T08:00:00+07:00
+       */
+      plannedStartAt: string;
+      /**
+       * Format: date-time
+       * @example 2026-11-19T08:00:00+07:00
+       */
+      plannedEndAt: string;
+      /**
+       * @description 본문 값
+       * @example SYSTEM
+       * @enum {string}
+       */
+      plannedTimeSourceCode: 'SYSTEM' | 'USER';
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      plannedShiftId: number | null;
+      /**
+       * Format: int64
+       * @description 본문 값 — 비었으면 null(그 칸 REQUIRED 가 errors 에 있다)
+       * @example 1001
+       */
+      productionLineId: number | null;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      plannedEquipmentId: number | null;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      plannedMoldId: number | null;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      responsibleWorkerId: number | null;
+      /**
+       * Format: int64
+       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
+       * @example 1001
+       */
+      defaultWipLocationId: number | null;
+      /**
+       * Format: int64
+       * @description 본문 값 — 비었으면 null(그 칸 REQUIRED 가 errors 에 있다)
+       * @example 1001
+       */
+      defaultFgLocationId: number | null;
+      /**
+       * Format: int64
+       * @description 과거 기록 호환용 선택값입니다. 작업계획 확정·배포의 필수값이 아니며 창고 불량품 이동 위치를 결정하지 않습니다.
+       * @example 1001
+       */
+      defaultScrapLocationId: number | null;
+      /** @example true */
+      equipmentRequired: boolean;
+      /** @example false */
+      moldRequired: boolean;
+      /**
+       * @description 공정이 요구하는데(equipmentRequired·moldRequired) 빈 배정 칸 — plannedEquipmentId·plannedMoldId. 확정은 이것으로 막지 않는다(라인·생산품 입고 위치은 본문 필수라 비지 않는다)
+       * @example [
+       *       "plannedEquipmentId"
+       *     ]
+       */
+      missingFields: string[];
+    };
+    /** @description 재검증 경고 하나 — 확정을 막지 않는다. field 는 본문 경로다. */
+    ProductionPlanProposalWarning: {
+      /**
+       * @description 4M 점검(GET /production/work-orders/{workOrderId}/validation)의 WARN 과 같은 판정·같은 문장 — 본문이 고른 설비·금형·작업자와 계획 시각으로 본다. EQUIPMENT_DOUBLE_BOOKED 는 WARN 목록 대신 errors에 반환해 확정을 막으며, 저장된 다른 MES W/O(단일/N 설비 배정)와 «이 본문의 다른 공정 W/O» 를 함께 본다. PLAN_DATE_HOLIDAY·PLAN_DATE_UNDETERMINED 는 본문 계획일·계획 라인의 근무일 판정(제안의 계획 단위 WARN 과 같은 문장). 제안 조회의 공정 W/O 경고도 같은 비교다(저장된 W/O 와 같은 ERP W/O 의 다른 공정 W/O). 작업자 자격(WORKER_QUALIFICATION_EXPIRED)은 제안이 작업자를 정하지 않아 재검증에만 나온다. PLAN_TIME_OUTSIDE_SHIFT 사람이 정한(USER) 시각이 고른 교대 창 밖 · PLAN_TIME_PRECEDENCE 후행 공정이 선행 공정(FINISH_TO_START)이 끝나기 전에 시작한다(둘 중 하나라도 USER 일 때) — 둘 다 field 는 그 공정 W/O 의 plannedStartAt. FG_WAREHOUSE_DIFFERS_FROM_ERP 입고 창고를 ERP(SL_CD)와 다르게 바꿨다 — 확인 응답을 받았어도 알린다(field plans[i].fgWarehouseOverride)
+       * @example EQUIPMENT_DOUBLE_BOOKED
+       * @enum {string}
+       */
+      code:
+        | 'EQUIPMENT_CALIBRATION_EXPIRED'
+        | 'WORKER_QUALIFICATION_EXPIRED'
+        | 'MOLD_LIFE_EXCEEDED'
+        | 'EQUIPMENT_DOUBLE_BOOKED'
+        | 'PLAN_DATE_HOLIDAY'
+        | 'PLAN_DATE_UNDETERMINED'
+        | 'PLAN_TIME_OUTSIDE_SHIFT'
+        | 'PLAN_TIME_PRECEDENCE'
+        | 'FG_WAREHOUSE_DIFFERS_FROM_ERP';
+      /** @example plans[0].workOrders[1].plannedEquipmentId */
+      field: string;
+      /** @example 설비(2001)가 같은 시간대의 다른 MES W/O 에 배정돼 있습니다. */
+      message: string;
     };
     /** @description ⚠ 개발팀 선행(P-30). 생산오더 수기 등록 요청. */
     ProductionOrderCreate: {
@@ -62644,6 +64479,19 @@ export interface components {
     /** @description BOM·Routing 은 06 기준정보 계약이 소유한다 — 여기서는 참조만 한다. */
     ProductionPlan: {
       /**
+       * @description 계획일을 누가 정했나 — SYSTEM 은 시스템이 만든 날짜(자동 분배·분할 순차 생성·제안 계획일 보정), USER 는 사람이 직접 고른 날짜. SYSTEM 날짜는 그 날이 뒤에 휴일이 되면 재검토 대상이고(planDateReviewRequired · 제안 basis.calendar), USER 날짜는 휴일이어도 경고만 한다. 출처는 계획일을 바꿀 때만 바뀐다. 이 칸이 생기기 전 계획은 USER
+       * @example SYSTEM
+       * @enum {string}
+       */
+      planDateSourceCode: 'SYSTEM' | 'USER';
+      /** @description 계획일의 지금 판정 — 휴일·판정 불가 경고 정보다(오류 아님). 조회·등록·수정·확정 응답마다 그때의 캘린더로 다시 판정한다. 라인은 plannedLineId(없으면 공장 층), 공장은 ERP W/O 의 공장 */
+      planDateCalendar: components['schemas']['PlanningCalendarDay'];
+      /**
+       * @description 작성중(DRAFT)이고 planDateSourceCode 가 SYSTEM 인데 planDateCalendar.statusCode 가 HOLIDAY 다 — 시스템이 고른 날이 그 뒤 휴일이 됐으니 다시 배분·보정하라는 표시. USER 출처·확정 계획은 늘 false(휴일 여부는 planDateCalendar 로 본다)
+       * @example false
+       */
+      planDateReviewRequired: boolean;
+      /**
        * Format: int64
        * @example 1001
        */
@@ -62708,6 +64556,12 @@ export interface components {
     };
     ProductionPlanCreate: {
       /**
+       * @description 계획일을 누가 정했나 — SYSTEM 은 시스템이 만든 날짜(자동 분배·분할 순차 생성·제안 계획일 보정), USER 는 사람이 직접 고른 날짜. SYSTEM 날짜는 그 날이 뒤에 휴일이 되면 재검토 대상이고(planDateReviewRequired · 제안 basis.calendar), USER 날짜는 휴일이어도 경고만 한다. 생략하면 USER. 화면의 자동 분배·분할 순차 생성이 만든 날짜는 SYSTEM 으로 싣는다. ⛔ 휴일이어도 거부하지 않는다 — 응답 planDateCalendar 로 경고한다
+       * @example SYSTEM
+       * @enum {string}
+       */
+      planDateSourceCode?: 'SYSTEM' | 'USER';
+      /**
        * Format: int64
        * @example 1001
        */
@@ -62758,6 +64612,12 @@ export interface components {
       reasonCode?: string;
     };
     ProductionPlanUpdate: {
+      /**
+       * @description 계획일을 누가 정했나 — SYSTEM 은 시스템이 만든 날짜(자동 분배·분할 순차 생성·제안 계획일 보정), USER 는 사람이 직접 고른 날짜. SYSTEM 날짜는 그 날이 뒤에 휴일이 되면 재검토 대상이고(planDateReviewRequired · 제안 basis.calendar), USER 날짜는 휴일이어도 경고만 한다. ⛔ planDate 가 저장값과 다를 때만 쓴다 — 그때 이 값(생략하면 USER)으로 바뀐다. planDate 를 안 보내거나 저장값과 같으면 이 칸은 무시하고 출처를 그대로 둔다(날짜 외 칸 수정으로 출처가 바뀌지 않는다)
+       * @example SYSTEM
+       * @enum {string}
+       */
+      planDateSourceCode?: 'SYSTEM' | 'USER';
       /**
        * Format: date
        * @example 2026-08-11
@@ -62849,11 +64709,11 @@ export interface components {
        */
       uomId: number;
       /**
-       * @description 실적을 «무엇이» 만들었는가 — 수기 입력(MANUAL) · IoT 자동수집(IOT). ⭐ 서버가 안다 — 화면이 고르는 값이 아니다. ⛔ 두 갈래뿐이라 계약이 닫는다
+       * @description 실적을 «무엇이» 만들었는가 — 수기 입력(MANUAL) · IoT 자동수집(IOT) · 추적 시스템 연동(TRACKING_SYSTEM — 서버가 연동 포장으로 쓴다 · 등록 본문으로는 보낼 수 없다). ⭐ 서버가 안다 — 화면이 고르는 값이 아니다
        * @example MANUAL
        * @enum {string}
        */
-      resultSourceCode: 'MANUAL' | 'IOT';
+      resultSourceCode: 'MANUAL' | 'IOT' | 'TRACKING_SYSTEM';
       /**
        * Format: date-time
        * @example 2026-08-11T09:12:00+09:00
@@ -63166,6 +65026,7 @@ export interface components {
        * @example 1001
        */
       lotId: number;
+      /** @description REGISTERED 등록 · SHIPPED 추적 시스템(flowtrack) 연동 출하로 나감 */
       statusCode: string;
       /**
        * Format: date-time
@@ -63333,6 +65194,73 @@ export interface components {
      * @enum {string}
      */
     ResourceRecommendationSource: 'DEFAULT' | 'MAPPED' | 'RECENT';
+    /** @description 배포 확인의 자재 소요 한 행 — BOM 구성 행마다. 화면 표시 예: BOM 367 GR → 0.367 KG (1 KG = 1,000 GR · 품목 환산) */
+    WorkOrderMaterialRequirement: {
+      /**
+       * Format: int64
+       * @description :release 의 materialUomConfirmations[].bomComponentId 로 그대로 싣는다
+       * @example 1001
+       */
+      bomComponentId: number;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      itemId: number;
+      /** @example 040101-00064 */
+      itemCode: string;
+      /** @example RESIN PC */
+      itemName: string;
+      /**
+       * @description BOM 소요 = 구성 소요량 × 지시수량 ÷ BOM 기준수량(BOM 단위)
+       * @example 367
+       */
+      bomQty: number;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      bomUomId: number;
+      /** @example GR */
+      bomUomCode: string;
+      /**
+       * Format: int64
+       * @description 재고 단위 = 품목 기본 단위 — 출고요청 라인 단위
+       * @example 1002
+       */
+      stockUomId: number;
+      /** @example KG */
+      stockUomCode: string;
+      /**
+       * @description 재고 단위 소수 자릿수(uom.decimal_scale) — 서버가 이 자릿수로 올림한다. 환산이 없는(NONE) 행에 비율을 넣으면 화면이 bomQty ÷ 비율을 이 자릿수로 올려 보인다
+       * @example 3
+       */
+      stockUomScale: number;
+      /**
+       * @description 재고 단위 수량 — 재고 단위 decimal_scale 로 올림. 단위가 같으면 bomQty 와 같다. 환산이 없으면(NONE) null — 화면이 입력한 비율로 bomQty ÷ 비율을 같은 자릿수로 올려 보인다
+       * @example 0.367
+       */
+      stockQty: number | null;
+      /**
+       * @description 환산 출처 — ITEM(품목 환산 · 유효일 = 공장 현지 오늘 · 역방향 포함) · COMMON(공통 환산 상수: KG = 1,000 GR = 1,000 G, GR = G · EA = PC) · NONE(환산 없음 — 비율 직접 입력). BOM 단위와 재고 단위가 같으면 null 이다. 품목 환산이 공통 환산보다 먼저다. 근거: omf-all-around#297
+       * @example ITEM
+       * @enum {string|null}
+       */
+      conversionSource: 'ITEM' | 'COMMON' | 'NONE' | null;
+      /**
+       * @description 「1 재고 단위 = N BOM 단위」의 N. 단위가 같거나 환산이 없으면 null
+       * @example 1000
+       */
+      conversionRate: number | null;
+      /**
+       * @description BOM 단위 ≠ 재고 단위 — 배포 전에 사용자가 확인해야 한다(공통 환산이어도). 라인 없이 배포하는 자동 W/O(추적 시스템 연동)는 출고요청을 만들지 않아 false
+       * @example true
+       */
+      confirmationRequired: boolean;
+    };
+    WorkOrderMaterialRequirementList: {
+      items: components['schemas']['WorkOrderMaterialRequirement'][];
+    };
     ValidationReport: {
       /**
        * @description BLOCK 이 하나도 없으면 true
@@ -63487,6 +65415,7 @@ export interface components {
       priorityNo: number;
       /**
        * Format: int64
+       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
        * @example 1001
        */
       defaultWipLocationId?: number;
@@ -63497,6 +65426,7 @@ export interface components {
       defaultFgLocationId?: number;
       /**
        * Format: int64
+       * @description 과거 기록 호환용 선택값입니다. 작업계획 확정·배포의 필수값이 아니며 창고 불량품 이동 위치를 결정하지 않습니다.
        * @example 1001
        */
       defaultScrapLocationId?: number;
@@ -63584,6 +65514,21 @@ export interface components {
        */
       productionOrderNo?: string;
       /**
+       * @description ERP W/O 의 창고(SL_CD) — 이 W/O 의 생산품 입고 창고. ERP W/O 가 없거나 ERP 가 비워 보냈으면 키가 없다. 추적 시스템 연동이 W/O 를 받을 때 쓴다(omf-all-around#274)
+       * @example S510
+       */
+      erpStorageLocationCode?: string;
+      /**
+       * @description 완제품 위치(defaultFgLocationId)의 창고 코드 — 위치가 없으면 키가 없다
+       * @example S520
+       */
+      fgWarehouseCode?: string;
+      /**
+       * @description 「ERP 입고 창고와 다름」 — ERP W/O 의 SL_CD(erpStorageLocationCode)가 있고 fgWarehouseCode 가 그와 다르다(SL_CD 앞뒤 공백 무시). 목록·상세 모두 싣는다. 저장한 표시가 아니라 읽을 때 판정한다 — 계획 제안에서 사람이 입고 창고를 바꿨든, 확정 뒤 ERP 가 SL_CD 를 바꿨든 참이다. ERP 는 SL_CD 창고로 입고하고 MES 생산입고 송신은 창고를 싣지 않으므로 참이면 MES 와 ERP 의 재고 위치가 다르다. 누가 언제 바꿨는지는 GET /planning/production-orders/{productionOrderId}/audit-events 의 FG_WAREHOUSE_OVERRIDDEN 기록이다
+       * @example true
+       */
+      fgWarehouseDiffersFromErp?: boolean;
+      /**
        * @description 공정명 — 목록의 「공정」 열이 쓴다
        * @example 사출
        */
@@ -63620,12 +65565,23 @@ export interface components {
        */
       itemCode?: string;
       /**
+       * @description 품목명 — 품목 마스터의 이름(ERP 품목 받기의 ITEM_NM). 추적 시스템 연동이 W/O 를 받을 때 쓴다(omf-all-around#274)
+       * @example 품목명
+       */
+      itemName?: string;
+      /**
        * @description P/O 와 어긋난 채 남은 W/O 인가. 서버가 두 자리에서 세운다 — ⓐ 관리자가 「기존 유지(강행)」를 고를 때 ⓑ 「변경 반영」을 골랐는데 그 W/O 를 workOrderAdjustments 로 조정하지 않았을 때. ⓑ 를 더한 것은 「반영했다고 적혔는데 실제로는 안 맞춘」 W/O 가 표식 없이 남지 않게 하기 위해서다 — 강행에는 표식이 서는데 반영의 미조정에는 안 서면 뒤엣것이 더 위험하다. 마감 화면이 이 값으로 경고를 낸다. ⛔ 화면이 스스로 계산하지 않는다. 근거: W-02-06 §5-2·§6
        * @example false
        */
       poMismatch?: boolean;
       /** @example 1 */
       versionNo?: number;
+      /**
+       * Format: date-time
+       * @description 마지막으로 바뀐 시각 — 행을 고칠 때마다 DB 가 다시 찍는다. 목록 질의 updatedSince 의 기준
+       * @example 2026-11-16T01:00:00.000Z
+       */
+      updatedAt?: string;
       progress?: components['schemas']['WorkOrderProgress'];
       preIssuedLots?: components['schemas']['PreIssuedLotSummary'];
       validation?: components['schemas']['ValidationSummary'];
@@ -63825,6 +65781,25 @@ export interface components {
        * @example 비고
        */
       handoverNote?: string;
+      /** @description BOM 단위와 재고 단위(품목 기본 단위)가 다른 자재의 확인 — 배포 전 조회(GET /production/work-orders/{workOrderId}/material-requirements)에서 confirmationRequired=true 인 행마다 하나. 단위가 같은 자재는 싣지 않아도 된다(단위가 다른 자재가 없는 W/O 는 칸을 비워도 지금처럼 배포된다). 확인되지 않은 행이 있거나, 환산이 없는(NONE) 행에 conversionRate 가 없으면 400 MATERIAL_UOM_CONFIRMATION_REQUIRED(field = materialUomConfirmations[bomComponentId=…].confirmed | .conversionRate). 출고요청 라인은 재고 단위·재고 단위 수량(재고 단위 decimal_scale 로 올림)으로 만든다. 근거: omf-all-around#297 */
+      materialUomConfirmations?: {
+        /**
+         * Format: int64
+         * @description 배포 전 조회 행의 bomComponentId
+         * @example 1001
+         */
+        bomComponentId: number;
+        /**
+         * @description 변환 수량을 보고 확인했다 — true 여야 배포된다
+         * @example true
+         */
+        confirmed: boolean;
+        /**
+         * @description 직접 입력한 환산 — 「1 재고 단위 = N BOM 단위」의 N(예: 1 KG = 1,000 GR 이면 1000). 소수 8자리까지 저장한다(반올림). 환산이 없는(NONE) 행은 필수다. 공통 환산(COMMON) 행은 개수(EA·PC)일 때만 실어 그 품목에서 이 비율을 쓸 수 있다 — 질량(KG·GR·G)은 물리적으로 고정이라 다른 비율을 실으면 400 INVALID(같은 비율이면 그대로 통과). 넣은 비율은 배포와 같은 트랜잭션에서 품목 환산(mdm.item_uom_conversion · from = 재고 단위 · to = BOM 단위 · effectiveFrom = 공장 현지 오늘)으로 저장되고 감사 기록(대상 ITEM · ITEM_UOM_CONVERSION_ENTERED_AT_RELEASE)이 남는다 — 저장 권한은 배포 권한 그대로다(승인 없음). 이미 품목 환산(ITEM)이 있는 행에 다른 비율을 실으면 400 INVALID — 덮어쓰지 않는다(품목 환산은 기준정보에서 고친다). 같은 비율이면 그대로 통과한다.
+         * @example 1000
+         */
+        conversionRate?: number | null;
+      }[];
     };
     /** @description 재시작은 상태가 아니라 중단→진행 전이 이벤트다 — 그래서 발생 시각을 받는다. 근거: ✓설계확정 결정 14 · 공유계약 C-12 */
     WorkOrderResume: {
@@ -63889,7 +65864,7 @@ export interface components {
       responsibleWorkerId?: number | null;
       /**
        * Format: int64
-       * @description 명시적 null = 해제 · 필드 생략 = 기존 값 유지. 값을 바꿀 때 이 공장의 사용 중인 위치이되 자재창고가 아니어야 한다(아니면 400 LOCATION_INVALID).
+       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
        * @example 1001
        */
       defaultWipLocationId?: number | null;
@@ -63901,7 +65876,7 @@ export interface components {
       defaultFgLocationId?: number | null;
       /**
        * Format: int64
-       * @description 명시적 null = 해제 · 필드 생략 = 기존 값 유지. 값을 바꿀 때 이 공장의 사용 중인 위치이되 자재창고가 아니어야 한다(아니면 400 LOCATION_INVALID).
+       * @description 과거 기록 호환용 선택값입니다. 작업계획 확정·배포의 필수값이 아니며 창고 불량품 이동 위치를 결정하지 않습니다.
        * @example 1001
        */
       defaultScrapLocationId?: number | null;
@@ -66452,6 +68427,7 @@ export interface components {
         remarks: string | null;
       }[];
       writtenWorkerNo: string | null;
+      /** @description 작성 작업자 이름. 관리웹 계정으로 만든 검사표는 작업자가 없어 만든 계정 이름(omf-all-around#316) */
       writtenWorkerName: string | null;
       /** Format: date-time */
       createdAt: string;
@@ -66503,6 +68479,7 @@ export interface components {
          */
         sourceCode: 'SHEET' | 'OQC';
         inspectedWorkerNo: string | null;
+        /** @description 검사 작업자 이름. 관리웹 계정으로 적은 단계는 작업자가 없어 마지막으로 쓴 계정 이름(omf-all-around#316) */
         inspectedWorkerName: string | null;
         /** Format: date-time */
         inspectedAt: string;
@@ -66625,6 +68602,7 @@ export interface components {
       recordedStepCount: number;
       stepCount: number;
       ngStepCount: number;
+      /** @description 작성 작업자 이름. 관리웹 계정으로 만든 검사표는 작업자가 없어 만든 계정 이름(omf-all-around#316) */
       writtenWorkerName: string | null;
       approvedByName: string | null;
       checkedByName: string | null;
@@ -67323,7 +69301,7 @@ export interface components {
       /** @example 1 */
       versionNo?: number;
       /**
-       * @description ERP 송신 상태(출하 내역 W-04-12 · 피처 010) — 위에서부터 처음 맞는 값: 미확정 NOT_QUEUED(확정 전) · 수주 연결 라인 0 NOT_SENT_NO_SALES_ORDER(송신 안 함) · 메시지 없음 NOT_QUEUED · 메시지 취소 CANCELLED · 송신 실패 SEND_ERROR · 보내기 전(PENDING·sentAt 없음·바깥 행 0) PENDING(대기) · 그 밖 SENT(보냄). 출하 완료 단계 화면에는 표시하지 않는다
+       * @description ERP 송신 상태(출하 예정 목록 W-04-02 「출하」 칸 · 피처 010) — 위에서부터 처음 맞는 값: 미확정 NOT_QUEUED(확정 전) · 수주 연결 라인 0 NOT_SENT_NO_SALES_ORDER(송신 안 함) · 메시지 없음 NOT_QUEUED · 메시지 취소 CANCELLED · 송신 실패 SEND_ERROR · 보내기 전(PENDING·sentAt 없음·바깥 행 0) PENDING(대기) · 그 밖 SENT(보냄). 출하 완료 단계 화면에는 표시하지 않는다
        * @example PENDING
        * @enum {string}
        */
@@ -69938,19 +71916,19 @@ export interface components {
        */
       outsourceVendorName?: string | null;
       /**
-       * @description 툴 누계 리셋 여부. 서버 v0.1.2의 신규 등록·수정에서는 false로 고정되며, 기존 데이터와 원본 계약 호환을 위해 응답 필드를 유지한다(통보 114).
+       * @description 툴 누계 리셋 여부. 서버의 신규 등록·수정에서는 false로 고정되며, 기존 데이터와 원본 계약 호환을 위해 응답 필드를 유지한다(통보 114).
        * @example false
        */
       resetCounter?: boolean;
       /**
        * Format: int64
-       * @description 리셋 직전 누계 스냅샷. 서버 v0.1.2의 신규 등록·수정에서는 null로 고정되며 기존 데이터 조회용 필드로 유지한다(통보 114).
+       * @description 리셋 직전 누계 스냅샷. 서버의 신규 등록·수정에서는 null로 고정되며 기존 데이터 조회용 필드로 유지한다(통보 114).
        * @example null
        */
       readonly shotCountBeforeReset?: number | null;
       /**
        * Format: int64
-       * @description 리셋 후 시작값. 서버 v0.1.2의 신규 등록·수정에서는 null로 고정되며 기존 데이터 조회용 필드로 유지한다(통보 114).
+       * @description 리셋 후 시작값. 서버의 신규 등록·수정에서는 null로 고정되며 기존 데이터 조회용 필드로 유지한다(통보 114).
        * @example null
        */
       shotCountAfterReset?: number | null;
@@ -69958,8 +71936,6 @@ export interface components {
        * @description 지시를 마감했는지
        *
        *     서버의 신규 등록·수정에서는 false로 고정된다(통보 113).
-       *
-       *     서버 v0.1.2의 신규 등록·수정에서는 false로 고정된다(통보 113).
        * @example false
        */
       closed?: boolean;
@@ -70019,18 +71995,18 @@ export interface components {
        */
       outsourceVendorName?: string | null;
       /**
-       * @description 서버 v0.1.2 구현 기준: true는 예방보전 시행일 기준이 확정되지 않아 항상 422 INVALID다. false 또는 생략만 사용한다(통보 114).
+       * @description 서버 구현 기준: true는 예방보전 시행일 기준이 확정되지 않아 항상 422 INVALID다. false 또는 생략만 사용한다(통보 114).
        * @example false
        */
       resetCounter?: boolean;
       /**
        * Format: int64
-       * @description 서버 v0.1.2 구현 기준: 누계 리셋을 지원하지 않으므로 null 또는 생략만 허용한다(통보 114).
+       * @description 서버 구현 기준: 누계 리셋을 지원하지 않으므로 null 또는 생략만 허용한다(통보 114).
        * @example null
        */
       shotCountAfterReset?: number | null;
       /**
-       * @description 서버 v0.1.2 구현 기준: true는 결과코드별 완료 의미가 확정되지 않아 항상 422 INVALID다. false 또는 생략만 사용한다(통보 113).
+       * @description 서버 구현 기준: true는 결과코드별 완료 의미가 확정되지 않아 항상 422 INVALID다. false 또는 생략만 사용한다(통보 113).
        * @example false
        */
       closed?: boolean;
@@ -70047,7 +72023,7 @@ export interface components {
       /** @example 씰 교체 후 시운전 정상 */
       resultNote?: string;
       /**
-       * @description 서버 v0.1.2 구현 기준: true는 항상 422 INVALID다. 마감 전 수정만 지원한다(통보 113).
+       * @description 서버 구현 기준: true는 항상 422 INVALID다. 마감 전 수정만 지원한다(통보 113).
        * @example false
        */
       closed?: boolean;

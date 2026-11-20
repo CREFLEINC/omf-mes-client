@@ -32,6 +32,21 @@ const productionPlan = (productionPlanId: number) => ({
   bomId: 9001,
   routingId: 9101,
   statusCode: 'DRAFT',
+  planDateSourceCode: 'SYSTEM' as const,
+  planDateCalendar: {
+    date: '2026-08-22',
+    statusCode: 'WORKING' as const,
+    sourceCode: 'PLANT_CALENDAR' as const,
+    workCalendarId: null,
+    calendarCode: null,
+    appliedProductionLineId: null,
+    reasonCode: null,
+    remarks: null,
+    startTime: null,
+    endTime: null,
+    weeklyWorkingDays: null,
+  },
+  planDateReviewRequired: false,
 });
 
 const recordingFetch = (route: StubRoute): { fetch: StubFetch; urls: URL[] } => {
@@ -78,6 +93,9 @@ describe('toProductionPlanFact', () => {
       routingId: 9101,
       plannedLineId: 7001,
       statusCode: 'DRAFT',
+      planDateSourceCode: 'SYSTEM',
+      planDateCalendar: productionPlan(202).planDateCalendar,
+      planDateReviewRequired: false,
       confirmedAt: '2026-08-22T09:15:00+09:00',
       remarks: 'Synthetic plan remark',
       versionNo: 7,
