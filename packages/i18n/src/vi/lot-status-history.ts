@@ -37,6 +37,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     all: 'Tất cả',
     inactive: (label: string): string => `${label} (ngừng dùng)`,
     unlisted: (value: string): string => `${value} (chưa có trong danh sách)`,
+    empty: '—',
   },
   lotFilter: {
     pane: 'Điều kiện tra cứu LOT',
@@ -102,6 +103,8 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     columns: {
       lot: 'Số LOT',
       item: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       status: 'Trạng thái',
       onHand: 'Số lượng đang giữ',
       latestTransition: 'Ngày thay đổi cuối',

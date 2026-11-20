@@ -41,6 +41,8 @@ export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
     fields: {
       lotNo: 'Số LOT',
       item: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       status: 'Trạng thái',
       onHand: 'Số lượng đang giữ',
       held: 'Số lượng tạm giữ',

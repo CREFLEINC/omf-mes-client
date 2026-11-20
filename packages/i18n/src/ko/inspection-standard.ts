@@ -340,6 +340,9 @@ export const inspectionStandard = {
   listColumns: {
     versionStatus: '상태',
     item: '품목',
+    /** 품목은 코드 · 이름 두 칸으로 나눠 보인다(사용자 지시 2026-11-20). */
+    itemCode: '품목코드',
+    itemName: '품목명',
     approval: '승인 여부',
     active: '사용 여부',
     approved: '승인',

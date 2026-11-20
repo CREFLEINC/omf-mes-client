@@ -12,6 +12,8 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
       skip: 'Bỏ qua',
       inspectionRequestNo: 'Số yêu cầu',
       itemId: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       targetQty: 'Số lượng kiểm tra',
       statusCode: 'Trạng thái',
     },

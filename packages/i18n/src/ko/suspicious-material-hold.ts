@@ -10,6 +10,9 @@ export const suspiciousMaterialHold = {
       excludeFullyHeld: '전량 보류 제외',
       lotNo: 'LOT 번호',
       item: '품목',
+      /** 표의 품목은 코드 · 이름 두 칸으로 나눠 보인다(사용자 지시 2026-11-20). */
+      itemCode: '품목코드',
+      itemName: '품목명',
       warehouse: '창고',
       location: '위치',
       quantity: '보유 수량',

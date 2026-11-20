@@ -36,6 +36,8 @@ export const lotStatusHistory = {
     inactive: (label: string): string => `${label} (미사용)`,
     /** 기준값 목록에 없는 코드. 코드를 감추면 무엇이 어긋났는지 알 길이 없다. */
     unlisted: (value: string): string => `${value} (목록 미확정)`,
+    /** 값이 없는 칸 — 품목을 못 풀었을 때의 품목명 칸. */
+    empty: '—',
   },
   lotFilter: {
     pane: 'LOT 조회 조건',
@@ -110,6 +112,9 @@ export const lotStatusHistory = {
     columns: {
       lot: 'LOT 번호',
       item: '품목',
+      /** 품목은 코드 · 이름 두 칸으로 나눠 보인다(사용자 지시 2026-11-20). */
+      itemCode: '품목코드',
+      itemName: '품목명',
       status: '상태',
       onHand: '보유 수량',
       latestTransition: '최종 변경일',

@@ -57,6 +57,9 @@ export const pqcInspectionRegister = {
     lot: '대상 LOT',
     workOrder: '작업지시',
     item: '품목',
+    /** 품목은 코드 · 이름 두 칸으로 나눠 보인다(사용자 지시 2026-11-20). */
+    itemCode: '품목코드',
+    itemName: '품목명',
     targetQty: '검사 수량',
     status: '상태',
     requestedAt: '의뢰 일시',

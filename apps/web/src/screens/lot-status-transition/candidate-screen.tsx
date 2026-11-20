@@ -49,7 +49,7 @@ import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { PageNav } from '../../patterns/page-nav';
 import { LOT_HOLD_RELEASE_REASON_GROUP, useLotHoldReasonOptions } from './code-options';
-import { useItemNameSources } from '../lot-status-history/reference-options';
+import { itemCodeAndName, useItemNameSources } from '../lot-status-history/reference-options';
 import { ItemFilterField } from '../lot-status-history/item-filter-field';
 import {
   defaultTransitionPeriod,
@@ -281,12 +281,16 @@ export const LotStatusTransitionCandidateScreen = () => {
         : null;
   const statusOptions =
     statuses.data?.items.map((item) => ({ value: item.code, label: item.label })) ?? [];
-  /* 이름은 보이는 행의 품목 상세로 푼다 — 품목 목록은 첫 쪽만 받아 그 밖 품목이 「알 수 없음」이 된다(#1336). */
+  /*
+   * 이름은 보이는 행의 품목 상세로 푼다 — 품목 목록은 첫 쪽만 받아 그 밖 품목이 「알 수 없음」이 된다(#1336).
+   * 표는 코드 · 이름 두 칸이다(사용자 지시 2026-11-20).
+   */
+  const itemSource = (itemId: number) =>
+    itemNames.get(itemId) ?? { entries: [], isError: false, isLoading: true };
   const itemLabel = (itemId: number): string =>
-    lookupDisplayLabelWithInactive(
-      itemNames.get(itemId) ?? { entries: [], isError: false, isLoading: true },
-      itemId,
-    );
+    lookupDisplayLabelWithInactive(itemSource(itemId), itemId);
+  const itemParts = (itemId: number): { code: string; name: string } =>
+    itemCodeAndName(itemSource(itemId), itemId);
   const statusLabel = (code: string): string =>
     statusOptions.find((option) => option.value === code)?.label ?? t.statusUnknown(code);
   const currentStatusChip =
@@ -392,18 +396,33 @@ export const LotStatusTransitionCandidateScreen = () => {
         </span>
       ),
     },
+    /* 품목 코드 · 이름 두 칸 — 긴 값은 칸 안에서 말줄임하고, 전체 값은 title 로 남긴다. */
     {
-      key: 'item',
-      header: t.fields.item,
+      key: 'itemCode',
+      header: t.fields.itemCode,
       align: 'center',
-      width: '320px',
-      /* 긴 품목명은 칸 안에서 말줄임하고, 전체 이름은 title 로 남긴다. */
+      width: '140px',
       render: (row) => {
-        const label = itemLabel(row.itemId);
+        const { code } = itemParts(row.itemId);
 
         return (
-          <span className="lot-status-one-line" title={label}>
-            {label}
+          <span className="lot-status-one-line" title={code}>
+            {code}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'itemName',
+      header: t.fields.itemName,
+      align: 'center',
+      width: '200px',
+      render: (row) => {
+        const { name } = itemParts(row.itemId);
+
+        return (
+          <span className="lot-status-one-line" title={name}>
+            {name}
           </span>
         );
       },
@@ -568,7 +587,7 @@ export const LotStatusTransitionCandidateScreen = () => {
               {/* 줄 아무 곳이나 눌러도 고른다 — LOT 번호 단추는 키보드로 고르는 자리로 남는다. */}
               <div
                 ref={fit.ref}
-                className="wide-table lot-status-table lot-status-transition-table inspection-queue-table"
+                className="wide-table lot-status-table lot-status-transition-table inspection-queue-table cells-start"
                 style={resizable.style}
                 aria-busy={candidates.isFetching}
                 onClick={(event) => {

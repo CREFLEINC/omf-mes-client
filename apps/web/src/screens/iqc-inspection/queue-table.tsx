@@ -177,7 +177,21 @@ const columnsOf = (
   hasInbound: boolean,
 ): Column<InspectionQueueRow>[] => [
   {
-    /* 첫 칸은 자재 LOT — 검사자가 손에 든 LOT 으로 줄을 찾는다(#133 · 담당자 지시). */
+    /* 첫 칸은 의뢰 일시(사용자 지시 2026-11-20) — 자재 LOT 은 둘째 칸으로 물러났다. */
+    key: 'requestedAt',
+    align: 'center',
+    header: t.columns.requestedAt,
+    width: '160px',
+    sortable: true,
+    /* 정렬은 원문(RFC3339)으로 한다 — 표기용 문자열로 정렬하면 형식이 아닌 값이 섞일 때 어긋난다. */
+    sortAccessor: (row) => row.requestedAt,
+    /* 날짜·시각은 한 줄로 온전히 보인다. */
+    render: (row) => (
+      <span className="iqc-inspection-requested-at">{formatDateTime(row.requestedAt)}</span>
+    ),
+  },
+  {
+    /* 자재 LOT — 검사자가 손에 든 LOT 으로 줄을 찾는다(#133 · 담당자 지시). */
     key: 'lotId',
     align: 'center',
     /* 입하 LOT 줄이 있으면 머리를 「입하 LOT」로 — 이전 데이터 줄만 있으면 지금 그대로(005). */
@@ -230,18 +244,17 @@ const columnsOf = (
     },
   },
   {
-    key: 'item',
+    key: 'itemCode',
     align: 'center',
-    header: t.columns.item,
-    /* 「이름 코드」 한 줄 — 넘치면 말줄임, 전체 값은 마우스를 올리면 보인다(#185 · 입하 예정 조회와 같은 한 줄 행). 다른 열처럼 폭을 끌어 바꾼다. */
-    width: '320px',
+    header: t.columns.itemCode,
+    width: '160px',
     /*
-     * **이 칸이 곧 「이 줄을 연다」다**(둘째 칸 · #133) — 저장소의 목록 창들과 같은 관용구다. 종전에는 그 자리가
+     * **이 칸이 곧 「이 줄을 연다」다**(#133) — 저장소의 목록 창들과 같은 관용구다. 종전에는 그 자리가
      * 의뢰번호였는데, 고르는 데 필요한 값이 아니고 고른 뒤 우측 창이 먼저 보여 주므로
      * **검사자가 실제로 찾는 값**(무엇을 검사하는가)에 자리를 내줬다(사용자 지시 2026-09-21).
      *
-     * 이름과 코드를 **두 줄로** 세운다 — 좁은 칸에서 한 줄로 붙이면 이름이 잘려 무엇인지 알 수
-     * 없다. 못 푼 갈래는 줄이 하나뿐이라 풀이가 네 갈래의 사유를 그 자리에 낸다.
+     * 품목은 코드 · 이름 두 칸이다(사용자 지시 2026-11-20) — 한 칸에 붙이던 「이름 코드」를 나눴다. 못 푼 갈래는
+     * 이 칸에 풀이의 사유를 내고 이름 칸은 비운다. 넘치면 말줄임, 전체 값은 마우스를 올리면 보인다.
      */
     render: (row) => {
       const parts = itemNames.partsOf(row.itemId);
@@ -252,22 +265,32 @@ const columnsOf = (
           type="button"
           className="link-cell iqc-inspection-queue-item"
           aria-current={row.inspectionRequestId === selectedId ? 'true' : undefined}
-          title={parts === null ? label : `${parts.name} · ${parts.code}`}
+          title={parts === null ? label : parts.code}
           aria-label={t.openRow(
             parts === null ? label : `${parts.name} ${parts.code}`,
             row.inspectionRequestNo,
           )}
           onClick={() => onSelect(row.inspectionRequestId)}
         >
-          {parts === null ? (
-            <span className="iqc-inspection-queue-item-name">{label}</span>
-          ) : (
-            <>
-              <span className="iqc-inspection-queue-item-name">{shortItemName(parts.name)}</span>
-              <span className="iqc-inspection-queue-item-code">{parts.code}</span>
-            </>
-          )}
+          <span className="iqc-inspection-queue-item-code">
+            {parts === null ? label : parts.code}
+          </span>
         </button>
+      );
+    },
+  },
+  {
+    key: 'itemName',
+    align: 'center',
+    header: t.columns.itemName,
+    width: '240px',
+    render: (row) => {
+      const parts = itemNames.partsOf(row.itemId);
+      if (parts === null) return t.emptyValue;
+      return (
+        <span className="iqc-inspection-queue-item-name" title={parts.name}>
+          {shortItemName(parts.name)}
+        </span>
       );
     },
   },
@@ -382,19 +405,6 @@ const columnsOf = (
     width: '170px',
     render: (row) => row.inspectionRequestNo,
   },
-  {
-    key: 'requestedAt',
-    align: 'center',
-    header: t.columns.requestedAt,
-    width: '160px',
-    sortable: true,
-    /* 정렬은 원문(RFC3339)으로 한다 — 표기용 문자열로 정렬하면 형식이 아닌 값이 섞일 때 어긋난다. */
-    sortAccessor: (row) => row.requestedAt,
-    /* 날짜·시각은 한 줄로 온전히 보인다. */
-    render: (row) => (
-      <span className="iqc-inspection-requested-at">{formatDateTime(row.requestedAt)}</span>
-    ),
-  },
   ...(skipWorkerNo === undefined
     ? []
     : [
@@ -443,8 +453,9 @@ export const QueueTable = ({
   /* 입하 LOT 줄(005)이 하나라도 있으면 그 칸들과 건수를 더한다 — 이전 데이터 줄만 있으면 지금 그대로다. */
   const hasInbound = rows.some((row) => row.inbound !== null);
   /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다(#185) — 순서를 먼저 정하고 그 위에 폭 손잡이를 단다. */
+  /* 의뢰 일시를 첫 칸으로 옮기며 저장 열쇠를 바꿨다(v2) — 예전에 남긴 순서가 새 기본 순서를 가리지 않는다. */
   const ordered = useColumnOrder(
-    'omf-mes:iqc-inspection:columns:queue:order',
+    'omf-mes:iqc-inspection:columns:queue:order:v2',
     columnsOf(
       selectedId,
       onSelect,
@@ -471,7 +482,7 @@ export const QueueTable = ({
        */}
       <div
         ref={fit.ref}
-        className="iqc-inspection-queue-rows inspection-queue-table"
+        className="iqc-inspection-queue-rows inspection-queue-table cells-start"
         style={resizable.style}
         onClick={(event) => {
           const target = event.target as Element;

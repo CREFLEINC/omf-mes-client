@@ -100,13 +100,24 @@ export const CurrentResults = ({
   const uomCodeOf = useUomCodeOf();
   const itemNames = useItemNameSources(list.data?.rows.map((row) => row.itemId) ?? []);
 
-  const itemLabel = (itemId: number): string => {
+  /*
+   * 품목은 코드 · 이름 두 칸이다(사용자 지시 2026-11-20). 못 푼 갈래는 코드 칸에 풀이의 사유를 내고 이름 칸은 비운다.
+   * 미사용 품목 표시는 이름 칸에 붙인다.
+   */
+  const itemCodeText = (itemId: number): string => {
     const source = itemNames.get(itemId);
     const item = source?.entries[0];
 
-    if (item !== undefined) return item.isActive ? item.label : t.values.inactive(item.label);
+    if (item !== undefined) return item.code ?? item.label;
     if (source === undefined || source.isLoading) return t.current.itemLabel.loading;
     return source.isError ? t.current.itemLabel.failed : t.current.itemLabel.unknown;
+  };
+  const itemNameText = (itemId: number): string => {
+    const item = itemNames.get(itemId)?.entries[0];
+
+    if (item === undefined) return t.values.empty;
+    const name = item.name ?? item.label;
+    return item.isActive ? name : t.values.inactive(name);
   };
   /*
    * 열 짜임은 검사 조회·판정 대기 목록을 따른다(사용자 2026-10-30) — 찾는 값(LOT · 품목)이 앞에 넓게, 상태 · 수량 ·
@@ -142,12 +153,19 @@ export const CurrentResults = ({
       ),
     },
     {
-      key: 'item',
-      header: t.current.columns.item,
+      key: 'itemCode',
+      header: t.current.columns.itemCode,
       align: 'center',
-      width: '320px',
+      width: '140px',
       sortable: true,
-      render: (row) => <OneLine text={itemLabel(row.itemId)} />,
+      render: (row) => <OneLine text={itemCodeText(row.itemId)} />,
+    },
+    {
+      key: 'itemName',
+      header: t.current.columns.itemName,
+      align: 'center',
+      width: '200px',
+      render: (row) => <OneLine text={itemNameText(row.itemId)} />,
     },
     {
       key: 'lotStatusCode',
@@ -379,7 +397,7 @@ export const CurrentResults = ({
            */}
           <div
             ref={fit.ref}
-            className="wide-table lot-status-table lot-status-list-table inspection-queue-table"
+            className="wide-table lot-status-table lot-status-list-table inspection-queue-table cells-start"
             style={resizable.style}
             aria-busy={list.isFetching}
             onClick={(event) => {
