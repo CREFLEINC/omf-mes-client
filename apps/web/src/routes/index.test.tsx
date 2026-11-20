@@ -1752,18 +1752,10 @@ describe('appRouter — 설비·설비그룹 마스터의 진입 경로', () => 
       /* 「툴·금형」 — 캐비티 수(마스터)와 환산 비율(타발수)은 한 계산의 두 입력이다. */
       '/equipment/tool-master',
       '/equipment/shot-conversion',
-      /* 「계측기」 — 검교정 이력은 마스터 없이는 적힐 수 없어 마스터 옆으로 옮겼다. */
-      '/equipment/gauge-master',
-      '/equipment/gauge-calibration',
-      /* 설비 보전 관리 「설비 보전」 — W-05-04 고장 → W-05-05 보전지시 → W-05-06 실적. */
-      '/equipment/failures',
-      '/equipment/maintenance-orders',
-      '/equipment/maintenance-results',
-      /* 「툴 보전」 — W-05-02 오더 → W-05-03 실적. */
-      '/equipment/tool-pm-order',
-      '/equipment/tool-pm-result',
-      /* W-05-08 — 일한 결과를 보는 화면이라 섹션 끝이다. */
-      '/equipment/downtime-summary',
+      /*
+       * 「계측기」 묶음과 설비 보전 관리 묶음(고장 → 보전지시 → 실적 · 툴 보전 · 비가동 집계)은 메뉴에서
+       * 감췄다(사용자 지시 2026-11-20) — 주소는 남아 라우트 표에서 잰다.
+       */
     ]);
   });
 });
@@ -2042,30 +2034,20 @@ describe('appRouter — 계측기 마스터의 진입 경로', () => {
    * 주소와 글자를 **둘 다** 센다: 주소만 보면 이름이 다른 메뉴가 같은 화면을 열어도 통과하고,
    * 글자만 보면 이름을 바꿔 단 메뉴가 통과한다.
    */
-  it('사이드바의 계측기 묶음 줄이 이 화면을 가리키고 첫 탭이 이 화면이다', async () => {
-    const tabs = await hubTabLinks('계측기');
-
-    expect(tabs[0]).toEqual({ name: messages.gaugeMaster.title, href: '/equipment/gauge-master' });
-    /* 검교정 이력은 같은 계측기를 다루는 짝이라 바로 뒤 탭이다. */
-    expect(tabs[1]?.href).toBe('/equipment/gauge-calibration');
-  });
-
   /**
-   * ⭐ 기준정보 관리의 설비·툴·금형 묶음 뒤 — 공정을 도는 설비·툴·계측기 차례의 끝이고, 공급사·품목 기본
-   * 정보(005)와 창고·위치 묶음이 뒤따른다.
+   * ⭐ **메뉴에서 감췄다**(사용자 지시 2026-11-20) — 계측기 묶음(마스터 · 검교정 이력)도, 그 뒤에 서던 공급사·품목
+   * 기본 정보(W-06-25)도 사이드바에 없고 툴·금형 바로 뒤에 창고·위치가 선다. 주소는 남는다(아래).
    */
-  it('기준정보 관리에서 툴·금형 묶음 바로 뒤에 선다', () => {
+  it('사이드바에 없고 툴·금형 바로 뒤에 창고·위치가 선다', () => {
     const hrefs = sidebarHrefs();
 
-    expect(hrefs.indexOf('/equipment/gauge-master')).toBe(
-      hrefs.indexOf('/equipment/tool-master') + 1,
-    );
-    /* 005 — 계측기 뒤에 공급사·품목 기본 정보(W-06-25)가 서고 창고·위치가 뒤따른다. */
-    expect(hrefs.indexOf('/master-data/supplier-item-defaults')).toBe(
-      hrefs.indexOf('/equipment/gauge-master') + 1,
-    );
+    /* 짝 양성 — 사이드바는 실제로 그려졌다. */
+    expect(hrefs).toContain('/equipment/tool-master');
+    expect(hrefs).not.toContain('/equipment/gauge-master');
+    expect(hrefs).not.toContain('/equipment/gauge-calibration');
+    expect(hrefs).not.toContain('/master-data/supplier-item-defaults');
     expect(hrefs.indexOf('/master-data/warehouse-location')).toBe(
-      hrefs.indexOf('/master-data/supplier-item-defaults') + 1,
+      hrefs.indexOf('/equipment/tool-master') + 1,
     );
   });
 
@@ -2073,12 +2055,17 @@ describe('appRouter — 계측기 마스터의 진입 경로', () => {
     expect(routedPaths()).toContain('/equipment/gauge-master');
   });
 
-  /** **실제 라우트 표를 태우므로** 라우트 줄이 없거나 다른 화면을 가리키면 여기서 운다. */
+  /**
+   * **실제 라우트 표를 태우므로** 라우트 줄이 없거나 다른 화면을 가리키면 여기서 운다. 묶음이 메뉴에 없어
+   * 탭 막대가 서지 않으므로 화면이 제 제목을 세운다.
+   */
   it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
     renderRoutedApp('/equipment/gauge-master', gaugeMasterRoutes());
 
-    expect(await findCurrentHubTab('계측기', '계측기 마스터 관리')).toBeInTheDocument();
-    expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
+    expect(
+      await screen.findByRole('heading', { level: 1, name: messages.gaugeMaster.title }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: '계측기' })).toBeNull();
   });
 
   /*
