@@ -39,7 +39,7 @@ export const FieldLabel = ({
 );
 
 /** 라벨 뒤 「(선택)」과 안내 라벨 — 공용 찾기 칸(`ReferenceField`)의 `labelAddon` 에도 그대로 쓴다. */
-export const LabelAddons = ({ note, optionalMark }: { note?: string; optionalMark?: string }) => (
+const LabelAddons = ({ note, optionalMark }: { note?: string; optionalMark?: string }) => (
   <>
     {optionalMark !== undefined && <span className="optional-mark"> {optionalMark}</span>}
     {note !== undefined && (

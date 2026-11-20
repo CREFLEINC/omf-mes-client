@@ -18452,11 +18452,6 @@ dialog.terminal-map-form-dialog {
   max-width: 18rem;
 }
 
-/* 설비 · 창고 찾기 창은 보통 큰 팝업 폭 — 공용 `.reference-field > *` 의 100% 가 창을 화면 너비로 늘린다. */
-.terminal-map-form .reference-field > dialog {
-  max-width: var(--dialog-max-lg);
-}
-
 /* 칸 이름 오른쪽 안내 라벨 — 정보 아이콘 + 파란 바탕, 라벨 줄이 높아지지 않게 여백 · 글자만 줄인다(품질 기준의 잠금 안내와 같다). */
 .field-label > .terminal-map-label-note {
   margin: 0 0 0 var(--space-2);
