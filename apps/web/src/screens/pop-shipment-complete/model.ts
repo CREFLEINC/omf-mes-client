@@ -97,37 +97,6 @@ export const directCodeOf = (raw: string): string => {
     : `${SHIPMENT_REQUEST_CODE_PREFIX}${value}`;
 };
 
-/** 적치 대기 자리(위치 시스템 역할). */
-export const STAGING_ROLE = 'PUTAWAY_STAGING';
-
-export interface LotWarehouse {
-  name: string;
-  qty: number;
-  /** 그 창고 안 적치 대기 자리 몫(검증 1회차: 다른 창고 몫에 붙지 않게). */
-  staging: number;
-}
-
-/**
- * LOT 의 창고별 몫(처음 나온 순서) — LOT 번호 아래 「창고 | 120 (적치 대기 120 EA)」로 늘 보인다
- * (시안 「출하 지시서 상세 화면 UI 개선 안」 2026-11-20).
- */
-export const lotWarehousesOf = (
-  portions: readonly CompletionLot['portions'][number][],
-): LotWarehouse[] => {
-  const warehouses: LotWarehouse[] = [];
-  for (const portion of portions) {
-    const atStaging = portion.locationSystemRoleCode === STAGING_ROLE ? portion.qty : 0;
-    const seen = warehouses.find((entry) => entry.name === portion.warehouseName);
-    if (seen === undefined) {
-      warehouses.push({ name: portion.warehouseName, qty: portion.qty, staging: atStaging });
-    } else {
-      seen.qty += portion.qty;
-      seen.staging += atStaging;
-    }
-  }
-  return warehouses;
-};
-
 /** 409 `COMPLETION_BLOCKED` 가 실어 온 막는 이유 — 계약 코드만 남긴다. 없으면 null(확인 값을 다시 읽는다). */
 export const blockersOfConflict = (error: ApiError): CompletionBlocker[] | null => {
   if (error.kind !== 'conflict' || error.blockers === undefined) return null;

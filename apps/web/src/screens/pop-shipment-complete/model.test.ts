@@ -6,7 +6,6 @@ import { POP_SCREENS } from '../../patterns/pop-screen-catalog';
 
 import { completion, requestRow } from './fixtures';
 import {
-  STAGING_ROLE,
   blockersOfConflict,
   completeFailureOf,
   directCodeOf,
@@ -17,7 +16,6 @@ import {
   minusDays,
   orderSearchRows,
   overText,
-  lotWarehousesOf,
   qtyWithUom,
   searchQueryOf,
   toSearchRow,
@@ -176,41 +174,7 @@ describe('P-04-07 찾기 조건', () => {
   });
 });
 
-describe('LOT 몫 요약·단위·409 막는 이유', () => {
-  const portion = (
-    warehouseName: string,
-    qty: number,
-    locationSystemRoleCode: string | null = null,
-  ) => ({
-    warehouseId: warehouseName === 'A' ? 1 : 2,
-    warehouseCode: warehouseName,
-    warehouseName,
-    locationId: qty,
-    locationCode: `L-${String(qty)}`,
-    locationSystemRoleCode,
-    qty,
-  });
-
-  it('US4-5 창고별 합을 낸다(한 창고 한 자리도) — 적치 대기 자리는 그 창고 안에서 따로 센다', () => {
-    expect(lotWarehousesOf([portion('A', 40)])).toEqual([{ name: 'A', qty: 40, staging: 0 }]);
-    expect(lotWarehousesOf([portion('A', 20), portion('B', 20)])).toEqual([
-      { name: 'A', qty: 20, staging: 0 },
-      { name: 'B', qty: 20, staging: 0 },
-    ]);
-    expect(lotWarehousesOf([portion('A', 20), portion('A', 10, STAGING_ROLE)])).toEqual([
-      { name: 'A', qty: 30, staging: 10 },
-    ]);
-  });
-
-  it('Q2 적치 대기 몫은 그 몫이 있는 창고에만 붙는다 — 다른 창고 몫에 섞이지 않는다', () => {
-    expect(
-      lotWarehousesOf([portion('A', 25), portion('A', 5, STAGING_ROLE), portion('B', 10)]),
-    ).toEqual([
-      { name: 'A', qty: 30, staging: 5 },
-      { name: 'B', qty: 10, staging: 0 },
-    ]);
-  });
-
+describe('단위·409 막는 이유', () => {
   it('US4-5 라인 단위가 하나면 합계에 붙이고, 섞이면 붙이지 않는다', () => {
     expect(uomOf(completion())).toBe('EA');
     expect(qtyWithUom(160, 'EA')).toBe('160 EA');

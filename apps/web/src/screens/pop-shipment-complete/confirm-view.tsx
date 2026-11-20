@@ -15,15 +15,12 @@ import {
   OQC_TONE,
   blockedTargetsOf,
   groupBlockers,
-  lotWarehousesOf,
   overText,
   qtyWithUom,
   splitLotsOf,
-  uomOf,
   type BlockerGroup,
   type ChipTone,
   type Completion,
-  type CompletionLot,
 } from './model';
 
 const t = messages.popShipmentComplete;
@@ -64,17 +61,6 @@ const targetOf = (completion: Completion, group: BlockerGroup): string => {
   return [...lines, ...group.lotNos].join(', ');
 };
 
-/** LOT 번호 아래 창고별 몫 — 「창고 | 120 (적치 대기 120 EA)」, 여러 창고면 쉼표로 잇는다(시안 2026-11-20). */
-const portionText = (lot: CompletionLot): string =>
-  lotWarehousesOf(lot.portions)
-    .map((entry) => {
-      const text = t.lots.portion(entry.name, qtyWithUom(entry.qty, lot.uomCode));
-      return entry.staging > 0
-        ? `${text} (${t.lots.staging(qtyWithUom(entry.staging, lot.uomCode))})`
-        : text;
-    })
-    .join(', ');
-
 /** 정보 띠 칸 이름 — 작은 아이콘 + 글(OQC 출하검사 의뢰 정보 띠와 같은 모양). */
 const bandLabel = (icon: PuIconName, text: string): ReactNode => (
   <>
@@ -105,8 +91,6 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
   const groups = groupBlockers(completion.blockers);
   const blocked = groups.length > 0;
   const targets = blockedTargetsOf(completion);
-  const uom = uomOf(completion);
-  const totalQty = completion.lots.reduce((sum, lot) => sum + lot.qty, 0);
   const splitLots = splitLotsOf(completion);
 
   return (
@@ -145,8 +129,6 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
               label: bandLabel('file', t.head.salesOrder),
               value: completion.salesOrderNo ?? t.head.noSalesOrder,
             },
-            { label: bandLabel('box', t.head.lotCount), value: String(completion.lots.length) },
-            { label: bandLabel('check', t.head.qty), value: qtyWithUom(totalQty, uom) },
             {
               label: bandLabel('pin', t.warehouses.heading),
               wide: true,
@@ -290,12 +272,8 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
                       key={lot.shipmentRequestLotId}
                       className={targets.lotNos.has(lot.lotNo) ? 'psc-row-blocked' : undefined}
                     >
-                      <td className="psc-lot-cell">
-                        <span className="pu-mono psc-nowrap">{lot.lotNo}</span>
-                        {lot.portions.length > 0 && (
-                          <span className="psc-lot-portions">{portionText(lot)}</span>
-                        )}
-                      </td>
+                      {/* LOT 번호만 — 창고는 위 정보 띠 「재고가 빠질 창고」에만 둔다(중복 정리 · 사용자 지시 2026-11-20). */}
+                      <td className="pu-mono psc-nowrap">{lot.lotNo}</td>
                       <td className="fit psc-c">{qtyWithUom(lot.qty, lot.uomCode)}</td>
                       <td className="fit psc-c">
                         {lot.oqcLotStatus !== null && (

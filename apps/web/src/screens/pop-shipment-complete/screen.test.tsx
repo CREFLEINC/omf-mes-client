@@ -230,29 +230,24 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     expect(screen.getByText('완제품 창고 A (WH-FG-A)')).toHaveClass('psc-wh-chip');
     expect(screen.getByText('완제품 창고 B (WH-FG-B)')).toHaveClass('psc-wh-chip');
     const band = screen.getByRole('group', { name: t.head.band });
-    expect(within(band).getByText(t.head.lotCount).nextSibling).toHaveTextContent('4');
-    expect(within(band).getByText(t.head.qty).nextSibling).toHaveTextContent('160 EA');
+    /* 표와 겹치는 「LOT 수」·「수량」은 머리 띠에 없다(중복 정리 · 2026-11-20). */
+    expect(within(band).queryByText('LOT 수')).toBeNull();
+    expect(within(band).queryByText('수량')).toBeNull();
     expect(screen.queryByRole('region', { name: t.warehouses.heading })).toBeNull();
     /* 피킹 = 지시면 체크, 초과 0 은 흐리게. */
     const line2 = within(lines).getAllByRole('row')[2] as HTMLElement;
     expect(within(line2).getByRole('img', { name: t.lines.matched })).toBeInTheDocument();
     expect(within(line1).queryByRole('img', { name: t.lines.matched })).toBeNull();
     expect(within(line2).getByText('0 EA')).toHaveClass('psc-zero');
-    /* LOT 번호 아래 창고별 몫은 늘 보인다 — 「창고 | 수량」. 출하 관리 코드가 없으면 「-」. */
-    const lot2 = within(lots).getByText('P2611-0002').closest('tr') as HTMLElement;
-    expect(
-      within(lot2).getByText(
-        `${t.lots.portion('완제품 창고 A', '20 EA')}, ${t.lots.portion('완제품 창고 B', '20 EA')}`,
-      ),
-    ).toBeInTheDocument();
-    expect(within(lot1).getByText(t.lots.portion('완제품 창고 A', '40 EA'))).toBeInTheDocument();
+    /* LOT 칸은 번호만 — 창고는 머리 띠에만(중복 정리 · 2026-11-20). 출하 관리 코드가 없으면 「-」. */
+    expect(within(lots).queryByText(/완제품 창고/u)).toBeNull();
     const lot3 = within(lots).getByText('P2611-0004').closest('tr') as HTMLElement;
     expect(within(lot3).getByText(t.lots.none)).toBeInTheDocument();
 
     expect(completeButton()).toBeEnabled();
   });
 
-  it('US4-5·US3-5 — 적치 대기 자리 몫은 「적치 대기 n 포함」으로, 교체로 빠진 LOT 은 표 아래 한 줄로 알린다', async () => {
+  it('US3-5 — 교체로 빠진 LOT 은 표 아래 한 줄로 알린다', async () => {
     const user = userEvent.setup();
     const base = completion();
     const lot = base.lots[2] as Completion['lots'][number];
@@ -305,66 +300,11 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     await scan(user, CODE);
 
     const lots = await screen.findByRole('table', { name: t.lots.caption });
-    const row = within(lots).getByText('P2611-0004').closest('tr') as HTMLElement;
-    expect(
-      within(row).getByText(
-        `${t.lots.portion('완제품 창고 A', '30 EA')} (${t.lots.staging('10 EA')})`,
-      ),
-    ).toBeInTheDocument();
+    expect(within(lots).getByText('P2611-0004')).toBeInTheDocument();
     expect(
       screen.getByText(t.lots.replaced(1, t.lots.replacedLot('P2611-0003', t.lots.oqc.REJECTED))),
     ).toBeInTheDocument();
     expect(within(lots).queryByText('P2611-0003')).toBeNull();
-  });
-
-  it('Q2 — 적치 대기 몫이 창고 1 에만 있으면 「(적치 대기 n 포함)」은 창고 1 몫 바로 뒤에만 붙는다', async () => {
-    const user = userEvent.setup();
-    const base = completion();
-    const lot = base.lots[2] as Completion['lots'][number];
-    const first = lot.portions[0] as Completion['lots'][number]['portions'][number];
-    renderScreen({
-      lookups: [
-        jsonResponse(
-          completion({
-            lots: [
-              ...base.lots.slice(0, 2),
-              {
-                ...lot,
-                portions: [
-                  { ...first, qty: 25 },
-                  {
-                    ...first,
-                    locationId: 9,
-                    locationCode: 'SYS-STAGING',
-                    locationSystemRoleCode: 'PUTAWAY_STAGING',
-                    qty: 5,
-                  },
-                  {
-                    ...first,
-                    warehouseId: 12,
-                    warehouseCode: 'WH-FG-B',
-                    warehouseName: '완제품 창고 B',
-                    locationId: 10,
-                    qty: 10,
-                  },
-                ],
-              },
-              ...base.lots.slice(3),
-            ],
-          }),
-        ),
-      ],
-    });
-
-    await scan(user, CODE);
-
-    const lots = await screen.findByRole('table', { name: t.lots.caption });
-    const row = within(lots).getByText('P2611-0004').closest('tr') as HTMLElement;
-    expect(
-      within(row).getByText(
-        `${t.lots.portion('완제품 창고 A', '30 EA')} (${t.lots.staging('5 EA')}), ${t.lots.portion('완제품 창고 B', '10 EA')}`,
-      ),
-    ).toBeInTheDocument();
   });
 
   it('US7-1·Q15 — 확인 화면에 ERP 송신 표시가 없고, 수주 없는 지시서는 수주 칸만 「없음」이다', async () => {

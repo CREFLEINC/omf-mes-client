@@ -28,8 +28,6 @@ export const popShipmentComplete = {
     blocked: 'Không thể xuất hàng',
     named: (name: string, code: string): string => `${name} (${code})`,
     band: 'Thông tin lệnh xuất hàng',
-    lotCount: 'Số LOT',
-    qty: 'SL',
     none: '-',
   },
 
@@ -86,8 +84,6 @@ export const popShipmentComplete = {
   lots: {
     title: 'LOT đã lấy',
     empty: 'Chưa có LOT nào được lấy.',
-    portion: (warehouse: string, qty: string): string => `${warehouse} | ${qty}`,
-    staging: (qty: string): string => `${qty} chờ xếp kệ`,
     none: '-',
     replaced: (count: number, lots: string): string =>
       `${String(count)} LOT bị loại do thay thế: ${lots}. Không tính vào lô xuất hàng.`,
@@ -174,7 +170,6 @@ export const popShipmentComplete = {
 
   bar: {
     label: 'Thao tác hoàn tất xuất hàng',
-    close: 'Đóng',
     complete: 'Hoàn tất xuất hàng',
     completing: 'Đang hoàn tất…',
   },

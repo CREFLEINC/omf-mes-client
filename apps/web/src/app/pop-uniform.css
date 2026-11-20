@@ -964,6 +964,13 @@ textarea.pu-input {
   color: var(--pu-text-2);
 }
 
+/* 카드 제목 옆 건수 — 글자 줄 가운데에 맞춘다(화면 탭 「OQC 출하검사 6」과 같다 · 사용자 지시 2026-11-20). */
+.pu-card-head h2:has(> .pu-count) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* 빨간 원 건수 — 묶음 줄 [남은 작업] 건수(`.pop-remaining__total`)와 같은 색. */
 .pu-count.primary {
   background: var(--primary);

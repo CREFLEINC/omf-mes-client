@@ -40,10 +40,8 @@ export const popShipmentComplete = {
     /** 「이름 (코드)」(C-10). */
     named: (name: string, code: string): string => `${name} (${code})`,
     /* 머리 카드 합계(시안 「출하 지시서 상세 화면 UI 개선 안」 2026-11-20). */
-    /** 정보 띠(공통 `PuBand`)의 이름과 칸 — 「LOT 수」·「수량」은 다른 화면과 같은 말. */
+    /** 정보 띠(공통 `PuBand`)의 이름. */
     band: '출하 지시서 정보',
-    lotCount: 'LOT 수',
-    qty: '수량',
     /** 값이 없는 칸(재고가 빠질 창고가 아직 없을 때). */
     none: '-',
   },
@@ -117,8 +115,6 @@ export const popShipmentComplete = {
       managementCode: '출하 관리 코드',
     },
     /* LOT 번호 아래 창고별 몫 — 「창고 | 120 (적치 대기 120 EA)」(시안 2026-11-20). */
-    portion: (warehouse: string, qty: string): string => `${warehouse} | ${qty}`,
-    staging: (qty: string): string => `적치 대기 ${qty}`,
     /** 출하 관리 코드가 없는 칸. */
     none: '-',
     /* 교체로 빠진 LOT — 확인 화면에서 출하에 들지 않는다는 것을 한 줄로 알린다. */
@@ -202,7 +198,6 @@ export const popShipmentComplete = {
 
   bar: {
     label: '출하 완료 작업',
-    close: '닫기',
     complete: '출하 완료',
     completing: '완료하는 중…',
   },

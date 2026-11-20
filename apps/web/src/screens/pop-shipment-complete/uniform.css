@@ -115,23 +115,6 @@
   display: block;
 }
 
-/* LOT 칸 — 번호는 한 줄, 아래 창고 몫은 말줄임 없이 낱말 경계에서 줄을 바꾼다(시안 「데이터 말줄임 해소」). */
-.pu-table td.psc-lot-cell {
-  white-space: normal;
-  overflow: visible;
-  overflow-wrap: break-word;
-  padding-top: 6px;
-  padding-bottom: 6px;
-}
-
-.psc-lot-portions {
-  display: block;
-  margin-top: 2px;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--pu-text-3);
-}
-
 .pu-table td.psc-code {
   text-align: center;
 }

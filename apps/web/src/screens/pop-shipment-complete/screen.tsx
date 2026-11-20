@@ -271,18 +271,6 @@ export const PopShipmentCompleteScreen = () => {
 
   const actionBar = (
     <PuActionBar label={t.bar.label}>
-      {confirm !== null && (
-        <PuButton
-          disabled={complete.isPending}
-          onClick={() => {
-            setFailure(null);
-            setNotice(null);
-            setView({ kind: 'idle' });
-          }}
-        >
-          {t.bar.close}
-        </PuButton>
-      )}
       <PuButton
         variant="primary"
         disabled={!canComplete || complete.isPending}
