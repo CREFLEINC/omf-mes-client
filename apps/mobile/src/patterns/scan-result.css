@@ -1,0 +1,131 @@
+/*
+ * 방금 찍은 결과 칸 — 스캔을 이어 하는 화면(입하 등록 · 제품 피킹 …)이 같이 쓴다. 결과마다 테두리 · 띠 색이 바뀐다
+ * (`data-kind`: 기본 초록 · duplicate 회색 · offline 노랑 · reject/closed 빨강). 사용자 지시 2026-11-20 시안 A.
+ */
+
+/* 낱말 조각 — 조각 사이(빈칸)에서만 꺾인다. 한 낱말이 줄보다 길면 셸의 overflow-wrap 으로 안에서 꺾인다. */
+.word-chunk {
+  display: inline-block;
+  max-width: 100%;
+}
+
+/* ── 방금 찍은 라벨 — 결과마다 테두리 · 띠 색이 바뀐다(등록 초록 · 이미 찍음 회색 · 전송 대기 노랑 · 거부 빨강). ── */
+.last-scan {
+  overflow: hidden;
+  border: 2px solid var(--semantic-success);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.last-scan__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  min-height: 44px;
+  padding: var(--space-1, 4px) var(--space-2, 8px) var(--space-1, 4px) var(--space-3, 12px);
+  background: var(--semantic-success-container);
+  color: var(--on-semantic-success-container);
+  font: var(--type-title-sm);
+}
+
+.last-scan__tag {
+  padding: 1px var(--space-2, 8px);
+  border-radius: var(--radius-sm);
+  background: var(--semantic-warning-container);
+  color: var(--on-semantic-warning-container);
+  font: var(--type-label-sm);
+  font-weight: 700;
+}
+
+.last-scan__undo {
+  margin-inline-start: auto;
+}
+
+.last-scan__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2, 8px) var(--space-3, 12px) var(--space-3, 12px);
+}
+
+/*
+ * 품목코드 · 품목명 — 잘리지 않고 낱말 사이에서 꺾인다(사용자 지시 2026-11-20). 낱말 조각(`.word-chunk`)이
+ * 음절 사이 꺾임을 막는다 — 모바일 규칙(code-wrapping)이 `word-break: keep-all` 을 막는다.
+ */
+.last-scan__code {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.last-scan__name {
+  font: var(--type-title-sm);
+  font-weight: 700;
+}
+
+.last-scan__qty {
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.last-scan__qty small {
+  margin-inline-start: var(--space-1, 4px);
+  font: var(--type-title-sm);
+  font-weight: 700;
+}
+
+.last-scan__lot {
+  font-family: var(--font-mono);
+}
+
+.last-scan__why {
+  font: var(--type-title-lg);
+  font-weight: 700;
+}
+
+.last-scan__sub,
+.last-scan__note {
+  font: var(--type-body-sm);
+}
+
+.last-scan__lot {
+  color: var(--on-surface-variant);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.last-scan[data-kind='duplicate'] {
+  border-color: var(--outline);
+}
+
+.last-scan[data-kind='duplicate'] .last-scan__bar {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+}
+
+.last-scan[data-kind='offline'] {
+  border-color: var(--semantic-warning);
+}
+
+.last-scan[data-kind='offline'] .last-scan__bar {
+  background: var(--semantic-warning-container);
+  color: var(--on-semantic-warning-container);
+}
+
+.last-scan[data-kind='reject'],
+.last-scan[data-kind='closed'] {
+  border-color: var(--semantic-error);
+}
+
+.last-scan[data-kind='reject'] .last-scan__bar,
+.last-scan[data-kind='closed'] .last-scan__bar {
+  background: var(--semantic-error);
+  color: var(--surface);
+}
+
+.last-scan[data-kind='reject'] .last-scan__why,
+.last-scan[data-kind='closed'] .last-scan__why {
+  color: var(--semantic-error-text);
+}
+

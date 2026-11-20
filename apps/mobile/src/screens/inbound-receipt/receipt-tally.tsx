@@ -5,7 +5,7 @@ import { Button } from '../../patterns/button';
 
 import { qtyNumber } from './lot-format';
 import { isReceiving, type TallyGroup } from './receipt';
-import { FitName } from './fit-name';
+import { FitName } from '../../patterns/fit-name';
 
 const t = messages.inboundReceipt.tally;
 const c = messages.inboundReceipt.close;
