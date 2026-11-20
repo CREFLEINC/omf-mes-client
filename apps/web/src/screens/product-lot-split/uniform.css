@@ -22,8 +22,48 @@
   flex: none;
 }
 
+.pls-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 스캔한 LOT 두 줄 — 구획 안에서 굴러도 맨 위에 붙어 있다. */
+.pls-lot {
+  position: sticky;
+  top: -12px;
+  z-index: 1;
+  margin: 0 -16px;
+  padding: 10px 16px 8px;
+  background: var(--pu-card);
+  border-bottom: 1px solid var(--pu-line);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pls-lot-line {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-width: 0;
+}
+
+.pls-lot-item {
+  font-size: 16px;
+}
+
+.pls-lot-code,
+.pls-lot-sub {
+  font-size: 13px;
+  color: var(--pu-text-2);
+}
+
 .pls-lotno {
   font-weight: 700;
+  color: var(--pu-text);
   word-break: break-all;
 }
 
@@ -103,17 +143,30 @@
   white-space: nowrap;
 }
 
+.pls-half span.pls-wrap {
+  white-space: normal;
+  overflow: visible;
+}
+
 .pls-half.is-new {
   border-color: var(--pu-info);
   background: var(--pu-info-bg);
 }
 
 /* ── 오른쪽: 확인 대기 ── */
+.pls-queue .pu-card-head .meta {
+  min-width: 0;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+}
+
+/* 머리 안내는 두 줄까지 감는다(시안) — 한 줄로 두면 1440 에서도 끝이 잘렸다. */
 .pls-queue-hint {
   font-size: 13px;
   line-height: 17px;
   color: var(--pu-text-3);
   max-width: 330px;
+  white-space: normal;
 }
 
 .pls-queue-body {

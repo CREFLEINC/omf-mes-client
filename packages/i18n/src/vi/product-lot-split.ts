@@ -144,6 +144,7 @@ export const productLotSplit = {
     splitTitle: '2 nhãn — dán lại nhãn LOT gốc với số lượng mới',
     reprintTitle: 'Lý do in lại',
     parentCaption: (seq: number) => `LOT gốc in lại #${String(seq)} (lý do 「Tách LOT」 tự động)`,
+    parentFirstCaption: (seq: number) => `LOT gốc in lần đầu #${String(seq)}`,
     childCaption: (seq: number) => `LOT mới in lần đầu #${String(seq)}`,
     parentReprint: 'In lại LOT gốc',
     childReprint: 'In lại LOT mới',

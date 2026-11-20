@@ -130,6 +130,15 @@ export const initialLocationId = (locations: readonly SplitLookupLocation[]): nu
   return selectable.length === 1 ? (selectable[0]?.locationId ?? null) : null;
 };
 
+/**
+ * 위치 타일 이름 — 서버가 창고마다 두는 적치 대기 자리(코드 `…SYS-STAGING`)는 코드 대신 「적치 대기」(공용 이름,
+ * `patterns/system-location`). 조회 응답에 위치 역할이 없어 코드 끝으로 가린다.
+ */
+export const locationNameOf = (location: Pick<SplitLookupLocation, 'locationCode'>): string =>
+  /(^|-)SYS-STAGING$/u.test(location.locationCode)
+    ? messages.warehouseLocation.values.systemRoles.PUTAWAY_STAGING
+    : location.locationCode;
+
 /** LOT 번호 끝 일곱 자 — 미리보기에서 원래 · 새 LOT 을 라벨과 대조하는 꼬리. */
 export const lotTail = (lotNo: string): string =>
   lotNo.length <= 7 ? lotNo : `…${lotNo.slice(-7)}`;

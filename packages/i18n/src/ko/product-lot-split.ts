@@ -151,6 +151,7 @@ export const productLotSplit = {
     splitTitle: '라벨 2장 — 원래 LOT 은 새 수량으로 다시 붙입니다',
     reprintTitle: '다시 출력하는 이유',
     parentCaption: (seq: number) => `원래 LOT 재발행 #${String(seq)}(사유 「LOT 분리」 자동)`,
+    parentFirstCaption: (seq: number) => `원래 LOT 첫 발행 #${String(seq)}`,
     childCaption: (seq: number) => `새 LOT 첫 발행 #${String(seq)}`,
     parentReprint: '원래 LOT 다시 출력',
     childReprint: '새 LOT 다시 출력',

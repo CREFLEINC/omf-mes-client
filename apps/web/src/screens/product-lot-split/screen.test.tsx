@@ -300,6 +300,52 @@ describe('P-04-08 생산 LOT 분리', () => {
     ).toBe(true);
   });
 
+  it('F1 조회가 끝나면 스캔 칸이 비고 다시 포커스를 잡아, 막힌 LOT 다음 스캔이 이어 붙지 않는다', async () => {
+    const user = userEvent.setup();
+    const { sent } = render({
+      lookup: (lotNo) =>
+        jsonResponse(
+          lotNo === 'SYN-BLOCKED'
+            ? lookupOf({ blocked: { code: 'INVALID_STATE', detail: 'HOLD' } })
+            : lookupOf(),
+        ),
+    });
+    const field = screen.getByRole('textbox', { name: t.work.scanLabel });
+
+    await user.type(field, 'SYN-BLOCKED{Enter}');
+    await screen.findByText(t.blocked.INVALID_STATE.title('보류'));
+    await waitFor(() => {
+      expect(document.activeElement).toBe(field);
+    });
+    expect((field as HTMLInputElement).value).toBe('');
+
+    /* 스캐너의 다음 스캔 — 칸을 누르지 않고 바로 친다. */
+    await user.keyboard(`${LOT_NO}{Enter}`);
+    await waitFor(() => {
+      expect(
+        sent
+          .filter((each) => each.path.endsWith(':lookup'))
+          .map((each) => each.search.get('lotNo')),
+      ).toEqual(['SYN-BLOCKED', LOT_NO]);
+    });
+  });
+
+  it('US1-3 처음 발행하는 원래 LOT(응답 1회차)은 「첫 발행」, 2회차 이상은 「재발행」으로 적는다', async () => {
+    const user = userEvent.setup();
+    shellPrints();
+    render({
+      split: () => jsonResponse({ ...RESULT, parentLot: { ...RESULT.parentLot, issueSeq: 1 } }),
+    });
+
+    await scan(user);
+    await screen.findByText(LOT_NO);
+    await keypad(user, '30');
+    await user.click(splitButton());
+    const dialog = await screen.findByRole('dialog', { name: t.dialog.splitTitle });
+    expect(within(dialog).getByText(t.dialog.parentFirstCaption(1))).toBeTruthy();
+    expect(within(dialog).queryByText(t.dialog.parentCaption(1))).toBeNull();
+  });
+
   it('US1-3 분리 직후 인쇄는 사유를 묻지 않는다 — 다시 발행 요청이 없다', async () => {
     const user = userEvent.setup();
     shellPrints();
@@ -340,7 +386,7 @@ describe('P-04-08 생산 LOT 분리', () => {
           },
           {
             locationId: 90,
-            locationCode: 'FG-STAGING',
+            locationCode: 'FG-SYS-STAGING',
             warehouseCode: 'FG',
             onHandQty: 20,
             selectable: false,
@@ -352,11 +398,18 @@ describe('P-04-08 생산 LOT 분리', () => {
 
     await scan(user);
     await screen.findByText(LOT_NO);
-    expect(screen.getByText(t.location.many(3, '160 EA'))).toBeTruthy();
+    /* 고를 수 있는 위치만 센다(적치 대기 자리는 빼고 둘). */
+    expect(screen.getByText(t.location.many(2, '160 EA'))).toBeTruthy();
     expect(screen.getByRole('radio', { name: /FG-A-01/u }).getAttribute('aria-checked')).toBe(
       'false',
     );
-    expect(screen.getByRole('radio', { name: /FG-STAGING/u })).toHaveProperty('disabled', true);
+    /* 적치 대기 자리는 시스템 코드 대신 「적치 대기」로 보인다. */
+    expect(screen.queryByText('FG-SYS-STAGING')).toBeNull();
+    expect(
+      screen.getByRole('radio', {
+        name: new RegExp(`^${t.location.blocked.PUTAWAY_PENDING ?? ''}`, 'u'),
+      }),
+    ).toHaveProperty('disabled', true);
     expect(screen.getByText(t.location.blocked.PUTAWAY_PENDING ?? '')).toBeTruthy();
     /* 위치를 고르기 전에는 수량 칸도 없다. */
     expect(screen.queryByRole('textbox', { name: t.qty.label })).toBeNull();

@@ -1,7 +1,7 @@
 import { isForbidden } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useId, useRef, useState, type RefObject } from 'react';
+import { useEffect, useId, useRef, useState, type RefObject } from 'react';
 
 import { formatBaseQty, isCountUom, parseQtyInput } from '../../patterns/package-qty';
 import { usePopIdentity } from '../../patterns/pop-identity';
@@ -18,7 +18,6 @@ import {
   PuIcon,
   PuInput,
   PuKeypad,
-  PuKv,
   PuNote,
   PuPager,
   PuScanField,
@@ -51,6 +50,8 @@ import {
   initialLocationId,
   isRangeRejection,
   isSplitBlockCode,
+  locationNameOf,
+  selectableLocations,
   lotTail,
   qtyProblemOf,
   shortAt,
@@ -129,6 +130,7 @@ export const ProductLotSplitScreen = () => {
   const queue = useSplitQueue(plantId !== null);
 
   const [scanText, setScanText] = useState('');
+  const scanRef = useRef<HTMLInputElement>(null);
   const [found, setFound] = useState<SplitLookup | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
   const [locationId, setLocationId] = useState<number | null>(null);
@@ -167,6 +169,15 @@ export const ProductLotSplitScreen = () => {
     workerNo !== null &&
     !isBusy;
 
+  /*
+   * 조회 · 분리 · 인쇄가 끝나 칸이 다시 켜지면 스캔 칸을 잡는다 — 조회 중 칸이 꺼지면 포커스가 빠져 실기 스캐너의
+   * 다음 스캔이 어디에도 들어가지 않았다(검증 F1). 창이 떠 있으면 창이 먼저다.
+   */
+  const isDialogOpen = done !== null || isReprintOpen;
+  useEffect(() => {
+    if (!isBusy && !isDialogOpen) scanRef.current?.focus();
+  }, [isBusy, isDialogOpen]);
+
   const outcome =
     printRun === null ? null : printOutcomeViewOf(runner.state, printRun.total, printRun.isReprint);
 
@@ -182,6 +193,8 @@ export const ProductLotSplitScreen = () => {
     const lotNo = value.trim();
     if (lotNo === '' || isBusy) return;
 
+    /* 읽은 번호는 LOT 칸이 보인다 — 스캔 칸은 바로 비워 다음 스캔이 이어 붙지 않게 한다(검증 F1). */
+    setScanText('');
     clearWork();
     setScanError(null);
     setNotice(null);
@@ -196,7 +209,6 @@ export const ProductLotSplitScreen = () => {
       },
       onError: (cause) => {
         const error = toApiError(cause);
-        setScanText('');
         setScanError(
           error.kind !== 'network' && error.status === 404
             ? t.work.notFound(lotNo)
@@ -373,6 +385,7 @@ export const ProductLotSplitScreen = () => {
               error={scanError}
               disabled={isBusy}
               manual={{ label: t.work.manualLabel }}
+              inputRef={scanRef}
               onChange={(value) => {
                 setScanText(value);
                 setScanError(null);
@@ -414,19 +427,27 @@ export const ProductLotSplitScreen = () => {
               <>
                 <LotInfo lookup={found} />
                 {lotBlock === null ? (
-                  <SplitInputs
-                    lookup={found}
-                    locationId={locationId}
-                    qtyText={qtyText}
-                    qtyProblem={qtyProblem}
-                    isLocked={isBusy}
-                    onLocation={(next) => {
-                      setLocationId(next);
-                      setRejection(null);
-                      setRangeRejected(false);
+                  /* 타일 · 키패드를 눌러도 스캔 칸이 포커스를 잃지 않게 한다(눌림은 그대로 된다). */
+                  <div
+                    className="pls-inputs"
+                    onMouseDown={(event) => {
+                      event.preventDefault();
                     }}
-                    onQty={changeQty}
-                  />
+                  >
+                    <SplitInputs
+                      lookup={found}
+                      locationId={locationId}
+                      qtyText={qtyText}
+                      qtyProblem={qtyProblem}
+                      isLocked={isBusy}
+                      onLocation={(next) => {
+                        setLocationId(next);
+                        setRejection(null);
+                        setRangeRejected(false);
+                      }}
+                      onQty={changeQty}
+                    />
+                  </div>
                 ) : null}
               </>
             )}
@@ -478,50 +499,40 @@ const BlockNote = ({ view }: { view: BlockView }) => (
   </PuNote>
 );
 
-/** 스캔한 LOT — 품목 · 번호 · 상태(정상은 칩 없음 · C-21) · W/O. */
+/**
+ * 스캔한 LOT — 두 줄로 간추린다: 품목(이름 · 코드)과 상태 칩 / LOT 번호 · W/O · LOT 수량. 1024×768 에서 위치 · 수량을
+ * 넣어도 무엇을 나누는지 보이게 구획 맨 위에 붙어 있다(검증 둘러보기 2).
+ */
 const LotInfo = ({ lookup }: { lookup: SplitLookup }) => {
   const { lot, blocked } = lookup;
   const state = lot.statusCode === 'NORMAL' ? undefined : t.lot.statuses[lot.statusCode];
 
   return (
     <div className="pls-lot" role="group" aria-label={t.lot.label}>
-      <PuKv
-        items={[
-          {
-            label: t.lot.item,
-            value: (
-              <>
-                <b>{lot.itemName}</b> ({lot.itemCode})
-              </>
-            ),
-          },
-          { label: t.lot.lotNo, value: <span className="pu-mono pls-lotno">{lot.lotNo}</span> },
-          {
-            label: t.lot.status,
-            value: (
-              <span className="pls-chips">
-                {state === undefined ? null : (
-                  <PuChip tone={lot.statusCode === 'INSPECTION_PENDING' ? 'info' : 'warn'}>
-                    {state}
-                  </PuChip>
-                )}
-                {blocked?.code === 'LOT_SPLIT_UNCONFIRMED' ? (
-                  <PuChip tone="info">{t.lot.queued}</PuChip>
-                ) : null}
-                {blocked?.code === 'LOT_ALREADY_RESERVED' && blocked.detail !== null ? (
-                  <PuChip tone="warn">{blocked.detail}</PuChip>
-                ) : null}
-                {state === undefined && blocked === null ? '-' : null}
-              </span>
-            ),
-          },
-          {
-            label: t.lot.workOrder,
-            value: <span className="pu-mono">{lot.workOrderNo ?? '-'}</span>,
-          },
-          { label: t.lot.labelQty, value: formatBaseQty(lot.labelQty, lot.uomCode) },
-        ]}
-      />
+      <p className="pls-lot-line">
+        <b className="pls-lot-item">{lot.itemName}</b>
+        <span className="pls-lot-code">({lot.itemCode})</span>
+        {state === undefined ? null : (
+          <PuChip tone={lot.statusCode === 'INSPECTION_PENDING' ? 'info' : 'warn'}>{state}</PuChip>
+        )}
+        {blocked?.code === 'LOT_SPLIT_UNCONFIRMED' ? (
+          <PuChip tone="info">{t.lot.queued}</PuChip>
+        ) : null}
+        {blocked?.code === 'LOT_ALREADY_RESERVED' && blocked.detail !== null ? (
+          <PuChip tone="warn">{blocked.detail}</PuChip>
+        ) : null}
+      </p>
+      <p className="pls-lot-line pls-lot-sub">
+        <span className="pu-mono pls-lotno">{lot.lotNo}</span>
+        <span>
+          {`${t.lot.workOrder} `}
+          <span className="pu-mono">{lot.workOrderNo ?? '-'}</span>
+        </span>
+        <span>
+          {`${t.lot.labelQty} `}
+          <b>{formatBaseQty(lot.labelQty, lot.uomCode)}</b>
+        </span>
+      </p>
     </div>
   );
 };
@@ -549,13 +560,15 @@ const SplitInputs = ({
   const qty = parseQtyInput(qtyText);
   const decimal = !isCountUom(lot.uomCode);
   const showsPreview = location !== null && qty !== null && qtyProblem === null;
+  /* 고를 수 있는 위치만 센다 — 적치 대기 · 다른 창고 몫은 「이송으로 n개 위치」가 아니다(검증 둘러보기 4). */
+  const selectableCount = selectableLocations(locations).length;
 
   return (
     <>
       <PuField label={t.location.label} required>
-        {locations.length > 1 ? (
+        {selectableCount > 1 ? (
           <PuNote>
-            {t.location.many(locations.length, formatBaseQty(lot.labelQty, lot.uomCode))}
+            {t.location.many(selectableCount, formatBaseQty(lot.labelQty, lot.uomCode))}
           </PuNote>
         ) : null}
         {locations.length === 0 ? (
@@ -574,14 +587,17 @@ const SplitInputs = ({
                 disabled: !each.selectable,
                 label: (
                   <span className="pls-tile">
-                    <b>{each.locationCode}</b>
+                    <b>{locationNameOf(each)}</b>
                     <span>
                       {t.location.tile(
                         each.warehouseCode,
                         formatBaseQty(each.onHandQty, lot.uomCode),
                       )}
                     </span>
-                    {reason === undefined ? null : <span className="pls-tile-why">{reason}</span>}
+                    {/* 이름이 곧 이유(적치 대기 자리)면 두 번 적지 않는다. */}
+                    {reason === undefined || reason === locationNameOf(each) ? null : (
+                      <span className="pls-tile-why">{reason}</span>
+                    )}
                   </span>
                 ),
               };
@@ -629,7 +645,7 @@ const SplitInputs = ({
                 <div className="pls-half is-new">
                   <small>{t.preview.child}</small>
                   <b>{formatBaseQty(qty, lot.uomCode)}</b>
-                  <span>{t.preview.childNo}</span>
+                  <span className="pls-wrap">{t.preview.childNo}</span>
                 </div>
               </div>
             ) : null}
@@ -720,7 +736,11 @@ const SplitLabelsDialog = ({
     >
       <div className="pls-labels">
         <LabelPreview
-          caption={t.dialog.parentCaption(result.parentLot.issueSeq)}
+          caption={
+            result.parentLot.issueSeq > 1
+              ? t.dialog.parentCaption(result.parentLot.issueSeq)
+              : t.dialog.parentFirstCaption(result.parentLot.issueSeq)
+          }
           tone="idle"
           seq={result.parentLot.issueSeq}
           itemCode={source.itemCode}
