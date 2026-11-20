@@ -8,7 +8,7 @@ import { useTerminal, useWorkerDirectory, useWorkerLookup } from './queries';
 import { pickExact, verifyWorker, type WorkerResponse } from './verify';
 import { looksUnusual } from './worker-no';
 import { usePopIdentity } from '../../../patterns/pop-identity';
-import { PuNote, PuScreen, puToast } from '../../../patterns/pop-uniform';
+import { PuConfirm, PuKv, PuNote, PuScreen } from '../../../patterns/pop-uniform';
 import { setWorkerSession } from '../../../patterns/worker-session';
 import './uniform.css';
 
@@ -62,6 +62,14 @@ export const PopHomeLogin = () => {
    * 사람의 기록이므로 세어서 알리기만 한다. 세지 못하면 0(알리지 않음).
    */
   const [pendingQueue, setPendingQueue] = useState(0);
+  /**
+   * 확인을 마치고 [확인]을 기다리는 작업자(사용자 지시 2026-11-20). 이 창에서 [확인]을 눌러야 현재 작업자로 정한다 —
+   * 사번을 잘못 쳐 남의 이름으로 기록되는 일을 막는다. [취소]면 정하지 않는다.
+   */
+  const [candidate, setCandidate] = useState<{
+    worker: WorkerResponse;
+    isOtherPlant: boolean;
+  } | null>(null);
 
   /* ⛔ 신원은 서버가 확인해 준 것만 쓴다(공유계약 F-4) — 주소에서 받지 않는다. */
   const { terminalId } = usePopIdentity();
@@ -113,15 +121,8 @@ export const PopHomeLogin = () => {
       }
 
       setError(null);
-      setWorkerNo('');
-      /* ⚠ 다른 공장 소속은 막지 않고 알린다(§6) — 확인과 함께 홈 내용으로 바뀌므로 알림으로 보인다. */
-      if (result.isOtherPlant) puToast(t.current.otherPlant, 'warn');
-      /* 같은 자리에서 홈 내용으로 바뀐다 — 홈이 현재 작업자를 읽는다. */
-      setWorkerSession({
-        worker: result.worker,
-        assignedAt: formatAssignedAt(new Date()),
-        isOtherPlant: result.isOtherPlant,
-      });
+      /* 바로 정하지 않고 누구로 정할지 확인 창으로 묻는다 — [확인]에서 정한다. */
+      setCandidate({ worker: result.worker, isOtherPlant: result.isOtherPlant });
     },
     [homePlantId],
   );
@@ -176,6 +177,8 @@ export const PopHomeLogin = () => {
             setWorkerNo(value);
           }}
           onSubmit={() => {
+            /* ⛔ 확인 중이거나 확인 창이 떠 있으면 다시 보내지 않는다(두 번 눌러 창이 둘 뜨지 않게). */
+            if (submitted !== null || candidate !== null) return;
             setError(null);
             /* ⛔ 6자리 숫자가 아니면 조회하지 않고 다시 입력하게 한다(사용자 지시 2026-11-17). */
             if (looksUnusual(workerNo)) {
@@ -185,13 +188,46 @@ export const PopHomeLogin = () => {
             /* 누르는 «순간»의 연결 상태를 함께 담는다 — 그 경로로 끝까지 간다. */
             setSubmitted({ workerNo, offline: !isOnline });
           }}
-          isChecking={submitted !== null && (submitted.offline || lookup.isFetching)}
+          isChecking={
+            candidate !== null || (submitted !== null && (submitted.offline || lookup.isFetching))
+          }
           error={error}
           offlineNote={isOnline ? null : t.offline.note}
           isUnusualShown={isUnusualShown}
           confirmedWorkerNo={null}
         />
         {pendingQueue > 0 && <PuNote tone="warn">{t.current.pendingQueue(pendingQueue)}</PuNote>}
+        {candidate !== null && (
+          <PuConfirm
+            title={t.confirm.title}
+            confirmLabel={messages.common.confirm}
+            onConfirm={() => {
+              /* 같은 자리에서 홈 내용으로 바뀐다 — 홈이 현재 작업자를 읽는다. */
+              setWorkerSession({
+                worker: candidate.worker,
+                assignedAt: formatAssignedAt(new Date()),
+                isOtherPlant: candidate.isOtherPlant,
+              });
+              setCandidate(null);
+              setWorkerNo('');
+            }}
+            onCancel={() => {
+              setCandidate(null);
+              setWorkerNo('');
+            }}
+          >
+            {/*
+             * 옛 「현재 작업자」 카드와 같은 내용 — 이름 · 사번. ⚠ 소속은 그리지 않는다: 계약의 작업자는 부서 번호만 주고
+             * 이름을 주지 않는다(숫자를 소속인 척 그리지 않는다 · G-9).
+             */}
+            <div className="home-login-who">
+              <b>{candidate.worker.workerName}</b>
+              <PuKv items={[{ label: t.confirm.workerNo, value: candidate.worker.workerNo }]} />
+              {/* ⚠ 다른 공장 소속은 막지 않고 알린다(§6). */}
+              {candidate.isOtherPlant && <PuNote tone="warn">{t.current.otherPlant}</PuNote>}
+            </div>
+          </PuConfirm>
+        )}
       </div>
     </PuScreen>
   );

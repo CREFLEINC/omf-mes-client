@@ -74,6 +74,10 @@ export const workerAssignment: Translated<typeof ko.workerAssignment> = {
       `Còn ${count} bản ghi chưa gửi vẫn mang mã nhân viên trước`,
     otherPlant: 'Thuộc nhà máy khác.',
   },
+  confirm: {
+    title: 'Bắt đầu với công nhân này?',
+    workerNo: 'Mã nhân viên',
+  },
   error: {
     unknown: 'Mã nhân viên chưa đăng ký.',
     inactive: 'Mã nhân viên này hiện không còn làm việc. Hãy liên hệ quản trị viên',

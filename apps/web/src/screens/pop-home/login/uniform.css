@@ -96,6 +96,17 @@
   align-items: center;
 }
 
+/* 확인 창 안 작업자 — 이름을 크게, 그 아래 사번 · (다른 공장 알림). */
+.home-login-who {
+  display: grid;
+  gap: 10px;
+  min-width: 320px;
+}
+
+.home-login-who > b {
+  font-size: 24px;
+}
+
 .home-login-box {
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;

@@ -85,6 +85,12 @@ const typeWorkerNo = async (digits: string) => {
 
 const submit = () => userEvent.click(screen.getByRole('button', { name: t.input.submit }));
 
+/** 확인 창에서 [확인] — 이때 현재 작업자로 정한다(사용자 지시 2026-11-20). */
+const confirmLogin = async () => {
+  const dialog = await screen.findByRole('dialog', { name: t.confirm.title });
+  await userEvent.click(within(dialog).getByRole('button', { name: messages.common.confirm }));
+};
+
 describe('홈 사번 입력 — 인증이 아니라 귀속', () => {
   it('비밀번호 칸을 두지 않는다', () => {
     renderLogin();
@@ -138,8 +144,44 @@ describe('홈 사번 입력 — 확인', () => {
     await typeWorkerNo('900028');
     await submit();
 
+    await confirmLogin();
     await waitFor(() => expect(current()).toHaveTextContent('김작업'));
     expect(screen.getByRole('status', { name: '현재 경로' })).toHaveTextContent('/pop/home');
+  });
+
+  /* 사용자 지시 2026-11-20 — 확인이 끝나면 바로 정하지 않고 누구로 정할지 창으로 묻는다. */
+  it('확인되면 이름 · 사번을 보인 확인 창이 뜨고, [확인]을 눌러야 현재 작업자가 된다', async () => {
+    renderLogin();
+
+    await typeWorkerNo('900028');
+    await submit();
+
+    const dialog = await screen.findByRole('dialog', { name: t.confirm.title });
+    expect(within(dialog).getByText('김작업')).toBeInTheDocument();
+    expect(within(dialog).getByText('900028')).toBeInTheDocument();
+    expect(current()).toHaveTextContent('');
+    /* 창이 떠 있는 동안 [사번 확인]은 잠긴다 — 두 번 눌러 창이 둘 뜨지 않는다. */
+    expect(screen.getByRole('button', { name: t.input.checking })).toBeDisabled();
+
+    await userEvent.click(within(dialog).getByRole('button', { name: messages.common.confirm }));
+    await waitFor(() => expect(current()).toHaveTextContent('김작업'));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('확인 창에서 [취소]하면 정하지 않고 사번 칸을 비운다', async () => {
+    renderLogin();
+
+    await typeWorkerNo('900028');
+    await submit();
+    const dialog = await screen.findByRole('dialog', { name: t.confirm.title });
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: messages.popUniform.dialog.cancel }),
+    );
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(current()).toHaveTextContent('');
+    expect(screen.getByLabelText(t.input.workerNo)).toHaveValue('');
+    expect(screen.getByRole('button', { name: t.input.submit })).toBeDisabled();
   });
 
   it('미등록이면 거부하고 미등록 문구를 낸다', async () => {
@@ -150,6 +192,7 @@ describe('홈 사번 입력 — 확인', () => {
 
     expect(await screen.findByText(t.error.unknown)).toBeInTheDocument();
     expect(current()).toHaveTextContent('');
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   /* 미등록과 비재직은 사용자가 할 일이 다르다 — 문구를 뭉치지 않는다. */
@@ -200,6 +243,10 @@ describe('홈 사번 입력 — 확인', () => {
     await typeWorkerNo('900028');
     await submit();
 
+    /* 다른 공장 알림은 확인 창 안에 선다. */
+    const dialog = await screen.findByRole('dialog', { name: t.confirm.title });
+    expect(within(dialog).getByText(t.current.otherPlant)).toBeInTheDocument();
+    await confirmLogin();
     await waitFor(() => expect(current()).toHaveTextContent('김작업'));
     expect(screen.getByRole('status', { name: '다른 공장' })).toHaveTextContent('true');
   });
@@ -218,6 +265,7 @@ describe('지정 시각', () => {
 
     await typeWorkerNo('900028');
     await submit();
+    await confirmLogin();
     await waitFor(() => expect(current()).toHaveTextContent('김작업'));
 
     const local = new Date('2026-09-01T00:00:00Z').toLocaleString('ko-KR', {
@@ -309,6 +357,7 @@ describe('오프라인', () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
     window.dispatchEvent(new Event('online'));
 
+    await confirmLogin();
     await waitFor(() => expect(current()).toHaveTextContent('김작업'));
     expect(screen.queryByText(t.error.unknown)).not.toBeInTheDocument();
   });
@@ -329,6 +378,7 @@ describe('오프라인', () => {
     await typeWorkerNo('900028');
     await submit();
 
+    await confirmLogin();
     await waitFor(() => expect(current()).toHaveTextContent('김작업'));
   });
 });
@@ -364,6 +414,7 @@ describe('보내지 못한 기록', () => {
     await typeWorkerNo('900028');
     await submit();
 
+    await confirmLogin();
     await waitFor(() => expect(current()).toHaveTextContent('김작업'));
     expect(screen.queryByText(t.current.pendingQueue(3))).not.toBeInTheDocument();
   });
