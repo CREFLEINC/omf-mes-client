@@ -324,6 +324,15 @@ const renderScreen = (
 };
 
 /**
+ * 품목 칸을 「전체」로 돌려 조회한다 — 마우스만으로 품목 조건을 푸는 길. 품목은 조건 줄에 보이는 칸이라 칩이 없다(C-6).
+ */
+const clearItemAndSearch = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(screen.getByLabelText(t.fields.item));
+  await user.click(await screen.findByRole('option', { name: t.filters.all }));
+  await user.click(screen.getByRole('button', { name: messages.common.search }));
+};
+
+/**
  * 응답을 붙잡아 두는 렌더. 「조회를 기다리는 동안」과 「참조 목록이 늦게 오는 순서」를
  * 실제로 만들어야 그 사이의 표기를 판정할 수 있다.
  */
@@ -1328,10 +1337,10 @@ describe('StockStatusScreen — 매달린 참조', () => {
   });
 
   /*
-   * **마우스만으로 닿는 경로다**(주소 편집이 필요 없다) — LOT별 보기에서 품목 조건 칩의 ×를
-   * 누르면 품목이 사라진다. 이때도 같은 규칙이 적용돼 품목별로 되읽혀야 한다.
+   * **마우스만으로 닿는 경로다**(주소 편집이 필요 없다) — LOT별 보기에서 품목 칸을 「전체」로 돌려
+   * 조회하면 품목이 사라진다. 이때도 같은 규칙이 적용돼 품목별로 되읽혀야 한다.
    */
-  it('LOT별 보기에서 품목 칩을 제거하면 품목별로 되읽힌다', async () => {
+  it('LOT별 보기에서 품목을 풀고 조회하면 품목별로 되읽힌다', async () => {
     const { requests, user } = renderScreen(
       [balanceRoute(), ...lookupRoutes()],
       `${WITH_WAREHOUSE}&item=9301&view=lot`,
@@ -1340,7 +1349,7 @@ describe('StockStatusScreen — 매달린 참조', () => {
     // 선행 단언 — 품목이 있는 동안에는 LOT 이름이 실제로 풀린다.
     expect(await screen.findByText('SAMPLE-LOT-0001')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveItem }));
+    await clearItemAndSearch(user);
 
     await waitFor(() => {
       expect(currentLocation()).not.toContain('item=');
@@ -1374,7 +1383,7 @@ describe('StockStatusScreen — 매달린 참조', () => {
  */
 describe('StockStatusScreen — 부모가 빠진 종속 조건', () => {
   /** 리뷰 실측 경로 (a) — 마우스만으로 닿는다. */
-  it('품목 칩을 빼면 LOT 조건이 요청에서도 칩에서도 사라진다', async () => {
+  it('품목을 풀고 조회하면 LOT 조건이 요청에서도 칩에서도 사라진다', async () => {
     const { requests, user } = renderScreen(
       [balanceRoute(), ...lookupRoutes()],
       `${WITH_WAREHOUSE}&item=9301&lot=9401&view=lot`,
@@ -1384,7 +1393,7 @@ describe('StockStatusScreen — 부모가 빠진 종속 조건', () => {
     expect(await screen.findByText('LOT: SAMPLE-LOT-0001')).toBeInTheDocument();
     expect(lastQuery(requests, BALANCES_PATH)?.get('lotId')).toBe('9401');
 
-    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveItem }));
+    await clearItemAndSearch(user);
 
     await waitFor(() => {
       expect(lastQuery(requests, BALANCES_PATH)?.has('lotId')).toBe(false);
@@ -1394,23 +1403,26 @@ describe('StockStatusScreen — 부모가 빠진 종속 조건', () => {
     expect(screen.queryByText(`LOT: ${t.values.unknown}`)).not.toBeInTheDocument();
   });
 
-  /** 리뷰 실측 경로 (b) — 위치는 창고에 매달린다. */
-  it('창고 칩을 빼면 위치 조건이 칩에서 사라진다', async () => {
-    const { requests, user } = renderScreen(
-      [balanceRoute(), ...lookupRoutes()],
-      `${WITH_WAREHOUSE}&loc=9201`,
-    );
+  /**
+   * 리뷰 실측 경로 (b) — 위치는 창고에 매달린다. 창고는 조건 줄에 보이는 필수 칸이라 칩이 없고(C-6), 마우스로 창고를 푸는
+   * 길은 「초기화」뿐이다 — 핸들러를 거치지 않는 길(창고 없이 위치만 든 주소)로 읽는 자리의 판정을 본다.
+   */
+  it('창고가 빠지면 위치 조건이 칩에서 사라진다', async () => {
+    const { requests, user } = renderScreen([balanceRoute(), ...lookupRoutes()], `?loc=9201`);
 
-    // 선행 단언 — 창고가 있는 동안에는 위치 조건이 걸려 있고 이름으로 보인다.
-    expect(await screen.findByText('위치: SAMPLE-LOC-01 · 합성 위치 가')).toBeInTheDocument();
-    expect(lastQuery(requests, BALANCES_PATH)?.get('locationId')).toBe('9201');
+    // 창고가 없으니 조회 전 상태다 — 위치 조건이 남아도 칩이 서지 않는다.
+    expect(await screen.findByText(t.empty.notQueriedTitle)).toBeInTheDocument();
+    expect(screen.queryByText(/^위치: /)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveWarehouse }));
+    // 짝 단언 — 창고를 고르고 조회하면 위치 조건은 이미 뜻을 잃어 되살아나지 않는다.
+    await user.click(screen.getByLabelText(t.fields.warehouse));
+    await user.click(await screen.findByRole('option', { name: WAREHOUSE_LABEL }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     await waitFor(() => {
-      expect(screen.getByText(t.empty.notQueriedTitle)).toBeInTheDocument();
+      expect(currentLocation()).toContain('wh=9101');
     });
-
+    expect(lastQuery(requests, BALANCES_PATH)?.has('locationId')).toBe(false);
     expect(screen.queryByText(/^위치: /)).not.toBeInTheDocument();
     expect(screen.queryByText(`위치: ${t.values.unknown}`)).not.toBeInTheDocument();
   });
@@ -1427,7 +1439,7 @@ describe('StockStatusScreen — 부모가 빠진 종속 조건', () => {
 
     await screen.findByText('LOT: SAMPLE-LOT-0001');
 
-    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveItem }));
+    await clearItemAndSearch(user);
 
     await waitFor(() => {
       expect(screen.queryByText(/^LOT: /)).not.toBeInTheDocument();

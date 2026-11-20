@@ -7,7 +7,6 @@ import {
   readSelectedLotId,
   SELECTION_KEYS,
   toBalanceFilterQuery,
-  toFilterChips,
   toSearchParams,
 } from './filters';
 
@@ -79,19 +78,6 @@ describe('toBalanceFilterQuery', () => {
     const query = toBalanceFilterQuery({ ...EMPTY_FILTERS, availableOnly: true });
 
     expect(query.inventoryStatusCode).toBe('AVAILABLE');
-  });
-});
-
-describe('toFilterChips', () => {
-  it('걸린 조건마다 칩 하나를 낸다', () => {
-    const filters = { warehouse: '9101', item: '', availableOnly: true };
-    const chips = toFilterChips(filters, { warehouse: '합성 창고', item: '' });
-
-    expect(chips.map((chip) => chip.key)).toEqual(['warehouse', 'availableOnly']);
-  });
-
-  it('아무 조건도 없으면 빈 배열이다', () => {
-    expect(toFilterChips(EMPTY_FILTERS, { warehouse: '', item: '' })).toEqual([]);
   });
 });
 

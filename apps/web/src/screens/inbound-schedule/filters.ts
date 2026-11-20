@@ -219,13 +219,18 @@ export const toFilterQuery = (filters: ScheduleFilters): ScheduleFilterQuery => 
   };
 };
 
-/** 칩으로 내는 조건 — 값이 있는 글자 조건뿐이다. 두 켜짐 표시는 조건 줄에 늘 보이므로 칩이 없다. */
-export type ChipKey = 'supplier' | 'plant' | 'item' | 'q';
+/**
+ * 칩으로 내는 조건 — 조건 줄에 값이 보이지 않는 것뿐이다(C-6). 「조건 더보기」에 접힌 공장 · 발주번호 · 지연 · 미완료만과,
+ * 품목이다 — 품목코드 칸은 찾고 나면 비워 다음 스캔을 받으므로 걸린 품목을 칸이 들고 있지 않다.
+ *
+ * 납기 · 공급업체는 조건 줄에 값이 그대로 보여 칩으로 겹쳐 적지 않는다. 「오늘 도착」도 칩이 없다 — 납기 칸이 오늘 하루로 보인다.
+ */
+export type ChipKey = 'item' | 'plant' | 'q' | 'overdueOnly' | 'openOnly';
 
 export interface FilterChip {
   key: ChipKey;
   label: string;
-  /** 제거 버튼의 접근 이름. 「제거」가 넷이면 어느 조건을 푸는 것인지 알 수 없다. */
+  /** 제거 버튼의 접근 이름. 「제거」가 여럿이면 어느 조건을 푸는 것인지 알 수 없다. */
   removeLabel: string;
 }
 
@@ -236,27 +241,59 @@ export interface FilterChip {
  * 내부 번호를 문자열로 만드는 자리가 아예 없으면 그 값이 화면에 샐 경로도 없다.
  */
 export interface FilterChipNames {
-  supplier: string;
   plant: string;
   item: string;
 }
 
-/** 적용된 조건마다 칩 하나. 순서는 조건 줄의 컨트롤 순서와 같다. */
+/** 걸린 조건마다 칩 하나. 순서는 품목 다음 「조건 더보기」 안의 칸 순서다. */
 export const toFilterChips = (filters: ScheduleFilters, names: FilterChipNames): FilterChip[] => {
-  const candidates: FilterChip[] = [
-    {
-      key: 'supplier',
-      label: t.filters.chipSupplier(names.supplier),
-      removeLabel: t.filters.chipRemoveSupplier,
-    },
-    {
-      key: 'plant',
-      label: t.filters.chipPlant(names.plant),
-      removeLabel: t.filters.chipRemovePlant,
-    },
-    { key: 'item', label: t.filters.chipItem(names.item), removeLabel: t.filters.chipRemoveItem },
-    { key: 'q', label: t.filters.chipQ(filters.q), removeLabel: t.filters.chipRemoveQ },
+  const candidates: [FilterChip, boolean][] = [
+    [
+      { key: 'item', label: t.filters.chipItem(names.item), removeLabel: t.filters.chipRemoveItem },
+      filters.item !== '',
+    ],
+    [
+      {
+        key: 'overdueOnly',
+        label: t.filters.chipOverdue,
+        removeLabel: t.filters.chipRemoveOverdue,
+      },
+      filters.overdueOnly,
+    ],
+    [
+      {
+        key: 'plant',
+        label: t.filters.chipPlant(names.plant),
+        removeLabel: t.filters.chipRemovePlant,
+      },
+      filters.plant !== '',
+    ],
+    [
+      { key: 'q', label: t.filters.chipQ(filters.q), removeLabel: t.filters.chipRemoveQ },
+      filters.q !== '',
+    ],
+    /* 미완료만은 켬이 기본이라 **끈 것이** 걸린 조건이다. */
+    [
+      {
+        key: 'openOnly',
+        label: t.filters.chipOpenOnlyOff,
+        removeLabel: t.filters.chipRemoveOpenOnlyOff,
+      },
+      !filters.openOnly,
+    ],
   ];
 
-  return candidates.filter((chip) => filters[chip.key] !== '');
+  return candidates.filter(([, isSet]) => isSet).map(([chip]) => chip);
+};
+
+/** 칩 하나를 푼다 — 그 조건만 처음 값으로 돌린다(미완료만은 켬, 지연은 끔). */
+export const clearFilter = (filters: ScheduleFilters, key: ChipKey): ScheduleFilters => {
+  switch (key) {
+    case 'overdueOnly':
+      return { ...filters, overdueOnly: DEFAULT_FILTERS.overdueOnly };
+    case 'openOnly':
+      return { ...filters, openOnly: DEFAULT_FILTERS.openOnly };
+    default:
+      return { ...filters, [key]: '' };
+  }
 };

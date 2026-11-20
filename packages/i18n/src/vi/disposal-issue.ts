@@ -61,8 +61,6 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
   filters: {
     all: 'Tất cả',
     periodNote: 'Để trống ngày nhập kho thì xem toàn bộ, không thu hẹp khoảng thời gian.',
-    periodClearNote:
-      'Ngày nhập kho chỉ xóa được bằng 「Đặt lại」. Các điều kiện khác thì gỡ bằng dấu × trên bảng điều kiện.',
     lookupFailed: 'Không tải được danh sách tên. Hãy thử lại.',
     lookupTruncated:
       'Danh sách tên chỉ về một phần. Giá trị cần tìm có thể không có trong danh sách — không phải là đã mất.',
@@ -89,8 +87,6 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
   },
   historyFilters: {
     periodNote: 'Để trống ngày xuất kho thì xem toàn bộ, không thu hẹp khoảng thời gian.',
-    periodClearNote:
-      'Ngày xuất kho chỉ xóa được bằng 「Đặt lại」. Các điều kiện khác thì gỡ bằng dấu × trên bảng điều kiện.',
     chipPeriodBoth: (from: string, to: string): string => `Ngày xuất kho: ${from} ~ ${to}`,
     chipPeriodFrom: (from: string): string => `Ngày xuất kho: từ ${from}`,
     chipPeriodTo: (to: string): string => `Ngày xuất kho: đến ${to}`,

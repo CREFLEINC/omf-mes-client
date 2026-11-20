@@ -318,15 +318,6 @@ export const stocktaking = {
     all: '전체',
     lookupTruncated: '선택지가 앞쪽 일부만 보입니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
     lookupFailed: '선택지를 불러오지 못했습니다.',
-    chipWarehouse: (value: string): string => `창고: ${value}`,
-    /** 한쪽만 넣은 기간도 조건이다 — 그 사실이 칩에서 읽혀야 한다. */
-    chipPeriodBoth: (from: string, to: string): string => `계획일: ${from} ~ ${to}`,
-    chipPeriodFrom: (from: string): string => `계획일: ${from}부터`,
-    chipPeriodTo: (to: string): string => `계획일: ${to}까지`,
-    chipInProgress: '진행 중만',
-    chipRemoveWarehouse: '창고 조건 제거',
-    chipRemovePeriod: '계획일 조건 제거',
-    chipRemoveInProgress: '진행 중만 조건 제거',
   },
   /** 쪽 이동. 번호 목록을 두지 않는 근거는 screens/stocktaking/page-nav.tsx에 있다. */
   pageNav: {

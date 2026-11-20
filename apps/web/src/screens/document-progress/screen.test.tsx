@@ -697,12 +697,30 @@ describe('조회 조건이 질의로 나간다', () => {
       expect(listRequests(requests)).toHaveLength(1);
     });
 
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     await user.click(screen.getByRole('checkbox', { name: t.fields.cancellableOnly }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     await waitFor(() => {
       expect(lastListQuery(requests).get('cancellableOnly')).toBe('true');
     });
+  });
+
+  /* C-6 — 접힌 조건은 칩이 알리고, ×는 그 조건만 풀어 곧바로 다시 조회한다. */
+  it('접힌 「지금 취소 가능한 것만」은 칩으로 보이고 ×로 풀면 다시 조회한다', async () => {
+    fillDocumentTypes();
+    const { requests, user } = renderScreen([listRoute()], `?ty=${SELECTABLE_TYPE}&conly=1`);
+
+    await waitFor(() => {
+      expect(lastListQuery(requests).get('cancellableOnly')).toBe('true');
+    });
+
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveCancellableOnly }));
+
+    await waitFor(() => {
+      expect(lastListQuery(requests).get('cancellableOnly')).toBe('false');
+    });
+    expect(locationOf()).not.toContain('conly');
   });
 
   /* 완결된 쌍이 정해진 뒤에만 두 값이 실린다 — 반쪽 기간으로는 요청이 나가지 않는다. */

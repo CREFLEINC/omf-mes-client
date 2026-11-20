@@ -176,9 +176,18 @@ describe('HistoryFilterBar — 모아서 적용', () => {
   });
 });
 
+/* C-6 — 조건 셋이 모두 줄에 보인다. 칩은 칸이 값을 보일 수 없을 때(선택지에 없는 값)만 선다. */
 describe('HistoryFilterBar — 조건 칩', () => {
-  it('걸린 조건마다 칩이 서고 이름으로 적힌다', () => {
+  it('선택지에 있는 값은 칸이 보여 칩이 없다', () => {
     renderBar({ appliedFilters: filters({ count: '9101' }) });
+
+    expect(screen.getByLabelText(t.historyFields.count)).toHaveTextContent(COUNT_NAME);
+    expect(screen.queryByText(t.historyFilters.chipCount(COUNT_NAME))).not.toBeInTheDocument();
+  });
+
+  /* 실사 목록이 잘렸거나 다른 화면이 넘긴 실사 — 칸이 「전체」로 보이므로 칩이 이름으로 말한다. */
+  it('선택지에 없는 값은 칩으로 이름을 말한다', () => {
+    renderBar({ appliedFilters: filters({ count: '9199' }) });
 
     expect(screen.getByText(t.historyFilters.chipCount(COUNT_NAME))).toBeInTheDocument();
   });
@@ -193,21 +202,16 @@ describe('HistoryFilterBar — 조건 칩', () => {
     expect(onRemoveFilter).toHaveBeenCalledWith('reason');
   });
 
-  /**
-   * **기간 칩에는 ×가 없고 그 사정을 밝힌다** — 양성 앵커(다른 칩에는 ×가 있다)를 먼저 재고
-   * 그 뒤에 잰다.
-   */
-  /* 푸는 길(「초기화」)을 밝히던 안내는 걷었다(사용자 지시 2026-11-18). */
-  it('기간 칩에는 ×가 없다', () => {
+  /** 기간은 칸이 값을 보이므로 칩이 없다 — 양성 앵커(선택지에 없는 사유 칩은 선다)를 먼저 잰다. */
+  it('기간은 칩이 없다', () => {
     renderBar({ appliedFilters: filters({ from: '2026-08-01', reason: 'SAMPLE_AR_A' }) });
 
     expect(
       screen.getByRole('button', { name: t.historyFilters.chipRemoveReason }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: t.historyFilters.chipRemoveCount }),
+      screen.queryByText(t.historyFilters.chipPeriodFrom('2026-08-01')),
     ).not.toBeInTheDocument();
-    expect(screen.getByText(t.historyFilters.chipPeriodFrom('2026-08-01'))).toBeInTheDocument();
   });
 
   it('조건이 없으면 칩이 서지 않는다', () => {
@@ -217,14 +221,30 @@ describe('HistoryFilterBar — 조건 칩', () => {
   });
 });
 
+describe('HistoryFilterBar — 초기화', () => {
+  /* C-6 — 처음 조건 그대로면 「초기화」가 할 일이 없다. 칸을 고치면 그때 보인다. */
+  it('처음 조건에서는 초기화가 없고, 칸을 고치면 나타난다', async () => {
+    const { user } = renderBar();
+
+    expect(screen.queryByRole('button', { name: messages.common.reset })).not.toBeInTheDocument();
+
+    await user.click(screen.getByLabelText(t.historyFields.count));
+    await user.click(screen.getByRole('option', { name: COUNT_NAME }));
+
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeInTheDocument();
+  });
+});
+
 describe('HistoryFilterBar — 잠금', () => {
   /** 조건이 바뀌면 고른 전표가 풀린다 — 나가는 중인 쓰기의 되먹임이 다른 맥락에 도착한다. */
+  /* 초기화는 바뀐 것이 있을 때만 보인다(C-6) — 걸린 조건을 둔다. */
   it('잠기면 칸과 버튼이 함께 잠긴다', () => {
-    const { rerender } = renderBar();
+    const appliedFilters = filters({ count: '9101' });
+    const { rerender } = renderBar({ appliedFilters });
 
     expect(searchButton()).toBeEnabled();
 
-    rerender(<HistoryFilterBar {...baseProps({ isLocked: true })} />);
+    rerender(<HistoryFilterBar {...baseProps({ appliedFilters, isLocked: true })} />);
 
     expect(searchButton()).toBeDisabled();
     expect(screen.getByRole('button', { name: messages.common.reset })).toBeDisabled();

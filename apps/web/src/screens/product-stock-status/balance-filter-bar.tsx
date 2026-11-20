@@ -1,8 +1,16 @@
-import { Button, Checkbox, Chip } from '@crefle/web-ui';
+import { Button, Checkbox } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
-import { toFilterChips, type BalanceFilters, type FilterChipNames } from './filters';
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  hasChangedFilters,
+  useFilterMore,
+  type HiddenFilterChip,
+} from '../../patterns/filter-more';
+
+import { EMPTY_FILTERS, type BalanceFilters } from './filters';
 import { ItemSelectField, SelectField } from './select-field';
 import type { SelectOption } from './types';
 import { VIEW_AXES, type ViewAxis } from './view-axis';
@@ -17,15 +25,13 @@ export interface BalanceFilterBarProps {
   canUseLotView: boolean;
   onViewChange: (view: ViewAxis) => void;
   warehouseOptions: SelectOption[];
-  /** 조건 칩에 실을 참조 이름. 번호를 문구로 만드는 자리를 두지 않기 위한 것이다. */
-  chipNames: FilterChipNames;
   warehouseNote?: string;
-  /** 이 구획이 이름을 내는 참조(창고·품목)가 실패했는가. */
+  /** 이 구획이 이름을 내는 참조(창고)가 실패했는가. 품목 칸은 고른 품목의 이름을 스스로 받는다. */
   referencesFailed: boolean;
   onRetryReferences: () => void;
   onSearch: (filters: BalanceFilters) => void;
-  /** 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. */
-  onRemoveFilter: (key: keyof BalanceFilters) => void;
+  /** 접힌 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. */
+  onRemoveFilter: (key: 'availableOnly') => void;
   onReset: () => void;
 }
 
@@ -38,6 +44,10 @@ export interface BalanceFilterBarProps {
  *
  * **창고가 필수다.** 고르기 전에는 조회를 잠그고 사유를 `aria-describedby`로 잇는다.
  *
+ * **보이는 칸은 셋이다**(C-6 · 관리웹 정리 시안 A, 2026-11-20) — 창고(필수) · 품목 · 묶기. 셋이 표의 범위와 모양을 정한다.
+ * 가용만은 결과를 더 좁히는 보조 조건이라 「조건 더보기」에 접고, 켜져 있으면 접힌 동안 칩으로 알린다. 칸 폭은 C-19 —
+ * 창고 · 품목 보통, 묶기 좁음 — 이라 고른 값에 따라 바뀌지 않는다. 「초기화」는 바뀐 것이 있을 때만 보인다.
+ *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
 export const BalanceFilterBar = ({
@@ -46,7 +56,6 @@ export const BalanceFilterBar = ({
   canUseLotView,
   onViewChange,
   warehouseOptions,
-  chipNames,
   warehouseNote,
   referencesFailed,
   onRetryReferences,
@@ -55,6 +64,7 @@ export const BalanceFilterBar = ({
   onReset,
 }: BalanceFilterBarProps) => {
   const reasonId = useId();
+  const more = useFilterMore();
 
   const [filters, setFilters] = useState<BalanceFilters>(appliedFilters);
 
@@ -86,7 +96,27 @@ export const BalanceFilterBar = ({
     onSearch(filters);
   };
 
-  const chips = toFilterChips(appliedFilters, chipNames);
+  /**
+   * 초기화. **자기 편집 상태를 함께 비운다** — 부모에게만 알리면 아직 조회하지 않은 값은 주소가 바뀌지 않아 되돌림
+   * effect 도 깨어나지 않고, 「초기화」를 눌렀는데 고르던 값이 그대로 남는다. 묶기는 조건이 아니라 그대로 둔다.
+   */
+  const reset = (): void => {
+    setFilters(EMPTY_FILTERS);
+    onReset();
+  };
+
+  const isChanged = hasChangedFilters(EMPTY_FILTERS, filters, appliedFilters);
+
+  /* 접힌 가용만이 켜져 있으면 칩으로 알린다 — 보이는 칸의 값은 칩으로 겹쳐 적지 않는다. */
+  const hiddenChips: HiddenFilterChip<'availableOnly'>[] = appliedFilters.availableOnly
+    ? [
+        {
+          key: 'availableOnly',
+          label: t.filters.chipAvailableOnly,
+          removeLabel: t.filters.chipRemoveAvailableOnly,
+        },
+      ]
+    : [];
 
   /* 「전체」를 값이 빈 선택지로 둔다 — 두지 않으면 한 번 고른 뒤에 해제할 방법이 칸 안에 없어진다. */
   const withAll = (options: readonly SelectOption[]): SelectOption[] => [
@@ -102,12 +132,9 @@ export const BalanceFilterBar = ({
   return (
     <>
       <div className="filter-bar">
-        {/*
-         * 규범 3-2 — 최소 폭을 주지 않으면 선택지 목록이 트리거 폭에 갇혀 잘린다. 창고·품목은
-         * 「코드 · 이름」 형이라 `codeName`(18.5rem)을 쓴다.
-         */}
+        {/* C-19 — 창고 · 품목은 「코드 · 이름」 참조라 보통 폭, 묶기는 고정 선택지라 좁은 폭이다. */}
         <SelectField
-          optionWidth="codeName"
+          fieldWidth="md"
           label={t.fields.warehouse}
           options={withAll(warehouseOptions)}
           value={filters.warehouse}
@@ -127,6 +154,7 @@ export const BalanceFilterBar = ({
         />
 
         <SelectField
+          fieldWidth="sm"
           label={t.fields.groupBy}
           options={viewOptions}
           value={view}
@@ -136,20 +164,8 @@ export const BalanceFilterBar = ({
           }}
         />
 
-        {/* 확인칸은 라벨이 오른쪽에 붙어 라벨 층이 없다 — 윗선을 맞추려 라벨 없는 셀에 담는다. */}
         <div className="field-cell field-cell-unlabeled">
-          <Checkbox
-            checked={filters.availableOnly}
-            onChange={(event) => {
-              setFilters((prev) => ({ ...prev, availableOnly: event.target.checked }));
-            }}
-          >
-            {t.fields.availableOnly}
-          </Checkbox>
-        </div>
-
-        <div className="field-cell field-cell-unlabeled">
-          <div className="filter-actions">
+          <div className="filter-actions product-stock-status-actions">
             <Button
               disabled={searchReason !== null}
               aria-describedby={searchReason === null ? undefined : reasonId}
@@ -157,9 +173,12 @@ export const BalanceFilterBar = ({
             >
               {messages.common.search}
             </Button>
-            <Button variant="outlined" onClick={onReset}>
-              {messages.common.reset}
-            </Button>
+            {isChanged && (
+              <Button variant="outlined" onClick={reset}>
+                {messages.common.reset}
+              </Button>
+            )}
+            <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
           </div>
           {searchReason !== null && (
             <span id={reasonId} className="field-note">
@@ -169,29 +188,31 @@ export const BalanceFilterBar = ({
         </div>
       </div>
 
+      {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+      <div id={more.id} hidden={!more.isOpen}>
+        <div className="filter-bar">
+          {/* 확인칸은 라벨이 오른쪽에 붙어 라벨 층이 없다 — 윗선을 맞추려 라벨 없는 셀에 담는다. */}
+          <div className="field-cell field-cell-unlabeled">
+            <Checkbox
+              checked={filters.availableOnly}
+              onChange={(event) => {
+                setFilters((prev) => ({ ...prev, availableOnly: event.target.checked }));
+              }}
+            >
+              {t.fields.availableOnly}
+            </Checkbox>
+          </div>
+        </div>
+      </div>
+
+      <HiddenFilterChips open={more.isOpen} chips={hiddenChips} onRemove={onRemoveFilter} />
+
       {referencesFailed && (
         <div className="field-cell">
           <span className="field-note">{t.reasons.filterReferencesFailed}</span>
           <Button variant="outlined" size="sm" onClick={onRetryReferences}>
             {messages.common.retry}
           </Button>
-        </div>
-      )}
-
-      {chips.length > 0 && (
-        <div className="filter-bar">
-          {chips.map((chip) => (
-            <Chip
-              key={chip.key}
-              variant="status"
-              removeLabel={chip.removeLabel}
-              onRemove={() => {
-                onRemoveFilter(chip.key);
-              }}
-            >
-              {chip.label}
-            </Chip>
-          ))}
         </div>
       )}
     </>

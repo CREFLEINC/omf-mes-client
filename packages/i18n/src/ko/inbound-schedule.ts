@@ -28,8 +28,7 @@ export const inboundSchedule = {
     lines: '발주 라인',
   },
   fields: {
-    periodFrom: '납기 시작',
-    periodTo: '납기 종료',
+    period: '납기',
     supplier: '공급사',
     plant: '공장',
     item: '품목',
@@ -97,7 +96,10 @@ export const inboundSchedule = {
     COMPLETED: '입하 완료',
     CANCELLED: '취소',
   },
-  /** 빠른 조회 줄 — 공급업체 · 품목/바코드 · 오늘 도착 · 지연(사용자 결정 2026-10-20). 누르거나 고르는 즉시 조회한다. */
+  /**
+   * 빠른 조회 — 공급업체 · 품목/바코드는 조건 줄에, 오늘 도착 · 지연은 「조건 더보기」 안에 있다(관리웹 정리 시안 A, 2026-11-20).
+   * 누르거나 고르는 즉시 조회한다.
+   */
   quick: {
     supplier: '공급업체',
     item: '품목코드',
@@ -106,8 +108,6 @@ export const inboundSchedule = {
     scanFailed: '품목을 찾지 못했습니다. 잠시 뒤 다시 스캔하세요.',
     today: '오늘 도착',
     overdue: '지연',
-    detailOpen: '상세 조건 펼치기',
-    detailClose: '상세 조건 접기',
   },
   filters: {
     all: '전체',
@@ -116,14 +116,17 @@ export const inboundSchedule = {
     itemPick: '이 품목으로 조회',
     lookupTruncated: '선택지가 앞쪽 일부만 보입니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
     lookupFailed: '선택지를 불러오지 못했습니다.',
-    chipSupplier: (value: string): string => `공급사: ${value}`,
     chipPlant: (value: string): string => `공장: ${value}`,
     chipItem: (value: string): string => `품목: ${value}`,
     chipQ: (value: string): string => `발주번호: ${value}`,
-    chipRemoveSupplier: '공급사 조건 제거',
+    chipOverdue: '지연',
+    /** 「미완료만」을 끈 상태 — 다 들어온 라인 · 취소된 라인까지 온다. */
+    chipOpenOnlyOff: '완료·취소 포함',
     chipRemovePlant: '공장 조건 제거',
     chipRemoveItem: '품목 조건 제거',
     chipRemoveQ: '발주번호 조건 제거',
+    chipRemoveOverdue: '지연 조건 제거',
+    chipRemoveOpenOnlyOff: '완료·취소 포함 해제',
   },
   /** 쪽 이동. 번호 목록을 두지 않는 근거는 screens/inbound-schedule/page-nav.tsx에 있다. */
   pageNav: {

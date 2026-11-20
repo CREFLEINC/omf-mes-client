@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { HUB_ACTIONS_ID } from '../../patterns/hub-actions';
 import { plantToday } from '../../patterns/plant-time';
 import { SessionProvider, type Session } from '../../patterns/session';
+import { pickRange } from '../../test/date-picker';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import {
   createStubFetch,
@@ -265,9 +266,9 @@ const listTable = (): HTMLElement =>
 /** 오른쪽 라인 구획. */
 const linesPane = (): HTMLElement => screen.getByRole('region', { name: t.panes.lines });
 
-/** 상세 조건(기간·공장·발주번호·미완료만·조회 단추)은 접혀 있다 — 그 칸을 쓰는 시험은 먼저 편다. */
+/** 「조건 더보기」(오늘 도착 · 지연 · 공장 · 발주번호 · 미완료만)는 접혀 있다 — 그 칸을 쓰는 시험은 먼저 편다. */
 const openDetail = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
-  await user.click(screen.getByRole('button', { name: t.quick.detailOpen }));
+  await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
 };
 
 /** 그 행의 칸 글자를 열 순서대로 낸다. 코드 열·이름 열이 나뉘어 있어 칸 단위로 봐야 읽힌다. */
@@ -476,17 +477,18 @@ describe('InboundScheduleScreen — 조건과 주소', () => {
     expect(requestsTo(requests, LIST_PATH)).toHaveLength(0);
   });
 
-  it('걸린 조건이 이름으로 칩이 되고, 칩을 지우면 그 조건만 풀린다', async () => {
+  /* 공급업체는 조건 줄의 선택 칸이 값을 보인다 — 칩은 접힌 칸(공장)과 칸이 비는 품목뿐이다(C-6). */
+  it('접힌 조건과 품목이 이름으로 칩이 되고, 칩을 지우면 그 조건만 풀린다', async () => {
     const { requests, user } = renderScreen(
       [listRoute(), ...lookupRoutes()],
       '?supplier=8101&plant=8201&item=8301',
     );
 
-    expect(await screen.findByText(t.filters.chipSupplier(SUPPLIER_LABEL))).toBeInTheDocument();
     expect(
       await screen.findByText(t.filters.chipPlant('SAMPLE-PLT-01 · 합성 공장 가')),
     ).toBeInTheDocument();
     expect(await screen.findByText(t.filters.chipItem(ITEM_LABEL))).toBeInTheDocument();
+    expect(screen.queryByText(new RegExp(SUPPLIER_LABEL))).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.filters.chipRemovePlant }));
 
@@ -497,7 +499,7 @@ describe('InboundScheduleScreen — 조건과 주소', () => {
     expect(requestsTo(requests, LIST_PATH).at(-1)?.url.searchParams.has('plantId')).toBe(false);
   });
 
-  it('초기화하면 기본 조건으로 돌아간다', async () => {
+  it('초기화하면 기본 조건으로 돌아가고, 초기화 단추도 거둔다', async () => {
     const { user } = renderScreen(
       [listRoute(), ...lookupRoutes()],
       '?from=2026-10-01&supplier=8101&open=0&overdue=1&page=2',
@@ -509,9 +511,25 @@ describe('InboundScheduleScreen — 조건과 주소', () => {
     await waitFor(() => {
       expect(currentLocation()).toBe(ROUTE);
     });
+    expect(screen.queryByRole('button', { name: messages.common.reset })).not.toBeInTheDocument();
+
+    await openDetail(user);
 
     expect(screen.getByRole('checkbox', { name: t.fields.openOnly })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: t.quick.overdue })).not.toBeChecked();
+  });
+
+  /* C-6 — 처음 조건 그대로면 「초기화」가 할 일이 없다. 칸을 고치거나 다른 조건이 걸리면 그때 보인다. */
+  it('초기화는 처음 조건에서는 없고, 조건을 고치면 나타난다', async () => {
+    const { user } = renderScreen([listRoute(), ...lookupRoutes()]);
+
+    await screen.findByText('SAMPLE-PO-0001');
+    expect(screen.queryByRole('button', { name: messages.common.reset })).not.toBeInTheDocument();
+
+    await openDetail(user);
+    await user.type(screen.getByLabelText(t.fields.q), 'S');
+
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeInTheDocument();
   });
 });
 
@@ -643,7 +661,9 @@ describe('InboundScheduleScreen — 조회 실패', () => {
 
     expect(screen.queryByText(t.empty.noResultTitle)).not.toBeInTheDocument();
     // 조건을 고칠 수단은 남는다.
-    expect(screen.getByRole('button', { name: t.quick.detailOpen })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: messages.common.filterMore.open }),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText(t.quick.item)).toBeInTheDocument();
 
     const before = requestsTo(requests, LIST_PATH).length;
@@ -949,6 +969,7 @@ describe('InboundScheduleScreen — 빠른 조회', () => {
     const { user } = renderScreen([listRoute(), ...lookupRoutes()]);
 
     await screen.findByText('SAMPLE-PO-0001');
+    await openDetail(user);
     await user.click(screen.getByRole('checkbox', { name: t.quick.today }));
 
     await waitFor(() => {
@@ -966,23 +987,35 @@ describe('InboundScheduleScreen — 빠른 조회', () => {
   /* 날짜만 「조회」를 기다리면 뒤이은 품목코드 조회가 옛 기간으로 나간다(2026-10-21 보고). */
   it('납기를 바꾸면 조회 단추 없이 바로 그 기간으로 조회한다', async () => {
     const { requests, user } = renderScreen([listRoute(), ...lookupRoutes()]);
+    const from = addDays(TODAY, 1);
+    const to = addDays(TODAY, 3);
 
     await screen.findByText('SAMPLE-PO-0001');
-    const from = screen.getByLabelText(t.fields.periodFrom);
-    await user.clear(from);
-    await user.type(from, '2026-01-05');
+    // 납기는 한 칸(기간 달력)이다 — 시작과 끝을 함께 골라야 값이 나간다(C-12).
+    await pickRange(user, screen.getByLabelText(t.fields.period), from, to);
 
     await waitFor(() => {
-      expect(
-        requestsTo(requests, LIST_PATH).at(-1)?.url.searchParams.get('expectedReceiptDateFrom'),
-      ).toBe('2026-01-05');
+      const query = requestsTo(requests, LIST_PATH).at(-1)?.url.searchParams;
+      expect(query?.get('expectedReceiptDateFrom')).toBe(from);
+      expect(query?.get('expectedReceiptDateTo')).toBe(to);
     });
+    expect(currentLocation()).toBe(`${ROUTE}?from=${from}&to=${to}`);
+  });
+
+  /* 지연은 납기와 상관없이 늦은 발주 전부라, 켜져 있는 동안 납기 칸을 잠근다. */
+  it('지연이 걸려 있으면 납기 칸이 잠긴다', async () => {
+    renderScreen([listRoute(), ...lookupRoutes()], '?overdue=1');
+
+    await screen.findByText('SAMPLE-PO-0001');
+
+    expect(screen.getByLabelText(t.fields.period)).toBeDisabled();
   });
 
   it('「지연」은 켜는 즉시 납기 기간과 상관없이 지연만 조회한다', async () => {
     const { requests, user } = renderScreen([listRoute(), ...lookupRoutes()]);
 
     await screen.findByText('SAMPLE-PO-0001');
+    await openDetail(user);
     await user.click(screen.getByRole('checkbox', { name: t.quick.overdue }));
 
     await waitFor(() => {
@@ -990,16 +1023,44 @@ describe('InboundScheduleScreen — 빠른 조회', () => {
     });
   });
 
-  it('상세 조건은 접혀 있고, 걸린 상세 조건이 있으면 펼친 채로 들어온다', async () => {
-    renderScreen([listRoute(), ...lookupRoutes()], `?q=SAMPLE`);
+  /* C-6 — 조건 더보기는 늘 접힌 채로 열고, 접힌 칸에 걸린 조건은 칩이 알린다. 칩의 ×는 그 조건만 풀고 바로 다시 조회한다. */
+  it('조건 더보기는 접힌 채로 들어오고, 접힌 칸에 걸린 조건은 칩으로 보인다', async () => {
+    const { user } = renderScreen([listRoute(), ...lookupRoutes()], `?q=SAMPLE&overdue=1`);
 
     await screen.findByText('SAMPLE-PO-0001');
 
-    expect(screen.getByRole('button', { name: t.quick.detailClose })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: messages.common.filterMore.open })).toHaveAttribute(
       'aria-expanded',
-      'true',
+      'false',
     );
+    expect(screen.queryByRole('checkbox', { name: t.quick.today })).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: t.fields.openOnly })).not.toBeInTheDocument();
+    expect(screen.getByText(t.filters.chipQ('SAMPLE'))).toBeInTheDocument();
+    // 「지연」은 표의 상태 칸에도 있는 글자라 칩은 × 이름으로 찾는다.
+    expect(screen.getByRole('button', { name: t.filters.chipRemoveOverdue })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveOverdue }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}?q=SAMPLE`);
+    });
+
+    // 펼치면 칸에 값이 보이므로 칩을 거둔다.
+    await openDetail(user);
+
     expect(screen.getByLabelText(t.fields.q)).toBeVisible();
+    expect(screen.queryByText(t.filters.chipQ('SAMPLE'))).not.toBeInTheDocument();
+  });
+
+  it('「미완료만」을 끈 조건은 접혀 있어도 칩으로 보이고, ×로 다시 켠다', async () => {
+    const { user } = renderScreen([listRoute(), ...lookupRoutes()], '?open=0');
+
+    await screen.findByText('SAMPLE-PO-0001');
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveOpenOnlyOff }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(ROUTE);
+    });
   });
 });
 

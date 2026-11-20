@@ -1,5 +1,3 @@
-import { messages } from '@omf-mes/i18n';
-
 /**
  * 조회 조건 — **주소가 정본이다.** 새로고침·뒤로가기·공유가 같은 결과를 내게 하려면
  * 화면 상태가 아니라 주소가 조건을 들고 있어야 한다.
@@ -14,8 +12,6 @@ import { messages } from '@omf-mes/i18n';
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
-
-const t = messages.stocktaking;
 
 export interface CountFilters {
   /** 창고 번호. 정수만 뜻이 있다 — 계약이 `warehouseId`를 정수로 요구한다. */
@@ -195,90 +191,4 @@ export const toFilterQuery = (filters: CountFilters): CountFilterQuery => {
     ...(to === '' ? {} : { plannedDateTo: to }),
     ...(filters.inProgressOnly ? { inProgressOnly: true as const } : {}),
   };
-};
-
-/**
- * 칩이 되는 조건. **기간은 칩 하나다** — 시작과 종료가 한 조건이라 따로 떼면
- * 한쪽만 지웠을 때 남은 쪽이 무엇을 뜻하는지 읽기 어렵다.
- */
-export type ChipFilterKey = 'warehouse' | 'period' | 'inProgress';
-
-export interface FilterChip {
-  key: ChipFilterKey;
-  label: string;
-  /** 제거 버튼의 접근 이름. 「제거」가 둘이면 어느 조건을 푸는 것인지 알 수 없다. */
-  removeLabel: string;
-}
-
-/**
- * 참조 조건의 표시 이름. **화면이 이름으로 풀어 넘긴다.**
- *
- * 이 모듈이 번호를 문구로 바꾸지 않는 것이 #44를 구조로 막는 형태다 —
- * 내부 번호를 문자열로 만드는 자리가 아예 없으면 그 값이 화면에 샐 경로도 없다.
- */
-export interface FilterChipNames {
-  warehouse: string;
-}
-
-/** 기간 칩의 문구. 한쪽만 넣은 기간도 조건이므로 세 갈래로 갈린다. */
-const periodLabel = (from: string, to: string): string => {
-  if (from !== '' && to !== '') return t.filters.chipPeriodBoth(from, to);
-
-  return from !== '' ? t.filters.chipPeriodFrom(from) : t.filters.chipPeriodTo(to);
-};
-
-/**
- * 적용된 조건마다 칩 하나. 순서는 조건 줄의 컨트롤 순서와 같다.
- *
- * **칩의 판정 기준을 요청의 판정 기준과 같게 둔다.** 둘이 갈리면 손으로 고친 주소
- * (`?from=2026-13-01`)에서 **조건은 걸리지 않는데 칩만 뜬다** —
- * 사용자는 칩을 보고 조건이 걸린 줄 알고, 결과가 그대로인 이유를 화면 어디에서도 읽을 수 없다.
- */
-export const toFilterChips = (filters: CountFilters, names: FilterChipNames): FilterChip[] => {
-  const from = readDateFilter(filters.from);
-  const to = readDateFilter(filters.to);
-
-  const candidates: [FilterChip, boolean][] = [
-    [
-      {
-        key: 'warehouse',
-        label: t.filters.chipWarehouse(names.warehouse),
-        removeLabel: t.filters.chipRemoveWarehouse,
-      },
-      readNumberFilter(filters.warehouse) !== '',
-    ],
-    [
-      {
-        key: 'period',
-        label: periodLabel(from, to),
-        removeLabel: t.filters.chipRemovePeriod,
-      },
-      from !== '' || to !== '',
-    ],
-    [
-      {
-        key: 'inProgress',
-        label: t.filters.chipInProgress,
-        removeLabel: t.filters.chipRemoveInProgress,
-      },
-      filters.inProgressOnly,
-    ],
-  ];
-
-  return candidates.filter(([, applied]) => applied).map(([chip]) => chip);
-};
-
-/**
- * 칩 하나를 푼다. **기간은 두 조건을 함께 푼다** — 칩이 하나인데 한쪽만 풀면
- * 칩을 지웠는데 조건이 남아 결과가 그대로다.
- */
-export const clearFilter = (filters: CountFilters, key: ChipFilterKey): CountFilters => {
-  switch (key) {
-    case 'period':
-      return { ...filters, from: '', to: '' };
-    case 'inProgress':
-      return { ...filters, inProgressOnly: false };
-    default:
-      return { ...filters, [key]: '' };
-  }
 };

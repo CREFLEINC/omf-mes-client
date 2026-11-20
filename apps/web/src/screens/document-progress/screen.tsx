@@ -935,6 +935,9 @@ export const DocumentProgressScreen = () => {
                   onSearch={(nextFilters) => {
                     applyQuery(nextFilters);
                   }}
+                  onRemoveFilter={(key) => {
+                    applyQuery({ ...filters, [key]: DEFAULT_PROGRESS_FILTERS[key] });
+                  }}
                   onReset={() => {
                     applyQuery(DEFAULT_PROGRESS_FILTERS);
                   }}

@@ -6,15 +6,10 @@ import { FieldLabel } from './field-label';
 import type { SelectOption } from './types';
 
 /**
- * 선택칸의 최소 폭 갈래(배치 규범 3-2의 옵트인). `codeName`은 「코드 · 이름」 선택지를 담는다
- * — 이 화면의 창고·품목 선택지가 그 형태다.
- *
- * **`app.css`가 아니라 여기 둔다** — 공통 클래스(`.wide-select` 13rem)는 여러 화면이
- * 함께 쓰는 값이라 이 화면 하나 때문에 올리면 다른 화면의 줄이 이유 없이 일찍 넘어간다.
+ * 조회 조건 칸 폭(C-19) — 좁음 160px(`sm`) · 보통 240px(`md`). 정한 폭이라 고른 값에 따라 칸 폭이 바뀌지 않는다(값이 길면
+ * 말줄임). 창고 · 품목은 「코드 · 이름」 참조라 보통, 묶기는 고정 선택지라 좁음이다.
  */
-export type SelectOptionWidth = 'code' | 'codeName';
-
-const CODE_NAME_MIN_WIDTH = '18.5rem';
+export type FilterFieldWidth = 'sm' | 'md';
 
 export interface SelectFieldProps {
   label: string;
@@ -24,7 +19,7 @@ export interface SelectFieldProps {
   /** 선택지의 한계(잘림·불러오기 실패·매달린 조건 미충족) 등을 밝히는 보조 문구. */
   note?: string;
   placeholder?: string;
-  optionWidth?: SelectOptionWidth;
+  fieldWidth: FilterFieldWidth;
 }
 
 /**
@@ -42,19 +37,15 @@ export const SelectField = ({
   onChange,
   note,
   placeholder,
-  optionWidth,
+  fieldWidth,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
 
   const hasEmptyOption = options.some((option) => option.value === '');
-  const isWide = optionWidth !== undefined;
 
   return (
-    <div
-      className={isWide ? 'field-cell wide-select' : 'field-cell'}
-      style={optionWidth === 'codeName' ? { minWidth: CODE_NAME_MIN_WIDTH } : undefined}
-    >
+    <div className={`field-cell filter-field-${fieldWidth}`}>
       <FieldLabel htmlFor={id} label={label} />
       <Select
         id={id}
@@ -73,7 +64,7 @@ export const SelectField = ({
   );
 };
 
-export interface ItemSelectFieldProps extends Omit<SelectFieldProps, 'options' | 'optionWidth'> {
+export interface ItemSelectFieldProps extends Omit<SelectFieldProps, 'options' | 'fieldWidth'> {
   /** 목록 맨 앞의 고정 선택지 — 조건 줄의 「전체」. */
   leadingOptions?: SelectOption[];
 }
@@ -95,7 +86,7 @@ export const ItemSelectField = ({
   const hasEmptyOption = leadingOptions?.some((option) => option.value === '') ?? false;
 
   return (
-    <div className="field-cell wide-select" style={{ minWidth: CODE_NAME_MIN_WIDTH }}>
+    <div className="field-cell filter-field-md">
       <FieldLabel htmlFor={id} label={label} />
       <ItemSelect
         id={id}

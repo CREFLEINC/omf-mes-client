@@ -118,51 +118,9 @@ export const lookupNote = (lookup: LookupResult): string | undefined => {
 };
 
 export const lookupKeys = {
-  suppliers: ['po-board-lookups', 'suppliers'] as const,
   plants: ['po-board-lookups', 'plants'] as const,
   itemName: (itemId: number) => ['po-board-lookups', 'item', itemId] as const,
   storageLocations: ['po-board-lookups', 'code', 'SL_TYPE'] as const,
-};
-
-/**
- * 공급사 — 표의 공급사 칸과 조건 줄의 공급사 선택지가 함께 쓴다.
- *
- * 계약이 거래처를 공급사·고객으로 가르는 조건을 주지 않으므로 전체 거래처를 받는다.
- * 좁혀 받을 근거가 생기면 그때 쿼리를 더한다 — 지금 지어내면 고를 수 있는 값이 사라진다.
- */
-export const useSupplierOptions = (): LookupResult => {
-  const { client } = useApiClient();
-
-  const query = useQuery({
-    queryKey: lookupKeys.suppliers,
-    queryFn: () =>
-      fetchAllPages((page, size) =>
-        runRequest(() =>
-          client.GET('/mdm/partners', {
-            params: { query: { includeInactive: true, page, size } },
-          }),
-        ),
-      ),
-  });
-
-  const data = query.data;
-
-  return {
-    entries:
-      data?.items.map((item) => ({
-        value: String(item.partnerId),
-        label: `${item.partnerCode} · ${item.partnerName}`,
-        isActive: item.isActive,
-        code: item.partnerCode,
-        name: item.partnerName,
-      })) ?? EMPTY_ENTRIES,
-    truncated: data?.truncated === true,
-    isError: query.isError,
-    isLoading: query.isPending,
-    refetch: () => {
-      void query.refetch();
-    },
-  };
 };
 
 /** 공장 — 조건 줄의 공장 선택지와 조건 칩이 쓴다. 표에는 공장 열이 없다(폭 예산). */

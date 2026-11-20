@@ -68,8 +68,6 @@ export const supplierReturn: Translated<typeof ko.supplierReturn> = {
     all: 'Tất cả',
     periodNote:
       'Không đặt khoảng thời gian thì hiện phạm vi mặc định do máy chủ quy định. Muốn thu hẹp thì hãy chọn ngày nhập kho.',
-    periodClearNote:
-      'Ngày nhập kho chỉ xóa được bằng 「Đặt lại」. Các điều kiện khác thì gỡ bằng dấu × trên bảng điều kiện.',
     lookupFailed: 'Không tải được danh sách tên. Hãy thử lại.',
     lookupTruncated:
       'Danh sách tên chỉ về một phần. Giá trị cần tìm có thể không có trong danh sách — không phải là đã mất.',

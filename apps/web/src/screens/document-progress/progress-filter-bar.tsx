@@ -2,6 +2,14 @@ import { Button, Checkbox, DatePicker, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  hasChangedFilters,
+  useFilterMore,
+  type HiddenFilterChip,
+} from '../../patterns/filter-more';
+
 import { FieldLabel } from './field-label';
 import { DEFAULT_PROGRESS_FILTERS, type ProgressFilters } from './filters';
 import { SelectField } from './select-field';
@@ -22,11 +30,16 @@ export interface ProgressFilterBarProps {
   /** 상태 선택지 — 공통코드에서 온다. 못 받았으면 비어 「전체」만 남는다. */
   statusOptions: SelectOption[];
   onSearch: (filters: ProgressFilters) => void;
+  /** 접힌 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. */
+  onRemoveFilter: (key: HiddenFilterKey) => void;
   onReset: () => void;
 }
 
+/** 「조건 더보기」에 접힌 조건 — 칩으로 알리고 ×로 푼다. */
+export type HiddenFilterKey = 'status' | 'cancellableOnly';
+
 /**
- * 진행현황 조회 조건 줄 — **다섯 축**이다(입고 관리처럼 한 줄).
+ * 진행현황 조회 조건 줄 — **다섯 축**이다.
  *
  * 트리거 모델은 「모아서 적용」이다 — 조건을 고치는 동안 조회가 나가면 반쯤 지운 검색어로
  * 요청이 나간다. 「조회」를 누를 때만 주소가 바뀌고 그때 조회된다.
@@ -38,8 +51,9 @@ export interface ProgressFilterBarProps {
  *
  * 품목 · 자재 LOT · 창고 번호 칸과 칸 아래 안내 두 줄은 걷었다(사용자 지시 2026-11-19).
  *
- * **조건 칩을 두지 않는다.** 조건이 다섯이고 전부 이 줄에 그대로 서 있어 칩이 같은 사실을 두 번
- * 말한다 — 칩은 조건이 접히거나 다른 탭에 걸릴 때 값을 되짚는 수단이고, 이 화면에는 그 자리가 없다.
+ * **보이는 칸은 셋이다**(C-6 · 관리웹 정리 시안 A, 2026-11-20) — 문서 유형 · 문서 일자 · 문서번호. 상태 · 지금 취소
+ * 가능한 것만은 「조건 더보기」에 접는다. 칩은 접힌 칸에 걸린 조건에만 선다 — 보이는 칸의 값을 칩으로 겹쳐 적으면 같은
+ * 사실을 두 번 말한다. 「초기화」는 바뀐 것이 있을 때만 보인다.
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
@@ -49,9 +63,11 @@ export const ProgressFilterBar = ({
   disabledTypeNote,
   statusOptions,
   onSearch,
+  onRemoveFilter,
   onReset,
 }: ProgressFilterBarProps) => {
   const periodId = useId();
+  const more = useFilterMore();
   const [filters, setFilters] = useState<ProgressFilters>(appliedFilters);
 
   /*
@@ -103,83 +119,123 @@ export const ProgressFilterBar = ({
     onReset();
   };
 
+  /* 접힌 칸의 조건만 칩으로. 상태는 이름으로 적는다(선택지에 없으면 코드 그대로). */
+  const statusLabel =
+    statusOptions.find((option) => option.value === appliedStatus)?.label ?? appliedStatus;
+  const hiddenChips: HiddenFilterChip<HiddenFilterKey>[] = [
+    ...(appliedStatus === ''
+      ? []
+      : [
+          {
+            key: 'status' as const,
+            label: t.filters.chipStatus(statusLabel),
+            removeLabel: t.filters.chipRemoveStatus,
+          },
+        ]),
+    ...(appliedCancellableOnly
+      ? [
+          {
+            key: 'cancellableOnly' as const,
+            label: t.fields.cancellableOnly,
+            removeLabel: t.filters.chipRemoveCancellableOnly,
+          },
+        ]
+      : []),
+  ];
+  const isChanged = hasChangedFilters(DEFAULT_PROGRESS_FILTERS, filters, appliedFilters);
+
   return (
-    <div className="filter-bar">
-      {/* 유형은 「전체」로 조회할 수 없다 — 「전체」를 두지 않고 하나를 고르게 한다. */}
-      <SelectField
-        label={t.fields.documentType}
-        options={documentTypeOptions}
-        value={filters.documentType}
-        note={disabledTypeNote}
-        placeholder={t.filters.choose}
-        onChange={(value) => {
-          setFilters((prev) => ({ ...prev, documentType: value }));
-        }}
-      />
-
-      <SelectField
-        label={t.fields.status}
-        options={[{ value: '', label: t.filters.all }, ...statusOptions]}
-        value={filters.status}
-        placeholder={t.filters.all}
-        onChange={(value) => {
-          setFilters((prev) => ({ ...prev, status: value }));
-        }}
-      />
-
-      {/*
-       * 기간은 **한 컨트롤**이다 — `mode="range"` 하나가 두 값을 준다. 컴포넌트가 완결된 쌍만
-       * 방출하므로(`from <= to`도 컴포넌트가 보장한다) 화면에 순서 검증을 두지 않고,
-       * 시작만 고른 중간 상태는 `value`가 반쪽으로 받아 그대로 보인다.
-       */}
-      <div className="field-cell">
-        <FieldLabel htmlFor={periodId} label={t.fields.period} />
-        <DatePicker
-          id={periodId}
-          mode="range"
-          placeholder={messages.common.selectDate}
-          value={[filters.from === '' ? null : filters.from, filters.to === '' ? null : filters.to]}
-          onChange={([from, to]) => {
-            setFilters((prev) => ({ ...prev, from, to }));
+    <>
+      <div className="filter-bar">
+        {/* 유형은 「전체」로 조회할 수 없다 — 「전체」를 두지 않고 하나를 고르게 한다. */}
+        <SelectField
+          label={t.fields.documentType}
+          options={documentTypeOptions}
+          value={filters.documentType}
+          note={disabledTypeNote}
+          placeholder={t.filters.choose}
+          onChange={(value) => {
+            setFilters((prev) => ({ ...prev, documentType: value }));
           }}
         />
-      </div>
 
-      {/*
-       * 「지금 취소 가능한 것만」. 라벨을 체크박스의 자식으로 두면 디자인 시스템이 접근 이름을
-       * 이어 준다 — 라벨 층이 없는 컨트롤이라 `.field-cell-unlabeled`로 윗선을 맞춘다.
-       */}
-      <div className="field-cell field-cell-unlabeled">
-        <Checkbox
-          checked={filters.cancellableOnly}
+        {/*
+         * 기간은 **한 컨트롤**이다 — `mode="range"` 하나가 두 값을 준다. 컴포넌트가 완결된 쌍만
+         * 방출하므로(`from <= to`도 컴포넌트가 보장한다) 화면에 순서 검증을 두지 않고,
+         * 시작만 고른 중간 상태는 `value`가 반쪽으로 받아 그대로 보인다.
+         */}
+        <div className="field-cell">
+          <FieldLabel htmlFor={periodId} label={t.fields.period} />
+          <DatePicker
+            id={periodId}
+            mode="range"
+            placeholder={messages.common.selectDate}
+            value={[
+              filters.from === '' ? null : filters.from,
+              filters.to === '' ? null : filters.to,
+            ]}
+            onChange={([from, to]) => {
+              setFilters((prev) => ({ ...prev, from, to }));
+            }}
+          />
+        </div>
+
+        <SearchInput
+          label={t.fields.q}
+          value={filters.q}
           onChange={(event) => {
-            setFilters((prev) => ({ ...prev, cancellableOnly: event.target.checked }));
+            setFilters((prev) => ({ ...prev, q: event.target.value }));
           }}
-        >
-          {t.fields.cancellableOnly}
-        </Checkbox>
-      </div>
+          /* 엔터로도 조회된다 — 검색칸에서 엔터가 아무 일도 하지 않으면 멈춘 것으로 읽힌다. */
+          onSearch={search}
+          clearLabel={messages.common.clear}
+        />
 
-      <SearchInput
-        label={t.fields.q}
-        value={filters.q}
-        onChange={(event) => {
-          setFilters((prev) => ({ ...prev, q: event.target.value }));
-        }}
-        /* 엔터로도 조회된다 — 검색칸에서 엔터가 아무 일도 하지 않으면 멈춘 것으로 읽힌다. */
-        onSearch={search}
-        clearLabel={messages.common.clear}
-      />
-
-      {/* 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다. */}
-      <div className="field-cell field-cell-unlabeled">
-        <div className="filter-actions">
-          <Button onClick={search}>{messages.common.search}</Button>
-          <Button variant="outlined" onClick={reset}>
-            {messages.common.reset}
-          </Button>
+        {/* 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다. */}
+        <div className="field-cell field-cell-unlabeled">
+          <div className="filter-actions">
+            <Button onClick={search}>{messages.common.search}</Button>
+            {isChanged && (
+              <Button variant="outlined" onClick={reset}>
+                {messages.common.reset}
+              </Button>
+            )}
+            <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+      <div id={more.id} hidden={!more.isOpen}>
+        <div className="filter-bar">
+          <SelectField
+            label={t.fields.status}
+            options={[{ value: '', label: t.filters.all }, ...statusOptions]}
+            value={filters.status}
+            placeholder={t.filters.all}
+            onChange={(value) => {
+              setFilters((prev) => ({ ...prev, status: value }));
+            }}
+          />
+
+          {/*
+           * 「지금 취소 가능한 것만」. 라벨을 체크박스의 자식으로 두면 디자인 시스템이 접근 이름을
+           * 이어 준다 — 라벨 층이 없는 컨트롤이라 `.field-cell-unlabeled`로 윗선을 맞춘다.
+           */}
+          <div className="field-cell field-cell-unlabeled">
+            <Checkbox
+              checked={filters.cancellableOnly}
+              onChange={(event) => {
+                setFilters((prev) => ({ ...prev, cancellableOnly: event.target.checked }));
+              }}
+            >
+              {t.fields.cancellableOnly}
+            </Checkbox>
+          </div>
+        </div>
+      </div>
+
+      <HiddenFilterChips open={more.isOpen} chips={hiddenChips} onRemove={onRemoveFilter} />
+    </>
   );
 };

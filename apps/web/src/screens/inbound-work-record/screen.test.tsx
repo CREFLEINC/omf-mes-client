@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { renderWithProviders } from '../../test/api-harness';
-import { FINAL, IQC_PENDING, READY, RECEIVING, ROUTE, workRecordStub } from './fixtures';
+import { FINAL, IQC_PENDING, PLANT, READY, RECEIVING, ROUTE, workRecordStub } from './fixtures';
 import { InboundWorkRecordScreen } from './screen';
 
 const t = messages.inboundWorkRecord;
@@ -178,5 +178,59 @@ describe('W-01-16 입하/입고 작업 기록 — 상세', () => {
 
     expect(screen.queryByText(/ERP 송신/)).toBeNull();
     expect(screen.queryByRole('button', { name: /ERP/ })).toBeNull();
+  });
+});
+
+describe('W-01-16 입하/입고 작업 기록 — 조회 조건', () => {
+  const PLANT_2 = { ...PLANT, plantId: 8402, plantCode: 'G2', plantName: '합성 2공장' };
+  const setupPlants = (route = ROUTE) => {
+    const stub = workRecordStub({ plants: [PLANT, PLANT_2] });
+    renderWithProviders(<InboundWorkRecordScreen />, { fetch: stub.fetch, route });
+    return { ...stub, user: userEvent.setup() };
+  };
+
+  it('공장이 하나면 공장 칸도 「조건 더보기」도 없다', async () => {
+    setup();
+
+    await rowOf(READY.inboundLotNo);
+    expect(screen.queryByRole('combobox', { name: t.filters.plant })).toBeNull();
+    expect(screen.queryByRole('button', { name: messages.common.filterMore.open })).toBeNull();
+  });
+
+  /* C-6 — 보이는 칸은 입하일 · 공급사 · 품목·입하 LOT 셋이다. 공장은 접혀 있고, 첫 공장이 아니면 칩으로 알린다. */
+  it('공장은 「조건 더보기」에 접혀 있고, 첫 공장이 아닌 공장은 칩으로 보이며 ×로 첫 공장으로 돌린다', async () => {
+    const { recorded, user } = setupPlants(`${ROUTE}&plant=8402`);
+
+    await screen.findByText(t.filters.chipPlant('합성 2공장'));
+    expect(screen.queryByRole('combobox', { name: t.filters.plant })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+
+    expect(screen.getByRole('combobox', { name: t.filters.plant })).toBeVisible();
+    // 펼치면 칸에 값이 보이므로 칩을 거둔다.
+    expect(screen.queryByText(t.filters.chipPlant('합성 2공장'))).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.close }));
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemovePlant }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(t.filters.chipPlant('합성 2공장'))).toBeNull();
+    });
+    await waitFor(() => {
+      expect(
+        recorded
+          .filter((call) => call.url.pathname === '/logistics/inbound-lots')
+          .at(-1)
+          ?.url.searchParams.get('plantId'),
+      ).toBe('8401');
+    });
+  });
+
+  it('첫 공장이면 칩이 없다', async () => {
+    setupPlants();
+
+    await rowOf(READY.inboundLotNo);
+    expect(screen.getByRole('button', { name: messages.common.filterMore.open })).toBeVisible();
+    expect(screen.queryByRole('button', { name: t.filters.chipRemovePlant })).toBeNull();
   });
 });

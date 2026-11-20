@@ -251,6 +251,9 @@ describe('W-06-25 공급사·품목 기본 정보', () => {
     const { user } = setup();
     await table();
 
+    /* C-6 — 찾기 칸이 비어 있으면 「초기화」가 할 일이 없어 서지 않는다. */
+    expect(screen.queryByRole('button', { name: t.filters.reset })).toBeNull();
+
     await user.type(screen.getByLabelText(t.filters.supplier), '공급사 나');
     expect((await table()).queryByText('SYN-CAP')).toBeNull();
     expect((await table()).getByText('SYN-RES')).toBeInTheDocument();
@@ -313,8 +316,10 @@ describe('W-06-25 공급사·품목 기본 정보', () => {
 
   /* 실기 접근성 트리에서 이름 없는 단추로 보고됐다 — 역할 · 이름으로 찾혀야 한다(G2 L22). */
   it('G2 L22 조건 줄의 [초기화] · 목록 머리의 [추가]는 이름 있는 단추다', async () => {
-    setup();
+    const { user } = setup();
     await table();
+    /* 초기화는 찾기 칸에 글자가 있을 때만 선다(C-6). */
+    await user.type(screen.getByLabelText(t.filters.item), 'cap');
 
     expect(screen.getByRole('button', { name: t.filters.reset })).toHaveAccessibleName('초기화');
     expect(screen.getByRole('button', { name: t.add })).toHaveAccessibleName('추가');
