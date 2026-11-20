@@ -30,10 +30,12 @@ const screenSources = (): { path: string; source: string }[] => {
 /**
  * 손 입력이 더할 것이 없는 화면.
  *
- * 이 둘은 스캔한 코드를 서버에 묻지 않고 미리 받아 둔 설비 목록에서 맞춘다. 목록이 오면
+ * 설비 둘은 스캔한 코드를 서버에 묻지 않고 미리 받아 둔 설비 목록에서 맞춘다. 목록이 오면
  * 선택칸으로 고를 수 있고, 목록이 안 오면 손으로 쳐도 맞출 데가 없다.
+ *
+ * 입하 등록은 라벨 스캔만 받는다(사용자 지시 2026-11-20 「직접 입력 단추 없애」).
  */
-const EXEMPT = ['equipment-failure', 'equipment-inspection'];
+const EXEMPT = ['equipment-failure', 'equipment-inspection', 'inbound-receipt'];
 
 /**
  * 손으로 넣는 길은 스캔 칸 그 자리에서 연다.

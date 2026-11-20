@@ -42,11 +42,11 @@ export const ConfirmDialog = ({
     showCloseButton={false}
     footer={
       <>
-        {/* 핵심 액션 규격(72px). 두 단추가 나란히 서므로 높이를 맞춘다. */}
-        <Button variant="outlined" size="2xl" className="confirm-dialog__action" onClick={onCancel}>
+        {/* 48px - 72px 은 작은 창 안에서 내용보다 단추가 커 보였다(사용자 지시 2026-11-20). 두 단추 높이를 맞춘다. */}
+        <Button variant="outlined" size="lg" className="confirm-dialog__action" onClick={onCancel}>
           {cancelLabel}
         </Button>
-        <Button variant="filled" size="2xl" className="confirm-dialog__action" onClick={onProceed}>
+        <Button variant="filled" size="lg" className="confirm-dialog__action" onClick={onProceed}>
           {proceedLabel}
         </Button>
       </>
