@@ -39,8 +39,6 @@ export const workOrderProgress: Translated<typeof ko.workOrderProgress> = {
     /** ⛔ 넓은 기간을 막지 않는다 — 예고이지 금지가 아니다. */
     periodWide: 'Kỳ vượt quá 3 tháng. Tra cứu có thể chậm.',
 
-    processUnavailable: 'Hiện chưa lọc được theo công đoạn.',
-
     statusUnavailable:
       'Chưa nhận được danh sách giá trị trạng thái. Hiện chưa lọc được theo trạng thái.',
     lookupFailed: 'Chưa nhận được các lựa chọn. Hãy thử làm mới trang.',
@@ -51,12 +49,6 @@ export const workOrderProgress: Translated<typeof ko.workOrderProgress> = {
 
   /** ⛔ 숫자 식별자로 메우지 않는다 — 모르면 모른다고 적는다. */
   nameUnknown: 'Đang xác nhận tên',
-
-  summary: {
-    title: 'Tóm tắt',
-    total: 'Tất cả',
-    unavailableMark: 'ⓘ',
-  },
 
   list: {
     title: 'Danh sách',
@@ -89,10 +81,6 @@ export const workOrderProgress: Translated<typeof ko.workOrderProgress> = {
 
     /** ⛔ 빈칸으로 두면 「정상」으로 읽힌다 — 판정할 수 없다는 뜻을 값 자리에 적는다. */
     delayUnknown: 'Không đánh giá được',
-
-    quantityNote: 'Số lượng hiển thị nguyên năm nhánh mà máy chủ gửi về.',
-
-    joinedColumnsNote: 'P/O và công đoạn không nhận được tên nên không đặt cột.',
   },
 
   page: {

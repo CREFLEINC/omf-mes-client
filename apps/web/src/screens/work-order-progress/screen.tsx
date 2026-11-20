@@ -34,7 +34,6 @@ import {
 import { toWorkOrderRow } from './row-view';
 import { type SortKey, type SortState } from './sort';
 import { useWorkOrderStatusOptions } from './status-options';
-import { SummaryPane } from './summary-pane';
 import { WorkOrderTable } from './work-order-table';
 
 const t = messages.workOrderProgress;
@@ -180,8 +179,6 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
             void queryClient.invalidateQueries({ queryKey: workOrderProgressKeys.all });
           }}
         />
-
-        <SummaryPane total={list.data?.page.total ?? null} />
 
         {/* ⛔ 「결과가 없습니다」로만 두면 조건이 잘못된 줄 알고 조건을 더 만지게 된다. */}
         {pageView.isBeyondLast && (

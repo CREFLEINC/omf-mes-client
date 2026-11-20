@@ -5243,7 +5243,8 @@ dialog.routing-history-dialog {
 }
 
 .work-order-progress-basis-copy {
-  display: grid;
+  display: flex;
+  align-items: center;
   gap: var(--space-1);
 }
 
@@ -5253,27 +5254,10 @@ dialog.routing-history-dialog {
   letter-spacing: var(--type-label-lg-tracking);
 }
 
-.work-order-progress-basis-copy > p {
-  margin: 0;
-  color: var(--on-surface-variant);
-}
-
-.work-order-progress-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
-  gap: var(--space-3);
-  min-width: 0;
-}
-
-.work-order-progress-list-notes {
+.work-order-progress-title {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-5);
-  color: var(--on-surface-variant);
-}
-
-.work-order-progress-list-notes > p {
-  margin: 0;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 .work-order-progress-table {
@@ -37098,3 +37082,29 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .users-roles-label-row > .users-roles-scope-hint {
   margin: 0;
 }
+
+/* ⓘ(patterns/info-tip.tsx) — 라벨 · 제목 바로 뒤의 작은 아이콘 단추. 문장은 DS 툴팁으로 뜬다. */
+.info-tip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: none;
+  color: var(--on-surface-variant);
+  cursor: help;
+}
+
+.info-tip:hover {
+  color: var(--on-surface);
+}
+
+.info-tip:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
