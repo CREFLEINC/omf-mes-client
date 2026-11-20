@@ -127,14 +127,12 @@ describe('POP API 중계 — 넘기는 방식', () => {
    *    사유 없이 잠겼다.
    */
   it('중계한 응답에 저장 금지를 붙인다', async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValue(
-        new Response('{"ok":true}', {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      );
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response('{"ok":true}', {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
 
     const relayed = await relayToApi(
       fetchImpl,
