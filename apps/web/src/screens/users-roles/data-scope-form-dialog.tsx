@@ -104,7 +104,7 @@ export const DataScopeFormDialog = ({
       <div className="form-grid">
         {/* 규범 3-2 — 「SYN-BU-01 · 합성 사업부 A」는 트리거 폭에 갇혀 잘린다. */}
         <SelectField
-          label={t.scope.dialog.businessUnitLabel}
+          label={t.scope.fields.businessUnit}
           wide
           options={[{ value: '', label: t.scope.dialog.allBusinessUnits }, ...businessUnitOptions]}
           value={values.businessUnitId}
@@ -114,7 +114,7 @@ export const DataScopeFormDialog = ({
         />
 
         <SelectField
-          label={t.scope.dialog.plantLabel}
+          label={t.scope.fields.plant}
           wide
           options={[{ value: '', label: t.scope.dialog.allPlants }, ...plantOptions]}
           value={values.plantId}

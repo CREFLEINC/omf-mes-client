@@ -2998,9 +2998,9 @@ describe('UsersRolesScreen 데이터 접근범위', () => {
 
     const dialog = await screen.findByRole('dialog');
 
-    await user.click(within(dialog).getByLabelText('사업부 선택'));
+    await user.click(within(dialog).getByLabelText('사업부'));
     await user.click(await screen.findByRole('option', { name: 'SYN-BU-02 · 합성 사업부 B' }));
-    await user.click(within(dialog).getByLabelText('공장 선택'));
+    await user.click(within(dialog).getByLabelText('공장'));
     await user.click(await screen.findByRole('option', { name: 'SYN-PLT-02 · 합성 공장 B' }));
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '추가' }));
 
@@ -3277,7 +3277,7 @@ describe('UsersRolesScreen 데이터 접근범위 — 만들 수 없는 줄', ()
     const dialog = await screen.findByRole('dialog');
 
     // 이미 「합성 사업부 B · (전체)」 줄이 있다 — 빈 공장은 0으로 접혀 같은 짝이 된다.
-    await user.click(within(dialog).getByLabelText('사업부 선택'));
+    await user.click(within(dialog).getByLabelText('사업부'));
     await user.click(await screen.findByRole('option', { name: 'SYN-BU-02 · 합성 사업부 B' }));
 
     expect(within(screen.getByRole('dialog')).getByRole('button', { name: '추가' })).toBeDisabled();
@@ -3293,9 +3293,9 @@ describe('UsersRolesScreen 데이터 접근범위 — 만들 수 없는 줄', ()
 
     const dialog = await screen.findByRole('dialog');
 
-    await user.click(within(dialog).getByLabelText('사업부 선택'));
+    await user.click(within(dialog).getByLabelText('사업부'));
     await user.click(await screen.findByRole('option', { name: 'SYN-BU-02 · 합성 사업부 B' }));
-    await user.click(within(screen.getByRole('dialog')).getByLabelText('공장 선택'));
+    await user.click(within(screen.getByRole('dialog')).getByLabelText('공장'));
     await user.click(await screen.findByRole('option', { name: 'SYN-PLT-02 · 합성 공장 B' }));
 
     expect(within(screen.getByRole('dialog')).getByRole('button', { name: '추가' })).toBeEnabled();

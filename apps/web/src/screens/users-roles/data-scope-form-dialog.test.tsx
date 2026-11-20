@@ -76,8 +76,8 @@ describe('DataScopeFormDialog', () => {
   it('두 축 모두 「(전체)」를 고를 수 있다', () => {
     renderDialog();
 
-    expect(screen.getByText('모든 사업부')).toBeInTheDocument();
-    expect(screen.getByText('모든 공장')).toBeInTheDocument();
+    expect(screen.getByText('사업부 선택')).toBeInTheDocument();
+    expect(screen.getByText('공장 선택')).toBeInTheDocument();
   });
 
   /**
@@ -129,7 +129,7 @@ describe('DataScopeFormDialog', () => {
 
     expect(confirmButton()).toBeDisabled();
 
-    await user.click(screen.getByLabelText('사업부 선택'));
+    await user.click(screen.getByLabelText('사업부'));
     await user.click(await screen.findByRole('option', { name: 'SYN-BU-01 · 합성 사업부 A' }));
 
     await user.click(confirmButton());
@@ -147,8 +147,8 @@ describe('DataScopeFormDialog', () => {
       draft: { ...emptyDraft, businessUnitId: '2001', plantId: '4001' },
     });
 
-    await user.click(screen.getByLabelText('공장 선택'));
-    await user.click(await screen.findByRole('option', { name: '모든 공장' }));
+    await user.click(screen.getByLabelText('공장'));
+    await user.click(await screen.findByRole('option', { name: '공장 선택' }));
     await user.click(confirmButton());
 
     expect(props.onConfirm).toHaveBeenCalledWith({
