@@ -36759,3 +36759,20 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   margin: var(--space-1) 0 0;
   white-space: nowrap;
 }
+
+/* 사용자 추가 팝업의 사번 안내 — 칸 묶음의 한 줄 전체, 왼쪽 끝부터(사용자 지시 2026-11-20 · #333). */
+.users-roles-create-worker-error {
+  grid-column: 1 / -1;
+}
+
+.users-roles-create-worker-error > .iqc-inspection-action-note.users-roles-dialog-note[data-tone] {
+  margin: 0;
+}
+
+/* 숨긴 칸 설명은 자리를 차지하지 않게 — 보이는 안내는 아래 줄에 있다. */
+.users-roles-create-worker p:has(> .visually-hidden) {
+  margin: 0;
+  min-height: 0;
+  height: 0;
+  overflow: hidden;
+}

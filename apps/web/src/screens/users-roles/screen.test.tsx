@@ -1481,9 +1481,13 @@ describe('UsersRolesScreen 등록', () => {
       );
       await user.click(within(createDialog()).getByRole('button', { name: '사용자 추가' }));
 
+      // 칸 설명(숨김)과 보이는 안내 줄, 두 곳에 같은 문장이 선다.
       expect(
-        await within(createDialog()).findByText('재직 중인 작업자 사번이 없습니다.'),
-      ).toBeInTheDocument();
+        await within(createDialog()).findAllByText('재직 중인 작업자 사번이 없습니다.'),
+      ).toHaveLength(2);
+      expect(
+        within(createDialog()).getByRole('textbox', { name: '연결할 작업자 사번' }),
+      ).toHaveAccessibleDescription('재직 중인 작업자 사번이 없습니다.');
       expect(requests.some((request) => request.method === 'POST')).toBe(false);
     });
   });

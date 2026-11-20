@@ -1392,27 +1392,36 @@ export const UsersRolesScreen = () => {
           /* 팝업이 제목과 [취소][사용자 추가]를 맡는다(사용자 지시 2026-11-20 · #333). */
           showHeading={false}
           createExtraField={
-            <div className="field-cell users-roles-create-worker">
-              <FieldLabel
-                htmlFor={createWorkerInputId}
-                label={t.workerLink.createLabel}
-                optionalMark={t.user.optionalMark}
-              />
-              <TextField
-                id={createWorkerInputId}
-                fullWidth
-                value={createWorkerNo}
-                onChange={(event) => {
-                  setCreateWorkerNo(event.target.value);
-                  setCreateWorkerError(null);
-                }}
-                error={
-                  createWorkerError === null ? undefined : (
-                    <WorkerNoError message={createWorkerError} />
-                  )
-                }
-              />
-            </div>
+            <>
+              <div className="field-cell users-roles-create-worker">
+                <FieldLabel
+                  htmlFor={createWorkerInputId}
+                  label={t.workerLink.createLabel}
+                  optionalMark={t.user.optionalMark}
+                />
+                <TextField
+                  id={createWorkerInputId}
+                  fullWidth
+                  value={createWorkerNo}
+                  onChange={(event) => {
+                    setCreateWorkerNo(event.target.value);
+                    setCreateWorkerError(null);
+                  }}
+                  /* 칸은 빨간 테두리만, 읽어 주는 문장은 숨김 — 보이는 안내는 아래 줄 왼쪽 끝에 둔다. */
+                  error={
+                    createWorkerError === null ? undefined : (
+                      <span className="visually-hidden">{createWorkerError}</span>
+                    )
+                  }
+                />
+              </div>
+              {/* 사번 안내는 창 왼쪽 끝에서 한 줄로(사용자 지시 2026-11-20 · #333). */}
+              {createWorkerError !== null && (
+                <div className="users-roles-create-worker-error" aria-hidden>
+                  <WorkerNoError message={createWorkerError} />
+                </div>
+              )}
+            </>
           }
           showActions={false}
           onDeactivate={() => undefined}
