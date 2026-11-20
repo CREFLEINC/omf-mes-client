@@ -9,6 +9,7 @@ import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/scr
 import { PopMaterialDefectScreen } from '../screens/pop-material-defect/screen';
 import { PopOqcInspectionScreen } from '../screens/pop-oqc-inspection/screen';
 import { PopShipmentCompleteScreen } from '../screens/pop-shipment-complete/screen';
+import { ProductLotSplitScreen } from '../screens/product-lot-split/screen';
 import { RepackLabelIssueScreen } from '../screens/repack-label-issue/screen';
 import { ProductionFlowScreen } from '../screens/production-result/screen';
 import { ReworkResultRegisterScreen } from '../screens/rework-result-register/screen';
@@ -146,6 +147,11 @@ export const popRoutes: RouteObject[] = [
    * 범위 밖이고 집행은 서버의 403 이다.
    */
   { path: '/pop/goods-issue-qr', element: <GoodsIssueQrScreen /> },
+  /*
+   * P-04-08 생산 LOT 분리(피처 013 · omf-all-around#303) — 창고 묶음. 제품 창고 생산 LOT 을 수량으로 둘로 나누고
+   * 라벨 두 장을 찍는다. 진입 컨텍스트 없이 LOT 스캔부터 시작한다. 집행은 서버(P-04-08 권한 · 라벨 출력 공정)다.
+   */
+  { path: '/pop/product-lot-split', element: <ProductLotSplitScreen /> },
   /*
    * P-04-05 — 포장이 끝난 상자를 스캔해 **출하 단위**로 묶고, 마감하면 납품 라벨이 나간다
    * (SHIP-UNIT-01 · 설계 §6). ⚠ 서버 경로가 아직 없어 조회·쓰기는 붙어 있지 않다(P4c).

@@ -114,6 +114,18 @@ export const POP_SCREENS: readonly PopScreen[] = [
    * ⭐ **설계보다 앞선 화면이다**(`docs/decisions.md` 결정 16) — 화면 코드도 클라이언트가
    *    부여했다. 도메인 06(기준정보연계)에 POP 화면이 없어 번호 체계를 그대로 이었다.
    */
+  /*
+   * 피처 013(omf-all-around#303) — 제품 창고 생산 LOT 을 나누고 라벨 두 장을 찍는다. 남은 작업 수(`countKey`)는 두지
+   * 않는다 — 확인 대기 수는 화면 안 목록 머리에만 보인다(설계 검토 2026-11-20). 이름은 단말 언어를 따른다.
+   */
+  {
+    path: '/pop/product-lot-split',
+    code: 'P-04-08',
+    group: 'warehouse',
+    get name(): string {
+      return messages.productLotSplit.title;
+    },
+  },
   {
     path: '/pop/location-label',
     code: 'P-06-01',

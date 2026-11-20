@@ -102,6 +102,7 @@ import { inspectionSheetEntry } from './inspection-sheet-entry';
 import { materialDefect } from './material-defect';
 import { popOqcInspection } from './pop-oqc-inspection';
 import { popShipmentComplete } from './pop-shipment-complete';
+import { productLotSplit } from './product-lot-split';
 import { popMaterialLotLabel } from './pop-material-lot-label';
 import { popChrome } from './pop-chrome';
 import { popUniform } from './pop-uniform';
@@ -271,6 +272,7 @@ export const vi: Translated<Messages> = {
   materialDefect,
   popOqcInspection,
   popShipmentComplete,
+  productLotSplit,
   popMaterialLotLabel,
   popChrome,
   popUniform,

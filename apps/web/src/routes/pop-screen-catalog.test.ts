@@ -104,4 +104,13 @@ describe('POP 화면 이름표', () => {
     });
     expect(complete?.name).toBe(messages.popShipmentComplete.title);
   });
+
+  /* 피처 013 — 창고 묶음, 남은 작업 수 없음(확인 대기 수는 화면 안 목록 머리에만 · 설계 검토 2026-11-20). */
+  it('T023 생산 LOT 분리(P-04-08)는 창고 묶음이고 남은 작업 수 키가 없으며 이름이 머리줄 제목과 같다', () => {
+    const split = POP_SCREENS.find((screen) => screen.code === 'P-04-08');
+
+    expect(split).toMatchObject({ path: '/pop/product-lot-split', group: 'warehouse' });
+    expect(split?.countKey).toBeUndefined();
+    expect(split?.name).toBe(messages.productLotSplit.title);
+  });
 });

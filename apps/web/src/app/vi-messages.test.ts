@@ -135,6 +135,7 @@ const TRANSLATED = [
   'materialDefect',
   'popOqcInspection',
   'popShipmentComplete',
+  'productLotSplit',
   'popMaterialLotLabel',
   'pqcInspection',
   'productionResult',
