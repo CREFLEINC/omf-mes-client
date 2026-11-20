@@ -1,6 +1,10 @@
 import { Button, Checkbox, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useColumnWidths } from '../../patterns/column-resize';
 import { FLAG_KEYS, flagLabel, type FlagKey } from './flags';
 import { isRowOpen } from './grid-draft';
 import type { ProcessRowView } from './types';
@@ -15,6 +19,8 @@ export interface ProcessGridProps {
   onToggle: (processId: number, key: FlagKey) => void;
   onToggleRow: (processId: number, open: boolean) => void;
   onRemove: (processId: number) => void;
+  /** 공정이 없을 때 표 안에 낼 빈 상태. */
+  empty?: ReactNode;
 }
 
 /**
@@ -33,12 +39,14 @@ export const ProcessGrid = ({
   onToggle,
   onToggleRow,
   onRemove,
+  empty,
 }: ProcessGridProps) => {
   const columns: Column<ProcessRowView>[] = [
     /* 한 행의 여덟 기능을 함께 켜고 끄는 칸 — 공정 칸 앞에 따로 둔다. 글자 없이 확인칸만. */
     {
       key: 'openAll',
       header: t.grid.openAll,
+      width: '88px',
       align: 'center',
       render: (row) => (
         <Checkbox
@@ -55,6 +63,7 @@ export const ProcessGrid = ({
     {
       key: 'process',
       header: t.grid.process,
+      width: '160px',
       render: (row) => {
         const error = rowErrors.get(row.processId);
         return error === undefined ? (
@@ -70,6 +79,7 @@ export const ProcessGrid = ({
     ...FLAG_KEYS.map((key): Column<ProcessRowView> => ({
       key,
       header: flagLabel(key),
+      width: '104px',
       align: 'center',
       render: (row) => (
         <Checkbox
@@ -85,6 +95,8 @@ export const ProcessGrid = ({
     {
       key: 'remove',
       header: t.grid.manage,
+      width: '72px',
+      align: 'center',
       render: (row) => (
         <Button
           variant="text"
@@ -101,13 +113,23 @@ export const ProcessGrid = ({
     },
   ];
 
+  /* 다른 표와 같이 열 폭 끌기 · 순서 바꾸기, 남는 폭은 나눠 갖고 넘치면 가로로 구른다(사용자 지시 2026-11-20 · #333). */
+  const ordered = useColumnOrder('omf-mes:terminal-process-map:grid:order', columns);
+  const resizable = useColumnWidths('omf-mes:terminal-process-map:grid', ordered);
+  const fit = useFitColumns(resizable.columns, { scrollX: true });
+
   return (
-    <div className="wide-table terminal-map-matrix">
+    <div
+      ref={fit.ref}
+      className="inspection-queue-table terminal-map-matrix"
+      style={resizable.style}
+    >
       <Table
-        columns={columns}
+        columns={fit.columns}
         rows={rows}
         getRowId={(row) => String(row.processId)}
         density="compact"
+        empty={empty}
       />
     </div>
   );

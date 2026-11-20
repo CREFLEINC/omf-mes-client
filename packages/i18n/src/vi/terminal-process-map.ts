@@ -13,8 +13,8 @@ import type { Translated } from './translated';
  * ⭐ **중지는 지우는 것이 아니다.** `xóa` 를 쓰지 않는다 — 그 단말이 남긴 기록이 참조로 남는다.
  */
 export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
-  title: 'Thiết lập ánh xạ máy quét - công đoạn',
-  menuPath: 'Quản trị hệ thống › Ánh xạ máy quét - công đoạn',
+  title: 'Quản lý thiết bị đầu cuối',
+  menuPath: 'Quản trị hệ thống › Quản lý thiết bị đầu cuối',
 
   panes: {
     list: 'Danh sách máy quét',
@@ -70,6 +70,9 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     type: 'Loại máy quét',
     status: 'Trạng thái vận hành',
     registration: 'Trạng thái đăng ký',
+    /** 단말 정보 카드 — 설비 · 창고를 정하지 않았을 때(사용자 지시 2026-11-20 · #333). */
+    unassigned: 'Chưa chỉ định',
+    registeredAt: 'Thời điểm đăng ký',
     equipment: 'Thiết bị lắp đặt',
     equipmentNone: 'Chưa chỉ định thiết bị',
     equipmentHint: 'Hãy chỉ định nếu là loại POP',
@@ -77,11 +80,16 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     typePlaceholder: 'Chọn loại',
     warehouse: 'Kho',
     warehouseAll: 'Toàn nhà máy (không chỉ định)',
-    warehouseLookupFailed: 'Không tải được danh sách kho nên hiện không chọn được.',
     register: 'Đăng ký',
     /** 창고 칸 이름 오른쪽 안내 라벨(사용자 시안 2026-11-20 · #333). */
     warehouseScope: 'Danh sách công việc và số việc còn lại được hiển thị theo phạm vi đã chọn.',
     optionalMark: '(tùy chọn)',
+    equipmentPickerTitle: 'Chọn thiết bị lắp đặt',
+    equipmentCodeColumn: 'Mã thiết bị',
+    equipmentNameColumn: 'Tên thiết bị',
+    warehousePickerTitle: 'Chọn kho',
+    warehouseCodeColumn: 'Mã kho',
+    warehouseNameColumn: 'Tên kho',
     save: 'Lưu',
     saving: 'Đang lưu.',
     saved: 'Đã lưu thông tin máy quét.',
@@ -100,7 +108,6 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     requiredType: 'Hãy nhập mã loại.',
     requiredStatus: 'Hãy nhập mã trạng thái vận hành.',
     plantLookupFailed: 'Không tải được danh sách nhà máy nên hiện chưa chọn được.',
-    equipmentLookupFailed: 'Không tải được danh sách thiết bị nên hiện chưa chọn được.',
     lookupTruncated:
       'Chỉ hiển thị một phần danh sách. Không thấy cái cần tìm thì hãy hỏi người phụ trách.',
     selectPlaceholder: 'Hãy chọn',
@@ -108,10 +115,8 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
 
   token: {
     issue: 'Phát hành token đăng ký',
-    title: 'Token đăng ký máy quét',
-    lead: 'Quét mã QR hoặc dán mã đăng ký trên máy. Trạng thái sẽ hoàn tất sau khi máy xác nhận với máy chủ và nhận danh sách nhân viên.',
-    reissueWarning:
-      'Khi phát hành lại, kết nối của mọi máy đã đăng ký sẽ bị hủy. Sau đó phải đăng ký lại các máy.',
+    title: 'Đăng ký thiết bị',
+    lead: 'Quét mã QR trên thiết bị cần đăng ký.',
     imageLabel: 'Hình mã dùng để đăng ký máy quét',
     copy: 'Sao chép mã đăng ký',
     copied: 'Đã sao chép mã đăng ký.',
@@ -120,29 +125,28 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
       'Trình duyệt chặn sao chép trên địa chỉ này nên không thể sao chép mã đăng ký. Hãy quét mã QR trên máy để đăng ký.',
     copyError: 'Không sao chép được. Hãy thử lại hoặc quét mã QR trên máy để đăng ký.',
     issuedAt: 'Thời điểm phát hành',
-    expiresAt: 'Hết hạn',
+    expiresAt: 'Thời điểm hết hạn',
     noExpiry: 'Không hết hạn',
     close: 'Đóng',
     failed: 'Không phát hành được token đăng ký. Hãy thử lại.',
-    textOmitted: 'Mã đăng ký không hiện trên màn hình. Hãy quét QR hoặc sao chép và dán vào máy.',
+    textOmitted: 'Dán mã đã sao chép vào màn hình đăng ký của thiết bị.',
   },
 
   grid: {
     process: 'Công đoạn',
     openAll: 'Chọn tất cả',
     add: 'Thêm công đoạn',
-    addPlaceholder: 'Chọn công đoạn cần thêm',
+    addPlaceholder: 'Chọn công đoạn',
     manage: 'Quản lý',
     remove: 'Loại trừ',
-    emptyTitle: 'Chưa có công đoạn nào được thiết lập',
-    empty: 'Để dùng máy quét này cho công việc sản xuất, hãy thêm công đoạn ở phía trên.',
-    /** ⭐ `quyền` 을 쓰지 않는다 — 보안 경계가 아니라 오조작을 막는 기능 구성이다. */
-    purpose:
-      'Thiết lập theo từng công đoạn các chức năng được dùng trên máy quét này. Khi lưu, cấu hình công đoạn sẽ được thay đổi theo danh sách hiện tại. Công đoạn đã loại trừ khỏi danh sách cũng sẽ bị loại khỏi máy quét này.',
-    save: 'Lưu cấu hình',
+    emptyTitle: 'Chưa có công đoạn nào được thiết lập.',
+    /** 저장된 공정을 목록에서 뺐을 때 저장 단추 옆 경고(사용자 지시 2026-11-20 · #333). */
+    removedWarning:
+      'Khi lưu, các công đoạn đã bỏ khỏi danh sách sẽ không dùng được trên thiết bị này.',
+    save: 'Lưu',
     saved: 'Đã lưu cấu hình chức năng.',
     saving: 'Đang lưu.',
-    reset: 'Hủy thay đổi',
+    reset: 'Hủy',
     duplicate: 'Công đoạn này đã được thêm.',
     noFlag: 'Hãy bật ít nhất một chức năng ngoài đóng lệnh sản xuất',
     selectTerminalTitle: 'Vui lòng chọn máy quét.',

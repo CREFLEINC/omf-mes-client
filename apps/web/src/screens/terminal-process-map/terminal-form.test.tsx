@@ -1,15 +1,15 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ApiRequestError } from '../../patterns/request';
+import { renderWithProviders } from '../../test/api-harness';
 import {
   codeSelectOptions,
   type CodeLookup,
   type LookupResult,
   type TerminalCodeNames,
 } from './lookups';
-import { EMPTY_TERMINAL } from './terminal-draft';
+import { EMPTY_TERMINAL, nextTerminalCode } from './terminal-draft';
 import { TerminalForm } from './terminal-form';
 
 const emptyLookup: LookupResult = {
@@ -42,12 +42,8 @@ const noCodes: TerminalCodeNames = (() => {
   return { type: empty.nameOf, status: empty.nameOf, typeLookup: empty, statusLookup: empty };
 })();
 
-const showForm = (
-  isNew: boolean,
-  equipments: LookupResult = emptyLookup,
-  codeNames: TerminalCodeNames = syntheticCodes,
-) =>
-  render(
+const showForm = (isNew: boolean, codeNames: TerminalCodeNames = syntheticCodes) =>
+  renderWithProviders(
     <TerminalForm
       draft={{ ...EMPTY_TERMINAL, statusCode: 'RUNNING' }}
       errors={{}}
@@ -56,7 +52,6 @@ const showForm = (
       saveError={null}
       fieldErrors={{}}
       plants={emptyLookup}
-      equipments={equipments}
       codeNames={codeNames}
       onChange={vi.fn()}
       onSubmit={vi.fn()}
@@ -76,34 +71,8 @@ describe('단말 등록·수정 폼의 운영 상태', () => {
   });
 
   it('공통코드를 못 받아도 지금 값은 코드 그대로 선택된 채 남는다', () => {
-    showForm(false, emptyLookup, noCodes);
+    showForm(false, noCodes);
     expect(screen.getByLabelText('운영 상태')).toHaveTextContent('RUNNING');
-  });
-
-  it('설비 조회 403은 미지정 선택지만 남더라도 빈 목록으로 숨기지 않는다', () => {
-    const retry = vi.fn();
-    showForm(true, {
-      ...emptyLookup,
-      isError: true,
-      error: new ApiRequestError(
-        {
-          kind: 'validation',
-          errors: [
-            {
-              scope: 'screen',
-              code: 'PERMISSION_DENIED',
-              message: '이 기능을 쓸 권한이 없습니다.',
-            },
-          ],
-        },
-        { httpStatus: 403 },
-      ),
-      refetch: retry,
-    });
-
-    expect(screen.getByText('이 기능을 쓸 권한이 없습니다.')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '다시 시도' })).toBeNull();
-    expect(retry).not.toHaveBeenCalled();
   });
 });
 
@@ -132,7 +101,7 @@ describe('공통코드 선택지', () => {
 
 describe('설치 설비는 POP 단말에서만 (사용자 지시 2026-11-20 · #333)', () => {
   const showWith = (terminalTypeCode: string, onChange = vi.fn()) =>
-    render(
+    renderWithProviders(
       <TerminalForm
         draft={{ ...EMPTY_TERMINAL, terminalTypeCode, equipment: '7' }}
         errors={{}}
@@ -141,7 +110,6 @@ describe('설치 설비는 POP 단말에서만 (사용자 지시 2026-11-20 · #
         saveError={null}
         fieldErrors={{}}
         plants={emptyLookup}
-        equipments={emptyLookup}
         codeNames={syntheticCodes}
         onChange={onChange}
         onSubmit={vi.fn()}
@@ -166,6 +134,20 @@ describe('설치 설비는 POP 단말에서만 (사용자 지시 2026-11-20 · #
     await user.click(screen.getByRole('combobox', { name: '단말 유형' }));
     await user.click(await screen.findByRole('option', { name: '합성 모바일' }));
 
-    expect(onChange).toHaveBeenLastCalledWith({ terminalTypeCode: 'MOBILE', equipment: '' });
+    expect(onChange).toHaveBeenLastCalledWith({
+      terminalTypeCode: 'MOBILE',
+      equipment: '',
+      equipmentLabel: '',
+    });
+  });
+});
+
+describe('단말 코드 자동 채움 (사용자 지시 2026-11-20 · #333)', () => {
+  it('그 유형의 일련번호 중 다음 번호를 세 자리로 낸다 — 다른 모양의 코드는 세지 않는다', () => {
+    expect(nextTerminalCode('POP', [])).toBe('POP-001');
+    expect(nextTerminalCode('POP', ['POP-001', 'POP-007', 'QC-DEMO-POP-EQ', 'POP-X'])).toBe(
+      'POP-008',
+    );
+    expect(nextTerminalCode('MOBILE', ['POP-003', 'MOBILE-012'])).toBe('MOBILE-013');
   });
 });

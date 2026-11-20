@@ -5,6 +5,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { requireIfMatch, useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
 import type { TerminalFilters } from './filters';
+import { nextTerminalCode } from './terminal-draft';
 import {
   toProcessRowView,
   toTerminalView,
@@ -95,6 +96,37 @@ export const useTerminals = (filters: TerminalFilters): UseQueryResult<TerminalL
         page: data.page,
       })),
   });
+};
+
+/** 다음 단말 코드를 셀 때 받는 쪽 크기 — 서버 상한(200). 넘치면 이미 있는 번호를 낼 수 있어 채우지 않는다. */
+const CODE_SCAN_SIZE = 200;
+
+/**
+ * 단말 추가 팝업이 채울 다음 단말 코드(`유형-일련번호` · 사용자 지시 2026-11-20 · #333).
+ * 미사용까지 모든 단말 중 그 유형 접두어가 든 코드를 받아 센다. 유형을 고르기 전이거나, 못 받았거나, 잘려 왔으면 `null`.
+ */
+export const useNextTerminalCode = (typeCode: string): string | null => {
+  const { client } = useApiClient();
+  const query = useQuery({
+    queryKey: [...terminalKeys.all, 'next-code', typeCode] as const,
+    enabled: typeCode !== '',
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/terminals', {
+          params: {
+            query: { q: `${typeCode}-`, includeInactive: true, page: 1, size: CODE_SCAN_SIZE },
+          },
+        }),
+      ),
+  });
+  const data = query.data;
+
+  if (typeCode === '' || data === undefined || data.page.total > data.items.length) return null;
+
+  return nextTerminalCode(
+    typeCode,
+    data.items.map((item) => item.terminalCode),
+  );
 };
 
 /**

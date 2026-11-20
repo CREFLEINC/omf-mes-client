@@ -34,6 +34,13 @@ export const FieldLabel = ({
         *
       </span>
     )}
+    <LabelAddons note={note} optionalMark={optionalMark} />
+  </span>
+);
+
+/** 라벨 뒤 「(선택)」과 안내 라벨 — 공용 찾기 칸(`ReferenceField`)의 `labelAddon` 에도 그대로 쓴다. */
+export const LabelAddons = ({ note, optionalMark }: { note?: string; optionalMark?: string }) => (
+  <>
     {optionalMark !== undefined && <span className="optional-mark"> {optionalMark}</span>}
     {note !== undefined && (
       <span className="iqc-inspection-action-note terminal-map-label-note" data-tone="info">
@@ -41,5 +48,5 @@ export const FieldLabel = ({
         {note}
       </span>
     )}
-  </span>
+  </>
 );

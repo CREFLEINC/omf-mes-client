@@ -54,18 +54,32 @@ export const TokenDialog = ({ token, terminalCode, onClose }: TokenDialogProps) 
       open={token !== null}
       onClose={onClose}
       title={t.token.title}
+      className="terminal-map-token-dialog"
+      /* 시안대로(사용자 지시 2026-11-20 · #333) — 오른쪽 위 X 없이 [닫기]로만 닫는다. */
+      showCloseButton={false}
+      closeOnBackdropClick={false}
       footer={<Button onClick={onClose}>{t.token.close}</Button>}
     >
       {token !== null && (
         <>
-          <p className="dialog-lead">{t.token.lead}</p>
+          {/* 시안 — 가운데 한 줄 안내 · QR · 복사 단추와 붙여넣기 안내 · 구분선 아래 발급 · 만료 일시. */}
+          <p className="terminal-map-token-lead">{t.token.lead}</p>
           <div className="token-figure">
             <QrCode value={token.token} label={`${terminalCode} ${t.token.imageLabel}`} />
           </div>
-          <Button variant="outlined" onClick={() => void copyCode()}>
+          <Button
+            variant="outlined"
+            className="terminal-map-token-copy"
+            onClick={() => void copyCode()}
+          >
             {t.token.copy}
           </Button>
-          {copyResult === 'copied' ? <p role="status">{t.token.copied}</p> : null}
+          <p className="field-note terminal-map-token-hint">{t.token.textOmitted}</p>
+          {copyResult === 'copied' ? (
+            <p role="status" className="terminal-map-token-hint">
+              {t.token.copied}
+            </p>
+          ) : null}
           {copyResult === 'unavailable' ? (
             <AlertBanner className="terminal-map-notice" variant="warning">
               {t.token.copyUnavailable}
@@ -81,16 +95,12 @@ export const TokenDialog = ({ token, terminalCode, onClose }: TokenDialogProps) 
               {t.token.copyFailed}
             </AlertBanner>
           ) : null}
-          <p className="field-note">{t.token.textOmitted}</p>
-          <dl className="token-meta">
+          <dl className="token-meta terminal-map-token-meta">
             <dt>{t.token.issuedAt}</dt>
             <dd>{formatMoment(token.issuedAt)}</dd>
             <dt>{t.token.expiresAt}</dt>
             <dd>{token.expiresAt === null ? t.token.noExpiry : formatMoment(token.expiresAt)}</dd>
           </dl>
-          <AlertBanner className="terminal-map-notice" variant="warning">
-            {t.token.reissueWarning}
-          </AlertBanner>
         </>
       )}
     </Dialog>

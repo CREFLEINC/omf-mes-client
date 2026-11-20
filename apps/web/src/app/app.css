@@ -18209,6 +18209,46 @@ dialog.layout-editor-dialog {
   padding: var(--space-3) 0;
 }
 
+/* 단말 등록 창(사용자 시안 2026-11-20 · #333) — 가운데 정렬 안내 · QR · 복사, 구분선 아래 발급 · 만료 일시. */
+.terminal-map-token-dialog [class*="_body_"] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.terminal-map-token-lead {
+  margin: 0;
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+  text-align: center;
+}
+
+.terminal-map-token-dialog .token-figure {
+  padding: var(--space-2) 0;
+}
+
+.terminal-map-token-copy {
+  min-width: 14rem;
+}
+
+.terminal-map-token-hint {
+  margin: 0;
+  text-align: center;
+}
+
+.token-meta.terminal-map-token-meta {
+  align-self: stretch;
+  grid-template-columns: 10rem 1fr;
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.terminal-map-token-dialog .terminal-map-notice {
+  align-self: stretch;
+}
+
 /* 발급 시각·만료 — 이름과 값을 두 칸으로 세운다. 값이 길어도 이름 칸은 흔들리지 않는다. */
 .token-meta {
   display: grid;
@@ -18244,54 +18284,21 @@ dialog.layout-editor-dialog {
   margin-block-start: 0;
 }
 
-/*
- * 공정별 기능 구성 표(매트릭스) — 열: 전체 선택 | 공정 | 기능 여덟 칸 | 관리.
- * 표는 카드 폭을 다 쓰고, 남는 폭은 기능 여덟 칸이 똑같이 나눈다(고정 배치: 전체 선택·공정·관리 칸만
- * 폭을 정하고 나머지는 균등). 좁은 폭에서는 최소 폭 아래로 줄지 않고 표 안에서만 가로로 넘긴다.
- * 세로선은 공정|기능, 기능|관리 두 개뿐 — 전체 선택은 그 공정 행 자체를 다루는 조작이라 공정 칸과
- * 한 덩어리로 읽히게 선을 긋지 않는다.
- */
-.wide-table.terminal-map-matrix table {
-  width: 100%;
-  min-width: 57.5rem;
-  table-layout: fixed;
+/* 공정이 없을 때 — 표 머리는 두고, 빈 문구는 가로로 구르는 표가 아니라 보이는 폭 가운데에(#333). */
+.terminal-map-matrix {
+  container-type: inline-size;
+}
+
+.terminal-map-matrix td[colspan] > * {
+  position: sticky;
+  left: 0;
+  width: 100cqw;
 }
 
 /* 줄 오류는 공정 이름 바로 아래 — 줄 높이만 늘고 열 폭은 그대로다. */
 .terminal-map-process-cell {
   display: grid;
   gap: var(--space-1);
-}
-
-/* 열이 열한 개라 칸 좌우 여백을 한 단계 줄여(12px → 8px) 1280 폭 카드 안에 들어오게 한다. */
-.terminal-map-matrix table th,
-.terminal-map-matrix table td {
-  padding-inline: var(--space-2);
-}
-
-.terminal-map-matrix th:first-child,
-.terminal-map-matrix td:first-child {
-  /* 머리 「전체 선택」이 한 줄로 읽히는 최소 폭. */
-  width: 3.5rem;
-}
-
-.terminal-map-matrix th:nth-child(2),
-.terminal-map-matrix td:nth-child(2) {
-  width: 12rem;
-  border-right: 1px solid var(--outline-variant);
-}
-
-/* 공정명이 행의 이름이다 — 굵게, 긴 이름은 칸을 넓히지 않고 줄을 바꾼다. */
-.terminal-map-matrix td:nth-child(2) {
-  font-weight: 600;
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-
-.terminal-map-matrix th:last-child,
-.terminal-map-matrix td:last-child {
-  width: 3rem;
-  border-left: 1px solid var(--outline-variant);
 }
 
 /* 전체 선택·기능 칸 — 상자 둘레까지 눌리게 누름 영역을 넓힌다(DS 확인칸의 label 이 그대로 받는다). */
@@ -18308,25 +18315,25 @@ dialog.layout-editor-dialog {
  * 「공정 추가」 — 오류·안내를 선택칸 오른쪽 같은 줄에, 세로 가운데를 맞춰 둔다. 문구가 없으면 자리도 없다.
  * 오류 색·aria-describedby 연결은 SelectField 그대로다.
  */
+/* 공정 추가 — 「공정별 기능 구성」 줄 오른쪽 끝(사용자 지시 2026-11-20 · #333). 칸 이름은 선택칸 왼쪽, 오류는 칸 아래. */
 .field-cell.terminal-map-add-field {
   display: grid;
-  grid-template-columns: minmax(13rem, max-content) minmax(0, 1fr);
-  column-gap: var(--space-3);
+  grid-template-columns: auto minmax(16rem, max-content);
   align-items: center;
+  column-gap: var(--space-3);
+  margin-left: auto;
 }
 
 .terminal-map-add-field > .field-label {
-  grid-column: 1 / -1;
+  margin: 0;
 }
 
 .terminal-map-add-field > .terminal-map-field-messages {
   display: block;
   grid-column: 2;
-  grid-row: 2;
 }
 
 .terminal-map-add-field > .terminal-map-field-messages > * {
-  margin-top: 0;
   max-width: none;
 }
 
@@ -18343,44 +18350,9 @@ dialog.layout-editor-dialog {
   -webkit-text-fill-color: var(--on-surface-variant);
 }
 
-/*
- * 단말 정보 — 항목명(작게·보조색) 위, 값 아래의 3열 격자. 넓은 카드의 오른쪽을 비워 두지 않는다.
- * 식별 값(단말 코드)만 조금 굵게 — 제목처럼 보이지 않을 만큼.
- */
+/* 단말 정보 — IQC 입하 정보와 같은 모양(테두리 상자 · 칸 사이 세로선 · 사용자 지시 2026-11-20 · #333). 모양은 `.parts-iqc-facts` 를 그대로 쓴다. */
 .terminal-map-info {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-4) var(--space-5);
-  margin: var(--space-2) 0 0;
-}
-
-.terminal-map-info-field {
-  display: grid;
-  align-content: start;
-  gap: var(--space-1);
-  min-width: 0;
-}
-
-.terminal-map-info-field > dt {
-  margin-bottom: 0;
-}
-
-.terminal-map-info-field > dd {
   margin: 0;
-  color: var(--on-surface);
-  font: var(--type-body-lg);
-  letter-spacing: var(--type-body-lg-tracking);
-  overflow-wrap: anywhere;
-}
-
-.terminal-map-info-field > dd.terminal-map-info-key {
-  font-weight: 500;
-}
-
-@media (max-width: 640px) {
-  .terminal-map-info {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 /* 위 줄 오른쪽 — 사용 · 미사용 라벨과 좌우 · 상하 배치 단추(사용자 지시 2026-11-20 · omf-all-around#333). */
@@ -18407,7 +18379,7 @@ dialog.layout-editor-dialog {
 /* 단말 추가 · 수정 팝업(사용자 시안 2026-11-20 · #333) — 제목 아래 구분선, 두 열. */
 /* 창고 칸 안내 라벨이 한 줄로 들어가는 폭 — 기본 큰 팝업(720px)에서는 두 줄로 접혀 옆 칸과 입력칸 윗선이 어긋난다. */
 dialog.terminal-map-form-dialog {
-  width: min(60rem, calc(100vw - 2rem));
+  width: fit-content;
   max-width: min(60rem, calc(100vw - 2rem));
 }
 
@@ -18417,15 +18389,27 @@ dialog.terminal-map-form-dialog {
 }
 
 .terminal-map-form.form-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(18rem, max-content));
+  column-gap: var(--space-6);
+}
+
+/* 입력 · 선택 · 찾기 칸은 값 길이만큼만(사용자 지시 2026-11-20 · #333) — 칸 이름 줄(안내 라벨)은 열 폭을 그대로 쓴다. */
+.terminal-map-form .field-cell > :not(.field-label, dialog) {
+  width: 100%;
+  max-width: 18rem;
+}
+
+/* 설비 · 창고 찾기 창은 보통 큰 팝업 폭 — 공용 `.reference-field > *` 의 100% 가 창을 화면 너비로 늘린다. */
+.terminal-map-form .reference-field > dialog {
+  max-width: var(--dialog-max-lg);
 }
 
 /* 칸 이름 오른쪽 안내 라벨 — 정보 아이콘 + 파란 바탕, 라벨 줄이 높아지지 않게 여백 · 글자만 줄인다(품질 기준의 잠금 안내와 같다). */
 .field-label > .terminal-map-label-note {
   margin: 0 0 0 var(--space-2);
   padding: 1px var(--space-2);
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
+  font: var(--type-body-md);
+  letter-spacing: var(--type-body-md-tracking);
 }
 
 /* 「(선택)」 · 「*」 — 라벨과 띄운다(라벨 줄이 flex 라 앞 공백이 접힌다). */
@@ -18470,21 +18454,34 @@ dialog.terminal-map-form-dialog {
   letter-spacing: var(--type-title-md-tracking);
 }
 
-.terminal-map-info {
-  margin-top: 0;
+/* 카드 제목 줄 — 왼쪽 제목, 오른쪽 위 단말 조작 단추 · 기능 구성 안내(사용자 지시 2026-11-20 · #333). */
+.terminal-map-settings-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
 }
 
-.form-actions.terminal-map-info-actions {
-  margin-top: 0;
+.terminal-map-grid-head {
+  justify-content: flex-start;
 }
 
-.terminal-map-reissue-warning {
-  justify-self: end;
-  margin: 0;
+.terminal-map-info-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-left: auto;
 }
 
-.terminal-map-grid-purpose {
-  margin: 0;
+/* 이 화면 안내 문구는 한 단계 크게(사용자 지시 2026-11-20 · #333). */
+.terminal-map-settings .iqc-inspection-action-note {
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.terminal-map-removed-note {
+  margin: 0 auto 0 0;
 }
 
 .terminal-map-settings-block > .filter-bar {

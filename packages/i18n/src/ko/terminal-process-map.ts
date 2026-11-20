@@ -6,9 +6,9 @@
  * ⭐ **등록 토큰을 발급해 QR 로 보이는 것이 이 화면이다** — 기기의 유일한 진입이다.
  */
 export const terminalProcessMap = {
-  title: '단말기-공정 매핑 설정',
+  title: '단말 관리',
   /** 메뉴에서 이 화면까지의 경로 — 다른 화면이 「어디로 가라」고 안내할 때 쓴다. 메뉴 라벨과 같아야 한다(app/nav-menu-path.test.ts). */
-  menuPath: '시스템 관리 › 단말기-공정 매핑',
+  menuPath: '시스템 관리 › 단말 관리',
 
   panes: {
     list: '단말 목록',
@@ -67,6 +67,9 @@ export const terminalProcessMap = {
     type: '단말 유형',
     status: '운영 상태',
     registration: '등록 상태',
+    /** 단말 정보 카드 — 설비 · 창고를 정하지 않았을 때(사용자 지시 2026-11-20 · #333). */
+    unassigned: '미지정',
+    registeredAt: '등록 일시',
     equipment: '설치 설비',
     equipmentNone: '설비 미지정',
     /** POP 이 「이 설비」를 전제로 도는 화면들이 이 값을 쓴다 — 라벨 옆 한 줄 안내. 유형과 상관없이 늘 보인다. */
@@ -75,11 +78,16 @@ export const terminalProcessMap = {
     typePlaceholder: '유형 선택',
     warehouse: '창고',
     warehouseAll: '공장 전체 (지정 안 함)',
-    warehouseLookupFailed: '창고 목록을 불러오지 못해 지금은 고를 수 없습니다.',
     register: '등록',
     /** 창고 칸 이름 오른쪽 안내 라벨(사용자 시안 2026-11-20 · #333). */
     warehouseScope: '작업 목록과 남은 작업 수는 선택한 범위를 기준으로 표시됩니다.',
     optionalMark: '(선택)',
+    equipmentPickerTitle: '설치 설비 선택',
+    equipmentCodeColumn: '설비 코드',
+    equipmentNameColumn: '설비명',
+    warehousePickerTitle: '창고 선택',
+    warehouseCodeColumn: '창고 코드',
+    warehouseNameColumn: '창고명',
     save: '저장',
     saving: '저장하는 중입니다.',
     saved: '단말 정보를 저장했습니다.',
@@ -98,18 +106,14 @@ export const terminalProcessMap = {
     requiredType: '유형 코드를 적으세요.',
     requiredStatus: '운영 상태 코드를 적으세요.',
     plantLookupFailed: '공장 목록을 불러오지 못해 지금은 고를 수 없습니다.',
-    equipmentLookupFailed: '설비 목록을 불러오지 못해 지금은 고를 수 없습니다.',
     lookupTruncated: '목록의 일부만 보입니다. 찾는 것이 없으면 담당자에게 문의하세요.',
     selectPlaceholder: '고르세요',
   },
 
   token: {
     issue: '등록 토큰 발급',
-    title: '단말 등록 토큰',
-    lead: '기기에서 QR을 스캔하거나 등록 코드를 붙여넣으세요. 기기가 서버 확인과 작업자 정보 수신을 마치면 등록 완료로 표시됩니다.',
-    /** ⭐ 재발급하면 이전 기기가 끊긴다 — 계약이 세대 번호를 올린다. */
-    reissueWarning:
-      '재발급 시 등록된 모든 기기의 연결이 해제됩니다. 이후 기기를 다시 등록해야 합니다.',
+    title: '단말 등록',
+    lead: '등록할 기기에서 QR 코드를 스캔하세요.',
     imageLabel: '단말 등록용 코드 그림',
     copy: '등록 코드 복사',
     copied: '등록 코드를 복사했습니다.',
@@ -117,13 +121,12 @@ export const terminalProcessMap = {
     copyUnavailable:
       '이 주소에서는 브라우저가 복사를 막아 등록 코드를 복사할 수 없습니다. 기기에서 QR을 스캔해 등록하세요.',
     copyError: '복사하지 못했습니다. 다시 시도하거나 기기에서 QR을 스캔해 등록하세요.',
-    issuedAt: '발급일시',
-    expiresAt: '만료',
+    issuedAt: '발급 일시',
+    expiresAt: '만료 일시',
     noExpiry: '만료 없음',
     close: '닫기',
     failed: '등록 토큰을 발급하지 못했습니다. 다시 시도해 주세요.',
-    textOmitted:
-      '등록 코드는 화면에 표시하지 않습니다. QR을 스캔하거나 복사해 기기에 붙여넣으세요.',
+    textOmitted: '복사한 코드는 기기의 등록 화면에 붙여넣으세요.',
   },
 
   grid: {
@@ -131,29 +134,20 @@ export const terminalProcessMap = {
     /** 여덟 칸을 하나씩 누르지 않게 한 줄을 통째로 여닫는다. */
     openAll: '전체 선택',
     add: '공정 추가',
-    addPlaceholder: '추가할 공정을 선택하세요',
+    addPlaceholder: '공정 선택',
     /** 공정 행 관리 열 — 기능 칸과 성격이 다르다(이 단말의 구성에서 공정을 뺀다). */
     manage: '관리',
     /** ⭐ 공정 마스터를 지우지 않는다 — 저장 때 이 단말의 공정 연결에서만 빠진다. */
     remove: '제외',
-    /**
-     * ⭐ 공정이 없는 단말이 있다(창고 단말). ⚠ 단말에 창고 여부를 가를 속성이 없어 모든 단말에 참인
-     * 문장만 쓴다 — 생산 작업(작업 시작 등)은 공정 연결이 있어야 서버가 받는다.
-     */
-    emptyTitle: '설정된 공정이 없습니다',
-    empty: '이 단말로 생산 작업을 하려면 위에서 공정을 추가해 주세요.',
-    /** ⭐ 보안이 아니라 오조작 방지다. */
-    /*
-     * ⚠ 「체크하지 않은 기능은 쓸 수 없다」고 단정하지 않는다 — 서버가 공정 단위로 막는 것은
-     * 작업 시작·라벨 발행뿐이고, 나머지는 POP 화면 목록을 가르거나(단말 전체 기준) 소비처가 없다.
-     */
-    purpose:
-      '이 단말에서 사용할 기능을 공정별로 설정합니다. 저장하면 현재 목록대로 공정 구성이 변경됩니다. 목록에서 제외한 공정은 이 단말에서도 제외됩니다.',
-    save: '구성 저장',
+    /** ⭐ 공정이 없는 단말이 있다(창고 단말) — 빈 영역에 한 줄만(사용자 지시 2026-11-20 · #333). */
+    emptyTitle: '설정된 공정이 없습니다.',
+    /** 저장된 공정을 목록에서 뺐을 때 저장 단추 옆 경고(사용자 지시 2026-11-20 · #333). */
+    removedWarning: '저장하면 목록에서 뺀 공정을 이 단말에서 사용할 수 없습니다.',
+    save: '저장',
     saved: '기능 구성을 저장했습니다.',
     saving: '저장하는 중입니다.',
     /** 저장하지 않은 변경을 버리고 마지막으로 불러온(저장된) 구성으로 돌아간다. */
-    reset: '변경 취소',
+    reset: '취소',
     duplicate: '이미 추가된 공정입니다.',
     noFlag: '작업지시 마감 말고 기능을 하나 이상 켜세요',
     selectTerminalTitle: '단말을 선택해 주세요.',

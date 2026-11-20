@@ -1,10 +1,18 @@
 import { Button, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
+import { useId, useState } from 'react';
 
+import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner } from '../../patterns/master';
-import { FieldLabel } from './field-label';
+import {
+  PickerDialog,
+  REFERENCE_PAGE_SIZE,
+  ReferenceField,
+  type ReferenceSource,
+} from '../../patterns/reference-picker';
+import { runRequest } from '../../patterns/request';
+import { FieldLabel, LabelAddons } from './field-label';
 import { LoadErrorBanner } from './load-error-banner';
 import {
   codeSelectOptions,
@@ -30,24 +38,12 @@ export interface TerminalFormProps {
   saveError: ApiError | null;
   fieldErrors: Record<string, string>;
   plants: LookupResult;
-  equipments: LookupResult;
-  /** 단말 공장의 창고(피처 002). 주지 않으면 빈 목록이다. */
-  warehouses?: LookupResult;
   /** 단말 유형·운영 상태 선택지 — 공통코드(TERMINAL_TYPE·TERMINAL_STATUS). 저장값은 코드 그대로다. */
   codeNames: TerminalCodeNames;
   onChange: (patch: Partial<TerminalDraft>) => void;
   onSubmit: () => void;
   onCancel: () => void;
 }
-
-const NO_WAREHOUSES: LookupResult = {
-  entries: [],
-  truncated: false,
-  isError: false,
-  error: null,
-  isLoading: false,
-  refetch: () => undefined,
-};
 
 const toOptions = (entries: { value: string; label: string }[]): SelectOption[] =>
   entries.map((entry) => ({ value: entry.value, label: entry.label }));
@@ -68,8 +64,6 @@ export const TerminalForm = ({
   saveError,
   fieldErrors,
   plants,
-  equipments,
-  warehouses = NO_WAREHOUSES,
   codeNames,
   onChange,
   onSubmit,
@@ -79,14 +73,65 @@ export const TerminalForm = ({
   const codeId = `${baseId}-code`;
   const hasPlant = draft.plant !== '';
   const isPop = draft.terminalTypeCode === POP_TYPE;
+  const { client } = useApiClient();
+  /* POP 을 고르면 설비 찾기 창, 공장을 고르면 창고 찾기 창이 바로 뜬다(사용자 지시 2026-11-20 · #333). 닫아도 칸에서 다시 연다. */
+  const [autoPicker, setAutoPicker] = useState<'equipment' | 'warehouse' | null>(null);
+  /* 설치 설비 · 창고는 찾기 창으로 고른다(사용자 지시 2026-11-20 · #333). 사용 중인 것만 낸다. */
+  const equipmentSource: ReferenceSource = {
+    title: t.terminal.equipmentPickerTitle,
+    key: ['terminal-process-map', 'equipment-picker'],
+    columns: { code: t.terminal.equipmentCodeColumn, name: t.terminal.equipmentNameColumn },
+    search: async (q, page) => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/equipments', {
+          params: { query: { ...(q === '' ? {} : { q }), page, size: REFERENCE_PAGE_SIZE } },
+        }),
+      );
+      return {
+        items: data.items
+          .filter((item) => item.isActive)
+          .map((item) => ({
+            id: item.equipmentId,
+            code: item.equipmentCode,
+            name: item.equipmentName,
+          })),
+        total: data.page.total,
+      };
+    },
+  };
+  const warehouseSource: ReferenceSource | null = hasPlant
+    ? {
+        title: t.terminal.warehousePickerTitle,
+        key: ['terminal-process-map', 'warehouse-picker', draft.plant],
+        columns: { code: t.terminal.warehouseCodeColumn, name: t.terminal.warehouseNameColumn },
+        search: async (q, page) => {
+          const plantId = Number(draft.plant);
+          const data = await runRequest(() =>
+            client.GET('/mdm/warehouses', {
+              params: {
+                query: { plantId, ...(q === '' ? {} : { q }), page, size: REFERENCE_PAGE_SIZE },
+              },
+            }),
+          );
+          return {
+            /* 공장 질의를 모르는 서버도 있어 다시 거른다 — 다른 공장 창고는 서버가 400 으로 막는다. */
+            items: data.items
+              .filter((item) => item.isActive && item.plantId === plantId)
+              .map((item) => ({
+                id: item.warehouseId,
+                code: item.warehouseCode,
+                name: item.warehouseName,
+              })),
+            total: data.page.total,
+          };
+        },
+      }
+    : null;
 
   return (
     <>
       <SaveErrorBanner error={saveError} />
       {plants.isError ? <LoadErrorBanner error={plants.error} onRetry={plants.refetch} /> : null}
-      {equipments.isError ? (
-        <LoadErrorBanner error={equipments.error} onRetry={equipments.refetch} />
-      ) : null}
 
       {/*
        * 두 열(사용자 지시 2026-11-20 · #333) — 단말 코드 · (운영 상태) / 단말 유형 · 설치 설비 / 공장 · 창고.
@@ -138,34 +183,40 @@ export const TerminalForm = ({
           placeholder={t.terminal.typePlaceholder}
           onChange={(value) => {
             /* POP 이 아니게 바꾸면 설비 칸이 사라진다 — 보이지 않는 설비가 저장되지 않게 비운다. */
+            if (value === POP_TYPE && draft.terminalTypeCode !== POP_TYPE)
+              setAutoPicker('equipment');
             onChange(
               value === POP_TYPE || value === draft.terminalTypeCode
                 ? { terminalTypeCode: value }
-                : { terminalTypeCode: value, equipment: '' },
+                : { terminalTypeCode: value, equipment: '', equipmentLabel: '' },
             );
           }}
         />
 
-        {/* 설치 설비는 POP 단말일 때만 고른다(선택 · 사용자 지시 2026-11-20 · #333). 아니면 공장이 왼쪽 열에 서도록 비운다. */}
+        {/* 설치 설비는 POP 단말일 때만 고른다(선택 · 사용자 지시 2026-11-20 · #333). */}
         {isPop ? (
-          <SelectField
+          <ReferenceField
             label={t.terminal.equipment}
-            optionalMark={t.terminal.optionalMark}
-            options={[
-              { value: '', label: t.terminal.equipmentNone },
-              ...toOptions(equipments.entries),
-            ]}
-            value={draft.equipment}
-            note={lookupNote(equipments, t.terminal.equipmentLookupFailed)}
-            labelNote={t.terminal.equipmentHint}
-            error={fieldErrors.equipmentId}
+            labelAddon={
+              <LabelAddons note={t.terminal.equipmentHint} optionalMark={t.terminal.optionalMark} />
+            }
+            valueLabel={draft.equipment === '' ? '' : draft.equipmentLabel || draft.equipment}
             placeholder={t.terminal.equipmentNone}
-            wide
-            onChange={(value) => {
-              onChange({ equipment: value });
+            source={equipmentSource}
+            invalid={fieldErrors.equipmentId !== undefined}
+            onPick={(row) => {
+              onChange({ equipment: String(row.id), equipmentLabel: `${row.code} · ${row.name}` });
             }}
-          />
+            onClear={() => {
+              onChange({ equipment: '', equipmentLabel: '' });
+            }}
+          >
+            {fieldErrors.equipmentId !== undefined && (
+              <span className="field-error">{fieldErrors.equipmentId}</span>
+            )}
+          </ReferenceField>
         ) : (
+          /* POP 이 아니면 설비 자리를 비워 둔다 — 공장 · 창고 줄이 그대로 아래에 선다(사용자 지시 2026-11-20 · #333). */
           <div className="terminal-map-form-spacer" aria-hidden="true" />
         )}
 
@@ -180,31 +231,67 @@ export const TerminalForm = ({
           wide
           onChange={(value) => {
             /* 다른 공장의 창고가 남지 않게 비운다. */
-            onChange(value === draft.plant ? { plant: value } : { plant: value, warehouse: '' });
+            if (value !== draft.plant) setAutoPicker('warehouse');
+            onChange(
+              value === draft.plant
+                ? { plant: value }
+                : { plant: value, warehouse: '', warehouseLabel: '' },
+            );
           }}
         />
 
         {/* 창고는 고를 수 있을 때만(공장을 고른 뒤) 보인다(사용자 지시 2026-11-20 · #333). */}
         {hasPlant && (
-          <SelectField
+          <ReferenceField
             label={t.terminal.warehouse}
-            optionalMark={t.terminal.optionalMark}
-            labelNote={t.terminal.warehouseScope}
-            options={[
-              { value: '', label: t.terminal.warehouseAll },
-              ...toOptions(warehouses.entries),
-            ]}
-            value={draft.warehouse}
-            note={lookupNote(warehouses, t.terminal.warehouseLookupFailed)}
-            error={fieldErrors.warehouseId}
+            labelAddon={
+              <LabelAddons
+                note={t.terminal.warehouseScope}
+                optionalMark={t.terminal.optionalMark}
+              />
+            }
+            valueLabel={draft.warehouse === '' ? '' : draft.warehouseLabel || draft.warehouse}
             placeholder={t.terminal.warehouseAll}
-            wide
-            onChange={(value) => {
-              onChange({ warehouse: value });
+            source={warehouseSource}
+            invalid={fieldErrors.warehouseId !== undefined}
+            onPick={(row) => {
+              onChange({ warehouse: String(row.id), warehouseLabel: `${row.code} ${row.name}` });
             }}
-          />
+            onClear={() => {
+              onChange({ warehouse: '', warehouseLabel: '' });
+            }}
+          >
+            {fieldErrors.warehouseId !== undefined && (
+              <span className="field-error">{fieldErrors.warehouseId}</span>
+            )}
+          </ReferenceField>
         )}
       </div>
+
+      {autoPicker === 'equipment' && (
+        <PickerDialog
+          source={equipmentSource}
+          onClose={() => {
+            setAutoPicker(null);
+          }}
+          onPick={(row) => {
+            onChange({ equipment: String(row.id), equipmentLabel: `${row.code} · ${row.name}` });
+            setAutoPicker(null);
+          }}
+        />
+      )}
+      {autoPicker === 'warehouse' && warehouseSource !== null && (
+        <PickerDialog
+          source={warehouseSource}
+          onClose={() => {
+            setAutoPicker(null);
+          }}
+          onPick={(row) => {
+            onChange({ warehouse: String(row.id), warehouseLabel: `${row.code} ${row.name}` });
+            setAutoPicker(null);
+          }}
+        />
+      )}
 
       <div className="form-actions terminal-map-form-actions">
         {isSaving && <p className="field-note form-actions-secondary">{t.terminal.saving}</p>}
