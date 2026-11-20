@@ -77,8 +77,6 @@ export const maintenanceResult: Translated<typeof ko.maintenanceResult> = {
     partsLead:
       'Chọn phiếu xuất kho do logistics tạo để liên kết. Ở đây không tạo phiếu xuất kho và cũng không trừ tồn kho.',
     partsNoLot: 'Phụ tùng không có số LOT. Chỉ ghi mã, tên và số lượng.',
-    partsMasterNote:
-      'Dữ liệu gốc phụ tùng chưa có quy cách · định mức tồn kho nên chỉ hiển thị mã và tên.',
     part: 'Phụ tùng',
     usedQty: 'Số lượng sử dụng',
     goodsIssue: 'Phiếu xuất kho liên kết',

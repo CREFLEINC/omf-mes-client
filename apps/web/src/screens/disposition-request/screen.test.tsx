@@ -378,7 +378,7 @@ describe('DispositionRequestScreen — ② 판정 의뢰', () => {
 });
 
 describe('DispositionRequestScreen — ③ 결과 수신 후', () => {
-  it('판정 완료 대상은 처분 목록을 보이고 후속 버튼은 처분별 사유를 단다', async () => {
+  it('판정 완료 대상은 처분 목록을 보이고, 이 화면에서 열 수 없는 후속(재작업 실적 · 폐기 품의)은 단추를 두지 않는다', async () => {
     const { user } = renderScreen({ allCandidates: true });
     await selectRow(user, 'LOT-TEST-0299');
 
@@ -386,11 +386,9 @@ describe('DispositionRequestScreen — ③ 결과 수신 후', () => {
     expect(resultPane().getByText(t.values.dispositionType.SCRAP)).toBeInTheDocument();
     expect(resultPane().getByText(t.result.partialNote)).toBeInTheDocument();
 
-    /* 조건은 맞지만 열 화면이 없다 — 그 사실을 사유로 말한다(규범 4). */
-    const rework = resultPane().getByRole('button', { name: t.actions.reworkResult });
-    expect(rework).toBeDisabled();
-    expect(resultPane().getByText(t.result.followUp.reworkUnavailable)).toBeInTheDocument();
-    expect(resultPane().getByText(t.result.followUp.disposalUnavailable)).toBeInTheDocument();
+    /* 열 길이가 없는 후속은 세우지 않는다(C-4) — 재고 재등록만 사유와 함께 남는다. */
+    expect(resultPane().queryByRole('button', { name: '재작업 실적 등록' })).toBeNull();
+    expect(resultPane().queryByRole('button', { name: '폐기 품의' })).toBeNull();
     expect(resultPane().getByText(t.result.followUp.reinstateNotDecided)).toBeInTheDocument();
 
     /* 판정 결과는 품질 화면(W-03-10)의 진입 주소로 연다 — 주소를 손으로 적지 않는다. */

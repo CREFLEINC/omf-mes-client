@@ -140,13 +140,8 @@ export const OrderForm = ({
           <span className="field-label">{t.form.maintenanceType}</span>
           <span>
             <Chip size="sm">{derivedTypeLabel(triggers)}</Chip>
-            {/* ⛔ 예지는 값을 두되 고를 수 없다 — 감추면 「왜 없나」를 알 수 없다. */}
-            <Chip size="sm" status="idle">
-              {t.form.predictive}
-            </Chip>
           </span>
           <span className="field-note">{t.form.maintenanceTypeDerived}</span>
-          <span className="field-note">{t.form.predictiveLocked}</span>
         </div>
 
         <div className="field-cell form-grid-full">

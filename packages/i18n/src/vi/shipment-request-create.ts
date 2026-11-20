@@ -45,7 +45,6 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
     nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
     startStandalone: 'Tạo độc lập không cần phiếu chỉ thị',
-    importOrderFile: 'Nhập phiếu chỉ thị',
     addLine: 'Thêm dòng',
     removeLine: (rowIndex: number): string => `Xóa dòng ${String(rowIndex)}`,
     submit: 'Lập lệnh xuất hàng',
@@ -100,8 +99,6 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
     lineInvalid: 'Hãy kiểm tra phần nhập của các dòng.',
     lineIncomplete: 'Hãy điền mặt hàng, đơn vị và số lượng yêu cầu của dòng.',
     headerIncomplete: 'Hãy nhập các mục bắt buộc.',
-    importFileNotSupported:
-      'Chưa dùng được chức năng nhập phiếu chỉ thị vì định dạng tệp chưa được chốt. Khi định dạng được quyết định thì nút này sẽ dùng được.',
   },
   notes: {
     fromOrderLocked:

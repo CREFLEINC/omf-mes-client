@@ -12,7 +12,6 @@ import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
 import { hasChangedFilters } from '../../patterns/filter-more';
-import { isProvisionalCatalog } from './code-group-catalog';
 import { hasAnyFilter } from './filters';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
@@ -185,16 +184,6 @@ export const CodeGroupListPane = ({
 
   return (
     <section className="pane" aria-label={t.panes.codeGroup}>
-      {/*
-       * 결정 6 — 기대 목록이 비어 있다는 사실이 곧 「코드 체계가 아직 확정되지 않았다」는 뜻이다.
-       * 목록 위에 **한 번만** 낸다. 행마다 되풀이하면 표를 읽을 수 없다.
-       */}
-      {isProvisionalCatalog() && (
-        <div className="banner-slot">
-          <AlertBanner variant="info">{t.codeGroup.provisionalCatalog}</AlertBanner>
-        </div>
-      )}
-
       {/* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
       <div className="filter-bar">
         <SearchInput

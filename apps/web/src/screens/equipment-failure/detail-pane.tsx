@@ -114,7 +114,7 @@ export const DetailPane = ({
           value={
             detail.attachmentCount === 0
               ? t.detail.noPhotos
-              : `${t.detail.photoCount(detail.attachmentCount)} · ${t.detail.photosNotViewable}`
+              : t.detail.photoCount(detail.attachmentCount)
           }
         />
       </div>

@@ -55,22 +55,7 @@ export const workOrderProgress: Translated<typeof ko.workOrderProgress> = {
   summary: {
     title: 'Tóm tắt',
     total: 'Tất cả',
-    waiting: 'Chờ',
-    running: 'Đang chạy',
-    done: 'Xong',
-    closed: 'Đã đóng',
-    delayed: 'Trễ',
-
-    goodQty: 'Đạt',
-    defectQty: 'Lỗi',
-    lossQty: 'Hao hụt',
-    achievementRate: 'Tỷ lệ đạt',
-
     unavailableMark: 'ⓘ',
-
-    /** ⛔ 무엇이 정확하고 무엇이 없는지를 한 문장에 담는다. */
-    unavailable:
-      'Số mục theo trạng thái, tổng số lượng và tỷ lệ đạt thì máy chủ chưa gửi về. Chỉ tổng số mục là chính xác.',
   },
 
   list: {

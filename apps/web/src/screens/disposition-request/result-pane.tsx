@@ -143,8 +143,6 @@ export const ResultPane = ({
             <Link to={dispositionEntryPath(nonconformanceId)}>{t.actions.openDecision}</Link>
           )}
         </div>
-        <FollowUpButton label={t.actions.reworkResult} reason={followUp.rework.reason} />
-        <FollowUpButton label={t.actions.disposalRequest} reason={followUp.disposal.reason} />
         <FollowUpButton
           label={t.actions.reinstate}
           reason={followUp.reinstate.reason}

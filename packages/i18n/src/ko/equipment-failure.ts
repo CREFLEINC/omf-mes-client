@@ -75,8 +75,6 @@ export const equipmentFailure = {
     reporter: '보고자',
     photos: '사진',
     photoCount: (count: number): string => `${String(count)}장`,
-    /** 사진 자체를 여는 경로가 계약에 없다 — 건수만 밝힌다. */
-    photosNotViewable: '사진을 여는 경로가 아직 없어 장수만 보입니다.',
     noPhotos: '사진이 없습니다.',
 
     downtimeHeading: '연결된 비가동',
@@ -136,7 +134,6 @@ export const equipmentFailure = {
 
   codes: {
     causeEmpty: '원인 코드 목록이 아직 등록되지 않았습니다. 값이 등록되면 고를 수 있습니다.',
-    provisional: '값 목록이 아직 확정되지 않아 일부만 보입니다. 없는 값은 담당자에게 문의하세요.',
     selectPlaceholder: '고르세요',
   },
 } as const;

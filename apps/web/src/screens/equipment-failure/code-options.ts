@@ -25,9 +25,9 @@ export interface CodeOption {
 /** 고장 원인 코드. **비어 있는 것이 지금 맞다.** */
 export const PLACEHOLDER_CAUSE_CODES: readonly CodeOption[] = [];
 
-/** 선택칸 아래 안내. 값이 아예 없으면 그 사실을, 일부만 있으면 잠정임을 밝힌다. */
-export const causeNote = (): string =>
-  PLACEHOLDER_CAUSE_CODES.length === 0 ? t.codes.causeEmpty : t.codes.provisional;
+/** 선택칸 아래 안내. 값이 아예 없을 때만 그 사실을 밝힌다(값이 있으면 칸만). */
+export const causeNote = (): string | undefined =>
+  PLACEHOLDER_CAUSE_CODES.length === 0 ? t.codes.causeEmpty : undefined;
 
 /** 코드 하나의 이름. 못 찾으면 코드를 그대로 보인다 — 「알 수 없음」을 쓰지 않는다. */
 export const codeLabel = (code: string): string =>

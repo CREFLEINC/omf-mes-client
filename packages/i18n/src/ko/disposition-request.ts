@@ -104,8 +104,6 @@ export const dispositionRequest = {
     goFirstPage: '첫 쪽으로',
     checkOutcome: '처리 결과 확인',
     openDecision: '판정 결과 보기',
-    reworkResult: '재작업 실적 등록',
-    disposalRequest: '폐기 품의',
     reinstate: '재고 재등록',
   },
   target: {
@@ -194,12 +192,6 @@ export const dispositionRequest = {
     approvalPending: '결재 진행 중',
     /** 후속 버튼의 비활성 사유 — 규범 4: 컨트롤 이름으로 시작하고 풀리는 조건을 함께 적는다. */
     followUp: {
-      reworkUnavailable:
-        '재작업 실적 등록은 현장 단말 화면에서 합니다. 이 화면에서는 열 수 없습니다.',
-      reworkNotDecided: '재작업 실적 등록은 재작업 처분이 내려지면 할 수 있습니다.',
-      disposalUnavailable:
-        '폐기 품의 화면이 아직 준비되지 않았습니다. 준비되면 이 버튼을 쓸 수 있습니다.',
-      disposalNotDecided: '폐기 품의는 폐기 처분이 내려지면 할 수 있습니다.',
       reinstateUnavailable:
         '재고 재등록 화면이 아직 준비되지 않았습니다. 준비되면 이 버튼을 쓸 수 있습니다.',
       reinstateNotDecided: '재고 재등록은 정상 처분이 내려지면 할 수 있습니다.',

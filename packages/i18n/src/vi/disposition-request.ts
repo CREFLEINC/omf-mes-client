@@ -94,8 +94,6 @@ export const dispositionRequest: Translated<typeof ko.dispositionRequest> = {
     goFirstPage: 'Về trang đầu',
     checkOutcome: 'Kiểm tra kết quả xử lý',
     openDecision: 'Xem kết quả đánh giá',
-    reworkResult: 'Đăng ký kết quả làm lại',
-    disposalRequest: 'Đề nghị hủy',
     reinstate: 'Đăng ký lại tồn kho',
   },
   target: {
@@ -184,13 +182,6 @@ export const dispositionRequest: Translated<typeof ko.dispositionRequest> = {
       'Một điểm không phù hợp có thể có nhiều quyết định xử lý. Mỗi quyết định có phần tiếp theo khác nhau.',
     approvalPending: 'Đang phê duyệt',
     followUp: {
-      reworkUnavailable:
-        'Đăng ký kết quả làm lại được làm ở màn hình máy quét tại hiện trường. Không mở được ở màn hình này.',
-      reworkNotDecided:
-        'Đăng ký kết quả làm lại chỉ làm được khi đã có quyết định xử lý là làm lại.',
-      disposalUnavailable:
-        'Màn hình đề nghị hủy vẫn chưa được chuẩn bị. Khi chuẩn bị xong thì nút này sẽ dùng được.',
-      disposalNotDecided: 'Đề nghị hủy chỉ làm được khi đã có quyết định xử lý là hủy.',
       reinstateUnavailable:
         'Màn hình đăng ký lại tồn kho vẫn chưa được chuẩn bị. Khi chuẩn bị xong thì nút này sẽ dùng được.',
       reinstateNotDecided:

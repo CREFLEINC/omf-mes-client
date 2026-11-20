@@ -23583,20 +23583,6 @@ main:has(> .oqc-inspection-panes) {
   margin-inline-start: auto;
 }
 
-/* 한 줄짜리 안내 — 표식과 글자를 같은 가운데 선에 둔다(사용자 지시 2026-09-22). */
-.shipment-schedule-summary-banner {
-  align-items: center;
-}
-
-/*
- * 한 줄짜리 배너라 아이콘을 내릴 이유가 없다 — 디자인 시스템이 여러 줄을 기준으로 준
- * `margin-top` 이 그대로 남아 글자보다 아래로 처진다(사용자 지시 2026-09-22).
- * ⛔ 공통 부품을 고치지 않고 이 화면의 배너에만 건다. 첫 자식 span 이 아이콘이다.
- */
-.shipment-schedule-summary-banner > span:first-child {
-  margin-block-start: 0;
-}
-
 /*
  * 표의 열 폭은 비율로 나눈다 — 남는 자리가 마지막 열에 몰리면 오른쪽이 비어 보인다
  * (사용자 지시 2026-09-22). 좁아지면 긴 글이 든 고객·납품처가 먼저 줄고, 날짜·수량·상태는

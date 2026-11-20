@@ -54,54 +54,14 @@ describe('SummaryPane', () => {
     expect(props).not.toHaveProperty('items');
   });
 
-  describe('아직 받을 수 없는 칸', () => {
-    it.each([
-      ['대기', t.waiting],
-      ['진행중', t.running],
-      ['완료', t.done],
-      ['마감', t.closed],
-      ['지연', t.delayed],
-      ['양품', t.goodQty],
-      ['불량', t.defectQty],
-      ['손실', t.lossQty],
-      ['달성률', t.achievementRate],
-    ])('%s 칸은 비운 채 둔다 — 숫자를 지어내지 않는다', (_name, label) => {
-      const region = renderPane();
-
-      expect(valueOf(region, label)).toBe(t.unavailableMark);
-    });
-
-    /* ⛔ 감추면 「이 화면엔 원래 없다」로 읽힌다. 칸은 제자리에 있어야 한다. */
-    it('⛔ 칸 자체를 없애지 않는다 — 열 개가 모두 자리에 있다', () => {
-      const region = renderPane();
-
-      for (const label of [
-        t.total,
-        t.waiting,
-        t.running,
-        t.done,
-        t.closed,
-        t.delayed,
-        t.goodQty,
-        t.defectQty,
-        t.lossQty,
-        t.achievementRate,
-      ]) {
-        expect(within(region).getByRole('group', { name: label })).toBeInTheDocument();
-      }
-    });
-  });
-
-  /*
-   * ⛔ 「집계를 못 받습니다」로만 적으면 옆의 「전체 128」까지 못 믿을 값으로 읽힌다.
-   * 무엇이 정확하고 무엇이 없는지를 한 문장에 담는다.
-   */
-  it('⛔ 비운 이유를 적되, 전체 건수는 정확하다는 것도 함께 말한다', () => {
+  /* 받을 수 없는 칸(상태별 건수 · 수량 합계 · 달성률)과 그 이유 문장은 세우지 않는다(C-4 · 관리웹 정리 시안 A). */
+  it('받을 수 있는 「전체」 하나만 세우고 안내 문장을 두지 않는다', () => {
     const region = renderPane();
-    const notice = within(region).getByText(t.unavailable);
 
-    expect(notice).toHaveTextContent('서버가 아직 내려 주지 않습니다');
-    expect(notice).toHaveTextContent('전체 건수만 정확합니다');
+    expect(within(region).getAllByRole('group')).toHaveLength(1);
+    expect(within(region).getByRole('group', { name: t.total })).toBeInTheDocument();
+    expect(within(region).queryByRole('status')).toBeNull();
+    expect(region).not.toHaveTextContent('서버가 아직 내려 주지 않습니다');
   });
 
   it('⛔ 이 구획에 컨트롤을 두지 않는다 — 읽는 자리다', () => {

@@ -58,9 +58,9 @@ export const PLACEHOLDER_RESULT_CODES: readonly CodeOption[] = [
  */
 export const PLACEHOLDER_AGENCY_TYPES: readonly CodeOption[] = [];
 
-/** 선택칸 아래 안내. 값이 아예 없으면 그 사실을, 일부만 있으면 잠정임을 밝힌다. */
+/** 선택칸 아래 안내. 값이 아예 없을 때만 그 사실을 밝힌다(값이 있으면 칸만). */
 export const codeNote = (options: readonly CodeOption[], name: string): string | undefined =>
-  options.length === 0 ? t.codes.empty(name) : t.codes.provisional;
+  options.length === 0 ? t.codes.empty(name) : undefined;
 
 /** 코드 하나의 이름. 못 찾으면 코드를 그대로 보인다 — 「알 수 없음」을 쓰지 않는다. */
 export const codeLabel = (code: string, options: readonly CodeOption[]): string =>

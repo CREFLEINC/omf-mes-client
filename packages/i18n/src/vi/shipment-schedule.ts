@@ -83,7 +83,6 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
     all: 'Tất cả',
     inspectionRequired: 'Thuộc diện',
     inspectionNotRequired: 'Không thuộc diện',
-    summaryNote: 'Đang chuẩn bị phần tổng hợp.',
     lookupTruncated:
       'Chỉ hiện một phần đầu của các lựa chọn. Nếu không có giá trị cần tìm, hãy báo người phụ trách.',
     lookupFailed: 'Không tải được các lựa chọn.',

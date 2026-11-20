@@ -76,7 +76,6 @@ export const equipmentFailure: Translated<typeof ko.equipmentFailure> = {
     reporter: 'Người báo',
     photos: 'Ảnh',
     photoCount: (count: number): string => `${String(count)} ảnh`,
-    photosNotViewable: 'Chưa có đường mở ảnh nên chỉ hiển thị số lượng.',
     noPhotos: 'Không có ảnh.',
 
     downtimeHeading: 'Dừng máy đã liên kết',
@@ -133,8 +132,6 @@ export const equipmentFailure: Translated<typeof ko.equipmentFailure> = {
 
   codes: {
     causeEmpty: 'Danh sách mã nguyên nhân chưa được đăng ký. Đăng ký giá trị xong thì chọn được.',
-    provisional:
-      'Danh sách giá trị chưa được chốt nên chỉ hiển thị một phần. Giá trị không có thì hãy hỏi người phụ trách.',
     selectPlaceholder: 'Hãy chọn',
   },
 };

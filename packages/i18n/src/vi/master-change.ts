@@ -26,16 +26,12 @@ export const masterChange: Translated<typeof ko.masterChange> = {
     viewDiff: 'Xem',
     /* 행 버튼의 접근 이름. 보이는 글자(`Xem`)를 그대로 담아 음성 조작이 부를 수 있게 둔다. */
     viewDiffRow: (occurredAt: string): string => `Xem nội dung thay đổi ${occurredAt}`,
-    newRevision: 'Phát hành bản sửa đổi mới',
   },
   /** 비활성 사유는 그 컨트롤의 이름으로 시작한다(배치 규범 4). */
   reasons: {
     searchNeedsPeriod:
       'Tra cứu chỉ dùng được sau khi điền đủ kỳ. Hãy chọn ngày bắt đầu và ngày kết thúc.',
     periodReversed: 'Kết thúc kỳ không được sớm hơn bắt đầu kỳ.',
-    /* 버튼을 감추지 않는 이유는 개정 발행이 어디서 이루어지는지를 여기서 알 수 있어야 해서다. */
-    newRevisionElsewhere:
-      'Không phát hành bản sửa đổi mới ở màn hình này được. Bản sửa đổi được phát hành ở từng màn hình dữ liệu gốc.',
   },
   loading: {
     events: 'Đang tải danh sách lịch sử thay đổi',
@@ -66,8 +62,6 @@ export const masterChange: Translated<typeof ko.masterChange> = {
   /** 선택지는 아직 임시이고 조회한 기간의 기록에서 만들므로 그 한계를 문구가 함께 밝힌다. */
   filters: {
     all: 'Tất cả',
-    optionsNote:
-      'Loại đối tượng · loại sự kiện là danh sách tạm, chưa được chốt. Danh sách tạo từ bản ghi trong kỳ đã tra cứu nên giá trị chưa từng được ghi hoặc không có trong kỳ này thì không nằm trong danh sách.',
     chipTargetType: (value: string): string => `Loại đối tượng: ${value}`,
     chipTargetId: (value: string): string => `Đối tượng: ${value}`,
     chipEventType: (value: string): string => `Loại sự kiện: ${value}`,

@@ -210,16 +210,11 @@ describe('EventFilterBar — 조건 5종', () => {
     expect(screen.getByRole('option', { name: '전체' })).toBeInTheDocument();
   });
 
-  it('선택지 안내에 「임시 목록」이 들어 있다', () => {
+  /* 「임시 목록」 · 기간 한계 설명은 늘 보이는 개발 사정 안내라 걷었다(관리웹 정리 시안 A). */
+  it('선택지 아래 「임시 목록」 안내를 두지 않는다', () => {
     renderBar();
 
-    expect(screen.getByText(/임시 목록/)).toBeInTheDocument();
-  });
-
-  it('선택지 안내가 기간의 한계도 밝힌다', () => {
-    renderBar();
-
-    expect(screen.getByText(/이 기간에 없는 값은 목록에 없습니다/)).toBeInTheDocument();
+    expect(screen.queryByText(/임시 목록/)).toBeNull();
   });
 });
 

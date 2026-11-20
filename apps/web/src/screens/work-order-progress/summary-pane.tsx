@@ -1,4 +1,4 @@
-import { AlertBanner, StatCard } from '@crefle/web-ui';
+import { StatCard } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 export interface SummaryPaneProps {
@@ -16,9 +16,9 @@ export interface SummaryPaneProps {
  * 화면이 손에 쥔 것은 50건인데 요약이 답해야 하는 질문은 「128건 중 몇 건인가」다. 모집단이
  * 다르므로 근사값도 아니고 **다른 수**가 나온다.
  *
- * ⚠ **그래서 지금은 「전체」 하나만 채운다.** 서버가 상태별 건수·수량 합계·달성률을 내려 주지
- * 않는다(omf-mes#265). 나머지 칸은 **비우되 이유를 적는다** — 감추면 「이 화면엔 원래 없다」로
- * 읽히고, 지어내면 거짓이 된다. **집계가 오면 비워 둔 칸만 채우면 되고 구조는 그대로다.**
+ * ⚠ **그래서 지금은 「전체」 하나만 세운다.** 서버가 상태별 건수·수량 합계·달성률을 내려 주지
+ * 않는다(omf-mes#265). 받을 수 없는 칸은 세우지 않는다 — 빈 칸과 그 이유를 늘 보이는 것은 군더더기다
+ * (관리웹 정리 시안 A, 2026-11-20). 집계가 오면 그 칸을 더한다.
  *
  * ⚠ 상태 다섯의 이름은 **가정**이다(스펙 §5-4) — 상태 코드 값 목록이 아직 확정되지 않아
  * 값이 오면 카드가 늘거나 이름이 바뀔 수 있다.
@@ -26,32 +26,12 @@ export interface SummaryPaneProps {
 export const SummaryPane = ({ total }: SummaryPaneProps) => {
   const t = messages.workOrderProgress.summary;
 
-  /* 「전체」만 서버가 준 값이고, 나머지는 아직 받을 수 없는 자리다. */
-  const cards = [
-    { label: t.waiting },
-    { label: t.running },
-    { label: t.done },
-    { label: t.closed },
-    { label: t.delayed },
-    { label: t.goodQty },
-    { label: t.defectQty },
-    { label: t.lossQty },
-    { label: t.achievementRate },
-  ];
-
   return (
     <section className="pane work-order-progress-pane" aria-label={t.title}>
       <h2 className="pane-title">{t.title}</h2>
 
       <div className="work-order-progress-summary-grid">
         <StatCard label={t.total} value={total === null ? t.unavailableMark : String(total)} />
-        {cards.map((card) => (
-          <StatCard key={card.label} label={card.label} value={t.unavailableMark} />
-        ))}
-      </div>
-
-      <div className="banner-slot">
-        <AlertBanner variant="info">{t.unavailable}</AlertBanner>
       </div>
     </section>
   );

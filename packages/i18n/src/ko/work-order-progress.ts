@@ -88,26 +88,8 @@ export const workOrderProgress = {
   summary: {
     title: '요약',
     total: '전체',
-    waiting: '대기',
-    running: '진행중',
-    done: '완료',
-    closed: '마감',
-    delayed: '지연',
-
-    goodQty: '양품',
-    defectQty: '불량',
-    lossQty: '손실',
-    achievementRate: '달성률',
-
     /** 값 자리에 놓이는 표식. 숫자가 아니라는 것이 한눈에 보여야 한다. */
     unavailableMark: 'ⓘ',
-
-    /**
-     * ⛔ **무엇이 정확하고 무엇이 없는지를 한 문장에 담는다.** 「집계를 못 받습니다」로만
-     * 적으면 옆의 「전체 128」까지 못 믿을 값으로 읽힌다.
-     */
-    unavailable:
-      '상태별 건수·수량 합계·달성률은 서버가 아직 내려 주지 않습니다. 전체 건수만 정확합니다.',
   },
 
   /**
