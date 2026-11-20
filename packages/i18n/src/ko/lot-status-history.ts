@@ -258,6 +258,25 @@ export const lotStatusHistory = {
         `${goodsIssueNo} · 라인 ${String(lineNo)}`,
       childrenUsage: '이 LOT 에서 분할된 LOT 에 투입된 생산 LOT 도 함께 보입니다.',
     },
+    /** 피처 013 — 생산 LOT 분리(P-04-08)로 생긴 LOT 의 분할 칸. 008 자재 분할 칸을 그대로 쓰고 출고 대신 이 줄들을 보인다. */
+    productSplit: {
+      note: '생산 LOT 분리로 원래 LOT 에서 떼어 낸 LOT 입니다.',
+      unconfirmedChip: 'PDA 확인 전',
+      qty: '분리 수량',
+      at: '분리 시각',
+      atText: (at: string, terminal: string | null, worker: string | null): string =>
+        [at, terminal, worker].filter((part) => part !== null && part !== '').join(', '),
+      location: '분리 위치',
+      // ui-check-ignore: C-13 시안 W0301 확정 표기(창고 · 위치)
+      locationText: (warehouseCode: string, locationCode: string): string =>
+        `${warehouseCode} · ${locationCode}`, // ui-check-ignore: C-13 시안 W0301 확정 표기
+      confirmed: 'PDA 확인',
+      confirmedText: (at: string, worker: string | null): string =>
+        worker === null ? at : `${at}, ${worker}`,
+      notConfirmed: '아직. 확인 전에는 출하 피킹이 되지 않습니다',
+      workOrder: 'W/O',
+      workOrderText: (workOrderNo: string): string => `${workOrderNo} (원래 LOT)`,
+    },
     fields: {
       lotNo: 'LOT 번호',
       item: '품목',

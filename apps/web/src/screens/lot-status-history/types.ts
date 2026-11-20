@@ -74,7 +74,13 @@ export interface LotDetailView {
   split: LotSplitView | null;
   /** 이 LOT 에서 나온 분할 LOT 수(자손 전체). */
   splitChildCount: number;
+  /**
+   * 생산 LOT 분리(피처 013) — 자식이면 자기 분리(CHILD), 원래 LOT 이면 가장 최근 분리(PARENT). 아니면 `null`.
+   */
+  productSplit: ProductLotSplitView | null;
 }
+
+export type ProductLotSplitView = NonNullable<Lot['productLotSplit']>;
 
 export interface LotSplitView {
   parentLotId: number;
@@ -119,6 +125,7 @@ export const toLotDetailView = ({ lot }: LotDetailResponse): LotDetailView => ({
   fourMChange: (lot as Lot).fourMChange ?? null,
   split: toSplitView(lot),
   splitChildCount: lot.splitChildCount ?? 0,
+  productSplit: lot.productLotSplit ?? null,
 });
 
 export interface LotStatusCountView {

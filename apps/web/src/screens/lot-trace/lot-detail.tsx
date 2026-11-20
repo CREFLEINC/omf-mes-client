@@ -975,13 +975,57 @@ const splitColumns = (
   },
 ];
 
+/** 생산 LOT 분리로 떼어 낸 LOT(피처 013) — 분리 시각 · 수량 · [보기](생산 LOT). 자손은 들여 쓴다. */
+const productSplitColumns = (
+  centerLotNo: string,
+  onView: (lot: LotRef) => void,
+): Column<FlowSplitLink>[] => [
+  {
+    key: 'lot',
+    header: sp.columns.lot,
+    render: (row) => {
+      const depth = splitDepth(centerLotNo, row.lot.lotNo);
+
+      return (
+        <span
+          className="lot-trace-cell-stack"
+          style={{ paddingInlineStart: `${String((depth - 1) * 16)}px` }}
+        >
+          <span>
+            {depth > 1 && <span aria-hidden="true">↳ </span>}
+            <LotNo lotNo={row.lot.lotNo} />
+          </span>
+          <span className="lot-trace-sub">{sp.productSplitLine(plantDateTime(row.splitAt))}</span>
+        </span>
+      );
+    },
+  },
+  {
+    key: 'qty',
+    header: sp.columns.qty,
+    width: '96px',
+    align: 'end',
+    render: (row) => qty(row.qty, row.uomCode),
+  },
+  {
+    key: 'action',
+    header: sp.columns.action,
+    width: '76px',
+    align: 'center',
+    render: (row) => <ViewButton lot={refOf(row.lot)} onView={onView} />,
+  },
+];
+
 /** 분할된 원래 LOT(008) — 이 LOT 이 부분 출고로 떼어져 나왔으면 그 부모 · 분할 수량 · 시각 · 출고. */
 const SplitFromSection = ({
   link,
   onView,
+  toRef = materialRef,
 }: {
   link: FlowSplitLink;
   onView: (lot: LotRef) => void;
+  /** 부모 LOT 의 참조 — 자재 분할(008)은 자재, 제품 분리(013)는 생산 LOT 이다. */
+  toRef?: (head: FlowLotHead) => LotRef;
 }) => (
   <Section title={sp.fromSection}>
     <Facts
@@ -993,7 +1037,7 @@ const SplitFromSection = ({
           value: (
             <span className="lot-trace-cell-stack">
               <Mono>{link.lot.lotNo}</Mono>
-              <ViewButton lot={materialRef(link.lot)} onView={onView} />
+              <ViewButton lot={toRef(link.lot)} onView={onView} />
             </span>
           ),
         },
@@ -1113,12 +1157,15 @@ const MaterialView = ({ chain, ...frame }: FrameProps & { chain: ForwardChain })
 
 const ProductionView = ({
   chain,
+  splits,
   usage,
   usageError,
   onRetryUsage,
   ...frame
 }: FrameProps & {
   chain: BackwardChain;
+  /** 이 LOT 에서 생산 LOT 분리로 떼어 낸 LOT(정방향 사슬의 `splits` · 피처 013). */
+  splits: readonly FlowSplitLink[];
   /** 다시 투입된 반제품이면 그 정방향 사슬. 투입된 적이 없으면 `undefined`. */
   usage: ForwardChain | undefined;
   /** 사용처(정방향 사슬)를 받지 못한 원인. 없는 사슬(404)은 실패가 아니라 `null`이다. */
@@ -1144,7 +1191,30 @@ const ProductionView = ({
           : flattenForward(usage, SPLIT_NOTES).filter((line) => line.depth > 0)),
       ]}
     >
+      {/*
+       * 제품 분리 자식 LOT(피처 013) — 원래 LOT 으로 올라간다. W/O · 투입 자재는 서버가 분할 뿌리로 채워 보낸다.
+       */}
+      {chain.splitFrom !== null && (
+        <SplitFromSection link={chain.splitFrom} onView={view} toRef={refOf} />
+      )}
       <ProductionSections chain={chain} onView={view} />
+      {/* 원래 생산 LOT 에서 나눈 LOT(US4-3) — 자재 LOT 의 「분할 LOT」 구획과 같은 자리 · 모양. */}
+      {splits.length > 0 && (
+        <Section
+          title={sp.splitsSection}
+          aside={<span className="lot-trace-section-count">{c.count(splits.length)}</span>}
+        >
+          <p className="field-note">{sp.productSplitsHint}</p>
+          <SmallTable
+            title={sp.splitsSection}
+            heading={false}
+            columns={productSplitColumns(chain.lot.lotNo, view)}
+            rows={[...splits]}
+            getRowId={(row) => String(row.lot.lotId)}
+            empty=""
+          />
+        </Section>
+      )}
       {usage !== undefined && <UsageSections chain={usage} onView={view} />}
       {usageError !== null &&
         (toLoadCause(usageError) === 'forbidden' ? (
@@ -1229,6 +1299,7 @@ export const LotDetail = ({ lotId, typeHint, ...frame }: LotDetailProps) => {
   return (
     <ProductionView
       chain={backward.data}
+      splits={forward.data?.splits ?? []}
       usage={usage}
       usageError={usageError}
       onRetryUsage={() => void forward.refetch()}
