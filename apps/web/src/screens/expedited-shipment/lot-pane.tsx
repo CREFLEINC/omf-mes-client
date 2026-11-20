@@ -2,6 +2,7 @@ import { AlertBanner, Chip, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import { InfoLabel } from '../../patterns/info-tip';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { Select } from '../../patterns/select';
 import type { ExpeditedLookup, ItemNameLookup } from './lookups';
@@ -46,10 +47,13 @@ const ReleaseNotice = ({ release }: { release: LotReleaseState }) => {
   }
 
   /*
-   * ⭐ 막지 않는 두 갈래에도 **최종 판정이 서버에 있다는 사실**을 남긴다. 화면이 아는 코드가
-   * 두 개뿐이라 「통과」를 선언할 수 없다(§5-3 · 공유계약 G-2).
+   * ⭐ 보류 여부를 못 받았으면 **최종 판정이 서버에 있다는 사실**을 남긴다 — 화면이 판정하지
+   * 못했다(§5-3 · 공유계약 G-2). 아는 차단이 없는 평소 갈래에는 늘 서던 이 문장을 두지 않는다
+   * (관리웹 정리 시안 A).
    */
-  return <AlertBanner variant="info">{t.release.serverDecides}</AlertBanner>;
+  return release.kind === 'unknown-hold' ? (
+    <AlertBanner variant="info">{t.release.serverDecides}</AlertBanner>
+  ) : null;
 };
 
 /** ① 대상 제품 LOT — 생산 완료분 중 **아직 창고에 들어오지 않은** 것만 온다. */
@@ -65,7 +69,6 @@ export const LotPane = ({
   onSelect,
 }: LotPaneProps) => {
   const selectId = useId();
-  const noteId = `${selectId}-note`;
 
   const options = lots.map((lot) => ({
     value: String(lot.lotId),
@@ -85,21 +88,15 @@ export const LotPane = ({
       ) : (
         <>
           <div className="field-cell wide-select">
-            <label className="field-label" htmlFor={selectId}>
-              {t.lot.label}
-            </label>
+            {/* §5-4 — 이 LOT이 왜 여기 있는지는 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
+            <InfoLabel htmlFor={selectId} label={t.lot.label} info={t.lot.unreceivedNotice} />
             <Select
               id={selectId}
               options={options}
               value={selected === null ? null : String(selected.lotId)}
               placeholder={options.length === 0 ? t.lot.empty : t.lot.placeholder}
-              aria-describedby={noteId}
               onChange={(value) => onSelect(value === '' ? null : Number(value))}
             />
-            {/* §5-4 — 이 LOT이 왜 여기 있는지. 정상 출하 흐름과 갈리는 지점이다. */}
-            <span id={noteId} className="field-note">
-              {t.lot.unreceivedNotice}
-            </span>
           </div>
 
           {/* ⚠ 목록이 잘렸다는 사실을 감춘다면 「없다」와 「이 쪽에 없다」가 뭉개진다(L-11). */}
@@ -132,7 +129,7 @@ export const LotPane = ({
               </dd>
             </div>
           </dl>
-          {release !== null && (
+          {release !== null && release.kind !== 'no-known-block' && (
             <div className="banner-slot">
               <ReleaseNotice release={release} />
             </div>

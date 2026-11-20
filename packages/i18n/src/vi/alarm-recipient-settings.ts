@@ -14,8 +14,6 @@ import type { Translated } from './translated';
 export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings> = {
   title: 'Thiết lập người nhận thông báo',
   breadcrumbRoot: 'Quản trị hệ thống',
-  description:
-    'Bật hoặc tắt từng sự kiện thông báo theo phòng ban, chọn có gửi thêm qua Zalo và người nhận.',
   panes: {
     events: 'Sự kiện',
     setting: (eventName: string): string => `Thiết lập: ${eventName}`,
@@ -64,11 +62,11 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
     zaloHelp: 'Dù gửi thất bại, trung tâm thông báo vẫn nhận',
     zaloNeedsEnabled: 'Phải bật thông báo thì mới gửi được qua Zalo',
     approverNotice:
-      'Người phê duyệt đến lượt sẽ nhận. Đó là người được chỉ định trong luồng phê duyệt (W-06-15).',
+      'Người phê duyệt đến lượt sẽ nhận. Đó là người được chỉ định trong luồng phê duyệt.',
     saved: 'Đã lưu',
     conflict: 'Người khác đã lưu trước. Hãy tải lại rồi lưu',
     zaloNotActive:
-      'Chưa thiết lập kết nối Zalo nên hiện chỉ gửi đến trung tâm thông báo — Thiết lập kết nối thông báo (W-CO-12)',
+      'Chưa thiết lập kết nối Zalo nên hiện chỉ gửi đến trung tâm thông báo — Thiết lập kết nối thông báo',
     unsavedTitle: 'Có thay đổi chưa lưu',
     unsavedBody: 'Nếu chuyển đi, nội dung đã sửa sẽ mất. Bỏ thay đổi và chuyển?',
     candidatesEmpty: 'Không có kết quả tìm kiếm',

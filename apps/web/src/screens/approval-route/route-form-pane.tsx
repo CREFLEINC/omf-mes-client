@@ -2,6 +2,8 @@ import { Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
+
 import { codeNote, codePlaceholder } from './code-options';
 import { DisabledAction } from './disabled-action';
 import { FieldLabel } from './field-label';
@@ -15,6 +17,8 @@ interface SummaryItem {
   key: string;
   label: string;
   value: ReactNode;
+  /** 라벨 옆 ⓘ 에 띄울 규칙(관리웹 정리 시안 A). */
+  info?: string;
 }
 
 export interface RouteFormPaneProps {
@@ -64,7 +68,7 @@ export interface RouteFormPaneProps {
  * ## 이 폼이 소유하지 않는 것
  *
  * - **승인 유형(수정)** — 계약의 수정 본문에 그 키가 아예 없다. 「바꾸면 다른 결재선이다」가
- *   계약의 말이며, 읽기 표시로 두고 그 사실을 문구로 밝힌다.
+ *   계약의 말이며, 읽기 표시로 두고 그 사실을 라벨 옆 ⓘ 로 밝힌다.
  * - **사용 여부** — 전용 액션(`:deactivate`·`:activate`)으로만 바뀐다. 입력칸을 두면
  *   저장 본문에 실릴 여지가 생긴다.
  * - **결재 단계** — 등록 본문에 단계를 실을 수 없고 치환은 번호를 요구한다. 등록 중에는
@@ -136,6 +140,8 @@ export const RouteFormPane = ({
             key: 'approvalTypeCode',
             label: t.fields.approvalTypeCode,
             value: route.approvalTypeCode,
+            /* 수정에서 승인 유형을 못 바꾸는 까닭은 칸 아래가 아니라 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */
+            info: t.notes.approvalTypeFixed,
           },
           {
             key: 'status',
@@ -158,7 +164,10 @@ export const RouteFormPane = ({
         <dl className="filter-bar">
           {summary.map((item) => (
             <div className="field-cell" key={item.key}>
-              <dt className="field-label">{item.label}</dt>
+              <dt className="field-label">
+                {item.label}
+                {item.info !== undefined && <InfoTip text={item.info} />}
+              </dt>
               <dd>{item.value}</dd>
             </div>
           ))}
@@ -201,7 +210,12 @@ export const RouteFormPane = ({
         />
 
         <div className="field-cell">
-          <FieldLabel htmlFor={minValueId} label={t.fields.minValue} />
+          {/* 값 구간이 결재선을 고르지 않는다는 사실은 하한 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}
+          <FieldLabel
+            htmlFor={minValueId}
+            label={t.fields.minValue}
+            info={t.notes.valueRangeUnused}
+          />
           <TextField
             id={minValueId}
             value={values.minValue}
@@ -230,10 +244,8 @@ export const RouteFormPane = ({
         </div>
       </div>
 
-      {!isCreate && <p className="field-note">{t.notes.approvalTypeFixed}</p>}
       {isBusinessUnitEmpty && <p className="field-note">{t.notes.businessUnitEmpty}</p>}
       {isValueRangeEmpty && <p className="field-note">{t.notes.valueRangeEmpty}</p>}
-      <p className="field-note">{t.notes.valueRangeUnused}</p>
 
       {route !== null && (
         <p className="field-note">

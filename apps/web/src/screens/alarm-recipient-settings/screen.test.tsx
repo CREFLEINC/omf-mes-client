@@ -248,7 +248,8 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
 
     await user.click(pane.getByRole('switch', { name: t.fields.enabled }));
     expect(pane.getByRole('switch', { name: t.fields.zalo })).toBeEnabled();
-    expect(pane.getByText(t.state.zaloHelp)).toBeInTheDocument();
+    expect(pane.getByRole('button', { name: t.state.zaloHelp })).toBeInTheDocument();
+    expect(pane.queryByText(t.state.zaloNeedsEnabled)).toBeNull();
   });
 
   it('US4-4 켬 + 수신자 0명이면 경고가 보인다', async () => {

@@ -79,9 +79,7 @@ export const stockTransfer = {
      * 한 이름으로 부르면 반출 단계에서 벌써 도착한 것으로 읽힌다.
      */
     legend: '보낼 곳',
-    arrivedLegend: '도착 스캔',
     warehouseLabel: '보낼 창고',
-    arrivedWarehouseLabel: '도착 창고',
     warehousePlaceholder: '창고를 고르세요',
     scanLabel: '보낼 위치 스캔',
     arrivedScanLabel: '도착 위치 스캔',
@@ -121,4 +119,49 @@ export const stockTransfer = {
     action: '전송 실패한 기록 보기',
   },
   another: '다음 이동',
+  /**
+   * 방금 찍은 결과 칸(사용자 지시 2026-11-20, 입하 등록 시안 A 를 재고 이동에도) — 담음 초록 · 이미 담음 회색(몇 번
+   * 줄인지) · 담지 않음 빨강. 거절 까닭은 `from` 의 문구를 그대로 쓴다.
+   */
+  result: {
+    added: '담음',
+    duplicate: '이미 담은 LOT입니다',
+    duplicateRow: (no: number) => `반출 LOT No ${String(no)}에 있습니다`,
+    rejected: '담지 않음',
+  },
+  /** 반출 LOT 표 — 줄마다 수량 칸(재고 전량으로 채워 둔다, 사용자 결정 2026-11-20). */
+  tally: {
+    title: '반출 LOT',
+    total: (count: number) => `${String(count)}개`,
+    open: (itemCode: string, lotNo: string) => `${itemCode} ${lotNo} 열기`,
+  },
+  /** 반출 LOT 시트 — 이름표 칸과 [목록에서 빼기]. */
+  sheet: {
+    title: '반출 LOT',
+    fields: {
+      itemCode: '품목코드',
+      itemName: '품목명',
+      lot: 'LOT',
+      from: '출발',
+      onHand: '재고',
+      qty: '반출 수량',
+    },
+    remove: '목록에서 빼기',
+  },
+  /** 보낼 곳을 정하면 맨 위 한 줄로 접는다. */
+  destination: {
+    change: '바꾸기',
+  },
+  /**
+   * 도착(이어서 하기) — 무엇을 옮기는 중인지 보이고 놓은 자리만 찍는다(사용자 지시 2026-11-20, 반출 화면과 같은 모양).
+   * LOT 을 하나씩 다시 찍지는 않는다 — 계약상 도착은 위치 하나와 반출한 라인 전체다.
+   */
+  arrive: {
+    route: (from: string, to: string) => `${from} → ${to}`,
+    lots: '도착할 LOT',
+  },
+  /** 바닥 바 — 담은 LOT 수와 합계. */
+  summary: {
+    count: (count: number) => `${String(count)}개`,
+  },
 } as const;

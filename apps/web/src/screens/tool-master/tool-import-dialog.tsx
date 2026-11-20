@@ -2,6 +2,7 @@ import { AlertBanner, Button, type Column, Dialog, Table } from '@crefle/web-ui'
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { FileField } from './file-field';
 import type { CodeOption } from './code-options';
 import {
@@ -106,10 +107,6 @@ export const ToolImportDialog = ({
           </AlertBanner>
         </div>
 
-        <div className="form-grid-full">
-          <AlertBanner variant="info">{t.noLabelNote}</AlertBanner>
-        </div>
-
         <SelectField
           label={t.plantLabel}
           options={plantOptions}
@@ -128,6 +125,8 @@ export const ToolImportDialog = ({
           emptyText={t.fileNone}
           accept={ACCEPT}
           disabled={isSaving}
+          /* ⭐ 마스터 행만 생기고 라벨은 나가지 않는다(스펙 §6) — 파일 칸 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */
+          info={t.noLabelNote}
           onSelect={onSelectFile}
         />
 
@@ -139,7 +138,11 @@ export const ToolImportDialog = ({
 
         {result !== null && (
           <div className="form-grid-full">
-            <h3 className="field-label">{t.resultTitle}</h3>
+            {/* 줄 번호의 뜻은 실패 표가 있을 때만 결과 제목 옆 ⓘ 로(관리웹 정리 시안 A). */}
+            <div className="info-label">
+              <h3 className="field-label">{t.resultTitle}</h3>
+              {result.failed.length > 0 && <InfoTip text={t.rowNote} />}
+            </div>
             {/*
              * ⭐ **성공과 실패를 둘 다 말한다.** 성공만 말하면 실패한 행이 없는 것처럼 읽히고,
              * 실패만 말하면 이미 들어간 행을 모르고 파일을 통째로 다시 올린다 —
@@ -151,7 +154,6 @@ export const ToolImportDialog = ({
 
             {result.failed.length > 0 && (
               <>
-                <span className="field-note">{t.rowNote}</span>
                 <div className="wide-table">
                   <Table
                     density="compact"

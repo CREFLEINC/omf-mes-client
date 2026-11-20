@@ -265,11 +265,12 @@ describe('GrFilterBar — 선택지의 한계', () => {
     expect(screen.getByText(t.filters.lookupTruncated)).toBeInTheDocument();
   });
 
-  /* 기본 기간이 없다는 사실은 화면에서 읽혀야 한다 — 빈 칸이 고장으로 읽히지 않게 한다. */
-  it('기본 기간이 없다는 사실을 밝힌다', () => {
+  /* 기본 기간이 없다는 사실은 입고일 라벨 옆 ⓘ 로 읽힌다 — 늘 펼쳐 두지 않는다(관리웹 정리 시안 A). */
+  it('기본 기간이 없다는 사실은 입고일 옆 ⓘ 의 설명으로 읽힌다', () => {
     renderBar();
 
-    expect(screen.getByText(t.filters.periodNote)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.filters.periodNote })).toBeInTheDocument();
+    expect(screen.queryByText(t.filters.periodNote)).not.toBeInTheDocument();
   });
 });
 

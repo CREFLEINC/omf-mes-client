@@ -107,15 +107,17 @@ describe('WarehouseFormPane', () => {
   describe('#292 창고 위치 코드', () => {
     const prefixBox = () => screen.getByRole('textbox', { name: '창고 위치 코드' });
 
-    it('등록 폼은 받은 값을 칸에 채우고 도움말 · 위치 코드 예를 보인다', () => {
+    /* 형식 · 저장 뒤 못 바꿈은 칸 아래가 아니라 라벨 옆 ⓘ 로 읽힌다(관리웹 정리 시안 A). */
+    it('등록 폼은 받은 값을 칸에 채우고 라벨 옆 ⓘ · 위치 코드 예를 보인다', () => {
+      const helper =
+        '무작위로 만들었습니다. 대문자와 숫자 2~6자로 고칠 수 있고, 저장한 뒤에는 바꿀 수 없습니다.';
       renderPane({ mode: 'create' });
 
       expect(prefixBox()).toHaveValue('K7PM');
       expect(prefixBox()).toBeRequired();
       expect(prefixBox()).toHaveAttribute('maxlength', '6');
-      expect(prefixBox()).toHaveAccessibleDescription(
-        '무작위로 만들었습니다. 대문자와 숫자 2~6자로 고칠 수 있고, 저장한 뒤에는 바꿀 수 없습니다.',
-      );
+      expect(screen.getByRole('button', { name: helper })).toBeInTheDocument();
+      expect(screen.queryByText(helper)).not.toBeInTheDocument();
       expect(screen.getByText('위치 코드 예: K7PM-Z01-R001-L01-C01')).toBeInTheDocument();
     });
 
@@ -156,7 +158,7 @@ describe('WarehouseFormPane', () => {
       spy.mockRestore();
     });
 
-    it('칸 오류(형식 · 서버가 준 「다른 창고가 쓰는 코드」)는 도움말 자리에 선다', () => {
+    it('칸 오류(형식 · 서버가 준 「다른 창고가 쓰는 코드」)는 칸 아래에 나타난다', () => {
       const taken =
         '이미 다른 창고가 쓰는 코드입니다 — 다른 코드를 넣거나 [다시 만들기]를 누르세요.';
       renderPane({ mode: 'create', fieldErrors: { locationPrefix: taken } });

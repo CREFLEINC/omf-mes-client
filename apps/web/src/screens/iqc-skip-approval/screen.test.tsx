@@ -1510,12 +1510,14 @@ describe('고른 요청의 아래 구획', () => {
     expect(pane.getByText('합성 결재 의견 하나')).toBeVisible();
   });
 
-  it('한도 구간이 아직 보이지 않는다는 사실이 결재 진행 구획에 선다', async () => {
+  /* 「한도 구간은 아직 화면에 표시되지 않습니다」는 개발 사정이라 두지 않는다(관리웹 정리 시안 A). */
+  it('결재 진행 구획에 한도 구간 안내 문장이 없다', async () => {
     renderScreen(defaultRoutes(), '?rq=9001');
 
     const pane = await detailPane();
 
-    expect(await pane.findByText(t.progress.limitRangeNote)).toBeVisible();
+    await pane.findByRole('group', { name: t.panes.progress });
+    expect(pane.queryByText(/한도 구간/)).not.toBeInTheDocument();
   });
 
   it('대상 표시명이 그대로 서고 열기는 사유와 함께 잠긴다', async () => {
@@ -1528,7 +1530,7 @@ describe('고른 요청의 아래 구획', () => {
     /* 매핑표가 비어 있고 이 대상에는 화면 ID도 없다 — 두 사실 가운데 앞엣것이 이긴다. */
     expect(target.getByRole('button', { name: t.target.open })).toBeDisabled();
     expect(target.getByText(t.target.blockedNoScreenId)).toBeVisible();
-    expect(target.getByText(t.target.note)).toBeVisible();
+    expect(target.queryByText(/원 화면에서/)).not.toBeInTheDocument();
   });
 
   it('계약이 열 수 없다고 한 대상은 다른 사유로 잠긴다', async () => {
@@ -1617,8 +1619,15 @@ const renderDecision = async (
 };
 
 const decisionPane = (): HTMLElement => screen.getByRole('group', { name: t.panes.decision });
-const outcomePane = (): HTMLElement =>
-  within(decisionPane()).getByRole('group', { name: t.panes.approvalOutcome });
+/** 《승인 시 결과》 세 문장 — 「결재」 제목 옆 ⓘ 하나에 함께 있다(관리웹 정리 시안 A). */
+const outcomeTip = (): HTMLElement =>
+  within(decisionPane()).getByRole('button', {
+    name: [
+      t.decision.outcome.statusOnly,
+      t.decision.outcome.noErpDocument,
+      t.decision.outcome.inspectionPending,
+    ].join(' '),
+  });
 const approveButton = (): HTMLElement =>
   within(decisionPane()).getByRole('button', { name: t.decision.approve });
 const rejectButton = (): HTMLElement =>
@@ -1641,24 +1650,22 @@ const openRejectDialog = async (
 const holdApprove = (request: Request): boolean => isApprovePath(new URL(request.url).pathname);
 
 /**
- * 《승인 시 결과》 — **이 화면 고유의 구획이고 사라지는 자리에 두지 않는다.**
+ * 《승인 시 결과》 — **이 화면 고유의 세 문장이고 사라지는 자리에 두지 않는다.**
  *
  * 화면 이름이 「한도승인」이라 승인이 곧 검사 생략의 실행이나 입고 처리로 읽히기 쉽다.
- * 세 문장이 서로 다른 오해를 하나씩 막으므로 **셋을 각각** 잰다.
+ * 세 문장이 서로 다른 오해를 하나씩 막는다 — 늘 펼친 상자 대신 「결재」 제목 옆 ⓘ 에 함께 둔다(관리웹 정리 시안 A).
  */
-describe('결재 — 《승인 시 결과》 구획', () => {
+describe('결재 — 《승인 시 결과》 ⓘ', () => {
   const outcomeSentences = [
     t.decision.outcome.statusOnly,
     t.decision.outcome.noErpDocument,
     t.decision.outcome.inspectionPending,
   ];
 
-  it('내 차례면 버튼 위 상시 자리에 선다', async () => {
+  it('내 차례면 「결재」 제목 옆 ⓘ 에 세 문장이 있다', async () => {
     await renderDecision();
 
-    for (const sentence of outcomeSentences) {
-      expect(within(outcomePane()).getByText(sentence)).toBeVisible();
-    }
+    expect(outcomeTip()).toBeInTheDocument();
   });
 
   /* 내 차례가 아니면 조회만 한다 — 결재 구획째 서지 않는다(#193). */
@@ -1682,8 +1689,8 @@ describe('결재 — 《승인 시 결과》 구획', () => {
     for (const sentence of outcomeSentences) {
       expect(toastText).not.toContain(sentence);
     }
-    /* 사라지지 않는 자리에는 그대로 있다 — 「어디에도 없다」로 통과하지 않게 짝을 둔다. */
-    expect(within(outcomePane()).getByText(t.decision.outcome.statusOnly)).toBeVisible();
+    /* 사라지지 않는 자리(ⓘ)에는 그대로 있다 — 「어디에도 없다」로 통과하지 않게 짝을 둔다. */
+    expect(outcomeTip()).toBeInTheDocument();
   });
 
   /**

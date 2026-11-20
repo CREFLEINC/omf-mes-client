@@ -11,7 +11,7 @@ import { runRequest } from './request';
  *
  * ⭐ POP 자재 LOT 라벨(P-01-01)에서 꺼냈다(008 · omf-all-around#289 · plan C1). 분할 LOT 라벨(P-01-02)도
  *    같은 양식·같은 발행 기록으로 찍는다(spec FR-007 — QR = LOT 번호). 동작은 P-01-01 그대로다.
- * ⭐ 걸음을 엮는 일(멱등 키 붙잡기 · 묶음 · IQC 라벨 · 멈춤)은 화면마다 다르므로 여기 두지 않는다.
+ * ⭐ 걸음을 엮는 일(멱등 키 붙잡기 · 묶음 · 멈춤)은 화면마다 다르므로 여기 두지 않는다.
  * ⛔ 서버 렌디션은 부르지 않는다 — 라벨은 POP 이 직접 짠다(`label/lot-label-tspl` 머리말).
  */
 
@@ -28,12 +28,6 @@ export type PrintOutcomeReportBody = components['schemas']['PrintOutcomeReport']
  * 확정되면 이 줄 하나만 바꾼다 — 화면·요청 조립 코드는 건드릴 것이 없다.
  */
 export const DOCUMENT_TYPE_CODE = 'MATERIAL_LOT_LABEL';
-
-/**
- * IQC 라벨(omf-all-around#110 · 서버 선행 P-40). IQC 대상 자재면 자재 라벨 뒤에 한 장 더 찍는다.
- * ⚠ 설계 사본(전달본)의 enum 에 아직 없는 값이라 단언한다 — 사본이 받아 오면 단언을 걷는다.
- */
-export const IQC_DOCUMENT_TYPE_CODE = 'IQC_LABEL' as unknown as typeof DOCUMENT_TYPE_CODE;
 
 /**
  * ⚠ **자리표시다.** 발행 대상이 LOT 임을 뜻하는 코드 문자열이 아직 정해지지 않았다 — 계약
@@ -69,11 +63,12 @@ export interface DocumentIssueInput {
  * 대상은 **한 건**이다. 계약은 여러 건을 한 트랜잭션으로 받지만 화면은 LOT 하나씩 찍는다 —
  * 「하나라도 실패하면 전건 실패」라는 계약 조항이 걸릴 자리가 없다.
  */
-export const toDocumentIssueBody = (
-  { lotId, printerName, reissueReasonCode }: DocumentIssueInput,
-  documentTypeCode: DocumentIssueCreateBody['documentTypeCode'] = DOCUMENT_TYPE_CODE,
-): DocumentIssueCreateBody => ({
-  documentTypeCode,
+export const toDocumentIssueBody = ({
+  lotId,
+  printerName,
+  reissueReasonCode,
+}: DocumentIssueInput): DocumentIssueCreateBody => ({
+  documentTypeCode: DOCUMENT_TYPE_CODE,
   targets: [{ targetTypeCode: DOCUMENT_TARGET_TYPE_CODE, targetId: lotId, lotId }],
   ...(reissueReasonCode === null ? {} : { reissueReasonCode }),
   ...(printerName === null ? {} : { printerName }),
@@ -122,14 +117,13 @@ export const createMaterialLotLabelIssue = async (
   input: DocumentIssueInput,
   workerNo: string,
   idempotencyKey: string,
-  documentTypeCode: typeof DOCUMENT_TYPE_CODE = DOCUMENT_TYPE_CODE,
 ): Promise<IssueView> => {
   const data = await runRequest(() =>
     client.POST('/app/document-issues', {
       params: {
         header: { 'Idempotency-Key': idempotencyKey, 'X-Worker-No': workerNo },
       },
-      body: toDocumentIssueBody(input, documentTypeCode),
+      body: toDocumentIssueBody(input),
     }),
   );
 
@@ -166,10 +160,10 @@ export interface MaterialLotLabelLot {
  * ⭐ 005 — 수량 줄 오른쪽 끝에 패키징(있으면 「봉지 10 × 100」)을 싣는다(FR-007). 입하 전에 찍으므로 옛 「입하일」은
  *    없다. 품목·공급사·수량·패키징은 목록 응답이 이미 싣고, LOT 번호는 발행 기록(없으면 줄)의 값이다.
  */
-export const drawMaterialLotLabel = (
-  input: { lot: MaterialLotLabelLot; issue: IssueView },
-  kind: 'material' | 'iqc' = 'material',
-): Uint8Array => {
+export const drawMaterialLotLabel = (input: {
+  lot: MaterialLotLabelLot;
+  issue: IssueView;
+}): Uint8Array => {
   const { lot, issue } = input;
 
   return buildMaterialLotLabelBytes({
@@ -185,7 +179,6 @@ export const drawMaterialLotLabel = (
         : `${lot.supplierName} (${lot.supplierCode})`,
     /* 라벨 인쇄는 코드 그대로 — 프린터 글꼴 · 칸 폭이 정해져 있다(화면 표기만 이름, G1 잔여). */
     receipt: formatPackage(lot.package === null ? null : { ...lot.package, uomName: null }),
-    kind,
   });
 };
 

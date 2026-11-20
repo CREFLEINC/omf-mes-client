@@ -183,10 +183,6 @@ export const BomContents = ({ id, plain = false }: { id: number; plain?: boolean
                 />
               </div>
             ))}
-            <div className="erp-wo-source-unavailable">
-              <strong>ERP 원문 조회 미지원</strong>
-              <p>원래 수량·기준 수량·단위 코드·공장·수신 이력은 현재 조회할 수 없습니다.</p>
-            </div>
             <h3 className="section-title">MES에서 적용한 기준</h3>
             <Properties
               values={[
@@ -281,13 +277,6 @@ export const BomContents = ({ id, plain = false }: { id: number; plain?: boolean
           </table>
         </div>
       )}
-      <div className="erp-wo-source-unavailable">
-        <strong>ERP 원본 추가 정보 · 조회 미지원</strong>
-        <p>
-          공장 코드, 행별 원래 기준 수량·소요량·단위 코드, 수신 식별값·수신 시각은 현재 조회할 수
-          없습니다.
-        </p>
-      </div>
     </>
   );
 };
@@ -410,8 +399,6 @@ export const RoutingContents = ({
           <strong>{label ?? '선택한 Routing'}</strong>
         </p>
       )}
-
-      <div className="erp-wo-source-label">MES Routing 기준정보 · ERP 실시간 수신 정보 아님</div>
       {showHeader && header.isError && (
         <AlertBanner
           variant="error"

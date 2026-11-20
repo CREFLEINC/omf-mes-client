@@ -68,9 +68,9 @@ describe('upsertDataScopeDraft', () => {
   it('없는 키는 뒤에 더한다', () => {
     const drafts = [draftOf({ draftId: 'saved:9001', businessUnitId: '2001' })];
 
-    expect(upsertDataScopeDraft(drafts, draftOf({ draftId: 'new:2' })).map((d) => d.draftId)).toEqual(
-      ['saved:9001', 'new:2'],
-    );
+    expect(
+      upsertDataScopeDraft(drafts, draftOf({ draftId: 'new:2' })).map((d) => d.draftId),
+    ).toEqual(['saved:9001', 'new:2']);
   });
 
   /** 수정이 순서를 흔들면 사용자가 고친 줄을 다시 찾아야 한다. */
@@ -129,9 +129,7 @@ describe('duplicateKeyOf', () => {
 describe('toDataScopesPayload', () => {
   /** 계약의 요청 항목은 두 축뿐이다 — 다른 화면의 치환을 베끼면 식별자가 함께 나간다. */
   it('식별자를 싣지 않는다', () => {
-    const payload = toDataScopesPayload(
-      toDataScopeDrafts([saved(9001, 2001, 4001)]),
-    );
+    const payload = toDataScopesPayload(toDataScopeDrafts([saved(9001, 2001, 4001)]));
 
     expect(Object.keys(payload[0] ?? {})).toEqual(['businessUnitId', 'plantId']);
   });

@@ -245,7 +245,6 @@ describe('주 메뉴 트리', () => {
       '/quality/dispositions → gavel',
       '/production/production-orders → account_tree',
       '/production/po-change-review → account_tree',
-      '/production/emergency-work-orders → bolt',
       '/production/work-order-progress → monitoring',
       '/production/lot-trace → timeline',
       '/production/work-order-close → archive',
@@ -269,18 +268,8 @@ describe('주 메뉴 트리', () => {
       '/equipment/collection-channels → precision_manufacturing',
       '/equipment/tool-master → handyman',
       '/equipment/shot-conversion → handyman',
-      '/equipment/gauge-master → straighten',
-      '/equipment/gauge-calibration → straighten',
-      '/master-data/supplier-item-defaults → package_2',
       '/master-data/warehouse-location → warehouse',
       '/master-data/warehouse-layout → warehouse',
-      '/master-data/master-change → history',
-      '/equipment/failures → build',
-      '/equipment/maintenance-orders → build',
-      '/equipment/maintenance-results → build',
-      '/equipment/tool-pm-order → schedule',
-      '/equipment/tool-pm-result → schedule',
-      '/equipment/downtime-summary → timelapse',
       '/master-data/integration-sync → sync_alt',
       '/master-data/erp-inbound → sync_alt',
       '/master-data/erp-outbound → sync_alt',
@@ -307,7 +296,7 @@ describe('주 메뉴 트리', () => {
 
 describe('navMenuPath', () => {
   it('주소에 닿는 메뉴의 경로를 사이드바 이름 그대로 만든다', () => {
-    expect(navMenuPath('/system/users-roles')).toBe('시스템 관리 › 사용자·역할·권한');
+    expect(navMenuPath('/system/users-roles')).toBe('시스템 관리 › 사용자 역할 권한 관리');
   });
 
   it('사이드바에 없는 주소는 null이다', () => {

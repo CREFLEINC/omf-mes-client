@@ -2,6 +2,7 @@ import { AlertBanner, Button, Chip, EmptyState, SkeletonText } from '@crefle/web
 import { messages } from '@omf-mes/i18n';
 import { Fragment, useId, type ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { canConfirm, cancelLockOf, flowOf } from './rules';
 import { ErpChip, FlowChip } from './shipment-list';
@@ -89,6 +90,8 @@ export const DetailPane = ({
   const flow = flowOf(row);
   const lock = cancelLockOf(row, cancelApproved);
   const canExecuteCancel = lock === 'cancelApproved';
+  /* 막힌 이유가 있을 때만 단추에 잇는다 — 열려 있으면 이을 문장이 없다(ⓘ 는 제 이름으로 읽힌다). */
+  const lockNoteId = lock === null ? undefined : actionNoteId;
   /* 송신 대기 안내 — 다음 송신 때 나갈 수주 연결 라인 수와 수주 번호(시안). 모르면 일반 문구. */
   const salesOrderLines = detail.lines.filter((line) => line.salesOrderNo !== null);
   const salesOrderNos = [...new Set(salesOrderLines.map((line) => line.salesOrderNo))].join(', ');
@@ -159,8 +162,12 @@ export const DetailPane = ({
       {confirmResult}
 
       <section aria-label={t.detail.lines}>
-        <h4 className="field-label">{t.detail.lines}</h4>
-        <p className="field-note">{t.detail.linesNote}</p>
+        <h4 className="field-label">
+          <span className="info-label">
+            {t.detail.lines}
+            <InfoTip text={t.detail.linesNote} />
+          </span>
+        </h4>
         <div className="wide-table">
           <table className="ship-history-lines">
             <thead>
@@ -249,8 +256,12 @@ export const DetailPane = ({
 
       {row.warehouses.some((warehouse) => warehouse.qty !== null) && (
         <section aria-label={t.detail.warehouses}>
-          <h4 className="field-label">{t.detail.warehouses}</h4>
-          <p className="field-note">{t.detail.warehousesNote}</p>
+          <h4 className="field-label">
+            <span className="info-label">
+              {t.detail.warehouses}
+              <InfoTip text={t.detail.warehousesNote} />
+            </span>
+          </h4>
           <ul className="ship-history-warehouses">
             {row.warehouses.map((warehouse) => (
               <li key={warehouse.warehouseId}>
@@ -290,29 +301,36 @@ export const DetailPane = ({
       )}
 
       <div className="form-actions ship-history-actions">
-        {/* 막힌 이유를 단추 옆에 두고 단추에 잇는다(C-4). */}
-        <span id={actionNoteId} className="field-note">
-          {lock === null ? t.cancelNote : t.lock[lock]}
-        </span>
+        {/*
+         * 막힌 이유를 단추 옆에 두고 단추에 잇는다(C-4). 막히지 않았을 때 늘 서던 취소 규칙
+         * (ERP 로 보내기 전에만)은 같은 자리의 ⓘ 로 둔다(관리웹 정리 시안 A).
+         */}
+        {lock === null ? (
+          <InfoTip text={t.cancelNote} />
+        ) : (
+          <span id={actionNoteId} className="field-note">
+            {t.lock[lock]}
+          </span>
+        )}
         {lock !== 'cancelled' && (
           <Button
             variant="outlined"
             disabled={lock !== null || isConfirming}
-            aria-describedby={actionNoteId}
+            aria-describedby={lockNoteId}
             onClick={onRequestCancel}
           >
             {t.actions.requestCancel}
           </Button>
         )}
         {canExecuteCancel && (
-          <Button disabled={isConfirming} aria-describedby={actionNoteId} onClick={onExecuteCancel}>
+          <Button disabled={isConfirming} aria-describedby={lockNoteId} onClick={onExecuteCancel}>
             {t.actions.executeCancel}
           </Button>
         )}
         {canConfirm(row) && (
           <Button
             disabled={isConfirming || row.cancelRequestPending}
-            aria-describedby={actionNoteId}
+            aria-describedby={lockNoteId}
             onClick={onConfirm}
           >
             {t.actions.confirm}

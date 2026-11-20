@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -76,6 +77,16 @@ describe('ItemAttrsPane — 폼 구성', () => {
     expect(screen.queryByLabelText('재생재')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('품목명(한국어)')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('품목명(베트남어)')).not.toBeInTheDocument();
+  });
+
+  /* 검사 기준의 IQC 「기본 생략」과 함께 바뀐다는 사실은 스위치 아래 대신 항목 이름 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */
+  it('IQC 대상이 검사 기준과 함께 바뀐다는 안내는 항목 이름 옆 ⓘ 의 설명으로 읽힌다', () => {
+    renderPane();
+
+    const note = messages.itemExtendedAttrs.attrs.inspectionRequiredSyncNote;
+    expect(screen.getByRole('button', { name: note })).toBeInTheDocument();
+    expect(screen.queryByText(note)).not.toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'IQC 대상' })).toBeInTheDocument();
   });
 
   /* 동작에 쓰이지 않는 항목은 뺐다(사용자 지시 2026-10-28) — 값은 저장 때 조회한 그대로 되돌려 실린다. */

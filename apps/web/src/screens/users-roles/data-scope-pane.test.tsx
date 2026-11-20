@@ -58,9 +58,10 @@ describe('DataScopePane', () => {
   it('구획 표제 옆에 범위 추가가 선다', () => {
     renderPane();
 
-    const heading = screen.getByRole('heading', { name: '데이터 접근범위' });
+    const heading = screen.getByRole('heading', { name: '데이터 접근 범위' });
 
-    expect(heading.parentElement).toContainElement(
+    /* 표제 · 안내가 한 묶음이고, 범위 추가는 그 묶음과 같은 줄 오른쪽이다. */
+    expect(heading.parentElement?.parentElement).toContainElement(
       screen.getByRole('button', { name: '범위 추가' }),
     );
   });
@@ -69,8 +70,12 @@ describe('DataScopePane', () => {
     renderPane();
 
     expect(rows()).toHaveLength(2);
-    expect(within(rows()[0] as HTMLElement).getByText('SYN-BU-01 · 합성 사업부 A')).toBeInTheDocument();
-    expect(within(rows()[0] as HTMLElement).getByText('SYN-PLT-01 · 합성 공장 A')).toBeInTheDocument();
+    expect(
+      within(rows()[0] as HTMLElement).getByText('SYN-BU-01 · 합성 사업부 A'),
+    ).toBeInTheDocument();
+    expect(
+      within(rows()[0] as HTMLElement).getByText('SYN-PLT-01 · 합성 공장 A'),
+    ).toBeInTheDocument();
   });
 
   /** 빈 축은 「고르지 않음」이 아니라 그 축 전체를 뜻하는 **고른 값**이다. */
@@ -133,7 +138,7 @@ describe('DataScopePane', () => {
   it('줄이 없으면 빈 상태가 나오고 범위 추가는 그대로 있다', () => {
     renderPane({ drafts: [] });
 
-    expect(screen.getByText('지정된 접근범위가 없습니다')).toBeInTheDocument();
+    expect(screen.getByText('지정된 범위가 없습니다')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '범위 추가' })).toBeEnabled();
   });
 
@@ -141,7 +146,7 @@ describe('DataScopePane', () => {
     renderPane({ isLoading: true });
 
     expect(
-      screen.getByRole('status', { name: '데이터 접근범위를 불러오는 중' }),
+      screen.getByRole('status', { name: '데이터 접근 범위를 불러오는 중' }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });

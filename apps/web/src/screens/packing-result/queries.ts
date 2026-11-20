@@ -1,5 +1,10 @@
 import type { ApiClient } from '@omf-mes/api-client';
-import { useMutation, useQuery, type UseMutationResult } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseMutationResult,
+} from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -75,6 +80,8 @@ export const packingResultKeys = {
    */
   unassignedBoxes: (shipmentId: number) =>
     ['packing-result', 'progress', shipmentId, 'unassigned-boxes'] as const,
+  /** 고른 출하의 «아직 포장하지 않은» 배분 — 고를 때 받은 값을 넣어 두고 머리줄 [새로고침] 때만 다시 읽는다. */
+  unpacked: (shipmentId: number) => ['packing-result', 'unpacked', shipmentId] as const,
   uoms: ['packing-result', 'uoms'] as const,
   todayShipments: (businessDate: string) =>
     ['packing-result', 'today-shipments', businessDate] as const,
@@ -207,8 +214,32 @@ export const useUnassignedPackedBoxCount = (
 
 export const useShipmentSelection = (): UseMutationResult<ShipmentEntry, Error, Shipment> => {
   const { client } = useApiClient();
+  const queryClient = useQueryClient();
 
-  return useMutation({ mutationFn: (shipment: Shipment) => entryOfShipment(client, shipment) });
+  return useMutation({
+    mutationFn: (shipment: Shipment) => entryOfShipment(client, shipment),
+    /* 머리줄 [새로고침]이 다시 읽을 값으로 둔다(`useUnpackedAllocations`). */
+    onSuccess: (entry) => {
+      queryClient.setQueryData(packingResultKeys.unpacked(entry.shipmentId), entry.allocations);
+    },
+  });
+};
+
+/**
+ * 고른 출하 카드의 품목·「N건」 — 머리줄 [새로고침](전체 무효화) 때 같은 조건으로 다시 읽는다(사용자 지시 2026-11-20).
+ * ⭐ 고르는 순간의 값은 `useShipmentSelection` 이 넣어 둔다 — 저절로 다시 받지 않는다(`staleTime: Infinity`).
+ * ⛔ 화면 표시만 바꾼다. 창고·질의 축(`label`)과 담던 줄은 그대로다.
+ */
+export const useUnpackedAllocations = (shipmentId: number | null) => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: packingResultKeys.unpacked(shipmentId ?? 0),
+    enabled: shipmentId !== null,
+    staleTime: Infinity,
+    retry: false,
+    queryFn: () => unpackedAllocations(client, shipmentId ?? 0),
+  }).data;
 };
 
 /** ② 생산LOT 스캔의 입력 — 출하 축은 **첫 스캔 응답의 `shipmentId`** 를 그대로 쓴다. */

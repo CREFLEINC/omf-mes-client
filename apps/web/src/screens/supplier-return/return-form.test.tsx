@@ -231,15 +231,25 @@ describe('ReturnForm — 반품 정보 구획', () => {
   });
 
   /*
-   * **사용자가 넣지 않은 값이 전표에 실린다**(영업일). 그 사실을 폼에서 밝히지 않으면
-   * 확인 창에서 처음 보게 된다.
+   * **사용자가 넣지 않은 값이 전표에 실린다**(영업일). 그 사실과 대체입고 예정의 뜻은 라벨 옆 ⓘ 로
+   * 읽힌다 — 칸 아래 설명문으로 늘 펼쳐 두지 않는다(관리웹 정리 시안 A).
    */
-  it('영업일이 파생값이라는 사실과 두 토글의 한계를 밝힌다', () => {
+  it('영업일이 파생값이라는 사실과 대체입고 예정의 뜻을 ⓘ 로 밝힌다', () => {
     renderForm();
 
-    expect(screen.getByText(t.notes.businessDateDerived)).toBeInTheDocument();
-    expect(screen.getByText(t.notes.replacementExpectedNote)).toBeInTheDocument();
-    expect(screen.getByText(t.notes.sendToErpNote)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.notes.businessDateDerived })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: t.notes.replacementExpectedNote }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(t.notes.businessDateDerived)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.notes.replacementExpectedNote)).not.toBeInTheDocument();
+  });
+
+  /* ERP 송신 설정을 못 바꾼다는 개발 사정은 두지 않는다(관리웹 정리 시안 A). */
+  it('ERP 송신 토글 아래 설명문을 두지 않는다', () => {
+    renderForm();
+
+    expect(screen.queryByText(/ERP 송신 설정은/)).not.toBeInTheDocument();
   });
 
   /* **M49** — 공급사 목록이 잘리면 그 사실을 밝힌다. 계약에 번호로 한 건을 받는 경로가 없다. */

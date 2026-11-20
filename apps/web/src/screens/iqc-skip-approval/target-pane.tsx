@@ -25,8 +25,8 @@ export interface TargetPaneProps {
  * **이 구획은 잠정이다.** 스펙이 여기에 대상 LOT의 수량·현재 상태·입하·공급사를 그리라고
  * 적었으나 그 값을 얻는 길이 계약에 정해지지 않았다(질문 게시 중 · `omf-mes#33`). 없는 값을
  * 그리려면 화면이 대상 유형을 보고 부를 곳을 고르는 매핑표를 만들어야 하는데 그것이 계약이
- * 금지한 일이다. 그래서 지금은 **이름을 내고 원 화면으로 건너가는 자리**로 두고, 그 사실을
- * 안내 한 줄로 밝힌다.
+ * 금지한 일이다. 그래서 지금은 **이름을 내고 원 화면으로 건너가는 자리**로 둔다. 「내용은 원 화면에서
+ * 확인합니다」 안내는 걷었다 — 「열기」 단추가 그 일을 말한다(관리웹 정리 시안 A).
  *
  * **`targetTypeCode`를 받지 않는다.** 유형을 보고 무엇을 그릴지 갈리는 코드가 이 슬라이스에
  * 한 줄도 없어야 한다. 이 부품은 이름 하나와 판정 하나만 받으므로 유형으로 갈릴 수단 자체가 없다.
@@ -57,7 +57,7 @@ export const TargetPane = ({ name, openState, onOpen, inboundLot = null }: Targe
       )}
     </dl>
 
-    {/* 「열기」·잠긴 사유·안내를 한 줄로 — 좁으면 그때 접힌다. */}
+    {/* 「열기」·잠긴 사유를 한 줄로 — 좁으면 그때 접힌다. */}
     <div className="iqc-skip-approval-target-open">
       {openState.kind === 'open' ? (
         <div className="field-cell">
@@ -75,8 +75,6 @@ export const TargetPane = ({ name, openState, onOpen, inboundLot = null }: Targe
         /* 사유는 감추지 않는다 — 비활성 컨트롤은 포커스를 받지 못해 툴팁으로는 닿을 수 없다. */
         <DisabledAction label={t.target.open} reason={describeOpenBlock(openState)} size="sm" />
       )}
-
-      <p className="field-note">{t.target.note}</p>
     </div>
   </div>
 );

@@ -51,7 +51,7 @@ export const issuedWhen = (value: string): string => {
 const statusText = (status: RowStatus): string => {
   switch (status.kind) {
     case 'printed':
-      return status.iqcMissing ? tStatus.iqcMissing : tStatus.printed;
+      return tStatus.printed;
     case 'failed':
       return tStatus.failed[status.failure];
     case 'running':
@@ -67,9 +67,9 @@ const statusText = (status: RowStatus): string => {
   }
 };
 
-/** 결과 칩 색 — 인쇄됨 초록 · 기록만 못 남김/IQC 빠짐 노랑 · 실패 빨강 · 보내는 중 파랑 · 그 밖 회색. */
+/** 결과 칩 색 — 인쇄됨 초록 · 기록만 못 남김 노랑 · 실패 빨강 · 보내는 중 파랑 · 그 밖 회색. */
 const statusTone = (status: RowStatus): PuChipTone => {
-  if (status.kind === 'printed') return status.iqcMissing ? 'warn' : 'ok';
+  if (status.kind === 'printed') return 'ok';
   if (status.kind === 'failed') return status.failure === 'reportFailedAfterPrint' ? 'warn' : 'bad';
 
   return status.kind === 'running' ? 'info' : 'idle';

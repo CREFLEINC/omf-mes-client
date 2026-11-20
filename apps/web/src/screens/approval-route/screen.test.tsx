@@ -2410,7 +2410,7 @@ describe('ApprovalRouteScreen — 전송 중 바깥 주소 이동', () => {
     });
 
     await user.click(screen.getByRole('button', { name: '주소 이동' }));
-    await screen.findByText(t.notes.approvalTypeFixed);
+    await screen.findByRole('button', { name: t.notes.approvalTypeFixed });
 
     release();
     await screen.findByText(messages.common.saved);
@@ -2713,7 +2713,7 @@ describe('ApprovalRouteScreen — 되먹임의 매임은 실패에도 같은 축
     });
 
     await user.click(screen.getByRole('button', { name: '주소 이동' }));
-    await screen.findByText(t.notes.approvalTypeFixed);
+    await screen.findByRole('button', { name: t.notes.approvalTypeFixed });
 
     release();
     await waitFor(() => {

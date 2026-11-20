@@ -5,8 +5,9 @@ import { messages } from '@omf-mes/i18n';
 import { Button } from '../../patterns/button';
 import { parseMaterialLotNo } from '../../patterns/material-lot-no';
 import { qtyNumber } from './lot-format';
-import { lotTail, type ScanLine } from './receipt';
-import { FitName } from './fit-name';
+import type { ScanLine } from './receipt';
+import '../../patterns/scan-result.css';
+import { FitName } from '../../patterns/fit-name';
 
 const t = messages.inboundReceipt;
 
@@ -52,16 +53,15 @@ export const LastScan = ({ line, detail, canUndo, onUndo }: LastScanProps) => {
           <p className="last-scan__name">
             {detail === undefined ? t.last.loading : <FitName text={detail.itemName} min={13} />}
           </p>
-          {/* 수량은 크게, 번호 끝은 같은 줄 오른쪽에 작게 — 공급사는 표의 머리 줄에 있다(사용자 지시 2026-11-20 시안 A). */}
-          <p className="last-scan__qty">
-            {line.qty === null ? null : (
-              <span>
-                {qtyNumber(line.qty)}
-                <small>{uom}</small>
-              </span>
-            )}
-            <span className="last-scan__tail">{lotTail(line.lotNo)}</span>
-          </p>
+          {/* 수량은 크게 — 공급사는 표의 머리 줄에 있다(사용자 지시 2026-11-20 시안 A). */}
+          {line.qty === null ? null : (
+            <p className="last-scan__qty">
+              {qtyNumber(line.qty)}
+              <small>{uom}</small>
+            </p>
+          )}
+          {/* 번호는 줄이지 않고 수량 아래 줄에 전체를 — 라벨과 대조한다(사용자 지시 2026-11-20). */}
+          <p className="last-scan__lot">{line.lotNo}</p>
           {line.autoClosed ? <p className="last-scan__note">{t.last.autoClosed}</p> : null}
         </div>
       </section>
@@ -81,7 +81,9 @@ export const LastScan = ({ line, detail, canUndo, onUndo }: LastScanProps) => {
     <section className="last-scan" data-kind={line.kind} aria-label={title}>
       <p className="last-scan__bar">
         <Icon
-          name={line.kind === 'duplicate' ? 'info' : line.kind === 'offline' ? 'cloud_off' : 'block'}
+          name={
+            line.kind === 'duplicate' ? 'info' : line.kind === 'offline' ? 'cloud_off' : 'block'
+          }
           size={20}
         />
         <span>{title}</span>

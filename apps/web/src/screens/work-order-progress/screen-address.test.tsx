@@ -130,10 +130,10 @@ describe('WorkOrderProgressScreen — 주소 수명', () => {
     });
 
     /* L-6 — 스스로 새로워지지 않는다는 사실을 적지 않으면 최신인 줄 알고 본다. */
-    it('⛔ 자동으로 갱신되지 않는다는 사실을 적는다', () => {
+    it('⛔ 자동으로 갱신되지 않는다는 사실은 기준 시각 옆 ⓘ 로 둔다', () => {
       renderScreen();
 
-      expect(screen.getByText(t.basis.note)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: t.basis.note })).toBeInTheDocument();
     });
 
     it('새로고침을 누르면 다시 조회한다', async () => {

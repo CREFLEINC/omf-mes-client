@@ -22,6 +22,7 @@ import {
   useHandoverAlertTypes,
   type HandoverAlertCode,
 } from '../../patterns/handover-alert-types';
+import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
@@ -305,16 +306,23 @@ export const HandoverAlertSettingsScreen = () => {
             onChange={(event) => change(setEnabled(draft, event.target.checked))}
           />
           <div>
-            <Switch
-              label={t.fields.zalo}
-              checked={draft.zaloEnabled}
-              disabled={!draft.enabled}
-              aria-describedby={zaloNoteId}
-              onChange={(event) => change({ ...draft, zaloEnabled: event.target.checked })}
-            />
-            <span id={zaloNoteId} className="field-note">
-              {draft.enabled ? t.state.zaloHelp : t.state.zaloNeedsEnabled}
+            {/* 무엇이 가는지 · 실패해도 알림센터는 받는다는 규칙은 Switch 옆 ⓘ 로(관리웹 정리 시안 A). */}
+            <span className="info-label">
+              <Switch
+                label={t.fields.zalo}
+                checked={draft.zaloEnabled}
+                disabled={!draft.enabled}
+                aria-describedby={draft.enabled ? undefined : zaloNoteId}
+                onChange={(event) => change({ ...draft, zaloEnabled: event.target.checked })}
+              />
+              <InfoTip text={t.state.zaloHelp} />
             </span>
+            {/* 잠긴 사유는 잠겼을 때만 Switch 아래에 둔다. */}
+            {!draft.enabled && (
+              <span id={zaloNoteId} className="field-note">
+                {t.state.zaloNeedsEnabled}
+              </span>
+            )}
           </div>
         </div>
 
@@ -409,9 +417,16 @@ export const HandoverAlertSettingsScreen = () => {
     return (
       <div className="two-pane alarm-recipient-layout">
         <section className="pane alarm-recipient-pane" aria-labelledby="handover-types-title">
-          <h2 id="handover-types-title" className="pane-title">
-            {t.panes.types}
-          </h2>
+          {/*
+           * 처음엔 모두 꺼져 있고 Zalo 를 켜면 발송량이 는다는 안내는 제목 옆 ⓘ 로(관리웹 정리 시안 A).
+           * ⓘ 를 제목 밖에 둔다 — 이 제목이 구획 · 표의 이름이라 문장이 이름에 섞이면 안 된다.
+           */}
+          <div className="info-label">
+            <h2 id="handover-types-title" className="pane-title">
+              {t.panes.types}
+            </h2>
+            <InfoTip text={t.intro} />
+          </div>
           {types.isError || summary.isError ? (
             loadError(types.error ?? summary.error, () => {
               void types.refetch();
@@ -446,7 +461,6 @@ export const HandoverAlertSettingsScreen = () => {
     <>
       <PageHeader
         title={t.title}
-        description={t.description}
         breadcrumb={
           <Breadcrumb
             items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
@@ -470,8 +484,8 @@ export const HandoverAlertSettingsScreen = () => {
         </div>
       )}
 
-      <div className="handover-top">
-        {(plants.data?.length ?? 0) > 1 && (
+      {(plants.data?.length ?? 0) > 1 && (
+        <div className="handover-top">
           <div className="alarm-department-bar">
             <SelectField
               label={t.fields.plant}
@@ -484,11 +498,8 @@ export const HandoverAlertSettingsScreen = () => {
               }}
             />
           </div>
-        )}
-        <div className="banner-slot">
-          <AlertBanner variant="info">{t.intro}</AlertBanner>
         </div>
-      </div>
+      )}
 
       {workspace()}
 

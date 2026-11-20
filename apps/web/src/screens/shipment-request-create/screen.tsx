@@ -152,7 +152,9 @@ export const ShipmentRequestCreateScreen = () => {
     null,
   );
 
-  const items = useItemNames(lines.map((line) => (line.itemId === '' ? null : Number(line.itemId))));
+  const items = useItemNames(
+    lines.map((line) => (line.itemId === '' ? null : Number(line.itemId))),
+  );
 
   const lineItemIds = lines.map((line) => (line.itemId === '' ? null : Number(line.itemId)));
   const availableQty = useAvailableQty(lineItemIds);
@@ -347,7 +349,6 @@ export const ShipmentRequestCreateScreen = () => {
   const startStandalone = (): void => {
     setSearchParams(toSearchParams(filters, page, { kind: 'standalone', mode: 'standalone' }));
   };
-
 
   const rightColumn = (): ReactNode => {
     if (target.kind === 'none') {

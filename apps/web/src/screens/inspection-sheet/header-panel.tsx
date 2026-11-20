@@ -7,6 +7,7 @@ import type {
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { Select } from '../../patterns/select';
 
 const t = messages.inspectionSheetEntry.header;
@@ -78,8 +79,11 @@ export const HeaderPanel = ({ sheet, disabled, isSaving, onSave }: HeaderPanelPr
 
   return (
     <section className="pane inspection-sheet-entry-header" aria-label={t.heading}>
-      <h2 className="pane-title">{t.heading}</h2>
-      <p className="field-note">{t.note}</p>
+      {/* 「자동으로 채운 값」이라는 사실은 제목 옆 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
+      <h2 className="pane-title inspection-sheet-entry-title">
+        {t.heading}
+        <InfoTip text={t.note} />
+      </h2>
       <div className="form-grid">
         {LOT_FIELDS.map(({ key, candidates }) => {
           const options = sheet.lotCandidates[candidates];

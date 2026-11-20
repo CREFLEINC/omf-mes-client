@@ -86,10 +86,17 @@ export const MasterDetails = ({
         {candidate ? (
           <>
             <RoutingTable key={preview} id={Number(preview)} />
+            {/*
+             * 적용한 개정을 볼 때는 제목 옆 「현재 적용: …」이 이미 말하므로 비워 둔다 — 다른 개정을 보는 동안만
+             * 알린다(관리웹 정리 시안 A). 알림 자리는 숨겨 남겨 두어 바뀔 때 읽히게 한다.
+             */}
             {!locked && (
-              <p className="field-note" aria-live="polite">
+              <p
+                className={preview === routingId ? 'visually-hidden' : 'field-note'}
+                aria-live="polite"
+              >
                 {preview === routingId
-                  ? '현재 적용한 작업 순서입니다.'
+                  ? null
                   : '확인 중인 작업 순서입니다. 적용하면 계획에 반영됩니다.'}
               </p>
             )}

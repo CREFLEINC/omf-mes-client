@@ -9,22 +9,24 @@
  * 무엇이 렌더되는지 흐려진다.
  */
 export const usersRoles = {
-  title: '사용자·역할·권한',
-  breadcrumbRoot: '시스템 관리',
   /** 탭 라벨. **만든 탭만 둔다** — 자리만 먼저 두면 「탭은 있는데 눌러도 빈 화면인」 상태가 된다. */
   tabs: {
-    label: '사용자·역할·권한',
-    users: '사용자',
-    roles: '역할·권한',
+    label: '사용자 역할 권한 관리',
+    users: '사용자 관리',
+    roles: '역할·권한 관리',
   },
   panes: {
-    userList: '사용자',
-    userForm: '사용자 정보',
-    roleAssign: '역할 부여',
-    dataScope: '데이터 접근범위',
-    roleList: '역할',
-    roleForm: '역할 정보',
+    userList: '사용자 목록',
+    userForm: '사용자 상세 정보',
+    roleAssign: '사용자 역할',
+    dataScope: '데이터 접근 범위',
+    /** 오른쪽 한 카드 — 고른 사용자의 설정이 모두 여기 있다(omf-all-around#333). 표제는 사용자 이름이다. */
+    userSettings: '사용자 설정',
+    roleList: '역할 목록',
+    roleForm: '역할 상세 정보',
     permission: '기능 권한',
+    /** 오른쪽 한 카드 — 고른 역할의 상세 정보 · 기능 권한(사용자 설정 카드와 같은 틀 · #333). */
+    roleSettings: '역할 설정',
   },
   actions: {
     prevPage: '이전',
@@ -33,6 +35,10 @@ export const usersRoles = {
     addUser: '사용자 추가',
     addRole: '역할 추가',
     resetPassword: '비밀번호 초기화',
+    /* 저장 경로가 칸마다 따로라(정보 · 역할 · 범위) 무엇을 저장하는지 버튼에 적는다(omf-all-around#333). */
+    saveInfo: '저장',
+    saveRoles: '저장',
+    saveScopes: '저장',
   },
   /** 비활성 사유는 배치 규범 4의 문형을 따른다 — 그 컨트롤의 이름으로 시작한다. */
   actionReasons: {
@@ -44,7 +50,6 @@ export const usersRoles = {
      * 계약의 수정 요청 본문에 로그인 ID가 아예 없다 — 「언젠가 풀린다」가 아니라
      * 보낼 자리가 없다는 뜻이다. 그 사실을 그대로 밝힌다.
      */
-    loginIdLocked: '로그인 ID는 변경 불가합니다.',
     deactivateRoleAlreadyDone: '사용 중지는 이미 미사용인 역할에 다시 할 수 없습니다.',
     /* 주 액션의 이름이 모드마다 달라 사유도 갈린다 — 규범 4는 컨트롤 이름으로 시작하라고 정한다. */
     saveNoChanges: '저장은 변경된 내용이 있을 때 누를 수 있습니다.',
@@ -58,8 +63,7 @@ export const usersRoles = {
      * 유일 제약이 빈 축을 접어 판정한다 — 사업부만 고른 두 줄은 서버에게 같은 짝이다.
      * 화면이 다르게 세면 사용자가 만든 줄이 저장 시점에야 거부된다.
      */
-    dataScopeDuplicate:
-      '확인은 이미 있는 범위와 겹치지 않을 때 누를 수 있습니다. 비운 축은 「(전체)」로 봅니다.',
+    dataScopeDuplicate: '이미 등록된 접근 범위와 중복되지 않도록 선택해 주세요.',
   },
   /**
    * 사용 중지 확인 창.
@@ -69,25 +73,32 @@ export const usersRoles = {
    * 두 뜻을 섞으면 화면이 지어낸다.
    */
   dialog: {
-    deactivateUserTitle: '사용을 중지할까요?',
-    deactivateUserDescription:
-      '사용을 중지하면 이 사용자는 시스템을 사용할 수 없게 되며 되돌릴 수 없습니다.',
-    deactivateRoleTitle: '이 역할을 사용 중지할까요?',
+    deactivateUserTitle: '계정 사용 중지',
+    deactivateUserCaption: '사용 중지 대상',
+    deactivateUserLoginId: (loginId: string): string => `로그인 아이디: ${loginId}`,
+    deactivateUserDescription: '이 계정의 시스템 사용을 중지하시겠습니까?',
+    deactivateUserWarning: '사용 중지 후에는 해당 계정으로 로그인할 수 없습니다.',
+    /* 역할 사용 중지 창 — 계정 사용 중지 창과 같은 모양(대상 상자 · 질문 · 경고)(사용자 지시 2026-11-20 · #333). */
+    deactivateRoleTitle: '역할 사용 중지',
+    deactivateRoleCaption: '사용 중지 대상',
+    deactivateRoleCode: (roleCode: string): string => `역할 코드: ${roleCode}`,
     /*
      * 역할과 사용자는 **중지했을 때 일어나는 일이 다르다.** 사용자 문구를 그대로 쓰면
      * 「이 사용자는 시스템을 쓸 수 없게 됩니다」가 역할 창에 나와 사실과 다른 안내가 된다.
      * 건수는 여기서도 내지 않는다 — 화면이 낼 수 있는 건수가 없다.
      */
-    deactivateRoleDescription:
-      '사용 중지하면 이 역할을 새로 부여할 수 없고 이 역할로 열려 있던 권한이 사라집니다. 이미 쌓인 자료는 그대로 남습니다. 되돌리는 경로가 없습니다.',
+    deactivateRoleDescription: '이 역할의 사용을 중지하시겠습니까?',
+    deactivateRoleWarning:
+      '신규 부여가 제한되며, 기존 사용자의 권한에도 영향을 줍니다.\n기존 데이터는 유지되지만, 사용 중지 후 복구할 수 없습니다.',
     /*
      * 비밀번호 초기화(W-CO-02 §8-2). 서버가 임시 비밀번호를 만들어 **그 응답에서 한 번만** 준다 —
      * 창을 닫으면 다시 볼 길이 없고, 다시 받으려면 새로 초기화해야 한다. 그 사실을 누르기 전과
      * 받은 뒤 두 번 말한다.
      */
-    resetPasswordTitle: '비밀번호를 초기화할까요?',
-    resetPasswordDescription: '초기화 시 새 임시 비밀번호가 1번만 표시됩니다.',
-    resetPasswordConfirm: '초기화',
+    resetPasswordTitle: '비밀번호 초기화',
+    resetPasswordQuestion: '새로운 임시 비밀번호를 발급하시겠습니까?',
+    resetPasswordDescription: '임시 비밀번호는 발급 후 한 번만 확인할 수 있습니다.',
+    resetPasswordConfirm: '비밀번호 초기화',
     temporaryPasswordTitle: '임시 비밀번호',
     temporaryPasswordLead:
       '비밀번호는 이번에만 확인할 수 있습니다. 창을 닫기 전에 사용자에게 전달해 주세요.',
@@ -111,25 +122,36 @@ export const usersRoles = {
     totalOnly: (total: number): string => `전체 ${String(total)}건`,
   },
   filters: {
+    departmentSearchPlaceholder: '소속 부서를 입력하세요',
+    pane: '사용자 조회 조건',
+    rolePane: '역할 조회 조건',
     userSearchLabel: '사용자 검색',
-    userSearchPlaceholder: '로그인 ID 또는 이름',
-    department: '부서',
+    userSearchPlaceholder: '아이디 또는 이름을 입력하세요',
+    department: '소속 부서',
     /* 선택지에 빈 값을 두어 고른 부서를 다시 「전체」로 되돌릴 수 있게 한다. */
-    departmentAll: '전체 부서',
+    departmentAll: '전체',
     /*
      * `status_code`는 **인사 상태**(재직·휴직·퇴사)다. 로그인 가부(`is_active` — 「사용 중지」·
      * 「미사용 포함」·「(미사용)」)와 다른 축이라 「상태」 한 낱말로 두지 않는다(설계 §4-A).
      */
     status: '재직 상태',
     statusAll: '전체 재직 상태',
+    /* 이 화면은 「미사용 포함」 대신 대상이 보이게 쓴다(사용자 지시 2026-11-20 · omf-all-around#333). */
+    /* 「미사용 포함」으로 정정(사용자 지시 2026-11-20 · #333) — 역할 탭과 같은 말. */
+    includeInactive: '미사용 포함',
     roleSearchLabel: '역할 검색',
-    roleSearchPlaceholder: '역할 코드 또는 역할명',
+    /* 역할 탭 용어 정정(사용자 지시 2026-11-20 · #333). */
+    roleSearchPlaceholder: '역할 코드 또는 역할명을 입력하세요',
+    roleIncludeInactive: '미사용 포함',
+    roleReset: '초기화',
+    /* 탭 줄 사용 · 미사용 라벨(사용자 지시 2026-11-20 · #333). */
+    roleStatusChipsLabel: '사용 상태',
   },
   loading: {
     users: '사용자 목록을 불러오는 중',
     userDetail: '사용자 정보를 불러오는 중',
     roleAssign: '역할 부여분을 불러오는 중',
-    dataScopes: '데이터 접근범위를 불러오는 중',
+    dataScopes: '데이터 접근 범위를 불러오는 중',
     roles: '역할 목록을 불러오는 중',
     roleDetail: '역할 정보를 불러오는 중',
     permissions: '기능 권한을 불러오는 중',
@@ -160,23 +182,30 @@ export const usersRoles = {
      * `isActive` 하나뿐이다) 상태 열이 사용 여부를 그대로 낸다 — 사용자 표처럼
      * 이름 뒤 접미로만 붙이면 역할 표의 상태 열에 낼 것이 없어진다.
      */
-    active: '사용 중',
+    /* 사용 / 미사용(사용자 지시 2026-11-20 · #333). */
+    active: '사용',
     inactive: '미사용',
   },
   user: {
     fields: {
-      loginId: '로그인 ID',
+      loginId: '로그인 아이디',
       userName: '이름',
-      department: '부서',
+      department: '소속 부서',
       /* 설계(W-CO-02 §4-A)의 라벨이 「이메일」이다 — 관리웹에서 「전자우편」은 이 화면에만 있었다. */
       email: '이메일',
-      phoneNumber: '휴대폰 번호',
+      phoneNumber: '휴대전화번호',
       status: '재직 상태',
       initialPassword: '초기 비밀번호',
     },
     statusDefault: '기본값(재직)',
+    showPassword: '비밀번호 보기',
+    /** 선택 입력칸 라벨 뒤 표시(사용자 지시 2026-11-20 · #333) — 다른 화면의 「이름 (선택)」과 같은 모양. */
+    optionalMark: '(선택)',
+    hidePassword: '비밀번호 숨기기',
     /* 부서를 고르지 않은 상태. 계약이 널을 허용하므로 비우는 것이 정상 값이다. */
-    departmentNone: '지정하지 않음',
+    departmentNone: '미지정',
+    /** 로그인 아이디 칸 이름 오른쪽 라벨(omf-all-around#333). */
+    loginIdLocked: '변경 불가',
     empty: {
       noneTitle: '등록된 사용자가 없습니다',
       noneDescription: '「사용자 추가」로 첫 사용자를 등록하세요.',
@@ -187,15 +216,15 @@ export const usersRoles = {
     },
     validation: {
       required: '필수 입력 항목입니다.',
-      loginIdBlank: '로그인 ID는 공백만으로 지정할 수 없습니다.',
+      loginIdBlank: '로그인 아이디는 공백만으로 지정할 수 없습니다.',
       userNameBlank: '이름은 공백만으로 지정할 수 없습니다.',
-      loginIdTooLong: '로그인 ID는 100자를 넘을 수 없습니다.',
+      loginIdTooLong: '로그인 아이디는 100자를 넘을 수 없습니다.',
       userNameTooLong: '이름은 200자를 넘을 수 없습니다.',
       emailTooLong: '이메일은 200자를 넘을 수 없습니다.',
       /* 계약이 「형식 검증은 화면 책임 — DB 제약 없음」이라고 명시한 유일한 칸이다. */
       emailFormat: '이메일 형식이 아닙니다. 「이름@도메인」 형태로 입력하세요.',
       /* 001 W-CO-02 — 0·+84·84 로 시작하는 입력을 받고 공백·하이픈은 무시한다. */
-      phoneFormat: '베트남 휴대폰 번호 형식이 아닙니다 (예: 0912 345 678)',
+      phoneFormat: '베트남 휴대전화 번호 형식이 아닙니다 (예: 0912 345 678)',
       /**
        * 초기 비밀번호가 규칙(숫자와 알파벳을 함께, 최소 길이 이상)을 어겼다. **빈 값은 이
        * 키를 쓰지 않는다** — 그 갈래는 이미 있는 `required`를 그대로 쓴다.
@@ -215,14 +244,15 @@ export const usersRoles = {
       roleCode: '역할 코드',
       roleName: '역할명',
       description: '설명',
-      status: '상태',
+      status: '사용 상태',
     },
+    /* 쓰이는 중이라 역할 코드가 잠겼다는 라벨(사용자 지시 2026-11-20 · #333). */
+    codeInUse: '사용 중인 코드는 변경 불가합니다.',
     empty: {
       noneTitle: '등록된 역할이 없습니다',
       noneDescription: '「역할 추가」로 첫 역할을 등록하세요.',
       noMatchTitle: '조건에 맞는 역할이 없습니다',
       noMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
-      notSelected: '왼쪽 목록에서 역할을 선택하세요.',
     },
     validation: {
       required: '필수 입력 항목입니다.',
@@ -247,9 +277,9 @@ export const usersRoles = {
       '칸을 눌러 권한을 주거나 거둔 뒤 저장하세요. 저장은 이 역할의 권한 전체를 한 번에 바꿉니다.',
     /* 표의 열 머리. 권한이 117개라 세로로 세우고, 코드는 화면을 짚어 보는 열쇠라 함께 보인다. */
     columns: {
-      granted: '부여',
-      name: '권한',
-      code: '코드',
+      granted: '권한 부여',
+      name: '기능명',
+      code: '사용처',
     },
     /* 표의 접근 설명. 무엇을 담은 표인지 한 줄로 말한다. */
     tableCaption: (roleLabel: string) => `${roleLabel} 역할의 기능 권한`,
@@ -257,8 +287,19 @@ export const usersRoles = {
      * 고르기만 하고 저장하지 않는다 - 그래서 「저장」과 나란히 두지 않고 표 위에 둔다.
      * 되돌리는 길은 「취소」다.
      */
-    selectAll: '전체 선택',
-    clearAll: '전체 해제',
+    /* 적용 범위가 보이게 — 접힌 묶음까지 모든 업무의 권한에 적용된다(사용자 지시 2026-11-20 · #333). */
+    selectAll: '모든 권한 선택',
+    clearAll: '모든 권한 해제',
+    /* 업무 묶음 머리 — 접고 펼친다. 건수는 이 묶음에서 부여된 수 / 전체 수다(#333). */
+    groupSelectAll: '묶음 전체',
+    /*
+     * 권한 코드 앞 글자가 쓰는 곳이다 — W 관리웹(WEB) · P POP · M 모바일(PDA)(docs/screen-composition.md §1). 코드 대신 이것을
+     * 보인다(사용자 지시 2026-11-20 · #333). 모르는 앞 글자면 코드를 그대로 낸다.
+     */
+    platforms: { W: 'WEB', P: 'POP', M: 'PDA' } as Record<string, string>,
+    groupCount: (granted: number, total: number): string => `${String(granted)} / ${String(total)}`,
+    groupCountLabel: (granted: number, total: number): string =>
+      `${String(total)}개 중 ${String(granted)}개 부여`,
     /*
      * 묶음 이름 - groupCode 는 개체 식별자라 서버가 이름을 주지 않는다(계약 x-no-code-key).
      * 고정 설계의 권한 목록 생성기가 적어 둔 축 7개의 이름을 옮긴 것이고,
@@ -340,7 +381,7 @@ export const usersRoles = {
     fields: {
       businessUnit: '사업부',
       plant: '공장',
-      edit: '편집',
+      edit: '관리',
     },
     values: {
       all: '(전체)',
@@ -357,49 +398,103 @@ export const usersRoles = {
       confirm: '확인',
     },
     dialog: {
-      addTitle: '접근범위 추가',
-      editTitle: '접근범위 수정',
-      /* 확인이 저장이라고 오해하면 창을 닫고 화면을 떠난다. */
-      notSavedNotice: '확인하면 표에 반영됩니다. 변경사항을 적용하려면 「저장」을 눌러주세요.',
+      addTitle: '접근 범위 추가',
+      editTitle: '접근 범위 수정',
+      addLead: '추가할 사업부와 공장을 선택하세요.',
+      allBusinessUnits: '사업부 선택',
+      allPlants: '공장 선택',
+      add: '추가',
+      apply: '변경 적용',
     },
+    /** 서버 규칙 — 줄이 없으면 제한 없음, 줄마다 공장 > 사업부 순으로 가장 좁은 축 하나를 본다. */
+    hint: '선택한 사업부와 공장의 데이터에 접근할 수 있습니다.',
     empty: {
-      none: '지정된 접근범위가 없습니다',
-      noneDescription: '「범위 추가」로 이 사용자가 볼 수 있는 범위를 정하세요.',
+      none: '지정된 범위가 없습니다',
+      /* 줄이 없으면 제한 없음 — 서버 `scopedPlantWhere`(대시보드 · 인계작업 알림 설정 등). */
+      noneDescription: '모든 공장의 자료를 볼 수 있습니다.',
     },
   },
   /**
    * 계정 ↔ 작업자 연결 — omf-all-around#104. 사용자 정보 카드 안의 「연결된 작업자」 구역이다. 용어는 「연결」로 통일(담당자 결정 2026-10-16).
    * 검사 판정처럼 작업자가 남는 관리웹 쓰기에 쓴다.
    */
+  /** 탭 줄 오른쪽 재직 상태 칩(omf-all-around#333) — 수입검사 상태 칩과 같은 자리 · 0건은 세우지 않는다. */
+  statusChips: {
+    label: '재직 상태',
+    filterOn: (label: string): string => `${label}만 보기`,
+    filterOff: (label: string): string => `${label} 거르기 해제`,
+  },
+  /** 오른쪽 카드 — 고르기 전 안내(수입검사 「검사 의뢰를 선택하세요」와 같은 모양). */
+  pickUser: {
+    title: '사용자를 선택하세요.',
+    hint: '선택한 사용자의 상세 정보 · 역할 · 데이터 접근 범위가 표시됩니다.',
+    /** 목록이 비었을 때 — 고를 사용자가 없다는 것을 먼저 말한다. */
+    noUsersTitle: '표시할 사용자가 없습니다.',
+    noUsersHint: '조회 조건을 바꾸거나 사용자를 추가하세요.',
+  },
+  /** 역할 탭 오른쪽 빈 안내 — 사용자 탭과 같은 모양(사용자 지시 2026-11-20 · #333). */
+  pickRole: {
+    title: '역할을 선택해 주세요.',
+    hint: '선택한 역할의 정보와 권한을 확인할 수 있습니다.',
+    noRolesTitle: '표시할 역할이 없습니다.',
+    noRolesHint: '조회 조건을 바꾸거나 역할을 추가하세요.',
+  },
+  /** 사용자를 바꾸거나 새로 추가할 때, 저장하지 않은 변경이 있으면 묻는다(omf-all-around#333). */
+  discard: {
+    /* 사용자 · 역할 탭이 같은 창을 쓴다 — 문구 정정(사용자 시안 2026-11-20 · #333). */
+    title: '저장되지 않은 변경 사항',
+    body: '저장하지 않고 나가면 변경 사항이 사라집니다.',
+    keep: '계속 편집',
+    confirm: '저장하지 않고 나가기',
+  },
   workerLink: {
-    title: '연결된 작업자',
+    title: '연결된 현장 작업자',
     linked: '연결됨',
     unlinked: '미연결',
-    none: '연결된 작업자가 없습니다.',
     /** 미연결일 때 한 줄 — 왜 연결해야 하는지 */
-    hintUnlinked: '수입검사 판정을 저장하려면 작업자 사번을 연결해야 합니다.',
-    hintLinked: '검사 판정 시 해당 작업자로 기록됩니다.',
+    hintUnlinked: '수입검사 판정을 저장하려면 작업자 연결이 필요합니다.',
+    /** 미연결일 때의 구역 제목(사용자 시안 2026-11-20 · #333). */
+    titleUnlinked: '현장 작업자 연결',
     noDepartment: '부서 없음',
     connect: '작업자 연결',
     change: '작업자 변경',
     unlink: '연결 해제',
+    /** 수입검사 화면의 작업자 연결 창(`iqc-inspection/worker-connect-dialog`)이 쓰는 문구 — 그 화면은 바꾸지 않는다. */
     inputLabel: '작업자 사번',
-    inputPlaceholder: '사번 입력',
-    submitConnect: '연결',
-    submitChange: '변경',
-    /** 입력 그룹 맨 아래에만 — 실패했는데 적용됐다고 말하지 않도록 「~하면」으로 쓴다. */
     noteConnect: '연결하면 별도 저장 없이 즉시 적용됩니다.',
-    noteChange: '변경하면 별도 저장 없이 즉시 적용됩니다.',
+    inputLabelChange: '변경할 작업자 사번',
+    inputLabelConnect: '연결할 작업자 사번',
+    inputPlaceholderConnect: '작업자 사번을 입력하세요',
+    currentCaption: '현재 연결된 작업자',
+    inputPlaceholder: '사번 입력',
+    /* 사용자 역할 권한 화면의 연결 · 변경 창(사용자 시안 2026-11-20 · #333). */
+    inputPlaceholderChange: '작업자 사번을 입력하세요',
+    submitConnect: '연결',
+    submitConnectDialog: '작업자 연결',
+    submitChange: '작업자 변경',
+    /** 입력 그룹 맨 아래에만 — 실패했는데 적용됐다고 말하지 않도록 「~하면」으로 쓴다. */
     unlinkConfirmTitle: '작업자 연결 해제',
-    unlinkQuestion: '이 작업자의 연결을 해제하시겠습니까?',
-    unlinkImpact: '연결을 해제하면 이 계정에서 수입검사 판정을 저장할 수 없습니다.',
-    unlinkNote: '연결 해제는 즉시 적용됩니다.',
+    unlinkCaption: '연결된 작업자',
+    unlinkImpact: '연결 해제 후에는 이 계정으로 수입검사 판정을 저장할 수 없습니다.',
     linkedToast: (summary: string): string => `작업자를 연결했습니다 — ${summary}`,
     unlinkedToast: '작업자 연결을 해제했습니다.',
     /** 조회 조건(재직 중 · 사번 일치)을 그대로 말한다. */
     notFound: '해당 사번의 재직 중인 작업자를 찾을 수 없습니다.',
     /** 사번 조회 응답의 연결 계정(appUserId)으로 가린다 — 서버도 같은 경우를 400 으로 막는다. */
     linkedElsewhere: '이미 다른 계정에 연결된 사번입니다.',
+    /** 사용자 화면(추가 팝업 · 연결 창) 문구 — 수입검사 연결 창은 notFound 를 그대로 쓴다(사용자 지시 2026-11-20 · #333). */
+    noActiveWorker: '재직 중인 작업자 사번이 없습니다.',
     workerNoRequired: '작업자 사번을 입력해 주세요.',
+    /** 사용자 추가 팝업의 사번 칸(사용자 지시 2026-11-20 · #333). */
+    createLabel: '연결할 작업자 사번',
+    /** 연결된 작업자 줄의 값 이름(사용자 지시 2026-11-20 · #333). */
+    metaLabels: {
+      workerNo: '사번',
+      departmentCode: '부서 코드',
+      departmentName: '부서명',
+      department: '부서',
+    },
+    createLinkFailed:
+      '사용자는 추가했지만 작업자를 연결하지 못했습니다. 상세 정보에서 다시 연결해 주세요.',
   },
 } as const;

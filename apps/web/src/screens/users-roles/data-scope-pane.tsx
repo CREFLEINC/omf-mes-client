@@ -2,6 +2,7 @@ import {
   Button,
   type Column,
   EmptyState,
+  Icon,
   IconButton,
   SkeletonText,
   Table,
@@ -33,6 +34,10 @@ export interface DataScopePaneProps {
   onRemove: (draftId: string) => void;
   onSave: () => void;
   onCancel: () => void;
+  /**
+   * 이 칸의 [취소][저장] 줄을 그릴지. 사용자 설정 카드는 아래에 한 줄만 두므로 끈다(사용자 지시 2026-11-20 · #333).
+   */
+  showActions?: boolean;
 }
 
 /**
@@ -79,6 +84,7 @@ export const DataScopePane = ({
   onRemove,
   onSave,
   onCancel,
+  showActions = true,
 }: DataScopePaneProps) => {
   /** 줄을 가리키는 이름. 「수정」이 여러 줄에 있으면 어느 줄을 고치는 것인지 알 수 없다. */
   const rowLabel = (draft: DataScopeDraft): string =>
@@ -109,7 +115,8 @@ export const DataScopePane = ({
     {
       key: 'edit',
       align: 'center',
-      header: t.scope.fields.edit,
+      /* 머리 이름은 화면에 내지 않는다(사용자 지시 2026-11-20 · #333) — 화면 낭독기에만 남긴다. */
+      header: <span className="visually-hidden">{t.scope.fields.edit}</span>,
       width: '20%',
       render: (row) => (
         /* 마우스를 올리면 짧은 이름을 보인다 — 공통 `Tooltip` 을 쓰고 표 액션 자체는 바꾸지 않는다. */
@@ -162,9 +169,15 @@ export const DataScopePane = ({
           rows={drafts}
           getRowId={(row) => row.draftId}
           empty={
+            /* 다른 목록의 빈 상태와 같은 모양 — 아이콘 · 제목 · 안내(사용자 지시 2026-11-20 · #333). */
             <EmptyState
               size="sm"
               live
+              icon={
+                <span className="inspection-standard-empty-icon">
+                  <Icon name="factory" size={20} />
+                </span>
+              }
               title={t.scope.empty.none}
               description={t.scope.empty.noneDescription}
             />
@@ -178,8 +191,20 @@ export const DataScopePane = ({
     <section className="pane users-roles-pane" aria-label={t.panes.dataScope}>
       {/* 추가는 이 구획의 표에 줄을 더하는 일이라 구획 표제 오른쪽에 둔다. */}
       <div className="pane-heading-row users-roles-heading">
-        <h2 className="pane-title">{t.panes.dataScope}</h2>
-        <Button variant="outlined" onClick={onAdd}>
+        {/* 안내는 표제 바로 오른쪽, 본문과 같은 글자 크기(사용자 지시 2026-11-20 · #333). */}
+        <div className="users-roles-scope-title">
+          <h3 className="pane-title">{t.panes.dataScope}</h3>
+          <p className="iqc-inspection-action-note users-roles-scope-hint" data-tone="info">
+            <Icon name="info" size={14} aria-hidden />
+            {t.scope.hint}
+          </p>
+        </div>
+        <Button
+          variant="outlined"
+          size="sm"
+          leadingIcon={<Icon name="add" size={18} />}
+          onClick={onAdd}
+        >
           {t.scope.actions.add}
         </Button>
       </div>
@@ -188,16 +213,18 @@ export const DataScopePane = ({
 
       {listSlot()}
 
-      <div className="form-actions">
-        <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
-          {messages.common.cancel}
-        </Button>
+      {showActions && (
+        <div className="form-actions">
+          <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
+            {messages.common.cancel}
+          </Button>
 
-        {/* 규범 4(비활성 사유 상시 표시)의 예외 — 사용자 지시 2026-09-18: 이 화면의 저장 사유 문구를 내지 않는다. */}
-        <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
-          {messages.common.save}
-        </Button>
-      </div>
+          {/* 규범 4(비활성 사유 상시 표시)의 예외 — 사용자 지시 2026-09-18: 이 화면의 저장 사유 문구를 내지 않는다. */}
+          <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
+            {t.actions.saveScopes}
+          </Button>
+        </div>
+      )}
     </section>
   );
 };

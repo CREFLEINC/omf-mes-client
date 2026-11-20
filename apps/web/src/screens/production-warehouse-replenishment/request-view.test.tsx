@@ -67,6 +67,15 @@ describe('W-02-12 생산 창고 보충 — 요청 보기', () => {
     expect(screen.getByRole('button', { name: tr.submit })).toBeEnabled();
   });
 
+  /* 구획 설명 · 나뉨 규칙은 늘 펴 두지 않고 ⓘ 의 설명으로 읽힌다(관리웹 정리 시안 A). */
+  it('요청 구획의 뜻은 제목 옆 ⓘ, 창고별로 나뉜다는 것은 보내기 옆 ⓘ 로 읽힌다', async () => {
+    setupScreen();
+
+    expect(await screen.findByRole('button', { name: tr.lead })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: tr.splitNote })).toBeInTheDocument();
+    expect(screen.queryByText(tr.lead)).not.toBeInTheDocument();
+  });
+
   it('US1-7 「생산 창고 쓸 수 있는 양」·「자재 창고 남은 수량」은 창고별 출고 예정 조회(includeUnplanned) 값이고, 행이 없는 쌍은 0 → 빨강 안내', async () => {
     const { user, gets } = setupScreen();
 

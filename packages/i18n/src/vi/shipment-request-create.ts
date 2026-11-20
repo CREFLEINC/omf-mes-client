@@ -105,7 +105,6 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
       'Đây là lệnh lập theo ERP S/O nên không sửa được khách hàng, nơi giao hàng và mặt hàng, số lượng của các dòng.',
     requestedQtyFixed:
       'Số lượng yêu cầu được tự động điền bằng số lượng còn lại của ERP S/O và không sửa được.',
-    lineNoAssignedByServer: 'Số dòng do máy chủ cấp.',
     erpUnmatched: 'Lệnh tạo không cần ERP S/O thì không có số ERP S/O.',
     networkUnconfirmed:
       'Chưa nhận được phản hồi. Hãy kiểm tra lại xem máy chủ đã ghi nhận thật chưa rồi thử lại.',

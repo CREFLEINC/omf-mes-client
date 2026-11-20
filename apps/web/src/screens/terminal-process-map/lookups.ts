@@ -40,47 +40,7 @@ export const lookupNote = (lookup: LookupResult, failed: string): string | undef
 
 export const lookupKeys = {
   plants: ['terminal-process-map-lookups', 'plants'] as const,
-  equipments: ['terminal-process-map-lookups', 'equipments'] as const,
   processes: ['terminal-process-map-lookups', 'processes'] as const,
-  warehouses: (plantId: string) => ['terminal-process-map-lookups', 'warehouses', plantId] as const,
-};
-
-/**
- * 단말 공장의 사용 중인 창고(피처 002, W-CO-06). 공장을 고르기 전에는 부르지 않는다.
- *
- * ⭐ **공장 질의를 싣고도 화면에서 다시 거른다** — 질의(P-109)를 모르는 서버는 모든 공장의 창고를
- * 낸다. 다른 공장 창고는 서버도 400 `PLANT_MISMATCH` 로 막는다.
- */
-export const useWarehouseOptions = (plant: string): LookupResult => {
-  const { client } = useApiClient();
-  const query = useQuery({
-    queryKey: lookupKeys.warehouses(plant),
-    enabled: plant !== '',
-    queryFn: () =>
-      runRequest(() =>
-        client.GET('/mdm/warehouses', {
-          params: { query: { plantId: Number(plant), includeInactive: false } },
-        }),
-      ),
-  });
-  const data = query.data;
-  const items = data?.items.filter((item) => String(item.plantId) === plant && item.isActive);
-
-  return {
-    entries:
-      items?.map((item) => ({
-        value: String(item.warehouseId),
-        label: `${item.warehouseCode} ${item.warehouseName}`,
-        isActive: item.isActive,
-      })) ?? EMPTY_ENTRIES,
-    truncated: data !== undefined && isTruncated(data.page, data.items.length),
-    isError: query.isError,
-    error: query.error,
-    isLoading: plant !== '' && query.isPending,
-    refetch: () => {
-      void query.refetch();
-    },
-  };
 };
 
 export const usePlantOptions = (): LookupResult => {
@@ -96,31 +56,6 @@ export const usePlantOptions = (): LookupResult => {
       data?.items.map((item) => ({
         value: String(item.plantId),
         label: `${item.plantCode} · ${item.plantName}`,
-        isActive: item.isActive,
-      })) ?? EMPTY_ENTRIES,
-    truncated: data !== undefined && isTruncated(data.page, data.items.length),
-    isError: query.isError,
-    error: query.error,
-    isLoading: query.isPending,
-    refetch: () => {
-      void query.refetch();
-    },
-  };
-};
-
-export const useEquipmentOptions = (): LookupResult => {
-  const { client } = useApiClient();
-  const query = useQuery({
-    queryKey: lookupKeys.equipments,
-    queryFn: () => runRequest(() => client.GET('/mdm/equipments', { params: { query: {} } })),
-  });
-  const data = query.data;
-
-  return {
-    entries:
-      data?.items.map((item) => ({
-        value: String(item.equipmentId),
-        label: `${item.equipmentCode} · ${item.equipmentName}`,
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
@@ -181,7 +116,10 @@ export interface CodeLookup {
  * 화면이 이름을 박지 않는다 — 값 목록의 정본은 공통코드다. 사용 중지 코드로 만든 단말도
  * 남아 있으므로 사용 중지 코드까지 받는다. 이름을 못 찾으면 코드를 그대로 돌려준다.
  */
-const useCodeLookup = (groupCode: string): CodeLookup => {
+const useCodeLookup = (
+  groupCode: string,
+  shortNames: Readonly<Record<string, string>> = {},
+): CodeLookup => {
   const { client } = useApiClient();
   const query = useQuery({
     queryKey: ['terminal-process-map', 'code-names', groupCode] as const,
@@ -198,7 +136,7 @@ const useCodeLookup = (groupCode: string): CodeLookup => {
         .sort((left, right) => left.displayOrder - right.displayOrder)
         .map((value) => ({
           value: value.code,
-          label: masterName(value, value.codeName),
+          label: shortNames[value.code] ?? masterName(value, value.codeName),
           isActive: value.isActive,
         }));
     },
@@ -238,8 +176,14 @@ export interface TerminalCodeNames {
   statusLookup: CodeLookup;
 }
 
+/**
+ * 단말 유형은 이 화면에서 짧은 이름으로 — POP · PDA · 추적 시스템 연동(사용자 지시 2026-11-20 · #333).
+ * 공통코드 이름(「POP 단말」·「모바일 스캐너」)은 그대로 두고 이 화면 표시만 바꾼다. 저장값은 코드 그대로다.
+ */
+const TYPE_SHORT_NAMES: Readonly<Record<string, string>> = { POP: 'POP', MOBILE: 'PDA' };
+
 export const useTerminalCodeNames = (): TerminalCodeNames => {
-  const typeLookup = useCodeLookup('TERMINAL_TYPE');
+  const typeLookup = useCodeLookup('TERMINAL_TYPE', TYPE_SHORT_NAMES);
   const statusLookup = useCodeLookup('TERMINAL_STATUS');
 
   return { type: typeLookup.nameOf, status: statusLookup.nameOf, typeLookup, statusLookup };

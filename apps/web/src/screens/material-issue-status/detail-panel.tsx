@@ -13,6 +13,7 @@ import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useId, useRef, useState } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
 import { plantToday } from '../../patterns/plant-time';
 import { toApiError } from '../../patterns/request';
@@ -291,6 +292,8 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
       return <SaveErrorBanner error={error} />;
     })();
 
+    const dateHint = t.detail.hints[request.displayStatus];
+
     return (
       <div className="material-issue-status-detail">
         <p className="field-note">
@@ -304,7 +307,11 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
         {errorBanner}
 
         <dl className="material-issue-status-head">
-          <dt>{t.detail.issueWorkDate}</dt>
+          {/* 날짜를 바꾸면 무엇이 되는지는 라벨 옆 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
+          <dt className="info-label">
+            {t.detail.issueWorkDate}
+            {scope === 'all' && dateHint !== undefined && <InfoTip text={dateHint} />}
+          </dt>
           <dd>
             <span>{formatDay(request.issueWorkDate)}</span>
             {scope === 'all' && (
@@ -319,9 +326,6 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
               >
                 {t.detail.changeDate}
               </Button>
-            )}
-            {scope === 'all' && t.detail.hints[request.displayStatus] !== undefined && (
-              <span className="field-note">{t.detail.hints[request.displayStatus]}</span>
             )}
           </dd>
           <dt>{t.detail.sourceWarehouse}</dt>

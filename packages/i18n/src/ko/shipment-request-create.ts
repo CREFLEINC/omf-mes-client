@@ -111,7 +111,6 @@ export const shipmentRequestCreate = {
   notes: {
     fromOrderLocked: 'ERP S/O 로 편성하는 중이라 고객, 납품처, 라인 품목과 수량은 고칠 수 없습니다.',
     requestedQtyFixed: '요청 수량은 ERP S/O 잔여 수량으로 자동 채워지며 고칠 수 없습니다.',
-    lineNoAssignedByServer: '줄번호는 서버가 부여합니다.',
     erpUnmatched: 'ERP S/O 없이 생성한 작업지시에는 ERP S/O 번호가 없습니다.',
     networkUnconfirmed:
       '응답을 받지 못했습니다. 서버에 실제로 반영됐는지 다시 확인한 뒤 재시도하세요.',

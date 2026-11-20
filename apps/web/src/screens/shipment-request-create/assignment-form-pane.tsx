@@ -231,8 +231,6 @@ export const AssignmentFormPane = ({
           onRemove={onRemoveLine}
         />
 
-        <p className="field-note">{t.notes.lineNoAssignedByServer}</p>
-
         {!isFromOrder && (
           <div className="filter-bar">
             <div className="field-cell">

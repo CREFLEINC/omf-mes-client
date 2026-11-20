@@ -49,8 +49,6 @@ export const shotConversion = {
      * 겹치면 무엇이 이기는지를 표 곁에서 말해 두지 않으면, 사람마다 다르게 읽는다.
      */
     overlapNote: '범위가 겹치면 더 좁은 것이 이깁니다 — 품목 · 공정 · 공장 · 사업부 차례입니다.',
-    /** ⚠ 화면이 판정하지 않는다 — 실제로 무엇이 적용되는지는 미리보기가 서버에 물어 답한다. */
-    resolvedElsewhere: '지금 어느 정책이 적용되는지는 아래 미리보기에서 확인하세요.',
     listTruncated: (shown: number, total: number): string =>
       `전체 ${String(total)}건 중 ${String(shown)}건을 표시합니다. 기준일로 좁혀 보세요.`,
     effectiveOnLabel: '기준일',
@@ -151,8 +149,6 @@ export const shotConversion = {
    */
   preview: {
     paneTitle: '미리보기',
-    description:
-      '툴·품목·공정을 고르면 그 조합에 실제로 적용되는 정책과 그것으로 계산한 타발수를 보입니다.',
     toolLabel: '툴',
     itemLabel: '품목',
     processLabel: '공정',
