@@ -37108,3 +37108,10 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   box-shadow: var(--focus-ring);
 }
 
+/* 긴 문장은 줄을 바꾼다 — DS 툴팁은 한 줄 라벨이 기본이다. */
+.info-tip-anchor > [role="tooltip"] {
+  width: max-content;
+  max-width: 22rem;
+  white-space: normal;
+}
+
