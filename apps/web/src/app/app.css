@@ -13790,13 +13790,6 @@ a.erp-send-chips:focus-visible {
   margin-bottom: var(--space-3);
 }
 
-/* 저장 안 한 변경 확인 창 제목 — 경고 아이콘 + 제목(사용자 시안 2026-11-20 · #333). */
-.users-roles-discard-title {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
 /* 범위 창의 겹침 안내 — 안내 띠 모양, 본문과 같은 크기 글자(사용자 지시 2026-11-20 · #333). */
 .iqc-inspection-action-note.users-roles-dialog-note[data-tone] {
   margin: var(--space-3) 0 0;
@@ -36894,9 +36887,18 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 }
 
 .users-roles-permission-pane td[data-align='center'] > label:has(input[type='checkbox']) {
-  display: inline-flex;
-  padding: var(--space-2);
   cursor: pointer;
+}
+
+/*
+ * 표 안에서 굴릴 때 업무 묶음 머리가 머리줄 바로 아래에 붙어 남는다 — 지금 어느 묶음을 보고 있는지 잃지 않게
+ * (사용자 지시 2026-11-20 · #333). 머리줄 높이는 `--permission-head-height` 로 맞춘다.
+ */
+.users-roles-permission-pane .permission-table-scroll tr[data-group-header] > th {
+  position: sticky;
+  top: var(--permission-head-height, 2.5rem);
+  z-index: 1;
+  background: var(--surface-container-high, var(--surface));
 }
 
 /* 확인 창 경고 — 문구 안 줄바꿈을 그대로 보인다(역할 사용 중지 · #333). */
@@ -36924,4 +36926,16 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .permission-group-head > .permission-group-toggle {
   flex: 1 1 auto;
   padding-left: 0;
+}
+
+/* 입력칸 이름 줄 — 이름 오른쪽에 라벨 안내(역할 코드 잠금 · #333). */
+.users-roles-label-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.users-roles-label-row > .users-roles-scope-hint {
+  margin: 0;
 }

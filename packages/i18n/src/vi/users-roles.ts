@@ -68,6 +68,7 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     deactivateUserWarning: 'Sau khi ngừng sử dụng, không thể đăng nhập bằng tài khoản này.',
     deactivateRoleTitle: 'Ngừng sử dụng vai trò',
     deactivateRoleCaption: 'Đối tượng ngừng sử dụng',
+    deactivateRoleCode: (roleCode: string): string => `Mã vai trò: ${roleCode}`,
     /** ⚠ 사용자 문구를 그대로 쓰지 않는다 — 중지했을 때 일어나는 일이 서로 다르다. */
     deactivateRoleDescription: 'Bạn có muốn ngừng sử dụng vai trò này?',
     deactivateRoleWarning:
@@ -112,14 +113,14 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     chipRemoveDepartment: 'Bỏ điều kiện phòng ban',
     chipStatus: (label: string): string => `Tình trạng làm việc: ${label}`,
     chipRemoveStatus: 'Bỏ điều kiện tình trạng làm việc',
-    includeInactive: 'Gồm cả tài khoản ngừng dùng',
+    includeInactive: 'Bao gồm không sử dụng',
     chipRemoveUserIncludeInactive: 'Bỏ điều kiện gồm cả tài khoản ngừng dùng',
     chipRemoveIncludeInactive: 'Bỏ điều kiện gồm cả mục ngừng dùng',
     roleSearchLabel: 'Tìm vai trò',
     roleSearchPlaceholder: 'Tìm theo mã hoặc tên vai trò',
-    roleIncludeInactive: 'Bao gồm đã ngừng sử dụng',
-    chipRemoveRoleIncludeInactive: 'Xóa điều kiện bao gồm đã ngừng sử dụng',
-    roleReset: 'Đặt lại điều kiện',
+    roleIncludeInactive: 'Bao gồm không sử dụng',
+    chipRemoveRoleIncludeInactive: 'Xóa điều kiện bao gồm không sử dụng',
+    roleReset: 'Đặt lại',
   },
   loading: {
     users: 'Đang tải danh sách người dùng',
@@ -139,8 +140,8 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     inactiveSuffix: ' (ngừng dùng)',
     /** ⛔ 못 찾은 번호를 그대로 내지 않는다 — 내부 식별자가 화면에 서면 자료로 읽힌다. */
     unknown: 'Không rõ',
-    active: 'Đang dùng',
-    inactive: 'Ngừng dùng',
+    active: 'Sử dụng',
+    inactive: 'Không sử dụng',
   },
   user: {
     fields: {
@@ -187,6 +188,7 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
       description: 'Mô tả',
       status: 'Trạng thái sử dụng',
     },
+    codeInUse: 'Không thể thay đổi mã đang được sử dụng.',
     empty: {
       noneTitle: 'Chưa đăng ký vai trò nào',
       noneDescription: 'Hãy đăng ký vai trò đầu tiên bằng «Thêm vai trò».',
@@ -314,8 +316,8 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
   },
   discard: {
     title: 'Thay đổi chưa lưu',
-    body: 'Bạn có muốn rời đi mà không lưu thay đổi?',
-    keep: 'Tiếp tục sửa',
+    body: 'Nếu rời đi mà không lưu, các thay đổi sẽ bị mất.',
+    keep: 'Tiếp tục chỉnh sửa',
     confirm: 'Rời đi không lưu',
   },
   workerLink: {

@@ -106,7 +106,7 @@ describe('RoleListPane 표', () => {
   it('사용 중인 역할의 상태 열에는 「미사용」이 나오지 않는다', () => {
     renderPane();
 
-    expect(within(rowOf('SYN-ROLE-01')).getByText('사용 중')).toBeInTheDocument();
+    expect(within(rowOf('SYN-ROLE-01')).getByText('사용')).toBeInTheDocument();
     expect(within(rowOf('SYN-ROLE-01')).queryByText('미사용')).not.toBeInTheDocument();
   });
 
@@ -163,7 +163,7 @@ describe('RoleListPane 조건', () => {
       appliedFilters: { q: 'SYN', includeInactive: false },
     });
 
-    await user.click(within(pane()).getByRole('checkbox', { name: '사용 중지 포함' }));
+    await user.click(within(pane()).getByRole('checkbox', { name: '미사용 포함' }));
 
     expect(onApplyFilters).toHaveBeenCalledWith({ q: 'SYN', includeInactive: true });
   });
@@ -173,7 +173,7 @@ describe('RoleListPane 조건', () => {
       appliedFilters: { q: 'SYN', includeInactive: true },
     });
 
-    await user.click(within(pane()).getByRole('button', { name: '조건 초기화' }));
+    await user.click(within(pane()).getByRole('button', { name: '초기화' }));
 
     expect(onApplyFilters).toHaveBeenCalledWith({ q: '', includeInactive: false });
   });
@@ -183,7 +183,7 @@ describe('RoleListPane 조건', () => {
 
     expect(within(pane()).getByText('검색어: SYN')).toBeInTheDocument();
     expect(
-      within(pane()).getByRole('button', { name: '사용 중지 포함 조건 제거' }),
+      within(pane()).getByRole('button', { name: '미사용 포함 조건 제거' }),
     ).toBeInTheDocument();
   });
 
@@ -215,9 +215,7 @@ describe('RoleListPane 빈 상태와 실패', () => {
     expect(within(pane()).getByText('조건에 맞는 역할이 없습니다')).toBeInTheDocument();
 
     // 조건 줄에도 「초기화」가 있다 — 빈 상태 안의 것만 눌러야 이 안내의 길이 열렸는지 알 수 있다.
-    await user.click(
-      within(screen.getByRole('status')).getByRole('button', { name: '조건 초기화' }),
-    );
+    await user.click(within(screen.getByRole('status')).getByRole('button', { name: '초기화' }));
 
     expect(onApplyFilters).toHaveBeenCalledWith({ q: '', includeInactive: false });
   });

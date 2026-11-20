@@ -211,7 +211,7 @@ describe('UserListPane 조건 줄', () => {
   it('사용 중지 계정 포함은 누르는 즉시 적용된다', async () => {
     const { onApplyFilters, user } = renderPane();
 
-    await user.click(screen.getByRole('checkbox', { name: '사용 중지 계정 포함' }));
+    await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
 
     expect(onApplyFilters).toHaveBeenCalledWith({ ...EMPTY_USER_FILTERS, includeInactive: true });
   });
@@ -234,9 +234,7 @@ describe('UserListPane 조건 줄', () => {
      * 「미사용 포함」은 확인칸 라벨과 칩 문구 둘 다에 쓰인다 —
      * 칩이 실제로 섰는지는 칩마다 다른 제거 버튼 이름으로 가린다.
      */
-    expect(
-      screen.getByRole('button', { name: '사용 중지 계정 포함 조건 제거' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '미사용 포함 조건 제거' })).toBeInTheDocument();
   });
 
   it('칩을 제거하면 그 조건만 풀린다', async () => {

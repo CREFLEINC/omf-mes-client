@@ -81,6 +81,17 @@ export const RoleFormPane = ({
 
   /* 등록에는 잠글 대상이 없다 — 아직 만들어지지 않은 자원이라 상세도 `editability`도 없다. */
   const codeLockReason = editability === null ? null : codeLockMessage(editability);
+  /*
+   * 잠금 안내는 「역할 코드」 이름 오른쪽 라벨로(사용자 지시 2026-11-20 · #333). 쓰이는 중이라 잠긴 경우는
+   * 건수 없이 짧게 말한다 — 다른 사유는 공용 문구 그대로다.
+   */
+  const codeLockNote =
+    codeLockReason === null
+      ? null
+      : editability?.reason === 'REFERENCED'
+        ? t.role.codeInUse
+        : codeLockReason;
+  const codeLockNoteId = useId();
 
   return (
     <section className="pane users-roles-pane users-roles-user-pane" aria-label={t.panes.roleForm}>
@@ -115,7 +126,19 @@ export const RoleFormPane = ({
          * `aria-describedby`로 잇는다(배치 규범 4의 이탈 조건: 디자인 시스템이 이미 처리한다).
          */}
         <div className="field-cell">
-          <FieldLabel htmlFor={roleCodeId} label={t.role.fields.roleCode} required />
+          <div className="users-roles-label-row">
+            <FieldLabel htmlFor={roleCodeId} label={t.role.fields.roleCode} required />
+            {codeLockNote !== null && (
+              <p
+                id={codeLockNoteId}
+                className="iqc-inspection-action-note users-roles-scope-hint"
+                data-tone="info"
+              >
+                <Icon name="info" size={14} aria-hidden />
+                {codeLockNote}
+              </p>
+            )}
+          </div>
           <TextField
             id={roleCodeId}
             value={values.roleCode}
@@ -126,7 +149,7 @@ export const RoleFormPane = ({
             onChange={(event) => onChange({ roleCode: event.target.value })}
             error={fieldErrors.roleCode}
             disabled={codeLockReason !== null}
-            disabledReason={codeLockReason ?? undefined}
+            aria-describedby={codeLockNote === null ? undefined : codeLockNoteId}
             aria-required
           />
         </div>

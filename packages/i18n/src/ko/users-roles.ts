@@ -81,6 +81,7 @@ export const usersRoles = {
     /* 역할 사용 중지 창 — 계정 사용 중지 창과 같은 모양(대상 상자 · 질문 · 경고)(사용자 지시 2026-11-20 · #333). */
     deactivateRoleTitle: '역할 사용 중지',
     deactivateRoleCaption: '사용 중지 대상',
+    deactivateRoleCode: (roleCode: string): string => `역할 코드: ${roleCode}`,
     /*
      * 역할과 사용자는 **중지했을 때 일어나는 일이 다르다.** 사용자 문구를 그대로 쓰면
      * 「이 사용자는 시스템을 쓸 수 없게 됩니다」가 역할 창에 나와 사실과 다른 안내가 된다.
@@ -142,15 +143,16 @@ export const usersRoles = {
     chipStatus: (label: string): string => `재직 상태: ${label}`,
     chipRemoveStatus: '재직 상태 조건 제거',
     /* 이 화면은 「미사용 포함」 대신 대상이 보이게 쓴다(사용자 지시 2026-11-20 · omf-all-around#333). */
-    includeInactive: '사용 중지 계정 포함',
-    chipRemoveUserIncludeInactive: '사용 중지 계정 포함 조건 제거',
+    /* 「미사용 포함」으로 정정(사용자 지시 2026-11-20 · #333) — 역할 탭과 같은 말. */
+    includeInactive: '미사용 포함',
+    chipRemoveUserIncludeInactive: '미사용 포함 조건 제거',
     chipRemoveIncludeInactive: '미사용 포함 조건 제거',
     roleSearchLabel: '역할 검색',
     /* 역할 탭 용어 정정(사용자 지시 2026-11-20 · #333). */
     roleSearchPlaceholder: '역할 코드 또는 역할명을 입력하세요',
-    roleIncludeInactive: '사용 중지 포함',
-    chipRemoveRoleIncludeInactive: '사용 중지 포함 조건 제거',
-    roleReset: '조건 초기화',
+    roleIncludeInactive: '미사용 포함',
+    chipRemoveRoleIncludeInactive: '미사용 포함 조건 제거',
+    roleReset: '초기화',
   },
   loading: {
     users: '사용자 목록을 불러오는 중',
@@ -187,7 +189,8 @@ export const usersRoles = {
      * `isActive` 하나뿐이다) 상태 열이 사용 여부를 그대로 낸다 — 사용자 표처럼
      * 이름 뒤 접미로만 붙이면 역할 표의 상태 열에 낼 것이 없어진다.
      */
-    active: '사용 중',
+    /* 사용 / 미사용(사용자 지시 2026-11-20 · #333). */
+    active: '사용',
     inactive: '미사용',
   },
   user: {
@@ -250,6 +253,8 @@ export const usersRoles = {
       description: '설명',
       status: '사용 상태',
     },
+    /* 쓰이는 중이라 역할 코드가 잠겼다는 라벨(사용자 지시 2026-11-20 · #333). */
+    codeInUse: '사용 중인 코드는 변경 불가합니다.',
     empty: {
       noneTitle: '등록된 역할이 없습니다',
       noneDescription: '「역할 추가」로 첫 역할을 등록하세요.',
@@ -443,9 +448,10 @@ export const usersRoles = {
   },
   /** 사용자를 바꾸거나 새로 추가할 때, 저장하지 않은 변경이 있으면 묻는다(omf-all-around#333). */
   discard: {
-    title: '저장하지 않은 변경사항',
-    body: '변경사항을 저장하지 않고 나가시겠습니까?',
-    keep: '계속 수정',
+    /* 사용자 · 역할 탭이 같은 창을 쓴다 — 문구 정정(사용자 시안 2026-11-20 · #333). */
+    title: '저장되지 않은 변경 사항',
+    body: '저장하지 않고 나가면 변경 사항이 사라집니다.',
+    keep: '계속 편집',
     confirm: '저장하지 않고 나가기',
   },
   workerLink: {
