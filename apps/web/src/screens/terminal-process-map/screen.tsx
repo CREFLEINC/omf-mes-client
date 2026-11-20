@@ -673,7 +673,19 @@ export const TerminalProcessMapScreen = () => {
                   onRemove={(processId) => {
                     setGrid(removeProcess(grid, processId));
                   }}
-                  empty={<EmptyState size="sm" title={t.grid.emptyTitle} />}
+                  empty={
+                    /* 오른쪽 「단말을 선택해 주세요」와 같은 아이콘 원 + 한 줄(사용자 지시 2026-11-20 · #333). */
+                    <EmptyState
+                      size="sm"
+                      className="terminal-map-grid-empty"
+                      icon={
+                        <span className="inspection-standard-empty-icon">
+                          <Icon name="checklist" size={20} />
+                        </span>
+                      }
+                      title={t.grid.emptyTitle}
+                    />
+                  }
                 />
               </div>
             </>

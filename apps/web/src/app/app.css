@@ -18331,6 +18331,17 @@ dialog.layout-editor-dialog {
   margin: 0 0 0 auto;
 }
 
+/* 빈 공정 표 — 안내를 표 가운데 위아래 여유 있게, 글자는 보통 굵기(#333). */
+.terminal-map-matrix .terminal-map-grid-empty {
+  padding-block: var(--space-8);
+}
+
+.terminal-map-matrix .terminal-map-grid-empty :is(h2, h3, h4, p, [class*="title"]) {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--color-text-secondary, inherit);
+}
+
 .terminal-map-matrix td[colspan] > * {
   position: sticky;
   left: 0;
