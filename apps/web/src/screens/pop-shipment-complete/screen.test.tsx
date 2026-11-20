@@ -424,6 +424,26 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     expect(completeButton()).toBeEnabled();
   });
 
+  /* 리뷰(#1731) — 다시 읽은 값으로 화면 종류도 다시 가른다(`show()` 와 같은 기준). */
+  it('머리줄 [새로고침] 사이 다른 단말이 완료했으면 「이미 완료」로, 완료가 풀렸으면 확인 화면으로 바뀐다', async () => {
+    const user = userEvent.setup();
+    const done = completion({ completedShipment, blockers: [{ code: 'ALREADY_COMPLETED' }] });
+    const { queryClient } = renderScreen({
+      lookups: [jsonResponse(completion()), jsonResponse(done), jsonResponse(completion())],
+    });
+
+    await scan(user, CODE);
+    expect(await screen.findByText(t.head.ready)).toBeInTheDocument();
+
+    await queryClient.invalidateQueries();
+    expect(await screen.findByText(t.already.title)).toBeInTheDocument();
+
+    await queryClient.invalidateQueries();
+    expect(await screen.findByText(t.head.ready)).toBeInTheDocument();
+    expect(screen.queryByText(t.already.title)).not.toBeInTheDocument();
+    expect(completeButton()).toBeEnabled();
+  });
+
   it('머리줄 [새로고침]에서 다시 읽지 못하면 앞 값을 그대로 두고 띠로 알린다', async () => {
     const user = userEvent.setup();
     const { queryClient } = renderScreen({

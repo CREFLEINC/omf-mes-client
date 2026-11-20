@@ -20,8 +20,8 @@ import { WorkHoldRegisterScreen } from '../screens/work-hold-register/screen';
 import { WorkStartScreen } from '../screens/work-start/screen';
 
 /**
- * 합쳐서 없어진 POP 화면의 옛 주소 → 새 자리. 라우트 표에는 서지만 화면이 아니라서 화면 목록(이름표 ·
- * 개발용 이동)과 대조할 때 뺀다(`pop-screen-catalog.test.ts` · `pop-dev-screen-nav.test.ts`).
+ * 합쳐서 없어진 POP 화면의 옛 주소 → 새 자리. 라우트 표에는 서지만 화면이 아니라서 화면 목록(이름표)과
+ * 대조할 때 뺀다(`pop-screen-catalog.test.ts`).
  */
 export const POP_LEGACY_REDIRECTS: Readonly<Record<string, string>> = {
   '/pop/emergency-work-orders': '/pop/work-start?type=emergency',

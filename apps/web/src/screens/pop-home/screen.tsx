@@ -379,6 +379,18 @@ const RemainingCard = ({ titleId, locked }: { titleId: string; locked: boolean }
  *
  * ⭐ 바로가기는 [편집]으로 이 단말에 맞게 고른다(최대 6개 · 단말에 저장).
  */
+/** 「상단 {login}을 …」 — `{login}` 앞뒤 두 조각 사이에 빨간 「로그인」 라벨(문구에 자리표시는 하나). */
+const LoginHint = () => {
+  const [before = '', after = ''] = messages.popChrome.home.greetingLoginHint.split('{login}');
+  return (
+    <>
+      {before}
+      <PuChip>{messages.popChrome.login}</PuChip>
+      {after}
+    </>
+  );
+};
+
 export const PopHomeScreen = (): ReactNode => {
   const titleId = useId();
   const { workerNo } = usePopIdentity();
@@ -432,19 +444,7 @@ export const PopHomeScreen = (): ReactNode => {
          * 사번이 없으면 인사 아래 줄을 맨 위 줄 로그인 안내로 바꾼다(사용자 지시 2026-11-20 · #334). 「로그인」은 맨 위 줄
          * 칩과 같은 빨간 바탕 라벨 — 보기만, 누르지 않는다.
          */}
-        <p>
-          {isLocked
-            ? t.greetingLoginHint
-                .split(/(\{login\})/u)
-                .map((part, index) =>
-                  part === '{login}' ? (
-                    <PuChip key={index}>{messages.popChrome.login}</PuChip>
-                  ) : (
-                    part
-                  ),
-                )
-            : t.greetingSub}
-        </p>
+        <p>{isLocked ? <LoginHint /> : t.greetingSub}</p>
       </div>
 
       <div className="home-top">

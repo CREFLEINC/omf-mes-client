@@ -9,9 +9,10 @@ import { describe, expect, it } from 'vitest';
  *
  * 부품의 `variant` 를 바꿔도 CSS 가 바탕과 글자색을 덮어쓰면 화면은 그대로다. 실제로
  * `.pop-logout button` 이 바탕을 빨강으로 칠해 [사용자 전환]이 채움 버튼으로 남았다. 이 시험은
- * 보조 동작 버튼을 겨냥한 CSS 규칙이 모양(바탕, 글자색, 테두리)을 덮어쓰지 않는지 잰다.
+ * 보조 동작 버튼을 겨냥한 CSS 규칙이 모양(바탕, 글자색, 테두리)을 덮어쓰지 않는지 잰다. 버튼 변형 자체(테두리)는
+ * `patterns/pop-screen-nav.test.tsx` 가 그려서 잰다.
  */
-const SECONDARY_SELECTORS = ['.pop-logout', '.pop-terminal-header__reregister'];
+const SECONDARY_SELECTORS = ['.pop-logout'];
 const LOOK_PROPERTIES = /(?:^|;|\s)(background(?:-color)?|color|border(?:-color)?|box-shadow)\s*:/u;
 
 const rulesOf = (file: string): { selector: string; body: string }[] =>
@@ -24,8 +25,6 @@ const rulesOf = (file: string): { selector: string; body: string }[] =>
     })
     .filter(({ body }) => body.trim() !== '');
 
-const sources = (path: string): string => readFileSync(resolve(process.cwd(), path), 'utf8');
-
 describe('POP 머리줄 보조 동작은 테두리 버튼으로 그려진다', () => {
   it.each(['src/app/pop.css', 'src/app/app.css'])(
     '%s 가 보조 동작 버튼의 바탕, 글자색, 테두리를 덮어쓰지 않는다',
@@ -33,21 +32,11 @@ describe('POP 머리줄 보조 동작은 테두리 버튼으로 그려진다', (
       const overrides = rulesOf(file).filter(
         ({ selector, body }) =>
           SECONDARY_SELECTORS.some((target) => selector.includes(target)) &&
-          /button|__reregister/u.test(selector) &&
+          /button/u.test(selector) &&
           LOOK_PROPERTIES.test(body),
       );
 
       expect(overrides.map(({ selector }) => selector)).toEqual([]);
-    },
-  );
-
-  it.each([['src/patterns/pop-screen-nav.tsx', 'variant="outlined"']])(
-    '%s 의 보조 동작은 테두리 변형이다',
-    (path, variant) => {
-      expect(sources(path)).toContain(variant);
-      expect(sources(path)).not.toMatch(
-        /variant="filled"[\s\S]{0,80}pop-terminal-header__reregister/u,
-      );
     },
   );
 });

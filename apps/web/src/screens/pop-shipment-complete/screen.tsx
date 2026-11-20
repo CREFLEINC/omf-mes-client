@@ -86,6 +86,8 @@ export const PopShipmentCompleteScreen = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [draft, setDraft] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  /** 마지막으로 연 입구 — [새로고침]으로 「이미 완료」가 확인 화면으로 돌아올 때 쓴다. */
+  const lastVia = useRef<Via>('scan');
 
   const queryClient = useQueryClient();
   const lookup = useLookupShipmentRequest();
@@ -93,6 +95,7 @@ export const PopShipmentCompleteScreen = () => {
 
   /** 확인 값을 받아 화면을 고른다. 완료된 지시서는 확인 화면 대신 「이미 출하 완료」다. */
   const show = (completion: Completion, via: Via): void => {
+    lastVia.current = via;
     setView(
       isAlreadyCompleted(completion)
         ? { kind: 'already', completion }
@@ -184,13 +187,21 @@ export const PopShipmentCompleteScreen = () => {
   useEffect(() => {
     const fresh = opened.data;
     if (fresh === undefined) return;
-    setView((current) =>
-      (current.kind === 'confirm' || current.kind === 'already') &&
-      current.completion.code === fresh.code &&
-      current.completion !== fresh
-        ? { ...current, completion: fresh }
-        : current,
-    );
+    /* 화면 종류도 `show()` 와 같은 기준으로 다시 가른다 — 그사이 다른 단말이 완료했으면 「이미 완료」로, 아니면 확인 화면으로. */
+    setView((current) => {
+      if (
+        (current.kind !== 'confirm' && current.kind !== 'already') ||
+        current.completion.code !== fresh.code ||
+        current.completion === fresh
+      )
+        return current;
+      if (isAlreadyCompleted(fresh)) return { kind: 'already', completion: fresh };
+      return {
+        kind: 'confirm',
+        completion: fresh,
+        via: current.kind === 'confirm' ? current.via : lastVia.current,
+      };
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 새로 받은 때만 바꾼다(409 가 그린 사유를 덮지 않게)
   }, [opened.dataUpdatedAt]);
   useEffect(() => {

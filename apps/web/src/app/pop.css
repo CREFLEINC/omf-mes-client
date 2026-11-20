@@ -1118,40 +1118,6 @@
 }
 
 /*
- * 사번 표시칸 — 이 화면이 말하는 값이라 가장 굵게 둔다.
- *
- * ⚠ **크기는 여기서 정하지 않는다.** 설계 §7 이 이 칸만 「큰 글자」로 못박은 자리라
- *   `app.css` 의 `.worker-no-field`(32px · 가운데 정렬)를 그대로 살린다 — POP 값 크기
- *   (`--pop-value-lg` 16px)를 여기에 다시 적으면 그 요구를 덮는다.
- *
- * ⛔ **`input` 을 뒤에 붙이지 않는다.** 디자인 시스템이 `className` 을 `<input>` 자신에
- *   넘기므로 그런 자식이 없다 — 한때 그렇게 적어 규칙이 통째로 죽어 있었다(실측).
- */
-.pop-ui .worker-no-field {
-  font-weight: 600;
-}
-
-/*
- * 현재 작업자 — 지금 누구로 기록되는지가 화면 밖에서도 보여야 한다(§5-4). 이 화면의 답이라
- * 본문(16)보다 크게 세운다(omf-all-around#109 담당자 지시서 C — 이름·사번을 쉽게 확인).
- */
-.pop-ui .worker-card__name {
-  margin: 0;
-  font: 700 24px / 32px var(--font-sans);
-}
-
-/* 작업자 미지정 — 지정된 상태(이름 카드)와 한눈에 갈리게 점선 상자로 비워 둔다. */
-.pop-ui .worker-card__none {
-  margin: 0;
-  padding: var(--space-5) var(--space-4);
-  border: 2px dashed var(--outline-variant);
-  border-radius: var(--radius-md);
-  font: 600 18px / 28px var(--font-sans);
-  color: var(--on-surface-variant);
-  text-align: center;
-}
-
-/*
  * 스캔 줄 — 입력칸과 버튼의 **윗선을 맞춘다.** 버튼 높이가 72(터치 하한)이고 칸이 60이라
  * 기존 규범 2(라벨 층만큼 내림)로는 아랫선이 12px 어긋난다.
  */
@@ -4533,7 +4499,7 @@
   flex-shrink: 0;
 }
 
-/* 맨 위 줄 프린터 연결 표시 — 사번 입력 화면 머리줄과 같은 칩을 띠 높이에 맞춘다. */
+/* 맨 위 줄 프린터 연결 표시 — 칩을 띠 높이에 맞춘다. */
 .pop-nav-top__printer {
   display: inline-flex;
   align-items: center;

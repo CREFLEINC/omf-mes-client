@@ -545,9 +545,14 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
       name: messages.workerAssignment.registration.reRegister,
     });
     expect(button).toBeEnabled();
-    expect(button.nextElementSibling).toBe(
-      screen.getByRole('button', { name: new RegExp(messages.popChrome.exit.button, 'u') }),
-    );
+    const exit = screen.getByRole('button', {
+      name: new RegExp(messages.popChrome.exit.button, 'u'),
+    });
+    expect(button.nextElementSibling).toBe(exit);
+    /* 보조 동작 — [종료]와 같은 테두리 버튼(C-3 · C-19: 채움은 주 동작 하나에만). */
+    const look = (element: HTMLElement) =>
+      [...element.classList].filter((name) => name !== 'pop-nav-top__exit').sort();
+    expect(look(button)).toEqual(look(exit));
     await user.click(button);
     expect(onReRegister).toHaveBeenCalledOnce();
   });
