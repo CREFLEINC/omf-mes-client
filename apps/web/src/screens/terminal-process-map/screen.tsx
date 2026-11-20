@@ -18,10 +18,10 @@ import { useSearchParams } from 'react-router';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
-import { hasChangedFilters } from '../../patterns/filter-more';
 import { SaveErrorBanner } from '../../patterns/master';
 import { PageNav } from '../../patterns/page-nav';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import { PaneHeightSplitter, useSplitOrientation } from '../../patterns/split-orientation';
 import {
   EMPTY_FILTERS,
   LIST_PAGE_SIZES,
@@ -43,6 +43,8 @@ import {
   toReplaceBody,
   type GridDraft,
 } from './grid-draft';
+import { ActiveChips } from './active-chips';
+import { LayoutToggle } from './layout-toggle';
 import { LoadErrorBanner } from './load-error-banner';
 import {
   lookupNote,
@@ -60,6 +62,7 @@ import {
   useTerminalDetail,
   useTerminalProcesses,
   useTerminals,
+  useTerminalStatusCounts,
   useTerminalUpdate,
   useTokenIssue,
 } from './queries';
@@ -128,9 +131,10 @@ export const TerminalProcessMapScreen = () => {
   /** 저장하지 않은 기능 구성이 있을 때 미뤄 둔 이동(사용자 역할 권한 관리와 같다 · #333). */
   const [pendingLeave, setPendingLeave] = useState<(() => void) | null>(null);
 
-  /* 사용자 역할 권한 관리와 같은 배치 — 위 조회 묶음 · 아래 목록 | 상세(폭 끌기, 목록 접기). */
+  /* 사용자 역할 권한 관리와 같은 배치 — 위 조회 묶음 · 아래 목록 | 상세(좌우 · 상하 배치, 폭 · 높이 끌기, 목록 접기). */
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:terminal-process-map:split', 0.45);
+  const layout = useSplitOrientation('omf-mes:terminal-process-map:split-orientation');
   const listCollapse = {
     collapsed: split.collapsed,
     onToggle: split.toggleCollapsed,
@@ -150,6 +154,7 @@ export const TerminalProcessMapScreen = () => {
   const warehouses = useWarehouseOptions(terminalDraft.plant);
 
   const terminals = useTerminals(filters);
+  const statusCounts = useTerminalStatusCounts(filters);
   const detail = useTerminalDetail(selectedId);
   const processRows = useTerminalProcesses(selectedId);
 
@@ -196,13 +201,6 @@ export const TerminalProcessMapScreen = () => {
 
   const rows = terminals.data?.items ?? EMPTY_ROWS;
   const selected = detail.data ?? null;
-
-  /* 「초기화」는 치던 검색어나 걸린 조건이 처음 값과 다를 때만 보인다(C-6). 쪽은 조건이 아니라 견주지 않는다. */
-  const isFilterChanged = hasChangedFilters(
-    { q: EMPTY_FILTERS.q, includeInactive: EMPTY_FILTERS.includeInactive },
-    { q: search, includeInactive: filters.includeInactive },
-    { q: filters.q, includeInactive: filters.includeInactive },
-  );
 
   const apply = (next: Partial<typeof filters>, keepSelection: boolean): void => {
     /* 조건이 바뀌면 첫 쪽으로 돌아간다 — 3쪽을 보던 채로 조건만 좁히면 빈 쪽이 나온다. */
@@ -675,11 +673,25 @@ export const TerminalProcessMapScreen = () => {
        * 사용자 역할 권한 관리와 같은 틀(omf-all-around#333) — 위 조회 묶음, 아래 목록 | 고른 단말의 한 카드.
        * 머리글(경로 · 화면 이름)은 두지 않는다 — 사이드바가 위치를 말한다.
        */}
+      {/* 위 줄 오른쪽 — 사용 · 미사용 라벨과 좌우 · 상하 배치 단추(사용자 지시 2026-11-20 · #333). */}
+      <div className="terminal-map-top-actions">
+        <ActiveChips
+          counts={statusCounts}
+          active={filters.status}
+          onChange={(status) => {
+            leaveSafely(() => {
+              apply({ status }, true);
+            });
+          }}
+        />
+        <LayoutToggle orientation={layout.orientation} onChange={layout.change} />
+      </div>
+
       <div className="users-roles-workspace">
         <section ref={aboveRef} className="pane users-roles-search" aria-label={t.panes.search}>
           <div className="filter-bar users-roles-filter-row">
             <SearchInput
-              containerClassName="users-roles-search-input"
+              containerClassName="users-roles-search-input terminal-map-search-input"
               label={t.filters.search}
               value={search}
               placeholder={t.filters.searchPlaceholder}
@@ -707,7 +719,7 @@ export const TerminalProcessMapScreen = () => {
                 {t.filters.includeInactive}
               </Checkbox>
             </div>
-            {/* 조회와 초기화는 짝이라 함께 둔다. 초기화는 바뀐 것이 있을 때만(C-6). */}
+            {/* 조회와 초기화는 짝이라 함께 둔다. 초기화는 늘 보인다(사용자 지시 2026-11-20 · #333). */}
             <div className="filter-actions field-cell-unlabeled">
               <Button
                 onClick={() => {
@@ -718,21 +730,19 @@ export const TerminalProcessMapScreen = () => {
               >
                 {t.filters.apply}
               </Button>
-              {isFilterChanged && (
-                <Button
-                  variant="outlined"
-                  onClick={() => {
-                    leaveSafely(() => {
-                      setSearch('');
-                      setSearchParams(
-                        toSearchParams({ ...EMPTY_FILTERS, size: filters.size }, selectedId),
-                      );
-                    });
-                  }}
-                >
-                  {t.filters.clear}
-                </Button>
-              )}
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  leaveSafely(() => {
+                    setSearch('');
+                    setSearchParams(
+                      toSearchParams({ ...EMPTY_FILTERS, size: filters.size }, selectedId),
+                    );
+                  });
+                }}
+              >
+                {t.filters.clear}
+              </Button>
             </div>
             <Button
               className="users-roles-add-user"
@@ -746,8 +756,8 @@ export const TerminalProcessMapScreen = () => {
 
         <div
           ref={splitRef}
-          className="po-board-split inspection-split users-roles-split"
-          style={split.style}
+          className={`po-board-split inspection-split users-roles-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+          style={{ ...split.style, ...layout.style }}
           data-left-collapsed={split.collapsed ? 'true' : undefined}
         >
           <section className="pane users-roles-list-pane" aria-label={t.panes.list}>
@@ -777,6 +787,14 @@ export const TerminalProcessMapScreen = () => {
             onChange={split.commit}
             collapse={listCollapse}
           />
+          {layout.orientation === 'column' && (
+            <PaneHeightSplitter
+              label={messages.common.inspectionHub.heightSplitter}
+              height={layout.listHeight}
+              onChange={layout.changeListHeight}
+              collapse={listCollapse}
+            />
+          )}
 
           <section
             className="pane users-roles-settings terminal-map-settings"
@@ -792,7 +810,10 @@ export const TerminalProcessMapScreen = () => {
         open={formMode !== 'closed'}
         size="lg"
         title={formMode === 'create' ? t.terminal.create : t.terminal.edit}
+        className="terminal-map-form-dialog"
         closeOnBackdropClick={false}
+        /* 닫기는 [취소] 하나(사용자 지시 2026-11-20 · #333). */
+        showCloseButton={false}
         onClose={() => {
           setFormMode('closed');
         }}
@@ -810,6 +831,10 @@ export const TerminalProcessMapScreen = () => {
           codeNames={codeNames}
           onChange={(patch) => {
             setTerminalDraft((prev) => ({ ...prev, ...patch }));
+            /* 고친 칸의 「비었다」 오류는 바로 지운다 — 다 채웠는데 빨간 문구가 남지 않게(#333). */
+            setTerminalErrors((prev) =>
+              Object.fromEntries(Object.entries(prev).filter(([key]) => !(key in patch))),
+            );
           }}
           onSubmit={submitTerminal}
           onCancel={() => {

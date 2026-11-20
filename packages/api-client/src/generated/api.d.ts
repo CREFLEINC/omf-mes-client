@@ -9932,6 +9932,8 @@ export interface paths {
           /** @description 단말 유형 — 고정 스테이션(POP · Electron 키오스크 · 산업용 패널 PC)과 손에 드는 기기(MOBILE · Capacitor Android)가 여기서 갈린다. ⭐ 폼팩터는 결정 16 이 확정한 아키텍처 축이라 고객 관행으로 늘지 않는다. ⚠ 관리웹은 단말 마스터에 등록하지 않는다 — 현장 단말만 여기 든다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 값 목록은 GET /mdm/code-values?codeGroupCode=TERMINAL_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
           terminalTypeCode?: string;
           includeInactive?: boolean;
+          /** @description 사용 여부 — 주면 그 값만 준다(true=사용, false=미사용). includeInactive 의 기본(사용만)보다 앞선다. 근거: omf-all-around#333 */
+          isActive?: boolean;
           /** @description 단말 코드 검색 */
           q?: string;
           page?: number;

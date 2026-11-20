@@ -30,13 +30,13 @@ export const terminalProcessMap = {
 
   list: {
     code: '단말 코드',
-    type: '유형',
+    type: '단말 유형',
     status: '운영 상태',
     registration: '등록 상태',
     registrationPending: '미등록',
     registrationComplete: '등록 완료',
     registrationUnknown: '확인 전',
-    equipment: '설비',
+    equipment: '설치 설비',
     /** 피처 002 — 단말 창고. 없으면 공장 전체 기준이다. */
     warehouse: '창고',
     warehouseAll: '공장 전체',
@@ -51,14 +51,20 @@ export const terminalProcessMap = {
     loadFailed: '단말 목록을 불러오지 못했습니다.',
   },
 
+  chips: {
+    label: '사용 상태',
+    filterOn: (label: string): string => `${label}만 보기`,
+    filterOff: (label: string): string => `${label} 거르기 해제`,
+  },
+
   terminal: {
     create: '단말 추가',
     edit: '단말 수정',
     code: '단말 코드',
     /** ⛔ 등록 뒤에는 못 바꾼다 — 키다. */
-    codeLocked: '단말 코드는 등록 후 변경할 수 없습니다.',
+    codeLocked: '등록 후 변경할 수 없습니다.',
     plant: '공장',
-    type: '유형',
+    type: '단말 유형',
     status: '운영 상태',
     registration: '등록 상태',
     equipment: '설치 설비',
@@ -67,18 +73,14 @@ export const terminalProcessMap = {
     equipmentHint: 'POP 유형일 시 지정해 주세요',
     plantPlaceholder: '공장을 지정하세요',
     typePlaceholder: '유형을 지정하세요',
-    /**
-     * 피처 002 — 창고 칸 안내. 전에는 창고 칸이 없어 「설치 위치를 설정하려면 먼저 창고를」을 띄웠다
-     * (확정 2026-10-28). 설치 위치 칸은 이번 범위가 아니다.
-     */
-    // ui-check-ignore: C-13 화면 목록 이름 나열(시안 WCO06-After 그대로)
-    warehouseGuide:
-      '창고를 지정하면 이 단말의 작업 목록(적치, 자재 출고, 재고 이동, 출하 포장)과 남은 작업 수가 그 창고 기준으로 보입니다. 비우면 공장 전체입니다.',
     warehouse: '창고',
-    warehouseHint: '선택, 같은 공장의 창고',
     warehouseAll: '공장 전체 (지정 안 함)',
     warehouseNeedsPlant: '공장을 먼저 고르세요',
     warehouseLookupFailed: '창고 목록을 불러오지 못해 지금은 고를 수 없습니다.',
+    register: '등록',
+    /** 창고 칸 이름 오른쪽 안내 라벨(사용자 시안 2026-11-20 · #333). */
+    warehouseScope: '작업 목록과 남은 작업 수는 선택한 범위를 기준으로 표시됩니다.',
+    optionalMark: '(선택)',
     save: '저장',
     saving: '저장하는 중입니다.',
     saved: '단말 정보를 저장했습니다.',
@@ -88,7 +90,7 @@ export const terminalProcessMap = {
     /* 사용자 · 역할 사용 중지 창과 같은 모양(#333). */
     deactivateTitle: '단말 사용 중지',
     deactivateCaption: '사용 중지 대상',
-    deactivateMeta: (type: string): string => `유형: ${type}`,
+    deactivateMeta: (type: string): string => `단말 유형: ${type}`,
     deactivateQuestion: '이 단말의 사용을 중지하시겠습니까?',
     deactivateLead: '단말이 남긴 기록은 참조로 남아 있습니다.',
     deactivateConfirm: '사용 중지',

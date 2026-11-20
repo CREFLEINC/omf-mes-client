@@ -34,13 +34,13 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
 
   list: {
     code: 'Mã máy quét',
-    type: 'Loại',
+    type: 'Loại máy quét',
     status: 'Trạng thái vận hành',
     registration: 'Trạng thái đăng ký',
     registrationPending: 'Chưa đăng ký',
     registrationComplete: 'Đã đăng ký',
     registrationUnknown: 'Chưa xác nhận',
-    equipment: 'Thiết bị',
+    equipment: 'Thiết bị lắp đặt',
     warehouse: 'Kho',
     warehouseAll: 'Toàn nhà máy',
     active: 'Dùng',
@@ -54,14 +54,20 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     loadFailed: 'Không tải được danh sách máy quét.',
   },
 
+  chips: {
+    label: 'Trạng thái sử dụng',
+    filterOn: (label: string): string => `Chỉ xem ${label}`,
+    filterOff: (label: string): string => `Bỏ lọc ${label}`,
+  },
+
   terminal: {
     create: 'Thêm máy quét',
     edit: 'Sửa máy quét',
     code: 'Mã máy quét',
     /** ⛔ 등록 뒤에는 못 바꾼다 — 키다. */
-    codeLocked: 'Không thể thay đổi mã máy quét sau khi đăng ký.',
+    codeLocked: 'Không thể thay đổi sau khi đăng ký.',
     plant: 'Nhà máy',
-    type: 'Loại',
+    type: 'Loại máy quét',
     status: 'Trạng thái vận hành',
     registration: 'Trạng thái đăng ký',
     equipment: 'Thiết bị lắp đặt',
@@ -69,13 +75,14 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     equipmentHint: 'Hãy chỉ định nếu là loại POP',
     plantPlaceholder: 'Hãy chỉ định nhà máy',
     typePlaceholder: 'Hãy chỉ định loại',
-    warehouseGuide:
-      'Khi chỉ định kho, danh sách công việc của máy quét (cất hàng, xuất vật tư, chuyển kho, đóng gói xuất hàng) và số việc còn lại sẽ tính theo kho đó. Để trống là toàn nhà máy.',
     warehouse: 'Kho',
-    warehouseHint: 'Tùy chọn, kho cùng nhà máy',
     warehouseAll: 'Toàn nhà máy (không chỉ định)',
     warehouseNeedsPlant: 'Hãy chọn nhà máy trước',
     warehouseLookupFailed: 'Không tải được danh sách kho nên hiện không chọn được.',
+    register: 'Đăng ký',
+    /** 창고 칸 이름 오른쪽 안내 라벨(사용자 시안 2026-11-20 · #333). */
+    warehouseScope: 'Danh sách công việc và số việc còn lại được hiển thị theo phạm vi đã chọn.',
+    optionalMark: '(tùy chọn)',
     save: 'Lưu',
     saving: 'Đang lưu.',
     saved: 'Đã lưu thông tin máy quét.',
@@ -84,7 +91,7 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     deactivated: 'Đã ngừng máy quét. Bản ghi vẫn còn.',
     deactivateTitle: 'Ngừng sử dụng máy quét',
     deactivateCaption: 'Đối tượng ngừng sử dụng',
-    deactivateMeta: (type: string): string => `Loại: ${type}`,
+    deactivateMeta: (type: string): string => `Loại máy quét: ${type}`,
     deactivateQuestion: 'Bạn có muốn ngừng sử dụng máy quét này không?',
     /** ⭐ `xóa` 를 쓰지 않는다 — 끄는 것이지 지우는 것이 아니다. */
     deactivateLead: 'Bản ghi máy quét để lại vẫn được giữ để tham chiếu.',

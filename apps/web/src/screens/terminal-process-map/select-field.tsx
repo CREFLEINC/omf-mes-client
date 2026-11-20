@@ -28,6 +28,10 @@ export interface SelectFieldProps {
   disabled?: boolean;
   /** 라벨 오른쪽 같은 줄의 짧은 안내. */
   hint?: string;
+  /** 라벨 오른쪽 같은 줄의 안내 라벨(정보 아이콘 + 파란 바탕). */
+  labelNote?: string;
+  required?: boolean;
+  optionalMark?: string;
   /** 칸 배치를 바꿀 이 화면 전용 클래스(예: 오류를 선택칸 오른쪽에 두는 자리). */
   className?: string;
 }
@@ -56,6 +60,9 @@ export const SelectField = ({
   wide = false,
   disabled = false,
   hint,
+  labelNote,
+  required,
+  optionalMark,
   className,
 }: SelectFieldProps) => {
   const id = useId();
@@ -70,7 +77,14 @@ export const SelectField = ({
         .filter((name) => name !== null)
         .join(' ')}
     >
-      <FieldLabel htmlFor={id} label={label} hint={hint} />
+      <FieldLabel
+        htmlFor={id}
+        label={label}
+        hint={hint}
+        note={labelNote}
+        required={required}
+        optionalMark={optionalMark}
+      />
       <Select
         id={id}
         options={options}

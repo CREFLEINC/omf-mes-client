@@ -1,5 +1,5 @@
 import type { components } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { requireIfMatch, useMasterWrite, type MasterWriteResult } from '../../patterns/master';
@@ -50,6 +50,7 @@ export const terminalKeys = {
       'list',
       filters.q,
       filters.includeInactive,
+      filters.status,
       filters.page,
       filters.size,
     ] as const,
@@ -67,6 +68,20 @@ export const terminalDetailPath = (terminalId: number): string =>
 export const processesPath = (terminalId: number): string =>
   `/mdm/terminals/${String(terminalId)}/processes`;
 
+/** 목록 조회 조건 — 화면 조건을 계약 쿼리로 옮긴다. 기본값은 보내지 않는다. */
+const toListQuery = (filters: TerminalFilters) => ({
+  ...(filters.q === '' ? {} : { q: filters.q }),
+  /* 끄면 보내지 않는다 — 기본이 「사용 중만」이다. */
+  ...(filters.includeInactive ? { includeInactive: true } : {}),
+  /* 사용 · 미사용 라벨(#333) — 걸면 그 값만. 「미사용 포함」보다 앞선다(서버 규칙). */
+  ...(filters.status === '' ? {} : { isActive: filters.status === 'active' }),
+  page: filters.page,
+  size: filters.size,
+});
+
+/** 건수만 세는 조회의 쪽 크기 — 목록은 받지 않고 `page.total` 만 쓴다. */
+const COUNT_PAGE_SIZE = 1;
+
 export const useTerminals = (filters: TerminalFilters): UseQueryResult<TerminalListResult> => {
   const { client } = useApiClient();
 
@@ -74,22 +89,38 @@ export const useTerminals = (filters: TerminalFilters): UseQueryResult<TerminalL
     queryKey: terminalKeys.list(filters),
     queryFn: () =>
       runRequest(() =>
-        client.GET('/mdm/terminals', {
-          params: {
-            query: {
-              ...(filters.q === '' ? {} : { q: filters.q }),
-              /* 끄면 보내지 않는다 — 기본이 「사용 중만」이다. */
-              ...(filters.includeInactive ? { includeInactive: true } : {}),
-              page: filters.page,
-              size: filters.size,
-            },
-          },
-        }),
+        client.GET('/mdm/terminals', { params: { query: toListQuery(filters) } }),
       ).then((data) => ({
         items: data.items.map(toTerminalView),
         page: data.page,
       })),
   });
+};
+
+/**
+ * 사용 · 미사용 라벨의 건수 — 걸린 다른 조건(검색어)은 두고 상태만 바꿔 센다(사용자 역할 권한 관리와 같다 · #333).
+ * 반환 순서는 [사용, 미사용]이다.
+ */
+export const useTerminalStatusCounts = (filters: TerminalFilters): (number | undefined)[] => {
+  const { client } = useApiClient();
+  const results = useQueries({
+    queries: (['active', 'inactive'] as const).map((status) => {
+      const next: TerminalFilters = { ...filters, status, page: 1 };
+
+      return {
+        queryKey: [...terminalKeys.list(next), 'count'] as const,
+        staleTime: 30_000,
+        queryFn: () =>
+          runRequest(() =>
+            client.GET('/mdm/terminals', {
+              params: { query: { ...toListQuery(next), size: COUNT_PAGE_SIZE } },
+            }),
+          ),
+      };
+    }),
+  });
+
+  return results.map((result) => result.data?.page.total);
 };
 
 /** 고른 단말의 상세. 단말을 고치는 쓰기가 실을 잠금 토큰이 여기서 온다. */

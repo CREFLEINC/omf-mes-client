@@ -113,7 +113,7 @@ describe('W-CO-06 단말 창고(피처 002)', () => {
       />,
     );
 
-    expect(screen.getByText(t.terminal.warehouseGuide)).toBeInTheDocument();
+    expect(screen.getByText(t.terminal.warehouseScope)).toBeInTheDocument();
     expect(screen.queryByText('설치 위치를 설정하려면 먼저 창고를 선택해 주세요.')).toBeNull();
 
     await user.click(screen.getByRole('combobox', { name: t.terminal.warehouse }));

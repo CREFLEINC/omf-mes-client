@@ -18330,11 +18330,6 @@ dialog.layout-editor-dialog {
   max-width: none;
 }
 
-/* 단말 등록·수정 폼 — 카드 제목 바로 아래 설치 위치 정보 띠. 재발급 경고 띠와 같은 폭·여백, 아래 필드와 --space-4. */
-.terminal-map-form-notice {
-  margin-bottom: var(--space-4);
-}
-
 /* 라벨 오른쪽 같은 줄의 짧은 안내(설치 설비) — 라벨보다 한 단계 흐린 보조 글자. */
 .terminal-map-label-hint {
   margin-left: var(--space-2);
@@ -18394,11 +18389,63 @@ dialog.layout-editor-dialog {
   }
 }
 
-/* 단말 등록·수정 폼 안내 띠 — 내용 폭. */
-.terminal-map-form-notice {
-  width: fit-content;
-  max-width: 100%;
-  padding: var(--space-2) var(--space-3);
+/* 위 줄 오른쪽 — 사용 · 미사용 라벨과 좌우 · 상하 배치 단추(사용자 지시 2026-11-20 · omf-all-around#333). */
+.terminal-map-top-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+/* 배치 단추 둘은 나란히(공용 「⋯」 판 안에서는 위아래로 선다). */
+.split-orientation-toggle.terminal-map-layout-toggle {
+  flex-direction: row;
+  align-items: center;
+}
+
+/* 단말 코드 검색 — 흐린 문구(단말 코드를 입력하세요)가 들어가는 폭만(사용자 지시 2026-11-20 · #333). */
+.users-roles-filter-row > .users-roles-search-input.terminal-map-search-input {
+  flex-basis: 14rem;
+  width: 14rem;
+}
+
+/* 단말 추가 · 수정 팝업(사용자 시안 2026-11-20 · #333) — 제목 아래 구분선, 두 열. */
+/* 창고 칸 안내 라벨이 한 줄로 들어가는 폭 — 기본 큰 팝업(720px)에서는 두 줄로 접혀 옆 칸과 입력칸 윗선이 어긋난다. */
+dialog.terminal-map-form-dialog {
+  width: min(60rem, calc(100vw - 2rem));
+  max-width: min(60rem, calc(100vw - 2rem));
+}
+
+.terminal-map-form-dialog [class*="_header_"] {
+  border-bottom: 1px solid var(--outline-variant);
+  margin-bottom: var(--space-4);
+}
+
+.terminal-map-form.form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* 칸 이름 오른쪽 안내 라벨 — 정보 아이콘 + 파란 바탕, 라벨 줄이 높아지지 않게 여백 · 글자만 줄인다(품질 기준의 잠금 안내와 같다). */
+.field-label > .terminal-map-label-note {
+  margin: 0 0 0 var(--space-2);
+  padding: 1px var(--space-2);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+}
+
+/* 「(선택)」 · 「*」 — 라벨과 띄운다(라벨 줄이 flex 라 앞 공백이 접힌다). */
+.terminal-map-form .field-label > .optional-mark {
+  margin-left: var(--space-1);
+}
+
+/* 안내 라벨이 있는 칸과 없는 칸의 라벨 줄 높이를 맞춘다 — 같은 줄 입력칸 윗선이 어긋나지 않게. */
+.terminal-map-form .field-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: var(--space-1);
+  min-height: 1.625rem;
 }
 
 /*

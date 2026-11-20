@@ -125,26 +125,85 @@ describe('TerminalProcessMapScreen 표시', () => {
 });
 
 describe('TerminalProcessMapScreen 조회 조건', () => {
-  it('초기화는 바뀐 것이 생겨야 나타나고, 누르면 치던 검색어까지 비운다', async () => {
+  it('초기화는 늘 보이고, 누르면 치던 검색어와 걸린 조건을 비운다', async () => {
     const user = userEvent.setup();
-    renderScreen();
+    renderScreen('/system/terminal-process-map?includeInactive=1');
     await screen.findByRole('button', { name: 'SYN-TERM-01' });
-    expect(screen.queryByRole('button', { name: t.filters.clear })).not.toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: t.filters.includeInactive })).toBeChecked();
 
     const search = screen.getByPlaceholderText(t.filters.searchPlaceholder);
     await user.type(search, 'SYN');
     await user.click(screen.getByRole('button', { name: t.filters.clear }));
 
     expect(search).toHaveValue('');
-    expect(screen.queryByRole('button', { name: t.filters.clear })).not.toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: t.filters.includeInactive })).not.toBeChecked();
+    expect(screen.getByRole('button', { name: t.filters.clear })).toBeInTheDocument();
   });
 
-  it('주소로 걸린 조건이 처음 값과 다르면 초기화가 보인다', async () => {
-    renderScreen('/system/terminal-process-map?includeInactive=1');
+  it('좌우 · 상하 배치 단추가 조회 줄에 늘 보이고, 상하를 누르면 위아래로 쌓인다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
     await screen.findByRole('button', { name: 'SYN-TERM-01' });
 
-    expect(screen.getByRole('checkbox', { name: t.filters.includeInactive })).toBeChecked();
-    expect(screen.getByRole('button', { name: t.filters.clear })).toBeInTheDocument();
+    const stacked = screen.getByRole('button', {
+      name: messages.common.inspectionHub.layoutStacked,
+    });
+    await user.click(stacked);
+
+    expect(stacked).toHaveAttribute('aria-pressed', 'true');
+    expect(document.querySelector('.po-board-split.is-stacked')).not.toBeNull();
+  });
+
+  it('사용 · 미사용 라벨에 건수가 붙고, 미사용을 누르면 미사용만 서버에 묻는다', async () => {
+    const user = userEvent.setup();
+    const listQueries: string[] = [];
+    renderWithProviders(<TerminalProcessMapScreen />, {
+      fetch: createStubFetch([
+        {
+          match: (request) => path(request) === '/mdm/terminals',
+          respond: (request) => {
+            const params = new URL(request.url).searchParams;
+            if (params.get('size') !== '1') listQueries.push(params.toString());
+            /* 사용 2건 · 미사용 1건인 단말 목록 */
+            if (params.get('isActive') === 'false') {
+              return jsonResponse(page([terminal(703, 'SYN-TERM-03', { isActive: false })]));
+            }
+            return jsonResponse(page([unregistered, registered]));
+          },
+        },
+        ...routes,
+      ]),
+      route: '/system/terminal-process-map',
+      session: null,
+    });
+    await screen.findByRole('button', { name: 'SYN-TERM-01' });
+
+    const inactive = await screen.findByRole('button', {
+      name: t.chips.filterOn(t.list.inactive),
+    });
+    expect(inactive).toHaveTextContent('1');
+    await user.click(inactive);
+
+    expect(await screen.findByRole('button', { name: 'SYN-TERM-03' })).toBeInTheDocument();
+    expect(listQueries.at(-1)).toContain('isActive=false');
+  });
+
+  it('단말 추가 팝업은 닫기(X) 없이 [취소]로만 닫히고, 칸을 고치면 그 칸의 오류가 지워진다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByRole('button', { name: 'SYN-TERM-01' });
+
+    await user.click(screen.getByRole('button', { name: t.terminal.create }));
+    const dialog = await screen.findByRole('dialog', { name: t.terminal.create });
+    expect(within(dialog).queryByRole('button', { name: /닫기|close/i })).not.toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: t.terminal.register }));
+    expect(within(dialog).getByText(t.terminal.requiredCode)).toBeInTheDocument();
+    await user.type(within(dialog).getByRole('textbox', { name: t.terminal.code }), 'SYN-NEW');
+    expect(within(dialog).queryByText(t.terminal.requiredCode)).not.toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: t.terminal.cancel }));
+    expect(screen.queryByRole('dialog', { name: t.terminal.create })).not.toBeInTheDocument();
   });
 });
 

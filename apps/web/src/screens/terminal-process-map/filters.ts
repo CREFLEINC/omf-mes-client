@@ -13,9 +13,13 @@ export const LIST_PAGE_SIZES = [10, 20, 50] as const;
 export type ListPageSize = (typeof LIST_PAGE_SIZES)[number];
 export const DEFAULT_PAGE_SIZE: ListPageSize = 20;
 
+/** 사용 · 미사용 라벨(사용자 지시 2026-11-20 · #333). 비면 라벨을 걸지 않는다. */
+export type ActiveStatus = '' | 'active' | 'inactive';
+
 export interface TerminalFilters {
   q: string;
   includeInactive: boolean;
+  status: ActiveStatus;
   page: number;
   size: ListPageSize;
 }
@@ -23,9 +27,13 @@ export interface TerminalFilters {
 export const EMPTY_FILTERS: TerminalFilters = {
   q: '',
   includeInactive: false,
+  status: '',
   page: 1,
   size: DEFAULT_PAGE_SIZE,
 };
+
+const readStatus = (value: string | null): ActiveStatus =>
+  value === 'active' || value === 'inactive' ? value : '';
 
 const readSize = (value: string | null): ListPageSize =>
   LIST_PAGE_SIZES.find((size) => String(size) === value) ?? DEFAULT_PAGE_SIZE;
@@ -39,6 +47,7 @@ export const readFilters = (params: URLSearchParams): TerminalFilters => {
     q: params.get('q') ?? '',
     /* 있으면 참이다 — 값을 견주지 않는다. 체크 상자 하나에 값 규약을 더하지 않는다. */
     includeInactive: params.get('includeInactive') === '1',
+    status: readStatus(params.get('status')),
     page: isPositiveInteger(page) ? Number(page) : 1,
     size: readSize(params.get('size')),
   };
@@ -60,6 +69,7 @@ export const toSearchParams = (
 
   if (filters.q !== '') params.set('q', filters.q);
   if (filters.includeInactive) params.set('includeInactive', '1');
+  if (filters.status !== '') params.set('status', filters.status);
   if (filters.page > 1) params.set('page', String(filters.page));
   if (filters.size !== DEFAULT_PAGE_SIZE) params.set('size', String(filters.size));
   if (selected !== null) params.set('terminal', String(selected));

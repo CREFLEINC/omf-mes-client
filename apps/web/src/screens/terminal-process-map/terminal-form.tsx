@@ -1,4 +1,4 @@
-import { AlertBanner, Button, TextField } from '@crefle/web-ui';
+import { Button, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
@@ -77,19 +77,24 @@ export const TerminalForm = ({
 
   return (
     <>
-      {/* 창고 칸이 무엇을 바꾸는지 — 카드 제목 바로 아래 정보 띠(내용 폭, 피처 002). */}
-      <AlertBanner className="terminal-map-notice terminal-map-form-notice" variant="info">
-        {t.terminal.warehouseGuide}
-      </AlertBanner>
       <SaveErrorBanner error={saveError} />
       {plants.isError ? <LoadErrorBanner error={plants.error} onRetry={plants.refetch} /> : null}
       {equipments.isError ? (
         <LoadErrorBanner error={equipments.error} onRetry={equipments.refetch} />
       ) : null}
 
+      {/*
+       * 두 열(사용자 시안 2026-11-20 · #333) — 단말 코드 · 단말 유형 / 공장 · 창고 / (운영 상태) · 설치 설비.
+       * 안내는 칸 이름 오른쪽 안내 라벨로 옮긴다(단말 코드 · 창고).
+       */}
       <div className="form-grid terminal-map-form">
         <div className="field-cell">
-          <FieldLabel htmlFor={codeId} label={t.terminal.code} hint={t.terminal.codeLocked} />
+          <FieldLabel
+            htmlFor={codeId}
+            label={t.terminal.code}
+            required={isNew}
+            note={t.terminal.codeLocked}
+          />
           <TextField
             id={codeId}
             value={draft.terminalCode}
@@ -101,8 +106,22 @@ export const TerminalForm = ({
           />
         </div>
 
+        {/* 코드를 외워 적지 않게 공통코드 이름으로 고른다 — 저장값은 코드 그대로다. */}
+        <SelectField
+          label={t.terminal.type}
+          required
+          options={codeSelectOptions(codeNames.typeLookup, draft.terminalTypeCode)}
+          value={draft.terminalTypeCode}
+          error={errors.terminalTypeCode ?? fieldErrors.terminalTypeCode}
+          placeholder={t.terminal.typePlaceholder}
+          onChange={(value) => {
+            onChange({ terminalTypeCode: value });
+          }}
+        />
+
         <SelectField
           label={t.terminal.plant}
+          required
           options={toOptions(plants.entries)}
           value={draft.plant}
           note={lookupNote(plants, t.terminal.plantLookupFailed)}
@@ -115,21 +134,34 @@ export const TerminalForm = ({
           }}
         />
 
-        {/* 코드를 외워 적지 않게 공통코드 이름으로 고른다 — 저장값은 코드 그대로다. */}
         <SelectField
-          label={t.terminal.type}
-          options={codeSelectOptions(codeNames.typeLookup, draft.terminalTypeCode)}
-          value={draft.terminalTypeCode}
-          error={errors.terminalTypeCode ?? fieldErrors.terminalTypeCode}
-          placeholder={t.terminal.typePlaceholder}
+          label={t.terminal.warehouse}
+          optionalMark={t.terminal.optionalMark}
+          labelNote={t.terminal.warehouseScope}
+          options={[
+            { value: '', label: t.terminal.warehouseAll },
+            ...toOptions(warehouses.entries),
+          ]}
+          value={draft.warehouse}
+          disabled={draft.plant === ''}
+          note={
+            draft.plant === ''
+              ? t.terminal.warehouseNeedsPlant
+              : lookupNote(warehouses, t.terminal.warehouseLookupFailed)
+          }
+          error={fieldErrors.warehouseId}
+          placeholder={t.terminal.warehouseAll}
+          wide
           onChange={(value) => {
-            onChange({ terminalTypeCode: value });
+            onChange({ warehouse: value });
           }}
         />
 
+        {/* 등록은 운영 상태를 묻지 않는다 — 그 자리는 비워 설치 설비가 오른쪽 열에 선다(시안). */}
         {!isNew ? (
           <SelectField
             label={t.terminal.status}
+            required
             options={codeSelectOptions(codeNames.statusLookup, draft.statusCode)}
             value={draft.statusCode}
             error={errors.statusCode ?? fieldErrors.statusCode}
@@ -138,7 +170,9 @@ export const TerminalForm = ({
               onChange({ statusCode: value });
             }}
           />
-        ) : null}
+        ) : (
+          <div className="terminal-map-form-spacer" aria-hidden="true" />
+        )}
 
         <SelectField
           label={t.terminal.equipment}
@@ -156,28 +190,6 @@ export const TerminalForm = ({
             onChange({ equipment: value });
           }}
         />
-
-        <SelectField
-          label={t.terminal.warehouse}
-          options={[
-            { value: '', label: t.terminal.warehouseAll },
-            ...toOptions(warehouses.entries),
-          ]}
-          value={draft.warehouse}
-          disabled={draft.plant === ''}
-          note={
-            draft.plant === ''
-              ? t.terminal.warehouseNeedsPlant
-              : lookupNote(warehouses, t.terminal.warehouseLookupFailed)
-          }
-          hint={t.terminal.warehouseHint}
-          error={fieldErrors.warehouseId}
-          placeholder={t.terminal.warehouseAll}
-          wide
-          onChange={(value) => {
-            onChange({ warehouse: value });
-          }}
-        />
       </div>
 
       <div className="form-actions terminal-map-form-actions">
@@ -186,7 +198,7 @@ export const TerminalForm = ({
           {t.terminal.cancel}
         </Button>
         <Button disabled={isSaving} onClick={onSubmit}>
-          {t.terminal.save}
+          {isNew ? t.terminal.register : t.terminal.save}
         </Button>
       </div>
     </>
