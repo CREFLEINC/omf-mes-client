@@ -7,7 +7,6 @@
  */
 export const terminalProcessMap = {
   title: '단말기-공정 매핑 설정',
-  breadcrumbRoot: '시스템 관리',
   /** 메뉴에서 이 화면까지의 경로 — 다른 화면이 「어디로 가라」고 안내할 때 쓴다. 메뉴 라벨과 같아야 한다(app/nav-menu-path.test.ts). */
   menuPath: '시스템 관리 › 단말기-공정 매핑',
 
@@ -15,12 +14,16 @@ export const terminalProcessMap = {
     list: '단말 목록',
     terminal: '단말 정보',
     grid: '공정별 기능 구성',
+    /* 위 조회 묶음(사용자 역할 권한 관리와 같은 틀 · omf-all-around#333). */
+    search: '단말 조회 조건',
+    settings: '단말 설정',
   },
 
   filters: {
     search: '단말 코드 검색',
     searchPlaceholder: '단말 코드를 입력하세요',
-    includeInactive: '중지 단말 포함',
+    /* 사용자 역할 권한 관리와 같은 말(#333). */
+    includeInactive: '미사용 포함',
     apply: '조회',
     clear: '초기화',
   },
@@ -38,8 +41,8 @@ export const terminalProcessMap = {
     warehouse: '창고',
     warehouseAll: '공장 전체',
     active: '사용',
-    activeHeader: '사용 여부',
-    inactive: '중지',
+    activeHeader: '사용 상태',
+    inactive: '미사용',
     notAvailable: '—',
     emptyTitle: '단말이 없습니다',
     empty: '조건에 맞는 단말이 없습니다. 조건을 넓히거나 새 단말을 등록하세요.',
@@ -49,7 +52,7 @@ export const terminalProcessMap = {
   },
 
   terminal: {
-    create: '새 단말 등록',
+    create: '단말 추가',
     edit: '단말 수정',
     code: '단말 코드',
     /** ⛔ 등록 뒤에는 못 바꾼다 — 키다. */
@@ -82,9 +85,13 @@ export const terminalProcessMap = {
     cancel: '취소',
     deactivate: '사용 중지',
     deactivated: '단말을 중지했습니다. 기록은 남습니다.',
-    deactivateTitle: '단말 사용을 중지할까요?',
+    /* 사용자 · 역할 사용 중지 창과 같은 모양(#333). */
+    deactivateTitle: '단말 사용 중지',
+    deactivateCaption: '사용 중지 대상',
+    deactivateMeta: (type: string): string => `유형: ${type}`,
+    deactivateQuestion: '이 단말의 사용을 중지하시겠습니까?',
     deactivateLead: '단말이 남긴 기록은 참조로 남아 있습니다.',
-    deactivateConfirm: '중지',
+    deactivateConfirm: '사용 중지',
     requiredCode: '단말 코드를 적으세요.',
     requiredPlant: '공장을 고르세요.',
     requiredType: '유형 코드를 적으세요.',
@@ -148,9 +155,9 @@ export const terminalProcessMap = {
     reset: '변경 취소',
     duplicate: '이미 추가된 공정입니다.',
     noFlag: '작업지시 마감 말고 기능을 하나 이상 켜세요',
-    selectTerminalTitle: '단말을 선택해 주세요',
-    selectTerminal: '왼쪽 목록에서 단말을 선택하면 상세 정보와 공정별 기능을 확인할 수 있습니다.',
-    unselectedNote: '단말을 선택하면 공정별 기능을 설정할 수 있습니다.',
+    selectTerminalTitle: '단말을 선택해 주세요.',
+    selectTerminal: '선택한 단말의 정보와 공정별 기능을 확인할 수 있습니다.',
+    noTerminalTitle: '단말이 없습니다.',
     loadFailed: '기능 구성을 불러오지 못했습니다.',
     processLookupFailed: '공정 목록을 불러오지 못해 지금은 공정을 추가할 수 없습니다.',
     lockLoading: '단말 구성을 불러오는 중입니다. 잠시 뒤 저장하세요.',
@@ -173,12 +180,11 @@ export const terminalProcessMap = {
     canReturnMaterial: '자재 반납',
   },
 
-  pageNav: {
-    label: '쪽 이동',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
-    totalOnly: (total: number): string => `전체 ${String(total)}건`,
-    prev: '이전',
-    next: '다음',
+  /** 저장하지 않은 기능 구성을 두고 다른 단말로 옮길 때(사용자 역할 권한 관리와 같은 창 · #333). */
+  discard: {
+    title: '저장되지 않은 변경 사항',
+    body: '저장하지 않고 나가면 변경 사항이 사라집니다.',
+    keep: '계속 편집',
+    leave: '저장하지 않고 나가기',
   },
 } as const;

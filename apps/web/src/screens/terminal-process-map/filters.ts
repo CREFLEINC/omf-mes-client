@@ -8,17 +8,27 @@
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
+/** 쪽 크기 고르개 — 사용자 역할 권한 관리 목록과 같은 셋(#333). 기본은 종전 그대로 20건. */
+export const LIST_PAGE_SIZES = [10, 20, 50] as const;
+export type ListPageSize = (typeof LIST_PAGE_SIZES)[number];
+export const DEFAULT_PAGE_SIZE: ListPageSize = 20;
+
 export interface TerminalFilters {
   q: string;
   includeInactive: boolean;
   page: number;
+  size: ListPageSize;
 }
 
 export const EMPTY_FILTERS: TerminalFilters = {
   q: '',
   includeInactive: false,
   page: 1,
+  size: DEFAULT_PAGE_SIZE,
 };
+
+const readSize = (value: string | null): ListPageSize =>
+  LIST_PAGE_SIZES.find((size) => String(size) === value) ?? DEFAULT_PAGE_SIZE;
 
 const isPositiveInteger = (value: string): boolean => /^\d+$/.test(value) && Number(value) > 0;
 
@@ -30,6 +40,7 @@ export const readFilters = (params: URLSearchParams): TerminalFilters => {
     /* 있으면 참이다 — 값을 견주지 않는다. 체크 상자 하나에 값 규약을 더하지 않는다. */
     includeInactive: params.get('includeInactive') === '1',
     page: isPositiveInteger(page) ? Number(page) : 1,
+    size: readSize(params.get('size')),
   };
 };
 
@@ -50,6 +61,7 @@ export const toSearchParams = (
   if (filters.q !== '') params.set('q', filters.q);
   if (filters.includeInactive) params.set('includeInactive', '1');
   if (filters.page > 1) params.set('page', String(filters.page));
+  if (filters.size !== DEFAULT_PAGE_SIZE) params.set('size', String(filters.size));
   if (selected !== null) params.set('terminal', String(selected));
 
   return params;

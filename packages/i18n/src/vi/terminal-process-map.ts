@@ -14,19 +14,20 @@ import type { Translated } from './translated';
  */
 export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
   title: 'Thiết lập ánh xạ máy quét - công đoạn',
-  breadcrumbRoot: 'Quản trị hệ thống',
   menuPath: 'Quản trị hệ thống › Ánh xạ máy quét - công đoạn',
 
   panes: {
     list: 'Danh sách máy quét',
     terminal: 'Thông tin máy quét',
     grid: 'Cấu hình chức năng theo công đoạn',
+    search: 'Điều kiện tra cứu máy quét',
+    settings: 'Thiết lập máy quét',
   },
 
   filters: {
     search: 'Tìm mã máy quét',
     searchPlaceholder: 'Nhập mã máy quét',
-    includeInactive: 'Gồm máy quét đã ngừng',
+    includeInactive: 'Gồm cả không sử dụng',
     apply: 'Tra cứu',
     clear: 'Đặt lại',
   },
@@ -43,8 +44,8 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     warehouse: 'Kho',
     warehouseAll: 'Toàn nhà máy',
     active: 'Dùng',
-    activeHeader: 'Sử dụng',
-    inactive: 'Ngừng',
+    activeHeader: 'Trạng thái sử dụng',
+    inactive: 'Không sử dụng',
     notAvailable: '—',
     emptyTitle: 'Không có máy quét',
     empty: 'Không có máy quét khớp điều kiện. Hãy nới điều kiện hoặc đăng ký máy quét mới.',
@@ -54,7 +55,7 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
   },
 
   terminal: {
-    create: 'Đăng ký máy quét mới',
+    create: 'Thêm máy quét',
     edit: 'Sửa máy quét',
     code: 'Mã máy quét',
     /** ⛔ 등록 뒤에는 못 바꾼다 — 키다. */
@@ -81,10 +82,13 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     cancel: 'Hủy',
     deactivate: 'Ngừng sử dụng',
     deactivated: 'Đã ngừng máy quét. Bản ghi vẫn còn.',
-    deactivateTitle: 'Ngừng sử dụng máy quét chứ?',
+    deactivateTitle: 'Ngừng sử dụng máy quét',
+    deactivateCaption: 'Đối tượng ngừng sử dụng',
+    deactivateMeta: (type: string): string => `Loại: ${type}`,
+    deactivateQuestion: 'Bạn có muốn ngừng sử dụng máy quét này không?',
     /** ⭐ `xóa` 를 쓰지 않는다 — 끄는 것이지 지우는 것이 아니다. */
     deactivateLead: 'Bản ghi máy quét để lại vẫn được giữ để tham chiếu.',
-    deactivateConfirm: 'Ngừng',
+    deactivateConfirm: 'Ngừng sử dụng',
     requiredCode: 'Hãy nhập mã máy quét.',
     requiredPlant: 'Hãy chọn nhà máy.',
     requiredType: 'Hãy nhập mã loại.',
@@ -135,10 +139,9 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     reset: 'Hủy thay đổi',
     duplicate: 'Công đoạn này đã được thêm.',
     noFlag: 'Hãy bật ít nhất một chức năng ngoài đóng lệnh sản xuất',
-    selectTerminalTitle: 'Vui lòng chọn máy quét',
-    selectTerminal:
-      'Chọn máy quét trong danh sách bên trái để xem thông tin chi tiết và chức năng theo công đoạn.',
-    unselectedNote: 'Chọn máy quét để thiết lập chức năng theo công đoạn.',
+    selectTerminalTitle: 'Vui lòng chọn máy quét.',
+    selectTerminal: 'Có thể xem thông tin và chức năng theo công đoạn của máy quét đã chọn.',
+    noTerminalTitle: 'Không có máy quét.',
     loadFailed: 'Không tải được cấu hình chức năng.',
     processLookupFailed: 'Không tải được danh sách công đoạn nên hiện chưa thể thêm công đoạn.',
     lockLoading: 'Đang tải cấu hình máy quét. Lát nữa hãy lưu.',
@@ -158,12 +161,10 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     canReturnMaterial: 'Trả lại vật tư',
   },
 
-  pageNav: {
-    label: 'Chuyển trang',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / tổng ${String(total)} mục`,
-    totalOnly: (total: number): string => `Tổng ${String(total)} mục`,
-    prev: 'Trước',
-    next: 'Sau',
+  discard: {
+    title: 'Thay đổi chưa được lưu',
+    body: 'Nếu rời đi mà không lưu, các thay đổi sẽ bị mất.',
+    keep: 'Tiếp tục chỉnh sửa',
+    leave: 'Rời đi mà không lưu',
   },
 };

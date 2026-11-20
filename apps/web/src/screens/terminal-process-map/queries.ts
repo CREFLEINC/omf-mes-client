@@ -42,12 +42,17 @@ type TerminalUpdate = TerminalUpdateForward;
 type TerminalProcessReplace = TerminalProcessReplaceForward;
 type TerminalRegistrationToken = components['schemas']['TerminalRegistrationToken'];
 
-export const PAGE_SIZE = 20;
-
 export const terminalKeys = {
   all: ['terminal-process-map'] as const,
   list: (filters: TerminalFilters) =>
-    ['terminal-process-map', 'list', filters.q, filters.includeInactive, filters.page] as const,
+    [
+      'terminal-process-map',
+      'list',
+      filters.q,
+      filters.includeInactive,
+      filters.page,
+      filters.size,
+    ] as const,
   terminal: (terminalId: number | null) =>
     ['terminal-process-map', 'terminal', terminalId ?? 0] as const,
   processes: (terminalId: number | null) =>
@@ -76,7 +81,7 @@ export const useTerminals = (filters: TerminalFilters): UseQueryResult<TerminalL
               /* 끄면 보내지 않는다 — 기본이 「사용 중만」이다. */
               ...(filters.includeInactive ? { includeInactive: true } : {}),
               page: filters.page,
-              size: PAGE_SIZE,
+              size: filters.size,
             },
           },
         }),

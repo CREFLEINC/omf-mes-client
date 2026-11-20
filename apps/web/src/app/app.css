@@ -18225,20 +18225,6 @@ dialog.layout-editor-dialog {
   margin: 0;
 }
 
-/* W-CO-06 단말기-공정 매핑 — 지금 고른 단말을 행 전체로 드러낸다. 목록 → 정보 → 기능 구성이 이어 읽힌다. */
-.terminal-map-list tbody tr:has(button[aria-current="true"]) > td {
-  background: var(--primary-container);
-}
-
-.terminal-map-list tbody tr:has(button[aria-current="true"]) > td:first-child {
-  box-shadow: inset 3px 0 0 var(--primary);
-}
-
-/* 단말 목록은 좌측 단에 선다 — 공통 넓은 표 최소 폭(58rem)을 풀어 여섯 열이 단 안에 들어오게 한다. */
-.wide-table.terminal-map-list table {
-  min-width: 0;
-}
-
 /* 단말 목록·공정별 기능 구성 표 — 머리줄과 모든 열을 가운데로. DS 의 열별 정렬([data-align])보다 앞선다. */
 .terminal-map-list thead th,
 .terminal-map-list thead th[data-align],
@@ -18249,22 +18235,6 @@ dialog.layout-editor-dialog {
   text-align: center;
 }
 
-/* 단말 목록 조회 조건 — 초기화는 그 줄의 오른쪽 끝(줄이 바뀌어도 그 줄의 끝)에 선다. */
-.terminal-map-filter > .terminal-map-filter-actions {
-  margin-left: auto;
-}
-
-/* 쪽 이동 — 「1–1 / 전체 1건」 글자와 이전·다음 단추의 세로 가운데를 맞춘다. */
-.form-actions.terminal-map-pagenav {
-  align-items: center;
-}
-
-/* 공통 .field-note·문단의 위아래 여백이 가운데 맞춤을 어긋나게 한다 — 이 줄에서만 뺀다. */
-.terminal-map-pagenav > .field-note {
-  margin-top: 0;
-  margin-bottom: 0;
-}
-
 /*
  * 제목 없는 안내 띠 — 표식을 첫 줄 글자에 맞춘다. DS 는 표식을 제목 줄에 맞추려 위 여백 4px 을 주는데,
  * 제목 없이 설명만 내는 띠에서는 그 여백이 어긋남이 된다(production-order-erp-notice 와 같은 풀이).
@@ -18272,49 +18242,6 @@ dialog.layout-editor-dialog {
  */
 .terminal-map-notice > :first-child {
   margin-block-start: 0;
-}
-
-/*
- * 제목이 있는 오류 띠(불러오기·저장 실패 — 공용 SaveErrorBanner 와 이 화면 LoadErrorBanner) — 표식을
- * 제목 줄 가운데에 맞춘다. DS 의 4px 은 제목 줄보다 2px 깊다(실측). 이 화면의 두 구획 안에서만 고친다.
- */
-.terminal-map-panes .banner-slot > [role] > :first-child,
-.terminal-map-grid-pane .banner-slot > [role] > :first-child {
-  margin-block-start: calc(var(--space-1) / 2);
-}
-
-/*
- * 두 칸 배치(1281px 이상)에서 단말 목록·오른쪽 카드 높이를 맞춘다 — 공용 .two-pane 은 그대로 둔다.
- * 늘어난 공간은 빈 칸(::after)이 받아 본문과 바닥글 사이에 두고, 바닥글(쪽 이동·조작 줄·폼 단추)은 카드 맨 아래에 붙는다.
- */
-@media (min-width: 1281px) {
-  .two-pane.terminal-map-panes {
-    align-items: stretch;
-  }
-
-  /* 기본 높이 = 단말 수정 폼이 오류 없이 서는 높이(1920·1440 실측 435px). 고르기·수정 전환에 카드 높이가 흔들리지 않는다. */
-  .terminal-map-panes > .pane {
-    display: flex;
-    flex-direction: column;
-    min-height: 27.1875rem;
-    box-sizing: border-box;
-  }
-
-  .terminal-map-panes > .pane::after {
-    content: "";
-    flex: 1 0 0;
-    order: 1;
-  }
-
-  .terminal-map-panes
-    > .pane
-    > :is(
-      .terminal-map-pagenav,
-      .terminal-map-info-footer,
-      .terminal-map-form-actions
-    ) {
-    order: 2;
-  }
 }
 
 /*
@@ -18467,43 +18394,67 @@ dialog.layout-editor-dialog {
   }
 }
 
-/*
- * 제목 → 재발급 경고(내용 폭, 같은 시작선) → 정보 격자 → 구분선 → 조작 줄. 사용 중지는 왼쪽 끝(보조 액션 자리).
- */
-.terminal-map-info-footer {
-  display: grid;
-  gap: var(--space-3);
-  margin-top: var(--space-4);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--outline-variant);
-}
-
-.terminal-map-reissue-warning,
+/* 단말 등록·수정 폼 안내 띠 — 내용 폭. */
 .terminal-map-form-notice {
   width: fit-content;
   max-width: 100%;
   padding: var(--space-2) var(--space-3);
 }
 
-/* 제목 → 재발급 경고 → 정보 격자. 경고와 격자 사이는 구획 안 블록 간격(--space-4). */
-.terminal-map-reissue-warning + .terminal-map-info {
-  margin-top: var(--space-4);
+/*
+ * 오른쪽 한 카드(사용자 결정 2026-11-20 · omf-all-around#333) — 단말 정보 → 구분선 → 공정별 기능 구성 → [변경 취소][구성 저장].
+ * 사용 중지는 조작 줄 왼쪽 끝(보조 액션 자리), 재발급 경고는 토큰 단추 바로 위 한 줄.
+ */
+.terminal-map-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
 }
 
-.terminal-map-info-footer > .form-actions {
+.terminal-map-settings-block {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.terminal-map-settings-block + .terminal-map-settings-block {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.terminal-map-settings-title {
+  margin: 0;
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.terminal-map-info {
   margin-top: 0;
 }
 
-/* 기능 구성 구획의 설명 — 공통 .pane-lead 의 글줄 폭 제한(44rem)을 이 구획에서만 풀어 카드 폭을 쓴다. */
-.terminal-map-grid-pane > .pane-lead {
-  max-width: none;
+.form-actions.terminal-map-info-actions {
+  margin-top: 0;
 }
 
-/* 선택 전 안내 — 구획 설명과 한 줄을 띄운다. */
-.pane-lead.terminal-map-unselected {
-  margin-top: var(--space-5);
-  /* 구획의 마지막 줄 — 문단 기본 아래 여백을 빼 카드가 내용만큼만 선다. */
+.terminal-map-reissue-warning {
+  justify-self: end;
+  margin: 0;
+}
+
+.terminal-map-grid-purpose {
+  margin: 0;
+}
+
+.terminal-map-settings-block > .filter-bar {
   margin-bottom: 0;
+}
+
+/* 저장 줄은 카드 맨 아래 — 내용이 짧으면 빈 자리를 위에 두고 구분선 아래에 선다. */
+.form-actions.terminal-map-settings-footer {
+  margin-top: auto;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
 }
 
 /* 공정별 기능 구성 표 — 열이 많아 좁은 폭에서는 표 안에서만 가로로 넘긴다(마지막 「빼기」 열이 잘리지 않게). */

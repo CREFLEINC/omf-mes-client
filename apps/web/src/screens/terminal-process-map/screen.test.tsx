@@ -82,15 +82,16 @@ const renderScreen = (route = '/system/terminal-process-map') =>
   });
 
 describe('TerminalProcessMapScreen 표시', () => {
-  it('선택 전에는 단말 정보만 크게 안내하고 기능 구성은 한 줄로 줄인다', async () => {
+  it('선택 전에는 오른쪽 카드가 고르라는 안내 하나만 보이고 기능 구성은 아직 없다', async () => {
     renderScreen();
     await screen.findByRole('button', { name: 'SYN-TERM-01' });
 
     expect(screen.getAllByText(t.grid.selectTerminalTitle)).toHaveLength(1);
-    expect(screen.getByText(t.grid.unselectedNote)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: t.panes.grid })).toBeInTheDocument();
-    /* 저장 결과 안내는 구획 설명 한 곳에만 있다 — 선택 전·후 같은 설명이다. */
-    expect(screen.getAllByText(t.grid.purpose)).toHaveLength(1);
+    expect(screen.queryByRole('heading', { name: t.panes.grid })).not.toBeInTheDocument();
+    expect(screen.queryByText(t.grid.purpose)).not.toBeInTheDocument();
+    /* 머리글(경로 · 화면 이름)은 두지 않는다 — 단말 추가는 조회 줄 오른쪽 끝이다. */
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.terminal.create })).toBeInTheDocument();
   });
 
   it('유형·운영 상태를 공통코드 이름으로 보이고, 미등록 단말의 운영 상태는 되풀이하지 않는다', async () => {
@@ -256,6 +257,41 @@ describe('TerminalProcessMapScreen 기능 구성 저장', () => {
 
     await user.click(flag('합성 조립', 'canInputInspection'));
     expect(screen.queryByText(SERVER_MESSAGE)).not.toBeInTheDocument();
+  });
+
+  it('저장하지 않은 구성이 있으면 다른 단말을 고르기 전에 묻고, 계속 편집하면 그대로 남는다', async () => {
+    const { user } = renderWith([processRow(11, '합성 사출', { canStartWork: true })]);
+
+    await screen.findByRole('button', { name: t.grid.save });
+    await user.click(flag('합성 사출', 'canCompleteWork'));
+    await user.click(screen.getByRole('button', { name: 'SYN-TERM-02' }));
+
+    const dialog = await screen.findByRole('dialog', { name: t.discard.title });
+    await user.click(within(dialog).getByRole('button', { name: t.discard.keep }));
+
+    expect(screen.queryByRole('dialog', { name: t.discard.title })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'SYN-TERM-01' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(flag('합성 사출', 'canCompleteWork')).toBeChecked();
+  });
+
+  it('저장하지 않고 나가면 고른 단말이 바뀐다', async () => {
+    const { user } = renderWith([processRow(11, '합성 사출', { canStartWork: true })]);
+
+    await screen.findByRole('button', { name: t.grid.save });
+    await user.click(flag('합성 사출', 'canCompleteWork'));
+    await user.click(screen.getByRole('button', { name: 'SYN-TERM-02' }));
+    const dialog = await screen.findByRole('dialog', { name: t.discard.title });
+    await user.click(within(dialog).getByRole('button', { name: t.discard.leave }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'SYN-TERM-02' })).toHaveAttribute(
+        'aria-current',
+        'true',
+      ),
+    );
   });
 
   it('「변경 취소」하면 서버가 짚은 문구도 지운다', async () => {
