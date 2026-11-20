@@ -150,12 +150,6 @@ export const workerAssignment = {
     otherPlant: '다른 공장 소속입니다.',
   },
 
-  /** 사번 확인 뒤 [확인] 창(사용자 지시 2026-11-20 · omf-all-around#334) — 누구로 정할지 묻는다. */
-  confirm: {
-    title: '이 작업자로 시작할까요?',
-    workerNo: '사번',
-  },
-
   error: {
     /** 입력값은 사번 칸에 그대로 남아 있어 문구에 다시 담지 않는다(사용자 지시 2026-11-17). */
     unknown: '등록되지 않은 사번입니다.',
