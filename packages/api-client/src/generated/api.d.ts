@@ -68831,6 +68831,11 @@ export interface components {
            */
           code: 'PUTAWAY_PENDING' | 'NOT_PRODUCT_WAREHOUSE' | 'MIXED_STOCK_STATUS';
         } | null;
+        /**
+         * @description 위치 역할 — PUTAWAY_STAGING(적치 대기 자리)·WAREHOUSE_WHOLE 등. 보통 위치는 null
+         * @example PUTAWAY_STAGING
+         */
+        systemRoleCode: string | null;
       }[];
     };
     /** @description 분리 요청 — 그 위치의 LOT 몫에서 qty 를 떼어 자식 LOT 을 만든다. 영업일은 단말이 보낸다(C-8). 시각을 빼면 서버 시각. */
