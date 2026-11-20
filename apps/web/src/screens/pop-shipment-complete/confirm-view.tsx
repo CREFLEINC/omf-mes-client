@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { useRef, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
 import {
   PuBand,
@@ -9,8 +9,7 @@ import {
   PuNote,
   PuPager,
   PuSection,
-  useClientPage,
-  useFitTableRows,
+  useFitPages,
   type PuChipTone,
   type PuIconName,
 } from '../../patterns/pop-uniform';
@@ -95,10 +94,24 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
   const blocked = groups.length > 0;
   const targets = blockedTargetsOf(completion);
   const splitLots = splitLotsOf(completion);
-  /* 피킹 LOT 표 — 칸 높이에 드는 줄만 한 쪽으로, 아래 「총 N건 ‹ n/m ›」(지시서 검색 창 · 다른 POP 표와 같다). */
-  const lotFitRef = useRef<HTMLDivElement>(null);
-  const lotPageSize = useFitTableRows(lotFitRef, { fallback: 5 });
-  const lotPage = useClientPage(completion.lots, lotPageSize);
+  /*
+   * 두 카드는 늘 같은 높이(위 · 아래 맞춤). 한 쪽에 다 들면 둘 다 내용 높이(큰 쪽)로 줄고 「총 N건」은 표 바로 아래,
+   * 넘칠 때만 남는 높이를 다 갖고 쪽을 나눈다(사용자 지시 2026-11-20). 한 번 넘친 지시서는 그대로 둔다(깜박임 방지).
+   */
+  const tablesRef = useRef<HTMLDivElement>(null);
+  const [overflowed, setOverflowed] = useState(false);
+  /*
+   * 피킹 LOT 표 — 처음엔 다 그려 보고(한 쪽), 본문을 넘칠 때만 칸 높이에 드는 줄로 쪽을 나눈다(아래 「총 N건 ‹ n/m ›」).
+   * 한 번 나누면 그 지시서는 그대로.
+   */
+  const single = !overflowed;
+  const lotPage = useFitPages(completion.lots, { table: true, enabled: !single });
+  useLayoutEffect(() => {
+    const scroller = tablesRef.current?.parentElement ?? null;
+    if (single && scroller !== null && scroller.scrollHeight > scroller.clientHeight + 1) {
+      setOverflowed(true);
+    }
+  });
 
   return (
     <>
@@ -175,7 +188,7 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
         </PuSection>
       )}
 
-      <div className="psc-tables">
+      <div ref={tablesRef} className={single ? 'psc-tables' : 'psc-tables is-paged'}>
         <div className="psc-col">
           <PuSection grow={false} title={t.lines.heading} label={t.lines.heading}>
             <div className="pu-table-wrap">
@@ -257,7 +270,7 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
           {completion.lots.length === 0 ? (
             <p className="psc-empty-row">{t.lots.empty}</p>
           ) : (
-            <div ref={lotFitRef} className="pu-fit">
+            <div ref={lotPage.fitRef} className="pu-fit">
               <div className="pu-table-wrap">
                 <table className="pu-table" aria-label={t.lots.caption}>
                   <thead>

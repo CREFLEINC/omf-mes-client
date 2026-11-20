@@ -108,9 +108,12 @@ export type ShipmentMeasurements = ReturnType<typeof useShipmentMeasurements>;
 export const ShipmentMeasurementSection = ({
   form,
   locked,
+  visibleRows,
 }: {
   form: ShipmentMeasurements;
   locked: boolean;
+  /** POP 이 쪽으로 나눠 보일 줄(없으면 전부). */
+  visibleRows?: ShipmentMeasurements['rows'];
 }) => {
   const uoms = useUomLookup();
   if (!form.hasPlan) return null;
@@ -126,6 +129,7 @@ export const ShipmentMeasurementSection = ({
         uomCodeOf={(uomId) => uoms.codeOf(uomId ?? undefined)}
         isLoading={form.isLoading}
         isLocked={locked}
+        visibleRows={visibleRows}
       />
     </div>
   );

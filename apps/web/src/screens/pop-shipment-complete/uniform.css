@@ -64,16 +64,35 @@
 }
 
 /*
- * 두 표 줄은 남는 높이를 다 갖는다 — 피킹 LOT 표가 그 높이에 드는 줄만 한 쪽으로 보이고 아래 쪽 넘김(안쪽 스크롤 없음).
- * 남는 높이가 아주 작아도(1024 · 막는 이유가 길 때) 표 칸은 최소 높이를 지키고, 그때는 본문이 통째로 내려간다.
+ * 두 카드는 늘 같은 높이(위 · 아래 맞춤). 한 쪽에 다 들면 내용 높이, 쪽을 나눌 때(`is-paged`)만 남는 높이를 다 갖는다 —
+ * 그때 피킹 LOT 표가 그 높이에 드는 줄만 보이고 아래 쪽 넘김. 표 칸은 첫 줄 높이만큼은 늘 지킨다(`useFitPages`).
  */
 .psc-content > .psc-tables {
-  flex: 1 0 320px;
   align-items: stretch;
 }
 
-.psc-tables > .psc-col {
-  align-self: start;
+.psc-content > .psc-tables.is-paged {
+  flex: 1 1 0;
+  min-height: min-content;
+}
+
+/* 쪽을 나눌 때 표 칸 최소 높이는 첫 줄만큼(내용 전체 높이로 늘지 않게 `contain: size`). */
+.psc-tables.is-paged .pu-card-body.split {
+  grid-template-rows: minmax(min-content, 1fr) auto;
+  min-height: min-content;
+}
+
+.psc-tables.is-paged .pu-fit {
+  contain: size;
+}
+
+/* 한 쪽이면 카드 본문 · 표 칸은 내용 높이 — 「총 N건」은 표 바로 아래. */
+.psc-tables:not(.is-paged) .pu-card-body {
+  flex: none;
+}
+
+.psc-tables:not(.is-paged) .pu-card-body.split {
+  grid-template-rows: auto auto;
 }
 
 /*

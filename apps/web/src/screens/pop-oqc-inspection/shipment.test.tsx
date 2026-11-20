@@ -276,11 +276,13 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     const { saves } = renderPop('900028', shipmentOqcRequest(), { withItems: true });
 
     await openRequest(user);
+    /* ① 검사 대상 LOT · 판정에서 판정, ② 검사 항목에서 값 — 구획을 바꿔도 넣은 것은 남는다. */
+    await user.click(screen.getByRole('radio', { name: s.judgments.ACCEPTED }));
+    await user.click(await screen.findByRole('tab', { name: new RegExp(pr.heading, 'u') }));
     await user.type(
       await screen.findByRole('textbox', { name: pr.valueLabel('길이', 1) }),
       '10.02',
     );
-    await user.click(screen.getByRole('radio', { name: s.judgments.ACCEPTED }));
     await user.click(screen.getByRole('button', { name: ps.bar.save }));
 
     await waitFor(() => expect(saves).toHaveLength(1));
@@ -300,8 +302,9 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     renderPop('900028', shipmentOqcRequest(), { withItems: true });
 
     await openRequest(user);
-    await user.type(await screen.findByRole('textbox', { name: pr.valueLabel('길이', 1) }), 'abc');
     await user.click(screen.getByRole('radio', { name: s.judgments.ACCEPTED }));
+    await user.click(await screen.findByRole('tab', { name: new RegExp(pr.heading, 'u') }));
+    await user.type(await screen.findByRole('textbox', { name: pr.valueLabel('길이', 1) }), 'abc');
 
     expect(screen.getByText(ps.bar.blocked.measurement)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: ps.bar.save })).toBeDisabled();
