@@ -309,3 +309,40 @@
 .transfer-sheet__remove {
   width: 100%;
 }
+
+/* ── 도착이 남은 이동 · 도착할 LOT(사용자 지시 2026-11-20). ── */
+.stock-transfer__col-resume {
+  width: 108px;
+}
+
+.stock-transfer__resume {
+  padding-inline-end: var(--space-2, 8px);
+  text-align: end;
+}
+
+.transfer-tally__table td.transfer-tally__item--static {
+  padding-block: var(--space-2, 8px);
+}
+
+.transfer-tally__item--static > * {
+  display: block;
+  min-width: 0;
+}
+
+.transfer-tally__item--static > .transfer-tally__code {
+  display: flex;
+}
+
+.stock-transfer__dest-no {
+  font-family: var(--font-mono);
+}
+
+.stock-transfer__picked {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+  margin: 0;
+  color: var(--on-semantic-success-container);
+  font: var(--type-body-sm);
+  font-weight: 700;
+}
