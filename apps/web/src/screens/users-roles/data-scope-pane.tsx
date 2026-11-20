@@ -169,9 +169,15 @@ export const DataScopePane = ({
           rows={drafts}
           getRowId={(row) => row.draftId}
           empty={
+            /* 다른 목록의 빈 상태와 같은 모양 — 아이콘 · 제목 · 안내(사용자 지시 2026-11-20 · #333). */
             <EmptyState
               size="sm"
               live
+              icon={
+                <span className="inspection-standard-empty-icon">
+                  <Icon name="factory" size={20} />
+                </span>
+              }
               title={t.scope.empty.none}
               description={t.scope.empty.noneDescription}
             />
