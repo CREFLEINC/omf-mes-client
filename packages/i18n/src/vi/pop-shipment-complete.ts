@@ -170,7 +170,6 @@ export const popShipmentComplete = {
 
   bar: {
     label: 'Thao tác hoàn tất xuất hàng',
-    recheck: 'Làm mới trạng thái',
     close: 'Đóng',
     complete: 'Hoàn tất xuất hàng',
     completing: 'Đang hoàn tất…',
@@ -179,12 +178,12 @@ export const popShipmentComplete = {
   failure: {
     /* 409 ALREADY_COMPLETED 인데 다시 읽어도 완료되지 않은 지시서(검증 1회차 F-3) — 아무 말 없이 두지 않는다. */
     alreadyNotDone:
-      'Máy chủ từ chối vì «đã hoàn tất xuất hàng» nhưng lệnh này vẫn chưa hoàn tất. Hãy nhấn [Làm mới trạng thái], nếu vẫn không được hãy báo người phụ trách.',
+      'Máy chủ từ chối vì «đã hoàn tất xuất hàng» nhưng lệnh này vẫn chưa hoàn tất. Hãy nhấn [Làm mới] ở trên cùng, nếu vẫn không được hãy báo người phụ trách.',
     /* 서버 문구를 함께 보인다 — 작업자가 담당자에게 그대로 전할 수 있게. */
     withMessage: (base: string, message: string): string => `${base} (Máy chủ: ${message})`,
     blocked: 'Vừa phát sinh lý do không thể xuất hàng. Hãy xem lại các lý do.',
-    changed: 'Lệnh xuất hàng vừa thay đổi. Hãy làm mới trạng thái rồi hoàn tất.',
+    changed: 'Lệnh xuất hàng vừa thay đổi. Hãy nhấn [Làm mới] ở trên cùng rồi hoàn tất.',
     network: 'Mất kết nối nên chưa hoàn tất được. Hãy kiểm tra kết nối rồi nhấn lại.',
-    other: 'Không hoàn tất được xuất hàng. Hãy nhấn [Làm mới trạng thái] rồi thử lại.',
+    other: 'Không hoàn tất được xuất hàng. Hãy nhấn [Làm mới] ở trên cùng rồi thử lại.',
   },
 };

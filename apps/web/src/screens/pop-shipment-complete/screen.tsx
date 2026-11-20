@@ -1,4 +1,5 @@
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState } from 'react';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
@@ -27,7 +28,12 @@ import {
   type CompletionResult,
 } from './model';
 import { AlreadyView, ResultView } from './outcome-views';
-import { useCompleteShipment, useLookupShipmentRequest } from './queries';
+import {
+  openedShipmentRequestKey,
+  useCompleteShipment,
+  useLookupShipmentRequest,
+  useOpenedShipmentRequest,
+} from './queries';
 import { SearchDialog } from './search-dialog';
 import './uniform.css';
 
@@ -81,6 +87,7 @@ export const PopShipmentCompleteScreen = () => {
   const [draft, setDraft] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const queryClient = useQueryClient();
   const lookup = useLookupShipmentRequest();
   const complete = useCompleteShipment();
 
@@ -94,7 +101,7 @@ export const PopShipmentCompleteScreen = () => {
   };
 
   /**
-   * 지시서를 연다(스캔·검색·[상태 새로고침]). 실패하면 열려 있던 화면은 그대로 두고 칸 아래 띠만 낸다 — 잘못
+   * 지시서를 연다(스캔·검색·[직접 입력]). 실패하면 열려 있던 화면은 그대로 두고 칸 아래 띠만 낸다 — 잘못
    * 찍은 LOT 라벨 하나로 보던 확인 화면이 닫히면 다시 스캔해야 한다.
    *
    * @param keepFailure 완료 실패 뒤 다시 읽는 경우 — 실패 까닭을 남겨 둔다.
@@ -120,6 +127,8 @@ export const PopShipmentCompleteScreen = () => {
     lookup.mutate(code, {
       onSuccess: (completion) => {
         complete.resetKey();
+        /* 머리줄 [새로고침]이 다시 읽을 값으로 둔다(`useOpenedShipmentRequest`). */
+        queryClient.setQueryData(openedShipmentRequestKey(completion.code), completion);
         show(completion, via);
         onOpened?.(completion);
       },
@@ -164,6 +173,32 @@ export const PopShipmentCompleteScreen = () => {
     inputRef.current?.focus();
   };
 
+  /*
+   * 머리줄 [새로고침] — 연 지시서를 같은 코드로 다시 읽어 «그 자리에서» 바꾼다(사용자 지시 2026-11-20). 확인 화면·
+   * 검색 창·스캔 칸은 그대로다(검색 창 목록은 `useQuery` 라 함께 다시 받는다). 다시 읽지 못하면 앞 값을 두고 칸 아래
+   * 띠만 낸다.
+   */
+  const openedCode =
+    view.kind === 'confirm' || view.kind === 'already' ? view.completion.code : null;
+  const opened = useOpenedShipmentRequest(openedCode);
+  useEffect(() => {
+    const fresh = opened.data;
+    if (fresh === undefined) return;
+    setView((current) =>
+      (current.kind === 'confirm' || current.kind === 'already') &&
+      current.completion.code === fresh.code &&
+      current.completion !== fresh
+        ? { ...current, completion: fresh }
+        : current,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 새로 받은 때만 바꾼다(409 가 그린 사유를 덮지 않게)
+  }, [opened.dataUpdatedAt]);
+  useEffect(() => {
+    if (opened.errorUpdatedAt === 0 || shownRequestNo === null) return;
+    setNotice({ tone: 'error', text: t.scan.failed, detail: t.scan.previousStill(shownRequestNo) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 실패한 때만 알린다
+  }, [opened.errorUpdatedAt]);
+
   /* 조회·완료가 끝나고 검색 창이 닫혀 있으면 스캔 칸이 포커스를 되찾는다 — 다음 스캔이 사라지지 않게. */
   useEffect(() => {
     if (!lookup.isPending && !complete.isPending && !isSearching) inputRef.current?.focus();
@@ -197,7 +232,7 @@ export const PopShipmentCompleteScreen = () => {
             return;
           }
           complete.resetKey();
-          /* 409 가 실어 온 막는 이유를 그대로 그린다 — 다시 조회하지 않는다. 다른 단말이 바꾼 판정은 [상태 새로고침]으로 읽는다. */
+          /* 409 가 실어 온 막는 이유를 그대로 그린다 — 다시 조회하지 않는다. 다른 단말이 바꾼 판정은 머리줄 [새로고침]으로 읽는다. */
           const blockers = reason === 'blocked' ? blockersOfConflict(apiError) : null;
           if (blockers !== null) {
             setFailure(t.failure.blocked);
@@ -226,25 +261,16 @@ export const PopShipmentCompleteScreen = () => {
   const actionBar = (
     <PuActionBar label={t.bar.label}>
       {confirm !== null && (
-        <>
-          <PuButton
-            icon="reset"
-            disabled={lookup.isPending || complete.isPending}
-            onClick={() => open(confirm.completion.code, confirm.via)}
-          >
-            {t.bar.recheck}
-          </PuButton>
-          <PuButton
-            disabled={complete.isPending}
-            onClick={() => {
-              setFailure(null);
-              setNotice(null);
-              setView({ kind: 'idle' });
-            }}
-          >
-            {t.bar.close}
-          </PuButton>
-        </>
+        <PuButton
+          disabled={complete.isPending}
+          onClick={() => {
+            setFailure(null);
+            setNotice(null);
+            setView({ kind: 'idle' });
+          }}
+        >
+          {t.bar.close}
+        </PuButton>
       )}
       <PuButton
         variant="primary"

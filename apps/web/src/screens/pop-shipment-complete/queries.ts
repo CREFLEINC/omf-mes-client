@@ -37,6 +37,33 @@ export const useLookupShipmentRequest = () => {
   });
 };
 
+/** 지금 화면에 연 지시서의 확인 값 캐시 키 — 머리줄 [새로고침](`invalidateQueries`)이 이 값을 다시 읽게 한다. */
+export const openedShipmentRequestKey = (code: string) =>
+  ['pop-shipment-complete', 'opened', code] as const;
+
+/**
+ * 연 지시서를 머리줄 [새로고침] 때 같은 코드로 다시 읽는다(사용자 지시 2026-11-20).
+ *
+ * ⭐ 여는 것은 여전히 `useLookupShipmentRequest`(스캔할 때마다 다시 읽는다)다. 연 값은 그 응답을 이 키에 넣어 두고
+ *    (`setQueryData`), 저절로 다시 받지 않는다(`staleTime: Infinity`) — [새로고침]이 무효로 만들 때만 다시 읽는다.
+ */
+export const useOpenedShipmentRequest = (code: string | null) => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: openedShipmentRequestKey(code ?? ''),
+    enabled: code !== null,
+    staleTime: Infinity,
+    retry: false,
+    queryFn: (): Promise<Completion> =>
+      runRequest(() =>
+        client.GET('/logistics/shipment-requests:lookup', {
+          params: { query: { code: code ?? '' } },
+        }),
+      ),
+  });
+};
+
 export interface CompleteInput {
   completion: Completion;
   workerNo: string;

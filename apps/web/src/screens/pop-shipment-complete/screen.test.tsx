@@ -422,8 +422,8 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
 
   it('US1-4·US1-7·US4-6·Q8 — 막히면 이유마다 무엇·어디·어디서 풀지를 보이고 [출하 완료]를 잠근다', async () => {
     const user = userEvent.setup();
-    const { lookupCalls } = renderScreen({
-      lookups: [jsonResponse(blockedCompletion()), jsonResponse(completion())],
+    renderScreen({
+      lookups: [jsonResponse(blockedCompletion())],
     });
 
     await scan(user, CODE);
@@ -438,11 +438,47 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     expect(screen.getByText(t.blockers.REJECTED.title)).toBeInTheDocument();
     expect(completeButton()).toBeDisabled();
 
-    /* [상태 새로고침] — 같은 코드로 다시 읽는다(다른 단말에서 검사·피킹이 끝났을 때). */
-    await user.click(screen.getByRole('button', { name: t.bar.recheck }));
+    /* 아래 작업 줄에는 따로 [상태 새로고침]이 없다 — 머리줄 [새로고침] 하나로 다시 읽는다. */
+    expect(screen.queryByRole('button', { name: '상태 새로고침' })).not.toBeInTheDocument();
+  });
+
+  it('머리줄 [새로고침](전체 무효화)이 연 지시서를 같은 코드로 다시 읽어 그 자리에서 바꾼다 — 화면·검색 창은 닫히지 않는다', async () => {
+    const user = userEvent.setup();
+    const { queryClient, lookupCalls, listCalls } = renderScreen({
+      lookups: [jsonResponse(blockedCompletion()), jsonResponse(completion())],
+    });
+
+    await scan(user, CODE);
+    expect(await screen.findByText(t.head.blocked)).toBeInTheDocument();
+    expect(completeButton()).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: t.scan.search }));
+    const dialog = await screen.findByRole('dialog', { name: t.search.title });
+    await waitFor(() => expect(listCalls()).toHaveLength(1));
+
+    await queryClient.invalidateQueries();
+
     expect(await screen.findByText(t.head.ready)).toBeInTheDocument();
     expect(lookupCalls()).toHaveLength(2);
     expect(new URL(lookupCalls()[1]?.url ?? '').searchParams.get('code')).toBe(CODE);
+    await waitFor(() => expect(listCalls()).toHaveLength(2));
+    expect(dialog).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: t.search.close }));
+    expect(completeButton()).toBeEnabled();
+  });
+
+  it('머리줄 [새로고침]에서 다시 읽지 못하면 앞 값을 그대로 두고 띠로 알린다', async () => {
+    const user = userEvent.setup();
+    const { queryClient } = renderScreen({
+      lookups: [jsonResponse(completion()), errorEnvelope('INTERNAL', 500)],
+    });
+
+    await scan(user, CODE);
+    expect(await screen.findByText(t.head.ready)).toBeInTheDocument();
+
+    await queryClient.invalidateQueries();
+
+    expect(await screen.findByText(t.scan.failed)).toBeInTheDocument();
+    expect(screen.getByText(t.head.ready)).toBeInTheDocument();
     expect(completeButton()).toBeEnabled();
   });
 
