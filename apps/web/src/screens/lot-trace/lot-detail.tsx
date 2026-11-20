@@ -967,9 +967,12 @@ const splitColumns = (
 const SplitFromSection = ({
   link,
   onView,
+  toRef = materialRef,
 }: {
   link: FlowSplitLink;
   onView: (lot: LotRef) => void;
+  /** 부모 LOT 의 참조 — 자재 분할(008)은 자재, 제품 분리(013)는 생산 LOT 이다. */
+  toRef?: (head: FlowLotHead) => LotRef;
 }) => (
   <Section title={sp.fromSection}>
     <Facts
@@ -981,7 +984,7 @@ const SplitFromSection = ({
           value: (
             <span className="lot-trace-cell-stack">
               <Mono>{link.lot.lotNo}</Mono>
-              <ViewButton lot={materialRef(link.lot)} onView={onView} />
+              <ViewButton lot={toRef(link.lot)} onView={onView} />
             </span>
           ),
         },
@@ -1132,6 +1135,12 @@ const ProductionView = ({
           : flattenForward(usage, SPLIT_NOTES).filter((line) => line.depth > 0)),
       ]}
     >
+      {/*
+       * 제품 분리 자식 LOT(피처 013) — 원래 LOT 으로 올라간다. W/O · 투입 자재는 서버가 분할 뿌리로 채워 보낸다.
+       */}
+      {chain.splitFrom !== null && (
+        <SplitFromSection link={chain.splitFrom} onView={view} toRef={refOf} />
+      )}
       <ProductionSections chain={chain} onView={view} />
       {usage !== undefined && <UsageSections chain={usage} onView={view} />}
       {usageError !== null &&

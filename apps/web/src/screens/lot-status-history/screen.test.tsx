@@ -1412,3 +1412,82 @@ describe('Lot Status 화면 — 분할 LOT (008)', () => {
     expect(within(detail).queryByText(/분할/u)).toBeNull();
   });
 });
+
+/*
+ * 피처 013 생산 LOT 분리(omf-all-around#303 · 시안 W0301) — 분할 칸이 출고 대신 분리 위치 · 작업자 · PDA 확인 · W/O 를
+ * 보이고, 확인 전이면 머리에 「PDA 확인 전」 칩이 선다.
+ */
+describe('Lot Status 화면 — 생산 LOT 분리 (013)', () => {
+  const productLotSplit = (confirmed: boolean, role: 'PARENT' | 'CHILD' = 'CHILD') => ({
+    productLotSplitId: 9,
+    role,
+    splitQty: 30,
+    splitAt: '2026-11-20T02:12:00Z',
+    splitWorkerNo: 'W0021',
+    splitTerminalCode: 'POP-FG-01',
+    location: { locationId: 45, locationCode: 'FG-A-01' },
+    confirmedAt: confirmed ? '2026-11-20T02:30:00Z' : null,
+    confirmedWorkerNo: confirmed ? 'W0031' : null,
+    workOrderNo: 'WO-SYN-0012',
+  });
+
+  it('US4-4 · Q19 새 LOT 은 분리 수량 · 시각(단말 · 작업자) · 위치 · PDA 확인 전 · 원래 LOT 의 W/O 를 보인다', async () => {
+    renderScreen('/quality/lot-status?lot=401', 'ready', [
+      ...qualityRoutes(),
+      ...detailRoutes(200, {
+        parentLotId: 400,
+        parentLotNo: 'SAMPLE-PL-261118-0412',
+        splitAt: '2026-11-20T02:12:00Z',
+        splitGoodsIssue: null,
+        splitChildCount: 0,
+        productLotSplit: productLotSplit(false),
+      }),
+    ]);
+
+    const detail = await screen.findByRole('region', { name: 'LOT 상세' });
+    const split = await within(detail).findByRole('region', { name: '분할' });
+    expect(within(detail).getByText('PDA 확인 전')).toBeVisible();
+    expect(
+      within(split).getByText('생산 LOT 분리로 원래 LOT 에서 떼어 낸 LOT 입니다.'),
+    ).toBeVisible();
+    expect(within(split).getByText('분리 수량')).toBeVisible();
+    expect(within(split).getByText('2026-11-20 09:12, POP-FG-01, W0021')).toBeVisible();
+    expect(within(split).getByText('FG-A-01')).toBeVisible();
+    expect(within(split).getByText('아직. 확인 전에는 출하 피킹이 되지 않습니다')).toBeVisible();
+    expect(within(split).getByText('WO-SYN-0012 (원래 LOT)')).toBeVisible();
+    expect(within(split).queryByText('분할 출고')).toBeNull();
+  });
+
+  it('US3-3 확인된 분리는 확인 시각 · 작업자를 보이고 「PDA 확인 전」 칩이 없다', async () => {
+    renderScreen('/quality/lot-status?lot=401', 'ready', [
+      ...qualityRoutes(),
+      ...detailRoutes(200, {
+        parentLotId: 400,
+        parentLotNo: 'SAMPLE-PL-261118-0412',
+        splitAt: '2026-11-20T02:12:00Z',
+        splitGoodsIssue: null,
+        splitChildCount: 0,
+        productLotSplit: productLotSplit(true),
+      }),
+    ]);
+
+    const detail = await screen.findByRole('region', { name: 'LOT 상세' });
+    const split = await within(detail).findByRole('region', { name: '분할' });
+    expect(within(split).getByText('2026-11-20 09:30, W0031')).toBeVisible();
+    expect(within(detail).queryByText('PDA 확인 전')).toBeNull();
+  });
+
+  it('Q19 원래 LOT 은 분할 칸 없이 「PDA 확인 전」 칩만 선다', async () => {
+    renderScreen('/quality/lot-status?lot=401', 'ready', [
+      ...qualityRoutes(),
+      ...detailRoutes(200, {
+        splitChildCount: 1,
+        productLotSplit: productLotSplit(false, 'PARENT'),
+      }),
+    ]);
+
+    const detail = await screen.findByRole('region', { name: 'LOT 상세' });
+    expect(await within(detail).findByText('PDA 확인 전')).toBeVisible();
+    expect(within(detail).queryByRole('region', { name: '분할' })).toBeNull();
+  });
+});

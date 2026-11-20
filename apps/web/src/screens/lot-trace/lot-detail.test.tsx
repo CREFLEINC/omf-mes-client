@@ -668,3 +668,42 @@ describe('W-02-09 LOT 생산 이력 조회: 분할 LOT (008)', () => {
     expect(within(detailPane()).queryByText(/분할/u)).toBeNull();
   });
 });
+
+/*
+ * 피처 013 생산 LOT 분리(omf-all-around#303) — 새 LOT 의 거꾸로 추적은 「분할」 관계로 원래 LOT 을 보이고, W/O · 투입 자재는
+ * 서버가 분할 뿌리로 채워 보낸다(그대로 보인다).
+ */
+describe('W-02-09 LOT 생산 이력 조회: 생산 LOT 분리 (013)', () => {
+  const CHILD = `${PROD}-S1`;
+
+  it('US4-2 · Q18 새 LOT 은 분할된 원래 LOT(생산 LOT)과 원래 LOT 의 W/O · 투입 자재를 보이고 [보기]로 원래 LOT 에 간다', async () => {
+    const user = userEvent.setup();
+    const child = {
+      ...backwardChain(202, CHILD, [inputMaterial(101, MAT)]),
+      splitFrom: {
+        relationTypeCode: 'SPLIT' as const,
+        lot: { ...backwardChain(201, PROD, []).lot },
+        qty: 30,
+        uomCode: 'EA',
+        splitAt: '2026-11-20T02:12:00Z',
+        goodsIssue: null,
+      },
+    };
+    setup(`/production/lot-trace?from=2026-10-20&to=2026-10-26&selected=202`, {
+      backwardRows: [backwardRow(202, CHILD)],
+      backwardChains: { 202: child, 201: backwardChain(201, PROD, [inputMaterial(101, MAT)]) },
+    });
+
+    await detailHead(CHILD);
+    const pane = detailPane();
+    const from = within(pane).getByRole('region', { name: '분할된 원래 LOT' });
+    expect(fact(from, '원래 LOT 번호')).toHaveTextContent(PROD);
+    expect(within(from).queryByText('출고번호')).toBeNull();
+    expect(fact(pane, 'W/O 번호')).toHaveTextContent('WO-SYN-0070');
+    expect(within(pane).queryByText('W/O 실적으로 만든 LOT이 아닙니다')).toBeNull();
+
+    await user.click(within(from).getByRole('button', { name: `${PROD} 추적 보기` }));
+
+    expect(await detailHead(PROD)).toBeInTheDocument();
+  });
+});
