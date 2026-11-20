@@ -55,7 +55,7 @@ import {
   judgmentTone,
   usePopJudgment,
 } from './judgment';
-import { PopQueueList } from './queue-list';
+import { isUnjudgeable, PopQueueList } from './queue-list';
 import { PopRequestBand } from './request-summary';
 import { PopSerialDialog, PopSerialSummary } from './serial-step';
 import { PopShipmentBar, PopShipmentDetail, usePopShipmentForm } from './shipment';
@@ -119,7 +119,16 @@ export const PopOqcInspectionScreen = () => {
    * (확정은 출하 완료 때라 상태가 진행으로 남는다). 미검사가 있거나 피킹 LOT 이 없으면 「판정 대기」.
    */
   const pendingRows = pendingQueue.data?.rows ?? [];
-  const waitingRows = pendingRows.filter((row) => !isJudgedOpen(row));
+  /*
+   * 판정할 수 있는 의뢰 먼저, 「판정 불가」(피킹 LOT 없음)는 맨 아래(사용자 지시 2026-11-20 · 출하 포장 #329 와 같다).
+   * 각 묶음 안은 받은 순서 그대로. ⭐ 한 번에 읽은 목록을 화면에서 쪽으로 나누므로 «자르기 전에» 줄 세운다.
+   * 고른 의뢰는 번호로 기억하므로 순서가 바뀌어도 그대로다.
+   */
+  const unsortedWaiting = pendingRows.filter((row) => !isJudgedOpen(row));
+  const waitingRows = [
+    ...unsortedWaiting.filter((row) => !isUnjudgeable(row)),
+    ...unsortedWaiting.filter(isUnjudgeable),
+  ];
   const judgedRows = pendingRows.filter(isJudgedOpen);
   const viewCount = {
     pending: waitingRows.length,

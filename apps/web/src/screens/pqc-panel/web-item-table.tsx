@@ -39,7 +39,7 @@ export interface WebItemTableProps {
 const tidy = (value: number): number => Number(value.toFixed(6));
 
 /** 규격 — 기준값과 상하한이 대칭이면 「100 ± 0.5」, 아니면 범위 뒤에 기준값을 괄호로(IQC #133 과 같다). */
-const describeSpec = (spec: SpecRange, unit: string | null): string => {
+export const describeSpec = (spec: SpecRange, unit: string | null): string => {
   const { target, lower, upper } = spec;
   let text: string | null = null;
 

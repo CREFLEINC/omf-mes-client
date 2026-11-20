@@ -1390,6 +1390,19 @@ textarea.pu-input {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+/*
+ * `is-fluid` — 열 수를 상자 폭에 맞춘다(칸 최소 220px · 좁으면 2열, 넓으면 4~6열 · 사용자 지시 2026-11-20).
+ * 긴 값(품목 · 창고 칩)은 두 칸을 쓰고, 뒤 칸이 빈자리를 먼저 채운다(`dense`). 출하 완료 · 출하 OQC 머리 띠가 쓴다.
+ */
+.pu-band-stack.is-fluid > .pu-band.grid {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-auto-flow: row dense;
+}
+
+.pu-band-stack.is-fluid > .pu-band.grid > .wide {
+  grid-column: span 2;
+}
+
 .pu-band-stack .pu-band .kv {
   flex-direction: column;
   align-items: flex-start;

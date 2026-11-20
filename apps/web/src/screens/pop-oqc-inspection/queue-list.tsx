@@ -35,8 +35,14 @@ export const shipmentStateChip = (
   overview: LotOverview,
 ): { text: string; tone: PuChipTone } =>
   overview.kind === 'none' && OPEN_STATUSES.includes(statusCode)
-    ? { text: ps.cannotJudge, tone: 'warn' }
+    ? { text: ps.cannotJudge, tone: 'bad' }
     : { text: overviewText(overview), tone: CHIP_TONE[overviewStatus(overview)] };
+
+/** 판정 불가 — 출하 OQC 새 흐름의 열린 의뢰인데 피킹 LOT 이 없다(결과를 기록할 수 없다). */
+export const isUnjudgeable = (row: InspectionQueueRow): boolean => {
+  const overview = lotOverviewOf(row);
+  return overview !== null && overview.kind === 'none' && OPEN_STATUSES.includes(row.statusCode);
+};
 
 export interface PopQueueListProps {
   rows: InspectionQueueRow[];

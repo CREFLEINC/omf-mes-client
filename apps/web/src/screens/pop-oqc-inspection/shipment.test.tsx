@@ -65,10 +65,10 @@ const pr = messages.pqcInspectionRegister.web.items;
 const renderPop = (
   workerNo: string | null = '900028',
   request = shipmentOqcRequest(),
-  options: { withItems?: boolean } = {},
+  options: { withItems?: boolean; before?: InspectionRequestResponse[] } = {},
 ) => {
   const saves: Request[] = [];
-  const all: InspectionRequestResponse[] = [request, judgedRequest];
+  const all: InspectionRequestResponse[] = [...(options.before ?? []), request, judgedRequest];
 
   const stubFetch: StubFetch = async (req) => {
     const url = new URL(req.url);
@@ -132,7 +132,7 @@ const renderPop = (
 
 const openRequest = async (user: ReturnType<typeof userEvent.setup>, no = 'IR-OQC-0201') => {
   await user.click(await screen.findByRole('button', { name: pop.queue.selectRow(no) }));
-  return within(await screen.findByRole('region', { name: ps.form.match.matchHeading }));
+  return within(await screen.findByRole('region', { name: /회차 검사 결과 등록/u }));
 };
 
 describe('P-04-06 출하 OQC 새 흐름', () => {
@@ -149,6 +149,36 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     expect(
       await screen.findByRole('button', { name: pop.queue.selectRow('IR-OQC-0202') }),
     ).toBeInTheDocument();
+  });
+
+  it('#334 판정 불가(피킹 LOT 없음) 의뢰는 판정 대기 목록 맨 아래로, 고른 의뢰는 그대로', async () => {
+    const user = userEvent.setup();
+    /* 서버 순서: 판정 불가 → 판정 가능(IR-OQC-0201). 화면은 판정 가능을 먼저 보인다. */
+    const noLot = shipmentOqcRequest({
+      inspectionRequestId: 4209,
+      inspectionRequestNo: 'IR-OQC-0209',
+      shipmentRequestNo: 'SR-261118-009',
+      statusCode: 'REQUESTED',
+      lots: [],
+      results: [],
+      pickedLotCount: 0,
+      lotJudgmentSummary: { notInspected: 0, accepted: 0, rejected: 0, held: 0 },
+    });
+    renderPop('900028', shipmentOqcRequest(), { before: [noLot] });
+
+    const judgeable = await screen.findByRole('button', {
+      name: pop.queue.selectRow('IR-OQC-0201'),
+    });
+    const blocked = screen.getByRole('button', { name: pop.queue.selectRow('IR-OQC-0209') });
+    expect(within(blocked).getByText(ps.cannotJudge)).toBeInTheDocument();
+    /* 판정 가능 카드가 판정 불가 카드보다 앞에 선다. */
+    expect(
+      judgeable.compareDocumentPosition(blocked) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    await user.click(blocked);
+    expect(blocked).toHaveAttribute('aria-pressed', 'true');
+    expect((await screen.findAllByText(ps.form.noLots)).length).toBeGreaterThan(0);
   });
 
   it('US3-1·Q4 목록 카드는 품목 코드와 「피킹 LOT n개 · 합 단위」를 보인다(품목 번호 #id 가 아니다)', async () => {

@@ -246,11 +246,6 @@
   gap: 8px;
 }
 
-/* 지시서 번호 · 품목(한 줄 전체) 뒤 칸이 첫 줄 빈자리를 먼저 채운다. */
-.oqc-u .pop-oqc-summary .pu-band.grid {
-  grid-auto-flow: row dense;
-}
-
 /* 피킹 LOT 이 없을 때 한 줄 — 출하 완료(`psc-empty-row`)와 같은 모양. */
 .oqc-u .pop-oqc-empty-row {
   margin: 0;
@@ -268,11 +263,10 @@
   white-space: nowrap;
 }
 
-/* 좁은 화면(1024 등)에서는 머리 띠를 셋씩 — 넷이면 의뢰번호가 잘린다. */
-@media (max-width: 1100px) {
-  .oqc-u .pop-oqc-summary .pu-band-stack.is-wide > .pu-band.grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
+/* 상세 맨 위 정보 띠 · 생략 안내는 두 단을 가로지른다. */
+.oqc-u .pop-oqc-shipment > .pop-oqc-summary,
+.oqc-u .pop-oqc-shipment > .pop-oqc-shipment-note {
+  grid-column: 1 / -1;
 }
 
 /* 결과 입력 칸이 없으면(판정 완료 · LOT 없음) 상세는 한 단으로 폭을 다 쓴다. */
@@ -341,10 +335,31 @@
   padding: 12px 16px;
 }
 
-/* 검사 결과 등록 = 주 작업 영역 — 테두리 · 바탕으로 보기 영역과 구분한다. */
-.oqc-u .pop-oqc-shipment-form {
-  padding: 16px;
-  border: 1px solid var(--pu-line-2);
-  border-radius: var(--radius-lg, 16px);
-  background: var(--pu-card-2);
+/* 검사 대상 LOT — 다른 POP 고르기 목록과 같은 체크 줄. */
+.oqc-u .pop-oqc-match {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.oqc-u .pop-oqc-match > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  border-bottom: 1px solid var(--pu-line-2);
+}
+
+.oqc-u .pop-oqc-match-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+
+/* 검사 기준 창 항목 이름은 줄을 바꾼다. */
+.pu-table td.pop-oqc-wrap {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: break-word;
 }

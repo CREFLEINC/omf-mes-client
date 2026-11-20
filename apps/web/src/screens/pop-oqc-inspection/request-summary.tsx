@@ -144,42 +144,74 @@ export const PopRequestBand = ({
     <div className={wide ? 'oqc-band pu-band-stack is-wide' : 'oqc-band pu-band-stack'}>
       <PuBand grid={wide ? 4 : 3} items={items} label={t.bandLabel} />
       {planOpen && (
-        <PuDialog
-          title={planId === null ? t.planTitle : `${t.planTitle} · ${planLabel}`}
-          wide
+        <PopPlanDialog
+          inspectionTypeCode={detail.inspectionTypeCode}
+          planId={planId}
+          planLabel={planLabel}
+          guides={guides}
           onClose={() => {
             setPlanOpen(false);
           }}
-        >
-          <PuKv
-            items={[
-              { label: t.fields.inspectionType, value: detail.inspectionTypeCode },
-              {
-                label: t.planNo,
-                value: planId === null ? t.noPlanVersion : t.planValue(planLabel),
-              },
-              {
-                label: t.guide,
-                value:
-                  guides.length === 0 ? (
-                    t.noGuide
-                  ) : (
-                    <span className="oqc-guide">
-                      {guides.map((guide) => (
-                        <span key={guide.scopeCode}>
-                          {guides.length > 1 && (
-                            <b>{guide.scopeCode === 'COMMON' ? hub.guideCommon : hub.guideItem}</b>
-                          )}
-                          {guide.text}
-                        </span>
-                      ))}
-                    </span>
-                  ),
-              },
-            ]}
-          />
-        </PuDialog>
+        />
       )}
     </div>
   );
 };
+
+/**
+ * 적용 기준 창 — 검사 유형 · 기준 번호 · 검사 안내(omf-all-around#252). 옛 흐름의 [기준 조회]와 출하 OQC 새 흐름이 함께 쓴다.
+ * 새 흐름은 그 기준의 검사 항목(`items`)을 아래에 더 보인다(사용자 지시 2026-11-20).
+ */
+export const PopPlanDialog = ({
+  inspectionTypeCode,
+  planId,
+  planLabel,
+  guides,
+  items,
+  title,
+  onClose,
+}: {
+  inspectionTypeCode: string;
+  planId: number | null;
+  planLabel: string;
+  guides: ReturnType<typeof useInspectionGuide>['data'] & object;
+  items?: ReactNode;
+  /** 창 제목 — 없으면 옛 흐름 그대로 「적용 기준 · 버전」. */
+  title?: string;
+  onClose: () => void;
+}) => (
+  <PuDialog
+    title={title ?? (planId === null ? t.planTitle : `${t.planTitle} · ${planLabel}`)}
+    wide
+    onClose={onClose}
+  >
+    <PuKv
+      items={[
+        { label: t.fields.inspectionType, value: inspectionTypeCode },
+        {
+          label: t.planNo,
+          value: planId === null ? t.noPlanVersion : t.planValue(planLabel),
+        },
+        {
+          label: t.guide,
+          value:
+            guides.length === 0 ? (
+              t.noGuide
+            ) : (
+              <span className="oqc-guide">
+                {guides.map((guide) => (
+                  <span key={guide.scopeCode}>
+                    {guides.length > 1 && (
+                      <b>{guide.scopeCode === 'COMMON' ? hub.guideCommon : hub.guideItem}</b>
+                    )}
+                    {guide.text}
+                  </span>
+                ))}
+              </span>
+            ),
+        },
+      ]}
+    />
+    {items}
+  </PuDialog>
+);

@@ -216,7 +216,6 @@ export const popOqcInspection = {
     appliedNone: '적용 검사 없음',
     form: {
       heading: (seqNo: number): string => `${String(seqNo)}회차 검사 결과 등록`,
-      matchHint: '선택한 LOT에 검사 결과가 적용됩니다.',
       /** 결과 입력의 LOT 고르기 칸(공용 LotMatchField 문구). */
       match: {
         matchHeading: '검사 대상 LOT',

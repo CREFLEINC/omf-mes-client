@@ -116,7 +116,7 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
        * 2026-11-20). 지시서 번호·출하 여부(목록과 같은 크기 칩)도 칸 하나씩, 맨 앞 두 칸. 박스 밖 제목 줄·카드는 두지 않는다.
        * 아이콘도 그 띠와 같은 뜻으로 고른다(거래처 list · 번호 file · 수량 check). 창고는 칩이 여럿일 수 있어 한 줄 전체.
        */}
-      <section className="pu-band-stack is-wide psc-band" aria-label={t.head.request}>
+      <section className="pu-band-stack is-fluid psc-band" aria-label={t.head.request}>
         <PuBand
           grid={3}
           label={t.head.band}

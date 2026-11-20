@@ -4780,12 +4780,6 @@
   gap: var(--space-2);
 }
 
-.oqc-u .pop-oqc-shipment-box__head > h2,
-.oqc-u .pop-oqc-shipment-form__title {
-  margin: 0;
-  font: 700 18px / 26px var(--font-sans);
-}
-
 .oqc-u .pop-oqc-shipment-gap {
   flex: 1 1 auto;
 }

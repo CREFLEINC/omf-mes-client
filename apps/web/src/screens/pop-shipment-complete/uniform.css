@@ -166,13 +166,6 @@
   text-align: center;
 }
 
-/* 좁은 화면(1024 등)에서는 머리 띠를 셋씩 — OQC 출하검사 머리 띠와 같다. */
-@media (max-width: 1100px) {
-  .psc-band.pu-band-stack.is-wide > .pu-band.grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
 /* 창고 칩은 여럿이면 줄을 바꾼다(값 칸 기본은 한 줄). */
 .psc-band .pu-band .kv > b:has(> .psc-wh-chips) {
   white-space: normal;

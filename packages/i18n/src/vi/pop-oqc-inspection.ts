@@ -185,7 +185,6 @@ export const popOqcInspection = {
     appliedNone: 'Chưa có lần áp dụng',
     form: {
       heading: (seqNo: number): string => `Đăng ký kết quả kiểm tra lần ${String(seqNo)}`,
-      matchHint: 'Kết quả kiểm tra được áp dụng cho các LOT đã chọn.',
       match: {
         matchHeading: 'LOT cần kiểm tra',
         selectAll: 'Chọn tất cả',
