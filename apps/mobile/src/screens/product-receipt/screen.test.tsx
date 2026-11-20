@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
@@ -475,13 +475,14 @@ describe('제품 입고·적치 화면', () => {
     mount({ lotFailed: true });
     await openUnit(user);
 
-    const label = await screen.findByText(/실물 수량/);
+    const field = await screen.findByLabelText(/실물 수량/);
 
     /* LOT 상세는 줄이 선 뒤에 묻는다(omf-all-around#293) — 실패가 돌아올 때까지 기다린다. */
     await waitFor(() => {
-      expect(label.textContent).toContain('연결되면 표시됩니다');
+      expect(field.getAttribute('aria-label')).toContain('연결되면 표시됩니다');
     });
-    expect(label.textContent).not.toContain('8201');
+    expect(field.getAttribute('aria-label')).not.toContain('8201');
+    expect(screen.queryByText(/8201/)).toBeNull();
   });
 
   /* 실물이 다르면 실물대로 받는다. 사유를 담을 자리가 계약에 없다. */
@@ -859,6 +860,24 @@ describe('제품 입고·적치 화면', () => {
     };
     const findLotField = () => screen.findByLabelText(/FG-1001 · FG-2026-000311 실물 수량/);
 
+    it('같은 LOT 을 또 찍으면 줄을 더하지 않고 회색으로 몇 번 줄인지 알린다', async () => {
+      const user = userEvent.setup();
+      mount({ scanLot: {} });
+      await scanLotLabel(user);
+      await findLotField();
+
+      scanUnit(LOT_NO);
+
+      /* 전에는 소리도 알림도 없이 넘어갔다(사용자 지시 2026-11-20). */
+      const already = within(await screen.findByRole('region', { name: '이미 담은 LOT입니다' }));
+      expect(already.getByText('인수 대상 No 1에 있습니다')).toBeTruthy();
+      expect(screen.getAllByLabelText(/실물 수량/)).toHaveLength(1);
+      expect(screen.getByLabelText(/실물 수량/).closest('tr')).toHaveAttribute(
+        'data-duplicate',
+        'true',
+      );
+    });
+
     it('생산 LOT 은 양품 실적을 수량으로 채운다', async () => {
       const user = userEvent.setup();
       mount({ scanLot: {} });
@@ -867,7 +886,12 @@ describe('제품 입고·적치 화면', () => {
       const field = (await findLotField()) as HTMLInputElement;
 
       expect(field.value).toBe('480');
-      expect(screen.getByText('양품 실적 480')).toBeTruthy();
+      /* 결과 칸 초록 「담음」, 양품 실적은 줄을 눌러 연 시트에(사용자 결정 2026-11-20). */
+      expect(await screen.findByRole('region', { name: '담음' })).toBeTruthy();
+      await user.click(await screen.findByRole('button', { name: /FG-2026-000311 열기$/ }));
+      const sheet = await screen.findByRole('dialog', { name: '인수 대상' });
+      expect(within(sheet).getByText('양품 실적')).toBeTruthy();
+      expect(within(sheet).getByText('480')).toBeTruthy();
     });
 
     it('양품 실적과 다르면 말하되 막지 않는다', async () => {

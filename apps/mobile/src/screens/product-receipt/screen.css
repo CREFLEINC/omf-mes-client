@@ -11,18 +11,6 @@
   gap: var(--space-3, 12px);
 }
 
-.product-receipt__line {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1, 4px);
-}
-
-.product-receipt__expected,
-.product-receipt__meta {
-  margin: 0;
-  font-variant-numeric: tabular-nums;
-}
-
 .product-receipt__note {
   margin: 0;
 }
@@ -37,4 +25,277 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-2, 8px);
+}
+
+/* ── 인수 대상 표 — 재고 이동 반출 LOT 표와 같은 모양(사용자 지시 2026-11-20). ── */
+.receipt-lines__box {
+  overflow: hidden;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.receipt-lines__table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font: var(--type-body-sm);
+}
+
+.receipt-lines__col-no {
+  width: 26px;
+}
+
+.receipt-lines__col-qty {
+  width: 112px;
+}
+
+/* 표 머리 줄은 낭독기에만 — 화면에서는 노이즈다(사용자 지시 2026-11-20). */
+.receipt-lines__table thead {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.receipt-lines__table thead th {
+  height: 28px;
+  padding: 0 var(--space-1, 4px);
+  border-bottom: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  text-align: start;
+  white-space: nowrap;
+}
+
+.receipt-lines__table td {
+  padding: 0 var(--space-1, 4px);
+  border-bottom: 1px solid var(--surface-container-high);
+  white-space: nowrap;
+}
+
+.receipt-lines__table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.receipt-lines__table .receipt-lines__no {
+  padding-inline-start: var(--space-2, 8px);
+  color: var(--on-surface-muted);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.receipt-lines__table .receipt-lines__num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.receipt-lines__table td.receipt-lines__num:last-child {
+  padding-inline-end: var(--space-3, 12px);
+}
+
+.receipt-lines__num small {
+  margin-inline-start: 2px;
+  color: var(--on-surface-muted);
+  font-size: 10px;
+}
+
+.receipt-lines__table td.receipt-lines__item {
+  white-space: normal;
+}
+
+/*
+ * 품목 칸 전체가 누르는 자리 — 코드 위 · 이름 아래. 셸의 `.mobile-shell button { white-space: nowrap }` 보다 앞서도록
+ * 표 클래스를 겹쳐 적는다 — 이름이 꺾여야 잘리지 않는다.
+ */
+.receipt-lines__table .receipt-lines__open {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 48px;
+  padding: var(--space-2, 8px) var(--space-1, 4px);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.25;
+  text-align: start;
+  white-space: normal;
+  cursor: pointer;
+}
+
+.receipt-lines__open > * {
+  min-width: 0;
+}
+
+.receipt-lines__code {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+/* 품목명은 작게 — 대조는 품목코드로 하고 이름은 거든다. 넘치면 fit-name 이 8px 까지 줄인다(사용자 지시 2026-11-20). */
+.receipt-lines__name {
+  overflow: hidden;
+  color: var(--on-surface-variant);
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * 방금 담은 LOT — 초록 바탕 + 왼쪽 6px 선. 3px 은 옅어 한눈에 안 들어왔다 · 줄을 둘러싼
+ * 테두리는 지나쳤다(사용자 지시 2026-11-20). 이미 담은 LOT 을 또 찍으면 그 줄을 같은 모양의 회색으로.
+ */
+.receipt-lines__table tr[data-current='true'] > td {
+  background: var(--semantic-success-container);
+}
+
+.receipt-lines__table tr[data-current='true'] > td:first-child {
+  box-shadow: inset 6px 0 0 var(--semantic-success);
+}
+
+.receipt-lines__table tr[data-duplicate='true'] > td {
+  background: var(--surface-container-high);
+}
+
+.receipt-lines__table tr[data-duplicate='true'] > td:first-child {
+  box-shadow: inset 6px 0 0 var(--on-surface-muted);
+}
+
+.receipt-lines__table .receipt-lines__qty {
+  padding-inline-end: var(--space-2, 8px);
+  text-align: end;
+}
+
+.receipt-lines__lot {
+  color: var(--on-surface-muted);
+  font-weight: 500;
+}
+
+/* 수량 칸 — 누르면 화면 숫자판. 재고 전량으로 채워 와 고칠 때만 누른다. */
+.receipt-lines__field {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 40px;
+  padding: 0 var(--space-2, 8px);
+  border: 1.5px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.receipt-lines__field:focus-within {
+  border-color: var(--on-surface);
+}
+
+.receipt-lines__field input {
+  width: 64px;
+  border: 0;
+  background: transparent;
+  color: var(--on-surface);
+  font: inherit;
+  font-weight: 700;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+
+.receipt-lines__field small {
+  color: var(--on-surface-muted);
+  font-size: 10px;
+}
+
+.receipt-lines__field:has(input[aria-invalid='true']) {
+  border-color: var(--semantic-error);
+}
+
+.receipt-lines__note {
+  margin: 0 0 var(--space-2, 8px);
+  padding-inline-start: var(--space-1, 4px);
+  color: var(--semantic-error-text);
+  font: var(--type-label-sm);
+  white-space: normal;
+}
+
+.receipt-lines__note {
+  color: var(--on-surface-variant);
+}
+
+.receipt-lines__note--error {
+  color: var(--semantic-error-text);
+}
+
+.receipt-lines__lot {
+  overflow: hidden;
+  color: var(--on-surface-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 창고 한 줄 — 「입고 창고 완제품창고 [바꾸기]」(사용자 지시 2026-11-20). ── */
+.product-receipt__dest {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+
+.product-receipt__dest-label {
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+}
+
+.product-receipt__dest-name {
+  flex: 1;
+  min-width: 0;
+  font: var(--type-body-sm);
+  font-weight: 700;
+}
+
+.product-receipt__status:empty {
+  display: none;
+}
+
+.product-receipt__title span {
+  margin-inline-start: var(--space-1, 4px);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 바닥 — 담은 수 · 합계, 꽉 찬 빨강 [입고·적치 완료] 하나. ── */
+.product-receipt__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+}
+
+.product-receipt__sum {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.product-receipt__sum strong {
+  font: var(--type-title-sm);
+  font-weight: 900;
+}
+
+.product-receipt__sum span {
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.receipt-sheet__lot {
+  overflow-wrap: anywhere;
 }
