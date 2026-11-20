@@ -8,6 +8,7 @@ import { warehouseListQuery } from '../../patterns/warehouse-filter-bar';
 import { runRequest } from '../../patterns/request';
 import { CODE_GROUPS } from './code-options';
 import type { Location, LocationItem, LookupEntry, LookupSources, WarehouseFilters } from './types';
+import { SYSTEM_REISSUE_REASON_CODES } from '../../patterns/reissue-reasons';
 
 type PageMeta = components['schemas']['PageMeta'];
 type Warehouse = components['schemas']['Warehouse'];
@@ -385,7 +386,13 @@ export const useLookupOptions = (): LookupResult => {
         isLoading: uoms.isPending,
       },
       warehouseTypes: codeSource(warehouseTypes),
-      reissueReasons: codeSource(reissueReasons),
+      /* 서버만 쓰는 사유(`LOT_SPLIT`)는 사람이 고르지 않는다(피처 013). */
+      reissueReasons: {
+        ...codeSource(reissueReasons),
+        entries: codeSource(reissueReasons).entries.filter(
+          (entry) => !SYSTEM_REISSUE_REASON_CODES.has(entry.value),
+        ),
+      },
     },
     truncated:
       isListTruncated(plants.data) ||

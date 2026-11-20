@@ -14,6 +14,7 @@ import {
   type Printer,
   type Warehouse,
 } from './types';
+import { withoutSystemReissueReasons } from '../../patterns/reissue-reasons';
 
 /**
  * 이 화면이 쓰는 조회와 캐시 키. 이 화면이 소유한다 — 다른 화면 슬라이스의 키 모듈을
@@ -157,7 +158,8 @@ export const useReissueReasons = (enabled: boolean): UseQueryResult<CodeValue[]>
         }),
       );
 
-      return data.items;
+      /* 서버만 쓰는 사유(`LOT_SPLIT`)는 사람이 고르지 않는다(피처 013). */
+      return withoutSystemReissueReasons(data.items);
     },
   });
 };

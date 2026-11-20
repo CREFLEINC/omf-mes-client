@@ -7,6 +7,7 @@ import { shellSelectsPrinter, terminalPrinters } from '../../patterns/pop-termin
 import { runRequest } from '../../patterns/request';
 import { REISSUE_REASON_CODE_GROUP } from './codes';
 import { pairKeyOf, toPrinterView, type PrinterView } from './types';
+import { withoutSystemReissueReasons } from '../../patterns/reissue-reasons';
 
 /**
  * 이 화면의 읽기(005 · omf-all-around#254).
@@ -165,7 +166,10 @@ export const useReissueReasons = (enabled: boolean): UseQueryResult<ReissueReaso
         }),
       );
 
-      return data.items.map((item) => ({ code: item.code, name: item.codeName }));
+      /* 서버만 쓰는 사유(`LOT_SPLIT`)는 사람이 고르지 않는다(피처 013). */
+      return withoutSystemReissueReasons(
+        data.items.map((item) => ({ code: item.code, name: item.codeName })),
+      );
     },
   });
 };

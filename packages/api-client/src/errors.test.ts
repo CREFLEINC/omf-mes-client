@@ -180,6 +180,33 @@ describe('normalizeApiError', () => {
     );
   });
 
+  /* 피처 013 — 생산 LOT 분리 409 는 문구에 쓸 값(detail)을 싣는다. null 이면 키를 두지 않는다. */
+  it('Q8 · T026 409 충돌의 거절 값(detail)을 남기고, null 이면 두지 않는다', () => {
+    expect(
+      normalizeApiError(409, {
+        code: 'LOT_ALREADY_RESERVED',
+        message: '잡힘',
+        conflictCause: 'user',
+        detail: 'SR-2611-0042',
+      }),
+    ).toMatchObject({ kind: 'conflict', code: 'LOT_ALREADY_RESERVED', detail: 'SR-2611-0042' });
+    expect(
+      normalizeApiError(409, {
+        code: 'PUTAWAY_PENDING',
+        message: '',
+        conflictCause: 'user',
+        detail: null,
+      }),
+    ).not.toHaveProperty('detail');
+    expect(
+      normalizeApiError(409, { code: 'INVALID_STATE', message: '보류', detail: 'HOLD' }),
+    ).toMatchObject({
+      kind: 'http',
+      code: 'INVALID_STATE',
+      detail: 'HOLD',
+    });
+  });
+
   /* 피처 012 — 피킹 409 `LOT_NOT_IN_LINE_WAREHOUSE` 는 LOT 이 있는 창고들을 싣는다. 화면이 그 이름을 그린다. */
   it('US2-5 409 충돌의 LOT 이 있는 창고(warehouses)를 남기고, 모양이 틀린 줄은 버린다', () => {
     const result = normalizeApiError(409, {

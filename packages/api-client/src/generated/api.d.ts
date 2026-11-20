@@ -28574,7 +28574,7 @@ export interface paths {
      *
      *     서버 구현 기준: IDENTIFICATION_TAG는 항상 422 STATE_LOCKED다. DELIVERY_LABEL은 대상이 SHIPPING_UNIT이어야 하고 마감(CLOSED)된 출하 단위에만 발행된다 — 다른 대상 유형은 422 INVALID, 안 닫힌 단위는 422 STATE_LOCKED다. MATERIAL_LOT_LABEL은 품질 상태가 검사 대기·정상인 자재 LOT에 발행되고, 생애가 폐기(VOIDED)인 자재 관리 LOT은 422 STATE_LOCKED다 — 미리 만든 대기(WAITING) 자재 관리 LOT은 입하 전에 라벨을 찍으므로 발행된다(피처 005). 패키징이 있는 LOT은 렌디션 QTY 줄 뒤에 「봉지 10 × 100」 꼴(패키징 단위 이름 · 패키징 수 × 패키징당 수량)을 덧붙인다 — 없으면 지금 출력 그대로다.
      *
-     *     서버 구현 기준: IDENTIFICATION_TAG는 항상 422 STATE_LOCKED다. DELIVERY_LABEL은 SHIP-UNIT-01로 대상이 SHIPPING_UNIT이 되어 마감(CLOSED)된 출하 단위에 발행된다 — 다른 대상 유형은 422 INVALID, 안 닫힌 단위는 422 STATE_LOCKED다. 종전의 「DELIVERY_LABEL은 항상 422」는 대상이 출하 LOT 배분이던 때의 설명이다.
+     *     서버 구현 기준: IDENTIFICATION_TAG는 항상 422 STATE_LOCKED다. DELIVERY_LABEL은 SHIP-UNIT-01로 대상이 SHIPPING_UNIT이 되어 마감(CLOSED)된 출하 단위에 발행된다 — 다른 대상 유형은 422 INVALID, 안 닫힌 단위는 422 STATE_LOCKED다. 종전의 「DELIVERY_LABEL은 항상 422」는 대상이 출하 LOT 배분이던 때의 설명이다. 피처 013(omf-all-around#303): 생산 LOT 라벨 단말 권한 — W/O 공정 단말(can_print_label) 규칙에 더해, 제품 분리 가족 LOT(원래·자식)은 라벨 공정이 하나라도 있는 단말(POP P-04-08)도 낸다. 재발행 사유 LOT_SPLIT 은 서버(분리)만 쓰므로 요청이 보내면 422 INVALID 다.
      */
     post: operations['createDocumentIssues'];
     delete?: never;
@@ -28627,7 +28627,7 @@ export interface paths {
      *
      *     미리보기와 인쇄가 같은 경로다. 미리 보고 인쇄한 것과 실제 인쇄물이 다르면 안 된다.
      *
-     *     서버 구현 기준: MATERIAL_LOT_LABEL·IQC_LABEL·PRODUCTION_LOT_LABEL·LOCATION_LABEL 네 유형만 그린다(PNG·TSPL 둘 다). 다른 문서 유형은 422다 — DELIVERY_LABEL도 422다(서버가 그리지 않고 POP이 출하 단위 상세의 값으로 그린다). 산출물을 저장하지 않으므로 호출할 때마다 다시 그린다.
+     *     서버 구현 기준: MATERIAL_LOT_LABEL·IQC_LABEL·PRODUCTION_LOT_LABEL·LOCATION_LABEL 네 유형만 그린다(PNG·TSPL 둘 다). 다른 문서 유형은 422다 — DELIVERY_LABEL도 422다(서버가 그리지 않고 POP이 출하 단위 상세의 값으로 그린다). 산출물을 저장하지 않으므로 호출할 때마다 다시 그린다. 피처 013(omf-all-around#303): 생산 LOT 라벨 수량 = LOT 수량(배분 누계, 없으면 처음 수량) − 제품 분리(PRODUCT_LOT_SPLIT)로 떼어 낸 수량 — 위치별이 아니라 LOT 하나의 값이다. 분리 자식 LOT 의 W/O·생산일은 분할 뿌리(원천 W/O LOT)의 것이다.
      */
     get: operations['getDocumentRendition'];
     put?: never;
@@ -43659,6 +43659,235 @@ export interface paths {
           };
         };
         /** @description COMPLETION_BLOCKED(blockers) · ALREADY_COMPLETED · VERSION_CONFLICT · INVALID_STATE(피킹이 방금 바뀜) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ShipmentConflictResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/product-lot-splits:lookup': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 생산 LOT 분리 스캔 조회(POP)
+     * @description POP P-04-08 — LOT 번호(정확 일치)로 LOT·라벨 수량·W/O 와 이 공장의 보유 위치별 잔액·고를 수 있는지·막힌 이유를 낸다. 분리 요청과 같은 규칙(R-8)이고 분리 때 다시 검사한다. 근거: 피처 013 R-14
+     */
+    get: {
+      parameters: {
+        query: {
+          lotNo: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 스캔 조회 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ProductLotSplitLookup'];
+          };
+        };
+        /** @description REQUIRED — lotNo 가 없다 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 · POP 단말이 아니다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 계정 세션 — 단말 전용 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 이 공장에 없는 LOT 번호 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/product-lot-splits': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 생산 LOT 분리 목록·찾기(POP·PDA)
+     * @description 단말 공장의 분리. status 기본 UNCONFIRMED(분리 시각 오래된 순), CONFIRMED·ALL 은 최신순. lotNo(원래·자식 어느 쪽이든 정확 일치)를 주면 많아야 한 건 — 그 LOT 의 확인 대기 분리, 없으면 가장 최근 확인된 분리(status 무시), 둘 다 없으면 빈 목록(PDA M-04-05 첫 스캔). unconfirmedCount 는 P-04-08 목록 머리 수. 근거: 피처 013 FR-009 · R-3
+     */
+    get: {
+      parameters: {
+        query?: {
+          status?: 'UNCONFIRMED' | 'CONFIRMED' | 'ALL';
+          lotNo?: string;
+          /** @description 1 부터 */
+          page?: number;
+          /** @description 기본 50 */
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: components['schemas']['ProductLotSplit'][];
+              page: components['schemas']['PageMeta'];
+              /**
+               * @description 단말 공장의 확인 대기 분리 수
+               * @example 3
+               */
+              unconfirmedCount: number;
+            };
+          };
+        };
+        /** @description status 값이 올바르지 않다 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 · 단말 유형이 아니다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 계정 세션 — 단말 전용 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    /**
+     * 생산 LOT 분리(POP)
+     * @description POP P-04-08 — 한 트랜잭션에서 분리 기록(확인 대기) → 자식 LOT 원번호-S{n}(원천 PRODUCT_LOT_SPLIT · 상태·생애·유효기간·제조일·BOM 복사 · SPLIT 계보) → 원장 LOT_SPLIT 1건(같은 자리 원래 → 자식, 거래번호 PLS-{id}) → 생산 LOT 라벨 발행 기록 2건(원래 = 다음 회차·사유 LOT_SPLIT 자동, 자식 = 1회차). 하나라도 실패하면 아무것도 남지 않는다. 막는 조건은 409 code(검사 순서 R-8), 입력 형식은 400. 근거: 피처 013 FR-001~008 · R-1·R-7·R-8
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /**
+           * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+           * @example 100027
+           */
+          'X-Worker-No': components['parameters']['WorkerNo'];
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ProductLotSplitCreate'];
+        };
+      };
+      responses: {
+        /** @description 분리됨 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ProductLotSplitResult'];
+          };
+        };
+        /** @description REQUIRED · RANGE(0 < qty < 그 위치 보유, 단위 소수 자리 · 그 위치에 재고 없음) · INVALID(businessDate) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 · POP 단말이 아니다 · 다른 공장 LOT·위치 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 계정 세션 · 라벨 출력 권한(can_print_label 공정) 없는 단말 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description NOT_PRODUCTION_LOT · SPLIT_SERIAL_LOT · INVALID_STATE · LOT_SPLIT_UNCONFIRMED · LOT_ALREADY_RESERVED · PUTAWAY_PENDING · NOT_PRODUCT_WAREHOUSE · MIXED_STOCK_STATUS · DUPLICATE_KEY */
         409: {
           headers: {
             [name: string]: unknown;
@@ -67684,7 +67913,7 @@ export interface components {
     };
     ShipmentConflictResponse: {
       /**
-       * @description ALREADY_CONFIRMED 는 이미 확정된 출하라는 뜻이다 — 확정 취소 경로가 없으므로 되돌릴 수 없다(W-04-12 §5-3). CANCEL_IN_PROGRESS 는 취소 결재가 진행 중이라 확정할 수 없다는 뜻이다(J-7). 근거: W-04-12 §5-8 피처 010(omf-all-around#305): USE_PICK_LOT 는 옛 수량 피킹(:pick)이 닫혔다는 뜻이다 — LOT 통째 피킹(:pick-lot)을 쓴다. LOT_TARGET_REACHED 는 라인 피킹 합이 이미 목표(배정) 이상이다. LOT_ALREADY_RESERVED 는 그 LOT 의 잔액 행에 다른 예약·피킹·차단이 걸려 통째로 잡을 수 없다. LOT_ALREADY_PICKED 는 이미 이 지시서에 피킹한 LOT 이다. NO_LINE_FOR_ITEM 은 이 지시서에 그 LOT 품목의 라인이 없다. LOT_NOT_REJECTED 는 교체할 수 없는 피킹 LOT 이다 — OQC 판정이 불합격이 아니거나(교체 전에 재검 합격이 들어온 경우 포함) 이미 교체·출하됐다. COMPLETION_BLOCKED 는 출하 완료를 막는 이유가 있다(blockers 에 실린다). ALREADY_COMPLETED 는 이미 POP 에서 출하 완료한 지시서다(다시 스캔·동시 완료). ERP_ALREADY_SENT 는 ERP 로 이미 보낸(또는 보내는 중인) POP 완료 출하라 취소할 수 없다 — ERP 에서 처리한다. 피처 012(omf-all-around#338): LOT_NOT_IN_LINE_WAREHOUSE 는 스캔한 LOT 의 가용 잔액이 이 기기 범위 안 같은 품목 줄의 출고 창고 어디에도 없다 — `warehouses` 에 LOT 이 있는 창고(공장)를 싣는다. LINE_WAREHOUSE_UNAVAILABLE 은 고른 줄의 출고 창고가 비활성이거나 지시서 사업부의 창고가 아니다(「출고 창고를 쓸 수 없습니다」). 창고 맞는 줄 찾기가 먼저이고, 맞는 줄이 모두 목표를 채웠을 때만 LOT_TARGET_REACHED 다.
+       * @description ALREADY_CONFIRMED 는 이미 확정된 출하라는 뜻이다 — 확정 취소 경로가 없으므로 되돌릴 수 없다(W-04-12 §5-3). CANCEL_IN_PROGRESS 는 취소 결재가 진행 중이라 확정할 수 없다는 뜻이다(J-7). 근거: W-04-12 §5-8 피처 010(omf-all-around#305): USE_PICK_LOT 는 옛 수량 피킹(:pick)이 닫혔다는 뜻이다 — LOT 통째 피킹(:pick-lot)을 쓴다. LOT_TARGET_REACHED 는 라인 피킹 합이 이미 목표(배정) 이상이다. LOT_ALREADY_RESERVED 는 그 LOT 의 잔액 행에 다른 예약·피킹·차단이 걸려 통째로 잡을 수 없다. LOT_ALREADY_PICKED 는 이미 이 지시서에 피킹한 LOT 이다. NO_LINE_FOR_ITEM 은 이 지시서에 그 LOT 품목의 라인이 없다. LOT_NOT_REJECTED 는 교체할 수 없는 피킹 LOT 이다 — OQC 판정이 불합격이 아니거나(교체 전에 재검 합격이 들어온 경우 포함) 이미 교체·출하됐다. COMPLETION_BLOCKED 는 출하 완료를 막는 이유가 있다(blockers 에 실린다). ALREADY_COMPLETED 는 이미 POP 에서 출하 완료한 지시서다(다시 스캔·동시 완료). ERP_ALREADY_SENT 는 ERP 로 이미 보낸(또는 보내는 중인) POP 완료 출하라 취소할 수 없다 — ERP 에서 처리한다. 피처 012(omf-all-around#338): LOT_NOT_IN_LINE_WAREHOUSE 는 스캔한 LOT 의 가용 잔액이 이 기기 범위 안 같은 품목 줄의 출고 창고 어디에도 없다 — `warehouses` 에 LOT 이 있는 창고(공장)를 싣는다. LINE_WAREHOUSE_UNAVAILABLE 은 고른 줄의 출고 창고가 비활성이거나 지시서 사업부의 창고가 아니다(「출고 창고를 쓸 수 없습니다」). 창고 맞는 줄 찾기가 먼저이고, 맞는 줄이 모두 목표를 채웠을 때만 LOT_TARGET_REACHED 다. 피처 013(omf-all-around#303) 생산 LOT 분리: NOT_PRODUCTION_LOT 는 생산 LOT 이 아니다. SPLIT_SERIAL_LOT 는 시리얼 관리 품목 LOT 이다. LOT_SPLIT_UNCONFIRMED 는 PDA 확인 전인 분리의 원래·자식 LOT 이다(재분리·출하 피킹 거절). PUTAWAY_PENDING 은 적치 대기 자리이거나 그 자리에서 출발하는 열린 적치 지시가 있다. NOT_PRODUCT_WAREHOUSE 는 제품 창고(불량 창고 제외) 위치가 아니다. MIXED_STOCK_STATUS 는 그 위치에 품질·재고 상태가 다른 잔액이 섞여 있다. 분리의 INVALID_STATE 는 보류·불량·폐기·무효, LOT_ALREADY_RESERVED 는 그 LOT 의 어느 잔액에든 예약·피킹·차단이 걸렸다는 뜻이다.
        * @example VERSION_CONFLICT
        * @enum {string}
        */
@@ -67704,7 +67933,13 @@ export interface components {
         | 'ALREADY_COMPLETED'
         | 'ERP_ALREADY_SENT'
         | 'LOT_NOT_IN_LINE_WAREHOUSE'
-        | 'LINE_WAREHOUSE_UNAVAILABLE';
+        | 'LINE_WAREHOUSE_UNAVAILABLE'
+        | 'NOT_PRODUCTION_LOT'
+        | 'SPLIT_SERIAL_LOT'
+        | 'LOT_SPLIT_UNCONFIRMED'
+        | 'PUTAWAY_PENDING'
+        | 'NOT_PRODUCT_WAREHOUSE'
+        | 'MIXED_STOCK_STATUS';
       /** @example 값 */
       message: string;
       /**
@@ -67722,6 +67957,11 @@ export interface components {
       blockers?: components['schemas']['ShipmentCompletionBlocker'][];
       /** @description LOT_NOT_IN_LINE_WAREHOUSE 일 때 그 LOT 의 가용 잔액이 있는 창고들(공장 이름 포함 · 피처 012). */
       warehouses?: components['schemas']['ShipmentRequestWarehouse'][];
+      /**
+       * @description 생산 LOT 분리 거절(피처 013)일 때 문구에 쓸 값 — 스캔 조회 blocked.detail 과 같다. INVALID_STATE 는 상태(DEFECTIVE·SCRAPPED·VOIDED·HOLD), LOT_SPLIT_UNCONFIRMED 는 확인 대기 분리 시각(ISO), LOT_ALREADY_RESERVED 는 피킹한 출하 지시서 번호, NOT_PRODUCTION_LOT 는 LOT 유형, SPLIT_SERIAL_LOT 는 시리얼 관리 유형. 위치 단위 사유는 null
+       * @example SR-20261118-0001
+       */
+      detail?: string | null;
     };
     /** @description 피킹 확정 요청. 사번은 본문이 아니라 X-Worker-No 헤더로 보낸다 */
     ShipmentLinePick: {
@@ -68699,6 +68939,282 @@ export interface components {
        * @example false
        */
       cancelRequestPending: boolean;
+    };
+    /** @description 분리를 막는 이유(피처 013 R-8). code 로 POP 문구를 고른다. */
+    ProductLotSplitBlock: {
+      /**
+       * @example LOT_ALREADY_RESERVED
+       * @enum {string}
+       */
+      code:
+        | 'NOT_PRODUCTION_LOT'
+        | 'SPLIT_SERIAL_LOT'
+        | 'INVALID_STATE'
+        | 'LOT_SPLIT_UNCONFIRMED'
+        | 'LOT_ALREADY_RESERVED'
+        | 'PUTAWAY_PENDING'
+        | 'NOT_PRODUCT_WAREHOUSE'
+        | 'MIXED_STOCK_STATUS';
+      /**
+       * @description 문구에 쓸 값 — INVALID_STATE 는 상태(DEFECTIVE·SCRAPPED·VOIDED·HOLD), LOT_SPLIT_UNCONFIRMED 는 확인 대기 분리 시각(ISO), LOT_ALREADY_RESERVED 는 피킹한 출하 지시서 번호(없으면 null)
+       * @example SR-20261118-0001
+       */
+      detail: string | null;
+    };
+    /** @description POP P-04-08 스캔 조회 — LOT 과 이 공장의 보유 위치(불량 창고 제외)·막힌 이유. 분리 요청과 같은 규칙이다(피처 013 R-14). */
+    ProductLotSplitLookup: {
+      lot: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        lotId: number;
+        /** @example M00000120261117000012ABCDEFGHJKLMN */
+        lotNo: string;
+        /** @example PH-2207-0031 */
+        itemCode: string;
+        /** @example 제품 */
+        itemName: string;
+        /** @example EA */
+        uomCode: string;
+        /** @example NORMAL */
+        statusCode: string;
+        /**
+         * @description 생산 뿌리(원천 W/O LOT)의 W/O — 분리 자식도 원래 LOT 의 W/O
+         * @example WO-261117-0012
+         */
+        workOrderNo: string | null;
+        /**
+         * Format: double
+         * @description LOT 수량 − 제품 분리로 떼어 낸 수량
+         * @example 180
+         */
+        labelQty: number;
+      };
+      /** @description LOT 단위 막힘(NOT_PRODUCTION_LOT·SPLIT_SERIAL_LOT·INVALID_STATE·LOT_SPLIT_UNCONFIRMED·LOT_ALREADY_RESERVED). 없으면 null */
+      blocked: components['schemas']['ProductLotSplitBlock'] | null;
+      locations: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        locationId: number;
+        /** @example FG-A-01 */
+        locationCode: string;
+        /** @example FG */
+        warehouseCode: string;
+        /**
+         * Format: double
+         * @example 100
+         */
+        onHandQty: number;
+        /**
+         * @description LOT·위치 둘 다 막힘이 없을 때만 true
+         * @example true
+         */
+        selectable: boolean;
+        blocked: {
+          /**
+           * @example PUTAWAY_PENDING
+           * @enum {string}
+           */
+          code: 'PUTAWAY_PENDING' | 'NOT_PRODUCT_WAREHOUSE' | 'MIXED_STOCK_STATUS';
+        } | null;
+        /**
+         * @description 위치 역할 — PUTAWAY_STAGING(적치 대기 자리)·WAREHOUSE_WHOLE 등. 보통 위치는 null
+         * @example PUTAWAY_STAGING
+         */
+        systemRoleCode: string | null;
+      }[];
+    };
+    /** @description 분리 요청 — 그 위치의 LOT 몫에서 qty 를 떼어 자식 LOT 을 만든다. 영업일은 단말이 보낸다(C-8). 시각을 빼면 서버 시각. */
+    ProductLotSplitCreate: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      lotId: number;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      locationId: number;
+      /**
+       * Format: double
+       * @description 0 < qty < 그 위치 보유, 단위 소수 자리 안
+       * @example 30
+       */
+      qty: number;
+      /**
+       * Format: date
+       * @example 2026-11-20
+       */
+      businessDate: string;
+      /**
+       * Format: date-time
+       * @example 2026-11-20T03:00:00Z
+       */
+      occurredAt?: string;
+    };
+    /** @description 분리 결과 — 두 발행 기록(원래 = 다음 회차·사유 LOT_SPLIT, 자식 = 1회차). POP 은 두 documentIssueLogId 로 렌디션 → 인쇄 → :report-print 한다. */
+    ProductLotSplitResult: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      productLotSplitId: number;
+      parentLot: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        lotId: number;
+        /** @example M00000120261117000012ABCDEFGHJKLMN-S1 */
+        lotNo: string;
+        /**
+         * Format: double
+         * @description 생산 LOT 라벨 수량 = LOT 수량 − 제품 분리로 떼어 낸 수량(위치별이 아니라 LOT 하나의 값)
+         * @example 30
+         */
+        qty: number;
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        documentIssueLogId: number;
+        /** @example 2 */
+        issueSeq: number;
+      };
+      childLot: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        lotId: number;
+        /** @example M00000120261117000012ABCDEFGHJKLMN-S1 */
+        lotNo: string;
+        /**
+         * Format: double
+         * @description 생산 LOT 라벨 수량 = LOT 수량 − 제품 분리로 떼어 낸 수량(위치별이 아니라 LOT 하나의 값)
+         * @example 30
+         */
+        qty: number;
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        documentIssueLogId: number;
+        /** @example 2 */
+        issueSeq: number;
+      };
+      location: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        locationId: number;
+        /** @example FG-A-01 */
+        locationCode: string;
+        /** @example FG */
+        warehouseCode: string;
+      };
+      /**
+       * Format: date-time
+       * @example 2026-11-20T03:00:00Z
+       */
+      splitAt: string;
+    };
+    /** @description 분리 한 건(trace.product_lot_split). UNCONFIRMED 인 동안 두 LOT 은 출하 피킹·추적 시스템 출고·재분리를 받지 않는다. */
+    ProductLotSplit: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      productLotSplitId: number;
+      /**
+       * @example UNCONFIRMED
+       * @enum {string}
+       */
+      status: 'UNCONFIRMED' | 'CONFIRMED';
+      parentLot: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        lotId: number;
+        /** @example M00000120261117000012ABCDEFGHJKLMN-S1 */
+        lotNo: string;
+        /**
+         * Format: double
+         * @description 생산 LOT 라벨 수량 = LOT 수량 − 제품 분리로 떼어 낸 수량(위치별이 아니라 LOT 하나의 값)
+         * @example 30
+         */
+        qty: number;
+      };
+      childLot: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        lotId: number;
+        /** @example M00000120261117000012ABCDEFGHJKLMN-S1 */
+        lotNo: string;
+        /**
+         * Format: double
+         * @description 생산 LOT 라벨 수량 = LOT 수량 − 제품 분리로 떼어 낸 수량(위치별이 아니라 LOT 하나의 값)
+         * @example 30
+         */
+        qty: number;
+      };
+      item: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        itemId: number;
+        /** @example PH-2207-0031 */
+        itemCode: string;
+        /** @example 제품 */
+        itemName: string;
+        /** @example EA */
+        uomCode: string;
+      };
+      location: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        locationId: number;
+        /** @example FG-A-01 */
+        locationCode: string;
+      };
+      /**
+       * Format: date-time
+       * @example 2026-11-20T03:00:00Z
+       */
+      splitAt: string;
+      /** @example 100027 */
+      splitWorkerNo: string | null;
+      /**
+       * Format: date-time
+       * @example 2026-11-20T03:10:00Z
+       */
+      confirmedAt: string | null;
+      /** @example 100031 */
+      confirmedWorkerNo: string | null;
+      /** @description LOT 마다 가장 최근 생산 LOT 라벨 발행의 인쇄 결과 — 보고 전은 NONE */
+      lastPrint: {
+        /**
+         * @example PRINTED
+         * @enum {string}
+         */
+        parent: 'PRINTED' | 'FAILED' | 'NONE';
+        /**
+         * @example FAILED
+         * @enum {string}
+         */
+        child: 'PRINTED' | 'FAILED' | 'NONE';
+      };
     };
     InspectionLine: {
       /**
