@@ -114,8 +114,6 @@ export const collectionChannel: Translated<typeof ko.collectionChannel> = {
    */
   importLog: {
     title: 'Lấy từ nhật ký nhận',
-    description:
-      'Đây là tín hiệu gần đây vào từ thiết bị này. Hãy chọn tín hiệu cần tạo thành kênh. Tên được lấy đúng như đã nhận nên không chép sai được.',
     loading: 'Đang tải tín hiệu nhận gần đây',
     /** ⭐ 비활성 사유는 그 컨트롤의 이름으로 시작한다. */
     noObservationsReason:

@@ -9,6 +9,7 @@ import {
   useFilterMore,
   type HiddenFilterChip,
 } from '../../patterns/filter-more';
+import { InfoTip } from '../../patterns/info-tip';
 import { Select } from '../../patterns/select';
 import { sourceCodeOptions, stageOptions, type CodeOption } from './codes';
 import { EMPTY_FILTERS, type TargetFilters } from './filters';
@@ -20,22 +21,22 @@ interface SelectCellProps {
   value: string;
   /** 선택지가 비었을 때의 사유(G-2). 비어 있으면 감추지 않고 이유를 단다 */
   pendingNote?: string;
-  /** 선택지가 «있어도» 상시 붙는 안내 — 축의 범위나 소스를 알릴 때 쓴다 */
-  note?: string;
+  /** 축의 범위나 소스 — 칸 아래가 아니라 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A) */
+  info?: string;
   wide?: boolean;
   onChange: (value: string) => void;
 }
 
 /**
  * 디자인 시스템 `Select`에는 `label` prop이 없다 — 라벨을 직접 붙이고 `htmlFor`로 잇는다(배치 규범 3).
- * 두 안내가 한 자리를 쓴다 — 선택지가 비면 그 사유(G-2)가 먼저다.
+ * 선택지가 비면 그 사유(G-2)를 칸 아래에 적는다. 축의 뜻은 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A).
  */
 const SelectCell = ({
   label,
   options,
   value,
   pendingNote,
-  note,
+  info,
   wide,
   onChange,
 }: SelectCellProps) => {
@@ -44,13 +45,23 @@ const SelectCell = ({
   const t = messages.dispositionRequest;
   const isPending = options.length === 0;
   const choices = isPending ? [] : [{ value: '', label: t.all }, ...options];
-  const description = isPending ? pendingNote : note;
+  const description = isPending ? pendingNote : undefined;
+  const labelNode = (
+    <label className="field-label" htmlFor={id}>
+      {label}
+    </label>
+  );
 
   return (
     <div className={wide === true ? 'field-cell wide-select' : 'field-cell'}>
-      <label className="field-label" htmlFor={id}>
-        {label}
-      </label>
+      {info === undefined ? (
+        labelNode
+      ) : (
+        <span className="info-label">
+          {labelNode}
+          <InfoTip text={info} />
+        </span>
+      )}
       <Select
         id={id}
         options={choices}
@@ -134,13 +145,13 @@ export const FilterBar = ({
         />
         {/*
          * 상태 — 「부적합 없음」은 대상 목록의 서버 축이고, 나머지 셋은 부적합 목록에서 온다
-         * (요구서 §3-7 둘째 행). 소스가 갈린다는 사실을 상시 적는다 — 검색어가 그쪽에는 안 실린다.
+         * (요구서 §3-7 둘째 행). 소스가 갈린다는 사실은 라벨 옆 ⓘ 로 둔다 — 검색어가 그쪽에는 안 실린다.
          */}
         <SelectCell
           label={t.fields.stage}
           options={stageOptions()}
           value={draft.stage}
-          note={t.stageSourceNote}
+          info={t.stageSourceNote}
           onChange={(value) => setDraft((current) => ({ ...current, stage: value }))}
         />
         <div className="field-cell">

@@ -116,4 +116,31 @@ export const productReceipt: Translated<typeof ko.productReceipt> = {
     action: 'Xem bản ghi gửi thất bại',
   },
   another: 'Thẻ nhận diện tiếp theo',
+  result: {
+    added: 'Đã thêm',
+    unitLines: (count: number) => `1 thẻ → ${String(count)} dòng`,
+    duplicate: 'LOT này đã được thêm',
+    duplicateRow: (no: number) => `Đã có ở dòng nhận No ${String(no)}`,
+    rejected: 'Không thêm',
+  },
+  tally: {
+    total: (count: number) => `${String(count)} dòng`,
+    open: (itemCode: string, lotNo: string) => `Mở ${itemCode} ${lotNo}`,
+  },
+  sheet: {
+    title: 'Hàng nhận',
+    fields: {
+      itemCode: 'Mã hàng',
+      itemName: 'Tên hàng',
+      lot: 'LOT',
+      expectedUnit: 'SL trên thẻ',
+      expectedGood: 'SL đạt',
+      manufactured: 'Ngày SX',
+      expiry: 'Hạn dùng',
+    },
+  },
+  warehouseChange: 'Đổi',
+  summary: {
+    count: (count: number) => `${String(count)} dòng`,
+  },
 };

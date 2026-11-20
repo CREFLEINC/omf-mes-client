@@ -20,8 +20,7 @@ export const inboundClose = {
   done: {
     heading: (count: number) => `입하 완료 · 마감 취소 가능 ${count}`, // ui-check-ignore: C-13 설계 확정 구획 이름(screens/M-01-03.md)
     empty: '마감 취소할 수 있는 건이 없습니다',
-    autoChip: '자동 마감',
-    closedAuto: (when: string) => `날짜 바뀜 자동 마감 ${when}`,
+    closedAuto: (when: string) => `자동 마감 ${when}`,
     closed: (when: string) => `마감 ${when}`,
     reopen: '마감 취소',
     /** 같은 공급사·품목이 입하 중이라 미리 막힌 건. */
@@ -34,32 +33,27 @@ export const inboundClose = {
     },
   },
   /** 카드 공통. */
+  /**
+   * 목록 표(사용자 지시 2026-11-20 — 입하 등록 「이번 입하」 표와 같은 모양). 입하 LOT 번호 · 첫 등록 시각은 줄에서 뺐다 —
+   * 작업자는 품목으로 찾는다. 번호는 마감 확인 창에 남는다.
+   */
+  list: {
+    open: (itemCode: string, itemName: string) => `${itemCode} ${itemName} 열기`,
+  },
+  /** 줄을 누르면 아래에서 올라오는 시트 — 이름표 칸 · 자재 관리 LOT · [마감]. */
+  sheet: {
+    title: '입하 품목',
+    fields: { itemCode: '품목코드', itemName: '품목명', supplier: '공급사', qty: '수량' },
+    summary: (count: number, total: string) => `${String(count)}개 ${total}`,
+  },
   card: {
-    /** 카드 안 이름표 붙은 칸(사용자 지시 2026-11-18 「명시적인 타이틀 — 공급사, LOT 수, 전체 수량」). */
-    facts: {
-      supplier: '공급사',
-      item: '품목',
-      lotCount: 'LOT 수',
-      totalQty: '전체 수량',
-      firstAt: '첫 등록',
-      quality: '품질',
-    },
-    lotCount: (count: number) => `${count}개`,
     open: (no: string) => `${no} 열기`,
     withIqc: (closed: string, iqcNo: string) => `${closed} · ${iqcNo}`, // ui-check-ignore: C-13 설계 확정 카드 표기(screens/M-01-03.md)
     lotItem: (no: string, item: string) => `${no} · ${item}`, // ui-check-ignore: C-13 설계 확정 창 표기(mockups/M0103-After)
   },
   /** 상세(입하 중 카드를 누르면). */
   detail: {
-    inboundLot: '입하 LOT',
-    status: '상태',
-    statusValue: '입하 중 · 마감 전', // ui-check-ignore: C-13 설계 확정 상태 문구(screens/M-01-03.md)
-    item: '품목',
-    supplier: '공급사',
-    receiptNo: '입하 번호',
-    firstAt: '첫 등록',
     lotCount: 'LOT 수',
-    totalQty: '전체 수량',
     lots: (count: number) => `자재 관리 LOT ${count}`,
     /** 자재 관리 LOT 표 — 행은 한 줄(번호 · 수량 · 등록 시각 · ✕). 번호는 보통 끝 일련번호. */
     columns: { no: '번호', qty: '수량', registered: '등록' },
@@ -94,8 +88,6 @@ export const inboundClose = {
     withIqc: (no: string) => `입하 완료 — IQC 요청이 생겼습니다(${no})`,
     withIqcNoNumber: '입하 완료 — IQC 요청이 생겼습니다',
     noInspection: '입하 완료 — 검사 불필요, 자재 관리 LOT 정상',
-    notice: '품질 담당자에게 IQC 인계 알림을 보냈습니다.',
-    back: '목록으로',
   },
   reopenDialog: {
     title: '마감을 취소할까요?',

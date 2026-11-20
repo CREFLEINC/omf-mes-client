@@ -10,6 +10,8 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     heading: 'Chờ kiểm tra',
     columns: {
       item: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       lotId: 'LOT vật tư',
       supplier: 'Nhà cung cấp',
       statusCode: 'Trạng thái',

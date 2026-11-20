@@ -7,8 +7,6 @@ export const handoverAlertSettings = {
   /* 설계 W-CO-14·사이드바와 같은 글자다. */
   title: '인계작업 알림 설정',
   breadcrumbRoot: '시스템 관리',
-  description:
-    '인계 작업이 생기면 누구에게 알릴지 작업마다 정합니다. 알림센터로 받고, 켜면 Zalo 로도 받습니다.',
   intro:
     '처음에는 모두 꺼져 있습니다. Zalo 를 켜면 고객사 Zalo 발송량(요금과 일일 한도)이 늘어납니다.',
   panes: {
@@ -95,7 +93,7 @@ export const handoverAlertSettings = {
     PUTAWAY_PENDING: {
       when: 'IQC 판정 확정 또는 검사 불필요 입하 마감으로 적치할 LOT 이 생길 때 — 입하 LOT 1건에 1번(LOT 수를 내용에)',
       // ui-check-ignore: C-13 PDA 화면 이름 「적치·입고 완료」 그대로
-      where: '모바일 PDA › 창고 › 적치·입고 완료 (M-01-05)',
+      where: '모바일 PDA › 창고 › 적치·입고 완료',
     },
     PUTAWAY_REQUESTED: {
       when: '입고 처리로 적치 지시가 생길 때 — 입고 1건에 1번(적치 지시 수를 내용에)',

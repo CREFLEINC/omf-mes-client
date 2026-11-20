@@ -12,6 +12,8 @@ export interface SelectFieldProps {
   required?: boolean;
   /** 선택지의 한계(잘림·불러오기 실패)를 밝히거나, 자동으로 채운 값임을 알리는 보조 문구 */
   note?: string;
+  /** 고른 값이 무엇을 뜻하는지 같은 규칙 — 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A) */
+  info?: string;
   placeholder?: string;
   /** 그 칸 아래 서는 오류. 화면이 잡은 것과 서버가 준 것이 같은 칸에 붙는다 */
   error?: string;
@@ -38,6 +40,7 @@ export const SelectField = ({
   onChange,
   required = false,
   note,
+  info,
   placeholder,
   error,
   disabled = false,
@@ -53,7 +56,7 @@ export const SelectField = ({
 
   return (
     <div className={wide ? 'field-cell wide-select' : 'field-cell'}>
-      <FieldLabel htmlFor={id} label={label} required={required} />
+      <FieldLabel htmlFor={id} label={label} required={required} info={info} />
       <Select
         id={id}
         options={options}

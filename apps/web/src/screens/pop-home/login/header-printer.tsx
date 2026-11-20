@@ -1,12 +1,12 @@
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useState } from 'react';
 
-import { useTerminalPrinterName } from '../../patterns/pop-printer-choice';
-import { PrinterChip } from '../pop-material-lot-label/printer-chip';
-import { choosePrinter, storedPrinterName } from '../pop-material-lot-label/printer-choice';
-import { useShellSelectsPrinter } from '../pop-material-lot-label/queries';
-import { toPrinterView } from '../pop-material-lot-label/types';
-import { LOT_PRINTER_STORAGE_KEY, usePrinters } from '../production-result/flow-queries';
+import { useTerminalPrinterName } from '../../../patterns/pop-printer-choice';
+import { PrinterChip } from '../../pop-material-lot-label/printer-chip';
+import { choosePrinter, storedPrinterName } from '../../pop-material-lot-label/printer-choice';
+import { useShellSelectsPrinter } from '../../pop-material-lot-label/queries';
+import { toPrinterView } from '../../pop-material-lot-label/types';
+import { LOT_PRINTER_STORAGE_KEY, usePrinters } from '../../production-result/flow-queries';
 
 const t = messages.productionResult.flow.work;
 

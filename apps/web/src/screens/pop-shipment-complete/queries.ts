@@ -37,6 +37,33 @@ export const useLookupShipmentRequest = () => {
   });
 };
 
+/** 지금 화면에 연 지시서의 확인 값 캐시 키 — 머리줄 [새로고침](`invalidateQueries`)이 이 값을 다시 읽게 한다. */
+export const openedShipmentRequestKey = (code: string) =>
+  ['pop-shipment-complete', 'opened', code] as const;
+
+/**
+ * 연 지시서를 머리줄 [새로고침] 때 같은 코드로 다시 읽는다(사용자 지시 2026-11-20).
+ *
+ * ⭐ 여는 것은 여전히 `useLookupShipmentRequest`(스캔할 때마다 다시 읽는다)다. 연 값은 그 응답을 이 키에 넣어 두고
+ *    (`setQueryData`), 저절로 다시 받지 않는다(`staleTime: Infinity`) — [새로고침]이 무효로 만들 때만 다시 읽는다.
+ */
+export const useOpenedShipmentRequest = (code: string | null) => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: openedShipmentRequestKey(code ?? ''),
+    enabled: code !== null,
+    staleTime: Infinity,
+    retry: false,
+    queryFn: (): Promise<Completion> =>
+      runRequest(() =>
+        client.GET('/logistics/shipment-requests:lookup', {
+          params: { query: { code: code ?? '' } },
+        }),
+      ),
+  });
+};
+
 export interface CompleteInput {
   completion: Completion;
   workerNo: string;
@@ -54,31 +81,46 @@ export interface CompleteInput {
 export const useCompleteShipment = () => {
   const queryClient = useQueryClient();
   const { client } = useApiClient();
-  const attempt = useRef<{ target: string; key: string } | null>(null);
+  /*
+   * ⭐ 한 시도의 키와 «본문»을 함께 둔다(실화면 검증 2026-11-20). 같은 키로 다시 보낼 때 시각이 바뀌면 서버가
+   *    「같은 요청 키로 다른 내용」(409 DUPLICATE_KEY)으로 거절해, 응답을 못 받은 뒤 다시 누르기가 성립하지 않는다.
+   */
+  const attempt = useRef<{
+    target: string;
+    key: string;
+    businessDate: string;
+    occurredAt: string;
+  } | null>(null);
 
-  const keyFor = (completion: Completion): string => {
+  const attemptFor = (completion: Completion) => {
     const target = `${String(completion.shipmentRequestId)}:${String(completion.versionNo)}`;
     if (attempt.current === null || attempt.current.target !== target) {
-      attempt.current = { target, key: createIdempotencyKey() };
+      const now = new Date();
+      attempt.current = {
+        target,
+        key: createIdempotencyKey(),
+        businessDate: plantToday(now),
+        occurredAt: now.toISOString(),
+      };
     }
-    return attempt.current.key;
+    return attempt.current;
   };
 
   const mutation = useMutation({
     mutationFn: ({ completion, workerNo }: CompleteInput): Promise<CompletionResult> => {
-      const now = new Date();
+      const sent = attemptFor(completion);
 
       return runRequest(() =>
         client.POST('/logistics/shipment-requests/{shipmentRequestId}:complete', {
           params: {
             path: { shipmentRequestId: completion.shipmentRequestId },
             header: {
-              'Idempotency-Key': keyFor(completion),
+              'Idempotency-Key': sent.key,
               'If-Match': `"${String(completion.versionNo)}"`,
               'X-Worker-No': workerNo,
             },
           },
-          body: { businessDate: plantToday(now), occurredAt: now.toISOString() },
+          body: { businessDate: sent.businessDate, occurredAt: sent.occurredAt },
         }),
       );
     },

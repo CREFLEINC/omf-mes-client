@@ -3,13 +3,8 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  createStubFetch,
-  jsonResponse,
-  renderHookWithProviders,
-  renderWithProviders,
-} from '../../test/api-harness';
-import { useWarehouseOptions, type LookupResult, type TerminalCodeNames } from './lookups';
+import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
+import type { LookupResult, TerminalCodeNames } from './lookups';
 import { TerminalProcessMapScreen } from './screen';
 import { EMPTY_TERMINAL, toCreateBody, toTerminalDraft, toUpdateBody } from './terminal-draft';
 import { TerminalForm } from './terminal-form';
@@ -55,43 +50,13 @@ const noCodes: TerminalCodeNames = (() => {
 })();
 
 describe('W-CO-06 단말 창고(피처 002)', () => {
-  it('US5-1 US5-2 창고 선택지는 단말 공장의 사용 중인 창고만이고 공장 질의를 싣는다', async () => {
-    const queries: URL[] = [];
-    const { result } = renderHookWithProviders(() => useWarehouseOptions('1'), {
-      fetch: createStubFetch([
-        {
-          match: (request) => path(request) === '/mdm/warehouses',
-          respond: (request) => {
-            queries.push(new URL(request.url));
-            return jsonResponse(page(WAREHOUSES));
-          },
-        },
-      ]),
-    });
-
-    await waitFor(() => expect(result.current.entries).toHaveLength(2));
-    expect(result.current.entries.map((entry) => entry.label)).toEqual([
-      'A01 합성 자재창고 A',
-      'P01 합성 제품창고 P',
-    ]);
-    expect(queries[0]?.searchParams.get('plantId')).toBe('1');
-  });
-
-  it('공장을 고르기 전에는 창고 조회를 하지 않는다', () => {
-    const fetch = vi.fn();
-    const { result } = renderHookWithProviders(() => useWarehouseOptions(''), { fetch });
-
-    expect(result.current.entries).toHaveLength(0);
-    expect(result.current.isLoading).toBe(false);
-    expect(fetch).not.toHaveBeenCalled();
-  });
-
-  it('US5-1 폼에 「공장 전체 (지정 안 함)」 맨 위 창고 칸과 기준 안내가 서고, 공장을 바꾸면 창고를 비운다', async () => {
+  it('US5-1 창고는 누르면 검색란 · 선택지가 펼쳐진다 — 단말 공장의 사용 중인 창고만, 비우면 공장 전체, 공장을 바꾸면 비운다', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
+    const queries: URL[] = [];
     renderWithProviders(
       <TerminalForm
-        draft={{ ...EMPTY_TERMINAL, plant: '1', warehouse: '11', statusCode: 'RUNNING' }}
+        draft={{ ...EMPTY_TERMINAL, plant: '1', statusCode: 'RUNNING' }}
         errors={{}}
         isNew={false}
         isSaving={false}
@@ -101,34 +66,49 @@ describe('W-CO-06 단말 창고(피처 002)', () => {
           { value: '1', label: 'G1 합성 1공장', isActive: true },
           { value: '2', label: 'G2 합성 2공장', isActive: true },
         ])}
-        equipments={lookup([])}
-        warehouses={lookup([
-          { value: '11', label: 'A01 합성 자재창고 A', isActive: true },
-          { value: '12', label: 'P01 합성 제품창고 P', isActive: true },
-        ])}
         codeNames={noCodes}
         onChange={onChange}
         onSubmit={vi.fn()}
         onCancel={vi.fn()}
       />,
+      {
+        fetch: createStubFetch([
+          {
+            match: (request) => path(request) === '/mdm/warehouses',
+            respond: (request) => {
+              queries.push(new URL(request.url));
+              return jsonResponse(page(WAREHOUSES));
+            },
+          },
+        ]),
+      },
     );
 
-    expect(screen.getByText(t.terminal.warehouseGuide)).toBeInTheDocument();
-    expect(screen.queryByText('설치 위치를 설정하려면 먼저 창고를 선택해 주세요.')).toBeNull();
+    expect(screen.getByText(t.terminal.warehouseScope)).toBeInTheDocument();
+    const field = screen.getByRole('combobox', { name: t.terminal.warehouse });
+    expect(field).toHaveTextContent(t.terminal.warehouseAll);
 
-    await user.click(screen.getByRole('combobox', { name: t.terminal.warehouse }));
-    const options = within(await screen.findByRole('listbox')).getAllByRole('option');
-    expect(options[0]).toHaveTextContent(t.terminal.warehouseAll);
-    expect(options).toHaveLength(3);
-    await user.click(options[2] as HTMLElement);
-    expect(onChange).toHaveBeenLastCalledWith({ warehouse: '12' });
+    /* 별도 찾기 창 없이 칸 아래로 검색란과 선택지가 펼쳐진다(사용자 지시 2026-11-20 · #333). */
+    await user.click(field);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(await screen.findByRole('searchbox')).toBeInTheDocument();
+    await screen.findByRole('option', { name: 'P01 합성 제품창고 P' });
+    expect(screen.queryByRole('option', { name: 'B01 다른 공장 창고' })).toBeNull();
+    expect(screen.queryByRole('option', { name: 'X01 중지 창고' })).toBeNull();
+    expect(queries[0]?.searchParams.get('plantId')).toBe('1');
+
+    await user.click(screen.getByRole('option', { name: 'P01 합성 제품창고 P' }));
+    expect(onChange).toHaveBeenLastCalledWith({
+      warehouse: '12',
+      warehouseLabel: 'P01 합성 제품창고 P',
+    });
 
     await user.click(screen.getByRole('combobox', { name: t.terminal.plant }));
     await user.click(await screen.findByRole('option', { name: 'G2 합성 2공장' }));
-    expect(onChange).toHaveBeenLastCalledWith({ plant: '2', warehouse: '' });
+    expect(onChange).toHaveBeenLastCalledWith({ plant: '2', warehouse: '', warehouseLabel: '' });
   });
 
-  it('공장을 고르기 전에는 창고 칸이 잠기고 사유를 보인다', () => {
+  it('공장을 고르기 전에는 창고 칸을 보이지 않는다', () => {
     renderWithProviders(
       <TerminalForm
         draft={{ ...EMPTY_TERMINAL }}
@@ -138,7 +118,6 @@ describe('W-CO-06 단말 창고(피처 002)', () => {
         saveError={null}
         fieldErrors={{}}
         plants={lookup([])}
-        equipments={lookup([])}
         codeNames={noCodes}
         onChange={vi.fn()}
         onSubmit={vi.fn()}
@@ -146,8 +125,8 @@ describe('W-CO-06 단말 창고(피처 002)', () => {
       />,
     );
 
-    expect(screen.getByRole('combobox', { name: t.terminal.warehouse })).toBeDisabled();
-    expect(screen.getByText(t.terminal.warehouseNeedsPlant)).toBeInTheDocument();
+    /* 공장을 고르기 전에는 창고 칸 자체가 없다(사용자 지시 2026-11-20 · #333). */
+    expect(screen.queryByLabelText(t.terminal.warehouse)).toBeNull();
   });
 
   it('US5-1 저장 본문 — 등록은 고르면 warehouseId, 수정은 비우면 null 로 뗀다', () => {

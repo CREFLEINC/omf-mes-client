@@ -3,6 +3,7 @@ import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
+import { InfoLabel, InfoTip } from '../../patterns/info-tip';
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import { SaveErrorBanner } from '../../patterns/master';
 import { DirectLotEntry } from './direct-lot-entry';
@@ -83,7 +84,8 @@ const warehouseLabel = (warehouse: WarehouseView): string =>
 /**
  * ② 반품 입고 — 사유 · 비고 · 라인 · 입고 창고·위치 · 고정된 품질 상태 · 이 등록이 하는 일(J-7).
  *
- * 원천은 묻지 않는다 — 출하가 끝난 뒤 돌아오는 입고는 전부 고객 클레임이다(§5-2). 그 사실을 상시 둔다.
+ * 원천은 묻지 않는다 — 출하가 끝난 뒤 돌아오는 입고는 전부 고객 클레임이다(§5-2). 고를 것이 없으니
+ * 그 사실도 적지 않는다(관리웹 정리 시안 A). 칸마다의 규칙은 칸 아래가 아니라 라벨 옆 ⓘ 로 둔다.
  */
 export const ReceiptForm = ({
   target,
@@ -110,6 +112,7 @@ export const ReceiptForm = ({
   onCheckOutcome,
 }: ReceiptFormProps) => {
   const lockReasonId = useId();
+  const remarksId = useId();
   const isLocked = lock.reason !== undefined;
   const fieldsLocked = isSaving || lock.isUncertain;
   const warehouse =
@@ -124,7 +127,13 @@ export const ReceiptForm = ({
   if (target.selection.kind === 'direct') {
     targetHeader = (
       <>
-        <p className="pane-lead">{t.target.direct}</p>
+        {/* 원 출하 수량을 몰라 반품 수량에 상한이 없다는 사실은 머리 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
+        <p className="pane-lead">
+          <span className="info-label">
+            {t.target.direct}
+            <InfoTip text={t.lot.help} />
+          </span>
+        </p>
         <DirectLotEntry
           isSearching={lotFind.isSearching}
           message={lotFind.message}
@@ -155,8 +164,6 @@ export const ReceiptForm = ({
   return (
     <div className="return-receipt-form">
       {targetHeader}
-      {/* 원천은 고정이다 — 라디오를 그리지 않고 그 사실을 적는다(§5-2). */}
-      <p className="field-note">{t.sourceFixed}</p>
 
       <SaveErrorBanner error={writeError} onReload={onCheckOutcome} />
 
@@ -166,26 +173,36 @@ export const ReceiptForm = ({
           options={reasons.options}
           value={draft.reasonCode}
           placeholder={reasons.options.length === 0 ? t.codePlaceholder : t.form.reasonPlaceholder}
-          note={optionNote(reasons) ?? t.form.reasonHelp}
+          note={optionNote(reasons)}
+          info={t.form.reasonHelp}
           error={draftErrors.reasonCode}
           disabled={fieldsLocked || reasons.options.length === 0}
           onChange={(value) => onChangeDraft({ ...draft, reasonCode: value })}
           wide
         />
       </div>
-      <TextArea
-        label={t.fields.remarks}
-        value={draft.remarks}
-        rows={2}
-        fullWidth
-        disabled={fieldsLocked}
-        helperText={t.form.remarksHelp}
-        error={draftErrors.remarks}
-        onChange={(event) => onChangeDraft({ ...draft, remarks: event.target.value })}
-      />
+      {/* 라벨과 칸을 한 덩어리로 — 폼의 줄 간격이 라벨과 칸 사이에 끼지 않게. */}
+      <div>
+        <InfoLabel htmlFor={remarksId} label={t.fields.remarks} info={t.form.remarksHelp} />
+        <TextArea
+          id={remarksId}
+          value={draft.remarks}
+          rows={2}
+          fullWidth
+          disabled={fieldsLocked}
+          error={draftErrors.remarks}
+          onChange={(event) => onChangeDraft({ ...draft, remarks: event.target.value })}
+        />
+      </div>
 
       <div className="return-receipt-lines" role="group" aria-label={t.panes.lines}>
-        <h3 className="pane-subtitle">{t.panes.lines}</h3>
+        {/* 나눠 반품해도 되고 빈 줄은 보내지 않는다는 규칙은 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
+        <h3 className="pane-subtitle">
+          <span className="info-label">
+            {t.panes.lines}
+            <InfoTip text={t.lines.partialNote} />
+          </span>
+        </h3>
         <LineTable
           drafts={lines}
           errors={lineErrors}
@@ -206,7 +223,8 @@ export const ReceiptForm = ({
             label: warehouseLabel(each),
           }))}
           value={draft.warehouseId}
-          note={listNote(warehouses) ?? t.form.warehouseHelp}
+          note={listNote(warehouses)}
+          info={t.form.warehouseHelp}
           error={draftErrors.warehouseId}
           disabled={fieldsLocked}
           onChange={(value) => onChangeDraft({ ...draft, warehouseId: value, locationId: '' })}
@@ -233,13 +251,15 @@ export const ReceiptForm = ({
       )}
 
       <div className="field-cell">
-        <span className="field-label">{t.fields.qualityStatus}</span>
+        <span className="info-label">
+          <span className="field-label">{t.fields.qualityStatus}</span>
+          <InfoTip text={t.form.qualityFixedNote} />
+        </span>
         <span>
           <Chip variant="status" size="sm">
             {t.form.qualityFixed}
           </Chip>
         </span>
-        <span className="field-note">{t.form.qualityFixedNote}</span>
       </div>
 
       {/* J-7 — 이 등록이 무엇을 바꾸는지 누르기 전에 보인다(§5-6). */}

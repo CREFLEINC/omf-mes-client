@@ -31,6 +31,15 @@
   font-size: 16px;
 }
 
+/* 사번 없을 때 안내 줄의 「로그인」 라벨 — 맨 위 줄 로그인 칩과 같은 빨간 바탕 · 흰 글자(사용자 지시 2026-11-20 · #334). */
+.home-u .home-greet p .pu-chip {
+  height: 22px;
+  margin: 0 2px;
+  background: var(--primary);
+  color: var(--on-primary);
+  vertical-align: 1px;
+}
+
 .home-u .home-greet .when {
   display: flex;
   gap: 6px;
@@ -234,7 +243,7 @@
   min-width: 0;
 }
 
-.home-u .home-row-link:hover {
+.home-u .home-row-link:not(:disabled):hover {
   border-color: var(--pu-line);
 }
 
@@ -286,6 +295,12 @@
 }
 
 .home-u .home-wo:disabled {
+  cursor: default;
+}
+
+/* 사번 전에는 남은 작업 줄도 잠긴다(#334) — 공통 메뉴의 잠긴 탭과 같은 흐림. */
+.home-u .home-remaining .home-row-link:disabled {
+  opacity: 0.45;
   cursor: default;
 }
 

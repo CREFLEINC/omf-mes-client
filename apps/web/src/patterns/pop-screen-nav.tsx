@@ -98,7 +98,8 @@ export const usePopNavigation = (): PopNavigation => {
     plantId,
     access.screens.map((screen) => screen.path),
   );
-  const pending = access.screens
+  /* 사번을 비우면(로그아웃) 앞 작업자의 수를 남기지 않는다 — 처음 켰을 때처럼 수 없이(#334 · 리뷰). */
+  const pending = (canCount ? access.screens : [])
     .map((screen) => ({ screen, count: countOf(screen, workCounts.counts) }))
     .filter((entry) => entry.count > 0)
     .sort((a, b) => b.count - a.count);
@@ -111,7 +112,7 @@ export const usePopNavigation = (): PopNavigation => {
     pending,
     total: pending.reduce((sum, entry) => sum + entry.count, 0),
     tabCount: (screen: PopScreen) =>
-      countOf(screen, workCounts.counts) + (tabCounts[screen.path] ?? 0),
+      canCount ? countOf(screen, workCounts.counts) + (tabCounts[screen.path] ?? 0) : 0,
     go: (screen: PopScreen) => {
       /* ⛔ 저장하지 않은 입력을 묻지 않는다(G-34) — 확인 창은 정작 물어야 할 자리의 확인까지 넘기게 만든다. */
       if (screen.path === pathname) return;
@@ -187,6 +188,11 @@ const REFRESH_ICON = navIcon(
 );
 
 /* 종료 — 전원 단추(#295 시안). */
+/* 단말 재등록 — 사번 입력 카드에 있던 것과 같은 되돌림 화살표(`PuIcon` reset). */
+const RE_REGISTER_ICON = navIcon(
+  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M8 16H3v5" />,
+);
+
 const POWER_ICON = navIcon(
   <>
     <path d="M12 3v8" />
@@ -223,11 +229,15 @@ const TopBar = ({
   printer,
   statusRef,
   printerRef,
+  onReRegister,
+  onLogin,
 }: {
   terminalCode: string | null;
   printer: ReactNode;
   statusRef?: (element: HTMLElement | null) => void;
   printerRef?: (element: HTMLElement | null) => void;
+  onReRegister?: () => void;
+  onLogin?: () => void;
 }) => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -249,6 +259,10 @@ const TopBar = ({
 
   return (
     <div className="pop-nav-top">
+      {/* 연결 표시는 모든 화면에 같게 선다(사용자 지시 2026-11-17 · #291) — 줄 맨 앞, 제품 이름 왼쪽(사용자 지시 2026-11-20 · #334). */}
+      <Chip variant="status" size="md" status={isOnline ? 'success' : 'warning'}>
+        {isOnline ? common.online : common.offline}
+      </Chip>
       <span className="pop-nav-top__brand">{nav.brand}</span>
       {/* 단말은 제품 이름 바로 오른쪽(사용자 지시 2026-11-17). 나머지 상태·작업자는 오른쪽 끝에 모은다. */}
       <span className="pop-nav-top__chip pop-nav-top__terminal">
@@ -273,35 +287,40 @@ const TopBar = ({
       )}
       {/* 화면이 보내는 미전송 표시(`PopTopStatus`) 자리 — 미전송이 있을 때만 선다. */}
       <span className="pop-nav-top__status" ref={statusRef} />
-      {/* 연결 표시는 모든 화면에 같게 선다(사용자 지시 2026-11-17 · #291). */}
-      <Chip variant="status" size="md" status={isOnline ? 'success' : 'warning'}>
-        {isOnline ? common.online : common.offline}
-      </Chip>
       {/* 화면이 보내는 프린터 칩(`PopTopPrinter`) 자리 — 서면 아래 기본 프린터 표시는 감춘다. */}
       <span className="pop-nav-top__screen-printer" ref={printerRef} />
       {printer !== null && <span className="pop-nav-top__printer">{printer}</span>}
       {/*
-       * 사번 — 누르면 사용자 전환(사용자 지시 2026-11-17 · #291). 현재 활성 사번만 지우고 사번 입력 화면으로
-       * 간다. 저장 기록과 오프라인 큐의 사번은 바꾸지 않는다(G-34 · D-5).
+       * 사번 — 있으면 「이름 (사번) | 전환」: 누르면 작업자 변경(교대 · 사용자 지시 2026-11-17 · #291). 현재 활성 사번만 지우고
+       * 홈으로 간다. 저장 기록과 오프라인 큐의 사번은 바꾸지 않는다(G-34 · D-5).
+       * 없으면 「사번 미입력 | 로그인」: 누르면 사번 입력 창을 연다(사용자 지시 2026-11-20 · #334). 사번 전 잠금을 받지 않는다.
        */}
       <Button
-        className="pop-logout"
+        /* 사번이 없으면 빨강 강조(남은 작업 단추와 같은 빨간 테두리 · 글자 — 사용자 지시 2026-11-20). */
+        className={workerNo === null ? 'pop-logout pop-nav-top__login' : 'pop-logout'}
         variant="outlined"
         size="md"
         title={workerNo === null ? undefined : headerText.workerTitle(workerNo, workerName)}
-        aria-label={`${messages.popChrome.userSwitch}: ${
+        aria-label={`${workerNo === null ? messages.popChrome.login : messages.popChrome.userSwitch}: ${
           workerNo === null ? headerText.workerUnset : headerText.workerLabel(workerNo, workerName)
         }`}
+        disabled={workerNo === null && onLogin === undefined}
         onClick={() => {
+          if (workerNo === null) {
+            onLogin?.();
+            return;
+          }
+          /* [전환] — 지금 작업자를 지우고 바로 사번 입력 창을 연다(사용자 지시 2026-11-20). [취소]하면 사번 없는 채로 둔다. */
           setWorkerSession(null);
           void navigate(POP_ENTRY_SCREEN_PATH, { replace: true });
+          onLogin?.();
         }}
       >
         {USER_ICON}
         {workerNo === null ? headerText.workerUnset : headerText.workerLabel(workerNo, workerName)}
         {/* 시안(사용자 지시 2026-11-17): 「이름 (사번) | 전환」 — 세로선 뒤 「전환」이 누르면 할 일을 알린다. */}
         <span className="pop-nav-top__switch" aria-hidden>
-          {messages.popChrome.switchShort}
+          {workerNo === null ? messages.popChrome.login : messages.popChrome.switchShort}
         </span>
       </Button>
       {/*
@@ -326,6 +345,16 @@ const TopBar = ({
         <span>{messages.popChrome.refreshedAt(formatRefreshedAt(refreshedAt).slice(0, 5))}</span>{' '}
         <span>{formatRefreshedAt(refreshedAt).slice(6)}</span>
       </span>
+      {/*
+       * [단말 재등록] — [종료] 바로 왼쪽(사용자 지시 2026-11-20 · #334). 설치 담당자용 보조 조작이라 사번 입력 중에만 선다
+       * (옛 사번 입력 화면 · 홈 사번 입력과 같은 범위). 사번 전 잠금을 받지 않는다 — 잘못된 단말로 등록되면 사번부터 막힌다.
+       */}
+      {workerNo === null && onReRegister !== undefined && (
+        <Button className="pop-logout" variant="outlined" size="md" onClick={onReRegister}>
+          {RE_REGISTER_ICON}
+          {messages.workerAssignment.registration.reRegister}
+        </Button>
+      )}
       {/* [종료] — 맨 위 줄 오른쪽 끝(#295 시안 규칙 17). 확인 창을 거친다. */}
       <Button
         className="pop-logout pop-nav-top__exit"
@@ -369,25 +398,33 @@ const TopBar = ({
  * ⚠ 못 갈 때는 감추지 않고 사유를 보인다(G-2). 묶음이 통째로 사라지면 「원래 이동이 안 되는
  *    단말인가」와 「지금 확인이 안 되는가」를 구별할 수 없다.
  *
- * ⛔ 진입 화면(사번 입력)에서는 그리지 않는다 — 사번 없이 다른 화면으로 가는 길이 생긴다.
+ * ⛔ 사번이 없으면(맨 위 줄 [로그인]으로 넣기 전) 묶음 · 홈 · [남은 작업]을 잠근다(감추지 않음 · G-2) — 사번 없이 다른 화면으로
+ *    가는 길이 생기지 않게(omf-all-around#334). 주소로 직접 들어와도 셸(`app/pop-main`)이 홈으로 돌려보낸다.
  *
  * `terminalCode` 는 셸이 단말 등록에서 읽어 넘긴다(모르면 `null`). `printer` 는 셸이 넘기는 프린터
- * 연결 표시다 — 사번 입력 화면 머리줄과 같은 것(`HeaderPrinter`)이고, 없으면 그리지 않는다.
+ * 연결 표시(`HeaderPrinter`)이고, 없으면 그리지 않는다.
  */
 export const PopScreenNav = ({
   terminalCode,
   printer = null,
   statusRef,
   printerRef,
+  onReRegister,
+  onLogin,
 }: {
   terminalCode: string | null;
   printer?: ReactNode;
   /** 맨 위 줄 화면 상태 자리를 셸에 알린다(`PopTopStatusTarget`). */
   statusRef?: (element: HTMLElement | null) => void;
   printerRef?: (element: HTMLElement | null) => void;
+  /** [단말 재등록] — 셸이 단말 등록의 `restart` 를 넘긴다. 없으면 단추를 두지 않는다. */
+  onReRegister?: () => void;
+  /** 「사번 미입력 | 로그인」 — 셸이 사번 입력 창을 연다. 없으면 사번 칩이 눌리지 않는다. */
+  onLogin?: () => void;
 }): ReactNode => {
   const navigate = useNavigate();
   const { pathname, search, access, workCounts, pending, total, go, tabCount } = usePopNavigation();
+  const isLocked = usePopIdentity().workerNo === null;
   const current = access.screens.find((screen) => screen.path === pathname) ?? null;
   const [open, setOpen] = useState(false);
   const currentTab = useRef<HTMLButtonElement | null>(null);
@@ -413,8 +450,6 @@ export const PopScreenNav = ({
 
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open]);
-
-  if (pathname === POP_ENTRY_SCREEN_PATH) return null;
 
   const isHome = pathname === POP_HOME_PATH;
   /*
@@ -445,6 +480,8 @@ export const PopScreenNav = ({
         printer={printer}
         statusRef={statusRef}
         printerRef={printerRef}
+        onReRegister={onReRegister}
+        onLogin={onLogin}
       />
       <div className="pop-nav-groups">
         <nav className="pop-nav-groups__list" aria-label={nav.groupsLabel}>
@@ -465,6 +502,7 @@ export const PopScreenNav = ({
               key={group.key}
               type="button"
               className="pop-nav-group"
+              disabled={isLocked}
               aria-pressed={shownGroup === group.key}
               data-on={shownGroup === group.key ? 'true' : undefined}
               aria-label={group.count > 0 ? nav.groupCount(group.name, group.count) : undefined}
@@ -491,7 +529,7 @@ export const PopScreenNav = ({
             aria-expanded={open}
             aria-haspopup="dialog"
             aria-label={remainingText.buttonLabel(total)}
-            disabled={access.state !== 'ready'}
+            disabled={isLocked || access.state !== 'ready'}
             onClick={() => {
               /* 창을 열 때 다시 센다 — 마지막 주기 뒤에 생긴 일도 보인다. */
               if (!open) workCounts.refresh();

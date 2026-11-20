@@ -43,6 +43,7 @@ import {
   type LotPageSize,
 } from '../lot-status-history/filters';
 import {
+  itemCodeAndName,
   useItemNameSources,
   useLocationNameSources,
   useWarehouseReferenceOptions,
@@ -308,8 +309,9 @@ export const SuspiciousMaterialCandidatePane = ({
     statuses.data?.isTruncated === false
       ? (statuses.data.items.find((item) => item.code === code)?.label ?? t.values.statusUnknown)
       : t.values.statusUnknown;
-  const itemLabel = (itemId: number): string =>
-    lookupDisplayLabelWithInactive(
+  /* 표의 품목은 코드 · 이름 두 칸이다(사용자 지시 2026-11-20). */
+  const itemParts = (itemId: number): { code: string; name: string } =>
+    itemCodeAndName(
       itemNames.get(itemId) ?? { entries: [], isError: false, isLoading: true },
       itemId,
     );
@@ -371,11 +373,18 @@ export const SuspiciousMaterialCandidatePane = ({
       },
     },
     {
-      key: 'item',
-      header: t.fields.item,
+      key: 'itemCode',
+      header: t.fields.itemCode,
       align: 'center',
-      width: '280px',
-      render: (row) => <OneLine text={itemLabel(row.itemId)} />,
+      width: '140px',
+      render: (row) => <OneLine text={itemParts(row.itemId).code} />,
+    },
+    {
+      key: 'itemName',
+      header: t.fields.itemName,
+      align: 'center',
+      width: '200px',
+      render: (row) => <OneLine text={itemParts(row.itemId).name} />,
     },
     {
       key: 'location',
@@ -643,7 +652,7 @@ export const SuspiciousMaterialCandidatePane = ({
             <>
               <div
                 ref={fit.ref}
-                className="wide-table lot-status-table suspicious-material-hold-table inspection-queue-table"
+                className="wide-table lot-status-table suspicious-material-hold-table inspection-queue-table cells-start"
                 style={resizable.style}
                 aria-busy={candidates.isFetching}
                 /*

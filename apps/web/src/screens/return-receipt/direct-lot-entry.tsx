@@ -15,7 +15,8 @@ export interface DirectLotEntryProps {
 /**
  * 원 출하 없이 등록 — LOT 번호를 정확히 적어 줄을 더한다.
  *
- * 품목·단위는 LOT 이 정하고, 원 출하 수량은 모르므로 반품 수량에 상한이 없다. 그 사실을 칸 옆에 상시 둔다.
+ * 품목·단위는 LOT 이 정하고, 원 출하 수량은 모르므로 반품 수량에 상한이 없다. 그 사실은 「원 출하 없이 등록」
+ * 머리 옆 ⓘ 로 둔다(`receipt-form.tsx` · 관리웹 정리 시안 A).
  */
 export const DirectLotEntry = ({ isSearching, message, isLocked, onFind }: DirectLotEntryProps) => {
   const [lotNo, setLotNo] = useState('');
@@ -34,7 +35,7 @@ export const DirectLotEntry = ({ isSearching, message, isLocked, onFind }: Direc
         fullWidth
         disabled={isLocked}
         error={message}
-        helperText={isSearching ? t.lot.searching : t.lot.help}
+        helperText={isSearching ? t.lot.searching : undefined}
         onChange={(event) => setLotNo(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === 'Enter') find();

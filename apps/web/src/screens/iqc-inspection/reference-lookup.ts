@@ -179,17 +179,40 @@ const lotQuery = (client: Client, lotId: number) => ({
 const INBOUND_RECEIPT = 'INBOUND_RECEIPT';
 
 /**
- * 자재 LOT 의 공급사(사용자 지시 2026-10-29 · #197) — 검사 의뢰 · LOT 응답에 공급사가 없어, LOT 의 출처(입고) → 입고의
- * 공급사 → 거래처 이름으로 잇는다. 같은 LOT · 입고 · 거래처는 요청 하나다. 입고로 생기지 않은 LOT 은 「—」다.
+ * 자재 LOT 의 공급사(사용자 지시 2026-10-29 · #197) — 검사 의뢰 · LOT 응답에 공급사가 없어, LOT 의 입하 LOT → 그 공급사
+ * 이름으로 잇는다(사용자 지시 2026-11-20). 입하 LOT 이 없는 LOT 만 종전처럼 출처(입고) → 입고의 공급사 → 거래처 이름이다.
+ * 같은 LOT · 입하 LOT · 입고 · 거래처는 요청 하나다. 어느 쪽으로도 잇지 못하면 「—」다.
+ *
+ * ⚠ 입고로 생긴 자재 LOT 의 출처는 `INBOUND_RECEIPT_LINE`(입고 라인)이라 아래 `INBOUND_RECEIPT` 갈래는 거의 맞지 않는다 —
+ *   이전 흐름 의뢰의 공급사가 모두 「—」였던 까닭이다(2026-11-20). 서버가 목록에 공급사를 실어 주면 이 풀이는 걷는다.
  */
 export const useLotSuppliers = (lotIds: readonly (number | null | undefined)[]): NameLookup => {
   const { client } = useApiClient();
   const ids = uniqueOf(lotIds);
   const lots = useQueries({ queries: ids.map((lotId) => lotQuery(client, lotId)) });
 
+  const inboundLotOf = (index: number): number | null => lots[index]?.data?.inboundLotId ?? null;
+  const inboundLotIds = uniqueOf(ids.map((_, index) => inboundLotOf(index)));
+  const inboundLots = useQueries({
+    queries: inboundLotIds.map((inboundLotId) => ({
+      queryKey: ['iqc-inspection', 'inbound-lot-supplier', inboundLotId] as const,
+      queryFn: async () => {
+        const data = await runRequest(() =>
+          client.GET('/logistics/inbound-lots/{inboundLotId}', {
+            params: { path: { inboundLotId } },
+          }),
+        );
+        return data.supplierName;
+      },
+      retry: false,
+      staleTime: Infinity,
+    })),
+  });
+
   const receiptOf = (index: number): number | null => {
     const lot = lots[index]?.data;
-    return lot !== undefined && lot.sourceTypeCode === INBOUND_RECEIPT ? lot.sourceId : null;
+    if (lot === undefined || inboundLotOf(index) !== null) return null;
+    return lot.sourceTypeCode === INBOUND_RECEIPT ? lot.sourceId : null;
   };
   const receiptIds = uniqueOf(ids.map((_, index) => receiptOf(index)));
   const receipts = useQueries({
@@ -219,6 +242,11 @@ export const useLotSuppliers = (lotIds: readonly (number | null | undefined)[]):
       const lotIndex = ids.indexOf(id);
       const lot = lotIndex === -1 ? undefined : lots[lotIndex];
       if (lot === undefined || lot.isPending || lot.isError) return describe(lot, undefined);
+      const inboundLotId = inboundLotOf(lotIndex);
+      if (inboundLotId !== null) {
+        const inboundLot = inboundLots[inboundLotIds.indexOf(inboundLotId)];
+        return describe(inboundLot, inboundLot?.data);
+      }
       const receiptId = receiptOf(lotIndex);
       if (receiptId === null) return t.empty;
       const receipt = receipts[receiptIds.indexOf(receiptId)];

@@ -9,7 +9,7 @@ import {
   PuNote,
   applyKeypadKey,
   type PuTone,
-} from '../../patterns/pop-uniform';
+} from '../../../patterns/pop-uniform';
 import { canSubmit } from './worker-no';
 
 /**

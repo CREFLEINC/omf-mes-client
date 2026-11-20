@@ -37,7 +37,7 @@ const POP_SCREENS = [
   'tool-usage',
   'work-hold-register',
   'work-start',
-  'worker-assignment',
+  'pop-home',
 ] as const;
 
 /**

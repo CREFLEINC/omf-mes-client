@@ -1,7 +1,9 @@
 import { AlertBanner, Button, Dialog, Switch, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
+import { useId } from 'react';
 
+import { InfoLabel } from '../../patterns/info-tip';
 import type { CodeOption } from './code-options';
 import { newDraftRow, selectableItems, type RowErrors } from './inspection-assignment';
 import { SelectField } from './select-field';
@@ -58,6 +60,7 @@ export const InspectionAssignDialog = ({
   onSave,
   onClose,
 }: InspectionAssignDialogProps) => {
+  const baseDateId = useId();
   const selectable = selectableItems(master, rows);
 
   const patchRow = (
@@ -152,15 +155,24 @@ export const InspectionAssignDialog = ({
                   }
                   error={errors.cycleInterval}
                 />
-                <TextField
-                  label={t.fields.cycleBaseDate}
-                  type="date"
-                  value={row.cycleBaseDate}
-                  onChange={(event) =>
-                    patchRow(row.equipmentInspectionItemId, { cycleBaseDate: event.target.value })
-                  }
-                  helperText={t.baseDateNote}
-                />
+                {/* 비우면 부여일이 기준이라는 뜻은 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}
+                <div className="field-cell">
+                  <InfoLabel
+                    htmlFor={`${baseDateId}-${String(row.equipmentInspectionItemId)}`}
+                    label={t.fields.cycleBaseDate}
+                    info={t.baseDateNote}
+                  />
+                  <TextField
+                    id={`${baseDateId}-${String(row.equipmentInspectionItemId)}`}
+                    type="date"
+                    value={row.cycleBaseDate}
+                    onChange={(event) =>
+                      patchRow(row.equipmentInspectionItemId, {
+                        cycleBaseDate: event.target.value,
+                      })
+                    }
+                  />
+                </div>
                 <div className="field-cell">
                   <Switch
                     label={t.fields.activation}

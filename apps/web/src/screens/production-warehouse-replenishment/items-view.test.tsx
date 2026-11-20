@@ -189,6 +189,7 @@ describe('W-02-12 생산 창고 보충 — 자동 보충 시각', () => {
     const { user, writes } = setupScreen({ route: ITEMS });
     const panel = within(await screen.findByRole('region', { name: tt.title }));
 
+    expect(panel.getByRole('button', { name: tt.lead })).toBeInTheDocument();
     expect(panel.getByRole('combobox', { name: tt.plantDefault })).toHaveTextContent('01:00');
     expect(
       panel.getByRole('combobox', { name: tt.warehouseLabel('합성 생산창고 A') }),

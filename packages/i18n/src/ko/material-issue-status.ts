@@ -223,8 +223,10 @@ export const materialIssueStatus = {
       allocation: '요청 배분 (출고 작업일 늦은 요청부터 부족)',
     },
     unsourcedTitle: '재고 있는 생산 창고 없음',
-    unsourcedNote: (count: number): string =>
-      `W/O ${String(count)}건. 배포 때 부서의 어느 생산 창고에도 재고가 없어 출고 요청에 넣지 못한 자재입니다. 생산 창고를 채운 뒤 보충 요청하세요. 재고가 생겨도 자동으로 요청하지 않습니다.`,
+    unsourcedCount: (count: number): string => `W/O ${String(count)}건`,
+    /** 묶음 제목 옆 ⓘ. */
+    unsourcedNote:
+      '배포 때 부서의 어느 생산 창고에도 재고가 없어 출고 요청에 넣지 못한 자재입니다. 생산 창고를 채운 뒤 보충 요청하세요. 재고가 생겨도 자동으로 요청하지 않습니다.',
     none: '없음',
     warehouseGroup: '생산 창고별 부족',
     warehouseGroupCount: (count: number): string => `품목 ${String(count)}건`,

@@ -154,7 +154,6 @@ export const InspectionItemPane = ({
       aria-label={t.paneTitle}
     >
       <h2 className="pane-title">{t.paneTitle}</h2>
-      <p className="dialog-lead">{t.description}</p>
 
       <div className="filter-bar equipment-master-filter">
         <SearchInput

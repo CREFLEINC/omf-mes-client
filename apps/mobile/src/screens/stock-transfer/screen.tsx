@@ -21,7 +21,8 @@ import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
-import { useLotBalances, useUnfinishedTransfers, useWarehouses } from './queries';
+import { ArriveLots } from './arrive-lots';
+import { useLotBalances, useLotsById, useUnfinishedTransfers, useWarehouses } from './queries';
 import { TransferSheet } from './transfer-sheet';
 import { qtyFieldId, TransferTally } from './transfer-tally';
 import {
@@ -105,6 +106,9 @@ export const StockTransferScreen = () => {
   const foundLot = useScannedLot(scannedLot);
   const balances = useLotBalances(foundLot.data?.lotId ?? null);
   const itemLabels = useItemLabels(lines.map((line) => line.itemId));
+  /* 도착(이어서 하기) — 옮기는 줄의 품목 · LOT 번호. 줄에는 대리키만 있다. */
+  const arriveItems = useItemLabels(shipped?.lines.map((line) => line.itemId) ?? []);
+  const arriveLots = useLotsById(shipped?.lines.map((line) => line.lotId) ?? []);
 
   const toWarehouse = (warehouses.data ?? []).find((each) => each.warehouseId === toWarehouseId);
   const toLocation = destination.data ?? null;
@@ -520,10 +524,100 @@ export const StockTransferScreen = () => {
       </section>
     );
 
+  /*
+   * 도착(이어서 하기) — 무엇을 옮기는 중인지(도착할 LOT 표)를 보이고 놓은 자리만 찍는다(사용자 지시 2026-11-20).
+   * LOT 을 하나씩 다시 찍지는 않는다 — 계약상 도착은 위치 하나와 반출한 라인 전체다.
+   */
+  if (shipped !== null) {
+    const arriveTotal = shipped.lines.reduce((sum, line) => sum + line.shippedQty, 0);
+    const arriveUnits = new Set(shipped.lines.map((line) => line.uomId));
+
+    return (
+      <div className="stock-transfer">
+        <section className="stock-transfer__dest" aria-label={shipped.transfer.stockTransferNo}>
+          <span className="stock-transfer__dest-place">
+            <strong className="stock-transfer__dest-no">{shipped.transfer.stockTransferNo}</strong>
+            <span>
+              {t.arrive.route(
+                warehouseNameOf(shipped.transfer.fromWarehouseId) ?? '',
+                warehouseNameOf(shipped.transfer.toWarehouseId) ?? '',
+              )}
+            </span>
+          </span>
+        </section>
+
+        <ScanZone
+          field={locationField}
+          label={t.to.arrivedScanLabel}
+          prompt={t.to.scanPlaceholder}
+          standby={toLocation !== null}
+          error={
+            scannedLocation !== null && destination.data === null
+              ? t.to.notFound(scannedLocation)
+              : undefined
+          }
+          tools={
+            <IconButton
+              icon={locationField.manual ? 'keyboard_return' : 'keyboard'}
+              size="lg"
+              aria-label={locationField.manual ? t.to.manualSubmit : t.to.manualLabel}
+              onClick={locationField.manual ? locationField.submitManual : locationField.openManual}
+            />
+          }
+        />
+        {scannedLocation !== null && destination.isPending ? (
+          <p role="status">{t.to.loading}</p>
+        ) : null}
+        {toLocation === null ? null : (
+          <p className="stock-transfer__picked">
+            <Icon name="check_circle" size={20} />
+            {t.to.picked(toLocation.locationCode)}
+          </p>
+        )}
+
+        <ArriveLots
+          lines={shipped.lines}
+          itemOf={(line) => ({
+            itemCode: arriveItems.get(line.itemId)?.itemCode ?? '',
+            itemName: arriveItems.get(line.itemId)?.itemName ?? '',
+          })}
+          lotNoOf={(line) => arriveLots.data?.get(line.lotId)?.lotNo ?? null}
+          uomOf={uomOf}
+        />
+
+        <section className="stock-transfer__bar">
+          {saveFailed ? (
+            <AlertBanner variant="error" title={t.saveFailed.title}>
+              {t.saveFailed.description}
+            </AlertBanner>
+          ) : null}
+          {toLocation === null ? <p className="stock-transfer__note">{t.noDestination}</p> : null}
+          <div className="stock-transfer__bar-row">
+            <p className="stock-transfer__sum">
+              <strong>{t.summary.count(shipped.lines.length)}</strong>
+              {arriveUnits.size === 1 ? (
+                <span>{`${arriveTotal.toLocaleString('ko-KR')} ${uomOf(shipped.lines[0]?.uomId)}`}</span>
+              ) : null}
+            </p>
+            <Button
+              className="stock-transfer__wide"
+              variant="filled"
+              size="2xl"
+              disabled={!arriveReady}
+              onClick={() => void arrive()}
+            >
+              {t.submitArrive}
+            </Button>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className={keypad === null ? 'stock-transfer' : 'stock-transfer docked-pad-open'}>
-      <section className="stock-transfer__section">
-        <h2>{t.unfinished.legend}</h2>
+      <section className="stock-transfer__section" aria-label={t.unfinished.legend}>
+        <h2 className="transfer-tally__title">{t.unfinished.legend}</h2>
         {unfinished.isPending ? <p role="status">{t.unfinished.loading}</p> : null}
         {unfinished.isError ? (
           <FailureBanner
@@ -533,26 +627,52 @@ export const StockTransferScreen = () => {
         ) : null}
         {/* 다른 단말이 반출한 것은 오프라인에서 오지 않는다. 없다고 단정하면 안 된다. */}
         {!online ? <p className="stock-transfer__note">{t.unfinished.offline}</p> : null}
-        {unfinished.isSuccess && unfinished.data.length === 0 ? <p>{t.unfinished.none}</p> : null}
-        {(unfinished.data ?? []).map((each) => (
-          <Card bordered key={each.transfer.stockTransferId}>
-            <Card.Header>
-              {t.unfinished.item(each.transfer.stockTransferNo, each.lines.length)}
-            </Card.Header>
-            <Card.Body className="card-body">
-              <Button
-                variant="outlined"
-                size="xl"
-                onClick={() => {
-                  setShipped(each);
-                  setToWarehouseId(each.transfer.toWarehouseId);
-                }}
-              >
-                {t.unfinished.resume}
-              </Button>
-            </Card.Body>
-          </Card>
-        ))}
+        {unfinished.isSuccess && unfinished.data.length === 0 ? (
+          <p className="stock-transfer__note">{t.unfinished.none}</p>
+        ) : null}
+        {/* 카드 대신 한 줄씩 — 이동 번호 · 라인 수 · 출발 → 도착, 오른쪽 [이어서 하기](사용자 지시 2026-11-20). */}
+        {(unfinished.data ?? []).length === 0 ? null : (
+          <div className="transfer-tally__box">
+            <table className="transfer-tally__table">
+              <colgroup>
+                <col className="transfer-tally__col-no" />
+                <col />
+                <col className="stock-transfer__col-resume" />
+              </colgroup>
+              <tbody>
+                {(unfinished.data ?? []).map((each, index) => (
+                  <tr key={each.transfer.stockTransferId}>
+                    <td className="transfer-tally__no">{index + 1}</td>
+                    <td className="transfer-tally__item transfer-tally__item--static">
+                      <span className="transfer-tally__code">
+                        {t.unfinished.item(each.transfer.stockTransferNo, each.lines.length)}
+                      </span>
+                      <span className="transfer-tally__name">
+                        {t.arrive.route(
+                          warehouseNameOf(each.transfer.fromWarehouseId) ?? '',
+                          warehouseNameOf(each.transfer.toWarehouseId) ?? '',
+                        )}
+                      </span>
+                    </td>
+                    <td className="stock-transfer__resume">
+                      <Button
+                        variant="outlined"
+                        size="sm"
+                        onClick={() => {
+                          setShipped(each);
+                          setToWarehouseId(each.transfer.toWarehouseId);
+                          setScannedLocation(null);
+                        }}
+                      >
+                        {t.unfinished.resume}
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       {destinationSet ? (
@@ -576,30 +696,26 @@ export const StockTransferScreen = () => {
         </section>
       ) : (
         <>
-          {shipped !== null ? null : (
-            <section className="stock-transfer__section">
-              <h2>{t.type.legend}</h2>
-              {TYPES.map((each) => (
-                <Radio
-                  key={each.value}
-                  name="transfer-type"
-                  value={each.value}
-                  checked={type === each.value}
-                  onChange={() => {
-                    setType(each.value);
-                  }}
-                >
-                  {each.label}
-                </Radio>
-              ))}
-            </section>
-          )}
+          <section className="stock-transfer__section">
+            <h2>{t.type.legend}</h2>
+            {TYPES.map((each) => (
+              <Radio
+                key={each.value}
+                name="transfer-type"
+                value={each.value}
+                checked={type === each.value}
+                onChange={() => {
+                  setType(each.value);
+                }}
+              >
+                {each.label}
+              </Radio>
+            ))}
+          </section>
 
           <section className="stock-transfer__section">
-            <h2>{shipped === null ? t.to.legend : t.to.arrivedLegend}</h2>
-            <label htmlFor="transfer-to-warehouse">
-              {shipped === null ? t.to.warehouseLabel : t.to.arrivedWarehouseLabel}
-            </label>
+            <h2>{t.to.legend}</h2>
+            <label htmlFor="transfer-to-warehouse">{t.to.warehouseLabel}</label>
             <Select
               id="transfer-to-warehouse"
               placeholder={t.to.warehousePlaceholder}
@@ -616,7 +732,7 @@ export const StockTransferScreen = () => {
             />
             <TextField
               ref={locationField.ref}
-              label={shipped === null ? t.to.scanLabel : t.to.arrivedScanLabel}
+              label={t.to.scanLabel}
               placeholder={t.to.scanPlaceholder}
               size="xl"
               fullWidth
@@ -649,140 +765,125 @@ export const StockTransferScreen = () => {
       {/* 헤더는 출발 창고를 하나만 받는다. 섞으면 없는 자리에서 빼는 것이 된다. */}
       {mixed ? <AlertBanner variant="error" title={t.from.mixedWarehouse} /> : null}
 
-      {shipped !== null ? (
-        <section className="stock-transfer__section">
-          {toLocation === null ? <p className="stock-transfer__note">{t.noDestination}</p> : null}
-          <Button
-            className="stock-transfer__wide"
-            variant="filled"
-            size="2xl"
-            disabled={!arriveReady}
-            onClick={() => void arrive()}
+      <>
+        <ScanZone
+          field={lotField}
+          label={t.from.scanLabel}
+          prompt={t.from.scanPlaceholder}
+          standby
+          /* 스캐너가 못 읽는 라벨이 있다. 손으로 넣는 길은 구역 아래 아이콘(공유계약 D-3). */
+          tools={
+            <IconButton
+              icon={lotField.manual ? 'keyboard_return' : 'keyboard'}
+              size="lg"
+              aria-label={lotField.manual ? t.from.manualSubmit : t.from.manualLabel}
+              onClick={lotField.manual ? lotField.submitManual : lotField.openManual}
+            />
+          }
+        />
+
+        <div className="stock-transfer__status">{result}</div>
+
+        {/* 결정 14 — 보류는 막지 않고 알린다. 막으면 현장이 물건을 못 옮긴다. */}
+        {held.length > 0 ? (
+          <AlertBanner
+            variant="warning"
+            title={t.hold.title(held.map((each) => each.lotNo).join(' · '))}
           >
-            {t.submitArrive}
-          </Button>
-        </section>
-      ) : (
-        <>
-          <ScanZone
-            field={lotField}
-            label={t.from.scanLabel}
-            prompt={t.from.scanPlaceholder}
-            standby
-            /* 스캐너가 못 읽는 라벨이 있다. 손으로 넣는 길은 구역 아래 아이콘(공유계약 D-3). */
-            tools={
-              <IconButton
-                icon={lotField.manual ? 'keyboard_return' : 'keyboard'}
-                size="lg"
-                aria-label={lotField.manual ? t.from.manualSubmit : t.from.manualLabel}
-                onClick={lotField.manual ? lotField.submitManual : lotField.openManual}
-              />
-            }
+            {t.hold.description}
+          </AlertBanner>
+        ) : null}
+
+        {lines.length === 0 ? null : (
+          <TransferTally
+            lines={lines}
+            itemOf={itemOf}
+            uomOf={uomOf}
+            nameOf={nameOf}
+            currentLotId={addedLotId}
+            duplicateLotId={duplicateLotId}
+            focusKey={scanKey}
+            onQty={setQty}
+            onKeypad={setKeypadFor}
+            onOpen={setViewLotId}
           />
+        )}
 
-          <div className="stock-transfer__status">{result}</div>
-
-          {/* 결정 14 — 보류는 막지 않고 알린다. 막으면 현장이 물건을 못 옮긴다. */}
-          {held.length > 0 ? (
-            <AlertBanner
-              variant="warning"
-              title={t.hold.title(held.map((each) => each.lotNo).join(' · '))}
-            >
-              {t.hold.description}
+        <section className="stock-transfer__bar">
+          {saveFailed ? (
+            <AlertBanner variant="error" title={t.saveFailed.title}>
+              {t.saveFailed.description}
             </AlertBanner>
           ) : null}
-
-          {lines.length === 0 ? null : (
-            <TransferTally
-              lines={lines}
-              itemOf={itemOf}
-              uomOf={uomOf}
-              nameOf={nameOf}
-              currentLotId={addedLotId}
-              duplicateLotId={duplicateLotId}
-              focusKey={scanKey}
-              onQty={setQty}
-              onKeypad={setKeypadFor}
-              onOpen={setViewLotId}
-            />
-          )}
-
-          <section className="stock-transfer__bar">
-            {saveFailed ? (
-              <AlertBanner variant="error" title={t.saveFailed.title}>
-                {t.saveFailed.description}
-              </AlertBanner>
-            ) : null}
-            {/*
+          {/*
               지금 할 일 하나만 말한다. 남은 것을 모두 늘어놓으면 무엇부터 해야 하는지가 도리어
               묻힌다 - 스캐너를 든 손은 한쪽뿐이다.
             */}
-            {nextStep === null ? null : <p className="stock-transfer__note">{nextStep}</p>}
-            <div className="stock-transfer__bar-row">
-              {lines.length === 0 ? null : (
-                <p className="stock-transfer__sum">
-                  <strong>{t.summary.count(lines.length)}</strong>
-                  {totalText === null ? null : <span>{totalText}</span>}
-                </p>
-              )}
-              <Button
-                className="stock-transfer__wide"
-                variant="filled"
-                size="2xl"
-                disabled={!shipReady}
-                onClick={() => void ship()}
-              >
-                {t.submitShip}
-              </Button>
-            </div>
-          </section>
+          {nextStep === null ? null : <p className="stock-transfer__note">{nextStep}</p>}
+          <div className="stock-transfer__bar-row">
+            {lines.length === 0 ? null : (
+              <p className="stock-transfer__sum">
+                <strong>{t.summary.count(lines.length)}</strong>
+                {totalText === null ? null : <span>{totalText}</span>}
+              </p>
+            )}
+            <Button
+              className="stock-transfer__wide"
+              variant="filled"
+              size="2xl"
+              disabled={!shipReady}
+              onClick={() => void ship()}
+            >
+              {t.submitShip}
+            </Button>
+          </div>
+        </section>
 
-          {viewed === null ? null : (
-            <TransferSheet
-              line={viewed}
-              item={itemOf(viewed)}
-              fromWarehouse={warehouseNameOf(viewed.warehouseId)}
-              uom={uomOf(viewed.uomId)}
-              onRemove={() => {
-                setLines((current) => current.filter((each) => each.lotId !== viewed.lotId));
-                setViewLotId(null);
-                setAddedLotId(null);
-                setDuplicateLotId(null);
-              }}
-              onDismiss={() => {
-                setViewLotId(null);
-              }}
-            />
-          )}
+        {viewed === null ? null : (
+          <TransferSheet
+            line={viewed}
+            item={itemOf(viewed)}
+            fromWarehouse={warehouseNameOf(viewed.warehouseId)}
+            uom={uomOf(viewed.uomId)}
+            onRemove={() => {
+              setLines((current) => current.filter((each) => each.lotId !== viewed.lotId));
+              setViewLotId(null);
+              setAddedLotId(null);
+              setDuplicateLotId(null);
+            }}
+            onDismiss={() => {
+              setViewLotId(null);
+            }}
+          />
+        )}
 
-          {keypad === null ? null : (
-            <DockedNumberPad
-              head={nameOf(keypad.line)}
-              fieldId={qtyFieldId(keypad.line.lotId)}
-              value={keypad.line.qty}
-              onChange={(value) => {
-                setQty(keypad.line.lotId, value);
-              }}
-              onClose={() => {
-                setKeypadFor(null);
-              }}
-              move={{
-                canPrevious: keypad.at > 0,
-                canNext: keypad.at < lines.length - 1,
-                onPrevious: () => {
-                  setKeypadFor(lines[keypad.at - 1]?.lotId ?? null);
-                },
-                onNext: () => {
-                  setKeypadFor(lines[keypad.at + 1]?.lotId ?? null);
-                },
-                previousLabel: t.from.previousLine,
-                nextLabel: t.from.nextLine,
-              }}
-              allowDecimal
-            />
-          )}
-        </>
-      )}
+        {keypad === null ? null : (
+          <DockedNumberPad
+            head={nameOf(keypad.line)}
+            fieldId={qtyFieldId(keypad.line.lotId)}
+            value={keypad.line.qty}
+            onChange={(value) => {
+              setQty(keypad.line.lotId, value);
+            }}
+            onClose={() => {
+              setKeypadFor(null);
+            }}
+            move={{
+              canPrevious: keypad.at > 0,
+              canNext: keypad.at < lines.length - 1,
+              onPrevious: () => {
+                setKeypadFor(lines[keypad.at - 1]?.lotId ?? null);
+              },
+              onNext: () => {
+                setKeypadFor(lines[keypad.at + 1]?.lotId ?? null);
+              },
+              previousLabel: t.from.previousLine,
+              nextLabel: t.from.nextLine,
+            }}
+            allowDecimal
+          />
+        )}
+      </>
     </div>
   );
 };

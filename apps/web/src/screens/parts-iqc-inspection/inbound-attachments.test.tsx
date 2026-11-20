@@ -75,6 +75,10 @@ describe('IQC 입하 LOT 파일 첨부', () => {
     );
 
     const dialog = await screen.findByRole('dialog', { name: t.title });
+    /* 받는 형식 · 크기 한도는 늘 펼쳐 두지 않고 「첨부할 파일」 옆 ⓘ 로 둔다. */
+    expect(
+      within(dialog).getByRole('button', { name: messages.inspectionDocuments.help }),
+    ).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: t.save }));
     expect(await within(dialog).findByText(t.fileRequired)).toBeInTheDocument();
     expect(posted).toHaveLength(0);

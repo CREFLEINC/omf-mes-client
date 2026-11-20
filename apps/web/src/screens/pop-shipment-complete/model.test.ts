@@ -6,19 +6,16 @@ import { POP_SCREENS } from '../../patterns/pop-screen-catalog';
 
 import { completion, requestRow } from './fixtures';
 import {
-  STAGING_ROLE,
   blockersOfConflict,
   completeFailureOf,
   directCodeOf,
   groupBlockers,
-  hasMoreBelow,
   isAlreadyCompleted,
   isCompletable,
   lookupFailureOf,
   minusDays,
   orderSearchRows,
   overText,
-  portionSummaryOf,
   qtyWithUom,
   searchQueryOf,
   toSearchRow,
@@ -127,6 +124,16 @@ describe('P-04-07 찾기 조건', () => {
     });
   });
 
+  it('#334 — 한 쪽 건수를 주면(창 목록 칸에 드는 카드 수) 그 건수로 쪽을 받는다. 조건은 같다', () => {
+    expect(searchQueryOf({ q: '', readyOnly: true, page: 2, size: 4 }, '2026-11-18')).toEqual({
+      shipDateFrom: '2026-10-19',
+      completionReadyOnly: true,
+      sort: 'requestedShipDate',
+      page: 2,
+      size: 4,
+    });
+  });
+
   it('달력 날짜를 시간대와 무관하게 뺀다(달·해 넘김)', () => {
     expect(minusDays('2026-01-05', 30)).toBe('2025-12-06');
   });
@@ -167,48 +174,7 @@ describe('P-04-07 찾기 조건', () => {
   });
 });
 
-describe('LOT 몫 요약·단위·409 막는 이유', () => {
-  const portion = (
-    warehouseName: string,
-    qty: number,
-    locationSystemRoleCode: string | null = null,
-  ) => ({
-    warehouseId: warehouseName === 'A' ? 1 : 2,
-    warehouseCode: warehouseName,
-    warehouseName,
-    locationId: qty,
-    locationCode: `L-${String(qty)}`,
-    locationSystemRoleCode,
-    qty,
-  });
-
-  it('US4-5 한 창고 한 자리는 요약하지 않고, 여러 창고는 창고별 합, 적치 대기 자리는 따로 센다', () => {
-    expect(portionSummaryOf([portion('A', 40)])).toBeNull();
-    expect(portionSummaryOf([portion('A', 20), portion('B', 20)])).toEqual({
-      warehouses: [
-        { name: 'A', qty: 20, staging: 0 },
-        { name: 'B', qty: 20, staging: 0 },
-      ],
-      staging: 0,
-    });
-    expect(portionSummaryOf([portion('A', 20), portion('A', 10, STAGING_ROLE)])).toEqual({
-      warehouses: [{ name: 'A', qty: 30, staging: 10 }],
-      staging: 10,
-    });
-  });
-
-  it('Q2 적치 대기 몫은 그 몫이 있는 창고에만 붙는다 — 다른 창고 몫에 섞이지 않는다', () => {
-    expect(
-      portionSummaryOf([portion('A', 25), portion('A', 5, STAGING_ROLE), portion('B', 10)]),
-    ).toEqual({
-      warehouses: [
-        { name: 'A', qty: 30, staging: 5 },
-        { name: 'B', qty: 10, staging: 0 },
-      ],
-      staging: 5,
-    });
-  });
-
+describe('단위·409 막는 이유', () => {
   it('US4-5 라인 단위가 하나면 합계에 붙이고, 섞이면 붙이지 않는다', () => {
     expect(uomOf(completion())).toBe('EA');
     expect(qtyWithUom(160, 'EA')).toBe('160 EA');
@@ -242,12 +208,6 @@ describe('둘러보기 보완(T055)', () => {
     expect(directCodeOf(' SR-261118-001 ')).toBe('SHPREQ:SR-261118-001');
     expect(directCodeOf('SHPREQ:SR-261118-001')).toBe('SHPREQ:SR-261118-001');
     expect(directCodeOf('shpreq:SR-261118-001')).toBe('SHPREQ:SR-261118-001');
-  });
-
-  it('W-8 아래로 더 이어지는가 — 끝에서 8px 안이면 다 본 것', () => {
-    expect(hasMoreBelow({ scrollTop: 0, clientHeight: 400, scrollHeight: 900 })).toBe(true);
-    expect(hasMoreBelow({ scrollTop: 495, clientHeight: 400, scrollHeight: 900 })).toBe(false);
-    expect(hasMoreBelow({ scrollTop: 0, clientHeight: 400, scrollHeight: 400 })).toBe(false);
   });
 
   it('W-7 「출하 완료」 탭 이름은 단말 언어를 따른다 — 다른 탭은 그대로', () => {

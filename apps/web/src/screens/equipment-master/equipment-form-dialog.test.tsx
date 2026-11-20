@@ -91,9 +91,9 @@ describe('EquipmentFormDialog', () => {
   it('설비유형 선택지가 비면 준비 중 안내를 붙인다', () => {
     renderDialog({ typeOptions: [] });
 
-    expect(screen.getByRole('combobox', { name: t.fields.equipmentType })).toHaveAccessibleDescription(
-      messages.pendingCode.note,
-    );
+    expect(
+      screen.getByRole('combobox', { name: t.fields.equipmentType }),
+    ).toHaveAccessibleDescription(messages.pendingCode.note);
   });
 
   /* 소속 그룹·공정이 비는 것은 정상 상태다 — 없는 제약을 말하면 안 된다. */
@@ -216,7 +216,9 @@ describe('EquipmentFormDialog', () => {
     renderDialog();
 
     expect(screen.getByLabelText(t.fields.calibrationCycle)).toHaveTextContent('12 개월');
-    expect(screen.getByText(t.actionReasons.calibrationCycleOwnedElsewhere)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: t.actionReasons.calibrationCycleOwnedElsewhere }),
+    ).toBeInTheDocument();
     // 잠긴 입력칸을 두지 않는다 — 「언젠가 여기서 고칠 수 있다」를 뜻하게 된다.
     expect(
       screen.queryByRole('textbox', { name: new RegExp(t.fields.calibrationCycle) }),

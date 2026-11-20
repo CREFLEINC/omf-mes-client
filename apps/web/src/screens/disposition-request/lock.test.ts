@@ -108,20 +108,11 @@ describe('toRequestLock — ② 판정 의뢰', () => {
 });
 
 describe('toFollowUpStates — ③ 후속', () => {
-  it('처분이 없으면 셋 다 「처분이 내려지면」 사유다', () => {
-    const states = toFollowUpStates([]);
-
-    expect(states.rework.reason).toBe(t.result.followUp.reworkNotDecided);
-    expect(states.disposal.reason).toBe(t.result.followUp.disposalNotDecided);
-    expect(states.reinstate.reason).toBe(t.result.followUp.reinstateNotDecided);
-  });
-
-  /* 조건이 맞아도 열 화면이 없으면 그 사실을 사유로 말한다 — 지어낸 주소로 보내지 않는다. */
-  it('재작업 처분이 있으면 사유가 「현장 단말 화면」으로 바뀐다', () => {
-    const states = toFollowUpStates([toDecisionRow(decisionFixture())]);
-
-    expect(states.rework.reason).toBe(t.result.followUp.reworkUnavailable);
-    expect(states.disposal.reason).toBe(t.result.followUp.disposalNotDecided);
+  it('정상 처분이 없으면 재고 재등록은 「처분이 내려지면」 사유로 잠근다', () => {
+    expect(toFollowUpStates([]).reinstate.reason).toBe(t.result.followUp.reinstateNotDecided);
+    expect(toFollowUpStates([toDecisionRow(decisionFixture())]).reinstate.reason).toBe(
+      t.result.followUp.reinstateNotDecided,
+    );
   });
 
   it('정상 처분이 있으면 재고 재등록 후속 작업을 연다', () => {

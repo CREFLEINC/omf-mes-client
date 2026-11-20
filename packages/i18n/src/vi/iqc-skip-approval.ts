@@ -17,7 +17,6 @@ export const iqcSkipApproval: Translated<typeof ko.iqcSkipApproval> = {
     progress: 'Tiến trình phê duyệt',
     reason: 'Toàn văn lý do',
     decision: 'Phê duyệt',
-    approvalOutcome: 'Kết quả khi phê duyệt',
     decisionSubject: 'Đối tượng phê duyệt',
   },
   typePendingNote:
@@ -51,7 +50,6 @@ export const iqcSkipApproval: Translated<typeof ko.iqcSkipApproval> = {
     blockedNotOpenable: 'Mở: đối tượng này không có màn hình nào để mở',
     blockedNoScreenId: 'Mở: chưa xác định màn hình mở đối tượng này',
     blockedUnmapped: 'Mở: màn hình này chưa có trên web quản trị',
-    note: 'Nội dung được xem ở màn hình gốc',
   },
   progress: {
     position: (current: number, total: number): string =>
@@ -63,8 +61,6 @@ export const iqcSkipApproval: Translated<typeof ko.iqcSkipApproval> = {
     waitingPending: 'Chưa duyệt',
     mine: 'Bước của tôi',
     noSteps: 'Không nhận được bước phê duyệt nào',
-    limitRangeNote:
-      'Khoảng hạn mức chưa được hiển thị trên màn hình. Hãy xem phạm vi phê duyệt theo các bước của luồng phê duyệt.',
   },
   filters: {
     chipPeriod: (from: string, to: string): string => `Ngày trình: ${from} ~ ${to}`,

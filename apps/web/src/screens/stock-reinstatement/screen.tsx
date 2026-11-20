@@ -20,6 +20,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { isStockableLocation } from '../../patterns/location-level';
 import { SaveErrorBanner } from '../../patterns/master';
 import { ScreenHeader } from '../../patterns/screen-header';
@@ -472,9 +473,7 @@ export const StockReinstatementScreen = () => {
           />
         }
       />
-      <div className="banner-slot">
-        <AlertBanner variant="info">{t.scopeNotice}</AlertBanner>
-      </div>
+      {/* 화면 머리의 띠 대신 「재등록 입력」 제목 옆 ⓘ 로 둔다 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
       <div className="stock-reinstatement-workspace">
         <section className="pane stock-reinstatement-pane" aria-label={t.panes.candidates}>
           <h2 className="pane-title">{t.panes.candidates}</h2>
@@ -620,7 +619,12 @@ export const StockReinstatementScreen = () => {
                 )}
               </div>
               <div className="stock-reinstatement-section">
-                <h3>{t.panes.form}</h3>
+                <h3>
+                  <span className="info-label">
+                    {t.panes.form}
+                    <InfoTip text={t.scopeNotice} />
+                  </span>
+                </h3>
                 <div className="form-grid stock-reinstatement-form">
                   <SelectField
                     label={t.fields.targetWarehouse}

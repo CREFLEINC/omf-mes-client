@@ -17,6 +17,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
@@ -262,16 +263,23 @@ export const AlarmRecipientSettingsScreen = () => {
             onChange={(event) => change({ ...draft, enabled: event.target.checked })}
           />
           <div>
-            <Switch
-              label={t.fields.zalo}
-              checked={draft.zaloEnabled}
-              disabled={!draft.enabled}
-              aria-describedby={zaloNoteId}
-              onChange={(event) => change({ ...draft, zaloEnabled: event.target.checked })}
-            />
-            <span id={zaloNoteId} className="field-note">
-              {draft.enabled ? t.state.zaloHelp : t.state.zaloNeedsEnabled}
+            {/* 실패해도 알림센터는 받는다는 규칙은 Switch 옆 ⓘ 로(관리웹 정리 시안 A). */}
+            <span className="info-label">
+              <Switch
+                label={t.fields.zalo}
+                checked={draft.zaloEnabled}
+                disabled={!draft.enabled}
+                aria-describedby={draft.enabled ? undefined : zaloNoteId}
+                onChange={(event) => change({ ...draft, zaloEnabled: event.target.checked })}
+              />
+              <InfoTip text={t.state.zaloHelp} />
             </span>
+            {/* 잠긴 사유는 잠겼을 때만 Switch 아래에 둔다. */}
+            {!draft.enabled && (
+              <span id={zaloNoteId} className="field-note">
+                {t.state.zaloNeedsEnabled}
+              </span>
+            )}
           </div>
         </div>
 
@@ -400,7 +408,6 @@ export const AlarmRecipientSettingsScreen = () => {
     <>
       <PageHeader
         title={t.title}
-        description={t.description}
         breadcrumb={
           <Breadcrumb
             items={[{ label: t.breadcrumbRoot }, { label: t.title }]}

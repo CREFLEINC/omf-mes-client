@@ -130,8 +130,8 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
       'Đây là lệnh lập theo ERP S/O nên không sửa được khách hàng, nơi giao hàng và mặt hàng, số lượng của các dòng.',
     requestedQtyFixed:
       'Số lượng yêu cầu được tự động điền bằng số lượng còn lại của ERP S/O và không sửa được.',
-    lineNoAssignedByServer:
-      'Số dòng do máy chủ cấp. Chỉ chọn được kho đang dùng của đơn vị kinh doanh đã chọn (trừ kho hàng lỗi).',
+    warehouseRule:
+      'Chỉ chọn được kho đang dùng của đơn vị kinh doanh đã chọn (trừ kho hàng lỗi).',
     businessUnitAutoFilled:
       'Phạm vi dữ liệu của tài khoản chỉ có một đơn vị kinh doanh nên đã được điền tự động',
     addLineWarehouse:

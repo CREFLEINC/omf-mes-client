@@ -5,8 +5,6 @@ import type { Translated } from './translated';
 export const returnReceipt: Translated<typeof ko.returnReceipt> = {
   title: 'Đăng ký nhập kho hàng trả và khiếu nại',
   breadcrumbRoot: 'Quản lý bán hàng / xuất hàng',
-  scopeNotice:
-    'Hàng trả và khiếu nại của lô xuất hàng đã xác nhận được nhập kho ở đây. Hàng trả vào ở trạng thái tạm giữ (Hold), còn đánh giá làm lại hoặc hủy thì làm ở màn hình yêu cầu đánh giá.',
   panes: {
     search: '① Tìm lô xuất hàng gốc',
     receipt: '② Nhập kho hàng trả',
@@ -54,7 +52,6 @@ export const returnReceipt: Translated<typeof ko.returnReceipt> = {
       'Hãy mở rộng khoảng thời gian hoặc đổi từ khóa. Nếu không tìm được lô xuất hàng gốc thì nhập tay ở bên dưới.',
     beyondLast: 'Trang này trống. Hãy quay về trang đầu.',
     loading: 'Đang tải các lô xuất hàng',
-    notFoundHint: 'Nếu không tìm được lô xuất hàng gốc thì nhập tay ở bên dưới.',
     lotCount: (count: number): string => `${String(count)} LOT`,
   },
   actions: {
@@ -82,8 +79,6 @@ export const returnReceipt: Translated<typeof ko.returnReceipt> = {
     noAllocations:
       'Lô xuất hàng này không có LOT nào được phân bổ. Hãy đăng ký không cần lô xuất hàng gốc.',
   },
-  sourceFixed:
-    'Nguồn gốc được cố định là khiếu nại của khách hàng. Loại nhập kho là nhập kho hàng trả.',
   lot: {
     label: 'Số LOT',
     placeholder: 'Nhập chính xác số LOT',
@@ -105,7 +100,7 @@ export const returnReceipt: Translated<typeof ko.returnReceipt> = {
   },
   form: {
     reasonPlaceholder: 'Không chọn',
-    reasonHelp: 'Chỉ chọn lý do trả hàng thuần túy. Giá trị lấy từ mã chung.',
+    reasonHelp: 'Chỉ chọn lý do trả hàng thuần túy.',
     remarksHelp: 'Ghi lại nội dung và tình trạng khách hàng nói sẽ giúp ích cho việc đánh giá.',
     warehouseHelp: 'Hàng trả được ưu tiên nhập vào kho hàng lỗi.',
     warehouseNotDefect:

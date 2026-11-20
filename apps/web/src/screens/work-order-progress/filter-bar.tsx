@@ -190,7 +190,6 @@ export const ProgressFilterBar = ({
 
       <div className="work-order-progress-filter-footer">
         {/* A-11 — 만들지 않은 조건을 한 문장으로 밝힌다. */}
-        <p className="field-note">{t.processUnavailable}</p>
 
         <div className="filter-actions work-order-progress-filter-buttons">
           <Button

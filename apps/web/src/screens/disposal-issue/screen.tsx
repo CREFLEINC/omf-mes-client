@@ -27,7 +27,6 @@ import { ApprovalProgressPane, type ApprovalProgressState } from './approval-pro
 import {
   DEFECT_WAREHOUSE_TYPE_CODES,
   DISPOSAL_PARTNER_ROLE_CODE,
-  isDefectWarehouseTypePending,
   isDisposalPartnerRolePending,
   narrowToDefectWarehouses,
   PLACEHOLDER_DISPOSAL_ISSUE_CODES,
@@ -1322,14 +1321,10 @@ export const DisposalIssueScreen = () => {
   );
 
   /**
-   * 창고 선택칸의 한계 안내. **못 불러온 것이 먼저다** — 목록을 받지도 못했는데 「좁히지
-   * 못했다」를 말하면 사용자가 원인을 잘못 읽는다. 좁힘이 살아나면 마지막 갈래가 사라진다.
+   * 창고 선택칸의 한계 안내 — 불러오기 실패 · 잘림뿐이다. 「폐기 대상 창고를 가려내지 못해 모든
+   * 창고를 보입니다」는 창고 유형 값 목록이 없다는 개발 사정이라 걷었다(관리웹 정리 시안 A).
    */
-  const warehouseNote =
-    lookupNote(warehouses) ??
-    (isDefectWarehouseTypePending(DEFECT_WAREHOUSE_TYPE_CODES)
-      ? t.filters.warehouseTypePending
-      : undefined);
+  const warehouseNote = lookupNote(warehouses);
 
   /**
    * 값 목록이 확정되지 않은 코드의 선택지. **화면이 만들어 조건 줄에 넘긴다** —
