@@ -1,4 +1,4 @@
-import { AlertBanner, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Icon, IconButton, Select } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ApiError } from '@omf-mes/api-client';
 import { useEffect, useRef, useState } from 'react';
@@ -10,7 +10,10 @@ import { Button } from '../../patterns/button';
 import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useLocationByCode, useLocations } from '../../patterns/locations';
-import { useItemCodes } from '../../patterns/masters';
+import { useItemCodes, useItemLabels } from '../../patterns/masters';
+import { FitName } from '../../patterns/fit-name';
+import { signal } from '../../patterns/scan-feedback';
+import { ScanZone } from '../../patterns/scan-zone';
 import { referenceFromQuery, referenceLabel } from '../../patterns/reference';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
@@ -31,19 +34,16 @@ import {
 } from './queries';
 import {
   ANYWHERE,
-  INSPECTION_PENDING,
   MATCHED,
   NOT_ALLOWED,
   UNDESIGNATED,
   RECEIPT_LABEL,
   canSubmit,
   destinationOf,
-  differsFromExpected,
   lotLineOf,
   lotRefusalOf,
   managesLocations,
   putawayTaskIdsOf,
-  qtyProblemOf,
   queuedForLotsOf,
   stockedLines,
   toPutawayDraft,
@@ -54,6 +54,9 @@ import {
   withLotLine,
   type DraftLine,
 } from './receipt';
+import { qtyFieldId, ReceiptLines } from './receipt-lines';
+import { ReceiptSheet } from './receipt-sheet';
+import '../../patterns/scan-result.css';
 import './screen.css';
 
 const t = messages.productReceipt;
@@ -67,9 +70,6 @@ const isRestrictedRejection = (error: ApiError | undefined): boolean =>
     : error.kind !== 'network' && error.code === 'LOCATION_ITEM_RESTRICTED');
 
 type Outcome = 'held' | 'sent' | 'receivedOnly' | 'putawayRejected' | 'rejected';
-
-/* 숫자판이 옮겨 갈 칸을 찾는 이름. 담는 쪽과 찾는 쪽이 이 함수 하나를 함께 쓴다. */
-const qtyFieldId = (key: string): string => `product-receipt-qty-${key}`;
 
 export const ProductReceiptScreen = () => {
   useScreenTitle(t.title);
@@ -96,6 +96,19 @@ export const ProductReceiptScreen = () => {
   const [keypadFor, setKeypadFor] = useState<string | null>(null);
   /* 같은 라벨을 다시 읽으면 상태는 그대로라 소리가 다시 나지 않는다. 회차를 함께 센다. */
   const [scanSeq, setScanSeq] = useState(0);
+  /* LOT · 인식표 스캔만 센다 — 위치 스캔으로 결과 칸이 바뀌면 안 된다. */
+  const [codeSeq, setCodeSeq] = useState(0);
+  /* 이번 스캔을 판정했나 — 같은 회차를 두 번(조회가 다시 와도) 판정하지 않는다. */
+  const judgedSeq = useRef(0);
+  const codeSeqRef = useRef(0);
+  codeSeqRef.current = codeSeq;
+  /** 방금 담은 줄 · 이미 담은 LOT 을 또 찍은 줄 — 결과 칸과 표 강조(사용자 지시 2026-11-20). */
+  const [addedKey, setAddedKey] = useState<string | null>(null);
+  const [duplicateKey, setDuplicateKey] = useState<string | null>(null);
+  /** 인식표를 찍어 줄이 펼쳐졌다 — 결과 칸 「인식표 1개 → n줄」. */
+  const [unitAdded, setUnitAdded] = useState(false);
+  /** 시트로 연 줄. */
+  const [viewKey, setViewKey] = useState<string | null>(null);
   /* 이미 입고해 줄에서 뺀 생산 LOT. 다시 스캔하면 줄을 더하지 않고 바로 거절한다. */
   const [refusedStockedLotIds, setRefusedStockedLotIds] = useState<ReadonlySet<number>>(new Set());
   const contentsSection = useRef<HTMLDivElement | null>(null);
@@ -105,6 +118,8 @@ export const ProductReceiptScreen = () => {
    * 두 번째가 들어와 같은 LOT 이 두 번 재고로 선다.
    */
   const inFlight = useRef(false);
+  const linesRef = useRef<DraftLine[]>([]);
+  linesRef.current = lines;
 
   const warehouses = useWarehouses();
   const warehouse =
@@ -127,6 +142,7 @@ export const ProductReceiptScreen = () => {
   const destination = destinationOf(warehouse, atLocation.data ?? null, locations.data ?? []);
 
   const itemCode = useItemCodes(lines.map((line) => line.itemId));
+  const itemLabels = useItemLabels(lines.map((line) => line.itemId));
   /* 줄의 LOT 상세 — 인식표 구성 줄이든 생산 LOT 라벨 줄이든 같은 자리에서 읽는다(omf-all-around#293). */
   const lots = useLots([...new Set(lines.map((line) => line.lotId))]);
   const plantId = currentPlantId();
@@ -219,9 +235,22 @@ export const ProductReceiptScreen = () => {
         qty: typed.get(unitLineKey(row.handlingUnitContentId)) ?? String(row.qty),
       }));
     });
+
+    /* 새 인식표의 구성이 왔을 때만 — 앞 인식표 구성으로 다음 스캔을 판정하지 않는다. */
+    if (rows.length > 0 && judgedSeq.current !== codeSeqRef.current) {
+      judgedSeq.current = codeSeqRef.current;
+      setUnitAdded(true);
+      setAddedKey(null);
+      setDuplicateKey(null);
+      signal('confirm');
+    }
   }, [contents.data]);
 
   /* 받을 수 있는 생산 LOT 이면 줄을 더한다. 수량은 양품 실적으로 채우고 고칠 수 있게 둔다. */
+  /*
+   * 이미 담은 LOT 을 또 읽으면 전에는 소리도 알림도 없이 넘어갔다 — 회색 「이미 담은 LOT」과 몇 번 줄인지 알린다
+   * (사용자 지시 2026-11-20).
+   */
   useEffect(() => {
     const lot = scannedLot.data;
 
@@ -229,8 +258,26 @@ export const ProductReceiptScreen = () => {
       return;
     }
 
-    setLines((current) => withLotLine(current, lotLineOf(lot)));
-  }, [scannedLot.data]);
+    if (judgedSeq.current === codeSeq) {
+      return;
+    }
+
+    judgedSeq.current = codeSeq;
+    const line = lotLineOf(lot);
+    setUnitAdded(false);
+
+    if (linesRef.current.some((each) => each.key === line.key)) {
+      setDuplicateKey(line.key);
+      setAddedKey(null);
+      signal('warn');
+      return;
+    }
+
+    setDuplicateKey(null);
+    setAddedKey(line.key);
+    signal('confirm');
+    setLines((current) => withLotLine(current, line));
+  }, [scannedLot.data, codeSeq, refusedStockedLotIds]);
 
   useEffect(() => {
     if (stockedLotIds === '') {
@@ -247,6 +294,11 @@ export const ProductReceiptScreen = () => {
     onScan: (value) => {
       setScannedCode(value.trim());
       setScanSeq((seq) => seq + 1);
+      setCodeSeq((seq) => seq + 1);
+      setAddedKey(null);
+      setDuplicateKey(null);
+      setUnitAdded(false);
+      setViewKey(null);
     },
   });
 
@@ -267,7 +319,13 @@ export const ProductReceiptScreen = () => {
     setScannedLocation(null);
     setLines([]);
     setKeypadFor(null);
+    setAddedKey(null);
+    setDuplicateKey(null);
+    setUnitAdded(false);
     unitScan.focus();
+  });
+  useBackStep(viewKey !== null, () => {
+    setViewKey(null);
   });
 
   /* 한 번에 받는 조회라 실패하면 줄 전부가 같은 상태다. 그래도 대리키는 보이지 않는다. */
@@ -292,6 +350,10 @@ export const ProductReceiptScreen = () => {
     setOutcome(null);
     setSaveFailed(false);
     setKeypadFor(null);
+    setAddedKey(null);
+    setDuplicateKey(null);
+    setUnitAdded(false);
+    setViewKey(null);
     unitScan.focus();
   };
 
@@ -425,90 +487,177 @@ export const ProductReceiptScreen = () => {
     );
   }
 
+  const itemOf = (line: DraftLine) => ({
+    itemCode: itemLabels.get(line.itemId)?.itemCode ?? referenceLabel(itemCode(line.itemId)),
+    itemName: itemLabels.get(line.itemId)?.itemName ?? '',
+  });
+  const lotNoText = (line: DraftLine) => referenceLabel(lotNo(line.lotId));
+  const setQty = (key: string, value: string) => {
+    setLines((current) =>
+      current.map((each) => (each.key === key ? { ...each, qty: value } : each)),
+    );
+  };
+  const viewed = lines.find((line) => line.key === viewKey) ?? null;
+  const added = lines.find((line) => line.key === addedKey) ?? null;
+  const duplicateAt = lines.findIndex((line) => line.key === duplicateKey);
+  const total = lines.reduce((sum, line) => sum + (Number(line.qty) || 0), 0);
+  /*
+   * 손 입력 아이콘은 화면 오른쪽 아래 한 자리에 뜬다 — 두 구역이 함께 띄우면 겹친다. 지금 받을 스캔 쪽 하나만:
+   * 담은 뒤 위치가 아직이면 위치, 아니면 LOT · 인식표.
+   */
+  const locationStep = lines.length > 0 && managed && destination === null;
+
+  /* 방금 찍은 결과 칸 — 담음 초록 · 이미 담음 회색 · 담지 않음 빨강(사용자 지시 2026-11-20). */
+  const rejectTitle = unit.isError
+    ? (failureText(unit.error, t.unit.loadFailed) ?? t.unit.loadFailed)
+    : scannedLot.isError
+      ? (failureText(scannedLot.error, t.unit.lotLoadFailed) ?? t.unit.lotLoadFailed)
+      : codeNotFound
+        ? t.unit.notFound(scannedCode ?? '')
+        : foundLot !== null && lotRefusal !== null
+          ? t.unit.lotRefused[lotRefusal](foundLot.lotNo)
+          : foundLot !== null && lotStocked
+            ? t.unit.lotRefused.stocked(foundLot.lotNo)
+            : null;
+
+  const result =
+    scannedCode !== null && (unit.isPending || scannedLot.isFetching) ? (
+      <p role="status">{t.unit.loading}</p>
+    ) : rejectTitle !== null ? (
+      <section className="last-scan" data-kind="reject" aria-label={t.result.rejected}>
+        <p className="last-scan__bar">
+          <Icon name="block" size={22} />
+          <span>{t.result.rejected}</span>
+        </p>
+        <div className="last-scan__body" role="alert">
+          <p className="last-scan__why">{rejectTitle}</p>
+        </div>
+      </section>
+    ) : foundUnit !== null && contents.isSuccess && contents.data.length === 0 ? (
+      <AlertBanner variant="warning" title={t.unit.empty}>
+        {t.unit.picked(foundUnit.handlingUnitNo)}
+      </AlertBanner>
+    ) : duplicateAt >= 0 ? (
+      <section className="last-scan" data-kind="duplicate" aria-label={t.result.duplicate}>
+        <p className="last-scan__bar">
+          <Icon name="info" size={22} />
+          <span>{t.result.duplicate}</span>
+        </p>
+        <div className="last-scan__body">
+          <p className="last-scan__why">{t.result.duplicateRow(duplicateAt + 1)}</p>
+          <p className="last-scan__lot">
+            {lines[duplicateAt] === undefined ? '' : lotNoText(lines[duplicateAt])}
+          </p>
+        </div>
+      </section>
+    ) : foundUnit !== null && unitAdded ? (
+      <section className="last-scan" data-kind="ok" aria-label={t.result.added}>
+        <p className="last-scan__bar">
+          <Icon name="check_circle" size={22} />
+          <span>{t.result.added}</span>
+        </p>
+        <div className="last-scan__body">
+          <p className="last-scan__why">{t.unit.picked(foundUnit.handlingUnitNo)}</p>
+          <p className="last-scan__note">{t.result.unitLines(lines.length)}</p>
+        </div>
+      </section>
+    ) : added === null ? (
+      foundUnit === null ? null : (
+        <p>{t.unit.picked(foundUnit.handlingUnitNo)}</p>
+      )
+    ) : (
+      <section className="last-scan" data-kind="ok" aria-label={t.result.added}>
+        <p className="last-scan__bar">
+          <Icon name="check_circle" size={22} />
+          <span>{t.result.added}</span>
+        </p>
+        <div className="last-scan__body">
+          <p className="last-scan__code">{itemOf(added).itemCode}</p>
+          <p className="last-scan__name">
+            <FitName text={itemOf(added).itemName} min={13} />
+          </p>
+          <p className="last-scan__qty">{added.qty}</p>
+          <p className="last-scan__lot">{lotNoText(added)}</p>
+        </div>
+      </section>
+    );
+
   return (
     <div className={keypad === null ? 'product-receipt' : 'product-receipt docked-pad-open'}>
-      <section className="product-receipt__section">
-        <h2>{t.warehouse.legend}</h2>
-        {warehouses.isPending ? <p role="status">{t.warehouse.loading}</p> : null}
-        {warehouses.isError ? (
-          <FailureBanner
-            variant="error"
-            title={failureText(warehouses.error, t.warehouse.loadFailed)}
-          />
-        ) : null}
-        <label htmlFor="product-receipt-warehouse">{t.warehouse.pick}</label>
-        <Select
-          id="product-receipt-warehouse"
-          placeholder={t.warehouse.pickPlaceholder}
-          size="xl"
-          value={warehouseId === null ? null : String(warehouseId)}
-          onChange={(value) => {
-            setWarehouseId(Number(value));
-            setScannedLocation(null);
-          }}
-          options={(warehouses.data ?? []).map((each) => ({
-            value: String(each.warehouseId),
-            label: each.warehouseName,
-          }))}
-        />
-        <p className="product-receipt__note">{t.warehouse.hint}</p>
-      </section>
-
-      {warehouse === null ? null : (
+      {/* 창고를 고르면 맨 위 한 줄로 접는다 — [바꾸기]로 다시 고른다(사용자 지시 2026-11-20). */}
+      {warehouse !== null ? (
+        <section className="product-receipt__dest" aria-label={t.warehouse.pick}>
+          <span className="product-receipt__dest-label">{t.warehouse.pick}</span>
+          <strong className="product-receipt__dest-name">{warehouse.warehouseName}</strong>
+          <Button
+            variant="outlined"
+            size="sm"
+            onClick={() => {
+              setWarehouseId(null);
+              setScannedLocation(null);
+            }}
+          >
+            {t.warehouseChange}
+          </Button>
+        </section>
+      ) : (
         <section className="product-receipt__section">
-          <h2>{t.unit.legend}</h2>
-          <TextField
-            ref={unitScan.ref}
-            label={required(t.unit.scanLabel)}
-            placeholder={t.unit.scanPlaceholder}
-            size="xl"
-            fullWidth
-          />
-          {/*
-           * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
-           * 입력을 누르면 그 칸이 열린다. 치는 도중 스캔이 오면 스캔값이 이긴다.
-           */}
-          {unitScan.manual ? (
-            <Button variant="outlined" size="xl" onClick={unitScan.submitManual}>
-              {t.unit.manualSubmit}
-            </Button>
-          ) : (
-            <Button variant="text" size="xl" onClick={unitScan.openManual}>
-              {t.unit.manualLabel}
-            </Button>
-          )}
-          {scannedCode !== null && (unit.isPending || scannedLot.isFetching) ? (
-            <p role="status">{t.unit.loading}</p>
-          ) : null}
-          {unit.isError ? (
-            <FailureBanner variant="error" title={failureText(unit.error, t.unit.loadFailed)} />
-          ) : null}
-          {scannedLot.isError ? (
+          <h2>{t.warehouse.legend}</h2>
+          {warehouses.isPending ? <p role="status">{t.warehouse.loading}</p> : null}
+          {warehouses.isError ? (
             <FailureBanner
               variant="error"
-              title={failureText(scannedLot.error, t.unit.lotLoadFailed)}
+              title={failureText(warehouses.error, t.warehouse.loadFailed)}
             />
           ) : null}
-          {codeNotFound ? (
-            <AlertBanner variant="error" title={t.unit.notFound(scannedCode ?? '')} />
-          ) : null}
-          {foundLot === null || lotRefusal === null ? null : (
-            <AlertBanner variant="error" title={t.unit.lotRefused[lotRefusal](foundLot.lotNo)} />
-          )}
-          {foundLot !== null && lotStocked ? (
-            <AlertBanner variant="error" title={t.unit.lotRefused.stocked(foundLot.lotNo)} />
-          ) : null}
-          {foundUnit === null ? null : <p>{t.unit.picked(foundUnit.handlingUnitNo)}</p>}
-          {foundUnit !== null && contents.isSuccess && contents.data.length === 0 ? (
-            <AlertBanner variant="warning" title={t.unit.empty} />
-          ) : null}
+          <label htmlFor="product-receipt-warehouse">{t.warehouse.pick}</label>
+          <Select
+            id="product-receipt-warehouse"
+            placeholder={t.warehouse.pickPlaceholder}
+            size="xl"
+            value={warehouseId === null ? null : String(warehouseId)}
+            onChange={(value) => {
+              setWarehouseId(Number(value));
+              setScannedLocation(null);
+            }}
+            options={(warehouses.data ?? []).map((each) => ({
+              value: String(each.warehouseId),
+              label: each.warehouseName,
+            }))}
+          />
+          <p className="product-receipt__note">{t.warehouse.hint}</p>
         </section>
+      )}
+
+      {warehouse === null ? null : (
+        <>
+          <ScanZone
+            field={unitScan}
+            label={required(t.unit.scanLabel)}
+            prompt={t.unit.scanPlaceholder}
+            standby
+            /* 스캐너가 못 읽는 라벨이 있다. 손으로 넣는 길은 구역 아래 아이콘(공유계약 D-3). */
+            tools={
+              locationStep ? undefined : (
+                <IconButton
+                  icon={unitScan.manual ? 'keyboard_return' : 'keyboard'}
+                  size="lg"
+                  aria-label={unitScan.manual ? t.unit.manualSubmit : t.unit.manualLabel}
+                  onClick={unitScan.manual ? unitScan.submitManual : unitScan.openManual}
+                />
+              )
+            }
+          />
+          <div className="product-receipt__status">{result}</div>
+        </>
       )}
 
       {lines.length === 0 ? null : (
         <>
           <section className="product-receipt__section" ref={contentsSection}>
-            <h2>{t.contents.legend}</h2>
+            <h2 className="product-receipt__title">
+              {t.contents.legend} <span>{t.tally.total(lines.length)}</span>
+            </h2>
             {/* 다른 기기가 먼저 입고한 것은 큐로는 알 수 없다. 두 번 서면 제품이 두 벌이 된다. */}
             {alreadyStocked.length > 0 ? (
               <AlertBanner variant="error" title={t.stocked.title}>
@@ -522,61 +671,19 @@ export const ProductReceiptScreen = () => {
                 })}
               </AlertBanner>
             ) : null}
-            {lines.map((line, index) => {
-              const problem = qtyProblemOf(line);
-              const lot = lots.data?.get(line.lotId);
-
-              return (
-                <div key={line.key} className="product-receipt__line">
-                  <TextField
-                    id={qtyFieldId(line.key)}
-                    label={required(t.contents.qtyLabel(nameOf(line)))}
-                    size="xl"
-                    fullWidth
-                    /*
-                     * 장갑을 끼고 한 손으로 조작한다. 기기 키보드는 키가 촘촘하고, 올라오면
-                     * 위치 스캔 칸과 완료 단추를 덮는다(설계 §7 · 공유계약 G-6).
-                     */
-                    inputMode="none"
-                    value={line.qty}
-                    onChange={(event) => {
-                      const next = event.target.value;
-                      setLines((current) =>
-                        current.map((each, at) => (at === index ? { ...each, qty: next } : each)),
-                      );
-                    }}
-                    onFocus={() => {
-                      setKeypadFor(line.key);
-                    }}
-                    error={problem === null ? undefined : t.contents.problem[problem]}
-                  />
-                  <p className="product-receipt__expected">
-                    {line.from === 'lot'
-                      ? t.contents.expectedGood(String(line.expectedQty))
-                      : t.contents.expected(String(line.expectedQty))}
-                  </p>
-                  {lot?.manufacturedAt == null ? null : (
-                    <p className="product-receipt__meta">
-                      {t.contents.manufactured(lot.manufacturedAt.slice(0, 10))}
-                    </p>
-                  )}
-                  {lot?.expiryDate == null ? null : (
-                    <p className="product-receipt__meta">{t.contents.expiry(lot.expiryDate)}</p>
-                  )}
-                  {/* 실물대로 받는다. 사유를 담을 자리가 계약에 없어 지어내지 않는다. */}
-                  {differsFromExpected(line) ? (
-                    <AlertBanner
-                      variant="warning"
-                      title={line.from === 'lot' ? t.contents.differsGood : t.contents.differs}
-                    />
-                  ) : null}
-                  {/* 입고는 막지 않는다. 막히는 것은 하류의 피킹·출하다. */}
-                  {lot?.statusCode === INSPECTION_PENDING ? (
-                    <AlertBanner variant="warning" title={t.notReleased} />
-                  ) : null}
-                </div>
-              );
-            })}
+            <ReceiptLines
+              lines={lines}
+              itemOf={itemOf}
+              lotNoOf={lotNoText}
+              statusOf={(line) => lots.data?.get(line.lotId)?.statusCode}
+              nameOf={nameOf}
+              currentKey={addedKey}
+              duplicateKey={duplicateKey}
+              focusKey={codeSeq}
+              onQty={setQty}
+              onKeypad={setKeypadFor}
+              onOpen={setViewKey}
+            />
             {/* 판정에 쓰는 값이라 캐시하지 않는다. 끊겨 있으면 물어볼 수 없다. */}
             {online ? null : <AlertBanner variant="info" title={t.releaseUnknown} />}
           </section>
@@ -585,26 +692,26 @@ export const ProductReceiptScreen = () => {
             <h2>{t.location.legend}</h2>
             {managed ? (
               <>
-                <TextField
-                  ref={locationScan.ref}
+                <ScanZone
+                  field={locationScan}
                   label={required(t.location.scanLabel)}
-                  placeholder={t.location.scanPlaceholder}
-                  size="xl"
-                  fullWidth
+                  prompt={t.location.scanPlaceholder}
+                  standby={destination !== null}
+                  tools={
+                    !locationStep ? undefined : (
+                      <IconButton
+                        icon={locationScan.manual ? 'keyboard_return' : 'keyboard'}
+                        size="lg"
+                        aria-label={
+                          locationScan.manual ? t.location.manualSubmit : t.location.manualLabel
+                        }
+                        onClick={
+                          locationScan.manual ? locationScan.submitManual : locationScan.openManual
+                        }
+                      />
+                    )
+                  }
                 />
-                {/*
-                 * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
-                 * 입력을 누르면 그 칸이 열린다. 치는 도중 스캔이 오면 스캔값이 이긴다.
-                 */}
-                {locationScan.manual ? (
-                  <Button variant="outlined" size="xl" onClick={locationScan.submitManual}>
-                    {t.location.manualSubmit}
-                  </Button>
-                ) : (
-                  <Button variant="text" size="xl" onClick={locationScan.openManual}>
-                    {t.location.manualLabel}
-                  </Button>
-                )}
                 {scannedLocation !== null && atLocation.isPending ? (
                   <p role="status">{t.location.loading}</p>
                 ) : null}
@@ -678,7 +785,11 @@ export const ProductReceiptScreen = () => {
               </AlertBanner>
             ) : null}
             {plantId === null ? <p className="product-receipt__note">{t.noPlant}</p> : null}
-            <div className="action-bar">
+            <div className="action-bar product-receipt__bar">
+              <p className="product-receipt__sum">
+                <strong>{t.summary.count(lines.length)}</strong>
+                <span>{total.toLocaleString('ko-KR')}</span>
+              </p>
               <Button
                 className="product-receipt__wide"
                 variant="filled"
@@ -690,15 +801,25 @@ export const ProductReceiptScreen = () => {
               </Button>
             </div>
           </section>
+          {viewed === null ? null : (
+            <ReceiptSheet
+              line={viewed}
+              item={itemOf(viewed)}
+              lotNo={lotNoText(viewed)}
+              manufacturedAt={lots.data?.get(viewed.lotId)?.manufacturedAt ?? null}
+              expiryDate={lots.data?.get(viewed.lotId)?.expiryDate ?? null}
+              onDismiss={() => {
+                setViewKey(null);
+              }}
+            />
+          )}
           {keypad === null ? null : (
             <DockedNumberPad
               head={t.contents.qtyLabel(nameOf(keypad.line))}
               fieldId={qtyFieldId(keypad.line.key)}
               value={keypad.line.qty}
               onChange={(next) => {
-                setLines((current) =>
-                  current.map((each, at) => (at === keypad.at ? { ...each, qty: next } : each)),
-                );
+                setQty(keypad.line.key, next);
               }}
               onClose={() => {
                 setKeypadFor(null);
