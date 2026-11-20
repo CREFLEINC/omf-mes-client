@@ -29,102 +29,6 @@
   font: var(--type-title-sm);
 }
 
-.inbound-close__cards {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3, 12px);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* 카드 전체가 누르는 곳이다(입하 중). 마감 취소 가능 카드는 단추만 누른다. */
-.inbound-close__card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1, 4px);
-  width: 100%;
-  box-sizing: border-box;
-  margin: 0;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  color: var(--on-surface);
-  font: var(--type-body-sm);
-  text-align: start;
-  white-space: normal;
-}
-
-button.inbound-close__card:active {
-  background: var(--surface-container-low);
-}
-
-button.inbound-close__card:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-
-.inbound-close__row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-/* 카드 안 한 줄 — 넘치면 말줄임(사용자 지시 2026-11-18 「가능하면 한 줄로」). */
-.inbound-close__line {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* 마감 시각 · IQC 번호와 [마감 취소]를 한 줄에 — 단추는 그대로, 글은 모자라면 단추 옆에서 두 줄로 접힌다. */
-.inbound-close__row--one {
-  flex-wrap: nowrap;
-}
-
-.inbound-close__row--one > * {
-  flex: none;
-}
-
-.inbound-close__row--one > .inbound-close__small {
-  flex: 0 1 auto;
-  min-width: 0;
-}
-
-/* 카드 안 이름표 붙은 칸 — 이름표는 작은 회색 글자, 값은 한 줄(넘치면 말줄임). LOT 수 · 전체 수량은 나란히. */
-.inbound-close__card-facts {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr);
-  align-items: baseline;
-  gap: 2px var(--space-3);
-}
-
-.inbound-close__card-label {
-  color: var(--on-surface-muted);
-  font: var(--type-label-sm);
-}
-
-.inbound-close__card-value {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.inbound-close__card-value.is-wide {
-  grid-column: span 3;
-}
-
-.inbound-close__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-}
-
 /* 번호는 고정폭으로, 자르지 않고 접는다. */
 .inbound-close__mono {
   font-family: var(--font-mono);
@@ -139,41 +43,210 @@ button.inbound-close__card:focus-visible {
   color: var(--on-surface-variant);
 }
 
-.inbound-close__blocked {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-1);
-  padding: var(--space-2);
-  border-radius: var(--radius-md);
-  background: var(--semantic-warning-container);
-  color: var(--on-semantic-warning-container);
+/* ── 입하 중 · 마감 취소 가능 표 — 입하 등록 「이번 입하」 표와 같은 모양(사용자 지시 2026-11-20). ── */
+.close-table__box {
+  overflow: hidden;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
 }
 
-.inbound-close__facts {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: var(--space-1) var(--space-3);
-  margin: 0;
+.close-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font: var(--type-body-sm);
 }
 
-.inbound-close__facts dt {
+.close-table__col-no {
+  width: 26px;
+}
+
+.close-table__col-qty {
+  width: 112px;
+}
+
+/* 표 머리 줄은 낭독기에만 — 화면에서는 노이즈다(사용자 지시 2026-11-20). */
+.close-table thead {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.close-table thead th {
+  height: 28px;
+  padding: 0 var(--space-1, 4px);
+  border-bottom: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
   color: var(--on-surface-muted);
-}
-
-.inbound-close__facts dd {
-  margin: 0;
-}
-
-/* 카드의 보조 글(합계 · 마감 시각)은 한 단 작은 글자 — 한 줄에 들어가게. */
-.inbound-close__small {
   font: var(--type-label-sm);
-  font-weight: 400;
+  text-align: start;
+  white-space: nowrap;
 }
 
-.inbound-close__result {
+.close-table td {
+  padding: 0 var(--space-1, 4px);
+  border-bottom: 1px solid var(--surface-container-high);
+  white-space: nowrap;
+}
+
+.close-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.close-table .close-table__no {
+  padding-inline-start: var(--space-2, 8px);
+  color: var(--on-surface-muted);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.close-table .close-table__num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.close-table td.close-table__num:last-child {
+  padding-inline-end: var(--space-3, 12px);
+}
+
+.close-table__num small {
+  margin-inline-start: 2px;
+  color: var(--on-surface-muted);
+  font-size: 10px;
+}
+
+.close-table td.close-table__item {
+  white-space: normal;
+}
+
+/*
+ * 품목 칸 전체가 누르는 자리 — 코드 위 · 이름 아래. 셸의 `.mobile-shell button { white-space: nowrap }` 보다 앞서도록
+ * 표 클래스를 겹쳐 적는다 — 이름이 꺾여야 잘리지 않는다.
+ */
+.close-table .close-table__open {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 48px;
+  padding: var(--space-2, 8px) var(--space-1, 4px);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.25;
+  text-align: start;
+  white-space: normal;
+  cursor: pointer;
+}
+
+.close-table__open > * {
+  min-width: 0;
+}
+
+.close-table__code {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  color: var(--semantic-success-text);
-  font: var(--type-title-sm);
+  gap: var(--space-2, 8px);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+/* 품목명은 작게 — 대조는 품목코드로 하고 이름은 거든다. 넘치면 fit-name 이 8px 까지 줄인다(사용자 지시 2026-11-20). */
+.close-table__name {
+  overflow: hidden;
+  color: var(--on-surface-variant);
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * 방금 담은 LOT — 초록 바탕 + 왼쪽 6px 선. 3px 은 옅어 한눈에 안 들어왔다 · 줄을 둘러싼
+ * 테두리는 지나쳤다(사용자 지시 2026-11-20). 이미 담은 LOT 을 또 찍으면 그 줄을 같은 모양의 회색으로.
+ */
+.close-table tr[data-current='true'] > td {
+  background: var(--semantic-success-container);
+}
+
+.close-table tr[data-current='true'] > td:first-child {
+  box-shadow: inset 6px 0 0 var(--semantic-success);
+}
+
+.close-table__col-count {
+  width: 32px;
+}
+
+.close-table__col-action {
+  width: 96px;
+}
+
+.close-table__count {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.close-table__group th {
+  height: 26px;
+  padding: 0 var(--space-3, 12px);
+  border-bottom: 1px solid var(--surface-container-high);
+  background: var(--surface-container-low);
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  font-weight: 700;
+  text-align: start;
+}
+
+.close-table td.close-table__item--static {
+  padding-block: var(--space-2, 8px);
+  white-space: normal;
+}
+
+.close-table__item--static > * {
+  display: block;
+  min-width: 0;
+}
+
+.close-table__item--static .close-table__code {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.close-table__sub {
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+}
+
+.close-table__blocked {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+}
+
+.close-table__action {
+  padding-inline-end: var(--space-2, 8px);
+  text-align: end;
+}
+
+/* ── 입하 품목 시트 — 이름표 칸 · 자재 관리 LOT · [마감](이 화면의 주 행동). ── */
+.close-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+.close-sheet__close {
+  width: 100%;
+}
+
+.close-sheet__lock {
+  margin: 0;
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
 }
