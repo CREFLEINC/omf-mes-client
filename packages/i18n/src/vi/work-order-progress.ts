@@ -111,8 +111,6 @@ export const workOrderProgress: Translated<typeof ko.workOrderProgress> = {
     closedAt: 'Đóng',
     remarks: 'Ghi chú',
 
-    historyUnavailable: 'Lịch sử kết quả và LOT sản xuất hiện chưa hiện ở cửa sổ này.',
-
     crewLoading: 'Đang nhận phiên làm việc và kết quả theo người làm.',
     crewLoadError: 'Chưa nhận được phiên làm việc và kết quả theo người làm.',
     sessionsTruncated: 'Không tải được một phần phiên làm việc.',

@@ -79,7 +79,7 @@ describe('WorkOrderCloseInputPane', () => {
       },
     });
 
-    expect(screen.getByText(t.exactNote)).toBeVisible();
+    expect(screen.getByText(t.classification.EXACT)).toBeVisible();
     expect(screen.queryByRole('radio')).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     expect(screen.queryByText('CARRY_OVER')).not.toBeInTheDocument();
@@ -246,7 +246,8 @@ describe('WorkOrderCloseInputPane — 소멸 비고', () => {
     /* 통제된 입력이라 부모가 값을 되돌려 주지 않으면 글자마다 그 글자만 올라온다 — 첫 호출이 첫 글자다. */
     expect(onRemarksChange).toHaveBeenCalled();
     expect(onRemarksChange.mock.calls[0]?.[0]).toBe('규');
-    expect(screen.getByText(t.remarks.help)).toBeVisible();
+    /* 소멸이 무엇을 남기는지는 라벨 옆 ⓘ 의 설명으로 읽힌다(관리웹 정리 시안 A). */
+    expect(screen.getByRole('button', { name: t.remarks.help })).toBeInTheDocument();
   });
 
   it.each(['CARRY_OVER', null] as const)(
@@ -262,10 +263,13 @@ describe('WorkOrderCloseInputPane — 소멸 비고', () => {
     renderPane();
 
     const note = t.remainder.carryOverNote(messages.productionOrder.menuPath);
-    expect(screen.getByText(note)).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: t.remainder.CARRY_OVER })).toHaveAccessibleDescription(
-      note,
-    );
+    /* 「이월」 바로 옆 ⓘ 의 설명으로 읽힌다(관리웹 정리 시안 A). */
+    const info = screen.getByRole('button', { name: note });
+    expect(
+      screen
+        .getByRole('radio', { name: t.remainder.CARRY_OVER })
+        .closest('.work-order-close-option-info'),
+    ).toBe(info.closest('.work-order-close-option-info'));
   });
 
   it('사유가 미리 골라져 있으면 어디서 온 값인지 적고 바꿀 수 있게 둔다', () => {

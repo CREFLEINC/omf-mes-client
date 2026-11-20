@@ -1,10 +1,11 @@
-import { AlertBanner, Chip, Skeleton } from '@crefle/web-ui';
+import { Chip, Skeleton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { Link } from 'react-router';
 
 import { useOverrideNotes, useReasonNames } from './queries';
 import { formatDay, formatQty, historyText, plantMinute } from './status';
 import type { PlannedStockResponse } from './api-types';
+import { InfoTip } from '../../patterns/info-tip';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 
 const t = messages.materialIssueStatus;
@@ -77,9 +78,6 @@ export const ShortageView = ({ data, isPending, isError, error, onRetry }: Short
 
   return (
     <>
-      <div className="banner-slot">
-        <AlertBanner variant="info">{t.shortage.intro}</AlertBanner>
-      </div>
       <table className="material-issue-status-table" aria-label={t.shortage.tableLabel}>
         <thead>
           <tr>
@@ -95,8 +93,12 @@ export const ShortageView = ({ data, isPending, isError, error, onRetry }: Short
           {unsourced.length > 0 && (
             <tr className="material-issue-status-group">
               <th scope="rowgroup" colSpan={6}>
-                <strong>{t.shortage.unsourcedTitle}</strong>{' '}
-                <span className="field-note">{t.shortage.unsourcedNote(workOrderCount)}</span>
+                {/* 묶음의 뜻과 할 일은 제목 옆 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
+                <span className="material-issue-status-title">
+                  <strong>{t.shortage.unsourcedTitle}</strong>
+                  <InfoTip text={t.shortage.unsourcedNote} />
+                  <span className="field-note">{t.shortage.unsourcedCount(workOrderCount)}</span>
+                </span>
               </th>
             </tr>
           )}

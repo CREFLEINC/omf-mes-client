@@ -144,7 +144,9 @@ describe('WorkOrderCloseDailyResultsPane', () => {
   it('열 머리와 날짜 줄 값을 보이고, 지시 수량과 단위는 표 밖 제목 줄에 한 번 보인다', () => {
     render(<WorkOrderCloseDailyResultsPane state={resolved()} unitLabel="EA · 개" />);
 
-    const head = within(pane()).getByRole('heading', { name: t.pane }).parentElement!;
+    const head = within(pane())
+      .getByRole('heading', { name: t.pane })
+      .closest<HTMLElement>('.work-order-close-daily-head')!;
     expect(within(head).getByText(t.values.orderQty).nextElementSibling).toHaveTextContent('500');
     expect(within(head).getByText(t.values.unit).nextElementSibling).toHaveTextContent('EA · 개');
     expect(
@@ -163,7 +165,8 @@ describe('WorkOrderCloseDailyResultsPane', () => {
       t.fields.corrected,
     ]);
     expect(screen.getByRole('button', { name: t.workDateHintLabel })).toBeInTheDocument();
-    expect(within(pane()).getByText(t.lead)).toBeInTheDocument();
+    /* 표를 읽는 법은 제목 옆 ⓘ 의 설명으로 읽힌다(관리웹 정리 시안 A). */
+    expect(within(pane()).getByRole('button', { name: t.lead })).toBeInTheDocument();
     const [first, second] = bodyRows();
     const firstCells = cellTexts(first!);
     expect(firstCells[0]).toContain('2026-10-20');

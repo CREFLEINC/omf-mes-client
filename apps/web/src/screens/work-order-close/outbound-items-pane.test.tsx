@@ -57,9 +57,9 @@ describe('WorkOrderCloseOutboundItemsPane', () => {
       'work-order-close-outbound-pane',
     );
     expect(screen.getByRole('heading', { name: t.heading })).toBeVisible();
-    expect(screen.getByText(t.lead)).toBeVisible();
+    /* 바꿀 수 없는 전역 설정이라는 근거는 제목 옆 ⓘ 의 설명으로 읽힌다(관리웹 정리 시안 A). */
+    expect(screen.getByRole('button', { name: t.lead })).toBeVisible();
     expect(screen.getByText(t.empty.title)).toBeVisible();
-    expect(screen.getByText(t.appendixPending)).toBeVisible();
   });
 
   /* 전역 설정은 마감 한 건이 바꾸지 않는다 — 토글이 없고 상태만 읽힌다. */

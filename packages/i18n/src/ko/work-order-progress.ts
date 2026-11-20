@@ -151,9 +151,6 @@ export const workOrderProgress = {
     closedAt: '마감',
     remarks: '비고',
 
-    /** ⛔ 아직 그리지 않는 것을 적지 않으면 「이 W/O 는 실적이 없구나」로 읽힌다. */
-    historyUnavailable: '실적 이력·생산LOT은 아직 이 창에서 보이지 않습니다.',
-
     crewLoading: '작업 세션·작업자별 실적을 받는 중입니다.',
     crewLoadError: '작업 세션·작업자별 실적을 받지 못했습니다.',
     sessionsTruncated: '작업 세션 일부를 불러오지 못했습니다.',

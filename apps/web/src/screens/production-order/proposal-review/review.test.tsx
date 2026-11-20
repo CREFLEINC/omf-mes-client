@@ -37,6 +37,19 @@ describe('제안 검토 화면', () => {
   });
 
   beforeEach(() => localStorage.removeItem('omf-mes:proposal-review:layout'));
+  /* 고른 ERP W/O 없이 연 제안의 범위는 제목 위 문장이 아니라 제목 옆 ⓘ 로 읽힌다(관리웹 정리 시안 A). */
+  it('제안 대상을 고른 방법은 제목 옆 ⓘ 의 설명으로 둔다', () => {
+    const scopeNote = '조회 대상: 조치 필요 ERP W/O 최근 20건.';
+    renderReview({ scopeNote });
+    const heading = screen.getByRole('heading', { level: 1 });
+    expect(within(heading).getByRole('button', { name: scopeNote })).toBeInTheDocument();
+    expect(screen.queryByText(scopeNote)).toBeNull();
+  });
+  it('범위 설명이 없으면 제목에 ⓘ 를 두지 않는다', () => {
+    renderReview();
+    expect(screen.getByRole('heading', { name: '생산계획 자동 전개 제안' })).toBeVisible();
+    expect(within(screen.getByRole('heading', { level: 1 })).queryByRole('button')).toBeNull();
+  });
   it('생산품 입고 창고는 정보로 표시하고 내부 위치 선택은 숨긴다', async () => {
     const user = userEvent.setup();
     renderReview();
