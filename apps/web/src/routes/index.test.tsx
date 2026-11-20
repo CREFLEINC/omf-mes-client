@@ -152,6 +152,17 @@ const hubTab = (hubLabel: string, tabLabel: string): HTMLElement =>
   });
 
 /**
+ * 탭 묶음 화면이 섰다 — 그 탭이 지금 탭이다. 묶음 안 화면은 제목을 세우지 않으므로(시안 A) 탭 막대가
+ * 화면 이름을 말한다.
+ */
+const findCurrentHubTab = async (hubLabel: string, tabLabel: string): Promise<HTMLElement> => {
+  const nav = await screen.findByRole('navigation', { name: hubLabel });
+  const tab = within(nav).getByRole('link', { name: tabLabel });
+  expect(tab).toHaveAttribute('aria-current', 'page');
+  return tab;
+};
+
+/**
  * **실제 라우트 표를 그대로 태운다.** 손으로 만든 두 줄짜리 표로 이동을 재면 그 표가 앱의
  * 표와 어긋나도 통과한다 — 이 파일이 존재하는 이유가 바로 그 어긋남이다.
  */
@@ -1226,16 +1237,16 @@ describe('appRouter — Lot Status 현황·변경이력 조회의 진입 경로'
 
     expect(await screen.findByText('LOT 유형 기준값이 준비되지 않았습니다.')).toBeVisible();
     expect(hubTab('LOT 상태', 'LOT 현황')).toHaveAttribute('aria-current', 'page');
-    /* 현재 상태 단추는 탭 막대 오른쪽, 좌우 · 상하 배치 단추 왼쪽이다(사용자 2026-10-30). */
+    /* 현재 상태 단추는 탭 막대 오른쪽, 배치 단추를 접은 「⋯」 왼쪽이다(사용자 2026-10-30 · 시안 A). */
     const hubActions = document.getElementById('hub-actions');
     const statusGroup = await screen.findByRole('group', { name: '현재 상태' });
-    const layoutGroup = await screen.findByRole('group', {
-      name: messages.common.inspectionHub.layoutLabel,
+    const layoutMenu = await screen.findByRole('button', {
+      name: messages.common.shell.moreActions,
     });
     expect(hubActions).toContainElement(statusGroup);
-    expect(hubActions).toContainElement(layoutGroup);
+    expect(hubActions).toContainElement(layoutMenu);
     expect(
-      statusGroup.compareDocumentPosition(layoutGroup) & Node.DOCUMENT_POSITION_FOLLOWING,
+      statusGroup.compareDocumentPosition(layoutMenu) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
       within(screen.getByRole('region', { name: 'LOT 조회 조건' })).queryByRole('group', {
@@ -1465,9 +1476,9 @@ describe('appRouter — 작업지시 목록 작업함의 진입 경로', () => {
     await user.keyboard('{Enter}');
 
     await waitFor(() => expect(currentLocation()).toBe('/production/production-orders'));
-    expect(
-      screen.getAllByRole('heading', { level: 1, name: messages.erpWorkOrderFlow.title }),
-    ).toHaveLength(1);
+    /* 탭 묶음 안이라 탭 막대가 화면 이름을 말한다 — 제목을 세우지 않는다(시안 A). */
+    expect(await findCurrentHubTab('작업계획', '작업계획')).toBeInTheDocument();
+    expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
     expect(await screen.findByText(messages.erpWorkOrderFlow.list.emptyTitle)).toBeVisible();
   });
 
@@ -1712,9 +1723,10 @@ describe('appRouter — 물류 전표 조회·취소의 진입 경로', () => {
       expect(currentLocation()).toBe('/logistics/document-progress');
     });
     expect(screen.getByLabelText(docProgress.fields.q)).toHaveValue('');
+    /* 「지금 취소 가능한 것만」은 「조건 더보기」에 접혀 있다 — 풀렸으면 접힌 조건 칩도 없다. */
     expect(
-      screen.getByRole('checkbox', { name: docProgress.fields.cancellableOnly }),
-    ).not.toBeChecked();
+      screen.queryByRole('button', { name: docProgress.filters.chipRemoveCancellableOnly }),
+    ).toBeNull();
   });
 
   /*
@@ -1814,9 +1826,8 @@ describe('appRouter — 설비·설비그룹 마스터의 진입 경로', () => 
   it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
     renderRoutedApp('/equipment/master', equipmentMasterRoutes());
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: messages.equipmentMaster.title }),
-    ).toBeInTheDocument();
+    expect(await findCurrentHubTab('설비', '설비·설비그룹 마스터')).toBeInTheDocument();
+    expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
   });
 
   /**
@@ -1890,9 +1901,8 @@ describe('appRouter — 작업 캘린더 설정의 진입 경로', () => {
   it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
     renderRoutedApp('/equipment/work-calendar', workCalendarRoutes());
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: messages.workCalendar.title }),
-    ).toBeInTheDocument();
+    expect(await findCurrentHubTab('설비', '작업 캘린더 설정')).toBeInTheDocument();
+    expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
   });
 
   /* ⭐ 라우트만 열고 화면이 서지 않는 상태를 잡으려면 조회가 실제로 도는 것까지 봐야 한다. */
@@ -1953,9 +1963,8 @@ describe('appRouter — 타발수 환산 파라미터 설정의 진입 경로', 
   it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
     renderRoutedApp('/equipment/shot-conversion', shotConversionRoutes());
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: messages.shotConversion.title }),
-    ).toBeInTheDocument();
+    expect(await findCurrentHubTab('툴·금형', '타발수 환산 파라미터 설정')).toBeInTheDocument();
+    expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
   });
 
   /* ⭐ 라우트만 열고 화면이 서지 않는 상태를 잡으려면 조회가 실제로 도는 것까지 봐야 한다. */
@@ -2015,9 +2024,8 @@ describe('appRouter — 수집 채널 매핑 관리의 진입 경로', () => {
   it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
     renderRoutedApp('/equipment/collection-channels', collectionChannelRoutes());
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: messages.collectionChannel.title }),
-    ).toBeInTheDocument();
+    expect(await findCurrentHubTab('설비', '수집 채널 매핑 관리')).toBeInTheDocument();
+    expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
   });
 
   /* ⭐ 라우트만 열고 화면이 서지 않는 상태를 잡으려면 조회가 실제로 도는 것까지 봐야 한다. */
@@ -2089,9 +2097,8 @@ describe('appRouter — 툴/금형/지그 마스터의 진입 경로', () => {
   it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
     renderRoutedApp('/equipment/tool-master', toolMasterRoutes());
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: messages.toolMaster.title }),
-    ).toBeInTheDocument();
+    expect(await findCurrentHubTab('툴·금형', '툴/금형/지그 마스터')).toBeInTheDocument();
+    expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
   });
 
   /* ⭐ 라우트만 열고 화면이 서지 않는 상태를 잡으려면 **조회가 실제로 도는 것**까지 봐야 한다. */
@@ -2177,9 +2184,8 @@ describe('appRouter — 계측기 마스터의 진입 경로', () => {
   it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
     renderRoutedApp('/equipment/gauge-master', gaugeMasterRoutes());
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: messages.gaugeMaster.title }),
-    ).toBeInTheDocument();
+    expect(await findCurrentHubTab('계측기', '계측기 마스터 관리')).toBeInTheDocument();
+    expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
   });
 
   /*
