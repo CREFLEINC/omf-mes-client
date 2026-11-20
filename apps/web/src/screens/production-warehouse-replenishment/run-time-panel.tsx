@@ -2,6 +2,7 @@ import { AlertBanner, Button, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
 import { plantToday } from '../../patterns/plant-time';
 import { Select } from '../../patterns/select';
@@ -66,9 +67,10 @@ export const RunTimePanel = ({ plantId, settings }: RunTimePanelProps) => {
 
   return (
     <section className="replenishment-run-time" aria-label={tt.title}>
+      {/* 하루 한 번 · 공장 현지 시각이라는 규칙은 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
       <header className="replenishment-section-head">
         <h2 className="subsection-title">{tt.title}</h2>
-        <p className="field-note">{tt.lead}</p>
+        <InfoTip text={tt.lead} />
       </header>
       <div className="replenishment-filter-row">
         <span className="replenishment-run-time-field">

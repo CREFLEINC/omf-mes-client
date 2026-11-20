@@ -218,6 +218,14 @@ const routes = (options: Options = {}): StubRoute[] => [
     },
   },
   {
+    match: (req) => /^\/trace\/lots\/\d+$/.test(new URL(req.url).pathname),
+    respond: (req) => {
+      const lotId = Number(new URL(req.url).pathname.split('/').pop());
+
+      return jsonResponse({ lot: { lotId, lotNo: LOT_NO, itemId: 2002, uomId: 1001 } });
+    },
+  },
+  {
     match: (req) => new URL(req.url).pathname === '/mdm/uoms',
     respond: () => jsonResponse({ items: [{ uomId: 1001, uomCode: 'EA' }], page }),
   },
@@ -455,6 +463,25 @@ describe('재고 이동 화면', () => {
    * 반출할 때 찍는 것은 「어디로 보낼지」이고, 이어서 할 때 찍는 것은 「물건을 놓은 자리」다.
    * 한 이름으로 부르면 반출 단계에서 벌써 도착한 것으로 읽힌다.
    */
+  it('도착 화면은 무엇을 옮기는 중인지 — 이동 번호 · 출발 → 도착 · 도착할 LOT 표를 보인다', async () => {
+    const user = userEvent.setup();
+    mount({ unfinished: true });
+
+    await user.click(await screen.findByRole('button', { name: '이어서 하기' }));
+
+    /* 전에는 도착 화면에 옮기는 것이 없었다(사용자 지시 2026-11-20). */
+    expect(await screen.findByRole('region', { name: 'ST-2026-000001' })).toBeTruthy();
+    const lots = await screen.findByRole('region', { name: '도착할 LOT' });
+    await waitFor(() => {
+      expect(lots).toHaveTextContent('ABC-123');
+    });
+    await waitFor(() => {
+      expect(lots).toHaveTextContent('0001');
+    });
+    expect(lots).toHaveTextContent('80');
+    expect(screen.getByRole('button', { name: '이동 완료' })).toBeDisabled();
+  });
+
   it('보낼 곳과 도착한 곳을 다른 이름으로 부른다', async () => {
     const user = userEvent.setup();
     mount({ unfinished: true });

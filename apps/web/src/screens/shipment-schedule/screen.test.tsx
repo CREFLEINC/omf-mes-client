@@ -721,7 +721,8 @@ describe('ShipmentScheduleScreen — 피처 010 지시서 상세', () => {
     expect(
       within(dialog).getByText(t.detail.blockers.SALES_ORDER_LINE_CANCELLED('1')),
     ).toBeInTheDocument();
-    expect(within(dialog).getByText(t.detail.popOnly)).toBeInTheDocument();
+    /* 출하 완료를 어디서 하는지는 「진행」 옆 ⓘ 로 읽힌다(관리웹 정리 시안 A). */
+    expect(within(dialog).getByRole('button', { name: t.detail.popOnly })).toBeInTheDocument();
 
     const lot1 = within(dialog).getAllByText('SAMPLE-LOT-0001')[0]?.closest('tr') as HTMLElement;
     expect(lot1).toHaveTextContent('SAMPLE-A-01-01');

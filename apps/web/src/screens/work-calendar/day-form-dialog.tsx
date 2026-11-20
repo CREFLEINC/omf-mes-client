@@ -115,13 +115,13 @@ export const DayFormDialog = ({
         {/*
          * ⚠ 사유 코드 값 목록이 아직 없다(`omf-mes#145`). **선택칸으로 내지 않는다** —
          * 고를 것이 자리표시뿐인 칸을 두면 누르는 사람마다 빈 목록을 만난다.
-         * 계약이 선택으로 둔 값이라 **비워 두어도 저장된다**는 사실을 함께 밝힌다.
+         * 계약이 선택으로 둔 값이라 비워 두어도 저장된다 — 필수 표시가 없는 것으로 충분해
+         * 따로 문장을 두지 않는다(관리웹 정리 시안 A).
          */}
         <TextField
           label={t.dayForm.reason}
           value={values.reasonCode}
           onChange={(event) => onChange({ reasonCode: event.target.value })}
-          helperText={t.dayForm.reasonOptional}
           error={fieldErrors.reasonCode}
         />
 

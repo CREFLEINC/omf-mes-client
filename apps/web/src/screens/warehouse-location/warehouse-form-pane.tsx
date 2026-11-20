@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useId, useState } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { LOCATION_LEVEL_CODES } from '../../patterns/location-level';
 import { levelIconOf, levelNameOf } from '../../patterns/location-tree-cell';
 import { Select } from '../../patterns/select';
@@ -148,8 +149,8 @@ const labelOf = (options: { value: string; label: string }[], value: string): st
 
 /**
  * 창고 위치 코드(omf-all-around#292) — 등록 폼을 여는 쪽이 무작위로 지어 채운다. 사람은 고치거나 [다시 만들기]로 새로
- * 짓는다. 친 글자는 대문자로 바꾼다. 칸 아래 도움말 자리에 형식 · 서버 오류(다른 창고가 쓰는 코드)가 대신 선다.
- * 그 아래 위치 코드 예가 친 값을 따라 바뀐다.
+ * 짓는다. 친 글자는 대문자로 바꾼다. 형식 · 저장 뒤 못 바꿈은 라벨 옆 ⓘ 가 말하고(관리웹 정리 시안 A), 칸 아래에는
+ * 오류(형식 · 다른 창고가 쓰는 코드)만 나타난다. 그 아래 위치 코드 예가 친 값을 따라 바뀐다.
  */
 const LocationPrefixField = ({
   value,
@@ -172,6 +173,7 @@ const LocationPrefixField = ({
             {' *'}
           </span>
         </span>
+        <InfoTip text={t.locationPrefix.helper} />
       </span>
       <div className="warehouse-location-field-row">
         <TextField
@@ -182,7 +184,6 @@ const LocationPrefixField = ({
           autoComplete="off"
           spellCheck={false}
           onChange={(event) => onChange(event.target.value.toUpperCase())}
-          helperText={t.locationPrefix.helper}
           error={error}
         />
         <Button

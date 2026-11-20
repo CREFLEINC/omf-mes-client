@@ -264,9 +264,14 @@ export const PuChip = ({ tone = 'idle', children }: { tone?: PuChipTone; childre
   <span className={cx('pu-chip', tone !== 'idle' && tone)}>{children}</span>
 );
 
-export const PuCount = ({ children }: { children: ReactNode }) => (
-  <span className="pu-count">{children}</span>
-);
+export const PuCount = ({
+  children,
+  tone,
+}: {
+  children: ReactNode;
+  /** `primary` — 빨간 원 안 흰 숫자(묶음 줄 [남은 작업] 건수와 같은 모양). */
+  tone?: 'primary';
+}) => <span className={cx('pu-count', tone)}>{children}</span>;
 
 export type PuButtonVariant = 'default' | 'primary' | 'danger' | 'ghost';
 

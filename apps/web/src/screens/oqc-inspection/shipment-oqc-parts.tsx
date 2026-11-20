@@ -65,6 +65,8 @@ export const portionsText = (
   lot: ShipmentRequestLot | null,
   /** 적치 대기 자리를 시스템 코드 대신 이 이름으로 적는다(P-04-06). 없으면 위치 코드 그대로. */
   stagingLabel?: string,
+  /** 수량 옆 단위(P-04-06 — 다른 POP 화면처럼 단위를 붙인다). 비우면 수량만(관리웹 그대로). */
+  uom?: string,
 ): string =>
   (lot?.portions ?? [])
     .map((portion) =>
@@ -73,7 +75,9 @@ export const portionsText = (
         stagingLabel !== undefined && portion.locationSystemRoleCode === 'PUTAWAY_STAGING'
           ? stagingLabel
           : portion.locationCode,
-        formatQty(portion.qty),
+        uom === undefined || uom === ''
+          ? formatQty(portion.qty)
+          : `${formatQty(portion.qty)} ${uom}`,
       ),
     )
     .join(' · '); // ui-check-ignore: C-13 시안 W0403 · P0406 「창고 · 위치」 칸 표기

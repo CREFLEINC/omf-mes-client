@@ -1,6 +1,7 @@
 import { Button, Checkbox, Chip, IconButton, Table, TextField, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { Select } from '../../patterns/select';
 import { isShortageLine } from './shortage-banner';
 import {
@@ -285,7 +286,13 @@ export const LineTable = ({
     },
     {
       key: 'warehouse',
-      header: t.lineTable.warehouse,
+      /* 고를 수 있는 창고 규칙은 칸 머리 ⓘ 로(관리웹 정리 시안 A — 늘 보이는 규칙 문장을 걷는다). */
+      header: (
+        <span className="info-label">
+          {t.lineTable.warehouse}
+          <InfoTip text={t.notes.warehouseRule} />
+        </span>
+      ),
       width: WIDTH.warehouse,
       /*
        * ⭐ 줄마다 출고 창고 하나(피처 012 FR-003). 사업부를 고르기 전에는 잠긴다(US1-2).

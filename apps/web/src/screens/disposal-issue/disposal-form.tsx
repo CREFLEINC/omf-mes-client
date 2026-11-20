@@ -2,6 +2,7 @@ import { Checkbox, DatePicker, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import { InfoLabel } from '../../patterns/info-tip';
 import {
   canChooseDisposalPartner,
   codeNote,
@@ -11,7 +12,6 @@ import {
   type CodeOptionSets,
   type DisposalPartnerCondition,
 } from './code-options';
-import { FieldLabel } from './field-label';
 import { SelectField } from './select-field';
 import type { DisposalCodeKey, DisposalDraft, SelectOption } from './types';
 import { CODE_FIELD_NAMES } from './validation';
@@ -160,7 +160,15 @@ export const DisposalForm = ({
         {codeField('reason', t.formFields.reason)}
 
         <div className="field-cell">
-          <FieldLabel htmlFor={issuedDateId} label={t.formFields.issuedDate} />
+          {/*
+           * 사용자가 넣지 않은 영업일이 이 값에서 나와 전표에 실린다 — 칸 아래 설명문 대신 라벨 옆
+           * ⓘ 로 밝힌다(관리웹 정리 시안 A).
+           */}
+          <InfoLabel
+            htmlFor={issuedDateId}
+            label={t.formFields.issuedDate}
+            info={t.form.businessDateDerived}
+          />
           <DatePicker
             id={issuedDateId}
             mode="single"
@@ -284,8 +292,6 @@ export const DisposalForm = ({
         />
       </div>
 
-      {/* 사용자가 넣지 않은 값이 전표에 실린다 — 그 사실을 폼에서 밝힌다. */}
-      <p className="field-note">{t.form.businessDateDerived}</p>
       {/* 화면이 정하지 않는 값이 있다는 사실도 밝힌다 — 없는 토글을 찾아 헤매지 않게 한다. */}
       <p className="field-note">{t.form.sendToErpNote}</p>
     </>

@@ -144,7 +144,7 @@ export const dispositionDecision = {
     requesting: '요청하는 중…',
     apply: '특채 적용',
     /** 결재 대기 중에는 적용할 수 없다(G2 5차). */
-    applyWaiting: '결재가 끝나야 적용할 수 있습니다(W-03-09)',
+    applyWaiting: '결재가 끝나야 적용할 수 있습니다',
     applying: '적용하는 중…',
     qty: '특채 요청 수량',
     validFrom: '적용 시작일',
@@ -223,7 +223,7 @@ export const dispositionDecision = {
       REWORK: '검사 대기(재작업) — IQC 다시 열림',
     } as Record<string, string | undefined>,
     reworkReopened: (inboundLotNo: string): string =>
-      `W-01-01 에서 ${inboundLotNo} 검사가 「검사 진행 중」으로 다시 열렸습니다.`,
+      `검사 조회·판정에서 ${inboundLotNo} 검사가 「검사 진행 중」으로 다시 열렸습니다.`,
     /**
      * ⭐ 저장 409의 구조화 문구 — **저장을 서버가 거절한 뒤** 응답의 `code`를 보고 화면이 되말하는 문구다 — `message` 원문을 그대로 옮기지
      * 않는다(공유 정규화기를 고치지 않고 화면 로컬에서 되말한다). 근거: W-03-10 §6 ·

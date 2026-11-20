@@ -89,7 +89,7 @@ describe('선택 개정 읽기 전용 상세', () => {
     expect(within(dialog).getByRole('columnheader', { name: 'MES 환산 소요량' })).toBeVisible();
     expect(dialog).toHaveTextContent('관리 공정');
     expect(dialog).toHaveTextContent('실제 사용 공정');
-    expect(dialog).toHaveTextContent('ERP 원본 추가 정보 · 조회 미지원');
+    expect(dialog).not.toHaveTextContent('조회 미지원');
     expect(dialog).toHaveTextContent('2%');
     expect(dialog).not.toHaveTextContent('환산한 값이 아닙니다');
   });

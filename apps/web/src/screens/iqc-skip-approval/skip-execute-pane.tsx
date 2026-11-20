@@ -42,7 +42,7 @@ export interface SkipExecutePaneProps {
 /**
  * 승인된 요청의 **생략 실행** 구획(omf-all-around#105).
  *
- * 승인은 요청 상태만 바꾼다(《승인 시 결과》 구획 · 공유계약 J-8). 의뢰·보류·LOT 을 옮기는 것은
+ * 승인은 요청 상태만 바꾼다(《승인 시 결과》 ⓘ · 공유계약 J-8). 의뢰·보류·LOT 을 옮기는 것은
  * 이 실행이다 — 그래서 결재 구획과 따로 세우고, 되돌릴 수 없는 조작이라 확인 창을 한 번 거친다.
  */
 export const SkipExecutePane = ({

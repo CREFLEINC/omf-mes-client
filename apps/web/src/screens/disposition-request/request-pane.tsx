@@ -3,6 +3,7 @@ import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import { InfoLabel, InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
 import type { Lock } from './lock';
 import type { RequestFormErrors, RequestFormValue } from './request-form';
@@ -24,7 +25,11 @@ export interface RequestPaneProps {
   onReload: () => void;
 }
 
-/** ② 판정 의뢰. 부적합이 등록된 뒤에만 열린다. 의뢰하면 품질 화면으로 넘어간다(§3 ②). */
+/**
+ * ② 판정 의뢰. 부적합이 등록된 뒤에만 열린다. 의뢰하면 품질 화면으로 넘어간다(§3 ②) — 그 말은 구획 제목
+ * 옆 ⓘ 로 둔다(`screen.tsx`). 칸의 규칙(넣을 범위 · 누가 읽는지)은 칸 아래가 아니라 라벨 옆 ⓘ 로 둔다
+ * (관리웹 정리 시안 A). DS 라벨은 글자만 받아 라벨을 비우고 같은 `id` 로 잇는다.
+ */
 export const RequestPane = ({
   value,
   errors,
@@ -42,41 +47,59 @@ export const RequestPane = ({
 }: RequestPaneProps) => {
   const t = messages.dispositionRequest;
   const lockReasonId = useId();
-  const afterNoteId = useId();
+  const qtyId = useId();
+  const remarksId = useId();
   const isLocked = lock.reason !== undefined;
 
   return (
     <div className="disposition-request-form" role="group" aria-label={t.panes.request}>
       <SaveErrorBanner error={writeError} onReload={onReload} />
 
-      <TextField
-        label={uomLabel === '' ? t.request.qtyLabel : `${t.request.qtyLabel} (${uomLabel})`}
-        value={value.qty}
-        required
-        fullWidth
-        inputMode="decimal"
-        disabled={isLocked}
-        aria-describedby={isLocked ? lockReasonId : afterNoteId}
-        error={errors.requestedQty}
-        helperText={t.request.qtyHelp(maxQtyText, uomLabel)}
-        onChange={(event) => onChange({ ...value, qty: event.target.value })}
-      />
+      {/*
+       * 라벨과 칸은 한 덩어리로 묶는다 — 폼의 줄 간격이 라벨과 칸 사이에 끼지 않게. 필수 표시를 지키려고
+       * 이 라벨은 공용 `InfoLabel` 과 같은 짜임으로 이 자리에서 그린다.
+       */}
+      <div>
+        <span className="info-label">
+          <span className="field-label">
+            <label htmlFor={qtyId}>
+              {uomLabel === '' ? t.request.qtyLabel : `${t.request.qtyLabel} (${uomLabel})`}
+            </label>
+            <span className="required-mark" aria-hidden="true">
+              {' *'}
+            </span>
+          </span>
+          <InfoTip text={t.request.qtyHelp(maxQtyText, uomLabel)} />
+        </span>
+        <TextField
+          id={qtyId}
+          value={value.qty}
+          required
+          fullWidth
+          inputMode="decimal"
+          disabled={isLocked}
+          aria-describedby={isLocked ? lockReasonId : undefined}
+          error={errors.requestedQty}
+          onChange={(event) => onChange({ ...value, qty: event.target.value })}
+        />
+      </div>
 
-      <TextArea
-        label={t.request.remarksLabel}
-        value={value.remarks}
-        fullWidth
-        rows={2}
-        disabled={isLocked}
-        aria-describedby={isLocked ? lockReasonId : undefined}
-        helperText={t.request.remarksHelp}
-        onChange={(event) => onChange({ ...value, remarks: event.target.value })}
-      />
-
-      {/* 의뢰하면 무엇이 일어나는지 — 품질 화면으로 넘어가고 결과가 돌아온다(스펙 §3 ②). */}
-      <p id={afterNoteId} className="field-note">
-        {t.request.afterNote}
-      </p>
+      <div>
+        <InfoLabel
+          htmlFor={remarksId}
+          label={t.request.remarksLabel}
+          info={t.request.remarksHelp}
+        />
+        <TextArea
+          id={remarksId}
+          value={value.remarks}
+          fullWidth
+          rows={2}
+          disabled={isLocked}
+          aria-describedby={isLocked ? lockReasonId : undefined}
+          onChange={(event) => onChange({ ...value, remarks: event.target.value })}
+        />
+      </div>
 
       {isLocked && (
         <div className="form-actions">

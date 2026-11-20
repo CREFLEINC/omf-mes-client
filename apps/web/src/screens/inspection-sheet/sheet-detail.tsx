@@ -4,6 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useState } from 'react';
 import { useNavigate } from 'react-router';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { ManagedTable } from '../../patterns/managed-table';
 import { masterName } from '../../patterns/master-name';
 import { formatPlantDateTime } from '../../patterns/plant-time';
@@ -69,6 +70,7 @@ const PERMISSION_SETTINGS_PATH = '/system/users-roles';
 const Card = ({
   title,
   showTitle = true,
+  info,
   note,
   action,
   className,
@@ -77,6 +79,8 @@ const Card = ({
   title: string;
   /** 탭 이름이 이미 말하면 제목 줄을 두지 않는다(이름은 화면 읽기용으로만 남는다). */
   showTitle?: boolean;
+  /** 제목 바로 뒤 ⓘ 문장 — 알아 둘 규칙이지만 늘 펼쳐 둘 문장은 아닌 것(관리웹 정리 시안 A). */
+  info?: string;
   /** 제목 오른쪽 안내 한 줄(정보 안내 줄 모양). */
   note?: string;
   /** 안내 옆 단추(권한 설정 등). */
@@ -90,7 +94,10 @@ const Card = ({
   >
     {showTitle && (
       <div className="result-detail-section-head inspection-sheet-card-head">
-        <h3>{title}</h3>
+        <h3>
+          {title}
+          {info !== undefined && <InfoTip text={info} />}
+        </h3>
         {note !== undefined && (
           <p className="iqc-inspection-action-note" data-tone="info">
             <Icon name="info" size={14} aria-hidden />
@@ -458,9 +465,9 @@ export const SheetDetail = ({
         />
       </Card>
 
-      <Card title={d.fourM}>
+      {/* 추정이라는 사실 · 단위는 제목 옆 ⓘ 로(관리웹 정리 시안 A) — 표에 줄이 있을 때만. */}
+      <Card title={d.fourM} info={sheet.fourMChanges.length > 0 ? d.fourMNote : undefined}>
         {/* 표 — 없으면 「투입된 변경 자재가 없습니다.」를 표 줄에(사용자 지시 2026-11-02 · #217). */}
-        {sheet.fourMChanges.length > 0 && <p className="field-note">{d.fourMNote}</p>}
         <ManagedTable
           storageKey="omf-mes:inspection-sheet:columns:four-m"
           caption={d.fourM}

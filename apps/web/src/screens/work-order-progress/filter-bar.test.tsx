@@ -284,14 +284,11 @@ describe('ProgressFilterBar', () => {
     });
   });
 
-  /*
-   * A-11 — 계약에 공정으로 거를 파라미터가 없다. ⛔ 자리만 만들어 두고 늘 비활성이면
-   * 「고장 났나」로 읽힌다. 대신 한 문장으로 적는다.
-   */
-  it('⛔ 공정 칸을 만들지 않고 못 거른다는 사실을 적는다', () => {
+  /* A-11 — 계약에 공정으로 거를 파라미터가 없다. 칸도, 못 거른다는 문장도 두지 않는다(관리웹 정리 시안 A). */
+  it('⛔ 공정 칸을 만들지 않는다', () => {
     renderBar();
 
-    expect(screen.getByText(t.processUnavailable)).toBeInTheDocument();
     expect(screen.queryByLabelText('공정')).not.toBeInTheDocument();
+    expect(screen.queryByText(/공정으로는/)).not.toBeInTheDocument();
   });
 });

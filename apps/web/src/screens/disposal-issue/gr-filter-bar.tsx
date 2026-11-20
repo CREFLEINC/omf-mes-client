@@ -9,9 +9,9 @@ import {
   useFilterMore,
   type HiddenFilterChip,
 } from '../../patterns/filter-more';
+import { InfoLabel } from '../../patterns/info-tip';
 
 import { codeNote, codePlaceholder } from './code-options';
-import { FieldLabel } from './field-label';
 import {
   DEFAULT_FILTERS,
   toFilterChips,
@@ -36,8 +36,8 @@ export interface GrFilterBarProps {
    */
   warehouseOptions: SelectOption[];
   /**
-   * 창고 선택칸의 한계 안내(불러오기 실패 · 잘림 · **폐기 대상 창고를 가려내지 못함**).
-   * 밝히지 않으면 사용자가 목록이 좁혀진 것으로 읽는다.
+   * 창고 선택칸의 한계 안내(불러오기 실패 · 잘림). 「폐기 대상 창고를 가려내지 못함」은 개발 사정이라
+   * 걷었다(관리웹 정리 시안 A).
    */
   warehouseNote?: string;
   /**
@@ -204,9 +204,11 @@ export const GrFilterBar = ({
          * 컴포넌트가 **완결된 쌍만, 그것도 from ≤ to로만** 방출한다. 그래서 이 컨트롤을 거친
          * 역전은 생기지 않지만 `filters.ts`의 날짜 판정은 그대로 둔다 — 조회 조건의 정본은
          * 주소이고 주소는 사용자가 직접 고칠 수 있다.
+         *
+         * 기본 기간이 없다는 사실은 라벨 옆 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A).
          */}
         <div className="field-cell">
-          <FieldLabel htmlFor={periodId} label={t.fields.period} />
+          <InfoLabel htmlFor={periodId} label={t.fields.period} info={t.filters.periodNote} />
           <DatePicker
             id={periodId}
             mode="range"
@@ -281,9 +283,6 @@ export const GrFilterBar = ({
           />
         </div>
       </div>
-
-      {/* 기본 기간이 없다는 사실은 화면에서 읽혀야 한다 — 비어 있는 칸이 고장으로 읽히지 않게 한다. */}
-      <p className="field-note">{t.filters.periodNote}</p>
 
       <HiddenFilterChips open={false} chips={hiddenChips} onRemove={onRemoveFilter} />
     </>

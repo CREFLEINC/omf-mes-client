@@ -2,6 +2,7 @@ import { AlertBanner, Button, Checkbox, Dialog, Radio, TextField } from '@crefle
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { WEEKDAY_NUMBERS } from './bulk-days';
 import type { BulkFormValues, DayFormValues } from './types';
 
@@ -106,8 +107,14 @@ export const BulkFormDialog = ({
         />
 
         <div className="form-grid-full">
-          <fieldset className="field-cell">
-            <legend className="field-label">{t.bulk.weekdays}</legend>
+          {/* 고르지 않으면 기간 전체라는 뜻은 묶음 이름 옆 ⓘ 로 — 이름은 `aria-label` 로 준다(관리웹 정리 시안 A). */}
+          <fieldset className="field-cell" aria-label={t.bulk.weekdays}>
+            <legend className="field-label">
+              <span className="info-label">
+                {t.bulk.weekdays}
+                <InfoTip text={t.bulk.weekdaysNote} />
+              </span>
+            </legend>
             <div className="filter-bar">
               {WEEKDAY_NUMBERS.map((weekday) => (
                 <Checkbox
@@ -119,7 +126,6 @@ export const BulkFormDialog = ({
                 </Checkbox>
               ))}
             </div>
-            <span className="field-note">{t.bulk.weekdaysNote}</span>
           </fieldset>
         </div>
 
@@ -171,7 +177,6 @@ export const BulkFormDialog = ({
           label={t.dayForm.reason}
           value={values.day.reasonCode}
           onChange={(event) => onChangeDay({ reasonCode: event.target.value })}
-          helperText={t.dayForm.reasonOptional}
           error={fieldErrors.reasonCode}
         />
 

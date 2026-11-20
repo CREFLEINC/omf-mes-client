@@ -19,8 +19,6 @@ export const popOqcInspection = {
 
   detail: {
     nothingSelectedTitle: 'Hãy chọn yêu cầu',
-    nothingSelected: 'Chạm vào yêu cầu bên trái để nhập số lượng và phán định.',
-    nothingSelectedDone: 'Chạm vào yêu cầu bên trái để xem kết quả phán định.',
     loading: 'Đang tải thông tin yêu cầu.',
     bandLabel: 'Thông tin yêu cầu',
     fields: {
@@ -151,8 +149,13 @@ export const popOqcInspection = {
     confirm: 'Lưu phán định',
   },
   shipment: {
-    card: (item: string, count: number, qty: string): string =>
-      `${item} · ${String(count)} LOT đã lấy · ${qty}`,
+    cardLots: (count: number, qty: string): string => `${String(count)} LOT đã lấy · ${qty}`,
+    cardStatus: (label: string): string => `Kiểm tra: ${label}`,
+    cannotJudge: 'Không thể phán định',
+    lotsTitle: 'Tình trạng LOT đã lấy',
+    results: {
+      serials: (count: number): string => `${String(count)} serial`,
+    },
     itemValue: (code: string, name: string): string => (name === '' ? code : `${code} ${name}`),
     staging: 'Chờ cất hàng',
     replacedLine: (
@@ -167,10 +170,14 @@ export const popOqcInspection = {
         `Thay trên PDA ${at}${worker === '' ? '' : ` ${worker}`}`,
         ...(nonconformanceNo === null ? [] : [`Không phù hợp ${nonconformanceNo}`]),
       ].join(' · '),
-    cardEmpty: (item: string): string => `${item} · Chưa có LOT đã lấy`,
-    target: 'Mục tiêu',
-    picked: 'Đã lấy',
+    target: 'SL chỉ thị',
+    picked: 'SL đã lấy',
+    over: 'SL vượt',
+    bandLabel: 'Thông tin lệnh xuất hàng',
+    lotsEmpty: 'Chưa có LOT nào được lấy.',
     refs: {
+      shipmentRequest: 'Lệnh xuất hàng',
+      status: 'Trạng thái kiểm tra',
       request: 'Số yêu cầu',
       customer: 'Khách hàng',
       shipTo: 'Nơi giao',
@@ -180,24 +187,30 @@ export const popOqcInspection = {
     lotsReplacedHeading: 'LOT đã bị thay thế — không còn là đối tượng phán định',
     appliedNone: 'Chưa có lần áp dụng',
     form: {
-      heading: (seqNo: number): string => `Thêm kết quả kiểm tra lần ${String(seqNo)}`,
-      matchHint: 'Phán định của kết quả này áp dụng cho các LOT đã chọn.',
-      judgmentHint: 'Chỉ chọn một. Không nhập số lượng.',
+      heading: (seqNo: number): string => `Đăng ký kết quả kiểm tra lần ${String(seqNo)}`,
+      reinspectHeading: (seqNo: number): string =>
+        `Đăng ký kết quả tái kiểm tra lần ${String(seqNo)}`,
+      match: {
+        matchHeading: 'LOT cần kiểm tra',
+        selectAll: 'Chọn tất cả',
+        selectNone: 'Bỏ chọn',
+      },
       serialHeading: 'Số sê-ri đã kiểm tra',
       serialOptional: '(tùy chọn)',
-      noLots: 'Chưa có LOT nào được lấy nên không thể ghi kết quả.',
+      noLots: 'Chưa có LOT nào được lấy nên không thể phán định.',
     },
     bar: {
       save: 'Lưu kết quả',
+      reinspect: 'Thêm tái kiểm tra',
       saving: 'Đang lưu…',
       saved: (seqNo: number): string => `Đã lưu kết quả lần ${String(seqNo)}.`,
       ready: 'Có thể lưu. Phán định sẽ được xác nhận khi hoàn tất xuất hàng.',
       blocked: {
-        match: 'Hãy chọn ít nhất 1 LOT đã lấy.',
+        match: 'Hãy chọn ít nhất 1 LOT cần kiểm tra.',
         judgment: 'Hãy chọn phán định.',
         reason:
           'Kết quả này thay đổi phán định Không đạt hoặc Giữ lại. Hãy chọn lý do kiểm tra lại.',
-        noLots: 'Chưa có LOT nào được lấy nên không thể ghi kết quả.',
+        noLots: 'Chưa có LOT nào được lấy nên không thể phán định.',
         skipped: 'Yêu cầu này đã đóng do bỏ qua OQC. Không thêm kết quả.',
         completed: 'Phán định đã được xác nhận khi hoàn tất xuất hàng. Không thêm kết quả.',
         measurement: 'Hãy sửa lỗi giá trị đo của hạng mục kiểm tra rồi mới lưu được.',

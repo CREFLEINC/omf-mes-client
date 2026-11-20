@@ -49,11 +49,15 @@ describe('RouteFormPane — 읽기 표기', () => {
     expect(screen.getByText('2')).toBeInTheDocument();
   });
 
-  /** 계약의 수정 본문에 승인 유형이 없다 — 왜 못 고치는지를 밝히지 않으면 결함으로 읽힌다. */
-  it('승인 유형을 고칠 수 없다는 사실을 밝힌다', () => {
+  /**
+   * 계약의 수정 본문에 승인 유형이 없다 — 왜 못 고치는지를 밝히지 않으면 결함으로 읽힌다.
+   * 칸 아래 문장 대신 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A).
+   */
+  it('승인 유형을 고칠 수 없다는 사실은 라벨 옆 ⓘ 로 밝힌다', () => {
     renderPane();
 
-    expect(screen.getByText(t.notes.approvalTypeFixed)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.notes.approvalTypeFixed })).toBeInTheDocument();
+    expect(screen.queryByText(t.notes.approvalTypeFixed)).toBeNull();
     expect(screen.queryByLabelText(t.fields.approvalTypeCode)).toBeNull();
   });
 
@@ -149,10 +153,12 @@ describe('RouteFormPane — 비움 경고 (전체 교체의 뜻)', () => {
     expect(screen.queryByText(t.notes.valueRangeEmpty)).not.toBeInTheDocument();
   });
 
-  it('1차에 값 구간이 쓰이지 않는다는 사실은 늘 밝힌다', () => {
+  /* 칸 아래에 늘 펼쳐 두지 않고 하한 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */
+  it('값 구간이 결재선을 고르지 않는다는 사실은 하한 라벨 옆 ⓘ 로 밝힌다', () => {
     renderPane();
 
-    expect(screen.getByText(t.notes.valueRangeUnused)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.notes.valueRangeUnused })).toBeInTheDocument();
+    expect(screen.queryByText(t.notes.valueRangeUnused)).toBeNull();
   });
 });
 

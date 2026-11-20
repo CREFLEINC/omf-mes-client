@@ -2,6 +2,7 @@ import { Button, Dialog, Switch, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import type { CodeOption } from './code-options';
 import { isMeasurement } from './inspection-item-validation';
 import { SelectField } from './select-field';
@@ -110,8 +111,8 @@ export const InspectionItemDialog = ({
           onChange={(value) => onChange({ judgmentMethodCode: value })}
           error={fieldErrors.judgmentMethodCode}
           placeholder={t.placeholders.judgmentMethod}
-          /* ⛔ 왜 세 칸이 갑자기 필수가 되는지 말한다 — 말하지 않으면 사용자가 헤맨다. */
-          note={t.measurementNote}
+          /* ⛔ 왜 세 칸이 갑자기 필수가 되는지 말한다 — 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */
+          info={t.measurementNote}
         />
 
         {/*
@@ -168,15 +169,17 @@ export const InspectionItemDialog = ({
           />
         </div>
 
-        {/* ⛔ 물리 삭제가 없다(B-4) — 끄는 것이 지우는 것을 대신하므로 그 뜻을 적는다. */}
+        {/* ⛔ 물리 삭제가 없다(B-4) — 끄는 것이 지우는 것을 대신하는 뜻은 스위치 옆 ⓘ 로(관리웹 정리 시안 A). */}
         {mode === 'edit' && (
           <div className="field-cell">
-            <Switch
-              label={t.fields.isActive}
-              checked={values.isActive}
-              onChange={(event) => onChange({ isActive: event.target.checked })}
-            />
-            <span className="field-note">{t.inactiveNote}</span>
+            <span className="info-label">
+              <Switch
+                label={t.fields.isActive}
+                checked={values.isActive}
+                onChange={(event) => onChange({ isActive: event.target.checked })}
+              />
+              <InfoTip text={t.inactiveNote} />
+            </span>
           </div>
         )}
 

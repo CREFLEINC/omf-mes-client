@@ -114,7 +114,8 @@ const baseRoutes = (): StubRoute[] => [
   },
   /* 품목 이름은 번호 하나씩 푼다 — 목록 첫 쪽에 기대지 않는다. 상세는 봉투로 온다. */
   {
-    match: (request) => request.method === 'GET' && /^\/mdm\/items\/\d+$/u.test(new URL(request.url).pathname),
+    match: (request) =>
+      request.method === 'GET' && /^\/mdm\/items\/\d+$/u.test(new URL(request.url).pathname),
     respond: (request) => {
       const itemId = Number(new URL(request.url).pathname.split('/').at(-1));
       const found = itemFixtures.find((item) => item.itemId === itemId);
@@ -164,7 +165,9 @@ const pickItems = async (
     await user.click(await dialog.findByRole('checkbox', { name: code }));
   }
 
-  await user.click(dialog.getByRole('button', { name: new RegExp(`${tp.add}|${tp.replace}`, 'u') }));
+  await user.click(
+    dialog.getByRole('button', { name: new RegExp(`${tp.add}|${tp.replace}`, 'u') }),
+  );
 };
 
 describe('ShipmentRequestCreateScreen — 좌측 목록(완료 조건 C1)', () => {
@@ -310,10 +313,12 @@ describe('ShipmentRequestCreateScreen — 단독 생성(완료 조건 C3)', () =
     await pickItems(user, 'SAMPLE-ITEM', ['SAMPLE-ITEM-01', 'SAMPLE-ITEM-02']);
 
     /* 빈 줄 하나 + 고른 둘 = 셋. */
-    expect(await screen.findByRole('button', { name: t.actions.removeLine(3) })).toBeInTheDocument();
     expect(
-      await screen.findByRole('button', { name: t.lineTable.itemLabel(2) }),
-    ).toHaveTextContent('SAMPLE-ITEM-01 · 합성 품목 가');
+      await screen.findByRole('button', { name: t.actions.removeLine(3) }),
+    ).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: t.lineTable.itemLabel(2) })).toHaveTextContent(
+      'SAMPLE-ITEM-01 · 합성 품목 가',
+    );
     expect(screen.getAllByRole('combobox', { name: t.lineTable.uomLabel(2) })[0]).toHaveTextContent(
       /개/u,
     );
@@ -371,15 +376,17 @@ describe('ShipmentRequestCreateScreen — 배정 수량 검증(완료 조건 C4)
   });
 });
 
-
-describe('ShipmentRequestCreateScreen — 가져오기 없음(omf-all-around#337)', () => {
-  it('파일 가져오기 단추가 없고 [ERP S/O 없이 생성]만 있다', async () => {
+/* 지시서 가져오기는 파일 형식이 정해지지 않아 쓸 수 없다 — 쓸 수 없는 단추는 세우지 않는다(C-4 · 관리웹 정리 시안 A). */
+describe('ShipmentRequestCreateScreen — 지시서 가져오기(완료 조건 C7)', () => {
+  it('쓸 수 없는 「지시서 가져오기」 단추를 세우지 않는다', async () => {
     renderScreen({ fetch: createStubFetch(baseRoutes()) });
 
-    expect(await screen.findByRole('button', { name: t.actions.startStandalone })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: t.title })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '지시서 가져오기' })).toBeNull();
+    expect(screen.getByRole('button', { name: t.actions.startStandalone })).toBeInTheDocument();
     expect(t.actions.startStandalone).toBe('ERP S/O 없이 생성');
     expect(screen.queryByRole('button', { name: /가져오기|Import/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '출하작업지시 생성' })).toBeInTheDocument();
+    expect(t.title).toBe('출하작업지시 생성');
   });
 });
 
@@ -559,7 +566,10 @@ describe('ShipmentRequestCreateScreen — 사업부·출고 창고(피처 012)',
       await screen.findByRole('combobox', { name: t.lineTable.warehouseLabel(2) }),
     ).toHaveTextContent('합성 창고 C (합성 1공장)');
     expect(screen.getByText(t.lineTable.warehouseFilledFromFirst)).toBeInTheDocument();
-    expect(screen.getByText(t.notes.addLineWarehouse)).toBeInTheDocument();
+    /* 새 줄 창고 규칙 · 고를 수 있는 창고 규칙은 늘 보이는 문장이 아니라 ⓘ 다(관리웹 정리 시안 A). */
+    expect(screen.getByRole('button', { name: t.notes.addLineWarehouse })).toBeInTheDocument();
+    expect(screen.queryByText(t.notes.addLineWarehouse)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.notes.warehouseRule })).toBeInTheDocument();
   });
 
   it('US1-7·Q5 사업부를 바꾸면 다른 사업부 창고를 고른 줄을 비우고 띠로 다시 고르라 한다', async () => {

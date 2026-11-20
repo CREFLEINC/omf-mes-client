@@ -99,11 +99,6 @@ export const DetailDialog = ({
 
         {/* 4M 변경품이 이 W/O 에 투입됐는지(omf-all-around#63 2단계) — 없으면 없다고 적는다. */}
         <FourMInputsPanel workOrderId={workOrder.workOrderId} />
-
-        {/* ⛔ 없다는 사실을 적지 않으면 「이 W/O 는 실적이 없구나」로 읽힌다. */}
-        <div className="banner-slot">
-          <AlertBanner variant="info">{t.historyUnavailable}</AlertBanner>
-        </div>
       </>
     )}
   </Dialog>

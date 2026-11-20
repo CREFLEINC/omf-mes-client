@@ -10,8 +10,6 @@ import type { Translated } from './translated';
  */
 export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
   title: 'Xử lý đánh giá · chuyển đổi Lot Status',
-  description:
-    'Tìm và chọn LOT để xem trạng thái chất lượng hiện tại, rồi đổi trạng thái bằng cách đăng ký hoặc gỡ tạm giữ.',
   breadcrumbRoot: 'Quản lý chất lượng',
   historyLink: 'Xem lịch sử thay đổi Lot Status',
   reason: {
@@ -41,6 +39,8 @@ export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
     fields: {
       lotNo: 'Số LOT',
       item: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       status: 'Trạng thái',
       onHand: 'Số lượng đang giữ',
       held: 'Số lượng tạm giữ',

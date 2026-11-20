@@ -114,7 +114,7 @@ describe('ZaloConnectionScreen — 인계 작업 템플릿(피처 002)', () => {
     expect(screen.getAllByRole('button', { name: /파라미터 복사$/ })).toHaveLength(6);
 
     const card = await waitFor(() => handoverCard());
-    expect(card.getByText(t.handover.notice)).toBeInTheDocument();
+    expect(card.getByRole('button', { name: t.handover.notice })).toBeInTheDocument();
     const boxes = await card.findAllByRole('textbox');
     expect(boxes).toHaveLength(11);
     await waitFor(() => {
