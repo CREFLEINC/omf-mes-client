@@ -65,7 +65,7 @@ export const RoleFilterBar = ({
     <>
       <div className="filter-bar users-roles-filter-row">
         <SearchInput
-          containerClassName="users-roles-search-input users-roles-role-search-input"
+          containerClassName="users-roles-search-input"
           label={t.filters.roleSearchLabel}
           placeholder={t.filters.roleSearchPlaceholder}
           value={draft.q}
@@ -82,7 +82,7 @@ export const RoleFilterBar = ({
               onApplyFilters({ ...appliedFilters, includeInactive: event.target.checked })
             }
           >
-            {messages.common.includeInactive}
+            {t.filters.roleIncludeInactive}
           </Checkbox>
         </div>
 
@@ -90,7 +90,7 @@ export const RoleFilterBar = ({
         <div className="filter-actions field-cell-unlabeled">
           <Button onClick={() => onApplyFilters(draft)}>{messages.common.search}</Button>
           <Button variant="outlined" onClick={() => onApplyFilters(EMPTY_ROLE_FILTERS)}>
-            {messages.common.reset}
+            {t.filters.roleReset}
           </Button>
         </div>
 
@@ -255,7 +255,7 @@ export const RoleListPane = ({
           description={t.role.empty.noMatchDescription}
           action={
             <Button variant="outlined" onClick={() => onApplyFilters(EMPTY_ROLE_FILTERS)}>
-              {messages.common.reset}
+              {t.filters.roleReset}
             </Button>
           }
         />
@@ -322,6 +322,7 @@ export const RoleListPane = ({
         <PageNav
           meta={pageMeta}
           sizes={pageSizes}
+          sizeLabel={t.filters.rolePageSizeOption}
           buttonSize="md"
           onChangePage={onChangePage}
           onChangeSize={onChangePageSize}

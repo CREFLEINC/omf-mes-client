@@ -304,7 +304,8 @@ export const UsersRolesScreen = () => {
     isUsersTab,
   );
   /* 수입검사 화면과 같은 배치 — 위 조회 묶음 · 아래 목록 | 상세(좌우 · 상하 배치, 폭 · 높이 끌기, 목록 접기). */
-  const { splitRef, aboveRef } = useFitToViewport();
+  /* 탭마다 목록 · 상세 구획이 따로 서서, 탭이 바뀌면 새 구획을 다시 잰다(높이가 줄던 문제 · #333). */
+  const { splitRef, aboveRef } = useFitToViewport(tab.id);
   const split = usePaneSplit('omf-mes:users-roles:split', 0.45);
   const layout = useSplitOrientation('omf-mes:users-roles:split-orientation');
   const listCollapse = {

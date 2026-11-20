@@ -364,8 +364,8 @@ export const toRoleFilterChips = (filters: RoleFilters): RoleFilterChip[] => {
   if (filters.includeInactive) {
     chips.push({
       key: 'includeInactive',
-      label: messages.common.includeInactive,
-      removeLabel: t.filters.chipRemoveIncludeInactive,
+      label: t.filters.roleIncludeInactive,
+      removeLabel: t.filters.chipRemoveRoleIncludeInactive,
     });
   }
 

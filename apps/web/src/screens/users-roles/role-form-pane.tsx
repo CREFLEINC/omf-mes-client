@@ -5,6 +5,7 @@ import { type ReactNode, useId } from 'react';
 import { codeLockMessage, type Editability } from '../../patterns/master';
 import { DisabledAction } from './disabled-action';
 import { FieldLabel } from './field-label';
+import { requiredEmptyClass } from './user-form-pane';
 import type { RoleFormValues } from './types';
 
 const t = messages.usersRoles;
@@ -118,6 +119,10 @@ export const RoleFormPane = ({
           <TextField
             id={roleCodeId}
             value={values.roleCode}
+            /* 필수 칸이 비면 빨간 테두리 — 사용자 추가 팝업과 같다(사용자 지시 2026-11-20 · #333). 잠긴 칸은 고칠 수 없어 뺀다. */
+            containerClassName={
+              codeLockReason === null ? requiredEmptyClass(values.roleCode) : undefined
+            }
             onChange={(event) => onChange({ roleCode: event.target.value })}
             error={fieldErrors.roleCode}
             disabled={codeLockReason !== null}
@@ -131,6 +136,7 @@ export const RoleFormPane = ({
           <TextField
             id={roleNameId}
             value={values.roleName}
+            containerClassName={requiredEmptyClass(values.roleName)}
             onChange={(event) => onChange({ roleName: event.target.value })}
             error={fieldErrors.roleName}
             aria-required
@@ -139,7 +145,11 @@ export const RoleFormPane = ({
 
         {/* 계약이 널을 허용한다 — 비우는 것이 정상 값이라 필수 표시를 붙이지 않는다. */}
         <div className="field-cell">
-          <FieldLabel htmlFor={descriptionId} label={t.role.fields.description} />
+          <FieldLabel
+            htmlFor={descriptionId}
+            label={t.role.fields.description}
+            optionalMark={t.user.optionalMark}
+          />
           <TextField
             id={descriptionId}
             value={values.description}

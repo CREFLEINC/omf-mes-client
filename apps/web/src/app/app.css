@@ -13557,12 +13557,6 @@ a.erp-send-chips:focus-visible {
   width: 17rem;
 }
 
-/* 역할 검색 — 흐린 문구(역할 코드 또는 역할명을 입력하세요)가 잘리지 않는 너비(사용자 지시 2026-11-20 · #333). */
-.users-roles-filter-row > .users-roles-search-input.users-roles-role-search-input {
-  flex-basis: 21rem;
-  width: 21rem;
-}
-
 /* 조회 · 초기화 · 사용자 추가를 함께 오른쪽 끝으로(사용자 지시 2026-11-20 · #333). */
 .users-roles-filter-row > .filter-actions {
   margin-left: auto;

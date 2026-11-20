@@ -14,7 +14,11 @@ export const formatDotDate = (date: string): string => date.replaceAll('-', '.')
  * 실어, CSS 가 남은 높이만큼만 쓰고 넘치는 줄은 표 안에서 스크롤한다. 조건 줄이 펼쳐지거나 창 크기가
  * 바뀌면 윗변이 움직이므로 다시 잰다.
  */
-export const useFitToViewport = () => {
+/**
+ * `remeasureKey` — 표 구획이 다른 요소로 갈아 끼워지는 화면(탭마다 구획이 따로 서는 화면)이 넘긴다. 값이 바뀌면
+ * 새 구획을 다시 잰다 — 안 재면 새 구획에 `--split-top` 이 없어 높이가 창 바닥까지 닿지 않는다(#333).
+ */
+export const useFitToViewport = (remeasureKey?: string) => {
   const splitRef = useRef<HTMLDivElement>(null);
   const aboveRef = useRef<HTMLElement>(null);
 
@@ -36,7 +40,7 @@ export const useFitToViewport = () => {
       observer?.disconnect();
       window.removeEventListener('resize', measure);
     };
-  }, []);
+  }, [remeasureKey]);
 
   return { splitRef, aboveRef };
 };

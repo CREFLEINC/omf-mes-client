@@ -13,7 +13,7 @@ export const usersRoles = {
   tabs: {
     label: '사용자 역할 권한 관리',
     users: '사용자 관리',
-    roles: '역할 및 권한 관리',
+    roles: '역할·권한 관리',
   },
   panes: {
     userList: '사용자 목록',
@@ -143,7 +143,12 @@ export const usersRoles = {
     chipRemoveUserIncludeInactive: '사용 중지 계정 포함 조건 제거',
     chipRemoveIncludeInactive: '미사용 포함 조건 제거',
     roleSearchLabel: '역할 검색',
-    roleSearchPlaceholder: '역할 코드 또는 역할명을 입력하세요',
+    /* 역할 탭 용어 정정(사용자 지시 2026-11-20 · #333). */
+    roleSearchPlaceholder: '역할 코드 또는 이름 검색',
+    roleIncludeInactive: '사용 중지 포함',
+    chipRemoveRoleIncludeInactive: '사용 중지 포함 조건 제거',
+    roleReset: '조건 초기화',
+    rolePageSizeOption: (size: number): string => `${String(size)}개씩 보기`,
   },
   loading: {
     users: '사용자 목록을 불러오는 중',
@@ -241,7 +246,7 @@ export const usersRoles = {
       roleCode: '역할 코드',
       roleName: '역할명',
       description: '설명',
-      status: '상태',
+      status: '사용 상태',
     },
     empty: {
       noneTitle: '등록된 역할이 없습니다',
@@ -420,8 +425,8 @@ export const usersRoles = {
   },
   /** 역할 탭 오른쪽 빈 안내 — 사용자 탭과 같은 모양(사용자 지시 2026-11-20 · #333). */
   pickRole: {
-    title: '역할을 선택하세요.',
-    hint: '선택한 역할의 상세 정보 · 기능 권한이 표시됩니다.',
+    title: '역할을 선택해 주세요.',
+    hint: '선택한 역할의 정보와 권한을 확인할 수 있습니다.',
     noRolesTitle: '표시할 역할이 없습니다.',
     noRolesHint: '조회 조건을 바꾸거나 역할을 추가하세요.',
   },

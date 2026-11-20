@@ -544,7 +544,7 @@ describe('UsersRolesScreen 탭', () => {
 
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
       '사용자 관리',
-      '역할 및 권한 관리',
+      '역할·권한 관리',
     ]);
   });
 
@@ -3371,7 +3371,7 @@ describe('UsersRolesScreen 역할 탭 진입과 조건', () => {
 
     await waitForRoleList(requests);
 
-    expect(screen.getByRole('tab', { name: '역할 및 권한 관리' })).toHaveAttribute(
+    expect(screen.getByRole('tab', { name: '역할·권한 관리' })).toHaveAttribute(
       'aria-selected',
       'true',
     );
@@ -3437,7 +3437,7 @@ describe('UsersRolesScreen 역할 탭 진입과 조건', () => {
 
     await waitForRoleList(requests);
 
-    await user.click(within(roleSearchPane()).getByRole('checkbox', { name: '미사용 포함' }));
+    await user.click(within(roleSearchPane()).getByRole('checkbox', { name: '사용 중지 포함' }));
 
     await waitFor(() => {
       expect(new URLSearchParams(search()).get('inactive')).toBe('1');
@@ -3480,7 +3480,7 @@ describe('UsersRolesScreen 탭 전환', () => {
 
     await waitForUserList(requests);
 
-    await user.click(screen.getByRole('tab', { name: '역할 및 권한 관리' }));
+    await user.click(screen.getByRole('tab', { name: '역할·권한 관리' }));
 
     await waitFor(() => {
       expect(new URLSearchParams(search()).get('tab')).toBe('roles');
@@ -3515,7 +3515,7 @@ describe('UsersRolesScreen 탭 전환', () => {
 
     await waitForUserList(requests);
 
-    await user.click(screen.getByRole('tab', { name: '역할 및 권한 관리' }));
+    await user.click(screen.getByRole('tab', { name: '역할·권한 관리' }));
 
     await waitForRoleList(requests);
 
@@ -3531,11 +3531,11 @@ describe('UsersRolesScreen 탭 전환', () => {
 
     await waitForUserList(requests);
 
-    await user.click(screen.getByRole('tab', { name: '역할 및 권한 관리' }));
+    await user.click(screen.getByRole('tab', { name: '역할·권한 관리' }));
 
     await waitForRoleList(requests);
 
-    expect(within(roleSettingsPane()).getByText('역할을 선택하세요.')).toBeInTheDocument();
+    expect(within(roleSettingsPane()).getByText('역할을 선택해 주세요.')).toBeInTheDocument();
     expect(requestsTo(requests, `${ROLES_PATH}/1001`)).toHaveLength(0);
   });
 });
@@ -3657,7 +3657,7 @@ describe('UsersRolesScreen 역할 상세 열기', () => {
 
     await waitForRoleList(requests);
 
-    expect(within(roleSettingsPane()).getByText('역할을 선택하세요.')).toBeInTheDocument();
+    expect(within(roleSettingsPane()).getByText('역할을 선택해 주세요.')).toBeInTheDocument();
     expect(requestsTo(requests, rolePath(5001))).toHaveLength(0);
   });
 
@@ -3673,11 +3673,17 @@ describe('UsersRolesScreen 역할 상세 열기', () => {
       { name: '역할 추가' },
     );
     expect(addButton).toBeDisabled();
+    /* 빈 필수 칸은 빨간 테두리, 설명은 「(선택)」(사용자 지시 2026-11-20 · #333). */
+    expect(roleCodeField().closest('.users-roles-required-empty')).not.toBeNull();
+    expect(roleNameField().closest('.users-roles-required-empty')).not.toBeNull();
+    expect(within(roleFormPane()).getByText('(선택)')).toBeInTheDocument();
 
     await user.type(roleCodeField(), 'SYN-NEW');
     await user.type(roleNameField(), '합성 새 역할');
 
     expect(addButton).toBeEnabled();
+    expect(roleCodeField().closest('.users-roles-required-empty')).toBeNull();
+    expect(roleNameField().closest('.users-roles-required-empty')).toBeNull();
   });
 
   it('역할 추가는 빈 폼을 열고 상세를 조회하지 않는다', async () => {
@@ -4316,7 +4322,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     await waitFor(() => {
       expect(new URLSearchParams(search()).has('rol')).toBe(false);
     });
-    expect(within(roleSettingsPane()).getByText('역할을 선택하세요.')).toBeInTheDocument();
+    expect(within(roleSettingsPane()).getByText('역할을 선택해 주세요.')).toBeInTheDocument();
   });
 
   const replaceBodyOf = (requests: RecordedRequest[]): Record<string, unknown> => {

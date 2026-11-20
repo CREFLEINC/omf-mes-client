@@ -114,7 +114,11 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     chipRemoveUserIncludeInactive: 'Bỏ điều kiện gồm cả tài khoản ngừng dùng',
     chipRemoveIncludeInactive: 'Bỏ điều kiện gồm cả mục ngừng dùng',
     roleSearchLabel: 'Tìm vai trò',
-    roleSearchPlaceholder: 'Mã vai trò hoặc tên vai trò',
+    roleSearchPlaceholder: 'Tìm theo mã hoặc tên vai trò',
+    roleIncludeInactive: 'Bao gồm đã ngừng sử dụng',
+    chipRemoveRoleIncludeInactive: 'Xóa điều kiện bao gồm đã ngừng sử dụng',
+    roleReset: 'Đặt lại điều kiện',
+    rolePageSizeOption: (size: number): string => `Xem ${String(size)} mục`,
   },
   loading: {
     users: 'Đang tải danh sách người dùng',
@@ -180,7 +184,7 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
       roleCode: 'Mã vai trò',
       roleName: 'Tên vai trò',
       description: 'Mô tả',
-      status: 'Trạng thái',
+      status: 'Trạng thái sử dụng',
     },
     empty: {
       noneTitle: 'Chưa đăng ký vai trò nào',
@@ -293,7 +297,7 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
   },
   pickRole: {
     title: 'Hãy chọn vai trò.',
-    hint: 'Thông tin chi tiết và quyền chức năng của vai trò đã chọn sẽ hiển thị.',
+    hint: 'Có thể xem thông tin và quyền của vai trò đã chọn.',
     noRolesTitle: 'Không có vai trò để hiển thị.',
     noRolesHint: 'Hãy thay đổi điều kiện tìm kiếm hoặc thêm vai trò.',
   },
