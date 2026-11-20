@@ -19,8 +19,6 @@ export const popOqcInspection = {
 
   detail: {
     nothingSelectedTitle: 'Hãy chọn yêu cầu',
-    nothingSelected: 'Chạm vào yêu cầu bên trái để nhập số lượng và phán định.',
-    nothingSelectedDone: 'Chạm vào yêu cầu bên trái để xem kết quả phán định.',
     loading: 'Đang tải thông tin yêu cầu.',
     bandLabel: 'Thông tin yêu cầu',
     fields: {

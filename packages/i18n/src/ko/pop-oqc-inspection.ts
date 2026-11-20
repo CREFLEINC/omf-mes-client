@@ -28,8 +28,6 @@ export const popOqcInspection = {
 
   detail: {
     nothingSelectedTitle: '의뢰를 선택하세요',
-    nothingSelected: '왼쪽 목록에서 의뢰를 누르면 수량과 판정을 입력합니다.',
-    nothingSelectedDone: '왼쪽 목록에서 의뢰를 누르면 판정 결과를 봅니다.',
     loading: '의뢰 정보를 불러오는 중입니다.',
     bandLabel: '의뢰 정보',
     fields: {

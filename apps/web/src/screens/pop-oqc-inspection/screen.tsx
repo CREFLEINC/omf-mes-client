@@ -321,6 +321,9 @@ export const PopOqcInspectionScreen = () => {
   const showResult = selectedId === null ? view === 'done' : formReady && judgmentState.isLocked;
   const editable = formReady && !judgmentState.isLocked;
   const inQuantity = !showResult && step === 'quantity';
+  /* 오른쪽 입력(키패드) 칸 — 옛 흐름에서 의뢰를 골라 수량을 적을 때만. 고르기 전·판정 결과·새 흐름은 두지 않고
+     상세가 그 폭을 쓴다(사용자 지시 2026-11-20). */
+  const showKeypad = inQuantity && !isNewFlow && selectedId !== null;
   /* [저장](1단계 → 2단계)과 단계 줄 「2 최종 판정」은 같은 조건 — 수량 합계 = 검사 수량. */
   const nextReason: string | null = !formReady
     ? selectedId === null
@@ -411,11 +414,8 @@ export const PopOqcInspectionScreen = () => {
   const workBody = (() => {
     if (selectedId === null) {
       return (
-        <PuEmpty
-          icon="file"
-          title={t.detail.nothingSelectedTitle}
-          hint={view === 'done' ? t.detail.nothingSelectedDone : t.detail.nothingSelected}
-        />
+        /* 제목 한 줄만 — 설명 문장은 두지 않는다(불필요 문구 제거 · 사용자 지시 2026-11-20). */
+        <PuEmpty icon="file" title={t.detail.nothingSelectedTitle} />
       );
     }
     if (detail.isError) {
@@ -635,7 +635,7 @@ export const PopOqcInspectionScreen = () => {
       className="oqc-u"
       actionBar={isNewFlow ? <PopShipmentBar form={shipmentForm} /> : actionBar}
     >
-      <PuCols variant={inQuantity && !isNewFlow ? 'lk' : 'list'}>
+      <PuCols variant={showKeypad ? 'lk' : 'list'}>
         <PuSection
           className="oqc-list-card"
           head={
@@ -722,7 +722,7 @@ export const PopOqcInspectionScreen = () => {
           </PuSection>
         )}
 
-        {inQuantity && !isNewFlow && (
+        {showKeypad && (
           <PuSection title={t.result.keypadTitle}>
             <PuKeypad
               targetLabel={keypadOn ? t.result.fields[keypadTarget] : null}
