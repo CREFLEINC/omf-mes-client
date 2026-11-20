@@ -90,7 +90,7 @@ export const lotTail = (lotNo: string): string => {
   return parts.length <= 2 ? lotNo : `…|${parts.slice(-2).join('|')}`;
 };
 
-/** 화면이 이번에 건드린 입하 LOT 카드 하나 — 맨 위가 마지막으로 건드린 것. */
+/** 화면이 이번에 건드린 입하 LOT 하나(= 공급사 · 품목 하나) — 처음 스캔된 차례로 선다. */
 export interface CardState {
   inboundLotId: number;
   inboundLotNo: string;
@@ -101,8 +101,9 @@ export interface CardState {
 }
 
 /**
- * 받기 결과를 카드에 넣는다 — 그 입하 LOT 카드를 맨 위로 올리고, 이번 LOT 을 「방금 등록」으로, 앞선 「방금」은
- * 「이번에 등록」으로 내린다.
+ * 받기 결과를 넣는다 — 이번 LOT 을 「방금 등록」으로, 앞선 「방금」은 「이번에 등록」으로 내린다. 있던 입하 LOT 은
+ * 자리를 지키고 새 입하 LOT 은 끝에 붙는다 — 스캔할 때마다 표의 줄이 자리를 바꾸면 행 번호로 셀 수 없다
+ * (사용자 지시 2026-11-20 「행 번호」).
  */
 export const applyReceive = (
   cards: readonly CardState[],
@@ -128,17 +129,14 @@ export const applyReceive = (
       registered,
     };
 
-    next = [card, ...next.filter((each) => each.inboundLotId !== lot.inboundLotId)];
+    next =
+      existing === undefined
+        ? [...next, card]
+        : next.map((each) => (each.inboundLotId === lot.inboundLotId ? card : each));
   }
 
   return next;
 };
-
-/** 카드에 무엇을 할 수 있는가 — 막히면 그 까닭(버튼 아래 한 줄). */
-export type CardLock = 'offline' | 'pending' | null;
-
-export const cardLockOf = (online: boolean, pendingCount: number): CardLock =>
-  !online ? 'offline' : pendingCount > 0 ? 'pending' : null;
 
 /** 입하 중(마감 전)인가 — 해제 · 공급사 LOT · 입하 마감은 이때만. */
 export const isReceiving = (detail: Pick<InboundLotDetail, 'statusCode'>): boolean =>
@@ -150,16 +148,22 @@ export type ScanLine =
       kind: 'ok';
       id: string;
       lotNo: string;
-      inboundLotNo: string;
-      created: boolean;
-      count: number;
-      /** 이 스캔 때 날짜가 바뀌어 자동 마감된 「입하 중」 입하 LOT 번호. */
-      autoClosed: string | null;
+      /** 들어간 입하 LOT(= 공급사 · 품목) — 품목 이름 · 표의 줄을 여기서 찾는다. */
+      inboundLotId: number;
+      /** 등록된 자재 관리 LOT — [취소]가 푼다. 응답에 없으면 null. */
+      lotId: number | null;
+      qty: number | null;
+      /** 바로 앞 스캔과 공급사 · 품목이 다르다 — 「새 품목」. */
+      newItem: boolean;
+      /** 이 스캔 때 날짜가 바뀌어 자동 마감된 입하가 있다. */
+      autoClosed: boolean;
     }
+  /** 이번 입하 표에 이미 있는 라벨 — 서버에 보내지 않는다. `row` 는 표의 행 번호. */
+  | { kind: 'duplicate'; id: string; lotNo: string; row: number }
   | { kind: 'offline'; id: string; lotNo: string }
   /** `body` 는 제목에 없는 사실(들어가 있는 입하 LOT · 서버 문구)만 — 없으면 null. */
   | { kind: 'reject'; id: string; lotNo: string; reason: string; body: string | null }
-  | { kind: 'closed'; id: string; lotNo: string; inboundLotNo: string };
+  | { kind: 'closed'; id: string; lotNo: string };
 
 /** 서버가 실어 준 이유 문구(검증 · 잠김 · 충돌) — 없으면 null. */
 export const serverMessageOf = (error: ApiError): string | null => {
@@ -221,6 +225,68 @@ export const registeredInOf = (
     if (detail === undefined) continue;
     if (detail.lots.some((lot) => lot.lotNo === lotNo && lot.lifecycleStatusCode !== 'WAITING')) {
       return { inboundLotNo: detail.inboundLotNo, receiving: isReceiving(detail) };
+    }
+  }
+
+  return null;
+};
+
+/** 이번 입하 표의 한 줄 — 입하 LOT 하나(공급사 · 품목 하나). `no` 는 화면의 행 번호(1부터). */
+export interface TallyRow {
+  no: number;
+  detail: InboundLotDetail;
+}
+
+/** 공급사 묶음 — 머리 줄 하나 아래 품목 줄들. */
+export interface TallyGroup {
+  supplierId: number;
+  supplierName: string;
+  rows: TallyRow[];
+}
+
+/**
+ * 이번 입하 표 — 공급사마다 묶고, 묶음과 줄은 처음 스캔된 차례. 행 번호는 보이는 차례로 1부터 매긴다.
+ * 아직 불러오지 못한 입하 LOT · 입하 취소(마지막 LOT 을 푼 것)는 빠진다.
+ */
+export const tallyOf = (
+  cards: readonly CardState[],
+  detailOf: (inboundLotId: number) => InboundLotDetail | undefined,
+): TallyGroup[] => {
+  const groups: TallyGroup[] = [];
+
+  for (const card of cards) {
+    const detail = detailOf(card.inboundLotId);
+
+    if (detail === undefined || detail.statusCode === 'VOIDED') continue;
+
+    let group = groups.find((each) => each.supplierId === detail.supplierId);
+    if (group === undefined) {
+      group = { supplierId: detail.supplierId, supplierName: detail.supplierName, rows: [] };
+      groups.push(group);
+    }
+    group.rows.push({ no: 0, detail });
+  }
+
+  let no = 0;
+  for (const group of groups) {
+    for (const row of group.rows) {
+      no += 1;
+      row.no = no;
+    }
+  }
+
+  return groups;
+};
+
+/** 등록된(대기 아닌) 자재 관리 LOT 만. */
+export const receivedLotsOf = (detail: InboundLotDetail): InboundLotDetail['lots'] =>
+  detail.lots.filter((lot) => lot.lifecycleStatusCode !== 'WAITING');
+
+/** 이 라벨이 이번 입하 표 몇 번 줄에 있는가 — 없으면 null. */
+export const tallyRowOfLot = (groups: readonly TallyGroup[], lotNo: string): number | null => {
+  for (const group of groups) {
+    for (const row of group.rows) {
+      if (receivedLotsOf(row.detail).some((lot) => lot.lotNo === lotNo)) return row.no;
     }
   }
 

@@ -44,6 +44,8 @@ const ALLOWED = [
   /* 홈의 「이어서 하기」 - 적다 만 것이 있다는 사실(사용자 결정 2026-10-21). */
   'app/shell-home.css :: .shell-home__resume-icon',
   'app/shell-home.css :: .shell-home__resume-card .shell-home__text small',
+  /* 입하 등록의 [마감] · [이 품목만 마감] - 드물게 누르지만 찾을 수 있어야 해 빨간 글자 · 테두리(사용자 결정 2026-11-20). */
+  'screens/inbound-receipt/screen.css :: .receive-tally__close.pda-button--outlined.pda-button--outlined:not(:disabled), .item-lots__close.pda-button--outlined.pda-button--outlined:not(:disabled)',
 ];
 
 /**

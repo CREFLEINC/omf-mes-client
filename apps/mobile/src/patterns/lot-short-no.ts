@@ -1,10 +1,12 @@
 import { parseMaterialLotNo, type MaterialLotSegments } from './material-lot-no';
 
-/** 짧은 표시의 차례 — 일련번호만, 겹치면 날짜, 그래도 겹치면 수량 칸을 앞에 붙인다. */
+/**
+ * 짧은 표시의 차례 — 일련번호만, 겹치면 날짜를 앞에 붙인다. 수량 칸은 붙이지 않는다 — 표의 수량 칸이 이미 가른다.
+ * 수량까지 붙이면 번호가 길어져 표가 카드 밖으로 밀리고 [해제]가 잘렸다(사용자 지시 2026-11-19).
+ */
 const SHAPES: readonly ((segments: MaterialLotSegments) => string)[] = [
   (segments) => segments.serial,
   (segments) => `${segments.date}|${segments.serial}`,
-  (segments) => `${segments.qty}|${segments.date}|${segments.serial}`,
 ];
 
 /**
@@ -22,8 +24,12 @@ export const shortLotNos = (lotNos: readonly string[]): ReadonlyMap<string, stri
 
   for (const shape of SHAPES) {
     const shorts = parsed.map((segments) => shape(segments as MaterialLotSegments));
+    /* 표시는 같아도 수량이 다르면 수량 칸으로 갈린다. */
+    const keys = parsed.map(
+      (segments, index) => `${(segments as MaterialLotSegments).qty}#${shorts[index] as string}`,
+    );
 
-    if (new Set(shorts).size === shorts.length) {
+    if (new Set(keys).size === keys.length) {
       return new Map(lotNos.map((lotNo, index) => [lotNo, shorts[index] as string]));
     }
   }

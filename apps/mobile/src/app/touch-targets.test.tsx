@@ -41,9 +41,13 @@ const screenFiles = (): { name: string; text: string }[] =>
  * 기기 등록 해제 창도 같은 자리다 - 사번 확인 화면(2xl 단추가 함께 있어 검사에 안 걸렸다)에서
  * 설정으로 옮기며 파일만 나뉘었다(사용자 지시 2026-10-21). 창 단추가 xl 인 것은 그 화면 시험이
  * 따로 지킨다.
+ *
+ * 확인 창(confirm-dialog)도 같은 자리다 - 72px 단추가 작은 창 안에서 내용보다 커 보여 48px 로
+ * 낮췄다(사용자 지시 2026-11-20).
  */
 const KNOWN_EXCEPTIONS = new Set([
   'patterns/scan-replace-dialog.tsx',
+  'patterns/confirm-dialog.tsx',
   'screens/device-registration/unregister.tsx',
 ]);
 
