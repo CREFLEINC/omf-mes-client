@@ -1,9 +1,23 @@
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { PuButton, PuChip, PuDialog, PuNote, PuPager } from '../../patterns/pop-uniform';
+import {
+  PuButton,
+  PuChip,
+  PuDialog,
+  PuNote,
+  PuPager,
+  puCx,
+  useFitCount,
+} from '../../patterns/pop-uniform';
 import { PuSearchBox } from '../../patterns/pop-uniform/search-box';
-import { formatQty, orderSearchRows, toSearchRow, type SearchRowView } from './model';
+import {
+  SEARCH_PAGE_SIZE,
+  formatQty,
+  orderSearchRows,
+  toSearchRow,
+  type SearchRowView,
+} from './model';
 import { useShipmentRequestSearch } from './queries';
 
 const t = messages.popShipmentComplete.search;
@@ -28,15 +42,34 @@ const blockerText = (row: SearchRowView): string =>
  *
  * ⚠ 출하 완료된 지시서는 나오지 않는다 — 「출하 가능만 표시」가 켜졌으면 서버의 완료 대기 조건이, 꺼졌으면
  *   「출하가 남은 지시서만」이 거른다(`model.searchQueryOf`).
- * 창은 화면 안에 들고, 결과가 많을 때만 목록이 구른다(찾기 칸 · 거르기 줄 · 쪽 넘김은 늘 보인다).
+ * 창은 화면 안에 들고 구르지 않는다 — 결과는 목록 칸에 드는 만큼 쪽으로 나눠 아래 쪽 넘김(총 N건 ‹ n / m ›)으로 본다.
  */
 export const SearchDialog = ({ onClose, onPick }: SearchDialogProps) => {
   const [q, setQ] = useState('');
   const [readyOnly, setReadyOnly] = useState(true);
   const [page, setPage] = useState(1);
 
-  const search = useShipmentRequestSearch({ q, readyOnly, page }, true);
+  /*
+   * 쪽 넘김(스크롤 없음) — 한 쪽 건수는 목록 칸에 드는 카드 수다(`useFitCount`, 선택 창 `pop-select` 와 같은 방식).
+   * 서버가 쪽으로 주는 목록이라 그 건수로 쪽을 받는다(조회 조건은 같다).
+   */
+  const listRef = useRef<HTMLUListElement>(null);
+  const size = useFitCount(listRef, { fallback: 3, max: SEARCH_PAGE_SIZE });
+  const search = useShipmentRequestSearch({ q, readyOnly, page, size }, true);
   const rows = orderSearchRows((search.data?.items ?? []).map(toSearchRow));
+  const total = search.data?.page.total ?? 0;
+  const pages = Math.max(1, Math.ceil(total / Math.max(1, search.data?.page.size ?? size)));
+  /*
+   * 한 쪽에 다 들지 않으면 창 높이를 화면 끝까지 키워 목록 칸이 남은 높이를 갖는다 — 적으면 창은 내용만큼.
+   * ⛔ 「받은 응답」의 쪽 수로 정한다(지금 잰 건수가 아니라). 잰 건수로 정하면 다시 받기 전에 창이 줄었다 늘었다
+   *    하며 재기를 끝없이 되풀이한다(1700×1350 실측, 화면 오류).
+   */
+  const isPaged = pages > 1;
+
+  /* 건수가 줄어 지금 쪽이 없어지면 마지막 쪽으로 당긴다. */
+  useEffect(() => {
+    if (search.data !== undefined && page > pages) setPage(pages);
+  }, [search.data, page, pages]);
 
   const body = search.isError ? (
     <PuNote
@@ -57,7 +90,7 @@ export const SearchDialog = ({ onClose, onPick }: SearchDialogProps) => {
       <span>{readyOnly ? t.emptyHintFiltered : t.emptyHint}</span>
     </div>
   ) : (
-    <ul className="pu-list psc-search-list" aria-label={t.caption}>
+    <ul ref={listRef} className="pu-list pu-fit psc-search-list" aria-label={t.caption}>
       {rows.map((row) => (
         <li key={row.shipmentRequestId}>
           <button
@@ -117,7 +150,7 @@ export const SearchDialog = ({ onClose, onPick }: SearchDialogProps) => {
       onClose={onClose}
       footer={<PuButton onClick={onClose}>{t.close}</PuButton>}
     >
-      <div className="psc-search">
+      <div className={puCx('psc-search', isPaged && 'is-paged')}>
         {/* 찾기 칸 — 누르면 다른 화면 찾기 칸과 같은 창(글자판 · [검색])이 뜬다(`PuSearchBox`). */}
         <PuSearchBox
           label={t.queryLabel}
@@ -128,31 +161,23 @@ export const SearchDialog = ({ onClose, onPick }: SearchDialogProps) => {
             setQ(value);
           }}
         />
-        <div className="psc-search-filter">
-          <label className="pu-check">
-            <input
-              type="checkbox"
-              checked={readyOnly}
-              onChange={(event) => {
-                setPage(1);
-                setReadyOnly(event.target.checked);
-              }}
-            />
-            {t.readyOnly}
-          </label>
-          <span className="psc-search-count">{t.count(search.data?.page.total ?? 0)}</span>
-        </div>
+        <label className="pu-check">
+          <input
+            type="checkbox"
+            checked={readyOnly}
+            onChange={(event) => {
+              setPage(1);
+              setReadyOnly(event.target.checked);
+            }}
+          />
+          {t.readyOnly}
+        </label>
         {body}
-        {/* POP 쪽 넘김은 공통 `PuPager` 로 옮겼다(#295) — 건수는 거르기 줄 오른쪽이 이미 보인다. */}
         <PuPager
-          total={search.data?.page.total ?? null}
-          page={Math.max(1, search.data?.page.page ?? page)}
-          pages={Math.max(
-            1,
-            Math.ceil((search.data?.page.total ?? 0) / Math.max(1, search.data?.page.size ?? 1)),
-          )}
+          total={search.data === undefined ? null : total}
+          page={Math.min(Math.max(1, search.data?.page.page ?? page), pages)}
+          pages={pages}
           label={t.pageNav}
-          showTotal={false}
           onPage={setPage}
         />
       </div>

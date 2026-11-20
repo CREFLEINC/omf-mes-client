@@ -97,7 +97,27 @@
 }
 
 /* ── 지시서 검색 창: 찾기 칸 · 거르기 줄은 늘 보이고, 결과가 많을 때만 목록이 구른다 ── */
-/* 창 본문이 통째로 구르지 않게 — 남는 높이는 목록이 갖고, 목록만 구른다. */
+/*
+ * 창 안은 구르지 않는다 — 결과가 한 쪽에 다 들면 창은 내용만큼, 넘치면 창 높이를 화면 끝까지(위아래 12px 여백) 키우고
+ * 목록 칸이 남은 높이를 갖는다 — 큰 화면일수록 한 쪽에 카드가 더 든다. 한 쪽 건수는 그 칸 높이로 잰다(`useFitCount`).
+ */
+/*
+ * ⛔ 내용만큼일 때의 최대 높이도 같은 값으로 둔다 — 기본(86vh)보다 낮으면 「한 쪽에 다 든다 → 내용만큼 줄임 → 잘림 →
+ *    쪽 넘김 → 다시 다 든다」가 끝없이 돈다(1700×1350 에서 실측, 화면 오류).
+ */
+.pu-dialog:has(.psc-search) {
+  max-height: calc(100vh - 24px);
+}
+
+.pu-dialog:has(.psc-search.is-paged) {
+  height: calc(100vh - 24px);
+}
+
+.pu-dialog:has(.psc-search.is-paged) > .pu-dialog-body {
+  flex: 1;
+  min-height: 0;
+}
+
 .pu-dialog-body:has(> .psc-search) {
   display: flex;
   flex-direction: column;
@@ -116,32 +136,15 @@
   flex: none;
 }
 
-/* 한 쪽뿐이면 쪽 넘김이 비어 있다(건수는 거르기 줄 오른쪽) — 빈 줄 높이를 남기지 않는다. */
-.psc-search > .pu-pager:empty {
-  display: none;
-}
-
-.psc-search-filter {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.psc-search-count {
-  color: var(--pu-text-3);
-  font-size: 14px;
-  white-space: nowrap;
-}
-
 .psc-search-list {
   flex: 0 1 auto;
-  min-height: 0;
-  max-height: 420px;
   margin: 0;
   padding: 0;
-  overflow-y: auto;
   list-style: none;
+}
+
+.psc-search.is-paged > .psc-search-list {
+  flex: 1 1 0;
 }
 
 .psc-search-blocked,

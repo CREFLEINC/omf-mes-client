@@ -260,6 +260,8 @@ export interface SearchCriteria {
   q: string;
   readyOnly: boolean;
   page: number;
+  /** 한 쪽 건수 — 창 목록 칸에 드는 만큼(`useFitCount`). 비우면 `SEARCH_PAGE_SIZE`. */
+  size?: number;
 }
 
 /**
@@ -272,7 +274,7 @@ export const searchQueryOf = (criteria: SearchCriteria, today: string) => ({
   ...(criteria.readyOnly ? { completionReadyOnly: true } : { shippableRemainderOnly: true }),
   sort: 'requestedShipDate' as const,
   page: criteria.page,
-  size: SEARCH_PAGE_SIZE,
+  size: criteria.size ?? SEARCH_PAGE_SIZE,
 });
 
 export interface SearchRowView {

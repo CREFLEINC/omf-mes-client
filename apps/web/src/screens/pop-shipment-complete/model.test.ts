@@ -126,6 +126,16 @@ describe('P-04-07 찾기 조건', () => {
     });
   });
 
+  it('#334 — 한 쪽 건수를 주면(창 목록 칸에 드는 카드 수) 그 건수로 쪽을 받는다. 조건은 같다', () => {
+    expect(searchQueryOf({ q: '', readyOnly: true, page: 2, size: 4 }, '2026-11-18')).toEqual({
+      shipDateFrom: '2026-10-19',
+      completionReadyOnly: true,
+      sort: 'requestedShipDate',
+      page: 2,
+      size: 4,
+    });
+  });
+
   it('달력 날짜를 시간대와 무관하게 뺀다(달·해 넘김)', () => {
     expect(minusDays('2026-01-05', 30)).toBe('2025-12-06');
   });

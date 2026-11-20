@@ -158,7 +158,6 @@ export const popShipmentComplete = {
     queryHeading: '지시서 번호, 고객명, 품목명 또는 코드',
     /** 켜면 막는 이유가 없는 지시서만(서버 `completionReadyOnly`), 끄면 출하가 남은 지시서 전부. */
     readyOnly: '출하 가능만 표시',
-    count: (total: number): string => `${String(total)}건`,
     caption: '출하 지시서 목록',
     select: (requestNo: string): string => `지시서 ${requestNo} 조회`,
     ready: '출하 가능',

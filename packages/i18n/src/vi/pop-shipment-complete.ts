@@ -137,7 +137,6 @@ export const popShipmentComplete = {
 
     queryHeading: 'Số lệnh, tên khách hàng, tên hoặc mã hàng',
     readyOnly: 'Chỉ hiện lệnh có thể xuất hàng',
-    count: (total: number): string => `${String(total)} lệnh`,
     caption: 'Danh sách lệnh xuất hàng',
     select: (requestNo: string): string => `Tra cứu lệnh ${requestNo}`,
     ready: 'Có thể xuất hàng',

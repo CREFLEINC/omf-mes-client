@@ -671,6 +671,9 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     const firstQuery = new URL(listCalls()[0]?.url ?? '').searchParams;
     expect(firstQuery.get('completionReadyOnly')).toBe('true');
     expect(firstQuery.get('shipDateFrom')).toMatch(/^\d{4}-\d{2}-\d{2}$/u);
+    /* 결과 수는 쪽 넘김의 「총 N건」 한 곳에만 — 거르기 줄에는 없다. 창 안은 구르지 않고 쪽으로 나눈다. */
+    expect(await within(dialog).findByText(u.pager.total(1))).toBeInTheDocument();
+    expect(within(dialog).getByRole('navigation', { name: t.search.pageNav })).toBeInTheDocument();
 
     /* 찾기 칸을 누르면 다른 화면과 같은 글자판 창이 뜬다 — 넣고 [검색]. */
     await user.click(within(dialog).getByRole('searchbox', { name: t.search.queryLabel }));
