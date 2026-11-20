@@ -214,7 +214,7 @@ const POP_ENTRY_PATH = '/pop/home';
 const PopChrome = () => {
   /* ⭐ 관리웹에서 바꾼 단말 공정·설비가 단말을 다시 켜지 않아도 보이게 한다(#1202). */
   useRefreshPopTerminalOnScreenEntry();
-  const { terminal } = usePopRegistration();
+  const { terminal, restart } = usePopRegistration();
   /* 맨 위 줄에서 고른 프린터는 단말 코드마다 기억한다 — 발행 화면이 읽기 전에 알려 둔다. */
   setPrinterTerminal(terminal?.terminalCode ?? null);
   const { workerNo } = usePopIdentity();
@@ -245,6 +245,7 @@ const PopChrome = () => {
         printer={<HeaderPrinter />}
         statusRef={setStatusSlot}
         printerRef={setPrinterSlot}
+        onReRegister={restart}
       />
       <div className="pop-frame__body">
         <PopTopStatusTarget.Provider value={statusSlot}>

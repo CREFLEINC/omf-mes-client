@@ -8,8 +8,7 @@ import { useTerminal, useWorkerDirectory, useWorkerLookup } from './queries';
 import { pickExact, verifyWorker, type WorkerResponse } from './verify';
 import { looksUnusual } from './worker-no';
 import { usePopIdentity } from '../../../patterns/pop-identity';
-import { usePopRegistration } from '../../../patterns/pop-registration';
-import { PuButton, PuNote, PuScreen, puToast } from '../../../patterns/pop-uniform';
+import { PuNote, PuScreen, puToast } from '../../../patterns/pop-uniform';
 import { setWorkerSession } from '../../../patterns/worker-session';
 import './uniform.css';
 
@@ -66,7 +65,6 @@ export const PopHomeLogin = () => {
 
   /* ⛔ 신원은 서버가 확인해 준 것만 쓴다(공유계약 F-4) — 주소에서 받지 않는다. */
   const { terminalId } = usePopIdentity();
-  const { restart } = usePopRegistration();
   const terminal = useTerminal(terminalId);
   const isOnline = useIsOnline();
   const homePlantId = terminal.data?.plantId ?? null;
@@ -194,15 +192,6 @@ export const PopHomeLogin = () => {
           confirmedWorkerNo={null}
         />
         {pendingQueue > 0 && <PuNote tone="warn">{t.current.pendingQueue(pendingQueue)}</PuNote>}
-        {/*
-         * [단말 재등록] — 설치 담당자용 보조 조작(P-CO-01 §5-1 · 공유계약 F-4). 재등록으로 들어가는 유일한 길이라
-         * 사번 없이도 눌려야 한다 — 잘못된 단말로 등록되면 사번부터 막힌다. 큐가 남은 채 바꾸는 것은 적용 단계가 막는다.
-         */}
-        <div className="home-login-foot">
-          <PuButton size="sm" icon="reset" onClick={restart}>
-            {t.registration.reRegister}
-          </PuButton>
-        </div>
       </div>
     </PuScreen>
   );

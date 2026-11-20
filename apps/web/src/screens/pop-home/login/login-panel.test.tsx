@@ -246,12 +246,12 @@ describe('터치 규격', () => {
   });
 });
 
-/** 단말 재등록 — 사번 없이 닿는 유일한 재등록 길이다(P-CO-01 §5-1 · F-4). */
+/** 단말 재등록은 맨 위 줄 [종료] 왼쪽으로 옮겼다(사용자 지시 2026-11-20 · #334) — 사번 입력 카드에는 없다. */
 describe('단말 재등록', () => {
-  it('사번 입력 아래에 [단말 재등록]이 선다', () => {
+  it('사번 입력 카드에 [단말 재등록]을 두지 않는다', () => {
     renderLogin();
 
-    expect(screen.getByRole('button', { name: t.registration.reRegister })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: t.registration.reRegister })).toBeNull();
   });
 });
 

@@ -52,6 +52,7 @@ const setup = (
     route?: string;
     plantId?: number | null;
     extra?: Parameters<typeof createStubFetch>[0];
+    onReRegister?: () => void;
   } = {},
 ) => {
   const counted: Request[] = [];
@@ -63,7 +64,7 @@ const setup = (
         plantId: options.plantId ?? null,
       }}
     >
-      <PopScreenNav terminalCode="POP-OA-01" />
+      <PopScreenNav terminalCode="POP-OA-01" onReRegister={options.onReRegister} />
       <Here />
     </PopIdentityProvider>,
     {
@@ -515,6 +516,31 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     expect(
       screen.getByRole('button', { name: new RegExp(`^${messages.popChrome.userSwitch}`, 'u') }),
     ).toBeDisabled();
+  });
+
+  /* 사용자 지시 2026-11-20(#334) — [단말 재등록]은 맨 위 줄 [종료] 바로 왼쪽, 사번 입력 중에만 · 잠그지 않는다. */
+  it('사번이 없으면 [종료] 바로 왼쪽에 [단말 재등록]이 서고 눌린다', async () => {
+    const user = userEvent.setup();
+    const onReRegister = vi.fn();
+    setup({ route: '/pop/home', workerNo: null, onReRegister });
+
+    const button = screen.getByRole('button', {
+      name: messages.workerAssignment.registration.reRegister,
+    });
+    expect(button).toBeEnabled();
+    expect(button.nextElementSibling).toBe(
+      screen.getByRole('button', { name: new RegExp(messages.popChrome.exit.button, 'u') }),
+    );
+    await user.click(button);
+    expect(onReRegister).toHaveBeenCalledOnce();
+  });
+
+  it('사번이 확인되면 [단말 재등록]을 두지 않는다', () => {
+    setup({ onReRegister: vi.fn() });
+
+    expect(
+      screen.queryByRole('button', { name: messages.workerAssignment.registration.reRegister }),
+    ).toBeNull();
   });
 });
 

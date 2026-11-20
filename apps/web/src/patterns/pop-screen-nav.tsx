@@ -187,6 +187,11 @@ const REFRESH_ICON = navIcon(
 );
 
 /* 종료 — 전원 단추(#295 시안). */
+/* 단말 재등록 — 사번 입력 카드에 있던 것과 같은 되돌림 화살표(`PuIcon` reset). */
+const RE_REGISTER_ICON = navIcon(
+  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M8 16H3v5" />,
+);
+
 const POWER_ICON = navIcon(
   <>
     <path d="M12 3v8" />
@@ -223,11 +228,13 @@ const TopBar = ({
   printer,
   statusRef,
   printerRef,
+  onReRegister,
 }: {
   terminalCode: string | null;
   printer: ReactNode;
   statusRef?: (element: HTMLElement | null) => void;
   printerRef?: (element: HTMLElement | null) => void;
+  onReRegister?: () => void;
 }) => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -328,6 +335,16 @@ const TopBar = ({
         <span>{messages.popChrome.refreshedAt(formatRefreshedAt(refreshedAt).slice(0, 5))}</span>{' '}
         <span>{formatRefreshedAt(refreshedAt).slice(6)}</span>
       </span>
+      {/*
+       * [단말 재등록] — [종료] 바로 왼쪽(사용자 지시 2026-11-20 · #334). 설치 담당자용 보조 조작이라 사번 입력 중에만 선다
+       * (옛 사번 입력 화면 · 홈 사번 입력과 같은 범위). 사번 전 잠금을 받지 않는다 — 잘못된 단말로 등록되면 사번부터 막힌다.
+       */}
+      {workerNo === null && onReRegister !== undefined && (
+        <Button className="pop-logout" variant="outlined" size="md" onClick={onReRegister}>
+          {RE_REGISTER_ICON}
+          {messages.workerAssignment.registration.reRegister}
+        </Button>
+      )}
       {/* [종료] — 맨 위 줄 오른쪽 끝(#295 시안 규칙 17). 확인 창을 거친다. */}
       <Button
         className="pop-logout pop-nav-top__exit"
@@ -382,12 +399,15 @@ export const PopScreenNav = ({
   printer = null,
   statusRef,
   printerRef,
+  onReRegister,
 }: {
   terminalCode: string | null;
   printer?: ReactNode;
   /** 맨 위 줄 화면 상태 자리를 셸에 알린다(`PopTopStatusTarget`). */
   statusRef?: (element: HTMLElement | null) => void;
   printerRef?: (element: HTMLElement | null) => void;
+  /** [단말 재등록] — 셸이 단말 등록의 `restart` 를 넘긴다. 없으면 단추를 두지 않는다. */
+  onReRegister?: () => void;
 }): ReactNode => {
   const navigate = useNavigate();
   const { pathname, search, access, workCounts, pending, total, go, tabCount } = usePopNavigation();
@@ -447,6 +467,7 @@ export const PopScreenNav = ({
         printer={printer}
         statusRef={statusRef}
         printerRef={printerRef}
+        onReRegister={onReRegister}
       />
       <div className="pop-nav-groups">
         <nav className="pop-nav-groups__list" aria-label={nav.groupsLabel}>
