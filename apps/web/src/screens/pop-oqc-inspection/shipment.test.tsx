@@ -65,7 +65,14 @@ const pr = messages.pqcInspectionRegister.web.items;
 const renderPop = (
   workerNo: string | null = '900028',
   request = shipmentOqcRequest(),
-  options: { withItems?: boolean; before?: InspectionRequestResponse[] } = {},
+  options: {
+    withItems?: boolean;
+    /** 기준에 항목이 0개(읽기는 성공). */
+    noItems?: boolean;
+    before?: InspectionRequestResponse[];
+    /** `GET …/oqc-serials` — 의뢰의 저장된 시리얼 기록. */
+    serials?: unknown[];
+  } = {},
 ) => {
   const saves: Request[] = [];
   const all: InspectionRequestResponse[] = [...(options.before ?? []), request, judgedRequest];
@@ -97,6 +104,12 @@ const renderPop = (
     }
     if (options.withItems === true && path === '/quality/inspection-plan-versions/3101/items') {
       return jsonResponse({ items: [lengthSpec], page: pageOf(1) });
+    }
+    if (options.noItems === true && path === '/quality/inspection-plan-versions/3101/items') {
+      return jsonResponse({ items: [], page: pageOf(0) });
+    }
+    if (path === '/quality/inspection-requests/4201/oqc-serials') {
+      return jsonResponse({ items: options.serials ?? [] });
     }
     if (path === '/logistics/shipment-requests/6201') return jsonResponse(shipmentRequestForOqc());
     if (path.startsWith('/mdm/partners/')) {
@@ -363,5 +376,57 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     expect(screen.getByRole('button', { name: ps.bar.save })).toBeDisabled();
     expect(screen.getByText(pop.bar.blocked.worker)).toBeInTheDocument();
     expect(saves).toHaveLength(0);
+  });
+
+  it('#334 검사 항목이 0개면 결과 등록에 「검사 항목」 칸째 없다(제목 · 안내 없음)', async () => {
+    const user = userEvent.setup();
+    renderPop('900028', shipmentOqcRequest(), { noItems: true });
+
+    const region = await openRequest(user);
+    expect(region.getByText(ps.form.match.matchHeading)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(region.queryByText(pr.heading)).toBeNull();
+    });
+    expect(region.queryByText(messages.pqcInspection.measurements.noItems)).toBeNull();
+  });
+
+  it('#334 [시리얼 검사 기록]은 바닥 띠 [결과 저장] 왼쪽에 서고 창을 연다', async () => {
+    const user = userEvent.setup();
+    renderPop();
+
+    const region = await openRequest(user);
+    expect(region.queryByRole('button', { name: pop.serial.open })).toBeNull();
+    const serialButton = screen.getByRole('button', { name: pop.serial.open });
+    const saveButton = screen.getByRole('button', { name: ps.bar.save });
+    expect(
+      serialButton.compareDocumentPosition(saveButton) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    await user.click(serialButton);
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('#334 검사 결과 탭은 회차마다 저장된 시리얼(번호 · OK/NG)을 보인다', async () => {
+    const user = userEvent.setup();
+    renderPop('900028', shipmentOqcRequest(), {
+      serials: [
+        {
+          serialNumberId: 1,
+          serialNo: 'SN-RESULT-1',
+          lotId: 7001,
+          lotNo: 'P2611-0001',
+          firstJudgmentCode: 'NG',
+          finalJudgmentCode: 'NG',
+          inspectedAt: '2026-11-18T01:00:00Z',
+          inspectionResultId: 9201,
+          inspectionRound: 1,
+        },
+      ],
+    });
+
+    await openRequest(user);
+    await user.click(screen.getByRole('tab', { name: new RegExp(s.results.title, 'u') }));
+    const serials = await screen.findByLabelText(ps.results.serials(1));
+    expect(within(serials).getByText('SN-RESULT-1')).toBeInTheDocument();
+    expect(within(serials).getByText(messages.oqcInspection.serials.ng)).toBeInTheDocument();
   });
 });

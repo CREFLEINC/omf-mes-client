@@ -263,15 +263,42 @@
   white-space: nowrap;
 }
 
-/* 상세 맨 위 정보 띠 · 생략 안내는 두 단을 가로지른다. */
-.oqc-u .pop-oqc-shipment > .pop-oqc-summary,
-.oqc-u .pop-oqc-shipment > .pop-oqc-shipment-note {
-  grid-column: 1 / -1;
+/* 상세는 위에서 아래로 정보 띠 → LOT·결과 탭 카드 → 결과 등록 카드(모두 전폭 · 사용자 지시 2026-11-20). */
+
+/* 결과 등록 안 — 왼쪽 검사 대상 LOT, 오른쪽 검사 항목 → 판정(→ 재검 사유). 좁으면(1100px 이하) 위아래로. */
+.oqc-u .pop-oqc-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px 24px;
+  align-items: start;
 }
 
-/* 결과 입력 칸이 없으면(판정 완료 · LOT 없음) 상세는 한 단으로 폭을 다 쓴다. */
-.oqc-u .pop-oqc-shipment:not(:has(> .pop-oqc-shipment-form)) {
-  grid-template-columns: minmax(0, 1fr);
+.oqc-u .pop-oqc-entry__col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .oqc-u .pop-oqc-entry {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 검사 결과 탭 — 회차 줄 아래 그 회차에 저장된 시리얼(번호 · OK/NG). */
+.oqc-u .pop-oqc-result-serials {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.oqc-u .pop-oqc-result-serial {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* 목록 카드 — 지시서 번호를 다 보이고 칩은 자리가 모자라면 아래로(작업 시작·재작업 목록과 같은 짜임). */

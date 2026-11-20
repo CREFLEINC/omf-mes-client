@@ -24,6 +24,7 @@ import { toApiError } from '../../patterns/request';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { overriddenLotsOf } from '../parts-iqc-inspection/lot-judgment';
 import { ReinspectionReasonField } from '../parts-iqc-inspection/reinspection-reason-field';
+import { useOqcSerialRecords } from '../oqc-inspection/queries';
 import { toSerialInputs, type SerialRow } from '../oqc-inspection/serials';
 import {
   defaultMatchOf,
@@ -59,11 +60,13 @@ import { usePlanVersion } from '../parts-iqc-inspection/queries';
 import { describeSpec } from '../pqc-panel/web-item-table';
 import { useUomLookup } from '../oqc-inspection/uom-lookup';
 import { bandLabel, PopPlanDialog } from './request-summary';
-import { PopSerialDialog, PopSerialSummary } from './serial-step';
+import { PopSerialDialog } from './serial-step';
 
 const pop = messages.popOqcInspection;
 const ps = messages.popOqcInspection.shipment;
 const s = messages.oqcInspection.shipment;
+const serialText = messages.oqcInspection.serials;
+type OqcSerialRecord = components['schemas']['OqcSerialRecord'];
 const itemsText = messages.pqcInspectionRegister.web.items;
 const measureText = messages.pqcInspection.measurements;
 
@@ -83,6 +86,8 @@ export const usePopShipmentForm = (inspectionRequestId: number | null, workerNo:
   const [judgment, setJudgment] = useState<string | null>(null);
   const [reason, setReason] = useState<string | null>(null);
   const [serialRows, setSerialRows] = useState<SerialRow[]>([]);
+  /* [시리얼 검사 기록] 창 — 단추는 바닥 띠, 창은 상세가 그린다(사용자 지시 2026-11-20). */
+  const [serialOpen, setSerialOpen] = useState(false);
   const [savedSeq, setSavedSeq] = useState<number | null>(null);
 
   /* 의뢰가 바뀌거나 결과가 늘면 새 결과를 빈 판정 · 미검사 LOT 체크로 다시 연다. */
@@ -168,6 +173,14 @@ export const usePopShipmentForm = (inspectionRequestId: number | null, workerNo:
     setReason,
     serialRows,
     setSerialRows,
+    serialOpen,
+    setSerialOpen,
+    /* 결과를 더할 수 있는 의뢰 — 열린 상태이고 피킹 LOT 이 있다. */
+    writable:
+      request !== undefined &&
+      views !== null &&
+      OPEN_STATUSES.includes(request.statusCode) &&
+      views.active.length > 0,
     measurements,
     overridden,
     needsReason,
@@ -363,10 +376,13 @@ const ResultLine = ({
   result,
   lotNoOf,
   replacedIds,
+  serials,
 }: {
   result: InspectionResultSummaryForward;
   lotNoOf: (lotId: number) => string;
   replacedIds: readonly number[];
+  /** 이 회차가 마지막으로 쓴 시리얼 기록(서버는 시리얼당 한 줄 — 재검 회차가 고치면 그 회차로 옮겨 간다). */
+  serials: readonly OqcSerialRecord[];
 }) => (
   <li className="pop-oqc-shipment-result">
     <span className="pop-oqc-shipment-result__seq">{s.results.seq(result.seqNo)}</span>
@@ -397,6 +413,19 @@ const ResultLine = ({
           {s.results.reason(result.reinspectionReasonName ?? result.reinspectionReasonCode ?? '')}
         </span>
       ) : null}
+      {serials.length > 0 && (
+        <span className="pop-oqc-result-serials" aria-label={ps.results.serials(serials.length)}>
+          <span className="pop-oqc-shipment-muted">{ps.results.serials(serials.length)}</span>
+          {serials.map((record) => (
+            <span key={record.serialNumberId} className="pop-oqc-result-serial">
+              <b className="pu-mono">{record.serialNo}</b>
+              <PuChip tone={record.finalJudgmentCode === 'OK' ? 'ok' : 'bad'}>
+                {record.finalJudgmentCode === 'OK' ? serialText.ok : serialText.ng}
+              </PuChip>
+            </span>
+          ))}
+        </span>
+      )}
     </span>
     <span className="pop-oqc-shipment-muted">
       {[
@@ -422,8 +451,8 @@ export const PopShipmentDetail = ({
   const [tab, setTab] = useState<'lots' | 'results'>('lots');
   const requestId = request?.inspectionRequestId ?? null;
   useEffect(() => setTab('lots'), [requestId]);
-  /* 시리얼 기록은 옛 흐름과 같은 창으로 적는다(#295 — 요약 줄 + [시리얼 검사 기록] 창). */
-  const [serialOpen, setSerialOpen] = useState(false);
+  /* 저장된 시리얼 기록 — 검사 결과 탭에서 회차마다 보인다. 창에 적고 아직 저장 안 한 것은 넣지 않는다. */
+  const serialRecords = useOqcSerialRecords(requestId, true).data ?? [];
   if (request === undefined || views === null) {
     return <p className="field-note">{pop.detail.loading}</p>;
   }
@@ -438,7 +467,7 @@ export const PopShipmentDetail = ({
   const overview = overviewOfViews(request.statusCode, views.active);
   const pickedTotal = views.active.reduce((sum, view) => sum + view.lot.lotQty, 0);
   const skipped = request.statusCode === 'SKIPPED';
-  const writable = OPEN_STATUSES.includes(request.statusCode) && views.active.length > 0;
+  const { writable } = form;
   const ruleCode = ruleCodeOf(form.save.error);
   const tabLabel = `${ps.lotsTitle} · ${s.results.title}`;
 
@@ -562,6 +591,9 @@ export const PopShipmentDetail = ({
                   result={result}
                   lotNoOf={lotNoOf}
                   replacedIds={replacedIds}
+                  serials={serialRecords.filter(
+                    (record) => record.inspectionResultId === result.inspectionResultId,
+                  )}
                 />
               ))}
           </ul>
@@ -575,62 +607,61 @@ export const PopShipmentDetail = ({
          */
         <PuSection
           grow={false}
-          className="pop-oqc-shipment-form"
           title={ps.form.heading(form.seqNo)}
           label={ps.form.heading(form.seqNo)}
         >
-          <PopLotMatch
-            views={views.active}
-            results={form.results}
-            uom={uom}
-            value={form.matched}
-            disabled={form.save.isSaving}
-            error={
-              ruleCode === 'MATCHED_LOT_REQUIRED' ? s.drawer.ruleErrors.MATCHED_LOT_REQUIRED : null
-            }
-            onChange={form.setMatched}
-          />
-          <PopMeasurements form={form.measurements} locked={form.save.isSaving} />
-          {/* 판정은 옛 흐름과 같은 공통 고르기 타일(`PuTiles` · 단일 선택 · 판정 색). */}
-          <PuField label={s.drawer.judgmentHeading} required>
-            <PuTiles
-              label={s.drawer.judgmentHeading}
-              cols={3}
-              value={form.judgment}
+          {/* 왼쪽 검사 대상 LOT · 오른쪽 검사 항목 → 판정(→ 재검 사유) — 좁으면 위아래로(사용자 지시 2026-11-20). */}
+          <div className="pop-oqc-entry">
+            <PopLotMatch
+              views={views.active}
+              results={form.results}
+              uom={uom}
+              value={form.matched}
               disabled={form.save.isSaving}
-              options={SHIPMENT_JUDGMENTS.map((code) => ({
-                value: code,
-                label: s.judgments[code],
-                judge: judgeOf(code),
-              }))}
-              onChange={form.setJudgment}
-            />
-          </PuField>
-          {form.needsReason && form.judgment !== null ? (
-            <ReinspectionReasonField
-              overridden={form.overridden}
-              lotNoOf={lotNoOf}
-              judgmentCode={form.judgment}
-              value={form.reason}
               error={
-                ruleCode === 'REINSPECTION_REASON_REQUIRED'
-                  ? s.drawer.ruleErrors.REINSPECTION_REASON_REQUIRED
+                ruleCode === 'MATCHED_LOT_REQUIRED'
+                  ? s.drawer.ruleErrors.MATCHED_LOT_REQUIRED
                   : null
               }
-              disabled={form.save.isSaving}
-              onChange={form.setReason}
-              text={s.drawer}
-              lotLabel={(lotNo) => lotNo}
+              onChange={form.setMatched}
             />
-          ) : null}
-          <PopSerialSummary
-            rows={form.serialRows}
-            disabled={form.save.isSaving}
-            onOpen={() => {
-              setSerialOpen(true);
-            }}
-          />
-          {serialOpen && (
+            <div className="pop-oqc-entry__col">
+              <PopMeasurements form={form.measurements} locked={form.save.isSaving} />
+              {/* 판정은 옛 흐름과 같은 공통 고르기 타일(`PuTiles` · 단일 선택 · 판정 색). */}
+              <PuField label={s.drawer.judgmentHeading} required>
+                <PuTiles
+                  label={s.drawer.judgmentHeading}
+                  cols={3}
+                  value={form.judgment}
+                  disabled={form.save.isSaving}
+                  options={SHIPMENT_JUDGMENTS.map((code) => ({
+                    value: code,
+                    label: s.judgments[code],
+                    judge: judgeOf(code),
+                  }))}
+                  onChange={form.setJudgment}
+                />
+              </PuField>
+              {form.needsReason && form.judgment !== null ? (
+                <ReinspectionReasonField
+                  overridden={form.overridden}
+                  lotNoOf={lotNoOf}
+                  judgmentCode={form.judgment}
+                  value={form.reason}
+                  error={
+                    ruleCode === 'REINSPECTION_REASON_REQUIRED'
+                      ? s.drawer.ruleErrors.REINSPECTION_REASON_REQUIRED
+                      : null
+                  }
+                  disabled={form.save.isSaving}
+                  onChange={form.setReason}
+                  text={s.drawer}
+                  lotLabel={(lotNo) => lotNo}
+                />
+              ) : null}
+            </div>
+          </div>
+          {form.serialOpen && (
             <PopSerialDialog
               inspectionRequestId={request.inspectionRequestId}
               itemId={request.itemId}
@@ -638,7 +669,7 @@ export const PopShipmentDetail = ({
               onChange={form.setSerialRows}
               disabled={form.save.isSaving}
               onClose={() => {
-                setSerialOpen(false);
+                form.setSerialOpen(false);
               }}
             />
           )}
@@ -650,19 +681,17 @@ export const PopShipmentDetail = ({
 
 /**
  * 검사 기준 창의 검사 항목 — No. · 검사 내용 · 규격 · 샘플 수 · 자동 판정. 결과 입력과 같은 데이터·같은 구분을 쓴다:
- * 못 읽었으면 오류 띠, 읽었는데 0개면 같은 주의 한 줄(사용자 지시 2026-11-20).
+ * 못 읽었으면 오류 띠, 읽었는데 0개면 칸째 두지 않는다(사용자 지시 2026-11-20).
  */
 const PlanItems = ({ form }: { form: ShipmentMeasurements }) => {
   const uoms = useUomLookup();
   const items = form.rows.filter((row) => row.sampleNo === 1);
+  /* 항목이 없으면(또는 아직 읽는 중이면) 칸째 두지 않는다 — 결과 입력과 같은 규칙(사용자 지시 2026-11-20). */
+  if (form.loadError === null && items.length === 0) return null;
   return (
     <PuField label={itemsText.heading}>
       {form.loadError !== null ? (
         <QueueLoadErrorBanner error={toApiError(form.loadError)} onRetry={form.retry} />
-      ) : form.isLoading ? (
-        <p className="pop-oqc-empty-row">{measureText.loading}</p>
-      ) : items.length === 0 ? (
-        <PuNote tone="warn">{measureText.noItems}</PuNote>
       ) : (
         <div className="pu-table-wrap">
           <table className="pu-table" aria-label={itemsText.heading}>
@@ -796,20 +825,18 @@ const PopLotMatch = ({
 };
 
 /**
- * 검사 항목 — 항목이 있으면 지금 표 그대로. 다 읽었는데 항목이 없으면 큰 빈 표 대신 한 줄(기준정보 확인 안내 · 주의 색),
+ * 검사 항목 — 항목이 있으면 지금 표 그대로. 다 읽었는데 항목이 없으면 칸을 두지 않고,
  * 못 읽었으면 오류 띠(다시 시도). 두 경우를 섞지 않는다(사용자 지시 2026-11-20). 항목이 없어도 저장은 막지 않는다(지금 규칙).
  */
 const PopMeasurements = ({ form, locked }: { form: ShipmentMeasurements; locked: boolean }) => {
   if (!form.hasPlan || form.isLoading || form.rows.length > 0) {
     return <ShipmentMeasurementSection form={form} locked={locked} />;
   }
+  /* 다 읽었는데 항목이 없으면 「검사 항목」 칸째 두지 않는다(제목 · 안내 없음 · 사용자 지시 2026-11-20). */
+  if (form.loadError === null) return null;
   return (
     <PuField label={itemsText.heading}>
-      {form.loadError !== null ? (
-        <QueueLoadErrorBanner error={toApiError(form.loadError)} onRetry={form.retry} />
-      ) : (
-        <PuNote tone="warn">{measureText.noItems}</PuNote>
-      )}
+      <QueueLoadErrorBanner error={toApiError(form.loadError)} onRetry={form.retry} />
     </PuField>
   );
 };
@@ -861,6 +888,18 @@ export const PopShipmentBar = ({ form }: { form: PopShipmentForm }) => {
         </div>
       }
     >
+      {/* [시리얼 검사 기록] — [결과 저장] 바로 왼쪽. 적은 대수는 단추의 건수(0 이면 숨김), NG 대수는 창 안에 있다. */}
+      {form.writable && (
+        <PuButton
+          disabled={save.isSaving}
+          onClick={() => {
+            form.setSerialOpen(true);
+          }}
+        >
+          {pop.serial.open}
+          {form.serialRows.length > 0 && <PuCount>{form.serialRows.length}</PuCount>}
+        </PuButton>
+      )}
       {/* 잠긴 까닭은 바로 옆 띠 글이다(C-4). */}
       <PuButton
         variant="primary"

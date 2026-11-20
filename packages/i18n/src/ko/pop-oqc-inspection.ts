@@ -179,6 +179,10 @@ export const popOqcInspection = {
     cannotJudge: '판정 불가',
     /** 읽기 전용 피킹 LOT 목록 구획 이름(검사 대상 LOT 고르기와 구분). */
     lotsTitle: '피킹 LOT 현황',
+    /** 검사 결과 탭 — 회차마다 저장된 시리얼 기록. */
+    results: {
+      serials: (count: number): string => `시리얼 ${String(count)}대`,
+    },
     /** 머리 품목 칸 — 「FG-A100 센서 모듈 A」. */
     itemValue: (code: string, name: string): string => (name === '' ? code : `${code} ${name}`),
     /** 적치 대기 자리 몫의 위치 이름(시스템 코드 대신). */

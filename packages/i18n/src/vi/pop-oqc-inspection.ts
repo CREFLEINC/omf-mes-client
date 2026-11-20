@@ -153,6 +153,9 @@ export const popOqcInspection = {
     cardStatus: (label: string): string => `Kiểm tra: ${label}`,
     cannotJudge: 'Không thể phán định',
     lotsTitle: 'Tình trạng LOT đã lấy',
+    results: {
+      serials: (count: number): string => `${String(count)} serial`,
+    },
     itemValue: (code: string, name: string): string => (name === '' ? code : `${code} ${name}`),
     staging: 'Chờ cất hàng',
     replacedLine: (

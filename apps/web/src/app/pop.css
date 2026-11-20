@@ -4739,15 +4739,9 @@
  */
 .oqc-u .pop-oqc-shipment {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-5);
   align-items: start;
-}
-
-@media (max-width: 1100px) {
-  .oqc-u .pop-oqc-shipment {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 .oqc-u .pop-oqc-shipment__col {
