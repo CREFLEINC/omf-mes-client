@@ -18402,13 +18402,19 @@ dialog.terminal-map-form-dialog {
 }
 
 .terminal-map-form.form-grid {
-  grid-template-columns: repeat(2, 17rem);
-  column-gap: var(--space-5);
+  /* 오른쪽 열(운영 상태 · 설비 · 창고)이 다 비어 있으면 폭을 차지하지 않는다 — 처음 뜬 창은 좁게(#333). */
+  grid-template-columns: 17rem auto;
+  column-gap: 0;
+}
+
+/* 열 사이는 오른쪽 칸이 있을 때만 띄운다 — 빈 오른쪽 열이 왼쪽 칸을 한쪽으로 밀지 않게(가운데 정렬 · #333). */
+.terminal-map-form > :nth-child(even):not(.terminal-map-form-spacer) {
+  margin-left: var(--space-5);
 }
 
 /* 입력 · 선택 · 찾기 칸은 값 길이만큼만(사용자 지시 2026-11-20 · #333) — 칸 이름 줄(안내 라벨)은 열 폭을 그대로 쓴다. */
 .terminal-map-form .field-cell > :not(.field-label, dialog) {
-  width: 100%;
+  width: 17rem;
   max-width: 18rem;
 }
 
@@ -18436,19 +18442,13 @@ dialog.terminal-map-form-dialog {
 }
 
 /* 창고 칸 아래 기준 안내 — 칸 폭에 갇히지 않고 한 줄로. */
-.terminal-map-form .field-cell > .terminal-map-warehouse-note {
-  width: auto;
-  max-width: 17rem;
-  margin: var(--space-1) 0 0;
+.terminal-map-form > .terminal-map-warehouse-note {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin: calc(var(--space-2) * -1) 0 0;
   padding: 2px var(--space-2);
-  border-radius: var(--radius-md);
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);
-  white-space: normal;
-  text-align: left;
-  align-items: flex-start;
-  justify-content: flex-start;
-  justify-self: start;
 }
 
 /* 「(선택)」 · 「*」 — 라벨과 띄운다(라벨 줄이 flex 라 앞 공백이 접힌다). */

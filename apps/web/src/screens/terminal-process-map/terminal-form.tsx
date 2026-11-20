@@ -250,13 +250,14 @@ export const TerminalForm = ({
             onChange={(warehouse, warehouseLabel) => {
               onChange({ warehouse, warehouseLabel });
             }}
-          >
-            {/* 창고 기준 안내는 칸 아래, 왼쪽 정렬(사용자 지시 2026-11-20 · #333). */}
-            <p className="iqc-inspection-action-note terminal-map-warehouse-note" data-tone="info">
-              <Icon name="info" size={14} aria-hidden />
-              {t.terminal.warehouseScope}
-            </p>
-          </PagedSelectField>
+          />
+        )}
+        {/* 창고 기준 안내 — 공장 · 창고 줄 아래 한 줄, 왼쪽 끝부터(사용자 지시 2026-11-20 · #333). */}
+        {hasPlant && (
+          <p className="iqc-inspection-action-note terminal-map-warehouse-note" data-tone="info">
+            <Icon name="info" size={14} aria-hidden />
+            {t.terminal.warehouseScope}
+          </p>
         )}
       </div>
 
