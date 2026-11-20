@@ -1,8 +1,14 @@
 import type { ApiClient, components } from '@omf-mes/api-client';
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
+import { messages } from '@omf-mes/i18n';
+
 import { useApiClient } from '../../patterns/api-context';
-import type { LookupSource } from '../../patterns/lookup-display';
+import {
+  lookupDisplayLabel,
+  toLookupDisplayState,
+  type LookupSource,
+} from '../../patterns/lookup-display';
 import { runRequest, toApiError } from '../../patterns/request';
 import { locationOptionLabel } from '../../patterns/location-label';
 
@@ -10,6 +16,9 @@ export interface ReferenceOption {
   value: string;
   label: string;
   isActive: boolean;
+  /** 품목 풀이(`useItemNameSources`)만 싣는다 — 표가 코드 · 이름을 두 칸으로 나눠 보인다(사용자 지시 2026-11-20). */
+  code?: string;
+  name?: string;
 }
 
 export interface ReferenceOptionsResult {
@@ -127,6 +136,8 @@ export const useItemNameSources = (
                     value: String(itemId),
                     label: `${item.itemCode} · ${item.itemName}`,
                     isActive: item.isActive,
+                    code: item.itemCode,
+                    name: item.itemName,
                   },
                 ],
           isError: result?.isError === true && !isNotFound(result.error),
@@ -135,6 +146,28 @@ export const useItemNameSources = (
       ];
     }),
   );
+};
+
+/**
+ * 품목 풀이를 표의 코드 · 이름 두 칸 글자로 낸다(사용자 지시 2026-11-20). 못 푼 갈래(불러오는 중 · 실패 · 알 수 없음)는
+ * 코드 칸에 그 사유를 내고 이름 칸은 빈 표시다. 미사용 품목 표시는 이름 칸에 붙인다.
+ */
+export const itemCodeAndName = (
+  source: LookupSource<ReferenceOption>,
+  itemId: number,
+): { code: string; name: string } => {
+  const entry =
+    toLookupDisplayState(source, itemId).kind === 'named'
+      ? source.entries.find((each) => each.value === String(itemId))
+      : undefined;
+  if (entry === undefined) {
+    return { code: lookupDisplayLabel(source, itemId), name: messages.common.reference.empty };
+  }
+  const name = entry.name ?? entry.label;
+  return {
+    code: entry.code ?? entry.label,
+    name: entry.isActive ? name : `${name}${messages.common.reference.inactiveSuffix}`,
+  };
 };
 
 const validIdentifier = (value: number | null): value is number =>

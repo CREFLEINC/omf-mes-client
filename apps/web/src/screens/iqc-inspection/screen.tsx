@@ -159,11 +159,12 @@ const IqcInspectionScreenBody = () => {
     else openRequest(to);
   };
   /* 고른 줄을 다시 누르면 상세가 닫힌다. */
-  /* 새 의뢰를 고르면 목록을 접어 상세가 자리를 다 쓴다 — 다시 펼치기는 목록과 상세 사이의 단추(사용자 지시 · #252). */
+  /*
+   * 의뢰를 골라도 목록은 그대로 둔다 — 접기·펼치기는 목록과 상세 사이의 단추로만 한다(사용자 지시 2026-11-20, 고르면
+   * 저절로 접던 #252 를 걷음).
+   */
   const select = (inspectionRequestId: number): void => {
-    const next = inspectionRequestId === selectedId ? null : inspectionRequestId;
-    moveTo(next);
-    if (next !== null && !split.collapsed) split.toggleCollapsed();
+    moveTo(inspectionRequestId === selectedId ? null : inspectionRequestId);
   };
 
   /*
@@ -181,7 +182,6 @@ const IqcInspectionScreenBody = () => {
   }, [scanOpen, selectedId]);
   const openByScan = (inspectionRequestId: number, scannedLotId: number | null): void => {
     if (inspectionRequestId !== selectedId) select(inspectionRequestId);
-    else if (!split.collapsed) split.toggleCollapsed();
     setScanOpen(
       scannedLotId === null
         ? null

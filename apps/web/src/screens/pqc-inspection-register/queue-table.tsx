@@ -44,14 +44,19 @@ const LotCell = ({ workOrderId }: { workOrderId: number }) => {
   );
 };
 
-/** 품목 — 이름(주)과 코드(보조) 두 줄. 내부 번호는 내지 않는다(#135). */
-const ItemCell = ({ itemId }: { itemId: number }) => {
+/**
+ * 품목 — 코드 · 이름 두 칸(사용자 지시 2026-11-20, 한 칸에 붙이던 「이름 코드」를 나눴다). 내부 번호는 내지 않는다(#135).
+ * 넘치면 말줄임, 전체 값은 마우스를 올리면 보인다.
+ */
+const ItemCell = ({ itemId, part }: { itemId: number; part: 'code' | 'name' }) => {
   const item = useItem(itemId);
   if (item.data === undefined) return <>{empty}</>;
+  const value = part === 'code' ? item.data.itemCode : item.data.itemName;
   return (
     <span className="pqc-web-queue-item">
-      <span className="pqc-web-queue-item-name">{item.data.itemName}</span>
-      <span className="pqc-web-queue-item-code">{item.data.itemCode}</span>
+      <span className="pqc-web-queue-item-name" title={value}>
+        {value}
+      </span>
     </span>
   );
 };
@@ -105,11 +110,18 @@ export const PqcQueueTable = ({
       render: (row) => <LotCell workOrderId={row.targetId} />,
     },
     {
-      key: 'item',
+      key: 'itemCode',
       align: 'start',
-      header: t.columns.item,
-      width: '240px',
-      render: (row) => <ItemCell itemId={row.itemId} />,
+      header: t.columns.itemCode,
+      width: '140px',
+      render: (row) => <ItemCell itemId={row.itemId} part="code" />,
+    },
+    {
+      key: 'itemName',
+      align: 'start',
+      header: t.columns.itemName,
+      width: '200px',
+      render: (row) => <ItemCell itemId={row.itemId} part="name" />,
     },
     {
       key: 'workOrder',
@@ -194,7 +206,7 @@ export const PqcQueueTable = ({
     /* 줄 아무 곳이나 눌러 연다(#135) — 의뢰번호를 따로 누르는 길은 두지 않는다. */
     <div
       ref={fit.ref}
-      className="pqc-web-queue inspection-queue-table"
+      className="pqc-web-queue inspection-queue-table cells-start"
       style={resizable.style}
       onClick={(event) => {
         const row = (event.target as Element).closest('tbody tr');

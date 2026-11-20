@@ -23,6 +23,9 @@ export const oqcInspection = {
       skip: '생략',
       inspectionRequestNo: '의뢰번호',
       itemId: '품목',
+      /** 품목은 코드 · 이름 두 칸으로 나눠 보인다(사용자 지시 2026-11-20). */
+      itemCode: '품목코드',
+      itemName: '품목명',
       targetQty: '검사수량',
       statusCode: '상태',
     },

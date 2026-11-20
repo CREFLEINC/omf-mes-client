@@ -20501,7 +20501,7 @@ dialog.layout-editor-dialog {
   vertical-align: middle;
 }
 
-/* 첫 칸(자재 LOT)은 표 왼쪽 끝과 띄운다(#133). */
+/* 첫 칸(의뢰 일시)은 표 왼쪽 끝과 띄운다(#133). */
 .iqc-inspection-queue-rows th:first-child,
 .iqc-inspection-queue-rows td:first-child {
   padding-inline-start: var(--space-7);
@@ -20583,6 +20583,12 @@ dialog.layout-editor-dialog {
 .iqc-inspection-panes .iqc-inspection-queue-item-code {
   font: var(--type-body-sm);
   color: var(--on-surface-muted);
+}
+
+/* 품목코드가 제 칸으로 섰다(사용자 지시 2026-11-20) — 보조 글이 아니라 본문 글자로 보인다. */
+.iqc-inspection-panes .iqc-inspection-queue-item > .iqc-inspection-queue-item-code {
+  font: inherit;
+  color: inherit;
 }
 
 /* 대기 목록 LOT — 앞 마디만 줄이고 끝 마디(일련번호)는 남긴다(queue-table.tsx). */
@@ -31971,6 +31977,27 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   text-overflow: clip;
   white-space: normal;
   overflow-wrap: anywhere;
+}
+
+/*
+ * 품목을 코드 · 이름 두 칸으로 나눈 품질 표(`cells-start`)는 칸 값을 왼쪽에 둔다(사용자 지시 2026-11-20) — 머리글은
+ * 위 가운데 그대로다. 위 가운데 규칙보다 무거워야 해서 클래스를 하나 더 겹친다. 빈 결과 줄(DS `_emptyCell`)은 가운데 그대로다.
+ */
+.inspection-queue-table.cells-start
+  table
+  tr:not([class*="_emptyCell"])
+  > td:nth-child(n):nth-child(n):nth-child(n),
+.inspection-queue-table.cells-start td .oqc-inspection-queue-unregistered {
+  text-align: left;
+}
+
+.inspection-queue-table.cells-start .iqc-inspection-lot-cell,
+.inspection-queue-table.cells-start .iqc-inspection-lot:has(> .iqc-inspection-lot-tail),
+.inspection-queue-table.cells-start .iqc-inspection-queue-item,
+.inspection-queue-table.cells-start .oqc-inspection-queue-item,
+.inspection-queue-table.cells-start .pqc-web-queue-item,
+.inspection-queue-table.cells-start .stacked-cell {
+  justify-content: flex-start;
 }
 
 /*
