@@ -302,18 +302,17 @@ describe('W-05-09 작업 캘린더 — 목록', () => {
     });
   });
 
-  it('칩으로 검색어를 거두면 검색칸도 함께 비워진다', async () => {
+  /* 조건 둘이 모두 조회 줄에 보인다 — 보이는 칸은 칩으로 겹쳐 적지 않고, 초기화는 바뀐 것이 있을 때만 선다(C-6). */
+  it('조건 칩을 세우지 않고, 초기화는 처음 값과 달라졌을 때만 보인다', async () => {
     const { user } = renderScreen();
 
     await screen.findByRole('button', { name: 'CAL-A' });
+    expect(within(listPane()).queryByRole('button', { name: messages.common.reset })).toBeNull();
 
-    const box = within(listPane()).getByLabelText(t.filters.searchLabel);
-    await user.type(box, '2026{Enter}');
-    await user.click(await screen.findByRole('button', { name: t.filters.chipRemoveKeyword }));
+    await user.type(within(listPane()).getByLabelText(t.filters.searchLabel), '2026{Enter}');
 
-    await waitFor(() => {
-      expect(box).toHaveValue('');
-    });
+    expect(within(listPane()).getByRole('button', { name: messages.common.reset })).toBeVisible();
+    expect(within(listPane()).queryByRole('button', { name: /조건 제거$/ })).toBeNull();
   });
 
   it('아무것도 없으면 등록을 권한다', async () => {

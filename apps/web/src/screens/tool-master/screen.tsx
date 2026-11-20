@@ -375,7 +375,6 @@ export const ToolMasterScreen = () => {
         appliedFilters={filters}
         onApplyFilters={setFilters}
         plantOptions={selectableOptions(plantSource, filters.plantId)}
-        plantSource={plantSource}
         typeSource={typeSource}
         typeNote={typeNote}
         statusOptions={statusOptions}

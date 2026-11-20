@@ -23,6 +23,8 @@ export const downtimeSummary = {
     search: '조회',
     reset: '초기화',
     download: '내려받기',
+    /** 「조건 더보기」에 접힌 공장 조건의 칩(C-6). */
+    chipPlant: (name: string): string => `공장: ${name}`,
     /** 기간이 필수인 화면이라 비활성 사유가 「어떻게 풀 것인가」를 담는다. */
     periodRequired: '기간을 고르면 조회할 수 있습니다. 시작일과 종료일을 모두 채우세요.',
     periodInvalid: '달력에 없는 날짜입니다. 시작일과 종료일을 다시 고르세요.',

@@ -24,6 +24,7 @@ export const downtimeSummary: Translated<typeof ko.downtimeSummary> = {
     search: 'Tra cứu',
     reset: 'Đặt lại',
     download: 'Tải xuống',
+    chipPlant: (name: string): string => `Nhà máy: ${name}`,
     periodRequired:
       'Chọn khoảng thời gian thì mới tra cứu được. Hãy điền cả ngày bắt đầu và ngày kết thúc.',
     periodInvalid: 'Ngày không có trên lịch. Hãy chọn lại ngày bắt đầu và ngày kết thúc.',

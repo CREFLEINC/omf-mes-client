@@ -154,6 +154,13 @@ const renderScreen = (options: RenderOptions = {}) => {
 
 const listPane = () => screen.getByRole('region', { name: t.paneTitle });
 
+/** 체크칸 셋은 「조건 더보기」 안에 접혀 있다(C-6) — 만지기 전에 편다. */
+const openMore = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(
+    within(listPane()).getByRole('button', { name: messages.common.filterMore.open }),
+  );
+};
+
 const rowOf = async (code: string) => {
   const cell = await screen.findByRole('cell', { name: code });
   return cell.closest('tr') as HTMLElement;
@@ -404,6 +411,7 @@ describe('W-05-11 계측기 마스터 — 목록', () => {
     const { user, sent } = renderScreen();
 
     await screen.findByRole('cell', { name: 'GA-01' });
+    await openMore(user);
     await user.click(within(listPane()).getByRole('checkbox', { name: t.filters.includeDisposed }));
 
     await waitFor(() => {
@@ -420,6 +428,7 @@ describe('W-05-11 계측기 마스터 — 목록', () => {
     const { user, sent } = renderScreen();
 
     await screen.findByRole('cell', { name: 'GA-01' });
+    await openMore(user);
     await user.click(within(listPane()).getByRole('checkbox', { name: t.filters.includeDisposed }));
 
     await waitFor(() => {
@@ -439,23 +448,37 @@ describe('W-05-11 계측기 마스터 — 목록', () => {
   });
 
   /*
-   * 밖에서 조건이 되돌려지면(초기화·칩 제거) **입력칸도 따라가야 한다.**
+   * 밖에서 조건이 되돌려지면(초기화) **입력칸도 따라가야 한다.**
    * 칸에 옛 낱말이 남아 있으면 목록과 칸이 어긋나고, 다음에 「조회」를 누르는 순간
    * 지운 줄 알았던 조건이 되살아난다.
    */
-  it('칩으로 검색어를 거두면 검색칸도 함께 비워진다', async () => {
-    const { user } = renderScreen();
+  it('적용한 검색어도 초기화가 거두고 검색칸을 비운다', async () => {
+    const { user, sent } = renderScreen();
 
     await screen.findByRole('cell', { name: 'GA-01' });
 
     const box = within(listPane()).getByLabelText(t.filters.searchLabel);
     await user.type(box, '캘리퍼{Enter}');
+    await waitFor(() => {
+      expect(sent.at(-1)?.searchParams.get('q')).toBe('캘리퍼');
+    });
 
-    await user.click(await screen.findByRole('button', { name: t.filters.chipRemoveKeyword }));
+    await user.click(within(listPane()).getByRole('button', { name: messages.common.reset }));
 
     await waitFor(() => {
       expect(box).toHaveValue('');
     });
+  });
+
+  it('초기화는 처음 값과 달라진 것이 있을 때만 보인다', async () => {
+    const { user } = renderScreen();
+
+    await screen.findByRole('cell', { name: 'GA-01' });
+    expect(within(listPane()).queryByRole('button', { name: messages.common.reset })).toBeNull();
+
+    await user.type(within(listPane()).getByLabelText(t.filters.searchLabel), '게');
+
+    expect(within(listPane()).getByRole('button', { name: messages.common.reset })).toBeVisible();
   });
 
   /*
@@ -496,6 +519,7 @@ describe('W-05-11 계측기 마스터 — 목록', () => {
     const { user } = renderScreen();
 
     await screen.findByRole('cell', { name: 'GA-01' });
+    await openMore(user);
     await user.click(within(listPane()).getByRole('checkbox', { name: t.filters.overdueOnly }));
 
     await waitFor(() => {
@@ -510,6 +534,7 @@ describe('W-05-11 계측기 마스터 — 목록', () => {
     const { user, sent } = renderScreen();
 
     await screen.findByRole('cell', { name: 'GA-01' });
+    await openMore(user);
     await user.click(within(listPane()).getByRole('checkbox', { name: t.filters.overdueOnly }));
 
     await waitFor(() => {
@@ -529,6 +554,7 @@ describe('W-05-11 계측기 마스터 — 목록', () => {
     await screen.findByRole('cell', { name: 'GA-01' });
     expect(screen.queryByText(t.overdueOnLoadedOnly)).not.toBeInTheDocument();
 
+    await openMore(user);
     await user.click(within(listPane()).getByRole('checkbox', { name: t.filters.overdueOnly }));
 
     expect(await screen.findByText(t.overdueOnLoadedOnly)).toBeInTheDocument();
@@ -538,6 +564,7 @@ describe('W-05-11 계측기 마스터 — 목록', () => {
     const { user } = renderScreen();
 
     await screen.findByRole('cell', { name: 'GA-01' });
+    await openMore(user);
     await user.click(within(listPane()).getByRole('checkbox', { name: t.filters.overdueOnly }));
 
     await waitFor(() => {
@@ -564,6 +591,7 @@ describe('W-05-11 계측기 마스터 — 목록', () => {
   it('조건에 맞는 것이 없으면 조건을 되돌릴 자리를 준다', async () => {
     const { user } = renderScreen({ respondGauges: () => jsonResponse(gaugesResponse([])) });
 
+    await openMore(user);
     await user.click(within(listPane()).getByRole('checkbox', { name: t.filters.includeDisposed }));
 
     expect(await screen.findByText(t.empty.noMatchTitle)).toBeInTheDocument();
@@ -576,16 +604,41 @@ describe('W-05-11 계측기 마스터 — 목록', () => {
     expect(screen.queryByText(t.empty.noMatchTitle)).not.toBeInTheDocument();
   });
 
-  it('건 조건을 칩으로 보이고 칩에서 거둘 수 있다', async () => {
+  it('체크칸 셋은 조건 더보기 안에 접혀 있다', async () => {
+    const { user } = renderScreen();
+
+    await screen.findByRole('cell', { name: 'GA-01' });
+    expect(within(listPane()).queryByRole('checkbox')).toBeNull();
+
+    await openMore(user);
+
+    expect(within(listPane()).getAllByRole('checkbox')).toHaveLength(3);
+  });
+
+  /* 칩은 접힌 칸에 걸린 조건만 알린다 — 보이는 칸(검색 · 공장 · 유형)의 값은 칸이 말한다(C-6). */
+  it('접힌 체크칸에 건 조건만 칩으로 보이고 칩에서 거둘 수 있다', async () => {
     const { user, sent } = renderScreen();
 
     await screen.findByRole('cell', { name: 'GA-01' });
+    await user.type(within(listPane()).getByLabelText(t.filters.searchLabel), '캘리퍼{Enter}');
+    await openMore(user);
     await user.click(within(listPane()).getByRole('checkbox', { name: t.filters.includeDisposed }));
+
+    /* 펼쳐 있으면 칸에 값이 보이므로 칩을 세우지 않는다. */
+    expect(
+      within(listPane()).queryByRole('button', { name: t.filters.chipRemoveIncludeDisposed }),
+    ).toBeNull();
+
+    await user.click(
+      within(listPane()).getByRole('button', { name: messages.common.filterMore.close }),
+    );
 
     /* 조건을 걸면 그것을 거둘 자리가 함께 선다 — 어디서 걸었는지 잊어도 되돌릴 수 있다. */
     const remove = await screen.findByRole('button', {
       name: t.filters.chipRemoveIncludeDisposed,
     });
+    /* 검색어는 보이는 칸이라 칩이 없다 — 칩은 하나뿐이다. */
+    expect(within(listPane()).getAllByRole('button', { name: /조건 제거$/ })).toHaveLength(1);
 
     await user.click(remove);
 

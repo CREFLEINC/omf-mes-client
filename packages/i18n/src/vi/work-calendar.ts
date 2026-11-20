@@ -27,9 +27,6 @@ export const workCalendar: Translated<typeof ko.workCalendar> = {
   filters: {
     searchLabel: 'Tìm lịch',
     searchPlaceholder: 'Mã lịch hoặc tên lịch',
-    chipRemoveKeyword: 'Bỏ điều kiện từ khóa',
-    chipRemoveIncludeInactive: 'Bỏ điều kiện gồm cả mục ngừng dùng',
-    chipKeyword: (value: string): string => `Từ khóa: ${value}`,
   },
   fields: {
     calendarCode: 'Mã lịch',

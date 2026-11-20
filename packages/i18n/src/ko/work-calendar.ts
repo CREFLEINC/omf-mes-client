@@ -25,9 +25,6 @@ export const workCalendar = {
   filters: {
     searchLabel: '캘린더 검색',
     searchPlaceholder: '캘린더 코드 또는 이름',
-    chipRemoveKeyword: '검색어 조건 제거',
-    chipRemoveIncludeInactive: '미사용 포함 조건 제거',
-    chipKeyword: (value: string): string => `검색어: ${value}`,
   },
   fields: {
     calendarCode: '캘린더 코드',

@@ -142,6 +142,13 @@ const renderScreen = (options: RenderOptions = {}) => {
 
 const listPane = () => screen.getByRole('region', { name: t.paneTitle });
 
+/** 정렬과 체크칸 셋은 「조건 더보기」 안에 접혀 있다(C-6) — 만지기 전에 편다. */
+const openMore = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(
+    within(listPane()).getByRole('button', { name: messages.common.filterMore.open }),
+  );
+};
+
 const rowOf = async (code: string) => {
   const cell = await screen.findByRole('cell', { name: code });
 
@@ -347,17 +354,21 @@ describe('W-05-13 툴 마스터 — 목록', () => {
 
   /*
    * ⭐ 체크칸 셋은 「추가 필터」라는 **이름 붙은 한 무리**다 — 검색칸 밑에 붙어 검색의 일부로
-   *   읽히지 않게, 상자 대신 이름으로 묶었다(사용자 지정). 건수는 그 줄 오른쪽 끝에 선다.
+   *   읽히지 않게, 상자 대신 이름으로 묶었다(사용자 지정). 보이는 칸은 셋이라(C-6) 정렬과 함께
+   *   「조건 더보기」에 접히고, 건수는 접어도 표 위에 남는다.
    */
-  it('체크칸 셋을 「추가 필터」 무리로 묶고 건수를 같은 줄에 둔다', async () => {
-    renderScreen();
+  it('정렬과 「추가 필터」 체크칸 셋은 조건 더보기 안에 있고 건수는 늘 보인다', async () => {
+    const { user } = renderScreen();
 
-    const group = await within(listPane()).findByRole('group', { name: t.filters.extraLabel });
+    expect(await within(listPane()).findByText(t.resultTotal('6'))).toBeVisible();
+    expect(within(listPane()).queryByRole('group', { name: t.filters.extraLabel })).toBeNull();
+    expect(within(listPane()).queryByRole('combobox', { name: t.filters.sortLabel })).toBeNull();
 
+    await openMore(user);
+
+    const group = within(listPane()).getByRole('group', { name: t.filters.extraLabel });
     expect(within(group).getAllByRole('checkbox')).toHaveLength(3);
-    expect(group.parentElement).toContainElement(
-      await within(listPane()).findByText(t.resultTotal('6')),
-    );
+    expect(within(listPane()).getByRole('combobox', { name: t.filters.sortLabel })).toBeVisible();
   });
 
   /*
@@ -447,10 +458,10 @@ describe('W-05-13 툴 마스터 — 목록', () => {
   });
 
   /*
-   * 공장은 **거르는 축으로 남기고** 칸은 두지 않는다 — 그래서 이름을 푸는 자리가 칩이다.
-   * 못 풀면 조건 칩에 공장 번호가 서고, 사용자는 무엇으로 좁혔는지 알 수 없다.
+   * 공장은 **거르는 축으로 남기고** 표에 칸은 두지 않는다 — 조회 줄의 공장 칸이 이름으로 말한다.
+   * 보이는 칸의 값은 칩으로 겹쳐 적지 않는다(C-6).
    */
-  it('고른 공장을 조건 칩에 이름으로 보인다', async () => {
+  it('고른 공장은 조회 줄의 칸이 이름으로 말하고 칩으로 겹쳐 적지 않는다', async () => {
     const { user } = renderScreen();
 
     await screen.findByRole('cell', { name: 'TL-01' });
@@ -458,7 +469,13 @@ describe('W-05-13 툴 마스터 — 목록', () => {
     await user.click(await screen.findByRole('option', { name: '제2공장' }));
     await user.click(within(listPane()).getByRole('button', { name: messages.common.search }));
 
-    expect(await screen.findByText(t.filters.chipPlant('제2공장'))).toBeInTheDocument();
+    expect(within(listPane()).getByRole('combobox', { name: t.fields.plant })).toHaveTextContent(
+      '제2공장',
+    );
+    expect(
+      within(listPane()).queryByRole('button', { name: messages.common.filterMore.remove('공장') }),
+    ).toBeNull();
+    expect(within(listPane()).queryByText(/공장: /)).toBeNull();
   });
 
   /* 좁힘은 «고를 목록» 한 자리에만 건다 — 이름 풀이와 고를 목록이 다른 규율을 쓴다. */
@@ -505,6 +522,7 @@ describe('W-05-13 툴 마스터 — 조회 조건', () => {
     const { user, sent } = renderScreen();
 
     await screen.findByRole('cell', { name: 'TL-01' });
+    await openMore(user);
     await user.click(
       within(listPane()).getByRole('checkbox', { name: t.filters.guaranteedMissingOnly }),
     );
@@ -518,6 +536,7 @@ describe('W-05-13 툴 마스터 — 조회 조건', () => {
     const { user, sent } = renderScreen();
 
     await screen.findByRole('cell', { name: 'TL-01' });
+    await openMore(user);
     await user.click(within(listPane()).getByRole('checkbox', { name: t.filters.pmDueOnly }));
 
     await waitFor(() => {
@@ -547,6 +566,7 @@ describe('W-05-13 툴 마스터 — 조회 조건', () => {
     const { user, sent } = renderScreen();
 
     await screen.findByRole('cell', { name: 'TL-01' });
+    await openMore(user);
     await user.click(
       within(listPane()).getByRole('checkbox', { name: messages.common.includeInactive }),
     );
@@ -569,6 +589,7 @@ describe('W-05-13 툴 마스터 — 조회 조건', () => {
     const { user, sent } = renderScreen();
 
     await screen.findByRole('cell', { name: 'TL-01' });
+    await openMore(user);
     await user.click(within(listPane()).getByRole('combobox', { name: t.filters.sortLabel }));
     await user.click(await screen.findByRole('option', { name: t.filters.sort.shotUsageDesc }));
 
@@ -586,6 +607,7 @@ describe('W-05-13 툴 마스터 — 조회 조건', () => {
     const { user, sent } = renderScreen();
 
     await screen.findByRole('cell', { name: 'TL-01' });
+    await openMore(user);
     await user.click(within(listPane()).getByRole('checkbox', { name: t.filters.pmDueOnly }));
 
     await waitFor(() => {
@@ -607,6 +629,7 @@ describe('W-05-13 툴 마스터 — 조회 조건', () => {
     const { user, sent } = renderScreen();
 
     await screen.findByRole('cell', { name: 'TL-01' });
+    await openMore(user);
     await user.click(within(listPane()).getByRole('combobox', { name: t.filters.sortLabel }));
     await user.click(await screen.findByRole('option', { name: t.filters.sort.nextPmAsc }));
 
@@ -622,26 +645,40 @@ describe('W-05-13 툴 마스터 — 조회 조건', () => {
     expect(sent.at(-1)?.searchParams.get('sort')).toBe('NEXT_PM_ASC');
   });
 
-  it('칩으로 검색어를 거두면 검색칸도 함께 비워진다', async () => {
+  /* 보이는 칸(검색 · 공장 · 유형)의 값은 칸이 말한다 — 칩은 접힌 칸에 걸린 조건만 알린다(C-6). */
+  it('접힌 체크칸에 걸린 조건만 칩이 되고, 펼치면 칩을 거둔다', async () => {
     const { user } = renderScreen();
 
     await screen.findByRole('cell', { name: 'TL-01' });
+    await user.type(within(listPane()).getByLabelText(t.filters.searchLabel), '프레스{Enter}');
+    await openMore(user);
+    await user.click(within(listPane()).getByRole('checkbox', { name: t.filters.pmDueOnly }));
 
-    const box = within(listPane()).getByLabelText(t.filters.searchLabel);
-    await user.type(box, '프레스{Enter}');
+    /* 펼쳐 있으면 칸에 값이 보이므로 칩이 없다. */
+    expect(
+      within(listPane()).queryByRole('button', { name: t.filters.chipRemovePmDue }),
+    ).toBeNull();
 
-    await user.click(await screen.findByRole('button', { name: t.filters.chipRemoveKeyword }));
+    await user.click(
+      within(listPane()).getByRole('button', { name: messages.common.filterMore.close }),
+    );
 
-    await waitFor(() => {
-      expect(box).toHaveValue('');
-    });
+    expect(
+      await within(listPane()).findByRole('button', { name: t.filters.chipRemovePmDue }),
+    ).toBeInTheDocument();
+    /* 검색어는 보이는 칸이라 칩이 없다 — 칩은 하나뿐이다. */
+    expect(within(listPane()).getAllByRole('button', { name: /조건 제거$/ })).toHaveLength(1);
   });
 
   it('칩으로 도래만 조건을 거둔다', async () => {
     const { user, sent } = renderScreen();
 
     await screen.findByRole('cell', { name: 'TL-01' });
+    await openMore(user);
     await user.click(within(listPane()).getByRole('checkbox', { name: t.filters.pmDueOnly }));
+    await user.click(
+      within(listPane()).getByRole('button', { name: messages.common.filterMore.close }),
+    );
 
     await user.click(await screen.findByRole('button', { name: t.filters.chipRemovePmDue }));
 
@@ -655,6 +692,17 @@ describe('W-05-13 툴 마스터 — 조회 조건', () => {
    * 적용된 값을 보고 칸을 맞추는 것만으로는 부족하다 — 적용된 값이 이미 비어 있으면
    * 「달라진 것이 없다」가 되어 칸에 남은 낱말을 아무도 지우지 않는다(client#316 계열).
    */
+  it('초기화는 처음 값과 달라진 것이 있을 때만 보인다', async () => {
+    const { user } = renderScreen();
+
+    await screen.findByRole('cell', { name: 'TL-01' });
+    expect(within(listPane()).queryByRole('button', { name: messages.common.reset })).toBeNull();
+
+    await user.type(within(listPane()).getByLabelText(t.filters.searchLabel), '프');
+
+    expect(within(listPane()).getByRole('button', { name: messages.common.reset })).toBeVisible();
+  });
+
   it('적용하지 않은 입력도 초기화가 거둔다', async () => {
     const { user } = renderScreen();
 
@@ -675,6 +723,7 @@ describe('W-05-13 툴 마스터 — 조회 조건', () => {
     const { user, sent } = renderScreen();
 
     await screen.findByRole('cell', { name: 'TL-01' });
+    await openMore(user);
     await user.click(within(listPane()).getByRole('checkbox', { name: t.filters.pmDueOnly }));
 
     await waitFor(() => {
@@ -711,6 +760,7 @@ describe('W-05-13 툴 마스터 — 빈 상태와 실패', () => {
     });
 
     await screen.findByRole('cell', { name: 'TL-01' });
+    await openMore(user);
     await user.click(within(listPane()).getByRole('checkbox', { name: t.filters.pmDueOnly }));
 
     expect(await screen.findByText(t.empty.noMatchTitle)).toBeInTheDocument();
