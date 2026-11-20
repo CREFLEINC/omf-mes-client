@@ -12,7 +12,6 @@ const result = (over: Partial<IssueRunResult>): IssueRunResult => ({
   hasPrintedLabel: false,
   issue: null,
   error: null,
-  iqcLabel: null,
   ...over,
 });
 
@@ -45,20 +44,11 @@ describe('rowStatusOf', () => {
     });
 
     expect(rowStatusOf(9, batch)).toEqual({ kind: 'notSelected' });
-    expect(rowStatusOf(1, batch)).toEqual({ kind: 'printed', iqcMissing: false });
+    expect(rowStatusOf(1, batch)).toEqual({ kind: 'printed' });
     expect(rowStatusOf(2, batch)).toEqual({ kind: 'running' });
     expect(rowStatusOf(3, batch)).toEqual({ kind: 'waiting' });
     expect(rowStatusOf(4, batch)).toEqual({ kind: 'alreadyIssued' });
     expect(rowStatusOf(5, batch)).toEqual({ kind: 'stopped' });
-  });
-
-  it('자재 라벨은 나왔고 IQC 라벨만 안 나왔으면 「인쇄됨」에 그 사실을 붙인다', () => {
-    const batch = snapshot({
-      order: [1],
-      results: new Map([[1, { ...printed(1), iqcLabel: 'failed' as const }]]),
-    });
-
-    expect(rowStatusOf(1, batch)).toEqual({ kind: 'printed', iqcMissing: true });
   });
 });
 

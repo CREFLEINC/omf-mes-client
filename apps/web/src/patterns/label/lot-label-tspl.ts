@@ -384,19 +384,17 @@ export interface MaterialLotLabelFields {
   qty: number;
   /** 단위 코드. 모르면 `null` — 수량만 적는다. */
   uomCode: string | null;
-  /** 발행 회차 — 자재 라벨 오른쪽 위 `#n`. IQC 라벨에는 찍지 않는다. */
+  /** 발행 회차 — 자재 라벨 오른쪽 위 `#n`. */
   issueSeq: number;
   /** 공급처 — 짜 둔 글(`이름 (코드)`). ASCII 밖 글자일 수 있다. */
   supplier: string | null;
   /** 입하 — 짜 둔 글(`입하 2026-10-22`). 수량 줄 오른쪽 끝에 맞춘다. */
   receipt: string | null;
-  /** `iqc` 면 `#n` 자리에 검은 바탕 흰 글자 `IQC` 를 찍는다(omf-all-around#110). */
-  kind: 'material' | 'iqc';
 }
 
 /** 글줄이 무엇을 싣는가 — 미리보기·시험이 줄을 이름으로 찾는다. */
 export type MaterialLotLabelField =
-  'itemCode' | 'issueSeq' | 'iqc' | 'itemName' | 'qty' | 'receipt' | 'supplier' | 'lotNo';
+  'itemCode' | 'issueSeq' | 'itemName' | 'qty' | 'receipt' | 'supplier' | 'lotNo';
 
 /**
  * 자리를 잡은 글줄 하나.
@@ -418,8 +416,6 @@ export interface MaterialLotLabelLayout {
   column: { left: number; right: number };
   texts: MaterialLotLabelText[];
   qr: { x: number; y: number; side: number; cell: number; content: string };
-  /** IQC 라벨에서 뒤집을 상자 — `TEXT "IQC"` 를 찍은 뒤 `REVERSE` 로 검은 바탕 흰 글자를 만든다. */
-  reverse: { x: number; y: number; width: number; height: number } | null;
 }
 
 /**
@@ -451,7 +447,6 @@ const MATERIAL_QR_CELL = 5;
 const MATERIAL_POINT: Record<MaterialLotLabelField, number> = {
   itemCode: 14,
   issueSeq: 8,
-  iqc: 12,
   itemName: 9,
   qty: 14,
   receipt: 8,
@@ -461,9 +456,6 @@ const MATERIAL_POINT: Record<MaterialLotLabelField, number> = {
 
 /** 같은 줄의 왼쪽 글과 오른쪽 맞춤 글 사이 — QR 과 글줄 칸 사이와 같은 2 mm. */
 const ASIDE_GAP = dots(2);
-
-/** IQC 검은 상자 안 좌우 여백. */
-const IQC_PAD = dots(1);
 
 /**
  * 줄 사이를 이보다 벌리지 않는다 — 빠진 줄(`null`)이 있어도 글줄 묶음이 흩어지지 않고 QR 옆에
@@ -575,7 +567,7 @@ const fitLotNoLine = (
  * 미리보기가 같은 자리를 쓴다.
  *
  * ```
- * ┌────┐ ITEM-0001 (품번 14pt)                      #1  ← 자재: 회차 8pt · IQC: 검은 상자 IQC
+ * ┌────┐ ITEM-0001 (품번 14pt)                      #1  ← 회차 8pt
  * │ QR │ 품명 (9pt)
  * │18mm│ 1,500 EA (수량 14pt)          입하 2026-10-22  ← 입하 8pt · 오른쪽 끝 · 바닥 맞춤
  * └────┘ 공급처 (100000) (8pt)
@@ -589,7 +581,7 @@ const fitLotNoLine = (
  * ⭐ 남는 세로는 `layoutLotLabel` 처럼 줄 사이에 고르게 나눈다. 빠진 줄이 있으면 사이를 2 mm
  *   까지만 벌리고 묶음을 세로 가운데에 둔다.
  *
- * ⛔ 오른쪽 맞춤 글(회차·입하·IQC)이 «먼저» 자리를 잡고, 같은 줄 왼쪽 글(품번·수량)이 남은 폭에
+ * ⛔ 오른쪽 맞춤 글(회차·입하)이 «먼저» 자리를 잡고, 같은 줄 왼쪽 글(품번·수량)이 남은 폭에
  *    맞춘다 — 둘이 겹쳐 찍히지 않게. 입하 글은 칸의 절반까지만 쓴다(수량이 먼저다).
  *
  * `measure` — 줄 폭을 재는 길. 생략하면 내장 글꼴 어림(TEXT 줄)이다. 그림으로 찍힐 줄까지 종이와
@@ -646,7 +638,6 @@ export const layoutMaterialLotLabel = (
   };
 
   const texts: MaterialLotLabelText[] = [];
-  let reverse: MaterialLotLabelLayout['reverse'] = null;
   let y = TOP + Math.floor((band - used - spacing * (rows.length - 1)) / 2);
 
   for (const each of rows) {
@@ -654,28 +645,7 @@ export const layoutMaterialLotLabel = (
     /* 왼쪽 글이 끝나야 하는 자리 — 오른쪽 맞춤 글이 있으면 그 왼쪽 2 mm 앞이다. */
     let until = right;
 
-    if (each.field === 'itemCode' && fields.kind === 'iqc') {
-      const point = MATERIAL_POINT.iqc;
-      const inner = measure('IQC', point);
-      const box = {
-        x: right - inner - IQC_PAD * 2,
-        y,
-        width: inner + IQC_PAD * 2,
-        height: lineHeight(each.point),
-      };
-
-      reverse = box;
-      hung.push({
-        field: 'iqc',
-        x: box.x + IQC_PAD,
-        y: y + Math.floor((box.height - lineHeight(point)) / 2),
-        point,
-        content: 'IQC',
-        width: inner,
-        align: 'right',
-      });
-      until = box.x - ASIDE_GAP;
-    } else if (each.field === 'itemCode') {
+    if (each.field === 'itemCode') {
       const seq = hang(
         'issueSeq',
         `#${String(fields.issueSeq)}`,
@@ -715,42 +685,24 @@ export const layoutMaterialLotLabel = (
     y += lineHeight(each.point) + spacing;
   }
 
-  return { width: WIDTH, height: HEIGHT, column: { left, right }, texts, qr, reverse };
+  return { width: WIDTH, height: HEIGHT, column: { left, right }, texts, qr };
 };
 
-const reverseCommand = (box: NonNullable<MaterialLotLabelLayout['reverse']>): string =>
-  `REVERSE ${String(box.x)},${String(box.y)},${String(box.width)},${String(box.height)}`;
-
 /**
- * 한 장의 명령 차례 — 머리 → 글줄 → IQC 글자 → `REVERSE` → QR → `PRINT`.
- *
- * ⛔ **IQC 글자와 `REVERSE` 는 글줄 뒤(QR 앞)다.** `REVERSE` 는 그 순간 상자 안에 있는 것만
- *    뒤집고, `BITMAP` 은 흰 점까지 덮어쓴다(방식 0) — 뒤집은 뒤에 그림 줄이 상자에 닿으면 상자가
- *    지워진다.
+ * 한 장의 명령 차례 — 머리 → 글줄 → QR → `PRINT`.
  *
  * `line` 이 글줄 하나를 명령으로 바꾼다 — TEXT 한 줄이거나 `BITMAP` 바이트다.
  */
 const materialCommands = <T>(
   layout: MaterialLotLabelLayout,
   line: (each: MaterialLotLabelText) => T,
-): (string | T)[] => [
-  ...HEADER,
-  ...layout.texts.filter((each) => each.field !== 'iqc').map(line),
-  ...layout.texts.filter((each) => each.field === 'iqc').map(line),
-  ...(layout.reverse === null ? [] : [reverseCommand(layout.reverse)]),
-  qrCommand(layout.qr),
-  'PRINT 1,1',
-  '',
-];
+): (string | T)[] => [...HEADER, ...layout.texts.map(line), qrCommand(layout.qr), 'PRINT 1,1', ''];
 
 /**
  * 자재 LOT 라벨 한 장 — **TEXT 만 쓰는 판**(ASCII 밖 글자는 결정 17 대로 `?`). 셸 진단의 견본
  * 인쇄(`sample-print`)가 쓴다. 자리는 `layoutMaterialLotLabel` 그대로다.
  *
  * ⭐ 모든 줄이 ASCII 면 실제 발행(`buildMaterialLotLabelBytes`)과 바이트까지 같다.
- *
- * ⚠ IQC 라벨은 `heading` 인자(`IQC LOT`)가 아니라 `kind: 'iqc'` 로 고른다 — 옛 다섯 줄 양식
- *   (`MATERIAL LOT #n` · `ITEM` · `QTY` · `LOT` · `RCV`)은 2026-10-24 개편으로 걷었다.
  */
 export const buildMaterialLotLabel = (fields: MaterialLotLabelFields): string =>
   materialCommands(layoutMaterialLotLabel(fields), text).join('\r\n');

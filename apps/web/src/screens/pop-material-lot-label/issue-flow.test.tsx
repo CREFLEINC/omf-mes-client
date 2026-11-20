@@ -318,8 +318,8 @@ describe('라벨 발행 — N장마다 멈추고 이어서', () => {
   });
 });
 
-describe('라벨 발행 — IQC 라벨', () => {
-  it('IQC 대상이면 자재 관리 LOT 라벨 뒤에 IQC 라벨을 발행 · 인쇄 · 보고한다', async () => {
+describe('라벨 발행 — IQC 대상 품목', () => {
+  it('⛔ IQC 대상이어도 자재 관리 LOT 라벨 한 장만 찍는다 — IQC 라벨은 찍지 않는다(omf-all-around#335)', async () => {
     const user = userEvent.setup();
     const save = installShell();
     const { sent } = renderLabelScreen(waitingOnly(1, { inspectionRequired: true }));
@@ -327,8 +327,8 @@ describe('라벨 발행 — IQC 라벨', () => {
     await issueAll(user, 1);
 
     await waitFor(() => expect(screen.getAllByText(t.bar.done(1)).length).toBeGreaterThan(0));
-    expect(docTypes(sent)).toEqual(['MATERIAL_LOT_LABEL', 'IQC_LABEL']);
-    expect(save).toHaveBeenCalledTimes(2);
+    expect(docTypes(sent)).toEqual(['MATERIAL_LOT_LABEL']);
+    expect(save).toHaveBeenCalledTimes(1);
   });
 });
 

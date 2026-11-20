@@ -19,7 +19,6 @@ export const labelLot = (lotId: number, over: Partial<LabelLot> = {}): LabelLot 
   lifecycleStatusCode: 'WAITING',
   statusCode: 'INSPECTION_PENDING',
   inboundLotNo: null,
-  inspectionRequired: false,
   lastIssue: null,
   ...over,
 });

@@ -157,8 +157,6 @@ export interface HarnessOptions {
   issueHangs?: boolean;
   reportFails?: boolean;
   reissueReasons?: { code: string; codeName: string }[];
-  /** IQC 라벨이 이미 나간 적이 있다 — 사유 없는 IQC 발행을 422(사유 필수)로 거절한다. */
-  iqcRequiresReason?: boolean;
   /** 목록 조회를 실패시킨다. */
   waitingFail?: boolean;
   /** 이 LOT 은 폐기에서 건별 실패로 돌려준다. */
@@ -458,10 +456,7 @@ export const renderLabelScreen = (options: HarnessOptions = {}) => {
         const lotId = body.targets[0]?.lotId ?? 0;
         const key = `${body.documentTypeCode}|${String(lotId)}`;
         const seq = (issueCounts.get(key) ?? 0) + 1;
-        const needsReason =
-          (seq > 1 ||
-            (options.iqcRequiresReason === true && body.documentTypeCode === 'IQC_LABEL')) &&
-          (body.reissueReasonCode ?? null) === null;
+        const needsReason = seq > 1 && (body.reissueReasonCode ?? null) === null;
 
         if (needsReason) {
           return jsonResponse(
