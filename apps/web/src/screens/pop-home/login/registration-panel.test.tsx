@@ -168,3 +168,41 @@ describe('RegistrationPanel — 판정이 누구 이야기인가', () => {
     });
   });
 });
+
+/*
+ * 사용자 지시(2026-11-20 · omf-all-around#334) — 등록 확인의 [재입력]은 [등록 적용]과 함께 구획 안 아래 단추 줄에 선다
+ * (보조 왼쪽 · 주 조작 오른쪽). 누르면 입력으로 돌아간다(동작은 종전 그대로).
+ */
+describe('RegistrationPanel — 등록 확인 단추 줄', () => {
+  it('[재입력]과 [등록 적용]이 구획 안 한 줄에 서고, [재입력]은 입력으로 돌린다', async () => {
+    const popFetch = createStubFetch([
+      {
+        match: (request) => /\/mdm\/terminals\/\d+(\?|$)/.test(request.url),
+        respond: () =>
+          jsonResponse({
+            terminalId: 2004,
+            terminalCode: 'POP-2004',
+            plantId: 10,
+            terminalTypeCode: 'POP',
+          }),
+      },
+    ]);
+    openPanel(popFetch);
+
+    fireEvent.change(screen.getByLabelText(t.tokenLabel), { target: { value: tokenFor(2004) } });
+    fireEvent.click(screen.getByRole('button', { name: t.verify }));
+
+    const restart = await screen.findByRole('button', { name: t.restart });
+    const row = restart.closest('.wa-reg-actions');
+    expect(t.restart).toBe('재입력');
+    expect(row?.closest('.wa-reg-card')).not.toBeNull();
+    expect(
+      [...(row?.querySelectorAll('button') ?? [])].map((button) => button.textContent),
+    ).toEqual([t.restart, t.apply]);
+
+    fireEvent.click(restart);
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.tokenLabel)).toBeInTheDocument();
+    });
+  });
+});

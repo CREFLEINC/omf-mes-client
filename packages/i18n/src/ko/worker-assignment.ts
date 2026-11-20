@@ -31,7 +31,7 @@ export const workerAssignment = {
     /** 검증 200 뒤 — 설치 담당자가 **단말 코드를 눈으로 확인**하고 누른다. */
     confirmTitle: '아래 단말 정보를 확인해 주세요.',
     apply: '등록 적용',
-    restart: '다시 입력',
+    restart: '재입력',
     /**
      * 등록을 마친 뒤 단말 자체를 바꿀 때(P-CO-01 §5-1 「재등록」).
      *
