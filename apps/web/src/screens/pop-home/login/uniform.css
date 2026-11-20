@@ -15,17 +15,13 @@
   background: var(--pu-bg);
 }
 
-/* 본문 — 전폭 구획 하나(출하 완료의 지시서 조회와 같은 짜임), 높낮이 가운데(사용자 지시 2026-11-20). */
+/*
+ * 본문 — 전폭 구획 하나(출하 완료의 지시서 조회와 같은 짜임). 구획만 높낮이 가운데, 단추는 아래 공통 작업 줄 그대로
+ * (사용자 지시 2026-11-20).
+ */
 .wa-reg-main > .pu-main {
   grid-template-rows: auto;
   align-content: center;
-}
-
-/* 구획 안 아래 단추 줄 — 단추만, 주 조작은 맨 오른쪽(공통 단추 크기 그대로). */
-.wa-reg-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
 }
 
 /* 확인 단계의 단말 코드 · 설비 · 공정 — 이름 위, 값 크게. */

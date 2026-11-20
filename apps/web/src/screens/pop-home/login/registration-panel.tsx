@@ -8,6 +8,7 @@ import {
   type RegistrationFailure,
 } from '../../../patterns/pop-registration';
 import {
+  PuActionBar,
   PuBand,
   PuButton,
   PuIcon,
@@ -128,12 +129,9 @@ export const RegistrationPanel = () => {
         ? t.preparing
         : null;
 
-  /*
-   * 작업 줄 — 구획 «안» 아래(사용자 지시 2026-11-20): 구획이 높낮이 가운데에 서므로, 화면 맨 아래 작업 줄로 떼면 상자와
-   * 단추가 갈라진다. 단추 모양 · 크기는 공통 주 · 보조 단추 그대로(보조는 왼쪽, 주 조작은 오른쪽 끝).
-   */
-  const actions = isInput ? (
-    <div className="wa-reg-actions" role="group" aria-label={t.title}>
+  /* 아래 작업 줄 — 다른 POP 화면과 같은 공통 작업 줄(보조는 왼쪽, 주 조작은 오른쪽 끝). */
+  const actionBar = isInput ? (
+    <PuActionBar label={t.title}>
       <PuButton icon="reset" onClick={() => setToken('')} disabled={busy || token === ''}>
         {t.clear}
       </PuButton>
@@ -146,13 +144,9 @@ export const RegistrationPanel = () => {
       >
         {phase === 'verifying' ? t.verifying : t.verify}
       </PuButton>
-    </div>
+    </PuActionBar>
   ) : isConfirm || phase === 'prepare-failed' ? (
-    <div
-      className="wa-reg-actions"
-      role="group"
-      aria-label={isConfirm ? t.confirmHeading : t.title}
-    >
+    <PuActionBar label={isConfirm ? t.confirmHeading : t.title}>
       <PuButton onClick={registration.restart}>{t.restart}</PuButton>
       <PuButton
         variant="primary"
@@ -162,8 +156,8 @@ export const RegistrationPanel = () => {
       >
         {isConfirm ? t.apply : t.retryPrepare}
       </PuButton>
-    </div>
-  ) : null;
+    </PuActionBar>
+  ) : undefined;
 
   return (
     <div className="wa-reg">
@@ -187,9 +181,9 @@ export const RegistrationPanel = () => {
 
       {/*
        * 본문 — 출하 완료의 지시서 조회와 같은 짜임(사용자 지시 2026-11-20): 전폭 구획 하나에 이름 위 스캔 칸 + [직접 입력],
-       * 그 아래 단추. 구획은 높낮이 가운데.
+       * 아래는 공통 작업 줄.
        */}
-      <PuScreen className="wa-reg-main">
+      <PuScreen className="wa-reg-main" actionBar={actionBar}>
         <PuSection
           labelId={titleId}
           title={isConfirm ? t.confirmHeading : t.title}
@@ -262,8 +256,6 @@ export const RegistrationPanel = () => {
               ]}
             />
           )}
-
-          {actions}
         </PuSection>
       </PuScreen>
     </div>
