@@ -38,11 +38,12 @@ export const findLinkableWorker = async (
   appUserId: number | null,
 ): Promise<{ workerId: number } | { error: string }> => {
   try {
-    const found = await runRequest(() =>
+    const response = await runRequest(() =>
       client.GET('/mdm/workers', {
         params: { query: { workerNo, includeInactive: false, page: 1, size: 2 } },
       }),
-    ).then((response) => response.items.find((worker) => worker.workerNo === workerNo));
+    );
+    const found = response.items.find((worker) => worker.workerNo === workerNo);
     if (found === undefined) return { error: t.noActiveWorker };
     if (found.appUserId != null && found.appUserId !== appUserId)
       return { error: t.linkedElsewhere };

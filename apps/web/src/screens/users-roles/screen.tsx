@@ -85,7 +85,8 @@ import {
 } from './role-assign-draft';
 import { RoleAssignPane } from './role-assign-pane';
 import { RoleFormPane } from './role-form-pane';
-import { RoleFilterBar, RoleListPane } from './role-list-pane';
+import { RoleFilterBar } from './role-filter-bar';
+import { RoleListPane } from './role-list-pane';
 import {
   emptyRoleFormValues,
   isSameRoleValues,
@@ -105,8 +106,9 @@ import {
 import { ROLE_FORM_FIELDS, validateRoleForm } from './role-validation';
 import { USERS_ROLES_TABS, resolveTab, tabSearchParams } from './tabs';
 import { UserFormPane } from './user-form-pane';
-import { UserStatusChips } from './status-chips';
-import { UserFilterBar, UserListPane } from './user-list-pane';
+import { StatusChips } from './status-chips';
+import { UserFilterBar } from './user-filter-bar';
+import { UserListPane } from './user-list-pane';
 import {
   appUserToFormValues,
   emptyUserFormValues,
@@ -216,8 +218,8 @@ interface DataScopeState {
   drafts: DataScopeDraft[];
 }
 
-/** 역할 폼의 출처. 사용자 폼과 같은 규칙이다 — 수정은 상세 응답, 등록은 주소에서 파생한 문자열. */
-type RoleFormSource = string | RoleDetailResponse;
+/** 역할 폼의 출처 — 상세 응답. 등록은 팝업이 따로 값을 쥔다(#333). */
+type RoleFormSource = RoleDetailResponse;
 
 interface RoleFormState {
   source: RoleFormSource;
@@ -423,11 +425,14 @@ export const UsersRolesScreen = () => {
   const [roleCreateValues, setRoleCreateValues] = useState<RoleFormValues | null>(null);
   const [roleCreateFieldErrors, setRoleCreateFieldErrors] = useState<Record<string, string>>({});
   const isCreatingRole = isRolesTab && roleCreateValues !== null;
+  /* 팝업은 주소에 없다 — 뒤로가기 등으로 역할 탭을 떠나면 입력값도 버려, 돌아왔을 때 지난 팝업이 다시 서지 않게 한다. */
+  if (!isRolesTab && roleCreateValues !== null) setRoleCreateValues(null);
   /* 역할 추가 팝업이 열리면 다음 역할 코드(ROLE_ 일련번호)를 정하려고 함께 받는다(#333). */
   const roleOptions = useRoleOptions(selectedAppUserId !== null || isCreatingRole);
   /*
    * 역할 추가 팝업의 역할 코드는 ROLE_ 일련번호로 미리 채운다 — 고칠 수 있다(사용자 결정 2026-11-20 · #333).
    * 모든 역할(미사용 포함)의 코드를 받은 뒤 한 번만 채우고, 사용자가 칸을 만졌으면 다시 채우지 않는다.
+   * 목록이 잘려 왔으면(한 쪽을 넘는 역할) 이미 있는 번호를 낼 수 있어 채우지 않는다 — 직접 적는다.
    */
   const [roleCodeTouched, setRoleCodeTouched] = useState(false);
   if (
@@ -435,7 +440,8 @@ export const UsersRolesScreen = () => {
     !roleCodeTouched &&
     roleCreateValues.roleCode === '' &&
     !roleOptions.isLoading &&
-    !roleOptions.isError
+    !roleOptions.isError &&
+    !roleOptions.truncated
   ) {
     setRoleCodeTouched(true);
     setRoleCreateValues({
@@ -553,16 +559,13 @@ export const UsersRolesScreen = () => {
 
   const [roleFormState, setRoleFormState] = useState<RoleFormState | null>(null);
 
-  /** 사용자 폼과 같은 규칙 — 출처가 바뀔 때만 다시 세우고, 등록 출처는 주소에서 파생한다. */
+  /** 사용자 폼과 같은 규칙 — 출처가 바뀔 때만 다시 세운다. */
   const roleFormSource: RoleFormSource | null = roleDetail.data ?? null;
 
   if (roleFormSource === null) {
     if (roleFormState !== null) setRoleFormState(null);
   } else if (roleFormState?.source !== roleFormSource) {
-    const seeded =
-      typeof roleFormSource === 'string'
-        ? emptyRoleFormValues()
-        : roleToFormValues(roleFormSource.role);
+    const seeded = roleToFormValues(roleFormSource.role);
     setRoleFormState({ source: roleFormSource, baseline: seeded, values: seeded });
   }
 
@@ -1022,7 +1025,6 @@ export const UsersRolesScreen = () => {
    * 한 곳에서 골라 쓴다 — 두 훅의 상태를 화면에서 합치면 어느 저장의 실패인지 흐려진다.
    */
   const activeUserWrite = isCreatingUser ? userCreateWrite : userWrite;
-  const activeRoleWrite = roleWrite;
 
   /**
    * 편집 중이던 상태를 통째로 비운다 — 창·초안·인라인 오류·저장 실패 배너.
@@ -1364,13 +1366,13 @@ export const UsersRolesScreen = () => {
     });
   };
 
-  /* 추가는 팝업 — 고친 역할이 있으면 먼저 묻는다(사용자 추가와 같다 · #333). */
   /*
    * 역할 추가 — 팝업만 연다. 목록의 선택은 그대로 둔다(사용자 지시 2026-11-20 · #333). 고친 내용이 있으면 먼저 묻는다 —
-   * 추가가 끝나면 새 역할로 옮겨 가 고친 내용이 사라지기 때문이다.
+   * 추가가 끝나면 새 역할로 옮겨 가 고친 내용이 사라지기 때문이다. 「저장하지 않고 나가기」면 고친 내용을 실제로 되돌린다.
    */
   const handleAddRole = () => {
     leaveSafely(() => {
+      handleCancelRoleSettings();
       roleCreateWrite.reset();
       setRoleCreateFieldErrors({});
       setRoleCodeTouched(false);
@@ -1419,7 +1421,7 @@ export const UsersRolesScreen = () => {
       return next;
     });
 
-    for (const key of Object.keys(patch)) activeRoleWrite.clearFieldError(key);
+    for (const key of Object.keys(patch)) roleWrite.clearFieldError(key);
   };
 
   /** 저장. **화면이 잡을 수 있는 오류가 있으면 요청을 보내지 않는다.** */
@@ -1431,7 +1433,7 @@ export const UsersRolesScreen = () => {
 
     if (Object.keys(errors).length > 0) return;
 
-    activeRoleWrite.write(roleFormState.values);
+    roleWrite.write(roleFormState.values);
   };
 
   /** 역할 정보 수정 취소 — 서버를 부르지 않고 기준값으로 되돌린다. */
@@ -1946,8 +1948,6 @@ export const UsersRolesScreen = () => {
   const renderRoleFormPane = (): ReactNode => {
     if (selectedRoleId === null) return null;
 
-    if (selectedRoleId === null) return null;
-
     if (roleDetail.isError) {
       return (
         <section className="pane" aria-label={t.panes.roleForm}>
@@ -2238,7 +2238,7 @@ export const UsersRolesScreen = () => {
         {isRolesTab && !roleListForbidden && (
           /* 역할 탭도 같은 자리에 사용 · 미사용 라벨과 좌우 / 상하 배치를 둔다(#333). */
           <div className="users-roles-tab-actions">
-            <UserStatusChips
+            <StatusChips
               label={t.filters.roleStatusChipsLabel}
               statuses={ROLE_STATUS_ENTRIES}
               counts={roleStatusCounts}
@@ -2259,7 +2259,7 @@ export const UsersRolesScreen = () => {
         )}
         {isUsersTab && !userListForbidden && (
           <div className="users-roles-tab-actions">
-            <UserStatusChips
+            <StatusChips
               statuses={userStatusOptions.entries}
               counts={statusCounts}
               active={filters.statusCode}

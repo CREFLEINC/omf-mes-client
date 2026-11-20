@@ -114,14 +114,14 @@ export const isCreating = (params: URLSearchParams, target: CreateTarget): boole
   params.get(URL_KEYS.create) === CREATE_VALUES[target];
 
 /**
- * 지금 무엇을 편집하고 있는가. **네 값은 함께 성립하지 않는 하나의 자리다** —
- * 고른 사용자(`usr`) · 사용자 등록(`new=user`) · 고른 역할(`rol`) · 역할 등록(`new=role`).
+ * 지금 무엇을 편집하고 있는가. **세 값은 함께 성립하지 않는 하나의 자리다** —
+ * 고른 사용자(`usr`) · 사용자 등록(`new=user`) · 고른 역할(`rol`).
+ * 역할 등록은 주소가 아니라 팝업이 값을 쥔다 — 열어도 고른 역할이 남아야 한다(#333).
  */
 export type Selection =
   | { kind: 'user'; appUserId: number }
   | { kind: 'role'; roleId: number }
   | { kind: 'createUser' }
-  | { kind: 'createRole' }
   | { kind: 'none' };
 
 /**
@@ -145,9 +145,6 @@ export const applySelection = (params: URLSearchParams, selection: Selection): v
       break;
     case 'createUser':
       params.set(URL_KEYS.create, CREATE_VALUES.user);
-      break;
-    case 'createRole':
-      params.set(URL_KEYS.create, CREATE_VALUES.role);
       break;
     case 'none':
       break;

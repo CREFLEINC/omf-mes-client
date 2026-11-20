@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { roleFixtures } from './fixtures';
-import { RoleFilterBar, RoleListPane, type RoleListPaneProps } from './role-list-pane';
+import { RoleFilterBar } from './role-filter-bar';
+import { RoleListPane, type RoleListPaneProps } from './role-list-pane';
 import type { PageView } from './pagination';
 import type { RoleFilters } from './types';
 

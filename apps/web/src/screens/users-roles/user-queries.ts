@@ -20,6 +20,9 @@ export interface UserListResponse {
   page: PageMeta;
 }
 
+/** 건수만 쓰는 조회 — 줄은 하나만 받는다(합계 `page.total` 만 본다). */
+const COUNT_PAGE_SIZE = 1;
+
 /**
  * 사용자의 캐시 키.
  *
@@ -81,12 +84,14 @@ export const useUserStatusCounts = (
       const next = { ...filters, statusCode };
 
       return {
-        queryKey: userKeys.list(next, 1),
+        queryKey: userKeys.list(next, 1, COUNT_PAGE_SIZE),
         enabled,
         staleTime: 30_000,
         queryFn: () =>
           runRequest(() =>
-            client.GET('/app/users', { params: { query: toUserListQuery(next, 1) } }),
+            client.GET('/app/users', {
+              params: { query: toUserListQuery(next, 1, COUNT_PAGE_SIZE) },
+            }),
           ),
       };
     }),

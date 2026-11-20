@@ -5,7 +5,7 @@ import type { LookupEntry } from './types';
 
 const t = messages.usersRoles;
 
-export interface UserStatusChipsProps {
+export interface StatusChipsProps {
   statuses: LookupEntry[];
   /** 상태마다의 건수 — `statuses` 와 같은 순서. 받기 전이면 `undefined`. */
   counts: readonly (number | undefined)[];
@@ -21,13 +21,13 @@ export interface UserStatusChipsProps {
  * 누르면 그 상태만, 다시 누르면 푼다. **0건 · 아직 모르는 상태는 세우지 않는다**(사용자 지시) — 다만 걸려 있는
  * 칩은 0건이어도 남겨 풀 수 있게 한다.
  */
-export const UserStatusChips = ({
+export const StatusChips = ({
   statuses,
   counts,
   active,
   onChange,
   label = t.statusChips.label,
-}: UserStatusChipsProps) => {
+}: StatusChipsProps) => {
   const shown = statuses
     .map((status, index) => ({ status, count: counts[index] }))
     .filter(({ status, count }) => status.value === active || (count !== undefined && count > 0));

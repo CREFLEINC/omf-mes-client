@@ -4,14 +4,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { appUserFixtures } from './fixtures';
 import { toPageView } from './pagination';
-import {
-  EMPTY_USER_FILTERS,
-  UserFilterBar,
-  type UserFilterBarProps,
-  UserListPane,
-  type UserListPaneProps,
-} from './user-list-pane';
 import type { UserFilters } from './types';
+import { EMPTY_USER_FILTERS, UserFilterBar, type UserFilterBarProps } from './user-filter-bar';
+import { UserListPane, type UserListPaneProps } from './user-list-pane';
 
 const departmentOptions = [{ value: '3001', label: 'SYN-DEPT-01 · 합성 부서 A' }];
 

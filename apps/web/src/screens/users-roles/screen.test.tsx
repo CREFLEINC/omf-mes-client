@@ -4211,6 +4211,51 @@ describe('UsersRolesScreen 역할 초안·창의 수명', () => {
   });
 
   /* 조건 · 탭을 바꾸면 고른 역할이 풀린다 — 편집 중이면 먼저 묻는다(말없이 사라지던 문제 · #333). */
+  /* 리뷰 지적(#1721) — 「저장하지 않고 나가기」를 골랐으면 고친 내용이 실제로 되돌아간다. */
+  it('편집 중에 역할 추가를 누르고 나가기를 고르면 고친 내용이 되돌아간다', async () => {
+    const { requests, user } = renderScreen(routesFor(5001), '?tab=roles&rol=5001');
+
+    await waitForRoleList(requests);
+    await waitForRoleForm('SYN-ROLE-01');
+    await user.type(roleNameField(), 'X');
+
+    await user.click(within(roleSearchPane()).getByRole('button', { name: '역할 추가' }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: '저장되지 않은 변경 사항' })).getByRole(
+        'button',
+        { name: '저장하지 않고 나가기' },
+      ),
+    );
+    await user.click(
+      within(await screen.findByRole('dialog', { name: '역할 추가' })).getByRole('button', {
+        name: '취소',
+      }),
+    );
+
+    expect(roleNameField()).toHaveValue('합성 역할 A');
+  });
+
+  /* 리뷰 지적(#1721) — 팝업은 주소에 없어, 탭을 떠났다 돌아와도 지난 팝업이 다시 서지 않아야 한다. */
+  it('역할 추가 팝업을 연 채 주소로 탭을 옮겼다 돌아오면 팝업이 다시 열리지 않는다', async () => {
+    const { requests, goTo, user } = renderScreen(
+      [...routesFor(5001), userListRoute(), departmentsRoute()],
+      '?tab=roles',
+    );
+
+    await waitForRoleList(requests);
+    await user.click(within(roleSearchPane()).getByRole('button', { name: '역할 추가' }));
+    await screen.findByRole('dialog', { name: '역할 추가' });
+
+    goTo(`${ROUTE}?tab=users`);
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: '역할 추가' })).not.toBeInTheDocument();
+    });
+    goTo(`${ROUTE}?tab=roles`);
+    await waitForRoleList(requests);
+
+    expect(screen.queryByRole('dialog', { name: '역할 추가' })).not.toBeInTheDocument();
+  });
+
   it('편집 중에 사용 상태 라벨을 누르면 먼저 묻고, 계속 편집이면 그대로 둔다', async () => {
     const { requests, search, user } = renderScreen(routesFor(5001), '?tab=roles&rol=5001');
 

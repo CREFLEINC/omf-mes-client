@@ -336,14 +336,6 @@ describe('applySelection', () => {
     expect(next.has('usr')).toBe(false);
   });
 
-  it('역할 등록을 열면 고른 역할과 사용자 선택이 함께 빠진다', () => {
-    const next = applied('rol=5001&usr=1001', { kind: 'createRole' });
-
-    expect(next.get('new')).toBe('role');
-    expect(next.has('rol')).toBe(false);
-    expect(next.has('usr')).toBe(false);
-  });
-
   it('선택을 놓으면 네 자리가 모두 빠진다', () => {
     const next = applied('usr=1001&rol=5001&new=user', { kind: 'none' });
 

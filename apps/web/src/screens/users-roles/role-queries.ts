@@ -38,6 +38,9 @@ export const roleKeys = {
   permissionCatalog: ['users-roles-permission-catalog'] as const,
 };
 
+/** 건수만 쓰는 조회 — 줄은 하나만 받는다(합계 `page.total` 만 본다). */
+const COUNT_PAGE_SIZE = 1;
+
 /**
  * 역할 목록. 조건은 서버로 보낸다 — 클라이언트에서 거르면 서버가 자른 뒤의 결과만 걸러진다.
  *
@@ -72,12 +75,14 @@ export const useRoleStatusCounts = (
       const next = { ...filters, status };
 
       return {
-        queryKey: roleKeys.list(next, 1),
+        queryKey: roleKeys.list(next, 1, COUNT_PAGE_SIZE),
         enabled,
         staleTime: 30_000,
         queryFn: () =>
           runRequest(() =>
-            client.GET('/app/roles', { params: { query: toRoleListQuery(next, 1) } }),
+            client.GET('/app/roles', {
+              params: { query: toRoleListQuery(next, 1, COUNT_PAGE_SIZE) },
+            }),
           ),
       };
     }),

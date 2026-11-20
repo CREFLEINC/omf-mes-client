@@ -5,7 +5,7 @@ import { type ReactNode, useId } from 'react';
 import { codeLockMessage, type Editability } from '../../patterns/master';
 import { DisabledAction } from './disabled-action';
 import { FieldLabel } from './field-label';
-import { requiredEmptyClass } from './user-form-pane';
+import { requiredEmptyClass } from './required-empty';
 import type { RoleFormValues } from './types';
 
 const t = messages.usersRoles;
