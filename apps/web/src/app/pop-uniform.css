@@ -964,6 +964,19 @@ textarea.pu-input {
   color: var(--pu-text-2);
 }
 
+/* 카드 제목 옆 건수 — 글자 줄 가운데에 맞춘다(화면 탭 「OQC 출하검사 6」과 같다 · 사용자 지시 2026-11-20). */
+.pu-card-head h2:has(> .pu-count) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 빨간 원 건수 — 묶음 줄 [남은 작업] 건수(`.pop-remaining__total`)와 같은 색. */
+.pu-count.primary {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
 /* ── 이름: 값 묶음 ── */
 .pu-kv {
   display: grid;
@@ -1368,6 +1381,55 @@ textarea.pu-input {
 
 .pu-band.grid > .wide {
   grid-column: 1 / -1;
+}
+
+/*
+ * 정보 띠 「이름 위 · 값 아래」 짜임 — 칸 이름(작은 아이콘 + 회색 글) 아래 굵은 값. 기본 2열, `is-wide` 4열.
+ * OQC 출하검사(P-04-06) 의뢰 정보 띠에서 옮겨 와 출하 완료(P-04-07) 머리 띠도 같이 쓴다(#334).
+ */
+.pu-band-stack > .pu-band.grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 16px;
+  background: var(--pu-field);
+}
+
+.pu-band-stack.is-wide > .pu-band.grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/*
+ * `is-fluid` — 열 수를 상자 폭에 맞춘다(칸 최소 220px · 좁으면 2열, 넓으면 4~6열 · 사용자 지시 2026-11-20).
+ * 긴 값(품목 · 창고 칩)은 두 칸을 쓰고, 뒤 칸이 빈자리를 먼저 채운다(`dense`). 출하 완료 · 출하 OQC 머리 띠가 쓴다.
+ */
+.pu-band-stack.is-fluid > .pu-band.grid {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-auto-flow: row dense;
+}
+
+.pu-band-stack.is-fluid > .pu-band.grid > .wide {
+  grid-column: span 2;
+}
+
+.pu-band-stack .pu-band .kv {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.pu-band-stack .pu-band .kv > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.pu-band-stack .pu-band .kv > span > .pu-ic {
+  color: var(--pu-primary);
+}
+
+.pu-band-stack .pu-band .kv > b {
+  max-width: 100%;
+  white-space: nowrap;
 }
 
 /* ── 아래 작업 줄(규칙 2·3): 버튼만, 주 버튼은 맨 오른쪽 하나 ── */

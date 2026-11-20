@@ -55,9 +55,7 @@ export const stockTransfer: Translated<typeof ko.stockTransfer> = {
   },
   to: {
     legend: 'Nơi gửi đến',
-    arrivedLegend: 'Quét nơi đến',
     warehouseLabel: 'Kho nhận',
-    arrivedWarehouseLabel: 'Kho đến',
     warehousePlaceholder: 'Hãy chọn kho',
     scanLabel: 'Quét vị trí gửi đến',
     arrivedScanLabel: 'Quét vị trí đến',
@@ -120,6 +118,10 @@ export const stockTransfer: Translated<typeof ko.stockTransfer> = {
   },
   destination: {
     change: 'Đổi',
+  },
+  arrive: {
+    route: (from: string, to: string) => `${from} → ${to}`,
+    lots: 'LOT sẽ đến',
   },
   summary: {
     count: (count: number) => `${String(count)} LOT`,

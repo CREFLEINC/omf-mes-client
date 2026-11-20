@@ -120,11 +120,6 @@ export const LinePane = ({
       )}
 
       <div className="material-issue-request-line-footer">
-        <div className="material-issue-request-line-notes">
-          <p className="field-note">{t.notes.shortageColumnsReadOnly}</p>
-          <p className="field-note">{t.notes.lineNoAssignedByServer}</p>
-        </div>
-
         <Button variant="outlined" disabled={isLocked} onClick={onAddLine}>
           {t.actions.addLine}
         </Button>

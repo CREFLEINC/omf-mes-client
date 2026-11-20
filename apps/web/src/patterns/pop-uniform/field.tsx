@@ -119,6 +119,10 @@ export interface PuScanFieldProps {
   onChange: (value: string) => void;
   /** 스캔(Enter · 스캐너 끝)·직접 입력으로 들어온 값. */
   onSubmit: (value: string) => void;
+  /**
+   * [직접 입력] 창에서 넣은 값만 따로 받을 때(손으로 친 번호에 앞머리를 붙이는 화면 등). 비우면 `onSubmit` 이 받는다.
+   */
+  onManualSubmit?: (value: string) => void;
   /** 읽었는가 — 초록 「스캔 완료」. */
   done?: boolean;
   doneText?: string;
@@ -153,6 +157,7 @@ export const PuScanField = ({
   value,
   onChange,
   onSubmit,
+  onManualSubmit,
   done = false,
   doneText,
   error,
@@ -238,6 +243,10 @@ export const PuScanField = ({
           }}
           onSubmit={(entered) => {
             setManualOpen(false);
+            if (onManualSubmit !== undefined) {
+              onManualSubmit(entered);
+              return;
+            }
             onChange(entered);
             onSubmit(entered);
           }}

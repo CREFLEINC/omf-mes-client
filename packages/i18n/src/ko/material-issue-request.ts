@@ -121,8 +121,6 @@ export const materialIssueRequest = {
     noLinesDescription: 'BOM 소요량을 불러오거나 품목을 직접 추가하세요.',
   },
   notes: {
-    lineNoAssignedByServer: '줄번호는 서버가 부여합니다.',
-    shortageColumnsReadOnly: 'BOM 소요·기출고·부족은 시스템이 낸 값이라 고칠 수 없습니다.',
     warehouseAutoFilled: 'W/O 의 기본 재공 위치로 채웠습니다. 필요하면 바꿀 수 있습니다.',
   },
   result: {

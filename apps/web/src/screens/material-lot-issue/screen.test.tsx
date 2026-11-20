@@ -456,7 +456,8 @@ describe('W-01-14 자재 관리 LOT 발행', () => {
       ['PO-SYN-0002', '1', '2026.11.03', '2026.11.10', '300 EA'],
     ]);
     expect(pane.getByText(t.poLines.count(3))).toBeInTheDocument();
-    expect(pane.getByText(t.poLines.fillOrder)).toBeInTheDocument();
+    /* 채우는 차례는 제목 옆 ⓘ 의 설명으로 읽힌다(관리웹 정리 시안 A). */
+    expect(pane.getByRole('button', { name: t.poLines.fillOrder })).toBeInTheDocument();
     expect(Object.fromEntries(poLineQueries[0] ?? [])).toMatchObject({
       plantId: '8401',
       supplierId: '8201',
@@ -500,6 +501,8 @@ describe('W-01-14 자재 관리 LOT 발행', () => {
     expect(dialog.getByLabelText(t.dialog.qtyPerPackage('EA'))).toHaveValue('100');
     expect(dialog.getByLabelText(t.dialog.lotQty)).toHaveValue('1000');
     expect(dialog.queryByRole('button', { name: /라벨|인쇄/ })).not.toBeInTheDocument();
+    /* 개수 범위는 칸 아래가 아니라 라벨 옆 ⓘ 로 읽힌다(관리웹 정리 시안 A). */
+    expect(dialog.getByRole('button', { name: t.dialog.lotCountHelp })).toBeInTheDocument();
 
     await user.type(dialog.getByLabelText(t.dialog.supplierLotNo), 'SL-77');
     await user.type(dialog.getByLabelText(t.dialog.lotCount), '3');

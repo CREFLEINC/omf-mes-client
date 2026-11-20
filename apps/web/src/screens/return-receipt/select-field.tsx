@@ -1,6 +1,7 @@
 import { type SelectOption, type SelectOptionGroup } from '@crefle/web-ui';
 import { useId } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { Select } from '../../patterns/select';
 
 export interface SelectFieldProps {
@@ -10,8 +11,10 @@ export interface SelectFieldProps {
   onChange: (value: string) => void;
   required?: boolean;
   placeholder?: string;
-  /** 선택지의 한계(잘림·불러오기 실패·아직 안 옴)를 밝히는 보조 문구 — 항상 보인다. */
+  /** 선택지의 한계(잘림·불러오기 실패·아직 안 옴)를 밝히는 보조 문구 — 그 사정이 있을 때만 준다. */
   note?: string;
+  /** 칸의 규칙(무엇을 고르는지) — 칸 아래가 아니라 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */
+  info?: string;
   /** 그 칸 아래 서는 오류. 화면이 잡은 것과 서버가 준 것이 같은 칸에 붙는다. */
   error?: string;
   disabled?: boolean;
@@ -34,6 +37,7 @@ export const SelectField = ({
   required = false,
   placeholder,
   note,
+  info,
   error,
   disabled = false,
   disabledReason,
@@ -51,13 +55,23 @@ export const SelectField = ({
   ]
     .filter((part): part is string => part !== undefined)
     .join(' ');
+  const labelNode = (
+    <label className="field-label" htmlFor={id}>
+      {label}
+      {required && <span aria-hidden="true"> *</span>}
+    </label>
+  );
 
   return (
     <div className={wide ? 'field-cell wide-select' : 'field-cell'}>
-      <label className="field-label" htmlFor={id}>
-        {label}
-        {required && <span aria-hidden="true"> *</span>}
-      </label>
+      {info === undefined ? (
+        labelNode
+      ) : (
+        <span className="info-label">
+          {labelNode}
+          <InfoTip text={info} />
+        </span>
+      )}
       <Select
         id={id}
         options={options}

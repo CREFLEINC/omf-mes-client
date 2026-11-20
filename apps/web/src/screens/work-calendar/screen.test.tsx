@@ -1252,13 +1252,14 @@ describe('W-05-09 작업 캘린더 — 하루 편집', () => {
     expect(screen.getByRole('dialog', { name: t.dayForm.title('2026-08-04') })).toBeInTheDocument();
   });
 
-  /* ⚠ 사유는 계약이 선택으로 두었다 — 비어도 저장된다는 사실을 화면이 말한다. */
-  it('사유가 비어도 저장된다는 것을 밝힌다', async () => {
+  /* ⚠ 사유는 계약이 선택으로 두었다 — 필수 표시가 없는 것으로 충분해 따로 문장을 두지 않는다(관리웹 정리 시안 A). */
+  it('사유 칸은 필수가 아니고 따로 안내 문장을 두지 않는다', async () => {
     const { user } = renderScreen();
 
     await openDay(user, '2026-08-04', t.grid.status.unset);
 
-    expect(screen.getByText(t.dayForm.reasonOptional)).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: t.dayForm.reason })).not.toBeRequired();
+    expect(screen.queryByText('사유는 비워 두어도 저장됩니다.')).toBeNull();
   });
 });
 
@@ -1476,12 +1477,14 @@ describe('W-05-09 작업 캘린더 — 적용 대상', () => {
   });
 
   /* ⭐ 해제는 지우는 것이 아니라 상위 층을 따르게 하는 것이다 — 그 사실을 말한다. */
-  it('해제가 무엇을 뜻하는지 밝힌다', async () => {
+  it('해제가 무엇을 뜻하는지 제목 옆 ⓘ 로 밝힌다', async () => {
     renderScreen();
 
     await screen.findByRole('button', { name: 'CAL-A' });
 
-    expect(within(applicationPane()).getByText(t.applications.releaseNote)).toBeInTheDocument();
+    expect(
+      within(applicationPane()).getByRole('button', { name: t.applications.releaseNote }),
+    ).toBeInTheDocument();
   });
 
   /*
@@ -1576,7 +1579,9 @@ describe('W-05-09 작업 캘린더 — 적용 대상', () => {
     await selectCalendar(user, 'CAL-A');
     await user.click(within(applicationPane()).getByRole('button', { name: t.applications.add }));
 
-    expect(await screen.findByText(t.applications.plantMovesNote)).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: t.applications.plantMovesNote }),
+    ).toBeInTheDocument();
   });
 
   /* 유형이 바뀌면 앞서 고른 대상은 다른 표의 것이라 뜻을 잃는다. */

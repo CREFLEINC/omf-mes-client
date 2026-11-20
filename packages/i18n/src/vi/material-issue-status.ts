@@ -211,8 +211,9 @@ export const materialIssueStatus: Translated<typeof ko.materialIssueStatus> = {
       allocation: 'Phân bổ yêu cầu (thiếu từ yêu cầu có ngày xuất muộn nhất)',
     },
     unsourcedTitle: 'Không có kho sản xuất còn tồn',
-    unsourcedNote: (count: number): string =>
-      `${String(count)} W/O. Vật tư không đưa vào yêu cầu xuất vì khi phát hành không kho sản xuất nào của phòng ban còn tồn. Hãy bổ sung kho sản xuất rồi yêu cầu bổ sung. Có tồn rồi cũng không tự yêu cầu.`,
+    unsourcedCount: (count: number): string => `${String(count)} W/O`,
+    unsourcedNote:
+      'Vật tư không đưa vào yêu cầu xuất vì khi phát hành không kho sản xuất nào của phòng ban còn tồn. Hãy bổ sung kho sản xuất rồi yêu cầu bổ sung. Có tồn rồi cũng không tự yêu cầu.',
     none: 'Không có',
     warehouseGroup: 'Thiếu theo kho sản xuất',
     warehouseGroupCount: (count: number): string => `${String(count)} mặt hàng`,

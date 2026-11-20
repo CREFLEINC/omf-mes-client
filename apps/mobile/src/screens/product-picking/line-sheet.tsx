@@ -7,6 +7,7 @@ import {
   activeLots,
   lineTiles,
   replacedLots,
+  warehouseTagOf,
   type ShipmentRequestLine,
   type ShipmentRequestLot,
 } from './picking';
@@ -25,6 +26,8 @@ interface LineSheetProps {
   onCodeCancel: () => void;
   onCodeSave: (lot: ShipmentRequestLot) => void;
   onDismiss: () => void;
+  /** 두 창고에 걸쳐 줄 창고 몫만 집은 LOT 의 다른 창고 남은 수량(피처 012 Edge · 이 회차에 피킹한 것만 안다). */
+  otherQtyOf?: (lot: ShipmentRequestLot) => number | undefined;
 }
 
 /**
@@ -43,6 +46,7 @@ export const LineSheet = ({
   onCodeCancel,
   onCodeSave,
   onDismiss,
+  otherQtyOf,
 }: LineSheetProps) => {
   const tiles = lineTiles(line);
   const uom = uomOf(line.uomId);
@@ -60,6 +64,8 @@ export const LineSheet = ({
           <dd>
             <Words text={item.itemName} />
           </dd>
+          <dt>{t.sheet.fields.warehouse}</dt>
+          <dd>{warehouseTagOf(line, t.warehouse)}</dd>
           <dt>{t.sheet.fields.picked}</dt>
           <dd>
             {t.sheet.pickedOfTarget(String(tiles.picked), String(tiles.target), uom)}
@@ -93,6 +99,7 @@ export const LineSheet = ({
                 key={lot.shipmentRequestLotId}
                 lot={lot}
                 uom={uomOf(lot.uomId)}
+                otherWarehouseQty={otherQtyOf?.(lot)}
                 code={codeStateOf(lot)}
                 onReplace={() => {
                   onReplace(lot);

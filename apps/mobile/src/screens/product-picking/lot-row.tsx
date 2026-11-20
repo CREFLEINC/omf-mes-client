@@ -27,6 +27,8 @@ interface LotRowProps {
   onCodeDraft: (value: string) => void;
   onCodeCancel: () => void;
   onCodeSave: () => void;
+  /** 줄 창고 밖에 남은 그 LOT 수량(피처 012 Edge) — 있으면 「다른 창고에 n 남음」. */
+  otherWarehouseQty?: number;
 }
 
 /**
@@ -39,6 +41,7 @@ interface LotRowProps {
 export const LotRow = ({
   lot,
   uom,
+  otherWarehouseQty,
   code,
   onReplace,
   onCodeEdit,
@@ -76,6 +79,12 @@ export const LotRow = ({
             </li>
           ))}
         </ul>
+      )}
+
+      {otherWarehouseQty === undefined || otherWarehouseQty <= 0 ? null : (
+        <p className="picking__note picking-lot__split">
+          {t.picked.otherWarehouseLeft(String(otherWarehouseQty), uom)}
+        </p>
       )}
 
       {status === 'REJECTED' && lot.oqcResult !== null ? (

@@ -105,8 +105,6 @@ export const commonCode: Translated<typeof ko.commonCode> = {
     unknown: 'Không rõ',
   },
   codeGroup: {
-    provisionalCatalog:
-      'Đây là danh sách tạm. Khi hệ thống mã được xác nhận, thành phần các nhóm mã hiển thị ở đây có thể thay đổi.',
     fields: {
       groupCode: 'Mã nhóm',
       groupName: 'Tên nhóm',

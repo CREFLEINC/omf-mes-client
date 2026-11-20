@@ -136,8 +136,7 @@ export const shipmentProcessing = {
     warehouse: {
       resolved: (label: string) => `${label} — 활성 창고가 하나뿐이라 자동으로 정했습니다.`,
       none: '활성 창고가 없어 출하 처리를 할 수 없습니다. 기준정보에서 창고를 등록해 주세요.',
-      ambiguous:
-        '활성 창고가 여러 곳입니다. 출하 창고 출처가 스펙에 없어 임시로 직접 선택하게 했습니다 — 설계 확인 필요.',
+      ambiguous: '활성 창고가 여러 곳입니다. 출하 창고를 고르세요.',
       loadFailed: '창고 목록을 불러오지 못했습니다.',
       loading: '창고 목록을 불러오는 중입니다.',
     },

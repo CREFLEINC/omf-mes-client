@@ -10,7 +10,13 @@ import {
   toApproverTypeOptions,
 } from './code-options';
 import { APPROVER_OPTION_LABEL, stepDraftFixtures, userFixtures } from './fixtures';
-import { REORDER_COLUMN_WIDTH, STEP_COLUMN_WIDTH, StepPane, type StepPaneProps } from './step-pane';
+import {
+  REORDER_COLUMN_WIDTH,
+  STEP_COLUMN_WIDTH,
+  STEP_RULES,
+  StepPane,
+  type StepPaneProps,
+} from './step-pane';
 import type { StepDraft } from './step-draft';
 
 const t = messages.approvalRoute;
@@ -340,10 +346,12 @@ describe('StepPane — 추가 줄', () => {
  * 기능이라고 읽는다(`omf-mes#69`).
  */
 describe('StepPane — 승인자 구분', () => {
-  it('구분 선택칸에 사유가 붙는다', () => {
+  /* 칸 아래 문장 대신 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */
+  it('구분 선택칸 라벨 옆 ⓘ 에 고를 수 있는 것을 밝힌다', () => {
     renderPane();
 
-    expect(screen.getByText(t.notes.approverTypePending)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.notes.approverTypePending })).toBeInTheDocument();
+    expect(screen.queryByText(t.notes.approverTypePending)).toBeNull();
   });
 
   it('역할·부서 선택지가 보이되 잠겨 있다', async () => {
@@ -378,19 +386,6 @@ describe('StepPane — 저장', () => {
     expect(onSave).toHaveBeenCalledTimes(1);
   });
 
-  /** **전체 교체라는 사실을 늘 말한다.** 보내는 배열이 곧 최종 순서 전체다(계약). */
-  it('전체 교체라는 사실이 늘 보인다', () => {
-    renderPane();
-
-    expect(screen.getByText(t.notes.stepReplaceWholeList)).toBeInTheDocument();
-  });
-
-  it('단계가 없어도 전체 교체 안내가 남는다', () => {
-    renderPane({ drafts: [] });
-
-    expect(screen.getByText(t.notes.stepReplaceWholeList)).toBeInTheDocument();
-  });
-
   it('막혔으면 비활성 저장과 사유가 함께 서고 사유가 그 버튼의 설명이 된다', () => {
     renderPane({ saveDisabledReason: t.actionReasons.stepSaveNoSteps, drafts: [] });
 
@@ -413,49 +408,43 @@ describe('StepPane — 저장', () => {
   });
 });
 
-describe('StepPane — 상시 안내', () => {
+describe('StepPane — 규칙 ⓘ', () => {
   /**
-   * 셋 다 결재선을 보는 내내 참인 사실이다. 성공 알림에 붙이면 알림과 함께 사라져,
-   * 정작 결재선을 고치는 사람이 읽을 자리가 없다.
+   * 전체 교체 · 승인자 부재 · 소급하지 않음 · 반려 후 재상신 — 결재선을 보는 내내 참인 사실이다.
+   * 표 아래 네 줄로 늘 펼쳐 두지 않고 구획 제목 옆 ⓘ 하나로 모은다(관리웹 정리 시안 A).
    */
-  it('세 줄을 늘 낸다', () => {
+  it('네 규칙을 제목 옆 ⓘ 의 설명으로 두고 표 아래에는 펼치지 않는다', () => {
     renderPane();
 
-    expect(screen.getByText(t.notes.stepGuideApproverAbsent)).toBeInTheDocument();
-    expect(screen.getByText(t.notes.stepGuideNotRetroactive)).toBeInTheDocument();
-    expect(screen.getByText(t.notes.stepGuideRejectResubmit)).toBeInTheDocument();
+    const tip = screen.getByRole('button', { name: STEP_RULES });
+
+    expect(within(screen.getByRole('heading', { level: 2 })).getByRole('button')).toBe(tip);
+    for (const rule of [
+      t.notes.stepReplaceWholeList,
+      t.notes.stepGuideApproverAbsent,
+      t.notes.stepGuideNotRetroactive,
+      t.notes.stepGuideRejectResubmit,
+    ]) {
+      expect(STEP_RULES).toContain(rule);
+      expect(screen.queryByText(rule)).toBeNull();
+    }
   });
 
-  it('단계가 하나도 없어도 세 줄이 남는다', () => {
-    renderPane({ drafts: [] });
+  /** **표가 무엇으로 채워졌는지와 무관하다** — 표에 딸린 것으로 두면 표가 비는 순간 함께 사라진다. */
+  it('단계가 없어도 · 조회에 실패해도 · 불러오는 중에도 ⓘ 가 남는다', () => {
+    const { unmount } = renderPane({ drafts: [] });
+    expect(screen.getByRole('button', { name: STEP_RULES })).toBeInTheDocument();
+    unmount();
 
-    expect(screen.getByText(t.notes.stepGuideApproverAbsent)).toBeInTheDocument();
-    expect(screen.getByText(t.notes.stepGuideNotRetroactive)).toBeInTheDocument();
-    expect(screen.getByText(t.notes.stepGuideRejectResubmit)).toBeInTheDocument();
-  });
-
-  /**
-   * **표가 무엇으로 채워졌는지와 무관하다.** 표 자리에 실패 배너나 자리 표시가 서 있어도
-   * 세 줄은 결재선을 보는 내내 참인 사실이다 — 표에 딸린 것으로 두면 표가 비는 순간
-   * 함께 사라진다.
-   */
-  it('조회에 실패해도 세 줄이 남는다', () => {
-    renderPane({ drafts: null, loadError: <p>단계 조회 실패 배너</p> });
-
+    const failed = renderPane({ drafts: null, loadError: <p>단계 조회 실패 배너</p> });
     // 선행 단언 — 실제로 실패 상태여야 이 감지기가 뜻을 갖는다.
     expect(screen.getByText('단계 조회 실패 배너')).toBeInTheDocument();
-    expect(screen.getByText(t.notes.stepGuideApproverAbsent)).toBeInTheDocument();
-    expect(screen.getByText(t.notes.stepGuideNotRetroactive)).toBeInTheDocument();
-    expect(screen.getByText(t.notes.stepGuideRejectResubmit)).toBeInTheDocument();
-  });
+    expect(screen.getByRole('button', { name: STEP_RULES })).toBeInTheDocument();
+    failed.unmount();
 
-  it('불러오는 중에도 세 줄이 남는다', () => {
     renderPane({ drafts: null, isLoading: true });
-
     expect(screen.getByRole('status', { name: t.loading.steps })).toBeInTheDocument();
-    expect(screen.getByText(t.notes.stepGuideApproverAbsent)).toBeInTheDocument();
-    expect(screen.getByText(t.notes.stepGuideNotRetroactive)).toBeInTheDocument();
-    expect(screen.getByText(t.notes.stepGuideRejectResubmit)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: STEP_RULES })).toBeInTheDocument();
   });
 });
 

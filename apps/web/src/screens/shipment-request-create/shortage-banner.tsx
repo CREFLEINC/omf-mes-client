@@ -20,7 +20,9 @@ export const isShortageLine = (
   if (allocated.kind !== 'qty' || allocated.value <= 0) return false;
 
   const itemId = line.itemId === '' ? null : Number(line.itemId);
-  const state = available.of(itemId);
+  const warehouseId = line.warehouseId === '' ? null : Number(line.warehouseId);
+  /* 고른 창고의 가용으로 본다(피처 012 FR-006a) — 창고를 안 고른 줄은 모르므로 부족으로 세지 않는다. */
+  const state = available.of(itemId, warehouseId);
 
   return state.kind === 'qty' && allocated.value > state.value;
 };

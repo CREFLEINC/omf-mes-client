@@ -396,11 +396,12 @@ describe('DisposalForm 출고 일시', () => {
     );
   });
 
-  /** 사용자가 넣지 않은 값이 전표에 실린다 — 폼이 그 사실을 밝힌다. */
-  it('영업일이 파생임을 밝힌다', () => {
+  /** 사용자가 넣지 않은 값이 전표에 실린다 — 출고 일자 라벨 옆 ⓘ 가 그 사실을 밝힌다(관리웹 정리 시안 A). */
+  it('영업일이 파생임을 출고 일자 옆 ⓘ 로 밝힌다', () => {
     renderForm();
 
-    expect(screen.getByText(t.form.businessDateDerived)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.form.businessDateDerived })).toBeInTheDocument();
+    expect(screen.queryByText(t.form.businessDateDerived)).not.toBeInTheDocument();
   });
 });
 

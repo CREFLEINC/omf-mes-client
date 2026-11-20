@@ -96,10 +96,8 @@ export const ResultPane = ({ result, lines }: ResultPaneProps) => (
       </div>
     </dl>
 
-    <p className="field-note">{t.result.statusNote}</p>
-
+    {/* 값이 어디서 왔는지 밝히던 두 문장(상태 코드 · 줄 목록)은 걷었다 — 개발 사정이다(관리웹 정리 시안 A). */}
     <p>{t.result.lines}</p>
-    <p className="field-note">{t.result.linesNote}</p>
     <ul>
       {/*
        * `key`가 사실상 배열 인덱스다. **여기서는 그 규칙을 지나간다** — 줄이 순수 텍스트이고

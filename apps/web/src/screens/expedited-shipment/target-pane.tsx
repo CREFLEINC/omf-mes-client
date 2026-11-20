@@ -2,6 +2,7 @@ import { AlertBanner, DatePicker, EmptyState, SkeletonText, TextField } from '@c
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import { InfoLabel } from '../../patterns/info-tip';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { Select } from '../../patterns/select';
 import type { ExpeditedLookup } from './lookups';
@@ -61,9 +62,9 @@ export const TargetPane = ({
   const periodId = useId();
   const periodNoteId = `${periodId}-note`;
   const selectId = useId();
-  const selectNoteId = `${selectId}-note`;
   const qtyId = useId();
   const qtyNoteId = `${qtyId}-note`;
+  const hasQtyError = showQtyError && qtyError !== undefined;
 
   if (!hasLot) {
     return (
@@ -89,20 +90,25 @@ export const TargetPane = ({
          * 부를 수조차 없다. 몰래 고정하면 어제 지시가 안 보이는 이유를 알 길이 없다.
          */}
         <div className="field-cell">
-          <label className="field-label" htmlFor={periodId}>
-            {t.target.fields.requestedShipDate}
-          </label>
+          {/* 기간의 뜻은 라벨 옆 ⓘ 로, 칸 아래에는 막혔을 때만 이유를 적는다(관리웹 정리 시안 A). */}
+          <InfoLabel
+            htmlFor={periodId}
+            label={t.target.fields.requestedShipDate}
+            info={t.target.periodNote}
+          />
           <DatePicker
             id={periodId}
             mode="range"
             value={[period.from === '' ? null : period.from, period.to === '' ? null : period.to]}
             placeholder={messages.common.selectDate}
-            aria-describedby={periodNoteId}
+            aria-describedby={isPeriodUsable ? undefined : periodNoteId}
             onChange={([from, to]) => onChangePeriod({ from, to })}
           />
-          <span id={periodNoteId} className="field-note">
-            {isPeriodUsable ? t.target.periodNote : t.target.periodInvalid}
-          </span>
+          {!isPeriodUsable && (
+            <span id={periodNoteId} className="field-note">
+              {t.target.periodInvalid}
+            </span>
+          )}
         </div>
       </div>
 
@@ -115,21 +121,15 @@ export const TargetPane = ({
       ) : (
         <>
           <div className="field-cell wide-select">
-            <label className="field-label" htmlFor={selectId}>
-              {t.target.label}
-            </label>
+            {/* 품목이 맞는 지시만 보인다는 사실은 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
+            <InfoLabel htmlFor={selectId} label={t.target.label} info={t.target.filteredByItem} />
             <Select
               id={selectId}
               options={options}
               value={selected === null ? null : String(selected.shipmentRequestId)}
               placeholder={options.length === 0 ? t.target.empty : t.target.placeholder}
-              aria-describedby={selectNoteId}
               onChange={(value) => onSelect(value === '' ? null : Number(value))}
             />
-            {/* A-11 — 품목으로 좁히는 축이 조회에 없어 화면이 걸렀다는 사실을 함께 적는다. */}
-            <span id={selectNoteId} className="field-note">
-              {t.target.filteredByItem}
-            </span>
           </div>
 
           {truncated && <AlertBanner variant="warning">{t.lot.truncated}</AlertBanner>}
@@ -158,26 +158,29 @@ export const TargetPane = ({
           </dl>
 
           <div className="field-cell">
-            <label className="field-label" htmlFor={qtyId}>
-              {t.target.fields.qty}
-            </label>
+            {/* 넣을 수 있는 범위(두 상한)는 라벨 옆 ⓘ 로, 칸 아래에는 틀렸을 때만 오류를 적는다(관리웹 정리 시안 A). */}
+            {limits === null ? (
+              <label className="field-label" htmlFor={qtyId}>
+                {t.target.fields.qty}
+              </label>
+            ) : (
+              <InfoLabel
+                htmlFor={qtyId}
+                label={t.target.fields.qty}
+                info={t.qty.limitNote(formatQty(limits.lotQty), formatQty(limits.remainingQty))}
+              />
+            )}
             <TextField
               id={qtyId}
               value={qty}
               inputMode="decimal"
-              aria-describedby={qtyNoteId}
-              aria-invalid={showQtyError && qtyError !== undefined}
+              aria-describedby={hasQtyError ? qtyNoteId : undefined}
+              aria-invalid={hasQtyError}
               onChange={(event) => onChangeQty(event.target.value)}
             />
-            {showQtyError && qtyError !== undefined ? (
+            {hasQtyError && (
               <span id={qtyNoteId} className="field-error">
                 {qtyError}
-              </span>
-            ) : (
-              <span id={qtyNoteId} className="field-note">
-                {limits === null
-                  ? t.target.fields.qty
-                  : t.qty.limitNote(formatQty(limits.lotQty), formatQty(limits.remainingQty))}
               </span>
             )}
           </div>

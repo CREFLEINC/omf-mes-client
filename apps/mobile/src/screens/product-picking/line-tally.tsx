@@ -2,9 +2,16 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef } from 'react';
 
 import { FitName } from '../../patterns/fit-name';
-import { activeLots, lineTiles, type ShipmentRequestLine } from './picking';
+import {
+  activeLots,
+  inTerminalScope,
+  lineTiles,
+  warehouseTagOf,
+  type ShipmentRequestLine,
+} from './picking';
 
 const t = messages.productPicking.tally;
+const tw = messages.productPicking.warehouse;
 
 export interface LineTallyProps {
   lines: readonly ShipmentRequestLine[];
@@ -69,6 +76,37 @@ export const LineTally = ({
               const live = activeLots(line);
               const rejected = live.filter((lot) => lot.oqcLotStatus === 'REJECTED').length;
               const tiles = lineTiles(line);
+              const mine = inTerminalScope(line);
+              const tag = warehouseTagOf(line, tw);
+
+              /*
+               * ⭐ 이 기기 범위 밖 줄(피처 012 FR-011)은 읽기만 한다 — 점선 테 · 회색, 누를 자리 없음(LOT · 교체 · 코드 칸이
+               *    없다). 목표 · 피킹은 보여 지시서 전체 진행을 안다.
+               */
+              if (!mine) {
+                const reason = line.outOfScopeReason === 'OTHER_WAREHOUSE' ? 'OTHER_WAREHOUSE' : 'OTHER_PLANT';
+
+                return (
+                  <tr
+                    key={line.shipmentRequestLineId}
+                    data-out-of-scope="true"
+                    data-reached={tiles.kind === 'over'}
+                  >
+                    <td className="picking-tally__no">{line.lineNo}</td>
+                    <td className="picking-tally__item">
+                      <span className="picking-tally__code">{item.itemCode}</span>
+                      <span className="picking-tally__scope">{tw[reason](tag)}</span>
+                    </td>
+                    <td className="picking-tally__num picking-tally__lots">{live.length}</td>
+                    <td className="picking-tally__num">
+                      {String(tiles.picked)}
+                      <small>
+                        /{String(tiles.target)} {uomOf(line.uomId)}
+                      </small>
+                    </td>
+                  </tr>
+                );
+              }
 
               return (
                 <tr
@@ -96,9 +134,17 @@ export const LineTally = ({
                       <FitName
                         className="picking-tally__name"
                         text={item.itemName}
-                        min={8}
+                        min={7}
                         lines={1}
+                        whole
                       />
+                      {/* 줄 출고 창고(피처 012) — 이 창고의 LOT 만 이 줄로 들어간다. */}
+                      <span
+                        className="picking-tally__warehouse"
+                        data-unassigned={line.warehouse === null || line.warehouse === undefined}
+                      >
+                        {tag}
+                      </span>
                     </button>
                   </td>
                   <td className="picking-tally__num picking-tally__lots">{live.length}</td>

@@ -64,8 +64,6 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
     lookupFailed: 'Không tải được danh sách tên. Hãy thử lại.',
     lookupTruncated:
       'Danh sách tên chỉ về một phần. Giá trị cần tìm có thể không có trong danh sách — không phải là đã mất.',
-    warehouseTypePending:
-      'Màn hình không lọc được kho thuộc diện hủy nên hiện mọi kho. Hãy tự chọn kho đang chứa vật tư cần hủy.',
     chipWarehouse: (name: string): string => `Kho: ${name}`,
     chipPeriodBoth: (from: string, to: string): string => `Ngày nhập kho: ${from} ~ ${to}`,
     chipPeriodFrom: (from: string): string => `Ngày nhập kho: từ ${from}`,
@@ -306,7 +304,6 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
   },
   post: {
     label: 'Xử lý xuất khác',
-    lead: 'Đây là nơi xử lý yêu cầu hủy đã được phê duyệt thành xuất kho thực tế.',
     destinationLabel: 'Nơi đến',
     effectsLabel: 'Những việc xảy ra khi xử lý',
     effectDeducts: 'Thao tác này trừ tồn kho.',

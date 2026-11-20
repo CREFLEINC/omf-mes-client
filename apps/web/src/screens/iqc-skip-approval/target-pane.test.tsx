@@ -65,11 +65,11 @@ describe('TargetPane — 표시명', () => {
     expect(container.textContent).not.toContain(String(targetFixtures.mapped.targetId));
   });
 
-  /** 이 구획이 **무엇을 하지 않는지** 밝힌다 — 여기서 문서를 읽을 수 있다고 오해하지 않게. */
-  it('내용은 원 화면에서 본다는 사실이 서 있다', () => {
+  /** 「내용은 원 화면에서 확인합니다」 안내는 두지 않는다 — 「열기」 단추가 그 일을 말한다(관리웹 정리 시안 A). */
+  it('원 화면 안내 문장을 두지 않는다', () => {
     renderPane();
 
-    expect(screen.getByText(t.target.note)).toBeVisible();
+    expect(screen.queryByText(/원 화면에서/)).not.toBeInTheDocument();
   });
 });
 

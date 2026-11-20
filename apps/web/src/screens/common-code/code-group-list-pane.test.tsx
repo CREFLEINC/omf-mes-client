@@ -84,25 +84,12 @@ describe('CodeGroupListPane — 목록 표시', () => {
   });
 });
 
-describe('CodeGroupListPane — 임시 목록 안내 (결정 6)', () => {
-  it('코드그룹 목록 위에 임시 목록 안내가 한 번 보인다', () => {
+/* 「임시 목록」 안내(결정 6)는 늘 보이는 개발 사정 안내라 걷었다(관리웹 정리 시안 A, 2026-11-20). */
+describe('CodeGroupListPane — 늘 보이는 안내 없음', () => {
+  it('코드그룹 목록 위에 「임시 목록」 안내를 두지 않는다', () => {
     renderPane();
 
-    expect(
-      screen.getAllByText(
-        '임시 목록입니다. 코드 체계가 확정되면 여기 보이는 코드그룹의 구성이 바뀔 수 있습니다.',
-      ),
-    ).toHaveLength(1);
-  });
-
-  it('결과가 0건이어도 안내가 남는다 — 목록의 성격에 대한 안내이지 결과에 대한 것이 아니다', () => {
-    renderPane({ codeGroups: [], pageView: toPageView({ page: 1, size: 50, total: 0 }, 0) });
-
-    expect(
-      screen.getByText(
-        '임시 목록입니다. 코드 체계가 확정되면 여기 보이는 코드그룹의 구성이 바뀔 수 있습니다.',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/임시 목록/)).toBeNull();
   });
 });
 

@@ -1,9 +1,9 @@
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { Navigate, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
-import { POP_ENTRY_SCREEN_PATH, type PopScreen } from '../../patterns/pop-screen-catalog';
+import type { PopScreen } from '../../patterns/pop-screen-catalog';
 import { countOf, GROUP_ICONS, navIcon, usePopNavigation } from '../../patterns/pop-screen-nav';
 import {
   PuButton,
@@ -323,7 +323,7 @@ const StatusCard = ({
  * ⭐ 줄과 쪽 넘김을 한 칸(`home-rows`)에 두고, 쪽 넘김이 «없을 때»와 «있을 때» 들어가는 줄 수를 따로 잰다
  *    (`useFitRows`) — 쪽 넘김이 서고 빠져도 잰 값이 흔들리지 않고, 쪽 넘김 아래 남는 자리도 줄로 쓴다.
  */
-const RemainingCard = ({ titleId }: { titleId: string }) => {
+const RemainingCard = ({ titleId, locked }: { titleId: string; locked: boolean }) => {
   const { pending, total, go } = usePopNavigation();
   const listRef = useRef<HTMLDivElement>(null);
   const fit = useFitRows(listRef, { rowSelector: '.home-row-link' });
@@ -348,6 +348,7 @@ const RemainingCard = ({ titleId }: { titleId: string }) => {
               type="button"
               className="home-row-link"
               aria-label={messages.popChrome.remaining.count(screen.name, count)}
+              disabled={locked}
               onClick={() => {
                 go(screen);
               }}
@@ -373,11 +374,23 @@ const RemainingCard = ({ titleId }: { titleId: string }) => {
 };
 
 /**
- * **홈**(#291) — 사번 확인 뒤 처음 서는 화면. 오늘 작업 현황, 남은 작업, 바로가기를 보여 주고, 누르면
+ * **홈**(#291) — POP 진입 화면. 오늘 작업 현황, 남은 작업, 바로가기를 보여 주고, 누르면
  * 그 화면으로 간다. 이동 길은 공통 메뉴와 같은 것을 쓴다(`usePopNavigation`) — 남은 작업 수도 같은 값이다.
  *
  * ⭐ 바로가기는 [편집]으로 이 단말에 맞게 고른다(최대 6개 · 단말에 저장).
  */
+/** 「상단 {login}을 …」 — `{login}` 앞뒤 두 조각 사이에 빨간 「로그인」 라벨(문구에 자리표시는 하나). */
+const LoginHint = () => {
+  const [before = '', after = ''] = messages.popChrome.home.greetingLoginHint.split('{login}');
+  return (
+    <>
+      {before}
+      <PuChip>{messages.popChrome.login}</PuChip>
+      {after}
+    </>
+  );
+};
+
 export const PopHomeScreen = (): ReactNode => {
   const titleId = useId();
   const { workerNo } = usePopIdentity();
@@ -411,10 +424,10 @@ export const PopHomeScreen = (): ReactNode => {
   };
 
   /*
-   * 사번이 없으면 홈 대신 사번 입력 «화면»으로 보낸다(사용자 지시 2026-11-17 — 팝업이 아니라 화면).
-   * 그 화면에서 사번을 확인하면 다시 홈으로 온다.
+   * 사번이 없어도 홈 내용은 보인다(사용자 지시 2026-11-20 · #334) — 사번은 맨 위 줄 [로그인]으로 넣는다. 그동안 다른
+   * 화면으로 가는 길(다음 작업 · 작업지시 줄 · 남은 작업 줄 · 바로가기)은 공통 메뉴처럼 잠근다(감추지 않음).
    */
-  if (workerNo === null) return <Navigate to={POP_ENTRY_SCREEN_PATH} replace />;
+  const isLocked = workerNo === null;
 
   return (
     <PuScreen className="home-u" labelledBy={titleId}>
@@ -427,14 +440,18 @@ export const PopHomeScreen = (): ReactNode => {
           <PuIcon name="clock" />
           {clock}
         </span>
-        <p>{t.greetingSub}</p>
+        {/*
+         * 사번이 없으면 인사 아래 줄을 맨 위 줄 로그인 안내로 바꾼다(사용자 지시 2026-11-20 · #334). 「로그인」은 맨 위 줄
+         * 칩과 같은 빨간 바탕 라벨 — 보기만, 누르지 않는다.
+         */}
+        <p>{isLocked ? <LoginHint /> : t.greetingSub}</p>
       </div>
 
       <div className="home-top">
         <StatusCard
           titleId={`${titleId}-status`}
           onNext={
-            workStart === null
+            workStart === null || isLocked
               ? null
               : (workOrderId, allEquipment, isEmergency) => {
                   const state: WorkStartEntryState = { workOrderId, allEquipment };
@@ -445,7 +462,7 @@ export const PopHomeScreen = (): ReactNode => {
                 }
           }
         />
-        <RemainingCard titleId={`${titleId}-rem`} />
+        <RemainingCard titleId={`${titleId}-rem`} locked={isLocked} />
       </div>
 
       <PuSection
@@ -542,6 +559,7 @@ export const PopHomeScreen = (): ReactNode => {
                   aria-label={
                     count > 0 ? messages.popChrome.remaining.count(screen.name, count) : undefined
                   }
+                  disabled={isLocked}
                   onClick={() => {
                     go(screen);
                   }}

@@ -3,8 +3,6 @@ import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest, runRequestWithResponse } from '../../patterns/request';
-import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
-import type { components } from '@omf-mes/api-client';
 import type { ShipmentFilterQuery } from './filters';
 import type { PeriodQuery } from './period';
 import type { SortQuery } from './sort';
@@ -54,7 +52,11 @@ const fetchShipmentSchedule = async (
     client.GET('/logistics/shipment-requests', { params: { query } }),
   );
 
-  return { items: data.items.map(toShipmentRequestView), page: data.page };
+  return {
+    items: data.items.map(toShipmentRequestView),
+    page: data.page,
+    erpSendStatusCounts: data.erpSendStatusCounts ?? {},
+  };
 };
 
 /**
@@ -97,36 +99,6 @@ export const useShipmentRequestDetail = (shipmentRequestId: number | null) => {
       if (etag !== null) etags.capture(shipmentRequestDetailPath(shipmentRequestId), etag);
       return data;
     },
-  });
-};
-
-export const useFulfillmentPlantUpdate = (
-  shipmentRequestId: number | null,
-  /** 저장이 실제로 끝났을 때만 부른다 — 화면은 이때 창을 닫는다(사용자 지시 2026-09-22). */
-  onSaved?: () => void,
-): MasterWriteResult<components['schemas']['ShipmentRequestUpdate']> => {
-  const { client } = useApiClient();
-  return useMasterWrite<
-    components['schemas']['ShipmentRequestUpdate'],
-    components['schemas']['ShipmentRequest']
-  >({
-    request: (body, headers) => {
-      if (shipmentRequestId === null) throw new Error('선택한 출하작업지시가 없습니다.');
-      return client.PUT('/logistics/shipment-requests/{shipmentRequestId}', {
-        params: {
-          path: { shipmentRequestId },
-          header: {
-            'Idempotency-Key': headers['Idempotency-Key'],
-            'If-Match': headers['If-Match'] ?? '',
-          },
-        },
-        body,
-      });
-    },
-    onSuccess: onSaved,
-    etagPath: shipmentRequestId === null ? null : shipmentRequestDetailPath(shipmentRequestId),
-    invalidateKeys: [shipmentScheduleKeys.all],
-    knownFields: ['fulfillmentPlantId'],
   });
 };
 

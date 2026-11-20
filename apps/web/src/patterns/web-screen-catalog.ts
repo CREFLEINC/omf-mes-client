@@ -163,7 +163,7 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   {
     path: '/shipment/shipment-request-create',
     code: 'W-04-01',
-    name: '출하지시서 Import·작업지시 생성',
+    name: '출하작업지시 생성',
   },
   { path: '/shipment/shipment-schedule', code: 'W-04-02', name: '출하 예정 목록' },
   { path: '/shipment/oqc-inspection', code: 'W-04-03', name: 'OQC 출하검사 판정' },
@@ -181,7 +181,11 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   /* 피처 010 — 출하 처리 묶음에서 빠져 독립 항목이다. */
   { path: '/shipment/expedited-shipment', code: 'W-04-05', name: '긴급 직행 출하 처리' },
   /* IA v1.4 신설 · 피처 010 에서 「출하 내역」으로 바뀌었다 — 확정 단계가 없어졌다(옛 흐름만 한 건씩 확정). */
-  { path: '/shipment/shipment-confirm', code: 'W-04-12', name: '출하 내역' },
+  /*
+   * 피처 012 — W-04-12 는 메뉴 없는 권한 「출하 취소(송신 전)」로 남는다(R-6). 옛 주소는 W-04-02 로 넘기는 자리라
+   * 화면이 없지만, 이 줄이 있어야 W-04-12 만 가진 역할에게 W-04-02 메뉴가 선다(`nav-tree.ts` 의 `alsoFor` · T064).
+   */
+  { path: '/shipment/shipment-confirm', code: 'W-04-12', name: '출하 취소(송신 전)' },
   { path: '/shipment/return-receipts', code: 'W-04-06', name: '반품·클레임 입고 등록' },
   /*
    * ⚠ **의뢰이지 판정이 아니다.** 판정은 `W-03-10`(처분 판정 처리)이 갖는다 — IA §3-2 가

@@ -13,6 +13,7 @@ import {
   shipmentRequestForOqc,
   shipmentResult,
 } from '../oqc-inspection/shipment-oqc-fixtures';
+import { toShipmentRequestRef } from '../oqc-inspection/shipment-oqc-queries';
 import type { InspectionRequestResponse } from '../oqc-inspection/types';
 import { PopOqcInspectionScreen } from './screen';
 
@@ -65,10 +66,17 @@ const pr = messages.pqcInspectionRegister.web.items;
 const renderPop = (
   workerNo: string | null = '900028',
   request = shipmentOqcRequest(),
-  options: { withItems?: boolean } = {},
+  options: {
+    withItems?: boolean;
+    /** 기준에 항목이 0개(읽기는 성공). */
+    noItems?: boolean;
+    before?: InspectionRequestResponse[];
+    /** `GET …/oqc-serials` — 의뢰의 저장된 시리얼 기록. */
+    serials?: unknown[];
+  } = {},
 ) => {
   const saves: Request[] = [];
-  const all: InspectionRequestResponse[] = [request, judgedRequest];
+  const all: InspectionRequestResponse[] = [...(options.before ?? []), request, judgedRequest];
 
   const stubFetch: StubFetch = async (req) => {
     const url = new URL(req.url);
@@ -97,6 +105,12 @@ const renderPop = (
     }
     if (options.withItems === true && path === '/quality/inspection-plan-versions/3101/items') {
       return jsonResponse({ items: [lengthSpec], page: pageOf(1) });
+    }
+    if (options.noItems === true && path === '/quality/inspection-plan-versions/3101/items') {
+      return jsonResponse({ items: [], page: pageOf(0) });
+    }
+    if (path === '/quality/inspection-requests/4201/oqc-serials') {
+      return jsonResponse({ items: options.serials ?? [] });
     }
     if (path === '/logistics/shipment-requests/6201') return jsonResponse(shipmentRequestForOqc());
     if (path.startsWith('/mdm/partners/')) {
@@ -132,7 +146,7 @@ const renderPop = (
 
 const openRequest = async (user: ReturnType<typeof userEvent.setup>, no = 'IR-OQC-0201') => {
   await user.click(await screen.findByRole('button', { name: pop.queue.selectRow(no) }));
-  return within(await screen.findByRole('region', { name: s.drawer.matchHeading }));
+  return within(await screen.findByRole('region', { name: /회차 검사 결과 등록/u }));
 };
 
 describe('P-04-06 출하 OQC 새 흐름', () => {
@@ -151,6 +165,36 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     ).toBeInTheDocument();
   });
 
+  it('#334 판정 불가(피킹 LOT 없음) 의뢰는 판정 대기 목록 맨 아래로, 고른 의뢰는 그대로', async () => {
+    const user = userEvent.setup();
+    /* 서버 순서: 판정 불가 → 판정 가능(IR-OQC-0201). 화면은 판정 가능을 먼저 보인다. */
+    const noLot = shipmentOqcRequest({
+      inspectionRequestId: 4209,
+      inspectionRequestNo: 'IR-OQC-0209',
+      shipmentRequestNo: 'SR-261118-009',
+      statusCode: 'REQUESTED',
+      lots: [],
+      results: [],
+      pickedLotCount: 0,
+      lotJudgmentSummary: { notInspected: 0, accepted: 0, rejected: 0, held: 0 },
+    });
+    renderPop('900028', shipmentOqcRequest(), { before: [noLot] });
+
+    const judgeable = await screen.findByRole('button', {
+      name: pop.queue.selectRow('IR-OQC-0201'),
+    });
+    const blocked = screen.getByRole('button', { name: pop.queue.selectRow('IR-OQC-0209') });
+    expect(within(blocked).getByText(ps.cannotJudge)).toBeInTheDocument();
+    /* 판정 가능 카드가 판정 불가 카드보다 앞에 선다. */
+    expect(
+      judgeable.compareDocumentPosition(blocked) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    await user.click(blocked);
+    expect(blocked).toHaveAttribute('aria-pressed', 'true');
+    expect((await screen.findAllByText(ps.form.noLots)).length).toBeGreaterThan(0);
+  });
+
   it('US3-1·Q4 목록 카드는 품목 코드와 「피킹 LOT n개 · 합 단위」를 보인다(품목 번호 #id 가 아니다)', async () => {
     renderPop(
       '900028',
@@ -163,7 +207,8 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     );
 
     const card = await screen.findByRole('button', { name: pop.queue.selectRow('IR-OQC-0201') });
-    expect(within(card).getByText(ps.card('FG-A100', 4, '110 EA'))).toBeInTheDocument();
+    expect(within(card).getByText('FG-A100')).toBeInTheDocument();
+    expect(within(card).getByText(ps.cardLots(4, '110 EA'))).toBeInTheDocument();
     expect(within(card).queryByText(/#2101/u)).toBeNull();
   });
 
@@ -181,10 +226,15 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     expect(screen.getByText(ps.itemValue('FG-A100', '센서 모듈 A'))).toBeInTheDocument();
     expect(screen.getByText('100 EA')).toBeInTheDocument();
     expect(screen.getByText('140 EA')).toBeInTheDocument();
-    expect(screen.getByText(s.over('40'))).toBeInTheDocument();
+    /* 정보 띠 — 지시량 · 피킹량 · 초과량(단위 포함, 출하 완료와 같은 말). */
+    const band = screen.getByRole('group', { name: ps.bandLabel });
+    expect(within(band).getByText(ps.target)).toBeInTheDocument();
+    expect(within(band).getByText(ps.picked)).toBeInTheDocument();
+    expect(within(band).getByText(ps.over)).toBeInTheDocument();
+    expect(within(band).getByText('40 EA')).toBeInTheDocument();
     expect(
       screen.getByText(
-        `${s.lots.portion('창고A', 'A-01-01', '30')} · ${s.lots.portion('창고A', ps.staging, '10')}`,
+        `${s.lots.portion('창고A', 'A-01-01', '30 EA')} · ${s.lots.portion('창고A', ps.staging, '10 EA')}`,
       ),
     ).toBeInTheDocument();
   });
@@ -197,7 +247,8 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     expect(match.getByRole('checkbox', { name: 'P2611-0004' })).toBeChecked();
     expect(match.getByRole('checkbox', { name: 'P2611-0001' })).not.toBeChecked();
     expect(screen.queryByLabelText(pop.result.fields.accepted)).toBeNull();
-    expect(screen.getByText(s.note)).toBeInTheDocument();
+    /* 긴 안내 문단은 없다(POP 통일 · 2026-11-20). */
+    expect(screen.queryByText(s.note)).toBeNull();
     expect(screen.getByText(ps.bar.blocked.judgment)).toBeInTheDocument();
   });
 
@@ -206,7 +257,7 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     const { saves } = renderPop();
 
     await openRequest(user);
-    await user.click(screen.getByRole('button', { name: s.judgments.ACCEPTED }));
+    await user.click(screen.getByRole('radio', { name: s.judgments.ACCEPTED }));
     expect(screen.getByText(ps.bar.ready)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: ps.bar.save }));
 
@@ -226,11 +277,13 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     const { saves } = renderPop('900028', shipmentOqcRequest(), { withItems: true });
 
     await openRequest(user);
+    /* ① 검사 대상 LOT · 판정에서 판정, ② 검사 항목에서 값 — 구획을 바꿔도 넣은 것은 남는다. */
+    await user.click(screen.getByRole('radio', { name: s.judgments.ACCEPTED }));
+    await user.click(await screen.findByRole('tab', { name: new RegExp(pr.heading, 'u') }));
     await user.type(
       await screen.findByRole('textbox', { name: pr.valueLabel('길이', 1) }),
       '10.02',
     );
-    await user.click(screen.getByRole('button', { name: s.judgments.ACCEPTED }));
     await user.click(screen.getByRole('button', { name: ps.bar.save }));
 
     await waitFor(() => expect(saves).toHaveLength(1));
@@ -250,8 +303,9 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     renderPop('900028', shipmentOqcRequest(), { withItems: true });
 
     await openRequest(user);
+    await user.click(screen.getByRole('radio', { name: s.judgments.ACCEPTED }));
+    await user.click(await screen.findByRole('tab', { name: new RegExp(pr.heading, 'u') }));
     await user.type(await screen.findByRole('textbox', { name: pr.valueLabel('길이', 1) }), 'abc');
-    await user.click(screen.getByRole('button', { name: s.judgments.ACCEPTED }));
 
     expect(screen.getByText(ps.bar.blocked.measurement)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: ps.bar.save })).toBeDisabled();
@@ -263,7 +317,7 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
 
     const match = await openRequest(user);
     await user.click(match.getByRole('checkbox', { name: 'P2611-0004' }));
-    await user.click(screen.getByRole('button', { name: s.judgments.ACCEPTED }));
+    await user.click(screen.getByRole('radio', { name: s.judgments.ACCEPTED }));
 
     expect(screen.getByText(ps.bar.blocked.match)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: ps.bar.save })).toBeDisabled();
@@ -276,7 +330,7 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     const match = await openRequest(user);
     await user.click(match.getByRole('checkbox', { name: 'P2611-0004' }));
     await user.click(match.getByRole('checkbox', { name: 'P2611-0003' }));
-    await user.click(screen.getByRole('button', { name: s.judgments.ACCEPTED }));
+    await user.click(screen.getByRole('radio', { name: s.judgments.ACCEPTED }));
 
     expect(screen.getByText(ps.bar.blocked.reason)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: ps.bar.save })).toBeDisabled();
@@ -321,10 +375,147 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     const { saves } = renderPop(null);
 
     await openRequest(user);
-    await user.click(screen.getByRole('button', { name: s.judgments.ACCEPTED }));
+    await user.click(screen.getByRole('radio', { name: s.judgments.ACCEPTED }));
 
     expect(screen.getByRole('button', { name: ps.bar.save })).toBeDisabled();
     expect(screen.getByText(pop.bar.blocked.worker)).toBeInTheDocument();
     expect(saves).toHaveLength(0);
+  });
+
+  it('#334 검사 항목이 0개면 결과 등록에 「검사 항목」 칸째 없다(제목 · 안내 없음)', async () => {
+    const user = userEvent.setup();
+    renderPop('900028', shipmentOqcRequest(), { noItems: true });
+
+    const region = await openRequest(user);
+    expect(region.getByText(ps.form.match.matchHeading)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(region.queryByText(pr.heading)).toBeNull();
+    });
+    expect(region.queryByText(messages.pqcInspection.measurements.noItems)).toBeNull();
+  });
+
+  it('#334 [시리얼 검사 기록]은 바닥 띠 [결과 저장] 왼쪽에 서고 창을 연다', async () => {
+    const user = userEvent.setup();
+    renderPop();
+
+    const region = await openRequest(user);
+    expect(region.queryByRole('button', { name: pop.serial.open })).toBeNull();
+    const serialButton = screen.getByRole('button', { name: pop.serial.open });
+    const saveButton = screen.getByRole('button', { name: ps.bar.save });
+    expect(
+      serialButton.compareDocumentPosition(saveButton) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    await user.click(serialButton);
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('#334 검사 결과 탭은 회차마다 저장된 시리얼(번호 · OK/NG)을 보인다', async () => {
+    const user = userEvent.setup();
+    renderPop('900028', shipmentOqcRequest(), {
+      serials: [
+        {
+          serialNumberId: 1,
+          serialNo: 'SN-RESULT-1',
+          lotId: 7001,
+          lotNo: 'P2611-0001',
+          firstJudgmentCode: 'NG',
+          finalJudgmentCode: 'NG',
+          inspectedAt: '2026-11-18T01:00:00Z',
+          inspectionResultId: 9201,
+          inspectionRound: 1,
+        },
+      ],
+    });
+
+    await openRequest(user);
+    await user.click(screen.getByRole('tab', { name: new RegExp(s.results.title, 'u') }));
+    const serials = await screen.findByLabelText(ps.results.serials(1));
+    expect(within(serials).getByText('SN-RESULT-1')).toBeInTheDocument();
+    expect(within(serials).getByText(messages.oqcInspection.serials.ng)).toBeInTheDocument();
+  });
+
+  /* 사용자 지시 2026-11-20 — 판정을 마친 열린 의뢰는 결과 등록을 닫아 두고 [재검사]로 연다. */
+  it('#334 판정 완료 의뢰는 결과 등록 없이 [재검사]만 서고, 누르면 재검사 회차로 열리고 [취소]로 닫힌다', async () => {
+    const user = userEvent.setup();
+    const { saves } = renderPop();
+
+    await user.click(
+      await screen.findByRole('tab', { name: new RegExp(pop.queue.doneHeading, 'u') }),
+    );
+    await user.click(
+      await screen.findByRole('button', { name: pop.queue.selectRow('IR-OQC-0202') }),
+    );
+    const reinspect = await screen.findByRole('button', { name: ps.bar.reinspect });
+    expect(screen.queryByRole('region', { name: /회차 (재)?검사 결과 등록/u })).toBeNull();
+    /* 판정 완료는 탭 대신 피킹 LOT 현황 · 검사 결과 두 카드(2026-11-20). */
+    expect(screen.getByRole('region', { name: ps.lotsTitle })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: s.results.title })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: new RegExp(s.results.title, 'u') })).toBeNull();
+    expect(reinspect).toHaveClass('pu-btn', 'primary');
+    expect(screen.queryByRole('button', { name: ps.bar.save })).toBeNull();
+    expect(screen.queryByRole('button', { name: pop.serial.open })).toBeNull();
+
+    await user.click(reinspect);
+    expect(
+      await screen.findByRole('region', { name: ps.form.reinspectHeading(2) }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: ps.bar.save })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: pop.serial.open })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+    expect(screen.queryByRole('region', { name: ps.form.reinspectHeading(2) })).toBeNull();
+    expect(screen.getByRole('button', { name: ps.bar.reinspect })).toBeInTheDocument();
+    expect(saves).toHaveLength(0);
+  });
+
+  it('#334 판정 대기 의뢰는 [재검사] 없이 결과 등록이 바로 선다', async () => {
+    const user = userEvent.setup();
+    renderPop();
+
+    await openRequest(user);
+    expect(screen.getByRole('region', { name: ps.form.heading(3) })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: ps.bar.reinspect })).toBeNull();
+    expect(screen.queryByRole('button', { name: messages.common.cancel })).toBeNull();
+  });
+
+  it('#334 판정 대기인데 저장된 결과가 없으면 「검사 결과」 탭 없이 피킹 LOT 현황 제목만 선다', async () => {
+    const user = userEvent.setup();
+    renderPop('900028', shipmentOqcRequest({ results: [] }));
+
+    await openRequest(user);
+    expect(screen.getByRole('region', { name: ps.lotsTitle })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: new RegExp(s.results.title, 'u') })).toBeNull();
+  });
+});
+
+/* ── 피처 012 US3-5 — 피킹 LOT 에 라인 · 출고 창고 · 공장 ─────────────────────────── */
+
+describe('P-04-06 — 피처 012 LOT 의 출고 창고', () => {
+  it('US3-5 같은 품목이 창고별 라인으로 나뉘어도 LOT 마다 라인 · 창고 · 공장을 안다', () => {
+    const base = shipmentRequestForOqc();
+    const [line] = base.lines ?? [];
+    const request = {
+      ...base,
+      lines: [
+        {
+          ...line,
+          warehouse: { warehouseId: 11, warehouseCode: 'WH-A', warehouseName: '창고A', plantId: 1, plantName: '1공장' },
+        },
+      ],
+    } as typeof base;
+    const firstLot = line?.lots[0];
+    const ref = toShipmentRequestRef(request, line?.itemId ?? 0, { customer: null, shipTo: null });
+
+    expect(ref.lotPlaceOf(firstLot?.lotId ?? 0)).toEqual({ lineNo: 1, warehouseName: '창고A', plantName: '1공장' });
+    expect(pop.bu012.lotPlace(1, '창고A', '1공장')).toBe('라인 1, 창고A (1공장)');
+  });
+
+  it('US3-5·US6-1 화면의 피킹 LOT 줄에 라인과 출고 창고(옛 라인은 「창고 미지정」)가 보인다', async () => {
+    const user = userEvent.setup();
+    renderPop();
+
+    await openRequest(user);
+
+    expect((await screen.findAllByText(pop.bu012.lotLineOnly(1))).length).toBeGreaterThan(0);
   });
 });

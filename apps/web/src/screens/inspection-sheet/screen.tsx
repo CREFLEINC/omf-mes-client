@@ -24,6 +24,7 @@ import {
   type HiddenFilterChip,
 } from '../../patterns/filter-more';
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
+import { InfoTip } from '../../patterns/info-tip';
 import { ItemSelect } from '../../patterns/item-select';
 import { ManagedTable } from '../../patterns/managed-table';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -276,6 +277,7 @@ const InspectionSheetScreenBody = () => {
     layout: useId(),
     reason: useId(),
     serial: useId(),
+    serialInput: useId(),
   };
   const [draft, setDraft] = useState<Filter>(EMPTY_FILTER);
   const [filter, setFilter] = useState<Filter>(EMPTY_FILTER);
@@ -901,8 +903,21 @@ const InspectionSheetScreenBody = () => {
               openSheet.write({ serialNo });
             }}
           >
+            {/*
+             * 이미 있는 시리얼이면 그 검사표를 연다는 사실은 칸 아래 대신 라벨 옆 ⓘ 로(관리웹 정리 시안 A). DS 라벨은
+             * 글자만 받으므로 라벨을 따로 두고 같은 id 로 잇는다 — 필수 표시는 DS 와 같은 자리(라벨 뒤 *)에.
+             */}
+            <span className="info-label">
+              <label className="field-label" htmlFor={ids.serialInput}>
+                {t.create.serial}
+              </label>
+              <span className="required-mark" aria-hidden="true">
+                *
+              </span>
+              <InfoTip text={t.create.note} />
+            </span>
             <TextField
-              label={t.create.serial}
+              id={ids.serialInput}
               placeholder={t.create.placeholder}
               value={serialDraft}
               required
@@ -911,7 +926,6 @@ const InspectionSheetScreenBody = () => {
               error={openSheet.fieldErrors.serialNo}
               onChange={(event) => setSerialDraft(event.target.value)}
             />
-            <p className="field-note">{t.create.note}</p>
             <SaveErrorBanner error={openSheet.error} />
           </form>
         </Dialog>

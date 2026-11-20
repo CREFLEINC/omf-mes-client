@@ -148,8 +148,9 @@ export const ReceiptTally = ({
                           <FitName
                             className="receive-tally__name"
                             text={detail.itemName}
-                            min={8}
+                            min={7}
                             lines={1}
+                            whole
                           />
                         </button>
                       </td>

@@ -59,7 +59,9 @@ describe('toReference', () => {
    * 「알 수 없음」으로 보이는데, 그 문구는 *값이 잘못됐다*는 뜻이라 사용자가 반대로 읽는다.
    */
   it('아직 오지 않은 것과 목록에 없는 것을 가른다', () => {
-    expect(toReference(source({ entries: [], isLoading: true }), 9701)).toEqual({ kind: 'loading' });
+    expect(toReference(source({ entries: [], isLoading: true }), 9701)).toEqual({
+      kind: 'loading',
+    });
     expect(toReference(source({ entries: [] }), 9701)).toEqual({ kind: 'unknown' });
   });
 
@@ -120,14 +122,6 @@ describe('isTruncated · lookupNote', () => {
     expect(lookupNote({ isError: true, truncated: true })).toBe(t.filters.lookupFailed);
     expect(lookupNote({ isError: false, truncated: true })).toBe(t.filters.lookupTruncated);
     expect(lookupNote({ isError: false, truncated: false })).toBeUndefined();
-  });
-
-  /**
-   * **창고 유형 미확정 안내는 이 함수가 내지 않는다.** 목록을 받아 온 결과가 아니라 값 목록이
-   * 확정되지 않았다는 별개의 사실이고, 화면이 둘을 이어 붙인다.
-   */
-  it('창고 유형 미확정 안내를 내지 않는다', () => {
-    expect(lookupNote({ isError: false, truncated: false })).not.toBe(t.filters.warehouseTypePending);
   });
 });
 
@@ -279,7 +273,10 @@ describe('useItemNames · useUomOptions', () => {
    * 기다리므로 미리 받아 둘 이득이 없고, 첫 진입의 요청 수만 이유 없이 는다.
    */
   it('고르기 전에는 요청이 나가지 않는다', async () => {
-    const { fetch, urls } = recording([...itemDetailRoutes(), route(UOMS_PATH, () => jsonResponse(listBody(uomFixtures)))]);
+    const { fetch, urls } = recording([
+      ...itemDetailRoutes(),
+      route(UOMS_PATH, () => jsonResponse(listBody(uomFixtures))),
+    ]);
     const { result } = renderHookWithProviders(
       () => ({ items: useItemNames(ITEM_IDS, false), uoms: useUomOptions(false) }),
       { fetch },
@@ -295,7 +292,10 @@ describe('useItemNames · useUomOptions', () => {
   });
 
   it('「코드 · 이름」으로 풀고 번호마다 한 번씩만 부른다', async () => {
-    const { fetch, urls } = recording([...itemDetailRoutes(), route(UOMS_PATH, () => jsonResponse(listBody(uomFixtures)))]);
+    const { fetch, urls } = recording([
+      ...itemDetailRoutes(),
+      route(UOMS_PATH, () => jsonResponse(listBody(uomFixtures))),
+    ]);
     const { result } = renderHookWithProviders(
       /* 같은 품목을 실은 줄이 셋이어도 요청은 품목 수만큼이다. */
       () => ({ items: useItemNames([...ITEM_IDS, 9301, 9301], true), uoms: useUomOptions(true) }),

@@ -21,6 +21,7 @@ import {
   useFilterMore,
 } from '../../patterns/filter-more';
 import { plantToday } from '../../patterns/plant-time';
+import { InfoTip } from '../../patterns/info-tip';
 import { ScreenHeader } from '../../patterns/screen-header';
 import { Select } from '../../patterns/select';
 import { DetailPanel } from './detail-panel';
@@ -481,6 +482,8 @@ export const MaterialIssueStatusScreen = () => {
           >
             {shortageCount > 0 ? t.views.shortageCount(shortageCount) : t.views.shortage}
           </Button>
+          {/* 「부족」 보기의 두 묶음과 보충 방법은 보기 단추 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
+          {view === 'shortage' && <InfoTip text={t.shortage.intro} />}
         </div>
         <span className="field-note">{t.today(formatDay(plantToday()))}</span>
       </div>

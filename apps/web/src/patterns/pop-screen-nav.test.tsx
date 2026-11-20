@@ -52,6 +52,8 @@ const setup = (
     route?: string;
     plantId?: number | null;
     extra?: Parameters<typeof createStubFetch>[0];
+    onReRegister?: () => void;
+    onLogin?: () => void;
   } = {},
 ) => {
   const counted: Request[] = [];
@@ -63,7 +65,11 @@ const setup = (
         plantId: options.plantId ?? null,
       }}
     >
-      <PopScreenNav terminalCode="POP-OA-01" />
+      <PopScreenNav
+        terminalCode="POP-OA-01"
+        onReRegister={options.onReRegister}
+        onLogin={options.onLogin}
+      />
       <Here />
     </PopIdentityProvider>,
     {
@@ -121,10 +127,11 @@ afterEach(() => {
 });
 
 describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
-  /* 사번 칩이 곧 [사용자 전환] 버튼이다(사용자 지시 2026-11-17 · #291). */
-  it('맨 위 줄에 단말·사번 버튼이 서고, 사번을 누르면 사용자 전환으로 간다', async () => {
+  /* 사번 칩이 곧 [사용자 전환] 버튼이다(사용자 지시 2026-11-17 · #291) — 누르면 사번을 지우고 사번 입력 창을 연다(2026-11-20). */
+  it('맨 위 줄에 단말·사번 버튼이 서고, 사번을 누르면 사번을 지우고 홈에서 사번 입력 창을 연다', async () => {
     const user = userEvent.setup();
-    setup();
+    const onLogin = vi.fn();
+    setup({ onLogin });
 
     expect(screen.getByText(header.terminalLabel('POP-OA-01'))).toBeInTheDocument();
     expect(screen.getByText(header.workerLabel('2048', null))).toBeInTheDocument();
@@ -132,7 +139,8 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     await user.click(
       screen.getByRole('button', { name: new RegExp(`^${messages.popChrome.userSwitch}`, 'u') }),
     );
-    expect(screen.getByText('지금: /pop/worker-assignment')).toBeInTheDocument();
+    expect(screen.getByText('지금: /pop/home')).toBeInTheDocument();
+    expect(onLogin).toHaveBeenCalledOnce();
   });
 
   /* 작업 단계 화면(자재 투입 등)은 탭에 두지 않고 작업 지시 목록 탭 아래 단계 줄이 연다(#291 · 사용자 승인 2026-11-17). */
@@ -479,7 +487,8 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
   it('사번이 확인되기 전에는 수를 묻지 않는다', async () => {
     const { counted } = setup({ workerNo: null });
 
-    await remainingButton();
+    /* 사번 확인 전에는 [남은 작업]이 잠긴다(#334). */
+    expect(await screen.findByRole('button', { name: /^남은 작업 \d+건$/u })).toBeDisabled();
     expect(counted).toHaveLength(0);
     expect(screen.getByText(header.workerUnset)).toBeInTheDocument();
   });
@@ -498,16 +507,62 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     expect(screen.getByRole('button', { name: remaining.buttonLabel(0) })).toBeDisabled();
   });
 
-  it('진입 화면(사번 입력)에서는 서지 않는다', async () => {
-    setup({ route: '/pop/worker-assignment' });
+  /* 사번 확인 전에는 메뉴를 감추지 않고 잠근다(omf-all-around#334). 사번 칩은 「사번 미입력 | 로그인」으로 열려 있다. */
+  it('사번이 없으면 묶음 · 남은 작업을 잠그고, 사번 칩은 [로그인]으로 눌린다', async () => {
+    const user = userEvent.setup();
+    const onLogin = vi.fn();
+    setup({ route: '/pop/home', workerNo: null, onLogin });
 
     await waitFor(() => {
-      expect(screen.getByText('지금: /pop/worker-assignment')).toBeInTheDocument();
+      expect(within(groupsNav()).getAllByRole('button').length).toBeGreaterThan(1);
     });
-    expect(screen.queryByRole('navigation', { name: nav.groupsLabel })).not.toBeInTheDocument();
+    const groups = within(groupsNav())
+      .getAllByRole('button')
+      .filter((button) => button.textContent !== nav.home);
+    expect(groups.length).toBeGreaterThan(0);
+    for (const button of groups) expect(button).toBeDisabled();
+    expect(screen.getByRole('button', { name: remaining.buttonLabel(0) })).toBeDisabled();
+    const login = screen.getByRole('button', {
+      name: new RegExp(`^${messages.popChrome.login}`, 'u'),
+    });
+    expect(login).toBeEnabled();
+    /* 사번이 없으면 빨강 강조. */
+    expect(login).toHaveClass('pop-nav-top__login');
+    expect(login).toHaveTextContent(header.workerUnset);
+    expect(login).toHaveTextContent(messages.popChrome.login);
+    await user.click(login);
+    expect(onLogin).toHaveBeenCalledOnce();
+    expect(screen.getByText('지금: /pop/home')).toBeInTheDocument();
+  });
+
+  /* 사용자 지시 2026-11-20(#334) — [단말 재등록]은 맨 위 줄 [종료] 바로 왼쪽, 사번 입력 중에만 · 잠그지 않는다. */
+  it('사번이 없으면 [종료] 바로 왼쪽에 [단말 재등록]이 서고 눌린다', async () => {
+    const user = userEvent.setup();
+    const onReRegister = vi.fn();
+    setup({ route: '/pop/home', workerNo: null, onReRegister });
+
+    const button = screen.getByRole('button', {
+      name: messages.workerAssignment.registration.reRegister,
+    });
+    expect(button).toBeEnabled();
+    const exit = screen.getByRole('button', {
+      name: new RegExp(messages.popChrome.exit.button, 'u'),
+    });
+    expect(button.nextElementSibling).toBe(exit);
+    /* 보조 동작 — [종료]와 같은 테두리 버튼(C-3 · C-19: 채움은 주 동작 하나에만). */
+    const look = (element: HTMLElement) =>
+      [...element.classList].filter((name) => name !== 'pop-nav-top__exit').sort();
+    expect(look(button)).toEqual(look(exit));
+    await user.click(button);
+    expect(onReRegister).toHaveBeenCalledOnce();
+  });
+
+  it('사번이 확인되면 [단말 재등록]을 두지 않는다', () => {
+    setup({ onReRegister: vi.fn() });
+
     expect(
-      screen.queryByRole('button', { name: messages.popChrome.userSwitch }),
-    ).not.toBeInTheDocument();
+      screen.queryByRole('button', { name: messages.workerAssignment.registration.reRegister }),
+    ).toBeNull();
   });
 });
 

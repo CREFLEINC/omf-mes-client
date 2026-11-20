@@ -5,8 +5,6 @@ import type { Translated } from './translated';
 export const dispositionRequest: Translated<typeof ko.dispositionRequest> = {
   title: 'Yêu cầu đánh giá làm lại hoặc hủy',
   breadcrumbRoot: 'Quản lý bán hàng / xuất hàng',
-  scopeNotice:
-    'Việc đánh giá làm ở màn hình chất lượng. Ở đây chỉ đăng ký điểm không phù hợp và yêu cầu đánh giá.',
   periodContractBlocked:
     'Vẫn chưa tải được danh sách theo trạng thái điểm không phù hợp. Máy chủ bắt buộc phải có khoảng thời gian tra cứu mà màn hình này lại không có điều kiện thời gian, nên sẽ mở sau khi đội máy chủ xác nhận. Trong lúc đó hãy để trống điều kiện trạng thái và dùng danh sách đối tượng chờ đánh giá.',
   panes: {
@@ -94,8 +92,6 @@ export const dispositionRequest: Translated<typeof ko.dispositionRequest> = {
     goFirstPage: 'Về trang đầu',
     checkOutcome: 'Kiểm tra kết quả xử lý',
     openDecision: 'Xem kết quả đánh giá',
-    reworkResult: 'Đăng ký kết quả làm lại',
-    disposalRequest: 'Đề nghị hủy',
     reinstate: 'Đăng ký lại tồn kho',
   },
   target: {
@@ -125,7 +121,6 @@ export const dispositionRequest: Translated<typeof ko.dispositionRequest> = {
     severityRequired: 'Hãy chọn mức nghiêm trọng',
     departmentLabel: 'Bộ phận phụ trách',
     departmentNone: 'Không chỉ định',
-    sourceDerived: 'Nguồn gốc do máy chủ xác định theo loại nhập kho. Không chọn ở đây.',
     qtyNote: (qty: string, uom: string): string =>
       `Đăng ký toàn bộ số lượng đối tượng ${qty} ${uom} là điểm không phù hợp.`,
     success: 'Đã đăng ký điểm không phù hợp',
@@ -184,13 +179,6 @@ export const dispositionRequest: Translated<typeof ko.dispositionRequest> = {
       'Một điểm không phù hợp có thể có nhiều quyết định xử lý. Mỗi quyết định có phần tiếp theo khác nhau.',
     approvalPending: 'Đang phê duyệt',
     followUp: {
-      reworkUnavailable:
-        'Đăng ký kết quả làm lại được làm ở màn hình máy quét tại hiện trường. Không mở được ở màn hình này.',
-      reworkNotDecided:
-        'Đăng ký kết quả làm lại chỉ làm được khi đã có quyết định xử lý là làm lại.',
-      disposalUnavailable:
-        'Màn hình đề nghị hủy vẫn chưa được chuẩn bị. Khi chuẩn bị xong thì nút này sẽ dùng được.',
-      disposalNotDecided: 'Đề nghị hủy chỉ làm được khi đã có quyết định xử lý là hủy.',
       reinstateUnavailable:
         'Màn hình đăng ký lại tồn kho vẫn chưa được chuẩn bị. Khi chuẩn bị xong thì nút này sẽ dùng được.',
       reinstateNotDecided:

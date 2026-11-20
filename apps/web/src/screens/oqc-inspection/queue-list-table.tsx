@@ -59,23 +59,36 @@ const columnsOf = (
         <span className="oqc-inspection-queue-unregistered">{t.serialUnregistered}</span>
       ),
   },
+  /*
+   * 품목은 코드 · 이름 두 칸이다(사용자 지시 2026-11-20, 한 칸에 붙이던 「이름 코드」를 나눴다 · IQC 와 같은 모양). 못 푼
+   * 갈래는 코드 칸에 풀이의 사유를 내고 이름 칸은 비운다. 다른 열처럼 폭을 끌어 바꾼다(#185).
+   */
   {
-    key: 'itemId',
+    key: 'itemCode',
     align: 'start',
-    header: t.columns.itemId,
-    /* 다른 열처럼 폭을 끌어 바꾼다(#185). */
-    width: '280px',
-    /* 「이름 / 코드」 두 줄 — 못 푼 갈래는 줄이 하나뿐이라 풀이가 사유를 그 자리에 낸다(IQC 와 같은 모양). */
+    header: t.columns.itemCode,
+    width: '140px',
     render: (row) => {
       const parts = itemNames.partsOf(row.itemId);
-      const label = itemNames.labelOf(row.itemId);
-
-      return parts === null ? (
-        <span className="oqc-inspection-queue-item-name">{label}</span>
-      ) : (
-        <span className="oqc-inspection-queue-item" title={`${parts.name} · ${parts.code}`}>
-          <span className="oqc-inspection-queue-item-name">{parts.name}</span>
-          <span className="oqc-inspection-queue-sub">{parts.code}</span>
+      const value = parts === null ? itemNames.labelOf(row.itemId) : parts.code;
+      return (
+        <span className="oqc-inspection-queue-item-name" title={value}>
+          {value}
+        </span>
+      );
+    },
+  },
+  {
+    key: 'itemName',
+    align: 'start',
+    header: t.columns.itemName,
+    width: '220px',
+    render: (row) => {
+      const parts = itemNames.partsOf(row.itemId);
+      if (parts === null) return t.emptyValue;
+      return (
+        <span className="oqc-inspection-queue-item-name" title={parts.name}>
+          {parts.name}
         </span>
       );
     },
@@ -231,7 +244,7 @@ export const QueueListTable = ({
      */
     <div
       ref={fit.ref}
-      className="oqc-inspection-queue-rows inspection-queue-table"
+      className="oqc-inspection-queue-rows inspection-queue-table cells-start"
       style={resizable.style}
       onClick={(event) => {
         const target = event.target as Element;
