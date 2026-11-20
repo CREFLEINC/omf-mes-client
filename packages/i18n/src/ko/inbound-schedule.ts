@@ -121,12 +121,12 @@ export const inboundSchedule = {
     chipQ: (value: string): string => `발주번호: ${value}`,
     chipOverdue: '지연',
     /** 「미완료만」을 끈 상태 — 다 들어온 라인 · 취소된 라인까지 온다. */
-    chipOpenOnlyOff: '완료·취소 포함',
+    chipOpenOnlyOff: '완료와 취소 포함',
     chipRemovePlant: '공장 조건 제거',
     chipRemoveItem: '품목 조건 제거',
     chipRemoveQ: '발주번호 조건 제거',
     chipRemoveOverdue: '지연 조건 제거',
-    chipRemoveOpenOnlyOff: '완료·취소 포함 해제',
+    chipRemoveOpenOnlyOff: '완료와 취소 포함 조건 제거',
   },
   /** 쪽 이동. 번호 목록을 두지 않는 근거는 screens/inbound-schedule/page-nav.tsx에 있다. */
   pageNav: {
