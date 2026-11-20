@@ -101,6 +101,9 @@ describe('PopHomeScreen — 홈(#291)', () => {
     setup({ shipmentPacking: 4, workStart: 3 });
 
     expect(screen.getByRole('heading', { name: t.greeting('2048') })).toBeInTheDocument();
+    /* 사번이 있으면 인사 아래 줄은 종전 그대로(#334). */
+    expect(screen.queryByText(/사번을 입력해 주세요/u)).toBeNull();
+    expect(screen.getByText(t.greetingSub)).toBeInTheDocument();
     const remaining = await within(
       screen.getByRole('region', { name: new RegExp(`^${t.remainingTitle}`, 'u') }),
     ).findByRole('button', { name: messages.popChrome.remaining.count('작업지시 목록', 3) });
@@ -156,6 +159,17 @@ describe('PopHomeScreen — 홈(#291)', () => {
     expect(tiles.length).toBeGreaterThan(0);
     for (const tile of tiles) expect(tile).toBeDisabled();
     expect(screen.getByText('지금: /pop/home')).toBeInTheDocument();
+    /* 사번이 없으면 인사 아래 줄이 [로그인] 안내로 바뀐다(사용자 지시 2026-11-20 · #334). */
+    expect(screen.getByRole('heading', { name: t.greetingAnonymous })).toBeInTheDocument();
+    const hint = screen.getByText(
+      (_, element) =>
+        element?.tagName === 'P' &&
+        element.textContent === t.greetingLoginHint.replace('{login}', messages.popChrome.login),
+    );
+    /* 「로그인」은 괄호 없이 빨간 라벨(칩)로, 누르는 단추가 아니다. */
+    expect(within(hint).getByText(messages.popChrome.login)).toHaveClass('pu-chip');
+    expect(within(hint).queryByRole('button')).toBeNull();
+    expect(screen.queryByText(t.greetingSub)).toBeNull();
   });
 
   it('남은 작업이 없으면 그렇게 말한다', async () => {

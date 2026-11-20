@@ -52,6 +52,11 @@ export const popChrome = {
     greetingAnonymous: '안녕하세요!',
     /** 인사 아래 한 줄(시안). */
     greetingSub: '오늘도 안전하고 정확한 작업을 진행해 주세요.',
+    /**
+     * 사번이 없을 때 인사 아래 줄(`greetingSub` 대신 · 사용자 지시 2026-11-20 · #334). `{login}` 자리에 빨간 「로그인」 라벨이
+     * 선다(말 순서가 다른 언어도 자리만 옮긴다).
+     */
+    greetingLoginHint: '상단 {login}을 눌러 사번을 입력해 주세요.',
     /** 인사 줄 오른쪽 시계의 요일(일요일부터). */
     weekdays: ['일', '월', '화', '수', '목', '금', '토'],
     remainingTitle: '남은 작업',

@@ -428,7 +428,23 @@ export const PopHomeScreen = (): ReactNode => {
           <PuIcon name="clock" />
           {clock}
         </span>
-        <p>{t.greetingSub}</p>
+        {/*
+         * 사번이 없으면 인사 아래 줄을 맨 위 줄 로그인 안내로 바꾼다(사용자 지시 2026-11-20 · #334). 「로그인」은 맨 위 줄
+         * 칩과 같은 빨간 바탕 라벨 — 보기만, 누르지 않는다.
+         */}
+        <p>
+          {isLocked
+            ? t.greetingLoginHint
+                .split(/(\{login\})/u)
+                .map((part, index) =>
+                  part === '{login}' ? (
+                    <PuChip key={index}>{messages.popChrome.login}</PuChip>
+                  ) : (
+                    part
+                  ),
+                )
+            : t.greetingSub}
+        </p>
       </div>
 
       <div className="home-top">
