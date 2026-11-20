@@ -65,7 +65,7 @@ export const RoleFilterBar = ({
     <>
       <div className="filter-bar users-roles-filter-row">
         <SearchInput
-          containerClassName="users-roles-search-input"
+          containerClassName="users-roles-search-input users-roles-role-search-input"
           label={t.filters.roleSearchLabel}
           placeholder={t.filters.roleSearchPlaceholder}
           value={draft.q}

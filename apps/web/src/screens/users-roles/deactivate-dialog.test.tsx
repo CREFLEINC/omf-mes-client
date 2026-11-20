@@ -82,10 +82,15 @@ describe('DeactivateDialog', () => {
     renderDialog({
       title: t.deactivateRoleTitle,
       description: t.deactivateRoleDescription,
+      warning: t.deactivateRoleWarning,
+      target: { caption: t.deactivateRoleCaption, name: '합성 역할 A', meta: 'SYN-ROLE-01' },
     });
 
-    expect(screen.getByRole('dialog', { name: '이 역할을 사용 중지할까요?' })).toBeInTheDocument();
-    expect(screen.getByText(/이 역할로 열려 있던 권한이 사라집니다/)).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: '역할 사용 중지' })).toBeInTheDocument();
+    expect(screen.getByText('합성 역할 A')).toBeInTheDocument();
+    expect(screen.getByText('SYN-ROLE-01')).toBeInTheDocument();
+    expect(screen.getByText('이 역할의 사용을 중지하시겠습니까?')).toBeInTheDocument();
+    expect(screen.getByText(/신규 부여가 제한되며/)).toBeInTheDocument();
     expect(screen.queryByText(/이 계정의 시스템 사용을 중지하시겠습니까/)).not.toBeInTheDocument();
   });
 

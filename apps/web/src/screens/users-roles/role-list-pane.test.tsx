@@ -215,7 +215,9 @@ describe('RoleListPane 빈 상태와 실패', () => {
     expect(within(pane()).getByText('조건에 맞는 역할이 없습니다')).toBeInTheDocument();
 
     // 조건 줄에도 「초기화」가 있다 — 빈 상태 안의 것만 눌러야 이 안내의 길이 열렸는지 알 수 있다.
-    await user.click(within(screen.getByRole('status')).getByRole('button', { name: '조건 초기화' }));
+    await user.click(
+      within(screen.getByRole('status')).getByRole('button', { name: '조건 초기화' }),
+    );
 
     expect(onApplyFilters).toHaveBeenCalledWith({ q: '', includeInactive: false });
   });

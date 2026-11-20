@@ -4050,9 +4050,12 @@ describe('UsersRolesScreen 역할 사용 중지', () => {
   it('창이 역할의 결과를 밝히고 건수를 내지 않는다', async () => {
     await openDialog();
 
-    const dialog = await screen.findByRole('dialog', { name: '이 역할을 사용 중지할까요?' });
+    const dialog = await screen.findByRole('dialog', { name: '역할 사용 중지' });
 
-    expect(within(dialog).getByText(/이 역할로 열려 있던 권한이 사라집니다/)).toBeInTheDocument();
+    /* 계정 사용 중지 창과 같은 모양 — 대상(역할명 · 역할 코드) · 질문 · 경고(사용자 지시 2026-11-20 · #333). */
+    expect(within(dialog).getByText('합성 역할 A')).toBeInTheDocument();
+    expect(within(dialog).getByText('SYN-ROLE-01')).toBeInTheDocument();
+    expect(within(dialog).getByText(/신규 부여가 제한되며/)).toBeInTheDocument();
     expect(dialog.textContent).not.toMatch(/\d+\s*건/);
   });
 
@@ -4411,7 +4414,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     const { requests, user } = await openRole([...gridRoutes(), permissionReplaceRoute()]);
 
     await within(permissionPane()).findByRole('table');
-    await user.click(within(permissionPane()).getByRole('button', { name: '전체 선택' }));
+    await user.click(within(permissionPane()).getByRole('button', { name: '모든 권한 선택' }));
 
     for (const box of await gridCells()) expect(box).toBeChecked();
 
@@ -4423,7 +4426,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     const { user } = await openRole();
 
     await within(permissionPane()).findByRole('table');
-    await user.click(within(permissionPane()).getByRole('button', { name: '전체 해제' }));
+    await user.click(within(permissionPane()).getByRole('button', { name: '모든 권한 해제' }));
 
     for (const box of await gridCells()) expect(box).not.toBeChecked();
   });
@@ -4432,7 +4435,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     const { requests, user } = await openRole([...gridRoutes(), permissionReplaceRoute()]);
 
     await within(permissionPane()).findByRole('table');
-    await user.click(within(permissionPane()).getByRole('button', { name: '전체 선택' }));
+    await user.click(within(permissionPane()).getByRole('button', { name: '모든 권한 선택' }));
     await user.click(within(roleSettingsPane()).getByRole('button', { name: '저장' }));
 
     await waitFor(() => {
@@ -4447,7 +4450,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     const { requests, user } = await openRole([...gridRoutes(), permissionReplaceRoute()]);
 
     await within(permissionPane()).findByRole('table');
-    await user.click(within(permissionPane()).getByRole('button', { name: '전체 해제' }));
+    await user.click(within(permissionPane()).getByRole('button', { name: '모든 권한 해제' }));
     await user.click(within(roleSettingsPane()).getByRole('button', { name: '저장' }));
 
     await waitFor(() => {
@@ -4460,7 +4463,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     const { user } = await openRole();
 
     await within(permissionPane()).findByRole('table');
-    await user.click(within(permissionPane()).getByRole('button', { name: '전체 해제' }));
+    await user.click(within(permissionPane()).getByRole('button', { name: '모든 권한 해제' }));
     await user.click(within(roleSettingsPane()).getByRole('button', { name: '취소' }));
 
     expect((await gridCells()).map((box) => box.getAttribute('aria-label'))).toEqual([
@@ -4724,16 +4727,6 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     ).toBeVisible();
   });
 
-  it('조작 안내가 항상 보이고 표가 그것을 가리킨다', async () => {
-    await openRole();
-
-    const table = await within(permissionPane()).findByRole('table');
-    const note = within(permissionPane()).getByText('선택한 권한이 이 역할에 부여됩니다.');
-
-    expect(note).toBeVisible();
-    expect(table).toHaveAttribute('aria-describedby', note.id);
-  });
-
   /**
    * 열 없는 격자는 라벨 칸만 남은 빈 표가 된다. 이것은 「부여가 0건」이 아니라
    * **「줄 수 있는 후보가 0건」**이다 — 그 둘을 가려 말한다.
@@ -4745,7 +4738,6 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
       await within(permissionPane()).findByText('부여할 수 있는 기능 권한이 없습니다'),
     ).toBeInTheDocument();
     expect(within(permissionPane()).queryByRole('table')).not.toBeInTheDocument();
-    expect(within(permissionPane()).getByText('선택한 권한이 이 역할에 부여됩니다.')).toBeVisible();
   });
 
   /** 실패를 빈 상태로 내면 「부여된 권한이 없습니다」가 되어 없는 사실을 단정한다. */

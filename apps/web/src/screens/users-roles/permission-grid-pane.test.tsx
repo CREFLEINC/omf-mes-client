@@ -46,8 +46,6 @@ const renderPane = (overrides: Partial<PermissionGridPaneProps> = {}) => {
 
 const pane = (): HTMLElement => screen.getByRole('region', { name: '기능 권한' });
 
-const NOTE = '선택한 권한이 이 역할에 부여됩니다.';
-
 /** 권한 확인칸 하나. 이름이 「역할 · 권한 이름 · 상태」라 그것으로 집는다. */
 const permissionBox = (name: string): HTMLElement =>
   within(pane()).getByRole('checkbox', { name: new RegExp(`· ${name} ·`) });
@@ -63,9 +61,9 @@ describe('PermissionGridPane 표', () => {
     const rows = within(pane()).getAllByRole('row');
     const text = rows.map((row) => row.textContent ?? '');
 
-    expect(text.some((line) => line.includes('합성 권한 하나') && line.includes('SYN-PERM-01'))).toBe(
-      true,
-    );
+    expect(
+      text.some((line) => line.includes('합성 권한 하나') && line.includes('SYN-PERM-01')),
+    ).toBe(true);
     expect(text.some((line) => line.includes('합성 권한 셋') && line.includes('SYN-PERM-03'))).toBe(
       true,
     );
@@ -78,7 +76,7 @@ describe('PermissionGridPane 표', () => {
       within(pane())
         .getAllByRole('columnheader')
         .map((header) => header.textContent),
-    ).toEqual(['부여', '권한', '코드']);
+    ).toEqual(['권한 부여', '기능명', '권한 코드']);
   });
 
   /** ⭐ 권한이 117개라 묶지 않으면 어디를 보고 있는지 알 수 없다. */
@@ -155,7 +153,7 @@ describe('PermissionGridPane 전체 선택·해제', () => {
     const onSelectAll = vi.fn();
     const { user } = renderPane({ onSelectAll });
 
-    await user.click(within(pane()).getByRole('button', { name: '전체 선택' }));
+    await user.click(within(pane()).getByRole('button', { name: '모든 권한 선택' }));
 
     expect(onSelectAll).toHaveBeenCalledTimes(1);
   });
@@ -164,7 +162,7 @@ describe('PermissionGridPane 전체 선택·해제', () => {
     const onClearAll = vi.fn();
     const { user } = renderPane({ onClearAll });
 
-    await user.click(within(pane()).getByRole('button', { name: '전체 해제' }));
+    await user.click(within(pane()).getByRole('button', { name: '모든 권한 해제' }));
 
     expect(onClearAll).toHaveBeenCalledTimes(1);
   });
@@ -176,7 +174,7 @@ describe('PermissionGridPane 전체 선택·해제', () => {
   it('전체 선택·해제가 표보다 앞에 선다', () => {
     renderPane();
 
-    const bulk = within(pane()).getByRole('button', { name: '전체 선택' });
+    const bulk = within(pane()).getByRole('button', { name: '모든 권한 선택' });
     const table = within(pane()).getByRole('table');
 
     expect(bulk.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -185,15 +183,15 @@ describe('PermissionGridPane 전체 선택·해제', () => {
   it('저장 중에는 잠긴다', () => {
     renderPane({ isSaving: true, isDirty: true });
 
-    expect(within(pane()).getByRole('button', { name: '전체 선택' })).toBeDisabled();
-    expect(within(pane()).getByRole('button', { name: '전체 해제' })).toBeDisabled();
+    expect(within(pane()).getByRole('button', { name: '모든 권한 선택' })).toBeDisabled();
+    expect(within(pane()).getByRole('button', { name: '모든 권한 해제' })).toBeDisabled();
   });
 
   /** 표가 없으면 고를 것도 없다 — 누를 수 없는 버튼을 두지 않는다. */
   it('표가 서지 않으면 버튼도 두지 않는다', () => {
     renderPane({ groups: [] });
 
-    expect(within(pane()).queryByRole('button', { name: '전체 선택' })).toBeNull();
+    expect(within(pane()).queryByRole('button', { name: '모든 권한 선택' })).toBeNull();
   });
 });
 
@@ -251,25 +249,7 @@ describe('PermissionGridPane 저장', () => {
 });
 
 describe('PermissionGridPane 안내', () => {
-  it('조작 안내가 항상 보이고 표보다 앞에 있다', () => {
-    renderPane();
-
-    const note = within(pane()).getByText(NOTE);
-    const table = within(pane()).getByRole('table');
-
-    expect(note).toBeVisible();
-    expect(note.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
-
-  it('표가 그 안내를 가리킨다', () => {
-    renderPane();
-
-    const noteId = within(pane()).getByText(NOTE).getAttribute('id');
-
-    expect(noteId).toBeTruthy();
-    expect(within(pane()).getByRole('table')).toHaveAttribute('aria-describedby', noteId);
-  });
-
+  /* 「선택한 권한이 이 역할에 부여됩니다」 안내는 없앴다(사용자 지시 2026-11-20 · #333). */
   /** 후보에 없는데 부여돼 있는 행이 섰다는 사실을 **감추지 않는다.** */
   it('목록에 없는 권한 안내를 넘기면 그대로 낸다', () => {
     renderPane({ unlistedNotice: <p>합성 미등재 안내</p> });
@@ -290,17 +270,6 @@ describe('PermissionGridPane 빈 상태와 실패', () => {
     expect(within(pane()).queryByRole('table')).toBeNull();
   });
 
-  it('빈 상태도 같은 안내를 가리킨다', () => {
-    renderPane({ groups: [] });
-
-    const noteId = within(pane()).getByText(NOTE).getAttribute('id');
-    const described = pane().querySelector(`[aria-describedby="${noteId ?? ''}"]`);
-
-    expect(noteId).toBeTruthy();
-    expect(described).not.toBeNull();
-    expect(described?.textContent).toContain('부여할 수 있는 기능 권한이 없습니다');
-  });
-
   /**
    * 실패를 빈 상태로 내면 **없는 사실을 단정한다** — 없는 것이 아니라 못 불러온 것이고,
    * 그 상태로 저장하면 가진 권한이 통째로 회수된다.
@@ -312,7 +281,7 @@ describe('PermissionGridPane 빈 상태와 실패', () => {
     expect(within(pane()).queryByRole('table')).toBeNull();
     expect(within(pane()).queryByText('부여할 수 있는 기능 권한이 없습니다')).toBeNull();
     /* 고를 것이 없으니 전체 선택도 두지 않는다. */
-    expect(within(pane()).queryByRole('button', { name: '전체 선택' })).toBeNull();
+    expect(within(pane()).queryByRole('button', { name: '모든 권한 선택' })).toBeNull();
   });
 
   it('불러오는 중에는 표 대신 진행 표시가 나온다', () => {
@@ -320,5 +289,32 @@ describe('PermissionGridPane 빈 상태와 실패', () => {
 
     expect(within(pane()).getByRole('status', { name: '기능 권한을 불러오는 중' })).toBeTruthy();
     expect(within(pane()).queryByRole('table')).toBeNull();
+  });
+});
+
+/* 업무 묶음 접기 · 펼치기(사용자 지시 2026-11-20 · #333) — 처음엔 접혀 있고, 머리에 부여 수 / 전체 수가 보인다. */
+describe('PermissionGridPane 업무 묶음', () => {
+  it('묶음 머리는 처음에 접혀 있고 누르면 펼쳐진다', async () => {
+    const { user } = renderPane();
+
+    const head = within(pane()).getByRole('button', { name: /자재·창고/ });
+    expect(head).toHaveAttribute('aria-expanded', 'false');
+    expect(within(head).getByLabelText('2개 중 1개 부여')).toHaveTextContent('1 / 2');
+
+    await user.click(head);
+    expect(head).toHaveAttribute('aria-expanded', 'true');
+    expect(within(pane()).getByRole('button', { name: /기준정보/ })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+  });
+
+  it('접혀 있어도 모든 권한 선택은 모든 묶음에 적용된다', async () => {
+    const onSelectAll = vi.fn<() => void>();
+    const { user } = renderPane({ onSelectAll });
+
+    await user.click(within(pane()).getByRole('button', { name: '모든 권한 선택' }));
+
+    expect(onSelectAll).toHaveBeenCalledTimes(1);
   });
 });

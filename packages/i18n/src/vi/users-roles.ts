@@ -66,10 +66,12 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     deactivateUserLoginId: (loginId: string): string => `ID đăng nhập: ${loginId}`,
     deactivateUserDescription: 'Bạn có muốn ngừng cho tài khoản này sử dụng hệ thống?',
     deactivateUserWarning: 'Sau khi ngừng sử dụng, không thể đăng nhập bằng tài khoản này.',
-    deactivateRoleTitle: 'Ngừng sử dụng vai trò này chứ?',
+    deactivateRoleTitle: 'Ngừng sử dụng vai trò',
+    deactivateRoleCaption: 'Đối tượng ngừng sử dụng',
     /** ⚠ 사용자 문구를 그대로 쓰지 않는다 — 중지했을 때 일어나는 일이 서로 다르다. */
-    deactivateRoleDescription:
-      'Ngừng sử dụng thì không gán mới vai trò này được nữa và quyền đang mở bằng vai trò này sẽ mất. Dữ liệu đã tích lũy vẫn còn nguyên. Không có đường hoàn lại.',
+    deactivateRoleDescription: 'Bạn có muốn ngừng sử dụng vai trò này?',
+    deactivateRoleWarning:
+      'Không thể gán mới, và quyền của người dùng hiện có cũng bị ảnh hưởng.\nDữ liệu hiện có được giữ nguyên, nhưng không thể khôi phục sau khi ngừng sử dụng.',
     /** ⚠ 임시 비밀번호는 **한 번만** 보인다 — 누르기 전과 받은 뒤 두 번 말한다. */
     resetPasswordTitle: 'Đặt lại mật khẩu',
     resetPasswordQuestion: 'Bạn có muốn cấp mật khẩu tạm thời mới không?',
@@ -201,19 +203,21 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
   },
   /** 기능 권한 격자 — **부여·회수할 수 있다.** 저장은 이 역할의 권한 전체를 한 번에 바꾼다. */
   permission: {
-    hint: 'Các quyền đã chọn sẽ được cấp cho vai trò này.',
     editNote:
       'Nhấn vào ô để cấp hoặc thu hồi quyền, rồi lưu. Lần lưu sẽ thay toàn bộ quyền của vai trò này.',
     /* 표의 열 머리. 권한이 117개라 세로로 세우고, 코드는 화면을 짚어 보는 열쇠라 함께 보인다. */
     columns: {
-      granted: 'Cấp',
-      name: 'Quyền',
-      code: 'Mã',
+      granted: 'Cấp quyền',
+      name: 'Tên chức năng',
+      code: 'Mã quyền',
     },
     tableCaption: (roleLabel: string) => `Quyền chức năng của vai trò ${roleLabel}`,
     /* 고르기만 하고 저장하지 않는다 - 되돌리는 길은 「취소」다. */
-    selectAll: 'Chọn tất cả',
-    clearAll: 'Bỏ chọn tất cả',
+    selectAll: 'Chọn tất cả quyền',
+    clearAll: 'Bỏ chọn tất cả quyền',
+    groupCount: (granted: number, total: number): string => `${String(granted)} / ${String(total)}`,
+    groupCountLabel: (granted: number, total: number): string =>
+      `Đã cấp ${String(granted)} / ${String(total)}`,
     /*
      * 묶음 이름 - groupCode 는 개체 식별자라 서버가 이름을 주지 않는다.
      * 고정 설계의 권한 목록 생성기가 적어 둔 축 7개를 옮겼고, 모르는 축은 코드를 그대로 낸다.

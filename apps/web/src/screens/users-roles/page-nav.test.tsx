@@ -10,7 +10,11 @@ const renderNav = (page: number, total: number, shown: number, label?: string) =
   const onChange = vi.fn<(page: number) => void>();
 
   render(
-    <PageNav view={toPageView({ page, size: 50, total }, shown)} onChange={onChange} label={label} />,
+    <PageNav
+      view={toPageView({ page, size: 50, total }, shown)}
+      onChange={onChange}
+      label={label}
+    />,
   );
 
   return { onChange, user: userEvent.setup() };

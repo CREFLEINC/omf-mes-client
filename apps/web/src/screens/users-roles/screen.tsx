@@ -2298,6 +2298,17 @@ export const UsersRolesScreen = () => {
           open
           title={t.dialog.deactivateRoleTitle}
           description={t.dialog.deactivateRoleDescription}
+          warning={t.dialog.deactivateRoleWarning}
+          target={
+            roleDetail.data === undefined
+              ? undefined
+              : {
+                  caption: t.dialog.deactivateRoleCaption,
+                  name: roleDetail.data.role.roleName,
+                  meta: roleDetail.data.role.roleCode,
+                }
+          }
+          showCloseButton={false}
           onClose={() => {
             setIsRoleDeactivateOpen(false);
             roleDeactivateWrite.reset();

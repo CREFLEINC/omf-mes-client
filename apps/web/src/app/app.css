@@ -13557,6 +13557,12 @@ a.erp-send-chips:focus-visible {
   width: 17rem;
 }
 
+/* 역할 검색 — 흐린 문구(역할 코드 또는 역할명을 입력하세요)가 꼭 들어가는 너비만큼만 넓힌다(사용자 지시 2026-11-20 · #333). */
+.users-roles-filter-row > .users-roles-search-input.users-roles-role-search-input {
+  flex-basis: 18.5rem;
+  width: 18.5rem;
+}
+
 /* 조회 · 초기화 · 사용자 추가를 함께 오른쪽 끝으로(사용자 지시 2026-11-20 · #333). */
 .users-roles-filter-row > .filter-actions {
   margin-left: auto;
@@ -36841,4 +36847,59 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 .users-roles-permission-pane > .pane-heading-row .permission-bulk-actions {
   margin-bottom: 0;
+}
+
+/*
+ * 기능 권한 업무 묶음 접기 · 펼치기(사용자 지시 2026-11-20 · #333) — 묶음 머리 전체가 단추다. 접힌 묶음의 행은 감춘다.
+ * 행 높이 · 정렬은 표 하나로 같고, 확인칸은 칸 전체를 눌러도 잡히게 넓힌다.
+ */
+.users-roles-permission-pane tbody:has(.permission-group-toggle[aria-expanded='false'])
+  > tr:not([data-group-header]) {
+  display: none;
+}
+
+.users-roles-permission-pane tr[data-group-header] > th {
+  padding: 0;
+}
+
+.permission-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  text-align: left;
+  cursor: pointer;
+}
+
+.permission-group-toggle:hover {
+  background: color-mix(in srgb, var(--on-surface) 6%, transparent);
+}
+
+.permission-group-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.permission-group-count {
+  margin-left: auto;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.users-roles-permission-pane td[data-align='center'] > label:has(input[type='checkbox']) {
+  display: inline-flex;
+  padding: var(--space-2);
+  cursor: pointer;
+}
+
+/* 확인 창 경고 — 문구 안 줄바꿈을 그대로 보인다(역할 사용 중지 · #333). */
+.users-roles-dialog-note {
+  white-space: pre-line;
 }

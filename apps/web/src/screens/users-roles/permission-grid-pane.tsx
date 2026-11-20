@@ -8,7 +8,7 @@ import {
   type Column,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useId } from 'react';
+import { type ReactNode, useState } from 'react';
 
 import { DisabledAction } from './disabled-action';
 import { toPermissionRows, type PermissionGroup, type PermissionRow } from './permission-catalog';
@@ -69,9 +69,23 @@ export const PermissionGridPane = ({
   onCancel,
   showActions = true,
 }: PermissionGridPaneProps) => {
-  const noteId = useId();
-
   const rows = toPermissionRows(groups);
+
+  /*
+   * 업무 묶음 접기 · 펼치기(사용자 지시 2026-11-20 · #333) — 처음에는 모두 접어 묶음 머리만 보인다. 117행을 한 번에
+   * 늘어놓지 않으려는 것이다. 접힌 묶음의 행은 CSS 가 감춘다(`.permission-group-toggle[aria-expanded=false]`) — 선택값 ·
+   * 전체 선택 · 저장은 접힘과 무관하게 모든 행에 그대로 적용된다.
+   */
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
+  const toggleGroup = (key: string): void => {
+    setExpanded((previous) => {
+      const next = new Set(previous);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+
+      return next;
+    });
+  };
 
   const columns: Column<PermissionRow>[] = [
     {
@@ -126,7 +140,6 @@ export const PermissionGridPane = ({
         <EmptyState
           size="sm"
           live
-          aria-describedby={noteId}
           title={t.permission.empty.none}
           description={t.permission.empty.noneDescription}
         />
@@ -140,14 +153,38 @@ export const PermissionGridPane = ({
     return (
       <div className="permission-table-scroll">
         <Table<PermissionRow>
-          aria-describedby={noteId}
           caption={t.permission.tableCaption(roleLabel)}
           density="compact"
           columns={columns}
           rows={rows}
           getRowId={(row) => row.code}
           groupBy={(row) => row.groupKey}
-          renderGroupHeader={(groupKey, groupRows) => groupRows[0]?.groupLabel ?? groupKey}
+          renderGroupHeader={(groupKey, groupRows) => {
+            const isOpen = expanded.has(groupKey);
+            const granted = groupRows.filter((row) => row.isGranted).length;
+
+            return (
+              <button
+                type="button"
+                className="permission-group-toggle"
+                aria-expanded={isOpen}
+                onClick={() => {
+                  toggleGroup(groupKey);
+                }}
+              >
+                <Icon name={isOpen ? 'expand_more' : 'chevron_right'} size={18} aria-hidden />
+                <span className="permission-group-name">
+                  {groupRows[0]?.groupLabel ?? groupKey}
+                </span>
+                <span
+                  className="permission-group-count"
+                  aria-label={t.permission.groupCountLabel(granted, groupRows.length)}
+                >
+                  {t.permission.groupCount(granted, groupRows.length)}
+                </span>
+              </button>
+            );
+          }}
         />
       </div>
     );
@@ -161,21 +198,11 @@ export const PermissionGridPane = ({
       aria-label={t.panes.permission}
     >
       {/*
-       * 표제 줄 — 왼쪽 「기능 권한」 + 라벨 안내, 오른쪽 전체 선택 · 해제(데이터 접근 범위 구역과 같은 모양 · #333).
-       * 전체 선택·해제는 고르기만 하고 저장은 따로라 아래 [저장]과 떨어뜨린다.
+       * 표제 줄 — 왼쪽 「기능 권한」, 오른쪽 모든 권한 선택 · 해제(#333). 안내 문구는 두지 않는다(사용자 지시 2026-11-20).
+       * 선택 · 해제는 고르기만 하고 저장은 따로라 아래 [저장]과 떨어뜨린다.
        */}
       <div className="pane-heading-row users-roles-heading">
-        <div className="users-roles-scope-title">
-          <h3 className="pane-title">{t.panes.permission}</h3>
-          <p
-            id={noteId}
-            className="iqc-inspection-action-note users-roles-scope-hint"
-            data-tone="info"
-          >
-            <Icon name="info" size={14} aria-hidden />
-            {t.permission.hint}
-          </p>
-        </div>
+        <h3 className="pane-title">{t.panes.permission}</h3>
         {hasRows && (
           <div className="permission-bulk-actions">
             <Button

@@ -78,14 +78,17 @@ export const usersRoles = {
     deactivateUserLoginId: (loginId: string): string => `로그인 아이디: ${loginId}`,
     deactivateUserDescription: '이 계정의 시스템 사용을 중지하시겠습니까?',
     deactivateUserWarning: '사용 중지 후에는 해당 계정으로 로그인할 수 없습니다.',
-    deactivateRoleTitle: '이 역할을 사용 중지할까요?',
+    /* 역할 사용 중지 창 — 계정 사용 중지 창과 같은 모양(대상 상자 · 질문 · 경고)(사용자 지시 2026-11-20 · #333). */
+    deactivateRoleTitle: '역할 사용 중지',
+    deactivateRoleCaption: '사용 중지 대상',
     /*
      * 역할과 사용자는 **중지했을 때 일어나는 일이 다르다.** 사용자 문구를 그대로 쓰면
      * 「이 사용자는 시스템을 쓸 수 없게 됩니다」가 역할 창에 나와 사실과 다른 안내가 된다.
      * 건수는 여기서도 내지 않는다 — 화면이 낼 수 있는 건수가 없다.
      */
-    deactivateRoleDescription:
-      '사용 중지하면 이 역할을 새로 부여할 수 없고 이 역할로 열려 있던 권한이 사라집니다. 이미 쌓인 자료는 그대로 남습니다. 되돌리는 경로가 없습니다.',
+    deactivateRoleDescription: '이 역할의 사용을 중지하시겠습니까?',
+    deactivateRoleWarning:
+      '신규 부여가 제한되며, 기존 사용자의 권한에도 영향을 줍니다.\n기존 데이터는 유지되지만, 사용 중지 후 복구할 수 없습니다.',
     /*
      * 비밀번호 초기화(W-CO-02 §8-2). 서버가 임시 비밀번호를 만들어 **그 응답에서 한 번만** 준다 —
      * 창을 닫으면 다시 볼 길이 없고, 다시 받으려면 새로 초기화해야 한다. 그 사실을 누르기 전과
@@ -144,7 +147,7 @@ export const usersRoles = {
     chipRemoveIncludeInactive: '미사용 포함 조건 제거',
     roleSearchLabel: '역할 검색',
     /* 역할 탭 용어 정정(사용자 지시 2026-11-20 · #333). */
-    roleSearchPlaceholder: '역할 코드 또는 이름 검색',
+    roleSearchPlaceholder: '역할 코드 또는 역할명을 입력하세요',
     roleIncludeInactive: '사용 중지 포함',
     chipRemoveRoleIncludeInactive: '사용 중지 포함 조건 제거',
     roleReset: '조건 초기화',
@@ -272,15 +275,13 @@ export const usersRoles = {
    * **무엇에 대한 안내인지**로 시작한다(배치 규범 4의 이탈 조건).
    */
   permission: {
-    /** 기능 권한 표제 옆 라벨 안내 — 데이터 접근 범위 안내와 같은 모양(#333). */
-    hint: '선택한 권한이 이 역할에 부여됩니다.',
     editNote:
       '칸을 눌러 권한을 주거나 거둔 뒤 저장하세요. 저장은 이 역할의 권한 전체를 한 번에 바꿉니다.',
     /* 표의 열 머리. 권한이 117개라 세로로 세우고, 코드는 화면을 짚어 보는 열쇠라 함께 보인다. */
     columns: {
-      granted: '부여',
-      name: '권한',
-      code: '코드',
+      granted: '권한 부여',
+      name: '기능명',
+      code: '권한 코드',
     },
     /* 표의 접근 설명. 무엇을 담은 표인지 한 줄로 말한다. */
     tableCaption: (roleLabel: string) => `${roleLabel} 역할의 기능 권한`,
@@ -288,8 +289,13 @@ export const usersRoles = {
      * 고르기만 하고 저장하지 않는다 - 그래서 「저장」과 나란히 두지 않고 표 위에 둔다.
      * 되돌리는 길은 「취소」다.
      */
-    selectAll: '전체 선택',
-    clearAll: '전체 해제',
+    /* 적용 범위가 보이게 — 접힌 묶음까지 모든 업무의 권한에 적용된다(사용자 지시 2026-11-20 · #333). */
+    selectAll: '모든 권한 선택',
+    clearAll: '모든 권한 해제',
+    /* 업무 묶음 머리 — 접고 펼친다. 건수는 이 묶음에서 부여된 수 / 전체 수다(#333). */
+    groupCount: (granted: number, total: number): string => `${String(granted)} / ${String(total)}`,
+    groupCountLabel: (granted: number, total: number): string =>
+      `${String(total)}개 중 ${String(granted)}개 부여`,
     /*
      * 묶음 이름 - groupCode 는 개체 식별자라 서버가 이름을 주지 않는다(계약 x-no-code-key).
      * 고정 설계의 권한 목록 생성기가 적어 둔 축 7개의 이름을 옮긴 것이고,
