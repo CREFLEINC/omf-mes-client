@@ -74,6 +74,7 @@ export const TerminalForm = ({
 }: TerminalFormProps) => {
   const baseId = useId();
   const codeId = `${baseId}-code`;
+  const hasPlant = draft.plant !== '';
 
   return (
     <>
@@ -134,28 +135,26 @@ export const TerminalForm = ({
           }}
         />
 
-        <SelectField
-          label={t.terminal.warehouse}
-          optionalMark={t.terminal.optionalMark}
-          labelNote={t.terminal.warehouseScope}
-          options={[
-            { value: '', label: t.terminal.warehouseAll },
-            ...toOptions(warehouses.entries),
-          ]}
-          value={draft.warehouse}
-          disabled={draft.plant === ''}
-          note={
-            draft.plant === ''
-              ? t.terminal.warehouseNeedsPlant
-              : lookupNote(warehouses, t.terminal.warehouseLookupFailed)
-          }
-          error={fieldErrors.warehouseId}
-          placeholder={t.terminal.warehouseAll}
-          wide
-          onChange={(value) => {
-            onChange({ warehouse: value });
-          }}
-        />
+        {/* 창고는 고를 수 있을 때만(공장을 고른 뒤) 보인다(사용자 지시 2026-11-20 · #333). */}
+        {hasPlant && (
+          <SelectField
+            label={t.terminal.warehouse}
+            optionalMark={t.terminal.optionalMark}
+            labelNote={t.terminal.warehouseScope}
+            options={[
+              { value: '', label: t.terminal.warehouseAll },
+              ...toOptions(warehouses.entries),
+            ]}
+            value={draft.warehouse}
+            note={lookupNote(warehouses, t.terminal.warehouseLookupFailed)}
+            error={fieldErrors.warehouseId}
+            placeholder={t.terminal.warehouseAll}
+            wide
+            onChange={(value) => {
+              onChange({ warehouse: value });
+            }}
+          />
+        )}
 
         {/* 등록은 운영 상태를 묻지 않는다 — 그 자리는 비워 설치 설비가 오른쪽 열에 선다(시안). */}
         {!isNew ? (
@@ -170,9 +169,10 @@ export const TerminalForm = ({
               onChange({ statusCode: value });
             }}
           />
-        ) : (
+        ) : hasPlant ? (
+          /* 창고가 선 줄 — 설치 설비가 오른쪽 열에 서도록 왼쪽을 비운다(시안). */
           <div className="terminal-map-form-spacer" aria-hidden="true" />
-        )}
+        ) : null}
 
         <SelectField
           label={t.terminal.equipment}
@@ -182,7 +182,7 @@ export const TerminalForm = ({
           ]}
           value={draft.equipment}
           note={lookupNote(equipments, t.terminal.equipmentLookupFailed)}
-          hint={t.terminal.equipmentHint}
+          labelNote={t.terminal.equipmentHint}
           error={fieldErrors.equipmentId}
           placeholder={t.terminal.equipmentNone}
           wide

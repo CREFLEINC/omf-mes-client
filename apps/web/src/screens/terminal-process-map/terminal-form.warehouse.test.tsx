@@ -128,7 +128,7 @@ describe('W-CO-06 단말 창고(피처 002)', () => {
     expect(onChange).toHaveBeenLastCalledWith({ plant: '2', warehouse: '' });
   });
 
-  it('공장을 고르기 전에는 창고 칸이 잠기고 사유를 보인다', () => {
+  it('공장을 고르기 전에는 창고 칸을 보이지 않는다', () => {
     renderWithProviders(
       <TerminalForm
         draft={{ ...EMPTY_TERMINAL }}
@@ -146,8 +146,8 @@ describe('W-CO-06 단말 창고(피처 002)', () => {
       />,
     );
 
-    expect(screen.getByRole('combobox', { name: t.terminal.warehouse })).toBeDisabled();
-    expect(screen.getByText(t.terminal.warehouseNeedsPlant)).toBeInTheDocument();
+    /* 공장을 고르기 전에는 창고 칸 자체가 없다(사용자 지시 2026-11-20 · #333). */
+    expect(screen.queryByRole('combobox', { name: t.terminal.warehouse })).not.toBeInTheDocument();
   });
 
   it('US5-1 저장 본문 — 등록은 고르면 warehouseId, 수정은 비우면 null 로 뗀다', () => {

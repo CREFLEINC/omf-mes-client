@@ -4,8 +4,6 @@ export interface FieldLabelProps {
   /** 이 라벨이 가리키는 컨트롤의 id */
   htmlFor: string;
   label: string;
-  /** 라벨 오른쪽 같은 줄의 짧은 안내(작은 보조 글자). */
-  hint?: string;
   /** 라벨 오른쪽 같은 줄의 안내 라벨 — 정보 아이콘 + 파란 바탕(사용자 지시 2026-11-20 · #333). */
   note?: string;
   /** 빨간 필수 표시(`required-mark`). 라벨 밖이라 접근 이름은 그대로다. */
@@ -24,7 +22,6 @@ export interface FieldLabelProps {
 export const FieldLabel = ({
   htmlFor,
   label,
-  hint,
   note,
   required = false,
   optionalMark,
@@ -38,7 +35,6 @@ export const FieldLabel = ({
       </span>
     )}
     {optionalMark !== undefined && <span className="optional-mark"> {optionalMark}</span>}
-    {hint !== undefined && <span className="terminal-map-label-hint">{hint}</span>}
     {note !== undefined && (
       <span className="iqc-inspection-action-note terminal-map-label-note" data-tone="info">
         <Icon name="info" size={14} aria-hidden />

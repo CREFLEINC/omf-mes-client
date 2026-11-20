@@ -18330,12 +18330,6 @@ dialog.layout-editor-dialog {
   max-width: none;
 }
 
-/* 라벨 오른쪽 같은 줄의 짧은 안내(설치 설비) — 라벨보다 한 단계 흐린 보조 글자. */
-.terminal-map-label-hint {
-  margin-left: var(--space-2);
-  color: var(--on-surface-muted);
-}
-
 /* 등록·수정 폼의 [취소][저장] 줄 — 단말 정보 카드 바닥글과 같은 구분선·간격(--space-4). */
 .form-actions.terminal-map-form-actions {
   margin-top: var(--space-4);

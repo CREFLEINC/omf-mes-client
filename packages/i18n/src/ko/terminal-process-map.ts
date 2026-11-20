@@ -71,11 +71,10 @@ export const terminalProcessMap = {
     equipmentNone: '설비 미지정',
     /** POP 이 「이 설비」를 전제로 도는 화면들이 이 값을 쓴다 — 라벨 옆 한 줄 안내. 유형과 상관없이 늘 보인다. */
     equipmentHint: 'POP 유형일 시 지정해 주세요',
-    plantPlaceholder: '공장을 지정하세요',
-    typePlaceholder: '유형을 지정하세요',
+    plantPlaceholder: '공장 선택',
+    typePlaceholder: '유형 선택',
     warehouse: '창고',
     warehouseAll: '공장 전체 (지정 안 함)',
-    warehouseNeedsPlant: '공장을 먼저 고르세요',
     warehouseLookupFailed: '창고 목록을 불러오지 못해 지금은 고를 수 없습니다.',
     register: '등록',
     /** 창고 칸 이름 오른쪽 안내 라벨(사용자 시안 2026-11-20 · #333). */

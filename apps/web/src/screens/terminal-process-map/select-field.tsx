@@ -26,8 +26,6 @@ export interface SelectFieldProps {
    * 고장 난 것으로 읽는다(배치 규범 4).
    */
   disabled?: boolean;
-  /** 라벨 오른쪽 같은 줄의 짧은 안내. */
-  hint?: string;
   /** 라벨 오른쪽 같은 줄의 안내 라벨(정보 아이콘 + 파란 바탕). */
   labelNote?: string;
   required?: boolean;
@@ -59,7 +57,6 @@ export const SelectField = ({
   placeholder,
   wide = false,
   disabled = false,
-  hint,
   labelNote,
   required,
   optionalMark,
@@ -80,7 +77,6 @@ export const SelectField = ({
       <FieldLabel
         htmlFor={id}
         label={label}
-        hint={hint}
         note={labelNote}
         required={required}
         optionalMark={optionalMark}

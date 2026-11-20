@@ -73,11 +73,10 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     equipment: 'Thiết bị lắp đặt',
     equipmentNone: 'Chưa chỉ định thiết bị',
     equipmentHint: 'Hãy chỉ định nếu là loại POP',
-    plantPlaceholder: 'Hãy chỉ định nhà máy',
-    typePlaceholder: 'Hãy chỉ định loại',
+    plantPlaceholder: 'Chọn nhà máy',
+    typePlaceholder: 'Chọn loại',
     warehouse: 'Kho',
     warehouseAll: 'Toàn nhà máy (không chỉ định)',
-    warehouseNeedsPlant: 'Hãy chọn nhà máy trước',
     warehouseLookupFailed: 'Không tải được danh sách kho nên hiện không chọn được.',
     register: 'Đăng ký',
     /** 창고 칸 이름 오른쪽 안내 라벨(사용자 시안 2026-11-20 · #333). */
