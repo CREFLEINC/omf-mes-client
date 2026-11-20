@@ -97,13 +97,6 @@ export const commonCode = {
      */
     partnerSearchLabel: '거래처 검색',
     partnerSearchPlaceholder: '거래처코드 또는 거래처명',
-    chipKeyword: (value: string): string => `검색어: ${value}`,
-    chipRemoveKeyword: '검색어 조건 제거',
-    chipRemoveIncludeInactive: '미사용 포함 조건 제거',
-    chipBusinessUnit: (label: string): string => `사업부: ${label}`,
-    chipRemoveBusinessUnit: '사업부 조건 제거',
-    chipDepartment: (label: string): string => `부서: ${label}`,
-    chipRemoveDepartment: '부서 조건 제거',
   },
   loading: {
     codeGroups: '코드그룹 목록을 불러오는 중',

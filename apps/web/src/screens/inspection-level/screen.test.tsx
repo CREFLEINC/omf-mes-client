@@ -267,4 +267,20 @@ describe('검사 수준 관리', () => {
     await user.click(await screen.findByRole('option', { name: t.list.all }));
     await waitFor(() => expect(lastList()?.url.searchParams.has('itemId')).toBe(false));
   });
+
+  /* C-6 — 초기화는 품목 조건이나 검사 수준 칩이 처음과 다를 때만 보인다. */
+  it('초기화는 품목을 고른 뒤에만 보이고 누르면 조건을 풀고 사라진다', async () => {
+    const { user, requests } = setup();
+    await within(levelTable()).findByRole('row', { name: /PPAD003200/ });
+    const lastList = () =>
+      requests.filter((r) => r.method === 'GET' && r.url.pathname.endsWith(LEVELS)).at(-1);
+    expect(screen.queryByRole('button', { name: messages.common.reset })).not.toBeInTheDocument();
+
+    await user.click(screen.getByLabelText(t.list.keyword));
+    await user.click(await screen.findByRole('option', { name: /^OA-002 · / }));
+    await user.click(await screen.findByRole('button', { name: messages.common.reset }));
+
+    await waitFor(() => expect(lastList()?.url.searchParams.has('itemId')).toBe(false));
+    expect(screen.queryByRole('button', { name: messages.common.reset })).not.toBeInTheDocument();
+  });
 });

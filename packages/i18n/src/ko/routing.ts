@@ -117,8 +117,6 @@ export const routing = {
     /** 검색 칸의 「전체」 — 조건을 푼다(#231). */
     all: '전체',
     processSearchLabel: '공정 검색',
-    chipRemoveKeyword: '검색어 조건 제거',
-    chipKeyword: (value: string): string => `검색어: ${value}`,
   },
   loading: {
     items: '품목 목록을 불러오는 중',

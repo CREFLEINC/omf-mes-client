@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 
 import { BoardTable } from '../../patterns/board-table';
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { OneLine } from '../../patterns/po-board';
 import { Select } from '../../patterns/select';
 import { EMPTY_ITEM_FILTERS, hasAnyFilter } from './filters';
@@ -52,6 +53,8 @@ export const ItemFilterBar = ({
   if (draft.itemType !== '' && !itemTypeOptions.some((option) => option.code === draft.itemType)) {
     typeOptions.push({ value: draft.itemType, label: draft.itemType });
   }
+  /* 「초기화」는 바뀐 것이 있을 때만 보인다(C-6). 조건 칸이 모두 줄에 보여 칩은 두지 않는다. */
+  const isChanged = hasChangedFilters(EMPTY_ITEM_FILTERS, draft, applied);
 
   return (
     <form
@@ -112,14 +115,17 @@ export const ItemFilterBar = ({
       <div className="field-cell field-cell-unlabeled">
         <div className="filter-actions">
           <Button type="submit">{messages.common.search}</Button>
-          <Button
-            variant="outlined"
-            onClick={() => {
-              onApply(EMPTY_ITEM_FILTERS);
-            }}
-          >
-            {messages.common.reset}
-          </Button>
+          {isChanged && (
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setDraft(EMPTY_ITEM_FILTERS);
+                onApply(EMPTY_ITEM_FILTERS);
+              }}
+            >
+              {messages.common.reset}
+            </Button>
+          )}
         </div>
       </div>
     </form>

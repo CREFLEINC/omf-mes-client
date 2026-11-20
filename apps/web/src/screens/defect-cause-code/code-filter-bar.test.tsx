@@ -107,8 +107,9 @@ describe('CodeFilterBar — 조회 조건', () => {
     });
   });
 
-  it('적용된 조건은 칩으로 보이고 칩을 지우면 그 조건만 풀린다', async () => {
-    const { props, user } = renderBar({
+  /* C-6 — 조건 칸이 모두 줄에 보이므로 칩으로 겹쳐 적지 않는다. */
+  it('적용된 조건을 칩으로 겹쳐 적지 않는다', () => {
+    renderBar({
       appliedFilters: {
         q: 'DF-1',
         includeInactive: true,
@@ -120,18 +121,25 @@ describe('CodeFilterBar — 조회 조건', () => {
       },
     });
 
-    expect(screen.getByText('검색어: DF-1')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '검색어 조건 제거' }));
+    expect(screen.queryByText('검색어: DF-1')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /조건 제거$/ })).not.toBeInTheDocument();
+  });
 
-    expect(props.onApplyFilters).toHaveBeenCalledWith({
-      q: '',
-      includeInactive: true,
-      inactiveOnly: false,
-      dispositionTypeCode: '',
-      processId: '',
-      page: 1,
-      size: 20,
+  it('초기화는 조건이 처음과 다를 때만 보인다 — 쪽만 넘긴 것은 바뀐 조건이 아니다', () => {
+    renderBar({
+      appliedFilters: {
+        q: '',
+        includeInactive: false,
+        inactiveOnly: false,
+        dispositionTypeCode: '',
+        processId: '',
+        page: 3,
+        size: 50,
+      },
     });
+
+    expect(screen.getByRole('button', { name: '조회' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
   });
 
   it('탭마다 검색 라벨이 다르다 — 불량코드 탭은 불량코드 검색', () => {

@@ -20,7 +20,6 @@ const renderPane = (overrides: Partial<Parameters<typeof WorkerListPane>[0]> = {
       appliedFilters={EMPTY_SCOPED_FILTERS}
       onApplyFilters={onApplyFilters}
       departmentOptions={[{ value: '3001', label: 'SYN-DEPT-01 · 합성 부서 A' }]}
-      departmentLabel={() => 'SYN-DEPT-01 · 합성 부서 A'}
       optionsNotice={null}
       pageView={toPageView(
         { page: 1, size: 50, total: workerFixtures.length },
@@ -94,16 +93,24 @@ describe('WorkerListPane — 조건', () => {
     expect(onApplyFilters).toHaveBeenCalledWith({ q: 'SYN', scopeId: '', includeInactive: false });
   });
 
-  it('부서 조건 칩의 제거 버튼이 그 조건만 푼다', async () => {
+  /* 조건 칸이 모두 줄에 보인다 — 칩으로 겹쳐 적지 않고, 초기화는 바뀐 것이 있을 때만 보인다(C-6). */
+  it('걸린 조건을 칩으로 겹쳐 적지 않고 초기화가 그 조건을 푼다', async () => {
     const { onApplyFilters, user } = renderPane({
       appliedFilters: { q: 'SYN', scopeId: '3001', includeInactive: false },
     });
 
-    expect(screen.getByText('부서: SYN-DEPT-01 · 합성 부서 A')).toBeInTheDocument();
+    expect(screen.queryByText('부서: SYN-DEPT-01 · 합성 부서 A')).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '부서 조건 제거' }));
+    await user.click(screen.getByRole('button', { name: '초기화' }));
 
-    expect(onApplyFilters).toHaveBeenCalledWith({ q: 'SYN', scopeId: '', includeInactive: false });
+    expect(onApplyFilters).toHaveBeenCalledWith({ q: '', scopeId: '', includeInactive: false });
+  });
+
+  it('조건이 처음 그대로면 초기화가 없다', () => {
+    renderPane();
+
+    expect(screen.getByRole('button', { name: '조회' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
   });
 
   /* 공장·사업부 필터를 두지 않는다(§4.2) — 좌 페인에 컨트롤 넷을 놓으면 표가 짓눌린다. */

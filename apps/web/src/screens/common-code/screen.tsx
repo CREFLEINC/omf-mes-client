@@ -36,7 +36,7 @@ import {
   useCodeGroupList,
 } from './code-group-queries';
 import { CODE_GROUP_FORM_FIELDS, validateCodeGroupForm } from './code-group-validation';
-import { lookupLabel, selectableOptions } from './code-options';
+import { selectableOptions } from './code-options';
 import { CodeValueSection } from './code-value-section';
 import { DeactivateDialog } from './deactivate-dialog';
 import { DepartmentFormPane } from './department-form-pane';
@@ -1985,7 +1985,6 @@ export const CommonCodeScreen = () => {
          * 각각 다른 상태로 내고, 이름이 도착하면 그 이름으로 바뀐다 —
          * 번호를 대신 보이면 사용자가 쓸 수 없는 값을 자료로 읽는다.
          */
-        businessUnitLabel={(scopeId) => lookupLabel(businessUnitOptions, Number(scopeId))}
         optionsNotice={renderOptionsNotice([businessUnitOptions])}
         pageView={departmentPageView}
         onChangePage={changeDepartmentPage}
@@ -2056,7 +2055,6 @@ export const CommonCodeScreen = () => {
         appliedFilters={workerFilters}
         onApplyFilters={applyWorkerFilters}
         departmentOptions={selectableOptions(workerDepartmentOptions, workerFilters.scopeId)}
-        departmentLabel={(scopeId) => lookupLabel(workerDepartmentOptions, Number(scopeId))}
         optionsNotice={renderOptionsNotice([workerDepartmentOptions])}
         pageView={workerPageView}
         onChangePage={changeWorkerPage}

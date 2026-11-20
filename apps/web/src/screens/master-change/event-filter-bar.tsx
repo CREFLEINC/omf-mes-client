@@ -1,14 +1,23 @@
-import { Button, Chip, DatePicker, TextField } from '@crefle/web-ui';
+import { Button, DatePicker, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  hasChangedFilters,
+  useFilterMore,
+} from '../../patterns/filter-more';
 import { Select } from '../../patterns/select';
-import { toFilterChips, type EventFilters } from './filters';
-import { validatePeriod, type PeriodInput } from './period';
+import { EMPTY_FILTERS, toFilterChips, type EventFilters } from './filters';
+import { defaultPeriod, validatePeriod, type PeriodInput } from './period';
 
 const t = messages.masterChange;
 
-/** 한 선택칸이 필요로 하는 것 전부. 두 칸이 같은 구조라 목록으로 돌린다. */
+/** 「조건 더보기」에 접는 조건(C-6) — 칩은 이 조건만 낸다. */
+const FOLDED_KEYS: readonly (keyof EventFilters)[] = ['eventType', 'performedBy', 'correlationId'];
+
+/** 한 선택칸이 필요로 하는 것 전부. 두 칸이 같은 구조라 한 그리기 함수로 돌린다. */
 interface CodeSelect {
   key: keyof EventFilters;
   label: string;
@@ -42,6 +51,9 @@ export interface EventFilterBarProps {
  * 트리거 모델은 「모아서 적용, 해제는 즉시」다 — 날짜나 조건을 고치는 동안 조회가 나가면
  * 반쯤 지운 기간으로 요청이 나간다. 「조회」를 누를 때만 주소가 바뀌고 그때 조회된다.
  * 조건 칩의 ×는 해제라 즉시 반영한다.
+ *
+ * **보이는 칸은 셋이다**(C-6) — 조회 기간 · 대상 종류 · 대상. 사건 종류 · 수행자 · 상관 식별자는 「조건 더보기」에 접고,
+ * 접힌 조건이 걸려 있으면 칩으로만 알린다. 「초기화」는 바뀐 것이 있을 때만 보인다.
  */
 export const EventFilterBar = ({
   appliedPeriod,
@@ -55,6 +67,7 @@ export const EventFilterBar = ({
   const reasonId = useId();
   const fieldId = useId();
   const periodId = useId();
+  const more = useFilterMore();
 
   const [period, setPeriod] = useState<PeriodInput>(appliedPeriod);
   const [filters, setFilters] = useState<EventFilters>(appliedFilters);
@@ -99,18 +112,78 @@ export const EventFilterBar = ({
   /** 기간이 갖춰지지 않으면 조회를 막고 사유를 밝힌다 — 계약이 기간을 필수로 두었다. */
   const searchReason = validatePeriod(period);
 
-  const codeSelects: CodeSelect[] = [
-    { key: 'targetType', label: t.fields.targetType, options: targetTypeOptions },
-    { key: 'eventType', label: t.fields.eventType, options: eventTypeOptions },
-  ];
-
-  const textFilters: TextFilter[] = [
-    { key: 'targetId', label: t.fields.targetId, type: 'number' },
+  const targetTypeSelect: CodeSelect = {
+    key: 'targetType',
+    label: t.fields.targetType,
+    options: targetTypeOptions,
+  };
+  const eventTypeSelect: CodeSelect = {
+    key: 'eventType',
+    label: t.fields.eventType,
+    options: eventTypeOptions,
+  };
+  const targetIdField: TextFilter = { key: 'targetId', label: t.fields.targetId, type: 'number' };
+  /* 「조건 더보기」 안의 입력칸 — 수행자 · 상관 식별자(C-6). */
+  const foldedTextFilters: TextFilter[] = [
     { key: 'performedBy', label: t.fields.performedBy, type: 'number' },
     { key: 'correlationId', label: t.fields.correlationId, type: 'text' },
   ];
 
-  const chips = toFilterChips(appliedFilters);
+  /* 접힌 칸(사건 종류 · 수행자 · 상관 식별자)의 조건만 칩으로 — 보이는 칸의 값을 칩으로 겹쳐 적지 않는다. */
+  const hiddenChips = toFilterChips(appliedFilters).filter((chip) =>
+    FOLDED_KEYS.includes(chip.key),
+  );
+  /* 처음 값은 초기화가 되돌리는 값 — 오늘까지 7일 · 조건 없음. */
+  const isChanged = hasChangedFilters(
+    { ...defaultPeriod(new Date()), ...EMPTY_FILTERS },
+    { ...period, ...filters },
+    { ...appliedPeriod, ...appliedFilters },
+  );
+
+  const renderCodeSelect = (select: CodeSelect) => (
+    /*
+     * 배치 규범 3 — 디자인 시스템 Select는 라벨을 내장하지 않는다.
+     * 라벨을 직접 붙이고 htmlFor로 잇는다. aria-label만 두면 눈으로 보이는 이름이 없다.
+     *
+     * 규범 3-2 — 이 두 칸은 **코드값**을 고른다. 선택지 목록이 트리거 폭에 갇혀 있어
+     * 최소 폭을 주지 않으면 긴 코드가 잘려 무엇을 고르는지 읽을 수 없다.
+     * 값이 짧은 번호 칸에는 붙이지 않는다.
+     */
+    <div className="field-cell wide-select" key={select.key}>
+      <label className="field-label" htmlFor={`${fieldId}-${select.key}`}>
+        {select.label}
+      </label>
+      <Select
+        id={`${fieldId}-${select.key}`}
+        value={filters[select.key]}
+        placeholder={t.filters.all}
+        /*
+         * 「전체」를 값이 빈 선택지로 둔다. 두지 않으면 한 번 고른 뒤에
+         * 조건을 해제할 방법이 선택칸 안에 없어진다.
+         */
+        options={[
+          { value: '', label: t.filters.all },
+          ...select.options.map((code) => ({ value: code, label: code })),
+        ]}
+        onChange={(value) => {
+          setFilters((prev) => ({ ...prev, [select.key]: value }));
+        }}
+      />
+    </div>
+  );
+
+  const renderTextFilter = (field: TextFilter) => (
+    <TextField
+      key={field.key}
+      label={field.label}
+      type={field.type}
+      {...(field.type === 'number' ? { min: 0, step: 1 } : {})}
+      value={filters[field.key]}
+      onChange={(event) => {
+        setFilters((prev) => ({ ...prev, [field.key]: event.target.value }));
+      }}
+    />
+  );
 
   return (
     <>
@@ -137,50 +210,9 @@ export const EventFilterBar = ({
           />
         </div>
 
-        {codeSelects.map((select) => (
-          /*
-           * 배치 규범 3 — 디자인 시스템 Select는 라벨을 내장하지 않는다.
-           * 라벨을 직접 붙이고 htmlFor로 잇는다. aria-label만 두면 눈으로 보이는 이름이 없다.
-           *
-           * 규범 3-2 — 이 두 칸은 **코드값**을 고른다. 선택지 목록이 트리거 폭에 갇혀 있어
-           * 최소 폭을 주지 않으면 긴 코드가 잘려 무엇을 고르는지 읽을 수 없다.
-           * 값이 짧은 번호 칸에는 붙이지 않는다.
-           */
-          <div className="field-cell wide-select" key={select.key}>
-            <label className="field-label" htmlFor={`${fieldId}-${select.key}`}>
-              {select.label}
-            </label>
-            <Select
-              id={`${fieldId}-${select.key}`}
-              value={filters[select.key]}
-              placeholder={t.filters.all}
-              /*
-               * 「전체」를 값이 빈 선택지로 둔다. 두지 않으면 한 번 고른 뒤에
-               * 조건을 해제할 방법이 선택칸 안에 없어진다.
-               */
-              options={[
-                { value: '', label: t.filters.all },
-                ...select.options.map((code) => ({ value: code, label: code })),
-              ]}
-              onChange={(value) => {
-                setFilters((prev) => ({ ...prev, [select.key]: value }));
-              }}
-            />
-          </div>
-        ))}
+        {renderCodeSelect(targetTypeSelect)}
 
-        {textFilters.map((field) => (
-          <TextField
-            key={field.key}
-            label={field.label}
-            type={field.type}
-            {...(field.type === 'number' ? { min: 0, step: 1 } : {})}
-            value={filters[field.key]}
-            onChange={(event) => {
-              setFilters((prev) => ({ ...prev, [field.key]: event.target.value }));
-            }}
-          />
-        ))}
+        {renderTextFilter(targetIdField)}
 
         {/*
          * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶고(배치 규범 2-1), 비활성 사유는 그 아래에 둔다.
@@ -198,9 +230,20 @@ export const EventFilterBar = ({
             >
               {messages.common.search}
             </Button>
-            <Button variant="outlined" onClick={onReset}>
-              {messages.common.reset}
-            </Button>
+            {isChanged && (
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  /* 치던 값도 함께 비운다 — 걸린 조건이 이미 처음 값이면 주소가 그대로라 편집 칸이 따라 돌아오지 않는다. */
+                  setPeriod(defaultPeriod(new Date()));
+                  setFilters(EMPTY_FILTERS);
+                  onReset();
+                }}
+              >
+                {messages.common.reset}
+              </Button>
+            )}
+            <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
           </div>
           {searchReason !== null && (
             <span id={reasonId} className="field-note">
@@ -210,25 +253,18 @@ export const EventFilterBar = ({
         </div>
       </div>
 
+      {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+      <div id={more.id} hidden={!more.isOpen}>
+        <div className="filter-bar">
+          {renderCodeSelect(eventTypeSelect)}
+          {foldedTextFilters.map(renderTextFilter)}
+        </div>
+      </div>
+
+      <HiddenFilterChips open={more.isOpen} chips={hiddenChips} onRemove={onRemoveFilter} />
+
       {/* 선택지가 어디서 왔고 무엇이 빠져 있는지 밝힌다 — 없으면 값이 사라진 것으로 읽힌다. */}
       <p className="field-note">{t.filters.optionsNote}</p>
-
-      {chips.length > 0 && (
-        <div className="filter-bar">
-          {chips.map((chip) => (
-            <Chip
-              key={chip.key}
-              variant="status"
-              removeLabel={chip.removeLabel}
-              onRemove={() => {
-                onRemoveFilter(chip.key);
-              }}
-            >
-              {chip.label}
-            </Chip>
-          ))}
-        </div>
-      )}
     </>
   );
 };

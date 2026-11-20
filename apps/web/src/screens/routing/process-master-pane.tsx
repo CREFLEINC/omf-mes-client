@@ -19,6 +19,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
+import { hasChangedFilters } from '../../patterns/filter-more';
 import {
   SaveErrorBanner,
   codeLockMessage,
@@ -527,6 +528,12 @@ const ProcessFilterBar = ({
 
   useEffect(() => setDraft(filters.q), [filters.q]);
   useEffect(() => setTypeDraft(filters.processTypeCode), [filters.processTypeCode]);
+  /* 「초기화」는 바뀐 것이 있을 때만 보인다(C-6) — 초기화가 사용 여부 칩도 되돌리므로 함께 견준다. */
+  const isChanged = hasChangedFilters(
+    DEFAULT_FILTERS,
+    { ...filters, q: draft, processTypeCode: typeDraft },
+    filters,
+  );
 
   return (
     <div className="filter-bar routing-process-filter">
@@ -596,9 +603,18 @@ const ProcessFilterBar = ({
         >
           {messages.common.search}
         </Button>
-        <Button variant="outlined" onClick={() => onApplyFilters(DEFAULT_FILTERS)}>
-          {messages.common.reset}
-        </Button>
+        {isChanged && (
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setDraft(DEFAULT_FILTERS.q);
+              setTypeDraft(DEFAULT_FILTERS.processTypeCode);
+              onApplyFilters(DEFAULT_FILTERS);
+            }}
+          >
+            {messages.common.reset}
+          </Button>
+        )}
         <span className="inspection-standard-filter-divider" aria-hidden />
         <Button onClick={onAdd}>{t.actions.addProcess}</Button>
       </div>

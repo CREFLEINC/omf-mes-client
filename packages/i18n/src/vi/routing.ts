@@ -104,8 +104,6 @@ export const routing: Translated<typeof ko.routing> = {
     searchLabel: 'Tìm mặt hàng',
     all: 'Tất cả',
     processSearchLabel: 'Tìm công đoạn',
-    chipRemoveKeyword: 'Bỏ điều kiện từ khóa',
-    chipKeyword: (value: string): string => `Từ khóa: ${value}`,
   },
   loading: {
     items: 'Đang tải danh sách mặt hàng',

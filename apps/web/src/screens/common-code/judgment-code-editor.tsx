@@ -20,6 +20,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
 import { fetchAllPages } from '../../patterns/fetch-all-pages';
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { PageNav, type PageSize } from '../../patterns/page-nav';
@@ -192,6 +193,12 @@ export const JudgmentCodeEditor = ({
   useEffect(() => {
     setDraftTypeCode(typeCode);
   }, [typeCode]);
+  /* 「초기화」는 바뀐 것이 있을 때만 보인다(C-6). 사용 여부 칩은 초기화가 건드리지 않아 견주지 않는다. */
+  const isFilterChanged = hasChangedFilters(
+    { keyword: '', typeCode: '' },
+    { keyword: draftKeyword, typeCode: draftTypeCode },
+    { keyword, typeCode },
+  );
   const typeFieldId = useId();
   const keywordFieldId = useId();
 
@@ -760,17 +767,19 @@ export const JudgmentCodeEditor = ({
             >
               {messages.common.search}
             </Button>
-            <Button
-              variant="outlined"
-              onClick={() => {
-                resetEditing();
-                setDraftKeyword('');
-                setDraftTypeCode('');
-                onFiltersChange({ keyword: '', typeCode: '' });
-              }}
-            >
-              {messages.common.reset}
-            </Button>
+            {isFilterChanged && (
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  resetEditing();
+                  setDraftKeyword('');
+                  setDraftTypeCode('');
+                  onFiltersChange({ keyword: '', typeCode: '' });
+                }}
+              >
+                {messages.common.reset}
+              </Button>
+            )}
             <span className="inspection-standard-filter-divider" aria-hidden />
             <Button
               leadingIcon={<Icon name="add" size={18} />}

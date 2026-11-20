@@ -10,6 +10,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { hasAnyPartnerFilter } from './filters';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
@@ -180,6 +181,9 @@ export const PartnerListPane = ({
     );
   };
 
+  /* 「초기화」는 바뀐 것이 있을 때만 보인다(C-6). */
+  const isChanged = hasChangedFilters(EMPTY_PARTNER_FILTERS, draft, appliedFilters);
+
   return (
     <section className="pane" aria-label={t.panes.partner}>
       {/* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
@@ -208,9 +212,17 @@ export const PartnerListPane = ({
         {/* 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1). */}
         <div className="filter-actions field-cell-unlabeled">
           <Button onClick={() => onApplyFilters(draft)}>{messages.common.search}</Button>
-          <Button variant="outlined" onClick={() => onApplyFilters(EMPTY_PARTNER_FILTERS)}>
-            {messages.common.reset}
-          </Button>
+          {isChanged && (
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setDraft(EMPTY_PARTNER_FILTERS);
+                onApplyFilters(EMPTY_PARTNER_FILTERS);
+              }}
+            >
+              {messages.common.reset}
+            </Button>
+          )}
         </div>
       </div>
 
