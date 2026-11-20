@@ -133,6 +133,13 @@ export const homeAreas: HomeArea[] = [
         icon: 'inventory',
         description: t.screens.productPicking,
       },
+      /* M-04-05 LOT 분리 확인(피처 013) — POP 에서 나눈 두 라벨을 스캔해 확인한다. 남은 작업 수는 두지 않는다. */
+      {
+        to: '/product-lot-split-confirm',
+        label: messages.productLotSplitConfirm.title,
+        icon: 'call_split',
+        description: t.screens.productLotSplitConfirm,
+      },
     ],
   },
 ];

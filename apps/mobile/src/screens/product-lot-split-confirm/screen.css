@@ -1,0 +1,106 @@
+/* M-04-05 LOT 분리 확인 — 시안 M0405. */
+
+.split-confirm {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.split-confirm__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.split-confirm__body > * {
+  flex: none;
+}
+
+.split-confirm p {
+  margin: 0;
+}
+
+.split-confirm__guide {
+  color: var(--on-surface-variant);
+}
+
+.split-confirm__status:empty {
+  display: none;
+}
+
+.split-confirm__pair {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.split-confirm__pair-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-container-low);
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+
+.split-confirm__slots {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.split-confirm__slot {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.split-confirm__slot[data-done='true'] {
+  background: var(--semantic-success-container);
+}
+
+.split-confirm__mark {
+  display: inline-flex;
+  color: var(--on-surface-muted);
+}
+
+.split-confirm__slot[data-done='true'] .split-confirm__mark {
+  color: var(--semantic-success);
+}
+
+.split-confirm__lot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  min-width: 0;
+}
+
+.split-confirm__chip {
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+
+.split-confirm__slot[data-done='true'] .split-confirm__chip {
+  color: var(--semantic-success-text);
+}
+
+.split-confirm__no {
+  flex-basis: 100%;
+  font: var(--type-body-sm);
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.split-confirm__qty {
+  font: var(--type-title-sm);
+  white-space: nowrap;
+}

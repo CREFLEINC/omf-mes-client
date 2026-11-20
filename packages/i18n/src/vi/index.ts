@@ -103,6 +103,7 @@ import { materialDefect } from './material-defect';
 import { popOqcInspection } from './pop-oqc-inspection';
 import { popShipmentComplete } from './pop-shipment-complete';
 import { productLotSplit } from './product-lot-split';
+import { productLotSplitConfirm } from './product-lot-split-confirm';
 import { popMaterialLotLabel } from './pop-material-lot-label';
 import { popChrome } from './pop-chrome';
 import { popUniform } from './pop-uniform';
@@ -273,6 +274,7 @@ export const vi: Translated<Messages> = {
   popOqcInspection,
   popShipmentComplete,
   productLotSplit,
+  productLotSplitConfirm,
   popMaterialLotLabel,
   popChrome,
   popUniform,

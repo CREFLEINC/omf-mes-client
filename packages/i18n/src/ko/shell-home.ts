@@ -45,6 +45,7 @@ export const shellHome = {
     equipmentFailure: '고장 증상과 사진 보고',
     productReceipt: '완성 제품을 창고에 입고 · 적치',
     productPicking: '출하 지시대로 제품 꺼내기',
+    productLotSplitConfirm: 'POP 에서 나눈 두 라벨 스캔해 확인',
     packingRepack: '포장을 나누거나 합치기',
   },
   /** 이 사번이 많이 들어간 작업. 사번마다 따로 센다. */
