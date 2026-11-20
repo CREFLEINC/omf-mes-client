@@ -464,6 +464,9 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
     expect(within(dialog).getByText(t.import.partialWarning)).toBeInTheDocument();
     expect(within(dialog).getByText(t.import.guideRequiredColumns)).toBeInTheDocument();
     expect(within(dialog).getByLabelText(t.import.fileLabel)).toHaveAttribute('accept', '.xlsx');
+    // 받는 형식은 칸 이름 옆 ⓘ 의 설명으로 둔다 — 늘 펼친 글이 아니다.
+    expect(within(dialog).getByRole('button', { name: t.import.fileHint })).toBeInTheDocument();
+    expect(within(dialog).queryByText(t.import.fileHint)).not.toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: t.import.submit })).toBeDisabled();
   });
 
@@ -3863,6 +3866,11 @@ describe('InspectionStandardScreen — OA 공장 계정의 PQC(#255)', () => {
 
     const form = createForm();
     expect(within(form).getByText(sheetT.editor.layout)).toBeInTheDocument();
+    // 양식 안내는 칸 이름 옆 ⓘ 의 설명이다 — 늘 펼친 글로 두지 않는다.
+    expect(
+      within(form).getByRole('button', { name: sheetT.editor.layoutNote }),
+    ).toBeInTheDocument();
+    expect(within(form).queryByText(sheetT.editor.layoutNote)).not.toBeInTheDocument();
     expect(within(form).getByText(sheetT.editor.businessUnit)).toBeInTheDocument();
     expect(within(form).getByText(t.fields.inspectionPlanCode)).toBeInTheDocument();
     expect(within(form).queryByText(t.fields.defaultSkip)).not.toBeInTheDocument();

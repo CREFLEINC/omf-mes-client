@@ -11,6 +11,7 @@ import {
   type RefObject,
 } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import {
   ALL_LINES,
@@ -226,14 +227,25 @@ const detailSubOf = (item: EquipmentItemView): string => {
 const DetailSection = ({
   title,
   sub,
+  info,
   children,
 }: {
   title: string;
   sub?: string;
+  /** 수를 바르게 읽으려면 알아 둘 규칙 — 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */
+  info?: string;
   children: ReactNode;
 }) => (
   <section aria-label={title} className="dash-detail-section">
-    <h3 className="dash-detail-title">{title}</h3>
+    {/* ⓘ 는 제목 밖에 둔다 — 문장이 제목의 이름에 섞이면 안 된다. */}
+    {info === undefined ? (
+      <h3 className="dash-detail-title">{title}</h3>
+    ) : (
+      <div className="info-label">
+        <h3 className="dash-detail-title">{title}</h3>
+        <InfoTip text={info} />
+      </div>
+    )}
     {sub !== undefined && <p className="dash-detail-sub dash-detail-lead">{sub}</p>}
     {children}
   </section>
@@ -460,7 +472,8 @@ const EquipmentDetailDialog = ({ item, onClose }: EquipmentDetailDialogProps) =>
                   />
                 )}
               </DetailSection>
-              <DetailSection title={t.groupDefects}>
+              {/* 설비가 비어 있는 실적이 빠진다는 사실은 제목 옆 ⓘ 로(관리웹 정리 시안 A). */}
+              <DetailSection title={t.groupDefects} info={t.unassignedNote}>
                 {extra === undefined ? (
                   pending
                 ) : (
@@ -483,7 +496,6 @@ const EquipmentDetailDialog = ({ item, onClose }: EquipmentDetailDialogProps) =>
                         {t.untypedQty(formatFigure(extra.untypedNgQty))}
                       </p>
                     )}
-                    <p className="dash-detail-none">{t.unassignedNote}</p>
                   </>
                 )}
               </DetailSection>

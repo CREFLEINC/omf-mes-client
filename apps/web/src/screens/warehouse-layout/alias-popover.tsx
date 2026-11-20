@@ -2,6 +2,7 @@ import { Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { useAliasSave } from '../warehouse-location/use-alias-save';
 import type { LocationView } from './types';
 
@@ -60,7 +61,11 @@ export const AliasPopover = ({ location, onClose, onSaved }: AliasPopoverProps) 
 
   return (
     <div className="layout-alias-popover" role="dialog" aria-labelledby={titleId}>
-      <strong id={titleId}>{t.aliasPopover.title(location.locationCode)}</strong>
+      {/* 「바로 저장 · 배치도 저장과 따로」는 제목 옆 ⓘ 로 — 칸 아래 설명문을 두지 않는다(관리웹 정리 시안 A). */}
+      <div className="layout-alias-popover-head">
+        <strong id={titleId}>{t.aliasPopover.title(location.locationCode)}</strong>
+        <InfoTip text={t.aliasPopover.note} />
+      </div>
       <TextField
         size="sm"
         fullWidth
@@ -83,9 +88,7 @@ export const AliasPopover = ({ location, onClose, onSaved }: AliasPopoverProps) 
           }
         }}
       />
-      {message === null ? (
-        <span className="field-note">{t.aliasPopover.note}</span>
-      ) : (
+      {message !== null && (
         <span role="alert" className="field-error">
           {message}
         </span>

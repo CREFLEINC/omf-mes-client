@@ -43,12 +43,14 @@ const postedReceipt = (): Request | undefined =>
   );
 
 describe('ReturnReceiptScreen — 원 출하 찾기', () => {
-  it('두 구획과 상시 안내가 서고 기간을 실어 출하를 부른다', async () => {
+  it('두 구획이 서고 기간을 실어 출하를 부른다', async () => {
     renderScreen();
 
     expect(await screen.findByRole('heading', { name: t.panes.search })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: t.panes.receipt })).toBeInTheDocument();
-    expect(screen.getByText(t.scopeNotice)).toBeInTheDocument();
+    /* 상단 설명 띠는 걷었다 — 기간 규칙은 라벨 옆 ⓘ 로 읽힌다(관리웹 정리 시안 A). */
+    expect(screen.queryByText(/여기서 입고합니다/)).toBeNull();
+    expect(screen.getByRole('button', { name: t.search.periodRequired })).toBeInTheDocument();
     expect(
       await screen.findByRole('button', { name: t.actions.selectRow('SH-TEST-0455') }),
     ).toBeInTheDocument();
@@ -122,9 +124,20 @@ describe('ReturnReceiptScreen — 원 출하가 있는 반품', () => {
     expect(linesGroup().getByLabelText(`LOT-TEST-0311 ${t.fields.returnQty}`)).toHaveValue('');
     expect(linesGroup().getByLabelText(`LOT-TEST-0305 ${t.fields.returnQty}`)).toHaveValue('');
     expect(linesGroup().getByText('180')).toBeInTheDocument();
-    /* 원천은 묻지 않는다 — 라디오가 없다. */
+    /* 원천은 묻지 않는다 — 라디오도, 고정됐다는 문장도 없다(관리웹 정리 시안 A). */
     expect(receiptPane().queryByRole('radio')).not.toBeInTheDocument();
-    expect(receiptPane().getByText(t.sourceFixed)).toBeInTheDocument();
+    expect(receiptPane().queryByText(/원천은 고객 클레임/)).toBeNull();
+    /* 칸 아래 늘 서던 규칙은 라벨 · 제목 옆 ⓘ 로 읽힌다. */
+    for (const text of [
+      t.form.reasonHelp,
+      t.form.remarksHelp,
+      t.form.warehouseHelp,
+      t.form.qualityFixedNote,
+      t.lines.partialNote,
+    ]) {
+      expect(receiptPane().getByRole('button', { name: text })).toBeInTheDocument();
+      expect(receiptPane().queryByText(text)).toBeNull();
+    }
     /* 수량 전에는 사유와 함께 잠긴다. */
     expect(receiptPane().getByRole('button', { name: t.actions.submit })).toBeDisabled();
     expect(receiptPane().getByText(t.lock.noQty)).toBeInTheDocument();
@@ -236,6 +249,9 @@ describe('ReturnReceiptScreen — 원 출하 없이 등록', () => {
 
     await user.click(screen.getByRole('button', { name: t.actions.withoutShipment }));
     expect(await screen.findByText(t.target.direct)).toBeInTheDocument();
+    /* 반품 수량에 상한이 없다는 사실은 머리 옆 ⓘ 로 읽힌다(관리웹 정리 시안 A). */
+    expect(receiptPane().getByRole('button', { name: t.lot.help })).toBeInTheDocument();
+    expect(receiptPane().queryByText(t.lot.help)).toBeNull();
 
     await user.type(receiptPane().getByLabelText(t.lot.label), 'LOT-TEST-0000');
     await user.click(receiptPane().getByRole('button', { name: t.actions.findLot }));

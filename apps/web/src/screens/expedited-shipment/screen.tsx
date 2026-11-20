@@ -167,11 +167,10 @@ export const ExpeditedShipmentScreen = ({
           />
         }
       />
-      {/* ⚠ 화면의 «성격»을 머리에 상시 붙인다 — 오류가 아니라 이 화면이 무엇인지에 대한 말이다. */}
-      <div className="banner-slot">
-        <AlertBanner variant="warning">{t.headerNotice}</AlertBanner>
-      </div>
-
+      {/*
+       * 화면 머리의 「정상 흐름을 건너뜁니다」 띠는 걷었다 — 화면 설명이고, 건너뛰는 것(창고 경유·피킹·포장)은
+       * 버튼 바로 위 「확정하면 일어나는 일」이 말한다(관리웹 정리 시안 A).
+       */}
       <LotPane
         lots={lots}
         truncated={lotQuery.data?.truncated ?? false}

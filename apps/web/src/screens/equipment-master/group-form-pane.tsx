@@ -37,8 +37,8 @@ export interface GroupFormPaneProps {
   locationNote?: string;
   /** 담당 부서 선택지 — 「지정 없음」이 첫 줄이다. */
   departmentOptions: CodeOption[];
-  /** 담당 부서 칸의 안내. 목록이 잘렸거나 실패했으면 그 사실이 도움말을 대신한다 */
-  departmentNote: string;
+  /** 담당 부서 선택지가 잘렸거나 실패했을 때의 안내. 알림 규칙은 라벨 옆 ⓘ 가 늘 갖는다 */
+  departmentNote?: string;
   isActive: boolean;
   isDirty: boolean;
   isSaving: boolean;
@@ -124,6 +124,8 @@ export const GroupFormPane = ({
           value={values.departmentId}
           onChange={(value) => onChange({ departmentId: value })}
           note={departmentNote}
+          /* 알림이 이 부서로 간다는 규칙은 ⓘ 로 — 칸 아래에 늘 펼치지 않는다(관리웹 정리 시안 A). */
+          info={t.form.departmentHelp}
           error={fieldErrors.departmentId}
         />
 
@@ -134,9 +136,9 @@ export const GroupFormPane = ({
           onChange={(value) => onChange({ parentGroupId: value })}
           /*
            * 고를 수 없는 값이 있다는 사실을 밝힌다. 밝히지 않으면 사용자는 찾는 그룹이
-           * 왜 목록에 없는지 알 수 없고, 값이 사라진 줄 안다.
+           * 왜 목록에 없는지 알 수 없고, 값이 사라진 줄 안다 — 라벨 옆 ⓘ 로(관리웹 정리 시안 A).
            */
-          note={mode === 'edit' ? t.actionReasons.parentExcludesSelfAndDescendants : undefined}
+          info={mode === 'edit' ? t.actionReasons.parentExcludesSelfAndDescendants : undefined}
           error={fieldErrors.parentGroupId}
         />
 

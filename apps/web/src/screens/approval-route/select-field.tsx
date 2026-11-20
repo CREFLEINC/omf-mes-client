@@ -26,6 +26,8 @@ export interface SelectFieldProps {
   disabledReason?: string;
   /** 값 목록이 확정되지 않았다는 안내 등. 오류가 있으면 오류가 우선한다. */
   note?: string;
+  /** 라벨 옆 ⓘ 에 띄울 규칙(관리웹 정리 시안 A). */
+  info?: string;
   error?: string;
   placeholder?: string;
   /**
@@ -55,6 +57,7 @@ export const SelectField = ({
   disabled = false,
   disabledReason,
   note,
+  info,
   error,
   placeholder,
   wide = false,
@@ -72,7 +75,7 @@ export const SelectField = ({
 
   return (
     <div className={wide ? 'field-cell wide-select' : 'field-cell'}>
-      <FieldLabel htmlFor={id} label={label} required={required} />
+      <FieldLabel htmlFor={id} label={label} required={required} info={info} />
       <Select
         id={id}
         options={options}

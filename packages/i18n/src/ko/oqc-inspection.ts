@@ -266,12 +266,6 @@ export const oqcInspection = {
     reinspect: '재검사 회차 추가',
     reinspectCancel: '재검사 그만두기',
     reinspectNote: '수량과 판정을 넣고 저장하면 새 회차가 만들어집니다. 앞 회차는 그대로 남습니다.',
-    /**
-     * ⛔ **사유를 지어내지 않는다.** 고를 값 목록이 아직 정해지지 않았다. 칸을 감추지 않고
-     * 왜 없는지 밝힌다.
-     */
-    reinspectReasonPending:
-      '재검사 사유는 아직 고를 수 없습니다. 사유 목록이 정해지면 이 자리에 추가됩니다.',
   },
 
   /**
@@ -522,7 +516,7 @@ export const oqcInspection = {
     targetPicked: (target: string, picked: string, uom: string): string =>
       `${target} / ${picked} ${uom}`,
     over: (qty: string): string => `초과 ${qty}`,
-    note: '판정은 POP 「출하 완료」(P-04-07) 때 확정됩니다. 확정 버튼은 없습니다. 그 전까지 결과를 더하거나 고칠 수 있고, LOT 마다 그 LOT 을 매칭한 마지막 결과가 판정입니다.',
+    note: '판정은 POP 「출하 완료」 때 확정됩니다. 확정 버튼은 없습니다. 그 전까지 결과를 더하거나 고칠 수 있고, LOT 마다 그 LOT 을 매칭한 마지막 결과가 판정입니다.',
     skipped: '이 의뢰는 OQC 생략으로 닫혔습니다.',
     skippedMore:
       '피킹 LOT 은 모두 통과로 봅니다. 생략 뒤 피킹되는 LOT(교체 포함)도 생략으로 봅니다.',

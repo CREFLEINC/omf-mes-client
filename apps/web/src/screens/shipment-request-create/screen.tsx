@@ -152,7 +152,9 @@ export const ShipmentRequestCreateScreen = () => {
     null,
   );
 
-  const items = useItemNames(lines.map((line) => (line.itemId === '' ? null : Number(line.itemId))));
+  const items = useItemNames(
+    lines.map((line) => (line.itemId === '' ? null : Number(line.itemId))),
+  );
 
   const lineItemIds = lines.map((line) => (line.itemId === '' ? null : Number(line.itemId)));
   const availableQty = useAvailableQty(lineItemIds);
@@ -348,8 +350,6 @@ export const ShipmentRequestCreateScreen = () => {
     setSearchParams(toSearchParams(filters, page, { kind: 'standalone', mode: 'standalone' }));
   };
 
-  const importReasonId = useId();
-
   const rightColumn = (): ReactNode => {
     if (target.kind === 'none') {
       return (
@@ -431,20 +431,6 @@ export const ShipmentRequestCreateScreen = () => {
             items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
             aria-label={messages.common.shell.breadcrumb}
           />
-        }
-        actions={
-          <div className="field-cell">
-            {/*
-             * 지시서 파일 업로드 형식이 아직 확정되지 않았다(계획서 미결 항목 · 배치 규범 4).
-             * 사유를 감추지 않고 항상 보이는 DOM 텍스트로 렌더해 `aria-describedby`로 잇는다.
-             */}
-            <Button variant="outlined" disabled aria-describedby={importReasonId}>
-              {t.actions.importOrderFile}
-            </Button>
-            <span id={importReasonId} className="field-note">
-              {t.actionReasons.importFileNotSupported}
-            </span>
-          </div>
         }
       />
 

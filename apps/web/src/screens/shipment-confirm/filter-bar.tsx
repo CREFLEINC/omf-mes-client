@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
 import { hasChangedFilters } from '../../patterns/filter-more';
+import { InfoLabel } from '../../patterns/info-tip';
 
 import { isUsable, type ConfirmFilters, type ErpFilter } from './filters';
 import { ERP_SEND_STATUSES } from './types';
@@ -69,22 +70,26 @@ export const FilterBar = ({
   return (
     <div className="filter-bar ship-history-filter">
       <div className="field-cell">
-        <label className="field-label" htmlFor={periodId}>
-          {t.filter.period}
-        </label>
+        {/* 기간을 비울 수 없다는 규칙은 라벨 옆 ⓘ 로, 칸 아래에는 막혔을 때만 이유를 적는다(관리웹 정리 시안 A). */}
+        <InfoLabel htmlFor={periodId} label={t.filter.period} info={t.filter.periodRequired} />
         <DatePicker
           id={periodId}
           mode="range"
           value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
           placeholder={messages.common.selectDate}
-          aria-describedby={periodNoteId}
+          aria-describedby={isUsable(draft) ? undefined : periodNoteId}
           onChange={([nextFrom, nextTo]) =>
             setDraft((current) => ({ ...current, from: nextFrom, to: nextTo }))
           }
         />
-        <span id={periodNoteId} className="field-note">
-          {isUsable(draft) ? t.filter.periodRequired : t.filter.periodReversed}
-        </span>
+        {!isUsable(draft) && (
+          <span id={periodNoteId} className="field-note">
+            {/* 비었으면 비울 수 없다고, 뒤바뀌었으면 바꾸라고 — 같은 자리라도 할 일이 다르다. */}
+            {draft.from === '' || draft.to === ''
+              ? t.filter.periodRequired
+              : t.filter.periodReversed}
+          </span>
+        )}
       </div>
 
       <div className="field-cell">

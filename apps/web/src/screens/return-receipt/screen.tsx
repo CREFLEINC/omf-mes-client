@@ -1,4 +1,4 @@
-import { AlertBanner, Breadcrumb, PageHeader, useToast } from '@crefle/web-ui';
+import { Breadcrumb, PageHeader, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
@@ -233,10 +233,10 @@ export const ReturnReceiptScreen = () => {
           />
         }
       />
-      {/* 확정된 출하의 사후 경로가 이 화면 하나다 — 그 사실과 다음 화면을 상단에 상시 둔다(§5-1). */}
-      <div className="banner-slot">
-        <AlertBanner variant="info">{t.scopeNotice}</AlertBanner>
-      </div>
+      {/*
+       * 상단 설명 띠(무엇을 여기서 하는지 · 보류로 들어온다 · 판정은 판정 의뢰에서)는 걷었다 — 화면 설명이고,
+       * 보류와 다음 화면은 등록 단추 위 「이 등록이 하는 일」이 말한다(관리웹 정리 시안 A).
+       */}
       <div className="return-receipt-workspace">
         <section
           className="pane return-receipt-pane return-receipt-search-pane"

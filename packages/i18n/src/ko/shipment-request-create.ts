@@ -48,7 +48,6 @@ export const shipmentRequestCreate = {
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
     startStandalone: '지시서 없이 단독 생성',
-    importOrderFile: '지시서 가져오기',
     addLine: '라인 추가',
     removeLine: (rowIndex: number): string => `${String(rowIndex)}행 삭제`,
     submit: '출하작업지시 편성',
@@ -108,13 +107,10 @@ export const shipmentRequestCreate = {
      */
     lineIncomplete: '라인의 품목·단위·요청 수량을 채우세요.',
     headerIncomplete: '필수 항목을 입력하세요.',
-    importFileNotSupported:
-      '지시서 가져오기는 파일 형식이 아직 확정되지 않아 사용할 수 없습니다. 형식이 정해지면 이 버튼을 쓸 수 있습니다.',
   },
   notes: {
     fromOrderLocked: '지시서 경유 편성이라 고객·납품처와 라인 품목·수량은 고칠 수 없습니다.',
     requestedQtyFixed: '요청 수량은 지시서 잔여 수량으로 자동 채워지며 고칠 수 없습니다.',
-    lineNoAssignedByServer: '줄번호는 서버가 부여합니다.',
     erpUnmatched: 'ERP 지시서 번호는 단독 생성분에는 없습니다.',
     networkUnconfirmed:
       '응답을 받지 못했습니다. 서버에 실제로 반영됐는지 다시 확인한 뒤 재시도하세요.',

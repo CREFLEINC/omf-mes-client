@@ -3,6 +3,7 @@ import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { serverReasonOf } from '../../patterns/server-reason';
 import { FieldLabel } from './field-label';
 
@@ -216,7 +217,8 @@ export const ImportDialog = ({
         <div className="form-grid-full inspection-standard-import-files">
           <div className="inspection-standard-import-files-label">
             <FieldLabel htmlFor={inputId} label={t.fileLabel} />
-            <span className="field-note">{t.fileHint}</span>
+            {/* 받는 형식은 칸 이름 옆 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
+            <InfoTip text={t.fileHint} />
           </div>
           <input
             ref={inputRef}

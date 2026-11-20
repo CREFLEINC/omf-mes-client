@@ -1,8 +1,5 @@
 export const lotStatusTransition = {
   title: 'Lot Status 판정·전이 처리',
-  /** 제목 아래 한 줄 — 이 화면에서 하는 일의 순서(찾기 → 확인 → 보류 등록·해제). */
-  description:
-    'LOT을 찾아 선택하면 현재 품질 상태를 확인하고, 보류 등록·해제로 상태를 바꿀 수 있습니다.',
   breadcrumbRoot: '품질 관리',
   historyLink: 'Lot Status 변경 이력 보기',
   /** 등록·해제 사유는 공통코드 선택지다(§5-4 · G-31). 없으면 지어내지 않고 잠근다(G-2). */
@@ -114,8 +111,7 @@ export const lotStatusTransition = {
     success: 'LOT 보류를 등록했습니다.',
     quantityPositive: '보류량은 0보다 커야 합니다.',
     quantityUnknown: '보류 가능 수량을 확인하지 못했습니다.',
-    quantityMax: (maximum: string): string =>
-      `보류량은 보류 가능 수량 ${maximum} 이하여야 합니다.`,
+    quantityMax: (maximum: string): string => `보류량은 보류 가능 수량 ${maximum} 이하여야 합니다.`,
     /** 확인 대화상자가 미리 보여 주는 「이 전이가 무엇을 막는가」. */
     impact: {
       title: '이 전이가 하는 일',

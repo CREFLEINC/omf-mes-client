@@ -52,8 +52,6 @@ export const notice = {
     BUSINESS_UNIT: '사업부',
     EQUIPMENT_GROUP: '설비그룹',
     WORK_SHIFT: '근무조',
-    /** ⚠ 1차는 둘만 유효하다 — 나머지를 고르면 서버가 거부한다. */
-    unsupported: '1차에서는 전사와 작업지시만 쓸 수 있습니다. 나머지는 서버가 거부합니다.',
     /** ⚠ 선택칸의 이름 **뒤**에 붙는 꼬리다 — 앞 공백까지가 이 값이다. */
     unsupportedSuffix: ' (1차 미지원)',
     companyNote: '새로 만들어지는 계정도 자동으로 대상에 들어갑니다.',
@@ -106,8 +104,6 @@ export const notice = {
     workOrderLookupFailed: '작업지시 목록을 불러오지 못해 지금은 고를 수 없습니다.',
     lookupTruncated: '목록의 일부만 보입니다. 찾는 것이 없으면 담당자에게 문의하세요.',
     selectPlaceholder: '고르세요',
-    /** ⛔ 첨부 대상 유형이 미정이라 올릴 수 없다. */
-    attachmentLocked: '첨부는 아직 열지 않았습니다. 첨부를 어디에 붙일지가 정해지면 열립니다.',
   },
 
   detail: {

@@ -1384,6 +1384,13 @@ describe('Lot Status 화면 — 분할 LOT (008)', () => {
     expect(
       within(split).getByRole('button', { name: 'SAMPLE-ITEM-01|1000|260820|100330|0001' }),
     ).toBeVisible();
+    /* 분할 LOT 의 뜻은 원래 LOT 칸 이름 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */
+    expect(
+      within(split).getByRole('button', { name: '부분 출고로 원래 LOT 에서 떼어 낸 LOT 입니다.' }),
+    ).toBeInTheDocument();
+    expect(
+      within(split).queryByText('부분 출고로 원래 LOT 에서 떼어 낸 LOT 입니다.'),
+    ).not.toBeInTheDocument();
     expect(within(split).getByText('분할 수량')).toBeVisible();
     expect(within(split).getByText('2026-11-17 08:40')).toBeVisible();
     expect(within(split).getByText('GI-SYN-0003 · 라인 1')).toBeVisible();

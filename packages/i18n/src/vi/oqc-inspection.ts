@@ -158,8 +158,6 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     reinspectCancel: 'Thôi không kiểm tra lại',
     reinspectNote:
       'Nhập số lượng và đánh giá rồi lưu thì một lượt mới được tạo. Lượt trước vẫn được giữ nguyên.',
-    reinspectReasonPending:
-      'Lý do kiểm tra lại vẫn chưa chọn được. Khi danh sách lý do được quyết định thì sẽ thêm vào chỗ này.',
   },
 
   transition: {
@@ -354,7 +352,7 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     targetPicked: (target: string, picked: string, uom: string): string =>
       `${target} / ${picked} ${uom}`,
     over: (qty: string): string => `Vượt ${qty}`,
-    note: 'Phán định được xác nhận khi「Hoàn tất xuất hàng」(P-04-07) trên POP. Không có nút xác nhận. Trước đó vẫn có thể thêm hoặc sửa kết quả, và kết quả cuối cùng liên kết với mỗi LOT là phán định của LOT đó.',
+    note: 'Phán định được xác nhận khi「Hoàn tất xuất hàng」 trên POP. Không có nút xác nhận. Trước đó vẫn có thể thêm hoặc sửa kết quả, và kết quả cuối cùng liên kết với mỗi LOT là phán định của LOT đó.',
     skipped: 'Yêu cầu này đã đóng do bỏ qua OQC.',
     skippedMore:
       'Mọi LOT đã lấy được coi là thông qua, kể cả LOT lấy sau khi bỏ qua (bao gồm LOT thay thế).',

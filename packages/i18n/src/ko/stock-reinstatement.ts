@@ -1,6 +1,7 @@
 export const stockReinstatement = {
   title: '재고 재등록',
   breadcrumbRoot: '영업 / 출하 관리',
+  /** 「재등록 입력」 제목 옆 ⓘ — 재등록이 LOT 을 새로 만들지 않는다는 규칙(관리웹 정리 시안 A). */
   scopeNotice: '재등록해도 새 LOT을 만들지 않습니다. 원 LOT과 반품 이력이 그대로 이어집니다.',
   panes: {
     candidates: '재등록 대기',

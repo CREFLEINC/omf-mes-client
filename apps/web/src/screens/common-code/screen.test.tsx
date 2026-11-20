@@ -455,15 +455,11 @@ describe('CommonCodeScreen — 코드그룹 목록 조회', () => {
   });
 
   /* C12 — 임시 목록 안내가 화면에 실제로 보인다(결정 6). */
-  it('코드그룹 목록 위에 임시 목록 안내가 보인다', async () => {
+  it('코드그룹 목록 위에 「임시 목록」 안내를 두지 않는다', async () => {
     renderScreen([codeGroupListRoute()]);
     await screen.findByRole('button', { name: 'SYN-GRP-01' });
 
-    expect(
-      screen.getByText(
-        '임시 목록입니다. 코드 체계가 확정되면 여기 보이는 코드그룹의 구성이 바뀔 수 있습니다.',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/임시 목록/)).toBeNull();
   });
 });
 

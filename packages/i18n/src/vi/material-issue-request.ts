@@ -119,9 +119,6 @@ export const materialIssueRequest: Translated<typeof ko.materialIssueRequest> = 
     noLinesDescription: 'Hãy tải lượng cần theo BOM hoặc tự thêm mặt hàng.',
   },
   notes: {
-    lineNoAssignedByServer: 'Số dòng do máy chủ cấp.',
-    shortageColumnsReadOnly:
-      'BOM cần · đã xuất · thiếu là giá trị hệ thống đưa ra nên không sửa được.',
     warehouseAutoFilled: 'Đã điền theo vị trí bán thành phẩm mặc định của W/O. Cần thì đổi được.',
   },
   result: {

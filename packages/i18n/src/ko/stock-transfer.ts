@@ -79,9 +79,7 @@ export const stockTransfer = {
      * 한 이름으로 부르면 반출 단계에서 벌써 도착한 것으로 읽힌다.
      */
     legend: '보낼 곳',
-    arrivedLegend: '도착 스캔',
     warehouseLabel: '보낼 창고',
-    arrivedWarehouseLabel: '도착 창고',
     warehousePlaceholder: '창고를 고르세요',
     scanLabel: '보낼 위치 스캔',
     arrivedScanLabel: '도착 위치 스캔',
@@ -153,6 +151,14 @@ export const stockTransfer = {
   /** 보낼 곳을 정하면 맨 위 한 줄로 접는다. */
   destination: {
     change: '바꾸기',
+  },
+  /**
+   * 도착(이어서 하기) — 무엇을 옮기는 중인지 보이고 놓은 자리만 찍는다(사용자 지시 2026-11-20, 반출 화면과 같은 모양).
+   * LOT 을 하나씩 다시 찍지는 않는다 — 계약상 도착은 위치 하나와 반출한 라인 전체다.
+   */
+  arrive: {
+    route: (from: string, to: string) => `${from} → ${to}`,
+    lots: '도착할 LOT',
   },
   /** 바닥 바 — 담은 LOT 수와 합계. */
   summary: {

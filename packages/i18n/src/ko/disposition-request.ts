@@ -7,8 +7,6 @@
 export const dispositionRequest = {
   title: '재작업/폐기 판정 의뢰',
   breadcrumbRoot: '영업 / 출하 관리',
-  /** 상단 상시 안내 — 이 화면에서 «하지 않는 것»을 먼저 말한다. 안 적으면 판정 버튼을 찾는다. */
-  scopeNotice: '판정은 품질 화면에서 합니다. 여기서는 부적합을 등록하고 판정을 의뢰합니다.',
   /**
    * 부적합 상태 조건을 골랐을 때의 안내 — 통보 186 · 공유계약 L-3-2 ⑷.
    *
@@ -79,7 +77,10 @@ export const dispositionRequest = {
     unknownQty: '—',
     notAvailable: '—',
   },
-  /** 상태 필터의 세 갈래(의뢰 전·판정 대기·판정 완료)는 부적합 목록에서 온다 — 대상이 아니라 부적합 단위다. */
+  /**
+   * 상태 필터의 세 갈래(의뢰 전·판정 대기·판정 완료)는 부적합 목록에서 온다 — 대상이 아니라 부적합 단위다.
+   * 상태 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A).
+   */
   stageSourceNote: '의뢰 전·판정 대기·판정 완료는 등록된 부적합 기준으로 조회합니다.',
   loading: '판정 대기 대상 불러오는 중',
   empty: {
@@ -104,8 +105,6 @@ export const dispositionRequest = {
     goFirstPage: '첫 쪽으로',
     checkOutcome: '처리 결과 확인',
     openDecision: '판정 결과 보기',
-    reworkResult: '재작업 실적 등록',
-    disposalRequest: '폐기 품의',
     reinstate: '재고 재등록',
   },
   target: {
@@ -136,8 +135,6 @@ export const dispositionRequest = {
     severityRequired: '심각도를 고르세요',
     departmentLabel: '담당 부서',
     departmentNone: '지정하지 않음',
-    /** 원천은 묻지 않는다(스펙 §5-1-1) — 서버가 입고 유형으로 정한다는 사실을 읽기 표시 옆에 둔다. */
-    sourceDerived: '원천은 서버가 입고 유형으로 정합니다. 여기서 고르지 않습니다.',
     qtyNote: (qty: string, uom: string): string =>
       `대상 수량 ${qty} ${uom} 전량을 부적합 대상으로 등록합니다.`,
     success: '부적합을 등록했습니다',
@@ -194,12 +191,6 @@ export const dispositionRequest = {
     approvalPending: '결재 진행 중',
     /** 후속 버튼의 비활성 사유 — 규범 4: 컨트롤 이름으로 시작하고 풀리는 조건을 함께 적는다. */
     followUp: {
-      reworkUnavailable:
-        '재작업 실적 등록은 현장 단말 화면에서 합니다. 이 화면에서는 열 수 없습니다.',
-      reworkNotDecided: '재작업 실적 등록은 재작업 처분이 내려지면 할 수 있습니다.',
-      disposalUnavailable:
-        '폐기 품의 화면이 아직 준비되지 않았습니다. 준비되면 이 버튼을 쓸 수 있습니다.',
-      disposalNotDecided: '폐기 품의는 폐기 처분이 내려지면 할 수 있습니다.',
       reinstateUnavailable:
         '재고 재등록 화면이 아직 준비되지 않았습니다. 준비되면 이 버튼을 쓸 수 있습니다.',
       reinstateNotDecided: '재고 재등록은 정상 처분이 내려지면 할 수 있습니다.',

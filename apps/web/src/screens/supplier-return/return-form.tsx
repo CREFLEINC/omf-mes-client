@@ -2,8 +2,8 @@ import { Button, Checkbox, DatePicker, Switch, TextField } from '@crefle/web-ui'
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import { InfoLabel, InfoTip } from '../../patterns/info-tip';
 import { codeNote, codePlaceholder, type CodeOptionSets } from './code-options';
-import { FieldLabel } from './field-label';
 import { SelectField } from './select-field';
 import type { ReturnCodeKey, ReturnDraft, SelectOption } from './types';
 import { CODE_FIELD_NAMES } from './validation';
@@ -54,6 +54,9 @@ export interface ReturnFormProps {
  * **미리 채우는 값이 없다.** 출고 일시를 지금 시각으로 채우면 사용자가 확인하지 않은 시각이
  * 되돌릴 수 없는 전표에 실리고, 어제 나간 것을 오늘 등록하는 흔한 경우에 조용히 틀린다.
  * ERP 송신만 참으로 시작한다(착수 이슈 §4가 「기본값을 켜짐으로 고정」이라 적었다).
+ *
+ * **칸 아래 설명문을 두지 않는다**(관리웹 정리 시안 A). 영업일이 출고 일자에서 나온다는 사실은
+ * 출고 일자 라벨 옆 ⓘ, 대체입고 예정이 표시로만 남는다는 사실은 체크 옆 ⓘ 로 읽힌다.
  *
  * **상태 칩을 쓰지 않는다** — 비활성 표현이 필요해지면 디자인 시스템의 갭(`StatusChip`에
  * `disabled`가 없다 · 실측)에 걸린다. 비활성은 컨트롤의 `disabled`와 사유 텍스트로만 낸다.
@@ -124,7 +127,12 @@ export const ReturnForm = ({
         {codeField('reason', t.fields.reason)}
 
         <div className="field-cell">
-          <FieldLabel htmlFor={issuedDateId} label={t.fields.issuedDate} />
+          {/* 사용자가 넣지 않은 영업일이 이 값에서 나와 전표에 실린다 — 라벨 옆 ⓘ 로 밝힌다. */}
+          <InfoLabel
+            htmlFor={issuedDateId}
+            label={t.fields.issuedDate}
+            info={t.notes.businessDateDerived}
+          />
           <DatePicker
             id={issuedDateId}
             mode="single"
@@ -165,15 +173,19 @@ export const ReturnForm = ({
         </div>
 
         <div className="check-group">
-          <Checkbox
-            checked={values.replacementExpected}
-            disabled={isLocked}
-            onChange={(event) => {
-              onChangeReplacementExpected(event.target.checked);
-            }}
-          >
-            {t.fields.replacementExpected}
-          </Checkbox>
+          {/* 체크해도 입하 예정이 생기지 않는다 — 그 사실은 체크 옆 ⓘ 로 둔다. */}
+          <span className="info-label">
+            <Checkbox
+              checked={values.replacementExpected}
+              disabled={isLocked}
+              onChange={(event) => {
+                onChangeReplacementExpected(event.target.checked);
+              }}
+            >
+              {t.fields.replacementExpected}
+            </Checkbox>
+            <InfoTip text={t.notes.replacementExpectedNote} />
+          </span>
 
           <Switch
             label={t.fields.sendToErp}
@@ -198,13 +210,6 @@ export const ReturnForm = ({
           />
         </div>
       </div>
-
-      {/* 사용자가 넣지 않은 값이 전표에 실린다 — 그 사실을 폼에서 밝힌다. */}
-      <p className="field-note">{t.notes.businessDateDerived}</p>
-
-      {/* 두 토글의 한계를 밝힌다 — 이어지는 화면이 없다는 것이 지금의 사실이다. */}
-      <p className="field-note">{t.notes.replacementExpectedNote}</p>
-      <p className="field-note">{t.notes.sendToErpNote}</p>
 
       {hasSupplierError && (
         <div className="field-cell">

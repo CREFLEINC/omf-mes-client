@@ -45,7 +45,6 @@ const renderPane = (overrides: Partial<GroupFormPaneProps> = {}) => {
         { value: '', label: t.form.departmentNone },
         { value: '7', label: 'D-PRD1 · 생산1팀' },
       ]}
-      departmentNote={t.form.departmentHelp}
       isActive
       isDirty={false}
       isSaving={false}
@@ -114,17 +113,21 @@ describe('GroupFormPane', () => {
   });
 
   /* 고를 수 없는 값이 있다는 사실을 밝히지 않으면 사용자는 값이 사라진 줄 안다. */
-  it('수정에서는 상위그룹에 제외 사유를 붙인다', () => {
+  it('수정에서는 상위그룹 라벨 옆 ⓘ 에 제외 사유를 둔다', () => {
     renderPane({ mode: 'edit' });
 
-    expect(screen.getByText(t.actionReasons.parentExcludesSelfAndDescendants)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: t.actionReasons.parentExcludesSelfAndDescendants }),
+    ).toBeInTheDocument();
   });
 
   /* 등록에는 후손이 없어 뺄 것이 없다 — 없는 제약을 말하면 안 된다. */
   it('등록에서는 제외 사유를 붙이지 않는다', () => {
     renderPane({ mode: 'create' });
 
-    expect(screen.queryByText(t.actionReasons.parentExcludesSelfAndDescendants)).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: t.actionReasons.parentExcludesSelfAndDescendants }),
+    ).toBeNull();
   });
 
   it('고친 것이 없으면 저장·취소를 누를 수 없다', () => {
@@ -236,13 +239,14 @@ describe('GroupFormPane', () => {
     expect(onChange).toHaveBeenCalledWith({ defaultWipLocationId: '301' });
   });
 
-  /* 001 W-05-12 — 알림 대상 부서. 상위 그룹에서 이어받지 않는다는 사실을 칸 곁에 밝힌다. */
-  it('담당 부서를 그룹유형 다음에 선택칸으로 두고 도움말을 붙인다', () => {
+  /* 001 W-05-12 — 알림 대상 부서. 상위 그룹에서 이어받지 않는다는 사실을 라벨 옆 ⓘ 로 밝힌다. */
+  it('담당 부서를 그룹유형 다음에 선택칸으로 두고 도움말을 ⓘ 로 붙인다', () => {
     renderPane();
 
     const department = screen.getByRole('combobox', { name: t.fields.department });
     expect(department).not.toHaveAttribute('aria-required');
-    expect(screen.getByText(t.form.departmentHelp)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.form.departmentHelp })).toBeInTheDocument();
+    expect(screen.queryByText(t.form.departmentHelp)).toBeNull();
     const order = screen.getAllByRole('combobox');
     expect(order.indexOf(department)).toBe(
       order.indexOf(screen.getByRole('combobox', { name: t.fields.groupType })) + 1,

@@ -149,16 +149,14 @@ export const ItemAttrsPane = ({
         {
           id: inspectionId,
           label: t.attrs.fields.inspectionRequired,
+          /* 검사 기준의 IQC 「기본 생략」과 함께 바뀐다(omf-all-around#215) — 스위치 아래 대신 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */
+          info: t.attrs.inspectionRequiredSyncNote,
           control: (
-            <div className="item-attrs-control-with-note">
-              <Switch
-                id={inspectionId}
-                checked={values.inspectionRequired}
-                onChange={(event) => onChange({ inspectionRequired: event.target.checked })}
-              />
-              {/* 검사 기준의 IQC 「기본 생략」과 함께 바뀐다(omf-all-around#215). */}
-              <p className="field-note">{t.attrs.inspectionRequiredSyncNote}</p>
-            </div>
+            <Switch
+              id={inspectionId}
+              checked={values.inspectionRequired}
+              onChange={(event) => onChange({ inspectionRequired: event.target.checked })}
+            />
           ),
         },
         {
@@ -202,7 +200,12 @@ export const ItemAttrsPane = ({
                   </th>
                 )}
                 <th scope="row" className="item-attrs-field">
-                  <FieldLabel htmlFor={row.id} label={row.label} required={row.required ?? false} />
+                  <FieldLabel
+                    htmlFor={row.id}
+                    label={row.label}
+                    required={row.required ?? false}
+                    info={row.info}
+                  />
                 </th>
                 <td>
                   <div className="item-attrs-inline">{row.control}</div>
@@ -246,6 +249,8 @@ interface SettingRow {
   id: string;
   label: string;
   required?: boolean;
+  /** 알아 둘 규칙 — 항목 이름 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */
+  info?: string;
   /** 선택칸의 오류(입력칸은 제 칸 아래에 낸다). */
   error?: string | undefined;
   control: ReactNode;
