@@ -22,6 +22,11 @@ export const common: Translated<typeof ko.common> = {
   created: 'Đã đăng ký',
   retry: 'Thử lại',
   includeInactive: 'Gồm cả mục ngừng dùng',
+  filterMore: {
+    open: 'Thêm điều kiện',
+    close: 'Thu gọn điều kiện',
+    remove: (label: string): string => `Bỏ điều kiện ${label}`,
+  },
   discardChangesConfirm: 'Nội dung đã nhập chưa được lưu. Bỏ thay đổi?',
   oaOnly: {
     checking: 'Đang kiểm tra nhà máy có được dùng màn hình này không.',

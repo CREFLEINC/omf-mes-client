@@ -29,6 +29,13 @@ export const common = {
   created: '등록했습니다',
   retry: '다시 시도',
   includeInactive: '미사용 포함',
+  /** 조회 조건 줄의 「조건 더보기」(C-6) — 자주 쓰는 세 칸 밖의 조건을 접어 둔다(`patterns/filter-more.tsx`). */
+  filterMore: {
+    open: '조건 더보기',
+    close: '조건 접기',
+    /** 접힌 칸에 걸린 조건 칩의 × 접근명. */
+    remove: (label: string): string => `${label} 조건 제거`,
+  },
   discardChangesConfirm: '입력한 내용이 저장되지 않았습니다. 변경을 파기할까요?',
   /*
    * 화면 뼈대의 이름들. 디자인 시스템이 기본값을 한국어로 들고 있어, 넘겨주지 않으면 다른

@@ -11046,11 +11046,14 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 .approval-inbox-filter-actions {
-  grid-column: 1 / -1;
   margin-top: 0;
 }
 
-.filter-bar.approval-inbox-filter-chips {
+.approval-inbox-filter-actions .filter-actions {
+  flex-wrap: nowrap;
+}
+
+.approval-inbox-pane .filter-more-chips {
   margin-bottom: 0;
 }
 
@@ -11281,6 +11284,12 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin-bottom: var(--space-4);
 }
 
+/* 「조건 더보기」에 접힌 칸에 걸린 조건 칩(patterns/filter-more.tsx). */
+.filter-bar.filter-more-chips {
+  align-items: center;
+  gap: var(--space-2);
+}
+
 /*
  * 규범 2 — 한 클래스가 세 경우를 모두 처리한다.
  * 컨트롤이 40px보다 낮으면 상자 안 중앙에 놓이고, 40px이면 그대로이며,
@@ -11314,6 +11323,8 @@ dl.filter-bar.approval-inbox-detail-facts {
  */
 .filter-actions {
   display: flex;
+  /* 「조건 더보기」(작은 글자 단추)가 조회 · 초기화와 같은 가운뎃줄에 오게. */
+  align-items: center;
   gap: var(--space-3);
 }
 
