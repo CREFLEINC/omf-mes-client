@@ -41130,13 +41130,24 @@ export interface paths {
     };
     /**
      * 출하작업지시 목록
-     * @description W-04-02 출하 예정 목록. 기간이 필수다(공유계약 L-3). 근거: W-04-02 §5
+     * @description W-04-02 출하 예정 목록. 기간이 필수다(공유계약 L-3). 근거: W-04-02 §5 ⭐ 피처 012 D-12: 계정 세션이면 계정 데이터 범위(사업부 줄·공장 줄 모두 그 사업부의 지시서, 사업부 없는 옛 지시서는 공장 줄의 이행 공장)로 좁힌다 — 범위 줄이 없는 계정은 전부. 단말이면 PDA 는 단말 범위 안 줄이 하나라도 있는 지시서, POP 은 단말 공장 사업부의 지시서다(사업부 없는 옛 지시서는 이행 공장). PDA 목록 행에 `pickableLineCount`, 줄에 `inTerminalScope`·`outOfScopeReason` 을 싣는다(범위 밖 줄도 읽기 전용으로 보이도록 싣는다).
      */
     get: {
       parameters: {
         query: {
           customerId?: number;
           shipToPartnerId?: number;
+          /** @description 지시서 사업부(피처 012 FR-007 · W-04-02 조회 조건 셋째 칸). */
+          businessUnitId?: number;
+          /** @description 대표 출하의 ERP 송신 상태로 거른다(피처 012 FR-018 · W-04-02 칩). 대표 출하 = 취소 안 된 출하 중 가장 최근, 모두 취소면 가장 최근 출하. 값은 010 출하 목록 `erpSendStatus` 와 같은 판정이고, `NO_SHIPMENT` 는 출하가 아직 없는 지시서다. */
+          erpSendStatus?:
+            | 'NOT_QUEUED'
+            | 'NOT_SENT_NO_SALES_ORDER'
+            | 'CANCELLED'
+            | 'SEND_ERROR'
+            | 'PENDING'
+            | 'SENT'
+            | 'NO_SHIPMENT';
           /** @description 이 품목이 담긴 라인이 있는 작업지시만. ⭐ 긴급 직행 출하(W-04-05)가 고른 제품 LOT 의 품목으로 지시를 좁히는 축이다 — 이 축이 없으면 화면이 이번 쪽 안에서만 거를 수 있어 맞는 지시가 있는데도 안 보인다(공유계약 L-11). 근거: W-04-05 §5-7 */
           itemId?: number;
           /** @description ⛔ 이 축으로는 거를 수 없다 — 「칸 불필요」로 닫힌 칸이다(A-21 · 사용자 결정 2026-09-02). 진행은 shipmentProgressCode, 검사 대상 여부는 shippingInspectionRequired 가 받는다. 근거: omf-mes#402 */
@@ -41172,7 +41183,7 @@ export interface paths {
           size?: number;
           /** @description OQC 불합격으로 교체한 LOT 이 있는 지시서만(피처 010 FR-015). false 는 거르지 않는다 */
           hasReplacement?: boolean;
-          /** @description 지시서 번호·고객(코드·이름)·품목(코드·이름) 부분 일치(POP 찾기 · 피처 010) */
+          /** @description 지시서 번호·고객(코드·이름)·품목(코드·이름) 부분 일치(POP 찾기 · 피처 010) ⭐ 피처 012: 출하 번호(SH-)로도 찾는다(지시서 번호·고객·품목 그대로). */
           q?: string;
           /** @description 완료 대기만 — completionBlockers 가 빈 지시서(피킹 ≥ 목표 · LOT 전부 합격·검사 불필요·생략 · 수주 라인 취소 없음 · 완료 전). false 는 거르지 않는다 */
           completionReadyOnly?: boolean;
@@ -41192,6 +41203,10 @@ export interface paths {
             'application/json': {
               items: components['schemas']['ShipmentRequest'][];
               page: components['schemas']['PageMeta'];
+              /** @description ERP 송신 상태별 지시서 수(피처 012 W-04-02 칩) — `erpSendStatus` 조건만 빼고 같은 조건으로 센다. 키는 `erpSendStatus` 값(`NO_SHIPMENT` 포함), 0건 상태는 키가 없다. */
+              erpSendStatusCounts: {
+                [key: string]: number;
+              };
             };
           };
         };
@@ -41281,6 +41296,15 @@ export interface paths {
             'application/json': components['schemas']['ShipmentConflictResponse'];
           };
         };
+        /** @description 업무 규칙 위반(피처 012) — 사업부·줄 출고 창고 누락 또는 쓸 수 없는 값, S/O 잔여 초과. `errors[].field` 가 그 칸이다 */
+        422: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
       };
     };
     delete?: never;
@@ -41305,6 +41329,8 @@ export interface paths {
         query: {
           customerId?: number;
           shipToPartnerId?: number;
+          /** @description 지시서 사업부(피처 012 FR-007). 목록과 같은 기준. */
+          businessUnitId?: number;
           /** @description ⛔ 이 축으로는 거를 수 없다 — 「칸 불필요」로 닫힌 칸이다(A-21 · 사용자 결정 2026-09-02). 진행은 shipmentProgressCode, 검사 대상 여부는 shippingInspectionRequired 가 받는다. 근거: omf-mes#402 */
           statusCode?: string;
           /** @description 진행 축 필터 — W-04-02 §3 「상태」 드롭다운이 이 축이다. ⛔ statusCode 로는 거를 수 없다(그 칸은 「칸 불필요」로 닫혔다). ⭐ 서버가 라인 수량으로 판정한다 — 같은 리소스의 pickingCompleteOnly·shippableRemainderOnly 와 같은 방식이고 저장 칸이 없다(공유계약 L-2 · A-17). 값 뜻은 응답 ShipmentRequest.shipmentProgressCode 의 설명이 정본이다. 근거: W-04-02 §5-5 · omf-mes#402 */
@@ -41383,7 +41409,7 @@ export interface paths {
     };
     /**
      * 출하작업지시 한 건
-     * @description 라인을 함께 내린다 · POP 단말도 읽는다(P-04-06 머리·피킹 LOT 몫 — 단말 공장 지시서만, 피처 010)
+     * @description 라인을 함께 내린다 · POP 단말도 읽는다(P-04-06 머리·피킹 LOT 몫 — 단말 공장 지시서만, 피처 010) ⭐ 피처 012 D-12: 계정 데이터 범위 밖 지시서는 404.
      */
     get: {
       parameters: {
@@ -41427,87 +41453,7 @@ export interface paths {
         };
       };
     };
-    /**
-     * 출하작업지시 이행 공장 지정
-     * @description 기존 미배정 요청의 이행 공장을 지정한다. 피킹 이력이 있으면 바꾸지 않으며, 이미 연결된 출하가 있으면 모든 출하 창고가 대상 공장에 속해야 한다.
-     */
-    put: {
-      parameters: {
-        query?: never;
-        header: {
-          /** @description 전 쓰기 API 필수. */
-          'Idempotency-Key': components['parameters']['IdempotencyKey'];
-          /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
-          'If-Match': components['parameters']['IfMatchVersion'];
-        };
-        path: {
-          shipmentRequestId: number;
-        };
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['ShipmentRequestUpdate'];
-        };
-      };
-      responses: {
-        /** @description 공장 지정됨 */
-        200: {
-          headers: {
-            ETag?: string;
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ShipmentRequest'];
-          };
-        };
-        /** @description 검증 실패 */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 권한 없음 */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 없다 */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 피킹 또는 최신 판 충돌 */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ShipmentConflictResponse'];
-          };
-        };
-      };
-    };
+    put?: never;
     post?: never;
     delete?: never;
     options?: never;
@@ -41791,7 +41737,7 @@ export interface paths {
     };
     /**
      * 출하 목록
-     * @description W-04-02·W-04-04·W-04-12 가 함께 쓴다. 기간 필수(L-3)
+     * @description W-04-02·W-04-04·W-04-12 가 함께 쓴다. 기간 필수(L-3) ⭐ 피처 012 D-11: W-04-02 「출하」 칸도 부른다(출하 내역 W-04-12 화면은 없앴다). ⭐ 피처 012 R-5(omf-all-around#331): 단말 범위 — 창고 있는 출하는 출하 창고가 단말 공장(창고 지정 단말은 그 창고), 창고 없는 POP 완료 출하는 «출고 전표» 창고 중 하나라도 단말 공장(창고 지정 단말은 그 창고)이면 보인다.
      */
     get: {
       parameters: {
@@ -41974,7 +41920,7 @@ export interface paths {
     };
     /**
      * 출하 한 건
-     * @description 라인과 LOT 배분을 함께 내린다 — genealogy 종결점이다
+     * @description 라인과 LOT 배분을 함께 내린다 — genealogy 종결점이다 ⭐ 피처 012 D-11: W-04-02 상세 「출하」 칸이 이 상세를 그대로 쓴다.
      */
     get: {
       parameters: {
@@ -42039,7 +41985,7 @@ export interface paths {
     put?: never;
     /**
      * 출하 취소 실행
-     * @description 승인 완료 후 실행한다. ⭐ 승인만으로 통과시키지 않는다 — 실행 시점에 후속을 다시 판정한다(공유계약 J-8). 그 사이 확정됐으면 409 다. 근거: W-04-12 §5-8 ⭐ 피처 010: POP 완료 출하는 송신 전이면 실행한다 — 창고마다의 내부 재고 차감 기록 전부를 역전기·취소, 지시·수주 출하 수량을 내리고, 메시지를 CANCELLED 로, 피킹 LOT 을 PICKED 로 되돌려 같은 잔액 행에 예약을 다시 건다(다시 잡을 수 없는 LOT 은 풀린 채 피킹 LOT 행을 지운다). 지시서는 「출하 완료 전」이 된다. OQC 결과는 그대로. 보낸 뒤는 409 ERP_ALREADY_SENT. ⭐ 2026-11-19 사용자 결정: 송신 오류(메시지 FAILED — 재처리로 다시 대기가 된 것 포함)라도 ERP 가 거절한 행만 있으면(ERP 에 들어갔거나 반영된 행이 없으면) 보내기 전으로 본다 — 실행이 그 메시지를 CANCELLED 로 둬 다시 시도하지 않는다. 실행은 그 지시서의 출하 OQC 의뢰(완료)를 진행으로 다시 연다 — 종합 판정·확정 시각을 비우고, 확정된 결과는 판정 근거로 그대로 둔다. 새로 피킹한 LOT 의 결과는 작성중으로 쌓이고 다시 출하 완료할 때 확정된다.
+     * @description 승인 완료 후 실행한다. ⭐ 승인만으로 통과시키지 않는다 — 실행 시점에 후속을 다시 판정한다(공유계약 J-8). 그 사이 확정됐으면 409 다. 근거: W-04-12 §5-8 ⭐ 피처 010: POP 완료 출하는 송신 전이면 실행한다 — 창고마다의 내부 재고 차감 기록 전부를 역전기·취소, 지시·수주 출하 수량을 내리고, 메시지를 CANCELLED 로, 피킹 LOT 을 PICKED 로 되돌려 같은 잔액 행에 예약을 다시 건다(다시 잡을 수 없는 LOT 은 풀린 채 피킹 LOT 행을 지운다). 지시서는 「출하 완료 전」이 된다. OQC 결과는 그대로. 보낸 뒤는 409 ERP_ALREADY_SENT. ⭐ 2026-11-19 사용자 결정: 송신 오류(메시지 FAILED — 재처리로 다시 대기가 된 것 포함)라도 ERP 가 거절한 행만 있으면(ERP 에 들어갔거나 반영된 행이 없으면) 보내기 전으로 본다 — 실행이 그 메시지를 CANCELLED 로 둬 다시 시도하지 않는다. 실행은 그 지시서의 출하 OQC 의뢰(완료)를 진행으로 다시 연다 — 종합 판정·확정 시각을 비우고, 확정된 결과는 판정 근거로 그대로 둔다. 새로 피킹한 LOT 의 결과는 작성중으로 쌓이고 다시 출하 완료할 때 확정된다. ⭐ 피처 012 R-6: 권한 `W-04-12` — W-04-02 상세 「출하」 칸에서 부른다(결재함 [열기] 착지도 W-04-02).
      */
     post: {
       parameters: {
@@ -42136,7 +42082,7 @@ export interface paths {
     put?: never;
     /**
      * 출하 확정
-     * @description 미확정 → 확정. ⭐ 이 시점에 ERP 송신 적재가 걸린다(2026-08-07 출하 2단 확정) — 재고는 앞 단계(출하 처리)에서 이미 차감됐다. 취소 결재가 진행 중이면 409 CANCEL_IN_PROGRESS 다(공유계약 J-7). ⛔ 확정 취소 경로가 없다 — 되돌릴 수 없다. 근거: W-04-12 §5-3·§5-8
+     * @description 미확정 → 확정. ⭐ 이 시점에 ERP 송신 적재가 걸린다(2026-08-07 출하 2단 확정) — 재고는 앞 단계(출하 처리)에서 이미 차감됐다. 취소 결재가 진행 중이면 409 CANCEL_IN_PROGRESS 다(공유계약 J-7). ⛔ 확정 취소 경로가 없다 — 되돌릴 수 없다. 근거: W-04-12 §5-3·§5-8 ⭐ 피처 012 R-6: 권한 `W-04-05`·`W-04-12` — 남은 미확정 출하는 W-04-02 상세 「출하」 칸이 `W-04-12` 로 부른다(W-04-05 는 메뉴에서 감춤).
      */
     post: {
       parameters: {
@@ -42229,7 +42175,7 @@ export interface paths {
     put?: never;
     /**
      * 출하 취소 요청
-     * @description 미확정 구간에서만 된다. 사유가 필수다. 승인은 공통 계약이 소유한다. 01 자재창고가 쓰는 :request-cancel 과 같은 형태다. 근거: W-04-12 §5-8 ⭐ 피처 010: POP 출하 완료로 확정된 출하도 ERP 로 보내기 전(메시지 PENDING · sentAt 없음 · 바깥 행 0 · 수주 없는 출하는 늘)이면 상신한다 — 보낸 뒤는 409 ERP_ALREADY_SENT. 상신 중에는 러너가 그 출하를 보내지 않는다. ⭐ 2026-11-19 사용자 결정: 송신 오류(메시지 FAILED — 재처리로 다시 대기가 된 것 포함)라도 ERP 가 거절한 행만 있으면(ERP 에 들어갔거나 반영된 행이 없으면) 보내기 전으로 본다 — 실행이 그 메시지를 CANCELLED 로 둬 다시 시도하지 않는다.
+     * @description 미확정 구간에서만 된다. 사유가 필수다. 승인은 공통 계약이 소유한다. 01 자재창고가 쓰는 :request-cancel 과 같은 형태다. 근거: W-04-12 §5-8 ⭐ 피처 010: POP 출하 완료로 확정된 출하도 ERP 로 보내기 전(메시지 PENDING · sentAt 없음 · 바깥 행 0 · 수주 없는 출하는 늘)이면 상신한다 — 보낸 뒤는 409 ERP_ALREADY_SENT. 상신 중에는 러너가 그 출하를 보내지 않는다. ⭐ 2026-11-19 사용자 결정: 송신 오류(메시지 FAILED — 재처리로 다시 대기가 된 것 포함)라도 ERP 가 거절한 행만 있으면(ERP 에 들어갔거나 반영된 행이 없으면) 보내기 전으로 본다 — 실행이 그 메시지를 CANCELLED 로 둬 다시 시도하지 않는다. ⭐ 피처 012 R-6: 권한 `W-04-12`(메뉴 없는 「출하 취소(송신 전)」) — W-04-02 상세 「출하」 칸에서 부른다.
      */
     post: {
       parameters: {
@@ -43189,7 +43135,7 @@ export interface paths {
     put?: never;
     /**
      * 제품 LOT 통째 피킹
-     * @description PDA(M-04-01)가 LOT 을 스캔하면 그 LOT 의 공장 안 가용 잔액 전부(불량창고 제외 — 여러 창고·위치·적치 대기 자리 포함)를 이 라인에 피킹한다. 잔액 행마다 예약을 하나씩 걸고 곧바로 푼다(picked += 가용). 라인 피킹 합이 목표(allocatedQty)보다 작을 때만 받으므로 초과는 마지막 LOT 에서만 생긴다. 수량 입력은 없다. 피킹 LOT 행(shipment_request_lot)이 PICKED 로 생긴다. 근거: 피처 010 FR-004·004a·005·006
+     * @description PDA(M-04-01)가 LOT 을 스캔하면 그 LOT 의 공장 안 가용 잔액 전부(불량창고 제외 — 여러 창고·위치·적치 대기 자리 포함)를 이 라인에 피킹한다. 잔액 행마다 예약을 하나씩 걸고 곧바로 푼다(picked += 가용). 라인 피킹 합이 목표(allocatedQty)보다 작을 때만 받으므로 초과는 마지막 LOT 에서만 생긴다. 수량 입력은 없다. 피킹 LOT 행(shipment_request_lot)이 PICKED 로 생긴다. 근거: 피처 010 FR-004·004a·005·006 ⭐ 피처 012 R-3: 줄 출고 창고가 있는 지시서는 경로의 줄을 «품목 힌트»로만 쓴다 — 서버가 LOT 의 가용 잔액이 있는 창고로 같은 품목·단말 범위 안 줄(남은 수량이 있는 앞 줄)을 골라 그 «창고의» 잔액만 통째로 잡고, 실제 줄을 응답 `line` 으로 알린다. 다른 창고에 남은 몫은 `otherWarehouseQty`. 창고 없는 옛 줄은 지금 규칙(지시서 공장의 불량 외 모든 창고) 그대로다.
      */
     post: {
       parameters: {
@@ -43469,7 +43415,7 @@ export interface paths {
     };
     /**
      * 지시서 코드 해석 · 출하 완료 확인 값
-     * @description POP P-04-07 스캔·PDA 코드 보기 — SHPREQ:{지시서 번호} 를 해석해 완료 확인 값을 낸다. 단말이면 그 공장 지시서만(다른 공장은 404). 근거: 피처 010 FR-018 · R-9
+     * @description POP P-04-07 스캔·PDA 코드 보기 — SHPREQ:{지시서 번호} 를 해석해 완료 확인 값을 낸다. 단말이면 그 공장 지시서만(다른 공장은 404). 근거: 피처 010 FR-018 · R-9 ⭐ 피처 012 FR-013: 단말이면 단말 공장 사업부의 지시서만 연다 — 다른 사업부면 403 `BUSINESS_UNIT_MISMATCH` 「다른 사업부의 출하 지시서입니다」(지시서 내용·상대 사업부 이름은 싣지 않는다). 사업부 없는 옛 지시서는 그 이행 공장 단말만.
      */
     get: {
       parameters: {
@@ -43509,6 +43455,15 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
+        /** @description 다른 사업부의 지시서 — BUSINESS_UNIT_MISMATCH(피처 012) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
         /** @description SHIPMENT_REQUEST_NOT_FOUND — 형식은 맞지만 지시서가 없다 */
         404: {
           headers: {
@@ -43539,7 +43494,7 @@ export interface paths {
     put?: never;
     /**
      * 출하 완료(POP)
-     * @description POP P-04-07 [출하 완료] 한 번 — 한 트랜잭션에서 관문(FR-016) → 출하 «하나»(CONFIRMED 로 바로 · warehouseId null · 완료 단말·작업자) → 창고마다 내부 재고 차감 기록(goods_issue)·원장 출고 → 출하 라인·LOT 배분(예약 행마다) → 지시·수주 라인 출하 수량 → 피킹 LOT SHIPPED → 출하 OQC 확정(작성중 결과 확정·의뢰 완료·LOT 이력 C4, 생략 의뢰는 남은 LOT 에 C27) → 수주 연결 라인이 있으면 ERP 송신 적재. 같은 지시서는 한 번만 완료된다. 근거: 피처 010 FR-016~019 · R-8
+     * @description POP P-04-07 [출하 완료] 한 번 — 한 트랜잭션에서 관문(FR-016) → 출하 «하나»(CONFIRMED 로 바로 · warehouseId null · 완료 단말·작업자) → 창고마다 내부 재고 차감 기록(goods_issue)·원장 출고 → 출하 라인·LOT 배분(예약 행마다) → 지시·수주 라인 출하 수량 → 피킹 LOT SHIPPED → 출하 OQC 확정(작성중 결과 확정·의뢰 완료·LOT 이력 C4, 생략 의뢰는 남은 LOT 에 C27) → 수주 연결 라인이 있으면 ERP 송신 적재. 같은 지시서는 한 번만 완료된다. 근거: 피처 010 FR-016~019 · R-8 ⭐ 피처 012: 사업부 안 어느 POP 에서나 완료한다 — 다른 사업부면 403 `BUSINESS_UNIT_MISMATCH`. 출하 번호는 완료한 POP 의 공장, 출고 전표는 창고마다 하나이고 번호는 그 창고의 공장 체계다(R-4). ERP 송신 행의 PLANT_CD 는 그 행 출고 전표 창고의 공장.
      */
     post: {
       parameters: {
@@ -43593,7 +43548,7 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description POP 단말이 아니다 */
+        /** @description POP 단말이 아니다 · 다른 사업부의 지시서 — BUSINESS_UNIT_MISMATCH(피처 012) */
         403: {
           headers: {
             [name: string]: unknown;
@@ -58556,7 +58511,7 @@ export interface components {
        */
       displayName: string;
       /**
-       * @description 대상을 여는 화면 ID. 규약이 정해지면 이 값만 바뀐다 — 프런트는 화면 ID → 경로 매핑 하나만 갖는다. ⭐ 첫 확정 규칙 — 특채·한도승인 유형의 요청은 서버가 screenId = "W-03-09"(특채·한도승인 승인 처리)를 내린다: 이 유형의 「원문」은 승인 조건 5축이고 그것을 보이는 화면이 W-03-09 다. 근거: omf-mes#194
+       * @description 대상을 여는 화면 ID. 규약이 정해지면 이 값만 바뀐다 — 프런트는 화면 ID → 경로 매핑 하나만 갖는다. ⭐ 첫 확정 규칙 — 특채·한도승인 유형의 요청은 서버가 screenId = "W-03-09"(특채·한도승인 승인 처리)를 내린다: 이 유형의 「원문」은 승인 조건 5축이고 그것을 보이는 화면이 W-03-09 다. 근거: omf-mes#194 ⭐ 출하 취소(`SHIPMENT_CANCEL`) 결재는 `W-04-02`(출하 예정 목록 — 그 지시서 상세 「출하」 칸에서 [취소 실행])다. 피처 012 R-7 이 출하 내역(W-04-12) 화면을 없애며 옮겼고, 응답 매핑이라 배포 전 결재도 W-04-02 로 간다.
        * @example W-01-06
        */
       screenId?: string;
@@ -59114,7 +59069,7 @@ export interface components {
        * @example 1001
        */
       targetId?: number;
-      /** @description 대상을 여는 화면 ID. 프런트가 「유형 → 화면」 표를 갖지 않는다. 서버가 열 화면을 정하지 못하면 이 키를 생략한다 */
+      /** @description 대상을 여는 화면 ID. 프런트가 「유형 → 화면」 표를 갖지 않는다. 서버가 열 화면을 정하지 못하면 이 키를 생략한다 ⭐ 출하 취소(`SHIPMENT_CANCEL`) 결재는 `W-04-02`(출하 예정 목록 — 그 지시서 상세 「출하」 칸에서 [취소 실행])다. 피처 012 R-7 이 출하 내역(W-04-12) 화면을 없애며 옮겼고, 응답 매핑이라 배포 전 결재도 W-04-02 로 간다. */
       screenId?: string | null;
       /**
        * @description 열 화면이 없으면 거짓. 화면은 링크를 만들지 않고 원본 코드를 그대로 보인다
@@ -67247,9 +67202,32 @@ export interface components {
     ShipmentRequest: {
       /**
        * Format: int64
-       * @description 이 출하작업지시의 이행 공장. 기존 호출 호환을 위해 생성에서는 선택값이며, null 또는 생략된 요청은 관리자에게는 보이되 POP·모바일 목록·피킹에서는 제외된다. 새 관리자 편성은 활성이고 사용자 데이터 범위가 허용한 공장을 반드시 보낸다.
+       * @description 옛 지시서(피처 012 배포 전)의 이행 공장 — 창고 미지정 줄의 피킹 범위 근거로만 남는다(FR-026·027). 새 지시서는 null 이다(공장은 줄 출고 창고가 정한다). ⛔ 생성 본문에서 뺐다(보내면 400), 공장 지정 PUT 도 없앴다(D-1).
        */
       fulfillmentPlantId?: number | null;
+      /**
+       * Format: int64
+       * @description 지시서 사업부(피처 012). null = 사업부 없는 공장의 옛 지시서(「사업부 미지정」).
+       * @example 1001
+       */
+      businessUnitId: number | null;
+      /** @description 지시서 사업부 표시 칸 — `businessUnitId` 가 null 이면 null. */
+      businessUnit: components['schemas']['ShipmentRequestBusinessUnit'] | null;
+      /** @description 줄 출고 창고 요약(피처 012 W-04-02 「출고 창고」) — 줄 순서대로 겹치지 않게. 창고 없는 옛 줄은 담지 않는다. */
+      warehouses: components['schemas']['ShipmentRequestWarehouse'][];
+      /** @description 대표 출하의 ERP 송신 상태(피처 012 FR-018) — 출하가 없으면 null. ⛔ 완료 전 화면(PDA·POP 완료·인쇄)은 이 칸을 그리지 않는다(FR-025). */
+      erpSendStatus:
+        | (
+            | 'NOT_QUEUED'
+            | 'NOT_SENT_NO_SALES_ORDER'
+            | 'CANCELLED'
+            | 'SEND_ERROR'
+            | 'PENDING'
+            | 'SENT'
+          )
+        | null;
+      /** @description 이 지시서의 출하 — 취소된 것 포함, 최신순(피처 012 FR-019). */
+      shipments: components['schemas']['ShipmentRequestShipment'][];
       /**
        * Format: int64
        * @example 1001
@@ -67363,6 +67341,11 @@ export interface components {
         /** @example 고객사 */
         partnerName: string;
       } | null;
+      /**
+       * @description PDA(단말 MOBILE) 목록에만 — 이 기기에서 피킹할 줄 수(피처 012 빈 곳 ⑥). 관리웹·POP 응답에는 없다.
+       * @example 1
+       */
+      pickableLineCount?: number;
     };
     /** @description W-04-02 요약 구획 — 필터 전체 기준(목록 페이지와 다른 모집단). 근거: W-04-02 §4-B · omf-mes#232 */
     ShipmentRequestSummary: {
@@ -67409,20 +67392,14 @@ export interface components {
        */
       asOf: string;
     };
-    ShipmentRequestUpdate: {
-      /**
-       * Format: int64
-       * @description 기존 미배정 출하작업지시를 활성·권한 공장에 지정한다. null 해제는 이번 경로에 없다. 이미 피킹한 요청은 바꿀 수 없고, 연결된 출하가 있으면 그 모든 출하 창고의 공장과 같아야 한다.
-       */
-      fulfillmentPlantId: number;
-    };
-    /** @description 편성. 라인 1건 이상이고 배정 수량이 1 이상이어야 한다(W-04-01 §5-7). ⛔ 편성 취소를 두지 않는다 — 출하작업지시 취소는 범위 밖이다 */
+    /** @description 편성. 라인 1건 이상이고 배정 수량이 1 이상이어야 한다(W-04-01 §5-7). ⛔ 편성 취소를 두지 않는다 — 출하작업지시 취소는 범위 밖이다 ⭐ 피처 012: 사업부(`businessUnitId`)와 줄마다 출고 창고(`lines[].warehouseId`)가 필수다(422). 같은 S/O 줄(`salesOrderLineId`)을 가리키는 줄을 여럿 둘 수 있다 — 창고별로 나눈 줄의 배정 합은 S/O 잔여(주문 − 누적 출하) 이하여야 하고, 넘으면 그 줄들이 422 `lines[n].allocatedQty`(「S/O 잔여 수량을 넘습니다」)다(D-3). */
     ShipmentRequestCreate: {
       /**
        * Format: int64
-       * @description 이 출하작업지시의 이행 공장. 기존 호출 호환을 위해 생성에서는 선택값이며, null 또는 생략된 요청은 관리자에게는 보이되 POP·모바일 목록·피킹에서는 제외된다. 새 관리자 편성은 활성이고 사용자 데이터 범위가 허용한 공장을 반드시 보낸다.
+       * @description 지시서 사업부(피처 012 D-1 · FR-001). ⭐ 업무 필수 — 비우면 422 `businessUnitId`. 활성이고 계정 데이터 범위 안이어야 한다(밖이면 403). 지시서는 공장이 아니라 사업부 단위이고 공장은 줄 출고 창고가 정한다. ⛔ `fulfillmentPlantId` 는 더 받지 않는다 — 보내면 400.
+       * @example 1001
        */
-      fulfillmentPlantId?: number | null;
+      businessUnitId?: number | null;
       /**
        * Format: int64
        * @description 지시서를 경유하면 채우고 단독 생성이면 비운다
@@ -67564,8 +67541,23 @@ export interface components {
          */
         cancelled: boolean;
       } | null;
+      /** @description 출고 창고(피처 012) — 이 줄은 이 창고 잔액에서만 피킹한다. null = 배포 전 줄(「창고 미지정」, 지시서 이행 공장의 불량 외 창고 전부). */
+      warehouse: components['schemas']['ShipmentRequestWarehouse'] | null;
+      /**
+       * @description PDA 목록에만 — 이 줄이 이 기기 범위 안인가(줄 창고의 공장 = 단말 공장, 창고 지정 단말은 그 창고 · 옛 줄은 지시서 공장). 밖이면 읽기 전용.
+       * @example true
+       */
+      inTerminalScope?: boolean;
+      /** @description PDA 목록에만 — 범위 밖인 이유. OTHER_PLANT = 다른 공장 창고, OTHER_WAREHOUSE = 같은 공장의 이 기기 창고 밖(피처 012). */
+      outOfScopeReason?: ('OTHER_PLANT' | 'OTHER_WAREHOUSE') | null;
     };
     ShipmentRequestLineCreate: {
+      /**
+       * Format: int64
+       * @description 출고 창고(피처 012 D-2 · FR-003). ⭐ 업무 필수 — 비우면 422 `lines[n].warehouseId`. 지시서 사업부의 활성 창고이고 불량창고가 아니어야 하며(아니면 422), 계정 공장 범위 안이어야 한다(밖이면 403). 이 줄은 이 창고의 잔액에서만 피킹한다.
+       * @example 1001
+       */
+      warehouseId?: number | null;
       /**
        * Format: int64
        * @example 1001
@@ -67600,7 +67592,7 @@ export interface components {
     };
     ShipmentConflictResponse: {
       /**
-       * @description ALREADY_CONFIRMED 는 이미 확정된 출하라는 뜻이다 — 확정 취소 경로가 없으므로 되돌릴 수 없다(W-04-12 §5-3). CANCEL_IN_PROGRESS 는 취소 결재가 진행 중이라 확정할 수 없다는 뜻이다(J-7). 근거: W-04-12 §5-8 피처 010(omf-all-around#305): USE_PICK_LOT 는 옛 수량 피킹(:pick)이 닫혔다는 뜻이다 — LOT 통째 피킹(:pick-lot)을 쓴다. LOT_TARGET_REACHED 는 라인 피킹 합이 이미 목표(배정) 이상이다. LOT_ALREADY_RESERVED 는 그 LOT 의 잔액 행에 다른 예약·피킹·차단이 걸려 통째로 잡을 수 없다. LOT_ALREADY_PICKED 는 이미 이 지시서에 피킹한 LOT 이다. NO_LINE_FOR_ITEM 은 이 지시서에 그 LOT 품목의 라인이 없다. LOT_NOT_REJECTED 는 교체할 수 없는 피킹 LOT 이다 — OQC 판정이 불합격이 아니거나(교체 전에 재검 합격이 들어온 경우 포함) 이미 교체·출하됐다. COMPLETION_BLOCKED 는 출하 완료를 막는 이유가 있다(blockers 에 실린다). ALREADY_COMPLETED 는 이미 POP 에서 출하 완료한 지시서다(다시 스캔·동시 완료). ERP_ALREADY_SENT 는 ERP 로 이미 보낸(또는 보내는 중인) POP 완료 출하라 취소할 수 없다 — ERP 에서 처리한다.
+       * @description ALREADY_CONFIRMED 는 이미 확정된 출하라는 뜻이다 — 확정 취소 경로가 없으므로 되돌릴 수 없다(W-04-12 §5-3). CANCEL_IN_PROGRESS 는 취소 결재가 진행 중이라 확정할 수 없다는 뜻이다(J-7). 근거: W-04-12 §5-8 피처 010(omf-all-around#305): USE_PICK_LOT 는 옛 수량 피킹(:pick)이 닫혔다는 뜻이다 — LOT 통째 피킹(:pick-lot)을 쓴다. LOT_TARGET_REACHED 는 라인 피킹 합이 이미 목표(배정) 이상이다. LOT_ALREADY_RESERVED 는 그 LOT 의 잔액 행에 다른 예약·피킹·차단이 걸려 통째로 잡을 수 없다. LOT_ALREADY_PICKED 는 이미 이 지시서에 피킹한 LOT 이다. NO_LINE_FOR_ITEM 은 이 지시서에 그 LOT 품목의 라인이 없다. LOT_NOT_REJECTED 는 교체할 수 없는 피킹 LOT 이다 — OQC 판정이 불합격이 아니거나(교체 전에 재검 합격이 들어온 경우 포함) 이미 교체·출하됐다. COMPLETION_BLOCKED 는 출하 완료를 막는 이유가 있다(blockers 에 실린다). ALREADY_COMPLETED 는 이미 POP 에서 출하 완료한 지시서다(다시 스캔·동시 완료). ERP_ALREADY_SENT 는 ERP 로 이미 보낸(또는 보내는 중인) POP 완료 출하라 취소할 수 없다 — ERP 에서 처리한다. 피처 012(omf-all-around#338): LOT_NOT_IN_LINE_WAREHOUSE 는 스캔한 LOT 의 가용 잔액이 이 기기 범위 안 같은 품목 줄의 출고 창고 어디에도 없다 — `warehouses` 에 LOT 이 있는 창고(공장)를 싣는다. LINE_WAREHOUSE_UNAVAILABLE 은 고른 줄의 출고 창고가 비활성이거나 지시서 사업부의 창고가 아니다(「출고 창고를 쓸 수 없습니다」). 창고 맞는 줄 찾기가 먼저이고, 맞는 줄이 모두 목표를 채웠을 때만 LOT_TARGET_REACHED 다.
        * @example VERSION_CONFLICT
        * @enum {string}
        */
@@ -67618,7 +67610,9 @@ export interface components {
         | 'LOT_NOT_REJECTED'
         | 'COMPLETION_BLOCKED'
         | 'ALREADY_COMPLETED'
-        | 'ERP_ALREADY_SENT';
+        | 'ERP_ALREADY_SENT'
+        | 'LOT_NOT_IN_LINE_WAREHOUSE'
+        | 'LINE_WAREHOUSE_UNAVAILABLE';
       /** @example 값 */
       message: string;
       /**
@@ -67634,6 +67628,8 @@ export interface components {
       conflictCause: 'user' | 'erpSync' | 'workerLease';
       /** @description COMPLETION_BLOCKED 일 때만 — 막는 이유 목록 */
       blockers?: components['schemas']['ShipmentCompletionBlocker'][];
+      /** @description LOT_NOT_IN_LINE_WAREHOUSE 일 때 그 LOT 의 가용 잔액이 있는 창고들(공장 이름 포함 · 피처 012). */
+      warehouses?: components['schemas']['ShipmentRequestWarehouse'][];
     };
     /** @description 피킹 확정 요청. 사번은 본문이 아니라 X-Worker-No 헤더로 보낸다 */
     ShipmentLinePick: {
@@ -68138,7 +68134,14 @@ export interface components {
     /** @description 통째 피킹 결과 — 만든 피킹 LOT 행과 갱신된 라인(목표·피킹·초과). */
     ShipmentLotPickResult: {
       pickedLot: components['schemas']['ShipmentRequestLot'];
+      /** @description 실제로 피킹한 줄 — 경로의 줄과 다를 수 있다(피처 012). */
       line: components['schemas']['ShipmentRequestLine'];
+      /**
+       * Format: double
+       * @description 줄 출고 창고 밖에 남은 그 LOT 의 수량(피처 012 — 두 창고에 걸친 LOT). 0 이면 싣지 않는다.
+       * @example 20
+       */
+      otherWarehouseQty?: number;
     };
     /** @description 교체 근거(FR-015) — 불합격 결과·교체가 만든 부적합·작업자·시각. */
     ShipmentLotReplacement: {
@@ -68220,6 +68223,11 @@ export interface components {
        * @example LOT-0001
        */
       lotNo?: string;
+      /**
+       * @description PICKING_SHORT 줄의 출고 창고 이름(피처 012 — 「피킹 부족: 라인 n(창고 …)」). 창고 없는 옛 줄은 없다.
+       * @example 완제품창고 B
+       */
+      warehouseName?: string;
     };
     /** @description 살아 있는 피킹 LOT 의 OQC 판정 수 */
     ShipmentLotJudgmentSummary: {
@@ -68330,6 +68338,16 @@ export interface components {
          * @example 40
          */
         qty: number;
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        plantId: number;
+        /**
+         * @description 그 창고의 공장(피처 012 — 출고 전표 공장)
+         * @example 1공장
+         */
+        plantName: string;
       }[];
       lines: {
         /**
@@ -68383,6 +68401,8 @@ export interface components {
         salesOrderLineId: number | null;
         /** @example EA */
         uomCode: string;
+        /** @description 줄 출고 창고(공장) — null 은 옛 줄(창고 미지정 · 피처 012). */
+        warehouse: components['schemas']['ShipmentRequestWarehouse'] | null;
       }[];
       /** @description 살아 있는(또는 출하된) 피킹 LOT — 교체된 LOT 은 빠진다 */
       lots: {
@@ -68479,6 +68499,8 @@ export interface components {
          */
         replacedAt: string;
       }[];
+      /** @description 지시서 사업부(피처 012 — POP 머리). 사업부 없는 옛 지시서는 null(「사업부 미지정」). */
+      businessUnit: components['schemas']['ShipmentRequestBusinessUnit'] | null;
     };
     /** @description 출하 완료 본문 — 영업일은 단말이 보낸다(서버가 수신 시각으로 다시 잡지 않는다 · C-8). 시각을 빼면 서버 시각. */
     ShipmentCompletion: {
@@ -68508,6 +68530,83 @@ export interface components {
        */
       completedAt: string;
       completion: components['schemas']['ShipmentRequestCompletion'];
+      /** @description 창고마다 출고 전표 하나(피처 012 FR-014) — 번호는 그 창고 공장의 체계다. */
+      goodsIssues: {
+        /** @example GI-20261120-0001 */
+        goodsIssueNo: string;
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        warehouseId: number;
+        /** @example 완제품창고 A */
+        warehouseName: string;
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        plantId: number;
+        /** @example 1공장 */
+        plantName: string;
+      }[];
+    };
+    /** @description 출하 지시서 사업부 표시 칸(피처 012). */
+    ShipmentRequestBusinessUnit: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      businessUnitId: number;
+      /** @example BU01 */
+      businessUnitCode: string;
+      /** @example 제1사업부 */
+      businessUnitName: string;
+    };
+    /** @description 지시서 줄 출고 창고와 그 공장(피처 012) — 화면은 「완제품창고 A · 1공장」으로 그린다. */
+    ShipmentRequestWarehouse: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      warehouseId: number;
+      /** @example WH-FG-A */
+      warehouseCode: string;
+      /** @example 완제품창고 A */
+      warehouseName: string;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      plantId: number;
+      /** @example 1공장 */
+      plantName: string;
+    };
+    /** @description 지시서의 출하 한 건(피처 012 W-04-02 상세 「출하」 칸 머리). 내용·취소·확정은 `GET /logistics/shipments/{shipmentId}`·`:request-cancel`·`:cancel`·`:confirm` 을 그대로 쓴다. */
+    ShipmentRequestShipment: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      shipmentId: number;
+      /** @example SH-20261120-0001 */
+      shipmentNo: string;
+      /**
+       * @description 출하 상태(`Shipment.statusCode` 와 같은 값 — 미확정·확정·취소)
+       * @example CONFIRMED
+       */
+      statusCode: string;
+      /**
+       * @description 010 출하 목록과 같은 판정
+       * @example PENDING
+       * @enum {string}
+       */
+      erpSendStatus:
+        'NOT_QUEUED' | 'NOT_SENT_NO_SALES_ORDER' | 'CANCELLED' | 'SEND_ERROR' | 'PENDING' | 'SENT';
+      /**
+       * @description 열린 취소 결재가 있다
+       * @example false
+       */
+      cancelRequestPending: boolean;
     };
     InspectionLine: {
       /**

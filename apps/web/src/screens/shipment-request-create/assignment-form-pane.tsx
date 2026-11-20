@@ -1,4 +1,4 @@
-import { Button, DatePicker } from '@crefle/web-ui';
+import { AlertBanner, Button, DatePicker, type SelectItems } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
@@ -14,6 +14,7 @@ import {
 } from './lookups';
 import { SelectField } from './select-field';
 import { ShortageBanner, countShortageLines } from './shortage-banner';
+import type { SplitGroup } from './validation';
 import type {
   AssignmentMode,
   CreatedShipmentRequestView,
@@ -24,7 +25,7 @@ import type {
 const t = messages.shipmentRequestCreate;
 
 export interface HeaderFieldPatch {
-  fulfillmentPlantId?: string;
+  businessUnitId?: string;
   customerId?: string;
   shipToPartnerId?: string;
   requestedShipDate?: string;
@@ -33,14 +34,17 @@ export interface HeaderFieldPatch {
 export interface AssignmentFormPaneProps {
   mode: AssignmentMode;
   customerId: string;
-  fulfillmentPlantId: string;
+  /** 지시서 사업부(피처 012 FR-002) — 「출하 담당 공장」 자리. */
+  businessUnitId: string;
   shipToPartnerId: string;
   requestedShipDate: string;
   customerOptions: SelectOption[];
-  fulfillmentPlantOptions: SelectOption[];
+  businessUnitOptions: SelectOption[];
+  /** 계정 범위의 사업부가 하나라 자동으로 채웠는가 — 칸 아래에 그 사실을 적는다. */
+  businessUnitAutoFilled: boolean;
   shipToPartnerOptions: SelectOption[];
   customerLookup: ReferenceSource;
-  fulfillmentPlantNote?: string;
+  businessUnitNote?: string;
   shipToPartnerLookup: ReferenceSource;
   customerNote?: string;
   shipToPartnerNote?: string;
@@ -58,6 +62,18 @@ export interface AssignmentFormPaneProps {
   onPatchLine: (key: string, patch: Partial<Omit<ShipmentRequestLineDraft, 'key'>>) => void;
   onRemoveLine: (key: string) => void;
   onAddLine: () => void;
+  /** 출고 창고(피처 012). */
+  warehouseOptions: SelectItems;
+  onChangeWarehouse: (key: string, warehouseId: string) => void;
+  onSplit: (key: string) => void;
+  salesOrderNo: string | null;
+  /** 나눈 줄 묶음 합계(FR-005) — 표 아래 묶음마다 한 줄. */
+  splitGroups: SplitGroup[];
+  /** 창고 이름 풀이 — 묶음 합계의 「창고 수량」 조각. */
+  warehouseNameOf: (warehouseId: string) => string | undefined;
+  /** 사업부를 바꿔 창고를 비운 줄 수와 지금 사업부 이름 — 띠(FR-004 · US1-7). */
+  clearedWarehouseCount: number;
+  businessUnitName: string;
 
   /** 나가는 중과 이미 편성한 뒤가 같은 잠금을 쓴다 — 사유는 `submitBlockReason`이 한 번 낸다. */
   isLocked: boolean;
@@ -84,14 +100,15 @@ export interface AssignmentFormPaneProps {
 export const AssignmentFormPane = ({
   mode,
   customerId,
-  fulfillmentPlantId,
+  businessUnitId,
   shipToPartnerId,
   requestedShipDate,
   customerOptions,
-  fulfillmentPlantOptions,
+  businessUnitOptions,
+  businessUnitAutoFilled,
   shipToPartnerOptions,
   customerLookup,
-  fulfillmentPlantNote,
+  businessUnitNote,
   shipToPartnerLookup,
   customerNote,
   shipToPartnerNote,
@@ -107,6 +124,14 @@ export const AssignmentFormPane = ({
   onPatchLine,
   onRemoveLine,
   onAddLine,
+  warehouseOptions,
+  onChangeWarehouse,
+  onSplit,
+  salesOrderNo,
+  splitGroups,
+  warehouseNameOf,
+  clearedWarehouseCount,
+  businessUnitName,
   isLocked,
   submitBlockReason,
   banner,
@@ -126,17 +151,20 @@ export const AssignmentFormPane = ({
         {isFromOrder && <p className="field-note">{t.notes.fromOrderLocked}</p>}
 
         <div className="form-grid">
+          {/*
+           * ⭐ 「출하 담당 공장」 자리에 「사업부」(피처 012 FR-002). 계정 범위의 사업부가 하나면 채워서 연다.
+           */}
           <SelectField
             wide
             required
-            label={t.fields.fulfillmentPlant}
-            options={fulfillmentPlantOptions}
-            value={fulfillmentPlantId}
-            note={fulfillmentPlantNote}
-            error={headerErrors.fulfillmentPlantId}
+            label={t.fields.businessUnit}
+            options={businessUnitOptions}
+            value={businessUnitId}
+            note={businessUnitNote ?? (businessUnitAutoFilled ? t.notes.businessUnitAutoFilled : undefined)}
+            error={headerErrors.businessUnitId}
             disabled={isLocked}
             onChange={(value) => {
-              onChangeHeader({ fulfillmentPlantId: value });
+              onChangeHeader({ businessUnitId: value });
             }}
           />
 
@@ -217,6 +245,14 @@ export const AssignmentFormPane = ({
       </section>
 
       <section className="pane" aria-label={t.panes.lines}>
+        {clearedWarehouseCount > 0 && (
+          <div className="banner-slot">
+            <AlertBanner variant="warning" title={t.warehouseCleared.title(clearedWarehouseCount)}>
+              {t.warehouseCleared.description(businessUnitName)}
+            </AlertBanner>
+          </div>
+        )}
+
         <LineTable
           mode={mode}
           rows={lines}
@@ -229,7 +265,39 @@ export const AssignmentFormPane = ({
           isLocked={isLocked}
           onPatch={onPatchLine}
           onRemove={onRemoveLine}
+          warehouseOptions={warehouseOptions}
+          hasBusinessUnit={businessUnitId !== ''}
+          onChangeWarehouse={onChangeWarehouse}
+          onSplit={onSplit}
+          salesOrderNo={salesOrderNo}
         />
+
+        {splitGroups.length > 0 && (
+          <ul className="sr-split-totals" aria-label={t.actions.splitLine}>
+            {splitGroups.map((group) => {
+              const source =
+                salesOrderNo === null || group.salesOrderLineNo === null
+                  ? t.values.empty
+                  : t.lineTable.salesOrderLineRef(salesOrderNo, group.salesOrderLineNo);
+              const parts = group.lines
+                .map((line) =>
+                  t.lineTable.splitPart(
+                    warehouseNameOf(line.warehouseId) ?? t.values.empty,
+                    Number(line.allocatedQty) || 0,
+                  ),
+                )
+                .join(', ');
+
+              return (
+                <li key={group.originKey} className={group.isOver ? 'field-error' : 'field-note'}>
+                  {group.isOver
+                    ? t.errors.splitOverRemaining(group.total, group.remaining, parts)
+                    : t.lineTable.splitTotal(source, group.remaining, group.total, parts)}
+                </li>
+              );
+            })}
+          </ul>
+        )}
 
         <p className="field-note">{t.notes.lineNoAssignedByServer}</p>
 
@@ -239,6 +307,7 @@ export const AssignmentFormPane = ({
               <Button variant="outlined" disabled={isLocked} onClick={onAddLine}>
                 {t.actions.addLine}
               </Button>
+              <span className="field-note">{t.notes.addLineWarehouse}</span>
             </div>
           </div>
         )}

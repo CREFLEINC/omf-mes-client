@@ -5,7 +5,9 @@ import type { ShipmentRequestLineDraft } from './types';
 import {
   hasAllocatableLine,
   lineFieldId,
+  linesMissingWarehouse,
   readQty,
+  splitGroupsOf,
   validateHeader,
   validateLines,
 } from './validation';
@@ -35,22 +37,22 @@ describe('readQty', () => {
 });
 
 describe('validateHeader', () => {
-  it('단독 생성은 공장·고객·납품처·출하요청일이 모두 필수다', () => {
+  it('단독 생성은 사업부·고객·납품처·출하요청일이 모두 필수다', () => {
     const errors = validateHeader('standalone', {
-      fulfillmentPlantId: '',
+      businessUnitId: '',
       customerId: '',
       shipToPartnerId: '',
       requestedShipDate: '',
     });
 
     expect(Object.keys(errors)).toEqual(
-      expect.arrayContaining(['fulfillmentPlantId', 'customerId', 'shipToPartnerId', 'requestedShipDate']),
+      expect.arrayContaining(['businessUnitId', 'customerId', 'shipToPartnerId', 'requestedShipDate']),
     );
   });
 
   it('지시서 경유는 고객·납품처를 판정하지 않는다 — 지시서가 채운다', () => {
     const errors = validateHeader('fromOrder', {
-      fulfillmentPlantId: '1',
+      businessUnitId: '1',
       customerId: '',
       shipToPartnerId: '',
       requestedShipDate: '2026-08-20',
@@ -61,7 +63,7 @@ describe('validateHeader', () => {
 
   it('출하요청일은 두 모드 모두 필수다', () => {
     const errors = validateHeader('fromOrder', {
-      fulfillmentPlantId: '1',
+      businessUnitId: '1',
       customerId: '8201',
       shipToPartnerId: '8211',
       requestedShipDate: '',
@@ -163,5 +165,67 @@ describe('hasAllocatableLine', () => {
     expect(hasAllocatableLine([line({ allocatedQty: '0' }), line({ allocatedQty: '' })])).toBe(
       false,
     );
+  });
+});
+
+/* ── 피처 012 — 사업부·출고 창고·나눈 줄 합 ─────────────────────────────── */
+
+describe('사업부·출고 창고·나눈 줄 검사(FR-001·003·005)', () => {
+  const draft = (patch: Partial<ShipmentRequestLineDraft>): ShipmentRequestLineDraft => ({
+    ...emptyLineDraft(),
+    ...patch,
+  });
+
+  it('US1-2 사업부가 비면 「사업부를 고르세요」', () => {
+    const errors = validateHeader('fromOrder', {
+      businessUnitId: '',
+      customerId: '8201',
+      shipToPartnerId: '8211',
+      requestedShipDate: '2026-11-21',
+    });
+
+    expect(errors.businessUnitId).toBe('사업부를 고르세요.');
+  });
+
+  it('US1-6 창고를 안 고른 채 나갈 줄을 찾고, 창고를 고르기 시작했으면 그 줄을 붉게 짚는다', () => {
+    const picked = draft({ allocatedQty: '10', warehouseId: '9101' });
+    const empty = draft({ allocatedQty: '5' });
+    const notSending = draft({ allocatedQty: '0' });
+
+    expect(linesMissingWarehouse([picked, empty, notSending])).toEqual([empty]);
+    expect(validateLines([picked, empty]).errors[lineFieldId(empty.key, 'warehouseId')]).toBe(
+      '출고 창고를 고르세요.',
+    );
+  });
+
+  it('US1-6 아무 창고도 고르지 않은 처음에는 줄마다 붉게 적지 않는다(막는 사유는 단추 옆)', () => {
+    const empty = draft({ allocatedQty: '5' });
+
+    expect(validateLines([empty]).errors).toEqual({});
+    expect(linesMissingWarehouse([empty])).toHaveLength(1);
+  });
+
+  it('US1-5 나눈 줄 합이 S/O 잔여 이하면 통과, 넘으면 그 묶음이 막힌다', () => {
+    const origin = draft({ salesOrderLineId: 8601, requestedQty: '100', allocatedQty: '60', salesOrderLineNo: 1 });
+    const split = draft({ salesOrderLineId: 8601, allocatedQty: '40', splitOf: origin.key, salesOrderLineNo: 1 });
+
+    expect(splitGroupsOf([origin, split])).toEqual([
+      expect.objectContaining({ originKey: origin.key, remaining: 100, total: 100, isOver: false }),
+    ]);
+
+    const over = { ...origin, allocatedQty: '70' };
+
+    expect(splitGroupsOf([over, split])[0]).toMatchObject({ total: 110, isOver: true });
+  });
+
+  it('US1-5 나눈 줄은 요청 수량이 없어 줄 단위 「요청 초과」로 막지 않는다 — 묶음 합이 본다', () => {
+    const origin = draft({ salesOrderLineId: 8601, requestedQty: '100', allocatedQty: '60' });
+    const split = draft({ salesOrderLineId: 8601, allocatedQty: '40', splitOf: origin.key });
+
+    expect(validateLines([origin, split]).errors).toEqual({});
+  });
+
+  it('나누지 않은 줄은 묶음을 만들지 않는다', () => {
+    expect(splitGroupsOf([draft({ salesOrderLineId: 8601, requestedQty: '100' })])).toEqual([]);
   });
 });

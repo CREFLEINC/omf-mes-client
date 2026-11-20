@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router';
 
 import { ItemPickerDialog, type ItemRow } from '../../patterns/item-picker';
 import { SaveErrorBanner } from '../../patterns/master';
+import { useSession } from '../../patterns/session';
 import { AssignmentFormPane } from './assignment-form-pane';
 import { EmptyFormPlaceholder } from './empty-form-placeholder';
 import {
@@ -19,11 +20,14 @@ import {
   type SourceFilters,
 } from './filters';
 import {
+  appendItemLines,
+  clearWarehousesOutside,
   emptyLineDraft,
   lineDraftsFromSalesOrder,
-  lineDraftFromItem,
   patchLineDraft,
   removeLineDraft,
+  setLineWarehouse,
+  splitLineDraft,
 } from './line-draft';
 import { LoadErrorBanner } from './load-error-banner';
 import {
@@ -31,11 +35,13 @@ import {
   lookupNote,
   toReference,
   useAvailableQty,
+  useBusinessUnitOptions,
   useCustomerOptions,
-  useFulfillmentPlantOptions,
   useItemNames,
   useShipToPartnerOptions,
   useUomOptions,
+  useWarehouseOptions,
+  type DataScope,
   type LookupResult,
 } from './lookups';
 import { PageNav } from './page-nav';
@@ -51,7 +57,13 @@ import type {
   SelectOption,
   ShipmentRequestLineDraft,
 } from './types';
-import { hasAllocatableLine, validateHeader, validateLines } from './validation';
+import {
+  hasAllocatableLine,
+  linesMissingWarehouse,
+  splitGroupsOf,
+  validateHeader,
+  validateLines,
+} from './validation';
 
 const t = messages.shipmentRequestCreate;
 
@@ -67,19 +79,20 @@ const SHIPPABLE_ITEM_TYPE_CODE = 'FINISHED';
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ROWS: SalesOrderView[] = [];
+const NO_SCOPES: readonly DataScope[] = [];
 
 const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
   lookup.entries.map((entry) => ({ value: entry.value, label: entry.label }));
 
 interface HeaderDraft {
-  fulfillmentPlantId: string;
+  businessUnitId: string;
   customerId: string;
   shipToPartnerId: string;
   requestedShipDate: string;
 }
 
 const EMPTY_HEADER_DRAFT: HeaderDraft = {
-  fulfillmentPlantId: '',
+  businessUnitId: '',
   customerId: '',
   shipToPartnerId: '',
   requestedShipDate: '',
@@ -134,7 +147,13 @@ export const ShipmentRequestCreateScreen = () => {
   const detail = useSalesOrderDetail(targetSalesOrderId);
 
   const customers = useCustomerOptions();
-  const fulfillmentPlants = useFulfillmentPlantOptions();
+  /*
+   * ⭐ 사업부·출고 창고 선택지는 계정 데이터 범위 안이다(피처 012 FR-002·003) — 서버도 범위 밖을 403 으로 막는다.
+   */
+  const { session } = useSession();
+  const scopes = session?.scopes ?? NO_SCOPES;
+  const businessUnits = useBusinessUnitOptions(scopes);
+  const warehouses = useWarehouseOptions(scopes);
   const shipToPartners = useShipToPartnerOptions();
   const uoms = useUomOptions();
 
@@ -154,8 +173,13 @@ export const ShipmentRequestCreateScreen = () => {
 
   const items = useItemNames(lines.map((line) => (line.itemId === '' ? null : Number(line.itemId))));
 
-  const lineItemIds = lines.map((line) => (line.itemId === '' ? null : Number(line.itemId)));
-  const availableQty = useAvailableQty(lineItemIds);
+  /* 고른 창고 기준 가용(피처 012 FR-006a) — 품목 × 창고. */
+  const availableQty = useAvailableQty(
+    lines.map((line) => ({
+      itemId: line.itemId === '' ? null : Number(line.itemId),
+      warehouseId: line.warehouseId === '' ? null : Number(line.warehouseId),
+    })),
+  );
 
   /**
    * **나가는 중인 쓰기는 건드리지 않는다.** 공통 훅의 `reset()`은 진행 중 mutation에서
@@ -186,7 +210,7 @@ export const ShipmentRequestCreateScreen = () => {
     if (detail.data === undefined) return;
 
     setHeader({
-      fulfillmentPlantId: '',
+      businessUnitId: '',
       customerId: String(detail.data.customerId),
       shipToPartnerId: String(detail.data.shipToPartnerId),
       requestedShipDate: '',
@@ -195,6 +219,21 @@ export const ShipmentRequestCreateScreen = () => {
     resetIfIdle(create);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetSalesOrderId, detail.data]);
+
+  /**
+   * ⭐ 계정 범위의 사업부가 하나면 채워서 연다(피처 012 FR-002 · US1-1). 사람이 고른 값은 덮지 않는다 —
+   *    비어 있을 때만 채운다. 대상을 바꿔 머리가 비면 다시 채운다.
+   */
+  const onlyBusinessUnit =
+    businessUnits.entries.length === 1 ? (businessUnits.entries[0]?.value ?? '') : '';
+  const businessUnitAutoFilled =
+    onlyBusinessUnit !== '' && header.businessUnitId === onlyBusinessUnit;
+
+  useEffect(() => {
+    if (onlyBusinessUnit === '' || header.businessUnitId !== '') return;
+
+    setHeader((prev) => (prev.businessUnitId === '' ? { ...prev, businessUnitId: onlyBusinessUnit } : prev));
+  }, [onlyBusinessUnit, header.businessUnitId, targetSignature]);
 
   const isStandalone = target.kind === 'standalone';
 
@@ -225,6 +264,20 @@ export const ShipmentRequestCreateScreen = () => {
   /* 빈 칸에서는 로컬 판정이 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다. */
   const headerErrors = { ...create.fieldErrors, ...headerLocalErrors };
 
+  const salesOrderNo = target.kind === 'order' ? (detail.data?.salesOrderNo ?? null) : null;
+  const splitGroups = splitGroupsOf(lines);
+  const missingWarehouse = linesMissingWarehouse(lines);
+
+  /** 막는 사유에 적을 라인 번호 — 나눈 줄은 「n(나눈 줄)」(시안 W0401-After). */
+  const rowTagsOf = (keys: readonly string[]): string =>
+    lines
+      .flatMap((line, index) =>
+        keys.includes(line.key)
+          ? [line.splitOf === null ? String(index + 1) : t.actionReasons.splitRowTag(index + 1)]
+          : [],
+      )
+      .join(', ');
+
   const submitBlockReason = (): string | null => {
     if (boundCreated !== null) return t.actionReasons.alreadySubmitted;
     if (isSaving) return t.actionReasons.saving;
@@ -232,8 +285,27 @@ export const ShipmentRequestCreateScreen = () => {
     if (target.kind === 'order' && (detail.data === undefined || detail.isError)) {
       return t.actionReasons.noTarget;
     }
+    /* 피처 012 — 사업부 → S/O 잔여 초과 → 창고 빈 줄 차례(시안 W0401-After). */
+    if (header.businessUnitId === '') return t.actionReasons.businessUnitMissing;
     if (!hasAllocatableLine(lines)) return t.actionReasons.noAllocatedLine;
-    if (Object.keys(lineValidation.errors).length > 0) return t.actionReasons.lineInvalid;
+    if (Object.keys(lineValidation.errors).some((key) => !key.endsWith('.warehouseId'))) {
+      return t.actionReasons.lineInvalid;
+    }
+    const overGroups = splitGroups.filter((group) => group.isOver);
+    if (overGroups.length > 0) {
+      return t.actionReasons.splitOverRemaining(
+        overGroups
+          .map((group) =>
+            salesOrderNo === null || group.salesOrderLineNo === null
+              ? t.values.empty
+              : t.lineTable.salesOrderLineRef(salesOrderNo, group.salesOrderLineNo),
+          )
+          .join(', '),
+      );
+    }
+    if (missingWarehouse.length > 0) {
+      return t.actionReasons.warehouseMissing(rowTagsOf(missingWarehouse.map((line) => line.key)));
+    }
     /*
      * ⛔ **아직 안 채운 칸도 편성을 막는다** — 막는 것과 «줄마다 붉게 적는 것»은 다른 일이다
      *    (사용자 지시 2026-09-18). 여기서 말하지 않으면 단추가 열린 채 눌리고, 본문 조립이
@@ -248,7 +320,26 @@ export const ShipmentRequestCreateScreen = () => {
   const changeHeader = (patch: Partial<HeaderDraft>): void => {
     setHeader((prev) => ({ ...prev, ...patch }));
 
+    /*
+     * ⭐ 사업부를 바꾸면 그 사업부 밖 창고를 고른 줄의 창고를 비운다(피처 012 FR-004 · US1-7).
+     */
+    if (patch.businessUnitId !== undefined && patch.businessUnitId !== header.businessUnitId) {
+      const allowed = new Set(
+        warehouses.selectable(patch.businessUnitId).map((entry) => entry.value),
+      );
+
+      setLines((prev) => clearWarehousesOutside(prev, allowed));
+    }
+
     for (const field of Object.keys(patch)) create.clearFieldError(field);
+  };
+
+  const changeWarehouse = (key: string, warehouseId: string): void => {
+    setLines((prev) => setLineWarehouse(prev, key, warehouseId));
+  };
+
+  const splitLine = (key: string): void => {
+    setLines((prev) => splitLineDraft(prev, key));
   };
 
   const patchLine = (key: string, patch: Partial<Omit<ShipmentRequestLineDraft, 'key'>>): void => {
@@ -275,10 +366,8 @@ export const ShipmentRequestCreateScreen = () => {
     if (target === null || chosen.length === 0) return;
 
     if (target.kind === 'add') {
-      setLines((prev) => [
-        ...prev,
-        ...chosen.map((item) => lineDraftFromItem(item.itemId, item.baseUomId)),
-      ]);
+      /* 새 줄의 창고는 첫 줄 창고다(피처 012 FR-004). */
+      setLines((prev) => appendItemLines(prev, chosen));
 
       return;
     }
@@ -306,7 +395,7 @@ export const ShipmentRequestCreateScreen = () => {
     const body = toShipmentRequestCreateBody({
       mode,
       salesOrderId: target.kind === 'order' ? target.salesOrderId : null,
-      fulfillmentPlantId: header.fulfillmentPlantId,
+      businessUnitId: header.businessUnitId,
       customerId: header.customerId,
       shipToPartnerId: header.shipToPartnerId,
       requestedShipDate: header.requestedShipDate,
@@ -349,6 +438,21 @@ export const ShipmentRequestCreateScreen = () => {
   };
 
 
+  const businessUnitName = describeReference(
+    toReference(businessUnits, header.businessUnitId === '' ? null : Number(header.businessUnitId)),
+  );
+  const selectableWarehouses = warehouses.selectable(header.businessUnitId);
+  /* 선택지는 사업부 하나로 묶어 그 이름을 제목으로 단다(시안 「사업부 X 활성 창고(불량창고 제외)」). */
+  const warehouseOptions =
+    selectableWarehouses.length === 0
+      ? []
+      : [
+          {
+            label: t.lineTable.warehouseGroup(businessUnitName),
+            options: selectableWarehouses.map((entry) => ({ value: entry.value, label: entry.label })),
+          },
+        ];
+
   const rightColumn = (): ReactNode => {
     if (target.kind === 'none') {
       return (
@@ -387,14 +491,15 @@ export const ShipmentRequestCreateScreen = () => {
       <AssignmentFormPane
         mode={mode ?? 'standalone'}
         customerId={header.customerId}
-        fulfillmentPlantId={header.fulfillmentPlantId}
+        businessUnitId={header.businessUnitId}
         shipToPartnerId={header.shipToPartnerId}
         requestedShipDate={header.requestedShipDate}
         customerOptions={toSelectOptions(customers)}
-        fulfillmentPlantOptions={toSelectOptions(fulfillmentPlants)}
+        businessUnitOptions={toSelectOptions(businessUnits)}
+        businessUnitAutoFilled={businessUnitAutoFilled}
         shipToPartnerOptions={toSelectOptions(shipToPartners)}
         customerLookup={customers}
-        fulfillmentPlantNote={lookupNote(fulfillmentPlants)}
+        businessUnitNote={lookupNote(businessUnits)}
         shipToPartnerLookup={shipToPartners}
         customerNote={lookupNote(customers)}
         shipToPartnerNote={lookupNote(shipToPartners)}
@@ -412,6 +517,14 @@ export const ShipmentRequestCreateScreen = () => {
         onPatchLine={patchLine}
         onRemoveLine={removeLine}
         onAddLine={addLine}
+        warehouseOptions={warehouseOptions}
+        onChangeWarehouse={changeWarehouse}
+        onSplit={splitLine}
+        salesOrderNo={salesOrderNo}
+        splitGroups={splitGroups}
+        warehouseNameOf={warehouses.nameOf}
+        clearedWarehouseCount={lines.filter((line) => line.warehouseCleared).length}
+        businessUnitName={businessUnitName}
         isLocked={isLocked}
         submitBlockReason={submitBlockReason()}
         banner={<SaveErrorBanner error={create.error} />}

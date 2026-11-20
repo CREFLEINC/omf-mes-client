@@ -100,36 +100,6 @@ export const useShipmentRequestDetail = (shipmentRequestId: number | null) => {
   });
 };
 
-export const useFulfillmentPlantUpdate = (
-  shipmentRequestId: number | null,
-  /** 저장이 실제로 끝났을 때만 부른다 — 화면은 이때 창을 닫는다(사용자 지시 2026-09-22). */
-  onSaved?: () => void,
-): MasterWriteResult<components['schemas']['ShipmentRequestUpdate']> => {
-  const { client } = useApiClient();
-  return useMasterWrite<
-    components['schemas']['ShipmentRequestUpdate'],
-    components['schemas']['ShipmentRequest']
-  >({
-    request: (body, headers) => {
-      if (shipmentRequestId === null) throw new Error('선택한 출하작업지시가 없습니다.');
-      return client.PUT('/logistics/shipment-requests/{shipmentRequestId}', {
-        params: {
-          path: { shipmentRequestId },
-          header: {
-            'Idempotency-Key': headers['Idempotency-Key'],
-            'If-Match': headers['If-Match'] ?? '',
-          },
-        },
-        body,
-      });
-    },
-    onSuccess: onSaved,
-    etagPath: shipmentRequestId === null ? null : shipmentRequestDetailPath(shipmentRequestId),
-    invalidateKeys: [shipmentScheduleKeys.all],
-    knownFields: ['fulfillmentPlantId'],
-  });
-};
-
 /**
  * 피처 010 — 상세 창 · 인쇄의 품목 표기(「코드 이름」). 지시서 라인은 품목 번호만 실어 번호로
  * 하나씩 푼다(`GET /mdm/items/{itemId}`). 같은 품목은 한 번만 묻는다. 못 풀면 `null` — 화면이

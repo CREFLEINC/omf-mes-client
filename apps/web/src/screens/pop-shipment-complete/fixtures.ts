@@ -69,6 +69,9 @@ export const completion = (overrides: Partial<Completion> = {}): Completion => (
       warehouseName: '완제품 창고 A',
       lotCount: 3,
       qty: 110,
+      /* 피처 012 — 창고의 공장. 이 화면은 C3 에서 읽는다. */
+      plantId: 1,
+      plantName: '1공장',
     },
     {
       warehouseId: 12,
@@ -76,6 +79,8 @@ export const completion = (overrides: Partial<Completion> = {}): Completion => (
       warehouseName: '완제품 창고 B',
       lotCount: 1,
       qty: 50,
+      plantId: 1,
+      plantName: '1공장',
     },
   ],
   lines: [
@@ -93,6 +98,7 @@ export const completion = (overrides: Partial<Completion> = {}): Completion => (
       shippedQty: 0,
       lotCount: 3,
       salesOrderLineId: 801,
+      warehouse: null,
     },
     {
       shipmentRequestLineId: 602,
@@ -108,6 +114,7 @@ export const completion = (overrides: Partial<Completion> = {}): Completion => (
       shippedQty: 0,
       lotCount: 1,
       salesOrderLineId: 802,
+      warehouse: null,
     },
   ],
   lots: [
@@ -174,6 +181,8 @@ export const completion = (overrides: Partial<Completion> = {}): Completion => (
   replacedLots: [],
   blockers: [],
   completedShipment: null,
+  /* 피처 012 — 지시서 사업부. 이 화면은 C3 에서 읽는다. */
+  businessUnit: null,
   ...overrides,
 });
 
@@ -213,6 +222,8 @@ export const completedShipment = {
 export const completionResult = (): CompletionResult => ({
   ...completedShipment,
   completion: completion({ completedShipment, blockers: [{ code: 'ALREADY_COMPLETED' }] }),
+  /* 피처 012 — 창고마다 출고 전표. 이 화면은 C3 에서 읽는다. */
+  goodsIssues: [],
 });
 
 export const requestRow = (overrides: Partial<ShipmentRequestRow> = {}): ShipmentRequestRow => ({
@@ -245,6 +256,7 @@ export const requestRow = (overrides: Partial<ShipmentRequestRow> = {}): Shipmen
       salesOrderLine: null,
       shippingInspectionRequired: true,
       picks: [],
+      warehouse: null,
       overQty: 10,
       lots: [
         requestLot(701, 'P2611-0001', 40),
@@ -268,6 +280,7 @@ export const requestRow = (overrides: Partial<ShipmentRequestRow> = {}): Shipmen
       salesOrderLine: null,
       shippingInspectionRequired: false,
       picks: [],
+      warehouse: null,
       overQty: 0,
       lots: [requestLot(711, 'P2611-0101', 50)],
     },
@@ -280,5 +293,11 @@ export const requestRow = (overrides: Partial<ShipmentRequestRow> = {}): Shipmen
   blockerSummary: {},
   lotJudgmentSummary: { notInspected: 0, accepted: 4, rejected: 0, held: 0 },
   completedShipment: null,
+  /* 피처 012 — 사업부·줄 창고 요약·ERP 송신·출하. */
+  businessUnitId: null,
+  businessUnit: null,
+  warehouses: [],
+  erpSendStatus: null,
+  shipments: [],
   ...overrides,
 });
