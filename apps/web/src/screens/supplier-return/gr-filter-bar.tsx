@@ -9,9 +9,9 @@ import {
   useFilterMore,
   type HiddenFilterChip,
 } from '../../patterns/filter-more';
+import { InfoLabel } from '../../patterns/info-tip';
 
 import { codeNote, codePlaceholder } from './code-options';
-import { FieldLabel } from './field-label';
 import {
   DEFAULT_FILTERS,
   toFilterChips,
@@ -196,9 +196,11 @@ export const GrFilterBar = ({
          * 역전은 생기지 않지만 `filters.ts`의 날짜 판정은 그대로 둔다 — 조회 조건의 정본은
          * 주소이고 주소는 사용자가 직접 고칠 수 있다. 컨트롤이 막는 것과 화면이 막는 것은
          * 다른 층이다.
+         *
+         * 기본 기간이 없다는 사실은 라벨 옆 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A).
          */}
         <div className="field-cell">
-          <FieldLabel htmlFor={periodId} label={t.fields.period} />
+          <InfoLabel htmlFor={periodId} label={t.fields.period} info={t.filters.periodNote} />
           <DatePicker
             id={periodId}
             mode="range"
@@ -269,9 +271,6 @@ export const GrFilterBar = ({
           />
         </div>
       </div>
-
-      {/* 기본 기간이 없다는 사실은 화면에서 읽혀야 한다 — 비어 있는 칸이 고장으로 읽히지 않게 한다. */}
-      <p className="field-note">{t.filters.periodNote}</p>
 
       <HiddenFilterChips open={false} chips={hiddenChips} onRemove={onRemoveFilter} />
     </>

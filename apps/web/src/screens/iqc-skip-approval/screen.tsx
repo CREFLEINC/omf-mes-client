@@ -420,7 +420,7 @@ export const IqcSkipApprovalScreen = () => {
    * *보이는 것*(배너·인라인 오류)이고, 그 몫은 `isWriteResultMine`이 갖는다.
    *
    * **《승인 시 결과》를 알림에 싣지 않는다.** 알림은 사라지고, 그 세 문장은 화면을 보는 내내
-   * 참인 사실이라 상시 구획이 제자리다.
+   * 참인 사실이라 「결재」 제목 옆 ⓘ 가 제자리다.
    */
   const finishDecision = (
     kind: DecisionKind,

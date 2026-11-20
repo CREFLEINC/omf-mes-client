@@ -187,23 +187,18 @@ describe('GrFilterBar — 값 목록이 확정되지 않은 코드', () => {
 });
 
 /**
- * **창고 좁힘의 두 방향**(부품 수준).
+ * **창고 좁힘**(부품 수준).
  *
- * 화면이 좁힌 뒤 넘기므로 이 부품이 보는 것은 「몇 개가 왔는가」와 「안내가 붙었는가」뿐이다 —
- * 그 둘이 실제로 갈리는지를 여기서 재고, 좁힘 자체의 판정은 `code-options.test.ts`가 잰다.
+ * 화면이 좁힌 뒤 넘기므로 이 부품이 보는 것은 「몇 개가 왔는가」뿐이다 — 좁힘 자체의 판정은
+ * `code-options.test.ts`가 잰다.
  */
 describe('GrFilterBar — 폐기 대상 창고 좁힘', () => {
-  it('좁히지 못한 동안에는 전체 창고와 그 사실을 함께 낸다', () => {
-    renderBar({ warehouseNote: t.filters.warehouseTypePending });
+  /* 「폐기 대상 창고를 가려내지 못해」 안내는 개발 사정이라 걷었다(관리웹 정리 시안 A). */
+  it('좁히지 못한 동안에도 그 사정을 칸 아래에 적지 않는다', () => {
+    renderBar();
 
     expect(screen.getByLabelText(t.fields.warehouse)).toBeInTheDocument();
-    expect(screen.getByText(t.filters.warehouseTypePending)).toBeInTheDocument();
-  });
-
-  it('좁혀지면 안내가 사라진다', () => {
-    renderBar({ warehouseOptions: [{ value: '9701', label: WAREHOUSE_LABEL }] });
-
-    expect(screen.queryByText(t.filters.warehouseTypePending)).not.toBeInTheDocument();
+    expect(screen.queryByText(/가려내지 못해/)).not.toBeInTheDocument();
   });
 });
 
@@ -286,11 +281,12 @@ describe('GrFilterBar — 선택지의 한계', () => {
     expect(screen.getByText(t.filters.lookupTruncated)).toBeInTheDocument();
   });
 
-  /* 기본 기간이 없다는 사실은 화면에서 읽혀야 한다 — 빈 칸이 고장으로 읽히지 않게 한다. */
-  it('기본 기간이 없다는 사실을 밝힌다', () => {
+  /* 기본 기간이 없다는 사실은 입고일 라벨 옆 ⓘ 로 읽힌다 — 늘 펼쳐 두지 않는다(관리웹 정리 시안 A). */
+  it('기본 기간이 없다는 사실은 입고일 옆 ⓘ 의 설명으로 읽힌다', () => {
     renderBar();
 
-    expect(screen.getByText(t.filters.periodNote)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.filters.periodNote })).toBeInTheDocument();
+    expect(screen.queryByText(t.filters.periodNote)).not.toBeInTheDocument();
   });
 });
 

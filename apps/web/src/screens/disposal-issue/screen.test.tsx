@@ -1334,8 +1334,6 @@ describe('DisposalIssueScreen — 조회 실패', () => {
 
     /* **조건 줄의 창고 칸은 조건 줄 문구를 쓴다** — 거기에는 「다시 시도」가 실재한다. */
     expect(screen.getByText(t.filters.lookupTruncated)).toBeInTheDocument();
-    /* 못 불러온 것이 먼저다 — 잘림이 좁힘 안내를 덮는다. */
-    expect(screen.queryByText(t.filters.warehouseTypePending)).not.toBeInTheDocument();
   });
 });
 
@@ -1396,14 +1394,14 @@ describe('DisposalIssueScreen — 조건 코드 자리표시', () => {
 describe('DisposalIssueScreen — 폐기 대상 창고 좁힘', () => {
   /**
    * 지금은 **좁히지 못한다.** 창고 유형의 값 목록이 없어 「이 창고가 폐기 대상 창고인가」를
-   * 화면이 물을 수 없다 — 전체를 보이고 그 사실을 밝힌다.
+   * 화면이 물을 수 없다 — 전체를 보인다. 그 사정을 적던 안내는 개발 사정이라 걷었다(관리웹 정리 시안 A).
    */
-  it('자리표시가 비면 전체 창고를 보이고 그 사실을 밝힌다', async () => {
+  it('자리표시가 비면 전체 창고를 보이고 안내를 적지 않는다', async () => {
     const { user } = renderScreen(allRoutes());
 
     await waitForList();
 
-    expect(screen.getByText(t.filters.warehouseTypePending)).toBeInTheDocument();
+    expect(screen.queryByText(/가려내지 못해/)).not.toBeInTheDocument();
 
     const listbox = await openOptions(user, t.fields.warehouse);
 
@@ -1417,15 +1415,13 @@ describe('DisposalIssueScreen — 폐기 대상 창고 좁힘', () => {
     ).toBeInTheDocument();
   });
 
-  /** **전환** — 배열이 채워지면 그 유형만 남고 안내가 사라진다. */
-  it('자리표시를 채우면 그 유형만 남고 안내가 사라진다', async () => {
+  /** **전환** — 배열이 채워지면 그 유형만 남는다. */
+  it('자리표시를 채우면 그 유형만 남는다', async () => {
     fillDefectWarehouseTypes();
 
     const { user } = renderScreen(allRoutes());
 
     await waitForList();
-
-    expect(screen.queryByText(t.filters.warehouseTypePending)).not.toBeInTheDocument();
 
     const listbox = await openOptions(user, t.fields.warehouse);
 
