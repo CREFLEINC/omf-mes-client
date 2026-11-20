@@ -1,18 +1,39 @@
 import { Icon, Tooltip } from '@crefle/web-ui';
+import { useState, type SyntheticEvent } from 'react';
+
+/** 오른쪽에 이만큼 자리가 없으면 문장을 왼쪽으로 띄운다 — 툴팁 최대 폭(22rem)과 간격. */
+const RIGHT_ROOM_PX = 22 * 16 + 16;
+
+type Placement = 'right' | 'left' | 'top' | 'bottom';
 
 /**
  * ⓘ — 알아 둘 규칙이지만 늘 펼쳐 둘 문장은 아닌 것(C-6 · 관리웹 정리 시안 A). 마우스를 올리거나 초점을
  * 주면 문장이 뜬다(DS `Tooltip`). 단추 이름이 곧 그 문장이다 — DS 툴팁은 뜬 뒤에야 설명을 이어 붙여,
- * 초점이 먼저 닿는 보조기술이 문장을 놓치지 않게. 라벨 · 제목 바로 뒤에 두고, 문장은 오른쪽에 줄을 바꿔 띄운다
- * (가운데 위로 띄우면 긴 문장이 화면 왼쪽 밖으로 잘린다).
+ * 초점이 먼저 닿는 보조기술이 문장을 놓치지 않게. 라벨 · 제목 바로 뒤에 두고, 문장은 옆으로 줄을 바꿔 띄운다
+ * (가운데 위로 띄우면 긴 문장이 화면 밖으로 잘린다). 방향을 주지 않으면 오른쪽, 오른쪽에 자리가 없으면 왼쪽이다.
  */
-export const InfoTip = ({ text }: { text: string }) => (
-  <Tooltip className="info-tip-anchor" placement="right" content={text}>
-    <button type="button" className="info-tip" aria-label={text}>
-      <Icon name="info" size={16} aria-hidden />
-    </button>
-  </Tooltip>
-);
+export const InfoTip = ({ text, placement }: { text: string; placement?: Placement }) => {
+  const [side, setSide] = useState<Placement>(placement ?? 'right');
+  const pickSide = (event: SyntheticEvent<HTMLElement>): void => {
+    if (placement !== undefined) return;
+    const { right } = event.currentTarget.getBoundingClientRect();
+    setSide(right + RIGHT_ROOM_PX > window.innerWidth ? 'left' : 'right');
+  };
+
+  return (
+    <Tooltip
+      className="info-tip-anchor"
+      placement={side}
+      content={text}
+      onMouseEnter={pickSide}
+      onFocus={pickSide}
+    >
+      <button type="button" className="info-tip" aria-label={text}>
+        <Icon name="info" size={16} aria-hidden />
+      </button>
+    </Tooltip>
+  );
+};
 
 /**
  * 칸 라벨 + ⓘ — 칸 아래 설명문(C-6 금지)을 라벨 옆 ⓘ 로 옮길 때 쓴다. DS `TextField` · `Select` 의 라벨은 글자만
