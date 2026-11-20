@@ -6,7 +6,6 @@ export const alarmRecipientSettings = {
   /* 설계 W-CO-11·사이드바와 같은 글자다. */
   title: '알림 수신자 설정',
   breadcrumbRoot: '시스템 관리',
-  description: '부서마다 알림 이벤트를 켜고 끄며, Zalo 부가 전달 여부와 받을 사람을 정합니다.',
   panes: { events: '이벤트', setting: (eventName: string): string => `설정: ${eventName}` },
   fields: {
     department: '부서',

@@ -2,6 +2,7 @@ import { AlertBanner, Button, type Column, EmptyState, SkeletonText, Table } fro
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { targetTypeLabel, type WorkCalendarApplication } from './application-targets';
 
 const t = messages.workCalendar.applications;
@@ -93,7 +94,11 @@ export const ApplicationPane = ({
   return (
     <section className="pane work-calendar-pane" aria-label={t.title}>
       <div className="work-calendar-pane-heading">
-        <h2 className="pane-title">{t.title}</h2>
+        {/* 해제가 상위 층을 따르게 한다는 뜻은 제목 옆 ⓘ 로(관리웹 정리 시안 A). */}
+        <h2 className="pane-title info-label">
+          {t.title}
+          <InfoTip text={t.releaseNote} />
+        </h2>
         {calendarName !== null && (
           <Button variant="outlined" onClick={onAdd}>
             {t.add}
@@ -110,8 +115,6 @@ export const ApplicationPane = ({
           <AlertBanner variant="warning">{t.unassignedPlants(unassignedPlants)}</AlertBanner>
         </div>
       )}
-
-      <p className="work-calendar-pane-note">{t.releaseNote}</p>
 
       {listSlot()}
     </section>

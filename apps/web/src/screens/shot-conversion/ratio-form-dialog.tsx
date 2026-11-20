@@ -2,6 +2,8 @@ import { AlertBanner, Button, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
+import { FieldLabel } from './field-label';
 import type { CodeOption } from './options';
 import { ratioWarning } from './ratio-validation';
 import { SelectField } from './select-field';
@@ -15,7 +17,8 @@ export type ScopeOptions = Record<Exclude<ScopeAxis, 'itemId'>, CodeOption[]>;
 interface ReadOnlyFieldProps {
   label: string;
   value: string;
-  note?: string;
+  /** 왜 여기서 못 바꾸는지 — 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */
+  info: string;
 }
 
 /**
@@ -24,16 +27,18 @@ interface ReadOnlyFieldProps {
  * **폼 컨트롤을 잠그지 않고 값 표기로 낸다** — 잠긴 입력칸은 「언젠가 여기서 고칠 수 있다」를
  * 뜻하는데, 범위는 이 창이 영영 정하지 않는다.
  */
-const ReadOnlyField = ({ label, value, note }: ReadOnlyFieldProps) => {
+const ReadOnlyField = ({ label, value, info }: ReadOnlyFieldProps) => {
   const labelId = useId();
 
   return (
     <div className="field-cell">
-      <span className="field-label" id={labelId}>
-        {label}
+      <span className="info-label">
+        <span className="field-label" id={labelId}>
+          {label}
+        </span>
+        <InfoTip text={info} />
       </span>
       <p aria-labelledby={labelId}>{value}</p>
-      {note !== undefined && <span className="field-note">{note}</span>}
     </div>
   );
 };
@@ -82,6 +87,8 @@ export const RatioFormDialog = ({
 }: RatioFormDialogProps) => {
   const isCreate = mode === 'create';
   const warning = ratioWarning(values);
+  const ratioId = useId();
+  const effectiveToId = useId();
 
   return (
     <Dialog
@@ -106,16 +113,18 @@ export const RatioFormDialog = ({
 
         {isCreate ? (
           <div className="form-grid-full">
-            <fieldset className="picker-group">
-              <legend className="field-label">{t.form.scopeLegend}</legend>
-              {/*
-               * ⭐ 비운 축이 「전체」다 — 고르지 않은 것이 아니라 값이다.
-               *
-               * ⛔ **`.field-note` 를 쓰지 않는다**(규범 4의 20rem 제한). 이것은 칸 하나가
-               * 아니라 **묶음 넷 전체**의 설명이라, 좁은 기둥으로 접히면 그만큼 아래의
-               * 필수 칸이 스크롤 밖으로 밀린다(브라우저 확인 실측).
-               */}
-              <p className="dialog-lead">{t.form.scopeNote}</p>
+            {/*
+             * ⭐ 비운 축이 「전체」다 — 고르지 않은 것이 아니라 값이다. 묶음 넷 전체의 설명이라
+             * 묶음 이름 옆 ⓘ 로 둔다(관리웹 정리 시안 A). ⓘ 의 문장이 묶음 이름에 섞이지 않게
+             * 이름은 `aria-label` 로 준다.
+             */}
+            <fieldset className="picker-group" aria-label={t.form.scopeLegend}>
+              <legend className="field-label">
+                <span className="info-label">
+                  {t.form.scopeLegend}
+                  <InfoTip text={t.form.scopeNote} />
+                </span>
+              </legend>
 
               <div className="form-grid">
                 {SCOPE_AXES.map((axis) => (
@@ -137,18 +146,21 @@ export const RatioFormDialog = ({
             </fieldset>
           </div>
         ) : (
-          <ReadOnlyField label={t.form.scopeLegend} value={scopeText} note={t.form.scopeFixed} />
+          <ReadOnlyField label={t.form.scopeLegend} value={scopeText} info={t.form.scopeFixed} />
         )}
 
-        <TextField
-          label={t.fields.ratio}
-          required
-          value={values.ratio}
-          onChange={(event) => onChange({ ratio: event.target.value })}
-          placeholder={t.form.ratioPlaceholder}
-          helperText={t.form.ratioNote}
-          error={fieldErrors.valueNumeric}
-        />
+        {/* 비율의 뜻(곱해 타발수를 낸다)은 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}
+        <div className="field-cell">
+          <FieldLabel htmlFor={ratioId} label={t.fields.ratio} required info={t.form.ratioNote} />
+          <TextField
+            id={ratioId}
+            required
+            value={values.ratio}
+            onChange={(event) => onChange({ ratio: event.target.value })}
+            placeholder={t.form.ratioPlaceholder}
+            error={fieldErrors.valueNumeric}
+          />
+        </div>
 
         {/*
          * ⚠ **막지 않고 말한다** — 한 번에 여러 번 타발하는 공정이 있을 수 있다.
@@ -171,14 +183,21 @@ export const RatioFormDialog = ({
           error={fieldErrors.effectiveFrom}
         />
 
-        <TextField
-          type="date"
-          label={t.form.effectiveTo}
-          value={values.effectiveTo}
-          onChange={(event) => onChange({ effectiveTo: event.target.value })}
-          helperText={t.form.effectiveToNote}
-          error={fieldErrors.effectiveTo}
-        />
+        {/* 비우면 끝이 없다는 뜻은 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}
+        <div className="field-cell">
+          <FieldLabel
+            htmlFor={effectiveToId}
+            label={t.form.effectiveTo}
+            info={t.form.effectiveToNote}
+          />
+          <TextField
+            id={effectiveToId}
+            type="date"
+            value={values.effectiveTo}
+            onChange={(event) => onChange({ effectiveTo: event.target.value })}
+            error={fieldErrors.effectiveTo}
+          />
+        </div>
       </div>
     </Dialog>
   );

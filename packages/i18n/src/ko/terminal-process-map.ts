@@ -52,7 +52,7 @@ export const terminalProcessMap = {
     create: '새 단말 등록',
     edit: '단말 수정',
     code: '단말 코드',
-    /** ⛔ 등록 뒤에는 못 바꾼다 — 키다. */
+    /** ⛔ 등록 뒤에는 못 바꾼다 — 키다. 라벨 옆 ⓘ(관리웹 정리 시안 A). */
     codeLocked: '단말 코드는 등록 후 변경할 수 없습니다.',
     plant: '공장',
     type: '유형',
@@ -60,7 +60,7 @@ export const terminalProcessMap = {
     registration: '등록 상태',
     equipment: '설치 설비',
     equipmentNone: '설비 미지정',
-    /** POP 이 「이 설비」를 전제로 도는 화면들이 이 값을 쓴다 — 라벨 옆 한 줄 안내. 유형과 상관없이 늘 보인다. */
+    /** POP 이 「이 설비」를 전제로 도는 화면들이 이 값을 쓴다 — 라벨 옆 ⓘ(관리웹 정리 시안 A). */
     equipmentHint: 'POP 유형일 시 지정해 주세요',
     plantPlaceholder: '공장을 지정하세요',
     typePlaceholder: '유형을 지정하세요',
@@ -114,8 +114,6 @@ export const terminalProcessMap = {
     noExpiry: '만료 없음',
     close: '닫기',
     failed: '등록 토큰을 발급하지 못했습니다. 다시 시도해 주세요.',
-    textOmitted:
-      '등록 코드는 화면에 표시하지 않습니다. QR을 스캔하거나 복사해 기기에 붙여넣으세요.',
   },
 
   grid: {
@@ -134,7 +132,7 @@ export const terminalProcessMap = {
      */
     emptyTitle: '설정된 공정이 없습니다',
     empty: '이 단말로 생산 작업을 하려면 위에서 공정을 추가해 주세요.',
-    /** ⭐ 보안이 아니라 오조작 방지다. */
+    /** ⭐ 보안이 아니라 오조작 방지다. 사용자 확정 문구(#1358) 그대로 구획 제목 옆 ⓘ 에 둔다(관리웹 정리 시안 A). */
     /*
      * ⚠ 「체크하지 않은 기능은 쓸 수 없다」고 단정하지 않는다 — 서버가 공정 단위로 막는 것은
      * 작업 시작·라벨 발행뿐이고, 나머지는 POP 화면 목록을 가르거나(단말 전체 기준) 소비처가 없다.

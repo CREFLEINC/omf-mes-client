@@ -7,8 +7,6 @@ export const handoverAlertSettings = {
   /* 설계 W-CO-14·사이드바와 같은 글자다. */
   title: '인계작업 알림 설정',
   breadcrumbRoot: '시스템 관리',
-  description:
-    '인계 작업이 생기면 누구에게 알릴지 작업마다 정합니다. 알림센터로 받고, 켜면 Zalo 로도 받습니다.',
   intro:
     '처음에는 모두 꺼져 있습니다. Zalo 를 켜면 고객사 Zalo 발송량(요금과 일일 한도)이 늘어납니다.',
   panes: {

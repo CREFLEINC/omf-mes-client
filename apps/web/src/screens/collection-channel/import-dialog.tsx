@@ -146,11 +146,7 @@ export const ImportDialog = ({
       }
     >
       <div className="dialog-scroll">
-        {/*
-         * 창 폭 전체를 쓰는 안내다 — `.field-note` 는 규범 4에 따라 20rem 에 갇혀 있어
-         * 넓은 창에서 좁은 기둥이 된다(브라우저 확인 실측).
-         */}
-        <p className="dialog-lead">{t.description}</p>
+        {/* 창 설명 문장은 두지 않는다 — 창 제목과 표가 무엇을 고르는지 말한다(관리웹 정리 시안 A). */}
 
         {/*
          * ⭐ **보낸 결과를 창 안에 남긴다.** 창을 닫아 버리면 무엇이 되고 무엇이 안 됐는지

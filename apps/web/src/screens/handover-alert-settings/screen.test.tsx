@@ -226,7 +226,8 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     const user = userEvent.setup();
     setup();
 
-    expect(await screen.findByText(t.intro)).toBeInTheDocument();
+    /* 발송량 안내는 「인계 작업」 제목 옆 ⓘ 의 설명이다(관리웹 정리 시안 A). */
+    expect(await screen.findByRole('button', { name: t.intro })).toBeInTheDocument();
     const pane = await openType(user, '자재 출고 피킹');
     expect(pane.getByText(t.types.MATERIAL_PICKING_REQUESTED.when)).toBeInTheDocument();
     expect(pane.getByText(t.types.MATERIAL_PICKING_REQUESTED.where)).toBeInTheDocument();

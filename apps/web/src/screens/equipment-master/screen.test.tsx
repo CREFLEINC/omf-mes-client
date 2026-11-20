@@ -1003,7 +1003,9 @@ describe('EquipmentMasterScreen — 상위 그룹 선택지와 순환', () => {
     await user.click(await screen.findByRole('button', { name: 'GRP-A' }));
 
     await screen.findByRole('region', { name: t.form.editTitle });
-    expect(form().getByText(t.actionReasons.parentExcludesSelfAndDescendants)).toBeInTheDocument();
+    expect(
+      form().getByRole('button', { name: t.actionReasons.parentExcludesSelfAndDescendants }),
+    ).toBeInTheDocument();
   });
 
   it('최상위로 두는 선택지가 첫 줄에 있다', async () => {
@@ -1885,19 +1887,23 @@ describe('EquipmentMasterScreen — 설비 등록·수정', () => {
 
     expect(equipmentForm().getByLabelText(t.fields.calibrationCycle)).toHaveTextContent('12');
     expect(
-      equipmentForm().getByText(t.actionReasons.calibrationCycleOwnedElsewhere),
+      equipmentForm().getByRole('button', { name: t.actionReasons.calibrationCycleOwnedElsewhere }),
     ).toBeInTheDocument();
   });
 
   /* 이 화면이 영영 정하지 않는 값은 잠긴 입력칸이 아니라 값 표기로 낸다. */
-  it('운용 상태와 검교정 일자를 값으로만 보이고 사유를 함께 낸다', async () => {
+  it('운용 상태와 검교정 일자를 값으로만 보이고 사유는 라벨 옆 ⓘ 로 낸다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
     await openEquipment(user);
 
-    expect(equipmentForm().getByText(t.actionReasons.statusNotEditableHere)).toBeInTheDocument();
-    expect(equipmentForm().getByText(t.actionReasons.calibrationDatesReadOnly)).toBeInTheDocument();
+    expect(
+      equipmentForm().getByRole('button', { name: t.actionReasons.statusNotEditableHere }),
+    ).toBeInTheDocument();
+    expect(
+      equipmentForm().getByRole('button', { name: t.actionReasons.calibrationDatesReadOnly }),
+    ).toBeInTheDocument();
     // 잠긴 입력칸을 두지 않는다 — 「언젠가 여기서 고칠 수 있다」를 뜻하게 된다.
     expect(
       equipmentForm().queryByRole('textbox', { name: new RegExp(t.fields.lastCalibrationDate) }),

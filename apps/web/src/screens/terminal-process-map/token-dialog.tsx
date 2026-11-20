@@ -81,7 +81,6 @@ export const TokenDialog = ({ token, terminalCode, onClose }: TokenDialogProps) 
               {t.token.copyFailed}
             </AlertBanner>
           ) : null}
-          <p className="field-note">{t.token.textOmitted}</p>
           <dl className="token-meta">
             <dt>{t.token.issuedAt}</dt>
             <dd>{formatMoment(token.issuedAt)}</dd>

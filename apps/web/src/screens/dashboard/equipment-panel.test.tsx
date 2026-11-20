@@ -266,6 +266,9 @@ describe('EquipmentBoard', () => {
     const defects = within(dialog).getByRole('region', { name: t.groupDefects });
     expect(defects).toHaveTextContent('찍힘30 EA');
     expect(defects).toHaveTextContent(t.untypedQty('10'));
+    /* 설비가 빈 실적이 빠진다는 사실은 제목 옆 ⓘ 의 설명이다(관리웹 정리 시안 A). */
+    expect(within(defects).getByRole('button', { name: t.unassignedNote })).toBeInTheDocument();
+    expect(within(defects).queryByText(t.unassignedNote)).toBeNull();
     const stops = within(dialog).getByRole('region', { name: t.groupStops });
     expect(stops).toHaveTextContent(`금형 고장${formatElapsed(40)}`);
     /* 사유 없는 정지는 「사유 미등록」. */

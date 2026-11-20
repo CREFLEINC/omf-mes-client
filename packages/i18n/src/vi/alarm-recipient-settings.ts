@@ -14,8 +14,6 @@ import type { Translated } from './translated';
 export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings> = {
   title: 'Thiết lập người nhận thông báo',
   breadcrumbRoot: 'Quản trị hệ thống',
-  description:
-    'Bật hoặc tắt từng sự kiện thông báo theo phòng ban, chọn có gửi thêm qua Zalo và người nhận.',
   panes: {
     events: 'Sự kiện',
     setting: (eventName: string): string => `Thiết lập: ${eventName}`,

@@ -10,8 +10,6 @@ import type { Translated } from './translated';
 export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> = {
   title: 'Thiết lập thông báo công việc bàn giao',
   breadcrumbRoot: 'Quản trị hệ thống',
-  description:
-    'Chọn người được thông báo cho từng công việc bàn giao. Thông báo đến trung tâm thông báo, bật thêm Zalo nếu cần.',
   intro:
     'Ban đầu tất cả đều tắt. Bật Zalo sẽ làm tăng lượng tin Zalo của khách hàng (phí và hạn mức ngày).',
   panes: {
