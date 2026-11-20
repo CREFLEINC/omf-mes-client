@@ -706,4 +706,45 @@ describe('W-02-09 LOT 생산 이력 조회: 생산 LOT 분리 (013)', () => {
 
     expect(await detailHead(PROD)).toBeInTheDocument();
   });
+
+  it('US4-3 · Q18 원래 생산 LOT 상세에 나눈 LOT(분리 자식)이 들여 쓴 표로 서고 [보기]로 새 LOT 에 간다', async () => {
+    const user = userEvent.setup();
+    const parentHead = backwardChain(201, PROD, []).lot;
+    const childLink = (lotId: number, lotNo: string, qty: number) => ({
+      relationTypeCode: 'SPLIT' as const,
+      lot: { ...parentHead, lotId, lotNo },
+      qty,
+      uomCode: 'EA',
+      splitAt: '2026-11-20T02:12:00Z',
+      goodsIssue: null,
+    });
+    setup(`/production/lot-trace?from=2026-10-20&to=2026-10-26&selected=201`, {
+      backwardRows: [backwardRow(201, PROD)],
+      backwardChains: {
+        201: backwardChain(201, PROD, []),
+        202: { ...backwardChain(202, CHILD, []), splitFrom: childLink(201, PROD, 30) },
+      },
+      forwardChains: {
+        201: {
+          ...forwardChain(201, PROD, [], 'PRODUCTION'),
+          splits: [childLink(202, CHILD, 30), childLink(203, `${CHILD}-S1`, 10)],
+        },
+      },
+    });
+
+    await detailHead(PROD);
+    const pane = detailPane();
+    const splits = await within(pane).findByRole('region', { name: '분할 LOT' });
+    expect(
+      within(splits).getByText(
+        '이 LOT 에서 생산 LOT 분리로 떼어 낸 LOT 입니다. 새 LOT 에서 다시 나눈 LOT 은 들여 씁니다.',
+      ),
+    ).toBeInTheDocument();
+    expect(within(splits).getAllByText('분리 시각 2026-11-20 09:12')).toHaveLength(2);
+    expect(within(splits).getByText('30 EA')).toBeInTheDocument();
+
+    await user.click(within(splits).getByRole('button', { name: `${CHILD} 추적 보기` }));
+
+    expect(await detailHead(CHILD)).toBeInTheDocument();
+  });
 });
