@@ -95,4 +95,33 @@ export const stockTransfer: Translated<typeof ko.stockTransfer> = {
     action: 'Xem bản ghi gửi thất bại',
   },
   another: 'Lượt chuyển tiếp theo',
+  result: {
+    added: 'Đã thêm',
+    duplicate: 'LOT này đã được thêm',
+    duplicateRow: (no: number) => `Đã có ở LOT xuất No ${String(no)}`,
+    rejected: 'Không thêm',
+  },
+  tally: {
+    title: 'LOT xuất',
+    total: (count: number) => `${String(count)} LOT`,
+    open: (itemCode: string, lotNo: string) => `Mở ${itemCode} ${lotNo}`,
+  },
+  sheet: {
+    title: 'LOT xuất',
+    fields: {
+      itemCode: 'Mã hàng',
+      itemName: 'Tên hàng',
+      lot: 'LOT',
+      from: 'Đi từ',
+      onHand: 'Tồn kho',
+      qty: 'Số lượng xuất',
+    },
+    remove: 'Bỏ khỏi danh sách',
+  },
+  destination: {
+    change: 'Đổi',
+  },
+  summary: {
+    count: (count: number) => `${String(count)} LOT`,
+  },
 };
