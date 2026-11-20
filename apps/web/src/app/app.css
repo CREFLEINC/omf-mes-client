@@ -18519,10 +18519,6 @@ dialog.terminal-map-form-dialog {
   letter-spacing: var(--type-body-lg-tracking);
 }
 
-.terminal-map-removed-note {
-  margin: 0 auto 0 0;
-}
-
 .terminal-map-settings-block > .filter-bar {
   margin-bottom: 0;
 }

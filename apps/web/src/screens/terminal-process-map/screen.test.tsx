@@ -136,7 +136,6 @@ describe('TerminalProcessMapScreen 표시', () => {
     expect(screen.getByRole('button', { name: 'SYN-TERM-02' })).not.toHaveAttribute('aria-current');
 
     expect(await screen.findByRole('button', { name: t.grid.save })).toBeInTheDocument();
-    expect(screen.queryByText(t.grid.removedWarning)).not.toBeInTheDocument();
   });
 });
 
@@ -262,16 +261,6 @@ describe('TerminalProcessMapScreen 기능 구성 저장', () => {
   };
   const flag = (processName: string, key: keyof typeof t.flags) =>
     screen.getByRole('checkbox', { name: `${processName} ${t.flags[key]}` });
-
-  it('저장된 공정을 목록에서 빼면 저장 옆에 경고가 뜬다(사용자 지시 2026-11-20 · #333)', async () => {
-    const { user } = renderWith([processRow(11, '합성 사출', { canStartWork: true })]);
-
-    await screen.findByRole('button', { name: t.grid.save });
-    expect(screen.queryByText(t.grid.removedWarning)).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: `합성 사출 ${t.grid.remove}` }));
-    expect(screen.getByText(t.grid.removedWarning)).toBeInTheDocument();
-    expect(screen.getByText(t.grid.emptyTitle)).toBeInTheDocument();
-  });
 
   it('기능을 하나도 켜지 않은 줄을 짚고 저장을 막으며, 하나라도 켜면 풀린다', async () => {
     const { user } = renderWith([

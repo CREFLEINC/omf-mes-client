@@ -137,9 +137,6 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     manage: 'Loại trừ công đoạn',
     remove: 'Loại trừ',
     emptyTitle: 'Chưa có công đoạn nào được thiết lập.',
-    /** 저장된 공정을 목록에서 뺐을 때 저장 단추 옆 경고(사용자 지시 2026-11-20 · #333). */
-    removedWarning:
-      'Khi lưu, các công đoạn đã bỏ khỏi danh sách sẽ không dùng được trên thiết bị này.',
     save: 'Lưu',
     saved: 'Đã lưu cấu hình chức năng.',
     saving: 'Đang lưu.',

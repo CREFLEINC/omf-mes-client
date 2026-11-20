@@ -424,10 +424,6 @@ export const TerminalProcessMapScreen = () => {
   const addableProcesses = processes.entries.filter(
     (entry) => !grid.some((row) => String(row.processId) === entry.value),
   );
-  /* 저장된 공정을 목록에서 뺐을 때만 저장 단추 옆에 알린다(사용자 지시 2026-11-20 · #333). */
-  const hasRemovedProcess = original.some(
-    (row) => !grid.some((current) => current.processId === row.processId),
-  );
 
   /** 조회 실패 → 로딩 → 표 순서로 하나만 낸다. 실패했는데 빈 표를 함께 보이면 안 된다. */
   const listSlot = (): ReactNode => {
@@ -654,12 +650,6 @@ export const TerminalProcessMapScreen = () => {
 
         <div className="form-actions terminal-map-settings-footer">
           {replace.isSaving && <p className="field-note form-actions-secondary">{t.grid.saving}</p>}
-          {!replace.isSaving && hasRemovedProcess && (
-            <p className="iqc-inspection-action-note terminal-map-removed-note" data-tone="warning">
-              <Icon name="warning" size={16} aria-hidden />
-              {t.grid.removedWarning}
-            </p>
-          )}
           <Button
             variant="outlined"
             disabled={replace.isSaving || !isGridDirty}
