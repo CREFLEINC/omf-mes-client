@@ -193,9 +193,13 @@ export const popOqcInspection = {
         `PDA 교체 ${at}${worker === '' ? '' : ` ${worker}`}`,
         ...(nonconformanceNo === null ? [] : [`부적합 ${nonconformanceNo}`]),
       ].join(' · '), // ui-check-ignore: C-13 시안 P0406 교체로 빠진 LOT 줄
-    cardEmpty: (item: string): string => `${item} · 피킹 LOT 없음`, // ui-check-ignore: C-13 시안 P0406 목록 카드
-    target: '목표',
-    picked: '피킹',
+    /** 머리 정보 띠 수량 — 출하 완료(P-04-07)와 같은 말. */
+    target: '지시량',
+    picked: '피킹량',
+    over: '초과량',
+    bandLabel: '출하 지시서 정보',
+    /** 피킹 LOT 이 없을 때 한 줄(출하 완료와 같은 문구). */
+    lotsEmpty: '피킹된 LOT이 없습니다.',
     refs: {
       request: '의뢰번호',
       customer: '고객',

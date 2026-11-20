@@ -1,11 +1,11 @@
-import { Button, Chip, EmptyState, Icon } from '@crefle/web-ui';
+import { Button, Chip, Icon } from '@crefle/web-ui';
 import type { components, InspectionResultSummaryForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { formatQty } from '../../patterns/package-qty';
-import { PuActionBar, PuButton } from '../../patterns/pop-uniform';
+import { PuActionBar, PuBand, PuButton, type PuBandItem } from '../../patterns/pop-uniform';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { overriddenLotsOf } from '../parts-iqc-inspection/lot-judgment';
 import { LotMatchField } from '../parts-iqc-inspection/lot-match-field';
@@ -40,6 +40,8 @@ import type { InspectionRequestResponse } from '../oqc-inspection/types';
 
 type ShipmentRequestLot = components['schemas']['ShipmentRequestLot'];
 import { formatDateTime } from '../oqc-inspection/types';
+import { withUom } from '../oqc-inspection/uom-lookup';
+import { bandLabel } from './request-summary';
 import { PopSerialDialog, PopSerialSummary } from './serial-step';
 
 const pop = messages.popOqcInspection;
@@ -187,68 +189,59 @@ const popReplacedText = (lot: ShipmentRequestLot | null): string => {
   );
 };
 
+/**
+ * 머리 — 지시서 번호 아래 정보 띠. 옛 흐름의 의뢰 정보 띠(`PopRequestBand` · `oqc-band`, 공통 `PuBand` 격자 ·
+ * 이름을 값 위에 작게)와 같은 모양이다. 수량은 출하 완료(P-04-07)와 같은 말(지시량 · 피킹량 · 초과량)과 단위로 쓴다.
+ */
 const Summary = ({
   request,
   refData,
   uom,
+  wide,
 }: {
   request: InspectionRequestResponse;
   refData: ShipmentRequestRef | undefined;
   uom: string;
+  /** 결과 입력 칸이 없어 상세가 한 단일 때 — 한 줄에 넷씩. */
+  wide: boolean;
 }) => {
-  const refs = [
-    { key: 'req', label: ps.refs.request, value: request.inspectionRequestNo },
-    { key: 'cust', label: ps.refs.customer, value: refData?.customerName ?? '—' },
-    { key: 'dest', label: ps.refs.shipTo, value: refData?.shipToName ?? '—' },
+  const qty = (value: number | undefined): string =>
+    value === undefined ? '—' : withUom(formatQty(value), uom || null);
+  const items: PuBandItem[] = [
     {
-      key: 'plan',
-      label: ps.refs.plan,
+      label: bandLabel('box', pop.detail.fields.item),
+      value: itemText(request, refData),
+      wide: true,
+    },
+    {
+      label: bandLabel('file', ps.refs.request),
+      value: <span className="pu-mono">{request.inspectionRequestNo}</span>,
+    },
+    { label: bandLabel('list', ps.refs.customer), value: refData?.customerName ?? '—' },
+    { label: bandLabel('list', ps.refs.shipTo), value: refData?.shipToName ?? '—' },
+    {
+      label: bandLabel('file', ps.refs.plan),
       value:
         request.inspectionPlanVersionId == null
           ? pop.detail.noPlanVersion
           : pop.detail.planValue(pop.detail.idValue(request.inspectionPlanVersionId)),
     },
-    { key: 'at', label: ps.refs.requestedAt, value: formatDateTime(request.requestedAt) },
+    { label: bandLabel('clock', ps.refs.requestedAt), value: formatDateTime(request.requestedAt) },
+    { label: bandLabel('check', ps.target), value: qty(refData?.targetQty) },
+    { label: bandLabel('check', ps.picked), value: qty(refData?.pickedQty) },
+    ...(refData !== undefined && refData.overQty > 0
+      ? [{ label: bandLabel('check', ps.over), value: qty(refData.overQty) }]
+      : []),
   ];
 
   return (
     <section className="pop-oqc-summary" aria-label={request.inspectionRequestNo}>
-      <div className="pop-oqc-summary__key">
-        <p className="pop-oqc-summary__no">
-          {request.shipmentRequestNo ?? refData?.shipmentRequestNo ?? '—'}
-        </p>
-        <dl className="pop-oqc-summary__figures">
-          <div>
-            <dt>{pop.detail.fields.item}</dt>
-            <dd>{itemText(request, refData)}</dd>
-          </div>
-          <div>
-            <dt>{ps.target}</dt>
-            <dd className="pop-oqc-num">
-              {refData === undefined ? '—' : `${formatQty(refData.targetQty)} ${uom}`.trim()}
-            </dd>
-          </div>
-          <div>
-            <dt>{ps.picked}</dt>
-            <dd className="pop-oqc-num">
-              {refData === undefined ? '—' : `${formatQty(refData.pickedQty)} ${uom}`.trim()}
-              {refData !== undefined && refData.overQty > 0 ? (
-                <Chip size="sm" status="info">
-                  {s.over(formatQty(refData.overQty))}
-                </Chip>
-              ) : null}
-            </dd>
-          </div>
-        </dl>
+      <p className="pop-oqc-summary__no">
+        {request.shipmentRequestNo ?? refData?.shipmentRequestNo ?? '—'}
+      </p>
+      <div className={wide ? 'oqc-band is-wide' : 'oqc-band'}>
+        <PuBand grid={wide ? 4 : 3} items={items} label={ps.bandLabel} />
       </div>
-      <dl className="pop-oqc-summary__ref">
-        {refs.map((item) => (
-          <div key={item.key}>
-            <dt>{item.label}</dt>
-            <dd>{item.value}</dd>
-          </div>
-        ))}
-      </dl>
     </section>
   );
 };
@@ -262,13 +255,14 @@ const LotLine = ({
   refData: ShipmentRequestRef | undefined;
   uom: string;
 }) => {
-  const portions = portionsText(refData?.lotOf(view.lot.lotId) ?? null, ps.staging);
+  const portions = portionsText(refData?.lotOf(view.lot.lotId) ?? null, ps.staging, uom);
 
   return (
     <li className="pop-oqc-shipment-lot">
+      {/* LOT 번호·수량은 한 줄(단위 포함), 창고 몫만 줄을 바꾼다(출하 완료 표 규칙과 같다). */}
       <span className="pop-oqc-shipment-lot__no">
-        <strong>{view.lot.lotNo}</strong>{' '}
-        <span>{`${formatQty(view.lot.lotQty)} ${uom}`.trim()}</span>
+        <strong className="pop-oqc-nowrap">{view.lot.lotNo}</strong>{' '}
+        <span className="pop-oqc-nowrap">{withUom(formatQty(view.lot.lotQty), uom || null)}</span>
       </span>
       <span className="pop-oqc-shipment-lot__judgment">
         <LotJudgmentChip code={view.judgmentCode} size="md" />
@@ -370,29 +364,32 @@ export const PopShipmentDetail = ({
   return (
     <div className="pop-oqc-shipment">
       <div className="pop-oqc-shipment__col">
-        <Summary request={request} refData={refData} uom={uom} />
-        <p className="field-note pop-oqc-shipment-note">
-          <Icon name={skipped ? 'fast_forward' : 'info'} size={20} aria-hidden />
-          <span>{skipped ? `${s.skipped} ${s.skippedMore}` : s.note}</span>
-        </p>
+        <Summary request={request} refData={refData} uom={uom} wide={!writable} />
+        {/* 긴 안내 문단은 두지 않는다(POP 통일 · 사용자 지시 2026-11-20) — OQC 생략으로 닫힌 의뢰만 그 사실을 알린다. */}
+        {skipped && (
+          <p className="field-note pop-oqc-shipment-note">
+            <Icon name="fast_forward" size={20} aria-hidden />
+            <span>{`${s.skipped} ${s.skippedMore}`}</span>
+          </p>
+        )}
 
         <section className="pop-oqc-shipment-box" aria-label={s.lots.heading(views.active.length)}>
           <div className="pop-oqc-shipment-box__head">
             <h2>{s.lots.title}</h2>
             <span className="pop-oqc-shipment-muted">{s.lots.count(views.active.length)}</span>
-            <span className="pop-oqc-shipment-gap" />
-            <OverviewChip overview={overview} size="md" />
-            <span className="pop-oqc-shipment-muted">
-              {s.lots.total(`${formatQty(pickedTotal)} ${uom}`.trim())}
-            </span>
+            {/* LOT 이 없으면 요약 칩·합계를 두지 않는다 — 아래 빈 줄이 같은 말을 한다(중복 표시 제거). */}
+            {views.active.length > 0 && (
+              <>
+                <span className="pop-oqc-shipment-gap" />
+                <OverviewChip overview={overview} size="md" />
+                <span className="pop-oqc-shipment-muted">
+                  {s.lots.total(withUom(formatQty(pickedTotal), uom || null))}
+                </span>
+              </>
+            )}
           </div>
           {views.active.length === 0 && views.replaced.length === 0 ? (
-            <EmptyState
-              size="sm"
-              icon={<Icon name="inventory_2" size={24} />}
-              title={s.lots.emptyTitle}
-              description={s.lots.emptyDescription}
-            />
+            <p className="pop-oqc-empty-row">{ps.lotsEmpty}</p>
           ) : (
             <ul className="pop-oqc-shipment-lots">
               {views.active.map((view) => (
@@ -410,7 +407,10 @@ export const PopShipmentDetail = ({
                 {views.replaced.map((lot) => (
                   <li key={lot.lotId} className="pop-oqc-shipment-lot">
                     <span className="pop-oqc-shipment-lot__no">
-                      <s>{lot.lotNo}</s> <span>{`${formatQty(lot.lotQty)} ${uom}`.trim()}</span>
+                      <s className="pop-oqc-nowrap">{lot.lotNo}</s>{' '}
+                      <span className="pop-oqc-nowrap">
+                        {withUom(formatQty(lot.lotQty), uom || null)}
+                      </span>
                     </span>
                     <Chip size="md">{s.lots.replaced}</Chip>
                     <span className="pop-oqc-shipment-muted">

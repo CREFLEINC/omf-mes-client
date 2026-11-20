@@ -181,10 +181,15 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     expect(screen.getByText(ps.itemValue('FG-A100', '센서 모듈 A'))).toBeInTheDocument();
     expect(screen.getByText('100 EA')).toBeInTheDocument();
     expect(screen.getByText('140 EA')).toBeInTheDocument();
-    expect(screen.getByText(s.over('40'))).toBeInTheDocument();
+    /* 정보 띠 — 지시량 · 피킹량 · 초과량(단위 포함, 출하 완료와 같은 말). */
+    const band = screen.getByRole('group', { name: ps.bandLabel });
+    expect(within(band).getByText(ps.target)).toBeInTheDocument();
+    expect(within(band).getByText(ps.picked)).toBeInTheDocument();
+    expect(within(band).getByText(ps.over)).toBeInTheDocument();
+    expect(within(band).getByText('40 EA')).toBeInTheDocument();
     expect(
       screen.getByText(
-        `${s.lots.portion('창고A', 'A-01-01', '30')} · ${s.lots.portion('창고A', ps.staging, '10')}`,
+        `${s.lots.portion('창고A', 'A-01-01', '30 EA')} · ${s.lots.portion('창고A', ps.staging, '10 EA')}`,
       ),
     ).toBeInTheDocument();
   });
@@ -197,7 +202,8 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     expect(match.getByRole('checkbox', { name: 'P2611-0004' })).toBeChecked();
     expect(match.getByRole('checkbox', { name: 'P2611-0001' })).not.toBeChecked();
     expect(screen.queryByLabelText(pop.result.fields.accepted)).toBeNull();
-    expect(screen.getByText(s.note)).toBeInTheDocument();
+    /* 긴 안내 문단은 없다(POP 통일 · 2026-11-20). */
+    expect(screen.queryByText(s.note)).toBeNull();
     expect(screen.getByText(ps.bar.blocked.judgment)).toBeInTheDocument();
   });
 

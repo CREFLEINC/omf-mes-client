@@ -46,6 +46,9 @@ const label = (icon: PuIconName, text: string): ReactNode => (
   </>
 );
 
+/** 정보 띠 칸 이름(아이콘 + 글) — 출하 OQC 새 흐름의 머리 띠도 같은 모양으로 쓴다. */
+export { label as bandLabel };
+
 /**
  * 고른 의뢰의 정보 띠(#295) — [상세보기] 대신 작업 구획 위쪽에 늘 보인다.
  *

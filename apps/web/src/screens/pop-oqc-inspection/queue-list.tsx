@@ -49,7 +49,7 @@ export const PopQueueList = ({ rows, selectedId, onSelect, listRef, uomOf }: Pop
         <button
           key={row.inspectionRequestId}
           type="button"
-          className={puCx('pu-item', selected && 'is-selected')}
+          className={puCx('pu-item', 'oqc-item', selected && 'is-selected')}
           aria-pressed={selected}
           aria-label={t.selectRow(row.inspectionRequestNo)}
           onClick={() => {
@@ -78,12 +78,13 @@ export const PopQueueList = ({ rows, selectedId, onSelect, listRef, uomOf }: Pop
           ) : (
             <span className="pu-item-sub">
               <span>
+                {/* LOT 이 없으면 품목만 — 「피킹 LOT 없음」은 위 칩이 한 번 말한다(중복 표시 제거). */}
                 {(row.pickedLotCount ?? 0) === 0
-                  ? ps.cardEmpty(itemLabel)
+                  ? itemLabel
                   : ps.card(
                       itemLabel,
                       row.pickedLotCount ?? 0,
-                      `${formatQty(row.pickedQty ?? 0)} ${row.uomCode ?? ''}`.trim(),
+                      withUom(formatQty(row.pickedQty ?? 0), row.uomCode || null),
                     )}
               </span>
             </span>
