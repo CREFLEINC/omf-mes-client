@@ -1101,17 +1101,27 @@ export const UsersRolesScreen = () => {
    * 그래야 `usr`·`new`가 자연히 사라진다 — 보이는 행이 달라지는데 선택이 남으면
    * 우 칸의 폼이 어디서 온 것인지 알 수 없다. 편집 상태 정리는 위 effect가 맡는다.
    */
+  /*
+   * 조건 · 쪽 · 건수 · 탭을 바꾸면 고른 줄이 풀린다 — 편집 중이면 먼저 묻는다(조회 중 변경 사항이
+   * 말없이 사라지던 문제 · #333).
+   */
   const applyFilters = (next: UserFilters) => {
-    setSearchParams(toUserSearchParams(tab.id, next, 1, pageSize));
+    leaveSafely(() => {
+      setSearchParams(toUserSearchParams(tab.id, next, 1, pageSize));
+    });
   };
 
   const changeUserPage = (nextPage: number) => {
-    setSearchParams(toUserSearchParams(tab.id, filters, nextPage, pageSize));
+    leaveSafely(() => {
+      setSearchParams(toUserSearchParams(tab.id, filters, nextPage, pageSize));
+    });
   };
 
   /* 건수를 바꾸면 첫 쪽으로 — 조건은 그대로, 고른 사용자는 보이는 줄이 달라져 놓는다(쪽 이동과 같다). */
   const changeUserPageSize = (nextSize: number) => {
-    setSearchParams(toUserSearchParams(tab.id, filters, 1, nextSize));
+    leaveSafely(() => {
+      setSearchParams(toUserSearchParams(tab.id, filters, 1, nextSize));
+    });
   };
 
   const handleAddUser = () => {
@@ -1336,16 +1346,22 @@ export const UsersRolesScreen = () => {
    * 사용자 탭과 같은 규칙이며, 규칙 표는 `filters.ts`가 갖는다.
    */
   const applyRoleFilters = (next: RoleFilters) => {
-    setSearchParams(toRoleSearchParams(tab.id, next, 1, pageSize));
+    leaveSafely(() => {
+      setSearchParams(toRoleSearchParams(tab.id, next, 1, pageSize));
+    });
   };
 
   const changeRolePage = (nextPage: number) => {
-    setSearchParams(toRoleSearchParams(tab.id, roleFilters, nextPage, pageSize));
+    leaveSafely(() => {
+      setSearchParams(toRoleSearchParams(tab.id, roleFilters, nextPage, pageSize));
+    });
   };
 
   /* 건수를 바꾸면 첫 쪽으로 — 사용자 목록과 같다. */
   const changeRolePageSize = (nextSize: number) => {
-    setSearchParams(toRoleSearchParams(tab.id, roleFilters, 1, nextSize));
+    leaveSafely(() => {
+      setSearchParams(toRoleSearchParams(tab.id, roleFilters, 1, nextSize));
+    });
   };
 
   /* 추가는 팝업 — 고친 역할이 있으면 먼저 묻는다(사용자 추가와 같다 · #333). */
@@ -1453,7 +1469,9 @@ export const UsersRolesScreen = () => {
    * 그 결과 `usr`·`new`가 떨어져 편집 대상이 바뀌므로 정리는 위 effect가 맡는다.
    */
   const changeTab = (nextTabId: string) => {
-    setSearchParams(tabSearchParams(nextTabId));
+    leaveSafely(() => {
+      setSearchParams(tabSearchParams(nextTabId));
+    });
   };
 
   /**

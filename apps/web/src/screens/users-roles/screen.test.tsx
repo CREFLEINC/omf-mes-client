@@ -2046,6 +2046,13 @@ describe('UsersRolesScreen 초안 수명', () => {
 
     // 목록만 다시 조회한다 — 상세 응답 객체는 그대로다.
     await user.click(within(userSearchPane()).getByRole('checkbox', { name: '미사용 포함' }));
+    /* 편집 중이라 먼저 묻는다(#333) — 나가기를 고르면 조건이 걸린다. */
+    await user.click(
+      within(await screen.findByRole('dialog', { name: '저장되지 않은 변경 사항' })).getByRole(
+        'button',
+        { name: '저장하지 않고 나가기' },
+      ),
+    );
     await waitFor(() => {
       expect(userRequests(requests).length).toBeGreaterThan(1);
     });
@@ -4201,6 +4208,48 @@ describe('UsersRolesScreen 역할 초안·창의 수명', () => {
 
     await waitForRoleForm('SYN-ROLE-02');
     expect(roleNameField()).toHaveValue('합성 역할 B');
+  });
+
+  /* 조건 · 탭을 바꾸면 고른 역할이 풀린다 — 편집 중이면 먼저 묻는다(말없이 사라지던 문제 · #333). */
+  it('편집 중에 사용 상태 라벨을 누르면 먼저 묻고, 계속 편집이면 그대로 둔다', async () => {
+    const { requests, search, user } = renderScreen(routesFor(5001), '?tab=roles&rol=5001');
+
+    await waitForRoleList(requests);
+    await waitForRoleForm('SYN-ROLE-01');
+    await user.type(roleNameField(), 'X');
+
+    const group = await screen.findByRole('group', { name: '사용 상태' });
+    await user.click(within(group).getByRole('button', { name: /^사용/ }));
+
+    const dialog = await screen.findByRole('dialog', { name: '저장되지 않은 변경 사항' });
+    await user.click(within(dialog).getByRole('button', { name: '계속 편집' }));
+
+    expect(new URLSearchParams(search()).get('status')).toBeNull();
+    expect(new URLSearchParams(search()).get('rol')).toBe('5001');
+    expect(roleNameField()).toHaveValue('합성 역할 AX');
+  });
+
+  it('편집 중에 사용자 관리 탭으로 옮기면 먼저 묻고, 나가기를 고르면 옮긴다', async () => {
+    const { requests, search, user } = renderScreen(
+      [...routesFor(5001), userListRoute(), departmentsRoute()],
+      '?tab=roles&rol=5001',
+    );
+
+    await waitForRoleList(requests);
+    await waitForRoleForm('SYN-ROLE-01');
+    await user.type(roleNameField(), 'X');
+
+    await user.click(screen.getByRole('tab', { name: '사용자 관리' }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: '저장되지 않은 변경 사항' })).getByRole(
+        'button',
+        { name: '저장하지 않고 나가기' },
+      ),
+    );
+
+    await waitFor(() => {
+      expect(new URLSearchParams(search()).get('tab')).toBe('users');
+    });
   });
 
   /**
