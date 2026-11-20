@@ -81,31 +81,46 @@ export interface CompleteInput {
 export const useCompleteShipment = () => {
   const queryClient = useQueryClient();
   const { client } = useApiClient();
-  const attempt = useRef<{ target: string; key: string } | null>(null);
+  /*
+   * ⭐ 한 시도의 키와 «본문»을 함께 둔다(실화면 검증 2026-11-20). 같은 키로 다시 보낼 때 시각이 바뀌면 서버가
+   *    「같은 요청 키로 다른 내용」(409 DUPLICATE_KEY)으로 거절해, 응답을 못 받은 뒤 다시 누르기가 성립하지 않는다.
+   */
+  const attempt = useRef<{
+    target: string;
+    key: string;
+    businessDate: string;
+    occurredAt: string;
+  } | null>(null);
 
-  const keyFor = (completion: Completion): string => {
+  const attemptFor = (completion: Completion) => {
     const target = `${String(completion.shipmentRequestId)}:${String(completion.versionNo)}`;
     if (attempt.current === null || attempt.current.target !== target) {
-      attempt.current = { target, key: createIdempotencyKey() };
+      const now = new Date();
+      attempt.current = {
+        target,
+        key: createIdempotencyKey(),
+        businessDate: plantToday(now),
+        occurredAt: now.toISOString(),
+      };
     }
-    return attempt.current.key;
+    return attempt.current;
   };
 
   const mutation = useMutation({
     mutationFn: ({ completion, workerNo }: CompleteInput): Promise<CompletionResult> => {
-      const now = new Date();
+      const sent = attemptFor(completion);
 
       return runRequest(() =>
         client.POST('/logistics/shipment-requests/{shipmentRequestId}:complete', {
           params: {
             path: { shipmentRequestId: completion.shipmentRequestId },
             header: {
-              'Idempotency-Key': keyFor(completion),
+              'Idempotency-Key': sent.key,
               'If-Match': `"${String(completion.versionNo)}"`,
               'X-Worker-No': workerNo,
             },
           },
-          body: { businessDate: plantToday(now), occurredAt: now.toISOString() },
+          body: { businessDate: sent.businessDate, occurredAt: sent.occurredAt },
         }),
       );
     },

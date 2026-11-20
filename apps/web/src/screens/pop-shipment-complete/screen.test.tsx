@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -675,6 +675,22 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     expect(await screen.findByText(t.result.title)).toBeInTheDocument();
     const [first, second] = completeCalls();
     expect(second?.headers.get('Idempotency-Key')).toBe(first?.headers.get('Idempotency-Key'));
+    /* 같은 키면 본문(영업일·시각)도 같아야 한다 — 다르면 서버가 409 DUPLICATE_KEY 로 거절한다(실화면 검증 2026-11-20). */
+    expect(await second?.text()).toBe(await first?.text());
+  });
+
+  it('[출하 완료]를 빠르게 두 번 눌러도 요청은 하나만 나간다(실화면 검증 2026-11-20)', async () => {
+    const user = userEvent.setup();
+    const { completeCalls } = renderScreen();
+
+    await scan(user, CODE);
+    const button = await screen.findByRole('button', { name: t.bar.complete });
+    await waitFor(() => expect(button).toBeEnabled());
+    fireEvent.click(button);
+    fireEvent.click(button);
+
+    expect(await screen.findByText(t.result.title)).toBeInTheDocument();
+    expect(completeCalls()).toHaveLength(1);
   });
 
   it('US4-3·Q10 — 지시서 코드가 아닌 값을 스캔하면 읽은 값과 함께 알린다', async () => {

@@ -208,12 +208,23 @@ export const PopShipmentCompleteScreen = () => {
   const canComplete =
     confirm !== null && isCompletable(confirm.completion) && workerNo !== null && !lookup.isPending;
 
+  /*
+   * 보내는 중 표시 — 렌더를 기다리지 않는 잠금이다. `complete.isPending` 은 다음 렌더에야 참이 되어, 두 번 빠르게
+   * 누르면 두 요청이 나갔다(실화면 검증 2026-11-20: 두 번 눌러 두 번 보냄 → 두 번째가 409 로 성공 화면을 덮음).
+   */
+  const sending = useRef(false);
+
   const runComplete = (): void => {
     if (confirm === null || workerNo === null || !canComplete || complete.isPending) return;
+    if (sending.current) return;
+    sending.current = true;
     setFailure(null);
     complete.mutate(
       { completion: confirm.completion, workerNo },
       {
+        onSettled: () => {
+          sending.current = false;
+        },
         onSuccess: (result) => {
           complete.resetKey();
           setNotice(null);
