@@ -524,7 +524,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         to: '/shipment/shipment-request-create',
         icon: 'assignment',
-        label: '출하지시서 Import·작업지시 생성',
+        label: '출하작업지시 생성',
         labelVi: 'Import lệnh xuất hàng · tạo lệnh sản xuất',
       },
       {

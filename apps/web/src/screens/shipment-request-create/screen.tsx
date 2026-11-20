@@ -1,6 +1,6 @@
 import { Breadcrumb, Button, PageHeader, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { ItemPickerDialog, type ItemRow } from '../../patterns/item-picker';
@@ -97,7 +97,7 @@ interface CreatedBinding {
 }
 
 /**
- * W-04-01 컨테이너 — **출하지시서를 Import해 출하작업지시로 편성하거나, 지시서 없이 단독으로
+ * W-04-01 컨테이너 — **ERP S/O 로 출하작업지시를 편성하거나, ERP S/O 없이 직접
  * 만드는 화면**이다.
  *
  * 좌측은 출하지시서(SalesOrder) 목록(필터+페이지이동), 우측은 편성 폼이다. **두 모드가
@@ -348,7 +348,6 @@ export const ShipmentRequestCreateScreen = () => {
     setSearchParams(toSearchParams(filters, page, { kind: 'standalone', mode: 'standalone' }));
   };
 
-  const importReasonId = useId();
 
   const rightColumn = (): ReactNode => {
     if (target.kind === 'none') {
@@ -431,20 +430,6 @@ export const ShipmentRequestCreateScreen = () => {
             items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
             aria-label={messages.common.shell.breadcrumb}
           />
-        }
-        actions={
-          <div className="field-cell">
-            {/*
-             * 지시서 파일 업로드 형식이 아직 확정되지 않았다(계획서 미결 항목 · 배치 규범 4).
-             * 사유를 감추지 않고 항상 보이는 DOM 텍스트로 렌더해 `aria-describedby`로 잇는다.
-             */}
-            <Button variant="outlined" disabled aria-describedby={importReasonId}>
-              {t.actions.importOrderFile}
-            </Button>
-            <span id={importReasonId} className="field-note">
-              {t.actionReasons.importFileNotSupported}
-            </span>
-          </div>
         }
       />
 

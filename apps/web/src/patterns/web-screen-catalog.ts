@@ -166,7 +166,7 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   {
     path: '/shipment/shipment-request-create',
     code: 'W-04-01',
-    name: '출하지시서 Import·작업지시 생성',
+    name: '출하작업지시 생성',
   },
   { path: '/shipment/shipment-schedule', code: 'W-04-02', name: '출하 예정 목록' },
   { path: '/shipment/oqc-inspection', code: 'W-04-03', name: 'OQC 출하검사 판정' },

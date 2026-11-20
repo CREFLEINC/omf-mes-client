@@ -359,24 +359,17 @@ describe('ShipmentRequestCreateScreen — 배정 수량 검증(완료 조건 C4)
 });
 
 
-describe('ShipmentRequestCreateScreen — 지시서 가져오기(완료 조건 C7)', () => {
-  it('항상 비활성이고 사유가 붙어 있다', async () => {
+describe('ShipmentRequestCreateScreen — 가져오기 없음(omf-all-around#337)', () => {
+  it('파일 가져오기 단추가 없고 [ERP S/O 없이 생성]만 있다', async () => {
     renderWithProviders(<ShipmentRequestCreateScreen />, {
       fetch: createStubFetch(baseRoutes()),
       route: ROUTE,
     });
 
-    const importButton = await screen.findByRole('button', { name: t.actions.importOrderFile });
-
-    expect(importButton).toBeDisabled();
-    expect(importButton).toHaveAttribute('aria-describedby');
-
-    const describedById = importButton.getAttribute('aria-describedby');
-
-    expect(describedById).not.toBeNull();
-    expect(document.getElementById(describedById ?? '')).toHaveTextContent(
-      t.actionReasons.importFileNotSupported,
-    );
+    expect(await screen.findByRole('button', { name: t.actions.startStandalone })).toBeInTheDocument();
+    expect(t.actions.startStandalone).toBe('ERP S/O 없이 생성');
+    expect(screen.queryByRole('button', { name: /가져오기|Import/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '출하작업지시 생성' })).toBeInTheDocument();
   });
 });
 

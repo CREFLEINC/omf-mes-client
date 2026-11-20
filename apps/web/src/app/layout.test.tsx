@@ -631,7 +631,7 @@ describe('AppLayout', () => {
     /* ERP 수주정보 조회는 「ERP 연동 현황·이력」 묶음의 탭으로 옮겼다. */
     expect(within(sidebar).queryByRole('link', { name: '수주정보 조회 (ERP)' })).toBeNull();
     expect(
-      within(sidebar).getByRole('link', { name: '출하지시서 Import·작업지시 생성' }),
+      within(sidebar).getByRole('link', { name: '출하작업지시 생성' }),
     ).toHaveAttribute('href', '/shipment/shipment-request-create');
     expect(within(sidebar).getByRole('link', { name: '출하 예정 목록' })).toHaveAttribute(
       'href',
