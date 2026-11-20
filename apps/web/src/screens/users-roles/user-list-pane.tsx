@@ -18,6 +18,7 @@ import { useColumnWidths } from '../../patterns/column-resize';
 import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
 
 import { clearUserFilter, hasAnyUserFilter, toUserFilterChips } from './filters';
+import type { ListPageSize } from './filters';
 import type { PageView } from './pagination';
 import { SelectField } from './select-field';
 import type { AppUser, SelectOption, UserFilters } from './types';
@@ -180,6 +181,9 @@ export interface UserListPaneProps {
   /** 서버가 준 쪽 정보. 받기 전·실패면 `null` — 셀 것이 없으면 쪽 이동을 그리지 않는다. */
   pageMeta: PageNavMeta | null;
   onChangePage: (page: number) => void;
+  /** 건수 선택(10 · 20 · 50) — 바꾸면 첫 쪽으로 간다(사용자 지시 2026-11-20 · #333). */
+  pageSizes?: readonly ListPageSize[];
+  onChangePageSize?: (size: ListPageSize) => void;
   selectedAppUserId: number | null;
   onSelect: (appUserId: number) => void;
   /**
@@ -228,6 +232,8 @@ export const UserListPane = ({
   pageView,
   pageMeta,
   onChangePage,
+  pageSizes,
+  onChangePageSize,
   selectedAppUserId,
   onSelect,
   loadError,
@@ -403,7 +409,13 @@ export const UserListPane = ({
     <section className="pane users-roles-list-pane" aria-label={t.panes.userList}>
       <div className="users-roles-list-body">{listSlot()}</div>
       {pageMeta !== null && loadError === null && (
-        <PageNav meta={pageMeta} buttonSize="md" onChangePage={onChangePage} />
+        <PageNav
+          meta={pageMeta}
+          sizes={pageSizes}
+          buttonSize="md"
+          onChangePage={onChangePage}
+          onChangeSize={onChangePageSize}
+        />
       )}
     </section>
   );

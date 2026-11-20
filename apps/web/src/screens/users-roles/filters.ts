@@ -30,6 +30,7 @@ const URL_KEYS = {
   statusCode: 'status',
   includeInactive: 'inactive',
   page: 'page',
+  size: 'size',
   appUserId: 'usr',
   roleId: 'rol',
   create: 'new',
@@ -79,6 +80,17 @@ export const readPage = (params: URLSearchParams, key: string = URL_KEYS.page): 
 
   return isIdentifier(raw) ? Number(raw) : 1;
 };
+
+/** 계약의 목록 기본 쪽 크기(`size` 기본 50). 주소·조회에 적지 않는다. */
+export const DEFAULT_PAGE_SIZE = 50;
+
+/** 목록 건수 선택 — 수입검사 목록과 같은 10 · 20 · 50건(사용자 지시 2026-11-20 · #333). */
+export const LIST_PAGE_SIZES = [10, 20, DEFAULT_PAGE_SIZE] as const;
+export type ListPageSize = (typeof LIST_PAGE_SIZES)[number];
+
+/** 주소의 쪽 크기. 고를 수 있는 값이 아니면 기본(50)이다. */
+export const readPageSize = (params: URLSearchParams): ListPageSize =>
+  LIST_PAGE_SIZES.find((size) => String(size) === params.get(URL_KEYS.size)) ?? DEFAULT_PAGE_SIZE;
 
 /**
  * 주소가 가리키는 선택 번호. 선택 자리(`usr`·`rol`)가 **같은 규칙**을 쓴다.
@@ -159,6 +171,7 @@ export const toUserSearchParams = (
   tabId: string,
   filters: UserFilters,
   page: number,
+  size: number = DEFAULT_PAGE_SIZE,
 ): URLSearchParams => {
   const next = new URLSearchParams({ [URL_KEYS.tab]: tabId });
 
@@ -167,6 +180,7 @@ export const toUserSearchParams = (
   if (filters.statusCode !== '') next.set(URL_KEYS.statusCode, filters.statusCode);
   if (filters.includeInactive) next.set(URL_KEYS.includeInactive, ON);
   if (page > 1) next.set(URL_KEYS.page, String(page));
+  if (size !== DEFAULT_PAGE_SIZE) next.set(URL_KEYS.size, String(size));
 
   return next;
 };
@@ -181,6 +195,7 @@ export interface UserListQuery {
   statusCode?: string;
   includeInactive?: boolean;
   page?: number;
+  size?: number;
 }
 
 /**
@@ -190,12 +205,17 @@ export interface UserListQuery {
  * 끈 상태를 값으로 실어 보내면 「보내지 않음」과 「false를 보냄」 두 상태가 생겨 캐시 키가 갈린다.
  * 첫 쪽도 같은 이유로 싣지 않는다.
  */
-export const toUserListQuery = (filters: UserFilters, page: number): UserListQuery => ({
+export const toUserListQuery = (
+  filters: UserFilters,
+  page: number,
+  size: number = DEFAULT_PAGE_SIZE,
+): UserListQuery => ({
   ...(filters.q === '' ? {} : { q: filters.q }),
   ...(filters.departmentId === '' ? {} : { departmentId: Number(filters.departmentId) }),
   ...(filters.statusCode === '' ? {} : { statusCode: filters.statusCode }),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
   ...(page > 1 ? { page } : {}),
+  ...(size === DEFAULT_PAGE_SIZE ? {} : { size }),
 });
 
 export interface UserFilterChip {

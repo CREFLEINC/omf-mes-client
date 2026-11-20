@@ -41,7 +41,9 @@ import { DataScopePane } from './data-scope-pane';
 import {
   applySelection,
   isCreating,
+  LIST_PAGE_SIZES,
   readPage,
+  readPageSize,
   readRoleFilters,
   readSelectedAppUserId,
   readSelectedRoleId,
@@ -271,10 +273,11 @@ export const UsersRolesScreen = () => {
 
   const filters = useMemo<UserFilters>(() => readUserFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
+  const pageSize = readPageSize(searchParams);
 
   const isCreatingUser = isUsersTab && isCreating(searchParams, 'user');
   const selectedParam = isUsersTab ? readSelectedAppUserId(searchParams) : null;
-  const userList = useUserList(filters, page, isUsersTab);
+  const userList = useUserList(filters, page, isUsersTab, pageSize);
   const userListForbidden = userList.isError && isForbiddenLoadError(userList.error);
   /**
    * 목록으로 화면 접근을 확인하기 전에는 URL의 지난 선택을 조회하지 않는다.
@@ -1043,11 +1046,16 @@ export const UsersRolesScreen = () => {
    * 우 칸의 폼이 어디서 온 것인지 알 수 없다. 편집 상태 정리는 위 effect가 맡는다.
    */
   const applyFilters = (next: UserFilters) => {
-    setSearchParams(toUserSearchParams(tab.id, next, 1));
+    setSearchParams(toUserSearchParams(tab.id, next, 1, pageSize));
   };
 
   const changeUserPage = (nextPage: number) => {
-    setSearchParams(toUserSearchParams(tab.id, filters, nextPage));
+    setSearchParams(toUserSearchParams(tab.id, filters, nextPage, pageSize));
+  };
+
+  /* 건수를 바꾸면 첫 쪽으로 — 조건은 그대로, 고른 사용자는 보이는 줄이 달라져 놓는다(쪽 이동과 같다). */
+  const changeUserPageSize = (nextSize: number) => {
+    setSearchParams(toUserSearchParams(tab.id, filters, 1, nextSize));
   };
 
   const handleAddUser = () => {
@@ -1635,6 +1643,8 @@ export const UsersRolesScreen = () => {
           pageView={userPageView}
           pageMeta={userList.data?.page ?? null}
           onChangePage={changeUserPage}
+          pageSizes={LIST_PAGE_SIZES}
+          onChangePageSize={changeUserPageSize}
           selectedAppUserId={selectedAppUserId}
           onSelect={selectUser}
           loadError={

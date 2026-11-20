@@ -324,7 +324,6 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     submitChange: 'Đổi người lao động',
     unlinkConfirmTitle: 'Hủy liên kết người lao động',
     unlinkCaption: 'Người lao động đã liên kết',
-    workerNoMeta: (workerNo: string): string => `Mã NV ${workerNo}`,
     unlinkImpact: 'Sau khi hủy liên kết, tài khoản này không lưu được phán định kiểm tra đầu vào.',
     linkedToast: (summary: string): string => `Đã liên kết người lao động — ${summary}`,
     unlinkedToast: 'Đã hủy liên kết người lao động.',
@@ -332,6 +331,12 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     noActiveWorker: 'Không có mã nhân viên đang làm việc.',
     linkedElsewhere: 'Mã nhân viên này đã được liên kết với tài khoản khác.',
     createLabel: 'Mã nhân viên cần liên kết',
+    metaLabels: {
+      workerNo: 'Mã NV',
+      departmentCode: 'Mã bộ phận',
+      departmentName: 'Tên bộ phận',
+      department: 'Bộ phận',
+    },
     createLinkFailed:
       'Đã thêm người dùng nhưng chưa liên kết được người lao động. Hãy liên kết lại trong chi tiết.',
     workerNoRequired: 'Hãy nhập mã nhân viên.',

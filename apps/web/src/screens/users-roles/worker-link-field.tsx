@@ -71,22 +71,37 @@ export interface WorkerLinkFieldProps {
 }
 
 /** 모달 안의 「현재 작업자」 블록 — 변경 모달과 해제 확인 창이 같이 쓴다. */
+const departmentMeta = (department: string): { label: string; value: string }[] => {
+  const [code, ...rest] = department.split(' · ');
+  if (rest.length === 0) return [{ label: t.metaLabels.department, value: department }];
+  return [
+    { label: t.metaLabels.departmentCode, value: code ?? '' },
+    { label: t.metaLabels.departmentName, value: rest.join(' · ') },
+  ];
+};
+
 const WorkerBlock = ({
   name,
   meta,
   caption,
 }: {
   name: string;
-  meta: readonly string[];
+  /** 사번 · 부서 코드 · 부서명 — 카드 요약 줄과 같은 이름표 + 세로 막대(사용자 지시 2026-11-20 · #333). */
+  meta: readonly { label: string; value: string }[];
   /** 블록 위 작은 제목(작업자 변경 창 · 사용자 시안 2026-11-20 · #333). */
   caption?: string;
 }) => (
   <div className="users-roles-worker-block">
     {caption !== undefined && <span className="users-roles-worker-block-caption">{caption}</span>}
     <strong>{name}</strong>
-    {meta.map((line) => (
-      <span key={line}>{line}</span>
-    ))}
+    <div className="users-roles-worker-block-meta">
+      {meta.map(({ label, value }) => (
+        <span key={label} className="users-roles-worker-link-meta">
+          <span className="users-roles-worker-link-meta-label">{label}</span>
+          {value}
+        </span>
+      ))}
+    </div>
   </div>
 );
 
@@ -216,9 +231,55 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
 
   return (
     <section className="users-roles-worker-link" aria-label={t.title}>
-      <h3 className="users-roles-worker-link-title">
-        {current !== undefined && linkedId === null ? t.titleUnlinked : t.title}
-      </h3>
+      {/* 제목 줄 오른쪽 끝에 작업자 변경 · 연결 해제(연결)를 둔다(사용자 지시 2026-11-20 · #333). */}
+      <div className="users-roles-worker-link-head">
+        <h3 className="users-roles-worker-link-title">
+          {current !== undefined && linkedId === null ? t.titleUnlinked : t.title}
+        </h3>
+        {current !== undefined && (
+          <div className="users-roles-worker-link-actions">
+            {isLinked ? (
+              <>
+                <Button
+                  variant="outlined"
+                  size="sm"
+                  className="app-button-neutral"
+                  leadingIcon={<Icon name="manage_accounts" size={18} />}
+                  onClick={() => {
+                    openPick('change');
+                  }}
+                >
+                  {t.change}
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="sm"
+                  className="app-button-neutral"
+                  leadingIcon={<Icon name="link_off" size={18} />}
+                  onClick={() => {
+                    write.reset();
+                    setIsUnlinkOpen(true);
+                  }}
+                >
+                  {t.unlink}
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="outlined"
+                size="sm"
+                className="app-button-neutral"
+                leadingIcon={<Icon name="link" size={18} />}
+                onClick={() => {
+                  openPick('connect');
+                }}
+              >
+                {t.connect}
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
 
       {link.isError && <LoadErrorBanner error={link.error} onRetry={() => void link.refetch()} />}
 
@@ -232,11 +293,17 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
               {isLinked ? (
                 <>
                   <strong>{linkedName}</strong>
-                  {/* 사번 | 부서 코드 | 부서 이름 — 세로 막대로 나눈다(사용자 시안 2026-11-20 · #333). */}
-                  <span className="users-roles-worker-link-meta">{linkedNo}</span>
-                  {department.split(' · ').map((part) => (
-                    <span key={part} className="users-roles-worker-link-meta">
-                      {part}
+                  {/*
+                   * 사번 | 부서 코드 | 부서명 — 세로 막대로 나누고, 값마다 무슨 정보인지 이름을 붙인다
+                   * (사용자 지시 2026-11-20 · #333). 부서를 코드·이름으로 못 가르면(미지정 등) 「부서」 하나로 낸다.
+                   */}
+                  {[
+                    { label: t.metaLabels.workerNo, value: linkedNo },
+                    ...departmentMeta(department),
+                  ].map(({ label, value }) => (
+                    <span key={label} className="users-roles-worker-link-meta">
+                      <span className="users-roles-worker-link-meta-label">{label}</span>
+                      {value}
                     </span>
                   ))}
                 </>
@@ -249,47 +316,6 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
                   <Icon name="info" size={16} aria-hidden />
                   {t.hintUnlinked}
                 </span>
-              )}
-            </div>
-            <div className="users-roles-worker-link-actions">
-              {isLinked ? (
-                <>
-                  <Button
-                    variant="outlined"
-                    size="sm"
-                    className="app-button-neutral"
-                    leadingIcon={<Icon name="manage_accounts" size={18} />}
-                    onClick={() => {
-                      openPick('change');
-                    }}
-                  >
-                    {t.change}
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    size="sm"
-                    className="app-button-neutral"
-                    leadingIcon={<Icon name="link_off" size={18} />}
-                    onClick={() => {
-                      write.reset();
-                      setIsUnlinkOpen(true);
-                    }}
-                  >
-                    {t.unlink}
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  variant="outlined"
-                  size="sm"
-                  className="app-button-neutral"
-                  leadingIcon={<Icon name="link" size={18} />}
-                  onClick={() => {
-                    openPick('connect');
-                  }}
-                >
-                  {t.connect}
-                </Button>
               )}
             </div>
           </div>
@@ -315,7 +341,10 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
               <WorkerBlock
                 caption={t.currentCaption}
                 name={linkedName}
-                meta={[`${linkedNo} · ${department}`]}
+                meta={[
+                  { label: t.metaLabels.workerNo, value: linkedNo },
+                  ...departmentMeta(department),
+                ]}
               />
             )}
             <div className="users-roles-worker-dialog-field">
@@ -382,7 +411,10 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
             <WorkerBlock
               caption={t.unlinkCaption}
               name={linkedName}
-              meta={[t.workerNoMeta(linkedNo)]}
+              meta={[
+                { label: t.metaLabels.workerNo, value: linkedNo },
+                ...departmentMeta(department),
+              ]}
             />
             <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
               <Icon name="warning" size={16} aria-hidden />

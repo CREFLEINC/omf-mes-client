@@ -449,7 +449,6 @@ export const usersRoles = {
     /** 입력 그룹 맨 아래에만 — 실패했는데 적용됐다고 말하지 않도록 「~하면」으로 쓴다. */
     unlinkConfirmTitle: '작업자 연결 해제',
     unlinkCaption: '연결된 작업자',
-    workerNoMeta: (workerNo: string): string => `사번 ${workerNo}`,
     unlinkImpact: '연결 해제 후에는 이 계정으로 수입검사 판정을 저장할 수 없습니다.',
     linkedToast: (summary: string): string => `작업자를 연결했습니다 — ${summary}`,
     unlinkedToast: '작업자 연결을 해제했습니다.',
@@ -462,6 +461,13 @@ export const usersRoles = {
     workerNoRequired: '작업자 사번을 입력해 주세요.',
     /** 사용자 추가 팝업의 사번 칸(사용자 지시 2026-11-20 · #333). */
     createLabel: '연결할 작업자 사번',
+    /** 연결된 작업자 줄의 값 이름(사용자 지시 2026-11-20 · #333). */
+    metaLabels: {
+      workerNo: '사번',
+      departmentCode: '부서 코드',
+      departmentName: '부서명',
+      department: '부서',
+    },
     createLinkFailed:
       '사용자는 추가했지만 작업자를 연결하지 못했습니다. 상세 정보에서 다시 연결해 주세요.',
   },

@@ -13886,6 +13886,16 @@ a.erp-send-chips:focus-visible {
   border-top: 1px solid var(--outline-variant);
 }
 
+/* 제목 줄 — 왼쪽 제목, 오른쪽 끝 작업자 변경 · 연결 해제(사용자 지시 2026-11-20 · #333). */
+.users-roles-worker-link-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  min-width: 0;
+}
+
 .users-roles-worker-link-title {
   margin: 0;
   font: var(--type-label-lg);
@@ -13916,6 +13926,15 @@ a.erp-send-chips:focus-visible {
 
 .users-roles-worker-link-meta {
   color: var(--on-surface-variant);
+}
+
+/* 값 앞 정보 이름 — 값보다 작고 옅게(사용자 지시 2026-11-20 · #333). */
+.users-roles-worker-link-meta-label {
+  margin-right: var(--space-2);
+  font: var(--type-label-lg);
+  font-weight: 400;
+  color: var(--on-surface-variant);
+  opacity: 0.8;
 }
 
 /* 사번 | 부서 코드 | 부서 이름 — 사이에 옅은 세로 막대(사용자 시안 2026-11-20 · #333). */
@@ -13992,6 +14011,14 @@ a.erp-send-chips:focus-visible {
 
 .users-roles-worker-block > span {
   color: var(--on-surface-variant);
+}
+
+/* 사번 | 부서 코드 | 부서명 한 줄 — 카드의 연결된 작업자 줄과 같은 모양(사용자 지시 2026-11-20 · #333). */
+.users-roles-worker-block-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
 }
 
 /* 블록 위 작은 제목 — 「현재 연결된 작업자」(사용자 시안 2026-11-20 · #333). */

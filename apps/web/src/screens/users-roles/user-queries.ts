@@ -3,7 +3,7 @@ import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import { toUserListQuery } from './filters';
+import { DEFAULT_PAGE_SIZE, toUserListQuery } from './filters';
 import type { AppUser, PageMeta, UserFilters } from './types';
 
 type AppUserDetailResponse = components['schemas']['AppUserDetailResponse'];
@@ -28,8 +28,8 @@ export interface UserListResponse {
  */
 export const userKeys = {
   all: ['users-roles-users'] as const,
-  list: (filters: UserFilters, page: number) =>
-    ['users-roles-users', 'list', filters, page] as const,
+  list: (filters: UserFilters, page: number, size: number = DEFAULT_PAGE_SIZE) =>
+    ['users-roles-users', 'list', filters, page, size] as const,
   detail: (appUserId: number) => ['users-roles-users', 'detail', appUserId] as const,
   /**
    * 부여분은 **자기 키만** 무효화한다.
@@ -52,15 +52,16 @@ export const useUserList = (
   filters: UserFilters,
   page: number,
   enabled: boolean,
+  size: number = DEFAULT_PAGE_SIZE,
 ): UseQueryResult<UserListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: userKeys.list(filters, page),
+    queryKey: userKeys.list(filters, page, size),
     enabled,
     queryFn: () =>
       runRequest(() =>
-        client.GET('/app/users', { params: { query: toUserListQuery(filters, page) } }),
+        client.GET('/app/users', { params: { query: toUserListQuery(filters, page, size) } }),
       ),
   });
 };
