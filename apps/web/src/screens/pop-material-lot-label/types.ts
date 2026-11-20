@@ -64,11 +64,9 @@ export interface LabelLot {
   package: MaterialPackage | null;
   supplierLotNo: string | null;
   lifecycleStatusCode: MaterialLotSummary['lifecycleStatusCode'];
-  /** 품질 상태 — 대기 LOT 는 검사 대기. 다시 인쇄의 IQC 라벨 · 막힘 판정에 쓴다. */
+  /** 품질 상태 — 대기 LOT 는 검사 대기. 막힘 판정에 쓴다. */
   statusCode: string;
   inboundLotNo: string | null;
-  /** IQC 대상 품목 — 자재 관리 LOT 라벨 뒤에 IQC 라벨을 함께 찍는다(omf-all-around#110). */
-  inspectionRequired: boolean;
   lastIssue: { issueSeq: number; issuedAt: string } | null;
   /**
    * 등록일시 — 발행 대기 표의 일시 칸과 [최신순 | 오래된순]이 이 값으로 선다(사용자 지시 2026-11-19).
@@ -99,7 +97,6 @@ export const toLabelLots = (group: WaitingMaterialLotGroup): LabelLot[] =>
     lifecycleStatusCode: lot.lifecycleStatusCode,
     statusCode: lot.statusCode,
     inboundLotNo: lot.inboundLotNo,
-    inspectionRequired: group.inspectionRequired,
     lastIssue: lot.lastLabelIssue,
     createdAt: lot.createdAt,
   }));

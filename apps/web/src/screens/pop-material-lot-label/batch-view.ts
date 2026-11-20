@@ -9,7 +9,7 @@ export type RowStatus =
   | { kind: 'notSelected' }
   | { kind: 'waiting' }
   | { kind: 'running' }
-  | { kind: 'printed'; iqcMissing: boolean }
+  | { kind: 'printed' }
   | { kind: 'failed'; failure: IssueFailure }
   | { kind: 'stopped' }
   | { kind: 'alreadyIssued' };
@@ -28,10 +28,7 @@ export const rowStatusOf = (lotId: number, batch: BatchSnapshot): RowStatus => {
   const result = batch.results.get(lotId);
 
   if (result === undefined) return { kind: 'waiting' };
-  if (result.isPrinted) {
-    /* 자재 라벨은 나왔다 — IQC 라벨만 빠졌으면 따로 말한다(「실패」로 읽히면 자재 라벨을 한 장 더 찍는다). */
-    return { kind: 'printed', iqcMissing: result.iqcLabel === 'failed' };
-  }
+  if (result.isPrinted) return { kind: 'printed' };
 
   return { kind: 'failed', failure: toIssueFailure(result) ?? 'other' };
 };
@@ -117,7 +114,6 @@ export const retryCommands = (
       ...base,
       lot,
       reissueReasonCode: isReissue ? printFailureCode : null,
-      lotStatusCode: null,
       ...(isReissue ? {} : { verifyUnissued: true }),
     });
   }

@@ -10,6 +10,9 @@ export const suspiciousMaterialHold = {
       excludeFullyHeld: '전량 보류 제외',
       lotNo: 'LOT 번호',
       item: '품목',
+      /** 표의 품목은 코드 · 이름 두 칸으로 나눠 보인다(사용자 지시 2026-11-20). */
+      itemCode: '품목코드',
+      itemName: '품목명',
       warehouse: '창고',
       location: '위치',
       quantity: '보유 수량',
@@ -99,7 +102,7 @@ export const suspiciousMaterialHold = {
     fieldError: '입력값을 확인하세요.',
     /* 확인 창 경고 — 굵은 한 줄 + 아래 두 줄(사용자 시안 2026-11-02). */
     impact: (count: number): string => `${String(count)}개 LOT의 출고·출하·피킹이 제한됩니다.`,
-    impactRelease: '보류 해제는 W-03-02에서 별도로 처리해야 합니다.',
+    impactRelease: '보류 해제는 LOT 상태 변경에서 따로 처리합니다.',
     impactShipped: '이미 출고된 수량은 회수되지 않습니다.',
     conflictOwner: '선택한 LOT 중 하나',
     conflictFallback: '선택한 LOT 중 하나의 상태가 변경되었습니다. 최신 정보를 다시 불러오세요.',

@@ -139,29 +139,14 @@ describe('ProgressPane — 배치', () => {
 });
 
 /**
- * **화면 이름에는 「한도」가 있는데 화면 안에 한도 구간이 없다.**
- *
- * 구간은 결재선의 값이고 요청에서 결재선으로 가는 길이 계약에 없다(`omf-mes#88`).
- * 아무 말도 하지 않으면 사용자가 없는 것을 찾는다 — 그 사실을 이 구획이 한 줄로 적는다.
+ * **한도 구간은 그리지 않는다.** 구간은 결재선의 값이고 요청에서 결재선으로 가는 길이 계약에 없다(`omf-mes#88`).
+ * 「아직 화면에 표시되지 않습니다」 안내도 두지 않는다 — 개발 사정이다(관리웹 정리 시안 A).
  */
-describe('ProgressPane — 한도 구간 안내', () => {
-  it('한도 구간이 아직 보이지 않는다는 사실이 이 구획에 선다', () => {
+describe('ProgressPane — 한도 구간', () => {
+  it('한도 구간 안내 문장을 두지 않는다', () => {
     const pane = renderPane([step()]);
 
-    expect(within(pane).getByText(t.progress.limitRangeNote)).toBeVisible();
-  });
-
-  it('단계가 오지 않아도 그 안내는 선다 — 진행과 무관한 사실이다', () => {
-    const pane = renderPane([]);
-
-    expect(within(pane).getByText(t.progress.limitRangeNote)).toBeVisible();
-  });
-
-  /** **구간 값을 지어내지 않는다.** 안내는 사실을 적을 뿐 수를 담지 않는다. */
-  it('안내에 구간 값이 없다 — 없는 수를 지어내지 않는다', () => {
-    renderPane([step()]);
-
-    expect(/\d/.test(t.progress.limitRangeNote)).toBe(false);
+    expect(within(pane).queryByText(/한도 구간/)).not.toBeInTheDocument();
   });
 });
 

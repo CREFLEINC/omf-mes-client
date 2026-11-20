@@ -47,10 +47,14 @@ const commentBox = (): HTMLElement => screen.getByLabelText(t.decision.commentLa
  */
 describe('DecisionPane', () => {
   describe('자물쇠 문구', () => {
-    it('버튼 위 상시 자리에 선다', () => {
+    /* 늘 펼쳐 두지 않고 결재 제목 옆 ⓘ 로 둔다 — 확인 창이 한 번 더 펼쳐 보인다(관리웹 정리 시안 A). */
+    it('결재 제목 옆 ⓘ 의 설명으로 늘 있다', () => {
       renderPane();
 
-      expect(screen.getByText(t.decision.lockNote)).toBeVisible();
+      const tip = screen.getByRole('button', { name: t.decision.lockNote });
+
+      expect(tip.closest('h3')).toHaveTextContent(t.panes.decision);
+      expect(screen.queryByText(t.decision.lockNote)).toBeNull();
     });
 
     /**
@@ -60,13 +64,13 @@ describe('DecisionPane', () => {
     it('내 차례가 아니어도 사라지지 않는다', () => {
       renderPane({ isMyTurn: false });
 
-      expect(screen.getByText(t.decision.lockNote)).toBeVisible();
+      expect(screen.getByRole('button', { name: t.decision.lockNote })).toBeVisible();
     });
 
     it('보내는 중에도 사라지지 않는다', () => {
       renderPane({ isLocked: true, comment: '합성 의견' });
 
-      expect(screen.getByText(t.decision.lockNote)).toBeVisible();
+      expect(screen.getByRole('button', { name: t.decision.lockNote })).toBeVisible();
     });
   });
 
@@ -195,11 +199,12 @@ describe('DecisionPane', () => {
       expect(commentBox()).toHaveAttribute('aria-invalid', 'true');
     });
 
-    /** 짝 방향 — 오류가 없으면 도움말이 그 자리를 지킨다. */
-    it('오류가 없으면 도움말이 보인다', () => {
+    /** 짝 방향 — 오류가 없으면 칸이 오류 상태가 아니다. 도움말은 칸 아래가 아니라 라벨 옆 ⓘ 다(관리웹 정리 시안 A). */
+    it('오류가 없으면 오류 상태가 아니고 도움말은 라벨 옆 ⓘ 에 있다', () => {
       renderPane();
 
-      expect(screen.getByText(t.decision.commentHelp)).toBeVisible();
+      expect(screen.getByRole('button', { name: t.decision.commentHelp })).toBeVisible();
+      expect(screen.queryByText(t.decision.commentHelp)).toBeNull();
       expect(commentBox()).not.toHaveAttribute('aria-invalid', 'true');
     });
 

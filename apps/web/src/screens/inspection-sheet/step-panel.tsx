@@ -3,6 +3,7 @@ import type { InspectionSheetJudgment, InspectionSheetStep } from '@omf-mes/api-
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { masterName } from '../../patterns/master-name';
 import type { StepWriteVariables } from './sheet-queries';
 import {
@@ -166,6 +167,8 @@ const StepForm = ({ step, disabled, isSaving, onSave }: StepFormProps) => {
 
       <div className="inspection-sheet-entry-judgment" role="group" aria-label={t.first}>
         <span className="field-label">{t.first}</span>
+        {/* 항목 판정으로 정해진다는 사실은 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}
+        {step.items.length > 0 && <InfoTip text={t.firstFromItems} />}
         {step.items.length === 0 ? (
           (['OK', 'NG'] as const).map((option) => (
             /* ui-check-ignore: C-4 완료된 검사표이거나 출하검사 화면이 기록한 단계라 잠긴다 — 사유는 위 안내 띠 */
@@ -183,7 +186,6 @@ const StepForm = ({ step, disabled, isSaving, onSave }: StepFormProps) => {
         ) : (
           <strong>{first ?? '—'}</strong>
         )}
-        {step.items.length > 0 && <span className="field-note">{t.firstFromItems}</span>}
       </div>
       {first === 'NG' && (
         <Checkbox

@@ -159,7 +159,7 @@ describe('W-05-01 ② — 정책을 더한다', () => {
     ]) {
       expect(dialog().getByRole('combobox', { name: label })).toBeInTheDocument();
     }
-    expect(dialog().getByText(t.form.scopeNote)).toBeInTheDocument();
+    expect(dialog().getByRole('button', { name: t.form.scopeNote })).toBeInTheDocument();
   });
 
   it('비율 없이 저장하면 막고 그 칸에 표시한다', async () => {
@@ -324,7 +324,7 @@ describe('W-05-01 ② — 정책을 고친다', () => {
     await openEdit();
 
     expect(dialog().queryByRole('combobox', { name: t.scope.itemId })).not.toBeInTheDocument();
-    expect(dialog().getByText(t.form.scopeFixed)).toBeInTheDocument();
+    expect(dialog().getByRole('button', { name: t.form.scopeFixed })).toBeInTheDocument();
     expect(
       dialog().getByText(t.scope.entry(t.scope.itemId, 'ITM-201 · 가상 하우징')),
     ).toBeInTheDocument();

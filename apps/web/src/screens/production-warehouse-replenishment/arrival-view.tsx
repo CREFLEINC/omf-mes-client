@@ -11,6 +11,7 @@ import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useId, useState, type ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
 import { plantToday } from '../../patterns/plant-time';
 import { Select } from '../../patterns/select';
@@ -148,8 +149,9 @@ export const ArrivalView = ({
             {t.common.reset}
           </Button>
         )}
+        {/* 어떤 출고가 이 목록에 오는지는 조회 줄 끝 ⓘ 로 둔다(관리웹 정리 시안 A). */}
+        <InfoTip text={ta.lead} />
       </div>
-      <p className="field-note replenishment-wide-note">{ta.lead}</p>
     </section>
   );
 
@@ -304,7 +306,6 @@ export const ArrivalView = ({
           </table>
         </div>
         <div className="replenishment-actions">
-          <span className="field-note replenishment-wide-note">{ta.footNote}</span>
           <span className="replenishment-actions-end">
             {blocked && (
               <span id={blockId} className="field-note">
@@ -321,6 +322,8 @@ export const ArrivalView = ({
             >
               {ta.bulk(selected.length)}
             </Button>
+            {/* 수령은 재고를 옮기지 않고 도착만 기록한다 — 수령 단추 옆 ⓘ(관리웹 정리 시안 A). */}
+            <InfoTip text={ta.footNote} />
           </span>
         </div>
         <div className="replenishment-pager">

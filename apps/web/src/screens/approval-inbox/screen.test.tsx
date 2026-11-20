@@ -1109,7 +1109,7 @@ describe('고른 요청 — 정보·대상·진행', () => {
 
     expect(within(target).getByText('합성 대상 문서 가')).toBeVisible();
     expect(target.textContent).not.toContain('INBOUND_LOT');
-    expect(within(target).getByText(t.target.note)).toBeVisible();
+    expect(within(target).getByRole('button', { name: t.target.note })).toBeVisible();
   });
 
   it('미등록 화면 ID에서는 열기가 잠기고 그 갈래의 사유가 붙는다', async () => {
@@ -1506,10 +1506,10 @@ describe('결재 — 상시 문구', () => {
    * **자물쇠 문구는 사라지는 자리에 두지 않는다.** 승인이 무엇을 하고 무엇을 하지 않는지는
    * 결재함을 보는 내내 참인 사실이라, 알림처럼 몇 초 뒤 없어지면 다시 확인할 방법이 없다.
    */
-  it('버튼 위 상시 자리에 서고 내 차례가 아니어도 사라지지 않는다', async () => {
+  it('결재 제목 옆 ⓘ 에 늘 있고 내 차례가 아니어도 사라지지 않는다', async () => {
     await renderDecision(decisionRoutes([detailRoute(contradictoryNotMyTurnDetail)]), '?rq=9003');
 
-    expect(within(decisionPane()).getByText(t.decision.lockNote)).toBeVisible();
+    expect(within(decisionPane()).getByRole('button', { name: t.decision.lockNote })).toBeVisible();
     /* 짝 방향 — 그 상태에서 버튼이 실제로 잠겨 있다(문구만 남고 잠금이 풀린 것이 아니다). */
     expect(approveButton()).toBeDisabled();
   });
@@ -1526,7 +1526,7 @@ describe('결재 — 상시 문구', () => {
       t.decision.lockNote,
     );
     /* 사라지지 않는 자리에는 그대로 있다 — 「어디에도 없다」로 통과하지 않게 짝을 둔다. */
-    expect(within(decisionPane()).getByText(t.decision.lockNote)).toBeVisible();
+    expect(within(decisionPane()).getByRole('button', { name: t.decision.lockNote })).toBeVisible();
   });
 });
 
@@ -1907,7 +1907,7 @@ describe('결재 — 성공한 뒤', () => {
 
     /* 재조회가 아직 오지 않았는데도 결재 응답의 값이 보인다. */
     expect(await screen.findByText('합성 결재 직후에 남은 의견')).toBeVisible();
-    expect(within(decisionPane()).getByText(t.decision.lockNote)).toBeVisible();
+    expect(within(decisionPane()).getByRole('button', { name: t.decision.lockNote })).toBeVisible();
 
     release();
   });

@@ -17,6 +17,7 @@ import {
   handoverTypeName,
   useHandoverAlertTypes,
 } from '../../patterns/handover-alert-types';
+import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import {
@@ -282,10 +283,16 @@ export const ZaloConnectionScreen = () => {
           </ul>
 
           <section className="zalo-handover" aria-labelledby="zalo-handover-title">
-            <h3 id="zalo-handover-title" className="zalo-subtitle">
-              {t.handover.title}
-            </h3>
-            <AlertBanner variant="info">{t.handover.notice}</AlertBanner>
+            {/*
+             * 템플릿 ID 를 넣는 법 · 비워 두면 어떻게 되는지는 제목 옆 ⓘ 로(관리웹 정리 시안 A).
+             * ⓘ 를 제목 밖에 둔다 — 이 제목이 구획의 이름이라 문장이 이름에 섞이면 안 된다.
+             */}
+            <div className="info-label">
+              <h3 id="zalo-handover-title" className="zalo-subtitle">
+                {t.handover.title}
+              </h3>
+              <InfoTip text={t.handover.notice} />
+            </div>
             <ul className="zalo-templates">
               {HANDOVER_ALERT_ORDER.map((code) => (
                 <li key={code}>

@@ -86,6 +86,9 @@ describe('W-02-12 생산 창고 보충 — 도착 대기 보기', () => {
     const button = screen.getByRole('button', { name: ta.bulk(0) });
     expect(button).toBeDisabled();
     expect(button).toHaveAccessibleDescription(ta.bulkBlocked);
+    /* 어떤 출고가 오는지 · 수령이 무엇을 기록하는지는 ⓘ 의 설명으로 읽힌다(관리웹 정리 시안 A). */
+    expect(screen.getByRole('button', { name: ta.lead })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: ta.footNote })).toBeInTheDocument();
   });
 
   it('US2-9 일괄 결과 창은 받음 수 · 이미 받음 · 실패를 장마다 보인다', async () => {

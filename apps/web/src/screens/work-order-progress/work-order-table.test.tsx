@@ -107,11 +107,11 @@ describe('WorkOrderTable', () => {
       expect(t.delayUnknown).not.toBe(t.blank);
     });
 
-    /* ⛔ 서버 판정이 아니라는 사실을 값 옆에 상시 둔다. 서버가 주기 시작하면 이 문구부터 지운다. */
-    it('⛔ 화면이 낸 참고값임을 상시 적는다', () => {
+    /* ⛔ 서버 판정이 아니라는 사실은 목록 제목 옆 ⓘ 로 둔다. 서버가 주기 시작하면 이 문구부터 지운다. */
+    it('⛔ 화면이 낸 참고값임을 목록 ⓘ 의 설명으로 밝힌다', () => {
       const { region } = renderTable();
 
-      expect(within(region).getByText(t.delayReference)).toBeInTheDocument();
+      expect(within(region).getByRole('button', { name: t.delayReference })).toBeInTheDocument();
     });
   });
 
@@ -191,10 +191,9 @@ describe('WorkOrderTable', () => {
   });
 
   /* ⚠ 응답이 식별자만 주어 이름을 얻으려면 줄마다 서버를 다시 불러야 한다. */
-  it('⛔ P/O·공정 열을 만들지 않고 그 사실을 적는다', () => {
+  it('⛔ P/O·공정 열을 만들지 않는다', () => {
     const { region } = renderTable();
 
-    expect(within(region).getByText(t.joinedColumnsNote)).toBeInTheDocument();
     expect(within(region).queryByRole('columnheader', { name: 'P/O' })).not.toBeInTheDocument();
     expect(within(region).queryByRole('columnheader', { name: '공정' })).not.toBeInTheDocument();
   });

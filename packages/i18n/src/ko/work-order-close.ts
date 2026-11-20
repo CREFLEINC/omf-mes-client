@@ -3,8 +3,6 @@ export const workOrderClose = {
   breadcrumbRoot: '생산 관리',
   /** 메뉴에서 이 화면까지의 경로 — 다른 화면이 「어디로 가라」고 안내할 때 쓴다. 메뉴 라벨과 같아야 한다(app/nav-menu-path.test.ts). */
   menuPath: '생산 관리 › W/O 마감·ERP 실적 송신',
-  description:
-    '작업이 끝난 작업지시를 마감하고 생산 실적을 ERP 로 보냅니다. 마감하면 되돌릴 수 없습니다.',
   detailSummary: {
     pane: '작업지시 마감 상세 요약',
     heading: '작업지시 마감 상세',
@@ -195,7 +193,6 @@ export const workOrderClose = {
       EXACT: '정상',
       OVERAGE: '초과',
     },
-    exactNote: '수량이 일치하여 추가 사유 입력이 필요하지 않습니다.',
     remainder: {
       legend: '잔량 처리',
       CARRY_OVER: '이월',
@@ -224,9 +221,6 @@ export const workOrderClose = {
     group: 'ERP 송신 항목 현황',
     /** 전역 설정이다 — 마감 한 건이 바꾸지 않는다(규범 4: 바꿀 수 없는 것에는 근거가 함께 보인다). */
     lead: '전역 송신 설정입니다. 마감 요청에 싣지 않으며, 바꾸려면 연계 설정 화면에서 합니다.',
-    /** 부속 항목(투입자재·공수·설비시간·비가동)의 코드가 정해지기 전에는 선택칸을 열지 않는다(G-2). */
-    appendixPending:
-      '생산 실적 부속 항목(투입자재·공수·설비시간·비가동)의 선택은 항목 코드가 정해지면 열립니다.',
     state: {
       on: '송신',
       off: '송신 안 함',
@@ -366,7 +360,6 @@ export const workOrderClose = {
     dialog: {
       title: (workOrderNo: string, sequence: number): string =>
         `정정 입력 — ${workOrderNo} 순번 ${String(sequence)}`,
-      serverGrade: '정정 등급은 서버가 입력 내용을 기준으로 판정합니다.',
     },
     saved: '정정 실적이 추가되었습니다.',
     approval: {

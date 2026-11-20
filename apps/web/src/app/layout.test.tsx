@@ -172,13 +172,13 @@ describe('AppLayout', () => {
 
   /*
    * 기준정보 관리 — 품목·BOM 정보(ERP 원본과 확장속성 편집이 한 화면이다)가 앞에 서고, 그 다음에
-   * MES 가 직접 세우는 마스터(공정 → 설비 → 툴·금형 → 계측기 → 창고·위치)가 온다. 횡단 조회인
-   * 마스터 변경관리는 섹션 맨 뒤다.
+   * MES 가 직접 세우는 마스터(공정 → 설비 → 툴·금형 → 창고·위치)가 온다. 창고·위치가 섹션 끝이다.
    *
+   * ⛔ 계측기 묶음 · 공급사·품목 기본 정보 · 마스터 변경관리는 메뉴에서 감췄다(사용자 지시 2026-11-20).
    * ⛔ ERP 에서 받은 것을 보기만 하는 「사원정보 조회 (ERP)」는 여기 없다 — 「시스템 관리」의
    * 「ERP 연동 현황·이력」 묶음의 탭으로 옮겼다(ERP 데이터 조회를 한 묶음에 모았다).
    */
-  it('기준정보 관리 섹션이 품목·BOM 정보 → 공정·설비 → 창고 → 마스터 변경관리 차례다', () => {
+  it('기준정보 관리 섹션이 품목·BOM 정보 → 공정·설비 → 툴·금형 → 창고 차례다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
@@ -194,24 +194,15 @@ describe('AppLayout', () => {
       links.indexOf('/master-data/item-extended-attrs') + 1,
     );
     expect(links.indexOf('/equipment/master')).toBe(links.indexOf('/master-data/routing') + 1);
-    /*
-     * 설비 → 툴·금형 → 계측기 묶음이 차례로 서고, 공급사·품목 기본 정보(W-06-25 · 005)와 창고·위치 묶음이
-     * 뒤따른다(screens/W-06-25.md — 창고·위치 앞).
-     */
+    /* 설비 → 툴·금형 → 창고·위치 묶음이 차례로 선다. */
     expect(links.indexOf('/equipment/tool-master')).toBe(links.indexOf('/equipment/master') + 1);
-    expect(links.indexOf('/equipment/gauge-master')).toBe(
+    expect(links.indexOf('/master-data/warehouse-location')).toBe(
       links.indexOf('/equipment/tool-master') + 1,
     );
-    expect(links.indexOf('/master-data/supplier-item-defaults')).toBe(
-      links.indexOf('/equipment/gauge-master') + 1,
-    );
-    expect(links.indexOf('/master-data/warehouse-location')).toBe(
-      links.indexOf('/master-data/supplier-item-defaults') + 1,
-    );
-    /* 횡단 조회라 마스터 항목들 뒤 — 섹션 끝이다. */
-    expect(links.indexOf('/master-data/master-change')).toBe(
-      links.indexOf('/master-data/warehouse-location') + 1,
-    );
+    /* 감춘 셋 — 사이드바에 없다. */
+    expect(links).not.toContain('/equipment/gauge-master');
+    expect(links).not.toContain('/master-data/supplier-item-defaults');
+    expect(links).not.toContain('/master-data/master-change');
   });
 
   it('사이드바에 공정 경로 관리 메뉴가 보인다', () => {
@@ -286,15 +277,15 @@ describe('AppLayout', () => {
     );
   });
 
-  it('사이드바에 마스터 변경관리 메뉴가 보인다', () => {
+  /* 메뉴에서 감췄다(사용자 지시 2026-11-20) — 주소·화면은 남는다. 글자로도 잰다. */
+  it('사이드바에 마스터 변경관리 메뉴가 없다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
 
-    expect(within(sidebar).getByRole('link', { name: '마스터 변경관리' })).toHaveAttribute(
-      'href',
-      '/master-data/master-change',
-    );
+    /* 짝 양성 — 같은 묶음의 형제는 섰다. */
+    expect(within(sidebar).getByRole('link', { name: '창고·위치' })).toBeInTheDocument();
+    expect(within(sidebar).queryByRole('link', { name: '마스터 변경관리' })).toBeNull();
   });
 
   /*
@@ -743,10 +734,9 @@ describe('AppLayout', () => {
       'href',
       '/production/work-order-close',
     );
-    expect(within(sidebar).getByRole('link', { name: '긴급 W/O 발행' })).toHaveAttribute(
-      'href',
-      '/production/emergency-work-orders',
-    );
+    /* W-02-07 긴급 W/O 발행은 메뉴에서 감췄다(사용자 지시 2026-11-20) — 주소·화면은 남는다. */
+    expect(within(sidebar).queryByRole('link', { name: '긴급 W/O 발행' })).toBeNull();
+    expect(links).not.toContain('/production/emergency-work-orders');
     expect(within(sidebar).getByRole('link', { name: 'W/O 진행현황 조회' })).toHaveAttribute(
       'href',
       '/production/work-order-progress',
@@ -755,16 +745,12 @@ describe('AppLayout', () => {
     expect(links.indexOf('/production/production-orders')).toBe(
       links.indexOf('/quality/dispositions') + 1,
     );
-    /* W-02-07 — 계획을 거치지 않는 갈래라 정규 흐름(작업계획) 뒤다. */
-    expect(links.indexOf('/production/emergency-work-orders')).toBe(
-      links.indexOf('/production/production-orders') + 1,
-    );
     /*
-     * W-02-10 자재 불출 요청은 「구매 / 자재 관리 > 출고 관리」로 옮겼다 — 긴급 발행 바로 뒤가
+     * W-02-10 자재 불출 요청은 「구매 / 자재 관리 > 출고 관리」로 옮겼다 — 작업계획 바로 뒤가
      * 진행현황이다(그쪽 자리는 「자재 불출 요청은 생산 관리에 없고 …」 감지기가 잰다).
      */
     expect(links.indexOf('/production/work-order-progress')).toBe(
-      links.indexOf('/production/emergency-work-orders') + 1,
+      links.indexOf('/production/production-orders') + 1,
     );
     /* W-02-09 LOT 생산 이력 조회 — 「W/O 진행현황 조회」 바로 아래. */
     expect(within(sidebar).getByRole('link', { name: 'LOT 생산 이력 조회' })).toHaveAttribute(
@@ -814,7 +800,8 @@ describe('AppLayout', () => {
    *
    * 메뉴 IA 개편(기준정보 관리 · 구매 / 자재 관리 · 품질 관리 · 생산 관리 · 설비 보전 관리 ·
    * 영업 / 출하 관리 · 업무함 · 시스템 관리)으로 묶음이 여덟이 됐다. 「승인」(결재함 하나)과
-   * 「알림」을 「업무함」 하나로 합쳤다 — 누구나 자기에게 온 것을 보는 자리다.
+   * 「알림」을 「업무함」 하나로 합쳤다 — 누구나 자기에게 온 것을 보는 자리다. 설비 보전 관리는
+   * 메뉴에서 감춰(사용자 지시 2026-11-20) 지금은 일곱이다.
    *
    * ⭐ **섹션 밖에 서는 항목은 하나다** — W-CO-05 통합 대시보드다. 그 화면은 어느 업무
    * 묶음에도 속하지 않고 **모든 묶음의 숫자를 모아** 보이므로, 어느 섹션에 넣어도 그 섹션의
@@ -833,11 +820,10 @@ describe('AppLayout', () => {
     '영업 / 출하 관리',
     '업무함',
     '기준정보 관리',
-    '설비 보전 관리',
     '시스템 관리',
   ];
 
-  it('사이드바 섹션이 여덟이고 섹션 밖 항목은 통합 대시보드 하나다', () => {
+  it('사이드바 섹션이 일곱이고 섹션 밖 항목은 통합 대시보드 하나다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
@@ -870,7 +856,7 @@ describe('AppLayout', () => {
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
 
     expect(within(sidebar).getByText('시스템 관리')).toBeInTheDocument();
-    expect(within(sidebar).getByRole('link', { name: '사용자·역할·권한' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: '사용자 역할 권한 관리' })).toHaveAttribute(
       'href',
       '/system/users-roles',
     );
@@ -878,15 +864,16 @@ describe('AppLayout', () => {
 
   /**
    * 시스템 관리 — **ERP 연동 현황 → 사용자·권한 → 결재·알림 설정 → 공통 설정** 차례다(아키텍처).
-   * 운영 설정이라 맨 끝 섹션이고(설비 보전 관리 뒤), 그 첫 항목이 ERP 연동 현황·이력이다.
+   * 운영 설정이라 맨 끝 섹션이고(기준정보 관리 뒤 — 그 사이의 설비 보전 관리는 메뉴에서 감췄다), 그 첫 항목이
+   * ERP 연동 현황·이력이다.
    */
-  it('시스템 관리 섹션이 설비 보전 관리 뒤 맨 끝에 서고 ERP 연동 현황·이력으로 시작한다', () => {
+  it('시스템 관리 섹션이 기준정보 관리 뒤 맨 끝에 서고 ERP 연동 현황·이력으로 시작한다', () => {
     renderLayout('본문 내용');
 
     const links = sidebarHrefs();
 
     expect(links.indexOf('/master-data/integration-sync')).toBe(
-      links.indexOf('/equipment/downtime-summary') + 1,
+      links.indexOf('/master-data/warehouse-location') + 1,
     );
     expect(links.indexOf('/system/users-roles')).toBe(
       links.indexOf('/master-data/integration-sync') + 1,
@@ -947,7 +934,7 @@ describe('AppLayout', () => {
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
 
     /* 짝 양성 — 시스템 관리 섹션은 실제로 펼쳐져 항목이 서 있다. */
-    expect(within(sidebar).getByRole('link', { name: '사용자·역할·권한' })).toBeInTheDocument();
+    expect(within(sidebar).getByRole('link', { name: '사용자 역할 권한 관리' })).toBeInTheDocument();
     expect(
       within(sidebar).queryByRole('link', { name: messages.session.actions.changePassword }),
     ).toBeNull();
@@ -1001,9 +988,8 @@ describe('AppLayout', () => {
       '/quality/lot-status' /* ← LOT 상태 */,
       '/quality/approvals',
       '/quality/dispositions',
-      /* 생산 관리 — 작업계획(작업함, 변경 확인) → (긴급) → 진행 → LOT 생산 이력 조회 → 마감. */
+      /* 생산 관리 — 작업계획(작업함, 변경 확인) → 진행 → LOT 생산 이력 조회 → 마감. 긴급 W/O 발행은 감췄다. */
       '/production/production-orders' /* ← 작업계획 */,
-      '/production/emergency-work-orders',
       '/production/work-order-progress',
       '/production/lot-trace',
       '/production/work-order-close',
@@ -1017,19 +1003,15 @@ describe('AppLayout', () => {
       '/approval/inbox',
       '/notification/center',
       '/notification/notices',
-      /* 기준정보 관리 — 품목·BOM 정보 먼저, MES 가 세우는 마스터가 뒤. */
+      /*
+       * 기준정보 관리 — 품목·BOM 정보 먼저, MES 가 세우는 마스터가 뒤. 계측기 · 공급사·품목 기본 정보 ·
+       * 마스터 변경관리와 그 뒤의 설비 보전 관리 묶음은 메뉴에서 감췄다(사용자 지시 2026-11-20).
+       */
       '/master-data/item-extended-attrs',
       '/master-data/routing',
       '/equipment/master' /* ← 설비 */,
       '/equipment/tool-master' /* ← 툴·금형 */,
-      '/equipment/gauge-master' /* ← 계측기 */,
-      '/master-data/supplier-item-defaults' /* ← 공급사·품목 기본 정보(005) */,
       '/master-data/warehouse-location' /* ← 창고·위치 */,
-      '/master-data/master-change',
-      /* 설비 보전 관리 — 일하는 화면만: 설비 보전 → 툴 보전 → 비가동. */
-      '/equipment/failures' /* ← 설비 보전 */,
-      '/equipment/tool-pm-order' /* ← 툴 보전 */,
-      '/equipment/downtime-summary',
       /* 시스템 관리 — ERP 연동 현황 → 사용자·권한 → 결재·알림 설정 → 공통 설정. */
       '/master-data/integration-sync' /* ← ERP 연동 현황·이력 */,
       '/system/users-roles',
@@ -1045,7 +1027,7 @@ describe('AppLayout', () => {
   });
 
   /*
-   * 탭 묶음 열다섯 개의 **탭 차례와 경로**. 사이드바 전체 감지기가 묶음 줄만 재므로, 묶음 안의
+   * 탭 묶음 열두 개의 **탭 차례와 경로**(계측기 · 설비 보전 · 툴 보전은 메뉴에서 감췄다). 사이드바 전체 감지기가 묶음 줄만 재므로, 묶음 안의
    * 차례는 여기서 얼린다 — 묶음 줄을 **실제로 눌러** 첫 탭에 들어가고 그 자리의 탭 막대를 읽는다.
    * 줄을 누르면 첫 탭에 닿는다는 것(`to` = 첫 탭)도 함께 재진다.
    */
@@ -1055,7 +1037,6 @@ describe('AppLayout', () => {
     const HUBS: Record<string, string[]> = {
       설비: ['/equipment/master', '/equipment/work-calendar', '/equipment/collection-channels'],
       '툴·금형': ['/equipment/tool-master', '/equipment/shot-conversion'],
-      계측기: ['/equipment/gauge-master', '/equipment/gauge-calibration'],
       '창고·위치': ['/master-data/warehouse-location', '/master-data/warehouse-layout'],
       '재고 관리': ['/logistics/stock-status', '/logistics/stocktaking', '/logistics/stock-adjust'],
       '출고 관리': [
@@ -1075,12 +1056,6 @@ describe('AppLayout', () => {
         '/quality/suspicious-material-hold',
       ],
       작업계획: ['/production/production-orders', '/production/po-change-review'],
-      '설비 보전': [
-        '/equipment/failures',
-        '/equipment/maintenance-orders',
-        '/equipment/maintenance-results',
-      ],
-      '툴 보전': ['/equipment/tool-pm-order', '/equipment/tool-pm-result'],
       '반품·클레임': [
         '/shipment/return-receipts',
         '/shipment/disposition-requests',
@@ -1145,7 +1120,7 @@ describe('AppLayout', () => {
         .map((link) => link.getAttribute('href')),
     ).toEqual(['/approval/inbox', '/notification/center', '/notification/notices']);
 
-    /* 전체 차례는 업무 묶음 → 업무함 → 가끔 여는 묶음(기준정보·설비 보전) → 시스템 관리다. */
+    /* 전체 차례는 업무 묶음 → 업무함 → 가끔 여는 묶음(기준정보) → 시스템 관리다. */
     const labels = SECTION_LABELS.map((label) =>
       within(sidebar).getByRole('group', { name: label }),
     );
@@ -1421,13 +1396,13 @@ describe('AppLayout — 셸 치수', () => {
  */
 describe('AppLayout — 묶음 접기', () => {
   /**
-   * 처음 열 때 보이는 것이 **묶음 8줄 + 섹션 밖 1개**다. 항목 43줄(탭을 펴면 화면 75개)이 한꺼번에 펼쳐져 있던 것이
-   * 이 작업의 출발점이다.
+   * 처음 열 때 보이는 것이 **묶음 7줄 + 섹션 밖 1개**다(설비 보전 관리는 메뉴에서 감췄다 · 2026-11-20). 항목
+   * 43줄(탭을 펴면 화면 75개)이 한꺼번에 펼쳐져 있던 것이 이 작업의 출발점이다.
    */
   it('처음에는 어느 묶음도 펼쳐져 있지 않다 — 현재 화면이 어느 묶음에도 없을 때', () => {
     renderLayout('본문 내용', { expandGroups: false });
 
-    expect(within(navSidebar()).getAllByRole('group')).toHaveLength(8);
+    expect(within(navSidebar()).getAllByRole('group')).toHaveLength(7);
     /* 섹션 밖 항목 하나만 남는다 — 묶음 안 항목은 DOM 에 없다. */
     expect(within(navSidebar()).getAllByRole('link')).toHaveLength(1);
   });
@@ -1480,10 +1455,11 @@ describe('AppLayout — 묶음 접기', () => {
     renderLayout('본문 내용', { expandGroups: false });
 
     /*
-     * 「기준정보 관리」는 사이드바 줄 8개에 **화면 15개**다(005 공급사·품목 기본 정보 포함) — 손잡이는
-     * 「화면」을 세므로 탭 묶음은 탭 수만큼 센다(공정 경로 관리 두 탭 · #231 포함). `nav-tree.ts` 가 정본이다.
+     * 「기준정보 관리」는 사이드바 줄 5개에 **화면 11개**다(계측기 · 공급사·품목 기본 정보 · 마스터 변경관리는
+     * 메뉴에서 감췄다) — 손잡이는 「화면」을 세므로 탭 묶음은 탭 수만큼 센다(공정 경로 관리 두 탭 · #231 포함).
+     * `nav-tree.ts` 가 정본이다.
      */
-    expect(groupToggle('기준정보 관리')).toHaveAccessibleName('기준정보 관리 (화면 15개)');
+    expect(groupToggle('기준정보 관리')).toHaveAccessibleName('기준정보 관리 (화면 11개)');
   });
 
   /*
@@ -1678,7 +1654,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(46);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(39);
   });
 
   /*
@@ -1728,7 +1704,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(46);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(39);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */
@@ -1917,7 +1893,7 @@ describe('셸 — 기능 권한으로 사이드바 거르기', () => {
   it('가진 권한의 화면만 메뉴에 선다', async () => {
     await renderWithPermissions(['W-CO-02']);
 
-    expect(hasMenu('사용자·역할·권한')).toBe(true);
+    expect(hasMenu('사용자 역할 권한 관리')).toBe(true);
     expect(hasMenu('창고·위치')).toBe(false);
   });
 
@@ -1941,7 +1917,7 @@ describe('셸 — 기능 권한으로 사이드바 거르기', () => {
     expect(
       within(panel).getByRole('link', { name: messages.session.actions.changePassword }),
     ).toHaveAttribute('href', '/system/password-change');
-    expect(hasMenu('사용자·역할·권한')).toBe(false);
+    expect(hasMenu('사용자 역할 권한 관리')).toBe(false);
   });
 
   /**
@@ -1951,7 +1927,7 @@ describe('셸 — 기능 권한으로 사이드바 거르기', () => {
   it('세션이 권한 목록을 주지 않으면 거르지 않는다', async () => {
     await renderWithPermissions();
 
-    expect(hasMenu('사용자·역할·권한')).toBe(true);
+    expect(hasMenu('사용자 역할 권한 관리')).toBe(true);
     expect(hasMenu('창고·위치')).toBe(true);
   });
 

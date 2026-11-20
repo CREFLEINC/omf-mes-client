@@ -70,7 +70,7 @@ const PICKED_DIRECTION_TEXT = {
 } as const;
 
 /** 판정 색 — 뜻이 정해진 코드만 색을 갖는다. 모르는 코드는 무채색이다. */
-const judgeOf = (code: string): PuTileOption['judge'] =>
+export const judgeOf = (code: string): PuTileOption['judge'] =>
   code === 'ACCEPTED' ? 'ok' : code === 'REJECTED' ? 'ng' : code === 'HELD' ? 'hold' : undefined;
 
 export const judgmentTone = (code: string): PuChipTone =>

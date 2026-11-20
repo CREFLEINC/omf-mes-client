@@ -154,8 +154,6 @@ export const collectionChannel = {
    */
   importLog: {
     title: '수신 로그에서 가져오기',
-    description:
-      '이 설비에서 최근 들어온 신호입니다. 채널로 만들 것을 고르세요. 이름은 받은 그대로 담기므로 옮겨 적다 틀릴 일이 없습니다.',
     loading: '최근 수신 신호를 불러오는 중',
     /** ⭐ 비활성 사유는 그 컨트롤의 이름으로 시작한다 — 시각적으로 끊겨도 대상을 되찾는다. */
     noObservationsReason:

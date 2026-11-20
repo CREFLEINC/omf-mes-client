@@ -2,6 +2,7 @@ import { AlertBanner, Checkbox, TextArea } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import { InfoLabel, InfoTip } from '../../patterns/info-tip';
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import { Select } from '../../patterns/select';
 import { ISSUE_TYPE_OTHER } from './codes';
@@ -62,7 +63,7 @@ export interface RequestPaneProps {
  * 나가서 없어지는 물건에는 도착지가 없다.
  *
  * ⛔ **폐기 «계정»을 묻는 칸이 없다** — 회계는 이 시스템 밖이다(DR-009). 없는 것이 정상이라
- * 그 사실을 적어 둔다.
+ * 그 사정을 화면에 적지 않는다(관리웹 정리 시안 A). 칸마다의 안내는 칸 아래가 아니라 라벨 옆 ⓘ 로 둔다.
  */
 export const RequestPane = ({
   draft,
@@ -82,6 +83,7 @@ export const RequestPane = ({
   const reasonId = useId();
   const reasonSelectId = `${reasonId}-select`;
   const reasonCodeErrorId = `${reasonId}-error`;
+  const requestReasonId = useId();
 
   const partnerNote = isPartnersError
     ? t.issue.partnerFailed
@@ -93,8 +95,14 @@ export const RequestPane = ({
     <section className="pane" aria-label={t.panes.request}>
       <h2>{t.panes.request}</h2>
 
-      <TextArea
+      {/* 처분 사유를 옮겨 둔 기본값이라는 안내는 라벨 옆 ⓘ — DS 라벨은 글자만 받아 같은 `id` 로 잇는다. */}
+      <InfoLabel
+        htmlFor={requestReasonId}
         label={t.request.reasonLabel}
+        info={t.request.reasonHelp}
+      />
+      <TextArea
+        id={requestReasonId}
         value={draft.reason}
         required
         fullWidth
@@ -102,7 +110,6 @@ export const RequestPane = ({
         maxLength={REASON_MAX}
         /* ⭐ 화면의 판정과 서버가 준 사유를 «함께» 본다 — 서버 것이 뒤에 와도 사라지지 않는다. */
         error={(showError ? reasonError(draft.reason) : undefined) ?? fieldErrors.reason}
-        helperText={t.request.reasonHelp}
         onChange={(event) => onChange({ reason: event.target.value })}
       />
 
@@ -112,7 +119,13 @@ export const RequestPane = ({
           <dd>{qtyText}</dd>
         </div>
         <div className="field-cell">
-          <dt className="field-label">{t.request.routeLabel}</dt>
+          {/* ⛔ 승인·반려는 여기 없다(J-10) — 어디서 하는지를 결재선 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
+          <dt className="field-label">
+            <span className="info-label">
+              {t.request.routeLabel}
+              <InfoTip text={t.approvalWhere} />
+            </span>
+          </dt>
           <dd>
             <RouteLine route={route} />
           </dd>
@@ -179,7 +192,6 @@ export const RequestPane = ({
           {t.issue.selfDisposal}
         </Checkbox>
       </div>
-      <p className="field-note">{t.issue.selfDisposalHelp}</p>
 
       <div className="field-cell wide-select">
         <label className="field-label" htmlFor={partnerId}>
@@ -203,9 +215,6 @@ export const RequestPane = ({
           </span>
         )}
       </div>
-
-      {/* A-11 — 「없어야 정상」인 것에 사유를 적는다. 조용히 빼면 빠뜨린 것으로 읽힌다. */}
-      <p className="field-note">{t.withdrawn.account}</p>
     </section>
   );
 };

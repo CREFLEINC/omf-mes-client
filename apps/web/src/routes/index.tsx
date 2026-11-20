@@ -12,7 +12,6 @@ import { HandoverAlertSettingsScreen } from '../screens/handover-alert-settings/
 import { PlantWorkingDaysScreen } from '../screens/plant-working-days/screen';
 import { ZaloConnectionScreen } from '../screens/zalo-connection/screen';
 import { DispatchHistoryScreen } from '../screens/dispatch-history/screen';
-import { JudgmentCodeScreen } from '../screens/common-code/judgment-code-screen';
 import { CommonCodeScreen } from '../screens/common-code/screen';
 import { DefectCauseCodeScreen } from '../screens/defect-cause-code/screen';
 import { DisposalIssueScreen } from '../screens/disposal-issue/screen';
@@ -72,7 +71,6 @@ import { DispositionRequestScreen } from '../screens/disposition-request/screen'
 import { ReturnReceiptScreen } from '../screens/return-receipt/screen';
 import { OqcInspectionScreen } from '../screens/oqc-inspection/screen';
 import { PasswordChangeScreen } from '../screens/password-change/screen';
-import { PoRegisterScreen } from '../screens/po-register/screen';
 import { PoChangeReviewScreen } from '../screens/po-change-review/screen';
 import { ProductionOrderScreen } from '../screens/production-order/screen';
 import {
@@ -84,7 +82,6 @@ import { ProductionOrderProcessScreen } from '../screens/production-order/proces
 import { DispositionDecisionScreen } from '../screens/disposition-decision/screen';
 import { PqcInspectionRegisterScreen } from '../screens/pqc-inspection-register/screen';
 import { InspectionLevelScreen } from '../screens/inspection-level/screen';
-import { ProductStockStatusScreen } from '../screens/product-stock-status/screen';
 import { QualityApprovalScreen } from '../screens/quality-approval/screen';
 import { IQC_SKIP_TYPE_CODE } from '../screens/quality-approval/type-tabs';
 import { RoutingScreen } from '../screens/routing/screen';
@@ -171,7 +168,6 @@ export const appRouter = createBrowserRouter([
       },
       { path: 'master-data/common-code', element: <CommonCodeScreen /> },
       /* W-06-04 — 전용 자원이 아니라 공통코드의 코드값 편집기를 한 그룹으로 고정해 여는 진입점이다. */
-      { path: 'master-data/judgment-code', element: <JudgmentCodeScreen /> },
       { path: 'master-data/integration-sync', element: <IntegrationSyncScreen /> },
       /* W-06-12 — 「ERP 연동 현황·이력」 묶음의 「ERP 송신」 탭. 송신 항목과 고른 항목의 송신 예정 목록이다. */
       { path: 'master-data/erp-inbound', element: <ErpInboundScreen /> },
@@ -255,7 +251,6 @@ export const appRouter = createBrowserRouter([
        * 업무 순서 사슬(예정 · 입하 등록 → 입고 → 재고 → 실사 → 반품 → 폐기)에 들지 않으므로,
        * 이 화면을 여는 화면 옆이 읽히는 자리다.
        */
-      { path: 'logistics/po-register', element: <PoRegisterScreen /> },
       /*
        * W-01-01 — **차례가 업무 순서다.** 도착을 처리한 뒤(입하 등록) **받아들여도
        * 되는지를 먼저 판정하고**(IQC 수입검사·판정) 그 다음 창고로 받아들인다.
@@ -697,7 +692,6 @@ export const appRouter = createBrowserRouter([
        * W-04-08 — 같은 규칙(사이드바 섹션)이다. 계약 경로는 `/logistics/**`이지만
        * 완제품 재고·Lot Status 조회는 출하 섹션에 둔다 — W-04-02와 같은 선례를 따른다.
        */
-      { path: 'shipment/product-stock-status', element: <ProductStockStatusScreen /> },
       /*
        * W-04-03 — 같은 규칙(사이드바 섹션)이다. 계약 경로는 `/quality/**`이지만 OQC 출하검사
        * 판정은 출하 섹션에 둔다 — W-04-02와 같은 선례를 따른다. 이 목록의 차례는 **착수 순서**라

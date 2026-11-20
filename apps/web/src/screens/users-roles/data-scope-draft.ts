@@ -101,7 +101,8 @@ export const duplicateKeyOf = (draft: DataScopeDraft): string => {
 };
 
 /** 빈 문자열은 사용자가 고른 「(전체)」다 — 계약의 널로 옮긴다. */
-const textToOptionalNumber = (value: string): number | null => (value === '' ? null : Number(value));
+const textToOptionalNumber = (value: string): number | null =>
+  value === '' ? null : Number(value);
 
 /**
  * 전체 치환 요청 본문의 항목 목록.
@@ -112,9 +113,7 @@ const textToOptionalNumber = (value: string): number | null => (value === '' ? n
  *
  * 순서는 표의 줄 순서 그대로다.
  */
-export const toDataScopesPayload = (
-  drafts: readonly DataScopeDraft[],
-): DataScopeItemPayload[] =>
+export const toDataScopesPayload = (drafts: readonly DataScopeDraft[]): DataScopeItemPayload[] =>
   drafts.map((draft) => ({
     businessUnitId: textToOptionalNumber(draft.businessUnitId),
     plantId: textToOptionalNumber(draft.plantId),

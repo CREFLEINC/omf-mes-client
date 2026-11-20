@@ -78,7 +78,7 @@ describe('emptyUserFormValues', () => {
     vi.unstubAllEnvs();
   });
 
-  it('비밀번호 외 나머지 칸은 전부 빈 값으로 시작한다', () => {
+  it('비밀번호 · 재직 상태 외 나머지 칸은 빈 값으로 시작한다', () => {
     vi.stubEnv('VITE_DEFAULT_INITIAL_PASSWORD', '');
 
     const values = emptyUserFormValues();
@@ -87,7 +87,7 @@ describe('emptyUserFormValues', () => {
     expect(values.userName).toBe('');
     expect(values.departmentId).toBe('');
     expect(values.email).toBe('');
-    expect(values.statusCode).toBe('');
+    expect(values.statusCode).toBe('EMPLOYED');
   });
 
   it('환경변수가 있으면 초기 비밀번호를 그 값으로 시딩한다', () => {

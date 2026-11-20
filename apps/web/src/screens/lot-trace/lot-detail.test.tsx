@@ -626,8 +626,14 @@ describe('W-02-09 LOT 생산 이력 조회: 분할 LOT (008)', () => {
     expect(
       within(splits).getAllByText(/분할 시각 .* · 출고번호 GI-SYN-0003 · 라인 1/u),
     ).toHaveLength(2);
+    /* 표를 읽는 법은 구획 제목 옆 ⓘ 의 설명으로 읽힌다(관리웹 정리 시안 A). */
     expect(
-      within(pane).getByText('분할 LOT 으로 투입된 W/O 도 함께 보입니다.'),
+      within(pane).getByRole('button', { name: '분할 LOT 으로 투입된 W/O 도 함께 보입니다.' }),
+    ).toBeInTheDocument();
+    expect(
+      within(pane).getByRole('button', {
+        name: '이 LOT 에서 부분 출고로 떼어 낸 LOT 입니다. 분할 LOT 에서 다시 나온 LOT 은 들여 씁니다.',
+      }),
     ).toBeInTheDocument();
     const usage = within(pane).getByRole('table', { name: '사용처' });
     expect(within(usage).getByText(/분할 LOT 경유/u)).toBeInTheDocument();
@@ -648,6 +654,9 @@ describe('W-02-09 LOT 생산 이력 조회: 분할 LOT (008)', () => {
     });
 
     await detailHead(PROD);
+    expect(
+      within(detailPane()).getByRole('button', { name: /원래 LOT 을 가까운 것부터 보입니다/u }),
+    ).toBeInTheDocument();
     const inputs = within(detailPane()).getByRole('table', { name: '투입 자재' });
     expect(within(inputs).getByText(/분할:/u)).toBeInTheDocument();
     expect(within(inputs).getByRole('button', { name: `${SPLIT} 추적 보기` })).toBeInTheDocument();

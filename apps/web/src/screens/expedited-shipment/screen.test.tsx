@@ -95,8 +95,32 @@ describe('ExpeditedShipmentScreen', () => {
   it('선택하기 전에도 결과 구획이 보인다 — 관문이 막혀 있어도 성격을 먼저 알아야 한다', async () => {
     renderScreen();
 
-    expect(await screen.findByRole('region', { name: t.panes.outcome })).toBeInTheDocument();
-    expect(screen.getByText(t.headerNotice)).toBeInTheDocument();
+    const outcome = await screen.findByRole('region', { name: t.panes.outcome });
+    /* 건너뛰는 것은 결과 구획이 말한다 — 화면 머리의 설명 띠는 걷었다(관리웹 정리 시안 A). */
+    expect(outcome).toHaveTextContent(t.outcome.skipped);
+    expect(screen.queryByText(/정상 흐름을 건너뜁니다/)).toBeNull();
+  });
+
+  /* 관리웹 정리 시안 A — 칸 아래 늘 서던 안내는 라벨 · 제목 옆 ⓘ 로, 개발 사정 문장은 걷었다. */
+  it('칸의 뜻과 넣을 범위는 ⓘ 로 읽히고, 평소 LOT 에는 서버 판정 문장이 서지 않는다', async () => {
+    const { user } = renderScreen();
+    await fillAll(user);
+
+    for (const text of [
+      t.lot.unreceivedNotice,
+      t.target.periodNote,
+      t.target.filteredByItem,
+      t.loading.optional,
+      t.reason.help,
+    ]) {
+      expect(screen.getByRole('button', { name: text })).toBeInTheDocument();
+      expect(screen.queryByText(text)).toBeNull();
+    }
+    expect(
+      screen.getByRole('button', { name: /^LOT 수량 .* 이하로 입력하세요$/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(t.release.serverDecides)).toBeNull();
+    expect(screen.queryByText(/사유별 집계/)).toBeNull();
   });
 
   it('⭐ 다 채우면 `expedited`와 사유를 실어 보낸다 — 이 화면의 전부다', async () => {

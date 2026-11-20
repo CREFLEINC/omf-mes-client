@@ -1173,7 +1173,7 @@ export const EquipmentMasterScreen = () => {
           ? t.optionsLoadFailed
           : departments.truncated
             ? t.optionsTruncated
-            : t.form.departmentHelp
+            : undefined
       }
       isActive={options.isActive}
       isDirty={isDirty}

@@ -167,6 +167,15 @@ describe('BulkCreateDialog', () => {
     expect(within(summary()).getByText('K7PM-Z01-R003')).toBeInTheDocument();
   });
 
+  /* 「0 이면 …까지만」은 칸 아래가 아니라 층 수 · 셀 수 라벨 옆 ⓘ 로 읽힌다(관리웹 정리 시안 A). */
+  it('층 수 · 셀 수의 0 뜻은 라벨 옆 ⓘ 로 둔다', () => {
+    setup();
+
+    expect(within(dialog()).getByRole('button', { name: b.levelHint })).toBeInTheDocument();
+    expect(within(dialog()).getByRole('button', { name: b.cellHint })).toBeInTheDocument();
+    expect(within(dialog()).queryByText(b.levelHint)).not.toBeInTheDocument();
+  });
+
   it('US1-5 기존 구역 Z01(랙 3)을 골라 랙 2×4×10 — Z01-R004 부터, 구역 수 칸이 없다', async () => {
     const { posts, user } = setup({ items: ZONED });
 

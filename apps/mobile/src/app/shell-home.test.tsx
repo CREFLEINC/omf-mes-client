@@ -187,6 +187,31 @@ describe('작업 목록', () => {
    * Q21 피처 010 — 출하는 PDA 피킹 → OQC → POP 출하 완료로 끝나 재포장(포장 수정)을 쓰지 않는다.
    * 제품 출하 업무에서 감추되 라우트는 남긴다(배포 전 진행분).
    */
+  it('입하 오류 등록 · 재생재 등록 · 긴급 IQC 생략 요청과 생산 현장 작업은 목록에 없다', () => {
+    const hidden = [
+      '/inbound-variance',
+      '/recycle-entry',
+      '/iqc-skip-request',
+      '/shopfloor-receipt',
+      '/wip-handover',
+      '/repair-roundtrip',
+      '/equipment-inspection',
+      '/equipment-failure',
+    ];
+    render(
+      <Shell path="/screens/inbound">
+        <HomeRoutes />
+      </Shell>,
+    );
+
+    expect(linkedPaths()).toEqual(expect.arrayContaining(['/inbound-receipt', '/inbound-close']));
+    for (const path of hidden) {
+      expect(linkedPaths()).not.toContain(path);
+      expect(screenOf(path)).toBeUndefined();
+    }
+    expect(hiddenScreens.map((each) => each.to)).toEqual(expect.arrayContaining(hidden));
+  });
+
   it('Q21 재포장은 제품 출하 업무에 없고 라우트는 남는다', () => {
     render(
       <Shell path="/screens/shipping">
@@ -196,7 +221,7 @@ describe('작업 목록', () => {
 
     expect(linkedPaths()).not.toContain('/packing-repack');
     expect(screenOf('/packing-repack')).toBeUndefined();
-    expect(hiddenScreens.map((hidden) => hidden.to)).toEqual(['/packing-repack']);
+    expect(hiddenScreens.map((hidden) => hidden.to)).toContain('/packing-repack');
     expect(
       (appRoutes[0]?.children ?? []).some(
         (child) => 'path' in child && child.path === 'packing-repack',
@@ -220,7 +245,8 @@ describe('작업 목록', () => {
   });
 
   /* 스물한 타일을 늘어놓던 첫 화면을 네 업무로 줄였다(사용자 지시 2026-10-20). */
-  it('첫 화면에는 네 업무만 선다', () => {
+  /* 생산 현장 업무는 감췄다(사용자 지시 2026-11-20). */
+  it('첫 화면에는 세 업무만 선다', () => {
     render(
       <Shell>
         <HomeRoutes />
@@ -236,7 +262,6 @@ describe('작업 목록', () => {
     ).toEqual([
       '/screens/inbound',
       '/screens/warehouse',
-      '/screens/shopfloor',
       '/screens/shipping',
     ]);
     /* 창고 7 — 피처 011 이 적치 기록(M-01-14)을 더했다. */

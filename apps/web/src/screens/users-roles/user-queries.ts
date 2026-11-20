@@ -1,9 +1,9 @@
 import type { components } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import { toUserListQuery } from './filters';
+import { DEFAULT_PAGE_SIZE, toUserListQuery } from './filters';
 import type { AppUser, PageMeta, UserFilters } from './types';
 
 type AppUserDetailResponse = components['schemas']['AppUserDetailResponse'];
@@ -20,6 +20,9 @@ export interface UserListResponse {
   page: PageMeta;
 }
 
+/** 건수만 쓰는 조회 — 줄은 하나만 받는다(합계 `page.total` 만 본다). */
+const COUNT_PAGE_SIZE = 1;
+
 /**
  * 사용자의 캐시 키.
  *
@@ -28,8 +31,8 @@ export interface UserListResponse {
  */
 export const userKeys = {
   all: ['users-roles-users'] as const,
-  list: (filters: UserFilters, page: number) =>
-    ['users-roles-users', 'list', filters, page] as const,
+  list: (filters: UserFilters, page: number, size: number = DEFAULT_PAGE_SIZE) =>
+    ['users-roles-users', 'list', filters, page, size] as const,
   detail: (appUserId: number) => ['users-roles-users', 'detail', appUserId] as const,
   /**
    * 부여분은 **자기 키만** 무효화한다.
@@ -52,15 +55,49 @@ export const useUserList = (
   filters: UserFilters,
   page: number,
   enabled: boolean,
+  size: number = DEFAULT_PAGE_SIZE,
 ): UseQueryResult<UserListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: userKeys.list(filters, page),
+    queryKey: userKeys.list(filters, page, size),
     enabled,
     queryFn: () =>
-      runRequest(() => client.GET('/app/users', { params: { query: toUserListQuery(filters, page) } })),
+      runRequest(() =>
+        client.GET('/app/users', { params: { query: toUserListQuery(filters, page, size) } }),
+      ),
   });
+};
+
+/**
+ * 재직 상태별 건수 — 탭 줄 칩(omf-all-around#333). 지금 걸린 다른 조건(검색어 · 부서 · 사용 중지 포함)은 그대로 두고
+ * 상태만 바꿔 첫 쪽을 묻는다. 키가 목록과 같아 그 상태 칩을 누르면 받아 둔 응답을 그대로 쓴다.
+ */
+export const useUserStatusCounts = (
+  filters: UserFilters,
+  statusCodes: readonly string[],
+  enabled: boolean,
+): (number | undefined)[] => {
+  const { client } = useApiClient();
+  const results = useQueries({
+    queries: statusCodes.map((statusCode) => {
+      const next = { ...filters, statusCode };
+
+      return {
+        queryKey: userKeys.list(next, 1, COUNT_PAGE_SIZE),
+        enabled,
+        staleTime: 30_000,
+        queryFn: () =>
+          runRequest(() =>
+            client.GET('/app/users', {
+              params: { query: toUserListQuery(next, 1, COUNT_PAGE_SIZE) },
+            }),
+          ),
+      };
+    }),
+  });
+
+  return results.map((result) => result.data?.page.total);
 };
 
 /**

@@ -738,6 +738,9 @@ describe('제품 검사표 조회', () => {
     const dialog = await screen.findByRole('dialog', { name: t.create.title });
     // 시리얼이 비면 열 수 없다.
     expect(within(dialog).getByRole('button', { name: t.create.open })).toBeDisabled();
+    // 이미 있는 시리얼이면 그 검사표를 연다는 사실은 라벨 옆 ⓘ 로 둔다.
+    expect(within(dialog).getByRole('button', { name: t.create.note })).toBeInTheDocument();
+    expect(within(dialog).queryByText(t.create.note)).not.toBeInTheDocument();
 
     await user.type(within(dialog).getByRole('textbox', { name: t.create.serial }), ' SN-0001 ');
     await user.click(within(dialog).getByRole('button', { name: t.create.open }));
@@ -761,6 +764,10 @@ describe('제품 검사표 조회', () => {
     const { user, requests } = setup(['W-03-13']);
     await open(user);
     await user.click(screen.getByRole('tab', { name: d.tabs.entry }));
+    // 구획 안내는 늘 펼쳐 두지 않고 제목 옆 ⓘ 로 둔다.
+    expect(screen.getByRole('button', { name: p.header.note })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: p.ng.note })).toBeInTheDocument();
+    expect(screen.queryByText(p.header.note)).not.toBeInTheDocument();
 
     await user.type(screen.getByRole('textbox', { name: p.header.destinationText }), '일본');
     await user.click(screen.getByRole('button', { name: p.header.save }));

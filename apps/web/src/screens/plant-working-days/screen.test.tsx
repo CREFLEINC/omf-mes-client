@@ -162,6 +162,18 @@ describe('W-CO-15 공장 근무일 설정', () => {
     expect(screen.getByText(t.intro)).toBeInTheDocument();
   });
 
+  /* 주간 근무일이 무엇을 세는지는 머리 아래 설명 줄이 아니라 구획 제목 옆 ⓘ 다(관리웹 정리 시안 A). */
+  it('주간 근무일의 뜻은 구획 제목 옆 ⓘ 의 설명으로 읽힌다', async () => {
+    setup();
+    await table();
+
+    const title = screen.getByRole('heading', { level: 2 });
+
+    expect(title).toHaveTextContent(t.tableLabel);
+    expect(within(title).getByRole('button', { name: t.description })).toBeInTheDocument();
+    expect(screen.queryByText(t.description)).not.toBeInTheDocument();
+  });
+
   it('US7-3 6 으로 바꾸면 바뀐 줄 표시 · 예시를 다시 세고, 저장하면 오늘부터 적용 행을 더한 뒤 다시 열어도 6', async () => {
     const { user, writes } = setup();
     const row = await rowOf('합성 2공장');

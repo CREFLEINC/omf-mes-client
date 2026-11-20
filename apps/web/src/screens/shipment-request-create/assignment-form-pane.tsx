@@ -2,6 +2,7 @@ import { AlertBanner, Button, DatePicker, type SelectItems } from '@crefle/web-u
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { FieldLabel } from './field-label';
 import { HeaderActions } from './header-actions';
 import { LineTable } from './line-table';
@@ -299,15 +300,14 @@ export const AssignmentFormPane = ({
           </ul>
         )}
 
-        <p className="field-note">{t.notes.lineNoAssignedByServer}</p>
-
         {!isFromOrder && (
           <div className="filter-bar">
             <div className="field-cell">
               <Button variant="outlined" disabled={isLocked} onClick={onAddLine}>
                 {t.actions.addLine}
               </Button>
-              <span className="field-note">{t.notes.addLineWarehouse}</span>
+              {/* 새 줄 창고 규칙은 단추 옆 ⓘ 로(관리웹 정리 시안 A). */}
+              <InfoTip text={t.notes.addLineWarehouse} />
             </div>
           </div>
         )}

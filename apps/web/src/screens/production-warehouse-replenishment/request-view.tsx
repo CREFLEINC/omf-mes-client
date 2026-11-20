@@ -4,6 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
 import { ItemSelect } from '../../patterns/item-select';
+import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
 import { plantToday } from '../../patterns/plant-time';
 import { Select } from '../../patterns/select';
@@ -208,9 +209,10 @@ export const RequestView = ({
 
   return (
     <section className="replenishment-request" aria-label={tr.title}>
+      {/* 만들면 바로 피킹 목록에 나간다는 것은 제목 옆 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
       <header className="replenishment-section-head">
         <h2 className="subsection-title">{tr.title}</h2>
-        <p className="field-note">{tr.lead}</p>
+        <InfoTip text={tr.lead} />
       </header>
       <div className="replenishment-filter-row">
         <Select
@@ -366,7 +368,6 @@ export const RequestView = ({
         <Button variant="outlined" size="sm" disabled={managed.isPending} onClick={loadBelow}>
           {tr.loadBelow}
         </Button>
-        <span className="field-note">{tr.splitNote}</span>
         <span className="replenishment-actions-end">
           {blocked && (
             <span id={noteId} className="field-note">
@@ -381,6 +382,8 @@ export const RequestView = ({
           >
             {tr.submit}
           </Button>
+          {/* 출고 자재 창고별로 요청이 나뉜다는 것 — 보내기 옆 ⓘ(관리웹 정리 시안 A). */}
+          <InfoTip text={tr.splitNote} />
         </span>
       </div>
       {loadNote !== null && <p className="field-note">{loadNote}</p>}

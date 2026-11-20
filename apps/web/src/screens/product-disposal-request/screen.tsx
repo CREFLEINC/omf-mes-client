@@ -11,6 +11,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
 import { ScreenHeader } from '../../patterns/screen-header';
 import { progressSummary, toProgressSteps } from './approval-progress';
@@ -219,7 +220,13 @@ export const ProductDisposalRequestScreen = () => {
   const requestTab = (
     <>
       <section className="pane" aria-label={t.panes.targets}>
-        <h2>{t.panes.targets}</h2>
+        {/* §5-2 — 판정이 선행이라는 사실은 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
+        <h2>
+          <span className="info-label">
+            {t.panes.targets}
+            <InfoTip text={t.targets.judgmentRequired} />
+          </span>
+        </h2>
         <TargetList
           rows={rows}
           selected={selected}
@@ -301,8 +308,7 @@ export const ProductDisposalRequestScreen = () => {
             </AlertBanner>
           </div>
         )}
-        {/* A-11 — 올린 뒤 화면에서 철회할 길이 없다는 사실을 «올리기 전»에 적는다. */}
-        <p className="field-note">{t.withdrawn.noWithdraw}</p>
+        {/* A-11 — 올린 뒤 철회할 길이 없다는 사실은 «올리기 전» 확인 창이 말한다(`confirm.irreversible`). */}
         <div className="form-actions">
           <Button
             disabled={submitLock !== undefined}
@@ -435,10 +441,10 @@ export const ProductDisposalRequestScreen = () => {
           />
         }
       />
-      {/* ⛔ 승인·반려는 여기 없다 — 어디서 하는지를 머리에 적는다(J-10). */}
-      <div className="banner-slot">
-        <AlertBanner variant="info">{t.headerNotice}</AlertBanner>
-      </div>
+      {/*
+       * ⛔ 승인·반려는 여기 없다(J-10) — 어디서 하는지는 「결재선」 · 「결재 진행」 옆 ⓘ 가 말한다. 머리의
+       * 설명 띠는 걷었다(관리웹 정리 시안 A).
+       */}
 
       <Tabs aria-label={t.title} items={tabItems} value={tab} onChange={changeTab} />
     </>

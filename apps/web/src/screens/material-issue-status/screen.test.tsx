@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import {
   createStubFetch,
@@ -383,6 +383,13 @@ describe('W-02-11 출고 요청 현황 — 목록', () => {
 });
 
 describe('W-02-11 출고 요청 현황 — 상세', () => {
+  it('대기 요청의 출고 작업일 라벨 옆 ⓘ 는 그날 배포된다는 것을 알린다', async () => {
+    setup({ route: '/production/material-issue-status?id=1' });
+    const detail = await panel();
+
+    expect(await detail.findByRole('button', { name: t.detail.hints.WAITING })).toBeInTheDocument();
+  });
+
   it('US5-2 대기 요청의 수량을 고쳐 저장하면 바뀐 줄만 versionNo 와 함께 보낸다', async () => {
     const { user, writes } = setup({ route: '/production/material-issue-status?id=1' });
     const detail = await panel();
@@ -420,6 +427,12 @@ describe('W-02-11 출고 요청 현황 — 상세', () => {
   });
 
   it('US5-3 출고 작업일 변경 창은 고른 날의 배포 시점을 안내하고, 저장은 날짜와 versionNo 만 보낸다', async () => {
+    /* 고른 날(11-20)이 «앞날»이어야 예약 안내가 선다 — 오늘이 11-20 이상이면 「바로 배포」로 바뀌므로 시계를 그 전날에 둔다. */
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-19T03:00:00Z'));
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
     const { user, writes } = setup({ route: '/production/material-issue-status?id=1' });
     const detail = await panel();
 
@@ -530,7 +543,10 @@ describe('W-02-11 출고 요청 현황 — 부족', () => {
 
     const table = within(await screen.findByRole('table', { name: t.shortage.tableLabel }));
     expect(table.getByText(t.shortage.unsourcedTitle)).toBeInTheDocument();
-    expect(table.getByText(t.shortage.unsourcedNote(2))).toBeInTheDocument();
+    expect(table.getByText(t.shortage.unsourcedCount(2))).toBeInTheDocument();
+    /* 묶음의 뜻은 제목 옆 ⓘ 의 설명으로 읽힌다(관리웹 정리 시안 A). */
+    expect(table.getByRole('button', { name: t.shortage.unsourcedNote })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.shortage.intro })).toBeInTheDocument();
     expect(table.getByText(t.shortage.replenished('SYN-MIR-15'))).toBeInTheDocument();
     expect(
       table.getByRole('link', { name: t.shortage.replenishLabel('SYN-WO-21 SYN-IT-2') }),

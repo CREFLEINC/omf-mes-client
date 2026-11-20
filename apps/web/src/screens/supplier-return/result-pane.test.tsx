@@ -47,10 +47,12 @@ describe('ResultPane — 화면이 확인한 것만 말한다', () => {
     expect(pane().textContent ?? '').not.toContain('전기 완료');
   });
 
-  it('상태 코드를 그대로 보인다는 사실을 밝힌다', () => {
+  /* 값이 어디서 왔는지 밝히던 문장(상태 코드 · 줄 목록)은 걷었다 — 개발 사정이다(관리웹 정리 시안 A). */
+  it('값의 출처를 밝히는 설명문을 두지 않는다', () => {
     renderPane();
 
-    expect(screen.getByText(t.result.statusNote)).toBeInTheDocument();
+    expect(pane()).not.toHaveTextContent('서버가 준 값을 그대로');
+    expect(pane()).not.toHaveTextContent('서버가 되돌려 준 반품 전표의 내용');
   });
 
   /*
@@ -78,7 +80,6 @@ describe('ResultPane — 화면이 확인한 것만 말한다', () => {
     expect(pane()).toHaveTextContent(
       t.result.linePair('알 수 없음', 'LOT-2026-900011', '5 SAMPLE-EA'),
     );
-    expect(screen.getByText(t.result.linesNote)).toBeInTheDocument();
   });
 
   it('줄이 하나뿐이면 하나만 그린다', () => {

@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { Radio, TextArea, type SelectItems } from '@crefle/web-ui';
 import { type JSX, useId } from 'react';
 
+import { InfoLabel, InfoTip } from '../../patterns/info-tip';
 import { Select } from '../../patterns/select';
 import type {
   WorkOrderCloseInputDraft,
@@ -41,7 +42,7 @@ export const WorkOrderCloseInputPane = ({
   const reasonId = useId();
   const reasonNoteId = `${reasonId}-note`;
   const remainderGroupName = useId();
-  const carryOverNoteId = `${remainderGroupName}-note`;
+  const remarksId = useId();
   const reasonNote =
     reasonUnavailableReason ??
     (reasonOptions.length === 0 ? t.reason.empty : isReasonPrefilled ? t.reason.prefilled : null);
@@ -54,20 +55,22 @@ export const WorkOrderCloseInputPane = ({
         <span className="field-label">{t.classification.label}</span>
         <span>{t.classification[classificationMessageKey]}</span>
       </div>
-      {completionJudgment === 'NORMAL' ? <p className="field-note">{t.exactNote}</p> : null}
       {completionJudgment === 'UNDER' ? (
         <fieldset className="field-cell">
           <legend className="field-label">{t.remainder.legend}</legend>
           <div className="check-group">
-            <Radio
-              checked={draft.remainderDisposition === 'CARRY_OVER'}
-              aria-describedby={carryOverNoteId}
-              name={remainderGroupName}
-              value="CARRY_OVER"
-              onChange={() => onRemainderDispositionChange('CARRY_OVER')}
-            >
-              {t.remainder.CARRY_OVER}
-            </Radio>
+            {/* 이월 W/O 가 저절로 서지 않는다는 것은 「이월」 바로 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
+            <span className="work-order-close-option-info">
+              <Radio
+                checked={draft.remainderDisposition === 'CARRY_OVER'}
+                name={remainderGroupName}
+                value="CARRY_OVER"
+                onChange={() => onRemainderDispositionChange('CARRY_OVER')}
+              >
+                {t.remainder.CARRY_OVER}
+              </Radio>
+              <InfoTip text={t.remainder.carryOverNote(messages.productionOrder.menuPath)} />
+            </span>
             <Radio
               checked={draft.remainderDisposition === 'WRITE_OFF'}
               name={remainderGroupName}
@@ -77,22 +80,22 @@ export const WorkOrderCloseInputPane = ({
               {t.remainder.WRITE_OFF}
             </Radio>
           </div>
-          <p className="field-note" id={carryOverNoteId}>
-            {t.remainder.carryOverNote(messages.productionOrder.menuPath)}
-          </p>
         </fieldset>
       ) : null}
       {/* 소멸은 다른 전표를 만들지 않는다 — 고른 이유는 마감 비고(remarks)와 처분 코드에만 남는다. */}
       {completionJudgment === 'UNDER' && draft.remainderDisposition === 'WRITE_OFF' ? (
-        <TextArea
-          label={t.remarks.label}
-          value={draft.remarks}
-          rows={2}
-          fullWidth
-          placeholder={t.remarks.placeholder}
-          helperText={t.remarks.help}
-          onChange={(event) => onRemarksChange(event.target.value)}
-        />
+        <div className="field-cell">
+          {/* 소멸이 무엇을 남기는지는 라벨 옆 ⓘ 로 — 칸 아래에 펴 두지 않는다(관리웹 정리 시안 A). */}
+          <InfoLabel htmlFor={remarksId} label={t.remarks.label} info={t.remarks.help} />
+          <TextArea
+            id={remarksId}
+            value={draft.remarks}
+            rows={2}
+            fullWidth
+            placeholder={t.remarks.placeholder}
+            onChange={(event) => onRemarksChange(event.target.value)}
+          />
+        </div>
       ) : null}
       {completionJudgment !== 'NORMAL' ? (
         <div className="field-cell">

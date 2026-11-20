@@ -447,7 +447,9 @@ describe('Lot Status 화면 shell', () => {
     expect(summary.getByText('0')).toBeVisible();
     expect(summary.getByText('집계 불가')).toBeVisible();
     expect(screen.getByText('SAMPLE_UNKNOWN (목록 미확정)')).toBeVisible();
-    expect(screen.getByText('SAMPLE-ITEM-01 · 합성 품목 (미사용)')).toBeVisible();
+    /* 품목은 코드 · 이름 두 칸이다(#1728). */
+    expect(screen.getAllByText('SAMPLE-ITEM-01').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('합성 품목 (미사용)').length).toBeGreaterThan(0);
     expect(screen.getByText('조회 권한이 없는 LOT 2건을 제외했습니다.')).toBeVisible();
     // 오른쪽 끝은 마지막 갱신 + [갱신] — 자동 갱신 안내는 없다(사용자 2026-10-30).
     expect(screen.getByText(/^마지막 갱신 /)).toBeVisible();
@@ -460,8 +462,8 @@ describe('Lot Status 화면 shell', () => {
     );
     expect(requestCount(urls, '/quality/lot-statuses')).toBe(listCalls + 1);
     const table = screen.getByRole('table', { name: 'LOT 현황' });
-    /* FR-035 — 「입하 LOT」 칸이 더해져 여섯에서 일곱 칸이 됐다. */
-    expect(within(table).getAllByRole('columnheader')).toHaveLength(7);
+    /* FR-035 — 「입하 LOT」 칸이 더해져 일곱 칸, #1728 품목을 코드 · 이름으로 나눠 여덟 칸이다. */
+    expect(within(table).getAllByRole('columnheader')).toHaveLength(8);
     expect(within(table).getByText('0')).toBeVisible();
   });
 
@@ -813,7 +815,8 @@ describe('Lot Status 화면 shell', () => {
 
       const table = await screen.findByRole('table', { name: 'LOT 현황' });
       expect(within(table).getByText(itemMessage)).toBeVisible();
-      expect(within(table).getByText('—')).toBeVisible();
+      /* 수량 칸과 (품목을 못 푼) 품목코드 칸이 「—」다(#1728). */
+      expect(within(table).getAllByText('—').length).toBeGreaterThan(0);
       expect(within(table).queryByText('999')).not.toBeInTheDocument();
       expect(screen.queryByText(/조회 권한이 없는 LOT .*건을 제외/)).not.toBeInTheDocument();
     },
@@ -831,7 +834,7 @@ describe('Lot Status 화면 shell', () => {
     );
 
     const table = await screen.findByRole('table', { name: 'LOT 현황' });
-    expect(await within(table).findAllByText('SAMPLE-ITEM-51 · 합성 51번째 품목')).toHaveLength(2);
+    expect(await within(table).findAllByText('합성 51번째 품목')).toHaveLength(2);
     expect(within(table).queryByText('알 수 없음')).not.toBeInTheDocument();
     const detailCalls = urls
       .map(({ pathname }) => pathname)
@@ -889,7 +892,16 @@ describe('Lot Status 화면 shell', () => {
       within(table)
         .getAllByRole('columnheader')
         .map((header) => (header.textContent ?? '').replace('drag_indicator', '')),
-    ).toEqual(['LOT 번호', '품목', '상태', '보유 수량', '상태 사유', '입하 LOT', '최종 변경일']);
+    ).toEqual([
+      'LOT 번호',
+      '품목코드',
+      '품목명',
+      '상태',
+      '보유 수량',
+      '상태 사유',
+      '입하 LOT',
+      '최종 변경일',
+    ]);
     const row = await within(table).findByRole('row', { name: /SAMPLE-LOT-Z/ });
     await user.click(within(row).getAllByRole('cell')[2]!);
     await waitFor(() => expect(locationSearch().get('lot')).toBe('401'));
@@ -914,7 +926,7 @@ describe('Lot Status 화면 shell', () => {
       (element.textContent ?? '').replace('drag_indicator', '');
     const itemHeader = within(table)
       .getAllByRole('columnheader')
-      .find((header) => headerText(header) === '품목');
+      .find((header) => headerText(header) === '품목코드');
 
     expect(itemHeader).toHaveAttribute('aria-sort', 'descending');
     expect(
@@ -922,7 +934,7 @@ describe('Lot Status 화면 shell', () => {
         .getAllByRole('button')
         .filter((button) => button.closest('th') !== null)
         .map(headerText),
-    ).toEqual(['LOT 번호', '품목', '최종 변경일']);
+    ).toEqual(['LOT 번호', '품목코드', '최종 변경일']);
     await user.click(within(table).getByRole('button', { name: 'LOT 번호' }));
     await waitFor(() => expect(locationSearch().get('sort')).toBe('lotNoAsc'));
     await waitFor(() => expect(requestCount(urls, '/quality/lot-statuses')).toBe(2));
@@ -1384,6 +1396,13 @@ describe('Lot Status 화면 — 분할 LOT (008)', () => {
     expect(
       within(split).getByRole('button', { name: 'SAMPLE-ITEM-01|1000|260820|100330|0001' }),
     ).toBeVisible();
+    /* 분할 LOT 의 뜻은 원래 LOT 칸 이름 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */
+    expect(
+      within(split).getByRole('button', { name: '부분 출고로 원래 LOT 에서 떼어 낸 LOT 입니다.' }),
+    ).toBeInTheDocument();
+    expect(
+      within(split).queryByText('부분 출고로 원래 LOT 에서 떼어 낸 LOT 입니다.'),
+    ).not.toBeInTheDocument();
     expect(within(split).getByText('분할 수량')).toBeVisible();
     expect(within(split).getByText('2026-11-17 08:40')).toBeVisible();
     expect(within(split).getByText('GI-SYN-0003 · 라인 1')).toBeVisible();

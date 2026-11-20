@@ -1,10 +1,11 @@
-import { Button, TextField } from '@crefle/web-ui';
+import { Button, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
 import { codeLockMessage, type Editability } from '../../patterns/master';
 import { DisabledAction } from './disabled-action';
 import { FieldLabel } from './field-label';
+import { requiredEmptyClass } from './required-empty';
 import type { RoleFormValues } from './types';
 
 const t = messages.usersRoles;
@@ -34,6 +35,13 @@ export interface RoleFormPaneProps {
   onSave: () => void;
   onCancel: () => void;
   onDeactivate: () => void;
+  /**
+   * 표제 줄(「역할 상세 정보」 + 오른쪽 [사용 중지])을 둔다 — 사용자 상세 정보와 같은 모양(사용자 지시 2026-11-20 · #333).
+   * 추가 팝업은 창 제목이 그 자리를 맡아 끈다.
+   */
+  showHeading?: boolean;
+  /** 폼 아래 [사용 중지][취소][저장] 줄. 끄면 카드 아래 [취소][저장] 한 줄 · 팝업 버튼이 맡는다. */
+  showActions?: boolean;
 }
 
 /**
@@ -63,6 +71,8 @@ export const RoleFormPane = ({
   onSave,
   onCancel,
   onDeactivate,
+  showHeading = false,
+  showActions = true,
 }: RoleFormPaneProps) => {
   const roleCodeId = useId();
   const roleNameId = useId();
@@ -71,9 +81,42 @@ export const RoleFormPane = ({
 
   /* 등록에는 잠글 대상이 없다 — 아직 만들어지지 않은 자원이라 상세도 `editability`도 없다. */
   const codeLockReason = editability === null ? null : codeLockMessage(editability);
+  /*
+   * 잠금 안내는 「역할 코드」 이름 오른쪽 라벨로(사용자 지시 2026-11-20 · #333). 쓰이는 중이라 잠긴 경우는
+   * 건수 없이 짧게 말한다 — 다른 사유는 공용 문구 그대로다.
+   */
+  const codeLockNote =
+    codeLockReason === null
+      ? null
+      : editability?.reason === 'REFERENCED'
+        ? t.role.codeInUse
+        : codeLockReason;
+  const codeLockNoteId = useId();
 
   return (
-    <section className="pane" aria-label={t.panes.roleForm}>
+    <section className="pane users-roles-pane users-roles-user-pane" aria-label={t.panes.roleForm}>
+      {/*
+       * 사용 중지는 표제 줄 오른쪽 — 폼 값을 저장하지 않고 바로 서버에 나가는 작업이라 아래 [취소][저장]과 떨어뜨린다
+       * (사용자 상세 정보와 같다). 이미 미사용이면 비활성이다.
+       */}
+      {showHeading && (
+        <div className="pane-heading-row users-roles-heading">
+          <h3 className="pane-title">{t.panes.roleForm}</h3>
+          {mode === 'edit' && (
+            <div className="users-roles-account-actions">
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={deactivateDisabledReason !== null}
+                leadingIcon={<Icon name="block" size={18} />}
+                onClick={onDeactivate}
+              >
+                {messages.common.deactivate}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
       {banner}
 
       <div className="form-grid">
@@ -83,14 +126,30 @@ export const RoleFormPane = ({
          * `aria-describedby`로 잇는다(배치 규범 4의 이탈 조건: 디자인 시스템이 이미 처리한다).
          */}
         <div className="field-cell">
-          <FieldLabel htmlFor={roleCodeId} label={t.role.fields.roleCode} required />
+          <div className="users-roles-label-row">
+            <FieldLabel htmlFor={roleCodeId} label={t.role.fields.roleCode} required />
+            {codeLockNote !== null && (
+              <p
+                id={codeLockNoteId}
+                className="iqc-inspection-action-note users-roles-scope-hint"
+                data-tone="info"
+              >
+                <Icon name="info" size={14} aria-hidden />
+                {codeLockNote}
+              </p>
+            )}
+          </div>
           <TextField
             id={roleCodeId}
             value={values.roleCode}
+            /* 필수 칸이 비면 빨간 테두리 — 사용자 추가 팝업과 같다(사용자 지시 2026-11-20 · #333). 잠긴 칸은 고칠 수 없어 뺀다. */
+            containerClassName={
+              codeLockReason === null ? requiredEmptyClass(values.roleCode) : undefined
+            }
             onChange={(event) => onChange({ roleCode: event.target.value })}
             error={fieldErrors.roleCode}
             disabled={codeLockReason !== null}
-            disabledReason={codeLockReason ?? undefined}
+            aria-describedby={codeLockNote === null ? undefined : codeLockNoteId}
             aria-required
           />
         </div>
@@ -100,6 +159,7 @@ export const RoleFormPane = ({
           <TextField
             id={roleNameId}
             value={values.roleName}
+            containerClassName={requiredEmptyClass(values.roleName)}
             onChange={(event) => onChange({ roleName: event.target.value })}
             error={fieldErrors.roleName}
             aria-required
@@ -107,8 +167,12 @@ export const RoleFormPane = ({
         </div>
 
         {/* 계약이 널을 허용한다 — 비우는 것이 정상 값이라 필수 표시를 붙이지 않는다. */}
-        <div className="field-cell">
-          <FieldLabel htmlFor={descriptionId} label={t.role.fields.description} />
+        <div className="field-cell users-roles-role-description">
+          <FieldLabel
+            htmlFor={descriptionId}
+            label={t.role.fields.description}
+            optionalMark={t.user.optionalMark}
+          />
           <TextField
             id={descriptionId}
             value={values.description}
@@ -118,51 +182,55 @@ export const RoleFormPane = ({
         </div>
       </div>
 
-      <div className="form-actions">
-        {/*
-         * 등록 폼에는 사용 중지 자리를 두지 않는다 — 아직 없는 자원이라
-         * 「언젠가 풀린다」가 아니라 애초에 해당하지 않는 액션이다.
-         */}
-        {mode === 'edit' &&
-          (deactivateDisabledReason === null ? (
-            <div className="field-cell form-actions-secondary">
-              <Button variant="outlined" onClick={onDeactivate}>
-                {messages.common.deactivate}
-              </Button>
-            </div>
+      {showActions && (
+        <div className="form-actions">
+          {/*
+           * 등록 폼에는 사용 중지 자리를 두지 않는다 — 아직 없는 자원이라
+           * 「언젠가 풀린다」가 아니라 애초에 해당하지 않는 액션이다.
+           */}
+          {mode === 'edit' &&
+            (deactivateDisabledReason === null ? (
+              <div className="field-cell form-actions-secondary">
+                <Button variant="outlined" onClick={onDeactivate}>
+                  {messages.common.deactivate}
+                </Button>
+              </div>
+            ) : (
+              <DisabledAction
+                label={messages.common.deactivate}
+                reason={deactivateDisabledReason}
+                className="form-actions-secondary"
+              />
+            ))}
+
+          {/*
+           * 등록에서 「취소」는 **폼을 닫는 것**이라 고친 것이 없어도 눌러야 한다.
+           * 수정에서는 **기준값으로 되돌리는 것**이라 고친 것이 있을 때만 의미가 있다.
+           */}
+          <Button variant="outlined" disabled={mode === 'edit' && !isDirty} onClick={onCancel}>
+            {messages.common.cancel}
+          </Button>
+
+          {/*
+           * 고친 것이 없으면 주 액션을 **비활성 + 사유**로 둔다(배치 규범 4) —
+           * 사유가 없으면 사용자는 버튼이 왜 안 눌리는지 알 방법이 없다.
+           * 저장 중에는 진행 표시가 그 자리를 대신하므로 사유를 내지 않는다.
+           */}
+          {isDirty || isSaving ? (
+            <Button disabled={isSaving} loading={isSaving} onClick={onSave}>
+              {saveLabel}
+            </Button>
           ) : (
             <DisabledAction
-              label={messages.common.deactivate}
-              reason={deactivateDisabledReason}
-              className="form-actions-secondary"
+              variant="filled"
+              label={saveLabel}
+              reason={
+                mode === 'create' ? t.actionReasons.addRoleNoInput : t.actionReasons.saveNoChanges
+              }
             />
-          ))}
-
-        {/*
-         * 등록에서 「취소」는 **폼을 닫는 것**이라 고친 것이 없어도 눌러야 한다.
-         * 수정에서는 **기준값으로 되돌리는 것**이라 고친 것이 있을 때만 의미가 있다.
-         */}
-        <Button variant="outlined" disabled={mode === 'edit' && !isDirty} onClick={onCancel}>
-          {messages.common.cancel}
-        </Button>
-
-        {/*
-         * 고친 것이 없으면 주 액션을 **비활성 + 사유**로 둔다(배치 규범 4) —
-         * 사유가 없으면 사용자는 버튼이 왜 안 눌리는지 알 방법이 없다.
-         * 저장 중에는 진행 표시가 그 자리를 대신하므로 사유를 내지 않는다.
-         */}
-        {isDirty || isSaving ? (
-          <Button disabled={isSaving} loading={isSaving} onClick={onSave}>
-            {saveLabel}
-          </Button>
-        ) : (
-          <DisabledAction
-            variant="filled"
-            label={saveLabel}
-            reason={mode === 'create' ? t.actionReasons.addRoleNoInput : t.actionReasons.saveNoChanges}
-          />
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </section>
   );
 };

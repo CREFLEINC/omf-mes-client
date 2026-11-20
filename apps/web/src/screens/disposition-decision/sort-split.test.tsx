@@ -77,6 +77,10 @@ describe('W-03-10 선별', () => {
 
     await user.click(screen.getByRole('radio', { name: '선별' }));
     await user.click(screen.getByRole('checkbox', { name: 'SAMPLE-ML|0003' }));
+    // 선별 규칙 · 정보 수량의 뜻은 늘 펼쳐 두지 않고 ⓘ 로 둔다(관리웹 정리 시안 A).
+    expect(screen.getByRole('button', { name: t.sort.help })).toBeInTheDocument();
+    expect(screen.queryByText(t.sort.help)).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: t.sort.qtyNote })).toHaveLength(2);
     // 저장하면 무엇이 일어나는지 미리 보인다 — 번호는 실행 응답으로만 안다.
     expect(screen.getByText(t.sort.previewRest('0001, 0002', '2,000 EA'))).toBeInTheDocument();
     expect(screen.getByText(t.sort.previewMoved('0003', '1,000 EA'))).toBeInTheDocument();

@@ -1,4 +1,4 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -26,6 +26,10 @@ export interface DeactivateDialogProps {
    * 그때도 「취소」와 Esc 로 닫힌다. 역할 쪽은 이 지시 밖이라 기본값 그대로다.
    */
   showCloseButton?: boolean;
+  /** 대상 블록(작은 제목 · 이름 · 보조 한 줄). 사용자 사용 중지만 쓴다(사용자 시안 2026-11-20 · #333). */
+  target?: { caption: string; name: string; meta: string };
+  /** 본문 아래 경고 라벨 한 줄. */
+  warning?: string;
 }
 
 /**
@@ -50,11 +54,14 @@ export const DeactivateDialog = ({
   isSaving,
   banner,
   showCloseButton = true,
+  target,
+  warning,
 }: DeactivateDialogProps) => (
   <Dialog
     open={open}
     onClose={onClose}
-    size="sm"
+    /* 경고 라벨이 한 줄로 들어가게 넓힌다(사용자 지시 2026-11-20 · #333). */
+    size="md"
     title={title}
     closeOnBackdropClick={false}
     showCloseButton={showCloseButton}
@@ -70,6 +77,21 @@ export const DeactivateDialog = ({
     }
   >
     {banner}
-    <p>{description}</p>
+    <div className="users-roles-worker-dialog">
+      {target !== undefined && (
+        <div className="users-roles-worker-block">
+          <span className="users-roles-worker-block-caption">{target.caption}</span>
+          <strong>{target.name}</strong>
+          <span>{target.meta}</span>
+        </div>
+      )}
+      <p>{description}</p>
+      {warning !== undefined && (
+        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+          <Icon name="warning" size={16} aria-hidden />
+          {warning}
+        </p>
+      )}
+    </div>
   </Dialog>
 );
