@@ -67871,6 +67871,11 @@ export interface components {
       conflictCause: 'user' | 'erpSync' | 'workerLease';
       /** @description COMPLETION_BLOCKED 일 때만 — 막는 이유 목록 */
       blockers?: components['schemas']['ShipmentCompletionBlocker'][];
+      /**
+       * @description 생산 LOT 분리 거절(피처 013)일 때 문구에 쓸 값 — 스캔 조회 blocked.detail 과 같다. INVALID_STATE 는 상태(DEFECTIVE·SCRAPPED·VOIDED·HOLD), LOT_SPLIT_UNCONFIRMED 는 확인 대기 분리 시각(ISO), LOT_ALREADY_RESERVED 는 피킹한 출하 지시서 번호, NOT_PRODUCTION_LOT 는 LOT 유형, SPLIT_SERIAL_LOT 는 시리얼 관리 유형. 위치 단위 사유는 null
+       * @example SR-20261118-0001
+       */
+      detail?: string | null;
     };
     /** @description 피킹 확정 요청. 사번은 본문이 아니라 X-Worker-No 헤더로 보낸다 */
     ShipmentLinePick: {
