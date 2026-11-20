@@ -17,6 +17,7 @@ const at = (overrides: Partial<SplitLookupLocation> = {}): SplitLookupLocation =
   onHandQty: 100,
   selectable: true,
   blocked: null,
+  systemRoleCode: null,
   ...overrides,
 });
 

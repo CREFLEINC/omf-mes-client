@@ -42,6 +42,7 @@ const lookupOf = (overrides: Partial<SplitLookup> = {}): SplitLookup => ({
       onHandQty: 100,
       selectable: true,
       blocked: null,
+      systemRoleCode: null,
     },
   ],
   ...overrides,
@@ -375,6 +376,7 @@ describe('P-04-08 생산 LOT 분리', () => {
             onHandQty: 100,
             selectable: true,
             blocked: null,
+            systemRoleCode: null,
           },
           {
             locationId: 46,
@@ -383,14 +385,16 @@ describe('P-04-08 생산 LOT 분리', () => {
             onHandQty: 60,
             selectable: true,
             blocked: null,
+            systemRoleCode: null,
           },
           {
             locationId: 90,
-            locationCode: 'FG-SYS-STAGING',
+            locationCode: 'UWVT-SYS-STAGING',
             warehouseCode: 'FG',
             onHandQty: 20,
             selectable: false,
             blocked: { code: 'PUTAWAY_PENDING' },
+            systemRoleCode: 'PUTAWAY_STAGING',
           },
         ],
       }),
@@ -404,7 +408,7 @@ describe('P-04-08 생산 LOT 분리', () => {
       'false',
     );
     /* 적치 대기 자리는 시스템 코드 대신 「적치 대기」로 보인다. */
-    expect(screen.queryByText('FG-SYS-STAGING')).toBeNull();
+    expect(screen.queryByText('UWVT-SYS-STAGING')).toBeNull();
     expect(
       screen.getByRole('radio', {
         name: new RegExp(`^${t.location.blocked.PUTAWAY_PENDING ?? ''}`, 'u'),

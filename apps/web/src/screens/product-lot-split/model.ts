@@ -131,11 +131,13 @@ export const initialLocationId = (locations: readonly SplitLookupLocation[]): nu
 };
 
 /**
- * 위치 타일 이름 — 서버가 창고마다 두는 적치 대기 자리(코드 `…SYS-STAGING`)는 코드 대신 「적치 대기」(공용 이름,
- * `patterns/system-location`). 조회 응답에 위치 역할이 없어 코드 끝으로 가린다.
+ * 위치 타일 이름 — 서버가 창고마다 두는 적치 대기 자리(`systemRoleCode` PUTAWAY_STAGING)는 시스템 코드 대신
+ * 「적치 대기」(공용 이름, `patterns/system-location`).
  */
-export const locationNameOf = (location: Pick<SplitLookupLocation, 'locationCode'>): string =>
-  /(^|-)SYS-STAGING$/u.test(location.locationCode)
+export const locationNameOf = (
+  location: Pick<SplitLookupLocation, 'locationCode' | 'systemRoleCode'>,
+): string =>
+  location.systemRoleCode === 'PUTAWAY_STAGING'
     ? messages.warehouseLocation.values.systemRoles.PUTAWAY_STAGING
     : location.locationCode;
 
