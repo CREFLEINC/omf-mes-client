@@ -428,9 +428,10 @@ describe('US2-12 마감 취소 가능 목록', () => {
     });
 
     expect(await screen.findByText(t.done.heading(1))).toBeInTheDocument();
-    expect(screen.getByText(t.done.autoChip)).toBeInTheDocument();
+    /* 칩 대신 아래 회색 줄 — 「까닭 · 자동 마감 시각 · IQC 번호」, 공급사는 머리 줄(사용자 결정 2026-11-20 시안 B). */
     expect(screen.getByText(t.done.reason.NO_IQC_RESULT.chip)).toBeInTheDocument();
-    expect(screen.getByText(/날짜 바뀜 자동 마감/u)).toBeInTheDocument();
+    expect(screen.getByText(/· 자동 마감 \d\d[-‑]\d\d \d\d:\d\d · SYN-IQC-5$/u)).toBeInTheDocument();
+    expect(screen.getByText('합성 공급사 가')).toBeInTheDocument();
     expect(screen.getByText(t.open.empty)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.done.reopen }));

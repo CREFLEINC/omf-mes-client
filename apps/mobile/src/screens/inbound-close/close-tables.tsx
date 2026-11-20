@@ -29,9 +29,11 @@ interface RowsProps {
   /** 표 칸 수(공급사 머리 줄 colSpan). */
   columns: number;
   currentId?: number | null;
+  /** 공급사가 하나여도 머리 줄을 그린다 — 마감 취소 가능 표(사용자 지시 2026-11-20 「공급사도 표시」). */
+  alwaysGroup?: boolean;
 }
 
-const Rows = ({ lots, cells, columns, currentId = null }: RowsProps) => {
+const Rows = ({ lots, cells, columns, currentId = null, alwaysGroup = false }: RowsProps) => {
   const groups = groupsOf(lots);
   let no = 0;
 
@@ -39,7 +41,7 @@ const Rows = ({ lots, cells, columns, currentId = null }: RowsProps) => {
     <>
       {groups.map((group) => (
         <tbody key={group.supplierName}>
-          {groups.length > 1 ? (
+          {alwaysGroup || groups.length > 1 ? (
             <tr className="close-table__group">
               <th scope="colgroup" colSpan={columns}>
                 {group.supplierName}
@@ -99,7 +101,13 @@ export const OpenTable = ({
                   {lot.itemCode}
                   {lot.reopened ? <Chip status="error">{t.open.reopened}</Chip> : null}
                 </span>
-                <FitName className="close-table__name" text={lot.itemName} min={8} lines={1} />
+                <FitName
+                  className="close-table__name"
+                  text={lot.itemName}
+                  min={7}
+                  lines={1}
+                  whole
+                />
               </button>
             </td>
             <td className="close-table__num close-table__count">{lot.lotCount}</td>
@@ -112,8 +120,8 @@ export const OpenTable = ({
 );
 
 /**
- * 마감 취소 가능 표 — No · 품목(까닭 칩 · 자동 마감 · 마감 시각 · 막힘) · 작은 외곽선 [마감 취소]. 방금 마감한 줄은
- * 초록(결과 화면 대신, 사용자 결정 2026-11-20).
+ * 마감 취소 가능 표 — 공급사 머리 줄 › No · 품목코드 / 품목명 / 「까닭 · 마감 시각 · IQC 번호」 · 작은 외곽선 [마감 취소].
+ * 칩은 두지 않는다 — 줄이 꺾여 길어졌다(사용자 결정 2026-11-20 시안 B). 방금 마감한 줄은 초록(결과 화면 대신).
  */
 export const DoneTable = ({
   lots,
@@ -143,19 +151,26 @@ export const DoneTable = ({
         lots={lots}
         columns={3}
         currentId={currentId}
+        alwaysGroup
         cells={(lot) => {
           const blocker = blockerOf(lot);
 
           return (
             <>
               <td className="close-table__item close-table__item--static">
-                <span className="close-table__code">
-                  {lot.itemCode}
-                  {lot.closedAutomatically ? <Chip>{t.done.autoChip}</Chip> : null}
-                  <Chip status="info">{reasonOf(lot)}</Chip>
+                <span className="close-table__code">{lot.itemCode}</span>
+                <FitName
+                  className="close-table__name"
+                  text={lot.itemName}
+                  min={7}
+                  lines={1}
+                  whole
+                />
+                {/* 칩 대신 아래 회색 줄 맨 앞에 까닭(사용자 결정 2026-11-20 시안 B). */}
+                <span className="close-table__sub">
+                  <b className="close-table__reason">{reasonOf(lot)}</b>
+                  {` · ${closedTextOf(lot)}`}
                 </span>
-                <FitName className="close-table__name" text={lot.itemName} min={8} lines={1} />
-                <span className="close-table__sub">{closedTextOf(lot)}</span>
                 {blocker === null ? null : (
                   <span className="close-table__blocked">
                     <Icon name="lock" size={16} />

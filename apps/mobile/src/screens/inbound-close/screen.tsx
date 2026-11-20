@@ -10,6 +10,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { keepHyphens } from '../../patterns/keep-hyphens';
 import { useBackStep } from '../../patterns/back-step';
 import { Button } from '../../patterns/button';
 import { ConfirmDialog } from '../../patterns/confirm-dialog';
@@ -50,7 +51,8 @@ const t = messages.inboundClose;
 
 /** 마감 줄 — 「날짜 바뀜 자동 마감 11-11 00:00 · IQC-…」. */
 const closedText = (lot: InboundLot): string => {
-  const when = shortWhen(lot.receivedClosedAt);
+  /* 날짜와 시각 사이에서 줄이 꺾이지 않게(「11-11」 / 「00:00」). */
+  const when = keepHyphens(shortWhen(lot.receivedClosedAt)).replace(' ', '\u00a0');
   const closed = lot.closedAutomatically ? t.done.closedAuto(when) : t.done.closed(when);
 
   return lot.iqc?.requestNo == null ? closed : t.card.withIqc(closed, lot.iqc.requestNo);

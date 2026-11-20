@@ -12,8 +12,7 @@ export const inboundClose: Translated<typeof ko.inboundClose> = {
   done: {
     heading: (count: number) => `Đã nhập hàng xong · có thể hủy chốt ${count}`,
     empty: 'Không có mục nào hủy chốt được',
-    autoChip: 'Tự động chốt',
-    closedAuto: (when: string) => `Tự động chốt do sang ngày mới ${when}`,
+    closedAuto: (when: string) => `Tự động chốt ${when}`,
     closed: (when: string) => `Chốt ${when}`,
     reopen: 'Hủy chốt',
     blocked: (no: string) =>

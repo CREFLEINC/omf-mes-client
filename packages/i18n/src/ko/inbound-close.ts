@@ -20,8 +20,7 @@ export const inboundClose = {
   done: {
     heading: (count: number) => `입하 완료 · 마감 취소 가능 ${count}`, // ui-check-ignore: C-13 설계 확정 구획 이름(screens/M-01-03.md)
     empty: '마감 취소할 수 있는 건이 없습니다',
-    autoChip: '자동 마감',
-    closedAuto: (when: string) => `날짜 바뀜 자동 마감 ${when}`,
+    closedAuto: (when: string) => `자동 마감 ${when}`,
     closed: (when: string) => `마감 ${when}`,
     reopen: '마감 취소',
     /** 같은 공급사·품목이 입하 중이라 미리 막힌 건. */

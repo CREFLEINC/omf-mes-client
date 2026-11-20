@@ -160,7 +160,8 @@
   overflow: hidden;
   color: var(--on-surface-variant);
   font-size: 12px;
-  line-height: 16px;
+  /* 줄여서 두 줄로 꺾여도 줄 사이가 벌어지지 않게 글자 크기에 맞춘다. */
+  line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -219,6 +220,13 @@
 .close-table__sub {
   color: var(--on-surface-muted);
   font: var(--type-label-sm);
+  white-space: normal;
+}
+
+/* 마감 취소 까닭 — 칩 대신 회색 줄 맨 앞 굵은 글자(사용자 결정 2026-11-20 시안 B). */
+.close-table__reason {
+  color: var(--on-semantic-info-container);
+  font-weight: 700;
 }
 
 .close-table__blocked {
