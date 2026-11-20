@@ -1,12 +1,11 @@
 /*
- * P-CO-01 단말 등록 · 사번 입력 — POP 로그인 시안(#295, `POP-로그인-시안-20261119`) 전용 모양.
+ * 단말 등록 · 홈 사번 입력 — POP 로그인 시안(#295, `POP-로그인-시안-20261119`) 전용 모양.
  * 공통 모양은 `app/pop-uniform.css`(`pu-*`), 짙은 머리줄은 `app/pop.css`(`pop-nav-top`)를 그대로 쓴다.
- * 선택자는 이 화면 접두(`wa-`)로만 건다.
+ * 선택자는 접두(`wa-` · `home-login`)로만 건다.
  */
 
 /* ── 단말 등록 ── */
-.wa-reg,
-.wa-screen {
+.wa-reg {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -67,8 +66,7 @@
 }
 
 /* 구획 아래 작업 줄 — 버튼만, 주 버튼은 맨 오른쪽. */
-.wa-reg-actions,
-.wa-right-actions {
+.wa-reg-actions {
   flex: none;
   display: flex;
   justify-content: flex-end;
@@ -83,13 +81,36 @@
   font-size: 17px;
 }
 
-/* ── 사번 입력 ── */
-
-/* 옛 그릇(`.pop-ui`)은 짙은 머리줄 아래 남는 높이만 갖는다. */
-.wa-screen > .wa-body {
-  flex: 1 1 auto;
-  height: auto;
+/*
+ * ── 홈 사번 입력 — 공통 메뉴 아래 가운데 카드 하나(사번 · 키패드 · [사번 확인]) ──
+ * 카드는 남는 높이를 갖되(키패드가 아래에 붙는다) 너무 길어지지 않게 막는다.
+ */
+.pu-screen.home-login {
+  height: 100%;
 }
+
+.home-login > .pu-main {
+  grid-template-rows: minmax(0, 1fr);
+  padding-block: 8px;
+  justify-items: center;
+  align-items: center;
+}
+
+.home-login-box {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 8px;
+  width: min(520px, 100%);
+  height: min(100%, 680px);
+  min-height: 0;
+}
+
+.home-login-foot {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ── 사번 입력 ── */
 
 .wa-left-body {
   flex: 1 1 0;
@@ -157,82 +178,4 @@
   width: 100%;
   height: 64px;
   font-size: 18px;
-}
-
-.wa-right-body {
-  flex: 1 1 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.wa-none.pu-empty {
-  flex: 1;
-}
-
-.wa-none.pu-empty > .pu-ic {
-  width: 44px;
-  height: 44px;
-  color: var(--pu-text-3);
-}
-
-.wa-who {
-  display: grid;
-  gap: 14px;
-  padding: 18px 20px;
-  border: 1px solid var(--pu-line-2);
-  border-radius: var(--radius-md, 12px);
-  background: var(--pu-field);
-}
-
-.wa-who-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.wa-who-head > b {
-  min-width: 0;
-  overflow: hidden;
-  font-size: 26px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.wa-who .pu-kv {
-  gap: 8px 24px;
-  font-size: 17px;
-}
-
-.wa-who .pu-kv dt {
-  font-size: 15px;
-}
-
-.wa-who .pu-kv dd {
-  font-family: var(--pu-mono);
-  font-weight: 700;
-}
-
-/* [작업자 변경]과 이동(제품: [작업 화면으로 →] · 개발: 화면 이동 셀렉터)을 반반으로. */
-.wa-right-actions {
-  display: grid;
-  grid-auto-columns: minmax(0, 1fr);
-  grid-auto-flow: column;
-  padding: 14px 16px;
-}
-
-.wa-right-actions > .pu-btn {
-  height: 64px;
-  font-size: 17px;
-}
-
-/* 머리줄 [단말 재등록]의 아이콘과 글자 사이. */
-.wa-screen .pop-logout .pu-ic {
-  margin-inline-end: 6px;
-}
-
-/* [단말 재등록] — 아이콘과 글자 사이를 띄운다(셸의 [새로고침]과 같은 간격). */
-.pop-logout .pu-ic {
-  margin-inline-end: 6px;
 }

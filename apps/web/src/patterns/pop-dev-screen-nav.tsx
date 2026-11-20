@@ -1,24 +1,7 @@
-import { useNavigate } from 'react-router';
-
-import { POP_HOME_PATH } from './pop-screen-catalog';
-import { PuButton } from './pop-uniform';
-
 /**
- * **개발 서버에서만 서는** POP 화면 이동 셀렉터 — 진입 화면(P-CO-01)의 「작업 화면으로
- * 이동」 자리에 선다.
- *
- * ⭐ **왜 있는가.** 제품 버튼은 작업지시 목록 화면(P-02-01 · `/pop/work-start`)으로만 이어진다.
- * 다른 POP 화면을 손으로 확인하려면 주소를 직접 쳐야 하는데 단말 셸에는 주소창이 없어,
- * 개발 중 확인 경로가 사람마다 갈린다. 이 셀렉터가 제품 버튼 자리를 **개발 중에만** 빌려
- * 전체 화면 점검 경로를 제공한다.
- *
- * ⛔ **배포본에 들어가지 않는다.** 호출부가 `import.meta.env.MODE === 'development'`로 감싸고,
- * 그 값은 빌드 시점에 상수로 치환되어 배포 번들에서는 이 모듈째 걷힌다(실측 — `build:pop`
- * 산출물에 이 파일의 문구가 없다). ⚠ 조건을 런타임 값으로 바꾸면 걷히지 않고 현장 단말에
- * 개발용 조작이 남는다.
- *
- * ⛔ **제품 모드의 이동 대상으로 사용하지 않는다.** 호출부가 개발 모드에서만 이 부품을
- * 넘기므로 배포본에는 P-02-01로 가는 제품 버튼만 남는다.
+ * 개발 중 손으로 여는 POP 화면 목록(라우트 대조용). 화면에 서던 개발용 이동 단추는 사번 입력 화면과 함께
+ * 없앴다(omf-all-around#334) — 사번을 확인하면 공통 메뉴로 모든 화면에 간다. 이 목록은
+ * `routes/pop-dev-screen-nav.test.ts` 가 라우트 표와 대조해, 새 화면의 진입값(`query`)을 적는 자리로 남는다.
  */
 
 export interface PopDevScreen {
@@ -57,14 +40,12 @@ export interface PopDevScreen {
  * `popRoutes`를 대조한다 — 라우트를 부르는 것이 허용되는 자리에 시험을 두어 방향을 지켰다.
  * 새 POP 화면을 붙이면 그 시험이 먼저 걸리므로, 목록이 조용히 낡지 않는다.
  *
- * ⛔ **진입 화면(P-CO-01)은 담지 않는다.** 이 셀렉터가 서 있는 화면이 그 화면이라, 목록에
- * 두면 자기 자신으로 가는 항목이 된다.
+ * ⛔ **진입 화면(홈)은 담지 않는다.** 진입값 없이 늘 열리는 자리라 대조에서 뺀다.
  *
  * ⛔ i18n 리소스에 넣지 않는다. 개발 중에만 보이는 문구라 번역 대상이 아니고, 공용 문구
  * 파일은 여러 작업이 동시에 건드리는 자리다.
  */
 export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
-  { path: '/pop/home', label: '홈' },
   { path: '/pop/work-start', label: 'P-02-01 작업지시 목록' },
   { path: '/pop/material-input', label: 'P-02-03 자재 투입 스캔', query: '?workOrderId=11002' },
   {
@@ -131,33 +112,5 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
   { path: '/pop/shipment-complete', label: 'P-04-07 출하 완료' },
 ];
 
-/** 진입 화면 — 이 셀렉터가 서 있는 자리라 목록에서 뺀다. 감지기가 이 예외를 안다. */
-export const POP_DEV_ENTRY_PATH = '/pop/worker-assignment';
-
-/** 트리거의 접근성 이름 — 시험과 화면이 같은 값을 보게 한 자리에 둔다. */
-export const POP_DEV_SCREEN_NAV_LABEL = '개발용 화면 이동';
-
-export interface PopDevScreenNavProps {
-  /** 대체하는 버튼과 같은 조건으로 잠근다 — 작업자가 정해지기 전에는 넘어가지 않는다. */
-  disabled: boolean;
-}
-
-export const PopDevScreenNav = ({ disabled }: PopDevScreenNavProps) => {
-  const navigate = useNavigate();
-
-  /*
-   * 누르면 고르는 창 없이 바로 홈으로 간다(사용자 지시 2026-11-19) — 다른 화면은 홈의 위 메뉴로
-   * 간다. 위 `POP_DEV_SCREENS` 는 라우트 대조 시험이 화면 목록을 지키는 데만 쓴다.
-   */
-  return (
-    <PuButton
-      variant="primary"
-      disabled={disabled}
-      onClick={() => {
-        void navigate(POP_HOME_PATH);
-      }}
-    >
-      {POP_DEV_SCREEN_NAV_LABEL}
-    </PuButton>
-  );
-};
+/** 진입 화면(홈) — 목록에서 뺀다. 감지기가 이 예외를 안다. */
+export const POP_DEV_ENTRY_PATH = '/pop/home';

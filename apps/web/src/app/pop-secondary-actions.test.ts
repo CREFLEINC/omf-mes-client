@@ -41,13 +41,13 @@ describe('POP 머리줄 보조 동작은 테두리 버튼으로 그려진다', (
     },
   );
 
-  it.each([
-    ['src/patterns/pop-screen-nav.tsx', 'variant="outlined"'],
-    ['src/screens/worker-assignment/screen.tsx', 'variant="outlined"'],
-  ])('%s 의 보조 동작은 테두리 변형이다', (path, variant) => {
-    expect(sources(path)).toContain(variant);
-    expect(sources(path)).not.toMatch(
-      /variant="filled"[\s\S]{0,80}pop-terminal-header__reregister/u,
-    );
-  });
+  it.each([['src/patterns/pop-screen-nav.tsx', 'variant="outlined"']])(
+    '%s 의 보조 동작은 테두리 변형이다',
+    (path, variant) => {
+      expect(sources(path)).toContain(variant);
+      expect(sources(path)).not.toMatch(
+        /variant="filled"[\s\S]{0,80}pop-terminal-header__reregister/u,
+      );
+    },
+  );
 });

@@ -7,9 +7,9 @@ import {
   PopRegistrationProvider,
   usePopRegistration,
   type PopRegistration,
-} from '../../patterns/pop-registration';
-import { forgetTerminalToken } from '../../patterns/pop-terminal-token';
-import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
+} from '../../../patterns/pop-registration';
+import { forgetTerminalToken } from '../../../patterns/pop-terminal-token';
+import { createStubFetch, jsonResponse, renderWithProviders } from '../../../test/api-harness';
 
 const t = messages.workerAssignment.registration;
 

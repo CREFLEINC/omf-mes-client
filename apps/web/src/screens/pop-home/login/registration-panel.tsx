@@ -6,7 +6,7 @@ import {
   usePopRegistration,
   type FailureSource,
   type RegistrationFailure,
-} from '../../patterns/pop-registration';
+} from '../../../patterns/pop-registration';
 import {
   PuBand,
   PuButton,
@@ -14,7 +14,7 @@ import {
   PuNote,
   PuScanField,
   PuScreen,
-} from '../../patterns/pop-uniform';
+} from '../../../patterns/pop-uniform';
 import { useIsOnline } from './connection';
 import { panelScale } from './panel-scale';
 import { equipmentText, processText } from './terminal-facts';

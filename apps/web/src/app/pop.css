@@ -4228,6 +4228,16 @@
   color: var(--primary);
 }
 
+/* 사번 확인 전(홈의 사번 입력)에는 묶음을 잠근다 — 감추지 않고 흐리게(#334). */
+.pop-nav-group:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.pop-nav-group:disabled:hover {
+  background: transparent;
+}
+
 .pop-nav-group[data-on='true']::after {
   content: '';
   position: absolute;

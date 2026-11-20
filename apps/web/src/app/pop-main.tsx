@@ -54,8 +54,8 @@ import {
   usePopRegistration,
   useRefreshPopTerminalOnScreenEntry,
 } from '../patterns/pop-registration';
-import { HeaderPrinter } from '../screens/worker-assignment/header-printer';
-import { RegistrationPanel } from '../screens/worker-assignment/registration-panel';
+import { HeaderPrinter } from '../screens/pop-home/login/header-printer';
+import { RegistrationPanel } from '../screens/pop-home/login/registration-panel';
 import { printSampleLotLabel } from '../screens/pop-material-lot-label/sample-print';
 import { currentTerminalToken, readTerminalToken } from '../patterns/pop-terminal-token';
 import { AppProviders } from './providers';
@@ -196,12 +196,12 @@ function virtualPrinterShell() {
 }
 
 /**
- * 단말을 켰을 때 맨 처음 서는 화면 — 사번 경량 인증(P-CO-01).
+ * 단말을 켰을 때 맨 처음 서는 화면 — 홈(사번이 없으면 홈이 사번 입력을 세운다 · omf-all-around#334).
  *
  * ⛔ **주소를 여기서 지어내지 않는다.** 라우트 표에 실제로 있는 경로여야 하고, 아래 시험이
  * 그것을 지킨다 — 화면이 옮겨지면 이 상수도 함께 고쳐야 한다.
  */
-const POP_ENTRY_PATH = '/pop/worker-assignment';
+const POP_ENTRY_PATH = '/pop/home';
 
 /**
  * 화면 위에 늘 서 있는 것 — **공통 이동 메뉴**(맨 위 줄·업무 묶음·화면 탭, #291)다. [사용자 전환]도
@@ -226,7 +226,7 @@ const PopChrome = () => {
   const [printerSlot, setPrinterSlot] = useState<HTMLElement | null>(null);
 
   /*
-   * ⭐ **사번이 없으면 어느 화면이든 사번 입력 화면으로 보낸다**(사용자 지시 2026-11-17 · #291).
+   * ⭐ **사번이 없으면 어느 화면이든 홈(사번 입력)으로 보낸다**(사용자 지시 2026-11-17 · #291 · #334).
    *    공통 메뉴로 사번 없이 다른 화면에 들어가면 「사번이 확인되지 않았습니다」 띠만 서고 할 일이
    *    없었다. 사번은 처음부터 동기로 읽히므로(`worker-session`) 확인 중에 튕기지 않는다.
    */

@@ -52,7 +52,7 @@ describe('POP API 중계 — 넘기는 방식', () => {
         'content-type': 'application/json',
         'idempotency-key': 'key-1',
         origin: 'pop://app',
-        referer: 'pop://app/pop/worker-assignment',
+        referer: 'pop://app/pop/home',
         'content-length': '999',
       }),
     );
@@ -127,9 +127,14 @@ describe('POP API 중계 — 넘기는 방식', () => {
    *    사유 없이 잠겼다.
    */
   it('중계한 응답에 저장 금지를 붙인다', async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(
-      new Response('{"ok":true}', { status: 200, headers: { 'Content-Type': 'application/json' } }),
-    );
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        new Response('{"ok":true}', {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
 
     const relayed = await relayToApi(
       fetchImpl,
@@ -148,7 +153,10 @@ describe('POP API 중계 — 넘기는 방식', () => {
   /* ⭐ 낙관적 잠금이 이 값을 `If-Match` 로 되싣는다 — 떼면 수정이 통째로 막힌다. */
   it('ETag 는 그대로 둔다', () => {
     const relayed = withNoStore(
-      new Response('{}', { status: 200, headers: { ETag: 'W/"7"', 'Content-Type': 'application/json' } }),
+      new Response('{}', {
+        status: 200,
+        headers: { ETag: 'W/"7"', 'Content-Type': 'application/json' },
+      }),
     );
 
     expect(relayed.headers.get('ETag')).toBe('W/"7"');

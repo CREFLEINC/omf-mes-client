@@ -5,6 +5,7 @@ import { useLocation } from 'react-router';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { PopIdentityProvider, UNKNOWN_POP_IDENTITY } from '../../patterns/pop-identity';
+import { PopRegistrationProvider } from '../../patterns/pop-registration';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { PopHomeScreen } from './screen';
 
@@ -128,16 +129,23 @@ describe('PopHomeScreen — 홈(#291)', () => {
     expect(screen.getByText('지금: /pop/work-start')).toBeInTheDocument();
   });
 
-  it('사번을 모르면 사번 입력 화면으로 보낸다', async () => {
+  /* 사번 입력 화면을 홈으로 합쳤다(omf-all-around#334) — 주소를 옮기지 않고 홈 내용 자리에 사번 입력을 세운다. */
+  it('사번을 모르면 주소는 그대로 두고 홈 내용 대신 사번 입력을 세운다', async () => {
     renderWithProviders(
-      <PopIdentityProvider value={UNKNOWN_POP_IDENTITY}>
-        <PopHomeScreen />
-        <Here />
-      </PopIdentityProvider>,
+      <PopRegistrationProvider>
+        <PopIdentityProvider value={UNKNOWN_POP_IDENTITY}>
+          <PopHomeScreen />
+          <Here />
+        </PopIdentityProvider>
+      </PopRegistrationProvider>,
       { fetch: createStubFetch([]), route: '/pop/home' },
     );
 
-    expect(await screen.findByText('지금: /pop/worker-assignment')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: messages.workerAssignment.input.submit }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('지금: /pop/home')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.shortcutsTitle })).not.toBeInTheDocument();
   });
 
   it('남은 작업이 없으면 그렇게 말한다', async () => {

@@ -281,8 +281,8 @@ const TopBar = ({
       <span className="pop-nav-top__screen-printer" ref={printerRef} />
       {printer !== null && <span className="pop-nav-top__printer">{printer}</span>}
       {/*
-       * 사번 — 누르면 사용자 전환(사용자 지시 2026-11-17 · #291). 현재 활성 사번만 지우고 사번 입력 화면으로
-       * 간다. 저장 기록과 오프라인 큐의 사번은 바꾸지 않는다(G-34 · D-5).
+       * 사번 — 누르면 작업자 변경(교대 · 사용자 지시 2026-11-17 · #291). 현재 활성 사번만 지우고 홈의 사번 입력으로
+       * 간다(#334). 저장 기록과 오프라인 큐의 사번은 바꾸지 않는다(G-34 · D-5).
        */}
       <Button
         className="pop-logout"
@@ -292,6 +292,8 @@ const TopBar = ({
         aria-label={`${messages.popChrome.userSwitch}: ${
           workerNo === null ? headerText.workerUnset : headerText.workerLabel(workerNo, workerName)
         }`}
+        /* 사번이 없으면 바꿀 사람도 없다 — 홈이 이미 사번 입력이다. */
+        disabled={workerNo === null}
         onClick={() => {
           setWorkerSession(null);
           void navigate(POP_ENTRY_SCREEN_PATH, { replace: true });
@@ -369,7 +371,8 @@ const TopBar = ({
  * ⚠ 못 갈 때는 감추지 않고 사유를 보인다(G-2). 묶음이 통째로 사라지면 「원래 이동이 안 되는
  *    단말인가」와 「지금 확인이 안 되는가」를 구별할 수 없다.
  *
- * ⛔ 진입 화면(사번 입력)에서는 그리지 않는다 — 사번 없이 다른 화면으로 가는 길이 생긴다.
+ * ⛔ 사번이 없으면(홈의 사번 입력) 묶음 · 홈 · [남은 작업]을 잠근다(감추지 않음 · G-2) — 사번 없이 다른 화면으로
+ *    가는 길이 생기지 않게(omf-all-around#334). 주소로 직접 들어와도 셸(`app/pop-main`)이 홈으로 돌려보낸다.
  *
  * `terminalCode` 는 셸이 단말 등록에서 읽어 넘긴다(모르면 `null`). `printer` 는 셸이 넘기는 프린터
  * 연결 표시다 — 사번 입력 화면 머리줄과 같은 것(`HeaderPrinter`)이고, 없으면 그리지 않는다.
@@ -388,6 +391,7 @@ export const PopScreenNav = ({
 }): ReactNode => {
   const navigate = useNavigate();
   const { pathname, search, access, workCounts, pending, total, go, tabCount } = usePopNavigation();
+  const isLocked = usePopIdentity().workerNo === null;
   const current = access.screens.find((screen) => screen.path === pathname) ?? null;
   const [open, setOpen] = useState(false);
   const currentTab = useRef<HTMLButtonElement | null>(null);
@@ -413,8 +417,6 @@ export const PopScreenNav = ({
 
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open]);
-
-  if (pathname === POP_ENTRY_SCREEN_PATH) return null;
 
   const isHome = pathname === POP_HOME_PATH;
   /*
@@ -465,6 +467,7 @@ export const PopScreenNav = ({
               key={group.key}
               type="button"
               className="pop-nav-group"
+              disabled={isLocked}
               aria-pressed={shownGroup === group.key}
               data-on={shownGroup === group.key ? 'true' : undefined}
               aria-label={group.count > 0 ? nav.groupCount(group.name, group.count) : undefined}
@@ -491,7 +494,7 @@ export const PopScreenNav = ({
             aria-expanded={open}
             aria-haspopup="dialog"
             aria-label={remainingText.buttonLabel(total)}
-            disabled={access.state !== 'ready'}
+            disabled={isLocked || access.state !== 'ready'}
             onClick={() => {
               /* 창을 열 때 다시 센다 — 마지막 주기 뒤에 생긴 일도 보인다. */
               if (!open) workCounts.refresh();

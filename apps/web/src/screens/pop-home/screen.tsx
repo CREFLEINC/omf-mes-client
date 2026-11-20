@@ -1,9 +1,9 @@
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { Navigate, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
-import { POP_ENTRY_SCREEN_PATH, type PopScreen } from '../../patterns/pop-screen-catalog';
+import type { PopScreen } from '../../patterns/pop-screen-catalog';
 import { countOf, GROUP_ICONS, navIcon, usePopNavigation } from '../../patterns/pop-screen-nav';
 import {
   PuButton,
@@ -22,6 +22,7 @@ import {
 } from '../../patterns/pop-uniform';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { useFitRows } from './fit-rows';
+import { PopHomeLogin } from './login/login-panel';
 import { HOME_STATUS_CODES, useHomeWorkOrders, useHomeWorkStatus } from './queries';
 import {
   DEFAULT_SHORTCUT_PATHS,
@@ -373,7 +374,7 @@ const RemainingCard = ({ titleId }: { titleId: string }) => {
 };
 
 /**
- * **홈**(#291) — 사번 확인 뒤 처음 서는 화면. 오늘 작업 현황, 남은 작업, 바로가기를 보여 주고, 누르면
+ * **홈**(#291) — POP 진입 화면. 사번이 없으면 사번 입력(`login/`), 확인 뒤에는 오늘 작업 현황, 남은 작업, 바로가기를 보여 주고, 누르면
  * 그 화면으로 간다. 이동 길은 공통 메뉴와 같은 것을 쓴다(`usePopNavigation`) — 남은 작업 수도 같은 값이다.
  *
  * ⭐ 바로가기는 [편집]으로 이 단말에 맞게 고른다(최대 6개 · 단말에 저장).
@@ -411,10 +412,10 @@ export const PopHomeScreen = (): ReactNode => {
   };
 
   /*
-   * 사번이 없으면 홈 대신 사번 입력 «화면»으로 보낸다(사용자 지시 2026-11-17 — 팝업이 아니라 화면).
-   * 그 화면에서 사번을 확인하면 다시 홈으로 온다.
+   * 사번이 없으면 홈 내용 자리에 사번 입력을 세운다(omf-all-around#334 — 사번 입력 화면을 없애고 홈에서 확인).
+   * 확인하면 같은 자리에서 홈 내용으로 바뀐다(주소 이동 없음). 그동안 공통 메뉴는 잠긴다(`pop-screen-nav`).
    */
-  if (workerNo === null) return <Navigate to={POP_ENTRY_SCREEN_PATH} replace />;
+  if (workerNo === null) return <PopHomeLogin />;
 
   return (
     <PuScreen className="home-u" labelledBy={titleId}>

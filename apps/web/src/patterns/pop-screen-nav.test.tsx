@@ -132,7 +132,7 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     await user.click(
       screen.getByRole('button', { name: new RegExp(`^${messages.popChrome.userSwitch}`, 'u') }),
     );
-    expect(screen.getByText('지금: /pop/worker-assignment')).toBeInTheDocument();
+    expect(screen.getByText('지금: /pop/home')).toBeInTheDocument();
   });
 
   /* 작업 단계 화면(자재 투입 등)은 탭에 두지 않고 작업 지시 목록 탭 아래 단계 줄이 연다(#291 · 사용자 승인 2026-11-17). */
@@ -479,7 +479,8 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
   it('사번이 확인되기 전에는 수를 묻지 않는다', async () => {
     const { counted } = setup({ workerNo: null });
 
-    await remainingButton();
+    /* 사번 확인 전에는 [남은 작업]이 잠긴다(#334). */
+    expect(await screen.findByRole('button', { name: /^남은 작업 \d+건$/u })).toBeDisabled();
     expect(counted).toHaveLength(0);
     expect(screen.getByText(header.workerUnset)).toBeInTheDocument();
   });
@@ -498,16 +499,22 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     expect(screen.getByRole('button', { name: remaining.buttonLabel(0) })).toBeDisabled();
   });
 
-  it('진입 화면(사번 입력)에서는 서지 않는다', async () => {
-    setup({ route: '/pop/worker-assignment' });
+  /* 사번 입력 화면을 홈으로 합쳤다(omf-all-around#334) — 사번 확인 전에는 메뉴를 감추지 않고 잠근다. */
+  it('사번이 없으면(홈의 사번 입력) 묶음 · 남은 작업 · 작업자 변경을 잠근다', async () => {
+    setup({ route: '/pop/home', workerNo: null });
 
     await waitFor(() => {
-      expect(screen.getByText('지금: /pop/worker-assignment')).toBeInTheDocument();
+      expect(within(groupsNav()).getAllByRole('button').length).toBeGreaterThan(1);
     });
-    expect(screen.queryByRole('navigation', { name: nav.groupsLabel })).not.toBeInTheDocument();
+    const groups = within(groupsNav())
+      .getAllByRole('button')
+      .filter((button) => button.textContent !== nav.home);
+    expect(groups.length).toBeGreaterThan(0);
+    for (const button of groups) expect(button).toBeDisabled();
+    expect(screen.getByRole('button', { name: remaining.buttonLabel(0) })).toBeDisabled();
     expect(
-      screen.queryByRole('button', { name: messages.popChrome.userSwitch }),
-    ).not.toBeInTheDocument();
+      screen.getByRole('button', { name: new RegExp(`^${messages.popChrome.userSwitch}`, 'u') }),
+    ).toBeDisabled();
   });
 });
 
