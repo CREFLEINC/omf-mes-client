@@ -253,8 +253,17 @@ export const useFitPages = <T,>(
   const [starts, setStarts] = useState<number[] | null>(null);
   const [page, setPage] = useState(1);
   const retries = useRef(0);
+  /*
+   * 다시 잴 때 머물 줄(#334) — 칸 높이 · 줄 높이가 바뀌어 다시 재도 보던 쪽에 머문다(판정을 바꿔도 쪽이 튀지 않게). 입력 중인
+   * 줄(포커스)이 있으면 그 줄이 든 쪽으로 — 오류 문구로 줄이 높아져 다음 쪽으로 밀려도 보인다. `resetKey` 가 바뀌면 1쪽.
+   */
+  const shownStart = useRef(0);
+  const anchor = useRef(0);
+  const lastResetKey = useRef(resetKey);
   useLayoutEffect(() => {
     retries.current = 0;
+    anchor.current = Object.is(lastResetKey.current, resetKey) ? shownStart.current : 0;
+    lastResetKey.current = resetKey;
     setStarts(null);
   }, [resetKey, list.length, height, enabled]);
   useEffect(() => {
@@ -276,6 +285,7 @@ export const useFitPages = <T,>(
       /* 그린 쪽이 칸을 넘으면(늦게 온 시리얼 등으로 줄이 높아짐) 다시 잰다 — 같은 조건에서 두 번까지만. */
       if (box.scrollHeight > box.clientHeight + 1 && retries.current < 2) {
         retries.current += 1;
+        anchor.current = shownStart.current;
         setStarts(null);
       }
       return;
@@ -295,10 +305,14 @@ export const useFitPages = <T,>(
       }
     });
     setStarts(next);
+    const focused = rows.findIndex((row) => row.contains(document.activeElement));
+    const target = focused >= 0 ? focused : anchor.current;
+    setPage(next.filter((start) => start <= target).length || 1);
   });
 
   const pages = enabled ? (starts?.length ?? 1) : 1;
   const current = Math.min(page, pages);
+  if (starts !== null) shownStart.current = starts[current - 1] ?? 0;
   const items =
     !enabled || starts === null
       ? list.slice()

@@ -26,6 +26,7 @@ import {
   PuSection,
   PuSeg,
   PuTiles,
+  puCx,
   useClientPage,
   useFitPages,
   type PuFitRef,
@@ -1121,7 +1122,13 @@ export const PopShipmentBar = ({ form }: { form: PopShipmentForm }) => {
   ) : save.error !== null ? (
     <SaveErrorBanner error={save.error} onReload={() => void form.query.refetch()} />
   ) : blockedReason !== null ? (
-    <p className="pop-oqc-bar-note pop-oqc-bar-note--blocked">
+    /* 측정 값 오류는 공통 메뉴 아래에서도 보인다 — 쪽을 넘겨 오류 줄을 놓쳐도 저장이 잠긴 까닭을 안다(#334 · 리뷰). */
+    <p
+      className={puCx(
+        'pop-oqc-bar-note pop-oqc-bar-note--blocked',
+        blockedReason === ps.bar.blocked.measurement && 'is-shown',
+      )}
+    >
       <Icon name="info" size={24} aria-hidden />
       <span>{blockedReason}</span>
     </p>
