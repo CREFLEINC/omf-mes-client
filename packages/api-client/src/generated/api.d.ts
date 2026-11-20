@@ -54889,6 +54889,7 @@ export interface components {
         splitWorkerNo: string | null;
         /** @example POP-FG-01 */
         splitTerminalCode: string | null;
+        /** @description 분리한 자리 — 위치와 그 창고(W-03-01 「FG · FG-A-01」) */
         location: {
           /**
            * Format: int64
@@ -54897,6 +54898,10 @@ export interface components {
           locationId: number;
           /** @example FG-A-01 */
           locationCode: string;
+          /** @example FG */
+          warehouseCode: string;
+          /** @example 제품 창고 */
+          warehouseName: string;
         };
         /**
          * Format: date-time
