@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ApiRequestError } from '../../patterns/request';
@@ -126,5 +127,45 @@ describe('공통코드 선택지', () => {
       label: 'SYN-UNKNOWN',
     });
     expect(codeSelectOptions(lookup, '')).toHaveLength(2);
+  });
+});
+
+describe('설치 설비는 POP 단말에서만 (사용자 지시 2026-11-20 · #333)', () => {
+  const showWith = (terminalTypeCode: string, onChange = vi.fn()) =>
+    render(
+      <TerminalForm
+        draft={{ ...EMPTY_TERMINAL, terminalTypeCode, equipment: '7' }}
+        errors={{}}
+        isNew
+        isSaving={false}
+        saveError={null}
+        fieldErrors={{}}
+        plants={emptyLookup}
+        equipments={emptyLookup}
+        codeNames={syntheticCodes}
+        onChange={onChange}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+  it('POP 이면 설치 설비 칸이 보이고, 아니면 없다', () => {
+    const { unmount } = showWith('POP');
+    expect(screen.getByLabelText('설치 설비')).toBeInTheDocument();
+    unmount();
+
+    showWith('MOBILE');
+    expect(screen.queryByLabelText('설치 설비')).toBeNull();
+  });
+
+  it('POP 에서 다른 유형으로 바꾸면 고르던 설비를 비운다', async () => {
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    showWith('POP', onChange);
+
+    await user.click(screen.getByRole('combobox', { name: '단말 유형' }));
+    await user.click(await screen.findByRole('option', { name: '합성 모바일' }));
+
+    expect(onChange).toHaveBeenLastCalledWith({ terminalTypeCode: 'MOBILE', equipment: '' });
   });
 });

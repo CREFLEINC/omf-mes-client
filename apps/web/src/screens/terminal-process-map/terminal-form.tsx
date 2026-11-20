@@ -18,6 +18,9 @@ import type { SelectOption } from './types';
 
 const t = messages.terminalProcessMap;
 
+/** 설치 설비를 고르는 단말 유형(공통코드 TERMINAL_TYPE) — 고정 스테이션만 설비에 붙는다. */
+const POP_TYPE = 'POP';
+
 export interface TerminalFormProps {
   draft: TerminalDraft;
   errors: TerminalErrors;
@@ -75,6 +78,7 @@ export const TerminalForm = ({
   const baseId = useId();
   const codeId = `${baseId}-code`;
   const hasPlant = draft.plant !== '';
+  const isPop = draft.terminalTypeCode === POP_TYPE;
 
   return (
     <>
@@ -85,8 +89,8 @@ export const TerminalForm = ({
       ) : null}
 
       {/*
-       * 두 열(사용자 시안 2026-11-20 · #333) — 단말 코드 · 단말 유형 / 공장 · 창고 / (운영 상태) · 설치 설비.
-       * 안내는 칸 이름 오른쪽 안내 라벨로 옮긴다(단말 코드 · 창고).
+       * 두 열(사용자 지시 2026-11-20 · #333) — 단말 코드 · (운영 상태) / 단말 유형 · 설치 설비 / 공장 · 창고.
+       * 설치 설비는 POP 일 때만, 창고는 공장을 고른 뒤에만 나타난다. 안내는 칸 이름 오른쪽 안내 라벨.
        */}
       <div className="form-grid terminal-map-form">
         <div className="field-cell">
@@ -107,6 +111,23 @@ export const TerminalForm = ({
           />
         </div>
 
+        {/* 운영 상태는 수정할 때만 — 등록이면 단말 코드 줄 오른쪽을 비운다. */}
+        {!isNew ? (
+          <SelectField
+            label={t.terminal.status}
+            required
+            options={codeSelectOptions(codeNames.statusLookup, draft.statusCode)}
+            value={draft.statusCode}
+            error={errors.statusCode ?? fieldErrors.statusCode}
+            placeholder={t.terminal.selectPlaceholder}
+            onChange={(value) => {
+              onChange({ statusCode: value });
+            }}
+          />
+        ) : (
+          <div className="terminal-map-form-spacer" aria-hidden="true" />
+        )}
+
         {/* 코드를 외워 적지 않게 공통코드 이름으로 고른다 — 저장값은 코드 그대로다. */}
         <SelectField
           label={t.terminal.type}
@@ -116,9 +137,37 @@ export const TerminalForm = ({
           error={errors.terminalTypeCode ?? fieldErrors.terminalTypeCode}
           placeholder={t.terminal.typePlaceholder}
           onChange={(value) => {
-            onChange({ terminalTypeCode: value });
+            /* POP 이 아니게 바꾸면 설비 칸이 사라진다 — 보이지 않는 설비가 저장되지 않게 비운다. */
+            onChange(
+              value === POP_TYPE || value === draft.terminalTypeCode
+                ? { terminalTypeCode: value }
+                : { terminalTypeCode: value, equipment: '' },
+            );
           }}
         />
+
+        {/* 설치 설비는 POP 단말일 때만 고른다(선택 · 사용자 지시 2026-11-20 · #333). 아니면 공장이 왼쪽 열에 서도록 비운다. */}
+        {isPop ? (
+          <SelectField
+            label={t.terminal.equipment}
+            optionalMark={t.terminal.optionalMark}
+            options={[
+              { value: '', label: t.terminal.equipmentNone },
+              ...toOptions(equipments.entries),
+            ]}
+            value={draft.equipment}
+            note={lookupNote(equipments, t.terminal.equipmentLookupFailed)}
+            labelNote={t.terminal.equipmentHint}
+            error={fieldErrors.equipmentId}
+            placeholder={t.terminal.equipmentNone}
+            wide
+            onChange={(value) => {
+              onChange({ equipment: value });
+            }}
+          />
+        ) : (
+          <div className="terminal-map-form-spacer" aria-hidden="true" />
+        )}
 
         <SelectField
           label={t.terminal.plant}
@@ -155,41 +204,6 @@ export const TerminalForm = ({
             }}
           />
         )}
-
-        {/* 등록은 운영 상태를 묻지 않는다 — 그 자리는 비워 설치 설비가 오른쪽 열에 선다(시안). */}
-        {!isNew ? (
-          <SelectField
-            label={t.terminal.status}
-            required
-            options={codeSelectOptions(codeNames.statusLookup, draft.statusCode)}
-            value={draft.statusCode}
-            error={errors.statusCode ?? fieldErrors.statusCode}
-            placeholder={t.terminal.selectPlaceholder}
-            onChange={(value) => {
-              onChange({ statusCode: value });
-            }}
-          />
-        ) : hasPlant ? (
-          /* 창고가 선 줄 — 설치 설비가 오른쪽 열에 서도록 왼쪽을 비운다(시안). */
-          <div className="terminal-map-form-spacer" aria-hidden="true" />
-        ) : null}
-
-        <SelectField
-          label={t.terminal.equipment}
-          options={[
-            { value: '', label: t.terminal.equipmentNone },
-            ...toOptions(equipments.entries),
-          ]}
-          value={draft.equipment}
-          note={lookupNote(equipments, t.terminal.equipmentLookupFailed)}
-          labelNote={t.terminal.equipmentHint}
-          error={fieldErrors.equipmentId}
-          placeholder={t.terminal.equipmentNone}
-          wide
-          onChange={(value) => {
-            onChange({ equipment: value });
-          }}
-        />
       </div>
 
       <div className="form-actions terminal-map-form-actions">
