@@ -42,6 +42,7 @@ import {
   applySelection,
   isCreating,
   LIST_PAGE_SIZES,
+  nextRoleCode,
   readPage,
   readPageSize,
   readRoleFilters,
@@ -99,6 +100,7 @@ import {
   useRoleDetail,
   useRoleList,
   useRolePermissions,
+  useRoleStatusCounts,
 } from './role-queries';
 import { ROLE_FORM_FIELDS, validateRoleForm } from './role-validation';
 import { USERS_ROLES_TABS, resolveTab, tabSearchParams } from './tabs';
@@ -124,6 +126,7 @@ import {
 import { USER_CREATE_FORM_FIELDS, USER_FORM_FIELDS, validateUserForm } from './user-validation';
 import type {
   AppUser,
+  LookupEntry,
   Role,
   RoleFilters,
   RoleFormValues,
@@ -146,6 +149,12 @@ type RoleDetailResponse = components['schemas']['RoleDetailResponse'];
 type RolePermissionListResponse = components['schemas']['RolePermissionListResponse'];
 
 const t = messages.usersRoles;
+
+/** 역할 탭 줄의 사용 · 미사용 라벨(#333). 값은 주소 `status` 에 실린다. */
+const ROLE_STATUS_ENTRIES: LookupEntry[] = [
+  { value: 'active', label: t.values.active, isActive: true },
+  { value: 'inactive', label: t.values.inactive, isActive: false },
+];
 
 /**
  * 폼의 현재 값과 그것이 어디서 나왔는지.
@@ -407,7 +416,35 @@ export const UsersRolesScreen = () => {
   /* ── 역할 부여 ─────────────────────────────────────────────────────────── */
 
   const userRoleList = useUserRoles(selectedAppUserId);
-  const roleOptions = useRoleOptions(selectedAppUserId !== null);
+  /*
+   * 역할 추가 팝업의 입력값 — 열려 있으면 값이 있다. **주소의 선택과 따로 둔다**: 팝업을 열어도 목록에서 고른
+   * 역할이 그대로 남는다(사용자 지시 2026-11-20 · #333).
+   */
+  const [roleCreateValues, setRoleCreateValues] = useState<RoleFormValues | null>(null);
+  const [roleCreateFieldErrors, setRoleCreateFieldErrors] = useState<Record<string, string>>({});
+  const isCreatingRole = isRolesTab && roleCreateValues !== null;
+  /* 역할 추가 팝업이 열리면 다음 역할 코드(ROLE_ 일련번호)를 정하려고 함께 받는다(#333). */
+  const roleOptions = useRoleOptions(selectedAppUserId !== null || isCreatingRole);
+  /*
+   * 역할 추가 팝업의 역할 코드는 ROLE_ 일련번호로 미리 채운다 — 고칠 수 있다(사용자 결정 2026-11-20 · #333).
+   * 모든 역할(미사용 포함)의 코드를 받은 뒤 한 번만 채우고, 사용자가 칸을 만졌으면 다시 채우지 않는다.
+   */
+  const [roleCodeTouched, setRoleCodeTouched] = useState(false);
+  if (
+    roleCreateValues !== null &&
+    !roleCodeTouched &&
+    roleCreateValues.roleCode === '' &&
+    !roleOptions.isLoading &&
+    !roleOptions.isError
+  ) {
+    setRoleCodeTouched(true);
+    setRoleCreateValues({
+      ...roleCreateValues,
+      roleCode: nextRoleCode(
+        roleOptions.entries.map((entry) => entry.code ?? '').filter((code) => code !== ''),
+      ),
+    });
+  }
 
   const [roleAssignState, setRoleAssignState] = useState<RoleAssignState | null>(null);
 
@@ -459,15 +496,9 @@ export const UsersRolesScreen = () => {
    */
   const roleFilters = useMemo<RoleFilters>(() => readRoleFilters(searchParams), [searchParams]);
 
-  /*
-   * 역할 추가 팝업의 입력값 — 열려 있으면 값이 있다. **주소의 선택과 따로 둔다**: 팝업을 열어도 목록에서 고른
-   * 역할이 그대로 남는다(사용자 지시 2026-11-20 · #333).
-   */
-  const [roleCreateValues, setRoleCreateValues] = useState<RoleFormValues | null>(null);
-  const [roleCreateFieldErrors, setRoleCreateFieldErrors] = useState<Record<string, string>>({});
-  const isCreatingRole = isRolesTab && roleCreateValues !== null;
   const selectedRoleParam = isRolesTab ? readSelectedRoleId(searchParams) : null;
   const roleList = useRoleList(roleFilters, page, isRolesTab, pageSize);
+  const roleStatusCounts = useRoleStatusCounts(roleFilters, isRolesTab);
   const roleListForbidden = roleList.isError && isForbiddenLoadError(roleList.error);
   /** 사용자 탭과 같이 목록 접근 확인 전에는 지난 역할의 상세를 조회하지 않는다. */
   const selectedRoleId =
@@ -1326,6 +1357,7 @@ export const UsersRolesScreen = () => {
     leaveSafely(() => {
       roleCreateWrite.reset();
       setRoleCreateFieldErrors({});
+      setRoleCodeTouched(false);
       setRoleCreateValues(emptyRoleFormValues());
     });
   };
@@ -1337,6 +1369,7 @@ export const UsersRolesScreen = () => {
   };
 
   const changeRoleCreateValues = (patch: Partial<RoleFormValues>) => {
+    if ('roleCode' in patch) setRoleCodeTouched(true);
     setRoleCreateValues((prev) => (prev === null ? prev : { ...prev, ...patch }));
     setRoleCreateFieldErrors((prev) => {
       const next = { ...prev };
@@ -2192,8 +2225,20 @@ export const UsersRolesScreen = () => {
        */}
       <div className="users-roles-tabs">
         {isRolesTab && !roleListForbidden && (
-          /* 역할 탭도 좌우 / 상하 배치를 같은 자리에 둔다(#333). 역할에는 상태 칩이 없다. */
+          /* 역할 탭도 같은 자리에 사용 · 미사용 라벨과 좌우 / 상하 배치를 둔다(#333). */
           <div className="users-roles-tab-actions">
+            <UserStatusChips
+              label={t.filters.roleStatusChipsLabel}
+              statuses={ROLE_STATUS_ENTRIES}
+              counts={roleStatusCounts}
+              active={roleFilters.status}
+              onChange={(status) => {
+                applyRoleFilters({
+                  ...roleFilters,
+                  status: status === 'active' || status === 'inactive' ? status : '',
+                });
+              }}
+            />
             <SplitOrientationToggle
               orientation={layout.orientation}
               onChange={layout.change}

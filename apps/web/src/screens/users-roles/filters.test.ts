@@ -7,6 +7,7 @@ import {
   hasAnyRoleFilter,
   hasAnyUserFilter,
   isCreating,
+  nextRoleCode,
   readPage,
   readRoleFilters,
   readSelectedId,
@@ -24,7 +25,7 @@ const params = (search: string): URLSearchParams => new URLSearchParams(search);
 
 const EMPTY: UserFilters = { q: '', departmentId: '', statusCode: '', includeInactive: false };
 
-const EMPTY_ROLE: RoleFilters = { q: '', includeInactive: false };
+const EMPTY_ROLE: RoleFilters = { q: '', includeInactive: false, status: '' };
 
 describe('readUserFilters', () => {
   it('키가 하나도 없으면 빈 조건이다', () => {
@@ -272,6 +273,7 @@ describe('readRoleFilters', () => {
     expect(readRoleFilters(params('q=SYN-ROLE&inactive=1'))).toEqual({
       q: 'SYN-ROLE',
       includeInactive: true,
+      status: '',
     });
   });
 
@@ -288,6 +290,7 @@ describe('readRoleFilters', () => {
     expect(readRoleFilters(params('q=SYN-ROLE&dept=3001'))).toEqual({
       q: 'SYN-ROLE',
       includeInactive: false,
+      status: '',
     });
   });
 });
@@ -298,7 +301,11 @@ describe('toRoleSearchParams', () => {
   });
 
   it('걸린 조건과 둘째 쪽부터는 주소에 남는다', () => {
-    const next = toRoleSearchParams('roles', { q: 'SYN-ROLE', includeInactive: true }, 2);
+    const next = toRoleSearchParams(
+      'roles',
+      { q: 'SYN-ROLE', includeInactive: true, status: '' },
+      2,
+    );
 
     expect(next.get('tab')).toBe('roles');
     expect(next.get('q')).toBe('SYN-ROLE');
@@ -309,7 +316,9 @@ describe('toRoleSearchParams', () => {
   /** 이 탭에 없는 조건을 주소에 적으면 무엇으로 조회했는지 읽을 수 없다. */
   it('부서 키를 만들지 않는다', () => {
     expect(
-      toRoleSearchParams('roles', { q: 'SYN-ROLE', includeInactive: true }, 2).has('dept'),
+      toRoleSearchParams('roles', { q: 'SYN-ROLE', includeInactive: true, status: '' }, 2).has(
+        'dept',
+      ),
     ).toBe(false);
   });
 
@@ -322,7 +331,7 @@ describe('toRoleSearchParams', () => {
   });
 
   it('읽기와 쓰기가 서로의 역이다', () => {
-    const filters: RoleFilters = { q: 'SYN-ROLE', includeInactive: true };
+    const filters: RoleFilters = { q: 'SYN-ROLE', includeInactive: true, status: '' };
 
     expect(readRoleFilters(toRoleSearchParams('roles', filters, 2))).toEqual(filters);
     expect(readPage(toRoleSearchParams('roles', filters, 2))).toBe(2);
@@ -335,7 +344,7 @@ describe('toRoleListQuery', () => {
   });
 
   it('걸린 조건만 싣는다', () => {
-    expect(toRoleListQuery({ q: 'SYN-ROLE', includeInactive: true }, 2)).toEqual({
+    expect(toRoleListQuery({ q: 'SYN-ROLE', includeInactive: true, status: '' }, 2)).toEqual({
       q: 'SYN-ROLE',
       includeInactive: true,
       page: 2,
@@ -344,15 +353,15 @@ describe('toRoleListQuery', () => {
 
   /** 계약에 없는 쿼리다 — 실으면 서버가 모르는 조건이 나간다. */
   it('부서를 어떤 경우에도 싣지 않는다', () => {
-    expect(Object.keys(toRoleListQuery({ q: 'SYN-ROLE', includeInactive: true }, 2))).not.toContain(
-      'departmentId',
-    );
+    expect(
+      Object.keys(toRoleListQuery({ q: 'SYN-ROLE', includeInactive: true, status: '' }, 2)),
+    ).not.toContain('departmentId');
   });
 
   it('상태 코드를 어떤 경우에도 싣지 않는다', () => {
-    expect(Object.keys(toRoleListQuery({ q: 'SYN-ROLE', includeInactive: true }, 2))).not.toContain(
-      'statusCode',
-    );
+    expect(
+      Object.keys(toRoleListQuery({ q: 'SYN-ROLE', includeInactive: true, status: '' }, 2)),
+    ).not.toContain('statusCode');
   });
 });
 
@@ -363,12 +372,14 @@ describe('toRoleFilterChips', () => {
 
   it('조건마다 칩 하나이고 순서는 조건 줄의 컨트롤 순서와 같다', () => {
     expect(
-      toRoleFilterChips({ q: 'SYN-ROLE', includeInactive: true }).map((chip) => chip.key),
+      toRoleFilterChips({ q: 'SYN-ROLE', includeInactive: true, status: '' }).map(
+        (chip) => chip.key,
+      ),
     ).toEqual(['q', 'includeInactive']);
   });
 
   it('칩마다 제거 버튼의 접근 이름이 서로 다르다', () => {
-    const labels = toRoleFilterChips({ q: 'SYN-ROLE', includeInactive: true }).map(
+    const labels = toRoleFilterChips({ q: 'SYN-ROLE', includeInactive: true, status: '' }).map(
       (chip) => chip.removeLabel,
     );
 
@@ -384,7 +395,7 @@ describe('hasAnyRoleFilter · clearRoleFilter', () => {
   });
 
   it('고른 조건 하나만 푼다', () => {
-    const all: RoleFilters = { q: 'SYN-ROLE', includeInactive: true };
+    const all: RoleFilters = { q: 'SYN-ROLE', includeInactive: true, status: '' };
 
     expect(clearRoleFilter(all, 'q')).toEqual({ ...all, q: '' });
     expect(clearRoleFilter(all, 'includeInactive')).toEqual({ ...all, includeInactive: false });
@@ -476,5 +487,40 @@ describe('isCreating', () => {
     expect(isCreating(params(''), 'user')).toBe(false);
     expect(isCreating(params('new=xyz'), 'user')).toBe(false);
     expect(isCreating(params('new=USER'), 'user')).toBe(false);
+  });
+});
+
+/* 역할 탭 사용 · 미사용 라벨(사용자 지시 2026-11-20 · #333) — 주소 `status` ↔ 서버 `isActive`. */
+describe('역할 사용 상태 조건', () => {
+  it('주소의 status 를 읽고 모르는 값은 버린다', () => {
+    expect(readRoleFilters(new URLSearchParams('status=inactive')).status).toBe('inactive');
+    expect(readRoleFilters(new URLSearchParams('status=ACTIVE')).status).toBe('');
+  });
+
+  it('사용은 isActive=true, 미사용은 isActive=false, 없으면 싣지 않는다', () => {
+    const base: RoleFilters = { q: '', includeInactive: false, status: '' };
+    expect(toRoleListQuery({ ...base, status: 'active' }, 1)).toEqual({ isActive: true });
+    expect(toRoleListQuery({ ...base, status: 'inactive' }, 1)).toEqual({ isActive: false });
+    expect(toRoleListQuery(base, 1)).toEqual({});
+  });
+
+  it('주소에 status 를 남기고 조건 칩으로 보이며 지우면 풀린다', () => {
+    const filters: RoleFilters = { q: '', includeInactive: false, status: 'inactive' };
+    expect(toRoleSearchParams('roles', filters, 1).get('status')).toBe('inactive');
+    expect(toRoleFilterChips(filters).map((chip) => chip.label)).toEqual(['사용 상태: 미사용']);
+    expect(hasAnyRoleFilter(filters)).toBe(true);
+    expect(clearRoleFilter(filters, 'status').status).toBe('');
+  });
+});
+
+/* 역할 추가 팝업이 미리 채우는 역할 코드 — ROLE_ 일련번호(사용자 결정 2026-11-20 · #333). */
+describe('nextRoleCode', () => {
+  it('ROLE_ 일련번호 중 가장 큰 번호 다음을 세 자리로 낸다', () => {
+    expect(nextRoleCode(['ROLE_EXEC_MGR', 'ROLE_001', 'ROLE_009'])).toBe('ROLE_010');
+  });
+
+  it('일련번호가 하나도 없으면 ROLE_001', () => {
+    expect(nextRoleCode(['ROLE_EXEC_MGR', 'ROLE_WORKER'])).toBe('ROLE_001');
+    expect(nextRoleCode([])).toBe('ROLE_001');
   });
 });

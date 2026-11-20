@@ -7,7 +7,7 @@ import { RoleFilterBar, RoleListPane, type RoleListPaneProps } from './role-list
 import type { PageView } from './pagination';
 import type { RoleFilters } from './types';
 
-const EMPTY_FILTERS: RoleFilters = { q: '', includeInactive: false };
+const EMPTY_FILTERS: RoleFilters = { q: '', includeInactive: false, status: '' };
 
 const PAGE_VIEW: PageView = {
   page: 1,
@@ -154,32 +154,32 @@ describe('RoleListPane 조건', () => {
     await user.type(within(pane()).getByLabelText('역할 검색'), 'SYN');
     await user.click(within(pane()).getByRole('button', { name: '조회' }));
 
-    expect(onApplyFilters).toHaveBeenCalledWith({ q: 'SYN', includeInactive: false });
+    expect(onApplyFilters).toHaveBeenCalledWith({ q: 'SYN', includeInactive: false, status: '' });
   });
 
   /** 해제 축이라 변경 즉시 적용한다 — 편집 중인 검색어를 함께 보내지 않는다. */
   it('미사용 포함은 누르는 즉시 적용된다', async () => {
     const { onApplyFilters, user } = renderPane({
-      appliedFilters: { q: 'SYN', includeInactive: false },
+      appliedFilters: { q: 'SYN', includeInactive: false, status: '' },
     });
 
     await user.click(within(pane()).getByRole('checkbox', { name: '미사용 포함' }));
 
-    expect(onApplyFilters).toHaveBeenCalledWith({ q: 'SYN', includeInactive: true });
+    expect(onApplyFilters).toHaveBeenCalledWith({ q: 'SYN', includeInactive: true, status: '' });
   });
 
   it('초기화는 조건을 모두 푼다', async () => {
     const { onApplyFilters, user } = renderPane({
-      appliedFilters: { q: 'SYN', includeInactive: true },
+      appliedFilters: { q: 'SYN', includeInactive: true, status: '' },
     });
 
     await user.click(within(pane()).getByRole('button', { name: '초기화' }));
 
-    expect(onApplyFilters).toHaveBeenCalledWith({ q: '', includeInactive: false });
+    expect(onApplyFilters).toHaveBeenCalledWith({ q: '', includeInactive: false, status: '' });
   });
 
   it('적용된 조건마다 칩이 하나씩 선다', () => {
-    renderPane({ appliedFilters: { q: 'SYN', includeInactive: true } });
+    renderPane({ appliedFilters: { q: 'SYN', includeInactive: true, status: '' } });
 
     expect(within(pane()).getByText('검색어: SYN')).toBeInTheDocument();
     expect(
@@ -189,12 +189,12 @@ describe('RoleListPane 조건', () => {
 
   it('칩을 제거하면 그 조건 하나만 풀린다', async () => {
     const { onApplyFilters, user } = renderPane({
-      appliedFilters: { q: 'SYN', includeInactive: true },
+      appliedFilters: { q: 'SYN', includeInactive: true, status: '' },
     });
 
     await user.click(within(pane()).getByRole('button', { name: '검색어 조건 제거' }));
 
-    expect(onApplyFilters).toHaveBeenCalledWith({ q: '', includeInactive: true });
+    expect(onApplyFilters).toHaveBeenCalledWith({ q: '', includeInactive: true, status: '' });
   });
 });
 
@@ -209,7 +209,7 @@ describe('RoleListPane 빈 상태와 실패', () => {
   it('조건이 걸린 0건은 다른 안내이고 초기화 길을 준다', async () => {
     const { onApplyFilters, user } = renderPane({
       roles: [],
-      appliedFilters: { q: 'SYN', includeInactive: false },
+      appliedFilters: { q: 'SYN', includeInactive: false, status: '' },
     });
 
     expect(within(pane()).getByText('조건에 맞는 역할이 없습니다')).toBeInTheDocument();
@@ -217,7 +217,7 @@ describe('RoleListPane 빈 상태와 실패', () => {
     // 조건 줄에도 「초기화」가 있다 — 빈 상태 안의 것만 눌러야 이 안내의 길이 열렸는지 알 수 있다.
     await user.click(within(screen.getByRole('status')).getByRole('button', { name: '초기화' }));
 
-    expect(onApplyFilters).toHaveBeenCalledWith({ q: '', includeInactive: false });
+    expect(onApplyFilters).toHaveBeenCalledWith({ q: '', includeInactive: false, status: '' });
   });
 
   it('범위 밖 쪽에는 첫 쪽으로 돌아갈 길을 준다', async () => {

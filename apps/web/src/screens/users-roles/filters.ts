@@ -1,6 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
-import type { RoleFilters, UserFilters } from './types';
+import type { RoleFilters, RoleStatus, UserFilters } from './types';
 
 /**
  * 조회 조건 — **주소가 정본이다.** 새로고침·뒤로가기·공유가 같은 결과를 내게 하려면
@@ -298,9 +298,13 @@ export const clearUserFilter = (filters: UserFilters, key: keyof UserFilters): U
  * **부서를 읽지 않는다.** 주소에 `dept`가 남아 있어도(탭을 손으로 오간 주소) 역할 조건이 아니다 —
  * 읽어 두면 언젠가 계약에 없는 쿼리로 실린다.
  */
+const readRoleStatus = (value: string | null): RoleStatus =>
+  value === 'active' || value === 'inactive' ? value : '';
+
 export const readRoleFilters = (params: URLSearchParams): RoleFilters => ({
   q: params.get(URL_KEYS.q) ?? '',
   includeInactive: params.get(URL_KEYS.includeInactive) === ON,
+  status: readRoleStatus(params.get(URL_KEYS.statusCode)),
 });
 
 /** 조건 전체를 주소로 옮긴다. 규칙은 사용자 쪽과 같다 — 빈 조건은 키 자체를 두지 않는다. */
@@ -314,6 +318,7 @@ export const toRoleSearchParams = (
 
   if (filters.q !== '') next.set(URL_KEYS.q, filters.q);
   if (filters.includeInactive) next.set(URL_KEYS.includeInactive, ON);
+  if (filters.status !== '') next.set(URL_KEYS.statusCode, filters.status);
   if (page > 1) next.set(URL_KEYS.page, String(page));
   if (size !== DEFAULT_PAGE_SIZE) next.set(URL_KEYS.size, String(size));
 
@@ -327,6 +332,8 @@ export const toRoleSearchParams = (
 export interface RoleListQuery {
   q?: string;
   includeInactive?: boolean;
+  /** 사용 여부 라벨(#333) — 주면 그 값만. `includeInactive` 보다 앞선다(서버 #1111). */
+  isActive?: boolean;
   page?: number;
   size?: number;
 }
@@ -338,6 +345,7 @@ export const toRoleListQuery = (
 ): RoleListQuery => ({
   ...(filters.q === '' ? {} : { q: filters.q }),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
+  ...(filters.status === '' ? {} : { isActive: filters.status === 'active' }),
   ...(page > 1 ? { page } : {}),
   ...(size === DEFAULT_PAGE_SIZE ? {} : { size }),
 });
@@ -361,6 +369,14 @@ export const toRoleFilterChips = (filters: RoleFilters): RoleFilterChip[] => {
     });
   }
 
+  if (filters.status !== '') {
+    chips.push({
+      key: 'status',
+      label: t.filters.chipRoleStatus(t.values[filters.status]),
+      removeLabel: t.filters.chipRemoveRoleStatus,
+    });
+  }
+
   if (filters.includeInactive) {
     chips.push({
       key: 'includeInactive',
@@ -373,7 +389,21 @@ export const toRoleFilterChips = (filters: RoleFilters): RoleFilterChip[] => {
 };
 
 export const hasAnyRoleFilter = (filters: RoleFilters): boolean =>
-  filters.q !== '' || filters.includeInactive;
+  filters.q !== '' || filters.includeInactive || filters.status !== '';
 
 export const clearRoleFilter = (filters: RoleFilters, key: keyof RoleFilters): RoleFilters =>
   key === 'includeInactive' ? { ...filters, includeInactive: false } : { ...filters, [key]: '' };
+
+/**
+ * 역할 추가 팝업이 처음 채울 역할 코드 — `ROLE_` 일련번호 중 쓰이지 않은 다음 번호(사용자 결정 2026-11-20 · #333).
+ * 사용자가 고칠 수 있고, 겹치면 서버가 막는다.
+ */
+export const nextRoleCode = (codes: readonly string[]): string => {
+  const numbers = codes
+    .map((code) => /^ROLE_(\d+)$/.exec(code)?.[1])
+    .filter((value): value is string => value !== undefined)
+    .map(Number);
+  const next = numbers.length === 0 ? 1 : Math.max(...numbers) + 1;
+
+  return `ROLE_${String(next).padStart(3, '0')}`;
+};

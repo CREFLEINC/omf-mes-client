@@ -1,5 +1,5 @@
 import type { components } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -59,6 +59,31 @@ export const useRoleList = (
         client.GET('/app/roles', { params: { query: toRoleListQuery(filters, page, size) } }),
       ),
   });
+};
+
+/** 탭 줄 사용 · 미사용 라벨의 건수 — 걸린 다른 조건은 두고 상태만 바꿔 센다(사용자 탭과 같다 · #333). */
+export const useRoleStatusCounts = (
+  filters: RoleFilters,
+  enabled: boolean,
+): (number | undefined)[] => {
+  const { client } = useApiClient();
+  const results = useQueries({
+    queries: (['active', 'inactive'] as const).map((status) => {
+      const next = { ...filters, status };
+
+      return {
+        queryKey: roleKeys.list(next, 1),
+        enabled,
+        staleTime: 30_000,
+        queryFn: () =>
+          runRequest(() =>
+            client.GET('/app/roles', { params: { query: toRoleListQuery(next, 1) } }),
+          ),
+      };
+    }),
+  });
+
+  return results.map((result) => result.data?.page.total);
 };
 
 /**

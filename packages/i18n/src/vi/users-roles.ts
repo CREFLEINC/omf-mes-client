@@ -121,6 +121,9 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     roleIncludeInactive: 'Bao gồm không sử dụng',
     chipRemoveRoleIncludeInactive: 'Xóa điều kiện bao gồm không sử dụng',
     roleReset: 'Đặt lại',
+    roleStatusChipsLabel: 'Trạng thái sử dụng',
+    chipRoleStatus: (label: string): string => `Trạng thái sử dụng: ${label}`,
+    chipRemoveRoleStatus: 'Xóa điều kiện trạng thái sử dụng',
   },
   loading: {
     users: 'Đang tải danh sách người dùng',

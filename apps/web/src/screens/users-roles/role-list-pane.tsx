@@ -24,7 +24,7 @@ import type { Role, RoleFilters } from './types';
 const t = messages.usersRoles;
 
 /** 화면을 처음 열었을 때의 조회 조건. 「초기화」가 돌아가는 자리이기도 하다. */
-export const EMPTY_ROLE_FILTERS: RoleFilters = { q: '', includeInactive: false };
+export const EMPTY_ROLE_FILTERS: RoleFilters = { q: '', includeInactive: false, status: '' };
 
 export interface RoleFilterBarProps {
   /** 적용된(주소에 반영된) 조건 — 조건 칩의 렌더 기준 */
@@ -53,11 +53,15 @@ export const RoleFilterBar = ({
    * 편집 중인 값은 draft에만 있고 조건 칩에 미러하지 않는다 — 칩은 「적용된 조건」의 표시다.
    */
   const [draft, setDraft] = useState<RoleFilters>(appliedFilters);
-  const { q: appliedQ, includeInactive: appliedIncludeInactive } = appliedFilters;
+  const {
+    q: appliedQ,
+    includeInactive: appliedIncludeInactive,
+    status: appliedStatus,
+  } = appliedFilters;
 
   useEffect(() => {
-    setDraft({ q: appliedQ, includeInactive: appliedIncludeInactive });
-  }, [appliedQ, appliedIncludeInactive]);
+    setDraft({ q: appliedQ, includeInactive: appliedIncludeInactive, status: appliedStatus });
+  }, [appliedQ, appliedIncludeInactive, appliedStatus]);
 
   const chips = toRoleFilterChips(appliedFilters);
 

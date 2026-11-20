@@ -153,6 +153,10 @@ export const usersRoles = {
     roleIncludeInactive: '미사용 포함',
     chipRemoveRoleIncludeInactive: '미사용 포함 조건 제거',
     roleReset: '초기화',
+    /* 탭 줄 사용 · 미사용 라벨(사용자 지시 2026-11-20 · #333). */
+    roleStatusChipsLabel: '사용 상태',
+    chipRoleStatus: (label: string): string => `사용 상태: ${label}`,
+    chipRemoveRoleStatus: '사용 상태 조건 제거',
   },
   loading: {
     users: '사용자 목록을 불러오는 중',

@@ -470,8 +470,9 @@ const roleCreateDialog = (): HTMLElement => screen.getByRole('dialog', { name: '
 
 const permissionPane = (): HTMLElement => screen.getByRole('region', { name: '기능 권한' });
 
+/* 목록 조회만 센다 — 탭 줄 사용 · 미사용 라벨이 상태마다 건수를 따로 묻는다(isActive 가 실린 요청 · #333). */
 const roleRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
-  requestsTo(requests, ROLES_PATH);
+  requestsTo(requests, ROLES_PATH).filter((request) => !request.url.searchParams.has('isActive'));
 
 const waitForRoleList = async (requests: RecordedRequest[]): Promise<void> => {
   await waitFor(() => {
@@ -3669,7 +3670,11 @@ describe('UsersRolesScreen 역할 상세 열기', () => {
       { name: '역할 추가' },
     );
     expect(addButton).toBeDisabled();
-    /* 빈 필수 칸은 빨간 테두리, 설명은 「(선택)」(사용자 지시 2026-11-20 · #333). */
+    /* 역할 코드는 미리 채워진다 — 비우면 빨간 테두리. 설명은 「(선택)」(사용자 지시 2026-11-20 · #333). */
+    await waitFor(() => {
+      expect(roleCodeField()).toHaveValue('ROLE_001');
+    });
+    await user.clear(roleCodeField());
     expect(roleCodeField().closest('.users-roles-required-empty')).not.toBeNull();
     expect(roleNameField().closest('.users-roles-required-empty')).not.toBeNull();
     expect(within(roleFormPane()).getByText('(선택)')).toBeInTheDocument();
@@ -3690,7 +3695,9 @@ describe('UsersRolesScreen 역할 상세 열기', () => {
     await user.click(within(roleSearchPane()).getByRole('button', { name: '역할 추가' }));
 
     await screen.findByRole('dialog', { name: '역할 추가' });
-    expect(roleCodeField()).toHaveValue('');
+    await waitFor(() => {
+      expect(roleCodeField()).toHaveValue('ROLE_001');
+    });
     expect(requestsTo(requests, rolePath(5001))).toHaveLength(0);
     /* 팝업은 주소에 남기지 않는다(#333). */
     expect(new URLSearchParams(search()).has('new')).toBe(false);
@@ -3712,6 +3719,44 @@ describe('UsersRolesScreen 역할 상세 열기', () => {
     expect(new URLSearchParams(search()).has('new')).toBe(false);
   });
 
+  /* 역할 코드는 ROLE_ 일련번호로 미리 채우고 고칠 수 있다(사용자 결정 2026-11-20 · #333). */
+  it('역할 추가 팝업은 역할 코드를 ROLE_ 일련번호로 미리 채우고 고칠 수 있다', async () => {
+    const { requests, user } = renderScreen([roleListRoute()], ROLES_TAB);
+
+    await waitForRoleList(requests);
+    await user.click(within(roleSearchPane()).getByRole('button', { name: '역할 추가' }));
+
+    await screen.findByRole('dialog', { name: '역할 추가' });
+    await waitFor(() => {
+      expect(roleCodeField()).toHaveValue('ROLE_001');
+    });
+
+    await user.clear(roleCodeField());
+    await user.type(roleCodeField(), 'ROLE_CUSTOM');
+    expect(roleCodeField()).toHaveValue('ROLE_CUSTOM');
+  });
+
+  /* 탭 줄 사용 · 미사용 라벨 — 누르면 서버에 isActive 로 묻는다(#333). */
+  it('사용 상태 라벨을 누르면 그 상태만 조회한다', async () => {
+    const { requests, search, user } = renderScreen([roleListRoute()], ROLES_TAB);
+
+    await waitForRoleList(requests);
+    const group = await screen.findByRole('group', { name: '사용 상태' });
+    await user.click(within(group).getByRole('button', { name: /^사용/ }));
+
+    await waitFor(() => {
+      expect(new URLSearchParams(search()).get('status')).toBe('active');
+    });
+    expect(
+      requests.some(
+        (request) =>
+          request.url.pathname === ROLES_PATH &&
+          request.url.searchParams.get('isActive') === 'true' &&
+          request.url.searchParams.get('page') === null,
+      ),
+    ).toBe(true);
+  });
+
   /* 목록에서 고른 채로 역할 추가를 눌러도 선택이 풀리지 않는다(사용자 지시 2026-11-20 · #333). */
   it('역할 추가 팝업을 열어도 고른 역할이 그대로 남는다', async () => {
     const { requests, search, user } = renderScreen(
@@ -3725,7 +3770,9 @@ describe('UsersRolesScreen 역할 상세 열기', () => {
     await user.click(within(roleSearchPane()).getByRole('button', { name: '역할 추가' }));
 
     const dialog = await screen.findByRole('dialog', { name: '역할 추가' });
-    expect(within(dialog).getByLabelText(/역할 코드/)).toHaveValue('');
+    await waitFor(() => {
+      expect(within(dialog).getByLabelText(/역할 코드/)).toHaveValue('ROLE_001');
+    });
     expect(new URLSearchParams(search()).get('rol')).toBe('5001');
     expect(within(roleListPane()).getByRole('button', { name: 'SYN-ROLE-01' })).toHaveAttribute(
       'aria-current',
@@ -3948,6 +3995,11 @@ describe('UsersRolesScreen 역할 등록', () => {
     await waitForRoleList(rendered.requests);
     await rendered.user.click(within(roleSearchPane()).getByRole('button', { name: '역할 추가' }));
 
+    /* 미리 채운 역할 코드를 지우고 고친다(#333). */
+    await waitFor(() => {
+      expect(roleCodeField()).toHaveValue('ROLE_001');
+    });
+    await rendered.user.clear(roleCodeField());
     await rendered.user.type(roleCodeField(), 'SYN-ROLE-09');
     await rendered.user.type(roleNameField(), '합성 역할 D');
 
@@ -4854,12 +4906,26 @@ describe('UsersRolesScreen 역할 쓰기가 사용자 탭의 선택 목록을 �
     await waitForRoleList(requests);
     await user.click(within(roleSearchPane()).getByRole('button', { name: '역할 추가' }));
 
+    await waitFor(() => {
+      expect(roleCodeField()).toHaveValue('ROLE_001');
+    });
+    await user.clear(roleCodeField());
     await user.type(roleCodeField(), 'SYN-ROLE-09');
     await user.type(roleNameField(), '합성 역할 D');
+    /*
+     * 추가 팝업이 다음 역할 코드를 정하려고 선택 목록을 쓰고 있어(#333) 무효화되면 곧바로 다시 받는다 —
+     * 무효화 표시 대신 다시 받은 요청으로 확인한다.
+     */
+    const lookupCalls = (): number =>
+      requests.filter(
+        (request) =>
+          request.url.pathname === ROLES_PATH && request.url.search === '?includeInactive=true',
+      ).length;
+    const before = lookupCalls();
     await user.click(within(roleCreateDialog()).getByRole('button', { name: '역할 추가' }));
 
     await waitFor(() => {
-      expect(isInvalidated(queryClient, ROLE_LOOKUP_KEY)).toBe(true);
+      expect(isInvalidated(queryClient, ROLE_LOOKUP_KEY) || lookupCalls() > before).toBe(true);
     });
 
     expectUserSideUntouched(queryClient);
