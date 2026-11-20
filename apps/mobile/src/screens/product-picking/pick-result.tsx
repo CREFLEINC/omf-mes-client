@@ -23,7 +23,7 @@ export type PickNotice =
       kind: 'rejected';
       lotNo: string;
       line: ShipmentRequestLine | null;
-      rejection: PickRejection | { kind: 'notFound' | 'noLine' };
+      rejection: PickRejection | { kind: 'notFound' | 'noLine' | 'outOfScope' };
     }
   | { kind: 'replaced'; lotNo: string; result: ShipmentLotReplaceResult }
   | { kind: 'replaceRefused'; lotNo: string; notRejected: boolean };
@@ -45,7 +45,9 @@ const rejectionTitle = (rejection: Extract<PickNotice, { kind: 'rejected' }>['re
         ? t.rejected.failed
         : rejection.kind === 'notFound'
           ? t.rejected.notFound
-          : t.rejected.NO_LINE_FOR_ITEM;
+          : rejection.kind === 'outOfScope'
+            ? t.rejected.outOfScope
+            : t.rejected.NO_LINE_FOR_ITEM;
 
 /** 라인이 채워진 정도 한 줄 — 「라인 1 남음 60」 · 「라인 1 목표 100 을 채웠습니다」. */
 const progressOf = (line: ShipmentRequestLine): string => {
@@ -88,6 +90,26 @@ export const PickResult = ({ notice, itemOf, uomOf, onRetry }: PickResultProps) 
           </p>
           <p className="last-scan__lot">{pickedLot.lotNo}</p>
           <p className="last-scan__note">{progressOf(line)}</p>
+          {/*
+           * 두 창고에 걸친 LOT — 줄 창고 몫만 집었고 다른 창고 몫은 그대로 남는다(피처 012 Edge · otherWarehouseQty).
+           */}
+          {notice.result.otherWarehouseQty === undefined ||
+          notice.result.otherWarehouseQty <= 0 ? null : (
+            <>
+              <p className="last-scan__note">
+                {t.picked.lineWarehouseOnly(
+                  line.lineNo,
+                  line.warehouse?.warehouseName ?? t.warehouse.unassigned,
+                )}
+              </p>
+              <p className="last-scan__note">
+                {t.picked.otherWarehouseLeft(
+                  String(notice.result.otherWarehouseQty),
+                  uomOf(pickedLot.uomId),
+                )}
+              </p>
+            </>
+          )}
         </div>
       </section>
     );
@@ -181,6 +203,25 @@ export const PickResult = ({ notice, itemOf, uomOf, onRetry }: PickResultProps) 
         ) : null}
         {rejection.kind === 'notFound' ? (
           <p className="last-scan__sub">{t.rejected.notFoundDetail}</p>
+        ) : null}
+        {rejection.kind === 'outOfScope' ? (
+          <p className="last-scan__sub">{t.rejected.outOfScopeDetail}</p>
+        ) : null}
+        {/* 피처 012 — 줄 창고에 없는 LOT 은 LOT 이 있는 창고(공장)를 다 적는다(FR-012 · US2-5). */}
+        {rejection.kind === 'code' &&
+        rejection.code === 'LOT_NOT_IN_LINE_WAREHOUSE' &&
+        rejection.warehouses !== undefined &&
+        rejection.warehouses.length > 0 ? (
+          <p className="last-scan__sub">
+            {t.rejected.lotWarehouses(
+              rejection.warehouses
+                .map((each) => t.rejected.lotWarehouse(each.warehouseName, each.plantName))
+                .join(', '),
+            )}
+          </p>
+        ) : null}
+        {rejection.kind === 'code' && rejection.code === 'LINE_WAREHOUSE_UNAVAILABLE' ? (
+          <p className="last-scan__sub">{t.rejected.lineWarehouseUnavailableDetail}</p>
         ) : null}
         {rejection.kind === 'failed' ? (
           <>

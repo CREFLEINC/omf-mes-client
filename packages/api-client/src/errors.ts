@@ -25,6 +25,15 @@ export interface ConflictBlocker {
 }
 
 /**
+ * 피킹 409 `LOT_NOT_IN_LINE_WAREHOUSE` 의 「LOT 이 있는 창고」 한 줄(피처 012 FR-012 · `ShipmentRequestWarehouse`).
+ */
+export interface ConflictWarehouse {
+  warehouseId: number;
+  warehouseName: string;
+  plantName: string;
+}
+
+/**
  * 다시 불러도 안 풀리는 잠김. 봉투를 이 코드로 가른다.
  *
  * 읽는 쪽도 같은 값을 봐야 한다 - 따로 적으면 한쪽만 바뀌었을 때 갈래와 표시가 어긋난다.
@@ -68,6 +77,11 @@ export type ApiError =
        * 그린다 — 버리면 같은 값을 다시 조회해야 한다.
        */
       blockers?: ConflictBlocker[];
+      /**
+       * LOT 이 있는 창고들(`LOT_NOT_IN_LINE_WAREHOUSE` 일 때만 서버가 싣는다 · 피처 012). 화면이 「LOT 이 있는 창고: …」를
+       * 그 나라 말로 그린다 — 버리면 서버 문장(한국어)만 남는다.
+       */
+      warehouses?: ConflictWarehouse[];
     }
   /*
    * 상태는 선택이다. 이 두 갈래는 서버 응답에서도 오고 화면이 스스로 만들기도 한다 - 저장을
@@ -173,6 +187,20 @@ const toConflictBlocker = (value: unknown): ConflictBlocker[] => {
   ];
 };
 
+const toConflictWarehouse = (value: unknown): ConflictWarehouse[] => {
+  if (
+    !isRecord(value) ||
+    typeof value.warehouseId !== 'number' ||
+    typeof value.warehouseName !== 'string' ||
+    typeof value.plantName !== 'string'
+  ) {
+    return [];
+  }
+  return [
+    { warehouseId: value.warehouseId, warehouseName: value.warehouseName, plantName: value.plantName },
+  ];
+};
+
 export const normalizeApiError = (status: number, body: unknown): ApiError => {
   const code = isRecord(body) && typeof body.code === 'string' ? body.code : undefined;
   const currentLotStatusCode =
@@ -193,6 +221,9 @@ export const normalizeApiError = (status: number, body: unknown): ApiError => {
       ...(currentLotStatusCode === undefined ? {} : { currentLotStatusCode }),
       ...(Array.isArray(body.blockers)
         ? { blockers: body.blockers.flatMap(toConflictBlocker) }
+        : {}),
+      ...(Array.isArray(body.warehouses)
+        ? { warehouses: body.warehouses.flatMap(toConflictWarehouse) }
         : {}),
     };
   }

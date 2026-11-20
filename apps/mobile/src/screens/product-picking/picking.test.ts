@@ -14,6 +14,10 @@ import {
   replaceEffect,
   type ShipmentRequestLine,
   type ShipmentRequestLot,
+  inTerminalScope,
+  onlyOutOfScope,
+  terminalShareDone,
+  warehouseTagOf,
 } from './picking';
 
 const lot = (overrides: Partial<ShipmentRequestLot> = {}): ShipmentRequestLot => ({
@@ -237,5 +241,81 @@ describe('partiesText', () => {
     expect(partiesText('가나전자', '가나전자 2공장')).toBe('가나전자, 가나전자 2공장');
     expect(partiesText('가나전자', '가나전자')).toBe('가나전자');
     expect(partiesText('가나전자', null)).toBe('가나전자');
+  });
+});
+
+/* ── 피처 012 — 이 기기 범위 · 줄 창고 ─────────────────────────────────── */
+
+describe('이 기기 범위 줄 고르기(피처 012)', () => {
+  const inside = (patch: Partial<ShipmentRequestLine>) =>
+    line({ inTerminalScope: true, outOfScopeReason: null, ...patch });
+  const outside = (patch: Partial<ShipmentRequestLine>) =>
+    line({ inTerminalScope: false, outOfScopeReason: 'OTHER_PLANT', ...patch });
+
+  it('US2-1 범위 밖 줄은 경로로 보내지 않는다 — 같은 품목이면 범위 안 줄을 고른다', () => {
+    const lines = [
+      outside({ shipmentRequestLineId: 1, pickedQty: 0 }),
+      inside({ shipmentRequestLineId: 2, pickedQty: 0 }),
+    ];
+
+    expect(chooseLine(lines, 31)?.shipmentRequestLineId).toBe(2);
+  });
+
+  it('US2-4 범위 안 같은 품목 줄이 둘이면 남은 수량이 있는 앞 줄(서버가 LOT 창고로 다시 고른다)', () => {
+    const lines = [
+      inside({ shipmentRequestLineId: 1, pickedQty: 100 }),
+      inside({ shipmentRequestLineId: 3, pickedQty: 0 }),
+    ];
+
+    expect(chooseLine(lines, 31)?.shipmentRequestLineId).toBe(3);
+  });
+
+  it('그 품목 줄이 범위 밖뿐이면 고르지 않고 「범위 밖」으로 가른다', () => {
+    const lines = [outside({ shipmentRequestLineId: 1 })];
+
+    expect(chooseLine(lines, 31)).toBeNull();
+    expect(onlyOutOfScope(lines, 31)).toBe(true);
+    expect(onlyOutOfScope(lines, 99)).toBe(false);
+  });
+
+  it('US6-2 범위 칸이 없는 옛 응답은 범위 안으로 본다', () => {
+    expect(inTerminalScope(line({}))).toBe(true);
+  });
+
+  it('시안 ⑦ 이 기기 줄이 다 찼고 범위 밖 줄이 남았을 때만 「이 기기 몫은 끝났습니다」', () => {
+    expect(terminalShareDone([inside({ pickedQty: 100 }), outside({ shipmentRequestLineId: 2 })])).toBe(true);
+    expect(terminalShareDone([inside({ pickedQty: 50 }), outside({ shipmentRequestLineId: 2 })])).toBe(false);
+    expect(terminalShareDone([inside({ pickedQty: 100 })])).toBe(false);
+  });
+
+  it('US6-1 줄 창고 꼬리표 — 창고 (공장), 옛 줄은 창고 미지정', () => {
+    const words = { tag: (w: string, p: string) => `${w} (${p})`, unassigned: '창고 미지정' };
+
+    expect(
+      warehouseTagOf(
+        line({ warehouse: { warehouseId: 1, warehouseCode: 'A', warehouseName: '완제품창고 A', plantId: 1, plantName: '1공장' } }),
+        words,
+      ),
+    ).toBe('완제품창고 A (1공장)');
+    expect(warehouseTagOf(line({ warehouse: null }), words)).toBe('창고 미지정');
+  });
+
+  it('US2-5 409 LOT_NOT_IN_LINE_WAREHOUSE 는 LOT 이 있는 창고들을 함께 가른다', () => {
+    expect(
+      pickRejectionOf({
+        kind: 'conflict',
+        cause: 'user',
+        code: 'LOT_NOT_IN_LINE_WAREHOUSE',
+        message: '',
+        warehouses: [{ warehouseId: 2, warehouseName: '완제품창고 B', plantName: '2공장' }],
+      }),
+    ).toEqual({
+      kind: 'code',
+      code: 'LOT_NOT_IN_LINE_WAREHOUSE',
+      warehouses: [{ warehouseId: 2, warehouseName: '완제품창고 B', plantName: '2공장' }],
+    });
+    expect(
+      pickRejectionOf({ kind: 'conflict', cause: 'user', code: 'LINE_WAREHOUSE_UNAVAILABLE', message: '' }),
+    ).toEqual({ kind: 'code', code: 'LINE_WAREHOUSE_UNAVAILABLE' });
   });
 });

@@ -424,3 +424,38 @@
   align-self: stretch;
   text-align: start;
 }
+
+/* 피처 012 — 줄 출고 창고 꼬리표(이 기기 줄은 파랑, 창고 미지정은 흐림). */
+.picking-tally__warehouse {
+  display: block;
+  white-space: normal;
+  color: var(--semantic-info);
+  font: var(--type-label-sm);
+  overflow-wrap: anywhere;
+}
+
+.picking-tally__warehouse[data-unassigned='true'] {
+  color: var(--on-surface-muted);
+}
+
+/* 이 기기 범위 밖 줄(FR-011) — 점선 테 · 회색 바탕, 읽기만. */
+.picking-tally__table tr[data-out-of-scope='true'] td {
+  background: var(--surface-container-low);
+  color: var(--on-surface-muted);
+  border-bottom: 1px dashed var(--outline-variant);
+}
+
+.picking-tally__table tr[data-out-of-scope='true'] .picking-tally__item {
+  white-space: normal;
+}
+
+.picking-tally__scope {
+  display: block;
+  font: var(--type-label-sm);
+  overflow-wrap: anywhere;
+}
+
+/* 두 창고에 걸친 LOT — 다른 창고에 남은 몫(Edge). */
+.picking-lot__split {
+  color: var(--on-surface-variant);
+}
