@@ -13,7 +13,12 @@ import type { ReactNode } from 'react';
 import { describeReference, toReference, type ReferenceSource } from './lookups';
 import { CONTRACT_SORT_KEYS, toSortState, type SortKey } from './sort';
 import { progressLabel } from './status-options';
-import type { LineQtyTotals, ShipmentRequestView } from './types';
+import {
+  completionMarkOf,
+  localToday,
+  type LineQtyTotals,
+  type ShipmentRequestView,
+} from './types';
 
 const t = messages.shipmentSchedule;
 
@@ -106,20 +111,29 @@ const renderJudgment = (summary: ShipmentRequestView['lotJudgmentSummary']): Rea
 };
 
 /**
- * 피처 010 — 진행 칩 아래 「완료 대기」(막는 이유 없음) / 「막힘 n」. 미편성과 출하 완료에는 달지 않는다.
+ * 피처 010 — 진행 칩 아래 칩. 고르는 규칙은 `completionMarkOf`(#342): 진짜 이슈는 붉은 「막힘 n」,
+ * 출하일이 지난 피킹 부족은 주황 「지연」, 막는 이유가 없으면 초록 「완료 대기」, 정상 진행만이면 없음.
  */
-const renderCompletion = (row: ShipmentRequestView): ReactNode => {
-  if (row.blockerCount === null) return null;
-  if (row.shipmentProgressCode === 'NOT_ALLOCATED' || row.shipmentProgressCode === 'SHIPPED') {
-    return null;
+const renderCompletion = (row: ShipmentRequestView, today: string): ReactNode => {
+  const mark = completionMarkOf(row, today);
+  if (mark === null) return null;
+  if (mark.kind === 'blocked') {
+    return (
+      <Chip variant="status" status="error" size="sm">
+        {t.values.blocked(mark.count)}
+      </Chip>
+    );
   }
-  return row.blockerCount === 0 ? (
+  if (mark.kind === 'delayed') {
+    return (
+      <Chip variant="status" status="warning" size="sm">
+        {t.values.delayed}
+      </Chip>
+    );
+  }
+  return (
     <Chip variant="status" status="success" size="sm">
       {t.values.completionReady}
-    </Chip>
-  ) : (
-    <Chip variant="status" status="error" size="sm">
-      {t.values.blocked(row.blockerCount)}
     </Chip>
   );
 };
@@ -169,6 +183,8 @@ export const ShipmentTable = ({
   onOpenDetail,
   erpFiltered = false,
 }: ShipmentTableProps) => {
+  /* 「지연」 판단의 오늘 — 화면을 연 기기의 날짜(#342). */
+  const today = localToday();
   const columns: Column<ShipmentRequestView>[] = [
     {
       key: 'requestedShipDate',
@@ -241,7 +257,7 @@ export const ShipmentTable = ({
           <Chip variant="status" status={progressTone(row.shipmentProgressCode)} size="sm">
             {orEmptyMark(progressLabel(row.shipmentProgressCode))}
           </Chip>
-          {renderCompletion(row)}
+          {renderCompletion(row, today)}
         </span>
       ),
     },

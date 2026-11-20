@@ -96,6 +96,8 @@ export const shipmentSchedule = {
     judgmentAccepted: '합격',
     completionReady: '완료 대기',
     blocked: (count: number): string => `막힘 ${String(count)}`,
+    /** #342 — 진짜 이슈는 없지만 출하요청일이 지났는데 피킹이 모자란 지시서. */
+    delayed: '지연',
     replacement: (count: number): string => `LOT 교체 ${String(count)}`,
   },
   filters: {
@@ -174,7 +176,8 @@ export const shipmentSchedule = {
     popOnly: '출하 완료는 POP 「출하 완료」에서 합니다.',
     completed: (shipmentNo: string, completedAt: string): string =>
       `POP 에서 출하 완료했습니다(${shipmentNo}, ${completedAt}). 재고 차감과 수주 출하 수량이 함께 기록됐습니다. 출하 관리 코드는 이제 고칠 수 없습니다. 취소는 「출하 내역」에서 상신합니다.`,
-    blockersTitle: (count: number): string => `출하 완료를 막는 이유 ${String(count)}건`,
+    /** #342 — 진짜 이슈와 정상 진행(피킹 부족, 미검사)을 함께 센다. 「이미 출하 완료」는 세지 않는다. */
+    remainingTitle: (count: number): string => `출하 완료까지 남은 일 ${String(count)}건`,
     blockers: {
       PICKING_SHORT: (lineNo: string): string =>
         `피킹 부족: 라인 ${lineNo}. PDA 「제품 피킹」에서 LOT 을 더 스캔하세요.`,
