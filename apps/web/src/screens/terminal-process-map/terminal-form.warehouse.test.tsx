@@ -50,7 +50,7 @@ const noCodes: TerminalCodeNames = (() => {
 })();
 
 describe('W-CO-06 단말 창고(피처 002)', () => {
-  it('US5-1 창고는 찾기 창으로 고른다 — 단말 공장의 사용 중인 창고만, 비우면 공장 전체, 공장을 바꾸면 비운다', async () => {
+  it('US5-1 창고는 누르면 검색란 · 선택지가 펼쳐진다 — 단말 공장의 사용 중인 창고만, 비우면 공장 전체, 공장을 바꾸면 비운다', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     const queries: URL[] = [];
@@ -85,22 +85,19 @@ describe('W-CO-06 단말 창고(피처 002)', () => {
     );
 
     expect(screen.getByText(t.terminal.warehouseScope)).toBeInTheDocument();
-    expect(screen.getByLabelText(t.terminal.warehouse)).toHaveAttribute(
-      'placeholder',
-      t.terminal.warehouseAll,
-    );
+    const field = screen.getByRole('combobox', { name: t.terminal.warehouse });
+    expect(field).toHaveTextContent(t.terminal.warehouseAll);
 
-    await user.click(screen.getByLabelText(t.terminal.warehouse));
-    const dialog = await screen.findByRole('dialog', { name: t.terminal.warehousePickerTitle });
-    await within(dialog).findByText('합성 제품창고 P');
-    expect(within(dialog).queryByText('다른 공장 창고')).toBeNull();
-    expect(within(dialog).queryByText('중지 창고')).toBeNull();
+    /* 별도 찾기 창 없이 칸 아래로 검색란과 선택지가 펼쳐진다(사용자 지시 2026-11-20 · #333). */
+    await user.click(field);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(await screen.findByRole('searchbox')).toBeInTheDocument();
+    await screen.findByRole('option', { name: 'P01 합성 제품창고 P' });
+    expect(screen.queryByRole('option', { name: 'B01 다른 공장 창고' })).toBeNull();
+    expect(screen.queryByRole('option', { name: 'X01 중지 창고' })).toBeNull();
     expect(queries[0]?.searchParams.get('plantId')).toBe('1');
 
-    await user.click(within(dialog).getByText('합성 제품창고 P'));
-    await user.click(
-      within(dialog).getByRole('button', { name: messages.screenPatterns.referencePicker.pick }),
-    );
+    await user.click(screen.getByRole('option', { name: 'P01 합성 제품창고 P' }));
     expect(onChange).toHaveBeenLastCalledWith({
       warehouse: '12',
       warehouseLabel: 'P01 합성 제품창고 P',

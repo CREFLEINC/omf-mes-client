@@ -63,9 +63,11 @@ export const toTerminalDraft = (view: TerminalView): TerminalDraft => ({
 });
 
 /**
- * 단말 추가 팝업이 처음 채울 단말 코드 — `유형-일련번호`(예: POP-003), 그 유형 일련번호 중 쓰이지 않은 다음 번호
- * (사용자 지시 2026-11-20 · #333). 사용자가 고칠 수 있고, 겹치면 서버가 막는다.
+ * 단말 추가 팝업을 열자마자 채울 단말 코드 — `접두어-일련번호`(예: TERM-003), 쓰이지 않은 다음 번호
+ * (사용자 지시 2026-11-20 · #333). 유형을 고르기 전에도 채우려고 유형과 무관한 접두어를 쓴다. 고칠 수 있고, 겹치면 서버가 막는다.
  */
+export const TERMINAL_CODE_PREFIX = 'TERM';
+
 export const nextTerminalCode = (typeCode: string, codes: readonly string[]): string => {
   const pattern = new RegExp(`^${typeCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-(\\d+)$`);
   const numbers = codes

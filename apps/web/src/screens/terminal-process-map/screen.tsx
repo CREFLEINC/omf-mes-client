@@ -63,6 +63,7 @@ import {
 import { SelectField } from './select-field';
 import {
   EMPTY_TERMINAL,
+  TERMINAL_CODE_PREFIX,
   hasTerminalErrors,
   toCreateBody,
   toTerminalDraft,
@@ -145,12 +146,12 @@ export const TerminalProcessMapScreen = () => {
   const codeNames = useTerminalCodeNames();
 
   /*
-   * 단말 추가 팝업의 단말 코드는 유형을 고르면 `유형-일련번호` 로 미리 채운다 — 고칠 수 있다(사용자 지시 2026-11-20 · #333).
+   * 단말 추가 팝업을 열면 단말 코드를 `TERM-일련번호` 로 바로 채운다 — 고칠 수 있다(사용자 지시 2026-11-20 · #333).
    * 칸이 비었거나 앞서 채운 값 그대로일 때만 바꾼다 — 사용자가 고친 코드는 덮지 않는다.
    */
   const [autoCode, setAutoCode] = useState<string | null>(null);
   const codeSuggestion = useNextTerminalCode(
-    formMode === 'create' ? terminalDraft.terminalTypeCode : '',
+    formMode === 'create' ? terminalDraft.terminalTypeCode || TERMINAL_CODE_PREFIX : '',
   );
   if (
     formMode === 'create' &&
@@ -417,6 +418,10 @@ export const TerminalProcessMapScreen = () => {
     noFlagIds.length === 0;
 
   const isGridDirty = selectedId !== null && isDirty(grid, original);
+  /* 이미 표에 있는 공정은 고를 거리에서 뺀다(사용자 지시 2026-11-20 · #333). */
+  const addableProcesses = processes.entries.filter(
+    (entry) => !grid.some((row) => String(row.processId) === entry.value),
+  );
   /* 저장된 공정을 목록에서 뺐을 때만 저장 단추 옆에 알린다(사용자 지시 2026-11-20 · #333). */
   const hasRemovedProcess = original.some(
     (row) => !grid.some((current) => current.processId === row.processId),
@@ -579,23 +584,27 @@ export const TerminalProcessMapScreen = () => {
           <div className="terminal-map-settings-head terminal-map-grid-head">
             <h3 className="terminal-map-settings-title">{t.panes.grid}</h3>
             {/* 공정 추가는 같은 줄 오른쪽 끝, 칸 이름은 선택칸 왼쪽(사용자 지시 2026-11-20 · #333). */}
-            {!processRows.isError && !processRows.isPending && (
-              <SelectField
-                label={t.grid.add}
-                /* 이미 표에 있는 공정은 고를 거리에서 뺀다(사용자 지시 2026-11-20 · #333). */
-                options={toOptions(
-                  processes.entries.filter(
-                    (entry) => !grid.some((row) => String(row.processId) === entry.value),
-                  ),
-                )}
-                value={addTarget}
-                note={lookupNote(processes, t.grid.processLookupFailed)}
-                error={gridNotice ?? undefined}
-                placeholder={t.grid.addPlaceholder}
-                className="terminal-map-add-field"
-                onChange={addRow}
-              />
-            )}
+            {!processRows.isError &&
+              !processRows.isPending &&
+              (addableProcesses.length === 0 && !processes.isLoading && !processes.isError ? (
+                /* 다 추가했으면 빈 선택칸 대신 안내 라벨(사용자 지시 2026-11-20 · #333). */
+                <p className="iqc-inspection-action-note terminal-map-add-done" data-tone="info">
+                  <Icon name="info" size={16} aria-hidden />
+                  {t.grid.nothingToAdd}
+                </p>
+              ) : (
+                <SelectField
+                  label={t.grid.add}
+                  /* 이미 표에 있는 공정은 고를 거리에서 뺀다(사용자 지시 2026-11-20 · #333). */
+                  options={toOptions(addableProcesses)}
+                  value={addTarget}
+                  note={lookupNote(processes, t.grid.processLookupFailed)}
+                  error={gridNotice ?? undefined}
+                  placeholder={t.grid.addPlaceholder}
+                  className="terminal-map-add-field"
+                  onChange={addRow}
+                />
+              ))}
           </div>
 
           {processRows.isError ? (

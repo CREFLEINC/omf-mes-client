@@ -213,6 +213,12 @@ describe('TerminalProcessMapScreen 조회 조건', () => {
     const dialog = await screen.findByRole('dialog', { name: t.terminal.create });
     expect(within(dialog).queryByRole('button', { name: /닫기|close/i })).not.toBeInTheDocument();
 
+    /* 단말 코드는 열자마자 미리 채워진다(사용자 지시 2026-11-20 · #333) — 지워야 빈 칸 오류를 본다. */
+    const code = within(dialog).getByRole('textbox', { name: t.terminal.code });
+    await waitFor(() => {
+      expect(code).not.toHaveValue('');
+    });
+    await user.clear(code);
     await user.click(within(dialog).getByRole('button', { name: t.terminal.register }));
     expect(within(dialog).getByText(t.terminal.requiredCode)).toBeInTheDocument();
     await user.type(within(dialog).getByRole('textbox', { name: t.terminal.code }), 'SYN-NEW');
@@ -379,7 +385,7 @@ describe('TerminalProcessMapScreen 기능 구성 저장', () => {
     );
   });
 
-  it('「변경 취소」하면 서버가 짚은 문구도 지운다', async () => {
+  it('「취소」하면 서버가 짚은 문구도 지운다', async () => {
     const { user } = await saveAndReject();
 
     await user.click(screen.getByRole('button', { name: t.grid.reset }));

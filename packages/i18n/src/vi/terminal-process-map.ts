@@ -76,8 +76,7 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     unassigned: 'Chưa chỉ định',
     registeredAt: 'Thời điểm đăng ký',
     equipment: 'Thiết bị lắp đặt',
-    equipmentNone: 'Chưa chỉ định thiết bị',
-    equipmentHint: 'Hãy chỉ định nếu là loại POP',
+    equipmentNone: 'Chưa chỉ định',
     plantPlaceholder: 'Chọn nhà máy',
     typePlaceholder: 'Chọn loại',
     warehouse: 'Kho',
@@ -86,12 +85,6 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     /** 창고 칸 이름 오른쪽 안내 라벨(사용자 시안 2026-11-20 · #333). */
     warehouseScope: 'Danh sách công việc và số việc còn lại được hiển thị theo kho đã chọn.',
     optionalMark: '(tùy chọn)',
-    equipmentPickerTitle: 'Chọn thiết bị lắp đặt',
-    equipmentCodeColumn: 'Mã thiết bị',
-    equipmentNameColumn: 'Tên thiết bị',
-    warehousePickerTitle: 'Chọn kho',
-    warehouseCodeColumn: 'Mã kho',
-    warehouseNameColumn: 'Tên kho',
     save: 'Lưu',
     saving: 'Đang lưu.',
     saved: 'Đã lưu thông tin máy quét.',
@@ -136,10 +129,11 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
 
   grid: {
     process: 'Công đoạn',
-    openAll: 'Chọn tất cả',
+    openAll: 'Tất cả chức năng',
     add: 'Thêm công đoạn',
     addPlaceholder: 'Chọn công đoạn',
-    manage: 'Quản lý',
+    nothingToAdd: 'Không còn công đoạn để thêm.',
+    manage: 'Loại trừ công đoạn',
     remove: 'Loại trừ',
     emptyTitle: 'Chưa có công đoạn nào được thiết lập.',
     /** 저장된 공정을 목록에서 뺐을 때 저장 단추 옆 경고(사용자 지시 2026-11-20 · #333). */

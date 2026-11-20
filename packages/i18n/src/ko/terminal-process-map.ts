@@ -73,9 +73,7 @@ export const terminalProcessMap = {
     unassigned: '미지정',
     registeredAt: '등록 일시',
     equipment: '설치 설비',
-    equipmentNone: '설비 미지정',
-    /** POP 이 「이 설비」를 전제로 도는 화면들이 이 값을 쓴다 — 라벨 옆 한 줄 안내. 유형과 상관없이 늘 보인다. */
-    equipmentHint: 'POP 유형일 시 지정해 주세요',
+    equipmentNone: '미지정',
     plantPlaceholder: '공장 선택',
     typePlaceholder: '유형 선택',
     warehouse: '창고',
@@ -84,12 +82,6 @@ export const terminalProcessMap = {
     /** 창고 칸 이름 오른쪽 안내 라벨(사용자 시안 2026-11-20 · #333). */
     warehouseScope: '작업 목록과 남은 작업 수는 선택한 창고 기준으로 표시됩니다.',
     optionalMark: '(선택)',
-    equipmentPickerTitle: '설치 설비 선택',
-    equipmentCodeColumn: '설비 코드',
-    equipmentNameColumn: '설비명',
-    warehousePickerTitle: '창고 선택',
-    warehouseCodeColumn: '창고 코드',
-    warehouseNameColumn: '창고명',
     save: '저장',
     saving: '저장하는 중입니다.',
     saved: '단말 정보를 저장했습니다.',
@@ -134,11 +126,12 @@ export const terminalProcessMap = {
   grid: {
     process: '공정',
     /** 여덟 칸을 하나씩 누르지 않게 한 줄을 통째로 여닫는다. */
-    openAll: '전체 선택',
+    openAll: '모든 기능',
     add: '공정 추가',
     addPlaceholder: '공정 선택',
+    nothingToAdd: '추가할 공정이 없습니다.',
     /** 공정 행 관리 열 — 기능 칸과 성격이 다르다(이 단말의 구성에서 공정을 뺀다). */
-    manage: '관리',
+    manage: '공정 제외',
     /** ⭐ 공정 마스터를 지우지 않는다 — 저장 때 이 단말의 공정 연결에서만 빠진다. */
     remove: '제외',
     /** ⭐ 공정이 없는 단말이 있다(창고 단말) — 빈 영역에 한 줄만(사용자 지시 2026-11-20 · #333). */

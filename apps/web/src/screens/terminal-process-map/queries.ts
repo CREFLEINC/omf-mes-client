@@ -102,8 +102,8 @@ export const useTerminals = (filters: TerminalFilters): UseQueryResult<TerminalL
 const CODE_SCAN_SIZE = 200;
 
 /**
- * 단말 추가 팝업이 채울 다음 단말 코드(`유형-일련번호` · 사용자 지시 2026-11-20 · #333).
- * 미사용까지 모든 단말 중 그 유형 접두어가 든 코드를 받아 센다. 유형을 고르기 전이거나, 못 받았거나, 잘려 왔으면 `null`.
+ * 단말 추가 팝업이 채울 다음 단말 코드(`접두어-일련번호` · 사용자 지시 2026-11-20 · #333).
+ * 미사용까지 모든 단말 중 접두어가 든 코드를 받아 센다. 팝업이 닫혀 있거나, 못 받았거나, 잘려 왔으면 `null`.
  */
 export const useNextTerminalCode = (typeCode: string): string | null => {
   const { client } = useApiClient();

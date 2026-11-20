@@ -1,10 +1,7 @@
-import { Button, Checkbox, Table, type Column } from '@crefle/web-ui';
+import { Checkbox, IconButton, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import { useFitColumns } from '../../patterns/column-fit';
-import { useColumnOrder } from '../../patterns/column-grip-order';
-import { useColumnWidths } from '../../patterns/column-resize';
 import { FLAG_KEYS, flagLabel, type FlagKey } from './flags';
 import { isRowOpen } from './grid-draft';
 import type { ProcessRowView } from './types';
@@ -41,25 +38,8 @@ export const ProcessGrid = ({
   onRemove,
   empty,
 }: ProcessGridProps) => {
+  /* 시안(사용자 지시 2026-11-20 · #333) — 공정 | 모든 기능 | 기능 여덟 칸 | 휴지통. */
   const columns: Column<ProcessRowView>[] = [
-    /* 한 행의 여덟 기능을 함께 켜고 끄는 칸 — 공정 칸 앞에 따로 둔다. 글자 없이 확인칸만. */
-    {
-      key: 'openAll',
-      header: t.grid.openAll,
-      width: '88px',
-      align: 'center',
-      render: (row) => (
-        <Checkbox
-          checked={isRowOpen(row)}
-          disabled={disabled}
-          /* 줄마다 같은 이름이면 낭독기가 여러 개의 「전체 선택」을 가르지 못한다. */
-          aria-label={`${row.processName} ${t.grid.openAll}`}
-          onChange={(event) => {
-            onToggleRow(row.processId, event.target.checked);
-          }}
-        />
-      ),
-    },
     {
       key: 'process',
       header: t.grid.process,
@@ -73,6 +53,28 @@ export const ProcessGrid = ({
             {row.processName}
             <span className="field-error">{error}</span>
           </span>
+        );
+      },
+    },
+    /* 한 줄의 기능을 함께 켜고 끈다 — 일부만 켜져 있으면 반쯤 표시. */
+    {
+      key: 'openAll',
+      header: t.grid.openAll,
+      width: '104px',
+      align: 'center',
+      render: (row) => {
+        const on = FLAG_KEYS.filter((key) => row[key]).length;
+        return (
+          <Checkbox
+            checked={isRowOpen(row)}
+            indeterminate={on > 0 && on < FLAG_KEYS.length}
+            disabled={disabled}
+            /* 줄마다 같은 이름이면 낭독기가 여러 개의 「모든 기능」을 가르지 못한다. */
+            aria-label={`${row.processName} ${t.grid.openAll}`}
+            onChange={() => {
+              onToggleRow(row.processId, !isRowOpen(row));
+            }}
+          />
         );
       },
     },
@@ -92,40 +94,32 @@ export const ProcessGrid = ({
         />
       ),
     })),
+    /* 머리 글자 없이 휴지통 아이콘만 — 이름은 낭독기에만(사용자 지시 2026-11-20 · #333). */
     {
       key: 'remove',
-      header: t.grid.manage,
-      width: '72px',
+      header: <span className="visually-hidden">{t.grid.manage}</span>,
+      width: '64px',
       align: 'center',
       render: (row) => (
-        <Button
-          variant="text"
+        <IconButton
+          icon="delete"
           size="sm"
+          variant="standard"
           disabled={disabled}
           aria-label={`${row.processName} ${t.grid.remove}`}
           onClick={() => {
             onRemove(row.processId);
           }}
-        >
-          {t.grid.remove}
-        </Button>
+        />
       ),
     },
   ];
 
-  /* 다른 표와 같이 열 폭 끌기 · 순서 바꾸기, 남는 폭은 나눠 갖고 넘치면 가로로 구른다(사용자 지시 2026-11-20 · #333). */
-  const ordered = useColumnOrder('omf-mes:terminal-process-map:grid:order', columns);
-  const resizable = useColumnWidths('omf-mes:terminal-process-map:grid', ordered);
-  const fit = useFitColumns(resizable.columns, { scrollX: true });
-
   return (
-    <div
-      ref={fit.ref}
-      className="inspection-queue-table terminal-map-matrix"
-      style={resizable.style}
-    >
+    /* 열 순서 · 폭은 고정(사용자 지시 2026-11-20 · #333) — 넘치면 표 안에서 가로로 구른다. */
+    <div className="inspection-queue-table terminal-map-matrix">
       <Table
-        columns={fit.columns}
+        columns={columns}
         rows={rows}
         getRowId={(row) => String(row.processId)}
         density="compact"

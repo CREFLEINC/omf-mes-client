@@ -916,7 +916,7 @@ main > * + * {
 
 .inspection-standard-readonly-grid dt {
   color: var(--on-surface-variant);
-  font: var(--type-label-md);
+  font: var(--type-body-md);
 }
 
 .inspection-standard-readonly-grid dd {
@@ -2210,7 +2210,7 @@ h2:has(> .inspection-standard-dialog-title) {
   height: 2.25rem;
   background: var(--surface-container);
   color: var(--on-surface-variant);
-  font: var(--type-label-md);
+  font: var(--type-body-md);
 }
 
 .item-attrs-table thead th:nth-child(1) {
@@ -3779,8 +3779,8 @@ dialog.routing-history-dialog {
 
 .work-order-assignment-context > span {
   color: var(--on-surface-variant);
-  font: var(--type-label-md);
-  letter-spacing: var(--type-label-md-tracking);
+  font: var(--type-body-md);
+  letter-spacing: var(--type-body-md-tracking);
 }
 
 .work-order-assignment-context > h2,
@@ -6551,7 +6551,7 @@ dialog.routing-history-dialog {
 .suspicious-material-hold-defect-lot-hint {
   flex: none;
   color: var(--on-surface-variant);
-  font: var(--type-label-md);
+  font: var(--type-body-md);
 }
 
 .suspicious-material-hold-defect-lot-state {
@@ -7696,8 +7696,8 @@ main:has(.iqc-skip-approval-detail) {
   gap: var(--space-1);
   padding: 2px var(--space-3);
   border-radius: var(--radius-full);
-  font: var(--type-label-md);
-  letter-spacing: var(--type-label-md-tracking);
+  font: var(--type-body-md);
+  letter-spacing: var(--type-body-md-tracking);
 }
 
 .quality-approval-turn-label.is-mine {
@@ -7818,8 +7818,8 @@ main:has(.iqc-skip-approval-detail) {
   border-radius: var(--radius-full);
   background: var(--surface-container-high);
   color: var(--on-surface-variant);
-  font: var(--type-label-md);
-  letter-spacing: var(--type-label-md-tracking);
+  font: var(--type-body-md);
+  letter-spacing: var(--type-body-md-tracking);
 }
 
 .quality-approval-step.is-current .quality-approval-step-no,
@@ -11784,7 +11784,7 @@ body.po-board-resizing.is-row-resize {
 }
 
 .ors-confirm-line-no {
-  font: var(--type-label-md);
+  font: var(--type-body-md);
   color: var(--on-surface-variant);
 }
 
@@ -12217,7 +12217,7 @@ th:hover > .col-drag {
 
 .po-board-lot-main > .po-board-one-line,
 .po-board-lot-meta {
-  font: var(--type-label-md);
+  font: var(--type-body-md);
   color: var(--on-surface-variant);
 }
 
@@ -12228,7 +12228,7 @@ th:hover > .col-drag {
 
 /* 「PDA에서 적치」처럼 이 화면이 하지 않는 다음 일 — 단추 모양을 쓰지 않는다. */
 .po-board-lot-note {
-  font: var(--type-label-md);
+  font: var(--type-body-md);
   color: var(--on-surface-variant);
 }
 
@@ -15785,7 +15785,7 @@ dialog.layout-editor-dialog {
 
 .dash-donut-share {
   color: var(--on-surface-muted);
-  font: var(--type-label-md);
+  font: var(--type-body-md);
 }
 
 /* 막대 목록 — 이름 · 막대 · 수량 · 비율이 모든 줄에서 같은 열(subgrid), 수량 · 비율은 오른쪽 정렬. */
@@ -18287,6 +18287,25 @@ dialog.layout-editor-dialog {
 /* 공정이 없을 때 — 표 머리는 두고, 빈 문구는 가로로 구르는 표가 아니라 보이는 폭 가운데에(#333). */
 .terminal-map-matrix {
   container-type: inline-size;
+  overflow-x: auto;
+}
+
+/* 열 폭은 정한 값 그대로, 남는 폭은 기능 칸이 나눠 갖는다(열 끌기 없음 · #333). */
+.terminal-map-matrix table {
+  width: 100%;
+  min-width: 72.5rem;
+  table-layout: fixed;
+}
+
+/* 공정 이름은 왼쪽 정렬(시안) — 공용 표의 가운데 정렬보다 무거워야 선다. */
+.inspection-queue-table.terminal-map-matrix table :is(th, td):first-child:nth-child(n):nth-child(n) {
+  text-align: left;
+  padding-inline-start: var(--space-4);
+}
+
+/* 다 추가했을 때 안내 — 공정 추가 칸 자리 오른쪽 끝. */
+.terminal-map-add-done {
+  margin: 0 0 0 auto;
 }
 
 .terminal-map-matrix td[colspan] > * {
@@ -18302,7 +18321,7 @@ dialog.layout-editor-dialog {
 }
 
 /* 전체 선택·기능 칸 — 상자 둘레까지 눌리게 누름 영역을 넓힌다(DS 확인칸의 label 이 그대로 받는다). */
-.terminal-map-matrix td:not(:nth-child(2)):not(:last-child) > label {
+.terminal-map-matrix td:not(:first-child):not(:last-child) > label {
   padding: var(--space-2);
 }
 
@@ -18383,8 +18402,8 @@ dialog.terminal-map-form-dialog {
 }
 
 .terminal-map-form.form-grid {
-  grid-template-columns: repeat(2, minmax(18rem, max-content));
-  column-gap: var(--space-6);
+  grid-template-columns: repeat(2, 17rem);
+  column-gap: var(--space-5);
 }
 
 /* 입력 · 선택 · 찾기 칸은 값 길이만큼만(사용자 지시 2026-11-20 · #333) — 칸 이름 줄(안내 라벨)은 열 폭을 그대로 쓴다. */
@@ -18402,8 +18421,8 @@ dialog.terminal-map-form-dialog {
 .field-label > .terminal-map-label-note {
   margin: 0 0 0 var(--space-2);
   padding: 1px var(--space-2);
-  font: var(--type-body-md);
-  letter-spacing: var(--type-body-md-tracking);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
 }
 
 /* 수정 팝업의 단말 코드 — 입력칸 테두리 없이 값만(고칠 수 없다). 옆 칸 입력칸과 높이를 맞춘다. */
@@ -18419,11 +18438,16 @@ dialog.terminal-map-form-dialog {
 /* 창고 칸 아래 기준 안내 — 칸 폭에 갇히지 않고 한 줄로. */
 .terminal-map-form .field-cell > .terminal-map-warehouse-note {
   width: auto;
-  max-width: none;
+  max-width: 17rem;
   margin: var(--space-1) 0 0;
-  padding: 1px var(--space-2);
-  font: var(--type-body-md);
-  letter-spacing: var(--type-body-md-tracking);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-md);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  white-space: normal;
+  text-align: left;
+  align-items: flex-start;
+  justify-content: flex-start;
   justify-self: start;
 }
 
@@ -19518,7 +19542,7 @@ dialog.terminal-map-form-dialog {
 .stock-reinstatement-summary dt,
 .stock-reinstatement-confirm-summary dt {
   color: var(--on-surface-variant);
-  font: var(--type-label-md);
+  font: var(--type-body-md);
 }
 
 .stock-reinstatement-summary dd,
@@ -31458,7 +31482,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   border-radius: var(--radius-full);
   background: var(--surface-container-high);
   color: var(--on-surface-variant);
-  font: var(--type-label-md);
+  font: var(--type-body-md);
   text-align: center;
 }
 
@@ -32992,7 +33016,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 .parts-iqc-confirm-card h4 {
   margin: 0;
   color: var(--on-surface-variant);
-  font: var(--type-label-md);
+  font: var(--type-body-md);
 }
 
 .parts-iqc-confirm-card strong {
@@ -33001,7 +33025,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 }
 
 .parts-iqc-confirm-verdict {
-  font: var(--type-label-md);
+  font: var(--type-body-md);
 }
 
 .parts-iqc-confirm-verdict[data-tone='ok'] {
@@ -33287,7 +33311,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 
 .parts-iqc-kv dt {
   color: var(--on-surface-variant);
-  font: var(--type-label-md);
+  font: var(--type-body-md);
 }
 
 .parts-iqc-kv dd {
@@ -33312,7 +33336,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 /* 칸 이름도 위 LOT 정보의 이름(dt)과 같은 글자 */
 .parts-iqc-lot-inspected .field-label {
   color: var(--on-surface-variant);
-  font: var(--type-label-md);
+  font: var(--type-body-md);
 }
 
 /* 검사 기준 조회 팝업 — 기준서 칸의 [기준 보기], 팝업 안 정보 · 항목 표 · 도면(사용자 지시 2026-10-30). */
@@ -34632,7 +34656,7 @@ ul.iqc-inbound-superseded {
   gap: var(--space-2);
   margin-bottom: var(--space-2);
   color: var(--on-surface-variant);
-  font: var(--type-label-md);
+  font: var(--type-body-md);
 }
 
 .measurement-section-tools > :last-child {
