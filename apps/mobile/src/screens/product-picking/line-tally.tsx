@@ -96,8 +96,9 @@ export const LineTally = ({
                       <FitName
                         className="picking-tally__name"
                         text={item.itemName}
-                        min={8}
+                        min={7}
                         lines={1}
+                        whole
                       />
                     </button>
                   </td>
