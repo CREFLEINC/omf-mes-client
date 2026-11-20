@@ -1370,6 +1370,42 @@ textarea.pu-input {
   grid-column: 1 / -1;
 }
 
+/*
+ * 정보 띠 「이름 위 · 값 아래」 짜임 — 칸 이름(작은 아이콘 + 회색 글) 아래 굵은 값. 기본 2열, `is-wide` 4열.
+ * OQC 출하검사(P-04-06) 의뢰 정보 띠에서 옮겨 와 출하 완료(P-04-07) 머리 띠도 같이 쓴다(#334).
+ */
+.pu-band-stack > .pu-band.grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 16px;
+  background: var(--pu-field);
+}
+
+.pu-band-stack.is-wide > .pu-band.grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.pu-band-stack .pu-band .kv {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.pu-band-stack .pu-band .kv > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.pu-band-stack .pu-band .kv > span > .pu-ic {
+  color: var(--pu-primary);
+}
+
+.pu-band-stack .pu-band .kv > b {
+  max-width: 100%;
+  white-space: nowrap;
+}
+
 /* ── 아래 작업 줄(규칙 2·3): 버튼만, 주 버튼은 맨 오른쪽 하나 ── */
 .pu-actionbar {
   flex: none;

@@ -1,4 +1,5 @@
 import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 
 import {
   PuBand,
@@ -8,6 +9,7 @@ import {
   PuSection,
   puCx,
   type PuChipTone,
+  type PuIconName,
 } from '../../patterns/pop-uniform';
 import {
   OQC_TONE,
@@ -73,6 +75,14 @@ const portionText = (lot: CompletionLot): string =>
     })
     .join(', ');
 
+/** 정보 띠 칸 이름 — 작은 아이콘 + 글(OQC 출하검사 의뢰 정보 띠와 같은 모양). */
+const bandLabel = (icon: PuIconName, text: string): ReactNode => (
+  <>
+    <PuIcon name={icon} />
+    {text}
+  </>
+);
+
 /** 교체 근거 판정 글 — 판정 코드가 OQC 판정 이름에 있으면 그 이름. */
 const judgmentText = (judgment: string | null): string | null =>
   judgment !== null && judgment in t.lots.oqc
@@ -116,42 +126,50 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
         }
       >
         {/*
-         * 정보 띠 — 출하 단위 구성(shipping-unit)의 출하 정보 띠와 같은 공통 `PuBand` 격자(3열 · 「이름 값」).
-         * 창고는 칩이 여럿일 수 있어 한 줄 전체를 쓴다.
+         * 정보 띠 — OQC 출하검사 의뢰 정보 띠와 같은 「이름 위 · 값 아래」 4열 격자(`pu-band-stack`, 사용자 지시 2026-11-20).
+         * 아이콘도 그 띠와 같은 뜻으로 고른다(거래처 list · 번호 file · 수량 check). 창고는 칩이 여럿일 수 있어 한 줄 전체.
          */}
-        <PuBand
-          grid={3}
-          label={t.head.band}
-          items={[
-            {
-              label: t.head.customer,
-              value: t.head.named(completion.customer.partnerName, completion.customer.partnerCode),
-            },
-            {
-              label: t.head.shipTo,
-              value: t.head.named(completion.shipTo.partnerName, completion.shipTo.partnerCode),
-            },
-            { label: t.head.salesOrder, value: completion.salesOrderNo ?? t.head.noSalesOrder },
-            { label: t.head.lotCount, value: String(completion.lots.length) },
-            { label: t.head.qty, value: qtyWithUom(totalQty, uom) },
-            {
-              label: t.warehouses.heading,
-              wide: true,
-              value:
-                completion.warehouses.length === 0 ? (
-                  t.head.none
-                ) : (
-                  <span className="psc-wh-chips">
-                    {completion.warehouses.map((warehouse) => (
-                      <span key={warehouse.warehouseId} className="psc-wh-chip">
-                        {t.head.named(warehouse.warehouseName, warehouse.warehouseCode)}
-                      </span>
-                    ))}
-                  </span>
+        <div className="pu-band-stack is-wide psc-band">
+          <PuBand
+            grid={3}
+            label={t.head.band}
+            items={[
+              {
+                label: bandLabel('list', t.head.customer),
+                value: t.head.named(
+                  completion.customer.partnerName,
+                  completion.customer.partnerCode,
                 ),
-            },
-          ]}
-        />
+              },
+              {
+                label: bandLabel('list', t.head.shipTo),
+                value: t.head.named(completion.shipTo.partnerName, completion.shipTo.partnerCode),
+              },
+              {
+                label: bandLabel('file', t.head.salesOrder),
+                value: completion.salesOrderNo ?? t.head.noSalesOrder,
+              },
+              { label: bandLabel('box', t.head.lotCount), value: String(completion.lots.length) },
+              { label: bandLabel('check', t.head.qty), value: qtyWithUom(totalQty, uom) },
+              {
+                label: bandLabel('pin', t.warehouses.heading),
+                wide: true,
+                value:
+                  completion.warehouses.length === 0 ? (
+                    t.head.none
+                  ) : (
+                    <span className="psc-wh-chips">
+                      {completion.warehouses.map((warehouse) => (
+                        <span key={warehouse.warehouseId} className="psc-wh-chip">
+                          {t.head.named(warehouse.warehouseName, warehouse.warehouseCode)}
+                        </span>
+                      ))}
+                    </span>
+                  ),
+              },
+            ]}
+          />
+        </div>
         {splitLots.map((lotNo) => (
           <PuNote key={lotNo}>{t.warehouses.splitLot(lotNo)}</PuNote>
         ))}

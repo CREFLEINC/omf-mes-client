@@ -24,39 +24,6 @@
   gap: 8px;
 }
 
-/* 의뢰 정보 띠: 이름을 값 위에 작게 — 1단계 2열, 2단계·판정 결과(넓음) 4열. */
-.oqc-band > .pu-band.grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px 16px;
-  background: var(--pu-field);
-}
-
-.oqc-band.is-wide > .pu-band.grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.oqc-band .pu-band .kv {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0;
-}
-
-.oqc-band .pu-band .kv > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 13px;
-}
-
-.oqc-band .pu-band .kv > span > .pu-ic {
-  color: var(--pu-primary);
-}
-
-.oqc-band .pu-band .kv > b {
-  max-width: 100%;
-  white-space: nowrap;
-}
-
 .oqc-band .oqc-vrow {
   display: inline-flex;
   align-items: center;
@@ -307,7 +274,7 @@
 
 /* 좁은 화면(1024 등)에서는 머리 띠를 셋씩 — 넷이면 의뢰번호가 잘린다. */
 @media (max-width: 1100px) {
-  .oqc-u .pop-oqc-summary .oqc-band.is-wide > .pu-band.grid {
+  .oqc-u .pop-oqc-summary .pu-band-stack.is-wide > .pu-band.grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

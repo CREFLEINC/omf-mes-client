@@ -141,7 +141,7 @@ export const PopRequestBand = ({
   }
 
   return (
-    <div className={wide ? 'oqc-band is-wide' : 'oqc-band'}>
+    <div className={wide ? 'oqc-band pu-band-stack is-wide' : 'oqc-band pu-band-stack'}>
       <PuBand grid={wide ? 4 : 3} items={items} label={t.bandLabel} />
       {planOpen && (
         <PuDialog
