@@ -112,7 +112,6 @@ export const ResultPane = ({
   } else {
     body = (
       <div className="disposition-request-table">
-        <p className="field-note">{t.result.partialNote}</p>
         <Table
           density="compact"
           caption={<span className="disposition-request-table-caption">{t.panes.decisions}</span>}

@@ -111,7 +111,6 @@ export const shipmentRequestCreate = {
   notes: {
     fromOrderLocked: '지시서 경유 편성이라 고객·납품처와 라인 품목·수량은 고칠 수 없습니다.',
     requestedQtyFixed: '요청 수량은 지시서 잔여 수량으로 자동 채워지며 고칠 수 없습니다.',
-    lineNoAssignedByServer: '줄번호는 서버가 부여합니다.',
     erpUnmatched: 'ERP 지시서 번호는 단독 생성분에는 없습니다.',
     networkUnconfirmed:
       '응답을 받지 못했습니다. 서버에 실제로 반영됐는지 다시 확인한 뒤 재시도하세요.',

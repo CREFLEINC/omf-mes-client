@@ -105,7 +105,6 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
       'Đây là lệnh lập qua phiếu chỉ thị nên không sửa được khách hàng, nơi giao hàng và mặt hàng, số lượng của các dòng.',
     requestedQtyFixed:
       'Số lượng yêu cầu được tự động điền bằng số lượng còn lại của phiếu chỉ thị và không sửa được.',
-    lineNoAssignedByServer: 'Số dòng do máy chủ cấp.',
     erpUnmatched: 'Phần tạo độc lập không có số phiếu chỉ thị ERP.',
     networkUnconfirmed:
       'Chưa nhận được phản hồi. Hãy kiểm tra lại xem máy chủ đã ghi nhận thật chưa rồi thử lại.',

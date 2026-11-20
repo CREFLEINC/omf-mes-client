@@ -10,7 +10,9 @@
 export const shipmentConfirm = {
   title: '출하 내역',
   breadcrumbRoot: '영업 / 출하 관리',
-  lead: '출하는 POP 「출하 완료」에서 끝납니다. 이 화면에서는 출하를 보고, ERP 로 보내기 전이면 취소를 요청합니다. 옛 흐름이나 긴급 직행으로 만든 미확정 출하만 여기서 확정합니다.',
+  /** 출하 목록 제목 옆 ⓘ — 출하가 어디서 끝나고 무엇만 여기서 확정하는지(관리웹 정리 시안 A). */
+  flowRule:
+    '출하는 POP 「출하 완료」에서 끝납니다. 옛 흐름이나 긴급 직행으로 만든 미확정 출하만 여기서 확정합니다.',
   panes: {
     list: '출하 목록',
     detail: '출하 상세',
@@ -195,8 +197,6 @@ export const shipmentConfirm = {
     reasonHelp: '왜 취소하는지 남기세요. 승인자가 이것을 읽고 판단합니다.',
     reasonRequired: '취소 사유를 입력하세요',
     reasonTooLong: '취소 사유가 너무 깁니다. 500자까지 입력하세요',
-    /** A-11 — 취소한 사람·시각을 담을 자리가 없어 승인 기록이 이력을 대신한다. */
-    traceWithdrawn: '취소한 사람과 시각은 결재 기록으로 남습니다.',
     /** 요청하는 사이 송신이 먼저 끝났다 — 409 ERP_ALREADY_SENT. */
     erpAlreadySent:
       '취소 요청을 올리지 못했습니다. 요청하는 사이 ERP 송신이 먼저 끝났습니다 — ERP 로 이미 보냈습니다. ERP 에서 처리하세요.',

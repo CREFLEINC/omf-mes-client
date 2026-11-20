@@ -5,8 +5,6 @@ import type { Translated } from './translated';
 export const dispositionRequest: Translated<typeof ko.dispositionRequest> = {
   title: 'Yêu cầu đánh giá làm lại hoặc hủy',
   breadcrumbRoot: 'Quản lý bán hàng / xuất hàng',
-  scopeNotice:
-    'Việc đánh giá làm ở màn hình chất lượng. Ở đây chỉ đăng ký điểm không phù hợp và yêu cầu đánh giá.',
   periodContractBlocked:
     'Vẫn chưa tải được danh sách theo trạng thái điểm không phù hợp. Máy chủ bắt buộc phải có khoảng thời gian tra cứu mà màn hình này lại không có điều kiện thời gian, nên sẽ mở sau khi đội máy chủ xác nhận. Trong lúc đó hãy để trống điều kiện trạng thái và dùng danh sách đối tượng chờ đánh giá.',
   panes: {
@@ -123,7 +121,6 @@ export const dispositionRequest: Translated<typeof ko.dispositionRequest> = {
     severityRequired: 'Hãy chọn mức nghiêm trọng',
     departmentLabel: 'Bộ phận phụ trách',
     departmentNone: 'Không chỉ định',
-    sourceDerived: 'Nguồn gốc do máy chủ xác định theo loại nhập kho. Không chọn ở đây.',
     qtyNote: (qty: string, uom: string): string =>
       `Đăng ký toàn bộ số lượng đối tượng ${qty} ${uom} là điểm không phù hợp.`,
     success: 'Đã đăng ký điểm không phù hợp',

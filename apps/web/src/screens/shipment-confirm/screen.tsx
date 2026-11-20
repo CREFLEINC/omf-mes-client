@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import {
@@ -151,8 +152,8 @@ export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) 
           />
         }
       />
+      {/* 화면 설명 띠는 걷고, 출하가 어디서 끝나는지는 목록 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
       <header ref={aboveRef} className="banner-slot ship-history-lead">
-        <AlertBanner variant="info">{t.lead}</AlertBanner>
         <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} inline />
       </header>
 
@@ -162,7 +163,12 @@ export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) 
         style={{ ...split.style, ...layout.style }}
       >
         <section className="pane po-board-pane po-board-scroll" aria-label={t.panes.list}>
-          <h2>{t.panes.list}</h2>
+          <h2>
+            <span className="info-label">
+              {t.panes.list}
+              <InfoTip text={t.flowRule} />
+            </span>
+          </h2>
           <FilterBar
             applied={filters}
             defaults={initialFilters}

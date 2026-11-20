@@ -170,7 +170,8 @@ export const shipmentSchedule = {
     noLotsBanner:
       '아직 피킹한 LOT 이 없습니다. 출하 담당 공장을 지정하고 배정한 뒤, PDA 「제품 피킹」에서 LOT 라벨을 스캔하면 여기에 LOT 이 보입니다.',
     noPickingWarehouse: '아직 없음',
-    popOnly: '출하 완료는 POP 「출하 완료」에서 합니다. 이 화면은 보기만 합니다.',
+    /** 「진행」 옆 ⓘ — 출하 완료를 어디서 하는지(관리웹 정리 시안 A). */
+    popOnly: '출하 완료는 POP 「출하 완료」에서 합니다.',
     completed: (shipmentNo: string, completedAt: string): string =>
       `POP 에서 출하 완료했습니다(${shipmentNo}, ${completedAt}). 재고 차감과 수주 출하 수량이 함께 기록됐습니다. 출하 관리 코드는 이제 고칠 수 없습니다. 취소는 「출하 내역」에서 상신합니다.`,
     blockersTitle: (count: number): string => `출하 완료를 막는 이유 ${String(count)}건`,
