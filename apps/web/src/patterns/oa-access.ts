@@ -23,6 +23,7 @@ interface Scope {
 
 /**
  * 계정 범위가 OA 공장을 덮는가 — 서버(`oa-plant.ts`)와 같은 규칙. 공장 없는 범위는 그 사업부의 모든 공장이다.
+ * 범위 줄이 없으면 제한 없음 — 모든 공장(omf-all-around#336).
  * ⚠ 사업부(VIETNAM)가 부품·OA 두 공장을 함께 가져 공장 코드로 가른다.
  */
 export const coversOaPlant = (
@@ -32,12 +33,14 @@ export const coversOaPlant = (
 ): boolean =>
   plants
     .filter((plant) => oaCodes.has(plant.plantCode))
-    .some((plant) =>
-      scopes.some((scope) =>
-        scope.plantId === undefined
-          ? scope.businessUnitId === plant.businessUnitId
-          : scope.plantId === plant.plantId,
-      ),
+    .some(
+      (plant) =>
+        scopes.length === 0 ||
+        scopes.some((scope) =>
+          scope.plantId === undefined
+            ? scope.businessUnitId === plant.businessUnitId
+            : scope.plantId === plant.plantId,
+        ),
     );
 
 interface PlantRow {
@@ -47,17 +50,19 @@ interface PlantRow {
   businessUnitId?: number | null;
 }
 
-/** 계정 범위가 덮는 공장 — 공장 없는 범위는 그 사업부의 모든 공장이다(`coversOaPlant` 와 같은 규칙). */
+/** 계정 범위가 덮는 공장 — 공장 없는 범위는 그 사업부의 모든 공장, 범위 줄이 없으면 모든 공장(`coversOaPlant` 와 같은 규칙). */
 export const plantsInScope = <T extends PlantRow>(
   scopes: readonly Scope[],
   plants: readonly T[],
 ): T[] =>
-  plants.filter((plant) =>
-    scopes.some((scope) =>
-      scope.plantId === undefined
-        ? scope.businessUnitId === plant.businessUnitId
-        : scope.plantId === plant.plantId,
-    ),
+  plants.filter(
+    (plant) =>
+      scopes.length === 0 ||
+      scopes.some((scope) =>
+        scope.plantId === undefined
+          ? scope.businessUnitId === plant.businessUnitId
+          : scope.plantId === plant.plantId,
+      ),
   );
 
 /** 공장 목록과 OA 공장 코드 — OA 판정과 부품 공장 고르기(omf-all-around#211)가 같은 조회를 나눠 쓴다. */
@@ -121,4 +126,29 @@ export const useScopedPlants = ():
     oa: scoped.filter((plant) => codes.has(plant.plantCode)),
     parts: scoped.filter((plant) => !codes.has(plant.plantCode)),
   };
+};
+
+/**
+ * 검사표를 만들 사업부 후보 — 계정 범위의 사업부. 범위 줄이 없으면(제한 없음) OA 공장들의 사업부다(omf-all-around#336).
+ */
+export const scopeBusinessUnitIds = (
+  scopes: readonly Scope[],
+  plants: readonly { plantCode: string; businessUnitId?: number | null }[],
+  oaCodes: ReadonlySet<string>,
+): number[] => {
+  if (scopes.length > 0) return scopes.map((scope) => scope.businessUnitId);
+  const ids = plants
+    .filter((plant) => oaCodes.has(plant.plantCode))
+    .map((plant) => plant.businessUnitId)
+    .filter((id): id is number => typeof id === 'number');
+  return [...new Set(ids)];
+};
+
+export const useScopeBusinessUnitIds = (): number[] => {
+  const { session } = useSession();
+  const lookup = usePlantsAndOaCodes();
+  if (session === null || session === undefined) return [];
+  if (session.scopes.length > 0) return session.scopes.map((scope) => scope.businessUnitId);
+  if (lookup.data === undefined) return [];
+  return scopeBusinessUnitIds(session.scopes, lookup.data.plants, lookup.data.codes);
 };

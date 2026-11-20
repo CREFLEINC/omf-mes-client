@@ -35,6 +35,7 @@ import {
 } from '../../patterns/split-orientation';
 import { runRequest, toApiError } from '../../patterns/request';
 import { serverReasonOf } from '../../patterns/server-reason';
+import { useScopeBusinessUnitIds } from '../../patterns/oa-access';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
 import { itemKeys } from '../item-extended-attrs/item-queries';
@@ -274,7 +275,8 @@ export const InspectionStandardScreen = () => {
    * 기준코드 · 기준명 · 품목 번호는 등록 폼 값을 쓴다. null 이면 검사 기준 등록이다.
    */
   const [sheetBasics, setSheetBasics] = useState<TemplateBasics | null>(null);
-  const sheetScopeIds = (session?.scopes ?? []).map((scope) => scope.businessUnitId);
+  /* 범위 줄이 없으면(제한 없음) OA 공장들의 사업부다(omf-all-around#336). */
+  const sheetScopeIds = useScopeBusinessUnitIds();
   const hub = usePageHub();
   /* 목록 · 상세 배치 — 검사 조회·판정과 같은 좌우 분할, 가운데 막대로 폭을 나눈다(비율은 브라우저에 남는다). */
   const { splitRef, aboveRef } = useFitToViewport();

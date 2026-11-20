@@ -30,7 +30,7 @@ import { OaOnlyGate } from '../../patterns/oa-only-gate';
 import { PageNav } from '../../patterns/page-nav';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import { Select } from '../../patterns/select';
-import { useSession } from '../../patterns/session';
+import { useScopeBusinessUnitIds } from '../../patterns/oa-access';
 import {
   PaneHeightSplitter,
   QUALITY_STANDARD_ORIENTATION_KEY,
@@ -135,7 +135,6 @@ const InspectionSheetTemplateScreenBody = ({
   const layout = useSplitOrientation(QUALITY_STANDARD_ORIENTATION_KEY);
   const statusId = useId();
   const more = useFilterMore();
-  const { session } = useSession();
   const [statusInput, setStatusInput] = useState<TemplateStatusFilter>('');
   /* 모델 · 양식 · 재료 조건(사용자 지시 · #208). 모델은 칸에서 바로 검색해서 고른다(#226) — 검사 기준 탭의 품목 검색과 같다. */
   const [modelInput, setModelInput] = useState<{ itemId: number; label: string } | null>(null);
@@ -288,7 +287,8 @@ const InspectionSheetTemplateScreenBody = ({
         });
   const rows = sorted.slice((filter.page - 1) * filter.size, filter.page * filter.size);
   const userNameOf = useUserNames(rows.map((row) => row.confirmedBy));
-  const scopeIds = (session?.scopes ?? []).map((scope) => scope.businessUnitId);
+  /* 범위 줄이 없으면(제한 없음) OA 공장들의 사업부다(omf-all-around#336). */
+  const scopeIds = useScopeBusinessUnitIds();
   const names = businessUnits.data ?? new Map<number, string>();
 
   /* 연 기준의 품목 — 표의 고른 줄 표시와 상세의 버전 고르기에 쓴다. */
