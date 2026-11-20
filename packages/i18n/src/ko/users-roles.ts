@@ -148,7 +148,6 @@ export const usersRoles = {
     roleIncludeInactive: '사용 중지 포함',
     chipRemoveRoleIncludeInactive: '사용 중지 포함 조건 제거',
     roleReset: '조건 초기화',
-    rolePageSizeOption: (size: number): string => `${String(size)}개씩 보기`,
   },
   loading: {
     users: '사용자 목록을 불러오는 중',

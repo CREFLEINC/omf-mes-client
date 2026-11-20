@@ -29,8 +29,6 @@ export interface PageNavProps<S extends number = PageSize> {
   buttonSize?: 'sm' | 'md';
   /** 단추 · 크기 선택의 크기. 기본은 `sm` — 목록 아래처럼 옆 단추와 맞출 때 `md`(#197). */
   controlSize?: 'sm' | 'md';
-  /** 크기 선택지 문구 — 주지 않으면 「N건」(역할 목록은 「N개씩 보기」 · #333). */
-  sizeLabel?: (size: S) => string;
   /** 저장 중 등 쪽을 옮기면 안 될 때 단추 · 크기 선택을 모두 끈다(#197). */
   disabled?: boolean;
 }
@@ -48,7 +46,6 @@ export const PageNav = <S extends number = PageSize>({
   sizes = PAGE_SIZES as unknown as readonly S[],
   buttonSize,
   controlSize = 'sm',
-  sizeLabel,
   disabled = false,
 }: PageNavProps<S>) => {
   const totalPages = totalPagesOf(meta);
@@ -68,7 +65,7 @@ export const PageNav = <S extends number = PageSize>({
             value={String(meta.size)}
             options={sizes.map((size) => ({
               value: String(size),
-              label: sizeLabel === undefined ? t.pageSizeOption(size) : sizeLabel(size),
+              label: t.pageSizeOption(size),
             }))}
             onChange={(value) => {
               const size = sizes.find((option) => String(option) === value);

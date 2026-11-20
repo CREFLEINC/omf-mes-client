@@ -322,7 +322,6 @@ export const RoleListPane = ({
         <PageNav
           meta={pageMeta}
           sizes={pageSizes}
-          sizeLabel={t.filters.rolePageSizeOption}
           buttonSize="md"
           onChangePage={onChangePage}
           onChangeSize={onChangePageSize}

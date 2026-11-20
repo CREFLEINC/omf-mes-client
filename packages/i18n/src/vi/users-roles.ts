@@ -118,7 +118,6 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     roleIncludeInactive: 'Bao gồm đã ngừng sử dụng',
     chipRemoveRoleIncludeInactive: 'Xóa điều kiện bao gồm đã ngừng sử dụng',
     roleReset: 'Đặt lại điều kiện',
-    rolePageSizeOption: (size: number): string => `Xem ${String(size)} mục`,
   },
   loading: {
     users: 'Đang tải danh sách người dùng',
