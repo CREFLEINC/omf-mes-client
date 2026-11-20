@@ -38,8 +38,10 @@ export const popShipmentComplete = {
     /** 「이름 (코드)」(C-10). */
     named: (name: string, code: string): string => `${name} (${code})`,
     /* 머리 카드 합계(시안 「출하 지시서 상세 화면 UI 개선 안」 2026-11-20). */
-    totalLots: (count: number): string => `총 LOT: ${String(count)}개`,
-    totalQty: (qty: string): string => `총 수량: ${qty}`,
+    /** 정보 띠(공통 `PuBand`)의 이름과 칸 — 「LOT 수」·「수량」은 다른 화면과 같은 말. */
+    band: '출하 지시서 정보',
+    lotCount: 'LOT 수',
+    qty: '수량',
     /** 값이 없는 칸(재고가 빠질 창고가 아직 없을 때). */
     none: '-',
   },
@@ -47,7 +49,7 @@ export const popShipmentComplete = {
   blockers: {
     heading: '출하할 수 없습니다',
     PICKING_SHORT: {
-      title: '피킹 수량이 부족합니다',
+      title: '피킹량이 부족합니다',
       hint: 'PDA 제품 피킹에서 출하 LOT을 확인해 주세요.',
     },
     /*
@@ -74,26 +76,26 @@ export const popShipmentComplete = {
       title: 'ERP 에서 취소된 수주 라인이 있습니다',
       hint: '담당자에게 문의하세요.',
     },
-    /** 라인 막힘의 대상 한 줄 — 「라인 2 FG-B200, 피킹 수량 0 / 지시 수량 50」. */
+    /** 라인 막힘의 대상 한 줄 — 「라인 2 FG-B200, 피킹량 0 EA / 지시량 50 EA」. */
     line: (lineNo: number, itemCode: string, picked: string, target: string): string =>
-      `라인 ${String(lineNo)} ${itemCode}, 피킹 수량 ${picked} / 지시 수량 ${target}`,
+      `라인 ${String(lineNo)} ${itemCode}, 피킹량 ${picked} / 지시량 ${target}`,
     lineOnly: (lineNo: number): string => `라인 ${String(lineNo)}`,
   },
 
   lines: {
     heading: '출하 품목',
-    caption: '출하 품목별 지시 수량과 피킹 수량',
+    caption: '출하 품목별 지시량과 피킹량',
     columns: {
       lineNo: '라인',
-      itemCode: '품목 코드',
+      itemCode: '품목코드',
       itemName: '품목명',
-      target: '지시 수량',
-      picked: '피킹 수량',
-      over: '초과 수량',
+      target: '지시량',
+      picked: '피킹량',
+      over: '초과량',
       lotCount: 'LOT 수',
     },
-    /** 피킹 수량이 지시 수량과 같을 때 체크 표시의 이름(화면 읽기용). */
-    matched: '지시 수량과 같음',
+    /** 피킹량이 지시량과 같을 때 체크 표시의 이름(화면 읽기용). */
+    matched: '지시량과 같음',
   },
 
   warehouses: {
@@ -134,7 +136,7 @@ export const popShipmentComplete = {
 
   result: {
     title: '출하를 완료했습니다',
-    shipmentNo: '출하 번호',
+    shipmentNo: '출하번호',
     request: '출하 지시서',
     completedAt: '완료 시각',
     worker: '작업자',
@@ -142,9 +144,9 @@ export const popShipmentComplete = {
     completedBy: '단말과 작업자',
     who: (terminalCode: string, workerName: string, workerNo: string): string =>
       `${terminalCode}, ${workerName} (${workerNo})`,
-    qty: '출하 수량',
+    qty: '출하량',
     qtyValue: (qty: string, lineCount: number, lotCount: number, over: string | null): string =>
-      `${qty}, 라인 ${String(lineCount)}, LOT ${String(lotCount)}${over === null ? '' : ` (초과 ${over} 포함)`}`,
+      `${qty}, 라인 ${String(lineCount)}, LOT ${String(lotCount)}${over === null ? '' : ` (초과량 ${over} 포함)`}`,
     warehouses: '재고 차감',
     warehouseValue: (name: string, qty: string): string => `${name} ${qty}`,
   },
@@ -152,7 +154,7 @@ export const popShipmentComplete = {
   already: {
     title: '이미 출하 완료된 지시서입니다',
     heading: '완료된 출하',
-    shipmentNo: '출하 번호',
+    shipmentNo: '출하번호',
     request: '출하 지시서',
     completedAt: '완료',
   },
@@ -176,12 +178,12 @@ export const popShipmentComplete = {
       more > 0 ? `${code} ${name} 외 ${String(more)}` : `${code} ${name}`,
     summary: '내용',
     summaryValue: (lineCount: number, lotCount: number, picked: string, target: string): string =>
-      `라인 ${String(lineCount)}, LOT ${String(lotCount)}, 피킹 수량 ${picked} / 지시 수량 ${target}`,
+      `라인 ${String(lineCount)}, LOT ${String(lotCount)}, 피킹량 ${picked} / 지시량 ${target}`,
     blockedWhy: '출하 불가 사유',
     /** 라인을 짚지 않은 피킹 부족(낼 피킹 LOT 없음) — 확인 화면 `blockers.noPickedLot` 과 같은 뜻. */
     noPickedLot: '피킹된 출하 LOT 없음',
     blockerCount: {
-      PICKING_SHORT: (count: number): string => `피킹 수량 부족 ${String(count)}라인`,
+      PICKING_SHORT: (count: number): string => `피킹량 부족 ${String(count)}라인`,
       NOT_INSPECTED: (count: number): string => `미검사 LOT ${String(count)}`,
       REJECTED: (count: number): string => `불합격 LOT ${String(count)}`,
       HELD: (count: number): string => `보류 LOT ${String(count)}`,

@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 
 import {
+  PuBand,
   PuChip,
   PuIcon,
   PuNote,
@@ -11,7 +12,6 @@ import {
 import {
   OQC_TONE,
   blockedTargetsOf,
-  formatQty,
   groupBlockers,
   lotWarehousesOf,
   overText,
@@ -50,7 +50,12 @@ const targetOf = (completion: Completion, group: BlockerGroup): string => {
     const line = completion.lines.find((candidate) => candidate.lineNo === lineNo);
     if (line === undefined) return t.blockers.lineOnly(lineNo);
     return group.code === 'PICKING_SHORT'
-      ? t.blockers.line(lineNo, line.itemCode, formatQty(line.pickedQty), formatQty(line.targetQty))
+      ? t.blockers.line(
+          lineNo,
+          line.itemCode,
+          qtyWithUom(line.pickedQty, line.uomCode),
+          qtyWithUom(line.targetQty, line.uomCode),
+        )
       : `${t.blockers.lineOnly(lineNo)} ${line.itemCode}`;
   });
 
@@ -58,12 +63,12 @@ const targetOf = (completion: Completion, group: BlockerGroup): string => {
 };
 
 /** LOT 번호 아래 창고별 몫 — 「창고 | 120 (적치 대기 120 EA)」, 여러 창고면 쉼표로 잇는다(시안 2026-11-20). */
-const portionText = (lot: CompletionLot, uom: string): string =>
+const portionText = (lot: CompletionLot): string =>
   lotWarehousesOf(lot.portions)
     .map((entry) => {
-      const text = t.lots.portion(entry.name, formatQty(entry.qty));
+      const text = t.lots.portion(entry.name, qtyWithUom(entry.qty, lot.uomCode));
       return entry.staging > 0
-        ? `${text} (${t.lots.staging(qtyWithUom(entry.staging, uom))})`
+        ? `${text} (${t.lots.staging(qtyWithUom(entry.staging, lot.uomCode))})`
         : text;
     })
     .join(', ');
@@ -80,7 +85,7 @@ export interface ConfirmViewProps {
 
 /**
  * 확인 화면 = `:lookup` 값 그대로(시안 ③·④·⑤ · 「출하 지시서 상세 화면 UI 개선 안」 2026-11-20). 머리 카드(지시서 번호 ·
- * 출하 가능 배지 · 고객·납품처·재고가 빠질 창고 · 수주·총 LOT·총 수량), 출하 불가 사유, 출하 품목, 피킹 LOT(보기만).
+ * 출하 가능 배지 · 정보 띠: 고객·납품처·수주·LOT 수·수량·재고가 빠질 창고), 출하 불가 사유, 출하 품목, 피킹 LOT(보기만).
  * ⛔ 시안 머리 카드의 [출하 확정]은 두지 않는다 — 주 동작은 아래 작업 줄의 [출하 완료] 하나다(POP 통일 규칙).
  *
  * ⛔ ERP 송신 여부는 어디에도 보이지 않는다(사용자 결정 2026-11-18). 수주 없는 지시서는 수주 칸만 「없음」이다.
@@ -110,29 +115,43 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
           </span>
         }
       >
-        {/* 한 카드에 모은다 — 1줄 고객·납품처·창고, 2줄 수주·합계(시안 「정보 밀도 강화 및 불필요한 카드 통합」). */}
-        <dl className="pu-kv psc-head-kv">
-          <dt>{t.head.customer}</dt>
-          <dd>{t.head.named(completion.customer.partnerName, completion.customer.partnerCode)}</dd>
-          <dt>{t.head.shipTo}</dt>
-          <dd>{t.head.named(completion.shipTo.partnerName, completion.shipTo.partnerCode)}</dd>
-          <dt>{t.warehouses.heading}</dt>
-          <dd className="psc-wh-chips">
-            {completion.warehouses.length === 0
-              ? t.head.none
-              : completion.warehouses.map((warehouse) => (
-                  <span key={warehouse.warehouseId} className="psc-wh-chip">
-                    {t.head.named(warehouse.warehouseName, warehouse.warehouseCode)}
+        {/*
+         * 정보 띠 — 출하 단위 구성(shipping-unit)의 출하 정보 띠와 같은 공통 `PuBand` 격자(3열 · 「이름 값」).
+         * 창고는 칩이 여럿일 수 있어 한 줄 전체를 쓴다.
+         */}
+        <PuBand
+          grid={3}
+          label={t.head.band}
+          items={[
+            {
+              label: t.head.customer,
+              value: t.head.named(completion.customer.partnerName, completion.customer.partnerCode),
+            },
+            {
+              label: t.head.shipTo,
+              value: t.head.named(completion.shipTo.partnerName, completion.shipTo.partnerCode),
+            },
+            { label: t.head.salesOrder, value: completion.salesOrderNo ?? t.head.noSalesOrder },
+            { label: t.head.lotCount, value: String(completion.lots.length) },
+            { label: t.head.qty, value: qtyWithUom(totalQty, uom) },
+            {
+              label: t.warehouses.heading,
+              wide: true,
+              value:
+                completion.warehouses.length === 0 ? (
+                  t.head.none
+                ) : (
+                  <span className="psc-wh-chips">
+                    {completion.warehouses.map((warehouse) => (
+                      <span key={warehouse.warehouseId} className="psc-wh-chip">
+                        {t.head.named(warehouse.warehouseName, warehouse.warehouseCode)}
+                      </span>
+                    ))}
                   </span>
-                ))}
-          </dd>
-          <dt>{t.head.salesOrder}</dt>
-          <dd>{completion.salesOrderNo ?? t.head.noSalesOrder}</dd>
-          <dd className="psc-head-totals">
-            <span>{t.head.totalLots(completion.lots.length)}</span>
-            <span>{t.head.totalQty(qtyWithUom(totalQty, uom))}</span>
-          </dd>
-        </dl>
+                ),
+            },
+          ]}
+        />
         {splitLots.map((lotNo) => (
           <PuNote key={lotNo}>{t.warehouses.splitLot(lotNo)}</PuNote>
         ))}
@@ -190,22 +209,22 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
                     >
                       <td className="fit num">{line.lineNo}</td>
                       <td className="fit pu-mono">{line.itemCode}</td>
-                      <td className="psc-wrap">{line.itemName}</td>
-                      <td className="fit num">{formatQty(line.targetQty)}</td>
+                      <td className="psc-name">{line.itemName}</td>
+                      <td className="fit num">{qtyWithUom(line.targetQty, line.uomCode)}</td>
                       <td className="fit num">
                         {line.pickedQty === line.targetQty ? (
                           <span className="psc-match">
-                            {formatQty(line.pickedQty)}
+                            {qtyWithUom(line.pickedQty, line.uomCode)}
                             <span role="img" aria-label={t.lines.matched}>
                               <PuIcon name="ok" />
                             </span>
                           </span>
                         ) : (
-                          formatQty(line.pickedQty)
+                          qtyWithUom(line.pickedQty, line.uomCode)
                         )}
                       </td>
                       <td className={line.overQty > 0 ? 'fit num psc-over' : 'fit num psc-zero'}>
-                        {overText(line.overQty)}
+                        {overText(line.overQty, line.uomCode)}
                       </td>
                       <td className="fit num">{line.lotCount}</td>
                     </tr>
@@ -247,12 +266,12 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
                       className={targets.lotNos.has(lot.lotNo) ? 'psc-row-blocked' : undefined}
                     >
                       <td className="psc-lot-cell">
-                        <span className="pu-mono">{lot.lotNo}</span>
+                        <span className="pu-mono psc-nowrap">{lot.lotNo}</span>
                         {lot.portions.length > 0 && (
-                          <span className="psc-lot-portions">{portionText(lot, uom)}</span>
+                          <span className="psc-lot-portions">{portionText(lot)}</span>
                         )}
                       </td>
-                      <td className="fit num">{formatQty(lot.qty)}</td>
+                      <td className="fit num">{qtyWithUom(lot.qty, lot.uomCode)}</td>
                       <td className="fit">
                         {lot.oqcLotStatus !== null && (
                           <PuChip tone={PU_TONE[OQC_TONE[lot.oqcLotStatus]]}>

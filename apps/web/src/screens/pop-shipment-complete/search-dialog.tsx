@@ -13,7 +13,7 @@ import {
 import { PuSearchBox } from '../../patterns/pop-uniform/search-box';
 import {
   SEARCH_PAGE_SIZE,
-  formatQty,
+  qtyWithUom,
   orderSearchRows,
   toSearchRow,
   type SearchRowView,
@@ -126,8 +126,8 @@ export const SearchDialog = ({ onClose, onPick }: SearchDialogProps) => {
                   {t.summaryValue(
                     row.lineCount,
                     row.lotCount,
-                    formatQty(row.picked),
-                    formatQty(row.target),
+                    qtyWithUom(row.picked, row.uom),
+                    qtyWithUom(row.target, row.uom),
                   )}
                 </b>
               </span>

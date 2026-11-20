@@ -214,9 +214,9 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     const line1 = within(lines).getAllByRole('row')[1] as HTMLElement;
     expect(within(line1).getByText('FG-A100')).toBeInTheDocument();
     expect(within(line1).getByText('센서 모듈 A')).toBeInTheDocument();
-    expect(within(line1).getByText('100')).toBeInTheDocument();
-    expect(within(line1).getByText('110')).toBeInTheDocument();
-    expect(within(line1).getByText('+10')).toBeInTheDocument();
+    expect(within(line1).getByText('100 EA')).toBeInTheDocument();
+    expect(within(line1).getByText('110 EA')).toBeInTheDocument();
+    expect(within(line1).getByText('+10 EA')).toBeInTheDocument();
     expect(within(line1).getByText('3')).toBeInTheDocument();
 
     const lots = screen.getByRole('table', { name: t.lots.caption });
@@ -229,22 +229,23 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     /* 머리 카드 한 장에 창고(칩)·합계까지(시안 2026-11-20) — 따로 선 창고 구획은 없다. */
     expect(screen.getByText('완제품 창고 A (WH-FG-A)')).toHaveClass('psc-wh-chip');
     expect(screen.getByText('완제품 창고 B (WH-FG-B)')).toHaveClass('psc-wh-chip');
-    expect(screen.getByText(t.head.totalLots(4))).toBeInTheDocument();
-    expect(screen.getByText(t.head.totalQty('160 EA'))).toBeInTheDocument();
+    const band = screen.getByRole('group', { name: t.head.band });
+    expect(within(band).getByText(t.head.lotCount).nextSibling).toHaveTextContent('4');
+    expect(within(band).getByText(t.head.qty).nextSibling).toHaveTextContent('160 EA');
     expect(screen.queryByRole('region', { name: t.warehouses.heading })).toBeNull();
     /* 피킹 = 지시면 체크, 초과 0 은 흐리게. */
     const line2 = within(lines).getAllByRole('row')[2] as HTMLElement;
     expect(within(line2).getByRole('img', { name: t.lines.matched })).toBeInTheDocument();
     expect(within(line1).queryByRole('img', { name: t.lines.matched })).toBeNull();
-    expect(within(line2).getByText('0')).toHaveClass('psc-zero');
+    expect(within(line2).getByText('0 EA')).toHaveClass('psc-zero');
     /* LOT 번호 아래 창고별 몫은 늘 보인다 — 「창고 | 수량」. 출하 관리 코드가 없으면 「-」. */
     const lot2 = within(lots).getByText('P2611-0002').closest('tr') as HTMLElement;
     expect(
       within(lot2).getByText(
-        `${t.lots.portion('완제품 창고 A', '20')}, ${t.lots.portion('완제품 창고 B', '20')}`,
+        `${t.lots.portion('완제품 창고 A', '20 EA')}, ${t.lots.portion('완제품 창고 B', '20 EA')}`,
       ),
     ).toBeInTheDocument();
-    expect(within(lot1).getByText(t.lots.portion('완제품 창고 A', '40'))).toBeInTheDocument();
+    expect(within(lot1).getByText(t.lots.portion('완제품 창고 A', '40 EA'))).toBeInTheDocument();
     const lot3 = within(lots).getByText('P2611-0004').closest('tr') as HTMLElement;
     expect(within(lot3).getByText(t.lots.none)).toBeInTheDocument();
 
@@ -307,7 +308,7 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     const row = within(lots).getByText('P2611-0004').closest('tr') as HTMLElement;
     expect(
       within(row).getByText(
-        `${t.lots.portion('완제품 창고 A', '30')} (${t.lots.staging('10 EA')})`,
+        `${t.lots.portion('완제품 창고 A', '30 EA')} (${t.lots.staging('10 EA')})`,
       ),
     ).toBeInTheDocument();
     expect(
@@ -361,7 +362,7 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     const row = within(lots).getByText('P2611-0004').closest('tr') as HTMLElement;
     expect(
       within(row).getByText(
-        `${t.lots.portion('완제품 창고 A', '30')} (${t.lots.staging('5 EA')}), ${t.lots.portion('완제품 창고 B', '10')}`,
+        `${t.lots.portion('완제품 창고 A', '30 EA')} (${t.lots.staging('5 EA')}), ${t.lots.portion('완제품 창고 B', '10 EA')}`,
       ),
     ).toBeInTheDocument();
   });
@@ -449,7 +450,7 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     expect(screen.getByText(t.blockers.heading)).toBeInTheDocument();
     expect(blockerRows()).toHaveLength(3);
     expect(screen.getByText(t.blockers.PICKING_SHORT.title)).toBeInTheDocument();
-    expect(screen.getByText(t.blockers.line(2, 'FG-B200', '0', '50'))).toBeInTheDocument();
+    expect(screen.getByText(t.blockers.line(2, 'FG-B200', '0 EA', '50 EA'))).toBeInTheDocument();
     expect(screen.getByText(t.blockers.PICKING_SHORT.hint)).toBeInTheDocument();
     expect(screen.getByText(t.blockers.NOT_INSPECTED.title)).toBeInTheDocument();
     expect(screen.getByText(t.blockers.REJECTED.title)).toBeInTheDocument();
@@ -582,7 +583,7 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
 
     expect(await screen.findByText(t.failure.blocked)).toBeInTheDocument();
     await waitFor(() => expect(blockerRows()).toHaveLength(1));
-    expect(screen.getByText(t.blockers.line(2, 'FG-B200', '50', '50'))).toBeInTheDocument();
+    expect(screen.getByText(t.blockers.line(2, 'FG-B200', '50 EA', '50 EA'))).toBeInTheDocument();
     expect(completeButton()).toBeDisabled();
     expect(lookupCalls()).toHaveLength(1);
   });
@@ -765,7 +766,9 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     expect(within(row).getByText(t.search.ready)).toBeInTheDocument();
     /* US4-4·Q10 — 고객 이름은 지시서 행의 customer 를 쓴다(POP 은 거래처 목록을 못 읽는다). */
     expect(within(row).getByText('가나전자(행)')).toBeInTheDocument();
-    expect(within(row).getByText(t.search.summaryValue(2, 4, '160', '150'))).toBeInTheDocument();
+    expect(
+      within(row).getByText(t.search.summaryValue(2, 4, '160 EA', '150 EA')),
+    ).toBeInTheDocument();
     expect(
       within(row).getByText(t.search.itemsValue('FG-A100', '센서 모듈 A', 1)),
     ).toBeInTheDocument();

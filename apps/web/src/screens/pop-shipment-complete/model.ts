@@ -160,8 +160,9 @@ export const totalsOf = (completion: Completion): CompletionTotals => ({
 export const formatQty = (value: number): string =>
   Number.isInteger(value) ? String(value) : String(Math.round(value * 1000) / 1000);
 
-/** 초과 칸 — 넘었으면 「+10」, 아니면 「0」. 음수(목표 미달)는 보이지 않는다(C-21). */
-export const overText = (overQty: number): string => (overQty > 0 ? `+${formatQty(overQty)}` : '0');
+/** 초과 칸 — 넘었으면 「+10 EA」, 아니면 「0 EA」(단위는 라인 단위, 모르면 수량만). 음수(목표 미달)는 보이지 않는다(C-21). */
+export const overText = (overQty: number, uom = ''): string =>
+  overQty > 0 ? `+${qtyWithUom(overQty, uom)}` : qtyWithUom(0, uom);
 
 /** OQC 판정 칩의 색. 미검사·보류는 할 일이 남은 상태라 경고, 불합격은 오류다. */
 export type ChipTone = 'idle' | 'info' | 'success' | 'warning' | 'error';
@@ -292,6 +293,8 @@ export interface SearchRowView {
   lotCount: number;
   picked: number;
   target: number;
+  /** 라인 단위가 하나면 그 단위, 섞이거나 없으면 빈 글(수량만 보인다). */
+  uom: string;
 }
 
 export const toSearchRow = (row: ShipmentRequestRow): SearchRowView => {
@@ -326,6 +329,10 @@ export const toSearchRow = (row: ShipmentRequestRow): SearchRowView => {
     ),
     picked: lines.reduce((sum, line) => sum + line.pickedQty, 0),
     target: lines.reduce((sum, line) => sum + line.allocatedQty, 0),
+    uom: (() => {
+      const codes = [...new Set(lines.map((line) => line.uomCode ?? '').filter((c) => c !== ''))];
+      return codes.length === 1 ? (codes[0] ?? '') : '';
+    })(),
   };
 };
 

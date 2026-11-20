@@ -26,8 +26,9 @@ export const popShipmentComplete = {
     ready: 'Có thể xuất hàng',
     blocked: 'Không thể xuất hàng',
     named: (name: string, code: string): string => `${name} (${code})`,
-    totalLots: (count: number): string => `Tổng LOT: ${String(count)}`,
-    totalQty: (qty: string): string => `Tổng SL: ${qty}`,
+    band: 'Thông tin lệnh xuất hàng',
+    lotCount: 'Số LOT',
+    qty: 'SL',
     none: '-',
   },
 

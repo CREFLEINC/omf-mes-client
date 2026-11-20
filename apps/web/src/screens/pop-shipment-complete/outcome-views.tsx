@@ -2,14 +2,7 @@ import { messages } from '@omf-mes/i18n';
 
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { PuKv, PuNote, PuSection } from '../../patterns/pop-uniform';
-import {
-  formatQty,
-  qtyWithUom,
-  totalsOf,
-  uomOf,
-  type Completion,
-  type CompletionResult,
-} from './model';
+import { qtyWithUom, totalsOf, uomOf, type Completion, type CompletionResult } from './model';
 
 const t = messages.popShipmentComplete;
 
@@ -58,7 +51,7 @@ export const ResultView = ({ result, workerNo }: ResultViewProps) => {
         qtyWithUom(totals.qty, uomOf(result.completion)),
         totals.lineCount,
         totals.lotCount,
-        totals.over > 0 ? formatQty(totals.over) : null,
+        totals.over > 0 ? qtyWithUom(totals.over, uomOf(result.completion)) : null,
       ),
     },
     ...(result.completion.warehouses.length > 0
