@@ -1,6 +1,7 @@
 import { Button, Checkbox, Chip, IconButton, Table, TextField, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { Select } from '../../patterns/select';
 import { isShortageLine } from './shortage-banner';
 import {
@@ -12,6 +13,7 @@ import {
   type ReferenceSource,
 } from './lookups';
 import type { AssignmentMode, SelectOption, ShipmentRequestLineDraft } from './types';
+import type { SelectItems } from '@crefle/web-ui';
 import { lineFieldId, readQty, type LineFieldName } from './validation';
 
 const t = messages.shipmentRequestCreate;
@@ -47,6 +49,10 @@ const WIDTH = {
   allocatedQty: '152px',
   inspection: '88px',
   rowActions: '64px',
+  /** 피처 012 — 「창고 이름 (공장 이름)」 선택칸 + 안내 한 줄. */
+  warehouse: '208px',
+  /** S/O 경유는 [나누기] 글자 단추가 들어간다. */
+  rowActionsSplit: '96px',
 } as const;
 
 export interface LineTableProps {
@@ -64,6 +70,15 @@ export interface LineTableProps {
   onRemove: (key: string) => void;
   /** 그 줄의 품목을 바꾸려고 팝업을 연다. 단독 생성에서만 쓰인다. */
   onPickItem: (key: string) => void;
+  /** 출고 창고 선택지(피처 012 FR-003) — 고른 사업부의 활성 창고. 묶음 제목에 사업부가 붙는다. */
+  warehouseOptions: SelectItems;
+  /** 사업부를 골랐는가 — 아니면 창고 칸·[나누기]가 잠긴다(US1-2). */
+  hasBusinessUnit: boolean;
+  onChangeWarehouse: (key: string, warehouseId: string) => void;
+  /** S/O 줄을 나눈다(FR-005). S/O 경유에서만 쓰인다. */
+  onSplit: (key: string) => void;
+  /** 나눈 줄을 「SO 번호 n행」으로 가리킨다. 단독 생성은 `null`. */
+  salesOrderNo: string | null;
 }
 
 /**
@@ -96,6 +111,11 @@ export const LineTable = ({
   onPatch,
   onRemove,
   onPickItem,
+  warehouseOptions,
+  hasBusinessUnit,
+  onChangeWarehouse,
+  onSplit,
+  salesOrderNo,
 }: LineTableProps) => {
   const isFromOrder = mode === 'fromOrder';
 
@@ -111,6 +131,12 @@ export const LineTable = ({
    *    셋이 그것을 함께 쓴다 — 계약 본문도 라인당 `uomId` 하나다. 수량마다 단위를 다시 적는 것은
    *    **구조상 있을 수 없는 차이**를 있는 것처럼 보이게 하는 중복이었다.
    */
+  /** 「SO 번호 n행」 — 나눈 줄과 묶음 합계가 S/O 줄을 가리킬 때 쓴다. */
+  const sourceRefOf = (row: ShipmentRequestLineDraft): string =>
+    salesOrderNo === null || row.salesOrderLineNo === null
+      ? t.values.empty
+      : t.lineTable.salesOrderLineRef(salesOrderNo, row.salesOrderLineNo);
+
   const uomNameOf = (row: ShipmentRequestLineDraft): string =>
     row.uomId === '' ? '' : describeReference(toReference(uomLookup, Number(row.uomId)));
 
@@ -129,7 +155,27 @@ export const LineTable = ({
           itemNames.of(row.itemId === '' ? null : Number(row.itemId)),
         );
 
-        if (isFromOrder) return label;
+        if (row.splitOf !== null) {
+          /* 나눈 줄 — 품목은 원 줄과 같다. 어느 S/O 줄에서 나왔는지만 적는다(시안 W0401-After). */
+          return (
+            <span className="sr-split-row">
+              {t.lineTable.splitRowLabel(sourceRefOf(row))}
+            </span>
+          );
+        }
+
+        if (isFromOrder) {
+          return (
+            <div className="field-cell">
+              <span>{label}</span>
+              {row.erpStorageLocationCode !== null && (
+                <span className="field-note">
+                  {t.lineTable.erpWarehouseHint(row.erpStorageLocationCode)}
+                </span>
+              )}
+            </div>
+          );
+        }
 
         return (
           <div className="field-cell">
@@ -157,7 +203,9 @@ export const LineTable = ({
       align: 'end',
       width: WIDTH.requestedQty,
       render: (row, rowIndex) =>
-        isFromOrder ? (
+        row.splitOf !== null ? (
+          t.values.empty
+        ) : isFromOrder ? (
           row.requestedQty
         ) : (
           <TextField
@@ -202,7 +250,12 @@ export const LineTable = ({
       width: WIDTH.availableQty,
       /* 읽기 전용이다 — 장부는 시스템이 아는 값이고 이 화면이 고치는 값이 아니다. */
       render: (row) =>
-        describeAvailableQty(availableQty.of(row.itemId === '' ? null : Number(row.itemId))),
+        describeAvailableQty(
+          availableQty.of(
+            row.itemId === '' ? null : Number(row.itemId),
+            row.warehouseId === '' ? null : Number(row.warehouseId),
+          ),
+        ),
     },
     {
       key: 'allocatedQty',
@@ -232,6 +285,50 @@ export const LineTable = ({
       ),
     },
     {
+      key: 'warehouse',
+      /* 고를 수 있는 창고 규칙은 칸 머리 ⓘ 로(관리웹 정리 시안 A — 늘 보이는 규칙 문장을 걷는다). */
+      header: (
+        <span className="info-label">
+          {t.lineTable.warehouse}
+          <InfoTip text={t.notes.warehouseRule} />
+        </span>
+      ),
+      width: WIDTH.warehouse,
+      /*
+       * ⭐ 줄마다 출고 창고 하나(피처 012 FR-003). 사업부를 고르기 전에는 잠긴다(US1-2).
+       * 첫 줄 창고로 채운 값은 「첫 줄 창고로 채움」을 작게 적고(FR-004), 사업부를 바꿔 비운 줄은 노란 테로 짚는다.
+       */
+      render: (row, rowIndex) => {
+        const error = errorOf(row, 'warehouseId');
+        const placeholder = !hasBusinessUnit
+          ? t.lineTable.warehouseNeedsBusinessUnit
+          : row.warehouseCleared
+            ? t.lineTable.warehouseReselect
+            : t.lineTable.warehousePlaceholder;
+
+        return (
+          <div className={row.warehouseCleared ? 'field-cell sr-warehouse is-cleared' : 'field-cell sr-warehouse'}>
+            <Select
+              size="sm"
+              options={warehouseOptions}
+              value={row.warehouseId === '' ? null : row.warehouseId}
+              placeholder={placeholder}
+              invalid={error !== undefined}
+              disabled={isLocked || !hasBusinessUnit}
+              aria-label={t.lineTable.warehouseLabel(rowIndex + 1)}
+              onChange={(value) => {
+                onChangeWarehouse(row.key, value);
+              }}
+            />
+            {error !== undefined && <span className="field-error">{error}</span>}
+            {error === undefined && row.warehouseFilled && row.warehouseId !== '' && (
+              <span className="field-note">{t.lineTable.warehouseFilledFromFirst}</span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
       key: 'shippingInspectionRequired',
       header: t.lineTable.inspection,
       width: WIDTH.inspection,
@@ -246,26 +343,55 @@ export const LineTable = ({
         />
       ),
     },
-    ...(isFromOrder
-      ? []
-      : [
-          {
-            key: 'rowActions',
-            header: t.lineTable.rowActions,
-            width: WIDTH.rowActions,
-            render: (row: ShipmentRequestLineDraft, rowIndex: number) => (
+    isFromOrder
+      ? ({
+          key: 'rowActions',
+          header: t.lineTable.rowActions,
+          width: WIDTH.rowActionsSplit,
+          /*
+           * S/O 경유 — 원 줄은 [나누기](FR-005), 나눈 줄은 [삭제]로 되돌린다. 원 줄은 지울 수 없다(S/O 가 정한 줄).
+           */
+          render: (row: ShipmentRequestLineDraft, rowIndex: number) =>
+            row.splitOf === null ? (
+              <Button
+                variant="text"
+                size="sm"
+                disabled={isLocked || !hasBusinessUnit}
+                aria-label={t.actions.splitLineLabel(rowIndex + 1)}
+                onClick={() => {
+                  onSplit(row.key);
+                }}
+              >
+                {t.actions.splitLine}
+              </Button>
+            ) : (
               <IconButton
                 icon="delete"
                 size="sm"
-                aria-label={t.actions.removeLine(rowIndex + 1)}
-                disabled={isLocked || rows.length <= 1}
+                aria-label={t.actions.removeSplitLine(rowIndex + 1)}
+                disabled={isLocked}
                 onClick={() => {
                   onRemove(row.key);
                 }}
               />
             ),
-          } satisfies Column<ShipmentRequestLineDraft>,
-        ]),
+        } satisfies Column<ShipmentRequestLineDraft>)
+      : ({
+          key: 'rowActions',
+          header: t.lineTable.rowActions,
+          width: WIDTH.rowActions,
+          render: (row: ShipmentRequestLineDraft, rowIndex: number) => (
+            <IconButton
+              icon="delete"
+              size="sm"
+              aria-label={t.actions.removeLine(rowIndex + 1)}
+              disabled={isLocked || rows.length <= 1}
+              onClick={() => {
+                onRemove(row.key);
+              }}
+            />
+          ),
+        } satisfies Column<ShipmentRequestLineDraft>),
   ];
 
   return (

@@ -37228,3 +37228,28 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   height: 16px;
 }
 
+
+/* W-04-01 출고 창고 칸·나눈 줄(피처 012 · 시안 W0401-After) — 사업부를 바꿔 비운 줄은 노란 테로 짚는다(FR-004). */
+.sr-warehouse.is-cleared {
+  border-radius: var(--radius-sm);
+  outline: 2px solid var(--semantic-warning);
+  outline-offset: 1px;
+}
+
+.sr-split-row {
+  padding-inline-start: var(--space-4);
+  color: var(--on-surface-variant);
+}
+
+.sr-split-totals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sr-split-totals .field-note {
+  max-width: none;
+}

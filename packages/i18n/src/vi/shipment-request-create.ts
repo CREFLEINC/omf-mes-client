@@ -46,11 +46,14 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
     goFirstPage: 'Về trang đầu',
     startStandalone: 'Tạo không cần ERP S/O',
     addLine: 'Thêm dòng',
+    splitLine: 'Tách',
+    splitLineLabel: (rowIndex: number): string => `Tách dòng ${String(rowIndex)}`,
+    removeSplitLine: (rowIndex: number): string => `Xóa dòng đã tách ${String(rowIndex)}`,
     removeLine: (rowIndex: number): string => `Xóa dòng ${String(rowIndex)}`,
     submit: 'Lập lệnh xuất hàng',
   },
   fields: {
-    fulfillmentPlant: 'Nhà máy phụ trách xuất hàng',
+    businessUnit: 'Đơn vị kinh doanh',
     customer: 'Khách hàng',
     shipToPartner: 'Nơi giao hàng',
     requestedShipDate: 'Ngày yêu cầu xuất hàng',
@@ -70,6 +73,21 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
     inspectionLabel: (rowIndex: number): string =>
       `Thuộc diện kiểm tra xuất hàng dòng ${String(rowIndex)}`,
     rowActions: 'Thao tác dòng',
+    warehouse: 'Kho xuất',
+    warehouseLabel: (rowIndex: number): string => `Kho xuất dòng ${String(rowIndex)}`,
+    warehouseNeedsBusinessUnit: 'Hãy chọn đơn vị kinh doanh trước',
+    warehousePlaceholder: 'Chọn kho xuất',
+    warehouseReselect: 'Hãy chọn lại',
+    warehouseFilledFromFirst: 'Điền theo kho của dòng đầu',
+    warehouseOption: (warehouseName: string, plantName: string): string => `${warehouseName} (${plantName})`,
+    warehouseGroup: (businessUnitName: string): string =>
+      `${businessUnitName}: kho đang dùng (trừ kho hàng lỗi)`,
+    erpWarehouseHint: (code: string): string => `Kho ERP ${code} (tham khảo)`,
+    splitRowLabel: (source: string): string => `Dòng đã tách (${source})`,
+    salesOrderLineRef: (salesOrderNo: string, lineNo: number): string => `${salesOrderNo} dòng ${String(lineNo)}`,
+    splitTotal: (source: string, remaining: number, total: number, parts: string): string =>
+      `${source} còn lại ${String(remaining)}, tổng các dòng đã tách ${String(total)} (${parts})`,
+    splitPart: (warehouseName: string, qty: number): string => `${warehouseName} ${String(qty)}`,
   },
   values: {
     empty: '—',
@@ -81,7 +99,10 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
     erpNotMatched: '—',
   },
   errors: {
-    fulfillmentPlantRequired: 'Hãy chọn nhà máy phụ trách xuất hàng.',
+    businessUnitRequired: 'Hãy chọn đơn vị kinh doanh.',
+    warehouseRequired: 'Hãy chọn kho xuất.',
+    splitOverRemaining: (total: number, remaining: number, parts: string): string =>
+      `Tổng số lượng của các dòng đã tách (${String(total)}) vượt quá số lượng còn lại của dòng S/O (${String(remaining)}) — ${parts}. Hãy giảm số lượng ở một trong các dòng.`,
     customerRequired: 'Hãy chọn khách hàng.',
     shipToPartnerRequired: 'Hãy chọn nơi giao hàng.',
     requestedShipDateRequired: 'Hãy nhập ngày yêu cầu xuất hàng.',
@@ -99,15 +120,31 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
     lineInvalid: 'Hãy kiểm tra phần nhập của các dòng.',
     lineIncomplete: 'Hãy điền mặt hàng, đơn vị và số lượng yêu cầu của dòng.',
     headerIncomplete: 'Hãy nhập các mục bắt buộc.',
+    businessUnitMissing: 'Hãy chọn đơn vị kinh doanh',
+    splitOverRemaining: (refs: string): string => `Có dòng vượt quá số lượng còn lại của S/O: ${refs}`,
+    warehouseMissing: (rows: string): string => `Hãy chọn kho xuất: dòng ${rows}`,
+    splitRowTag: (rowIndex: number): string => `${String(rowIndex)} (dòng đã tách)`,
   },
   notes: {
     fromOrderLocked:
       'Đây là lệnh lập theo ERP S/O nên không sửa được khách hàng, nơi giao hàng và mặt hàng, số lượng của các dòng.',
     requestedQtyFixed:
       'Số lượng yêu cầu được tự động điền bằng số lượng còn lại của ERP S/O và không sửa được.',
+    warehouseRule:
+      'Chỉ chọn được kho đang dùng của đơn vị kinh doanh đã chọn (trừ kho hàng lỗi).',
+    businessUnitAutoFilled:
+      'Phạm vi dữ liệu của tài khoản chỉ có một đơn vị kinh doanh nên đã được điền tự động',
+    addLineWarehouse:
+      'Kho xuất của dòng mới được điền theo kho của dòng đầu. Muốn xuất cùng một mặt hàng từ hai kho thì thêm dòng riêng.',
     erpUnmatched: 'Lệnh tạo không cần ERP S/O thì không có số ERP S/O.',
     networkUnconfirmed:
       'Chưa nhận được phản hồi. Hãy kiểm tra lại xem máy chủ đã ghi nhận thật chưa rồi thử lại.',
+  },
+  warehouseCleared: {
+    title: (count: number): string =>
+      `Đã đổi đơn vị kinh doanh nên đã xóa kho xuất của ${String(count)} dòng`,
+    description: (businessUnitName: string): string =>
+      `Hãy chọn lại kho xuất của các dòng màu vàng bằng kho của ${businessUnitName}.`,
   },
   shortage: {
     title: 'Có dòng thiếu tồn kho khả dụng',

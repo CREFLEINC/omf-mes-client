@@ -32,7 +32,6 @@ export interface ShipmentTableProps {
   fulfillmentPlantLookup: ReferenceSource;
   onFirstPage: () => void;
   onRetryReferences: () => void;
-  onAssignPlant: (shipmentRequestId: number) => void;
   /** 피처 010 — 지시서 번호를 누르면 상세 창을 연다. */
   onOpenDetail: (shipmentRequestId: number) => void;
 }
@@ -167,7 +166,6 @@ export const ShipmentTable = ({
   fulfillmentPlantLookup,
   onFirstPage,
   onRetryReferences,
-  onAssignPlant,
   onOpenDetail,
 }: ShipmentTableProps) => {
   const columns: Column<ShipmentRequestView>[] = [
@@ -275,46 +273,14 @@ export const ShipmentTable = ({
       align: 'center',
       width: '9%',
       header: t.table.fulfillmentPlant,
+      /*
+       * 공장 지정 단추를 없앴다(피처 012 D-1 · 서버가 공장 지정 PUT 을 지웠다). 옛 지시서만 공장이 있다 —
+       * 사업부·줄 출고 창고 표시는 W-04-02 바꾸기(C3)에서 이 자리를 「사업부」로 바꾼다.
+       */
       render: (row) =>
-        row.fulfillmentPlantId == null ? (
-          <Button
-            variant="outlined"
-            onClick={() => {
-              onAssignPlant(row.shipmentRequestId);
-            }}
-          >
-            {t.actions.assignPlant}
-          </Button>
-        ) : (
-          /*
-           * 「지정됨」이 아니라 **어느 공장인지** 적는다(사용자 지시 2026-09-22) — 지정 여부만
-           * 알려서는 다시 눌러 확인해야 한다. 이름을 못 구한 사정은 다른 참조 열과 같게 말한다.
-           *
-           * 단추가 글자로 바뀌어도 **줄 높이가 달라지지 않게** 한다 — 저장 뒤에 표가 낮아지면
-           * 고친 줄이 아니라 표 전체가 움직인 것처럼 보인다.
-           */
-          /*
-           * 지정을 끝낸 뒤에도 **다시 열 수 있다**(사용자 지시 2026-09-22). 서버는 피킹 전이고
-           * 이미 나간 출하의 창고 공장이 같으면 몇 번이든 받아 준다 — 막힌 경우는 서버가
-           * 사유를 돌려주므로 화면이 미리 잠그지 않는다.
-           */
-          <span className="shipment-schedule-plant-assigned">
-            <span className="shipment-schedule-plant-name">
-              {describeReference(toReference(fulfillmentPlantLookup, row.fulfillmentPlantId))}
-            </span>
-            <Button
-              className="shipment-schedule-plant-change"
-              variant="outlined"
-              /* 지정은 해야 할 일이고 변경은 이미 끝난 일을 되돌리는 보조 액션이라 작다. */
-              size="sm"
-              onClick={() => {
-                onAssignPlant(row.shipmentRequestId);
-              }}
-            >
-              {t.actions.changePlant}
-            </Button>
-          </span>
-        ),
+        row.fulfillmentPlantId == null
+          ? t.values.empty
+          : describeReference(toReference(fulfillmentPlantLookup, row.fulfillmentPlantId)),
     },
   ];
 

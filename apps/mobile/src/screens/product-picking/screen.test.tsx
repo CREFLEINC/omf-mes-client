@@ -77,6 +77,8 @@ const line = (overrides: Partial<ShipmentRequestLine> = {}): ShipmentRequestLine
   picks: [],
   overQty: 0,
   lots: [pickedLot()],
+  /* 피처 012 — 줄 출고 창고. 옛 줄(창고 미지정)과 같다. */
+  warehouse: null,
   ...overrides,
 });
 

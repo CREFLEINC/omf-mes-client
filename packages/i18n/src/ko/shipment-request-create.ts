@@ -50,10 +50,14 @@ export const shipmentRequestCreate = {
     startStandalone: 'ERP S/O 없이 생성',
     addLine: '라인 추가',
     removeLine: (rowIndex: number): string => `${String(rowIndex)}행 삭제`,
+    /** S/O 줄 하나를 창고별 지시서 줄로 나눈다(피처 012 FR-005). */
+    splitLine: '나누기',
+    splitLineLabel: (rowIndex: number): string => `${String(rowIndex)}행 나누기`,
+    removeSplitLine: (rowIndex: number): string => `${String(rowIndex)}행 나눈 줄 삭제`,
     submit: '출하작업지시 편성',
   },
   fields: {
-    fulfillmentPlant: '출하 담당 공장',
+    businessUnit: '사업부',
     customer: '고객',
     shipToPartner: '납품처',
     requestedShipDate: '출하요청일',
@@ -73,6 +77,24 @@ export const shipmentRequestCreate = {
     inspection: '검사',
     inspectionLabel: (rowIndex: number): string => `${String(rowIndex)}행 출하검사 대상`,
     rowActions: '행 조작',
+    warehouse: '출고 창고',
+    warehouseLabel: (rowIndex: number): string => `${String(rowIndex)}행 출고 창고`,
+    /** 사업부를 고르기 전 — 창고 칸이 잠긴다(US1-2). */
+    warehouseNeedsBusinessUnit: '사업부를 먼저 고르세요',
+    warehousePlaceholder: '출고 창고 선택',
+    /** 사업부를 바꿔 비운 줄(FR-004). */
+    warehouseReselect: '다시 고르세요',
+    warehouseFilledFromFirst: '첫 줄 창고로 채움',
+    warehouseOption: (warehouseName: string, plantName: string): string => `${warehouseName} (${plantName})`,
+    warehouseGroup: (businessUnitName: string): string => `${businessUnitName} 활성 창고(불량창고 제외)`,
+    /** ERP S/O 줄의 ERP 창고 코드 — 참고로만 보인다, 자동 연결하지 않는다(FR-006). */
+    erpWarehouseHint: (code: string): string => `ERP 창고 ${code} (참고)`,
+    splitRowLabel: (source: string): string => `나눈 줄 (${source})`,
+    salesOrderLineRef: (salesOrderNo: string, lineNo: number): string => `${salesOrderNo} ${String(lineNo)}행`,
+    /** 나눈 줄 묶음 끝 합계(FR-005). */
+    splitTotal: (source: string, remaining: number, total: number, parts: string): string =>
+      `${source} 잔여 ${String(remaining)}, 나눈 줄 합 ${String(total)} (${parts})`,
+    splitPart: (warehouseName: string, qty: number): string => `${warehouseName} ${String(qty)}`,
   },
   values: {
     empty: '—',
@@ -84,7 +106,10 @@ export const shipmentRequestCreate = {
     erpNotMatched: '—',
   },
   errors: {
-    fulfillmentPlantRequired: '출하 담당 공장을 선택하세요.',
+    businessUnitRequired: '사업부를 고르세요.',
+    warehouseRequired: '출고 창고를 고르세요.',
+    splitOverRemaining: (total: number, remaining: number, parts: string): string =>
+      `나눈 줄 합 ${String(total)} 이 S/O 잔여 수량 ${String(remaining)} 을 넘습니다 — ${parts}. 한쪽을 줄이세요.`,
     customerRequired: '고객을 선택하세요.',
     shipToPartnerRequired: '납품처를 선택하세요.',
     requestedShipDateRequired: '출하요청일을 입력하세요.',
@@ -107,13 +132,28 @@ export const shipmentRequestCreate = {
      */
     lineIncomplete: '라인의 품목·단위·요청 수량을 채우세요.',
     headerIncomplete: '필수 항목을 입력하세요.',
+    businessUnitMissing: '사업부를 고르세요',
+    splitOverRemaining: (refs: string): string => `S/O 잔여 수량을 넘는 줄이 있습니다: ${refs}`,
+    warehouseMissing: (rows: string): string => `출고 창고를 고르세요: 라인 ${rows}`,
+    splitRowTag: (rowIndex: number): string => `${String(rowIndex)}(나눈 줄)`,
   },
   notes: {
     fromOrderLocked: 'ERP S/O 로 편성하는 중이라 고객, 납품처, 라인 품목과 수량은 고칠 수 없습니다.',
     requestedQtyFixed: '요청 수량은 ERP S/O 잔여 수량으로 자동 채워지며 고칠 수 없습니다.',
+    /* 출고 창고 칸 머리 ⓘ(관리웹 정리 시안 A — 늘 보이는 규칙 문장은 ⓘ 로). */
+    warehouseRule: '출고 창고는 고른 사업부의 활성 창고만 고를 수 있습니다(불량창고 제외).',
+    businessUnitAutoFilled: '계정 범위의 사업부가 하나라 자동으로 채웠습니다',
+    addLineWarehouse:
+      '새 줄의 출고 창고는 첫 줄 창고로 채웁니다. 같은 품목을 두 창고에서 내려면 줄을 따로 담습니다.',
     erpUnmatched: 'ERP S/O 없이 생성한 작업지시에는 ERP S/O 번호가 없습니다.',
     networkUnconfirmed:
       '응답을 받지 못했습니다. 서버에 실제로 반영됐는지 다시 확인한 뒤 재시도하세요.',
+  },
+  /** 사업부를 바꿔 다른 사업부 창고를 고른 줄을 비웠을 때(FR-004 · US1-7). */
+  warehouseCleared: {
+    title: (count: number): string => `사업부를 바꿔 출고 창고 ${String(count)}줄을 비웠습니다`,
+    description: (businessUnitName: string): string =>
+      `노란 줄의 출고 창고를 ${businessUnitName} 의 창고로 다시 고르세요.`,
   },
   shortage: {
     title: '가용 재고가 부족한 라인이 있습니다',

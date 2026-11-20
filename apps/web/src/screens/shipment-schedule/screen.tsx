@@ -26,7 +26,6 @@ import {
 } from './period';
 import { PrintPreviewDialog } from './print-preview';
 import {
-  useFulfillmentPlantUpdate,
   useItemLabels,
   useShipmentRequestDetail,
   useShipmentScheduleList,
@@ -111,50 +110,12 @@ export const ShipmentScheduleScreen = () => {
   const customers = useCustomerOptions();
   const shipToPartners = useShipToPartnerOptions();
   const fulfillmentPlants = useFulfillmentPlantOptions();
-  const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
-  const [fulfillmentPlantId, setFulfillmentPlantId] = useState('');
-  const selectedDetail = useShipmentRequestDetail(selectedRequestId);
   /* 피처 010 — 지시서 상세 창 · 인쇄 미리 보기. 공장 지정 창과 따로 연다. */
   const [detailRequestId, setDetailRequestId] = useState<number | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const requestDetail = useShipmentRequestDetail(detailRequestId);
   const itemLabel = useItemLabels((requestDetail.data?.lines ?? []).map((line) => line.itemId));
   const toast = useToast();
-  /* 저장이 끝나면 창을 닫고 다른 화면과 같은 자리에 알린다(사용자 지시 2026-09-22). */
-  /*
-   * 창을 닫으면 고른 값도 비운다 — 남겨 두면 다음 줄을 열었을 때 앞 줄의 공장이 이미 골라진
-   * 것처럼 보이고, 상세가 아직 안 왔는데 저장이 눌린다.
-   */
-  const closePlantDialog = (): void => {
-    setSelectedRequestId(null);
-    setFulfillmentPlantId('');
-    filledForRequestId.current = null;
-  };
-
-  const updatePlant = useFulfillmentPlantUpdate(selectedRequestId, () => {
-    closePlantDialog();
-    toast.show({ variant: 'success', description: messages.common.saved });
-  });
-
-  /*
-   * ⭐ **대상이 바뀔 때만** 서버 값으로 채운다. 데이터 자체를 의존성에 두면 다른 쓰기의 무효화나
-   * 초점 복귀로 상세가 다시 오는 순간 사용자가 고르던 공장이 서버 값으로 되돌아간다 —
-   * 창으로 옮기며 머무는 시간이 길어져 더 잘 걸린다.
-   */
-  const filledForRequestId = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (selectedDetail.data === undefined) return;
-    if (filledForRequestId.current === selectedRequestId) return;
-
-    filledForRequestId.current = selectedRequestId;
-    setFulfillmentPlantId(
-      selectedDetail.data.fulfillmentPlantId == null
-        ? ''
-        : String(selectedDetail.data.fulfillmentPlantId),
-    );
-  }, [selectedDetail.data, selectedRequestId]);
-
   /**
    * 조건을 주소에 반영한다. 주소가 정본이라 조회는 주소가 바뀐 결과로 일어난다.
    * **조건·정렬이 바뀌면 쪽을 첫 쪽으로 되돌린다** — 3쪽을 보다가 조건을 좁히거나 정렬을
@@ -248,10 +209,6 @@ export const ShipmentScheduleScreen = () => {
                 applyQuery(period, filters, sortKey);
               }}
               onRetryReferences={retryReferences}
-              onAssignPlant={(shipmentRequestId) => {
-                setSelectedRequestId(shipmentRequestId);
-                updatePlant.reset();
-              }}
               onOpenDetail={(shipmentRequestId) => {
                 setIsPrinting(false);
                 setDetailRequestId(shipmentRequestId);
@@ -270,78 +227,9 @@ export const ShipmentScheduleScreen = () => {
       </section>
 
       {/*
-        공장 지정은 목록 아래 구획이 아니라 **창**으로 연다(사용자 지시 2026-09-22) — 고른 줄과
-        입력 자리가 멀어 어느 건을 고치는지 흐려졌다. 여는 조건과 저장 동작은 그대로다.
+        ⛔ 「출하 담당 공장」 지정 창을 없앴다(피처 012 D-1 · FR-007) — 서버가 공장 지정 PUT 을 지웠다.
+        지시서는 사업부에 속하고 줄마다 출고 창고를 W-04-01 에서 정한다.
       */}
-      {selectedRequestId !== null && (
-        <Dialog
-          open
-          size="sm"
-          /* 아래 「취소」가 같은 일을 한다 — 우상단 × 는 두지 않는다(사용자 지시 2026-09-22). */
-          showCloseButton={false}
-          title={t.panes.fulfillmentPlant}
-          onClose={closePlantDialog}
-          footer={
-            <>
-              <Button variant="outlined" disabled={updatePlant.isSaving} onClick={closePlantDialog}>
-                {messages.common.cancel}
-              </Button>
-              <Button
-                /* 상세를 받기 전에는 잠근다 — 최신본 표가 없으면 요청이 나가지도 않는다. */
-                disabled={
-                  selectedDetail.data === undefined ||
-                  selectedDetail.isFetching ||
-                  fulfillmentPlantId === '' ||
-                  updatePlant.isSaving
-                }
-                onClick={() => {
-                  updatePlant.write({ fulfillmentPlantId: Number(fulfillmentPlantId) });
-                }}
-              >
-                {t.actions.savePlant}
-              </Button>
-            </>
-          }
-        >
-          <div className="shipment-schedule-plant-body">
-            {selectedDetail.isPending && <p>{t.loading.detail}</p>}
-            {selectedDetail.isError && (
-              <LoadErrorBanner
-                error={selectedDetail.error}
-                onRetry={() => {
-                  void selectedDetail.refetch();
-                }}
-              />
-            )}
-            {selectedDetail.data !== undefined && (
-              <div className="form-grid shipment-schedule-plant-form">
-                <div className="field-cell wide-select">
-                  <label className="field-label" htmlFor="shipment-fulfillment-plant">
-                    {t.fields.fulfillmentPlant}
-                  </label>
-                  <Select
-                    id="shipment-fulfillment-plant"
-                    options={toSelectOptions(fulfillmentPlants)}
-                    value={fulfillmentPlantId === '' ? null : fulfillmentPlantId}
-                    disabled={updatePlant.isSaving}
-                    invalid={updatePlant.fieldErrors.fulfillmentPlantId !== undefined}
-                    onChange={(value) => {
-                      setFulfillmentPlantId(value);
-                      updatePlant.clearFieldError('fulfillmentPlantId');
-                    }}
-                  />
-                  {updatePlant.fieldErrors.fulfillmentPlantId !== undefined && (
-                    <span className="field-error">
-                      {updatePlant.fieldErrors.fulfillmentPlantId}
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-            <SaveErrorBanner error={updatePlant.error} />
-          </div>
-        </Dialog>
-      )}
 
       {detailRequestId !== null && !isPrinting && (
         <RequestDetailDialog

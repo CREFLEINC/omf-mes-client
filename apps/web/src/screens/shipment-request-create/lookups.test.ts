@@ -2,12 +2,14 @@ import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import {
+  businessUnitInScope,
   describeAvailableQty,
   describeReference,
   lookupNote,
   toReference,
   type LookupResult,
   type ReferenceSource,
+  warehouseSelectable,
 } from './lookups';
 
 const t = messages.shipmentRequestCreate;
@@ -86,5 +88,57 @@ describe('describeAvailableQty', () => {
 
     expect(new Set(texts).size).toBe(texts.length);
     expect(texts[3]).toBe('60');
+  });
+});
+
+/* ── 피처 012 — 사업부·출고 창고 선택지(계정 데이터 범위) ─────────────────── */
+
+describe('businessUnitInScope — 사업부 선택지(FR-002)', () => {
+  it('US1-1 범위에 사업부가 하나면 그 사업부만 고를 수 있다(화면이 자동으로 채운다)', () => {
+    const scopes = [{ businessUnitId: 7001 }];
+
+    expect(businessUnitInScope(7001, scopes)).toBe(true);
+    expect(businessUnitInScope(7002, scopes)).toBe(false);
+  });
+
+  it('Edge-scope 범위가 없는 계정은 모든 사업부를 고를 수 있다', () => {
+    expect(businessUnitInScope(7001, [])).toBe(true);
+    expect(businessUnitInScope(7002, [])).toBe(true);
+  });
+
+  it('Edge-scope 공장만 지정한 범위 줄은 그 공장의 사업부를 고를 수 있다', () => {
+    expect(businessUnitInScope(7001, [{ businessUnitId: 7001, plantId: 7102 }])).toBe(true);
+    expect(businessUnitInScope(7002, [{ businessUnitId: 7001, plantId: 7102 }])).toBe(false);
+  });
+});
+
+describe('warehouseSelectable — 출고 창고 선택지(FR-003)', () => {
+  const warehouse = (patch: Partial<{ businessUnitId: number; plantId: number; isActive: boolean; isDefect: boolean }> = {}) => ({
+    businessUnitId: 7001,
+    plantId: 7101,
+    isActive: true,
+    isDefect: false,
+    ...patch,
+  });
+
+  it('US1-3 고른 사업부의 활성 창고만 — 불량창고·비활성·다른 사업부는 없다', () => {
+    expect(warehouseSelectable(warehouse(), 7001, [])).toBe(true);
+    expect(warehouseSelectable(warehouse({ isDefect: true }), 7001, [])).toBe(false);
+    expect(warehouseSelectable(warehouse({ isActive: false }), 7001, [])).toBe(false);
+    expect(warehouseSelectable(warehouse({ businessUnitId: 7002 }), 7001, [])).toBe(false);
+  });
+
+  it('US1-3 사업부를 통째로 가진 범위면 그 사업부 창고 모두', () => {
+    const scopes = [{ businessUnitId: 7001 }];
+
+    expect(warehouseSelectable(warehouse({ plantId: 7101 }), 7001, scopes)).toBe(true);
+    expect(warehouseSelectable(warehouse({ plantId: 7102 }), 7001, scopes)).toBe(true);
+  });
+
+  it('Edge-scope 공장 줄만 있는 범위는 그 공장 창고로 좁힌다', () => {
+    const scopes = [{ businessUnitId: 7001, plantId: 7102 }];
+
+    expect(warehouseSelectable(warehouse({ plantId: 7102 }), 7001, scopes)).toBe(true);
+    expect(warehouseSelectable(warehouse({ plantId: 7101 }), 7001, scopes)).toBe(false);
   });
 });

@@ -22,6 +22,7 @@ const line = (overrides: Partial<Parameters<typeof toShipmentRequestLineCandidat
   /* 피처 010 — 초과·피킹 LOT 행. 이 시험은 아직 이 값을 읽지 않는다. */
   overQty: 0,
   lots: [],
+  warehouse: null,
   ...overrides,
 });
 
@@ -46,6 +47,12 @@ const request = (overrides: Partial<Parameters<typeof toShipmentRequestCandidate
   blockerSummary: {},
   lotJudgmentSummary: { notInspected: 0, accepted: 0, rejected: 0, held: 0 },
   completedShipment: null,
+  /* 피처 012 — 사업부·줄 창고 요약·ERP 송신·출하. */
+  businessUnitId: null,
+  businessUnit: null,
+  warehouses: [],
+  erpSendStatus: null,
+  shipments: [],
   ...overrides,
 });
 
