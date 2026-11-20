@@ -13474,6 +13474,33 @@ a.erp-send-chips:focus-visible {
   position: relative;
 }
 
+/*
+ * 사용자 · 역할 탭 — 다른 화면의 탭 막대(`.hub-tab`, 불량코드 등)와 같은 모양(사용자 지시 2026-11-20).
+ * 글자는 label-lg, 켜진 탭은 탭 폭 전체에 `--primary-text` 굵은 밑줄. 품질 결재 유형 탭(`.quality-approval-type-tabs`)과 같은 방식.
+ */
+/* 탭 목록의 아래 여백 · 진한 선을 걷고 옅은 선 하나만 — 켜진 탭 밑줄이 그 선 위에 바로 붙는다(선 두 줄 방지). */
+.users-roles-tab-strip [role="tablist"] {
+  gap: 0;
+  padding: 0;
+  box-shadow: inset 0 -1px 0 var(--outline-variant);
+}
+
+.users-roles-tab-strip [role="tab"] {
+  height: auto;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+.users-roles-tab-strip [role="tab"]::after {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 0;
+  background: var(--primary-text);
+}
+
 /* 탭 줄 오른쪽 — 재직 상태 칩 · 좌우 / 상하 배치. DS 탭에 오른쪽 자리가 없어 탭 줄 높이에 겹쳐 세운다. */
 .users-roles-tab-actions {
   position: absolute;
@@ -13483,7 +13510,7 @@ a.erp-send-chips:focus-visible {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  height: 48px;
+  height: 36px; /* 탭 줄 높이(밑줄 맞춤 뒤 36px)와 같게 */
 }
 
 .users-roles-tab-actions > .split-orientation-toggle {

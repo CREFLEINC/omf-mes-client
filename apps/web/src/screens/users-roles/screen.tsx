@@ -2273,6 +2273,7 @@ export const UsersRolesScreen = () => {
           </div>
         )}
         <Tabs
+          className="users-roles-tab-strip"
           aria-label={t.tabs.label}
           value={tab.id}
           onChange={changeTab}
