@@ -6,7 +6,8 @@ import { Button } from '../../patterns/button';
 import { parseMaterialLotNo } from '../../patterns/material-lot-no';
 import { qtyNumber } from './lot-format';
 import type { ScanLine } from './receipt';
-import { FitName } from './fit-name';
+import '../../patterns/scan-result.css';
+import { FitName } from '../../patterns/fit-name';
 
 const t = messages.inboundReceipt;
 

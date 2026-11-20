@@ -1,6 +1,6 @@
 import { Fragment } from 'react';
 
-import { keepHyphens } from './lot-format';
+import { keepHyphens } from './keep-hyphens';
 
 /**
  * 품목명 · 공급사명 — 낱말마다 꺾이지 않는 조각으로 그린다. 한글은 음절 사이에서도 꺾여 「검사불 / 필요」가 되는데,
@@ -15,7 +15,7 @@ export const Words = ({ text }: { text: string }) => (
       .map((word, index) => (
         <Fragment key={`${String(index)}-${word}`}>
           {index === 0 ? null : ' '}
-          <span className="receive-word">{word}</span>
+          <span className="word-chunk">{word}</span>
         </Fragment>
       ))}
   </>

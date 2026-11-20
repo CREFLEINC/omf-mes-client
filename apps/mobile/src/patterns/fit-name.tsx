@@ -4,8 +4,7 @@ import { Words } from './words';
 
 /** 낱말 조각이 놓인 줄 수 — 조각마다 윗변이 다르면 다른 줄이다. */
 const linesOf = (box: HTMLElement): number =>
-  new Set([...box.querySelectorAll<HTMLElement>('.receive-word')].map((word) => word.offsetTop))
-    .size;
+  new Set([...box.querySelectorAll<HTMLElement>('.word-chunk')].map((word) => word.offsetTop)).size;
 
 /** 한 줄 칸(nowrap)이 넘치는가. */
 const overflows = (box: HTMLElement): boolean => box.scrollWidth > box.clientWidth;
