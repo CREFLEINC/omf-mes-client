@@ -63,6 +63,8 @@ export const salesOrderDetailFixture: SalesOrderResponse = {
       orderedQty: 100,
       uomId: 8401,
       shippedQty: 20,
+      /* 피처 012 FR-006 — ERP 창고 코드는 참고로만 보인다. */
+      erpStorageLocationCode: 'SAMPLE-ERP-WH',
     },
     {
       salesOrderLineId: 8602,
@@ -110,6 +112,8 @@ export const createdShipmentRequestFixture: ShipmentRequestResponse = {
       /* 피처 010 — 초과·피킹 LOT 행. 이 화면은 아직 이 값을 읽지 않는다. */
       overQty: 0,
       lots: [],
+      /* 피처 012 — 줄 출고 창고. 이 화면은 응답의 이 값을 읽지 않는다. */
+      warehouse: null,
     },
   ],
   /* 피처 010 — 지시서 코드·피킹 창고·교체·막힘·판정 요약·완료 출하. 이 화면은 아직 읽지 않는다. */
@@ -120,6 +124,12 @@ export const createdShipmentRequestFixture: ShipmentRequestResponse = {
   blockerSummary: {},
   lotJudgmentSummary: { notInspected: 0, accepted: 0, rejected: 0, held: 0 },
   completedShipment: null,
+  /* 피처 012 — 사업부·줄 창고 요약·ERP 송신·출하. 이 화면은 읽지 않는다. */
+  businessUnitId: 7001,
+  businessUnit: { businessUnitId: 7001, businessUnitCode: 'SAMPLE-BU-01', businessUnitName: '합성 사업부 가' },
+  warehouses: [],
+  erpSendStatus: null,
+  shipments: [],
 };
 
 export const partnerFixtures = [
@@ -163,3 +173,46 @@ export const availableBalanceFixtures: Record<number, { availableQty: number }[]
   8301: [{ availableQty: 60 }],
   8302: [{ availableQty: 500 }],
 };
+
+/**
+ * 피처 012 — 사업부·공장·창고(합성값). quickstart 모양: 사업부 X(1공장: 창고 A·C·불량창고 D, 2공장: 창고 B),
+ * 사업부 Y(3공장: 창고 Y).
+ */
+export const businessUnitFixtures = [
+  { businessUnitId: 7001, legalEntityId: 1, businessUnitCode: 'SAMPLE-BU-X', businessUnitName: '합성 사업부 X', isActive: true },
+  { businessUnitId: 7002, legalEntityId: 1, businessUnitCode: 'SAMPLE-BU-Y', businessUnitName: '합성 사업부 Y', isActive: true },
+  { businessUnitId: 7003, legalEntityId: 1, businessUnitCode: 'SAMPLE-BU-Z', businessUnitName: '합성 사업부 Z', isActive: false },
+];
+
+export const plantFixtures = [
+  { plantId: 7101, legalEntityId: 1, businessUnitId: 7001, plantCode: 'SAMPLE-P1', plantName: '합성 1공장', isActive: true },
+  { plantId: 7102, legalEntityId: 1, businessUnitId: 7001, plantCode: 'SAMPLE-P2', plantName: '합성 2공장', isActive: true },
+  { plantId: 7103, legalEntityId: 1, businessUnitId: 7002, plantCode: 'SAMPLE-P3', plantName: '합성 3공장', isActive: true },
+];
+
+const warehouse = (
+  warehouseId: number,
+  warehouseName: string,
+  plantId: number,
+  businessUnitId: number,
+  patch: { isDefect?: boolean; isActive?: boolean } = {},
+) => ({
+  warehouseId,
+  plantId,
+  businessUnitId,
+  warehouseCode: `SAMPLE-WH-${String(warehouseId)}`,
+  warehouseName,
+  warehouseTypeCode: 'PRODUCT',
+  isExternal: false,
+  isDefect: patch.isDefect ?? false,
+  isActive: patch.isActive ?? true,
+  locationPrefix: '',
+});
+
+export const warehouseFixtures = [
+  warehouse(9101, '합성 창고 A', 7101, 7001),
+  warehouse(9103, '합성 창고 C', 7101, 7001),
+  warehouse(9104, '합성 불량창고 D', 7101, 7001, { isDefect: true }),
+  warehouse(9102, '합성 창고 B', 7102, 7001),
+  warehouse(9105, '합성 창고 Y', 7103, 7002),
+];

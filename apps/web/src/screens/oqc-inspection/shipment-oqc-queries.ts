@@ -61,6 +61,13 @@ export interface ShipmentRequestRef {
   overQty: number;
   /** LOT 번호 → 지시서의 피킹 LOT 행(교체된 행 포함). */
   lotOf: (lotId: number) => ShipmentRequestLot | null;
+  /**
+   * 피처 012 US3-5 — LOT 이 든 라인과 그 라인의 출고 창고 · 공장. 옛 라인(창고 미지정)은 창고가 `null`.
+   * 같은 품목이 창고별 라인으로 나뉘어도 의뢰는 하나(지시서 × 품목)라 LOT 마다 어느 창고인지 보인다.
+   */
+  lotPlaceOf: (
+    lotId: number,
+  ) => { lineNo: number; warehouseName: string | null; plantName: string | null } | null;
 }
 
 export const toShipmentRequestRef = (
@@ -87,6 +94,17 @@ export const toShipmentRequestRef = (
       lots.find((lot) => lot.lotId === lotId && lot.statusCode !== 'REPLACED') ??
       lots.find((lot) => lot.lotId === lotId) ??
       null,
+    lotPlaceOf: (lotId) => {
+      const line = lines.find((candidate) =>
+        (candidate.lots ?? []).some((lot) => lot.lotId === lotId && lot.statusCode !== 'REPLACED'),
+      );
+      if (line === undefined) return null;
+      return {
+        lineNo: line.lineNo,
+        warehouseName: line.warehouse?.warehouseName ?? null,
+        plantName: line.warehouse?.plantName ?? null,
+      };
+    },
   };
 };
 

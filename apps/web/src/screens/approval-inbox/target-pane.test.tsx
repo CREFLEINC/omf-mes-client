@@ -32,10 +32,12 @@ describe('TargetPane', () => {
     expect(screen.getByText('합성 대상 문서 가')).toBeVisible();
   });
 
-  it('여기서 대상 내용을 읽는 자리가 아님을 밝힌다', () => {
+  /* 늘 펼쳐 두지 않고 대상 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */
+  it('여기서 대상 내용을 읽는 자리가 아님을 제목 옆 ⓘ 로 밝힌다', () => {
     renderPane();
 
-    expect(screen.getByText(t.target.note)).toBeVisible();
+    expect(screen.getByRole('button', { name: t.target.note })).toBeVisible();
+    expect(screen.queryByText(t.target.note)).toBeNull();
   });
 
   it('열 수 있으면 그 경로를 들고 부른다', async () => {

@@ -124,6 +124,11 @@ export const pickingRequest = () =>
       { warehouseId: 9401, warehouseCode: 'SAMPLE-WH-A', warehouseName: '합성 완제품 창고 A' },
       { warehouseId: 9402, warehouseCode: 'SAMPLE-WH-B', warehouseName: '합성 완제품 창고 B' },
     ],
+    /* 피처 012 — 줄 출고 창고 요약(목록 「출고 창고」 칸). */
+    warehouses: [
+      { warehouseId: 9401, warehouseCode: 'SAMPLE-WH-A', warehouseName: '합성 완제품 창고 A', plantId: 9201, plantName: '합성 공장 가' },
+      { warehouseId: 9402, warehouseCode: 'SAMPLE-WH-B', warehouseName: '합성 완제품 창고 B', plantId: 9202, plantName: '합성 공장 나' },
+    ],
     completionBlockers: [
       { code: 'NOT_INSPECTED', lotNo: 'SAMPLE-LOT-0004' },
       { code: 'SALES_ORDER_LINE_CANCELLED', lineNo: 1 },

@@ -367,15 +367,10 @@ export const ResultFormPane = ({
           <p className="field-note">{t.round(round.inspectionRound)}</p>
         ) : null}
         {/*
-         * ⛔ **사유 칸을 지어내지 않는다.** 계약이 재검사 사유를 선택으로 받지만 대응 코드 그룹이
-         * 어디에도 없다. 감추지 않고 왜 없는지 밝힌다(공유계약 G-2).
+         * ⛔ **사유 칸을 지어내지 않는다.** 계약이 재검사 사유를 선택으로 받지만 대응 코드 그룹이 어디에도 없다.
+         * 「아직 고를 수 없다」는 개발 사정이라 화면에 내지 않는다(관리웹 정리 시안 A).
          */}
-        {isReinspecting && (
-          <>
-            <p className="field-note">{t.reinspectNote}</p>
-            <p className="field-note">{t.reinspectReasonPending}</p>
-          </>
-        )}
+        {isReinspecting && <p className="field-note">{t.reinspectNote}</p>}
         {/* 잠긴 이유를 **묶음에 한 번** 낸다 — 잠긴 것은 칸 하나가 아니라 이 회차다. */}
         {isLocked && (
           <p className="field-note" id={lockNoteId}>

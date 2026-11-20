@@ -78,7 +78,9 @@ export const lookupNote = (lookup: LookupResult): string | undefined => {
 export const lookupKeys = {
   customers: ['shipment-request-create-lookups', 'customers'] as const,
   shipToPartners: ['shipment-request-create-lookups', 'ship-to-partners'] as const,
-  fulfillmentPlants: ['shipment-request-create-lookups', 'fulfillment-plants'] as const,
+  businessUnits: ['shipment-request-create-lookups', 'business-units'] as const,
+  warehouses: ['shipment-request-create-lookups', 'warehouses'] as const,
+  plants: ['shipment-request-create-lookups', 'plants'] as const,
   itemName: (itemId: number) => ['shipment-request-create-lookups', 'item-name', itemId] as const,
   uoms: ['shipment-request-create-lookups', 'uoms'] as const,
 };
@@ -152,28 +154,151 @@ export const useShipToPartnerOptions = (): LookupResult => {
   });
 };
 
-/** 이행 공장 — 새 편성은 활성 공장을 지정해야 하므로 기본 활성 목록만 쓴다. */
-export const useFulfillmentPlantOptions = (): LookupResult => {
+/** 세션의 데이터 범위 한 줄 — 계약 `SessionScope`. */
+export interface DataScope {
+  businessUnitId: number;
+  plantId?: number;
+}
+
+/**
+ * 고를 수 있는 사업부인가(피처 012 FR-002) — 범위가 없으면 모든 활성 사업부, 범위 줄이 있으면 그 줄들의
+ * 사업부(공장만 지정한 줄도 그 공장의 사업부를 싣는다 — 계약 `SessionScope.businessUnitId` 는 필수다).
+ * 서버(`accountCoversBusinessUnit`)와 같은 규칙이다. 서버가 범위 밖을 403 으로 막으므로 이 거름은
+ * 고를 수 없는 값을 보이지 않게 하는 몫이다.
+ */
+export const businessUnitInScope = (
+  businessUnitId: number,
+  scopes: readonly DataScope[],
+): boolean => scopes.length === 0 || scopes.some((scope) => scope.businessUnitId === businessUnitId);
+
+/**
+ * 고를 수 있는 창고인가(피처 012 FR-003 · Edge 「공장 줄만 있는 범위」).
+ *
+ * - 활성 · 불량창고 아님 · 고른 사업부의 창고.
+ * - 계정 범위: 그 사업부를 통째로 가진 줄(공장 없음)이 있으면 그 사업부 창고 모두, 공장 줄만 있으면 그 공장 창고만.
+ *   범위가 하나도 없으면 전체.
+ */
+export const warehouseSelectable = (
+  warehouse: {
+    businessUnitId: number;
+    plantId: number;
+    isActive: boolean;
+    isDefect: boolean;
+  },
+  businessUnitId: number,
+  scopes: readonly DataScope[],
+): boolean => {
+  if (!warehouse.isActive || warehouse.isDefect || warehouse.businessUnitId !== businessUnitId) {
+    return false;
+  }
+  if (scopes.length === 0) return true;
+
+  const unitScopes = scopes.filter((scope) => scope.businessUnitId === businessUnitId);
+
+  return unitScopes.some(
+    (scope) => scope.plantId === undefined || scope.plantId === warehouse.plantId,
+  );
+};
+
+/** 사업부 선택지 — 활성 사업부 중 계정 범위 안. */
+export const useBusinessUnitOptions = (scopes: readonly DataScope[]): LookupResult => {
   const { client } = useApiClient();
   const query = useQuery({
-    queryKey: lookupKeys.fulfillmentPlants,
-    queryFn: () => runRequest(() => client.GET('/mdm/plants', { params: { query: {} } })),
+    queryKey: lookupKeys.businessUnits,
+    queryFn: () =>
+      fetchAllPages((page, size) =>
+        runRequest(() => client.GET('/mdm/business-units', { params: { query: { page, size } } })),
+      ),
   });
   const data = query.data;
 
   return {
     entries:
-      data?.items.map((plant) => ({
-        value: String(plant.plantId),
-        label: `${plant.plantCode} · ${plant.plantName}`,
-        isActive: plant.isActive,
-      })) ?? EMPTY_ENTRIES,
-    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+      data?.items
+        .filter((unit) => unit.isActive && businessUnitInScope(unit.businessUnitId, scopes))
+        .map((unit) => ({
+          value: String(unit.businessUnitId),
+          label: unit.businessUnitName,
+          isActive: unit.isActive,
+        })) ?? EMPTY_ENTRIES,
+    truncated: data?.truncated === true,
     isError: query.isError,
     isLoading: query.isPending,
     refetch: () => {
       void query.refetch();
     },
+  };
+};
+
+/** 출고 창고 한 건 — 선택지와 「사업부를 바꾸면 비울 줄」 판정이 함께 쓴다. */
+export interface WarehouseEntry {
+  value: string;
+  /** 「창고 이름 · 공장 이름」(시안 W0401-After) */
+  label: string;
+  warehouseName: string;
+  businessUnitId: number;
+  plantId: number;
+}
+
+export interface WarehouseLookup {
+  /** 고른 사업부에서 고를 수 있는 창고(계정 범위 · 활성 · 불량 아님). 사업부를 안 골랐으면 빈 목록. */
+  selectable: (businessUnitId: string) => WarehouseEntry[];
+  /** 번호로 이름을 푼다 — 고를 수 없게 된 창고도 이름은 푼다. */
+  nameOf: (warehouseId: string) => string | undefined;
+  isError: boolean;
+  isLoading: boolean;
+  truncated: boolean;
+}
+
+/**
+ * 출고 창고 — 창고 목록(활성)과 공장 이름을 받아 「창고 · 공장」으로 푼다.
+ *
+ * ⚠ 창고 목록 계약에 사업부 조건이 없다 — 전부 받아 사업부·계정 범위로 거른다(`warehouseSelectable`).
+ */
+export const useWarehouseOptions = (scopes: readonly DataScope[]): WarehouseLookup => {
+  const { client } = useApiClient();
+  const warehouses = useQuery({
+    queryKey: lookupKeys.warehouses,
+    queryFn: () =>
+      fetchAllPages((page, size) =>
+        runRequest(() => client.GET('/mdm/warehouses', { params: { query: { page, size } } })),
+      ),
+  });
+  const plants = useQuery({
+    queryKey: lookupKeys.plants,
+    queryFn: () => runRequest(() => client.GET('/mdm/plants', { params: { query: {} } })),
+  });
+
+  const plantNames = new Map(
+    (plants.data?.items ?? []).map((plant) => [plant.plantId, plant.plantName]),
+  );
+  const items = warehouses.data?.items ?? [];
+  const toEntry = (warehouse: (typeof items)[number]): WarehouseEntry => ({
+    value: String(warehouse.warehouseId),
+    label: t.lineTable.warehouseOption(
+      warehouse.warehouseName,
+      plantNames.get(warehouse.plantId) ?? t.values.unknown,
+    ),
+    warehouseName: warehouse.warehouseName,
+    businessUnitId: warehouse.businessUnitId,
+    plantId: warehouse.plantId,
+  });
+
+  return {
+    selectable: (businessUnitId) => {
+      if (businessUnitId === '') return [];
+
+      return items
+        .filter((warehouse) => warehouseSelectable(warehouse, Number(businessUnitId), scopes))
+        .map(toEntry);
+    },
+    nameOf: (warehouseId) =>
+      items.find((warehouse) => String(warehouse.warehouseId) === warehouseId)?.warehouseName,
+    isError: warehouses.isError || plants.isError,
+    isLoading: warehouses.isPending || plants.isPending,
+    truncated:
+      warehouses.data?.truncated === true ||
+      (plants.data !== undefined && isTruncated(plants.data.page, plants.data.items.length)),
   };
 };
 
@@ -275,9 +400,15 @@ export const describeAvailableQty = (state: AvailableQtyState): string => {
   }
 };
 
-const fetchAvailableQty = async (client: Client, itemId: number): Promise<number> => {
+const fetchAvailableQty = async (
+  client: Client,
+  itemId: number,
+  warehouseId: number,
+): Promise<number> => {
   const data = await runRequest(() =>
-    client.GET('/inventory/balances', { params: { query: { itemId, groupBy: 'ITEM' } } }),
+    client.GET('/inventory/balances', {
+      params: { query: { itemId, warehouseId, groupBy: 'ITEM' } },
+    }),
   );
 
   /*
@@ -290,33 +421,51 @@ const fetchAvailableQty = async (client: Client, itemId: number): Promise<number
 };
 
 export interface AvailableQtyLookup {
-  of: (itemId: number | null) => AvailableQtyState;
+  of: (itemId: number | null, warehouseId: number | null) => AvailableQtyState;
   refetchAll: () => void;
 }
 
+/** 품목 × 창고 한 쌍. 둘 중 하나라도 비면 묻지 않는다. */
+export interface ItemWarehouse {
+  itemId: number | null;
+  warehouseId: number | null;
+}
+
+const pairKey = (itemId: number, warehouseId: number): string =>
+  `${String(itemId)}@${String(warehouseId)}`;
+
 /**
- * 라인 품목마다 가용 수량을 조회한다 — 계획서 미결 항목의 구현 판단. 스펙·계약에 전용
- * 조회가 없어 `GET /inventory/balances?itemId=&groupBy=ITEM`을 품목마다 호출한다
- * (경고 표시용이라 창고를 좁히지 않는다 — 편성 라인에는 아직 창고 축이 없다).
+ * 라인의 **고른 창고** 가용 수량(피처 012 FR-006a · 시안 빈 곳 ④) —
+ * `GET /inventory/balances?itemId=&warehouseId=&groupBy=ITEM` 을 품목 × 창고마다 부른다.
+ * 창고를 아직 고르지 않은 줄은 묻지 않는다(「—」) — 사업부 전체 가용을 보이면 다른 창고 재고로 넉넉해 보인다.
  *
- * **중복 품목은 한 번만 묻는다** — 두 라인이 같은 품목이면 요청도 하나로 묶는다.
+ * **같은 품목 × 창고는 한 번만 묻는다** — 나눈 줄이 같은 창고면 요청도 하나다.
  */
-export const useAvailableQty = (itemIds: readonly (number | null)[]): AvailableQtyLookup => {
+export const useAvailableQty = (pairs: readonly ItemWarehouse[]): AvailableQtyLookup => {
   const { client } = useApiClient();
 
-  const uniqueIds = [...new Set(itemIds.filter((id): id is number => id !== null))];
+  const unique = new Map<string, { itemId: number; warehouseId: number }>();
 
+  for (const pair of pairs) {
+    if (pair.itemId === null || pair.warehouseId === null) continue;
+    unique.set(pairKey(pair.itemId, pair.warehouseId), {
+      itemId: pair.itemId,
+      warehouseId: pair.warehouseId,
+    });
+  }
+
+  const uniqueKeys = [...unique.keys()];
   const results = useQueries({
-    queries: uniqueIds.map((itemId) => ({
-      queryKey: ['shipment-request-create-lookups', 'available-qty', itemId] as const,
-      queryFn: () => fetchAvailableQty(client, itemId),
+    queries: [...unique.values()].map(({ itemId, warehouseId }) => ({
+      queryKey: ['shipment-request-create-lookups', 'available-qty', itemId, warehouseId] as const,
+      queryFn: () => fetchAvailableQty(client, itemId, warehouseId),
     })),
   });
 
-  const of = (itemId: number | null): AvailableQtyState => {
-    if (itemId === null) return { kind: 'unasked' };
+  const of = (itemId: number | null, warehouseId: number | null): AvailableQtyState => {
+    if (itemId === null || warehouseId === null) return { kind: 'unasked' };
 
-    const index = uniqueIds.indexOf(itemId);
+    const index = uniqueKeys.indexOf(pairKey(itemId, warehouseId));
     const result = index === -1 ? undefined : results[index];
 
     if (result === undefined) return { kind: 'unasked' };

@@ -20,7 +20,20 @@ export const productPicking = {
     loadFailed: '오늘 출하 지시서를 확인할 수 없습니다',
     /* 고르던 지시서가 목록에서 빠졌다. 말없이 나가면 무슨 일이 있었는지 알 수 없다. */
     dropped: '고르던 지시서가 오늘 출하 지시서에서 빠졌습니다',
-    none: '오늘 피킹할 출하 지시서가 없습니다',
+    none: '오늘 이 기기에서 피킹할 출하 지시서가 없습니다',
+    /** 피처 012 — 범위가 좁아져 「왜 안 보이지」가 생기므로 빈 문구와 목록 끝에 범위를 적는다(시안 ⑨). */
+    scopeHidden: '출하 완료된 지시서와, 이 기기 공장 창고 라인이 없는 지시서는 보이지 않습니다',
+    scopeNote: '이 기기 공장 창고 라인이 있는 지시서만 보입니다',
+    /** 카드의 라인 줄 — 이 기기가 피킹할 줄만, 창고 이름을 붙인다(FR-010). */
+    lineSummaryAt: (
+      lineNo: number,
+      item: string,
+      warehouse: string,
+      picked: string,
+      target: string,
+    ) => `${String(lineNo)}. ${item} ${warehouse} 피킹 ${picked} / 목표 ${target}`,
+    otherPlantLines: (count: number) => `다른 공장 창고 라인 ${String(count)}`,
+    otherWarehouseLines: (count: number) => `이 기기 창고 밖 라인 ${String(count)}`,
     /* 출하 완료된 지시서는 목록에 세우지 않는다 — 더 집을 일이 없다. */
     completedHidden: '출하 완료된 지시서는 목록에서 빠집니다',
     noSalesOrder: '수주 없음',
@@ -38,6 +51,23 @@ export const productPicking = {
     shipDate: '출하 예정',
     change: '다른 지시서 고르기',
     showCode: '지시서 코드 보기',
+    /** 피처 012 — 지시서는 사업부에 속한다. 사업부가 없는 공장의 옛 지시서는 이 배지(빈 곳 ⑨). */
+    noBusinessUnit: '사업부 미지정',
+  },
+  /** 피처 012 — 줄 출고 창고와 이 기기 범위(FR-010·011·027). */
+  warehouse: {
+    tag: (warehouse: string, plant: string) => `${warehouse} (${plant})`,
+    /** 배포 전 만든 옛 줄 — 지시서 공장의 불량창고 외 모든 창고에서 받는다. */
+    unassigned: '창고 미지정',
+    OTHER_PLANT: (warehouse: string) =>
+      `다른 공장 창고(${warehouse}), 이 기기에서 피킹하지 않습니다`,
+    OTHER_WAREHOUSE: (warehouse: string) =>
+      `이 기기 창고 밖(${warehouse}), 이 기기에서 피킹하지 않습니다`,
+    /** 이 기기 줄이 다 찼고 다른 공장 · 창고 줄이 남았을 때(시안 ⑦). */
+    terminalDone: '이 기기 몫은 끝났습니다',
+    terminalDoneDetail: (businessUnit: string) =>
+      `출하 완료는 ${businessUnit} 의 아무 POP 「출하 완료」에서 합니다`,
+    terminalDoneDetailNoUnit: '출하 완료는 POP 「출하 완료」에서 합니다',
   },
   line: {
     title: (lineNo: number, itemCode: string) => `라인 ${String(lineNo)}, ${itemCode}`,
@@ -80,7 +110,7 @@ export const productPicking = {
   },
   scan: {
     label: '제품 LOT 스캔',
-    hint: 'LOT 라벨을 스캔하면 바로 피킹합니다',
+    hint: 'LOT 라벨을 스캔하면 그 창고의 라인으로 피킹합니다',
     placeholder: '제품 LOT QR을 스캔하세요',
     manualLabel: '직접 입력',
     manualSubmit: '피킹',
@@ -93,6 +123,10 @@ export const productPicking = {
     reachedOver: (lineNo: number, target: string, over: string) =>
       `라인 ${String(lineNo)} 목표 ${target} 을 채웠습니다, 초과 ${over}`,
     remaining: (lineNo: number, left: string) => `라인 ${String(lineNo)} 남음 ${left}`,
+    /** 두 창고에 걸친 LOT — 줄 창고 몫만 집었다(피처 012 Edge · `otherWarehouseQty`). */
+    lineWarehouseOnly: (lineNo: number, warehouse: string) =>
+      `라인 ${String(lineNo)}, ${warehouse} 몫만 피킹했습니다`,
+    otherWarehouseLeft: (qty: string, uom: string) => `다른 창고에 ${qty} ${uom} 남음`,
   },
   /** 거절은 서버 409 `code` 로 가른다. 실제로는 한 번에 하나만 뜬다. */
   rejected: {
@@ -104,6 +138,17 @@ export const productPicking = {
     reservedDetail: '다른 출하 지시서나 출고에 예약된 몫이 있어 통째로 집을 수 없습니다',
     LOT_ALREADY_PICKED: '이미 이 지시서에 피킹한 LOT 입니다',
     NO_LINE_FOR_ITEM: '이 지시서에 이 품목 라인이 없습니다',
+    /** 피처 012 — 줄 창고에 없는 LOT(409 `LOT_NOT_IN_LINE_WAREHOUSE`). */
+    LOT_NOT_IN_LINE_WAREHOUSE: '이 지시서의 출고 창고에 없는 LOT 입니다',
+    lotWarehouses: (names: string) => `LOT 이 있는 창고: ${names}`,
+    lotWarehouse: (warehouse: string, plant: string) => `${warehouse}(${plant})`,
+    /** 줄 창고가 비활성이거나 다른 사업부로 옮겨짐(409 `LINE_WAREHOUSE_UNAVAILABLE`). */
+    LINE_WAREHOUSE_UNAVAILABLE: '출고 창고를 쓸 수 없습니다',
+    lineWarehouseUnavailableDetail:
+      '지시서를 취소하고 다시 만들어야 합니다. 출하 관리자에게 알리세요',
+    /** 그 품목 줄이 다른 공장 · 창고 줄뿐 — 이 기기에서 보내지 않는다. */
+    outOfScope: '이 기기에서 피킹할 이 품목 라인이 없습니다',
+    outOfScopeDetail: '이 품목은 다른 공장이나 다른 창고의 라인입니다',
     /** 피처 013(시안 M0401) — 원래 · 새 LOT 모두 해당. */
     LOT_SPLIT_UNCONFIRMED: '분리 확인 전인 LOT 입니다',
     splitUnconfirmedDetail:
@@ -174,6 +219,7 @@ export const productPicking = {
     fields: {
       itemCode: '품목코드',
       itemName: '품목명',
+      warehouse: '출고 창고',
       picked: '피킹',
       inspection: '출하검사',
       requirement: '고객 LOT 요구',

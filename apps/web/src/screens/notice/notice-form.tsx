@@ -87,8 +87,6 @@ export const NoticeForm = ({
               onChange({ body: event.target.value });
             }}
           />
-          {/* ⛔ 첨부는 아직 열 수 없다 — 감추지 않고 사유를 적는다. */}
-          <span className="field-note">{t.form.attachmentLocked}</span>
         </div>
 
         <div className="field-cell">
@@ -110,7 +108,8 @@ export const NoticeForm = ({
         </div>
 
         <div className="field-cell">
-          <FieldLabel htmlFor={endId} label={t.form.endDate} />
+          {/* 게시 상태를 정하는 필수 날짜라는 사실은 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}
+          <FieldLabel htmlFor={endId} label={t.form.endDate} info={t.form.endDateNote} />
           <DatePicker
             id={endId}
             mode="single"
@@ -122,7 +121,6 @@ export const NoticeForm = ({
               onChange({ endDate: value ?? '' });
             }}
           />
-          <span className="field-note">{t.form.endDateNote}</span>
           {(errors.endDate ?? fieldErrors.endDate) !== undefined && (
             <span className="field-error">{errors.endDate ?? fieldErrors.endDate}</span>
           )}
@@ -132,7 +130,11 @@ export const NoticeForm = ({
           label={t.form.scope}
           options={scopeOptions()}
           value={draft.scopeCode}
-          note={draft.scopeCode === 'COMPANY' ? t.scope.companyNote : t.scope.unsupported}
+          /*
+           * 전사의 뜻(새 계정도 대상)은 전사를 골랐을 때 라벨 옆 ⓘ 로. 1차 미지원 범위는 선택지 꼬리와
+           * 저장 전 오류가 알린다 — 늘 펼친 「서버가 거부」 문장은 걷는다(관리웹 정리 시안 A).
+           */
+          info={draft.scopeCode === 'COMPANY' ? t.scope.companyNote : undefined}
           error={errors.scopeCode ?? fieldErrors.scopeCode}
           placeholder={t.form.selectPlaceholder}
           wide

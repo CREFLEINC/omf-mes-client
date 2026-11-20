@@ -301,6 +301,8 @@ describe('W-CO-08 조회 화면 — 재고 (US2)', () => {
     );
     expect(screen.getByText(t.stock.legendStocked)).toBeInTheDocument();
     expect(screen.getByText(t.stock.legendEmpty)).toBeInTheDocument();
+    /* 「도면에 없는 위치는 목록의 「아직」」은 범례 옆 ⓘ 로 읽힌다(관리웹 정리 시안 A). */
+    expect(screen.getByRole('button', { name: t.stock.legendNote })).toBeInTheDocument();
   });
 
   it('US2-5 ⭐ 재고 있는 위치를 고르면 위치 · 품목 · LOT · 현재고 · 단위 · 품질 상태 이름이 보인다', async () => {

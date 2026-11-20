@@ -1,8 +1,8 @@
 import { AlertBanner, Button, Chip, Dialog, Icon, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { Fragment, useId } from 'react';
-import { Link } from 'react-router';
+import { Fragment, useId, type ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { LoadErrorBanner } from './load-error-banner';
 import {
@@ -63,6 +63,48 @@ const SalesOrderRemainingCell = ({
   }
 };
 
+/**
+ * 피처 012 — 상세 머리 「출고 창고」: 창고마다 그 창고의 라인 번호(시안 「완제품창고 A (1공장), 라인 1, 3」).
+ * 줄 창고가 하나도 없으면 옛 지시서 — 「창고 미지정」과 그 뜻(지시서 공장의 불량창고 외 모든 창고).
+ */
+const LineWarehouses = ({ detail }: { detail: ShipmentRequestDetail }) => {
+  const groups = new Map<number, { label: string; lineNos: number[] }>();
+
+  for (const line of linesOf(detail)) {
+    if (line.warehouse === null || line.warehouse === undefined) continue;
+    const found = groups.get(line.warehouse.warehouseId);
+    if (found === undefined) {
+      groups.set(line.warehouse.warehouseId, {
+        label: t.bu012.warehouse(line.warehouse.warehouseName, line.warehouse.plantName),
+        lineNos: [line.lineNo],
+      });
+    } else {
+      found.lineNos.push(line.lineNo);
+    }
+  }
+
+  if (groups.size === 0) {
+    return (
+      <span>
+        <Chip variant="status" status="idle" size="sm">
+          {t.bu012.warehouseUnassigned}
+        </Chip>{' '}
+        <span className="field-note">{t.bu012.warehouseUnassignedNote}</span>
+      </span>
+    );
+  }
+
+  return (
+    <span className="shipment-schedule-warehouses">
+      {[...groups.values()].map((group) => (
+        <span key={group.label}>
+          {t.bu012.warehouseLines(group.label, group.lineNos.join(', '))}
+        </span>
+      ))}
+    </span>
+  );
+};
+
 export interface RequestDetailDialogProps {
   detail: ShipmentRequestDetail | undefined;
   isLoading: boolean;
@@ -70,10 +112,13 @@ export interface RequestDetailDialogProps {
   onRetry: () => void;
   customerName: string;
   shipToPartnerName: string;
-  fulfillmentPlantName: string;
   itemLabel: (itemId: number) => string | null;
   onPrint: () => void;
   onClose: () => void;
+  /** 피처 012 — 머리 바로 아래 · 라인 표 위의 「출하」 칸(T059). 완료 출하가 없으면 `null`. */
+  shipmentSection?: ReactNode;
+  /** 피처 012 — 결재함 · 옛 주소로 들어왔을 때 맨 위 띠(FR-021). */
+  linkedBanner?: ReactNode;
 }
 
 /**
@@ -91,10 +136,11 @@ export const RequestDetailDialog = ({
   onRetry,
   customerName,
   shipToPartnerName,
-  fulfillmentPlantName,
   itemLabel,
   onPrint,
   onClose,
+  shipmentSection = null,
+  linkedBanner = null,
 }: RequestDetailDialogProps) => {
   const item = (itemId: number): string => itemLabel(itemId) ?? String(itemId);
   const printNoteId = useId();
@@ -126,6 +172,7 @@ export const RequestDetailDialog = ({
           {t.detail.print}
         </Button>
       </div>
+      {linkedBanner}
       {error !== null && error !== undefined && <LoadErrorBanner error={error} onRetry={onRetry} />}
       {detail === undefined && (
         <p id={printNoteId} className="field-note">
@@ -161,11 +208,26 @@ export const RequestDetailDialog = ({
               <dd>{detail.requestedShipDate}</dd>
             </div>
             <div>
-              <dt>{t.detail.fields.fulfillmentPlant}</dt>
-              <dd>{fulfillmentPlantName}</dd>
+              {/* 피처 012 FR-007 — 「출하 담당 공장」 → 「사업부」. 사업부 없는 공장의 옛 지시서는 배지(빈 곳 ⑨). */}
+              <dt>{t.bu012.businessUnit}</dt>
+              <dd>
+                {detail.businessUnit === null || detail.businessUnit === undefined ? (
+                  <Chip variant="status" status="warning" size="sm">
+                    {t.bu012.noBusinessUnit}
+                  </Chip>
+                ) : (
+                  detail.businessUnit.businessUnitName
+                )}
+              </dd>
             </div>
             <div>
-              <dt>{t.detail.fields.progress}</dt>
+              {/* 출하 완료를 어디서 하는지는 「진행」 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
+              <dt>
+                <span className="info-label">
+                  {t.detail.fields.progress}
+                  <InfoTip text={t.detail.popOnly} />
+                </span>
+              </dt>
               <dd>{progressLabel(detail.shipmentProgressCode)}</dd>
             </div>
             <div>
@@ -174,17 +236,12 @@ export const RequestDetailDialog = ({
             </div>
             {detail.completedShipment !== null && (
               <>
+                {/*
+                 * 피처 012 — 출하 번호는 더 이상 출하 내역으로 넘어가지 않는다. 아래 「출하」 칸이 그 출하를 보인다(시안 ④).
+                 */}
                 <div>
                   <dt>{t.detail.fields.completedShipment}</dt>
-                  <dd>
-                    {/* 출하 내역(W-04-12)의 그 출하를 연다 — 그 화면이 `?shipmentId=` 로 상세를 고른다. */}
-                    <Link
-                      className="link-cell"
-                      to={`/shipment/shipment-confirm?shipmentId=${String(detail.completedShipment.shipmentId)}`}
-                    >
-                      {t.detail.shipmentLink(detail.completedShipment.shipmentNo)}
-                    </Link>
-                  </dd>
+                  <dd>{detail.completedShipment.shipmentNo}</dd>
                 </div>
                 <div>
                   <dt>{t.detail.fields.completedBy}</dt>
@@ -201,6 +258,13 @@ export const RequestDetailDialog = ({
               </>
             )}
             <div>
+              {/* 피처 012 — 줄 출고 창고(창고마다 그 라인 번호). 옛 지시서는 「창고 미지정」(US6-1). */}
+              <dt>{t.bu012.lineWarehouse}</dt>
+              <dd>
+                <LineWarehouses detail={detail} />
+              </dd>
+            </div>
+            <div>
               <dt>{t.detail.fields.pickingWarehouses}</dt>
               <dd>
                 {warehouseSummary(detail).length === 0
@@ -216,12 +280,15 @@ export const RequestDetailDialog = ({
 
           {detail.completedShipment !== null && (
             <AlertBanner variant="success">
-              {t.detail.completed(
+              {/* 피처 012 T061 — 취소는 「출하 내역」이 아니라 아래 「출하」 칸에서(US5-4). */}
+              {t.bu012.completedBand(
                 detail.completedShipment.shipmentNo,
                 dateTime(detail.completedShipment.completedAt),
               )}
             </AlertBanner>
           )}
+
+          {shipmentSection}
 
           {linesOf(detail).every((line) => line.lots.length === 0) && (
             <AlertBanner variant="info">{t.detail.noLotsBanner}</AlertBanner>
@@ -244,7 +311,6 @@ export const RequestDetailDialog = ({
               </ul>
             </AlertBanner>
           )}
-          <p className="field-note">{t.detail.popOnly}</p>
 
           <h3 className="field-label">{t.detail.lines}</h3>
           {linesOf(detail).map((line) => (
@@ -262,6 +328,7 @@ export const RequestDetailDialog = ({
                       <th scope="col">{t.detail.lineColumns.picked}</th>
                       <th scope="col">{t.detail.lineColumns.over}</th>
                       <th scope="col">{t.detail.lineColumns.shipped}</th>
+                      <th scope="col">{t.bu012.lineWarehouse}</th>
                       <th scope="col">{t.detail.lineColumns.salesOrderLine}</th>
                       <th scope="col">{t.detail.lineColumns.salesOrderRemaining}</th>
                     </tr>
@@ -287,6 +354,11 @@ export const RequestDetailDialog = ({
                             : t.values.empty}
                       </td>
                       <td className="ship-history-num">{line.shippedQty}</td>
+                      <td>
+                        {line.warehouse === null || line.warehouse === undefined
+                          ? t.bu012.warehouseUnassigned
+                          : t.bu012.warehouse(line.warehouse.warehouseName, line.warehouse.plantName)}
+                      </td>
                       <td>
                         {line.salesOrderLine === null
                           ? t.values.empty

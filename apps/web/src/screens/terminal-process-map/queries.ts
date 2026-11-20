@@ -1,10 +1,11 @@
 import type { components } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { requireIfMatch, useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
 import type { TerminalFilters } from './filters';
+import { nextTerminalCode } from './terminal-draft';
 import {
   toProcessRowView,
   toTerminalView,
@@ -42,12 +43,21 @@ type TerminalUpdate = TerminalUpdateForward;
 type TerminalProcessReplace = TerminalProcessReplaceForward;
 type TerminalRegistrationToken = components['schemas']['TerminalRegistrationToken'];
 
-export const PAGE_SIZE = 20;
-
 export const terminalKeys = {
   all: ['terminal-process-map'] as const,
   list: (filters: TerminalFilters) =>
-    ['terminal-process-map', 'list', filters.q, filters.includeInactive, filters.page] as const,
+    [
+      'terminal-process-map',
+      'list',
+      filters.q,
+      filters.includeInactive,
+      filters.registration,
+      filters.type,
+      filters.equipment,
+      filters.warehouse,
+      filters.page,
+      filters.size,
+    ] as const,
   terminal: (terminalId: number | null) =>
     ['terminal-process-map', 'terminal', terminalId ?? 0] as const,
   processes: (terminalId: number | null) =>
@@ -62,6 +72,30 @@ export const terminalDetailPath = (terminalId: number): string =>
 export const processesPath = (terminalId: number): string =>
   `/mdm/terminals/${String(terminalId)}/processes`;
 
+/** 목록 조회 조건 — 화면 조건을 계약 쿼리로 옮긴다. 기본값은 보내지 않는다. */
+const toListQuery = (filters: TerminalFilters) => ({
+  ...(filters.q === '' ? {} : { q: filters.q }),
+  /* 끄면 보내지 않는다 — 기본이 「사용 중만」이다. */
+  ...(filters.includeInactive ? { includeInactive: true } : {}),
+  /* 등록 · 미등록 라벨, 단말 유형 · 설치 설비 조건(사용자 지시 2026-11-20 · #333). */
+  ...(filters.registration === ''
+    ? {}
+    : {
+        registrationStatusCode:
+          filters.registration === 'registered'
+            ? ('REGISTERED' as const)
+            : ('UNREGISTERED' as const),
+      }),
+  ...(filters.type === '' ? {} : { terminalTypeCode: filters.type }),
+  ...(filters.equipment === '' ? {} : { equipmentId: Number(filters.equipment) }),
+  ...(filters.warehouse === '' ? {} : { warehouseId: Number(filters.warehouse) }),
+  page: filters.page,
+  size: filters.size,
+});
+
+/** 건수만 세는 조회의 쪽 크기 — 목록은 받지 않고 `page.total` 만 쓴다. */
+const COUNT_PAGE_SIZE = 1;
+
 export const useTerminals = (filters: TerminalFilters): UseQueryResult<TerminalListResult> => {
   const { client } = useApiClient();
 
@@ -69,22 +103,69 @@ export const useTerminals = (filters: TerminalFilters): UseQueryResult<TerminalL
     queryKey: terminalKeys.list(filters),
     queryFn: () =>
       runRequest(() =>
-        client.GET('/mdm/terminals', {
-          params: {
-            query: {
-              ...(filters.q === '' ? {} : { q: filters.q }),
-              /* 끄면 보내지 않는다 — 기본이 「사용 중만」이다. */
-              ...(filters.includeInactive ? { includeInactive: true } : {}),
-              page: filters.page,
-              size: PAGE_SIZE,
-            },
-          },
-        }),
+        client.GET('/mdm/terminals', { params: { query: toListQuery(filters) } }),
       ).then((data) => ({
         items: data.items.map(toTerminalView),
         page: data.page,
       })),
   });
+};
+
+/** 다음 단말 코드를 셀 때 받는 쪽 크기 — 서버 상한(200). 넘치면 이미 있는 번호를 낼 수 있어 채우지 않는다. */
+const CODE_SCAN_SIZE = 200;
+
+/**
+ * 단말 추가 팝업이 채울 다음 단말 코드(`접두어-일련번호` · 사용자 지시 2026-11-20 · #333).
+ * 미사용까지 모든 단말 중 접두어가 든 코드를 받아 센다. 팝업이 닫혀 있거나, 못 받았거나, 잘려 왔으면 `null`.
+ */
+export const useNextTerminalCode = (typeCode: string): string | null => {
+  const { client } = useApiClient();
+  const query = useQuery({
+    queryKey: [...terminalKeys.all, 'next-code', typeCode] as const,
+    enabled: typeCode !== '',
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/terminals', {
+          params: {
+            query: { q: `${typeCode}-`, includeInactive: true, page: 1, size: CODE_SCAN_SIZE },
+          },
+        }),
+      ),
+  });
+  const data = query.data;
+
+  if (typeCode === '' || data === undefined || data.page.total > data.items.length) return null;
+
+  return nextTerminalCode(
+    typeCode,
+    data.items.map((item) => item.terminalCode),
+  );
+};
+
+/**
+ * 등록 · 미등록 라벨의 건수 — 걸린 다른 조건은 두고 등록 여부만 바꿔 센다(#333).
+ * 반환 순서는 [등록, 미등록]이다.
+ */
+export const useTerminalRegistrationCounts = (filters: TerminalFilters): (number | undefined)[] => {
+  const { client } = useApiClient();
+  const results = useQueries({
+    queries: (['registered', 'unregistered'] as const).map((registration) => {
+      const next: TerminalFilters = { ...filters, registration, page: 1 };
+
+      return {
+        queryKey: [...terminalKeys.list(next), 'count'] as const,
+        staleTime: 30_000,
+        queryFn: () =>
+          runRequest(() =>
+            client.GET('/mdm/terminals', {
+              params: { query: { ...toListQuery(next), size: COUNT_PAGE_SIZE } },
+            }),
+          ),
+      };
+    }),
+  });
+
+  return results.map((result) => result.data?.page.total);
 };
 
 /** 고른 단말의 상세. 단말을 고치는 쓰기가 실을 잠금 토큰이 여기서 온다. */
@@ -184,6 +265,115 @@ export const useTerminalUpdate = (
     keyLifetime: 'per-attempt',
     onSuccess,
   });
+};
+
+/** 사용 재개 — 사용 중지한 단말을 다시 켠다(#333). 본문이 없는 액션이라 중지와 같은 방식. */
+export const useTerminalActivate = (
+  terminalId: number | null,
+  onSuccess: () => void,
+): MasterWriteResult<Record<string, never>> => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<Record<string, never>, Terminal>({
+    request: (_body, headers) =>
+      client.POST('/mdm/terminals/{terminalId}:activate', {
+        params: {
+          path: { terminalId: terminalId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': requireIfMatch(headers),
+          },
+        },
+      }),
+    etagPath: terminalId === null ? null : terminalDetailPath(terminalId),
+    invalidateKeys: [terminalKeys.all],
+    knownFields: [],
+    keyLifetime: 'per-attempt',
+    onSuccess,
+  });
+};
+
+/** 설치 설비 선택칸이 한 번에 받는 건수. */
+const EQUIPMENT_PAGE_SIZE = 50;
+
+/** 설치 설비 선택칸의 쪽 받기 — 사용 중인 설비만, 검색은 서버(코드 · 이름). 폼과 조회 줄이 함께 쓴다. */
+export const useEquipmentPages = () => {
+  const { client } = useApiClient();
+
+  return async (q: string, page: number) => {
+    const data = await runRequest(() =>
+      client.GET('/mdm/equipments', {
+        params: { query: { ...(q === '' ? {} : { q }), page, size: EQUIPMENT_PAGE_SIZE } },
+      }),
+    );
+    return {
+      options: data.items
+        .filter((item) => item.isActive)
+        .map((item) => ({
+          value: String(item.equipmentId),
+          label: `${item.equipmentCode} · ${item.equipmentName}`,
+        })),
+      total: data.page.total,
+    };
+  };
+};
+
+/** 조회 줄 창고 선택칸의 쪽 받기 — 사용 중인 창고 전체(공장 무관), 검색은 서버(코드 · 이름). */
+export const useWarehousePages = () => {
+  const { client } = useApiClient();
+
+  return async (q: string, page: number) => {
+    const data = await runRequest(() =>
+      client.GET('/mdm/warehouses', {
+        params: { query: { ...(q === '' ? {} : { q }), page, size: EQUIPMENT_PAGE_SIZE } },
+      }),
+    );
+    return {
+      options: data.items
+        .filter((item) => item.isActive)
+        .map((item) => ({
+          value: String(item.warehouseId),
+          label: `${item.warehouseCode} ${item.warehouseName}`,
+        })),
+      total: data.page.total,
+    };
+  };
+};
+
+/** 주소에 실린 창고 조건의 이름 — 새로고침해도 칸에 이름이 보이게. */
+export const useWarehouseLabel = (warehouseId: string): string => {
+  const { client } = useApiClient();
+  const query = useQuery({
+    queryKey: ['terminal-process-map', 'warehouse-label', warehouseId],
+    enabled: warehouseId !== '',
+    staleTime: 300_000,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/warehouses/{warehouseId}', {
+          params: { path: { warehouseId: Number(warehouseId) } },
+        }),
+      ).then(({ warehouse }) => `${warehouse.warehouseCode} ${warehouse.warehouseName}`),
+  });
+
+  return query.data ?? '';
+};
+
+/** 주소에 실린 설치 설비 조건의 이름 — 새로고침해도 칸에 이름이 보이게. */
+export const useEquipmentLabel = (equipmentId: string): string => {
+  const { client } = useApiClient();
+  const query = useQuery({
+    queryKey: ['terminal-process-map', 'equipment-label', equipmentId],
+    enabled: equipmentId !== '',
+    staleTime: 300_000,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/equipments/{equipmentId}', {
+          params: { path: { equipmentId: Number(equipmentId) } },
+        }),
+      ).then(({ equipment }) => `${equipment.equipmentCode} · ${equipment.equipmentName}`),
+  });
+
+  return query.data ?? '';
 };
 
 /**

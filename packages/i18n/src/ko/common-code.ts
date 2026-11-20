@@ -137,12 +137,6 @@ export const commonCode = {
     unknown: '알 수 없음',
   },
   codeGroup: {
-    /*
-     * 결정 6 — 코드 체계 정의가 표준화 작업 중이라 기대 목록이 비어 있다.
-     * 그 사실을 감추지 않고 목록 위에 한 번 낸다.
-     */
-    provisionalCatalog:
-      '임시 목록입니다. 코드 체계가 확정되면 여기 보이는 코드그룹의 구성이 바뀔 수 있습니다.',
     fields: {
       groupCode: '그룹코드',
       groupName: '그룹명',

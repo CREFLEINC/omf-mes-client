@@ -14,7 +14,19 @@ export const productPicking: Translated<typeof ko.productPicking> = {
     loading: 'Đang tải phiếu xuất hàng hôm nay',
     loadFailed: 'Không xác nhận được phiếu xuất hàng hôm nay',
     dropped: 'Phiếu đang chọn đã rời khỏi danh sách phiếu xuất hàng hôm nay',
-    none: 'Hôm nay không có phiếu xuất hàng nào cần lấy hàng',
+    none: 'Hôm nay không có phiếu xuất hàng nào cần lấy hàng trên thiết bị này',
+    scopeHidden:
+      'Không hiện phiếu đã hoàn tất xuất hàng và phiếu không có dòng thuộc kho của nhà máy của thiết bị này',
+    scopeNote: 'Chỉ hiện phiếu có dòng thuộc kho của nhà máy của thiết bị này',
+    lineSummaryAt: (
+      lineNo: number,
+      item: string,
+      warehouse: string,
+      picked: string,
+      target: string,
+    ) => `${String(lineNo)}. ${item} ${warehouse} đã lấy ${picked} / mục tiêu ${target}`,
+    otherPlantLines: (count: number) => `${String(count)} dòng ở kho của nhà máy khác`,
+    otherWarehouseLines: (count: number) => `${String(count)} dòng ngoài kho của thiết bị này`,
     completedHidden: 'Phiếu đã hoàn tất xuất hàng sẽ không hiện trong danh sách',
     noSalesOrder: 'Không có đơn hàng',
     salesOrder: (salesOrderNo: string) => `Đơn hàng ${salesOrderNo}`,
@@ -31,6 +43,7 @@ export const productPicking: Translated<typeof ko.productPicking> = {
     shipDate: 'Dự kiến xuất',
     change: 'Chọn phiếu khác',
     showCode: 'Xem mã phiếu xuất hàng',
+    noBusinessUnit: 'Chưa chỉ định đơn vị kinh doanh',
   },
   line: {
     title: (lineNo: number, itemCode: string) => `Dòng ${String(lineNo)}, ${itemCode}`,
@@ -67,9 +80,21 @@ export const productPicking: Translated<typeof ko.productPicking> = {
     NOT_REQUIRED: 'Không cần kiểm tra',
     SKIPPED: 'Bỏ qua kiểm tra',
   },
+  warehouse: {
+    tag: (warehouse: string, plant: string) => `${warehouse} (${plant})`,
+    unassigned: 'Chưa chỉ định kho',
+    OTHER_PLANT: (warehouse: string) =>
+      `Kho của nhà máy khác (${warehouse}), không lấy hàng trên thiết bị này`,
+    OTHER_WAREHOUSE: (warehouse: string) =>
+      `Ngoài kho của thiết bị này (${warehouse}), không lấy hàng trên thiết bị này`,
+    terminalDone: 'Phần của thiết bị này đã xong',
+    terminalDoneDetail: (businessUnit: string) =>
+      `Hoàn tất xuất hàng tại màn hình «Hoàn tất xuất hàng» của POP bất kỳ thuộc ${businessUnit}`,
+    terminalDoneDetailNoUnit: 'Hoàn tất xuất hàng tại màn hình «Hoàn tất xuất hàng» của POP',
+  },
   scan: {
     label: 'Quét LOT thành phẩm',
-    hint: 'Quét nhãn LOT là lấy hàng ngay',
+    hint: 'Quét nhãn LOT để lấy hàng vào dòng của kho đó',
     placeholder: 'Hãy quét mã QR của LOT thành phẩm',
     manualLabel: 'Nhập tay',
     manualSubmit: 'Lấy hàng',
@@ -81,6 +106,9 @@ export const productPicking: Translated<typeof ko.productPicking> = {
     reachedOver: (lineNo: number, target: string, over: string) =>
       `Dòng ${String(lineNo)} đã đủ mục tiêu ${target}, vượt ${over}`,
     remaining: (lineNo: number, left: string) => `Dòng ${String(lineNo)} còn lại ${left}`,
+    lineWarehouseOnly: (lineNo: number, warehouse: string) =>
+      `Dòng ${String(lineNo)}: chỉ lấy phần trong ${warehouse}`,
+    otherWarehouseLeft: (qty: string, uom: string) => `Còn ${qty} ${uom} ở kho khác`,
   },
   rejected: {
     notPicked: 'Chưa ghi nhận lấy hàng',
@@ -92,6 +120,14 @@ export const productPicking: Translated<typeof ko.productPicking> = {
       'Có phần đã được đặt trước cho phiếu xuất hàng hoặc lệnh xuất kho khác nên không lấy nguyên LOT được',
     LOT_ALREADY_PICKED: 'LOT này đã được lấy cho phiếu này',
     NO_LINE_FOR_ITEM: 'Phiếu này không có dòng cho mặt hàng này',
+    LOT_NOT_IN_LINE_WAREHOUSE: 'LOT này không có trong kho xuất của phiếu xuất hàng này',
+    lotWarehouses: (names: string) => `Kho đang chứa LOT: ${names}`,
+    lotWarehouse: (warehouse: string, plant: string) => `${warehouse} (${plant})`,
+    LINE_WAREHOUSE_UNAVAILABLE: 'Không dùng được kho xuất',
+    lineWarehouseUnavailableDetail:
+      'Phải hủy phiếu và lập lại. Hãy báo cho người quản lý xuất hàng',
+    outOfScope: 'Thiết bị này không có dòng cần lấy cho mặt hàng này',
+    outOfScopeDetail: 'Mặt hàng này thuộc dòng của nhà máy khác hoặc kho khác',
     LOT_SPLIT_UNCONFIRMED: 'LOT chưa xác nhận tách',
     splitUnconfirmedDetail:
       'LOT đã tách trên POP nhưng chưa xác nhận trên PDA 「Xác nhận tách LOT」. Hãy quét hai nhãn để xác nhận rồi quét lại',
@@ -153,6 +189,7 @@ export const productPicking: Translated<typeof ko.productPicking> = {
     fields: {
       itemCode: 'Mã hàng',
       itemName: 'Tên hàng',
+      warehouse: 'Kho xuất',
       picked: 'Đã lấy',
       inspection: 'Kiểm tra xuất',
       requirement: 'Yêu cầu LOT của khách',

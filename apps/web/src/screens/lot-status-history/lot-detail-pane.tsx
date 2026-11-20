@@ -14,6 +14,7 @@ import { useLotDetail } from './queries';
 import type { ProductLotSplitView } from './types';
 import { useItemNameSources } from './reference-options';
 import { useUomCodeOf, withUom } from './uoms';
+import { InfoTip } from '../../patterns/info-tip';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
@@ -241,12 +242,17 @@ export const LotDetailPane = ({
       {/* 008 — 부분 출고로 떼어 낸 분할 LOT 이면 그 원래 LOT · 분할 수량 · 시각 · 출고. */}
       {detail.data?.split != null && (
         <section className="lot-detail-split" aria-label={t.detail.split.label}>
-          <p className="field-note">
-            {childSplit === null ? t.detail.split.note : t.detail.productSplit.note}
-          </p>
           <dl className="lot-detail-fields">
             <div className="lot-detail-field" data-size="wide">
-              <dt className="field-label">{t.detail.split.parent}</dt>
+              {/* 분할 LOT 이 무엇인지는 원래 LOT 칸 이름 옆 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
+              <dt className="field-label">
+                <span className="info-label">
+                  {t.detail.split.parent}
+                  <InfoTip
+                    text={childSplit === null ? t.detail.split.note : t.detail.productSplit.note}
+                  />
+                </span>
+              </dt>
               <dd>
                 <Button
                   variant="text"

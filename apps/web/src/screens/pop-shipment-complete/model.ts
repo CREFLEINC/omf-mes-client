@@ -97,46 +97,6 @@ export const directCodeOf = (raw: string): string => {
     : `${SHIPMENT_REQUEST_CODE_PREFIX}${value}`;
 };
 
-/** 구르는 상자가 아래로 더 이어지는가(둘러보기 W-8) — 끝에서 몇 px 안이면 다 본 것으로 친다. */
-export const hasMoreBelow = (box: {
-  scrollTop: number;
-  clientHeight: number;
-  scrollHeight: number;
-}): boolean => box.scrollHeight - box.clientHeight - box.scrollTop > 8;
-
-/** 적치 대기 자리(위치 시스템 역할). */
-export const STAGING_ROLE = 'PUTAWAY_STAGING';
-
-export interface PortionSummary {
-  /** 창고별 몫(처음 나온 순서) — `staging` 은 그 창고 안 적치 대기 자리 몫(검증 1회차: 다른 창고 몫에 붙지 않게). */
-  warehouses: { name: string; qty: number; staging: number }[];
-  /** 적치 대기 자리 몫의 합. */
-  staging: number;
-}
-
-/**
- * LOT 몫 요약 — 여러 창고에 나뉘었거나 적치 대기 자리 몫이 있을 때만 낸다(시안 ③·④ 「창고 A 20, B 20」).
- * 한 창고 한 자리면 null — 줄을 늘리지 않는다.
- */
-export const portionSummaryOf = (
-  portions: readonly CompletionLot['portions'][number][],
-): PortionSummary | null => {
-  const warehouses: PortionSummary['warehouses'] = [];
-  let staging = 0;
-  for (const portion of portions) {
-    const atStaging = portion.locationSystemRoleCode === STAGING_ROLE ? portion.qty : 0;
-    const seen = warehouses.find((entry) => entry.name === portion.warehouseName);
-    if (seen === undefined) {
-      warehouses.push({ name: portion.warehouseName, qty: portion.qty, staging: atStaging });
-    } else {
-      seen.qty += portion.qty;
-      seen.staging += atStaging;
-    }
-    staging += atStaging;
-  }
-  return warehouses.length > 1 || staging > 0 ? { warehouses, staging } : null;
-};
-
 /** 409 `COMPLETION_BLOCKED` 가 실어 온 막는 이유 — 계약 코드만 남긴다. 없으면 null(확인 값을 다시 읽는다). */
 export const blockersOfConflict = (error: ApiError): CompletionBlocker[] | null => {
   if (error.kind !== 'conflict' || error.blockers === undefined) return null;
@@ -145,10 +105,6 @@ export const blockersOfConflict = (error: ApiError): CompletionBlocker[] | null 
     known.includes(blocker.code) ? [blocker as CompletionBlocker] : [],
   );
 };
-
-/** LOT 줄의 품목 코드 — 확인 값의 LOT 은 품목 번호만 갖고, 코드는 그 라인에 있다. */
-export const itemCodeOfLot = (completion: Completion, lot: CompletionLot): string =>
-  completion.lines.find((line) => line.lineNo === lot.lineNo)?.itemCode ?? '';
 
 export interface CompletionTotals {
   /** 피킹 합계 = 이번에 나갈 수량. */
@@ -173,8 +129,9 @@ export const totalsOf = (completion: Completion): CompletionTotals => ({
 export const formatQty = (value: number): string =>
   Number.isInteger(value) ? String(value) : String(Math.round(value * 1000) / 1000);
 
-/** 초과 칸 — 넘었으면 「+10」, 아니면 「0」. 음수(목표 미달)는 보이지 않는다(C-21). */
-export const overText = (overQty: number): string => (overQty > 0 ? `+${formatQty(overQty)}` : '0');
+/** 초과 칸 — 넘었으면 「+10 EA」, 아니면 「0 EA」(단위는 라인 단위, 모르면 수량만). 음수(목표 미달)는 보이지 않는다(C-21). */
+export const overText = (overQty: number, uom = ''): string =>
+  overQty > 0 ? `+${qtyWithUom(overQty, uom)}` : qtyWithUom(0, uom);
 
 /** OQC 판정 칩의 색. 미검사·보류는 할 일이 남은 상태라 경고, 불합격은 오류다. */
 export type ChipTone = 'idle' | 'info' | 'success' | 'warning' | 'error';
@@ -218,7 +175,7 @@ const codesOf = (error: ApiError): string[] => {
   }
 };
 
-export type LookupFailure = 'notCode' | 'notFound' | 'failed';
+export type LookupFailure = 'notCode' | 'notFound' | 'otherBusinessUnit' | 'failed';
 
 /**
  * 지시서 코드 해석(`:lookup`)의 실패. 400 `NOT_SHIPMENT_REQUEST_CODE` 는 LOT 라벨 같은 다른 바코드,
@@ -228,6 +185,8 @@ export const lookupFailureOf = (error: ApiError): LookupFailure => {
   const codes = codesOf(error);
   if (codes.includes('NOT_SHIPMENT_REQUEST_CODE')) return 'notCode';
   if (codes.includes('SHIPMENT_REQUEST_NOT_FOUND')) return 'notFound';
+  /* 피처 012 FR-013 · US3-1 — 다른 사업부의 지시서(403). 지시서 내용 · 상대 사업부 이름은 오지 않는다. */
+  if (codes.includes('BUSINESS_UNIT_MISMATCH')) return 'otherBusinessUnit';
   return 'failed';
 };
 
@@ -267,6 +226,8 @@ export interface SearchCriteria {
   q: string;
   readyOnly: boolean;
   page: number;
+  /** 한 쪽 건수 — 창 목록 칸에 드는 만큼(`useFitCount`). 비우면 `SEARCH_PAGE_SIZE`. */
+  size?: number;
 }
 
 /**
@@ -279,7 +240,7 @@ export const searchQueryOf = (criteria: SearchCriteria, today: string) => ({
   ...(criteria.readyOnly ? { completionReadyOnly: true } : { shippableRemainderOnly: true }),
   sort: 'requestedShipDate' as const,
   page: criteria.page,
-  size: SEARCH_PAGE_SIZE,
+  size: criteria.size ?? SEARCH_PAGE_SIZE,
 });
 
 export interface SearchRowView {
@@ -293,6 +254,8 @@ export interface SearchRowView {
   ready: boolean;
   /** 막는 이유 수(이유 코드별 합). */
   blockedCount: number;
+  /** 라인을 짚지 않은 피킹 부족이 있다 — 서버가 «낼 피킹 LOT 이 없을 때» 내는 것(보이는 글만 가른다). */
+  noPickedLot: boolean;
   blockerSummary: { code: BlockerCode; count: number }[];
   /** 첫 품목(코드·이름)과 그 밖의 품목 수 — 찾기 줄 「FG-A100 센서 모듈 A 외 1」. 라인이 없으면 null. */
   firstItem: { code: string; name: string } | null;
@@ -301,6 +264,8 @@ export interface SearchRowView {
   lotCount: number;
   picked: number;
   target: number;
+  /** 라인 단위가 하나면 그 단위, 섞이거나 없으면 빈 글(수량만 보인다). */
+  uom: string;
 }
 
 export const toSearchRow = (row: ShipmentRequestRow): SearchRowView => {
@@ -324,6 +289,9 @@ export const toSearchRow = (row: ShipmentRequestRow): SearchRowView => {
     requestedShipDate: row.requestedShipDate,
     ready: row.completionBlockers.length === 0,
     blockedCount: blockerSummary.reduce((sum, entry) => sum + entry.count, 0),
+    noPickedLot: row.completionBlockers.some(
+      (blocker) => blocker.code === 'PICKING_SHORT' && blocker.lineNo === undefined,
+    ),
     blockerSummary,
     lineCount: lines.length,
     lotCount: lines.reduce(
@@ -332,6 +300,10 @@ export const toSearchRow = (row: ShipmentRequestRow): SearchRowView => {
     ),
     picked: lines.reduce((sum, line) => sum + line.pickedQty, 0),
     target: lines.reduce((sum, line) => sum + line.allocatedQty, 0),
+    uom: (() => {
+      const codes = [...new Set(lines.map((line) => line.uomCode ?? '').filter((c) => c !== ''))];
+      return codes.length === 1 ? (codes[0] ?? '') : '';
+    })(),
   };
 };
 

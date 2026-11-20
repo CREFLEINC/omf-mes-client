@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { WebAccess } from '../patterns/web-access';
+import { toWebAccess, type WebAccess } from '../patterns/web-access';
 import {
   filterNavGroups,
   filterNavGroupsByAccess,
@@ -8,7 +8,7 @@ import {
   isNavEntryAllowed,
   matchesNavEntry,
 } from './nav-filter';
-import type { NavEntry, NavGroup } from './nav-tree';
+import { NAV_GROUPS, type NavEntry, type NavGroup } from './nav-tree';
 
 /**
  * 사이드바 거르기(`nav-filter.ts`)를 **합성 트리**로 잰다.
@@ -269,5 +269,29 @@ describe('filterNavGroupsByAccess — 옛 화면을 품은 항목(`alsoFor`)', (
   it('제 주소도 옛 화면도 못 보면 빠진다', () => {
     expect(filterNavGroupsByAccess(MERGED_GROUPS, allowing('/plain'))).toEqual([]);
     expect(isNavEntryAllowed(MERGED, allowing('/plain'))).toBe(false);
+  });
+});
+
+/* 피처 012 T064 · FR-024 — 「출하 취소(송신 전)」(W-04-12)만 가진 역할에게도 출하 예정 목록(W-04-02) 메뉴가 선다. */
+describe('filterNavGroupsByAccess — 피처 012 출하 예정 목록', () => {
+  const shipmentEntries = (permissions: readonly string[]) =>
+    filterNavGroupsByAccess(NAV_GROUPS, toWebAccess(permissions))
+      .flatMap((group) => group.items)
+      .map((entry) => entry.to);
+
+  it('US5-5·Q15 W-04-12 만 가진 역할에게 W-04-02 메뉴가 선다(역할 저장값은 그대로)', () => {
+    expect(shipmentEntries(['W-04-12'])).toContain('/shipment/shipment-schedule');
+  });
+
+  it('US5-2 출하 내역(W-04-12) · 긴급 직행(W-04-05) 항목은 권한이 있어도 메뉴에 없다', () => {
+    const entries = shipmentEntries(['W-04-02', 'W-04-05', 'W-04-12']);
+
+    expect(entries).toContain('/shipment/shipment-schedule');
+    expect(entries).not.toContain('/shipment/shipment-confirm');
+    expect(entries).not.toContain('/shipment/expedited-shipment');
+  });
+
+  it('둘 다 없으면 W-04-02 메뉴가 서지 않는다', () => {
+    expect(shipmentEntries(['W-04-01'])).not.toContain('/shipment/shipment-schedule');
   });
 });

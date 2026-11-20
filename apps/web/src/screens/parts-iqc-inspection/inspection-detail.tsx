@@ -32,6 +32,7 @@ import {
 import { useNavigate } from 'react-router';
 
 import { InspectionDrawingImages } from '../../patterns/inspection-drawings';
+import { InfoTip } from '../../patterns/info-tip';
 import { InspectionGuideNotice } from '../../patterns/inspection-guide';
 import { SaveErrorBanner } from '../../patterns/master';
 import { Select } from '../../patterns/select';
@@ -1406,11 +1407,14 @@ const InspectionForm = (props: FormProps) => {
         </div>
         {needsReason && (
           <div className="field-cell parts-iqc-stretch">
-            <FieldLabel htmlFor="parts-iqc-reason" label={t.verdict.reason} required />
+            {/* 사유를 받는 까닭은 칸 아래 대신 라벨 옆 ⓘ 로(관리웹 정리 시안 A) — 필수 표시는 이 화면 라벨 그대로. */}
+            <span className="info-label">
+              <FieldLabel htmlFor="parts-iqc-reason" label={t.verdict.reason} required />
+              <InfoTip text={t.verdict.reasonHint} />
+            </span>
             <TextArea
               id="parts-iqc-reason"
               fullWidth
-              helperText={t.verdict.reasonHint}
               value={reason}
               maxLength={500}
               rows={2}

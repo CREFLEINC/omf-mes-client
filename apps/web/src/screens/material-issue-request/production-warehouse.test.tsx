@@ -221,7 +221,12 @@ describe('W-02-10 생산 창고 공장', () => {
     expect(screen.getByLabelText(t.sourceWarehouse.label)).toHaveTextContent(
       t.sourceWarehouse.auto,
     );
-    expect(screen.getByText(t.sourceWarehouse.autoHelp(2))).toBeInTheDocument();
+    /* 고른 값의 뜻은 라벨 옆 ⓘ 의 설명으로 읽힌다(관리웹 정리 시안 A). */
+    expect(screen.getByRole('button', { name: t.sourceWarehouse.autoHelp(2) })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: t.sourceWarehouse.destinationHelp }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.reasonHelp })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.actions.publish }));
 
@@ -236,7 +241,9 @@ describe('W-02-10 생산 창고 공장', () => {
 
     await user.click(screen.getByLabelText(t.sourceWarehouse.label));
     await user.click(await screen.findByRole('option', { name: 'SAMPLE-PW-B 합성 생산창고 B' }));
-    expect(screen.getByText(t.sourceWarehouse.fixedHelp('합성 생산창고 B'))).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: t.sourceWarehouse.fixedHelp('합성 생산창고 B') }),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.actions.publish }));
 

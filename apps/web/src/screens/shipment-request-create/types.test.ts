@@ -29,10 +29,12 @@ describe('toSalesOrderDetailView', () => {
     expect(view.lines).toHaveLength(2);
     expect(view.lines[0]).toEqual({
       salesOrderLineId: 8601,
+      lineNo: 1,
       itemId: 8301,
       orderedQty: 100,
       uomId: 8401,
       shippedQty: 20,
+      erpStorageLocationCode: 'SAMPLE-ERP-WH',
     });
   });
 

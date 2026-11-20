@@ -1,0 +1,296 @@
+/*
+ * P-04-07 출하 완료 — #295 POP 통일 모양(화면 전용 `psc-*`, omf-all-around#334). 공통 모양은 `app/pop-uniform.css`.
+ *
+ * 위 구획(스캔 칸 · [직접 입력] · [지시서 검색]) → 본문(확인 화면 · 결과) → 아래 작업 줄.
+ * 본문만 구르고 스캔 칸과 [출하 완료]는 늘 보인다. 확인 화면 표는 넓은 배치(1200 이상)에서 좌우 2단(왼쪽 출하 품목·창고,
+ * 오른쪽 피킹 LOT), 1024 배치는 한 단으로 쌓는다. 표 높이는 데이터만큼이다.
+ */
+
+.psc-title {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  margin: 0;
+}
+
+/* ── 위 구획: 스캔 칸 + [지시서 검색] — 분할 LOT 라벨 위 구획(스캔 칸 옆 칸)과 같은 배치 ── */
+.psc-top > .pu-card-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.psc-top > .pu-card-body > .pu-field {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 칸 이름 줄(20) + 간격(6) 만큼 내려 스캔 칸과 같은 줄에 선다. */
+.psc-search-btn {
+  flex: none;
+  margin-top: 26px;
+}
+
+/* ── 본문: 이 칸만 구른다 ── */
+.psc-content {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.psc-content > * {
+  flex: none;
+}
+
+/* ── 표 두 개: 출하 품목 · 피킹 LOT ── */
+.psc-tables {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.psc-col {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+/*
+ * 두 카드는 늘 같은 높이(위 · 아래 맞춤). 한 쪽에 다 들면 내용 높이, 쪽을 나눌 때(`is-paged`)만 남는 높이를 다 갖는다 —
+ * 그때 피킹 LOT 표가 그 높이에 드는 줄만 보이고 아래 쪽 넘김. 표 칸은 첫 줄 높이만큼은 늘 지킨다(`useFitPages`).
+ */
+.psc-content > .psc-tables {
+  align-items: stretch;
+}
+
+.psc-content > .psc-tables.is-paged {
+  flex: 1 1 0;
+  min-height: min-content;
+}
+
+/* 쪽을 나눌 때 표 칸 최소 높이는 첫 줄만큼(내용 전체 높이로 늘지 않게 `contain: size`). */
+.psc-tables.is-paged .pu-card-body.split {
+  grid-template-rows: minmax(min-content, 1fr) auto;
+  min-height: min-content;
+}
+
+.psc-tables.is-paged .pu-fit {
+  contain: size;
+}
+
+/* 한 쪽이면 카드 본문 · 표 칸은 내용 높이 — 「총 N건」은 표 바로 아래. */
+.psc-tables:not(.is-paged) .pu-card-body {
+  flex: none;
+}
+
+.psc-tables:not(.is-paged) .pu-card-body.split {
+  grid-template-rows: auto auto;
+}
+
+/*
+ * 두 표는 늘 좌우로 둔다(사용자 지시 2026-11-20 — 1024 포함). 공통 표 규칙 그대로: 코드·수량·머리글은 글자만큼
+ * 한 줄(`fit`), 남는 폭은 품목명과 LOT 칸(번호 아래 창고 몫)이 갖고 모자라면 그 둘만 낱말 경계에서 줄을 바꾼다.
+ * 반 폭에 들게 칸 좌우 여백만 줄인다.
+ */
+.psc-tables .pu-table th,
+.psc-tables .pu-table td {
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+.pu-table td.psc-name {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: break-word;
+}
+
+.psc-nowrap {
+  white-space: nowrap;
+}
+
+/* 막는 이유가 짚는 줄 — 연한 빨강. */
+.psc-row-blocked > td {
+  background: var(--pu-bad-bg);
+}
+
+/* 초과는 경고가 아니라 정보다 — 노란 글자만. */
+.pu-table td.psc-over {
+  color: var(--pu-warn);
+  font-weight: 700;
+}
+
+/* 초과 0 은 흐리게(시안 2026-11-20). */
+.pu-table td.psc-zero {
+  color: var(--pu-text-3);
+}
+
+/* 피킹 수량 = 지시 수량 — 초록 글자 + 체크(시안 「수량 일치 시각적 강조」). */
+.psc-match {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--pu-ok);
+  font-weight: 700;
+}
+
+.psc-match svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+/* LOT 번호 — 좁은 폭(1024)에서 말줄임 없이 다 보이게 줄을 바꾼다. */
+.pu-table td.psc-lot-no {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+}
+
+.pu-table td.psc-code {
+  text-align: center;
+}
+
+/*
+ * 머리 박스 — 지시서 번호 · 출하 여부까지 정보 격자 한 박스에(사용자 지시 2026-11-20). 박스 모양(테두리 · 둥근 모서리 ·
+ * 바탕 · 안쪽 여백)은 OQC 정보 띠(`pu-band-stack > .pu-band.grid`)와 같고, 안쪽 격자는 테두리·바탕을 박스에 넘긴다.
+ */
+.psc-band {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--pu-field);
+  min-width: 0;
+}
+
+.psc-band.pu-band-stack > .pu-band.grid {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  min-height: 0;
+}
+
+/* 출하 품목 표의 라인 · 지시량 · 피킹량 · 초과량 · LOT 수 — 머리·칸 모두 가운데(사용자 지시 2026-11-20). */
+.pu-table th.psc-c,
+.pu-table td.psc-c {
+  text-align: center;
+}
+
+/* 창고 칩은 여럿이면 줄을 바꾼다(값 칸 기본은 한 줄). */
+.psc-band .pu-band .kv > b:has(> .psc-wh-chips) {
+  white-space: normal;
+}
+
+.psc-wh-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.psc-wh-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--pu-card-2);
+  color: var(--pu-text-2);
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.psc-empty-row {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-field);
+  color: var(--pu-text-3);
+  font-size: 14px;
+  text-align: center;
+}
+
+/* ── 지시서 검색 창: 찾기 칸 · 거르기 줄은 늘 보이고, 결과가 많을 때만 목록이 구른다 ── */
+/*
+ * 창 안은 구르지 않는다 — 결과가 한 쪽에 다 들면 창은 내용만큼, 넘치면 창 높이를 화면 끝까지(위아래 12px 여백) 키우고
+ * 목록 칸이 남은 높이를 갖는다 — 큰 화면일수록 한 쪽에 카드가 더 든다. 한 쪽 건수는 그 칸 높이로 잰다(`useFitCount`).
+ */
+/*
+ * ⛔ 내용만큼일 때의 최대 높이도 같은 값으로 둔다 — 기본(86vh)보다 낮으면 「한 쪽에 다 든다 → 내용만큼 줄임 → 잘림 →
+ *    쪽 넘김 → 다시 다 든다」가 끝없이 돈다(1700×1350 에서 실측, 화면 오류).
+ */
+.pu-dialog:has(.psc-search) {
+  max-height: calc(100vh - 24px);
+}
+
+.pu-dialog:has(.psc-search.is-paged) {
+  height: calc(100vh - 24px);
+}
+
+.pu-dialog:has(.psc-search.is-paged) > .pu-dialog-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.pu-dialog-body:has(> .psc-search) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.psc-search {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+.psc-search > * {
+  flex: none;
+}
+
+.psc-search-list {
+  flex: 0 1 auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.psc-search.is-paged > .psc-search-list {
+  flex: 1 1 0;
+}
+
+.psc-search-blocked,
+.psc-search-blocked b {
+  color: var(--pu-bad);
+}
+
+.psc-search-empty {
+  display: grid;
+  gap: 2px;
+  padding: 12px 0;
+  text-align: center;
+  color: var(--pu-text-3);
+  font-size: 14px;
+}
+
+.psc-search-empty b {
+  color: var(--pu-text-2);
+  font-size: 15px;
+}
+
+/* 1024 배치에서는 두 표를 한 단으로 쌓는다 — 반 폭에는 출하 품목 표의 수량 칸이 다 들지 않아 잘린다. */

@@ -3,6 +3,7 @@ import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import { InfoLabel } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
 import { Select } from '../../patterns/select';
 import type { Lock } from './lock';
@@ -16,8 +17,6 @@ export interface RegisterPaneProps {
   warning: string | undefined;
   severity: CodeOptionSource;
   departments: CodeOptionSource;
-  /** 대상 수량 전량을 등록한다는 안내. 대상이 없으면 없다 */
-  qtyNote: string | undefined;
   lock: Lock;
   onCheckOutcome: () => void;
   writeError: ApiError | null;
@@ -36,7 +35,6 @@ export const RegisterPane = ({
   warning,
   severity,
   departments,
-  qtyNote,
   lock,
   onCheckOutcome,
   writeError,
@@ -52,7 +50,7 @@ export const RegisterPane = ({
   const departmentId = useId();
   const lockReasonId = useId();
   const warningId = useId();
-  const qtyNoteId = useId();
+  const descriptionId = useId();
   const isLocked = lock.reason !== undefined;
   const severityPending = severity.options.length === 0;
   const describedBy = (...ids: (string | undefined)[]): string | undefined => {
@@ -63,12 +61,6 @@ export const RegisterPane = ({
   return (
     <div className="disposition-request-form" role="group" aria-label={t.panes.register}>
       <SaveErrorBanner error={writeError} onReload={onReload} />
-
-      {qtyNote !== undefined && (
-        <p id={qtyNoteId} className="field-note">
-          {qtyNote}
-        </p>
-      )}
 
       <div className="field-cell">
         <label className="field-label" htmlFor={severityId}>
@@ -90,22 +82,32 @@ export const RegisterPane = ({
         )}
       </div>
 
-      {/* 내용 — 판정자의 유일한 입력이다. 형식을 도움말로 유도한다(§5-3 · A-12). */}
-      <TextArea
-        label={t.register.descriptionLabel}
-        value={value.description}
-        required
-        fullWidth
-        rows={3}
-        disabled={isLocked}
-        aria-describedby={describedBy(
-          isLocked ? lockReasonId : undefined,
-          warning === undefined ? undefined : warningId,
-        )}
-        error={errors.description}
-        helperText={t.register.descriptionHelp}
-        onChange={(event) => onChange({ ...value, description: event.target.value })}
-      />
+      {/*
+       * 내용 — 판정자의 유일한 입력이다. 형식은 라벨 옆 ⓘ 로 유도한다(§5-3 · A-12 · 관리웹 정리 시안 A).
+       * DS `TextArea` 라벨은 글자만 받아 라벨을 비우고 같은 `id` 로 잇는다. 라벨과 칸은 한 덩어리로
+       * 묶는다 — 폼의 줄 간격이 라벨과 칸 사이에 끼지 않게.
+       */}
+      <div>
+        <InfoLabel
+          htmlFor={descriptionId}
+          label={t.register.descriptionLabel}
+          info={t.register.descriptionHelp}
+        />
+        <TextArea
+          id={descriptionId}
+          value={value.description}
+          required
+          fullWidth
+          rows={3}
+          disabled={isLocked}
+          aria-describedby={describedBy(
+            isLocked ? lockReasonId : undefined,
+            warning === undefined ? undefined : warningId,
+          )}
+          error={errors.description}
+          onChange={(event) => onChange({ ...value, description: event.target.value })}
+        />
+      </div>
       {warning !== undefined && (
         <p id={warningId} className="field-note">
           {warning}

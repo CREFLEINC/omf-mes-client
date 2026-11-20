@@ -612,7 +612,7 @@ describe('AppLayout', () => {
     ]);
   });
 
-  it('Q17·Q21 영업 / 출하 관리 섹션(출하지시 → 예정 → 긴급 직행 → 출하 내역 → 반품 갈래)이 생산 관리 뒤·업무함 앞에 있다', () => {
+  it('US5-2·Q17·Q21 영업 / 출하 관리 섹션(출하지시 → 예정 → 반품 갈래)이 생산 관리 뒤·업무함 앞에 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
@@ -622,7 +622,7 @@ describe('AppLayout', () => {
     /* ERP 수주정보 조회는 「ERP 연동 현황·이력」 묶음의 탭으로 옮겼다. */
     expect(within(sidebar).queryByRole('link', { name: '수주정보 조회 (ERP)' })).toBeNull();
     expect(
-      within(sidebar).getByRole('link', { name: '출하지시서 Import·작업지시 생성' }),
+      within(sidebar).getByRole('link', { name: '출하작업지시 생성' }),
     ).toHaveAttribute('href', '/shipment/shipment-request-create');
     expect(within(sidebar).getByRole('link', { name: '출하 예정 목록' })).toHaveAttribute(
       'href',
@@ -634,16 +634,14 @@ describe('AppLayout', () => {
      */
     expect(within(sidebar).queryByRole('link', { name: '출하 처리' })).toBeNull();
     expect(links).not.toContain('/shipment/shipment-processing');
-    expect(within(sidebar).getByRole('link', { name: '긴급 직행 출하 처리' })).toHaveAttribute(
-      'href',
-      '/shipment/expedited-shipment',
-    );
-    /* W-04-12 이름은 「출하 내역」이다 — 확정 단계가 없어졌다. */
-    expect(within(sidebar).getByRole('link', { name: '출하 내역' })).toHaveAttribute(
-      'href',
-      '/shipment/shipment-confirm',
-    );
-    expect(within(sidebar).queryByRole('link', { name: '출하 확정·취소' })).toBeNull();
+    /*
+     * 피처 012(US5-2) — 긴급 직행(W-04-05)은 메뉴에서 감추고, 출하 내역(W-04-12)은 없앴다. 주소는 남는다
+     * (긴급 직행 화면 · 옛 출하 내역 주소는 W-04-02 로 넘김).
+     */
+    expect(within(sidebar).queryByRole('link', { name: '긴급 직행 출하 처리' })).toBeNull();
+    expect(within(sidebar).queryByRole('link', { name: '출하 내역' })).toBeNull();
+    expect(links).not.toContain('/shipment/expedited-shipment');
+    expect(links).not.toContain('/shipment/shipment-confirm');
     /* 반품·재고 갈래는 「반품·클레임」 묶음 한 줄이다 — 줄은 입고 등록(첫 탭)을 건다. */
     expect(within(sidebar).getByRole('link', { name: '반품·클레임' })).toHaveAttribute(
       'href',
@@ -658,19 +656,12 @@ describe('AppLayout', () => {
     expect(links.indexOf('/shipment/shipment-schedule')).toBe(
       links.indexOf('/shipment/shipment-request-create') + 1,
     );
-    /* 예정 목록 바로 뒤가 긴급 직행이다. OQC 는 「품질 관리」에 있다. */
-    expect(links.indexOf('/shipment/expedited-shipment')).toBe(
-      links.indexOf('/shipment/shipment-schedule') + 1,
-    );
+    /* OQC 는 「품질 관리」에 있다. 예정 목록 바로 뒤가 반품·재고 갈래다(피처 012). */
     expect(links.indexOf('/shipment/oqc-inspection')).toBeLessThan(
       links.indexOf('/shipment/shipment-request-create'),
     );
-    expect(links.indexOf('/shipment/shipment-confirm')).toBe(
-      links.indexOf('/shipment/expedited-shipment') + 1,
-    );
-    /* W-04-06 — 반품·재고 갈래는 출하 내역 바로 뒤다. */
     expect(links.indexOf('/shipment/return-receipts')).toBe(
-      links.indexOf('/shipment/shipment-confirm') + 1,
+      links.indexOf('/shipment/shipment-schedule') + 1,
     );
     /* 섹션 끝 — 바로 뒤가 「업무함」의 결재함이다. */
     expect(links.indexOf('/approval/inbox')).toBe(links.indexOf('/shipment/return-receipts') + 1);
@@ -993,11 +984,9 @@ describe('AppLayout', () => {
       '/production/work-order-progress',
       '/production/lot-trace',
       '/production/work-order-close',
-      /* 영업 / 출하 관리 — 편성 → 예정 → 긴급 직행 → 출하 내역 → 반품·클레임(피처 010). */
+      /* 영업 / 출하 관리 — 편성 → 예정 → 반품·클레임(피처 012: 긴급 직행 · 출하 내역은 메뉴에서 뺐다). */
       '/shipment/shipment-request-create',
       '/shipment/shipment-schedule',
-      '/shipment/expedited-shipment',
-      '/shipment/shipment-confirm',
       '/shipment/return-receipts' /* ← 반품·클레임 */,
       /* 업무함 — 결재함 → 알림센터(받는 자리) → 공지·전달(보내는 자리). */
       '/approval/inbox',
@@ -1654,7 +1643,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(39);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(37);
   });
 
   /*
@@ -1704,7 +1693,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(39);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(37);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */

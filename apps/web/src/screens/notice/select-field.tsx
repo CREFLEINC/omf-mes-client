@@ -11,6 +11,8 @@ export interface SelectFieldProps {
   onChange: (value: string) => void;
   /** 선택지의 한계(잘림·불러오기 실패) 등을 밝히는 보조 문구. */
   note?: string;
+  /** 칸을 바르게 쓰려면 알아 둘 규칙 — 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */
+  info?: string;
   /**
    * 이 칸의 오류. **선택칸에도 오류 자리가 필요하다** — 이 화면에는 고르지 않으면 저장할 수
    * 없는 선택칸이 셋 있는데, 자리가 없으면 저장을 눌렀을 때 **무엇이 비었는지 화면이 말하지
@@ -47,6 +49,7 @@ export const SelectField = ({
   value,
   onChange,
   note,
+  info,
   error,
   placeholder,
   wide = false,
@@ -60,7 +63,7 @@ export const SelectField = ({
 
   return (
     <div className={wide ? 'field-cell wide-select' : 'field-cell'}>
-      <FieldLabel htmlFor={id} label={label} />
+      <FieldLabel htmlFor={id} label={label} info={info} />
       <Select
         id={id}
         options={options}

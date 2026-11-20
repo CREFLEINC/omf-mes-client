@@ -11,6 +11,7 @@ import {
 import { useEffect, useId, useRef, useState } from 'react';
 import { AlertBanner, Button, Dialog, TextField } from '@crefle/web-ui';
 import { DistributionPeriodPicker } from './distribution-period-picker';
+import { InfoTip } from '../../../patterns/info-tip';
 import { PageNav } from '../../../patterns/page-nav';
 import { Select } from '../../../patterns/select';
 import { DistributionHelp } from './distribution-help';
@@ -1082,7 +1083,11 @@ export const DistributionControls = ({
                   />
                 )}
                 <section aria-label="선택 ERP W/O의 날짜별 라인 합계">
-                  <h3 className="section-title">선택 ERP W/O의 날짜별 라인 합계</h3>
+                  {/* 합계가 무엇을 세는지는 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
+                  <h3 className="section-title erp-wo-title-with-info">
+                    선택 ERP W/O의 날짜별 라인 합계
+                    <InfoTip text="선택한 ERP W/O의 계획만 집계합니다. 생산능력 검증 결과는 아닙니다." />
+                  </h3>
                   <div className="erp-wo-preview-scroll">
                     <table>
                       <thead>
@@ -1121,9 +1126,6 @@ export const DistributionControls = ({
                       onChangePage={setTotalsPage}
                     />
                   )}
-                  <p className="field-note">
-                    선택한 ERP W/O의 계획만 집계합니다. 생산능력 검증 결과는 아닙니다.
-                  </p>
                 </section>
                 {!!reviewResult!.warnings.length && (
                   <>

@@ -1,4 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { ToastProvider } from '@crefle/web-ui';
+import { fireEvent, render as baseRender, screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { messages } from '@omf-mes/i18n';
@@ -21,6 +23,9 @@ afterEach(() => {
     Object.defineProperty(window, 'isSecureContext', secureContextDescriptor);
   }
 });
+
+/* 복사 성공은 앱 알림(토스트)로 뜬다 — 알림 자리를 함께 둔다. */
+const render = (ui: ReactElement) => baseRender(<ToastProvider>{ui}</ToastProvider>);
 
 const renderDialog = () =>
   render(
@@ -52,7 +57,7 @@ describe('단말 등록 코드 전달', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: '등록 코드 복사' }));
-    expect(await screen.findByText('등록 코드를 복사했습니다.')).toBeInTheDocument();
+    expect(await screen.findByText(t.token.copied)).toBeInTheDocument();
     expect(writeText).toHaveBeenCalledExactlyOnceWith(token);
     expect(container.textContent).not.toContain(token);
   });
@@ -70,7 +75,7 @@ describe('단말 등록 코드 전달', () => {
     expect(
       await screen.findByText('복사하지 못했습니다. 브라우저의 클립보드 권한을 확인하세요.'),
     ).toBeInTheDocument();
-    expect(screen.queryByText('등록 코드를 복사했습니다.')).toBeNull();
+    expect(screen.queryByText(t.token.copied)).toBeNull();
     expect(screen.queryByText(t.token.copyUnavailable)).toBeNull();
   });
 

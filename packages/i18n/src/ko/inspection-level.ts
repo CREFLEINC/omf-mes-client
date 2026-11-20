@@ -30,6 +30,9 @@ export const inspectionLevel = {
 
   columns: {
     item: '품목',
+    /** 품목은 코드 · 이름 두 칸으로 나눠 보인다(사용자 지시 2026-11-20). */
+    itemCode: '품목코드',
+    itemName: '품목명',
     level: '검사 수준',
     updatedAt: '변경 일시',
     actions: '설정',
@@ -78,6 +81,8 @@ export const inspectionLevel = {
     columns: {
       changedAt: '변경 일시',
       item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       change: '검사 수준',
       type: '변경 방식',
       reason: '변경 사유',

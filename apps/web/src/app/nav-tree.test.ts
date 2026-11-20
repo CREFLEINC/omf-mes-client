@@ -250,8 +250,6 @@ describe('주 메뉴 트리', () => {
       '/production/work-order-close → archive',
       '/shipment/shipment-request-create → assignment',
       '/shipment/shipment-schedule → event_note',
-      '/shipment/expedited-shipment → outbound',
-      '/shipment/shipment-confirm → task_alt',
       '/shipment/return-receipts → keyboard_return',
       '/shipment/disposition-requests → keyboard_return',
       '/shipment/stock-reinstatements → keyboard_return',

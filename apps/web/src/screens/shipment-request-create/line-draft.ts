@@ -13,6 +13,9 @@ import type { SalesOrderLineView, ShipmentRequestLineDraft } from './types';
 
 let draftSequence = 0;
 
+/** 창고를 아직 고르지 않은 줄의 세 칸(피처 012). */
+const NO_WAREHOUSE = { warehouseId: '', warehouseFilled: false, warehouseCleared: false } as const;
+
 const nextKey = (prefix: string): string => {
   draftSequence += 1;
 
@@ -43,6 +46,10 @@ export const lineDraftsFromSalesOrder = (
       allocatedQty: String(remaining),
       uomId: String(line.uomId),
       shippingInspectionRequired: false,
+      ...NO_WAREHOUSE,
+      splitOf: null,
+      salesOrderLineNo: line.lineNo,
+      erpStorageLocationCode: line.erpStorageLocationCode,
     }));
 
 /** 단독 생성의 빈 줄. **값을 지어내지 않는다** — 사용자가 고르지 않은 품목이 전표에 실리면 안 된다. */
@@ -54,11 +61,130 @@ export const emptyLineDraft = (): ShipmentRequestLineDraft => ({
   allocatedQty: '',
   uomId: '',
   shippingInspectionRequired: false,
+  ...NO_WAREHOUSE,
+  splitOf: null,
+  salesOrderLineNo: null,
+  erpStorageLocationCode: null,
 });
+
+/**
+ * 첫 줄의 출고 창고 — 새 줄·안 고른 줄의 기본값이다(피처 012 FR-004). 첫 줄이 아직 비었으면 빈 글자.
+ */
+export const firstLineWarehouse = (lines: readonly ShipmentRequestLineDraft[]): string =>
+  lines[0]?.warehouseId ?? '';
+
+/** 새 줄에 첫 줄 창고를 채운다 — 첫 줄이 비었으면 그대로 빈 줄이다. */
+const withFirstWarehouse = (
+  line: ShipmentRequestLineDraft,
+  warehouseId: string,
+): ShipmentRequestLineDraft =>
+  warehouseId === '' ? line : { ...line, warehouseId, warehouseFilled: true, warehouseCleared: false };
 
 export const addLineDraft = (
   lines: readonly ShipmentRequestLineDraft[],
-): ShipmentRequestLineDraft[] => [...lines, emptyLineDraft()];
+): ShipmentRequestLineDraft[] => [
+  ...lines,
+  withFirstWarehouse(emptyLineDraft(), firstLineWarehouse(lines)),
+];
+
+/** 고른 품목들로 줄을 붙인다 — 새 줄의 창고는 첫 줄 창고다(FR-004). */
+export const appendItemLines = (
+  lines: readonly ShipmentRequestLineDraft[],
+  items: readonly { itemId: number; baseUomId: number }[],
+): ShipmentRequestLineDraft[] => {
+  const warehouseId = firstLineWarehouse(lines);
+
+  return [
+    ...lines,
+    ...items.map((item) => withFirstWarehouse(lineDraftFromItem(item.itemId, item.baseUomId), warehouseId)),
+  ];
+};
+
+/**
+ * 한 줄의 출고 창고를 고른다(피처 012 FR-003·004).
+ *
+ * ⭐ **첫 줄을 고르면 아직 창고가 빈 줄을 그 창고로 채운다** — 「첫 줄 창고로 채움」. 사업부를 바꿔 비운
+ *    줄(노란 줄)은 채우지 않는다 — 사람이 다시 골라야 한다는 안내가 그 줄에 남아 있어야 한다.
+ * ⛔ 이미 창고가 있는 줄은 건드리지 않는다 — 사람이 고른 값을 덮지 않는다.
+ */
+export const setLineWarehouse = (
+  lines: readonly ShipmentRequestLineDraft[],
+  key: string,
+  warehouseId: string,
+): ShipmentRequestLineDraft[] => {
+  const isFirst = lines[0]?.key === key;
+
+  return lines.map((line) => {
+    if (line.key === key) {
+      return { ...line, warehouseId, warehouseFilled: false, warehouseCleared: false };
+    }
+    if (isFirst && warehouseId !== '' && line.warehouseId === '' && !line.warehouseCleared) {
+      return { ...line, warehouseId, warehouseFilled: true };
+    }
+
+    return line;
+  });
+};
+
+/**
+ * S/O 줄을 나눈다(피처 012 FR-005) — 그 묶음 맨 끝에 「나눈 줄」을 붙인다.
+ *
+ * - 같은 S/O 줄(`salesOrderLineId`)·품목·단위·검사 대상을 잇는다.
+ * - **배정 수량은 0 으로 시작한다**(시안 — 반으로 가르지 않는다). 사람이 원 줄과 나눈 줄 수량을 정한다.
+ * - 창고는 첫 줄 창고로 채운다(FR-004) — 다른 창고로 바꾸는 것이 나누는 까닭이다.
+ * - 요청 수량은 비운다 — 보내기 직전 S/O 잔여를 묶음 안에서 나눠 정한다(`shipment-request-create-body.ts`).
+ */
+export const splitLineDraft = (
+  lines: readonly ShipmentRequestLineDraft[],
+  key: string,
+): ShipmentRequestLineDraft[] => {
+  const origin = lines.find((line) => line.key === key);
+
+  if (origin === undefined || origin.salesOrderLineId === null || origin.splitOf !== null) {
+    return [...lines];
+  }
+
+  const split: ShipmentRequestLineDraft = withFirstWarehouse(
+    {
+      ...emptyLineDraft(),
+      key: nextKey('split'),
+      salesOrderLineId: origin.salesOrderLineId,
+      itemId: origin.itemId,
+      uomId: origin.uomId,
+      allocatedQty: '0',
+      shippingInspectionRequired: origin.shippingInspectionRequired,
+      splitOf: origin.key,
+      salesOrderLineNo: origin.salesOrderLineNo,
+    },
+    firstLineWarehouse(lines),
+  );
+
+  const lastIndexOfGroup = lines.reduce(
+    (last, line, index) => (line.key === key || line.splitOf === key ? index : last),
+    -1,
+  );
+  const next = [...lines];
+
+  next.splice(lastIndexOfGroup + 1, 0, split);
+
+  return next;
+};
+
+/**
+ * 사업부를 바꿨을 때 그 사업부 밖 창고를 고른 줄의 창고를 비운다(피처 012 FR-004 · US1-7).
+ *
+ * 비운 줄은 `warehouseCleared` 로 노란 테를 받고, 다시 고를 때까지 남는다. **같은 사업부로 되돌려도
+ * 비운 값을 살리지 않는다**(시안 판단) — 무엇을 골랐었는지 기억해 되살리면 사람이 본 적 없는 값이 나간다.
+ */
+export const clearWarehousesOutside = (
+  lines: readonly ShipmentRequestLineDraft[],
+  allowedWarehouseIds: ReadonlySet<string>,
+): ShipmentRequestLineDraft[] =>
+  lines.map((line) =>
+    line.warehouseId !== '' && !allowedWarehouseIds.has(line.warehouseId)
+      ? { ...line, warehouseId: '', warehouseFilled: false, warehouseCleared: true }
+      : line,
+  );
 
 /**
  * 고른 품목으로 줄을 만든다 — **품목 선택 팝업이 부른다.**
@@ -82,7 +208,8 @@ export const lineDraftFromItem = (
 export const removeLineDraft = (
   lines: readonly ShipmentRequestLineDraft[],
   key: string,
-): ShipmentRequestLineDraft[] => lines.filter((line) => line.key !== key);
+): ShipmentRequestLineDraft[] =>
+  lines.filter((line) => line.key !== key && line.splitOf !== key);
 
 /**
  * 한 줄의 값을 바꾼다. **앞 초안을 고치지 않는다** — 같은 참조를 고치면 화면이 다시 그려지지 않는다.

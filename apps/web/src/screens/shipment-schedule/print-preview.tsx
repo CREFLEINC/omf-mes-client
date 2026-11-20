@@ -13,11 +13,14 @@ export type PrintLang = 'ko' | 'vi';
 
 /** 출력 언어는 화면 언어와 따로 고른다 — 양식 글은 두 언어를 다 읽는다(검사표 인쇄 선례). */
 const LABELS = { ko: ko.shipmentSchedule.print, vi: vi.shipmentSchedule.print } as const;
+/** 피처 012 — 사업부 · 줄 출고 창고 칸의 이름(출력 언어로). */
+const BU_LABELS = { ko: ko.shipmentSchedule.bu012, vi: vi.shipmentSchedule.bu012 } as const;
 
 export interface PrintNames {
   customer: string;
   shipToPartner: string;
-  fulfillmentPlant: string;
+  /** 피처 012 FR-007 — 「출하 담당 공장」 자리에 사업부. */
+  businessUnit: string;
   item: (itemId: number) => string;
   /** 인쇄한 사람 — 관리웹 세션 사용자 이름(시안 「관리웹 · 1공장 출하 관리자」). 모르면 빈 값. */
   printedBy: string;
@@ -43,6 +46,7 @@ export const ShipmentRequestSheet = ({
   printedAt,
 }: ShipmentRequestSheetProps) => {
   const l = LABELS[lang];
+  const b = BU_LABELS[lang];
   const lots = printableLots(detail);
 
   return (
@@ -76,8 +80,8 @@ export const ShipmentRequestSheet = ({
           <tr>
             <th scope="row">{l.salesOrder}</th>
             <td>{detail.salesOrderNo ?? '—'}</td>
-            <th scope="row">{l.fulfillmentPlant}</th>
-            <td>{names.fulfillmentPlant}</td>
+            <th scope="row">{b.printBusinessUnit}</th>
+            <td>{names.businessUnit}</td>
           </tr>
           <tr>
             <th scope="row">{l.printedBy}</th>
@@ -95,6 +99,7 @@ export const ShipmentRequestSheet = ({
             <th scope="col">{l.uom}</th>
             <th scope="col">{l.target}</th>
             <th scope="col">{l.inspection}</th>
+            <th scope="col">{b.printWarehouse}</th>
           </tr>
         </thead>
         <tbody>
@@ -106,6 +111,11 @@ export const ShipmentRequestSheet = ({
               <td className="ship-print__num">{line.allocatedQty}</td>
               <td>
                 {line.shippingInspectionRequired ? l.inspectionRequired : l.inspectionNotRequired}
+              </td>
+              <td>
+                {line.warehouse === null || line.warehouse === undefined
+                  ? b.warehouseUnassigned
+                  : b.warehouse(line.warehouse.warehouseName, line.warehouse.plantName)}
               </td>
             </tr>
           ))}

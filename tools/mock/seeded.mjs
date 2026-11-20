@@ -289,7 +289,7 @@ const APP_PERMISSIONS = [
   { code: 'P-04-02', name: '납품·포장 라벨 출력', groupCode: '04' },
   { code: 'P-04-03', name: '재작업 실적 등록', groupCode: '04' },
   { code: 'P-04-04', name: '재구성 신규 라벨 발행', groupCode: '04' },
-  { code: 'W-04-01', name: '출하지시서 Import·작업지시 생성', groupCode: '04' },
+  { code: 'W-04-01', name: '출하작업지시 생성', groupCode: '04' },
   { code: 'W-04-02', name: '출하 예정 목록', groupCode: '04' },
   { code: 'W-04-03', name: 'OQC 출하검사 판정', groupCode: '04' },
   { code: 'W-04-04', name: '출하 처리(상차·실물 출고)', groupCode: '04' },

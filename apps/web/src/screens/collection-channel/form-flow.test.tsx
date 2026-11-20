@@ -186,7 +186,9 @@ describe('W-05-07 ② — 채널을 더한다', () => {
     expect(
       dialog.getByText(t.form.equipmentFixed('EQ-101', '가상 성형기 1호')),
     ).toBeInTheDocument();
-    expect(dialog.getByText(t.actionReasons.equipmentFixed)).toBeInTheDocument();
+    expect(
+      dialog.getByRole('button', { name: t.actionReasons.equipmentFixed }),
+    ).toBeInTheDocument();
   });
 
   it('채널명 없이 저장하면 막고 그 칸에 표시한다', async () => {
@@ -309,7 +311,9 @@ describe('W-05-07 ② — 채널을 고친다', () => {
     const dialog = within(await screen.findByRole('dialog'));
 
     expect(dialog.queryByRole('textbox', { name: /채널명/ })).not.toBeInTheDocument();
-    expect(dialog.getByText(t.actionReasons.channelKeyFixed)).toBeInTheDocument();
+    expect(
+      dialog.getByRole('button', { name: t.actionReasons.channelKeyFixed }),
+    ).toBeInTheDocument();
   });
 
   /** ⭐ 잠금 토큰은 «상세» 경로에 보관된다 — 쓰기 경로로 꺼내면 늘 비어 있다. */

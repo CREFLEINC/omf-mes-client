@@ -116,7 +116,7 @@ export const lookupNote = (lookup: LookupResult): string | undefined => {
 export const lookupKeys = {
   customers: ['shipment-schedule-lookups', 'customers'] as const,
   shipToPartners: ['shipment-schedule-lookups', 'ship-to-partners'] as const,
-  fulfillmentPlants: ['shipment-schedule-lookups', 'fulfillment-plants'] as const,
+  businessUnits: ['shipment-schedule-lookups', 'business-units'] as const,
 };
 
 const toLookupResult = (
@@ -186,34 +186,41 @@ export const useShipToPartnerOptions = (): LookupResult => {
   });
 };
 
+/** 세션의 데이터 범위 한 줄 — 계약 `SessionScope`. */
+export interface DataScope {
+  businessUnitId: number;
+  plantId?: number;
+}
+
 /**
- * 출하 담당 공장 — 지정 창의 선택지이자 **목록 표의 공장 이름**이다.
- *
- * ⭐ 이름을 푸는 조회라 `includeInactive` 를 켜고 쪽을 끝까지 받는다(고객·납품처와 같다).
- * 켜지 않으면 서버가 «사용 중인 것»만 내려, 폐기된 공장에 지정된 과거 줄과 뒷쪽 쪽의 공장이
- * 「알 수 없음」으로 떨어진다 — 값은 멀쩡한데 화면만 모른다고 말하는 꼴이다(공유계약 G-8).
+ * 사업부 선택지(피처 012 FR-007·008) — 활성 사업부 중 계정 데이터 범위 안. 범위가 없으면 전체.
+ * 서버도 목록을 계정 사업부 범위로 거른다(D-12) — 이 거름은 고를 수 없는 값을 보이지 않게 하는 몫이다.
+ * 목록의 「사업부」 칸은 응답의 이름(`businessUnit`)을 쓰므로 이 목록에 기대지 않는다.
  */
-export const useFulfillmentPlantOptions = (): LookupResult => {
+export const useBusinessUnitOptions = (scopes: readonly DataScope[]): LookupResult => {
   const { client } = useApiClient();
   const query = useQuery({
-    queryKey: lookupKeys.fulfillmentPlants,
+    queryKey: lookupKeys.businessUnits,
     queryFn: () =>
       fetchAllPages((page, size) =>
-        runRequest(() =>
-          client.GET('/mdm/plants', {
-            params: { query: { includeInactive: true, page, size } },
-          }),
-        ),
+        runRequest(() => client.GET('/mdm/business-units', { params: { query: { page, size } } })),
       ),
   });
   const data = query.data;
   return {
     entries:
-      data?.items.map((plant) => ({
-        value: String(plant.plantId),
-        label: `${plant.plantCode} · ${plant.plantName}`,
-        isActive: plant.isActive,
-      })) ?? EMPTY_ENTRIES,
+      data?.items
+        .filter(
+          (unit) =>
+            unit.isActive &&
+            (scopes.length === 0 ||
+              scopes.some((scope) => scope.businessUnitId === unit.businessUnitId)),
+        )
+        .map((unit) => ({
+          value: String(unit.businessUnitId),
+          label: unit.businessUnitName,
+          isActive: unit.isActive,
+        })) ?? EMPTY_ENTRIES,
     truncated: data?.truncated === true,
     isError: query.isError,
     isLoading: query.isPending,

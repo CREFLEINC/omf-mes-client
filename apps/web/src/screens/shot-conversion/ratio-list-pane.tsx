@@ -1,5 +1,4 @@
 import {
-  AlertBanner,
   Button,
   Chip,
   type Column,
@@ -9,11 +8,13 @@ import {
   TextField,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useId, useState } from 'react';
 
 import { hasChangedFilters } from '../../patterns/filter-more';
+import { InfoTip } from '../../patterns/info-tip';
 
 import { endAvailability } from './end-policy';
+import { FieldLabel } from './field-label';
 import { defaultPolicyFilters } from './options';
 import { formulaText, isEnded, periodText, scopeText, type ScopeLookups } from './scope';
 import type { OperationPolicy, PolicyFilters } from './types';
@@ -56,6 +57,7 @@ export const RatioListPane = ({
   onEnd,
   loadError,
 }: RatioListPaneProps) => {
+  const effectiveOnId = useId();
   const [draft, setDraft] = useState<string>(appliedFilters.effectiveOn);
   const { effectiveOn: appliedEffectiveOn } = appliedFilters;
 
@@ -205,16 +207,29 @@ export const RatioListPane = ({
 
   return (
     <section className="pane shot-conversion-pane" aria-label={t.ratioList.paneTitle}>
-      <h2 className="pane-title">{t.ratioList.paneTitle}</h2>
+      {/*
+       * ⭐ **겹치는 것이 정상이다** — 공장 기본 위에 품목 예외를 얹는 것이 이 표의 쓰임이다.
+       * 겹칠 때의 규칙은 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). 「미리보기에서 확인하라」는 문장은
+       * 미리보기가 바로 아래 보여 두지 않는다.
+       */}
+      <h2 className="pane-title info-label">
+        {t.ratioList.paneTitle}
+        <InfoTip text={t.ratioList.overlapNote} />
+      </h2>
 
       <div className="filter-bar shot-conversion-policy-filter">
         <div className="field-cell">
-          <TextField
-            type="date"
+          {/* 비우면 끝난 정책까지 본다는 뜻은 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}
+          <FieldLabel
+            htmlFor={effectiveOnId}
             label={t.ratioList.effectiveOnLabel}
+            info={t.ratioList.effectiveOnNote}
+          />
+          <TextField
+            id={effectiveOnId}
+            type="date"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            helperText={t.ratioList.effectiveOnNote}
           />
         </div>
         {/* 규범 2-1 — 뜻이 짝인 액션이 줄바꿈으로 갈라지지 않게 한 덩어리로 묶는다. */}
@@ -234,19 +249,6 @@ export const RatioListPane = ({
             </Button>
           </div>
         </div>
-      </div>
-
-      {/*
-       * ⭐ **겹치는 것이 정상이다** — 공장 기본 위에 품목 예외를 얹는 것이 이 표의 쓰임이다.
-       * 규칙을 곁에 적지 않으면 사람마다 다르게 읽는다.
-       */}
-      <div className="banner-slot">
-        <AlertBanner variant="info">
-          <>
-            <p>{t.ratioList.overlapNote}</p>
-            <p>{t.ratioList.resolvedElsewhere}</p>
-          </>
-        </AlertBanner>
       </div>
 
       {truncated && total !== null && (

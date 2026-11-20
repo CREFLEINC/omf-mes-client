@@ -1,0 +1,209 @@
+import { messages } from '@omf-mes/i18n';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
+
+import { RegistrationPanel } from './registration-panel';
+import {
+  PopRegistrationProvider,
+  usePopRegistration,
+  type PopRegistration,
+} from '../../../patterns/pop-registration';
+import { forgetTerminalToken } from '../../../patterns/pop-terminal-token';
+import { createStubFetch, jsonResponse, renderWithProviders } from '../../../test/api-harness';
+
+const t = messages.workerAssignment.registration;
+
+/**
+ * ⛔⛔ **입력란이 빈 화면에서 「이 토큰은」이라고 말하지 않는다**(#1137).
+ *
+ * 켤 때 보관된 토큰을 스스로 확인하는 갈래가 있어(`app/pop-main` 의 `PopRegistrationGate`),
+ * 그 실패가 등록 화면에 그대로 떴다 — 설치 담당자는 한 글자도 넣지 않았는데 자기가 넣은 값이
+ * 거절당한 줄 알았다(실측 2026-09-12 · 사용자 지적 · 실서버 설치본).
+ *
+ * ⚠ **문구 «내용»이 아니라 어느 표에서 고르는가를 잰다.** 문구는 바뀔 수 있고, 바뀌어도
+ *   「보관된 것과 넣은 것을 가른다」는 성질은 남아야 한다.
+ */
+
+/** `sub` 만 담은 토큰. 서명은 검증되지 않으므로 자리만 채운다. */
+const tokenFor = (sub: number): string =>
+  `header.${btoa(JSON.stringify({ sub, kind: 'terminal' })).replace(/=+$/, '')}.signature`;
+
+/** 어떤 단말을 물어도 401 — 이 시험이 재는 것은 «거절 뒤의 말»이다. */
+const rejectingFetch = createStubFetch([
+  {
+    match: (request) => /\/mdm\/terminals\//.test(request.url),
+    respond: () => jsonResponse({ message: '없다' }, { status: 401 }),
+  },
+]);
+
+const openPanel = (fetch = rejectingFetch): { current: PopRegistration } => {
+  const box = { current: null as PopRegistration | null };
+
+  const Probe = () => {
+    box.current = usePopRegistration();
+
+    return null;
+  };
+
+  renderWithProviders(
+    <PopRegistrationProvider>
+      <Probe />
+      <RegistrationPanel />
+    </PopRegistrationProvider>,
+    { fetch, session: null },
+  );
+
+  return box as { current: PopRegistration };
+};
+
+afterEach(() => {
+  delete (globalThis as { pop?: unknown }).pop;
+  forgetTerminalToken();
+});
+
+/*
+ * ⭐ **바코드로 읽으면 [등록 확인]까지 간다**(사용자 지시 2026-09-19 · omf-all-around#35).
+ *    스캐너가 값 끝에 Enter 를 붙이지 않아도, 글자가 멈추면 확인이 나간다.
+ */
+describe('RegistrationPanel — 스캔', () => {
+  it('스캐너 속도로 들어온 토큰은 Enter 없이도 확인까지 간다', async () => {
+    openPanel();
+    const field = screen.getByLabelText(t.tokenLabel);
+    const token = tokenFor(2003);
+
+    for (let length = 1; length <= token.length; length += 1) {
+      fireEvent.change(field, { target: { value: token.slice(0, length) } });
+    }
+
+    /* 이 시험의 서버는 모두 401 이라, 「확인이 나갔다」는 그 거절 문구로 드러난다. */
+    await waitFor(() => {
+      expect(screen.getByText(t.failure.rejected)).toBeInTheDocument();
+    });
+  });
+});
+
+describe('RegistrationPanel — 판정이 누구 이야기인가', () => {
+  it('보관돼 있던 토큰이 걸러지면 그 사실을 밝히고, 넣은 값을 탓하지 않는다', async () => {
+    const registration = openPanel();
+
+    await act(async () => {
+      await registration.current.verify(tokenFor(2002), 'stored');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(t.storedFailure.rejected)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(t.failure.rejected)).toBeNull();
+  });
+
+  it('POP 단말용이 아닌 토큰을 넣으면 재요청을 안내하고 칸을 비운다', async () => {
+    const mobileFetch = createStubFetch([
+      {
+        match: (request) => /\/mdm\/terminals\/\d+(\?|$)/.test(request.url),
+        respond: () =>
+          jsonResponse({
+            terminalId: 3003,
+            terminalCode: 'PDA-3003',
+            plantId: 10,
+            terminalTypeCode: 'MOBILE',
+          }),
+      },
+    ]);
+    openPanel(mobileFetch);
+
+    const field = screen.getByLabelText(t.tokenLabel);
+    fireEvent.change(field, { target: { value: tokenFor(3003) } });
+    fireEvent.click(screen.getByRole('button', { name: t.verify }));
+
+    await waitFor(() => {
+      expect(screen.getByText(t.failure.wrongType)).toBeInTheDocument();
+    });
+    /* 칸 비우기는 거절 문구가 선 «다음» 렌더에서 일어난다 — 그것까지 기다린다. */
+    await waitFor(() => {
+      expect(field).toHaveValue('');
+    });
+  });
+
+  it('사람이 붙여넣은 값이 거절당하면 그 값의 말을 한다', async () => {
+    const registration = openPanel();
+
+    await act(async () => {
+      await registration.current.verify(tokenFor(2002));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(t.failure.rejected)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(t.storedFailure.rejected)).toBeNull();
+  });
+
+  /**
+   * ⚠ **닿지 못한 갈래는 가르지 않는다.** 판정이 아니라 못 물어본 것이라 두 경우에 할 일이
+   *   같다 — 연결을 확인하고 다시 시도하는 것 하나뿐이다.
+   */
+  it('서버에 닿지 못한 것은 보관이든 입력이든 같은 말로 남는다', async () => {
+    const box = { current: null as PopRegistration | null };
+    const Probe = () => {
+      box.current = usePopRegistration();
+
+      return null;
+    };
+
+    renderWithProviders(
+      <PopRegistrationProvider>
+        <Probe />
+        <RegistrationPanel />
+      </PopRegistrationProvider>,
+      { fetch: () => Promise.reject(new TypeError('Failed to fetch')), session: null },
+    );
+
+    const registration = box as { current: PopRegistration };
+
+    await act(async () => {
+      await registration.current.verify(tokenFor(2002), 'stored');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(t.failure.unreachable)).toBeInTheDocument();
+    });
+  });
+});
+
+/*
+ * 사용자 지시(2026-11-20 · omf-all-around#334) — 등록 확인의 [재입력]은 [등록 적용]과 함께 아래 공통 작업 줄에 선다
+ * (보조 왼쪽 · 주 조작 오른쪽). 누르면 입력으로 돌아간다(동작은 종전 그대로).
+ */
+describe('RegistrationPanel — 등록 확인 단추 줄', () => {
+  it('[재입력]과 [등록 적용]이 아래 작업 줄 한 줄에 서고, [재입력]은 입력으로 돌린다', async () => {
+    const popFetch = createStubFetch([
+      {
+        match: (request) => /\/mdm\/terminals\/\d+(\?|$)/.test(request.url),
+        respond: () =>
+          jsonResponse({
+            terminalId: 2004,
+            terminalCode: 'POP-2004',
+            plantId: 10,
+            terminalTypeCode: 'POP',
+          }),
+      },
+    ]);
+    openPanel(popFetch);
+
+    fireEvent.change(screen.getByLabelText(t.tokenLabel), { target: { value: tokenFor(2004) } });
+    fireEvent.click(screen.getByRole('button', { name: t.verify }));
+
+    const restart = await screen.findByRole('button', { name: t.restart });
+    const row = restart.closest('.pu-actionbar');
+    expect(t.restart).toBe('재입력');
+    expect(row).not.toBeNull();
+    expect(row?.closest('.wa-reg-card')).toBeNull();
+    expect(
+      [...(row?.querySelectorAll('button') ?? [])].map((button) => button.textContent),
+    ).toEqual([t.restart, t.apply]);
+
+    fireEvent.click(restart);
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.tokenLabel)).toBeInTheDocument();
+    });
+  });
+});
