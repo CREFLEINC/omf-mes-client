@@ -2,6 +2,7 @@ import { Button, Checkbox, DatePicker, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { EMPTY_FILTERS, type RequestFilters } from './filters';
 
 export interface FilterBarProps {
@@ -10,6 +11,20 @@ export interface FilterBarProps {
   onReset: () => void;
 }
 
+/** 조건 줄이 고르는 값 — 승인 유형 · 상태는 탭 줄(#144 · #186)이 고르고 보인다. */
+const rowValues = ({ from, to, q, myTurnOnly = false }: RequestFilters) => ({
+  from,
+  to,
+  q,
+  myTurnOnly,
+});
+
+/**
+ * 조회 조건 줄. 보이는 조건이 셋(상신일 · 검색어 · 내 차례만)이라 「조건 더보기」가 없다(C-6).
+ *
+ * 「초기화」는 이 줄의 값이 처음 값과 다를 때만 보인다. 승인 유형 · 상태는 탭 줄에 걸린 것이 보이고
+ * 그 자리에서 풀므로 견주지 않는다 — 누르면 종전대로 함께 처음으로 돌아간다.
+ */
 export const FilterBar = ({ applied, onApply, onReset }: FilterBarProps) => {
   const t = messages.qualityApproval;
   const fromId = useId();
@@ -85,9 +100,11 @@ export const FilterBar = ({ applied, onApply, onReset }: FilterBarProps) => {
         </Checkbox>
         <div className="filter-actions">
           <Button onClick={() => apply(draft)}>{messages.common.search}</Button>
-          <Button variant="outlined" onClick={reset}>
-            {messages.common.reset}
-          </Button>
+          {hasChangedFilters(rowValues(EMPTY_FILTERS), rowValues(draft), rowValues(applied)) && (
+            <Button variant="outlined" onClick={reset}>
+              {messages.common.reset}
+            </Button>
+          )}
         </div>
       </div>
     </div>

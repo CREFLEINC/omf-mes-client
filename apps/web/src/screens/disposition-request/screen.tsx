@@ -356,6 +356,7 @@ export const DispositionRequestScreen = () => {
             applied={filters}
             warehouses={warehouses}
             onApply={(next) => apply(next)}
+            onRemoveFilter={(key) => apply({ ...filters, [key]: '' })}
             onReset={() => apply(EMPTY_FILTERS)}
           />
           {/*

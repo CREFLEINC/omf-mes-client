@@ -34,11 +34,23 @@ describe('RequestFilterBar — 좁히는 축', () => {
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
   });
 
-  it('조건 없이도 조회와 초기화는 열려 있다', () => {
-    renderBar();
+  it('조건 없이도 조회는 열려 있고, 초기화는 바뀐 것이 생기면 나타난다(C-6)', async () => {
+    const { user } = renderBar();
 
     expect(screen.getByRole('button', { name: messages.common.search })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
+
+    await user.type(screen.getByLabelText(t.fields.q), 'S');
+
     expect(screen.getByRole('button', { name: messages.common.reset })).toBeEnabled();
+  });
+
+  it('탭 줄 칩이 건 상태만으로는 초기화가 나타나지 않는다 — 그 자리에서 보이고 푼다', () => {
+    renderBar({ appliedFilters: { ...EMPTY_FILTERS, statusCode: 'APPROVED' } });
+
+    /* 선행 단언 — 조건 줄이 실제로 그려져야 「초기화가 없다」가 뜻을 갖는다. */
+    expect(screen.getByRole('button', { name: messages.common.search })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
   });
 
   it('칩이 건 상태는 조회해도 그대로 실린다', async () => {
@@ -127,17 +139,35 @@ describe('RequestFilterBar — 주소가 정본이다', () => {
 });
 
 describe('RequestFilterBar — 조건 칩', () => {
-  it('걸어 둔 조건마다 칩 하나이고 ×가 그 조건만 푼다', async () => {
-    const { onRemoveFilter, user } = renderBar({
+  it('칸에 값이 보이는 조건은 칩으로 겹쳐 적지 않는다(C-6)', () => {
+    renderBar({
       appliedFilters: { ...EMPTY_FILTERS, q: 'SYNTH', from: '2026-08-01', to: '2026-08-31' },
     });
 
-    expect(screen.getByText(t.filters.chipKeyword('SYNTH'))).toBeInTheDocument();
-    expect(screen.getByText(t.filters.chipPeriod('2026-08-01', '2026-08-31'))).toBeInTheDocument();
+    /* 선행 단언 — 걸린 조건이 칸에 보인다. */
+    expect(screen.getByLabelText(t.fields.q)).toHaveValue('SYNTH');
+    expect(screen.queryByText(t.filters.chipKeyword('SYNTH'))).toBeNull();
+    expect(screen.queryByText(t.filters.chipPeriod('2026-08-01', '2026-08-31'))).toBeNull();
+  });
+
+  it('끝만 있는 상신일은 칸이 그리지 못해 칩으로 남고, ×가 그 조건만 푼다', async () => {
+    const { onRemoveFilter, user } = renderBar({
+      appliedFilters: { ...EMPTY_FILTERS, q: 'SYNTH', to: '2026-08-31' },
+    });
+
+    expect(screen.getByText(t.filters.chipPeriodTo('2026-08-31'))).toBeInTheDocument();
+    expect(screen.queryByText(t.filters.chipKeyword('SYNTH'))).toBeNull();
 
     await user.click(screen.getByRole('button', { name: t.filters.chipRemovePeriod }));
 
     expect(onRemoveFilter).toHaveBeenCalledWith('period');
+  });
+
+  it('시작만 있는 상신일은 칸이 「시작 ~」로 보이므로 칩이 없다', () => {
+    renderBar({ appliedFilters: { ...EMPTY_FILTERS, from: '2026-08-01' } });
+
+    expect(screen.getByLabelText(t.fields.period)).toHaveTextContent('2026-08-01 ~');
+    expect(screen.queryByRole('button', { name: t.filters.chipRemovePeriod })).toBeNull();
   });
 
   it('조건이 없으면 칩도 없다', () => {

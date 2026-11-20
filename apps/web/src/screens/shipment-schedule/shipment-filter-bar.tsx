@@ -1,9 +1,23 @@
-import { AlertBanner, Button, Checkbox, Chip, DatePicker, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Checkbox, DatePicker, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
-import { toFilterChips, type FilterChipNames, type ShipmentFilters } from './filters';
 import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  hasChangedFilters,
+  useFilterMore,
+} from '../../patterns/filter-more';
+
+import {
+  EMPTY_FILTERS,
+  toFilterChips,
+  type FilterChip,
+  type FilterChipNames,
+  type ShipmentFilters,
+} from './filters';
+import {
+  EMPTY_PERIOD,
   isPeriodEndReason,
   isPeriodRequiredReason,
   validatePeriod,
@@ -14,6 +28,16 @@ import { progressLabel } from './status-options';
 import type { SelectOption } from './types';
 
 const t = messages.shipmentSchedule;
+
+/** 「조건 더보기」에 접힌 칸의 조건 — 이 조건만 칩으로 알린다(C-6). */
+const FOLDED_KEYS: readonly FilterChip['key'][] = [
+  'customer',
+  'shipToPartner',
+  'progress',
+  'inspection',
+  'ready',
+  'replaced',
+];
 
 export interface ShipmentFilterBarProps {
   /** 주소에 반영된(= 조회에 쓰인) 기간. 편집 중인 값은 이 부품 안에만 있다. */
@@ -39,6 +63,11 @@ export interface ShipmentFilterBarProps {
  *
  * **출하일 시작이 필수다**(공유계약 L-3) — W-01-09(기간이 완전히 선택)와 반대다. 잠그는 것은
  * 시작일 없음 · 형식 오류 · 뒤집힌 기간 셋뿐이다.
+ *
+ * **보이는 칸은 둘이다**(C-6) — 출하일 · 검색어. 출하일이 두 칸이라 1280 폭에서 셋째 칸까지 두면
+ * 단추가 다음 줄로 밀린다. 검색어가 고객 이름도 찾으므로 고객은 납품처 곁으로 접는다. 고객 · 납품처 ·
+ * 진행 상태 · 검사 상태 · 두 체크는 「조건 더보기」에 있고, 걸린 조건은 칩으로만 알린다.
+ * 「초기화」는 바뀐 것이 있을 때만 보인다.
  */
 export const ShipmentFilterBar = ({
   appliedPeriod,
@@ -55,6 +84,7 @@ export const ShipmentFilterBar = ({
 }: ShipmentFilterBarProps) => {
   const reasonId = useId();
   const periodLabelId = useId();
+  const more = useFilterMore();
 
   const [period, setPeriod] = useState<PeriodInput>(appliedPeriod);
   const [filters, setFilters] = useState<ShipmentFilters>(appliedFilters);
@@ -106,7 +136,25 @@ export const ShipmentFilterBar = ({
     onSearch(period, filters);
   };
 
-  const chips = toFilterChips(appliedFilters, chipNames);
+  /*
+   * 초기화. **편집 중인 값도 함께 비운다** — 조회한 값이 이미 처음 값이면 주소가 바뀌지 않아
+   * 되돌림 effect 가 깨어나지 않고, 치던 값이 그대로 남는다.
+   */
+  const reset = (): void => {
+    setPeriod(EMPTY_PERIOD);
+    setFilters(EMPTY_FILTERS);
+    onReset();
+  };
+
+  /* 접힌 칸의 조건만 칩으로 — 보이는 칸(출하일 · 검색어)의 값을 칩으로 겹쳐 적지 않는다. */
+  const hiddenChips = toFilterChips(appliedFilters, chipNames).filter((chip) =>
+    FOLDED_KEYS.includes(chip.key),
+  );
+  const isChanged = hasChangedFilters(
+    { ...EMPTY_PERIOD, ...EMPTY_FILTERS },
+    { ...period, ...filters },
+    { ...appliedPeriod, ...appliedFilters },
+  );
 
   /* 「전체」를 값이 빈 선택지로 둔다 — 두지 않으면 한 번 고른 뒤에 해제할 방법이 칸 안에 없어진다. */
   const withAll = (options: SelectOption[]): SelectOption[] => [
@@ -191,69 +239,6 @@ export const ShipmentFilterBar = ({
             }}
           />
         </div>
-        <SelectField
-          wide
-          label={t.fields.customer}
-          options={withAll(customerOptions)}
-          value={filters.customer}
-          note={customerNote}
-          onChange={(value) => {
-            setFilters((prev) => ({ ...prev, customer: value }));
-          }}
-        />
-        <SelectField
-          wide
-          label={t.fields.shipToPartner}
-          options={withAll(shipToPartnerOptions)}
-          value={filters.shipToPartner}
-          note={shipToPartnerNote}
-          onChange={(value) => {
-            setFilters((prev) => ({ ...prev, shipToPartner: value }));
-          }}
-        />
-        <SelectField
-          wide
-          label={t.fields.progress}
-          /* 고르는 자리도 표와 같은 말을 쓴다 — 보내는 값은 코드 그대로다. */
-          options={withAll(
-            progressOptions.map((code) => ({ value: code, label: progressLabel(code) })),
-          )}
-          value={filters.progress}
-          onChange={(value) => {
-            setFilters((prev) => ({ ...prev, progress: value as ShipmentFilters['progress'] }));
-          }}
-        />
-        <SelectField
-          label={t.fields.inspection}
-          options={inspectionOptions}
-          value={filters.inspection}
-          onChange={(value) => {
-            setFilters((prev) => ({ ...prev, inspection: value }));
-          }}
-        />
-
-        {/* 피처 010 — 「완료 대기만」(completionReadyOnly) · 「LOT 교체 있음」(hasReplacement). */}
-        <div className="field-cell field-cell-unlabeled shipment-schedule-flags">
-          <Checkbox
-            checked={filters.ready === 'true'}
-            onChange={(event) => {
-              const ready = event.target.checked ? 'true' : '';
-              setFilters((prev) => ({ ...prev, ready }));
-            }}
-          >
-            {t.filters.readyOnly}
-          </Checkbox>
-          <Checkbox
-            checked={filters.replaced === 'true'}
-            onChange={(event) => {
-              const replaced = event.target.checked ? 'true' : '';
-              setFilters((prev) => ({ ...prev, replaced }));
-            }}
-          >
-            {t.filters.hasReplacement}
-          </Checkbox>
-        </div>
-
         <div className="field-cell field-cell-unlabeled shipment-schedule-filter-actions">
           <div className="filter-actions">
             <Button
@@ -263,9 +248,12 @@ export const ShipmentFilterBar = ({
             >
               {messages.common.search}
             </Button>
-            <Button variant="outlined" onClick={onReset}>
-              {messages.common.reset}
-            </Button>
+            {isChanged && (
+              <Button variant="outlined" onClick={reset}>
+                {messages.common.reset}
+              </Button>
+            )}
+            <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
           </div>
           {/*
             ⛔ 막힌 사유를 문장으로 되풀이하지 않는다 — 별표와 붉은 테두리가 같은 말을 한다.
@@ -286,29 +274,82 @@ export const ShipmentFilterBar = ({
         </div>
       </div>
 
+      {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+      <div id={more.id} hidden={!more.isOpen}>
+        <div className="filter-bar shipment-schedule-filters">
+          <SelectField
+            wide
+            label={t.fields.customer}
+            options={withAll(customerOptions)}
+            value={filters.customer}
+            note={customerNote}
+            onChange={(value) => {
+              setFilters((prev) => ({ ...prev, customer: value }));
+            }}
+          />
+          <SelectField
+            wide
+            label={t.fields.shipToPartner}
+            options={withAll(shipToPartnerOptions)}
+            value={filters.shipToPartner}
+            note={shipToPartnerNote}
+            onChange={(value) => {
+              setFilters((prev) => ({ ...prev, shipToPartner: value }));
+            }}
+          />
+          <SelectField
+            wide
+            label={t.fields.progress}
+            /* 고르는 자리도 표와 같은 말을 쓴다 — 보내는 값은 코드 그대로다. */
+            options={withAll(
+              progressOptions.map((code) => ({ value: code, label: progressLabel(code) })),
+            )}
+            value={filters.progress}
+            onChange={(value) => {
+              setFilters((prev) => ({ ...prev, progress: value as ShipmentFilters['progress'] }));
+            }}
+          />
+          <SelectField
+            label={t.fields.inspection}
+            options={inspectionOptions}
+            value={filters.inspection}
+            onChange={(value) => {
+              setFilters((prev) => ({ ...prev, inspection: value }));
+            }}
+          />
+
+          {/* 피처 010 — 「완료 대기만」(completionReadyOnly) · 「LOT 교체 있음」(hasReplacement). */}
+          <div className="field-cell field-cell-unlabeled shipment-schedule-flags">
+            <Checkbox
+              checked={filters.ready === 'true'}
+              onChange={(event) => {
+                const ready = event.target.checked ? 'true' : '';
+                setFilters((prev) => ({ ...prev, ready }));
+              }}
+            >
+              {t.filters.readyOnly}
+            </Checkbox>
+            <Checkbox
+              checked={filters.replaced === 'true'}
+              onChange={(event) => {
+                const replaced = event.target.checked ? 'true' : '';
+                setFilters((prev) => ({ ...prev, replaced }));
+              }}
+            >
+              {t.filters.hasReplacement}
+            </Checkbox>
+          </div>
+        </div>
+      </div>
+
+      <HiddenFilterChips open={more.isOpen} chips={hiddenChips} onRemove={onRemoveFilter} />
+
       {/* 계약에 자리가 없어 이번 슬라이스에서 뺀 구획을 밝힌다 — 감추면 「원래 없다」로 읽힌다. */}
       <AlertBanner
         className="shipment-schedule-summary-banner"
         variant="info"
         title={t.filters.summaryNote}
       />
-
-      {chips.length > 0 && (
-        <div className="filter-bar">
-          {chips.map((chip) => (
-            <Chip
-              key={chip.key}
-              variant="status"
-              removeLabel={chip.removeLabel}
-              onRemove={() => {
-                onRemoveFilter(chip.key);
-              }}
-            >
-              {chip.label}
-            </Chip>
-          ))}
-        </div>
-      )}
     </>
   );
 };
