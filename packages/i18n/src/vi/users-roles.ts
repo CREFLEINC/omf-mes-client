@@ -92,8 +92,9 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     totalOnly: (total: number): string => `Tổng ${String(total)} mục`,
   },
   filters: {
+    pane: 'Điều kiện tìm người dùng',
     userSearchLabel: 'Tìm người dùng',
-    userSearchPlaceholder: 'Tên đăng nhập hoặc tên',
+    userSearchPlaceholder: 'Nhập tên đăng nhập hoặc tên',
     department: 'Phòng ban',
     departmentAll: 'Tất cả',
     /** ⚠ 인사 상태다 — 사용 여부(ngừng dùng)와 다른 축이라 가려 부른다. */
@@ -273,6 +274,15 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
       none: 'Chưa chỉ định phạm vi nào',
       noneDescription: 'Có thể xem dữ liệu của mọi nhà máy.',
     },
+  },
+  statusChips: {
+    label: 'Tình trạng làm việc',
+    filterOn: (label: string): string => `Chỉ xem ${label}`,
+    filterOff: (label: string): string => `Bỏ lọc ${label}`,
+  },
+  pickUser: {
+    title: 'Hãy chọn người dùng.',
+    hint: 'Thông tin chi tiết · vai trò · phạm vi truy cập dữ liệu của người dùng được chọn sẽ hiển thị.',
   },
   discard: {
     title: 'Có thay đổi chưa lưu',

@@ -4,6 +4,7 @@ import {
   Dialog,
   EmptyState,
   SkeletonText,
+  Icon,
   Tabs,
   useToast,
 } from '@crefle/web-ui';
@@ -14,6 +15,12 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { sessionKeys } from '../../patterns/session';
 import { lookupLabel, selectableOptions } from './code-options';
@@ -92,7 +99,8 @@ import {
 import { ROLE_FORM_FIELDS, validateRoleForm } from './role-validation';
 import { USERS_ROLES_TABS, resolveTab, tabSearchParams } from './tabs';
 import { UserFormPane } from './user-form-pane';
-import { UserListPane } from './user-list-pane';
+import { UserStatusChips } from './status-chips';
+import { UserFilterBar, UserListPane } from './user-list-pane';
 import {
   appUserToFormValues,
   emptyUserFormValues,
@@ -105,6 +113,7 @@ import {
   useUserDetail,
   useUserList,
   useUserRoles,
+  useUserStatusCounts,
   userDetailPath,
   userKeys,
 } from './user-queries';
@@ -251,6 +260,22 @@ export const UsersRolesScreen = () => {
 
   const departmentOptions = useDepartmentOptions(isUsersTab);
   const userStatusOptions = useUserStatusOptions(isUsersTab);
+  /* 탭 줄 재직 상태 칩의 건수 — 걸린 다른 조건은 그대로 두고 상태만 바꿔 센다(omf-all-around#333). */
+  const statusCounts = useUserStatusCounts(
+    filters,
+    userStatusOptions.entries.map((entry) => entry.value),
+    isUsersTab,
+  );
+  /* 수입검사 화면과 같은 배치 — 위 조회 묶음 · 아래 목록 | 상세(좌우 · 상하 배치, 폭 · 높이 끌기, 목록 접기). */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:users-roles:split', 0.45);
+  const layout = useSplitOrientation('omf-mes:users-roles:split-orientation');
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: messages.common.inspectionHub.listCollapse,
+    expandLabel: messages.common.inspectionHub.listExpand,
+  };
 
   const [formState, setFormState] = useState<UserFormState | null>(null);
 
@@ -1447,48 +1472,91 @@ export const UsersRolesScreen = () => {
     </section>
   ) : (
     /*
-     * 왼쪽 목록 | 오른쪽 고른 사용자의 설정 한 카드 — 상세 정보 · 연결된 현장 작업자 · 사용자 역할 · 데이터 접근 범위
-     * 순서(omf-all-around#333). 저장 경로가 구역마다 달라(낙관적 잠금이 있는 수정 · 역할 치환 · 범위 치환) 저장은 구역별로 둔다.
+     * 수입검사 화면과 같은 틀(omf-all-around#333) — 위 조회 묶음, 아래 목록 | 고른 사용자의 설정 한 카드.
+     * 설정 카드는 상세 정보 · 연결된 현장 작업자 · 사용자 역할 · 데이터 접근 범위 순서다. 저장 경로가 구역마다 달라
+     * (낙관적 잠금이 있는 수정 · 역할 치환 · 범위 치환) 저장은 구역별로 둔다.
      */
-    <div className="two-pane users-roles-layout">
-      <UserListPane
-        users={users}
-        isLoading={userList.isPending}
-        appliedFilters={filters}
-        onApplyFilters={applyFilters}
-        departmentOptions={selectableOptions(departmentOptions, filters.departmentId)}
-        statusOptions={selectableOptions(userStatusOptions, filters.statusCode)}
-        statusDisabledReason={statusDisabledReason}
-        /*
-         * 조건 칩에는 번호가 아니라 이름을 낸다. 선택 목록을 아직 받지 못했으면
-         * 「알 수 없음」이 나오고 목록이 도착하면 이름으로 바뀐다 —
-         * 번호를 대신 보이면 사용자가 쓸 수 없는 값을 자료로 읽는다.
-         */
-        departmentLabel={(departmentId) => lookupLabel(departmentOptions, Number(departmentId))}
-        departmentNameOf={(departmentId) => lookupLabel(departmentOptions, departmentId)}
-        statusNameOf={(statusCode) => lookupLabel(userStatusOptions, statusCode)}
-        optionsNotice={renderOptionsNotice([departmentOptions, userStatusOptions])}
-        pageView={userPageView}
-        onChangePage={changeUserPage}
-        selectedAppUserId={selectedAppUserId}
-        onSelect={selectUser}
-        isCreating={isCreatingUser}
-        onAddUser={handleAddUser}
-        loadError={
-          userList.isError ? (
-            <LoadErrorBanner error={userList.error} onRetry={() => void userList.refetch()} />
-          ) : null
-        }
-      />
+    <div className="users-roles-workspace">
+      <section ref={aboveRef} className="pane users-roles-search" aria-label={t.filters.pane}>
+        <UserFilterBar
+          appliedFilters={filters}
+          onApplyFilters={applyFilters}
+          departmentOptions={selectableOptions(departmentOptions, filters.departmentId)}
+          /*
+           * 조건 칩에는 번호가 아니라 이름을 낸다. 선택 목록을 아직 받지 못했으면
+           * 「알 수 없음」이 나오고 목록이 도착하면 이름으로 바뀐다 —
+           * 번호를 대신 보이면 사용자가 쓸 수 없는 값을 자료로 읽는다.
+           */
+          departmentLabel={(departmentId) => lookupLabel(departmentOptions, Number(departmentId))}
+          statusNameOf={(statusCode) => lookupLabel(userStatusOptions, statusCode)}
+          optionsNotice={renderOptionsNotice([departmentOptions, userStatusOptions])}
+          isCreating={isCreatingUser}
+          onAddUser={handleAddUser}
+        />
+      </section>
 
-      {userList.data !== undefined && (
+      <div
+        ref={splitRef}
+        className={`po-board-split inspection-split users-roles-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
+        data-left-collapsed={split.collapsed ? 'true' : undefined}
+      >
+        <UserListPane
+          users={users}
+          isLoading={userList.isPending}
+          appliedFilters={filters}
+          onApplyFilters={applyFilters}
+          departmentNameOf={(departmentId) => lookupLabel(departmentOptions, departmentId)}
+          statusNameOf={(statusCode) => lookupLabel(userStatusOptions, statusCode)}
+          pageView={userPageView}
+          pageMeta={userList.data?.page ?? null}
+          onChangePage={changeUserPage}
+          selectedAppUserId={selectedAppUserId}
+          onSelect={selectUser}
+          loadError={
+            userList.isError ? (
+              <LoadErrorBanner error={userList.error} onRetry={() => void userList.refetch()} />
+            ) : null
+          }
+        />
+
+        <PaneSplitter
+          label={messages.common.inspectionHub.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+          collapse={listCollapse}
+        />
+        {layout.orientation === 'column' && (
+          <PaneHeightSplitter
+            label={messages.common.inspectionHub.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+            collapse={listCollapse}
+          />
+        )}
+
         <section className="pane users-roles-settings" aria-label={t.panes.userSettings}>
-          {renderSettingsHead()}
-          {renderUserFormPane()}
-          {renderRoleAssignPane()}
-          {renderDataScopePane()}
+          {!isCreatingUser && selectedAppUserId === null ? (
+            <EmptyState
+              size="sm"
+              icon={
+                <span className="inspection-standard-empty-icon">
+                  <Icon name="person" size={20} />
+                </span>
+              }
+              title={t.pickUser.title}
+              description={t.pickUser.hint}
+            />
+          ) : (
+            <>
+              {renderSettingsHead()}
+              {renderUserFormPane()}
+              {renderRoleAssignPane()}
+              {renderDataScopePane()}
+            </>
+          )}
         </section>
-      )}
+      </div>
     </div>
   );
 
@@ -1693,20 +1761,41 @@ export const UsersRolesScreen = () => {
   return (
     <>
       {/* 머리글(경로 · 화면 이름)은 두지 않는다 — 탭부터 선다(사용자 지시 2026-11-20 · omf-all-around#333). */}
-      <Tabs
-        aria-label={t.tabs.label}
-        value={tab.id}
-        onChange={changeTab}
-        items={USERS_ROLES_TABS.map((definition) => ({
-          value: definition.id,
-          label: definition.label,
-          /*
-           * 활성 탭의 내용만 만든다. 디자인 시스템 `Tabs`는 비활성 패널도 DOM에 두므로
-           * 모두 만들면 보이지 않는 표가 함께 살아 있게 된다.
-           */
-          content: definition.id === tab.id ? tabContentOf(definition.id) : null,
-        }))}
-      />
+      {/*
+       * 탭 줄 오른쪽 — 재직 상태 칩 · 좌우 / 상하 배치(수입검사 탭 줄과 같은 자리 · omf-all-around#333).
+       * DS `Tabs` 에 오른쪽 자리가 없어 탭 줄 위에 겹쳐 세운다.
+       */}
+      <div className="users-roles-tabs">
+        {isUsersTab && !userListForbidden && (
+          <div className="users-roles-tab-actions">
+            <UserStatusChips
+              statuses={userStatusOptions.entries}
+              counts={statusCounts}
+              active={filters.statusCode}
+              onChange={(statusCode) => applyFilters({ ...filters, statusCode })}
+            />
+            <SplitOrientationToggle
+              orientation={layout.orientation}
+              onChange={layout.change}
+              inline
+            />
+          </div>
+        )}
+        <Tabs
+          aria-label={t.tabs.label}
+          value={tab.id}
+          onChange={changeTab}
+          items={USERS_ROLES_TABS.map((definition) => ({
+            value: definition.id,
+            label: definition.label,
+            /*
+             * 활성 탭의 내용만 만든다. 디자인 시스템 `Tabs`는 비활성 패널도 DOM에 두므로
+             * 모두 만들면 보이지 않는 표가 함께 살아 있게 된다.
+             */
+            content: definition.id === tab.id ? tabContentOf(definition.id) : null,
+          }))}
+        />
+      </div>
 
       {pendingLeave !== null && (
         <Dialog

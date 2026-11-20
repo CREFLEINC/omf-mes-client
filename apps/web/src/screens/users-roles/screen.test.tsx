@@ -436,10 +436,17 @@ const isInvalidated = (queryClient: QueryClient, queryKey: readonly unknown[]): 
 const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
   requests.filter((request) => request.url.pathname === pathname);
 
+/*
+ * 목록 조회만 센다 — 탭 줄 재직 상태 칩이 상태마다 건수를 따로 묻는다(omf-all-around#333). 그 건수 조회는
+ * 상태 조건이 실린 요청이라, 상태 조건을 걸지 않은 시험에서는 상태가 실린 요청을 빼면 목록 조회만 남는다.
+ */
 const userRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
-  requestsTo(requests, USERS_PATH);
+  requestsTo(requests, USERS_PATH).filter((request) => !request.url.searchParams.has('statusCode'));
 
 const userListPane = (): HTMLElement => screen.getByRole('region', { name: '사용자 목록' });
+
+/** 위 조회 묶음 — 검색 · 사용 중지 계정 포함 · 소속 부서 · 조회 · 초기화 · 사용자 추가(수입검사와 같은 틀 · #333). */
+const userSearchPane = (): HTMLElement => screen.getByRole('region', { name: '사용자 조회 조건' });
 
 const waitForUserList = async (requests: RecordedRequest[]): Promise<void> => {
   await waitFor(() => {
@@ -551,11 +558,11 @@ describe('UsersRolesScreen 조건과 주소', () => {
 
     await waitForUserList(requests);
 
-    await user.type(within(userListPane()).getByLabelText('사용자 검색'), 'syn');
+    await user.type(within(userSearchPane()).getByLabelText('사용자 검색'), 'syn');
     // 디자인 시스템 `Select`는 네이티브 `<select>`가 아니라 트리거를 누른 뒤 선택지를 누른다.
-    await user.click(within(userListPane()).getByLabelText('소속 부서'));
+    await user.click(within(userSearchPane()).getByLabelText('소속 부서'));
     await user.click(await screen.findByRole('option', { name: /SYN-DEPT-01/ }));
-    await user.click(within(userListPane()).getByRole('button', { name: '조회' }));
+    await user.click(within(userSearchPane()).getByRole('button', { name: '조회' }));
 
     await waitFor(() => {
       expect(userRequests(requests).length).toBeGreaterThan(1);
@@ -609,16 +616,13 @@ describe('UsersRolesScreen 조건과 주소', () => {
 
     await waitForUserList(requests);
 
-    const status = within(userListPane()).getByLabelText('재직 상태');
-    expect(status).toBeEnabled();
-
-    await user.click(status);
-    await user.click(screen.getByRole('option', { name: '휴직' }));
-
-    await user.click(within(userListPane()).getByRole('button', { name: '조회' }));
+    /* 재직 상태는 탭 줄 칩이 맡는다 — 누르는 즉시 적용한다(수입검사 상태 칩과 같다 · #333). */
+    await user.click(await screen.findByRole('button', { name: '휴직만 보기' }));
 
     await waitFor(() => {
-      expect(userRequests(requests).at(-1)?.url.searchParams.get('statusCode')).toBe('ON_LEAVE');
+      expect(requestsTo(requests, USERS_PATH).at(-1)?.url.searchParams.get('statusCode')).toBe(
+        'ON_LEAVE',
+      );
     });
 
     expect(new URLSearchParams(probeSearch).get('status')).toBe('ON_LEAVE');
@@ -633,7 +637,9 @@ describe('UsersRolesScreen 조건과 주소', () => {
 
     await waitForUserList(requests);
 
-    await user.click(within(userListPane()).getByRole('checkbox', { name: '사용 중지 계정 포함' }));
+    await user.click(
+      within(userSearchPane()).getByRole('checkbox', { name: '사용 중지 계정 포함' }),
+    );
 
     await waitFor(() => {
       expect(new URLSearchParams(search()).get('inactive')).toBe('1');
@@ -654,7 +660,7 @@ describe('UsersRolesScreen 조건과 주소', () => {
 
     await waitForUserList(requests);
 
-    await user.click(within(userListPane()).getByRole('button', { name: '사용자 추가' }));
+    await user.click(within(userSearchPane()).getByRole('button', { name: '사용자 추가' }));
 
     await waitFor(() => {
       expect(new URLSearchParams(search()).get('new')).toBe('user');
@@ -912,9 +918,8 @@ describe('UsersRolesScreen 조회 실패', () => {
     expect(screen.queryByRole('region', { name: '사용자 상세 정보' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: '사용자 역할' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: '데이터 접근 범위' })).not.toBeInTheDocument();
-    expect(
-      within(userListPane()).queryByRole('button', { name: '사용자 추가' }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '사용자 조회 조건' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '사용자 추가' })).not.toBeInTheDocument();
     expect(within(userListPane()).queryByRole('textbox')).not.toBeInTheDocument();
     expect(screen.queryByText('등록된 사용자가 없습니다')).not.toBeInTheDocument();
     expect(screen.queryByText('조건에 맞는 사용자가 없습니다')).not.toBeInTheDocument();
@@ -993,20 +998,20 @@ describe('UsersRolesScreen 상세 열기', () => {
 
     await waitForUserList(requests);
 
-    expect(
-      within(settingsPane()).getByText('왼쪽 목록에서 사용자를 선택하세요'),
-    ).toBeInTheDocument();
+    expect(within(settingsPane()).getByText('사용자를 선택하세요.')).toBeInTheDocument();
     expect(within(settingsPane()).queryByRole('textbox')).not.toBeInTheDocument();
   });
 
-  /** 선택 전에는 설정 카드의 표제만 서고, 상세·역할·접근 범위 구역은 서지 않는다. */
-  it('고르기 전에는 사용자 설정 표제만 서고 역할·접근범위 카드는 없다', async () => {
+  /** 선택 전에는 설정 카드에 안내만 서고, 상세·역할·접근 범위 구역은 서지 않는다(수입검사와 같은 빈 상태 · #333). */
+  it('고르기 전에는 안내만 서고 역할·접근범위 카드는 없다', async () => {
     const { requests } = renderScreen([userListRoute(), departmentsRoute()]);
 
     await waitForUserList(requests);
 
     expect(
-      within(settingsPane()).getByRole('heading', { name: '사용자 설정' }),
+      within(settingsPane()).getByText(
+        '선택한 사용자의 상세 정보 · 역할 · 데이터 접근 범위가 표시됩니다.',
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: '사용자 상세 정보' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: '사용자 역할' })).not.toBeInTheDocument();
@@ -1021,7 +1026,7 @@ describe('UsersRolesScreen 상세 열기', () => {
     ]);
 
     await waitForUserList(requests);
-    await user.click(within(userListPane()).getByRole('button', { name: '사용자 추가' }));
+    await user.click(within(userSearchPane()).getByRole('button', { name: '사용자 추가' }));
 
     expect(
       await within(userFormPane()).findByRole('textbox', { name: '로그인 아이디' }),
@@ -1071,7 +1076,7 @@ describe('UsersRolesScreen 로그인 ID 잠금', () => {
     ]);
 
     await waitForUserList(requests);
-    await user.click(within(userListPane()).getByRole('button', { name: '사용자 추가' }));
+    await user.click(within(userSearchPane()).getByRole('button', { name: '사용자 추가' }));
 
     expect(
       await within(userFormPane()).findByRole('textbox', { name: '로그인 아이디' }),
@@ -1358,7 +1363,9 @@ describe('UsersRolesScreen 등록', () => {
     ]);
 
     await waitForUserList(rendered.requests);
-    await rendered.user.click(within(userListPane()).getByRole('button', { name: '사용자 추가' }));
+    await rendered.user.click(
+      within(userSearchPane()).getByRole('button', { name: '사용자 추가' }),
+    );
     await within(userFormPane()).findByRole('textbox', { name: '로그인 아이디' });
 
     await rendered.user.type(
@@ -1459,7 +1466,7 @@ describe('UsersRolesScreen 등록', () => {
 
       await waitForUserList(rendered.requests);
       await rendered.user.click(
-        within(userListPane()).getByRole('button', { name: '사용자 추가' }),
+        within(userSearchPane()).getByRole('button', { name: '사용자 추가' }),
       );
       await within(userFormPane()).findByLabelText('초기 비밀번호');
 
@@ -1583,7 +1590,7 @@ describe('UsersRolesScreen 등록', () => {
         expect(within(settingsPane()).queryByLabelText('초기 비밀번호')).not.toBeInTheDocument();
       });
 
-      await user.click(within(userListPane()).getByRole('button', { name: '사용자 추가' }));
+      await user.click(within(userSearchPane()).getByRole('button', { name: '사용자 추가' }));
       const reopened = await within(userFormPane()).findByLabelText('초기 비밀번호');
 
       expect(reopened).toHaveValue(SYNTHETIC_DEFAULT_PASSWORD);
@@ -1627,7 +1634,9 @@ describe('UsersRolesScreen 등록 저장 실패', () => {
     ]);
 
     await waitForUserList(rendered.requests);
-    await rendered.user.click(within(userListPane()).getByRole('button', { name: '사용자 추가' }));
+    await rendered.user.click(
+      within(userSearchPane()).getByRole('button', { name: '사용자 추가' }),
+    );
     await within(userFormPane()).findByRole('textbox', { name: '로그인 아이디' });
 
     await rendered.user.type(
@@ -1915,7 +1924,9 @@ describe('UsersRolesScreen 초안 수명', () => {
     await user.type(within(userFormPane()).getByRole('textbox', { name: '이름' }), '합성 사용자 Z');
 
     // 목록만 다시 조회한다 — 상세 응답 객체는 그대로다.
-    await user.click(within(userListPane()).getByRole('checkbox', { name: '사용 중지 계정 포함' }));
+    await user.click(
+      within(userSearchPane()).getByRole('checkbox', { name: '사용 중지 계정 포함' }),
+    );
     await waitFor(() => {
       expect(userRequests(requests).length).toBeGreaterThan(1);
     });
@@ -2224,7 +2235,7 @@ describe('UsersRolesScreen 창·오류의 수명', () => {
     ]);
 
     await waitForUserList(requests);
-    await user.click(within(userListPane()).getByRole('button', { name: '사용자 추가' }));
+    await user.click(within(userSearchPane()).getByRole('button', { name: '사용자 추가' }));
 
     await user.type(
       await within(userFormPane()).findByRole('textbox', { name: '로그인 아이디' }),
@@ -2235,7 +2246,7 @@ describe('UsersRolesScreen 창·오류의 수명', () => {
     await within(userFormPane()).findByText('등록이 막혔습니다.');
 
     await user.click(within(userFormPane()).getByRole('button', { name: '취소' }));
-    await user.click(within(userListPane()).getByRole('button', { name: '사용자 추가' }));
+    await user.click(within(userSearchPane()).getByRole('button', { name: '사용자 추가' }));
 
     await within(userFormPane()).findByRole('textbox', { name: '로그인 아이디' });
     expect(screen.queryByText('등록이 막혔습니다.')).not.toBeInTheDocument();

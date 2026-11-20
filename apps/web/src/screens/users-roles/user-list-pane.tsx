@@ -4,6 +4,7 @@ import {
   Chip,
   type Column,
   EmptyState,
+  Icon,
   SearchInput,
   SkeletonText,
   Table,
@@ -11,8 +12,12 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnWidths } from '../../patterns/column-resize';
+import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
+
 import { clearUserFilter, hasAnyUserFilter, toUserFilterChips } from './filters';
-import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
 import { SelectField } from './select-field';
 import type { AppUser, SelectOption, UserFilters } from './types';
@@ -27,31 +32,155 @@ export const EMPTY_USER_FILTERS: UserFilters = {
   includeInactive: false,
 };
 
-export interface UserListPaneProps {
-  users: AppUser[];
-  isLoading: boolean;
+export interface UserFilterBarProps {
   /** 적용된(주소에 반영된) 조건 — 조건 칩의 렌더 기준 */
   appliedFilters: UserFilters;
   /** 조회 버튼·Enter·칩 제거·초기화가 호출한다. 쪽은 늘 1로 돌아간다 */
   onApplyFilters: (next: UserFilters) => void;
   departmentOptions: SelectOption[];
-  statusOptions: SelectOption[];
-  statusDisabledReason: string | null;
   /** 조건 칩에 낼 부서 이름. 번호를 그대로 보이면 무엇을 걸었는지 모른다 */
   departmentLabel: (departmentId: string) => string;
+  statusNameOf: (statusCode: string) => string;
+  /** 선택 목록이 잘렸거나 실패했다는 안내 슬롯 */
+  optionsNotice: ReactNode;
+  /** 등록 폼이 이미 열려 있으면 참. 같은 폼을 두 번 열지 않는다 */
+  isCreating: boolean;
+  onAddUser: () => void;
+}
+
+/**
+ * 위 조회 카드 — 수입검사 화면의 검색 묶음과 같은 자리(omf-all-around#333).
+ * 소속 부서 · 검색창 · 사용 중지 계정 포함 · [조회][초기화] | [+ 사용자 추가] 를 한 줄에(사용자 지시 2026-11-20).
+ * 재직 상태는 탭 줄 오른쪽 칩이 맡는다(수입검사의 상태 칩과 같다) — 조회·초기화는 걸린 칩을 그대로 둔다.
+ */
+export const UserFilterBar = ({
+  appliedFilters,
+  onApplyFilters,
+  departmentOptions,
+  departmentLabel,
+  statusNameOf,
+  optionsNotice,
+  isCreating,
+  onAddUser,
+}: UserFilterBarProps) => {
+  /*
+   * 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
+   * 편집 중인 값은 draft에만 있고 조건 칩에 미러하지 않는다 — 칩은 「적용된 조건」의 표시다.
+   */
+  const [draft, setDraft] = useState<UserFilters>(appliedFilters);
+  const {
+    q: appliedQ,
+    departmentId: appliedDepartmentId,
+    statusCode: appliedStatusCode,
+    includeInactive: appliedIncludeInactive,
+  } = appliedFilters;
+
+  useEffect(() => {
+    setDraft({
+      q: appliedQ,
+      departmentId: appliedDepartmentId,
+      statusCode: appliedStatusCode,
+      includeInactive: appliedIncludeInactive,
+    });
+  }, [appliedQ, appliedDepartmentId, appliedStatusCode, appliedIncludeInactive]);
+
+  /* 재직 상태 칩은 탭 줄에 있으니 여기서 겹쳐 세우지 않는다. */
+  const chips = toUserFilterChips(appliedFilters, departmentLabel, statusNameOf).filter(
+    (chip) => chip.key !== 'statusCode',
+  );
+
+  return (
+    <>
+      {optionsNotice}
+      <div className="filter-bar users-roles-filter-row">
+        {/* 규범 3-2 — 「SYN-DEPT-01 · 합성 부서 A」는 트리거 폭에 갇혀 잘린다. */}
+        <SelectField
+          label={t.filters.department}
+          wide
+          options={[{ value: '', label: t.filters.departmentAll }, ...departmentOptions]}
+          value={draft.departmentId}
+          onChange={(value) => setDraft((prev) => ({ ...prev, departmentId: value }))}
+        />
+
+        <SearchInput
+          containerClassName="users-roles-search-input"
+          label={t.filters.userSearchLabel}
+          placeholder={t.filters.userSearchPlaceholder}
+          value={draft.q}
+          onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
+          onSearch={(value) => onApplyFilters({ ...draft, q: value })}
+          clearLabel={messages.common.clear}
+        />
+
+        {/* 해제 축이라 누르는 즉시 적용한다. */}
+        <div className="field-cell field-cell-unlabeled">
+          <Checkbox
+            checked={appliedFilters.includeInactive}
+            onChange={(event) =>
+              onApplyFilters({ ...appliedFilters, includeInactive: event.target.checked })
+            }
+          >
+            {t.filters.includeInactive}
+          </Checkbox>
+        </div>
+
+        {/* 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1). 초기화는 재직 상태 칩도 함께 푼다. */}
+        <div className="filter-actions field-cell-unlabeled">
+          <Button onClick={() => onApplyFilters({ ...draft, statusCode: appliedStatusCode })}>
+            {messages.common.search}
+          </Button>
+          <Button variant="outlined" onClick={() => onApplyFilters(EMPTY_USER_FILTERS)}>
+            {messages.common.reset}
+          </Button>
+        </div>
+
+        {/* 다른 화면의 추가 단추와 같은 모양 — 구분선 뒤 채운 단추 + 더하기 아이콘(사용자 지시 2026-11-20). */}
+        <span className="inspection-standard-filter-divider" aria-hidden />
+        <Button
+          variant="filled"
+          leadingIcon={<Icon name="add" size={18} />}
+          disabled={isCreating}
+          onClick={onAddUser}
+        >
+          {t.actions.addUser}
+        </Button>
+      </div>
+
+      {/* 걸린 조건이 없으면 빈 줄이 여백만 차지한다 — 칩이 있을 때만 줄을 둔다. */}
+      {chips.length > 0 && (
+        <div className="filter-bar users-roles-chip-row">
+          {chips.map((chip) => (
+            <Chip
+              key={chip.key}
+              variant="status"
+              removeLabel={chip.removeLabel}
+              onRemove={() => onApplyFilters(clearUserFilter(appliedFilters, chip.key))}
+            >
+              {chip.label}
+            </Chip>
+          ))}
+        </div>
+      )}
+    </>
+  );
+};
+
+export interface UserListPaneProps {
+  users: AppUser[];
+  isLoading: boolean;
+  /** 적용된 조건 — 빈 상태 문구를 가른다 */
+  appliedFilters: UserFilters;
+  onApplyFilters: (next: UserFilters) => void;
   /** 표의 부서 셀에 낼 이름. 값이 없으면 미지정 표기를 낸다 */
   departmentNameOf: (departmentId: number | null | undefined) => string;
   /** 상태 코드의 표시명. 값 목록에 없으면 숫자·코드 대신 공통 「알 수 없음」을 낸다. */
   statusNameOf: (statusCode: string) => string;
-  /** 선택 목록이 잘렸거나 실패했다는 안내 슬롯 */
-  optionsNotice: ReactNode;
   pageView: PageView;
+  /** 서버가 준 쪽 정보. 받기 전·실패면 `null` — 셀 것이 없으면 쪽 이동을 그리지 않는다. */
+  pageMeta: PageNavMeta | null;
   onChangePage: (page: number) => void;
   selectedAppUserId: number | null;
   onSelect: (appUserId: number) => void;
-  /** 등록 폼이 이미 열려 있으면 참. 같은 폼을 두 번 열지 않는다 */
-  isCreating: boolean;
-  onAddUser: () => void;
   /**
    * 조회 실패 표시. null이 아니면 표·빈 상태 대신 이것을 낸다 —
    * 실패를 「등록된 사용자가 없습니다」로 보이면 사실과 다른 안내가 되고,
@@ -83,53 +212,30 @@ export const UserListPane = ({
   isLoading,
   appliedFilters,
   onApplyFilters,
-  departmentOptions,
-  statusOptions,
-  statusDisabledReason,
-  departmentLabel,
   departmentNameOf,
   statusNameOf,
-  optionsNotice,
   pageView,
+  pageMeta,
   onChangePage,
   selectedAppUserId,
   onSelect,
-  isCreating,
-  onAddUser,
   loadError,
 }: UserListPaneProps) => {
-  /*
-   * 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
-   * 편집 중인 값은 draft에만 있고 조건 칩에 미러하지 않는다 — 칩은 「적용된 조건」의 표시다.
-   */
-  const [draft, setDraft] = useState<UserFilters>(appliedFilters);
-  const {
-    q: appliedQ,
-    departmentId: appliedDepartmentId,
-    statusCode: appliedStatusCode,
-    includeInactive: appliedIncludeInactive,
-  } = appliedFilters;
-
-  useEffect(() => {
-    setDraft({
-      q: appliedQ,
-      departmentId: appliedDepartmentId,
-      statusCode: appliedStatusCode,
-      includeInactive: appliedIncludeInactive,
-    });
-  }, [appliedQ, appliedDepartmentId, appliedStatusCode, appliedIncludeInactive]);
-
   /* 머리글과 셀을 가운데로 맞춘다(사용자 요청 2026-09-18) — 열 정렬은 DS `Column.align` 으로만 한다. */
-  const columns: Column<AppUser>[] = [
+  const baseColumns: Column<AppUser>[] = [
     {
       key: 'loginId',
       align: 'center',
       header: t.user.fields.loginId,
       width: '160px',
+      /*
+       * 링크처럼 보이지 않는다(사용자 지시 2026-11-20 · omf-all-around#333) — 줄 아무 곳이나 눌러 고른다.
+       * 이 단추는 키보드·화면 낭독기가 줄을 고르는 자리로만 남는다(수입검사 목록과 같다).
+       */
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className="users-roles-row-pick"
           aria-current={row.appUserId === selectedAppUserId ? 'true' : undefined}
           onClick={() => onSelect(row.appUserId)}
         >
@@ -158,6 +264,10 @@ export const UserListPane = ({
       render: (row) => (row.statusCode === '' ? orEmptyMark('') : statusNameOf(row.statusCode)),
     },
   ];
+  /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(다른 목록과 같다 · 사용자 지시 2026-11-20). */
+  const ordered = useColumnOrder('omf-mes:users-roles:columns:users:order', baseColumns);
+  const resizable = useColumnWidths('omf-mes:users-roles:columns:users', ordered);
+  const fit = useFitColumns(resizable.columns);
 
   /**
    * 빈 상태는 세 갈래다 — **셋을 뭉치면 사실과 다른 안내가 된다.**
@@ -226,121 +336,41 @@ export const UserListPane = ({
 
     return (
       <>
-        {/* 고른 줄 표시는 `app.css` 의 `.users-roles-list` 가 그린다 — `Table` 이 행 선택 표시를 주지 않는다. */}
-        <div className="users-roles-list">
+        {/*
+         * 고른 줄 표시는 `app.css` 의 `.users-roles-list` 가 그린다 — `Table` 이 행 선택 표시를 주지 않는다.
+         * 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 단추로 넘긴다(수입검사 목록과 같다).
+         */}
+        <div
+          ref={fit.ref}
+          className="users-roles-list"
+          style={resizable.style}
+          onClick={(event) => {
+            const target = event.target as Element;
+            if (target.closest('button, a, input, select, textarea') !== null) return;
+            target
+              .closest('tbody tr')
+              ?.querySelector<HTMLButtonElement>('.users-roles-row-pick')
+              ?.click();
+          }}
+        >
           <Table
             density="compact"
-            columns={columns}
+            columns={fit.columns}
             rows={users}
             getRowId={(row) => String(row.appUserId)}
             empty={emptySlot}
           />
         </div>
-        <PageNav view={pageView} onChange={onChangePage} />
       </>
     );
   };
 
-  const chips = toUserFilterChips(appliedFilters, departmentLabel, statusNameOf);
-
   return (
-    <section className="pane" aria-label={t.panes.userList}>
-      {/*
-       * 「사용자 추가」는 목록 끝이 아니라 구획 표제 옆에 둔다 — 목록이 길어지면 끝까지 내려야
-       * 찾을 수 있었다. 주 액션처럼 보이지 않게 외곽선 버튼을 그대로 쓴다.
-       */}
-      <div className="pane-heading-row users-roles-heading">
-        <h2 className="pane-title">{t.panes.userList}</h2>
-        <Button variant="outlined" disabled={isCreating} onClick={onAddUser}>
-          {t.actions.addUser}
-        </Button>
-      </div>
-      {optionsNotice}
-
-      {/* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-      {/*
-       * 조회 줄은 두 줄 묶음이다 — 1행 검색창·미사용 포함, 2행 부서·재직 상태 … [조회][초기화].
-       * 줄마다 따로 묶어야 좁아져 줄이 바뀌어도 조회·초기화가 오른쪽 끝에 남는다.
-       */}
-      <div className="users-roles-filter">
-        <div className="filter-bar">
-          <SearchInput
-            label={t.filters.userSearchLabel}
-            placeholder={t.filters.userSearchPlaceholder}
-            value={draft.q}
-            onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
-            onSearch={(value) => onApplyFilters({ ...draft, q: value })}
-            clearLabel={messages.common.clear}
-          />
-
-          {/*
-           * 해제 축이라 변경 즉시 적용한다 — 조회를 누르지 않으므로 검색창 옆에 두고, 조회·초기화는
-           * 그 버튼이 적용하는 부서·재직 상태 뒤에 둔다.
-           */}
-          <div className="field-cell field-cell-unlabeled">
-            <Checkbox
-              checked={appliedFilters.includeInactive}
-              onChange={(event) =>
-                onApplyFilters({ ...appliedFilters, includeInactive: event.target.checked })
-              }
-            >
-              {t.filters.includeInactive}
-            </Checkbox>
-          </div>
-        </div>
-
-        <div className="filter-bar">
-          {/*
-           * 규범 3-2 — 「SYN-DEPT-01 · 합성 부서 A」는 트리거 폭에 갇혀 잘린다.
-           * 판단 기준은 코드값이 아니라 선택지 문구 길이다.
-           */}
-          <SelectField
-            label={t.filters.department}
-            wide
-            options={[{ value: '', label: t.filters.departmentAll }, ...departmentOptions]}
-            value={draft.departmentId}
-            onChange={(value) => setDraft((prev) => ({ ...prev, departmentId: value }))}
-          />
-
-          <SelectField
-            label={t.filters.status}
-            options={[{ value: '', label: t.filters.statusAll }, ...statusOptions]}
-            value={draft.statusCode}
-            onChange={(value) => setDraft((prev) => ({ ...prev, statusCode: value }))}
-            disabled={statusDisabledReason !== null}
-            disabledReason={statusDisabledReason ?? undefined}
-          />
-
-          {/*
-           * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1).
-           * 갈라지면 남은 버튼이 무엇에 딸린 것인지 읽히지 않는다.
-           */}
-          <div className="filter-actions field-cell-unlabeled">
-            <Button onClick={() => onApplyFilters(draft)}>{messages.common.search}</Button>
-            <Button variant="outlined" onClick={() => onApplyFilters(EMPTY_USER_FILTERS)}>
-              {messages.common.reset}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* 걸린 조건이 없으면 빈 줄이 여백만 차지한다 — 칩이 있을 때만 줄을 둔다. */}
-      {chips.length > 0 && (
-        <div className="filter-bar">
-          {chips.map((chip) => (
-            <Chip
-              key={chip.key}
-              variant="status"
-              removeLabel={chip.removeLabel}
-              onRemove={() => onApplyFilters(clearUserFilter(appliedFilters, chip.key))}
-            >
-              {chip.label}
-            </Chip>
-          ))}
-        </div>
+    <section className="pane users-roles-list-pane" aria-label={t.panes.userList}>
+      <div className="users-roles-list-body">{listSlot()}</div>
+      {pageMeta !== null && loadError === null && (
+        <PageNav meta={pageMeta} buttonSize="md" onChangePage={onChangePage} />
       )}
-
-      {listSlot()}
     </section>
   );
 };

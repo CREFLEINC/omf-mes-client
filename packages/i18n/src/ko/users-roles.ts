@@ -115,8 +115,9 @@ export const usersRoles = {
     totalOnly: (total: number): string => `전체 ${String(total)}건`,
   },
   filters: {
+    pane: '사용자 조회 조건',
     userSearchLabel: '사용자 검색',
-    userSearchPlaceholder: '아이디 또는 이름 검색',
+    userSearchPlaceholder: '아이디 또는 이름을 입력하세요',
     department: '소속 부서',
     /* 선택지에 빈 값을 두어 고른 부서를 다시 「전체」로 되돌릴 수 있게 한다. */
     departmentAll: '전체',
@@ -388,6 +389,17 @@ export const usersRoles = {
    * 계정 ↔ 작업자 연결 — omf-all-around#104. 사용자 정보 카드 안의 「연결된 작업자」 구역이다. 용어는 「연결」로 통일(담당자 결정 2026-10-16).
    * 검사 판정처럼 작업자가 남는 관리웹 쓰기에 쓴다.
    */
+  /** 탭 줄 오른쪽 재직 상태 칩(omf-all-around#333) — 수입검사 상태 칩과 같은 자리 · 0건은 세우지 않는다. */
+  statusChips: {
+    label: '재직 상태',
+    filterOn: (label: string): string => `${label}만 보기`,
+    filterOff: (label: string): string => `${label} 거르기 해제`,
+  },
+  /** 오른쪽 카드 — 고르기 전 안내(수입검사 「검사 의뢰를 선택하세요」와 같은 모양). */
+  pickUser: {
+    title: '사용자를 선택하세요.',
+    hint: '선택한 사용자의 상세 정보 · 역할 · 데이터 접근 범위가 표시됩니다.',
+  },
   /** 사용자를 바꾸거나 새로 추가할 때, 저장하지 않은 변경이 있으면 묻는다(omf-all-around#333). */
   discard: {
     title: '저장하지 않은 변경이 있습니다',

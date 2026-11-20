@@ -1,5 +1,5 @@
 import type { components } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -59,8 +59,39 @@ export const useUserList = (
     queryKey: userKeys.list(filters, page),
     enabled,
     queryFn: () =>
-      runRequest(() => client.GET('/app/users', { params: { query: toUserListQuery(filters, page) } })),
+      runRequest(() =>
+        client.GET('/app/users', { params: { query: toUserListQuery(filters, page) } }),
+      ),
   });
+};
+
+/**
+ * 재직 상태별 건수 — 탭 줄 칩(omf-all-around#333). 지금 걸린 다른 조건(검색어 · 부서 · 사용 중지 포함)은 그대로 두고
+ * 상태만 바꿔 첫 쪽을 묻는다. 키가 목록과 같아 그 상태 칩을 누르면 받아 둔 응답을 그대로 쓴다.
+ */
+export const useUserStatusCounts = (
+  filters: UserFilters,
+  statusCodes: readonly string[],
+  enabled: boolean,
+): (number | undefined)[] => {
+  const { client } = useApiClient();
+  const results = useQueries({
+    queries: statusCodes.map((statusCode) => {
+      const next = { ...filters, statusCode };
+
+      return {
+        queryKey: userKeys.list(next, 1),
+        enabled,
+        staleTime: 30_000,
+        queryFn: () =>
+          runRequest(() =>
+            client.GET('/app/users', { params: { query: toUserListQuery(next, 1) } }),
+          ),
+      };
+    }),
+  });
+
+  return results.map((result) => result.data?.page.total);
 };
 
 /**
