@@ -350,11 +350,15 @@ export const TerminalProcessMapScreen = () => {
       render: (row) => codeNames.type(row.terminalTypeCode),
     },
     {
-      key: 'status',
+      key: 'active',
       align: 'center',
-      header: t.list.status,
+      header: t.list.activeHeader,
       width: '96px',
-      render: (row) => operatingStatusOf(row),
+      render: (row) => (
+        <Chip variant="status" size="sm" status={row.isActive ? 'success' : 'idle'}>
+          {row.isActive ? t.list.active : t.list.inactive}
+        </Chip>
+      ),
     },
     {
       key: 'registration',
@@ -376,17 +380,6 @@ export const TerminalProcessMapScreen = () => {
       header: t.list.warehouse,
       width: '120px',
       render: (row) => row.warehouseName ?? t.list.warehouseAll,
-    },
-    {
-      key: 'active',
-      align: 'center',
-      header: t.list.activeHeader,
-      width: '96px',
-      render: (row) => (
-        <Chip variant="status" size="sm" status={row.isActive ? 'success' : 'idle'}>
-          {row.isActive ? t.list.active : t.list.inactive}
-        </Chip>
-      ),
     },
   ];
   /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(사용자 역할 권한 관리 목록과 같다). */

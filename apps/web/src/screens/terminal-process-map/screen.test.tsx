@@ -94,22 +94,39 @@ describe('TerminalProcessMapScreen 표시', () => {
     expect(screen.getByRole('button', { name: t.terminal.create })).toBeInTheDocument();
   });
 
-  it('유형·운영 상태를 공통코드 이름으로 보이고, 미등록 단말의 운영 상태는 되풀이하지 않는다', async () => {
+  it('목록은 단말 유형을 공통코드 이름으로, 사용 상태를 운영 상태 자리에 보인다', async () => {
     renderScreen();
     const table = await screen.findByRole('table');
     await within(table).findAllByText('합성 유형');
 
-    const firstRow = within(table).getByRole('button', { name: 'SYN-TERM-01' }).closest('tr');
-    const secondRow = within(table).getByRole('button', { name: 'SYN-TERM-02' }).closest('tr');
-    if (firstRow === null || secondRow === null) throw new Error('행 없음');
+    /* 열 순서: 단말 코드 · 단말 유형 · 사용 상태 · 등록 상태 · 설치 설비 · 창고(용어 정리 2026-11-20 · #333) */
+    const headers = within(table)
+      .getAllByRole('columnheader')
+      .map((cell) => (cell.textContent ?? '').replace('drag_indicator', ''));
+    expect(headers.slice(0, 4)).toEqual([
+      t.list.code,
+      t.list.type,
+      t.list.activeHeader,
+      t.list.registration,
+    ]);
+    expect(headers).not.toContain(t.list.status);
 
-    /* 열 순서: 단말 코드 · 유형 · 운영 상태 · 등록 상태 · 설비 · 사용 여부 */
-    const statusCell = (row: Element): string => row.children[2]?.textContent ?? '';
-    expect(statusCell(firstRow)).toBe(t.list.notAvailable);
-    expect(within(firstRow).getByText(t.list.registrationPending)).toBeInTheDocument();
-    await within(secondRow).findByText('합성 가동');
-    expect(statusCell(secondRow)).toBe('합성 가동');
+    const firstRow = within(table).getByRole('button', { name: 'SYN-TERM-01' }).closest('tr');
+    if (firstRow === null) throw new Error('행 없음');
+    expect(firstRow.children[2]?.textContent).toBe(t.list.active);
     expect(within(table).queryByText('SYN-TYPE')).not.toBeInTheDocument();
+  });
+
+  it('운영 상태는 단말 정보에서 공통코드 이름으로 보이고, 미등록 단말은 되풀이하지 않는다', async () => {
+    const { unmount } = renderScreen('/system/terminal-process-map?terminal=702');
+    expect(await screen.findByText('합성 가동')).toBeInTheDocument();
+    unmount();
+
+    renderScreen('/system/terminal-process-map?terminal=701');
+    const label = await screen.findByText(t.terminal.status, { selector: 'dt' });
+    await waitFor(() =>
+      expect(label.parentElement?.querySelector('dd')?.textContent).toBe(t.list.notAvailable),
+    );
   });
 
   it('고른 단말은 목록에서 aria-current 로 표시되고, 저장 안내는 설명에만 한 번 나온다', async () => {
