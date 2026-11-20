@@ -1,7 +1,7 @@
 /*
- * 단말 등록 · 홈 사번 입력 — POP 로그인 시안(#295, `POP-로그인-시안-20261119`) 전용 모양.
+ * 단말 등록 · 사번 입력 창 — POP 로그인 시안(#295, `POP-로그인-시안-20261119`) 전용 모양.
  * 공통 모양은 `app/pop-uniform.css`(`pu-*`), 짙은 머리줄은 `app/pop.css`(`pop-nav-top`)를 그대로 쓴다.
- * 선택자는 접두(`wa-` · `home-login`)로만 건다.
+ * 선택자는 접두(`wa-`)로만 건다.
  */
 
 /* ── 단말 등록 ── */
@@ -30,8 +30,7 @@
 }
 
 /* 바깥 테두리만 없앤다(사용자 지시 2026-11-20) — 투명으로 두어 크기 · 자리는 그대로. 안쪽 칸 테두리는 그대로. */
-.pu-card.wa-reg-card,
-.home-login .pu-card.wa-left {
+.pu-card.wa-reg-card {
   border-color: transparent;
 }
 
@@ -88,27 +87,36 @@
 }
 
 /*
- * ── 홈 사번 입력 — 공통 메뉴 아래 가운데 카드 하나(사번 · 키패드 · [사번 확인]) ──
- * 카드는 남는 높이를 갖되(키패드가 아래에 붙는다) 너무 길어지지 않게 막는다.
+ * ── 사번 입력 창(맨 위 줄 [로그인]) — 창 안에 사번 입력 카드 하나. 카드는 창 바탕에 녹이고(테두리 · 바탕 없음),
+ * 1024×768 에서도 창 안 스크롤 없이 들게 키 높이를 조금 줄인다.
  */
-.pu-screen.home-login {
-  height: 100%;
-}
-
-.home-login > .pu-main {
-  grid-template-rows: minmax(0, 1fr);
-  padding-block: 8px;
-  justify-items: center;
-  align-items: center;
-}
-
-.home-login-box {
+.wa-login {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
   gap: 8px;
-  width: min(520px, 100%);
-  height: min(100%, 680px);
-  min-height: 0;
+}
+
+.wa-login > .pu-card.wa-left {
+  border-color: transparent;
+  background: transparent;
+}
+
+.wa-login > .wa-left > .pu-card-head,
+.wa-login > .wa-left > .pu-card-body {
+  padding-inline: 0;
+}
+
+.wa-login > .wa-left > .wa-left-body {
+  flex: none;
+  padding-bottom: 0;
+}
+
+.wa-login > .wa-left > .pu-card-head {
+  height: 36px;
+}
+
+.wa-login .wa-pad .pu-keypad button,
+.wa-login .wa-pad .wa-submit {
+  height: 56px;
 }
 
 /* ── 사번 입력 ── */

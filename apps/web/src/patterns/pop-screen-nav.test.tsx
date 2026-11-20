@@ -53,6 +53,7 @@ const setup = (
     plantId?: number | null;
     extra?: Parameters<typeof createStubFetch>[0];
     onReRegister?: () => void;
+    onLogin?: () => void;
   } = {},
 ) => {
   const counted: Request[] = [];
@@ -64,7 +65,11 @@ const setup = (
         plantId: options.plantId ?? null,
       }}
     >
-      <PopScreenNav terminalCode="POP-OA-01" onReRegister={options.onReRegister} />
+      <PopScreenNav
+        terminalCode="POP-OA-01"
+        onReRegister={options.onReRegister}
+        onLogin={options.onLogin}
+      />
       <Here />
     </PopIdentityProvider>,
     {
@@ -500,9 +505,11 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     expect(screen.getByRole('button', { name: remaining.buttonLabel(0) })).toBeDisabled();
   });
 
-  /* 사번 입력 화면을 홈으로 합쳤다(omf-all-around#334) — 사번 확인 전에는 메뉴를 감추지 않고 잠근다. */
-  it('사번이 없으면(홈의 사번 입력) 묶음 · 남은 작업 · 작업자 변경을 잠근다', async () => {
-    setup({ route: '/pop/home', workerNo: null });
+  /* 사번 확인 전에는 메뉴를 감추지 않고 잠근다(omf-all-around#334). 사번 칩은 「사번 미입력 | 로그인」으로 열려 있다. */
+  it('사번이 없으면 묶음 · 남은 작업을 잠그고, 사번 칩은 [로그인]으로 눌린다', async () => {
+    const user = userEvent.setup();
+    const onLogin = vi.fn();
+    setup({ route: '/pop/home', workerNo: null, onLogin });
 
     await waitFor(() => {
       expect(within(groupsNav()).getAllByRole('button').length).toBeGreaterThan(1);
@@ -513,9 +520,15 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     expect(groups.length).toBeGreaterThan(0);
     for (const button of groups) expect(button).toBeDisabled();
     expect(screen.getByRole('button', { name: remaining.buttonLabel(0) })).toBeDisabled();
-    expect(
-      screen.getByRole('button', { name: new RegExp(`^${messages.popChrome.userSwitch}`, 'u') }),
-    ).toBeDisabled();
+    const login = screen.getByRole('button', {
+      name: new RegExp(`^${messages.popChrome.login}`, 'u'),
+    });
+    expect(login).toBeEnabled();
+    expect(login).toHaveTextContent(header.workerUnset);
+    expect(login).toHaveTextContent(messages.popChrome.login);
+    await user.click(login);
+    expect(onLogin).toHaveBeenCalledOnce();
+    expect(screen.getByText('지금: /pop/home')).toBeInTheDocument();
   });
 
   /* 사용자 지시 2026-11-20(#334) — [단말 재등록]은 맨 위 줄 [종료] 바로 왼쪽, 사번 입력 중에만 · 잠그지 않는다. */

@@ -8,13 +8,13 @@ import { useTerminal, useWorkerDirectory, useWorkerLookup } from './queries';
 import { pickExact, verifyWorker, type WorkerResponse } from './verify';
 import { looksUnusual } from './worker-no';
 import { usePopIdentity } from '../../../patterns/pop-identity';
-import { PuNote, PuScreen, puToast } from '../../../patterns/pop-uniform';
+import { PuButton, PuDialog, PuNote, puToast } from '../../../patterns/pop-uniform';
 import { setWorkerSession } from '../../../patterns/worker-session';
 import './uniform.css';
 
 /**
- * 홈의 사번 입력(P-CO-01 → 홈 · omf-all-around#334) — 사번이 확인되지 않은 동안 홈 내용 자리에 선다.
- * 확인하면 단말의 현재 작업자(`worker-session`)가 정해지고, 같은 자리에서 홈 내용으로 바뀐다(주소 이동 없음).
+ * 사번 입력 창(P-CO-01 → 맨 위 줄 [로그인] · omf-all-around#334 · 사용자 지시 2026-11-20) — 맨 위 줄 「사번 미입력 | 로그인」을
+ * 누르면 뜬다. 확인하면 단말의 현재 작업자(`worker-session`)가 정해지고 창이 닫힌다(지금 화면 그대로).
  *
  * ⭐ **이 화면은 인증이 아니라 귀속이다**(§5-1). 인증은 단말 토큰이 이미 통과시켰고, 여기서는 「누가 한 일로
  * 기록할 것인가」만 정한다. 확인 방식(서버 조회 · 연결 상태 판정 · 오프라인 목록)은 옛 사번 입력 화면과 같다.
@@ -49,7 +49,7 @@ const formatAssignedAt = (now: Date): string =>
     hour12: false,
   });
 
-export const PopHomeLogin = () => {
+export const PopLoginDialog = ({ onClose }: { onClose: () => void }) => {
   /** 키패드가 채우는 값. 확인을 누르기 전에는 조회하지 않는다. */
   const [workerNo, setWorkerNo] = useState('');
   /** 확인을 누른 사번. 이 값이 있어야 조회가 돈다 */
@@ -122,8 +122,9 @@ export const PopHomeLogin = () => {
         assignedAt: formatAssignedAt(new Date()),
         isOtherPlant: result.isOtherPlant,
       });
+      onClose();
     },
-    [homePlantId],
+    [homePlantId, onClose],
   );
 
   useEffect(() => {
@@ -167,8 +168,13 @@ export const PopHomeLogin = () => {
   }, [submitted, lookup.isError]);
 
   return (
-    <PuScreen className="home-login">
-      <div className="home-login-box">
+    /* 제목 · 닫기(X) 없는 창 — 안의 「사번 입력」 카드가 제목을 대신하고, 아래 [취소]로 닫는다. */
+    <PuDialog
+      ariaLabel={t.input.heading}
+      onClose={onClose}
+      footer={<PuButton onClick={onClose}>{messages.common.cancel}</PuButton>}
+    >
+      <div className="wa-login">
         <KeypadPanel
           workerNo={workerNo}
           onChange={(value) => {
@@ -195,6 +201,6 @@ export const PopHomeLogin = () => {
         />
         {pendingQueue > 0 && <PuNote tone="warn">{t.current.pendingQueue(pendingQueue)}</PuNote>}
       </div>
-    </PuScreen>
+    </PuDialog>
   );
 };

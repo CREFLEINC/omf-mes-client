@@ -55,6 +55,7 @@ import {
   useRefreshPopTerminalOnScreenEntry,
 } from '../patterns/pop-registration';
 import { HeaderPrinter } from '../screens/pop-home/login/header-printer';
+import { PopLoginDialog } from '../screens/pop-home/login/login-panel';
 import { RegistrationPanel } from '../screens/pop-home/login/registration-panel';
 import { printSampleLotLabel } from '../screens/pop-material-lot-label/sample-print';
 import { currentTerminalToken, readTerminalToken } from '../patterns/pop-terminal-token';
@@ -224,9 +225,11 @@ const PopChrome = () => {
   /* 맨 위 줄의 화면 상태 자리(연결·전송 표시). 화면이 `PopTopStatus` 로 그 자리에 그린다. */
   const [statusSlot, setStatusSlot] = useState<HTMLElement | null>(null);
   const [printerSlot, setPrinterSlot] = useState<HTMLElement | null>(null);
+  /* 사번 입력 창 — 맨 위 줄 「사번 미입력 | 로그인」이 연다(사용자 지시 2026-11-20 · #334). */
+  const [isLoginOpen, setLoginOpen] = useState(false);
 
   /*
-   * ⭐ **사번이 없으면 어느 화면이든 홈(사번 입력)으로 보낸다**(사용자 지시 2026-11-17 · #291 · #334).
+   * ⭐ **사번이 없으면 어느 화면이든 홈으로 보낸다**(사용자 지시 2026-11-17 · #291 · #334).
    *    공통 메뉴로 사번 없이 다른 화면에 들어가면 「사번이 확인되지 않았습니다」 띠만 서고 할 일이
    *    없었다. 사번은 처음부터 동기로 읽히므로(`worker-session`) 확인 중에 튕기지 않는다.
    */
@@ -246,7 +249,17 @@ const PopChrome = () => {
         statusRef={setStatusSlot}
         printerRef={setPrinterSlot}
         onReRegister={restart}
+        onLogin={() => {
+          setLoginOpen(true);
+        }}
       />
+      {isLoginOpen && workerNo === null && (
+        <PopLoginDialog
+          onClose={() => {
+            setLoginOpen(false);
+          }}
+        />
+      )}
       <div className="pop-frame__body">
         <PopTopStatusTarget.Provider value={statusSlot}>
           <PopTopPrinterTarget.Provider value={printerSlot}>

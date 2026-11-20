@@ -4,15 +4,18 @@ import userEvent from '@testing-library/user-event';
 import { useLocation } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { PopHomeLogin } from './login-panel';
+import { PopLoginDialog } from './login-panel';
 import type { WorkerResponse } from './verify';
 import { PopIdentityProvider, UNKNOWN_POP_IDENTITY } from '../../../patterns/pop-identity';
 import { PopRegistrationProvider } from '../../../patterns/pop-registration';
 import { setWorkerSession, useWorkerSession } from '../../../patterns/worker-session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../../test/api-harness';
 
+/** 창을 닫은 횟수 — 확인이 끝나면 창이 닫힌다. */
+const closed = vi.fn();
+
 /*
- * 홈의 사번 입력(omf-all-around#334) — 옛 사번 입력 화면(P-CO-01)의 확인 방식을 그대로 옮겼다.
+ * 사번 입력 창(맨 위 줄 [로그인] · omf-all-around#334) — 옛 사번 입력 화면(P-CO-01)의 확인 방식을 그대로 옮겼다.
  * 확인이 끝나면 홈이 현재 작업자를 읽어 같은 자리에서 홈 내용으로 바뀐다 — 여기서는 단말의 현재 작업자
  * (`worker-session`)가 정해지는지를 본다.
  */
@@ -22,6 +25,7 @@ const t = messages.workerAssignment;
 /** 현재 작업자는 화면 밖 단일 자리에 있다(§5-4) — 시험 사이에 비운다. */
 afterEach(() => {
   setWorkerSession(null);
+  closed.mockClear();
 });
 
 const workerOf = (over: Partial<WorkerResponse> = {}): WorkerResponse => ({
@@ -63,7 +67,7 @@ const renderLogin = (items: WorkerResponse[] = [workerOf()]) => {
 
   renderWithProviders(
     <PopRegistrationProvider>
-      <PopHomeLogin />
+      <PopLoginDialog onClose={closed} />
       <Probe />
     </PopRegistrationProvider>,
     { fetch: createStubFetch([workersRoute(items, queries)]), route: '/pop/home' },
@@ -132,14 +136,26 @@ describe('홈 사번 입력 — 확인', () => {
     expect(queries[0]?.searchParams.get('includeInactive')).toBe('true');
   });
 
-  it('확인하면 단말의 현재 작업자로 정하고 주소는 홈 그대로다', async () => {
+  it('확인하면 단말의 현재 작업자로 정하고 창을 닫는다(주소는 그대로)', async () => {
     renderLogin();
 
+    expect(screen.queryByRole('heading', { level: 3 })).toBeNull();
     await typeWorkerNo('900028');
     await submit();
 
     await waitFor(() => expect(current()).toHaveTextContent('김작업'));
+    expect(closed).toHaveBeenCalledOnce();
     expect(screen.getByRole('status', { name: '현재 경로' })).toHaveTextContent('/pop/home');
+  });
+
+  it('[취소]는 정하지 않고 창을 닫는다', async () => {
+    renderLogin();
+
+    await typeWorkerNo('900028');
+    await userEvent.click(screen.getByRole('button', { name: messages.common.cancel }));
+
+    expect(closed).toHaveBeenCalledOnce();
+    expect(current()).toHaveTextContent('');
   });
 
   it('미등록이면 거부하고 미등록 문구를 낸다', async () => {
@@ -150,6 +166,8 @@ describe('홈 사번 입력 — 확인', () => {
 
     expect(await screen.findByText(t.error.unknown)).toBeInTheDocument();
     expect(current()).toHaveTextContent('');
+    /* 실패는 창 안에 남는다. */
+    expect(closed).not.toHaveBeenCalled();
   });
 
   /* 미등록과 비재직은 사용자가 할 일이 다르다 — 문구를 뭉치지 않는다. */
@@ -168,7 +186,7 @@ describe('홈 사번 입력 — 확인', () => {
     renderWithProviders(
       <PopRegistrationProvider>
         <PopIdentityProvider value={{ ...UNKNOWN_POP_IDENTITY, terminalId: 7 }}>
-          <PopHomeLogin />
+          <PopLoginDialog onClose={closed} />
           <Probe />
         </PopIdentityProvider>
       </PopRegistrationProvider>,
@@ -246,9 +264,9 @@ describe('터치 규격', () => {
   });
 });
 
-/** 단말 재등록은 맨 위 줄 [종료] 왼쪽으로 옮겼다(사용자 지시 2026-11-20 · #334) — 사번 입력 카드에는 없다. */
+/** 단말 재등록은 맨 위 줄 [종료] 왼쪽에 있다(사용자 지시 2026-11-20 · #334) — 사번 입력 창에는 없다. */
 describe('단말 재등록', () => {
-  it('사번 입력 카드에 [단말 재등록]을 두지 않는다', () => {
+  it('사번 입력 창에 [단말 재등록]을 두지 않는다', () => {
     renderLogin();
 
     expect(screen.queryByRole('button', { name: t.registration.reRegister })).toBeNull();

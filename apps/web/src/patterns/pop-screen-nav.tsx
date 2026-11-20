@@ -229,12 +229,14 @@ const TopBar = ({
   statusRef,
   printerRef,
   onReRegister,
+  onLogin,
 }: {
   terminalCode: string | null;
   printer: ReactNode;
   statusRef?: (element: HTMLElement | null) => void;
   printerRef?: (element: HTMLElement | null) => void;
   onReRegister?: () => void;
+  onLogin?: () => void;
 }) => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -288,20 +290,24 @@ const TopBar = ({
       <span className="pop-nav-top__screen-printer" ref={printerRef} />
       {printer !== null && <span className="pop-nav-top__printer">{printer}</span>}
       {/*
-       * 사번 — 누르면 작업자 변경(교대 · 사용자 지시 2026-11-17 · #291). 현재 활성 사번만 지우고 홈의 사번 입력으로
-       * 간다(#334). 저장 기록과 오프라인 큐의 사번은 바꾸지 않는다(G-34 · D-5).
+       * 사번 — 있으면 「이름 (사번) | 전환」: 누르면 작업자 변경(교대 · 사용자 지시 2026-11-17 · #291). 현재 활성 사번만 지우고
+       * 홈으로 간다. 저장 기록과 오프라인 큐의 사번은 바꾸지 않는다(G-34 · D-5).
+       * 없으면 「사번 미입력 | 로그인」: 누르면 사번 입력 창을 연다(사용자 지시 2026-11-20 · #334). 사번 전 잠금을 받지 않는다.
        */}
       <Button
         className="pop-logout"
         variant="outlined"
         size="md"
         title={workerNo === null ? undefined : headerText.workerTitle(workerNo, workerName)}
-        aria-label={`${messages.popChrome.userSwitch}: ${
+        aria-label={`${workerNo === null ? messages.popChrome.login : messages.popChrome.userSwitch}: ${
           workerNo === null ? headerText.workerUnset : headerText.workerLabel(workerNo, workerName)
         }`}
-        /* 사번이 없으면 바꿀 사람도 없다 — 홈이 이미 사번 입력이다. */
-        disabled={workerNo === null}
+        disabled={workerNo === null && onLogin === undefined}
         onClick={() => {
+          if (workerNo === null) {
+            onLogin?.();
+            return;
+          }
           setWorkerSession(null);
           void navigate(POP_ENTRY_SCREEN_PATH, { replace: true });
         }}
@@ -310,7 +316,7 @@ const TopBar = ({
         {workerNo === null ? headerText.workerUnset : headerText.workerLabel(workerNo, workerName)}
         {/* 시안(사용자 지시 2026-11-17): 「이름 (사번) | 전환」 — 세로선 뒤 「전환」이 누르면 할 일을 알린다. */}
         <span className="pop-nav-top__switch" aria-hidden>
-          {messages.popChrome.switchShort}
+          {workerNo === null ? messages.popChrome.login : messages.popChrome.switchShort}
         </span>
       </Button>
       {/*
@@ -400,6 +406,7 @@ export const PopScreenNav = ({
   statusRef,
   printerRef,
   onReRegister,
+  onLogin,
 }: {
   terminalCode: string | null;
   printer?: ReactNode;
@@ -408,6 +415,8 @@ export const PopScreenNav = ({
   printerRef?: (element: HTMLElement | null) => void;
   /** [단말 재등록] — 셸이 단말 등록의 `restart` 를 넘긴다. 없으면 단추를 두지 않는다. */
   onReRegister?: () => void;
+  /** 「사번 미입력 | 로그인」 — 셸이 사번 입력 창을 연다. 없으면 사번 칩이 눌리지 않는다. */
+  onLogin?: () => void;
 }): ReactNode => {
   const navigate = useNavigate();
   const { pathname, search, access, workCounts, pending, total, go, tabCount } = usePopNavigation();
@@ -468,6 +477,7 @@ export const PopScreenNav = ({
         statusRef={statusRef}
         printerRef={printerRef}
         onReRegister={onReRegister}
+        onLogin={onLogin}
       />
       <div className="pop-nav-groups">
         <nav className="pop-nav-groups__list" aria-label={nav.groupsLabel}>

@@ -5,7 +5,6 @@ import { useLocation } from 'react-router';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { PopIdentityProvider, UNKNOWN_POP_IDENTITY } from '../../patterns/pop-identity';
-import { PopRegistrationProvider } from '../../patterns/pop-registration';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { PopHomeScreen } from './screen';
 
@@ -129,23 +128,34 @@ describe('PopHomeScreen — 홈(#291)', () => {
     expect(screen.getByText('지금: /pop/work-start')).toBeInTheDocument();
   });
 
-  /* 사번 입력 화면을 홈으로 합쳤다(omf-all-around#334) — 주소를 옮기지 않고 홈 내용 자리에 사번 입력을 세운다. */
-  it('사번을 모르면 주소는 그대로 두고 홈 내용 대신 사번 입력을 세운다', async () => {
+  /* 사용자 지시 2026-11-20(#334) — 사번이 없어도 홈 내용을 보이고, 다른 화면으로 가는 길만 잠근다(감추지 않음). */
+  it('사번을 모르면 홈 내용은 그대로 보이고 바로가기 · 다음 작업이 잠긴다', async () => {
     renderWithProviders(
-      <PopRegistrationProvider>
-        <PopIdentityProvider value={UNKNOWN_POP_IDENTITY}>
-          <PopHomeScreen />
-          <Here />
-        </PopIdentityProvider>
-      </PopRegistrationProvider>,
-      { fetch: createStubFetch([]), route: '/pop/home' },
+      <PopIdentityProvider value={UNKNOWN_POP_IDENTITY}>
+        <PopHomeScreen />
+        <Here />
+      </PopIdentityProvider>,
+      {
+        fetch: createStubFetch([
+          {
+            match: (request) => request.url.endsWith('/app/sessions/current'),
+            respond: () => jsonResponse(SESSION),
+          },
+        ]),
+        route: '/pop/home',
+      },
     );
 
-    expect(
-      await screen.findByRole('button', { name: messages.workerAssignment.input.submit }),
-    ).toBeInTheDocument();
+    const shortcuts = await screen.findByRole('region', { name: t.shortcutsTitle });
+    await waitFor(() => {
+      expect(within(shortcuts).getAllByRole('button').length).toBeGreaterThan(1);
+    });
+    const tiles = within(shortcuts)
+      .getAllByRole('button')
+      .filter((button) => button.classList.contains('home-tile'));
+    expect(tiles.length).toBeGreaterThan(0);
+    for (const tile of tiles) expect(tile).toBeDisabled();
     expect(screen.getByText('지금: /pop/home')).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: t.shortcutsTitle })).not.toBeInTheDocument();
   });
 
   it('남은 작업이 없으면 그렇게 말한다', async () => {

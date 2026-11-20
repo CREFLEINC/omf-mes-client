@@ -71,6 +71,7 @@ export const popChrome: Translated<typeof ko.popChrome> = {
   },
   userSwitch: 'Đổi người dùng',
   switchShort: 'Đổi',
+  login: 'Đăng nhập',
   refresh: 'Làm mới',
   refreshedAt: (time: string): string => `Cập nhật ${time}`,
   exit: {

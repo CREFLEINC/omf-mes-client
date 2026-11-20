@@ -22,7 +22,6 @@ import {
 } from '../../patterns/pop-uniform';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { useFitRows } from './fit-rows';
-import { PopHomeLogin } from './login/login-panel';
 import { HOME_STATUS_CODES, useHomeWorkOrders, useHomeWorkStatus } from './queries';
 import {
   DEFAULT_SHORTCUT_PATHS,
@@ -324,7 +323,7 @@ const StatusCard = ({
  * ⭐ 줄과 쪽 넘김을 한 칸(`home-rows`)에 두고, 쪽 넘김이 «없을 때»와 «있을 때» 들어가는 줄 수를 따로 잰다
  *    (`useFitRows`) — 쪽 넘김이 서고 빠져도 잰 값이 흔들리지 않고, 쪽 넘김 아래 남는 자리도 줄로 쓴다.
  */
-const RemainingCard = ({ titleId }: { titleId: string }) => {
+const RemainingCard = ({ titleId, locked }: { titleId: string; locked: boolean }) => {
   const { pending, total, go } = usePopNavigation();
   const listRef = useRef<HTMLDivElement>(null);
   const fit = useFitRows(listRef, { rowSelector: '.home-row-link' });
@@ -349,6 +348,7 @@ const RemainingCard = ({ titleId }: { titleId: string }) => {
               type="button"
               className="home-row-link"
               aria-label={messages.popChrome.remaining.count(screen.name, count)}
+              disabled={locked}
               onClick={() => {
                 go(screen);
               }}
@@ -374,7 +374,7 @@ const RemainingCard = ({ titleId }: { titleId: string }) => {
 };
 
 /**
- * **홈**(#291) — POP 진입 화면. 사번이 없으면 사번 입력(`login/`), 확인 뒤에는 오늘 작업 현황, 남은 작업, 바로가기를 보여 주고, 누르면
+ * **홈**(#291) — POP 진입 화면. 오늘 작업 현황, 남은 작업, 바로가기를 보여 주고, 누르면
  * 그 화면으로 간다. 이동 길은 공통 메뉴와 같은 것을 쓴다(`usePopNavigation`) — 남은 작업 수도 같은 값이다.
  *
  * ⭐ 바로가기는 [편집]으로 이 단말에 맞게 고른다(최대 6개 · 단말에 저장).
@@ -412,10 +412,10 @@ export const PopHomeScreen = (): ReactNode => {
   };
 
   /*
-   * 사번이 없으면 홈 내용 자리에 사번 입력을 세운다(omf-all-around#334 — 사번 입력 화면을 없애고 홈에서 확인).
-   * 확인하면 같은 자리에서 홈 내용으로 바뀐다(주소 이동 없음). 그동안 공통 메뉴는 잠긴다(`pop-screen-nav`).
+   * 사번이 없어도 홈 내용은 보인다(사용자 지시 2026-11-20 · #334) — 사번은 맨 위 줄 [로그인]으로 넣는다. 그동안 다른
+   * 화면으로 가는 길(다음 작업 · 작업지시 줄 · 남은 작업 줄 · 바로가기)은 공통 메뉴처럼 잠근다(감추지 않음).
    */
-  if (workerNo === null) return <PopHomeLogin />;
+  const isLocked = workerNo === null;
 
   return (
     <PuScreen className="home-u" labelledBy={titleId}>
@@ -435,7 +435,7 @@ export const PopHomeScreen = (): ReactNode => {
         <StatusCard
           titleId={`${titleId}-status`}
           onNext={
-            workStart === null
+            workStart === null || isLocked
               ? null
               : (workOrderId, allEquipment, isEmergency) => {
                   const state: WorkStartEntryState = { workOrderId, allEquipment };
@@ -446,7 +446,7 @@ export const PopHomeScreen = (): ReactNode => {
                 }
           }
         />
-        <RemainingCard titleId={`${titleId}-rem`} />
+        <RemainingCard titleId={`${titleId}-rem`} locked={isLocked} />
       </div>
 
       <PuSection
@@ -543,6 +543,7 @@ export const PopHomeScreen = (): ReactNode => {
                   aria-label={
                     count > 0 ? messages.popChrome.remaining.count(screen.name, count) : undefined
                   }
+                  disabled={isLocked}
                   onClick={() => {
                     go(screen);
                   }}

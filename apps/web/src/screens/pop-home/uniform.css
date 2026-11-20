@@ -234,7 +234,7 @@
   min-width: 0;
 }
 
-.home-u .home-row-link:hover {
+.home-u .home-row-link:not(:disabled):hover {
   border-color: var(--pu-line);
 }
 
@@ -286,6 +286,12 @@
 }
 
 .home-u .home-wo:disabled {
+  cursor: default;
+}
+
+/* 사번 전에는 남은 작업 줄도 잠긴다(#334) — 공통 메뉴의 잠긴 탭과 같은 흐림. */
+.home-u .home-remaining .home-row-link:disabled {
+  opacity: 0.45;
   cursor: default;
 }
 
