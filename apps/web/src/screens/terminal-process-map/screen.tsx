@@ -582,12 +582,16 @@ export const TerminalProcessMapScreen = () => {
             {!processRows.isError && !processRows.isPending && (
               <SelectField
                 label={t.grid.add}
-                options={toOptions(processes.entries)}
+                /* 이미 표에 있는 공정은 고를 거리에서 뺀다(사용자 지시 2026-11-20 · #333). */
+                options={toOptions(
+                  processes.entries.filter(
+                    (entry) => !grid.some((row) => String(row.processId) === entry.value),
+                  ),
+                )}
                 value={addTarget}
                 note={lookupNote(processes, t.grid.processLookupFailed)}
                 error={gridNotice ?? undefined}
                 placeholder={t.grid.addPlaceholder}
-                wide
                 className="terminal-map-add-field"
                 onChange={addRow}
               />

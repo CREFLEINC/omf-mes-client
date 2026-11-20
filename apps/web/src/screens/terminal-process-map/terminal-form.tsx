@@ -1,4 +1,4 @@
-import { Button, TextField } from '@crefle/web-ui';
+import { Button, Icon, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
@@ -143,17 +143,23 @@ export const TerminalForm = ({
             htmlFor={codeId}
             label={t.terminal.code}
             required={isNew}
-            note={t.terminal.codeLocked}
+            note={isNew ? t.terminal.codeLocked : t.terminal.codeReadOnly}
           />
-          <TextField
-            id={codeId}
-            value={draft.terminalCode}
-            disabled={!isNew}
-            error={errors.terminalCode ?? fieldErrors.terminalCode}
-            onChange={(event) => {
-              onChange({ terminalCode: event.target.value });
-            }}
-          />
+          {/* 수정에서는 입력칸이 아니라 글자로만 — 고칠 수 있는 칸처럼 보이지 않게(사용자 지시 2026-11-20 · #333). */}
+          {isNew ? (
+            <TextField
+              id={codeId}
+              value={draft.terminalCode}
+              error={errors.terminalCode ?? fieldErrors.terminalCode}
+              onChange={(event) => {
+                onChange({ terminalCode: event.target.value });
+              }}
+            />
+          ) : (
+            <output id={codeId} className="terminal-map-form-static">
+              {draft.terminalCode}
+            </output>
+          )}
         </div>
 
         {/* 운영 상태는 수정할 때만 — 등록이면 단말 코드 줄 오른쪽을 비운다. */}
@@ -244,12 +250,7 @@ export const TerminalForm = ({
         {hasPlant && (
           <ReferenceField
             label={t.terminal.warehouse}
-            labelAddon={
-              <LabelAddons
-                note={t.terminal.warehouseScope}
-                optionalMark={t.terminal.optionalMark}
-              />
-            }
+            labelAddon={<LabelAddons optionalMark={t.terminal.optionalMark} />}
             valueLabel={draft.warehouse === '' ? '' : draft.warehouseLabel || draft.warehouse}
             placeholder={t.terminal.warehouseAll}
             source={warehouseSource}
@@ -264,6 +265,11 @@ export const TerminalForm = ({
             {fieldErrors.warehouseId !== undefined && (
               <span className="field-error">{fieldErrors.warehouseId}</span>
             )}
+            {/* 창고 기준 안내는 칸 아래(사용자 지시 2026-11-20 · #333). */}
+            <p className="iqc-inspection-action-note terminal-map-warehouse-note" data-tone="info">
+              <Icon name="info" size={14} aria-hidden />
+              {t.terminal.warehouseScope}
+            </p>
           </ReferenceField>
         )}
       </div>

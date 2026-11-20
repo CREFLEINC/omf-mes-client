@@ -63,6 +63,8 @@ export const terminalProcessMap = {
     code: '단말 코드',
     /** ⛔ 등록 뒤에는 못 바꾼다 — 키다. */
     codeLocked: '등록 후 변경할 수 없습니다.',
+    /** 수정 팝업의 단말 코드 옆(사용자 지시 2026-11-20 · #333). */
+    codeReadOnly: '변경 불가',
     plant: '공장',
     type: '단말 유형',
     status: '운영 상태',
@@ -77,10 +79,10 @@ export const terminalProcessMap = {
     plantPlaceholder: '공장 선택',
     typePlaceholder: '유형 선택',
     warehouse: '창고',
-    warehouseAll: '공장 전체 (지정 안 함)',
+    warehouseAll: '공장 전체',
     register: '등록',
     /** 창고 칸 이름 오른쪽 안내 라벨(사용자 시안 2026-11-20 · #333). */
-    warehouseScope: '작업 목록과 남은 작업 수는 선택한 범위를 기준으로 표시됩니다.',
+    warehouseScope: '작업 목록과 남은 작업 수는 선택한 창고 기준으로 표시됩니다.',
     optionalMark: '(선택)',
     equipmentPickerTitle: '설치 설비 선택',
     equipmentCodeColumn: '설비 코드',
@@ -116,7 +118,7 @@ export const terminalProcessMap = {
     lead: '등록할 기기에서 QR 코드를 스캔하세요.',
     imageLabel: '단말 등록용 코드 그림',
     copy: '등록 코드 복사',
-    copied: '등록 코드를 복사했습니다.',
+    copied: '복사 완료',
     copyFailed: '복사하지 못했습니다. 브라우저의 클립보드 권한을 확인하세요.',
     copyUnavailable:
       '이 주소에서는 브라우저가 복사를 막아 등록 코드를 복사할 수 없습니다. 기기에서 QR을 스캔해 등록하세요.',

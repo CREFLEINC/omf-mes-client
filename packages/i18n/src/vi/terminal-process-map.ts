@@ -66,6 +66,8 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     code: 'Mã máy quét',
     /** ⛔ 등록 뒤에는 못 바꾼다 — 키다. */
     codeLocked: 'Không thể thay đổi sau khi đăng ký.',
+    /** 수정 팝업의 단말 코드 옆(사용자 지시 2026-11-20 · #333). */
+    codeReadOnly: 'Không thể thay đổi',
     plant: 'Nhà máy',
     type: 'Loại máy quét',
     status: 'Trạng thái vận hành',
@@ -79,10 +81,10 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     plantPlaceholder: 'Chọn nhà máy',
     typePlaceholder: 'Chọn loại',
     warehouse: 'Kho',
-    warehouseAll: 'Toàn nhà máy (không chỉ định)',
+    warehouseAll: 'Toàn nhà máy',
     register: 'Đăng ký',
     /** 창고 칸 이름 오른쪽 안내 라벨(사용자 시안 2026-11-20 · #333). */
-    warehouseScope: 'Danh sách công việc và số việc còn lại được hiển thị theo phạm vi đã chọn.',
+    warehouseScope: 'Danh sách công việc và số việc còn lại được hiển thị theo kho đã chọn.',
     optionalMark: '(tùy chọn)',
     equipmentPickerTitle: 'Chọn thiết bị lắp đặt',
     equipmentCodeColumn: 'Mã thiết bị',
@@ -119,7 +121,7 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     lead: 'Quét mã QR trên thiết bị cần đăng ký.',
     imageLabel: 'Hình mã dùng để đăng ký máy quét',
     copy: 'Sao chép mã đăng ký',
-    copied: 'Đã sao chép mã đăng ký.',
+    copied: 'Đã sao chép',
     copyFailed: 'Không sao chép được. Hãy kiểm tra quyền bảng nhớ tạm của trình duyệt.',
     copyUnavailable:
       'Trình duyệt chặn sao chép trên địa chỉ này nên không thể sao chép mã đăng ký. Hãy quét mã QR trên máy để đăng ký.',

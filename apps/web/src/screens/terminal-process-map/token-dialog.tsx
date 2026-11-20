@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Dialog } from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { QrCode } from '@omf-mes/ui';
 import { useEffect, useState } from 'react';
@@ -19,11 +19,12 @@ export interface TokenDialogProps {
  * - `denied` 브라우저가 권한을 거부했다 → 권한 확인
  * - `failed` 그 밖의 실패 → 다시 시도하거나 QR 로 전달
  */
-type CopyResult = 'copied' | 'unavailable' | 'denied' | 'failed';
+type CopyResult = 'unavailable' | 'denied' | 'failed';
 
 /** 발급한 실제 JWT를 QR 또는 클립보드로 기기에 전달한다. 원문을 화면에 렌더링하지 않는다. */
 export const TokenDialog = ({ token, terminalCode, onClose }: TokenDialogProps) => {
   const [copyResult, setCopyResult] = useState<CopyResult | null>(null);
+  const toast = useToast();
 
   useEffect(() => {
     setCopyResult(null);
@@ -41,7 +42,9 @@ export const TokenDialog = ({ token, terminalCode, onClose }: TokenDialogProps) 
     }
     try {
       await navigator.clipboard.writeText(token.token);
-      setCopyResult('copied');
+      setCopyResult(null);
+      /* 성공은 창 안 문구가 아니라 오른쪽 아래 알림으로(사용자 지시 2026-11-20 · #333). */
+      toast.show({ variant: 'success', description: t.token.copied });
     } catch (error) {
       setCopyResult(
         error instanceof DOMException && error.name === 'NotAllowedError' ? 'denied' : 'failed',
@@ -75,11 +78,6 @@ export const TokenDialog = ({ token, terminalCode, onClose }: TokenDialogProps) 
             {t.token.copy}
           </Button>
           <p className="field-note terminal-map-token-hint">{t.token.textOmitted}</p>
-          {copyResult === 'copied' ? (
-            <p role="status" className="terminal-map-token-hint">
-              {t.token.copied}
-            </p>
-          ) : null}
           {copyResult === 'unavailable' ? (
             <AlertBanner className="terminal-map-notice" variant="warning">
               {t.token.copyUnavailable}
