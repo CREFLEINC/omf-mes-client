@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -183,6 +184,21 @@ describe('RoutingScreen — 공정 관리 탭', () => {
     await user.click(screen.getByRole('button', { name: /^미사용/ }));
     await waitFor(() => {
       expect(processListRequests(recorded).at(-1)?.url.searchParams.has('isActive')).toBe(false);
+    });
+  });
+
+  /* C-6 — 초기화는 처음 조건과 다를 때만 보인다. 사용 여부 라벨도 초기화가 되돌리므로 함께 견준다. */
+  it('초기화는 조건을 바꾼 뒤에만 보이고 누르면 다시 사라진다', async () => {
+    const { user } = renderScreen();
+    await screen.findByRole('button', { name: 'OP-INJ' });
+
+    expect(screen.queryByRole('button', { name: messages.common.reset })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^미사용/ }));
+    await user.click(await screen.findByRole('button', { name: messages.common.reset }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: messages.common.reset })).not.toBeInTheDocument();
     });
   });
 

@@ -1,7 +1,6 @@
 import {
   Button,
   Checkbox,
-  Chip,
   type Column,
   EmptyState,
   Icon,
@@ -12,13 +11,19 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  type HiddenFilterChip,
+  hasChangedFilters,
+  useFilterMore,
+} from '../../patterns/filter-more';
 import type { LookupSource } from '../../patterns/lookup-display';
 import {
   SORT_OPTIONS,
   type CodeOption,
   codeLabel,
   defaultToolFilters,
-  lookupLabel,
   selectableOptions,
   toToolSort,
 } from './code-options';
@@ -37,8 +42,6 @@ export interface ToolListPaneProps {
   appliedFilters: ToolFilters;
   onApplyFilters: (next: ToolFilters) => void;
   plantOptions: CodeOption[];
-  /** 공장 이름과 조회 상태 — 좁힌 선택지가 아니라 전체에서 찾는다 */
-  plantSource: LookupSource;
   /** 도구 유형 — 서버 공통코드가 정본이다(omf-all-around#52). */
   typeSource: LookupSource;
   /** 유형 선택지의 한계 안내(값 없음·조회 실패). 없으면 붙이지 않는다 */
@@ -83,6 +86,9 @@ const hasAnyFilter = (filters: ToolFilters): boolean =>
   filters.pmDueOnly ||
   filters.includeInactive;
 
+/** 「조건 더보기」에 접힌 체크칸 — 걸려 있으면 칩으로 알린다. 정렬은 목록을 좁히지 않아 칩을 두지 않는다. */
+type HiddenFlag = 'guaranteedShotCountMissing' | 'pmDueOnly' | 'includeInactive';
+
 export const ToolListPane = ({
   items,
   total,
@@ -90,7 +96,6 @@ export const ToolListPane = ({
   appliedFilters,
   onApplyFilters,
   plantOptions,
-  plantSource,
   typeSource,
   typeNote,
   statusOptions,
@@ -101,6 +106,7 @@ export const ToolListPane = ({
 }: ToolListPaneProps) => {
   /* 「추가 필터」 이름표가 체크칸 무리의 이름이 된다 — 상자 없이 묶는 자리라 이름으로 잇는다. */
   const extraLabelId = useId();
+  const more = useFilterMore();
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
   const [draft, setDraft] = useState<DraftFilters>(draftOf(appliedFilters));
   const { q: appliedQ, plantId: appliedPlantId, toolTypeCode: appliedType } = appliedFilters;
@@ -125,6 +131,47 @@ export const ToolListPane = ({
     setDraft(draftOf(defaultToolFilters));
     onApplyFilters(defaultToolFilters);
   };
+
+  /*
+   * 접힌 칸(체크칸 셋)에 걸린 조건만 칩으로 — 보이는 칸(검색 · 공장 · 유형)의 값은 칸이 말한다.
+   * 체크칸은 즉시 적용이라 × 도 곧바로 나간다.
+   */
+  const hiddenChips: HiddenFilterChip<HiddenFlag>[] = [
+    ...(appliedFilters.guaranteedShotCountMissing
+      ? [
+          {
+            key: 'guaranteedShotCountMissing' as const,
+            label: t.filters.guaranteedMissingOnly,
+            removeLabel: t.filters.chipRemoveGuaranteedMissing,
+          },
+        ]
+      : []),
+    ...(appliedFilters.pmDueOnly
+      ? [
+          {
+            key: 'pmDueOnly' as const,
+            label: t.filters.pmDueOnly,
+            removeLabel: t.filters.chipRemovePmDue,
+          },
+        ]
+      : []),
+    ...(appliedFilters.includeInactive
+      ? [
+          {
+            key: 'includeInactive' as const,
+            label: messages.common.includeInactive,
+            removeLabel: t.filters.chipRemoveIncludeInactive,
+          },
+        ]
+      : []),
+  ];
+
+  /* 「초기화」는 편집 중이거나 적용된 조건이 처음 값과 다를 때만 — 정렬도 처음 값으로 되돌리므로 함께 본다. */
+  const isChanged = hasChangedFilters(
+    defaultToolFilters,
+    { ...appliedFilters, ...draft },
+    appliedFilters,
+  );
 
   /**
    * 이름 칸. **미사용이면 표식을 붙인다** — 「미사용 포함」을 켜면 그 조건이 무엇을 데려왔는지
@@ -325,13 +372,6 @@ export const ToolListPane = ({
           value={draft.toolTypeCode}
           onChange={(value) => setDraft((prev) => ({ ...prev, toolTypeCode: value }))}
         />
-        {/* 정렬은 목록을 좁히지 않는다 — 모아서 적용할 이유가 없어 고르는 즉시 나간다. */}
-        <SelectField
-          label={t.filters.sortLabel}
-          options={[...SORT_OPTIONS]}
-          value={appliedFilters.sort}
-          onChange={(value) => onApplyFilters({ ...appliedFilters, sort: toToolSort(value) })}
-        />
         {/*
          * ⭐ 조회·초기화는 **조건 칸과 같은 줄 끝**에 둔다 — 조건을 고른 손이 바로 닿는 자리이고,
          *   줄 반대편 끝으로 멀어지면 한 조회 영역으로 읽히지 않는다.
@@ -339,52 +379,80 @@ export const ToolListPane = ({
          */}
         <div className="filter-actions tool-master-search-actions">
           <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
-          <Button variant="outlined" onClick={resetAll}>
-            {messages.common.reset}
-          </Button>
+          {isChanged && (
+            <Button variant="outlined" onClick={resetAll}>
+              {messages.common.reset}
+            </Button>
+          )}
+          <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
         </div>
       </div>
 
       {/*
-       * ⭐ **2행 — 추가 필터 · 건수**(사용자 지정 2026-09-22 · 되돌리지 않는다). 체크칸이 검색칸 바로
-       *   밑에 붙어 있으면 검색의 일부인지 따로인지 애매했다. 「기본 조건 → 추가 필터 → 결과」가 한눈에
-       *   갈리도록 조건 격자에서 떼어 제 줄을 주고, 건수는 이 줄 오른쪽 끝에 둔다(바로 아래가 표다).
-       * 해제 축이라 변경 즉시 적용한다. **셋을 한 덩어리로 묶는다** — 줄바꿈으로 갈라지면 남은 체크칸이
-       * 무엇에 딸린 것인지 읽히지 않는다(규범 2-1). 상자는 두지 않고 이름표로만 묶는다.
+       * **보이는 칸은 셋이다**(C-6) — 툴 검색 · 공장 · 도구 유형. 정렬과 추가 필터(체크칸 셋)는
+       * 「조건 더보기」에 접는다. 둘 다 바꾸는 즉시 나가는 조건이다.
+       * `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다.
+       */}
+      <div id={more.id} hidden={!more.isOpen}>
+        <div className="filter-bar tool-master-filter-more">
+          {/* 정렬은 목록을 좁히지 않는다 — 모아서 적용할 이유가 없어 고르는 즉시 나간다. */}
+          <SelectField
+            label={t.filters.sortLabel}
+            options={[...SORT_OPTIONS]}
+            value={appliedFilters.sort}
+            onChange={(value) => onApplyFilters({ ...appliedFilters, sort: toToolSort(value) })}
+          />
+          {/*
+           * ⭐ 체크칸 셋은 「추가 필터」라는 **이름 붙은 한 무리**다(사용자 지정 2026-09-22) — 검색칸
+           *   밑에 붙어 검색의 일부로 읽히지 않게, 상자 없이 이름표로만 묶는다. 해제 축이라 변경 즉시 적용한다.
+           */}
+          <div className="field-cell tool-master-extra">
+            <span id={extraLabelId} className="field-label">
+              {t.filters.extraLabel}
+            </span>
+            <div className="check-group" role="group" aria-labelledby={extraLabelId}>
+              <Checkbox
+                checked={appliedFilters.guaranteedShotCountMissing}
+                onChange={(event) =>
+                  onApplyFilters({
+                    ...appliedFilters,
+                    guaranteedShotCountMissing: event.target.checked,
+                  })
+                }
+              >
+                {t.filters.guaranteedMissingOnly}
+              </Checkbox>
+              <Checkbox
+                checked={appliedFilters.pmDueOnly}
+                onChange={(event) =>
+                  onApplyFilters({ ...appliedFilters, pmDueOnly: event.target.checked })
+                }
+              >
+                {t.filters.pmDueOnly}
+              </Checkbox>
+              <Checkbox
+                checked={appliedFilters.includeInactive}
+                onChange={(event) =>
+                  onApplyFilters({ ...appliedFilters, includeInactive: event.target.checked })
+                }
+              >
+                {messages.common.includeInactive}
+              </Checkbox>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <HiddenFilterChips
+        open={more.isOpen}
+        chips={hiddenChips}
+        onRemove={(key) => onApplyFilters({ ...appliedFilters, [key]: false })}
+      />
+
+      {/*
+       * ⭐ **건수는 표 바로 위 줄의 오른쪽 끝**에 둔다(사용자 지정 2026-09-22) — 바로 아래가 표다.
        */}
       <div className="tool-master-extra-row">
-        <span id={extraLabelId} className="tool-master-extra-label">
-          {t.filters.extraLabel}
-        </span>
-        <div className="check-group" role="group" aria-labelledby={extraLabelId}>
-          <Checkbox
-            checked={appliedFilters.guaranteedShotCountMissing}
-            onChange={(event) =>
-              onApplyFilters({
-                ...appliedFilters,
-                guaranteedShotCountMissing: event.target.checked,
-              })
-            }
-          >
-            {t.filters.guaranteedMissingOnly}
-          </Checkbox>
-          <Checkbox
-            checked={appliedFilters.pmDueOnly}
-            onChange={(event) =>
-              onApplyFilters({ ...appliedFilters, pmDueOnly: event.target.checked })
-            }
-          >
-            {t.filters.pmDueOnly}
-          </Checkbox>
-          <Checkbox
-            checked={appliedFilters.includeInactive}
-            onChange={(event) =>
-              onApplyFilters({ ...appliedFilters, includeInactive: event.target.checked })
-            }
-          >
-            {messages.common.includeInactive}
-          </Checkbox>
-        </div>
         {/*
          * ⭐ 유형 안내는 **조건 칸 밑이 아니라 이 줄에** 한 줄로 둔다 — 칸 밑에 붙으면 그 칸만 키가
          *   커져 조회 줄의 입력 상자 높이가 어긋난다. 값이 있을 때는 아예 서지 않는다.
@@ -399,65 +467,6 @@ export const ToolListPane = ({
           <p className="field-note tool-master-result-count" aria-live="polite">
             {t.resultTotal(new Intl.NumberFormat('ko-KR').format(total))}
           </p>
-        )}
-      </div>
-
-      <div className="filter-bar tool-master-filter-chips">
-        {appliedFilters.q !== '' && (
-          <Chip
-            variant="status"
-            removeLabel={t.filters.chipRemoveKeyword}
-            onRemove={() => onApplyFilters({ ...appliedFilters, q: '' })}
-          >
-            {t.filters.chipKeyword(appliedFilters.q)}
-          </Chip>
-        )}
-        {appliedFilters.plantId !== '' && (
-          <Chip
-            variant="status"
-            removeLabel={t.filters.chipRemovePlant}
-            onRemove={() => onApplyFilters({ ...appliedFilters, plantId: '' })}
-          >
-            {t.filters.chipPlant(lookupLabel(plantSource, appliedFilters.plantId))}
-          </Chip>
-        )}
-        {appliedFilters.toolTypeCode !== '' && (
-          <Chip
-            variant="status"
-            removeLabel={t.filters.chipRemoveType}
-            onRemove={() => onApplyFilters({ ...appliedFilters, toolTypeCode: '' })}
-          >
-            {t.filters.chipType(lookupLabel(typeSource, appliedFilters.toolTypeCode))}
-          </Chip>
-        )}
-        {appliedFilters.guaranteedShotCountMissing && (
-          <Chip
-            variant="status"
-            removeLabel={t.filters.chipRemoveGuaranteedMissing}
-            onRemove={() =>
-              onApplyFilters({ ...appliedFilters, guaranteedShotCountMissing: false })
-            }
-          >
-            {t.filters.guaranteedMissingOnly}
-          </Chip>
-        )}
-        {appliedFilters.pmDueOnly && (
-          <Chip
-            variant="status"
-            removeLabel={t.filters.chipRemovePmDue}
-            onRemove={() => onApplyFilters({ ...appliedFilters, pmDueOnly: false })}
-          >
-            {t.filters.pmDueOnly}
-          </Chip>
-        )}
-        {appliedFilters.includeInactive && (
-          <Chip
-            variant="status"
-            removeLabel={t.filters.chipRemoveIncludeInactive}
-            onRemove={() => onApplyFilters({ ...appliedFilters, includeInactive: false })}
-          >
-            {messages.common.includeInactive}
-          </Chip>
         )}
       </div>
 

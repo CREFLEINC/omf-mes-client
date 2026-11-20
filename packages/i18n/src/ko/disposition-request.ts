@@ -57,6 +57,8 @@ export const dispositionRequest = {
   codePending: '선택할 기준값이 아직 준비되지 않았습니다',
   codePlaceholder: '기준값 준비 중',
   warehousePending: '불량창고 목록이 아직 없습니다. 창고를 거르지 않고 조회합니다.',
+  /** 「조건 더보기」에 접힌 창고 칸에 걸린 조건 칩. */
+  chipWarehouse: (name: string): string => `창고: ${name}`,
   values: {
     sourceCode: {
       RETURN: '반품',

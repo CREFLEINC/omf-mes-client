@@ -158,7 +158,7 @@ describe('LOT 현재 조회 조건', () => {
     });
 
     await choose(user, 'LOT 유형', '합성 자재');
-    await user.click(screen.getByRole('button', { name: '상세 검색 펼치기' }));
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     // 품목은 칸에서 바로 검색해 고른다(#226) — 창(팝업)을 거치지 않고, 종전 창처럼 중지 품목까지 찾는다.
     itemSearchQueries.length = 0;
     await user.click(screen.getByLabelText('품목 검색'));
@@ -190,24 +190,51 @@ describe('LOT 현재 조회 조건', () => {
     );
   });
 
-  /* 잠긴 까닭은 칸 안 글자로 둔다(사용자 2026-10-30). */
-  /* 상세 조건은 접혀 들어오지만, 걸린 상세 조건이 있으면 펼친 채로 들어온다(입하 예정 조회와 같다 · 사용자 2026-10-30). */
-  it('품목 · 창고 · 위치는 접힌 상세 조건이고, 걸린 값이 있으면 펼쳐 들어온다', () => {
-    const { unmount } = renderBar();
-    expect(screen.getByRole('button', { name: '상세 검색 펼치기' })).toHaveAttribute(
-      'aria-expanded',
-      'false',
-    );
-    expect(screen.getByLabelText('창고 검색')).not.toBeVisible();
-    unmount();
+  /* 「조건 더보기」는 늘 접힌 채로 들어온다(C-6) — 걸린 조건은 칸 대신 칩이 알린다. */
+  it('품목 · 창고 · 위치는 「조건 더보기」에 접혀 들어온다 — 걸린 값이 있어도', async () => {
+    const { user } = renderBar({ appliedFilters: filters({ warehouse: '101' }) });
+    const more = screen.getByRole('button', { name: messages.common.filterMore.open });
 
-    renderBar({ appliedFilters: filters({ warehouse: '101' }) });
-    expect(screen.getByRole('button', { name: '상세 검색 접기' })).toHaveAttribute(
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByLabelText('창고 검색')).not.toBeVisible();
+
+    await user.click(more);
+
+    expect(screen.getByRole('button', { name: messages.common.filterMore.close })).toHaveAttribute(
       'aria-expanded',
       'true',
     );
     expect(screen.getByLabelText('창고 검색')).toBeVisible();
   });
+
+  it('접힌 칸에 걸린 조건은 칩으로, 칸 없는 입하 LOT 거르기는 펼쳐도 칩으로 남는다', async () => {
+    const { user } = renderBar({
+      appliedFilters: filters({ warehouse: '101', inboundLotNo: 'IL-1', inboundLot: '9901:IL-X' }),
+    });
+    const inboundLotChip = messages.lotStatusHistory.lotFilter.inboundLotChip('IL-X');
+
+    expect(screen.getByText('창고: SAMPLE-WH-01 · 합성 창고 가')).toBeInTheDocument();
+    expect(screen.getByText('입하 LOT 번호: IL-1')).toBeInTheDocument();
+    expect(screen.getByText(inboundLotChip)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+
+    expect(screen.queryByText('창고: SAMPLE-WH-01 · 합성 창고 가')).toBeNull();
+    expect(screen.getByText(inboundLotChip)).toBeInTheDocument();
+  });
+
+  it('창고 칩의 × 는 창고와 그 창고의 위치를 함께 풀어 조회한다', async () => {
+    const applied = filters({ lotType: 'SAMPLE_MATERIAL', warehouse: '101', location: '102' });
+    const { onSearch, user } = renderBar({ appliedFilters: applied });
+
+    await user.click(
+      screen.getByRole('button', { name: messages.common.filterMore.remove('창고') }),
+    );
+
+    expect(onSearch).toHaveBeenCalledWith({ ...applied, warehouse: '', location: '' });
+  });
+
+  /* 잠긴 까닭은 칸 안 글자로 둔다(사용자 2026-10-30). */
 
   /* 펼친 목록은 칸과 같은 폭이다(사용자 2026-10-30) — 긴 「코드 · 이름」이 칸 밖으로 넓어지지 않는다. */
   it('선택 목록을 칸 폭에 맞춘다', async () => {
@@ -224,7 +251,7 @@ describe('LOT 현재 조회 조건', () => {
 
   it('창고를 고르기 전에는 위치를 잠그고 칸 안에 까닭을 둔다', async () => {
     const { user } = renderBar();
-    await user.click(screen.getByRole('button', { name: '상세 검색 펼치기' }));
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     const location = screen.getByLabelText(/^위치/);
 
     expect(location).toBeDisabled();
@@ -240,6 +267,7 @@ describe('LOT 현재 조회 조건', () => {
       appliedFilters: filters({ lotType: 'SAMPLE_MATERIAL', warehouse: '101', location: '102' }),
     });
 
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     await pickWarehouse(user, 'SAMPLE-WH-09');
     await waitFor(() => expect(locationWarehouseIds).toContain('109'));
     await user.click(screen.getByRole('button', { name: '조회' }));
@@ -272,10 +300,22 @@ describe('LOT 현재 조회 조건', () => {
     expect(screen.getByLabelText('LOT 스캔')).toHaveValue('적용값');
   });
 
-  it('초기화는 상위에 한 번 알린다', async () => {
+  it('초기화는 처음 값에서는 없고, 바꾼 것이 생기면 나타나 누르면 상위에 한 번 알린다(C-6)', async () => {
     const { onReset, user } = renderBar();
 
+    expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
+
+    await user.type(screen.getByLabelText('LOT 스캔'), 'L');
     await user.click(screen.getByRole('button', { name: '초기화' }));
+
     expect(onReset).toHaveBeenCalledOnce();
+    /* 치던 값도 처음으로 — 조회에 쓰인 값이 이미 처음 값이면 주소가 바뀌지 않는다. */
+    expect(screen.getByLabelText('LOT 스캔')).toHaveValue('');
+  });
+
+  it('「전체」로 한 번 조회한 것만으로는 「초기화」가 서지 않는다 — 유형 「전체」는 처음 값과 같다', () => {
+    renderBar({ appliedFilters: filters({ lotType: 'ALL' }) });
+
+    expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
   });
 });

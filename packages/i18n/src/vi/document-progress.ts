@@ -46,6 +46,9 @@ export const documentProgress: Translated<typeof ko.documentProgress> = {
     all: 'Tất cả',
     choose: 'Chọn',
     disabledTypes: (reasons: string): string => `Có loại không chọn được. ${reasons}`,
+    chipStatus: (value: string): string => `Trạng thái: ${value}`,
+    chipRemoveStatus: 'Bỏ điều kiện trạng thái',
+    chipRemoveCancellableOnly: 'Bỏ điều kiện chỉ chứng từ hủy được ngay',
   },
   loading: {
     list: 'Đang tải tiến độ chứng từ',

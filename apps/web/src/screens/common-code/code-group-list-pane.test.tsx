@@ -135,25 +135,27 @@ describe('CodeGroupListPane — 조건', () => {
     expect(onApplyFilters).toHaveBeenCalledWith(EMPTY_CODE_GROUP_FILTERS);
   });
 
-  /* 칩은 「적용된 조건」의 표시다. 편집 중인 값을 미러하면 아직 조회하지 않은 조건이 보인다. */
-  it('조건 칩은 적용된 조건만 보인다', async () => {
-    const { user } = renderPane({ appliedFilters: { q: 'SYN', includeInactive: false } });
+  /* C-6 — 초기화는 편집 중인 값이나 걸린 조건이 처음 값과 다를 때만 보인다. */
+  it('초기화는 바뀐 것이 있을 때만 보인다', async () => {
+    const { user } = renderPane();
 
-    expect(screen.getByText('검색어: SYN')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
 
-    await user.type(screen.getByLabelText('코드그룹 검색'), '-GRP');
+    await user.type(screen.getByLabelText('코드그룹 검색'), 'SYN');
+    await user.click(screen.getByRole('button', { name: '초기화' }));
 
-    expect(screen.getByText('검색어: SYN')).toBeInTheDocument();
+    /* 걸린 조건이 처음 그대로여도 치던 검색어를 비우고 단추를 거둔다. */
+    expect(screen.getByLabelText('코드그룹 검색')).toHaveValue('');
+    expect(screen.queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
   });
 
-  it('칩을 제거하면 그 조건만 풀린다', async () => {
-    const { onApplyFilters, user } = renderPane({
-      appliedFilters: { q: 'SYN', includeInactive: true },
-    });
+  /* 조건 칸이 모두 줄에 보인다 — 보이는 칸의 값을 칩으로 겹쳐 적지 않는다(C-6). */
+  it('걸린 조건을 칩으로 겹쳐 적지 않는다', () => {
+    renderPane({ appliedFilters: { q: 'SYN', includeInactive: true } });
 
-    await user.click(screen.getByRole('button', { name: '검색어 조건 제거' }));
-
-    expect(onApplyFilters).toHaveBeenCalledWith({ q: '', includeInactive: true });
+    expect(screen.getByLabelText('코드그룹 검색')).toHaveValue('SYN');
+    expect(screen.queryByText('검색어: SYN')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /조건 제거$/ })).not.toBeInTheDocument();
   });
 });
 

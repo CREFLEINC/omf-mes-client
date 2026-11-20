@@ -217,6 +217,8 @@ describe('W-05-01 ① — 기준일로 좁힌다', () => {
     await within(pane()).findByText(t.scope.all);
 
     const box = within(pane()).getByLabelText(t.ratioList.effectiveOnLabel);
+    /* 「초기화」는 처음 값과 달라진 것이 있을 때만 보인다(C-6). */
+    expect(within(pane()).queryByRole('button', { name: messages.common.reset })).toBeNull();
 
     await user.type(box, '2026-08-23');
     await user.click(within(pane()).getByRole('button', { name: messages.common.reset }));

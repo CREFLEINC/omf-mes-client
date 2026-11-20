@@ -172,12 +172,25 @@ describe('EquipmentListPane', () => {
     const user = userEvent.setup();
     const { onApplyFilters } = renderPane();
 
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     await user.click(screen.getByRole('checkbox', { name: label }));
 
     expect(onApplyFilters).toHaveBeenCalledWith({ ...defaultEquipmentFilters, [field]: true });
   });
 
-  it('적용된 조건마다 제거할 수 있는 칩이 선다', async () => {
+  it('체크칸 셋은 조건 더보기 안에 접혀 있다', async () => {
+    const user = userEvent.setup();
+    renderPane();
+
+    expect(screen.queryByRole('checkbox')).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+
+    expect(screen.getAllByRole('checkbox')).toHaveLength(3);
+  });
+
+  /* 보이는 칸(검색 · 유형)의 값은 칸이 말한다 — 칩은 접힌 체크칸에 걸린 조건만 알린다(C-6). */
+  it('접힌 체크칸에 걸린 조건만 칩이 되고 × 가 그 조건만 푼다', async () => {
     const user = userEvent.setup();
     const applied: EquipmentFilters = {
       q: 'EQ',
@@ -188,15 +201,24 @@ describe('EquipmentListPane', () => {
     };
     const { onApplyFilters } = renderPane({ appliedFilters: applied });
 
-    expect(screen.getByText(t.equipmentFilters.chipKeyword('EQ'))).toBeInTheDocument();
-    /* 값 목록이 서서 이름으로 보인다 — 못 찾을 때만 코드를 그대로 쓴다(G-9). */
-    expect(screen.getByText(t.equipmentFilters.chipType('프레스'))).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /조건 제거$/ })).toHaveLength(2);
 
     await user.click(
       screen.getByRole('button', { name: t.equipmentFilters.chipRemoveCalibration }),
     );
 
     expect(onApplyFilters).toHaveBeenCalledWith({ ...applied, calibrationRequired: false });
+  });
+
+  it('초기화는 처음 값과 달라진 것이 있을 때만 보인다', async () => {
+    const user = userEvent.setup();
+    renderPane();
+
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
+
+    await user.type(screen.getByLabelText(t.equipmentFilters.searchLabel), 'E');
+
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeVisible();
   });
 
   /* 값 목록이 비었다는 사실은 감추지 않되, 차 있으면 거둔다 — 남으면 화면이 거짓말을 한다. */

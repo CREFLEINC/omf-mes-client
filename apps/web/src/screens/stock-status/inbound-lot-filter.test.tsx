@@ -102,6 +102,11 @@ const lastRequest = (requests: URL[]): URL => {
   return last;
 };
 
+/** 입하 LOT 번호 칸은 「조건 더보기」에 접혀 있다(C-6) — 그 칸을 쓰는 시험은 먼저 편다. */
+const openMore = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(await screen.findByRole('button', { name: messages.common.filterMore.open }));
+};
+
 describe('FR-035 W-01-07 재고 현황 — 입하 LOT 칸 · 거르기', () => {
   it('FR-035 LOT별 표에 「입하 LOT」 칸이 있고, 입하 LOT 이 없는 줄은 빈칸이다', async () => {
     renderScreen('?wh=9101&view=lot&item=9301');
@@ -117,6 +122,7 @@ describe('FR-035 W-01-07 재고 현황 — 입하 LOT 칸 · 거르기', () => {
   it('G2 L21 입하 LOT 칸에 번호를 넣고 Enter 를 누르면 그 번호로 조회한다', async () => {
     const { balanceRequests, user } = renderScreen('');
 
+    await openMore(user);
     const field = await screen.findByRole('searchbox', { name: t.fields.inboundLotNo });
     await user.type(field, `${IL_NO}{Enter}`);
 
@@ -126,8 +132,9 @@ describe('FR-035 W-01-07 재고 현황 — 입하 LOT 칸 · 거르기', () => {
   });
 
   it('G2 L21 번호와 Enter 가 한꺼번에 와도(스캐너 · 붙여 넣기) 칸에 든 번호로 조회한다', async () => {
-    const { balanceRequests } = renderScreen('');
+    const { balanceRequests, user } = renderScreen('');
 
+    await openMore(user);
     const field = (await screen.findByRole('searchbox', {
       name: t.fields.inboundLotNo,
     })) as HTMLInputElement;
@@ -150,6 +157,7 @@ describe('FR-035 W-01-07 재고 현황 — 입하 LOT 칸 · 거르기', () => {
   it('FR-035 「입하 LOT 번호」 칸만 채워도 창고 없이 조회되고 요청에 inboundLotNo 가 실린다', async () => {
     const { balanceRequests, user } = renderScreen('');
 
+    await openMore(user);
     await user.type(screen.getByRole('searchbox', { name: t.fields.inboundLotNo }), IL_NO);
 
     /* 범위 안내(창고 필수)가 사라지고 조회가 풀린다. */
@@ -162,7 +170,13 @@ describe('FR-035 W-01-07 재고 현황 — 입하 LOT 칸 · 거르기', () => {
     const request = lastRequest(balanceRequests);
     expect(request.searchParams.get('inboundLotNo')).toBe(IL_NO);
     expect(request.searchParams.has('warehouseId')).toBe(false);
-    expect(await screen.findByText(t.filters.chipInboundLotNo(IL_NO))).toBeInTheDocument();
+    /* 펼쳐 둔 동안은 칸이 값을 보여 칩이 없고, 접으면 칩이 걸린 번호를 알린다(C-6). */
+    expect(screen.getByRole('searchbox', { name: t.fields.inboundLotNo })).toHaveValue(IL_NO);
+    expect(screen.queryByText(t.filters.chipInboundLotNo(IL_NO))).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.close }));
+
+    expect(screen.getByText(t.filters.chipInboundLotNo(IL_NO))).toBeInTheDocument();
   });
 
   it('FR-035 주소에 입하 LOT 조건만 있어도 조회된다 — 범위 안내 없음', async () => {

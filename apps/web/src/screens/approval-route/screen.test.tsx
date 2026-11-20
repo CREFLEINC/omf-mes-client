@@ -550,18 +550,6 @@ describe('ApprovalRouteScreen — 조회 조건', () => {
     expect(locationText()).not.toContain('ar=');
   });
 
-  it('조건 칩의 ×는 그 조건 하나만 푼다', async () => {
-    const { user } = renderScreen(allRoutes(), '?q=SAMPLE&inactive=1');
-
-    await waitForList();
-    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveKeyword }));
-
-    await waitFor(() => {
-      expect(locationText()).not.toContain('q=SAMPLE');
-    });
-    expect(locationText()).toContain('inactive=1');
-  });
-
   it('치던 조건이 목록 응답 도착에 되돌아가지 않는다', async () => {
     const routes = allRoutes();
     const { fetch } = createRecordingFetch(routes);
@@ -1070,7 +1058,8 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
 
     expect(await screen.findByText(t.empty.notFoundTitle)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: messages.common.reset }));
+    await user.type(screen.getByLabelText(t.fields.q), 'SAMPLE');
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     await waitFor(() => {
       expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();

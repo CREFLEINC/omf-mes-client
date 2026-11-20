@@ -11,6 +11,8 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
+import { hasChangedFilters } from '../../patterns/filter-more';
+
 import { endAvailability } from './end-policy';
 import { defaultPolicyFilters } from './options';
 import { formulaText, isEnded, periodText, scopeText, type ScopeLookups } from './scope';
@@ -221,9 +223,12 @@ export const RatioListPane = ({
             <Button onClick={() => onApplyFilters({ effectiveOn: draft })}>
               {messages.common.search}
             </Button>
-            <Button variant="outlined" onClick={resetAll}>
-              {messages.common.reset}
-            </Button>
+            {/* 「초기화」는 편집 중이거나 적용된 기준일이 처음 값과 다를 때만 보인다(C-6). */}
+            {hasChangedFilters(defaultPolicyFilters, { effectiveOn: draft }, appliedFilters) && (
+              <Button variant="outlined" onClick={resetAll}>
+                {messages.common.reset}
+              </Button>
+            )}
             <Button variant="outlined" onClick={onAdd}>
               {t.actions.addPolicy}
             </Button>

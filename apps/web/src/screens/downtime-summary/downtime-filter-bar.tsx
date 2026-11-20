@@ -2,8 +2,15 @@ import { Button, DatePicker } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  hasChangedFilters,
+  useFilterMore,
+} from '../../patterns/filter-more';
+
 import { FieldLabel } from './field-label';
-import type { DowntimeFilters } from './filters';
+import { EMPTY_FILTERS, type DowntimeFilters } from './filters';
 import { periodLockReason, type PeriodInput } from './period';
 import { SelectField } from './select-field';
 import type { SelectOption } from './types';
@@ -14,6 +21,8 @@ export interface DowntimeFilterBarProps {
   /** 주소에 반영된(= 조회에 쓰인) 값. 편집 중인 값은 이 부품 안에만 있다. */
   appliedPeriod: PeriodInput;
   appliedFilters: DowntimeFilters;
+  /** 처음 기간(최근 한 달) — 「초기화」를 세울지 견줄 처음 값이다. 화면이 한 번 만든 것을 받는다. */
+  defaultPeriod: PeriodInput;
   plantOptions: SelectOption[];
   equipmentGroupOptions: SelectOption[];
   equipmentOptions: SelectOption[];
@@ -34,11 +43,15 @@ export interface DowntimeFilterBarProps {
  * ⭐ **공장을 바꾸면 그룹·설비 선택을 비운다.** 비우지 않으면 다른 공장의 설비가 걸린 채로
  * 남아 결과가 늘 비고, 사용자는 「이 공장에 자료가 없다」로 읽는다.
  *
+ * **보이는 칸은 셋이다**(C-6) — 기간 · 설비 그룹 · 설비. 공장은 「조건 더보기」에 접고, 걸려 있으면
+ * 칩으로 알린다. 「초기화」는 바뀐 것이 있을 때만 보인다.
+ *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
 export const DowntimeFilterBar = ({
   appliedPeriod,
   appliedFilters,
+  defaultPeriod,
   plantOptions,
   equipmentGroupOptions,
   equipmentOptions,
@@ -50,6 +63,7 @@ export const DowntimeFilterBar = ({
 }: DowntimeFilterBarProps) => {
   const periodId = useId();
   const reasonId = `${periodId}-reason`;
+  const more = useFilterMore();
 
   const [period, setPeriod] = useState<PeriodInput>(appliedPeriod);
   const [filters, setFilters] = useState<DowntimeFilters>(appliedFilters);
@@ -85,6 +99,27 @@ export const DowntimeFilterBar = ({
     onSearch(period, filters);
   };
 
+  /* 접힌 칸(공장)에 걸린 조건만 칩으로 — 보이는 칸의 값은 칩으로 겹쳐 적지 않는다. */
+  const hiddenChips =
+    appliedFilters.plant === ''
+      ? []
+      : [
+          {
+            key: 'plant' as const,
+            label: t.filters.chipPlant(
+              plantOptions.find((option) => option.value === appliedFilters.plant)?.label ??
+                appliedFilters.plant,
+            ),
+            removeLabel: messages.common.filterMore.remove(t.filters.plant),
+          },
+        ];
+
+  const isChanged = hasChangedFilters(
+    { ...defaultPeriod, ...EMPTY_FILTERS },
+    { ...period, ...filters },
+    { ...appliedPeriod, ...appliedFilters },
+  );
+
   return (
     <>
       <div className="filter-bar downtime-summary-filter">
@@ -103,19 +138,6 @@ export const DowntimeFilterBar = ({
             }}
           />
         </div>
-
-        <SelectField
-          label={t.filters.plant}
-          options={[{ value: '', label: t.filters.all }, ...plantOptions]}
-          value={filters.plant}
-          note={plantNote}
-          placeholder={t.filters.all}
-          wide
-          onChange={(value) => {
-            /* 공장이 바뀌면 그 아래 선택은 뜻을 잃는다 — 남겨 두면 결과가 늘 빈다. */
-            setFilters({ plant: value, equipmentGroup: '', equipment: '' });
-          }}
-        />
 
         <SelectField
           label={t.filters.equipmentGroup}
@@ -141,19 +163,51 @@ export const DowntimeFilterBar = ({
           }}
         />
 
-        <div className="filter-actions downtime-summary-filter-actions">
-          <Button
-            onClick={search}
-            disabled={lockReason !== null}
-            aria-describedby={lockReason === null ? undefined : reasonId}
-          >
-            {t.filters.search}
-          </Button>
-          <Button variant="outlined" onClick={onReset}>
-            {t.filters.reset}
-          </Button>
+        <div className="field-cell field-cell-unlabeled downtime-summary-filter-actions">
+          <div className="filter-actions">
+            <Button
+              onClick={search}
+              disabled={lockReason !== null}
+              aria-describedby={lockReason === null ? undefined : reasonId}
+            >
+              {t.filters.search}
+            </Button>
+            {isChanged && (
+              <Button variant="outlined" onClick={onReset}>
+                {t.filters.reset}
+              </Button>
+            )}
+            <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
+          </div>
         </div>
       </div>
+
+      {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+      <div id={more.id} hidden={!more.isOpen}>
+        <div className="filter-bar downtime-summary-filter">
+          <SelectField
+            label={t.filters.plant}
+            options={[{ value: '', label: t.filters.all }, ...plantOptions]}
+            value={filters.plant}
+            note={plantNote}
+            placeholder={t.filters.all}
+            wide
+            onChange={(value) => {
+              /* 공장이 바뀌면 그 아래 선택은 뜻을 잃는다 — 남겨 두면 결과가 늘 빈다. */
+              setFilters({ plant: value, equipmentGroup: '', equipment: '' });
+            }}
+          />
+        </div>
+      </div>
+
+      {/* 칩의 × 는 공장 조건만 풀어 곧바로 다시 조회한다 — 그룹 · 설비는 공장을 풀어도 뜻이 남는다. */}
+      <HiddenFilterChips
+        open={more.isOpen}
+        chips={hiddenChips}
+        onRemove={() => {
+          onSearch(appliedPeriod, { ...appliedFilters, plant: '' });
+        }}
+      />
 
       {/* 규범 4 — 잠근 이유를 감추지 않는다. 사유는 「어떻게 풀 것인가」를 담는다. */}
       {lockReason !== null && (

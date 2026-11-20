@@ -38,9 +38,6 @@ export const inspectionResultInsights = {
     calibrationOnly: '검교정 만료만',
     calibrationExclude: '검교정 만료 제외',
     finalRoundOnly: '최종 회차',
-    /** 기간 · LOT 밖의 조건을 담은 아랫줄을 펴고 접는 단추(사용자 2026-10-30). */
-    detailOpen: '상세 보기 펼치기',
-    detailClose: '상세 보기 접기',
     periodRequired: '조회 기간을 선택하세요.',
     periodReversed: '종료일은 시작일보다 빠를 수 없습니다.',
     periodPair: '기간은 시작일과 종료일을 함께 선택하세요.',

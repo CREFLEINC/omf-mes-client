@@ -76,6 +76,27 @@ describe('ShipmentProcessingFilterBar', () => {
     expect(onReset).toHaveBeenCalled();
   });
 
+  it('「초기화」는 처음 값과 달라진 것이 있을 때만 보이고, 누르면 편집 중인 값도 비운다(C-6)', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ShipmentProcessingFilterBar
+        appliedFilters={EMPTY_SHIPMENT_PROCESSING_FILTERS}
+        onSearch={vi.fn()}
+        onReset={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
+
+    /* 「피킹완료만」은 켜진 것이 처음 값이다 — 끄면 바뀐 것이다. */
+    await user.click(screen.getByRole('checkbox', { name: '피킹완료만' }));
+    await user.click(screen.getByRole('button', { name: '초기화' }));
+
+    expect(screen.getByRole('checkbox', { name: '피킹완료만' })).toBeChecked();
+    expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
+  });
+
   it('적용된 필터가 바뀌면 편집 중인 값을 되돌린다', () => {
     const { rerender } = render(
       <ShipmentProcessingFilterBar

@@ -594,7 +594,8 @@ describe('G1 — 승인 유형 코드 자리표시', () => {
     await waitForList();
 
     expect(screen.getByRole('button', { name: messages.common.search })).toBeEnabled();
-    expect(screen.getByRole('button', { name: messages.common.reset })).toBeEnabled();
+    /* 「초기화」는 바뀐 것이 있을 때만 보인다(C-6) — 처음 값 그대로라 없다. 잠긴 것이 아니다. */
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
     expect(pendingChip()).toBeEnabled();
     expect(screen.getByRole('button', { name: /SYNTH-REQ-001/ })).toBeEnabled();
   });
@@ -815,18 +816,18 @@ describe('조회 조건', () => {
     expect(lastListQuery(requests)?.get('pendingOnly')).toBeNull();
   });
 
-  /** 칩의 ×도 조건 변경이다 — 수명 표 1행을 그대로 지난다(범위 유지 · 첫 쪽 · 선택 비움). */
+  /**
+   * 칩의 ×도 조건 변경이다 — 수명 표 1행을 그대로 지난다(범위 유지 · 첫 쪽 · 선택 비움).
+   * 칩은 칸이 그리지 못하는 조건에만 선다(C-6) — 주소로 들어온 끝만 있는 상신일이 그렇다.
+   */
   it('조건 칩의 ×가 그 조건만 풀고 범위는 남긴 채 쪽과 선택을 비운다', async () => {
-    const { user } = renderScreen(
-      [listRoute()],
-      '?q=SYNTH&from=2026-08-01&to=2026-08-31&pd=1&page=2&rq=9001',
-    );
+    const { user } = renderScreen([listRoute()], '?q=SYNTH&to=2026-08-31&pd=1&page=2&rq=9001');
 
     await waitForList();
     await user.click(screen.getByRole('button', { name: t.filters.chipRemovePeriod }));
 
     await waitFor(() => {
-      expect(currentLocation()).not.toContain('from=');
+      expect(currentLocation()).not.toContain('to=');
     });
 
     expect(currentLocation()).toContain('q=SYNTH');
@@ -2605,8 +2606,11 @@ describe('결재 — 전송 중', () => {
   it('전송 중 조건 칩으로도 조건이 풀리지 않는다', async () => {
     const { requests, release, user } = await renderDecision(
       decisionRoutes(),
-      /* 조건 하나를 걸어 둔다 — 칩이 서 있어야 그 길을 잴 수 있다. */
-      '?rq=9001&q=SYNTH',
+      /*
+       * 조건 하나를 걸어 둔다 — 칩이 서 있어야 그 길을 잴 수 있다. 칩은 칸이 그리지 못하는 조건에만
+       * 서므로(C-6) 끝만 있는 상신일을 건다.
+       */
+      '?rq=9001&to=2026-08-31',
       holdApprove,
     );
 
@@ -2616,18 +2620,18 @@ describe('결재 — 전송 중', () => {
       expect(approveRequests(requests)).toHaveLength(1);
     });
 
-    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveKeyword }));
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemovePeriod }));
 
-    expect(currentLocation()).toContain('q=SYNTH');
+    expect(currentLocation()).toContain('to=2026-08-31');
 
     release();
     await screen.findByText(t.toast.approved);
 
     /* 짝 방향 — 잠금이 풀리면 같은 칩이 그 조건을 실제로 푼다(늘 남는 것이 아니다). */
-    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveKeyword }));
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemovePeriod }));
 
     await waitFor(() => {
-      expect(currentLocation()).not.toContain('q=SYNTH');
+      expect(currentLocation()).not.toContain('to=2026-08-31');
     });
   });
 

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { ScreenHeader } from '../../patterns/screen-header';
 import { CalibrationFilterBar } from './calibration-filter-bar';
 import {
   EMPTY_FILTERS,
@@ -132,7 +133,7 @@ export const GaugeCalibrationScreen = () => {
 
   return (
     <>
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb

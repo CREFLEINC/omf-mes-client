@@ -17,7 +17,7 @@ const WAREHOUSE_OPTIONS = [{ value: '9101', label: 'SAMPLE-WH-01 · 합성 자�
 const renderBar = (overrides: Partial<BalanceFilterBarProps> = {}) => {
   const onSearch = vi.fn<(filters: typeof EMPTY_FILTERS) => void>();
   const onReset = vi.fn<() => void>();
-  const onRemoveFilter = vi.fn<(key: keyof typeof EMPTY_FILTERS) => void>();
+  const onRemoveFilter = vi.fn<(key: 'availableOnly') => void>();
   const onRetryReferences = vi.fn<() => void>();
   const onViewChange = vi.fn<(view: 'item' | 'lot' | 'location') => void>();
 
@@ -31,7 +31,6 @@ const renderBar = (overrides: Partial<BalanceFilterBarProps> = {}) => {
           canUseLotView={false}
           onViewChange={onViewChange}
           warehouseOptions={WAREHOUSE_OPTIONS}
-          chipNames={{ warehouse: '', item: '' }}
           referencesFailed={false}
           onRetryReferences={onRetryReferences}
           onSearch={onSearch}
@@ -88,23 +87,63 @@ describe('BalanceFilterBar', () => {
     expect(screen.getByText(t.reasons.lotViewNeedsItem)).toBeInTheDocument();
   });
 
-  it('적용된 조건마다 칩을 내고 ×를 누르면 onRemoveFilter를 부른다', async () => {
+  /* C-6 — 보이는 칸은 창고 · 품목 · 묶기 셋이고, 가용만은 「조건 더보기」에 접혀 있다. */
+  it('가용만은 「조건 더보기」에 접혀 있고, 펼치면 보인다', async () => {
+    const { user } = renderBar();
+    const more = screen.getByRole('button', { name: messages.common.filterMore.open });
+
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    expect(
+      screen.queryByRole('checkbox', { name: t.fields.availableOnly }),
+    ).not.toBeInTheDocument();
+
+    await user.click(more);
+
+    expect(screen.getByRole('checkbox', { name: t.fields.availableOnly })).toBeVisible();
+  });
+
+  it('접힌 가용만이 켜져 있으면 칩으로 보이고 ×가 그 조건만 푼다 — 보이는 창고는 칩이 없다', async () => {
     const { onRemoveFilter, user } = renderBar({
-      appliedFilters: { warehouse: '9101', item: '', availableOnly: false },
-      chipNames: { warehouse: 'SAMPLE-WH-01 · 합성 자재창고 가', item: '' },
+      appliedFilters: { warehouse: '9101', item: '', availableOnly: true },
     });
 
-    expect(
-      screen.getByText(t.filters.chipWarehouse('SAMPLE-WH-01 · 합성 자재창고 가')),
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText(t.fields.warehouse)).toHaveTextContent(
+      WAREHOUSE_OPTIONS[0]?.label ?? '',
+    );
+    expect(screen.getAllByRole('button', { name: /조건 (제거|해제)$/u })).toHaveLength(1);
 
-    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveWarehouse }));
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveAvailableOnly }));
 
-    expect(onRemoveFilter).toHaveBeenCalledWith('warehouse');
+    expect(onRemoveFilter).toHaveBeenCalledWith('availableOnly');
+  });
+
+  /* C-19 — 칸 폭은 정한 폭이라 고른 값에 따라 바뀌지 않는다. */
+  it('창고 · 품목은 보통 폭, 묶기는 좁은 폭이다', () => {
+    renderBar();
+
+    const cellOf = (label: string) => screen.getByLabelText(label).closest('.field-cell');
+
+    expect(cellOf(t.fields.warehouse)).toHaveClass('filter-field-md');
+    expect(cellOf(t.fields.item)).toHaveClass('filter-field-md');
+    expect(cellOf(t.fields.groupBy)).toHaveClass('filter-field-sm');
+  });
+
+  /* C-6 — 처음 조건 그대로면 「초기화」가 할 일이 없다. 칸을 고치면 그때 보인다. */
+  it('처음 조건에서는 초기화가 없고, 칸을 고치면 나타난다', async () => {
+    const { user } = renderBar();
+
+    expect(screen.queryByRole('button', { name: messages.common.reset })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+    await user.click(screen.getByRole('checkbox', { name: t.fields.availableOnly }));
+
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeInTheDocument();
   });
 
   it('초기화를 누르면 onReset을 부른다', async () => {
-    const { onReset, user } = renderBar();
+    const { onReset, user } = renderBar({
+      appliedFilters: { warehouse: '9101', item: '', availableOnly: false },
+    });
 
     await user.click(screen.getByRole('button', { name: messages.common.reset }));
 

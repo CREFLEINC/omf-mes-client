@@ -1,7 +1,6 @@
 import {
   Button,
   Checkbox,
-  Chip,
   type Column,
   EmptyState,
   SearchInput,
@@ -11,7 +10,8 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
-import { clearUserFilter, hasAnyUserFilter, toUserFilterChips } from './filters';
+import { hasChangedFilters } from '../../patterns/filter-more';
+import { hasAnyUserFilter } from './filters';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
 import { SelectField } from './select-field';
@@ -30,15 +30,13 @@ export const EMPTY_USER_FILTERS: UserFilters = {
 export interface UserListPaneProps {
   users: AppUser[];
   isLoading: boolean;
-  /** 적용된(주소에 반영된) 조건 — 조건 칩의 렌더 기준 */
+  /** 적용된(주소에 반영된) 조건 */
   appliedFilters: UserFilters;
-  /** 조회 버튼·Enter·칩 제거·초기화가 호출한다. 쪽은 늘 1로 돌아간다 */
+  /** 조회 버튼·Enter·초기화가 호출한다. 쪽은 늘 1로 돌아간다 */
   onApplyFilters: (next: UserFilters) => void;
   departmentOptions: SelectOption[];
   statusOptions: SelectOption[];
   statusDisabledReason: string | null;
-  /** 조건 칩에 낼 부서 이름. 번호를 그대로 보이면 무엇을 걸었는지 모른다 */
-  departmentLabel: (departmentId: string) => string;
   /** 표의 부서 셀에 낼 이름. 값이 없으면 미지정 표기를 낸다 */
   departmentNameOf: (departmentId: number | null | undefined) => string;
   /** 상태 코드의 표시명. 값 목록에 없으면 숫자·코드 대신 공통 「알 수 없음」을 낸다. */
@@ -86,7 +84,6 @@ export const UserListPane = ({
   departmentOptions,
   statusOptions,
   statusDisabledReason,
-  departmentLabel,
   departmentNameOf,
   statusNameOf,
   optionsNotice,
@@ -100,7 +97,7 @@ export const UserListPane = ({
 }: UserListPaneProps) => {
   /*
    * 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
-   * 편집 중인 값은 draft에만 있고 조건 칩에 미러하지 않는다 — 칩은 「적용된 조건」의 표시다.
+   * 편집 중인 값은 draft에만 있다. 네 조건이 모두 조건 줄에 보여 조건 칩을 두지 않는다(C-6).
    */
   const [draft, setDraft] = useState<UserFilters>(appliedFilters);
   const {
@@ -241,7 +238,15 @@ export const UserListPane = ({
     );
   };
 
-  const chips = toUserFilterChips(appliedFilters, departmentLabel, statusNameOf);
+  /*
+   * 「초기화」는 바뀐 것이 있을 때만 보인다(C-6). 누르면 초안도 함께 비운다 — 주소가 이미 처음 값이면
+   * 주소가 바뀌지 않아 따라가는 effect 가 깨어나지 않고, 치던 값이 그대로 남는다.
+   */
+  const isChanged = hasChangedFilters(EMPTY_USER_FILTERS, draft, appliedFilters);
+  const reset = (): void => {
+    setDraft(EMPTY_USER_FILTERS);
+    onApplyFilters(EMPTY_USER_FILTERS);
+  };
 
   return (
     <section className="pane" aria-label={t.panes.userList}>
@@ -317,28 +322,14 @@ export const UserListPane = ({
            */}
           <div className="filter-actions field-cell-unlabeled">
             <Button onClick={() => onApplyFilters(draft)}>{messages.common.search}</Button>
-            <Button variant="outlined" onClick={() => onApplyFilters(EMPTY_USER_FILTERS)}>
-              {messages.common.reset}
-            </Button>
+            {isChanged && (
+              <Button variant="outlined" onClick={reset}>
+                {messages.common.reset}
+              </Button>
+            )}
           </div>
         </div>
       </div>
-
-      {/* 걸린 조건이 없으면 빈 줄이 여백만 차지한다 — 칩이 있을 때만 줄을 둔다. */}
-      {chips.length > 0 && (
-        <div className="filter-bar">
-          {chips.map((chip) => (
-            <Chip
-              key={chip.key}
-              variant="status"
-              removeLabel={chip.removeLabel}
-              onRemove={() => onApplyFilters(clearUserFilter(appliedFilters, chip.key))}
-            >
-              {chip.label}
-            </Chip>
-          ))}
-        </div>
-      )}
 
       {listSlot()}
     </section>

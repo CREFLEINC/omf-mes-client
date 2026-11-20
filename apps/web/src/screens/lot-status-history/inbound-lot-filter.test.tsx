@@ -128,7 +128,7 @@ describe('FR-035 W-03-01 LOT 현황 — 입하 LOT 칸 · 거르기', () => {
     const { urls, user } = setup();
 
     await screen.findByRole('table', { name: t.current.pane });
-    await user.click(screen.getByRole('button', { name: t.lotFilter.detailOpen }));
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     await user.type(
       screen.getByRole('searchbox', { name: t.lotFilter.labels.inboundLotNo }),
       `${IL_NO}{Enter}`,

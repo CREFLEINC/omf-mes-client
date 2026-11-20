@@ -75,8 +75,16 @@ const renderList = (overrides: Partial<HistoryListProps> = {}) => {
   return { ...render(<HistoryList {...props} />), props, user: userEvent.setup() };
 };
 
+const HISTORY_DEFAULTS = {
+  from: '2026-07-14',
+  to: '2026-08-12',
+  itemId: '',
+  dispositionTypeCode: '',
+};
+
 const barProps = (): HistoryFilterBarProps => ({
-  applied: { from: '2026-07-14', to: '2026-08-12', itemId: '', dispositionTypeCode: '' },
+  applied: HISTORY_DEFAULTS,
+  defaults: HISTORY_DEFAULTS,
   onApply: vi.fn(),
   onReset: vi.fn(),
 });
@@ -139,11 +147,22 @@ describe('HistoryFilterBar', () => {
     });
   });
 
-  it('초기화를 누르면 알린다', async () => {
+  it('초기화는 처음 값에서는 없고, 바꾼 것이 생기면 나타나 누르면 알린다(C-6)', async () => {
     const { props, user } = renderBar();
 
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: '품목 검색' }));
     await user.click(screen.getByRole('button', { name: messages.common.reset }));
 
     expect(props.onReset).toHaveBeenCalled();
+    /* 치던 값도 처음으로 — 조회에 쓰인 값이 처음 값이라 되돌림이 깨어나지 않아도. */
+    expect(screen.getByRole('button', { name: '품목 검색' })).toHaveAttribute('data-value', '');
+  });
+
+  it('조회에 쓰인 값(처분 유형 칩)이 처음과 다르면 「초기화」가 보인다', () => {
+    renderBar({ applied: { ...HISTORY_DEFAULTS, dispositionTypeCode: 'SCRAP' } });
+
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeInTheDocument();
   });
 });

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { CountFilterBar, type CountFilterBarProps } from './count-filter-bar';
-import { DEFAULT_FILTERS, type ChipFilterKey, type CountFilters } from './filters';
+import { DEFAULT_FILTERS, type CountFilters } from './filters';
 
 const t = messages.stocktaking;
 
@@ -13,10 +13,8 @@ const WAREHOUSE_LABEL = 'SAMPLE-WH-01 · 합성 창고 가';
 const baseProps = (overrides: Partial<CountFilterBarProps> = {}): CountFilterBarProps => ({
   appliedFilters: DEFAULT_FILTERS,
   warehouseOptions: [{ value: '9101', label: WAREHOUSE_LABEL }],
-  chipNames: { warehouse: WAREHOUSE_LABEL },
   isLocked: false,
   onSearch: vi.fn<(filters: CountFilters) => void>(),
-  onRemoveFilter: vi.fn<(key: ChipFilterKey) => void>(),
   onReset: vi.fn<() => void>(),
   ...overrides,
 });
@@ -64,10 +62,10 @@ describe('CountFilterBar — 조건 줄', () => {
 
   /*
    * **C26** — 전송 중에는 조회·초기화가 잠긴다(수명 표 18행). 둘 다 고른 실사를 비우는 길이라,
-   * 열어 두면 앞 요청의 결과가 다른 조건의 맥락에 나타난다.
+   * 열어 두면 앞 요청의 결과가 다른 조건의 맥락에 나타난다. 초기화는 바뀐 것이 있을 때만 보여(C-6) 걸린 조건을 둔다.
    */
   it('전송 중에는 조회와 초기화가 잠긴다', () => {
-    renderBar({ isLocked: true });
+    renderBar({ isLocked: true, appliedFilters: { ...DEFAULT_FILTERS, inProgressOnly: true } });
 
     expect(screen.getByRole('button', { name: messages.common.search })).toBeDisabled();
     expect(screen.getByRole('button', { name: messages.common.reset })).toBeDisabled();
@@ -87,7 +85,7 @@ describe('CountFilterBar — 조건 줄', () => {
   });
 
   it('전송 중이 아니면 조회와 초기화가 열려 있다', () => {
-    renderBar();
+    renderBar({ appliedFilters: { ...DEFAULT_FILTERS, inProgressOnly: true } });
 
     expect(screen.getByRole('button', { name: messages.common.search })).not.toBeDisabled();
     expect(screen.getByRole('button', { name: messages.common.reset })).not.toBeDisabled();
@@ -119,11 +117,30 @@ describe('CountFilterBar — 조건 줄', () => {
   });
 
   it('초기화를 누르면 부모에게 알린다', async () => {
-    const { onReset, user } = renderBar();
+    const { onReset, user } = renderBar({
+      appliedFilters: { ...DEFAULT_FILTERS, warehouse: '9101' },
+    });
 
     await user.click(screen.getByRole('button', { name: messages.common.reset }));
 
     expect(onReset).toHaveBeenCalledTimes(1);
+  });
+
+  /* C-6 — 처음 조건 그대로면 「초기화」가 할 일이 없다. 칸을 고치면 그때 보이고, 누르면 고치던 값도 비운다. */
+  it('초기화는 처음 조건에서는 없고, 칸을 고치면 나타나며 누르면 고치던 값까지 비운다', async () => {
+    const { onSearch, user } = renderBar();
+
+    expect(screen.queryByRole('button', { name: messages.common.reset })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('checkbox', { name: t.fields.inProgressOnly }));
+    await user.click(screen.getByRole('button', { name: messages.common.reset }));
+
+    expect(screen.getByRole('checkbox', { name: t.fields.inProgressOnly })).not.toBeChecked();
+    expect(screen.queryByRole('button', { name: messages.common.reset })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    expect(onSearch).toHaveBeenLastCalledWith(DEFAULT_FILTERS);
   });
 
   /*
@@ -179,44 +196,15 @@ describe('CountFilterBar — 조건 줄', () => {
   });
 });
 
+/* C-6 — 조건 셋이 모두 줄에 보여 칩으로 겹쳐 적지 않는다. */
 describe('CountFilterBar — 조건 칩', () => {
-  it('적용된 조건마다 칩이 보이고 ×가 그 조건만 푼다', async () => {
-    const { onRemoveFilter, user } = renderBar({
+  it('걸린 조건이 있어도 칩을 세우지 않는다 — 칸이 값을 보인다', () => {
+    renderBar({
       appliedFilters: { ...DEFAULT_FILTERS, warehouse: '9101', inProgressOnly: true },
     });
 
-    expect(screen.getByText(t.filters.chipWarehouse(WAREHOUSE_LABEL))).toBeInTheDocument();
-    /*
-     * 확인칸 라벨과 칩 문구가 같은 글자다 — 조건이 걸리면 그 글자가 **둘**이 된다.
-     * 칩을 가리키는 유일한 이름은 제거 버튼이므로 그것으로 판정한다.
-     */
-    expect(screen.getAllByText(t.filters.chipInProgress)).toHaveLength(2);
-    expect(
-      screen.getByRole('button', { name: t.filters.chipRemoveInProgress }),
-    ).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveWarehouse }));
-
-    expect(onRemoveFilter).toHaveBeenCalledWith('warehouse');
-  });
-
-  /* **#44** — 칩에도 번호를 내지 않는다. 화면이 이름으로 풀어 넘긴다. */
-  it('칩에 내부 번호를 내지 않는다', () => {
-    const { container } = renderBar({
-      appliedFilters: { ...DEFAULT_FILTERS, warehouse: '9101' },
-    });
-
-    expect(screen.getByText(t.filters.chipWarehouse(WAREHOUSE_LABEL))).toBeInTheDocument();
-    expect(container.textContent ?? '').not.toContain('9101');
-  });
-
-  it('조건이 없으면 칩 줄이 없다', () => {
-    renderBar();
-
-    expect(
-      screen.queryByRole('button', { name: t.filters.chipRemoveInProgress }),
-    ).not.toBeInTheDocument();
-    /* 짝 방향 — 확인칸 라벨은 그대로 있다(칩만 없다는 뜻임을 밝힌다). */
-    expect(screen.getAllByText(t.filters.chipInProgress)).toHaveLength(1);
+    expect(screen.getByLabelText(t.fields.warehouse)).toHaveTextContent(WAREHOUSE_LABEL);
+    expect(screen.getByRole('checkbox', { name: t.fields.inProgressOnly })).toBeChecked();
+    expect(screen.queryByRole('button', { name: /조건 제거$/u })).not.toBeInTheDocument();
   });
 });

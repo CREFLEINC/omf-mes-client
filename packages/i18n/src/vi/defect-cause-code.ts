@@ -62,16 +62,10 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
   filters: {
     defectSearchLabel: 'Tìm mã lỗi',
     defectSearchPlaceholder: 'Nhập mã lỗi hoặc tên lỗi',
-    chipRemoveKeyword: 'Bỏ điều kiện từ khóa',
     chipRemoveIncludeInactive: 'Bỏ điều kiện gồm cả mục ngừng dùng',
-    chipKeyword: (value: string): string => `Từ khóa: ${value}`,
     disposition: 'Chọn loại xử lý',
     process: 'Tìm công đoạn',
     all: 'Tất cả',
-    chipDisposition: (value: string): string => `Loại xử lý: ${value}`,
-    chipProcess: (value: string): string => `Công đoạn: ${value}`,
-    chipRemoveDisposition: 'Bỏ điều kiện loại xử lý',
-    chipRemoveProcess: 'Bỏ điều kiện công đoạn',
   },
   fields: {
     code: 'Mã',

@@ -171,6 +171,7 @@ export const InspectionResultInsightsScreen = ({
           appliedFilters={filters}
           options={options}
           onSearch={(next) => setSearchParams((current) => withFilters(current, next))}
+          defaults={todayFilters()}
           onReset={() => setSearchParams((current) => withFilters(current, todayFilters()))}
         />
       </section>

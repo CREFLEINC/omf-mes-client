@@ -239,7 +239,9 @@ const changingListRoute = (): StubRoute => {
     respond: () => {
       call += 1;
 
-      return jsonResponse(listBody(goodsReceiptFixtures, { total: goodsReceiptFixtures.length + call }));
+      return jsonResponse(
+        listBody(goodsReceiptFixtures, { total: goodsReceiptFixtures.length + call }),
+      );
     },
   };
 };
@@ -320,7 +322,11 @@ const linesPathRoute = (): StubRoute => ({
   respond: () =>
     jsonResponse({
       items: [
-        { ...goodsReceiptLineFixtures[0], goodsReceiptLineId: 9411, receiptQty: LINES_PATH_MARKER_QTY },
+        {
+          ...goodsReceiptLineFixtures[0],
+          goodsReceiptLineId: 9411,
+          receiptQty: LINES_PATH_MARKER_QTY,
+        },
       ],
     }),
 });
@@ -686,9 +692,7 @@ const discardButton = (): HTMLElement =>
 
 /** 실제로 나간 쓰기. **경로와 method를 함께** 본다 — 한쪽만 세면 다른 경로의 쓰기를 놓친다. */
 const issueRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
-  requests.filter(
-    (request) => request.method === 'POST' && request.url.pathname === ISSUES_PATH,
-  );
+  requests.filter((request) => request.method === 'POST' && request.url.pathname === ISSUES_PATH);
 
 const chooseOption = async (
   user: ReturnType<typeof userEvent.setup>,
@@ -1052,9 +1056,7 @@ describe('SupplierReturnScreen — 수명 표', () => {
     const { user } = renderScreen(allRoutes(), '?gr=9001');
 
     await screen.findAllByText(ITEM_LABEL);
-    await user.click(
-      screen.getByRole('button', { name: t.actions.deselectRow('GR-2026-900001') }),
-    );
+    await user.click(screen.getByRole('button', { name: t.actions.deselectRow('GR-2026-900001') }));
 
     await waitFor(() => {
       expect(currentLocation()).toBe(ROUTE);
@@ -1196,7 +1198,9 @@ describe('SupplierReturnScreen — 전표를 고른 뒤', () => {
     ).toBeInTheDocument();
     /* 짝 방향 — 쓰는 창고에는 표식이 붙지 않는다(목록 칸과 선택지 둘에서 보인다). */
     expect(screen.getAllByText(WAREHOUSE_LABEL).length).toBeGreaterThan(0);
-    expect(screen.queryByText(`${WAREHOUSE_LABEL}${t.values.inactiveSuffix}`)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(`${WAREHOUSE_LABEL}${t.values.inactiveSuffix}`),
+    ).not.toBeInTheDocument();
   });
 
   /** **M14** — 보류 중인 LOT에 표식이 붙고 푸는 수단이 화면 어디에도 없다(착수 이슈 §6). */
@@ -1312,7 +1316,10 @@ describe('SupplierReturnScreen — 전표를 고른 뒤', () => {
   /** **M11 · 조용한 잘림 방지** — 잘린 목록으로 이름을 풀면 정상 값이 잘못된 값으로 보인다. */
   it('참조 목록이 잘리면 그 사실을 밝힌다', async () => {
     const { user } = renderScreen(
-      allRoutes([lotsRoute({ total: 99 }), lookupRoute(WAREHOUSES_PATH, warehouseFixtures, { total: 99 })]),
+      allRoutes([
+        lotsRoute({ total: 99 }),
+        lookupRoute(WAREHOUSES_PATH, warehouseFixtures, { total: 99 }),
+      ]),
     );
 
     await screen.findByText('GR-2026-900001');
@@ -1394,7 +1401,9 @@ describe('SupplierReturnScreen — 다시 조회', () => {
    * (W-01-07의 Major 지적).
    */
   it('목록과 상세를 함께 부른다', async () => {
-    const { requests, user } = renderScreen(allRoutes([changingListRoute(), changingDetailRoute()]));
+    const { requests, user } = renderScreen(
+      allRoutes([changingListRoute(), changingDetailRoute()]),
+    );
 
     await screen.findByText('GR-2026-900001');
     await selectReceipt(user, 'GR-2026-900001');
@@ -2035,7 +2044,11 @@ describe('SupplierReturnScreen — 줄 선택과 반품 수량', () => {
     await user.click(selectBox(2));
     await user.type(qtyBox(2), '999999');
 
-    for (const reason of [t.reasons.selectQtyInvalid, t.reasons.selectQtyMissing, t.reasons.selectNone]) {
+    for (const reason of [
+      t.reasons.selectQtyInvalid,
+      t.reasons.selectQtyMissing,
+      t.reasons.selectNone,
+    ]) {
       expect(screen.queryByText(reason)).not.toBeInTheDocument();
     }
   });
@@ -2459,7 +2472,9 @@ describe('SupplierReturnScreen — 확인 창', () => {
     expect(dialog).toHaveTextContent(DESTINATION_TYPE);
     expect(dialog).toHaveTextContent(SAMPLE_REASON);
     expect(dialog).toHaveTextContent('2026-08-06 09:12');
-    expect(within(dialog).getByText(t.dialog.businessDateDerived('2026-08-06'))).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(t.dialog.businessDateDerived('2026-08-06')),
+    ).toBeInTheDocument();
     expect(dialog).toHaveTextContent(
       t.dialog.linePair(ITEM_LABEL, 'LOT-2026-900010', t.lineTable.returnQtyPair(30, UOM_LABEL)),
     );
@@ -2649,9 +2664,7 @@ describe('SupplierReturnScreen — 실제로 보내는 것', () => {
 
     expect(body.postImmediately).toBe(true);
     expect(body.sendToErp).toBe(true);
-    expect(Object.keys(body)).toEqual(
-      expect.arrayContaining(['postImmediately', 'sendToErp']),
-    );
+    expect(Object.keys(body)).toEqual(expect.arrayContaining(['postImmediately', 'sendToErp']));
   });
 
   /* **C43·C44·C45·C46** — 계약이 요구하는 열이 전부, 고른 전표와 표의 줄에서 나온다. */
@@ -2768,7 +2781,9 @@ describe('SupplierReturnScreen — 전송 중', () => {
     expect(discardButton()).toBeDisabled();
     expect(screen.getByRole('button', { name: messages.common.search })).toBeDisabled();
     expect(screen.getByRole('button', { name: t.actions.refresh })).toBeDisabled();
-    expect(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900002') })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900002') }),
+    ).toBeDisabled();
     expect(selectBox(1)).toBeDisabled();
     expect(qtyBox(1)).toBeDisabled();
     expect(screen.getByRole('combobox', { name: t.fields.supplier })).toBeDisabled();
@@ -2788,7 +2803,8 @@ describe('SupplierReturnScreen — 전송 중', () => {
    * 맥락에** 나타난다. 첫째 겹이 닿지 않는 자리라 핸들러 가드가 홀로 막는다.
    */
   it('전송 중에는 조건 칩의 ×로도 대상이 바뀌지 않는다', async () => {
-    const { release, user } = await setupReadyToSubmit(allRoutes(), '?q=GR&gr=9001', '', [
+    /* 칩은 「조건 더보기」에 접힌 조건에만 선다(C-6) — 상태로 건다. */
+    const { release, user } = await setupReadyToSubmit(allRoutes(), '?st=SAMPLE_ST_A&gr=9001', '', [
       ISSUES_PATH,
     ]);
 
@@ -2799,14 +2815,14 @@ describe('SupplierReturnScreen — 전송 중', () => {
       expect(submitButton()).toBeDisabled();
     });
 
-    const chip = screen.getByRole('button', { name: t.filters.chipRemoveQ });
+    const chip = screen.getByRole('button', { name: t.filters.chipRemoveStatus });
 
     /* 짝 방향 — ×는 실제로 눌리는 상태다(잠겨서 아무 일이 없는 것이 아니다). */
     expect(chip).not.toBeDisabled();
 
     await user.click(chip);
 
-    expect(currentLocation()).toContain('q=GR');
+    expect(currentLocation()).toContain('st=SAMPLE_ST_A');
     expect(currentLocation()).toContain('gr=9001');
 
     release();
@@ -2973,7 +2989,9 @@ describe('SupplierReturnScreen — 처리 실패', () => {
     await fail(failingPostRoute(409, { conflictCause: 'user', message: '' }));
 
     expect(await screen.findByText(messages.conflict.user)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: messages.conflict.reloadAction })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: messages.conflict.reloadAction }),
+    ).toBeInTheDocument();
   });
 
   /*
@@ -3001,12 +3019,16 @@ describe('SupplierReturnScreen — 처리 실패', () => {
   it('성공 뒤 다시 보내 실패하면 결과가 사라지고 배너가 선다', async () => {
     let call = 0;
     const flakyRoute: StubRoute = {
-      match: (request) => request.method === 'POST' && new URL(request.url).pathname === ISSUES_PATH,
+      match: (request) =>
+        request.method === 'POST' && new URL(request.url).pathname === ISSUES_PATH,
       respond: () => {
         call += 1;
 
         return call === 1
-          ? jsonResponse({ goodsIssue: goodsIssue(), lines: goodsIssueLineFixtures }, { status: 201 })
+          ? jsonResponse(
+              { goodsIssue: goodsIssue(), lines: goodsIssueLineFixtures },
+              { status: 201 },
+            )
           : jsonResponse({ message: '' }, { status: 403 });
       },
     };
@@ -3267,9 +3289,7 @@ describe('SupplierReturnScreen — 대상이 바뀔 때 두 초안', () => {
 describe('SupplierReturnScreen — 확인 창과 요청의 줄이 같다', () => {
   /** 창에 그려진 줄 문구를 차례대로 모은다. */
   const dialogLineTexts = (): string[] =>
-    [...screen.getByRole('dialog').querySelectorAll('li')].map(
-      (item) => item.textContent ?? '',
-    );
+    [...screen.getByRole('dialog').querySelectorAll('li')].map((item) => item.textContent ?? '');
 
   /** 요청 본문의 줄을 **창과 같은 규칙으로** 문구로 옮긴다 — 둘을 견줄 유일한 방법이다. */
   const requestLineTexts = (requests: RecordedRequest[]): string[] => {
@@ -3430,9 +3450,9 @@ describe('SupplierReturnScreen — 서버 필드 오류의 자리', () => {
     });
 
     expect(screen.queryByText('합성 사유 오류')).not.toBeInTheDocument();
-    expect(
-      screen.getByRole('combobox', { name: t.fields.reason }),
-    ).not.toHaveAccessibleDescription(expect.stringContaining('합성 사유 오류'));
+    expect(screen.getByRole('combobox', { name: t.fields.reason })).not.toHaveAccessibleDescription(
+      expect.stringContaining('합성 사유 오류'),
+    );
   });
 
   /*
@@ -3467,9 +3487,7 @@ describe('SupplierReturnScreen — 서버 필드 오류의 자리', () => {
 
     /* 어느 입력칸도 이 오류를 가리키지 않는다 — 그런데도 화면에는 보인다. */
     for (const control of screen.getAllByRole('combobox')) {
-      expect(control).not.toHaveAccessibleDescription(
-        expect.stringContaining('합성 창고 오류'),
-      );
+      expect(control).not.toHaveAccessibleDescription(expect.stringContaining('합성 창고 오류'));
     }
 
     expect(screen.getByText('합성 창고 오류')).toBeInTheDocument();
@@ -3588,9 +3606,9 @@ describe('SupplierReturnScreen — 전송 중 주소가 바뀌면', () => {
     });
 
     expect(screen.queryByText('합성 사유 오류')).not.toBeInTheDocument();
-    expect(
-      screen.getByRole('combobox', { name: t.fields.reason }),
-    ).not.toHaveAccessibleDescription(expect.stringContaining('합성 사유 오류'));
+    expect(screen.getByRole('combobox', { name: t.fields.reason })).not.toHaveAccessibleDescription(
+      expect.stringContaining('합성 사유 오류'),
+    );
   });
 
   /*
@@ -3625,9 +3643,7 @@ describe('SupplierReturnScreen — 전송 중 주소가 바뀌면', () => {
    * **짝 방향** — 대상이 그대로면 결과가 선다. 늘 버리면 성공을 확인할 자리가 사라진다.
    */
   it('대상이 그대로면 늦게 도착한 결과가 선다', async () => {
-    const { release, user } = await setupReadyToSubmit(allRoutes(), '?gr=9001', '', [
-      ISSUES_PATH,
-    ]);
+    const { release, user } = await setupReadyToSubmit(allRoutes(), '?gr=9001', '', [ISSUES_PATH]);
 
     await openConfirm(user);
     await confirmSubmit(user);

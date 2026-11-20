@@ -65,11 +65,7 @@ export const productStockStatus: Translated<typeof ko.productStockStatus> = {
     lookupTruncated:
       'Chỉ hiện một phần đầu của các lựa chọn. Nếu không có giá trị cần tìm, hãy báo người phụ trách.',
     lookupFailed: 'Không tải được các lựa chọn.',
-    chipWarehouse: (value: string): string => `Kho: ${value}`,
-    chipItem: (value: string): string => `Mặt hàng: ${value}`,
     chipAvailableOnly: 'Chỉ khả dụng',
-    chipRemoveWarehouse: 'Bỏ điều kiện kho',
-    chipRemoveItem: 'Bỏ điều kiện mặt hàng',
     chipRemoveAvailableOnly: 'Bỏ điều kiện chỉ khả dụng',
   },
   pageNav: {

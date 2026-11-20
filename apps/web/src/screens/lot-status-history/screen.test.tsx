@@ -406,13 +406,13 @@ describe('Lot Status 화면 shell', () => {
     /* 조회를 누르지 않아도 목록이 바로 선다(사용자 2026-10-30) — 주소에는 아직 조건이 없다. */
     expect(await screen.findByRole('table', { name: 'LOT 현황' })).toBeVisible();
     expect(locationSearch().get('lotType')).toBeNull();
-    /* 품목 · 창고 · 위치는 접힌 상세 조건 줄이다(입하 예정 조회와 같다). */
-    const detailToggle = screen.getByRole('button', { name: '상세 검색 펼치기' });
+    /* 품목 · 창고 · 위치는 「조건 더보기」에 접힌 줄이다(입하 예정 조회와 같다 · C-6). */
+    const detailToggle = screen.getByRole('button', { name: messages.common.filterMore.open });
     expect(detailToggle).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByLabelText('창고 검색')).not.toBeVisible();
     await choose(user, 'LOT 유형', '합성 자재');
     await user.click(detailToggle);
-    expect(screen.getByRole('button', { name: '상세 검색 접기' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: messages.common.filterMore.close })).toHaveAttribute(
       'aria-expanded',
       'true',
     );
@@ -512,8 +512,10 @@ describe('Lot Status 화면 shell', () => {
     [500, 2, '처리자 목록을 불러오지 못했습니다.'],
   ])('행위자 목록 상태 %i를 필터를 감추지 않고 밝힌다', async (status, total, note) => {
     renderScreen('/quality/lot-status?mode=history', 'ready', holdRoutes(200, status, total));
-    /* 행위자는 상세 조건으로 접혀 있다(2026-11-02) — 펼치면 보인다. */
-    await userEvent.setup().click(screen.getByRole('button', { name: '상세 검색 펼치기' }));
+    /* 행위자는 「조건 더보기」에 접혀 있다(2026-11-02 · C-6) — 펼치면 보인다. */
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: messages.common.filterMore.open }));
 
     expect(await screen.findByText(note)).toBeVisible();
     expect(screen.getByLabelText('처리자')).toBeVisible();

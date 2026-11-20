@@ -1,7 +1,6 @@
 import {
   Button,
   Checkbox,
-  Chip,
   type Column,
   EmptyState,
   SearchInput,
@@ -11,13 +10,9 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { EMPTY_SCOPED_FILTERS } from './department-list-pane';
-import {
-  clearScopedFilter,
-  hasAnyScopedFilter,
-  toScopedFilterChips,
-  type ScopedFilterLabels,
-} from './filters';
+import { hasAnyScopedFilter } from './filters';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
 import { SelectField } from './select-field';
@@ -25,22 +20,12 @@ import type { ScopedFilters, SelectOption, Worker } from './types';
 
 const t = messages.commonCode;
 
-const CHIP_LABELS: ScopedFilterLabels = {
-  keyword: t.filters.chipKeyword,
-  keywordRemove: t.filters.chipRemoveKeyword,
-  scope: t.filters.chipDepartment,
-  scopeRemove: t.filters.chipRemoveDepartment,
-  includeInactiveRemove: t.filters.chipRemoveIncludeInactive,
-};
-
 export interface WorkerListPaneProps {
   workers: Worker[];
   isLoading: boolean;
   appliedFilters: ScopedFilters;
   onApplyFilters: (next: ScopedFilters) => void;
   departmentOptions: SelectOption[];
-  /** 조건 칩에 낼 부서 이름. 번호를 그대로 보이면 무엇을 걸었는지 모른다 */
-  departmentLabel: (scopeId: string) => string;
   /** 선택 목록이 잘렸거나 실패했다는 안내 슬롯 */
   optionsNotice: ReactNode;
   pageView: PageView;
@@ -66,7 +51,6 @@ export const WorkerListPane = ({
   appliedFilters,
   onApplyFilters,
   departmentOptions,
-  departmentLabel,
   optionsNotice,
   pageView,
   onChangePage,
@@ -186,7 +170,8 @@ export const WorkerListPane = ({
     );
   };
 
-  const chips = toScopedFilterChips(appliedFilters, departmentLabel, CHIP_LABELS);
+  /* 조건 칸이 모두 줄에 보여 칩을 따로 두지 않는다(C-6). 「초기화」는 바뀐 것이 있을 때만 보인다. */
+  const isChanged = hasChangedFilters(EMPTY_SCOPED_FILTERS, draft, appliedFilters);
 
   return (
     <section className="pane" aria-label={t.panes.worker}>
@@ -228,23 +213,18 @@ export const WorkerListPane = ({
 
         <div className="filter-actions field-cell-unlabeled">
           <Button onClick={() => onApplyFilters(draft)}>{messages.common.search}</Button>
-          <Button variant="outlined" onClick={() => onApplyFilters(EMPTY_SCOPED_FILTERS)}>
-            {messages.common.reset}
-          </Button>
+          {isChanged && (
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setDraft(EMPTY_SCOPED_FILTERS);
+                onApplyFilters(EMPTY_SCOPED_FILTERS);
+              }}
+            >
+              {messages.common.reset}
+            </Button>
+          )}
         </div>
-      </div>
-
-      <div className="filter-bar">
-        {chips.map((chip) => (
-          <Chip
-            key={chip.key}
-            variant="status"
-            removeLabel={chip.removeLabel}
-            onRemove={() => onApplyFilters(clearScopedFilter(appliedFilters, chip.key))}
-          >
-            {chip.label}
-          </Chip>
-        ))}
       </div>
 
       {listSlot()}

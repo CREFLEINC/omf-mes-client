@@ -16,6 +16,7 @@ const baseProps = (overrides: Partial<ProgressFilterBarProps> = {}): ProgressFil
   documentTypeOptions: [],
   statusOptions: [],
   onSearch: vi.fn(),
+  onRemoveFilter: vi.fn(),
   onReset: vi.fn(),
   ...overrides,
 });
@@ -29,20 +30,32 @@ const renderBar = (overrides: Partial<ProgressFilterBarProps> = {}) => {
 
 const periodTrigger = (): HTMLElement => screen.getByLabelText(t.fields.period);
 
+/** 「조건 더보기」를 편다 — 상태 · 지금 취소 가능한 것만을 쓰는 시험은 먼저 편다. */
+const openMore = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+};
+
 const applied = (overrides: Partial<ProgressFilters> = {}): ProgressFilters => ({
   ...DEFAULT_PROGRESS_FILTERS,
   ...overrides,
 });
 
 describe('ProgressFilterBar — 다섯 축이 선다', () => {
-  it('다섯 조건 칸이 모두 있고 라벨이 각 칸에 이어져 있다', () => {
-    renderBar();
+  /* C-6 — 보이는 칸은 문서 유형 · 문서 일자 · 문서번호 셋이고, 상태 · 지금 취소 가능한 것만은 접혀 있다. */
+  it('세 칸이 보이고 둘은 「조건 더보기」에 접혀 있다 — 라벨이 각 칸에 이어져 있다', async () => {
+    const { user } = renderBar();
 
-    expect(screen.getByLabelText(t.fields.documentType)).toBeInTheDocument();
-    expect(screen.getByLabelText(t.fields.status)).toBeInTheDocument();
-    expect(screen.getByLabelText(t.fields.period)).toBeInTheDocument();
-    expect(screen.getByRole('checkbox', { name: t.fields.cancellableOnly })).toBeInTheDocument();
-    expect(screen.getByLabelText(t.fields.q)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.fields.documentType)).toBeVisible();
+    expect(screen.getByLabelText(t.fields.period)).toBeVisible();
+    expect(screen.getByLabelText(t.fields.q)).toBeVisible();
+    expect(
+      screen.queryByRole('checkbox', { name: t.fields.cancellableOnly }),
+    ).not.toBeInTheDocument();
+
+    await openMore(user);
+
+    expect(screen.getByLabelText(t.fields.status)).toBeVisible();
+    expect(screen.getByRole('checkbox', { name: t.fields.cancellableOnly })).toBeVisible();
   });
 
   it('기간 칸이 하나뿐이다', () => {
@@ -61,8 +74,10 @@ describe('ProgressFilterBar — 다섯 축이 선다', () => {
 });
 
 describe('ProgressFilterBar — 모아서 적용', () => {
-  it('적용된 조건이 컨트롤에 서 있다', () => {
-    renderBar({ appliedFilters: applied({ q: 'SYN-GR', cancellableOnly: true }) });
+  it('적용된 조건이 컨트롤에 서 있다', async () => {
+    const { user } = renderBar({ appliedFilters: applied({ q: 'SYN-GR', cancellableOnly: true }) });
+
+    await openMore(user);
 
     expect(screen.getByLabelText(t.fields.q)).toHaveValue('SYN-GR');
     expect(screen.getByRole('checkbox', { name: t.fields.cancellableOnly })).toBeChecked();
@@ -81,6 +96,7 @@ describe('ProgressFilterBar — 모아서 적용', () => {
     const { onSearch, user } = renderBar();
 
     await user.type(screen.getByLabelText(t.fields.q), 'SYN-GR');
+    await openMore(user);
     await user.click(screen.getByRole('checkbox', { name: t.fields.cancellableOnly }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
@@ -139,14 +155,17 @@ describe('ProgressFilterBar — 취소 가능 조건', () => {
   it('켜면 켜진 채 나간다', async () => {
     const { onSearch, user } = renderBar();
 
+    await openMore(user);
     await user.click(screen.getByRole('checkbox', { name: t.fields.cancellableOnly }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     expect(onSearch).toHaveBeenCalledWith(applied({ cancellableOnly: true }));
   });
 
-  it('적용된 조건이 체크에 서 있다', () => {
-    renderBar({ appliedFilters: applied({ cancellableOnly: true }) });
+  it('적용된 조건이 체크에 서 있다', async () => {
+    const { user } = renderBar({ appliedFilters: applied({ cancellableOnly: true }) });
+
+    await openMore(user);
 
     expect(screen.getByRole('checkbox', { name: t.fields.cancellableOnly })).toBeChecked();
   });
@@ -162,6 +181,7 @@ describe('ProgressFilterBar — 초기화', () => {
 
     await user.type(screen.getByLabelText(t.fields.q), 'SYN-GR');
     await pickRange(user, periodTrigger(), '2026-08-01', '2026-08-05');
+    await openMore(user);
     await user.click(screen.getByRole('checkbox', { name: t.fields.cancellableOnly }));
     await user.click(screen.getByRole('button', { name: messages.common.reset }));
 
@@ -213,6 +233,7 @@ describe('ProgressFilterBar — 선택지', () => {
       statusOptions: [{ value: 'SYN_STATUS_A', label: '합성 상태 가' }],
     });
 
+    await openMore(user);
     await user.click(screen.getByLabelText(t.fields.status));
 
     const options = screen.getAllByRole('option');
@@ -232,16 +253,69 @@ describe('ProgressFilterBar — 선택지', () => {
 
     expect(screen.queryByText(messages.pendingCode.note)).not.toBeInTheDocument();
 
+    await openMore(user);
     await user.click(screen.getByLabelText(t.fields.status));
 
     expect(screen.getAllByRole('option')).toHaveLength(1);
   });
 
+  /* 초기화는 바뀐 것이 있을 때만 보인다(C-6) — 걸린 조건을 두고 잰다. */
   it('조회·초기화는 잠기지 않는다', () => {
-    renderBar();
+    renderBar({ appliedFilters: applied({ q: 'SYN-GR' }) });
 
     expect(screen.getByRole('button', { name: messages.common.search })).toBeEnabled();
     expect(screen.getByRole('button', { name: messages.common.reset })).toBeEnabled();
+  });
+
+  it('처음 조건에서는 초기화가 없고, 칸을 고치면 나타난다', async () => {
+    const { user } = renderBar();
+
+    expect(screen.queryByRole('button', { name: messages.common.reset })).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(t.fields.q), 'S');
+
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeEnabled();
+  });
+});
+
+describe('ProgressFilterBar — 접힌 조건 칩', () => {
+  const STATUS_OPTIONS = [{ value: 'SYN_STATUS_A', label: '합성 상태 가' }];
+
+  /* C-6 — 접힌 칸에 걸린 조건만 칩이 된다. 보이는 칸(문서번호 등)의 값은 칩으로 겹쳐 적지 않는다. */
+  it('접힌 상태 · 지금 취소 가능한 것만에 걸린 값이 이름으로 칩이 되고, ×가 그 조건만 푼다', async () => {
+    const { onRemoveFilter, user } = renderBar({
+      statusOptions: STATUS_OPTIONS,
+      appliedFilters: applied({ status: 'SYN_STATUS_A', cancellableOnly: true, q: 'SYN-GR' }),
+    });
+
+    expect(screen.getByText(t.filters.chipStatus('합성 상태 가'))).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: t.filters.chipRemoveCancellableOnly }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /조건 제거$/u })).toHaveLength(2);
+
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveStatus }));
+
+    expect(onRemoveFilter).toHaveBeenCalledWith('status');
+  });
+
+  it('펼치면 칸에 값이 보이므로 칩을 거둔다', async () => {
+    const { user } = renderBar({
+      statusOptions: STATUS_OPTIONS,
+      appliedFilters: applied({ status: 'SYN_STATUS_A' }),
+    });
+
+    await openMore(user);
+
+    expect(screen.queryByText(t.filters.chipStatus('합성 상태 가'))).not.toBeInTheDocument();
+  });
+
+  it('접힌 칸에 걸린 조건이 없으면 칩이 없다', () => {
+    renderBar({ appliedFilters: applied({ q: 'SYN-GR' }) });
+
+    /* 선행 단언 — 조건 줄이 실제로 그려져야 「칩이 없다」가 뜻을 갖는다. */
+    expect(screen.getByRole('button', { name: messages.common.search })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /조건 제거$/u })).not.toBeInTheDocument();
   });
 });
 
@@ -320,6 +394,7 @@ describe('ProgressFilterBar — 주소가 정본이다', () => {
     const { rerender } = render(<ProgressFilterBar {...props} />);
     const user = userEvent.setup();
 
+    await openMore(user);
     await user.click(screen.getByRole('checkbox', { name: t.fields.cancellableOnly }));
     expect(screen.getByRole('checkbox', { name: t.fields.cancellableOnly })).not.toBeChecked();
 

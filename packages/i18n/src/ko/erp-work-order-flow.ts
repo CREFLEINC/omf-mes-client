@@ -150,6 +150,8 @@ export const erpWorkOrderFlow = {
     duePlaceholder: '시작일 ~ 종료일',
     plant: '공장',
     allPlants: '전체',
+    /** 「조건 더보기」에 접힌 공장 조건의 칩(C-6). */
+    plantChip: (name: string): string => `공장: ${name}`,
     item: '품목',
     itemPicker: '품목 선택',
     itemCode: '품목 코드',

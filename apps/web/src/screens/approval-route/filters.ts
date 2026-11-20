@@ -1,5 +1,4 @@
 import type { paths } from '@omf-mes/api-client';
-import { messages } from '@omf-mes/i18n';
 
 import type { RouteFilters } from './types';
 
@@ -17,8 +16,6 @@ import type { RouteFilters } from './types';
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
-
-const t = messages.approvalRoute;
 
 /** 주소 키는 짧게 쓰고 계약 이름과 분리한다 — 주소는 사람이 읽고 고치는 자리다. */
 const URL_KEYS = {
@@ -91,7 +88,7 @@ export const readSelectedRouteId = (params: URLSearchParams): number | null => {
   return isIdentifier(raw) ? Number(raw) : null;
 };
 
-/** 검색어로 쓸 수 있는가. 공백만인 값은 조건이 아니다 — 주소에도 요청에도 칩에도 서지 않는다. */
+/** 검색어로 쓸 수 있는가. 공백만인 값은 조건이 아니다 — 주소에도 요청에도 실리지 않는다. */
 const keywordOf = (q: string): string => q.trim();
 
 /**
@@ -212,67 +209,3 @@ export const toRouteListQuery = (filters: RouteFilters, page: number): RouteList
     ...(page > 1 ? { page } : {}),
   };
 };
-
-export type FilterKey = keyof RouteFilters;
-
-export interface RouteFilterChip {
-  key: FilterKey;
-  label: string;
-  /** 제거 버튼의 접근 이름. 「제거」가 둘이면 어느 조건을 푸는 것인지 알 수 없다. */
-  removeLabel: string;
-}
-
-/**
- * 적용된 조건마다 칩 하나. 순서는 조건 줄의 컨트롤 순서와 같다.
- *
- * 사업부는 **번호가 아니라 이름**으로 낸다 — 번호를 그대로 보이면 사용자가 무엇을 걸었는지 모른다.
- * 이름을 만드는 쪽이 아직 목록을 받지 못했으면 그쪽이 네 갈래 중 하나를 준다.
- */
-export const toFilterChips = (
-  filters: RouteFilters,
-  businessUnitLabel: (businessUnitId: string) => string,
-): RouteFilterChip[] => {
-  const chips: RouteFilterChip[] = [];
-  const keyword = keywordOf(filters.q);
-
-  if (filters.approvalTypeCode !== '') {
-    chips.push({
-      key: 'approvalTypeCode',
-      label: t.filters.chipApprovalType(filters.approvalTypeCode),
-      removeLabel: t.filters.chipRemoveApprovalType,
-    });
-  }
-
-  if (filters.businessUnitId !== '') {
-    chips.push({
-      key: 'businessUnitId',
-      label: t.filters.chipBusinessUnit(businessUnitLabel(filters.businessUnitId)),
-      removeLabel: t.filters.chipRemoveBusinessUnit,
-    });
-  }
-
-  if (keyword !== '') {
-    chips.push({
-      key: 'q',
-      label: t.filters.chipKeyword(keyword),
-      removeLabel: t.filters.chipRemoveKeyword,
-    });
-  }
-
-  if (filters.includeInactive) {
-    chips.push({
-      key: 'includeInactive',
-      label: messages.common.includeInactive,
-      removeLabel: t.filters.chipRemoveIncludeInactive,
-    });
-  }
-
-  return chips;
-};
-
-/**
- * 조건 하나만 푼다. 칩의 제거 버튼이 쓴다.
- * 키마다 「비었다」의 표현이 달라(문자열 vs 불리언) 호출부가 그것을 알지 않도록 여기서 다룬다.
- */
-export const clearFilter = (filters: RouteFilters, key: FilterKey): RouteFilters =>
-  key === 'includeInactive' ? { ...filters, includeInactive: false } : { ...filters, [key]: '' };

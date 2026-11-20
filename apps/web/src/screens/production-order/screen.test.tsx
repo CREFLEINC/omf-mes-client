@@ -318,7 +318,16 @@ describe('작업지시 목록 작업함', () => {
   });
 
   it('조건 칩은 「전체」가 맨 앞이고 처리 순서대로 서며, 보이는 묶음 이름 없이 접근명을 갖는다(C-17)', async () => {
-    render({ orders: [REVIEW, DONE_BLOCKED, DONE_READY] });
+    render({
+      orders: [
+        REVIEW,
+        DONE_BLOCKED,
+        DONE_READY,
+        order(721, 'SYN-PO-721', null, 0, 'BEFORE_PLAN'),
+        order(722, 'SYN-PO-722', { status: 'DONE', reasons: [] }, 1, 'RELEASED'),
+        order(723, 'SYN-PO-723', null, 0, 'CANCELLED'),
+      ],
+    });
 
     const group = await screen.findByRole('group', { name: t.counts.label });
     await waitFor(() =>
@@ -339,17 +348,36 @@ describe('작업지시 목록 작업함', () => {
     expect(within(group).queryByText('생산계획 자동 전개', { exact: true })).toBeNull();
   });
 
+  it('0 건으로 센 상태 칩은 세우지 않는다 — 「전체」는 0 이어도 남는다', async () => {
+    render({ orders: [REVIEW] });
+
+    const group = await screen.findByRole('group', { name: t.counts.label });
+    await waitFor(() =>
+      expect(
+        within(group)
+          .getAllByRole('button')
+          .filter((button) => button.hasAttribute('aria-pressed'))
+          .map((chip) => chip.textContent),
+      ).toEqual([
+        expect.stringMatching(/^전체 /),
+        expect.stringMatching(new RegExp(`^${t.status.ACTION_REQUIRED} `)),
+      ]),
+    );
+  });
+
   it.each(['BEFORE_PLAN', 'RELEASED', 'CANCELLED'] as const)(
     '새 상태 %s로 전환하고 검색 조건을 건수 조회에도 유지한다',
     async (state) => {
       const user = userEvent.setup();
       const { requests } = render(
-        { orders: [REVIEW] },
+        { orders: [REVIEW, order(731, 'SYN-PO-731', null, 0, state)] },
         '/production/production-orders?q=SYN&dueFrom=2026-10-01&dueTo=2026-10-31',
       );
       const group = await screen.findByRole('group', { name: t.counts.label });
       await user.click(
-        within(group).getByRole('button', { name: new RegExp(`^${t.status[state]}(?: |$)`) }),
+        await within(group).findByRole('button', {
+          name: new RegExp(`^${t.status[state]}(?: |$)`),
+        }),
       );
       await waitFor(() =>
         expect(
@@ -735,7 +763,10 @@ describe('작업지시 목록 작업함', () => {
 
     const row = await screen.findByRole('link', { name: t.list.openRow('SYN-PO-701') });
     expect(within(row).getByText('합성 공장 나')).toHaveAttribute('title', '합성 공장 나');
+    /* 공장은 「조건 더보기」에 접혀 있다(C-6). */
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     const plant = screen.getByLabelText(t.filters.plant);
+    expect(plant).toBeVisible();
     expect(plant).toBeEnabled();
     expect(plant).toHaveTextContent(t.filters.allPlants);
 
@@ -761,9 +792,67 @@ describe('작업지시 목록 작업함', () => {
     expect(plant).toBeDisabled();
     expect(screen.queryByRole('columnheader', { name: t.list.columns.plant })).toBeNull();
     expect(screen.getByTestId('location')).not.toHaveTextContent('plant=');
+    /* 바꿀 수 없는 범위라 접힌 칸의 칩도, 「초기화」도 세우지 않는다. */
+    expect(screen.queryByText(t.filters.plantChip('합성 공장 가'))).toBeNull();
+    expect(
+      within(screen.getByRole('region', { name: t.filters.pane })).queryByRole('button', {
+        name: messages.common.reset,
+      }),
+    ).toBeNull();
     /* 목록과 칩 건수가 모두 그 공장으로 걸린다. */
     await waitFor(() => expect(listPlantIds(requests).at(-1)).toBe('8401'));
     expect(countPlantIds(requests).slice(-3)).toEqual(['8401', '8401', '8401']);
+  });
+
+  it('접힌 공장 조건만 칩이 되고, ×는 공장만 풀어 다시 조회한다 — 보이는 칸(번호)은 칩이 없다', async () => {
+    const user = userEvent.setup();
+    const { requests } = render(
+      { orders: [{ ...REVIEW, plantId: 8402 }], plants: SYN_PLANTS },
+      '/production/production-orders?q=SYN&plant=8402',
+    );
+
+    const filterPane = screen.getByRole('region', { name: t.filters.pane });
+    expect(await within(filterPane).findByText(t.filters.plantChip('합성 공장 나'))).toBeVisible();
+    /* 칩은 공장 하나뿐이다 — 보이는 칸의 번호는 칩으로 겹쳐 적지 않는다. */
+    expect(within(filterPane).getAllByRole('button', { name: /조건 제거$/ })).toHaveLength(1);
+    expect(screen.getByLabelText(t.filters.plant)).not.toBeVisible();
+
+    await user.click(
+      within(filterPane).getByRole('button', {
+        name: messages.common.filterMore.remove(t.filters.plantChip('합성 공장 나')),
+      }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        /^\/production\/production-orders\?q=SYN$/,
+      ),
+    );
+    await waitFor(() => expect(listPlantIds(requests).at(-1)).toBeNull());
+    expect(within(filterPane).queryByText(t.filters.plantChip('합성 공장 나'))).toBeNull();
+  });
+
+  it('「초기화」는 조건 줄의 칸이 처음 값과 다를 때만 보이고, 펼치면 칩을 거둔다', async () => {
+    const user = userEvent.setup();
+    render({ orders: [REVIEW], plants: SYN_PLANTS }, '/production/production-orders?plant=8402');
+
+    const filterPane = screen.getByRole('region', { name: t.filters.pane });
+    /* 걸린 공장이 있으니 처음 값과 다르다. */
+    expect(within(filterPane).getByRole('button', { name: messages.common.reset })).toBeVisible();
+    await user.click(
+      within(filterPane).getByRole('button', { name: messages.common.filterMore.open }),
+    );
+    expect(within(filterPane).queryByText(t.filters.plantChip('합성 공장 나'))).toBeNull();
+    expect(screen.getByLabelText(t.filters.plant)).toBeVisible();
+    await user.click(within(filterPane).getByRole('button', { name: messages.common.reset }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent(/^\/production\/production-orders$/),
+    );
+    expect(within(filterPane).queryByRole('button', { name: messages.common.reset })).toBeNull();
+
+    await user.type(within(filterPane).getByLabelText(t.filters.q), 'S');
+    expect(within(filterPane).getByRole('button', { name: messages.common.reset })).toBeVisible();
   });
 
   it('일괄 배포 중에 다른 화면으로 갔다 돌아와도 결과가 남는다', async () => {

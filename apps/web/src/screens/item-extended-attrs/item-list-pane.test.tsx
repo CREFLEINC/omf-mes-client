@@ -167,6 +167,19 @@ describe('ItemListPane — 조회 조건', () => {
     expect(onApplyFilters).toHaveBeenCalledWith(EMPTY_ITEM_FILTERS);
   });
 
+  /* C-6 — 초기화는 편집 중인 값이나 걸린 조건이 처음 값과 다를 때만 보인다. */
+  it('초기화는 바뀐 것이 있을 때만 보이고, 누르면 치던 검색어도 비운다', async () => {
+    const { user } = renderPane();
+
+    expect(screen.queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('품목코드·품목명'), 'SYN');
+    await user.click(screen.getByRole('button', { name: '초기화' }));
+
+    expect(screen.getByLabelText('품목코드·품목명')).toHaveValue('');
+    expect(screen.queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
+  });
+
   /* 선택지 이름은 코드 그룹이 준다. 목록 밖 코드가 주소에 실려 와도 사라지지 않는다. */
   it('품목 유형 선택지를 코드 그룹 이름으로 낸다', () => {
     renderPane({

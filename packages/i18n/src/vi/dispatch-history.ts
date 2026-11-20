@@ -16,6 +16,7 @@ export const dispatchHistory: Translated<typeof ko.dispatchHistory> = {
     deliveryStatus: 'Trạng thái',
     all: 'Tất cả',
     search: 'Tra cứu',
+    chipDepartment: (name: string): string => `Phòng ban: ${name}`,
     eventGroup: 'Sự kiện',
     handoverGroup: 'Công việc bàn giao',
   },

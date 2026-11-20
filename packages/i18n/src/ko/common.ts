@@ -29,6 +29,13 @@ export const common = {
   created: '등록했습니다',
   retry: '다시 시도',
   includeInactive: '미사용 포함',
+  /** 조회 조건 줄의 「조건 더보기」(C-6) — 자주 쓰는 세 칸 밖의 조건을 접어 둔다(`patterns/filter-more.tsx`). */
+  filterMore: {
+    open: '조건 더보기',
+    close: '조건 접기',
+    /** 접힌 칸에 걸린 조건 칩의 × 접근명. */
+    remove: (label: string): string => `${label} 조건 제거`,
+  },
   discardChangesConfirm: '입력한 내용이 저장되지 않았습니다. 변경을 파기할까요?',
   /*
    * 화면 뼈대의 이름들. 디자인 시스템이 기본값을 한국어로 들고 있어, 넘겨주지 않으면 다른
@@ -48,6 +55,8 @@ export const common = {
     mainMenu: '주 메뉴',
     /** 표제 위 경로의 접근명. 관리웹에만 선다. */
     breadcrumb: '탐색 경로',
+    /** 탭 막대 끝 「⋯」 단추의 접근명 — 그 화면에서 드물게 쓰는 기능(배치 바꾸기 등)을 모은 자리. */
+    moreActions: '더보기',
     /** 모바일 앱바의 홈 단추 이름. 작업 화면에서 작업 목록으로 돌아간다. */
     home: '작업 목록',
     /** 모바일 앱바의 뒤로 단추 이름. 화면 안에서 지나온 단계로 하나 돌아간다. */
@@ -95,12 +104,6 @@ export const common = {
     filterOn: (label: string): string => `${label} 의뢰만 보기`,
     filterOff: (label: string): string => `${label} 거르기 해제`,
     pendingOnly: '대기·진행만 보기', // ui-check-ignore: C-13 사용자 지시 문구(2026-10-26 · #185)
-    /** 조회 조건(품목 · 작업지시 · 의뢰번호 등) 접기 — IQC · PQC · OQC 탭 공통(사용자 지시 2026-11-02 · #225). */
-    detailFilters: {
-      open: '상세 조건 펼치기',
-      close: '상세 조건 접기',
-      hiddenApplied: '상세 조건이 걸려 있습니다',
-    },
     pickRequest: '검사 의뢰를 선택하세요.',
     pickRequestHint: '선택한 의뢰의 상세 정보가 표시됩니다.',
     close: '닫기',

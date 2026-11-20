@@ -197,13 +197,22 @@ describe('ItemBomScreen — 모품목 목록', () => {
   it('BOM 있는 품목만을 끄면 그 조건을 싣지 않는다', async () => {
     const { requests, user } = renderScreen();
 
-    await user.click(await screen.findByRole('checkbox', { name: 'BOM 있는 품목만' }));
+    const hasBom = await screen.findByRole('checkbox', { name: 'BOM 있는 품목만' });
+    // 초기화는 바뀐 것이 있을 때만 보인다.
+    expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
+    await user.click(hasBom);
 
     await waitFor(() => {
       expect(probeSearch).toBe('?bom=all');
     });
     const last = requests.filter((request) => request.url.pathname === ITEMS_PATH).at(-1)!;
     expect(last.url.searchParams.has('hasBom')).toBe(false);
+
+    await user.click(screen.getByRole('button', { name: '초기화' }));
+    await waitFor(() => {
+      expect(probeSearch).toBe('');
+    });
+    expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
   });
 
   it('줄을 고르면 주소에 남고 기본 BOM 을 연다', async () => {

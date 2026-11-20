@@ -2,7 +2,6 @@ import {
   AlertBanner,
   Button,
   Checkbox,
-  Chip,
   type Column,
   EmptyState,
   SearchInput,
@@ -13,12 +12,8 @@ import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
 import { ORPHAN_GROUP_KEY, groupKeyOf, hasDeepHierarchy } from './department-hierarchy';
-import {
-  clearScopedFilter,
-  hasAnyScopedFilter,
-  toScopedFilterChips,
-  type ScopedFilterLabels,
-} from './filters';
+import { hasChangedFilters } from '../../patterns/filter-more';
+import { hasAnyScopedFilter } from './filters';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
 import { SelectField } from './select-field';
@@ -28,14 +23,6 @@ const t = messages.commonCode;
 
 /** 화면을 처음 열었을 때의 조회 조건. 「초기화」가 돌아가는 자리이기도 하다. */
 export const EMPTY_SCOPED_FILTERS: ScopedFilters = { q: '', scopeId: '', includeInactive: false };
-
-const CHIP_LABELS: ScopedFilterLabels = {
-  keyword: t.filters.chipKeyword,
-  keywordRemove: t.filters.chipRemoveKeyword,
-  scope: t.filters.chipBusinessUnit,
-  scopeRemove: t.filters.chipRemoveBusinessUnit,
-  includeInactiveRemove: t.filters.chipRemoveIncludeInactive,
-};
 
 export interface DepartmentListPaneProps {
   /** 표시 순서로 **이미 정렬된** 행. 디자인 시스템 `Table`의 그룹 순서가 이 배열 순서로 정해진다 */
@@ -48,8 +35,6 @@ export interface DepartmentListPaneProps {
   /** 조회 버튼·Enter·칩 제거·초기화가 호출한다. 쪽은 늘 1로 돌아간다 */
   onApplyFilters: (next: ScopedFilters) => void;
   businessUnitOptions: SelectOption[];
-  /** 조건 칩에 낼 사업부 이름. 번호를 그대로 보이면 무엇을 걸었는지 모른다 */
-  businessUnitLabel: (scopeId: string) => string;
   /** 선택 목록이 잘렸거나 실패했다는 안내 슬롯 */
   optionsNotice: ReactNode;
   pageView: PageView;
@@ -82,7 +67,6 @@ export const DepartmentListPane = ({
   appliedFilters,
   onApplyFilters,
   businessUnitOptions,
-  businessUnitLabel,
   optionsNotice,
   pageView,
   onChangePage,
@@ -227,7 +211,8 @@ export const DepartmentListPane = ({
     );
   };
 
-  const chips = toScopedFilterChips(appliedFilters, businessUnitLabel, CHIP_LABELS);
+  /* 조건 칸이 모두 줄에 보여 칩을 따로 두지 않는다(C-6). 「초기화」는 바뀐 것이 있을 때만 보인다. */
+  const isChanged = hasChangedFilters(EMPTY_SCOPED_FILTERS, draft, appliedFilters);
 
   return (
     <section className="pane" aria-label={t.panes.department}>
@@ -285,23 +270,18 @@ export const DepartmentListPane = ({
          */}
         <div className="filter-actions field-cell-unlabeled">
           <Button onClick={() => onApplyFilters(draft)}>{messages.common.search}</Button>
-          <Button variant="outlined" onClick={() => onApplyFilters(EMPTY_SCOPED_FILTERS)}>
-            {messages.common.reset}
-          </Button>
+          {isChanged && (
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setDraft(EMPTY_SCOPED_FILTERS);
+                onApplyFilters(EMPTY_SCOPED_FILTERS);
+              }}
+            >
+              {messages.common.reset}
+            </Button>
+          )}
         </div>
-      </div>
-
-      <div className="filter-bar">
-        {chips.map((chip) => (
-          <Chip
-            key={chip.key}
-            variant="status"
-            removeLabel={chip.removeLabel}
-            onRemove={() => onApplyFilters(clearScopedFilter(appliedFilters, chip.key))}
-          >
-            {chip.label}
-          </Chip>
-        ))}
       </div>
 
       {listSlot()}

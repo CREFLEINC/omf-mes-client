@@ -560,7 +560,8 @@ describe('W-05-07 — 조회 조건의 두 축', () => {
     expect(box).toHaveValue('');
   });
 
-  it('칩으로 검색어를 거둬도 고른 공장은 남는다', async () => {
+  /* 조건 둘이 모두 조회 줄에 보인다 — 보이는 칸은 칩으로 겹쳐 적지 않는다(C-6). */
+  it('조회한 조건은 칸이 말하고 칩을 세우지 않는다', async () => {
     const user = userEvent.setup();
 
     renderScreen();
@@ -573,34 +574,22 @@ describe('W-05-07 — 조회 조건의 두 축', () => {
     await user.click(await screen.findByRole('option', { name: '가상 1공장' }));
     await user.click(pane.getByRole('button', { name: messages.common.search }));
 
-    await screen.findByText(t.equipment.chipKeyword('성형'));
-
-    await user.click(screen.getByRole('button', { name: t.equipment.chipRemoveKeyword }));
-
-    expect(screen.getByText(t.equipment.chipPlant('가상 1공장'))).toBeInTheDocument();
-    expect(screen.queryByText(t.equipment.chipKeyword('성형'))).not.toBeInTheDocument();
+    expect(pane.getByRole('combobox', { name: t.fields.plant })).toHaveTextContent('가상 1공장');
+    expect(pane.queryByRole('button', { name: /조건 제거$/ })).toBeNull();
   });
 
-  /**
-   * ⭐ **밖에서 거둔 조건은 입력칸에서도 사라져야 한다.** 칩만 사라지고 칸에 낱말이 남으면
-   * 다음에 「조회」를 누르는 순간 **거둔 줄 알았던 조건이 되살아난다.**
-   */
-  it('칩으로 검색어를 거두면 입력칸도 함께 비워진다', async () => {
+  it('초기화는 처음 값과 달라진 것이 있을 때만 보인다', async () => {
     const user = userEvent.setup();
 
     renderScreen();
     await screen.findByText('EQ-101');
 
     const pane = within(equipmentPane());
-    const box = pane.getByRole('searchbox', { name: t.equipment.searchLabel });
+    expect(pane.queryByRole('button', { name: messages.common.reset })).toBeNull();
 
-    await user.type(box, '성형');
-    await user.click(pane.getByRole('button', { name: messages.common.search }));
-    await screen.findByText(t.equipment.chipKeyword('성형'));
+    await user.type(pane.getByRole('searchbox', { name: t.equipment.searchLabel }), '성');
 
-    await user.click(screen.getByRole('button', { name: t.equipment.chipRemoveKeyword }));
-
-    expect(box).toHaveValue('');
+    expect(pane.getByRole('button', { name: messages.common.reset })).toBeVisible();
   });
 });
 

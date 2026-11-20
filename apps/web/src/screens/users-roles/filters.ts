@@ -1,5 +1,3 @@
-import { messages } from '@omf-mes/i18n';
-
 import type { RoleFilters, UserFilters } from './types';
 
 /**
@@ -19,8 +17,6 @@ import type { RoleFilters, UserFilters } from './types';
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
-
-const t = messages.usersRoles;
 
 /** 주소 키는 짧게 쓰고 계약 이름과 분리한다 — 주소는 사람이 읽고 고치는 자리다. */
 const URL_KEYS = {
@@ -198,73 +194,11 @@ export const toUserListQuery = (filters: UserFilters, page: number): UserListQue
   ...(page > 1 ? { page } : {}),
 });
 
-export interface UserFilterChip {
-  key: keyof UserFilters;
-  label: string;
-  /** 제거 버튼의 접근 이름. 「제거」가 둘이면 어느 조건을 푸는 것인지 알 수 없다. */
-  removeLabel: string;
-}
-
-/**
- * 적용된 조건마다 칩 하나. 순서는 조건 줄의 컨트롤 순서와 같다.
- *
- * 부서는 **번호가 아니라 이름**으로 낸다 — 번호를 그대로 보이면 사용자가 무엇을 걸었는지 모른다.
- * 선택 목록을 아직 받지 못했으면 이름을 만드는 쪽이 「알 수 없음」을 준다.
- */
-export const toUserFilterChips = (
-  filters: UserFilters,
-  departmentLabel: (departmentId: string) => string,
-  statusLabel: (statusCode: string) => string,
-): UserFilterChip[] => {
-  const chips: UserFilterChip[] = [];
-
-  if (filters.q !== '') {
-    chips.push({
-      key: 'q',
-      label: t.filters.chipKeyword(filters.q),
-      removeLabel: t.filters.chipRemoveKeyword,
-    });
-  }
-
-  if (filters.departmentId !== '') {
-    chips.push({
-      key: 'departmentId',
-      label: t.filters.chipDepartment(departmentLabel(filters.departmentId)),
-      removeLabel: t.filters.chipRemoveDepartment,
-    });
-  }
-
-  if (filters.statusCode !== '') {
-    chips.push({
-      key: 'statusCode',
-      label: t.filters.chipStatus(statusLabel(filters.statusCode)),
-      removeLabel: t.filters.chipRemoveStatus,
-    });
-  }
-
-  if (filters.includeInactive) {
-    chips.push({
-      key: 'includeInactive',
-      label: messages.common.includeInactive,
-      removeLabel: t.filters.chipRemoveIncludeInactive,
-    });
-  }
-
-  return chips;
-};
-
 export const hasAnyUserFilter = (filters: UserFilters): boolean =>
   filters.q !== '' ||
   filters.departmentId !== '' ||
   filters.statusCode !== '' ||
   filters.includeInactive;
-
-/**
- * 조건 하나만 푼다. 칩의 제거 버튼이 쓴다.
- * 키마다 「비었다」의 표현이 달라(문자열 vs 불리언) 호출부가 그것을 알지 않도록 여기서 다룬다.
- */
-export const clearUserFilter = (filters: UserFilters, key: keyof UserFilters): UserFilters =>
-  key === 'includeInactive' ? { ...filters, includeInactive: false } : { ...filters, [key]: '' };
 
 /* ── 역할 목록의 조회 조건 ───────────────────────────────────────────────────
  *
@@ -314,38 +248,5 @@ export const toRoleListQuery = (filters: RoleFilters, page: number): RoleListQue
   ...(page > 1 ? { page } : {}),
 });
 
-export interface RoleFilterChip {
-  key: keyof RoleFilters;
-  label: string;
-  /** 제거 버튼의 접근 이름. 「제거」가 둘이면 어느 조건을 푸는 것인지 알 수 없다. */
-  removeLabel: string;
-}
-
-/** 적용된 조건마다 칩 하나. 순서는 조건 줄의 컨트롤 순서와 같다. */
-export const toRoleFilterChips = (filters: RoleFilters): RoleFilterChip[] => {
-  const chips: RoleFilterChip[] = [];
-
-  if (filters.q !== '') {
-    chips.push({
-      key: 'q',
-      label: t.filters.chipKeyword(filters.q),
-      removeLabel: t.filters.chipRemoveKeyword,
-    });
-  }
-
-  if (filters.includeInactive) {
-    chips.push({
-      key: 'includeInactive',
-      label: messages.common.includeInactive,
-      removeLabel: t.filters.chipRemoveIncludeInactive,
-    });
-  }
-
-  return chips;
-};
-
 export const hasAnyRoleFilter = (filters: RoleFilters): boolean =>
   filters.q !== '' || filters.includeInactive;
-
-export const clearRoleFilter = (filters: RoleFilters, key: keyof RoleFilters): RoleFilters =>
-  key === 'includeInactive' ? { ...filters, includeInactive: false } : { ...filters, [key]: '' };

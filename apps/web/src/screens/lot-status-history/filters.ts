@@ -154,6 +154,10 @@ export const readHistoryFilters = (params: URLSearchParams): HistoryFilters => (
   lot: params.get(URL_KEYS.historyLot) ?? '',
 });
 
+/** 처음 연 이력 조건 — 주소에 아무것도 없을 때와 같다(기간은 오늘 · 오늘). 초기화가 되돌리는 값이다(C-6). */
+export const initialHistoryFilters = (): HistoryFilters =>
+  readHistoryFilters(new URLSearchParams());
+
 export const readLotPage = (params: URLSearchParams): number =>
   readPositiveInteger(params.get(URL_KEYS.lotPage)) ?? FIRST_PAGE;
 

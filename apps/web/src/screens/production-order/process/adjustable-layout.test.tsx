@@ -18,6 +18,7 @@ describe('작업계획 배치와 영역 크기', () => {
     const view = render(<Workspace />);
     await user.clear(screen.getByRole('textbox', { name: '생산량' }));
     await user.type(screen.getByRole('textbox', { name: '생산량' }), '250');
+    await user.click(screen.getByRole('button', { name: '계획·편집 배치' }));
     await user.click(screen.getByRole('button', { name: '좌우 배치' }));
     expect(screen.getByRole('textbox', { name: '생산량' })).toHaveValue('250');
     expect(localStorage.getItem(key)).toBe('side');
@@ -26,6 +27,7 @@ describe('작업계획 배치와 영역 크기', () => {
     expect(Number(localStorage.getItem(`${key}:ratio`))).toBeGreaterThan(0.5);
     view.unmount();
     render(<Workspace />);
+    await user.click(screen.getByRole('button', { name: '계획·편집 배치' }));
     expect(screen.getByRole('button', { name: '좌우 배치' })).toHaveAttribute(
       'aria-pressed',
       'true',

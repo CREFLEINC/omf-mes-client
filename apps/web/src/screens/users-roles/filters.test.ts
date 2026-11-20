@@ -2,8 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   applySelection,
-  clearRoleFilter,
-  clearUserFilter,
   hasAnyRoleFilter,
   hasAnyUserFilter,
   isCreating,
@@ -11,10 +9,8 @@ import {
   readRoleFilters,
   readSelectedId,
   readUserFilters,
-  toRoleFilterChips,
   toRoleListQuery,
   toRoleSearchParams,
-  toUserFilterChips,
   toUserListQuery,
   toUserSearchParams,
 } from './filters';
@@ -182,55 +178,6 @@ describe('toUserListQuery', () => {
   });
 });
 
-describe('toUserFilterChips', () => {
-  it('조건이 없으면 칩도 없다', () => {
-    expect(
-      toUserFilterChips(
-        EMPTY,
-        () => '합성 부서 A',
-        () => '재직',
-      ),
-    ).toEqual([]);
-  });
-
-  it('조건마다 칩 하나이고 순서는 조건 줄의 컨트롤 순서와 같다', () => {
-    const chips = toUserFilterChips(
-      { q: 'SYN-LOGIN', departmentId: '3001', statusCode: 'EMPLOYED', includeInactive: true },
-      () => '합성 부서 A',
-      () => '재직',
-    );
-
-    expect(chips.map((chip) => chip.key)).toEqual([
-      'q',
-      'departmentId',
-      'statusCode',
-      'includeInactive',
-    ]);
-  });
-
-  it('부서 칩은 번호가 아니라 이름을 낸다 — 번호를 보이면 무엇을 걸었는지 모른다', () => {
-    const chips = toUserFilterChips(
-      { ...EMPTY, departmentId: '3001' },
-      () => '합성 부서 A',
-      () => '재직',
-    );
-
-    expect(chips[0]?.label).toContain('합성 부서 A');
-    expect(chips[0]?.label).not.toContain('3001');
-  });
-
-  it('칩마다 제거 버튼의 접근 이름이 서로 다르다', () => {
-    const chips = toUserFilterChips(
-      { q: 'SYN-LOGIN', departmentId: '3001', statusCode: 'EMPLOYED', includeInactive: true },
-      () => '합성 부서 A',
-      () => '재직',
-    );
-    const labels = chips.map((chip) => chip.removeLabel);
-
-    expect(new Set(labels).size).toBe(labels.length);
-  });
-});
-
 describe('hasAnyUserFilter', () => {
   it('조건이 하나라도 걸리면 참이다', () => {
     expect(hasAnyUserFilter(EMPTY)).toBe(false);
@@ -238,28 +185,6 @@ describe('hasAnyUserFilter', () => {
     expect(hasAnyUserFilter({ ...EMPTY, departmentId: '3001' })).toBe(true);
     expect(hasAnyUserFilter({ ...EMPTY, statusCode: 'EMPLOYED' })).toBe(true);
     expect(hasAnyUserFilter({ ...EMPTY, includeInactive: true })).toBe(true);
-  });
-});
-
-describe('clearUserFilter', () => {
-  const all: UserFilters = {
-    q: 'SYN-LOGIN',
-    departmentId: '3001',
-    statusCode: 'EMPLOYED',
-    includeInactive: true,
-  };
-
-  it('고른 조건 하나만 푼다', () => {
-    expect(clearUserFilter(all, 'q')).toEqual({ ...all, q: '' });
-    expect(clearUserFilter(all, 'departmentId')).toEqual({ ...all, departmentId: '' });
-    expect(clearUserFilter(all, 'statusCode')).toEqual({ ...all, statusCode: '' });
-    expect(clearUserFilter(all, 'includeInactive')).toEqual({ ...all, includeInactive: false });
-  });
-
-  it('원본을 바꾸지 않는다', () => {
-    clearUserFilter(all, 'q');
-
-    expect(all.q).toBe('SYN-LOGIN');
   });
 });
 
@@ -356,39 +281,11 @@ describe('toRoleListQuery', () => {
   });
 });
 
-describe('toRoleFilterChips', () => {
-  it('조건이 없으면 칩도 없다', () => {
-    expect(toRoleFilterChips(EMPTY_ROLE)).toEqual([]);
-  });
-
-  it('조건마다 칩 하나이고 순서는 조건 줄의 컨트롤 순서와 같다', () => {
-    expect(
-      toRoleFilterChips({ q: 'SYN-ROLE', includeInactive: true }).map((chip) => chip.key),
-    ).toEqual(['q', 'includeInactive']);
-  });
-
-  it('칩마다 제거 버튼의 접근 이름이 서로 다르다', () => {
-    const labels = toRoleFilterChips({ q: 'SYN-ROLE', includeInactive: true }).map(
-      (chip) => chip.removeLabel,
-    );
-
-    expect(new Set(labels).size).toBe(labels.length);
-  });
-});
-
-describe('hasAnyRoleFilter · clearRoleFilter', () => {
+describe('hasAnyRoleFilter', () => {
   it('조건이 하나라도 걸리면 참이다', () => {
     expect(hasAnyRoleFilter(EMPTY_ROLE)).toBe(false);
     expect(hasAnyRoleFilter({ ...EMPTY_ROLE, q: 'SYN-ROLE' })).toBe(true);
     expect(hasAnyRoleFilter({ ...EMPTY_ROLE, includeInactive: true })).toBe(true);
-  });
-
-  it('고른 조건 하나만 푼다', () => {
-    const all: RoleFilters = { q: 'SYN-ROLE', includeInactive: true };
-
-    expect(clearRoleFilter(all, 'q')).toEqual({ ...all, q: '' });
-    expect(clearRoleFilter(all, 'includeInactive')).toEqual({ ...all, includeInactive: false });
-    expect(all.q).toBe('SYN-ROLE');
   });
 });
 

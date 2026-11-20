@@ -2,6 +2,7 @@ import { Button, DatePicker, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { isUsable, type SearchFilters } from './filters';
 import type { CodeOptionSource } from './lookups';
 import { SelectField } from './select-field';
@@ -10,6 +11,8 @@ const t = messages.returnReceipt;
 
 export interface SearchPaneProps {
   applied: SearchFilters;
+  /** 처음 값(최근 한 달) — 「초기화」가 되돌리는 값이고, 이 값과 다를 때만 「초기화」가 보인다. */
+  defaults: SearchFilters;
   customers: CodeOptionSource;
   isDirect: boolean;
   onApply: (filters: SearchFilters) => void;
@@ -29,9 +32,12 @@ const optionNote = (source: CodeOptionSource): string | undefined => {
 /**
  * ① 원 출하 찾기의 조건 — 고객 · 출하일 기간 · 검색어. **기간은 비울 수 없다**(L-3).
  * 조건은 주소가 정본이라 여기서는 초안만 들고 「조회」때 올린다.
+ *
+ * 보이는 조건은 셋이라 「조건 더보기」가 없다(C-6). 「초기화」는 바뀐 것이 있을 때만 보인다.
  */
 export const SearchPane = ({
   applied,
+  defaults,
   customers,
   isDirect,
   onApply,
@@ -46,6 +52,15 @@ export const SearchPane = ({
   useEffect(() => {
     setDraft({ customerId, from, to, q });
   }, [customerId, from, to, q]);
+
+  /*
+   * 초기화. **편집 중인 값도 함께 되돌린다** — 조회한 값이 이미 처음 값이면 주소가 바뀌지 않아
+   * 되돌림 effect 가 깨어나지 않고, 치던 값이 그대로 남는다.
+   */
+  const reset = (): void => {
+    setDraft(defaults);
+    onReset();
+  };
 
   return (
     <>
@@ -94,9 +109,11 @@ export const SearchPane = ({
             <Button disabled={!isUsable(draft)} onClick={() => onApply(draft)}>
               {t.actions.search}
             </Button>
-            <Button variant="outlined" onClick={onReset}>
-              {t.actions.reset}
-            </Button>
+            {hasChangedFilters(defaults, draft, applied) && (
+              <Button variant="outlined" onClick={reset}>
+                {t.actions.reset}
+              </Button>
+            )}
           </div>
         </div>
       </div>

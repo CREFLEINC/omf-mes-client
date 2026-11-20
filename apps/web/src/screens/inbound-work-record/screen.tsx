@@ -4,6 +4,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  useFilterMore,
+  type HiddenFilterChip,
+} from '../../patterns/filter-more';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { plantToday, toPlantDateTimeParts } from '../../patterns/plant-time';
 import { Select } from '../../patterns/select';
@@ -36,10 +42,15 @@ const viewName = (view: View): string => t.views[view];
  *
  * ⛔ 시안의 「ERP 송신 상태」(보냄 · 반영 대기 / ERP 반영) 표시와 [ERP 반영] 흉내는 만들지 않는다 — #265.
  * 주소: 공장(`plant`) · 입하일(`from` · `to`) · 공급사(`supplier`) · 찾기(`q`) · 보기(`view`) · 연 입하 LOT(`open`).
+ *
+ * 조건은 바꾸는 즉시 적용한다(조회 · 초기화 단추가 없다). **보이는 칸은 셋이다**(C-6 · 관리웹 정리 시안 A, 2026-11-20) —
+ * 입하일 · 공급사 · 품목·입하 LOT. 공장은 둘 이상일 때만 고를 수 있어 「조건 더보기」에 접고, 첫 공장이 아닌 공장을 골랐으면
+ * 접혀 있는 동안 칩으로 알린다(×는 첫 공장으로 돌린다).
  */
 export const InboundWorkRecordScreen = () => {
   const toast = useToast();
   const queryClient = useQueryClient();
+  const more = useFilterMore();
   const [searchParams, setSearchParams] = useSearchParams();
   const today = plantToday();
   const plantParam = searchParams.get('plant') ?? '';
@@ -118,48 +129,82 @@ export const InboundWorkRecordScreen = () => {
       ?.finalizeBlockers;
   };
 
+  /* 공장을 바꾸면 공급사 · 연 입하 LOT 을 걷는다 — 다른 공장의 것이 조건에 남지 않게. */
+  const changePlant = (value: string | null): void => {
+    update({ plant: value, supplier: null, open: null });
+  };
+  const hasPlantChoice = (plants.data?.length ?? 0) > 1;
+  const firstPlantId = plants.data?.[0]?.plantId ?? null;
+  const hiddenChips: HiddenFilterChip<'plant'>[] =
+    plant !== null && plant.plantId !== firstPlantId
+      ? [
+          {
+            key: 'plant',
+            label: t.filters.chipPlant(plant.plantName),
+            removeLabel: t.filters.chipRemovePlant,
+          },
+        ]
+      : [];
+
   const filters = (
-    <section className="filter-bar iwr-filters" aria-label={t.filters.label}>
-      {(plants.data?.length ?? 0) > 1 && (
+    <section className="iwr-filters" aria-label={t.filters.label}>
+      <div className="iwr-filter-row">
+        <DatePicker
+          mode="range"
+          aria-label={t.filters.period}
+          value={[from, to]}
+          onChange={([nextFrom, nextTo]) => update({ from: nextFrom, to: nextTo, open: null })}
+        />
         <Select
-          aria-label={t.filters.plant}
-          value={plantId === null ? null : String(plantId)}
-          options={(plants.data ?? []).map((row) => ({
-            value: String(row.plantId),
-            label: row.plantName,
-          }))}
-          onChange={(value) => update({ plant: value, supplier: null, open: null })}
+          aria-label={t.filters.supplier}
+          value={supplierParam}
+          options={[
+            { value: '', label: t.filters.supplierAll },
+            ...suppliers.map((lot) => ({
+              value: String(lot.supplierId),
+              label: `${lot.supplierName} ${lot.supplierCode}`,
+            })),
+          ]}
+          onChange={(value) => update({ supplier: value })}
         />
-      )}
-      <DatePicker
-        mode="range"
-        aria-label={t.filters.period}
-        value={[from, to]}
-        onChange={([nextFrom, nextTo]) => update({ from: nextFrom, to: nextTo, open: null })}
-      />
-      <Select
-        aria-label={t.filters.supplier}
-        value={supplierParam}
-        options={[
-          { value: '', label: t.filters.supplierAll },
-          ...suppliers.map((lot) => ({
-            value: String(lot.supplierId),
-            label: `${lot.supplierName} ${lot.supplierCode}`,
-          })),
-        ]}
-        onChange={(value) => update({ supplier: value })}
-      />
-      {/* 베트남어 placeholder 가 잘리지 않는 폭(G2 L7). */}
-      <div className="iwr-query">
-        <TextField
-          fullWidth
-          aria-label={t.filters.query}
-          placeholder={t.filters.queryPlaceholder}
-          type="search"
-          value={query}
-          onChange={(event) => update({ q: event.target.value })}
-        />
+        {/* 베트남어 placeholder 가 잘리지 않는 폭(G2 L7). */}
+        <div className="iwr-query">
+          <TextField
+            fullWidth
+            aria-label={t.filters.query}
+            placeholder={t.filters.queryPlaceholder}
+            type="search"
+            value={query}
+            onChange={(event) => update({ q: event.target.value })}
+          />
+        </div>
+        {hasPlantChoice && (
+          <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
+        )}
       </div>
+      {/* `hidden` 은 감싸는 상자에 둔다 — 줄의 display 가 속성을 덮는다. */}
+      {hasPlantChoice && (
+        <div id={more.id} hidden={!more.isOpen}>
+          <div className="iwr-filter-row">
+            <Select
+              aria-label={t.filters.plant}
+              value={plantId === null ? null : String(plantId)}
+              options={(plants.data ?? []).map((row) => ({
+                value: String(row.plantId),
+                label: row.plantName,
+              }))}
+              onChange={changePlant}
+            />
+          </div>
+        </div>
+      )}
+      <HiddenFilterChips
+        open={more.isOpen}
+        chips={hiddenChips}
+        onRemove={() => {
+          changePlant(null);
+        }}
+      />
     </section>
   );
 

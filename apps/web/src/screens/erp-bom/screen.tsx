@@ -8,6 +8,7 @@ import { BoardFrame } from '../../patterns/board-frame';
 import { BoardTable } from '../../patterns/board-table';
 import { pickBom, useBomTree, type BomTreeRoot, type BomTreeRow } from '../../patterns/bom-tree';
 import { BomTreeCell } from '../../patterns/bom-tree-cell';
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { OneLine } from '../../patterns/po-board';
 import { Select } from '../../patterns/select';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
@@ -50,6 +51,9 @@ interface Filters {
   hasBom: boolean;
 }
 
+/** 화면을 처음 열었을 때의 조건. 「초기화」가 돌아가는 자리이기도 하다. */
+const DEFAULT_FILTERS: Filters = { q: '', type: DEFAULT_PARENT_TYPE, hasBom: true };
+
 const readId = (value: string | null): number | null => {
   const id = Number(value ?? '');
   return Number.isInteger(id) && id > 0 ? id : null;
@@ -90,6 +94,16 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
   useEffect(() => {
     setQ(applied.q);
   }, [applied.q]);
+
+  /*
+   * 초기화는 치던 검색어도 함께 비운다 — 주소가 이미 처음 값이면 주소가 바뀌지 않아 따라가는 effect 가
+   * 깨어나지 않는다. 「초기화」는 바뀐 것이 있을 때만 보인다(C-6).
+   */
+  const reset = (): void => {
+    setQ('');
+    onReset();
+  };
+  const isChanged = hasChangedFilters(DEFAULT_FILTERS, { ...applied, q }, applied);
 
   return (
     <form
@@ -132,9 +146,11 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
       <div className="field-cell field-cell-unlabeled">
         <div className="filter-actions">
           <Button type="submit">{messages.common.search}</Button>
-          <Button variant="outlined" onClick={onReset}>
-            {messages.common.reset}
-          </Button>
+          {isChanged && (
+            <Button variant="outlined" onClick={reset}>
+              {messages.common.reset}
+            </Button>
+          )}
         </div>
       </div>
     </form>
@@ -440,7 +456,7 @@ export const ErpBomScreen = () => {
                 setSearchParams(toSearchParams(next));
               }}
               onReset={() => {
-                setSearchParams(toSearchParams({ q: '', type: DEFAULT_PARENT_TYPE, hasBom: true }));
+                setSearchParams(toSearchParams(DEFAULT_FILTERS));
               }}
             />
           </div>

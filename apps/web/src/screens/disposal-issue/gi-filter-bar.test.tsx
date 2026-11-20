@@ -122,8 +122,9 @@ describe('GiFilterBar — 자리표시 코드 셋', () => {
     expect(screen.getAllByText(messages.pendingCode.note)).toHaveLength(3);
   });
 
+  /* 초기화는 바뀐 것이 있을 때만 보인다(C-6) — 걸린 조건을 두고 잰다. */
   it('비어 있어도 아무것도 잠그지 않는다', () => {
-    renderBar();
+    renderBar({ appliedFilters: applied({ q: 'GI-2026' }) });
 
     expect(screen.getByRole('button', { name: messages.common.search })).toBeEnabled();
     expect(screen.getByRole('button', { name: messages.common.reset })).toBeEnabled();
@@ -137,6 +138,7 @@ describe('GiFilterBar — 자리표시 코드 셋', () => {
 
     expect(screen.getAllByText(messages.pendingCode.note)).toHaveLength(2);
 
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     await user.click(screen.getByLabelText(t.historyFields.status));
     await user.click(screen.getByRole('option', { name: 'SAMPLE_GI_STATUS_A' }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
@@ -152,11 +154,24 @@ describe('GiFilterBar — 자리표시 코드 셋', () => {
 });
 
 describe('GiFilterBar — 조건 칩', () => {
-  it('걸린 조건이 칩으로 보인다', () => {
-    renderBar({ appliedFilters: applied({ status: 'SAMPLE_GI_STATUS_A', q: 'GI-2026' }) });
+  /* C-6 — 보이는 칸(출고일 · 폐기 사유 · 출고번호)의 조건은 칩으로 겹쳐 적지 않는다. 접힌 출고 유형 · 상태만 칩이 된다. */
+  it('접힌 칸에 걸린 조건만 칩이 된다', () => {
+    renderBar({
+      appliedFilters: applied({
+        from: '2026-08-01',
+        to: '2026-08-05',
+        status: 'SAMPLE_GI_STATUS_A',
+        q: 'GI-2026',
+      }),
+    });
 
     expect(screen.getByText(t.historyFilters.chipStatus('SAMPLE_GI_STATUS_A'))).toBeInTheDocument();
-    expect(screen.getByText(t.historyFilters.chipQ('GI-2026'))).toBeInTheDocument();
+    expect(screen.queryByText(t.historyFilters.chipQ('GI-2026'))).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(t.historyFilters.chipPeriodBoth('2026-08-01', '2026-08-05')),
+    ).not.toBeInTheDocument();
+    /* 칩은 상태 하나이고 ×도 하나다. */
+    expect(screen.getAllByRole('button', { name: /조건 해제$/ })).toHaveLength(1);
   });
 
   it('×를 누르면 그 조건만 푼다', async () => {
@@ -169,29 +184,27 @@ describe('GiFilterBar — 조건 칩', () => {
     expect(onRemoveFilter).toHaveBeenCalledWith('status');
   });
 
-  /* ×가 하나만 없는 이유를 밝힌다 — 없으면 사용자가 ×를 찾다가 화면을 고장으로 읽는다. */
-  it('기간 칩에는 ×가 없고 그 이유가 적힌다', () => {
-    renderBar({ appliedFilters: applied({ from: '2026-08-01', to: '2026-08-05' }) });
+  it('출고 유형 · 상태는 「조건 더보기」에 접혀 있고, 펼치면 칩을 거둔다', async () => {
+    const { user } = renderBar({ appliedFilters: applied({ status: 'SAMPLE_GI_STATUS_A' }) });
+    const more = screen.getByRole('button', { name: messages.common.filterMore.open });
 
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(more);
+
+    expect(screen.getByLabelText(t.historyFields.issueType)).toBeVisible();
+    expect(screen.getByLabelText(t.historyFields.status)).toBeVisible();
     expect(
-      screen.getByText(t.historyFilters.chipPeriodBoth('2026-08-01', '2026-08-05')),
-    ).toBeInTheDocument();
-    expect(screen.getByText(t.historyFilters.periodClearNote)).toBeInTheDocument();
-    /* 걸린 조건이 기간뿐인데 해제 버튼이 하나도 없다 — 기간 칩에 ×가 없다는 뜻이다. */
-    expect(screen.queryByRole('button', { name: /조건 해제$/ })).not.toBeInTheDocument();
+      screen.queryByText(t.historyFilters.chipStatus('SAMPLE_GI_STATUS_A')),
+    ).not.toBeInTheDocument();
   });
 
-  /** 짝 방향 — ×가 있는 칩에서는 그 버튼이 실제로 잡힌다(앞 단언이 늘 참이 아니다). */
-  it('다른 조건의 칩에는 ×가 있다', () => {
-    renderBar({ appliedFilters: applied({ from: '2026-08-01', status: 'SAMPLE_GI_STATUS_A' }) });
-
-    expect(screen.getAllByRole('button', { name: /조건 해제$/ })).toHaveLength(1);
-  });
-
-  it('조건이 없으면 칩도 안내도 없다', () => {
+  it('조건이 없으면 칩도 없다', () => {
     renderBar();
 
-    expect(screen.queryByText(t.historyFilters.periodClearNote)).not.toBeInTheDocument();
+    /* 선행 단언 — 조건 줄이 실제로 그려져야 「칩이 없다」가 뜻을 갖는다. */
+    expect(screen.getByRole('button', { name: messages.common.search })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /조건 해제$/ })).not.toBeInTheDocument();
   });
 });
 

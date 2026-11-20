@@ -1,8 +1,16 @@
-import { Button, Checkbox, Chip, SearchInput } from '@crefle/web-ui';
+import { Button, Checkbox, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
 import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  hasChangedFilters,
+  useFilterMore,
+} from '../../patterns/filter-more';
+
+import {
+  EMPTY_FILTERS,
   hasScopeCondition,
   toFilterChips,
   type BalanceFilters,
@@ -12,6 +20,11 @@ import { ItemSelectField, SelectField } from './select-field';
 import type { SelectOption } from './types';
 
 const t = messages.stockStatus;
+
+/** 조건 줄에 보이는 칸(C-6) — 값이 칸에 보이므로 칩으로 겹쳐 적지 않는다. */
+const VISIBLE_KEYS: readonly (keyof BalanceFilters)[] = ['warehouse', 'item'];
+/** 칸이 없는 조건 — 행에서 고른 입하 LOT. 펼쳐도 값이 보일 칸이 없어 칩이 늘 남는다. */
+const FIELDLESS_KEYS: readonly (keyof BalanceFilters)[] = ['inboundLot'];
 
 export interface BalanceFilterBarProps {
   /** 주소에 반영된(= 조회에 쓰인) 조건. 고르는 중인 값은 이 부품 안에만 있다. */
@@ -57,6 +70,12 @@ export interface BalanceFilterBarProps {
  * **자유 입력칸을 두지 않는다.** 계약의 잔액 조회에 검색어 파라미터가 없어 칸을 만들면
  * 아무 데도 실리지 않는 입력이 된다.
  *
+ * **보이는 칸은 둘이다**(C-6 · 관리웹 정리 시안 A, 2026-11-20) — 창고(필수) · 품목, 칸 폭은 C-19 보통. 입하 LOT 번호까지
+ * 셋을 보통 폭으로 두면 조회 · 초기화 · 조건 더보기와 함께 1280 에서 한 줄에 들지 않는다(240×3 + 단추 셋 > 조건 줄 942px).
+ * 입하 LOT 번호(창고 없이 조회하는 길) · 위치 · LOT(창고 · 품목에 매달린다) · 품질 상태 · 재고 상태 · 소유 구분 ·
+ * 잔액 0 포함은 「조건 더보기」에 접는다. 접힌 칸에 걸린 조건과 행에서 고른 입하 LOT 은 칩으로만 알린다.
+ * 「초기화」는 바뀐 것이 있을 때만 보인다.
+ *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
 export const BalanceFilterBar = ({
@@ -79,6 +98,7 @@ export const BalanceFilterBar = ({
   onReset,
 }: BalanceFilterBarProps) => {
   const reasonId = useId();
+  const more = useFilterMore();
 
   const [filters, setFilters] = useState<BalanceFilters>(appliedFilters);
 
@@ -158,7 +178,25 @@ export const BalanceFilterBar = ({
     onSearch(next);
   };
 
-  const chips = toFilterChips(appliedFilters, chipNames);
+  /**
+   * 초기화. **자기 편집 상태를 함께 비운다** — 부모에게만 알리면 아직 조회하지 않은 값은 주소가 바뀌지 않아 되돌림
+   * effect 도 깨어나지 않고, 「초기화」를 눌렀는데 고르던 값이 그대로 남는다.
+   */
+  const reset = (): void => {
+    setFilters(EMPTY_FILTERS);
+    onWarehouseChange?.('');
+    onReset();
+  };
+
+  /*
+   * 접힌 칸의 조건만 칩으로 — 보이는 칸(창고 · 품목 · 입하 LOT 번호)의 값을 칩으로 겹쳐 적지 않는다. 펼치면 접혀 있던 칸에
+   * 값이 보이므로 그 칩은 거두고, 칸이 없는 입하 LOT 거르기만 남긴다.
+   */
+  const hiddenChips = toFilterChips(appliedFilters, chipNames).filter(
+    (chip) =>
+      !VISIBLE_KEYS.includes(chip.key) && (!more.isOpen || FIELDLESS_KEYS.includes(chip.key)),
+  );
+  const isChanged = hasChangedFilters(EMPTY_FILTERS, filters, appliedFilters);
 
   /* 「전체」를 값이 빈 선택지로 둔다 — 두지 않으면 한 번 고른 뒤에 해제할 방법이 칸 안에 없어진다. */
   const withAll = (options: readonly SelectOption[]): SelectOption[] => [
@@ -173,18 +211,16 @@ export const BalanceFilterBar = ({
     <>
       <div className="filter-bar">
         {/*
-         * 규범 3-2 — 최소 폭을 주지 않으면 선택지 목록이 트리거 폭에 갇혀 잘리고,
-         * 무엇을 고르는지 읽을 수 없다. **판단 기준은 선택지 문구 길이다.**
+         * 조회 줄의 창고 · 품목은 C-19 보통(240px) 정한 폭이다 — 고른 값이 길어도 칸 폭이 그대로다(말줄임).
          *
-         * 참조 넷은 `codeName`(18.5rem) — 창고·위치·품목은 「코드 · 이름」이고 LOT은
-         * `LOT-2026-000045` 형의 긴 식별자라 `.wide-select`의 13rem으로 모자란다
-         * (브라우저 확인 F-B1: 창고 선택지가 13px 부족해 말줄임됐다).
+         * 「조건 더보기」 안은 규범 3-2 의 최소 폭을 그대로 쓴다 — 위치 · LOT 은 `codeName`(18.5rem): 위치는 「코드 · 이름」이고
+         * LOT 은 `LOT-2026-000045` 형의 긴 식별자라 `.wide-select`의 13rem으로 모자란다(브라우저 확인 F-B1).
          * 코드 셋은 `code`(13rem) — 규범 3-2가 코드값 13자에서 도출한 값 그대로다.
          *
-         * 순서는 **매달림의 순서**다 — 창고 → 위치, 품목 → LOT. 고르는 차례가 곧 읽는 차례다.
+         * 매달림의 순서는 창고 → 위치, 품목 → LOT 이다. 위치 · LOT 은 「조건 더보기」에 같은 차례로 놓인다.
          */}
         <SelectField
-          optionWidth="codeName"
+          fixedWidth
           label={t.fields.warehouse}
           options={withAll(warehouseOptions)}
           value={filters.warehouse}
@@ -199,17 +235,8 @@ export const BalanceFilterBar = ({
             onWarehouseChange?.(value);
           }}
         />
-        <SelectField
-          optionWidth="codeName"
-          label={t.fields.location}
-          options={withAll(locationOptions)}
-          value={filters.location}
-          note={locationNote}
-          onChange={(value) => {
-            setFilters((prev) => ({ ...prev, location: value }));
-          }}
-        />
         <ItemSelectField
+          fixedWidth
           label={t.fields.item}
           leadingOptions={withAll([])}
           value={filters.item}
@@ -217,74 +244,6 @@ export const BalanceFilterBar = ({
             setFilters((prev) => ({ ...prev, item: value }));
           }}
         />
-        <SelectField
-          optionWidth="codeName"
-          label={t.fields.lot}
-          options={withAll(lotOptions)}
-          value={filters.lot}
-          note={lotNote}
-          onChange={(value) => {
-            setFilters((prev) => ({ ...prev, lot: value }));
-          }}
-        />
-
-        <SelectField
-          optionWidth="code"
-          label={t.fields.qualityStatus}
-          options={codeOptions(qualityStatusOptions)}
-          value={filters.qualityStatus}
-          onChange={(value) => {
-            setFilters((prev) => ({ ...prev, qualityStatus: value }));
-          }}
-        />
-        <SelectField
-          optionWidth="code"
-          label={t.fields.inventoryStatus}
-          options={codeOptions(inventoryStatusOptions)}
-          value={filters.inventoryStatus}
-          onChange={(value) => {
-            setFilters((prev) => ({ ...prev, inventoryStatus: value }));
-          }}
-        />
-        <SelectField
-          optionWidth="code"
-          label={t.fields.ownership}
-          options={codeOptions(ownershipOptions)}
-          value={filters.ownership}
-          onChange={(value) => {
-            setFilters((prev) => ({ ...prev, ownership: value }));
-          }}
-        />
-
-        {/* 005 FR-035 — 입하 LOT 번호(정확 일치). Enter 로 조회한다. */}
-        <div className="field-cell">
-          <SearchInput
-            label={t.fields.inboundLotNo}
-            placeholder={t.fields.inboundLotNoPlaceholder}
-            value={filters.inboundLotNo}
-            clearLabel={messages.common.clear}
-            onChange={(event) => {
-              const inboundLotNo = event.target.value;
-              setFilters((prev) => ({ ...prev, inboundLotNo }));
-            }}
-            onSearch={searchInboundLotNo}
-            onClear={() => {
-              setFilters((prev) => ({ ...prev, inboundLotNo: '' }));
-            }}
-          />
-        </div>
-
-        {/* 확인칸은 라벨이 오른쪽에 붙어 라벨 층이 없다 — 윗선을 맞추려 라벨 없는 셀에 담는다. */}
-        <div className="field-cell field-cell-unlabeled">
-          <Checkbox
-            checked={filters.includeZero}
-            onChange={(event) => {
-              setFilters((prev) => ({ ...prev, includeZero: event.target.checked }));
-            }}
-          >
-            {t.fields.includeZero}
-          </Checkbox>
-        </div>
 
         {/*
          * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶고(배치 규범 2-1), 비활성 사유는 그 아래에 둔다.
@@ -300,9 +259,12 @@ export const BalanceFilterBar = ({
             >
               {messages.common.search}
             </Button>
-            <Button variant="outlined" onClick={onReset}>
-              {messages.common.reset}
-            </Button>
+            {isChanged && (
+              <Button variant="outlined" onClick={reset}>
+                {messages.common.reset}
+              </Button>
+            )}
+            <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
           </div>
           {searchReason !== null && (
             <span id={reasonId} className="field-note">
@@ -311,6 +273,92 @@ export const BalanceFilterBar = ({
           )}
         </div>
       </div>
+
+      {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+      <div id={more.id} hidden={!more.isOpen}>
+        <div className="filter-bar">
+          {/* 005 FR-035 — 입하 LOT 번호(정확 일치). Enter 로 조회한다. */}
+          <div className="field-cell">
+            <SearchInput
+              label={t.fields.inboundLotNo}
+              placeholder={t.fields.inboundLotNoPlaceholder}
+              value={filters.inboundLotNo}
+              clearLabel={messages.common.clear}
+              onChange={(event) => {
+                const inboundLotNo = event.target.value;
+                setFilters((prev) => ({ ...prev, inboundLotNo }));
+              }}
+              onSearch={searchInboundLotNo}
+              onClear={() => {
+                setFilters((prev) => ({ ...prev, inboundLotNo: '' }));
+              }}
+            />
+          </div>
+
+          <SelectField
+            optionWidth="codeName"
+            label={t.fields.location}
+            options={withAll(locationOptions)}
+            value={filters.location}
+            note={locationNote}
+            onChange={(value) => {
+              setFilters((prev) => ({ ...prev, location: value }));
+            }}
+          />
+          <SelectField
+            optionWidth="codeName"
+            label={t.fields.lot}
+            options={withAll(lotOptions)}
+            value={filters.lot}
+            note={lotNote}
+            onChange={(value) => {
+              setFilters((prev) => ({ ...prev, lot: value }));
+            }}
+          />
+
+          <SelectField
+            optionWidth="code"
+            label={t.fields.qualityStatus}
+            options={codeOptions(qualityStatusOptions)}
+            value={filters.qualityStatus}
+            onChange={(value) => {
+              setFilters((prev) => ({ ...prev, qualityStatus: value }));
+            }}
+          />
+          <SelectField
+            optionWidth="code"
+            label={t.fields.inventoryStatus}
+            options={codeOptions(inventoryStatusOptions)}
+            value={filters.inventoryStatus}
+            onChange={(value) => {
+              setFilters((prev) => ({ ...prev, inventoryStatus: value }));
+            }}
+          />
+          <SelectField
+            optionWidth="code"
+            label={t.fields.ownership}
+            options={codeOptions(ownershipOptions)}
+            value={filters.ownership}
+            onChange={(value) => {
+              setFilters((prev) => ({ ...prev, ownership: value }));
+            }}
+          />
+
+          {/* 확인칸은 라벨이 오른쪽에 붙어 라벨 층이 없다 — 윗선을 맞추려 라벨 없는 셀에 담는다. */}
+          <div className="field-cell field-cell-unlabeled">
+            <Checkbox
+              checked={filters.includeZero}
+              onChange={(event) => {
+                setFilters((prev) => ({ ...prev, includeZero: event.target.checked }));
+              }}
+            >
+              {t.fields.includeZero}
+            </Checkbox>
+          </div>
+        </div>
+      </div>
+
+      <HiddenFilterChips open={false} chips={hiddenChips} onRemove={onRemoveFilter} />
 
       {/*
        * 이 구획이 이름을 내는 참조 넷의 복구. **문구가 적은 대상과 다시 부르는 대상이 같다** —
@@ -322,23 +370,6 @@ export const BalanceFilterBar = ({
           <Button variant="outlined" size="sm" onClick={onRetryReferences}>
             {messages.common.retry}
           </Button>
-        </div>
-      )}
-
-      {chips.length > 0 && (
-        <div className="filter-bar">
-          {chips.map((chip) => (
-            <Chip
-              key={chip.key}
-              variant="status"
-              removeLabel={chip.removeLabel}
-              onRemove={() => {
-                onRemoveFilter(chip.key);
-              }}
-            >
-              {chip.label}
-            </Chip>
-          ))}
         </div>
       )}
     </>

@@ -39,6 +39,11 @@ export const inspectionSheetTemplate = {
     caption: '검사표 기준 목록',
     status: '상태 선택',
     statusAll: '전체',
+    /** 「조건 더보기」에 접힌 칸(양식 · 상태)에 걸린 조건 칩(C-6). */
+    chipLayout: (label: string): string => `양식: ${label}`,
+    chipStatus: (label: string): string => `상태: ${label}`,
+    chipRemoveLayout: '양식 조건 제거',
+    chipRemoveStatus: '상태 조건 제거',
     usageLabel: '사용 여부',
     usageAll: '전체',
     usageActive: '사용',

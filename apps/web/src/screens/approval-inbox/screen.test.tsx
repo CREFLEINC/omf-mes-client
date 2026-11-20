@@ -623,16 +623,15 @@ describe('조회 조건', () => {
     expect(lastListQuery(requests)?.get('requestedByMe')).toBe('true');
   });
 
-  it('조건 칩의 ×가 그 조건만 푼다', async () => {
-    const { user } = renderScreen(defaultRoutes(), '?q=SYNTH&from=2026-08-01&to=2026-08-31');
+  it('접힌 조건 칩의 ×가 그 조건만 푼다', async () => {
+    const { user } = renderScreen(defaultRoutes(), '?q=SYNTH&st=SAMPLE-STATUS-OPEN');
 
     await waitForList();
-    await user.click(screen.getByRole('button', { name: t.filters.chipRemovePeriod }));
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveStatus }));
 
     await waitFor(() => {
-      expect(currentLocation()).not.toContain('from=');
+      expect(currentLocation()).not.toContain('st=');
     });
-    expect(currentLocation()).not.toContain('to=');
     expect(currentLocation()).toContain('q=SYNTH');
   });
 

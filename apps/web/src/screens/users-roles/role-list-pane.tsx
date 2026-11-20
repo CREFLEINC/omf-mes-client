@@ -1,7 +1,6 @@
 import {
   Button,
   Checkbox,
-  Chip,
   type Column,
   EmptyState,
   SearchInput,
@@ -11,7 +10,8 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
-import { clearRoleFilter, hasAnyRoleFilter, toRoleFilterChips } from './filters';
+import { hasChangedFilters } from '../../patterns/filter-more';
+import { hasAnyRoleFilter } from './filters';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
 import type { Role, RoleFilters } from './types';
@@ -24,9 +24,9 @@ export const EMPTY_ROLE_FILTERS: RoleFilters = { q: '', includeInactive: false }
 export interface RoleListPaneProps {
   roles: Role[];
   isLoading: boolean;
-  /** 적용된(주소에 반영된) 조건 — 조건 칩의 렌더 기준 */
+  /** 적용된(주소에 반영된) 조건 */
   appliedFilters: RoleFilters;
-  /** 조회 버튼·Enter·칩 제거·초기화가 호출한다. 쪽은 늘 1로 돌아간다 */
+  /** 조회 버튼·Enter·초기화가 호출한다. 쪽은 늘 1로 돌아간다 */
   onApplyFilters: (next: RoleFilters) => void;
   pageView: PageView;
   onChangePage: (page: number) => void;
@@ -74,7 +74,7 @@ export const RoleListPane = ({
 }: RoleListPaneProps) => {
   /*
    * 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
-   * 편집 중인 값은 draft에만 있고 조건 칩에 미러하지 않는다 — 칩은 「적용된 조건」의 표시다.
+   * 편집 중인 값은 draft에만 있다. 두 조건이 모두 조건 줄에 보여 조건 칩을 두지 않는다(C-6).
    */
   const [draft, setDraft] = useState<RoleFilters>(appliedFilters);
   const { q: appliedQ, includeInactive: appliedIncludeInactive } = appliedFilters;
@@ -189,7 +189,15 @@ export const RoleListPane = ({
     );
   };
 
-  const chips = toRoleFilterChips(appliedFilters);
+  /*
+   * 「초기화」는 바뀐 것이 있을 때만 보인다(C-6). 누르면 초안도 함께 비운다 — 주소가 이미 처음 값이면
+   * 주소가 바뀌지 않아 따라가는 effect 가 깨어나지 않고, 치던 값이 그대로 남는다.
+   */
+  const isChanged = hasChangedFilters(EMPTY_ROLE_FILTERS, draft, appliedFilters);
+  const reset = (): void => {
+    setDraft(EMPTY_ROLE_FILTERS);
+    onApplyFilters(EMPTY_ROLE_FILTERS);
+  };
 
   return (
     <section className="pane" aria-label={t.panes.roleList}>
@@ -222,23 +230,12 @@ export const RoleListPane = ({
          */}
         <div className="filter-actions field-cell-unlabeled">
           <Button onClick={() => onApplyFilters(draft)}>{messages.common.search}</Button>
-          <Button variant="outlined" onClick={() => onApplyFilters(EMPTY_ROLE_FILTERS)}>
-            {messages.common.reset}
-          </Button>
+          {isChanged && (
+            <Button variant="outlined" onClick={reset}>
+              {messages.common.reset}
+            </Button>
+          )}
         </div>
-      </div>
-
-      <div className="filter-bar">
-        {chips.map((chip) => (
-          <Chip
-            key={chip.key}
-            variant="status"
-            removeLabel={chip.removeLabel}
-            onRemove={() => onApplyFilters(clearRoleFilter(appliedFilters, chip.key))}
-          >
-            {chip.label}
-          </Chip>
-        ))}
       </div>
 
       {listSlot()}

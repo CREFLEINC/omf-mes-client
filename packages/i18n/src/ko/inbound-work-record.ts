@@ -19,6 +19,9 @@ export const inboundWorkRecord = {
     supplierAll: '전체',
     query: '품목 · 입하 LOT', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-16.md)
     queryPlaceholder: '품목 코드·이름, IL 번호', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-16.md)
+    /** 「조건 더보기」에 접힌 공장이 첫 공장이 아닐 때의 칩(C-6). */
+    chipPlant: (value: string): string => `공장: ${value}`,
+    chipRemovePlant: '공장 조건 제거',
   },
   views: {
     label: '보기',

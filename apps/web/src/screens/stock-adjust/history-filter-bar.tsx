@@ -1,6 +1,12 @@
-import { Button, Chip, DatePicker } from '@crefle/web-ui';
+import { Button, DatePicker } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
+
+import {
+  HiddenFilterChips,
+  hasChangedFilters,
+  type HiddenFilterChip,
+} from '../../patterns/filter-more';
 
 import { FieldLabel } from './field-label';
 import {
@@ -62,6 +68,10 @@ export interface HistoryFilterBarProps {
  * 선택지가 늘 비어 쓰이지 않던 상태 조건과 그 「값 목록 미확정」 안내, 기간 안내 두 줄
  * (비우면 전기 전 전표도 보인다 · 「초기화」로만 푼다)은 걷었다(사용자 지시 2026-11-18).
  *
+ * **조건 셋이 모두 이 줄에 보인다**(C-6) — 접을 조건이 없어 「조건 더보기」를 두지 않고, 칸의 값을 칩으로 겹쳐 적지
+ * 않는다. 칩은 칸이 값을 보일 수 없을 때만 선다 — 걸린 실사 · 사유가 선택지에 없을 때(실사 목록이 잘렸거나 다른 화면이
+ * 넘긴 값). 「초기화」는 바뀐 것이 있을 때만 보인다(관리웹 정리 시안 A, 2026-11-20).
+ *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
 export const HistoryFilterBar = ({
@@ -117,7 +127,17 @@ export const HistoryFilterBar = ({
     onReset();
   };
 
-  const chips = toAdjustmentFilterChips(appliedFilters, chipNames);
+  /* 선택지에 없는 값은 칸이 보일 수 없다 — 그때만 칩으로 알린다(C-6). */
+  const isShownIn = (options: SelectOption[], value: string): boolean =>
+    options.some((option) => option.value === value);
+  const hiddenChips = toAdjustmentFilterChips(appliedFilters, chipNames).flatMap(
+    (chip): HiddenFilterChip<RemovableAdjustmentChipKey>[] =>
+      chip.removeLabel !== null &&
+      !isShownIn(chip.key === 'count' ? countOptions : reasonOptions, appliedFilters[chip.key])
+        ? [{ key: chip.key, label: chip.label, removeLabel: chip.removeLabel }]
+        : [],
+  );
+  const isChanged = hasChangedFilters(DEFAULT_ADJUSTMENT_FILTERS, filters, appliedFilters);
 
   const allOption: SelectOption = { value: '', label: t.historyFilters.all };
 
@@ -194,39 +214,16 @@ export const HistoryFilterBar = ({
             <Button disabled={isLocked} onClick={search}>
               {messages.common.search}
             </Button>
-            <Button variant="outlined" disabled={isLocked} onClick={reset}>
-              {messages.common.reset}
-            </Button>
+            {isChanged && (
+              <Button variant="outlined" disabled={isLocked} onClick={reset}>
+                {messages.common.reset}
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
-      {chips.length > 0 && (
-        <div className="filter-bar">
-          {chips.map((chip) =>
-            chip.removeLabel === null ? (
-              /*
-               * **기간 칩에는 ×가 없다.** 날짜 컨트롤이 값을 개별로 비우는 수단을 주지 않아
-               * 눌러도 값이 남는다 — 그러면 칩은 사라졌는데 조건은 걸려 있는 상태가 된다.
-               */
-              <Chip key={chip.key} variant="status">
-                {chip.label}
-              </Chip>
-            ) : (
-              <Chip
-                key={chip.key}
-                variant="status"
-                removeLabel={chip.removeLabel}
-                onRemove={() => {
-                  onRemoveFilter(chip.key);
-                }}
-              >
-                {chip.label}
-              </Chip>
-            ),
-          )}
-        </div>
-      )}
+      <HiddenFilterChips open={false} chips={hiddenChips} onRemove={onRemoveFilter} />
     </>
   );
 };

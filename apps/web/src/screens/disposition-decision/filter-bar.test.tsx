@@ -46,6 +46,7 @@ const codes = (pairs: [string, string][]): DispositionLookup => ({
 
 const baseProps = (): FilterBarProps => ({
   applied,
+  defaults: applied,
   severity: emptyLookup(),
   onApply: vi.fn(),
   onReset: vi.fn(),
@@ -91,12 +92,66 @@ describe('FilterBar', () => {
     });
   });
 
-  it('초기화를 알린다', async () => {
+  it('초기화는 처음 값에서는 없고, 바꾼 것이 생기면 나타나 누르면 알린다(C-6)', async () => {
     const { props, user } = renderBar();
 
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: '품목 검색' }));
     await user.click(screen.getByRole('button', { name: messages.common.reset }));
 
     expect(props.onReset).toHaveBeenCalledOnce();
+    /* 치던 값도 처음으로 — 조회에 쓰인 값이 처음 값이라 되돌림이 깨어나지 않아도. */
+    expect(screen.getByRole('button', { name: '품목 검색' })).toHaveAttribute('data-value', '');
+  });
+
+  it('심각도 · 원천은 「조건 더보기」에 접힌 채로 들어온다 — 걸려 있어도', async () => {
+    const { user } = renderBar({
+      applied: { ...applied, sourceCode: 'RETURN' },
+    });
+    const more = screen.getByRole('button', { name: messages.common.filterMore.open });
+
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('combobox', { name: t.fields.sourcePick })).toBeNull();
+
+    await user.click(more);
+
+    expect(screen.getByLabelText(t.fields.sourcePick)).toBeVisible();
+  });
+
+  it('접힌 칸에 걸린 조건만 칩이 되고 × 가 그 조건만 풀어 조회한다 — 보이는 칸은 칩으로 겹쳐 적지 않는다', async () => {
+    const { props, user } = renderBar({
+      applied: { ...applied, itemId: '5001', severityCode: 'CODE-B', sourceCode: 'RETURN' },
+      severity: codes([['CODE-B', '합성 심각도 B']]),
+    });
+
+    /* 칩 라벨은 대상 이름 — 칸 라벨의 「선택」은 싣지 않는다. */
+    expect(screen.getByText('심각도: 합성 심각도 B')).toBeInTheDocument();
+    expect(screen.getByText(`원천: ${t.values.sourceCode.RETURN}`)).toBeInTheDocument();
+    /* 품목은 보이는 칸이라 칩이 없다 — 칩은 접힌 둘뿐이다. */
+    expect(screen.queryByText(new RegExp(`^${t.fields.item}: `))).toBeNull();
+    expect(
+      screen.getAllByRole('button', { name: /./ }).filter((b) => b.closest('.filter-more-chips')),
+    ).toHaveLength(2);
+
+    await user.click(
+      screen.getByRole('button', { name: messages.common.filterMore.remove('원천') }),
+    );
+
+    expect(props.onApply).toHaveBeenCalledWith({
+      ...applied,
+      itemId: '5001',
+      severityCode: 'CODE-B',
+      sourceCode: '',
+    });
+  });
+
+  it('펼치면 칸에 값이 보이므로 칩을 거둔다', async () => {
+    const { user } = renderBar({ applied: { ...applied, sourceCode: 'RETURN' } });
+
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+
+    expect(screen.queryByText(`원천: ${t.values.sourceCode.RETURN}`)).toBeNull();
   });
 
   it('적용된 조건이 바뀌면 편집 중 값을 그것으로 맞춘다', () => {

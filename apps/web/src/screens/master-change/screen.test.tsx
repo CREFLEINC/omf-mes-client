@@ -423,6 +423,8 @@ describe('MasterChangeScreen — 조건으로 좁히기', () => {
     const { requests, user } = renderScreen([listRoute()], ALL_FILTERS_SEARCH);
     await screen.findByText('SAMPLE_EVENT_B');
 
+    /* 보이는 칸(대상 종류)의 조건은 칩이 없다 — 접힌 칸의 조건만 칩이다(C-6). */
+    expect(screen.queryByRole('button', { name: '대상 종류 조건 제거' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '수행자 조건 제거' }));
 
     expect(currentLocation()).not.toContain('by=9201');
@@ -527,7 +529,7 @@ describe('MasterChangeScreen — 쪽 이동', () => {
     );
     await screen.findByText('SAMPLE_EVENT_B');
 
-    await user.click(screen.getByRole('button', { name: '대상 종류 조건 제거' }));
+    await user.click(screen.getByRole('button', { name: '사건 종류 조건 제거' }));
 
     expect(currentLocation()).not.toContain('page=');
   });

@@ -39,6 +39,7 @@ export const notice: Translated<typeof ko.notice> = {
     periodNote: 'Tìm thông cáo có kỳ đăng giao với khoảng này. Không lấy ngày bắt đầu làm chuẩn.',
     periodOptional: 'Khoảng thời gian để trống cũng được.',
     clear: 'Xóa điều kiện',
+    chipScope: (name: string): string => `Phạm vi đối tượng: ${name}`,
     invalidPeriod: 'Kết thúc khoảng đứng trước lúc bắt đầu.',
   },
 

@@ -92,8 +92,8 @@ export const workOrderClose = {
   filter: {
     pane: '마감 후보 조회 조건',
     productionOrder: 'P/O',
-    plannedStartFrom: '계획 시작일(부터)',
-    plannedStartTo: '계획 시작일(까지)',
+    plannedStart: '계획 시작일',
+    plannedStartPlaceholder: '시작일 ~ 종료일',
     status: '마감 상태',
     judgment: '판정',
     judgmentUnavailable:
@@ -103,6 +103,8 @@ export const workOrderClose = {
     all: '전체',
     search: '조회',
     reset: '초기화',
+    /** 「조건 더보기」에 접힌 판정 조건의 칩(C-6). */
+    chipJudgment: (value: string): string => `판정: ${value}`,
     statusRequired: '마감 상태를 선택하세요.',
     dateRange: '계획 시작일은 종료일보다 늦을 수 없습니다.',
     statusEmpty: '선택할 마감 상태가 없습니다.',

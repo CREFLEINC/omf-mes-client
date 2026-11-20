@@ -76,13 +76,6 @@ export const commonCode: Translated<typeof ko.commonCode> = {
     departmentAll: 'Tất cả phòng ban',
     partnerSearchLabel: 'Tìm đối tác',
     partnerSearchPlaceholder: 'Mã đối tác hoặc tên đối tác',
-    chipKeyword: (value: string): string => `Từ khóa: ${value}`,
-    chipRemoveKeyword: 'Bỏ điều kiện từ khóa',
-    chipRemoveIncludeInactive: 'Bỏ điều kiện gồm cả mục ngừng dùng',
-    chipBusinessUnit: (label: string): string => `Đơn vị kinh doanh: ${label}`,
-    chipRemoveBusinessUnit: 'Bỏ điều kiện đơn vị kinh doanh',
-    chipDepartment: (label: string): string => `Phòng ban: ${label}`,
-    chipRemoveDepartment: 'Bỏ điều kiện phòng ban',
   },
   loading: {
     codeGroups: 'Đang tải danh sách nhóm mã',

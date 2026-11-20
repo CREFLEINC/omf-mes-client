@@ -8,7 +8,7 @@ import {
   scheduleLine,
 } from './fixtures';
 import {
-  countedGroups,
+  chipGroups,
   hasLot,
   isStageGroup,
   lineTableRowId,
@@ -77,20 +77,13 @@ describe('발주의 진행 — 가장 뒤처진 묶음과 외 N', () => {
     });
   });
 
-  it('칩 줄은 서버가 센 묶음만 0 까지 세운다 — 앞선 서버(라벨 발행 대기 키 없음)는 그 칩만 빠진다', () => {
-    expect(countedGroups({ INSPECTION: 0, HELD: 0, RECEIPT: 0, PUTAWAY: 0 })).toEqual([
+  it('칩 줄은 수가 있는 묶음만 세운다 — 0 인 묶음은 빠지고, 지금 걸린 묶음은 0 이어도 남는다', () => {
+    expect(chipGroups({ INSPECTION: 0, HELD: 0, RECEIPT: 0, PUTAWAY: 0 }, '')).toEqual([]);
+    expect(chipGroups({ PUTAWAY: 1, LABEL: 0, INSPECTION: 2, HELD: 0, RECEIPT: 0 }, '')).toEqual([
       'INSPECTION',
-      'HELD',
-      'RECEIPT',
       'PUTAWAY',
     ]);
-    expect(countedGroups({ PUTAWAY: 1, LABEL: 0, INSPECTION: 0, HELD: 0, RECEIPT: 0 })).toEqual([
-      'LABEL',
-      'INSPECTION',
-      'HELD',
-      'RECEIPT',
-      'PUTAWAY',
-    ]);
+    expect(chipGroups({ PUTAWAY: 1, HELD: 0 }, 'HELD')).toEqual(['HELD', 'PUTAWAY']);
   });
 
   it('묶음이 하나뿐이면 외 0, 하나도 없으면 null', () => {

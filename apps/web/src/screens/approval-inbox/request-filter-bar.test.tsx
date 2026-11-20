@@ -34,11 +34,31 @@ describe('RequestFilterBar — 자리표시 선택칸', () => {
     expect(screen.getAllByText(messages.pendingCode.placeholder).length).toBe(2);
   });
 
-  it('값 목록이 비어도 조회와 초기화는 열려 있다', () => {
-    renderBar();
+  it('값 목록이 비어도 조회는 열려 있고, 초기화는 바뀐 것이 생기면 나타난다', async () => {
+    const { user } = renderBar();
 
     expect(screen.getByRole('button', { name: messages.common.search })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
+
+    await user.type(screen.getByLabelText(t.fields.q), 'S');
+
     expect(screen.getByRole('button', { name: messages.common.reset })).toBeEnabled();
+  });
+
+  it('상태는 「조건 더보기」 안에 접혀 있다', async () => {
+    const { user } = renderBar();
+    const more = screen.getByRole('button', { name: messages.common.filterMore.open });
+
+    expect(screen.queryByRole('combobox', { name: t.fields.status })).toBeNull();
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(more);
+
+    expect(screen.getByLabelText(t.fields.status)).toBeVisible();
+    expect(screen.getByRole('button', { name: messages.common.filterMore.close })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
   });
 
   it('값이 오면 선택칸이 살아난다 — 자리표시가 죽은 가지가 아니다', () => {
@@ -144,17 +164,34 @@ describe('RequestFilterBar — 주소가 정본이다', () => {
 });
 
 describe('RequestFilterBar — 조건 칩', () => {
-  it('걸어 둔 조건마다 칩 하나이고 ×가 그 조건만 푼다', async () => {
+  it('접힌 칸(상태)에 걸린 조건만 칩이 되고 ×가 그 조건만 푼다 — 보이는 칸은 칩으로 겹쳐 적지 않는다', async () => {
     const { onRemoveFilter, user } = renderBar({
-      appliedFilters: { ...EMPTY_FILTERS, q: 'SYNTH', from: '2026-08-01', to: '2026-08-31' },
+      appliedFilters: {
+        ...EMPTY_FILTERS,
+        statusCode: 'SAMPLE-STATUS-OPEN',
+        q: 'SYNTH',
+        from: '2026-08-01',
+        to: '2026-08-31',
+      },
     });
 
-    expect(screen.getByText(t.filters.chipKeyword('SYNTH'))).toBeInTheDocument();
-    expect(screen.getByText(t.filters.chipPeriod('2026-08-01', '2026-08-31'))).toBeInTheDocument();
+    expect(screen.getByText(t.filters.chipStatus('SAMPLE-STATUS-OPEN'))).toBeInTheDocument();
+    expect(screen.queryByText(t.filters.chipKeyword('SYNTH'))).toBeNull();
+    expect(screen.queryByText(t.filters.chipPeriod('2026-08-01', '2026-08-31'))).toBeNull();
 
-    await user.click(screen.getByRole('button', { name: t.filters.chipRemovePeriod }));
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveStatus }));
 
-    expect(onRemoveFilter).toHaveBeenCalledWith('period');
+    expect(onRemoveFilter).toHaveBeenCalledWith('statusCode');
+  });
+
+  it('펼치면 칸에 값이 보이므로 칩을 거둔다', async () => {
+    const { user } = renderBar({
+      appliedFilters: { ...EMPTY_FILTERS, statusCode: 'SAMPLE-STATUS-OPEN' },
+    });
+
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+
+    expect(screen.queryByText(t.filters.chipStatus('SAMPLE-STATUS-OPEN'))).toBeNull();
   });
 
   it('조건이 없으면 칩도 없다', () => {
@@ -163,10 +200,7 @@ describe('RequestFilterBar — 조건 칩', () => {
     /* 선행 단언 — 조건 줄이 실제로 그려져야 「칩이 없다」가 뜻을 갖는다. */
     expect(screen.getByRole('button', { name: messages.common.search })).toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: t.filters.chipRemoveKeyword }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: t.filters.chipRemovePeriod }),
+      screen.queryByRole('button', { name: t.filters.chipRemoveStatus }),
     ).not.toBeInTheDocument();
   });
 });

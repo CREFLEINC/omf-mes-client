@@ -241,7 +241,9 @@ describe('DefectCauseCodeScreen — 목록 조회', () => {
         (request) => request.url.searchParams.get('processId') === '3001',
       ),
     ).toBe(true);
-    expect(screen.getByText('처분 유형: 폐기')).toBeInTheDocument();
+    /* 처분 유형은 줄에 보이는 칸이라 칩 없이 칸에 값이 선다(C-6). */
+    expect(screen.getByRole('combobox', { name: '처분 유형 선택' })).toHaveTextContent('폐기');
+    expect(screen.queryByText('처분 유형: 폐기')).not.toBeInTheDocument();
   });
 
   it('주소에 있던 조건이 첫 조회에 그대로 실린다 — 새로고침·공유가 같은 결과를 낸다', async () => {

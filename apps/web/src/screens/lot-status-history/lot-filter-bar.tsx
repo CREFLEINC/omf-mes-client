@@ -2,10 +2,18 @@ import { Button, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  hasChangedFilters,
+  useFilterMore,
+  type HiddenFilterChip,
+} from '../../patterns/filter-more';
+import { lookupDisplayLabelWithInactive } from '../../patterns/lookup-display';
 import { PagedSelect, Select } from '../../patterns/select';
-import { ALL_LOT_TYPES, type LotFilters } from './filters';
+import { ALL_LOT_TYPES, EMPTY_LOT_FILTERS, toInboundLotRef, type LotFilters } from './filters';
 import { ItemFilterField } from './item-filter-field';
-import { useLocationReferenceOptions } from './reference-options';
+import { useItemNameSources, useLocationReferenceOptions } from './reference-options';
 
 const t = messages.lotStatusHistory;
 
@@ -131,6 +139,23 @@ const withAll = (options: readonly FilterOption[]): FilterOption[] => [
 
 const toIdentifier = (value: string): number | null => (value === '' ? null : Number(value));
 
+/** 「초기화」를 세울지 견줄 꼴 — 유형 「아직 조회 전」('')과 「전체」는 같은 조건이고, 비어 있는 입하 LOT 칸은 빈 값이다. */
+const comparable = (filters: LotFilters): LotFilters => ({
+  ...filters,
+  lotType: filters.lotType === '' ? ALL_LOT_TYPES : filters.lotType,
+  inboundLotNo: filters.inboundLotNo ?? '',
+  inboundLot: filters.inboundLot ?? '',
+});
+
+type ChipKey = 'warehouse' | 'location' | 'item' | 'inboundLotNo' | 'inboundLot';
+
+/** 칩 한 개 — 「라벨: 값」 한 줄, × 의 접근명은 「〈라벨〉 조건 제거」. */
+const chipOf = (key: ChipKey, label: string, value: string): HiddenFilterChip<ChipKey> => ({
+  key,
+  label: `${label}: ${value}`,
+  removeLabel: messages.common.filterMore.remove(label),
+});
+
 export const LotFilterBar = ({
   appliedFilters,
   lotTypeOptions,
@@ -179,16 +204,10 @@ export const LotFilterBar = ({
   ]);
 
   /*
-   * 상세 조건(품목 · 창고 · 위치)은 접어 둔다 — **걸린 상세 조건이 있으면 펼친 채로 들어온다**. 접혀 있으면 무엇으로
-   * 걸렀는지 칸에서 보이지 않는다(입하 예정 조회와 같다).
+   * 창고 · 위치 · 품목 · 입하 LOT 번호는 「조건 더보기」로 접어 둔다(C-6). 늘 접힌 채로 들어오고, 접힌 칸에 걸린 조건은
+   * 아래 칩으로 알린다 — × 는 그 조건만 풀어 바로 조회한다.
    */
-  const detailId = useId();
-  const [isDetailOpen, setIsDetailOpen] = useState(
-    appliedItem !== '' ||
-      appliedWarehouse !== '' ||
-      appliedLocation !== '' ||
-      appliedInboundLotNo !== '',
-  );
+  const more = useFilterMore();
 
   const locations = useLocationReferenceOptions(toIdentifier(filters.warehouse));
   const locationOptions =
@@ -211,6 +230,88 @@ export const LotFilterBar = ({
         ? t.lotFilter.notes.locationTruncated
         : undefined;
 
+  /* 접힌 칸 칩의 값 — 펼친 칸이 보이는 글자와 같다. 칩은 조회에 쓰인 값을 말하므로 이름도 그 값으로 푼다. */
+  const appliedLocations = useLocationReferenceOptions(toIdentifier(appliedWarehouse));
+  const appliedItemId = toIdentifier(appliedItem);
+  const itemNames = useItemNameSources(appliedItemId === null ? [] : [appliedItemId]);
+  const referenceText = messages.common.reference;
+  const labelIn = (options: readonly FilterOption[], value: string, isLoading: boolean): string =>
+    options.find((option) => option.value === value)?.label ??
+    (isLoading ? referenceText.loading : referenceText.unknown);
+  const inboundLot = toInboundLotRef(appliedInboundLot);
+  /* 칩 라벨은 대상 이름이다 — 칸 라벨의 「검색」 같은 동작 낱말을 싣지 않는다. */
+  const fieldChips: HiddenFilterChip<ChipKey>[] = [
+    ...(appliedWarehouse === ''
+      ? []
+      : [
+          chipOf(
+            'warehouse',
+            t.lotFilter.fields.warehouse,
+            labelIn(warehouseOptions, appliedWarehouse, warehouseOptions.length === 0),
+          ),
+        ]),
+    ...(appliedLocation === ''
+      ? []
+      : [
+          chipOf(
+            'location',
+            t.lotFilter.fields.location,
+            labelIn(
+              appliedLocations.data?.entries ?? [],
+              appliedLocation,
+              appliedLocations.isPending,
+            ),
+          ),
+        ]),
+    ...(appliedItemId === null
+      ? []
+      : [
+          chipOf(
+            'item',
+            t.lotFilter.fields.item,
+            lookupDisplayLabelWithInactive(
+              itemNames.get(appliedItemId) ?? { entries: [], isError: false, isLoading: true },
+              appliedItemId,
+            ),
+          ),
+        ]),
+    ...(appliedInboundLotNo === ''
+      ? []
+      : [chipOf('inboundLotNo', t.lotFilter.labels.inboundLotNo, appliedInboundLotNo)]),
+  ];
+  /* 005 FR-035 — 행의 입하 LOT 으로 건 거르기는 칸이 없다 — 펼쳐도 칩으로 남는다. */
+  const noFieldChips: HiddenFilterChip<ChipKey>[] =
+    inboundLot === null
+      ? []
+      : [
+          {
+            key: 'inboundLot',
+            label: t.lotFilter.inboundLotChip(inboundLot.inboundLotNo),
+            removeLabel: t.lotFilter.inboundLotChipRemove,
+          },
+        ];
+  const removeChip = (key: ChipKey): void =>
+    onSearch(
+      key === 'warehouse'
+        ? { ...appliedFilters, warehouse: '', location: '' }
+        : { ...appliedFilters, [key]: '' },
+    );
+
+  /*
+   * 「초기화」는 바뀐 것이 있을 때만 보인다(C-6) — 편집 중인 값이나 조회에 쓰인 값(탭 막대 상태 단추 · 표 정렬 포함)이
+   * 처음 값과 다를 때. 초기화가 그 모두를 처음으로 되돌리기 때문이다.
+   */
+  const isChanged = hasChangedFilters(
+    comparable(EMPTY_LOT_FILTERS),
+    comparable(filters),
+    comparable(appliedFilters),
+  );
+  /* 편집 상태도 함께 처음으로 — 조회에 쓰인 값이 이미 처음 값이면 주소가 바뀌지 않아 되돌림이 깨어나지 않는다. */
+  const reset = (): void => {
+    setFilters(EMPTY_LOT_FILTERS);
+    onReset();
+  };
+
   /* 아직 조회 전('')이면 초안은 「전체」다 — 유형을 고르지 않고 조회해도 된다(사용자 지시 2026-09-19). */
   const lotType = filters.lotType === '' ? ALL_LOT_TYPES : filters.lotType;
   // 창고가 비면 위치는 잠겨 있다 — 주소로 들어온 위치 값이 잠긴 채 조회에 실리지 않게 비운다.
@@ -220,7 +321,7 @@ export const LotFilterBar = ({
   return (
     <>
       {/*
-       * 첫 줄 — LOT 유형 · LOT 번호 스캔 · 조회/초기화/상세 조건 펼치기. 품목 · 창고 · 위치는 아래 줄(상세 조건)로
+       * 첫 줄 — LOT 유형 · LOT 번호 스캔 · 조회/초기화/조건 더보기. 품목 · 창고 · 위치는 아래 줄(조건 더보기)로
        * 접어 둔다 — 입하 예정 조회와 같다(사용자 2026-10-30). 현재 상태는 탭 막대의 상태 단추가 맡는다.
        */}
       <div className="filter-bar lot-status-filter">
@@ -245,27 +346,21 @@ export const LotFilterBar = ({
           onSearch={() => search()}
           clearLabel={messages.common.clear}
         />
-        {/* 조회·초기화 — [조회](주 동작) → [초기화], 상세 조건 펼치기는 초기화 오른쪽(입하 예정 조회와 같다). */}
+        {/* 조회·초기화 — [조회](주 동작) → [초기화], 조건 더보기는 초기화 오른쪽(입하 예정 조회와 같다). */}
         <div className="filter-actions field-cell-unlabeled lot-status-filter-actions">
           <Button variant="filled" onClick={search}>
             {t.actions.search}
           </Button>
-          <Button variant="outlined" onClick={onReset}>
-            {t.actions.reset}
-          </Button>
-          <Button
-            variant="text"
-            size="sm"
-            aria-expanded={isDetailOpen}
-            aria-controls={detailId}
-            onClick={() => setIsDetailOpen((open) => !open)}
-          >
-            {isDetailOpen ? t.lotFilter.detailClose : t.lotFilter.detailOpen}
-          </Button>
+          {isChanged && (
+            <Button variant="outlined" onClick={reset}>
+              {t.actions.reset}
+            </Button>
+          )}
+          <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
         </div>
       </div>
       {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
-      <div id={detailId} hidden={!isDetailOpen}>
+      <div id={more.id} hidden={!more.isOpen}>
         {/* 창고 → 위치 → 품목 순(사용자 2026-10-30). */}
         <div className="filter-bar lot-status-filter">
           {/*
@@ -336,6 +431,15 @@ export const LotFilterBar = ({
           />
         </div>
       </div>
+      {/*
+       * 접힌 칸의 칩과 칸 없는 조건(입하 LOT 거르기)의 칩을 한 줄에 — 펼치면 칸에 값이 보이므로 칸 없는 조건만 남긴다.
+       * 그래서 펼침 여부는 여기서 가르고 칩 줄에는 늘 「접힘」을 넘긴다.
+       */}
+      <HiddenFilterChips
+        open={false}
+        chips={more.isOpen ? noFieldChips : [...fieldChips, ...noFieldChips]}
+        onRemove={removeChip}
+      />
     </>
   );
 };

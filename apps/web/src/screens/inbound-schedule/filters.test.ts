@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import {
+  clearFilter,
   DEFAULT_FILTERS,
   readFilters,
   readPage,
@@ -20,7 +21,7 @@ const filters = (overrides: Partial<ScheduleFilters> = {}): ScheduleFilters => (
   ...overrides,
 });
 
-const NAMES = { supplier: '합성 공급사 가', plant: '합성 공장 가', item: '합성 품목 가' };
+const NAMES = { plant: '합성 공장 가', item: '합성 품목 가' };
 
 describe('readFilters', () => {
   /* 주소가 비어 있으면 화면 기본 — 미완료만 켬, 납기 지난 것만 끔. */
@@ -161,33 +162,56 @@ describe('toFilterQuery', () => {
 });
 
 describe('toFilterChips', () => {
-  it('조건이 없으면 칩이 없다 — 켜짐 표시는 칩이 되지 않는다', () => {
-    expect(toFilterChips(filters({ openOnly: false, overdueOnly: true }), NAMES)).toEqual([]);
+  it('처음 조건이면 칩이 없다', () => {
+    expect(toFilterChips(DEFAULT_FILTERS, NAMES)).toEqual([]);
   });
 
-  it('걸린 조건마다 이름으로 칩을 만든다 — 번호를 문구로 만들지 않는다', () => {
+  /* 공급업체는 조건 줄의 선택 칸이 값을 보인다 — 칩으로 겹쳐 적지 않는다(C-6). */
+  it('공급업체는 칩이 되지 않는다', () => {
+    expect(toFilterChips(filters({ supplier: '8101' }), NAMES)).toEqual([]);
+  });
+
+  it('품목과 접힌 칸의 조건마다 이름으로 칩을 만든다 — 번호를 문구로 만들지 않는다', () => {
     const chips = toFilterChips(
-      filters({ supplier: '8101', plant: '8201', item: '8301', q: 'SAMPLE-PO' }),
+      filters({
+        supplier: '8101',
+        plant: '8201',
+        item: '8301',
+        q: 'SAMPLE-PO',
+        overdueOnly: true,
+        openOnly: false,
+      }),
       NAMES,
     );
 
     expect(chips.map((chip) => chip.label)).toEqual([
-      t.filters.chipSupplier(NAMES.supplier),
-      t.filters.chipPlant(NAMES.plant),
       t.filters.chipItem(NAMES.item),
+      t.filters.chipOverdue,
+      t.filters.chipPlant(NAMES.plant),
       t.filters.chipQ('SAMPLE-PO'),
+      t.filters.chipOpenOnlyOff,
     ]);
     expect(JSON.stringify(chips)).not.toMatch(/8101|8201|8301/);
   });
 
-  /* 「제거」가 넷이면 어느 조건을 푸는 것인지 알 수 없다. */
+  /* 「제거」가 여럿이면 어느 조건을 푸는 것인지 알 수 없다. */
   it('제거 버튼의 접근 이름이 조건마다 다르다', () => {
     const chips = toFilterChips(
-      filters({ supplier: '8101', plant: '8201', item: '8301', q: 'Q' }),
+      filters({ plant: '8201', item: '8301', q: 'Q', overdueOnly: true, openOnly: false }),
       NAMES,
     );
 
-    expect(new Set(chips.map((chip) => chip.removeLabel)).size).toBe(4);
+    expect(new Set(chips.map((chip) => chip.removeLabel)).size).toBe(5);
+  });
+});
+
+describe('clearFilter', () => {
+  it('그 조건만 처음 값으로 돌린다 — 미완료만은 켬, 지연은 끔', () => {
+    const applied = filters({ plant: '8201', q: 'Q', overdueOnly: true, openOnly: false });
+
+    expect(clearFilter(applied, 'openOnly')).toEqual({ ...applied, openOnly: true });
+    expect(clearFilter(applied, 'overdueOnly')).toEqual({ ...applied, overdueOnly: false });
+    expect(clearFilter(applied, 'plant')).toEqual({ ...applied, plant: '' });
   });
 });
 

@@ -7,8 +7,6 @@ export const dispositionDecision = {
   /** 탭 줄 오른쪽 상태 칩 — 「판정 대기 3」. 건수를 아직 모르면 이름만(#223). */
   statusChip: (label: string, count: number | undefined): string =>
     count === undefined ? label : `${label} ${String(count)}`,
-  /** 조회 조건의 상세 펼치기 — 심각도 · 원천. 다른 화면과 같은 말(#223 · omf-all-around#275). */
-  filterDetail: { open: '상세 조건 펼치기', close: '상세 조건 접기' },
   tabs: {
     label: '처분 판정 보기',
     pending: '처분 대기',

@@ -18,6 +18,7 @@ import { useId, useState } from 'react';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { SaveErrorBanner } from '../../patterns/master';
 import { ItemSelect } from '../../patterns/item-select';
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
@@ -148,6 +149,12 @@ export const InspectionLevelScreen = () => {
     page: 1,
     size: PAGE_SIZE,
   });
+  /* 「초기화」는 바뀐 것이 있을 때만 보인다(C-6) — 초기화가 검사 수준 칩도 되돌리므로 함께 견준다. */
+  const isFilterChanged = hasChangedFilters(
+    { itemId: null, level: '' },
+    { itemId: itemInput?.itemId ?? null, level: filter.level },
+    { itemId: filter.itemId, level: filter.level },
+  );
   const [historyItem, setHistoryItem] = useState<ItemInspectionLevel | null>(null);
   const [historyPage, setHistoryPage] = useState(1);
   const [historySize, setHistorySize] = useState<number>(PAGE_SIZE);
@@ -439,15 +446,17 @@ export const InspectionLevelScreen = () => {
               {messages.common.search}
             </Button>
             {/* 초기화 — 입력과 적용된 조건을 처음으로 되돌린다. 다른 탭과 같다. */}
-            <Button
-              variant="outlined"
-              onClick={() => {
-                setItemInput(null);
-                setFilter((prev) => ({ ...prev, itemId: null, level: '', page: 1 }));
-              }}
-            >
-              {messages.common.reset}
-            </Button>
+            {isFilterChanged && (
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setItemInput(null);
+                  setFilter((prev) => ({ ...prev, itemId: null, level: '', page: 1 }));
+                }}
+              >
+                {messages.common.reset}
+              </Button>
+            )}
             <span className="inspection-standard-filter-divider" aria-hidden />
             <Button
               variant="filled"

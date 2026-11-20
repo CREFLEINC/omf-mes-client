@@ -55,6 +55,7 @@ import {
 import { SearchPane } from './search-pane';
 import { ShipmentList } from './shipment-list';
 import { toLotLineSource, toReturnLineSources, type ShipmentRow } from './types';
+import { ScreenHeader } from '../../patterns/screen-header';
 
 const selectionKeyOf = (selection: Selection): string =>
   selection.kind === 'shipment' ? `shipment:${String(selection.shipmentId)}` : selection.kind;
@@ -64,6 +65,8 @@ export const ReturnReceiptScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const today = useMemo(() => new Date(), []);
   const filters = useMemo(() => readFilters(searchParams, today), [searchParams, today]);
+  /* 처음 값 — 주소에 조건이 없을 때 읽히는 값(최근 한 달). 「초기화」가 이 값으로 되돌린다. */
+  const initialFilters = useMemo(() => readFilters(new URLSearchParams(), today), [today]);
   const page = readPage(searchParams);
   const selection = useMemo(() => readSelection(searchParams), [searchParams]);
   const listQuery = useMemo(() => toListQuery(filters, page), [filters, page]);
@@ -221,7 +224,7 @@ export const ReturnReceiptScreen = () => {
 
   return (
     <>
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb
@@ -242,13 +245,12 @@ export const ReturnReceiptScreen = () => {
           <h2 className="pane-title">{t.panes.search}</h2>
           <SearchPane
             applied={filters}
+            defaults={initialFilters}
             customers={customers}
             isDirect={selection.kind === 'direct'}
             onApply={(next) => apply(next)}
             onReset={() =>
-              setSearchParams((current) =>
-                toAppliedSearchParams(current, readFilters(new URLSearchParams(), today), 1),
-              )
+              setSearchParams((current) => toAppliedSearchParams(current, initialFilters, 1))
             }
             onDirect={() =>
               select(selection.kind === 'direct' ? { kind: 'none' } : { kind: 'direct' })

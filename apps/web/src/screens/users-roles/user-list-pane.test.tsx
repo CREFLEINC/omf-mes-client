@@ -26,7 +26,6 @@ const renderPane = (overrides: Partial<UserListPaneProps> = {}) => {
     departmentOptions,
     statusOptions,
     statusDisabledReason: null,
-    departmentLabel: (id) => (id === '3001' ? 'SYN-DEPT-01 · 합성 부서 A' : '알 수 없음'),
     departmentNameOf: (id) => {
       if (id === null || id === undefined) return '—';
       return id === 3001 ? 'SYN-DEPT-01 · 합성 부서 A' : '알 수 없음';
@@ -188,6 +187,18 @@ describe('UserListPane 조건 줄', () => {
     expect(onApplyFilters).toHaveBeenCalledWith(EMPTY_USER_FILTERS);
   });
 
+  it('초기화는 바뀐 것이 생겨야 나타나고, 누르면 치던 값까지 비운다', async () => {
+    const { onApplyFilters, user } = renderPane();
+    expect(screen.queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('사용자 검색'), 'syn');
+    await user.click(screen.getByRole('button', { name: '초기화' }));
+
+    expect(onApplyFilters).toHaveBeenCalledWith(EMPTY_USER_FILTERS);
+    expect(screen.getByLabelText('사용자 검색')).toHaveValue('');
+    expect(screen.queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
+  });
+
   /* 해제 축이라 변경 즉시 적용한다 — 조회를 한 번 더 누르게 하지 않는다. */
   it('미사용 포함은 누르는 즉시 적용된다', async () => {
     const { onApplyFilters, user } = renderPane();
@@ -197,7 +208,7 @@ describe('UserListPane 조건 줄', () => {
     expect(onApplyFilters).toHaveBeenCalledWith({ ...EMPTY_USER_FILTERS, includeInactive: true });
   });
 
-  it('적용된 조건마다 칩이 하나씩 보인다', () => {
+  it('네 조건이 모두 조건 줄에 보여 칩으로 겹쳐 적지 않는다', () => {
     renderPane({
       appliedFilters: {
         q: 'syn',
@@ -207,29 +218,11 @@ describe('UserListPane 조건 줄', () => {
       },
     });
 
-    expect(screen.getByText('검색어: syn')).toBeInTheDocument();
-    expect(screen.getByText('부서: SYN-DEPT-01 · 합성 부서 A')).toBeInTheDocument();
-    expect(screen.getByText('재직 상태: 재직')).toBeInTheDocument();
-    /*
-     * 「미사용 포함」은 확인칸 라벨과 칩 문구 둘 다에 쓰인다 —
-     * 칩이 실제로 섰는지는 칩마다 다른 제거 버튼 이름으로 가린다.
-     */
-    expect(screen.getByRole('button', { name: '미사용 포함 조건 제거' })).toBeInTheDocument();
-  });
-
-  it('칩을 제거하면 그 조건만 풀린다', async () => {
-    const { onApplyFilters, user } = renderPane({
-      appliedFilters: { q: 'syn', departmentId: '3001', statusCode: '', includeInactive: true },
-    });
-
-    await user.click(screen.getByRole('button', { name: '검색어 조건 제거' }));
-
-    expect(onApplyFilters).toHaveBeenCalledWith({
-      q: '',
-      departmentId: '3001',
-      statusCode: '',
-      includeInactive: true,
-    });
+    /* 선행 단언 — 조건이 칸에 서 있어야 「칩이 없다」가 뜻을 갖는다. */
+    expect(screen.getByLabelText('사용자 검색')).toHaveValue('syn');
+    expect(screen.getByRole('checkbox', { name: '미사용 포함' })).toBeChecked();
+    expect(screen.queryByText('검색어: syn')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /조건 제거$/ })).not.toBeInTheDocument();
   });
 });
 

@@ -21,6 +21,7 @@ import { BoardFrame } from '../../patterns/board-frame';
 import { BoardTable } from '../../patterns/board-table';
 import { pickBom, useBomTree, type BomTreeRow } from '../../patterns/bom-tree';
 import { BomTreeCell } from '../../patterns/bom-tree-cell';
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { OneLine } from '../../patterns/po-board';
 import { Select } from '../../patterns/select';
@@ -134,6 +135,9 @@ const FilterBar = ({ applied, typeName, onSearch }: FilterBarProps) => {
     setQ(applied.q);
   }, [applied.q]);
 
+  /* 「초기화」는 바뀐 것이 있을 때만 보인다(C-6). 치던 검색어도 함께 비운다 — 주소가 이미 처음 값이면 effect 가 깨어나지 않는다. */
+  const isChanged = hasChangedFilters(DEFAULT_FILTERS, { ...applied, q }, applied);
+
   return (
     <form
       className="filter-bar"
@@ -175,14 +179,17 @@ const FilterBar = ({ applied, typeName, onSearch }: FilterBarProps) => {
       <div className="field-cell field-cell-unlabeled">
         <div className="filter-actions">
           <Button type="submit">{messages.common.search}</Button>
-          <Button
-            variant="outlined"
-            onClick={() => {
-              onSearch(DEFAULT_FILTERS);
-            }}
-          >
-            {messages.common.reset}
-          </Button>
+          {isChanged && (
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setQ('');
+                onSearch(DEFAULT_FILTERS);
+              }}
+            >
+              {messages.common.reset}
+            </Button>
+          )}
         </div>
       </div>
     </form>

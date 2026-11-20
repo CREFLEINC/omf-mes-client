@@ -74,11 +74,8 @@ export const productStockStatus = {
     all: '전체',
     lookupTruncated: '선택지가 앞쪽 일부만 보입니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
     lookupFailed: '선택지를 불러오지 못했습니다.',
-    chipWarehouse: (value: string): string => `창고: ${value}`,
-    chipItem: (value: string): string => `품목: ${value}`,
+    /** 「조건 더보기」에 접힌 가용만이 켜져 있을 때의 칩(C-6). */
     chipAvailableOnly: '가용만',
-    chipRemoveWarehouse: '창고 조건 제거',
-    chipRemoveItem: '품목 조건 제거',
     chipRemoveAvailableOnly: '가용만 조건 해제',
   },
   pageNav: {

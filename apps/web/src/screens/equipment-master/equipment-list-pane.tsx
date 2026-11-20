@@ -2,7 +2,6 @@ import {
   AlertBanner,
   Button,
   Checkbox,
-  Chip,
   type Column,
   EmptyState,
   SearchInput,
@@ -11,6 +10,14 @@ import {
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
+
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  type HiddenFilterChip,
+  hasChangedFilters,
+  useFilterMore,
+} from '../../patterns/filter-more';
 
 import { type CodeOption, codeNote, defaultEquipmentFilters, statusLabel } from './code-options';
 import { SelectField } from './select-field';
@@ -40,6 +47,9 @@ export interface EquipmentListPaneProps {
 }
 
 const t = messages.equipmentMaster;
+
+/** 「조건 더보기」에 접힌 체크칸 — 걸려 있으면 칩으로 알린다. */
+type HiddenFlag = 'calibrationRequired' | 'includeInactive' | 'includeDisposed';
 
 const hasAnyFilter = (filters: EquipmentFilters): boolean =>
   filters.q !== '' ||
@@ -77,6 +87,7 @@ export const EquipmentListPane = ({
   typeOptions,
   loadError,
 }: EquipmentListPaneProps) => {
+  const more = useFilterMore();
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
   const [draft, setDraft] = useState<DraftFilters>(draftOf(appliedFilters));
   const { q: appliedQ, equipmentTypeCode: appliedType } = appliedFilters;
@@ -105,6 +116,47 @@ export const EquipmentListPane = ({
   /** ⛔ 이름을 모르는 코드는 지어내지 않고 그대로 쓴다(G-9) — 시드가 아직 없을 수 있다. */
   const typeLabelOf = (code: string): string =>
     typeOptions.find((option) => option.value === code)?.label ?? code;
+
+  /*
+   * 접힌 칸(체크칸 셋)에 걸린 조건만 칩으로 — 보이는 칸(검색 · 유형)의 값은 칸이 말한다(C-6).
+   * 체크칸은 즉시 적용이라 × 도 곧바로 나간다.
+   */
+  const hiddenChips: HiddenFilterChip<HiddenFlag>[] = [
+    ...(appliedFilters.calibrationRequired
+      ? [
+          {
+            key: 'calibrationRequired' as const,
+            label: t.equipmentFilters.calibrationRequiredOnly,
+            removeLabel: t.equipmentFilters.chipRemoveCalibration,
+          },
+        ]
+      : []),
+    ...(appliedFilters.includeInactive
+      ? [
+          {
+            key: 'includeInactive' as const,
+            label: messages.common.includeInactive,
+            removeLabel: t.equipmentFilters.chipRemoveIncludeInactive,
+          },
+        ]
+      : []),
+    ...(appliedFilters.includeDisposed
+      ? [
+          {
+            key: 'includeDisposed' as const,
+            label: t.equipmentFilters.includeDisposed,
+            removeLabel: t.equipmentFilters.chipRemoveIncludeDisposed,
+          },
+        ]
+      : []),
+  ];
+
+  /* 「초기화」는 편집 중이거나 적용된 조건이 처음 값과 다를 때만 보인다. */
+  const isChanged = hasChangedFilters(
+    defaultEquipmentFilters,
+    { ...appliedFilters, ...draft },
+    appliedFilters,
+  );
 
   const columns: Column<Equipment>[] = [
     {
@@ -232,6 +284,27 @@ export const EquipmentListPane = ({
           note={codeNote(typeOptions)}
         />
         <div className="equipment-master-filter-footer">
+          <div className="filter-actions">
+            <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
+            <Button variant="outlined" onClick={onAdd}>
+              {t.actions.addEquipment}
+            </Button>
+            {isChanged && (
+              <Button variant="outlined" onClick={resetAll}>
+                {messages.common.reset}
+              </Button>
+            )}
+            <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
+          </div>
+        </div>
+      </div>
+
+      {/*
+       * **보이는 조건은 둘이다**(C-6) — 검색 · 설비 유형. 체크칸 셋은 「조건 더보기」에 접는다.
+       * `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다.
+       */}
+      <div id={more.id} hidden={!more.isOpen}>
+        <div className="filter-bar equipment-master-filter-more">
           <div className="equipment-master-filter-checks">
             {/* 해제 축이라 변경 즉시 적용한다. */}
             <Checkbox
@@ -263,65 +336,14 @@ export const EquipmentListPane = ({
               {t.equipmentFilters.includeDisposed}
             </Checkbox>
           </div>
-          <div className="filter-actions">
-            <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
-            <Button variant="outlined" onClick={onAdd}>
-              {t.actions.addEquipment}
-            </Button>
-            <Button variant="outlined" onClick={resetAll}>
-              {messages.common.reset}
-            </Button>
-          </div>
         </div>
       </div>
 
-      <div className="filter-bar equipment-master-filter-chips">
-        {appliedFilters.q !== '' && (
-          <Chip
-            variant="status"
-            removeLabel={t.equipmentFilters.chipRemoveKeyword}
-            onRemove={() => onApplyFilters({ ...appliedFilters, q: '' })}
-          >
-            {t.equipmentFilters.chipKeyword(appliedFilters.q)}
-          </Chip>
-        )}
-        {appliedFilters.equipmentTypeCode !== '' && (
-          <Chip
-            variant="status"
-            removeLabel={t.equipmentFilters.chipRemoveType}
-            onRemove={() => onApplyFilters({ ...appliedFilters, equipmentTypeCode: '' })}
-          >
-            {t.equipmentFilters.chipType(typeLabelOf(appliedFilters.equipmentTypeCode))}
-          </Chip>
-        )}
-        {appliedFilters.calibrationRequired && (
-          <Chip
-            variant="status"
-            removeLabel={t.equipmentFilters.chipRemoveCalibration}
-            onRemove={() => onApplyFilters({ ...appliedFilters, calibrationRequired: false })}
-          >
-            {t.equipmentFilters.calibrationRequiredOnly}
-          </Chip>
-        )}
-        {appliedFilters.includeInactive && (
-          <Chip
-            variant="status"
-            removeLabel={t.equipmentFilters.chipRemoveIncludeInactive}
-            onRemove={() => onApplyFilters({ ...appliedFilters, includeInactive: false })}
-          >
-            {messages.common.includeInactive}
-          </Chip>
-        )}
-        {appliedFilters.includeDisposed && (
-          <Chip
-            variant="status"
-            removeLabel={t.equipmentFilters.chipRemoveIncludeDisposed}
-            onRemove={() => onApplyFilters({ ...appliedFilters, includeDisposed: false })}
-          >
-            {t.equipmentFilters.includeDisposed}
-          </Chip>
-        )}
-      </div>
+      <HiddenFilterChips
+        open={more.isOpen}
+        chips={hiddenChips}
+        onRemove={(key) => onApplyFilters({ ...appliedFilters, [key]: false })}
+      />
 
       {listSlot()}
     </section>

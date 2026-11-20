@@ -2009,55 +2009,6 @@ describe('StocktakingScreen — 개시 요청', () => {
       expect(currentLocation()).toContain(`ct=${String(OPENED_COUNT_ID)}`);
     });
   });
-
-  /*
-   * **M-5 · M26의 둘째 겹** — 위 테스트가 재는 것은 **컨트롤 잠금**(눈에 보이는 첫째 겹)이다.
-   * 그 겹만으로는 모자란 자리가 실재한다: **조건 칩의 ×는 디자인 시스템이 잠금을 받지 않아**
-   * (`StatusChipProps`에 `disabled`가 없다 — 실측) 전송 중에도 눌린다.
-   *
-   * 그 길로 들어오면 조건이 바뀌면서 `ct`가 풀리고, 잠시 뒤 도착한 **앞 요청의 결과가 다른
-   * 조건의 맥락에 나타난다.** 그래서 `applyQuery`가 스스로 한 번 더 막는다 — 이 테스트는
-   * **경로 가드 단독**을 겨눈다(컨트롤 잠금은 이 경로에 아예 없다).
-   */
-  it('전송 중에는 잠금을 받지 않는 조건 칩의 ×로도 대상이 바뀌지 않는다', async () => {
-    const { requests, release, user } = await setupReadyToOpen(
-      allRoutes(),
-      '?wh=9101',
-      '',
-      isOpenRequest,
-    );
-
-    await user.click(openButton());
-    await user.click(screen.getByRole('button', { name: t.actions.confirmOpen }));
-
-    await waitFor(() => {
-      expect(openRequests(requests)).toHaveLength(1);
-    });
-
-    const before = currentLocation();
-    const listBefore = requestsTo(requests, LIST_PATH).filter(
-      (request) => request.method === 'GET',
-    ).length;
-    const removeChip = within(listPane()).getByRole('button', {
-      name: t.filters.chipRemoveWarehouse,
-    });
-
-    /* 짝 방향 — 이 버튼은 실제로 눌린다(잠겨 있어서 아무 일도 안 나는 것이 아니다). */
-    expect(removeChip).not.toBeDisabled();
-
-    await user.click(removeChip);
-
-    expect(currentLocation()).toBe(before);
-    expect(
-      requestsTo(requests, LIST_PATH).filter((request) => request.method === 'GET'),
-    ).toHaveLength(listBefore);
-
-    release();
-
-    await waitFor(() => {
-      expect(currentLocation()).toContain(`ct=${String(OPENED_COUNT_ID)}`);
-    });
-  });
 });
 
 describe('StocktakingScreen — 개시 실패', () => {
@@ -3508,43 +3459,6 @@ describe('StocktakingScreen — 저장 중 잠금', () => {
     /* 짝 방향 — 화면은 「위치를 고르지 않았다」를 그대로 말하고 있다. */
     expect(screen.getByText(t.empty.noLocationTitle)).toBeInTheDocument();
   });
-
-  /*
-   * **감지기 M41의 둘째 겹 — 경로 가드 단독.** 조건 칩의 ×는 디자인 시스템이 잠금을 받지 않아
-   * (`StatusChipProps`에 `disabled`가 없다 — 실측) 전송 중에도 눌린다. 그 길로 들어오면 조건이
-   * 바뀌면서 `ct`·`loc`가 풀리고 **앞 요청의 결과가 다른 맥락에 나타난다.**
-   */
-  it('저장 중에는 잠금을 받지 않는 조건 칩의 ×로도 대상이 바뀌지 않는다', async () => {
-    const { requests, release, user } = await setupAtLocation(
-      allRoutes(),
-      `${AT_LOCATION}&wh=9101`,
-      '',
-      isReplaceRequest,
-    );
-
-    await fillAllQty(user);
-    await user.click(saveButton());
-
-    await waitFor(() => {
-      expect(replaceRequests(requests)).toHaveLength(1);
-    });
-
-    const before = currentLocation();
-    const removeChip = within(listPane()).getByRole('button', {
-      name: t.filters.chipRemoveWarehouse,
-    });
-
-    /* 짝 방향 — 이 버튼은 실제로 눌린다(잠겨 있어서 아무 일도 안 나는 것이 아니다). */
-    expect(removeChip).not.toBeDisabled();
-
-    await user.click(removeChip);
-
-    expect(currentLocation()).toBe(before);
-
-    release();
-
-    await screen.findByRole('status', { name: t.result.savedLabel });
-  });
 });
 
 describe('StocktakingScreen — 마감 잠금과 활성', () => {
@@ -3797,7 +3711,8 @@ describe('StocktakingScreen — 마감 확인 창', () => {
    * 「실사 마감 실행」을 누른다.
    */
   it('조건을 바꿔 실사가 풀린 뒤 다시 골라도 마감 창이 서지 않는다', async () => {
-    const { requests, user } = await setupClosable();
+    /* 초기화는 바뀐 것이 있을 때만 보인다(C-6) — 걸린 조건을 둔다. */
+    const { requests, user } = await setupClosable(undefined, `${AT_COUNT}&prog=1`);
 
     await user.click(closeButton());
 
@@ -4537,42 +4452,6 @@ describe('StocktakingScreen — 마감 중 잠금', () => {
     await user.click(closeButton());
 
     expect(closeRequests(requests)).toHaveLength(1);
-
-    release();
-
-    await screen.findByRole('status', { name: t.result.closedLabel });
-  });
-
-  /*
-   * **감지기 M51의 둘째 겹 — 경로 가드 단독.** 조건 칩의 ×는 디자인 시스템이 잠금을 받지 않아
-   * (`StatusChipProps`에 `disabled`가 없다 — 실측) 전송 중에도 눌린다. 그 길로 들어오면
-   * 조건이 바뀌면서 `ct`가 풀리고 **앞 요청의 결과가 다른 맥락에 나타난다.**
-   */
-  it('마감 중에는 잠금을 받지 않는 조건 칩의 ×로도 대상이 바뀌지 않는다', async () => {
-    const { requests, release, user } = await setupClosable(
-      allRoutes([closableDetailRoute(), closingRoute()]),
-      `${AT_COUNT}&wh=9101`,
-      '',
-      isCloseRequest,
-    );
-
-    await closeCount(user);
-
-    await waitFor(() => {
-      expect(closeRequests(requests)).toHaveLength(1);
-    });
-
-    const before = currentLocation();
-    const removeChip = within(listPane()).getByRole('button', {
-      name: t.filters.chipRemoveWarehouse,
-    });
-
-    /* 짝 방향 — 이 버튼은 실제로 눌린다(잠겨 있어서 아무 일도 안 나는 것이 아니다). */
-    expect(removeChip).not.toBeDisabled();
-
-    await user.click(removeChip);
-
-    expect(currentLocation()).toBe(before);
 
     release();
 

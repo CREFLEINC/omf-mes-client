@@ -17,6 +17,7 @@ import { useId, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { ScreenHeader } from '../../patterns/screen-header';
 import { FieldLabel } from './field-label';
 import { LoadErrorBanner } from './load-error-banner';
 import {
@@ -183,7 +184,7 @@ export const MaintenanceResultScreen = () => {
 
   return (
     <>
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb

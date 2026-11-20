@@ -48,6 +48,7 @@ export const dispositionRequest: Translated<typeof ko.dispositionRequest> = {
   codePending: 'Giá trị gốc để chọn vẫn chưa được chuẩn bị',
   codePlaceholder: 'Đang chuẩn bị giá trị gốc',
   warehousePending: 'Vẫn chưa có danh sách kho hàng lỗi. Sẽ tra cứu mà không lọc theo kho.',
+  chipWarehouse: (name: string): string => `Kho: ${name}`,
   values: {
     sourceCode: {
       RETURN: 'Trả hàng',

@@ -2,11 +2,26 @@ import { Button, Checkbox, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  hasChangedFilters,
+  useFilterMore,
+  type HiddenFilterChip,
+} from '../../patterns/filter-more';
 import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
 import { periodProblem, type InspectionInsightFilters } from './filters';
+import { useItemNames } from './item-names';
 
 const t = messages.inspectionResultInsights.filter;
+/* 접힌 칸 칩의 라벨 — 대상 이름(목록 머리글 · 상세 라벨)이다. 칸 라벨의 「선택 · 검색」 같은 동작 낱말을 싣지 않는다. */
+const chipLabels = {
+  inspectionType: messages.inspectionResultInsights.overview.columns.inspectionType,
+  process: messages.inspectionResultInsights.detail.fields.process,
+  calibration: messages.inspectionResultInsights.measurement.columns.calibration,
+  item: messages.inspectionResultInsights.overview.columns.item,
+};
 
 export interface InspectionFilterOption {
   value: string;
@@ -21,6 +36,8 @@ export interface InspectionFilterOptions {
 
 interface InspectionInsightFilterBarProps {
   appliedFilters: InspectionInsightFilters;
+  /** 처음 값 — 초기화가 되돌리는 값(오늘 · 오늘). 「초기화」는 이것과 다를 때만 보인다(C-6). */
+  defaults: InspectionInsightFilters;
   options: InspectionFilterOptions;
   onSearch: (filters: InspectionInsightFilters) => void;
   onReset: () => void;
@@ -33,22 +50,29 @@ const optional = (options: readonly InspectionFilterOption[]): InspectionFilterO
 
 const ALL_ITEMS: InspectionFilterOption[] = [{ value: '', label: t.all }];
 
+type HiddenKey = 'inspectionTypeCode' | 'processId' | 'calibrationExpired' | 'itemId';
+
+/** 접힌 칸 칩 한 개 — 「라벨: 값」 한 줄, × 의 접근명은 「〈라벨〉 조건 제거」. */
+const chipOf = (key: HiddenKey, label: string, value: string): HiddenFilterChip<HiddenKey> => ({
+  key,
+  label: `${label}: ${value}`,
+  removeLabel: messages.common.filterMore.remove(label),
+});
+
 export const InspectionInsightFilterBar = ({
   appliedFilters,
+  defaults,
   options,
   onSearch,
   onReset,
 }: InspectionInsightFilterBarProps) => {
   const [draft, setDraft] = useState(appliedFilters);
   const id = useId();
-  /* 아랫줄(기간 · LOT 밖 조건)은 접어 둔다 — 그 조건이 걸려 있으면 펴서 연다(사용자 2026-10-30). */
-  const [isDetailOpen, setIsDetailOpen] = useState(
-    () =>
-      appliedFilters.inspectionTypeCode !== '' ||
-      appliedFilters.itemId !== '' ||
-      appliedFilters.processId !== '' ||
-      appliedFilters.calibrationExpired !== '',
-  );
+  /*
+   * 아랫줄(기간 · LOT 밖 조건)은 「조건 더보기」로 접어 둔다(사용자 2026-10-30 · C-6). 늘 접힌 채로 들어오고, 걸린 조건은
+   * 아래 칩으로 알린다 — × 는 그 조건만 풀어 바로 조회한다.
+   */
+  const more = useFilterMore();
   const {
     from,
     to,
@@ -104,10 +128,56 @@ export const InspectionInsightFilterBar = ({
     [t.process, 'processId', optional(options.process), false],
   ] as const;
 
+  /* 접힌 칸 칩의 값 — 펼친 칸이 보이는 글자와 같다(품목은 품목코드 · 품목명). */
+  const appliedItemId = itemId === '' ? undefined : Number(itemId);
+  const itemNames = useItemNames([appliedItemId]);
+  const labelIn = (values: readonly InspectionFilterOption[], value: string): string =>
+    values.find((option) => option.value === value)?.label ?? value;
+  const hiddenChips: HiddenFilterChip<HiddenKey>[] = [
+    ...(inspectionTypeCode === ''
+      ? []
+      : [
+          chipOf(
+            'inspectionTypeCode',
+            chipLabels.inspectionType,
+            labelIn(options.inspectionType, inspectionTypeCode),
+          ),
+        ]),
+    ...(processId === ''
+      ? []
+      : [chipOf('processId', chipLabels.process, labelIn(options.process, processId))]),
+    ...(calibrationExpired === ''
+      ? []
+      : [
+          chipOf(
+            'calibrationExpired',
+            chipLabels.calibration,
+            calibrationExpired === 'only' ? t.calibrationOnly : t.calibrationExclude,
+          ),
+        ]),
+    ...(appliedItemId === undefined
+      ? []
+      : [
+          chipOf(
+            'itemId',
+            chipLabels.item,
+            itemNames.get(appliedItemId)?.label ?? messages.common.reference.loading,
+          ),
+        ]),
+  ];
+
+  /* 「초기화」는 바뀐 것이 있을 때만(C-6) — 편집 중인 값이나 조회에 쓰인 값(판정 칩 포함)이 처음 값과 다를 때. */
+  const isChanged = hasChangedFilters(defaults, draft, appliedFilters);
+  /* 편집 상태도 함께 처음으로 — 조회에 쓰인 값이 이미 처음 값이면 주소가 바뀌지 않아 되돌림이 깨어나지 않는다. */
+  const reset = (): void => {
+    setDraft(defaults);
+    onReset();
+  };
+
   return (
     <div className="filter-bar inspection-results-filter">
       {/*
-       * 윗줄 — 시작일 → 종료일 → LOT 스캔, 오른쪽 끝에 [조회] [초기화] [상세 보기 펼치기](사용자 2026-10-30, LOT 현황 조회 줄과
+       * 윗줄 — 시작일 → 종료일 → LOT 스캔, 오른쪽 끝에 [조회] [초기화] [조건 더보기](사용자 2026-10-30, LOT 현황 조회 줄과
        * 같은 짜임). 나머지 조건은 아랫줄에서 펴고 접는다.
        */}
       <div className="inspection-results-filter-row">
@@ -152,27 +222,21 @@ export const InspectionInsightFilterBar = ({
             {t.finalRoundOnly}
           </Checkbox>
         </div>
-        {/* 조회 → 초기화 → 상세 보기 차례(사용자 지시 · #217). */}
+        {/* 조회 → 초기화 → 조건 더보기 차례(사용자 지시 · #217). */}
         <div className="form-actions inspection-results-filter-actions">
           <Button disabled={reason !== null} onClick={() => onSearch(draft)}>
             {t.search}
           </Button>
-          <Button variant="outlined" onClick={onReset}>
-            {t.reset}
-          </Button>
-          <Button
-            variant="text"
-            size="sm"
-            aria-expanded={isDetailOpen}
-            aria-controls={`${id}-detail`}
-            onClick={() => setIsDetailOpen((open) => !open)}
-          >
-            {isDetailOpen ? t.detailClose : t.detailOpen}
-          </Button>
+          {isChanged && (
+            <Button variant="outlined" onClick={reset}>
+              {t.reset}
+            </Button>
+          )}
+          <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
         </div>
       </div>
       {/* 아랫줄 — `hidden` 은 감싸는 상자에 둔다. */}
-      <div id={`${id}-detail`} className="inspection-results-filter-detail" hidden={!isDetailOpen}>
+      <div id={more.id} className="inspection-results-filter-detail" hidden={!more.isOpen}>
         {/* 검사 유형 → 공정 → 교정 상태 → 품목 차례(사용자 2026-10-30). */}
         {selects.map(([label, key, values, required]) => (
           <div className="field-cell wide-select" key={key}>
@@ -222,6 +286,11 @@ export const InspectionInsightFilterBar = ({
           />
         </div>
       </div>
+      <HiddenFilterChips
+        open={more.isOpen}
+        chips={hiddenChips}
+        onRemove={(key) => onSearch({ ...appliedFilters, [key]: '' })}
+      />
       {/* 안내가 없으면 줄을 두지 않는다 — 빈 줄이 칸 사이 간격만큼 아래 여백을 늘렸다(사용자 2026-10-30). */}
       {note !== null && (
         <div className="inspection-results-filter-footer">

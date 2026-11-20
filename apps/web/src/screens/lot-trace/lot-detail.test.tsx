@@ -296,11 +296,11 @@ describe('W-02-09 LOT 생산 이력 조회: 자재 LOT 상세', () => {
 });
 
 describe('W-02-09 LOT 생산 이력 조회: 제품 LOT 상세', () => {
-  it('상세 조건 안의 조건(W/O 번호)이 주소에 있어도 접힌 채 열고, 걸린 조건을 한 줄로 알린다', async () => {
+  it('조건 더보기 안의 조건(W/O 번호)이 주소에 있어도 접힌 채 열고, 걸린 조건을 칩으로 알린다', async () => {
     setup('/production/lot-trace?wo=WO-SYN-0001', {});
 
-    expect(await screen.findByText('상세 조건: W/O 번호 WO-SYN-0001')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '상세 조건 펼치기' })).toHaveAttribute(
+    expect(await screen.findByText('W/O 번호: WO-SYN-0001')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '조건 더보기' })).toHaveAttribute(
       'aria-expanded',
       'false',
     );

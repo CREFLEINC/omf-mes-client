@@ -2,7 +2,6 @@ import {
   AlertBanner,
   Button,
   Checkbox,
-  Chip,
   type Column,
   EmptyState,
   SearchInput,
@@ -12,6 +11,13 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  type HiddenFilterChip,
+  hasChangedFilters,
+  useFilterMore,
+} from '../../patterns/filter-more';
 import type { LookupSource } from '../../patterns/lookup-display';
 import { CalibrationBadge } from './calibration-badge';
 import { judgeCalibration } from './calibration-status';
@@ -70,6 +76,9 @@ const hasAnyFilter = (filters: GaugeFilters): boolean =>
   filters.includeInactive ||
   filters.includeDisposed;
 
+/** 「조건 더보기」에 접힌 체크칸 — 걸려 있으면 칩으로 알린다. */
+type HiddenFlag = 'overdueOnly' | 'includeInactive' | 'includeDisposed';
+
 /** 밀린 것 — 「아직 안 함」과 「만료」를 함께 잡는다. 둘 다 채워야 할 것이다. */
 const isOverdue = (gauge: Equipment, today: string): boolean => {
   const { status } = judgeCalibration(gauge, today);
@@ -93,6 +102,7 @@ export const GaugeListPane = ({
   onEdit,
   loadError,
 }: GaugeListPaneProps) => {
+  const more = useFilterMore();
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
   const [draft, setDraft] = useState<DraftFilters>(draftOf(appliedFilters));
   const { q: appliedQ, plantId: appliedPlantId, equipmentTypeCode: appliedType } = appliedFilters;
@@ -117,6 +127,47 @@ export const GaugeListPane = ({
     setDraft(draftOf(defaultGaugeFilters));
     onApplyFilters(defaultGaugeFilters);
   };
+
+  /*
+   * 접힌 칸(체크칸 셋)에 걸린 조건만 칩으로 — 보이는 칸(검색 · 공장 · 유형)의 값은 칸이 말한다.
+   * 체크칸은 즉시 적용이라 × 도 곧바로 나간다.
+   */
+  const hiddenChips: HiddenFilterChip<HiddenFlag>[] = [
+    ...(appliedFilters.overdueOnly
+      ? [
+          {
+            key: 'overdueOnly' as const,
+            label: t.filters.overdueOnly,
+            removeLabel: t.filters.chipRemoveOverdue,
+          },
+        ]
+      : []),
+    ...(appliedFilters.includeInactive
+      ? [
+          {
+            key: 'includeInactive' as const,
+            label: messages.common.includeInactive,
+            removeLabel: t.filters.chipRemoveIncludeInactive,
+          },
+        ]
+      : []),
+    ...(appliedFilters.includeDisposed
+      ? [
+          {
+            key: 'includeDisposed' as const,
+            label: t.filters.includeDisposed,
+            removeLabel: t.filters.chipRemoveIncludeDisposed,
+          },
+        ]
+      : []),
+  ];
+
+  /* 「초기화」는 편집 중이거나 적용된 조건이 처음 값과 다를 때만 보인다. */
+  const isChanged = hasChangedFilters(
+    defaultGaugeFilters,
+    { ...appliedFilters, ...draft },
+    appliedFilters,
+  );
 
   /*
    * ⚠ **밀림 조건은 화면이 건다** — 「아직 안 함」과 「만료」를 함께 잡는 질의 조건이 계약에
@@ -203,7 +254,16 @@ export const GaugeListPane = ({
 
   return (
     <section className="pane gauge-master-pane" aria-label={t.paneTitle}>
-      <h2 className="pane-title">{t.paneTitle}</h2>
+      {/*
+       * 등록은 조회 조건이 아니라 자료를 만드는 일이다 — 제목 줄 오른쪽에 두어 조회 줄을 세 칸과
+       * 조회 · 초기화 · 조건 더보기로 한 줄에 맞춘다(C-6, 형제 화면 툴 마스터와 같은 자리).
+       */}
+      <div className="pane-heading-row gauge-master-heading">
+        <h2 className="pane-title">{t.paneTitle}</h2>
+        <Button variant="outlined" onClick={onAdd}>
+          {t.actions.addGauge}
+        </Button>
+      </div>
       <div className="filter-bar gauge-master-filter">
         <SearchInput
           label={t.filters.searchLabel}
@@ -226,9 +286,27 @@ export const GaugeListPane = ({
           onChange={(value) => setDraft((prev) => ({ ...prev, equipmentTypeCode: value }))}
           note={typeOptionsNote}
         />
-        <div className="gauge-master-filter-footer">
+        <div className="field-cell field-cell-unlabeled gauge-master-filter-actions">
+          <div className="filter-actions">
+            <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
+            {isChanged && (
+              <Button variant="outlined" onClick={resetAll}>
+                {messages.common.reset}
+              </Button>
+            )}
+            <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
+          </div>
+        </div>
+      </div>
+
+      {/*
+       * **보이는 칸은 셋이다**(C-6) — 계측기 검색 · 공장 · 계측기 유형. 체크칸 셋은 「조건 더보기」에 접는다.
+       * `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다.
+       */}
+      <div id={more.id} hidden={!more.isOpen}>
+        <div className="filter-bar gauge-master-filter-more">
           {/* 해제 축이라 변경 즉시 적용한다. */}
-          <div className="check-group">
+          <div className="check-group check-group-row">
             <Checkbox
               checked={appliedFilters.overdueOnly}
               onChange={(event) =>
@@ -254,74 +332,14 @@ export const GaugeListPane = ({
               {t.filters.includeDisposed}
             </Checkbox>
           </div>
-          <div className="filter-actions">
-            <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
-            <Button variant="outlined" onClick={resetAll}>
-              {messages.common.reset}
-            </Button>
-            <Button variant="outlined" onClick={onAdd}>
-              {t.actions.addGauge}
-            </Button>
-          </div>
         </div>
       </div>
 
-      <div className="filter-bar gauge-master-filter-chips">
-        {appliedFilters.q !== '' && (
-          <Chip
-            variant="status"
-            removeLabel={t.filters.chipRemoveKeyword}
-            onRemove={() => onApplyFilters({ ...appliedFilters, q: '' })}
-          >
-            {t.filters.chipKeyword(appliedFilters.q)}
-          </Chip>
-        )}
-        {appliedFilters.plantId !== '' && (
-          <Chip
-            variant="status"
-            removeLabel={t.filters.chipRemovePlant}
-            onRemove={() => onApplyFilters({ ...appliedFilters, plantId: '' })}
-          >
-            {t.filters.chipPlant(lookupLabel(plantSource, appliedFilters.plantId))}
-          </Chip>
-        )}
-        {appliedFilters.equipmentTypeCode !== '' && (
-          <Chip
-            variant="status"
-            removeLabel={t.filters.chipRemoveType}
-            onRemove={() => onApplyFilters({ ...appliedFilters, equipmentTypeCode: '' })}
-          >
-            {t.filters.chipType(appliedFilters.equipmentTypeCode)}
-          </Chip>
-        )}
-        {appliedFilters.overdueOnly && (
-          <Chip
-            variant="status"
-            removeLabel={t.filters.chipRemoveOverdue}
-            onRemove={() => onApplyFilters({ ...appliedFilters, overdueOnly: false })}
-          >
-            {t.filters.overdueOnly}
-          </Chip>
-        )}
-        {appliedFilters.includeInactive && (
-          <Chip
-            variant="status"
-            removeLabel={t.filters.chipRemoveIncludeInactive}
-            onRemove={() => onApplyFilters({ ...appliedFilters, includeInactive: false })}
-          >
-            {messages.common.includeInactive}
-          </Chip>
-        )}
-        {appliedFilters.includeDisposed && (
-          <Chip
-            variant="status"
-            removeLabel={t.filters.chipRemoveIncludeDisposed}
-            onRemove={() => onApplyFilters({ ...appliedFilters, includeDisposed: false })}
-          >
-            {t.filters.includeDisposed}
-          </Chip>
-        )}
-      </div>
+      <HiddenFilterChips
+        open={more.isOpen}
+        chips={hiddenChips}
+        onRemove={(key) => onApplyFilters({ ...appliedFilters, [key]: false })}
+      />
 
       {/*
        * ⚠ **밀림 조건은 받아 온 것만 덮는다.** 서버가 목록을 잘랐는데 화면에서 거르면,

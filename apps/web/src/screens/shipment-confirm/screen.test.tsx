@@ -81,6 +81,19 @@ describe('ShipmentConfirmScreen — W-04-12 출하 내역', () => {
     await rowOf('SYN-SH-102');
   });
 
+  it('C-6 「초기화」는 처음 값(최근 한 달 · 전체)과 달라진 것이 있을 때만 보이고, 누르면 처음 값으로 돌아간다', async () => {
+    const { user } = renderScreen();
+    await rowOf('SYN-SH-101');
+
+    expect(screen.queryByRole('button', { name: t.filter.reset })).toBeNull();
+
+    await user.type(screen.getByRole('textbox', { name: t.filter.q }), 'SYN-SH-1');
+    await user.click(screen.getByRole('button', { name: t.filter.reset }));
+
+    expect(screen.getByRole('textbox', { name: t.filter.q })).toHaveValue('');
+    expect(screen.queryByRole('button', { name: t.filter.reset })).toBeNull();
+  });
+
   it('Q18 창고가 여럿이면 「창고 2곳」 칩(이름은 title), 하나면 그 이름이다', async () => {
     renderScreen();
 
@@ -195,7 +208,7 @@ describe('ShipmentConfirmScreen — W-04-12 출하 내역', () => {
     expect(within(detailPane()).getByText(t.detail.erpPending(1, 'SYN-SO-01'))).toBeInTheDocument();
   });
 
-  it('Q15·US7-2 ERP 송신 거르기 칩에 상태별 건수와 전체 건수를 보인다', async () => {
+  it('Q15·US7-2 ERP 송신 거르기 칩에 상태별 건수와 전체 건수를 보인다 — 0 건 칩은 세우지 않는다', async () => {
     renderScreen({
       erpSendStatusCounts: { PENDING: 2, SENT: 1, NOT_SENT_NO_SALES_ORDER: 1, NOT_QUEUED: 2 },
     });
@@ -203,7 +216,7 @@ describe('ShipmentConfirmScreen — W-04-12 출하 내역', () => {
     const group = await screen.findByRole('group', { name: t.filter.erp });
     expect(await within(group).findByText(t.filter.chip(t.erp.PENDING, 2))).toBeInTheDocument();
     expect(within(group).getByText(t.filter.chip(t.filter.all, 6))).toBeInTheDocument();
-    expect(within(group).getByText(t.filter.chip(t.erp.SEND_ERROR, 0))).toBeInTheDocument();
+    expect(within(group).queryByText(t.filter.chip(t.erp.SEND_ERROR, 0))).toBeNull();
   });
 
   it('US6-1·Q13 취소가 승인된 출하는 상세에서 [취소 실행]한다 — 확인 창을 거쳐 잠금 토큰·영업일과 함께 실행한다', async () => {

@@ -4,6 +4,7 @@ import { useQueries, useQuery } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { masterName } from '../../patterns/master-name';
+import { partnerOptionLabel } from '../../patterns/partner-select';
 import { runRequest, toApiError } from '../../patterns/request';
 
 /**
@@ -209,15 +210,7 @@ export const useLotSuppliers = (lotIds: readonly (number | null | undefined)[]):
 
   const partnerIds = uniqueOf(receipts.map((result) => result.data));
   const partners = useQueries({
-    queries: partnerIds.map((partnerId) => ({
-      queryKey: ['iqc-inspection', 'partner', partnerId] as const,
-      queryFn: () =>
-        runRequest(() =>
-          client.GET('/mdm/partners/{partnerId}', { params: { path: { partnerId } } }),
-        ),
-      retry: false,
-      staleTime: Infinity,
-    })),
+    queries: partnerIds.map((partnerId) => partnerQuery(client, partnerId)),
   });
 
   return {
@@ -236,6 +229,31 @@ export const useLotSuppliers = (lotIds: readonly (number | null | undefined)[]):
       return describe(partner, partner?.data?.partnerName);
     },
   };
+};
+
+/* 거래처 단건 — LOT 공급사 풀이와 접힌 공급사 조건 칩이 같은 조회를 나눠 쓴다. */
+const partnerQuery = (client: Client, partnerId: number) => ({
+  queryKey: ['iqc-inspection', 'partner', partnerId] as const,
+  queryFn: () =>
+    runRequest(() => client.GET('/mdm/partners/{partnerId}', { params: { path: { partnerId } } })),
+  retry: false,
+  staleTime: Infinity,
+});
+
+/**
+ * 공급사 조건의 이름 — 「조건 더보기」에 접힌 공급사 칸이 칩으로 알릴 때 쓴다(C-6). 칸이 보이는 글자와 같다(거래처코드 ·
+ * 거래처명). 못 푼 갈래는 품목 이름과 같은 네 갈래 글자다.
+ */
+export const useSupplierName = (partnerId: number | null): string => {
+  const { client } = useApiClient();
+  const result = useQuery({
+    ...partnerQuery(client, partnerId ?? 0),
+    enabled: partnerId !== null,
+  });
+
+  if (partnerId === null) return t.empty;
+  const partner = result.data;
+  return describe(result, partner === undefined ? undefined : partnerOptionLabel(partner));
 };
 
 export interface SupplierOptions {

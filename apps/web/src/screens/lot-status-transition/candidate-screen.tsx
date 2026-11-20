@@ -15,6 +15,12 @@ import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-quer
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  hasChangedFilters,
+  useFilterMore,
+} from '../../patterns/filter-more';
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import {
@@ -244,9 +250,27 @@ export const LotStatusTransitionCandidateScreen = () => {
     return releaseReasonNames.options.find((option) => option.value === code)?.label ?? code;
   };
   const periodReasonId = useId();
-  const detailId = useId();
-  /* 자재는 상세 조건으로 접어 둔다 — 걸린 자재가 있으면 펼친 채로 들어온다(LOT 상태 이력의 처리자와 같다). */
-  const [isDetailOpen, setIsDetailOpen] = useState(filters.itemId !== '');
+  /*
+   * 자재는 「조건 더보기」로 접어 둔다(LOT 상태 이력의 처리자와 같다 · C-6). 늘 접힌 채로 들어오고, 걸린 자재는 아래 칩으로
+   * 알린다 — × 는 자재만 풀어 바로 다시 조회한다.
+   */
+  const more = useFilterMore();
+  const filterItemId = positiveId(filters.itemId);
+  const filterItemNames = useItemNameSources(filterItemId === undefined ? [] : [filterItemId]);
+  const hiddenChips =
+    filterItemId === undefined
+      ? []
+      : [
+          {
+            key: 'itemId' as const,
+            /* 칩의 값은 펼친 칸이 보이는 글자와 같다(품목코드 · 품목명). */
+            label: `${t.filters.item}: ${lookupDisplayLabelWithInactive(
+              filterItemNames.get(filterItemId) ?? { entries: [], isError: false, isLoading: true },
+              filterItemId,
+            )}`,
+            removeLabel: messages.common.filterMore.remove(t.filters.item),
+          },
+        ];
   const periodError = validateTransitionPeriod(draft);
   /* 날짜를 비운 경우는 [조회]만 잠그고 문구는 두지 않는다(LOT 상태 이력과 같다). 검사 규칙은 종전 그대로다. */
   const periodReason =
@@ -320,6 +344,14 @@ export const LotStatusTransitionCandidateScreen = () => {
     const next = defaultLotStatusCandidateFilters(new Date());
     setDraft(next);
     setFilters(next);
+    changePage(1);
+  };
+  /* 「초기화」는 바뀐 것이 있을 때만(C-6) — 편집 중인 값이나 조회에 쓰인 값(상태 칩 포함)이 처음 값(최근 30일)과 다를 때. */
+  const isChanged = hasChangedFilters(defaultLotStatusCandidateFilters(new Date()), draft, filters);
+  const removeItem = (): void => {
+    if (confirmationPinned) return;
+    setDraft((current) => ({ ...current, itemId: '' }));
+    setFilters((current) => ({ ...current, itemId: '' }));
     changePage(1);
   };
   const toggleRow = (row: LotStatusCandidate): void => {
@@ -418,7 +450,7 @@ export const LotStatusTransitionCandidateScreen = () => {
       {/* 상태 칩은 탭 막대 오른쪽, 좌우 · 상하 배치 단추 왼쪽이다. 탭 막대가 없으면(묶음 밖) 조회 카드 위쪽 줄에 둔다. */}
       {hubTarget !== null && <HubActions target={hubTarget}>{statusChips}</HubActions>}
       <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
-      {/* 조회 조건 카드 — LOT 상태 이력과 같은 짜임(기간 · LOT 스캔 · 조회 · 초기화 · 상세 검색). */}
+      {/* 조회 조건 카드 — LOT 상태 이력과 같은 짜임(기간 · LOT 스캔 · 조회 · 초기화 · 조건 더보기). */}
       <section
         ref={aboveRef}
         className="pane lot-status-search"
@@ -480,7 +512,7 @@ export const LotStatusTransitionCandidateScreen = () => {
             onSearch={apply}
             clearLabel={messages.common.clear}
           />
-          {/* [조회](주 동작) → [초기화] → 상세 검색 펼치기 — LOT 상태 이력과 같은 순서, 줄의 오른쪽 끝. */}
+          {/* [조회](주 동작) → [초기화] → 조건 더보기 — LOT 상태 이력과 같은 순서, 줄의 오른쪽 끝. */}
           <div className="filter-actions field-cell-unlabeled lot-status-filter-actions">
             <Button
               variant="filled"
@@ -490,22 +522,16 @@ export const LotStatusTransitionCandidateScreen = () => {
             >
               {t.filters.search}
             </Button>
-            <Button variant="outlined" disabled={confirmationPinned} onClick={reset}>
-              {t.filters.reset}
-            </Button>
-            <Button
-              variant="text"
-              size="sm"
-              aria-expanded={isDetailOpen}
-              aria-controls={detailId}
-              onClick={() => setIsDetailOpen((open) => !open)}
-            >
-              {isDetailOpen ? tHistory.lotFilter.detailClose : tHistory.lotFilter.detailOpen}
-            </Button>
+            {isChanged && (
+              <Button variant="outlined" disabled={confirmationPinned} onClick={reset}>
+                {t.filters.reset}
+              </Button>
+            )}
+            <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
           </div>
         </div>
         {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
-        <div id={detailId} hidden={!isDetailOpen}>
+        <div id={more.id} hidden={!more.isOpen}>
           <div className="filter-bar lot-status-filter lot-status-transition-filter">
             {/* 자재도 칸에서 바로 검색해서 고른다 — 의심자재 보류 · LOT 현황과 같은 칸(omf-all-around#228). */}
             <ItemFilterField
@@ -516,6 +542,7 @@ export const LotStatusTransitionCandidateScreen = () => {
             />
           </div>
         </div>
+        <HiddenFilterChips open={more.isOpen} chips={hiddenChips} onRemove={removeItem} />
       </section>
       {/* 목록과 고른 LOT(전이 준비)을 처음부터 나란히(상하 배치면 위아래로) 둔다 — LOT 상태 이력과 같다. */}
       <div

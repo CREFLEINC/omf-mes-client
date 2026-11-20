@@ -198,8 +198,11 @@ describe('ErpBomScreen', () => {
   it('품목코드 · 품목명 검색어를 목록 조건으로 싣는다', async () => {
     const { urls, user } = renderScreen([]);
     await screen.findByText('SYN-PARENT');
+    // 초기화는 바뀐 것이 있을 때만 보인다 — 처음 값(제품 · BOM 있는 품목만)은 바뀐 것이 아니다.
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
 
     await user.type(screen.getByLabelText(t.fields.q), 'SYN');
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     await waitFor(() => {
@@ -224,6 +227,13 @@ describe('ErpBomScreen', () => {
       expect(last?.searchParams.has('hasBom')).toBe(false);
     });
     expect(screen.getByRole('checkbox', { name: t.fields.hasBom })).not.toBeChecked();
+
+    // 처음 값에서 벗어났으니 초기화가 보이고, 누르면 처음 값으로 돌아가 다시 숨는다.
+    await user.click(screen.getByRole('button', { name: messages.common.reset }));
+    await waitFor(() => {
+      expect(screen.getByRole('checkbox', { name: t.fields.hasBom })).toBeChecked();
+    });
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
   });
 
   it('모품목 줄을 누르면 오른쪽에 그 품목의 BOM 하이라키를 연다', async () => {

@@ -122,13 +122,6 @@ export const usersRoles = {
      */
     status: '재직 상태',
     statusAll: '전체 재직 상태',
-    chipKeyword: (value: string): string => `검색어: ${value}`,
-    chipRemoveKeyword: '검색어 조건 제거',
-    chipDepartment: (label: string): string => `부서: ${label}`,
-    chipRemoveDepartment: '부서 조건 제거',
-    chipStatus: (label: string): string => `재직 상태: ${label}`,
-    chipRemoveStatus: '재직 상태 조건 제거',
-    chipRemoveIncludeInactive: '미사용 포함 조건 제거',
     roleSearchLabel: '역할 검색',
     roleSearchPlaceholder: '역할 코드 또는 역할명',
   },

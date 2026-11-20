@@ -1,5 +1,3 @@
-import { messages } from '@omf-mes/i18n';
-
 import type { SortKey } from './sort';
 import { DEFAULT_VIEW, type ViewAxis } from './view-axis';
 
@@ -16,8 +14,6 @@ import { DEFAULT_VIEW, type ViewAxis } from './view-axis';
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
-
-const t = messages.productStockStatus;
 
 export interface BalanceFilters {
   /** 창고 번호. 이 화면이 필수로 둔다(계획 §완료 조건 1) — 전 창고 조회는 무겁다. */
@@ -137,45 +133,4 @@ export const toBalanceFilterQuery = (filters: BalanceFilters): BalanceFilterQuer
     /* 가용만이 꺼져 있으면 값을 아예 싣지 않는다 — 계약 기본값이 「거르지 않음」이다. */
     ...(filters.availableOnly ? { inventoryStatusCode: 'AVAILABLE' as const } : {}),
   };
-};
-
-export interface FilterChip {
-  key: keyof BalanceFilters;
-  label: string;
-  removeLabel: string;
-}
-
-/** 참조 조건의 표시 이름. 화면이 이름으로 풀어 넘긴다 — 내부 번호를 문자열로 옮기는 자리를 두지 않는다. */
-export interface FilterChipNames {
-  warehouse: string;
-  item: string;
-}
-
-/** 적용된 조건마다 칩 하나. 순서는 조건 줄의 컨트롤 순서와 같다. */
-export const toFilterChips = (filters: BalanceFilters, names: FilterChipNames): FilterChip[] => {
-  const candidates: FilterChip[] = [
-    {
-      key: 'warehouse',
-      label: t.filters.chipWarehouse(names.warehouse),
-      removeLabel: t.filters.chipRemoveWarehouse,
-    },
-    {
-      key: 'item',
-      label: t.filters.chipItem(names.item),
-      removeLabel: t.filters.chipRemoveItem,
-    },
-    {
-      key: 'availableOnly',
-      label: t.filters.chipAvailableOnly,
-      removeLabel: t.filters.chipRemoveAvailableOnly,
-    },
-  ];
-
-  return candidates.filter((chip) => isFilterSet(filters, chip.key));
-};
-
-const isFilterSet = (filters: BalanceFilters, key: keyof BalanceFilters): boolean => {
-  const value = filters[key];
-
-  return typeof value === 'boolean' ? value : value !== '';
 };

@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
+import { ScreenHeader } from '../../patterns/screen-header';
 import { CalendarFormDialog } from './calendar-form-dialog';
 import { CalendarListPane } from './calendar-list-pane';
 import { CALENDAR_FORM_FIELDS, validateCalendar } from './calendar-validation';
@@ -459,7 +460,7 @@ export const WorkCalendarScreen = ({
 
   return (
     <div className="screen">
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb

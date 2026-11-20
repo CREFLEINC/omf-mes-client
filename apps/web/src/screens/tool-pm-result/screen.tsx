@@ -17,6 +17,7 @@ import { useId, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { ScreenHeader } from '../../patterns/screen-header';
 import { FieldLabel } from './field-label';
 import { LoadErrorBanner } from './load-error-banner';
 import { lookupNote, useOrderOptions, useToolOptions, useUserOptions } from './lookups';
@@ -195,7 +196,7 @@ export const ToolPmResultScreen = () => {
 
   return (
     <>
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb

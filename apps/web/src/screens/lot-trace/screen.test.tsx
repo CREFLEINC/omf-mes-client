@@ -412,9 +412,8 @@ describe('W-02-09 LOT 생산 이력 조회: 이력 목록', () => {
     /* 제품 쪽 줄은 자재 LOT 번호를 걸 수 없어 부르지 않는다. */
     expect(listQueries(shipmentQueries)).toHaveLength(0);
     await waitFor(() => expect(navState()).toContain('selected=101'));
-    expect(
-      screen.getByText('상세 조건: 자재 LOT 번호 ITEM-A|500|261023|SUP-A|0001'),
-    ).toBeInTheDocument();
+    /* 접힌 칸에 걸린 조건은 칩으로 알린다(C-6). */
+    expect(screen.getByText('자재 LOT 번호: ITEM-A|500|261023|SUP-A|0001')).toBeInTheDocument();
   });
 
   it('탭이 있던 때의 주소(LOT 상태 상세의 [추적 보기])도 같은 LOT을 연다', async () => {
@@ -463,13 +462,16 @@ describe('W-02-09 LOT 생산 이력 조회: 이력 목록', () => {
     expect(receiptQueries).toHaveLength(0);
   });
 
-  it('상세 조건은 접힌 채 시작하고, 펴면 번호와 공급사, 고객 칸이 보인다', async () => {
+  it('「조건 더보기」는 접힌 채 시작하고, 펴면 번호와 공급사, 고객 칸이 보인다', async () => {
     const user = userEvent.setup();
-    setup();
+    /* 기간 없이 들어오면 기본 기간이 채워진다 — 처음 값 그대로라 「초기화」를 세우지 않는다(C-6). */
+    setup({ route: '/production/lot-trace' });
 
-    const toggle = await screen.findByRole('button', { name: '상세 조건 펼치기' });
+    const toggle = await screen.findByRole('button', { name: '조건 더보기' });
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByLabelText('자재 LOT 번호')).toBeNull();
+    expect(screen.queryByRole('searchbox', { name: '자재 LOT 번호' })).toBeNull();
+    await waitFor(() => expect(navState()).toContain('from='));
+    expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
     await user.click(toggle);
     for (const label of [
       '자재 LOT 번호',
@@ -480,8 +482,26 @@ describe('W-02-09 LOT 생산 이력 조회: 이력 목록', () => {
       '공급사',
       '고객',
     ]) {
-      expect(screen.getByLabelText(label)).toBeInTheDocument();
+      expect(screen.getByLabelText(label)).toBeVisible();
     }
+  });
+
+  it('접힌 칸 칩의 × 는 그 조건만 풀어 다시 조회하고, 펼치면 칩을 거둔다', async () => {
+    const user = userEvent.setup();
+    setup({ route: `${ROUTE}&wo=WO-SYN-1` });
+    const chip = 'W/O 번호: WO-SYN-1';
+
+    expect(await screen.findByText(chip)).toBeInTheDocument();
+    /* 바뀐 것이 있으니 「초기화」가 보인다. */
+    expect(screen.getByRole('button', { name: '초기화' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '조건 더보기' }));
+    expect(screen.queryByText(chip)).toBeNull();
+    await user.click(screen.getByRole('button', { name: '조건 접기' }));
+
+    await user.click(screen.getByRole('button', { name: 'W/O 번호 조건 제거' }));
+    await waitFor(() => expect(navState()).not.toContain('wo='));
+    expect(screen.queryByText(chip)).toBeNull();
   });
 });
 

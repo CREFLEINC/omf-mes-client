@@ -10,11 +10,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
-import {
-  lookupDisplayLabel,
-  selectableLookupOptions,
-  type LookupSource,
-} from '../../patterns/lookup-display';
+import { selectableLookupOptions, type LookupSource } from '../../patterns/lookup-display';
 import { formatAsOf } from './as-of';
 import { BalanceFilterBar } from './balance-filter-bar';
 import { BalanceTable } from './balance-table';
@@ -32,7 +28,6 @@ import {
 } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
 import {
-  useItemDetail,
   useItemOptions,
   useLocationOptions,
   useLotOptions,
@@ -157,13 +152,6 @@ export const ProductStockStatusScreen = () => {
     isError: items.isError,
     isLoading: items.isPending,
   };
-  /* 조건 칩의 품목 이름 — 선택칸이 쪽으로 받아, 고른 품목이 첫 쪽(`items`)에 없을 수 있다. 번호로 하나 받는다. */
-  const itemDetail = useItemDetail(itemId);
-  const chipItemSource: LookupSource = {
-    entries: itemDetail.data?.entries ?? [],
-    isError: itemDetail.isError,
-    isLoading: itemId !== null && itemDetail.isPending,
-  };
   const locationSource: LookupSource = {
     entries: locations.data?.entries ?? [],
     isError: locations.isError,
@@ -241,7 +229,6 @@ export const ProductStockStatusScreen = () => {
 
   const retryFilterReferences = (): void => {
     void warehouses.refetch();
-    if (itemId !== null) void itemDetail.refetch();
   };
 
   /** 부르지 않는 참조를 다시 부르지 않는다 — 비활성 쿼리의 `refetch`는 `queryFn`을 그대로 실행한다. */
@@ -382,18 +369,14 @@ export const ProductStockStatusScreen = () => {
           canUseLotView={canUseLotView}
           onViewChange={changeView}
           warehouseOptions={selectableLookupOptions(warehouseSource, filters.warehouse)}
-          chipNames={{
-            warehouse: lookupDisplayLabel(warehouseSource, warehouseId),
-            item: lookupDisplayLabel(chipItemSource, itemId),
-          }}
           warehouseNote={lookupNote(warehouses)}
-          referencesFailed={warehouses.isError || itemDetail.isError}
+          referencesFailed={warehouses.isError}
           onRetryReferences={retryFilterReferences}
           onSearch={(nextFilters) => {
             apply(view, nextFilters, sortKey);
           }}
           onRemoveFilter={(key) => {
-            apply(view, { ...filters, [key]: key === 'availableOnly' ? false : '' }, sortKey);
+            apply(view, { ...filters, [key]: false }, sortKey);
           }}
           onReset={() => {
             apply(view, EMPTY_FILTERS, null);

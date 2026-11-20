@@ -82,6 +82,18 @@ describe('FilterBar draft lifetime', () => {
     expect(props.onReset).toHaveBeenCalledOnce();
   });
 
+  it('「초기화」는 조건 줄의 값이 처음 값과 다를 때만 보인다 — 탭 줄의 유형 · 상태는 견주지 않는다(C-6)', async () => {
+    const { user } = renderBar({
+      applied: { ...EMPTY_FILTERS, approvalTypeCode: 'CONCESSION', statusCode: 'APPROVED' },
+    });
+
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
+
+    await user.click(screen.getByRole('checkbox', { name: t.fields.myTurnOnly }));
+
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeInTheDocument();
+  });
+
   it('적용된 primitive가 바뀌면 draft를 동기화한다', () => {
     const props = makeProps({ applied: { ...EMPTY_FILTERS, q: 'SYNTH-OLD' } });
     const { rerender } = render(<FilterBar {...props} />);

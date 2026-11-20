@@ -1,8 +1,9 @@
 import { Button, Checkbox, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, useState, type FormEvent } from 'react';
+import { useEffect, useId, useState, type FormEvent } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { ItemSelect } from '../../patterns/item-select';
 import { runRequest } from '../../patterns/request';
 
@@ -35,6 +36,8 @@ export interface PqcFilterBarProps {
   onReset: () => void;
   /** 「대기·진행만 보기」를 이 줄에 둔다(기본). 검사 조회·판정 탭은 스캔 줄에 따로 둔다(#225). */
   showPendingOnly?: boolean;
+  /** 탭 줄 상태 칩 — 초기화가 함께 푸므로 걸려 있으면 「초기화」가 보인다. */
+  statusCode?: string | null;
 }
 
 /**
@@ -49,11 +52,42 @@ export const PqcFilterBar = ({
   onSearch,
   onReset,
   showPendingOnly = true,
+  statusCode = null,
 }: PqcFilterBarProps) => {
   const [itemId, setItemId] = useState<number | null>(applied.itemId);
   const [keyword, setKeyword] = useState(applied.keyword);
   const [workOrderNo, setWorkOrderNo] = useState(applied.workOrderNo);
   const [workOrderError, setWorkOrderError] = useState<string | null>(null);
+
+  /*
+   * 걸린 조건이 밖에서 바뀌면(접힌 칸의 칩 × · 초기화) 편집 중인 값도 그 값으로 되돌린다 — 값으로 판정한다.
+   * 칩으로 푼 조건이 칸에 남아 있다가 다음 [조회]에 다시 실리지 않게.
+   */
+  const {
+    itemId: appliedItemId,
+    workOrderNo: appliedWorkOrderNo,
+    keyword: appliedKeyword,
+  } = applied;
+  useEffect(() => {
+    setItemId(appliedItemId);
+    setWorkOrderNo(appliedWorkOrderNo);
+    setKeyword(appliedKeyword);
+    setWorkOrderError(null);
+  }, [appliedItemId, appliedWorkOrderNo, appliedKeyword]);
+
+  /*
+   * 「초기화」는 바뀐 것이 있을 때만 보인다(C-6) — 치던 값이나 조회에 쓰인 값(「대기·진행만 보기」 · 탭 줄 상태 칩 포함)이
+   * 처음 값과 다를 때. 초기화가 그 모두를 처음으로 되돌리기 때문이다.
+   */
+  const isChanged =
+    hasChangedFilters(EMPTY_PQC_FILTERS, applied, {
+      ...applied,
+      itemId,
+      workOrderNo: workOrderNo.trim(),
+      keyword: keyword.trim(),
+    }) ||
+    !pendingOnly ||
+    statusCode !== null;
   const [isFinding, setIsFinding] = useState(false);
   const { client } = useApiClient();
   const itemFieldId = useId();
@@ -153,19 +187,21 @@ export const PqcFilterBar = ({
         <Button type="submit" variant="filled" disabled={isFinding}>
           {t.apply}
         </Button>
-        <Button
-          type="button"
-          variant="outlined"
-          onClick={() => {
-            setItemId(null);
-            setWorkOrderNo('');
-            setWorkOrderError(null);
-            setKeyword('');
-            onReset();
-          }}
-        >
-          {t.reset}
-        </Button>
+        {isChanged && (
+          <Button
+            type="button"
+            variant="outlined"
+            onClick={() => {
+              setItemId(null);
+              setWorkOrderNo('');
+              setWorkOrderError(null);
+              setKeyword('');
+              onReset();
+            }}
+          >
+            {t.reset}
+          </Button>
+        )}
       </div>
     </form>
   );
