@@ -140,8 +140,8 @@ export const shipmentRequestCreate = {
   notes: {
     fromOrderLocked: 'ERP S/O 로 편성하는 중이라 고객, 납품처, 라인 품목과 수량은 고칠 수 없습니다.',
     requestedQtyFixed: '요청 수량은 ERP S/O 잔여 수량으로 자동 채워지며 고칠 수 없습니다.',
-    lineNoAssignedByServer:
-      '줄번호는 서버가 부여합니다. 출고 창고는 고른 사업부의 활성 창고만 고를 수 있습니다(불량창고 제외).',
+    /* 출고 창고 칸 머리 ⓘ(관리웹 정리 시안 A — 늘 보이는 규칙 문장은 ⓘ 로). */
+    warehouseRule: '출고 창고는 고른 사업부의 활성 창고만 고를 수 있습니다(불량창고 제외).',
     businessUnitAutoFilled: '계정 범위의 사업부가 하나라 자동으로 채웠습니다',
     addLineWarehouse:
       '새 줄의 출고 창고는 첫 줄 창고로 채웁니다. 같은 품목을 두 창고에서 내려면 줄을 따로 담습니다.',

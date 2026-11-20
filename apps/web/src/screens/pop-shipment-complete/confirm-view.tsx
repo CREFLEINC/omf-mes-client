@@ -1,32 +1,55 @@
-import { Chip, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
+import {
+  PuBand,
+  PuChip,
+  PuCount,
+  PuIcon,
+  PuNote,
+  PuPager,
+  PuSection,
+  useFitPages,
+  type PuChipTone,
+  type PuIconName,
+} from '../../patterns/pop-uniform';
 import {
   OQC_TONE,
   blockedTargetsOf,
-  formatQty,
   groupBlockers,
-  itemCodeOfLot,
   overText,
-  portionSummaryOf,
   qtyWithUom,
   splitLotsOf,
-  uomOf,
-  type BlockerCode,
   type BlockerGroup,
+  type ChipTone,
   type Completion,
-  type CompletionLot,
 } from './model';
 
 const t = messages.popShipmentComplete;
 
-/** 이유마다 앞에 서는 그림 — 시안 ④의 표식(피킹·대기·불합격·보류·취소). */
-const BLOCKER_ICON: Record<BlockerCode, string> = {
-  PICKING_SHORT: 'inventory_2',
-  NOT_INSPECTED: 'pending',
-  REJECTED: 'cancel',
-  HELD: 'pause_circle',
-  SALES_ORDER_LINE_CANCELLED: 'block',
+/** 판정 칩 색 → POP 통일 칩 색. */
+const PU_TONE: Record<ChipTone, PuChipTone> = {
+  idle: 'idle',
+  info: 'info',
+  success: 'ok',
+  warning: 'warn',
+  error: 'bad',
+};
+
+/**
+ * 이유 글. 라인을 짚지 않은 피킹 부족은 서버가 «낼 피킹 LOT 이 하나도 없을 때» 내는 것이라(라인 수량이 다 차도
+ * 난다 — 서버 `completionBlockers`) 「피킹된 출하 LOT 이 없습니다」로 쓴다. 판정은 서버 그대로다.
+ */
+const reasonOf = (completion: Completion, group: BlockerGroup): { title: string; hint: string } => {
+  if (group.code === 'PICKING_SHORT' && group.lineNos.length === 0) return t.blockers.noPickedLot;
+  /* 피처 012 US3-3 — 줄 출고 창고가 있는 지시서의 피킹 부족은 그 창고 공장의 PDA 로 보낸다. */
+  if (
+    group.code === 'PICKING_SHORT' &&
+    completion.lines.some((line) => line.warehouse !== null && line.warehouse !== undefined)
+  ) {
+    return { title: t.blockers.PICKING_SHORT.title, hint: t.bu012.pickingShortHint };
+  }
+  return t.blockers[group.code];
 };
 
 /** 이유가 짚는 곳 — 라인은 「라인 2 FG-B200, 피킹 0 / 목표 50」, LOT 은 번호(쉼표로 잇는다). */
@@ -37,33 +60,31 @@ const targetOf = (completion: Completion, group: BlockerGroup): string => {
     if (group.code !== 'PICKING_SHORT') return `${t.blockers.lineOnly(lineNo)} ${line.itemCode}`;
     /* 피처 012 US3-3 — 피킹 부족 라인에 출고 창고를 붙인다(「라인 2(완제품창고 B (2공장))」). 옛 라인은 그대로. */
     return line.warehouse === null || line.warehouse === undefined
-      ? t.blockers.line(lineNo, line.itemCode, formatQty(line.pickedQty), formatQty(line.targetQty))
+      ? t.blockers.line(
+          lineNo,
+          line.itemCode,
+          qtyWithUom(line.pickedQty, line.uomCode),
+          qtyWithUom(line.targetQty, line.uomCode),
+        )
       : t.bu012.pickingShortLine(
           lineNo,
           line.itemCode,
           t.bu012.warehouse(line.warehouse.warehouseName, line.warehouse.plantName),
-          formatQty(line.pickedQty),
-          formatQty(line.targetQty),
+          qtyWithUom(line.pickedQty, line.uomCode),
+          qtyWithUom(line.targetQty, line.uomCode),
         );
   });
 
   return [...lines, ...group.lotNos].join(', ');
 };
 
-/** LOT 몫 요약 글 — 「완제품 창고 A 20 (적치 대기 10 포함), 완제품 창고 B 20」. 한 창고 한 자리면 null. */
-const portionText = (lot: CompletionLot): string | null => {
-  const summary = portionSummaryOf(lot.portions);
-  if (summary === null) return null;
-  /* 적치 대기 몫은 그 몫이 있는 창고 바로 뒤에만 붙인다 — 「창고1 30 (적치 대기 5 포함), 창고2 10」. */
-  return summary.warehouses
-    .map((entry) => {
-      const text = t.lots.portion(entry.name, formatQty(entry.qty));
-      return entry.staging > 0
-        ? `${text} (${t.lots.stagingIncluded(formatQty(entry.staging))})`
-        : text;
-    })
-    .join(', ');
-};
+/** 정보 띠 칸 이름 — 작은 아이콘 + 글(OQC 출하검사 의뢰 정보 띠와 같은 모양). */
+const bandLabel = (icon: PuIconName, text: string): ReactNode => (
+  <>
+    <PuIcon name={icon} />
+    {text}
+  </>
+);
 
 /** 교체 근거 판정 글 — 판정 코드가 OQC 판정 이름에 있으면 그 이름. */
 const judgmentText = (judgment: string | null): string | null =>
@@ -73,246 +94,283 @@ const judgmentText = (judgment: string | null): string | null =>
 
 export interface ConfirmViewProps {
   completion: Completion;
-  via: 'scan' | 'search' | 'direct';
 }
 
 /**
- * 확인 화면 = `:lookup` 값 그대로(시안 ③·④·⑤). 머리(지시서·고객·납품처·수주·상태), 막는 이유, 라인,
- * 재고가 빠질 창고(정보로만), LOT(판정·코드 — 보기만).
+ * 확인 화면 = `:lookup` 값 그대로(시안 ③·④·⑤ · 「출하 지시서 상세 화면 UI 개선 안」 2026-11-20). 머리 카드(지시서 번호 ·
+ * 출하 가능 배지 · 정보 띠: 고객·납품처·수주·LOT 수·수량·재고가 빠질 창고), 출하 불가 사유, 출하 품목, 피킹 LOT(보기만).
+ * ⛔ 시안 머리 카드의 [출하 확정]은 두지 않는다 — 주 동작은 아래 작업 줄의 [출하 완료] 하나다(POP 통일 규칙).
  *
  * ⛔ ERP 송신 여부는 어디에도 보이지 않는다(사용자 결정 2026-11-18). 수주 없는 지시서는 수주 칸만 「없음」이다.
- * ⛔ [출하 완료]는 바닥 띠에 있다 — 이 화면이 곧 확인 창이라 따로 묻지 않는다.
+ * ⛔ [출하 완료]는 아래 작업 줄에 있다 — 이 화면이 곧 확인 창이라 따로 묻지 않는다.
  */
-export const ConfirmView = ({ completion, via }: ConfirmViewProps) => {
+export const ConfirmView = ({ completion }: ConfirmViewProps) => {
   const groups = groupBlockers(completion.blockers);
   const blocked = groups.length > 0;
   const targets = blockedTargetsOf(completion);
-  const uom = uomOf(completion);
+  const splitLots = splitLotsOf(completion);
+  /*
+   * 두 카드는 늘 같은 높이(위 · 아래 맞춤). 한 쪽에 다 들면 둘 다 내용 높이(큰 쪽)로 줄고 「총 N건」은 표 바로 아래,
+   * 넘칠 때만 남는 높이를 다 갖고 쪽을 나눈다(사용자 지시 2026-11-20). 한 번 넘친 지시서는 그대로 둔다(깜박임 방지).
+   */
+  const tablesRef = useRef<HTMLDivElement>(null);
+  const [overflowed, setOverflowed] = useState(false);
+  /*
+   * 피킹 LOT 표 — 처음엔 다 그려 보고(한 쪽), 본문을 넘칠 때만 칸 높이에 드는 줄로 쪽을 나눈다(아래 「총 N건 ‹ n/m ›」).
+   * 한 번 나누면 그 지시서는 그대로.
+   */
+  const single = !overflowed;
+  const lotPage = useFitPages(completion.lots, { table: true, enabled: !single });
+  useLayoutEffect(() => {
+    const scroller = tablesRef.current?.parentElement ?? null;
+    if (single && scroller !== null && scroller.scrollHeight > scroller.clientHeight + 1) {
+      setOverflowed(true);
+    }
+  });
 
   return (
-    <div className="pop-ship-confirm">
-      <section className="pop-ship-head" aria-label={t.head.request}>
-        <div className="pop-ship-head__key">
-          <span className="pop-ship-head__label">{t.head.request}</span>
-          <strong className="pop-ship-head__no">{completion.shipmentRequestNo}</strong>
-          <Chip
-            variant="status"
-            size="md"
-            status={blocked ? 'error' : 'success'}
-            leadingIcon={<Icon name={blocked ? 'block' : 'check_circle'} size={18} aria-hidden />}
-          >
-            {blocked ? t.head.blocked : t.head.ready}
-          </Chip>
-          <span className="pop-ship-head__via">
-            {via === 'scan'
-              ? t.head.openedByScan
-              : via === 'direct'
-                ? t.head.openedByDirect
-                : t.head.openedBySearch}
-          </span>
-        </div>
-        <dl className="pop-ship-head__facts">
-          {/* 피처 012 — 지시서 사업부. 사업부 안 어느 POP 에서나 연다(FR-013). 없으면 「사업부 미지정」(빈 곳 ⑨). */}
-          <div>
-            <dt>{t.bu012.businessUnit}</dt>
-            <dd>{completion.businessUnit?.businessUnitName ?? t.bu012.noBusinessUnit}</dd>
-          </div>
-          <div>
-            <dt>{t.head.customer}</dt>
-            <dd>
-              {t.head.named(completion.customer.partnerName, completion.customer.partnerCode)}
-            </dd>
-          </div>
-          <div>
-            <dt>{t.head.shipTo}</dt>
-            <dd>{t.head.named(completion.shipTo.partnerName, completion.shipTo.partnerCode)}</dd>
-          </div>
-          <div>
-            <dt>{t.head.salesOrder}</dt>
-            <dd>{completion.salesOrderNo ?? t.head.noSalesOrder}</dd>
-          </div>
-        </dl>
+    <>
+      {/*
+       * 머리 박스 하나 — OQC 출하검사 의뢰 정보 띠와 같은 「이름 위 · 값 아래」 4열 격자(`pu-band-stack`, 사용자 지시
+       * 2026-11-20). 지시서 번호·출하 여부(목록과 같은 크기 칩)도 칸 하나씩, 맨 앞 두 칸. 박스 밖 제목 줄·카드는 두지 않는다.
+       * 아이콘도 그 띠와 같은 뜻으로 고른다(거래처 list · 번호 file · 수량 check). 창고는 칩이 여럿일 수 있어 한 줄 전체.
+       */}
+      <section className="pu-band-stack is-fluid psc-band" aria-label={t.head.request}>
+        <PuBand
+          grid={3}
+          label={t.head.band}
+          items={[
+            {
+              label: bandLabel('file', t.head.request),
+              value: <span className="pu-mono">{completion.shipmentRequestNo}</span>,
+            },
+            {
+              label: bandLabel('shield', t.head.status),
+              value: (
+                <PuChip tone={blocked ? 'bad' : 'ok'}>
+                  {blocked ? t.head.blocked : t.head.ready}
+                </PuChip>
+              ),
+            },
+            /* 피처 012 — 지시서 사업부. 사업부 안 어느 POP 에서나 연다(FR-013). 없으면 「사업부 미지정」(빈 곳 ⑨). */
+            {
+              label: bandLabel('list', t.bu012.businessUnit),
+              value: completion.businessUnit?.businessUnitName ?? t.bu012.noBusinessUnit,
+            },
+            {
+              label: bandLabel('list', t.head.customer),
+              value: t.head.named(completion.customer.partnerName, completion.customer.partnerCode),
+            },
+            {
+              label: bandLabel('list', t.head.shipTo),
+              value: t.head.named(completion.shipTo.partnerName, completion.shipTo.partnerCode),
+            },
+            {
+              label: bandLabel('file', t.head.salesOrder),
+              value: completion.salesOrderNo ?? t.head.noSalesOrder,
+            },
+            {
+              label: bandLabel('pin', t.warehouses.heading),
+              wide: true,
+              value:
+                completion.warehouses.length === 0 ? (
+                  t.head.none
+                ) : (
+                  <span className="psc-wh-chips">
+                    {completion.warehouses.map((warehouse) => (
+                      <span key={warehouse.warehouseId} className="psc-wh-chip">
+                        {t.head.named(warehouse.warehouseName, warehouse.warehouseCode)}{' '}
+                        {/* 피처 012 — 창고의 공장과 그 창고 몫 라인(시안 P0407-After ①). */}
+                        <span>
+                          {t.bu012.warehouseLines(
+                            warehouse.plantName,
+                            completion.lines
+                              .filter((line) => line.warehouse?.warehouseId === warehouse.warehouseId)
+                              .map((line) => String(line.lineNo))
+                              .join(', ') || '-',
+                          )}
+                        </span>
+                      </span>
+                    ))}
+                  </span>
+                ),
+            },
+          ]}
+        />
+        {splitLots.map((lotNo) => (
+          <PuNote key={lotNo}>{t.warehouses.splitLot(lotNo)}</PuNote>
+        ))}
       </section>
 
       {blocked && (
-        <section className="pop-ship-blockers" aria-label={t.blockers.heading(groups.length)}>
-          <h2 className="pop-ship-section-title pop-ship-section-title--error">
-            <Icon name="block" size={20} aria-hidden />
-            <span>{t.blockers.heading(groups.length)}</span>
-          </h2>
-          <ul>
-            {groups.map((group) => (
-              <li key={group.code} className="pop-ship-blocker">
-                <Icon name={BLOCKER_ICON[group.code]} size={24} aria-hidden />
-                <span className="pop-ship-blocker__text">
-                  <strong>{t.blockers[group.code].title}</strong>
-                  {targetOf(completion, group) !== '' && (
-                    <span className="pop-ship-blocker__target">{targetOf(completion, group)}</span>
-                  )}
-                  <span className="pop-ship-blocker__hint">
-                    {group.code === 'PICKING_SHORT' &&
-                    completion.lines.some((line) => line.warehouse !== null && line.warehouse !== undefined)
-                      ? t.bu012.pickingShortHint
-                      : t.blockers[group.code].hint}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <PuSection grow={false} title={t.blockers.heading} label={t.blockers.heading}>
+          {groups.map((group) => {
+            const reason = reasonOf(completion, group);
+            const target = targetOf(completion, group);
+            return (
+              <PuNote key={group.code} tone="bad">
+                <b>{reason.title}</b>
+                {target !== '' && <span> {target}</span>}
+                <span> {reason.hint}</span>
+              </PuNote>
+            );
+          })}
+        </PuSection>
       )}
 
-      <div className="pop-ship-body">
-        <div className="pop-ship-col">
-          <section aria-label={t.lines.heading}>
-            <h2 className="pop-ship-section-title">{t.lines.heading}</h2>
-            <p className="field-note">{t.lines.note}</p>
-            <table className="pop-ship-table" aria-label={t.lines.caption}>
-              <thead>
-                <tr>
-                  <th scope="col">{t.lines.columns.lineNo}</th>
-                  <th scope="col">{t.lines.columns.itemCode}</th>
-                  <th scope="col">{t.lines.columns.itemName}</th>
-                  <th scope="col">{t.bu012.warehouseColumn}</th>
-                  <th scope="col" className="pop-ship-num">
-                    {t.lines.columns.target}
-                  </th>
-                  <th scope="col" className="pop-ship-num">
-                    {t.lines.columns.picked}
-                  </th>
-                  <th scope="col" className="pop-ship-num">
-                    {t.lines.columns.over}
-                  </th>
-                  <th scope="col" className="pop-ship-num">
-                    {t.lines.columns.lotCount}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {completion.lines.map((line) => (
-                  <tr
-                    key={line.shipmentRequestLineId}
-                    className={
-                      targets.lineNos.has(line.lineNo) ? 'pop-ship-row-blocked' : undefined
-                    }
-                  >
-                    <td className="pop-ship-num">{line.lineNo}</td>
-                    <td className="pop-ship-code">{line.itemCode}</td>
-                    <td className="pop-ship-name" title={line.itemName}>
-                      {line.itemName}
-                    </td>
-                    <td>
-                      {line.warehouse === null || line.warehouse === undefined
-                        ? t.bu012.warehouseUnassigned
-                        : t.bu012.warehouse(line.warehouse.warehouseName, line.warehouse.plantName)}
-                    </td>
-                    <td className="pop-ship-num">{formatQty(line.targetQty)}</td>
-                    <td className="pop-ship-num">{formatQty(line.pickedQty)}</td>
-                    <td
-                      className={line.overQty > 0 ? 'pop-ship-num pop-ship-over' : 'pop-ship-num'}
-                    >
-                      {overText(line.overQty)}
-                    </td>
-                    <td className="pop-ship-num">{line.lotCount}</td>
+      <div ref={tablesRef} className={single ? 'psc-tables' : 'psc-tables is-paged'}>
+        <div className="psc-col">
+          <PuSection grow={false} title={t.lines.heading} label={t.lines.heading}>
+            <div className="pu-table-wrap">
+              <table className="pu-table" aria-label={t.lines.caption}>
+                <thead>
+                  <tr>
+                    <th scope="col" className="fit psc-c">
+                      {t.lines.columns.lineNo}
+                    </th>
+                    <th scope="col">{t.lines.columns.item}</th>
+                    <th scope="col">{t.bu012.warehouseColumn}</th>
+                    <th scope="col" className="fit psc-c">
+                      {t.lines.columns.target}
+                    </th>
+                    <th scope="col" className="fit psc-c">
+                      {t.lines.columns.picked}
+                    </th>
+                    <th scope="col" className="fit psc-c">
+                      {t.lines.columns.over}
+                    </th>
+                    <th scope="col" className="fit psc-c">
+                      {t.lines.columns.lotCount}
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
-
-          {completion.warehouses.length > 0 && (
-            <section aria-label={t.warehouses.heading}>
-              <h2 className="pop-ship-section-title">{t.warehouses.heading}</h2>
-              <p className="field-note">{t.warehouses.note}</p>
-              <ul className="pop-ship-warehouses">
-                {completion.warehouses.map((warehouse) => (
-                  <li key={warehouse.warehouseId}>
-                    <Icon name="warehouse" size={20} aria-hidden />
-                    <span className="pop-ship-warehouse__name">
-                      {t.head.named(warehouse.warehouseName, warehouse.warehouseCode)}
-                    </span>
-                    <span className="pop-ship-warehouse__qty">
-                      {t.warehouses.entry(warehouse.lotCount, qtyWithUom(warehouse.qty, uom))}
-                    </span>
-                    {/* 피처 012 — 창고의 공장과 그 창고 몫 라인(시안 P0407-After ①). */}
-                    <span className="field-note">
-                      {t.bu012.warehouseLines(
-                        warehouse.plantName,
-                        completion.lines
-                          .filter((line) => line.warehouse?.warehouseId === warehouse.warehouseId)
-                          .map((line) => String(line.lineNo))
-                          .join(', ') || '—',
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              {splitLotsOf(completion).map((lotNo) => (
-                <p key={lotNo} className="field-note pop-ship-split-lot">
-                  <Icon name="info" size={18} aria-hidden />
-                  <span>{t.warehouses.splitLot(lotNo)}</span>
-                </p>
-              ))}
-            </section>
-          )}
+                </thead>
+                <tbody>
+                  {completion.lines.map((line) => (
+                    <tr
+                      key={line.shipmentRequestLineId}
+                      className={targets.lineNos.has(line.lineNo) ? 'psc-row-blocked' : undefined}
+                    >
+                      <td className="fit psc-c">{line.lineNo}</td>
+                      {/* 품목 한 칸 — 출고 QR(goods-issue-qr)처럼 굵은 코드 + 이름 한 줄. 코드는 한 줄, 이름만 줄을 바꾼다. */}
+                      <td className="psc-name" title={`${line.itemCode} ${line.itemName}`}>
+                        <b className="pu-mono psc-nowrap">{line.itemCode}</b> {line.itemName}
+                      </td>
+                      {/* 피처 012 FR-003 — 줄 출고 창고(공장). 옛 지시서는 「창고 미지정」. */}
+                      <td>
+                        {line.warehouse === null || line.warehouse === undefined
+                          ? t.bu012.warehouseUnassigned
+                          : t.bu012.warehouse(line.warehouse.warehouseName, line.warehouse.plantName)}
+                      </td>
+                      <td className="fit psc-c">{qtyWithUom(line.targetQty, line.uomCode)}</td>
+                      <td className="fit psc-c">
+                        {line.pickedQty === line.targetQty ? (
+                          <span className="psc-match">
+                            {qtyWithUom(line.pickedQty, line.uomCode)}
+                            <span role="img" aria-label={t.lines.matched}>
+                              <PuIcon name="ok" />
+                            </span>
+                          </span>
+                        ) : (
+                          qtyWithUom(line.pickedQty, line.uomCode)
+                        )}
+                      </td>
+                      <td
+                        className={line.overQty > 0 ? 'fit psc-c psc-over' : 'fit psc-c psc-zero'}
+                      >
+                        {overText(line.overQty, line.uomCode)}
+                      </td>
+                      <td className="fit psc-c">{line.lotCount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </PuSection>
         </div>
 
-        <section className="pop-ship-col" aria-label={t.lots.heading(completion.lots.length)}>
-          <h2 className="pop-ship-section-title">{t.lots.heading(completion.lots.length)}</h2>
-          <p className="field-note">{t.lots.note}</p>
-          <table className="pop-ship-table" aria-label={t.lots.caption}>
-            <thead>
-              <tr>
-                <th scope="col">{t.lots.columns.lotNo}</th>
-                <th scope="col">{t.lots.columns.itemCode}</th>
-                <th scope="col" className="pop-ship-num">
-                  {t.lots.columns.qty}
-                </th>
-                <th scope="col">{t.lots.columns.oqc}</th>
-                <th scope="col">{t.lots.columns.managementCode}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {completion.lots.map((lot) => (
-                <tr
-                  key={lot.shipmentRequestLotId}
-                  className={targets.lotNos.has(lot.lotNo) ? 'pop-ship-row-blocked' : undefined}
-                >
-                  <td className="pop-ship-lot">
-                    {lot.lotNo}
-                    {portionText(lot) !== null && (
-                      <span className="pop-ship-lot__portions">{portionText(lot)}</span>
-                    )}
-                  </td>
-                  <td className="pop-ship-code">{itemCodeOfLot(completion, lot)}</td>
-                  <td className="pop-ship-num">{formatQty(lot.qty)}</td>
-                  <td>
-                    {lot.oqcLotStatus !== null && (
-                      <Chip variant="status" size="sm" status={OQC_TONE[lot.oqcLotStatus]}>
-                        {t.lots.oqc[lot.oqcLotStatus]}
-                      </Chip>
-                    )}
-                  </td>
-                  <td className="pop-ship-code">{lot.managementCode ?? ''}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {completion.replacedLots.length > 0 && (
-            <p className="pop-ship-replaced">
-              <Icon name="swap_horiz" size={20} aria-hidden />
-              <span>
-                {t.lots.replaced(
-                  completion.replacedLots.length,
-                  completion.replacedLots
-                    .map((lot) => t.lots.replacedLot(lot.lotNo, judgmentText(lot.judgment)))
-                    .join(', '),
-                )}
-              </span>
-            </p>
+        <PuSection
+          split
+          title={
+            /* 건수는 빨간 원 숫자만 — 화면 탭 건수처럼 0 이면 두지 않는다(사용자 지시 2026-11-20). */
+            <>
+              {t.lots.title}
+              {completion.lots.length > 0 && (
+                <>
+                  {' '}
+                  <PuCount tone="primary">{completion.lots.length}</PuCount>
+                </>
+              )}
+            </>
+          }
+          label={t.lots.title}
+        >
+          {completion.lots.length === 0 ? (
+            <p className="psc-empty-row">{t.lots.empty}</p>
+          ) : (
+            <div ref={lotPage.fitRef} className="pu-fit">
+              <div className="pu-table-wrap">
+                <table className="pu-table" aria-label={t.lots.caption}>
+                  <thead>
+                    <tr>
+                      <th scope="col">{t.lots.columns.lotNo}</th>
+                      <th scope="col" className="fit psc-c">
+                        {t.lots.columns.qty}
+                      </th>
+                      <th scope="col" className="fit psc-c">
+                        {t.lots.columns.oqc}
+                      </th>
+                      <th scope="col" className="fit">
+                        {t.lots.columns.managementCode}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lotPage.items.map((lot) => (
+                      <tr
+                        key={lot.shipmentRequestLotId}
+                        className={targets.lotNos.has(lot.lotNo) ? 'psc-row-blocked' : undefined}
+                      >
+                        {/* LOT 번호만 — 창고는 위 정보 띠 「재고가 빠질 창고」에만 둔다(중복 정리 · 사용자 지시 2026-11-20). */}
+                        <td className="pu-mono psc-lot-no">{lot.lotNo}</td>
+                        <td className="fit psc-c">{qtyWithUom(lot.qty, lot.uomCode)}</td>
+                        <td className="fit psc-c">
+                          {lot.oqcLotStatus !== null && (
+                            <PuChip tone={PU_TONE[OQC_TONE[lot.oqcLotStatus]]}>
+                              {t.lots.oqc[lot.oqcLotStatus]}
+                            </PuChip>
+                          )}
+                        </td>
+                        <td className="fit pu-mono psc-code">
+                          {lot.managementCode === null || lot.managementCode === ''
+                            ? t.lots.none
+                            : lot.managementCode}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
-        </section>
+          <PuPager
+            total={lotPage.total}
+            page={lotPage.page}
+            pages={lotPage.pages}
+            onPage={lotPage.setPage}
+            label={t.lots.title}
+          />
+          {completion.replacedLots.length > 0 && (
+            <PuNote>
+              {t.lots.replaced(
+                completion.replacedLots.length,
+                completion.replacedLots
+                  .map((lot) => t.lots.replacedLot(lot.lotNo, judgmentText(lot.judgment)))
+                  .join(', '),
+              )}
+            </PuNote>
+          )}
+        </PuSection>
       </div>
-    </div>
+    </>
   );
 };

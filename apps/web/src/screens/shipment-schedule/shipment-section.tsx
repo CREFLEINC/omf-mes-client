@@ -2,6 +2,7 @@ import { AlertBanner, Button, Chip, SkeletonText, type ChipStatus } from '@crefl
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
 import { formatPlantDateTime, plantToday } from '../../patterns/plant-time';
 import { CancelRequestDialog, cancelReasonError } from './cancel-request-dialog';
@@ -98,7 +99,11 @@ export const ShipmentSection = ({ request, canAct }: ShipmentSectionProps) => {
   return (
     <section className="shipment-section" aria-label={t.section}>
       <h3 className="field-label">
-        {t.section} <span className="field-note">{t.sectionNote}</span>
+        {/* 칸이 무엇을 담는지는 제목 옆 ⓘ 로(관리웹 정리 시안 A · #1733). */}
+        <span className="info-label">
+          {t.section}
+          <InfoTip text={t.sectionNote} />
+        </span>
       </h3>
       {[...shipments]
         .sort((a, b) => b.shipmentId - a.shipmentId)
@@ -180,6 +185,8 @@ const ShipmentCard = ({ shipmentId, shipmentRequestNo, plantOf, canAct }: Shipme
   const { row, lines } = detail.data;
   const flow = flowOf(row);
   const lock = cancelLockOf(row, cancelApproval.data === 'APPROVED');
+  /* 막힌 이유가 있을 때만 단추에 잇는다 — 열려 있으면 이을 문장이 없다(ⓘ 는 제 이름으로 읽힌다). */
+  const lockNoteId = lock === null ? undefined : actionNoteId;
   const erpStatus = row.erpSendStatus;
   const salesOrderLines = lines.filter((line) => line.salesOrderNo !== null);
   const salesOrderNos = [...new Set(salesOrderLines.map((line) => line.salesOrderNo))].join(', ');
@@ -257,7 +264,10 @@ const ShipmentCard = ({ shipmentId, shipmentRequestNo, plantOf, canAct }: Shipme
       {row.warehouses.length > 0 && (
         <section aria-label={t.goodsIssues}>
           <h4 className="field-label">
-            {t.goodsIssues} <span className="field-note">{t.goodsIssuesNote}</span>
+            <span className="info-label">
+              {t.goodsIssues}
+              <InfoTip text={t.goodsIssuesNote} />
+            </span>
           </h4>
           <div className="wide-table">
             <table className="ship-history-lines">
@@ -338,18 +348,23 @@ const ShipmentCard = ({ shipmentId, shipmentRequestNo, plantOf, canAct }: Shipme
 
       {/*
        * 취소 · 확정은 「출하 취소(송신 전)」 권한(W-04-12)으로만 — 없으면 단추 대신 그 사실을 적는다(R-6).
-       * 막힌 이유를 단추 옆에 두고 단추에 잇는다(C-4).
+       * 막힌 이유를 단추 옆에 두고 단추에 잇는다(C-4). 막히지 않았을 때 늘 서던 취소 규칙(ERP 로 보내기
+       * 전에만)은 같은 자리의 ⓘ 로 둔다(관리웹 정리 시안 A — main #1733 의 출하 내역 상세와 같다).
        */}
       {canAct ? (
         <div className="form-actions ship-history-actions">
-          <span id={actionNoteId} className="field-note">
-            {lock === null ? tc.cancelNote : tc.lock[lock]}
-          </span>
+          {lock === null ? (
+            <InfoTip text={tc.cancelNote} />
+          ) : (
+            <span id={actionNoteId} className="field-note">
+              {tc.lock[lock]}
+            </span>
+          )}
           {lock !== 'cancelled' && lock !== 'sent' && (
             <Button
               variant="outlined"
               disabled={lock !== null || runner.isRunning}
-              aria-describedby={actionNoteId}
+              aria-describedby={lockNoteId}
               onClick={() => {
                 cancelWrite.reset();
                 setDialog('cancel');
@@ -361,7 +376,7 @@ const ShipmentCard = ({ shipmentId, shipmentRequestNo, plantOf, canAct }: Shipme
           {lock === 'cancelApproved' && (
             <Button
               disabled={runner.isRunning}
-              aria-describedby={actionNoteId}
+              aria-describedby={lockNoteId}
               onClick={() => {
                 executeWrite.reset();
                 setDialog('execute');
@@ -373,7 +388,7 @@ const ShipmentCard = ({ shipmentId, shipmentRequestNo, plantOf, canAct }: Shipme
           {canConfirm(row) && (
             <Button
               disabled={runner.isRunning || row.cancelRequestPending}
-              aria-describedby={actionNoteId}
+              aria-describedby={lockNoteId}
               onClick={() => {
                 runner.reset();
                 setDialog('confirm');

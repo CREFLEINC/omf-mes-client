@@ -838,8 +838,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         to: '/system/terminal-process-map',
         icon: 'tablet_android',
-        label: '단말기-공정 매핑',
-        labelVi: 'Ánh xạ máy quét - công đoạn',
+        label: '단말 관리',
+        labelVi: 'Quản lý thiết bị đầu cuối',
       },
     ],
   },

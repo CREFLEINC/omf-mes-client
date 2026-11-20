@@ -2,6 +2,7 @@ import { AlertBanner, Button, type Column, EmptyState, SkeletonText, Table } fro
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { cycleText } from './inspection-assignment';
 import type { InspectionItemAssignment } from './types';
 
@@ -92,8 +93,11 @@ export const InspectionItemsPane = ({
   return (
     /* ⛔ `.pane` 을 두르지 않는다 — 탭 내용은 이미 페인 «안»이라 상자가 겹쳐 보인다. */
     <section className="equipment-master-tab-content" aria-label={t.paneTitle}>
-      <h3 className="equipment-master-subtitle">{t.paneTitle}</h3>
-      <p className="dialog-lead">{t.description}</p>
+      {/* 설비 부여가 그룹 부여를 이긴다는 규칙은 제목 옆 ⓘ 로 — 제목 이름에 섞이지 않게 밖에 둔다(관리웹 정리 시안 A). */}
+      <div className="info-label">
+        <h3 className="equipment-master-subtitle">{t.paneTitle}</h3>
+        <InfoTip text={t.description} />
+      </div>
 
       <div className="equipment-master-subsection-actions">
         <div className="filter-actions">

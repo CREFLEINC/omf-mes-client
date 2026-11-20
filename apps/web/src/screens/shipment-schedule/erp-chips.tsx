@@ -2,6 +2,7 @@ import { type ChipStatus } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { CountChip } from '../../patterns/count-chip';
+import { InfoTip } from '../../patterns/info-tip';
 import { ERP_CHIP_VALUES, type ErpChipValue } from './types';
 
 const t = messages.shipmentSchedule.bu012;
@@ -56,7 +57,8 @@ export const ErpChips = ({ counts, selected, onSelect }: ErpChipsProps) => {
           />
         ),
       )}
-      <span className="field-note">{t.erpNote}</span>
+      {/* 세는 규칙은 칩 줄 끝 ⓘ 로(관리웹 정리 시안 A · #1733). */}
+      <InfoTip text={t.erpNote} />
     </div>
   );
 };

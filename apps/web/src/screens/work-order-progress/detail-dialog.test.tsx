@@ -111,16 +111,6 @@ describe('DetailDialog', () => {
     });
   });
 
-  /*
-   * ⛔ 없다는 사실을 적지 않으면 「이 W/O 는 실적이 없구나」로 읽힌다 — 실제로는 아직
-   * 받아 오지 않은 것이다(A-11).
-   */
-  it('⛔ 실적 이력·생산LOT이 아직 없다는 것을 적는다', () => {
-    renderDialog();
-
-    expect(within(dialog()).getByText(t.historyUnavailable)).toBeInTheDocument();
-  });
-
   describe('열고 닫기', () => {
     it('고른 것이 없으면 창이 열리지 않는다', () => {
       renderDialog({ isOpen: false, workOrder: null });

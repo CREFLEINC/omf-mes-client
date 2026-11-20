@@ -134,8 +134,9 @@ export const LineTally = ({
                       <FitName
                         className="picking-tally__name"
                         text={item.itemName}
-                        min={8}
+                        min={7}
                         lines={1}
+                        whole
                       />
                       {/* 줄 출고 창고(피처 012) — 이 창고의 LOT 만 이 줄로 들어간다. */}
                       <span

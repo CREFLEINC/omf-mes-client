@@ -13,6 +13,7 @@ import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import { SaveErrorBanner } from '../../patterns/master';
 import { formatDateTime, isProductDisposal, type IssueRow } from './types';
@@ -187,26 +188,35 @@ export const HistoryPane = ({
 
   return (
     <section className="pane" aria-label={t.panes.history}>
-      <h2>{t.panes.history}</h2>
-
-      {/* A-11 — 못 좁힌다는 사실을 «목록 위에» 적는다. 밑에 적으면 다 읽고 나서 안다. */}
-      <div className="banner-slot">
-        <AlertBanner variant="info">{t.history.mixedNotice}</AlertBanner>
-      </div>
+      {/* A-11 — 자재 폐기 전표가 섞인다는 사실은 «목록 위» 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
+      <h2>
+        <span className="info-label">
+          {t.panes.history}
+          <InfoTip text={t.history.mixedNotice} />
+        </span>
+      </h2>
 
       {body}
 
       <div className="pane-block">
-        <h3>{t.approval.title}</h3>
+        {/* ⛔ 승인·반려는 여기 없다(J-10) — 어디서 하는지를 제목 옆 ⓘ 로 둔다. */}
+        <h3>
+          <span className="info-label">
+            {t.approval.title}
+            <InfoTip text={t.approvalWhere} />
+          </span>
+        </h3>
         <ApprovalBlock approval={approval} />
       </div>
 
       <div className="pane-block">
-        <h3>{t.issue.submit}</h3>
-        {/* §5-4 · J-8 — 승인이 끝나도 출고는 «여기서 다시» 누른다는 사실을 적는다. */}
-        <div className="banner-slot">
-          <AlertBanner variant="info">{t.issue.unlockNote}</AlertBanner>
-        </div>
+        {/* §5-4 · J-8 — 승인이 끝나도 출고는 «여기서 다시» 누른다는 사실은 제목 옆 ⓘ 로 둔다. */}
+        <h3>
+          <span className="info-label">
+            {t.issue.submit}
+            <InfoTip text={t.issue.unlockNote} />
+          </span>
+        </h3>
         <SaveErrorBanner error={post.error} />
         {post.lock !== undefined && (
           <div className="banner-slot">

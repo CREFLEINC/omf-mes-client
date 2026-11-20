@@ -292,6 +292,9 @@ describe('ShipmentSection — 「출하」 칸(피처 012)', () => {
     const shipment = await card('SYN-SH-0001');
 
     expect(within(shipment).getByText(t.noPermission)).toBeInTheDocument();
-    expect(within(shipment).queryByRole('button')).toBeNull();
+    /* 남는 단추는 칸 제목 ⓘ 뿐이다(관리웹 정리 시안 A). */
+    for (const name of [tc.actions.requestCancel, tc.actions.executeCancel, tc.actions.confirm]) {
+      expect(within(shipment).queryByRole('button', { name })).toBeNull();
+    }
   });
 });

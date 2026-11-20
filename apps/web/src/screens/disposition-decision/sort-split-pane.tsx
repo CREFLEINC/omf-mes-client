@@ -2,6 +2,7 @@ import { Checkbox, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import { InfoLabel, InfoTip } from '../../patterns/info-tip';
 import type { DecisionFormErrors, DecisionFormValue } from './decision-form';
 import { IqcMatchChips } from './iqc-match';
 import { formatQty, type NonconformanceLotRow } from './types';
@@ -48,7 +49,8 @@ export const SortSplitPane = ({
   onChange,
 }: SortSplitPaneProps) => {
   const headingId = useId();
-  const noteId = useId();
+  const goodQtyId = useId();
+  const defectQtyId = useId();
   const unit = uomLabel === '' ? '' : ` ${uomLabel}`;
   const selected = new Set(value.sortLotIds);
   const moved = lots.filter((lot) => selected.has(lot.lotId));
@@ -68,10 +70,11 @@ export const SortSplitPane = ({
 
   return (
     <div className="disposition-sort" role="group" aria-labelledby={headingId}>
+      {/* 선별 규칙은 제목 옆 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
       <h4 className="disposition-sort-heading" id={headingId}>
         {t.heading}
+        <InfoTip text={t.help} />
       </h4>
-      <p className="field-note">{t.help}</p>
       <ul className="disposition-sort-lots" aria-label={t.lotsLabel}>
         {lots.map((lot) => (
           <li key={lot.nonconformanceLotId} className="disposition-sort-lot">
@@ -97,30 +100,34 @@ export const SortSplitPane = ({
           {t.allSelected}
         </p>
       )}
+      {/* 정보 수량이 재고를 바꾸지 않는다는 사실은 칸 이름 옆 ⓘ 로(관리웹 정리 시안 A). */}
       <div className="disposition-sort-qty">
-        <TextField
-          label={t.goodQty}
-          value={value.goodQty}
-          inputMode="decimal"
-          placeholder={formatQty(sumQty(rest))}
-          disabled={disabled}
-          aria-describedby={[noteId, describedBy ?? ''].join(' ').trim()}
-          error={errors.goodQty}
-          onChange={(event) => onChange({ ...value, goodQty: event.target.value })}
-        />
-        <TextField
-          label={t.defectQty}
-          value={value.defectQty}
-          inputMode="decimal"
-          placeholder={formatQty(sumQty(moved))}
-          disabled={disabled}
-          aria-describedby={[noteId, describedBy ?? ''].join(' ').trim()}
-          error={errors.defectQty}
-          onChange={(event) => onChange({ ...value, defectQty: event.target.value })}
-        />
-        <p id={noteId} className="field-note">
-          {t.qtyNote}
-        </p>
+        <div className="field-cell">
+          <InfoLabel htmlFor={goodQtyId} label={t.goodQty} info={t.qtyNote} />
+          <TextField
+            id={goodQtyId}
+            value={value.goodQty}
+            inputMode="decimal"
+            placeholder={formatQty(sumQty(rest))}
+            disabled={disabled}
+            aria-describedby={describedBy}
+            error={errors.goodQty}
+            onChange={(event) => onChange({ ...value, goodQty: event.target.value })}
+          />
+        </div>
+        <div className="field-cell">
+          <InfoLabel htmlFor={defectQtyId} label={t.defectQty} info={t.qtyNote} />
+          <TextField
+            id={defectQtyId}
+            value={value.defectQty}
+            inputMode="decimal"
+            placeholder={formatQty(sumQty(moved))}
+            disabled={disabled}
+            aria-describedby={describedBy}
+            error={errors.defectQty}
+            onChange={(event) => onChange({ ...value, defectQty: event.target.value })}
+          />
+        </div>
       </div>
       {moved.length > 0 && !isAll && (
         <div className="disposition-sort-preview" aria-label={t.previewTitle} role="group">

@@ -5,7 +5,8 @@ import type { Translated } from './translated';
 export const shipmentConfirm: Translated<typeof ko.shipmentConfirm> = {
   title: 'Lịch sử xuất hàng',
   breadcrumbRoot: 'Quản lý bán hàng / xuất hàng',
-  lead: 'Việc xuất hàng kết thúc ở màn hình POP 「Hoàn tất xuất hàng」 (P-04-07). Màn hình này dùng để xem các lô xuất hàng và yêu cầu hủy nếu chưa gửi sang ERP. Chỉ những lô xuất hàng chưa xác nhận được tạo theo luồng cũ hoặc xuất thẳng khẩn mới được xác nhận tại đây.',
+  flowRule:
+    'Việc xuất hàng kết thúc ở màn hình POP 「Hoàn tất xuất hàng」. Chỉ những lô xuất hàng chưa xác nhận được tạo theo luồng cũ hoặc xuất thẳng khẩn mới được xác nhận tại đây.',
   panes: {
     list: 'Danh sách xuất hàng',
     detail: 'Chi tiết xuất hàng',
@@ -177,7 +178,6 @@ export const shipmentConfirm: Translated<typeof ko.shipmentConfirm> = {
     reasonHelp: 'Hãy ghi lại vì sao hủy. Người duyệt sẽ đọc phần này để quyết định.',
     reasonRequired: 'Hãy nhập lý do hủy',
     reasonTooLong: 'Lý do hủy quá dài. Hãy nhập tối đa 500 ký tự',
-    traceWithdrawn: 'Người hủy và thời điểm hủy được lưu trong bản ghi phê duyệt.',
     erpAlreadySent:
       'Không gửi được yêu cầu hủy. Trong lúc yêu cầu, việc gửi ERP đã xong trước — đã gửi sang ERP rồi. Hãy xử lý ở phía ERP.',
     cancel: 'Đóng',

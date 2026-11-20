@@ -103,6 +103,13 @@ describe('AssignmentFormPane — 지시서 경유', () => {
     expect(screen.queryByRole('button', { name: t.actions.addLine })).not.toBeInTheDocument();
   });
 
+  /* 줄번호가 어디서 오는지는 사용자가 할 일이 아니다 — 문장을 두지 않는다(관리웹 정리 시안 A). */
+  it('줄번호 안내 문장을 두지 않는다', () => {
+    render(<AssignmentFormPane {...baseProps({ mode: 'fromOrder' })} />);
+
+    expect(screen.queryByText(/줄번호/)).not.toBeInTheDocument();
+  });
+
   it('지시서 경유 안내를 낸다', () => {
     render(<AssignmentFormPane {...baseProps({ mode: 'fromOrder' })} />);
 

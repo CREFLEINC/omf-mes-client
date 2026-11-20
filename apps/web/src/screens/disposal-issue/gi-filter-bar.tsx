@@ -9,9 +9,9 @@ import {
   useFilterMore,
   type HiddenFilterChip,
 } from '../../patterns/filter-more';
+import { InfoLabel } from '../../patterns/info-tip';
 
 import { codeNote, codePlaceholder } from './code-options';
-import { FieldLabel } from './field-label';
 import {
   DEFAULT_ISSUE_FILTERS,
   toIssueFilterChips,
@@ -144,9 +144,15 @@ export const GiFilterBar = ({
         {/*
          * 기간은 **한 컨트롤**이다 — `mode="range"` 하나가 두 값을 준다. 주소 키(`ifrom`·`ito`)와
          * 요청 파라미터는 그대로이고 바뀐 것은 고르는 수단뿐이다.
+         *
+         * 기본 기간이 없다는 사실은 라벨 옆 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A).
          */}
         <div className="field-cell">
-          <FieldLabel htmlFor={periodId} label={t.historyFields.period} />
+          <InfoLabel
+            htmlFor={periodId}
+            label={t.historyFields.period}
+            info={t.historyFilters.periodNote}
+          />
           <DatePicker
             id={periodId}
             mode="range"
@@ -230,9 +236,6 @@ export const GiFilterBar = ({
           />
         </div>
       </div>
-
-      {/* 기본 기간이 없다는 사실은 화면에서 읽혀야 한다 — 비어 있는 칸이 고장으로 읽히지 않게 한다. */}
-      <p className="field-note">{t.historyFilters.periodNote}</p>
 
       <HiddenFilterChips open={false} chips={hiddenChips} onRemove={onRemoveFilter} />
     </>

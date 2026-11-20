@@ -1,5 +1,6 @@
-import { AlertBanner } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+
+import { InfoTip } from '../../patterns/info-tip';
 
 import type { DisposalDraft } from './request-draft';
 import type { DisposalPartner } from './types';
@@ -27,11 +28,13 @@ export const IssuePane = ({ draft, partners }: IssuePaneProps) => {
 
   return (
     <section className="pane" aria-label={t.panes.issue}>
-      <h2>{t.panes.issue}</h2>
-
-      <div className="banner-slot">
-        <AlertBanner variant="info">{t.issue.unlockNote}</AlertBanner>
-      </div>
+      {/* 승인은 자물쇠를 풀 뿐이라는 사실(J-8)은 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
+      <h2>
+        <span className="info-label">
+          {t.panes.issue}
+          <InfoTip text={t.issue.unlockNote} />
+        </span>
+      </h2>
 
       <dl className="filter-bar">
         <div className="field-cell">

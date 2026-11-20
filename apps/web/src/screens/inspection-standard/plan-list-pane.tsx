@@ -107,26 +107,29 @@ export const PlanListPane = ({
       render: (row) => inspectionTypeLabel(row.inspectionTypeCode),
     },
     /* 목록에서 바로 가를 수 있게 품목 · 승인 · 사용을 함께 싣는다(사용자 지시 · #196). */
+    /*
+     * 품목은 코드 · 이름 두 칸이다(사용자 지시 2026-11-20, 한 칸에 붙이던 「이름 코드」를 나눴다 · 검사 조회·판정 목록과
+     * 같다). 전 품목 공통 기준은 이름 칸에 「전체 품목」, 코드 칸은 「—」다.
+     */
     {
-      key: 'item',
+      key: 'itemCode',
       align: 'center',
-      header: t.listColumns.item,
-      width: '240px',
-      /* 「이름 코드」 한 줄 — 코드는 흐리게 뒤에 붙인다(사용자 시안 · #196, 검사 조회·판정 목록과 같다). */
+      header: t.listColumns.itemCode,
+      width: '140px',
+      render: (row) => {
+        const code = itemPartsOf(row.itemId)?.code ?? null;
+        return code === null ? t.values.empty : <span title={code}>{code}</span>;
+      },
+    },
+    {
+      key: 'itemName',
+      align: 'center',
+      header: t.listColumns.itemName,
+      width: '200px',
       render: (row) => {
         const parts = itemPartsOf(row.itemId);
         if (parts === null) return t.values.allItems;
-        return (
-          <span
-            className="inspection-standard-item-cell"
-            title={parts.code === null ? parts.name : `${parts.name} ${parts.code}`}
-          >
-            <span className="inspection-standard-item-cell-name">{parts.name}</span>
-            {parts.code !== null && (
-              <span className="inspection-standard-item-cell-code">{parts.code}</span>
-            )}
-          </span>
-        );
+        return <span title={parts.name}>{parts.name}</span>;
       },
     },
     /* 상태 — 가장 높은 버전의 상태(작성중 · 확정 · 폐기, 사용자 지시 · #208). 버전이 없으면 「—」. */
@@ -259,7 +262,7 @@ export const PlanListPane = ({
        */
       <div
         ref={fit.ref}
-        className="inspection-queue-table inspection-standard-plan-rows"
+        className="inspection-queue-table inspection-standard-plan-rows cells-start"
         style={resizable.style}
         onClick={(event) => {
           const target = event.target as Element;

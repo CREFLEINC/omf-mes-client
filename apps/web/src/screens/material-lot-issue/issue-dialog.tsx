@@ -3,6 +3,7 @@ import type { MaterialLotBatchCreated } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { InfoLabel } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
 import {
   checkBatch,
@@ -47,6 +48,7 @@ const SOURCE_STATUS: Record<BatchSource, 'success' | 'info' | 'idle'> = {
  */
 export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: IssueDialogProps) => {
   const reasonId = useId();
+  const lotCountId = useId();
   const [pickedKey, setPickedKey] = useState<string | null>(
     fixed !== null ? groupKey(fixed) : null,
   );
@@ -318,14 +320,18 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
               value={draft.supplierLotNo}
               onChange={(event) => edit({ supplierLotNo: event.target.value })}
             />
-            <TextField
-              label={td.lotCount}
-              inputMode="numeric"
-              value={draft.lotCount}
-              error={lotCountError ?? undefined}
-              helperText={td.lotCountHelp}
-              onChange={(event) => edit({ lotCount: event.target.value })}
-            />
+            {/* 개수 범위는 라벨 옆 ⓘ 로 — 칸 아래 설명문을 두지 않는다(관리웹 정리 시안 A). 넘으면 오류 문구가 범위를 말한다. */}
+            <div className="field-cell">
+              <InfoLabel htmlFor={lotCountId} label={td.lotCount} info={td.lotCountHelp} />
+              <TextField
+                id={lotCountId}
+                fullWidth
+                inputMode="numeric"
+                value={draft.lotCount}
+                error={lotCountError ?? undefined}
+                onChange={(event) => edit({ lotCount: event.target.value })}
+              />
+            </div>
           </>
         )}
 

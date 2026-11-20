@@ -105,7 +105,10 @@ describe('W-CO-08 편집 창 — 별칭 고치기 (#267 FR-007a)', () => {
     expect(within(board()).getByRole('button', { name: 'Z01-R001' })).toBeInTheDocument();
 
     await user.click(pencil('Z01-R001'));
-    expect(within(popover('Z01-R001')).getByText(t.aliasPopover.note)).toBeInTheDocument();
+    /* 「바로 저장 · 배치도 저장과 따로」는 제목 옆 ⓘ 로 읽힌다(관리웹 정리 시안 A). */
+    expect(
+      within(popover('Z01-R001')).getByRole('button', { name: t.aliasPopover.note }),
+    ).toBeInTheDocument();
     const input = within(popover('Z01-R001')).getByRole('textbox', {
       name: wl.aliasEdit.edit('Z01-R001'),
     });

@@ -110,7 +110,7 @@ describe('의심자재 후보 pane', () => {
         /* 열 머리마다 끌기 손잡이 아이콘 글자(drag_indicator)가 붙는다 — 이름만 본다. */
         .map((cell) => cell.textContent?.replaceAll('drag_indicator', ''))
         .join('|'),
-    ).toBe('|LOT 번호|품목|위치|보유 수량|상태|최근 상태 변경일');
+    ).toBe('|LOT 번호|품목코드|품목명|위치|보유 수량|상태|최근 상태 변경일');
     /* 선택 칸 머리는 이 쪽 전체 선택 칸이다(사용자 2026-11-02). */
     expect(screen.getByRole('checkbox', { name: '이 쪽 LOT 전체 선택' })).toBeVisible();
     /* 목록 카드 제목은 두지 않는다(다른 LOT 상태 탭과 같다 · 사용자 2026-11-02) — 구역 이름으로만 남는다. */
@@ -187,7 +187,9 @@ describe('의심자재 후보 pane', () => {
     );
 
     expect(await screen.findByText('WH · 창고 / LOC · 위치')).toBeVisible();
-    expect(screen.getByText('SYN-801002 · 상세 품목')).toBeVisible();
+    /* 품목은 코드 · 이름 두 칸이다(#1728). */
+    expect(screen.getByText('SYN-801002')).toBeVisible();
+    expect(screen.getAllByText('상세 품목').length).toBeGreaterThan(0);
     expect(screen.getByText('25 SYN-EA')).toBeVisible();
     expect(screen.getAllByText('—')).toHaveLength(2);
     for (const unknown of [

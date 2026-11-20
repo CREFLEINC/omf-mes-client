@@ -332,7 +332,6 @@ export const equipmentMaster = {
   inspectionItem: {
     tabLabel: '점검 항목',
     paneTitle: '점검 항목 마스터',
-    description: '설비와 설비 그룹에 부여할 점검 항목을 여기서 만듭니다.',
     loading: '점검 항목을 불러오는 중',
     emptyTitle: '등록된 점검 항목이 없습니다',
     emptyDescription: '점검 항목을 만들면 설비·설비 그룹에 부여할 수 있습니다.',

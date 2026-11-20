@@ -1,8 +1,8 @@
 import type { ApiClient } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
-import { useApiClient } from '../../patterns/api-context';
-import { runRequest } from '../../patterns/request';
+import { useApiClient } from '../../../patterns/api-context';
+import { runRequest } from '../../../patterns/request';
 import type { WorkerResponse } from './verify';
 
 /**
@@ -29,7 +29,7 @@ import type { WorkerResponse } from './verify';
 
 type Client = ApiClient['client'];
 
-const ALL_KEY = ['worker-assignment'] as const;
+const ALL_KEY = ['pop-home-login'] as const;
 
 export const workerAssignmentKeys = {
   all: ALL_KEY,

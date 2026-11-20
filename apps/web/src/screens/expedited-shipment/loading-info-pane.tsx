@@ -2,6 +2,7 @@ import { AlertBanner, SkeletonText, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import { InfoLabel, InfoTip } from '../../patterns/info-tip';
 import { Select } from '../../patterns/select';
 import type { WarehouseResolution } from './lookups';
 import type { LoadingInfoDraft } from './submission';
@@ -54,7 +55,13 @@ export const LoadingInfoPane = ({
 
   return (
     <section className="pane" aria-label={messages.expeditedShipment.panes.loading}>
-      <h2>{messages.expeditedShipment.panes.loading}</h2>
+      {/* 전부 선택 입력이라는 사실은 구획 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
+      <h2>
+        <span className="info-label">
+          {messages.expeditedShipment.panes.loading}
+          <InfoTip text={t.optional} />
+        </span>
+      </h2>
 
       <div className="filter-bar">
         <TextCell
@@ -73,7 +80,6 @@ export const LoadingInfoPane = ({
           onChange={(value) => onChange({ sealNo: value })}
         />
       </div>
-      <p className="field-note">{t.optional}</p>
 
       {warehouse.kind === 'PENDING' && (
         <div role="status" aria-label={t.warehouseLoading}>
@@ -93,18 +99,20 @@ export const LoadingInfoPane = ({
       {warehouse.kind === 'AUTO' && (
         <dl className="filter-bar">
           <div className="field-cell">
-            <dt className="field-label">{t.warehouse}</dt>
+            {/* ⭐ 「장부상」을 여기서도 적는다 — 안 적으면 창고 담당이 물건을 찾으러 간다(§5-4). 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
+            <dt className="field-label">
+              <span className="info-label">
+                {t.warehouse}
+                <InfoTip text={t.warehouseNote} />
+              </span>
+            </dt>
             <dd>{warehouse.label}</dd>
-            {/* ⭐ 「장부상」을 여기서도 적는다 — 안 적으면 창고 담당이 물건을 찾으러 간다(§5-4). */}
-            <span className="field-note">{t.warehouseNote}</span>
           </div>
         </dl>
       )}
       {warehouse.kind === 'AMBIGUOUS' && (
         <div className="field-cell wide-select">
-          <label className="field-label" htmlFor={warehouseId}>
-            {t.warehouse}
-          </label>
+          <InfoLabel htmlFor={warehouseId} label={t.warehouse} info={t.warehouseNote} />
           <Select
             id={warehouseId}
             options={warehouse.options.map((option) => ({
@@ -117,7 +125,7 @@ export const LoadingInfoPane = ({
             onChange={onChangeWarehouse}
           />
           <span id={warehouseNoteId} className="field-note">
-            {t.warehouseAmbiguous} {t.warehouseNote}
+            {t.warehouseAmbiguous}
           </span>
         </div>
       )}

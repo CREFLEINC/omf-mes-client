@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -38,70 +38,65 @@ const renderPane = (overrides: Partial<DecisionPaneProps> = {}): Handlers => {
 const approveButton = (): HTMLElement => screen.getByRole('button', { name: t.decision.approve });
 const rejectButton = (): HTMLElement => screen.getByRole('button', { name: t.decision.reject });
 const commentBox = (): HTMLElement => screen.getByLabelText(t.decision.commentLabel);
-const outcomePane = (): HTMLElement => screen.getByRole('group', { name: t.panes.approvalOutcome });
+/** 《승인 시 결과》 세 문장 — 「결재」 제목 옆 ⓘ 하나에 함께 있다(관리웹 정리 시안 A). */
+const outcomeText = [
+  t.decision.outcome.statusOnly,
+  t.decision.outcome.noErpDocument,
+  t.decision.outcome.inspectionPending,
+].join(' ');
+const outcomeTip = (): HTMLElement => screen.getByRole('button', { name: outcomeText });
 
 /**
  * 결재 구획 — **되돌릴 수 없는 조작의 첫째 겹이 여기 있다.**
  *
  * 둘째 겹(보내는 자리의 재판정)과 셋째 겹(요청이 실제로 나갔는가)은 이 부품이 잴 수 없다 —
  * 화면 시험이 맡는다. 여기서 재는 것은 **컨트롤이 실제로 잠기는가와 왜 잠겼는지 말하는가**,
- * 그리고 **《승인 시 결과》가 어떤 상태에서도 서 있는가**다.
+ * 그리고 **《승인 시 결과》가 어떤 상태에서도 있는가**다.
  */
 describe('DecisionPane', () => {
   /**
-   * 《승인 시 결과》 — 이 화면 고유의 구획이다.
+   * 《승인 시 결과》 — 이 화면 고유의 세 문장이다.
    *
    * 화면 이름이 「한도승인」이라 승인이 곧 입고·검사 처리로 읽히기 쉬운데, 실제로 일어나는
-   * 것은 요청 상태 변경 하나뿐이다. 세 문장이 서로 다른 오해를 하나씩 막으므로 **셋을 각각**
-   * 잰다 — 「구획이 있다」만 재면 문장 하나가 빠져도 통과한다.
+   * 것은 요청 상태 변경 하나뿐이다. 세 문장이 서로 다른 오해를 하나씩 막으므로 **셋을 모두** 담은
+   * ⓘ 를 잰다 — 문장 하나가 빠지면 이름이 달라져 걸린다. 늘 펼친 상자는 두지 않는다(관리웹 정리 시안 A).
    */
-  describe('《승인 시 결과》 구획', () => {
-    it('버튼 위 상시 자리에 구획으로 서고 세 문장이 모두 보인다', () => {
+  describe('《승인 시 결과》 ⓘ', () => {
+    it('「결재」 제목 옆 ⓘ 에 세 문장이 모두 있고 늘 펼친 상자는 없다', () => {
       renderPane();
 
-      const outcome = within(outcomePane());
-
-      expect(outcome.getByText(t.decision.outcome.statusOnly)).toBeVisible();
-      expect(outcome.getByText(t.decision.outcome.noErpDocument)).toBeVisible();
-      expect(outcome.getByText(t.decision.outcome.inspectionPending)).toBeVisible();
+      expect(outcomeTip()).toBeInTheDocument();
+      expect(screen.queryByText(t.decision.outcome.statusOnly)).not.toBeInTheDocument();
     });
 
     /**
-     * **버튼이 잠겨 있어도 보인다.** 승인이 무엇을 하고 무엇을 하지 않는지는 지금 누를 수
+     * **버튼이 잠겨 있어도 있다.** 승인이 무엇을 하고 무엇을 하지 않는지는 지금 누를 수
      * 있는지와 무관하게 참인 사실이다 — 잠긴 자리에서 감추면 「내 차례가 되면 입고까지 된다」로 읽힌다.
      */
-    it('내 차례가 아니어도 세 문장이 사라지지 않는다', () => {
+    it('내 차례가 아니어도 사라지지 않는다', () => {
       renderPane({ isMyTurn: false });
 
-      const outcome = within(outcomePane());
-
-      expect(outcome.getByText(t.decision.outcome.statusOnly)).toBeVisible();
-      expect(outcome.getByText(t.decision.outcome.noErpDocument)).toBeVisible();
-      expect(outcome.getByText(t.decision.outcome.inspectionPending)).toBeVisible();
+      expect(outcomeTip()).toBeInTheDocument();
     });
 
-    it('보내는 중에도 세 문장이 사라지지 않는다', () => {
+    it('보내는 중에도 사라지지 않는다', () => {
       renderPane({ isLocked: true, comment: '합성 의견' });
 
-      const outcome = within(outcomePane());
-
-      expect(outcome.getByText(t.decision.outcome.statusOnly)).toBeVisible();
-      expect(outcome.getByText(t.decision.outcome.noErpDocument)).toBeVisible();
-      expect(outcome.getByText(t.decision.outcome.inspectionPending)).toBeVisible();
+      expect(outcomeTip()).toBeInTheDocument();
     });
 
     /**
-     * **버튼보다 위다.** 아래에 두면 결재를 누른 사람이 그 문장을 읽는 시점이 이미 지난 뒤다.
+     * **버튼보다 앞이다.** 뒤에 두면 결재를 누른 사람이 그 문장을 읽는 시점이 이미 지난 뒤다.
      * 문서 차례로 잰다 — 시각 배치는 §11.2가 본다.
      */
     it('두 버튼보다 앞선다', () => {
       renderPane();
 
       expect(
-        outcomePane().compareDocumentPosition(approveButton()) & Node.DOCUMENT_POSITION_FOLLOWING,
+        outcomeTip().compareDocumentPosition(approveButton()) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
       expect(
-        outcomePane().compareDocumentPosition(rejectButton()) & Node.DOCUMENT_POSITION_FOLLOWING,
+        outcomeTip().compareDocumentPosition(rejectButton()) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
     });
   });
@@ -263,11 +258,12 @@ describe('DecisionPane', () => {
       expect(commentBox()).toHaveAttribute('aria-invalid', 'true');
     });
 
-    /** 짝 방향 — 오류가 없으면 도움말이 그 자리를 지킨다. */
-    it('오류가 없으면 도움말이 보인다', () => {
+    /** 짝 방향 — 오류가 없으면 칸 아래가 비고, 승인 · 반려의 의견 규칙은 라벨 옆 ⓘ 가 말한다(관리웹 정리 시안 A). */
+    it('오류가 없으면 의견 규칙은 라벨 옆 ⓘ 로 읽힌다', () => {
       renderPane();
 
-      expect(screen.getByText(t.decision.commentHelp)).toBeVisible();
+      expect(screen.getByRole('button', { name: t.decision.commentHelp })).toBeInTheDocument();
+      expect(screen.queryByText(t.decision.commentHelp)).not.toBeInTheDocument();
       expect(commentBox()).not.toHaveAttribute('aria-invalid', 'true');
     });
 

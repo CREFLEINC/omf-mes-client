@@ -5,7 +5,7 @@ import type { Translated } from './translated';
 export const productDisposalRequest: Translated<typeof ko.productDisposalRequest> = {
   title: 'Yêu cầu hủy thành phẩm',
   breadcrumbRoot: 'Quản lý bán hàng / xuất hàng',
-  headerNotice: 'Việc phê duyệt làm ở hộp phê duyệt. Màn hình này lo phần yêu cầu và xuất kho.',
+  approvalWhere: 'Việc phê duyệt làm ở hộp phê duyệt.',
   tabs: {
     request: 'Yêu cầu hủy',
     history: 'Lịch sử xử lý',
@@ -60,8 +60,6 @@ export const productDisposalRequest: Translated<typeof ko.productDisposalRequest
     typeLabel: 'Loại xuất kho',
     typeFixed: 'Cố định là xuất kho khác',
     selfDisposal: 'Tự hủy (không có đơn vị bên ngoài)',
-    selfDisposalHelp:
-      'Đánh dấu thì sẽ để trống đối tác hủy. Hàng đi ra rồi mất đi thì không có nơi đến.',
     partnerLabel: 'Đối tác hủy',
     partnerPlaceholder: 'Hãy chọn đối tác hủy',
     partnerEmpty: 'Không có đối tác nào được gắn vai trò hủy',
@@ -145,11 +143,5 @@ export const productDisposalRequest: Translated<typeof ko.productDisposalRequest
       'Sau khi gửi yêu cầu thì không rút lại được ở màn hình. Muốn lật lại thì dùng phần từ chối ở hộp phê duyệt.',
     cancel: 'Hủy',
     submit: 'Yêu cầu phê duyệt',
-  },
-  withdrawn: {
-    account:
-      'Hệ thống này không xử lý tài khoản kế toán cho việc hủy. Phần kế toán làm ở bên ngoài.',
-    noWithdraw:
-      'Không có đường rút lại yêu cầu đã gửi ngay trên màn hình. Hãy xử lý bằng phần từ chối ở hộp phê duyệt.',
   },
 };

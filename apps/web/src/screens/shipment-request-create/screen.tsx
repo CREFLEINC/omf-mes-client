@@ -171,7 +171,9 @@ export const ShipmentRequestCreateScreen = () => {
     null,
   );
 
-  const items = useItemNames(lines.map((line) => (line.itemId === '' ? null : Number(line.itemId))));
+  const items = useItemNames(
+    lines.map((line) => (line.itemId === '' ? null : Number(line.itemId))),
+  );
 
   /* 고른 창고 기준 가용(피처 012 FR-006a) — 품목 × 창고. */
   const availableQty = useAvailableQty(
@@ -436,7 +438,6 @@ export const ShipmentRequestCreateScreen = () => {
   const startStandalone = (): void => {
     setSearchParams(toSearchParams(filters, page, { kind: 'standalone', mode: 'standalone' }));
   };
-
 
   const businessUnitName = describeReference(
     toReference(businessUnits, header.businessUnitId === '' ? null : Number(header.businessUnitId)),

@@ -2,6 +2,7 @@ import { AlertBanner, Button, Chip, Dialog, Icon, SkeletonText } from '@crefle/w
 import { messages } from '@omf-mes/i18n';
 import { Fragment, useId, type ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { LoadErrorBanner } from './load-error-banner';
 import {
@@ -220,7 +221,13 @@ export const RequestDetailDialog = ({
               </dd>
             </div>
             <div>
-              <dt>{t.detail.fields.progress}</dt>
+              {/* 출하 완료를 어디서 하는지는 「진행」 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
+              <dt>
+                <span className="info-label">
+                  {t.detail.fields.progress}
+                  <InfoTip text={t.detail.popOnly} />
+                </span>
+              </dt>
               <dd>{progressLabel(detail.shipmentProgressCode)}</dd>
             </div>
             <div>
@@ -304,7 +311,6 @@ export const RequestDetailDialog = ({
               </ul>
             </AlertBanner>
           )}
-          <p className="field-note">{t.detail.popOnly}</p>
 
           <h3 className="field-label">{t.detail.lines}</h3>
           {linesOf(detail).map((line) => (

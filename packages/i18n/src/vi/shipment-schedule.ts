@@ -83,7 +83,6 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
     all: 'Tất cả',
     inspectionRequired: 'Thuộc diện',
     inspectionNotRequired: 'Không thuộc diện',
-    summaryNote: 'Đang chuẩn bị phần tổng hợp.',
     lookupTruncated:
       'Chỉ hiện một phần đầu của các lựa chọn. Nếu không có giá trị cần tìm, hãy báo người phụ trách.',
     lookupFailed: 'Không tải được các lựa chọn.',
@@ -138,8 +137,7 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
       completedBy: 'Hoàn tất',
     },
     noPickingWarehouse: 'Chưa có',
-    popOnly:
-      'Việc hoàn tất xuất hàng chỉ thực hiện trên POP 「Hoàn tất xuất hàng」 (P-04-07). Màn hình này chỉ để xem.',
+    popOnly: 'Việc hoàn tất xuất hàng chỉ thực hiện trên POP 「Hoàn tất xuất hàng」.',
     completed: (shipmentNo: string, completedAt: string): string =>
       `Đã hoàn tất xuất hàng trên POP (${shipmentNo}, ${completedAt}). Trừ tồn kho và số lượng đã xuất của đơn bán hàng đã được ghi cùng lúc. Mã quản lý xuất hàng không thể sửa nữa. Yêu cầu hủy được trình ở 「Lịch sử xuất hàng」.`,
     shipmentLink: (shipmentNo: string): string => `${shipmentNo} → Lịch sử xuất hàng`,
@@ -275,7 +273,7 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
     printedAt: (value: string): string => `In lúc ${value}`,
     printedByValue: (at: string, user: string): string => `${at}, web quản lý ${user}`,
     footnote:
-      'Quét QR ở trên tại POP 「Hoàn tất xuất hàng」 (P-04-07) thì lệnh xuất hàng này sẽ mở ra. Có hoàn tất được hay không sẽ do trạng thái lệnh xuất hàng lúc đó quyết định.',
+      'Quét QR ở trên tại POP 「Hoàn tất xuất hàng」 thì lệnh xuất hàng này sẽ mở ra. Có hoàn tất được hay không sẽ do trạng thái lệnh xuất hàng lúc đó quyết định.',
   },
   bu012: {
     businessUnit: 'Đơn vị kinh doanh',

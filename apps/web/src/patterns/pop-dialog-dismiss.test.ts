@@ -36,7 +36,7 @@ const SOURCE_ROOT = resolve(process.cwd(), 'src');
  *   비지 않았다」 시험이 훑기가 조용히 망가지는 것만 막아 준다.
  */
 const POP_SCREEN_DIRS = [
-  'worker-assignment',
+  'pop-home',
   'work-start',
   'work-precheck-gate',
   'material-input-scan',

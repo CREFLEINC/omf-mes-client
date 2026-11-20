@@ -23,6 +23,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
+import { InfoTip } from '../../patterns/info-tip';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { runRequest } from '../../patterns/request';
 import {
@@ -483,12 +484,19 @@ export const InboundAttachDialog = ({
       <div className="iqc-inbound-attach-dialog">
         <section className="parts-iqc-card" aria-labelledby="iqc-inbound-attach-files">
           <div className="parts-iqc-block-head">
-            <h3 id="iqc-inbound-attach-files" className="parts-iqc-sub-title">
-              {t.fileHeading}{' '}
-              <span className="required-mark" aria-hidden="true">
-                *
-              </span>
-            </h3>
+            {/*
+             * 받는 형식 · 크기 한도는 칸 아래 대신 제목 옆 ⓘ 로(관리웹 정리 시안 A). ⓘ 는 제목 밖에 둔다 — 구획 이름
+             * (`aria-labelledby`)에 ⓘ 문장이 섞이지 않게.
+             */}
+            <span className="info-label">
+              <h3 id="iqc-inbound-attach-files" className="parts-iqc-sub-title">
+                {t.fileHeading}{' '}
+                <span className="required-mark" aria-hidden="true">
+                  *
+                </span>
+              </h3>
+              <InfoTip text={td.help} />
+            </span>
             <span className="parts-iqc-footer-gap" />
             <Button
               variant="outlined"
@@ -500,7 +508,6 @@ export const InboundAttachDialog = ({
               {t.pick}
             </Button>
           </div>
-          <p className="field-note">{td.help}</p>
           {files.length === 0 ? null : (
             <div
               className="inspection-documents-selected-list"

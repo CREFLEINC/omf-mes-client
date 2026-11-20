@@ -33,13 +33,15 @@ export interface WebItemTableProps {
   /** 단계 안에 선다(#197) — 단계 머리가 제목을 대신해 제목 줄을 그리지 않고, 표 아래 오른쪽에 `footer`([확정])를 둔다. */
   inStep?: boolean;
   footer?: ReactNode;
+  /** 표에 그릴 줄(쪽으로 나눠 보일 때) — 없으면 `rows` 전부. 진행 건수는 늘 `rows` 전부로 센다. */
+  visibleRows?: MeasurementRow[];
 }
 
 /** 부동소수 뺄셈 찌꺼기를 지운다 — 규격 값은 소수 여섯째 자리를 넘지 않는다. */
 const tidy = (value: number): number => Number(value.toFixed(6));
 
 /** 규격 — 기준값과 상하한이 대칭이면 「100 ± 0.5」, 아니면 범위 뒤에 기준값을 괄호로(IQC #133 과 같다). */
-const describeSpec = (spec: SpecRange, unit: string | null): string => {
+export const describeSpec = (spec: SpecRange, unit: string | null): string => {
   const { target, lower, upper } = spec;
   let text: string | null = null;
 
@@ -89,6 +91,7 @@ export const WebItemTable = ({
   isLocked,
   inStep = false,
   footer = null,
+  visibleRows,
 }: WebItemTableProps) => {
   /* 쪽 이동 줄 없이 항목을 모두 보인다(사용자 지시 2026-11-16 · #274). */
   /* 시안(사용자 지시 2026-11-16 · #274) — No. · 검사 내용 · 규격 · n1 · 판정. 측정 회차 칸은 없애고, 여러 번 재는 항목은 값 칸에 n2 · n3 …. */
@@ -240,7 +243,7 @@ export const WebItemTable = ({
           caption={<span className="visually-hidden">{t.heading}</span>}
           density="compact"
           columns={columns}
-          rows={rows}
+          rows={visibleRows ?? rows}
           getRowId={(row) => row.key}
           empty={<p className="field-note">{isLoading ? tMeasure.loading : tMeasure.noItems}</p>}
         />

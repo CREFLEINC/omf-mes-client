@@ -3,6 +3,7 @@ import type { InspectionLotForward, InspectionResultSummaryForward } from '@omf-
 import { messages } from '@omf-mes/i18n';
 import { useId, useState, type ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { formatQty } from '../../patterns/package-qty';
 import { toApiError } from '../../patterns/request';
 import { PlanViewLauncher } from '../iqc-inspection/plan-view-launcher';
@@ -221,16 +222,13 @@ export const ShipmentOqcDetail = ({
         ))}
       </dl>
 
-      <p className="field-note oqc-shipment-note">
-        <Icon name={skipped ? 'fast_forward' : 'info'} size={16} aria-hidden />
-        <span>
-          {skipped
-            ? `${s.skipped} ${s.skippedMore}`
-            : request.statusCode === 'COMPLETED'
-              ? s.completed
-              : s.note}
-        </span>
-      </p>
+      {/* 닫힌 의뢰(생략 · 출하 완료)는 그 사실을 한 줄로. 열린 의뢰의 판정 규칙은 「검사 결과」 제목 옆 ⓘ 로(관리웹 정리 시안 A). */}
+      {(skipped || request.statusCode === 'COMPLETED') && (
+        <p className="field-note oqc-shipment-note">
+          <Icon name={skipped ? 'fast_forward' : 'info'} size={16} aria-hidden />
+          <span>{skipped ? `${s.skipped} ${s.skippedMore}` : s.completed}</span>
+        </p>
+      )}
 
       <section className="parts-iqc-card" aria-label={s.lots.heading(active.length)}>
         <div className="parts-iqc-block-head">
@@ -263,9 +261,10 @@ export const ShipmentOqcDetail = ({
 
       <section className="parts-iqc-card" aria-label={s.results.heading(results.length)}>
         <div className="parts-iqc-block-head">
-          <h3>
+          <h3 className="oqc-shipment-results-title">
             {s.results.title}{' '}
             <span className="parts-iqc-muted">{s.results.count(results.length)}</span>
+            {!skipped && request.statusCode !== 'COMPLETED' && <InfoTip text={s.note} />}
           </h3>
           <span className="parts-iqc-footer-gap" />
           {isOpen ? (
