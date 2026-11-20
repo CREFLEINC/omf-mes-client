@@ -3,10 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { SCREEN_ROUTES, screenPathOf } from './screen-routes';
 
 describe('화면 ID 매핑표', () => {
-  it('US6-1·Q13 W-04-12(출하 내역)는 승인 요청 ID 를 싣는다 — 그 화면이 결재의 대상 출하를 연다', () => {
-    expect(screenPathOf('W-04-12', 9001, SCREEN_ROUTES)).toBe(
-      '/shipment/shipment-confirm?approvalRequestId=9001',
+  it('US4-4·Q13 출하 취소 결재(W-04-02)는 출하 예정 목록에 승인 요청 ID 를 싣는다 — 그 화면이 대상 출하의 지시서 상세를 연다', () => {
+    expect(screenPathOf('W-04-02', 9001, SCREEN_ROUTES)).toBe(
+      '/shipment/shipment-schedule?approvalRequestId=9001',
     );
+  });
+
+  it('US5-2 출하 내역(W-04-12) 화면 주소는 매핑표에 없다 — 옛 결재도 서버가 W-04-02 로 낸다(피처 012 R-7)', () => {
+    expect(SCREEN_ROUTES['W-04-12']).toBeUndefined();
   });
 
   it('W-03-09는 정식 주소에 선택한 승인 요청 ID를 싣는다', () => {

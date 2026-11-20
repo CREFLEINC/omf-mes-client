@@ -9,7 +9,8 @@ import { EmptyLine, Panel } from './viz';
 const t = messages.dashboard.shipment;
 
 /** 이동 대상 화면(웹 화면 목록의 주소 그대로). */
-export const SHIPMENT_CONFIRM_PATH = '/shipment/shipment-confirm';
+/** 오늘 출하 실적 — 출하 내역(W-04-12)이 없어져 출하 예정 목록(W-04-02)으로 간다(피처 012 FR-023). */
+export const SHIPMENT_CONFIRM_PATH = '/shipment/shipment-schedule';
 export const SHIPMENT_SCHEDULE_PATH = '/shipment/shipment-schedule';
 
 export interface ShipmentCell {
