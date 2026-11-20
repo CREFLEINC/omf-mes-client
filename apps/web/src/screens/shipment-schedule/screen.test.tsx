@@ -787,6 +787,32 @@ describe('ShipmentScheduleScreen — 피처 010 지시서 상세', () => {
     expect(within(lot1).getByRole('img', { name: t.detail.codeLocked })).toBeInTheDocument();
   });
 
+  it('US5-4 완료된 지시서 상세의 완료 띠 안내는 취소를 아래 「출하」 칸에서 하라고 말한다(출하 내역 아님)', async () => {
+    const request = {
+      ...pickingRequest(),
+      shipmentProgressCode: 'SHIPPED',
+      completionBlockers: [],
+      blockerSummary: {},
+      completedShipment: {
+        shipmentId: 7701,
+        shipmentNo: 'SAMPLE-SH-0001',
+        completedAt: '2026-11-18T14:05:00+07:00',
+        completedTerminal: { terminalId: 61, terminalCode: 'SAMPLE-POP-01' },
+        completedWorker: { workerId: 9601, workerNo: 'SAMPLE-W-01', workerName: '합성 작업자' },
+      },
+    };
+    const { user } = renderScreen(
+      [listRoute([request]), detailOf(request), itemRoute(), ...partnerRoutes()],
+      SHIP_DATE_FROM,
+    );
+
+    const dialog = await openDetail(user);
+
+    const band = await within(dialog).findByText(t.bu012.completedBand('SAMPLE-SH-0001', '2026-11-18 14:05'));
+    expect(band).toHaveTextContent('취소는 아래 「출하」 칸에서 요청합니다.');
+    expect(band).not.toHaveTextContent('출하 내역');
+  });
+
   it('US2-7·Q19 「LOT 교체 이력」의 「다음 피킹 LOT」 — 같은 라인에서 교체 뒤 처음 피킹한 LOT, 없으면 「—」', async () => {
     const base = pickingRequest();
     const line = (base.lines as Record<string, unknown>[])[0] as Record<string, unknown>;

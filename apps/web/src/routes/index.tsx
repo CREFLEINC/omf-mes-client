@@ -87,7 +87,7 @@ import { IQC_SKIP_TYPE_CODE } from '../screens/quality-approval/type-tabs';
 import { RoutingScreen } from '../screens/routing/screen';
 import { ExpeditedShipmentScreen } from '../screens/expedited-shipment/screen';
 import { ProductDisposalRequestScreen } from '../screens/product-disposal-request/screen';
-import { ShipmentConfirmScreen } from '../screens/shipment-confirm/screen';
+import { ShipmentConfirmRedirect } from '../screens/shipment-schedule/shipment-confirm-redirect';
 import { ShipmentProcessingScreen } from '../screens/shipment-processing/screen';
 import { ShipmentRequestCreateScreen } from '../screens/shipment-request-create/screen';
 import { ShipmentScheduleScreen } from '../screens/shipment-schedule/screen';
@@ -679,10 +679,10 @@ export const appRouter = createBrowserRouter([
        */
       { path: 'shipment/expedited-shipment', element: <ExpeditedShipmentScreen /> },
       /*
-       * W-04-12 — 앞의 두 화면이 만든 «미확정» 출하를 확정·취소하는 자리라 그 뒤에 둔다.
-       * 되돌릴 수 있는 구간이 여기서 끝난다.
+       * W-04-12 출하 내역은 없어졌다(피처 012 FR-023) — 옛 주소는 출하 예정 목록(W-04-02)으로 넘긴다.
+       * 그 일(ERP 송신 · 취소 요청 · 실행 · 미확정 확정)은 W-04-02 상세 「출하」 칸이 맡는다.
        */
-      { path: 'shipment/shipment-confirm', element: <ShipmentConfirmScreen /> },
+      { path: 'shipment/shipment-confirm', element: <ShipmentConfirmRedirect /> },
       /*
        * W-04-10 — 출하가 아니라 «되돌아온 물건을 버리는» 일이라 확정 뒤에 둔다. 처분 판정이
        * 선행이고 결재를 타므로 만드는 화면들과 축이 다르다.
