@@ -98,7 +98,8 @@ export const usePopNavigation = (): PopNavigation => {
     plantId,
     access.screens.map((screen) => screen.path),
   );
-  const pending = access.screens
+  /* 사번을 비우면(로그아웃) 앞 작업자의 수를 남기지 않는다 — 처음 켰을 때처럼 수 없이(#334 · 리뷰). */
+  const pending = (canCount ? access.screens : [])
     .map((screen) => ({ screen, count: countOf(screen, workCounts.counts) }))
     .filter((entry) => entry.count > 0)
     .sort((a, b) => b.count - a.count);
@@ -111,7 +112,7 @@ export const usePopNavigation = (): PopNavigation => {
     pending,
     total: pending.reduce((sum, entry) => sum + entry.count, 0),
     tabCount: (screen: PopScreen) =>
-      countOf(screen, workCounts.counts) + (tabCounts[screen.path] ?? 0),
+      canCount ? countOf(screen, workCounts.counts) + (tabCounts[screen.path] ?? 0) : 0,
     go: (screen: PopScreen) => {
       /* ⛔ 저장하지 않은 입력을 묻지 않는다(G-34) — 확인 창은 정작 물어야 할 자리의 확인까지 넘기게 만든다. */
       if (screen.path === pathname) return;
