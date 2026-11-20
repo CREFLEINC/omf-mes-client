@@ -31,7 +31,7 @@ describe('DeactivateDialog', () => {
   it('제목이 어느 자원을 중지하는지 밝힌다', () => {
     renderDialog();
 
-    expect(screen.getByRole('dialog', { name: '사용을 중지할까요?' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: '계정 사용 중지' })).toBeInTheDocument();
   });
 
   it('닫기 아이콘은 기본으로 서고, 끄면 없어진다 — 사용자 쪽만 끈다(사용자 지시 2026-09-18)', () => {
@@ -55,11 +55,16 @@ describe('DeactivateDialog', () => {
     expect(screen.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
   });
 
-  /** 계약에 되살리는 오퍼레이션이 없고 수정 본문에도 사용 여부가 없다. */
-  it('본문이 되돌릴 수 없다는 사실을 밝힌다', () => {
-    renderDialog();
+  /* 사용자 창은 대상 블록 · 질문 · 경고 라벨을 낸다(사용자 시안 2026-11-20 · #333). */
+  it('대상과 경고 라벨을 받으면 함께 보인다', () => {
+    renderDialog({
+      target: { caption: '사용 중지 대상', name: '합성 사용자', meta: '로그인 아이디: SYN-01' },
+      warning: t.deactivateUserWarning,
+    });
 
-    expect(screen.getByText(/되돌릴 수 없습니다/)).toBeInTheDocument();
+    expect(screen.getByText('합성 사용자')).toBeInTheDocument();
+    expect(screen.getByText('로그인 아이디: SYN-01')).toBeInTheDocument();
+    expect(screen.getByText(/로그인할 수 없습니다/)).toBeInTheDocument();
   });
 
   /**
@@ -69,7 +74,7 @@ describe('DeactivateDialog', () => {
   it('본문이 어느 자원을 중지하는지에 따라 달라진다', () => {
     renderDialog();
 
-    expect(screen.getByText(/이 사용자는 시스템을 사용할 수 없게 되며/)).toBeInTheDocument();
+    expect(screen.getByText(/이 계정의 시스템 사용을 중지하시겠습니까/)).toBeInTheDocument();
     expect(screen.queryByText(/이 역할로 열려 있던 권한이 사라집니다/)).not.toBeInTheDocument();
   });
 
@@ -81,7 +86,7 @@ describe('DeactivateDialog', () => {
 
     expect(screen.getByRole('dialog', { name: '이 역할을 사용 중지할까요?' })).toBeInTheDocument();
     expect(screen.getByText(/이 역할로 열려 있던 권한이 사라집니다/)).toBeInTheDocument();
-    expect(screen.queryByText(/이 사용자는 시스템을 사용할 수 없게 되며/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/이 계정의 시스템 사용을 중지하시겠습니까/)).not.toBeInTheDocument();
   });
 
   /**

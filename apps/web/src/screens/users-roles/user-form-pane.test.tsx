@@ -218,7 +218,7 @@ describe('UserFormPane 입력', () => {
 
     const textboxes = within(pane()).getAllByRole('textbox');
     const email = within(pane()).getByRole('textbox', { name: '이메일' });
-    const phone = within(pane()).getByRole('textbox', { name: '휴대전화 번호' });
+    const phone = within(pane()).getByRole('textbox', { name: '휴대전화번호' });
     expect(textboxes.indexOf(phone)).toBe(textboxes.indexOf(email) + 1);
     expect(phone).not.toHaveAttribute('aria-required');
 

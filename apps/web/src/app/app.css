@@ -13557,8 +13557,12 @@ a.erp-send-chips:focus-visible {
   width: 17rem;
 }
 
-.users-roles-filter-row > .users-roles-add-user {
+/* 조회 · 초기화 · 사용자 추가를 함께 오른쪽 끝으로(사용자 지시 2026-11-20 · #333). */
+.users-roles-filter-row > .filter-actions {
   margin-left: auto;
+  /* 조회 · 초기화와 사용자 추가 사이를 세로선으로 나눈다(사용자 지시 2026-11-20 · #333). */
+  padding-right: var(--space-4);
+  border-right: 1px solid var(--outline-variant);
 }
 
 .users-roles-filter-row > .field-cell-unlabeled,
@@ -13795,6 +13799,47 @@ a.erp-send-chips:focus-visible {
   letter-spacing: var(--type-label-lg-tracking);
 }
 
+/* 오른쪽 빈 안내의 보조 문구는 한 줄로(사용자 지시 2026-11-20 · #333) — 공통 가독 폭 제한을 푼다. */
+.users-roles-pick-empty p {
+  max-width: none;
+}
+
+/* 창 제목 오른쪽 라벨 안내 — 접근 범위 추가(사용자 지시 2026-11-20 · #333). */
+.users-roles-dialog-title-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.users-roles-dialog-title-row > .iqc-inspection-action-note.users-roles-dialog-note[data-tone] {
+  margin: 0;
+}
+
+/* 사용자 추가 팝업 — 다른 화면 추가 창처럼 칸 카드 테두리 없이 창 본문에 바로 입력칸을 둔다(#333). */
+.users-roles-create-dialog > .pane {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+/* 초기 비밀번호 눈 아이콘 — 입력칸 오른쪽 안에 겹쳐 둔다(사용자 지시 2026-11-20 · #333). */
+.users-roles-password-field {
+  position: relative;
+}
+
+.users-roles-password-field > button {
+  position: absolute;
+  top: 6px;
+  right: var(--space-2);
+}
+
+.users-roles-password-field input.users-roles-password-input {
+  padding-right: 3rem;
+}
+
 .users-roles-scope-title {
   display: flex;
   flex-wrap: wrap;
@@ -13885,14 +13930,6 @@ a.erp-send-chips:focus-visible {
   gap: var(--space-2);
 }
 
-/* 공용 .field-note 의 폭 상한은 입력칸 밑 짧은 주석용이다 — 이 구역의 안내는 구역 폭을 쓴다. */
-.users-roles-worker-link-hint {
-  max-width: none;
-  margin: 0;
-  justify-self: start;
-  width: fit-content;
-}
-
 /*
  * 연결·변경 모달과 해제 확인 창의 본문 — 내용에 맞춘 높이, 항목 사이는 gap 하나(문단 기본 여백을 걷는다).
  * 버튼 위 여백이 과하게 벌어지던 것은 문단 margin 이 Dialog 본문 padding 에 더해진 탓이었다.
@@ -13928,6 +13965,9 @@ a.erp-send-chips:focus-visible {
   justify-content: flex-end;
   gap: var(--space-2);
   margin-top: var(--space-1);
+  /* 단추 위 구분선(사용자 시안 2026-11-20 · #333). */
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
 }
 
 .users-roles-worker-dialog-question {
@@ -13947,6 +13987,13 @@ a.erp-send-chips:focus-visible {
 
 .users-roles-worker-block > span {
   color: var(--on-surface-variant);
+}
+
+/* 블록 위 작은 제목 — 「현재 연결된 작업자」(사용자 시안 2026-11-20 · #333). */
+.users-roles-worker-block > .users-roles-worker-block-caption {
+  font: var(--type-label-lg);
+  font-weight: 400;
+  letter-spacing: var(--type-label-lg-tracking);
 }
 
 /*

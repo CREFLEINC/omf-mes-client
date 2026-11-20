@@ -10,6 +10,8 @@ export interface SelectFieldProps {
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
+  /** 선택 입력칸 표시 — `FieldLabel` 로 넘긴다. */
+  optionalMark?: string;
   disabled?: boolean;
   /** 비활성 사유. 디자인 시스템 `Select`에는 `disabledReason`이 없어 화면이 직접 붙인다(배치 규범 4). */
   disabledReason?: string;
@@ -45,6 +47,7 @@ export const SelectField = ({
   value,
   onChange,
   required = false,
+  optionalMark,
   disabled = false,
   disabledReason,
   note,
@@ -72,7 +75,7 @@ export const SelectField = ({
         .filter((name) => name !== null && name !== undefined)
         .join(' ')}
     >
-      <FieldLabel htmlFor={id} label={label} required={required} />
+      <FieldLabel htmlFor={id} label={label} required={required} optionalMark={optionalMark} />
       <Select
         id={id}
         options={options}

@@ -72,9 +72,11 @@ export const usersRoles = {
    * 두 뜻을 섞으면 화면이 지어낸다.
    */
   dialog: {
-    deactivateUserTitle: '사용을 중지할까요?',
-    deactivateUserDescription:
-      '사용을 중지하면 이 사용자는 시스템을 사용할 수 없게 되며 되돌릴 수 없습니다.',
+    deactivateUserTitle: '계정 사용 중지',
+    deactivateUserCaption: '사용 중지 대상',
+    deactivateUserLoginId: (loginId: string): string => `로그인 아이디: ${loginId}`,
+    deactivateUserDescription: '이 계정의 시스템 사용을 중지하시겠습니까?',
+    deactivateUserWarning: '사용 중지 후에는 해당 계정으로 로그인할 수 없습니다.',
     deactivateRoleTitle: '이 역할을 사용 중지할까요?',
     /*
      * 역할과 사용자는 **중지했을 때 일어나는 일이 다르다.** 사용자 문구를 그대로 쓰면
@@ -88,9 +90,10 @@ export const usersRoles = {
      * 창을 닫으면 다시 볼 길이 없고, 다시 받으려면 새로 초기화해야 한다. 그 사실을 누르기 전과
      * 받은 뒤 두 번 말한다.
      */
-    resetPasswordTitle: '비밀번호를 초기화할까요?',
-    resetPasswordDescription: '초기화 시 새 임시 비밀번호가 1번만 표시됩니다.',
-    resetPasswordConfirm: '초기화',
+    resetPasswordTitle: '비밀번호 초기화',
+    resetPasswordQuestion: '새로운 임시 비밀번호를 발급하시겠습니까?',
+    resetPasswordDescription: '임시 비밀번호는 발급 후 한 번만 확인할 수 있습니다.',
+    resetPasswordConfirm: '비밀번호 초기화',
     temporaryPasswordTitle: '임시 비밀번호',
     temporaryPasswordLead:
       '비밀번호는 이번에만 확인할 수 있습니다. 창을 닫기 전에 사용자에게 전달해 주세요.',
@@ -185,11 +188,15 @@ export const usersRoles = {
       department: '소속 부서',
       /* 설계(W-CO-02 §4-A)의 라벨이 「이메일」이다 — 관리웹에서 「전자우편」은 이 화면에만 있었다. */
       email: '이메일',
-      phoneNumber: '휴대전화 번호',
+      phoneNumber: '휴대전화번호',
       status: '재직 상태',
       initialPassword: '초기 비밀번호',
     },
     statusDefault: '기본값(재직)',
+    showPassword: '비밀번호 보기',
+    /** 선택 입력칸 라벨 뒤 표시(사용자 지시 2026-11-20 · #333) — 다른 화면의 「이름 (선택)」과 같은 모양. */
+    optionalMark: '(선택)',
+    hidePassword: '비밀번호 숨기기',
     /* 부서를 고르지 않은 상태. 계약이 널을 허용하므로 비우는 것이 정상 값이다. */
     departmentNone: '미지정',
     /** 로그인 아이디 칸 이름 오른쪽 라벨(omf-all-around#333). */
@@ -377,6 +384,8 @@ export const usersRoles = {
       addTitle: '접근 범위 추가',
       editTitle: '접근 범위 수정',
       addLead: '추가할 사업부와 공장을 선택하세요.',
+      businessUnitLabel: '사업부 선택',
+      plantLabel: '공장 선택',
       allBusinessUnits: '모든 사업부',
       allPlants: '모든 공장',
       add: '추가',
@@ -419,24 +428,26 @@ export const usersRoles = {
     title: '연결된 현장 작업자',
     linked: '연결됨',
     unlinked: '미연결',
-    none: '연결된 작업자가 없습니다.',
     /** 미연결일 때 한 줄 — 왜 연결해야 하는지 */
-    hintUnlinked: '수입검사 판정을 저장하려면 작업자 사번을 연결해야 합니다.',
+    hintUnlinked: '수입검사 판정을 저장하려면 작업자 연결이 필요합니다.',
+    /** 미연결일 때의 구역 제목(사용자 시안 2026-11-20 · #333). */
+    titleUnlinked: '현장 작업자 연결',
     noDepartment: '부서 없음',
     connect: '작업자 연결',
     change: '작업자 변경',
     unlink: '연결 해제',
     inputLabel: '작업자 사번',
-    inputPlaceholder: '사번 입력',
+    inputLabelChange: '변경할 작업자 사번',
+    currentCaption: '현재 연결된 작업자',
+    inputPlaceholder: '사번을 입력하세요',
     submitConnect: '연결',
-    submitChange: '변경',
+    submitChange: '작업자 변경',
     /** 입력 그룹 맨 아래에만 — 실패했는데 적용됐다고 말하지 않도록 「~하면」으로 쓴다. */
     noteConnect: '연결하면 별도 저장 없이 즉시 적용됩니다.',
-    noteChange: '변경하면 별도 저장 없이 즉시 적용됩니다.',
     unlinkConfirmTitle: '작업자 연결 해제',
-    unlinkQuestion: '이 작업자의 연결을 해제하시겠습니까?',
-    unlinkImpact: '연결을 해제하면 이 계정에서 수입검사 판정을 저장할 수 없습니다.',
-    unlinkNote: '연결 해제는 즉시 적용됩니다.',
+    unlinkCaption: '연결된 작업자',
+    workerNoMeta: (workerNo: string): string => `사번 ${workerNo}`,
+    unlinkImpact: '연결 해제 후에는 이 계정으로 수입검사 판정을 저장할 수 없습니다.',
     linkedToast: (summary: string): string => `작업자를 연결했습니다 — ${summary}`,
     unlinkedToast: '작업자 연결을 해제했습니다.',
     /** 조회 조건(재직 중 · 사번 일치)을 그대로 말한다. */
@@ -444,5 +455,8 @@ export const usersRoles = {
     /** 사번 조회 응답의 연결 계정(appUserId)으로 가린다 — 서버도 같은 경우를 400 으로 막는다. */
     linkedElsewhere: '이미 다른 계정에 연결된 사번입니다.',
     workerNoRequired: '작업자 사번을 입력해 주세요.',
+    /** 사용자 추가 팝업의 사번 칸(사용자 지시 2026-11-20 · #333). */
+    createLabel: '작업자 사번',
+    createLinkFailed: '사용자는 추가했지만 작업자를 연결하지 못했습니다. 상세 정보에서 다시 연결해 주세요.',
   },
 } as const;

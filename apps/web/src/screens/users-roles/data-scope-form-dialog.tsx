@@ -58,7 +58,24 @@ export const DataScopeFormDialog = ({
       open
       onClose={onClose}
       size="md"
-      title={isNew ? t.scope.dialog.addTitle : t.scope.dialog.editTitle}
+      title={
+        /* 추가 창은 제목 오른쪽에 라벨 모양 안내(사용자 지시 2026-11-20 · #333). 창 이름은 제목만 읽힌다. */
+        isNew ? (
+          <span className="users-roles-dialog-title-row">
+            {t.scope.dialog.addTitle}
+            <span
+              className="iqc-inspection-action-note users-roles-dialog-note"
+              data-tone="info"
+              aria-hidden
+            >
+              <Icon name="info" size={16} aria-hidden />
+              {t.scope.dialog.addLead}
+            </span>
+          </span>
+        ) : (
+          t.scope.dialog.editTitle
+        )
+      }
       /* 오른쪽 위 X 를 두지 않는다(사용자 지시 2026-09-18) — 닫기는 「취소」와 Esc 로 한다. */
       showCloseButton={false}
       footer={
@@ -84,13 +101,10 @@ export const DataScopeFormDialog = ({
         </>
       }
     >
-      {/* 무엇을 고르는 창인지 한 줄로 — 추가 창에만(사용자 시안 2026-11-20 · #333). */}
-      {isNew && <p className="dialog-lead">{t.scope.dialog.addLead}</p>}
-
       <div className="form-grid">
         {/* 규범 3-2 — 「SYN-BU-01 · 합성 사업부 A」는 트리거 폭에 갇혀 잘린다. */}
         <SelectField
-          label={t.scope.fields.businessUnit}
+          label={t.scope.dialog.businessUnitLabel}
           wide
           options={[{ value: '', label: t.scope.dialog.allBusinessUnits }, ...businessUnitOptions]}
           value={values.businessUnitId}
@@ -100,7 +114,7 @@ export const DataScopeFormDialog = ({
         />
 
         <SelectField
-          label={t.scope.fields.plant}
+          label={t.scope.dialog.plantLabel}
           wide
           options={[{ value: '', label: t.scope.dialog.allPlants }, ...plantOptions]}
           value={values.plantId}

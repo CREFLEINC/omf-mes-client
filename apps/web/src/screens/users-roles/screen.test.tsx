@@ -930,6 +930,8 @@ describe('UsersRolesScreen 조회 실패', () => {
 const userFormPane = (): HTMLElement => screen.getByRole('region', { name: '사용자 상세 정보' });
 /** 오른쪽 한 카드 — 고른 사용자의 설정 전부(omf-all-around#333). 고르기 전에도 선다. */
 const settingsPane = (): HTMLElement => screen.getByRole('region', { name: '사용자 설정' });
+/** 사용자 추가 팝업(사용자 지시 2026-11-20 · #333). */
+const createDialog = (): HTMLElement => screen.getByRole('dialog', { name: '사용자 추가' });
 
 const detailRequests = (requests: RecordedRequest[], appUserId = 1001): RecordedRequest[] =>
   requestsTo(requests, `${USERS_PATH}/${String(appUserId)}`);
@@ -1393,6 +1395,96 @@ describe('UsersRolesScreen 등록', () => {
     return rendered;
   };
 
+  /* 사용자 추가 팝업(사용자 지시 2026-11-20 · #333) — 필수 칸이 차면 누를 수 있고, 사번을 적으면 등록 뒤 연결한다. */
+  describe('팝업', () => {
+    const workerDirectoryRoute = (items: object[]): StubRoute => ({
+      match: (request) =>
+        request.method === 'GET' && new URL(request.url).pathname === '/mdm/workers',
+      respond: () => jsonResponse({ items, page: { page: 1, size: 2, total: items.length } }),
+    });
+    const workerLinkPutRoute = (): StubRoute => ({
+      match: (request) =>
+        request.method === 'PUT' && new URL(request.url).pathname === `${USERS_PATH}/1009/worker`,
+      respond: () =>
+        jsonResponse({ workerId: 8501, workerNo: 'SYN-W-01', workerName: '합성 작업자' }),
+    });
+    const FREE_WORKER = {
+      workerId: 8501,
+      workerNo: 'SYN-W-01',
+      workerName: '합성 작업자',
+      appUserId: null,
+    };
+
+    it('필수 칸이 비어 있으면 사용자 추가를 누를 수 없고, 다 차면 누를 수 있다', async () => {
+      const { requests, user } = renderScreen([userListRoute(), departmentsRoute()]);
+
+      await waitForUserList(requests);
+      await user.click(within(userSearchPane()).getByRole('button', { name: '사용자 추가' }));
+      const dialog = await screen.findByRole('dialog', { name: '사용자 추가' });
+
+      expect(within(dialog).getByRole('button', { name: '사용자 추가' })).toBeDisabled();
+
+      await user.type(
+        within(dialog).getByRole('textbox', { name: '로그인 아이디' }),
+        'SYN-LOGIN-09',
+      );
+      await user.type(within(dialog).getByRole('textbox', { name: '이름' }), '합성 사용자 Z');
+
+      expect(within(dialog).getByRole('button', { name: '사용자 추가' })).toBeEnabled();
+    });
+
+    it('눈 아이콘으로 초기 비밀번호를 보고 숨긴다', async () => {
+      const { user } = await fillCreateForm();
+      const password = within(createDialog()).getByLabelText('초기 비밀번호');
+
+      expect(password).toHaveAttribute('type', 'password');
+      await user.click(within(createDialog()).getByRole('button', { name: '비밀번호 보기' }));
+      expect(password).toHaveAttribute('type', 'text');
+      await user.click(within(createDialog()).getByRole('button', { name: '비밀번호 숨기기' }));
+      expect(password).toHaveAttribute('type', 'password');
+    });
+
+    it('사번을 적으면 등록한 뒤 그 계정에 작업자를 연결한다', async () => {
+      const { requests, user } = await fillCreateForm([
+        userCreateRoute(),
+        workerDirectoryRoute([FREE_WORKER]),
+        workerLinkPutRoute(),
+      ]);
+
+      await user.type(
+        within(createDialog()).getByRole('textbox', { name: '작업자 사번' }),
+        'SYN-W-01',
+      );
+      await user.click(within(createDialog()).getByRole('button', { name: '사용자 추가' }));
+
+      await waitFor(() => {
+        expect(
+          requests.filter(
+            (request) =>
+              request.method === 'PUT' && request.url.pathname === `${USERS_PATH}/1009/worker`,
+          ),
+        ).toHaveLength(1);
+      });
+      const put = requests.find((request) => request.url.pathname === `${USERS_PATH}/1009/worker`);
+      expect(JSON.parse(put?.body ?? '{}')).toEqual({ workerId: 8501 });
+    });
+
+    it('없는 사번이면 아무것도 만들지 않고 칸 아래에 이유를 낸다', async () => {
+      const { requests, user } = await fillCreateForm([
+        userCreateRoute(),
+        workerDirectoryRoute([]),
+      ]);
+
+      await user.type(within(createDialog()).getByRole('textbox', { name: '작업자 사번' }), 'NOPE');
+      await user.click(within(createDialog()).getByRole('button', { name: '사용자 추가' }));
+
+      expect(
+        await within(createDialog()).findByText('해당 사번의 재직 중인 작업자를 찾을 수 없습니다.'),
+      ).toBeInTheDocument();
+      expect(requests.some((request) => request.method === 'POST')).toBe(false);
+    });
+  });
+
   const createBodyOf = (requests: RecordedRequest[]): Record<string, unknown> => {
     const post = requests.find(
       (request) => request.method === 'POST' && request.url.pathname === USERS_PATH,
@@ -1406,7 +1498,7 @@ describe('UsersRolesScreen 등록', () => {
   it('등록 요청에 멱등 키만 실린다 — 아직 잠글 대상이 없다', async () => {
     const { requests, user } = await fillCreateForm([userCreateRoute()]);
 
-    await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+    await user.click(within(createDialog()).getByRole('button', { name: '사용자 추가' }));
 
     await waitFor(() => {
       expect(requests.some((request) => request.method === 'POST')).toBe(true);
@@ -1418,16 +1510,16 @@ describe('UsersRolesScreen 등록', () => {
     expect(post?.headers.get('If-Match')).toBeNull();
   });
 
-  /** 계약이 「미지정 시 서버가 기본값으로 채운다」고 명시했고 화면이 고를 값이 없다. */
-  it('등록 본문에 상태 코드가 실리지 않는다', async () => {
+  /* 재직 상태는 「재직」이 미리 골라진 채 열린다(사용자 지시 2026-11-20 · #333) — 서버 기본값과 같은 값이 실린다. */
+  it('등록 본문에 미리 골라진 재직 상태가 실린다', async () => {
     const { requests, user } = await fillCreateForm([userCreateRoute()]);
 
-    await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+    await user.click(within(createDialog()).getByRole('button', { name: '사용자 추가' }));
 
     await waitFor(() => {
       expect(requests.some((request) => request.method === 'POST')).toBe(true);
     });
-    expect(Object.keys(createBodyOf(requests))).not.toContain('statusCode');
+    expect(createBodyOf(requests).statusCode).toBe('EMPLOYED');
     expect(createBodyOf(requests).loginId).toBe('SYN-LOGIN-09');
   });
 
@@ -1437,7 +1529,7 @@ describe('UsersRolesScreen 등록', () => {
       userDetailRoute({ ...filledUserFixture, appUserId: 1009 }),
     ]);
 
-    await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+    await user.click(within(createDialog()).getByRole('button', { name: '사용자 추가' }));
 
     await waitFor(() => {
       expect(new URLSearchParams(search()).get('usr')).toBe('1009');
@@ -1493,7 +1585,7 @@ describe('UsersRolesScreen 등록', () => {
 
       await user.clear(passwordBoxOf());
       await user.type(passwordBoxOf(), SYNTHETIC_TYPED_PASSWORD);
-      await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+      await user.click(within(createDialog()).getByRole('button', { name: '사용자 추가' }));
 
       await waitFor(() => {
         expect(requests.some((request) => request.method === 'POST')).toBe(true);
@@ -1508,7 +1600,7 @@ describe('UsersRolesScreen 등록', () => {
 
       expect(passwordBoxOf()).toHaveValue(SYNTHETIC_DEFAULT_PASSWORD);
 
-      await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+      await user.click(within(createDialog()).getByRole('button', { name: '사용자 추가' }));
 
       await waitFor(() => {
         expect(requests.some((request) => request.method === 'POST')).toBe(true);
@@ -1524,7 +1616,7 @@ describe('UsersRolesScreen 등록', () => {
 
       expect(passwordBoxOf()).toHaveValue(FALLBACK_INITIAL_PASSWORD);
 
-      await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+      await user.click(within(createDialog()).getByRole('button', { name: '사용자 추가' }));
 
       await waitFor(() => {
         expect(requests.some((request) => request.method === 'POST')).toBe(true);
@@ -1556,7 +1648,7 @@ describe('UsersRolesScreen 등록', () => {
       expect(passwordBoxOf()).toBeInvalid();
 
       // 저장을 눌러도 화면 검증이 막아 요청을 보내지 않는다.
-      await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+      await user.click(within(createDialog()).getByRole('button', { name: '사용자 추가' }));
       expect(requests.some((request) => request.method === 'POST')).toBe(false);
     });
 
@@ -1598,7 +1690,7 @@ describe('UsersRolesScreen 등록', () => {
         expect(within(userFormPane()).getByText(passwordRequiredText)).toBeInTheDocument();
       });
 
-      await user.click(within(userFormPane()).getByRole('button', { name: '취소' }));
+      await user.click(within(createDialog()).getByRole('button', { name: '취소' }));
       await waitFor(() => {
         expect(within(settingsPane()).queryByLabelText('초기 비밀번호')).not.toBeInTheDocument();
       });
@@ -1685,7 +1777,7 @@ describe('UsersRolesScreen 등록 저장 실패', () => {
       ),
     ]);
 
-    await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+    await user.click(within(createDialog()).getByRole('button', { name: '사용자 추가' }));
 
     // 인라인 — 그 칸 옆에 선다.
     expect(await within(userFormPane()).findByText(serverMessage)).toBeInTheDocument();
@@ -1707,7 +1799,7 @@ describe('UsersRolesScreen 등록 저장 실패', () => {
       ),
     ]);
 
-    await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+    await user.click(within(createDialog()).getByRole('button', { name: '사용자 추가' }));
     // 이 병합 순간에는 값이 화면 규칙을 통과한 채였다 — 파생값이 비어 서버 오류가 그대로 보인다
     // (screen.tsx 주석의 그 갈래).
     await within(userFormPane()).findByText(serverMessage);
@@ -1752,15 +1844,17 @@ describe('UsersRolesScreen 사용 중지', () => {
     await openUserDetail([userDeactivateRoute()]);
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.queryByText(/되돌릴 수 없습니다/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/로그인할 수 없습니다/)).not.toBeInTheDocument();
   });
 
-  it('창이 되돌릴 수 없다는 사실을 먼저 밝히고 건수를 내지 않는다', async () => {
+  /* 대상 · 질문 · 경고 라벨(사용자 시안 2026-11-20 · #333). */
+  it('창이 대상과 로그인 불가를 밝히고 건수를 내지 않는다', async () => {
     await openDeactivateDialog([userDeactivateRoute()]);
 
-    const dialog = screen.getByRole('dialog');
+    const dialog = screen.getByRole('dialog', { name: '계정 사용 중지' });
 
-    expect(within(dialog).getByText(/되돌릴 수 없습니다/)).toBeInTheDocument();
+    expect(within(dialog).getByText('사용 중지 대상')).toBeInTheDocument();
+    expect(within(dialog).getByText(/로그인할 수 없습니다/)).toBeInTheDocument();
     expect(dialog.textContent).not.toMatch(/\d+\s*건/);
     // 사용자 지시(2026-09-18) — 사용자 사용 중지 창에는 오른쪽 위 X 가 없다.
     expect(within(dialog).queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
@@ -1836,7 +1930,7 @@ describe('UsersRolesScreen 비밀번호 초기화', () => {
       within(userFormPane()).getByRole('button', { name: '비밀번호 초기화' }),
     );
     await rendered.user.click(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: '초기화' }),
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '비밀번호 초기화' }),
     );
 
     return rendered;
@@ -1895,7 +1989,7 @@ describe('UsersRolesScreen 비밀번호 초기화', () => {
 
     await user.click(within(userFormPane()).getByRole('button', { name: '비밀번호 초기화' }));
     await user.click(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: '초기화' }),
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '비밀번호 초기화' }),
     );
     await screen.findByText('SynTmp9x2k');
 
@@ -2257,10 +2351,10 @@ describe('UsersRolesScreen 창·오류의 수명', () => {
       'SYN-LOGIN-09',
     );
     await user.type(within(userFormPane()).getByRole('textbox', { name: '이름' }), '합성 사용자 Z');
-    await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+    await user.click(within(createDialog()).getByRole('button', { name: '사용자 추가' }));
     await within(userFormPane()).findByText('등록이 막혔습니다.');
 
-    await user.click(within(userFormPane()).getByRole('button', { name: '취소' }));
+    await user.click(within(createDialog()).getByRole('button', { name: '취소' }));
     await user.click(within(userSearchPane()).getByRole('button', { name: '사용자 추가' }));
 
     await within(userFormPane()).findByRole('textbox', { name: '로그인 아이디' });
@@ -2904,9 +2998,9 @@ describe('UsersRolesScreen 데이터 접근범위', () => {
 
     const dialog = await screen.findByRole('dialog');
 
-    await user.click(within(dialog).getByLabelText('사업부'));
+    await user.click(within(dialog).getByLabelText('사업부 선택'));
     await user.click(await screen.findByRole('option', { name: 'SYN-BU-02 · 합성 사업부 B' }));
-    await user.click(within(dialog).getByLabelText('공장'));
+    await user.click(within(dialog).getByLabelText('공장 선택'));
     await user.click(await screen.findByRole('option', { name: 'SYN-PLT-02 · 합성 공장 B' }));
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '추가' }));
 
@@ -3183,7 +3277,7 @@ describe('UsersRolesScreen 데이터 접근범위 — 만들 수 없는 줄', ()
     const dialog = await screen.findByRole('dialog');
 
     // 이미 「합성 사업부 B · (전체)」 줄이 있다 — 빈 공장은 0으로 접혀 같은 짝이 된다.
-    await user.click(within(dialog).getByLabelText('사업부'));
+    await user.click(within(dialog).getByLabelText('사업부 선택'));
     await user.click(await screen.findByRole('option', { name: 'SYN-BU-02 · 합성 사업부 B' }));
 
     expect(within(screen.getByRole('dialog')).getByRole('button', { name: '추가' })).toBeDisabled();
@@ -3199,9 +3293,9 @@ describe('UsersRolesScreen 데이터 접근범위 — 만들 수 없는 줄', ()
 
     const dialog = await screen.findByRole('dialog');
 
-    await user.click(within(dialog).getByLabelText('사업부'));
+    await user.click(within(dialog).getByLabelText('사업부 선택'));
     await user.click(await screen.findByRole('option', { name: 'SYN-BU-02 · 합성 사업부 B' }));
-    await user.click(within(screen.getByRole('dialog')).getByLabelText('공장'));
+    await user.click(within(screen.getByRole('dialog')).getByLabelText('공장 선택'));
     await user.click(await screen.findByRole('option', { name: 'SYN-PLT-02 · 합성 공장 B' }));
 
     expect(within(screen.getByRole('dialog')).getByRole('button', { name: '추가' })).toBeEnabled();

@@ -6,12 +6,13 @@ import {
   SkeletonText,
   Icon,
   Tabs,
+  TextField,
   useToast,
 } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -22,6 +23,7 @@ import {
   useSplitOrientation,
 } from '../../patterns/split-orientation';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
+import { runRequest } from '../../patterns/request';
 import { sessionKeys } from '../../patterns/session';
 import { lookupLabel, selectableOptions } from './code-options';
 import { DeactivateDialog } from './deactivate-dialog';
@@ -126,7 +128,8 @@ import type {
   UserFilters,
   UserFormValues,
 } from './types';
-import { WorkerLinkField } from './worker-link-field';
+import { FieldLabel } from './field-label';
+import { findLinkableWorker, WorkerLinkField, workerLinkKey } from './worker-link-field';
 
 type AppUserDetailResponse = components['schemas']['AppUserDetailResponse'];
 type UserRoleListResponse = components['schemas']['UserRoleListResponse'];
@@ -229,6 +232,32 @@ export const UsersRolesScreen = () => {
    */
   const refreshSession = (): void => {
     void queryClient.refetchQueries({ queryKey: sessionKeys.current });
+  };
+
+  /*
+   * 사용자 추가 팝업의 작업자 사번(선택 · 사용자 지시 2026-11-20 · #333). 사번은 **등록 전에** 찾아 두고
+   * (못 찾으면 아무것도 만들지 않는다), 등록이 성공하면 그 계정에 연결한다. 연결만 실패하면 계정은 남으므로
+   * 상세에서 다시 연결하라고 알린다.
+   */
+  const createWorkerInputId = useId();
+  const [createWorkerNo, setCreateWorkerNo] = useState('');
+  const [createWorkerError, setCreateWorkerError] = useState<string | null>(null);
+  const [isCheckingWorker, setIsCheckingWorker] = useState(false);
+  const pendingWorkerIdRef = useRef<number | null>(null);
+
+  const linkCreatedWorker = async (appUserId: number, workerId: number): Promise<void> => {
+    try {
+      const saved = await runRequest(() =>
+        client.PUT('/app/users/{appUserId}/worker', {
+          params: { path: { appUserId }, header: { 'Idempotency-Key': crypto.randomUUID() } },
+          body: { workerId },
+        }),
+      );
+      queryClient.setQueryData(workerLinkKey(appUserId), saved);
+      refreshSession();
+    } catch {
+      toast.show({ variant: 'error', description: t.workerLink.createLinkFailed });
+    }
   };
 
   const tab = resolveTab(searchParams.get('tab'));
@@ -664,6 +693,9 @@ export const UsersRolesScreen = () => {
       /* 등록이 끝났다 — 폼 값은 방금 저장됐으니 묻지 않고 연다. */
       openUser(saved.appUserId);
       toast.show({ variant: 'success', description: messages.common.created });
+      const workerId = pendingWorkerIdRef.current;
+      pendingWorkerIdRef.current = null;
+      if (workerId !== null) void linkCreatedWorker(saved.appUserId, workerId);
     },
   });
 
@@ -1016,6 +1048,8 @@ export const UsersRolesScreen = () => {
   const handleAddUser = () => {
     // 등록 폼이 열려 있는 동안 고른 사용자의 상세가 함께 보이면 어느 쪽을 고치는지 가릴 수 없다.
     leaveSafely(() => {
+      setCreateWorkerNo('');
+      setCreateWorkerError(null);
       patchSearchParams((next) => {
         applySelection(next, { kind: 'createUser' });
       });
@@ -1059,6 +1093,32 @@ export const UsersRolesScreen = () => {
    * 저장. **화면이 잡을 수 있는 오류가 있으면 요청을 보내지 않는다** —
    * 보내 놓고 서버가 되돌려 주기를 기다리면 사용자가 두 번 기다린다.
    */
+  /** 사용자 추가 — 사번을 적었으면 먼저 찾아 보고, 찾았을 때만 등록한다. */
+  const handleCreateUser = async (): Promise<void> => {
+    if (formState === null || isCheckingWorker) return;
+
+    const errors = validateUserForm(formState.values, 'create');
+    setUserFieldErrors(errors);
+    pendingWorkerIdRef.current = null;
+    setCreateWorkerError(null);
+
+    if (Object.keys(errors).length > 0) return;
+
+    const workerNo = createWorkerNo.trim();
+    if (workerNo !== '') {
+      setIsCheckingWorker(true);
+      const result = await findLinkableWorker(client, workerNo, null);
+      setIsCheckingWorker(false);
+      if ('error' in result) {
+        setCreateWorkerError(result.error);
+        return;
+      }
+      pendingWorkerIdRef.current = result.workerId;
+    }
+
+    userCreateWrite.write(formState.values);
+  };
+
   const handleSaveUser = () => {
     if (formState === null) return;
 
@@ -1324,6 +1384,28 @@ export const UsersRolesScreen = () => {
           isSaving={userCreateWrite.isSaving}
           onSave={handleSaveUser}
           onCancel={closeUserCreateForm}
+          /* 팝업이 제목과 [취소][사용자 추가]를 맡는다(사용자 지시 2026-11-20 · #333). */
+          showHeading={false}
+          createExtraField={
+            <div className="field-cell users-roles-create-worker">
+              <FieldLabel
+                htmlFor={createWorkerInputId}
+                label={t.workerLink.createLabel}
+                optionalMark={t.user.optionalMark}
+              />
+              <TextField
+                id={createWorkerInputId}
+                fullWidth
+                value={createWorkerNo}
+                onChange={(event) => {
+                  setCreateWorkerNo(event.target.value);
+                  setCreateWorkerError(null);
+                }}
+                error={createWorkerError ?? undefined}
+              />
+            </div>
+          }
+          showActions={false}
           onDeactivate={() => undefined}
           onResetPassword={() => undefined}
         />
@@ -1560,7 +1642,8 @@ export const UsersRolesScreen = () => {
         )}
 
         <section className="pane users-roles-settings" aria-label={t.panes.userSettings}>
-          {!isCreatingUser && selectedAppUserId === null ? (
+          {/* 추가는 팝업에서 한다 — 그동안 오른쪽은 고르기 전 안내 그대로다(사용자 지시 2026-11-20 · #333). */}
+          {isCreatingUser || selectedAppUserId === null ? (
             /*
              * 빈 상세 — 수입검사 상세와 같은 아이콘 + 제목 + 보조 문구. 목록이 비었으면 「고르라」 대신
              * 고를 사용자가 없다는 것을 말한다(사용자 지시 2026-11-20 · #333).
@@ -1568,6 +1651,7 @@ export const UsersRolesScreen = () => {
             userList.data !== undefined && users.length === 0 ? (
               <EmptyState
                 size="sm"
+                className="users-roles-pick-empty"
                 icon={
                   <span className="inspection-standard-empty-icon">
                     <Icon name="person_search" size={20} />
@@ -1579,6 +1663,7 @@ export const UsersRolesScreen = () => {
             ) : (
               <EmptyState
                 size="sm"
+                className="users-roles-pick-empty"
                 icon={
                   <span className="inspection-standard-empty-icon">
                     <Icon name="person" size={20} />
@@ -1617,6 +1702,41 @@ export const UsersRolesScreen = () => {
           )}
         </section>
       </div>
+
+      {/* 사용자 추가 팝업(사용자 지시 2026-11-20 · #333) — 주소의 등록 상태를 그대로 쓰고, 닫으면 등록을 접는다. */}
+      {isCreatingUser && formState !== null && (
+        <Dialog
+          open
+          onClose={closeUserCreateForm}
+          size="lg"
+          title={t.actions.addUser}
+          closeOnBackdropClick={false}
+          showCloseButton={false}
+          footer={
+            <>
+              <Button variant="outlined" onClick={closeUserCreateForm}>
+                {messages.common.cancel}
+              </Button>
+              <Button
+                /* 필수 칸(로그인 아이디 · 초기 비밀번호 · 이름)이 모두 차면 바로 누를 수 있다(사용자 지시 2026-11-20 · #333). */
+                disabled={
+                  formState.values.loginId.trim() === '' ||
+                  formState.values.password === '' ||
+                  formState.values.userName.trim() === '' ||
+                  userCreateWrite.isSaving ||
+                  isCheckingWorker
+                }
+                loading={userCreateWrite.isSaving || isCheckingWorker}
+                onClick={() => void handleCreateUser()}
+              >
+                {t.actions.addUser}
+              </Button>
+            </>
+          }
+        >
+          <div className="users-roles-create-dialog">{renderUserFormPane()}</div>
+        </Dialog>
+      )}
     </div>
   );
 
@@ -1911,6 +2031,16 @@ export const UsersRolesScreen = () => {
           open
           title={t.dialog.deactivateUserTitle}
           description={t.dialog.deactivateUserDescription}
+          warning={t.dialog.deactivateUserWarning}
+          target={
+            userDetail.data === undefined
+              ? undefined
+              : {
+                  caption: t.dialog.deactivateUserCaption,
+                  name: userDetail.data.appUser.userName,
+                  meta: t.dialog.deactivateUserLoginId(userDetail.data.appUser.loginId),
+                }
+          }
           showCloseButton={false}
           onClose={() => {
             setIsDeactivateOpen(false);

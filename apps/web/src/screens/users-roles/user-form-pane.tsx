@@ -1,6 +1,6 @@
-import { Button, Icon, TextField } from '@crefle/web-ui';
+import { Button, Icon, IconButton, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useId } from 'react';
+import { type ReactNode, useId, useState } from 'react';
 
 import { FieldLabel } from './field-label';
 import { SelectField } from './select-field';
@@ -40,11 +40,15 @@ export interface UserFormPaneProps {
    * 이 칸의 [취소][저장] 줄을 그릴지. 사용자 설정 카드는 아래에 한 줄만 두므로 끈다(사용자 지시 2026-11-20 · #333).
    */
   showActions?: boolean;
+  /** 칸 표제 줄을 그릴지. 사용자 추가 팝업은 창 제목이 같은 일을 하므로 끈다(사용자 지시 2026-11-20 · #333). */
+  showHeading?: boolean;
   onDeactivate: () => void;
   /** 비밀번호 초기화 확인 창을 연다. 수정 모드에서만 쓴다. */
   onResetPassword: () => void;
   /** 작업자 지정 줄(omf-all-around#104). 수정 모드에서만 — 아직 없는 사용자에게는 지정할 수 없다. */
   workerField?: ReactNode;
+  /** 등록 폼 입력칸 묶음 끝에 붙일 칸 — 사용자 추가 팝업의 작업자 사번(사용자 지시 2026-11-20 · #333). */
+  createExtraField?: ReactNode;
 }
 
 /** 라벨과 값 한 쌍. **폼 컨트롤이 아니다** — 잠긴 입력칸은 「언젠가 열린다」는 뜻이 된다. */
@@ -116,9 +120,11 @@ export const UserFormPane = ({
   onSave,
   onCancel,
   showActions = true,
+  showHeading = true,
   onDeactivate,
   onResetPassword,
   workerField,
+  createExtraField,
 }: UserFormPaneProps) => {
   const loginIdId = useId();
   /*
@@ -126,6 +132,8 @@ export const UserFormPane = ({
    * 부르는 차례가 렌더마다 같아야 한다. 조건 안에서 부르면 모드가 바뀌는 순간 훅 차례가 어긋난다.
    */
   const passwordId = useId();
+  /* 초기 비밀번호를 눈 아이콘으로 보이게/숨기게(사용자 지시 2026-11-20 · #333). */
+  const [isPasswordShown, setIsPasswordShown] = useState(false);
   const userNameId = useId();
   const emailId = useId();
   const phoneId = useId();
@@ -140,31 +148,33 @@ export const UserFormPane = ({
        * 비밀번호 초기화는 중립 보조, 사용 중지는 주의(outlined 기본색) — 강조 정도만 가른다(담당자 결정 2026-10-16).
        * 사용 중지는 이미 미사용이면 비활성이고 사유 문구는 내지 않는다(사용자 지시 2026-09-18).
        */}
-      <div className="pane-heading-row users-roles-heading">
-        <h3 className="pane-title">{t.panes.userForm}</h3>
-        {mode === 'edit' && (
-          <div className="users-roles-account-actions">
-            <Button
-              variant="outlined"
-              size="sm"
-              className="app-button-neutral"
-              leadingIcon={<Icon name="key" size={18} />}
-              onClick={onResetPassword}
-            >
-              {t.actions.resetPassword}
-            </Button>
-            <Button
-              variant="outlined"
-              size="sm"
-              disabled={isDeactivateDisabled}
-              leadingIcon={<Icon name="person_off" size={18} />}
-              onClick={onDeactivate}
-            >
-              {messages.common.deactivate}
-            </Button>
-          </div>
-        )}
-      </div>
+      {showHeading && (
+        <div className="pane-heading-row users-roles-heading">
+          <h3 className="pane-title">{t.panes.userForm}</h3>
+          {mode === 'edit' && (
+            <div className="users-roles-account-actions">
+              <Button
+                variant="outlined"
+                size="sm"
+                className="app-button-neutral"
+                leadingIcon={<Icon name="key" size={18} />}
+                onClick={onResetPassword}
+              >
+                {t.actions.resetPassword}
+              </Button>
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={isDeactivateDisabled}
+                leadingIcon={<Icon name="person_off" size={18} />}
+                onClick={onDeactivate}
+              >
+                {messages.common.deactivate}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
       {banner}
 
       <div
@@ -237,20 +247,35 @@ export const UserFormPane = ({
         {mode === 'create' ? (
           <div className="field-cell urf-password">
             <FieldLabel htmlFor={passwordId} label={t.user.fields.initialPassword} required />
-            <TextField
-              id={passwordId}
-              type="password"
-              /*
-               * `new-password`다 — `current-password`로 두면 브라우저가 **관리자 자신의** 저장된
-               * 비밀번호를 이 칸에 채우려 하고, 그 값이 등록 요청에 실린다.
-               */
-              autoComplete="new-password"
-              value={values.password}
-              containerClassName={requiredEmptyClass(values.password)}
-              onChange={(event) => onChange({ password: event.target.value })}
-              error={fieldErrors.password}
-              aria-required
-            />
+            {/*
+             * 눈 아이콘은 입력칸 위에 겹쳐 둔다 — 디자인 시스템의 뒤쪽 아이콘 자리는 화면 낭독기에서 숨겨져
+             * 누를 수 있는 단추를 둘 수 없다(사용자 지시 2026-11-20 · #333).
+             */}
+            <div className="users-roles-password-field">
+              <TextField
+                id={passwordId}
+                type={isPasswordShown ? 'text' : 'password'}
+                className="users-roles-password-input"
+                /*
+                 * `new-password`다 — `current-password`로 두면 브라우저가 **관리자 자신의** 저장된
+                 * 비밀번호를 이 칸에 채우려 하고, 그 값이 등록 요청에 실린다.
+                 */
+                autoComplete="new-password"
+                value={values.password}
+                containerClassName={requiredEmptyClass(values.password)}
+                onChange={(event) => onChange({ password: event.target.value })}
+                error={fieldErrors.password}
+                aria-required
+              />
+              <IconButton
+                icon={isPasswordShown ? 'visibility_off' : 'visibility'}
+                size="sm"
+                aria-label={isPasswordShown ? t.user.hidePassword : t.user.showPassword}
+                onClick={() => {
+                  setIsPasswordShown((shown) => !shown);
+                }}
+              />
+            </div>
           </div>
         ) : null}
 
@@ -273,6 +298,7 @@ export const UserFormPane = ({
         <SelectField
           className="urf-dept"
           label={t.user.fields.department}
+          optionalMark={t.user.optionalMark}
           wide
           searchPlaceholder={t.filters.departmentSearchPlaceholder}
           options={departmentOptions}
@@ -283,7 +309,11 @@ export const UserFormPane = ({
 
         {/* 계약이 널을 허용한다 — 비우는 것이 정상 값이라 필수 표시를 붙이지 않는다. */}
         <div className="field-cell urf-email">
-          <FieldLabel htmlFor={emailId} label={t.user.fields.email} />
+          <FieldLabel
+            htmlFor={emailId}
+            label={t.user.fields.email}
+            optionalMark={t.user.optionalMark}
+          />
           <TextField
             id={emailId}
             value={values.email}
@@ -297,13 +327,16 @@ export const UserFormPane = ({
          * 표시는 국내 표기다. 목록 표에는 열을 두지 않는다 — 개인정보 노출을 줄인다(FR-019).
          */}
         <div className="field-cell urf-phone">
-          <FieldLabel htmlFor={phoneId} label={t.user.fields.phoneNumber} />
+          <FieldLabel
+            htmlFor={phoneId}
+            label={t.user.fields.phoneNumber}
+            optionalMark={t.user.optionalMark}
+          />
           <TextField
             id={phoneId}
             type="tel"
             inputMode="tel"
             autoComplete="off"
-            placeholder="0912 345 678"
             value={values.phoneNumber}
             onChange={(event) => onChange({ phoneNumber: event.target.value })}
             error={fieldErrors.phoneNumber}
@@ -321,6 +354,7 @@ export const UserFormPane = ({
           disabledReason={statusDisabledReason ?? undefined}
           error={fieldErrors.statusCode}
         />
+        {mode === 'create' && createExtraField}
       </div>
 
       {showActions && (

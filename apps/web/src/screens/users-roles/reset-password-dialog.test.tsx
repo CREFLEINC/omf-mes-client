@@ -30,12 +30,15 @@ describe('ResetPasswordDialog', () => {
       />,
     );
 
-    expect(screen.getByText('비밀번호를 초기화할까요?')).toBeInTheDocument();
-    expect(screen.getByText('초기화 시 새 임시 비밀번호가 1번만 표시됩니다.')).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: '비밀번호 초기화' })).toBeInTheDocument();
+    expect(screen.getByText('새로운 임시 비밀번호를 발급하시겠습니까?')).toBeInTheDocument();
+    expect(
+      screen.getByText('임시 비밀번호는 발급 후 한 번만 확인할 수 있습니다.'),
+    ).toBeInTheDocument();
     // 사용자 지시(2026-09-18) — 오른쪽 위 X 없이 「취소」로 닫는다.
     expect(screen.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: '초기화' }));
+    fireEvent.click(screen.getByRole('button', { name: '비밀번호 초기화' }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole('button', { name: '취소' }));
@@ -48,7 +51,7 @@ describe('ResetPasswordDialog', () => {
       <ResetPasswordDialog open onClose={vi.fn()} onConfirm={vi.fn()} isSaving banner={null} />,
     );
 
-    expect(screen.getByRole('button', { name: '초기화' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '비밀번호 초기화' })).toBeDisabled();
   });
 });
 

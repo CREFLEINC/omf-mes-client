@@ -129,7 +129,7 @@ describe('DataScopeFormDialog', () => {
 
     expect(confirmButton()).toBeDisabled();
 
-    await user.click(screen.getByLabelText('사업부'));
+    await user.click(screen.getByLabelText('사업부 선택'));
     await user.click(await screen.findByRole('option', { name: 'SYN-BU-01 · 합성 사업부 A' }));
 
     await user.click(confirmButton());
@@ -147,7 +147,7 @@ describe('DataScopeFormDialog', () => {
       draft: { ...emptyDraft, businessUnitId: '2001', plantId: '4001' },
     });
 
-    await user.click(screen.getByLabelText('공장'));
+    await user.click(screen.getByLabelText('공장 선택'));
     await user.click(await screen.findByRole('option', { name: '모든 공장' }));
     await user.click(confirmButton());
 
