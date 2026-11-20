@@ -5,7 +5,13 @@ import { useEffect, useId, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { formatQty } from '../../patterns/package-qty';
-import { PuActionBar, PuBand, PuButton, type PuBandItem } from '../../patterns/pop-uniform';
+import {
+  PuActionBar,
+  PuBand,
+  PuButton,
+  PuCount,
+  type PuBandItem,
+} from '../../patterns/pop-uniform';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { overriddenLotsOf } from '../parts-iqc-inspection/lot-judgment';
 import { LotMatchField } from '../parts-iqc-inspection/lot-match-field';
@@ -207,7 +213,19 @@ const Summary = ({
 }) => {
   const qty = (value: number | undefined): string =>
     value === undefined ? '—' : withUom(formatQty(value), uom || null);
+  /*
+   * 지시서 번호도 칸 하나(출하 완료 머리 띠와 같다 · 2026-11-20). 품목은 길어 한 줄 전체를 쓰고, 격자를 빈틈없이
+   * 채우도록(`dense`) 뒤 칸이 첫 줄을 먼저 채운다.
+   */
   const items: PuBandItem[] = [
+    {
+      label: bandLabel('file', ps.refs.shipmentRequest),
+      value: (
+        <span className="pu-mono">
+          {request.shipmentRequestNo ?? refData?.shipmentRequestNo ?? '—'}
+        </span>
+      ),
+    },
     {
       label: bandLabel('box', pop.detail.fields.item),
       value: itemText(request, refData),
@@ -236,9 +254,6 @@ const Summary = ({
 
   return (
     <section className="pop-oqc-summary" aria-label={request.inspectionRequestNo}>
-      <p className="pop-oqc-summary__no">
-        {request.shipmentRequestNo ?? refData?.shipmentRequestNo ?? '—'}
-      </p>
       <div className={wide ? 'oqc-band pu-band-stack is-wide' : 'oqc-band pu-band-stack'}>
         <PuBand grid={wide ? 4 : 3} items={items} label={ps.bandLabel} />
       </div>
@@ -376,7 +391,8 @@ export const PopShipmentDetail = ({
         <section className="pop-oqc-shipment-box" aria-label={s.lots.heading(views.active.length)}>
           <div className="pop-oqc-shipment-box__head">
             <h2>{s.lots.title}</h2>
-            <span className="pop-oqc-shipment-muted">{s.lots.count(views.active.length)}</span>
+            {/* 건수는 빨간 원 숫자만(출하 완료와 같다) — 화면 탭 건수처럼 0 이면 두지 않는다. */}
+            {views.active.length > 0 && <PuCount tone="primary">{views.active.length}</PuCount>}
             {/* LOT 이 없으면 요약 칩·합계를 두지 않는다 — 아래 빈 줄이 같은 말을 한다(중복 표시 제거). */}
             {views.active.length > 0 && (
               <>

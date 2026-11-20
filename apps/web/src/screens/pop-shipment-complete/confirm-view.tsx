@@ -4,10 +4,10 @@ import type { ReactNode } from 'react';
 import {
   PuBand,
   PuChip,
+  PuCount,
   PuIcon,
   PuNote,
   PuSection,
-  puCx,
   type PuChipTone,
   type PuIconName,
 } from '../../patterns/pop-uniform';
@@ -111,69 +111,64 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
 
   return (
     <>
-      <PuSection
-        grow={false}
-        label={t.head.request}
-        title={
-          <>
-            {t.head.request} <span className="pu-mono">{completion.shipmentRequestNo}</span>
-          </>
-        }
-        meta={
-          <span className={puCx('psc-status', blocked ? 'bad' : 'ok')}>
-            {blocked ? t.head.blocked : t.head.ready}
-          </span>
-        }
-      >
-        {/*
-         * 정보 띠 — OQC 출하검사 의뢰 정보 띠와 같은 「이름 위 · 값 아래」 4열 격자(`pu-band-stack`, 사용자 지시 2026-11-20).
-         * 아이콘도 그 띠와 같은 뜻으로 고른다(거래처 list · 번호 file · 수량 check). 창고는 칩이 여럿일 수 있어 한 줄 전체.
-         */}
-        <div className="pu-band-stack is-wide psc-band">
-          <PuBand
-            grid={3}
-            label={t.head.band}
-            items={[
-              {
-                label: bandLabel('list', t.head.customer),
-                value: t.head.named(
-                  completion.customer.partnerName,
-                  completion.customer.partnerCode,
+      {/*
+       * 머리 박스 하나 — OQC 출하검사 의뢰 정보 띠와 같은 「이름 위 · 값 아래」 4열 격자(`pu-band-stack`, 사용자 지시
+       * 2026-11-20). 지시서 번호·출하 여부(목록과 같은 크기 칩)도 칸 하나씩, 맨 앞 두 칸. 박스 밖 제목 줄·카드는 두지 않는다.
+       * 아이콘도 그 띠와 같은 뜻으로 고른다(거래처 list · 번호 file · 수량 check). 창고는 칩이 여럿일 수 있어 한 줄 전체.
+       */}
+      <section className="pu-band-stack is-wide psc-band" aria-label={t.head.request}>
+        <PuBand
+          grid={3}
+          label={t.head.band}
+          items={[
+            {
+              label: bandLabel('file', t.head.request),
+              value: <span className="pu-mono">{completion.shipmentRequestNo}</span>,
+            },
+            {
+              label: bandLabel('shield', t.head.status),
+              value: (
+                <PuChip tone={blocked ? 'bad' : 'ok'}>
+                  {blocked ? t.head.blocked : t.head.ready}
+                </PuChip>
+              ),
+            },
+            {
+              label: bandLabel('list', t.head.customer),
+              value: t.head.named(completion.customer.partnerName, completion.customer.partnerCode),
+            },
+            {
+              label: bandLabel('list', t.head.shipTo),
+              value: t.head.named(completion.shipTo.partnerName, completion.shipTo.partnerCode),
+            },
+            {
+              label: bandLabel('file', t.head.salesOrder),
+              value: completion.salesOrderNo ?? t.head.noSalesOrder,
+            },
+            { label: bandLabel('box', t.head.lotCount), value: String(completion.lots.length) },
+            { label: bandLabel('check', t.head.qty), value: qtyWithUom(totalQty, uom) },
+            {
+              label: bandLabel('pin', t.warehouses.heading),
+              wide: true,
+              value:
+                completion.warehouses.length === 0 ? (
+                  t.head.none
+                ) : (
+                  <span className="psc-wh-chips">
+                    {completion.warehouses.map((warehouse) => (
+                      <span key={warehouse.warehouseId} className="psc-wh-chip">
+                        {t.head.named(warehouse.warehouseName, warehouse.warehouseCode)}
+                      </span>
+                    ))}
+                  </span>
                 ),
-              },
-              {
-                label: bandLabel('list', t.head.shipTo),
-                value: t.head.named(completion.shipTo.partnerName, completion.shipTo.partnerCode),
-              },
-              {
-                label: bandLabel('file', t.head.salesOrder),
-                value: completion.salesOrderNo ?? t.head.noSalesOrder,
-              },
-              { label: bandLabel('box', t.head.lotCount), value: String(completion.lots.length) },
-              { label: bandLabel('check', t.head.qty), value: qtyWithUom(totalQty, uom) },
-              {
-                label: bandLabel('pin', t.warehouses.heading),
-                wide: true,
-                value:
-                  completion.warehouses.length === 0 ? (
-                    t.head.none
-                  ) : (
-                    <span className="psc-wh-chips">
-                      {completion.warehouses.map((warehouse) => (
-                        <span key={warehouse.warehouseId} className="psc-wh-chip">
-                          {t.head.named(warehouse.warehouseName, warehouse.warehouseCode)}
-                        </span>
-                      ))}
-                    </span>
-                  ),
-              },
-            ]}
-          />
-        </div>
+            },
+          ]}
+        />
         {splitLots.map((lotNo) => (
           <PuNote key={lotNo}>{t.warehouses.splitLot(lotNo)}</PuNote>
         ))}
-      </PuSection>
+      </section>
 
       {blocked && (
         <PuSection grow={false} title={t.blockers.heading} label={t.blockers.heading}>
@@ -198,23 +193,20 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
               <table className="pu-table" aria-label={t.lines.caption}>
                 <thead>
                   <tr>
-                    <th scope="col" className="fit num">
+                    <th scope="col" className="fit psc-c">
                       {t.lines.columns.lineNo}
                     </th>
-                    <th scope="col" className="fit">
-                      {t.lines.columns.itemCode}
-                    </th>
-                    <th scope="col">{t.lines.columns.itemName}</th>
-                    <th scope="col" className="fit num">
+                    <th scope="col">{t.lines.columns.item}</th>
+                    <th scope="col" className="fit psc-c">
                       {t.lines.columns.target}
                     </th>
-                    <th scope="col" className="fit num">
+                    <th scope="col" className="fit psc-c">
                       {t.lines.columns.picked}
                     </th>
-                    <th scope="col" className="fit num">
+                    <th scope="col" className="fit psc-c">
                       {t.lines.columns.over}
                     </th>
-                    <th scope="col" className="fit num">
+                    <th scope="col" className="fit psc-c">
                       {t.lines.columns.lotCount}
                     </th>
                   </tr>
@@ -225,11 +217,13 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
                       key={line.shipmentRequestLineId}
                       className={targets.lineNos.has(line.lineNo) ? 'psc-row-blocked' : undefined}
                     >
-                      <td className="fit num">{line.lineNo}</td>
-                      <td className="fit pu-mono">{line.itemCode}</td>
-                      <td className="psc-name">{line.itemName}</td>
-                      <td className="fit num">{qtyWithUom(line.targetQty, line.uomCode)}</td>
-                      <td className="fit num">
+                      <td className="fit psc-c">{line.lineNo}</td>
+                      {/* 품목 한 칸 — 출고 QR(goods-issue-qr)처럼 굵은 코드 + 이름 한 줄. 코드는 한 줄, 이름만 줄을 바꾼다. */}
+                      <td className="psc-name" title={`${line.itemCode} ${line.itemName}`}>
+                        <b className="pu-mono psc-nowrap">{line.itemCode}</b> {line.itemName}
+                      </td>
+                      <td className="fit psc-c">{qtyWithUom(line.targetQty, line.uomCode)}</td>
+                      <td className="fit psc-c">
                         {line.pickedQty === line.targetQty ? (
                           <span className="psc-match">
                             {qtyWithUom(line.pickedQty, line.uomCode)}
@@ -241,10 +235,12 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
                           qtyWithUom(line.pickedQty, line.uomCode)
                         )}
                       </td>
-                      <td className={line.overQty > 0 ? 'fit num psc-over' : 'fit num psc-zero'}>
+                      <td
+                        className={line.overQty > 0 ? 'fit psc-c psc-over' : 'fit psc-c psc-zero'}
+                      >
                         {overText(line.overQty, line.uomCode)}
                       </td>
-                      <td className="fit num">{line.lotCount}</td>
+                      <td className="fit psc-c">{line.lotCount}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -255,8 +251,19 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
 
         <PuSection
           grow={false}
-          title={t.lots.heading(completion.lots.length)}
-          label={t.lots.heading(completion.lots.length)}
+          title={
+            /* 건수는 빨간 원 숫자만 — 화면 탭 건수처럼 0 이면 두지 않는다(사용자 지시 2026-11-20). */
+            <>
+              {t.lots.title}
+              {completion.lots.length > 0 && (
+                <>
+                  {' '}
+                  <PuCount tone="primary">{completion.lots.length}</PuCount>
+                </>
+              )}
+            </>
+          }
+          label={t.lots.title}
         >
           {completion.lots.length === 0 ? (
             <p className="psc-empty-row">{t.lots.empty}</p>
@@ -266,10 +273,10 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
                 <thead>
                   <tr>
                     <th scope="col">{t.lots.columns.lotNo}</th>
-                    <th scope="col" className="fit num">
+                    <th scope="col" className="fit psc-c">
                       {t.lots.columns.qty}
                     </th>
-                    <th scope="col" className="fit">
+                    <th scope="col" className="fit psc-c">
                       {t.lots.columns.oqc}
                     </th>
                     <th scope="col" className="fit">
@@ -289,8 +296,8 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
                           <span className="psc-lot-portions">{portionText(lot)}</span>
                         )}
                       </td>
-                      <td className="fit num">{qtyWithUom(lot.qty, lot.uomCode)}</td>
-                      <td className="fit">
+                      <td className="fit psc-c">{qtyWithUom(lot.qty, lot.uomCode)}</td>
+                      <td className="fit psc-c">
                         {lot.oqcLotStatus !== null && (
                           <PuChip tone={PU_TONE[OQC_TONE[lot.oqcLotStatus]]}>
                             {t.lots.oqc[lot.oqcLotStatus]}

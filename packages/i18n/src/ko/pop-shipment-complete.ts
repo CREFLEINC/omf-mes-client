@@ -33,6 +33,8 @@ export const popShipmentComplete = {
     shipTo: '납품처',
     salesOrder: '수주',
     noSalesOrder: '없음(수주 없이 작성)',
+    /** 머리 띠 상태 칸 이름 — 값은 출하 가능 · 출하 불가 칩. */
+    status: '출하 여부',
     ready: '출하 가능',
     blocked: '출하 불가',
     /** 「이름 (코드)」(C-10). */
@@ -87,8 +89,7 @@ export const popShipmentComplete = {
     caption: '출하 품목별 지시량과 피킹량',
     columns: {
       lineNo: '라인',
-      itemCode: '품목코드',
-      itemName: '품목명',
+      item: '품목',
       target: '지시량',
       picked: '피킹량',
       over: '초과량',
@@ -105,13 +106,14 @@ export const popShipmentComplete = {
   },
 
   lots: {
-    heading: (count: number): string => `피킹 LOT (${String(count)}건)`,
+    title: '피킹 LOT',
     caption: '피킹 LOT 과 OQC 판정',
     empty: '피킹된 LOT이 없습니다.',
     columns: {
-      lotNo: 'LOT',
+      lotNo: 'LOT 번호',
       qty: '수량',
-      oqc: 'OQC',
+      /** 관리웹 출하 일정(shipment-schedule)의 같은 열 이름. */
+      oqc: 'OQC 판정',
       managementCode: '출하 관리 코드',
     },
     /* LOT 번호 아래 창고별 몫 — 「창고 | 120 (적치 대기 120 EA)」(시안 2026-11-20). */

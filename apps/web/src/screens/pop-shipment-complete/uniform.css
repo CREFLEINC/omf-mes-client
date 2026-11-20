@@ -136,26 +136,34 @@
   text-align: center;
 }
 
-/* ── 머리 카드: 상태 배지 · 정보 두 줄(시안 「출하 지시서 상세 화면 UI 개선 안」 2026-11-20) ── */
-.psc-status {
-  display: inline-flex;
-  align-items: center;
-  height: 34px;
-  padding: 0 16px;
-  border-radius: 999px;
-  font-size: 15px;
-  font-weight: 700;
-  /* 바탕이 진한 초록·빨강(밝은 테마)이면 흰 글자, 옅은(어두운 테마)이면 짙은 글자 — 카드 색을 쓴다. */
-  color: var(--pu-card);
-  white-space: nowrap;
+/*
+ * 머리 박스 — 지시서 번호 · 출하 여부까지 정보 격자 한 박스에(사용자 지시 2026-11-20). 박스 모양(테두리 · 둥근 모서리 ·
+ * 바탕 · 안쪽 여백)은 OQC 정보 띠(`pu-band-stack > .pu-band.grid`)와 같고, 안쪽 격자는 테두리·바탕을 박스에 넘긴다.
+ */
+.psc-band {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--pu-field);
+  min-width: 0;
 }
 
-.psc-status.ok {
-  background: var(--pu-ok);
+.psc-band.pu-band-stack > .pu-band.grid {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  min-height: 0;
 }
 
-.psc-status.bad {
-  background: var(--pu-bad);
+/* 출하 품목 표의 라인 · 지시량 · 피킹량 · 초과량 · LOT 수 — 머리·칸 모두 가운데(사용자 지시 2026-11-20). */
+.pu-table th.psc-c,
+.pu-table td.psc-c {
+  text-align: center;
 }
 
 /* 좁은 화면(1024 등)에서는 머리 띠를 셋씩 — OQC 출하검사 머리 띠와 같다. */

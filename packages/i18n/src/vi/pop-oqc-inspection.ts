@@ -171,6 +171,7 @@ export const popOqcInspection = {
     bandLabel: 'Thông tin lệnh xuất hàng',
     lotsEmpty: 'Chưa có LOT nào được lấy.',
     refs: {
+      shipmentRequest: 'Lệnh xuất hàng',
       request: 'Số yêu cầu',
       customer: 'Khách hàng',
       shipTo: 'Nơi giao',

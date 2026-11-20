@@ -246,13 +246,9 @@
   gap: 8px;
 }
 
-/* 지시서 번호 — 구획 제목 크기(출하 완료 머리와 같다). 큰 숫자는 쓰지 않는다. */
-.oqc-u .pop-oqc-summary__no {
-  margin: 0;
-  font-family: var(--pu-mono);
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 26px;
+/* 지시서 번호 · 품목(한 줄 전체) 뒤 칸이 첫 줄 빈자리를 먼저 채운다. */
+.oqc-u .pop-oqc-summary .pu-band.grid {
+  grid-auto-flow: row dense;
 }
 
 /* 피킹 LOT 이 없을 때 한 줄 — 출하 완료(`psc-empty-row`)와 같은 모양. */

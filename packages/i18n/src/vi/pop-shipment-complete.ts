@@ -23,6 +23,7 @@ export const popShipmentComplete = {
     shipTo: 'Nơi giao hàng',
     salesOrder: 'Đơn bán hàng',
     noSalesOrder: 'Không có (lập không theo đơn bán hàng)',
+    status: 'Tình trạng xuất hàng',
     ready: 'Có thể xuất hàng',
     blocked: 'Không thể xuất hàng',
     named: (name: string, code: string): string => `${name} (${code})`,
@@ -68,8 +69,7 @@ export const popShipmentComplete = {
     caption: 'SL chỉ thị và SL đã lấy theo mặt hàng xuất',
     columns: {
       lineNo: 'Dòng',
-      itemCode: 'Mã hàng',
-      itemName: 'Tên hàng',
+      item: 'Mặt hàng',
       target: 'SL chỉ thị',
       picked: 'SL đã lấy',
       over: 'SL vượt',
@@ -84,7 +84,7 @@ export const popShipmentComplete = {
   },
 
   lots: {
-    heading: (count: number): string => `LOT đã lấy (${String(count)})`,
+    title: 'LOT đã lấy',
     empty: 'Chưa có LOT nào được lấy.',
     portion: (warehouse: string, qty: string): string => `${warehouse} | ${qty}`,
     staging: (qty: string): string => `${qty} chờ xếp kệ`,
@@ -95,9 +95,9 @@ export const popShipmentComplete = {
       judgment === null ? lotNo : `${lotNo} (${judgment})`,
     caption: 'LOT đã lấy và phán định OQC',
     columns: {
-      lotNo: 'LOT',
+      lotNo: 'Số LOT',
       qty: 'SL',
-      oqc: 'OQC',
+      oqc: 'Phán định OQC',
       managementCode: 'Mã quản lý xuất hàng',
     },
     oqc: {

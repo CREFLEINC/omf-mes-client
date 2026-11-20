@@ -655,7 +655,9 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
 
     expect(await screen.findByText(t.blockers.noPickedLot.title)).toBeInTheDocument();
     expect(screen.queryByText(t.blockers.PICKING_SHORT.title)).toBeNull();
-    expect(screen.getByText(t.lots.heading(0))).toBeInTheDocument();
+    /* 건수 0 은 빨간 원을 두지 않는다(화면 탭 건수와 같은 규칙). */
+    const lotsHeading = screen.getByRole('heading', { name: t.lots.title });
+    expect(lotsHeading.querySelector('.pu-count')).toBeNull();
     expect(screen.getByText(t.lots.empty)).toBeInTheDocument();
     expect(completeButton()).toBeDisabled();
   });

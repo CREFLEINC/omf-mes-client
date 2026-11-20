@@ -964,6 +964,12 @@ textarea.pu-input {
   color: var(--pu-text-2);
 }
 
+/* 빨간 원 건수 — 묶음 줄 [남은 작업] 건수(`.pop-remaining__total`)와 같은 색. */
+.pu-count.primary {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
 /* ── 이름: 값 묶음 ── */
 .pu-kv {
   display: grid;

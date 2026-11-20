@@ -199,6 +199,7 @@ export const popOqcInspection = {
     /** 피킹 LOT 이 없을 때 한 줄(출하 완료와 같은 문구). */
     lotsEmpty: '피킹된 LOT이 없습니다.',
     refs: {
+      shipmentRequest: '출하 지시서',
       request: '의뢰번호',
       customer: '고객',
       shipTo: '납품처',
