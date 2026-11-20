@@ -174,6 +174,23 @@ export const popShipmentComplete = {
     completing: 'Đang hoàn tất…',
   },
 
+  bu012: {
+    businessUnit: 'Đơn vị kinh doanh',
+    noBusinessUnit: 'Chưa chỉ định đơn vị kinh doanh',
+    warehouseColumn: 'Kho xuất',
+    warehouseUnassigned: 'Chưa chỉ định kho',
+    warehouse: (warehouse: string, plant: string): string => `${warehouse} (${plant})`,
+    warehouseLines: (plant: string, lines: string): string => `${plant}, dòng ${lines}`,
+    otherBusinessUnit: 'Lệnh xuất hàng của đơn vị kinh doanh khác',
+    otherBusinessUnitDetail:
+      'Không phải lệnh của đơn vị kinh doanh của POP này. Hãy hoàn tất tại POP của đơn vị kinh doanh của lệnh.',
+    pickingShortLine: (lineNo: number, itemCode: string, warehouse: string, picked: string, target: string): string =>
+      `Dòng ${String(lineNo)} (${warehouse}) ${itemCode}, SL đã lấy ${picked} / SL chỉ thị ${target}`,
+    pickingShortHint:
+      'Hãy kiểm tra LOT xuất hàng của kho đó tại màn hình lấy hàng thành phẩm trên PDA của nhà máy có kho đó. Không có hoàn tất từng phần.',
+    goodsIssues: 'Phiếu xuất kho theo từng kho',
+    goodsIssue: (no: string, warehouse: string, plant: string): string => `${no} ${warehouse} (${plant})`,
+  },
   failure: {
     /* 409 ALREADY_COMPLETED 인데 다시 읽어도 완료되지 않은 지시서(검증 1회차 F-3) — 아무 말 없이 두지 않는다. */
     alreadyNotDone:

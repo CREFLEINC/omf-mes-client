@@ -113,7 +113,7 @@ export const shipmentSchedule = {
     chipRemoveProgress: '진행 조건 제거',
     chipRemoveInspection: '검사 조건 제거',
     q: '검색어',
-    qPlaceholder: '지시서 번호, 고객, 품목',
+    qPlaceholder: '지시서 번호, 출하 번호, 고객, 품목',
     readyOnly: '완료 대기만',
     hasReplacement: 'LOT 교체 있음',
     chipQ: (value: string): string => `검색어: ${value}`,
@@ -168,7 +168,7 @@ export const shipmentSchedule = {
     codeLocked: '출하 완료 뒤에는 출하 관리 코드를 고칠 수 없습니다',
     /** 피킹 전 지시서 상세의 안내 띠(시안 W0402-After 빈 상세). */
     noLotsBanner:
-      '아직 피킹한 LOT 이 없습니다. 출하 담당 공장을 지정하고 배정한 뒤, PDA 「제품 피킹」에서 LOT 라벨을 스캔하면 여기에 LOT 이 보입니다.',
+      '아직 피킹한 LOT 이 없습니다. PDA 「제품 피킹」에서 LOT 라벨을 스캔하면 여기에 LOT 이 보입니다.',
     noPickingWarehouse: '아직 없음',
     /** 「진행」 옆 ⓘ — 출하 완료를 어디서 하는지(관리웹 정리 시안 A). */
     popOnly: '출하 완료는 POP 「출하 완료」에서 합니다.',
@@ -255,6 +255,54 @@ export const shipmentSchedule = {
       next: '다음 피킹 LOT',
     },
     noReplacements: '교체한 LOT 이 없습니다.',
+  },
+  /**
+   * 피처 012 — 사업부 · 줄 출고 창고 · ERP 송신 칩 · 「출하」 칸(시안 W0402-After v2). 출하 내역(W-04-12)에서 하던
+   * ERP 송신 보기 · 취소 요청 · 취소 실행 · 미확정 확정을 이 화면이 맡는다(D-8 · D-9).
+   */
+  bu012: {
+    businessUnit: '사업부',
+    noBusinessUnit: '사업부 미지정',
+    lineWarehouse: '출고 창고',
+    warehouseUnassigned: '창고 미지정',
+    warehouse: (warehouse: string, plant: string): string => `${warehouse} (${plant})`,
+    /** 상세 머리 「출고 창고」 — 창고마다 그 창고의 라인 번호(시안 「완제품창고 A 1공장, 라인 1, 3」). */
+    warehouseLines: (warehouse: string, lines: string): string => `${warehouse}, 라인 ${lines}`,
+    warehouseUnassignedNote: '배포 전 만든 지시서라 지시서 공장의 불량창고 외 모든 창고에서 피킹합니다',
+    erpSend: 'ERP 송신',
+    erpChipsLabel: 'ERP 송신으로 거르기',
+    erpAll: '전체',
+    erpStatus: {
+      NOT_QUEUED: '확정 전',
+      PENDING: '대기',
+      SENT: '보냄',
+      SEND_ERROR: '송신 오류',
+      NOT_SENT_NO_SALES_ORDER: '송신 안 함',
+      CANCELLED: '취소됨',
+    },
+    erpChip: (label: string, count: number): string => `${label} ${String(count)}`,
+    erpNote: '완료된 출하가 있는 지시서만 셉니다',
+    erpEmptyHint: '기간을 넓히거나 ERP 송신 거르기를 풀어 보세요.',
+    /** 결재함 · 옛 주소로 들어왔을 때(FR-021 · 빈 곳 ⑦). */
+    fromApproval: '결재에서 열림',
+    fromApprovalNote: '아래 「출하」 칸에서 취소를 처리하세요.',
+    outOfPeriod: (no: string): string => `목록 기간 밖 지시서(${no})를 열었습니다`,
+    linkedNotFound: '연결된 출하 지시서를 찾지 못했습니다',
+    /** 「출하」 칸(FR-019 · T059). */
+    section: '출하',
+    sectionNote: '완료한 출하, 창고별 차감, ERP 송신, 취소',
+    sectionLoading: '출하를 불러오는 중',
+    sectionLoadFailed: '출하를 불러오지 못했습니다',
+    goodsIssues: '창고별 차감',
+    goodsIssuesNote: '출고 전표는 창고마다 하나, ERP 송신 공장은 창고의 공장',
+    goodsIssueColumns: { no: '출고 전표', warehouse: '창고', plant: '공장', qty: '수량' },
+    lots: 'LOT 배분',
+    lotColumns: { lot: 'LOT', line: '라인', place: '창고', qty: '수량', oqc: 'OQC', code: '출하 관리 코드' },
+    noPermission: '취소와 확정은 「출하 취소(송신 전)」 권한이 있는 사람만 합니다',
+    completedBand: (shipmentNo: string, completedAt: string): string =>
+      `POP 에서 출하 완료했습니다(${shipmentNo}, ${completedAt}). 재고 차감과 수주 출하 수량이 함께 기록됐습니다. 출하 관리 코드는 이제 고칠 수 없습니다. 취소는 아래 「출하」 칸에서 요청합니다.`,
+    printBusinessUnit: '사업부',
+    printWarehouse: '출고 창고',
   },
   /** 피처 010 — 지시서 인쇄(시안 Print-Preview). A4 세로 · 출력 언어를 고른다. ERP 표시 없음. */
   printPreview: {

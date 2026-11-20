@@ -54,6 +54,23 @@ export const ResultView = ({ result, workerNo }: ResultViewProps) => {
         totals.over > 0 ? qtyWithUom(totals.over, uomOf(result.completion)) : null,
       ),
     },
+    /* 피처 012 FR-014 — 창고마다 출고 전표 하나(번호 · 창고 · 공장). */
+    ...((result.goodsIssues ?? []).length > 0
+      ? [
+          {
+            label: t.bu012.goodsIssues,
+            value: (
+              <ul className="pop-ship-goods-issues">
+                {(result.goodsIssues ?? []).map((issue) => (
+                  <li key={issue.goodsIssueNo}>
+                    {t.bu012.goodsIssue(issue.goodsIssueNo, issue.warehouseName, issue.plantName)}
+                  </li>
+                ))}
+              </ul>
+            ),
+          },
+        ]
+      : []),
     ...(result.completion.warehouses.length > 0
       ? [
           {

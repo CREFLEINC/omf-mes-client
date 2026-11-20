@@ -40,24 +40,39 @@ const PU_TONE: Record<ChipTone, PuChipTone> = {
  * 이유 글. 라인을 짚지 않은 피킹 부족은 서버가 «낼 피킹 LOT 이 하나도 없을 때» 내는 것이라(라인 수량이 다 차도
  * 난다 — 서버 `completionBlockers`) 「피킹된 출하 LOT 이 없습니다」로 쓴다. 판정은 서버 그대로다.
  */
-const reasonOf = (group: BlockerGroup): { title: string; hint: string } =>
-  group.code === 'PICKING_SHORT' && group.lineNos.length === 0
-    ? t.blockers.noPickedLot
-    : t.blockers[group.code];
+const reasonOf = (completion: Completion, group: BlockerGroup): { title: string; hint: string } => {
+  if (group.code === 'PICKING_SHORT' && group.lineNos.length === 0) return t.blockers.noPickedLot;
+  /* 피처 012 US3-3 — 줄 출고 창고가 있는 지시서의 피킹 부족은 그 창고 공장의 PDA 로 보낸다. */
+  if (
+    group.code === 'PICKING_SHORT' &&
+    completion.lines.some((line) => line.warehouse !== null && line.warehouse !== undefined)
+  ) {
+    return { title: t.blockers.PICKING_SHORT.title, hint: t.bu012.pickingShortHint };
+  }
+  return t.blockers[group.code];
+};
 
 /** 이유가 짚는 곳 — 라인은 「라인 2 FG-B200, 피킹 0 / 목표 50」, LOT 은 번호(쉼표로 잇는다). */
 const targetOf = (completion: Completion, group: BlockerGroup): string => {
   const lines = group.lineNos.map((lineNo) => {
     const line = completion.lines.find((candidate) => candidate.lineNo === lineNo);
     if (line === undefined) return t.blockers.lineOnly(lineNo);
-    return group.code === 'PICKING_SHORT'
+    if (group.code !== 'PICKING_SHORT') return `${t.blockers.lineOnly(lineNo)} ${line.itemCode}`;
+    /* 피처 012 US3-3 — 피킹 부족 라인에 출고 창고를 붙인다(「라인 2(완제품창고 B (2공장))」). 옛 라인은 그대로. */
+    return line.warehouse === null || line.warehouse === undefined
       ? t.blockers.line(
           lineNo,
           line.itemCode,
           qtyWithUom(line.pickedQty, line.uomCode),
           qtyWithUom(line.targetQty, line.uomCode),
         )
-      : `${t.blockers.lineOnly(lineNo)} ${line.itemCode}`;
+      : t.bu012.pickingShortLine(
+          lineNo,
+          line.itemCode,
+          t.bu012.warehouse(line.warehouse.warehouseName, line.warehouse.plantName),
+          qtyWithUom(line.pickedQty, line.uomCode),
+          qtyWithUom(line.targetQty, line.uomCode),
+        );
   });
 
   return [...lines, ...group.lotNos].join(', ');
@@ -137,6 +152,11 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
                 </PuChip>
               ),
             },
+            /* 피처 012 — 지시서 사업부. 사업부 안 어느 POP 에서나 연다(FR-013). 없으면 「사업부 미지정」(빈 곳 ⑨). */
+            {
+              label: bandLabel('list', t.bu012.businessUnit),
+              value: completion.businessUnit?.businessUnitName ?? t.bu012.noBusinessUnit,
+            },
             {
               label: bandLabel('list', t.head.customer),
               value: t.head.named(completion.customer.partnerName, completion.customer.partnerCode),
@@ -159,7 +179,17 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
                   <span className="psc-wh-chips">
                     {completion.warehouses.map((warehouse) => (
                       <span key={warehouse.warehouseId} className="psc-wh-chip">
-                        {t.head.named(warehouse.warehouseName, warehouse.warehouseCode)}
+                        {t.head.named(warehouse.warehouseName, warehouse.warehouseCode)}{' '}
+                        {/* 피처 012 — 창고의 공장과 그 창고 몫 라인(시안 P0407-After ①). */}
+                        <span>
+                          {t.bu012.warehouseLines(
+                            warehouse.plantName,
+                            completion.lines
+                              .filter((line) => line.warehouse?.warehouseId === warehouse.warehouseId)
+                              .map((line) => String(line.lineNo))
+                              .join(', ') || '-',
+                          )}
+                        </span>
                       </span>
                     ))}
                   </span>
@@ -175,7 +205,7 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
       {blocked && (
         <PuSection grow={false} title={t.blockers.heading} label={t.blockers.heading}>
           {groups.map((group) => {
-            const reason = reasonOf(group);
+            const reason = reasonOf(completion, group);
             const target = targetOf(completion, group);
             return (
               <PuNote key={group.code} tone="bad">
@@ -199,6 +229,7 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
                       {t.lines.columns.lineNo}
                     </th>
                     <th scope="col">{t.lines.columns.item}</th>
+                    <th scope="col">{t.bu012.warehouseColumn}</th>
                     <th scope="col" className="fit psc-c">
                       {t.lines.columns.target}
                     </th>
@@ -223,6 +254,12 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
                       {/* 품목 한 칸 — 출고 QR(goods-issue-qr)처럼 굵은 코드 + 이름 한 줄. 코드는 한 줄, 이름만 줄을 바꾼다. */}
                       <td className="psc-name" title={`${line.itemCode} ${line.itemName}`}>
                         <b className="pu-mono psc-nowrap">{line.itemCode}</b> {line.itemName}
+                      </td>
+                      {/* 피처 012 FR-003 — 줄 출고 창고(공장). 옛 지시서는 「창고 미지정」. */}
+                      <td>
+                        {line.warehouse === null || line.warehouse === undefined
+                          ? t.bu012.warehouseUnassigned
+                          : t.bu012.warehouse(line.warehouse.warehouseName, line.warehouse.plantName)}
                       </td>
                       <td className="fit psc-c">{qtyWithUom(line.targetQty, line.uomCode)}</td>
                       <td className="fit psc-c">

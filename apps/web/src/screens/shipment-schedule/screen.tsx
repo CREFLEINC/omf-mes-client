@@ -1,20 +1,23 @@
-import { Breadcrumb, Button, Dialog, PageHeader, useToast, type SortState } from '@crefle/web-ui';
+import { AlertBanner, Breadcrumb, PageHeader, type SortState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router';
 
-import { Select } from '../../patterns/select';
 import { LoadErrorBanner } from './load-error-banner';
 import {
   describeReference,
   lookupNote,
   toReference,
+  useBusinessUnitOptions,
   useCustomerOptions,
-  useFulfillmentPlantOptions,
   useShipToPartnerOptions,
+  type DataScope,
   type LookupResult,
 } from './lookups';
+import { ErpChips } from './erp-chips';
+import { ShipmentSection } from './shipment-section';
+import { useLinkedRequest } from './shipment-queries';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import {
@@ -31,7 +34,6 @@ import {
   useShipmentScheduleList,
 } from './queries';
 import { RequestDetailDialog } from './request-detail-dialog';
-import { SaveErrorBanner } from '../../patterns/master';
 import { sessionKeys, type Session } from '../../patterns/session';
 import { ShipmentFilterBar } from './shipment-filter-bar';
 import { ShipmentTable } from './shipment-table';
@@ -51,6 +53,20 @@ const t = messages.shipmentSchedule;
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ROWS: ShipmentRequestView[] = [];
+const NO_SCOPES: readonly DataScope[] = [];
+const NO_COUNTS: Readonly<Record<string, number>> = {};
+
+const POSITIVE_INTEGER = /^\d+$/;
+
+/** 주소의 번호 — 양의 정수만 받는다(결재함 [열기] · 옛 주소 `/shipment/shipment-confirm`). */
+const readLinkId = (raw: string | null): number | null =>
+  raw !== null && POSITIVE_INTEGER.test(raw) && Number(raw) >= 1 ? Number(raw) : null;
+
+/**
+ * 「출하 취소(송신 전)」(`W-04-12`) 권한 — 취소 요청 · 실행 · 미확정 확정을 이 화면이 맡는다(피처 012 R-6 · FR-024).
+ * 세션이 권한 목록을 주지 않았으면(모름) 막지 않는다 — 서버가 403 으로 막는다(`web-access.ts` 와 같은 규율).
+ */
+const CANCEL_PERMISSION = 'W-04-12';
 
 const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
   lookup.entries.map((entry) => ({
@@ -109,13 +125,46 @@ export const ShipmentScheduleScreen = () => {
 
   const customers = useCustomerOptions();
   const shipToPartners = useShipToPartnerOptions();
-  const fulfillmentPlants = useFulfillmentPlantOptions();
-  /* 피처 010 — 지시서 상세 창 · 인쇄 미리 보기. 공장 지정 창과 따로 연다. */
+  /* 피처 012 — 사업부 거르기 선택지(계정 범위) · 「출하」 칸 권한. */
+  const scopes = session?.scopes ?? NO_SCOPES;
+  const businessUnits = useBusinessUnitOptions(scopes);
+  const canAct =
+    session?.permissions === undefined || session.permissions.includes(CANCEL_PERMISSION);
+  /* 피처 010 — 지시서 상세 창 · 인쇄 미리 보기. */
   const [detailRequestId, setDetailRequestId] = useState<number | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const requestDetail = useShipmentRequestDetail(detailRequestId);
   const itemLabel = useItemLabels((requestDetail.data?.lines ?? []).map((line) => line.itemId));
-  const toast = useToast();
+
+  /*
+   * 피처 012 FR-021 · R-7 — 결재함 [열기](`?approvalRequestId=`)와 옛 주소(`?shipmentId=`)로 들어오면 그 출하의 지시서
+   * 상세를 연다. 목록 기간과 무관하게 연다(빈 곳 ⑦).
+   */
+  const linkApprovalId = readLinkId(searchParams.get('approvalRequestId'));
+  const linkShipmentId = readLinkId(searchParams.get('shipmentId'));
+  const linked = useLinkedRequest({ approvalRequestId: linkApprovalId, shipmentId: linkShipmentId });
+  const [openedFrom, setOpenedFrom] = useState<'approval' | 'shipment' | null>(null);
+
+  useEffect(() => {
+    if (linked.data === undefined || linked.data === null) return;
+
+    setIsPrinting(false);
+    setDetailRequestId(linked.data.shipmentRequestId);
+    setOpenedFrom(linkApprovalId === null ? 'shipment' : 'approval');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linked.data]);
+
+  const linkMissing =
+    (linkApprovalId !== null || linkShipmentId !== null) &&
+    (linked.isError || (linked.isSuccess && linked.data === null));
+
+  /* 열어 둔 지시서가 목록 기간 밖이면 목록 위에 띠로 알린다 — 목록에서 그 줄을 찾지 못해 헤매지 않게(빈 곳 ⑦). */
+  const openedOutOfPeriod =
+    openedFrom !== null &&
+    requestDetail.data !== undefined &&
+    requestDetail.data.shipmentRequestId === detailRequestId &&
+    (requestDetail.data.requestedShipDate < period.from ||
+      (period.to !== '' && requestDetail.data.requestedShipDate > period.to));
   /**
    * 조건을 주소에 반영한다. 주소가 정본이라 조회는 주소가 바뀐 결과로 일어난다.
    * **조건·정렬이 바뀌면 쪽을 첫 쪽으로 되돌린다** — 3쪽을 보다가 조건을 좁히거나 정렬을
@@ -173,6 +222,8 @@ export const ShipmentScheduleScreen = () => {
         <ShipmentFilterBar
           appliedPeriod={period}
           appliedFilters={filters}
+          businessUnitOptions={toSelectOptions(businessUnits)}
+          businessUnitNote={lookupNote(businessUnits)}
           customerOptions={toSelectOptions(customers)}
           shipToPartnerOptions={toSelectOptions(shipToPartners)}
           progressOptions={SHIPMENT_PROGRESS_CODES}
@@ -193,10 +244,30 @@ export const ShipmentScheduleScreen = () => {
           }}
         />
 
+        {/* 피처 012 FR-018 — ERP 송신 칩(건수). 누르면 곧바로 거른다 — 조건 줄의 [조회]를 거치지 않는다. */}
+        {listQuery !== null && (
+          <ErpChips
+            counts={list.data?.erpSendStatusCounts ?? NO_COUNTS}
+            selected={filters.erp}
+            onSelect={(erp) => {
+              applyQuery(period, { ...filters, erp }, sortKey);
+            }}
+          />
+        )}
+
+        {linkMissing && <AlertBanner variant="warning" title={t.bu012.linkedNotFound} />}
+        {openedOutOfPeriod && requestDetail.data !== undefined && (
+          <AlertBanner
+            variant="info"
+            title={t.bu012.outOfPeriod(requestDetail.data.shipmentRequestNo)}
+          />
+        )}
+
         {!list.isError && (
           <>
             <ShipmentTable
               rows={rows}
+              erpFiltered={filters.erp !== ''}
               isLoading={list.isPending && listQuery !== null}
               hasQuery={listQuery !== null}
               isBeyondLast={pageView.isBeyondLast}
@@ -204,7 +275,6 @@ export const ShipmentScheduleScreen = () => {
               onSortChange={changeSort}
               customerLookup={customers}
               shipToPartnerLookup={shipToPartners}
-              fulfillmentPlantLookup={fulfillmentPlants}
               onFirstPage={() => {
                 applyQuery(period, filters, sortKey);
               }}
@@ -245,15 +315,25 @@ export const ShipmentScheduleScreen = () => {
           shipToPartnerName={describeReference(
             toReference(shipToPartners, requestDetail.data?.shipToPartnerId ?? null),
           )}
-          fulfillmentPlantName={describeReference(
-            toReference(fulfillmentPlants, requestDetail.data?.fulfillmentPlantId ?? null),
-          )}
+          linkedBanner={
+            openedFrom === 'approval' ? (
+              <AlertBanner variant="info" title={t.bu012.fromApproval}>
+                {t.bu012.fromApprovalNote}
+              </AlertBanner>
+            ) : null
+          }
+          shipmentSection={
+            requestDetail.data === undefined ? null : (
+              <ShipmentSection request={requestDetail.data} canAct={canAct} />
+            )
+          }
           itemLabel={itemLabel}
           onPrint={() => {
             setIsPrinting(true);
           }}
           onClose={() => {
             setDetailRequestId(null);
+            setOpenedFrom(null);
           }}
         />
       )}
@@ -266,9 +346,8 @@ export const ShipmentScheduleScreen = () => {
             shipToPartner: describeReference(
               toReference(shipToPartners, requestDetail.data.shipToPartnerId),
             ),
-            fulfillmentPlant: describeReference(
-              toReference(fulfillmentPlants, requestDetail.data.fulfillmentPlantId ?? null),
-            ),
+            businessUnit:
+              requestDetail.data.businessUnit?.businessUnitName ?? t.bu012.noBusinessUnit,
             item: (itemId) => itemLabel(itemId) ?? String(itemId),
             printedBy: session?.userName ?? '',
           }}

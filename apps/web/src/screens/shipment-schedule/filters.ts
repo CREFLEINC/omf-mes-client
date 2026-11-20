@@ -5,7 +5,7 @@ import { progressLabel } from './status-options';
 import type { PeriodInput } from './period';
 import type { SortKey } from './sort';
 import { SHIPMENT_PROGRESS_CODES } from './status-options';
-import type { ShipmentProgressCode } from './types';
+import { ERP_CHIP_VALUES, type ErpChipValue, type ShipmentProgressCode } from './types';
 
 /**
  * 조회 조건(기간 제외) — **주소가 정본이다.** 새로고침·뒤로가기·공유가 같은 결과를 내게 하려면
@@ -31,6 +31,10 @@ export interface ShipmentFilters {
   ready: '' | 'true';
   /** 피처 010 — LOT 교체 있음(`hasReplacement`). 켜면 `'true'`. */
   replaced: '' | 'true';
+  /** 피처 012 — 사업부(조회 조건 셋째 칸 · FR-007). */
+  businessUnit: string;
+  /** 피처 012 — ERP 송신 칩(FR-018). 칩 줄이 보이므로 접힌 칸 칩으로 겹쳐 적지 않는다. */
+  erp: ErpChipValue | '';
 }
 
 export const EMPTY_FILTERS: ShipmentFilters = {
@@ -41,6 +45,8 @@ export const EMPTY_FILTERS: ShipmentFilters = {
   q: '',
   ready: '',
   replaced: '',
+  businessUnit: '',
+  erp: '',
 };
 
 /** 주소 키는 짧게 쓰고 계약 이름과 분리한다 — 주소는 사람이 읽고 고치는 자리다. */
@@ -52,7 +58,12 @@ const URL_KEYS: Record<keyof ShipmentFilters, string> = {
   q: 'q',
   ready: 'ready',
   replaced: 'replaced',
+  businessUnit: 'businessUnit',
+  erp: 'erp',
 };
+
+const readErpFilter = (raw: string): ErpChipValue | '' =>
+  ERP_CHIP_VALUES.some((value) => value === raw) ? (raw as ErpChipValue) : '';
 
 const POSITIVE_INTEGER = /^\d+$/;
 
@@ -81,6 +92,8 @@ export const readFilters = (params: URLSearchParams): ShipmentFilters => ({
   q: readQuery(params.get(URL_KEYS.q) ?? ''),
   ready: readFlag(params.get(URL_KEYS.ready) ?? ''),
   replaced: readFlag(params.get(URL_KEYS.replaced) ?? ''),
+  businessUnit: readNumberFilter(params.get(URL_KEYS.businessUnit) ?? ''),
+  erp: readErpFilter(params.get(URL_KEYS.erp) ?? ''),
 });
 
 /** 주소가 가리키는 쪽. 이상한 값은 첫 쪽으로 본다 — 주소는 손으로 고쳐지는 자리다. */
@@ -115,6 +128,8 @@ export const toSearchParams = (
     [URL_KEYS.q, readQuery(filters.q)],
     [URL_KEYS.ready, readFlag(filters.ready)],
     [URL_KEYS.replaced, readFlag(filters.replaced)],
+    [URL_KEYS.businessUnit, readNumberFilter(filters.businessUnit)],
+    [URL_KEYS.erp, readErpFilter(filters.erp)],
   ];
 
   for (const [key, value] of entries) {
@@ -136,6 +151,8 @@ export interface ShipmentFilterQuery {
   q?: string;
   completionReadyOnly?: boolean;
   hasReplacement?: boolean;
+  businessUnitId?: number;
+  erpSendStatus?: ErpChipValue;
 }
 
 export const toFilterQuery = (filters: ShipmentFilters): ShipmentFilterQuery => {
@@ -152,6 +169,10 @@ export const toFilterQuery = (filters: ShipmentFilters): ShipmentFilterQuery => 
     ...(readQuery(filters.q) === '' ? {} : { q: readQuery(filters.q) }),
     ...(filters.ready === 'true' ? { completionReadyOnly: true } : {}),
     ...(filters.replaced === 'true' ? { hasReplacement: true } : {}),
+    ...(readNumberFilter(filters.businessUnit) === ''
+      ? {}
+      : { businessUnitId: Number(filters.businessUnit) }),
+    ...(filters.erp === '' ? {} : { erpSendStatus: filters.erp }),
   };
 };
 

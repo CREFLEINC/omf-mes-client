@@ -29,11 +29,12 @@ export interface ShipmentTableProps {
   customerLookup: ReferenceSource;
   shipToPartnerLookup: ReferenceSource;
   /** 지정이 끝난 줄에 **어느 공장인지**를 적기 위해 받는다(사용자 지시 2026-09-22). */
-  fulfillmentPlantLookup: ReferenceSource;
   onFirstPage: () => void;
   onRetryReferences: () => void;
   /** 피처 010 — 지시서 번호를 누르면 상세 창을 연다. */
   onOpenDetail: (shipmentRequestId: number) => void;
+  /** 피처 012 — ERP 송신 칩으로 거른 중이면 빈 문구가 그 거르기를 풀라고 말한다(시안 W0402-After 빈 상태). */
+  erpFiltered?: boolean;
 }
 
 /** 값이 없는 칸은 비워 두지 않는다. */
@@ -163,10 +164,10 @@ export const ShipmentTable = ({
   onSortChange,
   customerLookup,
   shipToPartnerLookup,
-  fulfillmentPlantLookup,
   onFirstPage,
   onRetryReferences,
   onOpenDetail,
+  erpFiltered = false,
 }: ShipmentTableProps) => {
   const columns: Column<ShipmentRequestView>[] = [
     {
@@ -245,14 +246,32 @@ export const ShipmentTable = ({
       ),
     },
     {
-      key: 'pickingWarehouses',
+      /*
+       * 피처 012 — 「피킹 창고」 자리에 지시서 줄의 출고 창고 요약(시안 W0402-After ②). 아래 줄에 공장.
+       * 옛 지시서(줄 창고 없음)는 「창고 미지정」(US6-1).
+       */
+      key: 'lineWarehouses',
       align: 'center',
-      header: t.table.pickingWarehouses,
-      width: '9%',
+      header: t.bu012.lineWarehouse,
+      width: '11%',
       render: (row) =>
-        row.pickingWarehouseNames.length === 0
-          ? t.values.empty
-          : row.pickingWarehouseNames.join(', '),
+        row.lineWarehouses.length === 0 ? (
+          <Chip variant="status" status="idle" size="sm">
+            {t.bu012.warehouseUnassigned}
+          </Chip>
+        ) : (
+          <span
+            className="shipment-schedule-warehouses"
+            title={row.lineWarehouses
+              .map((warehouse) => t.bu012.warehouse(warehouse.warehouseName, warehouse.plantName))
+              .join(', ')}
+          >
+            <span>{row.lineWarehouses.map((warehouse) => warehouse.warehouseName).join(', ')}</span>
+            <span className="field-note">
+              {[...new Set(row.lineWarehouses.map((warehouse) => warehouse.plantName))].join(', ')}
+            </span>
+          </span>
+        ),
     },
     {
       key: 'marks',
@@ -269,18 +288,30 @@ export const ShipmentTable = ({
         ),
     },
     {
-      key: 'fulfillmentPlant',
+      /* 피처 012 FR-018 — 대표 ERP 송신 상태(완료 출하가 있을 때만). 완료 전 지시서는 「—」. */
+      key: 'erpSendStatus',
+      align: 'center',
+      width: '8%',
+      header: t.bu012.erpSend,
+      render: (row) =>
+        row.erpSendStatus === null || row.erpSendStatus === undefined
+          ? t.values.empty
+          : t.bu012.erpStatus[row.erpSendStatus],
+    },
+    {
+      /* 피처 012 FR-007 — 「출하 담당 공장」 → 「사업부」. 사업부 없는 공장의 옛 지시서는 배지(빈 곳 ⑨). */
+      key: 'businessUnit',
       align: 'center',
       width: '9%',
-      header: t.table.fulfillmentPlant,
-      /*
-       * 공장 지정 단추를 없앴다(피처 012 D-1 · 서버가 공장 지정 PUT 을 지웠다). 옛 지시서만 공장이 있다 —
-       * 사업부·줄 출고 창고 표시는 W-04-02 바꾸기(C3)에서 이 자리를 「사업부」로 바꾼다.
-       */
+      header: t.bu012.businessUnit,
       render: (row) =>
-        row.fulfillmentPlantId == null
-          ? t.values.empty
-          : describeReference(toReference(fulfillmentPlantLookup, row.fulfillmentPlantId)),
+        row.businessUnitName === null ? (
+          <Chip variant="status" status="warning" size="sm">
+            {t.bu012.noBusinessUnit}
+          </Chip>
+        ) : (
+          row.businessUnitName
+        ),
     },
   ];
 
@@ -324,7 +355,7 @@ export const ShipmentTable = ({
         size="sm"
         live
         title={t.empty.noResultTitle}
-        description={t.empty.noResultDescription}
+        description={erpFiltered ? t.bu012.erpEmptyHint : t.empty.noResultDescription}
       />
     );
   };

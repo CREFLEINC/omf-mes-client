@@ -780,3 +780,97 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     ).toBeInTheDocument();
   });
 });
+
+/* ── 피처 012 — 사업부 범위 · 줄 출고 창고 · 창고별 출고 전표(US3 · US5-4 · quickstart Q9~Q11) ──────── */
+
+describe('P-04-07 — 피처 012 사업부 · 출고 창고', () => {
+  const WH_A = { warehouseId: 11, warehouseCode: 'WH-FG-A', warehouseName: '완제품 창고 A', plantId: 1, plantName: '1공장' };
+  const WH_B = { warehouseId: 12, warehouseCode: 'WH-FG-B', warehouseName: '완제품 창고 B', plantId: 2, plantName: '2공장' };
+
+  /** 사업부 X · 줄1 = 창고 A(1공장) · 줄2 = 창고 B(2공장). */
+  const scoped = (base: Completion = completion()): Completion =>
+    ({
+      ...base,
+      businessUnit: { businessUnitId: 7, businessUnitCode: 'BU-X', businessUnitName: '사업부 X' },
+      warehouses: base.warehouses.map((warehouse) =>
+        warehouse.warehouseId === 12 ? { ...warehouse, plantId: 2, plantName: '2공장' } : warehouse,
+      ),
+      lines: base.lines.map((line) => ({ ...line, warehouse: line.lineNo === 2 ? WH_B : WH_A })),
+    }) as Completion;
+
+  it('US3-1·Q9 다른 사업부 지시서(403 BUSINESS_UNIT_MISMATCH)는 열지 않고 「다른 사업부」라고만 말한다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ lookups: [errorEnvelope('BUSINESS_UNIT_MISMATCH', 403)] });
+
+    await scan(user, 'SHPREQ:SR-261120-009');
+
+    expect(await screen.findByText(t.bu012.otherBusinessUnit)).toBeInTheDocument();
+    expect(screen.getByText(t.bu012.otherBusinessUnitDetail)).toBeInTheDocument();
+    /* 확인 화면이 열리지 않는다 — 지시서 내용을 보이지 않는다. */
+    expect(screen.queryByText(t.head.ready)).toBeNull();
+    expect(completeButton()).toBeDisabled();
+  });
+
+  it('FR-013·Q9 확인 화면 머리에 사업부, 라인 표에 출고 창고(공장), 재고가 빠질 창고에 공장과 라인', async () => {
+    const user = userEvent.setup();
+    renderScreen({ lookups: [jsonResponse(scoped())] });
+
+    await scan(user, CODE);
+
+    expect(await screen.findByText('사업부 X')).toBeInTheDocument();
+    const lines = screen.getByRole('table', { name: t.lines.caption });
+    expect(within(lines).getByRole('columnheader', { name: t.bu012.warehouseColumn })).toBeInTheDocument();
+    expect(within(lines).getByText('완제품 창고 B (2공장)')).toBeInTheDocument();
+    expect(screen.getByText(t.bu012.warehouseLines('2공장', '2'))).toBeInTheDocument();
+    /* FR-025 — 완료 전 화면에 ERP 송신 여부를 보이지 않는다. */
+    expect(screen.queryByText(/ERP 송신/)).toBeNull();
+  });
+
+  it('US3-3·Q10 한 공장 라인만 피킹이 끝났으면 「피킹 부족: 라인 2(창고)」로 막고 그 창고 공장 PDA 를 말한다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ lookups: [jsonResponse(scoped(blockedCompletion()))] });
+
+    await scan(user, CODE);
+
+    expect(await screen.findByText(t.head.blocked)).toBeInTheDocument();
+    expect(
+      screen.getByText(t.bu012.pickingShortLine(2, 'FG-B200', '완제품 창고 B (2공장)', '0 EA', '50 EA'), { exact: false }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(t.bu012.pickingShortHint)).toBeInTheDocument();
+    expect(completeButton()).toBeDisabled();
+  });
+
+  it('US3-2·Q11 완료 결과에 창고별 출고 전표(번호 · 창고 · 공장), 「출하 내역」을 가리키지 않는다(US5-4)', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      lookups: [jsonResponse(scoped())],
+      complete: [
+        jsonResponse({
+          ...completionResult(),
+          goodsIssues: [
+            { goodsIssueNo: 'GI-261120-0011', warehouseId: 11, warehouseName: '완제품 창고 A', plantId: 1, plantName: '1공장' },
+            { goodsIssueNo: 'GI-261120-0012', warehouseId: 12, warehouseName: '완제품 창고 B', plantId: 2, plantName: '2공장' },
+          ],
+        }),
+      ],
+    });
+
+    await scan(user, CODE);
+    await user.click(await screen.findByRole('button', { name: t.bar.complete }));
+
+    expect(await screen.findByText(t.result.title)).toBeInTheDocument();
+    expect(screen.getByText(t.bu012.goodsIssue('GI-261120-0011', '완제품 창고 A', '1공장'))).toBeInTheDocument();
+    expect(screen.getByText(t.bu012.goodsIssue('GI-261120-0012', '완제품 창고 B', '2공장'))).toBeInTheDocument();
+    /* 완료 결과의 상시 안내 줄은 POP 통일(#1731)에서 걷혔다 — 지운 화면(W-04-12)을 가리키는 글이 없어야 한다. */
+    expect(screen.queryByText(/출하 내역/)).toBeNull();
+    expect(screen.queryByText(/W-04-12/)).toBeNull();
+  });
+
+  it('US5-4 출하 완료 문구 어디에도 지운 「출하 내역(W-04-12)」을 가리키지 않는다', () => {
+    const all = JSON.stringify(t, (_key, value: unknown) =>
+      typeof value === 'function' ? String(value) : value,
+    );
+    expect(all).not.toContain('W-04-12');
+    expect(all).not.toContain('출하 내역');
+  });
+});

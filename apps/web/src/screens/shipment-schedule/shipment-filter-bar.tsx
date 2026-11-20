@@ -45,6 +45,9 @@ export interface ShipmentFilterBarProps {
   appliedFilters: ShipmentFilters;
   customerOptions: SelectOption[];
   shipToPartnerOptions: SelectOption[];
+  /** 피처 012 — 사업부 선택지(계정 데이터 범위 안 · FR-007·008). */
+  businessUnitOptions: SelectOption[];
+  businessUnitNote?: string;
   /** 고정 계약이 정의한 출하 진행 상태 선택지. */
   progressOptions: readonly string[];
   chipNames: FilterChipNames;
@@ -74,6 +77,8 @@ export const ShipmentFilterBar = ({
   appliedFilters,
   customerOptions,
   shipToPartnerOptions,
+  businessUnitOptions,
+  businessUnitNote,
   progressOptions,
   chipNames,
   customerNote,
@@ -102,6 +107,8 @@ export const ShipmentFilterBar = ({
     q: appliedQ,
     ready: appliedReady,
     replaced: appliedReplaced,
+    businessUnit: appliedBusinessUnit,
+    erp: appliedErp,
   } = appliedFilters;
 
   useEffect(() => {
@@ -117,8 +124,12 @@ export const ShipmentFilterBar = ({
       q: appliedQ,
       ready: appliedReady,
       replaced: appliedReplaced,
+      businessUnit: appliedBusinessUnit,
+      erp: appliedErp,
     });
   }, [
+    appliedBusinessUnit,
+    appliedErp,
     appliedCustomer,
     appliedShipToPartner,
     appliedProgress,
@@ -239,6 +250,17 @@ export const ShipmentFilterBar = ({
             }}
           />
         </div>
+        {/* 피처 012 — 사업부는 조회 조건 셋째 칸(시안 W0402-After ①). 「전체」는 계정 범위 안 사업부 모두. */}
+        <SelectField
+          wide
+          label={t.bu012.businessUnit}
+          options={withAll(businessUnitOptions)}
+          value={filters.businessUnit}
+          note={businessUnitNote}
+          onChange={(value) => {
+            setFilters((prev) => ({ ...prev, businessUnit: value }));
+          }}
+        />
         <div className="field-cell field-cell-unlabeled shipment-schedule-filter-actions">
           <div className="filter-actions">
             <Button

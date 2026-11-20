@@ -121,6 +121,9 @@ describe('toShipmentRequestView', () => {
       blockerCount: 0,
       pickingWarehouseNames: [],
       replacementCount: 0,
+      businessUnitName: null,
+      lineWarehouses: [],
+      erpSendStatus: null,
     });
   });
 

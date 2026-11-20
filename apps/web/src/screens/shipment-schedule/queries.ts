@@ -3,8 +3,6 @@ import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest, runRequestWithResponse } from '../../patterns/request';
-import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
-import type { components } from '@omf-mes/api-client';
 import type { ShipmentFilterQuery } from './filters';
 import type { PeriodQuery } from './period';
 import type { SortQuery } from './sort';
@@ -54,7 +52,11 @@ const fetchShipmentSchedule = async (
     client.GET('/logistics/shipment-requests', { params: { query } }),
   );
 
-  return { items: data.items.map(toShipmentRequestView), page: data.page };
+  return {
+    items: data.items.map(toShipmentRequestView),
+    page: data.page,
+    erpSendStatusCounts: data.erpSendStatusCounts ?? {},
+  };
 };
 
 /**
