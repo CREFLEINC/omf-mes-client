@@ -262,6 +262,9 @@ export const lotStatusHistory = {
       atText: (at: string, terminal: string | null, worker: string | null): string =>
         [at, terminal, worker].filter((part) => part !== null && part !== '').join(', '),
       location: '분리 위치',
+      // ui-check-ignore: C-13 시안 W0301 확정 표기(창고 · 위치)
+      locationText: (warehouseCode: string, locationCode: string): string =>
+        `${warehouseCode} · ${locationCode}`, // ui-check-ignore: C-13 시안 W0301 확정 표기
       confirmed: 'PDA 확인',
       confirmedText: (at: string, worker: string | null): string =>
         worker === null ? at : `${at}, ${worker}`,

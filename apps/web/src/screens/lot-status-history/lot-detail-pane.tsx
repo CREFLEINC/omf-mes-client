@@ -432,7 +432,11 @@ const ProductSplitFields = ({
       ps.at,
       ps.atText(formatDateTime(split.splitAt), split.splitTerminalCode, split.splitWorkerNo),
     ],
-    ['short', ps.location, split.location.locationCode],
+    [
+      'short',
+      ps.location,
+      ps.locationText(split.location.warehouseCode, split.location.locationCode),
+    ],
     [
       'wide',
       ps.confirmed,

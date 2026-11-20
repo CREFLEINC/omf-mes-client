@@ -1425,7 +1425,12 @@ describe('Lot Status 화면 — 생산 LOT 분리 (013)', () => {
     splitAt: '2026-11-20T02:12:00Z',
     splitWorkerNo: 'W0021',
     splitTerminalCode: 'POP-FG-01',
-    location: { locationId: 45, locationCode: 'FG-A-01' },
+    location: {
+      locationId: 45,
+      locationCode: 'FG-A-01',
+      warehouseCode: 'FG',
+      warehouseName: '제품 창고',
+    },
     confirmedAt: confirmed ? '2026-11-20T02:30:00Z' : null,
     confirmedWorkerNo: confirmed ? 'W0031' : null,
     workOrderNo: 'WO-SYN-0012',
@@ -1452,7 +1457,7 @@ describe('Lot Status 화면 — 생산 LOT 분리 (013)', () => {
     ).toBeVisible();
     expect(within(split).getByText('분리 수량')).toBeVisible();
     expect(within(split).getByText('2026-11-20 09:12, POP-FG-01, W0021')).toBeVisible();
-    expect(within(split).getByText('FG-A-01')).toBeVisible();
+    expect(within(split).getByText('FG · FG-A-01')).toBeVisible();
     expect(within(split).getByText('아직. 확인 전에는 출하 피킹이 되지 않습니다')).toBeVisible();
     expect(within(split).getByText('WO-SYN-0012 (원래 LOT)')).toBeVisible();
     expect(within(split).queryByText('분할 출고')).toBeNull();
