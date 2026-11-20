@@ -43,7 +43,7 @@ export const findLinkableWorker = async (
         params: { query: { workerNo, includeInactive: false, page: 1, size: 2 } },
       }),
     ).then((response) => response.items.find((worker) => worker.workerNo === workerNo));
-    if (found === undefined) return { error: t.notFound };
+    if (found === undefined) return { error: t.noActiveWorker };
     if (found.appUserId != null && found.appUserId !== appUserId)
       return { error: t.linkedElsewhere };
     return { workerId: found.workerId };
@@ -52,6 +52,17 @@ export const findLinkableWorker = async (
     return { error: describeLoadError(toApiError(error)) };
   }
 };
+
+/** 사번 칸 아래 안내 — 라벨 모양 한 줄, 왼쪽 정렬(사용자 지시 2026-11-20 · #333). */
+export const WorkerNoError = ({ message }: { message: string }) => (
+  <span
+    className="iqc-inspection-action-note users-roles-dialog-note users-roles-worker-no-error"
+    data-tone="warning"
+  >
+    <Icon name="warning" size={16} aria-hidden />
+    {message}
+  </span>
+);
 
 export interface WorkerLinkFieldProps {
   appUserId: number;
@@ -328,7 +339,11 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
                   if (write.error !== null) write.reset();
                 }}
                 disabled={isBusy}
-                error={inputError}
+                error={
+                  inputError === undefined || inputError === null ? undefined : (
+                    <WorkerNoError message={inputError} />
+                  )
+                }
               />
               {/* 연결 · 변경 창 모두 시안대로 보조 문구 없이(사용자 시안 2026-11-20 · #333). */}
             </div>

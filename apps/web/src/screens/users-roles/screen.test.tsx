@@ -1452,7 +1452,7 @@ describe('UsersRolesScreen 등록', () => {
       ]);
 
       await user.type(
-        within(createDialog()).getByRole('textbox', { name: '작업자 사번' }),
+        within(createDialog()).getByRole('textbox', { name: '연결할 작업자 사번' }),
         'SYN-W-01',
       );
       await user.click(within(createDialog()).getByRole('button', { name: '사용자 추가' }));
@@ -1475,11 +1475,14 @@ describe('UsersRolesScreen 등록', () => {
         workerDirectoryRoute([]),
       ]);
 
-      await user.type(within(createDialog()).getByRole('textbox', { name: '작업자 사번' }), 'NOPE');
+      await user.type(
+        within(createDialog()).getByRole('textbox', { name: '연결할 작업자 사번' }),
+        'NOPE',
+      );
       await user.click(within(createDialog()).getByRole('button', { name: '사용자 추가' }));
 
       expect(
-        await within(createDialog()).findByText('해당 사번의 재직 중인 작업자를 찾을 수 없습니다.'),
+        await within(createDialog()).findByText('재직 중인 작업자 사번이 없습니다.'),
       ).toBeInTheDocument();
       expect(requests.some((request) => request.method === 'POST')).toBe(false);
     });

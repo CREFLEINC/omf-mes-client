@@ -140,7 +140,7 @@ describe('WorkerLinkField', () => {
     const modal = await dialog();
     await user.type(within(modal).getByRole('textbox'), 'NOPE{Enter}');
 
-    expect(await within(modal).findByText(t.notFound)).toBeInTheDocument();
+    expect(await within(modal).findByText(t.noActiveWorker)).toBeInTheDocument();
     expect(puts).toEqual([]);
   });
 
@@ -163,10 +163,10 @@ describe('WorkerLinkField', () => {
     await user.click(await screen.findByRole('button', { name: t.change }));
     const modal = await dialog();
     await user.type(within(modal).getByRole('textbox'), 'NOPE{Enter}');
-    expect(await within(modal).findByText(t.notFound)).toBeInTheDocument();
+    expect(await within(modal).findByText(t.noActiveWorker)).toBeInTheDocument();
 
     await user.type(within(modal).getByRole('textbox'), 'X');
-    expect(within(modal).queryByText(t.notFound)).not.toBeInTheDocument();
+    expect(within(modal).queryByText(t.noActiveWorker)).not.toBeInTheDocument();
   });
 
   it('조회한 사번이 다른 계정에 연결돼 있으면 보내지 않고 「이미 다른 계정에 연결된 사번」을 낸다', async () => {

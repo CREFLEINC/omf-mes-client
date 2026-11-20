@@ -36753,3 +36753,9 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .iqc-inbound-attach-dialog .field-note {
   max-width: none;
 }
+
+/* 사번 칸 아래 오류 — 라벨 모양 한 줄, 왼쪽 정렬(사용자 지시 2026-11-20 · #333). */
+.iqc-inspection-action-note.users-roles-dialog-note.users-roles-worker-no-error[data-tone] {
+  margin: var(--space-1) 0 0;
+  white-space: nowrap;
+}

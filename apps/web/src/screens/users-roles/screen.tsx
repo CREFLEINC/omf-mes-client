@@ -129,7 +129,12 @@ import type {
   UserFormValues,
 } from './types';
 import { FieldLabel } from './field-label';
-import { findLinkableWorker, WorkerLinkField, workerLinkKey } from './worker-link-field';
+import {
+  findLinkableWorker,
+  WorkerLinkField,
+  WorkerNoError,
+  workerLinkKey,
+} from './worker-link-field';
 
 type AppUserDetailResponse = components['schemas']['AppUserDetailResponse'];
 type UserRoleListResponse = components['schemas']['UserRoleListResponse'];
@@ -1401,7 +1406,11 @@ export const UsersRolesScreen = () => {
                   setCreateWorkerNo(event.target.value);
                   setCreateWorkerError(null);
                 }}
-                error={createWorkerError ?? undefined}
+                error={
+                  createWorkerError === null ? undefined : (
+                    <WorkerNoError message={createWorkerError} />
+                  )
+                }
               />
             </div>
           }

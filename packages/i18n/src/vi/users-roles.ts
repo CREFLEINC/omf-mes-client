@@ -56,8 +56,7 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     dataScopeTargetRequired:
       'Xác nhận chỉ bấm được sau khi chọn ít nhất một trong đơn vị kinh doanh và nhà máy.',
     /** ⚠ 비운 축을 「(전체)」로 접어 판정한다 — 그 사실을 빼면 중복 사유가 설명되지 않는다. */
-    dataScopeDuplicate:
-      'Hãy chọn sao cho không trùng với phạm vi truy cập đã đăng ký.',
+    dataScopeDuplicate: 'Hãy chọn sao cho không trùng với phạm vi truy cập đã đăng ký.',
   },
   /** ⛔ 참조 건수·배정 건수를 내지 않는다 — 화면이 낼 수 있는 건수가 그 뜻이 아니다. */
   dialog: {
@@ -330,9 +329,11 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     linkedToast: (summary: string): string => `Đã liên kết người lao động — ${summary}`,
     unlinkedToast: 'Đã hủy liên kết người lao động.',
     notFound: 'Không tìm thấy người lao động đang làm việc có mã nhân viên này.',
+    noActiveWorker: 'Không có mã nhân viên đang làm việc.',
     linkedElsewhere: 'Mã nhân viên này đã được liên kết với tài khoản khác.',
-    createLabel: 'Mã nhân viên',
-    createLinkFailed: 'Đã thêm người dùng nhưng chưa liên kết được người lao động. Hãy liên kết lại trong chi tiết.',
+    createLabel: 'Mã nhân viên cần liên kết',
+    createLinkFailed:
+      'Đã thêm người dùng nhưng chưa liên kết được người lao động. Hãy liên kết lại trong chi tiết.',
     workerNoRequired: 'Hãy nhập mã nhân viên.',
   },
 };
