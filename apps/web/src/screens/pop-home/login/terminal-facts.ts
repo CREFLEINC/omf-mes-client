@@ -1,6 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
-import type { VerifiedTerminal } from '../../patterns/pop-registration';
+import type { VerifiedTerminal } from '../../../patterns/pop-registration';
 
 /**
  * 단말 등록이 확인해 준 설비·공정을 화면 글자로 — 등록 확인 단계와 사번 입력 화면의 정보 띠가

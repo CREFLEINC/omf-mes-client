@@ -75,16 +75,6 @@
  * .scan-row      스캔 칸과 읽기 버튼을 한 줄에 — 버튼 높이를 칸의 라벨 층만큼 내린다
  * .scan-outcome  스캔 한 번의 결과가 서는 자리(늘 자리를 차지한다)
  * .pop-touch-target  현장 단말의 업무 중요도 표식 — 렌더 높이는 관리웹 기본 토큰을 쓴다
- *
- * P-CO-01(작업자 지정) — ⚠ 위 `.pop-shell` 계열과 «다른» 어휘다. 그 화면들은 헤더에 표제를
- * 두지만 이 화면은 세로 예산이 768 로 딱 맞아(§3/E-1 슬랙 0) 표제를 두지 않는다.
- * .pop-screen    헤더와 본문을 한 껍데기로 묶어 사이 여백을 0으로 — 합이 768을 넘지 않게
- * .pop-terminal-header  헤더 64 — 제품명 · 단말 · 연결 상태
- * .pop-terminal-header__brand  헤더 왼쪽 끝의 제품명
- * .pop-assign    본문 704 — 좌 《사번 입력》 / 우 《현재 작업자》
- * .pop-pane      그 두 구획 각각(⚠ 위 `.pop-panes` 와 다른 이름 · 서로 간섭하지 않는다)
- * .worker-no-field  사번 표시칸 — 글자만 키운다(높이는 xl 그대로)
- * .worker-card__name  현재 작업자 이름·사번 — 늘 크게 보인다
  * POP(1024×768 터치 키오스크) — 관리웹과 폼팩터가 다르다
  * .pop-pane         2단의 각 칸 — 안에서 표가 스크롤한다
  * .pop-touch(-등급) 업무 중요도 표식 — 크기를 키우지 않는다
@@ -18606,28 +18596,6 @@ dialog.terminal-map-form-dialog {
 
 .pop-touch-destructive {
   --pop-touch-grade: destructive;
-}
-
-/*
- * 사번 표시 — **글자를 크게 한다.** 「큰 글자」는 글자 크기 요구이지 높이 요구가 아니라
- * (§7) 칸 높이는 그대로 두고 글자만 키운다.
- *
- * ⚠ **이름표는 입력칸 «자신»에 붙는다.** 디자인 시스템의 `TextField` 는 `className` 을
- *   바깥 상자가 아니라 `<input>` 에 그대로 넘긴다 — 한때 `.worker-no-field input` 으로
- *   안쪽을 찾았는데 그런 자식이 없어 **규칙이 통째로 죽어 있었다**(실측 — 사번이 본문과
- *   같은 16px 로 떴고 가운데 정렬도 서지 않았다).
- */
-.worker-no-field {
-  font-size: var(--font-size-2xl, 2rem);
-  letter-spacing: 0.15em;
-  text-align: center;
-}
-
-/* 현재 작업자 — 지금 누구로 기록되는지가 멀리서도 보여야 한다(§5-4). */
-.worker-card__name {
-  margin: 0;
-  font-size: var(--font-size-2xl, 2rem);
-  font-weight: 600;
 }
 
 /*

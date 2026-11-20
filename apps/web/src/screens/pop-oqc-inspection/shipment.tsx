@@ -1,15 +1,43 @@
-import { Button, Chip, EmptyState, Icon } from '@crefle/web-ui';
+import { Button, Chip, Icon } from '@crefle/web-ui';
 import type { components, InspectionResultSummaryForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
-import { formatQty } from '../../patterns/package-qty';
-import { PuActionBar, PuButton } from '../../patterns/pop-uniform';
+import { formatPackage, formatQty } from '../../patterns/package-qty';
+import {
+  PuActionBar,
+  PuBand,
+  PuButton,
+  PuChip,
+  PuCount,
+  PuField,
+  PuIcon,
+  PuNote,
+  PuPager,
+  PuSection,
+  PuSeg,
+  PuTiles,
+  puCx,
+  useClientPage,
+  useFitPages,
+  type PuFitRef,
+  type PuBandItem,
+  type PuChipTone,
+} from '../../patterns/pop-uniform';
+import { toApiError } from '../../patterns/request';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { overriddenLotsOf } from '../parts-iqc-inspection/lot-judgment';
-import { LotMatchField } from '../parts-iqc-inspection/lot-match-field';
 import { ReinspectionReasonField } from '../parts-iqc-inspection/reinspection-reason-field';
+import { useOqcSerialRecords } from '../oqc-inspection/queries';
 import { toSerialInputs, type SerialRow } from '../oqc-inspection/serials';
 import {
   defaultMatchOf,
@@ -19,32 +47,41 @@ import {
   ruleCodeOf,
   type PickedLotView,
 } from '../oqc-inspection/shipment-oqc';
-import {
-  LotJudgmentChip,
-  OverviewChip,
-  portionsText,
-  replacedText,
-} from '../oqc-inspection/shipment-oqc-parts';
+import { LotJudgmentChip, portionsText, replacedText } from '../oqc-inspection/shipment-oqc-parts';
 import {
   useSaveShipmentResult,
   useShipmentOqcRequest,
   useShipmentRequestRef,
   type ShipmentRequestRef,
 } from '../oqc-inspection/shipment-oqc-queries';
+import { QueueLoadErrorBanner } from '../oqc-inspection/load-error-banner';
 import {
   ShipmentMeasurementSection,
   useShipmentMeasurements,
+  type ShipmentMeasurements,
 } from '../oqc-inspection/shipment-measurements';
 import { SHIPMENT_JUDGMENTS } from '../oqc-inspection/shipment-result-drawer';
 import type { InspectionRequestResponse } from '../oqc-inspection/types';
 
 type ShipmentRequestLot = components['schemas']['ShipmentRequestLot'];
 import { formatDateTime } from '../oqc-inspection/types';
-import { PopSerialDialog, PopSerialSummary } from './serial-step';
+import { withUom } from '../oqc-inspection/uom-lookup';
+import { judgeOf } from './judgment';
+import { shipmentStateChip } from './queue-list';
+import { useInspectionGuide } from '../../patterns/inspection-guide';
+import { usePlanVersion } from '../parts-iqc-inspection/queries';
+import { describeSpec } from '../pqc-panel/web-item-table';
+import { useUomLookup } from '../oqc-inspection/uom-lookup';
+import { bandLabel, PopPlanDialog } from './request-summary';
+import { PopSerialDialog } from './serial-step';
 
 const pop = messages.popOqcInspection;
 const ps = messages.popOqcInspection.shipment;
 const s = messages.oqcInspection.shipment;
+const serialText = messages.oqcInspection.serials;
+type OqcSerialRecord = components['schemas']['OqcSerialRecord'];
+const itemsText = messages.pqcInspectionRegister.web.items;
+const measureText = messages.pqcInspection.measurements;
 
 /**
  * P-04-06 출하 OQC 새 흐름(피처 010 · 시안 P0406-After · decisions #47) — 결과 «추가»만 한다(고치기는 관리웹 W-04-03, 잘못 넣으면
@@ -62,13 +99,21 @@ export const usePopShipmentForm = (inspectionRequestId: number | null, workerNo:
   const [judgment, setJudgment] = useState<string | null>(null);
   const [reason, setReason] = useState<string | null>(null);
   const [serialRows, setSerialRows] = useState<SerialRow[]>([]);
+  /* [시리얼 검사 기록] 창 — 단추는 바닥 띠, 창은 상세가 그린다(사용자 지시 2026-11-20). */
+  const [serialOpen, setSerialOpen] = useState(false);
   const [savedSeq, setSavedSeq] = useState<number | null>(null);
+  /*
+   * [재검사]로 연 결과 등록(사용자 지시 2026-11-20) — 판정을 마친 열린 의뢰는 결과 등록을 닫아 두고 [재검사]로 연다.
+   * 다른 의뢰를 고르면 닫고, 새로고침은 그대로 둔다. [취소]는 닫으면서 적던 값을 버린다(`draftGen` 으로 다시 연다).
+   */
+  const [reinspecting, setReinspecting] = useState(false);
+  const [draftGen, setDraftGen] = useState(0);
 
-  /* 의뢰가 바뀌거나 결과가 늘면 새 결과를 빈 판정 · 미검사 LOT 체크로 다시 연다. */
+  /* 의뢰가 바뀌거나 결과가 늘면(또는 [취소]) 새 결과를 빈 판정 · 미검사 LOT 체크로 다시 연다. */
   const resetKey =
     request === undefined
       ? null
-      : `${String(request.inspectionRequestId)}#${String(results.length)}`;
+      : `${String(request.inspectionRequestId)}#${String(results.length)}#${String(draftGen)}`;
   useEffect(() => {
     if (resetKey === null || views === null) return;
     setMatched(defaultMatchOf(views.active));
@@ -77,7 +122,10 @@ export const usePopShipmentForm = (inspectionRequestId: number | null, workerNo:
     setSerialRows([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
-  useEffect(() => setSavedSeq(null), [inspectionRequestId]);
+  useEffect(() => {
+    setSavedSeq(null);
+    setReinspecting(false);
+  }, [inspectionRequestId]);
   /* 검사 항목 측정(FR-009 · T052) — POP 은 결과를 더하기만 하므로 늘 빈 칸에서 시작한다(결과가 늘면 다시 연다). */
   const measurements = useShipmentMeasurements({
     planVersionId: request?.inspectionPlanVersionId,
@@ -89,7 +137,10 @@ export const usePopShipmentForm = (inspectionRequestId: number | null, workerNo:
     request?.nextResultSeqNo ?? results.reduce((max, result) => Math.max(max, result.seqNo), 0) + 1;
   const save = useSaveShipmentResult(
     inspectionRequestId,
-    () => setSavedSeq(seqNo),
+    () => {
+      setSavedSeq(seqNo);
+      setReinspecting(false);
+    },
     workerNo ?? undefined,
   );
 
@@ -114,6 +165,17 @@ export const usePopShipmentForm = (inspectionRequestId: number | null, workerNo:
     if (measurements.hasError) return ps.bar.blocked.measurement;
     return null;
   })();
+
+  const writable =
+    request !== undefined &&
+    views !== null &&
+    OPEN_STATUSES.includes(request.statusCode) &&
+    views.active.length > 0;
+  /* 판정을 마친 열린 의뢰 — 목록 「판정 완료」 탭과 같은 조건(`isJudgedOpen`): 살아 있는 피킹 LOT 이 모두 판정을 가졌다. */
+  const judgedOpen =
+    writable && views.active.every((view) => view.judgmentCode !== 'NOT_INSPECTED');
+  /* 결과 등록을 보이는가 — 판정 대기는 바로, 판정 완료는 [재검사]를 누른 뒤에만. 저장 몸통 · 규칙은 그대로다. */
+  const entryOpen = writable && (!judgedOpen || reinspecting);
 
   const submit = () => {
     if (blockedReason !== null || request === undefined || judgment === null) return;
@@ -147,6 +209,20 @@ export const usePopShipmentForm = (inspectionRequestId: number | null, workerNo:
     setReason,
     serialRows,
     setSerialRows,
+    serialOpen,
+    setSerialOpen,
+    /* 결과를 더할 수 있는 의뢰 — 열린 상태이고 피킹 LOT 이 있다. */
+    writable,
+    entryOpen,
+    judgedOpen,
+    reinspect: () => {
+      setSavedSeq(null);
+      setReinspecting(true);
+    },
+    cancelReinspect: () => {
+      setReinspecting(false);
+      setDraftGen((gen) => gen + 1);
+    },
     measurements,
     overridden,
     needsReason,
@@ -187,68 +263,118 @@ const popReplacedText = (lot: ShipmentRequestLot | null): string => {
   );
 };
 
+/**
+ * 머리 — 지시서 번호 아래 정보 띠. 옛 흐름의 의뢰 정보 띠(`PopRequestBand` · `oqc-band`, 공통 `PuBand` 격자 ·
+ * 이름을 값 위에 작게)와 같은 모양이다. 수량은 출하 완료(P-04-07)와 같은 말(지시량 · 피킹량 · 초과량)과 단위로 쓴다.
+ */
+/** 보조 정보 값 — 주요 정보(지시서 · 상태 · 품목 · 수량)보다 작고 옅게(2026-11-20). */
+const sub = (value: ReactNode): ReactNode => <span className="pop-oqc-sub">{value}</span>;
+
 const Summary = ({
   request,
   refData,
   uom,
+  state,
+  measurements,
 }: {
   request: InspectionRequestResponse;
   refData: ShipmentRequestRef | undefined;
   uom: string;
+  /** 검사 상태 칩 — 목록 카드와 같은 말·색. */
+  state: { text: string; tone: PuChipTone };
+  /** 검사 기준 창에 보일 그 기준의 검사 항목(결과 입력이 이미 읽은 것). */
+  measurements: ShipmentMeasurements;
 }) => {
-  const refs = [
-    { key: 'req', label: ps.refs.request, value: request.inspectionRequestNo },
-    { key: 'cust', label: ps.refs.customer, value: refData?.customerName ?? '—' },
-    { key: 'dest', label: ps.refs.shipTo, value: refData?.shipToName ?? '—' },
+  const [planOpen, setPlanOpen] = useState(false);
+  const planId = request.inspectionPlanVersionId ?? null;
+  const planVersion = usePlanVersion(planId).data;
+  const guides = useInspectionGuide(request.inspectionRequestId).data ?? [];
+  /* 버전을 아직 못 읽었으면 번호(#id)로 둔다 — 옛 흐름 정보 띠와 같다. */
+  const planLabel =
+    planId === null
+      ? ''
+      : planVersion === undefined
+        ? pop.detail.idValue(planId)
+        : pop.detail.planVersion(planVersion.planVersion);
+  const qty = (value: number | undefined): string =>
+    value === undefined ? '—' : withUom(formatQty(value), uom || null);
+  /*
+   * 지시서 번호도 칸 하나(출하 완료 머리 띠와 같다 · 2026-11-20). 품목은 길어 한 줄 전체를 쓰고, 격자를 빈틈없이
+   * 채우도록(`dense`) 뒤 칸이 첫 줄을 먼저 채운다.
+   */
+  const items: PuBandItem[] = [
     {
-      key: 'plan',
-      label: ps.refs.plan,
-      value:
-        request.inspectionPlanVersionId == null
-          ? pop.detail.noPlanVersion
-          : pop.detail.planValue(pop.detail.idValue(request.inspectionPlanVersionId)),
+      label: bandLabel('file', ps.refs.shipmentRequest),
+      value: (
+        <span className="pu-mono">
+          {request.shipmentRequestNo ?? refData?.shipmentRequestNo ?? '—'}
+        </span>
+      ),
     },
-    { key: 'at', label: ps.refs.requestedAt, value: formatDateTime(request.requestedAt) },
+    {
+      label: bandLabel('shield', ps.refs.status),
+      value: <PuChip tone={state.tone}>{state.text}</PuChip>,
+    },
+    {
+      label: bandLabel('box', pop.detail.fields.item),
+      value: itemText(request, refData),
+      wide: true,
+    },
+    { label: bandLabel('check', ps.target), value: qty(refData?.targetQty) },
+    { label: bandLabel('check', ps.picked), value: qty(refData?.pickedQty) },
+    ...(refData !== undefined && refData.overQty > 0
+      ? [{ label: bandLabel('check', ps.over), value: qty(refData.overQty) }]
+      : []),
+    {
+      label: bandLabel('file', ps.refs.request),
+      value: sub(<span className="pu-mono">{request.inspectionRequestNo}</span>),
+    },
+    { label: bandLabel('list', ps.refs.customer), value: sub(refData?.customerName ?? '—') },
+    { label: bandLabel('list', ps.refs.shipTo), value: sub(refData?.shipToName ?? '—') },
+    {
+      label: bandLabel('file', ps.refs.plan),
+      wide: true,
+      /* [기준 조회] — 옛 흐름 정보 띠와 같은 자리 · 같은 작은 단추(사용자 지시 2026-11-20). */
+      value: (
+        <span className="oqc-vrow">
+          {sub(planId == null ? pop.detail.noPlanVersion : pop.detail.planValue(planLabel))}
+          {(planId != null || guides.length > 0) && (
+            <PuButton
+              size="sm"
+              onClick={() => {
+                setPlanOpen(true);
+              }}
+            >
+              {pop.detail.viewPlan}
+            </PuButton>
+          )}
+        </span>
+      ),
+    },
+    {
+      label: bandLabel('clock', ps.refs.requestedAt),
+      value: sub(formatDateTime(request.requestedAt)),
+    },
   ];
 
   return (
     <section className="pop-oqc-summary" aria-label={request.inspectionRequestNo}>
-      <div className="pop-oqc-summary__key">
-        <p className="pop-oqc-summary__no">
-          {request.shipmentRequestNo ?? refData?.shipmentRequestNo ?? '—'}
-        </p>
-        <dl className="pop-oqc-summary__figures">
-          <div>
-            <dt>{pop.detail.fields.item}</dt>
-            <dd>{itemText(request, refData)}</dd>
-          </div>
-          <div>
-            <dt>{ps.target}</dt>
-            <dd className="pop-oqc-num">
-              {refData === undefined ? '—' : `${formatQty(refData.targetQty)} ${uom}`.trim()}
-            </dd>
-          </div>
-          <div>
-            <dt>{ps.picked}</dt>
-            <dd className="pop-oqc-num">
-              {refData === undefined ? '—' : `${formatQty(refData.pickedQty)} ${uom}`.trim()}
-              {refData !== undefined && refData.overQty > 0 ? (
-                <Chip size="sm" status="info">
-                  {s.over(formatQty(refData.overQty))}
-                </Chip>
-              ) : null}
-            </dd>
-          </div>
-        </dl>
+      <div className="oqc-band pu-band-stack is-fluid">
+        <PuBand grid={4} items={items} label={ps.bandLabel} />
       </div>
-      <dl className="pop-oqc-summary__ref">
-        {refs.map((item) => (
-          <div key={item.key}>
-            <dt>{item.label}</dt>
-            <dd>{item.value}</dd>
-          </div>
-        ))}
-      </dl>
+      {planOpen && (
+        <PopPlanDialog
+          inspectionTypeCode={request.inspectionTypeCode}
+          planId={planId}
+          planLabel={planLabel}
+          guides={guides}
+          title={ps.refs.plan}
+          items={<PlanItems form={measurements} />}
+          onClose={() => {
+            setPlanOpen(false);
+          }}
+        />
+      )}
     </section>
   );
 };
@@ -262,13 +388,14 @@ const LotLine = ({
   refData: ShipmentRequestRef | undefined;
   uom: string;
 }) => {
-  const portions = portionsText(refData?.lotOf(view.lot.lotId) ?? null, ps.staging);
+  const portions = portionsText(refData?.lotOf(view.lot.lotId) ?? null, ps.staging, uom);
 
   return (
     <li className="pop-oqc-shipment-lot">
+      {/* LOT 번호·수량은 한 줄(단위 포함), 창고 몫만 줄을 바꾼다(출하 완료 표 규칙과 같다). */}
       <span className="pop-oqc-shipment-lot__no">
-        <strong>{view.lot.lotNo}</strong>{' '}
-        <span>{`${formatQty(view.lot.lotQty)} ${uom}`.trim()}</span>
+        <strong className="pop-oqc-nowrap">{view.lot.lotNo}</strong>{' '}
+        <span className="pop-oqc-nowrap">{withUom(formatQty(view.lot.lotQty), uom || null)}</span>
       </span>
       <span className="pop-oqc-shipment-lot__judgment">
         <LotJudgmentChip code={view.judgmentCode} size="md" />
@@ -292,10 +419,13 @@ const ResultLine = ({
   result,
   lotNoOf,
   replacedIds,
+  serials,
 }: {
   result: InspectionResultSummaryForward;
   lotNoOf: (lotId: number) => string;
   replacedIds: readonly number[];
+  /** 이 회차가 마지막으로 쓴 시리얼 기록(서버는 시리얼당 한 줄 — 재검 회차가 고치면 그 회차로 옮겨 간다). */
+  serials: readonly OqcSerialRecord[];
 }) => (
   <li className="pop-oqc-shipment-result">
     <span className="pop-oqc-shipment-result__seq">{s.results.seq(result.seqNo)}</span>
@@ -326,6 +456,19 @@ const ResultLine = ({
           {s.results.reason(result.reinspectionReasonName ?? result.reinspectionReasonCode ?? '')}
         </span>
       ) : null}
+      {serials.length > 0 && (
+        <span className="pop-oqc-result-serials" aria-label={ps.results.serials(serials.length)}>
+          <span className="pop-oqc-shipment-muted">{ps.results.serials(serials.length)}</span>
+          {serials.map((record) => (
+            <span key={record.serialNumberId} className="pop-oqc-result-serial">
+              <b className="pu-mono">{record.serialNo}</b>
+              <PuChip tone={record.finalJudgmentCode === 'OK' ? 'ok' : 'bad'}>
+                {record.finalJudgmentCode === 'OK' ? serialText.ok : serialText.ng}
+              </PuChip>
+            </span>
+          ))}
+        </span>
+      )}
     </span>
     <span className="pop-oqc-shipment-muted">
       {[
@@ -347,9 +490,41 @@ export const PopShipmentDetail = ({
   uomCode: string | null;
 }) => {
   const { request, views } = form;
-  const judgmentHintId = useId();
-  /* 시리얼 기록은 옛 흐름과 같은 창으로 적는다(#295 — 요약 줄 + [시리얼 검사 기록] 창). */
-  const [serialOpen, setSerialOpen] = useState(false);
+  /* 피킹 LOT 현황 · 검사 결과 탭 — 다른 의뢰를 고르면 처음(피킹 LOT 현황)으로, 새로고침은 그대로 둔다. */
+  const [tab, setTab] = useState<'lots' | 'results'>('lots');
+  const requestId = request?.inspectionRequestId ?? null;
+  /* 결과 등록 안 두 구획 — ① 검사 대상 LOT · 판정, ② 검사 항목(있을 때만). 다른 의뢰를 고르면 ①로. 입력값은 그대로 남는다. */
+  const [entrySeg, setEntrySeg] = useState<'match' | 'items'>('match');
+  useEffect(() => {
+    setTab('lots');
+    setEntrySeg('match');
+  }, [requestId]);
+  /* 저장된 결과가 없으면 「검사 결과」 탭을 두지 않는다(사용자 지시 2026-11-20) — 그 탭에 있었으면 피킹 LOT 현황으로. */
+  const hasResults = form.results.length > 0;
+  useEffect(() => {
+    if (!hasResults) setTab('lots');
+  }, [hasResults]);
+  /* 서버가 ①의 칸(검사 대상 LOT · 재검 사유)을 짚어 거절하면 ①을 보인다 — 그 칸 아래 오류가 선다. */
+  const savedRuleCode = ruleCodeOf(form.save.error);
+  useEffect(() => {
+    if (
+      savedRuleCode === 'MATCHED_LOT_REQUIRED' ||
+      savedRuleCode === 'REINSPECTION_REASON_REQUIRED'
+    ) {
+      setEntrySeg('match');
+    }
+  }, [savedRuleCode]);
+  /* 칸에 드는 줄만 한 쪽으로(바깥 · 안쪽 스크롤 없음). 쪽 넘김은 각 카드 제목 줄 오른쪽에 둔다(줄 칸을 더 쓰게). */
+  const lotsFit = useFitPage(views?.active ?? [], false, requestId);
+  const resultsFit = useFitPage(
+    [...form.results].sort((a, b) => a.seqNo - b.seqNo),
+    false,
+    requestId,
+  );
+  const matchFit = useFitPage(views?.active ?? [], false, requestId);
+  const itemsFit = useFitPage(form.measurements.rows, true, requestId);
+  /* 저장된 시리얼 기록 — 검사 결과 탭에서 회차마다 보인다. 창에 적고 아직 저장 안 한 것은 넣지 않는다. */
+  const serialRecords = useOqcSerialRecords(requestId, true).data ?? [];
   if (request === undefined || views === null) {
     return <p className="field-note">{pop.detail.loading}</p>;
   }
@@ -364,170 +539,305 @@ export const PopShipmentDetail = ({
   const overview = overviewOfViews(request.statusCode, views.active);
   const pickedTotal = views.active.reduce((sum, view) => sum + view.lot.lotQty, 0);
   const skipped = request.statusCode === 'SKIPPED';
-  const writable = OPEN_STATUSES.includes(request.statusCode) && views.active.length > 0;
-  const ruleCode = ruleCodeOf(form.save.error);
+  const ruleCode = savedRuleCode;
+  const tabLabel = `${ps.lotsTitle} · ${s.results.title}`;
+  const shownTab = hasResults ? tab : 'lots';
+  /* 판정 완료 — 판정을 마친 열린 의뢰이거나 닫힌 의뢰. 이때는 탭 대신 두 카드로 나눈다. */
+  const split = form.judgedOpen || !OPEN_STATUSES.includes(request.statusCode);
+  const itemCount = form.measurements.rows.filter((row) => row.sampleNo === 1).length;
+  /* ② 검사 항목은 항목이 있거나 못 읽었을 때만(0개면 구획째 없음 — 사용자 지시 2026-11-20). */
+  const hasItemsSeg = itemCount > 0 || form.measurements.loadError !== null;
+  const seg = hasItemsSeg ? entrySeg : 'match';
+  const entryTitle = form.judgedOpen
+    ? ps.form.reinspectHeading(form.seqNo)
+    : ps.form.heading(form.seqNo);
+  const matchSegLabel = `${ps.form.match.matchHeading} · ${s.drawer.judgmentHeading}`;
+
+  /* 피킹 LOT 목록(살아 있는 LOT · 교체로 빠진 LOT) — 탭 카드와 나눈 카드가 같이 쓴다. */
+  const lotsBody = (
+    <>
+      {views.active.length === 0 && views.replaced.length === 0 ? (
+        /* 판정 대기인데 LOT 이 없으면 결과를 기록할 수 없다 — 그 까닭 한 줄(출하 완료 막힘 사유와 같은 안내 모양). */
+        OPEN_STATUSES.includes(request.statusCode) ? (
+          <PuNote tone="warn">{ps.form.noLots}</PuNote>
+        ) : (
+          <p className="pop-oqc-empty-row">{ps.lotsEmpty}</p>
+        )
+      ) : (
+        <ul ref={lotsFit.fitRef} className="pop-oqc-shipment-lots pu-fit">
+          {lotsFit.items.map((view) => (
+            <LotLine key={view.lot.lotId} view={view} refData={refData} uom={uom} />
+          ))}
+        </ul>
+      )}
+      {views.replaced.length === 0 ? null : (
+        <>
+          <p className="pop-oqc-shipment-muted pop-oqc-shipment-replaced-head">
+            <Icon name="swap_horiz" size={20} aria-hidden />
+            {ps.lotsReplacedHeading}
+          </p>
+          <ul className="pop-oqc-shipment-lots pop-oqc-shipment-lots--replaced">
+            {views.replaced.map((lot) => (
+              <li key={lot.lotId} className="pop-oqc-shipment-lot">
+                <span className="pop-oqc-shipment-lot__no">
+                  <s className="pop-oqc-nowrap">{lot.lotNo}</s>{' '}
+                  <span className="pop-oqc-nowrap">
+                    {withUom(formatQty(lot.lotQty), uom || null)}
+                  </span>
+                </span>
+                <Chip size="md">{s.lots.replaced}</Chip>
+                <span className="pop-oqc-shipment-muted">
+                  {popReplacedText(refData?.lotOf(lot.lotId) ?? null)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </>
+  );
+  /* 검사 결과 회차(· 시리얼) 목록. */
+  const resultsBody =
+    form.results.length === 0 ? (
+      <p className="pop-oqc-empty-row">{s.results.empty}</p>
+    ) : (
+      <ul ref={resultsFit.fitRef} className="pop-oqc-shipment-results pu-fit">
+        {resultsFit.items.map((result) => (
+          <ResultLine
+            key={result.inspectionResultId}
+            result={result}
+            lotNoOf={lotNoOf}
+            replacedIds={replacedIds}
+            serials={serialRecords.filter(
+              (record) => record.inspectionResultId === result.inspectionResultId,
+            )}
+          />
+        ))}
+      </ul>
+    );
+  const lotsCount =
+    views.active.length > 0 ? (
+      <>
+        {' '}
+        <PuCount tone="primary">{views.active.length}</PuCount>
+      </>
+    ) : null;
+  const resultsCount = hasResults ? (
+    <>
+      {' '}
+      <PuCount tone="primary">{form.results.length}</PuCount>
+    </>
+  ) : null;
+  const lotsTotal =
+    views.active.length > 0 ? (
+      <span className="pop-oqc-shipment-muted">
+        {s.lots.total(withUom(formatQty(pickedTotal), uom || null))}
+      </span>
+    ) : null;
 
   return (
     <div className="pop-oqc-shipment">
-      <div className="pop-oqc-shipment__col">
-        <Summary request={request} refData={refData} uom={uom} />
+      {/* 정보 띠는 상세 맨 위에 두 단을 가로질러 넓게(4열 · 1024 는 3열 — 사용자 지시 2026-11-20). */}
+      <Summary
+        request={request}
+        refData={refData}
+        uom={uom}
+        state={shipmentStateChip(request.statusCode, overview)}
+        measurements={form.measurements}
+      />
+      {/* 긴 안내 문단은 두지 않는다(POP 통일 · 사용자 지시 2026-11-20) — OQC 생략으로 닫힌 의뢰만 그 사실을 알린다. */}
+      {skipped && (
         <p className="field-note pop-oqc-shipment-note">
-          <Icon name={skipped ? 'fast_forward' : 'info'} size={20} aria-hidden />
-          <span>{skipped ? `${s.skipped} ${s.skippedMore}` : s.note}</span>
+          <Icon name="fast_forward" size={20} aria-hidden />
+          <span>{`${s.skipped} ${s.skippedMore}`}</span>
         </p>
-
-        <section className="pop-oqc-shipment-box" aria-label={s.lots.heading(views.active.length)}>
-          <div className="pop-oqc-shipment-box__head">
-            <h2>{s.lots.title}</h2>
-            <span className="pop-oqc-shipment-muted">{s.lots.count(views.active.length)}</span>
-            <span className="pop-oqc-shipment-gap" />
-            <OverviewChip overview={overview} size="md" />
-            <span className="pop-oqc-shipment-muted">
-              {s.lots.total(`${formatQty(pickedTotal)} ${uom}`.trim())}
-            </span>
-          </div>
-          {views.active.length === 0 && views.replaced.length === 0 ? (
-            <EmptyState
-              size="sm"
-              icon={<Icon name="inventory_2" size={24} />}
-              title={s.lots.emptyTitle}
-              description={s.lots.emptyDescription}
-            />
-          ) : (
-            <ul className="pop-oqc-shipment-lots">
-              {views.active.map((view) => (
-                <LotLine key={view.lot.lotId} view={view} refData={refData} uom={uom} />
-              ))}
-            </ul>
-          )}
-          {views.replaced.length === 0 ? null : (
-            <>
-              <p className="pop-oqc-shipment-muted pop-oqc-shipment-replaced-head">
-                <Icon name="swap_horiz" size={20} aria-hidden />
-                {ps.lotsReplacedHeading}
-              </p>
-              <ul className="pop-oqc-shipment-lots pop-oqc-shipment-lots--replaced">
-                {views.replaced.map((lot) => (
-                  <li key={lot.lotId} className="pop-oqc-shipment-lot">
-                    <span className="pop-oqc-shipment-lot__no">
-                      <s>{lot.lotNo}</s> <span>{`${formatQty(lot.lotQty)} ${uom}`.trim()}</span>
-                    </span>
-                    <Chip size="md">{s.lots.replaced}</Chip>
-                    <span className="pop-oqc-shipment-muted">
-                      {popReplacedText(refData?.lotOf(lot.lotId) ?? null)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </section>
-
+      )}
+      {split ? (
+        /*
+         * 판정 완료(판정을 마친 열린 의뢰 · 닫힌 의뢰)는 피킹 LOT 현황과 검사 결과를 나란히 두 카드로(사용자 지시 2026-11-20 —
+         * 출하 완료의 출하 품목 | 피킹 LOT 짜임). 높이는 같고 각자 칸에 드는 만큼 쪽으로 나눈다. 좁은 화면은 위아래.
+         */
+        <div
+          className={form.entryOpen ? 'pop-oqc-shipment-split is-entry' : 'pop-oqc-shipment-split'}
+        >
+          <section className="pop-oqc-shipment-box pop-oqc-shipment__col" aria-label={ps.lotsTitle}>
+            <div className="pop-oqc-shipment-box__head">
+              <h2 className="pop-oqc-shipment-box__title">
+                {ps.lotsTitle}
+                {lotsCount}
+              </h2>
+              <span className="pop-oqc-shipment-gap" />
+              {lotsTotal}
+              {lotsFit.pager(ps.lotsTitle)}
+            </div>
+            {lotsBody}
+          </section>
+          <section
+            className="pop-oqc-shipment-box pop-oqc-shipment__col"
+            aria-label={s.results.title}
+          >
+            <div className="pop-oqc-shipment-box__head">
+              <h2 className="pop-oqc-shipment-box__title">
+                {s.results.title}
+                {resultsCount}
+              </h2>
+              <span className="pop-oqc-shipment-gap" />
+              {resultsFit.pager(s.results.title)}
+            </div>
+            {resultsBody}
+          </section>
+        </div>
+      ) : (
+        /*
+         * 판정 대기 — 결과가 있으면 피킹 LOT 현황 · 검사 결과를 한 카드에서 탭으로(사용자 지시 2026-11-20), 결과가 없으면 탭 없이
+         * 피킹 LOT 현황 하나. 탭은 공통 `PuSeg`, 건수는 빨간 원(0 이면 숨김). 다른 의뢰를 고르면 피킹 LOT 현황으로.
+         */
         <section
-          className="pop-oqc-shipment-box"
-          aria-label={s.results.heading(form.results.length)}
+          className="pop-oqc-shipment-box pop-oqc-shipment__col"
+          aria-label={hasResults ? tabLabel : ps.lotsTitle}
         >
           <div className="pop-oqc-shipment-box__head">
-            <h2>{s.results.title}</h2>
-            <span className="pop-oqc-shipment-muted">{s.results.count(form.results.length)}</span>
+            {hasResults ? (
+              <PuSeg
+                label={tabLabel}
+                value={tab}
+                onChange={setTab}
+                options={[
+                  {
+                    value: 'lots',
+                    label: (
+                      <>
+                        {ps.lotsTitle}
+                        {lotsCount}
+                      </>
+                    ),
+                  },
+                  {
+                    value: 'results',
+                    label: (
+                      <>
+                        {s.results.title}
+                        {resultsCount}
+                      </>
+                    ),
+                  },
+                ]}
+              />
+            ) : (
+              /* 결과가 아직 없으면 탭 없이 보통 카드 제목처럼 「피킹 LOT 현황 n」. */
+              <h2 className="pop-oqc-shipment-box__title">
+                {ps.lotsTitle}
+                {lotsCount}
+              </h2>
+            )}
+            <span className="pop-oqc-shipment-gap" />
+            {shownTab === 'lots' && lotsTotal}
+            {shownTab === 'lots' ? lotsFit.pager(ps.lotsTitle) : resultsFit.pager(s.results.title)}
           </div>
-          {form.results.length === 0 ? (
-            <p className="field-note">{s.results.empty}</p>
-          ) : (
-            <ul className="pop-oqc-shipment-results">
-              {[...form.results]
-                .sort((a, b) => a.seqNo - b.seqNo)
-                .map((result) => (
-                  <ResultLine
-                    key={result.inspectionResultId}
-                    result={result}
-                    lotNoOf={lotNoOf}
-                    replacedIds={replacedIds}
-                  />
-                ))}
-            </ul>
-          )}
+          {shownTab === 'lots' ? lotsBody : resultsBody}
         </section>
-      </div>
+      )}
 
-      {writable ? (
-        <div className="pop-oqc-shipment__col pop-oqc-shipment-form">
-          <h2 className="pop-oqc-shipment-form__title">{ps.form.heading(form.seqNo)}</h2>
-          <p className="pop-oqc-shipment-muted">{ps.form.matchHint}</p>
-          <LotMatchField
-            lots={views.active.map((view) => view.lot)}
-            otherResults={form.results}
-            uomCode={uom}
-            value={form.matched}
-            disabled={form.save.isSaving}
-            error={
-              ruleCode === 'MATCHED_LOT_REQUIRED' ? s.drawer.ruleErrors.MATCHED_LOT_REQUIRED : null
-            }
-            onChange={form.setMatched}
-            text={s.drawer}
-            renderExtra={(lot) => {
-              const view = views.active.find((each) => each.lot.lotId === lot.lotId);
-              return view === undefined ? null : <LotJudgmentChip code={view.judgmentCode} />;
-            }}
-          />
-          <section className="pop-oqc-step" aria-label={s.drawer.judgmentHeading}>
-            <p className="pop-oqc-step__title">
-              {s.drawer.judgmentHeading}{' '}
-              <span className="required-mark" aria-hidden="true">
-                *
-              </span>
-            </p>
-            <p id={judgmentHintId} className="pop-oqc-step__hint">
-              {ps.form.judgmentHint}
-            </p>
-            <div
-              className="pop-oqc-shipment-judgments"
-              role="group"
-              aria-label={s.drawer.judgmentHeading}
-            >
-              {SHIPMENT_JUDGMENTS.map((code) => (
-                <Button
-                  key={code}
-                  type="button"
-                  size="xl"
-                  variant={form.judgment === code ? 'filled' : 'outlined'}
-                  aria-pressed={form.judgment === code}
-                  disabled={form.save.isSaving}
-                  aria-describedby={judgmentHintId}
-                  onClick={() => form.setJudgment(code)}
-                >
-                  {s.judgments[code]}
-                </Button>
-              ))}
-            </div>
-          </section>
-          {form.needsReason && form.judgment !== null ? (
-            <ReinspectionReasonField
-              overridden={form.overridden}
-              lotNoOf={lotNoOf}
-              judgmentCode={form.judgment}
-              value={form.reason}
-              error={
-                ruleCode === 'REINSPECTION_REASON_REQUIRED'
-                  ? s.drawer.ruleErrors.REINSPECTION_REASON_REQUIRED
-                  : null
-              }
-              disabled={form.save.isSaving}
-              onChange={form.setReason}
-              text={s.drawer}
-              lotLabel={(lotNo) => lotNo}
+      {form.entryOpen ? (
+        /*
+         * 결과 등록 — 옛 흐름 판정 단계 · 다른 POP 입력 카드와 같은 짜임(PuSection 제목 + PuField 이름 위 · 필수 빨간 *).
+         * 흐름: 검사 대상 LOT → 검사 항목 → 판정 → (재검 사유 · 시리얼) → 아래 [결과 저장](사용자 지시 2026-11-20).
+         */
+        <PuSection
+          title={entryTitle}
+          label={entryTitle}
+          className="pop-oqc-entry-card"
+          meta={
+            seg === 'items'
+              ? itemsFit.pager(itemsText.heading)
+              : matchFit.pager(ps.form.match.matchHeading)
+          }
+          head={
+            hasItemsSeg ? (
+              <PuSeg
+                label={entryTitle}
+                value={seg}
+                onChange={setEntrySeg}
+                options={[
+                  { value: 'match', label: matchSegLabel },
+                  {
+                    value: 'items',
+                    label: (
+                      <>
+                        {itemsText.heading} <PuCount tone="primary">{itemCount}</PuCount>
+                      </>
+                    ),
+                  },
+                ]}
+              />
+            ) : undefined
+          }
+        >
+          {/*
+           * 상세는 화면 높이 안에 다 든다(바깥 스크롤 없음 · 사용자 지시 2026-11-20). 결과 등록은 두 구획을 같은 `PuSeg` 로 바꿔 본다:
+           * ① 왼쪽 검사 대상 LOT · 오른쪽 판정(→ 재검 사유), ② 검사 항목 표 전폭. 목록 · 표는 칸에 드는 만큼 쪽으로 나눈다.
+           */}
+          {seg === 'items' ? (
+            <PopMeasurements
+              form={form.measurements}
+              locked={form.save.isSaving}
+              page={itemsFit.items}
+              fitRef={itemsFit.fitRef}
             />
-          ) : null}
-          {/* 검사 항목 측정 — 지금 검사 기준대로(FR-009 · 시안 P0406-After 메모 E 「지금처럼」). */}
-          <ShipmentMeasurementSection form={form.measurements} locked={form.save.isSaving} />
-          <PopSerialSummary
-            rows={form.serialRows}
-            disabled={form.save.isSaving}
-            onOpen={() => {
-              setSerialOpen(true);
-            }}
-          />
-          {serialOpen && (
+          ) : (
+            <div className="pop-oqc-entry">
+              <PopLotMatch
+                views={views.active}
+                page={matchFit.items}
+                fitRef={matchFit.fitRef}
+                results={form.results}
+                uom={uom}
+                value={form.matched}
+                disabled={form.save.isSaving}
+                error={
+                  ruleCode === 'MATCHED_LOT_REQUIRED'
+                    ? s.drawer.ruleErrors.MATCHED_LOT_REQUIRED
+                    : null
+                }
+                onChange={form.setMatched}
+              />
+              <div className="pop-oqc-entry__col">
+                {/* 판정은 옛 흐름과 같은 공통 고르기 타일(`PuTiles` · 단일 선택 · 판정 색). */}
+                <PuField label={s.drawer.judgmentHeading} required>
+                  <PuTiles
+                    label={s.drawer.judgmentHeading}
+                    cols={3}
+                    value={form.judgment}
+                    disabled={form.save.isSaving}
+                    options={SHIPMENT_JUDGMENTS.map((code) => ({
+                      value: code,
+                      label: s.judgments[code],
+                      judge: judgeOf(code),
+                    }))}
+                    onChange={form.setJudgment}
+                  />
+                </PuField>
+                {form.needsReason && form.judgment !== null ? (
+                  <ReinspectionReasonField
+                    overridden={form.overridden}
+                    lotNoOf={lotNoOf}
+                    judgmentCode={form.judgment}
+                    value={form.reason}
+                    error={
+                      ruleCode === 'REINSPECTION_REASON_REQUIRED'
+                        ? s.drawer.ruleErrors.REINSPECTION_REASON_REQUIRED
+                        : null
+                    }
+                    disabled={form.save.isSaving}
+                    onChange={form.setReason}
+                    text={s.drawer}
+                    lotLabel={(lotNo) => lotNo}
+                  />
+                ) : null}
+              </div>
+            </div>
+          )}
+          {form.serialOpen && (
             <PopSerialDialog
               inspectionRequestId={request.inspectionRequestId}
               itemId={request.itemId}
@@ -535,13 +845,253 @@ export const PopShipmentDetail = ({
               onChange={form.setSerialRows}
               disabled={form.save.isSaving}
               onClose={() => {
-                setSerialOpen(false);
+                form.setSerialOpen(false);
               }}
             />
           )}
-        </div>
+        </PuSection>
       ) : null}
     </div>
+  );
+};
+
+/**
+ * 검사 기준 창의 검사 항목 — No. · 검사 내용 · 규격 · 샘플 수 · 자동 판정. 결과 입력과 같은 데이터·같은 구분을 쓴다:
+ * 못 읽었으면 오류 띠, 읽었는데 0개면 칸째 두지 않는다(사용자 지시 2026-11-20).
+ */
+const PlanItems = ({ form }: { form: ShipmentMeasurements }) => {
+  const uoms = useUomLookup();
+  const items = form.rows.filter((row) => row.sampleNo === 1);
+  /* 항목이 없으면(또는 아직 읽는 중이면) 칸째 두지 않는다 — 결과 입력과 같은 규칙(사용자 지시 2026-11-20). */
+  if (form.loadError === null && items.length === 0) return null;
+  return (
+    <PuField label={itemsText.heading}>
+      {form.loadError !== null ? (
+        <QueueLoadErrorBanner error={toApiError(form.loadError)} onRetry={form.retry} />
+      ) : (
+        /* 창 안 스크롤 대신 쪽 넘김(다른 POP 표와 같다). */
+        <Paged list={items} size={PLAN_PAGE} label={itemsText.heading}>
+          {(page) => (
+            <div className="pu-table-wrap">
+              <table className="pu-table" aria-label={itemsText.heading}>
+                <thead>
+                  <tr>
+                    <th scope="col" className="fit num">
+                      {itemsText.columns.no}
+                    </th>
+                    <th scope="col">{itemsText.columns.item}</th>
+                    <th scope="col" className="fit">
+                      {itemsText.columns.spec}
+                    </th>
+                    <th scope="col" className="fit num">
+                      {measureText.columns.sample}
+                    </th>
+                    <th scope="col" className="fit">
+                      {itemsText.autoJudgment}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {page.map((row) => (
+                    <tr key={row.inspectionItemSpecId}>
+                      <td className="fit num">{row.displayNo}</td>
+                      <td className="pop-oqc-wrap">{row.itemName}</td>
+                      <td className="fit">
+                        {describeSpec(row.spec, uoms.codeOf(row.spec.uomId ?? undefined))}
+                      </td>
+                      <td className="fit num">{row.sampleCount}</td>
+                      <td className="fit">{row.automaticJudgment ? <PuIcon name="ok" /> : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Paged>
+      )}
+    </PuField>
+  );
+};
+
+/** 검사 기준 창 항목 표 한 쪽 줄 수(1024 창 높이에도 드는 만큼). */
+const PLAN_PAGE = 5;
+
+/** 칸 높이에 드는 줄만 한 쪽으로(공통 `useFitPages`) + 카드 제목 줄 오른쪽 쪽 넘김. */
+const useFitPage = <T,>(list: readonly T[], table: boolean, resetKey: unknown) => {
+  const fit = useFitPages(list, { table, resetKey });
+  return {
+    fitRef: fit.fitRef,
+    items: fit.items,
+    /** 건수는 탭 · 구획 이름 옆에 있어 「총 N건」은 두지 않는다. */
+    pager: (label: string) => (
+      <PuPager
+        total={fit.total}
+        page={fit.page}
+        pages={fit.pages}
+        onPage={fit.setPage}
+        label={label}
+        showTotal={false}
+      />
+    ),
+  };
+};
+
+/** 받은 목록을 쪽으로 나눠 그리고 아래에 공통 쪽 넘김(「총 N건 ‹ n/m ›」). 의뢰가 바뀌면 `key` 로 1쪽부터. */
+const Paged = <T,>({
+  list,
+  size,
+  label,
+  children,
+}: {
+  list: readonly T[];
+  size: number;
+  label: string;
+  children: (page: T[]) => ReactNode;
+}) => {
+  const paged = useClientPage(list, size);
+  return (
+    <>
+      {children(paged.items)}
+      <PuPager
+        total={paged.total}
+        page={paged.page}
+        pages={paged.pages}
+        onPage={paged.setPage}
+        label={label}
+      />
+    </>
+  );
+};
+
+/**
+ * 검사 대상 LOT — 결과를 걸 피킹 LOT 고르기. 다른 POP 고르기 목록과 같은 체크 줄(`pu-check`)과 [전체 선택] · [선택 해제].
+ * 동작은 공용 `LotMatchField` 와 같다 — 체크한 LOT 은 피킹 순서대로 담고, 다른 회차에 걸린 LOT 은 그 회차를 적는다.
+ */
+const PopLotMatch = ({
+  views,
+  page,
+  fitRef,
+  results,
+  uom,
+  value,
+  disabled,
+  error,
+  onChange,
+}: {
+  views: readonly PickedLotView[];
+  /** 지금 쪽에 보일 줄(칸에 드는 만큼). */
+  page: readonly PickedLotView[];
+  fitRef: PuFitRef;
+  results: readonly InspectionResultSummaryForward[];
+  uom: string;
+  value: readonly number[];
+  disabled: boolean;
+  error: string | null;
+  onChange: (next: number[]) => void;
+}) => {
+  const ids = views.map((view) => view.lot.lotId);
+
+  return (
+    <PuField
+      label={ps.form.match.matchHeading}
+      required
+      aside={
+        <span className="pop-oqc-match-actions">
+          <PuButton
+            size="sm"
+            disabled={disabled || value.length === ids.length}
+            onClick={() => onChange(ids)}
+          >
+            {ps.form.match.selectAll}
+          </PuButton>
+          <PuButton
+            size="sm"
+            disabled={disabled || value.length === 0}
+            onClick={() => onChange([])}
+          >
+            {ps.form.match.selectNone}
+          </PuButton>
+        </span>
+      }
+    >
+      <ul ref={fitRef} className="pop-oqc-match pu-fit">
+        {page.map((view) => {
+          const { lot } = view;
+          const checked = value.includes(lot.lotId);
+          const also = results
+            .filter((result) => result.matchedLotIds.includes(lot.lotId))
+            .map((result) => String(result.seqNo));
+          return (
+            <li key={lot.lotId}>
+              <label className="pu-check">
+                <input
+                  type="checkbox"
+                  aria-label={lot.lotNo}
+                  checked={checked}
+                  disabled={disabled}
+                  onChange={() =>
+                    onChange(
+                      checked
+                        ? value.filter((id) => id !== lot.lotId)
+                        : ids.filter((id) => id === lot.lotId || value.includes(id)),
+                    )
+                  }
+                />
+                <b className="pu-mono pop-oqc-lotno">{lot.lotNo}</b>
+                <span className="pop-oqc-nowrap">
+                  {withUom(formatQty(lot.lotQty), uom || null)}
+                </span>
+                {lot.package != null && (
+                  <span className="pop-oqc-shipment-muted">{formatPackage(lot.package)}</span>
+                )}
+              </label>
+              <LotJudgmentChip code={view.judgmentCode} />
+              {also.length > 0 && (
+                <span className="pop-oqc-shipment-muted">
+                  {s.drawer.alsoMatched(also.join(', '))}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {error !== null && <PuNote tone="bad">{error}</PuNote>}
+    </PuField>
+  );
+};
+
+/**
+ * 검사 항목 — 항목이 있으면 지금 표 그대로. 다 읽었는데 항목이 없으면 칸을 두지 않고,
+ * 못 읽었으면 오류 띠(다시 시도). 두 경우를 섞지 않는다(사용자 지시 2026-11-20). 항목이 없어도 저장은 막지 않는다(지금 규칙).
+ */
+const PopMeasurements = ({
+  form,
+  locked,
+  page,
+  fitRef,
+}: {
+  form: ShipmentMeasurements;
+  locked: boolean;
+  /** 지금 쪽에 보일 줄(칸에 드는 만큼). 넣은 값은 쪽을 넘겨도 남는다(값은 폼이 든다). */
+  page: ShipmentMeasurements['rows'];
+  fitRef: PuFitRef;
+}) => {
+  if (form.rows.length > 0) {
+    return (
+      <div ref={fitRef} className="pu-fit pop-oqc-items">
+        <ShipmentMeasurementSection form={form} locked={locked} visibleRows={page} />
+      </div>
+    );
+  }
+  if (!form.hasPlan || form.isLoading) {
+    return <ShipmentMeasurementSection form={form} locked={locked} />;
+  }
+  /* 다 읽었는데 항목이 없으면 「검사 항목」 칸째 두지 않는다(제목 · 안내 없음 · 사용자 지시 2026-11-20). */
+  if (form.loadError === null) return null;
+  return (
+    <PuField label={itemsText.heading}>
+      <QueueLoadErrorBanner error={toApiError(form.loadError)} onRetry={form.retry} />
+    </PuField>
   );
 };
 
@@ -572,7 +1122,13 @@ export const PopShipmentBar = ({ form }: { form: PopShipmentForm }) => {
   ) : save.error !== null ? (
     <SaveErrorBanner error={save.error} onReload={() => void form.query.refetch()} />
   ) : blockedReason !== null ? (
-    <p className="pop-oqc-bar-note pop-oqc-bar-note--blocked">
+    /* 측정 값 오류는 공통 메뉴 아래에서도 보인다 — 쪽을 넘겨 오류 줄을 놓쳐도 저장이 잠긴 까닭을 안다(#334 · 리뷰). */
+    <p
+      className={puCx(
+        'pop-oqc-bar-note pop-oqc-bar-note--blocked',
+        blockedReason === ps.bar.blocked.measurement && 'is-shown',
+      )}
+    >
       <Icon name="info" size={24} aria-hidden />
       <span>{blockedReason}</span>
     </p>
@@ -583,6 +1139,31 @@ export const PopShipmentBar = ({ form }: { form: PopShipmentForm }) => {
     </p>
   );
 
+  /*
+   * 판정을 마친 열린 의뢰는 결과 등록을 닫아 두고 [재검사] 하나만 둔다(사용자 지시 2026-11-20). 띠 글은 방금 저장한 회차만.
+   */
+  if (form.writable && !form.entryOpen) {
+    return (
+      <PuActionBar
+        lead={
+          <div className="pop-action-note" aria-live="polite">
+            {savedSeq === null ? null : (
+              <p className="pop-oqc-bar-note pop-oqc-bar-note--success">
+                <Icon name="check_circle" size={24} aria-hidden />
+                <span>{ps.bar.saved(savedSeq)}</span>
+              </p>
+            )}
+          </div>
+        }
+      >
+        {/* [결과 저장]과 같은 주 동작 단추(빨강 채움 · 같은 크기 · 맨 오른쪽 — 사용자 지시 2026-11-20). */}
+        <PuButton variant="primary" onClick={form.reinspect}>
+          {ps.bar.reinspect}
+        </PuButton>
+      </PuActionBar>
+    );
+  }
+
   /* #295 — 공통 작업 줄(`PuActionBar`)에 선다: 왼쪽 띠 글, 오른쪽 [결과 저장]. */
   return (
     <PuActionBar
@@ -592,6 +1173,24 @@ export const PopShipmentBar = ({ form }: { form: PopShipmentForm }) => {
         </div>
       }
     >
+      {/* [재검사]로 연 결과 등록만 [취소] — 닫으면서 적던 값을 버린다. */}
+      {form.judgedOpen && (
+        <PuButton disabled={save.isSaving} onClick={form.cancelReinspect}>
+          {messages.common.cancel}
+        </PuButton>
+      )}
+      {/* [시리얼 검사 기록] — [결과 저장] 바로 왼쪽. 적은 대수는 단추의 건수(0 이면 숨김), NG 대수는 창 안에 있다. */}
+      {form.writable && (
+        <PuButton
+          disabled={save.isSaving}
+          onClick={() => {
+            form.setSerialOpen(true);
+          }}
+        >
+          {pop.serial.open}
+          {form.serialRows.length > 0 && <PuCount>{form.serialRows.length}</PuCount>}
+        </PuButton>
+      )}
       {/* 잠긴 까닭은 바로 옆 띠 글이다(C-4). */}
       <PuButton
         variant="primary"

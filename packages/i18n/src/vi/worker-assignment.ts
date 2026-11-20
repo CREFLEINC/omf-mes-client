@@ -55,7 +55,6 @@ export const workerAssignment: Translated<typeof ko.workerAssignment> = {
   },
   header: {
     brand: 'OMF-MES POP',
-    label: 'Máy trạm',
     online: common.connection.online,
     offline: common.connection.offline,
   },
@@ -71,16 +70,8 @@ export const workerAssignment: Translated<typeof ko.workerAssignment> = {
     note: 'Đang ngoại tuyến. Kiểm tra bằng danh sách công nhân đã nhận trước.',
   },
   current: {
-    heading: 'Công nhân hiện tại',
-    none: 'Chưa có công nhân hiện tại.',
-    noneHelp: 'Hãy nhập mã nhân viên.',
-    confirmed: 'Đã xác nhận',
-    workerNo: 'Mã nhân viên',
-    assignedAt: 'Thời điểm chỉ định',
-    shift: 'Đổi công nhân',
     pendingQueue: (count: number): string =>
       `Còn ${count} bản ghi chưa gửi vẫn mang mã nhân viên trước`,
-    toWork: 'Đến màn hình công việc →',
     otherPlant: 'Thuộc nhà máy khác.',
   },
   error: {

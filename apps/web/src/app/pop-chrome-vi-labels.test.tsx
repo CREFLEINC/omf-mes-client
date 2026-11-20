@@ -39,7 +39,7 @@ const OPTIONS = Array.from({ length: 7 }, (_, index) => ({
 }));
 
 describe('POP 공통 조작 문구 — 베트남어', () => {
-  it('공통 이동 메뉴(#291)의 홈·남은 작업·사용자 전환이 베트남어로 선다', async () => {
+  it('공통 이동 메뉴(#291)의 홈·남은 작업·로그인이 베트남어로 선다', async () => {
     renderWithProviders(<PopScreenNav terminalCode="POP-01" />, {
       route: '/pop/work-start',
       fetch: createStubFetch([
@@ -57,8 +57,9 @@ describe('POP 공통 조작 문구 — 베트남어', () => {
       screen.getByRole('button', { name: viMessages.popChrome.remaining.buttonLabel(0) }),
     ).toHaveTextContent(viMessages.popChrome.remaining.button);
     expect(
-      screen.getByRole('button', { name: new RegExp(`^${viMessages.popChrome.userSwitch}`, 'u') }),
-    ).toBeInTheDocument();
+      /* 사번이 없으면 사번 칩은 「사번 미입력 | 로그인」(#334). */
+      screen.getByRole('button', { name: new RegExp(`^${viMessages.popChrome.login}`, 'u') }),
+    ).toHaveTextContent(viMessages.popChrome.login);
     expect(screen.queryByText('홈')).not.toBeInTheDocument();
     expect(screen.queryByText('남은 작업')).not.toBeInTheDocument();
     expect(screen.queryByText('사용자 전환')).not.toBeInTheDocument();

@@ -96,8 +96,8 @@ export const POP_HIDDEN_SCREEN_PATHS: readonly string[] = [
 /**
  * 갈 수 있는 POP 화면.
  *
- * ⛔ **진입 화면(`P-CO-01` · `/pop/worker-assignment`)은 담지 않는다.** 그 화면으로 가는 길은
- * [사용자 전환]이고, 여기에 두면 사번을 지우지 않은 채 진입 화면이 열려 두 길이 어긋난다.
+ * ⛔ **진입 화면(홈 · `/pop/home`)은 담지 않는다.** 홈은 공통 메뉴의 [홈] 단추로 가고, 사번 입력은
+ * [사용자 전환]이 사번을 지운 뒤 홈에서 선다.
  *
  * ⛔ **통합·폐지된 화면을 남겨 두지 않는다**(G-34). 라우트가 걷힌 화면이 목록에 남으면 눌러도
  * 진입 화면으로 되돌아가, 작업자에게는 「눌리지 않는 버튼」으로 보인다.
@@ -216,8 +216,11 @@ export const POP_SCREENS: readonly PopScreen[] = [
   },
 ];
 
-/** 진입 화면. 목록에서 빠지는 것이 정상이라는 사실을 감지기가 이 값으로 확인한다. */
-export const POP_ENTRY_SCREEN_PATH = '/pop/worker-assignment';
+/**
+ * 진입 화면 — 홈이다(사번 입력 화면을 없애고 홈에서 사번을 확인 · omf-all-around#334). 목록에서 빠지는 것이
+ * 정상이라는 사실을 감지기가 이 값으로 확인한다.
+ */
+export const POP_ENTRY_SCREEN_PATH = '/pop/home';
 
 /**
  * 홈(#291) — 사번 확인 뒤 처음 서는 화면. 권한 코드가 없는 안내 화면이라 `POP_SCREENS`(권한으로
