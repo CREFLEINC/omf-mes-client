@@ -373,6 +373,10 @@ describe('ShipmentRequestCreateScreen — 지시서 가져오기(완료 조건 C
 
     expect(await screen.findByRole('heading', { name: t.title })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '지시서 가져오기' })).toBeNull();
+    expect(screen.getByRole('button', { name: t.actions.startStandalone })).toBeInTheDocument();
+    expect(t.actions.startStandalone).toBe('ERP S/O 없이 생성');
+    expect(screen.queryByRole('button', { name: /가져오기|Import/i })).not.toBeInTheDocument();
+    expect(t.title).toBe('출하작업지시 생성');
   });
 });
 

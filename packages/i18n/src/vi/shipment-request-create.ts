@@ -1,12 +1,12 @@
 import type { ko } from '../ko';
 import type { Translated } from './translated';
 
-/** W-04-01 출하지시서 Import·작업지시 생성. 지시서 경유와 단독 생성이 한 폼을 나눠 쓴다. */
+/** W-04-01 출하작업지시 생성. ERP S/O 경유와 ERP S/O 없이 생성이 한 폼을 나눠 쓴다. */
 export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> = {
-  title: 'Nhập phiếu chỉ thị xuất hàng và tạo lệnh xuất hàng',
+  title: 'Tạo lệnh xuất hàng',
   breadcrumbRoot: 'Quản lý bán hàng / xuất hàng',
   panes: {
-    source: 'Danh sách phiếu chỉ thị xuất hàng',
+    source: 'Danh sách ERP S/O',
     header: 'Thông tin lệnh xuất hàng',
     lines: 'Dòng của lệnh xuất hàng',
   },
@@ -28,7 +28,7 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
     chipRemoveUnassignedOnly: 'Bỏ điều kiện chỉ chưa lập lệnh',
   },
   table: {
-    salesOrderNo: 'Số phiếu chỉ thị',
+    salesOrderNo: 'ERP S/O',
     customer: 'Khách hàng',
     orderDate: 'Ngày đặt hàng',
     status: 'Trạng thái',
@@ -44,7 +44,7 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
     prevPage: 'Trước',
     nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
-    startStandalone: 'Tạo độc lập không cần phiếu chỉ thị',
+    startStandalone: 'Tạo không cần ERP S/O',
     addLine: 'Thêm dòng',
     removeLine: (rowIndex: number): string => `Xóa dòng ${String(rowIndex)}`,
     submit: 'Lập lệnh xuất hàng',
@@ -94,7 +94,7 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
   actionReasons: {
     saving: 'Đang gửi.',
     alreadySubmitted: 'Đã lập lệnh rồi.',
-    noTarget: 'Hãy chọn phiếu chỉ thị trước hoặc bắt đầu tạo độc lập.',
+    noTarget: 'Hãy chọn ERP S/O trước hoặc bấm [Tạo không cần ERP S/O].',
     noAllocatedLine: 'Không có dòng nào có số lượng phân bổ từ 1 trở lên.',
     lineInvalid: 'Hãy kiểm tra phần nhập của các dòng.',
     lineIncomplete: 'Hãy điền mặt hàng, đơn vị và số lượng yêu cầu của dòng.',
@@ -102,10 +102,10 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
   },
   notes: {
     fromOrderLocked:
-      'Đây là lệnh lập qua phiếu chỉ thị nên không sửa được khách hàng, nơi giao hàng và mặt hàng, số lượng của các dòng.',
+      'Đây là lệnh lập theo ERP S/O nên không sửa được khách hàng, nơi giao hàng và mặt hàng, số lượng của các dòng.',
     requestedQtyFixed:
-      'Số lượng yêu cầu được tự động điền bằng số lượng còn lại của phiếu chỉ thị và không sửa được.',
-    erpUnmatched: 'Phần tạo độc lập không có số phiếu chỉ thị ERP.',
+      'Số lượng yêu cầu được tự động điền bằng số lượng còn lại của ERP S/O và không sửa được.',
+    erpUnmatched: 'Lệnh tạo không cần ERP S/O thì không có số ERP S/O.',
     networkUnconfirmed:
       'Chưa nhận được phản hồi. Hãy kiểm tra lại xem máy chủ đã ghi nhận thật chưa rồi thử lại.',
   },
@@ -120,16 +120,16 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
     lineCount: (count: number): string => `${String(count)} dòng`,
   },
   loading: {
-    sourceList: 'Đang tải danh sách phiếu chỉ thị xuất hàng',
-    sourceDetail: 'Đang tải chi tiết phiếu chỉ thị xuất hàng',
+    sourceList: 'Đang tải danh sách ERP S/O',
+    sourceDetail: 'Đang tải chi tiết ERP S/O',
   },
   empty: {
-    noResultTitle: 'Không có phiếu chỉ thị xuất hàng nào khớp điều kiện',
+    noResultTitle: 'Không có ERP S/O nào khớp điều kiện',
     noResultDescription: 'Hãy đổi điều kiện hoặc đặt lại rồi tra cứu lại.',
     beyondLastTitle: 'Trang này không có kết quả',
     beyondLastDescription: 'Hãy về trang đầu.',
-    noTargetTitle: 'Hãy chọn phiếu chỉ thị hoặc bắt đầu tạo độc lập',
+    noTargetTitle: 'Hãy chọn ERP S/O hoặc bấm [Tạo không cần ERP S/O]',
     noTargetDescription:
-      'Chọn phiếu chỉ thị xuất hàng ở danh sách bên trái thì sẽ lập lệnh theo phiếu đó; muốn tạo mà không có phiếu chỉ thị thì hãy bấm nút bên dưới.',
+      'Chọn ERP S/O ở danh sách bên trái thì sẽ lập lệnh theo S/O đó; muốn tạo mà không có ERP S/O thì hãy bấm nút bên dưới.',
   },
 };

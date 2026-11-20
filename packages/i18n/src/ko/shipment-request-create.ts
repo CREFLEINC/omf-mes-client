@@ -1,5 +1,5 @@
 /**
- * W-04-01 출하지시서 Import·작업지시 생성.
+ * W-04-01 출하작업지시 생성(ERP S/O 로 편성하거나 ERP S/O 없이 생성).
  *
  * 좌측은 고객사 출하지시서(SalesOrder) 목록, 우측은 출하작업지시(ShipmentRequest) 편성 폼이다.
  * 지시서를 고르면 「지시서 경유」 모드(고객·납품처 잠김·라인 고정)가 되고, 지시서 없이
@@ -7,10 +7,10 @@
  * 하나를 공유한다 — `salesOrderId`를 비우면 단독 생성이다.
  */
 export const shipmentRequestCreate = {
-  title: '출하지시서 Import·작업지시 생성',
+  title: '출하작업지시 생성',
   breadcrumbRoot: '영업 / 출하 관리',
   panes: {
-    source: '출하지시서 목록',
+    source: 'ERP S/O 목록',
     header: '출하작업지시 정보',
     lines: '출하작업지시 라인',
   },
@@ -31,7 +31,7 @@ export const shipmentRequestCreate = {
     chipRemoveUnassignedOnly: '미편성만 조건 제거',
   },
   table: {
-    salesOrderNo: '지시서번호',
+    salesOrderNo: 'ERP S/O',
     customer: '고객',
     orderDate: '주문일',
     status: '상태',
@@ -47,7 +47,7 @@ export const shipmentRequestCreate = {
     prevPage: '이전',
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
-    startStandalone: '지시서 없이 단독 생성',
+    startStandalone: 'ERP S/O 없이 생성',
     addLine: '라인 추가',
     removeLine: (rowIndex: number): string => `${String(rowIndex)}행 삭제`,
     submit: '출하작업지시 편성',
@@ -97,7 +97,7 @@ export const shipmentRequestCreate = {
   actionReasons: {
     saving: '전송 중입니다.',
     alreadySubmitted: '이미 편성했습니다.',
-    noTarget: '먼저 지시서를 고르거나 단독 생성을 시작하세요.',
+    noTarget: '먼저 ERP S/O 를 고르거나 [ERP S/O 없이 생성]을 누르세요.',
     noAllocatedLine: '배정 수량이 1 이상인 라인이 하나도 없습니다.',
     lineInvalid: '라인 입력을 확인하세요.',
     /*
@@ -109,9 +109,9 @@ export const shipmentRequestCreate = {
     headerIncomplete: '필수 항목을 입력하세요.',
   },
   notes: {
-    fromOrderLocked: '지시서 경유 편성이라 고객·납품처와 라인 품목·수량은 고칠 수 없습니다.',
-    requestedQtyFixed: '요청 수량은 지시서 잔여 수량으로 자동 채워지며 고칠 수 없습니다.',
-    erpUnmatched: 'ERP 지시서 번호는 단독 생성분에는 없습니다.',
+    fromOrderLocked: 'ERP S/O 로 편성하는 중이라 고객, 납품처, 라인 품목과 수량은 고칠 수 없습니다.',
+    requestedQtyFixed: '요청 수량은 ERP S/O 잔여 수량으로 자동 채워지며 고칠 수 없습니다.',
+    erpUnmatched: 'ERP S/O 없이 생성한 작업지시에는 ERP S/O 번호가 없습니다.',
     networkUnconfirmed:
       '응답을 받지 못했습니다. 서버에 실제로 반영됐는지 다시 확인한 뒤 재시도하세요.',
   },
@@ -126,16 +126,16 @@ export const shipmentRequestCreate = {
     lineCount: (count: number): string => `라인 ${String(count)}건`,
   },
   loading: {
-    sourceList: '출하지시서 목록을 불러오는 중',
-    sourceDetail: '출하지시서 상세를 불러오는 중',
+    sourceList: 'ERP S/O 목록을 불러오는 중',
+    sourceDetail: 'ERP S/O 상세를 불러오는 중',
   },
   empty: {
-    noResultTitle: '조건에 맞는 출하지시서가 없습니다',
+    noResultTitle: '조건에 맞는 ERP S/O 가 없습니다',
     noResultDescription: '조건을 바꾸거나 초기화한 뒤 다시 조회하세요.',
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
     beyondLastDescription: '첫 쪽으로 이동하세요.',
-    noTargetTitle: '지시서를 고르거나 단독 생성을 시작하세요',
+    noTargetTitle: 'ERP S/O 를 고르거나 [ERP S/O 없이 생성]을 누르세요',
     noTargetDescription:
-      '왼쪽 목록에서 출하지시서를 고르면 그 지시서로 편성하고, 지시서 없이 만들려면 아래 버튼을 누르세요.',
+      '왼쪽 목록에서 ERP S/O 를 고르면 그 S/O 로 편성하고, ERP S/O 없이 만들려면 아래 버튼을 누르세요.',
   },
 } as const;
