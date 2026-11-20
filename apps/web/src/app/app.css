@@ -36600,12 +36600,6 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
  * 검증 2회차: 상세 표가 넓은 표 하한(58rem)을 끌고 와 창 밖으로 나갔고, 목록 표는 오른쪽 칸이 잘렸다.
  */
 /* 출하 내역 머리 줄 — 화면 설명 띠를 걷어 배치 바꾸기(⋯)만 남았다. 오른쪽 끝에 둔다(관리웹 정리 시안 A). */
-.ship-history-lead {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-}
-
 /* 목록 표는 창보다 넓으면 표 안에서 가로로 구른다(T-W-A). */
 .ship-history-split .wide-table {
   min-width: 0;

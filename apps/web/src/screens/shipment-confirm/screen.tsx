@@ -66,7 +66,7 @@ export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) 
    * 목록 · 상세 배치(T-W-A) — 검사 조회·판정과 같은 좌우 분할(막대로 폭을 나눔), 1440 보다 좁거나 상하를 고르면 위아래.
    * 각 창은 창 바닥에서 멈추고 안에서 구른다. 검증 2회차: 직접 짠 2열 격자에서 상세 표가 창 밖으로 넘쳤다.
    */
-  const { splitRef, aboveRef } = useFitToViewport();
+  const { splitRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:shipment-confirm:split', 0.5);
   const layout = useSplitOrientation('omf-mes:shipment-confirm:split-orientation');
 
@@ -151,11 +151,15 @@ export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) 
             aria-label={messages.common.shell.breadcrumb}
           />
         }
+        /* 화면 설명 띠는 걷고(출하가 어디서 끝나는지는 목록 제목 옆 ⓘ), 배치 「⋯」은 머리 오른쪽에 — 빈 줄을 남기지 않는다. */
+        actions={
+          <SplitOrientationToggle
+            orientation={layout.orientation}
+            onChange={layout.change}
+            inline
+          />
+        }
       />
-      {/* 화면 설명 띠는 걷고, 출하가 어디서 끝나는지는 목록 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
-      <header ref={aboveRef} className="banner-slot ship-history-lead">
-        <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} inline />
-      </header>
 
       <div
         ref={splitRef}
