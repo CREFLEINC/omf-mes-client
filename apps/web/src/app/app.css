@@ -37108,6 +37108,18 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   box-shadow: var(--focus-ring);
 }
 
+/* 칸 라벨 + ⓘ(patterns/info-tip.tsx `InfoLabel`) — 라벨 줄 높이를 늘리지 않게 ⓘ 를 가운데 맞춘다. */
+.info-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.info-label > .field-label {
+  margin: 0;
+}
+
 /* 긴 문장은 줄을 바꾼다 — DS 툴팁은 한 줄 라벨이 기본이다. */
 .info-tip-anchor > [role="tooltip"] {
   width: max-content;

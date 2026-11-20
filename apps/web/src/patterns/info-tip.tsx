@@ -13,3 +13,24 @@ export const InfoTip = ({ text }: { text: string }) => (
     </button>
   </Tooltip>
 );
+
+/**
+ * 칸 라벨 + ⓘ — 칸 아래 설명문(C-6 금지)을 라벨 옆 ⓘ 로 옮길 때 쓴다. DS `TextField` · `Select` 의 라벨은 글자만
+ * 받아 ⓘ 를 넣을 수 없으므로, 그 칸은 `label` 을 비우고 같은 `id` 를 주어 이 라벨에 잇는다.
+ */
+export const InfoLabel = ({
+  htmlFor,
+  label,
+  info,
+}: {
+  htmlFor: string;
+  label: string;
+  info: string;
+}) => (
+  <span className="info-label">
+    <label className="field-label" htmlFor={htmlFor}>
+      {label}
+    </label>
+    <InfoTip text={info} />
+  </span>
+);
