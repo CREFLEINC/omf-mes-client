@@ -13815,14 +13815,6 @@ button.app-button-neutral {
   overflow-wrap: anywhere;
 }
 
-/* 역할명이 먼저 읽히고 코드는 곁에 작게 — 운영자가 짚어 볼 값이라 지우지 않는다. */
-.role-choice-code {
-  margin-left: var(--space-2);
-  color: var(--on-surface-variant);
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
-}
-
 /**
  * 전체 선택·해제 — **표 위에 둔다.** 아래 액션 줄에 섞으면 「저장」과 나란히 서서 누르는
  * 순간 저장되는 것으로 읽힌다. 이 둘은 고르기만 하고 서버로 나가는 것은 「저장」뿐이다.

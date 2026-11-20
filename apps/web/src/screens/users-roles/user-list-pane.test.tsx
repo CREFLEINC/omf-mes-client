@@ -61,7 +61,7 @@ describe('UserListPane 표', () => {
   it('사용자 추가가 구획 표제 옆에 선다', () => {
     renderPane();
 
-    const heading = screen.getByRole('heading', { name: '사용자' });
+    const heading = screen.getByRole('heading', { name: '사용자 목록' });
 
     expect(heading.parentElement).toContainElement(
       screen.getByRole('button', { name: '사용자 추가' }),
@@ -75,7 +75,7 @@ describe('UserListPane 표', () => {
       within(table())
         .getAllByRole('columnheader')
         .map((cell) => cell.textContent),
-    ).toEqual(['로그인 ID', '이름', '부서', '재직 상태']);
+    ).toEqual(['로그인 아이디', '이름', '소속 부서', '재직 상태']);
   });
 
   it('응답 건수만큼 행을 그린다', () => {
@@ -189,10 +189,10 @@ describe('UserListPane 조건 줄', () => {
   });
 
   /* 해제 축이라 변경 즉시 적용한다 — 조회를 한 번 더 누르게 하지 않는다. */
-  it('미사용 포함은 누르는 즉시 적용된다', async () => {
+  it('사용 중지 계정 포함은 누르는 즉시 적용된다', async () => {
     const { onApplyFilters, user } = renderPane();
 
-    await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
+    await user.click(screen.getByRole('checkbox', { name: '사용 중지 계정 포함' }));
 
     expect(onApplyFilters).toHaveBeenCalledWith({ ...EMPTY_USER_FILTERS, includeInactive: true });
   });
@@ -214,7 +214,9 @@ describe('UserListPane 조건 줄', () => {
      * 「미사용 포함」은 확인칸 라벨과 칩 문구 둘 다에 쓰인다 —
      * 칩이 실제로 섰는지는 칩마다 다른 제거 버튼 이름으로 가린다.
      */
-    expect(screen.getByRole('button', { name: '미사용 포함 조건 제거' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '사용 중지 계정 포함 조건 제거' }),
+    ).toBeInTheDocument();
   });
 
   it('칩을 제거하면 그 조건만 풀린다', async () => {

@@ -9,18 +9,16 @@
  * 무엇이 렌더되는지 흐려진다.
  */
 export const usersRoles = {
-  title: '사용자·역할·권한',
-  breadcrumbRoot: '시스템 관리',
   /** 탭 라벨. **만든 탭만 둔다** — 자리만 먼저 두면 「탭은 있는데 눌러도 빈 화면인」 상태가 된다. */
   tabs: {
     label: '사용자·역할·권한',
-    users: '사용자',
-    roles: '역할·권한',
+    users: '사용자 관리',
+    roles: '역할 및 권한 관리',
   },
   panes: {
-    userList: '사용자',
-    userForm: '사용자 정보',
-    roleAssign: '역할 부여',
+    userList: '사용자 목록',
+    userForm: '사용자 상세 정보',
+    roleAssign: '사용자 역할',
     dataScope: '데이터 접근범위',
     roleList: '역할',
     roleForm: '역할 정보',
@@ -44,7 +42,7 @@ export const usersRoles = {
      * 계약의 수정 요청 본문에 로그인 ID가 아예 없다 — 「언젠가 풀린다」가 아니라
      * 보낼 자리가 없다는 뜻이다. 그 사실을 그대로 밝힌다.
      */
-    loginIdLocked: '로그인 ID는 변경 불가합니다.',
+    loginIdLocked: '변경할 수 없습니다.',
     deactivateRoleAlreadyDone: '사용 중지는 이미 미사용인 역할에 다시 할 수 없습니다.',
     /* 주 액션의 이름이 모드마다 달라 사유도 갈린다 — 규범 4는 컨트롤 이름으로 시작하라고 정한다. */
     saveNoChanges: '저장은 변경된 내용이 있을 때 누를 수 있습니다.',
@@ -112,8 +110,8 @@ export const usersRoles = {
   },
   filters: {
     userSearchLabel: '사용자 검색',
-    userSearchPlaceholder: '로그인 ID 또는 이름',
-    department: '부서',
+    userSearchPlaceholder: '아이디 또는 이름 검색',
+    department: '소속 부서',
     /* 선택지에 빈 값을 두어 고른 부서를 다시 「전체」로 되돌릴 수 있게 한다. */
     departmentAll: '전체 부서',
     /*
@@ -128,6 +126,9 @@ export const usersRoles = {
     chipRemoveDepartment: '부서 조건 제거',
     chipStatus: (label: string): string => `재직 상태: ${label}`,
     chipRemoveStatus: '재직 상태 조건 제거',
+    /* 이 화면은 「미사용 포함」 대신 대상이 보이게 쓴다(사용자 지시 2026-11-20 · omf-all-around#333). */
+    includeInactive: '사용 중지 계정 포함',
+    chipRemoveUserIncludeInactive: '사용 중지 계정 포함 조건 제거',
     chipRemoveIncludeInactive: '미사용 포함 조건 제거',
     roleSearchLabel: '역할 검색',
     roleSearchPlaceholder: '역할 코드 또는 역할명',
@@ -172,12 +173,12 @@ export const usersRoles = {
   },
   user: {
     fields: {
-      loginId: '로그인 ID',
+      loginId: '로그인 아이디',
       userName: '이름',
-      department: '부서',
+      department: '소속 부서',
       /* 설계(W-CO-02 §4-A)의 라벨이 「이메일」이다 — 관리웹에서 「전자우편」은 이 화면에만 있었다. */
       email: '이메일',
-      phoneNumber: '휴대폰 번호',
+      phoneNumber: '휴대전화 번호',
       status: '재직 상태',
       initialPassword: '초기 비밀번호',
     },
@@ -194,15 +195,15 @@ export const usersRoles = {
     },
     validation: {
       required: '필수 입력 항목입니다.',
-      loginIdBlank: '로그인 ID는 공백만으로 지정할 수 없습니다.',
+      loginIdBlank: '로그인 아이디는 공백만으로 지정할 수 없습니다.',
       userNameBlank: '이름은 공백만으로 지정할 수 없습니다.',
-      loginIdTooLong: '로그인 ID는 100자를 넘을 수 없습니다.',
+      loginIdTooLong: '로그인 아이디는 100자를 넘을 수 없습니다.',
       userNameTooLong: '이름은 200자를 넘을 수 없습니다.',
       emailTooLong: '이메일은 200자를 넘을 수 없습니다.',
       /* 계약이 「형식 검증은 화면 책임 — DB 제약 없음」이라고 명시한 유일한 칸이다. */
       emailFormat: '이메일 형식이 아닙니다. 「이름@도메인」 형태로 입력하세요.',
       /* 001 W-CO-02 — 0·+84·84 로 시작하는 입력을 받고 공백·하이픈은 무시한다. */
-      phoneFormat: '베트남 휴대폰 번호 형식이 아닙니다 (예: 0912 345 678)',
+      phoneFormat: '베트남 휴대전화 번호 형식이 아닙니다 (예: 0912 345 678)',
       /**
        * 초기 비밀번호가 규칙(숫자와 알파벳을 함께, 최소 길이 이상)을 어겼다. **빈 값은 이
        * 키를 쓰지 않는다** — 그 갈래는 이미 있는 `required`를 그대로 쓴다.
@@ -379,13 +380,13 @@ export const usersRoles = {
    * 검사 판정처럼 작업자가 남는 관리웹 쓰기에 쓴다.
    */
   workerLink: {
-    title: '연결된 작업자',
+    title: '연결된 현장 작업자',
     linked: '연결됨',
     unlinked: '미연결',
     none: '연결된 작업자가 없습니다.',
     /** 미연결일 때 한 줄 — 왜 연결해야 하는지 */
     hintUnlinked: '수입검사 판정을 저장하려면 작업자 사번을 연결해야 합니다.',
-    hintLinked: '검사 판정 시 해당 작업자로 기록됩니다.',
+    hintLinked: '검사 판정 시 연결된 작업자 정보로 기록됩니다.',
     noDepartment: '부서 없음',
     connect: '작업자 연결',
     change: '작업자 변경',

@@ -284,7 +284,7 @@ export const UserListPane = ({
                 onApplyFilters({ ...appliedFilters, includeInactive: event.target.checked })
               }
             >
-              {messages.common.includeInactive}
+              {t.filters.includeInactive}
             </Checkbox>
           </div>
         </div>

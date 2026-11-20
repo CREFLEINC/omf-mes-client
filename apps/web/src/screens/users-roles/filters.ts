@@ -245,8 +245,8 @@ export const toUserFilterChips = (
   if (filters.includeInactive) {
     chips.push({
       key: 'includeInactive',
-      label: messages.common.includeInactive,
-      removeLabel: t.filters.chipRemoveIncludeInactive,
+      label: t.filters.includeInactive,
+      removeLabel: t.filters.chipRemoveUserIncludeInactive,
     });
   }
 

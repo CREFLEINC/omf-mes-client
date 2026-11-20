@@ -88,14 +88,8 @@ export const RoleAssignPane = ({
               onToggle(choice.roleId);
             }}
           >
-            {/* 이름을 앞세우고 코드는 작게 곁들인다 — 코드는 운영자가 짚어 볼 값이라 지우지 않는다. */}
+            {/* 이름만 보인다 — 역할 코드는 「역할 및 권한 관리」 탭에서 본다(사용자 지시 2026-11-20 · omf-all-around#333). */}
             <span className="role-choice-name">{choice.label}</span>
-            {choice.code !== '' && (
-              <>
-                {/* 접근 이름에서 이름과 코드가 붙어 읽히지 않게 사이를 띄운다. */}{' '}
-                <span className="role-choice-code">{choice.code}</span>
-              </>
-            )}
           </Checkbox>
         ))}
       </div>

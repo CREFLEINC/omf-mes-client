@@ -79,7 +79,7 @@ describe('TemporaryPasswordDialog', () => {
     const terms = screen.getAllByRole('term').map((term) => term.textContent);
     const values = screen.getAllByRole('definition').map((value) => value.textContent);
 
-    expect(terms).toEqual(['로그인 ID', '임시 비밀번호']);
+    expect(terms).toEqual(['로그인 아이디', '임시 비밀번호']);
     expect(values).toEqual(['SYN-LOGIN-01', 'SynTmp9x2k']);
   });
 

@@ -1,12 +1,4 @@
-import {
-  AlertBanner,
-  Breadcrumb,
-  EmptyState,
-  PageHeader,
-  SkeletonText,
-  Tabs,
-  useToast,
-} from '@crefle/web-ui';
+import { AlertBanner, EmptyState, SkeletonText, Tabs, useToast } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
@@ -1406,48 +1398,46 @@ export const UsersRolesScreen = () => {
       <LoadErrorBanner error={userList.error} onRetry={() => void userList.refetch()} />
     </section>
   ) : (
-    <div className="two-pane users-roles-layout">
-      <UserListPane
-        users={users}
-        isLoading={userList.isPending}
-        appliedFilters={filters}
-        onApplyFilters={applyFilters}
-        departmentOptions={selectableOptions(departmentOptions, filters.departmentId)}
-        statusOptions={selectableOptions(userStatusOptions, filters.statusCode)}
-        statusDisabledReason={statusDisabledReason}
-        /*
-         * 조건 칩에는 번호가 아니라 이름을 낸다. 선택 목록을 아직 받지 못했으면
-         * 「알 수 없음」이 나오고 목록이 도착하면 이름으로 바뀐다 —
-         * 번호를 대신 보이면 사용자가 쓸 수 없는 값을 자료로 읽는다.
-         */
-        departmentLabel={(departmentId) => lookupLabel(departmentOptions, Number(departmentId))}
-        departmentNameOf={(departmentId) => lookupLabel(departmentOptions, departmentId)}
-        statusNameOf={(statusCode) => lookupLabel(userStatusOptions, statusCode)}
-        optionsNotice={renderOptionsNotice([departmentOptions, userStatusOptions])}
-        pageView={userPageView}
-        onChangePage={changeUserPage}
-        selectedAppUserId={selectedAppUserId}
-        onSelect={selectUser}
-        isCreating={isCreatingUser}
-        onAddUser={handleAddUser}
-        loadError={
-          userList.isError ? (
-            <LoadErrorBanner error={userList.error} onRetry={() => void userList.refetch()} />
-          ) : null
-        }
-      />
+    /*
+     * 위 줄은 목록 | 사용자 상세 정보, 그 아래로 사용자 역할 · 데이터 접근범위가 전체 폭으로 선다
+     * (사용자 지시 2026-11-20 · omf-all-around#333).
+     */
+    <div className="pane-stack">
+      <div className="two-pane users-roles-layout">
+        <UserListPane
+          users={users}
+          isLoading={userList.isPending}
+          appliedFilters={filters}
+          onApplyFilters={applyFilters}
+          departmentOptions={selectableOptions(departmentOptions, filters.departmentId)}
+          statusOptions={selectableOptions(userStatusOptions, filters.statusCode)}
+          statusDisabledReason={statusDisabledReason}
+          /*
+           * 조건 칩에는 번호가 아니라 이름을 낸다. 선택 목록을 아직 받지 못했으면
+           * 「알 수 없음」이 나오고 목록이 도착하면 이름으로 바뀐다 —
+           * 번호를 대신 보이면 사용자가 쓸 수 없는 값을 자료로 읽는다.
+           */
+          departmentLabel={(departmentId) => lookupLabel(departmentOptions, Number(departmentId))}
+          departmentNameOf={(departmentId) => lookupLabel(departmentOptions, departmentId)}
+          statusNameOf={(statusCode) => lookupLabel(userStatusOptions, statusCode)}
+          optionsNotice={renderOptionsNotice([departmentOptions, userStatusOptions])}
+          pageView={userPageView}
+          onChangePage={changeUserPage}
+          selectedAppUserId={selectedAppUserId}
+          onSelect={selectUser}
+          isCreating={isCreatingUser}
+          onAddUser={handleAddUser}
+          loadError={
+            userList.isError ? (
+              <LoadErrorBanner error={userList.error} onRetry={() => void userList.refetch()} />
+            ) : null
+          }
+        />
 
-      {/*
-       * 우 칸은 구획을 세로로 쌓는다 — 사용자 정보 아래에 역할 부여·데이터 접근범위가 붙는다.
-       * `.pane-stack`은 선택자에 매이지 않은 기본 규칙이라 2단 배치의 칸 안에서도 그대로 동작한다.
-       */}
-      {userList.data !== undefined && (
-        <div className="pane-stack">
-          {renderUserFormPane()}
-          {renderRoleAssignPane()}
-          {renderDataScopePane()}
-        </div>
-      )}
+        {userList.data !== undefined && renderUserFormPane()}
+      </div>
+      {userList.data !== undefined && renderRoleAssignPane()}
+      {userList.data !== undefined && renderDataScopePane()}
     </div>
   );
 
@@ -1651,16 +1641,7 @@ export const UsersRolesScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
-
+      {/* 머리글(경로 · 화면 이름)은 두지 않는다 — 탭부터 선다(사용자 지시 2026-11-20 · omf-all-around#333). */}
       <Tabs
         aria-label={t.tabs.label}
         value={tab.id}

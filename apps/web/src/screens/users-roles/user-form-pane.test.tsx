@@ -55,7 +55,7 @@ const renderPane = (overrides: Partial<UserFormPaneProps> = {}) => {
   return { onChange, onSave, onCancel, onDeactivate, onResetPassword, user: userEvent.setup() };
 };
 
-const pane = (): HTMLElement => screen.getByRole('region', { name: '사용자 정보' });
+const pane = (): HTMLElement => screen.getByRole('region', { name: '사용자 상세 정보' });
 
 /**
  * 그 칸에 **실제로 매인** 문구. `aria-describedby`가 가리키는 요소들을 따라간다.
@@ -147,7 +147,9 @@ describe('UserFormPane 로그인 ID', () => {
   it('수정에서는 입력칸이 아니라 값 표기다', () => {
     renderPane({ mode: 'edit' });
 
-    expect(within(pane()).queryByRole('textbox', { name: '로그인 ID' })).not.toBeInTheDocument();
+    expect(
+      within(pane()).queryByRole('textbox', { name: '로그인 아이디' }),
+    ).not.toBeInTheDocument();
     expect(within(pane()).getByText('SYN-LOGIN-01')).toBeInTheDocument();
   });
 
@@ -155,7 +157,7 @@ describe('UserFormPane 로그인 ID', () => {
   it('수정에서는 라벨 옆에 잠금 안내가 보이고 값에 이어져 있다', () => {
     renderPane({ mode: 'edit' });
 
-    const note = within(pane()).getByText('로그인 ID는 변경 불가합니다.');
+    const note = within(pane()).getByText('변경할 수 없습니다.');
     const value = within(pane()).getByText('SYN-LOGIN-01');
 
     expect(note).toHaveClass('readonly-label-note');
@@ -165,7 +167,7 @@ describe('UserFormPane 로그인 ID', () => {
   it('등록에서만 입력칸이다', async () => {
     const { onChange, user } = renderPane({ mode: 'create', values: { ...values, loginId: '' } });
 
-    const input = within(pane()).getByRole('textbox', { name: '로그인 ID' });
+    const input = within(pane()).getByRole('textbox', { name: '로그인 아이디' });
 
     await user.type(input, 'S');
 
@@ -175,7 +177,7 @@ describe('UserFormPane 로그인 ID', () => {
   it('등록에는 잠금 사유가 없다 — 아직 정할 수 있는 값이다', () => {
     renderPane({ mode: 'create', values: { ...values, loginId: '' } });
 
-    expect(within(pane()).queryByText(/로그인 ID는 변경 불가합니다/)).not.toBeInTheDocument();
+    expect(within(pane()).queryByText(/변경할 수 없습니다/)).not.toBeInTheDocument();
   });
 });
 
@@ -220,7 +222,7 @@ describe('UserFormPane 입력', () => {
 
     const textboxes = within(pane()).getAllByRole('textbox');
     const email = within(pane()).getByRole('textbox', { name: '이메일' });
-    const phone = within(pane()).getByRole('textbox', { name: '휴대폰 번호' });
+    const phone = within(pane()).getByRole('textbox', { name: '휴대전화 번호' });
     expect(textboxes.indexOf(phone)).toBe(textboxes.indexOf(email) + 1);
     expect(phone).not.toHaveAttribute('aria-required');
 
@@ -241,7 +243,7 @@ describe('UserFormPane 입력', () => {
   it('부서를 고르면 상위에 알린다', async () => {
     const { onChange, user } = renderPane({ values: { ...values, departmentId: '' } });
 
-    await user.click(within(pane()).getByLabelText('부서'));
+    await user.click(within(pane()).getByLabelText('소속 부서'));
     await user.click(await screen.findByRole('option', { name: /SYN-DEPT-01/ }));
 
     expect(onChange).toHaveBeenCalledWith({ departmentId: '3001' });
@@ -250,7 +252,7 @@ describe('UserFormPane 입력', () => {
   it('필수 칸에 표시가 붙는다 — 저장을 눌러야 필수임을 알게 되면 안 된다', () => {
     renderPane({ mode: 'create', values: { ...values, loginId: '' } });
 
-    expect(within(pane()).getByRole('textbox', { name: '로그인 ID' })).toHaveAttribute(
+    expect(within(pane()).getByRole('textbox', { name: '로그인 아이디' })).toHaveAttribute(
       'aria-required',
       'true',
     );

@@ -15,8 +15,6 @@ import type { Translated } from './translated';
  * 지으면 무엇이 렌더되는지 흐려진다.
  */
 export const usersRoles: Translated<typeof ko.usersRoles> = {
-  title: 'Người dùng · vai trò · quyền',
-  breadcrumbRoot: 'Quản trị hệ thống',
   tabs: {
     label: 'Người dùng · vai trò · quyền',
     users: 'Người dùng',
@@ -103,6 +101,8 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     chipRemoveDepartment: 'Bỏ điều kiện phòng ban',
     chipStatus: (label: string): string => `Tình trạng làm việc: ${label}`,
     chipRemoveStatus: 'Bỏ điều kiện tình trạng làm việc',
+    includeInactive: 'Gồm cả tài khoản ngừng dùng',
+    chipRemoveUserIncludeInactive: 'Bỏ điều kiện gồm cả tài khoản ngừng dùng',
     chipRemoveIncludeInactive: 'Bỏ điều kiện gồm cả mục ngừng dùng',
     roleSearchLabel: 'Tìm vai trò',
     roleSearchPlaceholder: 'Mã vai trò hoặc tên vai trò',
