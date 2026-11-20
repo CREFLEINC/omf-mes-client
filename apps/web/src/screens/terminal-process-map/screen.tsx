@@ -61,6 +61,8 @@ import {
   useTerminalCreate,
   useEquipmentLabel,
   useEquipmentPages,
+  useWarehouseLabel,
+  useWarehousePages,
   useTerminalActivate,
   useTerminalDeactivate,
   useTerminalDetail,
@@ -183,6 +185,8 @@ export const TerminalProcessMapScreen = () => {
   const registrationCounts = useTerminalRegistrationCounts(filters);
   const fetchEquipments = useEquipmentPages();
   const equipmentFilterLabel = useEquipmentLabel(filters.equipment);
+  const fetchWarehouses = useWarehousePages();
+  const warehouseFilterLabel = useWarehouseLabel(filters.warehouse);
   const detail = useTerminalDetail(selectedId);
   const processRows = useTerminalProcesses(selectedId);
 
@@ -739,22 +743,7 @@ export const TerminalProcessMapScreen = () => {
       <div className="users-roles-workspace">
         <section ref={aboveRef} className="pane users-roles-search" aria-label={t.panes.search}>
           <div className="filter-bar users-roles-filter-row">
-            <SearchInput
-              containerClassName="users-roles-search-input terminal-map-search-input"
-              label={t.filters.search}
-              value={search}
-              placeholder={t.filters.searchPlaceholder}
-              onChange={(event) => {
-                setSearch(event.target.value);
-              }}
-              onSearch={(value) => {
-                leaveSafely(() => {
-                  apply({ q: value }, true);
-                });
-              }}
-              clearLabel={messages.common.clear}
-            />
-            {/* 단말 유형 · 설치 설비 — 고르는 즉시 적용한다(사용자 지시 2026-11-20 · #333). */}
+            {/* 단말 유형 · 설치 설비 · 창고 · 단말 코드 검색 순(사용자 지시 2026-11-20 · #333). 고르는 즉시 적용한다. */}
             <SelectField
               label={t.filters.type}
               options={[
@@ -785,6 +774,36 @@ export const TerminalProcessMapScreen = () => {
                 }}
               />
             </div>
+            <div className="terminal-map-filter-field">
+              <PagedSelectField
+                label={t.filters.warehouse}
+                emptyLabel={t.filters.all}
+                value={filters.warehouse}
+                valueLabel={warehouseFilterLabel}
+                queryKey={['terminal-process-map', 'warehouse-filter']}
+                fetchPage={fetchWarehouses}
+                onChange={(warehouse) => {
+                  leaveSafely(() => {
+                    apply({ warehouse }, true);
+                  });
+                }}
+              />
+            </div>
+            <SearchInput
+              containerClassName="users-roles-search-input terminal-map-search-input"
+              label={t.filters.search}
+              value={search}
+              placeholder={t.filters.searchPlaceholder}
+              onChange={(event) => {
+                setSearch(event.target.value);
+              }}
+              onSearch={(value) => {
+                leaveSafely(() => {
+                  apply({ q: value }, true);
+                });
+              }}
+              clearLabel={messages.common.clear}
+            />
             {/* 해제 축이라 누르는 즉시 적용한다. */}
             <div className="field-cell field-cell-unlabeled">
               <Checkbox

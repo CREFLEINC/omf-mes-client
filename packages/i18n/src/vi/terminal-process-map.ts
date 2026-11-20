@@ -32,6 +32,7 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     clear: 'Đặt lại',
     type: 'Loại thiết bị',
     equipment: 'Thiết bị lắp đặt',
+    warehouse: 'Kho',
     all: 'Tất cả',
   },
 

@@ -9936,6 +9936,8 @@ export interface paths {
           isActive?: boolean;
           /** @description 설치 설비 — 주면 그 설비에 붙은 단말만. 근거: omf-all-around#333 */
           equipmentId?: number;
+          /** @description 창고 — 주면 그 창고로 지정된 단말만. 근거: omf-all-around#333 */
+          warehouseId?: number;
           /** @description 등록 여부 — REGISTERED=기기 등록 완료(지금 세대 토큰으로 확인됨), UNREGISTERED=그 밖. 근거: omf-all-around#333 */
           registrationStatusCode?: 'REGISTERED' | 'UNREGISTERED';
           /** @description 단말 코드 검색 */

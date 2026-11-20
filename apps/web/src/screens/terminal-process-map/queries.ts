@@ -54,6 +54,7 @@ export const terminalKeys = {
       filters.registration,
       filters.type,
       filters.equipment,
+      filters.warehouse,
       filters.page,
       filters.size,
     ] as const,
@@ -87,6 +88,7 @@ const toListQuery = (filters: TerminalFilters) => ({
       }),
   ...(filters.type === '' ? {} : { terminalTypeCode: filters.type }),
   ...(filters.equipment === '' ? {} : { equipmentId: Number(filters.equipment) }),
+  ...(filters.warehouse === '' ? {} : { warehouseId: Number(filters.warehouse) }),
   page: filters.page,
   size: filters.size,
 });
@@ -314,6 +316,46 @@ export const useEquipmentPages = () => {
       total: data.page.total,
     };
   };
+};
+
+/** 조회 줄 창고 선택칸의 쪽 받기 — 사용 중인 창고 전체(공장 무관), 검색은 서버(코드 · 이름). */
+export const useWarehousePages = () => {
+  const { client } = useApiClient();
+
+  return async (q: string, page: number) => {
+    const data = await runRequest(() =>
+      client.GET('/mdm/warehouses', {
+        params: { query: { ...(q === '' ? {} : { q }), page, size: EQUIPMENT_PAGE_SIZE } },
+      }),
+    );
+    return {
+      options: data.items
+        .filter((item) => item.isActive)
+        .map((item) => ({
+          value: String(item.warehouseId),
+          label: `${item.warehouseCode} ${item.warehouseName}`,
+        })),
+      total: data.page.total,
+    };
+  };
+};
+
+/** 주소에 실린 창고 조건의 이름 — 새로고침해도 칸에 이름이 보이게. */
+export const useWarehouseLabel = (warehouseId: string): string => {
+  const { client } = useApiClient();
+  const query = useQuery({
+    queryKey: ['terminal-process-map', 'warehouse-label', warehouseId],
+    enabled: warehouseId !== '',
+    staleTime: 300_000,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/warehouses/{warehouseId}', {
+          params: { path: { warehouseId: Number(warehouseId) } },
+        }),
+      ).then(({ warehouse }) => `${warehouse.warehouseCode} ${warehouse.warehouseName}`),
+  });
+
+  return query.data ?? '';
 };
 
 /** 주소에 실린 설치 설비 조건의 이름 — 새로고침해도 칸에 이름이 보이게. */

@@ -28,6 +28,7 @@ export const terminalProcessMap = {
     clear: '초기화',
     type: '단말 유형',
     equipment: '설치 설비',
+    warehouse: '창고',
     all: '전체',
   },
 

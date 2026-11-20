@@ -24,6 +24,8 @@ export interface TerminalFilters {
   type: string;
   /** 설치 설비 ID — 비면 전체. */
   equipment: string;
+  /** 창고 ID — 비면 전체. */
+  warehouse: string;
   page: number;
   size: ListPageSize;
 }
@@ -34,6 +36,7 @@ export const EMPTY_FILTERS: TerminalFilters = {
   registration: '',
   type: '',
   equipment: '',
+  warehouse: '',
   page: 1,
   size: DEFAULT_PAGE_SIZE,
 };
@@ -57,6 +60,9 @@ export const readFilters = (params: URLSearchParams): TerminalFilters => {
     type: params.get('type') ?? '',
     equipment: isPositiveInteger(params.get('equipment') ?? '')
       ? (params.get('equipment') ?? '')
+      : '',
+    warehouse: isPositiveInteger(params.get('warehouse') ?? '')
+      ? (params.get('warehouse') ?? '')
       : '',
     page: isPositiveInteger(page) ? Number(page) : 1,
     size: readSize(params.get('size')),
@@ -82,6 +88,7 @@ export const toSearchParams = (
   if (filters.registration !== '') params.set('registration', filters.registration);
   if (filters.type !== '') params.set('type', filters.type);
   if (filters.equipment !== '') params.set('equipment', filters.equipment);
+  if (filters.warehouse !== '') params.set('warehouse', filters.warehouse);
   if (filters.page > 1) params.set('page', String(filters.page));
   if (filters.size !== DEFAULT_PAGE_SIZE) params.set('size', String(filters.size));
   if (selected !== null) params.set('terminal', String(selected));
