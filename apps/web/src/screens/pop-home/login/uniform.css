@@ -29,6 +29,12 @@
   zoom: var(--pop-reg-scale, 1);
 }
 
+/* 바깥 테두리만 없앤다(사용자 지시 2026-11-20) — 투명으로 두어 크기 · 자리는 그대로. 안쪽 칸 테두리는 그대로. */
+.pu-card.wa-reg-card,
+.home-login .pu-card.wa-left {
+  border-color: transparent;
+}
+
 .wa-reg-card > .pu-card-body {
   gap: 16px;
   padding: 14px 20px 20px;
