@@ -221,10 +221,8 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     const user = userEvent.setup();
     const { queueQueries } = renderScreen();
     await screen.findByText(REQUEST.inspectionRequestNo);
-    /* 품목 · 작업지시 · 의뢰번호는 상세 조건으로 접혀 있다(#225). */
-    await user.click(
-      screen.getByRole('button', { name: messages.common.inspectionHub.detailFilters.open }),
-    );
+    /* 품목 · 작업지시 · 의뢰번호는 「조건 더보기」에 접혀 있다(#225 · C-6). */
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
 
     await user.type(screen.getByRole('textbox', { name: t.filters.keyword }), 'IR-PQC');
     await user.click(screen.getByRole('button', { name: t.filters.apply }));
@@ -238,6 +236,48 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     /* 초기화는 처음 연 상태로 — 「대기·진행만 보기」도 다시 켠다(OQC 와 같다). */
     expect(queueQueries.at(-1)?.get('pendingOnly')).toBe('true');
     expect(screen.getByRole('checkbox', { name: t.queue.pendingOnly })).toBeChecked();
+  });
+
+  it('「초기화」는 처음 연 상태에서는 없고, 바꾼 것이 생기면 나타난다(C-6)', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByText(REQUEST.inspectionRequestNo);
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+
+    expect(screen.queryByRole('button', { name: t.filters.reset })).toBeNull();
+
+    await user.type(screen.getByRole('textbox', { name: t.filters.keyword }), 'IR');
+
+    expect(screen.getByRole('button', { name: t.filters.reset })).toBeInTheDocument();
+  });
+
+  it('접힌 칸에 걸린 조건은 칩으로 보이고, × 는 그 조건만 풀어 다시 조회한다(C-6)', async () => {
+    const user = userEvent.setup();
+    const { queueQueries } = renderScreen();
+    await screen.findByText(REQUEST.inspectionRequestNo);
+    const more = screen.getByRole('button', { name: messages.common.filterMore.open });
+
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('textbox', { name: t.filters.keyword })).toBeNull();
+
+    await user.click(more);
+    await user.type(screen.getByRole('textbox', { name: t.filters.keyword }), 'IR-PQC');
+    await user.click(screen.getByRole('button', { name: t.filters.apply }));
+    await waitFor(() => expect(queueQueries.at(-1)?.get('q')).toBe('IR-PQC'));
+
+    /* 펼쳐 있으면 칸에 값이 보이므로 칩이 없다. */
+    /* 칩 라벨은 대상 이름 — 칸 라벨의 「검색」은 싣지 않는다. */
+    const chip = '의뢰번호: IR-PQC';
+    expect(screen.queryByText(chip)).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.close }));
+    expect(screen.getByText(chip)).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: messages.common.filterMore.remove('의뢰번호') }),
+    );
+    await waitFor(() => expect(queueQueries.at(-1)?.get('q')).toBeNull());
+    expect(screen.queryByText(chip)).toBeNull();
   });
 
   it('LOT 스캔은 생산 LOT 의 작업지시로 대기 의뢰를 찾아 열고, 없으면 공정검사 문구를 낸다(#135)', async () => {
@@ -261,10 +301,8 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     const user = userEvent.setup();
     const { queueQueries } = renderScreen();
     await screen.findByText(REQUEST.inspectionRequestNo);
-    /* 품목 · 작업지시 · 의뢰번호는 상세 조건으로 접혀 있다(#225). */
-    await user.click(
-      screen.getByRole('button', { name: messages.common.inspectionHub.detailFilters.open }),
-    );
+    /* 품목 · 작업지시 · 의뢰번호는 「조건 더보기」에 접혀 있다(#225 · C-6). */
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     const field = screen.getByRole('textbox', { name: t.filters.workOrder });
     const asked = (): number => queueQueries.length;
 
@@ -291,10 +329,8 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     const user = userEvent.setup();
     const { queueQueries } = renderScreen();
     await screen.findByText(REQUEST.inspectionRequestNo);
-    /* 품목 · 작업지시 · 의뢰번호는 상세 조건으로 접혀 있다(#225). */
-    await user.click(
-      screen.getByRole('button', { name: messages.common.inspectionHub.detailFilters.open }),
-    );
+    /* 품목 · 작업지시 · 의뢰번호는 「조건 더보기」에 접혀 있다(#225 · C-6). */
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
 
     await user.click(screen.getByLabelText(t.filters.item));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

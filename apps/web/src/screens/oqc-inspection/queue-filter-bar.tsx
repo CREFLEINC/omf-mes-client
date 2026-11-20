@@ -2,6 +2,7 @@ import { Button, Checkbox, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState, type FormEvent } from 'react';
 
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { EMPTY_FILTERS, type QueueFilters } from './filters';
 import { ItemFilterField } from './item-filter-field';
 import {
@@ -91,6 +92,13 @@ export const QueueFilterBar = ({
     onReset();
   };
 
+  /*
+   * 「초기화」는 바뀐 것이 있을 때만 보인다(C-6) — 치던 값이나 조회에 쓰인 값(탭 줄 상태 칩 · 「대기·진행만 보기」 포함)이
+   * 처음 값과 다를 때. 초기화가 그 모두를 처음으로 되돌리기 때문이다.
+   */
+  const isChanged =
+    hasChangedFilters(EMPTY_DRAFT, draft) || hasChangedFilters(EMPTY_FILTERS, appliedFilters);
+
   return (
     <form className="filter-bar" onSubmit={submit}>
       {/* 품목은 검색 창에서 고른다 — 내부 번호를 치지 않는다(IQC #133 과 같은 칸 · omf-all-around#136). */}
@@ -121,9 +129,11 @@ export const QueueFilterBar = ({
         <Button type="submit" variant="filled">
           {t.apply}
         </Button>
-        <Button type="button" variant="outlined" onClick={reset}>
-          {t.reset}
-        </Button>
+        {isChanged && (
+          <Button type="button" variant="outlined" onClick={reset}>
+            {t.reset}
+          </Button>
+        )}
       </div>
     </form>
   );

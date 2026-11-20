@@ -16,8 +16,6 @@ export const inspectionSheet = {
     to: 'Chọn ngày kết thúc',
     search: 'Tra cứu',
     reset: 'Đặt lại',
-    detailOpen: 'Mở điều kiện chi tiết',
-    detailClose: 'Đóng điều kiện chi tiết',
     model: 'Model',
     modelPlaceholder: 'Nhập model',
     workOrder: 'Lệnh sản xuất',

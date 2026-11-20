@@ -1,9 +1,10 @@
+import { messages } from '@omf-mes/i18n';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { pickDate } from '../../test/date-picker';
-import { EMPTY_HISTORY_FILTERS } from './filters';
+import { EMPTY_HISTORY_FILTERS, initialHistoryFilters } from './filters';
 import { HistoryFilterBar, type HistoryFilterBarProps } from './history-filter-bar';
 
 const baseProps = (): HistoryFilterBarProps => ({
@@ -24,6 +25,7 @@ describe('HistoryFilterBar', () => {
 
     await pickDate(user, screen.getByLabelText('조회 시작일'), '2026-07-20');
     await pickDate(user, screen.getByLabelText('조회 종료일'), '2026-07-25');
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     await user.click(screen.getByLabelText('처리자'));
     await user.click(screen.getByRole('option', { name: '합성 퇴직자 (미사용)' }));
     await user.type(screen.getByLabelText('LOT 스캔'), 'SAMPLE-LOT-001');
@@ -44,7 +46,9 @@ describe('HistoryFilterBar', () => {
 
     expect(screen.getByLabelText('조회 시작일')).toHaveTextContent('2026-08-01');
     expect(screen.getByLabelText('조회 종료일')).toHaveTextContent('2026-08-07');
-    expect(screen.queryByText('시작일을 선택한 후 종료일을 선택해 주세요.')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('시작일을 선택한 후 종료일을 선택해 주세요.'),
+    ).not.toBeInTheDocument();
   });
 
   it('날짜를 비우면 문구 없이 조회만 막는다', () => {
@@ -93,6 +97,7 @@ describe('HistoryFilterBar', () => {
   it('바깥의 적용 의미값이 바뀌면 뒤로가기 값으로 동기화한다', () => {
     const props = baseProps();
     const { rerender } = render(<HistoryFilterBar {...props} />);
+    /* 처리자 칸은 접혀 있어도 그려져 있다 — 칸 글자로 동기화를 본다. */
 
     rerender(
       <HistoryFilterBar
@@ -117,6 +122,9 @@ describe('HistoryFilterBar', () => {
     );
     const user = userEvent.setup();
 
+    /* 접힌 처리자 칩도 번호가 아니라 이름 확인 실패를 말한다. */
+    expect(screen.getByText('처리자: 선택한 처리자 (이름 확인 불가)')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     expect(screen.getByText('일부 행위자만 표시됩니다.')).toBeVisible();
     expect(screen.queryByText('999')).not.toBeInTheDocument();
     await user.click(screen.getByLabelText('처리자'));
@@ -129,5 +137,34 @@ describe('HistoryFilterBar', () => {
 
     await userEvent.setup().click(screen.getByRole('button', { name: '초기화' }));
     expect(props.onReset).toHaveBeenCalledOnce();
+  });
+
+  it('「초기화」는 처음 값(오늘 · 오늘)에서는 없고, 바꾼 것이 생기면 나타난다(C-6)', async () => {
+    render(<HistoryFilterBar {...baseProps()} appliedFilters={initialHistoryFilters()} />);
+    const user = userEvent.setup();
+
+    expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
+
+    await user.type(screen.getByLabelText('LOT 스캔'), 'L');
+    await user.click(screen.getByRole('button', { name: '초기화' }));
+
+    /* 치던 값도 처음으로 — 조회에 쓰인 값이 이미 처음 값이면 주소가 바뀌지 않는다. */
+    expect(screen.getByLabelText('LOT 스캔')).toHaveValue('');
+  });
+
+  it('접힌 처리자는 칩으로 보이고, × 는 처리자만 풀어 조회한다', async () => {
+    const props = baseProps();
+    render(
+      <HistoryFilterBar {...props} appliedFilters={{ ...props.appliedFilters, actor: '601' }} />,
+    );
+    const user = userEvent.setup();
+
+    expect(screen.getByText('처리자: 합성 담당자')).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: messages.common.filterMore.remove('처리자') }),
+    );
+
+    expect(props.onSearch).toHaveBeenCalledWith({ ...props.appliedFilters, actor: '' });
   });
 });

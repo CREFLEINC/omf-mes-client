@@ -18,9 +18,6 @@ export const inspectionSheet = {
     to: '종료일 선택',
     search: '조회',
     reset: '초기화',
-    /* 상세 조건 펼치기 — 모델 · 작업지시(사용자 지시 2026-11-02 · #217). */
-    detailOpen: '상세 보기 펼치기',
-    detailClose: '상세 보기 접기',
     model: '모델 검색',
     modelPlaceholder: '모델을 입력하세요',
     workOrder: '작업지시 검색',

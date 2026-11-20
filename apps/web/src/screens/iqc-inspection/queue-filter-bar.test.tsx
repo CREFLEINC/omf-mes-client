@@ -215,6 +215,22 @@ describe('QueueFilterBar — 의뢰번호와 조회·초기화', () => {
     expect(onSearch).toHaveBeenCalledWith({ itemId: null, supplierId: null, keyword: 'IR-1' });
   });
 
+  it('「초기화」는 처음 상태에서는 없고, 치던 값이 생기면 나타난다(C-6)', async () => {
+    const reset = () => screen.queryByRole('button', { name: t.reset });
+    const { user } = renderBar();
+
+    expect(reset()).toBeNull();
+
+    await user.type(keywordBox(), 'I');
+    expect(reset()).toBeInTheDocument();
+  });
+
+  it('조회에 쓰인 값(상태 칩, 「대기·진행만 보기」)이 처음과 다르면 치던 값이 없어도 「초기화」가 보인다', () => {
+    renderBar({ ...EMPTY_FILTERS, statusCode: 'COMPLETED', pendingOnly: false });
+
+    expect(screen.getByRole('button', { name: t.reset })).toBeInTheDocument();
+  });
+
   /**
    * 부모에게만 알리면 아직 조회하지 않은 값은 주소가 바뀌지 않아 되돌림 effect 도 깨어나지
    * 않는다 — 그러면 **「초기화」를 눌렀는데 치던 값이 그대로 남는다.**

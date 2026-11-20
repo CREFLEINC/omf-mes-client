@@ -9,14 +9,13 @@ import {
   useToast,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import {
   InspectionHubCounts,
   type InspectionHubStatus,
 } from '../../patterns/inspection-hub-counts';
-import { DetailFiltersToggle } from '../../patterns/detail-filters';
 import type { ScopedPlant } from '../../patterns/oa-access';
 import { PageNav } from '../../patterns/page-nav';
 import { useSession } from '../../patterns/session';
@@ -31,7 +30,6 @@ import {
 } from '../../patterns/split-orientation';
 import { LotScan } from '../inspection-documents/lot-scan';
 import {
-  EMPTY_FILTERS,
   LIST_PAGE_SIZES,
   PAGE_SIZE,
   QUEUE_STATUSES,
@@ -48,7 +46,7 @@ import {
 } from '../iqc-inspection/filters';
 import { QueueLoadErrorBanner } from '../iqc-inspection/load-error-banner';
 import { toPageView } from '../iqc-inspection/pagination';
-import { QueueFilterBar } from '../iqc-inspection/queue-filter-bar';
+import { QueueDetailFilters } from '../iqc-inspection/queue-detail-filters';
 import { QueueTable } from '../iqc-inspection/queue-table';
 import { useItemNames, useLotNumbers, useLotSuppliers } from '../iqc-inspection/reference-lookup';
 import { withDraft, withStatus } from '../oqc-inspection/filters';
@@ -83,11 +81,6 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
   const [searchParams, setSearchParams] = useSearchParams();
 
   const filters = readFilters(searchParams);
-  /* 상세 조건(품목 · 공급사 · 의뢰번호)은 접어 둔다 — 주소에 그 조건이 걸려 있으면 펼친 채로 연다(#225). */
-  const hasDetailCondition =
-    filters.itemId !== null || filters.supplierId !== null || filters.keyword !== '';
-  const [detailOpen, setDetailOpen] = useState(hasDetailCondition);
-  const detailFiltersId = useId();
   const page = readPage(searchParams);
   const pageSize = readPageSize(searchParams);
   const selectedId = readSelectedId(searchParams);
@@ -307,28 +300,9 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
               {messages.common.inspectionHub.pendingOnly}
             </Checkbox>
           </div>
-          {/* 품목 · 공급사 · 의뢰번호는 상세 조건으로 접는다(사용자 지시 2026-11-02 · #225). */}
-          <DetailFiltersToggle
-            open={detailOpen}
-            onToggle={() => setDetailOpen((open) => !open)}
-            controlsId={detailFiltersId}
-            hasCondition={hasDetailCondition}
-          />
         </div>
-        {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
-        <div id={detailFiltersId} className="inspection-detail-filters" hidden={!detailOpen}>
-          <QueueFilterBar
-            appliedFilters={filters}
-            showPendingOnly={false}
-            onSearch={(next) =>
-              applyFilters(withDraft(filters, { ...next, pendingOnly: filters.pendingOnly }))
-            }
-            onTogglePendingOnly={(next) =>
-              applyFilters(withDraft(filters, { ...filters, pendingOnly: next }))
-            }
-            onReset={() => applyFilters(EMPTY_FILTERS)}
-          />
-        </div>
+        {/* 품목 · 공급사 · 의뢰번호는 「조건 더보기」로 접는다(사용자 지시 2026-11-02 · #225) — 걸린 조건은 칩으로. */}
+        <QueueDetailFilters filters={filters} onApply={applyFilters} />
       </section>
 
       <div

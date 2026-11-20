@@ -360,12 +360,12 @@ describe('제품 검사표 조회', () => {
     );
   });
 
-  it('상세 보기 펼치기로 작업지시 번호를 적으면 그 작업지시의 번호(id)로 거른다', async () => {
+  it('조건 더보기로 작업지시 번호를 적으면 그 작업지시의 번호(id)로 거른다', async () => {
     const { user, requests } = setup(['W-03-13']);
     await screen.findByRole('table', { name: t.list.caption });
     expect(screen.getByLabelText(t.list.workOrder)).not.toBeVisible();
 
-    await user.click(screen.getByRole('button', { name: t.list.detailOpen }));
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     await user.type(screen.getByLabelText(t.list.workOrder), 'wo-070');
     await user.click(screen.getByRole('button', { name: t.list.search }));
     await waitFor(() =>
@@ -379,6 +379,35 @@ describe('제품 검사표 조회', () => {
       ).toBe(true),
     );
     expect(screen.getByLabelText(t.list.model)).toBeVisible();
+
+    /* 접으면 걸린 작업지시가 칩으로 보이고, × 는 그 조건만 풀어 다시 조회한다(C-6). */
+    const chip = `${t.columns.workOrder}: wo-070`;
+    expect(screen.queryByText(chip)).toBeNull();
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.close }));
+    expect(screen.getByText(chip)).toBeInTheDocument();
+    const before = requests.length;
+    await user.click(
+      screen.getByRole('button', { name: messages.common.filterMore.remove(t.columns.workOrder) }),
+    );
+    await waitFor(() => expect(requests.length).toBeGreaterThan(before));
+    expect(screen.queryByText(chip)).toBeNull();
+    expect(
+      requests
+        .filter((r) => r.path.endsWith('/quality/inspection-sheets'))
+        .at(-1)
+        ?.query.has('workOrderId'),
+    ).toBe(false);
+  });
+
+  it('「초기화」는 처음 값에서는 없고, 바꾼 것이 생기면 나타난다(C-6)', async () => {
+    const { user } = setup(['W-03-13']);
+    await screen.findByRole('table', { name: t.list.caption });
+
+    expect(screen.queryByRole('button', { name: t.list.reset })).toBeNull();
+
+    await user.type(screen.getByLabelText(t.list.scan), 'P');
+
+    expect(screen.getByRole('button', { name: t.list.reset })).toBeInTheDocument();
   });
 
   /* 양식(OP향 · PP향)으로 거른다(사용자 지시 2026-11-02 · 서버 선행 formLayoutCode). */

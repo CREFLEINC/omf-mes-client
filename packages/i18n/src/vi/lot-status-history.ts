@@ -57,8 +57,6 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     lotNoScanPlaceholder: 'Quét mã vạch LOT hoặc nhập số',
     /** 창고 검색 칸의 흐린 문구(사용자 2026-11-02). */
     warehousePlaceholder: 'Nhập kho',
-    detailOpen: 'Mở tìm kiếm chi tiết',
-    detailClose: 'Thu gọn tìm kiếm chi tiết',
     itemPlaceholder: 'Nhập mặt hàng',
     itemClear: 'Xóa mặt hàng',
     itemPick: 'Chọn',
