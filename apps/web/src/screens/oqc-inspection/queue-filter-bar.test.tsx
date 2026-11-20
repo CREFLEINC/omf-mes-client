@@ -60,4 +60,20 @@ describe('QueueFilterBar', () => {
 
     expect(screen.getByRole('checkbox', { name: t.pendingOnly })).not.toBeChecked();
   });
+
+  it('「초기화」는 처음 상태에서는 없고, 치던 값이 생기면 나타난다(C-6)', async () => {
+    renderBar();
+
+    expect(screen.queryByRole('button', { name: t.reset })).toBeNull();
+
+    await userEvent.type(screen.getByLabelText(t.keyword), 'I');
+
+    expect(screen.getByRole('button', { name: t.reset })).toBeInTheDocument();
+  });
+
+  it('조회에 쓰인 값(상태 칩, 「대기·진행만 보기」)이 처음과 다르면 「초기화」가 보인다', () => {
+    renderBar({ ...EMPTY_FILTERS, statusCode: 'COMPLETED', pendingOnly: false });
+
+    expect(screen.getByRole('button', { name: t.reset })).toBeInTheDocument();
+  });
 });

@@ -21,7 +21,6 @@ import { CountLineTable } from './count-line-table';
 import { CountTable } from './count-table';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import {
-  clearFilter,
   DEFAULT_FILTERS,
   readFilters,
   readPage,
@@ -30,7 +29,6 @@ import {
   SELECTION_KEYS,
   toFilterQuery,
   toSearchParams,
-  type ChipFilterKey,
   type CountFilters,
 } from './filters';
 import {
@@ -869,11 +867,6 @@ export const StocktakingScreen = () => {
 
   const codeOptions = toCodeOptionSets(PLACEHOLDER_STOCKTAKING_CODES);
 
-  const warehouseReference = toReference(
-    warehouses,
-    filters.warehouse === '' ? null : Number(filters.warehouse),
-  );
-
   /**
    * 창고 선택지. **한 렌더에 한 벌만 만든다** — 조건 줄과 개시 폼이 같은 목록을 쓰는데
    * 자리마다 부르면 내용이 같은 배열이 두 벌 생긴다.
@@ -1441,14 +1434,10 @@ export const StocktakingScreen = () => {
         <CountFilterBar
           appliedFilters={filters}
           warehouseOptions={warehouseOptions}
-          chipNames={{ warehouse: describeReference(warehouseReference) }}
           warehouseNote={lookupNote(warehouses)}
           isLocked={isLocked}
           onSearch={(nextFilters) => {
             applyQuery(nextFilters);
-          }}
-          onRemoveFilter={(key: ChipFilterKey) => {
-            applyQuery(clearFilter(filters, key));
           }}
           onReset={() => {
             applyQuery(DEFAULT_FILTERS);

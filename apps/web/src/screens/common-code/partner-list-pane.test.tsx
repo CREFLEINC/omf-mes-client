@@ -142,6 +142,17 @@ describe('PartnerListPane — 조건', () => {
     expect(onApplyFilters).toHaveBeenCalledWith(EMPTY_PARTNER_FILTERS);
   });
 
+  /* C-6 — 초기화는 편집 중인 값이나 걸린 조건이 처음 값과 다를 때만 보인다. */
+  it('초기화는 바뀐 것이 있을 때만 보인다', async () => {
+    const { user } = renderPane();
+
+    expect(screen.queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('거래처 검색'), 'SAMPLE');
+
+    expect(screen.getByRole('button', { name: '초기화' })).toBeInTheDocument();
+  });
+
   /* 적용된 조건이 컨트롤에 그대로 서야 무엇으로 조회했는지 읽을 수 있다. */
   it('적용된 조건이 컨트롤에 실려 있다', () => {
     renderPane({ appliedFilters: { q: 'SAMPLE', includeInactive: true } });
@@ -224,7 +235,6 @@ describe('PartnerListPane — 만들 수 없는 것', () => {
     const buttonNames = screen.getAllByRole('button').map((button) => button.textContent);
     expect(buttonNames).toEqual([
       '조회',
-      '초기화',
       'SAMPLE-PTNR-A',
       'SAMPLE-PTNR-B',
       'SAMPLE-PTNR-C',

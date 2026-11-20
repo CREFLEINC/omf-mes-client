@@ -2,8 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   PARTNER_SELECT_KEY,
-  clearFilter,
-  clearScopedFilter,
   hasAnyFilter,
   hasAnyPartnerFilter,
   hasAnyScopedFilter,
@@ -14,10 +12,8 @@ import {
   readSelectedId,
   toCodeGroupListQuery,
   toDepartmentListQuery,
-  toFilterChips,
   toPartnerListQuery,
   toPartnerSearchParams,
-  toScopedFilterChips,
   toScopedSearchParams,
   toSearchParams,
   toWorkerListQuery,
@@ -213,59 +209,10 @@ describe('toWorkerListQuery', () => {
   });
 });
 
-describe('toScopedFilterChips', () => {
-  const labels = {
-    keyword: (value: string) => `검색어: ${value}`,
-    keywordRemove: '검색어 조건 제거',
-    scope: (label: string) => `사업부: ${label}`,
-    scopeRemove: '사업부 조건 제거',
-    includeInactiveRemove: '미사용 포함 조건 제거',
-  };
-
-  it('걸린 조건마다 칩 하나가 나온다', () => {
-    const chips = toScopedFilterChips(
-      { q: 'SYN', scopeId: '1001', includeInactive: true },
-      () => '제조사업부',
-      labels,
-    );
-
-    expect(chips.map((chip) => chip.key)).toEqual(['q', 'scopeId', 'includeInactive']);
-    expect(chips[1]?.label).toBe('사업부: 제조사업부');
-  });
-
-  it('조건이 없으면 칩도 없다', () => {
-    expect(
-      toScopedFilterChips({ q: '', scopeId: '', includeInactive: false }, () => '', labels),
-    ).toEqual([]);
-  });
-
-  it('칩마다 제거 버튼의 접근 이름이 다르다', () => {
-    const chips = toScopedFilterChips(
-      { q: 'SYN', scopeId: '1001', includeInactive: true },
-      () => '제조사업부',
-      labels,
-    );
-    const removeLabels = chips.map((chip) => chip.removeLabel);
-
-    expect(new Set(removeLabels).size).toBe(removeLabels.length);
-  });
-});
-
-describe('hasAnyScopedFilter · clearScopedFilter', () => {
+describe('hasAnyScopedFilter', () => {
   it('조건이 하나라도 있으면 참이다', () => {
     expect(hasAnyScopedFilter({ q: '', scopeId: '1001', includeInactive: false })).toBe(true);
     expect(hasAnyScopedFilter({ q: '', scopeId: '', includeInactive: false })).toBe(false);
-  });
-
-  it('조건 하나만 푼다 — 키마다 「비었다」의 표현이 다르다', () => {
-    const filters = { q: 'SYN', scopeId: '1001', includeInactive: true };
-
-    expect(clearScopedFilter(filters, 'scopeId')).toEqual({ ...filters, scopeId: '' });
-    expect(clearScopedFilter(filters, 'includeInactive')).toEqual({
-      ...filters,
-      includeInactive: false,
-    });
-    expect(clearScopedFilter(filters, 'q')).toEqual({ ...filters, q: '' });
   });
 });
 
@@ -319,48 +266,11 @@ describe('toCodeGroupListQuery', () => {
   });
 });
 
-describe('toFilterChips', () => {
-  it('걸린 조건마다 칩 하나가 나온다', () => {
-    const chips = toFilterChips({ q: 'SYN', includeInactive: true });
-
-    expect(chips.map((chip) => chip.key)).toEqual(['q', 'includeInactive']);
-    expect(chips[0]?.label).toBe('검색어: SYN');
-  });
-
-  it('조건이 없으면 칩도 없다', () => {
-    expect(toFilterChips({ q: '', includeInactive: false })).toEqual([]);
-  });
-
-  it('칩마다 제거 버튼의 접근 이름이 다르다 — 어느 조건을 푸는지 알 수 있다', () => {
-    const chips = toFilterChips({ q: 'SYN', includeInactive: true });
-    const labels = chips.map((chip) => chip.removeLabel);
-
-    expect(new Set(labels).size).toBe(labels.length);
-    for (const label of labels) expect(label).not.toBe('');
-  });
-});
-
 describe('hasAnyFilter', () => {
   it('조건이 하나라도 있으면 참이다', () => {
     expect(hasAnyFilter({ q: 'SYN', includeInactive: false })).toBe(true);
     expect(hasAnyFilter({ q: '', includeInactive: true })).toBe(true);
     expect(hasAnyFilter({ q: '', includeInactive: false })).toBe(false);
-  });
-});
-
-describe('clearFilter', () => {
-  it('검색어만 푼다', () => {
-    expect(clearFilter({ q: 'SYN', includeInactive: true }, 'q')).toEqual({
-      q: '',
-      includeInactive: true,
-    });
-  });
-
-  it('미사용 포함만 푼다 — 키마다 「비었다」의 표현이 다르다', () => {
-    expect(clearFilter({ q: 'SYN', includeInactive: true }, 'includeInactive')).toEqual({
-      q: 'SYN',
-      includeInactive: false,
-    });
   });
 });
 

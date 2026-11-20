@@ -12,6 +12,8 @@ export const dispatchHistory = {
     deliveryStatus: '상태',
     all: '전체',
     search: '조회',
+    /** 「조건 더보기」에 접힌 부서 조건의 칩(C-6). */
+    chipDepartment: (name: string): string => `부서: ${name}`,
     /** 이벤트 선택지의 묶음 이름 — 기존 6종 뒤에 인계 작업 10종(피처 002). */
     eventGroup: '이벤트',
     handoverGroup: '인계 작업',

@@ -20,8 +20,7 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     lines: 'Dòng đơn đặt hàng',
   },
   fields: {
-    periodFrom: 'Hạn giao từ',
-    periodTo: 'Hạn giao đến',
+    period: 'Hạn giao',
     supplier: 'Nhà cung cấp',
     plant: 'Nhà máy',
     item: 'Mặt hàng',
@@ -88,8 +87,6 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     scanFailed: 'Không tìm được mặt hàng. Hãy quét lại sau giây lát.',
     today: 'Đến hôm nay',
     overdue: 'Trễ hạn',
-    detailOpen: 'Mở điều kiện chi tiết',
-    detailClose: 'Thu gọn điều kiện chi tiết',
   },
   filters: {
     all: 'Tất cả',
@@ -99,14 +96,16 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     lookupTruncated:
       'Danh sách chọn chỉ hiện một phần đầu. Nếu không thấy giá trị cần tìm, hãy báo người phụ trách.',
     lookupFailed: 'Không tải được danh sách chọn.',
-    chipSupplier: (value: string): string => `Nhà cung cấp: ${value}`,
     chipPlant: (value: string): string => `Nhà máy: ${value}`,
     chipItem: (value: string): string => `Mặt hàng: ${value}`,
     chipQ: (value: string): string => `Số đơn đặt hàng: ${value}`,
-    chipRemoveSupplier: 'Bỏ điều kiện nhà cung cấp',
+    chipOverdue: 'Trễ hạn',
+    chipOpenOnlyOff: 'Gồm cả dòng đã nhận đủ, đã hủy',
     chipRemovePlant: 'Bỏ điều kiện nhà máy',
     chipRemoveItem: 'Bỏ điều kiện mặt hàng',
     chipRemoveQ: 'Bỏ điều kiện số đơn đặt hàng',
+    chipRemoveOverdue: 'Bỏ điều kiện trễ hạn',
+    chipRemoveOpenOnlyOff: 'Bỏ gồm cả dòng đã nhận đủ, đã hủy',
   },
   pageNav: {
     label: 'Chuyển trang',

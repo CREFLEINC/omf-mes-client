@@ -64,6 +64,10 @@ export const documentProgress = {
     choose: '선택',
     /** 외주 문서처럼 고를 수 없는 유형이 있을 때. 사유를 감추지 않는다. */
     disabledTypes: (reasons: string): string => `고를 수 없는 유형이 있습니다. ${reasons}`,
+    /** 「조건 더보기」에 접힌 상태에 걸린 값의 칩(C-6). */
+    chipStatus: (value: string): string => `상태: ${value}`,
+    chipRemoveStatus: '상태 조건 제거',
+    chipRemoveCancellableOnly: '지금 취소 가능한 것만 조건 제거',
   },
   loading: {
     list: '문서 진행현황을 불러오는 중',

@@ -58,6 +58,11 @@ export interface SelectFieldProps {
    * **판단 기준은 코드값이 아니라 선택지 문구 길이다.**
    */
   optionWidth?: SelectOptionWidth;
+  /**
+   * 조회 줄에 보이는 칸의 폭(C-19 보통 · 240px). 주면 `optionWidth` 대신 이 폭을 쓴다 — 고른 값이 길어도 칸 폭이 그대로다
+   * (말줄임). 「조건 더보기」 안의 칸은 종전대로 `optionWidth` 를 쓴다.
+   */
+  fixedWidth?: boolean;
 }
 
 /**
@@ -82,6 +87,7 @@ export const SelectField = ({
   note,
   placeholder,
   optionWidth,
+  fixedWidth = false,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
@@ -100,8 +106,12 @@ export const SelectField = ({
 
   return (
     <div
-      className={isWide ? 'field-cell wide-select' : 'field-cell'}
-      style={optionWidth === 'codeName' ? { minWidth: CODE_NAME_MIN_WIDTH } : undefined}
+      className={
+        fixedWidth ? 'field-cell filter-field-md' : isWide ? 'field-cell wide-select' : 'field-cell'
+      }
+      style={
+        !fixedWidth && optionWidth === 'codeName' ? { minWidth: CODE_NAME_MIN_WIDTH } : undefined
+      }
     >
       <FieldLabel htmlFor={id} label={label} />
       <Select
@@ -137,13 +147,17 @@ export const ItemSelectField = ({
   note,
   placeholder,
   leadingOptions,
+  fixedWidth = false,
 }: ItemSelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
   const hasEmptyOption = leadingOptions?.some((option) => option.value === '') ?? false;
 
   return (
-    <div className="field-cell wide-select" style={{ minWidth: CODE_NAME_MIN_WIDTH }}>
+    <div
+      className={fixedWidth ? 'field-cell filter-field-md' : 'field-cell wide-select'}
+      style={fixedWidth ? undefined : { minWidth: CODE_NAME_MIN_WIDTH }}
+    >
       <FieldLabel htmlFor={id} label={label} />
       <ItemSelect
         id={id}

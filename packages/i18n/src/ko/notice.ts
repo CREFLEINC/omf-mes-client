@@ -32,6 +32,8 @@ export const notice = {
     /** ⛔ 기간은 필수가 아니다 — 계약이 그렇게 두었다. */
     periodOptional: '기간은 비워도 됩니다.',
     clear: '조건 지우기',
+    /** 「조건 더보기」에 접힌 대상 범위 조건의 칩(C-6). */
+    chipScope: (name: string): string => `대상 범위: ${name}`,
     invalidPeriod: '기간 끝이 시작보다 앞섭니다.',
   },
 

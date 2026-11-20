@@ -19,7 +19,8 @@ import type {
   ReplenishmentSettings,
   ShopfloorReceiptBulkResult,
 } from './api-types';
-import type { ArrivalFilters } from './filters';
+import { hasChangedFilters } from '../../patterns/filter-more';
+import { EMPTY_ARRIVAL, type ArrivalFilters } from './filters';
 import { useBulkReceive } from './mutations';
 import { OriginChip } from './progress-view';
 import { PAGE_SIZE, replenishmentKeys, useArrivalList, useLocationNames } from './queries';
@@ -70,6 +71,12 @@ export const ArrivalView = ({
     setDraftSource(filters);
     setDraft(filters);
   }
+  /* 「초기화」는 처음 값과 다를 때만 보인다(C-6). 주소가 그대로여도 고친 값은 되돌린다. */
+  const isChanged = hasChangedFilters(EMPTY_ARRIVAL, draft, filters);
+  const reset = (): void => {
+    setDraft(EMPTY_ARRIVAL);
+    onReset();
+  };
   const [checked, setChecked] = useState<ReadonlySet<number>>(new Set());
   const [expanded, setExpanded] = useState<ReadonlySet<number>>(new Set());
   const [receiving, setReceiving] = useState<ReplenishmentArrival | null>(null);
@@ -136,9 +143,11 @@ export const ArrivalView = ({
         >
           {t.common.search}
         </Button>
-        <Button variant="outlined" onClick={onReset}>
-          {t.common.reset}
-        </Button>
+        {isChanged && (
+          <Button variant="outlined" onClick={reset}>
+            {t.common.reset}
+          </Button>
+        )}
       </div>
       <p className="field-note replenishment-wide-note">{ta.lead}</p>
     </section>

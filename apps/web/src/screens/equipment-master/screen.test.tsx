@@ -522,9 +522,12 @@ describe('EquipmentMasterScreen', () => {
       respondPlants: () => jsonResponse({ message: '서버 오류' }, { status: 500 }),
     });
 
-    expect(
-      await screen.findByText(t.filters.chipPlant(messages.common.reference.failed)),
-    ).toBeInTheDocument();
+    /* 공장은 조회 줄에 보이는 칸이라 칩 대신 칸이 실패 상태를 말한다(C-6). */
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: t.fields.plant })).toHaveTextContent(
+        messages.common.reference.failed,
+      );
+    });
     expect(screen.queryByText('9999')).not.toBeInTheDocument();
   });
 
@@ -1431,6 +1434,15 @@ describe('EquipmentMasterScreen — 설비 목록 탭', () => {
     return screen.findByRole('region', { name: t.tabs.equipment });
   };
 
+  /** 설비 탭의 체크칸 셋은 「조건 더보기」 안에 접혀 있다(C-6) — 만지기 전에 편다. */
+  const openMore = async (
+    pane: ReturnType<typeof within>,
+    user: ReturnType<typeof userEvent.setup>,
+  ) => {
+    if (pane.queryByRole('button', { name: messages.common.filterMore.open }) === null) return;
+    await user.click(pane.getByRole('button', { name: messages.common.filterMore.open }));
+  };
+
   it('그룹을 고른 뒤 설비 탭에서 그 그룹의 설비를 본다', async () => {
     const user = userEvent.setup();
     renderScreen();
@@ -1594,6 +1606,7 @@ describe('EquipmentMasterScreen — 설비 목록 탭', () => {
     const pane = within(await openEquipmentTab(user));
     const box = pane.getByLabelText(t.equipmentFilters.searchLabel);
     await user.type(box, 'EQ-01');
+    await openMore(pane, user);
     await user.click(pane.getByRole('checkbox', { name: messages.common.includeInactive }));
 
     await waitFor(() => {
@@ -1610,6 +1623,7 @@ describe('EquipmentMasterScreen — 설비 목록 탭', () => {
     const { equipmentSent } = renderScreen();
 
     const pane = within(await openEquipmentTab(user));
+    await openMore(pane, user);
     await user.click(pane.getByRole('checkbox', { name: messages.common.includeInactive }));
 
     await waitFor(() => {
@@ -1635,6 +1649,7 @@ describe('EquipmentMasterScreen — 설비 목록 탭', () => {
     const box = pane.getByLabelText(t.equipmentFilters.searchLabel);
     await user.type(box, 'EQ-01');
     await user.click(pane.getByRole('button', { name: messages.common.search }));
+    await openMore(pane, user);
     await user.click(pane.getByRole('checkbox', { name: messages.common.includeInactive }));
 
     await waitFor(() => {
@@ -1643,27 +1658,31 @@ describe('EquipmentMasterScreen — 설비 목록 탭', () => {
   });
 
   /*
-   * ⭐ **되맞춤이 돌 때 «적용된» 유형을 되살려야 한다.** 칩으로 검색어를 거두면 적용된 값이
-   * 달라져 효과가 도는데, 그때 유형까지 비우면 사용자가 고르고 조회까지 한 조건이 조용히
-   * 사라진다 — 검색어와 같은 규율이 선택칸에도 선다.
+   * ⭐ 접힌 체크칸의 칩을 거둬도 **적용된 검색어와 유형은 칸에 남는다** — 칩 × 는 그 조건만 푼다.
+   * 보이는 칸(검색 · 유형)은 칩으로 겹쳐 적지 않는다(C-6).
    */
-  it('칩으로 검색어를 거둬도 적용된 유형은 칸에 남는다', async () => {
+  it('접힌 체크칸의 칩을 거둬도 적용된 검색어와 유형은 칸에 남는다', async () => {
     const user = userEvent.setup();
-    renderScreen();
+    const { equipmentSent } = renderScreen();
 
     const pane = within(await openEquipmentTab(user));
     await user.click(pane.getByRole('combobox', { name: t.fields.equipmentType }));
     await user.click(await screen.findByRole('option', { name: '프레스' }));
     await user.type(pane.getByLabelText(t.equipmentFilters.searchLabel), 'EQ-01');
     await user.click(pane.getByRole('button', { name: messages.common.search }));
+    await openMore(pane, user);
+    await user.click(pane.getByRole('checkbox', { name: messages.common.includeInactive }));
+    await user.click(pane.getByRole('button', { name: messages.common.filterMore.close }));
 
+    expect(pane.getAllByRole('button', { name: /조건 제거$/ })).toHaveLength(1);
     await user.click(
-      await screen.findByRole('button', { name: t.equipmentFilters.chipRemoveKeyword }),
+      pane.getByRole('button', { name: t.equipmentFilters.chipRemoveIncludeInactive }),
     );
 
     await waitFor(() => {
-      expect(pane.getByLabelText(t.equipmentFilters.searchLabel)).toHaveValue('');
+      expect((equipmentSent.at(-1) as URL).searchParams.get('includeInactive')).toBe('false');
     });
+    expect(pane.getByLabelText(t.equipmentFilters.searchLabel)).toHaveValue('EQ-01');
     expect(pane.getByRole('combobox', { name: t.fields.equipmentType })).toHaveTextContent(
       '프레스',
     );

@@ -11,16 +11,20 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { useBackStep } from '../../patterns/back-step';
 import { ConfirmDialog } from '../../patterns/confirm-dialog';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
 import { ApiRequestError, toApiError } from '../../patterns/request';
+import { signal } from '../../patterns/scan-feedback';
 import { ScanZone } from '../../patterns/scan-zone';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useWorkerSession } from '../../patterns/worker-session';
-import { InboundLotCard, qtyText } from './inbound-lot-card';
+import { ItemLots } from './item-lots';
+import { LastScan } from './last-scan';
+import { qtyText } from './lot-format';
 import {
   closeReceipt,
   inboundLotKeys,
@@ -32,18 +36,21 @@ import {
 import {
   RECEIVE_LABEL,
   applyReceive,
-  cardLockOf,
   hasErrorCode,
+  isReceiving,
   lotTail,
   pendingCountFor,
   queuedLotNoOf,
   registeredInOf,
   rejectionCodeOf,
   serverMessageOf,
+  tallyOf,
+  tallyRowOfLot,
   toReceiveDraft,
   type CardState,
   type ScanLine,
 } from './receipt';
+import { ReceiptTally } from './receipt-tally';
 import { SupplierLotSheet } from './supplier-lot-sheet';
 import './screen.css';
 
@@ -68,13 +75,19 @@ interface Tracked {
  * ```
  * ←  입하 등록                       [온라인] 사번
  * ▦ SCAN
- * ✓ 등록됨 · …|0002 → 새 입하 LOT IL-… 생성      ← 결과 줄 하나(다음 스캔 · 알림이 덮는다)
+ * ┌ ✓ 등록됨 [새 품목]        [취소] ┐   ← 방금 찍은 라벨 하나(다음 스캔 · 알림이 덮는다)
+ * │ 품목코드 / 품목명 / 큰 수량       │
+ * └ 공급사 · …|번호 끝                ┘
  * (전송 대기 띠)
- * 이번에 받은 입하 LOT N   — 카드(공급사·품목마다 한 장): 줄 · [해제] · 공급사 LOT · [입하 마감]
+ * 이번 입하 N개 — 공급사 머리 줄 › 품목 줄(No · 품목코드 · 품목 · 개수 · 수량), 줄을 누르면 그 품목의 LOT
+ * [모두 입하 마감 (n품목 m개)]
  * ```
  *
- * ⭐ 결과 · 거부 · 알림은 **한 자리에 마지막 하나만** 보인다 — 쌓으면 스캔할수록 카드가 아래로 밀린다(사용자 지시
- *    2026-11-18 「알림 내용이 끝없이 쌓이는 부분 수정」). 날짜 자동 마감도 따로 띠를 세우지 않고 그 스캔의 결과 줄에 적는다.
+ * ⭐ 작업자에게 중요한 것만 남긴다(사용자 지시 2026-11-20) — 방금 찍은 라벨이 맞는지, 지금까지 몇 개를 찍었는지.
+ *    입하 LOT 번호 · 상태 칩 · 등록 시각 · IQC 요청 번호 · 직접 입력 단추는 두지 않는다.
+ * ⭐ 결과는 소리로도 가른다 — 등록 높은 음 두 번 · 새 품목 · 이미 찍음은 가운데 음 · 거부는 낮은 음(scan-feedback).
+ * ⭐ 이번 입하 표에 이미 있는 라벨은 서버에 보내지 않고 회색 「이미 찍은 라벨」로 몇 번 줄인지 알린다.
+ * ⭐ 하나씩 빼기 · 공급사 LOT 번호 · 이 품목만 마감은 품목 화면에서, 모두 마감은 바닥 단추로.
  *
  * ⛔ 없앤 것(기존 화면 디자인 변경): P/O 고르기 · 단계 · 수량 칸 · 초과 판정 · 「LOT 번호 없음」 대체 사유 · 입하 LOT
  *    고르기 · 스캔 목록 · 결과 화면 · [나중에 마감](설계 변경 1·2·6, FR-036).
@@ -89,17 +102,19 @@ export const InboundReceiptScreen = () => {
   const workerNo = worker?.workerNo ?? null;
 
   const [cards, setCards] = useState<CardState[]>([]);
-  /*
-   * 사람이 직접 접거나 편 카드. 없으면 맨 위(마지막으로 스캔이 들어간) 카드만 펼친다 — 스캔이 들어가면 그 카드의
-   * 손댄 기록을 지워 맨 위에서 펼쳐지게 한다(사용자 지시 2026-11-18 「입하 LOT 단위 접기 펴기」).
-   */
-  const [openById, setOpenById] = useState<ReadonlyMap<number, boolean>>(new Map());
+  /** 품목 화면으로 연 입하 LOT — null 이면 스캔 화면. 앱바 ← 가 닫는다. */
+  const [viewId, setViewId] = useState<number | null>(null);
+  /** 바로 앞 등록이 들어간 입하 LOT — 다르면 「새 품목」. */
+  const lastOkId = useRef<number | null>(null);
   /* 결과 줄과 알림은 한 자리다 — 하나를 세우면 다른 하나는 내린다. */
   const [line, setLine] = useState<ScanLine | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [tracked, setTracked] = useState<Tracked[]>([]);
   const [busyId, setBusyId] = useState<number | null>(null);
-  const [closing, setClosing] = useState<InboundLotDetail | null>(null);
+  /** 마감 확인 창 — 모두 또는 품목 하나. */
+  const [closing, setClosing] = useState<
+    { kind: 'all' } | { kind: 'one'; detail: InboundLotDetail } | null
+  >(null);
   const [sheet, setSheet] = useState<{
     detail: InboundLotDetail;
     lot: InboundLotMaterialLot;
@@ -111,6 +126,20 @@ export const InboundReceiptScreen = () => {
 
   const details = useInboundLotDetails(cards.map((card) => card.inboundLotId));
   const pending = outbox.loaded ? outbox.pendingOf(RECEIVE_LABEL) : [];
+  const detailOf = (inboundLotId: number): InboundLotDetail | undefined =>
+    details.get(inboundLotId)?.data;
+  const groups = tallyOf(cards, detailOf);
+  const rows = groups.flatMap((group) => group.rows);
+  const total = rows.reduce((sum, row) => sum + row.detail.lotCount, 0);
+  const receivingRows = rows.filter((row) => isReceiving(row.detail));
+  const viewed = viewId === null ? undefined : detailOf(viewId);
+
+  useBackStep(viewId !== null, () => {
+    setViewId(null);
+  });
+
+  const pairPendingOf = (detail: InboundLotDetail): number =>
+    pendingCountFor(pending, { itemCode: detail.itemCode, supplierCode: detail.supplierCode });
 
   const pushLine = (next: ScanLine): void => {
     setLine(next);
@@ -122,7 +151,7 @@ export const InboundReceiptScreen = () => {
     setLine(null);
   };
 
-  /* 결과 · 알림 줄 오른쪽 ✕ — 그 줄을 지운다(사용자 지시 2026-11-18). */
+  /* 알림 줄 오른쪽 ✕ — 그 줄을 지운다(사용자 지시 2026-11-18). */
   const dismiss = (
     <IconButton
       className="receive__dismiss"
@@ -130,7 +159,6 @@ export const InboundReceiptScreen = () => {
       size="sm"
       aria-label={t.scan.dismiss}
       onClick={() => {
-        setLine(null);
         setNotice(null);
       }}
     />
@@ -140,14 +168,12 @@ export const InboundReceiptScreen = () => {
     void queryClient.invalidateQueries({ queryKey: inboundLotKeys.detail(inboundLotId) });
   };
 
-  /** 받기 결과를 화면에 — 카드 · 결과 줄(날짜 자동 마감도 이 줄에). */
-  const apply = (result: InboundLotReceiveResult, lotNo: string): void => {
+  /**
+   * 받기 결과를 화면에 — 표 · 방금 찍은 칸(날짜 자동 마감도 이 칸에). 전송 대기에서 나간 건(`queued`)은 칸을 세우지
+   * 않는다 — 몇 개가 나갔는지 알림 한 줄로 센다.
+   */
+  const apply = (result: InboundLotReceiveResult, lotNo: string, queued = false): void => {
     setCards((previous) => applyReceive(previous, result));
-    setOpenById((previous) => {
-      const next = new Map(previous);
-      for (const lot of result.inboundLots) next.delete(lot.inboundLotId);
-      return next;
-    });
 
     for (const lot of result.inboundLots) {
       refreshCard(lot.inboundLotId);
@@ -160,20 +186,31 @@ export const InboundReceiptScreen = () => {
 
     const first = result.inboundLots[0];
 
-    if (first === undefined) return;
+    if (first === undefined || queued) return;
 
-    /* 성공은 결과 줄 하나로만 알린다 — 알림 줄에 같은 문구를 또 띄우지 않는다(G1 360 폭). */
+    const newItem = lastOkId.current !== null && lastOkId.current !== first.inboundLotId;
+    const lot = first.lots.find((each) => each.lotNo === lotNo) ?? null;
+    lastOkId.current = first.inboundLotId;
+
+    signal(newItem ? 'warn' : 'confirm');
+    setViewId(null);
     pushLine({
       kind: 'ok',
       id: nextLineId(),
       lotNo,
-      inboundLotNo: first.inboundLotNo,
-      created: first.created,
-      count: first.lotCount,
-      autoClosed:
-        result.inboundLots.find((each) => each.autoClosedInboundLotNo !== null)
-          ?.autoClosedInboundLotNo ?? null,
+      inboundLotId: first.inboundLotId,
+      lotId: lot?.lotId ?? null,
+      qty: lot?.lotQty ?? null,
+      newItem,
+      autoClosed: result.inboundLots.some((each) => each.autoClosedInboundLotNo !== null),
     });
+  };
+
+  /** 이번 입하 표에 이미 있는 라벨 — 거부가 아니라 회색 알림(가운데 음). */
+  const duplicate = (lotNo: string, row: number): void => {
+    signal('warn');
+    setViewId(null);
+    pushLine({ kind: 'duplicate', id: nextLineId(), lotNo, row });
   };
 
   /**
@@ -198,8 +235,7 @@ export const InboundReceiptScreen = () => {
       return {
         ...base,
         reason: t.reject.alreadyReceived,
-        body:
-          where === null ? null : t.reject.alreadyReceivedIn(where.inboundLotNo, where.receiving),
+        body: where === null ? null : t.reject.alreadyReceivedIn(where.receiving),
       };
     }
     if (code === 'NOT_MATERIAL_LOT') {
@@ -210,8 +246,18 @@ export const InboundReceiptScreen = () => {
   };
 
   const reject = (lotNo: string, cause: unknown): void => {
+    const error = toApiError(cause);
+    const row =
+      rejectionCodeOf(error) === 'ALREADY_RECEIVED' ? tallyRowOfLot(groups, lotNo) : null;
+
+    if (row !== null) {
+      duplicate(lotNo, row);
+
+      return;
+    }
     playErrorTone();
-    pushLine(rejectLineOf(lotNo, toApiError(cause)));
+    setViewId(null);
+    pushLine(rejectLineOf(lotNo, error));
   };
 
   /** 오프라인 — 등록하지 않고 전송 대기에 둔다(같은 키로 나중에 나간다). */
@@ -238,6 +284,14 @@ export const InboundReceiptScreen = () => {
     const lotNo = raw.trim();
 
     if (lotNo === '' || workerNo === null || inFlight.current) return;
+
+    const row = tallyRowOfLot(groups, lotNo);
+
+    if (row !== null) {
+      duplicate(lotNo, row);
+
+      return;
+    }
 
     if (pending.some((entry) => queuedLotNoOf(entry) === lotNo)) {
       playErrorTone();
@@ -302,7 +356,7 @@ export const InboundReceiptScreen = () => {
 
       if (response !== undefined) {
         registered += 1;
-        apply(response, each.lotNo);
+        apply(response, each.lotNo, true);
       } else if (outbox.isRejected(each.key)) {
         rejected += 1;
       }
@@ -336,14 +390,11 @@ export const InboundReceiptScreen = () => {
         setCards((previous) =>
           previous.filter((card) => card.inboundLotId !== detail.inboundLotId),
         );
-        showNotice(t.unregistered.lastToast(detail.inboundLotNo));
+        setViewId((previous) => (previous === detail.inboundLotId ? null : previous));
+        showNotice(t.unregistered.lastToast(detail.itemName));
       } else {
         showNotice(
-          t.unregistered.toast(
-            lotTail(lot.lotNo),
-            detail.inboundLotNo,
-            qtyText(after.receivedQty, detail.uomCode),
-          ),
+          t.unregistered.toast(lotTail(lot.lotNo), qtyText(after.receivedQty, detail.uomCode)),
         );
       }
     } catch (cause) {
@@ -354,32 +405,62 @@ export const InboundReceiptScreen = () => {
     }
   };
 
+  /** 방금 찍은 칸의 [취소] — 그 라벨 하나를 푼다. */
+  const undo = (inboundLotId: number, lotId: number): void => {
+    const detail = detailOf(inboundLotId);
+    const lot = detail?.lots.find((each) => each.lotId === lotId);
+
+    if (detail !== undefined && lot !== undefined) void unregister(detail, lot);
+  };
+
+  const closeFailed = (lotNo: string, cause: unknown): void => {
+    playErrorTone();
+    pushLine({
+      kind: 'reject',
+      id: nextLineId(),
+      lotNo,
+      reason: t.reject.refused,
+      body: serverMessageOf(toApiError(cause)) ?? t.closeDialog.failed,
+    });
+  };
+
   const close = async (detail: InboundLotDetail): Promise<void> => {
     if (workerNo === null) return;
 
     setClosing(null);
     setBusyId(detail.inboundLotId);
     try {
-      const closed = await closeReceipt(client, detail.inboundLotId, detail.versionNo, workerNo);
-
-      showNotice(
-        t.closeDialog.toast(
-          detail.inboundLotNo,
-          detail.inspectionRequired ? (closed.iqc?.requestNo ?? null) : null,
-        ),
-      );
+      await closeReceipt(client, detail.inboundLotId, detail.versionNo, workerNo);
+      showNotice(t.closeDialog.toastOne(detail.itemName));
     } catch (cause) {
-      playErrorTone();
-      pushLine({
-        kind: 'reject',
-        id: nextLineId(),
-        lotNo: detail.inboundLotNo,
-        reason: t.reject.refused,
-        body: serverMessageOf(toApiError(cause)) ?? t.closeDialog.failed,
-      });
+      setViewId(null);
+      closeFailed(detail.itemCode, cause);
     } finally {
       setBusyId(null);
       refreshCard(detail.inboundLotId);
+    }
+  };
+
+  /** 모두 마감 — 입하 중인 품목을 차례로. 하나라도 막히면 거기서 멈추고 까닭을 보인다. */
+  const closeAll = async (): Promise<void> => {
+    if (workerNo === null) return;
+
+    const targets = receivingRows.map((row) => row.detail);
+
+    setClosing(null);
+    setBusyId(-1);
+    let done = 0;
+    try {
+      for (const detail of targets) {
+        await closeReceipt(client, detail.inboundLotId, detail.versionNo, workerNo);
+        done += 1;
+      }
+      showNotice(t.closeDialog.toastAll(done));
+    } catch (cause) {
+      closeFailed(targets[done]?.itemCode ?? '', cause);
+    } finally {
+      setBusyId(null);
+      for (const detail of targets) refreshCard(detail.inboundLotId);
     }
   };
 
@@ -408,12 +489,8 @@ export const InboundReceiptScreen = () => {
         /* 그사이 마감됐다 — 시트를 닫고 거부 줄, 카드를 마감 상태로 다시 그린다. */
         setSheet(null);
         playErrorTone();
-        pushLine({
-          kind: 'closed',
-          id: nextLineId(),
-          lotNo: lot.lotNo,
-          inboundLotNo: detail.inboundLotNo,
-        });
+        setViewId(null);
+        pushLine({ kind: 'closed', id: nextLineId(), lotNo: lot.lotNo });
         refreshCard(detail.inboundLotId);
       } else {
         setSheetError(serverMessageOf(error) ?? t.sheet.failed);
@@ -429,23 +506,30 @@ export const InboundReceiptScreen = () => {
     return lotNo === null ? [] : [lotNo];
   });
 
+  const allLock = !online
+    ? t.close.blockedOffline
+    : pending.length > 0
+      ? t.close.blockedPending(pending.length)
+      : null;
+  const viewedLock =
+    viewed === undefined
+      ? null
+      : !online
+        ? t.close.blockedOffline
+        : pairPendingOf(viewed) > 0
+          ? t.close.blockedPending(pairPendingOf(viewed))
+          : null;
+  const working = busyId !== null;
+  const lineDetail = line?.kind === 'ok' ? detailOf(line.inboundLotId) : undefined;
+
   return (
     <div className="receive">
-      <ScanZone
-        field={scanField}
-        label={t.scan.label}
-        prompt={t.scan.prompt}
-        tools={
-          <IconButton
-            icon={scanField.manual ? 'keyboard_return' : 'keyboard'}
-            size="lg"
-            aria-label={scanField.manual ? t.scan.manualSubmit : t.scan.manual}
-            onClick={scanField.manual ? scanField.submitManual : scanField.openManual}
-          />
-        }
-      />
+      {/*
+       * 스캔 칸은 늘 낮은 띠(사용자 지시 2026-11-20 「상단에 높이가 낮은 스캔칸 유지」) — 결과는 바로 아래 큰 칸이 말한다.
+       */}
+      <ScanZone field={scanField} label={t.scan.label} prompt={t.scan.prompt} standby />
 
-      {/* 결과 · 알림 자리 — 늘 하나다(다음 스캔 · 알림이 덮는다). */}
+      {/* 방금 찍은 라벨 · 알림 자리 — 늘 하나다(다음 스캔 · 알림이 덮는다). */}
       <div className="receive__result" role="status" aria-label={t.scan.results}>
         {notice !== null ? (
           <p className="receive__notice">
@@ -453,53 +537,22 @@ export const InboundReceiptScreen = () => {
             {dismiss}
           </p>
         ) : line === null ? null : (
-          <p key={line.id} className="receive-line" data-kind={line.kind}>
-            {line.kind === 'ok' ? (
-              <>
-                <Icon name="check_circle" size={18} />
-                <span>
-                  {t.result.registered(lotTail(line.lotNo))} →{' '}
-                  {line.created
-                    ? t.result.created(line.inboundLotNo)
-                    : t.result.added(line.inboundLotNo, line.count)}
-                  {line.autoClosed === null ? null : (
-                    <span className="receive-line__sub">
-                      {t.result.autoClosed(line.autoClosed)}
-                    </span>
-                  )}
-                </span>
-              </>
-            ) : line.kind === 'offline' ? (
-              <>
-                <Icon name="cloud_off" size={18} />
-                <span>
-                  <strong>{lotTail(line.lotNo)}</strong>
-                  <span className="receive-line__sub">{t.offline.scanned}</span>
-                </span>
-              </>
-            ) : line.kind === 'closed' ? (
-              <>
-                <Icon name="block" size={18} />
-                <span>
-                  <strong>{t.reject.closedTitle(lotTail(line.lotNo))}</strong>
-                  <span className="receive-line__sub">
-                    {t.reject.closedBody(line.inboundLotNo)}
-                  </span>
-                </span>
-              </>
-            ) : (
-              <>
-                <Icon name="block" size={18} />
-                <span>
-                  <strong>{t.reject.title(line.reason, lotTail(line.lotNo))}</strong>
-                  {line.body === null ? null : (
-                    <span className="receive-line__sub">{line.body}</span>
-                  )}
-                </span>
-              </>
-            )}
-            {dismiss}
-          </p>
+          <LastScan
+            key={line.id}
+            line={line}
+            detail={lineDetail}
+            canUndo={
+              line.kind === 'ok' &&
+              line.lotId !== null &&
+              lineDetail !== undefined &&
+              isReceiving(lineDetail) &&
+              online &&
+              !working
+            }
+            onUndo={() => {
+              if (line.kind === 'ok' && line.lotId !== null) undo(line.inboundLotId, line.lotId);
+            }}
+          />
         )}
       </div>
 
@@ -518,81 +571,94 @@ export const InboundReceiptScreen = () => {
         </section>
       )}
 
-      <section className="receive__cards" aria-label={t.cards.title}>
-        {/* 제목과 건수 — 건수는 오른쪽 끝에 다른 색 배지로(사용자 지시 2026-11-18). */}
-        <h2 className="receive__cards-head">
-          <span>{t.cards.title}</span>
-          <span className="receive__cards-count">{t.cards.count(cards.length)}</span>
-        </h2>
-        {cards.length === 0 ? <p className="receive-card__note">{t.cards.empty}</p> : null}
-        {cards.map((card, index) => {
-          const detail = details.get(card.inboundLotId);
-          const open = openById.get(card.inboundLotId) ?? index === 0;
-          const data = detail?.data;
-          const pairCount =
-            data === undefined
-              ? 0
-              : pendingCountFor(pending, {
-                  itemCode: data.itemCode,
-                  supplierCode: data.supplierCode,
-                });
+      <ReceiptTally
+        groups={groups}
+        total={total}
+        currentId={line?.kind === 'ok' ? line.inboundLotId : null}
+        duplicateNo={line?.kind === 'duplicate' ? line.row : null}
+        focusKey={line?.kind === 'ok' || line?.kind === 'duplicate' ? line.id : null}
+        onOpen={(inboundLotId) => {
+          setNotice(null);
+          setViewId(inboundLotId);
+        }}
+        receiving={{
+          items: receivingRows.length,
+          lots: receivingRows.reduce((sum, row) => sum + row.detail.lotCount, 0),
+        }}
+        closeLock={allLock}
+        closing={busyId === -1}
+        onCloseAll={() => {
+          setClosing({ kind: 'all' });
+        }}
+      />
 
-          return (
-            <InboundLotCard
-              key={card.inboundLotId}
-              card={card}
-              detail={detail}
-              lock={cardLockOf(online, pairCount)}
-              pendingCount={pairCount}
-              busy={busyId === card.inboundLotId}
-              open={open}
-              current={index === 0}
-              onToggle={() => {
-                setOpenById((previous) => new Map(previous).set(card.inboundLotId, !open));
-              }}
-              onUnregister={(lot) => {
-                if (data !== undefined) void unregister(data, lot);
-              }}
-              onEditSupplierLot={(lot) => {
-                if (data === undefined) return;
-                setSheetError(null);
-                setSheet({ detail: data, lot });
-              }}
-              onClose={() => {
-                if (data !== undefined) setClosing(data);
-              }}
-            />
-          );
-        })}
-      </section>
+      {/* 품목 시트 — 공급사 LOT 시트 · 마감 확인 창이 떠 있는 동안은 내린다(창이 겹치지 않게). 닫히면 다시 선다. */}
+      {viewed === undefined || sheet !== null || closing !== null ? null : (
+        <ItemLots
+          detail={viewed}
+          editable={isReceiving(viewed) && viewedLock === null && !working}
+          closeLock={viewedLock}
+          closing={busyId === viewed.inboundLotId}
+          onUnregister={(lot) => {
+            void unregister(viewed, lot);
+          }}
+          onEditSupplierLot={(lot) => {
+            setSheetError(null);
+            setSheet({ detail: viewed, lot });
+          }}
+          onCloseItem={() => {
+            setClosing({ kind: 'one', detail: viewed });
+          }}
+          onDismiss={() => {
+            setViewId(null);
+          }}
+        />
+      )}
 
       <ConfirmDialog
         open={closing !== null}
-        title={closing === null ? '' : t.closeDialog.title(closing.inboundLotNo)}
+        title={
+          closing === null
+            ? ''
+            : closing.kind === 'all'
+              ? t.closeDialog.titleAll
+              : t.closeDialog.titleOne(closing.detail.itemName)
+        }
         cancelLabel={t.closeDialog.cancel}
         proceedLabel={t.closeDialog.confirm}
         onCancel={() => {
           setClosing(null);
         }}
         onProceed={() => {
-          if (closing !== null) void close(closing);
+          if (closing === null) return;
+          if (closing.kind === 'all') void closeAll();
+          else void close(closing.detail);
         }}
       >
-        {closing === null ? null : (
+        {closing === null ? null : closing.kind === 'all' ? (
           <>
             <p>
-              {t.closeDialog.summary(
-                closing.supplierName,
-                `${closing.itemCode} ${closing.itemName}`,
-                closing.lotCount,
-                qtyText(closing.receivedQty, closing.uomCode),
+              {t.closeDialog.summaryAll(
+                receivingRows.length,
+                receivingRows.reduce((sum, row) => sum + row.detail.lotCount, 0),
+              )}
+            </p>
+            <p>{t.closeDialog.body}</p>
+          </>
+        ) : (
+          <>
+            <p>{closing.detail.supplierName}</p>
+            <p>
+              {t.closeDialog.summaryOne(
+                closing.detail.lotCount,
+                qtyText(closing.detail.receivedQty, closing.detail.uomCode),
               )}
             </p>
             <p>
               {/* 「검사 생략」으로 남는 것은 기본 생략 기준이 걸릴 때만(G2 L15 · US2-7). */}
-              {closing.inspectionRequired
+              {closing.detail.inspectionRequired
                 ? t.closeDialog.body
-                : closing.iqcDefaultSkipApplies === true
+                : closing.detail.iqcDefaultSkipApplies === true
                   ? t.closeDialog.bodyNoInspection
                   : t.closeDialog.bodyNoIqcRecord}
             </p>

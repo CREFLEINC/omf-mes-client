@@ -8,6 +8,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { requireIfMatch, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
+import { ScreenHeader } from '../../patterns/screen-header';
 import { stageOf } from './codes';
 import { FilterBar } from './filter-bar';
 import {
@@ -332,7 +333,7 @@ export const DispositionRequestScreen = () => {
 
   return (
     <>
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb
@@ -355,6 +356,7 @@ export const DispositionRequestScreen = () => {
             applied={filters}
             warehouses={warehouses}
             onApply={(next) => apply(next)}
+            onRemoveFilter={(key) => apply({ ...filters, [key]: '' })}
             onReset={() => apply(EMPTY_FILTERS)}
           />
           {/*

@@ -1,4 +1,4 @@
-import { AlertBanner, Chip, EmptyState, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
@@ -107,6 +107,12 @@ export const LotHistory = () => {
   const supplierLabel = usePartnerLabel(filters.supplier, 'SUPPLIER');
   const customerLabel = usePartnerLabel(filters.customer, 'CUSTOMER');
 
+  /* 처음 값 — 초기화가 되돌리는 값(기본 기간 · 나머지 비움). 「초기화」는 이것과 다를 때만 보인다(C-6). */
+  const defaults: LotTraceFilters = {
+    ...EMPTY_FILTERS,
+    ...defaultPeriod(plantToday()),
+    size: DEFAULT_SIZE,
+  };
   /* 조건을 바꿔 바로 반영하는 갈래는 주소를 바꿔 쓴다. 조건이 바뀌면 고른 줄은 푼다. */
   const apply = (next: LotTraceFilters, replace = false) =>
     setSearchParams(toSearchParams(next), { replace });
@@ -136,7 +142,7 @@ export const LotHistory = () => {
   };
 
   const rows = list.data?.rows ?? [];
-  /* 005 FR-035 — 행에서 고른 입하 LOT(거르기 표시 · 지우기). */
+  /* 005 FR-035 — 행에서 고른 입하 LOT(좁힌 조건 요약에 싣는다 · 표시와 지우기는 조회 조건 칩). */
   const inboundLot = toInboundLotRef(filters.inboundLot);
   const chosenRow = rows.find((row) => rowKeyOf(row) === line);
   const total = list.data?.page.total ?? 0;
@@ -299,23 +305,12 @@ export const LotHistory = () => {
       <section ref={aboveRef} className="pane lot-trace-filter-pane" aria-label={t.filters.pane}>
         <FilterBar
           applied={filters}
+          defaults={defaults}
           onSearch={search}
-          onReset={() =>
-            apply({ ...EMPTY_FILTERS, ...defaultPeriod(plantToday()), size: DEFAULT_SIZE })
-          }
+          onReset={() => apply(defaults)}
+          /* 005 FR-035 — 행의 입하 LOT 으로 건 거르기 지우기(✕ — 기본 기간이 다시 채워진다). */
+          onClearInboundLot={() => apply({ ...filters, inboundLot: '', page: 1 })}
         />
-        {/* 005 FR-035 — 행의 입하 LOT 으로 건 거르기 표시와 지우기(✕ — 기본 기간이 다시 채워진다). */}
-        {inboundLot !== null && (
-          <div className="filter-bar">
-            <Chip
-              variant="status"
-              removeLabel={t.filters.inboundLotChipRemove}
-              onRemove={() => apply({ ...filters, inboundLot: '', page: 1 })}
-            >
-              {t.filters.inboundLotChip(inboundLot.inboundLotNo)}
-            </Chip>
-          </div>
-        )}
       </section>
       <div
         ref={splitRef}

@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate } from 'react-router';
@@ -346,6 +347,8 @@ describe('IntegrationSyncScreen — 조건으로 좁히기', () => {
 
     await user.click(screen.getByRole('combobox', { name: '상태' }));
     await user.click(screen.getByRole('option', { name: 'ERROR' }));
+    /* 재시도 횟수는 「조건 더보기」 안에 접혀 있다(C-6). */
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     await user.type(screen.getByLabelText('재시도 횟수(이상)'), '2');
     await user.click(screen.getByRole('button', { name: '조회' }));
 
@@ -407,18 +410,20 @@ describe('IntegrationSyncScreen — 조건으로 좁히기', () => {
     expect(screen.getByRole('option', { name: 'GONE_CODE' })).toBeInTheDocument();
   });
 
-  it('조건 칩의 ×는 그 조건만 풀고 다시 조회한다', async () => {
+  it('접힌 조건 칩의 ×는 그 조건만 풀고 다시 조회한다', async () => {
     const { requests, user } = renderScreen([listRoute()], `${PERIOD}&status=FAILED&dir=OUTBOUND`);
     await screen.findByText('SAMPLE-KEY-0001');
+    /* 보이는 칸(상태)의 조건은 칩이 없다 — 접힌 구분만 칩이다(C-6). */
+    expect(screen.queryByRole('button', { name: '상태 조건 제거' })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '상태 조건 제거' }));
+    await user.click(screen.getByRole('button', { name: '구분 조건 제거' }));
 
-    expect(currentLocation()).not.toContain('status=');
-    expect(currentLocation()).toContain('dir=OUTBOUND');
+    expect(currentLocation()).not.toContain('dir=');
+    expect(currentLocation()).toContain('status=FAILED');
 
     const last = narrowedRequests(requests).at(-1);
-    expect(last?.url.searchParams.has('statusCode')).toBe(false);
-    expect(last?.url.searchParams.get('directionCode')).toBe('OUTBOUND');
+    expect(last?.url.searchParams.has('directionCode')).toBe(false);
+    expect(last?.url.searchParams.get('statusCode')).toBe('FAILED');
   });
 
   it('초기화는 기간을 기본값으로 되돌리고 나머지 조건과 쪽을 지운다', async () => {
@@ -529,11 +534,11 @@ describe('IntegrationSyncScreen — 쪽 이동', () => {
   it('조건 칩으로 조건을 풀어도 쪽이 첫 쪽으로 되돌아간다', async () => {
     const { user } = renderScreen(
       [listRoute(messageRowFixtures, { page: 3, size: 3, total: 10 })],
-      `${PERIOD}&status=FAILED&page=3`,
+      `${PERIOD}&retryMin=2&page=3`,
     );
     await screen.findByText('SAMPLE-KEY-0001');
 
-    await user.click(screen.getByRole('button', { name: '상태 조건 제거' }));
+    await user.click(screen.getByRole('button', { name: '재시도 횟수 조건 제거' }));
 
     expect(currentLocation()).not.toContain('page=');
   });

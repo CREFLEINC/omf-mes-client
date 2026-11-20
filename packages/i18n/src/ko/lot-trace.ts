@@ -20,10 +20,6 @@ export const lotTrace = {
     itemPicker: '품목 선택',
     itemCode: '품목 코드',
     itemName: '품목명',
-    more: '상세 조건 펼치기',
-    less: '상세 조건 접기',
-    /** 상세 조건이 접혀 있는데 그 안의 조건이 걸려 있을 때 버튼 옆 한 줄. */
-    hiddenApplied: (conditions: string): string => `상세 조건: ${conditions}`,
     materialLot: '자재 LOT 번호',
     productLot: '제품 LOT 번호',
     inboundNo: '입하번호',

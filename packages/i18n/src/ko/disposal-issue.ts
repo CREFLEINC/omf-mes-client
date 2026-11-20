@@ -145,13 +145,6 @@ export const disposalIssue = {
      * 조건을 잘못 넓힌다. 저장소가 이미 쓰고 있는 표현(입하 예정·생산 계획)에 맞춘다.
      */
     periodNote: '입고일을 비워 두면 기간을 좁히지 않고 전체를 봅니다.',
-    /**
-     * 기간 칩에만 해제 버튼이 없는 이유.
-     *
-     * 날짜 컨트롤이 한 번 고른 값을 개별로 비우는 수단을 아직 주지 않아, 기간을 푸는 길이
-     * 「초기화」뿐이다. 사용자가 ×를 찾다가 못 찾는 것보다 왜 없는지를 밝히는 편이 낫다.
-     */
-    periodClearNote: '입고일은 「초기화」로만 비울 수 있습니다. 다른 조건은 조건표의 ×로 풉니다.',
     lookupFailed: '이름 목록을 불러오지 못했습니다. 다시 시도해 주세요.',
     lookupTruncated:
       '이름 목록이 일부만 왔습니다. 찾는 값이 목록에 없을 수 있습니다 — 없어진 것이 아닙니다.',
@@ -195,7 +188,6 @@ export const disposalIssue = {
   },
   historyFilters: {
     periodNote: '출고일을 비워 두면 기간을 좁히지 않고 전체를 봅니다.',
-    periodClearNote: '출고일은 「초기화」로만 비울 수 있습니다. 다른 조건은 조건표의 ×로 풉니다.',
     chipPeriodBoth: (from: string, to: string): string => `출고일: ${from} ~ ${to}`,
     chipPeriodFrom: (from: string): string => `출고일: ${from}부터`,
     chipPeriodTo: (to: string): string => `출고일: ${to}까지`,

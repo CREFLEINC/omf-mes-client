@@ -235,6 +235,8 @@ const listFor = (url: URL, rows: readonly WorkRecordLot[]): WorkRecordLot[] => {
 };
 
 export interface StubOptions {
+  /** 공장 목록. 비우면 `PLANT` 하나 — 공장을 고르는 칸이 서지 않는다. */
+  plants?: (typeof PLANT)[];
   rows?: WorkRecordLot[];
   details?: Record<number, WorkRecordDetail>;
   candidates?: () => Candidate[];
@@ -258,7 +260,7 @@ export const workRecordStub = (options: StubOptions = {}) => {
   const routes: StubRoute[] = [
     {
       match: (r) => r.method === 'GET' && pathOf(r) === '/mdm/plants',
-      respond: () => jsonResponse(page([PLANT])),
+      respond: () => jsonResponse(page(options.plants ?? [PLANT])),
     },
     {
       match: (r) => r.method === 'GET' && pathOf(r) === '/logistics/inbound-lots',

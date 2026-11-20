@@ -312,6 +312,8 @@ describe('검사표 기준', () => {
     const { user } = setup(template());
     await screen.findByRole('row', { name: /AAR4/ });
 
+    /* 상태는 「조건 더보기」 안에 접혀 있다(C-6). */
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     await user.click(screen.getByRole('combobox', { name: t.list.status }));
     await user.click(screen.getByRole('option', { name: t.statuses.CONFIRMED }));
 
@@ -323,11 +325,49 @@ describe('검사표 기준', () => {
     const { user } = setup(template());
     await screen.findByRole('row', { name: /AAR4/ });
 
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     await user.click(screen.getByRole('combobox', { name: t.list.status }));
     await user.click(screen.getByRole('option', { name: t.statuses.CONFIRMED }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     expect(await screen.findByText(t.list.emptyFiltered)).toBeInTheDocument();
+  });
+
+  /* C-6 — 보이는 칸은 품목 · 재료(검사 기준 탭 안이면 맨 앞 검사 유형까지 셋), 양식 · 상태는 「조건 더보기」. */
+  it('양식 · 상태는 접혀 있고, 접힌 채 걸린 조건은 칩으로 알리며 ×가 그 조건만 푼다', async () => {
+    const { user } = setup(template());
+    await screen.findByRole('row', { name: /AAR4/ });
+    expect(screen.queryByRole('combobox', { name: t.list.layout })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: t.list.status })).not.toBeInTheDocument();
+    expect(screen.getByLabelText(t.list.material)).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+    await user.click(screen.getByRole('combobox', { name: t.list.status }));
+    await user.click(screen.getByRole('option', { name: t.statuses.CONFIRMED }));
+    expect(await screen.findByText(t.list.emptyFiltered)).toBeInTheDocument();
+    /* 펼쳐 있으면 칸에 값이 보이므로 칩을 내지 않는다. */
+    expect(screen.queryByText(t.list.chipStatus(t.statuses.CONFIRMED!))).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.close }));
+    expect(screen.getByText(t.list.chipStatus(t.statuses.CONFIRMED!))).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.list.chipRemoveStatus }));
+
+    expect(await screen.findByRole('row', { name: /AAR4/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.list.chipRemoveStatus })).not.toBeInTheDocument();
+  });
+
+  it('보이는 칸(재료)의 조건은 칩으로 겹쳐 적지 않고, 초기화는 바뀐 것이 있을 때만 보인다', async () => {
+    const { user } = setup(template());
+    await screen.findByRole('row', { name: /AAR4/ });
+    expect(screen.queryByRole('button', { name: messages.common.reset })).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(t.list.material), '없는재료');
+    expect(await screen.findByText(t.list.emptyFiltered)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /조건 제거/ })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.common.reset }));
+    expect(await screen.findByRole('row', { name: /AAR4/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: messages.common.reset })).not.toBeInTheDocument();
   });
 
   /* 양식 · 재료는 받은 쪽 안에서 거른다(#208). */

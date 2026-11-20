@@ -232,18 +232,25 @@ describe('GroupListPane', () => {
     expect(onApplyFilters).toHaveBeenCalledWith({ ...defaultGroupFilters, includeInactive: true });
   });
 
-  it('적용된 조건마다 제거할 수 있는 칩이 선다', async () => {
-    const user = userEvent.setup();
+  /* 조건 셋이 모두 조회 줄에 보인다 — 보이는 칸의 값은 칩으로 겹쳐 적지 않는다(C-6). */
+  it('조건 칩을 세우지 않는다 — 걸린 조건은 칸이 말한다', () => {
     const applied: GroupFilters = { q: 'GRP', plantId: '12', includeInactive: true };
-    const { onApplyFilters } = renderPane({ appliedFilters: applied });
+    renderPane({ appliedFilters: applied });
 
-    expect(screen.getByText(t.filters.chipKeyword('GRP'))).toBeInTheDocument();
-    // 미사용 공장이라 좁힌 선택지에는 없지만 칩의 이름은 전체 목록에서 푼다.
-    expect(screen.getByText(t.filters.chipPlant('제2공장'))).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /조건 제거$/ })).toBeNull();
+    expect(screen.getByLabelText(t.filters.searchLabel)).toHaveValue('GRP');
+    expect(screen.getByRole('checkbox', { name: messages.common.includeInactive })).toBeChecked();
+  });
 
-    await user.click(screen.getByRole('button', { name: t.filters.chipRemovePlant }));
+  it('초기화는 처음 값과 달라진 것이 있을 때만 보인다', async () => {
+    const user = userEvent.setup();
+    renderPane();
 
-    expect(onApplyFilters).toHaveBeenCalledWith({ ...applied, plantId: '' });
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
+
+    await user.type(screen.getByLabelText(t.filters.searchLabel), 'G');
+
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeVisible();
   });
 
   it('초기화는 조건을 기본값으로 되돌린다', async () => {

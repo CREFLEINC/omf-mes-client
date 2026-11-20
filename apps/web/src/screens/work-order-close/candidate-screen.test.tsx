@@ -1038,7 +1038,9 @@ describe('WorkOrderCloseCandidateScreen', () => {
     expectReasonPlaceholder(nextInput);
     await user.click(reasonField(nextInput));
     await user.click(screen.getByRole('option', { name: 'Synthetic second reason' }));
-    await user.click(screen.getByRole('button', { name: t.filter.reset }));
+    /* 조건이 처음 값 그대로라 「초기화」는 없다 — 같은 조건으로 다시 조회해 첫 쪽으로 돌아간다. */
+    expect(screen.queryByRole('button', { name: t.filter.reset })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.filter.search }));
     await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
     const finalInput = await screen.findByRole('region', { name: t.input.pane });
     expectReasonPlaceholder(finalInput);

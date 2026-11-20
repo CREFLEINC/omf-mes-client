@@ -17,7 +17,13 @@ import {
 } from './lookups';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
-import { readPeriod, toPeriodQuery, validatePeriod, type PeriodInput } from './period';
+import {
+  EMPTY_PERIOD,
+  readPeriod,
+  toPeriodQuery,
+  validatePeriod,
+  type PeriodInput,
+} from './period';
 import { PrintPreviewDialog } from './print-preview';
 import {
   useFulfillmentPlantUpdate,
@@ -222,7 +228,7 @@ export const ShipmentScheduleScreen = () => {
             applyQuery(period, { ...filters, [key]: '' }, sortKey);
           }}
           onReset={() => {
-            applyQuery({ from: '', to: '' }, EMPTY_FILTERS, null);
+            applyQuery(EMPTY_PERIOD, EMPTY_FILTERS, null);
           }}
         />
 

@@ -17,6 +17,7 @@ import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState, type ReactNode } from 'react';
 
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { SaveErrorBanner } from '../../patterns/master';
 import { formatPackageQty, formatQty, packageUnitName } from '../../patterns/package-qty';
@@ -55,6 +56,11 @@ export const SupplierItemDefaultScreen = () => {
 
   const [supplierQuery, setSupplierQuery] = useState('');
   const [itemQuery, setItemQuery] = useState('');
+  /* 「초기화」는 찾기 칸에 글자가 있을 때만 보인다(C-6) — 비울 것이 없으면 할 일이 없다. 공장은 초기화가 건드리지 않는다. */
+  const isFilterChanged = hasChangedFilters(
+    { supplier: '', item: '' },
+    { supplier: supplierQuery, item: itemQuery },
+  );
   /** 열린 창 — `null` 닫힘, `'new'` 추가. */
   const [editing, setEditing] = useState<SupplierItemDefault | 'new' | null>(null);
   const [deleting, setDeleting] = useState<SupplierItemDefault | null>(null);
@@ -239,15 +245,17 @@ export const SupplierItemDefaultScreen = () => {
             value={itemQuery}
             onChange={(event) => setItemQuery(event.target.value)}
           />
-          <Button
-            variant="outlined"
-            onClick={() => {
-              setSupplierQuery('');
-              setItemQuery('');
-            }}
-          >
-            {t.filters.reset}
-          </Button>
+          {isFilterChanged && (
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setSupplierQuery('');
+                setItemQuery('');
+              }}
+            >
+              {t.filters.reset}
+            </Button>
+          )}
         </div>
       </section>
       <section className="pane" aria-label={t.tableLabel}>

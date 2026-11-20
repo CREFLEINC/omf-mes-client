@@ -2,8 +2,14 @@ import { Button, DatePicker, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  hasChangedFilters,
+  useFilterMore,
+} from '../../patterns/filter-more';
 import { Select } from '../../patterns/select';
-import type { HistoryFilters } from './filters';
+import { initialHistoryFilters, type HistoryFilters } from './filters';
 import type { FilterOption } from './lot-filter-bar';
 import { validateHistoryPeriod, type HistoryPeriodError } from './period';
 
@@ -38,8 +44,8 @@ export const HistoryFilterBar = ({
   onSearch,
   onReset,
 }: HistoryFilterBarProps) => {
-  const detailId = useId();
-  const [isDetailOpen, setIsDetailOpen] = useState(appliedFilters.actor !== '');
+  /* 처리자는 「조건 더보기」로 접는다(C-6) — 늘 접힌 채로 들어오고, 걸린 처리자는 아래 칩으로 알린다. */
+  const more = useFilterMore();
   const actorId = useId();
   const actorNoteId = useId();
   const reasonId = useId();
@@ -58,6 +64,29 @@ export const HistoryFilterBar = ({
     appliedActor !== '' && !hasAppliedActor
       ? [...actorOptions, { value: appliedActor, label: t.historyFilter.actorUnknownOption }]
       : actorOptions;
+  /* 접힌 처리자 칩 — 값은 펼친 칸이 보이는 글자와 같다(목록에 없으면 「이름 확인 불가」). */
+  const actorLabel = t.historyFilter.fields.actor;
+  const actorValue =
+    visibleActorOptions.find((option) => option.value === appliedActor)?.label ?? '';
+  const hiddenChips =
+    appliedActor === ''
+      ? []
+      : [
+          {
+            key: 'actor' as const,
+            label: `${actorLabel}: ${actorValue}`,
+            removeLabel: messages.common.filterMore.remove(actorLabel),
+          },
+        ];
+
+  /* 「초기화」는 바뀐 것이 있을 때만(C-6) — 편집 중인 값이나 조회에 쓰인 값이 처음 값(오늘 · 오늘)과 다를 때. */
+  const initial = initialHistoryFilters();
+  const isChanged = hasChangedFilters(initial, draft, appliedFilters);
+  /* 편집 상태도 함께 처음으로 — 조회에 쓰인 값이 이미 처음 값이면 주소가 바뀌지 않아 되돌림이 깨어나지 않는다. */
+  const reset = (): void => {
+    setDraft(initial);
+    onReset();
+  };
 
   return (
     <>
@@ -125,25 +154,19 @@ export const HistoryFilterBar = ({
           >
             {t.actions.search}
           </Button>
-          <Button variant="outlined" onClick={onReset}>
-            {t.actions.reset}
-          </Button>
-          <Button
-            variant="text"
-            size="sm"
-            aria-expanded={isDetailOpen}
-            aria-controls={detailId}
-            onClick={() => setIsDetailOpen((open) => !open)}
-          >
-            {isDetailOpen ? t.lotFilter.detailClose : t.lotFilter.detailOpen}
-          </Button>
+          {isChanged && (
+            <Button variant="outlined" onClick={reset}>
+              {t.actions.reset}
+            </Button>
+          )}
+          <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
         </div>
       </div>
       {/*
-       * 행위자는 상세 조건으로 접어 둔다 — 걸린 행위자가 있으면 펼친 채로 들어온다(LOT 현황과 같다 · 사용자 2026-11-02).
+       * 행위자는 「조건 더보기」로 접어 둔다(LOT 현황과 같다 · 사용자 2026-11-02 · C-6).
        * `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다.
        */}
-      <div id={detailId} hidden={!isDetailOpen}>
+      <div id={more.id} hidden={!more.isOpen}>
         <div className="filter-bar lot-status-filter lot-status-history-filter">
           <div className="field-cell lot-status-history-actor">
             <label className="field-label" htmlFor={actorId}>
@@ -165,6 +188,11 @@ export const HistoryFilterBar = ({
           </div>
         </div>
       </div>
+      <HiddenFilterChips
+        open={more.isOpen}
+        chips={hiddenChips}
+        onRemove={() => onSearch({ ...appliedFilters, actor: '' })}
+      />
     </>
   );
 };

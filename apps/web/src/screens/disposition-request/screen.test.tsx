@@ -107,6 +107,60 @@ describe('DispositionRequestScreen — 진입 목록', () => {
   });
 });
 
+describe('DispositionRequestScreen — 조건 더보기(C-6)', () => {
+  const WAREHOUSE_LABEL = t.chipWarehouse('SYN-WH-3 · 합성 불량창고');
+
+  it('원천 · 상태 · 검색어만 보이고, 창고는 「조건 더보기」를 눌러야 보인다', async () => {
+    const { user } = renderScreen();
+    await screen.findByRole('button', { name: t.actions.selectRow('LOT-TEST-0311') });
+    const more = screen.getByRole('button', { name: messages.common.filterMore.open });
+
+    expect(screen.getByRole('combobox', { name: t.fields.sourceCode })).toBeVisible();
+    expect(screen.getByRole('combobox', { name: t.fields.stage })).toBeVisible();
+    expect(screen.getByRole('textbox', { name: t.fields.keyword })).toBeVisible();
+    expect(screen.queryByRole('combobox', { name: t.fields.warehouse })).toBeNull();
+
+    await user.click(more);
+
+    expect(screen.getByRole('combobox', { name: t.fields.warehouse })).toBeVisible();
+    expect(more).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('접힌 창고 조건만 칩이 되고, ×가 창고만 풀어 다시 조회한다', async () => {
+    const { user } = renderScreen({ route: '/shipment/disposition-requests?wh=1003&q=LOT' });
+
+    expect(await screen.findByText(WAREHOUSE_LABEL)).toBeInTheDocument();
+    /* 보이는 칸(검색어)의 값은 칩으로 겹쳐 적지 않는다 — 칩의 ×는 창고 하나뿐이다. */
+    expect(screen.getAllByRole('button', { name: /조건 제거$/ })).toHaveLength(1);
+
+    await user.click(
+      screen.getByRole('button', { name: messages.common.filterMore.remove(WAREHOUSE_LABEL) }),
+    );
+
+    await waitFor(() => {
+      const last = requestedPaths()
+        .filter((path) => path.startsWith('/quality/disposition-candidates'))
+        .at(-1);
+      expect(last).not.toContain('warehouseId=1003');
+      expect(last).toContain('q=LOT');
+    });
+    expect(screen.queryByText(WAREHOUSE_LABEL)).toBeNull();
+  });
+
+  it('「초기화」는 처음 값과 달라진 것이 있을 때만 보이고, 누르면 비운다', async () => {
+    const { user } = renderScreen();
+    await screen.findByRole('button', { name: t.actions.selectRow('LOT-TEST-0311') });
+
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
+
+    await user.type(screen.getByRole('textbox', { name: t.fields.keyword }), 'LOT');
+    await user.click(screen.getByRole('button', { name: messages.common.reset }));
+
+    expect(screen.getByRole('textbox', { name: t.fields.keyword })).toHaveValue('');
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
+  });
+});
+
 describe('DispositionRequestScreen — 선택한 대상', () => {
   it('행을 고르면 머리에 LOT·원천·입고 정보가 서고 원천은 묻지 않는다', async () => {
     const { user } = renderScreen();

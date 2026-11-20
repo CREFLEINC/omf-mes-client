@@ -2,12 +2,20 @@ import { Button, DatePicker } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  hasChangedFilters,
+  useFilterMore,
+  type HiddenFilterChip,
+} from '../../patterns/filter-more';
 import { Select } from '../../patterns/select';
 import { ItemFilterField } from '../iqc-inspection/item-filter-field';
 import {
   codeLockReason,
   codeOptionsOf,
   codeTruncatedNote,
+  codeValueLabel,
   sourceCodeOptions,
   type CodeOption,
 } from './disposition-codes';
@@ -77,21 +85,22 @@ const SelectCell = ({
 
 export interface FilterBarProps {
   applied: PendingFilters;
+  /** 처음 값 — 초기화가 되돌리는 값(최근 한 달 · 나머지 비움). 「초기화」는 이것과 다를 때만 보인다(C-6). */
+  defaults: PendingFilters;
   /** 심각도는 공통코드 조회 결과를 그대로 받는다 — 선택지·잠금 사유를 여기서 가른다. */
   severity: DispositionLookup;
   onApply: (filters: PendingFilters) => void;
   onReset: () => void;
 }
 
-export const FilterBar = ({ applied, severity, onApply, onReset }: FilterBarProps) => {
+type HiddenKey = 'severityCode' | 'sourceCode';
+
+export const FilterBar = ({ applied, defaults, severity, onApply, onReset }: FilterBarProps) => {
   const t = messages.dispositionDecision;
   const fromId = useId();
   const toId = useId();
-  const detailId = useId();
-  /* 상세 조건(심각도 · 원천)이 걸려 있으면 펼친 채로 연다 — 접힌 칸에 조건이 숨지 않게. */
-  const [isDetailOpen, setIsDetailOpen] = useState(
-    applied.severityCode !== '' || applied.sourceCode !== '',
-  );
+  /* 심각도 · 원천은 「조건 더보기」로 접는다(C-6) — 늘 접힌 채로 들어오고, 걸린 조건은 아래 칩으로 알린다. */
+  const more = useFilterMore();
   const [draft, setDraft] = useState<PendingFilters>(applied);
   const { from, to, itemId, severityCode, statusCode, sourceCode } = applied;
 
@@ -101,6 +110,34 @@ export const FilterBar = ({ applied, severity, onApply, onReset }: FilterBarProp
 
   /* 심각도·상태와 달리 밖에서 받지 않는다 — 계약이 두 값을 열거해 기다릴 대기가 없다. */
   const sourceOptions = sourceCodeOptions();
+
+  const chipOf = (key: HiddenKey, label: string, value: string): HiddenFilterChip<HiddenKey> => ({
+    key,
+    label: `${label}: ${value}`,
+    removeLabel: messages.common.filterMore.remove(label),
+  });
+  /* 칩 라벨은 대상 이름(목록 머리글)이다 — 칸 라벨의 「선택」 같은 동작 낱말을 싣지 않는다. */
+  const hiddenChips: HiddenFilterChip<HiddenKey>[] = [
+    ...(severityCode === ''
+      ? []
+      : [chipOf('severityCode', t.fields.severityCode, codeValueLabel(severity, severityCode))]),
+    ...(sourceCode === ''
+      ? []
+      : [
+          chipOf(
+            'sourceCode',
+            t.fields.sourceCode,
+            sourceOptions.find((option) => option.value === sourceCode)?.label ?? sourceCode,
+          ),
+        ]),
+  ];
+  /* 「초기화」는 바뀐 것이 있을 때만(C-6) — 편집 중인 값이나 조회에 쓰인 값(탭 줄 상태 칩 포함)이 처음 값과 다를 때. */
+  const isChanged = hasChangedFilters(defaults, draft, applied);
+  /* 편집 상태도 함께 처음으로 — 조회에 쓰인 값이 이미 처음 값이면 주소가 바뀌지 않아 되돌림이 깨어나지 않는다. */
+  const reset = (): void => {
+    setDraft(defaults);
+    onReset();
+  };
 
   return (
     <div className="disposition-filter-wrap">
@@ -143,24 +180,18 @@ export const FilterBar = ({ applied, severity, onApply, onReset }: FilterBarProp
         <div className="disposition-filter-actions">
           <div className="filter-actions">
             <Button onClick={() => onApply(draft)}>{messages.common.search}</Button>
-            <Button variant="outlined" onClick={onReset}>
-              {messages.common.reset}
-            </Button>
-            {/* 상세 펼치기는 초기화 오른쪽(사용자 지시 · #223) — 심각도 · 원천을 펼쳤다 접는다. */}
-            <Button
-              variant="text"
-              size="sm"
-              aria-expanded={isDetailOpen}
-              aria-controls={detailId}
-              onClick={() => setIsDetailOpen((open) => !open)}
-            >
-              {isDetailOpen ? t.filterDetail.close : t.filterDetail.open}
-            </Button>
+            {isChanged && (
+              <Button variant="outlined" onClick={reset}>
+                {messages.common.reset}
+              </Button>
+            )}
+            {/* 「조건 더보기」는 초기화 오른쪽(사용자 지시 · #223) — 심각도 · 원천을 펼쳤다 접는다. */}
+            <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
           </div>
         </div>
       </div>
       {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
-      <div id={detailId} hidden={!isDetailOpen}>
+      <div id={more.id} hidden={!more.isOpen}>
         <div className="filter-bar disposition-filter disposition-filter-detail">
           {/* 심각도 — 공통코드가 채운다(G-32). 못 채운 사유(조회 중·실패·빈 목록)는 칸 옆에 밝힌다(G-2). 상태는 탭 줄 칩이 거른다(#223). */}
           <SelectCell
@@ -183,6 +214,11 @@ export const FilterBar = ({ applied, severity, onApply, onReset }: FilterBarProp
           />
         </div>
       </div>
+      <HiddenFilterChips
+        open={more.isOpen}
+        chips={hiddenChips}
+        onRemove={(key) => onApply({ ...applied, [key]: '' })}
+      />
     </div>
   );
 };

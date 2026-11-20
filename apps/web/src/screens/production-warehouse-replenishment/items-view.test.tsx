@@ -70,6 +70,26 @@ describe('W-02-12 생산 창고 보충 — 관리 품목 보기', () => {
     );
   });
 
+  it('C-6 「초기화」는 고친 조건이 있을 때만 보이고, 조회 전이어도 고친 값을 되돌린다', async () => {
+    const { user } = setupScreen({ route: ITEMS });
+    await listTable();
+    const filters = within(screen.getByRole('region', { name: ti.filters.label }));
+
+    expect(filters.queryByRole('button', { name: t.common.reset })).toBeNull();
+
+    await user.click(filters.getByRole('combobox', { name: ti.filters.source }));
+    await user.click(await screen.findByRole('option', { name: 'SYN-MW-2 합성 자재창고 2' }));
+    expect(filters.getByRole('combobox', { name: ti.filters.source })).toHaveTextContent(
+      'SYN-MW-2 합성 자재창고 2',
+    );
+    await user.click(filters.getByRole('button', { name: t.common.reset }));
+
+    expect(filters.getByRole('combobox', { name: ti.filters.source })).toHaveTextContent(
+      t.common.all,
+    );
+    expect(filters.queryByRole('button', { name: t.common.reset })).toBeNull();
+  });
+
   it('US4-2 보충 시점이 유지량 이상이면 오류를 보이고 저장을 잠근다', async () => {
     const { user, writes } = setupScreen({ route: ITEMS });
 

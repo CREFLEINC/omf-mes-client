@@ -65,7 +65,6 @@ import { iqcSkipRequest } from './iqc-skip-request';
 import { itemExtendedAttrs } from './item-extended-attrs';
 import { itemPicker } from './item-picker';
 import { resourcePicker } from './resource-picker';
-import { judgmentCode } from './judgment-code';
 import { login } from './login';
 import { lotStatusHistory } from './lot-status-history';
 import { lotStatusTransition } from './lot-status-transition';
@@ -88,7 +87,6 @@ import { passwordChange } from './password-change';
 import { pendingCode } from './pending-code';
 import { physicalCount } from './physical-count';
 import { poChangeReview } from './po-change-review';
-import { poRegister } from './po-register';
 import { popLocationLabel } from './pop-location-label';
 import { inspectionDocuments } from './inspection-documents';
 import { inspectionHistory } from './inspection-history';
@@ -111,7 +109,6 @@ import { pqcInspection } from './pqc-inspection';
 import { productDisposalRequest } from './product-disposal-request';
 import { productPicking } from './product-picking';
 import { productReceipt } from './product-receipt';
-import { productStockStatus } from './product-stock-status';
 import { productionOrder } from './production-order';
 import { erpPurchaseOrder } from './erp-purchase-order';
 import { erpSalesOrder } from './erp-sales-order';
@@ -237,7 +234,6 @@ export const vi: Translated<Messages> = {
   itemExtendedAttrs,
   itemPicker,
   resourcePicker,
-  judgmentCode,
   login,
   lotStatusHistory,
   lotStatusTransition,
@@ -278,7 +274,6 @@ export const vi: Translated<Messages> = {
   popMaterialLotLabel,
   popChrome,
   popUniform,
-  poRegister,
   pqcInspection,
   productDisposalRequest,
   productionOrder,
@@ -290,7 +285,6 @@ export const vi: Translated<Messages> = {
   productionResult,
   productPicking,
   productReceipt,
-  productStockStatus,
   putaway,
   qualityApproval,
   recycleEntry,

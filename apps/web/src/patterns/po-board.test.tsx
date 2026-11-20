@@ -27,6 +27,8 @@ describe('usePaneLayout · PaneLayoutToggle(#186)', () => {
     const user = userEvent.setup();
     const { unmount } = render(<Harness />);
 
+    expect(screen.queryByRole('group', { name: LABELS.group })).toBeNull();
+    await user.click(screen.getByRole('button', { name: '더보기' }));
     expect(screen.getByRole('group', { name: LABELS.group })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: LABELS.side })).toHaveAttribute(
       'aria-pressed',
@@ -40,6 +42,7 @@ describe('usePaneLayout · PaneLayoutToggle(#186)', () => {
     expect(screen.getByTestId('split')).not.toHaveClass('is-stacked');
 
     await user.click(screen.getByRole('button', { name: LABELS.stack }));
+    await user.click(screen.getByRole('button', { name: '더보기' }));
     expect(screen.getByRole('button', { name: LABELS.stack })).toHaveAttribute(
       'aria-pressed',
       'true',
@@ -52,6 +55,7 @@ describe('usePaneLayout · PaneLayoutToggle(#186)', () => {
     render(<Harness />);
 
     expect(screen.getByTestId('split')).toHaveClass('is-stacked');
+    await user.click(screen.getByRole('button', { name: '더보기' }));
     await user.click(screen.getByRole('button', { name: LABELS.side }));
     expect(screen.getByTestId('split')).not.toHaveClass('is-stacked');
     expect(globalThis.localStorage.getItem(STORAGE_KEY)).toBe('side');

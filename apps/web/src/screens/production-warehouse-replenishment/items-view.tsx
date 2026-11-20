@@ -2,6 +2,7 @@ import { Button, Checkbox, Chip, EmptyState, Skeleton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState, type ReactNode } from 'react';
 
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
 import type { ReplenishmentItem, ReplenishmentSettings } from './api-types';
@@ -61,6 +62,12 @@ export const ItemsView = ({
     setDraftSource(filters);
     setDraft(filters);
   }
+  /* 「초기화」는 처음 값과 다를 때만 보인다(C-6). 주소가 그대로여도 고친 값은 되돌린다. */
+  const isChanged = hasChangedFilters(EMPTY_ITEMS, draft, filters);
+  const reset = (): void => {
+    setDraft(EMPTY_ITEMS);
+    onReset();
+  };
   /** 열린 창 — `null` 은 닫힘, `'new'` 는 추가. */
   const [editing, setEditing] = useState<ReplenishmentItem | 'new' | null>(null);
   const list = useItemList(plantId, filters, page, true);
@@ -104,9 +111,11 @@ export const ItemsView = ({
           {ti.filters.belowOnly}
         </Checkbox>
         <Button onClick={() => onSearch(draft)}>{t.common.search}</Button>
-        <Button variant="outlined" onClick={onReset}>
-          {t.common.reset}
-        </Button>
+        {isChanged && (
+          <Button variant="outlined" onClick={reset}>
+            {t.common.reset}
+          </Button>
+        )}
         <span className="replenishment-actions-end">
           <Button variant="tonal" onClick={() => setEditing('new')}>
             {ti.add}

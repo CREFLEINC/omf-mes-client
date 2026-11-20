@@ -186,6 +186,8 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
     const { user } = renderScreen([planListRoute()], '?inactive=1');
     await screen.findByRole('button', { name: 'SYN-PLAN-03' });
 
+    /* 미승인은 「조건 더보기」 안에 접혀 있다(C-6). */
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     await user.click(screen.getByRole('checkbox', { name: '미승인' }));
 
     await waitFor(() => {
@@ -204,14 +206,35 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
   });
 
   it('조회 조건은 주소에 남는다 — 새로고침·공유가 같은 결과를 낸다', async () => {
-    const { requests } = renderScreen([planListRoute()], '?q=SYN&type=OQC&inactive=1&unapproved=1');
+    const { requests, user } = renderScreen(
+      [planListRoute()],
+      '?q=SYN&type=OQC&inactive=1&unapproved=1',
+    );
     await screen.findByRole('button', { name: 'SYN-PLAN-01' });
 
     const first = planRequests(requests)[0];
     expect(first?.url.searchParams.get('q')).toBe('SYN');
     expect(first?.url.searchParams.get('inspectionTypeCode')).toBe('OQC');
     expect(first?.url.searchParams.get('includeInactive')).toBe('true');
+    /* 접힌 미승인 조건은 칩으로 알리고, 펼치면 칸에 그대로 보인다(C-6). */
+    expect(screen.getByRole('button', { name: '미승인 조건 제거' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     expect(screen.getByRole('checkbox', { name: '미승인' })).toBeChecked();
+  });
+
+  it('접힌 상태 조건 칩의 ×가 그 조건만 풀고 다시 조회한다', async () => {
+    const { requests, user } = renderScreen(
+      [planListRoute(), versionListRoute(), ...lookupRoutes()],
+      '?q=SYN&vstatus=confirmed',
+    );
+    await screen.findByText('조건에 맞는 검사기준이 없습니다');
+    /* 보이는 칸(검사 기준 검색)의 조건은 칩으로 겹쳐 적지 않는다. */
+    expect(screen.queryByText('검색어: SYN')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '상태 조건 제거' }));
+
+    expect(await screen.findByRole('button', { name: 'SYN-PLAN-01' })).toBeInTheDocument();
+    expect(planRequests(requests).at(-1)?.url.searchParams.get('q')).toBe('SYN');
   });
 
   it('조회에 실패하면 표와 빈 상태 대신 오류 배너와 다시 시도가 뜬다', async () => {

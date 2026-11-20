@@ -9,9 +9,10 @@ import {
   Tabs,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useCallback, useId, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
+import { itemOptionLabel } from '../../patterns/item-select';
 import { LeaveGuardProvider } from '../../patterns/leave-guard';
 import { PageNav } from '../../patterns/page-nav';
 import { toApiError } from '../../patterns/request';
@@ -26,7 +27,12 @@ import {
   SplitOrientationToggle,
   useSplitOrientation,
 } from '../../patterns/split-orientation';
-import { DetailFiltersToggle } from '../../patterns/detail-filters';
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  useFilterMore,
+  type HiddenFilterChip,
+} from '../../patterns/filter-more';
 import { LotScan } from '../inspection-documents/lot-scan';
 import { plantTodayRange } from '../parts-iqc-inspection/today';
 import {
@@ -43,6 +49,7 @@ import { InspectionHistoryPanel, useInspectionHistory } from '../inspection-hist
 import { labelOfCode } from '../oqc-inspection/code-options';
 import { CODE_GROUPS, toCodeOptions } from '../pqc-inspection/code-options';
 import { useCodeValues } from '../pqc-inspection/queries';
+import { useItem } from '../production-result/flow-queries';
 import { EMPTY_PQC_FILTERS, PqcFilterBar, type PqcFilters } from './filter-bar';
 import { PqcQueueTable } from './queue-table';
 
@@ -51,6 +58,20 @@ const t = messages.pqcInspectionRegister;
 const tOqc = messages.oqcInspection;
 const todayText = messages.partsIqcInspection;
 const hubText = messages.common.inspectionHub;
+const referenceText = messages.common.reference;
+
+type HiddenChipKey = 'itemId' | 'workOrder' | 'keyword';
+
+/** 접힌 칸 칩 한 개 — 「라벨: 값」 한 줄, × 의 접근명은 「〈라벨〉 조건 제거」. */
+const chipOf = (
+  key: HiddenChipKey,
+  label: string,
+  value: string,
+): HiddenFilterChip<HiddenChipKey> => ({
+  key,
+  label: `${label}: ${value}`,
+  removeLabel: messages.common.filterMore.remove(label),
+});
 
 /** 이 화면이 무엇인지의 정의 — 조건이 아니다. */
 const PQC = 'PQC';
@@ -84,14 +105,39 @@ export const PqcInspectionRegisterScreen = () => {
   /* 목록 쪽 크기 — IQC 목록과 같은 10 · 20 · 50건(사용자 지시 2026-10-28 · #197). */
   const [pageSize, setPageSize] = useState<ListPageSize>(PAGE_SIZE);
   const [filters, setFilters] = useState<PqcFilters>(EMPTY_PQC_FILTERS);
-  /* 품목 · 작업지시 · 의뢰번호는 상세 조건으로 접어 둔다(사용자 지시 2026-11-02 · #225). */
-  const [detailOpen, setDetailOpen] = useState(false);
-  const detailFiltersId = useId();
-  const hasDetailCondition =
-    filters.itemId !== null ||
-    filters.workOrderId !== null ||
-    filters.workOrderNo !== '' ||
-    filters.keyword !== '';
+  /*
+   * 품목 · 작업지시 · 의뢰번호는 「조건 더보기」로 접어 둔다(사용자 지시 2026-11-02 · #225 · C-6). 늘 접힌 채로 들어오고,
+   * 접힌 칸에 걸린 조건은 칩으로 알린다 — × 는 그 조건만 풀어 바로 다시 조회한다.
+   */
+  const fold = useFilterMore();
+  const filterItem = useItem(filters.itemId);
+  /* 칩의 값은 펼친 칸이 보이는 글자와 같다(품목코드 · 품목명). */
+  const filterItemLabel =
+    filterItem.data !== undefined
+      ? itemOptionLabel(filterItem.data)
+      : filterItem.isError
+        ? referenceText.failed
+        : referenceText.loading;
+  /* 칩 라벨은 대상 이름(표 머리글 · 상세 라벨)이다 — 칸 라벨의 「검색」 같은 동작 낱말을 싣지 않는다. */
+  const hiddenChips: HiddenFilterChip<HiddenChipKey>[] = [
+    ...(filters.itemId === null ? [] : [chipOf('itemId', t.columns.item, filterItemLabel)]),
+    ...(filters.workOrderNo === ''
+      ? []
+      : [chipOf('workOrder', t.columns.workOrder, filters.workOrderNo)]),
+    ...(filters.keyword === ''
+      ? []
+      : [chipOf('keyword', t.web.summary.inspectionRequestNo, filters.keyword)]),
+  ];
+  const removeChip = (key: HiddenChipKey): void => {
+    setFilters((current) =>
+      key === 'itemId'
+        ? { ...current, itemId: null }
+        : key === 'workOrder'
+          ? { ...current, workOrderId: null, workOrderNo: '' }
+          : { ...current, keyword: '' },
+    );
+    setPage(1);
+  };
   const [dirty, setDirty] = useState(false);
   /* 저장하지 않은 입력을 두고 옮기려 할 때 묻는 자리(#133 · #185). `to` 가 `null` 이면 상세 닫기다. */
   const [leaveTo, setLeaveTo] = useState<{ to: number | null; href?: string } | null>(null);
@@ -247,17 +293,15 @@ export const PqcInspectionRegisterScreen = () => {
             {messages.pqcInspectionRegister.queue.pendingOnly}
           </Checkbox>
         </div>
-        <DetailFiltersToggle
-          open={detailOpen}
-          onToggle={() => setDetailOpen((open) => !open)}
-          controlsId={detailFiltersId}
-          hasCondition={hasDetailCondition}
-        />
+        <div className="inspection-filter-more">
+          <FilterMoreButton open={fold.isOpen} controlsId={fold.id} onToggle={fold.toggle} />
+        </div>
         {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
-        <div id={detailFiltersId} className="inspection-detail-filters" hidden={!detailOpen}>
+        <div id={fold.id} className="inspection-detail-filters" hidden={!fold.isOpen}>
           <PqcFilterBar
             applied={filters}
             showPendingOnly={false}
+            statusCode={statusCode}
             pendingOnly={pendingOnly}
             onTogglePendingOnly={togglePendingOnly}
             onSearch={(next) => {
@@ -273,6 +317,7 @@ export const PqcInspectionRegisterScreen = () => {
             }}
           />
         </div>
+        <HiddenFilterChips open={fold.isOpen} chips={hiddenChips} onRemove={removeChip} />
       </section>
 
       <div

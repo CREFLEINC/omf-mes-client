@@ -15,8 +15,6 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
   /** 탭 줄 오른쪽 상태 칩 — 「판정 대기 3」. 건수를 아직 모르면 이름만(#223). */
   statusChip: (label: string, count: number | undefined): string =>
     count === undefined ? label : `${label} ${String(count)}`,
-  /** 조회 조건의 상세 펼치기 — 심각도 · 원천(사용자 지시 · #223). */
-  filterDetail: { open: 'Mở rộng điều kiện', close: 'Thu gọn điều kiện' },
   tabs: {
     label: 'Xem đánh giá quyết định xử lý',
     pending: 'Chờ đánh giá',

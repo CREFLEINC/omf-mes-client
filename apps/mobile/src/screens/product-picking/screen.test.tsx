@@ -196,6 +196,19 @@ const openRequest = async (user: User) => {
   await screen.findByLabelText('제품 LOT 스캔');
 };
 
+/** 라인 줄의 품목 단추 — 접근 이름이 「FG-A100 센서 모듈 라인 열기」. */
+const lineButton = (itemCode = 'FG-A100') =>
+  screen.findByRole('button', { name: new RegExp(`^${itemCode} .*라인 열기$`) });
+
+/** 피킹 라인 표의 그 라인 줄. */
+const lineRow = async (itemCode = 'FG-A100') => (await lineButton(itemCode)).closest('tr')!;
+
+/** 라인 줄을 눌러 라인 시트를 연다 — 그 라인의 LOT · 교체 · 출하 관리 코드는 시트에 있다(사용자 지시 2026-11-20). */
+const openLine = async (user: User, itemCode = 'FG-A100') => {
+  await user.click(await lineButton(itemCode));
+  return screen.findByRole('region', { name: '피킹한 LOT' });
+};
+
 const capture = (
   pathname: string,
   method: string,
@@ -271,7 +284,7 @@ describe('M-04-01 제품 피킹 — 지시서 목록', () => {
 
     expect(within(card).getByText('수주 SO-T1, 출하 예정 2026-11-18')).toBeTruthy();
     await openRequest(user);
-    expect(screen.getByText('SO-T1')).toBeTruthy();
+    expect(screen.getByText(/수주 SO-T1/)).toBeTruthy();
   });
 
   it('Q9 빈 목록이면 지시서가 없다고 말한다', async () => {
@@ -287,11 +300,12 @@ describe('M-04-01 제품 피킹 — LOT 통째 피킹', () => {
     mount();
     await openRequest(user);
 
-    const tiles = await screen.findByRole('group', { name: '라인 1, FG-A100' });
-    expect(within(tiles).getByText('목표')).toBeTruthy();
-    expect(within(tiles).getByText('100')).toBeTruthy();
-    expect(within(tiles).getByText('남음')).toBeTruthy();
-    expect(within(tiles).getByText('60')).toBeTruthy();
+    /* 라인 한 줄 — No · 품목 · LOT 수 · 피킹 / 목표(사용자 지시 2026-11-20). */
+    const row = await lineRow();
+    expect(row).toHaveTextContent('1');
+    expect(row).toHaveTextContent('FG-A100');
+    expect(row).toHaveTextContent('40/100 EA');
+    expect(row).toHaveAttribute('data-reached', 'false');
     expect(screen.queryByLabelText(/피킹 수량/)).toBeNull();
     expect(screen.queryByRole('button', { name: '피킹 확정' })).toBeNull();
   });
@@ -333,6 +347,7 @@ describe('M-04-01 제품 피킹 — LOT 통째 피킹', () => {
       ],
     });
     await openRequest(user);
+    await openLine(user);
 
     expect(await screen.findByText('창고 A, A-01-02')).toBeTruthy();
     expect(screen.getByText('창고 B, B-02-01')).toBeTruthy();
@@ -367,6 +382,7 @@ describe('M-04-01 제품 피킹 — LOT 통째 피킹', () => {
       ],
     });
     await openRequest(user);
+    await openLine(user);
 
     expect(await screen.findByText('창고 A')).toBeTruthy();
     expect(screen.getByText('적치 대기')).toBeTruthy();
@@ -407,11 +423,18 @@ describe('M-04-01 제품 피킹 — LOT 통째 피킹', () => {
     expect(await seen[0]?.json()).toEqual({ lotNo: 'P2611-0003' });
     expect(seen[0]?.headers.get('X-Worker-No')).toBe('900028');
     expect(seen[0]?.headers.get('Idempotency-Key')).toBeTruthy();
-    expect(await screen.findByText('P2611-0003 70 EA 를 피킹했습니다')).toBeTruthy();
-    expect(screen.getByText('라인 1 목표 100 을 채웠습니다, 초과 10')).toBeTruthy();
-    const tiles = screen.getByRole('group', { name: '라인 1, FG-A100' });
-    expect(within(tiles).getByText('초과')).toBeTruthy();
-    expect(within(tiles).getByText('110')).toBeTruthy();
+    /* 방금 찍은 결과 칸 — 품목 · 큰 수량 · LOT 번호 전체 · 「목표 채움」(사용자 지시 2026-11-20). */
+    const result = within(await screen.findByRole('region', { name: '피킹됨' }));
+    expect(result.getByText('P2611-0003')).toBeTruthy();
+    expect(result.getByText('70')).toBeTruthy();
+    expect(result.getByText('목표 채움')).toBeTruthy();
+    expect(result.getByText('라인 1 목표 100 을 채웠습니다, 초과 10')).toBeTruthy();
+    const row = await lineRow();
+    await waitFor(() => {
+      expect(row).toHaveTextContent('110/100 EA');
+    });
+    expect(row).toHaveAttribute('data-current', 'true');
+    expect(row).toHaveAttribute('data-reached', 'true');
   });
 
   it('US1-1 같은 품목 라인이 둘이면 남은 수량이 있는 앞 라인으로 보낸다', async () => {
@@ -481,8 +504,15 @@ describe('M-04-01 제품 피킹 — LOT 통째 피킹', () => {
     await scan(user, 'P2611-0003');
     expect(await screen.findByText('다른 작업에 잡힌 LOT 입니다')).toBeTruthy();
 
-    answer = 'LOT_ALREADY_PICKED';
+    /* 이미 피킹한 LOT 은 보내지 않고 회색으로 몇 번 라인인지 알린다(사용자 지시 2026-11-20). */
     await scan(user, 'P2611-0001');
+    const already = within(await screen.findByRole('region', { name: '이미 피킹한 LOT입니다' }));
+    expect(already.getByText('피킹 라인 No 1에 있습니다')).toBeTruthy();
+    expect(await lineRow()).toHaveAttribute('data-duplicate', 'true');
+
+    /* 다른 기기가 먼저 집어 서버가 막으면 코드별 문구로. */
+    answer = 'LOT_ALREADY_PICKED';
+    await scan(user, 'P2611-0003');
     expect(await screen.findByText('이미 이 지시서에 피킹한 LOT 입니다')).toBeTruthy();
   });
 
@@ -631,6 +661,7 @@ describe('M-04-01 제품 피킹 — OQC 판정과 [교체]', () => {
       ],
     });
     await openRequest(user);
+    await openLine(user);
 
     for (const label of ['미검사', '합격', '불합격', '보류', '검사 불필요', '검사 생략']) {
       expect(await screen.findByText(label)).toBeTruthy();
@@ -670,9 +701,13 @@ describe('M-04-01 제품 피킹 — OQC 판정과 [교체]', () => {
     });
     await openRequest(user);
 
+    /* 불합격은 라인 줄 칩으로만 알린다 — [교체]는 시트에. */
+    expect(await lineRow()).toHaveTextContent('불합격 1');
+    expect(screen.queryByRole('button', { name: /교체/ })).toBeNull();
+
+    await openLine(user);
     expect(await screen.findAllByRole('button', { name: /교체/ })).toHaveLength(1);
     expect(screen.getByRole('button', { name: 'P2611-0003 교체' })).toBeTruthy();
-    expect(screen.getByText('불합격 LOT 이 있습니다. 교체하세요')).toBeTruthy();
   });
 
   it('US2-1 불합격 줄에 판정을 정한 「OQC 결과 n, 시각」을 보인다', async () => {
@@ -702,6 +737,7 @@ describe('M-04-01 제품 피킹 — OQC 판정과 [교체]', () => {
       ],
     });
     await openRequest(user);
+    await openLine(user);
 
     expect(await screen.findByText('OQC 결과 2, 14:10')).toBeTruthy();
   });
@@ -764,9 +800,11 @@ describe('M-04-01 제품 피킹 — OQC 판정과 [교체]', () => {
       ),
     ]);
     await openRequest(user);
+    await openLine(user);
     await user.click(await screen.findByRole('button', { name: 'P2611-0003 교체' }));
 
-    const dialog = await screen.findByRole('dialog');
+    /* 확인 창이 시트 자리에 선다. */
+    const dialog = await screen.findByRole('dialog', { name: 'P2611-0003 을 교체할까요?' });
     expect(within(dialog).getByText('P2611-0003 을 교체할까요?')).toBeTruthy();
     expect(
       within(dialog).getByText('피킹에서 30 EA 가 빠집니다(라인 1 피킹 110 → 80)'),
@@ -783,7 +821,9 @@ describe('M-04-01 제품 피킹 — OQC 판정과 [교체]', () => {
     expect(await screen.findByText('P2611-0003 을 교체했습니다')).toBeTruthy();
     expect(screen.getByText('부적합 NC-261118-0004 이 생겼습니다')).toBeTruthy();
     expect(screen.getByText('라인 1 이 20 EA 를 더 받습니다. 다른 LOT 을 스캔하세요')).toBeTruthy();
-    expect(screen.getByText('교체됨')).toBeTruthy();
+    expect(screen.getByRole('region', { name: '교체됨' })).toBeTruthy();
+    const lots = await openLine(user);
+    expect(await within(lots).findByText('교체됨')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'P2611-0003 교체' })).toBeNull();
   });
 
@@ -815,9 +855,13 @@ describe('M-04-01 제품 피킹 — OQC 판정과 [교체]', () => {
       },
     );
     await openRequest(user);
+    await openLine(user);
     await user.click(await screen.findByRole('button', { name: 'P2611-0003 교체' }));
     await user.click(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: '교체' }),
+      within(await screen.findByRole('dialog', { name: 'P2611-0003 을 교체할까요?' })).getByRole(
+        'button',
+        { name: '교체' },
+      ),
     );
 
     expect(await screen.findByText('교체하지 않았습니다')).toBeTruthy();
@@ -830,7 +874,7 @@ describe('M-04-01 제품 피킹 — OQC 판정과 [교체]', () => {
 });
 
 describe('M-04-01 제품 피킹 — 출하 관리 코드', () => {
-  it('US5-1 코드 칸을 누르면 다음 스캔이 그 LOT 코드로 바로 저장된다', async () => {
+  it('US5-1 ✎ 로 연 코드 칸이 스캐너 입력을 받아 Enter 로 저장한다 — LOT 피킹으로 가지 않는다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
     const pickSeen: Request[] = [];
@@ -849,12 +893,16 @@ describe('M-04-01 제품 피킹 — 출하 관리 코드', () => {
       ),
     ]);
     await openRequest(user);
+    await openLine(user);
     await user.click(
       await screen.findByRole('button', { name: 'P2611-0001 출하 관리 코드 고치기' }),
     );
-    expect(screen.getByText('코드 입력 중, LOT 스캔은 쉽니다')).toBeTruthy();
 
-    await scan(user, 'GN-PLT-0007');
+    /* 스캐너는 초점이 있는 코드 칸에 글자와 Enter 를 친다. */
+    await user.type(
+      screen.getByLabelText('출하 관리 코드(선택), 100자 이하'),
+      'GN-PLT-0007{Enter}',
+    );
 
     await waitFor(() => {
       expect(seen).toHaveLength(1);
@@ -882,11 +930,13 @@ describe('M-04-01 제품 피킹 — 출하 관리 코드', () => {
       },
     );
     await openRequest(user);
+    await openLine(user);
     await user.click(
-      await screen.findByRole('button', { name: 'P2611-0001 출하 관리 코드 직접 입력' }),
+      await screen.findByRole('button', { name: 'P2611-0001 출하 관리 코드 고치기' }),
     );
 
     const field = screen.getByLabelText('출하 관리 코드(선택), 100자 이하');
+    expect(field).toHaveValue('OLD-1');
     await user.clear(field);
     await user.click(screen.getByRole('button', { name: '저장' }));
 
@@ -908,8 +958,9 @@ describe('M-04-01 제품 피킹 — 출하 관리 코드', () => {
       ),
     ]);
     await openRequest(user);
+    await openLine(user);
     await user.click(
-      await screen.findByRole('button', { name: 'P2611-0001 출하 관리 코드 직접 입력' }),
+      await screen.findByRole('button', { name: 'P2611-0001 출하 관리 코드 고치기' }),
     );
 
     const field = screen.getByLabelText('출하 관리 코드(선택), 100자 이하');
@@ -932,10 +983,14 @@ describe('M-04-01 제품 피킹 — 출하 관리 코드', () => {
       },
     ]);
     await openRequest(user);
+    await openLine(user);
     await user.click(
       await screen.findByRole('button', { name: 'P2611-0001 출하 관리 코드 고치기' }),
     );
-    await scan(user, 'GN-PLT-0009');
+    await user.type(
+      screen.getByLabelText('출하 관리 코드(선택), 100자 이하'),
+      'GN-PLT-0009{Enter}',
+    );
 
     expect(
       await screen.findByText('코드를 저장하지 못했습니다. 다시 스캔하거나 입력하세요'),
@@ -998,10 +1053,9 @@ describe('M-04-01 제품 피킹 — 지시서 코드 보기', () => {
       mount([partnersDenied], { requests: [named()] });
       await openRequest(user);
 
-      expect(screen.getByText('고객')).toBeTruthy();
-      expect(screen.getByText('가나전자')).toBeTruthy();
-      expect(screen.getByText('납품처')).toBeTruthy();
-      expect(screen.getByText('가나전자 2공장')).toBeTruthy();
+      /* 지시서는 머리 한 줄 — 「고객, 납품처, 수주, 출하 예정」(사용자 지시 2026-11-20). */
+      const head = screen.getByRole('region', { name: 'SR-261118-001' });
+      expect(head).toHaveTextContent(/가나전자.*가나전자 2공장/);
     });
 
     it('US4-1·Q9 「지시서 코드 보기」에 고객·납품처를 보인다', async () => {

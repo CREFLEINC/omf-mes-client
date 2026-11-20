@@ -12,6 +12,8 @@ export const inboundWorkRecord: Translated<typeof ko.inboundWorkRecord> = {
     supplierAll: 'Tất cả',
     query: 'Mặt hàng · LOT nhập hàng',
     queryPlaceholder: 'Mã · tên mặt hàng, số IL',
+    chipPlant: (value: string): string => `Nhà máy: ${value}`,
+    chipRemovePlant: 'Bỏ điều kiện nhà máy',
   },
   views: {
     label: 'Chế độ xem',

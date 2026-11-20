@@ -1,9 +1,16 @@
-import { Button, DatePicker, Icon, SearchInput } from '@crefle/web-ui';
+import { Button, DatePicker, SearchInput } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  hasChangedFilters,
+  useFilterMore,
+  type HiddenFilterChip,
+} from '../../patterns/filter-more';
 import { ReferenceField } from '../../patterns/reference-picker';
-import type { LotTraceFilters } from './filters';
+import { DEFAULT_SIZE, toInboundLotRef, type LotTraceFilters } from './filters';
 import { validatePeriod } from './period';
 import { useItemLabel, useItemSource, usePartnerLabel, usePartnerSource } from './queries';
 
@@ -28,9 +35,13 @@ export type FilterSearchMode = 'auto' | 'manual';
 
 export interface FilterBarProps {
   applied: LotTraceFilters;
+  /** 처음 값 — 초기화가 되돌리는 값(기본 기간 · 나머지 비움). 「초기화」는 이것과 다를 때만 보인다(C-6). */
+  defaults: LotTraceFilters;
   /** `auto`는 조건을 바꿔 바로 반영, `manual`은 [조회](같은 조건이면 다시 조회). */
   onSearch: (draft: FilterDraft, mode: FilterSearchMode) => void;
   onReset: () => void;
+  /** 행의 입하 LOT 으로 건 거르기를 푼다(005 FR-035) — 칸이 없는 조건이라 칩의 × 로만 푼다. */
+  onClearInboundLot: () => void;
 }
 
 const draftOf = (filters: LotTraceFilters): FilterDraft => ({
@@ -50,23 +61,35 @@ const draftOf = (filters: LotTraceFilters): FilterDraft => ({
 type TextKey = 'materialLot' | 'productLot' | 'inbound' | 'inboundLotNo' | 'workOrder' | 'shipment';
 type PickKey = 'item' | 'supplier' | 'customer';
 type Picked = Partial<Record<PickKey, { id: string; label: string }>>;
+type ChipKey = TextKey | 'supplier' | 'customer' | 'inboundLot';
+
+/** 「초기화」를 세울지 견줄 꼴 — 쪽 번호 · 쪽 크기는 조회 조건이 아니라 같은 값으로 둔다. */
+const conditionsOf = (filters: LotTraceFilters): LotTraceFilters => ({
+  ...filters,
+  page: 1,
+  size: DEFAULT_SIZE,
+});
 
 /**
- * C-6 조회 조건. 기본 줄: 기간(넓음, 필수, 늘 보임), 품목(보통), [상세 조건 펼치기], [초기화], [조회].
- * 상세 조건(처음엔 접힘): 자재 LOT 번호, 제품 LOT 번호, 입하번호, 입하 LOT 번호(005 FR-035), W/O 번호, 출하번호, 공급사, 고객.
- * 접혀 있는데 그 안의 조건이 걸려 있으면 버튼 옆 한 줄로 알린다.
+ * C-6 조회 조건. 기본 줄: 기간(넓음, 필수, 늘 보임), 품목(보통), [초기화], [조회], [조건 더보기].
+ * 조건 더보기(늘 접힌 채 시작): 자재 LOT 번호, 제품 LOT 번호, 입하번호, 입하 LOT 번호(005 FR-035), W/O 번호, 출하번호, 공급사, 고객.
+ * 접혀 있는데 그 안의 조건이 걸려 있으면 조건 줄 아래 칩으로 알린다 — × 는 그 조건만 풀어 다시 조회한다.
  * 고르면 끝나는 조건(기간, 품목, 공급사, 고객)은 바로 반영한다. 글자 칸은 Enter나 칸을 떠날 때, 지우기(×)는 바로
  * 반영한다. 기간이 맞지 않으면 반영하지 않고 기간 칸 아래 사유를 보인다(C-7). [조회]는 다시 조회하는 자리로 남는다.
  */
-export const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
+export const FilterBar = ({
+  applied,
+  defaults,
+  onSearch,
+  onReset,
+  onClearInboundLot,
+}: FilterBarProps) => {
   const [draft, setDraft] = useState<FilterDraft>(() => draftOf(applied));
   const [picked, setPicked] = useState<Picked>({});
   const [periodError, setPeriodError] = useState<string | null>(null);
-  /* 상세 조건은 늘 접힌 채 시작한다. */
-  const [moreOpen, setMoreOpen] = useState(false);
+  const more = useFilterMore();
   const periodId = useId();
   const periodErrorId = useId();
-  const moreId = useId();
 
   const appliedKey = JSON.stringify(draftOf(applied));
   useEffect(() => {
@@ -83,20 +106,56 @@ export const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
   const labelOf = (key: PickKey, id: string, resolved: string): string =>
     id === '' ? '' : picked[key]?.id === id ? (picked[key]?.label ?? '') : resolved;
 
-  const hiddenConditions = [
-    applied.materialLot === '' ? '' : `${t.materialLot} ${applied.materialLot}`,
-    applied.productLot === '' ? '' : `${t.productLot} ${applied.productLot}`,
-    applied.inbound === '' ? '' : `${t.inboundNo} ${applied.inbound}`,
-    applied.inboundLotNo === '' ? '' : `${t.inboundLotNo} ${applied.inboundLotNo}`,
-    applied.workOrder === '' ? '' : `${t.workOrderNo} ${applied.workOrder}`,
-    applied.shipment === '' ? '' : `${t.shipmentNo} ${applied.shipment}`,
-    applied.supplier === ''
-      ? ''
-      : `${t.supplier} ${labelOf('supplier', applied.supplier, resolvedSupplier)}`,
-    applied.customer === ''
-      ? ''
-      : `${t.customer} ${labelOf('customer', applied.customer, resolvedCustomer)}`,
-  ].filter((value) => value !== '');
+  /* 접힌 칸에 걸린 조건 — 칩 하나에 「라벨: 값」, 값은 펼친 칸이 보이는 글자와 같다. */
+  const chipOf = (key: ChipKey, label: string, value: string): HiddenFilterChip<ChipKey>[] =>
+    value === ''
+      ? []
+      : [
+          {
+            key,
+            label: `${label}: ${value}`,
+            removeLabel: messages.common.filterMore.remove(label),
+          },
+        ];
+  const fieldChips: HiddenFilterChip<ChipKey>[] = [
+    ...chipOf('materialLot', t.materialLot, applied.materialLot),
+    ...chipOf('productLot', t.productLot, applied.productLot),
+    ...chipOf('inbound', t.inboundNo, applied.inbound),
+    ...chipOf('inboundLotNo', t.inboundLotNo, applied.inboundLotNo),
+    ...chipOf('workOrder', t.workOrderNo, applied.workOrder),
+    ...chipOf('shipment', t.shipmentNo, applied.shipment),
+    ...chipOf('supplier', t.supplier, labelOf('supplier', applied.supplier, resolvedSupplier)),
+    ...chipOf('customer', t.customer, labelOf('customer', applied.customer, resolvedCustomer)),
+  ];
+  /* 005 FR-035 — 행의 입하 LOT 으로 건 거르기는 칸이 없다 — 펼쳐도 칩으로 남는다. */
+  const inboundLot = toInboundLotRef(applied.inboundLot);
+  const noFieldChips: HiddenFilterChip<ChipKey>[] =
+    inboundLot === null
+      ? []
+      : [
+          {
+            key: 'inboundLot',
+            label: t.inboundLotChip(inboundLot.inboundLotNo),
+            removeLabel: t.inboundLotChipRemove,
+          },
+        ];
+  const removeChip = (key: ChipKey): void => {
+    if (key === 'inboundLot') onClearInboundLot();
+    else onSearch({ ...draftOf(applied), [key]: '' }, 'manual');
+  };
+
+  /* 「초기화」는 바뀐 것이 있을 때만(C-6) — 편집 중인 값이나 조회에 쓰인 값(종류 칩 포함)이 처음 값과 다를 때. */
+  const isChanged = hasChangedFilters(
+    conditionsOf(defaults),
+    conditionsOf(applied),
+    conditionsOf({ ...applied, ...draft }),
+  );
+  /* 편집 상태도 함께 처음으로 — 조회에 쓰인 값이 이미 처음 값이면 주소가 바뀌지 않아 되돌림이 깨어나지 않는다. */
+  const reset = (): void => {
+    setDraft(draftOf(defaults));
+    setPeriodError(null);
+    onReset();
+  };
 
   const set = (patch: Partial<FilterDraft>) => setDraft((current) => ({ ...current, ...patch }));
   const submit = () => {
@@ -139,103 +198,102 @@ export const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
   );
 
   return (
-    <form
-      className="filter-bar lot-trace-filter"
-      aria-label={t.pane}
-      onSubmit={(event) => {
-        event.preventDefault();
-        submit();
-      }}
-    >
-      <div className="field-cell filter-field-lg">
-        <label className="field-label" htmlFor={periodId}>
-          {t.period}
-          <span className="required-mark" aria-hidden="true">
-            {' '}
-            *
-          </span>
-        </label>
-        <DatePicker
-          id={periodId}
-          mode="range"
-          clearable
-          value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
-          placeholder={t.periodPlaceholder}
-          aria-required
-          invalid={periodError !== null}
-          aria-describedby={periodError === null ? undefined : periodErrorId}
-          onChange={(value) =>
-            commit({ from: value === null ? '' : value[0], to: value === null ? '' : value[1] })
-          }
-        />
-        {periodError !== null && (
-          <span id={periodErrorId} className="field-error" role="alert">
-            {periodError}
-          </span>
-        )}
-      </div>
-      <div className="filter-field-md">
-        <ReferenceField
-          label={t.item}
-          valueLabel={labelOf('item', draft.item, resolvedItem)}
-          source={itemSource}
-          onPick={(row) => pick('item', row)}
-          onClear={() => commit({ item: '' })}
-        />
-      </div>
-      <div className="field-cell field-cell-unlabeled">
-        <Button
-          type="button"
-          variant="outlined"
-          className="lot-trace-more-toggle"
-          aria-expanded={moreOpen}
-          aria-controls={moreOpen ? moreId : undefined}
-          onClick={() => setMoreOpen((open) => !open)}
-        >
-          {moreOpen ? t.less : t.more}
-          <Icon name={moreOpen ? 'expand_less' : 'expand_more'} size={18} />
-        </Button>
-      </div>
-      <div className="field-cell field-cell-unlabeled filter-actions-end">
-        <div className="filter-actions">
-          <Button type="button" variant="outlined" onClick={onReset}>
-            {messages.common.reset}
-          </Button>
-          <Button type="submit">{messages.common.search}</Button>
+    <>
+      <form
+        className="filter-bar lot-trace-filter"
+        aria-label={t.pane}
+        onSubmit={(event) => {
+          event.preventDefault();
+          submit();
+        }}
+      >
+        <div className="field-cell filter-field-lg">
+          <label className="field-label" htmlFor={periodId}>
+            {t.period}
+            <span className="required-mark" aria-hidden="true">
+              {' '}
+              *
+            </span>
+          </label>
+          <DatePicker
+            id={periodId}
+            mode="range"
+            clearable
+            value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
+            placeholder={t.periodPlaceholder}
+            aria-required
+            invalid={periodError !== null}
+            aria-describedby={periodError === null ? undefined : periodErrorId}
+            onChange={(value) =>
+              commit({ from: value === null ? '' : value[0], to: value === null ? '' : value[1] })
+            }
+          />
+          {periodError !== null && (
+            <span id={periodErrorId} className="field-error" role="alert">
+              {periodError}
+            </span>
+          )}
         </div>
-      </div>
-      {!moreOpen && hiddenConditions.length > 0 && (
-        <p className="lot-trace-hidden-summary">{t.hiddenApplied(hiddenConditions.join(', '))}</p>
-      )}
-      {moreOpen && (
-        <div id={moreId} className="lot-trace-filter-more">
-          {textField('materialLot', t.materialLot, t.exactPlaceholder)}
-          {textField('productLot', t.productLot, t.exactPlaceholder)}
-          {textField('inbound', t.inboundNo, t.exactPlaceholder)}
-          {/* 005 FR-035 — 입하 LOT 번호(번호 조건 · 자재 입고 · 투입만). */}
-          {textField('inboundLotNo', t.inboundLotNo, t.exactPlaceholder)}
-          {textField('workOrder', t.workOrderNo, t.exactPlaceholder)}
-          {textField('shipment', t.shipmentNo, t.exactPlaceholder)}
-          <div className="filter-field-md">
-            <ReferenceField
-              label={t.supplier}
-              valueLabel={labelOf('supplier', draft.supplier, resolvedSupplier)}
-              source={supplierSource}
-              onPick={(row) => pick('supplier', row)}
-              onClear={() => commit({ supplier: '' })}
-            />
-          </div>
-          <div className="filter-field-md">
-            <ReferenceField
-              label={t.customer}
-              valueLabel={labelOf('customer', draft.customer, resolvedCustomer)}
-              source={customerSource}
-              onPick={(row) => pick('customer', row)}
-              onClear={() => commit({ customer: '' })}
-            />
+        <div className="filter-field-md">
+          <ReferenceField
+            label={t.item}
+            valueLabel={labelOf('item', draft.item, resolvedItem)}
+            source={itemSource}
+            onPick={(row) => pick('item', row)}
+            onClear={() => commit({ item: '' })}
+          />
+        </div>
+        <div className="field-cell field-cell-unlabeled filter-actions-end">
+          <div className="filter-actions">
+            {isChanged && (
+              <Button type="button" variant="outlined" onClick={reset}>
+                {messages.common.reset}
+              </Button>
+            )}
+            <Button type="submit">{messages.common.search}</Button>
+            <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
           </div>
         </div>
-      )}
-    </form>
+        {/* `hidden` 은 감싸는 상자에 둔다 — `.lot-trace-filter-more` 의 display 가 속성을 덮는다. */}
+        <div id={more.id} className="lot-trace-filter-more-wrap" hidden={!more.isOpen}>
+          <div className="lot-trace-filter-more">
+            {textField('materialLot', t.materialLot, t.exactPlaceholder)}
+            {textField('productLot', t.productLot, t.exactPlaceholder)}
+            {textField('inbound', t.inboundNo, t.exactPlaceholder)}
+            {/* 005 FR-035 — 입하 LOT 번호(번호 조건 · 자재 입고 · 투입만). */}
+            {textField('inboundLotNo', t.inboundLotNo, t.exactPlaceholder)}
+            {textField('workOrder', t.workOrderNo, t.exactPlaceholder)}
+            {textField('shipment', t.shipmentNo, t.exactPlaceholder)}
+            <div className="filter-field-md">
+              <ReferenceField
+                label={t.supplier}
+                valueLabel={labelOf('supplier', draft.supplier, resolvedSupplier)}
+                source={supplierSource}
+                onPick={(row) => pick('supplier', row)}
+                onClear={() => commit({ supplier: '' })}
+              />
+            </div>
+            <div className="filter-field-md">
+              <ReferenceField
+                label={t.customer}
+                valueLabel={labelOf('customer', draft.customer, resolvedCustomer)}
+                source={customerSource}
+                onPick={(row) => pick('customer', row)}
+                onClear={() => commit({ customer: '' })}
+              />
+            </div>
+          </div>
+        </div>
+      </form>
+      {/*
+       * 접힌 칸의 칩과 칸 없는 조건(입하 LOT 거르기)의 칩을 한 줄에 — 펼치면 칸에 값이 보이므로 칸 없는 조건만 남긴다.
+       * 그래서 펼침 여부는 여기서 가르고 칩 줄에는 늘 「접힘」을 넘긴다.
+       */}
+      <HiddenFilterChips
+        open={false}
+        chips={more.isOpen ? noFieldChips : [...fieldChips, ...noFieldChips]}
+        onRemove={removeChip}
+      />
+    </>
   );
 };

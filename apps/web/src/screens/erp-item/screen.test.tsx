@@ -140,6 +140,19 @@ describe('ErpItemScreen', () => {
     });
   });
 
+  it('초기화는 바뀐 것이 있을 때만 보이고, 누르면 치던 값까지 비운다', async () => {
+    const { user } = renderScreen([listRoute()]);
+    await screen.findByText('합성 품목 B');
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
+
+    await user.type(screen.getByLabelText(t.fields.q), 'SYN');
+    await user.click(screen.getByRole('button', { name: messages.common.reset }));
+
+    // 주소는 이미 처음 값이라 바뀌지 않는다 — 그래도 치던 값은 비워지고 초기화는 다시 숨는다.
+    expect(screen.getByLabelText(t.fields.q)).toHaveValue('');
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
+  });
+
   it('상세 구획 없이 목록 한 구획만 서고, 줄을 눌러도 상세를 부르지 않는다', async () => {
     const { user, urls } = renderScreen([listRoute()]);
 

@@ -7,6 +7,7 @@ import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { TAB_PAGE_SIZES, type TabPageSize } from '../../patterns/client-page';
 import { useApiClient } from '../../patterns/api-context';
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
 import { runRequest } from '../../patterns/request';
 import { PagedSelect } from '../../patterns/select';
@@ -34,7 +35,7 @@ export const DEFAULT_ITEM_FILTERS: ItemFilters = {
 const SEARCH_PAGE_SIZE = 20;
 
 export interface ItemFilterBarProps {
-  /** 적용된(URL에 반영된) 조건 — 조건 칩의 렌더 기준 */
+  /** 적용된(URL에 반영된) 조건 */
   appliedFilters: ItemFilters;
   /** 조회 버튼·Enter·칩 제거·초기화가 호출 */
   onApplyFilters: (next: ItemFilters) => void;
@@ -72,7 +73,7 @@ const hasAnyFilter = (filters: ItemFilters): boolean =>
 export const ItemFilterBar = ({ appliedFilters, onApplyFilters }: ItemFilterBarProps) => {
   const { client } = useApiClient();
   const searchId = useId();
-  // 트리거 모델: 편집은 모아서 적용, 해제는 즉시. 편집 중인 값은 draft에만 있고 조건 칩에 미러하지 않는다.
+  // 트리거 모델: 편집은 모아서 적용, 해제는 즉시. 편집 중인 값은 draft에만 있다.
   const [draft, setDraft] = useState<ItemFilters>(appliedFilters);
   const {
     q: appliedQ,
@@ -88,82 +89,78 @@ export const ItemFilterBar = ({ appliedFilters, onApplyFilters }: ItemFilterBarP
     });
   }, [appliedQ, appliedOnlyWithoutRouting, appliedLatestStatus]);
 
-  return (
-    <>
-      <div className="filter-bar">
-        {/*
-         * 품목은 칸에서 바로 검색해서 고른다(다른 화면과 같다 · #226 · #231) — 고른 품목코드가 검색어로 들어간다.
-         * 「전체」는 조건을 푼다. 조회를 눌러야 목록에 걸린다(종전 검색어와 같은 트리거 · 같은 서버 조건 `q`).
-         */}
-        <div className="field-cell search-select-cell">
-          <label className="field-label" htmlFor={searchId}>
-            {t.filters.searchLabel}
-          </label>
-          <PagedSelect
-            id={searchId}
-            queryKey={[
-              'routing-items',
-              'item-select',
-              appliedFilters.onlyWithoutRouting,
-              appliedFilters.latestStatus,
-            ]}
-            fetchPage={async (q, page) => {
-              const data = await runRequest(() =>
-                client.GET('/mdm/items', {
-                  params: {
-                    query: {
-                      ...(q === '' ? {} : { q }),
-                      /* 목록과 같은 범위에서 찾는다 — 목록에 없는 품목을 고르지 않게. */
-                      ...(appliedFilters.onlyWithoutRouting ? { hasRouting: false } : {}),
-                      ...(appliedFilters.latestStatus === ''
-                        ? {}
-                        : { latestRoutingStatus: appliedFilters.latestStatus }),
-                      page,
-                      size: SEARCH_PAGE_SIZE,
-                    },
-                  },
-                }),
-              );
-              return {
-                options: data.items.map((item) => ({
-                  value: item.itemCode,
-                  label: `${item.itemCode} · ${item.itemName}`,
-                })),
-                total: data.page.total,
-              };
-            }}
-            selectedOption={draft.q === '' ? null : { value: draft.q, label: draft.q }}
-            leadingOptions={[{ value: '', label: t.filters.all }]}
-            value={draft.q}
-            placeholder={t.filters.all}
-            onChange={(value) => setDraft((prev) => ({ ...prev, q: value }))}
-          />
-        </div>
+  /* 「초기화」는 바뀐 것이 있을 때만 보인다(C-6) — 초기화가 진행 상태 칩도 되돌리므로 함께 견준다. */
+  const isChanged = hasChangedFilters(DEFAULT_ITEM_FILTERS, draft, appliedFilters);
 
-        {/* 「공정 경로 미등록」 체크는 진행 상태 칩 「미등록」으로 옮겼다(#231). */}
-        {/* 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1). 라벨 층은 묶음이 한 번만 갖는다. */}
-        <div className="filter-actions field-cell-unlabeled">
-          <Button onClick={() => onApplyFilters(draft)}>{messages.common.search}</Button>
-          <Button variant="outlined" onClick={() => onApplyFilters(DEFAULT_ITEM_FILTERS)}>
-            {messages.common.reset}
-          </Button>
-        </div>
+  /* 품목 검색 칸에 고른 값이 보인다 — 칩으로 겹쳐 적지 않는다(C-6). */
+  return (
+    <div className="filter-bar">
+      {/*
+       * 품목은 칸에서 바로 검색해서 고른다(다른 화면과 같다 · #226 · #231) — 고른 품목코드가 검색어로 들어간다.
+       * 「전체」는 조건을 푼다. 조회를 눌러야 목록에 걸린다(종전 검색어와 같은 트리거 · 같은 서버 조건 `q`).
+       */}
+      <div className="field-cell search-select-cell">
+        <label className="field-label" htmlFor={searchId}>
+          {t.filters.searchLabel}
+        </label>
+        <PagedSelect
+          id={searchId}
+          queryKey={[
+            'routing-items',
+            'item-select',
+            appliedFilters.onlyWithoutRouting,
+            appliedFilters.latestStatus,
+          ]}
+          fetchPage={async (q, page) => {
+            const data = await runRequest(() =>
+              client.GET('/mdm/items', {
+                params: {
+                  query: {
+                    ...(q === '' ? {} : { q }),
+                    /* 목록과 같은 범위에서 찾는다 — 목록에 없는 품목을 고르지 않게. */
+                    ...(appliedFilters.onlyWithoutRouting ? { hasRouting: false } : {}),
+                    ...(appliedFilters.latestStatus === ''
+                      ? {}
+                      : { latestRoutingStatus: appliedFilters.latestStatus }),
+                    page,
+                    size: SEARCH_PAGE_SIZE,
+                  },
+                },
+              }),
+            );
+            return {
+              options: data.items.map((item) => ({
+                value: item.itemCode,
+                label: `${item.itemCode} · ${item.itemName}`,
+              })),
+              total: data.page.total,
+            };
+          }}
+          selectedOption={draft.q === '' ? null : { value: draft.q, label: draft.q }}
+          leadingOptions={[{ value: '', label: t.filters.all }]}
+          value={draft.q}
+          placeholder={t.filters.all}
+          onChange={(value) => setDraft((prev) => ({ ...prev, q: value }))}
+        />
       </div>
 
-      {appliedFilters.q !== '' && (
-        <div className="filter-bar">
-          {appliedFilters.q !== '' && (
-            <Chip
-              variant="status"
-              removeLabel={t.filters.chipRemoveKeyword}
-              onRemove={() => onApplyFilters({ ...appliedFilters, q: '' })}
-            >
-              {t.filters.chipKeyword(appliedFilters.q)}
-            </Chip>
-          )}
-        </div>
-      )}
-    </>
+      {/* 「공정 경로 미등록」 체크는 진행 상태 칩 「미등록」으로 옮겼다(#231). */}
+      {/* 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1). 라벨 층은 묶음이 한 번만 갖는다. */}
+      <div className="filter-actions field-cell-unlabeled">
+        <Button onClick={() => onApplyFilters(draft)}>{messages.common.search}</Button>
+        {isChanged && (
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setDraft(DEFAULT_ITEM_FILTERS);
+              onApplyFilters(DEFAULT_ITEM_FILTERS);
+            }}
+          >
+            {messages.common.reset}
+          </Button>
+        )}
+      </div>
+    </div>
   );
 };
 

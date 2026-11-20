@@ -9,7 +9,7 @@ import {
   Tabs,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { InspectionGuideNotice } from '../../patterns/inspection-guide';
@@ -30,7 +30,6 @@ import {
 } from '../../patterns/split-orientation';
 import { CODE_GROUPS, labelOfCode, toCodeOptions } from './code-options';
 import {
-  EMPTY_FILTERS,
   LIST_PAGE_SIZES,
   PAGE_SIZE,
   QUEUE_STATUSES,
@@ -68,9 +67,8 @@ import {
   usePickedLotNumbers,
   useSaveInspectionResult,
 } from './queries';
-import { DetailFiltersToggle } from '../../patterns/detail-filters';
 import { plantTodayRange } from '../parts-iqc-inspection/today';
-import { QueueFilterBar } from './queue-filter-bar';
+import { QueueDetailFilters } from './queue-detail-filters';
 import { QueueListTable } from './queue-list-table';
 import { RequestDetailPane } from './request-detail-pane';
 import { ResultFormPane } from './result-form-pane';
@@ -145,10 +143,6 @@ export const OqcInspectionScreen = () => {
   const hub = usePageHub();
 
   const filters = readFilters(searchParams);
-  /* 품목 · 의뢰번호는 상세 조건으로 접어 둔다 — 주소에 그 조건이 걸려 있으면 펼친 채로 연다(사용자 지시 2026-11-02 · #225). */
-  const hasDetailCondition = filters.itemId !== null || filters.keyword !== '';
-  const [detailOpen, setDetailOpen] = useState(hasDetailCondition);
-  const detailFiltersId = useId();
   const page = readPage(searchParams);
   const pageSize = readPageSize(searchParams);
   const selectedId = readSelectedId(searchParams);
@@ -1134,25 +1128,8 @@ export const OqcInspectionScreen = () => {
             {t.filters.pendingOnly}
           </Checkbox>
         </div>
-        <DetailFiltersToggle
-          open={detailOpen}
-          onToggle={() => setDetailOpen((open) => !open)}
-          controlsId={detailFiltersId}
-          hasCondition={hasDetailCondition}
-        />
-        {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
-        <div id={detailFiltersId} className="inspection-detail-filters" hidden={!detailOpen}>
-          <QueueFilterBar
-            appliedFilters={filters}
-            showPendingOnly={false}
-            /* 상태는 탭 줄 칩이 맡는다 — 조회는 걸린 칩을 그대로 두고, 초기화는 함께 푼다. */
-            onSearch={(next) => applyFilters(withDraft(filters, next))}
-            onTogglePendingOnly={(next) =>
-              applyFilters(withDraft(filters, { ...filters, pendingOnly: next }))
-            }
-            onReset={() => applyFilters(EMPTY_FILTERS)}
-          />
-        </div>
+        {/* 품목 · 의뢰번호는 「조건 더보기」로 접는다(사용자 지시 2026-11-02 · #225) — 걸린 조건은 칩으로. */}
+        <QueueDetailFilters filters={filters} onApply={applyFilters} />
       </section>
 
       <div

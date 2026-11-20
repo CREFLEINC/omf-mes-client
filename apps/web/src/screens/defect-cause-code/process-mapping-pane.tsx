@@ -14,6 +14,7 @@ import { useId, useMemo, useState, type ReactNode } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { fetchAllPages } from '../../patterns/fetch-all-pages';
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest, type ApiCallResult } from '../../patterns/request';
@@ -209,6 +210,12 @@ export const ProcessMappingPane = () => {
     setApplied(EMPTY_MAPPING_FILTERS);
     setLink('all');
   };
+  /* 조회 카드의 「초기화」는 바뀐 것이 있을 때만 보인다(C-6) — 초기화가 되돌리는 연결 상태 칩도 함께 견준다. */
+  const isFilterChanged = hasChangedFilters(
+    { ...EMPTY_MAPPING_FILTERS, link: 'all' },
+    { ...draft, link },
+    { ...applied, link },
+  );
   const shownProcesses =
     applied.processId === ''
       ? processes
@@ -495,9 +502,11 @@ export const ProcessMappingPane = () => {
             <Button variant="filled" onClick={() => setApplied(draft)}>
               {messages.common.search}
             </Button>
-            <Button variant="outlined" onClick={resetFilters}>
-              {messages.common.reset}
-            </Button>
+            {isFilterChanged && (
+              <Button variant="outlined" onClick={resetFilters}>
+                {messages.common.reset}
+              </Button>
+            )}
           </div>
         </div>
       </section>

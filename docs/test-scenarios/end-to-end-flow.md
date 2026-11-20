@@ -111,14 +111,14 @@ bash <잡 디렉터리>/build-local-backend-3100.sh
 
 ⚠ 사번 화면은 **숫자만** 받는다. 문자가 섞인 사번은 넣을 수 없다 — 설계 확인 중인 사항이다.
 
-### 4. P/O 등록
+### 4. 발주 확인
 
 | | |
 | --- | --- |
 | 담당 | 웹 |
-| 화면 | `/logistics/po-register` |
-| 조작 | 공급사·품목·수량으로 발주를 만든다 |
-| 기대 | 발주가 생기고 입하 예정에 나타난다 |
+| 화면 | `/system/erp-data/purchase-orders` |
+| 조작 | ERP 에서 받은 발주 중 시험에 쓸 공급사·품목을 고른다(관리웹에서 발주를 새로 만드는 화면은 없다) |
+| 기대 | 그 발주가 입하 예정에 나타난다 |
 | 실제 | |
 
 ### 5. 입하 등록
@@ -306,7 +306,7 @@ bash <잡 디렉터리>/build-local-backend-3100.sh
 | --- | --- | --- |
 | 시험용 단말 | 웹 `/system/terminal-process-map` | 2단계 QR 을 못 낸다 |
 | 숫자 사번 작업자 | 웹 기준정보 | 3단계를 못 지나간다 |
-| 공급사·품목·발주 | 웹 `/logistics/po-register` | 5단계 고를 것이 없다 |
+| 공급사·품목·발주 | ERP 수신(웹 `/system/erp-data/purchase-orders`) | 5단계 고를 것이 없다 |
 | LOT 이 안 붙은 입하 라인 | 5단계가 만든다 | 6단계가 401 로 떨어진다 |
 | `IQC_SKIP` 결재선 + 단계 | 웹 `/system/approval-route` | 7-b 가 `ROUTE_NOT_FOUND` |
 | 위치의 보관 품목 | 웹 `/master-data/warehouse-location` | 8단계가 보관 위치를 안내하지 않는다(창고 어디든 받는다) |

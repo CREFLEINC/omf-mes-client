@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { plantToday } from '../../patterns/plant-time';
+import { ScreenHeader } from '../../patterns/screen-header';
 import { Select } from '../../patterns/select';
 import { ArrivalView } from './arrival-view';
 import {
@@ -155,7 +156,7 @@ export const ProductionWarehouseReplenishmentScreen = () => {
 
   return (
     <>
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb

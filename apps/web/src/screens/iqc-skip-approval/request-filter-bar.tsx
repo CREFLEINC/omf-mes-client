@@ -1,11 +1,15 @@
-import { Button, Chip, DatePicker, SearchInput } from '@crefle/web-ui';
+import { Button, DatePicker, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { HiddenFilterChips, hasChangedFilters } from '../../patterns/filter-more';
 import { EMPTY_FILTERS, toFilterChips, type FilterChipKey } from './filters';
 import type { RequestFilters } from './types';
 
 const t = messages.iqcSkipApproval;
+
+/** 조건 줄이 고르는 값 — 상태는 탭 줄 칩(#186)이 고르고 보인다. */
+const rowValues = ({ from, to, q }: RequestFilters) => ({ from, to, q });
 
 export interface RequestFilterBarProps {
   /** 주소에 반영된(= 조회에 쓰인) 조건. 편집 중인 값은 이 부품 안에만 있다. */
@@ -35,7 +39,11 @@ export interface RequestFilterBarProps {
  *
  * **상신일은 한 컨트롤이다**(`mode="range"`). 컴포넌트가 완결된 쌍만, 그것도 `from ≤ to`로만
  * 방출하므로 이 칸을 거친 역전은 생기지 않는다. 그래도 주소로 들어온 한쪽만의 구간은
- * 조건으로 살아 있다 — 그 표기는 조건 칩이 맡는다(`filters.ts`).
+ * 조건으로 살아 있다 — 시작만 있으면 칸이 「2026-08-01 ~」로 보이고, 끝만 있으면 칸이 비므로
+ * 그때만 조건 칩이 맡는다(`filters.ts`).
+ *
+ * **보이는 칸이 둘이라 「조건 더보기」가 없고**, 칸에 값이 보이는 조건은 칩으로 겹쳐 적지 않는다(C-6).
+ * 「초기화」는 이 줄의 값(상신일 · 요청번호)이 처음 값과 다를 때만 보인다 — 상태는 탭 줄 칩이 보이고 푼다.
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
@@ -80,7 +88,15 @@ export const RequestFilterBar = ({
     onReset();
   };
 
-  const chips = toFilterChips(appliedFilters);
+  /* 칸이 그리지 못하는 조건만 칩으로 — 시작 없이 끝만 걸린 상신일. */
+  const hiddenChips = toFilterChips(appliedFilters).filter(
+    (chip) => chip.key === 'period' && appliedFilters.from === '',
+  );
+  const isChanged = hasChangedFilters(
+    rowValues(EMPTY_FILTERS),
+    rowValues(filters),
+    rowValues(appliedFilters),
+  );
 
   return (
     <>
@@ -132,29 +148,16 @@ export const RequestFilterBar = ({
           <div className="filter-actions">
             {/* 품질 승인 처리의 다른 탭과 같은 조회 단추다(#186 — 탭을 옮겨도 조건 줄이 같아 보인다). */}
             <Button onClick={search}>{messages.common.search}</Button>
-            <Button variant="outlined" onClick={reset}>
-              {messages.common.reset}
-            </Button>
+            {isChanged && (
+              <Button variant="outlined" onClick={reset}>
+                {messages.common.reset}
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
-      {chips.length > 0 && (
-        <div className="filter-bar">
-          {chips.map((chip) => (
-            <Chip
-              key={chip.key}
-              variant="status"
-              removeLabel={chip.removeLabel}
-              onRemove={() => {
-                onRemoveFilter(chip.key);
-              }}
-            >
-              {chip.label}
-            </Chip>
-          ))}
-        </div>
-      )}
+      <HiddenFilterChips open={false} chips={hiddenChips} onRemove={onRemoveFilter} />
     </>
   );
 };

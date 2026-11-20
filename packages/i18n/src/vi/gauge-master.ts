@@ -40,15 +40,9 @@ export const gaugeMaster: Translated<typeof ko.gaugeMaster> = {
     typeAll: 'Tất cả loại thiết bị đo',
     /** 「아직 안 함」과 「만료」를 함께 잡는다 — 둘 다 채워야 할 것이다. */
     overdueOnly: 'Chỉ mục trễ hiệu chuẩn',
-    chipRemoveKeyword: 'Bỏ điều kiện từ khóa',
-    chipRemovePlant: 'Bỏ điều kiện nhà máy',
-    chipRemoveType: 'Bỏ điều kiện loại',
     chipRemoveOverdue: 'Bỏ điều kiện trễ hiệu chuẩn',
     chipRemoveIncludeInactive: 'Bỏ điều kiện gồm cả mục ngừng dùng',
     chipRemoveIncludeDisposed: 'Bỏ điều kiện gồm cả mục đã thanh lý',
-    chipKeyword: (value: string): string => `Từ khóa: ${value}`,
-    chipPlant: (label: string): string => `Nhà máy: ${label}`,
-    chipType: (label: string): string => `Loại: ${label}`,
     includeDisposed: 'Gồm cả mục đã thanh lý',
   },
   form: {

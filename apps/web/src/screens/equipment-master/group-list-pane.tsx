@@ -1,7 +1,6 @@
 import {
   Button,
   Checkbox,
-  Chip,
   type Column,
   EmptyState,
   IconButton,
@@ -12,6 +11,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
+import { hasChangedFilters } from '../../patterns/filter-more';
 import type { LookupSource } from '../../patterns/lookup-display';
 import { type CodeOption, defaultGroupFilters, groupTypeLabel, lookupLabel } from './code-options';
 import type { GroupTreeRow } from './group-tree';
@@ -22,13 +22,13 @@ export interface GroupListPaneProps {
   /** buildGroupRows의 결과 */
   rows: GroupTreeRow[];
   isLoading: boolean;
-  /** 적용된(URL에 반영된) 조건 — 조건 칩의 렌더 기준 */
+  /** 적용된(URL에 반영된) 조건 */
   appliedFilters: GroupFilters;
-  /** 조회 버튼·Enter·칩 제거·초기화가 호출 */
+  /** 조회 버튼·Enter·초기화가 호출 */
   onApplyFilters: (next: GroupFilters) => void;
   /** 공장 선택지. 미사용 공장은 지금 고른 값일 때만 남는다 */
   plantOptions: CodeOption[];
-  /** 공장 이름 풀이용 원본 — 선택지가 좁혀져 있어도 조건 칩은 전체에서 이름을 찾는다 */
+  /** 공장 이름 풀이용 원본 — 선택지가 좁혀져 있어도 표의 공장 칸은 전체에서 이름을 찾는다 */
   plants: LookupSource<LookupEntry>;
   expandedIds: ReadonlySet<number>;
   onToggleExpand: (equipmentGroupId: number) => void;
@@ -80,11 +80,11 @@ export const GroupListPane = ({
   loadError,
 }: GroupListPaneProps) => {
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
-  // 편집 중인 값은 draft에만 있고 조건 칩에는 미러하지 않는다.
+  // 편집 중인 값은 draft에만 있다 — 「조회」를 눌러야 적용된다.
   const [draft, setDraft] = useState<GroupDraftFilters>(groupDraftOf(appliedFilters));
   const { q: appliedQ, plantId: appliedPlantId } = appliedFilters;
 
-  /* 밖에서 조건이 되돌려지면(초기화·칩 제거) 초안도 그것을 따라간다. */
+  /* 밖에서 조건이 되돌려지면(초기화) 초안도 그것을 따라간다. */
   useEffect(() => {
     setDraft({ q: appliedQ, plantId: appliedPlantId });
   }, [appliedQ, appliedPlantId]);
@@ -244,43 +244,20 @@ export const GroupListPane = ({
           </Checkbox>
           <div className="filter-actions">
             <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
-            <Button variant="outlined" onClick={resetAll}>
-              {messages.common.reset}
-            </Button>
+            {hasChangedFilters(
+              defaultGroupFilters,
+              { ...appliedFilters, ...draft },
+              appliedFilters,
+            ) && (
+              <Button variant="outlined" onClick={resetAll}>
+                {messages.common.reset}
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="filter-bar equipment-master-filter-chips">
-        {appliedFilters.q !== '' && (
-          <Chip
-            variant="status"
-            removeLabel={t.filters.chipRemoveKeyword}
-            onRemove={() => onApplyFilters({ ...appliedFilters, q: '' })}
-          >
-            {t.filters.chipKeyword(appliedFilters.q)}
-          </Chip>
-        )}
-        {appliedFilters.plantId !== '' && (
-          <Chip
-            variant="status"
-            removeLabel={t.filters.chipRemovePlant}
-            onRemove={() => onApplyFilters({ ...appliedFilters, plantId: '' })}
-          >
-            {t.filters.chipPlant(lookupLabel(plants, appliedFilters.plantId))}
-          </Chip>
-        )}
-        {appliedFilters.includeInactive && (
-          <Chip
-            variant="status"
-            removeLabel={t.filters.chipRemoveIncludeInactive}
-            onRemove={() => onApplyFilters({ ...appliedFilters, includeInactive: false })}
-          >
-            {messages.common.includeInactive}
-          </Chip>
-        )}
-      </div>
-
+      {/* 조건 칩을 두지 않는다 — 조건 셋이 모두 조회 줄에 보인다(C-6, 보이는 칸은 칩으로 겹쳐 적지 않는다). */}
       {listSlot()}
     </section>
   );

@@ -22,6 +22,7 @@ import { useSearchParams } from 'react-router';
 
 import { isStockableLocation } from '../../patterns/location-level';
 import { SaveErrorBanner } from '../../patterns/master';
+import { ScreenHeader } from '../../patterns/screen-header';
 import { Select } from '../../patterns/select';
 import { ConfirmDialog, type ReinstatementSummary } from './confirm-dialog';
 import {
@@ -462,7 +463,7 @@ export const StockReinstatementScreen = () => {
 
   return (
     <>
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb

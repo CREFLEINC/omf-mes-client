@@ -8,6 +8,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest, toApiError } from '../../patterns/request';
+import { ScreenHeader } from '../../patterns/screen-header';
 import { channelLimitNote } from './channel-notes';
 import { ChannelFormDialog } from './channel-form-dialog';
 import { ChannelPane } from './channel-pane';
@@ -514,7 +515,7 @@ export const CollectionChannelScreen = () => {
 
   return (
     <div className="screen">
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb

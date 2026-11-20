@@ -17,7 +17,15 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  type HiddenFilterChip,
+  hasChangedFilters,
+  useFilterMore,
+} from '../../patterns/filter-more';
 import { createLocalKey } from '../../patterns/local-key';
+import { ScreenHeader } from '../../patterns/screen-header';
 import { FieldLabel } from './field-label';
 import { LoadErrorBanner } from './load-error-banner';
 import { lookupNote, usePlantOptions, useUserOptions } from './lookups';
@@ -53,6 +61,9 @@ import {
 
 const t = messages.toolPmOrder;
 
+/** 「조건 더보기」에 접힌 체크칸. */
+type HiddenFlag = 'dueOnly' | 'withoutOpenOrder' | 'guaranteedMissing';
+
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ROWS: MoldView[] = [];
 
@@ -73,6 +84,10 @@ const notComputable = (value: number | null, format: (value: number) => string):
  *
  * ⛔ **값이 없으면 0으로 채우지 않는다.** 적정타수가 없으면 초과율·사용 가능이 「산출 불가」이고,
  * 기준일·주기가 없으면 다음 예정일이 「기준 없음」이다.
+ *
+ * **보이는 조건은 둘이다**(C-6) — 공장 · 정렬. 체크칸 셋은 「조건 더보기」에 접고, 걸려 있으면 칩으로
+ * 알린다. 「도래한 것만」 · 「열린 오더 없는 것만」은 기본이 켜짐이라 처음부터 칩이 보인다 — 무엇으로
+ * 좁혀 보고 있는지가 접혀서도 드러난다. 「초기화」는 처음 값과 다를 때만 보인다.
  */
 export const ToolPmOrderScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -81,6 +96,7 @@ export const ToolPmOrderScreen = () => {
   const noteId = `${plannedId}-note`;
 
   const filters = useMemo<ToolFilters>(() => readFilters(searchParams), [searchParams]);
+  const more = useFilterMore();
   const page = readPage(searchParams);
   const listQuery = useMemo<MoldListQuery>(() => toListQuery(filters, page), [filters, page]);
 
@@ -107,6 +123,17 @@ export const ToolPmOrderScreen = () => {
 
   const toOptions = (entries: { value: string; label: string }[]): SelectOption[] =>
     entries.map((entry) => ({ value: entry.value, label: entry.label }));
+
+  /* 접힌 칸(체크칸 셋)에 걸린 조건만 칩으로 — 보이는 칸(공장 · 정렬)의 값은 칸이 말한다. */
+  const hiddenChips: HiddenFilterChip<HiddenFlag>[] = [
+    ...(filters.dueOnly ? [{ key: 'dueOnly' as const, label: t.filters.dueOnly }] : []),
+    ...(filters.withoutOpenOrder
+      ? [{ key: 'withoutOpenOrder' as const, label: t.filters.withoutOpenOrder }]
+      : []),
+    ...(filters.guaranteedMissing
+      ? [{ key: 'guaranteedMissing' as const, label: t.filters.guaranteedMissing }]
+      : []),
+  ];
 
   const apply = (nextFilters: ToolFilters, nextPage = 1): void => {
     setSelected([]);
@@ -222,7 +249,7 @@ export const ToolPmOrderScreen = () => {
 
   return (
     <>
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb
@@ -270,46 +297,63 @@ export const ToolPmOrderScreen = () => {
             }}
           />
 
-          <div className="field-cell field-cell-unlabeled check-group tool-pm-order-filter-options">
-            <Checkbox
-              checked={filters.dueOnly}
-              onChange={(event) => {
-                apply({ ...filters, dueOnly: event.target.checked });
-              }}
-            >
-              {t.filters.dueOnly}
-            </Checkbox>
-            <Checkbox
-              checked={filters.withoutOpenOrder}
-              onChange={(event) => {
-                apply({ ...filters, withoutOpenOrder: event.target.checked });
-              }}
-            >
-              {t.filters.withoutOpenOrder}
-            </Checkbox>
-            <Checkbox
-              checked={filters.guaranteedMissing}
-              onChange={(event) => {
-                apply({ ...filters, guaranteedMissing: event.target.checked });
-              }}
-            >
-              {t.filters.guaranteedMissing}
-            </Checkbox>
-          </div>
-
           <div className="field-cell field-cell-unlabeled tool-pm-order-filter-actions">
             <div className="filter-actions">
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  apply(DEFAULT_FILTERS);
-                }}
-              >
-                {t.filters.reset}
-              </Button>
+              {hasChangedFilters(DEFAULT_FILTERS, filters) && (
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    apply(DEFAULT_FILTERS);
+                  }}
+                >
+                  {t.filters.reset}
+                </Button>
+              )}
+              <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
             </div>
           </div>
         </div>
+
+        {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+        <div id={more.id} hidden={!more.isOpen}>
+          <div className="filter-bar tool-pm-order-filter-more">
+            <div className="check-group check-group-row">
+              <Checkbox
+                checked={filters.dueOnly}
+                onChange={(event) => {
+                  apply({ ...filters, dueOnly: event.target.checked });
+                }}
+              >
+                {t.filters.dueOnly}
+              </Checkbox>
+              <Checkbox
+                checked={filters.withoutOpenOrder}
+                onChange={(event) => {
+                  apply({ ...filters, withoutOpenOrder: event.target.checked });
+                }}
+              >
+                {t.filters.withoutOpenOrder}
+              </Checkbox>
+              <Checkbox
+                checked={filters.guaranteedMissing}
+                onChange={(event) => {
+                  apply({ ...filters, guaranteedMissing: event.target.checked });
+                }}
+              >
+                {t.filters.guaranteedMissing}
+              </Checkbox>
+            </div>
+          </div>
+        </div>
+
+        {/* 조건은 바꾸는 즉시 나가므로 칩의 × 도 그 조건만 풀어 곧바로 다시 조회한다. */}
+        <HiddenFilterChips
+          open={more.isOpen}
+          chips={hiddenChips}
+          onRemove={(key) => {
+            apply({ ...filters, [key]: false });
+          }}
+        />
         <p className="pane-lead">{t.filters.defaultNote}</p>
       </section>
 

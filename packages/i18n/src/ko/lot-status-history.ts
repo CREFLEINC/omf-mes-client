@@ -61,8 +61,6 @@ export const lotStatusHistory = {
     lotNoScanPlaceholder: 'LOT 바코드 스캔 또는 번호를 입력하세요',
     /** 창고 검색 칸의 흐린 문구(사용자 2026-11-02). */
     warehousePlaceholder: '창고를 입력하세요',
-    detailOpen: '상세 검색 펼치기',
-    detailClose: '상세 검색 접기',
     /** 품목은 검색해서 고른다 — 품목 선택 창을 여는 단추와 고른 값을 지우는 단추. */
     itemPlaceholder: '품목을 입력하세요',
     itemClear: '품목 지우기',

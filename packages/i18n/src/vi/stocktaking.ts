@@ -150,14 +150,6 @@ export const stocktaking: Translated<typeof ko.stocktaking> = {
     lookupTruncated:
       'Danh sách chọn chỉ hiện một phần đầu. Nếu không thấy giá trị cần tìm, hãy báo người phụ trách.',
     lookupFailed: 'Không tải được danh sách chọn.',
-    chipWarehouse: (value: string): string => `Kho: ${value}`,
-    chipPeriodBoth: (from: string, to: string): string => `Ngày kế hoạch: ${from} ~ ${to}`,
-    chipPeriodFrom: (from: string): string => `Ngày kế hoạch: từ ${from}`,
-    chipPeriodTo: (to: string): string => `Ngày kế hoạch: đến ${to}`,
-    chipInProgress: 'Chỉ phiếu đang làm',
-    chipRemoveWarehouse: 'Bỏ điều kiện kho',
-    chipRemovePeriod: 'Bỏ điều kiện ngày kế hoạch',
-    chipRemoveInProgress: 'Bỏ điều kiện chỉ phiếu đang làm',
   },
   pageNav: {
     label: 'Chuyển trang',

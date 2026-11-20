@@ -2,7 +2,6 @@ import {
   AlertBanner,
   Button,
   Checkbox,
-  Chip,
   type Column,
   EmptyState,
   SearchInput,
@@ -12,8 +11,9 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { isProvisionalCatalog } from './code-group-catalog';
-import { clearFilter, hasAnyFilter, toFilterChips } from './filters';
+import { hasAnyFilter } from './filters';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
 import type { CodeGroup, CodeGroupFilters } from './types';
@@ -180,7 +180,8 @@ export const CodeGroupListPane = ({
     );
   };
 
-  const chips = toFilterChips(appliedFilters);
+  /* 조건 칸이 모두 줄에 보여 칩을 따로 두지 않는다(C-6). 「초기화」는 바뀐 것이 있을 때만 보인다. */
+  const isChanged = hasChangedFilters(EMPTY_CODE_GROUP_FILTERS, draft, appliedFilters);
 
   return (
     <section className="pane" aria-label={t.panes.codeGroup}>
@@ -223,23 +224,18 @@ export const CodeGroupListPane = ({
          */}
         <div className="filter-actions field-cell-unlabeled">
           <Button onClick={() => onApplyFilters(draft)}>{messages.common.search}</Button>
-          <Button variant="outlined" onClick={() => onApplyFilters(EMPTY_CODE_GROUP_FILTERS)}>
-            {messages.common.reset}
-          </Button>
+          {isChanged && (
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setDraft(EMPTY_CODE_GROUP_FILTERS);
+                onApplyFilters(EMPTY_CODE_GROUP_FILTERS);
+              }}
+            >
+              {messages.common.reset}
+            </Button>
+          )}
         </div>
-      </div>
-
-      <div className="filter-bar">
-        {chips.map((chip) => (
-          <Chip
-            key={chip.key}
-            variant="status"
-            removeLabel={chip.removeLabel}
-            onRemove={() => onApplyFilters(clearFilter(appliedFilters, chip.key))}
-          >
-            {chip.label}
-          </Chip>
-        ))}
       </div>
 
       {listSlot()}

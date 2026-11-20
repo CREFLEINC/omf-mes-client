@@ -15,9 +15,10 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
 
-import { clearUserFilter, hasAnyUserFilter, toUserFilterChips } from './filters';
+import { hasAnyUserFilter } from './filters';
 import type { ListPageSize } from './filters';
 import type { PageView } from './pagination';
 import { SelectField } from './select-field';
@@ -34,14 +35,11 @@ export const EMPTY_USER_FILTERS: UserFilters = {
 };
 
 export interface UserFilterBarProps {
-  /** 적용된(주소에 반영된) 조건 — 조건 칩의 렌더 기준 */
+  /** 적용된(주소에 반영된) 조건 */
   appliedFilters: UserFilters;
-  /** 조회 버튼·Enter·칩 제거·초기화가 호출한다. 쪽은 늘 1로 돌아간다 */
+  /** 조회 버튼·Enter·초기화가 호출한다. 쪽은 늘 1로 돌아간다 */
   onApplyFilters: (next: UserFilters) => void;
   departmentOptions: SelectOption[];
-  /** 조건 칩에 낼 부서 이름. 번호를 그대로 보이면 무엇을 걸었는지 모른다 */
-  departmentLabel: (departmentId: string) => string;
-  statusNameOf: (statusCode: string) => string;
   /** 선택 목록이 잘렸거나 실패했다는 안내 슬롯 */
   optionsNotice: ReactNode;
   /** 등록 폼이 이미 열려 있으면 참. 같은 폼을 두 번 열지 않는다 */
@@ -58,15 +56,13 @@ export const UserFilterBar = ({
   appliedFilters,
   onApplyFilters,
   departmentOptions,
-  departmentLabel,
-  statusNameOf,
   optionsNotice,
   isCreating,
   onAddUser,
 }: UserFilterBarProps) => {
   /*
    * 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
-   * 편집 중인 값은 draft에만 있고 조건 칩에 미러하지 않는다 — 칩은 「적용된 조건」의 표시다.
+   * 편집 중인 값은 draft에만 있다. 조건이 모두 조건 줄 · 탭 줄 칩에 보여 조건 칩을 두지 않는다(C-6 · main #1712).
    */
   const [draft, setDraft] = useState<UserFilters>(appliedFilters);
   const {
@@ -85,10 +81,15 @@ export const UserFilterBar = ({
     });
   }, [appliedQ, appliedDepartmentId, appliedStatusCode, appliedIncludeInactive]);
 
-  /* 재직 상태 칩은 탭 줄에 있으니 여기서 겹쳐 세우지 않는다. */
-  const chips = toUserFilterChips(appliedFilters, departmentLabel, statusNameOf).filter(
-    (chip) => chip.key !== 'statusCode',
-  );
+  /*
+   * 「초기화」는 바뀐 것이 있을 때만 보인다(C-6 · main #1712). 탭 줄 재직 상태 칩도 함께 푼다.
+   * 누르면 초안도 함께 비운다 — 주소가 이미 처음 값이면 따라가는 effect 가 깨어나지 않는다.
+   */
+  const isChanged = hasChangedFilters(EMPTY_USER_FILTERS, draft, appliedFilters);
+  const reset = (): void => {
+    setDraft(EMPTY_USER_FILTERS);
+    onApplyFilters(EMPTY_USER_FILTERS);
+  };
 
   return (
     <>
@@ -131,9 +132,11 @@ export const UserFilterBar = ({
           <Button onClick={() => onApplyFilters({ ...draft, statusCode: appliedStatusCode })}>
             {messages.common.search}
           </Button>
-          <Button variant="outlined" onClick={() => onApplyFilters(EMPTY_USER_FILTERS)}>
-            {messages.common.reset}
-          </Button>
+          {isChanged && (
+            <Button variant="outlined" onClick={reset}>
+              {messages.common.reset}
+            </Button>
+          )}
         </div>
 
         {/* 다른 화면의 추가 단추와 같은 모양(채운 단추 + 더하기 아이콘) — 구분선 없이 줄 오른쪽 끝(사용자 지시 2026-11-20). */}
@@ -147,22 +150,6 @@ export const UserFilterBar = ({
           {t.actions.addUser}
         </Button>
       </div>
-
-      {/* 걸린 조건이 없으면 빈 줄이 여백만 차지한다 — 칩이 있을 때만 줄을 둔다. */}
-      {chips.length > 0 && (
-        <div className="filter-bar users-roles-chip-row">
-          {chips.map((chip) => (
-            <Chip
-              key={chip.key}
-              variant="status"
-              removeLabel={chip.removeLabel}
-              onRemove={() => onApplyFilters(clearUserFilter(appliedFilters, chip.key))}
-            >
-              {chip.label}
-            </Chip>
-          ))}
-        </div>
-      )}
     </>
   );
 };

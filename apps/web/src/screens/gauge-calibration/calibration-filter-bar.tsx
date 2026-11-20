@@ -2,9 +2,11 @@ import { Button, DatePicker } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { hasChangedFilters } from '../../patterns/filter-more';
+
 import { codeNote, PLACEHOLDER_HISTORY_TYPES } from './code-options';
 import { FieldLabel } from './field-label';
-import { periodLockReason, type CalibrationFilters } from './filters';
+import { EMPTY_FILTERS, periodLockReason, type CalibrationFilters } from './filters';
 import { SelectField } from './select-field';
 import type { SelectOption } from './types';
 
@@ -123,9 +125,12 @@ export const CalibrationFilterBar = ({
             >
               {t.filters.search}
             </Button>
-            <Button variant="outlined" onClick={onReset}>
-              {t.filters.reset}
-            </Button>
+            {/* 「초기화」는 편집 중이거나 조회에 쓰인 조건이 처음 값과 다를 때만 보인다(C-6). */}
+            {hasChangedFilters(EMPTY_FILTERS, filters, appliedFilters) && (
+              <Button variant="outlined" onClick={onReset}>
+                {t.filters.reset}
+              </Button>
+            )}
           </div>
         </div>
       </div>

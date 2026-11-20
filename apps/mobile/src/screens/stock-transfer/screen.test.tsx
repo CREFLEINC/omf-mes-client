@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
@@ -290,6 +290,46 @@ describe('재고 이동 화면', () => {
   });
 
   /* 재고보다 많이 내보내면 반출이 되돌아오는데, 그때 물건은 이미 옮겨진 뒤다. */
+  it('담으면 수량을 재고 전량으로 채우고 같은 LOT 을 또 찍으면 회색으로 몇 번 줄인지 알린다', async () => {
+    mount();
+    await screen.findByLabelText('반출 LOT 스캔');
+
+    scanInto('반출 LOT 스캔', LOT_NO);
+
+    /* 결과 칸 초록 — 수량은 재고 전량으로 채워 둔다(사용자 결정 2026-11-20). */
+    const added = within(await screen.findByRole('region', { name: '담음' }));
+    expect(added.getByText(LOT_NO)).toBeTruthy();
+    expect(await screen.findByLabelText(/반출 수량/)).toHaveValue('120');
+
+    scanInto('반출 LOT 스캔', LOT_NO);
+
+    const already = within(await screen.findByRole('region', { name: '이미 담은 LOT입니다' }));
+    expect(already.getByText('반출 LOT No 1에 있습니다')).toBeTruthy();
+    expect(screen.getAllByLabelText(/반출 수량/)).toHaveLength(1);
+    expect(screen.getByLabelText(/반출 수량/).closest('tr')).toHaveAttribute(
+      'data-duplicate',
+      'true',
+    );
+  });
+
+  it('줄을 누르면 시트가 서고 [목록에서 빼기]로 뺀다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('반출 LOT 스캔');
+    scanInto('반출 LOT 스캔', LOT_NO);
+    await screen.findByLabelText(/반출 수량/);
+
+    await user.click(await screen.findByRole('button', { name: `ABC-123 ${LOT_NO} 열기` }));
+
+    const sheet = await screen.findByRole('dialog', { name: '반출 LOT' });
+    expect(within(sheet).getByText('하우징')).toBeTruthy();
+    await user.click(within(sheet).getByRole('button', { name: '목록에서 빼기' }));
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/반출 수량/)).toBeNull();
+    });
+  });
+
   it('재고보다 많이 내보내지 못한다', async () => {
     const user = userEvent.setup();
     mount();
@@ -309,7 +349,9 @@ describe('재고 이동 화면', () => {
     await screen.findByLabelText('반출 LOT 스캔');
 
     scanInto('반출 LOT 스캔', LOT_NO);
-    await user.type(await screen.findByLabelText(/반출 수량/), '80');
+    /* 수량은 재고 전량으로 채워져 온다 — 덜 옮길 때만 고친다(사용자 결정 2026-11-20). */
+    await user.clear(await screen.findByLabelText(/반출 수량/));
+    await user.type(screen.getByLabelText(/반출 수량/), '80');
     await pickDestination(user);
 
     expect(await screen.findByText(`${LOT_NO} 은(는) 보류 중인 LOT입니다`)).toBeTruthy();
@@ -358,7 +400,9 @@ describe('재고 이동 화면', () => {
     await screen.findByLabelText('반출 LOT 스캔');
 
     scanInto('반출 LOT 스캔', LOT_NO);
-    await user.type(await screen.findByLabelText(/반출 수량/), '80');
+    /* 수량은 재고 전량으로 채워져 온다 — 덜 옮길 때만 고친다(사용자 결정 2026-11-20). */
+    await user.clear(await screen.findByLabelText(/반출 수량/));
+    await user.type(screen.getByLabelText(/반출 수량/), '80');
     await pickWarehouse(user);
 
     expect(
@@ -439,7 +483,9 @@ describe('재고 이동 화면', () => {
     expect(screen.queryByText('도착 위치를 스캔하세요')).toBeNull();
 
     scanInto('반출 LOT 스캔', LOT_NO);
-    await user.type(await screen.findByLabelText(/반출 수량/), '80');
+    /* 수량은 재고 전량으로 채워져 온다 — 덜 옮길 때만 고친다(사용자 결정 2026-11-20). */
+    await user.clear(await screen.findByLabelText(/반출 수량/));
+    await user.type(screen.getByLabelText(/반출 수량/), '80');
 
     /* 적고 나면 다음 것을 말한다 - 한 자리에서만. */
     await waitFor(() => {
@@ -518,7 +564,9 @@ describe('재고 이동 화면', () => {
     await screen.findByLabelText('반출 LOT 스캔');
 
     scanInto('반출 LOT 스캔', LOT_NO);
-    await user.type(await screen.findByLabelText(/반출 수량/), '80');
+    /* 수량은 재고 전량으로 채워져 온다 — 덜 옮길 때만 고친다(사용자 결정 2026-11-20). */
+    await user.clear(await screen.findByLabelText(/반출 수량/));
+    await user.type(screen.getByLabelText(/반출 수량/), '80');
     await pickDestination(user);
     await user.click(screen.getByRole('button', { name: '반출 기록' }));
 
@@ -549,7 +597,9 @@ describe('재고 이동 화면', () => {
     await screen.findByLabelText('반출 LOT 스캔');
 
     scanInto('반출 LOT 스캔', LOT_NO);
-    await user.type(await screen.findByLabelText(/반출 수량/), '80');
+    /* 수량은 재고 전량으로 채워져 온다 — 덜 옮길 때만 고친다(사용자 결정 2026-11-20). */
+    await user.clear(await screen.findByLabelText(/반출 수량/));
+    await user.type(screen.getByLabelText(/반출 수량/), '80');
     await pickDestination(user);
 
     const button = screen.getByRole('button', { name: '반출 기록' });
@@ -573,7 +623,9 @@ describe('재고 이동 화면', () => {
     await screen.findByLabelText('반출 LOT 스캔');
 
     scanInto('반출 LOT 스캔', LOT_NO);
-    await user.type(await screen.findByLabelText(/반출 수량/), '80');
+    /* 수량은 재고 전량으로 채워져 온다 — 덜 옮길 때만 고친다(사용자 결정 2026-11-20). */
+    await user.clear(await screen.findByLabelText(/반출 수량/));
+    await user.type(screen.getByLabelText(/반출 수량/), '80');
     await pickDestination(user);
 
     held.failWrite = 'outbox';

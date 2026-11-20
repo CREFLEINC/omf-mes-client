@@ -29,8 +29,6 @@ export const erpPurchaseOrder = {
     cancelled: '취소',
     /** 외자 발주(발주 유형 `PO`) 라인의 ERP 통관번호 / 순번(서버 장부 P-143). */
     customsClearance: '통관번호',
-    orderDateFrom: '발주일 시작',
-    orderDateTo: '발주일 종료',
     q: '발주번호',
   },
   /** 두 구획 사이 끌기 막대(키보드 ←·→ 로도 움직인다). */
@@ -46,7 +44,8 @@ export const erpPurchaseOrder = {
   },
   filters: {
     all: '전체',
-    dateRangeError: '발주일 시작이 종료보다 늦습니다. 기간을 바로잡으세요.',
+    /** 「조건 더보기」에 접힌 조건의 칩 — 「상태: 반려」처럼 칸 이름과 값을 한 줄로. */
+    chip: (label: string, value: string): string => `${label}: ${value}`,
   },
   actions: {
     select: (orderNo: string): string => `${orderNo} 선택`,

@@ -231,20 +231,30 @@ describe('ItemPane', () => {
     });
   });
 
-  it('적용된 검색어는 칩으로 보이고 칩을 지우면 검색어만 풀린다', async () => {
+  /* C-6 — 검색어는 품목 검색 칸에 보이므로 칩으로 겹쳐 적지 않는다. 초기화는 바뀐 것이 있을 때만 보인다. */
+  it('적용된 검색어는 칸에만 보이고 칩으로 겹쳐 적지 않는다', () => {
+    renderPane({ appliedFilters: { q: 'ITM', onlyWithoutRouting: true, latestStatus: '' } });
+
+    expect(screen.getByLabelText('품목 검색')).toHaveTextContent('ITM');
+    expect(screen.queryByText('검색어: ITM')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /조건 제거$/ })).not.toBeInTheDocument();
+  });
+
+  it('초기화는 처음 조건과 다를 때만 보이고 누르면 진행 상태 칩까지 되돌린다', async () => {
     const { onApplyFilters, user } = renderPane({
-      appliedFilters: { q: 'ITM', onlyWithoutRouting: true, latestStatus: '' },
+      appliedFilters: { ...NO_FILTERS, latestStatus: 'DRAFT' },
     });
 
-    expect(screen.getByText('검색어: ITM')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '초기화' }));
 
-    await user.click(screen.getByRole('button', { name: '검색어 조건 제거' }));
+    expect(onApplyFilters).toHaveBeenCalledWith(NO_FILTERS);
+  });
 
-    expect(onApplyFilters).toHaveBeenCalledWith({
-      q: '',
-      onlyWithoutRouting: true,
-      latestStatus: '',
-    });
+  it('조건이 처음 그대로면 초기화가 없다', () => {
+    renderPane();
+
+    expect(screen.getByRole('button', { name: '조회' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
   });
 
   it('조회에 실패하면 표도 빈 상태도 내지 않고 받은 오류 표시만 낸다', () => {

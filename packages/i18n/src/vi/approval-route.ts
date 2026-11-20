@@ -69,13 +69,6 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
     lookupTruncated:
       'Lựa chọn chỉ hiện một phần ở đầu. Không thấy giá trị cần tìm thì hãy báo người phụ trách.',
     lookupFailed: 'Không tải được lựa chọn.',
-    chipApprovalType: (value: string): string => `Loại phê duyệt: ${value}`,
-    chipBusinessUnit: (value: string): string => `Đơn vị kinh doanh: ${value}`,
-    chipKeyword: (value: string): string => `Từ khóa: ${value}`,
-    chipRemoveApprovalType: 'Bỏ điều kiện loại phê duyệt',
-    chipRemoveBusinessUnit: 'Bỏ điều kiện đơn vị kinh doanh',
-    chipRemoveKeyword: 'Bỏ điều kiện từ khóa',
-    chipRemoveIncludeInactive: 'Bỏ điều kiện gồm cả mục ngừng dùng',
   },
   pageNav: {
     label: 'Chuyển trang',

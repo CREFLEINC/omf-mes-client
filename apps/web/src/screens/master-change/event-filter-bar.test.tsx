@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -5,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { pickRange } from '../../test/date-picker';
 import { EventFilterBar, type EventFilterBarProps } from './event-filter-bar';
 import { EMPTY_FILTERS } from './filters';
+import { defaultPeriod } from './period';
 
 const baseProps = (): EventFilterBarProps => ({
   appliedPeriod: { from: '2026-08-01', to: '2026-08-07' },
@@ -150,6 +152,19 @@ describe('EventFilterBar — 조회 기간', () => {
 
     expect(onReset).toHaveBeenCalledTimes(1);
   });
+
+  it('초기화는 처음 값(오늘까지 7일 · 조건 없음)과 달라진 것이 있을 때만 보인다', async () => {
+    const { user } = renderBar({ appliedPeriod: defaultPeriod(new Date()) });
+
+    expect(screen.queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('대상'), '9101');
+    await user.click(screen.getByRole('button', { name: '초기화' }));
+
+    /* 걸린 조건이 처음 그대로여도 치던 값을 비우고 단추를 거둔다. */
+    expect(screen.getByLabelText('대상')).toHaveValue(null);
+    expect(screen.queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
+  });
 });
 
 describe('EventFilterBar — 조건 5종', () => {
@@ -167,6 +182,7 @@ describe('EventFilterBar — 조건 5종', () => {
     const { onSearch, user } = renderBar();
 
     await user.type(screen.getByLabelText('대상'), '9101');
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     await user.type(screen.getByLabelText('상관 식별자'), 'SAMPLE-CORR-0001');
     await user.click(screen.getByRole('button', { name: '조회' }));
 
@@ -188,6 +204,7 @@ describe('EventFilterBar — 조건 5종', () => {
   it('선택칸에 「전체」가 있다', async () => {
     const { user } = renderBar();
 
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     await user.click(screen.getByLabelText('사건 종류'));
 
     expect(screen.getByRole('option', { name: '전체' })).toBeInTheDocument();
@@ -206,14 +223,44 @@ describe('EventFilterBar — 조건 5종', () => {
   });
 });
 
+describe('EventFilterBar — 조건 더보기(C-6)', () => {
+  it('보이는 칸은 조회 기간 · 대상 종류 · 대상, 나머지 셋은 「조건 더보기」 안에 접혀 있다', async () => {
+    const { user } = renderBar();
+    const more = screen.getByRole('button', { name: messages.common.filterMore.open });
+
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('combobox', { name: '대상 종류' })).toBeVisible();
+    expect(screen.getByRole('spinbutton', { name: '대상' })).toBeVisible();
+    expect(screen.queryByRole('combobox', { name: '사건 종류' })).toBeNull();
+    expect(screen.queryByRole('spinbutton', { name: '수행자' })).toBeNull();
+    expect(screen.queryByRole('textbox', { name: '상관 식별자' })).toBeNull();
+
+    await user.click(more);
+
+    expect(screen.getByRole('combobox', { name: '사건 종류' })).toBeVisible();
+    expect(screen.getByRole('spinbutton', { name: '수행자' })).toBeVisible();
+    expect(screen.getByRole('textbox', { name: '상관 식별자' })).toBeVisible();
+  });
+
+  it('펼치면 칸에 값이 보이므로 칩을 거둔다', async () => {
+    const { user } = renderBar({ appliedFilters: { ...EMPTY_FILTERS, performedBy: '9201' } });
+
+    expect(screen.getByText('수행자: 9201')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+
+    expect(screen.queryByText('수행자: 9201')).toBeNull();
+    expect(screen.getByLabelText('수행자')).toHaveValue(9201);
+  });
+});
+
 describe('EventFilterBar — 조건 칩', () => {
-  it('적용된 조건마다 칩이 하나씩 나온다', () => {
+  it('접힌 칸에 걸린 조건만 칩이 나오고 보이는 칸의 조건은 칩으로 겹쳐 적지 않는다', () => {
     renderBar({
       appliedFilters: { ...EMPTY_FILTERS, targetType: 'ITEM', performedBy: '9201' },
     });
 
-    expect(screen.getByText('대상 종류: ITEM')).toBeInTheDocument();
     expect(screen.getByText('수행자: 9201')).toBeInTheDocument();
+    expect(screen.queryByText('대상 종류: ITEM')).not.toBeInTheDocument();
   });
 
   it('×를 누르면 그 조건만 풀린다', async () => {

@@ -62,6 +62,11 @@ const renderBar = (overrides: Partial<BalanceFilterBarProps> = {}) => {
   return { ...props, ...view, user: userEvent.setup() };
 };
 
+/** 「조건 더보기」를 편다 — 접힌 칸을 쓰는 시험은 먼저 편다. */
+const openMore = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+};
+
 describe('BalanceFilterBar — 창고가 조회를 연다', () => {
   /*
    * **창고 필수는 이 화면의 규칙이지 계약의 규칙이 아니다.** 그래도 화면에서는 필수이므로
@@ -128,6 +133,7 @@ describe('BalanceFilterBar — 고르는 중인 창고가 위치 선택지를 �
 
     await user.click(screen.getByLabelText(t.fields.warehouse));
     await user.click(screen.getByRole('option', { name: WAREHOUSES[0]?.label ?? '' }));
+    await openMore(user);
     await user.click(screen.getByLabelText(t.fields.location));
     await user.click(screen.getByRole('option', { name: LOCATIONS[0]?.label ?? '' }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
@@ -141,6 +147,7 @@ describe('BalanceFilterBar — 고르는 중인 창고가 위치 선택지를 �
     const { onSearch, user } = renderBar({
       appliedFilters: filters({ warehouse: '9101', location: '9201' }),
     });
+    await openMore(user);
 
     await user.click(screen.getByLabelText(t.fields.warehouse));
     await user.click(screen.getByRole('option', { name: WAREHOUSES[1]?.label ?? '' }));
@@ -188,6 +195,7 @@ describe('BalanceFilterBar — 조건 초안의 수명', () => {
   it('잔액 0 포함도 같은 값의 새 객체에 지워지지 않는다', async () => {
     const { rerender, user } = renderBar();
 
+    await openMore(user);
     await user.click(screen.getByLabelText(t.fields.includeZero));
 
     rerender(<BalanceFilterBar {...baseProps({ appliedFilters: { ...EMPTY_FILTERS } })} />);
@@ -196,12 +204,57 @@ describe('BalanceFilterBar — 조건 초안의 수명', () => {
   });
 });
 
-describe('BalanceFilterBar — 조건 칩', () => {
-  it('걸린 조건마다 칩이 보이고 이름으로 적힌다', () => {
-    renderBar({ appliedFilters: filters({ warehouse: '9101', item: '9301' }) });
+/*
+ * C-6 — 보이는 칸은 창고 · 품목 둘이다(C-19 보통 폭 셋과 단추 셋은 1280 에서 한 줄에 들지 않는다). 나머지는 「조건 더보기」에
+ * 접혀 있다.
+ */
+describe('BalanceFilterBar — 조건 더보기', () => {
+  it('입하 LOT 번호 · 위치 · LOT · 코드 셋 · 잔액 0 포함은 접혀 있고, 펼치면 보인다', async () => {
+    const { user } = renderBar();
 
-    expect(screen.getByText('창고: 합성 자재창고 가')).toBeInTheDocument();
-    expect(screen.getByText('품목: 합성 품목 가')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: messages.common.filterMore.open })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    expect(screen.queryByRole('checkbox', { name: t.fields.includeZero })).toBeNull();
+    expect(screen.queryByRole('searchbox', { name: t.fields.inboundLotNo })).toBeNull();
+    expect(screen.getByLabelText(t.fields.warehouse)).toBeVisible();
+    expect(screen.getByLabelText(t.fields.item)).toBeVisible();
+
+    await openMore(user);
+
+    expect(screen.getByRole('searchbox', { name: t.fields.inboundLotNo })).toBeVisible();
+    for (const label of [
+      t.fields.location,
+      t.fields.lot,
+      t.fields.qualityStatus,
+      t.fields.inventoryStatus,
+      t.fields.ownership,
+      t.fields.includeZero,
+    ]) {
+      expect(screen.getByLabelText(label)).toBeVisible();
+    }
+  });
+});
+
+describe('BalanceFilterBar — 조건 칩', () => {
+  it('접힌 칸에 걸린 조건만 칩이 되고 이름으로 적힌다 — 보이는 칸의 조건은 칩으로 겹쳐 적지 않는다', () => {
+    renderBar({
+      appliedFilters: filters({
+        warehouse: '9101',
+        item: '9301',
+        location: '9201',
+        lot: '9401',
+        inboundLotNo: 'IL-20261110-0001',
+      }),
+    });
+
+    expect(screen.getByText(t.filters.chipInboundLotNo('IL-20261110-0001'))).toBeInTheDocument();
+
+    expect(screen.getByText('위치: 합성 위치 가')).toBeInTheDocument();
+    expect(screen.getByText('LOT: SAMPLE-LOT-0001')).toBeInTheDocument();
+    expect(screen.queryByText('창고: 합성 자재창고 가')).toBeNull();
+    expect(screen.queryByText('품목: 합성 품목 가')).toBeNull();
   });
 
   /* 이름이 실려 있음을 먼저 확인했으므로, 번호가 없다는 단언이 뜻을 갖는다(#44). */
@@ -210,7 +263,7 @@ describe('BalanceFilterBar — 조건 칩', () => {
       appliedFilters: filters({ warehouse: '9101', item: '9301', lot: '9401', location: '9201' }),
     });
 
-    expect(screen.getByText('창고: 합성 자재창고 가')).toBeInTheDocument();
+    expect(screen.getByText('위치: 합성 위치 가')).toBeInTheDocument();
 
     const text = container.textContent ?? '';
 
@@ -221,18 +274,34 @@ describe('BalanceFilterBar — 조건 칩', () => {
 
   it('칩의 ×를 누르면 그 조건만 상위에 알린다', async () => {
     const { onRemoveFilter, user } = renderBar({
-      appliedFilters: filters({ warehouse: '9101', item: '9301' }),
+      appliedFilters: filters({ warehouse: '9101', location: '9201', includeZero: true }),
     });
 
-    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveItem }));
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveLocation }));
 
-    expect(onRemoveFilter).toHaveBeenCalledWith('item');
+    expect(onRemoveFilter).toHaveBeenCalledWith('location');
+  });
+
+  it('펼치면 칸에 값이 보이므로 칩을 거두되, 칸이 없는 입하 LOT 거르기 칩은 남는다', async () => {
+    const { user } = renderBar({
+      appliedFilters: filters({ includeZero: true, inboundLot: '9901:IL-20261110-0001' }),
+    });
+
+    // 칩 글자는 접힌 확인칸의 이름과 같아 × 이름으로 찾는다.
+    expect(
+      screen.getByRole('button', { name: t.filters.chipRemoveIncludeZero }),
+    ).toBeInTheDocument();
+
+    await openMore(user);
+
+    expect(screen.queryByRole('button', { name: t.filters.chipRemoveIncludeZero })).toBeNull();
+    expect(screen.getByText(t.filters.chipInboundLot('IL-20261110-0001'))).toBeInTheDocument();
   });
 
   it('조건이 없으면 칩 줄이 없다', () => {
     renderBar();
 
-    expect(screen.queryByRole('button', { name: t.filters.chipRemoveWarehouse })).toBeNull();
+    expect(screen.queryByRole('button', { name: t.filters.chipRemoveLocation })).toBeNull();
   });
 });
 
@@ -244,6 +313,18 @@ describe('BalanceFilterBar — 초기화', () => {
     await user.click(screen.getByRole('button', { name: messages.common.reset }));
 
     expect(onReset).toHaveBeenCalledTimes(1);
+  });
+
+  /* C-6 — 처음 조건 그대로면 「초기화」가 할 일이 없다. 고르는 중인 값이 처음과 달라지면 그때 보인다. */
+  it('처음 조건에서는 초기화가 없고, 칸을 고치면 나타난다', async () => {
+    const { user } = renderBar();
+
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
+
+    await user.click(screen.getByLabelText(t.fields.warehouse));
+    await user.click(screen.getByRole('option', { name: WAREHOUSES[0]?.label ?? '' }));
+
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeInTheDocument();
   });
 });
 
@@ -258,8 +339,10 @@ describe('BalanceFilterBar — 선택지의 한계 안내', () => {
    * **잠그지 않는다.** 주소로 걸린 조건을 해제할 방법이 사라지기 때문이다 —
    * 선택지가 비어도 「전체」는 늘 있어 되돌릴 수 있다.
    */
-  it('선택지가 비어도 칸을 잠그지 않는다', () => {
-    renderBar({ locationOptions: [] });
+  it('선택지가 비어도 칸을 잠그지 않는다', async () => {
+    const { user } = renderBar({ locationOptions: [] });
+
+    await openMore(user);
 
     expect(screen.getByLabelText(t.fields.location)).toBeEnabled();
   });
@@ -276,10 +359,23 @@ describe('BalanceFilterBar — 선택칸 최소 폭 (규범 3-2)', () => {
   const cellOf = (label: string): HTMLElement | null =>
     screen.getByLabelText(label).closest('.field-cell');
 
-  it('「코드 · 이름」과 긴 식별자를 고르는 넷은 넓은 갈래를 쓴다', () => {
+  /* C-19 — 조회 줄에 보이는 창고 · 품목은 정한 보통 폭이다. 고른 값에 따라 칸 폭이 바뀌지 않는다. */
+  it('조회 줄의 창고 · 품목은 C-19 보통 폭을 쓴다', () => {
     renderBar();
 
-    for (const label of [t.fields.warehouse, t.fields.location, t.fields.item, t.fields.lot]) {
+    for (const label of [t.fields.warehouse, t.fields.item]) {
+      const cell = cellOf(label);
+
+      expect(cell).toHaveClass('filter-field-md');
+      expect(cell).not.toHaveClass('wide-select');
+      expect(cell?.style.minWidth).toBe('');
+    }
+  });
+
+  it('「조건 더보기」의 「코드 · 이름」과 긴 식별자를 고르는 둘은 넓은 갈래를 쓴다', () => {
+    renderBar();
+
+    for (const label of [t.fields.location, t.fields.lot]) {
       const cell = cellOf(label);
 
       expect(cell).toHaveClass('wide-select');

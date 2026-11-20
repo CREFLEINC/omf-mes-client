@@ -1,4 +1,5 @@
 import type { components } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -253,7 +254,7 @@ describe('Lot Status 전이 후보', () => {
     expect(lotStatusTransitionKeys.candidates(filters, 1, 540).at(-1)).toBe(540);
   });
 
-  it('기간은 「기간」 아래 시작일 · 종료일 두 칸이고, 자재는 상세 검색에 접혀 있다', async () => {
+  it('기간은 「기간」 아래 시작일 · 종료일 두 칸이고, 자재는 「조건 더보기」에 접혀 있다', async () => {
     const { user } = renderScreen([listRoute()]);
     await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' });
     const period = screen.getByRole('group', { name: '기간' });
@@ -265,9 +266,31 @@ describe('Lot Status 전이 후보', () => {
     /* 상태는 조건 줄이 아니라 위쪽 칩으로 고른다. */
     expect(screen.queryByLabelText('상태')).toBeNull();
     expect(screen.getByLabelText('자재')).not.toBeVisible();
-    await user.click(screen.getByRole('button', { name: '상세 검색 펼치기' }));
+    /* 처음 값(최근 30일)이면 「초기화」를 세우지 않는다(C-6). */
+    expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     expect(screen.getByLabelText('자재')).toBeVisible();
-    expect(screen.getByRole('button', { name: '상세 검색 접기' })).toBeVisible();
+    expect(screen.getByRole('button', { name: messages.common.filterMore.close })).toBeVisible();
+  });
+
+  it('접힌 자재 조건은 칩으로 보이고, × 는 자재만 풀어 다시 조회한다(C-6)', async () => {
+    const { urls, user } = renderScreen([listRoute()]);
+    await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' });
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+    await choose(user, '자재', 'SYN-ITEM-A · 합성 자재');
+    await user.click(screen.getByRole('button', { name: '조회' }));
+    await waitFor(() => expect(lotRequests(urls).at(-1)?.searchParams.get('itemId')).toBe('801'));
+
+    /* 펼쳐 있으면 칸에 값이 보이므로 칩이 없다. */
+    expect(screen.queryByText('자재: SYN-ITEM-A · 합성 자재')).toBeNull();
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.close }));
+    expect(await screen.findByText('자재: SYN-ITEM-A · 합성 자재')).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: messages.common.filterMore.remove('자재') }),
+    );
+    await waitFor(() => expect(lotRequests(urls).at(-1)?.searchParams.has('itemId')).toBe(false));
+    expect(screen.queryByText('자재: SYN-ITEM-A · 합성 자재')).toBeNull();
   });
 
   it('상태 칩은 상태를 뺀 같은 조건의 요약 한 번으로 건수를 보이고, 누르면 그 상태로 서버에서 거른다', async () => {
@@ -305,7 +328,7 @@ describe('Lot Status 전이 후보', () => {
     const { urls, user } = renderScreen([listRoute()]);
     await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' });
     await user.type(screen.getByLabelText('LOT 스캔'), 'SYN-LOT');
-    await user.click(screen.getByRole('button', { name: '상세 검색 펼치기' }));
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     await choose(user, '자재', 'SYN-ITEM-A · 합성 자재');
     await user.click(screen.getByRole('button', { name: '조회' }));
 

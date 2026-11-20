@@ -1,16 +1,10 @@
-import {
-  Button,
-  Chip,
-  type Column,
-  EmptyState,
-  SearchInput,
-  SkeletonText,
-  Table,
-} from '@crefle/web-ui';
+import { Button, type Column, EmptyState, SearchInput, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
-import { type CodeOption, defaultEquipmentFilters, codeLabel, withInactiveSuffix } from './options';
+import { hasChangedFilters } from '../../patterns/filter-more';
+
+import { type CodeOption, defaultEquipmentFilters, withInactiveSuffix } from './options';
 import { SelectField } from './select-field';
 import type { Equipment, EquipmentFilters } from './types';
 
@@ -60,7 +54,7 @@ export const EquipmentPane = ({
   const [draft, setDraft] = useState<EquipmentFilters>(draftOf(appliedFilters));
   const { q: appliedQ, plantId: appliedPlantId } = appliedFilters;
 
-  /* 밖에서 조건이 되돌려지면(초기화·칩 제거) 초안도 그것을 따라간다. */
+  /* 밖에서 조건이 되돌려지면(초기화) 초안도 그것을 따라간다. */
   useEffect(() => {
     setDraft({ q: appliedQ, plantId: appliedPlantId });
   }, [appliedQ, appliedPlantId]);
@@ -177,33 +171,17 @@ export const EquipmentPane = ({
         <div className="field-cell field-cell-unlabeled">
           <div className="filter-actions">
             <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
-            <Button variant="outlined" onClick={resetAll}>
-              {messages.common.reset}
-            </Button>
+            {/* 「초기화」는 편집 중이거나 적용된 조건이 처음 값과 다를 때만 보인다(C-6). */}
+            {hasChangedFilters(defaultEquipmentFilters, draft, appliedFilters) && (
+              <Button variant="outlined" onClick={resetAll}>
+                {messages.common.reset}
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="filter-bar collection-channel-filter-chips">
-        {appliedFilters.q !== '' && (
-          <Chip
-            variant="status"
-            removeLabel={t.equipment.chipRemoveKeyword}
-            onRemove={() => onApplyFilters({ ...appliedFilters, q: '' })}
-          >
-            {t.equipment.chipKeyword(appliedFilters.q)}
-          </Chip>
-        )}
-        {appliedFilters.plantId !== '' && (
-          <Chip
-            variant="status"
-            removeLabel={t.equipment.chipRemovePlant}
-            onRemove={() => onApplyFilters({ ...appliedFilters, plantId: '' })}
-          >
-            {t.equipment.chipPlant(codeLabel(appliedFilters.plantId, plantOptions))}
-          </Chip>
-        )}
-      </div>
+      {/* 조건 칩을 두지 않는다 — 조건 둘이 모두 조회 줄에 보인다(C-6, 보이는 칸은 칩으로 겹쳐 적지 않는다). */}
 
       {/* 잘림은 목록 «위»에 둔다 — 아래에 두면 찾는 설비가 없다고 판단한 뒤에야 읽힌다. */}
       {truncated && total !== null && (

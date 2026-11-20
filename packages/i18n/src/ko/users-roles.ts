@@ -135,28 +135,17 @@ export const usersRoles = {
      * 「미사용 포함」·「(미사용)」)와 다른 축이라 「상태」 한 낱말로 두지 않는다(설계 §4-A).
      */
     status: '재직 상태',
-    statusAll: '전체',
-    chipKeyword: (value: string): string => `검색어: ${value}`,
-    chipRemoveKeyword: '검색어 조건 제거',
-    chipDepartment: (label: string): string => `부서: ${label}`,
-    chipRemoveDepartment: '부서 조건 제거',
-    chipStatus: (label: string): string => `재직 상태: ${label}`,
-    chipRemoveStatus: '재직 상태 조건 제거',
+    statusAll: '전체 재직 상태',
     /* 이 화면은 「미사용 포함」 대신 대상이 보이게 쓴다(사용자 지시 2026-11-20 · omf-all-around#333). */
     /* 「미사용 포함」으로 정정(사용자 지시 2026-11-20 · #333) — 역할 탭과 같은 말. */
     includeInactive: '미사용 포함',
-    chipRemoveUserIncludeInactive: '미사용 포함 조건 제거',
-    chipRemoveIncludeInactive: '미사용 포함 조건 제거',
     roleSearchLabel: '역할 검색',
     /* 역할 탭 용어 정정(사용자 지시 2026-11-20 · #333). */
     roleSearchPlaceholder: '역할 코드 또는 역할명을 입력하세요',
     roleIncludeInactive: '미사용 포함',
-    chipRemoveRoleIncludeInactive: '미사용 포함 조건 제거',
     roleReset: '초기화',
     /* 탭 줄 사용 · 미사용 라벨(사용자 지시 2026-11-20 · #333). */
     roleStatusChipsLabel: '사용 상태',
-    chipRoleStatus: (label: string): string => `사용 상태: ${label}`,
-    chipRemoveRoleStatus: '사용 상태 조건 제거',
   },
   loading: {
     users: '사용자 목록을 불러오는 중',

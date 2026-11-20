@@ -168,6 +168,18 @@ describe('RoleListPane 조건', () => {
     expect(onApplyFilters).toHaveBeenCalledWith({ q: 'SYN', includeInactive: true, status: '' });
   });
 
+  it('초기화는 바뀐 것이 생겨야 나타나고, 누르면 치던 값까지 비운다', async () => {
+    const { onApplyFilters, user } = renderPane();
+    expect(within(pane()).queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
+
+    await user.type(within(pane()).getByLabelText('역할 검색'), 'SYN');
+    await user.click(within(pane()).getByRole('button', { name: '초기화' }));
+
+    expect(onApplyFilters).toHaveBeenCalledWith({ q: '', includeInactive: false, status: '' });
+    expect(within(pane()).getByLabelText('역할 검색')).toHaveValue('');
+    expect(within(pane()).queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
+  });
+
   it('초기화는 조건을 모두 푼다', async () => {
     const { onApplyFilters, user } = renderPane({
       appliedFilters: { q: 'SYN', includeInactive: true, status: '' },
@@ -178,23 +190,12 @@ describe('RoleListPane 조건', () => {
     expect(onApplyFilters).toHaveBeenCalledWith({ q: '', includeInactive: false, status: '' });
   });
 
-  it('적용된 조건마다 칩이 하나씩 선다', () => {
-    renderPane({ appliedFilters: { q: 'SYN', includeInactive: true, status: '' } });
+  /* 조건이 모두 조건 줄 · 탭 줄 라벨에 보여 조건 칩을 두지 않는다(C-6 · main #1712). */
+  it('걸린 조건을 칩으로 겹쳐 적지 않는다', () => {
+    renderPane({ appliedFilters: { q: 'SYN', includeInactive: true, status: 'inactive' } });
 
-    expect(within(pane()).getByText('검색어: SYN')).toBeInTheDocument();
-    expect(
-      within(pane()).getByRole('button', { name: '미사용 포함 조건 제거' }),
-    ).toBeInTheDocument();
-  });
-
-  it('칩을 제거하면 그 조건 하나만 풀린다', async () => {
-    const { onApplyFilters, user } = renderPane({
-      appliedFilters: { q: 'SYN', includeInactive: true, status: '' },
-    });
-
-    await user.click(within(pane()).getByRole('button', { name: '검색어 조건 제거' }));
-
-    expect(onApplyFilters).toHaveBeenCalledWith({ q: '', includeInactive: true, status: '' });
+    expect(within(pane()).queryByText('검색어: SYN')).not.toBeInTheDocument();
+    expect(within(pane()).queryByRole('button', { name: /조건 제거/ })).not.toBeInTheDocument();
   });
 });
 

@@ -26,10 +26,6 @@ export const collectionChannel: Translated<typeof ko.collectionChannel> = {
       `Hiển thị ${shown} trong tổng ${total} mục. Hãy thu hẹp điều kiện rồi tra cứu.`,
     /** 행이 곧 손잡이다 — 접근 이름에 무엇이 열리는지 담는다. */
     selectLabel: (code: string, name: string): string => `Xem kênh thu thập của ${code} ${name}`,
-    chipRemoveKeyword: 'Bỏ điều kiện từ khóa',
-    chipRemovePlant: 'Bỏ điều kiện nhà máy',
-    chipKeyword: (value: string): string => `Từ khóa: ${value}`,
-    chipPlant: (label: string): string => `Nhà máy: ${label}`,
   },
   channels: {
     paneTitle: 'Ánh xạ kênh',

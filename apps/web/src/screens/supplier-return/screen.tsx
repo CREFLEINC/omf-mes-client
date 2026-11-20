@@ -4,6 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'rea
 import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { ScreenHeader } from '../../patterns/screen-header';
 import {
   SUPPLIER_RETURN_CODE_GROUPS,
   isRequiredCodeListPending,
@@ -26,12 +27,7 @@ import {
 import { GrFilterBar } from './gr-filter-bar';
 import { GrLineTable } from './gr-line-table';
 import { GrTable } from './gr-table';
-import {
-  toBusinessDate,
-  toGoodsIssueRequest,
-  toIssuedLocal,
-  toReturnLines,
-} from './issue-request';
+import { toBusinessDate, toGoodsIssueRequest, toIssuedLocal, toReturnLines } from './issue-request';
 import {
   EMPTY_LINE_DRAFT,
   hasAnyLineDraftValue,
@@ -860,9 +856,7 @@ export const SupplierReturnScreen = () => {
          * 이 화면에서 확인 없이 다시 보내면 같은 반품이 전표 두 벌로 남는다 — 공통 쓰기 훅이
          * 호출마다 새 멱등 키를 만들어 서버가 재전송으로 보지 못한다.
          */}
-        {currentError?.kind === 'network' && (
-          <p className="field-error">{t.notes.submitRecheck}</p>
-        )}
+        {currentError?.kind === 'network' && <p className="field-error">{t.notes.submitRecheck}</p>}
 
         <div className="form-actions">
           {/* 지우기가 반품 처리보다 앞에 선다 — 되돌릴 수 없는 것이 손 가까이 있으면 안 된다. */}
@@ -989,9 +983,7 @@ export const SupplierReturnScreen = () => {
            * 창고는 **위 구획이 실패 안내와 복구를 소유**하므로 이름만 넘긴다.
            * 제목줄에 번호를 문자열로 만드는 자리는 어느 쪽에도 없다.
            */
-          warehouseName={describeReference(
-            toReference(warehouses, detailData.receipt.warehouseId),
-          )}
+          warehouseName={describeReference(toReference(warehouses, detailData.receipt.warehouseId))}
         />
 
         <GrLineTable
@@ -1041,7 +1033,7 @@ export const SupplierReturnScreen = () => {
 
   return (
     <>
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb
