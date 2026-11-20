@@ -123,20 +123,10 @@
 }
 
 .last-scan__qty {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2, 8px);
   font-size: 32px;
   font-weight: 900;
   line-height: 1.15;
   font-variant-numeric: tabular-nums;
-}
-
-.last-scan__qty .last-scan__tail {
-  color: var(--on-surface-muted);
-  font: var(--type-label-sm);
-  font-family: var(--font-mono);
 }
 
 .last-scan__qty small {
@@ -145,7 +135,6 @@
   font-weight: 700;
 }
 
-.last-scan__tail,
 .last-scan__lot {
   font-family: var(--font-mono);
 }
@@ -161,8 +150,8 @@
 }
 
 .last-scan__lot {
-  color: var(--on-surface-muted);
-  font-size: 12px;
+  color: var(--on-surface-variant);
+  font-size: 13px;
   overflow-wrap: anywhere;
 }
 
@@ -373,9 +362,12 @@
 
 /* 품목명은 작게 — 대조는 품목코드로 하고 이름은 거든다(사용자 지시 2026-11-20). 두 줄을 넘으면 fit-name 이 더 줄인다. */
 .receive-tally__name {
+  overflow: hidden;
   color: var(--on-surface-variant);
   font-size: 12px;
   line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .receive-tally__closed {

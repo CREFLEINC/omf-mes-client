@@ -60,107 +60,112 @@ export const ReceiptTally = ({
   }, [focusKey]);
 
   return (
-  <section className="receive-tally" aria-label={t.title}>
-    <div className="receive-tally__head">
-      <h2 className="receive-tally__title">
-        {t.title} <span className="receive-tally__total">{t.total(total)}</span>
-      </h2>
-      {receiving.items === 0 ? null : (
-        <Button
-          variant="outlined"
-          size="sm"
-          className="receive-tally__close"
-          aria-label={c.all(receiving.items, receiving.lots)}
-          aria-describedby={closeLock === null ? undefined : lockId}
-          disabled={closeLock !== null || closing}
-          loading={closing}
-          onClick={onCloseAll}
-        >
-          {c.allShort}
-        </Button>
-      )}
-    </div>
-    {receiving.items === 0 || closeLock === null ? null : (
-      <p id={lockId} className="receive-tally__lock">
-        {closeLock}
-      </p>
-    )}
-    {groups.length === 0 ? (
-      <p className="receive-tally__empty">{t.empty}</p>
-    ) : (
-      <div className="receive-tally__scroll">
-        <table ref={tableRef} className="receive-tally__table">
-          <colgroup>
-            <col className="receive-tally__col-no" />
-            <col />
-            <col className="receive-tally__col-count" />
-            <col className="receive-tally__col-qty" />
-          </colgroup>
-          <thead>
-            <tr>
-              <th scope="col" className="receive-tally__no">
-                {t.columns.no}
-              </th>
-              <th scope="col">{t.columns.item}</th>
-              <th scope="col" className="receive-tally__num">
-                {t.columns.count}
-              </th>
-              <th scope="col" className="receive-tally__num">
-                {t.columns.qty}
-              </th>
-            </tr>
-          </thead>
-          {groups.map((group) => (
-            <tbody key={group.supplierId}>
-              {grouped ? (
-                <tr className="receive-tally__group">
-                  <th scope="colgroup" colSpan={4}>
-                    {group.supplierName}
-                  </th>
-                </tr>
-              ) : null}
-              {group.rows.map(({ no, detail }) => {
-                const closed = !isReceiving(detail);
-
-                return (
-                  <tr
-                    key={detail.inboundLotId}
-                    data-current={detail.inboundLotId === currentId}
-                    data-duplicate={no === duplicateNo}
-                    data-closed={closed}
-                  >
-                    <td className="receive-tally__no">{no}</td>
-                    <td className="receive-tally__item">
-                      <button
-                        type="button"
-                        className="receive-tally__open"
-                        aria-label={t.open(detail.itemCode, detail.itemName)}
-                        onClick={() => {
-                          onOpen(detail.inboundLotId);
-                        }}
-                      >
-                        <span className="receive-tally__code">
-                          {detail.itemCode}
-                          {closed ? <span className="receive-tally__closed">{t.closed}</span> : null}
-                        </span>
-                        <FitName className="receive-tally__name" text={detail.itemName} min={10} />
-                      </button>
-                    </td>
-                    <td className="receive-tally__num receive-tally__count">
-                      {detail.lotCount}
-                    </td>
-                    <td className="receive-tally__num">
-                      {qtyNumber(detail.receivedQty)}
-                      <small>{detail.uomCode}</small>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          ))}
-        </table>
+    <section className="receive-tally" aria-label={t.title}>
+      <div className="receive-tally__head">
+        <h2 className="receive-tally__title">
+          {t.title} <span className="receive-tally__total">{t.total(total)}</span>
+        </h2>
+        {receiving.items === 0 ? null : (
+          <Button
+            variant="outlined"
+            size="sm"
+            className="receive-tally__close"
+            aria-label={c.all(receiving.items, receiving.lots)}
+            aria-describedby={closeLock === null ? undefined : lockId}
+            disabled={closeLock !== null || closing}
+            loading={closing}
+            onClick={onCloseAll}
+          >
+            {c.allShort}
+          </Button>
+        )}
       </div>
-    )}
-  </section>
+      {receiving.items === 0 || closeLock === null ? null : (
+        <p id={lockId} className="receive-tally__lock">
+          {closeLock}
+        </p>
+      )}
+      {groups.length === 0 ? (
+        <p className="receive-tally__empty">{t.empty}</p>
+      ) : (
+        <div className="receive-tally__scroll">
+          <table ref={tableRef} className="receive-tally__table">
+            <colgroup>
+              <col className="receive-tally__col-no" />
+              <col />
+              <col className="receive-tally__col-count" />
+              <col className="receive-tally__col-qty" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col" className="receive-tally__no">
+                  {t.columns.no}
+                </th>
+                <th scope="col">{t.columns.item}</th>
+                <th scope="col" className="receive-tally__num">
+                  {t.columns.count}
+                </th>
+                <th scope="col" className="receive-tally__num">
+                  {t.columns.qty}
+                </th>
+              </tr>
+            </thead>
+            {groups.map((group) => (
+              <tbody key={group.supplierId}>
+                {grouped ? (
+                  <tr className="receive-tally__group">
+                    <th scope="colgroup" colSpan={4}>
+                      {group.supplierName}
+                    </th>
+                  </tr>
+                ) : null}
+                {group.rows.map(({ no, detail }) => {
+                  const closed = !isReceiving(detail);
+
+                  return (
+                    <tr
+                      key={detail.inboundLotId}
+                      data-current={detail.inboundLotId === currentId}
+                      data-duplicate={no === duplicateNo}
+                      data-closed={closed}
+                    >
+                      <td className="receive-tally__no">{no}</td>
+                      <td className="receive-tally__item">
+                        <button
+                          type="button"
+                          className="receive-tally__open"
+                          aria-label={t.open(detail.itemCode, detail.itemName)}
+                          onClick={() => {
+                            onOpen(detail.inboundLotId);
+                          }}
+                        >
+                          <span className="receive-tally__code">
+                            {detail.itemCode}
+                            {closed ? (
+                              <span className="receive-tally__closed">{t.closed}</span>
+                            ) : null}
+                          </span>
+                          <FitName
+                            className="receive-tally__name"
+                            text={detail.itemName}
+                            min={8}
+                            lines={1}
+                          />
+                        </button>
+                      </td>
+                      <td className="receive-tally__num receive-tally__count">{detail.lotCount}</td>
+                      <td className="receive-tally__num">
+                        {qtyNumber(detail.receivedQty)}
+                        <small>{detail.uomCode}</small>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            ))}
+          </table>
+        </div>
+      )}
+    </section>
   );
 };
