@@ -101,12 +101,18 @@ export const usePopShipmentForm = (inspectionRequestId: number | null, workerNo:
   /* [시리얼 검사 기록] 창 — 단추는 바닥 띠, 창은 상세가 그린다(사용자 지시 2026-11-20). */
   const [serialOpen, setSerialOpen] = useState(false);
   const [savedSeq, setSavedSeq] = useState<number | null>(null);
+  /*
+   * [재검사]로 연 결과 등록(사용자 지시 2026-11-20) — 판정을 마친 열린 의뢰는 결과 등록을 닫아 두고 [재검사]로 연다.
+   * 다른 의뢰를 고르면 닫고, 새로고침은 그대로 둔다. [취소]는 닫으면서 적던 값을 버린다(`draftGen` 으로 다시 연다).
+   */
+  const [reinspecting, setReinspecting] = useState(false);
+  const [draftGen, setDraftGen] = useState(0);
 
-  /* 의뢰가 바뀌거나 결과가 늘면 새 결과를 빈 판정 · 미검사 LOT 체크로 다시 연다. */
+  /* 의뢰가 바뀌거나 결과가 늘면(또는 [취소]) 새 결과를 빈 판정 · 미검사 LOT 체크로 다시 연다. */
   const resetKey =
     request === undefined
       ? null
-      : `${String(request.inspectionRequestId)}#${String(results.length)}`;
+      : `${String(request.inspectionRequestId)}#${String(results.length)}#${String(draftGen)}`;
   useEffect(() => {
     if (resetKey === null || views === null) return;
     setMatched(defaultMatchOf(views.active));
@@ -115,7 +121,10 @@ export const usePopShipmentForm = (inspectionRequestId: number | null, workerNo:
     setSerialRows([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
-  useEffect(() => setSavedSeq(null), [inspectionRequestId]);
+  useEffect(() => {
+    setSavedSeq(null);
+    setReinspecting(false);
+  }, [inspectionRequestId]);
   /* 검사 항목 측정(FR-009 · T052) — POP 은 결과를 더하기만 하므로 늘 빈 칸에서 시작한다(결과가 늘면 다시 연다). */
   const measurements = useShipmentMeasurements({
     planVersionId: request?.inspectionPlanVersionId,
@@ -127,7 +136,10 @@ export const usePopShipmentForm = (inspectionRequestId: number | null, workerNo:
     request?.nextResultSeqNo ?? results.reduce((max, result) => Math.max(max, result.seqNo), 0) + 1;
   const save = useSaveShipmentResult(
     inspectionRequestId,
-    () => setSavedSeq(seqNo),
+    () => {
+      setSavedSeq(seqNo);
+      setReinspecting(false);
+    },
     workerNo ?? undefined,
   );
 
@@ -152,6 +164,17 @@ export const usePopShipmentForm = (inspectionRequestId: number | null, workerNo:
     if (measurements.hasError) return ps.bar.blocked.measurement;
     return null;
   })();
+
+  const writable =
+    request !== undefined &&
+    views !== null &&
+    OPEN_STATUSES.includes(request.statusCode) &&
+    views.active.length > 0;
+  /* 판정을 마친 열린 의뢰 — 목록 「판정 완료」 탭과 같은 조건(`isJudgedOpen`): 살아 있는 피킹 LOT 이 모두 판정을 가졌다. */
+  const judgedOpen =
+    writable && views.active.every((view) => view.judgmentCode !== 'NOT_INSPECTED');
+  /* 결과 등록을 보이는가 — 판정 대기는 바로, 판정 완료는 [재검사]를 누른 뒤에만. 저장 몸통 · 규칙은 그대로다. */
+  const entryOpen = writable && (!judgedOpen || reinspecting);
 
   const submit = () => {
     if (blockedReason !== null || request === undefined || judgment === null) return;
@@ -188,11 +211,17 @@ export const usePopShipmentForm = (inspectionRequestId: number | null, workerNo:
     serialOpen,
     setSerialOpen,
     /* 결과를 더할 수 있는 의뢰 — 열린 상태이고 피킹 LOT 이 있다. */
-    writable:
-      request !== undefined &&
-      views !== null &&
-      OPEN_STATUSES.includes(request.statusCode) &&
-      views.active.length > 0,
+    writable,
+    entryOpen,
+    judgedOpen,
+    reinspect: () => {
+      setSavedSeq(null);
+      setReinspecting(true);
+    },
+    cancelReinspect: () => {
+      setReinspecting(false);
+      setDraftGen((gen) => gen + 1);
+    },
     measurements,
     overridden,
     needsReason,
@@ -504,14 +533,15 @@ export const PopShipmentDetail = ({
   const overview = overviewOfViews(request.statusCode, views.active);
   const pickedTotal = views.active.reduce((sum, view) => sum + view.lot.lotQty, 0);
   const skipped = request.statusCode === 'SKIPPED';
-  const { writable } = form;
   const ruleCode = savedRuleCode;
   const tabLabel = `${ps.lotsTitle} · ${s.results.title}`;
   const itemCount = form.measurements.rows.filter((row) => row.sampleNo === 1).length;
   /* ② 검사 항목은 항목이 있거나 못 읽었을 때만(0개면 구획째 없음 — 사용자 지시 2026-11-20). */
   const hasItemsSeg = itemCount > 0 || form.measurements.loadError !== null;
   const seg = hasItemsSeg ? entrySeg : 'match';
-  const entryTitle = ps.form.heading(form.seqNo);
+  const entryTitle = form.judgedOpen
+    ? ps.form.reinspectHeading(form.seqNo)
+    : ps.form.heading(form.seqNo);
   const matchSegLabel = `${ps.form.match.matchHeading} · ${s.drawer.judgmentHeading}`;
 
   return (
@@ -640,7 +670,7 @@ export const PopShipmentDetail = ({
         )}
       </section>
 
-      {writable ? (
+      {form.entryOpen ? (
         /*
          * 결과 등록 — 옛 흐름 판정 단계 · 다른 POP 입력 카드와 같은 짜임(PuSection 제목 + PuField 이름 위 · 필수 빨간 *).
          * 흐름: 검사 대상 LOT → 검사 항목 → 판정 → (재검 사유 · 시리얼) → 아래 [결과 저장](사용자 지시 2026-11-20).
@@ -1035,6 +1065,28 @@ export const PopShipmentBar = ({ form }: { form: PopShipmentForm }) => {
     </p>
   );
 
+  /*
+   * 판정을 마친 열린 의뢰는 결과 등록을 닫아 두고 [재검사] 하나만 둔다(사용자 지시 2026-11-20). 띠 글은 방금 저장한 회차만.
+   */
+  if (form.writable && !form.entryOpen) {
+    return (
+      <PuActionBar
+        lead={
+          <div className="pop-action-note" aria-live="polite">
+            {savedSeq === null ? null : (
+              <p className="pop-oqc-bar-note pop-oqc-bar-note--success">
+                <Icon name="check_circle" size={24} aria-hidden />
+                <span>{ps.bar.saved(savedSeq)}</span>
+              </p>
+            )}
+          </div>
+        }
+      >
+        <PuButton onClick={form.reinspect}>{ps.bar.reinspect}</PuButton>
+      </PuActionBar>
+    );
+  }
+
   /* #295 — 공통 작업 줄(`PuActionBar`)에 선다: 왼쪽 띠 글, 오른쪽 [결과 저장]. */
   return (
     <PuActionBar
@@ -1044,6 +1096,12 @@ export const PopShipmentBar = ({ form }: { form: PopShipmentForm }) => {
         </div>
       }
     >
+      {/* [재검사]로 연 결과 등록만 [취소] — 닫으면서 적던 값을 버린다. */}
+      {form.judgedOpen && (
+        <PuButton disabled={save.isSaving} onClick={form.cancelReinspect}>
+          {messages.common.cancel}
+        </PuButton>
+      )}
       {/* [시리얼 검사 기록] — [결과 저장] 바로 왼쪽. 적은 대수는 단추의 건수(0 이면 숨김), NG 대수는 창 안에 있다. */}
       {form.writable && (
         <PuButton

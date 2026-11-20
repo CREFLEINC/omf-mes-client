@@ -220,6 +220,7 @@ export const popOqcInspection = {
     appliedNone: '적용 검사 없음',
     form: {
       heading: (seqNo: number): string => `${String(seqNo)}회차 검사 결과 등록`,
+      reinspectHeading: (seqNo: number): string => `${String(seqNo)}회차 재검사 결과 등록`,
       /** 결과 입력의 LOT 고르기 칸(공용 LotMatchField 문구). */
       match: {
         matchHeading: '검사 대상 LOT',
@@ -234,6 +235,7 @@ export const popOqcInspection = {
       save: '결과 저장',
       saving: '저장 중…',
       saved: (seqNo: number): string => `${String(seqNo)}회차 결과를 저장했습니다.`,
+      reinspect: '재검사',
       ready: '저장할 수 있습니다. 판정은 출하 완료 때 확정됩니다.',
       blocked: {
         match: '검사 대상 LOT을 1개 이상 고르세요.',

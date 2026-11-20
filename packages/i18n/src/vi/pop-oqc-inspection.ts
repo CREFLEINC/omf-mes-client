@@ -188,6 +188,8 @@ export const popOqcInspection = {
     appliedNone: 'Chưa có lần áp dụng',
     form: {
       heading: (seqNo: number): string => `Đăng ký kết quả kiểm tra lần ${String(seqNo)}`,
+      reinspectHeading: (seqNo: number): string =>
+        `Đăng ký kết quả tái kiểm tra lần ${String(seqNo)}`,
       match: {
         matchHeading: 'LOT cần kiểm tra',
         selectAll: 'Chọn tất cả',
@@ -199,6 +201,7 @@ export const popOqcInspection = {
     },
     bar: {
       save: 'Lưu kết quả',
+      reinspect: 'Tái kiểm tra',
       saving: 'Đang lưu…',
       saved: (seqNo: number): string => `Đã lưu kết quả lần ${String(seqNo)}.`,
       ready: 'Có thể lưu. Phán định sẽ được xác nhận khi hoàn tất xuất hàng.',

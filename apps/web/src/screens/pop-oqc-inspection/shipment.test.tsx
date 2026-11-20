@@ -432,4 +432,43 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     expect(within(serials).getByText('SN-RESULT-1')).toBeInTheDocument();
     expect(within(serials).getByText(messages.oqcInspection.serials.ng)).toBeInTheDocument();
   });
+
+  /* 사용자 지시 2026-11-20 — 판정을 마친 열린 의뢰는 결과 등록을 닫아 두고 [재검사]로 연다. */
+  it('#334 판정 완료 의뢰는 결과 등록 없이 [재검사]만 서고, 누르면 재검사 회차로 열리고 [취소]로 닫힌다', async () => {
+    const user = userEvent.setup();
+    const { saves } = renderPop();
+
+    await user.click(
+      await screen.findByRole('tab', { name: new RegExp(pop.queue.doneHeading, 'u') }),
+    );
+    await user.click(
+      await screen.findByRole('button', { name: pop.queue.selectRow('IR-OQC-0202') }),
+    );
+    const reinspect = await screen.findByRole('button', { name: ps.bar.reinspect });
+    expect(screen.queryByRole('region', { name: /회차 (재)?검사 결과 등록/u })).toBeNull();
+    expect(screen.queryByRole('button', { name: ps.bar.save })).toBeNull();
+    expect(screen.queryByRole('button', { name: pop.serial.open })).toBeNull();
+
+    await user.click(reinspect);
+    expect(
+      await screen.findByRole('region', { name: ps.form.reinspectHeading(2) }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: ps.bar.save })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: pop.serial.open })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+    expect(screen.queryByRole('region', { name: ps.form.reinspectHeading(2) })).toBeNull();
+    expect(screen.getByRole('button', { name: ps.bar.reinspect })).toBeInTheDocument();
+    expect(saves).toHaveLength(0);
+  });
+
+  it('#334 판정 대기 의뢰는 [재검사] 없이 결과 등록이 바로 선다', async () => {
+    const user = userEvent.setup();
+    renderPop();
+
+    await openRequest(user);
+    expect(screen.getByRole('region', { name: ps.form.heading(3) })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: ps.bar.reinspect })).toBeNull();
+    expect(screen.queryByRole('button', { name: messages.common.cancel })).toBeNull();
+  });
 });
