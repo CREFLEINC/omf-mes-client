@@ -67913,7 +67913,7 @@ export interface components {
     };
     ShipmentConflictResponse: {
       /**
-       * @description ALREADY_CONFIRMED 는 이미 확정된 출하라는 뜻이다 — 확정 취소 경로가 없으므로 되돌릴 수 없다(W-04-12 §5-3). CANCEL_IN_PROGRESS 는 취소 결재가 진행 중이라 확정할 수 없다는 뜻이다(J-7). 근거: W-04-12 §5-8 피처 010(omf-all-around#305): USE_PICK_LOT 는 옛 수량 피킹(:pick)이 닫혔다는 뜻이다 — LOT 통째 피킹(:pick-lot)을 쓴다. LOT_TARGET_REACHED 는 라인 피킹 합이 이미 목표(배정) 이상이다. LOT_ALREADY_RESERVED 는 그 LOT 의 잔액 행에 다른 예약·피킹·차단이 걸려 통째로 잡을 수 없다. LOT_ALREADY_PICKED 는 이미 이 지시서에 피킹한 LOT 이다. NO_LINE_FOR_ITEM 은 이 지시서에 그 LOT 품목의 라인이 없다. LOT_NOT_REJECTED 는 교체할 수 없는 피킹 LOT 이다 — OQC 판정이 불합격이 아니거나(교체 전에 재검 합격이 들어온 경우 포함) 이미 교체·출하됐다. COMPLETION_BLOCKED 는 출하 완료를 막는 이유가 있다(blockers 에 실린다). ALREADY_COMPLETED 는 이미 POP 에서 출하 완료한 지시서다(다시 스캔·동시 완료). ERP_ALREADY_SENT 는 ERP 로 이미 보낸(또는 보내는 중인) POP 완료 출하라 취소할 수 없다 — ERP 에서 처리한다. 피처 012(omf-all-around#338): LOT_NOT_IN_LINE_WAREHOUSE 는 스캔한 LOT 의 가용 잔액이 이 기기 범위 안 같은 품목 줄의 출고 창고 어디에도 없다 — `warehouses` 에 LOT 이 있는 창고(공장)를 싣는다. LINE_WAREHOUSE_UNAVAILABLE 은 고른 줄의 출고 창고가 비활성이거나 지시서 사업부의 창고가 아니다(「출고 창고를 쓸 수 없습니다」). 창고 맞는 줄 찾기가 먼저이고, 맞는 줄이 모두 목표를 채웠을 때만 LOT_TARGET_REACHED 다.
+       * @description ALREADY_CONFIRMED 는 이미 확정된 출하라는 뜻이다 — 확정 취소 경로가 없으므로 되돌릴 수 없다(W-04-12 §5-3). CANCEL_IN_PROGRESS 는 취소 결재가 진행 중이라 확정할 수 없다는 뜻이다(J-7). 근거: W-04-12 §5-8 피처 010(omf-all-around#305): USE_PICK_LOT 는 옛 수량 피킹(:pick)이 닫혔다는 뜻이다 — LOT 통째 피킹(:pick-lot)을 쓴다. LOT_TARGET_REACHED 는 라인 피킹 합이 이미 목표(배정) 이상이다. LOT_ALREADY_RESERVED 는 그 LOT 의 잔액 행에 다른 예약·피킹·차단이 걸려 통째로 잡을 수 없다. LOT_ALREADY_PICKED 는 이미 이 지시서에 피킹한 LOT 이다. NO_LINE_FOR_ITEM 은 이 지시서에 그 LOT 품목의 라인이 없다. LOT_NOT_REJECTED 는 교체할 수 없는 피킹 LOT 이다 — OQC 판정이 불합격이 아니거나(교체 전에 재검 합격이 들어온 경우 포함) 이미 교체·출하됐다. COMPLETION_BLOCKED 는 출하 완료를 막는 이유가 있다(blockers 에 실린다). ALREADY_COMPLETED 는 이미 POP 에서 출하 완료한 지시서다(다시 스캔·동시 완료). ERP_ALREADY_SENT 는 ERP 로 이미 보낸(또는 보내는 중인) POP 완료 출하라 취소할 수 없다 — ERP 에서 처리한다. 피처 012(omf-all-around#338): LOT_NOT_IN_LINE_WAREHOUSE 는 스캔한 LOT 의 가용 잔액이 이 기기 범위 안 같은 품목 줄의 출고 창고 어디에도 없다 — `warehouses` 에 LOT 이 있는 창고(공장)를 싣는다. LINE_WAREHOUSE_UNAVAILABLE 은 고른 줄의 출고 창고가 비활성이거나 지시서 사업부의 창고가 아니다(「출고 창고를 쓸 수 없습니다」). 창고 맞는 줄 찾기가 먼저이고, 맞는 줄이 모두 목표를 채웠을 때만 LOT_TARGET_REACHED 다. 피처 013(omf-all-around#303) 생산 LOT 분리: NOT_PRODUCTION_LOT 는 생산 LOT 이 아니다. SPLIT_SERIAL_LOT 는 시리얼 관리 품목 LOT 이다. LOT_SPLIT_UNCONFIRMED 는 PDA 확인 전인 분리의 원래·자식 LOT 이다(재분리·출하 피킹 거절). PUTAWAY_PENDING 은 적치 대기 자리이거나 그 자리에서 출발하는 열린 적치 지시가 있다. NOT_PRODUCT_WAREHOUSE 는 제품 창고(불량 창고 제외) 위치가 아니다. MIXED_STOCK_STATUS 는 그 위치에 품질·재고 상태가 다른 잔액이 섞여 있다. 분리의 INVALID_STATE 는 보류·불량·폐기·무효, LOT_ALREADY_RESERVED 는 그 LOT 의 어느 잔액에든 예약·피킹·차단이 걸렸다는 뜻이다.
        * @example VERSION_CONFLICT
        * @enum {string}
        */
@@ -67955,13 +67955,13 @@ export interface components {
       conflictCause: 'user' | 'erpSync' | 'workerLease';
       /** @description COMPLETION_BLOCKED 일 때만 — 막는 이유 목록 */
       blockers?: components['schemas']['ShipmentCompletionBlocker'][];
+      /** @description LOT_NOT_IN_LINE_WAREHOUSE 일 때 그 LOT 의 가용 잔액이 있는 창고들(공장 이름 포함 · 피처 012). */
+      warehouses?: components['schemas']['ShipmentRequestWarehouse'][];
       /**
        * @description 생산 LOT 분리 거절(피처 013)일 때 문구에 쓸 값 — 스캔 조회 blocked.detail 과 같다. INVALID_STATE 는 상태(DEFECTIVE·SCRAPPED·VOIDED·HOLD), LOT_SPLIT_UNCONFIRMED 는 확인 대기 분리 시각(ISO), LOT_ALREADY_RESERVED 는 피킹한 출하 지시서 번호, NOT_PRODUCTION_LOT 는 LOT 유형, SPLIT_SERIAL_LOT 는 시리얼 관리 유형. 위치 단위 사유는 null
        * @example SR-20261118-0001
        */
       detail?: string | null;
-      /** @description LOT_NOT_IN_LINE_WAREHOUSE 일 때 그 LOT 의 가용 잔액이 있는 창고들(공장 이름 포함 · 피처 012). */
-      warehouses?: components['schemas']['ShipmentRequestWarehouse'][];
     };
     /** @description 피킹 확정 요청. 사번은 본문이 아니라 X-Worker-No 헤더로 보낸다 */
     ShipmentLinePick: {
