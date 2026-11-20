@@ -235,6 +235,21 @@ describe('M-04-05 LOT 분리 확인', () => {
     expect(await screen.findByText(t.notice.doneTitle)).toBeTruthy();
   });
 
+  it('짝이 아닌 라벨 뒤 같은 라벨을 다시 스캔하면 빨간 띠를 지우고 남은 라벨 안내로 돌린다', async () => {
+    const user = userEvent.setup();
+    const { sent } = mount();
+
+    await scan(user, CHILD);
+    await screen.findByText(t.notice.needParentTitle);
+    await scan(user, OTHER);
+    await screen.findByText(t.notice.wrongTitle);
+    await scan(user, CHILD);
+
+    expect(await screen.findByText(t.notice.needParentTitle)).toBeTruthy();
+    expect(screen.queryByText(t.notice.wrongTitle)).toBeNull();
+    expect(sent).toHaveLength(0);
+  });
+
   it('US3-5 · Q16 ⑤ 첫 스캔이 확인된 분리면 바로 「이미 확인된 분리입니다」(시각 · 작업자)', async () => {
     const user = userEvent.setup();
     const { sent } = mount({

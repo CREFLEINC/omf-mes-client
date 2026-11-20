@@ -154,8 +154,14 @@ export const ProductLotSplitConfirmScreen = () => {
     }
 
     const role = roleOf(split, lotNo);
-    /* 같은 라벨을 또 읽었다 — 아무것도 바꾸지 않는다. */
-    if (role === scanned) return;
+    /*
+     * 같은 라벨을 또 읽었다 — 보내지 않는다. 직전 「이 분리의 라벨이 아닙니다」 띠는 지우고 남은 라벨 안내로
+     * 돌린다(검증 둘러보기 11 — 지난 거절이 방금 스캔의 결과로 읽혔다).
+     */
+    if (role === scanned) {
+      if (scanned !== null) setNotice({ kind: 'half', scanned });
+      return;
+    }
     if (role === null) {
       setNotice({ kind: 'wrong', lotNo });
       signal('reject');
@@ -185,7 +191,8 @@ export const ProductLotSplitConfirmScreen = () => {
   return (
     <div className="split-confirm">
       <div className="split-confirm__body">
-        <p className="split-confirm__guide">{t.guide}</p>
+        {/* 두 칸이 서면 안내 글은 띠가 대신한다 — 좁은 폭(320)에서 두 칸이 떠 있는 [키보드] 단추 밑으로 가지 않게. */}
+        {split === null ? <p className="split-confirm__guide">{t.guide}</p> : null}
         <ScanZone
           field={scanField}
           label={t.scan.label}

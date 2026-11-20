@@ -12,6 +12,8 @@
   flex-direction: column;
   gap: var(--space-4);
   padding: var(--space-4);
+  /* 오른쪽 아래에 떠 있는 [키보드] 단추 높이만큼 바닥을 비운다 — 마지막 줄 수량을 가리지 않게(320 폭). */
+  padding-bottom: 88px;
 }
 
 .split-confirm__body > * {

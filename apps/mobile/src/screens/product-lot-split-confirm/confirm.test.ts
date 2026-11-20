@@ -32,7 +32,7 @@ describe('M-04-05 판정', () => {
 
   it('vi 문구가 있고 한국어가 남지 않는다', () => {
     const vi = viMessages.productLotSplitConfirm;
-    expect(vi.title).toBe('Xác nhận tách LOT');
+    expect(vi.title).toBe('Xác nhận tách');
     expect(vi.notice.doneTitle).not.toBe(ko.productLotSplitConfirm.notice.doneTitle);
     expect(JSON.stringify(vi)).not.toMatch(/[가-힣]/u);
     expect(viMessages.productPicking.rejected.LOT_SPLIT_UNCONFIRMED).toBe('LOT chưa xác nhận tách');

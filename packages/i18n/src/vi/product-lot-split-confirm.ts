@@ -1,6 +1,7 @@
 /** M-04-05 Xác nhận tách LOT (PDA · tính năng 013). Thuật ngữ theo GLOSSARY.md. */
 export const productLotSplitConfirm = {
-  title: 'Xác nhận tách LOT',
+  /* 앱바 360 폭에서 잘리지 않게 짧게 — 「LOT」은 안내 · 칸 이름이 말한다(검증 둘러보기 9). */
+  title: 'Xác nhận tách',
   guide:
     'Sau khi dán nhãn cho hai LOT đã tách trên POP, hãy quét lần lượt hai nhãn. Thứ tự không quan trọng',
 
