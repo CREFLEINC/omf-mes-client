@@ -160,7 +160,7 @@ describe('UserFormPane 로그인 ID', () => {
     const note = within(pane()).getByText('변경할 수 없습니다.');
     const value = within(pane()).getByText('SYN-LOGIN-01');
 
-    expect(note).toHaveClass('readonly-label-note');
+    expect(note).toHaveClass('readonly-value-note');
     expect(value.getAttribute('aria-describedby')).toBe(note.id);
   });
 
@@ -281,7 +281,7 @@ describe('UserFormPane 액션', () => {
   it('고친 것이 없으면 저장이 비활성이고 사유 문구는 내지 않는다', () => {
     renderPane({ isDirty: false });
 
-    const save = within(pane()).getByRole('button', { name: '저장' });
+    const save = within(pane()).getByRole('button', { name: '정보 저장' });
 
     expect(save).toBeDisabled();
     expect(within(pane()).queryByText(/저장은 변경된 내용이 있을 때/)).not.toBeInTheDocument();
@@ -311,14 +311,14 @@ describe('UserFormPane 액션', () => {
   it('저장 중에는 저장을 다시 누를 수 없다', () => {
     renderPane({ isSaving: true });
 
-    expect(within(pane()).getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(within(pane()).getByRole('button', { name: '정보 저장' })).toBeDisabled();
   });
 
   it('등록의 주 액션은 「사용자 추가」다', () => {
     renderPane({ mode: 'create', values: { ...values, loginId: '' } });
 
     expect(within(pane()).getByRole('button', { name: '사용자 추가' })).toBeInTheDocument();
-    expect(within(pane()).queryByRole('button', { name: '저장' })).not.toBeInTheDocument();
+    expect(within(pane()).queryByRole('button', { name: '정보 저장' })).not.toBeInTheDocument();
   });
 
   /** 아직 없는 자원이라 「언젠가 풀린다」가 아니라 애초에 해당하지 않는 액션이다. */
@@ -370,7 +370,7 @@ describe('UserFormPane 액션', () => {
 
     expect(group).not.toBeNull();
     expect(within(group).getByRole('button', { name: '사용 중지' })).toBeInTheDocument();
-    expect(within(group).queryByRole('button', { name: '저장' })).not.toBeInTheDocument();
+    expect(within(group).queryByRole('button', { name: '정보 저장' })).not.toBeInTheDocument();
     expect(within(group).queryByRole('button', { name: '취소' })).not.toBeInTheDocument();
   });
 
@@ -383,7 +383,7 @@ describe('UserFormPane 액션', () => {
   it('저장과 취소를 누르면 상위에 알린다', async () => {
     const { onSave, onCancel, user } = renderPane();
 
-    await user.click(within(pane()).getByRole('button', { name: '저장' }));
+    await user.click(within(pane()).getByRole('button', { name: '정보 저장' }));
     expect(onSave).toHaveBeenCalledTimes(1);
 
     await user.click(within(pane()).getByRole('button', { name: '취소' }));

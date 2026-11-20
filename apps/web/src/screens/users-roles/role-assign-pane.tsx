@@ -98,7 +98,7 @@ export const RoleAssignPane = ({
 
   return (
     <section className="pane users-roles-pane" aria-label={t.panes.roleAssign}>
-      <h2 className="pane-title">{t.panes.roleAssign}</h2>
+      <h3 className="pane-title">{t.panes.roleAssign}</h3>
       {banner}
       {optionsNotice}
 
@@ -121,7 +121,7 @@ export const RoleAssignPane = ({
 
         {/* 규범 4(비활성 사유 상시 표시)의 예외 — 사용자 지시 2026-09-18: 이 화면의 저장 사유 문구를 내지 않는다. */}
         <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
-          {messages.common.save}
+          {t.actions.saveRoles}
         </Button>
       </div>
     </section>

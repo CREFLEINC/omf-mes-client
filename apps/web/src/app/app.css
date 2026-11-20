@@ -13527,9 +13527,24 @@ a.erp-send-chips:focus-visible {
   flex: 1 1 12rem;
 }
 
-/* 2행 — 조회·초기화를 줄 오른쪽 끝(사용자 추가와 같은 끝선)으로. 줄이 바뀌어도 오른쪽에 붙는다. */
-.users-roles-filter .filter-actions {
-  margin-left: auto;
+/*
+ * 2행 — 소속 부서 · 재직 상태 · 조회 · 초기화를 한 줄에(omf-all-around#333). 고르개가 남는 폭을 나눠 쓰고
+ * 버튼은 조건 바로 옆에 붙는다.
+ */
+.users-roles-filter > .filter-bar:nth-child(2) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  align-items: end;
+}
+
+.users-roles-filter > .filter-bar:nth-child(2) > *,
+.users-roles-filter > .filter-bar:nth-child(2) > .field-cell > * {
+  width: 100%;
+  min-width: 0;
+}
+
+.users-roles-filter > .filter-bar:nth-child(2) > .filter-actions {
+  width: auto;
 }
 
 /*
@@ -13538,14 +13553,15 @@ a.erp-send-chips:focus-visible {
  * 굵은 로그인 ID 로 짚는다 — 막대가 있어 배경이 옅어도 선택이 흐려지지 않는다.
  */
 .users-roles-list tbody tr:has(.link-cell[aria-current="true"]) {
-  background: var(--state-hover);
+  background: var(--surface-container-high);
 }
 
 .users-roles-list
   tbody
   tr:has(.link-cell[aria-current="true"])
   > td:first-child {
-  box-shadow: inset 3px 0 var(--primary);
+  /* 빨강(주 색)은 오류·위험으로 읽힌다 — 정보 색 막대로 짚는다(omf-all-around#333). */
+  box-shadow: inset 3px 0 var(--semantic-info);
 }
 
 .users-roles-list .link-cell[aria-current="true"] {
@@ -13554,21 +13570,10 @@ a.erp-send-chips:focus-visible {
   text-decoration: none;
 }
 
-/* 읽기 전용 칸의 라벨 줄 — 라벨 오른쪽에 「바꿀 수 없다」는 보조 라벨을 작게 붙인다. */
-.readonly-label-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  column-gap: var(--space-2);
-}
-
-/* 라벨과 같은 글자 크기 — 크면 이 칸의 라벨 줄만 높아져 옆 칸과 입력칸 윗선이 어긋난다. */
-.readonly-label-note {
-  color: var(--on-surface-variant);
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
-  white-space: nowrap;
-  opacity: 0.8;
+/* 읽기 전용 칸의 보조 안내 — 값 아래 한 줄(omf-all-around#333). */
+.readonly-value-note {
+  max-width: none;
+  margin: 0;
 }
 
 /* 입력칸이 아닌 값 — 옅은 바탕으로 «고칠 수 없는 칸»임을 보이되 글자는 흐리게 두지 않는다. */
@@ -13615,26 +13620,73 @@ a.erp-send-chips:focus-visible {
   }
 }
 
-/*
- * 사용자 정보의 액션 줄 — 폼 칸과 선으로 가르고, 왼쪽 계정 관리 묶음(비밀번호 초기화·사용 중지)과
- * 오른쪽 폼 묶음(취소·저장)이 양 끝에 선다. 묶음 안은 촘촘히, 묶음 사이는 줄 폭만큼 떨어진다.
- */
-.users-roles-pane > .form-actions:has(.users-roles-account-actions),
-.users-roles-select-hint {
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--outline-variant);
-}
-
-/* 고르기 전 안내 — 사용자 정보 카드의 표제 아래 구분선 다음 한 줄. */
+/* 고르기 전 안내 — 설정 카드 머리 아래 한 줄. */
 .users-roles-select-hint {
   margin: 0;
   color: var(--on-surface-variant);
 }
 
+/* 계정 관리(비밀번호 초기화 · 사용 중지) — 상세 정보 표제 줄 오른쪽. 아래 「취소 · 정보 저장」과 떨어져 선다. */
 .users-roles-account-actions {
   display: flex;
-  align-items: flex-start;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-2);
+}
+
+/*
+ * 오른쪽 한 카드 — 고른 사용자의 설정(omf-all-around#333). 머리(이름 · 아이디) 아래로 상세 정보 · 사용자 역할 ·
+ * 데이터 접근 범위가 구분선으로만 나뉜다 — 구역마다 카드를 따로 세우지 않는다.
+ */
+.users-roles-settings {
+  display: grid;
+  gap: var(--space-4);
+  container-type: inline-size;
+}
+
+.users-roles-settings-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.users-roles-settings-head > .pane-title {
+  margin: 0;
+}
+
+.users-roles-settings-sub {
+  color: var(--on-surface-variant);
+}
+
+.users-roles-settings > .pane {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.users-roles-settings > .pane + .pane {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.users-roles-settings > .pane .pane-title {
+  margin: 0;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+.users-roles-settings > .pane > .pane-heading-row,
+.users-roles-settings > .pane > .pane-title {
+  margin-bottom: var(--space-3);
+}
+
+.users-roles-scope-hint {
+  max-width: none;
+  margin: 0 0 var(--space-3);
 }
 
 /*
@@ -13760,15 +13812,22 @@ button.app-button-neutral {
 }
 
 /* 역할 부여 — 넓으면 여러 열, 좁으면 한 열. 카드 없는 단순 목록 그대로다. */
+/* 역할은 2열(omf-all-around#333) — 넓게 펼치면 어느 것이 체크됐는지 한눈에 안 들어온다. 좁으면 1열. */
 .users-roles-role-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(16rem, 100%), 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-2) var(--space-5);
+}
+
+@container (max-width: 24rem) {
+  .users-roles-role-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* 오른쪽 세 구획의 액션 줄 — 공통 간격(space-5)이면 저장 줄이 내용에서 떨어져 보인다. */
 .users-roles-pane > .form-actions {
-  margin-top: var(--space-4);
+  margin-top: var(--space-3);
 }
 
 /* 표제와 그 옆 버튼의 가운데를 맞춘다 — 공통 `.pane-heading-row` 는 위 끝을 맞춰 표제가 떠 보인다. */

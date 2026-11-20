@@ -37,13 +37,13 @@ describe('DataScopeFormDialog', () => {
   it('새 줄이면 제목이 추가다', () => {
     renderDialog();
 
-    expect(screen.getByRole('dialog', { name: '접근범위 추가' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: '접근 범위 추가' })).toBeInTheDocument();
   });
 
   it('고치는 줄이면 제목이 수정이다', () => {
     renderDialog({ isNew: false, draft: { ...emptyDraft, businessUnitId: '2001' } });
 
-    expect(screen.getByRole('dialog', { name: '접근범위 수정' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: '접근 범위 수정' })).toBeInTheDocument();
   });
 
   /** 확인이 저장이라고 오해하면 창을 닫고 화면을 떠난다. */
@@ -51,7 +51,7 @@ describe('DataScopeFormDialog', () => {
     renderDialog();
 
     expect(
-      screen.getByText('확인하면 표에 반영됩니다. 변경사항을 적용하려면 「저장」을 눌러주세요.'),
+      screen.getByText('확인하면 표에 반영됩니다. 변경사항을 적용하려면 「범위 저장」을 눌러주세요.'),
     ).toBeInTheDocument();
   });
 

@@ -19,7 +19,9 @@ export const usersRoles = {
     userList: '사용자 목록',
     userForm: '사용자 상세 정보',
     roleAssign: '사용자 역할',
-    dataScope: '데이터 접근범위',
+    dataScope: '데이터 접근 범위',
+    /** 오른쪽 한 카드 — 고른 사용자의 설정이 모두 여기 있다(omf-all-around#333). 표제는 사용자 이름이다. */
+    userSettings: '사용자 설정',
     roleList: '역할',
     roleForm: '역할 정보',
     permission: '기능 권한',
@@ -31,6 +33,10 @@ export const usersRoles = {
     addUser: '사용자 추가',
     addRole: '역할 추가',
     resetPassword: '비밀번호 초기화',
+    /* 저장 경로가 칸마다 따로라(정보 · 역할 · 범위) 무엇을 저장하는지 버튼에 적는다(omf-all-around#333). */
+    saveInfo: '정보 저장',
+    saveRoles: '역할 저장',
+    saveScopes: '범위 저장',
   },
   /** 비활성 사유는 배치 규범 4의 문형을 따른다 — 그 컨트롤의 이름으로 시작한다. */
   actionReasons: {
@@ -113,13 +119,13 @@ export const usersRoles = {
     userSearchPlaceholder: '아이디 또는 이름 검색',
     department: '소속 부서',
     /* 선택지에 빈 값을 두어 고른 부서를 다시 「전체」로 되돌릴 수 있게 한다. */
-    departmentAll: '전체 부서',
+    departmentAll: '전체',
     /*
      * `status_code`는 **인사 상태**(재직·휴직·퇴사)다. 로그인 가부(`is_active` — 「사용 중지」·
      * 「미사용 포함」·「(미사용)」)와 다른 축이라 「상태」 한 낱말로 두지 않는다(설계 §4-A).
      */
     status: '재직 상태',
-    statusAll: '전체 재직 상태',
+    statusAll: '전체',
     chipKeyword: (value: string): string => `검색어: ${value}`,
     chipRemoveKeyword: '검색어 조건 제거',
     chipDepartment: (label: string): string => `부서: ${label}`,
@@ -137,7 +143,7 @@ export const usersRoles = {
     users: '사용자 목록을 불러오는 중',
     userDetail: '사용자 정보를 불러오는 중',
     roleAssign: '역할 부여분을 불러오는 중',
-    dataScopes: '데이터 접근범위를 불러오는 중',
+    dataScopes: '데이터 접근 범위를 불러오는 중',
     roles: '역할 목록을 불러오는 중',
     roleDetail: '역할 정보를 불러오는 중',
     permissions: '기능 권한을 불러오는 중',
@@ -348,7 +354,7 @@ export const usersRoles = {
     fields: {
       businessUnit: '사업부',
       plant: '공장',
-      edit: '편집',
+      edit: '관리',
     },
     values: {
       all: '(전체)',
@@ -365,20 +371,29 @@ export const usersRoles = {
       confirm: '확인',
     },
     dialog: {
-      addTitle: '접근범위 추가',
-      editTitle: '접근범위 수정',
+      addTitle: '접근 범위 추가',
+      editTitle: '접근 범위 수정',
       /* 확인이 저장이라고 오해하면 창을 닫고 화면을 떠난다. */
-      notSavedNotice: '확인하면 표에 반영됩니다. 변경사항을 적용하려면 「저장」을 눌러주세요.',
+      notSavedNotice: '확인하면 표에 반영됩니다. 변경사항을 적용하려면 「범위 저장」을 눌러주세요.',
     },
+    /** 서버 규칙 — 줄이 없으면 제한 없음, 줄마다 공장 > 사업부 순으로 가장 좁은 축 하나를 본다. */
+    hint: '범위를 정하면 그 사업부·공장의 자료만 볼 수 있습니다. 「(전체)」는 그 항목 전체입니다.',
     empty: {
-      none: '지정된 접근범위가 없습니다',
-      noneDescription: '「범위 추가」로 이 사용자가 볼 수 있는 범위를 정하세요.',
+      none: '지정된 범위가 없습니다',
+      /* 줄이 없으면 제한 없음 — 서버 `scopedPlantWhere`(대시보드 · 인계작업 알림 설정 등). */
+      noneDescription: '모든 공장의 자료를 볼 수 있습니다.',
     },
   },
   /**
    * 계정 ↔ 작업자 연결 — omf-all-around#104. 사용자 정보 카드 안의 「연결된 작업자」 구역이다. 용어는 「연결」로 통일(담당자 결정 2026-10-16).
    * 검사 판정처럼 작업자가 남는 관리웹 쓰기에 쓴다.
    */
+  /** 사용자를 바꾸거나 새로 추가할 때, 저장하지 않은 변경이 있으면 묻는다(omf-all-around#333). */
+  discard: {
+    title: '저장하지 않은 변경이 있습니다',
+    keep: '계속 수정',
+    confirm: '변경 버리기',
+  },
   workerLink: {
     title: '연결된 현장 작업자',
     linked: '연결됨',

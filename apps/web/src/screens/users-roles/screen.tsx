@@ -1,4 +1,12 @@
-import { AlertBanner, EmptyState, SkeletonText, Tabs, useToast } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  Dialog,
+  EmptyState,
+  SkeletonText,
+  Tabs,
+  useToast,
+} from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
@@ -514,9 +522,33 @@ export const UsersRolesScreen = () => {
    * 그 배타 규칙은 `filters.ts`의 `applySelection` 한 곳에 있다 — 자리마다 손으로 지우면
    * 「무엇을 비우는가」가 자리마다 갈린다.
    */
-  const selectUser = (appUserId: number) => {
+  /*
+   * 저장하지 않은 변경(정보 · 역할 · 범위)이 있으면 다른 사용자로 옮기거나 새로 추가하기 전에 묻는다
+   * (omf-all-around#333). 고른 사용자가 바뀌면 세 초안이 모두 그 사용자의 값으로 다시 서서 변경이 사라진다.
+   */
+  const [pendingLeave, setPendingLeave] = useState<(() => void) | null>(null);
+  const hasUnsavedChanges = isUserDirty || isRoleAssignDirty || isDataScopeDirty;
+  const leaveSafely = (action: () => void) => {
+    if (hasUnsavedChanges) {
+      setPendingLeave(() => action);
+      return;
+    }
+
+    action();
+  };
+
+  /** 묻지 않고 연다 — 방금 저장한 사용자로 옮길 때처럼 버릴 변경이 없을 때만 쓴다. */
+  const openUser = (appUserId: number) => {
     patchSearchParams((next) => {
       applySelection(next, { kind: 'user', appUserId });
+    });
+  };
+
+  const selectUser = (appUserId: number) => {
+    if (appUserId === selectedAppUserId) return;
+
+    leaveSafely(() => {
+      openUser(appUserId);
     });
   };
 
@@ -596,7 +628,8 @@ export const UsersRolesScreen = () => {
        *
        * **주소 갱신은 이 한 번뿐이다**(`new` 해제 + `usr` 설정을 한 patch로).
        */
-      selectUser(saved.appUserId);
+      /* 등록이 끝났다 — 폼 값은 방금 저장됐으니 묻지 않고 연다. */
+      openUser(saved.appUserId);
       toast.show({ variant: 'success', description: messages.common.created });
     },
   });
@@ -949,8 +982,10 @@ export const UsersRolesScreen = () => {
 
   const handleAddUser = () => {
     // 등록 폼이 열려 있는 동안 고른 사용자의 상세가 함께 보이면 어느 쪽을 고치는지 가릴 수 없다.
-    patchSearchParams((next) => {
-      applySelection(next, { kind: 'createUser' });
+    leaveSafely(() => {
+      patchSearchParams((next) => {
+        applySelection(next, { kind: 'createUser' });
+      });
     });
   };
 
@@ -1231,12 +1266,7 @@ export const UsersRolesScreen = () => {
      * 데이터 접근범위 카드는 여기서 서지 않는다(`renderRoleAssignPane` 등).
      */
     if (selectedAppUserId === null) {
-      return (
-        <section className="pane users-roles-pane" aria-label={t.panes.userForm}>
-          <h2 className="pane-title">{t.panes.userForm}</h2>
-          <p className="users-roles-select-hint">{t.user.empty.notSelected}</p>
-        </section>
-      );
+      return <p className="users-roles-select-hint">{t.user.empty.notSelected}</p>;
     }
 
     if (userDetail.isError) {
@@ -1393,51 +1423,72 @@ export const UsersRolesScreen = () => {
     );
   };
 
+  /**
+   * 오른쪽 카드 머리 — 고른 사용자의 이름과 로그인 아이디(omf-all-around#333). 아래 구역이 모두 이 사용자의
+   * 설정임을 한 번에 밝힌다. 등록 중이면 「사용자 추가」, 고르기 전·불러오는 중이면 「사용자 설정」.
+   */
+  const renderSettingsHead = (): ReactNode => {
+    const appUser = isCreatingUser ? undefined : userDetail.data?.appUser;
+    const isShown = appUser !== undefined && selectedAppUserId !== null;
+
+    return (
+      <div className="users-roles-settings-head">
+        <h2 className="pane-title">
+          {isCreatingUser ? t.actions.addUser : isShown ? appUser.userName : t.panes.userSettings}
+        </h2>
+        {isShown && <span className="users-roles-settings-sub">{appUser.loginId}</span>}
+      </div>
+    );
+  };
+
   const usersTabContent = userListForbidden ? (
     <section className="pane" aria-label={t.panes.userList}>
       <LoadErrorBanner error={userList.error} onRetry={() => void userList.refetch()} />
     </section>
   ) : (
     /*
-     * 위 줄은 목록 | 사용자 상세 정보, 그 아래로 사용자 역할 · 데이터 접근범위가 전체 폭으로 선다
-     * (사용자 지시 2026-11-20 · omf-all-around#333).
+     * 왼쪽 목록 | 오른쪽 고른 사용자의 설정 한 카드 — 상세 정보 · 연결된 현장 작업자 · 사용자 역할 · 데이터 접근 범위
+     * 순서(omf-all-around#333). 저장 경로가 구역마다 달라(낙관적 잠금이 있는 수정 · 역할 치환 · 범위 치환) 저장은 구역별로 둔다.
      */
-    <div className="pane-stack">
-      <div className="two-pane users-roles-layout">
-        <UserListPane
-          users={users}
-          isLoading={userList.isPending}
-          appliedFilters={filters}
-          onApplyFilters={applyFilters}
-          departmentOptions={selectableOptions(departmentOptions, filters.departmentId)}
-          statusOptions={selectableOptions(userStatusOptions, filters.statusCode)}
-          statusDisabledReason={statusDisabledReason}
-          /*
-           * 조건 칩에는 번호가 아니라 이름을 낸다. 선택 목록을 아직 받지 못했으면
-           * 「알 수 없음」이 나오고 목록이 도착하면 이름으로 바뀐다 —
-           * 번호를 대신 보이면 사용자가 쓸 수 없는 값을 자료로 읽는다.
-           */
-          departmentLabel={(departmentId) => lookupLabel(departmentOptions, Number(departmentId))}
-          departmentNameOf={(departmentId) => lookupLabel(departmentOptions, departmentId)}
-          statusNameOf={(statusCode) => lookupLabel(userStatusOptions, statusCode)}
-          optionsNotice={renderOptionsNotice([departmentOptions, userStatusOptions])}
-          pageView={userPageView}
-          onChangePage={changeUserPage}
-          selectedAppUserId={selectedAppUserId}
-          onSelect={selectUser}
-          isCreating={isCreatingUser}
-          onAddUser={handleAddUser}
-          loadError={
-            userList.isError ? (
-              <LoadErrorBanner error={userList.error} onRetry={() => void userList.refetch()} />
-            ) : null
-          }
-        />
+    <div className="two-pane users-roles-layout">
+      <UserListPane
+        users={users}
+        isLoading={userList.isPending}
+        appliedFilters={filters}
+        onApplyFilters={applyFilters}
+        departmentOptions={selectableOptions(departmentOptions, filters.departmentId)}
+        statusOptions={selectableOptions(userStatusOptions, filters.statusCode)}
+        statusDisabledReason={statusDisabledReason}
+        /*
+         * 조건 칩에는 번호가 아니라 이름을 낸다. 선택 목록을 아직 받지 못했으면
+         * 「알 수 없음」이 나오고 목록이 도착하면 이름으로 바뀐다 —
+         * 번호를 대신 보이면 사용자가 쓸 수 없는 값을 자료로 읽는다.
+         */
+        departmentLabel={(departmentId) => lookupLabel(departmentOptions, Number(departmentId))}
+        departmentNameOf={(departmentId) => lookupLabel(departmentOptions, departmentId)}
+        statusNameOf={(statusCode) => lookupLabel(userStatusOptions, statusCode)}
+        optionsNotice={renderOptionsNotice([departmentOptions, userStatusOptions])}
+        pageView={userPageView}
+        onChangePage={changeUserPage}
+        selectedAppUserId={selectedAppUserId}
+        onSelect={selectUser}
+        isCreating={isCreatingUser}
+        onAddUser={handleAddUser}
+        loadError={
+          userList.isError ? (
+            <LoadErrorBanner error={userList.error} onRetry={() => void userList.refetch()} />
+          ) : null
+        }
+      />
 
-        {userList.data !== undefined && renderUserFormPane()}
-      </div>
-      {userList.data !== undefined && renderRoleAssignPane()}
-      {userList.data !== undefined && renderDataScopePane()}
+      {userList.data !== undefined && (
+        <section className="pane users-roles-settings" aria-label={t.panes.userSettings}>
+          {renderSettingsHead()}
+          {renderUserFormPane()}
+          {renderRoleAssignPane()}
+          {renderDataScopePane()}
+        </section>
+      )}
     </div>
   );
 
@@ -1656,6 +1707,42 @@ export const UsersRolesScreen = () => {
           content: definition.id === tab.id ? tabContentOf(definition.id) : null,
         }))}
       />
+
+      {pendingLeave !== null && (
+        <Dialog
+          open
+          size="sm"
+          title={t.discard.title}
+          onClose={() => {
+            setPendingLeave(null);
+          }}
+          closeOnBackdropClick={false}
+          showCloseButton={false}
+          footer={
+            <>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setPendingLeave(null);
+                }}
+              >
+                {t.discard.keep}
+              </Button>
+              <Button
+                onClick={() => {
+                  const action = pendingLeave;
+                  setPendingLeave(null);
+                  action();
+                }}
+              >
+                {t.discard.confirm}
+              </Button>
+            </>
+          }
+        >
+          <p>{messages.common.discardChangesConfirm}</p>
+        </Dialog>
+      )}
 
       {/*
        * 창은 **열 때만 붙인다** — 디자인 시스템 `Dialog`는 닫혀도 내용이 DOM에 남아

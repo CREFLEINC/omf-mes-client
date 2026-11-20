@@ -178,11 +178,13 @@ export const DataScopePane = ({
     <section className="pane users-roles-pane" aria-label={t.panes.dataScope}>
       {/* 추가는 이 구획의 표에 줄을 더하는 일이라 구획 표제 오른쪽에 둔다. */}
       <div className="pane-heading-row users-roles-heading">
-        <h2 className="pane-title">{t.panes.dataScope}</h2>
-        <Button variant="outlined" onClick={onAdd}>
+        <h3 className="pane-title">{t.panes.dataScope}</h3>
+        <Button variant="outlined" size="sm" onClick={onAdd}>
           {t.scope.actions.add}
         </Button>
       </div>
+      {/* 서버 규칙을 한 줄로 — 줄이 없으면 제한 없음은 빈 표 안내가 말한다(omf-all-around#333). */}
+      <p className="field-note users-roles-scope-hint">{t.scope.hint}</p>
       {banner}
       {optionsNotice}
 
@@ -195,7 +197,7 @@ export const DataScopePane = ({
 
         {/* 규범 4(비활성 사유 상시 표시)의 예외 — 사용자 지시 2026-09-18: 이 화면의 저장 사유 문구를 내지 않는다. */}
         <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
-          {messages.common.save}
+          {t.actions.saveScopes}
         </Button>
       </div>
     </section>

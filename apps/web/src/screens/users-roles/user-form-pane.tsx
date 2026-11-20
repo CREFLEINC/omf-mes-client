@@ -53,19 +53,16 @@ const ValueField = ({
 
   return (
     <div className={`field-cell ${className}`}>
-      {/*
-       * 안내는 입력칸 아래가 아니라 **라벨 오른쪽의 작은 보조 라벨**이다(사용자 지시 2026-09-18) —
-       * 칸 아래에 두면 이 칸만 높아져 옆 칸들과 줄이 어긋난다. 값과의 연결(`aria-describedby`)은 그대로다.
-       */}
-      <span className="field-label readonly-label-row">
-        <span id={labelId}>{label}</span>
-        <span id={noteId} className="readonly-label-note">
-          {note}
-        </span>
+      <span id={labelId} className="field-label">
+        {label}
       </span>
       {/* 입력칸이 아님을 읽기 쉬운 채로 보인다 — 흐린 비활성 입력칸으로 그리면 값이 잘 안 읽힌다. */}
       <p className="readonly-value" aria-labelledby={labelId} aria-describedby={noteId}>
         {value}
+      </p>
+      {/* 「바꿀 수 없다」는 값 아래에 둔다(omf-all-around#333) — 라벨 옆에 두면 라벨 줄이 길어져 옆 칸과 어긋난다. */}
+      <p id={noteId} className="field-note readonly-value-note">
+        {note}
       </p>
     </div>
   );
@@ -115,11 +112,40 @@ export const UserFormPane = ({
   const userNameId = useId();
   const emailId = useId();
   const phoneId = useId();
-  const saveLabel = mode === 'create' ? t.actions.addUser : messages.common.save;
+  const saveLabel = mode === 'create' ? t.actions.addUser : t.actions.saveInfo;
 
   return (
     <section className="pane users-roles-pane users-roles-user-pane" aria-label={t.panes.userForm}>
-      <h2 className="pane-title">{t.panes.userForm}</h2>
+      {/*
+       * 계정 관리(비밀번호 초기화 · 사용 중지)는 표제 줄 오른쪽에 둔다(omf-all-around#333) — 폼 값을 저장하지 않고
+       * **바로 서버에 나가는 계정 작업**이라 아래 「취소 · 정보 저장」과 떨어져 있어야 한 무리로 읽히지 않는다.
+       * 등록 폼에는 두지 않는다 — 아직 없는 사용자라 초기화할 비밀번호도, 중지할 계정도 없다.
+       * 비밀번호 초기화는 중립 보조, 사용 중지는 주의(outlined 기본색) — 강조 정도만 가른다(담당자 결정 2026-10-16).
+       * 사용 중지는 이미 미사용이면 비활성이고 사유 문구는 내지 않는다(사용자 지시 2026-09-18).
+       */}
+      <div className="pane-heading-row users-roles-heading">
+        <h3 className="pane-title">{t.panes.userForm}</h3>
+        {mode === 'edit' && (
+          <div className="users-roles-account-actions">
+            <Button
+              variant="outlined"
+              size="sm"
+              className="app-button-neutral"
+              onClick={onResetPassword}
+            >
+              {t.actions.resetPassword}
+            </Button>
+            <Button
+              variant="outlined"
+              size="sm"
+              disabled={isDeactivateDisabled}
+              onClick={onDeactivate}
+            >
+              {messages.common.deactivate}
+            </Button>
+          </div>
+        )}
+      </div>
       {banner}
 
       <div
@@ -274,35 +300,7 @@ export const UserFormPane = ({
         />
       </div>
 
-      {mode === 'edit' && workerField}
-
       <div className="form-actions">
-        {/*
-         * 계정 관리 묶음 — 비밀번호 초기화·사용 중지. 폼의 「취소·저장」과 같은 줄 양 끝에 두되
-         * 한 덩어리로 묶어 왼쪽에 모은다: 이 둘은 폼 값을 저장하지 않고 **바로 서버에 나가는
-         * 계정 작업**이라, 폼 저장과 한 무리로 읽히면 안 된다. 등록 폼에는 두지 않는다 — 아직
-         * 없는 사용자라 초기화할 비밀번호도, 중지할 계정도 없다.
-         *
-         * 비밀번호 초기화(설계 §5-1 「기본 정보 폼 · 항상」)는 사용 여부와 무관하게 누를 수 있어
-         * 비활성 사유가 없다. 두 버튼 모두 외곽선 버튼이다(사용자 지시 2026-09-18) — 디자인 시스템에
-         * 위험 동작 전용 버튼이 없다. 더 무거운 사용 중지(로그인 차단)는 확인 창이 되돌릴 수 없음을 밝힌다.
-         */}
-        {mode === 'edit' && (
-          <div className="users-roles-account-actions form-actions-secondary">
-            {/* 비밀번호 초기화는 중립 보조, 사용 중지는 주의(outlined 기본색) — 강조 정도만 가른다(담당자 결정 2026-10-16). */}
-            <Button variant="outlined" className="app-button-neutral" onClick={onResetPassword}>
-              {t.actions.resetPassword}
-            </Button>
-            {/*
-             * 이미 미사용이면 비활성이다. 사유 문구(「…이미 미사용인 사용자에게…」)는 내지 않는다 —
-             * 규범 4(비활성 사유 상시 표시)의 예외, 사용자 지시 2026-09-18.
-             */}
-            <Button variant="outlined" disabled={isDeactivateDisabled} onClick={onDeactivate}>
-              {messages.common.deactivate}
-            </Button>
-          </div>
-        )}
-
         {/*
          * 등록에서 「취소」는 **폼을 닫는 것**이라 고친 것이 없어도 눌러야 한다.
          * 수정에서는 **기준값으로 되돌리는 것**이라 고친 것이 있을 때만 의미가 있다.
@@ -319,6 +317,9 @@ export const UserFormPane = ({
           {saveLabel}
         </Button>
       </div>
+
+      {/* 연결된 현장 작업자 — 상세 정보의 하위 구역. 연결·변경·해제는 각자 바로 저장된다(「정보 저장」과 무관). */}
+      {mode === 'edit' && workerField}
     </section>
   );
 };

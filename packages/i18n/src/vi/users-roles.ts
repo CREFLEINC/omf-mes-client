@@ -25,6 +25,7 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     userForm: 'Thông tin người dùng',
     roleAssign: 'Gán vai trò',
     dataScope: 'Phạm vi truy cập dữ liệu',
+    userSettings: 'Cài đặt người dùng',
     roleList: 'Vai trò',
     roleForm: 'Thông tin vai trò',
     permission: 'Quyền chức năng',
@@ -36,6 +37,9 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     addUser: 'Thêm người dùng',
     addRole: 'Thêm vai trò',
     resetPassword: 'Đặt lại mật khẩu',
+    saveInfo: 'Lưu thông tin',
+    saveRoles: 'Lưu vai trò',
+    saveScopes: 'Lưu phạm vi',
   },
   /** 비활성 사유는 **그 컨트롤의 이름으로 시작한다**(배치 규범 4). 옮긴 말에서도 앞머리를 지킨다. */
   actionReasons: {
@@ -91,10 +95,10 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     userSearchLabel: 'Tìm người dùng',
     userSearchPlaceholder: 'Tên đăng nhập hoặc tên',
     department: 'Phòng ban',
-    departmentAll: 'Tất cả phòng ban',
+    departmentAll: 'Tất cả',
     /** ⚠ 인사 상태다 — 사용 여부(ngừng dùng)와 다른 축이라 가려 부른다. */
     status: 'Tình trạng làm việc',
-    statusAll: 'Tất cả tình trạng làm việc',
+    statusAll: 'Tất cả',
     chipKeyword: (value: string): string => `Từ khóa: ${value}`,
     chipRemoveKeyword: 'Bỏ điều kiện từ khóa',
     chipDepartment: (label: string): string => `Phòng ban: ${label}`,
@@ -243,7 +247,7 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     fields: {
       businessUnit: 'Đơn vị kinh doanh',
       plant: 'Nhà máy',
-      edit: 'Sửa',
+      edit: 'Quản lý',
     },
     values: {
       /** ⭐ 빈 축은 「고르지 않음」이 아니라 **고른 값**이다 — 그 축 전체를 뜻한다. */
@@ -262,12 +266,18 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
       addTitle: 'Thêm phạm vi truy cập',
       editTitle: 'Sửa phạm vi truy cập',
       /** ⚠ 확인이 저장이라고 오해하면 창을 닫고 화면을 떠난다. */
-      notSavedNotice: 'Xác nhận thì phản ánh vào bảng. Để áp dụng thay đổi, hãy bấm «Lưu».',
+      notSavedNotice: 'Xác nhận thì phản ánh vào bảng. Để áp dụng thay đổi, hãy bấm «Lưu phạm vi».',
     },
+    hint: 'Khi chỉ định phạm vi, chỉ xem được dữ liệu của bộ phận kinh doanh · nhà máy đó. «(Tất cả)» là toàn bộ mục đó.',
     empty: {
-      none: 'Chưa chỉ định phạm vi truy cập nào',
-      noneDescription: 'Hãy dùng «Thêm phạm vi» để định phạm vi mà người dùng này xem được.',
+      none: 'Chưa chỉ định phạm vi nào',
+      noneDescription: 'Có thể xem dữ liệu của mọi nhà máy.',
     },
+  },
+  discard: {
+    title: 'Có thay đổi chưa lưu',
+    keep: 'Tiếp tục sửa',
+    confirm: 'Bỏ thay đổi',
   },
   workerLink: {
     title: 'Người lao động đã liên kết',

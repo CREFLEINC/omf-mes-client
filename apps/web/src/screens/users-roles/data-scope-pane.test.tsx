@@ -58,7 +58,7 @@ describe('DataScopePane', () => {
   it('구획 표제 옆에 범위 추가가 선다', () => {
     renderPane();
 
-    const heading = screen.getByRole('heading', { name: '데이터 접근범위' });
+    const heading = screen.getByRole('heading', { name: '데이터 접근 범위' });
 
     expect(heading.parentElement).toContainElement(
       screen.getByRole('button', { name: '범위 추가' }),
@@ -133,7 +133,7 @@ describe('DataScopePane', () => {
   it('줄이 없으면 빈 상태가 나오고 범위 추가는 그대로 있다', () => {
     renderPane({ drafts: [] });
 
-    expect(screen.getByText('지정된 접근범위가 없습니다')).toBeInTheDocument();
+    expect(screen.getByText('지정된 범위가 없습니다')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '범위 추가' })).toBeEnabled();
   });
 
@@ -141,7 +141,7 @@ describe('DataScopePane', () => {
     renderPane({ isLoading: true });
 
     expect(
-      screen.getByRole('status', { name: '데이터 접근범위를 불러오는 중' }),
+      screen.getByRole('status', { name: '데이터 접근 범위를 불러오는 중' }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
@@ -158,14 +158,14 @@ describe('DataScopePane', () => {
   it('고친 것이 없으면 저장이 비활성이고 사유 문구는 내지 않는다', () => {
     renderPane();
 
-    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '범위 저장' })).toBeDisabled();
     expect(screen.queryByText(/저장은 변경된 내용이 있을 때/)).not.toBeInTheDocument();
   });
 
   it('고친 것이 있으면 저장과 취소를 누를 수 있다', async () => {
     const { props, user } = renderPane({ isDirty: true });
 
-    await user.click(screen.getByRole('button', { name: '저장' }));
+    await user.click(screen.getByRole('button', { name: '범위 저장' }));
     await user.click(screen.getByRole('button', { name: '취소' }));
 
     expect(props.onSave).toHaveBeenCalledTimes(1);
