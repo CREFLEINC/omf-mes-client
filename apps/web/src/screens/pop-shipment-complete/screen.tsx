@@ -324,7 +324,10 @@ export const PopShipmentCompleteScreen = () => {
           <div className="psc-content">
             {lookup.isPending && <PuNote live>{t.scan.looking}</PuNote>}
             {failure !== null && <PuNote tone="bad">{failure}</PuNote>}
-            {view.kind === 'confirm' && <ConfirmView completion={view.completion} />}
+            {/* 다른 지시서를 열면 피킹 LOT 쪽이 1쪽부터(새로고침은 같은 지시서라 그대로). */}
+            {view.kind === 'confirm' && (
+              <ConfirmView key={view.completion.code} completion={view.completion} />
+            )}
             {view.kind === 'already' && <AlreadyView completion={view.completion} />}
             {view.kind === 'done' && <ResultView result={view.result} workerNo={workerLabel} />}
           </div>

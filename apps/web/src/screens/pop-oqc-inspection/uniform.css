@@ -297,6 +297,13 @@
   }
 }
 
+/* 검사 항목 표 — 두 칸 아래 전폭, 같은 구분선으로 나눈다. */
+.oqc-u .pop-oqc-shipment .pu-card-body > .oqc-shipment-measurements,
+.oqc-u .pop-oqc-shipment .pu-card-body > .pu-field {
+  padding-top: 16px;
+  border-top: 1px solid var(--pu-line-2);
+}
+
 /* 검사 결과 탭 — 회차 줄 아래 그 회차에 저장된 시리얼(번호 · OK/NG). */
 .oqc-u .pop-oqc-result-serials {
   display: flex;

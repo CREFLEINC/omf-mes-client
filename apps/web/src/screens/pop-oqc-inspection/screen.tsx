@@ -106,11 +106,17 @@ export const PopOqcInspectionScreen = () => {
     page: 1,
     size: PENDING_SIZE,
   });
+  /*
+   * 「판정 완료」 탭 앞쪽 쪽들은 판정을 마친 열린 의뢰(`judgedRows`, 화면에서 자름), 그 뒤 쪽들은 서버의 완료 의뢰다.
+   * 한 쪽에 둘을 섞어 칸을 넘기지 않는다(목록 칸 안 스크롤 · 잘림 없음 — 사용자 지시 2026-11-20).
+   */
+  const judgedOpenRows = (pendingQueue.data?.rows ?? []).filter(isJudgedOpen);
+  const judgedPages = Math.ceil(judgedOpenRows.length / Math.max(1, pageSize));
   const doneQueue = useInspectionQueue({
     inspectionTypeCode: FIXED_AXES.inspectionTypeCode,
     pendingOnly: false,
     statusCode: 'COMPLETED',
-    page: view === 'done' ? page : 1,
+    page: view === 'done' ? Math.max(1, page - judgedPages) : 1,
     size: pageSize,
   });
   const queue = view === 'pending' ? pendingQueue : doneQueue;
@@ -129,7 +135,7 @@ export const PopOqcInspectionScreen = () => {
     ...unsortedWaiting.filter((row) => !isUnjudgeable(row)),
     ...unsortedWaiting.filter(isUnjudgeable),
   ];
-  const judgedRows = pendingRows.filter(isJudgedOpen);
+  const judgedRows = judgedOpenRows;
   const viewCount = {
     pending: waitingRows.length,
     done: judgedRows.length + (doneQueue.data?.page.total ?? 0),
@@ -239,23 +245,31 @@ export const PopOqcInspectionScreen = () => {
 
   /*
    * 판정 대기는 한 번에 읽은 줄(200)을 화면에서 쪽으로 나눠 보인다. 판정 완료는 서버 쪽 읽기 그대로이고,
-   * 판정을 마친 열린 의뢰(`judgedRows`)는 첫 쪽 앞에 선다(피처 010 — 목록 칸은 넘치면 굴린다).
+   * 판정을 마친 열린 의뢰(`judgedRows`)는 앞쪽 쪽들에 선다(피처 010 · 한 쪽은 칸에 드는 만큼).
    */
   const pendingPage = pageOf(waitingRows, page, pageSize);
   const rows =
     view === 'pending'
       ? pendingPage.items
-      : [...(page === 1 ? judgedRows : []), ...(doneQueue.data?.rows ?? [])];
+      : page <= judgedPages
+        ? pageOf(judgedRows, page, pageSize).items
+        : (doneQueue.data?.rows ?? []);
   const listPager =
     view === 'pending'
       ? { total: pendingPage.total, pages: pendingPage.pages }
       : {
-          total: doneQueue.data?.page.total ?? null,
+          total:
+            doneQueue.data === undefined
+              ? judgedRows.length > 0
+                ? judgedRows.length
+                : null
+              : judgedRows.length + doneQueue.data.page.total,
           pages: Math.max(
             1,
-            Math.ceil(
-              (doneQueue.data?.page.total ?? 0) / Math.max(1, doneQueue.data?.page.size ?? 1),
-            ),
+            judgedPages +
+              Math.ceil(
+                (doneQueue.data?.page.total ?? 0) / Math.max(1, doneQueue.data?.page.size ?? 1),
+              ),
           ),
         };
 

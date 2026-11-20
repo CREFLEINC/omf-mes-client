@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 
 import {
   PuBand,
@@ -7,7 +7,10 @@ import {
   PuCount,
   PuIcon,
   PuNote,
+  PuPager,
   PuSection,
+  useClientPage,
+  useFitTableRows,
   type PuChipTone,
   type PuIconName,
 } from '../../patterns/pop-uniform';
@@ -92,6 +95,10 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
   const blocked = groups.length > 0;
   const targets = blockedTargetsOf(completion);
   const splitLots = splitLotsOf(completion);
+  /* 피킹 LOT 표 — 칸 높이에 드는 줄만 한 쪽으로, 아래 「총 N건 ‹ n/m ›」(지시서 검색 창 · 다른 POP 표와 같다). */
+  const lotFitRef = useRef<HTMLDivElement>(null);
+  const lotPageSize = useFitTableRows(lotFitRef, { fallback: 5 });
+  const lotPage = useClientPage(completion.lots, lotPageSize);
 
   return (
     <>
@@ -232,7 +239,7 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
         </div>
 
         <PuSection
-          grow={false}
+          split
           title={
             /* 건수는 빨간 원 숫자만 — 화면 탭 건수처럼 0 이면 두지 않는다(사용자 지시 2026-11-20). */
             <>
@@ -250,49 +257,58 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
           {completion.lots.length === 0 ? (
             <p className="psc-empty-row">{t.lots.empty}</p>
           ) : (
-            <div className="pu-table-wrap">
-              <table className="pu-table" aria-label={t.lots.caption}>
-                <thead>
-                  <tr>
-                    <th scope="col">{t.lots.columns.lotNo}</th>
-                    <th scope="col" className="fit psc-c">
-                      {t.lots.columns.qty}
-                    </th>
-                    <th scope="col" className="fit psc-c">
-                      {t.lots.columns.oqc}
-                    </th>
-                    <th scope="col" className="fit">
-                      {t.lots.columns.managementCode}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {completion.lots.map((lot) => (
-                    <tr
-                      key={lot.shipmentRequestLotId}
-                      className={targets.lotNos.has(lot.lotNo) ? 'psc-row-blocked' : undefined}
-                    >
-                      {/* LOT 번호만 — 창고는 위 정보 띠 「재고가 빠질 창고」에만 둔다(중복 정리 · 사용자 지시 2026-11-20). */}
-                      <td className="pu-mono psc-nowrap">{lot.lotNo}</td>
-                      <td className="fit psc-c">{qtyWithUom(lot.qty, lot.uomCode)}</td>
-                      <td className="fit psc-c">
-                        {lot.oqcLotStatus !== null && (
-                          <PuChip tone={PU_TONE[OQC_TONE[lot.oqcLotStatus]]}>
-                            {t.lots.oqc[lot.oqcLotStatus]}
-                          </PuChip>
-                        )}
-                      </td>
-                      <td className="fit pu-mono psc-code">
-                        {lot.managementCode === null || lot.managementCode === ''
-                          ? t.lots.none
-                          : lot.managementCode}
-                      </td>
+            <div ref={lotFitRef} className="pu-fit">
+              <div className="pu-table-wrap">
+                <table className="pu-table" aria-label={t.lots.caption}>
+                  <thead>
+                    <tr>
+                      <th scope="col">{t.lots.columns.lotNo}</th>
+                      <th scope="col" className="fit psc-c">
+                        {t.lots.columns.qty}
+                      </th>
+                      <th scope="col" className="fit psc-c">
+                        {t.lots.columns.oqc}
+                      </th>
+                      <th scope="col" className="fit">
+                        {t.lots.columns.managementCode}
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {lotPage.items.map((lot) => (
+                      <tr
+                        key={lot.shipmentRequestLotId}
+                        className={targets.lotNos.has(lot.lotNo) ? 'psc-row-blocked' : undefined}
+                      >
+                        {/* LOT 번호만 — 창고는 위 정보 띠 「재고가 빠질 창고」에만 둔다(중복 정리 · 사용자 지시 2026-11-20). */}
+                        <td className="pu-mono psc-lot-no">{lot.lotNo}</td>
+                        <td className="fit psc-c">{qtyWithUom(lot.qty, lot.uomCode)}</td>
+                        <td className="fit psc-c">
+                          {lot.oqcLotStatus !== null && (
+                            <PuChip tone={PU_TONE[OQC_TONE[lot.oqcLotStatus]]}>
+                              {t.lots.oqc[lot.oqcLotStatus]}
+                            </PuChip>
+                          )}
+                        </td>
+                        <td className="fit pu-mono psc-code">
+                          {lot.managementCode === null || lot.managementCode === ''
+                            ? t.lots.none
+                            : lot.managementCode}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
+          <PuPager
+            total={lotPage.total}
+            page={lotPage.page}
+            pages={lotPage.pages}
+            onPage={lotPage.setPage}
+            label={t.lots.title}
+          />
           {completion.replacedLots.length > 0 && (
             <PuNote>
               {t.lots.replaced(
