@@ -29,9 +29,14 @@
   zoom: var(--pop-reg-scale, 1);
 }
 
-/* 바깥 테두리만 없앤다(사용자 지시 2026-11-20) — 투명으로 두어 크기 · 자리는 그대로. 안쪽 칸 테두리는 그대로. */
+/*
+ * 상자 경계가 보이지 않게(사용자 지시 2026-11-20) — 바탕 · 테두리 · 그림자를 없애 화면 바탕과 같게 둔다.
+ * 테두리는 투명으로 두어 크기 · 자리는 그대로. 안쪽 칸(토큰 칸 테두리 등)은 그대로.
+ */
 .pu-card.wa-reg-card {
   border-color: transparent;
+  background: transparent;
+  box-shadow: none;
 }
 
 .wa-reg-card > .pu-card-body {
@@ -77,7 +82,6 @@
   justify-content: flex-end;
   gap: 8px;
   padding: 14px 20px;
-  border-top: 1px solid var(--pu-line-2);
 }
 
 .wa-reg-actions > .pu-btn {
