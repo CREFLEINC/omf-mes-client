@@ -19,6 +19,7 @@ import { PhysicalCountScreen } from '../screens/physical-count/screen';
 import { ShopfloorReceiptScreen } from '../screens/shopfloor-receipt/screen';
 import { StockTransferScreen } from '../screens/stock-transfer/screen';
 import { ProductPickingScreen } from '../screens/product-picking/screen';
+import { ProductLotSplitConfirmScreen } from '../screens/product-lot-split-confirm/screen';
 import { ProductReceiptScreen } from '../screens/product-receipt/screen';
 import { PutawayScreen } from '../screens/putaway/screen';
 import { PutawayHistoryScreen } from '../screens/putaway-history/screen';
@@ -62,6 +63,8 @@ export const appRoutes: RouteObject[] = [
       { path: 'wip-handover', element: <WipHandoverScreen /> },
       { path: 'repair-roundtrip', element: <RepairRoundtripScreen /> },
       { path: 'product-picking', element: <ProductPickingScreen /> },
+      /* M-04-05 LOT 분리 확인(피처 013) — 온라인 전용, 메뉴 배지 없음. */
+      { path: 'product-lot-split-confirm', element: <ProductLotSplitConfirmScreen /> },
       { path: 'product-receipt', element: <ProductReceiptScreen /> },
       { path: 'packing-repack', element: <PackingRepackScreen /> },
       { path: 'outbox', element: <OutboxPendingScreen /> },

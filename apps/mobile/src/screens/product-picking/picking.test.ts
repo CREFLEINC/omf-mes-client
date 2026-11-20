@@ -209,6 +209,15 @@ describe('피킹 거절', () => {
     expect(
       pickRejectionOf({ kind: 'conflict', cause: 'user', code: 'NO_LINE_FOR_ITEM', message: '' }),
     ).toEqual({ kind: 'code', code: 'NO_LINE_FOR_ITEM' });
+    /* 피처 013 Q14 — 확인 전 분리 LOT. */
+    expect(
+      pickRejectionOf({
+        kind: 'conflict',
+        cause: 'user',
+        code: 'LOT_SPLIT_UNCONFIRMED',
+        message: '',
+      }),
+    ).toEqual({ kind: 'code', code: 'LOT_SPLIT_UNCONFIRMED' });
   });
 
   it('FR-006 보류·불량·재고 없음은 서버 문구를 그대로 쓴다', () => {

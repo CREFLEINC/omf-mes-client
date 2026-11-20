@@ -25,8 +25,13 @@ export const productPicking = {
     scopeHidden: '출하 완료된 지시서와, 이 기기 공장 창고 라인이 없는 지시서는 보이지 않습니다',
     scopeNote: '이 기기 공장 창고 라인이 있는 지시서만 보입니다',
     /** 카드의 라인 줄 — 이 기기가 피킹할 줄만, 창고 이름을 붙인다(FR-010). */
-    lineSummaryAt: (lineNo: number, item: string, warehouse: string, picked: string, target: string) =>
-      `${String(lineNo)}. ${item} ${warehouse} 피킹 ${picked} / 목표 ${target}`,
+    lineSummaryAt: (
+      lineNo: number,
+      item: string,
+      warehouse: string,
+      picked: string,
+      target: string,
+    ) => `${String(lineNo)}. ${item} ${warehouse} 피킹 ${picked} / 목표 ${target}`,
     otherPlantLines: (count: number) => `다른 공장 창고 라인 ${String(count)}`,
     otherWarehouseLines: (count: number) => `이 기기 창고 밖 라인 ${String(count)}`,
     /* 출하 완료된 지시서는 목록에 세우지 않는다 — 더 집을 일이 없다. */
@@ -54,8 +59,10 @@ export const productPicking = {
     tag: (warehouse: string, plant: string) => `${warehouse} (${plant})`,
     /** 배포 전 만든 옛 줄 — 지시서 공장의 불량창고 외 모든 창고에서 받는다. */
     unassigned: '창고 미지정',
-    OTHER_PLANT: (warehouse: string) => `다른 공장 창고(${warehouse}), 이 기기에서 피킹하지 않습니다`,
-    OTHER_WAREHOUSE: (warehouse: string) => `이 기기 창고 밖(${warehouse}), 이 기기에서 피킹하지 않습니다`,
+    OTHER_PLANT: (warehouse: string) =>
+      `다른 공장 창고(${warehouse}), 이 기기에서 피킹하지 않습니다`,
+    OTHER_WAREHOUSE: (warehouse: string) =>
+      `이 기기 창고 밖(${warehouse}), 이 기기에서 피킹하지 않습니다`,
     /** 이 기기 줄이 다 찼고 다른 공장 · 창고 줄이 남았을 때(시안 ⑦). */
     terminalDone: '이 기기 몫은 끝났습니다',
     terminalDoneDetail: (businessUnit: string) =>
@@ -142,6 +149,10 @@ export const productPicking = {
     /** 그 품목 줄이 다른 공장 · 창고 줄뿐 — 이 기기에서 보내지 않는다. */
     outOfScope: '이 기기에서 피킹할 이 품목 라인이 없습니다',
     outOfScopeDetail: '이 품목은 다른 공장이나 다른 창고의 라인입니다',
+    /** 피처 013(시안 M0401) — 원래 · 새 LOT 모두 해당. */
+    LOT_SPLIT_UNCONFIRMED: '분리 확인 전인 LOT 입니다',
+    splitUnconfirmedDetail:
+      'POP 에서 나눈 뒤 PDA 「LOT 분리 확인」을 하지 않았습니다. 두 라벨을 스캔해 확인한 뒤 다시 스캔하세요',
     notFound: '이 공장의 LOT 이 아닙니다',
     notFoundDetail: '번호를 확인하고 다시 스캔하세요',
     failed: '피킹을 기록하지 못했습니다',

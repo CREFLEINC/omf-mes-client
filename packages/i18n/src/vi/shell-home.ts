@@ -36,6 +36,7 @@ export const shellHome: Translated<typeof ko.shellHome> = {
     equipmentFailure: 'Báo cáo hiện tượng hỏng và ảnh',
     productReceipt: 'Nhập kho · cất thành phẩm',
     productPicking: 'Lấy thành phẩm theo chỉ thị xuất hàng',
+    productLotSplitConfirm: 'Quét hai nhãn đã tách trên POP để xác nhận',
     packingRepack: 'Tách hoặc gộp kiện đóng gói',
   },
   frequent: 'Công việc hay dùng',

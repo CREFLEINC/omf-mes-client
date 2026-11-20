@@ -160,6 +160,7 @@ import { materialDefect } from './material-defect';
 import { popOqcInspection } from './pop-oqc-inspection';
 import { popShipmentComplete } from './pop-shipment-complete';
 import { productLotSplit } from './product-lot-split';
+import { productLotSplitConfirm } from './product-lot-split-confirm';
 import { popMaterialLotLabel } from './pop-material-lot-label';
 import { reworkResultRegister } from './rework-result-register';
 import { shippingPackingLabel } from './shipping-packing-label';
@@ -321,6 +322,7 @@ export const ko = {
   popOqcInspection,
   popShipmentComplete,
   productLotSplit,
+  productLotSplitConfirm,
   popMaterialLotLabel,
   workStart,
   workPrecheckGate,

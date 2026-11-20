@@ -18,8 +18,13 @@ export const productPicking: Translated<typeof ko.productPicking> = {
     scopeHidden:
       'Không hiện phiếu đã hoàn tất xuất hàng và phiếu không có dòng thuộc kho của nhà máy của thiết bị này',
     scopeNote: 'Chỉ hiện phiếu có dòng thuộc kho của nhà máy của thiết bị này',
-    lineSummaryAt: (lineNo: number, item: string, warehouse: string, picked: string, target: string) =>
-      `${String(lineNo)}. ${item} ${warehouse} đã lấy ${picked} / mục tiêu ${target}`,
+    lineSummaryAt: (
+      lineNo: number,
+      item: string,
+      warehouse: string,
+      picked: string,
+      target: string,
+    ) => `${String(lineNo)}. ${item} ${warehouse} đã lấy ${picked} / mục tiêu ${target}`,
     otherPlantLines: (count: number) => `${String(count)} dòng ở kho của nhà máy khác`,
     otherWarehouseLines: (count: number) => `${String(count)} dòng ngoài kho của thiết bị này`,
     completedHidden: 'Phiếu đã hoàn tất xuất hàng sẽ không hiện trong danh sách',
@@ -123,6 +128,9 @@ export const productPicking: Translated<typeof ko.productPicking> = {
       'Phải hủy phiếu và lập lại. Hãy báo cho người quản lý xuất hàng',
     outOfScope: 'Thiết bị này không có dòng cần lấy cho mặt hàng này',
     outOfScopeDetail: 'Mặt hàng này thuộc dòng của nhà máy khác hoặc kho khác',
+    LOT_SPLIT_UNCONFIRMED: 'LOT chưa xác nhận tách',
+    splitUnconfirmedDetail:
+      'LOT đã tách trên POP nhưng chưa xác nhận trên PDA 「Xác nhận tách LOT」. Hãy quét hai nhãn để xác nhận rồi quét lại',
     notFound: 'Không phải LOT của nhà máy này',
     notFoundDetail: 'Hãy kiểm tra số và quét lại',
     failed: 'Không ghi nhận được việc lấy hàng',

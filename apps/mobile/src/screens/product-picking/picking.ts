@@ -65,9 +65,7 @@ export const terminalShareDone = (lines: readonly ShipmentRequestLine[]): boolea
   const mine = lines.filter(inTerminalScope);
 
   return (
-    mine.length > 0 &&
-    mine.length < lines.length &&
-    mine.every((line) => remainingOf(line) <= 0)
+    mine.length > 0 && mine.length < lines.length && mine.every((line) => remainingOf(line) <= 0)
   );
 };
 
@@ -147,7 +145,9 @@ export type PickRejectionCode =
   | 'NO_LINE_FOR_ITEM'
   /** 피처 012 — 줄 창고에 없는 LOT · 줄 창고를 쓸 수 없음. */
   | 'LOT_NOT_IN_LINE_WAREHOUSE'
-  | 'LINE_WAREHOUSE_UNAVAILABLE';
+  | 'LINE_WAREHOUSE_UNAVAILABLE'
+  /** 피처 013 — POP 에서 나눈 뒤 PDA 「LOT 분리 확인」 전인 원래 · 새 LOT. */
+  | 'LOT_SPLIT_UNCONFIRMED';
 
 export type PickRejection =
   /** `warehouses` 는 `LOT_NOT_IN_LINE_WAREHOUSE` 일 때 LOT 이 있는 창고들(피처 012). */
@@ -164,6 +164,7 @@ const REJECTION_CODES: readonly string[] = [
   'NO_LINE_FOR_ITEM',
   'LOT_NOT_IN_LINE_WAREHOUSE',
   'LINE_WAREHOUSE_UNAVAILABLE',
+  'LOT_SPLIT_UNCONFIRMED',
 ];
 
 /** `:pick-lot` 의 거절을 화면 말로 가른다. 409 는 `code` 로, 나머지는 서버 문구로. */
