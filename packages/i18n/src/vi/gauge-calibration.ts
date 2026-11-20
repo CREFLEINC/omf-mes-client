@@ -105,6 +105,8 @@ export const gaugeCalibration: Translated<typeof ko.gaugeCalibration> = {
   },
 
   codes: {
+    provisional:
+      'Danh sách giá trị chưa được chốt nên chỉ hiển thị một phần. Giá trị không có thì hãy hỏi người phụ trách.',
     empty: (name: string): string =>
       `Chưa có danh sách giá trị ${name} nên không chọn được. Đăng ký giá trị xong thì sẽ mở.`,
     resultBlocked:

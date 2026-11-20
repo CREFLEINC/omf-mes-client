@@ -70,6 +70,9 @@ export const maintenanceOrder: Translated<typeof ko.maintenanceOrder> = {
       'Loại bảo trì do tổ hợp kích hoạt quyết định — chỉ cần lẫn một sự cố là thành khắc phục.',
     corrective: 'Khắc phục',
     preventive: 'Phòng ngừa',
+    predictive: 'Dự đoán',
+    predictiveLocked: 'Bảo trì dự đoán chưa có kích hoạt nên không chọn được.',
+
     submit: 'Phát hành lệnh',
     reset: 'Xóa nội dung nhập',
     requiredTarget: 'Hãy chọn thiết bị đối tượng.',

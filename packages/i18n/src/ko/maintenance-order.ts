@@ -71,6 +71,10 @@ export const maintenanceOrder = {
       '보전 유형은 트리거 조합이 정합니다 — 고장이 하나라도 섞이면 사후입니다.',
     corrective: '사후',
     preventive: '예방',
+    /** ⛔ 예지는 트리거가 없다 — 값은 두되 고를 수 없다. */
+    predictive: '예지',
+    predictiveLocked: '예지 보전은 트리거가 아직 없어 고를 수 없습니다.',
+
     submit: '지시 발행',
     reset: '입력 지우기',
     requiredTarget: '대상 설비를 고르세요.',

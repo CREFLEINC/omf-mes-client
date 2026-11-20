@@ -31,11 +31,19 @@ export const masterChange = {
      * 보이는 글자를 그대로 담는다 — 담지 않으면 음성 조작이 「보기」로 이 버튼을 부를 수 없다.
      */
     viewDiffRow: (occurredAt: string): string => `${occurredAt} 변경 내용 보기`,
+    newRevision: '신규 개정 발행',
   },
   /** 비활성 사유는 그 컨트롤의 이름으로 시작한다(배치 규범 4). */
   reasons: {
     searchNeedsPeriod: '조회는 기간을 모두 채운 뒤에 쓸 수 있습니다. 시작일과 종료일을 고르세요.',
     periodReversed: '기간 종료는 기간 시작보다 앞설 수 없습니다.',
+    /*
+     * 개정 발행은 「어느 마스터의 어느 판을 복사할 것인가」를 요구하는데 이 화면에는 그 대상이 없다.
+     * 버튼을 감추지 않는 이유는 개정 발행이 어디서 이루어지는지를 여기서 알 수 있어야 해서다.
+     * 이동 링크는 두지 않는다 — 대상 식별자가 어느 표를 가리키는지 데이터로 판정되지 않는다.
+     */
+    newRevisionElsewhere:
+      '신규 개정 발행은 이 화면에서 할 수 없습니다. 개정은 각 마스터 화면에서 발행합니다.',
   },
   loading: {
     events: '변경 이력 목록을 불러오는 중',
@@ -72,6 +80,8 @@ export const masterChange = {
    */
   filters: {
     all: '전체',
+    optionsNote:
+      '대상 종류·사건 종류는 아직 확정되지 않은 임시 목록입니다. 조회한 기간의 기록에서 만들어, 한 번도 기록되지 않았거나 이 기간에 없는 값은 목록에 없습니다.',
     chipTargetType: (value: string): string => `대상 종류: ${value}`,
     chipTargetId: (value: string): string => `대상: ${value}`,
     chipEventType: (value: string): string => `사건 종류: ${value}`,

@@ -344,6 +344,7 @@ export const MaintenanceResultScreen = () => {
         <h3>{t.form.parts}</h3>
         <p className="pane-lead">{t.form.partsLead}</p>
         <p className="pane-lead">{t.form.partsNoLot}</p>
+        <p className="pane-lead">{t.form.partsMasterNote}</p>
 
         <div className="filter-bar maintenance-result-part-picker">
           <SelectField

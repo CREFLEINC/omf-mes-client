@@ -836,12 +836,32 @@ describe('MasterChangeScreen — 창 수명', () => {
 describe('MasterChangeScreen — 신규 개정 발행 자리', () => {
   const PERIOD_SEARCH = '?from=2026-08-01&to=2026-08-06';
 
-  /* 이 화면에서는 개정을 발행할 수 없다 — 쓸 수 없는 단추는 세우지 않는다(C-4 · 관리웹 정리 시안 A). */
-  it('「신규 개정 발행」 단추를 세우지 않는다', async () => {
+  /* 감추면 개정 발행이 어디서 이루어지는지 화면에서 알 방법이 없어진다. */
+  it('버튼이 있고 잠겨 있으며 사유가 항상 보이는 텍스트로 붙어 있다', async () => {
     renderScreen([listRoute()], PERIOD_SEARCH);
     await screen.findByText('SAMPLE_EVENT_A');
 
-    expect(screen.queryByRole('button', { name: '신규 개정 발행' })).toBeNull();
+    const button = screen.getByRole('button', { name: '신규 개정 발행' });
+    expect(button).toBeDisabled();
+
+    const reasonId = button.getAttribute('aria-describedby') ?? '';
+    const reason = document.getElementById(reasonId);
+    expect(reason).toBeVisible();
+    // 사유는 그 컨트롤의 이름으로 시작한다 — 무엇에 대한 설명인지 먼저 읽혀야 한다.
+    expect(reason?.textContent).toMatch(/^신규 개정 발행은/);
+  });
+
+  it('눌러도 요청이 나가지 않고 주소도 바뀌지 않는다', async () => {
+    const { requests, user } = renderScreen([listRoute()], PERIOD_SEARCH);
+    await screen.findByText('SAMPLE_EVENT_A');
+
+    const before = requestsTo(requests, LIST_PATH).length;
+    const location = currentLocation();
+
+    await user.click(screen.getByRole('button', { name: '신규 개정 발행' }));
+
+    expect(requestsTo(requests, LIST_PATH)).toHaveLength(before);
+    expect(currentLocation()).toBe(location);
   });
 
   /* 이동 링크를 두지 않는다 — 대상 식별자가 어느 표를 가리키는지 데이터로 판정되지 않는다. */

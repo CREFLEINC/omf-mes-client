@@ -264,6 +264,7 @@ export const EventFilterBar = ({
       <HiddenFilterChips open={more.isOpen} chips={hiddenChips} onRemove={onRemoveFilter} />
 
       {/* 선택지가 어디서 왔고 무엇이 빠져 있는지 밝힌다 — 없으면 값이 사라진 것으로 읽힌다. */}
+      <p className="field-note">{t.filters.optionsNote}</p>
     </>
   );
 };
