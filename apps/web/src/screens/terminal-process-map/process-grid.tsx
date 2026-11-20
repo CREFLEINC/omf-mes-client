@@ -43,7 +43,7 @@ export const ProcessGrid = ({
     {
       key: 'process',
       header: t.grid.process,
-      width: '160px',
+      width: '128px',
       render: (row) => {
         const error = rowErrors.get(row.processId);
         return error === undefined ? (
@@ -60,7 +60,6 @@ export const ProcessGrid = ({
     {
       key: 'openAll',
       header: t.grid.openAll,
-      width: '88px',
       align: 'center',
       render: (row) => {
         const on = FLAG_KEYS.filter((key) => row[key]).length;
@@ -81,7 +80,6 @@ export const ProcessGrid = ({
     ...FLAG_KEYS.map((key): Column<ProcessRowView> => ({
       key,
       header: flagLabel(key),
-      width: '88px',
       align: 'center',
       render: (row) => (
         <Checkbox

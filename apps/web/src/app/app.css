@@ -137,6 +137,7 @@ body,
 body {
   margin: 0;
   word-break: keep-all;
+  overflow-wrap: normal;
   overflow-wrap: break-word;
 }
 
@@ -16208,6 +16209,7 @@ dialog.layout-editor-dialog {
   font-weight: 700;
   color: var(--on-surface);
   word-break: keep-all;
+  overflow-wrap: normal;
   overflow-wrap: break-word;
 }
 
@@ -16575,6 +16577,7 @@ dialog.layout-editor-dialog {
 .dash-eq-line {
   color: var(--on-surface-muted);
   word-break: keep-all;
+  overflow-wrap: normal;
   overflow-wrap: break-word;
 }
 
@@ -16661,6 +16664,7 @@ dialog.layout-editor-dialog {
   letter-spacing: var(--type-body-sm-tracking);
   font-weight: 700;
   word-break: keep-all;
+  overflow-wrap: normal;
   overflow-wrap: break-word;
 }
 
@@ -16682,6 +16686,7 @@ dialog.layout-editor-dialog {
   letter-spacing: var(--type-body-sm-tracking);
   color: var(--on-surface-variant);
   word-break: keep-all;
+  overflow-wrap: normal;
   overflow-wrap: break-word;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -16824,6 +16829,7 @@ dialog.layout-editor-dialog {
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);
   word-break: keep-all;
+  overflow-wrap: normal;
   overflow-wrap: break-word;
 }
 
@@ -16950,6 +16956,7 @@ dialog.layout-editor-dialog {
   min-width: 0;
   color: var(--on-surface-variant);
   word-break: keep-all;
+  overflow-wrap: normal;
   overflow-wrap: break-word;
 }
 
@@ -17110,6 +17117,7 @@ dialog.layout-editor-dialog {
   min-width: 0;
   color: var(--on-surface-variant);
   word-break: keep-all;
+  overflow-wrap: normal;
   overflow-wrap: break-word;
 }
 
@@ -17230,6 +17238,7 @@ dialog.layout-editor-dialog {
   letter-spacing: var(--type-label-sm-tracking);
   color: var(--on-surface-muted);
   word-break: keep-all;
+  overflow-wrap: normal;
   overflow-wrap: break-word;
 }
 
@@ -17313,6 +17322,7 @@ dialog.layout-editor-dialog {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   word-break: keep-all;
+  overflow-wrap: normal;
   overflow-wrap: break-word;
 }
 
@@ -17823,6 +17833,7 @@ dialog.layout-editor-dialog {
   max-width: min(24rem, 80vw);
   white-space: normal;
   word-break: keep-all;
+  overflow-wrap: normal;
   overflow-wrap: break-word;
 }
 
@@ -17964,6 +17975,7 @@ dialog.layout-editor-dialog {
   letter-spacing: var(--type-body-sm-tracking);
   color: var(--on-surface);
   word-break: keep-all;
+  overflow-wrap: normal;
   overflow-wrap: break-word;
 }
 
@@ -18300,7 +18312,17 @@ dialog.layout-editor-dialog {
 /* 공정 이름은 왼쪽 정렬(시안) — 공용 표의 가운데 정렬보다 무거워야 선다. */
 .inspection-queue-table.terminal-map-matrix table :is(th, td):first-child:nth-child(n):nth-child(n) {
   text-align: left;
-  padding-inline-start: var(--space-4);
+  padding-inline-start: var(--space-8);
+}
+
+/* 기능 칸 머리 글자는 좁으면 두 줄로 — 「…」로 자르지 않는다(#333). */
+.inspection-queue-table.terminal-map-matrix thead th,
+.inspection-queue-table.terminal-map-matrix thead th * {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  word-break: keep-all;
+  overflow-wrap: normal;
 }
 
 /* 다 추가했을 때 안내 — 공정 추가 칸 자리 오른쪽 끝. */
@@ -33395,6 +33417,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   border-left: 1px solid var(--outline-variant);
   overflow-wrap: normal;
   word-break: keep-all;
+  overflow-wrap: normal;
 }
 
 /* 항목 표 칸 이름은 꺾지 않는다 — 좁으면 표 상자 안에서 가로로 민다(사용자 지시 2026-11-19 · omf-all-around#296). */
