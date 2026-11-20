@@ -6,6 +6,7 @@ import { preferPrinter } from '../../patterns/pop-printer-choice';
 import { terminalPrinters } from '../../patterns/pop-terminal-printers';
 import { runRequest } from '../../patterns/request';
 import { CONTRACT_BATCH_SIZE, chunkTargets } from './flow-state';
+import { withoutSystemReissueReasons } from '../../patterns/reissue-reasons';
 
 /** 마감된 LOT 창 한 쪽에 보이는 건수. */
 export const COMPLETED_LOT_PAGE_SIZE = 5;
@@ -253,7 +254,8 @@ export const useReissueReasons = (enabled: boolean): UseQueryResult<CodeValue[]>
         }),
       );
 
-      return data.items;
+      /* 서버만 쓰는 사유(`LOT_SPLIT`)는 사람이 고르지 않는다(피처 013). */
+      return withoutSystemReissueReasons(data.items);
     },
   });
 };
