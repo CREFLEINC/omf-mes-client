@@ -1,25 +1,36 @@
 import {
-  AlertBanner,
-  Breadcrumb,
   Button,
   Checkbox,
   Chip,
   Dialog,
   EmptyState,
-  PageHeader,
+  Icon,
   SearchInput,
   Skeleton,
   Table,
+  useToast,
   type Column,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
-import { hasChangedFilters } from '../../patterns/filter-more';
-import { InfoTip } from '../../patterns/info-tip';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useColumnWidths } from '../../patterns/column-resize';
 import { SaveErrorBanner } from '../../patterns/master';
-import { EMPTY_FILTERS, readFilters, readSelected, toSearchParams } from './filters';
+import { PageNav } from '../../patterns/page-nav';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import { PaneHeightSplitter, useSplitOrientation } from '../../patterns/split-orientation';
+import {
+  EMPTY_FILTERS,
+  LIST_PAGE_SIZES,
+  readFilters,
+  readSelected,
+  toSearchParams,
+  type ListPageSize,
+} from './filters';
+import { DiscardDialog } from '../routing/leave-guard';
 import type { FlagKey } from './flags';
 import {
   addProcess,
@@ -33,31 +44,39 @@ import {
   toReplaceBody,
   type GridDraft,
 } from './grid-draft';
+import { ActiveChips } from './active-chips';
+import { LayoutToggle } from './layout-toggle';
 import { LoadErrorBanner } from './load-error-banner';
 import {
+  codeSelectOptions,
   lookupNote,
-  useEquipmentOptions,
   usePlantOptions,
-  useWarehouseOptions,
   useProcessOptions,
   useTerminalCodeNames,
 } from './lookups';
-import { PageNav } from './page-nav';
-import { toPageView } from './pagination';
+import { PagedSelectField } from './paged-select-field';
 import { ProcessGrid } from './process-grid';
 import {
   useProcessesReplace,
   useTerminalCreate,
+  useEquipmentLabel,
+  useEquipmentPages,
+  useWarehouseLabel,
+  useWarehousePages,
+  useTerminalActivate,
   useTerminalDeactivate,
   useTerminalDetail,
   useTerminalProcesses,
   useTerminals,
+  useNextTerminalCode,
+  useTerminalRegistrationCounts,
   useTerminalUpdate,
   useTokenIssue,
 } from './queries';
 import { SelectField } from './select-field';
 import {
   EMPTY_TERMINAL,
+  TERMINAL_CODE_PREFIX,
   hasTerminalErrors,
   toCreateBody,
   toTerminalDraft,
@@ -116,20 +135,58 @@ export const TerminalProcessMapScreen = () => {
   const [addTarget, setAddTarget] = useState('');
   const [token, setToken] = useState<TokenView | null>(null);
   const [isDeactivating, setDeactivating] = useState(false);
-  const [savedNotice, setSavedNotice] = useState<string | null>(null);
+  /* 저장 · 중지 결과는 오른쪽 아래 알림으로(사용자 지시 2026-11-20 · #333). */
+  const toast = useToast();
+  const notify = (description: string): void => {
+    toast.show({ variant: 'success', description });
+  };
+  /** 저장하지 않은 기능 구성이 있을 때 미뤄 둔 이동(사용자 역할 권한 관리와 같다 · #333). */
+  const [pendingLeave, setPendingLeave] = useState<(() => void) | null>(null);
+
+  /* 사용자 역할 권한 관리와 같은 배치 — 위 조회 묶음 · 아래 목록 | 상세(좌우 · 상하 배치, 폭 · 높이 끌기, 목록 접기). */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:terminal-process-map:split', 0.45);
+  const layout = useSplitOrientation('omf-mes:terminal-process-map:split-orientation');
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: messages.common.inspectionHub.listCollapse,
+    expandLabel: messages.common.inspectionHub.listExpand,
+  };
   /** 서버 오류의 `items[i]` 를 공정으로 되짚을 «보낸» 순서 */
   const sentProcessIds = useRef<number[]>([]);
   /** 서버가 짚은 뒤 사람이 고친 줄 — 고친 줄에 옛 오류를 남기지 않는다 */
   const [editedSinceSave, setEditedSinceSave] = useState<ReadonlySet<number>>(new Set());
 
   const plants = usePlantOptions();
-  const equipments = useEquipmentOptions();
   const processes = useProcessOptions();
   const codeNames = useTerminalCodeNames();
-  /* 피처 002 — 폼이 고른 공장의 창고. 공장을 고르기 전에는 부르지 않는다. */
-  const warehouses = useWarehouseOptions(terminalDraft.plant);
+
+  /*
+   * 단말 추가 팝업을 열면 단말 코드를 `TERM-일련번호` 로 바로 채운다 — 고칠 수 있다(사용자 지시 2026-11-20 · #333).
+   * 칸이 비었거나 앞서 채운 값 그대로일 때만 바꾼다 — 사용자가 고친 코드는 덮지 않는다.
+   */
+  const [autoCode, setAutoCode] = useState<string | null>(null);
+  const codeSuggestion = useNextTerminalCode(
+    formMode === 'create' ? terminalDraft.terminalTypeCode || TERMINAL_CODE_PREFIX : '',
+  );
+  if (
+    formMode === 'create' &&
+    codeSuggestion !== null &&
+    codeSuggestion !== autoCode &&
+    (terminalDraft.terminalCode === '' || terminalDraft.terminalCode === autoCode)
+  ) {
+    setAutoCode(codeSuggestion);
+    setTerminalDraft({ ...terminalDraft, terminalCode: codeSuggestion });
+    setTerminalErrors(({ terminalCode: _filled, ...rest }) => rest);
+  }
 
   const terminals = useTerminals(filters);
+  const registrationCounts = useTerminalRegistrationCounts(filters);
+  const fetchEquipments = useEquipmentPages();
+  const equipmentFilterLabel = useEquipmentLabel(filters.equipment);
+  const fetchWarehouses = useWarehousePages();
+  const warehouseFilterLabel = useWarehouseLabel(filters.warehouse);
   const detail = useTerminalDetail(selectedId);
   const processRows = useTerminalProcesses(selectedId);
 
@@ -150,22 +207,26 @@ export const TerminalProcessMapScreen = () => {
 
   const create = useTerminalCreate((created) => {
     setFormMode('closed');
-    setSavedNotice(t.terminal.saved);
+    notify(t.terminal.registered);
     selectTerminal(created.terminalId);
   });
 
   const update = useTerminalUpdate(selectedId, () => {
     setFormMode('closed');
-    setSavedNotice(t.terminal.saved);
+    notify(t.terminal.saved);
+  });
+
+  const activate = useTerminalActivate(selectedId, () => {
+    notify(t.terminal.activated);
   });
 
   const deactivate = useTerminalDeactivate(selectedId, () => {
     setDeactivating(false);
-    setSavedNotice(t.terminal.deactivated);
+    notify(t.terminal.deactivated);
   });
 
   const replace = useProcessesReplace(selectedId, () => {
-    setSavedNotice(t.grid.saved);
+    notify(t.grid.saved);
     /* 저장한 구성을 다시 읽는다 — 새 잠금 토큰이 그 조회에 실려 온다. */
     void processRows.refetch();
   });
@@ -175,16 +236,7 @@ export const TerminalProcessMapScreen = () => {
   });
 
   const rows = terminals.data?.items ?? EMPTY_ROWS;
-  const pageView =
-    terminals.data === undefined ? null : toPageView(terminals.data.page, rows.length);
   const selected = detail.data ?? null;
-
-  /* 「초기화」는 치던 검색어나 걸린 조건이 처음 값과 다를 때만 보인다(C-6). 쪽은 조건이 아니라 견주지 않는다. */
-  const isFilterChanged = hasChangedFilters(
-    { q: EMPTY_FILTERS.q, includeInactive: EMPTY_FILTERS.includeInactive },
-    { q: search, includeInactive: filters.includeInactive },
-    { q: filters.q, includeInactive: filters.includeInactive },
-  );
 
   const apply = (next: Partial<typeof filters>, keepSelection: boolean): void => {
     /* 조건이 바뀌면 첫 쪽으로 돌아간다 — 3쪽을 보던 채로 조건만 좁히면 빈 쪽이 나온다. */
@@ -193,10 +245,28 @@ export const TerminalProcessMapScreen = () => {
     setSearchParams(toSearchParams(merged, keepSelection ? selectedId : null));
   };
 
+  const resetGrid = (): void => {
+    setGrid(original);
+    setGridNotice(null);
+    replace.reset();
+  };
+
+  /*
+   * 저장하지 않은 기능 구성이 있으면 단말 · 조건 · 쪽을 바꾸기 전에 묻는다(사용자 역할 권한 관리와 같다 · #333).
+   * 다른 단말로 옮기면 그 구성은 조용히 사라진다 — 고르던 단말이 목록에서 빠지는 조건 변경도 같다.
+   */
+  const leaveSafely = (action: () => void): void => {
+    if (selectedId !== null && isDirty(grid, original)) {
+      setPendingLeave(() => action);
+      return;
+    }
+
+    action();
+  };
+
   const selectTerminal = (terminalId: number | null): void => {
     setSearchParams(toSearchParams(filters, terminalId));
     setFormMode('closed');
-    setSavedNotice(null);
     create.reset();
     update.reset();
     replace.reset();
@@ -205,9 +275,9 @@ export const TerminalProcessMapScreen = () => {
 
   const openCreate = (): void => {
     setTerminalDraft(EMPTY_TERMINAL);
+    setAutoCode(null);
     setTerminalErrors({});
     setFormMode('create');
-    setSavedNotice(null);
     create.reset();
     update.reset();
   };
@@ -218,7 +288,6 @@ export const TerminalProcessMapScreen = () => {
     setTerminalDraft(toTerminalDraft(selected));
     setTerminalErrors({});
     setFormMode('edit');
-    setSavedNotice(null);
     create.reset();
     update.reset();
   };
@@ -277,46 +346,80 @@ export const TerminalProcessMapScreen = () => {
   const toOptions = (entries: { value: string; label: string }[]): SelectOption[] =>
     entries.map((entry) => ({ value: entry.value, label: entry.label }));
 
-  const listColumns: Column<TerminalView>[] = [
+  /*
+   * 고른 줄을 다시 누르면 선택이 풀린다(사용자 역할 권한 관리 목록과 같다 · #333).
+   * 저장하지 않은 기능 구성이 있으면 먼저 묻는다 — 다른 단말로 옮기면 그 구성이 사라진다.
+   */
+  const pickTerminal = (terminalId: number): void => {
+    leaveSafely(() => {
+      selectTerminal(terminalId === selectedId ? null : terminalId);
+    });
+  };
+
+  const baseColumns: Column<TerminalView>[] = [
     {
       key: 'code',
+      align: 'center',
       header: t.list.code,
+      width: '184px',
+      /* 링크처럼 보이지 않는다 — 줄 아무 곳이나 눌러 고른다. 이 단추는 키보드·화면 낭독기의 자리다. */
       render: (row) => (
-        <Button
-          variant="text"
-          size="sm"
+        <button
+          type="button"
+          className="users-roles-row-pick"
           aria-current={row.terminalId === selectedId ? 'true' : undefined}
           onClick={() => {
-            selectTerminal(row.terminalId);
+            pickTerminal(row.terminalId);
           }}
         >
           {row.terminalCode}
-        </Button>
+        </button>
       ),
     },
-    { key: 'type', header: t.list.type, render: (row) => codeNames.type(row.terminalTypeCode) },
-    { key: 'status', header: t.list.status, render: (row) => operatingStatusOf(row) },
-    { key: 'registration', header: t.list.registration, render: (row) => registrationChip(row) },
     {
-      key: 'equipment',
-      header: t.list.equipment,
-      render: (row) => row.equipmentLabel ?? t.list.notAvailable,
-    },
-    {
-      key: 'warehouse',
-      header: t.list.warehouse,
-      render: (row) => row.warehouseName ?? t.list.warehouseAll,
+      key: 'type',
+      align: 'center',
+      header: t.list.type,
+      width: '120px',
+      render: (row) => codeNames.type(row.terminalTypeCode),
     },
     {
       key: 'active',
+      align: 'center',
       header: t.list.activeHeader,
+      width: '96px',
       render: (row) => (
-        <Chip size="sm" status={row.isActive ? 'success' : 'idle'}>
+        <Chip variant="status" size="sm" status={row.isActive ? 'success' : 'idle'}>
           {row.isActive ? t.list.active : t.list.inactive}
         </Chip>
       ),
     },
+    {
+      key: 'registration',
+      align: 'center',
+      header: t.list.registration,
+      width: '104px',
+      render: (row) => registrationChip(row),
+    },
+    {
+      key: 'equipment',
+      align: 'center',
+      header: t.list.equipment,
+      width: '168px',
+      render: (row) => row.equipmentLabel ?? t.list.notAvailable,
+    },
+    {
+      key: 'warehouse',
+      align: 'center',
+      header: t.list.warehouse,
+      width: '120px',
+      render: (row) => row.warehouseName ?? t.list.warehouseAll,
+    },
   ];
+  /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(사용자 역할 권한 관리 목록과 같다). */
+  const ordered = useColumnOrder('omf-mes:terminal-process-map:columns:order', baseColumns);
+  const resizable = useColumnWidths('omf-mes:terminal-process-map:columns', ordered);
+  const fit = useFitColumns(resizable.columns);
 
   const serverRowErrors = splitRowErrors(replace.error, sentProcessIds.current);
   const noFlagIds = grid.filter(hasNoFlag).map((row) => row.processId);
@@ -336,262 +439,228 @@ export const TerminalProcessMapScreen = () => {
     !replace.isSaving &&
     noFlagIds.length === 0;
 
-  return (
-    <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-        actions={<Button onClick={openCreate}>{t.terminal.create}</Button>}
-      />
+  const isGridDirty = selectedId !== null && isDirty(grid, original);
+  /* 이미 표에 있는 공정은 고를 거리에서 뺀다(사용자 지시 2026-11-20 · #333). */
+  const addableProcesses = processes.entries.filter(
+    (entry) => !grid.some((row) => String(row.processId) === entry.value),
+  );
 
-      {savedNotice !== null && (
-        <div className="banner-slot">
-          <AlertBanner
-            className="terminal-map-notice"
-            variant="success"
-            onDismiss={() => {
-              setSavedNotice(null);
-            }}
-            dismissLabel={messages.common.close}
-          >
-            {savedNotice}
-          </AlertBanner>
-        </div>
-      )}
+  /** 조회 실패 → 로딩 → 표 순서로 하나만 낸다. 실패했는데 빈 표를 함께 보이면 안 된다. */
+  const listSlot = (): ReactNode => {
+    if (terminals.isError) {
+      return (
+        <LoadErrorBanner
+          error={terminals.error}
+          onRetry={() => {
+            void terminals.refetch();
+          }}
+        />
+      );
+    }
 
-      <div className="two-pane terminal-map-panes">
-        <section className="pane" aria-label={t.panes.list}>
-          <h2>{t.panes.list}</h2>
-          <div className="filter-bar terminal-map-filter">
-            <div className="field-cell">
-              <span className="field-label">{t.filters.search}</span>
-              <SearchInput
-                value={search}
-                placeholder={t.filters.searchPlaceholder}
-                onChange={(event) => {
-                  setSearch(event.target.value);
-                }}
-                onSearch={() => {
-                  apply({ q: search }, true);
-                }}
-                clearLabel={messages.common.clear}
-              />
-            </div>
-            <div className="field-cell field-cell-unlabeled check-group">
-              <Checkbox
-                checked={filters.includeInactive}
-                onChange={(event) => {
-                  apply({ includeInactive: event.target.checked }, true);
-                }}
-              >
-                {t.filters.includeInactive}
-              </Checkbox>
-            </div>
-            {isFilterChanged && (
-              <div className="form-actions terminal-map-filter-actions">
+    if (terminals.isPending) return <Skeleton variant="rect" height="12rem" />;
+
+    return (
+      /* 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 단추로 넘긴다. */
+      <div
+        ref={fit.ref}
+        className="users-roles-list inspection-queue-table terminal-map-list"
+        style={resizable.style}
+        onClick={(event) => {
+          const target = event.target;
+          if (!(target instanceof Element)) return;
+          if (target.closest('button, a, input, select, textarea') !== null) return;
+          target
+            .closest('tbody tr')
+            ?.querySelector<HTMLButtonElement>('.users-roles-row-pick')
+            ?.click();
+        }}
+      >
+        <Table
+          density="compact"
+          columns={fit.columns}
+          rows={rows}
+          getRowId={(row) => String(row.terminalId)}
+          empty={<EmptyState size="sm" live title={t.list.emptyTitle} description={t.list.empty} />}
+        />
+      </div>
+    );
+  };
+
+  /** 오른쪽 한 카드 — 단말 정보 위, 공정별 기능 구성 아래(사용자 결정 2026-11-20 · #333). */
+  const renderSettings = (): ReactNode => {
+    if (selectedId === null) {
+      return (
+        <EmptyState
+          size="sm"
+          className="users-roles-pick-empty"
+          icon={
+            <span className="inspection-standard-empty-icon">
+              <Icon name="tablet_android" size={20} />
+            </span>
+          }
+          title={
+            terminals.data !== undefined && rows.length === 0
+              ? t.grid.noTerminalTitle
+              : t.grid.selectTerminalTitle
+          }
+          description={t.grid.selectTerminal}
+        />
+      );
+    }
+
+    if (detail.isError) {
+      return (
+        <LoadErrorBanner
+          error={detail.error}
+          onRetry={() => {
+            void detail.refetch();
+          }}
+        />
+      );
+    }
+
+    if (selected === null) return <Skeleton variant="rect" height="12rem" />;
+
+    return (
+      <>
+        <section className="terminal-map-settings-block" aria-label={t.panes.terminal}>
+          {/* 제목 줄 오른쪽 위에 단말 조작 단추(사용자 지시 2026-11-20 · #333). */}
+          <div className="terminal-map-settings-head">
+            <h3 className="terminal-map-settings-title">{t.panes.terminal}</h3>
+            <div className="terminal-map-info-actions">
+              {/* 사용 중이면 「사용 중지」, 중지된 단말이면 「사용 재개」(사용자 지시 2026-11-20 · #333). */}
+              {selected.isActive ? (
                 <Button
                   variant="outlined"
+                  leadingIcon={<Icon name="block" size={18} aria-hidden />}
+                  disabled={deactivate.isSaving}
                   onClick={() => {
-                    setSearch('');
-                    setSearchParams(toSearchParams(EMPTY_FILTERS, selectedId));
+                    setDeactivating(true);
                   }}
                 >
-                  {t.filters.clear}
+                  {t.terminal.deactivate}
                 </Button>
-              </div>
-            )}
+              ) : (
+                <Button
+                  variant="outlined"
+                  leadingIcon={<Icon name="restart_alt" size={18} aria-hidden />}
+                  loading={activate.isSaving}
+                  disabled={activate.isSaving}
+                  onClick={() => {
+                    activate.write({});
+                  }}
+                >
+                  {t.terminal.activate}
+                </Button>
+              )}
+              <Button
+                variant="outlined"
+                leadingIcon={<Icon name="edit" size={18} aria-hidden />}
+                onClick={openEdit}
+              >
+                {t.terminal.edit}
+              </Button>
+              <Button
+                leadingIcon={<Icon name="key" size={18} aria-hidden />}
+                disabled={issueToken.isSaving}
+                onClick={() => {
+                  issueToken.write({});
+                }}
+              >
+                {t.token.issue}
+              </Button>
+            </div>
+          </div>
+          <SaveErrorBanner error={issueToken.error} />
+          <SaveErrorBanner error={deactivate.error} />
+          <SaveErrorBanner error={activate.error} />
+          {/* 항목명 위·값 아래의 3열 격자 — 순서는 그대로(코드 · 유형 · 운영 상태 · 등록 상태 · 설비 · 창고). */}
+          <dl className="parts-iqc-facts iqc-inbound-facts terminal-map-info">
+            <div className="parts-iqc-fact">
+              <dt className="field-label">{t.terminal.code}</dt>
+              <dd className="parts-iqc-fact-key">{selected.terminalCode}</dd>
+            </div>
+            <div className="parts-iqc-fact">
+              <dt className="field-label">{t.terminal.type}</dt>
+              <dd>{codeNames.type(selected.terminalTypeCode)}</dd>
+            </div>
+            <div className="parts-iqc-fact">
+              <dt className="field-label">{t.terminal.status}</dt>
+              <dd>{operatingStatusOf(selected)}</dd>
+            </div>
+            <div className="parts-iqc-fact">
+              <dt className="field-label">{t.terminal.registration}</dt>
+              <dd>{registrationChip(selected)}</dd>
+            </div>
+            {/* 등록 상태와 등록 일시를 나눈다(사용자 지시 2026-11-20 · #333). */}
+            <div className="parts-iqc-fact">
+              <dt className="field-label">{t.terminal.registeredAt}</dt>
+              <dd>
+                {selected.registrationConfirmedAt === null
+                  ? t.list.notAvailable
+                  : formatMoment(selected.registrationConfirmedAt)}
+              </dd>
+            </div>
+            <div className="parts-iqc-fact">
+              <dt className="field-label">{t.terminal.equipment}</dt>
+              <dd>{selected.equipmentLabel ?? t.terminal.unassigned}</dd>
+            </div>
+            <div className="parts-iqc-fact">
+              <dt className="field-label">{t.terminal.warehouse}</dt>
+              <dd>{selected.warehouseName ?? t.terminal.unassigned}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section className="terminal-map-settings-block" aria-label={t.panes.grid}>
+          {/* 제목 옆 안내는 두지 않는다 — 제목과 [공정 추가]가 목적과 첫 행동을 말한다(사용자 지시 2026-11-20 · #333). */}
+          <div className="terminal-map-settings-head terminal-map-grid-head">
+            <h3 className="terminal-map-settings-title">{t.panes.grid}</h3>
+            {/* 공정 추가는 같은 줄 오른쪽 끝, 칸 이름은 선택칸 왼쪽(사용자 지시 2026-11-20 · #333). */}
+            {!processRows.isError &&
+              !processRows.isPending &&
+              (addableProcesses.length === 0 && !processes.isLoading && !processes.isError ? (
+                /* 다 추가했으면 빈 선택칸 대신 안내 라벨(사용자 지시 2026-11-20 · #333). */
+                <p className="iqc-inspection-action-note terminal-map-add-done" data-tone="info">
+                  <Icon name="info" size={16} aria-hidden />
+                  {t.grid.nothingToAdd}
+                </p>
+              ) : (
+                <SelectField
+                  label={t.grid.add}
+                  /* 이미 표에 있는 공정은 고를 거리에서 뺀다(사용자 지시 2026-11-20 · #333). */
+                  options={toOptions(addableProcesses)}
+                  value={addTarget}
+                  note={lookupNote(processes, t.grid.processLookupFailed)}
+                  error={gridNotice ?? undefined}
+                  placeholder={t.grid.addPlaceholder}
+                  className="terminal-map-add-field"
+                  onChange={addRow}
+                />
+              ))}
           </div>
 
-          {terminals.isError ? (
+          {processRows.isError ? (
             <LoadErrorBanner
-              error={terminals.error}
+              error={processRows.error}
               onRetry={() => {
-                void terminals.refetch();
+                void processRows.refetch();
               }}
             />
-          ) : terminals.isPending ? (
-            <Skeleton variant="rect" height="12rem" />
+          ) : processRows.isPending ? (
+            <Skeleton variant="rect" height="10rem" />
           ) : (
-            <div className="wide-table terminal-map-list">
-              <Table
-                columns={listColumns}
-                rows={rows}
-                getRowId={(row) => String(row.terminalId)}
-                density="compact"
-                empty={
-                  <EmptyState size="sm" live title={t.list.emptyTitle} description={t.list.empty} />
-                }
-              />
-            </div>
-          )}
-          {pageView !== null && (
-            <PageNav
-              view={pageView}
-              onChange={(page) => {
-                apply({ page }, true);
-              }}
-            />
-          )}
-        </section>
+            <>
+              <SaveErrorBanner error={serverRowErrors.rest} />
+              {processes.isError ? (
+                <LoadErrorBanner error={processes.error} onRetry={processes.refetch} />
+              ) : null}
 
-        <section className="pane" aria-label={t.panes.terminal}>
-          <h2>{formMode === 'create' ? t.terminal.create : t.panes.terminal}</h2>
-
-          {formMode === 'closed' ? (
-            selected === null ? (
-              <EmptyState
-                size="sm"
-                title={t.grid.selectTerminalTitle}
-                description={t.grid.selectTerminal}
-              />
-            ) : (
-              <>
-                <SaveErrorBanner error={deactivate.error} />
-                {/* ⚠ 누르기 전에 말한다 — 누른 뒤에는 이미 이전 기기가 끊겨 있다. 카드 제목 바로 아래, 격자와 같은 시작선. */}
-                <AlertBanner
-                  className="terminal-map-notice terminal-map-reissue-warning"
-                  variant="warning"
-                >
-                  {t.token.reissueWarning}
-                </AlertBanner>
-                {/* 항목명 위·값 아래의 3열 격자 — 순서는 그대로(코드 · 유형 · 운영 상태 · 등록 상태 · 설비). */}
-                <dl className="terminal-map-info">
-                  <div className="terminal-map-info-field">
-                    <dt className="field-label">{t.terminal.code}</dt>
-                    <dd className="terminal-map-info-key">{selected.terminalCode}</dd>
-                  </div>
-                  <div className="terminal-map-info-field">
-                    <dt className="field-label">{t.terminal.type}</dt>
-                    <dd>{codeNames.type(selected.terminalTypeCode)}</dd>
-                  </div>
-                  <div className="terminal-map-info-field">
-                    <dt className="field-label">{t.terminal.status}</dt>
-                    <dd>{operatingStatusOf(selected)}</dd>
-                  </div>
-                  <div className="terminal-map-info-field">
-                    <dt className="field-label">{t.terminal.registration}</dt>
-                    <dd>
-                      {registrationChip(selected)}
-                      {selected.registrationConfirmedAt === null
-                        ? null
-                        : ` ${formatMoment(selected.registrationConfirmedAt)}`}
-                    </dd>
-                  </div>
-                  <div className="terminal-map-info-field">
-                    <dt className="field-label">{t.terminal.equipment}</dt>
-                    <dd>{selected.equipmentLabel ?? t.terminal.equipmentNone}</dd>
-                  </div>
-                </dl>
-                <SaveErrorBanner error={issueToken.error} />
-                {/* 하단 조작 줄 — 얇은 구분선 아래 하나의 바닥글. */}
-                <div className="terminal-map-info-footer">
-                  <div className="form-actions">
-                    <Button
-                      className="form-actions-secondary"
-                      variant="outlined"
-                      disabled={!selected.isActive || deactivate.isSaving}
-                      onClick={() => {
-                        setDeactivating(true);
-                      }}
-                    >
-                      {t.terminal.deactivate}
-                    </Button>
-                    <Button variant="outlined" onClick={openEdit}>
-                      {t.terminal.edit}
-                    </Button>
-                    <Button
-                      disabled={issueToken.isSaving}
-                      onClick={() => {
-                        issueToken.write({});
-                      }}
-                    >
-                      {t.token.issue}
-                    </Button>
-                  </div>
-                </div>
-              </>
-            )
-          ) : (
-            <TerminalForm
-              draft={terminalDraft}
-              errors={terminalErrors}
-              isNew={formMode === 'create'}
-              isSaving={create.isSaving || update.isSaving}
-              saveError={formMode === 'create' ? create.error : update.error}
-              fieldErrors={formMode === 'create' ? create.fieldErrors : update.fieldErrors}
-              plants={plants}
-              equipments={equipments}
-              warehouses={warehouses}
-              codeNames={codeNames}
-              onChange={(patch) => {
-                setTerminalDraft((prev) => ({ ...prev, ...patch }));
-              }}
-              onSubmit={submitTerminal}
-              onCancel={() => {
-                setFormMode('closed');
-              }}
-            />
-          )}
-        </section>
-      </div>
-
-      {/*
-       * ⭐ **기능 구성은 두 단 밖에서 전체 너비를 쓴다.** 공정 한 줄에 여덟 칸이 서는 표라
-       * 좁은 단에 넣으면 열 이름이 두 줄로 접히고 체크 상자가 서로 붙는다 — 오조작을 막으려고
-       * 만든 화면이 오조작을 부르게 된다.
-       */}
-      <section className="pane terminal-map-grid-pane" aria-label={t.panes.grid}>
-        {/*
-         * ⭐ 이 구획이 무엇을 정하는지는 제목 옆 ⓘ 로(관리웹 정리 시안 A) — 늘 펼친 설명 줄을 걷었다.
-         * ⓘ 를 제목 밖에 두어 제목 이름이 그대로 읽히게 한다.
-         */}
-        <div className="info-label">
-          <h2>{t.panes.grid}</h2>
-          <InfoTip text={t.grid.purpose} />
-        </div>
-
-        {selectedId === null ? (
-          /* 선택 안내는 단말 정보 구획이 크게 한 번 말한다 — 여기서는 한 줄로 줄인다. */
-          <p className="pane-lead terminal-map-unselected">{t.grid.unselectedNote}</p>
-        ) : processRows.isError ? (
-          <LoadErrorBanner
-            error={processRows.error}
-            onRetry={() => {
-              void processRows.refetch();
-            }}
-          />
-        ) : processRows.isPending ? (
-          <Skeleton variant="rect" height="10rem" />
-        ) : (
-          <>
-            <SaveErrorBanner error={serverRowErrors.rest} />
-            {processes.isError ? (
-              <LoadErrorBanner error={processes.error} onRetry={processes.refetch} />
-            ) : null}
-
-            <div className="filter-bar">
-              <SelectField
-                label={t.grid.add}
-                options={toOptions(processes.entries)}
-                value={addTarget}
-                note={lookupNote(processes, t.grid.processLookupFailed)}
-                error={gridNotice ?? undefined}
-                placeholder={t.grid.addPlaceholder}
-                wide
-                className="terminal-map-add-field"
-                onChange={addRow}
-              />
-            </div>
-
-            {grid.length === 0 ? (
-              /* ⭐ 0건이 정상인 단말이 있다 — 오류처럼 그리지 않는다. */
-              <EmptyState size="sm" title={t.grid.emptyTitle} description={t.grid.empty} />
-            ) : (
+              {/*
+               * 공정이 없어도 표 머리는 그대로 두고 표 안에 빈 상태를 낸다 — 목록 표와 같은 모양(사용자 지시 2026-11-20 · #333).
+               * ⭐ 0건이 정상인 단말이 있다 — 오류처럼 그리지 않는다.
+               */}
               <div className="terminal-map-grid-table">
                 <ProcessGrid
                   rows={grid}
@@ -608,39 +677,268 @@ export const TerminalProcessMapScreen = () => {
                   onRemove={(processId) => {
                     setGrid(removeProcess(grid, processId));
                   }}
+                  empty={
+                    /* 오른쪽 「단말을 선택해 주세요」와 같은 아이콘 원 + 한 줄(사용자 지시 2026-11-20 · #333). */
+                    <EmptyState
+                      size="sm"
+                      className="terminal-map-grid-empty"
+                      icon={
+                        <span className="inspection-standard-empty-icon">
+                          <Icon name="checklist" size={20} />
+                        </span>
+                      }
+                      title={t.grid.emptyTitle}
+                    />
+                  }
                 />
               </div>
-            )}
+            </>
+          )}
+        </section>
 
-            <div className="form-actions">
-              {replace.isSaving && (
-                <p className="field-note form-actions-secondary">{t.grid.saving}</p>
-              )}
+        <div className="form-actions terminal-map-settings-footer">
+          {replace.isSaving && <p className="field-note form-actions-secondary">{t.grid.saving}</p>}
+          <Button
+            variant="outlined"
+            disabled={replace.isSaving || !isGridDirty}
+            onClick={resetGrid}
+          >
+            {t.grid.reset}
+          </Button>
+          <Button
+            disabled={!canSaveGrid || !isGridDirty}
+            onClick={() => {
+              sentProcessIds.current = grid.map((row) => row.processId);
+              setEditedSinceSave(new Set());
+              replace.write(toReplaceBody(grid));
+            }}
+          >
+            {t.grid.save}
+          </Button>
+        </div>
+      </>
+    );
+  };
+
+  return (
+    <>
+      {/*
+       * 사용자 역할 권한 관리와 같은 틀(omf-all-around#333) — 위 조회 묶음, 아래 목록 | 고른 단말의 한 카드.
+       * 머리글(경로 · 화면 이름)은 두지 않는다 — 사이드바가 위치를 말한다.
+       */}
+      {/* 위 줄 오른쪽 — 등록 · 미등록 라벨과 좌우 · 상하 배치 단추(사용자 지시 2026-11-20 · #333). */}
+      <div className="terminal-map-top-actions">
+        <ActiveChips
+          counts={registrationCounts}
+          active={filters.registration}
+          onChange={(registration) => {
+            leaveSafely(() => {
+              apply({ registration }, true);
+            });
+          }}
+        />
+        <LayoutToggle orientation={layout.orientation} onChange={layout.change} />
+      </div>
+
+      <div className="users-roles-workspace">
+        <section ref={aboveRef} className="pane users-roles-search" aria-label={t.panes.search}>
+          <div className="filter-bar users-roles-filter-row">
+            {/* 단말 유형 · 설치 설비 · 창고 · 단말 코드 검색 순(사용자 지시 2026-11-20 · #333). 고르는 즉시 적용한다. */}
+            <SelectField
+              label={t.filters.type}
+              options={[
+                { value: '', label: t.filters.all },
+                ...codeSelectOptions(codeNames.typeLookup, filters.type),
+              ]}
+              value={filters.type}
+              placeholder={t.filters.all}
+              className="terminal-map-filter-field"
+              onChange={(type) => {
+                leaveSafely(() => {
+                  apply({ type }, true);
+                });
+              }}
+            />
+            <div className="terminal-map-filter-field">
+              <PagedSelectField
+                label={t.filters.equipment}
+                emptyLabel={t.filters.all}
+                value={filters.equipment}
+                valueLabel={equipmentFilterLabel}
+                queryKey={['terminal-process-map', 'equipment-filter']}
+                fetchPage={fetchEquipments}
+                onChange={(equipment) => {
+                  leaveSafely(() => {
+                    apply({ equipment }, true);
+                  });
+                }}
+              />
+            </div>
+            <div className="terminal-map-filter-field">
+              <PagedSelectField
+                label={t.filters.warehouse}
+                emptyLabel={t.filters.all}
+                value={filters.warehouse}
+                valueLabel={warehouseFilterLabel}
+                queryKey={['terminal-process-map', 'warehouse-filter']}
+                fetchPage={fetchWarehouses}
+                onChange={(warehouse) => {
+                  leaveSafely(() => {
+                    apply({ warehouse }, true);
+                  });
+                }}
+              />
+            </div>
+            <SearchInput
+              containerClassName="users-roles-search-input terminal-map-search-input"
+              label={t.filters.search}
+              value={search}
+              placeholder={t.filters.searchPlaceholder}
+              onChange={(event) => {
+                setSearch(event.target.value);
+              }}
+              onSearch={(value) => {
+                leaveSafely(() => {
+                  apply({ q: value }, true);
+                });
+              }}
+              clearLabel={messages.common.clear}
+            />
+            {/* 해제 축이라 누르는 즉시 적용한다. */}
+            <div className="field-cell field-cell-unlabeled">
+              <Checkbox
+                checked={filters.includeInactive}
+                onChange={(event) => {
+                  const includeInactive = event.target.checked;
+                  leaveSafely(() => {
+                    apply({ includeInactive }, true);
+                  });
+                }}
+              >
+                {t.filters.includeInactive}
+              </Checkbox>
+            </div>
+            {/* 조회와 초기화는 짝이라 함께 둔다. 초기화는 늘 보인다(사용자 지시 2026-11-20 · #333). */}
+            <div className="filter-actions field-cell-unlabeled">
+              <Button
+                onClick={() => {
+                  leaveSafely(() => {
+                    apply({ q: search }, true);
+                  });
+                }}
+              >
+                {t.filters.apply}
+              </Button>
               <Button
                 variant="outlined"
-                disabled={replace.isSaving || !isDirty(grid, original)}
                 onClick={() => {
-                  setGrid(original);
-                  setGridNotice(null);
-                  replace.reset();
+                  leaveSafely(() => {
+                    setSearch('');
+                    setSearchParams(
+                      toSearchParams({ ...EMPTY_FILTERS, size: filters.size }, selectedId),
+                    );
+                  });
                 }}
               >
-                {t.grid.reset}
-              </Button>
-              <Button
-                disabled={!canSaveGrid || !isDirty(grid, original)}
-                onClick={() => {
-                  sentProcessIds.current = grid.map((row) => row.processId);
-                  setEditedSinceSave(new Set());
-                  replace.write(toReplaceBody(grid));
-                }}
-              >
-                {t.grid.save}
+                {t.filters.clear}
               </Button>
             </div>
-          </>
-        )}
-      </section>
+            <Button
+              className="users-roles-add-user"
+              leadingIcon={<Icon name="add" size={18} />}
+              onClick={openCreate}
+            >
+              {t.terminal.create}
+            </Button>
+          </div>
+        </section>
+
+        <div
+          ref={splitRef}
+          className={`po-board-split inspection-split users-roles-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+          style={{ ...split.style, ...layout.style }}
+          data-left-collapsed={split.collapsed ? 'true' : undefined}
+        >
+          <section className="pane users-roles-list-pane" aria-label={t.panes.list}>
+            <div className="users-roles-list-body">{listSlot()}</div>
+            {terminals.data !== undefined && (
+              <PageNav<ListPageSize>
+                meta={terminals.data.page}
+                sizes={LIST_PAGE_SIZES}
+                buttonSize="md"
+                onChangePage={(page) => {
+                  leaveSafely(() => {
+                    apply({ page }, true);
+                  });
+                }}
+                onChangeSize={(size) => {
+                  leaveSafely(() => {
+                    apply({ size }, true);
+                  });
+                }}
+              />
+            )}
+          </section>
+
+          <PaneSplitter
+            label={messages.common.inspectionHub.splitter}
+            ratio={split.ratio}
+            onChange={split.commit}
+            collapse={listCollapse}
+          />
+          {layout.orientation === 'column' && (
+            <PaneHeightSplitter
+              label={messages.common.inspectionHub.heightSplitter}
+              height={layout.listHeight}
+              onChange={layout.changeListHeight}
+              collapse={listCollapse}
+            />
+          )}
+
+          <section
+            className="pane users-roles-settings terminal-map-settings"
+            aria-label={t.panes.settings}
+          >
+            {renderSettings()}
+          </section>
+        </div>
+      </div>
+
+      {/* 단말 추가 · 수정은 팝업(사용자 · 역할 추가와 같다 · #333). 고르던 단말과 기능 구성은 그대로 남는다. */}
+      <Dialog
+        open={formMode !== 'closed'}
+        size="lg"
+        title={formMode === 'create' ? t.terminal.create : t.terminal.edit}
+        className="terminal-map-form-dialog"
+        closeOnBackdropClick={false}
+        /* 닫기는 [취소] 하나(사용자 지시 2026-11-20 · #333). */
+        showCloseButton={false}
+        onClose={() => {
+          setFormMode('closed');
+        }}
+      >
+        <TerminalForm
+          draft={terminalDraft}
+          errors={terminalErrors}
+          isNew={formMode === 'create'}
+          isSaving={create.isSaving || update.isSaving}
+          saveError={formMode === 'create' ? create.error : update.error}
+          fieldErrors={formMode === 'create' ? create.fieldErrors : update.fieldErrors}
+          plants={plants}
+          codeNames={codeNames}
+          onChange={(patch) => {
+            setTerminalDraft((prev) => ({ ...prev, ...patch }));
+            /* 고친 칸의 「비었다」 오류는 바로 지운다 — 다 채웠는데 빨간 문구가 남지 않게(#333). */
+            setTerminalErrors((prev) =>
+              Object.fromEntries(Object.entries(prev).filter(([key]) => !(key in patch))),
+            );
+          }}
+          onSubmit={submitTerminal}
+          onCancel={() => {
+            setFormMode('closed');
+          }}
+        />
+      </Dialog>
 
       <TokenDialog
         token={token}
@@ -650,8 +948,10 @@ export const TerminalProcessMapScreen = () => {
         }}
       />
 
+      {/* 사용 중지 — 사용자 · 역할 사용 중지 창과 같은 모양(대상 · 질문 · 경고 · #333). */}
       <Dialog
         open={isDeactivating}
+        size="md"
         onClose={() => {
           setDeactivating(false);
         }}
@@ -670,6 +970,7 @@ export const TerminalProcessMapScreen = () => {
               {t.terminal.cancel}
             </Button>
             <Button
+              loading={deactivate.isSaving}
               disabled={deactivate.isSaving}
               onClick={() => {
                 deactivate.write({});
@@ -680,8 +981,41 @@ export const TerminalProcessMapScreen = () => {
           </>
         }
       >
-        <p className="dialog-lead">{t.terminal.deactivateLead}</p>
+        <div className="users-roles-worker-dialog">
+          {selected !== null && (
+            <div className="users-roles-worker-block">
+              <span className="users-roles-worker-block-caption">
+                {t.terminal.deactivateCaption}
+              </span>
+              <strong>{selected.terminalCode}</strong>
+              <span>{t.terminal.deactivateMeta(codeNames.type(selected.terminalTypeCode))}</span>
+            </div>
+          )}
+          <p>{t.terminal.deactivateQuestion}</p>
+          <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+            <Icon name="warning" size={16} aria-hidden />
+            {t.terminal.deactivateLead}
+          </p>
+        </div>
       </Dialog>
+
+      {/* 저장하지 않은 기능 구성 — 다른 화면과 같은 나가기 확인 창(시안 문구 · 사용자 지시 2026-11-20 · #333). */}
+      {pendingLeave !== null && (
+        <DiscardDialog
+          title={t.discard.title}
+          body={t.discard.body}
+          showCloseButton={false}
+          onStay={() => {
+            setPendingLeave(null);
+          }}
+          onLeave={() => {
+            const action = pendingLeave;
+            setPendingLeave(null);
+            resetGrid();
+            action();
+          }}
+        />
+      )}
     </>
   );
 };

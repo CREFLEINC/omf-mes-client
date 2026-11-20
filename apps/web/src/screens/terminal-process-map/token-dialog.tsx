@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Dialog } from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { QrCode } from '@omf-mes/ui';
 import { useEffect, useState } from 'react';
@@ -19,11 +19,12 @@ export interface TokenDialogProps {
  * - `denied` 브라우저가 권한을 거부했다 → 권한 확인
  * - `failed` 그 밖의 실패 → 다시 시도하거나 QR 로 전달
  */
-type CopyResult = 'copied' | 'unavailable' | 'denied' | 'failed';
+type CopyResult = 'unavailable' | 'denied' | 'failed';
 
 /** 발급한 실제 JWT를 QR 또는 클립보드로 기기에 전달한다. 원문을 화면에 렌더링하지 않는다. */
 export const TokenDialog = ({ token, terminalCode, onClose }: TokenDialogProps) => {
   const [copyResult, setCopyResult] = useState<CopyResult | null>(null);
+  const toast = useToast();
 
   useEffect(() => {
     setCopyResult(null);
@@ -41,7 +42,9 @@ export const TokenDialog = ({ token, terminalCode, onClose }: TokenDialogProps) 
     }
     try {
       await navigator.clipboard.writeText(token.token);
-      setCopyResult('copied');
+      setCopyResult(null);
+      /* 성공은 창 안 문구가 아니라 오른쪽 아래 알림으로(사용자 지시 2026-11-20 · #333). */
+      toast.show({ variant: 'success', description: t.token.copied });
     } catch (error) {
       setCopyResult(
         error instanceof DOMException && error.name === 'NotAllowedError' ? 'denied' : 'failed',
@@ -54,18 +57,27 @@ export const TokenDialog = ({ token, terminalCode, onClose }: TokenDialogProps) 
       open={token !== null}
       onClose={onClose}
       title={t.token.title}
+      className="terminal-map-token-dialog"
+      /* 시안대로(사용자 지시 2026-11-20 · #333) — 오른쪽 위 X 없이 [닫기]로만 닫는다. */
+      showCloseButton={false}
+      closeOnBackdropClick={false}
       footer={<Button onClick={onClose}>{t.token.close}</Button>}
     >
       {token !== null && (
         <>
-          <p className="dialog-lead">{t.token.lead}</p>
+          {/* 시안 — 가운데 한 줄 안내 · QR · 복사 단추와 붙여넣기 안내 · 구분선 아래 발급 · 만료 일시. */}
+          <p className="terminal-map-token-lead">{t.token.lead}</p>
           <div className="token-figure">
             <QrCode value={token.token} label={`${terminalCode} ${t.token.imageLabel}`} />
           </div>
-          <Button variant="outlined" onClick={() => void copyCode()}>
+          <Button
+            variant="outlined"
+            className="terminal-map-token-copy"
+            onClick={() => void copyCode()}
+          >
             {t.token.copy}
           </Button>
-          {copyResult === 'copied' ? <p role="status">{t.token.copied}</p> : null}
+          <p className="field-note terminal-map-token-hint">{t.token.textOmitted}</p>
           {copyResult === 'unavailable' ? (
             <AlertBanner className="terminal-map-notice" variant="warning">
               {t.token.copyUnavailable}
@@ -81,15 +93,12 @@ export const TokenDialog = ({ token, terminalCode, onClose }: TokenDialogProps) 
               {t.token.copyFailed}
             </AlertBanner>
           ) : null}
-          <dl className="token-meta">
+          <dl className="token-meta terminal-map-token-meta">
             <dt>{t.token.issuedAt}</dt>
             <dd>{formatMoment(token.issuedAt)}</dd>
             <dt>{t.token.expiresAt}</dt>
             <dd>{token.expiresAt === null ? t.token.noExpiry : formatMoment(token.expiresAt)}</dd>
           </dl>
-          <AlertBanner className="terminal-map-notice" variant="warning">
-            {t.token.reissueWarning}
-          </AlertBanner>
         </>
       )}
     </Dialog>
