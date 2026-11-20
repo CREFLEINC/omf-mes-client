@@ -230,4 +230,10 @@ export const popOqcInspection = {
       },
     },
   },
+  /** 피처 012 US3-5 — 피킹 LOT 의 라인 · 출고 창고 · 공장. 사업부 안 어느 POP 에서나 결과를 넣는다. */
+  bu012: {
+    lotPlace: (lineNo: number, warehouse: string, plant: string): string =>
+      `라인 ${String(lineNo)}, ${warehouse} (${plant})`,
+    lotLineOnly: (lineNo: number): string => `라인 ${String(lineNo)}, 창고 미지정`,
+  },
 };

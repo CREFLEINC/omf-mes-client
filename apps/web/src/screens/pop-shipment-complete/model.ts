@@ -218,7 +218,7 @@ const codesOf = (error: ApiError): string[] => {
   }
 };
 
-export type LookupFailure = 'notCode' | 'notFound' | 'failed';
+export type LookupFailure = 'notCode' | 'notFound' | 'otherBusinessUnit' | 'failed';
 
 /**
  * 지시서 코드 해석(`:lookup`)의 실패. 400 `NOT_SHIPMENT_REQUEST_CODE` 는 LOT 라벨 같은 다른 바코드,
@@ -228,6 +228,8 @@ export const lookupFailureOf = (error: ApiError): LookupFailure => {
   const codes = codesOf(error);
   if (codes.includes('NOT_SHIPMENT_REQUEST_CODE')) return 'notCode';
   if (codes.includes('SHIPMENT_REQUEST_NOT_FOUND')) return 'notFound';
+  /* 피처 012 FR-013 · US3-1 — 다른 사업부의 지시서(403). 지시서 내용 · 상대 사업부 이름은 오지 않는다. */
+  if (codes.includes('BUSINESS_UNIT_MISMATCH')) return 'otherBusinessUnit';
   return 'failed';
 };
 

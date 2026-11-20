@@ -34,9 +34,17 @@ const targetOf = (completion: Completion, group: BlockerGroup): string => {
   const lines = group.lineNos.map((lineNo) => {
     const line = completion.lines.find((candidate) => candidate.lineNo === lineNo);
     if (line === undefined) return t.blockers.lineOnly(lineNo);
-    return group.code === 'PICKING_SHORT'
+    if (group.code !== 'PICKING_SHORT') return `${t.blockers.lineOnly(lineNo)} ${line.itemCode}`;
+    /* 피처 012 US3-3 — 피킹 부족 라인에 출고 창고를 붙인다(「라인 2(완제품창고 B (2공장))」). 옛 라인은 그대로. */
+    return line.warehouse === null || line.warehouse === undefined
       ? t.blockers.line(lineNo, line.itemCode, formatQty(line.pickedQty), formatQty(line.targetQty))
-      : `${t.blockers.lineOnly(lineNo)} ${line.itemCode}`;
+      : t.bu012.pickingShortLine(
+          lineNo,
+          line.itemCode,
+          t.bu012.warehouse(line.warehouse.warehouseName, line.warehouse.plantName),
+          formatQty(line.pickedQty),
+          formatQty(line.targetQty),
+        );
   });
 
   return [...lines, ...group.lotNos].join(', ');
@@ -104,6 +112,11 @@ export const ConfirmView = ({ completion, via }: ConfirmViewProps) => {
           </span>
         </div>
         <dl className="pop-ship-head__facts">
+          {/* 피처 012 — 지시서 사업부. 사업부 안 어느 POP 에서나 연다(FR-013). 없으면 「사업부 미지정」(빈 곳 ⑨). */}
+          <div>
+            <dt>{t.bu012.businessUnit}</dt>
+            <dd>{completion.businessUnit?.businessUnitName ?? t.bu012.noBusinessUnit}</dd>
+          </div>
           <div>
             <dt>{t.head.customer}</dt>
             <dd>
@@ -136,7 +149,12 @@ export const ConfirmView = ({ completion, via }: ConfirmViewProps) => {
                   {targetOf(completion, group) !== '' && (
                     <span className="pop-ship-blocker__target">{targetOf(completion, group)}</span>
                   )}
-                  <span className="pop-ship-blocker__hint">{t.blockers[group.code].hint}</span>
+                  <span className="pop-ship-blocker__hint">
+                    {group.code === 'PICKING_SHORT' &&
+                    completion.lines.some((line) => line.warehouse !== null && line.warehouse !== undefined)
+                      ? t.bu012.pickingShortHint
+                      : t.blockers[group.code].hint}
+                  </span>
                 </span>
               </li>
             ))}
@@ -155,6 +173,7 @@ export const ConfirmView = ({ completion, via }: ConfirmViewProps) => {
                   <th scope="col">{t.lines.columns.lineNo}</th>
                   <th scope="col">{t.lines.columns.itemCode}</th>
                   <th scope="col">{t.lines.columns.itemName}</th>
+                  <th scope="col">{t.bu012.warehouseColumn}</th>
                   <th scope="col" className="pop-ship-num">
                     {t.lines.columns.target}
                   </th>
@@ -181,6 +200,11 @@ export const ConfirmView = ({ completion, via }: ConfirmViewProps) => {
                     <td className="pop-ship-code">{line.itemCode}</td>
                     <td className="pop-ship-name" title={line.itemName}>
                       {line.itemName}
+                    </td>
+                    <td>
+                      {line.warehouse === null || line.warehouse === undefined
+                        ? t.bu012.warehouseUnassigned
+                        : t.bu012.warehouse(line.warehouse.warehouseName, line.warehouse.plantName)}
                     </td>
                     <td className="pop-ship-num">{formatQty(line.targetQty)}</td>
                     <td className="pop-ship-num">{formatQty(line.pickedQty)}</td>
@@ -209,6 +233,16 @@ export const ConfirmView = ({ completion, via }: ConfirmViewProps) => {
                     </span>
                     <span className="pop-ship-warehouse__qty">
                       {t.warehouses.entry(warehouse.lotCount, qtyWithUom(warehouse.qty, uom))}
+                    </span>
+                    {/* 피처 012 — 창고의 공장과 그 창고 몫 라인(시안 P0407-After ①). */}
+                    <span className="field-note">
+                      {t.bu012.warehouseLines(
+                        warehouse.plantName,
+                        completion.lines
+                          .filter((line) => line.warehouse?.warehouseId === warehouse.warehouseId)
+                          .map((line) => String(line.lineNo))
+                          .join(', ') || '—',
+                      )}
                     </span>
                   </li>
                 ))}

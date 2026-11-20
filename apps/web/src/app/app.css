@@ -37110,3 +37110,46 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .sr-split-totals .field-note {
   max-width: none;
 }
+
+/* W-04-02 ERP 송신 칩 · 「출하」 칸(피처 012 · 시안 W0402-After ③④) — 출하 내역(W-04-12) 상세를 옮겼다. */
+.shipment-schedule-erp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+}
+
+.shipment-schedule-warehouses {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.shipment-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-inline-start: 3px solid var(--semantic-info);
+  border-radius: var(--radius-md);
+}
+
+.shipment-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.shipment-card + .shipment-card {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+/* P-04-07 완료 결과의 창고별 출고 전표(피처 012 FR-014). */
+.pop-ship-goods-issues {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

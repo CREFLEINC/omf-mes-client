@@ -129,6 +129,16 @@ export const PopShipmentCompleteScreen = () => {
       },
       onError: (error) => {
         const reason = lookupFailureOf(toApiError(error));
+
+        if (reason === 'otherBusinessUnit') {
+          setNotice({
+            tone: 'error',
+            text: t.bu012.otherBusinessUnit,
+            detail: t.bu012.otherBusinessUnitDetail,
+          });
+          return;
+        }
+
         const text =
           via === 'direct' && reason !== 'failed'
             ? t.scan.directNotFound(typed ?? code)

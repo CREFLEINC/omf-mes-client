@@ -204,4 +204,9 @@ export const popOqcInspection = {
       },
     },
   },
+  bu012: {
+    lotPlace: (lineNo: number, warehouse: string, plant: string): string =>
+      `Dòng ${String(lineNo)}, ${warehouse} (${plant})`,
+    lotLineOnly: (lineNo: number): string => `Dòng ${String(lineNo)}, chưa chỉ định kho`,
+  },
 };

@@ -111,6 +111,21 @@ export const ResultView = ({ result, workerNo }: ResultViewProps) => {
             )}
           </dd>
         </div>
+        {/* 피처 012 FR-014 — 창고마다 출고 전표 하나(번호 · 창고 · 공장). */}
+        {(result.goodsIssues ?? []).length > 0 && (
+          <div>
+            <dt>{t.bu012.goodsIssues}</dt>
+            <dd>
+              <ul className="pop-ship-goods-issues">
+                {(result.goodsIssues ?? []).map((issue) => (
+                  <li key={issue.goodsIssueNo}>
+                    {t.bu012.goodsIssue(issue.goodsIssueNo, issue.warehouseName, issue.plantName)}
+                  </li>
+                ))}
+              </ul>
+            </dd>
+          </div>
+        )}
         {result.completion.warehouses.length > 0 && (
           <div>
             <dt>{t.result.warehouses}</dt>

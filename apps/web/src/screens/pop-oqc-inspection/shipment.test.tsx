@@ -13,6 +13,7 @@ import {
   shipmentRequestForOqc,
   shipmentResult,
 } from '../oqc-inspection/shipment-oqc-fixtures';
+import { toShipmentRequestRef } from '../oqc-inspection/shipment-oqc-queries';
 import type { InspectionRequestResponse } from '../oqc-inspection/types';
 import { PopOqcInspectionScreen } from './screen';
 
@@ -326,5 +327,37 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     expect(screen.getByRole('button', { name: ps.bar.save })).toBeDisabled();
     expect(screen.getByText(pop.bar.blocked.worker)).toBeInTheDocument();
     expect(saves).toHaveLength(0);
+  });
+});
+
+/* ── 피처 012 US3-5 — 피킹 LOT 에 라인 · 출고 창고 · 공장 ─────────────────────────── */
+
+describe('P-04-06 — 피처 012 LOT 의 출고 창고', () => {
+  it('US3-5 같은 품목이 창고별 라인으로 나뉘어도 LOT 마다 라인 · 창고 · 공장을 안다', () => {
+    const base = shipmentRequestForOqc();
+    const [line] = base.lines ?? [];
+    const request = {
+      ...base,
+      lines: [
+        {
+          ...line,
+          warehouse: { warehouseId: 11, warehouseCode: 'WH-A', warehouseName: '창고A', plantId: 1, plantName: '1공장' },
+        },
+      ],
+    } as typeof base;
+    const firstLot = line?.lots[0];
+    const ref = toShipmentRequestRef(request, line?.itemId ?? 0, { customer: null, shipTo: null });
+
+    expect(ref.lotPlaceOf(firstLot?.lotId ?? 0)).toEqual({ lineNo: 1, warehouseName: '창고A', plantName: '1공장' });
+    expect(pop.bu012.lotPlace(1, '창고A', '1공장')).toBe('라인 1, 창고A (1공장)');
+  });
+
+  it('US3-5·US6-1 화면의 피킹 LOT 줄에 라인과 출고 창고(옛 라인은 「창고 미지정」)가 보인다', async () => {
+    const user = userEvent.setup();
+    renderPop();
+
+    await openRequest(user);
+
+    expect((await screen.findAllByText(pop.bu012.lotLineOnly(1))).length).toBeGreaterThan(0);
   });
 });

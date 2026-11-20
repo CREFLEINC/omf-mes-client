@@ -263,6 +263,14 @@ const LotLine = ({
   uom: string;
 }) => {
   const portions = portionsText(refData?.lotOf(view.lot.lotId) ?? null, ps.staging);
+  /* 피처 012 US3-5 — 그 LOT 의 라인 · 출고 창고 · 공장(사업부 안 다른 공장 창고 LOT 도 이 POP 에서 본다). */
+  const place = refData?.lotPlaceOf(view.lot.lotId) ?? null;
+  const placeText =
+    place === null
+      ? ''
+      : place.warehouseName === null || place.plantName === null
+        ? messages.popOqcInspection.bu012.lotLineOnly(place.lineNo)
+        : messages.popOqcInspection.bu012.lotPlace(place.lineNo, place.warehouseName, place.plantName);
 
   return (
     <li className="pop-oqc-shipment-lot">
@@ -283,6 +291,7 @@ const LotLine = ({
           <span className="pop-oqc-shipment-muted">{s.lots.replaceHint}</span>
         ) : null}
       </span>
+      {placeText === '' ? null : <span className="pop-oqc-shipment-muted">{placeText}</span>}
       {portions === '' ? null : <span className="pop-oqc-shipment-muted">{portions}</span>}
     </li>
   );

@@ -175,6 +175,8 @@ export const SearchDialog = ({ onClose, onPick }: SearchDialogProps) => {
         <span className="pop-ship-search-count">{t.count(search.data?.page.total ?? 0)}</span>
       </form>
       <p className="field-note">{t.note}</p>
+      {/* 피처 012 FR-013 · US3-4 — 찾기는 이 POP 사업부 범위다. 다른 공장 창고 지시서가 나오는 까닭을 알린다. */}
+      <p className="field-note">{messages.popShipmentComplete.bu012.searchScope}</p>
       {body}
       {/* POP 쪽 넘김은 공통 `PuPager` 로 옮겼다(#295) — 건수는 위 칸이 이미 보인다. */}
       <PuPager

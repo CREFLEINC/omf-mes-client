@@ -157,7 +157,7 @@ export const popShipmentComplete = {
       `${qty}, 라인 ${String(lineCount)}, LOT ${String(lotCount)}${over === null ? '' : ` (초과 ${over} 포함)`}`,
     warehouses: '재고 차감',
     warehouseValue: (name: string, qty: string): string => `${name} ${qty}`,
-    cancelHint: '잘못 나갔으면 관리웹 출하 내역(W-04-12)에서 취소를 상신하세요.',
+    cancelHint: '잘못 나갔으면 관리웹 출하 예정 목록(W-04-02)에서 취소를 요청하세요.',
   },
 
   already: {
@@ -167,7 +167,7 @@ export const popShipmentComplete = {
     shipmentNo: '출하 번호',
     request: '출하 지시서',
     completedAt: '완료',
-    historyHint: '내역과 취소는 관리웹 출하 내역(W-04-12)에서 합니다.',
+    historyHint: 'ERP 송신 상태와 취소는 관리웹 출하 예정 목록(W-04-02)에서 봅니다.',
   },
 
   search: {
@@ -237,6 +237,26 @@ export const popShipmentComplete = {
     completing: '완료하는 중…',
   },
 
+  /** 피처 012 — 사업부 범위 · 줄 출고 창고 · 창고별 출고 전표(시안 P0407-After). */
+  bu012: {
+    businessUnit: '사업부',
+    noBusinessUnit: '사업부 미지정',
+    warehouseColumn: '출고 창고',
+    warehouseUnassigned: '창고 미지정',
+    warehouse: (warehouse: string, plant: string): string => `${warehouse} (${plant})`,
+    /** 「재고가 빠질 창고」 줄의 공장과 라인(시안 「1공장, 라인 1, 3」). */
+    warehouseLines: (plant: string, lines: string): string => `${plant}, 라인 ${lines}`,
+    /** 403 BUSINESS_UNIT_MISMATCH — 지시서 내용 · 상대 사업부 이름은 보이지 않는다(US3-1). */
+    otherBusinessUnit: '다른 사업부의 출하 지시서입니다',
+    otherBusinessUnitDetail: '이 POP 사업부의 지시서가 아닙니다. 지시서 사업부의 POP 에서 완료하세요.',
+    /** 피킹 부족 라인에 창고를 붙인다(US3-3). */
+    pickingShortLine: (lineNo: number, itemCode: string, warehouse: string, picked: string, target: string): string =>
+      `라인 ${String(lineNo)}(${warehouse}) ${itemCode}, 피킹 ${picked} / 목표 ${target}`,
+    pickingShortHint: '그 창고 공장의 PDA 「제품 피킹」에서 그 창고의 LOT 을 스캔하세요. 부분 완료는 없습니다.',
+    searchScope: '이 POP 사업부의 지시서를 찾습니다. 다른 공장 창고 라인이 있어도 여기서 완료할 수 있습니다.',
+    goodsIssues: '창고별 출고 전표',
+    goodsIssue: (no: string, warehouse: string, plant: string): string => `${no} ${warehouse} (${plant})`,
+  },
   failure: {
     /* 409 ALREADY_COMPLETED 인데 다시 읽어도 완료되지 않은 지시서(검증 1회차 F-3) — 아무 말 없이 두지 않는다. */
     alreadyNotDone:
