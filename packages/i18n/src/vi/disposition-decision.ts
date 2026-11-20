@@ -128,7 +128,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     request: 'Yêu cầu đặc cách',
     requesting: 'Đang yêu cầu…',
     apply: 'Áp dụng đặc cách',
-    applyWaiting: 'Phải phê duyệt xong (W-03-09) mới áp dụng được',
+    applyWaiting: 'Phải phê duyệt xong mới áp dụng được',
     applying: 'Đang áp dụng…',
     qty: 'Số lượng yêu cầu đặc cách',
     validFrom: 'Ngày bắt đầu áp dụng',
@@ -200,7 +200,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
       REWORK: 'Chờ kiểm tra (làm lại) — mở lại IQC',
     } as Record<string, string | undefined>,
     reworkReopened: (inboundLotNo: string): string =>
-      `Kiểm tra ${inboundLotNo} đã được mở lại ở W-01-01 với trạng thái 「Đang kiểm tra」.`,
+      `Kiểm tra ${inboundLotNo} đã được mở lại ở Tra cứu · đánh giá kiểm tra với trạng thái 「Đang kiểm tra」.`,
     qtyExceededByServer: (remaining: string): string =>
       `Tổng số lượng quyết định xử lý vượt số lượng còn lại (${remaining}) nên chưa được lưu. Hãy tải lại mục không phù hợp rồi lưu`,
     alreadyClosed: 'Mục không phù hợp này đã kết thúc. Không lưu được đánh giá',

@@ -83,7 +83,6 @@ export const poChangeReview: Translated<typeof ko.poChangeReview> = {
     apply: 'Áp dụng thay đổi — điều chỉnh số lượng W/O',
     proceed: 'Giữ nguyên (tiếp tục) — để lại chỗ không khớp và đi tiếp',
     reasonLabel: 'Lý do',
-    reasonHelp: 'Nếu tiếp tục thì cần lý do. Sau này đó là căn cứ cho quyết định này.',
     reasonRequired: 'Hãy nhập lý do tiếp tục',
     reasonTooLong: 'Lý do quá dài. Hãy nhập tối đa 500 ký tự',
     proceedNote: 'Nếu tiếp tục, dấu không khớp với P/O sẽ lưu lại trên các W/O bị ảnh hưởng.',

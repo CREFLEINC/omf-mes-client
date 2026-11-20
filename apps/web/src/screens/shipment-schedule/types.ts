@@ -91,6 +91,12 @@ export interface ShipmentRequestView {
   blockerCount: number | null;
   pickingWarehouseNames: string[];
   replacementCount: number;
+  /** 피처 012 — 지시서 사업부. `null` 이면 사업부가 없는 공장의 옛 지시서(「사업부 미지정」 · 빈 곳 ⑨). */
+  businessUnitName: string | null;
+  /** 피처 012 — 줄 출고 창고 요약(창고 · 공장). 빈 배열이면 옛 지시서(「창고 미지정」 · US6-1). */
+  lineWarehouses: { warehouseId: number; warehouseName: string; plantName: string }[];
+  /** 피처 012 — 대표 ERP 송신 상태(취소 안 된 출하 중 최근 것). 완료 출하가 없으면 `null`(FR-018). */
+  erpSendStatus: ShipmentRequestResponse['erpSendStatus'];
 }
 
 /** 응답 한 건을 화면 타입으로 옮기는 **유일한 지점**이다. */
@@ -112,13 +118,34 @@ export const toShipmentRequestView = (data: ShipmentRequestResponse): ShipmentRe
   blockerCount: data.completionBlockers === undefined ? null : data.completionBlockers.length,
   pickingWarehouseNames: (data.pickingWarehouses ?? []).map((warehouse) => warehouse.warehouseName),
   replacementCount: data.replacementCount ?? 0,
+  businessUnitName: data.businessUnit?.businessUnitName ?? null,
+  lineWarehouses: (data.warehouses ?? []).map((warehouse) => ({
+    warehouseId: warehouse.warehouseId,
+    warehouseName: warehouse.warehouseName,
+    plantName: warehouse.plantName,
+  })),
+  erpSendStatus: data.erpSendStatus ?? null,
 });
 
 /** 목록 조회 결과. `page`는 쪽 이동과 위치 표시의 정본이다. */
 export interface ShipmentScheduleListResult {
   items: ShipmentRequestView[];
   page: PageMeta;
+  /** 피처 012 — ERP 송신 상태별 지시서 수(칩 · FR-018). 0 건 상태는 키가 없다. */
+  erpSendStatusCounts: Readonly<Record<string, number>>;
 }
+
+/** ERP 송신 칩 값(피처 012 FR-018 · 빈 곳 ②). 「확정 전」 = 옛 흐름 · 긴급 직행 미확정. */
+export type ErpChipValue = NonNullable<ShipmentRequestResponse['erpSendStatus']>;
+
+export const ERP_CHIP_VALUES: readonly ErpChipValue[] = [
+  'NOT_QUEUED',
+  'PENDING',
+  'SENT',
+  'SEND_ERROR',
+  'NOT_SENT_NO_SALES_ORDER',
+  'CANCELLED',
+];
 
 export interface LookupEntry {
   value: string;

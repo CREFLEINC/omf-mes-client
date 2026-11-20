@@ -564,8 +564,6 @@
   background: var(--surface-container);
 }
 
-
-
 .proposal-manual-workspace {
   display: grid;
   gap: var(--space-4);
@@ -607,4 +605,11 @@
   flex-wrap: wrap;
   max-width: 100%;
   min-width: 0;
+}
+
+/* 제목 + ⓘ(patterns/info-tip.tsx) — 아이콘을 제목 줄 가운데에 맞춘다. */
+.proposal-review-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
 }

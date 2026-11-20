@@ -85,8 +85,9 @@ export const ReceiptLines = ({
                     <FitName
                       className="receipt-lines__name"
                       text={item.itemName}
-                      min={8}
+                      min={7}
                       lines={1}
+                      whole
                     />
                     <span className="receipt-lines__lot">{lotNo}</span>
                   </button>

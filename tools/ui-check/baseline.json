@@ -493,18 +493,6 @@
       "n": 1,
       "text": "가운뎃점: {row.isActive ? '' : ` · ${t.inactive}`}"
     },
-    "C-13|apps/web/src/patterns/pop-dev-screen-nav.tsx|23a123d9cd83": {
-      "n": 1,
-      "text": "가운뎃점: label: 'P-02-09 포장 라벨·인식표 재출력',"
-    },
-    "C-13|apps/web/src/patterns/pop-dev-screen-nav.tsx|2829c1c445ab": {
-      "n": 1,
-      "text": "가운뎃점: label: 'P-02-04 생산 실적·라벨·LOT 마감',"
-    },
-    "C-13|apps/web/src/patterns/pop-dev-screen-nav.tsx|b67bc924eb03": {
-      "n": 1,
-      "text": "가운뎃점: { path: '/pop/material-lot-label', label: 'P-01-01 자재LOT 등록·라벨' },"
-    },
     "C-13|apps/web/src/patterns/pop-screen-catalog.ts|d698551fc8ab": {
       "n": 1,
       "text": "가운뎃점: { path: '/pop/material-lot-label', code: 'P-01-01', name: '자재LOT 등록·라벨 발행' },"

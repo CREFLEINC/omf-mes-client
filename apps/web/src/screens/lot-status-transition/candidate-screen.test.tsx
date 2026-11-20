@@ -434,7 +434,9 @@ describe('Lot Status 전이 후보', () => {
     const row = (await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' })).closest('tr');
     if (row === null) throw new Error('후보 행이 없습니다.');
 
-    expect(await within(row).findByText('SYN-ITEM-51 · 합성 51번째 자재')).toBeVisible();
+    /* 품목은 코드 · 이름 두 칸이다(#1728). */
+    expect(await within(row).findByText('합성 51번째 자재')).toBeVisible();
+    expect(within(row).getByText('SYN-ITEM-51')).toBeVisible();
     expect(within(row).queryByText('알 수 없음')).not.toBeInTheDocument();
   });
 

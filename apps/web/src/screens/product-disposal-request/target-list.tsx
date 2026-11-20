@@ -1,11 +1,4 @@
-import {
-  AlertBanner,
-  Checkbox,
-  type Column,
-  EmptyState,
-  SkeletonText,
-  Table,
-} from '@crefle/web-ui';
+import { Checkbox, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -133,14 +126,7 @@ export const TargetList = ({
 
   return (
     <>
-      {/*
-       * A-11 — 좁히지 못한다는 사실과 판정이 선행이라는 사실을 «둘 다» 적는다. 앞은 지금 보이는
-       * 것에 대한 말이고, 뒤는 안 보이는 것에 대한 말이다.
-       */}
-      {/* §5-2 — 판정이 선행이라는 사실을 적는다. 목록에 없는 것에 대한 말이라 목록 위에 선다. */}
-      <div className="banner-slot">
-        <AlertBanner variant="info">{t.targets.judgmentRequired}</AlertBanner>
-      </div>
+      {/* §5-2 — 판정이 선행이라는 사실은 「폐기 대상」 제목 옆 ⓘ 로 둔다(`screen.tsx` · 관리웹 정리 시안 A). */}
       <Table
         density="compact"
         columns={columns}

@@ -38,14 +38,12 @@ describe('WorkOrderProgressScreen', () => {
     expect(await listUrl(urls)).toContain('withProgress=true');
   });
 
-  describe('요약', () => {
-    /* L-1 — 서버가 센 「전체」다. 화면이 페이지를 받아 센 수가 아니다. */
+  describe('전체 건수', () => {
+    /* L-1 — 서버가 센 「전체」다. 요약 상자 대신 쪽 이동이 「128건 중 …」으로 보인다(관리웹 정리 시안 A). */
     it('필터 전체 건수를 서버가 준 값으로 보인다', async () => {
       renderScreen({ total: 128 });
 
-      await waitFor(() => {
-        expect(screen.getByRole('group', { name: t.summary.total })).toHaveTextContent('128');
-      });
+      expect(await screen.findByText(/^128건 중/)).toBeInTheDocument();
     });
   });
 

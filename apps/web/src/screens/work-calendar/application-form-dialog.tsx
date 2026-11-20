@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Dialog, Radio } from '@crefle/web-ui';
+import { Button, Dialog, Radio } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
@@ -95,14 +95,9 @@ export const ApplicationFormDialog = ({
           onChange={onChangeTarget}
           error={fieldErrors.targetId}
           placeholder={t.targetPlaceholder}
+          /* ⭐ 이미 다른 캘린더를 따르는 공장을 골라도 된다 — 서버가 한 번에 옮긴다. 그 뜻은 ⓘ 로(관리웹 정리 시안 A). */
+          info={targetTypeCode === TARGET_TYPES.plant ? t.plantMovesNote : undefined}
         />
-
-        {/* ⭐ 이미 다른 캘린더를 따르는 공장을 골라도 된다 — 서버가 한 번에 옮긴다. */}
-        {targetTypeCode === TARGET_TYPES.plant && (
-          <div className="form-grid-full">
-            <AlertBanner variant="info">{t.plantMovesNote}</AlertBanner>
-          </div>
-        )}
       </div>
     </Dialog>
   );

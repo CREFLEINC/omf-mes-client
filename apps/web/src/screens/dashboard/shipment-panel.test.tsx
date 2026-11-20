@@ -63,6 +63,8 @@ describe('ShipmentPanel — 2×2 요약 · 칸 이동(사용자 지시 2026-10-1
 
   it('이동 주소 — 확정(조건 없음) · 대기(가장 이른 대기 요청일~기준일) · 다음 출하(그날) · 지연(없음)', () => {
     expect(pathOf('today')).toBe(SHIPMENT_CONFIRM_PATH);
+    /* 피처 012 FR-023 — 출하 내역이 없어져 출하 예정 목록으로 간다. */
+    expect(SHIPMENT_CONFIRM_PATH).toBe('/shipment/shipment-schedule');
     expect(pathOf('waiting')).toBe(
       `${SHIPMENT_SCHEDULE_PATH}?shipDateFrom=2026-10-04&shipDateTo=2026-10-16`,
     );

@@ -13,6 +13,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import { reasonError, REASON_MAX, type DecisionCode, type DecisionDraft } from './decision';
 import {
@@ -301,7 +302,13 @@ export const WorkOrderPane = ({
 
   return (
     <section className="pane po-change-review-pane" aria-label={t.panes.workOrders}>
-      <h2>{t.panes.workOrders}</h2>
+      <h2 className="po-change-review-title">
+        {t.panes.workOrders}
+        {/* 조정 수량을 적는 법은 제목 옆 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
+        {hasSelection && !isError && !isLoading && showAdjustments && rows.length > 0 && (
+          <InfoTip text={t.workOrders.adjustHelp} />
+        )}
+      </h2>
       {!hasSelection ? (
         <EmptyState size="sm" title={t.diff.selectFirst} />
       ) : isError ? (
@@ -321,9 +328,6 @@ export const WorkOrderPane = ({
             getRowId={(row) => String(row.workOrderId)}
             empty={<EmptyState size="sm" title={t.workOrders.empty} />}
           />
-          {showAdjustments && rows.length > 0 && (
-            <p className="field-note">{t.workOrders.adjustHelp}</p>
-          )}
           {/* ⚠ 막지 않고 경고한다(A-9 ⓑ) — 반영이 업무적으로 옳을 수 있고 그것은 관리자가 안다. */}
           {overProduced.length > 0 && changedQty !== null && (
             <div className="banner-slot">
@@ -364,7 +368,11 @@ export const DecisionPane = ({ draft, showError, warnings, onChange }: DecisionP
 
   return (
     <section className="pane po-change-review-pane" aria-label={t.panes.decision}>
-      <h2>{t.panes.decision}</h2>
+      <h2 className="po-change-review-title">
+        {t.panes.decision}
+        {/* 중단·취소 반영 뒤 W/O 취소는 건별로 따로 한다는 것 — 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
+        <InfoTip text={t.withdrawn.cancelFollowUp} />
+      </h2>
 
       <div className="field-cell" role="group" aria-label={t.decision.label}>
         <span className="field-label" id={labelId}>
@@ -391,7 +399,6 @@ export const DecisionPane = ({ draft, showError, warnings, onChange }: DecisionP
             rows={3}
             maxLength={REASON_MAX}
             error={showError ? reasonError(draft) : undefined}
-            helperText={t.decision.reasonHelp}
             onChange={(event) => onChange({ reason: event.target.value })}
           />
           <div className="banner-slot">
@@ -405,9 +412,6 @@ export const DecisionPane = ({ draft, showError, warnings, onChange }: DecisionP
           <AlertBanner variant="warning">{t.decision.applyWithoutAdjustment}</AlertBanner>
         </div>
       )}
-
-      {/* A-11 — 이 화면에 두지 않은 것을 두지 않았다고 적는다. */}
-      <p className="field-note">{t.withdrawn.cancelFollowUp}</p>
     </section>
   );
 };

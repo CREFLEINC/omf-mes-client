@@ -2,6 +2,7 @@ import { Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
+import { InfoLabel, InfoTip } from '../../patterns/info-tip';
 import { decisionBlockedReason } from './decision-draft';
 import { DisabledAction } from './disabled-action';
 
@@ -30,21 +31,20 @@ export interface DecisionPaneProps {
  * 의견을 써야 하고, 확인 창은 「정말 보낼 것인가」만 묻는 자리로 남아야 한다.
  *
  * **입력칸은 하나뿐이다.** 승인이면 선택이고 반려면 필수라 라벨에 필수 표시를 붙이지 않는다 —
- * 붙이면 승인에는 거짓말이 된다. 어느 쪽에 무엇이 필요한지는 도움말과 반려 버튼의 사유가 말한다.
+ * 붙이면 승인에는 거짓말이 된다. 어느 쪽에 무엇이 필요한지는 라벨 옆 ⓘ 와 반려 버튼의 사유가 말한다.
  *
  * ---
  *
  * **《승인 시 결과》가 이 화면 고유의 것이다.**
  *
  * 화면 이름이 「긴급 IQC 생략 **한도승인**」이라 승인이 곧 검사 생략의 실행이나 입고 처리로
- * 읽히기 쉽다. 실제로 일어나는 것은 **요청 상태 변경 하나**뿐이다. 그래서 문장 하나짜리
- * 주석이 아니라 **구획**으로 세우고 세 문장을 나눠 적는다 — 문장마다 막는 오해가 다르므로
- * 뭉치면 어느 오해가 남았는지 알 수 없다.
+ * 읽히기 쉽다. 실제로 일어나는 것은 **요청 상태 변경 하나**뿐이다. 세 문장이 서로 다른 오해를
+ * 하나씩 막는다 — 지금은 늘 펼친 상자 대신 「결재」 제목 옆 ⓘ 하나에 셋을 함께 둔다
+ * (관리웹 정리 시안 A, 2026-11-20).
  *
  * **성공 알림에 넣지 않는다.** 알림은 사라지지만 이 셋은 화면을 보는 내내 참인 사실이고,
- * **버튼이 잠겨 있을 때도 참이다** — 그래서 구획의 자리가 버튼의 상태와 무관하다.
- * 이것은 「사후 결과」 구획이 아니다: 결재 뒤에 무엇이 되었는지가 아니라 **누르기 전에
- * 무엇이 일어나지 않는지**를 말한다.
+ * **버튼이 잠겨 있을 때도 참이다** — 그래서 ⓘ 의 자리가 버튼의 상태와 무관하다.
+ * 결재 뒤에 무엇이 되었는지가 아니라 **누르기 전에 무엇이 일어나지 않는지**를 말한다.
  *
  * ---
  *
@@ -52,7 +52,7 @@ export interface DecisionPaneProps {
  *
  * | 겹 | 여기서 |
  * | :-: | --- |
- * | ① 상시 구획 | 《승인 시 결과》가 **의견칸·버튼 위 상시 자리**에 선다. 버튼이 잠겨 있어도 보인다 |
+ * | ① 상시 ⓘ | 《승인 시 결과》가 **「결재」 제목 옆 ⓘ** 로 의견칸·버튼보다 앞에 있다. 버튼이 잠겨 있어도 있다 |
  * | ② 확인 창 | 버튼은 창을 열 뿐이다 — 이 부품은 요청을 보내지 않는다 |
  * | ③ 전면 잠금 | `isLocked`가 입력칸과 버튼을 함께 잠근다(첫째 겹) |
  *
@@ -77,42 +77,41 @@ export const DecisionPane = ({
 }: DecisionPaneProps) => {
   const commentId = useId();
   const rejectGuideId = useId();
-  const outcomeHeadingId = useId();
   const state = { isMyTurn, comment };
   const approveBlocked = decisionBlockedReason('approve', state);
   const rejectBlocked = decisionBlockedReason('reject', state);
   const turnNoteId = useId();
   const isNotMyTurn = !isMyTurn;
   const isCommentDisabled = isNotMyTurn || isLocked;
+  const outcomeText = [
+    t.decision.outcome.statusOnly,
+    t.decision.outcome.noErpDocument,
+    t.decision.outcome.inspectionPending,
+  ].join(' ');
 
   return (
     <div role="group" aria-label={t.panes.decision} className="iqc-skip-approval-section">
-      <h3 className="iqc-skip-approval-heading">{t.panes.decision}</h3>
+      <h3 className="iqc-skip-approval-heading iqc-skip-approval-heading-info">
+        {t.panes.decision}
+        {/*
+         * 《승인 시 결과》 세 문장 — 늘 펼친 상자 대신 제목 옆 ⓘ 로(관리웹 정리 시안 A). 버튼의 상태와
+         * 무관하게 늘 있다 — 승인이 무엇을 하고 무엇을 하지 않는지는 누를 수 있는지와 상관없이 참인 사실이다.
+         */}
+        <InfoTip text={outcomeText} />
+      </h3>
       {banner}
 
-      {/*
-       * **상시 구획이다.** 버튼의 상태와 무관하게 늘 선다 — 승인이 무엇을 하고 무엇을 하지
-       * 않는지는 누를 수 있는지와 상관없이 참인 사실이다.
-       *
-       * 이름을 **보이는 글자로** 두고 그것으로 구획 이름을 삼는다. 감춘 이름만 두면 화면에서는
-       * 문장 셋이 근거 없이 떠 있는 것으로 보이고, 그 셋이 무엇에 대한 말인지 읽는 사람이 짐작해야 한다.
-       */}
-      <div className="iqc-skip-approval-outcome" role="group" aria-labelledby={outcomeHeadingId}>
-        <p id={outcomeHeadingId} className="field-label">
-          {t.panes.approvalOutcome}
-        </p>
-        <p className="field-note">{t.decision.outcome.statusOnly}</p>
-        <p className="field-note">{t.decision.outcome.noErpDocument}</p>
-        <p className="field-note">{t.decision.outcome.inspectionPending}</p>
-      </div>
-
       <div className="field-cell iqc-skip-approval-comment">
+        {/* 승인은 선택 · 반려는 필수라는 규칙은 라벨 옆 ⓘ 로 — 칸 아래 도움말을 두지 않는다(관리웹 정리 시안 A). */}
+        <InfoLabel
+          htmlFor={commentId}
+          label={t.decision.commentLabel}
+          info={t.decision.commentHelp}
+        />
         <TextField
           id={commentId}
-          label={t.decision.commentLabel}
           value={comment}
           disabled={isCommentDisabled}
-          helperText={t.decision.commentHelp}
           /*
            * 형식 유도 문구를 **입력칸의 설명으로 잇는다.** 디자인 시스템이 넘겨받은
            * `aria-describedby`를 자기 것과 합쳐 주므로 도움말·오류·잠금 사유가 밀려나지 않는다.

@@ -16,8 +16,6 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
   title: 'Đóng W/O · gửi kết quả sang ERP',
   breadcrumbRoot: 'Quản lý sản xuất',
   menuPath: 'Quản lý sản xuất › Đóng W/O · gửi kết quả sang ERP',
-  description:
-    'Đóng lệnh sản xuất đã xong việc và gửi kết quả sản xuất sang ERP. Đã đóng thì không hoàn tác được.',
   detailSummary: {
     pane: 'Tóm tắt chi tiết đóng lệnh sản xuất',
     heading: 'Chi tiết đóng lệnh sản xuất',
@@ -205,7 +203,6 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
       EXACT: 'Bình thường',
       OVERAGE: 'Vượt',
     },
-    exactNote: 'Số lượng khớp nên không cần nhập thêm lý do.',
     remainder: {
       legend: 'Xử lý lượng còn lại',
       CARRY_OVER: 'Chuyển sang kỳ sau',
@@ -233,8 +230,6 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
     group: 'Tình trạng mục gửi sang ERP',
     /** 전역 설정이다 — 마감 한 건이 바꾸지 않는다는 사실과 어디서 바꾸는지를 함께 적는다. */
     lead: 'Đây là thiết lập gửi toàn hệ thống. Không kèm vào yêu cầu đóng, và muốn đổi thì đổi ở màn hình thiết lập liên kết.',
-    appendixPending:
-      'Việc chọn các mục phụ của kết quả sản xuất (vật tư đưa vào · giờ công · giờ thiết bị · dừng máy) sẽ mở khi mã mục được chốt.',
     state: {
       on: 'Gửi',
       off: 'Không gửi',
@@ -372,7 +367,6 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
     dialog: {
       title: (workOrderNo: string, sequence: number) =>
         `Nhập bản sửa — ${workOrderNo} số thứ tự ${String(sequence)}`,
-      serverGrade: 'Mức của bản sửa do máy chủ đánh giá dựa trên nội dung đã nhập.',
     },
     saved: 'Đã thêm kết quả sửa.',
     approval: {

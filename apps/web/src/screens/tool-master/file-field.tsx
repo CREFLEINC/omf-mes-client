@@ -14,6 +14,8 @@ export interface FileFieldProps {
   /** 받아들일 확장자 목록(`accept`). 걸러 주기만 하고 **막지는 못한다** */
   accept?: string;
   disabled?: boolean;
+  /** 알아 둘 규칙 — 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */
+  info?: string;
   onSelect: (file: File | null) => void;
 }
 
@@ -39,6 +41,7 @@ export const FileField = ({
   emptyText,
   accept,
   disabled = false,
+  info,
   onSelect,
 }: FileFieldProps) => {
   const id = useId();
@@ -46,7 +49,7 @@ export const FileField = ({
 
   return (
     <div className="field-cell">
-      <FieldLabel htmlFor={id} label={label} />
+      <FieldLabel htmlFor={id} label={label} info={info} />
       <input
         ref={inputRef}
         id={id}

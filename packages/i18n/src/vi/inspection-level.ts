@@ -29,6 +29,8 @@ export const inspectionLevel = {
 
   columns: {
     item: 'Vật tư',
+    itemCode: 'Mã vật tư',
+    itemName: 'Tên vật tư',
     level: 'Mức kiểm tra',
     updatedAt: 'Thời điểm thay đổi',
     actions: 'Thiết lập',
@@ -77,6 +79,8 @@ export const inspectionLevel = {
     columns: {
       changedAt: 'Thời điểm thay đổi',
       item: 'Vật tư',
+      itemCode: 'Mã vật tư',
+      itemName: 'Tên vật tư',
       change: 'Mức kiểm tra',
       type: 'Cách thay đổi',
       reason: 'Lý do thay đổi',

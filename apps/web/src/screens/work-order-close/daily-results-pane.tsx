@@ -13,6 +13,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useState, type JSX } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { ApiRequestError, toApiError } from '../../patterns/request';
 import type { WorkOrderCloseDailyResults } from './queries';
 
@@ -278,7 +279,11 @@ export const WorkOrderCloseDailyResultsPane = ({
   return (
     <section aria-label={t.pane} className="pane work-order-close-daily-pane">
       <div className="work-order-close-daily-head">
-        <PaneTitle />
+        {/* 표를 읽는 법(작업일 · 정정 반영)은 제목 옆 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
+        <div className="work-order-close-title-row">
+          <PaneTitle />
+          <InfoTip text={t.lead} />
+        </div>
         <dl className="work-order-close-daily-facts">
           <div>
             <dt>{t.values.orderQty}</dt>
@@ -290,7 +295,6 @@ export const WorkOrderCloseDailyResultsPane = ({
           </div>
         </dl>
       </div>
-      <p className="pane-lead">{t.lead}</p>
       {state.refetchFailed ? (
         <AlertBanner
           variant="warning"

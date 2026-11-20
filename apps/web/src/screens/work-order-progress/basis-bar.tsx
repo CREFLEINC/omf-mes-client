@@ -2,6 +2,7 @@ import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { formatLocalDateTime } from '../../patterns/date-display';
+import { InfoTip } from '../../patterns/info-tip';
 
 const t = messages.workOrderProgress.basis;
 
@@ -31,7 +32,8 @@ export const BasisBar = ({ basisAt, onRefresh }: BasisBarProps) => (
     <div className="work-order-progress-basis-copy">
       {/* `yyyy-MM-dd HH:mm`(보는 사람 시계 · ⭐ 관리웹 날짜 표기 통일 · 사용자 지시 2026-10-19). */}
       <strong>{t.label(formatLocalDateTime(basisAt))}</strong>
-      <p>{t.note}</p>
+      {/* 스스로 새로워지지 않는다는 사실은 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
+      <InfoTip text={t.note} />
     </div>
     <Button size="sm" variant="outlined" onClick={onRefresh}>
       {t.refresh}

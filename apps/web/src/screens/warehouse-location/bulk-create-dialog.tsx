@@ -11,6 +11,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useId, useMemo, useState } from 'react';
 
+import { InfoLabel } from '../../patterns/info-tip';
 import { isSystemLocation } from '../../patterns/system-location';
 import {
   BULK_LIMITS,
@@ -85,6 +86,8 @@ export const BulkCreateDialog = ({
   /** [만들기] 뒤의 계획 — 만든 것이 목록에 들어와도 코드가 다시 지어지지 않게 굳힌다. */
   const [frozen, setFrozen] = useState<BulkPlan | null>(null);
   const noteId = useId();
+  const levelsId = useId();
+  const cellsId = useId();
 
   /* 창을 열 때 한 번 — 권한이 없거나 실패하면 「모름」이고 미리 막지 않는다(research R-1). */
   const stock = useZoneStockLocations(warehouseId, open);
@@ -154,24 +157,39 @@ export const BulkCreateDialog = ({
         ? b.rackNoLeft
         : null);
 
+  /*
+   * 「0 이면 …까지만」은 칸 아래가 아니라 라벨 옆 ⓘ 로(관리웹 정리 시안 A). ⓘ 가 있는 칸은 DS 라벨을 비우고
+   * 같은 id 로 라벨에 잇는다 — 라벨 줄 높이는 공용 `.info-label` 이 DS 라벨과 맞춰 옆 칸과 입력칸 윗선이 같다.
+   */
   const numberField = (
     label: string,
     value: string,
     onChange: (value: string) => void,
     error: string | undefined,
-    hint?: string,
+    info?: { id: string; text: string },
     disabled = false,
-  ) => (
-    <TextField
-      label={label}
-      inputMode="numeric"
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      disabled={locked || disabled}
-      error={error}
-      helperText={hint}
-    />
-  );
+  ) => {
+    const field = (
+      <TextField
+        id={info?.id}
+        label={info === undefined ? label : undefined}
+        inputMode="numeric"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        disabled={locked || disabled}
+        error={error}
+      />
+    );
+
+    if (info === undefined) return field;
+
+    return (
+      <div className="bulk-create-info-field">
+        <InfoLabel htmlFor={info.id} label={label} info={info.text} />
+        {field}
+      </div>
+    );
+  };
 
   const footer =
     state.status === 'done' ? (
@@ -255,13 +273,16 @@ export const BulkCreateDialog = ({
         <div className={mode === 'newZones' ? 'bulk-create-counts' : 'bulk-create-counts is-three'}>
           {mode === 'newZones' && numberField(b.zoneCount, zoneText, setZoneText, fields.zones)}
           {numberField(b.racksPerZone, rackText, setRackText, fields.racks)}
-          {numberField(b.levelsPerRack, levelText, setLevelText, fields.levels, b.levelHint)}
+          {numberField(b.levelsPerRack, levelText, setLevelText, fields.levels, {
+            id: levelsId,
+            text: b.levelHint,
+          })}
           {numberField(
             b.cellsPerLevel,
             levels === 0 ? '0' : cellText,
             setCellText,
             fields.cells,
-            b.cellHint,
+            { id: cellsId, text: b.cellHint },
             levels === 0,
           )}
         </div>

@@ -15,6 +15,7 @@ import { useRef, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 
 import { saveCsv, toCsvText, type CsvColumn } from '../../patterns/csv';
+import { InfoTip } from '../../patterns/info-tip';
 import {
   backwardImpact,
   backwardStages,
@@ -181,21 +182,27 @@ const ViewButton = ({ lot, onView }: { lot: LotRef; onView: (lot: LotRef) => voi
   </Button>
 );
 
-/** 상세 안 구획. 단계 줄의 칸을 누르면 `stage`가 맞는 첫 구획으로 간다. */
+/**
+ * 상세 안 구획. 단계 줄의 칸을 누르면 `stage`가 맞는 첫 구획으로 간다. 표를 읽는 법(`info`)은 제목 옆 ⓘ 로 둔다 —
+ * 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A).
+ */
 const Section = ({
   title,
   stage,
+  info,
   aside,
   children,
 }: {
   title: string;
   stage?: string;
+  info?: string;
   aside?: ReactNode;
   children: ReactNode;
 }) => (
   <section className="lot-trace-section" aria-label={title} data-stage={stage}>
     <div className="lot-trace-section-head">
       <h3 className="subsection-title">{title}</h3>
+      {info !== undefined && <InfoTip text={info} />}
       {aside}
     </div>
     {children}
@@ -547,10 +554,11 @@ const UsageSections = ({
   const lots = uniqueProductionLots(chain);
   return (
     <>
-      <Section title={c.sections.usage} stage="CONSUMED">
-        {chain.workOrders.some((wo) => wo.viaLot !== null) && (
-          <p className="field-note">{sp.usageHint}</p>
-        )}
+      <Section
+        title={c.sections.usage}
+        stage="CONSUMED"
+        info={chain.workOrders.some((wo) => wo.viaLot !== null) ? sp.usageHint : undefined}
+      >
         <SmallTable
           title={c.sections.usage}
           heading={false}
@@ -682,10 +690,14 @@ const ProductionSections = ({
           />
         )}
       </Section>
-      <Section title={c.sections.inputs}>
-        {chain.inputMaterials.some((input) => input.splitAncestry.length > 0) && (
-          <p className="field-note">{sp.inputsHint}</p>
-        )}
+      <Section
+        title={c.sections.inputs}
+        info={
+          chain.inputMaterials.some((input) => input.splitAncestry.length > 0)
+            ? sp.inputsHint
+            : undefined
+        }
+      >
         <SmallTable
           title={c.sections.inputs}
           heading={false}
@@ -1081,9 +1093,9 @@ const MaterialView = ({ chain, ...frame }: FrameProps & { chain: ForwardChain })
       {chain.splits.length > 0 && (
         <Section
           title={sp.splitsSection}
+          info={sp.splitsHint}
           aside={<span className="lot-trace-section-count">{c.count(chain.splits.length)}</span>}
         >
-          <p className="field-note">{sp.splitsHint}</p>
           <SmallTable
             title={sp.splitsSection}
             heading={false}

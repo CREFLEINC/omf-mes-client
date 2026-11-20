@@ -509,7 +509,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     ],
   },
   /*
-   * 영업 / 출하 관리 — 출하지시 편성 → 예정 → 긴급 직행 → 출하 내역(피처 010),
+   * 영업 / 출하 관리 — 출하지시 편성 → 예정(피처 012: 긴급 직행 · 출하 내역은 메뉴에서 뺐다),
    * 그리고 확정된 출하가 되돌아오는 반품·클레임 갈래가 뒤따른다. OQC 판정은 「품질 관리」로 옮겼다.
    */
   {
@@ -520,7 +520,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         to: '/shipment/shipment-request-create',
         icon: 'assignment',
-        label: '출하지시서 Import·작업지시 생성',
+        label: '출하작업지시 생성',
         labelVi: 'Import lệnh xuất hàng · tạo lệnh sản xuất',
       },
       {
@@ -528,29 +528,18 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         icon: 'event_note',
         label: '출하 예정 목록',
         labelVi: 'Danh sách kế hoạch xuất hàng',
+        /*
+         * 피처 012 T064 · FR-024 — 「출하 취소(송신 전)」(W-04-12)만 가진 역할도 이 화면에서 취소 · 확정을 한다.
+         * 역할 저장값을 바꾸지 않고 메뉴를 세운다.
+         */
+        alsoFor: ['/shipment/shipment-confirm'],
       },
       /*
-       * 피처 010(omf-all-around#305) — 출하는 PDA 피킹 → OQC → POP 「출하 완료」(P-04-07)로 끝난다.
-       * 관리웹 출하 처리(W-04-04)는 **메뉴에서 감춘다** — 주소·화면은 남긴다(배포 전에 예약만 있던
-       * 옛 피킹을 끝내는 관리자용 링크, 배포 공지). 그래서 그 묶음에 있던 긴급 직행(W-04-05)이
-       * 독립 항목으로 나왔다 — 창고 경유·피킹·포장을 건너뛰는 예외 흐름이라 출하 내역 «앞»이다.
+       * 피처 012 — 긴급 직행 출하 처리(W-04-05)는 쓰지 않는다: 메뉴에서 감춘다(FR-022a · D-13). 주소 · 화면 · 서버는
+       * 그대로 둔다 — 다시 세우려면 이 자리에 아래 항목을 되살린다.
+       *   { to: '/shipment/expedited-shipment', icon: 'outbound', label: '긴급 직행 출하 처리', labelVi: 'Xử lý xuất hàng thẳng khẩn' }
+       * 출하 내역(W-04-12)은 없어졌다(FR-023) — 그 일은 출하 예정 목록 「출하」 칸이 맡는다.
        */
-      {
-        to: '/shipment/expedited-shipment',
-        icon: 'outbound',
-        label: '긴급 직행 출하 처리',
-        labelVi: 'Xử lý xuất hàng thẳng khẩn',
-      },
-      /*
-       * W-04-12 — 확정 단계가 없어져 이름이 「출하 내역」이다(피처 010). 옛 흐름·긴급 직행의 미확정
-       * 출하는 이 화면 상세에서 한 건씩 확정한다.
-       */
-      {
-        to: '/shipment/shipment-confirm',
-        icon: 'task_alt',
-        label: '출하 내역',
-        labelVi: 'Lịch sử xuất hàng',
-      },
       /*
        * 반품·클레임 — 확정된 출하가 되돌아오는 한 흐름이다: 입고 등록 → 판정 의뢰(판정은 품질의
        * 처분 판정 처리 W-03-10 몫) → 판정 결과에 따라 재고 재등록 또는 제품 폐기 요청.
@@ -849,8 +838,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         to: '/system/terminal-process-map',
         icon: 'tablet_android',
-        label: '단말기-공정 매핑',
-        labelVi: 'Ánh xạ máy quét - công đoạn',
+        label: '단말 관리',
+        labelVi: 'Quản lý thiết bị đầu cuối',
       },
     ],
   },

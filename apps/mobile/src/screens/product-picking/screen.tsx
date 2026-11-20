@@ -25,7 +25,10 @@ import { PickResult, type PickNotice } from './pick-result';
 import {
   activeLots,
   codeProblem,
+  inTerminalScope,
   isNotRejected,
+  terminalShareDone,
+  warehouseTagOf,
   partiesText,
   pickRejectionOf,
   replaceEffect,
@@ -101,6 +104,11 @@ export const ProductPickingScreen = () => {
   } | null>(null);
   const [codeTarget, setCodeTarget] = useState<CodeTarget | null>(null);
   const [codeFailedLotId, setCodeFailedLotId] = useState<number | null>(null);
+  /*
+   * 두 창고에 걸쳐 줄 창고 몫만 집은 LOT 의 「다른 창고에 n 남음」(피처 012 Edge) — 피킹 응답에만 오므로 이 회차에 집은 것만
+   * 기억해 라인 시트의 LOT 줄에도 적는다.
+   */
+  const [otherQtyByLot, setOtherQtyByLot] = useState<ReadonlyMap<number, number>>(new Map());
   const [, setRetried] = useState(0);
   /* 보내는 동안 잠근다 — 스캐너가 같은 값을 잇달아 보내도 한 건만 나간다. */
   const inFlight = useRef(false);
@@ -200,6 +208,14 @@ export const ProductPickingScreen = () => {
       keys.settle(ring);
       signal('confirm');
       announce({ kind: 'picked', result });
+
+      const other = result.otherWarehouseQty;
+
+      if (other !== undefined && other > 0) {
+        setOtherQtyByLot((current) =>
+          new Map(current).set(result.pickedLot.shipmentRequestLotId, other),
+        );
+      }
     } catch (error: unknown) {
       const cause = error instanceof PickLineError ? error.cause : error;
       keys.settle(ring, cause);
@@ -328,9 +344,10 @@ export const ProductPickingScreen = () => {
           ) : null}
           {requests.isPending ? <p role="status">{t.requests.loading}</p> : null}
           {requests.isError ? <AlertBanner variant="error" title={t.requests.loadFailed} /> : null}
+          {/* 피처 012 — 이 기기 공장 창고 줄이 있는 지시서만 온다. 범위를 적어 「왜 안 보이지」를 막는다(시안 ⑨). */}
           {requests.isSuccess && requests.data.length === 0 ? (
             <AlertBanner variant="info" title={t.requests.none}>
-              {t.requests.completedHidden}
+              {t.requests.scopeHidden}
             </AlertBanner>
           ) : null}
           <ul className="picking__targets">
@@ -340,6 +357,15 @@ export const ProductPickingScreen = () => {
                 0,
               );
               const { customer, shipTo } = namesOf(request);
+              const allLines = request.lines ?? [];
+              /* 카드에는 이 기기가 피킹할 줄만 「피킹 / 목표」로 세고, 범위 밖 줄은 한 줄로 접는다(FR-010 · 시안 ①). */
+              const mine = allLines.filter(inTerminalScope);
+              const otherPlant = allLines.filter(
+                (line) => !inTerminalScope(line) && line.outOfScopeReason !== 'OTHER_WAREHOUSE',
+              ).length;
+              const otherWarehouse = allLines.filter(
+                (line) => !inTerminalScope(line) && line.outOfScopeReason === 'OTHER_WAREHOUSE',
+              ).length;
 
               return (
                 <li key={request.shipmentRequestId}>
@@ -362,16 +388,25 @@ export const ProductPickingScreen = () => {
                             : t.requests.salesOrder(request.salesOrderNo)
                         }, ${t.requests.shipDate(request.requestedShipDate)}`}
                       </p>
-                      {(request.lines ?? []).map((line) => (
+                      {mine.map((line) => (
                         <p key={line.shipmentRequestLineId}>
-                          {t.requests.lineSummary(
+                          {t.requests.lineSummaryAt(
                             line.lineNo,
                             itemCodeOf(line.itemId),
+                            warehouseTagOf(line, t.warehouse),
                             String(line.pickedQty),
                             String(line.allocatedQty),
                           )}
                         </p>
                       ))}
+                      {otherPlant === 0 ? null : (
+                        <p className="picking__note">{t.requests.otherPlantLines(otherPlant)}</p>
+                      )}
+                      {otherWarehouse === 0 ? null : (
+                        <p className="picking__note">
+                          {t.requests.otherWarehouseLines(otherWarehouse)}
+                        </p>
+                      )}
                       <Chip status={lotCount === 0 ? 'idle' : 'info'}>
                         {lotCount === 0 ? t.requests.notStarted : t.requests.pickingLots(lotCount)}
                       </Chip>
@@ -381,6 +416,11 @@ export const ProductPickingScreen = () => {
               );
             })}
           </ul>
+          {requests.isSuccess && requests.data.length > 0 ? (
+            <p className="picking__note">
+              {t.requests.completedHidden}, {t.requests.scopeNote}
+            </p>
+          ) : null}
         </section>
       </div>
     );
@@ -423,6 +463,10 @@ export const ProductPickingScreen = () => {
       <section className="picking__head" aria-label={target.shipmentRequestNo}>
         <div className="picking__head-text">
           <strong className="picking__head-no">{target.shipmentRequestNo}</strong>
+          {/* 피처 012 — 지시서 사업부. 사업부 없는 공장의 옛 지시서는 「사업부 미지정」(빈 곳 ⑨). */}
+          <Chip status={target.businessUnit === null ? 'warning' : 'idle'}>
+            {target.businessUnit?.businessUnitName ?? t.request.noBusinessUnit}
+          </Chip>
           <span className="picking__note">
             {[
               parties,
@@ -475,6 +519,15 @@ export const ProductPickingScreen = () => {
         )}
       </div>
 
+      {/* 이 기기 줄이 다 찼고 다른 공장 · 창고 줄이 남았다 — 완료는 사업부 안 아무 POP 에서 한 번(시안 ⑦ · US3). */}
+      {terminalShareDone(lines) ? (
+        <AlertBanner variant="info" title={t.warehouse.terminalDone}>
+          {target.businessUnit === null || target.businessUnit === undefined
+            ? t.warehouse.terminalDoneDetailNoUnit
+            : t.warehouse.terminalDoneDetail(target.businessUnit.businessUnitName)}
+        </AlertBanner>
+      ) : null}
+
       <LineTally
         lines={lines}
         itemOf={itemOf}
@@ -498,6 +551,7 @@ export const ProductPickingScreen = () => {
           item={itemOf(viewedLine)}
           uomOf={uomOf}
           codeStateOf={codeStateOf}
+          otherQtyOf={(lot) => otherQtyByLot.get(lot.shipmentRequestLotId)}
           onReplace={(lot) => {
             setReplaceTarget({ lot, line: viewedLine });
           }}

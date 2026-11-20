@@ -15,9 +15,10 @@ import { popRoutes } from '../routes/pop';
  */
 /* 시험은 앱 패키지(`apps/web`)를 작업 디렉터리로 돌아간다. */
 const source = readFileSync(resolve(process.cwd(), 'src/app/pop-main.tsx'), 'utf8');
+const chrome = readFileSync(resolve(process.cwd(), 'src/app/pop-chrome.tsx'), 'utf8');
 const html = readFileSync(resolve(process.cwd(), 'pop.html'), 'utf8');
 
-const entryPath = /const POP_ENTRY_PATH = '([^']+)'/.exec(source)?.[1];
+const entryPath = /const POP_ENTRY_PATH = '([^']+)'/.exec(chrome)?.[1];
 
 describe('POP 진입점 배선', () => {
   it('POP 라우트 표를 싣는다 — 관리웹 라우트 표를 싣지 않는다', () => {
@@ -48,6 +49,8 @@ describe('POP 진입점 배선', () => {
     expect(source).toMatch(/path: '\*'[\s\S]{0,80}POP_ENTRY_PATH/);
   });
 
+  /* 사번 없이 다른 화면에 들어가면 홈으로 보내는 것은 그려서 잰다(`pop-chrome.test.tsx` · #334). */
+
   /*
    * ⭐ **이 자리는 한 번 뒤집혔다.** 후보를 공급할 근거가 없다고 보아 배포 셸에서 화면 이동을
    * «빼는» 것을 지키던 시험이었다(PR #926). 근거는 계약에 있었다 — 세션 권한 배열이 화면
@@ -55,15 +58,9 @@ describe('POP 진입점 배선', () => {
    * 못박았다. 그래서 지금은 **실려 있는 것**을 지킨다(#949 · 공유계약 G-34). #291 부터는 [화면 이동]
    * 단추 대신 공통 이동 메뉴(묶음·탭)다.
    */
-  /* 사번 없이 공통 메뉴로 다른 화면에 들어가면 할 일 없는 띠만 선다 — 셸이 사번 입력 화면으로 보낸다(#291). */
-  it('사번이 없으면 진입 화면 밖 어느 화면이든 진입 화면으로 보낸다', () => {
-    expect(source).toMatch(
-      /if \(workerNo === null && pathname !== POP_ENTRY_PATH\) \{\s*return <Navigate to=\{POP_ENTRY_PATH\} replace \/>;/u,
-    );
-  });
-
   it('배포 셸에 업무용 화면 이동을 싣는다', () => {
-    expect(source).toMatch(/<PopScreenNav\s/u);
+    expect(source).toMatch(/element: <PopChrome \/>/u);
+    expect(chrome).toMatch(/<PopScreenNav\s/u);
   });
 
   it('진입 문서가 이 파일을 가리킨다', () => {

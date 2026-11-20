@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
+import { InfoLabel } from '../../patterns/info-tip';
 import { ChangeErrorBanner } from './change-error-banner';
 import { boundField, splitInvalidErrors } from './change-outcome';
 import {
@@ -62,6 +63,7 @@ export const PasswordChangeScreen = () => {
   const [draft, setDraft] = useState<PasswordDraft>(emptyPasswordDraft);
 
   const reasonId = useId();
+  const newPasswordId = useId();
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -253,19 +255,28 @@ export const PasswordChangeScreen = () => {
             }}
           />
 
-          <TextField
-            label={t.fields.newPassword}
-            type="password"
-            value={draft.newPassword}
-            autoComplete="new-password"
-            /* 규칙 안내는 이 칸의 도움말이다 — 오류가 서면 디자인 시스템이 그 자리를 오류로 바꾼다. */
-            helperText={t.notice(MIN_NEW_PASSWORD_LENGTH)}
-            error={errors.newPassword}
-            fullWidth
-            onChange={(event) => {
-              changeDraft({ newPassword: event.target.value });
-            }}
-          />
+          {/*
+           * 규칙 안내는 칸 이름 옆 ⓘ 로 둔다(관리웹 정리 시안 A). DS `TextField` 라벨은 글자만 받아
+           * 라벨을 비우고 같은 `id` 로 공용 `InfoLabel` 에 잇는다.
+           */}
+          <div className="field-cell">
+            <InfoLabel
+              htmlFor={newPasswordId}
+              label={t.fields.newPassword}
+              info={t.notice(MIN_NEW_PASSWORD_LENGTH)}
+            />
+            <TextField
+              id={newPasswordId}
+              type="password"
+              value={draft.newPassword}
+              autoComplete="new-password"
+              error={errors.newPassword}
+              fullWidth
+              onChange={(event) => {
+                changeDraft({ newPassword: event.target.value });
+              }}
+            />
+          </div>
 
           <TextField
             label={t.fields.confirmPassword}

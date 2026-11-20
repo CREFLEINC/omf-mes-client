@@ -77,6 +77,30 @@ export interface UnfinishedTransfer {
  * 반출과 도착 사이에 그만두거나 앱이 꺼지면 그 상태가 남는데, 데이터베이스가 막지 않는다.
  * 진입에서 보이지 않으면 작업자는 같은 물건을 또 반출한다.
  */
+/**
+ * 도착할 줄의 LOT 번호 · 품목 — 이동 줄에는 대리키만 있다. 라벨과 대조할 번호를 보인다.
+ */
+export const useLotsById = (lotIds: readonly number[]): UseQueryResult<Map<number, LotSummary>> => {
+  const { client } = useApiClient();
+  const key = [...lotIds].sort((a, b) => a - b).join(',');
+
+  return useQuery({
+    queryKey: ['stock-transfer-lots', key] as const,
+    enabled: lotIds.length > 0,
+    queryFn: async () => {
+      const details = await Promise.all(
+        lotIds.map((lotId) =>
+          runRequest(() => client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } })),
+        ),
+      );
+
+      return new Map(details.map((detail) => [detail.lot.lotId, detail.lot]));
+    },
+  });
+};
+
+type LotSummary = components['schemas']['Lot'];
+
 export const useUnfinishedTransfers = (): UseQueryResult<UnfinishedTransfer[]> => {
   const { client } = useApiClient();
 

@@ -261,26 +261,20 @@ afterEach(() => {
 });
 
 describe('US2-10 입하 중 목록 · 상세 · 해제 · 마감', () => {
-  it('US2-10 입하 중 카드는 번호와 이름표 붙은 공급사 · 품목 · LOT 수 · 전체 수량 · 첫 등록을 보이고 경과일 강조는 없다', async () => {
+  it('US2-10 입하 중은 번호 붙은 표 — 품목코드 · 품목명 · LOT 수 · 수량, 입하 LOT 번호 · 경과일은 줄에 없다', async () => {
     const { sent } = mount();
 
-    const card = await screen.findByRole('button', { name: /SYN-IL-20261111-0003/u });
-    expect(card).toHaveTextContent(t.open.receiving);
-    /* 이름표 붙은 칸(사용자 지시 2026-11-18 「명시적인 타이틀」). */
-    for (const label of [
-      t.card.facts.supplier,
-      t.card.facts.item,
-      t.card.facts.lotCount,
-      t.card.facts.totalQty,
-      t.card.facts.firstAt,
-    ]) {
-      expect(within(card).getByText(label)).toBeInTheDocument();
-    }
-    expect(within(card).getByText('합성 공급사 가')).toBeInTheDocument();
-    expect(within(card).getByText('SYN-ITEM-01 합성 품목 가')).toBeInTheDocument();
-    expect(within(card).getByText(t.card.lotCount(2))).toBeInTheDocument();
-    expect(within(card).getByText('2,000 EA')).toBeInTheDocument();
-    expect(within(card).getByText(/^\d\d-\d\d \d\d:\d\d$/u)).toBeInTheDocument();
+    /* 줄은 품목으로 찾는다 — 입하 LOT 번호 · 첫 등록 시각은 줄에서 뺐다(사용자 지시 2026-11-20). */
+    const row = (
+      await screen.findByRole('button', { name: t.list.open('SYN-ITEM-01', '합성 품목 가') })
+    ).closest('tr') as HTMLElement;
+    expect(row).toHaveTextContent('SYN-ITEM-01');
+    expect(row).toHaveTextContent('합성 품목 가');
+    expect(row).toHaveTextContent('2,000 EA');
+    expect(within(row).getByText('2')).toBeInTheDocument();
+    expect(screen.queryByText('SYN-IL-20261111-0003')).toBeNull();
+    /* 공급사는 하나여도 머리 줄로 보인다(사용자 지시 2026-11-20). */
+    expect(screen.getByText('합성 공급사 가')).toBeInTheDocument();
     expect(screen.getByText(t.open.heading(1))).toBeInTheDocument();
     expect(sent.find((each) => each.search.get('closable') === 'true')?.search.get('plantId')).toBe(
       '8301',
@@ -291,8 +285,12 @@ describe('US2-10 입하 중 목록 · 상세 · 해제 · 마감', () => {
     const user = userEvent.setup();
     const { sent } = mount();
 
-    await user.click(await screen.findByRole('button', { name: /SYN-IL-20261111-0003/u }));
-    expect(await screen.findByText(t.detail.statusValue)).toBeInTheDocument();
+    await user.click(
+      await screen.findByRole('button', { name: t.list.open('SYN-ITEM-01', '합성 품목 가') }),
+    );
+    /* 상세는 화면을 바꾸지 않고 「입하 품목」 시트로 뜬다(사용자 지시 2026-11-20). */
+    const sheet = await screen.findByRole('dialog', { name: t.sheet.title });
+    expect(sheet).toHaveTextContent('합성 공급사 가');
     expect(screen.queryByText(/[MW]-01-\d\d/u)).toBeNull();
     /* 번호 칸은 번호 전체 대신 끝 일련번호(사용자 지시 2026-11-18). */
     expect(
@@ -307,7 +305,9 @@ describe('US2-10 입하 중 목록 · 상세 · 해제 · 마감', () => {
     expect(within(dialog).queryByRole('textbox')).toBeNull();
     await user.click(within(dialog).getByRole('button', { name: t.closeDialog.proceed }));
 
+    /* 결과 화면 없이 알림 한 줄 — 목록으로 돌아온다(사용자 결정 2026-11-20). */
     expect(await screen.findByText(t.result.withIqc('SYN-IQC-0013'))).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: t.sheet.title })).toBeNull();
     expect(screen.queryByText(/P\/O/u)).toBeNull();
     const close = sent.find((each) => each.path.endsWith(':close-receipt'));
     expect(close?.body).toMatchObject({ versionNo: 3 });
@@ -336,7 +336,9 @@ describe('US2-10 입하 중 목록 · 상세 · 해제 · 마감', () => {
     };
     mount({ details: { 3: detail } });
 
-    await user.click(await screen.findByRole('button', { name: /SYN-IL-20261111-0003/u }));
+    await user.click(
+      await screen.findByRole('button', { name: t.list.open('SYN-ITEM-01', '합성 품목 가') }),
+    );
     expect(await screen.findByText('1,000 EA · 봉지 10')).toBeInTheDocument();
     expect(screen.getByText('1,000 EA · SYN-BAG 10')).toBeInTheDocument();
 
@@ -364,7 +366,9 @@ describe('US2-10 입하 중 목록 · 상세 · 해제 · 마감', () => {
       closeResult: { inspectionRequired: false, iqc: null },
     });
 
-    await user.click(await screen.findByRole('button', { name: /SYN-IL-20261111-0003/u }));
+    await user.click(
+      await screen.findByRole('button', { name: t.list.open('SYN-ITEM-01', '합성 품목 가') }),
+    );
     await user.click(await screen.findByRole('button', { name: t.detail.close }));
     const dialog = await screen.findByRole('dialog');
     expect(dialog).toHaveTextContent(t.closeDialog.withoutIqcRecord);
@@ -379,7 +383,9 @@ describe('US2-10 입하 중 목록 · 상세 · 해제 · 마감', () => {
       closeResult: { inspectionRequired: false, iqc: null },
     });
 
-    await user.click(await screen.findByRole('button', { name: /SYN-IL-20261111-0003/u }));
+    await user.click(
+      await screen.findByRole('button', { name: t.list.open('SYN-ITEM-01', '합성 품목 가') }),
+    );
     await user.click(await screen.findByRole('button', { name: t.detail.close }));
     const dialog = await screen.findByRole('dialog');
     expect(dialog).toHaveTextContent(t.closeDialog.withoutIqc);
@@ -394,7 +400,9 @@ describe('US2-10 입하 중 목록 · 상세 · 해제 · 마감', () => {
       details: { 3: detailOf(inboundLot(3, { lotCount: 1, receivedQty: 1000 }), 1) },
     });
 
-    await user.click(await screen.findByRole('button', { name: /SYN-IL-20261111-0003/u }));
+    await user.click(
+      await screen.findByRole('button', { name: t.list.open('SYN-ITEM-01', '합성 품목 가') }),
+    );
     await user.click(await screen.findByRole('button', { name: t.detail.unregister }));
     const dialog = await screen.findByRole('dialog', { name: t.unregisterDialog.title });
     expect(dialog).toHaveTextContent(t.unregisterDialog.body('1,000 EA'));
@@ -420,9 +428,10 @@ describe('US2-12 마감 취소 가능 목록', () => {
     });
 
     expect(await screen.findByText(t.done.heading(1))).toBeInTheDocument();
-    expect(screen.getByText(t.done.autoChip)).toBeInTheDocument();
+    /* 칩 대신 아래 회색 줄 — 「까닭 · 자동 마감 시각 · IQC 번호」, 공급사는 머리 줄(사용자 결정 2026-11-20 시안 B). */
     expect(screen.getByText(t.done.reason.NO_IQC_RESULT.chip)).toBeInTheDocument();
-    expect(screen.getByText(/날짜 바뀜 자동 마감/u)).toBeInTheDocument();
+    expect(screen.getByText(/· 자동 마감 \d\d[-‑]\d\d \d\d:\d\d · SYN-IQC-5$/u)).toBeInTheDocument();
+    expect(screen.getByText('합성 공급사 가')).toBeInTheDocument();
     expect(screen.getByText(t.open.empty)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.done.reopen }));
@@ -481,7 +490,7 @@ describe('US2-13 같은 공급사·품목 입하 중이면 마감 취소가 막�
     expect(sent.some((each) => each.path.endsWith(':reopen-receipt'))).toBe(false);
 
     await user.click(within(dialog).getByRole('button', { name: t.card.open('0003') }));
-    expect(await screen.findByText(t.detail.statusValue)).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: t.sheet.title })).toBeInTheDocument();
   });
 
   it('US2-13 그사이 생긴 막힘(409 `blockers`)은 코드별 문구로 막힘 창에 보인다', async () => {
@@ -518,7 +527,9 @@ describe('US2-10 온라인에서만', () => {
     expect(await screen.findByText(t.offline)).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: t.done.reopen })).toBeDisabled();
 
-    await user.click(screen.getByRole('button', { name: /SYN-IL-20261111-0003/u }));
+    await user.click(
+      screen.getByRole('button', { name: t.list.open('SYN-ITEM-01', '합성 품목 가') }),
+    );
     const unregisters = await screen.findAllByRole('button', { name: t.detail.unregister });
     for (const each of unregisters) expect(each).toBeDisabled();
     expect(screen.getByRole('button', { name: t.detail.close })).toBeDisabled();
@@ -571,13 +582,15 @@ describe('G1 입하 마감 목록', () => {
     const closable = [inboundLot(3)];
     mount({ closable, withLeave: true });
 
-    expect(await screen.findByText('SYN-IL-20261111-0003')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: t.list.open('SYN-ITEM-01', '합성 품목 가') }),
+    ).toBeInTheDocument();
 
     closable.splice(0, closable.length);
     await user.click(screen.getByRole('button', { name: '나가기' }));
     await user.click(screen.getByRole('button', { name: '들어오기' }));
 
     expect(await screen.findByText(t.open.empty)).toBeInTheDocument();
-    expect(screen.queryByText('SYN-IL-20261111-0003')).not.toBeInTheDocument();
+    expect(screen.queryByText('SYN-ITEM-01')).not.toBeInTheDocument();
   });
 });

@@ -38,6 +38,8 @@ describe('readFilters', () => {
       q: '',
       ready: '',
       replaced: '',
+      businessUnit: '',
+      erp: '',
     });
   });
 
@@ -205,5 +207,29 @@ describe('toFilterChips', () => {
     const labels = chips.map((chip) => chip.removeLabel);
 
     expect(new Set(labels).size).toBe(labels.length);
+  });
+});
+
+describe('피처 012 — 사업부 · ERP 송신 조건', () => {
+  it('US4-1 ERP 송신 칩 값은 6값만 읽고 주소 · 조회 조건으로 그대로 옮긴다', () => {
+    const filters = readFilters(new URLSearchParams('erp=NOT_QUEUED&businessUnit=8301'));
+
+    expect(filters).toMatchObject({ erp: 'NOT_QUEUED', businessUnit: '8301' });
+    expect(toFilterQuery(filters)).toMatchObject({ erpSendStatus: 'NOT_QUEUED', businessUnitId: 8301 });
+    expect(readFilters(new URLSearchParams('erp=NO_SHIPMENT&businessUnit=x')).erp).toBe('');
+    expect(readFilters(new URLSearchParams('businessUnit=x')).businessUnit).toBe('');
+
+    const params = toSearchParams({ from: '2026-11-17', to: '' }, filters, null, 1);
+    expect(params.get('erp')).toBe('NOT_QUEUED');
+    expect(params.get('businessUnit')).toBe('8301');
+  });
+
+  it('FR-007 사업부 · ERP 송신은 보이는 칸 · 칩 줄이 말하므로 접힌 조건 칩으로 겹쳐 적지 않는다', () => {
+    const chips = toFilterChips(
+      { ...EMPTY_FILTERS, erp: 'SENT', businessUnit: '8301' },
+      { customer: '', shipToPartner: '' },
+    );
+
+    expect(chips).toEqual([]);
   });
 });

@@ -10,8 +10,6 @@ import type { Translated } from './translated';
 export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> = {
   title: 'Thiết lập thông báo công việc bàn giao',
   breadcrumbRoot: 'Quản trị hệ thống',
-  description:
-    'Chọn người được thông báo cho từng công việc bàn giao. Thông báo đến trung tâm thông báo, bật thêm Zalo nếu cần.',
   intro:
     'Ban đầu tất cả đều tắt. Bật Zalo sẽ làm tăng lượng tin Zalo của khách hàng (phí và hạn mức ngày).',
   panes: {
@@ -88,7 +86,7 @@ export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> 
     },
     PUTAWAY_PENDING: {
       when: 'Khi có LOT cần cất do xác nhận kết quả IQC hoặc đóng nhập hàng không cần kiểm — 1 lần cho mỗi LOT nhập (kèm số LOT)',
-      where: 'PDA › Kho › Cất hàng và hoàn tất nhập kho (M-01-05)',
+      where: 'PDA › Kho › Cất hàng và hoàn tất nhập kho',
     },
     PUTAWAY_REQUESTED: {
       when: 'Khi nhập kho tạo lệnh xếp kệ — 1 lần cho mỗi phiếu nhập kho (kèm số lệnh)',

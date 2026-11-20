@@ -50,6 +50,7 @@ import {
   useLotScan,
   useShipmentAllocations,
   useShipmentSelection,
+  useUnpackedAllocations,
   useTodayShipments,
   useUnassignedPackedBoxCount,
   useUomCodes,
@@ -192,6 +193,9 @@ export const PackingResultScreen = () => {
   const shipmentId = entry?.shipmentId ?? label?.shipmentId ?? null;
   const warehouseId = label?.warehouseId ?? null;
   const shipmentAllocations = useShipmentAllocations(shipmentId);
+  /* 고른 출하 카드의 품목·건수 — 머리줄 [새로고침] 때 다시 읽은 값(없으면 고를 때 받은 값). */
+  const entryAllocations =
+    useUnpackedAllocations(entry?.shipmentId ?? null) ?? entry?.allocations ?? [];
   /* ⭐ 다음 걸음(P-04-05)이 남았는지 — 미구성 상자는 서버가 센다(SHIP-UNIT-01 §7). */
   const unassignedBoxes = useUnassignedPackedBoxCount(shipmentId, entry?.shipmentNo ?? null);
   const createUnit = useHandlingUnitCreate();
@@ -587,7 +591,7 @@ export const PackingResultScreen = () => {
             }
             const isSelected = entry?.shipmentId === shipment.shipmentId;
             const items = isSelected
-              ? [...new Set(entry.allocations.map((allocation) => allocation.itemCode))].join(', ')
+              ? [...new Set(entryAllocations.map((allocation) => allocation.itemCode))].join(', ')
               : null;
             const boxes = isSelected
               ? unassignedBoxes.count
@@ -611,7 +615,7 @@ export const PackingResultScreen = () => {
                       <PuChip tone="info">{t.shipments.inProgress}</PuChip>
                     )}
                     {isSelected && (
-                      <PuChip>{t.shipments.allocations(entry.allocations.length)}</PuChip>
+                      <PuChip>{t.shipments.allocations(entryAllocations.length)}</PuChip>
                     )}
                   </span>
                 </span>

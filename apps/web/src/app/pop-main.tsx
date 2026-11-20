@@ -12,7 +12,7 @@
  * 2. **단말에 관리웹 화면 전부가 실린다.** 현장 단말이 쓰지 않는 화면이 설치본의 대부분을
  *    차지한다(실측 — 화면 코드 2.5MB → 0.5MB).
  *
- * 그래서 이 파일이 **POP 라우트 표만** 세우고 루트를 진입 화면(P-CO-01)으로 보낸다.
+ * 그래서 이 파일이 **POP 라우트 표만** 세우고 루트를 POP 홈(`POP_ENTRY_PATH`)으로 보낸다.
  *
  * ⚠ **관리웹 라우트 표는 POP 라우트를 더 이상 펼쳐 넣지 않는다**(#752). 그래서 개발 중
  * 브라우저로 POP 화면을 여는 길도 이 번들로 옮겨졌다 — `pnpm --filter @omf-mes/web dev:pop`
@@ -39,26 +39,16 @@ import './pop-locale';
 
 import { StrictMode, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Navigate, Outlet, RouterProvider, createBrowserRouter, useLocation } from 'react-router';
+import { Navigate, RouterProvider, createBrowserRouter } from 'react-router';
 
 import { popRoutes } from '../routes/pop';
 import { applyPopFit } from '../patterns/pop-fit';
-import { usePopIdentity } from '../patterns/pop-identity';
-import { useLegacyOutboxDrain } from '../patterns/pop-legacy-outbox';
-import { PopScreenNav } from '../patterns/pop-screen-nav';
-import { PuToastHost } from '../patterns/pop-uniform';
-import { setPrinterTerminal } from '../patterns/pop-printer-choice';
-import { PopTopPrinterTarget, PopTopStatusTarget } from '../patterns/pop-top-status';
-import {
-  PopRegistrationProvider,
-  usePopRegistration,
-  useRefreshPopTerminalOnScreenEntry,
-} from '../patterns/pop-registration';
-import { HeaderPrinter } from '../screens/worker-assignment/header-printer';
-import { RegistrationPanel } from '../screens/worker-assignment/registration-panel';
+import { PopRegistrationProvider, usePopRegistration } from '../patterns/pop-registration';
+import { RegistrationPanel } from '../screens/pop-home/login/registration-panel';
 import { printSampleLotLabel } from '../screens/pop-material-lot-label/sample-print';
 import { currentTerminalToken, readTerminalToken } from '../patterns/pop-terminal-token';
 import { AppProviders } from './providers';
+import { POP_ENTRY_PATH, PopChrome } from './pop-chrome';
 
 /**
  * **등록을 마치기 전에는 업무로 넘기지 않는다**(공유계약 F-4 · P-CO-01 §3-A).
@@ -195,70 +185,6 @@ function virtualPrinterShell() {
   };
 }
 
-/**
- * 단말을 켰을 때 맨 처음 서는 화면 — 사번 경량 인증(P-CO-01).
- *
- * ⛔ **주소를 여기서 지어내지 않는다.** 라우트 표에 실제로 있는 경로여야 하고, 아래 시험이
- * 그것을 지킨다 — 화면이 옮겨지면 이 상수도 함께 고쳐야 한다.
- */
-const POP_ENTRY_PATH = '/pop/worker-assignment';
-
-/**
- * 화면 위에 늘 서 있는 것 — **공통 이동 메뉴**(맨 위 줄·업무 묶음·화면 탭, #291)다. [사용자 전환]도
- * 그 맨 위 줄에 있다.
- *
- * ⭐ **길 위에 두어야 길을 안다.** 라우터 «안» 겹이라 지금 어느 화면인지 알 수 있고, 그래야
- * 진입 화면에서 스스로 빠질 수 있다. 라우터 밖에 두면 주소를 직접 읽어야 하고, 화면을 옮겨도
- * 다시 그려지지 않는다.
- */
-const PopChrome = () => {
-  /* ⭐ 관리웹에서 바꾼 단말 공정·설비가 단말을 다시 켜지 않아도 보이게 한다(#1202). */
-  useRefreshPopTerminalOnScreenEntry();
-  const { terminal } = usePopRegistration();
-  /* 맨 위 줄에서 고른 프린터는 단말 코드마다 기억한다 — 발행 화면이 읽기 전에 알려 둔다. */
-  setPrinterTerminal(terminal?.terminalCode ?? null);
-  const { workerNo } = usePopIdentity();
-  /* 없앤 생산 포장·PQC 제품 검사 화면이 단말에 남긴 확정을 마저 보낸다(#293). */
-  useLegacyOutboxDrain(terminal !== null);
-  const { pathname } = useLocation();
-  /* 맨 위 줄의 화면 상태 자리(연결·전송 표시). 화면이 `PopTopStatus` 로 그 자리에 그린다. */
-  const [statusSlot, setStatusSlot] = useState<HTMLElement | null>(null);
-  const [printerSlot, setPrinterSlot] = useState<HTMLElement | null>(null);
-
-  /*
-   * ⭐ **사번이 없으면 어느 화면이든 사번 입력 화면으로 보낸다**(사용자 지시 2026-11-17 · #291).
-   *    공통 메뉴로 사번 없이 다른 화면에 들어가면 「사번이 확인되지 않았습니다」 띠만 서고 할 일이
-   *    없었다. 사번은 처음부터 동기로 읽히므로(`worker-session`) 확인 중에 튕기지 않는다.
-   */
-  if (workerNo === null && pathname !== POP_ENTRY_PATH) {
-    return <Navigate to={POP_ENTRY_PATH} replace />;
-  }
-
-  /*
-   * ⭐ 공통 이동 메뉴(#291)를 화면 «위»에 세우고, 화면은 남은 높이를 가져간다(`.pop-frame__body`).
-   *    화면들은 `height: 100%` 로 그 칸을 채우므로 화면 코드는 그대로다.
-   */
-  return (
-    <div className="pop-frame">
-      <PopScreenNav
-        terminalCode={terminal?.terminalCode ?? null}
-        printer={<HeaderPrinter />}
-        statusRef={setStatusSlot}
-        printerRef={setPrinterSlot}
-      />
-      <div className="pop-frame__body">
-        <PopTopStatusTarget.Provider value={statusSlot}>
-          <PopTopPrinterTarget.Provider value={printerSlot}>
-            <Outlet />
-          </PopTopPrinterTarget.Provider>
-        </PopTopStatusTarget.Provider>
-      </div>
-      {/* 처리 결과 알림 자리 — 작업 줄 위 가운데(POP 통일 규칙 13 · #295). */}
-      <PuToastHost />
-    </div>
-  );
-};
-
 const popRouter = createBrowserRouter([
   {
     element: <PopChrome />,
@@ -273,40 +199,6 @@ const popRouter = createBrowserRouter([
     ],
   },
 ]);
-
-/*
- * ⚠ **개발 빌드에서만 듣는 되돌림 단축키(`Ctrl+Alt+H`).** 화면 이동 선택기는 진입 화면
- * 안에만 있어, 다른 화면으로 나가면 사번 입력 화면으로 돌아올 길이 없다 — 키오스크에는
- * 주소창도 뒤로가기도 없기 때문이다.
- *
- * ⛔ **화면에 버튼을 두지 않는다.** 처음에는 떠 있는 버튼으로 두었는데 어느 자리에 놓아도
- * 화면마다 다른 조작 버튼을 가렸다(실측). 단축키는 무엇도 가리지 않는다.
- *
- * ⛔ **`MODE`로 가른다.** 빌드 시점에 상수로 접혀 배포 번들에서 이 가지째 걷힌다 —
- * 현장 단말에서 이 손짓이 통하면 작업자가 작업 중에 세션을 버릴 수 있다.
- *
- * ⭐ **사번은 놓지 않는다**(사용자 지시 2026-09-08). 사번을 비우는 것은 이제 머리줄의
- *    **로그아웃**이 맡는다 — 이 손짓은 「사번 확인을 마친 그 화면으로 돌아간다」이지
- *    「작업자를 바꾼다」가 아니다. 그래서 문서를 다시 열지 않고 **라우터로만** 옮긴다.
- */
-const PopDevHomeShortcut = () => {
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      // `event.key` 는 배열(레이아웃)에 따라 달라지므로 물리 키(`code`)로 판정한다.
-      if (!event.ctrlKey || !event.altKey || event.code !== 'KeyH') return;
-
-      event.preventDefault();
-      window.history.pushState(null, '', POP_ENTRY_PATH);
-      window.dispatchEvent(new PopStateEvent('popstate'));
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
-
-  return null;
-};
 
 /*
  * 화면을 단말 크기에 맞춘다. **라우터를 세우기 전에 건다** — 첫 그림부터 맞은 크기로 서야
@@ -326,7 +218,6 @@ const mount = () => {
         <PopRegistrationProvider>
           <PopRegistrationGate>
             <RouterProvider router={popRouter} />
-            {import.meta.env.MODE === 'development' ? <PopDevHomeShortcut /> : null}
           </PopRegistrationGate>
         </PopRegistrationProvider>
       </AppProviders>

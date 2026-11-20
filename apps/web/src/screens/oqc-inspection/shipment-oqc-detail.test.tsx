@@ -195,7 +195,9 @@ describe('W-04-03 출하 OQC 새 흐름 — 상세', () => {
     expect(
       results.getByRole('button', { name: `${s.results.seq(1)} ${s.results.edit}` }),
     ).toBeInTheDocument();
-    expect(screen.getByText(s.note)).toBeInTheDocument();
+    /* 판정 규칙은 늘 펼쳐 두지 않고 「검사 결과」 제목 옆 ⓘ 로 둔다. */
+    expect(screen.getByRole('button', { name: s.note })).toBeInTheDocument();
+    expect(screen.queryByText(s.note)).toBeNull();
   });
 
   it('US3-5 교체된 LOT 은 회색 이력 줄(교체됨 · 부적합 번호)로만 남고 매칭 후보에서 빠진다', async () => {

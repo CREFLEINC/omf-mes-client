@@ -28,8 +28,6 @@ export const popOqcInspection = {
 
   detail: {
     nothingSelectedTitle: '의뢰를 선택하세요',
-    nothingSelected: '왼쪽 목록에서 의뢰를 누르면 수량과 판정을 입력합니다.',
-    nothingSelectedDone: '왼쪽 목록에서 의뢰를 누르면 판정 결과를 봅니다.',
     loading: '의뢰 정보를 불러오는 중입니다.',
     bandLabel: '의뢰 정보',
     fields: {
@@ -173,9 +171,18 @@ export const popOqcInspection = {
    * 출하 OQC 새 흐름(피처 010) — 결과 추가만(고치기 · 지우기는 관리웹 W-04-03), 저장 확인 창 없음. 판정은 출하 완료 때 확정된다.
    */
   shipment: {
-    /** 목록 카드 둘째 줄 — 「FG-A100 · 피킹 LOT 3개」. */
-    card: (item: string, count: number, qty: string): string =>
-      `${item} · 피킹 LOT ${String(count)}개 · ${qty}`, // ui-check-ignore: C-13 시안 P0406 목록 카드
+    /** 목록 카드 둘째 줄 품목 뒤 — 「피킹 LOT 3개 · 110 EA」. */
+    cardLots: (count: number, qty: string): string => `피킹 LOT ${String(count)}개 · ${qty}`, // ui-check-ignore: C-13 시안 P0406 목록 카드
+    /** 목록 카드 의뢰 상태 칩 — 「검사 대기」(뜻을 붙인다 · 2026-11-20). */
+    cardStatus: (label: string): string => `검사 ${label}`,
+    /** 판정 대기인데 피킹 LOT 이 없어 결과를 기록할 수 없다(서버 규칙 그대로). */
+    cannotJudge: '판정 불가',
+    /** 읽기 전용 피킹 LOT 목록 구획 이름(검사 대상 LOT 고르기와 구분). */
+    lotsTitle: '피킹 LOT 현황',
+    /** 검사 결과 탭 — 회차마다 저장된 시리얼 기록. */
+    results: {
+      serials: (count: number): string => `시리얼 ${String(count)}대`,
+    },
     /** 머리 품목 칸 — 「FG-A100 센서 모듈 A」. */
     itemValue: (code: string, name: string): string => (name === '' ? code : `${code} ${name}`),
     /** 적치 대기 자리 몫의 위치 이름(시스템 코드 대신). */
@@ -193,10 +200,16 @@ export const popOqcInspection = {
         `PDA 교체 ${at}${worker === '' ? '' : ` ${worker}`}`,
         ...(nonconformanceNo === null ? [] : [`부적합 ${nonconformanceNo}`]),
       ].join(' · '), // ui-check-ignore: C-13 시안 P0406 교체로 빠진 LOT 줄
-    cardEmpty: (item: string): string => `${item} · 피킹 LOT 없음`, // ui-check-ignore: C-13 시안 P0406 목록 카드
-    target: '목표',
-    picked: '피킹',
+    /** 머리 정보 띠 수량 — 출하 완료(P-04-07)와 같은 말. */
+    target: '지시량',
+    picked: '피킹량',
+    over: '초과량',
+    bandLabel: '출하 지시서 정보',
+    /** 피킹 LOT 이 없을 때 한 줄(출하 완료와 같은 문구). */
+    lotsEmpty: '피킹된 LOT이 없습니다.',
     refs: {
+      shipmentRequest: '출하 지시서',
+      status: '검사 상태',
       request: '의뢰번호',
       customer: '고객',
       shipTo: '납품처',
@@ -206,28 +219,40 @@ export const popOqcInspection = {
     lotsReplacedHeading: '교체로 빠진 LOT — 판정 대상 아님',
     appliedNone: '적용 검사 없음',
     form: {
-      heading: (seqNo: number): string => `${String(seqNo)}회차 검사 결과 추가`,
-      matchHint: '이 결과의 판정이 고른 LOT 에 걸립니다.',
-      judgmentHint: '하나만 고릅니다. 수량은 넣지 않습니다.',
+      heading: (seqNo: number): string => `${String(seqNo)}회차 검사 결과 등록`,
+      reinspectHeading: (seqNo: number): string => `${String(seqNo)}회차 재검사 결과 등록`,
+      /** 결과 입력의 LOT 고르기 칸(공용 LotMatchField 문구). */
+      match: {
+        matchHeading: '검사 대상 LOT',
+        selectAll: '전체 선택',
+        selectNone: '선택 해제',
+      },
       serialHeading: '검사한 시리얼',
       serialOptional: '(선택)',
-      noLots: '피킹된 LOT 이 없어 결과를 기록할 수 없습니다.',
+      noLots: '피킹된 LOT이 없어 판정할 수 없습니다.',
     },
     bar: {
       save: '결과 저장',
       saving: '저장 중…',
       saved: (seqNo: number): string => `${String(seqNo)}회차 결과를 저장했습니다.`,
+      reinspect: '재검사 추가',
       ready: '저장할 수 있습니다. 판정은 출하 완료 때 확정됩니다.',
       blocked: {
-        match: '피킹 LOT 을 1개 이상 고르세요.',
+        match: '검사 대상 LOT을 1개 이상 고르세요.',
         judgment: '판정을 고르세요.',
         reason: '이 결과가 불합격이나 보류 판정을 바꿉니다. 재검 사유를 고르세요.',
-        noLots: '피킹된 LOT 이 없어 결과를 기록할 수 없습니다.',
+        noLots: '피킹된 LOT이 없어 판정할 수 없습니다.',
         skipped: '이 의뢰는 OQC 생략으로 닫혔습니다. 결과를 더하지 않습니다.',
         completed: '출하 완료로 판정이 확정된 의뢰입니다. 결과를 더하지 않습니다.',
         /** 검사 항목 측정 값 오류(FR-009 · T052) — 수치 항목에 숫자가 아닌 값 등. */
         measurement: '검사 항목 측정 값의 오류를 고친 뒤 저장할 수 있습니다.',
       },
     },
+  },
+  /** 피처 012 US3-5 — 피킹 LOT 의 라인 · 출고 창고 · 공장. 사업부 안 어느 POP 에서나 결과를 넣는다. */
+  bu012: {
+    lotPlace: (lineNo: number, warehouse: string, plant: string): string =>
+      `라인 ${String(lineNo)}, ${warehouse} (${plant})`,
+    lotLineOnly: (lineNo: number): string => `라인 ${String(lineNo)}, 창고 미지정`,
   },
 };

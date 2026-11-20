@@ -2,6 +2,7 @@ import { Button, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { ItemPicker, type PickerSlot } from './item-picker';
 import type { CodeOption } from './options';
 import { asScopeId } from './scope';
@@ -20,25 +21,28 @@ const ANY_ITEM: CodeOption[] = [{ value: '', label: t.scope.anyOption }];
 interface ReadOnlyFieldProps {
   label: string;
   value: string;
-  note: string;
+  /** 왜 여기서 못 바꾸는지 — 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */
+  info: string;
 }
 
 /**
  * 값을 보여 주기만 하는 칸.
  *
  * **폼 컨트롤을 잠그지 않고 값 표기로 낸다** — 잠긴 입력칸은 「언젠가 여기서 고칠 수 있다」를
- * 뜻하는데, 이 값들은 이 창이 영영 정하지 않는다. 사유는 함께 낸다.
+ * 뜻하는데, 이 값들은 이 창이 영영 정하지 않는다. 사유는 라벨 옆 ⓘ 로 낸다.
  */
-const ReadOnlyField = ({ label, value, note }: ReadOnlyFieldProps) => {
+const ReadOnlyField = ({ label, value, info }: ReadOnlyFieldProps) => {
   const labelId = useId();
 
   return (
     <div className="field-cell">
-      <span className="field-label" id={labelId}>
-        {label}
+      <span className="info-label">
+        <span className="field-label" id={labelId}>
+          {label}
+        </span>
+        <InfoTip text={info} />
       </span>
       <p aria-labelledby={labelId}>{value}</p>
-      <span className="field-note">{note}</span>
     </div>
   );
 };
@@ -140,7 +144,7 @@ export const ChannelFormDialog = ({
         <ReadOnlyField
           label={t.fields.equipment}
           value={equipmentLabel}
-          note={t.actionReasons.equipmentFixed}
+          info={t.actionReasons.equipmentFixed}
         />
 
         {isCreate ? (
@@ -155,7 +159,7 @@ export const ChannelFormDialog = ({
           <ReadOnlyField
             label={t.fields.channelKey}
             value={values.channelKey}
-            note={t.actionReasons.channelKeyFixed}
+            info={t.actionReasons.channelKeyFixed}
           />
         )}
 
@@ -182,10 +186,17 @@ export const ChannelFormDialog = ({
          * 있고, 그것이 이 축을 둔 이유다(설계 회신 `omf-mes#203` 질문1).
          */}
         <div className="form-grid-full">
-          <fieldset className="picker-group">
-            <legend className="field-label">{t.scope.columnHeader}</legend>
-            {/* ⭐ 비운 것이 「전체」다 — 고르지 않은 것이 아니라 값이다. */}
-            <p className="dialog-lead">{t.scope.note}</p>
+          {/*
+           * ⭐ 비운 것이 「전체」다 — 고르지 않은 것이 아니라 값이다. 그 뜻은 묶음 이름 옆 ⓘ 로 둔다
+           * (관리웹 정리 시안 A). ⓘ 의 문장이 묶음 이름에 섞이지 않게 이름은 `aria-label` 로 준다.
+           */}
+          <fieldset className="picker-group" aria-label={t.scope.columnHeader}>
+            <legend className="field-label">
+              <span className="info-label">
+                {t.scope.columnHeader}
+                <InfoTip text={t.scope.note} />
+              </span>
+            </legend>
 
             <div className="form-grid">
               <ItemSelectField

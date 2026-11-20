@@ -2,6 +2,8 @@ import { Button, type Column, EmptyState, IconButton, SkeletonText, Table } from
 import { messages } from '@omf-mes/i18n';
 import { useId, useState, type ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
+
 import type { ApproverOption } from './approver-options';
 import { DisabledAction } from './disabled-action';
 import { describeApprover } from './lookups';
@@ -62,6 +64,17 @@ export interface StepPaneProps {
 }
 
 /**
+ * 결재 단계 제목 옆 ⓘ 의 문장 — 전체 교체(계약에 개별 추가·삭제 경로가 없어 배열이 곧 최종 순서다) ·
+ * 승인자 부재 · 소급하지 않음 · 반려 후 재상신.
+ */
+export const STEP_RULES = [
+  t.notes.stepReplaceWholeList,
+  t.notes.stepGuideApproverAbsent,
+  t.notes.stepGuideNotRetroactive,
+  t.notes.stepGuideRejectResubmit,
+].join(' ');
+
+/**
  * 고른 결재선의 결재 단계 — **추가·삭제·순서 이동과 전체 치환 저장**.
  *
  * **읽는 데는 조회가 하나도 붙지 않는다.** 계약이 단계 응답에 승인자의 표시 이름과 부서,
@@ -77,9 +90,8 @@ export interface StepPaneProps {
  * 단계는 (순서, 승인자) 둘뿐이라 「바꾸기」가 「지우고 넣고 옮기기」와 같고, 조작을 하나 줄이면
  * 초안 규칙도 하나 줄어든다.
  *
- * **상시 안내 네 줄을 늘 낸다.** 전체 교체 · 승인자 부재 · 소급하지 않음 · 반려 후 재상신은
- * 결재선을 보는 내내 참인 사실이라, 성공 알림에 붙이면 알림과 함께 사라져 정작 읽어야 할
- * 사람이 못 읽는다.
+ * **규칙 네 가지는 구획 제목 옆 ⓘ 에 둔다.** 전체 교체 · 승인자 부재 · 소급하지 않음 · 반려 후 재상신은
+ * 결재선을 보는 내내 참인 사실이라 성공 알림에 붙이지 않는다 — 다만 늘 펼쳐 두지도 않는다(관리웹 정리 시안 A).
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
@@ -219,6 +231,11 @@ export const StepPane = ({
 
   return (
     <section className="pane" aria-label={t.panes.steps}>
+      {/* 표 아래 네 줄이던 규칙은 제목 옆 ⓘ 하나로 모은다(관리웹 정리 시안 A). */}
+      <h2 className="pane-title info-label">
+        {t.panes.steps}
+        <InfoTip text={STEP_RULES} />
+      </h2>
       <div className="banner-slot">{banner}</div>
 
       {stepsSlot()}
@@ -241,7 +258,8 @@ export const StepPane = ({
         <div className="filter-bar">
           {/*
            * 승인자 구분 — 1차에는 사용자만 열린다. **잠긴 선택지를 감추지 않는다**(`omf-mes#69`).
-           * 값이 하나뿐이라 고를 것이 없지만, 그 사실을 보이는 것이 이 칸의 일이다.
+           * 값이 하나뿐이라 고를 것이 없지만, 그 사실을 보이는 것이 이 칸의 일이다. 「사용자만 고를 수
+           * 있다」는 칸 아래가 아니라 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A).
            *
            * **`disabledReason`을 주지 않는다.** 그 prop이 묻는 것은 「왜 잠겼는가」인데 여기
            * 담을 값(역할·부서를 열지 않았다 · 목록이 잘렸다)은 그 답이 아니다 — 이 칸이 잠기는
@@ -252,7 +270,7 @@ export const StepPane = ({
             label={t.fields.approverType}
             options={approverTypeOptions}
             value="USER"
-            note={approverTypeNote}
+            info={approverTypeNote}
             disabled={isLocked}
             onChange={() => {
               /* 열린 값이 하나뿐이라 바뀔 값이 없다. 치환 본문의 구분은 상수이며 이 칸을 읽지 않는다. */
@@ -279,12 +297,6 @@ export const StepPane = ({
           )}
         </div>
       )}
-
-      {/* 이 저장이 전체 교체라는 사실. 계약에 개별 추가·삭제 경로가 없어 배열이 곧 최종 순서다. */}
-      <p className="field-note">{t.notes.stepReplaceWholeList}</p>
-      <p className="field-note">{t.notes.stepGuideApproverAbsent}</p>
-      <p className="field-note">{t.notes.stepGuideNotRetroactive}</p>
-      <p className="field-note">{t.notes.stepGuideRejectResubmit}</p>
 
       {drafts !== null && (
         <div className="form-actions">
