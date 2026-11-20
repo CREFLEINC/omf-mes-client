@@ -21,8 +21,6 @@ export const erpProductionOrder = {
     rework: '재작업',
     status: '상태',
     progress: '진행',
-    plannedStartFrom: '계획 시작일 시작',
-    plannedStartTo: '계획 시작일 종료',
     q: 'ERP W/O 번호',
   },
   panes: {
@@ -31,10 +29,11 @@ export const erpProductionOrder = {
   },
   filters: {
     all: '전체',
-    dateRangeError: '계획 시작일 시작이 종료보다 늦습니다. 기간을 바로잡으세요.',
     itemPlaceholder: '품목을 검색해 고르세요',
     itemClear: '품목 지우기',
     itemPick: '고르기',
+    /** 「조건 더보기」에 접힌 조건의 칩 — 「상태: 반려」처럼 칸 이름과 값을 한 줄로. */
+    chip: (label: string, value: string): string => `${label}: ${value}`,
   },
   actions: {
     firstPage: '첫 쪽',

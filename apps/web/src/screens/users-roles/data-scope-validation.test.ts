@@ -29,7 +29,9 @@ describe('dataScopeBlockReason — 최소 1축', () => {
   });
 
   it('두 축을 다 골라도 만들 수 있다', () => {
-    expect(dataScopeBlockReason(draftOf({ businessUnitId: '2001', plantId: '4001' }), [])).toBeNull();
+    expect(
+      dataScopeBlockReason(draftOf({ businessUnitId: '2001', plantId: '4001' }), []),
+    ).toBeNull();
   });
 });
 

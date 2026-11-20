@@ -1,9 +1,9 @@
 import type { components } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import { toRoleListQuery } from './filters';
+import { DEFAULT_PAGE_SIZE, toRoleListQuery } from './filters';
 import type { PageMeta, Role, RoleFilters } from './types';
 
 type RoleDetailResponse = components['schemas']['RoleDetailResponse'];
@@ -26,7 +26,8 @@ export interface RoleListResponse {
 
 export const roleKeys = {
   all: ['users-roles-roles'] as const,
-  list: (filters: RoleFilters, page: number) => ['users-roles-roles', 'list', filters, page] as const,
+  list: (filters: RoleFilters, page: number, size: number = DEFAULT_PAGE_SIZE) =>
+    ['users-roles-roles', 'list', filters, page, size] as const,
   detail: (roleId: number) => ['users-roles-roles', 'detail', roleId] as const,
   /** 이 역할에 부여된 기능 권한. 치환이 성공하면 이 키만 무효화한다. */
   permissions: (roleId: number) => ['users-roles-roles', 'permissions', roleId] as const,
@@ -37,6 +38,9 @@ export const roleKeys = {
   permissionCatalog: ['users-roles-permission-catalog'] as const,
 };
 
+/** 건수만 쓰는 조회 — 줄은 하나만 받는다(합계 `page.total` 만 본다). */
+const COUNT_PAGE_SIZE = 1;
+
 /**
  * 역할 목록. 조건은 서버로 보낸다 — 클라이언트에서 거르면 서버가 자른 뒤의 결과만 걸러진다.
  *
@@ -46,15 +50,45 @@ export const useRoleList = (
   filters: RoleFilters,
   page: number,
   enabled: boolean,
+  size: number = DEFAULT_PAGE_SIZE,
 ): UseQueryResult<RoleListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: roleKeys.list(filters, page),
+    queryKey: roleKeys.list(filters, page, size),
     enabled,
     queryFn: () =>
-      runRequest(() => client.GET('/app/roles', { params: { query: toRoleListQuery(filters, page) } })),
+      runRequest(() =>
+        client.GET('/app/roles', { params: { query: toRoleListQuery(filters, page, size) } }),
+      ),
   });
+};
+
+/** 탭 줄 사용 · 미사용 라벨의 건수 — 걸린 다른 조건은 두고 상태만 바꿔 센다(사용자 탭과 같다 · #333). */
+export const useRoleStatusCounts = (
+  filters: RoleFilters,
+  enabled: boolean,
+): (number | undefined)[] => {
+  const { client } = useApiClient();
+  const results = useQueries({
+    queries: (['active', 'inactive'] as const).map((status) => {
+      const next = { ...filters, status };
+
+      return {
+        queryKey: roleKeys.list(next, 1, COUNT_PAGE_SIZE),
+        enabled,
+        staleTime: 30_000,
+        queryFn: () =>
+          runRequest(() =>
+            client.GET('/app/roles', {
+              params: { query: toRoleListQuery(next, 1, COUNT_PAGE_SIZE) },
+            }),
+          ),
+      };
+    }),
+  });
+
+  return results.map((result) => result.data?.page.total);
 };
 
 /**

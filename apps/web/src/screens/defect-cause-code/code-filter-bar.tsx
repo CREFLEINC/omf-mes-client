@@ -1,8 +1,9 @@
-import { Button, Chip } from '@crefle/web-ui';
+import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { runRequest } from '../../patterns/request';
 import { PagedSelect, Select } from '../../patterns/select';
 
@@ -16,9 +17,12 @@ const t = messages.defectCauseCode;
 /** 공정 칸의 한 쪽 건수 — 종전 공정 검색 창의 첫 쪽과 같다. */
 const PROCESS_SELECT_PAGE_SIZE = 20;
 
+/** 「초기화」가 견주는 조건만 — 쪽 · 쪽 크기는 조건이 아니다(초기화는 쪽 크기를 남긴다). */
+const conditionsOf = ({ page: _page, size: _size, ...conditions }: CodeFilters) => conditions;
+
 export interface CodeFilterBarProps {
   adapter: CodeAdapter;
-  /** 적용된(주소에 반영된) 조건 — 조건 칩의 렌더 기준 */
+  /** 적용된(주소에 반영된) 조건 */
   appliedFilters: CodeFilters;
   /** 조회 버튼·Enter·칩 제거·초기화가 호출 */
   onApplyFilters: (next: CodeFilters) => void;
@@ -45,12 +49,9 @@ export const CodeFilterBar = ({
   const { client } = useApiClient();
   /* 처분 유형은 처분 값이 있는 코드에만, 공정 검색은 늘(사용자 지시 · #209). */
   const showDisposition = adapter.hasDisposition;
-  const dispositionLabel = (code: CodeFilters['dispositionTypeCode']): string =>
-    code === '' ? t.filters.all : t.values.disposition[code];
   const processLabel = (id: string): string =>
     id === '' ? '' : (processLabelOf(Number(id)) ?? id);
-  // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
-  // 편집 중인 값은 draft에만 있고 조건 칩에는 미러하지 않는다.
+  // 트리거 모델: 편집은 모아서 적용, 해제는 즉시. 편집 중인 값은 draft에만 있다.
   const [draft, setDraft] = useState<CodeFilters>(appliedFilters);
   const {
     q: appliedQ,
@@ -81,6 +82,16 @@ export const CodeFilterBar = ({
     appliedPage,
     appliedSize,
   ]);
+
+  /*
+   * 「초기화」는 바뀐 것이 있을 때만 보인다(C-6) — 사용 여부 칩도 초기화가 되돌리므로 함께 견준다.
+   * 조건 칸이 모두 줄에 보여 칩을 따로 두지 않는다.
+   */
+  const isChanged = hasChangedFilters(
+    conditionsOf(DEFAULT_CODE_FILTERS),
+    conditionsOf(draft),
+    conditionsOf(appliedFilters),
+  );
 
   return (
     <>
@@ -171,50 +182,22 @@ export const CodeFilterBar = ({
           <Button variant="filled" onClick={() => onApplyFilters(draft)}>
             {messages.common.search}
           </Button>
-          <Button
-            variant="outlined"
-            onClick={() => onApplyFilters({ ...DEFAULT_CODE_FILTERS, size: appliedFilters.size })}
-          >
-            {messages.common.reset}
-          </Button>
+          {isChanged && (
+            <Button
+              variant="outlined"
+              onClick={() => {
+                const next = { ...DEFAULT_CODE_FILTERS, size: appliedFilters.size };
+                setDraft(next);
+                onApplyFilters(next);
+              }}
+            >
+              {messages.common.reset}
+            </Button>
+          )}
           <span className="inspection-standard-filter-divider" aria-hidden />
           {actions}
         </div>
       </div>
-
-      {(appliedFilters.q !== '' ||
-        appliedFilters.dispositionTypeCode !== '' ||
-        appliedFilters.processId !== '') && (
-        <div className="filter-bar">
-          {appliedFilters.q !== '' && (
-            <Chip
-              variant="status"
-              removeLabel={t.filters.chipRemoveKeyword}
-              onRemove={() => onApplyFilters({ ...appliedFilters, q: '' })}
-            >
-              {t.filters.chipKeyword(appliedFilters.q)}
-            </Chip>
-          )}
-          {appliedFilters.dispositionTypeCode !== '' && (
-            <Chip
-              variant="status"
-              removeLabel={t.filters.chipRemoveDisposition}
-              onRemove={() => onApplyFilters({ ...appliedFilters, dispositionTypeCode: '' })}
-            >
-              {t.filters.chipDisposition(dispositionLabel(appliedFilters.dispositionTypeCode))}
-            </Chip>
-          )}
-          {appliedFilters.processId !== '' && (
-            <Chip
-              variant="status"
-              removeLabel={t.filters.chipRemoveProcess}
-              onRemove={() => onApplyFilters({ ...appliedFilters, processId: '' })}
-            >
-              {t.filters.chipProcess(processLabel(appliedFilters.processId))}
-            </Chip>
-          )}
-        </div>
-      )}
     </>
   );
 };

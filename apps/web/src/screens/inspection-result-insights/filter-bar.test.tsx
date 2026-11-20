@@ -34,11 +34,15 @@ const wrapper = ({ children }: { children: ReactNode }) => (
   </QueryClientProvider>
 );
 
+/** 처음 값 — 화면은 오늘 · 오늘로 연다. */
+const TODAY = { ...EMPTY_INSPECTION_INSIGHT_FILTERS, from: '2026-08-31', to: '2026-08-31' };
+
 describe('검사 결과 공통 필터', () => {
   it('기간 전에는 조회를 막고 무관한 rerender에 편집 초안을 보존한다', async () => {
     const user = userEvent.setup();
     const props = {
       appliedFilters: EMPTY_INSPECTION_INSIGHT_FILTERS,
+      defaults: TODAY,
       options,
       onSearch: vi.fn(),
       onReset: vi.fn(),
@@ -76,6 +80,7 @@ describe('검사 결과 공통 필터', () => {
     render(
       <InspectionInsightFilterBar
         appliedFilters={EMPTY_INSPECTION_INSIGHT_FILTERS}
+        defaults={TODAY}
         options={options}
         onSearch={onSearch}
         onReset={() => undefined}
@@ -91,12 +96,12 @@ describe('검사 결과 공통 필터', () => {
     );
     expect(from!.compareDocumentPosition(to!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(to!.compareDocumentPosition(lot!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    const toggle = screen.getByRole('button', { name: '상세 보기 펼치기' });
+    const toggle = screen.getByRole('button', { name: '조건 더보기' });
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     // 최종 회차는 윗줄(LOT 스캔 옆)이라 접혀 있어도 보인다.
     expect(screen.getByRole('checkbox', { name: '최종 회차' })).toBeVisible();
     await user.click(toggle);
-    expect(screen.getByRole('button', { name: '상세 보기 접기' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: '조건 접기' })).toHaveAttribute(
       'aria-expanded',
       'true',
     );
@@ -135,6 +140,7 @@ describe('검사 결과 공통 필터', () => {
     render(
       <InspectionInsightFilterBar
         appliedFilters={EMPTY_INSPECTION_INSIGHT_FILTERS}
+        defaults={TODAY}
         options={options}
         onSearch={onSearch}
         onReset={vi.fn()}
@@ -152,5 +158,60 @@ describe('검사 결과 공통 필터', () => {
       screen.getByRole('button', { name: '초기화' }),
     ];
     expect(search.compareDocumentPosition(reset) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('「초기화」는 처음 값(오늘 · 오늘)에서는 없고, 바꾼 것이 생기면 나타난다(C-6)', async () => {
+    const user = userEvent.setup();
+    const onReset = vi.fn();
+    render(
+      <InspectionInsightFilterBar
+        appliedFilters={TODAY}
+        defaults={TODAY}
+        options={options}
+        onSearch={vi.fn()}
+        onReset={onReset}
+      />,
+      { wrapper },
+    );
+
+    expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
+
+    await user.type(screen.getByLabelText('LOT 스캔'), 'L');
+    await user.click(screen.getByRole('button', { name: '초기화' }));
+
+    expect(onReset).toHaveBeenCalledOnce();
+    /* 치던 값도 처음으로 — 조회에 쓰인 값이 이미 처음 값이면 주소가 바뀌지 않는다. */
+    expect(screen.getByLabelText('LOT 스캔')).toHaveValue('');
+  });
+
+  it('접힌 칸에 걸린 조건은 칩으로 보이고, × 는 그 조건만 풀어 조회한다 — 펼치면 칩을 거둔다', async () => {
+    const user = userEvent.setup();
+    const onSearch = vi.fn();
+    const applied = { ...TODAY, processId: '501', calibrationExpired: 'only' as const };
+    render(
+      <InspectionInsightFilterBar
+        appliedFilters={applied}
+        defaults={TODAY}
+        options={options}
+        onSearch={onSearch}
+        onReset={vi.fn()}
+      />,
+      { wrapper },
+    );
+
+    expect(screen.getByRole('button', { name: '조건 더보기' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    expect(screen.getByText('검사 공정: 합성 공정')).toBeInTheDocument();
+    expect(screen.getByText('교정 상태: 검교정 만료만')).toBeInTheDocument();
+    /* 보이는 칸(기간 · LOT · 최종 회차)은 칩으로 겹쳐 적지 않는다. */
+    expect(screen.queryByText(/^시작일 선택: /)).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: '검사 공정 조건 제거' }));
+    expect(onSearch).toHaveBeenCalledWith({ ...applied, processId: '' });
+
+    await user.click(screen.getByRole('button', { name: '조건 더보기' }));
+    expect(screen.queryByText('검사 공정: 합성 공정')).toBeNull();
   });
 });

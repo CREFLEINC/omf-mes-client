@@ -1,5 +1,6 @@
 /*
- * M-01-01 입하 등록(005) — 스캔 화면 하나: 스캔 칸 · 결과 줄(하나) · 전송 대기 띠 · 입하 LOT 카드(screens/M-01-01.md).
+ * M-01-01 입하 등록(005) — 스캔 칸 · 방금 찍은 라벨(하나) · 전송 대기 띠 · 이번 입하 표, 품목 줄을 누르면 그 품목의
+ * 자재 관리 LOT(screens/M-01-01.md · 사용자 지시 2026-11-20 「정말로 중요한 것만」).
  */
 .receive {
   display: flex;
@@ -40,31 +41,6 @@
   color: inherit;
 }
 
-.receive-line {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2, 8px);
-  padding: var(--space-2, 8px) var(--space-3, 12px);
-  border-radius: var(--radius-md);
-  background: var(--semantic-success-container);
-  overflow-wrap: anywhere;
-}
-
-.receive-line[data-kind='offline'] {
-  background: var(--semantic-warning-container);
-}
-
-.receive-line[data-kind='reject'],
-.receive-line[data-kind='closed'] {
-  background: var(--semantic-error-container);
-  color: var(--on-semantic-error-container);
-}
-
-.receive-line__sub {
-  display: block;
-  font: var(--type-body-sm);
-}
-
 .receive__pending {
   display: flex;
   flex-direction: column;
@@ -87,156 +63,313 @@
   list-style: none;
 }
 
-.receive__cards {
+/* ── 이번 입하 표 — 공급사 머리 줄 › 품목 줄. 품목 칸만 꺾이고 나머지 칸은 한 줄. ── */
+.receive-tally {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+.receive-tally__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+
+.receive-tally__title {
+  margin: 0;
+  font: var(--type-title-sm);
+}
+
+.receive-tally__total {
+  margin-inline-start: var(--space-1, 4px);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 드물게 쓰는 [마감] — 머리 오른쪽에 작게. 빨강은 확인 창에서만. */
+.receive-tally__close {
+  margin-inline-start: auto;
+}
+
+.receive-tally__lock,
+.item-lots__lock {
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+}
+
+.receive-tally__empty {
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+}
+
+.receive-tally__scroll {
+  overflow: hidden;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.receive-tally__table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font: var(--type-body-sm);
+}
+
+.receive-tally__col-no {
+  width: 26px;
+}
+
+.receive-tally__col-count {
+  width: 32px;
+}
+
+.receive-tally__col-qty {
+  width: 84px;
+}
+
+/* 표 머리 줄은 낭독기에만 — 화면에서는 노이즈다(사용자 지시 2026-11-20). */
+.receive-tally__table thead {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.receive-tally__table thead th {
+  height: 28px;
+  padding: 0 var(--space-1, 4px);
+  border-bottom: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  text-align: start;
+  white-space: nowrap;
+}
+
+.receive-tally__table td {
+  padding: 0 var(--space-1, 4px);
+  border-bottom: 1px solid var(--surface-container-high);
+  white-space: nowrap;
+}
+
+.receive-tally__table tbody:last-child tr:last-child td {
+  border-bottom: 0;
+}
+
+.receive-tally__group th {
+  height: 26px;
+  padding: 0 var(--space-3, 12px);
+  border-bottom: 1px solid var(--surface-container-high);
+  background: var(--surface-container-low);
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  font-weight: 700;
+  text-align: start;
+}
+
+.receive-tally__table .receive-tally__no {
+  padding-inline-start: var(--space-2, 8px);
+  color: var(--on-surface-muted);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.receive-tally__table .receive-tally__num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.receive-tally__table td.receive-tally__num:last-child {
+  padding-inline-end: var(--space-3, 12px);
+}
+
+.receive-tally__num small {
+  margin-inline-start: 2px;
+  color: var(--on-surface-muted);
+  font-size: 10px;
+}
+
+.receive-tally__count {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.receive-tally__table td.receive-tally__item {
+  white-space: normal;
+}
+
+/*
+ * 품목 칸 전체가 누르는 자리 — 코드 위 · 이름 아래. 셸의 `.mobile-shell button { white-space: nowrap }` 보다 앞서도록
+ * 표 클래스를 겹쳐 적는다 — 이름이 꺾여야 잘리지 않는다.
+ */
+.receive-tally__table .receive-tally__open {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 48px;
+  padding: var(--space-2, 8px) var(--space-1, 4px);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.25;
+  text-align: start;
+  white-space: normal;
+  cursor: pointer;
+}
+
+.receive-tally__open > * {
+  min-width: 0;
+}
+
+.receive-tally__code {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+/* 품목명은 작게 — 대조는 품목코드로 하고 이름은 거든다(사용자 지시 2026-11-20). 줄여서라도 전체 — fit-name 이 7px 까지 줄이고 그래도 넘치면 다음 줄로. */
+.receive-tally__name {
+  overflow: hidden;
+  color: var(--on-surface-variant);
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.receive-tally__closed {
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+}
+
+/*
+ * 방금 찍은 라벨이 들어간 줄 — 초록 바탕 + 왼쪽 6px 선. 3px 은 옅어 한눈에 안 들어왔다 · 줄을 둘러싼
+ * 테두리는 지나쳤다(사용자 지시 2026-11-20). 이미 찍은 라벨이면 같은 모양을 회색으로.
+ */
+.receive-tally__table tr[data-current='true'] > td {
+  background: var(--semantic-success-container);
+}
+
+.receive-tally__table tr[data-current='true'] > td:first-child {
+  box-shadow: inset 6px 0 0 var(--semantic-success);
+}
+
+.receive-tally__table tr[data-duplicate='true'] > td {
+  background: var(--surface-container-high);
+}
+
+.receive-tally__table tr[data-duplicate='true'] > td:first-child {
+  box-shadow: inset 6px 0 0 var(--on-surface-muted);
+}
+
+/* 마감된 품목 — 흐리게. 눌러 LOT 은 볼 수 있다. */
+.receive-tally__table tr[data-closed='true'] > td {
+  color: var(--on-surface-muted);
+}
+
+/* ── 품목 시트 안 — 그 품목의 자재 관리 LOT(patterns/lot-table.css). ── */
+.item-lots {
   display: flex;
   flex-direction: column;
   gap: var(--space-3, 12px);
 }
 
-.receive__cards-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2, 8px);
-  margin: 0;
-  font: var(--type-headline-sm);
-}
-
-/* 제목 오른쪽 건수 — 제목과 갈리게 옅은 파랑 배지(빨강은 주 단추에만). */
-.receive__cards-count {
-  flex: none;
-  padding: 2px var(--space-3, 12px);
-  border-radius: var(--radius-full);
-  background: var(--semantic-info-container);
-  color: var(--on-semantic-info-container);
-  font: var(--type-title-sm);
-  font-variant-numeric: tabular-nums;
-}
-
-/*
- * 입하 LOT 카드 — 테두리 상자 + 회색 머리 띠로 카드끼리 또렷이 갈린다(사용자 지시 2026-11-18). 마지막으로 스캔이
- * 들어간 맨 위 카드는 테두리가 짙다. 클래스를 겹쳐 적어 디자인 시스템 카드의 안쪽 여백보다 앞선다.
- */
-.receive-card.receive-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  padding: 0;
-  overflow: hidden;
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-lg);
-}
-
-.receive-card.receive-card[data-current='true'] {
-  border-color: var(--brand-charcoal);
-}
-
-.receive-card[data-closed='true'] {
-  background: var(--surface-container-low);
-}
-
-/* 머리 띠 — 누르면 접고 편다. 번호 · 상태 칩 · 화살표. */
-.receive-card__head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2, 8px);
-  width: 100%;
-  min-height: 48px;
-  margin: 0;
-  padding: var(--space-2, 8px) var(--space-3, 12px);
-  border: 0;
-  border-bottom: 1px solid var(--outline-variant);
-  background: var(--surface-container);
-  color: inherit;
-  font: inherit;
-  text-align: start;
-  cursor: pointer;
-}
-
-.receive-card__head > .receive-card__no {
-  flex: 1 1 auto;
-}
-
-.receive-card__head > :not(.receive-card__no) {
-  flex: none;
-}
-
-.receive-card__head:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: -2px;
-}
-
-/* 접히는 부분 — 자재 관리 LOT 표와 [입하 마감]. */
-.receive-card__more {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2, 8px);
-  padding: 0 var(--space-3, 12px) var(--space-3, 12px);
-}
-
-.receive-card__more[hidden] {
-  display: none;
-}
-
-.receive-card__no {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-/* 낱말 조각 — 조각 사이(빈칸)에서만 꺾인다. 한 낱말이 줄보다 길면 셸의 overflow-wrap 으로 안에서 꺾인다. */
-.receive-card__word {
-  display: inline-block;
-  max-width: 100%;
-}
-
-/*
- * 이름표 붙은 칸 — 이름표는 작은 회색 글자, 값은 오른쪽. 공급사 · 품목 · 품질은 한 줄을 다 쓰고 LOT 수 · 전체 수량은 나란히.
- */
-.receive-card__facts {
-  padding: var(--space-3, 12px);
+.item-lots__head {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr);
-  align-items: center;
+  grid-template-columns: max-content minmax(0, 1fr);
   gap: var(--space-1, 4px) var(--space-3, 12px);
   margin: 0;
-}
-
-.receive-card__facts > dt {
-  color: var(--on-surface-muted);
-  font: var(--type-label-sm);
-}
-
-.receive-card__facts > dd {
-  min-width: 0;
-  margin: 0;
-}
-
-.receive-card__facts > .receive-card__wide {
-  grid-column: span 3;
-}
-
-.receive-card__strong {
-  font-weight: 700;
-}
-
-.receive-card__note {
-  color: var(--on-surface-muted);
   font: var(--type-body-sm);
 }
 
-.receive-card__close {
+.item-lots__head dt {
+  color: var(--on-surface-muted);
+}
+
+.item-lots__head dd {
+  margin: 0;
+  color: var(--on-surface);
+}
+
+.item-lots__close {
   width: 100%;
 }
 
 /*
- * 카드 아래 자재 관리 LOT 표(patterns/lot-table.css). 공급사 LOT 칸은 시트를 여는 단추 — 값이 길면 말줄임.
+ * 마감 단추는 빨간 글자 · 테두리(사용자 결정 2026-11-20) — 찾기 쉽되, 꽉 찬 빨강은 확인 창의 [마감] 한 자리에만.
+ * 막혔을 때는 공용 외곽선 단추의 흐린 모양 그대로.
  */
-.receive-lots__supplier {
-  display: inline-flex;
+.receive-tally__close.pda-button--outlined.pda-button--outlined:not(:disabled),
+.item-lots__close.pda-button--outlined.pda-button--outlined:not(:disabled) {
+  color: var(--primary);
+  box-shadow: inset 0 0 0 1.5px var(--primary);
+}
+
+.receive-tally__close.pda-button--outlined.pda-button--outlined:not(:disabled):focus-visible,
+.item-lots__close.pda-button--outlined.pda-button--outlined:not(:disabled):focus-visible {
+  box-shadow:
+    inset 0 0 0 1.5px var(--primary),
+    var(--focus-ring);
+}
+
+.item-lots__head .item-lots__code {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+
+
+.item-lots__table {
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.item-lots__table .item-lots__no {
+  width: 28px;
+  color: var(--on-surface-muted);
+  text-align: center;
+}
+
+.item-lots__uom {
+  margin-inline-start: 2px;
+  color: var(--on-surface-muted);
+  font-size: 10px;
+}
+
+/*
+ * 공급사 LOT 칸 — 다른 칸이 쓰고 남은 폭만 갖고 길면 말줄임(contain 으로 글 폭을 표 폭 계산에서 뺀다). 그래서 표는
+ * 화면보다 넓어지지 않고 ✕ 가 늘 보인다(사용자 지시 2026-11-19).
+ */
+.item-lots__supplier-cell {
+  width: 100%;
+  max-width: 0;
+}
+
+.item-lots__clip {
+  display: block;
+  min-width: 0;
+  contain: inline-size;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-lots__supplier {
+  display: flex;
+  contain: inline-size;
   align-items: center;
   gap: 2px;
-  max-width: 7.5em;
+  width: 100%;
   min-height: 40px;
   padding: 0;
   border: 0;
@@ -247,18 +380,18 @@
   cursor: pointer;
 }
 
-.receive-lots__supplier-text {
+.item-lots__supplier-text {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.receive-lots__supplier > :not(.receive-lots__supplier-text) {
+.item-lots__supplier > :not(.item-lots__supplier-text) {
   flex: none;
   color: var(--on-surface-muted);
 }
 
-.receive-lots__supplier:disabled {
+.item-lots__supplier:disabled {
   cursor: default;
 }
 

@@ -41,15 +41,9 @@ export const gaugeMaster = {
     typeAll: '계측기 전체',
     /** 「아직 안 함」과 「만료」를 함께 잡는다 — 둘 다 채워야 할 것이다. */
     overdueOnly: '검교정 밀린 것만',
-    chipRemoveKeyword: '검색어 조건 제거',
-    chipRemovePlant: '공장 조건 제거',
-    chipRemoveType: '유형 조건 제거',
     chipRemoveOverdue: '검교정 밀림 조건 제거',
     chipRemoveIncludeInactive: '미사용 포함 조건 제거',
     chipRemoveIncludeDisposed: '폐기 포함 조건 제거',
-    chipKeyword: (value: string): string => `검색어: ${value}`,
-    chipPlant: (label: string): string => `공장: ${label}`,
-    chipType: (label: string): string => `유형: ${label}`,
     includeDisposed: '폐기 포함',
   },
   form: {

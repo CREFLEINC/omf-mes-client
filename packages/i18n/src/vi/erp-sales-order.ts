@@ -20,8 +20,6 @@ export const erpSalesOrder: Translated<typeof ko.erpSalesOrder> = {
     remainingQty: 'Còn lại',
     uom: 'Đơn vị',
     requestedDeliveryDate: 'Ngày giao yêu cầu',
-    orderDateFrom: 'Ngày nhận đơn từ',
-    orderDateTo: 'Ngày nhận đơn đến',
     unassignedOnly: 'Chỉ đơn chưa xếp',
     q: 'Số đơn bán',
     orderType: 'Loại đơn bán',
@@ -41,7 +39,7 @@ export const erpSalesOrder: Translated<typeof ko.erpSalesOrder> = {
   },
   filters: {
     all: 'Tất cả',
-    dateRangeError: 'Ngày nhận đơn từ muộn hơn ngày đến. Hãy sửa lại khoảng thời gian.',
+    chip: (label: string, value: string): string => `${label}: ${value}`,
   },
   actions: {
     select: (orderNo: string): string => `Chọn ${orderNo}`,

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { ScreenHeader } from '../../patterns/screen-header';
 import { DetailPane } from './detail-pane';
 import { FailureFilterBar } from './failure-filter-bar';
 import { FailureTable } from './failure-table';
@@ -150,7 +151,7 @@ export const EquipmentFailureScreen = () => {
 
   return (
     <>
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb

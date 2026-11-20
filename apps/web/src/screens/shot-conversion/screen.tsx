@@ -6,6 +6,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { type LookupSource, selectableLookupOptions } from '../../patterns/lookup-display';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
+import { ScreenHeader } from '../../patterns/screen-header';
 import { EnabledPane } from './enabled-pane';
 import { PreviewPane } from './preview-pane';
 import { enabledState, globalPolicy } from './enabled-state';
@@ -419,7 +420,7 @@ export const ShotConversionScreen = () => {
 
   return (
     <div className="screen">
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb

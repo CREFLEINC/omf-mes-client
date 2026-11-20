@@ -82,7 +82,7 @@ describe('검사실적·검사결과 조회 조립', () => {
     await user.type(screen.getByLabelText('시작일 선택'), '2026-08-01');
     await user.clear(screen.getByLabelText('종료일 선택'));
     await user.type(screen.getByLabelText('종료일 선택'), '2026-08-31');
-    await user.click(screen.getByRole('button', { name: '상세 보기 펼치기' }));
+    await user.click(screen.getByRole('button', { name: '조건 더보기' }));
     await user.click(screen.getByLabelText('검사 유형 선택'));
     await user.click(screen.getByRole('option', { name: 'PQC (공정검사)' }));
     await user.click(screen.getByRole('checkbox', { name: '최종 회차' }));

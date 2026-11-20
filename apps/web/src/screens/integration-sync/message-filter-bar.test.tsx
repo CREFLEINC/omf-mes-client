@@ -1,10 +1,11 @@
+import { messages } from '@omf-mes/i18n';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { EMPTY_FILTERS, type MessageFilters } from './filters';
 import { MessageFilterBar } from './message-filter-bar';
-import type { PeriodInput } from './period';
+import { defaultPeriod, type PeriodInput } from './period';
 
 const APPLIED: PeriodInput = { from: '2026-08-01', to: '2026-08-06' };
 
@@ -92,6 +93,7 @@ describe('MessageFilterBar — 기간', () => {
 
     await user.clear(screen.getByLabelText('기간 종료'));
     await user.type(screen.getByLabelText('기간 종료'), '2026-08-10');
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     await user.type(screen.getByLabelText('재시도 횟수(이상)'), '3');
 
     rerenderWithApplied({ ...APPLIED }, { ...EMPTY_FILTERS });
@@ -156,6 +158,20 @@ describe('MessageFilterBar — 기간', () => {
 
     expect(onReset).toHaveBeenCalledTimes(1);
   });
+
+  it('초기화는 처음 값(오늘까지 7일 · 조건 없음)과 달라진 것이 있을 때만 보인다', async () => {
+    const { user } = renderBar({ period: defaultPeriod(new Date()), statusOptions: ['FAILED'] });
+
+    expect(screen.queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('combobox', { name: '상태' }));
+    await user.click(screen.getByRole('option', { name: '실패' }));
+    await user.click(screen.getByRole('button', { name: '초기화' }));
+
+    /* 걸린 조건이 처음 그대로여도 고르던 값을 되돌리고 단추를 거둔다. */
+    expect(screen.getByRole('combobox', { name: '상태' })).toHaveTextContent('전체');
+    expect(screen.queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
+  });
 });
 
 describe('MessageFilterBar — 조건 4종', () => {
@@ -198,28 +214,61 @@ describe('MessageFilterBar — 조건 4종', () => {
   it('시도 하한을 고쳐 조회하면 그 값이 함께 넘어간다', async () => {
     const { onSearch, user } = renderBar();
 
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     await user.type(screen.getByLabelText('재시도 횟수(이상)'), '3');
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     expect(onSearch).toHaveBeenCalledWith(APPLIED, { ...EMPTY_FILTERS, retryMin: '3' });
   });
 
-  it('걸린 조건마다 칩이 나오고 ×를 누르면 그 조건만 푼다', async () => {
+  it('접힌 칸(구분 · 재시도 횟수)에 걸린 조건만 칩이 되고 ×를 누르면 그 조건만 푼다', async () => {
     const { onRemoveFilter, user } = renderBar({
-      filters: { ...EMPTY_FILTERS, status: 'FAILED', retryMin: '2' },
+      filters: { ...EMPTY_FILTERS, status: 'FAILED', direction: 'OUTBOUND', retryMin: '2' },
+      statusOptions: ['FAILED'],
+      directionOptions: ['OUTBOUND'],
     });
 
-    expect(screen.getByText('상태: 실패')).toBeInTheDocument();
+    expect(screen.getByText('구분: 송신')).toBeInTheDocument();
     expect(screen.getByText('재시도 2회 이상')).toBeInTheDocument();
+    /* 보이는 칸(상태)의 조건은 칩으로 겹쳐 적지 않는다. */
+    expect(screen.queryByText('상태: 실패')).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '상태 조건 제거' }));
+    await user.click(screen.getByRole('button', { name: '재시도 횟수 조건 제거' }));
 
-    expect(onRemoveFilter).toHaveBeenCalledWith('status');
+    expect(onRemoveFilter).toHaveBeenCalledWith('retryMin');
   });
 
   it('조건이 없으면 칩을 만들지 않는다', () => {
     renderBar();
 
-    expect(screen.queryByRole('button', { name: '상태 조건 제거' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '구분 조건 제거' })).not.toBeInTheDocument();
+  });
+});
+
+describe('MessageFilterBar — 조건 더보기(C-6)', () => {
+  it('보이는 칸은 기간 · 항목 · 상태, 구분 · 재시도 횟수는 「조건 더보기」 안에 접혀 있다', async () => {
+    const { user } = renderBar();
+    const more = screen.getByRole('button', { name: messages.common.filterMore.open });
+
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('combobox', { name: '항목' })).toBeVisible();
+    expect(screen.getByRole('combobox', { name: '상태' })).toBeVisible();
+    expect(screen.queryByRole('combobox', { name: '구분' })).toBeNull();
+    expect(screen.queryByRole('spinbutton', { name: '재시도 횟수(이상)' })).toBeNull();
+
+    await user.click(more);
+
+    expect(screen.getByRole('combobox', { name: '구분' })).toBeVisible();
+    expect(screen.getByRole('spinbutton', { name: '재시도 횟수(이상)' })).toBeVisible();
+  });
+
+  it('펼치면 칸에 값이 보이므로 칩을 거둔다', async () => {
+    const { user } = renderBar({ filters: { ...EMPTY_FILTERS, retryMin: '2' } });
+
+    expect(screen.getByText('재시도 2회 이상')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+
+    expect(screen.queryByText('재시도 2회 이상')).toBeNull();
+    expect(screen.getByLabelText('재시도 횟수(이상)')).toHaveValue(2);
   });
 });

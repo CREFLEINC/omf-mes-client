@@ -72,17 +72,11 @@ export const defectCauseCode = {
   filters: {
     defectSearchLabel: '불량코드 검색',
     defectSearchPlaceholder: '불량코드 또는 불량명을 입력하세요',
-    chipRemoveKeyword: '검색어 조건 제거',
     chipRemoveIncludeInactive: '미사용 포함 조건 제거',
-    chipKeyword: (value: string): string => `검색어: ${value}`,
     /** 처분 유형 · 공정 조건(불량코드 탭 · #209) */
     disposition: '처분 유형 선택',
     process: '공정 검색',
     all: '전체',
-    chipDisposition: (value: string): string => `처분 유형: ${value}`,
-    chipProcess: (value: string): string => `공정: ${value}`,
-    chipRemoveDisposition: '처분 유형 조건 제거',
-    chipRemoveProcess: '공정 조건 제거',
   },
   fields: {
     code: '코드',

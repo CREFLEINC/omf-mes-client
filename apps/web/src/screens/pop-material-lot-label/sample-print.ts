@@ -34,7 +34,6 @@ export const SAMPLE_LOT_LABEL: MaterialLotLabelFields = {
   issueSeq: 1,
   supplier: 'TEST SUPPLIER (000000)',
   receipt: 'RCV 2026-01-01',
-  kind: 'material',
 };
 
 /** 셸이 부른다. 셸 통로가 없으면 던진다 — 부른 쪽이 사유를 상자로 보인다. */

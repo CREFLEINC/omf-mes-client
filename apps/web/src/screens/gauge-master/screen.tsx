@@ -6,6 +6,7 @@ import { useApiClient } from '../../patterns/api-context';
 import type { LookupSource } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
+import { ScreenHeader } from '../../patterns/screen-header';
 import {
   CODE_GROUPS,
   defaultGaugeFilters,
@@ -330,7 +331,7 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
 
   return (
     <div className="screen">
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb

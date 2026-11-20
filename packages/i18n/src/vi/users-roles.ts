@@ -15,10 +15,8 @@ import type { Translated } from './translated';
  * 지으면 무엇이 렌더되는지 흐려진다.
  */
 export const usersRoles: Translated<typeof ko.usersRoles> = {
-  title: 'Người dùng · vai trò · quyền',
-  breadcrumbRoot: 'Quản trị hệ thống',
   tabs: {
-    label: 'Người dùng · vai trò · quyền',
+    label: 'Quản lý người dùng · vai trò · quyền',
     users: 'Người dùng',
     roles: 'Vai trò · quyền',
   },
@@ -27,9 +25,11 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     userForm: 'Thông tin người dùng',
     roleAssign: 'Gán vai trò',
     dataScope: 'Phạm vi truy cập dữ liệu',
-    roleList: 'Vai trò',
-    roleForm: 'Thông tin vai trò',
+    userSettings: 'Cài đặt người dùng',
+    roleList: 'Danh sách vai trò',
+    roleForm: 'Thông tin chi tiết vai trò',
     permission: 'Quyền chức năng',
+    roleSettings: 'Thiết lập vai trò',
   },
   actions: {
     prevPage: 'Trước',
@@ -38,6 +38,9 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     addUser: 'Thêm người dùng',
     addRole: 'Thêm vai trò',
     resetPassword: 'Đặt lại mật khẩu',
+    saveInfo: 'Lưu',
+    saveRoles: 'Lưu',
+    saveScopes: 'Lưu',
   },
   /** 비활성 사유는 **그 컨트롤의 이름으로 시작한다**(배치 규범 4). 옮긴 말에서도 앞머리를 지킨다. */
   actionReasons: {
@@ -48,29 +51,33 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     statusLookupEmpty:
       'Chưa đăng ký tình trạng làm việc nào nên không chọn được tình trạng làm việc.',
     /** ⚠ 「언젠가 풀린다」가 아니라 **보낼 자리가 없다**는 뜻이다 — 그 사실 그대로 옮긴다. */
-    loginIdLocked: 'Tên đăng nhập không thể thay đổi.',
     deactivateRoleAlreadyDone: 'Ngừng sử dụng không làm lại được với vai trò đã ngừng dùng.',
     saveNoChanges: 'Lưu chỉ bấm được khi có nội dung đã sửa.',
     addRoleNoInput: 'Thêm vai trò chỉ bấm được khi đã nhập nội dung.',
     dataScopeTargetRequired:
       'Xác nhận chỉ bấm được sau khi chọn ít nhất một trong đơn vị kinh doanh và nhà máy.',
     /** ⚠ 비운 축을 「(전체)」로 접어 판정한다 — 그 사실을 빼면 중복 사유가 설명되지 않는다. */
-    dataScopeDuplicate:
-      'Xác nhận chỉ bấm được khi không trùng với phạm vi đã có. Trục để trống được coi là «(Tất cả)».',
+    dataScopeDuplicate: 'Hãy chọn sao cho không trùng với phạm vi truy cập đã đăng ký.',
   },
   /** ⛔ 참조 건수·배정 건수를 내지 않는다 — 화면이 낼 수 있는 건수가 그 뜻이 아니다. */
   dialog: {
-    deactivateUserTitle: 'Ngừng sử dụng chứ?',
-    deactivateUserDescription:
-      'Ngừng sử dụng thì người dùng này không dùng được hệ thống nữa và không thể hoàn lại.',
-    deactivateRoleTitle: 'Ngừng sử dụng vai trò này chứ?',
+    deactivateUserTitle: 'Ngừng sử dụng tài khoản',
+    deactivateUserCaption: 'Đối tượng ngừng sử dụng',
+    deactivateUserLoginId: (loginId: string): string => `ID đăng nhập: ${loginId}`,
+    deactivateUserDescription: 'Bạn có muốn ngừng cho tài khoản này sử dụng hệ thống?',
+    deactivateUserWarning: 'Sau khi ngừng sử dụng, không thể đăng nhập bằng tài khoản này.',
+    deactivateRoleTitle: 'Ngừng sử dụng vai trò',
+    deactivateRoleCaption: 'Đối tượng ngừng sử dụng',
+    deactivateRoleCode: (roleCode: string): string => `Mã vai trò: ${roleCode}`,
     /** ⚠ 사용자 문구를 그대로 쓰지 않는다 — 중지했을 때 일어나는 일이 서로 다르다. */
-    deactivateRoleDescription:
-      'Ngừng sử dụng thì không gán mới vai trò này được nữa và quyền đang mở bằng vai trò này sẽ mất. Dữ liệu đã tích lũy vẫn còn nguyên. Không có đường hoàn lại.',
+    deactivateRoleDescription: 'Bạn có muốn ngừng sử dụng vai trò này?',
+    deactivateRoleWarning:
+      'Không thể gán mới, và quyền của người dùng hiện có cũng bị ảnh hưởng.\nDữ liệu hiện có được giữ nguyên, nhưng không thể khôi phục sau khi ngừng sử dụng.',
     /** ⚠ 임시 비밀번호는 **한 번만** 보인다 — 누르기 전과 받은 뒤 두 번 말한다. */
-    resetPasswordTitle: 'Đặt lại mật khẩu chứ?',
-    resetPasswordDescription: 'Khi đặt lại, mật khẩu tạm thời mới chỉ hiện 1 lần.',
-    resetPasswordConfirm: 'Đặt lại',
+    resetPasswordTitle: 'Đặt lại mật khẩu',
+    resetPasswordQuestion: 'Bạn có muốn cấp mật khẩu tạm thời mới không?',
+    resetPasswordDescription: 'Mật khẩu tạm thời chỉ xem được một lần sau khi cấp.',
+    resetPasswordConfirm: 'Đặt lại mật khẩu',
     temporaryPasswordTitle: 'Mật khẩu tạm thời',
     temporaryPasswordLead:
       'Mật khẩu chỉ xem được lần này. Hãy chuyển cho người dùng trước khi đóng cửa sổ.',
@@ -90,22 +97,22 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     totalOnly: (total: number): string => `Tổng ${String(total)} mục`,
   },
   filters: {
+    departmentSearchPlaceholder: 'Nhập bộ phận',
+    pane: 'Điều kiện tìm người dùng',
+    rolePane: 'Điều kiện tìm vai trò',
     userSearchLabel: 'Tìm người dùng',
-    userSearchPlaceholder: 'Tên đăng nhập hoặc tên',
+    userSearchPlaceholder: 'Nhập tên đăng nhập hoặc tên',
     department: 'Phòng ban',
-    departmentAll: 'Tất cả phòng ban',
+    departmentAll: 'Tất cả',
     /** ⚠ 인사 상태다 — 사용 여부(ngừng dùng)와 다른 축이라 가려 부른다. */
     status: 'Tình trạng làm việc',
     statusAll: 'Tất cả tình trạng làm việc',
-    chipKeyword: (value: string): string => `Từ khóa: ${value}`,
-    chipRemoveKeyword: 'Bỏ điều kiện từ khóa',
-    chipDepartment: (label: string): string => `Phòng ban: ${label}`,
-    chipRemoveDepartment: 'Bỏ điều kiện phòng ban',
-    chipStatus: (label: string): string => `Tình trạng làm việc: ${label}`,
-    chipRemoveStatus: 'Bỏ điều kiện tình trạng làm việc',
-    chipRemoveIncludeInactive: 'Bỏ điều kiện gồm cả mục ngừng dùng',
+    includeInactive: 'Bao gồm không sử dụng',
     roleSearchLabel: 'Tìm vai trò',
-    roleSearchPlaceholder: 'Mã vai trò hoặc tên vai trò',
+    roleSearchPlaceholder: 'Tìm theo mã hoặc tên vai trò',
+    roleIncludeInactive: 'Bao gồm không sử dụng',
+    roleReset: 'Đặt lại',
+    roleStatusChipsLabel: 'Trạng thái sử dụng',
   },
   loading: {
     users: 'Đang tải danh sách người dùng',
@@ -125,8 +132,8 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     inactiveSuffix: ' (ngừng dùng)',
     /** ⛔ 못 찾은 번호를 그대로 내지 않는다 — 내부 식별자가 화면에 서면 자료로 읽힌다. */
     unknown: 'Không rõ',
-    active: 'Đang dùng',
-    inactive: 'Ngừng dùng',
+    active: 'Sử dụng',
+    inactive: 'Không sử dụng',
   },
   user: {
     fields: {
@@ -139,8 +146,12 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
       initialPassword: 'Mật khẩu ban đầu',
     },
     statusDefault: 'Mặc định (đang làm việc)',
+    showPassword: 'Hiện mật khẩu',
+    optionalMark: '(tùy chọn)',
+    hidePassword: 'Ẩn mật khẩu',
     /** 부서를 고르지 않은 상태. 계약이 널을 허용하므로 **비우는 것이 정상 값이다.** */
     departmentNone: 'Không chỉ định',
+    loginIdLocked: 'Không thể đổi',
     empty: {
       noneTitle: 'Chưa đăng ký người dùng nào',
       noneDescription: 'Hãy đăng ký người dùng đầu tiên bằng «Thêm người dùng».',
@@ -167,14 +178,14 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
       roleCode: 'Mã vai trò',
       roleName: 'Tên vai trò',
       description: 'Mô tả',
-      status: 'Trạng thái',
+      status: 'Trạng thái sử dụng',
     },
+    codeInUse: 'Không thể thay đổi mã đang được sử dụng.',
     empty: {
       noneTitle: 'Chưa đăng ký vai trò nào',
       noneDescription: 'Hãy đăng ký vai trò đầu tiên bằng «Thêm vai trò».',
       noMatchTitle: 'Không có vai trò khớp điều kiện',
       noMatchDescription: 'Hãy bớt điều kiện hoặc đặt lại rồi tra cứu lại.',
-      notSelected: 'Hãy chọn vai trò trong danh sách bên trái.',
     },
     validation: {
       required: 'Đây là mục bắt buộc.',
@@ -190,14 +201,19 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
       'Nhấn vào ô để cấp hoặc thu hồi quyền, rồi lưu. Lần lưu sẽ thay toàn bộ quyền của vai trò này.',
     /* 표의 열 머리. 권한이 117개라 세로로 세우고, 코드는 화면을 짚어 보는 열쇠라 함께 보인다. */
     columns: {
-      granted: 'Cấp',
-      name: 'Quyền',
-      code: 'Mã',
+      granted: 'Cấp quyền',
+      name: 'Tên chức năng',
+      code: 'Nơi dùng',
     },
     tableCaption: (roleLabel: string) => `Quyền chức năng của vai trò ${roleLabel}`,
     /* 고르기만 하고 저장하지 않는다 - 되돌리는 길은 「취소」다. */
-    selectAll: 'Chọn tất cả',
-    clearAll: 'Bỏ chọn tất cả',
+    selectAll: 'Chọn tất cả quyền',
+    clearAll: 'Bỏ chọn tất cả quyền',
+    groupSelectAll: 'Cả nhóm',
+    platforms: { W: 'WEB', P: 'POP', M: 'PDA' } as Record<string, string>,
+    groupCount: (granted: number, total: number): string => `${String(granted)} / ${String(total)}`,
+    groupCountLabel: (granted: number, total: number): string =>
+      `Đã cấp ${String(granted)} / ${String(total)}`,
     /*
      * 묶음 이름 - groupCode 는 개체 식별자라 서버가 이름을 주지 않는다.
      * 고정 설계의 권한 목록 생성기가 적어 둔 축 7개를 옮겼고, 모르는 축은 코드를 그대로 낸다.
@@ -243,7 +259,7 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     fields: {
       businessUnit: 'Đơn vị kinh doanh',
       plant: 'Nhà máy',
-      edit: 'Sửa',
+      edit: 'Quản lý',
     },
     values: {
       /** ⭐ 빈 축은 「고르지 않음」이 아니라 **고른 값**이다 — 그 축 전체를 뜻한다. */
@@ -261,39 +277,79 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     dialog: {
       addTitle: 'Thêm phạm vi truy cập',
       editTitle: 'Sửa phạm vi truy cập',
-      /** ⚠ 확인이 저장이라고 오해하면 창을 닫고 화면을 떠난다. */
-      notSavedNotice: 'Xác nhận thì phản ánh vào bảng. Để áp dụng thay đổi, hãy bấm «Lưu».',
+      addLead: 'Chọn bộ phận kinh doanh và nhà máy cần thêm.',
+      allBusinessUnits: 'Chọn bộ phận kinh doanh',
+      allPlants: 'Chọn nhà máy',
+      add: 'Thêm',
+      apply: 'Áp dụng thay đổi',
     },
+    hint: 'Có thể truy cập dữ liệu của bộ phận kinh doanh và nhà máy đã chọn.',
     empty: {
-      none: 'Chưa chỉ định phạm vi truy cập nào',
-      noneDescription: 'Hãy dùng «Thêm phạm vi» để định phạm vi mà người dùng này xem được.',
+      none: 'Chưa chỉ định phạm vi nào',
+      noneDescription: 'Có thể xem dữ liệu của mọi nhà máy.',
     },
+  },
+  statusChips: {
+    label: 'Tình trạng làm việc',
+    filterOn: (label: string): string => `Chỉ xem ${label}`,
+    filterOff: (label: string): string => `Bỏ lọc ${label}`,
+  },
+  pickRole: {
+    title: 'Hãy chọn vai trò.',
+    hint: 'Có thể xem thông tin và quyền của vai trò đã chọn.',
+    noRolesTitle: 'Không có vai trò để hiển thị.',
+    noRolesHint: 'Hãy thay đổi điều kiện tìm kiếm hoặc thêm vai trò.',
+  },
+  pickUser: {
+    title: 'Hãy chọn người dùng.',
+    hint: 'Thông tin chi tiết · vai trò · phạm vi truy cập dữ liệu của người dùng được chọn sẽ hiển thị.',
+    noUsersTitle: 'Không có người dùng để hiển thị.',
+    noUsersHint: 'Hãy đổi điều kiện tìm kiếm hoặc thêm người dùng.',
+  },
+  discard: {
+    title: 'Thay đổi chưa lưu',
+    body: 'Nếu rời đi mà không lưu, các thay đổi sẽ bị mất.',
+    keep: 'Tiếp tục chỉnh sửa',
+    confirm: 'Rời đi không lưu',
   },
   workerLink: {
     title: 'Người lao động đã liên kết',
     linked: 'Đã liên kết',
     unlinked: 'Chưa liên kết',
-    none: 'Chưa có người lao động được liên kết.',
-    hintUnlinked: 'Để lưu phán định kiểm tra đầu vào, cần liên kết mã nhân viên.',
-    hintLinked: 'Khi phán định kiểm tra, sẽ được ghi nhận theo người lao động này.',
+    hintUnlinked: 'Để lưu phán định kiểm tra đầu vào, cần liên kết người lao động.',
+    titleUnlinked: 'Liên kết người lao động hiện trường',
     noDepartment: 'Không có bộ phận',
     connect: 'Liên kết người lao động',
     change: 'Đổi người lao động',
     unlink: 'Hủy liên kết',
     inputLabel: 'Mã nhân viên',
-    inputPlaceholder: 'Nhập mã nhân viên',
-    submitConnect: 'Liên kết',
-    submitChange: 'Đổi',
     noteConnect: 'Khi liên kết, thay đổi được áp dụng ngay, không cần lưu riêng.',
-    noteChange: 'Khi đổi, thay đổi được áp dụng ngay, không cần lưu riêng.',
+    inputLabelChange: 'Mã nhân viên cần đổi',
+    inputLabelConnect: 'Mã nhân viên cần liên kết',
+    inputPlaceholderConnect: 'Nhập mã nhân viên',
+    currentCaption: 'Người lao động đang liên kết',
+    inputPlaceholder: 'Nhập mã nhân viên',
+    inputPlaceholderChange: 'Nhập mã nhân viên',
+    submitConnect: 'Liên kết',
+    submitConnectDialog: 'Liên kết người lao động',
+    submitChange: 'Đổi người lao động',
     unlinkConfirmTitle: 'Hủy liên kết người lao động',
-    unlinkQuestion: 'Bạn có muốn hủy liên kết người lao động này không?',
+    unlinkCaption: 'Người lao động đã liên kết',
     unlinkImpact: 'Sau khi hủy liên kết, tài khoản này không lưu được phán định kiểm tra đầu vào.',
-    unlinkNote: 'Hủy liên kết được áp dụng ngay.',
     linkedToast: (summary: string): string => `Đã liên kết người lao động — ${summary}`,
     unlinkedToast: 'Đã hủy liên kết người lao động.',
     notFound: 'Không tìm thấy người lao động đang làm việc có mã nhân viên này.',
+    noActiveWorker: 'Không có mã nhân viên đang làm việc.',
     linkedElsewhere: 'Mã nhân viên này đã được liên kết với tài khoản khác.',
+    createLabel: 'Mã nhân viên cần liên kết',
+    metaLabels: {
+      workerNo: 'Mã NV',
+      departmentCode: 'Mã bộ phận',
+      departmentName: 'Tên bộ phận',
+      department: 'Bộ phận',
+    },
+    createLinkFailed:
+      'Đã thêm người dùng nhưng chưa liên kết được người lao động. Hãy liên kết lại trong chi tiết.',
     workerNoRequired: 'Hãy nhập mã nhân viên.',
   },
 };

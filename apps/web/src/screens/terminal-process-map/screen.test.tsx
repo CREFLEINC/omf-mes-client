@@ -123,6 +123,30 @@ describe('TerminalProcessMapScreen 표시', () => {
   });
 });
 
+describe('TerminalProcessMapScreen 조회 조건', () => {
+  it('초기화는 바뀐 것이 생겨야 나타나고, 누르면 치던 검색어까지 비운다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByRole('button', { name: 'SYN-TERM-01' });
+    expect(screen.queryByRole('button', { name: t.filters.clear })).not.toBeInTheDocument();
+
+    const search = screen.getByPlaceholderText(t.filters.searchPlaceholder);
+    await user.type(search, 'SYN');
+    await user.click(screen.getByRole('button', { name: t.filters.clear }));
+
+    expect(search).toHaveValue('');
+    expect(screen.queryByRole('button', { name: t.filters.clear })).not.toBeInTheDocument();
+  });
+
+  it('주소로 걸린 조건이 처음 값과 다르면 초기화가 보인다', async () => {
+    renderScreen('/system/terminal-process-map?includeInactive=1');
+    await screen.findByRole('button', { name: 'SYN-TERM-01' });
+
+    expect(screen.getByRole('checkbox', { name: t.filters.includeInactive })).toBeChecked();
+    expect(screen.getByRole('button', { name: t.filters.clear })).toBeInTheDocument();
+  });
+});
+
 describe('TerminalProcessMapScreen 기능 구성 저장', () => {
   const processRow = (processId: number, processName: string, flags: Record<string, boolean>) => ({
     terminalProcessId: processId + 1000,

@@ -11,22 +11,301 @@
   gap: var(--space-3, 12px);
 }
 
-.stock-transfer__line {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2, 8px);
-}
-
-.stock-transfer__onhand {
-  margin: 0;
-  font-variant-numeric: tabular-nums;
-}
-
 .stock-transfer__note {
   margin: 0;
 }
 
 /* 핵심 단추는 장갑 낀 손으로 누른다. 폭을 꽉 채워 겨냥하지 않아도 닿게 한다. */
 .stock-transfer__wide {
+  width: 100%;
+}
+
+/* ── 반출 LOT 표 — 입하 등록 「이번 입하」 표와 같은 모양(사용자 지시 2026-11-20). ── */
+.transfer-tally {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+.transfer-tally__title {
+  margin: 0;
+  font: var(--type-title-sm);
+}
+
+.transfer-tally__total {
+  margin-inline-start: var(--space-1, 4px);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.transfer-tally__box {
+  overflow: hidden;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.transfer-tally__table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font: var(--type-body-sm);
+}
+
+.transfer-tally__col-no {
+  width: 26px;
+}
+
+.transfer-tally__col-qty {
+  width: 112px;
+}
+
+/* 표 머리 줄은 낭독기에만 — 화면에서는 노이즈다(사용자 지시 2026-11-20). */
+.transfer-tally__table thead {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.transfer-tally__table thead th {
+  height: 28px;
+  padding: 0 var(--space-1, 4px);
+  border-bottom: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  text-align: start;
+  white-space: nowrap;
+}
+
+.transfer-tally__table td {
+  padding: 0 var(--space-1, 4px);
+  border-bottom: 1px solid var(--surface-container-high);
+  white-space: nowrap;
+}
+
+.transfer-tally__table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.transfer-tally__table .transfer-tally__no {
+  padding-inline-start: var(--space-2, 8px);
+  color: var(--on-surface-muted);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.transfer-tally__table .transfer-tally__num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.transfer-tally__table td.transfer-tally__num:last-child {
+  padding-inline-end: var(--space-3, 12px);
+}
+
+.transfer-tally__num small {
+  margin-inline-start: 2px;
+  color: var(--on-surface-muted);
+  font-size: 10px;
+}
+
+.transfer-tally__table td.transfer-tally__item {
+  white-space: normal;
+}
+
+/*
+ * 품목 칸 전체가 누르는 자리 — 코드 위 · 이름 아래. 셸의 `.mobile-shell button { white-space: nowrap }` 보다 앞서도록
+ * 표 클래스를 겹쳐 적는다 — 이름이 꺾여야 잘리지 않는다.
+ */
+.transfer-tally__table .transfer-tally__open {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 48px;
+  padding: var(--space-2, 8px) var(--space-1, 4px);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.25;
+  text-align: start;
+  white-space: normal;
+  cursor: pointer;
+}
+
+.transfer-tally__open > * {
+  min-width: 0;
+}
+
+.transfer-tally__code {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+/* 품목명은 작게 — 대조는 품목코드로 하고 이름은 거든다. 줄여서라도 전체 — fit-name 이 7px 까지 줄이고 그래도 넘치면 다음 줄로(사용자 지시 2026-11-20). */
+.transfer-tally__name {
+  overflow: hidden;
+  color: var(--on-surface-variant);
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * 방금 담은 LOT — 초록 바탕 + 왼쪽 6px 선. 3px 은 옅어 한눈에 안 들어왔다 · 줄을 둘러싼
+ * 테두리는 지나쳤다(사용자 지시 2026-11-20). 이미 담은 LOT 을 또 찍으면 그 줄을 같은 모양의 회색으로.
+ */
+.transfer-tally__table tr[data-current='true'] > td {
+  background: var(--semantic-success-container);
+}
+
+.transfer-tally__table tr[data-current='true'] > td:first-child {
+  box-shadow: inset 6px 0 0 var(--semantic-success);
+}
+
+.transfer-tally__table tr[data-duplicate='true'] > td {
+  background: var(--surface-container-high);
+}
+
+.transfer-tally__table tr[data-duplicate='true'] > td:first-child {
+  box-shadow: inset 6px 0 0 var(--on-surface-muted);
+}
+
+.transfer-tally__table .transfer-tally__qty {
+  padding-inline-end: var(--space-2, 8px);
+  text-align: end;
+}
+
+.transfer-tally__lot {
+  color: var(--on-surface-muted);
+  font-weight: 500;
+}
+
+/* 수량 칸 — 누르면 화면 숫자판. 재고 전량으로 채워 와 고칠 때만 누른다. */
+.transfer-tally__field {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 40px;
+  padding: 0 var(--space-2, 8px);
+  border: 1.5px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.transfer-tally__field:focus-within {
+  border-color: var(--on-surface);
+}
+
+.transfer-tally__field input {
+  width: 64px;
+  border: 0;
+  background: transparent;
+  color: var(--on-surface);
+  font: inherit;
+  font-weight: 700;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+
+.transfer-tally__field small {
+  color: var(--on-surface-muted);
+  font-size: 10px;
+}
+
+.transfer-tally__field:has(input[aria-invalid='true']) {
+  border-color: var(--semantic-error);
+}
+
+.transfer-tally__problem {
+  margin: 0 0 var(--space-2, 8px);
+  padding-inline-start: var(--space-1, 4px);
+  color: var(--semantic-error-text);
+  font: var(--type-label-sm);
+  white-space: normal;
+}
+
+/* ── 보낼 곳 한 줄 — 유형 · 창고 · 위치, 오른쪽 [바꾸기](사용자 지시 2026-11-20). ── */
+.stock-transfer__dest {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+
+.stock-transfer__dest-type {
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+}
+
+.stock-transfer__dest-place {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 0 var(--space-2, 8px);
+  min-width: 0;
+  font: var(--type-body-sm);
+}
+
+.stock-transfer__dest-place strong {
+  font-weight: 700;
+}
+
+.stock-transfer__status:empty {
+  display: none;
+}
+
+/* ── 바닥 — 담은 수 · 합계, 꽉 찬 빨강 [반출 기록] 하나. ── */
+.stock-transfer__bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+.stock-transfer__bar-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+}
+
+.stock-transfer__sum {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.stock-transfer__sum strong {
+  font: var(--type-title-sm);
+  font-weight: 900;
+}
+
+.stock-transfer__sum span {
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 반출 LOT 시트. ── */
+.transfer-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+.transfer-sheet__lot {
+  overflow-wrap: anywhere;
+}
+
+.transfer-sheet__remove {
   width: 100%;
 }

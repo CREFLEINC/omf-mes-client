@@ -36,6 +36,8 @@ export const lotStatusHistory = {
     inactive: (label: string): string => `${label} (미사용)`,
     /** 기준값 목록에 없는 코드. 코드를 감추면 무엇이 어긋났는지 알 길이 없다. */
     unlisted: (value: string): string => `${value} (목록 미확정)`,
+    /** 값이 없는 칸 — 품목을 못 풀었을 때의 품목명 칸. */
+    empty: '—',
   },
   lotFilter: {
     pane: 'LOT 조회 조건',
@@ -61,8 +63,6 @@ export const lotStatusHistory = {
     lotNoScanPlaceholder: 'LOT 바코드 스캔 또는 번호를 입력하세요',
     /** 창고 검색 칸의 흐린 문구(사용자 2026-11-02). */
     warehousePlaceholder: '창고를 입력하세요',
-    detailOpen: '상세 검색 펼치기',
-    detailClose: '상세 검색 접기',
     /** 품목은 검색해서 고른다 — 품목 선택 창을 여는 단추와 고른 값을 지우는 단추. */
     itemPlaceholder: '품목을 입력하세요',
     itemClear: '품목 지우기',
@@ -112,6 +112,9 @@ export const lotStatusHistory = {
     columns: {
       lot: 'LOT 번호',
       item: '품목',
+      /** 품목은 코드 · 이름 두 칸으로 나눠 보인다(사용자 지시 2026-11-20). */
+      itemCode: '품목코드',
+      itemName: '품목명',
       status: '상태',
       onHand: '보유 수량',
       latestTransition: '최종 변경일',

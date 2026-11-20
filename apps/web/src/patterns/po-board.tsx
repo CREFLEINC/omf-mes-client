@@ -1,6 +1,8 @@
 import { Icon } from '@crefle/web-ui';
 import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 
+import { MoreMenu } from './popover-button';
+
 /**
  * 발주 목록 · 발주 상세 두 표 배치(W-01-09 입하 예정)가 함께 쓰는 조각.
  * 모양은 app.css `.po-board-*` 가 정한다.
@@ -14,7 +16,11 @@ export const formatDotDate = (date: string): string => date.replaceAll('-', '.')
  * 실어, CSS 가 남은 높이만큼만 쓰고 넘치는 줄은 표 안에서 스크롤한다. 조건 줄이 펼쳐지거나 창 크기가
  * 바뀌면 윗변이 움직이므로 다시 잰다.
  */
-export const useFitToViewport = () => {
+/**
+ * `remeasureKey` — 표 구획이 다른 요소로 갈아 끼워지는 화면(탭마다 구획이 따로 서는 화면)이 넘긴다. 값이 바뀌면
+ * 새 구획을 다시 잰다 — 안 재면 새 구획에 `--split-top` 이 없어 높이가 창 바닥까지 닿지 않는다(#333).
+ */
+export const useFitToViewport = (remeasureKey?: string) => {
   const splitRef = useRef<HTMLDivElement>(null);
   const aboveRef = useRef<HTMLElement>(null);
 
@@ -36,7 +42,7 @@ export const useFitToViewport = () => {
       observer?.disconnect();
       window.removeEventListener('resize', measure);
     };
-  }, []);
+  }, [remeasureKey]);
 
   return { splitRef, aboveRef };
 };
@@ -274,36 +280,45 @@ const LAYOUT_ICONS: Record<PaneLayout, string> = { side: 'view_column_2', stack:
 
 /**
  * 배치 고르기 — 「좌우 배치 | 상하 배치」 두 단추 중 지금 배치가 강조돼 보인다(사용자 지시 2026-10-26). 탭 줄
- * 오른쪽, 상태 칩 뒤에 선다. 창이 좁아 늘 위아래로 쌓일 때는 CSS 가 감춘다 — 눌러도 바뀌는 것이 없다.
+ * 오른쪽, 상태 칩 뒤의 「⋯」(더보기) 안에 접어 둔다(관리웹 화면 정리 시안 A · 2026-11-20). 창이 좁아 늘 위아래로 쌓일 때는
+ * CSS 가 감춘다 — 눌러도 바뀌는 것이 없다.
  * ⭐ 모양은 검사 조회·판정의 배치 단추와 같다 — 그 클래스(`split-orientation-*`)를 함께 쓴다(사용자 지시 2026-10-27 · #193).
  */
 export const PaneLayoutToggle = ({
   layout,
   onChange,
   labels,
+  menuLabel,
 }: {
   layout: PaneLayout;
   onChange: (next: PaneLayout) => void;
   labels: { group: string; side: string; stack: string };
+  /** 「⋯」 단추 이름 — 한 화면에 배치 고르기가 둘 이상일 때만 준다. 주지 않으면 「더보기」. */
+  menuLabel?: string;
 }) => (
-  <div
-    className="po-board-layout-toggle split-orientation-toggle"
-    role="group"
-    aria-label={labels.group}
-  >
-    {(['side', 'stack'] as const).map((value) => (
-      <button
-        key={value}
-        type="button"
-        className="split-orientation-option"
-        aria-pressed={layout === value}
-        onClick={() => {
-          if (layout !== value) onChange(value);
-        }}
+  <MoreMenu className="po-board-layout-more" label={menuLabel}>
+    {(close) => (
+      <div
+        className="po-board-layout-toggle split-orientation-toggle"
+        role="group"
+        aria-label={labels.group}
       >
-        <Icon name={LAYOUT_ICONS[value]} size={16} />
-        {labels[value]}
-      </button>
-    ))}
-  </div>
+        {(['side', 'stack'] as const).map((value) => (
+          <button
+            key={value}
+            type="button"
+            className="split-orientation-option"
+            aria-pressed={layout === value}
+            onClick={() => {
+              if (layout !== value) onChange(value);
+              close();
+            }}
+          >
+            <Icon name={LAYOUT_ICONS[value]} size={16} />
+            {labels[value]}
+          </button>
+        ))}
+      </div>
+    )}
+  </MoreMenu>
 );

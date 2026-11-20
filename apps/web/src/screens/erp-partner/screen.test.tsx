@@ -109,8 +109,11 @@ describe('ErpPartnerScreen', () => {
   it('검색어·역할·미사용 포함을 조회 조건으로 싣는다', async () => {
     const { urls, user } = renderScreen([listRoute(), rolesRoute]);
     await screen.findByText('예시 거래처 B');
+    // 초기화는 바뀐 것이 있을 때만 보인다.
+    expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
 
     await user.type(screen.getByLabelText('거래처 코드·명'), 'SAMPLE');
+    expect(screen.getByRole('button', { name: '초기화' })).toBeInTheDocument();
     await user.click(screen.getByRole('combobox', { name: '역할' }));
     await user.click(screen.getByRole('option', { name: '공급사' }));
     await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));

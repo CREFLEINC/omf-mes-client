@@ -4,29 +4,26 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { appUserFixtures } from './fixtures';
 import { toPageView } from './pagination';
-import { EMPTY_USER_FILTERS, UserListPane, type UserListPaneProps } from './user-list-pane';
 import type { UserFilters } from './types';
+import { EMPTY_USER_FILTERS, UserFilterBar, type UserFilterBarProps } from './user-filter-bar';
+import { UserListPane, type UserListPaneProps } from './user-list-pane';
 
 const departmentOptions = [{ value: '3001', label: 'SYN-DEPT-01 · 합성 부서 A' }];
-const statusOptions = [
-  { value: 'SYN-STATUS-A', label: '재직' },
-  { value: 'SYN-STATUS-B', label: '휴직' },
-];
 
-const renderPane = (overrides: Partial<UserListPaneProps> = {}) => {
+/* 위 조회 묶음과 아래 목록 칸을 화면처럼 함께 세운다(수입검사와 같은 틀 · omf-all-around#333). */
+type PaneProps = UserListPaneProps & UserFilterBarProps;
+
+const renderPane = (overrides: Partial<PaneProps> = {}) => {
   const onApplyFilters = vi.fn<(next: UserFilters) => void>();
   const onChangePage = vi.fn<(page: number) => void>();
   const onSelect = vi.fn<(appUserId: number) => void>();
   const onAddUser = vi.fn<() => void>();
-  const props: UserListPaneProps = {
+  const props: PaneProps = {
     users: appUserFixtures,
     isLoading: false,
     appliedFilters: EMPTY_USER_FILTERS,
     onApplyFilters,
     departmentOptions,
-    statusOptions,
-    statusDisabledReason: null,
-    departmentLabel: (id) => (id === '3001' ? 'SYN-DEPT-01 · 합성 부서 A' : '알 수 없음'),
     departmentNameOf: (id) => {
       if (id === null || id === undefined) return '—';
       return id === 3001 ? 'SYN-DEPT-01 · 합성 부서 A' : '알 수 없음';
@@ -40,6 +37,7 @@ const renderPane = (overrides: Partial<UserListPaneProps> = {}) => {
       { page: 1, size: 50, total: appUserFixtures.length },
       appUserFixtures.length,
     ),
+    pageMeta: { page: 1, size: 50, total: appUserFixtures.length },
     onChangePage,
     selectedAppUserId: null,
     onSelect,
@@ -49,7 +47,12 @@ const renderPane = (overrides: Partial<UserListPaneProps> = {}) => {
     ...overrides,
   };
 
-  render(<UserListPane {...props} />);
+  render(
+    <>
+      <UserFilterBar {...props} />
+      <UserListPane {...props} />
+    </>,
+  );
 
   return { onApplyFilters, onChangePage, onSelect, onAddUser, user: userEvent.setup() };
 };
@@ -57,13 +60,11 @@ const renderPane = (overrides: Partial<UserListPaneProps> = {}) => {
 const table = (): HTMLElement => screen.getByRole('table');
 
 describe('UserListPane 표', () => {
-  /** 목록이 길어져도 찾을 수 있게 구획 표제 옆에 둔다 — 목록 아래에는 더 없다. */
-  it('사용자 추가가 구획 표제 옆에 선다', () => {
+  /** 수입검사 검색 묶음처럼 조회 줄 한 줄에 선다 — 목록 아래에는 더 없다. */
+  it('사용자 추가가 조회 줄에 선다', () => {
     renderPane();
 
-    const heading = screen.getByRole('heading', { name: '사용자' });
-
-    expect(heading.parentElement).toContainElement(
+    expect(screen.getByRole('button', { name: '조회' }).closest('.filter-bar')).toContainElement(
       screen.getByRole('button', { name: '사용자 추가' }),
     );
   });
@@ -74,8 +75,9 @@ describe('UserListPane 표', () => {
     expect(
       within(table())
         .getAllByRole('columnheader')
-        .map((cell) => cell.textContent),
-    ).toEqual(['로그인 ID', '이름', '부서', '재직 상태']);
+        /* 머리마다 열 순서를 바꾸는 손잡이 아이콘(글자 이름)이 붙는다 — 이름만 본다. */
+        .map((cell) => (cell.textContent ?? '').replace('drag_indicator', '')),
+    ).toEqual(['로그인 아이디', '이름', '소속 부서', '재직 상태']);
   });
 
   it('응답 건수만큼 행을 그린다', () => {
@@ -85,12 +87,22 @@ describe('UserListPane 표', () => {
     expect(within(table()).getAllByRole('row')).toHaveLength(appUserFixtures.length + 1);
   });
 
-  it('로그인 ID가 상세를 여는 버튼이다', async () => {
+  /* 줄 아무 곳이나 눌러 고른다(사용자 지시 2026-11-20 · #333). 로그인 아이디 단추는 키보드로 고르는 자리로만 남는다. */
+  it('줄 아무 칸이나 누르면 그 사용자를 고른다', async () => {
     const { onSelect, user } = renderPane();
 
-    await user.click(screen.getByRole('button', { name: 'SYN-LOGIN-01' }));
+    await user.click(screen.getByText('합성 사용자 A'));
 
     expect(onSelect).toHaveBeenCalledWith(1001);
+  });
+
+  it('로그인 아이디는 링크 모양이 아니다', () => {
+    renderPane();
+
+    const pick = screen.getByRole('button', { name: 'SYN-LOGIN-01' });
+
+    expect(pick).not.toHaveClass('link-cell');
+    expect(pick).toHaveClass('users-roles-row-pick');
   });
 
   it('고른 행의 버튼에 현재 위치 표시가 붙는다', () => {
@@ -149,18 +161,19 @@ describe('UserListPane 표', () => {
 });
 
 describe('UserListPane 조건 줄', () => {
-  it('상태를 선택하고 조회하면 상태 조건을 적용한다', async () => {
-    const { onApplyFilters, user } = renderPane();
+  /* 재직 상태는 탭 줄 칩이 맡는다(#333) — 조회 줄에는 고르개가 없고, 조회는 걸린 상태를 그대로 둔다. */
+  it('재직 상태 고르개가 없고 조회는 걸린 상태를 그대로 둔다', async () => {
+    const { onApplyFilters, user } = renderPane({
+      appliedFilters: { ...EMPTY_USER_FILTERS, statusCode: 'SYN-STATUS-B' },
+    });
 
-    await user.click(screen.getByLabelText('재직 상태'));
-    await user.click(screen.getByRole('option', { name: '휴직' }));
+    expect(screen.queryByLabelText('재직 상태')).not.toBeInTheDocument();
+
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     expect(onApplyFilters).toHaveBeenCalledWith({
-      q: '',
-      departmentId: '',
+      ...EMPTY_USER_FILTERS,
       statusCode: 'SYN-STATUS-B',
-      includeInactive: false,
     });
   });
 
@@ -188,8 +201,20 @@ describe('UserListPane 조건 줄', () => {
     expect(onApplyFilters).toHaveBeenCalledWith(EMPTY_USER_FILTERS);
   });
 
+  it('초기화는 바뀐 것이 생겨야 나타나고, 누르면 치던 값까지 비운다', async () => {
+    const { onApplyFilters, user } = renderPane();
+    expect(screen.queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('사용자 검색'), 'syn');
+    await user.click(screen.getByRole('button', { name: '초기화' }));
+
+    expect(onApplyFilters).toHaveBeenCalledWith(EMPTY_USER_FILTERS);
+    expect(screen.getByLabelText('사용자 검색')).toHaveValue('');
+    expect(screen.queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
+  });
+
   /* 해제 축이라 변경 즉시 적용한다 — 조회를 한 번 더 누르게 하지 않는다. */
-  it('미사용 포함은 누르는 즉시 적용된다', async () => {
+  it('사용 중지 계정 포함은 누르는 즉시 적용된다', async () => {
     const { onApplyFilters, user } = renderPane();
 
     await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
@@ -197,7 +222,7 @@ describe('UserListPane 조건 줄', () => {
     expect(onApplyFilters).toHaveBeenCalledWith({ ...EMPTY_USER_FILTERS, includeInactive: true });
   });
 
-  it('적용된 조건마다 칩이 하나씩 보인다', () => {
+  it('네 조건이 모두 조건 줄에 보여 칩으로 겹쳐 적지 않는다', () => {
     renderPane({
       appliedFilters: {
         q: 'syn',
@@ -207,29 +232,9 @@ describe('UserListPane 조건 줄', () => {
       },
     });
 
-    expect(screen.getByText('검색어: syn')).toBeInTheDocument();
-    expect(screen.getByText('부서: SYN-DEPT-01 · 합성 부서 A')).toBeInTheDocument();
-    expect(screen.getByText('재직 상태: 재직')).toBeInTheDocument();
-    /*
-     * 「미사용 포함」은 확인칸 라벨과 칩 문구 둘 다에 쓰인다 —
-     * 칩이 실제로 섰는지는 칩마다 다른 제거 버튼 이름으로 가린다.
-     */
-    expect(screen.getByRole('button', { name: '미사용 포함 조건 제거' })).toBeInTheDocument();
-  });
-
-  it('칩을 제거하면 그 조건만 풀린다', async () => {
-    const { onApplyFilters, user } = renderPane({
-      appliedFilters: { q: 'syn', departmentId: '3001', statusCode: '', includeInactive: true },
-    });
-
-    await user.click(screen.getByRole('button', { name: '검색어 조건 제거' }));
-
-    expect(onApplyFilters).toHaveBeenCalledWith({
-      q: '',
-      departmentId: '3001',
-      statusCode: '',
-      includeInactive: true,
-    });
+    expect(screen.queryByText('검색어: syn')).not.toBeInTheDocument();
+    expect(screen.queryByText('부서: SYN-DEPT-01 · 합성 부서 A')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /조건 제거/ })).not.toBeInTheDocument();
   });
 });
 
@@ -324,6 +329,15 @@ describe('UserListPane 정렬·선택 열', () => {
   });
 
   /** 일괄로 할 쓰기가 계약에 없다 — 선택 열만 두면 눌러도 아무 일이 없다. */
+  /* 열 순서는 끌어서 바꾼다(다른 목록과 같다 · 사용자 지시 2026-11-20). */
+  it('열 머리마다 순서를 바꾸는 손잡이가 있다', () => {
+    renderPane();
+
+    for (const header of within(table()).getAllByRole('columnheader')) {
+      expect(header).toHaveTextContent('drag_indicator');
+    }
+  });
+
   it('행 선택 확인칸이 없다', () => {
     renderPane();
 

@@ -22,6 +22,11 @@ export const common: Translated<typeof ko.common> = {
   created: 'Đã đăng ký',
   retry: 'Thử lại',
   includeInactive: 'Gồm cả mục ngừng dùng',
+  filterMore: {
+    open: 'Thêm điều kiện',
+    close: 'Thu gọn điều kiện',
+    remove: (label: string): string => `Bỏ điều kiện ${label}`,
+  },
   discardChangesConfirm: 'Nội dung đã nhập chưa được lưu. Bỏ thay đổi?',
   oaOnly: {
     checking: 'Đang kiểm tra nhà máy có được dùng màn hình này không.',
@@ -35,6 +40,7 @@ export const common: Translated<typeof ko.common> = {
     notifications: 'Thông báo',
     mainMenu: 'Menu chính',
     breadcrumb: 'Đường dẫn điều hướng',
+    moreActions: 'Thêm',
     home: 'Danh sách công việc',
     back: 'Bước trước',
     backToArea: (area: string) => `Công việc ${area}`,
@@ -76,11 +82,6 @@ export const common: Translated<typeof ko.common> = {
     filterOn: (label: string): string => `Chỉ xem yêu cầu ${label}`,
     filterOff: (label: string): string => `Bỏ lọc ${label}`,
     pendingOnly: 'Chỉ xem chờ · đang làm',
-    detailFilters: {
-      open: 'Mở điều kiện chi tiết',
-      close: 'Thu gọn điều kiện chi tiết',
-      hiddenApplied: 'Đang áp dụng điều kiện chi tiết',
-    },
     pickRequest: 'Chọn yêu cầu kiểm tra',
     pickRequestHint: 'Chọn một yêu cầu kiểm tra để xem nội dung chi tiết.',
     close: 'Đóng',

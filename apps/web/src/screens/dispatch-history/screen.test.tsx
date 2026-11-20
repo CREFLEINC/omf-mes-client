@@ -236,8 +236,31 @@ describe('DispatchHistoryScreen', () => {
 
     await dispatchPane().findByText('WO-20261021-001');
     expect(t.zaloSummary(2, 1, 0, 0, 3)).toBe('성공 2, 실패 1, 대기 0, 만료 0, 번호없음 3');
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     await user.click(screen.getByRole('combobox', { name: t.filters.department }));
     expect(await screen.findByRole('option', { name: '생산1팀 (D-PRD1)' })).toBeInTheDocument();
+  });
+
+  /* 보이는 조건은 셋(C-6) — 부서는 접혀 있고, 걸려 있으면 칩이 알린다. 보이는 칸(결과)은 칩이 없다. */
+  it('부서는 조건 더보기에 접히고, 걸린 부서는 칩으로 보이며 × 가 그 조건만 풀어 다시 조회한다', async () => {
+    const user = userEvent.setup();
+    const { dispatchQueries } = setup({ route: `${ROUTE}&dept=7&result=SKIPPED` });
+
+    await dispatchPane().findByText('WO-20261021-001');
+    expect(screen.queryByRole('combobox', { name: t.filters.department })).toBeNull();
+    expect(await screen.findByText(t.filters.chipDepartment('생산1팀 (D-PRD1)'))).toBeVisible();
+    expect(screen.getAllByRole('button', { name: /조건 제거$/ })).toHaveLength(1);
+
+    await user.click(
+      screen.getByRole('button', {
+        name: messages.common.filterMore.remove(t.filters.department),
+      }),
+    );
+
+    await waitFor(() =>
+      expect((dispatchQueries.at(-1) as URL).searchParams.get('departmentId')).toBeNull(),
+    );
+    expect((dispatchQueries.at(-1) as URL).searchParams.get('status')).toBe('SKIPPED');
   });
 
   it('US8-1 행을 고르면 기간과 함께 Zalo 발송 상세를 부르고 SENDING 을 「대기」로 보인다', async () => {

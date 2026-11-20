@@ -23,6 +23,9 @@ export interface PeriodInput {
   to: string;
 }
 
+/** 처음 값 — 두 칸 모두 비어 있다. 「초기화」가 이 값으로 되돌린다. */
+export const EMPTY_PERIOD: PeriodInput = { from: '', to: '' };
+
 /** 서버로 보내는 값. `shipDateFrom`은 항상 채워진다 — 비어 있으면 애초에 조회하지 않는다. */
 export interface PeriodQuery {
   shipDateFrom: string;

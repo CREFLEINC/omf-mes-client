@@ -16,6 +16,13 @@ import type { components, InspectionSheet } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useRef, useState } from 'react';
 
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  hasChangedFilters,
+  useFilterMore,
+  type HiddenFilterChip,
+} from '../../patterns/filter-more';
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { ItemSelect } from '../../patterns/item-select';
 import { ManagedTable } from '../../patterns/managed-table';
@@ -44,6 +51,7 @@ import {
   useWorkOrderFilter,
 } from './queries';
 import { useFourMChangeTypeLabel } from '../four-m-inputs/panel';
+import { useItemNames } from '../inspection-result-insights/item-names';
 import { downloadSheetXlsx } from './export';
 import { type DetailTab, SheetDetail } from './sheet-detail';
 import { SheetEntry } from './sheet-entry';
@@ -101,6 +109,11 @@ const EMPTY_FILTER: Filter = {
   page: 1,
   size: PAGE_SIZE,
 };
+
+/** 「초기화」를 세울지 견줄 꼴 — 쪽 번호 · 쪽 크기는 조회 조건이 아니라 같은 값으로 둔다. */
+const conditionsOf = (filter: Filter): Filter => ({ ...filter, page: 1, size: PAGE_SIZE });
+
+type HiddenKey = 'itemId' | 'workOrderNo';
 
 const toQuery = (
   filter: Filter,
@@ -259,7 +272,6 @@ const InspectionSheetScreenBody = () => {
   const layout = useSplitOrientation('omf-mes:inspection-sheet:split-orientation');
   const ids = {
     scan: useId(),
-    detail: useId(),
     model: useId(),
     layout: useId(),
     reason: useId(),
@@ -300,7 +312,44 @@ const InspectionSheetScreenBody = () => {
 
   const scan = useListFilter(filter);
   const list = useSheetList(toQuery(filter, scan ?? {}), scan !== null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  /*
+   * 모델 · 작업지시는 「조건 더보기」로 접어 둔다(사용자 지시 2026-11-02 · #217 · C-6). 늘 접힌 채로 들어오고, 걸린 조건은
+   * 아래 칩으로 알린다 — × 는 그 조건만 풀어 바로 조회한다.
+   */
+  const more = useFilterMore();
+  const filterItemId = filter.itemId === '' ? undefined : Number(filter.itemId);
+  const filterItemNames = useItemNames([filterItemId]);
+  const chipOf = (key: HiddenKey, label: string, value: string): HiddenFilterChip<HiddenKey> => ({
+    key,
+    label: `${label}: ${value}`,
+    removeLabel: messages.common.filterMore.remove(label),
+  });
+  /* 칩 라벨은 대상 이름(목록 머리글)이다 — 칸 라벨의 「검색」 같은 동작 낱말을 싣지 않는다. */
+  const hiddenChips: HiddenFilterChip<HiddenKey>[] = [
+    /* 칩의 값은 펼친 칸이 보이는 글자와 같다(품목코드 · 품목명). */
+    ...(filterItemId === undefined
+      ? []
+      : [
+          chipOf(
+            'itemId',
+            t.columns.model,
+            filterItemNames.get(filterItemId)?.label ?? messages.common.reference.loading,
+          ),
+        ]),
+    ...(filter.workOrderNo === ''
+      ? []
+      : [chipOf('workOrderNo', t.columns.workOrder, filter.workOrderNo)]),
+  ];
+  const removeChip = (key: HiddenKey): void => {
+    setDraft((prev) => ({ ...prev, [key]: '' }));
+    setFilter((prev) => ({ ...prev, [key]: '', page: 1 }));
+  };
+  /* 「초기화」는 바뀐 것이 있을 때만(C-6) — 편집 중인 값이나 조회에 쓰인 값(상태 칩 포함)이 처음 값과 다를 때. */
+  const isChanged = hasChangedFilters(
+    conditionsOf(EMPTY_FILTER),
+    conditionsOf(draft),
+    conditionsOf(filter),
+  );
   const periodReversed = draft.from !== '' && draft.to !== '' && draft.from > draft.to;
   /* 선택 칸(양식 · 모델)은 고르는 즉시 조회 — 조회 단추를 누른 것과 같다(사용자 지시 2026-11-02). */
   const applyNow = (patch: Partial<Filter>) => {
@@ -522,30 +571,24 @@ const InspectionSheetScreenBody = () => {
               value={draft.scan}
               onChange={(e) => setDraft({ ...draft, scan: e.target.value })}
             />
-            {/* 조회 → 초기화 → 상세 보기 차례(검사 실적 조회 줄과 같다 · 사용자 지시 2026-11-02). */}
+            {/* 조회 → 초기화 → 조건 더보기 차례(검사 실적 조회 줄과 같다 · 사용자 지시 2026-11-02). */}
             <div className="form-actions inspection-results-filter-actions">
               {/* ui-check-ignore: C-4 막히는 까닭은 조회 줄 아래 안내 */}
               <Button type="submit" disabled={periodReversed}>
                 {t.list.search}
               </Button>
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  setDraft(EMPTY_FILTER);
-                  setFilter((prev) => ({ ...EMPTY_FILTER, size: prev.size }));
-                }}
-              >
-                {t.list.reset}
-              </Button>
-              <Button
-                variant="text"
-                size="sm"
-                aria-expanded={isDetailOpen}
-                aria-controls={ids.detail}
-                onClick={() => setIsDetailOpen((open) => !open)}
-              >
-                {isDetailOpen ? t.list.detailClose : t.list.detailOpen}
-              </Button>
+              {isChanged && (
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    setDraft(EMPTY_FILTER);
+                    setFilter((prev) => ({ ...EMPTY_FILTER, size: prev.size }));
+                  }}
+                >
+                  {t.list.reset}
+                </Button>
+              )}
+              <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
               <Button
                 variant="outlined"
                 leadingIcon={<Icon name="add" size={18} aria-hidden />}
@@ -556,7 +599,7 @@ const InspectionSheetScreenBody = () => {
             </div>
           </div>
           {/* 아랫줄 — 모델 · 작업지시. `hidden` 은 감싸는 상자에 둔다. */}
-          <div id={ids.detail} className="inspection-results-filter-detail" hidden={!isDetailOpen}>
+          <div id={more.id} className="inspection-results-filter-detail" hidden={!more.isOpen}>
             {/*
              * 모델 — 칸을 누르면 바로 검색창이 펼쳐져 칸 안에서 찾아 고른다(팝업 없음 · #226 공용 칸 · 담당자 지시 2026-11-02).
              * 넘기는 값(품목 번호)과 조회 시점(조회 단추)은 그대로다.
@@ -582,6 +625,7 @@ const InspectionSheetScreenBody = () => {
               onChange={(e) => setDraft({ ...draft, workOrderNo: e.target.value })}
             />
           </div>
+          <HiddenFilterChips open={more.isOpen} chips={hiddenChips} onRemove={removeChip} />
           {/* 기간이 거꾸로면 조회를 막고 까닭을 보인다(검사 실적 조회 줄과 같다 · 실검증 2026-11-02). */}
           {periodReversed && (
             <p className="iqc-inspection-action-note" data-tone="info" role="status">

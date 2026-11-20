@@ -1,9 +1,10 @@
-import { Button, Checkbox, Chip, SearchInput } from '@crefle/web-ui';
+import { Button, Checkbox, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState } from 'react';
 
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { codeNote, codePlaceholder } from './code-options';
-import { DEFAULT_FILTERS, toFilterChips, type FilterKey } from './filters';
+import { DEFAULT_FILTERS } from './filters';
 import { SelectField } from './select-field';
 import type { RouteFilters, SelectOption } from './types';
 
@@ -20,20 +21,18 @@ export interface RouteFilterBarProps {
   businessUnitOptions: SelectOption[];
   /** 사업부 선택지의 한계(잘림·실패) 안내. 밝히지 않으면 값이 사라진 것으로 읽힌다. */
   businessUnitNote?: string;
-  /** 조건 칩에 실을 사업부 이름. 번호를 문구로 만드는 자리를 두지 않기 위한 것이다. */
-  businessUnitLabel: (businessUnitId: string) => string;
   onSearch: (filters: RouteFilters) => void;
-  /** 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. */
-  onRemoveFilter: (key: FilterKey) => void;
   onReset: () => void;
 }
 
 /**
  * 결재선 조회 조건 줄.
  *
- * 트리거 모델은 「모아서 적용, 해제는 즉시」다 — 조건을 고치는 동안 조회가 나가면
+ * 트리거 모델은 「모아서 적용」이다 — 조건을 고치는 동안 조회가 나가면
  * 반쯤 지운 검색어로 요청이 나간다. 「조회」를 누를 때만 주소가 바뀌고 그때 조회된다.
- * 조건 칩의 ×는 해제라 즉시 반영한다.
+ *
+ * **조건 칩을 두지 않는다**(C-6). 네 조건이 모두 조건 줄에 보여 칩으로 겹쳐 적을 것이 없다 —
+ * 한 줄에 들어가 「조건 더보기」로 접을 것도 없다. 「초기화」는 바뀐 것이 있을 때만 보인다.
  *
  * **「미사용 포함」이 화면 어휘다.** 계약 파라미터(`activeOnly`)는 방향이 반대이고 기본값이
  * 없지만, 그것은 계약의 사정이며 뒤집는 자리는 `filters.ts` 한 곳이다.
@@ -48,9 +47,7 @@ export const RouteFilterBar = ({
   approvalTypeOptions,
   businessUnitOptions,
   businessUnitNote,
-  businessUnitLabel,
   onSearch,
-  onRemoveFilter,
   onReset,
 }: RouteFilterBarProps) => {
   const [filters, setFilters] = useState<RouteFilters>(appliedFilters);
@@ -105,90 +102,73 @@ export const RouteFilterBar = ({
    */
   const typeOptions = approvalTypeOptions.length === 0 ? [] : withAll(approvalTypeOptions);
 
-  const chips = toFilterChips(appliedFilters, businessUnitLabel);
+  const isChanged = hasChangedFilters(DEFAULT_FILTERS, filters, appliedFilters);
 
   return (
-    <>
-      <div className="filter-bar">
-        <SelectField
-          label={t.fields.approvalTypeCode}
-          options={typeOptions}
-          value={filters.approvalTypeCode}
-          note={codeNote(approvalTypeOptions)}
-          placeholder={approvalTypeOptions.length === 0 ? codePlaceholder() : t.filters.all}
-          onChange={(value) => {
-            setFilters((prev) => ({ ...prev, approvalTypeCode: value }));
-          }}
-        />
+    <div className="filter-bar">
+      <SelectField
+        label={t.fields.approvalTypeCode}
+        options={typeOptions}
+        value={filters.approvalTypeCode}
+        note={codeNote(approvalTypeOptions)}
+        placeholder={approvalTypeOptions.length === 0 ? codePlaceholder() : t.filters.all}
+        onChange={(value) => {
+          setFilters((prev) => ({ ...prev, approvalTypeCode: value }));
+        }}
+      />
 
-        {/*
-         * 규범 3-2 — 선택칸이 「코드 · 이름」을 고른다. 최소 폭을 주지 않으면
-         * 선택지 목록이 트리거 폭에 갇혀 잘리고, 무엇을 고르는지 읽을 수 없다.
-         */}
-        <SelectField
-          wide
-          label={t.fields.businessUnit}
-          options={withAll(businessUnitOptions)}
-          value={filters.businessUnitId}
-          note={businessUnitNote}
-          onChange={(value) => {
-            setFilters((prev) => ({ ...prev, businessUnitId: value }));
-          }}
-        />
+      {/*
+       * 규범 3-2 — 선택칸이 「코드 · 이름」을 고른다. 최소 폭을 주지 않으면
+       * 선택지 목록이 트리거 폭에 갇혀 잘리고, 무엇을 고르는지 읽을 수 없다.
+       */}
+      <SelectField
+        wide
+        label={t.fields.businessUnit}
+        options={withAll(businessUnitOptions)}
+        value={filters.businessUnitId}
+        note={businessUnitNote}
+        onChange={(value) => {
+          setFilters((prev) => ({ ...prev, businessUnitId: value }));
+        }}
+      />
 
-        <SearchInput
-          label={t.fields.q}
-          value={filters.q}
+      <SearchInput
+        label={t.fields.q}
+        value={filters.q}
+        onChange={(event) => {
+          setFilters((prev) => ({ ...prev, q: event.target.value }));
+        }}
+        /* 엔터로도 조회된다 — 검색칸에서 엔터가 아무 일도 하지 않으면 멈춘 것으로 읽힌다. */
+        onSearch={search}
+        clearLabel={messages.common.clear}
+      />
+
+      <div className="field-cell field-cell-unlabeled">
+        <Checkbox
+          checked={filters.includeInactive}
           onChange={(event) => {
-            setFilters((prev) => ({ ...prev, q: event.target.value }));
+            const { checked } = event.target;
+            setFilters((prev) => ({ ...prev, includeInactive: checked }));
           }}
-          /* 엔터로도 조회된다 — 검색칸에서 엔터가 아무 일도 하지 않으면 멈춘 것으로 읽힌다. */
-          onSearch={search}
-          clearLabel={messages.common.clear}
-        />
+        >
+          {messages.common.includeInactive}
+        </Checkbox>
+      </div>
 
-        <div className="field-cell field-cell-unlabeled">
-          <Checkbox
-            checked={filters.includeInactive}
-            onChange={(event) => {
-              const { checked } = event.target;
-              setFilters((prev) => ({ ...prev, includeInactive: checked }));
-            }}
-          >
-            {messages.common.includeInactive}
-          </Checkbox>
-        </div>
-
-        {/*
-         * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1).
-         * 조건 없이도 조회가 열려 있다 — 이 화면은 들어오자마자 결재선을 보여야 한다.
-         */}
-        <div className="field-cell field-cell-unlabeled">
-          <div className="filter-actions">
-            <Button onClick={search}>{messages.common.search}</Button>
+      {/*
+       * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1).
+       * 조건 없이도 조회가 열려 있다 — 이 화면은 들어오자마자 결재선을 보여야 한다.
+       */}
+      <div className="field-cell field-cell-unlabeled">
+        <div className="filter-actions">
+          <Button onClick={search}>{messages.common.search}</Button>
+          {isChanged && (
             <Button variant="outlined" onClick={reset}>
               {messages.common.reset}
             </Button>
-          </div>
+          )}
         </div>
       </div>
-
-      {chips.length > 0 && (
-        <div className="filter-bar">
-          {chips.map((chip) => (
-            <Chip
-              key={chip.key}
-              variant="status"
-              removeLabel={chip.removeLabel}
-              onRemove={() => {
-                onRemoveFilter(chip.key);
-              }}
-            >
-              {chip.label}
-            </Chip>
-          ))}
-        </div>
-      )}
-    </>
+    </div>
   );
 };

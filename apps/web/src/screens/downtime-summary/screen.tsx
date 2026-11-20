@@ -188,6 +188,7 @@ export const DowntimeSummaryScreen = () => {
         <DowntimeFilterBar
           appliedPeriod={period}
           appliedFilters={filters}
+          defaultPeriod={fallbackPeriod}
           plantOptions={toOptions(plants.entries)}
           equipmentGroupOptions={toOptions(equipmentGroups.entries)}
           equipmentOptions={toOptions(equipments.entries)}

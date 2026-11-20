@@ -87,6 +87,29 @@ describe('W-02-12 생산 창고 보충 — 진행 보기', () => {
     expect(listQueries(gets).at(-1)?.searchParams.has('displayStatus')).toBe(false);
   });
 
+  it('C-6 「초기화」는 조건이 처음 값과 다를 때만 보이고, 누르면 구분 · 상태까지 비운다', async () => {
+    const { user, gets } = setupScreen({ route: PROGRESS });
+    await listTable();
+    const filters = within(screen.getByRole('region', { name: tp.filters.label }));
+
+    expect(filters.queryByRole('button', { name: t.common.reset })).toBeNull();
+
+    await user.click(
+      within(screen.getByRole('group', { name: tp.filters.origin })).getByRole('button', {
+        name: t.origin.AUTO,
+      }),
+    );
+    await waitFor(() =>
+      expect(listQueries(gets).at(-1)?.searchParams.get('replenishmentOriginCode')).toBe('AUTO'),
+    );
+    await user.click(filters.getByRole('button', { name: t.common.reset }));
+
+    await waitFor(() =>
+      expect(listQueries(gets).at(-1)?.searchParams.has('replenishmentOriginCode')).toBe(false),
+    );
+    expect(filters.queryByRole('button', { name: t.common.reset })).toBeNull();
+  });
+
   it('FR-023 상세에 출고 전표 목록(번호 · 출고 시각 · 수령 여부)을 보인다', async () => {
     setupScreen({ route: `${PROGRESS}&id=2` });
     const detail = await panel('SYN-MIR-02');

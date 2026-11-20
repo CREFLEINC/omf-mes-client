@@ -105,6 +105,7 @@ describe('PlanFilterBar — 조건', () => {
   it('미승인은 누르는 즉시 적용되고 미사용 포함 체크는 없다', async () => {
     const { onApplyFilters, user } = renderBar();
 
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     expect(screen.queryByRole('checkbox', { name: '미사용 포함' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('checkbox', { name: '미승인' }));
 
@@ -132,7 +133,49 @@ describe('PlanFilterBar — 조건', () => {
     ).toHaveClass('inspection-standard-type-filter');
   });
 
-  it('적용된 조건마다 칩이 하나씩 서고 제거 라벨이 서로 다르다', () => {
+  it('초기화는 처음 조건과 달라진 것이 있을 때만 보인다', async () => {
+    const { user } = renderBar();
+
+    expect(screen.queryByRole('button', { name: messages.common.reset })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+    await user.click(screen.getByRole('combobox', { name: '상태 선택' }));
+    await user.click(screen.getByRole('option', { name: '확정' }));
+
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeInTheDocument();
+  });
+
+  it('사용 여부 칩이 「사용」이 아니어도 초기화가 보인다 — 초기화가 그것도 되돌린다', () => {
+    renderBar({ ...DEFAULT_PLAN_FILTERS, includeInactive: true });
+
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeInTheDocument();
+  });
+});
+
+describe('PlanFilterBar — 조건 더보기(C-6)', () => {
+  it('상태 · 미승인은 「조건 더보기」 안에 접혀 있다', async () => {
+    const { user } = renderBar();
+    const more = screen.getByRole('button', { name: messages.common.filterMore.open });
+
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('combobox', { name: '상태 선택' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: '미승인' })).not.toBeInTheDocument();
+    /* 보이는 칸은 셋 — 검사 유형 · 검사 기준 검색 · 품목 검색. */
+    expect(screen.getByRole('combobox', { name: '검사 유형 선택' })).toBeVisible();
+    expect(screen.getByLabelText('검사 기준 검색')).toBeVisible();
+    expect(screen.getByLabelText('품목 검색')).toBeVisible();
+
+    await user.click(more);
+
+    expect(screen.getByRole('combobox', { name: '상태 선택' })).toBeVisible();
+    expect(screen.getByRole('checkbox', { name: '미승인' })).toBeVisible();
+    expect(screen.getByRole('button', { name: messages.common.filterMore.close })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  });
+
+  it('접힌 칸에 걸린 조건만 칩이 되고 보이는 칸의 조건은 칩으로 겹쳐 적지 않는다', () => {
     renderBar({
       q: 'SYN',
       inspectionTypeCode: 'IQC',
@@ -140,18 +183,30 @@ describe('PlanFilterBar — 조건', () => {
       includeInactive: false,
       inactiveOnly: false,
       unapprovedOnly: true,
-      versionStatus: '',
+      versionStatus: 'confirmed',
     });
 
-    expect(screen.getByText('검색어: SYN')).toBeInTheDocument();
-    expect(screen.getByText('검사 유형: IQC (수입검사)')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '검색어 조건 제거' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '검사 유형 조건 제거' })).toBeInTheDocument();
+    expect(screen.getByText('상태: 확정')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '상태 조건 제거' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '미승인 조건 제거' })).toBeInTheDocument();
+    expect(screen.queryByText('검색어: SYN')).not.toBeInTheDocument();
+    expect(screen.queryByText('검사 유형: IQC (수입검사)')).not.toBeInTheDocument();
   });
 
-  it('칩을 제거하면 그 조건만 풀린다', async () => {
+  it('접힌 조건 칩을 제거하면 그 조건만 풀린다', async () => {
     const { onApplyFilters, user } = renderBar({
+      q: 'SYN',
+      inspectionTypeCode: 'IQC',
+      itemId: '',
+      includeInactive: true,
+      inactiveOnly: false,
+      unapprovedOnly: false,
+      versionStatus: 'draft',
+    });
+
+    await user.click(screen.getByRole('button', { name: '상태 조건 제거' }));
+
+    expect(onApplyFilters).toHaveBeenCalledWith({
       q: 'SYN',
       inspectionTypeCode: 'IQC',
       itemId: '',
@@ -160,17 +215,15 @@ describe('PlanFilterBar — 조건', () => {
       unapprovedOnly: false,
       versionStatus: '',
     });
+  });
 
-    await user.click(screen.getByRole('button', { name: '검사 유형 조건 제거' }));
+  it('펼치면 칸에 값이 보이므로 칩을 거둔다', async () => {
+    const { user } = renderBar({ ...DEFAULT_PLAN_FILTERS, unapprovedOnly: true });
 
-    expect(onApplyFilters).toHaveBeenCalledWith({
-      q: 'SYN',
-      inspectionTypeCode: '',
-      itemId: '',
-      includeInactive: true,
-      inactiveOnly: false,
-      unapprovedOnly: false,
-      versionStatus: '',
-    });
+    expect(screen.getByRole('button', { name: '미승인 조건 제거' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+
+    expect(screen.queryByRole('button', { name: '미승인 조건 제거' })).not.toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: '미승인' })).toBeChecked();
   });
 });

@@ -17,6 +17,13 @@ import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  type HiddenFilterChip,
+  hasChangedFilters,
+  useFilterMore,
+} from '../../patterns/filter-more';
 import { SaveErrorBanner } from '../../patterns/master';
 import { AckPanel } from './ack-panel';
 import {
@@ -82,9 +89,15 @@ type Confirming = 'none' | 'publish' | 'close';
  * 대상을 잘못 고른다.
  *
  * **조회 조건과 고른 공지는 주소가 소유한다** — 새로고침·공유가 같은 화면을 연다.
+ *
+ * **보이는 조건은 셋이다**(C-6) — 제목 · 상태 · 게시 기간(시작 · 끝을 하나로 센다). 대상 범위와
+ * 체크칸 둘은 「조건 더보기」에 접고, 걸려 있으면 칩으로 알린다. 「게시 중만」은 기본이 켜짐이라
+ * 처음부터 칩이 보인다 — 끝난 공지가 왜 안 보이는지가 접혀서도 드러난다.
+ * 「조건 지우기」는 처음 값과 다른 것이 있을 때만 보인다.
  */
 export const NoticeScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const more = useFilterMore();
   const filters = readFilters(searchParams);
   const selectedId = readSelected(searchParams);
   const invalidPeriod = periodError(filters);
@@ -200,6 +213,33 @@ export const NoticeScreen = () => {
     value: code,
     label: scopeLabel(code),
   }));
+
+  /*
+   * 접힌 칸(대상 범위 · 체크칸 둘)에 걸린 조건만 칩으로 — 보이는 칸의 값은 칩으로 겹쳐 적지 않는다.
+   * 조건은 바꾸는 즉시 나가므로 × 도 곧바로 다시 조회한다.
+   */
+  const hiddenChips: HiddenFilterChip<'scopeCode' | 'activeOnly' | 'unacknowledgedByMe'>[] = [
+    ...(filters.scopeCode === ''
+      ? []
+      : [
+          {
+            key: 'scopeCode' as const,
+            label: t.filters.chipScope(scopeLabel(filters.scopeCode)),
+            removeLabel: messages.common.filterMore.remove(t.filters.scope),
+          },
+        ]),
+    ...(filters.activeOnly ? [{ key: 'activeOnly' as const, label: t.filters.activeOnly }] : []),
+    ...(filters.unacknowledgedByMe
+      ? [{ key: 'unacknowledgedByMe' as const, label: t.filters.unacknowledgedByMe }]
+      : []),
+  ];
+
+  /* 쪽은 조건이 아니다 — 견줄 때 첫 쪽으로 맞춘다. 제목 칸은 Enter 전에도 편집 중인 값으로 본다. */
+  const isFilterChanged = hasChangedFilters(
+    EMPTY_FILTERS,
+    { ...filters, q: search, page: 1 },
+    { ...filters, page: 1 },
+  );
 
   const columns: Column<NoticeView>[] = [
     {
@@ -318,16 +358,6 @@ export const NoticeScreen = () => {
             }}
           />
 
-          <SelectField
-            label={t.filters.scope}
-            options={scopeFilterOptions}
-            value={filters.scopeCode}
-            placeholder={t.filters.scopeAll}
-            onChange={(value) => {
-              apply({ scopeCode: value });
-            }}
-          />
-
           <div className="field-cell notice-filter-period">
             <span className="field-label">{t.filters.from}</span>
             <DatePicker
@@ -356,37 +386,67 @@ export const NoticeScreen = () => {
             {invalidPeriod !== undefined && <span className="field-error">{invalidPeriod}</span>}
           </div>
 
-          <div className="field-cell field-cell-unlabeled check-group notice-filter-options">
-            <Checkbox
-              checked={filters.activeOnly}
-              onChange={(event) => {
-                apply({ activeOnly: event.target.checked });
-              }}
-            >
-              {t.filters.activeOnly}
-            </Checkbox>
-            <Checkbox
-              checked={filters.unacknowledgedByMe}
-              onChange={(event) => {
-                apply({ unacknowledgedByMe: event.target.checked });
-              }}
-            >
-              {t.filters.unacknowledgedByMe}
-            </Checkbox>
-          </div>
-
-          <div className="form-actions notice-filter-clear">
-            <Button
-              variant="outlined"
-              onClick={() => {
-                setSearch('');
-                setSearchParams(toSearchParams(EMPTY_FILTERS, selectedId));
-              }}
-            >
-              {t.filters.clear}
-            </Button>
+          <div className="field-cell field-cell-unlabeled notice-filter-actions">
+            <div className="filter-actions">
+              {isFilterChanged && (
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    setSearch('');
+                    setSearchParams(toSearchParams(EMPTY_FILTERS, selectedId));
+                  }}
+                >
+                  {t.filters.clear}
+                </Button>
+              )}
+              <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
+            </div>
           </div>
         </div>
+
+        {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+        <div id={more.id} hidden={!more.isOpen}>
+          <div className="filter-bar notice-filter">
+            <SelectField
+              label={t.filters.scope}
+              options={scopeFilterOptions}
+              value={filters.scopeCode}
+              placeholder={t.filters.scopeAll}
+              onChange={(value) => {
+                apply({ scopeCode: value });
+              }}
+            />
+
+            <div className="field-cell field-cell-unlabeled check-group check-group-row notice-filter-options">
+              <Checkbox
+                checked={filters.activeOnly}
+                onChange={(event) => {
+                  apply({ activeOnly: event.target.checked });
+                }}
+              >
+                {t.filters.activeOnly}
+              </Checkbox>
+              <Checkbox
+                checked={filters.unacknowledgedByMe}
+                onChange={(event) => {
+                  apply({ unacknowledgedByMe: event.target.checked });
+                }}
+              >
+                {t.filters.unacknowledgedByMe}
+              </Checkbox>
+            </div>
+          </div>
+        </div>
+
+        <HiddenFilterChips
+          open={more.isOpen}
+          chips={hiddenChips}
+          onRemove={(key) => {
+            if (key === 'scopeCode') apply({ scopeCode: '' });
+            else if (key === 'activeOnly') apply({ activeOnly: false });
+            else apply({ unacknowledgedByMe: false });
+          }}
+        />
         {/* ⭐ 시작일이 아니라 겹침으로 거른다는 사실을 기간 칸 아래에 적는다. */}
         <p className="pane-lead">{t.filters.periodNote}</p>
 

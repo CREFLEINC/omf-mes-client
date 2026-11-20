@@ -11,6 +11,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
+import { pickRange } from '../../test/date-picker';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { ErpPurchaseOrderScreen } from './screen';
 
@@ -162,19 +163,16 @@ describe('ErpPurchaseOrderScreen', () => {
       .find((url) => url.pathname === '/logistics/purchase-orders');
     expect(listUrl?.searchParams.get('supplierId')).toBe('4101');
     expect(listUrl?.searchParams.get('statusCode')).toBe('REGISTERED');
-    /* 발주 유형(주소 `type`) — 서버 조건 `erpOrderTypeCode`, 칸에는 공통코드 이름. */
+    /* 발주 유형(주소 `type`) — 서버 조건 `erpOrderTypeCode`. 칸은 「조건 더보기」에 접혀 있어 공통코드 이름의 칩으로 보인다. */
     expect(listUrl?.searchParams.get('erpOrderTypeCode')).toBe('SYN-OT1');
-    expect(await screen.findByRole('combobox', { name: t.fields.orderType })).toHaveTextContent(
-      '합성 발주유형',
-    );
+    expect(
+      await screen.findByText(t.filters.chip(t.fields.orderType, '합성 발주유형')),
+    ).toBeVisible();
     /* 예전 주소의 「입하 미완료만」(`open=1`)은 미완료로 읽는다. */
     expect(listUrl?.searchParams.get('openOnly')).toBe('true');
     expect(listUrl?.searchParams.get('progress')).toBe('OPEN');
-    const progressGroup = screen.getByRole('group', { name: t.progress.group });
-    expect(within(progressGroup).getByRole('button', { name: t.progress.open })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    /* 진행은 「조건 더보기」에 접혀 있어 칩으로 알린다. */
+    expect(screen.getByText(t.filters.chip(t.fields.progress, t.progress.open))).toBeVisible();
     expect(listUrl?.searchParams.get('orderDateFrom')).toBe('2026-10-01');
     /* 고르기 전에는 상세를 부르지 않는다. */
     expect(
@@ -236,6 +234,8 @@ describe('ErpPurchaseOrderScreen', () => {
     const first = listUrls(requests)[0];
     expect(first?.searchParams.has('progress')).toBe(false);
     expect(first?.searchParams.has('openOnly')).toBe(false);
+    /* 진행은 「조건 더보기」 안에 있다. */
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     const group = screen.getByRole('group', { name: t.progress.group });
     const button = (name: string) => within(group).getByRole('button', { name });
     expect(button(t.progress.all)).toHaveAttribute('aria-pressed', 'true');
@@ -264,6 +264,100 @@ describe('ErpPurchaseOrderScreen', () => {
     await waitFor(() =>
       expect(screen.getByTestId('location')).toHaveTextContent(/^\?supplier=4101$/),
     );
+  });
+
+  it('공장 · 상태 · 발주 유형은 「조건 더보기」에 접혀 있고, 걸린 것만 이름 칩으로 알리며 ×는 그 조건만 푼다', async () => {
+    const { fetch, requests } = recordingFetch(normalRoutes);
+    renderWithProviders(
+      <>
+        <ErpPurchaseOrderScreen />
+        <LocationProbe />
+      </>,
+      { fetch, route: '/?supplier=4101&plant=3101&status=REGISTERED' },
+    );
+    const user = userEvent.setup();
+    const removeOf = (label: string) =>
+      screen.queryByRole('button', { name: messages.common.filterMore.remove(label) });
+
+    await screen.findByRole('button', { name: t.actions.select('SYN-PO-901') });
+    for (const label of [t.fields.plant, t.fields.status, t.fields.orderType]) {
+      expect(screen.queryByRole('combobox', { name: label })).toBeNull();
+    }
+    /* 코드가 아니라 선택지 이름으로. */
+    expect(
+      await screen.findByText(t.filters.chip(t.fields.plant, 'SYN-PLANT · 합성 공장')),
+    ).toBeVisible();
+    expect(await screen.findByText(t.filters.chip(t.fields.status, '합성 등록'))).toBeVisible();
+    /* 걸리지 않은 발주 유형도, 보이는 칸(공급사)도 칩이 없다. */
+    expect(removeOf(t.fields.orderType)).toBeNull();
+    expect(removeOf(t.fields.supplier)).toBeNull();
+
+    await user.click(removeOf(t.fields.plant) as HTMLElement);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        /^\?supplier=4101&status=REGISTERED$/,
+      ),
+    );
+    expect(listUrls(requests).at(-1)?.searchParams.has('plantId')).toBe(false);
+    expect(listUrls(requests).at(-1)?.searchParams.get('statusCode')).toBe('REGISTERED');
+    expect(removeOf(t.fields.plant)).toBeNull();
+
+    /* 펼치면 칸에 값이 보이므로 칩을 거둔다. */
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+    expect(screen.getByRole('combobox', { name: t.fields.status })).toHaveTextContent('합성 등록');
+    expect(removeOf(t.fields.status)).toBeNull();
+
+    /* 초기화는 처음 값과 다른 것이 있을 때만 보인다 — 누르면 처음으로 돌아가고 다시 숨는다. */
+    await user.click(screen.getByRole('button', { name: messages.common.reset }));
+    await waitFor(() => expect(screen.getByTestId('location')).toBeEmptyDOMElement());
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
+  });
+
+  it('발주일은 기간 한 칸이고, 고른 기간을 주소 from · to 와 orderDateFrom · orderDateTo 로 싣는다', async () => {
+    const { fetch, requests } = recordingFetch(normalRoutes);
+    renderWithProviders(
+      <>
+        <ErpPurchaseOrderScreen />
+        <LocationProbe />
+      </>,
+      { fetch },
+    );
+    const user = userEvent.setup();
+
+    await screen.findByRole('button', { name: t.actions.select('SYN-PO-901') });
+    await pickRange(user, screen.getByLabelText(t.fields.orderDate), '2026-10-01', '2026-10-15');
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent(/^\?from=2026-10-01&to=2026-10-15$/),
+    );
+    const last = listUrls(requests).at(-1);
+    expect(last?.searchParams.get('orderDateFrom')).toBe('2026-10-01');
+    expect(last?.searchParams.get('orderDateTo')).toBe('2026-10-15');
+  });
+
+  it('진행은 「조건 더보기」에 접혀 있고, 전체가 아니면 칩으로 알리며 × 는 전체로 되돌려 다시 조회한다', async () => {
+    const { fetch, requests } = recordingFetch(normalRoutes);
+    renderWithProviders(
+      <>
+        <ErpPurchaseOrderScreen />
+        <LocationProbe />
+      </>,
+      { fetch, route: '/?q=SYN&progress=done' },
+    );
+    const user = userEvent.setup();
+    const removeProgress = messages.common.filterMore.remove(t.fields.progress);
+
+    await screen.findByRole('button', { name: t.actions.select('SYN-PO-901') });
+    expect(screen.queryByRole('group', { name: t.progress.group })).toBeNull();
+    expect(screen.getByText(t.filters.chip(t.fields.progress, t.progress.done))).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: removeProgress }));
+
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\?q=SYN$/));
+    expect(listUrls(requests).at(-1)?.searchParams.has('progress')).toBe(false);
+    expect(screen.queryByRole('button', { name: removeProgress })).toBeNull();
   });
 
   it('진행 열은 입하 진행을 표지로 보이고, 칸이 없는 응답은 「-」로 보인다', async () => {

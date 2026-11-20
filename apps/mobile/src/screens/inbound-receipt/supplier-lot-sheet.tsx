@@ -75,7 +75,7 @@ export const SupplierLotSheet = ({
       }
     >
       <p className="receive-sheet__lot">{lot.lotNo}</p>
-      <p className="receive-sheet__note">{t.status(detail.inboundLotNo)}</p>
+      <p className="receive-sheet__note">{`${detail.itemCode} ${detail.itemName}`}</p>
       <TextField
         label={t.label}
         value={value}

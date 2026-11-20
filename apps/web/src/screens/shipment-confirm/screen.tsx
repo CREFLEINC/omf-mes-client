@@ -51,7 +51,8 @@ export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) 
   const toast = useToast();
   const baseNow = useMemo(() => now ?? new Date(), [now]);
 
-  const [filters, setFilters] = useState<ConfirmFilters>(() => defaultFilters(baseNow));
+  const initialFilters = useMemo(() => defaultFilters(baseNow), [baseNow]);
+  const [filters, setFilters] = useState<ConfirmFilters>(initialFilters);
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -164,9 +165,10 @@ export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) 
           <h2>{t.panes.list}</h2>
           <FilterBar
             applied={filters}
+            defaults={initialFilters}
             counts={list.data?.erpSendStatusCounts ?? null}
             onApply={applyFilters}
-            onReset={() => applyFilters(defaultFilters(baseNow))}
+            onReset={() => applyFilters(initialFilters)}
           />
           <ShipmentList
             rows={rows}

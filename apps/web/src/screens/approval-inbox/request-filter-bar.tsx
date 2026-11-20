@@ -1,6 +1,13 @@
-import { Button, Chip, DatePicker, SearchInput } from '@crefle/web-ui';
+import { Button, DatePicker, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
+
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  hasChangedFilters,
+  useFilterMore,
+} from '../../patterns/filter-more';
 
 import { codeNote, codePlaceholder } from './code-options';
 import { EMPTY_FILTERS, toFilterChips, type FilterChipKey } from './filters';
@@ -41,6 +48,9 @@ export interface RequestFilterBarProps {
  * **승인 유형은 고정 OpenAPI enum을 쓰고, 상태 선택지는 비어 있다.** 운영
  * 공통코드인 상태를 지어내지 않고, 왜 비어 있는지를 `aria-describedby`로 이어 붙인다.
  *
+ * **보이는 칸은 셋이다**(C-6) — 승인 유형 · 상신일 · 요청번호. 상태는 탭이 이미 범위를 나누고 있어
+ * 「조건 더보기」에 접는다. 접힌 상태 조건이 걸려 있으면 칩으로만 알린다. 「초기화」는 바뀐 것이 있을 때만 보인다.
+ *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
 export const RequestFilterBar = ({
@@ -52,6 +62,7 @@ export const RequestFilterBar = ({
   onReset,
 }: RequestFilterBarProps) => {
   const periodId = useId();
+  const more = useFilterMore();
   const [filters, setFilters] = useState<InboxFilters>(appliedFilters);
 
   /*
@@ -110,7 +121,9 @@ export const RequestFilterBar = ({
   const placeholderOf = (options: SelectOption[]): string =>
     options.length === 0 ? codePlaceholder() : t.filters.all;
 
-  const chips = toFilterChips(appliedFilters);
+  /* 접힌 칸(상태)의 조건만 칩으로 — 보이는 칸의 값을 칩으로 겹쳐 적지 않는다. */
+  const hiddenChips = toFilterChips(appliedFilters).filter((chip) => chip.key === 'statusCode');
+  const isChanged = hasChangedFilters(EMPTY_FILTERS, filters, appliedFilters);
 
   return (
     <>
@@ -123,17 +136,6 @@ export const RequestFilterBar = ({
           placeholder={placeholderOf(approvalTypeOptions)}
           onChange={(value) => {
             setFilters((prev) => ({ ...prev, approvalTypeCode: value }));
-          }}
-        />
-
-        <SelectField
-          label={t.fields.status}
-          options={optionsOf(statusOptions)}
-          value={filters.statusCode}
-          note={codeNote(statusOptions)}
-          placeholder={placeholderOf(statusOptions)}
-          onChange={(value) => {
-            setFilters((prev) => ({ ...prev, statusCode: value }));
           }}
         />
 
@@ -182,29 +184,33 @@ export const RequestFilterBar = ({
         <div className="field-cell field-cell-unlabeled approval-inbox-filter-actions">
           <div className="filter-actions">
             <Button onClick={search}>{messages.common.search}</Button>
-            <Button variant="outlined" onClick={reset}>
-              {messages.common.reset}
-            </Button>
+            {isChanged && (
+              <Button variant="outlined" onClick={reset}>
+                {messages.common.reset}
+              </Button>
+            )}
+            <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
           </div>
         </div>
       </div>
 
-      {chips.length > 0 && (
-        <div className="filter-bar approval-inbox-filter-chips">
-          {chips.map((chip) => (
-            <Chip
-              key={chip.key}
-              variant="status"
-              removeLabel={chip.removeLabel}
-              onRemove={() => {
-                onRemoveFilter(chip.key);
-              }}
-            >
-              {chip.label}
-            </Chip>
-          ))}
+      {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+      <div id={more.id} hidden={!more.isOpen}>
+        <div className="filter-bar approval-inbox-filter">
+          <SelectField
+            label={t.fields.status}
+            options={optionsOf(statusOptions)}
+            value={filters.statusCode}
+            note={codeNote(statusOptions)}
+            placeholder={placeholderOf(statusOptions)}
+            onChange={(value) => {
+              setFilters((prev) => ({ ...prev, statusCode: value }));
+            }}
+          />
         </div>
-      )}
+      </div>
+
+      <HiddenFilterChips open={more.isOpen} chips={hiddenChips} onRemove={onRemoveFilter} />
     </>
   );
 };

@@ -16,6 +16,13 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  hasChangedFilters,
+  useFilterMore,
+  type HiddenFilterChip,
+} from '../../patterns/filter-more';
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import {
@@ -36,6 +43,7 @@ import {
   type LotPageSize,
 } from '../lot-status-history/filters';
 import {
+  itemCodeAndName,
   useItemNameSources,
   useLocationNameSources,
   useWarehouseReferenceOptions,
@@ -159,7 +167,6 @@ export const SuspiciousMaterialCandidatePane = ({
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit(SPLIT_KEY, 0.6);
   const layout = useSplitOrientation(SPLIT_ORIENTATION_KEY);
-  const detailId = useId();
   const warehouseFieldId = useId();
   const periodFromId = useId();
   const periodToId = useId();
@@ -172,10 +179,11 @@ export const SuspiciousMaterialCandidatePane = ({
       : periodError === 'reversed'
         ? messages.lotStatusTransition.candidate.filters.periodReversed
         : null;
-  /* 품목 · 창고는 상세 조건으로 접어 둔다 — 걸린 조건이 있으면 펼친 채로 들어온다(LOT 상태 이력 · 변경과 같다). */
-  const [isDetailOpen, setIsDetailOpen] = useState(
-    filters.itemId !== '' || filters.warehouseId !== '',
-  );
+  /*
+   * 품목 · 창고는 「조건 더보기」로 접어 둔다(LOT 상태 이력 · 변경과 같다 · C-6). 늘 접힌 채로 들어오고, 걸린 조건은
+   * 아래 칩으로 알린다 — × 는 그 조건만 풀어 바로 다시 조회한다.
+   */
+  const more = useFilterMore();
   const warehouses = useWarehouseReferenceOptions();
   const rows = candidates.data?.items ?? [];
   /* 이름은 보이는 행으로 푼다 — 품목은 상세로, 위치는 행의 창고마다(품목 목록은 첫 쪽만 받아 거의 다 「미확인」이었다). */
@@ -244,6 +252,13 @@ export const SuspiciousMaterialCandidatePane = ({
     setDraft(EMPTY_SUSPICIOUS_MATERIAL_FILTERS);
     move(EMPTY_SUSPICIOUS_MATERIAL_FILTERS, 1);
   };
+  /* 「초기화」는 바뀐 것이 있을 때만(C-6) — 편집 중인 값이나 조회에 쓰인 값(상태 칩 포함)이 처음 값과 다를 때. */
+  const isChanged = hasChangedFilters(EMPTY_SUSPICIOUS_MATERIAL_FILTERS, draft, filters);
+  const removeChip = (key: 'itemId' | 'warehouseId'): void => {
+    if (isLocked) return;
+    setDraft((current) => ({ ...current, [key]: '' }));
+    move({ ...filters, [key]: '' }, 1);
+  };
   /* 고른 LOT 한 건의 스냅숏 — 위치 · 단위 이름은 고를 때의 표시 값을 함께 남긴다. 고를 수 없는 LOT 이면 null. */
   const toSnapshot = (row: Lot): SelectedLotSnapshot | null => {
     const snapshot = toSelectedLotSnapshot(row);
@@ -294,8 +309,9 @@ export const SuspiciousMaterialCandidatePane = ({
     statuses.data?.isTruncated === false
       ? (statuses.data.items.find((item) => item.code === code)?.label ?? t.values.statusUnknown)
       : t.values.statusUnknown;
-  const itemLabel = (itemId: number): string =>
-    lookupDisplayLabelWithInactive(
+  /* 표의 품목은 코드 · 이름 두 칸이다(사용자 지시 2026-11-20). */
+  const itemParts = (itemId: number): { code: string; name: string } =>
+    itemCodeAndName(
       itemNames.get(itemId) ?? { entries: [], isError: false, isLoading: true },
       itemId,
     );
@@ -357,11 +373,18 @@ export const SuspiciousMaterialCandidatePane = ({
       },
     },
     {
-      key: 'item',
-      header: t.fields.item,
+      key: 'itemCode',
+      header: t.fields.itemCode,
       align: 'center',
-      width: '280px',
-      render: (row) => <OneLine text={itemLabel(row.itemId)} />,
+      width: '140px',
+      render: (row) => <OneLine text={itemParts(row.itemId).code} />,
+    },
+    {
+      key: 'itemName',
+      header: t.fields.itemName,
+      align: 'center',
+      width: '200px',
+      render: (row) => <OneLine text={itemParts(row.itemId).name} />,
     },
     {
       key: 'location',
@@ -417,6 +440,50 @@ export const SuspiciousMaterialCandidatePane = ({
   const fit = useFitColumns(resizable.columns, { scrollX: true, reserve: SELECT_COLUMN_WIDTH });
   const options = (data: ReferenceOptionsResult | undefined) =>
     data?.entries.map(({ value, label }) => ({ value, label })) ?? [];
+  /*
+   * 접힌 칸 칩 — 라벨은 대상 이름(표 머리글)이고 값은 펼친 칸이 보이는 글자와 같다. 창고 칸의 라벨은 「위치 검색」이지만
+   * 고르는 값이 창고라 칩은 「창고」다.
+   */
+  const chipOf = (
+    key: 'itemId' | 'warehouseId',
+    label: string,
+    value: string,
+  ): HiddenFilterChip<'itemId' | 'warehouseId'> => ({
+    key,
+    label: `${label}: ${value}`,
+    removeLabel: messages.common.filterMore.remove(label),
+  });
+  const filterItemId = filters.itemId === '' ? undefined : Number(filters.itemId);
+  const filterItemNames = useItemNameSources(filterItemId === undefined ? [] : [filterItemId]);
+  const hiddenChips = [
+    ...(filterItemId === undefined
+      ? []
+      : [
+          chipOf(
+            'itemId',
+            t.fields.item,
+            lookupDisplayLabelWithInactive(
+              filterItemNames.get(filterItemId) ?? { entries: [], isError: false, isLoading: true },
+              filterItemId,
+            ),
+          ),
+        ]),
+    ...(filters.warehouseId === ''
+      ? []
+      : [
+          chipOf(
+            'warehouseId',
+            t.fields.warehouse,
+            referenceLabel(
+              warehouses,
+              Number(filters.warehouseId),
+              warehouses.isPending
+                ? messages.common.reference.loading
+                : messages.common.reference.unknown,
+            ),
+          ),
+        ]),
+  ];
   const statusOptions =
     statuses.data?.items.map((item) => ({ value: item.code, label: item.label })) ?? [];
   const statusChips = (
@@ -511,7 +578,7 @@ export const SuspiciousMaterialCandidatePane = ({
               {t.fields.excludeFullyHeld}
             </Checkbox>
           </div>
-          {/* [조회](주 동작) → [초기화] → 상세 검색 펼치기 — 다른 LOT 상태 탭과 같은 순서, 줄의 오른쪽 끝. */}
+          {/* [조회](주 동작) → [초기화] → 조건 더보기 — 다른 LOT 상태 탭과 같은 순서, 줄의 오른쪽 끝. */}
           <div className="filter-actions field-cell-unlabeled lot-status-filter-actions">
             <Button
               variant="filled"
@@ -521,22 +588,16 @@ export const SuspiciousMaterialCandidatePane = ({
             >
               {t.actions.search}
             </Button>
-            <Button variant="outlined" disabled={isLocked} onClick={reset}>
-              {t.actions.reset}
-            </Button>
-            <Button
-              variant="text"
-              size="sm"
-              aria-expanded={isDetailOpen}
-              aria-controls={detailId}
-              onClick={() => setIsDetailOpen((open) => !open)}
-            >
-              {isDetailOpen ? tHistory.lotFilter.detailClose : tHistory.lotFilter.detailOpen}
-            </Button>
+            {isChanged && (
+              <Button variant="outlined" disabled={isLocked} onClick={reset}>
+                {t.actions.reset}
+              </Button>
+            )}
+            <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
           </div>
         </div>
         {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
-        <div id={detailId} hidden={!isDetailOpen}>
+        <div id={more.id} hidden={!more.isOpen}>
           <div className="filter-bar lot-status-filter lot-status-transition-filter">
             {/*
              * 품목은 LOT 현황과 같은 칸에서 바로 검색하는 칸(서버에 묻는다 · omf-all-around#226), 창고는 이름 검색 선택 —
@@ -564,6 +625,7 @@ export const SuspiciousMaterialCandidatePane = ({
             </div>
           </div>
         </div>
+        <HiddenFilterChips open={more.isOpen} chips={hiddenChips} onRemove={removeChip} />
       </section>
       {/* 목록과 보류 입력을 처음부터 나란히(상하 배치면 위아래로) 둔다 — LOT 상태 변경과 같다. */}
       <div
@@ -590,7 +652,7 @@ export const SuspiciousMaterialCandidatePane = ({
             <>
               <div
                 ref={fit.ref}
-                className="wide-table lot-status-table suspicious-material-hold-table inspection-queue-table"
+                className="wide-table lot-status-table suspicious-material-hold-table inspection-queue-table cells-start"
                 style={resizable.style}
                 aria-busy={candidates.isFetching}
                 /*

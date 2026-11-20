@@ -509,6 +509,79 @@ describe('ShipmentScheduleScreen — 조건 초안의 수명', () => {
   });
 });
 
+describe('ShipmentScheduleScreen — 조건 더보기(C-6)', () => {
+  it('출하일 · 검색어만 보이고, 나머지 조건은 「조건 더보기」를 눌러야 보인다', async () => {
+    const { user } = renderScreen([listRoute(), ...partnerRoutes()], SHIP_DATE_FROM);
+
+    await screen.findByText('SAMPLE-SR-0001');
+    const more = screen.getByRole('button', { name: messages.common.filterMore.open });
+
+    expect(screen.getByLabelText(t.fields.periodFrom)).toBeVisible();
+    expect(screen.getByRole('textbox', { name: t.filters.q })).toBeVisible();
+    expect(screen.queryByRole('checkbox', { name: t.filters.readyOnly })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: t.fields.customer })).toBeNull();
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(more);
+
+    expect(screen.getByRole('checkbox', { name: t.filters.readyOnly })).toBeVisible();
+    expect(screen.getByLabelText(t.fields.customer)).toBeVisible();
+    expect(screen.getByLabelText(t.fields.progress)).toBeVisible();
+    expect(screen.getByRole('button', { name: messages.common.filterMore.close })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  });
+
+  it('접힌 칸에 걸린 조건만 칩이 되고, ×가 그 조건만 풀어 다시 조회한다 — 보이는 칸은 칩으로 겹쳐 적지 않는다', async () => {
+    const { user } = renderScreen(
+      [listRoute(), ...partnerRoutes()],
+      `${SHIP_DATE_FROM}&q=SAMPLE&progress=PICKED&ready=true`,
+    );
+
+    await screen.findByText('SAMPLE-SR-0001');
+
+    expect(screen.getByRole('button', { name: t.filters.chipRemoveProgress })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.filters.chipRemoveReadyOnly })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.filters.chipRemoveQ })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveProgress }));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('progress=');
+    });
+    expect(currentLocation()).toContain('q=SAMPLE');
+    expect(currentLocation()).toContain('ready=true');
+  });
+
+  it('펼치면 칸에 값이 보이므로 칩을 거둔다', async () => {
+    const { user } = renderScreen(
+      [listRoute(), ...partnerRoutes()],
+      `${SHIP_DATE_FROM}&ready=true`,
+    );
+
+    await screen.findByText('SAMPLE-SR-0001');
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+
+    expect(screen.queryByRole('button', { name: t.filters.chipRemoveReadyOnly })).toBeNull();
+    expect(screen.getByRole('checkbox', { name: t.filters.readyOnly })).toBeChecked();
+  });
+
+  it('「초기화」는 처음 값과 달라진 것이 있을 때만 보이고, 누르면 처음 값으로 돌아간다', async () => {
+    const { user } = renderScreen([listRoute(), ...partnerRoutes()]);
+
+    /* 선행 단언 — 조건 줄이 실제로 그려져야 「초기화가 없다」가 뜻을 갖는다. */
+    expect(await screen.findByRole('button', { name: messages.common.search })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
+
+    await user.type(screen.getByRole('textbox', { name: t.filters.q }), 'SAMPLE');
+    await user.click(screen.getByRole('button', { name: messages.common.reset }));
+
+    expect(screen.getByRole('textbox', { name: t.filters.q })).toHaveValue('');
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
+  });
+});
+
 const PLANTS_PATH = '/mdm/plants';
 const DETAIL_PATH = `${LIST_PATH}/9001`;
 
@@ -659,6 +732,8 @@ describe('ShipmentScheduleScreen — 피처 010 진행·교체 표시', () => {
 
     await screen.findByText('SAMPLE-SR-0001');
     await user.type(screen.getByRole('textbox', { name: t.filters.q }), 'SAMPLE');
+    /* 두 체크는 「조건 더보기」 안에 접혀 있다(C-6). */
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     await user.click(screen.getByRole('checkbox', { name: t.filters.readyOnly }));
     await user.click(screen.getByRole('checkbox', { name: t.filters.hasReplacement }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));

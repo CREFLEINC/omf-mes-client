@@ -18,8 +18,6 @@ export const erpProductionOrder: Translated<typeof ko.erpProductionOrder> = {
     rework: 'Làm lại',
     status: 'Trạng thái',
     progress: 'Tiến độ',
-    plannedStartFrom: 'Ngày bắt đầu kế hoạch từ',
-    plannedStartTo: 'Ngày bắt đầu kế hoạch đến',
     q: 'Số ERP W/O',
   },
   panes: {
@@ -28,10 +26,10 @@ export const erpProductionOrder: Translated<typeof ko.erpProductionOrder> = {
   },
   filters: {
     all: 'Tất cả',
-    dateRangeError: 'Ngày bắt đầu kế hoạch "từ" muộn hơn "đến". Hãy sửa lại khoảng ngày.',
     itemPlaceholder: 'Tìm và chọn mặt hàng',
     itemClear: 'Xóa mặt hàng',
     itemPick: 'Chọn',
+    chip: (label: string, value: string): string => `${label}: ${value}`,
   },
   actions: {
     firstPage: 'Trang đầu',

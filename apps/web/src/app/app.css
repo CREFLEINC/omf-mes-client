@@ -245,8 +245,18 @@ main > * + * {
   margin-bottom: var(--space-4);
 }
 
-.inspection-standard-search > .filter-bar:last-child {
+.inspection-standard-search > .filter-bar:last-child,
+.inspection-standard-search > .filter-bar:has(+ .inspection-standard-filter-more) {
   margin-bottom: 0;
+}
+
+/*
+ * 「조건 더보기」(C-6) — 접힌 칸 줄과 칩 줄은 첫 줄 아래 12px 에 선다. 접혀 있고 칩이 없으면 카드 바닥 여백은 종전과 같다.
+ * 검사 기준 · 검사표 기준 탭이 함께 쓴다.
+ */
+.inspection-standard-filter-more > .filter-bar,
+:is(.inspection-standard-search, .inspection-sheet-template-search) > .filter-more-chips {
+  margin: var(--space-3) 0 0;
 }
 
 /* 조회 · 초기화 | 엑셀 올리기 · 추가 — 줄 오른쪽 끝에 선다(사용자 시안 · #196). */
@@ -268,7 +278,7 @@ main > * + * {
  */
 .inspection-standard-search:not(.defect-cause-search, .routing-search)
   > .filter-bar:first-child
-  > :nth-child(3) {
+  > :nth-child(2) {
   flex: 0 1 19.5em;
   min-width: 12rem;
 }
@@ -300,7 +310,7 @@ main > * + * {
 /* 품목 칸은 고른 품목 이름 길이로 늘지 않는다 — 늘면 조회 · 초기화가 아랫줄로 밀린다(#208). 전체 이름은 title 로 본다. */
 .inspection-standard-search:not(.defect-cause-search, .routing-search)
   > .filter-bar:first-child
-  > :nth-child(4) {
+  > :nth-child(3) {
   flex: 0 1 11.5em;
   min-width: 10rem;
 }
@@ -433,35 +443,6 @@ main > * + * {
 
 /* 등록 · 수정 창(#209 · 사용자 시안) — 상위 대분류는 줄 전체 폭, 안내는 정보 아이콘 + 한 줄. */
 .defect-cause-form-grid > .defect-cause-form-wide {
-  grid-column: 1 / -1;
-}
-
-/* 판정 유형 추가 · 수정 창(#209) — 첫 줄 세 칸, 둘째 줄 사용 시작일 · 종료일 두 칸이 같은 너비로 줄을 채운다. */
-/* 공용 `.form-grid`(2열)가 이 파일 뒤쪽에 있어 클래스 둘로 무겁게 건다. 좁은 화면(720px 이하)은 한 줄에 하나. */
-.form-grid.judgment-code-form-grid {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-}
-
-@media (max-width: 720px) {
-  .form-grid.judgment-code-form-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .form-grid.judgment-code-form-grid > *,
-  .form-grid.judgment-code-form-grid > .judgment-code-form-half {
-    grid-column: 1 / -1;
-  }
-}
-
-.judgment-code-form-grid > * {
-  grid-column: span 2;
-}
-
-.judgment-code-form-grid > .judgment-code-form-half {
-  grid-column: span 3;
-}
-
-.judgment-code-form-grid > .defect-cause-form-wide {
   grid-column: 1 / -1;
 }
 
@@ -709,19 +690,6 @@ main > * + * {
 .defect-mapping-col-code {
   color: var(--on-surface-muted);
   font: var(--type-label-sm);
-}
-
-/* 판정 유형 검색 칸은 돋보기를 걷는다(사용자 지시 2026-10-29 · #209). DS SearchInput 에 끄는 값이 없어 앞자리를 숨긴다. */
-.judgment-code-search-field [class*="_leading_"] {
-  display: none;
-}
-
-/* 판정 유형 검색 칸 — 흐린 안내 글이 잘리지 않는 만큼(#209). */
-.inspection-standard-search.defect-cause-search
-  .filter-bar
-  > .judgment-code-search-field {
-  flex: 0 1 21rem;
-  min-width: 11rem;
 }
 
 /*
@@ -2723,7 +2691,8 @@ h2:has(> .inspection-standard-dialog-title) {
  * 필수인데 비어 있는 입력칸 — 빨간 테두리(사용자 지시 · #231). 긴급 작업지시 화면과 같은 방식:
  * DS 입력칸에 「비었음」 상태가 없어 칸 껍데기(`containerClassName`)를 걸고 안의 상자에 DS 오류색 테두리를 덧그린다.
  */
-.routing-required-empty > div:has(input) {
+.routing-required-empty > div:has(input),
+.users-roles-required-empty > div:has(input) {
   box-shadow: inset 0 0 0 1px var(--semantic-error);
 }
 
@@ -4513,6 +4482,11 @@ dialog.routing-history-dialog {
   margin-bottom: 0;
 }
 
+/* 「조건 더보기」에 접힌 칸에 걸린 조건 칩 — 구획 사이 간격(grid gap)만 둔다(C-6). */
+.work-order-close-filter-pane > .filter-more-chips {
+  margin: 0;
+}
+
 .work-order-close-table {
   min-width: 0;
   max-width: 100%;
@@ -5211,11 +5185,21 @@ dialog.routing-history-dialog {
   letter-spacing: var(--type-title-lg-tracking);
 }
 
+/*
+ * 칸 수를 비워 둔 칸까지 세어(auto-fill) 정한다 — 「조건 더보기」에 접힌 칸(상태 · P/O)이 같은 칸 폭으로
+ * 조건 줄 바로 아래에 줄을 맞춰 놓인다(C-6).
+ */
 .filter-bar.work-order-progress-filter {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
   gap: var(--space-4);
   margin-bottom: 0;
+}
+
+.work-order-progress-filter-more,
+.work-order-progress-filter > .filter-more-chips {
+  grid-column: 1 / -1;
+  margin: 0;
 }
 
 .work-order-progress-filter > *,
@@ -5417,6 +5401,11 @@ dialog.routing-history-dialog {
 
 .filter-bar.lot-status-filter {
   margin-bottom: 0;
+}
+
+/* 접힌 칸에 걸린 조건 칩(C-6) — 조회 카드의 줄 간격(gap)이 위를 띄우므로 아래 여백을 걷는다. */
+.lot-status-search > .filter-bar.filter-more-chips {
+  margin: 0;
 }
 
 /*
@@ -6908,11 +6897,8 @@ dialog.routing-history-dialog {
   justify-self: end;
 }
 
-.inspection-results-workspace > .split-orientation-toggle {
+.inspection-results-workspace > .more-menu {
   justify-self: end;
-  margin-left: 0;
-  padding-left: 0;
-  border-left: none;
 }
 
 .inspection-results-pane {
@@ -8327,10 +8313,15 @@ main:has(.iqc-skip-approval-detail) {
   }
 }
 
-/* 조회 조건 두 줄 — 기본 줄과 「상세 펼치기」로 여는 심각도 · 원천 줄(#223). */
+/* 조회 조건 두 줄 — 기본 줄과 「조건 더보기」로 여는 심각도 · 원천 줄(#223). */
 .disposition-filter-wrap {
   display: grid;
   gap: var(--space-3);
+}
+
+/* 접힌 칸에 걸린 조건 칩(C-6) — 줄 간격(gap)이 위를 띄우므로 아래 여백을 걷는다. */
+.disposition-filter-wrap > .filter-bar.filter-more-chips {
+  margin: 0;
 }
 
 .po-board-filter .filter-bar.disposition-filter.disposition-filter-detail > .field-cell {
@@ -9302,13 +9293,10 @@ main:has(.iqc-skip-approval-detail) {
   gap: var(--space-3);
 }
 
-.filter-bar.equipment-master-filter-chips {
-  gap: var(--space-2);
+/* 설비 탭 「조건 더보기」에 접힌 체크칸 셋과 그 칩 — 격자 간격이 여백을 맡는다. */
+.filter-bar.equipment-master-filter-more,
+.equipment-master-tab-content > .filter-more-chips {
   margin-bottom: 0;
-}
-
-.equipment-master-filter-chips:empty {
-  display: none;
 }
 
 .equipment-master-table {
@@ -9469,26 +9457,31 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 /*
- * 조회 줄 — 검색이 주 입력이라 한 칸 반, 나머지 셋은 같은 폭, 끝에 조회·초기화.
+ * 조회 줄 — 검색이 주 입력이라 한 칸 반, 공장 · 유형은 같은 폭, 끝에 조회 · 초기화 · 조건 더보기.
  * 칸들은 아래 끝(입력 상자)에 맞춰 선다 — 라벨 높이가 달라도 상자 줄이 어긋나지 않는다.
+ * 접힌 줄(정렬 · 추가 필터)도 같은 칸 나눔을 쓴다 — 단추 칸을 정한 폭으로 두어야 두 줄의 칸이 맞는다.
  */
-.filter-bar.tool-master-filter {
+.filter-bar.tool-master-filter,
+.filter-bar.tool-master-filter-more {
   display: grid;
   grid-template-columns:
-    minmax(16rem, 1.6fr)
-    repeat(3, minmax(10rem, 1fr))
-    auto;
+    minmax(14rem, 1.6fr)
+    repeat(2, minmax(10rem, 1fr))
+    minmax(15rem, auto);
   align-items: end;
   gap: var(--space-2) var(--space-3);
   margin-bottom: 0;
 }
 
 .tool-master-filter > *,
-.tool-master-filter .field-cell {
+.tool-master-filter .field-cell,
+.tool-master-filter-more > *,
+.tool-master-filter-more .field-cell {
   min-width: 0;
 }
 
-.tool-master-filter .field-cell {
+.tool-master-filter .field-cell,
+.tool-master-filter-more .field-cell {
   align-items: stretch;
 }
 
@@ -9497,9 +9490,25 @@ main:has(.iqc-skip-approval-detail) {
   gap: var(--space-2);
 }
 
+/* 추가 필터 — 이름표 아래 체크칸 셋을 한 줄로. 입력 상자 높이에 맞춰 가운데로 선다. */
+.tool-master-filter-more > .tool-master-extra {
+  grid-column: 2 / -1;
+}
+
+.tool-master-extra > .check-group {
+  min-height: 2.5rem;
+  flex-flow: row wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.tool-master-pane .filter-more-chips {
+  margin-bottom: 0;
+}
+
 /*
- * 2행 — 추가 필터 · 건수. 상자 없이 이름표로 묶고, 건수는 줄 오른쪽 끝. 바로 아래 표와는 격자
- * 간격보다 한 단계 좁게 붙인다 — 건수가 표의 머리로 읽히게.
+ * 건수 줄 — 유형 안내와 건수. 건수는 줄 오른쪽 끝. 바로 아래 표와는 격자 간격보다 한 단계
+ * 좁게 붙인다 — 건수가 표의 머리로 읽히게.
  */
 .tool-master-extra-row {
   display: flex;
@@ -9507,17 +9516,6 @@ main:has(.iqc-skip-approval-detail) {
   align-items: center;
   gap: var(--space-2) var(--space-4);
   margin-bottom: calc(var(--space-2) - var(--space-3));
-}
-
-.tool-master-extra-label {
-  color: var(--on-surface-variant);
-  font: var(--type-body-sm);
-}
-
-.tool-master-extra-row > .check-group {
-  flex-flow: row wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-4);
 }
 
 .tool-master-extra-row > .tool-master-result-count {
@@ -9529,15 +9527,6 @@ main:has(.iqc-skip-approval-detail) {
   margin: 0;
   color: var(--on-surface-variant);
   font: var(--type-body-sm);
-}
-
-.filter-bar.tool-master-filter-chips {
-  gap: var(--space-2);
-  margin-bottom: 0;
-}
-
-.tool-master-filter-chips:empty {
-  display: none;
 }
 
 /*
@@ -9754,13 +9743,8 @@ main:has(.iqc-skip-approval-detail) {
   margin-left: auto;
 }
 
-.filter-bar.work-calendar-filter-chips,
 .filter-bar.work-calendar-effective-filter {
   margin-bottom: 0;
-}
-
-.work-calendar-filter-chips:empty {
-  display: none;
 }
 
 .work-calendar-month-navigation > strong {
@@ -9856,14 +9840,15 @@ main:has(.iqc-skip-approval-detail) {
 /*
  * 폭이 모자라면 두 줄로 접는다 — ⭐ **검색과 조회·초기화는 첫 줄에 함께 남는다**(사용자 지정
  * 2026-09-22). 조회 버튼이 맨 아래로 떨어지면 검색어를 친 손이 버튼을 찾아 내려가야 한다.
- * 공장·유형·정렬은 둘째 줄에 같은 폭으로 선다. 한 줄 배치의 최소 폭(약 60rem) 아래에서 접는다.
+ * 공장·유형은 둘째 줄에 같은 폭으로 선다. 한 줄 배치의 최소 폭(약 51rem) 아래에서 접는다.
+ * 접힌 줄은 정렬 한 칸 · 추가 필터 한 칸으로 같은 두 칸을 쓴다.
  */
-@container (max-width: 62rem) {
+@container (max-width: 52rem) {
   .filter-bar.tool-master-filter {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
     grid-template-areas:
       "search search actions"
-      "plant type sort";
+      "plant type .";
   }
 
   .filter-bar.tool-master-filter > :nth-child(1) {
@@ -9878,13 +9863,17 @@ main:has(.iqc-skip-approval-detail) {
     grid-area: type;
   }
 
-  .filter-bar.tool-master-filter > :nth-child(4) {
-    grid-area: sort;
-  }
-
   .filter-bar.tool-master-filter > .tool-master-search-actions {
     grid-area: actions;
     justify-self: start;
+  }
+
+  .filter-bar.tool-master-filter-more {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tool-master-filter-more > .tool-master-extra {
+    grid-column: auto;
   }
 }
 
@@ -9900,7 +9889,7 @@ main:has(.iqc-skip-approval-detail) {
   }
 
   .tool-master-extra-row,
-  .tool-master-extra-row > .check-group {
+  .tool-master-extra > .check-group {
     align-items: flex-start;
     flex-direction: column;
   }
@@ -9967,13 +9956,8 @@ main:has(.iqc-skip-approval-detail) {
   align-items: flex-end;
 }
 
-.filter-bar.collection-channel-filter-chips,
 .filter-bar.collection-channel-toolbar {
   margin-bottom: 0;
-}
-
-.collection-channel-filter-chips:empty {
-  display: none;
 }
 
 .collection-channel-toolbar {
@@ -10153,16 +10137,27 @@ main:has(.iqc-skip-approval-detail) {
   padding: var(--space-5);
 }
 
-.gauge-master-pane > .pane-title {
+.gauge-master-pane > .pane-title,
+.gauge-master-heading > .pane-title {
   margin: 0;
   color: var(--on-surface);
   font: var(--type-title-lg);
   letter-spacing: var(--type-title-lg-tracking);
 }
 
+/* 공용 `pane-heading-row` 의 아래 여백은 격자 간격이 대신한다 — 두 번 벌어지지 않게. */
+.pane-heading-row.gauge-master-heading {
+  align-items: center;
+  margin-bottom: 0;
+}
+
+/*
+ * 조회 줄 — 세 칸과 조회 · 초기화 · 조건 더보기를 한 줄에(C-6). 단추 칸은 초기화가 서도 넉넉한
+ * 폭으로 정해 둔다 — 초기화가 서고 질 때마다 세 칸의 폭이 흔들리지 않게.
+ */
 .filter-bar.gauge-master-filter {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(15rem, auto);
   gap: var(--space-4);
   margin-bottom: 0;
 }
@@ -10176,35 +10171,14 @@ main:has(.iqc-skip-approval-detail) {
   align-items: stretch;
 }
 
-.gauge-master-filter-footer {
-  display: flex;
-  grid-column: 1 / -1;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
+.gauge-master-filter-actions .filter-actions {
+  flex-wrap: nowrap;
 }
 
-.gauge-master-filter-footer > .check-group {
-  flex: 1 1 28rem;
-  flex-flow: row wrap;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.gauge-master-filter-footer > .filter-actions {
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  margin-left: auto;
-}
-
-.filter-bar.gauge-master-filter-chips {
-  gap: var(--space-2);
+/* 「조건 더보기」에 접힌 체크칸 셋 — 조회 줄의 첫 칸 왼쪽 끝에 맞춘다. */
+.filter-bar.gauge-master-filter-more,
+.gauge-master-pane .filter-more-chips {
   margin-bottom: 0;
-}
-
-.gauge-master-filter-chips:empty {
-  display: none;
 }
 
 .gauge-master-table {
@@ -10235,19 +10209,6 @@ main:has(.iqc-skip-approval-detail) {
 @media (max-width: 1100px) {
   .filter-bar.gauge-master-filter {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 640px) {
-  .gauge-master-filter-footer,
-  .gauge-master-filter-footer > .check-group {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .gauge-master-filter-footer > .filter-actions {
-    align-self: flex-end;
-    margin-left: 0;
   }
 }
 
@@ -10363,9 +10324,13 @@ main:has(.iqc-skip-approval-detail) {
   letter-spacing: var(--type-title-lg-tracking);
 }
 
+/*
+ * 조회 줄 — 세 칸과 조회 · 초기화 · 조건 더보기를 한 줄에(C-6). 단추 칸은 초기화가 서도 넉넉한
+ * 폭으로 정해 둔다 — 초기화가 서고 질 때마다 세 칸의 폭이 흔들리지 않게.
+ */
 .filter-bar.equipment-failure-filter {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(15rem, auto);
   gap: var(--space-4);
   margin-bottom: 0;
 }
@@ -10379,20 +10344,14 @@ main:has(.iqc-skip-approval-detail) {
   align-items: stretch;
 }
 
-.equipment-failure-filter .equipment-failure-filter-options {
-  grid-column: 1 / 3;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center !important;
-  justify-content: flex-start;
-  gap: var(--space-4);
-  margin-top: 0;
+.equipment-failure-filter-actions .filter-actions {
+  flex-wrap: nowrap;
 }
 
-.equipment-failure-filter-actions {
-  grid-column: 3;
-  align-items: flex-end !important;
-  margin-top: 0;
+/* 「조건 더보기」에 접힌 체크칸 둘 — 조회 줄의 첫 칸 왼쪽 끝에 맞춘다. */
+.filter-bar.equipment-failure-filter-more,
+.equipment-failure-pane > .filter-more-chips {
+  margin-bottom: 0;
 }
 
 .equipment-failure-pane > .pane-lead {
@@ -10445,15 +10404,6 @@ main:has(.iqc-skip-approval-detail) {
 @media (max-width: 1100px) {
   .filter-bar.equipment-failure-filter {
     grid-template-columns: 1fr;
-  }
-
-  .equipment-failure-filter-options,
-  .equipment-failure-filter-actions {
-    grid-column: 1;
-  }
-
-  .equipment-failure-filter-actions {
-    align-items: flex-start !important;
   }
 }
 
@@ -10699,9 +10649,13 @@ main:has(.iqc-skip-approval-detail) {
   letter-spacing: var(--type-title-lg-tracking);
 }
 
+/*
+ * 조회 줄 — 공장 · 정렬과 초기화 · 조건 더보기를 한 줄에(C-6). 단추 칸은 초기화가 서도 넉넉한 폭으로
+ * 정해 둔다 — 초기화가 서고 질 때마다 두 칸의 폭이 흔들리지 않게.
+ */
 .filter-bar.tool-pm-order-filter {
   display: grid;
-  grid-template-columns: repeat(2, minmax(16rem, 1fr)) auto;
+  grid-template-columns: repeat(2, minmax(16rem, 1fr)) minmax(11rem, auto);
   align-items: start;
   gap: var(--space-4);
   margin-bottom: 0;
@@ -10716,22 +10670,14 @@ main:has(.iqc-skip-approval-detail) {
   align-items: stretch;
 }
 
-.tool-pm-order-filter .tool-pm-order-filter-options {
-  grid-column: 1 / -1;
-  grid-row: 2;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-start;
-  gap: var(--space-4);
-  margin-top: 0;
+.tool-pm-order-filter-actions .filter-actions {
+  flex-wrap: nowrap;
 }
 
-.tool-pm-order-filter-actions {
-  grid-column: 3;
-  grid-row: 1;
-  align-items: flex-end !important;
-  margin-top: 0;
+/* 「조건 더보기」에 접힌 체크칸 셋과 그 칩 — 격자 간격이 여백을 맡는다. */
+.filter-bar.tool-pm-order-filter-more,
+.tool-pm-order-pane > .filter-more-chips {
+  margin-bottom: 0;
 }
 
 .tool-pm-order-pane > .pane-lead {
@@ -10794,12 +10740,6 @@ main:has(.iqc-skip-approval-detail) {
   .form-grid.tool-pm-order-form-grid,
   .filter-bar.tool-pm-order-item-row {
     grid-template-columns: 1fr;
-  }
-
-  .tool-pm-order-filter .tool-pm-order-filter-options,
-  .tool-pm-order-filter-actions {
-    grid-column: 1;
-    grid-row: auto;
   }
 
   .tool-pm-order-filter-actions,
@@ -10942,9 +10882,14 @@ main:has(.iqc-skip-approval-detail) {
   margin: 0;
 }
 
+/*
+ * 조회 줄 — 기간 · 설비 그룹 · 설비와 조회 · 초기화 · 조건 더보기를 한 줄에(C-6). 접힌 줄(공장)도
+ * 같은 칸 나눔을 쓴다 — 단추 칸을 정한 폭으로 두어야 두 줄의 칸이 맞고, 초기화가 서고 질 때도
+ * 칸 폭이 흔들리지 않는다.
+ */
 .filter-bar.downtime-summary-filter {
   display: grid;
-  grid-template-columns: minmax(18rem, 1.4fr) repeat(3, minmax(10rem, 1fr));
+  grid-template-columns: minmax(18rem, 1.4fr) repeat(2, minmax(10rem, 1fr)) minmax(15rem, auto);
   gap: var(--space-4);
   margin-bottom: 0;
 }
@@ -10953,10 +10898,20 @@ main:has(.iqc-skip-approval-detail) {
   align-items: stretch;
 }
 
-.downtime-summary-filter-actions {
-  grid-column: 1 / -1;
-  align-items: flex-end;
-  margin-top: 0;
+/*
+ * 세 칸이 단추와 한 줄에 서려면 선택칸이 공용 최소 폭(13rem)보다 좁아질 수 있어야 한다 — 칸을 넘쳐
+ * 옆 칸을 덮지 않게. 펼친 목록은 공용 선택칸이 따로 최소 폭을 둔다.
+ */
+.downtime-summary-filter > .field-cell.wide-select {
+  min-width: 0;
+}
+
+.downtime-summary-filter-actions .filter-actions {
+  flex-wrap: nowrap;
+}
+
+.downtime-summary-pane > .filter-more-chips {
+  margin-bottom: 0;
 }
 
 .kpi-grid.downtime-summary-kpi-grid {
@@ -10984,10 +10939,6 @@ main:has(.iqc-skip-approval-detail) {
 @media (max-width: 1100px) {
   .filter-bar.downtime-summary-filter {
     grid-template-columns: 1fr;
-  }
-
-  .downtime-summary-filter-actions {
-    grid-column: 1;
   }
 }
 
@@ -11049,11 +11000,14 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 .approval-inbox-filter-actions {
-  grid-column: 1 / -1;
   margin-top: 0;
 }
 
-.filter-bar.approval-inbox-filter-chips {
+.approval-inbox-filter-actions .filter-actions {
+  flex-wrap: nowrap;
+}
+
+.approval-inbox-pane .filter-more-chips {
   margin-bottom: 0;
 }
 
@@ -11191,7 +11145,7 @@ dl.filter-bar.approval-inbox-detail-facts {
   }
 }
 
-/* 공지·전달 — 검색 조건을 의미별 두 행으로 묶고 목록·상세 제목의 위계를 통일한다. */
+/* 공지·전달 — 검색 조건을 한 줄로 두고(C-6) 목록·상세 제목의 위계를 통일한다. */
 .notice-pane,
 .notice-table,
 .notice-filter > * {
@@ -11217,9 +11171,14 @@ dl.filter-bar.approval-inbox-detail-facts {
   letter-spacing: var(--type-title-lg-tracking);
 }
 
+/*
+ * 조회 줄 — 제목 · 상태 · 게시 기간(시작 · 끝)과 조건 지우기 · 조건 더보기를 한 줄에. 접힌 줄(대상 범위 ·
+ * 체크칸 둘)도 같은 칸 나눔을 쓴다 — 단추 칸을 정한 폭으로 두어야 두 줄의 칸이 맞고, 조건 지우기가
+ * 서고 질 때도 칸 폭이 흔들리지 않는다.
+ */
 .filter-bar.notice-filter {
   display: grid;
-  grid-template-columns: minmax(16rem, 1.5fr) repeat(2, minmax(13rem, 1fr));
+  grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr)) minmax(13rem, auto);
   gap: var(--space-4);
   margin-bottom: 0;
 }
@@ -11228,15 +11187,18 @@ dl.filter-bar.approval-inbox-detail-facts {
   align-items: stretch;
 }
 
-.notice-filter-options {
-  align-items: flex-start !important;
-  margin-top: 0;
+.notice-filter .notice-filter-options {
+  grid-column: 2 / -1;
+  align-items: center;
+  justify-content: flex-start;
 }
 
-.notice-filter-clear {
-  grid-column: 1 / -1;
-  justify-content: flex-end;
-  margin-top: 0;
+.notice-filter-actions .filter-actions {
+  flex-wrap: nowrap;
+}
+
+.notice-pane > .filter-more-chips {
+  margin-bottom: 0;
 }
 
 .notice-pane > .pane-lead,
@@ -11270,7 +11232,7 @@ dl.filter-bar.approval-inbox-detail-facts {
     grid-template-columns: 1fr;
   }
 
-  .notice-filter-clear {
+  .notice-filter .notice-filter-options {
     grid-column: 1;
   }
 }
@@ -11282,6 +11244,12 @@ dl.filter-bar.approval-inbox-detail-facts {
   align-items: flex-start;
   gap: var(--space-3);
   margin-bottom: var(--space-4);
+}
+
+/* 「조건 더보기」에 접힌 칸에 걸린 조건 칩(patterns/filter-more.tsx). */
+.filter-bar.filter-more-chips {
+  align-items: center;
+  gap: var(--space-2);
 }
 
 /*
@@ -11317,6 +11285,8 @@ dl.filter-bar.approval-inbox-detail-facts {
  */
 .filter-actions {
   display: flex;
+  /* 「조건 더보기」(작은 글자 단추)가 조회 · 초기화와 같은 가운뎃줄에 오게. */
+  align-items: center;
   gap: var(--space-3);
 }
 
@@ -11714,7 +11684,7 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 /* 창이 좁으면 늘 위아래로 쌓인다 — 배치 고르기와 그 앞 구분선은 눌러도 바뀌는 것이 없어 감춘다. */
 @media (max-width: 1439px) {
-  .po-board-layout-toggle,
+  .po-board-layout-more,
   .quality-approval-type-bar-divider {
     display: none;
   }
@@ -11894,13 +11864,26 @@ body.po-board-resizing.is-row-resize {
   background: var(--surface-container-high);
 }
 
-/* 조회·초기화는 같은 폭(사용자 지시 2026-10-21) — 상세 조건 펼치기(글자 단추)는 제 폭이다. */
+/*
+ * 조회·초기화는 같은 폭(사용자 지시 2026-10-21) — 조건 더보기(글자 단추)는 제 폭이다. 폭은 「초기화」 글자에 맞춘다 —
+ * 납기 · 공급업체(C-19 보통) · 품목코드(좁음)와 단추 셋이 1280 에서 한 줄에 들게(C-6). 단추 묶음은 줄바꿈하지 않는다.
+ */
 .po-board-actions {
+  flex-wrap: nowrap;
   align-items: center;
 }
 
 .po-board-actions > button:not([aria-expanded]) {
-  min-width: 5.5rem;
+  min-width: 4.5rem;
+}
+
+/*
+ * 조회 단추 아래 사유는 단추 묶음 폭 안에서 줄바꿈한다 — 사유 글자가 칸을 넓혀 단추 묶음이 다음 줄로 밀리지 않게(C-6).
+ * 입고 관리(`.po-board-actions`)의 조회 줄이 쓴다.
+ */
+.po-board-actions + .field-note {
+  width: 0;
+  min-width: 100%;
 }
 
 .po-board-table td {
@@ -12295,6 +12278,14 @@ th:hover > .col-drag {
   display: grid;
   gap: var(--space-4);
   margin-bottom: var(--space-4);
+}
+
+/*
+ * 연동 현황·이력 조회 줄(C-6) — 항목 · 상태 칸은 업무 이름(「출하 (PGI)」)이 다 보이는 폭이면 된다.
+ * 공용 13rem 으로 두면 「초기화」가 서는 순간 단추 묶음이 아랫줄로 밀린다(1280 폭).
+ */
+.filter-bar.integration-sync-filter > .field-cell.wide-select {
+  min-width: 10rem;
 }
 
 /* 조건 줄 아래 한 줄 안내(ERP 데이터 탭의 「고칠 수 없습니다」) — 상자 폭을 다 써 한 줄로 선다. */
@@ -13494,81 +13485,199 @@ a.erp-send-chips:focus-visible {
 }
 
 /*
- * W-CO-02 사용자 탭 — 목록(네 열)과 상세(세 구획)가 페이지 폭을 끝까지 채운다. 카드에 최대 폭을
- * 걸면 오른쪽이 비어 남는다(사용자 확인 2026-09-18). 카드 안이 휑한 문제는 폭에 따라 열 수가
- * 바뀌는 안쪽 격자(아래 폼·역할 목록)로 푼다. 목록 하한 24rem 은 네 열과 조회 줄이 접히지 않는 폭이다.
+ * W-CO-02 사용자 탭 — 수입검사 화면과 같은 틀(omf-all-around#333): 위 조회 묶음, 아래 목록 | 설정 카드(`.po-board-split`
+ * · `.inspection-split` 의 좌우 · 상하 배치, 폭 · 높이 끌기, 목록 접기를 그대로 쓴다).
  */
-.two-pane.users-roles-layout {
-  grid-template-columns: minmax(24rem, 5fr) minmax(0, 8fr);
+.users-roles-tabs {
+  position: relative;
 }
 
-@media (max-width: 1280px) {
-  .two-pane.users-roles-layout {
-    grid-template-columns: 1fr;
-  }
+/* 탭 줄 오른쪽 — 재직 상태 칩 · 좌우 / 상하 배치. DS 탭에 오른쪽 자리가 없어 탭 줄 높이에 겹쳐 세운다. */
+.users-roles-tab-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 48px;
 }
 
-/*
- * 검색창이 첫 줄의 남는 폭을 다 쓰고 「미사용 포함」이 그 옆에 선다. 둘째 줄에 부서·재직 상태와
- * 그것을 적용하는 조회·초기화가 한 묶음으로 선다.
- */
-.users-roles-filter {
+.users-roles-tab-actions > .split-orientation-toggle {
+  margin-left: 0;
+}
+
+.users-roles-workspace {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.users-roles-search {
   display: grid;
   gap: var(--space-3);
-  margin-bottom: var(--space-4);
+  min-width: 0;
 }
 
-.users-roles-filter > .filter-bar {
+.users-roles-search > .filter-bar {
   margin-bottom: 0;
 }
 
-/* 1행 — 검색창이 남는 폭을 다 쓴다. */
-.users-roles-filter > .filter-bar:first-child > :first-child {
-  flex: 1 1 12rem;
+/* 한 줄 — 소속 부서 · 검색창 · 사용 중지 계정 포함 · 조회 · 초기화 … 사용자 추가(오른쪽 끝). 부서 고르개는 문구가 잘리지 않는 폭, 「사용자 추가」는 줄 오른쪽 끝. */
+.users-roles-filter-row {
+  align-items: flex-end;
 }
 
-/* 2행 — 조회·초기화를 줄 오른쪽 끝(사용자 추가와 같은 끝선)으로. 줄이 바뀌어도 오른쪽에 붙는다. */
-.users-roles-filter .filter-actions {
+/* 검색창은 흐린 문구(「아이디 또는 이름을 입력하세요」)가 다 보이는 폭만 — 남는 폭까지 늘리지 않는다(사용자 지시 2026-11-20). */
+/* 소속 부서 — 「전체」·부서 이름이 들어가는 만큼만(사용자 지시 2026-11-20 · #333). */
+.users-roles-filter-row > .users-roles-department-select {
+  flex: 0 0 12rem;
+  width: 12rem;
+}
+
+/* 고르개 상자가 칸을 꽉 채운다 — 글자만큼 줄면 칸 오른쪽이 빈다. */
+.users-roles-department-select > :not(.field-label) {
+  width: 100%;
+  min-width: 0;
+}
+
+.users-roles-filter-row > .users-roles-search-input {
+  flex: 0 0 17rem;
+  width: 17rem;
+}
+
+/* 역할 검색 — 흐린 문구(역할 코드 또는 역할명을 입력하세요)가 꼭 들어가는 너비만큼만 넓힌다(사용자 지시 2026-11-20 · #333). */
+.users-roles-filter-row > .users-roles-search-input.users-roles-role-search-input {
+  flex-basis: 18.5rem;
+  width: 18.5rem;
+}
+
+/* 조회 · 초기화 · 사용자 추가를 함께 오른쪽 끝으로(사용자 지시 2026-11-20 · #333). */
+.users-roles-filter-row > .filter-actions {
   margin-left: auto;
+  /* 조회 · 초기화와 사용자 추가 사이를 세로선으로 나눈다(사용자 지시 2026-11-20 · #333). */
+  padding-right: var(--space-4);
+  border-right: 1px solid var(--outline-variant);
+}
+
+.users-roles-filter-row > .field-cell-unlabeled,
+.users-roles-filter-row > .filter-actions {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* 목록 칸 — 표만 안에서 구르고 쪽 넘김은 칸 바닥에 남는다(수입검사 목록과 같다). */
+.users-roles-list-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  max-height: calc(100dvh - 20rem);
+  min-height: 18rem;
+}
+
+.users-roles-list-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.users-roles-list-body > .users-roles-list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.users-roles-list-body > .users-roles-list > div {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.users-roles-list thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.users-roles-list-pane > .page-nav,
+.users-roles-list-pane > nav {
+  flex: 0 0 auto;
+}
+
+@media (min-width: 1440px) {
+  .inspection-split > .users-roles-list-pane {
+    max-height: none;
+    min-height: 0;
+  }
+
+  .inspection-split > .users-roles-settings {
+    min-height: 0;
+    overflow: auto;
+  }
+}
+
+.po-board-split.inspection-split.is-stacked > .users-roles-list-pane {
+  box-sizing: border-box;
+  height: var(--stacked-list-height, auto);
+  min-height: 0;
+  max-height: var(--stacked-list-height, min(28rem, 50dvh));
+}
+
+.po-board-split.inspection-split.is-stacked > .users-roles-settings {
+  overflow: visible;
 }
 
 /*
- * 고른 사용자 줄 — DS `Table` 이 행 선택 표시를 주지 않아 안쪽 버튼의 `aria-current` 로 줄을
- * 짚는다. 채운 색(`--primary-container`)은 목록에서 너무 강해 옅은 상태 배경 + 줄 앞 막대 +
- * 굵은 로그인 ID 로 짚는다 — 막대가 있어 배경이 옅어도 선택이 흐려지지 않는다.
+ * 줄 아무 곳이나 눌러 고른다(사용자 지시 2026-11-20 · omf-all-around#333) — 로그인 아이디는 링크처럼 보이지 않는다.
+ * 고른 줄은 DS `Table` 이 표시를 주지 않아 안쪽 단추의 `aria-current` 로 짚는다 — 옅은 바탕 + 정보 색 막대(빨강은 오류로 읽힌다).
  */
-.users-roles-list tbody tr:has(.link-cell[aria-current="true"]) {
-  background: var(--state-hover);
+.users-roles-list tbody tr {
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.users-roles-list tbody tr:nth-child(n):hover {
+  background: var(--state-hover-neutral);
+}
+
+.users-roles-list tbody tr:nth-child(n):has(.users-roles-row-pick[aria-current="true"]) {
+  background: var(--surface-container-high);
 }
 
 .users-roles-list
   tbody
-  tr:has(.link-cell[aria-current="true"])
+  tr:has(.users-roles-row-pick[aria-current="true"])
   > td:first-child {
-  box-shadow: inset 3px 0 var(--primary);
+  box-shadow: inset 3px 0 var(--semantic-info);
 }
 
-.users-roles-list .link-cell[aria-current="true"] {
+.users-roles-row-pick {
+  display: inline;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
   color: inherit;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-/* 읽기 전용 칸의 라벨 줄 — 라벨 오른쪽에 「바꿀 수 없다」는 보조 라벨을 작게 붙인다. */
-.readonly-label-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  column-gap: var(--space-2);
-}
-
-/* 라벨과 같은 글자 크기 — 크면 이 칸의 라벨 줄만 높아져 옆 칸과 입력칸 윗선이 어긋난다. */
-.readonly-label-note {
-  color: var(--on-surface-variant);
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
-  opacity: 0.8;
+}
+
+.users-roles-row-pick:focus-visible {
+  outline: none;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--focus-ring);
+}
+
+.users-roles-row-pick[aria-current="true"] {
+  font-weight: 600;
 }
 
 /* 입력칸이 아닌 값 — 옅은 바탕으로 «고칠 수 없는 칸»임을 보이되 글자는 흐리게 두지 않는다. */
@@ -13615,26 +13724,141 @@ a.erp-send-chips:focus-visible {
   }
 }
 
-/*
- * 사용자 정보의 액션 줄 — 폼 칸과 선으로 가르고, 왼쪽 계정 관리 묶음(비밀번호 초기화·사용 중지)과
- * 오른쪽 폼 묶음(취소·저장)이 양 끝에 선다. 묶음 안은 촘촘히, 묶음 사이는 줄 폭만큼 떨어진다.
- */
-.users-roles-pane > .form-actions:has(.users-roles-account-actions),
-.users-roles-select-hint {
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--outline-variant);
-}
-
-/* 고르기 전 안내 — 사용자 정보 카드의 표제 아래 구분선 다음 한 줄. */
+/* 고르기 전 안내 — 설정 카드 머리 아래 한 줄. */
 .users-roles-select-hint {
   margin: 0;
   color: var(--on-surface-variant);
 }
 
+/* 계정 관리(비밀번호 초기화 · 사용 중지) — 상세 정보 표제 줄 오른쪽. 아래 「취소 · 정보 저장」과 떨어져 선다. */
 .users-roles-account-actions {
   display: flex;
-  align-items: flex-start;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-2);
+}
+
+/*
+ * 오른쪽 한 카드 — 고른 사용자의 설정(omf-all-around#333). 상세 정보 · 사용자 역할 ·
+ * 데이터 접근 범위가 구분선으로만 나뉜다 — 구역마다 카드를 따로 세우지 않는다.
+ */
+.users-roles-settings {
+  display: grid;
+  gap: var(--space-4);
+  /* 카드가 창 높이까지 늘어도 구역 사이가 벌어지지 않게 위에서부터 쌓는다. */
+  align-content: start;
+  container-type: inline-size;
+}
+
+.users-roles-settings > .pane {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+/* 카드 아래 [취소][저장] 한 줄 — 위 구역들과 선으로 나눈다(사용자 지시 2026-11-20 · #333). */
+.users-roles-settings > .users-roles-settings-actions {
+  margin: 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.users-roles-settings > .pane + .pane {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.users-roles-settings > .pane .pane-title {
+  margin: 0;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+.users-roles-settings > .pane > .pane-heading-row,
+.users-roles-settings > .pane > .pane-title {
+  margin-bottom: var(--space-3);
+}
+
+/* 범위 창의 겹침 안내 — 안내 띠 모양, 본문과 같은 크기 글자(사용자 지시 2026-11-20 · #333). */
+.iqc-inspection-action-note.users-roles-dialog-note[data-tone] {
+  margin: var(--space-3) 0 0;
+  font: var(--type-label-lg);
+  font-weight: 400;
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+/* 오른쪽 빈 안내의 보조 문구는 한 줄로(사용자 지시 2026-11-20 · #333) — 공통 가독 폭 제한을 푼다. */
+.users-roles-pick-empty p {
+  max-width: none;
+}
+
+/* 창 제목 오른쪽 라벨 안내 — 접근 범위 추가(사용자 지시 2026-11-20 · #333). */
+.users-roles-dialog-title-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.users-roles-dialog-title-row > .iqc-inspection-action-note.users-roles-dialog-note[data-tone] {
+  margin: 0;
+}
+
+/* 사용자 추가 팝업 — 다른 화면 추가 창처럼 칸 카드 테두리 없이 창 본문에 바로 입력칸을 둔다(#333). */
+.users-roles-create-dialog > .pane {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+/* 초기 비밀번호 눈 아이콘 — 입력칸 오른쪽 안에 겹쳐 둔다(사용자 지시 2026-11-20 · #333). */
+.users-roles-password-field {
+  position: relative;
+}
+
+.users-roles-password-field > button {
+  position: absolute;
+  top: 6px;
+  right: var(--space-2);
+}
+
+.users-roles-password-field input.users-roles-password-input {
+  padding-right: 3rem;
+}
+
+/* 미연결 안내 라벨은 칩 줄 안에 선다 — 공용 안내 띠의 위 여백을 걷는다(#333). */
+.users-roles-worker-link-summary > .iqc-inspection-action-note.users-roles-dialog-note[data-tone] {
+  margin: 0;
+}
+
+.users-roles-scope-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+}
+
+/* 표제 오른쪽 안내 — 표제 · 표 글자와 같은 크기(사용자 지시 2026-11-20 · #333). 안내 줄 공통 글자 규칙보다 무겁게 건다. */
+.users-roles-scope-title > .iqc-inspection-action-note.users-roles-scope-hint {
+  max-width: none;
+  margin: 0;
+  font: var(--type-label-lg);
+  font-weight: 400;
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+/* 로그인 아이디 칸 이름 줄 — 「변경 불가」 라벨이 서도 옆 칸 이름 줄과 높이가 어긋나지 않게 줄 높이를 고정한다. */
+.users-roles-locked-label {
+  display: flex;
+  align-items: center;
+}
+
+.users-roles-locked-label > .inspection-standard-label-hint {
+  line-height: 1.2;
 }
 
 /*
@@ -13649,6 +13873,16 @@ a.erp-send-chips:focus-visible {
   margin-top: var(--space-4);
   padding-top: var(--space-3);
   border-top: 1px solid var(--outline-variant);
+}
+
+/* 제목 줄 — 왼쪽 제목, 오른쪽 끝 작업자 변경 · 연결 해제(사용자 지시 2026-11-20 · #333). */
+.users-roles-worker-link-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  min-width: 0;
 }
 
 .users-roles-worker-link-title {
@@ -13683,16 +13917,30 @@ a.erp-send-chips:focus-visible {
   color: var(--on-surface-variant);
 }
 
+/* 값 앞 정보 이름 — 값보다 작고 옅게(사용자 지시 2026-11-20 · #333). */
+.users-roles-worker-link-meta-label {
+  margin-right: var(--space-2);
+  font: var(--type-label-lg);
+  font-weight: 400;
+  color: var(--on-surface-variant);
+  opacity: 0.8;
+}
+
+/* 사번 | 부서 코드 | 부서 이름 — 사이에 옅은 세로 막대(사용자 시안 2026-11-20 · #333). */
+.users-roles-worker-link-meta + .users-roles-worker-link-meta::before {
+  content: "";
+  display: inline-block;
+  width: 1px;
+  height: 0.9em;
+  margin-right: var(--space-3);
+  vertical-align: -0.1em;
+  background: var(--outline-variant);
+}
+
 .users-roles-worker-link-actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-}
-
-/* 공용 .field-note 의 폭 상한은 입력칸 밑 짧은 주석용이다 — 이 구역의 안내는 구역 폭을 쓴다. */
-.users-roles-worker-link-hint {
-  max-width: none;
-  margin: 0;
 }
 
 /*
@@ -13730,6 +13978,9 @@ a.erp-send-chips:focus-visible {
   justify-content: flex-end;
   gap: var(--space-2);
   margin-top: var(--space-1);
+  /* 단추 위 구분선(사용자 시안 2026-11-20 · #333). */
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
 }
 
 .users-roles-worker-dialog-question {
@@ -13751,6 +14002,21 @@ a.erp-send-chips:focus-visible {
   color: var(--on-surface-variant);
 }
 
+/* 사번 | 부서 코드 | 부서명 한 줄 — 카드의 연결된 작업자 줄과 같은 모양(사용자 지시 2026-11-20 · #333). */
+.users-roles-worker-block-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+}
+
+/* 블록 위 작은 제목 — 「현재 연결된 작업자」(사용자 시안 2026-11-20 · #333). */
+.users-roles-worker-block > .users-roles-worker-block-caption {
+  font: var(--type-label-lg);
+  font-weight: 400;
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
 /*
  * 중립 보조 버튼 — DS primary 가 빨강이고 Button 에 색 prop 이 없어, outlined·text 의 글자만 중립 토큰으로 바꾼다.
  * 강조 정도(테두리·면)는 DS 변형 그대로다. 새 컴포넌트가 아니라 클래스 하나다.
@@ -13760,15 +14026,18 @@ button.app-button-neutral {
 }
 
 /* 역할 부여 — 넓으면 여러 열, 좁으면 한 열. 카드 없는 단순 목록 그대로다. */
-.users-roles-role-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(16rem, 100%), 1fr));
-  gap: var(--space-2) var(--space-5);
+/* 역할은 2열(omf-all-around#333) — 넓게 펼치면 어느 것이 체크됐는지 한눈에 안 들어온다. 좁으면 1열. */
+/* 역할은 한 줄로 늘어놓고, 폭이 모자라면 다음 줄로 넘긴다(사용자 지시 2026-11-20 · #333). */
+.check-group.users-roles-role-list {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
 }
 
 /* 오른쪽 세 구획의 액션 줄 — 공통 간격(space-5)이면 저장 줄이 내용에서 떨어져 보인다. */
 .users-roles-pane > .form-actions {
-  margin-top: var(--space-4);
+  margin-top: var(--space-3);
 }
 
 /* 표제와 그 옆 버튼의 가운데를 맞춘다 — 공통 `.pane-heading-row` 는 위 끝을 맞춰 표제가 떠 보인다. */
@@ -13813,14 +14082,6 @@ button.app-button-neutral {
 .temp-password-facts dd {
   min-width: 0;
   overflow-wrap: anywhere;
-}
-
-/* 역할명이 먼저 읽히고 코드는 곁에 작게 — 운영자가 짚어 볼 값이라 지우지 않는다. */
-.role-choice-code {
-  margin-left: var(--space-2);
-  color: var(--on-surface-variant);
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
 }
 
 /**
@@ -14468,6 +14729,11 @@ dialog.layout-editor-dialog {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
+}
+
+/* 「조건 더보기」에 접힌 칸에 걸린 조건 칩 — 조건 줄 사이 간격(grid gap)만 둔다(C-6). */
+.material-issue-status-filters > .filter-more-chips {
+  margin: 0;
 }
 
 .material-issue-status-table,
@@ -19120,26 +19386,27 @@ dialog.layout-editor-dialog {
   letter-spacing: var(--type-title-lg-tracking);
 }
 
+/*
+ * 조회 조건 한 줄(C-6) — 세 칸과 단추 묶음. 칸 폭을 하나로 고정해 「조건 더보기」의 창고 칸이 위 줄 원천 칸과
+ * 같은 세로선에 놓인다. 목록이 좁아지면(2단 배치) 단추 묶음부터 다음 줄로 내려간다.
+ */
 .filter-bar.disposition-request-filter {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
   margin-bottom: 0;
 }
 
-.disposition-request-filter > *,
-.disposition-request-filter .field-cell {
-  min-width: 0;
-}
-
-.disposition-request-filter .field-cell {
+.disposition-request-filter > .field-cell {
+  flex: 0 0 13rem;
   align-items: stretch;
+  min-width: 0;
 }
 
 .disposition-request-filter-actions {
   display: flex;
-  grid-column: 1 / -1;
-  justify-content: flex-end;
+  margin-inline-start: auto;
+}
+
+.disposition-request-pane .filter-more-chips {
+  margin-bottom: 0;
 }
 
 .disposition-request-list-pane > .banner-slot,
@@ -19713,6 +19980,94 @@ dialog.layout-editor-dialog {
 }
 
 /*
+ * 누르면 아래로 펼치는 작은 판(`patterns/popover-button.tsx`) — 상단 바 이름 메뉴와 탭 막대 「⋯」(더보기)가 쓴다.
+ * 드물게 쓰는 기능을 화면에 늘 세우지 않고 한 곳에 접는다(관리웹 화면 정리 시안 A · 2026-11-20).
+ */
+.popover {
+  position: relative;
+  display: inline-flex;
+}
+
+.popover-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--on-surface);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  cursor: pointer;
+}
+
+.popover-trigger:hover,
+.popover-trigger[aria-expanded="true"] {
+  background: var(--surface-container-high);
+}
+
+.popover-trigger:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.popover-panel {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 200px;
+  padding: var(--space-2);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--elevation-2);
+}
+
+/* 상단 바 이름 메뉴 — 이름을 누르면 비밀번호 변경 · 언어 · 로그아웃이 아래로 펼친다. */
+.session-menu > .popover-trigger {
+  height: 32px;
+  padding: 0 var(--space-2) 0 var(--space-3);
+}
+
+.session-menu > .popover-panel {
+  align-items: stretch;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+/* 판 안의 링크와 로그아웃은 같은 줄 모양 — 같은 글자 · 같은 높이 · 중립 색(주 색은 주 동작에만 · C-19). */
+.session-menu > .popover-panel > .topbar-link,
+.session-menu > .popover-panel > button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: 36px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--on-surface);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  text-decoration: none;
+}
+
+.session-menu > .popover-panel > .topbar-link:hover,
+.session-menu > .popover-panel > button:hover {
+  background: var(--surface-container-high);
+  text-decoration: none;
+}
+
+.more-menu > .popover-trigger {
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: var(--on-surface-variant);
+}
+
+/*
  * 탭 묶음의 탭 막대(`hub-tabs.tsx`). **화면 제목 위의 한 줄**이라 제목보다 가볍게 읽혀야 한다 —
  * 밑줄 하나와 보조 글자색으로 서고, 지금 화면만 진한 글자와 굵은 밑줄을 갖는다.
  *
@@ -20146,7 +20501,7 @@ dialog.layout-editor-dialog {
   vertical-align: middle;
 }
 
-/* 첫 칸(자재 LOT)은 표 왼쪽 끝과 띄운다(#133). */
+/* 첫 칸(의뢰 일시)은 표 왼쪽 끝과 띄운다(#133). */
 .iqc-inspection-queue-rows th:first-child,
 .iqc-inspection-queue-rows td:first-child {
   padding-inline-start: var(--space-7);
@@ -20228,6 +20583,12 @@ dialog.layout-editor-dialog {
 .iqc-inspection-panes .iqc-inspection-queue-item-code {
   font: var(--type-body-sm);
   color: var(--on-surface-muted);
+}
+
+/* 품목코드가 제 칸으로 섰다(사용자 지시 2026-11-20) — 보조 글이 아니라 본문 글자로 보인다. */
+.iqc-inspection-panes .iqc-inspection-queue-item > .iqc-inspection-queue-item-code {
+  font: inherit;
+  color: inherit;
 }
 
 /* 대기 목록 LOT — 앞 마디만 줄이고 끝 마디(일련번호)는 남긴다(queue-table.tsx). */
@@ -24799,11 +25160,25 @@ body:has(.page-nav-size [aria-expanded="true"])
   color: var(--on-surface-variant);
 }
 
-/* 공장, 번호, 납기, 품목 네 칸과 버튼은 1280px 한 줄에 들어가지 않는다. 칸 폭을 줄이지 않고 버튼을 다음 줄 오른쪽 끝으로 내린다. */
+/*
+ * 번호, 납기, 품목 세 칸과 버튼이 1280px 한 줄에 들어간다 — 칸은 보통 폭(240px)에서 줄 끝까지 조금 줄어든다.
+ * 좁은 창에서는 버튼이 다음 줄 오른쪽 끝으로 내려간다. 공장은 「조건 더보기」에 접는다(C-6).
+ */
 .filter-bar.erp-wo-filter-bar {
   flex-wrap: wrap;
   gap: var(--space-3);
   margin-bottom: 0;
+}
+
+.filter-bar.erp-wo-filter-bar > .filter-field-md {
+  flex: 1 1 200px;
+  max-width: 240px;
+}
+
+/* 접힌 칸과 접힌 조건 칩은 조건 줄과 같은 간격으로 그 아래에 놓인다. */
+.filter-bar.erp-wo-filter-more,
+.erp-wo-filter-pane .filter-more-chips {
+  margin: var(--space-3) 0 0;
 }
 
 .erp-wo-table .ellipsis-cell {
@@ -26453,9 +26828,12 @@ body:has(.page-nav-size [aria-expanded="true"])
   width: 100%;
 }
 
-/* 품목 · 재료 검색 칸 — 흐린 안내(「품목을 입력하세요」 · 「재료를 입력하세요」)가 꼭 맞는 폭(사용자 지시 · #208). */
-.inspection-sheet-template-search > .filter-bar > :nth-child(3),
-.inspection-sheet-template-search > .filter-bar > :nth-child(4) {
+/*
+ * 품목 · 재료 검색 칸 — 흐린 안내(「품목을 입력하세요」 · 「재료를 입력하세요」)가 꼭 맞는 폭(사용자 지시 · #208).
+ * 맨 앞 검사 유형 칸 다음 둘이다 — 양식 · 상태는 「조건 더보기」로 옮겼다(C-6). 넷째는 단추 묶음이라 걸지 않는다.
+ */
+.inspection-sheet-template-search > .filter-bar > :nth-child(2),
+.inspection-sheet-template-search > .filter-bar > :nth-child(3) {
   flex: 0 0 12em;
 }
 
@@ -28177,13 +28555,23 @@ body.col-reordering * {
   text-align: left;
 }
 
-/* 목록 · 상세 배치 단추(`patterns/split-orientation.tsx`) — 상태 칩 옆, 칩과 한 칸 띄운다. */
+/* 목록 · 상세 배치 단추(`patterns/split-orientation.tsx`) — 「⋯」 판 안에 위아래로 선다. */
 .split-orientation-toggle {
   display: flex;
-  gap: var(--space-2);
-  margin-left: var(--space-2);
-  padding-left: var(--space-2);
-  border-left: 1px solid var(--outline-variant);
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* 「⋯」 판 안에서는 한 줄씩 판 폭을 채운다(품질 승인 처리 등의 `.po-board-layout-toggle` 가운데 정렬도 덮는다). */
+.more-menu .split-orientation-toggle {
+  align-items: stretch;
+}
+
+.more-menu .split-orientation-option {
+  justify-content: flex-start;
+  height: 36px;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
 }
 
 /*
@@ -30094,12 +30482,21 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   margin-bottom: 0;
 }
 
-/* 조건 더보기를 펴면 둘째 줄. 기본 줄의 [초기화] [조회]는 첫 줄 오른쪽 끝에 남는다. */
+/* 조건 더보기를 펴면 둘째 줄 전체. 기본 줄의 [초기화] [조회]는 첫 줄 오른쪽 끝에 남는다. */
+.lot-trace-filter-more-wrap {
+  flex-basis: 100%;
+}
+
+/* `hidden` 은 바깥 상자(.lot-trace-filter-more-wrap)에 둔다 — 이 줄의 display 가 속성을 덮는다. */
 .lot-trace-filter-more {
   display: flex;
-  flex-basis: 100%;
   align-items: flex-start;
   gap: var(--space-3);
+}
+
+/* 접힌 칸에 걸린 조건 칩(C-6) — 조건 줄 바로 아래. 조건 줄이 아래 여백을 걷었으므로 위에 한 칸 띄운다. */
+.lot-trace-filter-pane > .filter-bar.filter-more-chips {
+  margin: var(--space-3) 0 0;
 }
 
 .lot-trace-totals {
@@ -30148,12 +30545,6 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   margin-left: auto;
 }
 
-/* 상세 조건 펼치기 단추 — 글 오른쪽에 펼침 화살표. */
-.lot-trace-more-toggle {
-  gap: var(--space-1);
-}
-
-/* 상세 조건이 접혀 있는데 그 안의 조건이 걸려 있을 때 한 줄로 알린다. */
 /* 기간별 이력에서 고른 줄에 LOT이 여럿일 때 상세 머리의 LOT 고르기 줄. */
 .lot-trace-lot-picker {
   display: flex;
@@ -30167,13 +30558,6 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 
 .lot-trace-lot-picker > .field-label {
   margin: 0;
-}
-
-.lot-trace-hidden-summary {
-  flex-basis: 100%;
-  margin: 0;
-  color: var(--on-surface-variant);
-  font: var(--type-body-sm);
 }
 
 .lot-trace-toolbar-start {
@@ -30689,6 +31073,19 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 .erp-po-order-type-field > :not(label) {
   width: 100%;
   min-width: 0;
+}
+
+/*
+ * ERP 구매발주 · 수주 · W/O 번호 검색칸 — 좁음 폭(C-19 `filter-field-sm`) 안에 검색창 테두리 상자가 들어오게 안쪽 여백까지
+ * 칸 폭에 넣는다. 그대로 두면 상자가 칸보다 24px 넓어 옆의 「조회」를 덮는다. 폭 클래스가 칸 안 단추를 칸 폭으로 늘리는
+ * 규칙은 선택 칸을 위한 것이라, 검색창의 지우기(×) 단추는 제 크기로 되돌린다 — 늘어나면 글자 칸이 사라진다.
+ */
+.erp-order-search > * {
+  box-sizing: border-box;
+}
+
+.filter-field-sm.erp-order-search > * > button {
+  width: auto;
 }
 
 /*
@@ -31521,18 +31918,6 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   background: var(--surface);
 }
 
-@media (min-width: 1440px) {
-  .judgment-code-screen .po-board-split > section.pane:first-child {
-    max-height: none;
-    min-height: 0;
-  }
-
-  .judgment-code-screen .po-board-split > section.pane:last-child {
-    min-height: 0;
-    overflow: auto;
-  }
-}
-
 /* 피처 002 — 닫힌 묶음 손잡이의 대기 점(IQC 대기, 확정 항목 2). 이름 바로 뒤, 화살표 앞이다. */
 .nav-group-dot {
   flex: none;
@@ -31592,6 +31977,27 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   text-overflow: clip;
   white-space: normal;
   overflow-wrap: anywhere;
+}
+
+/*
+ * 품목을 코드 · 이름 두 칸으로 나눈 품질 표(`cells-start`)는 칸 값을 왼쪽에 둔다(사용자 지시 2026-11-20) — 머리글은
+ * 위 가운데 그대로다. 위 가운데 규칙보다 무거워야 해서 클래스를 하나 더 겹친다. 빈 결과 줄(DS `_emptyCell`)은 가운데 그대로다.
+ */
+.inspection-queue-table.cells-start
+  table
+  tr:not([class*="_emptyCell"])
+  > td:nth-child(n):nth-child(n):nth-child(n),
+.inspection-queue-table.cells-start td .oqc-inspection-queue-unregistered {
+  text-align: left;
+}
+
+.inspection-queue-table.cells-start .iqc-inspection-lot-cell,
+.inspection-queue-table.cells-start .iqc-inspection-lot:has(> .iqc-inspection-lot-tail),
+.inspection-queue-table.cells-start .iqc-inspection-queue-item,
+.inspection-queue-table.cells-start .oqc-inspection-queue-item,
+.inspection-queue-table.cells-start .pqc-web-queue-item,
+.inspection-queue-table.cells-start .stacked-cell {
+  justify-content: flex-start;
 }
 
 /*
@@ -33025,7 +33431,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   min-width: 0;
 }
 
-/* 스캔 줄이 폭을 다 쓰고 「상세 조건 펼치기」는 그 줄 오른쪽 끝, 펼친 조건은 다음 줄 전체(#225). */
+/* 스캔 줄이 폭을 다 쓰고 「조건 더보기」는 그 줄 오른쪽 끝, 펼친 조건은 다음 줄 전체(#225). */
 .parts-iqc-scan-row {
   flex: 1 1 100%;
   flex-wrap: wrap;
@@ -33806,12 +34212,11 @@ ul.iqc-inbound-superseded {
   gap: var(--space-1);
 }
 
-/* 「상세 조건 펼치기」(#225) — 검사 조회·판정 IQC · PQC · OQC 공통. 단추는 스캔 줄 오른쪽 끝, 펼친 조건은 다음 줄 전체. */
-.inspection-detail-toggle {
+/* 「조건 더보기」(#225 · C-6) — 검사 조회·판정 IQC · PQC · OQC 공통. 단추는 스캔 줄 오른쪽 끝, 펼친 조건은 다음 줄 전체. */
+.inspection-filter-more {
   display: flex;
   flex: none;
   align-items: center;
-  gap: var(--space-2);
   margin-left: auto;
   align-self: center;
 }
@@ -34925,7 +35330,7 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 /*
  * 검사 조회·판정 조회 조건(omf-all-around#228) — 수입(IQC) · 공정(PQC) · 출하(OQC).
  * ① 칸 폭은 공정 · 출하도 수입검사와 같게 — 셀렉터는 글자 폭, 입력란은 기본 폭(아래 맨 끝 규칙).
- * ② [조회] [초기화] 는 첫 줄 「상세 조건 펼치기」 바로 왼쪽에 순서대로 — 접혀 있어도 보인다.
+ * ② [조회] [초기화] 는 첫 줄 「조건 더보기」 바로 왼쪽에 순서대로 — 접혀 있어도 보인다.
  *    단추는 상세 조건 폼 안의 그 단추 그대로라 누르면 하는 일은 같다. 자리만 옮긴다.
  */
 :is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) > .parts-iqc-scan-row,
@@ -34942,7 +35347,7 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   margin: 0 0 0 auto;
 }
 
-:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) .inspection-detail-toggle {
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) .inspection-filter-more {
   order: 2;
   margin-left: 0;
   /* 조회 · 초기화와 같은 줄 높이에 세로 가운데로(사용자 시안 #228). */
@@ -34951,12 +35356,12 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 }
 
 /* 펼치기 단추는 바탕 없이 글자만(사용자 시안 #228). */
-:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) .inspection-detail-toggle button {
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) .inspection-filter-more button {
   background: none;
 }
 
 /* 펼치기 단추는 세 화면 같은 작은 크기 · 여백 — IQC 의 「단추 높이 한 값」 · 스캔 줄 단추 여백 규칙에 끌리지 않게. */
-.iqc-inspection-search .inspection-detail-toggle button {
+.iqc-inspection-search .inspection-filter-more button {
   height: var(--control-height-sm);
   min-height: var(--control-height-sm);
   padding-inline: var(--space-3);
@@ -34997,6 +35402,27 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   > :not(.filter-actions),
 :is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search):has(> .inspection-detail-filters[hidden])::after {
   display: none;
+}
+
+/*
+ * 접힌 칸에 걸린 조건 칩(C-6 · patterns/filter-more.tsx) — 조건 줄 아래 한 줄 전체. 검색 묶음의 칸 폭(14rem) · 단추 높이
+ * 규칙이 칩과 칩의 × 에 끌려오지 않게 되돌린다.
+ */
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) > .filter-bar.filter-more-chips {
+  flex: 1 0 100%;
+  order: 5;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) > .filter-bar.filter-more-chips > * {
+  flex: 0 0 auto;
+}
+
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) > .filter-more-chips button {
+  height: auto;
+  min-height: 0;
 }
 
 /* 칸 폭 — 공정 · 출하는 수입검사처럼 제 글자 폭(고정 14rem 을 푼다). 수입검사는 종전 그대로. */
@@ -35099,14 +35525,14 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 }
 
 /*
- * 「상세 보기 펼치기」 · 「상세 조건 펼치기」는 바탕 없이 글자만 — 펼친 뒤(「접기」)에도 눌린 바탕을 깔지 않는다.
+ * 「상세 보기 펼치기」 · 「조건 더보기」는 바탕 없이 글자만 — 펼친 뒤(「접기」)에도 눌린 바탕을 깔지 않는다.
  * 검사 실적·결과 · 제품 검사표 · 검사 조회·판정(IQC · PQC · OQC) 같게.
  */
 :is(.inspection-results-pane, .inspection-sheet-search)
   .inspection-results-filter-actions
   > button[aria-expanded],
 :is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search)
-  .inspection-detail-toggle
+  .inspection-filter-more
   button {
   background: none;
 }
@@ -35115,9 +35541,15 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   .inspection-results-filter-actions
   > button[aria-expanded='true']::before,
 :is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search)
-  .inspection-detail-toggle
+  .inspection-filter-more
   button[aria-expanded='true']::before {
   opacity: 0;
+}
+
+/* 접힌 칸에 걸린 조건 칩(C-6) — 조건 줄 아래 한 줄 전체. 조건 상자의 칸 나눔(grid)에 끌려 한 칸에 갇히지 않게. */
+.inspection-results-filter > .filter-bar.filter-more-chips {
+  grid-column: 1 / -1;
+  margin: 0;
 }
 
 /* 작업지시 입력칸은 안내 글이 다 보이는 종전 폭(14rem) 그대로. */
@@ -35357,14 +35789,25 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   gap: var(--space-3);
 }
 
+/* 조건 상자 — 보이는 줄 · 「조건 더보기」에 접힌 줄 · 접힌 조건 칩을 위아래로 담는다(C-6). */
 .iwr-filters {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+}
+
+.iwr-filter-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-3);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-lg);
+}
+
+.iwr-filters .filter-more-chips {
+  margin-bottom: 0;
 }
 
 .iwr-tab-count {
@@ -35610,10 +36053,6 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   gap: var(--space-1);
 }
 
-.po-register-scope-legacy {
-  display: block;
-  margin-top: var(--space-1);
-}
 /* 분배 조건과 결과는 같은 영역에서 전환하고 선택한 조건만 편집한다. */
 .erp-wo-distribution-steps { display: flex; gap: var(--space-5); list-style: none; margin: 0; padding: 0 0 var(--space-3); border-bottom: 1px solid var(--outline-variant); font: var(--type-label-lg); color: var(--on-surface-variant); }
 .erp-wo-distribution-steps [aria-current='step'] { color: var(--primary); font-weight: 600; }
@@ -36182,6 +36621,11 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   flex-wrap: wrap;
 }
 
+/* ERP 송신 칩은 조회 단추 다음 줄 — 「초기화」가 나타나도 단추가 튀지 않게. */
+.ship-history-erp {
+  flex-basis: 100%;
+}
+
 .ship-history-chips {
   display: inline-flex;
   flex-wrap: wrap;
@@ -36507,4 +36951,164 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 /* 파일 안내(형식 · 크기 제한)는 한 줄로 — 공용 안내 폭 제한(20rem)을 풀어 준다(사용자 지시 2026-11-19 · omf-all-around#296). */
 .iqc-inbound-attach-dialog .field-note {
   max-width: none;
+}
+
+/* 사번 칸 아래 오류 — 라벨 모양 한 줄, 왼쪽 정렬(사용자 지시 2026-11-20 · #333). */
+.iqc-inspection-action-note.users-roles-dialog-note.users-roles-worker-no-error[data-tone] {
+  margin: var(--space-1) 0 0;
+  white-space: nowrap;
+}
+
+/* 사용자 추가 팝업의 사번 안내 — 칸 묶음의 한 줄 전체, 왼쪽 끝부터(사용자 지시 2026-11-20 · #333). */
+.users-roles-create-worker-error {
+  grid-column: 1 / -1;
+}
+
+.users-roles-create-worker-error > .iqc-inspection-action-note.users-roles-dialog-note[data-tone] {
+  margin: 0;
+}
+
+/* 숨긴 칸 설명은 자리를 차지하지 않게 — 보이는 안내는 아래 줄에 있다. */
+.users-roles-create-worker p:has(> .visually-hidden) {
+  margin: 0;
+  min-height: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/*
+ * 역할 설정 카드(좌우 배치) — 기능 권한 표가 카드의 남은 높이를 채우고 표만 구른다. 카드 아래 [취소][저장]이
+ * 늘 보이게 한다(사용자 지시 2026-11-20 · #333). 상하 배치는 카드가 늘어나는 종전 동작 그대로다.
+ */
+.po-board-split.inspection-split:not(.is-stacked) > .users-roles-role-settings:has(> .users-roles-permission-pane) {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  align-content: stretch;
+  overflow: hidden;
+}
+
+.po-board-split.inspection-split:not(.is-stacked) > .users-roles-role-settings > .users-roles-permission-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.po-board-split.inspection-split:not(.is-stacked)
+  > .users-roles-role-settings
+  > .users-roles-permission-pane
+  .permission-table-scroll {
+  flex: 1 1 auto;
+  min-height: 8rem;
+  max-height: none;
+}
+
+/* 표 위 「○○ 역할의 기능 권한」 설명은 화면 낭독기에만 — 바로 위 표제가 같은 말을 한다(#333). */
+.users-roles-permission-pane caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.users-roles-permission-pane > .pane-heading-row .permission-bulk-actions {
+  margin-bottom: 0;
+}
+
+/*
+ * 기능 권한 업무 묶음 접기 · 펼치기(사용자 지시 2026-11-20 · #333) — 묶음 머리 전체가 단추다. 접힌 묶음의 행은 감춘다.
+ * 행 높이 · 정렬은 표 하나로 같고, 확인칸은 칸 전체를 눌러도 잡히게 넓힌다.
+ */
+.users-roles-permission-pane tbody:has(.permission-group-toggle[aria-expanded='false'])
+  > tr:not([data-group-header]) {
+  display: none;
+}
+
+.users-roles-permission-pane tr[data-group-header] > th {
+  padding: 0;
+}
+
+.permission-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  text-align: left;
+  cursor: pointer;
+}
+
+.permission-group-toggle:hover {
+  background: color-mix(in srgb, var(--on-surface) 6%, transparent);
+}
+
+.permission-group-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.permission-group-count {
+  margin-left: auto;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.users-roles-permission-pane td[data-align='center'] > label:has(input[type='checkbox']) {
+  cursor: pointer;
+}
+
+/*
+ * 표 안에서 굴릴 때 업무 묶음 머리가 머리줄 바로 아래에 붙어 남는다 — 지금 어느 묶음을 보고 있는지 잃지 않게
+ * (사용자 지시 2026-11-20 · #333). 머리줄 높이는 `--permission-head-height` 로 맞춘다.
+ */
+.users-roles-permission-pane .permission-table-scroll tr[data-group-header] > th {
+  position: sticky;
+  top: var(--permission-head-height, 2.5rem);
+  z-index: 1;
+  background: var(--surface-container-high, var(--surface));
+}
+
+/* 확인 창 경고 — 문구 안 줄바꿈을 그대로 보인다(역할 사용 중지 · #333). */
+.users-roles-dialog-note {
+  white-space: pre-line;
+}
+
+/* 역할 추가 팝업 · 역할 상세 정보 — 설명 칸은 폭에 맞춰 한 줄을 다 쓴다(사용자 지시 2026-11-20 · #333). */
+.users-roles-role-description {
+  grid-column: 1 / -1;
+}
+
+/* 묶음 머리 — 확인칸(행 확인칸과 같은 열) + 접기 단추(사용자 지시 2026-11-20 · #333). */
+.permission-group-head {
+  display: flex;
+  align-items: center;
+}
+
+.permission-group-check {
+  display: inline-flex;
+  justify-content: center;
+  flex: 0 0 5rem;
+}
+
+.permission-group-head > .permission-group-toggle {
+  flex: 1 1 auto;
+  padding-left: 0;
+}
+
+/* 입력칸 이름 줄 — 이름 오른쪽에 라벨 안내(역할 코드 잠금 · #333). */
+.users-roles-label-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.users-roles-label-row > .users-roles-scope-hint {
+  margin: 0;
 }

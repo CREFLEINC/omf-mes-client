@@ -244,6 +244,21 @@ export const DispositionDecisionScreen = ({
     () => readHistoryFilters(searchParams, baseDate, dispositionTypeCodes),
     [baseDate, dispositionTypeCodes, searchParams],
   );
+  /* 두 탭의 처음 값 — 초기화가 되돌리는 값이고, 「초기화」는 이것과 다를 때만 보인다(C-6). */
+  const pendingDefaults = useMemo(
+    () => ({
+      ...defaultPeriod(baseDate),
+      itemId: '',
+      severityCode: '',
+      statusCode: '',
+      sourceCode: '',
+    }),
+    [baseDate],
+  );
+  const historyDefaults = useMemo(
+    () => ({ ...defaultPeriod(baseDate), itemId: '', dispositionTypeCode: '' }),
+    [baseDate],
+  );
   const historyQuery = useMemo(
     () => (tab === 'history' ? toHistoryListQuery(historyFilters, page, zone, size) : null),
     [historyFilters, page, size, tab, zone],
@@ -692,25 +707,17 @@ export const DispositionDecisionScreen = ({
         {tab === 'pending' ? (
           <FilterBar
             applied={filters}
+            defaults={pendingDefaults}
             severity={severity}
             onApply={(next) => apply(next)}
-            onReset={() =>
-              apply({
-                ...defaultPeriod(baseDate),
-                itemId: '',
-                severityCode: '',
-                statusCode: '',
-                sourceCode: '',
-              })
-            }
+            onReset={() => apply(pendingDefaults)}
           />
         ) : (
           <HistoryFilterBar
             applied={historyFilters}
+            defaults={historyDefaults}
             onApply={(next) => applyHistory(next)}
-            onReset={() =>
-              applyHistory({ ...defaultPeriod(baseDate), itemId: '', dispositionTypeCode: '' })
-            }
+            onReset={() => applyHistory(historyDefaults)}
           />
         )}
       </section>

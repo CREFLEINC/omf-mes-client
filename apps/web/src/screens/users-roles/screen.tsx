@@ -1,20 +1,29 @@
 import {
   AlertBanner,
-  Breadcrumb,
+  Button,
+  Dialog,
   EmptyState,
-  PageHeader,
   SkeletonText,
+  Icon,
   Tabs,
+  TextField,
   useToast,
 } from '@crefle/web-ui';
-import type { components } from '@omf-mes/api-client';
+import { type components, createIdempotencyKey } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
+import { runRequest } from '../../patterns/request';
 import { sessionKeys } from '../../patterns/session';
 import { lookupLabel, selectableOptions } from './code-options';
 import { DeactivateDialog } from './deactivate-dialog';
@@ -32,7 +41,10 @@ import { DataScopePane } from './data-scope-pane';
 import {
   applySelection,
   isCreating,
+  LIST_PAGE_SIZES,
+  nextRoleCode,
   readPage,
+  readPageSize,
   readRoleFilters,
   readSelectedAppUserId,
   readSelectedRoleId,
@@ -73,6 +85,7 @@ import {
 } from './role-assign-draft';
 import { RoleAssignPane } from './role-assign-pane';
 import { RoleFormPane } from './role-form-pane';
+import { RoleFilterBar } from './role-filter-bar';
 import { RoleListPane } from './role-list-pane';
 import {
   emptyRoleFormValues,
@@ -88,10 +101,13 @@ import {
   useRoleDetail,
   useRoleList,
   useRolePermissions,
+  useRoleStatusCounts,
 } from './role-queries';
 import { ROLE_FORM_FIELDS, validateRoleForm } from './role-validation';
 import { USERS_ROLES_TABS, resolveTab, tabSearchParams } from './tabs';
 import { UserFormPane } from './user-form-pane';
+import { StatusChips } from './status-chips';
+import { UserFilterBar } from './user-filter-bar';
 import { UserListPane } from './user-list-pane';
 import {
   appUserToFormValues,
@@ -105,19 +121,27 @@ import {
   useUserDetail,
   useUserList,
   useUserRoles,
+  useUserStatusCounts,
   userDetailPath,
   userKeys,
 } from './user-queries';
 import { USER_CREATE_FORM_FIELDS, USER_FORM_FIELDS, validateUserForm } from './user-validation';
 import type {
   AppUser,
+  LookupEntry,
   Role,
   RoleFilters,
   RoleFormValues,
   UserFilters,
   UserFormValues,
 } from './types';
-import { WorkerLinkField } from './worker-link-field';
+import { FieldLabel } from './field-label';
+import {
+  findLinkableWorker,
+  WorkerLinkField,
+  WorkerNoError,
+  workerLinkKey,
+} from './worker-link-field';
 
 type AppUserDetailResponse = components['schemas']['AppUserDetailResponse'];
 type UserRoleListResponse = components['schemas']['UserRoleListResponse'];
@@ -127,6 +151,12 @@ type RoleDetailResponse = components['schemas']['RoleDetailResponse'];
 type RolePermissionListResponse = components['schemas']['RolePermissionListResponse'];
 
 const t = messages.usersRoles;
+
+/** 역할 탭 줄의 사용 · 미사용 라벨(#333). 값은 주소 `status` 에 실린다. */
+const ROLE_STATUS_ENTRIES: LookupEntry[] = [
+  { value: 'active', label: t.values.active, isActive: true },
+  { value: 'inactive', label: t.values.inactive, isActive: false },
+];
 
 /**
  * 폼의 현재 값과 그것이 어디서 나왔는지.
@@ -188,8 +218,8 @@ interface DataScopeState {
   drafts: DataScopeDraft[];
 }
 
-/** 역할 폼의 출처. 사용자 폼과 같은 규칙이다 — 수정은 상세 응답, 등록은 주소에서 파생한 문자열. */
-type RoleFormSource = string | RoleDetailResponse;
+/** 역할 폼의 출처 — 상세 응답. 등록은 팝업이 따로 값을 쥔다(#333). */
+type RoleFormSource = RoleDetailResponse;
 
 interface RoleFormState {
   source: RoleFormSource;
@@ -222,16 +252,43 @@ export const UsersRolesScreen = () => {
     void queryClient.refetchQueries({ queryKey: sessionKeys.current });
   };
 
+  /*
+   * 사용자 추가 팝업의 작업자 사번(선택 · 사용자 지시 2026-11-20 · #333). 사번은 **등록 전에** 찾아 두고
+   * (못 찾으면 아무것도 만들지 않는다), 등록이 성공하면 그 계정에 연결한다. 연결만 실패하면 계정은 남으므로
+   * 상세에서 다시 연결하라고 알린다.
+   */
+  const createWorkerInputId = useId();
+  const [createWorkerNo, setCreateWorkerNo] = useState('');
+  const [createWorkerError, setCreateWorkerError] = useState<string | null>(null);
+  const [isCheckingWorker, setIsCheckingWorker] = useState(false);
+  const pendingWorkerIdRef = useRef<number | null>(null);
+
+  const linkCreatedWorker = async (appUserId: number, workerId: number): Promise<void> => {
+    try {
+      const saved = await runRequest(() =>
+        client.PUT('/app/users/{appUserId}/worker', {
+          params: { path: { appUserId }, header: { 'Idempotency-Key': createIdempotencyKey() } },
+          body: { workerId },
+        }),
+      );
+      queryClient.setQueryData(workerLinkKey(appUserId), saved);
+      refreshSession();
+    } catch {
+      toast.show({ variant: 'error', description: t.workerLink.createLinkFailed });
+    }
+  };
+
   const tab = resolveTab(searchParams.get('tab'));
   const isUsersTab = tab.id === 'users';
   const isRolesTab = tab.id === 'roles';
 
   const filters = useMemo<UserFilters>(() => readUserFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
+  const pageSize = readPageSize(searchParams);
 
   const isCreatingUser = isUsersTab && isCreating(searchParams, 'user');
   const selectedParam = isUsersTab ? readSelectedAppUserId(searchParams) : null;
-  const userList = useUserList(filters, page, isUsersTab);
+  const userList = useUserList(filters, page, isUsersTab, pageSize);
   const userListForbidden = userList.isError && isForbiddenLoadError(userList.error);
   /**
    * 목록으로 화면 접근을 확인하기 전에는 URL의 지난 선택을 조회하지 않는다.
@@ -251,6 +308,23 @@ export const UsersRolesScreen = () => {
 
   const departmentOptions = useDepartmentOptions(isUsersTab);
   const userStatusOptions = useUserStatusOptions(isUsersTab);
+  /* 탭 줄 재직 상태 칩의 건수 — 걸린 다른 조건은 그대로 두고 상태만 바꿔 센다(omf-all-around#333). */
+  const statusCounts = useUserStatusCounts(
+    filters,
+    userStatusOptions.entries.map((entry) => entry.value),
+    isUsersTab,
+  );
+  /* 수입검사 화면과 같은 배치 — 위 조회 묶음 · 아래 목록 | 상세(좌우 · 상하 배치, 폭 · 높이 끌기, 목록 접기). */
+  /* 탭마다 목록 · 상세 구획이 따로 서서, 탭이 바뀌면 새 구획을 다시 잰다(높이가 줄던 문제 · #333). */
+  const { splitRef, aboveRef } = useFitToViewport(tab.id);
+  const split = usePaneSplit('omf-mes:users-roles:split', 0.45);
+  const layout = useSplitOrientation('omf-mes:users-roles:split-orientation');
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: messages.common.inspectionHub.listCollapse,
+    expandLabel: messages.common.inspectionHub.listExpand,
+  };
 
   const [formState, setFormState] = useState<UserFormState | null>(null);
 
@@ -344,7 +418,39 @@ export const UsersRolesScreen = () => {
   /* ── 역할 부여 ─────────────────────────────────────────────────────────── */
 
   const userRoleList = useUserRoles(selectedAppUserId);
-  const roleOptions = useRoleOptions(selectedAppUserId !== null);
+  /*
+   * 역할 추가 팝업의 입력값 — 열려 있으면 값이 있다. **주소의 선택과 따로 둔다**: 팝업을 열어도 목록에서 고른
+   * 역할이 그대로 남는다(사용자 지시 2026-11-20 · #333).
+   */
+  const [roleCreateValues, setRoleCreateValues] = useState<RoleFormValues | null>(null);
+  const [roleCreateFieldErrors, setRoleCreateFieldErrors] = useState<Record<string, string>>({});
+  const isCreatingRole = isRolesTab && roleCreateValues !== null;
+  /* 팝업은 주소에 없다 — 뒤로가기 등으로 역할 탭을 떠나면 입력값도 버려, 돌아왔을 때 지난 팝업이 다시 서지 않게 한다. */
+  if (!isRolesTab && roleCreateValues !== null) setRoleCreateValues(null);
+  /* 역할 추가 팝업이 열리면 다음 역할 코드(ROLE_ 일련번호)를 정하려고 함께 받는다(#333). */
+  const roleOptions = useRoleOptions(selectedAppUserId !== null || isCreatingRole);
+  /*
+   * 역할 추가 팝업의 역할 코드는 ROLE_ 일련번호로 미리 채운다 — 고칠 수 있다(사용자 결정 2026-11-20 · #333).
+   * 모든 역할(미사용 포함)의 코드를 받은 뒤 한 번만 채우고, 사용자가 칸을 만졌으면 다시 채우지 않는다.
+   * 목록이 잘려 왔으면(한 쪽을 넘는 역할) 이미 있는 번호를 낼 수 있어 채우지 않는다 — 직접 적는다.
+   */
+  const [roleCodeTouched, setRoleCodeTouched] = useState(false);
+  if (
+    roleCreateValues !== null &&
+    !roleCodeTouched &&
+    roleCreateValues.roleCode === '' &&
+    !roleOptions.isLoading &&
+    !roleOptions.isError &&
+    !roleOptions.truncated
+  ) {
+    setRoleCodeTouched(true);
+    setRoleCreateValues({
+      ...roleCreateValues,
+      roleCode: nextRoleCode(
+        roleOptions.entries.map((entry) => entry.code ?? '').filter((code) => code !== ''),
+      ),
+    });
+  }
 
   const [roleAssignState, setRoleAssignState] = useState<RoleAssignState | null>(null);
 
@@ -396,13 +502,13 @@ export const UsersRolesScreen = () => {
    */
   const roleFilters = useMemo<RoleFilters>(() => readRoleFilters(searchParams), [searchParams]);
 
-  const isCreatingRole = isRolesTab && isCreating(searchParams, 'role');
   const selectedRoleParam = isRolesTab ? readSelectedRoleId(searchParams) : null;
-  const roleList = useRoleList(roleFilters, page, isRolesTab);
+  const roleList = useRoleList(roleFilters, page, isRolesTab, pageSize);
+  const roleStatusCounts = useRoleStatusCounts(roleFilters, isRolesTab);
   const roleListForbidden = roleList.isError && isForbiddenLoadError(roleList.error);
   /** 사용자 탭과 같이 목록 접근 확인 전에는 지난 역할의 상세를 조회하지 않는다. */
   const selectedRoleId =
-    isCreatingRole || roleList.data === undefined || roleListForbidden ? null : selectedRoleParam;
+    roleList.data === undefined || roleListForbidden ? null : selectedRoleParam;
   const roles = roleList.data?.items ?? [];
 
   /* 서버가 준 쪽 정보를 정본으로 쓴다 — 사용자 목록과 같은 규칙이다. */
@@ -453,18 +559,13 @@ export const UsersRolesScreen = () => {
 
   const [roleFormState, setRoleFormState] = useState<RoleFormState | null>(null);
 
-  /** 사용자 폼과 같은 규칙 — 출처가 바뀔 때만 다시 세우고, 등록 출처는 주소에서 파생한다. */
-  const roleFormSource: RoleFormSource | null = isCreatingRole
-    ? 'create:role'
-    : (roleDetail.data ?? null);
+  /** 사용자 폼과 같은 규칙 — 출처가 바뀔 때만 다시 세운다. */
+  const roleFormSource: RoleFormSource | null = roleDetail.data ?? null;
 
   if (roleFormSource === null) {
     if (roleFormState !== null) setRoleFormState(null);
   } else if (roleFormState?.source !== roleFormSource) {
-    const seeded =
-      typeof roleFormSource === 'string'
-        ? emptyRoleFormValues()
-        : roleToFormValues(roleFormSource.role);
+    const seeded = roleToFormValues(roleFormSource.role);
     setRoleFormState({ source: roleFormSource, baseline: seeded, values: seeded });
   }
 
@@ -522,15 +623,67 @@ export const UsersRolesScreen = () => {
    * 그 배타 규칙은 `filters.ts`의 `applySelection` 한 곳에 있다 — 자리마다 손으로 지우면
    * 「무엇을 비우는가」가 자리마다 갈린다.
    */
-  const selectUser = (appUserId: number) => {
+  /*
+   * 저장하지 않은 변경(정보 · 역할 · 범위)이 있으면 다른 사용자로 옮기거나 새로 추가하기 전에 묻는다
+   * (omf-all-around#333). 고른 사용자가 바뀌면 세 초안이 모두 그 사용자의 값으로 다시 서서 변경이 사라진다.
+   */
+  const [pendingLeave, setPendingLeave] = useState<(() => void) | null>(null);
+  /* 역할 탭도 같은 규칙 — 고친 역할 정보 · 기능 권한이 있으면 다른 역할로 옮기기 전에 묻는다(#333). */
+  const hasUnsavedChanges = isRolesTab
+    ? isRoleDirty || isPermissionDirty
+    : isUserDirty || isRoleAssignDirty || isDataScopeDirty;
+  const leaveSafely = (action: () => void) => {
+    if (hasUnsavedChanges) {
+      setPendingLeave(() => action);
+      return;
+    }
+
+    action();
+  };
+
+  /** 묻지 않고 연다 — 방금 저장한 사용자로 옮길 때처럼 버릴 변경이 없을 때만 쓴다. */
+  const openUser = (appUserId: number) => {
     patchSearchParams((next) => {
       applySelection(next, { kind: 'user', appUserId });
     });
   };
 
-  const selectRole = (roleId: number) => {
+  /* 고른 줄을 다시 누르면 선택이 풀린다(수입검사 목록과 같다 · 사용자 지시 2026-11-20 · #333). */
+  const selectUser = (appUserId: number) => {
+    if (appUserId === selectedAppUserId) {
+      leaveSafely(() => {
+        patchSearchParams((next) => {
+          applySelection(next, { kind: 'none' });
+        });
+      });
+      return;
+    }
+
+    leaveSafely(() => {
+      openUser(appUserId);
+    });
+  };
+
+  /** 묻지 않고 연다 — 방금 만든 역할로 옮길 때처럼 버릴 변경이 없을 때만 쓴다. */
+  const openRole = (roleId: number) => {
     patchSearchParams((next) => {
       applySelection(next, { kind: 'role', roleId });
+    });
+  };
+
+  /* 고른 줄을 다시 누르면 선택이 풀린다 · 고친 것이 있으면 먼저 묻는다(사용자 목록과 같다 · #333). */
+  const selectRole = (roleId: number) => {
+    if (roleId === selectedRoleId) {
+      leaveSafely(() => {
+        patchSearchParams((next) => {
+          applySelection(next, { kind: 'none' });
+        });
+      });
+      return;
+    }
+
+    leaveSafely(() => {
+      openRole(roleId);
     });
   };
 
@@ -604,8 +757,12 @@ export const UsersRolesScreen = () => {
        *
        * **주소 갱신은 이 한 번뿐이다**(`new` 해제 + `usr` 설정을 한 patch로).
        */
-      selectUser(saved.appUserId);
+      /* 등록이 끝났다 — 폼 값은 방금 저장됐으니 묻지 않고 연다. */
+      openUser(saved.appUserId);
       toast.show({ variant: 'success', description: messages.common.created });
+      const workerId = pendingWorkerIdRef.current;
+      pendingWorkerIdRef.current = null;
+      if (workerId !== null) void linkCreatedWorker(saved.appUserId, workerId);
     },
   });
 
@@ -792,9 +949,10 @@ export const UsersRolesScreen = () => {
     invalidateKeys: roleWriteInvalidateKeys,
     knownFields: ROLE_FORM_FIELDS,
     onSuccess: (saved) => {
-      setRoleFieldErrors({});
+      setRoleCreateValues(null);
+      setRoleCreateFieldErrors({});
       /* 방금 만든 역할을 연다 — 상세 조회가 잠금 토큰을 확보한다. 주소 갱신은 이 한 번뿐이다. */
-      selectRole(saved.roleId);
+      openRole(saved.roleId);
       toast.show({ variant: 'success', description: messages.common.created });
     },
   });
@@ -867,7 +1025,6 @@ export const UsersRolesScreen = () => {
    * 한 곳에서 골라 쓴다 — 두 훅의 상태를 화면에서 합치면 어느 저장의 실패인지 흐려진다.
    */
   const activeUserWrite = isCreatingUser ? userCreateWrite : userWrite;
-  const activeRoleWrite = isCreatingRole ? roleCreateWrite : roleWrite;
 
   /**
    * 편집 중이던 상태를 통째로 비운다 — 창·초안·인라인 오류·저장 실패 배너.
@@ -924,7 +1081,6 @@ export const UsersRolesScreen = () => {
    */
   const resetRoleEditing = () => {
     roleWrite.reset();
-    roleCreateWrite.reset();
     roleDeactivateWrite.reset();
     permissionWrite.reset();
     setIsRoleDeactivateOpen(false);
@@ -936,7 +1092,7 @@ export const UsersRolesScreen = () => {
   const resetRoleEditingRef = useRef(resetRoleEditing);
   resetRoleEditingRef.current = resetRoleEditing;
 
-  const editingRoleTargetKey = isCreatingRole ? 'create' : String(selectedRoleId ?? '');
+  const editingRoleTargetKey = String(selectedRoleId ?? '');
 
   useEffect(() => {
     resetRoleEditingRef.current();
@@ -947,18 +1103,37 @@ export const UsersRolesScreen = () => {
    * 그래야 `usr`·`new`가 자연히 사라진다 — 보이는 행이 달라지는데 선택이 남으면
    * 우 칸의 폼이 어디서 온 것인지 알 수 없다. 편집 상태 정리는 위 effect가 맡는다.
    */
+  /*
+   * 조건 · 쪽 · 건수 · 탭을 바꾸면 고른 줄이 풀린다 — 편집 중이면 먼저 묻는다(조회 중 변경 사항이
+   * 말없이 사라지던 문제 · #333).
+   */
   const applyFilters = (next: UserFilters) => {
-    setSearchParams(toUserSearchParams(tab.id, next, 1));
+    leaveSafely(() => {
+      setSearchParams(toUserSearchParams(tab.id, next, 1, pageSize));
+    });
   };
 
   const changeUserPage = (nextPage: number) => {
-    setSearchParams(toUserSearchParams(tab.id, filters, nextPage));
+    leaveSafely(() => {
+      setSearchParams(toUserSearchParams(tab.id, filters, nextPage, pageSize));
+    });
+  };
+
+  /* 건수를 바꾸면 첫 쪽으로 — 조건은 그대로, 고른 사용자는 보이는 줄이 달라져 놓는다(쪽 이동과 같다). */
+  const changeUserPageSize = (nextSize: number) => {
+    leaveSafely(() => {
+      setSearchParams(toUserSearchParams(tab.id, filters, 1, nextSize));
+    });
   };
 
   const handleAddUser = () => {
     // 등록 폼이 열려 있는 동안 고른 사용자의 상세가 함께 보이면 어느 쪽을 고치는지 가릴 수 없다.
-    patchSearchParams((next) => {
-      applySelection(next, { kind: 'createUser' });
+    leaveSafely(() => {
+      setCreateWorkerNo('');
+      setCreateWorkerError(null);
+      patchSearchParams((next) => {
+        applySelection(next, { kind: 'createUser' });
+      });
     });
   };
 
@@ -999,6 +1174,32 @@ export const UsersRolesScreen = () => {
    * 저장. **화면이 잡을 수 있는 오류가 있으면 요청을 보내지 않는다** —
    * 보내 놓고 서버가 되돌려 주기를 기다리면 사용자가 두 번 기다린다.
    */
+  /** 사용자 추가 — 사번을 적었으면 먼저 찾아 보고, 찾았을 때만 등록한다. */
+  const handleCreateUser = async (): Promise<void> => {
+    if (formState === null || isCheckingWorker) return;
+
+    const errors = validateUserForm(formState.values, 'create');
+    setUserFieldErrors(errors);
+    pendingWorkerIdRef.current = null;
+    setCreateWorkerError(null);
+
+    if (Object.keys(errors).length > 0) return;
+
+    const workerNo = createWorkerNo.trim();
+    if (workerNo !== '') {
+      setIsCheckingWorker(true);
+      const result = await findLinkableWorker(client, workerNo, null);
+      setIsCheckingWorker(false);
+      if ('error' in result) {
+        setCreateWorkerError(result.error);
+        return;
+      }
+      pendingWorkerIdRef.current = result.workerId;
+    }
+
+    userCreateWrite.write(formState.values);
+  };
+
   const handleSaveUser = () => {
     if (formState === null) return;
 
@@ -1008,6 +1209,13 @@ export const UsersRolesScreen = () => {
     if (Object.keys(errors).length > 0) return;
 
     activeUserWrite.write(formState.values);
+  };
+
+  /** 수정 취소는 **서버를 부르지 않는다** — 초안을 기준값으로 되돌릴 뿐이다. */
+  const handleCancelUserEdit = () => {
+    setUserFieldErrors({});
+    userWrite.reset();
+    setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
   };
 
   const handleToggleRole = (roleId: number) => {
@@ -1052,6 +1260,16 @@ export const UsersRolesScreen = () => {
     setPermissionState((prev) => (prev === null ? prev : { ...prev, selected: everyCode }));
   };
 
+  /** 업무 묶음 하나를 통째로 켜거나 끈다 — 전체 선택과 같이 고르기만 하고 저장은 따로다(사용자 지시 2026-11-20 · #333). */
+  const handleSetPermissionGroup = (codes: readonly string[], grant: boolean) => {
+    setPermissionState((prev) => {
+      if (prev === null) return prev;
+      const rest = prev.selected.filter((code) => !codes.includes(code));
+
+      return { ...prev, selected: grant ? [...rest, ...codes] : rest };
+    });
+  };
+
   const handleClearAllPermissions = () => {
     setPermissionState((prev) => (prev === null ? prev : { ...prev, selected: [] }));
   };
@@ -1094,6 +1312,35 @@ export const UsersRolesScreen = () => {
     setDataScopeState((prev) => (prev === null ? prev : { ...prev, drafts: prev.baseline }));
   };
 
+  /*
+   * 사용자 설정 카드 아래 [취소][저장] 한 줄(사용자 지시 2026-11-20 · omf-all-around#333).
+   *
+   * 저장 길은 셋 그대로다(낙관적 잠금이 있는 정보 수정 · 역할 치환 · 범위 치환) — **고친 구역만** 보낸다.
+   * 정보에 화면이 잡을 오류가 있으면 **아무것도 보내지 않는다** — 일부만 나가는 일을 줄인다. 그래도 서버가 한 구역만
+   * 거부할 수 있다: 그 구역의 배너가 서고 고친 값이 남아, 다시 누르면 남은 구역만 다시 나간다.
+   */
+  const isSettingsDirty = isUserDirty || isRoleAssignDirty || isDataScopeDirty;
+  const isSettingsSaving =
+    userWrite.isSaving || roleAssignWrite.isSaving || dataScopeWrite.isSaving;
+
+  const handleSaveAll = () => {
+    if (isUserDirty && formState !== null) {
+      const errors = validateUserForm(formState.values, 'edit');
+      setUserFieldErrors(errors);
+      if (Object.keys(errors).length > 0) return;
+    }
+
+    if (isUserDirty && formState !== null) activeUserWrite.write(formState.values);
+    if (isRoleAssignDirty) handleSaveRoleAssign();
+    if (isDataScopeDirty) handleSaveDataScopes();
+  };
+
+  const handleCancelAll = () => {
+    handleCancelUserEdit();
+    handleCancelRoleAssign();
+    handleCancelDataScopes();
+  };
+
   /* ── 역할·권한 탭의 조작 ────────────────────────────────────────────────── */
 
   /**
@@ -1101,23 +1348,65 @@ export const UsersRolesScreen = () => {
    * 사용자 탭과 같은 규칙이며, 규칙 표는 `filters.ts`가 갖는다.
    */
   const applyRoleFilters = (next: RoleFilters) => {
-    setSearchParams(toRoleSearchParams(tab.id, next, 1));
+    leaveSafely(() => {
+      setSearchParams(toRoleSearchParams(tab.id, next, 1, pageSize));
+    });
   };
 
   const changeRolePage = (nextPage: number) => {
-    setSearchParams(toRoleSearchParams(tab.id, roleFilters, nextPage));
+    leaveSafely(() => {
+      setSearchParams(toRoleSearchParams(tab.id, roleFilters, nextPage, pageSize));
+    });
   };
 
+  /* 건수를 바꾸면 첫 쪽으로 — 사용자 목록과 같다. */
+  const changeRolePageSize = (nextSize: number) => {
+    leaveSafely(() => {
+      setSearchParams(toRoleSearchParams(tab.id, roleFilters, 1, nextSize));
+    });
+  };
+
+  /*
+   * 역할 추가 — 팝업만 연다. 목록의 선택은 그대로 둔다(사용자 지시 2026-11-20 · #333). 고친 내용이 있으면 먼저 묻는다 —
+   * 추가가 끝나면 새 역할로 옮겨 가 고친 내용이 사라지기 때문이다. 「저장하지 않고 나가기」면 고친 내용을 실제로 되돌린다.
+   */
   const handleAddRole = () => {
-    patchSearchParams((next) => {
-      applySelection(next, { kind: 'createRole' });
+    leaveSafely(() => {
+      handleCancelRoleSettings();
+      roleCreateWrite.reset();
+      setRoleCreateFieldErrors({});
+      setRoleCodeTouched(false);
+      setRoleCreateValues(emptyRoleFormValues());
     });
   };
 
   const closeRoleCreateForm = () => {
-    patchSearchParams((next) => {
-      applySelection(next, { kind: 'none' });
+    roleCreateWrite.reset();
+    setRoleCreateFieldErrors({});
+    setRoleCreateValues(null);
+  };
+
+  const changeRoleCreateValues = (patch: Partial<RoleFormValues>) => {
+    if ('roleCode' in patch) setRoleCodeTouched(true);
+    setRoleCreateValues((prev) => (prev === null ? prev : { ...prev, ...patch }));
+    setRoleCreateFieldErrors((prev) => {
+      const next = { ...prev };
+      for (const key of Object.keys(patch)) delete next[key];
+      return next;
     });
+    for (const key of Object.keys(patch)) roleCreateWrite.clearFieldError(key);
+  };
+
+  /** 역할 추가. 화면이 잡을 수 있는 오류가 있으면 요청을 보내지 않는다. */
+  const handleCreateRole = () => {
+    if (roleCreateValues === null) return;
+
+    const errors = validateRoleForm(roleCreateValues);
+    setRoleCreateFieldErrors(errors);
+
+    if (Object.keys(errors).length > 0) return;
+
+    roleCreateWrite.write(roleCreateValues);
   };
 
   const changeRoleValues = (patch: Partial<RoleFormValues>) => {
@@ -1132,7 +1421,7 @@ export const UsersRolesScreen = () => {
       return next;
     });
 
-    for (const key of Object.keys(patch)) activeRoleWrite.clearFieldError(key);
+    for (const key of Object.keys(patch)) roleWrite.clearFieldError(key);
   };
 
   /** 저장. **화면이 잡을 수 있는 오류가 있으면 요청을 보내지 않는다.** */
@@ -1144,7 +1433,37 @@ export const UsersRolesScreen = () => {
 
     if (Object.keys(errors).length > 0) return;
 
-    activeRoleWrite.write(roleFormState.values);
+    roleWrite.write(roleFormState.values);
+  };
+
+  /** 역할 정보 수정 취소 — 서버를 부르지 않고 기준값으로 되돌린다. */
+  const handleCancelRoleEdit = () => {
+    setRoleFieldErrors({});
+    roleWrite.reset();
+    setRoleFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
+  };
+
+  /*
+   * 역할 설정 카드 아래 [취소][저장] 한 줄 — 사용자 설정 카드와 같다(사용자 지시 2026-11-20 · #333).
+   * 저장 길은 둘 그대로다(낙관적 잠금이 있는 역할 수정 · 기능 권한 치환) — **고친 구역만** 보낸다.
+   * 역할 정보에 화면이 잡을 오류가 있으면 아무것도 보내지 않는다.
+   */
+  const isRoleSettingsDirty = isRoleDirty || isPermissionDirty;
+  const isRoleSettingsSaving = roleWrite.isSaving || permissionWrite.isSaving;
+
+  const handleSaveRoleSettings = () => {
+    if (isRoleDirty && roleFormState !== null) {
+      const errors = validateRoleForm(roleFormState.values);
+      setRoleFieldErrors(errors);
+      if (Object.keys(errors).length > 0) return;
+      roleWrite.write(roleFormState.values);
+    }
+    if (isPermissionDirty) handleSavePermissions();
+  };
+
+  const handleCancelRoleSettings = () => {
+    handleCancelRoleEdit();
+    handleCancelPermissions();
   };
 
   /**
@@ -1152,7 +1471,9 @@ export const UsersRolesScreen = () => {
    * 그 결과 `usr`·`new`가 떨어져 편집 대상이 바뀌므로 정리는 위 effect가 맡는다.
    */
   const changeTab = (nextTabId: string) => {
-    setSearchParams(tabSearchParams(nextTabId));
+    leaveSafely(() => {
+      setSearchParams(tabSearchParams(nextTabId));
+    });
   };
 
   /**
@@ -1228,6 +1549,41 @@ export const UsersRolesScreen = () => {
           isSaving={userCreateWrite.isSaving}
           onSave={handleSaveUser}
           onCancel={closeUserCreateForm}
+          /* 팝업이 제목과 [취소][사용자 추가]를 맡는다(사용자 지시 2026-11-20 · #333). */
+          showHeading={false}
+          createExtraField={
+            <>
+              <div className="field-cell users-roles-create-worker">
+                <FieldLabel
+                  htmlFor={createWorkerInputId}
+                  label={t.workerLink.createLabel}
+                  optionalMark={t.user.optionalMark}
+                />
+                <TextField
+                  id={createWorkerInputId}
+                  fullWidth
+                  value={createWorkerNo}
+                  onChange={(event) => {
+                    setCreateWorkerNo(event.target.value);
+                    setCreateWorkerError(null);
+                  }}
+                  /* 칸은 빨간 테두리만, 읽어 주는 문장은 숨김 — 보이는 안내는 아래 줄 왼쪽 끝에 둔다. */
+                  error={
+                    createWorkerError === null ? undefined : (
+                      <span className="visually-hidden">{createWorkerError}</span>
+                    )
+                  }
+                />
+              </div>
+              {/* 사번 안내는 창 왼쪽 끝에서 한 줄로(사용자 지시 2026-11-20 · #333). */}
+              {createWorkerError !== null && (
+                <div className="users-roles-create-worker-error" aria-hidden>
+                  <WorkerNoError message={createWorkerError} />
+                </div>
+              )}
+            </>
+          }
+          showActions={false}
           onDeactivate={() => undefined}
           onResetPassword={() => undefined}
         />
@@ -1239,12 +1595,7 @@ export const UsersRolesScreen = () => {
      * 데이터 접근범위 카드는 여기서 서지 않는다(`renderRoleAssignPane` 등).
      */
     if (selectedAppUserId === null) {
-      return (
-        <section className="pane users-roles-pane" aria-label={t.panes.userForm}>
-          <h2 className="pane-title">{t.panes.userForm}</h2>
-          <p className="users-roles-select-hint">{t.user.empty.notSelected}</p>
-        </section>
-      );
+      return <p className="users-roles-select-hint">{t.user.empty.notSelected}</p>;
     }
 
     if (userDetail.isError) {
@@ -1279,13 +1630,9 @@ export const UsersRolesScreen = () => {
         isDeactivateDisabled={userDetail.data.appUser.isActive === false}
         isDirty={isUserDirty}
         isSaving={userWrite.isSaving}
-        onSave={handleSaveUser}
-        onCancel={() => {
-          setUserFieldErrors({});
-          userWrite.reset();
-          // 취소는 **서버를 부르지 않는다** — 초안을 기준값으로 되돌릴 뿐이다.
-          setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
-        }}
+        onSave={handleSaveAll}
+        onCancel={handleCancelUserEdit}
+        showActions={false}
         onDeactivate={() => {
           userDeactivateWrite.reset();
           setIsDeactivateOpen(true);
@@ -1357,6 +1704,7 @@ export const UsersRolesScreen = () => {
         onToggle={handleToggleRole}
         onSave={handleSaveRoleAssign}
         onCancel={handleCancelRoleAssign}
+        showActions={false}
       />
     );
   };
@@ -1396,6 +1744,7 @@ export const UsersRolesScreen = () => {
           changeDataScopeDrafts((drafts) => removeDataScopeDraft(drafts, draftId));
         }}
         onSave={handleSaveDataScopes}
+        showActions={false}
         onCancel={handleCancelDataScopes}
       />
     );
@@ -1406,50 +1755,189 @@ export const UsersRolesScreen = () => {
       <LoadErrorBanner error={userList.error} onRetry={() => void userList.refetch()} />
     </section>
   ) : (
-    <div className="two-pane users-roles-layout">
-      <UserListPane
-        users={users}
-        isLoading={userList.isPending}
-        appliedFilters={filters}
-        onApplyFilters={applyFilters}
-        departmentOptions={selectableOptions(departmentOptions, filters.departmentId)}
-        statusOptions={selectableOptions(userStatusOptions, filters.statusCode)}
-        statusDisabledReason={statusDisabledReason}
-        /*
-         * 조건 칩에는 번호가 아니라 이름을 낸다. 선택 목록을 아직 받지 못했으면
-         * 「알 수 없음」이 나오고 목록이 도착하면 이름으로 바뀐다 —
-         * 번호를 대신 보이면 사용자가 쓸 수 없는 값을 자료로 읽는다.
-         */
-        departmentLabel={(departmentId) => lookupLabel(departmentOptions, Number(departmentId))}
-        departmentNameOf={(departmentId) => lookupLabel(departmentOptions, departmentId)}
-        statusNameOf={(statusCode) => lookupLabel(userStatusOptions, statusCode)}
-        optionsNotice={renderOptionsNotice([departmentOptions, userStatusOptions])}
-        pageView={userPageView}
-        onChangePage={changeUserPage}
-        selectedAppUserId={selectedAppUserId}
-        onSelect={selectUser}
-        isCreating={isCreatingUser}
-        onAddUser={handleAddUser}
-        loadError={
-          userList.isError ? (
-            <LoadErrorBanner error={userList.error} onRetry={() => void userList.refetch()} />
-          ) : null
-        }
-      />
+    /*
+     * 수입검사 화면과 같은 틀(omf-all-around#333) — 위 조회 묶음, 아래 목록 | 고른 사용자의 설정 한 카드.
+     * 설정 카드는 상세 정보 · 연결된 현장 작업자 · 사용자 역할 · 데이터 접근 범위 순서다. 저장 경로가 구역마다 달라
+     * (낙관적 잠금이 있는 수정 · 역할 치환 · 범위 치환) 저장은 구역별로 둔다.
+     */
+    <div className="users-roles-workspace">
+      <section ref={aboveRef} className="pane users-roles-search" aria-label={t.filters.pane}>
+        <UserFilterBar
+          appliedFilters={filters}
+          onApplyFilters={applyFilters}
+          departmentOptions={selectableOptions(departmentOptions, filters.departmentId)}
+          optionsNotice={renderOptionsNotice([departmentOptions, userStatusOptions])}
+          isCreating={isCreatingUser}
+          onAddUser={handleAddUser}
+        />
+      </section>
 
-      {/*
-       * 우 칸은 구획을 세로로 쌓는다 — 사용자 정보 아래에 역할 부여·데이터 접근범위가 붙는다.
-       * `.pane-stack`은 선택자에 매이지 않은 기본 규칙이라 2단 배치의 칸 안에서도 그대로 동작한다.
-       */}
-      {userList.data !== undefined && (
-        <div className="pane-stack">
-          {renderUserFormPane()}
-          {renderRoleAssignPane()}
-          {renderDataScopePane()}
-        </div>
+      <div
+        ref={splitRef}
+        className={`po-board-split inspection-split users-roles-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
+        data-left-collapsed={split.collapsed ? 'true' : undefined}
+      >
+        <UserListPane
+          users={users}
+          isLoading={userList.isPending}
+          appliedFilters={filters}
+          onApplyFilters={applyFilters}
+          departmentNameOf={(departmentId) => lookupLabel(departmentOptions, departmentId)}
+          statusNameOf={(statusCode) => lookupLabel(userStatusOptions, statusCode)}
+          pageView={userPageView}
+          pageMeta={userList.data?.page ?? null}
+          onChangePage={changeUserPage}
+          pageSizes={LIST_PAGE_SIZES}
+          onChangePageSize={changeUserPageSize}
+          selectedAppUserId={selectedAppUserId}
+          onSelect={selectUser}
+          loadError={
+            userList.isError ? (
+              <LoadErrorBanner error={userList.error} onRetry={() => void userList.refetch()} />
+            ) : null
+          }
+        />
+
+        <PaneSplitter
+          label={messages.common.inspectionHub.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+          collapse={listCollapse}
+        />
+        {layout.orientation === 'column' && (
+          <PaneHeightSplitter
+            label={messages.common.inspectionHub.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+            collapse={listCollapse}
+          />
+        )}
+
+        <section className="pane users-roles-settings" aria-label={t.panes.userSettings}>
+          {/* 추가는 팝업에서 한다 — 그동안 오른쪽은 고르기 전 안내 그대로다(사용자 지시 2026-11-20 · #333). */}
+          {isCreatingUser || selectedAppUserId === null ? (
+            /*
+             * 빈 상세 — 수입검사 상세와 같은 아이콘 + 제목 + 보조 문구. 목록이 비었으면 「고르라」 대신
+             * 고를 사용자가 없다는 것을 말한다(사용자 지시 2026-11-20 · #333).
+             */
+            userList.data !== undefined && users.length === 0 ? (
+              <EmptyState
+                size="sm"
+                className="users-roles-pick-empty"
+                icon={
+                  <span className="inspection-standard-empty-icon">
+                    <Icon name="person_search" size={20} />
+                  </span>
+                }
+                title={t.pickUser.noUsersTitle}
+                description={t.pickUser.noUsersHint}
+              />
+            ) : (
+              <EmptyState
+                size="sm"
+                className="users-roles-pick-empty"
+                icon={
+                  <span className="inspection-standard-empty-icon">
+                    <Icon name="person" size={20} />
+                  </span>
+                }
+                title={t.pickUser.title}
+                description={t.pickUser.hint}
+              />
+            )
+          ) : (
+            <>
+              {renderUserFormPane()}
+              {renderRoleAssignPane()}
+              {renderDataScopePane()}
+              {/* 수정에서만 — 등록은 정보 칸 하나라 그 칸의 [취소][사용자 추가]가 곧 아래 줄이다. */}
+              {!isCreatingUser && userDetail.data !== undefined && (
+                <div className="form-actions users-roles-settings-actions">
+                  <Button
+                    variant="outlined"
+                    disabled={!isSettingsDirty || isSettingsSaving}
+                    onClick={handleCancelAll}
+                  >
+                    {messages.common.cancel}
+                  </Button>
+                  {/* 규범 4(비활성 사유 상시 표시)의 예외 — 사용자 지시 2026-09-18: 저장 사유 문구를 내지 않는다. */}
+                  <Button
+                    disabled={!isSettingsDirty || isSettingsSaving}
+                    loading={isSettingsSaving}
+                    onClick={handleSaveAll}
+                  >
+                    {messages.common.save}
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      </div>
+
+      {/* 사용자 추가 팝업(사용자 지시 2026-11-20 · #333) — 주소의 등록 상태를 그대로 쓰고, 닫으면 등록을 접는다. */}
+      {isCreatingUser && formState !== null && (
+        <Dialog
+          open
+          onClose={closeUserCreateForm}
+          size="lg"
+          title={t.actions.addUser}
+          closeOnBackdropClick={false}
+          showCloseButton={false}
+          footer={
+            <>
+              <Button variant="outlined" onClick={closeUserCreateForm}>
+                {messages.common.cancel}
+              </Button>
+              <Button
+                /* 필수 칸(로그인 아이디 · 초기 비밀번호 · 이름)이 모두 차면 바로 누를 수 있다(사용자 지시 2026-11-20 · #333). */
+                disabled={
+                  formState.values.loginId.trim() === '' ||
+                  formState.values.password === '' ||
+                  formState.values.userName.trim() === '' ||
+                  userCreateWrite.isSaving ||
+                  isCheckingWorker
+                }
+                loading={userCreateWrite.isSaving || isCheckingWorker}
+                onClick={() => void handleCreateUser()}
+              >
+                {t.actions.addUser}
+              </Button>
+            </>
+          }
+        >
+          <div className="users-roles-create-dialog">{renderUserFormPane()}</div>
+        </Dialog>
       )}
     </div>
   );
+
+  /** 역할 추가 팝업의 폼 — 고른 역할의 폼과 따로 선다(#333). */
+  const renderRoleCreatePane = (): ReactNode => {
+    if (roleCreateValues === null) return null;
+
+    return (
+      <RoleFormPane
+        mode="create"
+        values={roleCreateValues}
+        onChange={changeRoleCreateValues}
+        fieldErrors={{ ...roleCreateWrite.fieldErrors, ...roleCreateFieldErrors }}
+        /* 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
+        banner={<SaveErrorBanner error={roleCreateWrite.error} />}
+        /* 아직 없는 자원이라 잠금 판정의 근거가 없다. */
+        editability={null}
+        deactivateDisabledReason={null}
+        isDirty
+        isSaving={roleCreateWrite.isSaving}
+        onSave={handleCreateRole}
+        onCancel={closeRoleCreateForm}
+        onDeactivate={() => undefined}
+        /* 팝업이 제목과 [취소][역할 추가]를 맡는다(사용자 추가 팝업과 같다 · #333). */
+        showActions={false}
+      />
+    );
+  };
 
   /**
    * 우 칸 위 — 역할 정보.
@@ -1458,36 +1946,7 @@ export const UsersRolesScreen = () => {
    * 등록·선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다(사용자 폼과 같은 규칙).
    */
   const renderRoleFormPane = (): ReactNode => {
-    if (isCreatingRole) {
-      if (roleFormState === null) return null;
-
-      return (
-        <RoleFormPane
-          mode="create"
-          values={roleFormState.values}
-          onChange={changeRoleValues}
-          fieldErrors={{ ...roleCreateWrite.fieldErrors, ...roleFieldErrors }}
-          /* 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
-          banner={<SaveErrorBanner error={roleCreateWrite.error} />}
-          /* 아직 없는 자원이라 잠금 판정의 근거가 없다. */
-          editability={null}
-          deactivateDisabledReason={null}
-          isDirty={isRoleDirty}
-          isSaving={roleCreateWrite.isSaving}
-          onSave={handleSaveRole}
-          onCancel={closeRoleCreateForm}
-          onDeactivate={() => undefined}
-        />
-      );
-    }
-
-    if (selectedRoleId === null) {
-      return (
-        <section className="pane" aria-label={t.panes.roleForm}>
-          <EmptyState size="sm" title={t.role.empty.notSelected} />
-        </section>
-      );
-    }
+    if (selectedRoleId === null) return null;
 
     if (roleDetail.isError) {
       return (
@@ -1523,16 +1982,14 @@ export const UsersRolesScreen = () => {
         isDirty={isRoleDirty}
         isSaving={roleWrite.isSaving}
         onSave={handleSaveRole}
-        onCancel={() => {
-          setRoleFieldErrors({});
-          roleWrite.reset();
-          // 취소는 **서버를 부르지 않는다** — 초안을 기준값으로 되돌릴 뿐이다.
-          setRoleFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
-        }}
+        onCancel={handleCancelRoleEdit}
         onDeactivate={() => {
           roleDeactivateWrite.reset();
           setIsRoleDeactivateOpen(true);
         }}
+        /* 표제 줄 오른쪽 [사용 중지] · 저장은 카드 아래 한 줄(사용자 상세 정보와 같다 · #333). */
+        showHeading
+        showActions={false}
       />
     );
   };
@@ -1601,10 +2058,12 @@ export const UsersRolesScreen = () => {
         isDirty={isPermissionDirty}
         isSaving={permissionWrite.isSaving}
         onToggle={handleTogglePermission}
+        onSetGroup={handleSetPermissionGroup}
         onSelectAll={handleSelectAllPermissions}
         onClearAll={handleClearAllPermissions}
         onSave={handleSavePermissions}
         onCancel={handleCancelPermissions}
+        showActions={false}
       />
     );
   };
@@ -1614,30 +2073,149 @@ export const UsersRolesScreen = () => {
       <LoadErrorBanner error={roleList.error} onRetry={() => void roleList.refetch()} />
     </section>
   ) : (
-    <div className="two-pane">
-      <RoleListPane
-        roles={roles}
-        isLoading={roleList.isPending}
-        appliedFilters={roleFilters}
-        onApplyFilters={applyRoleFilters}
-        pageView={rolePageView}
-        onChangePage={changeRolePage}
-        selectedRoleId={selectedRoleId}
-        onSelect={selectRole}
-        isCreating={isCreatingRole}
-        onAddRole={handleAddRole}
-        loadError={
-          roleList.isError ? (
-            <LoadErrorBanner error={roleList.error} onRetry={() => void roleList.refetch()} />
-          ) : null
-        }
-      />
+    /*
+     * 사용자 관리 탭과 같은 틀(사용자 지시 2026-11-20 · #333) — 위 조회 묶음, 아래 목록 | 고른 역할의 설정 한 카드.
+     * 설정 카드는 역할 상세 정보 · 기능 권한 순서이고, 저장은 카드 아래 [취소][저장] 한 줄이다.
+     */
+    <div className="users-roles-workspace">
+      <section ref={aboveRef} className="pane users-roles-search" aria-label={t.filters.rolePane}>
+        <RoleFilterBar
+          appliedFilters={roleFilters}
+          onApplyFilters={applyRoleFilters}
+          isCreating={isCreatingRole}
+          onAddRole={handleAddRole}
+        />
+      </section>
 
-      {roleList.data !== undefined && (
-        <div className="pane-stack">
-          {renderRoleFormPane()}
-          {renderPermissionGridPane()}
-        </div>
+      <div
+        ref={splitRef}
+        className={`po-board-split inspection-split users-roles-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
+        data-left-collapsed={split.collapsed ? 'true' : undefined}
+      >
+        <RoleListPane
+          roles={roles}
+          isLoading={roleList.isPending}
+          appliedFilters={roleFilters}
+          onApplyFilters={applyRoleFilters}
+          pageView={rolePageView}
+          pageMeta={roleList.data?.page ?? null}
+          onChangePage={changeRolePage}
+          pageSizes={LIST_PAGE_SIZES}
+          onChangePageSize={changeRolePageSize}
+          selectedRoleId={selectedRoleId}
+          onSelect={selectRole}
+          loadError={
+            roleList.isError ? (
+              <LoadErrorBanner error={roleList.error} onRetry={() => void roleList.refetch()} />
+            ) : null
+          }
+        />
+
+        <PaneSplitter
+          label={messages.common.inspectionHub.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+          collapse={listCollapse}
+        />
+        {layout.orientation === 'column' && (
+          <PaneHeightSplitter
+            label={messages.common.inspectionHub.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+            collapse={listCollapse}
+          />
+        )}
+
+        <section
+          className="pane users-roles-settings users-roles-role-settings"
+          aria-label={t.panes.roleSettings}
+        >
+          {/* 빈 상세 — 사용자 탭과 같은 아이콘 + 제목 + 보조 문구. 목록이 비었으면 고를 역할이 없다고 말한다. */}
+          {selectedRoleId === null ? (
+            roleList.data !== undefined && roles.length === 0 ? (
+              <EmptyState
+                size="sm"
+                className="users-roles-pick-empty"
+                icon={
+                  <span className="inspection-standard-empty-icon">
+                    <Icon name="search_off" size={20} />
+                  </span>
+                }
+                title={t.pickRole.noRolesTitle}
+                description={t.pickRole.noRolesHint}
+              />
+            ) : (
+              <EmptyState
+                size="sm"
+                className="users-roles-pick-empty"
+                icon={
+                  <span className="inspection-standard-empty-icon">
+                    <Icon name="badge" size={20} />
+                  </span>
+                }
+                title={t.pickRole.title}
+                description={t.pickRole.hint}
+              />
+            )
+          ) : (
+            <>
+              {renderRoleFormPane()}
+              {renderPermissionGridPane()}
+              {roleDetail.data !== undefined && (
+                <div className="form-actions users-roles-settings-actions">
+                  <Button
+                    variant="outlined"
+                    disabled={!isRoleSettingsDirty || isRoleSettingsSaving}
+                    onClick={handleCancelRoleSettings}
+                  >
+                    {messages.common.cancel}
+                  </Button>
+                  <Button
+                    disabled={!isRoleSettingsDirty || isRoleSettingsSaving}
+                    loading={isRoleSettingsSaving}
+                    onClick={handleSaveRoleSettings}
+                  >
+                    {messages.common.save}
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      </div>
+
+      {/* 역할 추가 팝업 — 사용자 추가 팝업과 같은 모양(사용자 지시 2026-11-20 · #333). 닫으면 등록을 접는다. */}
+      {isCreatingRole && roleCreateValues !== null && (
+        <Dialog
+          open
+          onClose={closeRoleCreateForm}
+          size="lg"
+          title={t.actions.addRole}
+          closeOnBackdropClick={false}
+          showCloseButton={false}
+          footer={
+            <>
+              <Button variant="outlined" onClick={closeRoleCreateForm}>
+                {messages.common.cancel}
+              </Button>
+              <Button
+                /* 필수 칸(역할 코드 · 역할명)이 모두 차면 바로 누를 수 있다. */
+                disabled={
+                  roleCreateValues.roleCode.trim() === '' ||
+                  roleCreateValues.roleName.trim() === '' ||
+                  roleCreateWrite.isSaving
+                }
+                loading={roleCreateWrite.isSaving}
+                onClick={handleCreateRole}
+              >
+                {t.actions.addRole}
+              </Button>
+            </>
+          }
+        >
+          <div className="users-roles-create-dialog">{renderRoleCreatePane()}</div>
+        </Dialog>
       )}
     </div>
   );
@@ -1651,30 +2229,101 @@ export const UsersRolesScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
+      {/* 머리글(경로 · 화면 이름)은 두지 않는다 — 탭부터 선다(사용자 지시 2026-11-20 · omf-all-around#333). */}
+      {/*
+       * 탭 줄 오른쪽 — 재직 상태 칩 · 좌우 / 상하 배치(수입검사 탭 줄과 같은 자리 · omf-all-around#333).
+       * DS `Tabs` 에 오른쪽 자리가 없어 탭 줄 위에 겹쳐 세운다.
+       */}
+      <div className="users-roles-tabs">
+        {isRolesTab && !roleListForbidden && (
+          /* 역할 탭도 같은 자리에 사용 · 미사용 라벨과 좌우 / 상하 배치를 둔다(#333). */
+          <div className="users-roles-tab-actions">
+            <StatusChips
+              label={t.filters.roleStatusChipsLabel}
+              statuses={ROLE_STATUS_ENTRIES}
+              counts={roleStatusCounts}
+              active={roleFilters.status}
+              onChange={(status) => {
+                applyRoleFilters({
+                  ...roleFilters,
+                  status: status === 'active' || status === 'inactive' ? status : '',
+                });
+              }}
+            />
+            <SplitOrientationToggle
+              orientation={layout.orientation}
+              onChange={layout.change}
+              inline
+            />
+          </div>
+        )}
+        {isUsersTab && !userListForbidden && (
+          <div className="users-roles-tab-actions">
+            <StatusChips
+              statuses={userStatusOptions.entries}
+              counts={statusCounts}
+              active={filters.statusCode}
+              onChange={(statusCode) => applyFilters({ ...filters, statusCode })}
+            />
+            <SplitOrientationToggle
+              orientation={layout.orientation}
+              onChange={layout.change}
+              inline
+            />
+          </div>
+        )}
+        <Tabs
+          aria-label={t.tabs.label}
+          value={tab.id}
+          onChange={changeTab}
+          items={USERS_ROLES_TABS.map((definition) => ({
+            value: definition.id,
+            label: definition.label,
+            /*
+             * 활성 탭의 내용만 만든다. 디자인 시스템 `Tabs`는 비활성 패널도 DOM에 두므로
+             * 모두 만들면 보이지 않는 표가 함께 살아 있게 된다.
+             */
+            content: definition.id === tab.id ? tabContentOf(definition.id) : null,
+          }))}
+        />
+      </div>
 
-      <Tabs
-        aria-label={t.tabs.label}
-        value={tab.id}
-        onChange={changeTab}
-        items={USERS_ROLES_TABS.map((definition) => ({
-          value: definition.id,
-          label: definition.label,
-          /*
-           * 활성 탭의 내용만 만든다. 디자인 시스템 `Tabs`는 비활성 패널도 DOM에 두므로
-           * 모두 만들면 보이지 않는 표가 함께 살아 있게 된다.
-           */
-          content: definition.id === tab.id ? tabContentOf(definition.id) : null,
-        }))}
-      />
+      {pendingLeave !== null && (
+        <Dialog
+          open
+          size="sm"
+          /* 아이콘 없이 제목만(사용자 시안 2026-11-20 · #333) — 사용자 · 역할 탭이 같은 창이다. */
+          title={t.discard.title}
+          onClose={() => {
+            setPendingLeave(null);
+          }}
+          closeOnBackdropClick={false}
+          showCloseButton={false}
+          footer={
+            <>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setPendingLeave(null);
+                }}
+              >
+                {t.discard.keep}
+              </Button>
+              <Button
+                onClick={() => {
+                  const action = pendingLeave;
+                  setPendingLeave(null);
+                  action();
+                }}
+              >
+                {t.discard.confirm}
+              </Button>
+            </>
+          }
+        >
+          <p>{t.discard.body}</p>
+        </Dialog>
+      )}
 
       {/*
        * 창은 **열 때만 붙인다** — 디자인 시스템 `Dialog`는 닫혀도 내용이 DOM에 남아
@@ -1688,6 +2337,16 @@ export const UsersRolesScreen = () => {
           open
           title={t.dialog.deactivateUserTitle}
           description={t.dialog.deactivateUserDescription}
+          warning={t.dialog.deactivateUserWarning}
+          target={
+            userDetail.data === undefined
+              ? undefined
+              : {
+                  caption: t.dialog.deactivateUserCaption,
+                  name: userDetail.data.appUser.userName,
+                  meta: t.dialog.deactivateUserLoginId(userDetail.data.appUser.loginId),
+                }
+          }
           showCloseButton={false}
           onClose={() => {
             setIsDeactivateOpen(false);
@@ -1734,6 +2393,17 @@ export const UsersRolesScreen = () => {
           open
           title={t.dialog.deactivateRoleTitle}
           description={t.dialog.deactivateRoleDescription}
+          warning={t.dialog.deactivateRoleWarning}
+          target={
+            roleDetail.data === undefined
+              ? undefined
+              : {
+                  caption: t.dialog.deactivateRoleCaption,
+                  name: roleDetail.data.role.roleName,
+                  meta: t.dialog.deactivateRoleCode(roleDetail.data.role.roleCode),
+                }
+          }
+          showCloseButton={false}
           onClose={() => {
             setIsRoleDeactivateOpen(false);
             roleDeactivateWrite.reset();

@@ -16,6 +16,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { SaveErrorBanner } from '../../patterns/master';
 import { EMPTY_FILTERS, readFilters, readSelected, toSearchParams } from './filters';
 import type { FlagKey } from './flags';
@@ -176,6 +177,13 @@ export const TerminalProcessMapScreen = () => {
   const pageView =
     terminals.data === undefined ? null : toPageView(terminals.data.page, rows.length);
   const selected = detail.data ?? null;
+
+  /* 「초기화」는 치던 검색어나 걸린 조건이 처음 값과 다를 때만 보인다(C-6). 쪽은 조건이 아니라 견주지 않는다. */
+  const isFilterChanged = hasChangedFilters(
+    { q: EMPTY_FILTERS.q, includeInactive: EMPTY_FILTERS.includeInactive },
+    { q: search, includeInactive: filters.includeInactive },
+    { q: filters.q, includeInactive: filters.includeInactive },
+  );
 
   const apply = (next: Partial<typeof filters>, keepSelection: boolean): void => {
     /* 조건이 바뀌면 첫 쪽으로 돌아간다 — 3쪽을 보던 채로 조건만 좁히면 빈 쪽이 나온다. */
@@ -383,17 +391,19 @@ export const TerminalProcessMapScreen = () => {
                 {t.filters.includeInactive}
               </Checkbox>
             </div>
-            <div className="form-actions terminal-map-filter-actions">
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  setSearch('');
-                  setSearchParams(toSearchParams(EMPTY_FILTERS, selectedId));
-                }}
-              >
-                {t.filters.clear}
-              </Button>
-            </div>
+            {isFilterChanged && (
+              <div className="form-actions terminal-map-filter-actions">
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    setSearch('');
+                    setSearchParams(toSearchParams(EMPTY_FILTERS, selectedId));
+                  }}
+                >
+                  {t.filters.clear}
+                </Button>
+              </div>
+            )}
           </div>
 
           {terminals.isError ? (

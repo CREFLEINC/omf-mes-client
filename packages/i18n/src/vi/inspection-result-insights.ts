@@ -41,8 +41,6 @@ export const inspectionResultInsights: Translated<typeof ko.inspectionResultInsi
     calibrationOnly: 'Chỉ hết hạn hiệu chuẩn',
     calibrationExclude: 'Trừ hết hạn hiệu chuẩn',
     finalRoundOnly: 'Lần cuối',
-    detailOpen: 'Mở rộng xem chi tiết',
-    detailClose: 'Thu gọn xem chi tiết',
     periodRequired: 'Hãy chọn khoảng thời gian tra cứu.',
     periodReversed: 'Ngày kết thúc không được sớm hơn ngày bắt đầu.',
     periodPair: 'Hãy chọn cả ngày bắt đầu và ngày kết thúc.',

@@ -95,17 +95,6 @@ export const approvalRoute = {
     all: '전체',
     lookupTruncated: '선택지가 앞쪽 일부만 보입니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
     lookupFailed: '선택지를 불러오지 못했습니다.',
-    /**
-     * 「미사용 포함」의 방향은 화면 어휘이고 계약 파라미터는 그 반대다. 뒤집는 자리는
-     * `filters.ts` 한 곳이며 문구는 다른 화면과 같은 말(`common.includeInactive`)을 쓴다.
-     */
-    chipApprovalType: (value: string): string => `승인 유형: ${value}`,
-    chipBusinessUnit: (value: string): string => `사업부: ${value}`,
-    chipKeyword: (value: string): string => `검색어: ${value}`,
-    chipRemoveApprovalType: '승인 유형 조건 제거',
-    chipRemoveBusinessUnit: '사업부 조건 제거',
-    chipRemoveKeyword: '검색어 조건 제거',
-    chipRemoveIncludeInactive: '미사용 포함 조건 제거',
   },
   /** 쪽 이동. 번호 목록을 두지 않는 근거는 screens/approval-route/page-nav.tsx에 있다. */
   pageNav: {

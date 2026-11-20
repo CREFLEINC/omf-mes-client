@@ -1,7 +1,6 @@
 import {
   Button,
   Checkbox,
-  Chip,
   type Column,
   EmptyState,
   SearchInput,
@@ -10,6 +9,8 @@ import {
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
+
+import { hasChangedFilters } from '../../patterns/filter-more';
 
 import { defaultCalendarFilters } from './filters';
 import type { CalendarFilters, WorkCalendar } from './types';
@@ -61,7 +62,7 @@ export const CalendarListPane = ({
   const [draft, setDraft] = useState<DraftFilters>(draftOf(appliedFilters));
   const { q: appliedQ } = appliedFilters;
 
-  /* 밖에서 조건이 되돌려지면(초기화·칩 제거) 초안도 그것을 따라간다. */
+  /* 밖에서 조건이 되돌려지면(초기화) 초안도 그것을 따라간다. */
   useEffect(() => {
     setDraft({ q: appliedQ });
   }, [appliedQ]);
@@ -182,9 +183,16 @@ export const CalendarListPane = ({
           {/* 규범 2-1 — 뜻이 짝인 액션이 줄바꿈으로 갈라지지 않게 한 덩어리로 묶는다. */}
           <div className="filter-actions">
             <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
-            <Button variant="outlined" onClick={resetAll}>
-              {messages.common.reset}
-            </Button>
+            {/* 「초기화」는 편집 중이거나 적용된 조건이 처음 값과 다를 때만 보인다(C-6). */}
+            {hasChangedFilters(
+              defaultCalendarFilters,
+              { ...appliedFilters, ...draft },
+              appliedFilters,
+            ) && (
+              <Button variant="outlined" onClick={resetAll}>
+                {messages.common.reset}
+              </Button>
+            )}
             <Button variant="outlined" onClick={onAdd}>
               {t.actions.addCalendar}
             </Button>
@@ -192,27 +200,7 @@ export const CalendarListPane = ({
         </div>
       </div>
 
-      <div className="filter-bar work-calendar-filter-chips">
-        {appliedFilters.q !== '' && (
-          <Chip
-            variant="status"
-            removeLabel={t.filters.chipRemoveKeyword}
-            onRemove={() => onApplyFilters({ ...appliedFilters, q: '' })}
-          >
-            {t.filters.chipKeyword(appliedFilters.q)}
-          </Chip>
-        )}
-        {appliedFilters.includeInactive && (
-          <Chip
-            variant="status"
-            removeLabel={t.filters.chipRemoveIncludeInactive}
-            onRemove={() => onApplyFilters({ ...appliedFilters, includeInactive: false })}
-          >
-            {messages.common.includeInactive}
-          </Chip>
-        )}
-      </div>
-
+      {/* 조건 칩을 두지 않는다 — 조건 둘이 모두 조회 줄에 보인다(C-6, 보이는 칸은 칩으로 겹쳐 적지 않는다). */}
       {listSlot()}
     </section>
   );

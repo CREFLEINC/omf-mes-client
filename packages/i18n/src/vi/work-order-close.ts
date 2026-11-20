@@ -105,8 +105,8 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
   filter: {
     pane: 'Điều kiện tra cứu ứng viên đóng',
     productionOrder: 'P/O',
-    plannedStartFrom: 'Ngày bắt đầu kế hoạch (từ)',
-    plannedStartTo: 'Ngày bắt đầu kế hoạch (đến)',
+    plannedStart: 'Ngày bắt đầu kế hoạch',
+    plannedStartPlaceholder: 'Ngày bắt đầu ~ ngày kết thúc',
     status: 'Trạng thái đóng',
     judgment: 'Đánh giá',
     judgmentUnavailable:
@@ -115,6 +115,7 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
     all: 'Tất cả',
     search: 'Tra cứu',
     reset: 'Đặt lại',
+    chipJudgment: (value: string): string => `Đánh giá: ${value}`,
     statusRequired: 'Hãy chọn trạng thái đóng.',
     dateRange: 'Ngày bắt đầu kế hoạch không được muộn hơn ngày kết thúc.',
     statusEmpty: 'Không có trạng thái đóng nào để chọn.',

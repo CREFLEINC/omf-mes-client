@@ -1,15 +1,12 @@
-import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import {
   DEFAULT_FILTERS,
-  clearFilter,
   isCreating,
   readFilters,
   readPage,
   readSelectedRouteId,
   toCreateSearchParams,
-  toFilterChips,
   toRouteListQuery,
   toSearchParams,
   toSelectionSearchParams,
@@ -235,60 +232,5 @@ describe('toRouteListQuery', () => {
   it('쪽 크기를 싣지 않는다', () => {
     // 서버 기본값을 쓴다 — 화면이 정한 크기를 심으면 그것이 계약처럼 굳는다.
     expect(Object.keys(toRouteListQuery(filters(), 2))).not.toContain('size');
-  });
-});
-
-describe('toFilterChips', () => {
-  const label = (businessUnitId: string): string => `합성사업부${businessUnitId}`;
-
-  it('걸린 조건마다 칩 하나를 낸다', () => {
-    const chips = toFilterChips(
-      filters({
-        approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
-        businessUnitId: '9101',
-        includeInactive: true,
-        q: 'SAMPLE',
-      }),
-      label,
-    );
-
-    expect(chips.map((chip) => chip.key)).toEqual([
-      'approvalTypeCode',
-      'businessUnitId',
-      'q',
-      'includeInactive',
-    ]);
-  });
-
-  it('사업부 칩에 번호가 아니라 이름을 담는다', () => {
-    const chips = toFilterChips(filters({ businessUnitId: '9101' }), label);
-
-    expect(chips).toHaveLength(1);
-    expect(chips[0]?.label).toContain('합성사업부9101');
-    expect(chips[0]?.removeLabel).toBe(messages.approvalRoute.filters.chipRemoveBusinessUnit);
-  });
-
-  it('「미사용 포함」 칩은 공용 문구를 쓴다', () => {
-    const chips = toFilterChips(filters({ includeInactive: true }), label);
-
-    expect(chips[0]?.label).toBe(messages.common.includeInactive);
-  });
-
-  it('공백만인 검색어는 칩이 되지 않는다', () => {
-    expect(toFilterChips(filters({ q: '   ' }), label)).toHaveLength(0);
-  });
-
-  it('조건이 없으면 칩도 없다', () => {
-    expect(toFilterChips(DEFAULT_FILTERS, label)).toHaveLength(0);
-  });
-});
-
-describe('clearFilter', () => {
-  it('조건 하나만 푼다', () => {
-    const applied = filters({ businessUnitId: '9101', includeInactive: true, q: 'SAMPLE' });
-
-    expect(clearFilter(applied, 'includeInactive')).toEqual({ ...applied, includeInactive: false });
-    expect(clearFilter(applied, 'q')).toEqual({ ...applied, q: '' });
-    expect(clearFilter(applied, 'businessUnitId')).toEqual({ ...applied, businessUnitId: '' });
   });
 });

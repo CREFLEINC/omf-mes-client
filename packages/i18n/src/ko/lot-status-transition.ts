@@ -34,6 +34,9 @@ export const lotStatusTransition = {
     fields: {
       lotNo: 'LOT 번호',
       item: '품목',
+      /** 표의 품목은 코드 · 이름 두 칸으로 나눠 보인다(사용자 지시 2026-11-20). */
+      itemCode: '품목코드',
+      itemName: '품목명',
       status: '상태',
       onHand: '보유 수량',
       held: '보류량',

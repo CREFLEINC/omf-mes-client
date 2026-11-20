@@ -87,6 +87,8 @@ export const InspectionHubCounts = ({
           const label = LABELS[status];
           const isActive = active === status;
           const count = counts[index]?.data;
+          /* 0 건으로 센 칩은 세우지 않는다 — 걸린 칩은 남겨 풀 수 있게(관리웹 화면 정리 시안 A · 2026-11-20). */
+          if (count === 0 && !isActive) return null;
 
           return (
             <Chip

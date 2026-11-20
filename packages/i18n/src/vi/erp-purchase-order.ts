@@ -28,8 +28,6 @@ export const erpPurchaseOrder: Translated<typeof ko.erpPurchaseOrder> = {
     storageLocation: 'Kho',
     cancelled: 'Hủy',
     customsClearance: 'Số thông quan',
-    orderDateFrom: 'Ngày đặt từ',
-    orderDateTo: 'Ngày đặt đến',
     q: 'Số đơn mua',
   },
   splitter: 'Kéo để điều chỉnh độ rộng danh sách·chi tiết',
@@ -43,7 +41,7 @@ export const erpPurchaseOrder: Translated<typeof ko.erpPurchaseOrder> = {
   },
   filters: {
     all: 'Tất cả',
-    dateRangeError: 'Ngày đặt từ muộn hơn ngày đặt đến. Hãy sửa lại khoảng thời gian.',
+    chip: (label: string, value: string): string => `${label}: ${value}`,
   },
   actions: {
     select: (orderNo: string): string => `Chọn ${orderNo}`,

@@ -1,4 +1,4 @@
-import { AlertBanner, Chip, TextField } from '@crefle/web-ui';
+import { AlertBanner, Chip, IconButton, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { Button } from '../../patterns/button';
@@ -10,11 +10,9 @@ const t = messages.productPicking;
 /** 적치 대기 자리(위치 시스템 역할) — 그 몫에 「적치 대기」 칩을 단다. */
 const STAGING = 'PUTAWAY_STAGING';
 
-/** 코드 칸이 지금 무엇을 받는가 — 다음 스캔(`scan`) 또는 기기 키보드(`type`). */
-export type CodeMode = 'scan' | 'type';
-
 export interface CodeFieldState {
-  mode: CodeMode | null;
+  /** ✎ 를 눌러 코드 칸이 열렸는가. */
+  editing: boolean;
   draft: string;
   saving: boolean;
   failed: boolean;
@@ -23,28 +21,27 @@ export interface CodeFieldState {
 interface LotRowProps {
   lot: ShipmentRequestLot;
   uom: string;
-  /** 방금 집은 LOT — 붉은 테로 눈에 띄게. */
-  fresh: boolean;
   code: CodeFieldState;
   onReplace: () => void;
-  onCodeScan: () => void;
-  onCodeType: () => void;
+  onCodeEdit: () => void;
   onCodeDraft: (value: string) => void;
   onCodeCancel: () => void;
   onCodeSave: () => void;
 }
 
 /**
- * 피킹 LOT 한 줄 — 통째 수량, OQC 판정 배지, 창고·위치별 몫, 출하 관리 코드, 불합격이면 [교체].
+ * 라인 시트의 피킹 LOT 한 줄 — LOT 번호 · 판정 · 수량, 그 아래 창고 · 위치 몫(찍을 때마다 보는 정보라 늘 보인다),
+ * 출하 관리 코드. 불합격이면 작은 빨간 외곽선 [교체] — 꽉 찬 빨강은 교체 확인 창에만(사용자 결정 2026-11-20).
+ *
+ * 출하 관리 코드는 ✎ 를 눌러 연 칸으로만 받는다. 시트는 화면 위에 떠 있어 바깥 스캔 칸이 입력을 못 받으므로,
+ * 코드 칸이 스캐너 입력도 손 입력도 받고 Enter 로 저장한다.
  */
 export const LotRow = ({
   lot,
   uom,
-  fresh,
   code,
   onReplace,
-  onCodeScan,
-  onCodeType,
+  onCodeEdit,
   onCodeDraft,
   onCodeCancel,
   onCodeSave,
@@ -54,15 +51,15 @@ export const LotRow = ({
   const problem = codeProblem(code.draft);
 
   return (
-    <li className={fresh ? 'picking__lot picking__lot--fresh' : 'picking__lot'}>
-      <div className="picking__lot-head">
-        <strong>{lot.lotNo}</strong>
+    <li className="picking-lot">
+      <div className="picking-lot__head">
+        <strong className="picking-lot__no">{lot.lotNo}</strong>
         {status === null ? null : <Chip status={oqcTone(status)}>{t.oqc[status]}</Chip>}
-        <span className="picking__lot-qty">{t.lot.qty(String(lot.pickedQty), uom)}</span>
+        <span className="picking-lot__qty">{t.lot.qty(String(lot.pickedQty), uom)}</span>
       </div>
 
       {lot.portions.length === 0 ? null : (
-        <ul className="picking__portions">
+        <ul className="picking-lot__portions">
           {lot.portions.map((portion) => (
             <li key={`${String(portion.warehouseId)}-${String(portion.locationId)}`}>
               {/* 적치 대기 자리는 코드(창고 위치 코드 접두가 붙은 시스템 코드, 예 89YE-SYS-STAGING) 대신 칩으로만 말한다(시안). */}
@@ -87,26 +84,14 @@ export const LotRow = ({
         </p>
       ) : null}
 
-      {canReplace(lot) ? (
-        <Button
-          className="picking__replace"
-          variant="filled"
-          size="2xl"
-          aria-label={`${lot.lotNo} ${t.lot.replace}`}
-          onClick={onReplace}
+      {code.editing ? (
+        <form
+          className="picking-lot__code-edit"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (problem === null) onCodeSave();
+          }}
         >
-          {t.lot.replace}
-        </Button>
-      ) : null}
-
-      {!editable ? (
-        lot.managementCode === null ? null : (
-          <p className="picking__note">
-            {t.code.label} {lot.managementCode}
-          </p>
-        )
-      ) : code.mode === 'type' ? (
-        <div className="picking__code-edit">
           <TextField
             label={t.code.labelLimit}
             size="lg"
@@ -119,50 +104,46 @@ export const LotRow = ({
             helperText={`${t.code.noCheck}, ${t.code.count(code.draft.trim().length)}`}
             error={problem === null ? undefined : t.code.tooLong}
           />
-          <div className="picking__code-actions">
-            <Button variant="outlined" size="2xl" onClick={onCodeCancel}>
+          <div className="picking-lot__code-actions">
+            <Button type="button" variant="outlined" size="lg" onClick={onCodeCancel}>
               {t.code.cancel}
             </Button>
             <Button
-              variant="filled"
-              size="2xl"
+              type="submit"
+              variant="outlined"
+              size="lg"
               loading={code.saving}
               disabled={problem !== null}
-              onClick={onCodeSave}
             >
               {t.code.save}
             </Button>
           </div>
-        </div>
+        </form>
       ) : (
-        <div className="picking__code">
-          <span className="picking__code-label">{t.code.label}</span>
-          <div className="picking__code-row">
+        <div className="picking-lot__foot">
+          <span className="picking-lot__code">
+            <span className="picking-lot__code-label">{t.code.label}</span>
+            <span>{lot.managementCode ?? t.code.empty}</span>
+            {editable ? (
+              <IconButton
+                icon="edit"
+                size="md"
+                aria-label={t.code.edit(lot.lotNo)}
+                onClick={onCodeEdit}
+              />
+            ) : null}
+          </span>
+          {canReplace(lot) ? (
             <Button
-              className={
-                code.mode === 'scan'
-                  ? 'picking__code-value picking__code-value--waiting'
-                  : 'picking__code-value'
-              }
+              className="picking-lot__replace"
               variant="outlined"
-              size="lg"
-              aria-label={code.mode === 'scan' ? t.code.stopWaiting : t.code.edit(lot.lotNo)}
-              aria-pressed={code.mode === 'scan'}
-              loading={code.saving}
-              onClick={code.mode === 'scan' ? onCodeCancel : onCodeScan}
+              size="sm"
+              aria-label={`${lot.lotNo} ${t.lot.replace}`}
+              onClick={onReplace}
             >
-              {code.mode === 'scan' ? t.code.waiting : (lot.managementCode ?? t.code.empty)}
+              {t.lot.replace}
             </Button>
-            <Button
-              variant="text"
-              size="lg"
-              aria-label={t.code.keyboard(lot.lotNo)}
-              onClick={onCodeType}
-            >
-              {t.scan.manualLabel}
-            </Button>
-          </div>
-          {code.mode === 'scan' ? <p className="picking__note">{t.code.waitingHint}</p> : null}
+          ) : null}
         </div>
       )}
 
@@ -173,11 +154,11 @@ export const LotRow = ({
 
 /** 교체로 빠진 LOT — 라인 맨 아래 흐린 이력 줄. */
 export const ReplacedRow = ({ lot, uom }: { lot: ShipmentRequestLot; uom: string }) => (
-  <li className="picking__lot picking__lot--replaced">
-    <div className="picking__lot-head">
-      <strong>{lot.lotNo}</strong>
-      <span>{t.lot.qty(String(lot.pickedQty), uom)}</span>
+  <li className="picking-lot picking-lot--replaced">
+    <div className="picking-lot__head">
+      <strong className="picking-lot__no">{lot.lotNo}</strong>
       <Chip status="idle">{t.lot.replaced}</Chip>
+      <span className="picking-lot__qty">{t.lot.qty(String(lot.pickedQty), uom)}</span>
     </div>
     {lot.replacement === null ? null : (
       <p className="picking__note">

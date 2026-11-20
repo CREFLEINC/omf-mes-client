@@ -28,6 +28,9 @@ export const workOrderProgress = {
     keywordPlaceholder: 'W/O 번호의 일부',
     search: '조회',
     reset: '초기화',
+    /** 「조건 더보기」에 접힌 칸에 걸린 조건의 칩(C-6). */
+    chipStatus: (value: string): string => `상태: ${value}`,
+    chipProductionOrder: (value: string): string => `P/O: ${value}`,
 
     /** 고르지 않은 상태. ⛔ 「선택 안 함」이 아니라 **무엇이 조회되는지**를 적는다. */
     all: '전체',

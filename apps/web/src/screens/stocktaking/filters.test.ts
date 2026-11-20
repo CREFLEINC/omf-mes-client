@@ -1,14 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  clearFilter,
   DEFAULT_FILTERS,
   readFilters,
   readPage,
   readSelectedCountId,
   readSelectedLocationId,
   SELECTION_KEYS,
-  toFilterChips,
   toFilterQuery,
   toSearchParams,
   type CountFilters,
@@ -20,8 +18,6 @@ const filters = (overrides: Partial<CountFilters> = {}): CountFilters => ({
   ...DEFAULT_FILTERS,
   ...overrides,
 });
-
-const NAMES = { warehouse: 'SAMPLE-WH-01 · 합성 창고 가' };
 
 describe('readFilters', () => {
   it('주소의 조건 넷을 읽는다', () => {
@@ -179,75 +175,5 @@ describe('toFilterQuery', () => {
   /** 창고 번호는 **수로** 실린다 — 계약이 정수를 요구한다. */
   it('창고 번호를 수로 싣는다', () => {
     expect(toFilterQuery(filters({ warehouse: '9101' })).warehouseId).toBe(9101);
-  });
-});
-
-describe('toFilterChips', () => {
-  it('적용된 조건마다 칩 하나를 만든다', () => {
-    const chips = toFilterChips(
-      filters({ warehouse: '9101', from: '2026-08-01', to: '2026-08-31', inProgressOnly: true }),
-      NAMES,
-    );
-
-    expect(chips.map((chip) => chip.key)).toEqual(['warehouse', 'period', 'inProgress']);
-    expect(chips[0]?.label).toBe('창고: SAMPLE-WH-01 · 합성 창고 가');
-    expect(chips[1]?.label).toBe('계획일: 2026-08-01 ~ 2026-08-31');
-  });
-
-  it('한쪽만 넣은 기간도 칩 하나로 낸다', () => {
-    expect(toFilterChips(filters({ from: '2026-08-01' }), NAMES)[0]?.label).toBe(
-      '계획일: 2026-08-01부터',
-    );
-    expect(toFilterChips(filters({ to: '2026-08-31' }), NAMES)[0]?.label).toBe(
-      '계획일: 2026-08-31까지',
-    );
-  });
-
-  /*
-   * **칩의 판정 기준을 요청의 판정 기준과 같게 둔다.** 둘이 갈리면 손으로 고친 주소에서
-   * **조건은 걸리지 않는데 칩만 뜬다** — 사용자는 칩을 보고 조건이 걸린 줄 안다.
-   */
-  it('요청에 실리지 않는 값으로는 칩을 만들지 않는다', () => {
-    expect(toFilterChips(filters({ warehouse: 'abc', from: '2026-13-01' }), NAMES)).toEqual([]);
-  });
-
-  it('조건이 없으면 칩이 없다', () => {
-    expect(toFilterChips(DEFAULT_FILTERS, NAMES)).toEqual([]);
-  });
-
-  /** 제거 버튼의 접근 이름이 조건마다 다르다 — 「제거」가 둘이면 어느 조건을 푸는지 알 수 없다. */
-  it('제거 버튼 이름이 조건마다 다르다', () => {
-    const chips = toFilterChips(
-      filters({
-        warehouse: '9101',
-        from: '2026-08-01',
-        inProgressOnly: true,
-      }),
-      NAMES,
-    );
-    const labels = chips.map((chip) => chip.removeLabel);
-
-    expect(new Set(labels).size).toBe(labels.length);
-  });
-});
-
-describe('clearFilter', () => {
-  it('칩 하나를 푼다', () => {
-    const next = clearFilter(filters({ warehouse: '9101', from: '2026-08-01' }), 'warehouse');
-
-    expect(next.warehouse).toBe('');
-    expect(next.from).toBe('2026-08-01');
-  });
-
-  /* 기간은 칩이 하나다 — 한쪽만 풀면 칩을 지웠는데 조건이 남아 결과가 그대로다. */
-  it('기간은 두 조건을 함께 푼다', () => {
-    const next = clearFilter(filters({ from: '2026-08-01', to: '2026-08-31' }), 'period');
-
-    expect(next.from).toBe('');
-    expect(next.to).toBe('');
-  });
-
-  it('진행 중만은 꺼진 상태로 되돌린다', () => {
-    expect(clearFilter(filters({ inProgressOnly: true }), 'inProgress').inProgressOnly).toBe(false);
   });
 });

@@ -1,4 +1,5 @@
 import type { components } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
@@ -139,6 +140,35 @@ describe('의심자재 후보 pane', () => {
     expect(lotUrls(urls)[1]?.searchParams.get('q')).toBe('SYN-SEARCH');
     await user.click(screen.getByRole('button', { name: '다음' }));
     await waitFor(() => expect(lotUrls(urls).at(-1)?.searchParams.get('page')).toBe('2'));
+  });
+
+  it('품목 · 창고는 「조건 더보기」에 접혀 있고, 걸린 창고는 칩으로 보이며 × 가 그것만 풀어 조회한다(C-6)', async () => {
+    const { urls, user } = renderPane(() => jsonResponse(page([lot(701)])));
+    await screen.findByRole('checkbox', { name: 'SYN-LOT-701 선택' });
+    const more = screen.getByRole('button', { name: messages.common.filterMore.open });
+    /* 처음 값이면 「초기화」를 세우지 않는다. */
+    expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByLabelText('위치 검색')).not.toBeVisible();
+
+    await user.click(more);
+    await user.click(screen.getByLabelText('위치 검색'));
+    await user.click(await screen.findByRole('option', { name: 'WH · 창고' }));
+    expect(screen.getByRole('button', { name: '초기화' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '조회' }));
+    await waitFor(() =>
+      expect(lotUrls(urls).at(-1)?.searchParams.get('warehouseId')).toBe('802001'),
+    );
+
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.close }));
+    /* 창고 칸의 라벨은 「위치 검색」이지만 고른 값이 창고라 칩은 「창고」다. */
+    expect(screen.getByText('창고: WH · 창고')).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: messages.common.filterMore.remove('창고') }),
+    );
+    await waitFor(() => expect(lotUrls(urls).at(-1)?.searchParams.has('warehouseId')).toBe(false));
+    expect(screen.queryByText('창고: WH · 창고')).toBeNull();
   });
 
   it('창고 조건 없이도 품목·위치·단위 이름을 풀고, 재고 없는 LOT은 빈 값(—)으로 보인다', async () => {

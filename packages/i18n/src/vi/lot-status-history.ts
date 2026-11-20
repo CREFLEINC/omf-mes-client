@@ -37,6 +37,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     all: 'Tất cả',
     inactive: (label: string): string => `${label} (ngừng dùng)`,
     unlisted: (value: string): string => `${value} (chưa có trong danh sách)`,
+    empty: '—',
   },
   lotFilter: {
     pane: 'Điều kiện tra cứu LOT',
@@ -57,8 +58,6 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     lotNoScanPlaceholder: 'Quét mã vạch LOT hoặc nhập số',
     /** 창고 검색 칸의 흐린 문구(사용자 2026-11-02). */
     warehousePlaceholder: 'Nhập kho',
-    detailOpen: 'Mở tìm kiếm chi tiết',
-    detailClose: 'Thu gọn tìm kiếm chi tiết',
     itemPlaceholder: 'Nhập mặt hàng',
     itemClear: 'Xóa mặt hàng',
     itemPick: 'Chọn',
@@ -104,6 +103,8 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     columns: {
       lot: 'Số LOT',
       item: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       status: 'Trạng thái',
       onHand: 'Số lượng đang giữ',
       latestTransition: 'Ngày thay đổi cuối',

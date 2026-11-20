@@ -11,6 +11,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
+import { pickRange } from '../../test/date-picker';
 import { ErpSalesOrderScreen } from './screen';
 
 const t = messages.erpSalesOrder;
@@ -220,6 +221,8 @@ describe('ErpSalesOrderScreen', () => {
 
     await screen.findByRole('button', { name: t.actions.select('SYN-SO-801') });
     expect(listUrls(requests)[0]?.searchParams.has('progress')).toBe(false);
+    /* 진행은 「조건 더보기」 안에 있다. */
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     const group = screen.getByRole('group', { name: t.progress.group });
     const button = (name: string) => within(group).getByRole('button', { name });
     expect(button(t.progress.all)).toHaveAttribute('aria-pressed', 'true');
@@ -242,6 +245,29 @@ describe('ErpSalesOrderScreen', () => {
       expect(listUrls(requests).at(-1)?.searchParams.get('progress')).toBe('COMPLETED'),
     );
     expect(screen.getByTestId('location')).toHaveTextContent(/progress=done$/);
+  });
+
+  it('진행은 「조건 더보기」에 접혀 있고, 전체가 아니면 칩으로 알리며 × 는 전체로 되돌려 다시 조회한다', async () => {
+    const { fetch, requests } = recordingFetch(normalRoutes);
+    renderWithProviders(
+      <>
+        <ErpSalesOrderScreen />
+        <LocationProbe />
+      </>,
+      { fetch, route: '/?q=SYN&progress=done' },
+    );
+    const user = userEvent.setup();
+    const removeProgress = messages.common.filterMore.remove(t.fields.progress);
+
+    await screen.findByRole('button', { name: t.actions.select('SYN-SO-801') });
+    expect(screen.queryByRole('group', { name: t.progress.group })).toBeNull();
+    expect(screen.getByText(t.filters.chip(t.fields.progress, t.progress.done))).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: removeProgress }));
+
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\?q=SYN$/));
+    expect(listUrls(requests).at(-1)?.searchParams.has('progress')).toBe(false);
+    expect(screen.queryByRole('button', { name: removeProgress })).toBeNull();
   });
 
   it('진행 열은 출하 진행을 표지로 보이고, 칸이 없는 응답은 「-」로 보인다', async () => {
@@ -292,7 +318,7 @@ describe('ErpSalesOrderScreen', () => {
     expect(within(linesPane).getByText(t.empty.linesTitle)).toBeInTheDocument();
   });
 
-  it('상태는 공통코드 선택지로 거르고, 주소의 상태를 조건에 싣는다', async () => {
+  it('상태는 「조건 더보기」 안의 공통코드 선택지로 거르고, 주소의 상태를 조건에 싣는다', async () => {
     const { fetch, requests } = recordingFetch(normalRoutes);
     renderWithProviders(<ErpSalesOrderScreen />, { fetch, route: '/?status=RECEIVED' });
     const user = userEvent.setup();
@@ -303,6 +329,10 @@ describe('ErpSalesOrderScreen', () => {
         .map((request) => new URL(request.url))
         .filter((url) => url.pathname === '/logistics/sales-orders');
     expect(listUrls()[0]?.searchParams.get('statusCode')).toBe('RECEIVED');
+
+    /* 상태는 「조건 더보기」에 접혀 있다 — 펼쳐야 칸이 보인다. */
+    expect(screen.queryByRole('combobox', { name: t.fields.status })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
 
     /* 글로 적는 칸이 아니라 선택지다. */
     expect(screen.queryByRole('textbox', { name: t.fields.status })).not.toBeInTheDocument();
@@ -315,6 +345,81 @@ describe('ErpSalesOrderScreen', () => {
     await waitFor(() =>
       expect(listUrls().at(-1)?.searchParams.get('statusCode')).toBe('CANCELLED'),
     );
+  });
+
+  it('접힌 조건(상태 · 미편성만)만 칩으로 알리고, ×는 그 조건만 풀어 다시 조회한다', async () => {
+    const { fetch, requests } = recordingFetch(normalRoutes);
+    renderWithProviders(
+      <>
+        <ErpSalesOrderScreen />
+        <LocationProbe />
+      </>,
+      { fetch, route: '/?customer=4101&status=RECEIVED&unassigned=1' },
+    );
+    const user = userEvent.setup();
+    const removeOf = (label: string) =>
+      screen.queryByRole('button', { name: messages.common.filterMore.remove(label) });
+
+    await screen.findByRole('button', { name: t.actions.select('SYN-SO-801') });
+    /* 코드가 아니라 선택지 이름으로. 보이는 칸(고객사)은 칩으로 겹쳐 적지 않는다. */
+    expect(await screen.findByText(t.filters.chip(t.fields.status, '수신'))).toBeVisible();
+    expect(removeOf(t.fields.unassignedOnly)).toBeVisible();
+    expect(removeOf(t.fields.customer)).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: t.fields.unassignedOnly })).toBeNull();
+
+    await user.click(removeOf(t.fields.unassignedOnly) as HTMLElement);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent(/^\?customer=4101&status=RECEIVED$/),
+    );
+    expect(listUrls(requests).at(-1)?.searchParams.has('unassignedOnly')).toBe(false);
+    expect(removeOf(t.fields.unassignedOnly)).toBeNull();
+    expect(removeOf(t.fields.status)).toBeVisible();
+
+    /* 펼치면 칸에 값이 보이므로 칩을 거둔다. */
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+    expect(screen.getByRole('checkbox', { name: t.fields.unassignedOnly })).not.toBeChecked();
+    expect(removeOf(t.fields.status)).toBeNull();
+  });
+
+  it('수주일은 기간 한 칸이고, 고른 기간을 주소 from · to 와 orderDateFrom · orderDateTo 로 싣는다', async () => {
+    const { fetch, requests } = recordingFetch(normalRoutes);
+    renderWithProviders(
+      <>
+        <ErpSalesOrderScreen />
+        <LocationProbe />
+      </>,
+      { fetch },
+    );
+    const user = userEvent.setup();
+
+    await screen.findByRole('button', { name: t.actions.select('SYN-SO-801') });
+    await pickRange(user, screen.getByLabelText(t.fields.orderDate), '2026-10-01', '2026-10-15');
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent(/^\?from=2026-10-01&to=2026-10-15$/),
+    );
+    const last = listUrls(requests).at(-1);
+    expect(last?.searchParams.get('orderDateFrom')).toBe('2026-10-01');
+    expect(last?.searchParams.get('orderDateTo')).toBe('2026-10-15');
+  });
+
+  it('초기화는 바뀐 것이 있을 때만 보이고, 누르면 치던 값까지 비운다', async () => {
+    const { fetch } = recordingFetch(normalRoutes);
+    renderWithProviders(<ErpSalesOrderScreen />, { fetch });
+    const user = userEvent.setup();
+
+    await screen.findByRole('button', { name: t.actions.select('SYN-SO-801') });
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
+
+    const q = screen.getByRole('searchbox', { name: t.fields.q });
+    await user.type(q, 'SYN');
+    await user.click(screen.getByRole('button', { name: messages.common.reset }));
+
+    /* 주소는 이미 처음 값이라 바뀌지 않는다 — 그래도 치던 값은 비워지고 초기화는 다시 숨는다. */
+    expect(q).toHaveValue('');
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
   });
 
   it('이름을 못 찾은 코드는 원본, 없는 칸은 「-」, 취소된 라인은 취소 표지와 시각을 보인다', async () => {

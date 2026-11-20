@@ -30,7 +30,6 @@ const renderPane = (overrides: Partial<Parameters<typeof DepartmentListPane>[0]>
       appliedFilters={EMPTY_SCOPED_FILTERS}
       onApplyFilters={onApplyFilters}
       businessUnitOptions={[{ value: '4001', label: 'SYN-BU-01 · 합성 사업부 A' }]}
-      businessUnitLabel={() => 'SYN-BU-01 · 합성 사업부 A'}
       optionsNotice={null}
       pageView={toPageView({ page: 1, size: 50, total: sourceRows.length }, sourceRows.length)}
       onChangePage={onChangePage}
@@ -162,17 +161,24 @@ describe('DepartmentListPane — 조건', () => {
     expect(onApplyFilters).toHaveBeenCalledWith({ q: '', scopeId: '', includeInactive: true });
   });
 
-  it('걸린 조건마다 칩이 보이고 제거 버튼이 그 조건만 푼다', async () => {
-    const { onApplyFilters, user } = renderPane({
-      appliedFilters: { q: 'SYN', scopeId: '4001', includeInactive: false },
-    });
+  /* 조건 칸이 모두 줄에 보인다 — 보이는 칸의 값을 칩으로 겹쳐 적지 않는다(C-6). */
+  it('걸린 조건은 칸에 보이고 칩으로 겹쳐 적지 않는다', () => {
+    renderPane({ appliedFilters: { q: 'SYN', scopeId: '4001', includeInactive: false } });
 
-    expect(screen.getByText('검색어: SYN')).toBeInTheDocument();
-    expect(screen.getByText('사업부: SYN-BU-01 · 합성 사업부 A')).toBeInTheDocument();
+    expect(screen.getByLabelText('부서 검색')).toHaveValue('SYN');
+    expect(screen.queryByText('사업부: SYN-BU-01 · 합성 사업부 A')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /조건 제거$/ })).not.toBeInTheDocument();
+  });
 
-    await user.click(screen.getByRole('button', { name: '사업부 조건 제거' }));
+  it('초기화는 바뀐 것이 있을 때만 보이고 누르면 빈 조건을 알린다', async () => {
+    const { onApplyFilters, user } = renderPane();
 
-    expect(onApplyFilters).toHaveBeenCalledWith({ q: 'SYN', scopeId: '', includeInactive: false });
+    expect(screen.queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('부서 검색'), 'SYN');
+    await user.click(screen.getByRole('button', { name: '초기화' }));
+
+    expect(onApplyFilters).toHaveBeenCalledWith({ q: '', scopeId: '', includeInactive: false });
   });
 
   it('선택 목록 안내 슬롯을 필터 위에 낸다', () => {

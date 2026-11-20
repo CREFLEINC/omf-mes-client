@@ -13,6 +13,7 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { DetailDrawer } from '../../patterns/detail-drawer';
+import { FilterMoreButton, HiddenFilterChips, useFilterMore } from '../../patterns/filter-more';
 import { handoverTypeName, useHandoverAlertTypes } from '../../patterns/handover-alert-types';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
@@ -38,10 +39,14 @@ const t = messages.dispatchHistory;
  * W-CO-13 알림 발송 이력 — 이벤트 처리 결과(알림/건너뜀과 사유)와 수신자별 Zalo 결과.
  * 조건은 주소가 든다. 행을 고르면 그 건의 Zalo 발송 상세가 오른쪽 드로어로 열린다
  * (T-W-A·C-2, omf-all-around#183). 목록 아래에 붙이면 50행 아래로 밀려 누른 자리에서 보이지 않는다.
+ *
+ * **보이는 조건은 셋이다**(C-6) — 기간 · 이벤트 · 결과. 부서는 「조건 더보기」에 접고, 걸려 있으면
+ * 칩으로 알린다. 초기화 단추는 없다 — 기간이 늘 차 있는 화면이다.
  */
 export const DispatchHistoryScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const fieldId = useId();
+  const more = useFilterMore();
   /* 기간 오류 문구. [조회]를 잠그는 사유이기도 해서 단추가 이 문구를 가리킨다(C-4). */
   const periodReasonId = `${fieldId}-period-reason`;
   const applied = readPeriod(searchParams);
@@ -108,6 +113,32 @@ export const DispatchHistoryScreen = () => {
 
   const go = (nextPage: number, nextSelected: number | null): void => {
     setSearchParams(toSearchParams(applied, appliedFilters, nextPage, nextSelected));
+  };
+
+  const departmentOptions = (departments.data ?? []).map((item) => ({
+    value: String(item.departmentId),
+    label: named(item.departmentName, item.departmentCode),
+  }));
+
+  /* 접힌 칸(부서)에 걸린 조건만 칩으로 — 이름을 못 풀면 번호라도 보인다. */
+  const hiddenChips =
+    appliedFilters.department === ''
+      ? []
+      : [
+          {
+            key: 'department' as const,
+            label: t.filters.chipDepartment(
+              departmentOptions.find((option) => option.value === appliedFilters.department)
+                ?.label ?? appliedFilters.department,
+            ),
+            removeLabel: messages.common.filterMore.remove(t.filters.department),
+          },
+        ];
+
+  /* × 는 부서만 풀어 곧바로 다시 조회한다. 편집 중인 칸도 함께 비워야 다음 [조회]가 되살리지 않는다. */
+  const removeDepartment = (): void => {
+    setFilters((prev) => ({ ...prev, department: '' }));
+    setSearchParams(toSearchParams(applied, { ...appliedFilters, department: '' }));
   };
 
   const selectField = (
@@ -275,16 +306,6 @@ export const DispatchHistoryScreen = () => {
           (value) => setFilters((prev) => ({ ...prev, event: value })),
         )}
         {selectField(
-          'department',
-          t.filters.department,
-          filters.department,
-          (departments.data ?? []).map((item) => ({
-            value: String(item.departmentId),
-            label: named(item.departmentName, item.departmentCode),
-          })),
-          (value) => setFilters((prev) => ({ ...prev, department: value })),
-        )}
-        {selectField(
           'result',
           t.filters.result,
           filters.result,
@@ -294,16 +315,34 @@ export const DispatchHistoryScreen = () => {
           ],
           (value) => setFilters((prev) => ({ ...prev, result: value })),
         )}
-        <div className="filter-actions">
-          <Button
-            disabled={draftReason !== null}
-            aria-describedby={draftReason === null ? undefined : periodReasonId}
-            onClick={search}
-          >
-            {t.filters.search}
-          </Button>
+        <div className="field-cell field-cell-unlabeled">
+          <div className="filter-actions">
+            <Button
+              disabled={draftReason !== null}
+              aria-describedby={draftReason === null ? undefined : periodReasonId}
+              onClick={search}
+            >
+              {t.filters.search}
+            </Button>
+            <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
+          </div>
         </div>
       </div>
+
+      {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+      <div id={more.id} hidden={!more.isOpen}>
+        <div className="filter-bar">
+          {selectField(
+            'department',
+            t.filters.department,
+            filters.department,
+            departmentOptions,
+            (value) => setFilters((prev) => ({ ...prev, department: value })),
+          )}
+        </div>
+      </div>
+
+      <HiddenFilterChips open={more.isOpen} chips={hiddenChips} onRemove={removeDepartment} />
 
       <section className="pane dispatch-pane" aria-labelledby="dispatch-title">
         <h2 id="dispatch-title" className="pane-title">

@@ -117,7 +117,11 @@ describe('toRoleCreate', () => {
   });
 
   it('앞뒤 공백을 턴 값을 싣고 빈 설명은 널이다', () => {
-    const body = toRoleCreate({ roleCode: ' SYN-ROLE-09 ', roleName: ' 합성 역할 D ', description: '' });
+    const body = toRoleCreate({
+      roleCode: ' SYN-ROLE-09 ',
+      roleName: ' 합성 역할 D ',
+      description: '',
+    });
 
     expect(body.roleCode).toBe('SYN-ROLE-09');
     expect(body.roleName).toBe('합성 역할 D');

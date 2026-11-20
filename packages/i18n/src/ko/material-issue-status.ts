@@ -26,6 +26,9 @@ export const materialIssueStatus = {
     hasShortage: '부족 있는 요청만',
     releaseFailed: '배포 실패만',
     groupByPlan: '계획별 묶음 보기',
+    /** 「조건 더보기」에 접힌 칸에 걸린 조건의 칩(C-6). */
+    chipPlant: (name: string): string => `공장: ${name}`,
+    chipSourceWarehouse: (name: string): string => `출발 생산 창고: ${name}`,
     search: '조회',
     reset: '초기화',
   },

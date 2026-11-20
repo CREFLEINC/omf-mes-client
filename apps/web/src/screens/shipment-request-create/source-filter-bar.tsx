@@ -1,9 +1,10 @@
-import { Button, Checkbox, Chip, DatePicker } from '@crefle/web-ui';
+import { Button, Checkbox, DatePicker } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { HiddenFilterChips, hasChangedFilters } from '../../patterns/filter-more';
 import { FieldLabel } from './field-label';
-import type { FilterChip, SourceFilters } from './filters';
+import { EMPTY_FILTERS, type FilterChip, type SourceFilters } from './filters';
 import { SelectField } from './select-field';
 import type { SelectOption } from './types';
 
@@ -57,6 +58,10 @@ export interface SourceFilterBarProps {
  * 트리거 모델은 「모아서 적용, 해제는 즉시」다 — 「조회」를 누를 때만 주소가 바뀌고, 조건 칩의
  * ×는 그 조건 하나만 풀고 곧바로 다시 조회한다.
  *
+ * 보이는 조건이 셋이라 「조건 더보기」가 없고, 칸에 값이 보이는 조건은 칩으로 겹쳐 적지 않는다(C-6).
+ * 칩이 남는 것은 주소로 들어온 끝만 있는 주문일뿐이다 — 범위 달력은 시작일이 없으면 칸을 비워 둔다.
+ * 「초기화」는 바뀐 것이 있을 때만 보인다.
+ *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
 export const SourceFilterBar = ({
@@ -98,7 +103,19 @@ export const SourceFilterBar = ({
     ...options,
   ];
 
-  const chips = toFilterChips(appliedFilters, customerName);
+  /* 칸이 그리지 못하는 조건만 칩으로 — 시작일 없이 종료일만 걸린 주문일. */
+  const hiddenChips = toFilterChips(appliedFilters, customerName).filter(
+    (chip) => chip.key === 'period' && appliedFilters.orderDateFrom === '',
+  );
+
+  /*
+   * 초기화. **편집 중인 값도 함께 비운다** — 조회한 값이 이미 처음 값이면 주소가 바뀌지 않아
+   * 되돌림 effect 가 깨어나지 않고, 치던 값이 그대로 남는다.
+   */
+  const reset = (): void => {
+    setFilters(EMPTY_FILTERS);
+    onReset();
+  };
 
   return (
     <>
@@ -151,29 +168,16 @@ export const SourceFilterBar = ({
             >
               {t.filters.search}
             </Button>
-            <Button variant="outlined" onClick={onReset}>
-              {t.filters.reset}
-            </Button>
+            {hasChangedFilters(EMPTY_FILTERS, filters, appliedFilters) && (
+              <Button variant="outlined" onClick={reset}>
+                {t.filters.reset}
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
-      {chips.length > 0 && (
-        <div className="filter-bar">
-          {chips.map((chip) => (
-            <Chip
-              key={chip.key}
-              variant="status"
-              removeLabel={chip.removeLabel}
-              onRemove={() => {
-                onRemoveFilter(chip.key);
-              }}
-            >
-              {chip.label}
-            </Chip>
-          ))}
-        </div>
-      )}
+      <HiddenFilterChips open={false} chips={hiddenChips} onRemove={onRemoveFilter} />
     </>
   );
 };

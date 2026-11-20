@@ -5,6 +5,7 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { PageNav as ListPageNav, type PageNavMeta } from '../../patterns/page-nav';
 import { ItemFilterField } from '../iqc-inspection/item-filter-field';
@@ -18,6 +19,8 @@ import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 
 export interface HistoryFilterBarProps {
   applied: HistoryFilters;
+  /** 처음 값 — 초기화가 되돌리는 값(최근 한 달 · 나머지 비움). 「초기화」는 이것과 다를 때만 보인다(C-6). */
+  defaults: HistoryFilters;
   onApply: (filters: HistoryFilters) => void;
   onReset: () => void;
 }
@@ -27,7 +30,12 @@ export interface HistoryFilterBarProps {
  * 판정 시작일 · 종료일 · 품목, 오른쪽 끝에 조회 · 초기화. 기간은 비울 수 없다(L-3).
  * 처분 유형은 탭 줄 칩이 거른다(#223) — 처분 대기의 상태 칩과 같다.
  */
-export const HistoryFilterBar = ({ applied, onApply, onReset }: HistoryFilterBarProps) => {
+export const HistoryFilterBar = ({
+  applied,
+  defaults,
+  onApply,
+  onReset,
+}: HistoryFilterBarProps) => {
   const t = messages.dispositionDecision;
   const fromId = useId();
   const toId = useId();
@@ -37,6 +45,14 @@ export const HistoryFilterBar = ({ applied, onApply, onReset }: HistoryFilterBar
   useEffect(() => {
     setDraft({ from, to, itemId, dispositionTypeCode });
   }, [from, to, itemId, dispositionTypeCode]);
+
+  /* 「초기화」는 바뀐 것이 있을 때만(C-6) — 편집 중인 값이나 조회에 쓰인 값(탭 줄 처분 유형 칩 포함)이 처음 값과 다를 때. */
+  const isChanged = hasChangedFilters(defaults, draft, applied);
+  /* 편집 상태도 함께 처음으로 — 조회에 쓰인 값이 이미 처음 값이면 되돌림이 깨어나지 않는다. */
+  const reset = (): void => {
+    setDraft(defaults);
+    onReset();
+  };
 
   return (
     <div className="filter-bar disposition-filter disposition-history-filter">
@@ -73,9 +89,11 @@ export const HistoryFilterBar = ({ applied, onApply, onReset }: HistoryFilterBar
       <div className="disposition-filter-actions">
         <div className="filter-actions">
           <Button onClick={() => onApply(draft)}>{messages.common.search}</Button>
-          <Button variant="outlined" onClick={onReset}>
-            {messages.common.reset}
-          </Button>
+          {isChanged && (
+            <Button variant="outlined" onClick={reset}>
+              {messages.common.reset}
+            </Button>
+          )}
         </div>
       </div>
     </div>

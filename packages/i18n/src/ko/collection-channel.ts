@@ -27,10 +27,6 @@ export const collectionChannel = {
       `전체 ${total}건 중 ${shown}건을 표시합니다. 조건을 좁혀 조회하세요.`,
     /** 행이 곧 손잡이다 — 접근 이름에 무엇이 열리는지 담는다. */
     selectLabel: (code: string, name: string): string => `${code} ${name}의 수집 채널 보기`,
-    chipRemoveKeyword: '검색어 조건 제거',
-    chipRemovePlant: '공장 조건 제거',
-    chipKeyword: (value: string): string => `검색어: ${value}`,
-    chipPlant: (label: string): string => `공장: ${label}`,
   },
   channels: {
     paneTitle: '채널 매핑',

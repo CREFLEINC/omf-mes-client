@@ -18,6 +18,7 @@ import { useId, useState } from 'react';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { SaveErrorBanner } from '../../patterns/master';
 import { ItemSelect } from '../../patterns/item-select';
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
@@ -148,6 +149,12 @@ export const InspectionLevelScreen = () => {
     page: 1,
     size: PAGE_SIZE,
   });
+  /* 「초기화」는 바뀐 것이 있을 때만 보인다(C-6) — 초기화가 검사 수준 칩도 되돌리므로 함께 견준다. */
+  const isFilterChanged = hasChangedFilters(
+    { itemId: null, level: '' },
+    { itemId: itemInput?.itemId ?? null, level: filter.level },
+    { itemId: filter.itemId, level: filter.level },
+  );
   const [historyItem, setHistoryItem] = useState<ItemInspectionLevel | null>(null);
   const [historyPage, setHistoryPage] = useState(1);
   const [historySize, setHistorySize] = useState<number>(PAGE_SIZE);
@@ -175,23 +182,27 @@ export const InspectionLevelScreen = () => {
 
   /* 목록 표는 모든 열을 가운데 정렬한다 — 검사 기준 탭과 같다(#208). */
   const columns: Column<ItemInspectionLevel>[] = [
+    /*
+     * 품목은 코드 · 이름 두 칸이다(사용자 지시 2026-11-20, 한 칸에 붙이던 「코드 · 이름(흐리게)」를 나눴다).
+     * 모든 열이 폭을 가져야 좁은 칸에서 이 열이 0 으로 짓눌리지 않고 표가 옆으로 구른다 — 넓으면 비율대로 늘어난다(반응형 · #208).
+     */
     {
-      key: 'item',
+      key: 'itemCode',
       align: 'center',
-      header: t.columns.item,
-      /*
-       * 품목 코드 · 품목명(흐리게) 한 줄 — 검사표 기준 탭과 같다(사용자 지시 · #208).
-       * 모든 열이 폭을 가져야 좁은 칸에서 이 열이 0 으로 짓눌리지 않고 표가 옆으로 구른다 — 넓으면 비율대로 늘어난다(반응형 · #208).
-       */
-      width: '280px',
+      header: t.columns.itemCode,
+      width: '140px',
       render: (row) => (
-        <span className="inspection-level-item-cell">
-          <span className="inspection-level-item-code">{row.itemCode}</span>
-          <span className="inspection-sheet-template-muted" title={row.itemName}>
-            {row.itemName}
-          </span>
+        <span className="inspection-level-item-code" title={row.itemCode}>
+          {row.itemCode}
         </span>
       ),
+    },
+    {
+      key: 'itemName',
+      align: 'center',
+      header: t.columns.itemName,
+      width: '200px',
+      render: (row) => <span title={row.itemName}>{row.itemName}</span>,
     },
     {
       key: 'level',
@@ -252,15 +263,20 @@ export const InspectionLevelScreen = () => {
         </span>
       ),
     },
+    /* 품목 코드 · 이름 두 칸(사용자 지시 2026-11-20). */
     {
-      key: 'item',
+      key: 'itemCode',
       align: 'center',
-      header: t.history.columns.item,
-      width: '240px',
-      render: (row) => {
-        const label = `${row.itemCode} · ${row.itemName}`;
-        return <span title={label}>{label}</span>;
-      },
+      header: t.history.columns.itemCode,
+      width: '140px',
+      render: (row) => <span title={row.itemCode}>{row.itemCode}</span>,
+    },
+    {
+      key: 'itemName',
+      align: 'center',
+      header: t.history.columns.itemName,
+      width: '200px',
+      render: (row) => <span title={row.itemName}>{row.itemName}</span>,
     },
     {
       key: 'change',
@@ -439,15 +455,17 @@ export const InspectionLevelScreen = () => {
               {messages.common.search}
             </Button>
             {/* 초기화 — 입력과 적용된 조건을 처음으로 되돌린다. 다른 탭과 같다. */}
-            <Button
-              variant="outlined"
-              onClick={() => {
-                setItemInput(null);
-                setFilter((prev) => ({ ...prev, itemId: null, level: '', page: 1 }));
-              }}
-            >
-              {messages.common.reset}
-            </Button>
+            {isFilterChanged && (
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setItemInput(null);
+                  setFilter((prev) => ({ ...prev, itemId: null, level: '', page: 1 }));
+                }}
+              >
+                {messages.common.reset}
+              </Button>
+            )}
             <span className="inspection-standard-filter-divider" aria-hidden />
             <Button
               variant="filled"
@@ -483,7 +501,7 @@ export const InspectionLevelScreen = () => {
           )}
           <div
             ref={fit.ref}
-            className="inspection-queue-table inspection-standard-table-box inspection-level-rows"
+            className="inspection-queue-table inspection-standard-table-box inspection-level-rows cells-start"
             style={resizable.style}
           >
             <Table
@@ -538,7 +556,7 @@ export const InspectionLevelScreen = () => {
           {histories.isError && <AlertBanner variant="error">{t.history.loadFailed}</AlertBanner>}
           <div
             ref={historyFit.ref}
-            className="inspection-queue-table inspection-standard-table-box inspection-level-rows"
+            className="inspection-queue-table inspection-standard-table-box inspection-level-rows cells-start"
             style={historyResizable.style}
           >
             <Table

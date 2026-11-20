@@ -4,7 +4,7 @@ import { isVoided, isWaiting, pairKeyOf, toLabelLots } from './types';
 
 /** 합성값이다 — 실 운영 값을 쓰지 않는다(공개 저장소 경계). */
 describe('toLabelLots — 공급사·품목 묶음의 LOT 을 화면 줄로', () => {
-  it('묶음의 공급사·품목·기본 단위·IQC 대상을 LOT 마다 싣는다', () => {
+  it('묶음의 공급사·품목·기본 단위를 LOT 마다 싣는다', () => {
     const [lot] = toLabelLots({
       supplierId: 8201,
       supplierCode: 'SYN-P-01',
@@ -43,7 +43,6 @@ describe('toLabelLots — 공급사·품목 묶음의 LOT 을 화면 줄로', ()
       supplierCode: 'SYN-P-01',
       itemCode: 'SYN-ITEM-01',
       uomCode: 'EA',
-      inspectionRequired: true,
       supplierLotNo: 'SYN-SL-1',
       lastIssue: null,
     });

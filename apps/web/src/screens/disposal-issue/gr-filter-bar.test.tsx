@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -217,62 +217,65 @@ describe('GrFilterBar — 조건 칩', () => {
     q: 'GR-2026',
   };
 
-  it('걸린 조건을 이름으로 보인다', () => {
+  /* C-6 — 보이는 칸(창고 · 입고일 · 입고번호)의 조건은 칩으로 겹쳐 적지 않는다. 접힌 입고 유형 · 상태만 칩이 된다. */
+  it('접힌 칸에 걸린 조건만 칩이 되고, 보이는 칸의 조건은 칩이 없다', () => {
     renderBar({ appliedFilters: applied });
 
-    expect(screen.getByText(t.filters.chipWarehouse(WAREHOUSE_LABEL))).toBeInTheDocument();
+    expect(screen.getByText(t.filters.chipReceiptType('SAMPLE_TY_A'))).toBeInTheDocument();
+    expect(screen.getByText(t.filters.chipStatus('SAMPLE_ST_A'))).toBeInTheDocument();
+    expect(screen.queryByText(t.filters.chipWarehouse(WAREHOUSE_LABEL))).not.toBeInTheDocument();
     expect(
-      screen.getByText(t.filters.chipPeriodBoth('2026-08-01', '2026-08-05')),
-    ).toBeInTheDocument();
-  });
-
-  /** **번호를 문구로 만드는 자리가 없다**(`omf-mes#44`) — 화면이 이름으로 풀어 넘긴다. */
-  it('칩에 내부 번호가 없다', () => {
-    renderBar({ appliedFilters: applied });
-
-    expect(screen.getByText(t.filters.chipWarehouse(WAREHOUSE_LABEL)).textContent).not.toContain(
-      '9701',
-    );
+      screen.queryByText(t.filters.chipPeriodBoth('2026-08-01', '2026-08-05')),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(t.filters.chipQ('GR-2026'))).not.toBeInTheDocument();
   });
 
   it('×가 그 조건 하나만 푼다', async () => {
     const { onRemoveFilter, user } = renderBar({ appliedFilters: applied });
 
-    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveWarehouse }));
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveStatus }));
 
-    expect(onRemoveFilter).toHaveBeenCalledWith('warehouse');
+    expect(onRemoveFilter).toHaveBeenCalledWith('status');
+  });
+
+  it('입고 유형 · 상태는 「조건 더보기」에 접혀 있고, 펼치면 칸에 값이 보이므로 칩을 거둔다', async () => {
+    const { user } = renderBar({ appliedFilters: applied });
+    const more = screen.getByRole('button', { name: messages.common.filterMore.open });
+
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('combobox', { name: t.fields.status })).not.toBeInTheDocument();
+
+    await user.click(more);
+
+    expect(screen.getByLabelText(t.fields.receiptType)).toBeVisible();
+    expect(screen.getByLabelText(t.fields.status)).toBeVisible();
+    expect(screen.queryByText(t.filters.chipStatus('SAMPLE_ST_A'))).not.toBeInTheDocument();
   });
 
   /**
-   * **기간 칩에는 ×가 없다** — 날짜 컨트롤이 값을 개별로 비우는 수단을 주지 않아 눌러도 값이
-   * 남는다. **이름이 아니라 개수로 잰다** — 「입고일 조건 해제」라는 이름의 ×가 없는지만 보면
-   * 다른 이름을 단 ×를 놓친다.
+   * **선택지에 없는 창고는 칸이 값을 보일 수 없다** — 주소로 좁힘 밖 창고를 걸었거나 이름을 못 푼 경우다. 그때 조건을
+   * 말할 자리는 칩뿐이라, 보이는 칸이어도 칩이 남는다. 이름으로 적고 번호를 내지 않는다(`omf-mes#44`).
    */
-  it('기간 칩에만 해제 버튼이 없고 그 사실을 밝힌다', () => {
-    renderBar({ appliedFilters: applied });
+  it('선택지에 없는 창고는 보이는 칸이어도 칩으로 이름을 말한다', () => {
+    renderBar({
+      appliedFilters: { ...DEFAULT_FILTERS, warehouse: '9799' },
+      chipNames: { warehouse: OTHER_WAREHOUSE_LABEL },
+    });
 
-    const chipRow = screen
-      .getByText(t.filters.chipPeriodBoth('2026-08-01', '2026-08-05'))
-      .closest('.filter-bar');
+    const chip = screen.getByText(t.filters.chipWarehouse(OTHER_WAREHOUSE_LABEL));
 
-    /* 형 단언으로 누르지 않는다 — 없으면 무엇을 집으려 했는지 말하고 세운다. */
-    if (!(chipRow instanceof HTMLElement)) throw new Error('조건 칩 줄을 찾지 못했다');
-
-    /* 칩 다섯 중 넷만 ×를 갖는다 — 어떤 이름이든 하나가 더 붙으면 이 수가 어긋난다. */
-    expect(within(chipRow).getAllByRole('button')).toHaveLength(4);
-    expect(screen.getByText(t.filters.periodClearNote)).toBeInTheDocument();
+    expect(chip).toBeInTheDocument();
+    expect(chip.textContent).not.toContain('9799');
   });
 
-  /**
-   * **상태를 덜 만들면 공허하게 통과한다.** 조건이 하나도 없는 상태로 재면 「기간이 없으면」이
-   * 아니라 「칩이 하나도 없으면」을 재는 것이 되어, 판정 기준을 갈아 끼워도 지나간다.
-   */
-  it('다른 조건만 걸렸으면 기간 안내를 내지 않는다', () => {
-    renderBar({ appliedFilters: { ...DEFAULT_FILTERS, warehouse: '9701' } });
+  it('조건이 없으면 칩도 없다', () => {
+    renderBar();
 
-    /* 짝 방향 — 칩은 실제로 서 있다(아무것도 없어서 통과한 것이 아니다). */
-    expect(screen.getByText(t.filters.chipWarehouse(WAREHOUSE_LABEL))).toBeInTheDocument();
-    expect(screen.queryByText(t.filters.periodClearNote)).not.toBeInTheDocument();
+    /* 선행 단언 — 조건 줄이 실제로 그려져야 「칩이 없다」가 뜻을 갖는다. */
+    expect(screen.getByRole('button', { name: messages.common.search })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: t.filters.chipRemoveStatus }),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -297,10 +300,20 @@ describe('GrFilterBar — 선택지의 한계', () => {
  * 사실을 고정해 두어, 잠금이 더해질 때 그 변화가 감지기에 잡히게 한다.
  */
 describe('GrFilterBar — 조회와 초기화', () => {
-  it('조회와 초기화가 늘 열려 있다', () => {
+  it('조회는 늘 열려 있다', () => {
     renderBar();
 
     expect(screen.getByRole('button', { name: messages.common.search })).not.toBeDisabled();
+  });
+
+  /* C-6 — 처음 조건 그대로면 「초기화」가 할 일이 없다. 칸을 고치거나 걸린 조건이 있으면 그때 보인다. */
+  it('초기화는 처음 조건에서는 없고, 칸을 고치면 나타난다', async () => {
+    const { user } = renderBar();
+
+    expect(screen.queryByRole('button', { name: messages.common.reset })).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(t.fields.q), 'G');
+
     expect(screen.getByRole('button', { name: messages.common.reset })).not.toBeDisabled();
   });
 });

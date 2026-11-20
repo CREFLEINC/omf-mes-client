@@ -29,6 +29,21 @@ afterEach(() => {
 });
 
 describe('목록 · 상세 배치', () => {
+  it('배치 단추는 「더보기」 안에 접혀 있다', async () => {
+    stubWidth(1536);
+    const target = document.createElement('div');
+    target.id = HUB_ACTIONS_ID;
+    document.body.append(target);
+    render(<SplitOrientationToggle orientation="row" onChange={vi.fn()} />);
+
+    const more = await screen.findByRole('button', { name: '더보기' });
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('button', { name: '좌우 배치' })).toBeNull();
+    await userEvent.setup().click(more);
+    expect(more).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('group', { name: '목록·상세 배치' })).toBeInTheDocument();
+  });
+
   it('고른 배치를 남기고 다시 읽는다', () => {
     stubWidth(1536);
     const { result } = renderHook(() => useSplitOrientation('test:layout'));
@@ -46,11 +61,15 @@ describe('목록 · 상세 배치', () => {
     const onChange = vi.fn();
     render(<SplitOrientationToggle orientation="column" onChange={onChange} />);
 
-    const side = await screen.findByRole('button', { name: '좌우 배치' });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: '더보기' }));
+    const side = screen.getByRole('button', { name: '좌우 배치' });
     expect(side).toBeEnabled();
     expect(side).toHaveAttribute('aria-pressed', 'false');
-    await userEvent.setup().click(side);
+    await user.click(side);
     expect(onChange).toHaveBeenCalledWith('row');
+    /* 고르면 판이 닫힌다. */
+    expect(screen.queryByRole('button', { name: '좌우 배치' })).toBeNull();
   });
 
   it('1440px보다 좁으면 단추는 상하를 눌린 상태로 보이고, 좌우는 사유와 함께 끈다', async () => {
@@ -61,7 +80,8 @@ describe('목록 · 상세 배치', () => {
     const onChange = vi.fn();
     render(<SplitOrientationToggle orientation="row" onChange={onChange} />);
 
-    const side = await screen.findByRole('button', { name: '좌우 배치' });
+    await userEvent.setup().click(await screen.findByRole('button', { name: '더보기' }));
+    const side = screen.getByRole('button', { name: '좌우 배치' });
     expect(side).toHaveAttribute('aria-pressed', 'false');
     expect(side).toBeDisabled();
     expect(side).toHaveAttribute('title', '창이 좁아 상하로 배치됩니다.');

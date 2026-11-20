@@ -19,6 +19,11 @@ export interface SelectFieldProps {
    */
   wide?: boolean;
   /**
+   * 조회 조건 칸 폭(C-19) — 고른 값에 따라 칸 폭이 바뀌지 않게 정한 폭을 준다. 주면 `wide` 대신 이 폭을 쓴다.
+   * 값이 길면 말줄임한다.
+   */
+  filterWidth?: 'sm' | 'md';
+  /**
    * 거래처 칸 — 거래처를 통째로 받지 않고 쪽 단위로 찾는다(`PartnerSelect`, 사용자 지시 2026-10-29). 이때 `options` 는
    * 맨 앞 고정 선택지(「전체」)다.
    */
@@ -47,6 +52,7 @@ export const SelectField = ({
   note,
   placeholder,
   wide = false,
+  filterWidth,
   partners = false,
 }: SelectFieldProps) => {
   const id = useId();
@@ -58,7 +64,15 @@ export const SelectField = ({
   const hasEmptyOption = options.some((option) => option.value === '');
 
   return (
-    <div className={wide ? 'field-cell wide-select' : 'field-cell'}>
+    <div
+      className={
+        filterWidth !== undefined
+          ? `field-cell filter-field-${filterWidth}`
+          : wide
+            ? 'field-cell wide-select'
+            : 'field-cell'
+      }
+    >
       <FieldLabel htmlFor={id} label={label} />
       {partners ? (
         <PartnerSelect

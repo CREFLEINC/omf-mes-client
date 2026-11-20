@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router';
 
 import { BoardFrame } from '../../patterns/board-frame';
 import { BoardTable } from '../../patterns/board-table';
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { OneLine } from '../../patterns/po-board';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { isErpCodeGroup } from './erp-groups';
@@ -86,6 +87,16 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
     setDraft({ q, includeInactive });
   }, [q, includeInactive]);
 
+  /*
+   * 초기화는 초안도 함께 비운다 — 주소가 이미 처음 값이면 주소가 바뀌지 않아 따라가는 effect 가
+   * 깨어나지 않고, 치던 값이 그대로 남는다. 「초기화」는 바뀐 것이 있을 때만 보인다(C-6).
+   */
+  const reset = (): void => {
+    setDraft(EMPTY_FILTERS);
+    onReset();
+  };
+  const isChanged = hasChangedFilters(EMPTY_FILTERS, draft, applied);
+
   return (
     <form
       className="filter-bar"
@@ -115,9 +126,11 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
       <div className="field-cell field-cell-unlabeled">
         <div className="filter-actions">
           <Button type="submit">{messages.common.search}</Button>
-          <Button variant="outlined" onClick={onReset}>
-            {messages.common.reset}
-          </Button>
+          {isChanged && (
+            <Button variant="outlined" onClick={reset}>
+              {messages.common.reset}
+            </Button>
+          )}
         </div>
       </div>
     </form>

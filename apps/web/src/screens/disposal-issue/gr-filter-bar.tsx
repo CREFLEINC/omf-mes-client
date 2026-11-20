@@ -1,6 +1,14 @@
-import { Button, Chip, DatePicker, SearchInput } from '@crefle/web-ui';
+import { Button, DatePicker, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
+
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  hasChangedFilters,
+  useFilterMore,
+  type HiddenFilterChip,
+} from '../../patterns/filter-more';
 
 import { codeNote, codePlaceholder } from './code-options';
 import { FieldLabel } from './field-label';
@@ -71,6 +79,11 @@ export interface GrFilterBarProps {
  * **조건이 하나도 없어도 조회가 열려 있다** — 이 화면은 들어오자마자 대상 후보를 보여야 한다.
  * 잠글 조건이 없어 「조회」에 비활성 사유가 붙는 자리도 없다.
  *
+ * **보이는 칸은 셋이다**(C-6 · 관리웹 정리 시안 A, 2026-11-20) — 창고 · 입고일 · 입고번호. 입고 유형 · 상태는 값 목록이
+ * 아직 비어 있어 고를 것이 없으므로 「조건 더보기」에 접는다(주소로 걸린 값은 칩으로 보인다). 보이는 칸의 조건은 칩으로
+ * 겹쳐 적지 않는다 — 다만 창고 선택지에 없는 창고(좁힘 밖 · 이름을 못 푼 창고)는 칸이 값을 보일 수 없어 칩이 남는다.
+ * 「초기화」는 바뀐 것이 있을 때만 보인다.
+ *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
 export const GrFilterBar = ({
@@ -86,6 +99,7 @@ export const GrFilterBar = ({
   onReset,
 }: GrFilterBarProps) => {
   const periodId = useId();
+  const more = useFilterMore();
   const [filters, setFilters] = useState<ReceiptFilters>(appliedFilters);
 
   /*
@@ -132,8 +146,24 @@ export const GrFilterBar = ({
     onReset();
   };
 
-  const chips = toFilterChips(appliedFilters, chipNames);
-  const hasPeriodChip = chips.some((chip) => chip.key === 'period');
+  /*
+   * 접힌 칸(입고 유형 · 상태)의 조건만 칩으로. 펼치면 칸에 값이 보이므로 그 칩은 거둔다. 창고는 보이는 칸이지만 선택지에
+   * 없는 창고는 칸이 값을 보일 수 없어 칩이 남는다(좁힘 밖 창고를 주소로 건 경우).
+   */
+  const isWarehouseShown =
+    appliedFilters.warehouse === '' ||
+    warehouseOptions.some((option) => option.value === appliedFilters.warehouse);
+  const isHidden = (key: RemovableChipKey): boolean =>
+    key === 'warehouse'
+      ? !isWarehouseShown
+      : !more.isOpen && (key === 'receiptType' || key === 'status');
+  const hiddenChips = toFilterChips(appliedFilters, chipNames).flatMap(
+    (chip): HiddenFilterChip<RemovableChipKey>[] =>
+      chip.removeLabel !== null && isHidden(chip.key)
+        ? [{ key: chip.key, label: chip.label, removeLabel: chip.removeLabel }]
+        : [],
+  );
+  const isChanged = hasChangedFilters(DEFAULT_FILTERS, filters, appliedFilters);
 
   /* 「전체」를 값이 빈 선택지로 둔다 — 두지 않으면 한 번 고른 뒤에 해제할 방법이 칸 안에 없어진다. */
   const withAll = (options: SelectOption[]): SelectOption[] => [
@@ -192,30 +222,6 @@ export const GrFilterBar = ({
           />
         </div>
 
-        <SelectField
-          label={t.fields.receiptType}
-          options={codeOptions(receiptTypeOptions)}
-          value={filters.receiptType}
-          note={codeNote(receiptTypeOptions)}
-          placeholder={receiptTypeOptions.length === 0 ? codePlaceholder() : t.filters.all}
-          disabled={isLocked}
-          onChange={(value) => {
-            setFilters((prev) => ({ ...prev, receiptType: value }));
-          }}
-        />
-
-        <SelectField
-          label={t.fields.status}
-          options={codeOptions(statusOptions)}
-          value={filters.status}
-          note={codeNote(statusOptions)}
-          placeholder={statusOptions.length === 0 ? codePlaceholder() : t.filters.all}
-          disabled={isLocked}
-          onChange={(value) => {
-            setFilters((prev) => ({ ...prev, status: value }));
-          }}
-        />
-
         <SearchInput
           label={t.fields.q}
           value={filters.q}
@@ -237,45 +243,49 @@ export const GrFilterBar = ({
             <Button disabled={isLocked} onClick={search}>
               {messages.common.search}
             </Button>
-            <Button variant="outlined" disabled={isLocked} onClick={reset}>
-              {messages.common.reset}
-            </Button>
+            {isChanged && (
+              <Button variant="outlined" disabled={isLocked} onClick={reset}>
+                {messages.common.reset}
+              </Button>
+            )}
+            <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
           </div>
+        </div>
+      </div>
+
+      {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+      <div id={more.id} hidden={!more.isOpen}>
+        <div className="filter-bar">
+          <SelectField
+            label={t.fields.receiptType}
+            options={codeOptions(receiptTypeOptions)}
+            value={filters.receiptType}
+            note={codeNote(receiptTypeOptions)}
+            placeholder={receiptTypeOptions.length === 0 ? codePlaceholder() : t.filters.all}
+            disabled={isLocked}
+            onChange={(value) => {
+              setFilters((prev) => ({ ...prev, receiptType: value }));
+            }}
+          />
+
+          <SelectField
+            label={t.fields.status}
+            options={codeOptions(statusOptions)}
+            value={filters.status}
+            note={codeNote(statusOptions)}
+            placeholder={statusOptions.length === 0 ? codePlaceholder() : t.filters.all}
+            disabled={isLocked}
+            onChange={(value) => {
+              setFilters((prev) => ({ ...prev, status: value }));
+            }}
+          />
         </div>
       </div>
 
       {/* 기본 기간이 없다는 사실은 화면에서 읽혀야 한다 — 비어 있는 칸이 고장으로 읽히지 않게 한다. */}
       <p className="field-note">{t.filters.periodNote}</p>
 
-      {chips.length > 0 && (
-        <div className="filter-bar">
-          {chips.map((chip) =>
-            chip.removeLabel === null ? (
-              /*
-               * **기간 칩에는 ×가 없다.** 날짜 컨트롤이 값을 개별로 비우는 수단을 주지 않아
-               * 눌러도 값이 남는다 — 그러면 칩은 사라졌는데 조건은 걸려 있는 상태가 된다.
-               */
-              <Chip key={chip.key} variant="status">
-                {chip.label}
-              </Chip>
-            ) : (
-              <Chip
-                key={chip.key}
-                variant="status"
-                removeLabel={chip.removeLabel}
-                onRemove={() => {
-                  onRemoveFilter(chip.key);
-                }}
-              >
-                {chip.label}
-              </Chip>
-            ),
-          )}
-        </div>
-      )}
-
-      {/* ×가 하나만 없는 이유를 밝힌다 — 없으면 사용자가 ×를 찾다가 화면을 고장으로 읽는다. */}
-      {hasPeriodChip && <p className="field-note">{t.filters.periodClearNote}</p>}
+      <HiddenFilterChips open={false} chips={hiddenChips} onRemove={onRemoveFilter} />
     </>
   );
 };

@@ -93,6 +93,19 @@ describe('ReturnReceiptScreen — 원 출하 찾기', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('「초기화」는 처음 값(최근 한 달)과 달라진 것이 있을 때만 보이고, 누르면 처음 값으로 돌아간다', async () => {
+    const { user } = renderScreen();
+    await screen.findByRole('button', { name: t.actions.selectRow('SH-TEST-0455') });
+
+    expect(screen.queryByRole('button', { name: t.actions.reset })).toBeNull();
+
+    await user.type(screen.getByLabelText(t.fields.keyword), 'SH-TEST');
+    await user.click(screen.getByRole('button', { name: t.actions.reset }));
+
+    expect(screen.getByLabelText(t.fields.keyword)).toHaveValue('');
+    expect(screen.queryByRole('button', { name: t.actions.reset })).toBeNull();
+  });
+
   it('목록 조회가 실패하면 다시 시도할 수 있다', async () => {
     renderScreen({ listStatus: 500 });
 

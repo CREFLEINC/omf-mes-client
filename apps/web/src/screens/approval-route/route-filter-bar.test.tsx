@@ -14,9 +14,7 @@ const baseProps = (overrides: Partial<RouteFilterBarProps> = {}): RouteFilterBar
   appliedFilters: DEFAULT_FILTERS,
   approvalTypeOptions: [],
   businessUnitOptions: [{ value: '9101', label: BUSINESS_UNIT_LABEL }],
-  businessUnitLabel: () => BUSINESS_UNIT_LABEL,
   onSearch: vi.fn(),
-  onRemoveFilter: vi.fn(),
   onReset: vi.fn(),
   ...overrides,
 });
@@ -79,14 +77,22 @@ describe('RouteFilterBar — 모아서 적용', () => {
     expect(onSearch).toHaveBeenCalledWith({ ...DEFAULT_FILTERS, q: 'SAMPLE' });
   });
 
-  it('초기화는 자기 편집 상태까지 함께 비운다', async () => {
+  it('초기화는 바뀐 것이 생겨야 나타나고, 자기 편집 상태까지 함께 비운다', async () => {
     const { onReset, user } = renderBar();
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
 
     await user.type(screen.getByLabelText(t.fields.q), 'SAMPLE');
     await user.click(screen.getByRole('button', { name: messages.common.reset }));
 
     expect(onReset).toHaveBeenCalledTimes(1);
     expect(screen.getByLabelText(t.fields.q)).toHaveValue('');
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
+  });
+
+  it('적용된 조건이 처음 값과 다르면 초기화가 보인다', () => {
+    renderBar({ appliedFilters: { ...DEFAULT_FILTERS, includeInactive: true } });
+
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeInTheDocument();
   });
 
   it('주소가 바뀌면 편집 중인 값도 그 값으로 되돌아간다', () => {
@@ -165,7 +171,7 @@ describe('RouteFilterBar — 사업부 선택지', () => {
 });
 
 describe('RouteFilterBar — 조건 칩', () => {
-  it('걸린 조건마다 칩 하나를 낸다', () => {
+  it('네 조건이 모두 조건 줄에 보여 칩으로 겹쳐 적지 않는다', () => {
     renderBar({
       appliedFilters: {
         approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
@@ -175,50 +181,9 @@ describe('RouteFilterBar — 조건 칩', () => {
       },
     });
 
-    expect(
-      screen.getByText(t.filters.chipApprovalType('GOODS_ISSUE_DISPOSAL')),
-    ).toBeInTheDocument();
-    expect(screen.getByText(t.filters.chipBusinessUnit(BUSINESS_UNIT_LABEL))).toBeInTheDocument();
-    expect(screen.getByText(t.filters.chipKeyword('SAMPLE'))).toBeInTheDocument();
-
-    /*
-     * 「미사용 포함」은 확인칸의 이름이기도 하다 — 글자로 찾으면 둘이 잡힌다.
-     * 칩임을 확실히 하려고 그 칩의 제거 버튼으로 집는다.
-     */
-    for (const removeLabel of [
-      t.filters.chipRemoveApprovalType,
-      t.filters.chipRemoveBusinessUnit,
-      t.filters.chipRemoveKeyword,
-      t.filters.chipRemoveIncludeInactive,
-    ]) {
-      expect(screen.getByRole('button', { name: removeLabel })).toBeInTheDocument();
-    }
-  });
-
-  it('사업부 칩에 내부 번호가 없다', () => {
-    renderBar({ appliedFilters: { ...DEFAULT_FILTERS, businessUnitId: '9101' } });
-
-    const chip = screen.getByText(t.filters.chipBusinessUnit(BUSINESS_UNIT_LABEL));
-
-    expect(chip).toHaveTextContent(BUSINESS_UNIT_LABEL);
-    expect(chip.textContent).not.toContain('9101');
-  });
-
-  it('칩의 ×는 그 조건 하나만 즉시 푼다', async () => {
-    const { onRemoveFilter, user } = renderBar({
-      appliedFilters: { ...DEFAULT_FILTERS, q: 'SAMPLE', includeInactive: true },
-    });
-
-    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveKeyword }));
-
-    expect(onRemoveFilter).toHaveBeenCalledWith('q');
-  });
-
-  it('조건이 없으면 칩도 없다', () => {
-    renderBar();
-
-    expect(
-      screen.queryByRole('button', { name: t.filters.chipRemoveKeyword }),
-    ).not.toBeInTheDocument();
+    /* 선행 단언 — 조건이 칸에 서 있어야 「칩이 없다」가 뜻을 갖는다. */
+    expect(screen.getByLabelText(t.fields.q)).toHaveValue('SAMPLE');
+    expect(screen.getByRole('checkbox', { name: messages.common.includeInactive })).toBeChecked();
+    expect(screen.queryByRole('button', { name: /조건 제거$/ })).not.toBeInTheDocument();
   });
 });

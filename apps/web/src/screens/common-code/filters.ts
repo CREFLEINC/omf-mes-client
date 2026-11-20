@@ -1,5 +1,3 @@
-import { messages } from '@omf-mes/i18n';
-
 import type { CodeGroupFilters, PartnerFilters, ScopedFilters } from './types';
 
 /**
@@ -8,8 +6,6 @@ import type { CodeGroupFilters, PartnerFilters, ScopedFilters } from './types';
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
-
-const t = messages.commonCode;
 
 /** 주소 키는 짧게 쓰고 계약 이름과 분리한다 — 주소는 사람이 읽고 고치는 자리다. */
 const URL_KEYS = {
@@ -239,108 +235,8 @@ export const toPartnerListQuery = (filters: PartnerFilters, page: number): Partn
 export const hasAnyPartnerFilter = (filters: PartnerFilters): boolean =>
   filters.q !== '' || filters.includeInactive;
 
-export interface FilterChip {
-  key: keyof CodeGroupFilters;
-  label: string;
-  /** 제거 버튼의 접근 이름. 「제거」가 둘이면 어느 조건을 푸는 것인지 알 수 없다. */
-  removeLabel: string;
-}
-
-/** 적용된 조건마다 칩 하나. 순서는 조건 줄의 컨트롤 순서와 같다. */
-export const toFilterChips = (filters: CodeGroupFilters): FilterChip[] => {
-  const chips: FilterChip[] = [];
-
-  if (filters.q !== '') {
-    chips.push({
-      key: 'q',
-      label: t.filters.chipKeyword(filters.q),
-      removeLabel: t.filters.chipRemoveKeyword,
-    });
-  }
-
-  if (filters.includeInactive) {
-    chips.push({
-      key: 'includeInactive',
-      label: messages.common.includeInactive,
-      removeLabel: t.filters.chipRemoveIncludeInactive,
-    });
-  }
-
-  return chips;
-};
-
 export const hasAnyFilter = (filters: CodeGroupFilters): boolean =>
   filters.q !== '' || filters.includeInactive;
 
-/**
- * 조건 하나만 푼다. 칩의 제거 버튼이 쓴다.
- * 키마다 「비었다」의 표현이 달라(문자열 vs 불리언) 호출부가 그것을 알지 않도록 여기서 다룬다.
- */
-export const clearFilter = (
-  filters: CodeGroupFilters,
-  key: keyof CodeGroupFilters,
-): CodeGroupFilters =>
-  key === 'includeInactive' ? { ...filters, includeInactive: false } : { ...filters, [key]: '' };
-
-export interface ScopedFilterChip {
-  key: keyof ScopedFilters;
-  label: string;
-  removeLabel: string;
-}
-
-/**
- * 조건 칩의 문구. 탭마다 선택 축의 이름이 달라(사업부·부서) 바깥에서 받는다 —
- * 문구를 이 파일에 박으면 탭이 늘 때마다 여기를 고치게 된다.
- */
-export interface ScopedFilterLabels {
-  keyword: (value: string) => string;
-  keywordRemove: string;
-  scope: (label: string) => string;
-  scopeRemove: string;
-  includeInactiveRemove: string;
-}
-
-/**
- * 적용된 조건마다 칩 하나. 순서는 조건 줄의 컨트롤 순서와 같다.
- *
- * 선택 축은 **번호가 아니라 이름**으로 낸다 — 번호를 그대로 보이면 사용자가 무엇을 걸었는지 모른다.
- */
-export const toScopedFilterChips = (
-  filters: ScopedFilters,
-  scopeLabel: (scopeId: string) => string,
-  labels: ScopedFilterLabels,
-): ScopedFilterChip[] => {
-  const chips: ScopedFilterChip[] = [];
-
-  if (filters.q !== '') {
-    chips.push({ key: 'q', label: labels.keyword(filters.q), removeLabel: labels.keywordRemove });
-  }
-
-  if (filters.scopeId !== '') {
-    chips.push({
-      key: 'scopeId',
-      label: labels.scope(scopeLabel(filters.scopeId)),
-      removeLabel: labels.scopeRemove,
-    });
-  }
-
-  if (filters.includeInactive) {
-    chips.push({
-      key: 'includeInactive',
-      label: messages.common.includeInactive,
-      removeLabel: labels.includeInactiveRemove,
-    });
-  }
-
-  return chips;
-};
-
 export const hasAnyScopedFilter = (filters: ScopedFilters): boolean =>
   filters.q !== '' || filters.scopeId !== '' || filters.includeInactive;
-
-/** 조건 하나만 푼다. 키마다 「비었다」의 표현이 달라(문자열 vs 불리언) 여기서 다룬다. */
-export const clearScopedFilter = (
-  filters: ScopedFilters,
-  key: keyof ScopedFilters,
-): ScopedFilters =>
-  key === 'includeInactive' ? { ...filters, includeInactive: false } : { ...filters, [key]: '' };

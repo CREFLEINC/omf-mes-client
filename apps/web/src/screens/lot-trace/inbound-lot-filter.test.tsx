@@ -194,11 +194,11 @@ describe('FR-035 W-02-09 LOT 생산 이력 — 입하 LOT 칸 · 거르기', () 
     expect(screen.queryByText(messages.lotTrace.period.required)).toBeNull();
   });
 
-  it('FR-035 상세 조건 「입하 LOT 번호」 칸에 넣으면 그 조건으로 조회한다', async () => {
+  it('FR-035 조건 더보기 「입하 LOT 번호」 칸에 넣으면 그 조건으로 조회한다', async () => {
     const { calls, user } = setup();
 
     await screen.findByText('GR-SYN-0001');
-    await user.click(screen.getByRole('button', { name: new RegExp(t.filters.more) }));
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     await user.type(
       screen.getByRole('searchbox', { name: t.filters.inboundLotNo }),
       `${IL_NO}{Enter}`,

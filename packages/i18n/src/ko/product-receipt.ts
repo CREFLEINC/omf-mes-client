@@ -140,4 +140,37 @@ export const productReceipt = {
     action: '전송 실패한 기록 보기',
   },
   another: '다음 인식표',
+  /**
+   * 방금 찍은 결과 칸(사용자 지시 2026-11-20, 입하 등록 시안 A 를 제품 입고에도) — 담음 초록 · 이미 담음 회색(몇 번
+   * 줄인지) · 담지 않음 빨강. 「담음」은 아직 서버에 보내지 않은 것이라 「등록됨」으로 쓰지 않는다(사용자 결정 2026-11-20).
+   */
+  result: {
+    added: '담음',
+    unitLines: (count: number) => `인식표 1개 → ${String(count)}라인`,
+    duplicate: '이미 담은 LOT입니다',
+    duplicateRow: (no: number) => `인수 대상 No ${String(no)}에 있습니다`,
+    rejected: '담지 않음',
+  },
+  /** 인수 대상 표 — 줄마다 실물 수량 칸. 줄을 누르면 시트(제조일 · 유효기간 · 양품 실적). */
+  tally: {
+    total: (count: number) => `${String(count)}개`,
+    open: (itemCode: string, lotNo: string) => `${itemCode} ${lotNo} 열기`,
+  },
+  sheet: {
+    title: '인수 대상',
+    fields: {
+      itemCode: '품목코드',
+      itemName: '품목명',
+      lot: 'LOT',
+      expectedUnit: '인식표 수량',
+      expectedGood: '양품 실적',
+      manufactured: '제조',
+      expiry: '유효기간',
+    },
+  },
+  /** 창고는 고르면 맨 위 한 줄로 접는다. */
+  warehouseChange: '바꾸기',
+  summary: {
+    count: (count: number) => `${String(count)}개`,
+  },
 } as const;

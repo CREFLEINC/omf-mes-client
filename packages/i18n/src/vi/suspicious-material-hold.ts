@@ -18,6 +18,8 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
       excludeFullyHeld: 'Bỏ LOT đã tạm giữ toàn bộ',
       lotNo: 'Số LOT',
       item: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       warehouse: 'Kho',
       location: 'Vị trí',
       quantity: 'Số lượng đang giữ',

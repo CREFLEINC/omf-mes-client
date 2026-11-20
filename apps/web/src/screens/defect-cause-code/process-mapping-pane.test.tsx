@@ -187,6 +187,8 @@ describe('DefectCauseCodeScreen — 공정 매핑', () => {
   it('조회 카드의 검색어로 행을 거르고, 초기화하면 모두 보인다(#209)', async () => {
     const { user } = renderMapping();
     await screen.findByRole('rowheader', { name: /DF-11 · 스크래치/ });
+    /* 초기화는 바뀐 것이 있을 때만 보인다(C-6). */
+    expect(screen.queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
 
     // 검색 칸은 칸에서 바로 검색해 고른다 — 창(팝업)이 열리지 않는다(#209 · #226).
     const field = screen.getByLabelText('불량코드 검색');

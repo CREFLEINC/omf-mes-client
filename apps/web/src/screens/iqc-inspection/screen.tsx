@@ -10,10 +10,9 @@ import {
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
-import { DetailFiltersToggle } from '../../patterns/detail-filters';
 import {
   InspectionHubCounts,
   type InspectionHubStatus,
@@ -36,7 +35,6 @@ import { InspectionDetail } from '../parts-iqc-inspection/inspection-detail';
 import { plantTodayRange } from '../parts-iqc-inspection/today';
 import { LeaveGuard } from '../routing/leave-guard';
 import {
-  EMPTY_FILTERS,
   LIST_PAGE_SIZES,
   PAGE_SIZE,
   QUEUE_STATUSES,
@@ -54,7 +52,7 @@ import {
 import { QueueLoadErrorBanner } from './load-error-banner';
 import { toPageView } from './pagination';
 import { useInspectionQueue } from './queries';
-import { QueueFilterBar } from './queue-filter-bar';
+import { QueueDetailFilters } from './queue-detail-filters';
 import { QueueTable } from './queue-table';
 import { useItemNames, useLotNumbers, useLotSuppliers } from './reference-lookup';
 
@@ -90,11 +88,6 @@ const IqcInspectionScreenBody = () => {
   }, [queryClient]);
 
   const filters = readFilters(searchParams);
-  /* 상세 조건(품목 · 공급사 · 의뢰번호)은 접어 둔다 — 주소에 그 조건이 걸려 있으면 펼친 채로 연다(#225). */
-  const hasDetailCondition =
-    filters.itemId !== null || filters.supplierId !== null || filters.keyword !== '';
-  const [detailOpen, setDetailOpen] = useState(hasDetailCondition);
-  const detailFiltersId = useId();
   const page = readPage(searchParams);
   const pageSize = readPageSize(searchParams);
   const selectedId = readSelectedId(searchParams);
@@ -166,11 +159,12 @@ const IqcInspectionScreenBody = () => {
     else openRequest(to);
   };
   /* 고른 줄을 다시 누르면 상세가 닫힌다. */
-  /* 새 의뢰를 고르면 목록을 접어 상세가 자리를 다 쓴다 — 다시 펼치기는 목록과 상세 사이의 단추(사용자 지시 · #252). */
+  /*
+   * 의뢰를 골라도 목록은 그대로 둔다 — 접기·펼치기는 목록과 상세 사이의 단추로만 한다(사용자 지시 2026-11-20, 고르면
+   * 저절로 접던 #252 를 걷음).
+   */
   const select = (inspectionRequestId: number): void => {
-    const next = inspectionRequestId === selectedId ? null : inspectionRequestId;
-    moveTo(next);
-    if (next !== null && !split.collapsed) split.toggleCollapsed();
+    moveTo(inspectionRequestId === selectedId ? null : inspectionRequestId);
   };
 
   /*
@@ -188,7 +182,6 @@ const IqcInspectionScreenBody = () => {
   }, [scanOpen, selectedId]);
   const openByScan = (inspectionRequestId: number, scannedLotId: number | null): void => {
     if (inspectionRequestId !== selectedId) select(inspectionRequestId);
-    else if (!split.collapsed) split.toggleCollapsed();
     setScanOpen(
       scannedLotId === null
         ? null
@@ -288,28 +281,9 @@ const IqcInspectionScreenBody = () => {
               {hubText.pendingOnly}
             </Checkbox>
           </div>
-          <DetailFiltersToggle
-            open={detailOpen}
-            onToggle={() => setDetailOpen((open) => !open)}
-            controlsId={detailFiltersId}
-            hasCondition={hasDetailCondition}
-          />
         </div>
-        {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
-        <div id={detailFiltersId} className="inspection-detail-filters" hidden={!detailOpen}>
-          <QueueFilterBar
-            appliedFilters={filters}
-            showPendingOnly={false}
-            /* 상태는 탭 줄 칩이 맡는다 — 조회는 걸린 칩을 그대로 두고, 초기화는 함께 푼다. */
-            onSearch={(next) =>
-              applyFilters(withDraft(filters, { ...next, pendingOnly: filters.pendingOnly }))
-            }
-            onTogglePendingOnly={(next) =>
-              applyFilters(withDraft(filters, { ...filters, pendingOnly: next }))
-            }
-            onReset={() => applyFilters(EMPTY_FILTERS)}
-          />
-        </div>
+        {/* 품목 · 공급사 · 의뢰번호는 「조건 더보기」로 접는다 — 단추는 스캔 줄 오른쪽 끝(#225), 걸린 조건은 칩으로. */}
+        <QueueDetailFilters filters={filters} onApply={applyFilters} />
       </section>
 
       <div

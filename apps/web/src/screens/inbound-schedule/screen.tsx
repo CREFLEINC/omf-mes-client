@@ -18,6 +18,7 @@ import {
 import type { UnallocatedLine } from './excess-types';
 import { ScheduleFilterBar } from './filter-bar';
 import {
+  clearFilter,
   DEFAULT_FILTERS,
   readFilters,
   readPage,
@@ -34,7 +35,6 @@ import {
   useItemNames,
   usePlantOptions,
   useStorageLocationNames,
-  useSupplierOptions,
   type LookupResult,
 } from './lookups';
 import { PageNav } from './page-nav';
@@ -45,7 +45,7 @@ import {
   useInboundProgress,
   useInboundStageCounts,
 } from './progress-queries';
-import { QuickLookupBar, type QuickLookupHandle } from './quick-lookup-bar';
+import { QuickLookupBar, QuickToggles, type QuickLookupHandle } from './quick-lookup-bar';
 import { toPageView } from './pagination';
 import {
   defaultPeriod,
@@ -205,7 +205,6 @@ export const InboundScheduleScreen = () => {
     [progress.data],
   );
 
-  const suppliers = useSupplierOptions();
   const plants = usePlantOptions();
   const storageLocationNameOf = useStorageLocationNames();
 
@@ -316,9 +315,6 @@ export const InboundScheduleScreen = () => {
           fallbackPeriod={fallbackPeriod}
           plantOptions={toSelectOptions(plants)}
           chipNames={{
-            supplier: describeReference(
-              toReference(suppliers, filters.supplier === '' ? null : Number(filters.supplier)),
-            ),
             plant: describeReference(
               toReference(plants, filters.plant === '' ? null : Number(filters.plant)),
             ),
@@ -331,7 +327,7 @@ export const InboundScheduleScreen = () => {
             applyQuery(nextPeriod, nextFilters);
           }}
           onRemoveFilter={(key) => {
-            applyQuery(period, { ...filters, [key]: '' });
+            applyQuery(period, clearFilter(filters, key));
           }}
           onReset={() => {
             applyQuery(fallbackPeriod, DEFAULT_FILTERS);
@@ -339,6 +335,15 @@ export const InboundScheduleScreen = () => {
           quick={
             <QuickLookupBar
               ref={quickRef}
+              appliedPeriod={period}
+              appliedFilters={filters}
+              onApply={(nextPeriod, nextFilters) => {
+                applyQuery(nextPeriod, nextFilters);
+              }}
+            />
+          }
+          quickMore={
+            <QuickToggles
               appliedPeriod={period}
               appliedFilters={filters}
               today={today}

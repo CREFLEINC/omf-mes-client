@@ -4,6 +4,7 @@ import { useQueries, useQuery } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { masterName } from '../../patterns/master-name';
+import { partnerOptionLabel } from '../../patterns/partner-select';
 import { runRequest, toApiError } from '../../patterns/request';
 
 /**
@@ -178,17 +179,40 @@ const lotQuery = (client: Client, lotId: number) => ({
 const INBOUND_RECEIPT = 'INBOUND_RECEIPT';
 
 /**
- * 자재 LOT 의 공급사(사용자 지시 2026-10-29 · #197) — 검사 의뢰 · LOT 응답에 공급사가 없어, LOT 의 출처(입고) → 입고의
- * 공급사 → 거래처 이름으로 잇는다. 같은 LOT · 입고 · 거래처는 요청 하나다. 입고로 생기지 않은 LOT 은 「—」다.
+ * 자재 LOT 의 공급사(사용자 지시 2026-10-29 · #197) — 검사 의뢰 · LOT 응답에 공급사가 없어, LOT 의 입하 LOT → 그 공급사
+ * 이름으로 잇는다(사용자 지시 2026-11-20). 입하 LOT 이 없는 LOT 만 종전처럼 출처(입고) → 입고의 공급사 → 거래처 이름이다.
+ * 같은 LOT · 입하 LOT · 입고 · 거래처는 요청 하나다. 어느 쪽으로도 잇지 못하면 「—」다.
+ *
+ * ⚠ 입고로 생긴 자재 LOT 의 출처는 `INBOUND_RECEIPT_LINE`(입고 라인)이라 아래 `INBOUND_RECEIPT` 갈래는 거의 맞지 않는다 —
+ *   이전 흐름 의뢰의 공급사가 모두 「—」였던 까닭이다(2026-11-20). 서버가 목록에 공급사를 실어 주면 이 풀이는 걷는다.
  */
 export const useLotSuppliers = (lotIds: readonly (number | null | undefined)[]): NameLookup => {
   const { client } = useApiClient();
   const ids = uniqueOf(lotIds);
   const lots = useQueries({ queries: ids.map((lotId) => lotQuery(client, lotId)) });
 
+  const inboundLotOf = (index: number): number | null => lots[index]?.data?.inboundLotId ?? null;
+  const inboundLotIds = uniqueOf(ids.map((_, index) => inboundLotOf(index)));
+  const inboundLots = useQueries({
+    queries: inboundLotIds.map((inboundLotId) => ({
+      queryKey: ['iqc-inspection', 'inbound-lot-supplier', inboundLotId] as const,
+      queryFn: async () => {
+        const data = await runRequest(() =>
+          client.GET('/logistics/inbound-lots/{inboundLotId}', {
+            params: { path: { inboundLotId } },
+          }),
+        );
+        return data.supplierName;
+      },
+      retry: false,
+      staleTime: Infinity,
+    })),
+  });
+
   const receiptOf = (index: number): number | null => {
     const lot = lots[index]?.data;
-    return lot !== undefined && lot.sourceTypeCode === INBOUND_RECEIPT ? lot.sourceId : null;
+    if (lot === undefined || inboundLotOf(index) !== null) return null;
+    return lot.sourceTypeCode === INBOUND_RECEIPT ? lot.sourceId : null;
   };
   const receiptIds = uniqueOf(ids.map((_, index) => receiptOf(index)));
   const receipts = useQueries({
@@ -209,15 +233,7 @@ export const useLotSuppliers = (lotIds: readonly (number | null | undefined)[]):
 
   const partnerIds = uniqueOf(receipts.map((result) => result.data));
   const partners = useQueries({
-    queries: partnerIds.map((partnerId) => ({
-      queryKey: ['iqc-inspection', 'partner', partnerId] as const,
-      queryFn: () =>
-        runRequest(() =>
-          client.GET('/mdm/partners/{partnerId}', { params: { path: { partnerId } } }),
-        ),
-      retry: false,
-      staleTime: Infinity,
-    })),
+    queries: partnerIds.map((partnerId) => partnerQuery(client, partnerId)),
   });
 
   return {
@@ -226,6 +242,11 @@ export const useLotSuppliers = (lotIds: readonly (number | null | undefined)[]):
       const lotIndex = ids.indexOf(id);
       const lot = lotIndex === -1 ? undefined : lots[lotIndex];
       if (lot === undefined || lot.isPending || lot.isError) return describe(lot, undefined);
+      const inboundLotId = inboundLotOf(lotIndex);
+      if (inboundLotId !== null) {
+        const inboundLot = inboundLots[inboundLotIds.indexOf(inboundLotId)];
+        return describe(inboundLot, inboundLot?.data);
+      }
       const receiptId = receiptOf(lotIndex);
       if (receiptId === null) return t.empty;
       const receipt = receipts[receiptIds.indexOf(receiptId)];
@@ -236,6 +257,31 @@ export const useLotSuppliers = (lotIds: readonly (number | null | undefined)[]):
       return describe(partner, partner?.data?.partnerName);
     },
   };
+};
+
+/* 거래처 단건 — LOT 공급사 풀이와 접힌 공급사 조건 칩이 같은 조회를 나눠 쓴다. */
+const partnerQuery = (client: Client, partnerId: number) => ({
+  queryKey: ['iqc-inspection', 'partner', partnerId] as const,
+  queryFn: () =>
+    runRequest(() => client.GET('/mdm/partners/{partnerId}', { params: { path: { partnerId } } })),
+  retry: false,
+  staleTime: Infinity,
+});
+
+/**
+ * 공급사 조건의 이름 — 「조건 더보기」에 접힌 공급사 칸이 칩으로 알릴 때 쓴다(C-6). 칸이 보이는 글자와 같다(거래처코드 ·
+ * 거래처명). 못 푼 갈래는 품목 이름과 같은 네 갈래 글자다.
+ */
+export const useSupplierName = (partnerId: number | null): string => {
+  const { client } = useApiClient();
+  const result = useQuery({
+    ...partnerQuery(client, partnerId ?? 0),
+    enabled: partnerId !== null,
+  });
+
+  if (partnerId === null) return t.empty;
+  const partner = result.data;
+  return describe(result, partner === undefined ? undefined : partnerOptionLabel(partner));
 };
 
 export interface SupplierOptions {

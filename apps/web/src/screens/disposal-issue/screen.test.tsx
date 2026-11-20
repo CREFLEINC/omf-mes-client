@@ -1505,17 +1505,19 @@ describe('DisposalIssueScreen — 폐기 대상 창고 좁힘', () => {
 });
 
 describe('DisposalIssueScreen — 조건 칩', () => {
-  it('걸린 조건을 이름으로 보이고 ×가 그 조건만 푼다', async () => {
-    const { user } = renderScreen(allRoutes(), '?wh=9701&q=GR-2026');
+  /* C-6 — 칩은 「조건 더보기」에 접힌 조건(입고 유형 · 상태)에만 선다. 보이는 창고 · 입고번호는 칩이 없다. */
+  it('접힌 조건만 칩으로 보이고 ×가 그 조건만 푼다', async () => {
+    const { user } = renderScreen(allRoutes(), '?wh=9701&st=SAMPLE_ST_A&q=GR-2026');
 
     await waitForList();
 
-    expect(screen.getByText(t.filters.chipWarehouse(WAREHOUSE_LABEL))).toBeInTheDocument();
+    expect(screen.queryByText(t.filters.chipWarehouse(WAREHOUSE_LABEL))).not.toBeInTheDocument();
+    expect(screen.getByText(t.filters.chipStatus('SAMPLE_ST_A'))).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveWarehouse }));
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveStatus }));
 
     await waitFor(() => {
-      expect(currentLocation()).toBe(`${ROUTE}?q=GR-2026`);
+      expect(currentLocation()).toBe(`${ROUTE}?wh=9701&q=GR-2026`);
     });
   });
 
@@ -4080,7 +4082,8 @@ describe('DisposalIssueScreen — 잠금이 닿지 않는 두 길', () => {
       allRoutes(chainRoutes()),
       undefined,
       [ISSUES_PATH],
-      '?gr=9001&q=GR',
+      /* 칩은 「조건 더보기」에 접힌 조건에만 선다(C-6) — 상태로 건다. */
+      '?gr=9001&st=SAMPLE_ST_A',
     );
 
     await openSubmitConfirm(user);
@@ -4091,7 +4094,7 @@ describe('DisposalIssueScreen — 잠금이 닿지 않는 두 길', () => {
     });
 
     const before = currentLocation();
-    const chipRemove = screen.getByRole('button', { name: t.filters.chipRemoveQ });
+    const chipRemove = screen.getByRole('button', { name: t.filters.chipRemoveStatus });
 
     /* 첫째 겹이 없는 자리다 — 실제로 눌린다는 것을 짝으로 굳힌다. */
     expect(chipRemove).toBeEnabled();
@@ -5627,7 +5630,8 @@ describe('DisposalIssueScreen — 처리 전송 중 잠금', () => {
   it('보내는 동안 이력 조건 칩의 ×를 눌러도 주소가 바뀌지 않는다', async () => {
     const { user, release } = await setupReadyToPost(
       allRoutes([postableDetailRoute(), postRoute()]),
-      `${HISTORY_SEARCH}&iq=GI&gi=9501`,
+      /* 칩은 「조건 더보기」에 접힌 조건에만 선다(C-6) — 상태로 건다. */
+      `${HISTORY_SEARCH}&ist=SAMPLE_GI_STATUS_A&gi=9501`,
       '',
       [POST_PATH],
     );
@@ -5640,7 +5644,7 @@ describe('DisposalIssueScreen — 처리 전송 중 잠금', () => {
     });
 
     const before = currentLocation();
-    const chipRemove = screen.getByRole('button', { name: t.historyFilters.chipRemoveQ });
+    const chipRemove = screen.getByRole('button', { name: t.historyFilters.chipRemoveStatus });
 
     /* 첫째 겹이 없는 자리다 — 실제로 눌린다는 것을 짝으로 굳힌다. */
     expect(chipRemove).toBeEnabled();

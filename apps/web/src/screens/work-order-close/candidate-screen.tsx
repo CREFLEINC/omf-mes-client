@@ -523,6 +523,7 @@ export const WorkOrderCloseCandidateScreen = () => {
     <div className="work-order-close-workspace">
       <WorkOrderCloseFilterBar
         appliedFilters={state.appliedFilters}
+        initialFilters={initialization.initialFilters}
         productionOrderOptions={toWorkOrderCloseProductionOrderOptions(
           productionOrders.data?.items ?? [],
         )}

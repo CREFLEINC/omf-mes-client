@@ -79,16 +79,19 @@ const GROUP_TONE: Record<InboundStageGroup, StageTone> = {
 
 export const stageGroupTone = (group: InboundStageGroup): StageTone => GROUP_TONE[group];
 
-/**
- * 서버가 센 묶음만 흐름 순서로 — 칩 줄이 쓴다. 앞선 서버는 라벨 발행 대기를 세지 않아(키가 없다) 그 칩이 서지 않는다.
- * 센 묶음은 0 이어도 선다 — 「보류 0」이 보여야 보류가 없음을 안다.
- */
-export const countedGroups = (counts: InboundStageCounts): InboundStageGroup[] =>
-  STAGE_GROUPS.filter((group) => counts[group] !== undefined);
-
 /** 수가 있는 묶음만 흐름 순서로. */
 export const presentGroups = (counts: InboundStageCounts): InboundStageGroup[] =>
   STAGE_GROUPS.filter((group) => (counts[group] ?? 0) > 0);
+
+/**
+ * 칩 줄에 세울 묶음 — 수가 있는 것과 지금 걸린 것(0 이 돼도 눌러 풀 수 있게). 0 인 칩은 세우지 않는다
+ * (관리웹 화면 정리 시안 A · 2026-11-20 — 「보류 0」 같은 칩이 늘 서 있던 것을 걷었다. 늘 0 인 「입고 대기」도 함께 빠진다).
+ */
+export const chipGroups = (
+  counts: InboundStageCounts,
+  active: InboundStageGroup | '',
+): InboundStageGroup[] =>
+  STAGE_GROUPS.filter((group) => (counts[group] ?? 0) > 0 || group === active);
 
 /**
  * 발주의 「진행」 한 칸 — 가장 뒤처진 묶음과 그 수, 나머지 묶음 수(「외 N」). 아무 묶음도 없으면 `null`.

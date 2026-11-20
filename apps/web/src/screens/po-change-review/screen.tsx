@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { ScreenHeader } from '../../patterns/screen-header';
 import {
   adjustmentErrors,
   decisionLockReason,
@@ -86,7 +87,7 @@ export const PoChangeReviewScreen = () => {
 
   return (
     <>
-      <PageHeader
+      <ScreenHeader
         title={t.title}
         breadcrumb={
           <Breadcrumb

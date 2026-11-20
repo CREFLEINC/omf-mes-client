@@ -18,6 +18,12 @@ import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useFitColumns } from '../../patterns/column-fit';
 import { ItemSelect } from '../../patterns/item-select';
 import { useColumnOrder } from '../../patterns/column-grip-order';
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  hasChangedFilters,
+  useFilterMore,
+} from '../../patterns/filter-more';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { OaOnlyGate } from '../../patterns/oa-only-gate';
@@ -71,6 +77,18 @@ const INITIAL_FILTER = {
   size: PAGE_SIZE,
 };
 
+/** 「초기화」가 견주는 조건만 — 쪽 · 쪽 크기는 조건이 아니다(초기화는 쪽 크기를 남긴다). */
+const conditionsOf = (filter: typeof INITIAL_FILTER) => ({
+  status: filter.status,
+  itemId: filter.itemId,
+  layout: filter.layout,
+  material: filter.material,
+  usage: filter.usage,
+});
+
+/** 「조건 더보기」에 접힌 칸(양식 · 상태)의 칩 키(C-6). */
+type FoldedKey = 'layout' | 'status';
+
 /** 무엇을 펴 두었나 — 새 기준이거나 목록에서 연 기준. */
 type Opened =
   { kind: 'new'; basics: TemplateBasics; seq: number } | { kind: 'existing'; id: number } | null;
@@ -116,6 +134,7 @@ const InspectionSheetTemplateScreenBody = ({
   };
   const layout = useSplitOrientation(QUALITY_STANDARD_ORIENTATION_KEY);
   const statusId = useId();
+  const more = useFilterMore();
   const { session } = useSession();
   const [statusInput, setStatusInput] = useState<TemplateStatusFilter>('');
   /* 모델 · 양식 · 재료 조건(사용자 지시 · #208). 모델은 칸에서 바로 검색해서 고른다(#226) — 검사 기준 탭의 품목 검색과 같다. */
@@ -189,6 +208,44 @@ const InspectionSheetTemplateScreenBody = ({
    * 사용 = 작성중 · 확정, 미사용 = 폐기(앞 확정 판은 새 판을 확정하면 폐기된다). 재료는 대소문자 구분 없이 일부만 맞아도 걸린다.
    */
   const materialKeyword = filter.material.trim().toLowerCase();
+  /* 접힌 칸(양식 · 상태)에 걸린 조건만 칩으로 — 보이는 칸(검사 유형 · 품목 · 재료)은 칩으로 겹쳐 적지 않는다(C-6). */
+  const hiddenChips = [
+    ...(filter.layout === ''
+      ? []
+      : [
+          {
+            key: 'layout' as const,
+            label: t.list.chipLayout(t.layouts[filter.layout] ?? filter.layout),
+            removeLabel: t.list.chipRemoveLayout,
+          },
+        ]),
+    ...(filter.status === ''
+      ? []
+      : [
+          {
+            key: 'status' as const,
+            label: t.list.chipStatus(t.statuses[filter.status] ?? filter.status),
+            removeLabel: t.list.chipRemoveStatus,
+          },
+        ]),
+  ];
+  const removeHiddenFilter = (key: FoldedKey) => {
+    if (key === 'layout') setLayoutInput('');
+    else setStatusInput('');
+    setFilter((prev) => ({ ...prev, [key]: '', page: 1 }));
+  };
+  /* 「초기화」는 편집 중인 값이나 걸린 조건이 처음과 다를 때만(사용 여부 칩 포함 — 초기화가 「사용」으로 되돌린다). */
+  const isChanged = hasChangedFilters(
+    conditionsOf(INITIAL_FILTER),
+    {
+      status: statusInput,
+      itemId: modelInput?.itemId ?? null,
+      layout: layoutInput,
+      material: materialInput,
+      usage: filter.usage,
+    },
+    conditionsOf(filter),
+  );
   const hasFilter =
     filter.layout !== '' ||
     materialKeyword !== '' ||
@@ -377,46 +434,7 @@ const InspectionSheetTemplateScreenBody = ({
         >
           {/* 검사 기준 탭 안에서는 맨 앞에 검사 유형 칸이 선다(omf-all-around#255). */}
           {typeSelect}
-          {/* 순서: 양식 선택 → 상태 선택 → 품목 검색 → 재료 검색(사용자 지시 · #208). */}
-          <div className="field-cell inspection-sheet-template-status-filter">
-            <label className="field-label" htmlFor={layoutFilterId}>
-              {t.list.layout}
-            </label>
-            <Select
-              id={layoutFilterId}
-              options={[
-                { value: '', label: t.list.layoutAll },
-                ...(['OP', 'PP'] as const).map((code) => ({
-                  value: code,
-                  label: t.layouts[code] ?? code,
-                })),
-              ]}
-              value={layoutInput}
-              onChange={(value) => {
-                const layout = value as InspectionSheetLayoutCode | '';
-                setLayoutInput(layout);
-                setFilter((prev) => ({ ...prev, layout, page: 1 }));
-              }}
-            />
-          </div>
-          <div className="field-cell inspection-sheet-template-status-filter">
-            <label className="field-label" htmlFor={statusId}>
-              {t.list.status}
-            </label>
-            <Select
-              id={statusId}
-              options={[
-                { value: '', label: t.list.statusAll },
-                ...STATUSES.map((code) => ({ value: code, label: t.statuses[code] ?? code })),
-              ]}
-              value={statusInput}
-              onChange={(value) => {
-                const status = value as TemplateStatusFilter;
-                setStatusInput(status);
-                setFilter((prev) => ({ ...prev, status, page: 1 }));
-              }}
-            />
-          </div>
+          {/* 순서: 품목 검색 → 재료 검색 → (조건 더보기) 양식 선택 · 상태 선택(사용자 지시 · #208 · C-6). */}
           {/* 모델 — 칸에서 바로 검색해서 고른다(#226). 고르면 바로 조회하고(#208) 「전체」는 종전 × 자리다. */}
           <div className="field-cell search-select-cell">
             <label className="field-label" htmlFor={modelSelectId}>
@@ -462,18 +480,21 @@ const InspectionSheetTemplateScreenBody = ({
               {messages.common.search}
             </Button>
             {/* 초기화 — 입력과 적용된 조건을 처음으로(사용 여부는 「사용」) 되돌린다. 검사 기준 탭과 같다. */}
-            <Button
-              variant="outlined"
-              onClick={() => {
-                setStatusInput('');
-                setModelInput(null);
-                setLayoutInput('');
-                setMaterialInput('');
-                setFilter((prev) => ({ ...INITIAL_FILTER, size: prev.size }));
-              }}
-            >
-              {messages.common.reset}
-            </Button>
+            {isChanged && (
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setStatusInput('');
+                  setModelInput(null);
+                  setLayoutInput('');
+                  setMaterialInput('');
+                  setFilter((prev) => ({ ...INITIAL_FILTER, size: prev.size }));
+                }}
+              >
+                {messages.common.reset}
+              </Button>
+            )}
+            <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
             <span className="inspection-standard-filter-divider" aria-hidden />
             <Button
               variant="filled"
@@ -485,6 +506,51 @@ const InspectionSheetTemplateScreenBody = ({
             </Button>
           </div>
         </form>
+        {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. 고르면 바로 걸려 폼 밖에 둔다. */}
+        <div id={more.id} className="inspection-standard-filter-more" hidden={!more.isOpen}>
+          <div className="filter-bar">
+            <div className="field-cell inspection-sheet-template-status-filter">
+              <label className="field-label" htmlFor={layoutFilterId}>
+                {t.list.layout}
+              </label>
+              <Select
+                id={layoutFilterId}
+                options={[
+                  { value: '', label: t.list.layoutAll },
+                  ...(['OP', 'PP'] as const).map((code) => ({
+                    value: code,
+                    label: t.layouts[code] ?? code,
+                  })),
+                ]}
+                value={layoutInput}
+                onChange={(value) => {
+                  const layout = value as InspectionSheetLayoutCode | '';
+                  setLayoutInput(layout);
+                  setFilter((prev) => ({ ...prev, layout, page: 1 }));
+                }}
+              />
+            </div>
+            <div className="field-cell inspection-sheet-template-status-filter">
+              <label className="field-label" htmlFor={statusId}>
+                {t.list.status}
+              </label>
+              <Select
+                id={statusId}
+                options={[
+                  { value: '', label: t.list.statusAll },
+                  ...STATUSES.map((code) => ({ value: code, label: t.statuses[code] ?? code })),
+                ]}
+                value={statusInput}
+                onChange={(value) => {
+                  const status = value as TemplateStatusFilter;
+                  setStatusInput(status);
+                  setFilter((prev) => ({ ...prev, status, page: 1 }));
+                }}
+              />
+            </div>
+          </div>
+        </div>
+        <HiddenFilterChips open={more.isOpen} chips={hiddenChips} onRemove={removeHiddenFilter} />
       </section>
 
       <div
