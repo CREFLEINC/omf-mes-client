@@ -4,7 +4,6 @@ export const popShipmentComplete = {
 
   scan: {
     label: 'Tra cứu lệnh xuất hàng',
-    guide: 'Có thể quét QR trên PDA hoặc trên lệnh xuất hàng đã in.',
     manualLabel: 'Số lệnh xuất hàng',
     search: 'Tìm lệnh xuất hàng',
     looking: 'Đang mở lệnh xuất hàng.',
@@ -18,10 +17,6 @@ export const popShipmentComplete = {
       `Màn hình bên dưới là lệnh ${requestNo} đã mở trước đó.`,
   },
 
-  idle: {
-    empty: 'Tra cứu lệnh xuất hàng để xem nội dung tại đây.',
-  },
-
   head: {
     request: 'Lệnh xuất hàng',
     customer: 'Khách hàng',
@@ -30,15 +25,11 @@ export const popShipmentComplete = {
     noSalesOrder: 'Không có (lập không theo đơn bán hàng)',
     ready: 'Có thể xuất hàng',
     blocked: 'Không thể xuất hàng',
-    openedByScan: 'Tra cứu bằng quét mã',
-    openedBySearch: 'Tra cứu bằng tìm kiếm',
-    openedByDirect: 'Tra cứu bằng nhập trực tiếp',
     named: (name: string, code: string): string => `${name} (${code})`,
   },
 
   blockers: {
     heading: 'Không thể xuất hàng',
-    count: (count: number): string => `${String(count)} lý do không thể xuất hàng`,
     PICKING_SHORT: {
       title: 'Số lượng đã lấy chưa đủ',
       hint: 'Hãy kiểm tra LOT xuất hàng tại màn hình lấy hàng thành phẩm trên PDA.',
@@ -105,7 +96,6 @@ export const popShipmentComplete = {
       oqc: 'OQC',
       managementCode: 'Mã quản lý xuất hàng',
     },
-    moreBelow: 'Kéo xuống để xem thêm bảng',
     oqc: {
       NOT_REQUIRED: 'Không cần kiểm tra',
       SKIPPED: 'Bỏ qua kiểm tra',
@@ -130,28 +120,24 @@ export const popShipmentComplete = {
       `${qty}, ${String(lineCount)} dòng, ${String(lotCount)} LOT${over === null ? '' : ` (gồm vượt ${over})`}`,
     warehouses: 'Trừ tồn kho',
     warehouseValue: (name: string, qty: string): string => `${name} ${qty}`,
-    cancelHint:
-      'Nếu xuất nhầm, hãy trình duyệt hủy tại màn hình lịch sử xuất hàng (W-04-12) trên web quản lý.',
   },
 
   already: {
     title: 'Lệnh xuất hàng này đã được hoàn tất',
-    body: 'Không có gì thay đổi. Hãy quét lệnh tiếp theo.',
     heading: 'Xuất hàng đã hoàn tất',
     shipmentNo: 'Số xuất hàng',
     request: 'Lệnh xuất hàng',
     completedAt: 'Hoàn tất',
-    historyHint: 'Xem lịch sử và hủy tại màn hình lịch sử xuất hàng (W-04-12) trên web quản lý.',
   },
 
   search: {
     title: 'Tìm lệnh xuất hàng',
     close: 'Đóng',
     queryLabel: 'Từ khóa',
-    queryPlaceholder: 'Số lệnh, tên khách hàng, tên hoặc mã hàng',
+
+    queryHeading: 'Số lệnh, tên khách hàng, tên hoặc mã hàng',
     readyOnly: 'Chỉ hiện lệnh có thể xuất hàng',
     count: (total: number): string => `${String(total)} lệnh`,
-    note: 'Lệnh đã hoàn tất xuất hàng không hiện ra.',
     caption: 'Danh sách lệnh xuất hàng',
     select: (requestNo: string): string => `Tra cứu lệnh ${requestNo}`,
     ready: 'Có thể xuất hàng',

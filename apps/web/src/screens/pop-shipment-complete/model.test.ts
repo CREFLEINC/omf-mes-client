@@ -11,7 +11,6 @@ import {
   completeFailureOf,
   directCodeOf,
   groupBlockers,
-  hasMoreBelow,
   isAlreadyCompleted,
   isCompletable,
   lookupFailureOf,
@@ -242,12 +241,6 @@ describe('둘러보기 보완(T055)', () => {
     expect(directCodeOf(' SR-261118-001 ')).toBe('SHPREQ:SR-261118-001');
     expect(directCodeOf('SHPREQ:SR-261118-001')).toBe('SHPREQ:SR-261118-001');
     expect(directCodeOf('shpreq:SR-261118-001')).toBe('SHPREQ:SR-261118-001');
-  });
-
-  it('W-8 아래로 더 이어지는가 — 끝에서 8px 안이면 다 본 것', () => {
-    expect(hasMoreBelow({ scrollTop: 0, clientHeight: 400, scrollHeight: 900 })).toBe(true);
-    expect(hasMoreBelow({ scrollTop: 495, clientHeight: 400, scrollHeight: 900 })).toBe(false);
-    expect(hasMoreBelow({ scrollTop: 0, clientHeight: 400, scrollHeight: 400 })).toBe(false);
   });
 
   it('W-7 「출하 완료」 탭 이름은 단말 언어를 따른다 — 다른 탭은 그대로', () => {

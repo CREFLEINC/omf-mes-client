@@ -97,13 +97,6 @@ export const directCodeOf = (raw: string): string => {
     : `${SHIPMENT_REQUEST_CODE_PREFIX}${value}`;
 };
 
-/** 구르는 상자가 아래로 더 이어지는가(둘러보기 W-8) — 끝에서 몇 px 안이면 다 본 것으로 친다. */
-export const hasMoreBelow = (box: {
-  scrollTop: number;
-  clientHeight: number;
-  scrollHeight: number;
-}): boolean => box.scrollHeight - box.clientHeight - box.scrollTop > 8;
-
 /** 적치 대기 자리(위치 시스템 역할). */
 export const STAGING_ROLE = 'PUTAWAY_STAGING';
 

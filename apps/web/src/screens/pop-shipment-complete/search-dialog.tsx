@@ -1,12 +1,12 @@
 import { messages } from '@omf-mes/i18n';
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 
-import { PuButton, PuChip, PuDialog, PuInput, PuNote, PuPager } from '../../patterns/pop-uniform';
+import { PuButton, PuChip, PuDialog, PuNote, PuPager } from '../../patterns/pop-uniform';
+import { PuSearchBox } from '../../patterns/pop-uniform/search-box';
 import { formatQty, orderSearchRows, toSearchRow, type SearchRowView } from './model';
 import { useShipmentRequestSearch } from './queries';
 
 const t = messages.popShipmentComplete.search;
-const u = messages.popUniform;
 
 export interface SearchDialogProps {
   onClose: () => void;
@@ -31,19 +31,12 @@ const blockerText = (row: SearchRowView): string =>
  * 창은 화면 안에 들고, 결과가 많을 때만 목록이 구른다(찾기 칸 · 거르기 줄 · 쪽 넘김은 늘 보인다).
  */
 export const SearchDialog = ({ onClose, onPick }: SearchDialogProps) => {
-  const [draft, setDraft] = useState('');
   const [q, setQ] = useState('');
   const [readyOnly, setReadyOnly] = useState(true);
   const [page, setPage] = useState(1);
 
   const search = useShipmentRequestSearch({ q, readyOnly, page }, true);
   const rows = orderSearchRows((search.data?.items ?? []).map(toSearchRow));
-
-  const submit = (event: FormEvent<HTMLFormElement>): void => {
-    event.preventDefault();
-    setPage(1);
-    setQ(draft);
-  };
 
   const body = search.isError ? (
     <PuNote
@@ -125,18 +118,16 @@ export const SearchDialog = ({ onClose, onPick }: SearchDialogProps) => {
       footer={<PuButton onClick={onClose}>{t.close}</PuButton>}
     >
       <div className="psc-search">
-        <form className="pu-row" onSubmit={submit}>
-          <PuInput
-            value={draft}
-            aria-label={t.queryLabel}
-            placeholder={t.queryPlaceholder}
-            autoComplete="off"
-            onChange={(event) => setDraft(event.target.value)}
-          />
-          <PuButton type="submit" icon="search">
-            {u.scan.search}
-          </PuButton>
-        </form>
+        {/* 찾기 칸 — 누르면 다른 화면 찾기 칸과 같은 창(글자판 · [검색])이 뜬다(`PuSearchBox`). */}
+        <PuSearchBox
+          label={t.queryLabel}
+          heading={t.queryHeading}
+          value={q}
+          onChange={(value) => {
+            setPage(1);
+            setQ(value);
+          }}
+        />
         <div className="psc-search-filter">
           <label className="pu-check">
             <input
@@ -151,7 +142,6 @@ export const SearchDialog = ({ onClose, onPick }: SearchDialogProps) => {
           </label>
           <span className="psc-search-count">{t.count(search.data?.page.total ?? 0)}</span>
         </div>
-        <p className="pu-help">{t.note}</p>
         {body}
         {/* POP 쪽 넘김은 공통 `PuPager` 로 옮겼다(#295) — 건수는 거르기 줄 오른쪽이 이미 보인다. */}
         <PuPager

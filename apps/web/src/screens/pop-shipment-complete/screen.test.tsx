@@ -94,6 +94,10 @@ const scan = async (user: ReturnType<typeof userEvent.setup>, value: string) => 
   await user.type(field, `${value}{Enter}`);
 };
 
+/** 출하 불가 사유 줄 수 — 사유 구획 안 빨간 줄(alert)을 센다. */
+const blockerRows = () =>
+  within(screen.getByRole('region', { name: t.blockers.heading })).getAllByRole('alert');
+
 const completeButton = () => screen.getByRole('button', { name: t.bar.complete });
 
 /** [직접 입력] — 창(제목 없음)을 열어 값을 치고 [확인]을 누른다(스캔 칸 Enter 는 스캔 길이다). */
@@ -117,7 +121,6 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
 
     expect(await screen.findByText(t.head.ready)).toBeInTheDocument();
     expect(new URL(lookupCalls()[0]?.url ?? '').searchParams.get('code')).toBe(CODE);
-    expect(screen.getByText(t.head.openedByDirect)).toBeInTheDocument();
   });
 
   it('US4-3·W-2 — [직접 입력]에 코드 전체를 쳐도 그대로 연다. 없는 번호면 직접 입력용 문구로 알린다', async () => {
@@ -173,22 +176,24 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     expect(completeButton()).toBeDisabled();
 
     await scan(user, CODE);
-    expect(await screen.findByText(t.blockers.count(3))).toBeInTheDocument();
+    expect(await screen.findByText(t.blockers.heading)).toBeInTheDocument();
+    expect(blockerRows()).toHaveLength(3);
     expect(completeButton()).toBeDisabled();
     expect(
-      within(screen.getByRole('region', { name: t.bar.label })).queryByText(t.blockers.count(3)),
+      within(screen.getByRole('region', { name: t.bar.label })).queryByText(
+        t.blockers.PICKING_SHORT.title,
+      ),
     ).toBeNull();
   });
 
-  it('스캔 대기 — 칸 이름은 「출하 지시서 조회」(칸 안 흐린 안내 없음), 아래 안내 한 줄, [출하 완료]는 잠겨 있다', () => {
+  it('스캔 대기 — 칸 이름은 「출하 지시서 조회」(칸 안 흐린 안내 없음), [직접 입력]·[지시서 검색], [출하 완료]는 잠겨 있다', () => {
     renderScreen();
 
     expect(screen.getByRole('heading', { name: t.title })).toBeInTheDocument();
     const field = screen.getByRole('textbox', { name: t.scan.label });
     expect(field).not.toHaveAttribute('placeholder');
-    expect(screen.getByText(t.scan.guide)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: u.scan.manual })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.scan.search })).toBeInTheDocument();
-    expect(screen.getByText(t.idle.empty)).toBeInTheDocument();
     expect(completeButton()).toBeDisabled();
   });
 
@@ -204,7 +209,6 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     expect(screen.getByText('가나전자 (C-GANA)')).toBeInTheDocument();
     expect(screen.getByText('가나전자 2공장 (C-GANA2)')).toBeInTheDocument();
     expect(screen.getByText('SO-T1')).toBeInTheDocument();
-    expect(screen.getByText(t.head.openedByScan)).toBeInTheDocument();
 
     const lines = screen.getByRole('table', { name: t.lines.caption });
     const line1 = within(lines).getAllByRole('row')[1] as HTMLElement;
@@ -426,7 +430,7 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
 
     expect(await screen.findByText(t.head.blocked)).toBeInTheDocument();
     expect(screen.getByText(t.blockers.heading)).toBeInTheDocument();
-    expect(screen.getByText(t.blockers.count(3))).toBeInTheDocument();
+    expect(blockerRows()).toHaveLength(3);
     expect(screen.getByText(t.blockers.PICKING_SHORT.title)).toBeInTheDocument();
     expect(screen.getByText(t.blockers.line(2, 'FG-B200', '0', '50'))).toBeInTheDocument();
     expect(screen.getByText(t.blockers.PICKING_SHORT.hint)).toBeInTheDocument();
@@ -524,7 +528,7 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     await user.click(await screen.findByRole('button', { name: t.bar.complete }));
 
     expect(await screen.findByText(t.failure.blocked)).toBeInTheDocument();
-    expect(await screen.findByText(t.blockers.count(1))).toBeInTheDocument();
+    await waitFor(() => expect(blockerRows()).toHaveLength(1));
     expect(screen.getByText(t.blockers.line(2, 'FG-B200', '50', '50'))).toBeInTheDocument();
     expect(completeButton()).toBeDisabled();
     expect(lookupCalls()).toHaveLength(1);
@@ -540,7 +544,7 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     await scan(user, CODE);
     await user.click(await screen.findByRole('button', { name: t.bar.complete }));
 
-    expect(await screen.findByText(t.blockers.count(3))).toBeInTheDocument();
+    await waitFor(() => expect(blockerRows()).toHaveLength(3));
     expect(screen.getByText(t.failure.blocked)).toBeInTheDocument();
     expect(lookupCalls()).toHaveLength(2);
   });
@@ -668,8 +672,18 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     expect(firstQuery.get('completionReadyOnly')).toBe('true');
     expect(firstQuery.get('shipDateFrom')).toMatch(/^\d{4}-\d{2}-\d{2}$/u);
 
-    await user.type(within(dialog).getByRole('textbox', { name: t.search.queryLabel }), '가나');
-    await user.click(within(dialog).getByRole('button', { name: u.scan.search }));
+    /* 찾기 칸을 누르면 다른 화면과 같은 글자판 창이 뜬다 — 넣고 [검색]. */
+    await user.click(within(dialog).getByRole('searchbox', { name: t.search.queryLabel }));
+    const keyboard = await screen.findByRole('dialog', {
+      name: u.scan.manualTitle(t.search.queryLabel),
+    });
+    const queryField = within(keyboard).getByRole('textbox', { name: t.search.queryLabel });
+    expect(queryField).toHaveAttribute(
+      'placeholder',
+      u.scan.manualPlaceholder(t.search.queryHeading),
+    );
+    await user.type(queryField, '가나');
+    await user.click(within(keyboard).getByRole('button', { name: u.scan.search }));
     await waitFor(() => expect(listCalls()).toHaveLength(2));
     expect(new URL(listCalls()[1]?.url ?? '').searchParams.get('q')).toBe('가나');
 
@@ -685,7 +699,7 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     ).toBeInTheDocument();
     await user.click(row);
 
-    expect(await screen.findByText(t.head.openedBySearch)).toBeInTheDocument();
+    expect(await screen.findByText(t.head.ready)).toBeInTheDocument();
     expect(screen.queryByRole('dialog', { name: t.search.title })).toBeNull();
     expect(new URL(lookupCalls()[0]?.url ?? '').searchParams.get('code')).toBe(CODE);
   });

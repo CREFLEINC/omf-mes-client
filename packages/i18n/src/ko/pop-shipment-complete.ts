@@ -12,7 +12,6 @@ export const popShipmentComplete = {
   scan: {
     /* 칸 위 이름 — 칸 안 흐린 안내는 두지 않는다(POP 공통 · 사용자 지시 2026-11-19). */
     label: '출하 지시서 조회',
-    guide: 'PDA 또는 인쇄된 지시서의 QR을 스캔할 수 있습니다.',
     /** [직접 입력] 창에 넣을 값의 이름 — 창 칸 안내가 「출하 지시서 번호를 입력하세요」다. */
     manualLabel: '출하 지시서 번호',
     search: '지시서 검색',
@@ -28,10 +27,6 @@ export const popShipmentComplete = {
     previousStill: (requestNo: string): string => `아래 화면은 앞서 연 지시서 ${requestNo} 입니다.`,
   },
 
-  idle: {
-    empty: '출하 지시서를 조회하면 여기에 내용이 표시됩니다.',
-  },
-
   head: {
     request: '출하 지시서',
     customer: '고객',
@@ -40,16 +35,12 @@ export const popShipmentComplete = {
     noSalesOrder: '없음(수주 없이 작성)',
     ready: '출하 가능',
     blocked: '출하 불가',
-    openedByScan: '스캔으로 조회',
-    openedBySearch: '검색으로 조회',
-    openedByDirect: '직접 입력으로 조회',
     /** 「이름 (코드)」(C-10). */
     named: (name: string, code: string): string => `${name} (${code})`,
   },
 
   blockers: {
     heading: '출하할 수 없습니다',
-    count: (count: number): string => `출하 불가 사유 ${String(count)}건`,
     PICKING_SHORT: {
       title: '피킹 수량이 부족합니다',
       hint: 'PDA 제품 피킹에서 출하 LOT을 확인해 주세요.',
@@ -124,8 +115,6 @@ export const popShipmentComplete = {
       `교체로 빠진 LOT ${String(count)}: ${lots}. 출하에 들지 않습니다.`,
     replacedLot: (lotNo: string, judgment: string | null): string =>
       judgment === null ? lotNo : `${lotNo}(${judgment})`,
-    /* 확인 화면이 더 아래로 이어질 때 바닥에 붙는 단서(둘러보기 W-8). */
-    moreBelow: '아래로 밀면 표가 더 있습니다',
     oqc: {
       NOT_REQUIRED: '검사 불필요',
       SKIPPED: '검사 생략',
@@ -151,29 +140,25 @@ export const popShipmentComplete = {
       `${qty}, 라인 ${String(lineCount)}, LOT ${String(lotCount)}${over === null ? '' : ` (초과 ${over} 포함)`}`,
     warehouses: '재고 차감',
     warehouseValue: (name: string, qty: string): string => `${name} ${qty}`,
-    cancelHint: '잘못 나갔으면 관리웹 출하 내역(W-04-12)에서 취소를 상신하세요.',
   },
 
   already: {
     title: '이미 출하 완료된 지시서입니다',
-    body: '아무것도 바뀌지 않았습니다. 다음 지시서를 스캔하세요.',
     heading: '완료된 출하',
     shipmentNo: '출하 번호',
     request: '출하 지시서',
     completedAt: '완료',
-    historyHint: '내역과 취소는 관리웹 출하 내역(W-04-12)에서 합니다.',
   },
 
   search: {
     title: '출하 지시서 검색',
     close: '닫기',
     queryLabel: '검색어',
-    /* 창 안 찾기 칸의 안내 — 창 칸은 흐린 안내를 둔다(화면 칸은 두지 않는다). */
-    queryPlaceholder: '지시서 번호, 고객명, 품목명 또는 코드',
+    /** 찾기 칸 위 이름 — 넣을 값(칸 안 흐린 안내는 없고, 글자판 창 칸 안내가 「… 을/를 입력하세요」다). */
+    queryHeading: '지시서 번호, 고객명, 품목명 또는 코드',
     /** 켜면 막는 이유가 없는 지시서만(서버 `completionReadyOnly`), 끄면 출하가 남은 지시서 전부. */
     readyOnly: '출하 가능만 표시',
     count: (total: number): string => `${String(total)}건`,
-    note: '출하 완료된 지시서는 나오지 않습니다.',
     caption: '출하 지시서 목록',
     select: (requestNo: string): string => `지시서 ${requestNo} 조회`,
     ready: '출하 가능',

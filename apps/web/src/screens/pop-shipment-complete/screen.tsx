@@ -1,19 +1,15 @@
 import { messages } from '@omf-mes/i18n';
-import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
-import { useScannerSubmit } from '../../patterns/pop-scanner-submit';
 import {
   PuActionBar,
   PuButton,
-  PuEmpty,
-  PuIcon,
-  PuManualDialog,
   PuNote,
+  PuScanField,
   PuScreen,
   PuSection,
   PuStack,
-  puCx,
 } from '../../patterns/pop-uniform';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { toApiError } from '../../patterns/request';
@@ -23,7 +19,6 @@ import {
   blockersOfConflict,
   completeFailureOf,
   directCodeOf,
-  hasMoreBelow,
   isAlreadyCompleted,
   isCompletable,
   lookupFailureOf,
@@ -37,7 +32,6 @@ import { SearchDialog } from './search-dialog';
 import './uniform.css';
 
 const t = messages.popShipmentComplete;
-const u = messages.popUniform;
 
 type Via = 'scan' | 'search' | 'direct';
 
@@ -84,16 +78,8 @@ export const PopShipmentCompleteScreen = () => {
   const [notice, setNotice] = useState<ScanNotice | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
-  const [isManualOpen, setManualOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-  /* 확인 화면이 아래로 더 이어지는가 — 바닥에 「아래로 밀면…」 단서를 붙인다(둘러보기 W-8). */
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [moreBelow, setMoreBelow] = useState(false);
-  const measureMore = useCallback(() => {
-    const box = contentRef.current;
-    setMoreBelow(box !== null && hasMoreBelow(box));
-  }, []);
 
   const lookup = useLookupShipmentRequest();
   const complete = useCompleteShipment();
@@ -156,6 +142,7 @@ export const PopShipmentCompleteScreen = () => {
     });
   };
 
+  /** 스캔(Enter · 스캐너 끝) — 스캐너 받기는 공통 스캔 칸(`PuScanField`)이 한다. */
   const send = (raw: string): void => {
     const code = raw.trim();
     if (code === '') return;
@@ -164,11 +151,10 @@ export const PopShipmentCompleteScreen = () => {
     open(code, 'scan');
     inputRef.current?.focus();
   };
-  const scanner = useScannerSubmit(send, () => inputRef.current?.value ?? '');
 
   /**
    * [직접 입력] 창 — 손으로 친 지시서 번호(SR-…)도 연다. 앞머리 `SHPREQ:` 는 화면이 붙인다(W-2).
-   * 창은 POP 공통 [직접 입력] 창(`PuManualDialog` · 제목 없음 · 글자판)이다.
+   * 창은 공통 스캔 칸의 [직접 입력] 창(`PuScanField` `manual` · 제목 없음 · 글자판)이다.
    */
   const sendDirect = (entered: string): void => {
     const typed = entered.trim();
@@ -178,24 +164,10 @@ export const PopShipmentCompleteScreen = () => {
     inputRef.current?.focus();
   };
 
-  /* 화면이 바뀌거나 창 크기가 바뀌면 다시 잰다. 구를 때는 `onScroll` 이 잰다. */
+  /* 조회·완료가 끝나고 검색 창이 닫혀 있으면 스캔 칸이 포커스를 되찾는다 — 다음 스캔이 사라지지 않게. */
   useEffect(() => {
-    measureMore();
-    window.addEventListener('resize', measureMore);
-    return () => window.removeEventListener('resize', measureMore);
-  }, [view, failure, measureMore]);
-
-  /* 조회·완료가 끝나고 검색 창·직접 입력 창이 닫혀 있으면 스캔 칸이 포커스를 되찾는다 — 다음 스캔이 사라지지 않게. */
-  useEffect(() => {
-    if (!lookup.isPending && !complete.isPending && !isSearching && !isManualOpen) {
-      inputRef.current?.focus();
-    }
-  }, [lookup.isPending, complete.isPending, isSearching, isManualOpen]);
-
-  const submitScan = (event: FormEvent<HTMLFormElement>): void => {
-    event.preventDefault();
-    scanner.submit(draft);
-  };
+    if (!lookup.isPending && !complete.isPending && !isSearching) inputRef.current?.focus();
+  }, [lookup.isPending, complete.isPending, isSearching]);
 
   const confirm = view.kind === 'confirm' ? view : null;
   const canComplete =
@@ -285,96 +257,54 @@ export const PopShipmentCompleteScreen = () => {
   );
 
   return (
-    <main className="pop-ui psc-screen" aria-labelledby={titleId}>
+    <main className="pop-ui" aria-labelledby={titleId}>
       <h1 id={titleId} className="psc-title">
         {t.title}
       </h1>
 
       <PopWorkerMissingBanner workerNo={workerNo} />
 
-      <PuScreen className="psc-body" actionBar={actionBar}>
+      <PuScreen actionBar={actionBar}>
         <PuStack fill>
           <PuSection className="psc-top" grow={false} label={t.scan.label}>
-            <form className="pu-field" onSubmit={submitScan}>
-              <label className="pu-label" htmlFor={inputId}>
-                {t.scan.label}
-              </label>
-              <div className="pu-row">
-                <div className={puCx('pu-scan', isOpened && 'is-done')}>
-                  <PuIcon name="scan" />
-                  <input
-                    ref={inputRef}
-                    id={inputId}
-                    value={draft}
-                    autoComplete="off"
-                    onKeyDown={scanner.onKeyDown}
-                    onChange={(event) => {
-                      setDraft(event.target.value);
-                      scanner.noteInput(event.target.value);
-                    }}
-                  />
-                  <span className="ready">{isOpened ? u.scan.done : u.scan.ready}</span>
-                </div>
-                <PuButton
-                  onClick={() => {
-                    setManualOpen(true);
-                  }}
-                >
-                  {u.scan.manual}
-                </PuButton>
-                <PuButton
-                  icon="search"
-                  onClick={() => {
-                    setIsSearching(true);
-                  }}
-                >
-                  {t.scan.search}
-                </PuButton>
-              </div>
-              <p className="pu-help psc-guide">{t.scan.guide}</p>
-              {lookup.isPending ? (
-                <PuNote live>{t.scan.looking}</PuNote>
-              ) : notice !== null ? (
-                <PuNote tone={notice.tone === 'error' ? 'bad' : 'warn'}>
-                  <span>{notice.text}</span>
-                  {notice.detail !== undefined && <span> {notice.detail}</span>}
-                </PuNote>
-              ) : null}
-            </form>
+            <PuScanField
+              label={t.scan.label}
+              inputRef={inputRef}
+              value={draft}
+              done={isOpened}
+              error={
+                notice === null ? undefined : (
+                  <>
+                    <span>{notice.text}</span>
+                    {notice.detail !== undefined && <span> {notice.detail}</span>}
+                  </>
+                )
+              }
+              manual={{ label: t.scan.manualLabel }}
+              onChange={setDraft}
+              onSubmit={send}
+              onManualSubmit={sendDirect}
+            />
+            {/* [지시서 검색] — 스캔 칸 옆(분할 LOT 라벨 위 구획의 「스캔 칸 + 옆 칸」 배치). */}
+            <PuButton
+              className="psc-search-btn"
+              icon="search"
+              onClick={() => {
+                setIsSearching(true);
+              }}
+            >
+              {t.scan.search}
+            </PuButton>
           </PuSection>
-
-          <div className="psc-content" ref={contentRef} onScroll={measureMore}>
+          <div className="psc-content">
+            {lookup.isPending && <PuNote live>{t.scan.looking}</PuNote>}
             {failure !== null && <PuNote tone="bad">{failure}</PuNote>}
-            {view.kind === 'idle' && (
-              <PuSection className="psc-idle" label={t.scan.label}>
-                <PuEmpty icon="file" title={t.idle.empty} />
-              </PuSection>
-            )}
-            {view.kind === 'confirm' && <ConfirmView completion={view.completion} via={view.via} />}
+            {view.kind === 'confirm' && <ConfirmView completion={view.completion} />}
             {view.kind === 'already' && <AlreadyView completion={view.completion} />}
             {view.kind === 'done' && <ResultView result={view.result} workerNo={workerLabel} />}
-            {moreBelow && view.kind === 'confirm' && (
-              <p className="psc-more" aria-hidden="true">
-                <PuIcon name="chevron" />
-                {t.lots.moreBelow}
-              </p>
-            )}
           </div>
         </PuStack>
       </PuScreen>
-
-      {isManualOpen && (
-        <PuManualDialog
-          label={t.scan.manualLabel}
-          onClose={() => {
-            setManualOpen(false);
-          }}
-          onSubmit={(entered) => {
-            setManualOpen(false);
-            sendDirect(entered);
-          }}
-        />
-      )}
 
       {isSearching && (
         <SearchDialog

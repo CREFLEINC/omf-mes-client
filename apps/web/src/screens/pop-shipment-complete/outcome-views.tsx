@@ -82,7 +82,6 @@ export const ResultView = ({ result, workerNo }: ResultViewProps) => {
     <PuSection grow={false} label={t.result.title}>
       <PuNote tone="ok">{t.result.title}</PuNote>
       <PuKv items={items} />
-      <p className="pu-help">{t.result.cancelHint}</p>
     </PuSection>
   );
 };
@@ -97,9 +96,7 @@ export const AlreadyView = ({ completion }: { completion: Completion }) => {
 
   return (
     <PuSection grow={false} label={t.already.heading}>
-      <PuNote tone="warn">
-        <b>{t.already.title}</b> {t.already.body}
-      </PuNote>
+      <PuNote tone="warn">{t.already.title}</PuNote>
       {done !== null && (
         <PuKv
           items={[
@@ -110,7 +107,6 @@ export const AlreadyView = ({ completion }: { completion: Completion }) => {
           ]}
         />
       )}
-      <p className="pu-help">{t.already.historyHint}</p>
     </PuSection>
   );
 };

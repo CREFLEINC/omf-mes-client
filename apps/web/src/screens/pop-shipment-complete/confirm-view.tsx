@@ -1,13 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
-import {
-  PuChip,
-  PuIcon,
-  PuKv,
-  PuNote,
-  PuSection,
-  type PuChipTone,
-} from '../../patterns/pop-uniform';
+import { PuChip, PuKv, PuNote, PuSection, type PuChipTone } from '../../patterns/pop-uniform';
 import {
   OQC_TONE,
   blockedTargetsOf,
@@ -81,7 +74,6 @@ const judgmentText = (judgment: string | null): string | null =>
 
 export interface ConfirmViewProps {
   completion: Completion;
-  via: 'scan' | 'search' | 'direct';
 }
 
 /**
@@ -91,7 +83,7 @@ export interface ConfirmViewProps {
  * ⛔ ERP 송신 여부는 어디에도 보이지 않는다(사용자 결정 2026-11-18). 수주 없는 지시서는 수주 칸만 「없음」이다.
  * ⛔ [출하 완료]는 아래 작업 줄에 있다 — 이 화면이 곧 확인 창이라 따로 묻지 않는다.
  */
-export const ConfirmView = ({ completion, via }: ConfirmViewProps) => {
+export const ConfirmView = ({ completion }: ConfirmViewProps) => {
   const groups = groupBlockers(completion.blockers);
   const blocked = groups.length > 0;
   const targets = blockedTargetsOf(completion);
@@ -100,26 +92,15 @@ export const ConfirmView = ({ completion, via }: ConfirmViewProps) => {
   return (
     <>
       <PuSection
-        className="psc-head"
         grow={false}
         label={t.head.request}
-        head={
-          <h2 className="psc-head-key">
-            <span className="psc-head-label">{t.head.request}</span>
-            <span className="pu-mono">{completion.shipmentRequestNo}</span>
-          </h2>
+        title={
+          <>
+            {t.head.request} <span className="pu-mono">{completion.shipmentRequestNo}</span>
+          </>
         }
         meta={
-          <>
-            <span className="psc-via">
-              {via === 'scan'
-                ? t.head.openedByScan
-                : via === 'direct'
-                  ? t.head.openedByDirect
-                  : t.head.openedBySearch}
-            </span>
-            <PuChip tone={blocked ? 'bad' : 'ok'}>{blocked ? t.head.blocked : t.head.ready}</PuChip>
-          </>
+          <PuChip tone={blocked ? 'bad' : 'ok'}>{blocked ? t.head.blocked : t.head.ready}</PuChip>
         }
       >
         <PuKv
@@ -139,31 +120,18 @@ export const ConfirmView = ({ completion, via }: ConfirmViewProps) => {
       </PuSection>
 
       {blocked && (
-        <PuSection
-          className="psc-blockers"
-          grow={false}
-          title={
-            <>
-              <PuIcon name="bad" />
-              {t.blockers.heading}
-            </>
-          }
-          meta={t.blockers.count(groups.length)}
-          label={t.blockers.heading}
-        >
-          <ul className="psc-blocker-list">
-            {groups.map((group) => {
-              const reason = reasonOf(group);
-              const target = targetOf(completion, group);
-              return (
-                <li key={group.code}>
-                  <b>{reason.title}</b>
-                  {target !== '' && <span className="psc-blocker-target">{target}</span>}
-                  <span className="psc-blocker-hint">{reason.hint}</span>
-                </li>
-              );
-            })}
-          </ul>
+        <PuSection grow={false} title={t.blockers.heading} label={t.blockers.heading}>
+          {groups.map((group) => {
+            const reason = reasonOf(group);
+            const target = targetOf(completion, group);
+            return (
+              <PuNote key={group.code} tone="bad">
+                <b>{reason.title}</b>
+                {target !== '' && <span> {target}</span>}
+                <span> {reason.hint}</span>
+              </PuNote>
+            );
+          })}
         </PuSection>
       )}
 
@@ -219,16 +187,12 @@ export const ConfirmView = ({ completion, via }: ConfirmViewProps) => {
 
           {completion.warehouses.length > 0 && (
             <PuSection grow={false} title={t.warehouses.heading} label={t.warehouses.heading}>
-              <ul className="psc-warehouses">
-                {completion.warehouses.map((warehouse) => (
-                  <li key={warehouse.warehouseId}>
-                    <span>{t.head.named(warehouse.warehouseName, warehouse.warehouseCode)}</span>
-                    <span className="psc-warehouse-qty">
-                      {t.warehouses.entry(warehouse.lotCount, qtyWithUom(warehouse.qty, uom))}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              <PuKv
+                items={completion.warehouses.map((warehouse) => ({
+                  label: t.head.named(warehouse.warehouseName, warehouse.warehouseCode),
+                  value: t.warehouses.entry(warehouse.lotCount, qtyWithUom(warehouse.qty, uom)),
+                }))}
+              />
               {splitLotsOf(completion).map((lotNo) => (
                 <PuNote key={lotNo}>{t.warehouses.splitLot(lotNo)}</PuNote>
               ))}
@@ -237,7 +201,6 @@ export const ConfirmView = ({ completion, via }: ConfirmViewProps) => {
         </div>
 
         <PuSection
-          className="psc-lots"
           grow={false}
           title={t.lots.heading(completion.lots.length)}
           label={t.lots.heading(completion.lots.length)}
