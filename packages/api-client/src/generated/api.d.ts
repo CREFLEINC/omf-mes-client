@@ -43264,7 +43264,7 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description 충돌 — LOT_TARGET_REACHED · LOT_ALREADY_RESERVED · LOT_ALREADY_PICKED · NO_LINE_FOR_ITEM · INVALID_STATE(보류·피킹 막힌 상태·재고 없음·이행 공장 없음) */
+        /** @description 충돌 — LOT_TARGET_REACHED · LOT_ALREADY_RESERVED · LOT_ALREADY_PICKED · NO_LINE_FOR_ITEM · INVALID_STATE(보류·피킹 막힌 상태·재고 없음·이행 공장 없음) · LOT_SPLIT_UNCONFIRMED(PDA 확인 전인 생산 LOT 분리의 원래·자식 · 피처 013) */
         409: {
           headers: {
             [name: string]: unknown;
@@ -43845,6 +43845,104 @@ export interface paths {
           };
         };
         /** @description NOT_PRODUCTION_LOT · SPLIT_SERIAL_LOT · INVALID_STATE · LOT_SPLIT_UNCONFIRMED · LOT_ALREADY_RESERVED · PUTAWAY_PENDING · NOT_PRODUCT_WAREHOUSE · MIXED_STOCK_STATUS · DUPLICATE_KEY */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ShipmentConflictResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/product-lot-splits/{productLotSplitId}:confirm': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 생산 LOT 분리 확인(PDA)
+     * @description PDA M-04-05 — 두 라벨(원래·자식, 순서 무관)이 이 분리의 짝이면 확인 시각·작업자·단말을 남긴다. LOT 상태와 무관하다(보류·불량이 된 뒤에도 확인한다). 확인 뒤 두 LOT 은 출하 피킹·추적 시스템 출고·재분리를 다시 받는다. 근거: 피처 013 FR-010·FR-012 · R-3
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /**
+           * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+           * @example 100027
+           */
+          'X-Worker-No': components['parameters']['WorkerNo'];
+        };
+        path: {
+          productLotSplitId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ProductLotSplitConfirm'];
+        };
+      };
+      responses: {
+        /** @description 확인됨 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ProductLotSplit'];
+          };
+        };
+        /** @description INVALID — 두 LOT 이 이 분리의 원래·자식 짝이 아니다(한 장·같은 장 두 번 포함) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 · PDA 단말이 아니다 · 다른 공장 분리 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 계정 세션 — 단말 전용 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 분리 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description ALREADY_CONFIRMED — 이미 확인된 분리(PDA 는 「이미 확인됨」 안내) · DUPLICATE_KEY */
         409: {
           headers: {
             [name: string]: unknown;
@@ -67886,7 +67984,7 @@ export interface components {
     };
     ShipmentConflictResponse: {
       /**
-       * @description ALREADY_CONFIRMED 는 이미 확정된 출하라는 뜻이다 — 확정 취소 경로가 없으므로 되돌릴 수 없다(W-04-12 §5-3). CANCEL_IN_PROGRESS 는 취소 결재가 진행 중이라 확정할 수 없다는 뜻이다(J-7). 근거: W-04-12 §5-8 피처 010(omf-all-around#305): USE_PICK_LOT 는 옛 수량 피킹(:pick)이 닫혔다는 뜻이다 — LOT 통째 피킹(:pick-lot)을 쓴다. LOT_TARGET_REACHED 는 라인 피킹 합이 이미 목표(배정) 이상이다. LOT_ALREADY_RESERVED 는 그 LOT 의 잔액 행에 다른 예약·피킹·차단이 걸려 통째로 잡을 수 없다. LOT_ALREADY_PICKED 는 이미 이 지시서에 피킹한 LOT 이다. NO_LINE_FOR_ITEM 은 이 지시서에 그 LOT 품목의 라인이 없다. LOT_NOT_REJECTED 는 교체할 수 없는 피킹 LOT 이다 — OQC 판정이 불합격이 아니거나(교체 전에 재검 합격이 들어온 경우 포함) 이미 교체·출하됐다. COMPLETION_BLOCKED 는 출하 완료를 막는 이유가 있다(blockers 에 실린다). ALREADY_COMPLETED 는 이미 POP 에서 출하 완료한 지시서다(다시 스캔·동시 완료). ERP_ALREADY_SENT 는 ERP 로 이미 보낸(또는 보내는 중인) POP 완료 출하라 취소할 수 없다 — ERP 에서 처리한다. 피처 013(omf-all-around#303) 생산 LOT 분리: NOT_PRODUCTION_LOT 는 생산 LOT 이 아니다. SPLIT_SERIAL_LOT 는 시리얼 관리 품목 LOT 이다. LOT_SPLIT_UNCONFIRMED 는 PDA 확인 전인 분리의 원래·자식 LOT 이다(재분리·출하 피킹 거절). PUTAWAY_PENDING 은 적치 대기 자리이거나 그 자리에서 출발하는 열린 적치 지시가 있다. NOT_PRODUCT_WAREHOUSE 는 제품 창고(불량 창고 제외) 위치가 아니다. MIXED_STOCK_STATUS 는 그 위치에 품질·재고 상태가 다른 잔액이 섞여 있다. 분리의 INVALID_STATE 는 보류·불량·폐기·무효, LOT_ALREADY_RESERVED 는 그 LOT 의 어느 잔액에든 예약·피킹·차단이 걸렸다는 뜻이다.
+       * @description ALREADY_CONFIRMED 는 이미 확정된 출하라는 뜻이다 — 확정 취소 경로가 없으므로 되돌릴 수 없다(W-04-12 §5-3). CANCEL_IN_PROGRESS 는 취소 결재가 진행 중이라 확정할 수 없다는 뜻이다(J-7). 근거: W-04-12 §5-8 피처 010(omf-all-around#305): USE_PICK_LOT 는 옛 수량 피킹(:pick)이 닫혔다는 뜻이다 — LOT 통째 피킹(:pick-lot)을 쓴다. LOT_TARGET_REACHED 는 라인 피킹 합이 이미 목표(배정) 이상이다. LOT_ALREADY_RESERVED 는 그 LOT 의 잔액 행에 다른 예약·피킹·차단이 걸려 통째로 잡을 수 없다. LOT_ALREADY_PICKED 는 이미 이 지시서에 피킹한 LOT 이다. NO_LINE_FOR_ITEM 은 이 지시서에 그 LOT 품목의 라인이 없다. LOT_NOT_REJECTED 는 교체할 수 없는 피킹 LOT 이다 — OQC 판정이 불합격이 아니거나(교체 전에 재검 합격이 들어온 경우 포함) 이미 교체·출하됐다. COMPLETION_BLOCKED 는 출하 완료를 막는 이유가 있다(blockers 에 실린다). ALREADY_COMPLETED 는 이미 POP 에서 출하 완료한 지시서다(다시 스캔·동시 완료). ERP_ALREADY_SENT 는 ERP 로 이미 보낸(또는 보내는 중인) POP 완료 출하라 취소할 수 없다 — ERP 에서 처리한다. 피처 013(omf-all-around#303) 생산 LOT 분리: NOT_PRODUCTION_LOT 는 생산 LOT 이 아니다. SPLIT_SERIAL_LOT 는 시리얼 관리 품목 LOT 이다. LOT_SPLIT_UNCONFIRMED 는 PDA 확인 전인 분리의 원래·자식 LOT 이다(재분리·출하 피킹 거절). PUTAWAY_PENDING 은 적치 대기 자리이거나 그 자리에서 출발하는 열린 적치 지시가 있다. NOT_PRODUCT_WAREHOUSE 는 제품 창고(불량 창고 제외) 위치가 아니다. MIXED_STOCK_STATUS 는 그 위치에 품질·재고 상태가 다른 잔액이 섞여 있다. 분리의 INVALID_STATE 는 보류·불량·폐기·무효, LOT_ALREADY_RESERVED 는 그 LOT 의 어느 잔액에든 예약·피킹·차단이 걸렸다는 뜻이다. 분리 확인(:confirm)의 ALREADY_CONFIRMED 는 이미 확인된 분리다.
        * @example VERSION_CONFLICT
        * @enum {string}
        */
@@ -69081,6 +69179,10 @@ export interface components {
          */
         child: 'PRINTED' | 'FAILED' | 'NONE';
       };
+    };
+    /** @description PDA M-04-05 — 스캔한 두 라벨의 LOT. 순서 무관, 정확히 둘. */
+    ProductLotSplitConfirm: {
+      lotIds: number[];
     };
     InspectionLine: {
       /**
