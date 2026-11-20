@@ -1,55 +1,39 @@
-import {
-  Button,
-  Checkbox,
-  type Column,
-  EmptyState,
-  SearchInput,
-  SkeletonText,
-  Table,
-} from '@crefle/web-ui';
+import { Button, Chip, type Column, EmptyState, Icon, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 
-import { hasChangedFilters } from '../../patterns/filter-more';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnWidths } from '../../patterns/column-resize';
+import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
+
 import { hasAnyUserFilter } from './filters';
-import { PageNav } from './page-nav';
+import type { ListPageSize } from './filters';
 import type { PageView } from './pagination';
-import { SelectField } from './select-field';
-import type { AppUser, SelectOption, UserFilters } from './types';
+import type { AppUser, UserFilters } from './types';
+import { EMPTY_USER_FILTERS } from './user-filter-bar';
 
 const t = messages.usersRoles;
-
-/** 화면을 처음 열었을 때의 조회 조건. 「초기화」가 돌아가는 자리이기도 하다. */
-export const EMPTY_USER_FILTERS: UserFilters = {
-  q: '',
-  departmentId: '',
-  statusCode: '',
-  includeInactive: false,
-};
 
 export interface UserListPaneProps {
   users: AppUser[];
   isLoading: boolean;
-  /** 적용된(주소에 반영된) 조건 */
+  /** 적용된 조건 — 빈 상태 문구를 가른다 */
   appliedFilters: UserFilters;
-  /** 조회 버튼·Enter·초기화가 호출한다. 쪽은 늘 1로 돌아간다 */
   onApplyFilters: (next: UserFilters) => void;
-  departmentOptions: SelectOption[];
-  statusOptions: SelectOption[];
-  statusDisabledReason: string | null;
   /** 표의 부서 셀에 낼 이름. 값이 없으면 미지정 표기를 낸다 */
   departmentNameOf: (departmentId: number | null | undefined) => string;
   /** 상태 코드의 표시명. 값 목록에 없으면 숫자·코드 대신 공통 「알 수 없음」을 낸다. */
   statusNameOf: (statusCode: string) => string;
-  /** 선택 목록이 잘렸거나 실패했다는 안내 슬롯 */
-  optionsNotice: ReactNode;
   pageView: PageView;
+  /** 서버가 준 쪽 정보. 받기 전·실패면 `null` — 셀 것이 없으면 쪽 이동을 그리지 않는다. */
+  pageMeta: PageNavMeta | null;
   onChangePage: (page: number) => void;
+  /** 건수 선택(10 · 20 · 50) — 바꾸면 첫 쪽으로 간다(사용자 지시 2026-11-20 · #333). */
+  pageSizes?: readonly ListPageSize[];
+  onChangePageSize?: (size: ListPageSize) => void;
   selectedAppUserId: number | null;
   onSelect: (appUserId: number) => void;
-  /** 등록 폼이 이미 열려 있으면 참. 같은 폼을 두 번 열지 않는다 */
-  isCreating: boolean;
-  onAddUser: () => void;
   /**
    * 조회 실패 표시. null이 아니면 표·빈 상태 대신 이것을 낸다 —
    * 실패를 「등록된 사용자가 없습니다」로 보이면 사실과 다른 안내가 되고,
@@ -59,6 +43,16 @@ export interface UserListPaneProps {
 }
 
 /** 값이 없는 칸을 비워 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
+/*
+ * 재직 상태 라벨 색 — 초기 시드 세 값만 색을 정하고, 고객이 늘린 값은 중립색이다(값 목록은 고정하지 않는다).
+ * 표 안에서 상태가 한눈에 갈리도록 라벨로 낸다(사용자 지시 2026-11-20 · #333).
+ */
+const STATUS_TONE: Record<string, 'success' | 'warning' | 'idle'> = {
+  EMPLOYED: 'success',
+  ON_LEAVE: 'warning',
+  RESIGNED: 'idle',
+};
+
 const orEmptyMark = (value: string): string => (value === '' ? t.values.empty : value);
 
 /**
@@ -81,52 +75,32 @@ export const UserListPane = ({
   isLoading,
   appliedFilters,
   onApplyFilters,
-  departmentOptions,
-  statusOptions,
-  statusDisabledReason,
   departmentNameOf,
   statusNameOf,
-  optionsNotice,
   pageView,
+  pageMeta,
   onChangePage,
+  pageSizes,
+  onChangePageSize,
   selectedAppUserId,
   onSelect,
-  isCreating,
-  onAddUser,
   loadError,
 }: UserListPaneProps) => {
-  /*
-   * 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
-   * 편집 중인 값은 draft에만 있다. 네 조건이 모두 조건 줄에 보여 조건 칩을 두지 않는다(C-6).
-   */
-  const [draft, setDraft] = useState<UserFilters>(appliedFilters);
-  const {
-    q: appliedQ,
-    departmentId: appliedDepartmentId,
-    statusCode: appliedStatusCode,
-    includeInactive: appliedIncludeInactive,
-  } = appliedFilters;
-
-  useEffect(() => {
-    setDraft({
-      q: appliedQ,
-      departmentId: appliedDepartmentId,
-      statusCode: appliedStatusCode,
-      includeInactive: appliedIncludeInactive,
-    });
-  }, [appliedQ, appliedDepartmentId, appliedStatusCode, appliedIncludeInactive]);
-
   /* 머리글과 셀을 가운데로 맞춘다(사용자 요청 2026-09-18) — 열 정렬은 DS `Column.align` 으로만 한다. */
-  const columns: Column<AppUser>[] = [
+  const baseColumns: Column<AppUser>[] = [
     {
       key: 'loginId',
       align: 'center',
       header: t.user.fields.loginId,
       width: '160px',
+      /*
+       * 링크처럼 보이지 않는다(사용자 지시 2026-11-20 · omf-all-around#333) — 줄 아무 곳이나 눌러 고른다.
+       * 이 단추는 키보드·화면 낭독기가 줄을 고르는 자리로만 남는다(수입검사 목록과 같다).
+       */
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className="users-roles-row-pick"
           aria-current={row.appUserId === selectedAppUserId ? 'true' : undefined}
           onClick={() => onSelect(row.appUserId)}
         >
@@ -152,9 +126,20 @@ export const UserListPane = ({
       align: 'center',
       header: t.user.fields.status,
       width: '112px',
-      render: (row) => (row.statusCode === '' ? orEmptyMark('') : statusNameOf(row.statusCode)),
+      render: (row) =>
+        row.statusCode === '' ? (
+          orEmptyMark('')
+        ) : (
+          <Chip variant="status" size="sm" status={STATUS_TONE[row.statusCode] ?? 'idle'}>
+            {statusNameOf(row.statusCode)}
+          </Chip>
+        ),
     },
   ];
+  /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(다른 목록과 같다 · 사용자 지시 2026-11-20). */
+  const ordered = useColumnOrder('omf-mes:users-roles:columns:users:order', baseColumns);
+  const resizable = useColumnWidths('omf-mes:users-roles:columns:users', ordered);
+  const fit = useFitColumns(resizable.columns);
 
   /**
    * 빈 상태는 세 갈래다 — **셋을 뭉치면 사실과 다른 안내가 된다.**
@@ -172,6 +157,11 @@ export const UserListPane = ({
         <EmptyState
           size="sm"
           live
+          icon={
+            <span className="inspection-standard-empty-icon">
+              <Icon name="last_page" size={20} />
+            </span>
+          }
           title={t.empty.beyondLastTitle}
           description={t.empty.beyondLastDescription}
           action={
@@ -188,6 +178,11 @@ export const UserListPane = ({
         <EmptyState
           size="sm"
           live
+          icon={
+            <span className="inspection-standard-empty-icon">
+              <Icon name="search_off" size={20} />
+            </span>
+          }
           title={t.user.empty.noMatchTitle}
           description={t.user.empty.noMatchDescription}
           action={
@@ -203,6 +198,11 @@ export const UserListPane = ({
       <EmptyState
         size="sm"
         live
+        icon={
+          <span className="inspection-standard-empty-icon">
+            <Icon name="group" size={20} />
+          </span>
+        }
         title={t.user.empty.noneTitle}
         description={t.user.empty.noneDescription}
       />
@@ -223,115 +223,49 @@ export const UserListPane = ({
 
     return (
       <>
-        {/* 고른 줄 표시는 `app.css` 의 `.users-roles-list` 가 그린다 — `Table` 이 행 선택 표시를 주지 않는다. */}
-        <div className="users-roles-list">
+        {/*
+         * `inspection-queue-table` — 수입검사 목록과 같은 머리 · 칸 가운데 정렬(열 손잡이가 있어도 이름이 칸 가운데).
+         * 고른 줄 표시는 `app.css` 의 `.users-roles-list` 가 그린다 — `Table` 이 행 선택 표시를 주지 않는다.
+         * 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 단추로 넘긴다(수입검사 목록과 같다).
+         */}
+        <div
+          ref={fit.ref}
+          className="users-roles-list inspection-queue-table"
+          style={resizable.style}
+          onClick={(event) => {
+            const target = event.target;
+            if (!(target instanceof Element)) return;
+            if (target.closest('button, a, input, select, textarea') !== null) return;
+            target
+              .closest('tbody tr')
+              ?.querySelector<HTMLButtonElement>('.users-roles-row-pick')
+              ?.click();
+          }}
+        >
           <Table
             density="compact"
-            columns={columns}
+            columns={fit.columns}
             rows={users}
             getRowId={(row) => String(row.appUserId)}
             empty={emptySlot}
           />
         </div>
-        <PageNav view={pageView} onChange={onChangePage} />
       </>
     );
   };
 
-  /*
-   * 「초기화」는 바뀐 것이 있을 때만 보인다(C-6). 누르면 초안도 함께 비운다 — 주소가 이미 처음 값이면
-   * 주소가 바뀌지 않아 따라가는 effect 가 깨어나지 않고, 치던 값이 그대로 남는다.
-   */
-  const isChanged = hasChangedFilters(EMPTY_USER_FILTERS, draft, appliedFilters);
-  const reset = (): void => {
-    setDraft(EMPTY_USER_FILTERS);
-    onApplyFilters(EMPTY_USER_FILTERS);
-  };
-
   return (
-    <section className="pane" aria-label={t.panes.userList}>
-      {/*
-       * 「사용자 추가」는 목록 끝이 아니라 구획 표제 옆에 둔다 — 목록이 길어지면 끝까지 내려야
-       * 찾을 수 있었다. 주 액션처럼 보이지 않게 외곽선 버튼을 그대로 쓴다.
-       */}
-      <div className="pane-heading-row users-roles-heading">
-        <h2 className="pane-title">{t.panes.userList}</h2>
-        <Button variant="outlined" disabled={isCreating} onClick={onAddUser}>
-          {t.actions.addUser}
-        </Button>
-      </div>
-      {optionsNotice}
-
-      {/* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-      {/*
-       * 조회 줄은 두 줄 묶음이다 — 1행 검색창·미사용 포함, 2행 부서·재직 상태 … [조회][초기화].
-       * 줄마다 따로 묶어야 좁아져 줄이 바뀌어도 조회·초기화가 오른쪽 끝에 남는다.
-       */}
-      <div className="users-roles-filter">
-        <div className="filter-bar">
-          <SearchInput
-            label={t.filters.userSearchLabel}
-            placeholder={t.filters.userSearchPlaceholder}
-            value={draft.q}
-            onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
-            onSearch={(value) => onApplyFilters({ ...draft, q: value })}
-            clearLabel={messages.common.clear}
-          />
-
-          {/*
-           * 해제 축이라 변경 즉시 적용한다 — 조회를 누르지 않으므로 검색창 옆에 두고, 조회·초기화는
-           * 그 버튼이 적용하는 부서·재직 상태 뒤에 둔다.
-           */}
-          <div className="field-cell field-cell-unlabeled">
-            <Checkbox
-              checked={appliedFilters.includeInactive}
-              onChange={(event) =>
-                onApplyFilters({ ...appliedFilters, includeInactive: event.target.checked })
-              }
-            >
-              {messages.common.includeInactive}
-            </Checkbox>
-          </div>
-        </div>
-
-        <div className="filter-bar">
-          {/*
-           * 규범 3-2 — 「SYN-DEPT-01 · 합성 부서 A」는 트리거 폭에 갇혀 잘린다.
-           * 판단 기준은 코드값이 아니라 선택지 문구 길이다.
-           */}
-          <SelectField
-            label={t.filters.department}
-            wide
-            options={[{ value: '', label: t.filters.departmentAll }, ...departmentOptions]}
-            value={draft.departmentId}
-            onChange={(value) => setDraft((prev) => ({ ...prev, departmentId: value }))}
-          />
-
-          <SelectField
-            label={t.filters.status}
-            options={[{ value: '', label: t.filters.statusAll }, ...statusOptions]}
-            value={draft.statusCode}
-            onChange={(value) => setDraft((prev) => ({ ...prev, statusCode: value }))}
-            disabled={statusDisabledReason !== null}
-            disabledReason={statusDisabledReason ?? undefined}
-          />
-
-          {/*
-           * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1).
-           * 갈라지면 남은 버튼이 무엇에 딸린 것인지 읽히지 않는다.
-           */}
-          <div className="filter-actions field-cell-unlabeled">
-            <Button onClick={() => onApplyFilters(draft)}>{messages.common.search}</Button>
-            {isChanged && (
-              <Button variant="outlined" onClick={reset}>
-                {messages.common.reset}
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {listSlot()}
+    <section className="pane users-roles-list-pane" aria-label={t.panes.userList}>
+      <div className="users-roles-list-body">{listSlot()}</div>
+      {pageMeta !== null && loadError === null && (
+        <PageNav
+          meta={pageMeta}
+          sizes={pageSizes}
+          buttonSize="md"
+          onChangePage={onChangePage}
+          onChangeSize={onChangePageSize}
+        />
+      )}
     </section>
   );
 };

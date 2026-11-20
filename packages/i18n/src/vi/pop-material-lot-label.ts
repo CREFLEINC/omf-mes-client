@@ -94,7 +94,6 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     notSelected: 'Không chọn',
     stopped: 'Đã dừng',
     alreadyIssued: 'Đã phát hành',
-    iqcMissing: 'Đã in, chưa ra nhãn IQC',
     failed: {
       printFailed: 'Chưa in được',
       reportFailedAfterPrint: 'Đã in, chưa ghi nhận',

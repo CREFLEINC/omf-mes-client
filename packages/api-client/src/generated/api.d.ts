@@ -1997,6 +1997,8 @@ export interface paths {
           q?: string;
           /** @description 기본은 사용 중인 것만 */
           includeInactive?: boolean;
+          /** @description 사용 여부 — 주면 그 값만 준다(true=사용, false=미사용). includeInactive 의 기본(사용만)보다 앞선다. 근거: omf-all-around#333 */
+          isActive?: boolean;
           page?: number;
           size?: number;
         };

@@ -1,8 +1,9 @@
-import { Button, TextField } from '@crefle/web-ui';
+import { Button, Icon, IconButton, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useId } from 'react';
+import { type ReactNode, useId, useState } from 'react';
 
 import { FieldLabel } from './field-label';
+import { requiredEmptyClass } from './required-empty';
 import { SelectField } from './select-field';
 import type { SelectOption, UserFormValues } from './types';
 
@@ -29,42 +30,52 @@ export interface UserFormPaneProps {
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;
+  /**
+   * 이 칸의 [취소][저장] 줄을 그릴지. 사용자 설정 카드는 아래에 한 줄만 두므로 끈다(사용자 지시 2026-11-20 · #333).
+   */
+  showActions?: boolean;
+  /** 칸 표제 줄을 그릴지. 사용자 추가 팝업은 창 제목이 같은 일을 하므로 끈다(사용자 지시 2026-11-20 · #333). */
+  showHeading?: boolean;
   onDeactivate: () => void;
   /** 비밀번호 초기화 확인 창을 연다. 수정 모드에서만 쓴다. */
   onResetPassword: () => void;
   /** 작업자 지정 줄(omf-all-around#104). 수정 모드에서만 — 아직 없는 사용자에게는 지정할 수 없다. */
   workerField?: ReactNode;
+  /** 등록 폼 입력칸 묶음 끝에 붙일 칸 — 사용자 추가 팝업의 작업자 사번(사용자 지시 2026-11-20 · #333). */
+  createExtraField?: ReactNode;
 }
 
 /** 라벨과 값 한 쌍. **폼 컨트롤이 아니다** — 잠긴 입력칸은 「언젠가 열린다」는 뜻이 된다. */
 const ValueField = ({
   label,
   value,
-  note,
+  lockedLabel,
   className,
 }: {
   label: string;
   value: string;
-  note: string;
+  /** 칸 이름 오른쪽의 짧은 라벨(「변경 불가」). */
+  lockedLabel: string;
   className: string;
 }) => {
   const labelId = useId();
-  const noteId = useId();
+  const lockedId = useId();
 
   return (
     <div className={`field-cell ${className}`}>
-      {/*
-       * 안내는 입력칸 아래가 아니라 **라벨 오른쪽의 작은 보조 라벨**이다(사용자 지시 2026-09-18) —
-       * 칸 아래에 두면 이 칸만 높아져 옆 칸들과 줄이 어긋난다. 값과의 연결(`aria-describedby`)은 그대로다.
-       */}
-      <span className="field-label readonly-label-row">
+      <span className="field-label users-roles-locked-label">
         <span id={labelId}>{label}</span>
-        <span id={noteId} className="readonly-label-note">
-          {note}
+        {/* 칸 이름 오른쪽 「변경 불가」 라벨 — 기준정보 화면의 잠긴 코드 안내와 같은 모양(사용자 지시 2026-11-20 · #333). */}
+        <span
+          id={lockedId}
+          className="iqc-inspection-action-note inspection-standard-label-hint"
+          data-tone="info"
+        >
+          {lockedLabel}
         </span>
       </span>
       {/* 입력칸이 아님을 읽기 쉬운 채로 보인다 — 흐린 비활성 입력칸으로 그리면 값이 잘 안 읽힌다. */}
-      <p className="readonly-value" aria-labelledby={labelId} aria-describedby={noteId}>
+      <p className="readonly-value" aria-labelledby={labelId} aria-describedby={lockedId}>
         {value}
       </p>
     </div>
@@ -102,9 +113,12 @@ export const UserFormPane = ({
   isSaving,
   onSave,
   onCancel,
+  showActions = true,
+  showHeading = true,
   onDeactivate,
   onResetPassword,
   workerField,
+  createExtraField,
 }: UserFormPaneProps) => {
   const loginIdId = useId();
   /*
@@ -112,14 +126,49 @@ export const UserFormPane = ({
    * 부르는 차례가 렌더마다 같아야 한다. 조건 안에서 부르면 모드가 바뀌는 순간 훅 차례가 어긋난다.
    */
   const passwordId = useId();
+  /* 초기 비밀번호를 눈 아이콘으로 보이게/숨기게(사용자 지시 2026-11-20 · #333). */
+  const [isPasswordShown, setIsPasswordShown] = useState(false);
   const userNameId = useId();
   const emailId = useId();
   const phoneId = useId();
-  const saveLabel = mode === 'create' ? t.actions.addUser : messages.common.save;
+  const saveLabel = mode === 'create' ? t.actions.addUser : t.actions.saveInfo;
 
   return (
     <section className="pane users-roles-pane users-roles-user-pane" aria-label={t.panes.userForm}>
-      <h2 className="pane-title">{t.panes.userForm}</h2>
+      {/*
+       * 계정 관리(비밀번호 초기화 · 사용 중지)는 표제 줄 오른쪽에 둔다(omf-all-around#333) — 폼 값을 저장하지 않고
+       * **바로 서버에 나가는 계정 작업**이라 아래 「취소 · 정보 저장」과 떨어져 있어야 한 무리로 읽히지 않는다.
+       * 등록 폼에는 두지 않는다 — 아직 없는 사용자라 초기화할 비밀번호도, 중지할 계정도 없다.
+       * 비밀번호 초기화는 중립 보조, 사용 중지는 주의(outlined 기본색) — 강조 정도만 가른다(담당자 결정 2026-10-16).
+       * 사용 중지는 이미 미사용이면 비활성이고 사유 문구는 내지 않는다(사용자 지시 2026-09-18).
+       */}
+      {showHeading && (
+        <div className="pane-heading-row users-roles-heading">
+          <h3 className="pane-title">{t.panes.userForm}</h3>
+          {mode === 'edit' && (
+            <div className="users-roles-account-actions">
+              <Button
+                variant="outlined"
+                size="sm"
+                className="app-button-neutral"
+                leadingIcon={<Icon name="key" size={18} />}
+                onClick={onResetPassword}
+              >
+                {t.actions.resetPassword}
+              </Button>
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={isDeactivateDisabled}
+                leadingIcon={<Icon name="person_off" size={18} />}
+                onClick={onDeactivate}
+              >
+                {messages.common.deactivate}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
       {banner}
 
       <div
@@ -139,6 +188,7 @@ export const UserFormPane = ({
             <TextField
               id={loginIdId}
               value={values.loginId}
+              containerClassName={requiredEmptyClass(values.loginId)}
               /*
                * ⛔ **아래 비밀번호 칸이 생기면서 이 줄이 필요해졌다.** 두 칸을 나란히 두면
                *    브라우저가 「아이디 + 비밀번호」를 **이 출처의 자격증명 쌍**으로 읽고 저장을
@@ -160,7 +210,7 @@ export const UserFormPane = ({
             className="urf-login"
             label={t.user.fields.loginId}
             value={values.loginId}
-            note={t.actionReasons.loginIdLocked}
+            lockedLabel={t.user.loginIdLocked}
           />
         )}
 
@@ -191,19 +241,35 @@ export const UserFormPane = ({
         {mode === 'create' ? (
           <div className="field-cell urf-password">
             <FieldLabel htmlFor={passwordId} label={t.user.fields.initialPassword} required />
-            <TextField
-              id={passwordId}
-              type="password"
-              /*
-               * `new-password`다 — `current-password`로 두면 브라우저가 **관리자 자신의** 저장된
-               * 비밀번호를 이 칸에 채우려 하고, 그 값이 등록 요청에 실린다.
-               */
-              autoComplete="new-password"
-              value={values.password}
-              onChange={(event) => onChange({ password: event.target.value })}
-              error={fieldErrors.password}
-              aria-required
-            />
+            {/*
+             * 눈 아이콘은 입력칸 위에 겹쳐 둔다 — 디자인 시스템의 뒤쪽 아이콘 자리는 화면 낭독기에서 숨겨져
+             * 누를 수 있는 단추를 둘 수 없다(사용자 지시 2026-11-20 · #333).
+             */}
+            <div className="users-roles-password-field">
+              <TextField
+                id={passwordId}
+                type={isPasswordShown ? 'text' : 'password'}
+                className="users-roles-password-input"
+                /*
+                 * `new-password`다 — `current-password`로 두면 브라우저가 **관리자 자신의** 저장된
+                 * 비밀번호를 이 칸에 채우려 하고, 그 값이 등록 요청에 실린다.
+                 */
+                autoComplete="new-password"
+                value={values.password}
+                containerClassName={requiredEmptyClass(values.password)}
+                onChange={(event) => onChange({ password: event.target.value })}
+                error={fieldErrors.password}
+                aria-required
+              />
+              <IconButton
+                icon={isPasswordShown ? 'visibility_off' : 'visibility'}
+                size="sm"
+                aria-label={isPasswordShown ? t.user.hidePassword : t.user.showPassword}
+                onClick={() => {
+                  setIsPasswordShown((shown) => !shown);
+                }}
+              />
+            </div>
           </div>
         ) : null}
 
@@ -212,6 +278,7 @@ export const UserFormPane = ({
           <TextField
             id={userNameId}
             value={values.userName}
+            containerClassName={requiredEmptyClass(values.userName)}
             onChange={(event) => onChange({ userName: event.target.value })}
             error={fieldErrors.userName}
             aria-required
@@ -225,7 +292,9 @@ export const UserFormPane = ({
         <SelectField
           className="urf-dept"
           label={t.user.fields.department}
+          optionalMark={t.user.optionalMark}
           wide
+          searchPlaceholder={t.filters.departmentSearchPlaceholder}
           options={departmentOptions}
           value={values.departmentId}
           onChange={(value) => onChange({ departmentId: value })}
@@ -234,7 +303,11 @@ export const UserFormPane = ({
 
         {/* 계약이 널을 허용한다 — 비우는 것이 정상 값이라 필수 표시를 붙이지 않는다. */}
         <div className="field-cell urf-email">
-          <FieldLabel htmlFor={emailId} label={t.user.fields.email} />
+          <FieldLabel
+            htmlFor={emailId}
+            label={t.user.fields.email}
+            optionalMark={t.user.optionalMark}
+          />
           <TextField
             id={emailId}
             value={values.email}
@@ -248,13 +321,16 @@ export const UserFormPane = ({
          * 표시는 국내 표기다. 목록 표에는 열을 두지 않는다 — 개인정보 노출을 줄인다(FR-019).
          */}
         <div className="field-cell urf-phone">
-          <FieldLabel htmlFor={phoneId} label={t.user.fields.phoneNumber} />
+          <FieldLabel
+            htmlFor={phoneId}
+            label={t.user.fields.phoneNumber}
+            optionalMark={t.user.optionalMark}
+          />
           <TextField
             id={phoneId}
             type="tel"
             inputMode="tel"
             autoComplete="off"
-            placeholder="0912 345 678"
             value={values.phoneNumber}
             onChange={(event) => onChange({ phoneNumber: event.target.value })}
             error={fieldErrors.phoneNumber}
@@ -272,53 +348,31 @@ export const UserFormPane = ({
           disabledReason={statusDisabledReason ?? undefined}
           error={fieldErrors.statusCode}
         />
+        {mode === 'create' && createExtraField}
       </div>
 
+      {showActions && (
+        <div className="form-actions">
+          {/*
+           * 등록에서 「취소」는 **폼을 닫는 것**이라 고친 것이 없어도 눌러야 한다.
+           * 수정에서는 **기준값으로 되돌리는 것**이라 고친 것이 있을 때만 의미가 있다.
+           */}
+          <Button variant="outlined" disabled={mode === 'edit' && !isDirty} onClick={onCancel}>
+            {messages.common.cancel}
+          </Button>
+
+          {/*
+           * 규범 4(비활성 사유 상시 표시)의 예외 — 사용자 지시 2026-09-18: 이 화면의 「저장」·
+           * 「사용자 추가」 사유 문구를 내지 않는다. 고친 것이 없으면 비활성인 조건은 그대로다.
+           */}
+          <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
+            {saveLabel}
+          </Button>
+        </div>
+      )}
+
+      {/* 연결된 현장 작업자 — 상세 정보의 하위 구역. 연결·변경·해제는 각자 바로 저장된다(「정보 저장」과 무관). */}
       {mode === 'edit' && workerField}
-
-      <div className="form-actions">
-        {/*
-         * 계정 관리 묶음 — 비밀번호 초기화·사용 중지. 폼의 「취소·저장」과 같은 줄 양 끝에 두되
-         * 한 덩어리로 묶어 왼쪽에 모은다: 이 둘은 폼 값을 저장하지 않고 **바로 서버에 나가는
-         * 계정 작업**이라, 폼 저장과 한 무리로 읽히면 안 된다. 등록 폼에는 두지 않는다 — 아직
-         * 없는 사용자라 초기화할 비밀번호도, 중지할 계정도 없다.
-         *
-         * 비밀번호 초기화(설계 §5-1 「기본 정보 폼 · 항상」)는 사용 여부와 무관하게 누를 수 있어
-         * 비활성 사유가 없다. 두 버튼 모두 외곽선 버튼이다(사용자 지시 2026-09-18) — 디자인 시스템에
-         * 위험 동작 전용 버튼이 없다. 더 무거운 사용 중지(로그인 차단)는 확인 창이 되돌릴 수 없음을 밝힌다.
-         */}
-        {mode === 'edit' && (
-          <div className="users-roles-account-actions form-actions-secondary">
-            {/* 비밀번호 초기화는 중립 보조, 사용 중지는 주의(outlined 기본색) — 강조 정도만 가른다(담당자 결정 2026-10-16). */}
-            <Button variant="outlined" className="app-button-neutral" onClick={onResetPassword}>
-              {t.actions.resetPassword}
-            </Button>
-            {/*
-             * 이미 미사용이면 비활성이다. 사유 문구(「…이미 미사용인 사용자에게…」)는 내지 않는다 —
-             * 규범 4(비활성 사유 상시 표시)의 예외, 사용자 지시 2026-09-18.
-             */}
-            <Button variant="outlined" disabled={isDeactivateDisabled} onClick={onDeactivate}>
-              {messages.common.deactivate}
-            </Button>
-          </div>
-        )}
-
-        {/*
-         * 등록에서 「취소」는 **폼을 닫는 것**이라 고친 것이 없어도 눌러야 한다.
-         * 수정에서는 **기준값으로 되돌리는 것**이라 고친 것이 있을 때만 의미가 있다.
-         */}
-        <Button variant="outlined" disabled={mode === 'edit' && !isDirty} onClick={onCancel}>
-          {messages.common.cancel}
-        </Button>
-
-        {/*
-         * 규범 4(비활성 사유 상시 표시)의 예외 — 사용자 지시 2026-09-18: 이 화면의 「저장」·
-         * 「사용자 추가」 사유 문구를 내지 않는다. 고친 것이 없으면 비활성인 조건은 그대로다.
-         */}
-        <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
-          {saveLabel}
-        </Button>
-      </div>
     </section>
   );
 };

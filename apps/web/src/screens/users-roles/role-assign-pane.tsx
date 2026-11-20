@@ -19,6 +19,10 @@ export interface RoleAssignPaneProps {
   onToggle: (roleId: number) => void;
   onSave: () => void;
   onCancel: () => void;
+  /**
+   * 이 칸의 [취소][저장] 줄을 그릴지. 사용자 설정 카드는 아래에 한 줄만 두므로 끈다(사용자 지시 2026-11-20 · #333).
+   */
+  showActions?: boolean;
 }
 
 /**
@@ -45,6 +49,7 @@ export const RoleAssignPane = ({
   onToggle,
   onSave,
   onCancel,
+  showActions = true,
 }: RoleAssignPaneProps) => {
   const lockedNoteId = useId();
   const hasLocked = choices.some((choice) => choice.isLocked);
@@ -88,14 +93,8 @@ export const RoleAssignPane = ({
               onToggle(choice.roleId);
             }}
           >
-            {/* 이름을 앞세우고 코드는 작게 곁들인다 — 코드는 운영자가 짚어 볼 값이라 지우지 않는다. */}
+            {/* 이름만 보인다 — 역할 코드는 「역할 및 권한 관리」 탭에서 본다(사용자 지시 2026-11-20 · omf-all-around#333). */}
             <span className="role-choice-name">{choice.label}</span>
-            {choice.code !== '' && (
-              <>
-                {/* 접근 이름에서 이름과 코드가 붙어 읽히지 않게 사이를 띄운다. */}{' '}
-                <span className="role-choice-code">{choice.code}</span>
-              </>
-            )}
           </Checkbox>
         ))}
       </div>
@@ -104,7 +103,7 @@ export const RoleAssignPane = ({
 
   return (
     <section className="pane users-roles-pane" aria-label={t.panes.roleAssign}>
-      <h2 className="pane-title">{t.panes.roleAssign}</h2>
+      <h3 className="pane-title">{t.panes.roleAssign}</h3>
       {banner}
       {optionsNotice}
 
@@ -120,16 +119,18 @@ export const RoleAssignPane = ({
         </p>
       )}
 
-      <div className="form-actions">
-        <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
-          {messages.common.cancel}
-        </Button>
+      {showActions && (
+        <div className="form-actions">
+          <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
+            {messages.common.cancel}
+          </Button>
 
-        {/* 규범 4(비활성 사유 상시 표시)의 예외 — 사용자 지시 2026-09-18: 이 화면의 저장 사유 문구를 내지 않는다. */}
-        <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
-          {messages.common.save}
-        </Button>
-      </div>
+          {/* 규범 4(비활성 사유 상시 표시)의 예외 — 사용자 지시 2026-09-18: 이 화면의 저장 사유 문구를 내지 않는다. */}
+          <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
+            {t.actions.saveRoles}
+          </Button>
+        </div>
+      )}
     </section>
   );
 };

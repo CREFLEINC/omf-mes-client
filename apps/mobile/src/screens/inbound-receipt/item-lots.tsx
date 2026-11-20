@@ -7,7 +7,8 @@ import { Button } from '../../patterns/button';
 import { shortLotNos } from '../../patterns/lot-short-no';
 import { packageUnitOf, qtyNumber, qtyText } from './lot-format';
 import { isReceiving, receivedLotsOf } from './receipt';
-import { Words } from './words';
+import { Words } from '../../patterns/words';
+import '../../patterns/item-sheet.css';
 
 import '../../patterns/lot-table.css';
 

@@ -378,12 +378,10 @@ const mount = (server: ReturnType<typeof createServer>) =>
     { fetch: server.fetch },
   );
 
-/** 찍고 방금 찍은 칸에 그 번호 끝이 설 때까지 — 앞 스캔이 끝나기 전 스캔은 화면이 받지 않는다. */
+/** 찍고 방금 찍은 칸에 그 번호가 설 때까지 — 앞 스캔이 끝나기 전 스캔은 화면이 받지 않는다. */
 const scanDone = async (code: string): Promise<void> => {
   await scan(code);
-  await waitFor(() =>
-    expect(lastScan()).toHaveTextContent(`…|${code.split('|').slice(-2).join('|')}`),
-  );
+  await waitFor(() => expect(lastScan()).toHaveTextContent(code));
 };
 
 const scan = async (code: string): Promise<void> => {
@@ -478,7 +476,8 @@ describe('US2-1 스캔마다 바로 등록', () => {
     expect(last.getByText('SYN-CAP')).toBeInTheDocument();
     expect(last.getByText('1,000')).toBeInTheDocument();
     expect(last.queryByText('합성 공급사 SYN01')).toBeNull();
-    expect(last.getByText('…|SYN01|0002')).toBeInTheDocument();
+    /* 번호는 줄이지 않고 전체를. */
+    expect(last.getByText(A(2))).toBeInTheDocument();
     /* 같은 품목을 이어 찍으면 「새 품목」은 없다. */
     expect(last.queryByText(t.last.newItem)).toBeNull();
 

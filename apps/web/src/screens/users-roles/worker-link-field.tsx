@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Chip, Dialog, TextField, useToast } from '@crefle/web-ui';
+import { Button, Chip, Dialog, Icon, TextField, useToast } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -26,6 +26,45 @@ const WORKER_FIELD = 'workerId';
 
 type PickMode = 'connect' | 'change';
 
+type ApiClient = ReturnType<typeof useApiClient>['client'];
+
+/**
+ * 사번 → 연결할 수 있는 재직 작업자. 연결 모달과 사용자 추가 팝업이 같이 쓴다(사용자 지시 2026-11-20 · #333).
+ * 못 찾았거나 다른 계정에 연결됐으면 입력칸 아래에 낼 문장을 돌려준다. `appUserId` 가 없으면(등록 전) 연결된 작업자는 모두 막는다.
+ */
+export const findLinkableWorker = async (
+  client: ApiClient,
+  workerNo: string,
+  appUserId: number | null,
+): Promise<{ workerId: number } | { error: string }> => {
+  try {
+    const response = await runRequest(() =>
+      client.GET('/mdm/workers', {
+        params: { query: { workerNo, includeInactive: false, page: 1, size: 2 } },
+      }),
+    );
+    const found = response.items.find((worker) => worker.workerNo === workerNo);
+    if (found === undefined) return { error: t.noActiveWorker };
+    if (found.appUserId != null && found.appUserId !== appUserId)
+      return { error: t.linkedElsewhere };
+    return { workerId: found.workerId };
+  } catch (error) {
+    // 사번 조회 자체가 실패했다(통신·서버 오류) — 조용히 끝내지 않고 입력칸 아래에 원인을 낸다.
+    return { error: describeLoadError(toApiError(error)) };
+  }
+};
+
+/** 사번 칸 아래 안내 — 라벨 모양 한 줄, 왼쪽 정렬(사용자 지시 2026-11-20 · #333). */
+export const WorkerNoError = ({ message }: { message: string }) => (
+  <span
+    className="iqc-inspection-action-note users-roles-dialog-note users-roles-worker-no-error"
+    data-tone="warning"
+  >
+    <Icon name="warning" size={16} aria-hidden />
+    {message}
+  </span>
+);
+
 export interface WorkerLinkFieldProps {
   appUserId: number;
   /** 작업자의 부서 번호 → 이름. 사용자 정보의 부서 칸과 같은 목록에서 푼다. */
@@ -33,12 +72,37 @@ export interface WorkerLinkFieldProps {
 }
 
 /** 모달 안의 「현재 작업자」 블록 — 변경 모달과 해제 확인 창이 같이 쓴다. */
-const WorkerBlock = ({ name, meta }: { name: string; meta: readonly string[] }) => (
+const departmentMeta = (department: string): { label: string; value: string }[] => {
+  const [code, ...rest] = department.split(' · ');
+  if (rest.length === 0) return [{ label: t.metaLabels.department, value: department }];
+  return [
+    { label: t.metaLabels.departmentCode, value: code ?? '' },
+    { label: t.metaLabels.departmentName, value: rest.join(' · ') },
+  ];
+};
+
+const WorkerBlock = ({
+  name,
+  meta,
+  caption,
+}: {
+  name: string;
+  /** 사번 · 부서 코드 · 부서명 — 카드 요약 줄과 같은 이름표 + 세로 막대(사용자 지시 2026-11-20 · #333). */
+  meta: readonly { label: string; value: string }[];
+  /** 블록 위 작은 제목(작업자 변경 창 · 사용자 시안 2026-11-20 · #333). */
+  caption?: string;
+}) => (
   <div className="users-roles-worker-block">
+    {caption !== undefined && <span className="users-roles-worker-block-caption">{caption}</span>}
     <strong>{name}</strong>
-    {meta.map((line) => (
-      <span key={line}>{line}</span>
-    ))}
+    <div className="users-roles-worker-block-meta">
+      {meta.map(({ label, value }) => (
+        <span key={label} className="users-roles-worker-link-meta">
+          <span className="users-roles-worker-link-meta-label">{label}</span>
+          {value}
+        </span>
+      ))}
+    </div>
   </div>
 );
 
@@ -151,23 +215,12 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
     write.reset();
     setIsLookingUp(true);
     try {
-      const found = await runRequest(() =>
-        client.GET('/mdm/workers', {
-          params: { query: { workerNo: trimmed, includeInactive: false, page: 1, size: 2 } },
-        }),
-      ).then((response) => response.items.find((worker) => worker.workerNo === trimmed));
-      if (found === undefined) {
-        setLocalError(t.notFound);
+      const result = await findLinkableWorker(client, trimmed, appUserId);
+      if ('error' in result) {
+        setLocalError(result.error);
         return;
       }
-      if (found.appUserId != null && found.appUserId !== appUserId) {
-        setLocalError(t.linkedElsewhere);
-        return;
-      }
-      write.write(found.workerId);
-    } catch (error) {
-      // 사번 조회 자체가 실패했다(통신·서버 오류) — 조용히 끝내지 않고 입력칸 아래에 원인을 낸다.
-      setLocalError(describeLoadError(toApiError(error)));
+      write.write(result.workerId);
     } finally {
       setIsLookingUp(false);
     }
@@ -179,7 +232,55 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
 
   return (
     <section className="users-roles-worker-link" aria-label={t.title}>
-      <h3 className="users-roles-worker-link-title">{t.title}</h3>
+      {/* 제목 줄 오른쪽 끝에 작업자 변경 · 연결 해제(연결)를 둔다(사용자 지시 2026-11-20 · #333). */}
+      <div className="users-roles-worker-link-head">
+        <h3 className="users-roles-worker-link-title">
+          {current !== undefined && linkedId === null ? t.titleUnlinked : t.title}
+        </h3>
+        {current !== undefined && (
+          <div className="users-roles-worker-link-actions">
+            {isLinked ? (
+              <>
+                <Button
+                  variant="outlined"
+                  size="sm"
+                  className="app-button-neutral"
+                  leadingIcon={<Icon name="manage_accounts" size={18} />}
+                  onClick={() => {
+                    openPick('change');
+                  }}
+                >
+                  {t.change}
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="sm"
+                  className="app-button-neutral"
+                  leadingIcon={<Icon name="link_off" size={18} />}
+                  onClick={() => {
+                    write.reset();
+                    setIsUnlinkOpen(true);
+                  }}
+                >
+                  {t.unlink}
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="outlined"
+                size="sm"
+                className="app-button-neutral"
+                leadingIcon={<Icon name="link" size={18} />}
+                onClick={() => {
+                  openPick('connect');
+                }}
+              >
+                {t.connect}
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
 
       {link.isError && <LoadErrorBanner error={link.error} onRetry={() => void link.refetch()} />}
 
@@ -193,54 +294,32 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
               {isLinked ? (
                 <>
                   <strong>{linkedName}</strong>
-                  <span className="users-roles-worker-link-meta">{linkedNo}</span>
-                  <span className="users-roles-worker-link-meta">{department}</span>
+                  {/*
+                   * 사번 | 부서 코드 | 부서명 — 세로 막대로 나누고, 값마다 무슨 정보인지 이름을 붙인다
+                   * (사용자 지시 2026-11-20 · #333). 부서를 코드·이름으로 못 가르면(미지정 등) 「부서」 하나로 낸다.
+                   */}
+                  {[
+                    { label: t.metaLabels.workerNo, value: linkedNo },
+                    ...departmentMeta(department),
+                  ].map(({ label, value }) => (
+                    <span key={label} className="users-roles-worker-link-meta">
+                      <span className="users-roles-worker-link-meta-label">{label}</span>
+                      {value}
+                    </span>
+                  ))}
                 </>
               ) : (
-                <span>{t.none}</span>
-              )}
-            </div>
-            <div className="users-roles-worker-link-actions">
-              {isLinked ? (
-                <>
-                  <Button
-                    variant="outlined"
-                    size="sm"
-                    className="app-button-neutral"
-                    onClick={() => {
-                      openPick('change');
-                    }}
-                  >
-                    {t.change}
-                  </Button>
-                  <Button
-                    variant="text"
-                    size="sm"
-                    className="app-button-neutral"
-                    onClick={() => {
-                      write.reset();
-                      setIsUnlinkOpen(true);
-                    }}
-                  >
-                    {t.unlink}
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  variant="tonal"
-                  size="sm"
-                  onClick={() => {
-                    openPick('connect');
-                  }}
+                /* 미연결이면 칩 옆에 왜 연결해야 하는지 — 라벨 모양 안내(사용자 지시 2026-11-20 · #333). */
+                <span
+                  className="iqc-inspection-action-note users-roles-dialog-note"
+                  data-tone="info"
                 >
-                  {t.connect}
-                </Button>
+                  <Icon name="info" size={16} aria-hidden />
+                  {t.hintUnlinked}
+                </span>
               )}
             </div>
           </div>
-          <p className="field-note users-roles-worker-link-hint">
-            {isLinked ? t.hintLinked : t.hintUnlinked}
-          </p>
         </>
       )}
 
@@ -251,7 +330,7 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
       <Dialog
         open={pickMode !== null}
         onClose={closePick}
-        size="sm"
+        size="md"
         title={pickMode === 'change' ? t.change : t.connect}
         closeOnBackdropClick={false}
         showCloseButton={false}
@@ -260,16 +339,28 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
           <form className="users-roles-worker-dialog" onSubmit={(event) => void submit(event)}>
             {write.error !== null && <SaveErrorBanner error={write.error} />}
             {pickMode === 'change' && (
-              <WorkerBlock name={linkedName} meta={[`${linkedNo} · ${department}`]} />
+              <WorkerBlock
+                caption={t.currentCaption}
+                name={linkedName}
+                meta={[
+                  { label: t.metaLabels.workerNo, value: linkedNo },
+                  ...departmentMeta(department),
+                ]}
+              />
             )}
             <div className="users-roles-worker-dialog-field">
-              <FieldLabel htmlFor={inputId} label={t.inputLabel} />
+              <FieldLabel
+                htmlFor={inputId}
+                label={pickMode === 'change' ? t.inputLabelChange : t.inputLabelConnect}
+              />
               <TextField
                 ref={inputRef}
                 id={inputId}
                 fullWidth
                 autoFocus
-                placeholder={t.inputPlaceholder}
+                placeholder={
+                  pickMode === 'change' ? t.inputPlaceholderChange : t.inputPlaceholderConnect
+                }
                 value={workerNo}
                 onChange={(event) => {
                   setWorkerNo(event.target.value);
@@ -278,9 +369,13 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
                   if (write.error !== null) write.reset();
                 }}
                 disabled={isBusy}
-                error={inputError}
+                error={
+                  inputError === undefined || inputError === null ? undefined : (
+                    <WorkerNoError message={inputError} />
+                  )
+                }
               />
-              <p className="field-note">{pickMode === 'change' ? t.noteChange : t.noteConnect}</p>
+              {/* 연결 · 변경 창 모두 시안대로 보조 문구 없이(사용자 시안 2026-11-20 · #333). */}
             </div>
             <div className="users-roles-worker-dialog-actions">
               <Button
@@ -293,7 +388,7 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
                 {messages.common.cancel}
               </Button>
               <Button type="submit" loading={isBusy} disabled={isBusy || workerNo.trim() === ''}>
-                {pickMode === 'change' ? t.submitChange : t.submitConnect}
+                {pickMode === 'change' ? t.submitChange : t.submitConnectDialog}
               </Button>
             </div>
           </form>
@@ -305,7 +400,7 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
         onClose={() => {
           if (!write.isSaving) setIsUnlinkOpen(false);
         }}
-        size="sm"
+        size="md"
         title={t.unlinkConfirmTitle}
         closeOnBackdropClick={false}
         showCloseButton={false}
@@ -313,10 +408,19 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
         {isUnlinkOpen && (
           <div className="users-roles-worker-dialog">
             {write.error !== null && <SaveErrorBanner error={write.error} />}
-            <WorkerBlock name={linkedName} meta={[linkedNo]} />
-            <p className="users-roles-worker-dialog-question">{t.unlinkQuestion}</p>
-            <AlertBanner variant="warning">{t.unlinkImpact}</AlertBanner>
-            <p className="field-note">{t.unlinkNote}</p>
+            {/* 시안대로 — 작은 제목 + 사번 표기, 영향은 경고 라벨 한 줄(사용자 시안 2026-11-20 · #333). */}
+            <WorkerBlock
+              caption={t.unlinkCaption}
+              name={linkedName}
+              meta={[
+                { label: t.metaLabels.workerNo, value: linkedNo },
+                ...departmentMeta(department),
+              ]}
+            />
+            <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+              <Icon name="warning" size={16} aria-hidden />
+              {t.unlinkImpact}
+            </p>
             <div className="users-roles-worker-dialog-actions">
               <Button
                 variant="outlined"
