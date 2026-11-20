@@ -29,7 +29,7 @@ interface RowsProps {
   /** 표 칸 수(공급사 머리 줄 colSpan). */
   columns: number;
   currentId?: number | null;
-  /** 공급사가 하나여도 머리 줄을 그린다 — 마감 취소 가능 표(사용자 지시 2026-11-20 「공급사도 표시」). */
+  /** 공급사가 하나여도 머리 줄을 그린다(사용자 지시 2026-11-20 「공급사도 표시」). */
   alwaysGroup?: boolean;
 }
 
@@ -65,7 +65,7 @@ const Rows = ({ lots, cells, columns, currentId = null, alwaysGroup = false }: R
 };
 
 /**
- * 입하 중 표 — No · 품목코드 / 품목명(한 줄, 넘치면 8px 까지 줄임) · LOT 수 · 수량(사용자 지시 2026-11-20). 품목 칸을 누르면
+ * 입하 중 표 — 공급사 머리 줄 › No · 품목코드 / 품목명(줄여서라도 전체) · LOT 수 · 수량(사용자 지시 2026-11-20). 품목 칸을 누르면
  * 「입하 품목」 시트(자재 관리 LOT · 해제 · [마감]).
  */
 export const OpenTable = ({
@@ -86,6 +86,7 @@ export const OpenTable = ({
       <Rows
         lots={lots}
         columns={4}
+        alwaysGroup
         cells={(lot) => (
           <>
             <td className="close-table__item">

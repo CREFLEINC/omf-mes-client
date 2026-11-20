@@ -273,8 +273,8 @@ describe('US2-10 입하 중 목록 · 상세 · 해제 · 마감', () => {
     expect(row).toHaveTextContent('2,000 EA');
     expect(within(row).getByText('2')).toBeInTheDocument();
     expect(screen.queryByText('SYN-IL-20261111-0003')).toBeNull();
-    /* 공급사가 하나면 공급사 머리 줄은 없다. */
-    expect(screen.queryByText('합성 공급사 가')).toBeNull();
+    /* 공급사는 하나여도 머리 줄로 보인다(사용자 지시 2026-11-20). */
+    expect(screen.getByText('합성 공급사 가')).toBeInTheDocument();
     expect(screen.getByText(t.open.heading(1))).toBeInTheDocument();
     expect(sent.find((each) => each.search.get('closable') === 'true')?.search.get('plantId')).toBe(
       '8301',
