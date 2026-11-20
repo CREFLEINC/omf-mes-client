@@ -18293,7 +18293,7 @@ dialog.layout-editor-dialog {
 /* 열 폭은 정한 값 그대로, 남는 폭은 기능 칸이 나눠 갖는다(열 끌기 없음 · #333). */
 .terminal-map-matrix table {
   width: 100%;
-  min-width: 72.5rem;
+  min-width: 56rem;
   table-layout: fixed;
 }
 
@@ -18304,7 +18304,7 @@ dialog.layout-editor-dialog {
 }
 
 /* 다 추가했을 때 안내 — 공정 추가 칸 자리 오른쪽 끝. */
-.terminal-map-add-done {
+.terminal-map-grid-head > .iqc-inspection-action-note.terminal-map-add-done {
   margin: 0 0 0 auto;
 }
 

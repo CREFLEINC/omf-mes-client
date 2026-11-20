@@ -170,7 +170,5 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
   discard: {
     title: 'Thay đổi chưa được lưu',
     body: 'Nếu rời đi mà không lưu, các thay đổi sẽ bị mất.',
-    keep: 'Tiếp tục chỉnh sửa',
-    leave: 'Rời đi mà không lưu',
   },
 };

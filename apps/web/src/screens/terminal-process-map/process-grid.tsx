@@ -60,7 +60,7 @@ export const ProcessGrid = ({
     {
       key: 'openAll',
       header: t.grid.openAll,
-      width: '104px',
+      width: '88px',
       align: 'center',
       render: (row) => {
         const on = FLAG_KEYS.filter((key) => row[key]).length;
@@ -81,7 +81,7 @@ export const ProcessGrid = ({
     ...FLAG_KEYS.map((key): Column<ProcessRowView> => ({
       key,
       header: flagLabel(key),
-      width: '104px',
+      width: '88px',
       align: 'center',
       render: (row) => (
         <Checkbox

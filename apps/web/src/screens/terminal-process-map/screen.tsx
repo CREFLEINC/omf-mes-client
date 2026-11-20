@@ -1,5 +1,4 @@
 import {
-  AlertBanner,
   Button,
   Checkbox,
   Chip,
@@ -9,6 +8,7 @@ import {
   SearchInput,
   Skeleton,
   Table,
+  useToast,
   type Column,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
@@ -30,6 +30,7 @@ import {
   toSearchParams,
   type ListPageSize,
 } from './filters';
+import { DiscardDialog } from '../routing/leave-guard';
 import type { FlagKey } from './flags';
 import {
   addProcess,
@@ -122,7 +123,11 @@ export const TerminalProcessMapScreen = () => {
   const [addTarget, setAddTarget] = useState('');
   const [token, setToken] = useState<TokenView | null>(null);
   const [isDeactivating, setDeactivating] = useState(false);
-  const [savedNotice, setSavedNotice] = useState<string | null>(null);
+  /* 저장 · 중지 결과는 오른쪽 아래 알림으로(사용자 지시 2026-11-20 · #333). */
+  const toast = useToast();
+  const notify = (description: string): void => {
+    toast.show({ variant: 'success', description });
+  };
   /** 저장하지 않은 기능 구성이 있을 때 미뤄 둔 이동(사용자 역할 권한 관리와 같다 · #333). */
   const [pendingLeave, setPendingLeave] = useState<(() => void) | null>(null);
 
@@ -186,22 +191,22 @@ export const TerminalProcessMapScreen = () => {
 
   const create = useTerminalCreate((created) => {
     setFormMode('closed');
-    setSavedNotice(t.terminal.saved);
+    notify(t.terminal.saved);
     selectTerminal(created.terminalId);
   });
 
   const update = useTerminalUpdate(selectedId, () => {
     setFormMode('closed');
-    setSavedNotice(t.terminal.saved);
+    notify(t.terminal.saved);
   });
 
   const deactivate = useTerminalDeactivate(selectedId, () => {
     setDeactivating(false);
-    setSavedNotice(t.terminal.deactivated);
+    notify(t.terminal.deactivated);
   });
 
   const replace = useProcessesReplace(selectedId, () => {
-    setSavedNotice(t.grid.saved);
+    notify(t.grid.saved);
     /* 저장한 구성을 다시 읽는다 — 새 잠금 토큰이 그 조회에 실려 온다. */
     void processRows.refetch();
   });
@@ -242,7 +247,6 @@ export const TerminalProcessMapScreen = () => {
   const selectTerminal = (terminalId: number | null): void => {
     setSearchParams(toSearchParams(filters, terminalId));
     setFormMode('closed');
-    setSavedNotice(null);
     create.reset();
     update.reset();
     replace.reset();
@@ -254,7 +258,6 @@ export const TerminalProcessMapScreen = () => {
     setAutoCode(null);
     setTerminalErrors({});
     setFormMode('create');
-    setSavedNotice(null);
     create.reset();
     update.reset();
   };
@@ -265,7 +268,6 @@ export const TerminalProcessMapScreen = () => {
     setTerminalDraft(toTerminalDraft(selected));
     setTerminalErrors({});
     setFormMode('edit');
-    setSavedNotice(null);
     create.reset();
     update.reset();
   };
@@ -682,21 +684,6 @@ export const TerminalProcessMapScreen = () => {
 
   return (
     <>
-      {savedNotice !== null && (
-        <div className="banner-slot">
-          <AlertBanner
-            className="terminal-map-notice"
-            variant="success"
-            onDismiss={() => {
-              setSavedNotice(null);
-            }}
-            dismissLabel={messages.common.close}
-          >
-            {savedNotice}
-          </AlertBanner>
-        </div>
-      )}
-
       {/*
        * 사용자 역할 권한 관리와 같은 틀(omf-all-around#333) — 위 조회 묶음, 아래 목록 | 고른 단말의 한 카드.
        * 머리글(경로 · 화면 이름)은 두지 않는다 — 사이드바가 위치를 말한다.
@@ -928,42 +915,22 @@ export const TerminalProcessMapScreen = () => {
         </div>
       </Dialog>
 
-      {/* 저장하지 않은 기능 구성 — 사용자 역할 권한 관리와 같은 창(제목만 · #333). */}
+      {/* 저장하지 않은 기능 구성 — 다른 화면과 같은 나가기 확인 창(시안 문구 · 사용자 지시 2026-11-20 · #333). */}
       {pendingLeave !== null && (
-        <Dialog
-          open
-          size="sm"
+        <DiscardDialog
           title={t.discard.title}
-          onClose={() => {
+          body={t.discard.body}
+          showCloseButton={false}
+          onStay={() => {
             setPendingLeave(null);
           }}
-          closeOnBackdropClick={false}
-          showCloseButton={false}
-          footer={
-            <>
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  setPendingLeave(null);
-                }}
-              >
-                {t.discard.keep}
-              </Button>
-              <Button
-                onClick={() => {
-                  const action = pendingLeave;
-                  setPendingLeave(null);
-                  resetGrid();
-                  action();
-                }}
-              >
-                {t.discard.leave}
-              </Button>
-            </>
-          }
-        >
-          <p className="dialog-lead">{t.discard.body}</p>
-        </Dialog>
+          onLeave={() => {
+            const action = pendingLeave;
+            setPendingLeave(null);
+            resetGrid();
+            action();
+          }}
+        />
       )}
     </>
   );

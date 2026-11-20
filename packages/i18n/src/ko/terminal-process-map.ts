@@ -32,16 +32,16 @@ export const terminalProcessMap = {
     code: '단말 코드',
     type: '단말 유형',
     status: '운영 상태',
-    registration: '등록 상태',
+    registration: '등록 유무',
     registrationPending: '미등록',
-    registrationComplete: '등록 완료',
+    registrationComplete: '등록',
     registrationUnknown: '확인 전',
     equipment: '설치 설비',
     /** 피처 002 — 단말 창고. 없으면 공장 전체 기준이다. */
     warehouse: '창고',
     warehouseAll: '공장 전체',
     active: '사용',
-    activeHeader: '사용 상태',
+    activeHeader: '사용 유무',
     inactive: '미사용',
     notAvailable: '—',
     emptyTitle: '단말이 없습니다',
@@ -84,7 +84,7 @@ export const terminalProcessMap = {
     optionalMark: '(선택)',
     save: '저장',
     saving: '저장하는 중입니다.',
-    saved: '단말 정보를 저장했습니다.',
+    saved: '저장했습니다.',
     cancel: '취소',
     deactivate: '사용 중지',
     deactivated: '단말을 중지했습니다. 기록은 남습니다.',
@@ -139,7 +139,7 @@ export const terminalProcessMap = {
     /** 저장된 공정을 목록에서 뺐을 때 저장 단추 옆 경고(사용자 지시 2026-11-20 · #333). */
     removedWarning: '저장하면 목록에서 뺀 공정을 이 단말에서 사용할 수 없습니다.',
     save: '저장',
-    saved: '기능 구성을 저장했습니다.',
+    saved: '저장했습니다.',
     saving: '저장하는 중입니다.',
     /** 저장하지 않은 변경을 버리고 마지막으로 불러온(저장된) 구성으로 돌아간다. */
     reset: '취소',
@@ -172,9 +172,7 @@ export const terminalProcessMap = {
 
   /** 저장하지 않은 기능 구성을 두고 다른 단말로 옮길 때(사용자 역할 권한 관리와 같은 창 · #333). */
   discard: {
-    title: '저장되지 않은 변경 사항',
-    body: '저장하지 않고 나가면 변경 사항이 사라집니다.',
-    keep: '계속 편집',
-    leave: '저장하지 않고 나가기',
+    title: '저장하지 않은 변경 사항이 있습니다',
+    body: '지금 나가면 수정한 공정별 기능 설정이 사라집니다.',
   },
 } as const;
