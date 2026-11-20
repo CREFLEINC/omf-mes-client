@@ -797,6 +797,23 @@ describe('P-04-07 — 피처 012 사업부 · 출고 창고', () => {
     expect(screen.queryByText(/출하 내역/)).toBeNull();
   });
 
+  it('US6-3 사업부 없는 공장의 옛 지시서는 확인 화면 머리 사업부 칸에 「사업부 미지정」을 보인다', async () => {
+    const user = userEvent.setup();
+    /* 옛 지시서 — 사업부 null, 줄 출고 창고 null(창고 미지정). */
+    const legacy = {
+      ...completion(),
+      businessUnit: null,
+      lines: completion().lines.map((line) => ({ ...line, warehouse: null })),
+    } as Completion;
+    renderScreen({ lookups: [jsonResponse(legacy)] });
+
+    await scan(user, CODE);
+
+    const label = await screen.findByText(t.bu012.businessUnit, { selector: 'dt' });
+    expect(label.nextElementSibling).toHaveTextContent(t.bu012.noBusinessUnit);
+    expect(t.bu012.noBusinessUnit).toBe('사업부 미지정');
+  });
+
   it('US5-4 이미 완료된 지시서 안내도 「출하 예정 목록」을 가리킨다', () => {
     expect(t.already.historyHint).toContain('출하 예정 목록(W-04-02)');
     expect(t.already.historyHint).not.toContain('W-04-12');
