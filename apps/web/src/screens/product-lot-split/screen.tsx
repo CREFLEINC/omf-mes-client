@@ -178,6 +178,38 @@ export const ProductLotSplitScreen = () => {
     if (!isBusy && !isDialogOpen) scanRef.current?.focus();
   }, [isBusy, isDialogOpen]);
 
+  /*
+   * 창(프린터 고르기 · 다시 출력 사유)을 닫거나 확인 대기 줄을 눌러 포커스가 입력 칸 밖(BODY · 단추)으로 가면 스캔
+   * 칸으로 돌려준다 — 다음 스캐너 입력이 버려지지 않게(재검증 2회차). 창이 떠 있거나 다른 입력 칸이 잡혀 있으면
+   * 그대로 둔다.
+   */
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const settle = (): void => {
+      if (timer !== null) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        const field = scanRef.current;
+        if (field === null || field.disabled) return;
+        if (document.querySelector('[role="dialog"]') !== null) return;
+        const active = document.activeElement;
+        const typing =
+          active instanceof HTMLInputElement ||
+          active instanceof HTMLTextAreaElement ||
+          active instanceof HTMLSelectElement ||
+          (active instanceof HTMLElement && active.isContentEditable);
+        if (!typing) field.focus();
+      }, 0);
+    };
+    document.addEventListener('focusout', settle);
+    document.addEventListener('click', settle);
+    return () => {
+      if (timer !== null) clearTimeout(timer);
+      document.removeEventListener('focusout', settle);
+      document.removeEventListener('click', settle);
+    };
+  }, []);
+
   const outcome =
     printRun === null ? null : printOutcomeViewOf(runner.state, printRun.total, printRun.isReprint);
 

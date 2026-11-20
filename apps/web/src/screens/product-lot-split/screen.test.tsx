@@ -682,6 +682,28 @@ describe('P-04-08 생산 LOT 분리', () => {
     expect(saved).toEqual([row.parentLot.lotNo, row.childLot.lotNo]);
   });
 
+  it('재검증 2회차 확인 대기 줄을 고르거나 다시 출력 사유 창을 닫으면 포커스가 스캔 칸으로 돌아온다', async () => {
+    const user = userEvent.setup();
+    const row = splitRow();
+    render({ queue: [row] });
+    const field = screen.getByRole('textbox', { name: t.work.scanLabel });
+
+    await user.click(
+      await screen.findByRole('radio', { name: t.queue.choose(row.parentLot.lotNo) }),
+    );
+    await waitFor(() => {
+      expect(document.activeElement).toBe(field);
+    });
+
+    await user.click(screen.getByRole('button', { name: t.bar.reprint }));
+    const dialog = await screen.findByRole('dialog', { name: t.dialog.reprintTitle });
+    await user.click(within(dialog).getByRole('button', { name: t.dialog.close }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(document.activeElement).toBe(field);
+    });
+  });
+
   it('US1-1 빈 목록이면 「확인 대기 분리가 없습니다」, 목록 머리 수 0', async () => {
     render({ queue: [] });
 
