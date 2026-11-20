@@ -291,27 +291,6 @@
   flex: none;
 }
 
-.oqc-u .pop-oqc-step {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.oqc-u .pop-oqc-step__title {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  margin: 0;
-  font: 600 18px / 26px var(--font-sans);
-}
-
-.oqc-u .pop-oqc-step__hint {
-  margin-inline-start: var(--space-2);
-  font: 400 var(--pop-label) / 22px var(--font-sans);
-  color: var(--on-surface-variant);
-}
-
 .oqc-u .pop-oqc-bar-note {
   display: flex;
   align-items: center;
@@ -333,4 +312,39 @@
 .pop-frame .oqc-u .pop-oqc-bar-note--blocked,
 .pop-frame .oqc-u .pop-oqc-bar-note--ready {
   display: none;
+}
+
+/*
+ * 출하 OQC 새 흐름 정리(사용자 지시 2026-11-20 · #334) — 정보 우선순위 · 작업 영역 강조 · 여백 줄임.
+ */
+
+/* 정보 띠 보조 정보(의뢰번호 · 고객 · 납품처 · 검사 기준 · 의뢰 일시)는 작고 옅게 — 주요 정보와 구분. */
+.oqc-u .pop-oqc-sub {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--pu-text-2);
+}
+
+/* 목록 카드 — 품목 코드를 둘째 줄 맨 앞에 또렷하게. */
+.oqc-item .pu-item-sub .oqc-item-code {
+  color: var(--pu-text);
+  font-weight: 600;
+}
+
+/* 왼쪽 단(정보 · 피킹 LOT 현황 · 검사 결과)은 간격을 줄인다. */
+.oqc-u .pop-oqc-shipment__col {
+  gap: 12px;
+}
+
+.oqc-u .pop-oqc-shipment-box {
+  gap: 8px;
+  padding: 12px 16px;
+}
+
+/* 검사 결과 등록 = 주 작업 영역 — 테두리 · 바탕으로 보기 영역과 구분한다. */
+.oqc-u .pop-oqc-shipment-form {
+  padding: 16px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--pu-card-2);
 }

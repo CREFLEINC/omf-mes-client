@@ -3,7 +3,12 @@ import type { Ref } from 'react';
 
 import { formatQty } from '../../patterns/package-qty';
 import { PuChip, puCx, type PuChipTone } from '../../patterns/pop-uniform';
-import { lotOverviewOf, overviewStatus } from '../oqc-inspection/shipment-oqc';
+import {
+  lotOverviewOf,
+  OPEN_STATUSES,
+  overviewStatus,
+  type LotOverview,
+} from '../oqc-inspection/shipment-oqc';
 import { overviewText } from '../oqc-inspection/shipment-oqc-parts';
 import { toStatusBadge, type StatusTone } from '../oqc-inspection/status-badge';
 import type { InspectionQueueRow } from '../oqc-inspection/types';
@@ -20,6 +25,18 @@ const CHIP_TONE: Record<StatusTone, PuChipTone> = {
   warning: 'warn',
   error: 'bad',
 };
+
+/**
+ * 출하 OQC 새 흐름의 검사 상태 칩 — 판정 대기인데 피킹 LOT 이 없으면 결과를 기록할 수 없으므로 「판정 불가」(주의 색),
+ * 그 밖에는 LOT 판정 요약(사용자 지시 2026-11-20). 목록 카드와 상세 정보 띠가 함께 쓴다 — 같은 말을 한 번만 보인다.
+ */
+export const shipmentStateChip = (
+  statusCode: string,
+  overview: LotOverview,
+): { text: string; tone: PuChipTone } =>
+  overview.kind === 'none' && OPEN_STATUSES.includes(statusCode)
+    ? { text: ps.cannotJudge, tone: 'warn' }
+    : { text: overviewText(overview), tone: CHIP_TONE[overviewStatus(overview)] };
 
 export interface PopQueueListProps {
   rows: InspectionQueueRow[];
@@ -44,6 +61,7 @@ export const PopQueueList = ({ rows, selectedId, onSelect, listRef, uomOf }: Pop
 
       const overview = lotOverviewOf(row);
       const itemLabel = row.itemCode ?? detail.idValue(row.itemId);
+      const state = overview === null ? null : shipmentStateChip(row.statusCode, overview);
 
       return (
         <button
@@ -59,10 +77,18 @@ export const PopQueueList = ({ rows, selectedId, onSelect, listRef, uomOf }: Pop
           {/* 출하 OQC 새 흐름은 지시서 번호 · 피킹 LOT 수 · LOT 판정 요약(피처 010 · 시안 P0406 목록). */}
           <span className="pu-item-top">
             <span className="no">{row.shipmentRequestNo ?? row.inspectionRequestNo}</span>
+            {/*
+             * 새 흐름: 의뢰 상태는 「검사 대기」처럼 뜻을 붙여 무채색으로, 색은 검사 상태 칩 하나만(색 강조 줄임 · 2026-11-20).
+             * 옛 흐름 카드는 그대로다.
+             */}
             <span className="chips">
-              <PuChip tone={CHIP_TONE[badge.tone]}>{badge.label}</PuChip>
-              {overview !== null && (
-                <PuChip tone={CHIP_TONE[overviewStatus(overview)]}>{overviewText(overview)}</PuChip>
+              {state === null ? (
+                <PuChip tone={CHIP_TONE[badge.tone]}>{badge.label}</PuChip>
+              ) : (
+                <>
+                  <PuChip tone="idle">{ps.cardStatus(badge.label)}</PuChip>
+                  <PuChip tone={state.tone}>{state.text}</PuChip>
+                </>
               )}
             </span>
           </span>
@@ -77,16 +103,16 @@ export const PopQueueList = ({ rows, selectedId, onSelect, listRef, uomOf }: Pop
             </span>
           ) : (
             <span className="pu-item-sub">
-              <span>
-                {/* LOT 이 없으면 품목만 — 「피킹 LOT 없음」은 위 칩이 한 번 말한다(중복 표시 제거). */}
-                {(row.pickedLotCount ?? 0) === 0
-                  ? itemLabel
-                  : ps.card(
-                      itemLabel,
-                      row.pickedLotCount ?? 0,
-                      withUom(formatQty(row.pickedQty ?? 0), row.uomCode || null),
-                    )}
-              </span>
+              {/* 품목은 굵게 먼저, LOT 수·수량은 뒤에 작게. LOT 이 없으면 품목만 — 위 칩이 한 번 말한다. */}
+              <b className="oqc-item-code">{itemLabel}</b>
+              {(row.pickedLotCount ?? 0) > 0 && (
+                <span>
+                  {ps.cardLots(
+                    row.pickedLotCount ?? 0,
+                    withUom(formatQty(row.pickedQty ?? 0), row.uomCode || null),
+                  )}
+                </span>
+              )}
             </span>
           )}
         </button>

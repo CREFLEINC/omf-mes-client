@@ -132,7 +132,7 @@ const renderPop = (
 
 const openRequest = async (user: ReturnType<typeof userEvent.setup>, no = 'IR-OQC-0201') => {
   await user.click(await screen.findByRole('button', { name: pop.queue.selectRow(no) }));
-  return within(await screen.findByRole('region', { name: s.drawer.matchHeading }));
+  return within(await screen.findByRole('region', { name: ps.form.match.matchHeading }));
 };
 
 describe('P-04-06 출하 OQC 새 흐름', () => {
@@ -163,7 +163,8 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     );
 
     const card = await screen.findByRole('button', { name: pop.queue.selectRow('IR-OQC-0201') });
-    expect(within(card).getByText(ps.card('FG-A100', 4, '110 EA'))).toBeInTheDocument();
+    expect(within(card).getByText('FG-A100')).toBeInTheDocument();
+    expect(within(card).getByText(ps.cardLots(4, '110 EA'))).toBeInTheDocument();
     expect(within(card).queryByText(/#2101/u)).toBeNull();
   });
 
@@ -212,7 +213,7 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     const { saves } = renderPop();
 
     await openRequest(user);
-    await user.click(screen.getByRole('button', { name: s.judgments.ACCEPTED }));
+    await user.click(screen.getByRole('radio', { name: s.judgments.ACCEPTED }));
     expect(screen.getByText(ps.bar.ready)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: ps.bar.save }));
 
@@ -236,7 +237,7 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
       await screen.findByRole('textbox', { name: pr.valueLabel('길이', 1) }),
       '10.02',
     );
-    await user.click(screen.getByRole('button', { name: s.judgments.ACCEPTED }));
+    await user.click(screen.getByRole('radio', { name: s.judgments.ACCEPTED }));
     await user.click(screen.getByRole('button', { name: ps.bar.save }));
 
     await waitFor(() => expect(saves).toHaveLength(1));
@@ -257,7 +258,7 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
 
     await openRequest(user);
     await user.type(await screen.findByRole('textbox', { name: pr.valueLabel('길이', 1) }), 'abc');
-    await user.click(screen.getByRole('button', { name: s.judgments.ACCEPTED }));
+    await user.click(screen.getByRole('radio', { name: s.judgments.ACCEPTED }));
 
     expect(screen.getByText(ps.bar.blocked.measurement)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: ps.bar.save })).toBeDisabled();
@@ -269,7 +270,7 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
 
     const match = await openRequest(user);
     await user.click(match.getByRole('checkbox', { name: 'P2611-0004' }));
-    await user.click(screen.getByRole('button', { name: s.judgments.ACCEPTED }));
+    await user.click(screen.getByRole('radio', { name: s.judgments.ACCEPTED }));
 
     expect(screen.getByText(ps.bar.blocked.match)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: ps.bar.save })).toBeDisabled();
@@ -282,7 +283,7 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     const match = await openRequest(user);
     await user.click(match.getByRole('checkbox', { name: 'P2611-0004' }));
     await user.click(match.getByRole('checkbox', { name: 'P2611-0003' }));
-    await user.click(screen.getByRole('button', { name: s.judgments.ACCEPTED }));
+    await user.click(screen.getByRole('radio', { name: s.judgments.ACCEPTED }));
 
     expect(screen.getByText(ps.bar.blocked.reason)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: ps.bar.save })).toBeDisabled();
@@ -327,7 +328,7 @@ describe('P-04-06 출하 OQC 새 흐름', () => {
     const { saves } = renderPop(null);
 
     await openRequest(user);
-    await user.click(screen.getByRole('button', { name: s.judgments.ACCEPTED }));
+    await user.click(screen.getByRole('radio', { name: s.judgments.ACCEPTED }));
 
     expect(screen.getByRole('button', { name: ps.bar.save })).toBeDisabled();
     expect(screen.getByText(pop.bar.blocked.worker)).toBeInTheDocument();
