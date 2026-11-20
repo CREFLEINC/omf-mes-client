@@ -19,7 +19,6 @@ import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import { judgeDuplicate, type DuplicateProbe } from './duplicate-check';
 import {
   DEFAULT_FILTERS,
-  clearFilter,
   isCreating as readIsCreating,
   readFilters,
   readPage,
@@ -28,7 +27,6 @@ import {
   toSearchParams,
   toSelectionSearchParams,
   withoutSelection,
-  type FilterKey,
 } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
 import {
@@ -684,10 +682,6 @@ export const ApprovalRouteScreen = () => {
     applyUserNavigation(toSearchParams(next, 1));
   };
 
-  const handleRemoveFilter = (key: FilterKey): void => {
-    handleSearch(clearFilter(filters, key));
-  };
-
   const handleChangePage = (nextPage: number): void => {
     applyUserNavigation(toSearchParams(filters, nextPage));
   };
@@ -1151,9 +1145,7 @@ export const ApprovalRouteScreen = () => {
             approvalTypeOptions={approvalTypeOptions}
             businessUnitOptions={toBusinessUnitOptions(businessUnits.entries)}
             businessUnitNote={lookupNote(businessUnits)}
-            businessUnitLabel={(businessUnitId) => businessUnitLabelOf(Number(businessUnitId))}
             onSearch={handleSearch}
-            onRemoveFilter={handleRemoveFilter}
             onReset={() => {
               handleSearch(DEFAULT_FILTERS);
             }}

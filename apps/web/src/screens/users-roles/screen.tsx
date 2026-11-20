@@ -1415,12 +1415,6 @@ export const UsersRolesScreen = () => {
         departmentOptions={selectableOptions(departmentOptions, filters.departmentId)}
         statusOptions={selectableOptions(userStatusOptions, filters.statusCode)}
         statusDisabledReason={statusDisabledReason}
-        /*
-         * 조건 칩에는 번호가 아니라 이름을 낸다. 선택 목록을 아직 받지 못했으면
-         * 「알 수 없음」이 나오고 목록이 도착하면 이름으로 바뀐다 —
-         * 번호를 대신 보이면 사용자가 쓸 수 없는 값을 자료로 읽는다.
-         */
-        departmentLabel={(departmentId) => lookupLabel(departmentOptions, Number(departmentId))}
         departmentNameOf={(departmentId) => lookupLabel(departmentOptions, departmentId)}
         statusNameOf={(statusCode) => lookupLabel(userStatusOptions, statusCode)}
         optionsNotice={renderOptionsNotice([departmentOptions, userStatusOptions])}

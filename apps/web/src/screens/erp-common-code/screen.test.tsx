@@ -139,8 +139,11 @@ describe('ErpCommonCodeScreen', () => {
   it('검색어와 미사용 포함을 코드값 조건으로 싣는다', async () => {
     const { urls, user } = renderScreen([groupsRoute(), valuesRoute()], '?group=UNIT');
     await screen.findByText('예시 값 B');
+    // 초기화는 바뀐 것이 있을 때만 보인다 — 고른 그룹은 조건이 아니다.
+    expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
 
     await user.type(screen.getByLabelText('코드·코드명'), 'SAMPLE');
+    expect(screen.getByRole('button', { name: '초기화' })).toBeInTheDocument();
     await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
     await user.click(screen.getByRole('button', { name: '조회' }));
 

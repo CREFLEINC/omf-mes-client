@@ -20,8 +20,6 @@ export const erpSalesOrder = {
     remainingQty: '잔량',
     uom: '단위',
     requestedDeliveryDate: '납기 요청일',
-    orderDateFrom: '수주일 시작',
-    orderDateTo: '수주일 종료',
     unassignedOnly: '미편성만',
     q: '수주번호',
     orderType: '수주 유형',
@@ -43,7 +41,8 @@ export const erpSalesOrder = {
   },
   filters: {
     all: '전체',
-    dateRangeError: '수주일 시작이 종료보다 늦습니다. 기간을 바로잡으세요.',
+    /** 「조건 더보기」에 접힌 조건의 칩 — 「상태: 반려」처럼 칸 이름과 값을 한 줄로. */
+    chip: (label: string, value: string): string => `${label}: ${value}`,
   },
   actions: {
     select: (orderNo: string): string => `${orderNo} 선택`,

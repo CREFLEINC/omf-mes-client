@@ -97,13 +97,6 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     /** ⚠ 인사 상태다 — 사용 여부(ngừng dùng)와 다른 축이라 가려 부른다. */
     status: 'Tình trạng làm việc',
     statusAll: 'Tất cả tình trạng làm việc',
-    chipKeyword: (value: string): string => `Từ khóa: ${value}`,
-    chipRemoveKeyword: 'Bỏ điều kiện từ khóa',
-    chipDepartment: (label: string): string => `Phòng ban: ${label}`,
-    chipRemoveDepartment: 'Bỏ điều kiện phòng ban',
-    chipStatus: (label: string): string => `Tình trạng làm việc: ${label}`,
-    chipRemoveStatus: 'Bỏ điều kiện tình trạng làm việc',
-    chipRemoveIncludeInactive: 'Bỏ điều kiện gồm cả mục ngừng dùng',
     roleSearchLabel: 'Tìm vai trò',
     roleSearchPlaceholder: 'Mã vai trò hoặc tên vai trò',
   },
