@@ -95,7 +95,7 @@ export const handoverAlertSettings = {
     PUTAWAY_PENDING: {
       when: 'IQC 판정 확정 또는 검사 불필요 입하 마감으로 적치할 LOT 이 생길 때 — 입하 LOT 1건에 1번(LOT 수를 내용에)',
       // ui-check-ignore: C-13 PDA 화면 이름 「적치·입고 완료」 그대로
-      where: '모바일 PDA › 창고 › 적치·입고 완료 (M-01-05)',
+      where: '모바일 PDA › 창고 › 적치·입고 완료',
     },
     PUTAWAY_REQUESTED: {
       when: '입고 처리로 적치 지시가 생길 때 — 입고 1건에 1번(적치 지시 수를 내용에)',

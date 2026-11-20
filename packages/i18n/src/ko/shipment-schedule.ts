@@ -176,7 +176,7 @@ export const shipmentSchedule = {
     noLotsBanner:
       '아직 피킹한 LOT 이 없습니다. 출하 담당 공장을 지정하고 배정한 뒤, PDA 「제품 피킹」에서 LOT 라벨을 스캔하면 여기에 LOT 이 보입니다.',
     noPickingWarehouse: '아직 없음',
-    popOnly: '출하 완료는 POP 「출하 완료」(P-04-07)에서 합니다. 이 화면은 보기만 합니다.',
+    popOnly: '출하 완료는 POP 「출하 완료」에서 합니다. 이 화면은 보기만 합니다.',
     completed: (shipmentNo: string, completedAt: string): string =>
       `POP 에서 출하 완료했습니다(${shipmentNo}, ${completedAt}). 재고 차감과 수주 출하 수량이 함께 기록됐습니다. 출하 관리 코드는 이제 고칠 수 없습니다. 취소는 「출하 내역」에서 상신합니다.`,
     blockersTitle: (count: number): string => `출하 완료를 막는 이유 ${String(count)}건`,
@@ -313,6 +313,6 @@ export const shipmentSchedule = {
     printedByValue: (at: string, user: string): string => `${at}, 관리웹 ${user}`,
     /** 아래 안내 문장(시안 Print-Preview). */
     footnote:
-      'POP 「출하 완료」(P-04-07)에서 위 QR 을 스캔하면 이 지시서가 열립니다. 완료할 수 있는지는 그때 지시서 상태로 정해집니다.',
+      'POP 「출하 완료」에서 위 QR 을 스캔하면 이 지시서가 열립니다. 완료할 수 있는지는 그때 지시서 상태로 정해집니다.',
   },
 } as const;

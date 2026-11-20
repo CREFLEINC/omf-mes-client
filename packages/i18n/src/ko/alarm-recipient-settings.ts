@@ -55,11 +55,11 @@ export const alarmRecipientSettings = {
       `전화번호가 없는 수신자 ${String(count)}명은 알림센터로만 받습니다`,
     zaloHelp: '실패해도 알림센터는 받습니다',
     zaloNeedsEnabled: '알림을 켜야 Zalo도 보낼 수 있습니다',
-    approverNotice: '그 차례의 결재자가 받습니다. 결재선(W-06-15)에서 정한 사람입니다.',
+    approverNotice: '그 차례의 결재자가 받습니다. 결재선 정의에서 정한 사람입니다.',
     saved: '저장했습니다',
     /** US4-6 — 409. */
     conflict: '다른 사람이 먼저 저장했습니다. 다시 불러온 뒤 저장하세요',
-    zaloNotActive: 'Zalo 연결이 설정되지 않아 지금은 알림센터로만 갑니다 — 알림 연결 설정(W-CO-12)',
+    zaloNotActive: 'Zalo 연결이 설정되지 않아 지금은 알림센터로만 갑니다 — 알림 연결 설정',
     unsavedTitle: '저장하지 않은 변경이 있습니다',
     unsavedBody: '이동하면 고친 내용이 사라집니다. 버리고 이동할까요?',
     candidatesEmpty: '검색 결과 없음',

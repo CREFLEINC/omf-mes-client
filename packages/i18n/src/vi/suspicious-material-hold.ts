@@ -107,7 +107,7 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
     fieldError: 'Hãy kiểm tra lại giá trị đã nhập.',
     impact: (count: number): string =>
       `Xuất kho·xuất hàng·lấy hàng của ${String(count)} LOT bị hạn chế.`,
-    impactRelease: 'Gỡ tạm giữ phải xử lý riêng ở W-03-02.',
+    impactRelease: 'Gỡ tạm giữ phải xử lý riêng ở Thay đổi trạng thái LOT.',
     impactShipped: 'Số lượng đã xuất kho sẽ không được thu hồi.',
     conflictOwner: 'Một trong các LOT đã chọn',
     conflictFallback:

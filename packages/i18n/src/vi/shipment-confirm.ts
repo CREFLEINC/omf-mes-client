@@ -5,7 +5,7 @@ import type { Translated } from './translated';
 export const shipmentConfirm: Translated<typeof ko.shipmentConfirm> = {
   title: 'Lịch sử xuất hàng',
   breadcrumbRoot: 'Quản lý bán hàng / xuất hàng',
-  lead: 'Việc xuất hàng kết thúc ở màn hình POP 「Hoàn tất xuất hàng」 (P-04-07). Màn hình này dùng để xem các lô xuất hàng và yêu cầu hủy nếu chưa gửi sang ERP. Chỉ những lô xuất hàng chưa xác nhận được tạo theo luồng cũ hoặc xuất thẳng khẩn mới được xác nhận tại đây.',
+  lead: 'Việc xuất hàng kết thúc ở màn hình POP 「Hoàn tất xuất hàng」. Màn hình này dùng để xem các lô xuất hàng và yêu cầu hủy nếu chưa gửi sang ERP. Chỉ những lô xuất hàng chưa xác nhận được tạo theo luồng cũ hoặc xuất thẳng khẩn mới được xác nhận tại đây.',
   panes: {
     list: 'Danh sách xuất hàng',
     detail: 'Chi tiết xuất hàng',

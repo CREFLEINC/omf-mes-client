@@ -522,7 +522,7 @@ export const oqcInspection = {
     targetPicked: (target: string, picked: string, uom: string): string =>
       `${target} / ${picked} ${uom}`,
     over: (qty: string): string => `초과 ${qty}`,
-    note: '판정은 POP 「출하 완료」(P-04-07) 때 확정됩니다. 확정 버튼은 없습니다. 그 전까지 결과를 더하거나 고칠 수 있고, LOT 마다 그 LOT 을 매칭한 마지막 결과가 판정입니다.',
+    note: '판정은 POP 「출하 완료」 때 확정됩니다. 확정 버튼은 없습니다. 그 전까지 결과를 더하거나 고칠 수 있고, LOT 마다 그 LOT 을 매칭한 마지막 결과가 판정입니다.',
     skipped: '이 의뢰는 OQC 생략으로 닫혔습니다.',
     skippedMore:
       '피킹 LOT 은 모두 통과로 봅니다. 생략 뒤 피킹되는 LOT(교체 포함)도 생략으로 봅니다.',

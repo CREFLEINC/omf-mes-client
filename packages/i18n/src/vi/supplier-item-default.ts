@@ -5,7 +5,7 @@ export const supplierItemDefault: Translated<typeof ko.supplierItemDefault> = {
   title: 'Thông tin mặc định nhà cung cấp · mặt hàng',
   breadcrumbRoot: 'Quản lý dữ liệu gốc',
   intro:
-    'Khi phát hành LOT quản lý vật tư (POP P-01-01, Quản trị W-01-14), đóng gói và số lượng tồn kho mỗi LOT quản lý vật tư được điền sẵn bằng giá trị này. Có thể thay đổi trên màn hình phát hành. Nhà cung cấp · mặt hàng không có ở đây sẽ được điền theo đơn vị bảo quản mặc định của mặt hàng, nếu cũng không có thì nhập tay.',
+    'Khi phát hành LOT quản lý vật tư, đóng gói và số lượng tồn kho mỗi LOT quản lý vật tư được điền sẵn bằng giá trị này. Có thể thay đổi trên màn hình phát hành. Nhà cung cấp · mặt hàng không có ở đây sẽ được điền theo đơn vị bảo quản mặc định của mặt hàng, nếu cũng không có thì nhập tay.',
   filters: {
     label: 'Điều kiện',
     plant: 'Nhà máy',
