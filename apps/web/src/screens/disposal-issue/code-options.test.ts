@@ -9,7 +9,6 @@ import {
   DISPOSAL_PARTNER_ROLE_CODE,
   disposalPartnerNote,
   disposalPartnerPlaceholder,
-  isDefectWarehouseTypePending,
   isDisposalPartnerRolePending,
   isRequiredCodeListPending,
   narrowToDefectWarehouses,
@@ -299,12 +298,7 @@ describe('불량창고 좁힘 — 두 방향', () => {
   ];
 
   it('자리표시가 비어 있는 지금은 좁히지 못한다', () => {
-    expect(isDefectWarehouseTypePending(DEFECT_WAREHOUSE_TYPE_CODES)).toBe(true);
     expect(narrowToDefectWarehouses(entries, DEFECT_WAREHOUSE_TYPE_CODES)).toEqual(entries);
-  });
-
-  it('자리표시가 차면 좁힐 수 있다고 판정한다', () => {
-    expect(isDefectWarehouseTypePending(['SAMPLE_WH_TYPE_B'])).toBe(false);
   });
 
   it('자리표시를 채우면 그 유형만 남는다', () => {

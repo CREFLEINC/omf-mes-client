@@ -114,7 +114,6 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     noExpiry: 'Không hết hạn',
     close: 'Đóng',
     failed: 'Không phát hành được token đăng ký. Hãy thử lại.',
-    textOmitted: 'Mã đăng ký không hiện trên màn hình. Hãy quét QR hoặc sao chép và dán vào máy.',
   },
 
   grid: {

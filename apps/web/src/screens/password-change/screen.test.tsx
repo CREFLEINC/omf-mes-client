@@ -307,7 +307,10 @@ describe('PasswordChangeScreen — 셸 안에 선다', () => {
   it('안내 문구가 최소 길이 상수를 주입받는다', () => {
     renderScreen();
 
-    expect(screen.getByText(t.notice(MIN_NEW_PASSWORD_LENGTH))).toBeInTheDocument();
+    /* 안내는 새 비밀번호 칸 이름 옆 ⓘ 의 설명이다(관리웹 정리 시안 A). */
+    expect(
+      screen.getByRole('button', { name: t.notice(MIN_NEW_PASSWORD_LENGTH) }),
+    ).toBeInTheDocument();
 
     /* 인자를 바꾸면 문구도 바뀌어야 한다 — 손으로 적은 숫자는 여기서 걸린다. */
     expect(t.notice(MIN_NEW_PASSWORD_LENGTH + 1)).not.toBe(t.notice(MIN_NEW_PASSWORD_LENGTH));
@@ -327,7 +330,7 @@ describe('PasswordChangeScreen — 셸 안에 선다', () => {
 
     const notice = t.notice(MIN_NEW_PASSWORD_LENGTH);
 
-    expect(screen.getByText(notice)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: notice })).toBeInTheDocument();
     expect(notice).toContain(String(MIN_NEW_PASSWORD_LENGTH));
     expect(notice).toContain(t.fields.currentPassword);
   });

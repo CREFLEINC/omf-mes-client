@@ -45,7 +45,10 @@ export interface TargetPaneProps {
   sourceWarehouse?: {
     options: SelectOption[];
     value: string;
-    note: string;
+    /** 고를 수 없는 사유(연결된 생산 창고 없음) — 칸 아래에 늘 보인다 */
+    note?: string;
+    /** 고른 값이 무엇을 뜻하는지 — 라벨 옆 ⓘ */
+    info?: string;
     onChange: (value: string) => void;
   };
 }
@@ -158,6 +161,7 @@ export const TargetPane = ({
             options={sourceWarehouse.options}
             value={sourceWarehouse.value}
             note={sourceWarehouse.note}
+            info={sourceWarehouse.info}
             disabled={isLocked}
             onChange={sourceWarehouse.onChange}
           />
@@ -187,11 +191,8 @@ export const TargetPane = ({
           options={locationOptions}
           value={destinationLocationId}
           placeholder={t.placeholders.select}
-          note={
-            sourceWarehouse === undefined
-              ? locationNote
-              : (locationNote ?? t.sourceWarehouse.destinationHelp)
-          }
+          note={locationNote}
+          info={sourceWarehouse === undefined ? undefined : t.sourceWarehouse.destinationHelp}
           error={headerErrors.destinationLocationId}
           disabled={isLocked}
           onChange={onChangeDestination}

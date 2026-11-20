@@ -102,12 +102,6 @@ export const shipmentSchedule = {
     all: '전체',
     inspectionRequired: '대상',
     inspectionNotRequired: '대상 아님',
-    /*
-     * ⛔ 시간대 필터 안내를 걷어냈다(사용자 지시 2026-09-22) — 없는 기능의 «없는 이유»를
-     * 설명하는 자리였다. 저장 컬럼이 없다는 사실은 스펙 §5-2 와 코드 주석에 남아 있다.
-     */
-    /** 집계 자리를 비워 둔 사실만 말한다 — 왜 비었는지(설계·계약 사정)는 말하지 않는다. */
-    summaryNote: '집계는 준비 중입니다.',
     lookupTruncated: '선택지가 앞쪽 일부만 보입니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
     lookupFailed: '선택지를 불러오지 못했습니다.',
     chipCustomer: (value: string): string => `고객: ${value}`,
@@ -176,7 +170,8 @@ export const shipmentSchedule = {
     noLotsBanner:
       '아직 피킹한 LOT 이 없습니다. 출하 담당 공장을 지정하고 배정한 뒤, PDA 「제품 피킹」에서 LOT 라벨을 스캔하면 여기에 LOT 이 보입니다.',
     noPickingWarehouse: '아직 없음',
-    popOnly: '출하 완료는 POP 「출하 완료」(P-04-07)에서 합니다. 이 화면은 보기만 합니다.',
+    /** 「진행」 옆 ⓘ — 출하 완료를 어디서 하는지(관리웹 정리 시안 A). */
+    popOnly: '출하 완료는 POP 「출하 완료」에서 합니다.',
     completed: (shipmentNo: string, completedAt: string): string =>
       `POP 에서 출하 완료했습니다(${shipmentNo}, ${completedAt}). 재고 차감과 수주 출하 수량이 함께 기록됐습니다. 출하 관리 코드는 이제 고칠 수 없습니다. 취소는 「출하 내역」에서 상신합니다.`,
     blockersTitle: (count: number): string => `출하 완료를 막는 이유 ${String(count)}건`,
@@ -313,6 +308,6 @@ export const shipmentSchedule = {
     printedByValue: (at: string, user: string): string => `${at}, 관리웹 ${user}`,
     /** 아래 안내 문장(시안 Print-Preview). */
     footnote:
-      'POP 「출하 완료」(P-04-07)에서 위 QR 을 스캔하면 이 지시서가 열립니다. 완료할 수 있는지는 그때 지시서 상태로 정해집니다.',
+      'POP 「출하 완료」에서 위 QR 을 스캔하면 이 지시서가 열립니다. 완료할 수 있는지는 그때 지시서 상태로 정해집니다.',
   },
 } as const;

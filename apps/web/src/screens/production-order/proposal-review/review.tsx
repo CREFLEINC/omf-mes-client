@@ -17,6 +17,7 @@ import {
 } from '@crefle/web-ui';
 import { useId, useMemo, useState } from 'react';
 import { PageNav } from '../../../patterns/page-nav';
+import { InfoTip } from '../../../patterns/info-tip';
 import { ActionBar } from '../../../patterns/action-bar';
 import {
   ReferenceField,
@@ -103,6 +104,8 @@ export interface ProposalReviewProps {
   preview?: boolean;
   proposalTime?: string;
   unavailableReason?: string;
+  /** 제안 대상을 어떻게 골랐는지 — 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */
+  scopeNote?: string;
 }
 
 /** W-C review: table/calendar selection opens one common detail panel below the entire list. */
@@ -120,6 +123,7 @@ export const ProposalReview = ({
   preview = false,
   proposalTime,
   unavailableReason,
+  scopeNote,
 }: ProposalReviewProps) => {
   const [rows, setRows] = useState(() =>
     structuredClone(initialProposals).map(applyReceiptStorage),
@@ -353,7 +357,17 @@ export const ProposalReview = ({
   return (
     <div className="proposal-review-page">
       <PageHeader
-        title="생산계획 자동 전개 제안"
+        title={
+          scopeNote === undefined ? (
+            '생산계획 자동 전개 제안'
+          ) : (
+            /* 목록 위 스크롤 영역은 툴팁 윗부분을 자르므로 ⓘ 는 머리 제목 옆에 둔다. */
+            <span className="proposal-review-title">
+              생산계획 자동 전개 제안
+              <InfoTip text={scopeNote} />
+            </span>
+          )
+        }
         actions={
           <Chip status={rows.some((row) => row.outcome) ? 'success' : 'idle'}>
             {rows.some((row) => row.outcome)

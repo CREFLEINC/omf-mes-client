@@ -47,7 +47,8 @@ describe('ShipmentConfirmScreen — W-04-12 출하 내역', () => {
     await rowOf('SYN-SH-101');
 
     expect(screen.getByRole('heading', { level: 1, name: t.title })).toBeInTheDocument();
-    expect(screen.getByText(t.lead)).toBeInTheDocument();
+    /* 출하가 어디서 끝나는지는 목록 제목 옆 ⓘ 로 읽힌다(관리웹 정리 시안 A). */
+    expect(screen.getByRole('button', { name: t.flowRule })).toBeInTheDocument();
     const [query] = listRequests();
     expect(query?.searchParams.get('unconfirmedOnly')).toBeNull();
     expect(query?.searchParams.get('shipDateFrom')).not.toBeNull();
@@ -322,6 +323,22 @@ describe('ShipmentConfirmScreen — W-04-12 출하 내역', () => {
     expect(await screen.findByText(t.result.allConfirmed(1))).toBeInTheDocument();
   });
 
+  /* 관리웹 정리 시안 A — 칸 아래 · 구획 아래에 늘 서던 규칙은 라벨 · 제목 옆 ⓘ 로 옮겼다. */
+  it('기간 · 라인과 LOT · 재고가 빠진 창고의 규칙은 ⓘ 로 읽힌다', async () => {
+    const { user } = renderScreen();
+    await openDetail(user, 'SYN-SH-101');
+
+    expect(screen.getByRole('button', { name: t.filter.periodRequired })).toBeInTheDocument();
+    expect(screen.queryByText(t.filter.periodRequired)).toBeNull();
+    expect(
+      within(detailPane()).getByRole('button', { name: t.detail.linesNote }),
+    ).toBeInTheDocument();
+    expect(
+      within(detailPane()).getByRole('button', { name: t.detail.warehousesNote }),
+    ).toBeInTheDocument();
+    expect(within(detailPane()).queryByText(t.detail.linesNote)).toBeNull();
+  });
+
   it('Q22 POP 완료 출하에는 [확정]이 없다', async () => {
     const { user } = renderScreen();
     await openDetail(user, 'SYN-SH-101');
@@ -333,7 +350,7 @@ describe('ShipmentConfirmScreen — W-04-12 출하 내역', () => {
     const { user } = renderScreen();
     await openDetail(user, 'SYN-SH-101');
 
-    expect(within(detailPane()).getByText(t.cancelNote)).toBeInTheDocument();
+    expect(within(detailPane()).getByRole('button', { name: t.cancelNote })).toBeInTheDocument();
     await user.click(within(detailPane()).getByRole('button', { name: t.actions.requestCancel }));
 
     const dialog = await screen.findByRole('dialog');
@@ -365,7 +382,7 @@ describe('ShipmentConfirmScreen — W-04-12 출하 내역', () => {
       within(detailPane()).getByRole('button', { name: t.actions.requestCancel }),
     ).toBeEnabled();
     expect(within(detailPane()).getByText(t.detail.erpMessage.SEND_ERROR)).toBeInTheDocument();
-    expect(within(detailPane()).getByText(t.cancelNote)).toBeInTheDocument();
+    expect(within(detailPane()).getByRole('button', { name: t.cancelNote })).toBeInTheDocument();
   });
 
   it('US7-4 수주 없이 나간 출하(송신 안 함)도 취소를 요청할 수 있다', async () => {

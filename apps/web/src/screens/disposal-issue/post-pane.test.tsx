@@ -61,6 +61,13 @@ describe('PostPane — 《처리하면 일어나는 일》 상시 문구', () =>
     expect(screen.getByText(t.post.effectDeducts)).toBeVisible();
     expect(screen.getByText(t.post.effectNoUndoHere)).toBeVisible();
   });
+
+  /* 「…처리하는 자리입니다」 구획 소개 문장은 걷었다 — 단추 이름이 같은 말을 한다(관리웹 정리 시안 A). */
+  it('구획을 소개하는 문장을 두지 않는다', () => {
+    renderPane();
+
+    expect(screen.queryByText(/처리하는 자리입니다/)).not.toBeInTheDocument();
+  });
 });
 
 describe('PostPane — 승인 판정을 못 하는 동안', () => {

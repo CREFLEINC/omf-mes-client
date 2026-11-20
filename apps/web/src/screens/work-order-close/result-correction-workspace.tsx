@@ -13,6 +13,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
 import { Select } from '../../patterns/select';
 import { WORK_ORDER_CLOSE_CODE_GROUPS, toWorkOrderCloseCodeLabel } from './code-options';
@@ -100,9 +101,6 @@ const CorrectionDialog = ({
       }
     >
       {banner}
-      <div className="banner-slot">
-        <AlertBanner variant="info">{t.dialog.serverGrade}</AlertBanner>
-      </div>
       {reasonUnavailable && (
         <div className="banner-slot">
           <AlertBanner variant="warning">{t.reasonUnavailable}</AlertBanner>
@@ -194,7 +192,6 @@ const ApprovalDialog = ({
       placeholder={t.approval.reasonHint}
       onChange={(event) => onReasonChange(event.target.value)}
     />
-    <p className="field-note">{t.approval.reasonHint}</p>
   </Dialog>
 );
 
@@ -397,7 +394,11 @@ export const WorkOrderResultCorrectionWorkspace = ({
 
   return (
     <section className="pane work-order-close-result-pane" aria-label={t.pane}>
-      <h2 className="pane-title">{t.heading(workOrderNo)}</h2>
+      {/* 정정이 원본을 지우지 않고 줄을 더한다는 규칙은 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
+      <div className="work-order-close-title-row">
+        <h2 className="pane-title">{t.heading(workOrderNo)}</h2>
+        <InfoTip text={t.immutable} />
+      </div>
       {results.isPending ? (
         <div role="status" aria-label={t.loading}>
           <SkeletonText lines={4} />
@@ -431,7 +432,6 @@ export const WorkOrderResultCorrectionWorkspace = ({
               }
             />
           </div>
-          <AlertBanner variant="info">{t.immutable}</AlertBanner>
           <div className="work-order-close-actions">
             <Button
               disabled={selected === null}

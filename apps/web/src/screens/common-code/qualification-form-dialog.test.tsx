@@ -58,16 +58,17 @@ describe('QualificationFormDialog — 확인은 저장이 아니다 (C65)', () =
 });
 
 describe('QualificationFormDialog — 자리표시 (C73)', () => {
-  /* 계약: 「공통코드 — 값 목록 미정 §8-5」. 값을 지어내지 않고 그 사실을 밝힌다. */
-  it('자격 유형 선택지가 자리표시 하나뿐이고 안내가 붙는다', async () => {
+  /*
+   * 계약: 「공통코드 — 값 목록 미정 §8-5」. 값을 지어내지 않는다 — 자리표시 「선택지 준비 중」이 그 사실을 말하고,
+   * 칸 아래 「준비 중」 설명은 두지 않는다(관리웹 정리 시안 A).
+   */
+  it('자격 유형 선택지가 자리표시 하나뿐이고 칸 아래 안내를 두지 않는다', async () => {
     const { user } = renderDialog();
 
     await user.click(screen.getByLabelText('자격 유형'));
 
     expect(screen.getAllByRole('option')).toHaveLength(1);
-    expect(
-      screen.getByText('선택지 준비 중입니다. 코드 목록이 확정되면 이 항목에서 고를 수 있습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/코드 목록이 확정되면/)).not.toBeInTheDocument();
   });
 
   /* 계약이 비운 공정을 「모든 공정」으로 정했다(A-7) — 비우는 선택지가 있어야 한다. */

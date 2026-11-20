@@ -90,7 +90,9 @@ describe('StockReinstatementScreen', () => {
     const user = renderScreen();
     await chooseTarget(user);
 
-    expect(screen.getByText(t.scopeNotice)).toBeInTheDocument();
+    /* 재등록이 LOT 을 새로 만들지 않는다는 규칙은 「재등록 입력」 제목 옆 ⓘ 로 읽힌다(관리웹 정리 시안 A). */
+    expect(screen.getByRole('button', { name: t.scopeNotice })).toBeInTheDocument();
+    expect(screen.queryByText(t.scopeNotice)).toBeNull();
     expect(screen.getAllByText(/WH-DEFECT/).length).toBeGreaterThan(0);
     expect(screen.getByText(/2027-02-01/)).toBeInTheDocument();
     expect(screen.getByText(t.history.opened)).toBeInTheDocument();

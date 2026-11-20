@@ -101,7 +101,6 @@ export const LineTable = ({
         rows={drafts}
         getRowId={(row) => row.source.key}
       />
-      <p className="field-note">{t.lines.partialNote}</p>
     </div>
   );
 };

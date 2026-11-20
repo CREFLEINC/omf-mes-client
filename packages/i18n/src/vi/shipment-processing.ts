@@ -141,8 +141,7 @@ export const shipmentProcessing: Translated<typeof ko.shipmentProcessing> = {
     warehouse: {
       resolved: (label: string) => `${label} — chỉ có một kho đang hoạt động nên đã tự chọn.`,
       none: 'Không có kho nào đang hoạt động nên không xử lý xuất hàng được. Hãy đăng ký kho ở dữ liệu gốc.',
-      ambiguous:
-        'Có nhiều kho đang hoạt động. Đặc tả không nói kho xuất hàng lấy từ đâu nên tạm để chọn tay — cần xác nhận thiết kế.',
+      ambiguous: 'Có nhiều kho đang hoạt động. Hãy chọn kho xuất hàng.',
       loadFailed: 'Không tải được danh sách kho.',
       loading: 'Đang tải danh sách kho.',
     },

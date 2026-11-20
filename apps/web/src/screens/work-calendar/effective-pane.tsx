@@ -2,6 +2,7 @@ import { type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import {
   levelLabel,
   resolutionSummary,
@@ -74,7 +75,6 @@ export const EffectivePane = ({
     return (
       <>
         <p>{resolutionSummary(effective, levelLabel)}</p>
-        <span className="field-note">{t.pathNote}</span>
         <Table
           density="compact"
           caption={<span className="work-calendar-table-caption">{t.pathTitle}</span>}
@@ -88,7 +88,11 @@ export const EffectivePane = ({
 
   return (
     <section className="pane work-calendar-pane" aria-label={t.title}>
-      <h2 className="pane-title">{t.title}</h2>
+      {/* 가까운 층부터 훑는다는 해석 규칙은 제목 옆 ⓘ 로(관리웹 정리 시안 A). */}
+      <h2 className="pane-title info-label">
+        {t.title}
+        <InfoTip text={t.pathNote} />
+      </h2>
       <div className="filter-bar work-calendar-effective-filter">
         <SelectField
           label={t.equipment}

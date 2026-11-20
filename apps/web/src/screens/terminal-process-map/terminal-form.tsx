@@ -89,7 +89,7 @@ export const TerminalForm = ({
 
       <div className="form-grid terminal-map-form">
         <div className="field-cell">
-          <FieldLabel htmlFor={codeId} label={t.terminal.code} hint={t.terminal.codeLocked} />
+          <FieldLabel htmlFor={codeId} label={t.terminal.code} info={t.terminal.codeLocked} />
           <TextField
             id={codeId}
             value={draft.terminalCode}
@@ -148,7 +148,7 @@ export const TerminalForm = ({
           ]}
           value={draft.equipment}
           note={lookupNote(equipments, t.terminal.equipmentLookupFailed)}
-          hint={t.terminal.equipmentHint}
+          info={t.terminal.equipmentHint}
           error={fieldErrors.equipmentId}
           placeholder={t.terminal.equipmentNone}
           wide

@@ -197,7 +197,7 @@ describe('ResultFormPane — 재검사 갈래', () => {
     expect(onStartReinspection).toHaveBeenCalledTimes(1);
   });
 
-  it('재검사 중에는 칸이 열리고 사유 목록이 없다는 사실을 밝힌다', () => {
+  it('재검사 중에는 칸이 열리고 새 회차가 쌓인다는 사실을 밝힌다', () => {
     renderPane({ round: null, isReinspecting: true, draft: MATCHING, judgment: 'ACCEPTED' });
     /* 수량 · 판정을 다 채운 회차라 ① 이 접혀 있다 — 펼쳐 본다. */
     reopenQuantities();
@@ -205,8 +205,6 @@ describe('ResultFormPane — 재검사 갈래', () => {
     expect(screen.getByLabelText(t.fields.accepted)).toBeEnabled();
     expect(screen.getByText(t.reinspectRound)).toBeInTheDocument();
     expect(screen.getByText(t.reinspectNote)).toBeInTheDocument();
-    /* ⛔ 사유 칸을 지어내지 않는다 — 고를 값 목록이 없다. */
-    expect(screen.getByText(t.reinspectReasonPending)).toBeInTheDocument();
   });
 
   it('그만두는 길을 함께 둔다 — 열고 나서 되돌아갈 데가 없으면 갇힌다', async () => {

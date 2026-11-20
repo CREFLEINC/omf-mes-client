@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { hasChangedFilters } from '../../patterns/filter-more';
+import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
 import { EMPTY_FILTERS, readFilters, readSelected, toSearchParams } from './filters';
 import type { FlagKey } from './flags';
@@ -545,9 +546,14 @@ export const TerminalProcessMapScreen = () => {
        * 만든 화면이 오조작을 부르게 된다.
        */}
       <section className="pane terminal-map-grid-pane" aria-label={t.panes.grid}>
-        <h2>{t.panes.grid}</h2>
-        {/* ⭐ 이 구획이 무엇을 정하는지 먼저 말한다. */}
-        <p className="pane-lead">{t.grid.purpose}</p>
+        {/*
+         * ⭐ 이 구획이 무엇을 정하는지는 제목 옆 ⓘ 로(관리웹 정리 시안 A) — 늘 펼친 설명 줄을 걷었다.
+         * ⓘ 를 제목 밖에 두어 제목 이름이 그대로 읽히게 한다.
+         */}
+        <div className="info-label">
+          <h2>{t.panes.grid}</h2>
+          <InfoTip text={t.grid.purpose} />
+        </div>
 
         {selectedId === null ? (
           /* 선택 안내는 단말 정보 구획이 크게 한 번 말한다 — 여기서는 한 줄로 줄인다. */

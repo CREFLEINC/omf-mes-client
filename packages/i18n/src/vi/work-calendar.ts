@@ -79,8 +79,6 @@ export const workCalendar: Translated<typeof ko.workCalendar> = {
     saved: (count: number): string => `Đã lưu ${count} ngày.`,
     /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다. */
     timeNeedsPartial: 'Chọn phân loại «Làm việc một phần» thì mới nhập được giờ.',
-    /** 사유는 선택이라 비어 있어도 저장된다 — 그 사실을 함께 밝힌다. */
-    reasonOptional: 'Để trống lý do vẫn lưu được.',
   },
   bulk: {
     open: 'Áp dụng hàng loạt',

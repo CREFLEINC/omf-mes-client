@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
 import { hasChangedFilters } from '../../patterns/filter-more';
+import { InfoLabel } from '../../patterns/info-tip';
 import { isUsable, type SearchFilters } from './filters';
 import type { CodeOptionSource } from './lookups';
 import { SelectField } from './select-field';
@@ -75,24 +76,25 @@ export const SearchPane = ({
           wide
         />
         <div className="field-cell">
-          <label className="field-label" htmlFor={periodId}>
-            {t.fields.shipDate}
-          </label>
+          {/* 기간을 비울 수 없다는 규칙은 라벨 옆 ⓘ 로, 칸 아래에는 막혔을 때만 이유를 적는다(관리웹 정리 시안 A). */}
+          <InfoLabel htmlFor={periodId} label={t.fields.shipDate} info={t.search.periodRequired} />
           <DatePicker
             id={periodId}
             mode="range"
             value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
             placeholder={messages.common.selectDate}
-            aria-describedby={periodNoteId}
+            aria-describedby={isUsable(draft) ? undefined : periodNoteId}
             onChange={([nextFrom, nextTo]) =>
               setDraft((current) => ({ ...current, from: nextFrom ?? '', to: nextTo ?? '' }))
             }
           />
-          <span id={periodNoteId} className="field-note">
-            {isUsable(draft) || draft.from === '' || draft.to === ''
-              ? t.search.periodRequired
-              : t.search.periodReversed}
-          </span>
+          {!isUsable(draft) && (
+            <span id={periodNoteId} className="field-note">
+              {draft.from === '' || draft.to === ''
+                ? t.search.periodRequired
+                : t.search.periodReversed}
+            </span>
+          )}
         </div>
         <TextField
           label={t.fields.keyword}
@@ -117,8 +119,8 @@ export const SearchPane = ({
           </div>
         </div>
       </div>
+      {/* 「원 출하를 못 찾으면 직접 입력」 안내는 걷었다 — 단추 이름이 같은 말을 한다(관리웹 정리 시안 A). */}
       <div className="form-actions return-receipt-direct">
-        <p className="field-note form-actions-secondary">{t.search.notFoundHint}</p>
         <Button variant="outlined" size="sm" aria-pressed={isDirect} onClick={onDirect}>
           {t.actions.withoutShipment}
         </Button>

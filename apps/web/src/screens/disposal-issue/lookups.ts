@@ -118,10 +118,7 @@ export interface LotLookupResult extends LotReferenceSource {
  * **어느 갈래에도 번호를 담지 않는다**(`omf-mes#44`). 담을 자리가 없으면 화면으로 샐 경로도 없다.
  */
 export type ReferenceState =
-  | { kind: 'named'; label: string }
-  | { kind: 'unknown' }
-  | { kind: 'loading' }
-  | { kind: 'failed' };
+  { kind: 'named'; label: string } | { kind: 'unknown' } | { kind: 'loading' } | { kind: 'failed' };
 
 /**
  * 참조 하나를 표기 상태로 옮긴다.
@@ -191,10 +188,6 @@ export const isTruncated = (page: PageMeta, shown: number): boolean => page.tota
  *
  * **실패가 잘림보다 앞선다.** 둘이 겹치는 자리가 실제로 있다 — 첫 조회가 잘린 목록을 주고
  * 다시 부르기가 실패하면 낡은 자료(`truncated`)와 실패(`isError`)가 함께 참이 된다.
- *
- * **창고 유형 미확정 안내는 여기 넣지 않는다.** 그것은 목록을 받아 온 결과가 아니라 값 목록이
- * 확정되지 않았다는 별개의 사실이고, 자리표시가 채워지는 순간 사라져야 한다 — 화면이 둘을
- * 이어 붙인다(못 불러온 목록에 대고 「좁히지 못했다」를 말하면 사용자가 원인을 잘못 읽는다).
  */
 export const lookupNote = (lookup: {
   isError: boolean;
@@ -342,10 +335,7 @@ const fetchItemName = async (client: ItemClient, itemId: number): Promise<string
   return `${item.itemCode} · ${masterName(item, item.itemName)}`;
 };
 
-export const useItemNames = (
-  itemIds: readonly number[],
-  enabled: boolean,
-): ItemNameLookup => {
+export const useItemNames = (itemIds: readonly number[], enabled: boolean): ItemNameLookup => {
   const { client } = useApiClient();
 
   /** 같은 품목을 실은 줄이 여럿이면 요청은 하나다. 정렬은 요청 순서를 읽기 쉽게 둔다. */
@@ -366,7 +356,8 @@ export const useItemNames = (
 
       if (result === undefined) return { kind: 'loading' };
       /* 없는 품목은 실패가 아니다 — 다시 불러도 같은 답이 온다. */
-      if (result.isError) return isNotFound(result.error) ? { kind: 'unknown' } : { kind: 'failed' };
+      if (result.isError)
+        return isNotFound(result.error) ? { kind: 'unknown' } : { kind: 'failed' };
 
       return result.data === undefined
         ? { kind: 'loading' }

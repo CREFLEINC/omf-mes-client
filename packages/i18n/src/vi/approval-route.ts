@@ -109,7 +109,7 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
     approverTypeDepartment: 'Phòng ban',
   },
   notes: {
-    valueRangeUnused: 'Đợt 1 không dùng khoảng giá trị này để chọn luồng phê duyệt.',
+    valueRangeUnused: 'Không dùng khoảng giá trị này để chọn luồng phê duyệt.',
     inProgressSome: (count: number): string =>
       `Đang có ${String(count)} yêu cầu đang xử lý. Những yêu cầu này sẽ kết thúc bằng luồng phê duyệt hiện tại.`,
     inProgressNone: 'Không có yêu cầu nào đang xử lý.',
@@ -121,9 +121,8 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
     /** ⭐ **막지 않는다** — 없는 규칙을 지어내는 대신 보이기만 한다. */
     approverDuplicateWarning: 'Cùng người phê duyệt này còn ở bước khác nữa. Vẫn lưu như vậy được.',
     stepReplaceWholeList: 'Lưu thì thay toàn bộ bước phê duyệt đúng theo thứ tự đang hiện.',
-    /** ⭐ 선택지를 감추지 않고 잠근 채 사유를 붙인다 — 감추면 없는 기능으로 읽힌다. */
-    approverTypePending:
-      'Đợt 1 chưa mở người phê duyệt theo vai trò · phòng ban — chỉ chọn được người dùng.',
+    /** ⭐ 선택지를 감추지 않고 잠근 채 라벨 옆 ⓘ 로 무엇을 고를 수 있는지 말한다 — 감추면 없는 기능으로 읽힌다. */
+    approverTypePending: 'Chỉ chọn được người dùng làm người phê duyệt.',
     approverListTruncated:
       'Lựa chọn người phê duyệt chỉ hiện một phần ở đầu. Không thấy người cần tìm thì hãy báo người phụ trách.',
     approverListFailed: 'Không tải được lựa chọn người phê duyệt.',

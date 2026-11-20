@@ -16,6 +16,12 @@ import { ProposalReview } from './proposal-review/review';
 import { loadCatalog, toLiveProposal, liveResourceSource } from './proposal-review/live-data';
 
 export const AUTO_PLAN_RESULT_PATH = '/production/production-orders/auto-plan-results';
+/**
+ * 고른 ERP W/O 없이 열면 조치 필요 최근 20건을 부른다. 그 사실은 제목 위 문장 대신 제목 옆 ⓘ 와 빈 목록
+ * 설명으로 둔다(관리웹 정리 시안 A).
+ */
+const RECENT_SCOPE_NOTE =
+  '조회 대상: 조치 필요 ERP W/O 최근 20건. 다른 대상은 작업계획 목록에서 선택할 수 있습니다.';
 export const AutoPlanResultPage = ({
   permissionMenuPath = null,
 }: {
@@ -114,15 +120,11 @@ export const AutoPlanResultPage = ({
       {data.warnings.map((message) => (
         <AlertBanner key={message} variant="warning" title={message} />
       ))}
-      {!ids.length && (
-        <p className="field-note">
-          조회 대상: 조치 필요 ERP W/O 최근 20건. 다른 대상은 작업계획 목록에서 선택할 수 있습니다.
-        </p>
-      )}
       {data.rows.length && data.catalog ? (
         <ProposalReview
           key={query.dataUpdatedAt}
           initialProposals={data.rows}
+          scopeNote={ids.length ? undefined : RECENT_SCOPE_NOTE}
           onClose={back}
           resourceSource={(row, operation, field) =>
             liveResourceSource(api.client, data.catalog!, row, field, operation)
@@ -152,6 +154,7 @@ export const AutoPlanResultPage = ({
       ) : (
         <EmptyState
           title="조회된 생산계획 제안이 없습니다"
+          description={ids.length ? undefined : RECENT_SCOPE_NOTE}
           action={<Button onClick={back}>작업계획 목록으로</Button>}
         />
       )}

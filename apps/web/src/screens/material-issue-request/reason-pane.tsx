@@ -2,6 +2,7 @@ import { Button, Radio, RadioGroup, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import type { LookupResult } from './lookups';
 
 const t = messages.materialIssueRequest;
@@ -21,6 +22,8 @@ export interface ReasonPaneProps {
   reasonError?: string;
   /** 서버가 준 비고 오류(있으면) */
   remarksError?: string;
+  /** 사유마다 다른 규칙(생산 창고 공장) — 사유 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A) */
+  info?: string;
   isLocked: boolean;
 }
 
@@ -47,6 +50,7 @@ export const ReasonPane = ({
   onChangeRemarks,
   reasonError,
   remarksError,
+  info,
   isLocked,
 }: ReasonPaneProps) => {
   const groupName = useId();
@@ -57,7 +61,14 @@ export const ReasonPane = ({
       <h2 className="pane-title">{t.panes.reason}</h2>
 
       <div className="field-cell">
-        <span className="field-label">{t.formFields.reason}</span>
+        {info === undefined ? (
+          <span className="field-label">{t.formFields.reason}</span>
+        ) : (
+          <span className="info-label">
+            <span className="field-label">{t.formFields.reason}</span>
+            <InfoTip text={info} />
+          </span>
+        )}
         <RadioGroup
           name={groupName}
           orientation="horizontal"

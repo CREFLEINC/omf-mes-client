@@ -89,8 +89,8 @@ export const erpWorkOrderFlow = {
   access: {
     forbiddenTitle: `${SCREEN_NAME} 권한이 없습니다`,
     forbidden: (menuPath: string): string =>
-      `이 화면을 보려면 「${SCREEN_NAME}」(W-02-01) 권한이 필요합니다. 관리자가 「${menuPath}」 메뉴에서 역할에 이 권한을 줄 수 있으니 관리자에게 요청하세요.`,
-    forbiddenNoMenu: `이 화면을 보려면 「${SCREEN_NAME}」(W-02-01) 권한이 필요합니다. 관리자에게 권한을 요청하세요.`,
+      `이 화면을 보려면 「${SCREEN_NAME}」 권한이 필요합니다. 관리자가 「${menuPath}」 메뉴에서 역할에 이 권한을 줄 수 있으니 관리자에게 요청하세요.`,
+    forbiddenNoMenu: `이 화면을 보려면 「${SCREEN_NAME}」 권한이 필요합니다. 관리자에게 권한을 요청하세요.`,
   },
 
   /** 페이지 머리 조건 칩. `label`은 보이지 않는 칩 묶음의 접근명이다. */
