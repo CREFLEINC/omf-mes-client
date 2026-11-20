@@ -2,7 +2,7 @@ import { messages, vi } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useSearchParams } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi as vitest } from 'vitest';
 
 import { pickDate } from '../../test/date-picker';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
@@ -628,7 +628,7 @@ describe('ShipmentScheduleScreen — 공장 지정 없음 · 사업부(피처 01
 });
 
 describe('ShipmentScheduleScreen — 피처 010 진행·교체 표시', () => {
-  it('US2-7·Q19 초과 · 막힘 n · 피킹 창고 · LOT 교체 n 을 목록에 보인다', async () => {
+  it('US2-7·Q19 초과 · 막힘 n(진짜 이슈 수만, #342) · 피킹 창고 · LOT 교체 n 을 목록에 보인다', async () => {
     renderScreen([listRoute([pickingRequest()]), ...partnerRoutes()], SHIP_DATE_FROM);
 
     await screen.findByText('SAMPLE-SR-0010');
@@ -636,7 +636,8 @@ describe('ShipmentScheduleScreen — 피처 010 진행·교체 표시', () => {
 
     expect(row).toHaveTextContent('100 / 110 / 0');
     expect(within(row).getByText(t.values.over(10))).toBeInTheDocument();
-    expect(within(row).getByText(t.values.blocked(2))).toBeInTheDocument();
+    /* #342 — 미검사는 정상 진행이라 세지 않는다. 수주 라인 취소 하나만. */
+    expect(within(row).getByText(t.values.blocked(1))).toBeInTheDocument();
     expect(within(row).getByText(t.values.replacement(1))).toBeInTheDocument();
     expect(row).toHaveTextContent('합성 완제품 창고 A, 합성 완제품 창고 B');
     expect(within(row).getByText(t.values.judgmentNotInspected(1))).toBeInTheDocument();
@@ -688,6 +689,158 @@ describe('ShipmentScheduleScreen — 피처 010 진행·교체 표시', () => {
   });
 });
 
+/*
+ * #342 — 「막힘」은 진짜 이슈만, 출하일 지난 피킹 부족은 「지연」. 오늘은 시계를 고정해 정한다.
+ */
+describe('ShipmentScheduleScreen — #342 막힘 · 지연 · 완료 대기', () => {
+  beforeEach(() => {
+    vitest.useFakeTimers({ toFake: ['Date'] });
+    vitest.setSystemTime(new Date(2026, 10, 20, 9, 0, 0));
+  });
+  afterEach(() => {
+    vitest.useRealTimers();
+  });
+
+  const request = (id: number, overrides: Record<string, unknown>) =>
+    shipmentRequest({
+      shipmentRequestId: id,
+      shipmentRequestNo: `SAMPLE-SR-${String(id)}`,
+      shipmentProgressCode: 'PICKING',
+      requestedShipDate: '2026-11-25',
+      ...overrides,
+    });
+
+  const rowOf = (no: string): HTMLElement =>
+    within(listTable()).getByText(no).closest('tr') as HTMLElement;
+
+  const statusChips = (row: HTMLElement): string[] =>
+    [...row.querySelectorAll<HTMLElement>('span[class*="status-"]')].map(
+      (chip) => `${/status-([a-z]+)/.exec(chip.className)?.[1] ?? ''}:${chip.textContent ?? ''}`,
+    );
+
+  it('#342 확인 1·2·3·4 — 목록 진행 칩 아래 칩을 갈래대로 단다', async () => {
+    const rows = [
+      /* 1. 피킹 중 — 피킹 부족 · 미검사만, 출하일 전: 칩 없음. */
+      request(9301, {
+        completionBlockers: [
+          { code: 'PICKING_SHORT', lineNo: 1 },
+          { code: 'NOT_INSPECTED', lotNo: 'SAMPLE-LOT-0101' },
+        ],
+      }),
+      /* 2. 출하일이 어제인 피킹 부족 — 주황 「지연」. */
+      request(9302, {
+        requestedShipDate: '2026-11-19',
+        completionBlockers: [{ code: 'PICKING_SHORT', lineNo: 1 }],
+      }),
+      /* 3. 불합격 · 보류 + 피킹 부족(출하일 지남) — 붉은 「막힘 2」가 「지연」보다 앞선다. */
+      request(9303, {
+        requestedShipDate: '2026-11-19',
+        completionBlockers: [
+          { code: 'REJECTED', lotNo: 'SAMPLE-LOT-0102' },
+          { code: 'HELD', lotNo: 'SAMPLE-LOT-0103' },
+          { code: 'PICKING_SHORT', lineNo: 1 },
+        ],
+      }),
+      /* 4. 막는 이유 없음 — 초록 「완료 대기」. */
+      request(9304, { shipmentProgressCode: 'PICKED', completionBlockers: [] }),
+      /* 4. 출하 완료 — 칩 없음. */
+      request(9305, {
+        shipmentProgressCode: 'SHIPPED',
+        completionBlockers: [{ code: 'ALREADY_COMPLETED' }],
+      }),
+      /* 오늘이 출하일인 피킹 부족은 아직 지연이 아니다. */
+      request(9306, {
+        requestedShipDate: '2026-11-20',
+        completionBlockers: [{ code: 'PICKING_SHORT', lineNo: 1 }],
+      }),
+    ];
+    renderScreen([listRoute(rows), ...partnerRoutes()], SHIP_DATE_FROM);
+
+    await screen.findByText('SAMPLE-SR-9301');
+    /* 진행 칩 아래 칩만 본다(검사 · 진행 칩은 빼고). */
+    const marks = [t.values.delayed, t.values.completionReady, ...[1, 2, 3].map(t.values.blocked)];
+    const completion = (no: string) =>
+      statusChips(rowOf(no)).filter((chip) => marks.some((text) => chip.endsWith(`:${text}`)));
+
+    expect(completion('SAMPLE-SR-9301')).toEqual([]);
+    expect(completion('SAMPLE-SR-9302')).toEqual([`warning:${t.values.delayed}`]);
+    expect(completion('SAMPLE-SR-9303')).toEqual([`error:${t.values.blocked(2)}`]);
+    expect(completion('SAMPLE-SR-9304')).toEqual([`success:${t.values.completionReady}`]);
+    expect(completion('SAMPLE-SR-9305')).toEqual([]);
+    expect(completion('SAMPLE-SR-9306')).toEqual([]);
+  });
+
+  const detailRoute = (body: Record<string, unknown>): StubRoute => ({
+    match: (r) => isGet(r, `${LIST_PATH}/${String(body.shipmentRequestId)}`),
+    respond: () => jsonResponse(body, { headers: { ETag: '"sample-v1"' } }),
+  });
+
+  const openDetailOf = async (body: Record<string, unknown>) => {
+    const { user } = renderScreen(
+      [listRoute([body]), detailRoute(body), ...partnerRoutes()],
+      SHIP_DATE_FROM,
+    );
+    await user.click(
+      await screen.findByRole('button', {
+        name: t.table.openDetail(String(body.shipmentRequestNo)),
+      }),
+    );
+    const dialog = await screen.findByRole('dialog', { name: t.detail.title });
+    await within(dialog).findByText(String(body.shipmentRequestNo));
+    return dialog;
+  };
+
+  it('#342 확인 1 — 피킹 부족 · 미검사만이면 상세 띠는 정보(회색) 「출하 완료까지 남은 일」이다', async () => {
+    const dialog = await openDetailOf(
+      request(9311, {
+        completionBlockers: [
+          { code: 'PICKING_SHORT', lineNo: 1 },
+          { code: 'NOT_INSPECTED', lotNo: 'SAMPLE-LOT-0111' },
+        ],
+      }),
+    );
+
+    const title = within(dialog).getByText(t.detail.remainingTitle(2));
+    expect(title.closest('[role]')).toHaveAttribute('role', 'status');
+    expect(within(dialog).queryByRole('alert')).toBeNull();
+  });
+
+  it('#342 확인 3 — 불합격 · 보류가 있으면 붉은 띠에 이슈를 먼저 나열한다', async () => {
+    const dialog = await openDetailOf(
+      request(9312, {
+        completionBlockers: [
+          { code: 'PICKING_SHORT', lineNo: 1 },
+          { code: 'HELD', lotNo: 'SAMPLE-LOT-0112' },
+          { code: 'NOT_INSPECTED', lotNo: 'SAMPLE-LOT-0113' },
+          { code: 'REJECTED', lotNo: 'SAMPLE-LOT-0114' },
+        ],
+      }),
+    );
+
+    const title = within(dialog).getByText(t.detail.remainingTitle(4));
+    const band = title.closest('[role]') as HTMLElement;
+    expect(band).toHaveAttribute('role', 'alert');
+    expect([...band.querySelectorAll('li')].map((item) => item.textContent)).toEqual([
+      t.detail.blockers.HELD('SAMPLE-LOT-0112'),
+      t.detail.blockers.REJECTED('SAMPLE-LOT-0114'),
+      t.detail.blockers.PICKING_SHORT('1'),
+      t.detail.blockers.NOT_INSPECTED('SAMPLE-LOT-0113'),
+    ]);
+  });
+
+  it('#342 확인 4 — 출하 완료한 지시서(「이미 출하 완료」)는 남은 일 칸을 숨긴다', async () => {
+    const dialog = await openDetailOf(
+      request(9313, {
+        shipmentProgressCode: 'SHIPPED',
+        completionBlockers: [{ code: 'ALREADY_COMPLETED' }],
+      }),
+    );
+
+    expect(within(dialog).queryByText(t.detail.blockers.ALREADY_COMPLETED)).toBeNull();
+    expect(within(dialog).queryByText(/출하 완료까지 남은 일/)).toBeNull();
+  });
+});
+
 const detailOf = (body: unknown): StubRoute => ({
   match: (request) => isGet(request, `${LIST_PATH}/9010`),
   respond: () => jsonResponse(body, { headers: { ETag: '"sample-v1"' } }),
@@ -719,7 +872,12 @@ describe('ShipmentScheduleScreen — 피처 010 지시서 상세', () => {
     const dialog = await openDetail(user);
 
     expect(await within(dialog).findByText('SHPREQ:SAMPLE-SR-0010')).toBeInTheDocument();
-    expect(within(dialog).getByText(t.detail.blockersTitle(2))).toBeInTheDocument();
+    /* #342 — 진짜 이슈(수주 라인 취소)가 있어 붉은 띠, 제목은 남은 일 전부. */
+    expect(within(dialog).getByText(t.detail.remainingTitle(2))).toBeInTheDocument();
+    expect(within(dialog).getByText(t.detail.remainingTitle(2)).closest('[role]')).toHaveAttribute(
+      'role',
+      'alert',
+    );
     expect(
       within(dialog).getByText(t.detail.blockers.NOT_INSPECTED('SAMPLE-LOT-0004')),
     ).toBeInTheDocument();
