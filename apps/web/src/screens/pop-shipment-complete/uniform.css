@@ -74,15 +74,103 @@
   font-weight: 700;
 }
 
-/* LOT 번호 아래 몫 요약 — 여러 창고·적치 대기 자리에 나뉜 LOT 만. */
+/* 초과 0 은 흐리게(시안 2026-11-20). */
+.pu-table td.psc-zero {
+  color: var(--pu-text-3);
+}
+
+/* 피킹 수량 = 지시 수량 — 초록 글자 + 체크(시안 「수량 일치 시각적 강조」). */
+.psc-match {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--pu-ok);
+  font-weight: 700;
+}
+
+.psc-match svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+/* LOT 칸·품목명 — 말줄임 없이 줄을 바꾼다(시안 「데이터 말줄임 해소」). */
+.pu-table td.psc-wrap,
+.pu-table td.psc-lot-cell {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
 .psc-lot-portions {
   display: block;
-  font-family: inherit;
+  margin-top: 2px;
   font-size: 12px;
   line-height: 16px;
   color: var(--pu-text-3);
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.pu-table td.psc-code {
+  text-align: center;
+}
+
+/* ── 머리 카드: 상태 배지 · 정보 두 줄(시안 「출하 지시서 상세 화면 UI 개선 안」 2026-11-20) ── */
+.psc-status {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 700;
+  /* 바탕이 진한 초록·빨강(밝은 테마)이면 흰 글자, 옅은(어두운 테마)이면 짙은 글자 — 카드 색을 쓴다. */
+  color: var(--pu-card);
+  white-space: nowrap;
+}
+
+.psc-status.ok {
+  background: var(--pu-ok);
+}
+
+.psc-status.bad {
+  background: var(--pu-bad);
+}
+
+.psc-head-kv {
+  grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr) max-content minmax(
+      0,
+      1.4fr
+    );
+  align-items: center;
+  row-gap: 10px;
+}
+
+.psc-head-totals {
+  grid-column: 5 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+}
+
+.psc-wh-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.psc-wh-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--pu-card-2);
+  color: var(--pu-text-2);
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .psc-empty-row {
@@ -170,5 +258,14 @@
 @media (max-width: 1199px) {
   .psc-tables {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 좁으면 두 쌍씩 — 합계는 한 줄 전체. */
+  .psc-head-kv {
+    grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr);
+  }
+
+  .psc-head-totals {
+    grid-column: 1 / -1;
   }
 }

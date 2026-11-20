@@ -1,14 +1,20 @@
 import { messages } from '@omf-mes/i18n';
 
-import { PuChip, PuKv, PuNote, PuSection, type PuChipTone } from '../../patterns/pop-uniform';
+import {
+  PuChip,
+  PuIcon,
+  PuNote,
+  PuSection,
+  puCx,
+  type PuChipTone,
+} from '../../patterns/pop-uniform';
 import {
   OQC_TONE,
   blockedTargetsOf,
   formatQty,
   groupBlockers,
-  itemCodeOfLot,
+  lotWarehousesOf,
   overText,
-  portionSummaryOf,
   qtyWithUom,
   splitLotsOf,
   uomOf,
@@ -51,20 +57,16 @@ const targetOf = (completion: Completion, group: BlockerGroup): string => {
   return [...lines, ...group.lotNos].join(', ');
 };
 
-/** LOT 몫 요약 글 — 「완제품 창고 A 20 (적치 대기 10 포함), 완제품 창고 B 20」. 한 창고 한 자리면 null. */
-const portionText = (lot: CompletionLot): string | null => {
-  const summary = portionSummaryOf(lot.portions);
-  if (summary === null) return null;
-  /* 적치 대기 몫은 그 몫이 있는 창고 바로 뒤에만 붙인다 — 「창고1 30 (적치 대기 5 포함), 창고2 10」. */
-  return summary.warehouses
+/** LOT 번호 아래 창고별 몫 — 「창고 | 120 (적치 대기 120 EA)」, 여러 창고면 쉼표로 잇는다(시안 2026-11-20). */
+const portionText = (lot: CompletionLot, uom: string): string =>
+  lotWarehousesOf(lot.portions)
     .map((entry) => {
       const text = t.lots.portion(entry.name, formatQty(entry.qty));
       return entry.staging > 0
-        ? `${text} (${t.lots.stagingIncluded(formatQty(entry.staging))})`
+        ? `${text} (${t.lots.staging(qtyWithUom(entry.staging, uom))})`
         : text;
     })
     .join(', ');
-};
 
 /** 교체 근거 판정 글 — 판정 코드가 OQC 판정 이름에 있으면 그 이름. */
 const judgmentText = (judgment: string | null): string | null =>
@@ -77,8 +79,9 @@ export interface ConfirmViewProps {
 }
 
 /**
- * 확인 화면 = `:lookup` 값 그대로(시안 ③·④·⑤). 머리(지시서 번호 · 출하 가능 여부 · 고객·납품처·수주),
- * 출하 불가 사유, 출하 품목, 재고가 빠질 창고(정보로만), 피킹 LOT(판정·코드 — 보기만).
+ * 확인 화면 = `:lookup` 값 그대로(시안 ③·④·⑤ · 「출하 지시서 상세 화면 UI 개선 안」 2026-11-20). 머리 카드(지시서 번호 ·
+ * 출하 가능 배지 · 고객·납품처·재고가 빠질 창고 · 수주·총 LOT·총 수량), 출하 불가 사유, 출하 품목, 피킹 LOT(보기만).
+ * ⛔ 시안 머리 카드의 [출하 확정]은 두지 않는다 — 주 동작은 아래 작업 줄의 [출하 완료] 하나다(POP 통일 규칙).
  *
  * ⛔ ERP 송신 여부는 어디에도 보이지 않는다(사용자 결정 2026-11-18). 수주 없는 지시서는 수주 칸만 「없음」이다.
  * ⛔ [출하 완료]는 아래 작업 줄에 있다 — 이 화면이 곧 확인 창이라 따로 묻지 않는다.
@@ -88,6 +91,8 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
   const blocked = groups.length > 0;
   const targets = blockedTargetsOf(completion);
   const uom = uomOf(completion);
+  const totalQty = completion.lots.reduce((sum, lot) => sum + lot.qty, 0);
+  const splitLots = splitLotsOf(completion);
 
   return (
     <>
@@ -100,23 +105,37 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
           </>
         }
         meta={
-          <PuChip tone={blocked ? 'bad' : 'ok'}>{blocked ? t.head.blocked : t.head.ready}</PuChip>
+          <span className={puCx('psc-status', blocked ? 'bad' : 'ok')}>
+            {blocked ? t.head.blocked : t.head.ready}
+          </span>
         }
       >
-        <PuKv
-          cols2
-          items={[
-            {
-              label: t.head.customer,
-              value: t.head.named(completion.customer.partnerName, completion.customer.partnerCode),
-            },
-            {
-              label: t.head.shipTo,
-              value: t.head.named(completion.shipTo.partnerName, completion.shipTo.partnerCode),
-            },
-            { label: t.head.salesOrder, value: completion.salesOrderNo ?? t.head.noSalesOrder },
-          ]}
-        />
+        {/* 한 카드에 모은다 — 1줄 고객·납품처·창고, 2줄 수주·합계(시안 「정보 밀도 강화 및 불필요한 카드 통합」). */}
+        <dl className="pu-kv psc-head-kv">
+          <dt>{t.head.customer}</dt>
+          <dd>{t.head.named(completion.customer.partnerName, completion.customer.partnerCode)}</dd>
+          <dt>{t.head.shipTo}</dt>
+          <dd>{t.head.named(completion.shipTo.partnerName, completion.shipTo.partnerCode)}</dd>
+          <dt>{t.warehouses.heading}</dt>
+          <dd className="psc-wh-chips">
+            {completion.warehouses.length === 0
+              ? t.head.none
+              : completion.warehouses.map((warehouse) => (
+                  <span key={warehouse.warehouseId} className="psc-wh-chip">
+                    {t.head.named(warehouse.warehouseName, warehouse.warehouseCode)}
+                  </span>
+                ))}
+          </dd>
+          <dt>{t.head.salesOrder}</dt>
+          <dd>{completion.salesOrderNo ?? t.head.noSalesOrder}</dd>
+          <dd className="psc-head-totals">
+            <span>{t.head.totalLots(completion.lots.length)}</span>
+            <span>{t.head.totalQty(qtyWithUom(totalQty, uom))}</span>
+          </dd>
+        </dl>
+        {splitLots.map((lotNo) => (
+          <PuNote key={lotNo}>{t.warehouses.splitLot(lotNo)}</PuNote>
+        ))}
       </PuSection>
 
       {blocked && (
@@ -171,10 +190,21 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
                     >
                       <td className="fit num">{line.lineNo}</td>
                       <td className="fit pu-mono">{line.itemCode}</td>
-                      <td title={line.itemName}>{line.itemName}</td>
+                      <td className="psc-wrap">{line.itemName}</td>
                       <td className="fit num">{formatQty(line.targetQty)}</td>
-                      <td className="fit num">{formatQty(line.pickedQty)}</td>
-                      <td className={line.overQty > 0 ? 'fit num psc-over' : 'fit num'}>
+                      <td className="fit num">
+                        {line.pickedQty === line.targetQty ? (
+                          <span className="psc-match">
+                            {formatQty(line.pickedQty)}
+                            <span role="img" aria-label={t.lines.matched}>
+                              <PuIcon name="ok" />
+                            </span>
+                          </span>
+                        ) : (
+                          formatQty(line.pickedQty)
+                        )}
+                      </td>
+                      <td className={line.overQty > 0 ? 'fit num psc-over' : 'fit num psc-zero'}>
                         {overText(line.overQty)}
                       </td>
                       <td className="fit num">{line.lotCount}</td>
@@ -184,20 +214,6 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
               </table>
             </div>
           </PuSection>
-
-          {completion.warehouses.length > 0 && (
-            <PuSection grow={false} title={t.warehouses.heading} label={t.warehouses.heading}>
-              <PuKv
-                items={completion.warehouses.map((warehouse) => ({
-                  label: t.head.named(warehouse.warehouseName, warehouse.warehouseCode),
-                  value: t.warehouses.entry(warehouse.lotCount, qtyWithUom(warehouse.qty, uom)),
-                }))}
-              />
-              {splitLotsOf(completion).map((lotNo) => (
-                <PuNote key={lotNo}>{t.warehouses.splitLot(lotNo)}</PuNote>
-              ))}
-            </PuSection>
-          )}
         </div>
 
         <PuSection
@@ -213,9 +229,6 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
                 <thead>
                   <tr>
                     <th scope="col">{t.lots.columns.lotNo}</th>
-                    <th scope="col" className="fit">
-                      {t.lots.columns.itemCode}
-                    </th>
                     <th scope="col" className="fit num">
                       {t.lots.columns.qty}
                     </th>
@@ -233,13 +246,12 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
                       key={lot.shipmentRequestLotId}
                       className={targets.lotNos.has(lot.lotNo) ? 'psc-row-blocked' : undefined}
                     >
-                      <td className="pu-mono" title={lot.lotNo}>
-                        {lot.lotNo}
-                        {portionText(lot) !== null && (
-                          <span className="psc-lot-portions">{portionText(lot)}</span>
+                      <td className="psc-lot-cell">
+                        <span className="pu-mono">{lot.lotNo}</span>
+                        {lot.portions.length > 0 && (
+                          <span className="psc-lot-portions">{portionText(lot, uom)}</span>
                         )}
                       </td>
-                      <td className="fit pu-mono">{itemCodeOfLot(completion, lot)}</td>
                       <td className="fit num">{formatQty(lot.qty)}</td>
                       <td className="fit">
                         {lot.oqcLotStatus !== null && (
@@ -248,7 +260,11 @@ export const ConfirmView = ({ completion }: ConfirmViewProps) => {
                           </PuChip>
                         )}
                       </td>
-                      <td className="fit pu-mono">{lot.managementCode ?? ''}</td>
+                      <td className="fit pu-mono psc-code">
+                        {lot.managementCode === null || lot.managementCode === ''
+                          ? t.lots.none
+                          : lot.managementCode}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

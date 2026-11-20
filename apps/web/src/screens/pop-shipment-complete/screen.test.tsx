@@ -226,12 +226,27 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     const lot4 = within(lots).getByText('P2611-0101').closest('tr') as HTMLElement;
     expect(within(lot4).getByText(t.lots.oqc.NOT_REQUIRED)).toBeInTheDocument();
 
-    expect(screen.getByText('완제품 창고 A (WH-FG-A)')).toBeInTheDocument();
-    expect(screen.getByText(t.warehouses.entry(3, '110 EA'))).toBeInTheDocument();
-    /* 두 창고에 나뉜 LOT 만 몫을 적는다 — 한 창고 한 자리 LOT 은 줄을 늘리지 않는다. */
+    /* 머리 카드 한 장에 창고(칩)·합계까지(시안 2026-11-20) — 따로 선 창고 구획은 없다. */
+    expect(screen.getByText('완제품 창고 A (WH-FG-A)')).toHaveClass('psc-wh-chip');
+    expect(screen.getByText('완제품 창고 B (WH-FG-B)')).toHaveClass('psc-wh-chip');
+    expect(screen.getByText(t.head.totalLots(4))).toBeInTheDocument();
+    expect(screen.getByText(t.head.totalQty('160 EA'))).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.warehouses.heading })).toBeNull();
+    /* 피킹 = 지시면 체크, 초과 0 은 흐리게. */
+    const line2 = within(lines).getAllByRole('row')[2] as HTMLElement;
+    expect(within(line2).getByRole('img', { name: t.lines.matched })).toBeInTheDocument();
+    expect(within(line1).queryByRole('img', { name: t.lines.matched })).toBeNull();
+    expect(within(line2).getByText('0')).toHaveClass('psc-zero');
+    /* LOT 번호 아래 창고별 몫은 늘 보인다 — 「창고 | 수량」. 출하 관리 코드가 없으면 「-」. */
     const lot2 = within(lots).getByText('P2611-0002').closest('tr') as HTMLElement;
-    expect(within(lot2).getByText('완제품 창고 A 20, 완제품 창고 B 20')).toBeInTheDocument();
-    expect(within(lot1).queryByText(/완제품 창고/u)).toBeNull();
+    expect(
+      within(lot2).getByText(
+        `${t.lots.portion('완제품 창고 A', '20')}, ${t.lots.portion('완제품 창고 B', '20')}`,
+      ),
+    ).toBeInTheDocument();
+    expect(within(lot1).getByText(t.lots.portion('완제품 창고 A', '40'))).toBeInTheDocument();
+    const lot3 = within(lots).getByText('P2611-0004').closest('tr') as HTMLElement;
+    expect(within(lot3).getByText(t.lots.none)).toBeInTheDocument();
 
     expect(completeButton()).toBeEnabled();
   });
@@ -291,7 +306,9 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     const lots = await screen.findByRole('table', { name: t.lots.caption });
     const row = within(lots).getByText('P2611-0004').closest('tr') as HTMLElement;
     expect(
-      within(row).getByText(`완제품 창고 A 30 (${t.lots.stagingIncluded('10')})`),
+      within(row).getByText(
+        `${t.lots.portion('완제품 창고 A', '30')} (${t.lots.staging('10 EA')})`,
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(t.lots.replaced(1, t.lots.replacedLot('P2611-0003', t.lots.oqc.REJECTED))),
@@ -344,7 +361,7 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     const row = within(lots).getByText('P2611-0004').closest('tr') as HTMLElement;
     expect(
       within(row).getByText(
-        `${t.lots.portion('완제품 창고 A', '30')} (${t.lots.stagingIncluded('5')}), ${t.lots.portion('완제품 창고 B', '10')}`,
+        `${t.lots.portion('완제품 창고 A', '30')} (${t.lots.staging('5 EA')}), ${t.lots.portion('완제품 창고 B', '10')}`,
       ),
     ).toBeInTheDocument();
   });
@@ -507,13 +524,13 @@ describe('PopShipmentCompleteScreen (P-04-07)', () => {
     expect(screen.getByText(t.result.who('POP-출하-01', '김작업', 'W-0102'))).toBeInTheDocument();
   });
 
-  it('R-2·Q2 — 두 창고에 나뉜 LOT 은 「재고가 빠질 창고」 아래에 양쪽에 모두 센다고 알린다(시안 ③)', async () => {
+  it('R-2·Q2 — 두 창고에 나뉜 LOT 은 머리 카드(「재고가 빠질 창고」 칩 아래)에 양쪽에 모두 센다고 알린다(시안 ③)', async () => {
     const user = userEvent.setup();
     renderScreen();
 
     await scan(user, CODE);
 
-    const section = await screen.findByRole('region', { name: t.warehouses.heading });
+    const section = await screen.findByRole('region', { name: t.head.request });
     expect(within(section).getByText(t.warehouses.splitLot('P2611-0002'))).toBeInTheDocument();
     expect(within(section).queryByText(t.warehouses.splitLot('P2611-0001'))).toBeNull();
   });

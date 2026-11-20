@@ -37,6 +37,11 @@ export const popShipmentComplete = {
     blocked: '출하 불가',
     /** 「이름 (코드)」(C-10). */
     named: (name: string, code: string): string => `${name} (${code})`,
+    /* 머리 카드 합계(시안 「출하 지시서 상세 화면 UI 개선 안」 2026-11-20). */
+    totalLots: (count: number): string => `총 LOT: ${String(count)}개`,
+    totalQty: (qty: string): string => `총 수량: ${qty}`,
+    /** 값이 없는 칸(재고가 빠질 창고가 아직 없을 때). */
+    none: '-',
   },
 
   blockers: {
@@ -87,11 +92,12 @@ export const popShipmentComplete = {
       over: '초과 수량',
       lotCount: 'LOT 수',
     },
+    /** 피킹 수량이 지시 수량과 같을 때 체크 표시의 이름(화면 읽기용). */
+    matched: '지시 수량과 같음',
   },
 
   warehouses: {
     heading: '재고가 빠질 창고',
-    entry: (lotCount: number, qty: string): string => `LOT ${String(lotCount)}개, 수량 ${qty}`,
     /** 두 창고 이상에 몫이 있는 LOT — 창고마다 LOT 수를 세면 그 LOT 이 양쪽에 들어간다(시안 ③). */
     splitLot: (lotNo: string): string => `${lotNo} 는 두 창고에 나뉘어 있어 양쪽에 모두 셉니다.`,
   },
@@ -102,14 +108,15 @@ export const popShipmentComplete = {
     empty: '피킹된 LOT이 없습니다.',
     columns: {
       lotNo: 'LOT',
-      itemCode: '품목 코드',
       qty: '수량',
       oqc: 'OQC',
       managementCode: '출하 관리 코드',
     },
-    /* 여러 창고·적치 대기 자리에 나뉜 LOT 의 몫 — 「창고 A 20, 창고 B 20」. */
-    portion: (warehouse: string, qty: string): string => `${warehouse} ${qty}`,
-    stagingIncluded: (qty: string): string => `적치 대기 ${qty} 포함`,
+    /* LOT 번호 아래 창고별 몫 — 「창고 | 120 (적치 대기 120 EA)」(시안 2026-11-20). */
+    portion: (warehouse: string, qty: string): string => `${warehouse} | ${qty}`,
+    staging: (qty: string): string => `적치 대기 ${qty}`,
+    /** 출하 관리 코드가 없는 칸. */
+    none: '-',
     /* 교체로 빠진 LOT — 확인 화면에서 출하에 들지 않는다는 것을 한 줄로 알린다. */
     replaced: (count: number, lots: string): string =>
       `교체로 빠진 LOT ${String(count)}: ${lots}. 출하에 들지 않습니다.`,

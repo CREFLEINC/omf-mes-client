@@ -26,6 +26,9 @@ export const popShipmentComplete = {
     ready: 'Có thể xuất hàng',
     blocked: 'Không thể xuất hàng',
     named: (name: string, code: string): string => `${name} (${code})`,
+    totalLots: (count: number): string => `Tổng LOT: ${String(count)}`,
+    totalQty: (qty: string): string => `Tổng SL: ${qty}`,
+    none: '-',
   },
 
   blockers: {
@@ -71,19 +74,20 @@ export const popShipmentComplete = {
       over: 'SL vượt',
       lotCount: 'Số LOT',
     },
+    matched: 'Bằng SL chỉ thị',
   },
 
   warehouses: {
     heading: 'Kho sẽ bị trừ tồn',
-    entry: (lotCount: number, qty: string): string => `${String(lotCount)} LOT, SL ${qty}`,
     splitLot: (lotNo: string): string => `${lotNo} nằm ở hai kho nên được tính ở cả hai kho.`,
   },
 
   lots: {
     heading: (count: number): string => `LOT đã lấy (${String(count)})`,
     empty: 'Chưa có LOT nào được lấy.',
-    portion: (warehouse: string, qty: string): string => `${warehouse} ${qty}`,
-    stagingIncluded: (qty: string): string => `gồm ${qty} chờ xếp kệ`,
+    portion: (warehouse: string, qty: string): string => `${warehouse} | ${qty}`,
+    staging: (qty: string): string => `${qty} chờ xếp kệ`,
+    none: '-',
     replaced: (count: number, lots: string): string =>
       `${String(count)} LOT bị loại do thay thế: ${lots}. Không tính vào lô xuất hàng.`,
     replacedLot: (lotNo: string, judgment: string | null): string =>
@@ -91,7 +95,6 @@ export const popShipmentComplete = {
     caption: 'LOT đã lấy và phán định OQC',
     columns: {
       lotNo: 'LOT',
-      itemCode: 'Mã hàng',
       qty: 'SL',
       oqc: 'OQC',
       managementCode: 'Mã quản lý xuất hàng',
