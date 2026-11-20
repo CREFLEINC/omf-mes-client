@@ -9,7 +9,7 @@ import {
   TextField,
   useToast,
 } from '@crefle/web-ui';
-import type { components } from '@omf-mes/api-client';
+import { type components, createIdempotencyKey } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from 'react';
@@ -265,7 +265,7 @@ export const UsersRolesScreen = () => {
     try {
       const saved = await runRequest(() =>
         client.PUT('/app/users/{appUserId}/worker', {
-          params: { path: { appUserId }, header: { 'Idempotency-Key': crypto.randomUUID() } },
+          params: { path: { appUserId }, header: { 'Idempotency-Key': createIdempotencyKey() } },
           body: { workerId },
         }),
       );
