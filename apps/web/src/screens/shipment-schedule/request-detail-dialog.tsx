@@ -16,6 +16,7 @@ import {
   type ShipmentRequestDetail,
 } from './request-detail';
 import { progressLabel } from './status-options';
+import { remainingBlockers, tallyBlockers } from './types';
 
 const t = messages.shipmentSchedule;
 
@@ -31,6 +32,33 @@ const OQC_TONE: Record<string, ChipStatus> = {
 };
 
 const dateTime = (value: string): string => formatPlantDateTime(value) ?? value;
+
+/**
+ * 「출하 완료까지 남은 일 n건」 띠(omf-all-around#342). 진짜 이슈가 있으면 붉게, 정상 진행(피킹
+ * 부족 · 미검사)만이면 정보 띠. 이슈를 먼저 나열한다. 출하 완료한 지시서(「이미 출하 완료」)는 숨긴다.
+ */
+const remainingBlockerBand = (blockers: ShipmentRequestDetail['completionBlockers']): ReactNode => {
+  const tally = tallyBlockers(blockers);
+  const remaining = remainingBlockers(blockers);
+  if (tally.completed || remaining.length === 0) return null;
+  return (
+    <AlertBanner
+      variant={tally.issueCount > 0 ? 'error' : 'info'}
+      title={t.detail.remainingTitle(remaining.length)}
+    >
+      <ul className="ship-history-consequences">
+        {remaining.map((blocker, index) => {
+          const target = blockerTarget(blocker);
+          const text =
+            blocker.code === 'ALREADY_COMPLETED'
+              ? t.detail.blockers.ALREADY_COMPLETED
+              : t.detail.blockers[blocker.code](target);
+          return <li key={`${blocker.code}-${target}-${String(index)}`}>{text}</li>;
+        })}
+      </ul>
+    </AlertBanner>
+  );
+};
 
 /** 수주 잔량 칸 — 「100」 + 「수주 100」, 넘으면 「0 + 초과 10」 + 「수주 100, 출하 110」. */
 const SalesOrderRemainingCell = ({
@@ -294,23 +322,7 @@ export const RequestDetailDialog = ({
             <AlertBanner variant="info">{t.detail.noLotsBanner}</AlertBanner>
           )}
 
-          {detail.completionBlockers.length > 0 && (
-            <AlertBanner
-              variant="error"
-              title={t.detail.blockersTitle(detail.completionBlockers.length)}
-            >
-              <ul className="ship-history-consequences">
-                {detail.completionBlockers.map((blocker, index) => {
-                  const target = blockerTarget(blocker);
-                  const text =
-                    blocker.code === 'ALREADY_COMPLETED'
-                      ? t.detail.blockers.ALREADY_COMPLETED
-                      : t.detail.blockers[blocker.code](target);
-                  return <li key={`${blocker.code}-${target}-${String(index)}`}>{text}</li>;
-                })}
-              </ul>
-            </AlertBanner>
-          )}
+          {remainingBlockerBand(detail.completionBlockers)}
 
           <h3 className="field-label">{t.detail.lines}</h3>
           {linesOf(detail).map((line) => (
