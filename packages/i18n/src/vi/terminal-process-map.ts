@@ -88,6 +88,7 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     save: 'Lưu',
     saving: 'Đang lưu.',
     saved: 'Đã lưu thông tin máy quét.',
+    registered: 'Đã đăng ký.',
     cancel: 'Hủy',
     deactivate: 'Ngừng sử dụng',
     deactivated: 'Đã ngừng máy quét. Bản ghi vẫn còn.',

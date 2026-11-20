@@ -191,7 +191,7 @@ export const TerminalProcessMapScreen = () => {
 
   const create = useTerminalCreate((created) => {
     setFormMode('closed');
-    notify(t.terminal.saved);
+    notify(t.terminal.registered);
     selectTerminal(created.terminalId);
   });
 

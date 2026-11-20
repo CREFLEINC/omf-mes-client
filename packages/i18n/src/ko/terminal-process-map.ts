@@ -85,6 +85,7 @@ export const terminalProcessMap = {
     save: '저장',
     saving: '저장하는 중입니다.',
     saved: '저장했습니다.',
+    registered: '등록했습니다.',
     cancel: '취소',
     deactivate: '사용 중지',
     deactivated: '단말을 중지했습니다. 기록은 남습니다.',
