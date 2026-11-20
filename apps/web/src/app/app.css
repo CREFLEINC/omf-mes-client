@@ -13840,6 +13840,11 @@ a.erp-send-chips:focus-visible {
   padding-right: 3rem;
 }
 
+/* 미연결 안내 라벨은 칩 줄 안에 선다 — 공용 안내 띠의 위 여백을 걷는다(#333). */
+.users-roles-worker-link-summary > .iqc-inspection-action-note.users-roles-dialog-note[data-tone] {
+  margin: 0;
+}
+
 .users-roles-scope-title {
   display: flex;
   flex-wrap: wrap;

@@ -230,8 +230,14 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
                   ))}
                 </>
               ) : (
-                /* 미연결이면 칩 옆에 왜 연결해야 하는지 한 줄(사용자 시안 2026-11-20 · #333). */
-                <span className="users-roles-worker-link-meta-plain">{t.hintUnlinked}</span>
+                /* 미연결이면 칩 옆에 왜 연결해야 하는지 — 라벨 모양 안내(사용자 지시 2026-11-20 · #333). */
+                <span
+                  className="iqc-inspection-action-note users-roles-dialog-note"
+                  data-tone="info"
+                >
+                  <Icon name="info" size={16} aria-hidden />
+                  {t.hintUnlinked}
+                </span>
               )}
             </div>
             <div className="users-roles-worker-link-actions">
