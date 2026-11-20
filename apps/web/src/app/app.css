@@ -446,35 +446,6 @@ main > * + * {
   grid-column: 1 / -1;
 }
 
-/* 판정 유형 추가 · 수정 창(#209) — 첫 줄 세 칸, 둘째 줄 사용 시작일 · 종료일 두 칸이 같은 너비로 줄을 채운다. */
-/* 공용 `.form-grid`(2열)가 이 파일 뒤쪽에 있어 클래스 둘로 무겁게 건다. 좁은 화면(720px 이하)은 한 줄에 하나. */
-.form-grid.judgment-code-form-grid {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-}
-
-@media (max-width: 720px) {
-  .form-grid.judgment-code-form-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .form-grid.judgment-code-form-grid > *,
-  .form-grid.judgment-code-form-grid > .judgment-code-form-half {
-    grid-column: 1 / -1;
-  }
-}
-
-.judgment-code-form-grid > * {
-  grid-column: span 2;
-}
-
-.judgment-code-form-grid > .judgment-code-form-half {
-  grid-column: span 3;
-}
-
-.judgment-code-form-grid > .defect-cause-form-wide {
-  grid-column: 1 / -1;
-}
-
 /* 상위 선택칸과 안내 사이를 띄운다(사용자 지시 · #209). 뒤쪽 공용 규칙(`.iqc-inspection-action-note { margin: 0 }`)보다 무거워야 선다. */
 .defect-cause-form-grid .defect-cause-info-note {
   justify-self: start;
@@ -719,19 +690,6 @@ main > * + * {
 .defect-mapping-col-code {
   color: var(--on-surface-muted);
   font: var(--type-label-sm);
-}
-
-/* 판정 유형 검색 칸은 돋보기를 걷는다(사용자 지시 2026-10-29 · #209). DS SearchInput 에 끄는 값이 없어 앞자리를 숨긴다. */
-.judgment-code-search-field [class*="_leading_"] {
-  display: none;
-}
-
-/* 판정 유형 검색 칸 — 흐린 안내 글이 잘리지 않는 만큼(#209). */
-.inspection-standard-search.defect-cause-search
-  .filter-bar
-  > .judgment-code-search-field {
-  flex: 0 1 21rem;
-  min-width: 11rem;
 }
 
 /*
@@ -11920,10 +11878,9 @@ body.po-board-resizing.is-row-resize {
 
 /*
  * 조회 단추 아래 사유는 단추 묶음 폭 안에서 줄바꿈한다 — 사유 글자가 칸을 넓혀 단추 묶음이 다음 줄로 밀리지 않게(C-6).
- * 입고 관리(`.po-board-actions`)와 완제품 재고(`.product-stock-status-actions`)의 조회 줄이 쓴다.
+ * 입고 관리(`.po-board-actions`)의 조회 줄이 쓴다.
  */
-.po-board-actions + .field-note,
-.product-stock-status-actions + .field-note {
+.po-board-actions + .field-note {
   width: 0;
   min-width: 100%;
 }
@@ -31684,18 +31641,6 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   background: var(--surface);
 }
 
-@media (min-width: 1440px) {
-  .judgment-code-screen .po-board-split > section.pane:first-child {
-    max-height: none;
-    min-height: 0;
-  }
-
-  .judgment-code-screen .po-board-split > section.pane:last-child {
-    min-height: 0;
-    overflow: auto;
-  }
-}
-
 /* 피처 002 — 닫힌 묶음 손잡이의 대기 점(IQC 대기, 확정 항목 2). 이름 바로 뒤, 화살표 앞이다. */
 .nav-group-dot {
   flex: none;
@@ -35810,10 +35755,6 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   gap: var(--space-1);
 }
 
-.po-register-scope-legacy {
-  display: block;
-  margin-top: var(--space-1);
-}
 /* 분배 조건과 결과는 같은 영역에서 전환하고 선택한 조건만 편집한다. */
 .erp-wo-distribution-steps { display: flex; gap: var(--space-5); list-style: none; margin: 0; padding: 0 0 var(--space-3); border-bottom: 1px solid var(--outline-variant); font: var(--type-label-lg); color: var(--on-surface-variant); }
 .erp-wo-distribution-steps [aria-current='step'] { color: var(--primary); font-weight: 600; }

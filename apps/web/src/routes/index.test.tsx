@@ -46,14 +46,6 @@ import {
   notificationListBody,
 } from '../screens/notification-center/fixtures';
 import {
-  businessUnitFixtures,
-  inboundReceiptDetailBody,
-  itemFixtures,
-  partnerFixtures,
-  plantFixtures,
-  uomFixtures,
-} from '../screens/po-register/fixtures';
-import {
   countFixtures as adjustCountFixtures,
   itemFixtures as adjustItemFixtures,
   locationFixtures as adjustLocationFixtures,
@@ -78,7 +70,6 @@ import { appRouter } from './index';
  * **어느 쪽도 그 어긋남을 잡지 못한다.** 이 파일이 그 사이를 잇는다.
  */
 
-const t = messages.poRegister;
 
 /** 라우터가 실제로 받는 경로. 자식 라우트의 `path`는 앞머리 `/`가 없다. */
 const routedPaths = (): string[] =>
@@ -560,19 +551,6 @@ const workOrderCloseRoutes = (): StubRoute[] => [
   },
 ];
 
-/** W-01-11이 첫 진입에 부르는 것들 — 대상 초과분 상세와 이름 풀이 다섯. */
-const poRegisterRoutes = (): StubRoute[] => [
-  {
-    match: (request) => isGet(request, '/logistics/inbound-receipts/9101'),
-    respond: () => jsonResponse(inboundReceiptDetailBody()),
-  },
-  lookupRoute('/mdm/partners', partnerFixtures),
-  lookupRoute('/mdm/business-units', businessUnitFixtures),
-  lookupRoute('/mdm/plants', plantFixtures),
-  lookupRoute('/mdm/items', itemFixtures),
-  lookupRoute('/mdm/uoms', uomFixtures),
-];
-
 describe('appRouter', () => {
   it('사이드바가 가리키는 주소가 전부 라우트 표에 있다', () => {
     const routes = routedPaths();
@@ -729,15 +707,6 @@ describe('appRouter', () => {
   });
 
   /*
-   * **W-01-11 · C32** — 주소 앞머리는 다른 자재창고 화면과 같은 규칙(사이드바 섹션)을 따른다.
-   * 메뉴에 서지 않아도 이 화면이 속한 업무 묶음은 자재창고이고, 주소가 그 사실을 말해야 한다.
-   */
-  it('신규 P/O 등록이 자재창고 앞머리로 등록돼 있다', () => {
-    expect(routedPaths()).toContain('/logistics/po-register');
-    expect(routedPaths()).not.toContain('/logistics/purchase-orders');
-  });
-
-  /*
    * **W-01-12 · C46** — 계약 경로는 `/inventory/adjustments`인데 주소 앞머리는 `/logistics/`다.
    * 근거는 여기서도 **섹션**이다(D-1) — 재고실사·재고 현황과 한 섹션에 서는 화면이 저 혼자
    * 계약 앞머리를 쓰면 사용자와 개발자 모두 섹션과 주소를 대응시킬 수 없다.
@@ -816,8 +785,8 @@ describe('appRouter — 옛 적치 규칙 주소', () => {
 
 /**
  * **W-01-12는 진입 경로가 둘인 첫 화면이다** — 사이드바 항목(D-19)과 재고실사 마감 결과의
- * 링크(D-18). W-01-11이 링크 하나뿐이었던 것과 갈리는 자리이고, 그 근거는 **직접 등록이
- * 다른 화면을 거치지 않고 들어오는 정상 경로**라는 것이다(원천이 셋 — 착수 이슈 §6).
+ * 링크(D-18). 직접 등록이 다른 화면을 거치지 않고 들어오는 정상 경로라서 메뉴에도 둔다
+ * (원천이 셋 — 착수 이슈 §6).
  *
  * 이 describe가 두 경로를 양쪽에서 잰다 — 메뉴에 있고, 링크가 가리키는 주소가 실재한다.
  */
@@ -889,79 +858,6 @@ describe('appRouter — 재고조정의 진입 경로', () => {
      * 말을 하는 자리다.
      */
     expect(screen.queryByText('SAMPLE-IC-9101 · 2026-08-17')).not.toBeInTheDocument();
-  });
-});
-
-/**
- * **W-01-11은 이 저장소에서 처음으로 메뉴에 서지 않는 화면이다**(착수 이슈 §6 ① · 스펙 §5-2).
- *
- * 메뉴에 「신규 P/O 등록」이 서면 맥락 없는 진입이 기본 경로가 되고, 그때 사용자가 하는 일이
- * 곧 일반 구매 발주 등록이다. 그래서 메뉴에는 없고, 맥락(`receipt`)을 실은 주소로만 화면이 선다.
- *
- * 입하 등록의 결과는 더 이상 이 화면으로 가지 않는다(서버 장부 P-100) — 초과분은 줄의 `excessQty` 로
- * 실리고 「입하 예정 조회」의 초과분 연결 창으로 간다.
- */
-const PO_REGISTER_ENTRY = '/logistics/po-register?receipt=9101';
-
-describe('appRouter — 신규 P/O 등록의 진입 경로', () => {
-  /*
-   * **C33** — 메뉴에 항목이 없다. 주소와 글자를 **둘 다** 센다: 주소만 보면 이름이 다른 메뉴가
-   * 같은 화면을 열어도 통과하고, 글자만 보면 이름을 바꿔 단 메뉴가 통과한다.
-   */
-  it('사이드바에 이 화면 항목이 없다 — 입고 관리는 탭 없는 한 줄이다', () => {
-    renderWithProviders(
-      <SessionProvider>
-        <AppLayout>본문</AppLayout>
-      </SessionProvider>,
-      { session: SYNTHETIC_SESSION },
-    );
-    expandAllNavGroups();
-
-    /* 입고 관리는 탭 묶음이 아니다(2026-10-23 탭 합치기) — 이 화면이 숨을 탭 막대도 없다. */
-    expect(screen.queryByRole('navigation', { name: '입고 관리' })).toBeNull();
-
-    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
-    const hrefs = within(nav)
-      .getAllByRole('link')
-      .map((link) => link.getAttribute('href'));
-
-    /* 짝 양성 — 사이드바도 실제로 그려졌고 같은 섹션의 입고 관리 줄이 거기 있다. */
-    expect(hrefs).toContain('/logistics/inbound-schedule');
-    expect(hrefs).not.toContain('/logistics/po-register');
-    expect(within(nav).queryByText('신규 P/O 등록')).not.toBeInTheDocument();
-  });
-
-  /*
-   * **C32·C37** — 맥락(`receipt`)을 실은 주소로 들어가면 화면이 **그 맥락으로** 선다.
-   * 질의 열쇠(`receipt`)가 받는 쪽이 읽는 이름과 어긋나면 여기서 맥락 없는 화면이 서고 이 시험이 운다.
-   */
-  it('그 주소로 들어가면 대상 초과분이 실린 화면이 선다', async () => {
-    renderWithProviders(<RoutedApp />, {
-      session: SYNTHETIC_SESSION,
-      fetch: createStubFetch(poRegisterRoutes()),
-      route: PO_REGISTER_ENTRY,
-    });
-
-    expect(await screen.findByText('SAMPLE-IR-9101')).toBeInTheDocument();
-    /* 맥락이 실제로 실렸다 — 못 읽었으면 아래 짝 시험의 빈 상태가 이 자리에 선다. */
-    expect(screen.queryByText(t.empty.noContextTitle)).not.toBeInTheDocument();
-  });
-
-  /*
-   * **짝 음성** — 위 시험이 「무엇이든 그리기만 하면 통과」가 되지 않게, 맥락을 뺀 같은 주소가
-   * 실제로 다른 화면을 세우는 것을 함께 잰다. 질의 열쇠가 어긋나면 위 시험이 이쪽 모습을 본다.
-   */
-  it('맥락 없이 그 주소로 들어가면 넘어온 초과분이 없다고 말한다', async () => {
-    const [pathname] = PO_REGISTER_ENTRY.split('?');
-
-    renderWithProviders(<RoutedApp />, {
-      session: SYNTHETIC_SESSION,
-      fetch: createStubFetch(poRegisterRoutes()),
-      route: pathname ?? '',
-    });
-
-    expect(await screen.findByText(t.empty.noContextTitle)).toBeInTheDocument();
-    expect(screen.queryByText('SAMPLE-IR-9101')).not.toBeInTheDocument();
   });
 });
 
@@ -2133,9 +2029,6 @@ describe('appRouter — 툴/금형/지그 마스터의 진입 경로', () => {
  * 「계측기 마스터」라는 메뉴 이름은 「여기 있는 것은 계측기다」를 약속한다. 유형 값 목록이
  * 없던 동안에는 그 약속을 지킬 수 없어 미뤘고(설계 질의 `omf-mes#195`), 값이 확정돼
  * (회신 · 시드 `omf-mes#182`) 사용자가 실제로 계측기만 골라 볼 수 있게 되면서 세웠다.
- *
- * ⭐ **W-01-11과 갈린다** — 그쪽은 맥락 없는 진입이 요구사항 위반이라 **영영** 두지 않는다.
- * 이제 메뉴에 서지 않는 화면은 그것 하나뿐이다.
  */
 describe('appRouter — 계측기 마스터의 진입 경로', () => {
   /*

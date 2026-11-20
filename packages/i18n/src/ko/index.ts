@@ -39,7 +39,6 @@ import { itemExtendedAttrs } from './item-extended-attrs';
 import { itemPicker } from './item-picker';
 import { resourcePicker } from './resource-picker';
 import { masterChange } from './master-change';
-import { judgmentCode } from './judgment-code';
 import { usersRoles } from './users-roles';
 import { inboundSchedule } from './inbound-schedule';
 import { stockStatus } from './stock-status';
@@ -51,7 +50,6 @@ import { disposalIssue } from './disposal-issue';
 import { approvalRoute } from './approval-route';
 import { approvalInbox } from './approval-inbox';
 import { iqcSkipApproval } from './iqc-skip-approval';
-import { poRegister } from './po-register';
 import { login } from './login';
 import { session } from './session';
 import { stockAdjust } from './stock-adjust';
@@ -103,7 +101,6 @@ import { lotTrace } from './lot-trace';
 import { materialLocation } from './material-location';
 import { materialPicking } from './material-picking';
 import { toolUsage } from './tool-usage';
-import { productStockStatus } from './product-stock-status';
 import { shipmentRequestCreate } from './shipment-request-create';
 import { shipmentProcessing } from './shipment-processing';
 import { dashboard } from './dashboard';
@@ -205,7 +202,6 @@ export const ko = {
   itemPicker,
   resourcePicker,
   masterChange,
-  judgmentCode,
   usersRoles,
   inboundSchedule,
   stockStatus,
@@ -217,7 +213,6 @@ export const ko = {
   approvalRoute,
   approvalInbox,
   iqcSkipApproval,
-  poRegister,
   login,
   session,
   stockAdjust,
@@ -266,7 +261,6 @@ export const ko = {
   lotTrace,
   materialLocation,
   materialPicking,
-  productStockStatus,
   shipmentRequestCreate,
   shipmentProcessing,
   dashboard,
