@@ -846,7 +846,11 @@ describe('WorkOrderCloseCandidateScreen', () => {
     expect(screen.queryByRole('region', { name: t.input.pane })).not.toBeInTheDocument();
     expect(sessionUrls(api.urls)[0]!.search).toBe('?open=true&workOrderId=701&page=1&size=20');
     api.releaseSession();
-    expect(await screen.findByText(t.input.exactNote)).toBeVisible();
+    expect(
+      within(await screen.findByRole('region', { name: t.input.pane })).getByText(
+        t.input.classification.EXACT,
+      ),
+    ).toBeVisible();
     expect(screen.getByRole('status')).toHaveTextContent(t.status.complete);
     api.setSessionMode('pending-error');
     void queryClient.invalidateQueries({ queryKey: ['work-order-close', 'open-session', 701] });
@@ -858,7 +862,11 @@ describe('WorkOrderCloseCandidateScreen', () => {
     const before = api.urls.length;
     api.setSessionMode('ready');
     await user.click(within(status).getByRole('button', { name: messages.common.retry }));
-    expect(await screen.findByText(t.input.exactNote)).toBeVisible();
+    expect(
+      within(await screen.findByRole('region', { name: t.input.pane })).getByText(
+        t.input.classification.EXACT,
+      ),
+    ).toBeVisible();
     expect(api.urls.slice(before).map((url) => url.pathname)).toEqual([paths.sessions]);
     api.setJudgment(null);
     void queryClient.invalidateQueries({ queryKey: ['work-order-close', 'detail', 701] });
@@ -1066,7 +1074,11 @@ describe('WorkOrderCloseCandidateScreen', () => {
     renderWithProviders(<View />, { fetch: api.fetch });
     await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
     if (judgment === 'NORMAL') {
-      expect(await screen.findByText(t.input.exactNote)).toBeVisible();
+      expect(
+        within(await screen.findByRole('region', { name: t.input.pane })).getByText(
+          t.input.classification.EXACT,
+        ),
+      ).toBeVisible();
       expect(screen.getByRole('status')).toHaveTextContent(t.status.complete);
       expect(screen.queryByLabelText(t.input.reason.label)).not.toBeInTheDocument();
       return;

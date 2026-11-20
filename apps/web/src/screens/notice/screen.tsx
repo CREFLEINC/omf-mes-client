@@ -24,6 +24,7 @@ import {
   hasChangedFilters,
   useFilterMore,
 } from '../../patterns/filter-more';
+import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
 import { AckPanel } from './ack-panel';
 import {
@@ -352,14 +353,19 @@ export const NoticeScreen = () => {
             options={statusOptions}
             value={filters.statusCode}
             placeholder={t.filters.statusAll}
-            note={t.status.derived}
+            /* 상태가 정해지는 방식은 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */
+            info={t.status.derived}
             onChange={(value) => {
               apply({ statusCode: value });
             }}
           />
 
           <div className="field-cell notice-filter-period">
-            <span className="field-label">{t.filters.from}</span>
+            {/* ⭐ 시작일이 아니라 겹침으로 거른다 — 기간 칸 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}
+            <span className="info-label">
+              <span className="field-label">{t.filters.from}</span>
+              <InfoTip text={t.filters.periodNote} />
+            </span>
             <DatePicker
               mode="single"
               clearable
@@ -447,8 +453,6 @@ export const NoticeScreen = () => {
             else apply({ unacknowledgedByMe: false });
           }}
         />
-        {/* ⭐ 시작일이 아니라 겹침으로 거른다는 사실을 기간 칸 아래에 적는다. */}
-        <p className="pane-lead">{t.filters.periodNote}</p>
 
         {notices.isError ? (
           <LoadErrorBanner
@@ -591,7 +595,11 @@ export const NoticeScreen = () => {
 
       {selected !== null && formMode === 'closed' && (
         <section className="pane notice-pane" aria-label={t.panes.ack}>
-          <h2 className="pane-title">{t.ack.title}</h2>
+          <h2 className="pane-title info-label">
+            {t.ack.title}
+            {/* 사번으로 보이는 행의 뜻은 제목 옆 ⓘ 로 — 확인을 받는 공지에서만 목록이 있다(관리웹 정리 시안 A). */}
+            {selected.acknowledgeRequired && <InfoTip text={t.ack.workerNote} />}
+          </h2>
           <AckPanel
             required={selected.acknowledgeRequired}
             pendingOnly={pendingOnly}

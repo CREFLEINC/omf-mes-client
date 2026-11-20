@@ -1714,12 +1714,12 @@ describe('W-05-13 툴 마스터 — 엑셀 올리기', () => {
   });
 
   /* ⭐ 마스터 행이 생겼다고 현장에 라벨이 나가는 것이 아니다(스펙 §6). */
-  it('올리기가 라벨을 발행하지 않는다는 것을 말한다', async () => {
+  it('올리기가 라벨을 발행하지 않는다는 것을 파일 칸 ⓘ 로 말한다', async () => {
     const { user } = renderScreen();
 
     await openImport(user);
 
-    expect(screen.getByText(t.import.noLabelNote)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.import.noLabelNote })).toBeInTheDocument();
   });
 
   /* 감추지 않고 잠그고 사유를 말한다(G-2). */
@@ -1848,7 +1848,7 @@ describe('W-05-13 툴 마스터 — 엑셀 올리기', () => {
 
     expect(await screen.findByRole('cell', { name: t.import.rowLabel(1) })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: t.import.rowLabel(5) })).toBeInTheDocument();
-    expect(screen.getByText(t.import.rowNote)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.import.rowNote })).toBeInTheDocument();
   });
 
   /* ⛔ 없는 식별값을 지어내지 않는다 — 「없다」는 사실을 말한다(G-9). */

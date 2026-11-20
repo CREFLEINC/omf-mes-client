@@ -68,7 +68,7 @@ export const popShipmentComplete = {
     },
     NOT_INSPECTED: {
       title: '검사하지 않은 LOT 이 있습니다',
-      hint: 'OQC 출하검사(P-04-06, W-04-03)에서 결과를 기록하세요.',
+      hint: 'OQC 출하검사에서 결과를 기록하세요.',
     },
     REJECTED: {
       title: '불합격 LOT 이 있습니다',
@@ -157,7 +157,7 @@ export const popShipmentComplete = {
       `${qty}, 라인 ${String(lineCount)}, LOT ${String(lotCount)}${over === null ? '' : ` (초과 ${over} 포함)`}`,
     warehouses: '재고 차감',
     warehouseValue: (name: string, qty: string): string => `${name} ${qty}`,
-    cancelHint: '잘못 나갔으면 관리웹 출하 내역(W-04-12)에서 취소를 상신하세요.',
+    cancelHint: '잘못 나갔으면 관리웹 출하 내역에서 취소를 상신하세요.',
   },
 
   already: {
@@ -167,7 +167,7 @@ export const popShipmentComplete = {
     shipmentNo: '출하 번호',
     request: '출하 지시서',
     completedAt: '완료',
-    historyHint: '내역과 취소는 관리웹 출하 내역(W-04-12)에서 합니다.',
+    historyHint: '내역과 취소는 관리웹 출하 내역에서 합니다.',
   },
 
   search: {

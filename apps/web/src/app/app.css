@@ -381,10 +381,6 @@ main > * + * {
   display: contents;
 }
 
-.inspection-standard-sheet-fields .inspection-standard-notice-label {
-  grid-column: 1 / -1;
-}
-
 /* 기본 정보 수정 창 — 첫 줄에 세 칸(기본 생략 · 기준코드 · 기준명)이 서도록 넓힌다(사용자 지시 2026-11-04). */
 .inspection-standard-plan-edit-dialog {
   --dialog-max-lg: 60rem;
@@ -1534,11 +1530,15 @@ h2:has(> .inspection-standard-dialog-title) {
   gap: var(--space-2);
 }
 
+/* 칸 이름 + ⓘ(받는 형식) — 라벨 줄 높이를 늘리지 않게 가운데 맞춘다(관리웹 정리 시안 A). */
 .inspection-standard-import-files-label {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.inspection-standard-import-files-label > .field-label {
+  margin: 0;
 }
 
 .inspection-standard-import-box {
@@ -3727,6 +3727,13 @@ dialog.routing-history-dialog {
   letter-spacing: var(--type-title-lg-tracking);
 }
 
+/* 제목 + ⓘ(patterns/info-tip.tsx) — 아이콘을 제목 줄 가운데에 맞춘다. */
+.po-change-review-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
 .po-change-review-diff-values > div {
   display: grid;
   gap: var(--space-1);
@@ -4447,13 +4454,6 @@ dialog.routing-history-dialog {
   padding: var(--space-5);
 }
 
-.work-order-close-result-pane > .pane-title {
-  margin: 0;
-  color: var(--on-surface);
-  font: var(--type-title-lg);
-  letter-spacing: var(--type-title-lg-tracking);
-}
-
 .production-result-correction-table table {
   min-width: 64rem;
 }
@@ -4471,12 +4471,26 @@ dialog.routing-history-dialog {
 .work-order-close-summary-pane > .pane-title,
 .work-order-close-status-pane > .pane-title,
 .work-order-close-input-pane > .pane-title,
-.work-order-close-outbound-pane > .pane-title,
-.work-order-close-daily-head > .pane-title {
+.work-order-close-title-row > .pane-title {
   margin: 0;
   color: var(--on-surface);
   font: var(--type-title-lg);
   letter-spacing: var(--type-title-lg-tracking);
+}
+
+/* 제목 + ⓘ(patterns/info-tip.tsx) — 늘 펴 두던 구획 설명을 제목 옆으로 옮긴 자리(관리웹 정리 시안 A). */
+.work-order-close-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+/* 「이월」 단추와 그 옆 ⓘ 를 한 줄에 — 단추 줄 높이에 맞춘다. */
+.work-order-close-option-info {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 .work-order-close-filter {
@@ -5094,17 +5108,7 @@ dialog.routing-history-dialog {
 }
 
 .material-issue-request-line-footer {
-  align-items: flex-end;
-}
-
-.material-issue-request-line-notes {
-  display: grid;
-  gap: var(--space-1);
-}
-
-.material-issue-request-line-notes > .field-note {
-  margin: 0;
-  max-width: none;
+  justify-content: flex-end;
 }
 
 .material-issue-request-footer {
@@ -5244,7 +5248,8 @@ dialog.routing-history-dialog {
 }
 
 .work-order-progress-basis-copy {
-  display: grid;
+  display: flex;
+  align-items: center;
   gap: var(--space-1);
 }
 
@@ -5254,27 +5259,10 @@ dialog.routing-history-dialog {
   letter-spacing: var(--type-label-lg-tracking);
 }
 
-.work-order-progress-basis-copy > p {
-  margin: 0;
-  color: var(--on-surface-variant);
-}
-
-.work-order-progress-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
-  gap: var(--space-3);
-  min-width: 0;
-}
-
-.work-order-progress-list-notes {
+.work-order-progress-title {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-5);
-  color: var(--on-surface-variant);
-}
-
-.work-order-progress-list-notes > p {
-  margin: 0;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 .work-order-progress-table {
@@ -9125,6 +9113,10 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 .disposition-sort-heading {
+  /* 제목 옆 ⓘ(선별 규칙)를 가운데 맞춘다. */
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   margin: 0;
   font: var(--type-label-lg);
   letter-spacing: var(--type-label-lg-tracking);
@@ -9760,7 +9752,6 @@ main:has(.iqc-skip-approval-detail) {
   max-width: none;
 }
 
-.work-calendar-pane-note,
 .work-calendar-pane p {
   margin: 0;
 }
@@ -14263,6 +14254,14 @@ dialog.layout-editor-dialog {
   white-space: normal;
 }
 
+/* 팝오버 제목 + ⓘ(「바로 저장 · 배치도 저장과 따로」) 한 줄. */
+.layout-alias-popover-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
 .layout-alias-popover-actions {
   display: flex;
   justify-content: flex-end;
@@ -14551,7 +14550,8 @@ dialog.layout-editor-dialog {
   padding: var(--space-5);
 }
 
-.alarm-recipient-pane > .pane-title {
+.alarm-recipient-pane > .pane-title,
+.alarm-recipient-pane > .info-label > .pane-title {
   margin: 0;
 }
 
@@ -14853,8 +14853,10 @@ dialog.layout-editor-dialog {
   border-radius: var(--radius-lg);
 }
 
+/* 구획 제목 + ⓘ(patterns/info-tip.tsx) — 늘 펴 두던 구획 설명을 제목 옆으로 옮긴 자리(관리웹 정리 시안 A). */
 .replenishment-section-head {
-  display: grid;
+  display: flex;
+  align-items: center;
   gap: var(--space-1);
 }
 
@@ -14902,10 +14904,6 @@ dialog.layout-editor-dialog {
 }
 
 /* 줄 전체의 설명 — `.field-note` 의 폭 제한(20rem)을 풀어 한 줄로 읽히게. */
-.replenishment-wide-note {
-  max-width: none;
-}
-
 /* 관리 품목 표 — 행 어디를 눌러도 수정 창(키보드는 품목 링크). */
 .replenishment-table tr.is-clickable {
   cursor: pointer;
@@ -17944,6 +17942,16 @@ dialog.layout-editor-dialog {
   font: var(--type-label-lg);
   letter-spacing: var(--type-label-lg-tracking);
   color: var(--on-surface-variant);
+}
+
+/* 제목 + ⓘ(관리웹 정리 시안 A) — 제목 아래 여백을 감싸개로 옮겨 ⓘ 가 글자 가운데에 놓이게 한다. */
+.dash-detail-section > .info-label {
+  display: flex;
+  margin-bottom: var(--space-2);
+}
+
+.dash-detail-section > .info-label > .dash-detail-title {
+  margin: 0;
 }
 
 .dash-facts {
@@ -23636,20 +23644,6 @@ main:has(> .oqc-inspection-panes) {
   margin-inline-start: auto;
 }
 
-/* 한 줄짜리 안내 — 표식과 글자를 같은 가운데 선에 둔다(사용자 지시 2026-09-22). */
-.shipment-schedule-summary-banner {
-  align-items: center;
-}
-
-/*
- * 한 줄짜리 배너라 아이콘을 내릴 이유가 없다 — 디자인 시스템이 여러 줄을 기준으로 준
- * `margin-top` 이 그대로 남아 글자보다 아래로 처진다(사용자 지시 2026-09-22).
- * ⛔ 공통 부품을 고치지 않고 이 화면의 배너에만 건다. 첫 자식 span 이 아이콘이다.
- */
-.shipment-schedule-summary-banner > span:first-child {
-  margin-block-start: 0;
-}
-
 /*
  * 표의 열 폭은 비율로 나눈다 — 남는 자리가 마지막 열에 몰리면 오른쪽이 비어 보인다
  * (사용자 지시 2026-09-22). 좁아지면 긴 글이 든 고객·납품처가 먼저 줄고, 날짜·수량·상태는
@@ -24476,17 +24470,11 @@ main:has(> .oqc-inspection-panes) {
   gap: var(--space-1);
 }
 
-/* 결재 — 승인 시 결과는 한 안내 상자, 의견칸은 넓게, 단추 줄은 의견칸 바로 아래 오른쪽. */
-.iqc-skip-approval-outcome {
-  display: grid;
+/* 결재 — 승인 시 결과는 제목 옆 ⓘ, 의견칸은 넓게, 단추 줄은 의견칸 바로 아래 오른쪽. */
+.iqc-skip-approval-heading-info {
+  display: flex;
+  align-items: center;
   gap: var(--space-1);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--semantic-info-container);
-}
-
-.iqc-skip-approval-outcome p {
-  margin: 0;
 }
 
 .iqc-skip-approval-comment {
@@ -26324,6 +26312,13 @@ body:has(.page-nav-size [aria-expanded="true"])
   gap: var(--space-2);
 }
 
+/* 카드 제목 + ⓘ(patterns/info-tip.tsx) — 아이콘을 제목 줄 가운데에 맞춘다(관리웹 정리 시안 A). */
+.inspection-sheet-card-head > h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
 .inspection-sheet-rows {
   display: grid;
   gap: var(--space-2);
@@ -26541,6 +26536,13 @@ body:has(.page-nav-size [aria-expanded="true"])
 .inspection-sheet-entry .inspection-sheet-entry-item-name {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+/* 검사 입력 구획 제목 + ⓘ(머리 값 · NG 기록) — 아이콘을 제목 줄 가운데에 맞춘다(관리웹 정리 시안 A). */
+.inspection-sheet-entry-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 .inspection-sheet-entry .inspection-sheet-entry-judgment {
@@ -26855,11 +26857,12 @@ body:has(.page-nav-size [aria-expanded="true"])
   grid-template-columns: minmax(0, 1fr);
 }
 
-/* 팝업 안 양식 안내는 작은 글자 한 줄 — 칸 이름 · 보조 글과 크기를 맞춘다(사용자 지시 · #208). */
-.inspection-sheet-template-basic-grid > .inspection-standard-notice-label {
-  padding: var(--space-1) var(--space-3);
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
+/* 칸 이름 + 필수 표시 + ⓘ(양식 안내) — 한 줄로 가운데 맞춘다(관리웹 정리 시안 A). */
+.field-label.inspection-sheet-template-info-label {
+  display: flex;
+  align-items: center;
+  /* 필수 표시 앞 띄움 — 묶음 안 공백 글자는 flex 에서 사라진다. */
+  column-gap: 0.2em;
 }
 
 /* 조회 카드(#208) — 검사 기준 탭과 같은 한 줄: 조건들 → (오른쪽) 조회 · 초기화 | 새 기준 등록. 카드 안 줄의 아래 여백은 걷는다. */
@@ -31209,6 +31212,22 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+/*
+ * 라벨 옆 ⓘ 가 있는 칸(층 수 · 셀 수) — 라벨 줄 높이 · 간격은 공용 `.info-label` 이 DS 라벨과 맞춘다. 여기서는 입력칸이
+ * 칸 폭을 채우게 세로로 쌓기만 한다(간격을 더하면 같은 줄의 구역 수 · 랙 수 칸과 입력칸 윗선이 어긋난다).
+ */
+.bulk-create-info-field {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* 맨 오른쪽 칸(층마다 셀 수)의 ⓘ 문장은 왼쪽으로 띄운다 — 오른쪽으로 띄우면 창 가장자리에서 잘린다. */
+.bulk-create-counts > .bulk-create-info-field:last-child .info-tip-anchor > [role="tooltip"] {
+  right: calc(100% + var(--space-2));
+  left: auto;
+}
+
 .bulk-create-zones {
   display: grid;
   margin: 0;
@@ -32770,17 +32789,6 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   margin: var(--space-5) 0 var(--space-3);
 }
 
-/* 품목 설정의 스위치 아래 한 줄 안내(IQC 대상 ↔ 검사 기준 기본 생략 연동 · omf-all-around#215). */
-.item-attrs-control-with-note {
-  display: grid;
-  justify-items: start;
-  gap: var(--space-1);
-}
-
-.item-attrs-control-with-note > .field-note {
-  margin: 0;
-}
-
 /*
  * 부품 공장 IQC 수입검사(omf-all-around#211) — 검사 조회·판정과 같은 목록 · 상세 배치(`.inspection-split`). 상세는 레퍼런스 화면:
  * 검사 대상 → 로트 → 치수 측정 → 기준서 도면 → 외관·XRF → 판정, 바닥에 되돌리기 · 다시 실행 · 비우기 · 제출.
@@ -33871,6 +33879,13 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
+}
+
+/* 「검사 결과」 제목 + ⓘ(판정 규칙) — 아이콘을 제목 줄 가운데에 맞춘다(관리웹 정리 시안 A). */
+.oqc-shipment-results-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 .oqc-shipment-target {
@@ -35117,9 +35132,6 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 @media (max-width: 1000px) { .erp-wo-master-selection-layout { grid-template-columns: 1fr; } .erp-wo-master-order-list { grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr)); } }
 
 .erp-wo-origin-summary { display: grid; gap: var(--space-2); padding-block: var(--space-3); border-block: 1px solid var(--outline-variant); }
-.erp-wo-source-label { color: var(--on-surface-variant); font: var(--type-body-sm); }
-.erp-wo-source-unavailable { padding: var(--space-3); background: var(--surface-container); border-radius: 8px; font: var(--type-body-sm); overflow-wrap: anywhere; }
-.erp-wo-source-unavailable p { margin-top: var(--space-2); color: var(--on-surface-variant); }
 .erp-wo-origin-summary + .erp-wo-revision-table th:first-child { width: 38%; }
 .erp-wo-origin-summary + .erp-wo-revision-table th:nth-child(2) { width: 23%; }
 
@@ -36427,6 +36439,8 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 /* 자동 분배는 입력 영역을 펼치고 모든 조건 폼을 동일한 규격으로 표시한다. */
 .erp-wo-common-conditions { display:grid; gap:var(--space-3); padding-block:var(--space-3); border-block:1px solid var(--outline-variant); }
 .erp-wo-common-conditions > .section-title, .erp-wo-distribution-preview > section > .section-title { margin:0; font:var(--type-body-sm); font-weight:500; }
+/* 제목 + ⓘ(patterns/info-tip.tsx) — 아이콘을 제목 줄 가운데에 맞춘다. */
+.erp-wo-title-with-info { display: flex; align-items: center; gap: var(--space-1); }
 .erp-wo-common-conditions > .field-note { margin:0; }
 .erp-wo-common-conditions > button { justify-self:end; min-width:9rem; }
 .erp-wo-distribution-dialog .erp-wo-segment-fields { grid-template-columns:repeat(4,minmax(0,1fr)); gap:var(--space-3); align-items:start; }
@@ -36639,18 +36653,7 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
  * W-04-12 목록 · 상세(T-W-A) — 배치는 `.po-board-split`(좌우 · 상하, 막대). 머리 안내 옆에 배치 단추를 둔다.
  * 검증 2회차: 상세 표가 넓은 표 하한(58rem)을 끌고 와 창 밖으로 나갔고, 목록 표는 오른쪽 칸이 잘렸다.
  */
-.ship-history-lead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.ship-history-lead > :first-child {
-  flex: 1 1 32rem;
-  min-width: 0;
-}
-
+/* 출하 내역 머리 줄 — 화면 설명 띠를 걷어 배치 바꾸기(⋯)만 남았다. 오른쪽 끝에 둔다(관리웹 정리 시안 A). */
 /* 목록 표는 창보다 넓으면 표 안에서 가로로 구른다(T-W-A). */
 .ship-history-split .wide-table {
   min-width: 0;
@@ -37166,3 +37169,67 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .users-roles-label-row > .users-roles-scope-hint {
   margin: 0;
 }
+
+/* ⓘ(patterns/info-tip.tsx) — 라벨 · 제목 바로 뒤의 작은 아이콘 단추. 문장은 DS 툴팁으로 뜬다. */
+.info-tip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: none;
+  color: var(--on-surface-variant);
+  cursor: help;
+}
+
+.info-tip:hover {
+  color: var(--on-surface);
+}
+
+.info-tip:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* 칸 라벨 + ⓘ(patterns/info-tip.tsx `InfoLabel`) — 라벨 줄 높이를 늘리지 않게 ⓘ 를 가운데 맞춘다. */
+.info-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.info-label > .field-label {
+  margin: 0;
+}
+
+/*
+ * 라벨 줄은 다른 칸의 라벨과 같은 높이(16px + 간격, `--field-label-layer`)여야 옆 칸 컨트롤과 윗선이 맞는다.
+ * ⓘ(24px)는 위아래로 4px 씩 넘치게 둔다.
+ */
+.info-label:has(> .field-label) {
+  display: flex;
+  height: 16px;
+  margin-bottom: var(--space-1);
+}
+
+/*
+ * 긴 문장은 줄을 바꾼다 — DS 툴팁은 한 줄 라벨이 기본이다. 표의 고정 머리 · 스위치(z-index 1)보다 위에 뜬다
+ * (DS 목록 상자와 같은 층).
+ */
+.info-tip-anchor > [role="tooltip"] {
+  z-index: 20;
+  width: max-content;
+  max-width: 22rem;
+  white-space: normal;
+}
+
+/* 라벨 줄 안의 ⓘ 는 글자 높이(16px)만 차지한다 — 24px 단추가 라벨 줄을 키워 옆 칸 입력칸과 어긋나지 않게. */
+.info-label .info-tip {
+  height: 16px;
+}
+

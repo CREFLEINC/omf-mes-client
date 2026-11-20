@@ -180,15 +180,17 @@ describe('W-05-01 ① — 비율 정책을 본다', () => {
   });
 
   /**
-   * ⭐ **겹치는 것이 정상이다.** 규칙을 곁에 적지 않으면 사람마다 다르게 읽는다.
-   * ⛔ 그리고 **화면이 판정하지 않는다**는 사실도 함께 말한다.
+   * ⭐ **겹치는 것이 정상이다.** 규칙은 목록 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A).
+   * 「미리보기에서 확인하라」는 문장은 두지 않는다 — 미리보기가 바로 아래 보인다.
    */
-  it('겹칠 때의 규칙과 판정하는 자리를 함께 말한다', async () => {
+  it('겹칠 때의 규칙을 목록 제목 옆 ⓘ 로 말한다', async () => {
     renderScreen();
     await within(pane()).findByText(t.scope.all);
 
-    expect(within(pane()).getByText(t.ratioList.overlapNote)).toBeInTheDocument();
-    expect(within(pane()).getByText(t.ratioList.resolvedElsewhere)).toBeInTheDocument();
+    expect(
+      within(pane()).getByRole('button', { name: t.ratioList.overlapNote }),
+    ).toBeInTheDocument();
+    expect(within(pane()).queryByText(/미리보기에서 확인하세요/)).toBeNull();
   });
 });
 

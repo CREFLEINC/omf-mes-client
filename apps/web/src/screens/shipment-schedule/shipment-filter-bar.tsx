@@ -343,13 +343,6 @@ export const ShipmentFilterBar = ({
       </div>
 
       <HiddenFilterChips open={more.isOpen} chips={hiddenChips} onRemove={onRemoveFilter} />
-
-      {/* 계약에 자리가 없어 이번 슬라이스에서 뺀 구획을 밝힌다 — 감추면 「원래 없다」로 읽힌다. */}
-      <AlertBanner
-        className="shipment-schedule-summary-banner"
-        variant="info"
-        title={t.filters.summaryNote}
-      />
     </>
   );
 };

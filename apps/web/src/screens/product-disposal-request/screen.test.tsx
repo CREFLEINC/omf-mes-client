@@ -20,6 +20,9 @@ import { ProductDisposalRequestScreen } from './screen';
 
 const t = messages.productDisposalRequest;
 
+/** 제목 옆 ⓘ 의 문장이 제목 이름 뒤에 붙는다(관리웹 정리 시안 A) — 제목은 이름의 앞머리로 집는다. */
+const titled = (title: string) => (name: string) => name.startsWith(title);
+
 const DECISION = {
   dispositionDecisionId: 7001,
   nonconformanceId: 3001,
@@ -503,7 +506,13 @@ describe('W-04-10 제품 폐기 요청 — 화면', () => {
   it('처리 이력 탭을 주소로 열 수 있다', async () => {
     openScreen({}, '/?tab=history');
 
-    expect(await screen.findByRole('heading', { name: t.panes.history })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: titled(t.panes.history) }),
+    ).toBeInTheDocument();
+    /* 목록 위에 늘 서던 띠는 제목 옆 ⓘ 로 읽힌다(관리웹 정리 시안 A). */
+    expect(screen.getByRole('button', { name: t.history.mixedNotice })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.approvalWhere })).toBeInTheDocument();
+    expect(screen.queryByText(t.history.mixedNotice)).toBeNull();
   });
 
   /**
@@ -513,9 +522,11 @@ describe('W-04-10 제품 폐기 요청 — 화면', () => {
   it('요청 탭에서는 이력 구획이 접근성 트리에 없다', async () => {
     openScreen();
 
-    await screen.findByRole('heading', { name: t.panes.targets });
+    await screen.findByRole('heading', { name: titled(t.panes.targets) });
 
-    expect(screen.queryByRole('heading', { name: t.panes.history })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: titled(t.panes.history) }),
+    ).not.toBeInTheDocument();
   });
 
   /**
@@ -527,41 +538,50 @@ describe('W-04-10 제품 폐기 요청 — 화면', () => {
   it('요청 탭에는 기타출고 처리 버튼을 두지 않는다', async () => {
     openScreen();
 
-    await screen.findByRole('heading', { name: t.panes.targets });
+    await screen.findByRole('heading', { name: titled(t.panes.targets) });
 
     expect(screen.queryByRole('button', { name: t.issue.submit })).not.toBeInTheDocument();
   });
 
-  /** ⛔ 승인·반려는 이 화면에 없다(J-10) — 어디서 하는지를 머리에 적는다. */
+  /** ⛔ 승인·반려는 이 화면에 없다(J-10) — 어디서 하는지를 결재선 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */
   it('승인·반려 버튼을 두지 않고 결재함을 가리킨다', async () => {
     openScreen();
 
-    await screen.findByRole('heading', { name: t.panes.targets });
+    await screen.findByRole('heading', { name: titled(t.panes.targets) });
 
-    expect(screen.getByText(t.headerNotice)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.approvalWhere })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '승인' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '반려' })).not.toBeInTheDocument();
   });
 
-  /** ⛔ 폐기 «계정»을 묻지 않는다 — 회계는 이 시스템 밖이다(DR-009). 없는 것이 정상이라 적는다. */
-  it('폐기 계정을 묻지 않고 그 사실을 적는다', async () => {
+  /**
+   * ⛔ 폐기 «계정»을 묻지 않는다 — 회계는 이 시스템 밖이다(DR-009). 묻는 칸이 없을 뿐, 그 사정과
+   * 철회 경로가 없다는 사실을 늘 적어 두지 않는다(관리웹 정리 시안 A — 철회는 확인 창이 말한다).
+   */
+  it('폐기 계정을 묻지 않고, 개발 사정 문장도 두지 않는다', async () => {
     openScreen();
 
-    await screen.findByRole('heading', { name: t.panes.targets });
+    await screen.findByRole('heading', { name: titled(t.panes.targets) });
 
-    expect(screen.getByText(t.withdrawn.account)).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /계정/ })).toBeNull();
+    expect(screen.queryByText(/회계 처리는 밖에서/)).toBeNull();
+    expect(screen.queryByText(/철회하는 길은 없습니다/)).toBeNull();
+    /* 칸 아래 늘 서던 안내는 라벨 옆 ⓘ 로 읽힌다. */
+    expect(screen.getByRole('button', { name: t.request.reasonHelp })).toBeInTheDocument();
+    expect(screen.queryByText(t.request.reasonHelp)).toBeNull();
+    expect(screen.getByRole('button', { name: t.issue.unlockNote })).toBeInTheDocument();
   });
 
-  /** §5-2 — 판정이 선행이라는 사실을 목록 위에 적는다. */
+  /** §5-2 — 판정이 선행이라는 사실은 「폐기 대상」 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */
   it('판정 없이 폐기할 수 없다는 사실을 적는다', async () => {
     openScreen();
 
-    /* 목록이 서기 전에는 배너도 없다 — 「없다」가 아니라 「아직」이라 기다린다. */
-    expect(await screen.findByText(t.targets.judgmentRequired)).toBeInTheDocument();
+    const pane = await screen.findByRole('region', { name: t.panes.targets });
 
-    const pane = screen.getByRole('region', { name: t.panes.targets });
-
-    expect(within(pane).getByText(t.targets.judgmentRequired)).toBeInTheDocument();
+    expect(
+      within(pane).getByRole('button', { name: t.targets.judgmentRequired }),
+    ).toBeInTheDocument();
+    expect(within(pane).queryByText(t.targets.judgmentRequired)).toBeNull();
   });
 });
 
@@ -716,8 +736,10 @@ describe('W-04-10 — 「기타출고 처리」', () => {
     await waitFor(() => expect(posts).toHaveLength(1));
     await user.click(screen.getByRole('tab', { name: t.tabs.request }));
 
-    expect(screen.getByRole('heading', { name: t.panes.history })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: t.panes.targets })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: titled(t.panes.history) })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: titled(t.panes.targets) }),
+    ).not.toBeInTheDocument();
   });
 
   /** ⚠ 목록에 자재 폐기 전표가 섞여 온다 — 남의 화면 업무를 여기서 끝내지 않는다. */

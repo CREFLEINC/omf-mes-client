@@ -89,17 +89,14 @@ export const toRequestLock = (input: RequestLockInput): Lock => {
 };
 
 /**
- * ③ 후속 버튼 — 처분별로 활성 «조건»만 판정한다(스펙 §5-7). 조건이 맞아도 열 화면이 없으면
- * 그 사실을 사유로 말한다 — 재작업 실적 등록은 현장 단말(POP) 화면이고 폐기 품의는 아직
- * 만들어지지 않았다. 재고 재등록은 공개 화면이 서므로 정상 판정이 있으면 열린다.
+ * ③ 후속 버튼 — 재고 재등록 하나다(스펙 §5-7). 정상 판정이 있으면 열린다. 재작업 실적 등록(현장 단말)과
+ * 폐기 품의는 이 화면에서 열 길이 없어 단추를 두지 않는다(C-4 · 관리웹 정리 시안 A, 2026-11-20).
  */
 export interface FollowUpState {
   reason: string | undefined;
 }
 
 export interface FollowUpStates {
-  rework: FollowUpState;
-  disposal: FollowUpState;
   reinstate: FollowUpState;
 }
 
@@ -109,8 +106,6 @@ export const toFollowUpStates = (decisions: readonly DecisionRow[]): FollowUpSta
     decisions.some((decision) => decision.dispositionTypeCode === code);
 
   return {
-    rework: { reason: has('REWORK') ? t.reworkUnavailable : t.reworkNotDecided },
-    disposal: { reason: has('SCRAP') ? t.disposalUnavailable : t.disposalNotDecided },
     reinstate: { reason: has('NORMAL') ? undefined : t.reinstateNotDecided },
   };
 };

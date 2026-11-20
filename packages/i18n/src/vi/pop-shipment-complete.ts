@@ -59,7 +59,7 @@ export const popShipmentComplete = {
     },
     NOT_INSPECTED: {
       title: 'Có LOT chưa được kiểm tra',
-      hint: 'Hãy ghi kết quả tại màn hình kiểm tra xuất hàng OQC (P-04-06, W-04-03).',
+      hint: 'Hãy ghi kết quả tại màn hình kiểm tra xuất hàng OQC.',
     },
     REJECTED: {
       title: 'Có LOT không đạt',
@@ -143,7 +143,7 @@ export const popShipmentComplete = {
     warehouses: 'Trừ tồn kho',
     warehouseValue: (name: string, qty: string): string => `${name} ${qty}`,
     cancelHint:
-      'Nếu xuất nhầm, hãy trình duyệt hủy tại màn hình lịch sử xuất hàng (W-04-12) trên web quản lý.',
+      'Nếu xuất nhầm, hãy trình duyệt hủy tại màn hình lịch sử xuất hàng trên web quản lý.',
   },
 
   already: {
@@ -153,7 +153,7 @@ export const popShipmentComplete = {
     shipmentNo: 'Số xuất hàng',
     request: 'Lệnh xuất hàng',
     completedAt: 'Hoàn tất',
-    historyHint: 'Xem lịch sử và hủy tại màn hình lịch sử xuất hàng (W-04-12) trên web quản lý.',
+    historyHint: 'Xem lịch sử và hủy tại màn hình lịch sử xuất hàng trên web quản lý.',
   },
 
   search: {

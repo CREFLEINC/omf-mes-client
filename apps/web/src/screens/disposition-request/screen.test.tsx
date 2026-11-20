@@ -33,15 +33,30 @@ const requestPane = () => within(screen.getByRole('group', { name: t.panes.reque
 const resultPane = () => within(screen.getByRole('group', { name: t.panes.result }));
 
 describe('DispositionRequestScreen — 진입 목록', () => {
-  it('구획 넷과 소관 안내가 서고, 판정 버튼은 없다', async () => {
+  it('구획 넷이 서고, 판정 버튼은 없다', async () => {
     renderScreen();
 
+    /* 제목 옆 ⓘ 의 문장이 제목 이름 뒤에 붙는다 — 이름의 앞머리로 집는다. */
+    const headingStartsWith = (text: string) => (name: string) => name.startsWith(text);
     expect(await screen.findByRole('heading', { name: t.panes.list })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: t.panes.register })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: t.panes.request })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: t.panes.result })).toBeInTheDocument();
-    /* §5-1 — 이 화면이 «하지 않는 것»을 상단에 상시 적는다. */
-    expect(screen.getByText(t.scopeNotice)).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: headingStartsWith(t.panes.register) }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: headingStartsWith(t.panes.request) }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: headingStartsWith(t.panes.result) }),
+    ).toBeInTheDocument();
+    /* §5-1 — 판정이 품질 화면 몫이라는 것은 「② 판정 의뢰」 제목 옆 ⓘ 가 말한다. 상단 설명 띠는 걷었다(관리웹 정리 시안 A). */
+    expect(screen.getByRole('button', { name: t.request.afterNote })).toBeInTheDocument();
+    expect(screen.queryByText(/여기서는 부적합을 등록하고/)).toBeNull();
+    /* 칸 아래 늘 서던 안내는 라벨 · 제목 옆 ⓘ 로 읽힌다. */
+    expect(screen.getByRole('button', { name: t.stageSourceNote })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.result.partialNote })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.register.descriptionHelp })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.request.remarksHelp })).toBeInTheDocument();
+    expect(screen.queryByText(t.register.descriptionHelp)).toBeNull();
     expect(screen.queryByRole('button', { name: '판정' })).not.toBeInTheDocument();
   });
 
@@ -170,7 +185,12 @@ describe('DispositionRequestScreen — 선택한 대상', () => {
     expect(target.getByText('LOT-TEST-0311')).toBeInTheDocument();
     expect(target.getByText(/RT-TEST-0044/)).toBeInTheDocument();
     expect(target.getByText(/합성 거래처/)).toBeInTheDocument();
-    expect(target.getByText(t.register.sourceDerived)).toBeInTheDocument();
+    /* 고를 칸이 없으니 서버가 정한다는 사정도 적지 않는다(관리웹 정리 시안 A). */
+    expect(target.queryByText(/원천은 서버가/)).toBeNull();
+    /* 대상 수량 전량을 등록한다는 사실은 「① 부적합 등록」 제목 옆 ⓘ 로 읽힌다. */
+    expect(
+      screen.getByRole('button', { name: /전량을 부적합 대상으로 등록합니다/ }),
+    ).toBeInTheDocument();
     /* 원천 입력 위젯을 그리지 않는다(§5-1-1 ⓓ). */
     expect(target.queryByRole('radio')).not.toBeInTheDocument();
   });
@@ -378,19 +398,17 @@ describe('DispositionRequestScreen — ② 판정 의뢰', () => {
 });
 
 describe('DispositionRequestScreen — ③ 결과 수신 후', () => {
-  it('판정 완료 대상은 처분 목록을 보이고 후속 버튼은 처분별 사유를 단다', async () => {
+  it('판정 완료 대상은 처분 목록을 보이고, 이 화면에서 열 수 없는 후속(재작업 실적 · 폐기 품의)은 단추를 두지 않는다', async () => {
     const { user } = renderScreen({ allCandidates: true });
     await selectRow(user, 'LOT-TEST-0299');
 
     expect(await resultPane().findByText(t.values.dispositionType.REWORK)).toBeInTheDocument();
     expect(resultPane().getByText(t.values.dispositionType.SCRAP)).toBeInTheDocument();
-    expect(resultPane().getByText(t.result.partialNote)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.result.partialNote })).toBeInTheDocument();
 
-    /* 조건은 맞지만 열 화면이 없다 — 그 사실을 사유로 말한다(규범 4). */
-    const rework = resultPane().getByRole('button', { name: t.actions.reworkResult });
-    expect(rework).toBeDisabled();
-    expect(resultPane().getByText(t.result.followUp.reworkUnavailable)).toBeInTheDocument();
-    expect(resultPane().getByText(t.result.followUp.disposalUnavailable)).toBeInTheDocument();
+    /* 열 길이가 없는 후속은 세우지 않는다(C-4) — 재고 재등록만 사유와 함께 남는다. */
+    expect(resultPane().queryByRole('button', { name: '재작업 실적 등록' })).toBeNull();
+    expect(resultPane().queryByRole('button', { name: '폐기 품의' })).toBeNull();
     expect(resultPane().getByText(t.result.followUp.reinstateNotDecided)).toBeInTheDocument();
 
     /* 판정 결과는 품질 화면(W-03-10)의 진입 주소로 연다 — 주소를 손으로 적지 않는다. */

@@ -222,7 +222,7 @@ describe('W-05-01 ⑤ — 캐비티 수', () => {
     await user.click(await screen.findByRole('option', { name: /MLD-0207/ }));
 
     expect(within(pane()).getByText('4')).toBeInTheDocument();
-    expect(within(pane()).getByText(tp.cavitySource)).toBeInTheDocument();
+    expect(within(pane()).getByRole('button', { name: tp.cavitySource })).toBeInTheDocument();
   });
 
   /** ⭐ 스펙의 「캐비티 미등록」 예외는 계약이 닫았다 — 남는 「없음」은 안 고른 것뿐이다. */

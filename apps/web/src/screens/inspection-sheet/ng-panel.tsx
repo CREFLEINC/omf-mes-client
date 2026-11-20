@@ -4,6 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
 import { DateTimeField } from '../../patterns/date-time-field';
+import { InfoTip } from '../../patterns/info-tip';
 import { masterName } from '../../patterns/master-name';
 import { Select } from '../../patterns/select';
 
@@ -141,8 +142,11 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
 
   return (
     <section className="pane inspection-sheet-entry-ngs" aria-label={t.heading}>
-      <h2 className="pane-title">{t.heading}</h2>
-      <p className="field-note">{t.note}</p>
+      {/* 한 건씩 적는다 · 출력 양식에 나오는 건수는 제목 옆 ⓘ 로(관리웹 정리 시안 A). */}
+      <h2 className="pane-title inspection-sheet-entry-title">
+        {t.heading}
+        <InfoTip text={t.note} />
+      </h2>
       {drafts.length === 0 && <p className="field-note">{t.empty}</p>}
       {drafts.map((draft, index) => {
         const n = index + 1;

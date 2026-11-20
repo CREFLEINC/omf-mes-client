@@ -8,6 +8,8 @@ import {
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { InfoTip } from '../../patterns/info-tip';
+
 import type { PeriodInput } from './period';
 import type { WorkOrderRow } from './row-view';
 import { isSortKeyAllowed, type SortKey, type SortState } from './sort';
@@ -163,16 +165,13 @@ export const WorkOrderTable = ({
 
   return (
     <section className="pane work-order-progress-pane" aria-label={t.title}>
-      <h2 className="pane-title">{t.title}</h2>
+      <h2 className="pane-title work-order-progress-title">
+        {t.title}
+        {/* ⛔ 지연이 서버 판정이 아니라는 사실은 ⓘ 로 둔다(omf-mes#265 · 관리웹 정리 시안 A). */}
+        <InfoTip text={t.delayReference} />
+      </h2>
 
       {isLoading && <p role="status">{t.loading}</p>}
-
-      <div className="work-order-progress-list-notes">
-        <p>{t.joinedColumnsNote}</p>
-        <p>{t.quantityNote}</p>
-        {/* ⛔ 지연이 서버 판정이 아니라는 사실을 값 옆에 상시 둔다(omf-mes#265). */}
-        <p>{t.delayReference}</p>
-      </div>
 
       <div className="work-order-progress-table">
         <Table

@@ -720,8 +720,9 @@ export const MaterialIssueRequestScreen = () => {
                     })),
                   ],
                   value: form.sourceWarehouseId === '' ? AUTO_SOURCE : form.sourceWarehouseId,
-                  note: lacksProductionWarehouse
-                    ? t.sourceWarehouse.none
+                  note: lacksProductionWarehouse ? t.sourceWarehouse.none : undefined,
+                  info: lacksProductionWarehouse
+                    ? undefined
                     : form.sourceWarehouseId === ''
                       ? t.sourceWarehouse.autoHelp(productionWarehouses.length)
                       : t.sourceWarehouse.fixedHelp(
@@ -783,9 +784,9 @@ export const MaterialIssueRequestScreen = () => {
             />
 
             <div className="material-issue-request-footer">
-              {usesProductionWarehouses && <p className="field-note">{t.reasonHelp}</p>}
               <ReasonPane
                 reasons={reasons}
+                info={usesProductionWarehouses ? t.reasonHelp : undefined}
                 reasonCode={form.reasonCode}
                 onChangeReason={(value) => {
                   changeForm({ reasonCode: value });

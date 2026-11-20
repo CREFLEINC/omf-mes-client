@@ -383,6 +383,13 @@ describe('W-02-11 출고 요청 현황 — 목록', () => {
 });
 
 describe('W-02-11 출고 요청 현황 — 상세', () => {
+  it('대기 요청의 출고 작업일 라벨 옆 ⓘ 는 그날 배포된다는 것을 알린다', async () => {
+    setup({ route: '/production/material-issue-status?id=1' });
+    const detail = await panel();
+
+    expect(await detail.findByRole('button', { name: t.detail.hints.WAITING })).toBeInTheDocument();
+  });
+
   it('US5-2 대기 요청의 수량을 고쳐 저장하면 바뀐 줄만 versionNo 와 함께 보낸다', async () => {
     const { user, writes } = setup({ route: '/production/material-issue-status?id=1' });
     const detail = await panel();
@@ -530,7 +537,10 @@ describe('W-02-11 출고 요청 현황 — 부족', () => {
 
     const table = within(await screen.findByRole('table', { name: t.shortage.tableLabel }));
     expect(table.getByText(t.shortage.unsourcedTitle)).toBeInTheDocument();
-    expect(table.getByText(t.shortage.unsourcedNote(2))).toBeInTheDocument();
+    expect(table.getByText(t.shortage.unsourcedCount(2))).toBeInTheDocument();
+    /* 묶음의 뜻은 제목 옆 ⓘ 의 설명으로 읽힌다(관리웹 정리 시안 A). */
+    expect(table.getByRole('button', { name: t.shortage.unsourcedNote })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.shortage.intro })).toBeInTheDocument();
     expect(table.getByText(t.shortage.replenished('SYN-MIR-15'))).toBeInTheDocument();
     expect(
       table.getByRole('link', { name: t.shortage.replenishLabel('SYN-WO-21 SYN-IT-2') }),
