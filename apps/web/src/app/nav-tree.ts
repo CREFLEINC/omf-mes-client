@@ -887,8 +887,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         to: '/system/users-roles',
         icon: 'manage_accounts',
-        label: '사용자·역할·권한',
-        labelVi: 'Người dùng · vai trò · quyền',
+        label: '사용자 역할 권한 관리',
+        labelVi: 'Quản lý người dùng · vai trò · quyền',
       },
       /* W-06-15 — 승인자를 정할 수 있게 된 다음에 결재선을 세운다. */
       {

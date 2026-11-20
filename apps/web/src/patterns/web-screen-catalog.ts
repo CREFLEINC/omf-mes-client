@@ -308,7 +308,7 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   { path: '/notification/notices', code: 'W-CO-04', name: '공지·전달 게시/조회' },
 
   /* ── 시스템 관리 ──────────────────────────────────────────────────────── */
-  { path: '/system/users-roles', code: 'W-CO-02', name: '사용자·역할·권한 관리' },
+  { path: '/system/users-roles', code: 'W-CO-02', name: '사용자 역할 권한 관리' },
   /*
    * ⚠ **06 이지 CO 가 아니다.** IA §3-1 은 이 화면을 「기준정보 > 승인」에 두었는데 사이드바는
    * 운영 설정이라는 성격을 따라 「시스템 관리」에 세웠다 — 메뉴 배치와 코드 도메인이 갈리는 둘째

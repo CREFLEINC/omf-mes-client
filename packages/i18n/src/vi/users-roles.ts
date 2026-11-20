@@ -16,7 +16,7 @@ import type { Translated } from './translated';
  */
 export const usersRoles: Translated<typeof ko.usersRoles> = {
   tabs: {
-    label: 'Người dùng · vai trò · quyền',
+    label: 'Quản lý người dùng · vai trò · quyền',
     users: 'Người dùng',
     roles: 'Vai trò · quyền',
   },

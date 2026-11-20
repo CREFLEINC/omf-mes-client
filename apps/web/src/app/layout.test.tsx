@@ -856,7 +856,7 @@ describe('AppLayout', () => {
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
 
     expect(within(sidebar).getByText('시스템 관리')).toBeInTheDocument();
-    expect(within(sidebar).getByRole('link', { name: '사용자·역할·권한' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: '사용자 역할 권한 관리' })).toHaveAttribute(
       'href',
       '/system/users-roles',
     );
@@ -933,7 +933,7 @@ describe('AppLayout', () => {
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
 
     /* 짝 양성 — 시스템 관리 섹션은 실제로 펼쳐져 항목이 서 있다. */
-    expect(within(sidebar).getByRole('link', { name: '사용자·역할·권한' })).toBeInTheDocument();
+    expect(within(sidebar).getByRole('link', { name: '사용자 역할 권한 관리' })).toBeInTheDocument();
     expect(
       within(sidebar).queryByRole('link', { name: messages.session.actions.changePassword }),
     ).toBeNull();
@@ -1886,7 +1886,7 @@ describe('셸 — 기능 권한으로 사이드바 거르기', () => {
   it('가진 권한의 화면만 메뉴에 선다', async () => {
     await renderWithPermissions(['W-CO-02']);
 
-    expect(hasMenu('사용자·역할·권한')).toBe(true);
+    expect(hasMenu('사용자 역할 권한 관리')).toBe(true);
     expect(hasMenu('창고·위치')).toBe(false);
   });
 
@@ -1909,7 +1909,7 @@ describe('셸 — 기능 권한으로 사이드바 거르기', () => {
     expect(
       within(topbar()).getByRole('link', { name: messages.session.actions.changePassword }),
     ).toHaveAttribute('href', '/system/password-change');
-    expect(hasMenu('사용자·역할·권한')).toBe(false);
+    expect(hasMenu('사용자 역할 권한 관리')).toBe(false);
   });
 
   /**
@@ -1919,7 +1919,7 @@ describe('셸 — 기능 권한으로 사이드바 거르기', () => {
   it('세션이 권한 목록을 주지 않으면 거르지 않는다', async () => {
     await renderWithPermissions();
 
-    expect(hasMenu('사용자·역할·권한')).toBe(true);
+    expect(hasMenu('사용자 역할 권한 관리')).toBe(true);
     expect(hasMenu('창고·위치')).toBe(true);
   });
 

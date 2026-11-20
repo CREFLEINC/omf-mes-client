@@ -307,7 +307,7 @@ describe('주 메뉴 트리', () => {
 
 describe('navMenuPath', () => {
   it('주소에 닿는 메뉴의 경로를 사이드바 이름 그대로 만든다', () => {
-    expect(navMenuPath('/system/users-roles')).toBe('시스템 관리 › 사용자·역할·권한');
+    expect(navMenuPath('/system/users-roles')).toBe('시스템 관리 › 사용자 역할 권한 관리');
   });
 
   it('사이드바에 없는 주소는 null이다', () => {
