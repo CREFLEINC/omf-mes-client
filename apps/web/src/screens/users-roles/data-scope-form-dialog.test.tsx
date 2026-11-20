@@ -31,28 +31,35 @@ const renderDialog = (overrides: Partial<DataScopeFormDialogProps> = {}) => {
   return { props, user: userEvent.setup() };
 };
 
-const confirmButton = (): HTMLElement => screen.getByRole('button', { name: '확인' });
+/* 추가 창은 「추가」, 수정 창은 「변경 적용」(사용자 시안 2026-11-20 · #333). */
+const confirmButton = (): HTMLElement => screen.getByRole('button', { name: /^(추가|변경 적용)$/ });
 
 describe('DataScopeFormDialog', () => {
   it('새 줄이면 제목이 추가다', () => {
     renderDialog();
 
-    expect(screen.getByRole('dialog', { name: '접근범위 추가' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: '접근 범위 추가' })).toBeInTheDocument();
   });
 
   it('고치는 줄이면 제목이 수정이다', () => {
     renderDialog({ isNew: false, draft: { ...emptyDraft, businessUnitId: '2001' } });
 
-    expect(screen.getByRole('dialog', { name: '접근범위 수정' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: '접근 범위 수정' })).toBeInTheDocument();
   });
 
-  /** 확인이 저장이라고 오해하면 창을 닫고 화면을 떠난다. */
-  it('확인이 아직 저장이 아니라는 사실을 밝힌다', () => {
+  /* 추가 창에만 무엇을 고르는지 한 줄 안내가 선다(사용자 시안 2026-11-20 · #333). */
+  it('추가 창에는 고르라는 안내가 서고 수정 창에는 없다', () => {
     renderDialog();
 
-    expect(
-      screen.getByText('확인하면 표에 반영됩니다. 변경사항을 적용하려면 「저장」을 눌러주세요.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('추가할 사업부와 공장을 선택하세요.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '추가' })).toBeInTheDocument();
+  });
+
+  it('수정 창의 확정 단추는 「변경 적용」이다', () => {
+    renderDialog({ isNew: false, draft: { ...emptyDraft, businessUnitId: '2001' } });
+
+    expect(screen.queryByText('추가할 사업부와 공장을 선택하세요.')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '변경 적용' })).toBeInTheDocument();
   });
 
   /** 사용자 지시(2026-09-18) — 오른쪽 위 X 없이 「취소」로 닫는다. */
@@ -69,7 +76,8 @@ describe('DataScopeFormDialog', () => {
   it('두 축 모두 「(전체)」를 고를 수 있다', () => {
     renderDialog();
 
-    expect(screen.getAllByText('(전체)').length).toBeGreaterThan(0);
+    expect(screen.getByText('사업부 선택')).toBeInTheDocument();
+    expect(screen.getByText('공장 선택')).toBeInTheDocument();
   });
 
   /**
@@ -105,7 +113,7 @@ describe('DataScopeFormDialog', () => {
     });
 
     expect(confirmButton()).toBeDisabled();
-    expect(screen.getByText(/이미 있는 범위와 겹치지 않을 때/)).toBeInTheDocument();
+    expect(screen.getByText(/중복되지 않도록 선택해 주세요/)).toBeInTheDocument();
   });
 
   it('자기 자신은 중복으로 세지 않는다 — 고치는 줄을 그대로 확인할 수 있다', () => {
@@ -140,7 +148,7 @@ describe('DataScopeFormDialog', () => {
     });
 
     await user.click(screen.getByLabelText('공장'));
-    await user.click(await screen.findByRole('option', { name: '(전체)' }));
+    await user.click(await screen.findByRole('option', { name: '공장 선택' }));
     await user.click(confirmButton());
 
     expect(props.onConfirm).toHaveBeenCalledWith({

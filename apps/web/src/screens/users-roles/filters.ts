@@ -1,4 +1,4 @@
-import type { RoleFilters, UserFilters } from './types';
+import type { RoleFilters, RoleStatus, UserFilters } from './types';
 
 /**
  * 조회 조건 — **주소가 정본이다.** 새로고침·뒤로가기·공유가 같은 결과를 내게 하려면
@@ -26,6 +26,7 @@ const URL_KEYS = {
   statusCode: 'status',
   includeInactive: 'inactive',
   page: 'page',
+  size: 'size',
   appUserId: 'usr',
   roleId: 'rol',
   create: 'new',
@@ -76,6 +77,17 @@ export const readPage = (params: URLSearchParams, key: string = URL_KEYS.page): 
   return isIdentifier(raw) ? Number(raw) : 1;
 };
 
+/** 계약의 목록 기본 쪽 크기(`size` 기본 50). 주소·조회에 적지 않는다. */
+export const DEFAULT_PAGE_SIZE = 50;
+
+/** 목록 건수 선택 — 수입검사 목록과 같은 10 · 20 · 50건(사용자 지시 2026-11-20 · #333). */
+export const LIST_PAGE_SIZES = [10, 20, DEFAULT_PAGE_SIZE] as const;
+export type ListPageSize = (typeof LIST_PAGE_SIZES)[number];
+
+/** 주소의 쪽 크기. 고를 수 있는 값이 아니면 기본(50)이다. */
+export const readPageSize = (params: URLSearchParams): ListPageSize =>
+  LIST_PAGE_SIZES.find((size) => String(size) === params.get(URL_KEYS.size)) ?? DEFAULT_PAGE_SIZE;
+
 /**
  * 주소가 가리키는 선택 번호. 선택 자리(`usr`·`rol`)가 **같은 규칙**을 쓴다.
  *
@@ -102,14 +114,14 @@ export const isCreating = (params: URLSearchParams, target: CreateTarget): boole
   params.get(URL_KEYS.create) === CREATE_VALUES[target];
 
 /**
- * 지금 무엇을 편집하고 있는가. **네 값은 함께 성립하지 않는 하나의 자리다** —
- * 고른 사용자(`usr`) · 사용자 등록(`new=user`) · 고른 역할(`rol`) · 역할 등록(`new=role`).
+ * 지금 무엇을 편집하고 있는가. **세 값은 함께 성립하지 않는 하나의 자리다** —
+ * 고른 사용자(`usr`) · 사용자 등록(`new=user`) · 고른 역할(`rol`).
+ * 역할 등록은 주소가 아니라 팝업이 값을 쥔다 — 열어도 고른 역할이 남아야 한다(#333).
  */
 export type Selection =
   | { kind: 'user'; appUserId: number }
   | { kind: 'role'; roleId: number }
   | { kind: 'createUser' }
-  | { kind: 'createRole' }
   | { kind: 'none' };
 
 /**
@@ -134,9 +146,6 @@ export const applySelection = (params: URLSearchParams, selection: Selection): v
     case 'createUser':
       params.set(URL_KEYS.create, CREATE_VALUES.user);
       break;
-    case 'createRole':
-      params.set(URL_KEYS.create, CREATE_VALUES.role);
-      break;
     case 'none':
       break;
   }
@@ -155,6 +164,7 @@ export const toUserSearchParams = (
   tabId: string,
   filters: UserFilters,
   page: number,
+  size: number = DEFAULT_PAGE_SIZE,
 ): URLSearchParams => {
   const next = new URLSearchParams({ [URL_KEYS.tab]: tabId });
 
@@ -163,6 +173,7 @@ export const toUserSearchParams = (
   if (filters.statusCode !== '') next.set(URL_KEYS.statusCode, filters.statusCode);
   if (filters.includeInactive) next.set(URL_KEYS.includeInactive, ON);
   if (page > 1) next.set(URL_KEYS.page, String(page));
+  if (size !== DEFAULT_PAGE_SIZE) next.set(URL_KEYS.size, String(size));
 
   return next;
 };
@@ -177,6 +188,7 @@ export interface UserListQuery {
   statusCode?: string;
   includeInactive?: boolean;
   page?: number;
+  size?: number;
 }
 
 /**
@@ -186,12 +198,17 @@ export interface UserListQuery {
  * 끈 상태를 값으로 실어 보내면 「보내지 않음」과 「false를 보냄」 두 상태가 생겨 캐시 키가 갈린다.
  * 첫 쪽도 같은 이유로 싣지 않는다.
  */
-export const toUserListQuery = (filters: UserFilters, page: number): UserListQuery => ({
+export const toUserListQuery = (
+  filters: UserFilters,
+  page: number,
+  size: number = DEFAULT_PAGE_SIZE,
+): UserListQuery => ({
   ...(filters.q === '' ? {} : { q: filters.q }),
   ...(filters.departmentId === '' ? {} : { departmentId: Number(filters.departmentId) }),
   ...(filters.statusCode === '' ? {} : { statusCode: filters.statusCode }),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
   ...(page > 1 ? { page } : {}),
+  ...(size === DEFAULT_PAGE_SIZE ? {} : { size }),
 });
 
 export const hasAnyUserFilter = (filters: UserFilters): boolean =>
@@ -212,9 +229,13 @@ export const hasAnyUserFilter = (filters: UserFilters): boolean =>
  * **부서를 읽지 않는다.** 주소에 `dept`가 남아 있어도(탭을 손으로 오간 주소) 역할 조건이 아니다 —
  * 읽어 두면 언젠가 계약에 없는 쿼리로 실린다.
  */
+const readRoleStatus = (value: string | null): RoleStatus =>
+  value === 'active' || value === 'inactive' ? value : '';
+
 export const readRoleFilters = (params: URLSearchParams): RoleFilters => ({
   q: params.get(URL_KEYS.q) ?? '',
   includeInactive: params.get(URL_KEYS.includeInactive) === ON,
+  status: readRoleStatus(params.get(URL_KEYS.statusCode)),
 });
 
 /** 조건 전체를 주소로 옮긴다. 규칙은 사용자 쪽과 같다 — 빈 조건은 키 자체를 두지 않는다. */
@@ -222,12 +243,15 @@ export const toRoleSearchParams = (
   tabId: string,
   filters: RoleFilters,
   page: number,
+  size: number = DEFAULT_PAGE_SIZE,
 ): URLSearchParams => {
   const next = new URLSearchParams({ [URL_KEYS.tab]: tabId });
 
   if (filters.q !== '') next.set(URL_KEYS.q, filters.q);
   if (filters.includeInactive) next.set(URL_KEYS.includeInactive, ON);
+  if (filters.status !== '') next.set(URL_KEYS.statusCode, filters.status);
   if (page > 1) next.set(URL_KEYS.page, String(page));
+  if (size !== DEFAULT_PAGE_SIZE) next.set(URL_KEYS.size, String(size));
 
   return next;
 };
@@ -239,14 +263,37 @@ export const toRoleSearchParams = (
 export interface RoleListQuery {
   q?: string;
   includeInactive?: boolean;
+  /** 사용 여부 라벨(#333) — 주면 그 값만. `includeInactive` 보다 앞선다(서버 #1111). */
+  isActive?: boolean;
   page?: number;
+  size?: number;
 }
 
-export const toRoleListQuery = (filters: RoleFilters, page: number): RoleListQuery => ({
+export const toRoleListQuery = (
+  filters: RoleFilters,
+  page: number,
+  size: number = DEFAULT_PAGE_SIZE,
+): RoleListQuery => ({
   ...(filters.q === '' ? {} : { q: filters.q }),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
+  ...(filters.status === '' ? {} : { isActive: filters.status === 'active' }),
   ...(page > 1 ? { page } : {}),
+  ...(size === DEFAULT_PAGE_SIZE ? {} : { size }),
 });
 
 export const hasAnyRoleFilter = (filters: RoleFilters): boolean =>
-  filters.q !== '' || filters.includeInactive;
+  filters.q !== '' || filters.includeInactive || filters.status !== '';
+
+/**
+ * 역할 추가 팝업이 처음 채울 역할 코드 — `ROLE_` 일련번호 중 쓰이지 않은 다음 번호(사용자 결정 2026-11-20 · #333).
+ * 사용자가 고칠 수 있고, 겹치면 서버가 막는다.
+ */
+export const nextRoleCode = (codes: readonly string[]): string => {
+  const numbers = codes
+    .map((code) => /^ROLE_(\d+)$/.exec(code)?.[1])
+    .filter((value): value is string => value !== undefined)
+    .map(Number);
+  const next = numbers.length === 0 ? 1 : Math.max(...numbers) + 1;
+
+  return `ROLE_${String(next).padStart(3, '0')}`;
+};

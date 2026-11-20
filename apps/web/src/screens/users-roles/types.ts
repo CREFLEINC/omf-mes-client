@@ -72,7 +72,11 @@ export interface UserFilters {
 export interface RoleFilters {
   q: string;
   includeInactive: boolean;
+  /** 탭 줄 사용 · 미사용 라벨(#333). `''` 이면 걸지 않는다 — 서버 `isActive` 로 간다. */
+  status: RoleStatus;
 }
+
+export type RoleStatus = '' | 'active' | 'inactive';
 
 /**
  * 사용자 폼 값. 전부 문자열인 이유는 디자인 시스템 입력·선택이 문자열을 다루기 때문이다.
