@@ -37084,6 +37084,7 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 .users-roles-label-row > .users-roles-scope-hint {
   margin: 0;
+}
 
 /* W-04-01 출고 창고 칸·나눈 줄(피처 012 · 시안 W0401-After) — 사업부를 바꿔 비운 줄은 노란 테로 짚는다(FR-004). */
 .sr-warehouse.is-cleared {
