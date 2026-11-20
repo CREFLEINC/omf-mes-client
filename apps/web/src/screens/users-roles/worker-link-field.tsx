@@ -304,14 +304,16 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
             <div className="users-roles-worker-dialog-field">
               <FieldLabel
                 htmlFor={inputId}
-                label={pickMode === 'change' ? t.inputLabelChange : t.inputLabel}
+                label={pickMode === 'change' ? t.inputLabelChange : t.inputLabelConnect}
               />
               <TextField
                 ref={inputRef}
                 id={inputId}
                 fullWidth
                 autoFocus
-                placeholder={t.inputPlaceholder}
+                placeholder={
+                  pickMode === 'change' ? t.inputPlaceholderChange : t.inputPlaceholderConnect
+                }
                 value={workerNo}
                 onChange={(event) => {
                   setWorkerNo(event.target.value);
@@ -322,8 +324,7 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
                 disabled={isBusy}
                 error={inputError}
               />
-              {/* 변경 창은 시안대로 보조 문구 없이(사용자 시안 2026-11-20 · #333). */}
-              {pickMode === 'connect' && <p className="field-note">{t.noteConnect}</p>}
+              {/* 연결 · 변경 창 모두 시안대로 보조 문구 없이(사용자 시안 2026-11-20 · #333). */}
             </div>
             <div className="users-roles-worker-dialog-actions">
               <Button
@@ -336,7 +337,7 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
                 {messages.common.cancel}
               </Button>
               <Button type="submit" loading={isBusy} disabled={isBusy || workerNo.trim() === ''}>
-                {pickMode === 'change' ? t.submitChange : t.submitConnect}
+                {pickMode === 'change' ? t.submitChange : t.submitConnectDialog}
               </Button>
             </div>
           </form>

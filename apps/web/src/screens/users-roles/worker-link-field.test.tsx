@@ -95,7 +95,7 @@ describe('WorkerLinkField', () => {
 
     await user.click(await screen.findByRole('button', { name: t.connect }));
     const modal = await dialog();
-    expect(within(modal).getByText(t.noteConnect)).toBeInTheDocument();
+    expect(within(modal).getByLabelText(t.inputLabelConnect)).toBeInTheDocument();
     await user.type(within(modal).getByRole('textbox'), 'SYN-W-01{Enter}');
 
     await waitFor(() => {
@@ -117,16 +117,19 @@ describe('WorkerLinkField', () => {
 
     await user.click(await screen.findByRole('button', { name: t.connect }));
     const modal = await dialog();
-    const submitButton = within(modal).getByRole('button', { name: t.submitConnect });
+    const submitButton = within(modal).getByRole('button', { name: t.submitConnectDialog });
     expect(submitButton).toBeDisabled();
     await user.type(within(modal).getByRole('textbox'), '   ');
     expect(submitButton).toBeDisabled();
-    expect(within(modal).getByRole('textbox')).toHaveAttribute('placeholder', t.inputPlaceholder);
+    expect(within(modal).getByRole('textbox')).toHaveAttribute(
+      'placeholder',
+      t.inputPlaceholderConnect,
+    );
     expect(
       within(modal)
         .getAllByRole('button')
         .map((button) => button.textContent),
-    ).toEqual([messages.common.cancel, t.submitConnect]);
+    ).toEqual([messages.common.cancel, t.submitConnectDialog]);
     expect(puts).toEqual([]);
   });
 

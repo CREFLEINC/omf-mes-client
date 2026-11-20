@@ -436,14 +436,20 @@ export const usersRoles = {
     connect: '작업자 연결',
     change: '작업자 변경',
     unlink: '연결 해제',
+    /** 수입검사 화면의 작업자 연결 창(`iqc-inspection/worker-connect-dialog`)이 쓰는 문구 — 그 화면은 바꾸지 않는다. */
     inputLabel: '작업자 사번',
+    noteConnect: '연결하면 별도 저장 없이 즉시 적용됩니다.',
     inputLabelChange: '변경할 작업자 사번',
+    inputLabelConnect: '연결할 작업자 사번',
+    inputPlaceholderConnect: '작업자 사번 입력',
     currentCaption: '현재 연결된 작업자',
-    inputPlaceholder: '사번을 입력하세요',
+    inputPlaceholder: '사번 입력',
+    /* 사용자 역할 권한 화면의 연결 · 변경 창(사용자 시안 2026-11-20 · #333). */
+    inputPlaceholderChange: '사번을 입력하세요',
     submitConnect: '연결',
+    submitConnectDialog: '작업자 연결',
     submitChange: '작업자 변경',
     /** 입력 그룹 맨 아래에만 — 실패했는데 적용됐다고 말하지 않도록 「~하면」으로 쓴다. */
-    noteConnect: '연결하면 별도 저장 없이 즉시 적용됩니다.',
     unlinkConfirmTitle: '작업자 연결 해제',
     unlinkCaption: '연결된 작업자',
     workerNoMeta: (workerNo: string): string => `사번 ${workerNo}`,
