@@ -1,6 +1,6 @@
 import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useState, type CSSProperties } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 import {
   usePopRegistration,
@@ -8,15 +8,16 @@ import {
   type RegistrationFailure,
 } from '../../../patterns/pop-registration';
 import {
+  PuActionBar,
   PuBand,
   PuButton,
   PuIcon,
   PuNote,
   PuScanField,
   PuScreen,
+  PuSection,
 } from '../../../patterns/pop-uniform';
 import { useIsOnline } from './connection';
-import { panelScale } from './panel-scale';
 import { equipmentText, processText } from './terminal-facts';
 import './uniform.css';
 
@@ -89,27 +90,6 @@ const failureMessage = (
   }
 };
 
-/**
- * 단말 화면에 맞춘 상자 배율(`panel-scale`). 창 크기가 바뀌면 다시 잰다 — 실기는 고정이지만
- * 개발 PC 에서는 창을 줄여 가며 보기 때문이다.
- */
-const usePanelScale = (): number => {
-  const [scale, setScale] = useState(() =>
-    typeof window === 'undefined' ? 1 : panelScale(window.innerWidth, window.innerHeight),
-  );
-
-  useEffect(() => {
-    const apply = (): void => setScale(panelScale(window.innerWidth, window.innerHeight));
-
-    apply();
-    window.addEventListener('resize', apply);
-
-    return () => window.removeEventListener('resize', apply);
-  }, []);
-
-  return scale;
-};
-
 export const RegistrationPanel = () => {
   const registration = usePopRegistration();
   const [token, setToken] = useState('');
@@ -122,7 +102,6 @@ export const RegistrationPanel = () => {
   const { phase, failure, failureSource, pendingCount, terminal, verifiedProcessNames } =
     registration;
   const busy = phase === 'verifying' || phase === 'preparing';
-  const scale = usePanelScale();
 
   /* POP 단말용이 아닌 토큰을 넣었으면 칸을 비운다 — 같은 값을 다시 누르지 않게 한다(omf-all-around#288). */
   useEffect(() => {
@@ -150,134 +129,134 @@ export const RegistrationPanel = () => {
         ? t.preparing
         : null;
 
+  /* 아래 작업 줄 — 다른 POP 화면과 같은 공통 작업 줄(보조는 왼쪽, 주 조작은 오른쪽 끝). */
+  const actionBar = isInput ? (
+    <PuActionBar label={t.title}>
+      <PuButton icon="reset" onClick={() => setToken('')} disabled={busy || token === ''}>
+        {t.clear}
+      </PuButton>
+      <PuButton
+        variant="primary"
+        onClick={() => {
+          send(token);
+        }}
+        disabled={busy || token.trim() === ''}
+      >
+        {phase === 'verifying' ? t.verifying : t.verify}
+      </PuButton>
+    </PuActionBar>
+  ) : isConfirm || phase === 'prepare-failed' ? (
+    <PuActionBar label={isConfirm ? t.confirmHeading : t.title}>
+      <PuButton onClick={registration.restart}>{t.restart}</PuButton>
+      <PuButton
+        variant="primary"
+        onClick={() => {
+          void (isConfirm ? registration.apply() : registration.retryPrepare());
+        }}
+      >
+        {isConfirm ? t.apply : t.retryPrepare}
+      </PuButton>
+    </PuActionBar>
+  ) : undefined;
+
   return (
     <div className="wa-reg">
-      {/* 다른 POP 화면과 같은 짙은 머리줄 — 제품 이름 · 「단말 확인 전」 · 연결 상태(#295 로그인 시안). */}
+      {/*
+       * 다른 POP 화면과 같은 짙은 머리줄(사용자 지시 2026-11-20 · #334) — 연결 상태 · 제품 이름 · 「단말 확인 전」.
+       * 등록 전에는 할 일이 없어 다른 단추는 두지 않는다.
+       */}
       <div className="pop-nav">
         <div className="pop-nav-top">
-          <span className="pop-nav-top__brand">{messages.workerAssignment.header.brand}</span>
-          <span className="pop-nav-top__chip pop-nav-top__terminal">
-            {messages.popChrome.header.terminalUnknown}
-          </span>
           <Chip variant="status" size="md" status={isOnline ? 'success' : 'warning'}>
             {isOnline
               ? messages.workerAssignment.header.online
               : messages.workerAssignment.header.offline}
           </Chip>
+          <span className="pop-nav-top__brand">{messages.workerAssignment.header.brand}</span>
+          <span className="pop-nav-top__chip pop-nav-top__terminal">
+            {messages.popChrome.header.terminalUnknown}
+          </span>
         </div>
       </div>
 
-      <PuScreen className="wa-reg-main">
-        <section
-          className="pu-card wa-reg-card"
-          style={{ '--pop-reg-scale': scale } as CSSProperties}
-          aria-labelledby={titleId}
+      {/*
+       * 본문 — 출하 완료의 지시서 조회와 같은 짜임(사용자 지시 2026-11-20): 전폭 구획 하나에 이름 위 스캔 칸 + [직접 입력],
+       * 아래는 공통 작업 줄.
+       */}
+      <PuScreen className="wa-reg-main" actionBar={actionBar}>
+        <PuSection
+          labelId={titleId}
+          title={isConfirm ? t.confirmHeading : t.title}
+          className="wa-reg-card"
+          grow={false}
         >
-          <div className="pu-card-head">
-            <h2 id={titleId}>{isConfirm ? t.confirmHeading : t.title}</h2>
-          </div>
+          {guide !== null && <PuNote tone="info">{guide}</PuNote>}
 
-          <div className="pu-card-body">
-            {guide !== null && <PuNote tone="info">{guide}</PuNote>}
-
-            {isInput && (
-              /*
-               * ⭐ **바코드로 읽으면 그대로 확인까지 간다**(사용자 지시 2026-09-19 · omf-all-around#35).
-               *    스캐너가 값 끝에 Enter 를 붙이지 않아도, 글자가 멈추면 [단말 등록]을 누른 것과
-               *    같다 — 판정은 `patterns/pop-scanner-submit` 한 곳이다(스캔 칸이 부른다). 손으로 친
-               *    값은 그대로 Enter·단추로만 나간다. 등록이 안 된 이유는 칸 바로 아래 빨간 줄이다.
-               */
-              <PuScanField
-                label={t.tokenLabel}
-                ariaLabel={t.tokenLabel}
-                required
-                value={token}
-                onChange={setToken}
-                onSubmit={send}
-                disabled={busy}
-                error={failureText}
-              />
-            )}
-
-            {!isInput && failureText !== null && <PuNote tone="bad">{failureText}</PuNote>}
-
-            {phase === 'prepare-failed' && (
-              <PuNote tone="warn">
-                <b>{t.prepareFailedTitle}</b>
-                <br />
-                {t.prepareFailedBody}
-              </PuNote>
-            )}
-
-            {isConfirm && (
-              <PuBand
-                grid={3}
-                label={t.confirmHeading}
-                items={[
-                  {
-                    label: (
-                      <>
-                        <PuIcon name="pin" />
-                        {t.terminalCode}
-                      </>
-                    ),
-                    value: terminal.terminalCode,
-                  },
-                  {
-                    label: (
-                      <>
-                        <PuIcon name="tool" />
-                        {t.equipment}
-                      </>
-                    ),
-                    value: equipmentText(terminal),
-                  },
-                  {
-                    label: (
-                      <>
-                        <PuIcon name="list" />
-                        {t.process}
-                      </>
-                    ),
-                    value: processText(verifiedProcessNames),
-                  },
-                ]}
-              />
-            )}
-          </div>
-
-          {/* 구획 아래 작업 줄 — 보조는 왼쪽, 주 조작은 오른쪽 끝(확인·적용 단계와 같은 순서). */}
           {isInput && (
-            <div className="wa-reg-actions">
-              <PuButton icon="reset" onClick={() => setToken('')} disabled={busy || token === ''}>
-                {t.clear}
-              </PuButton>
-              <PuButton
-                variant="primary"
-                onClick={() => {
-                  send(token);
-                }}
-                disabled={busy || token.trim() === ''}
-              >
-                {phase === 'verifying' ? t.verifying : t.verify}
-              </PuButton>
-            </div>
+            /*
+             * ⭐ **바코드로 읽으면 그대로 확인까지 간다**(사용자 지시 2026-09-19 · omf-all-around#35).
+             *    스캐너가 값 끝에 Enter 를 붙이지 않아도, 글자가 멈추면 [단말 등록]을 누른 것과
+             *    같다 — 판정은 `patterns/pop-scanner-submit` 한 곳이다(스캔 칸이 부른다). 손으로 친
+             *    값은 그대로 Enter·단추로만 나간다. 등록이 안 된 이유는 칸 바로 아래 빨간 줄이다.
+             */
+            <PuScanField
+              label={t.tokenLabel}
+              ariaLabel={t.tokenLabel}
+              required
+              value={token}
+              onChange={setToken}
+              onSubmit={send}
+              disabled={busy}
+              error={failureText}
+            />
           )}
 
-          {(isConfirm || phase === 'prepare-failed') && (
-            <div className="wa-reg-actions">
-              <PuButton onClick={registration.restart}>{t.restart}</PuButton>
-              <PuButton
-                variant="primary"
-                onClick={() => {
-                  void (isConfirm ? registration.apply() : registration.retryPrepare());
-                }}
-              >
-                {isConfirm ? t.apply : t.retryPrepare}
-              </PuButton>
-            </div>
+          {!isInput && failureText !== null && <PuNote tone="bad">{failureText}</PuNote>}
+
+          {phase === 'prepare-failed' && (
+            <PuNote tone="warn">
+              <b>{t.prepareFailedTitle}</b>
+              <br />
+              {t.prepareFailedBody}
+            </PuNote>
           )}
-        </section>
+
+          {isConfirm && (
+            <PuBand
+              grid={3}
+              label={t.confirmHeading}
+              items={[
+                {
+                  label: (
+                    <>
+                      <PuIcon name="pin" />
+                      {t.terminalCode}
+                    </>
+                  ),
+                  value: terminal.terminalCode,
+                },
+                {
+                  label: (
+                    <>
+                      <PuIcon name="tool" />
+                      {t.equipment}
+                    </>
+                  ),
+                  value: equipmentText(terminal),
+                },
+                {
+                  label: (
+                    <>
+                      <PuIcon name="list" />
+                      {t.process}
+                    </>
+                  ),
+                  value: processText(verifiedProcessNames),
+                },
+              ]}
+            />
+          )}
+        </PuSection>
       </PuScreen>
     </div>
   );
