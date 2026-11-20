@@ -1,8 +1,9 @@
-import { Button, Dialog, Icon, SearchInput, TextField } from '@crefle/web-ui';
+import { Button, Dialog, SearchInput, TextField } from '@crefle/web-ui';
 import type { InspectionSheetLayoutCode } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { ItemPickerDialog } from '../../patterns/item-picker';
 import { Select } from '../../patterns/select';
 
@@ -59,7 +60,7 @@ const Required = () => (
 );
 
 /**
- * 품목 · 사업부 · 출력 양식 칸과 양식 안내 — 이 창과 검사 기준 「기준 추가」 창(PQC 를 고른 때 · 사용자 지시)이 같이 쓴다.
+ * 품목 · 사업부 · 출력 양식 칸 — 이 창과 검사 기준 「기준 추가」 창(PQC 를 고른 때 · 사용자 지시)이 같이 쓴다.
  * 품목은 누르거나 엔터를 치면 품목 선택 창이 열린다.
  */
 export const TemplateBasicFields = ({
@@ -164,9 +165,11 @@ export const TemplateBasicFields = ({
               )}
             </div>
             <div className="field-cell">
-              <span className="field-label">
+              {/* 양식 안내는 칸 이름 옆 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
+              <span className="field-label inspection-sheet-template-info-label">
                 <label htmlFor={ids.layout}>{t.editor.layout}</label>
                 <Required />
+                <InfoTip text={t.editor.layoutNote} />
               </span>
               <Select
                 id={ids.layout}
@@ -180,11 +183,6 @@ export const TemplateBasicFields = ({
                 }
               />
             </div>
-            {/* 양식 안내 — 안내 알약(아이콘 + 한 줄 · 사용자 시안 · #208). */}
-            <p className="inspection-standard-notice-label">
-              <Icon name="info" size={16} aria-hidden />
-              {t.editor.layoutNote}
-            </p>
           </>
         )}
       </div>

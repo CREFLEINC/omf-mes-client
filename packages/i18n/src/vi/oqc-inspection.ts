@@ -158,8 +158,6 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     reinspectCancel: 'Thôi không kiểm tra lại',
     reinspectNote:
       'Nhập số lượng và đánh giá rồi lưu thì một lượt mới được tạo. Lượt trước vẫn được giữ nguyên.',
-    reinspectReasonPending:
-      'Lý do kiểm tra lại vẫn chưa chọn được. Khi danh sách lý do được quyết định thì sẽ thêm vào chỗ này.',
   },
 
   transition: {

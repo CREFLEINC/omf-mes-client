@@ -266,12 +266,6 @@ export const oqcInspection = {
     reinspect: '재검사 회차 추가',
     reinspectCancel: '재검사 그만두기',
     reinspectNote: '수량과 판정을 넣고 저장하면 새 회차가 만들어집니다. 앞 회차는 그대로 남습니다.',
-    /**
-     * ⛔ **사유를 지어내지 않는다.** 고를 값 목록이 아직 정해지지 않았다. 칸을 감추지 않고
-     * 왜 없는지 밝힌다.
-     */
-    reinspectReasonPending:
-      '재검사 사유는 아직 고를 수 없습니다. 사유 목록이 정해지면 이 자리에 추가됩니다.',
   },
 
   /**
