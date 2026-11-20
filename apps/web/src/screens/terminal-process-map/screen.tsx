@@ -23,11 +23,6 @@ import { SaveErrorBanner } from '../../patterns/master';
 import { PageNav } from '../../patterns/page-nav';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import {
-  PaneHeightSplitter,
-  SplitOrientationToggle,
-  useSplitOrientation,
-} from '../../patterns/split-orientation';
-import {
   EMPTY_FILTERS,
   LIST_PAGE_SIZES,
   readFilters,
@@ -133,10 +128,9 @@ export const TerminalProcessMapScreen = () => {
   /** 저장하지 않은 기능 구성이 있을 때 미뤄 둔 이동(사용자 역할 권한 관리와 같다 · #333). */
   const [pendingLeave, setPendingLeave] = useState<(() => void) | null>(null);
 
-  /* 사용자 역할 권한 관리와 같은 배치 — 위 조회 묶음 · 아래 목록 | 상세(좌우 · 상하 배치, 폭 · 높이 끌기, 목록 접기). */
+  /* 사용자 역할 권한 관리와 같은 배치 — 위 조회 묶음 · 아래 목록 | 상세(폭 끌기, 목록 접기). */
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:terminal-process-map:split', 0.45);
-  const layout = useSplitOrientation('omf-mes:terminal-process-map:split-orientation');
   const listCollapse = {
     collapsed: split.collapsed,
     onToggle: split.toggleCollapsed,
@@ -747,18 +741,13 @@ export const TerminalProcessMapScreen = () => {
             >
               {t.terminal.create}
             </Button>
-            <SplitOrientationToggle
-              orientation={layout.orientation}
-              onChange={layout.change}
-              inline
-            />
           </div>
         </section>
 
         <div
           ref={splitRef}
-          className={`po-board-split inspection-split users-roles-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
-          style={{ ...split.style, ...layout.style }}
+          className="po-board-split inspection-split users-roles-split"
+          style={split.style}
           data-left-collapsed={split.collapsed ? 'true' : undefined}
         >
           <section className="pane users-roles-list-pane" aria-label={t.panes.list}>
@@ -788,14 +777,6 @@ export const TerminalProcessMapScreen = () => {
             onChange={split.commit}
             collapse={listCollapse}
           />
-          {layout.orientation === 'column' && (
-            <PaneHeightSplitter
-              label={messages.common.inspectionHub.heightSplitter}
-              height={layout.listHeight}
-              onChange={layout.changeListHeight}
-              collapse={listCollapse}
-            />
-          )}
 
           <section
             className="pane users-roles-settings terminal-map-settings"
