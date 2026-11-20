@@ -180,6 +180,33 @@ describe('normalizeApiError', () => {
     );
   });
 
+  /* 피처 013 — 생산 LOT 분리 409 는 문구에 쓸 값(detail)을 싣는다. null 이면 키를 두지 않는다. */
+  it('Q8 · T026 409 충돌의 거절 값(detail)을 남기고, null 이면 두지 않는다', () => {
+    expect(
+      normalizeApiError(409, {
+        code: 'LOT_ALREADY_RESERVED',
+        message: '잡힘',
+        conflictCause: 'user',
+        detail: 'SR-2611-0042',
+      }),
+    ).toMatchObject({ kind: 'conflict', code: 'LOT_ALREADY_RESERVED', detail: 'SR-2611-0042' });
+    expect(
+      normalizeApiError(409, {
+        code: 'PUTAWAY_PENDING',
+        message: '',
+        conflictCause: 'user',
+        detail: null,
+      }),
+    ).not.toHaveProperty('detail');
+    expect(
+      normalizeApiError(409, { code: 'INVALID_STATE', message: '보류', detail: 'HOLD' }),
+    ).toMatchObject({
+      kind: 'http',
+      code: 'INVALID_STATE',
+      detail: 'HOLD',
+    });
+  });
+
   it('봉투로 온 오류도 응답 코드를 지고 온다', () => {
     const invalid = normalizeApiError(400, {
       errors: [{ scope: 'screen', code: 'UNIQUE_VIOLATION', message: '이미 있는 값입니다.' }],

@@ -470,6 +470,46 @@ describe('P-04-08 생산 LOT 분리', () => {
     });
   });
 
+  it('US2-1 · Q8 분리 409 가 실은 값(지시서 번호 · 분리 시각 · 상태)을 조회 때와 같은 문구로 보인다', async () => {
+    const user = userEvent.setup();
+    let answer: { code: string; detail: string | null } = {
+      code: 'LOT_ALREADY_RESERVED',
+      detail: 'SR-2611-0042',
+    };
+    render({
+      split: () =>
+        jsonResponse({ ...answer, message: '거절', conflictCause: 'user' }, { status: 409 }),
+    });
+
+    await scan(user);
+    await screen.findByText(LOT_NO);
+    await keypad(user, '30');
+    await user.click(splitButton());
+    expect(
+      await screen.findByText(t.blocked.LOT_ALREADY_RESERVED.body('SR-2611-0042'), {
+        exact: false,
+      }),
+    ).toBeTruthy();
+
+    answer = { code: 'INVALID_STATE', detail: 'HOLD' };
+    await scan(user);
+    await screen.findByText(LOT_NO);
+    await keypad(user, '30');
+    await user.click(splitButton());
+    expect(await screen.findByText(t.blocked.INVALID_STATE.title('보류'))).toBeTruthy();
+
+    answer = { code: 'LOT_SPLIT_UNCONFIRMED', detail: '2026-11-20T02:12:00Z' };
+    await scan(user);
+    await screen.findByText(LOT_NO);
+    await keypad(user, '30');
+    await user.click(splitButton());
+    expect(
+      await screen.findByText(t.blocked.LOT_SPLIT_UNCONFIRMED.body('11-20 09:12'), {
+        exact: false,
+      }),
+    ).toBeTruthy();
+  });
+
   it('US2-7 · Q13 확인 전 LOT 은 「분리 확인을 먼저 하세요」와 나눈 시각을 보인다', async () => {
     const user = userEvent.setup();
     render({

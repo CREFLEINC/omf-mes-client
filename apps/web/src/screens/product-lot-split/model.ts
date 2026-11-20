@@ -87,6 +87,12 @@ export const blockViewOf = (code: string | undefined, detail: string | null = nu
 export const conflictCodeOf = (error: ApiError): string | undefined =>
   error.kind === 'conflict' || error.kind === 'http' ? error.code : undefined;
 
+/** 분리 409 가 실은 문구 값 — 스캔 조회의 `blocked.detail` 과 같은 값이다. 없으면 null. */
+export const conflictDetailOf = (error: ApiError): string | null =>
+  (error.kind === 'conflict' || error.kind === 'http') && error.detail !== undefined
+    ? error.detail
+    : null;
+
 /** 400 RANGE — 수량 범위 밖(서버 판정). 화면 판정과 같은 문구로 보인다. */
 export const isRangeRejection = (error: ApiError): boolean =>
   error.kind === 'validation' && error.errors.some((item) => item.code === 'RANGE');

@@ -47,6 +47,7 @@ import { useLabelPrintRunner } from '../production-result/flow-print';
 import {
   blockViewOf,
   conflictCodeOf,
+  conflictDetailOf,
   initialLocationId,
   isRangeRejection,
   isSplitBlockCode,
@@ -242,7 +243,7 @@ export const ProductLotSplitScreen = () => {
           createSplit.resetKey();
           if (isForbidden(error)) setNotice({ tone: 'bad', text: t.result.forbidden });
           else if (isRangeRejection(error)) setRangeRejected(true);
-          else if (isSplitBlockCode(code)) setRejection(blockViewOf(code));
+          else if (isSplitBlockCode(code)) setRejection(blockViewOf(code, conflictDetailOf(error)));
           else setNotice({ tone: 'bad', text: t.result.splitFailed });
         },
       },

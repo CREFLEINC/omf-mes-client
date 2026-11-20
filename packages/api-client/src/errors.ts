@@ -68,6 +68,11 @@ export type ApiError =
        * 그린다 — 버리면 같은 값을 다시 조회해야 한다.
        */
       blockers?: ConflictBlocker[];
+      /**
+       * 거절 문구에 쓸 값 하나(피처 013 생산 LOT 분리 409 — 상태 코드 · 분리 시각 · 지시서 번호 등). 서버가 null 을
+       * 실으면 키를 두지 않는다. 버리면 화면이 같은 값을 다시 조회해야 한다(`blockers` 와 같은 까닭).
+       */
+      detail?: string;
     }
   /*
    * 상태는 선택이다. 이 두 갈래는 서버 응답에서도 오고 화면이 스스로 만들기도 한다 - 저장을
@@ -84,7 +89,15 @@ export type ApiError =
       rejectedLots?: RejectedLot[];
     }
   | { kind: 'validation'; errors: ErrorItem[]; status?: number }
-  | { kind: 'http'; status: number; code?: string; message?: string; currentLotStatusCode?: string }
+  | {
+      kind: 'http';
+      status: number;
+      code?: string;
+      message?: string;
+      currentLotStatusCode?: string;
+      /** 충돌 원인 없이 온 409 의 거절 값(`conflict` 의 `detail` 과 같다). */
+      detail?: string;
+    }
   | { kind: 'network' };
 
 /**
@@ -175,6 +188,10 @@ const toConflictBlocker = (value: unknown): ConflictBlocker[] => {
 
 export const normalizeApiError = (status: number, body: unknown): ApiError => {
   const code = isRecord(body) && typeof body.code === 'string' ? body.code : undefined;
+  const detail =
+    isRecord(body) && typeof body.detail === 'string' && body.detail.trim() !== ''
+      ? body.detail
+      : undefined;
   const currentLotStatusCode =
     isRecord(body) &&
     typeof body.currentLotStatusCode === 'string' &&
@@ -194,6 +211,7 @@ export const normalizeApiError = (status: number, body: unknown): ApiError => {
       ...(Array.isArray(body.blockers)
         ? { blockers: body.blockers.flatMap(toConflictBlocker) }
         : {}),
+      ...(detail === undefined ? {} : { detail }),
     };
   }
 
@@ -269,6 +287,7 @@ export const normalizeApiError = (status: number, body: unknown): ApiError => {
       ...(code === undefined ? {} : { code }),
       message: body.message,
       ...(currentLotStatusCode === undefined ? {} : { currentLotStatusCode }),
+      ...(status === 409 && detail !== undefined ? { detail } : {}),
     };
   }
 
