@@ -22823,7 +22823,7 @@ export interface paths {
     };
     /**
      * LOT 하나의 상위 사슬(역방향)
-     * @description 출하·포장·생산입고 ← 생산 LOT ← W/O·실적 ← 투입 자재 LOT ← 자재입고·입하(공급사·입하 번호·공급사 LOT 번호). 반제품은 한 번에 한 단만 푼다 — producedBy 가 있는 투입 자재 LOT 으로 다시 부른다. 투입 자재 집합과 근거는 input-materials 와 같다. 근거: 서버 선행 · 장부 P-119
+     * @description 출하·포장·생산입고 ← 생산 LOT ← W/O·실적 ← 투입 자재 LOT ← 자재입고·입하(공급사·입하 번호·공급사 LOT 번호). 반제품은 한 번에 한 단만 푼다 — producedBy 가 있는 투입 자재 LOT 으로 다시 부른다. 투입 자재 집합과 근거는 input-materials 와 같다. 근거: 서버 선행 · 장부 P-119 피처 013(omf-all-around#303): 제품 분리 자식 LOT 은 원천이 W/O 가 아니어도 분할 뿌리(원천 W/O LOT)의 W/O·투입 자재를 채운다. 투입 자재가 반제품 분리 자식이면 producedBy 도 뿌리 W/O 다.
      */
     get: {
       parameters: {
@@ -22867,6 +22867,8 @@ export interface paths {
               } | null;
               /** @description 투입 자재 LOT — 첫 투입 시각 → LOT 번호순. 실적 배분이 없는 생산 LOT 은 비운다(정방향이 그 LOT 을 잇지 않는 것과 같다) */
               inputMaterials: components['schemas']['LotFlowInputMaterial'][];
+              /** @description 이 LOT 이 분할 LOT 이면 그 부모 — 제품 분리 자식이면 원래 LOT(피처 013 · omf-all-around#303) */
+              splitFrom: components['schemas']['LotFlowSplitLink'] | null;
             };
           };
         };
@@ -23237,7 +23239,7 @@ export interface paths {
           q?: string;
           page?: number;
           size?: number;
-          /** @description 이 W/O 를 원천으로 발행된 LOT 만. 선발행 슬롯을 빠짐없이 훑는 경로다 — 마감(W-02-05 §3)과 POP 의 실적 대상 LOT 선택(P-02-04 §5)·생산LOT 완료(P-02-06 §3 좌단 LOT 목록)가 같은 축을 쓴다. ⭐ 저장된 형태는 다형 참조 짝(sourceTypeCode + sourceId)이지만 판별자 값 목록이 아직 미확정이라 짝 필터를 열지 않았다 — 값을 모르는 채 열면 눌러도 아무것도 안 걸린다(공유계약 G-23). 서버가 W/O 원천으로 풀어 준다 */
+          /** @description 이 W/O 를 원천으로 발행된 LOT 만. 선발행 슬롯을 빠짐없이 훑는 경로다 — 마감(W-02-05 §3)과 POP 의 실적 대상 LOT 선택(P-02-04 §5)·생산LOT 완료(P-02-06 §3 좌단 LOT 목록)가 같은 축을 쓴다. ⭐ 저장된 형태는 다형 참조 짝(sourceTypeCode + sourceId)이지만 판별자 값 목록이 아직 미확정이라 짝 필터를 열지 않았다 — 값을 모르는 채 열면 눌러도 아무것도 안 걸린다(공유계약 G-23). 서버가 W/O 원천으로 풀어 준다 피처 013(omf-all-around#303): 그 W/O 의 제품 분리 자식 LOT 도 함께 찾힌다(currentOnly 는 원천 W/O LOT 만). */
           workOrderId?: number;
           /** @description 입고 확정 대기 큐의 판정 축 — IQC 합격(IQC_PASSED) · 샘플링 미대상(SAMPLING_NOT_REQUIRED) · 긴급 IQC 생략 한도승인(URGENT_IQC_WAIVED). ⭐ 값 집합은 W-01-10 §3·§5-1·§5-5 가 이미 확정했고 문자열만 없었다 — 2026-09-02 §G 로 도출. ⭐ 서버가 판정한다 — 화면이 검사 결과·승인 요청을 따로 조회해 조합하면 세 갈래가 화면마다 갈린다 */
           receiptDispositionCode?: 'IQC_PASSED' | 'SAMPLING_NOT_REQUIRED' | 'URGENT_IQC_WAIVED';
@@ -40733,7 +40735,7 @@ export interface paths {
           lotNo?: string;
           /** @description 출하 번호 정확 일치(장부 P-151) */
           shipmentNo?: string;
-          /** @description 줄에 배분된 LOT 의 원천 W/O 번호 정확 일치(장부 P-151) */
+          /** @description 줄에 배분된 LOT 의 원천 W/O 번호 정확 일치(장부 P-151) 피처 013(omf-all-around#303): 그 W/O 의 제품 분리 자식 LOT 을 배분한 출하 라인도 찾힌다. */
           workOrderNo?: string;
           /** @description 출하 상태(SHIPMENT_STATUS). 주면 취소도 그 값으로 고른다 */
           statusCode?: string;
@@ -54861,6 +54863,54 @@ export interface components {
       splitAt?: string | null;
       /** @description 이 LOT 에서 나온 분할 LOT 수(자손 전체) — 단건 조회만 */
       splitChildCount?: number;
+      /** @description 제품 분리(피처 013 · omf-all-around#303) — 자식 LOT 이면 자기 분리(CHILD), 원래 LOT 이면 가장 최근 분리(PARENT). 분리가 없으면 null. 단건 조회만 싣는다. */
+      productLotSplit?: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        productLotSplitId: number;
+        /**
+         * @example CHILD
+         * @enum {string}
+         */
+        role: 'PARENT' | 'CHILD';
+        /**
+         * Format: double
+         * @example 30
+         */
+        splitQty: number;
+        /**
+         * Format: date-time
+         * @example 2026-11-20T03:00:00Z
+         */
+        splitAt: string;
+        /** @example 100027 */
+        splitWorkerNo: string | null;
+        /** @example POP-FG-01 */
+        splitTerminalCode: string | null;
+        location: {
+          /**
+           * Format: int64
+           * @example 1001
+           */
+          locationId: number;
+          /** @example FG-A-01 */
+          locationCode: string;
+        };
+        /**
+         * Format: date-time
+         * @example 2026-11-20T03:10:00Z
+         */
+        confirmedAt: string | null;
+        /** @example 100031 */
+        confirmedWorkerNo: string | null;
+        /**
+         * @description 생산 뿌리(원천 W/O LOT)의 W/O
+         * @example WO-261117-0012
+         */
+        workOrderNo: string | null;
+      } | null;
     };
     /** @description 생산 LOT 완료. 계획 수량에 미달하면 사유 코드가 필요하고, 서버가 작업지시에 그 사유를 함께 기록한다 — 한 트랜잭션이다(공유계약 B-8). 근거: P-02-06 §5-5 */
     LotComplete: {
