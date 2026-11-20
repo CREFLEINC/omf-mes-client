@@ -281,7 +281,7 @@ export const usersRoles = {
     columns: {
       granted: '권한 부여',
       name: '기능명',
-      code: '권한 코드',
+      code: '사용처',
     },
     /* 표의 접근 설명. 무엇을 담은 표인지 한 줄로 말한다. */
     tableCaption: (roleLabel: string) => `${roleLabel} 역할의 기능 권한`,
@@ -293,6 +293,12 @@ export const usersRoles = {
     selectAll: '모든 권한 선택',
     clearAll: '모든 권한 해제',
     /* 업무 묶음 머리 — 접고 펼친다. 건수는 이 묶음에서 부여된 수 / 전체 수다(#333). */
+    groupSelectAll: '묶음 전체',
+    /*
+     * 권한 코드 앞 글자가 쓰는 곳이다 — W 관리웹(WEB) · P POP · M 모바일(PDA)(docs/screen-composition.md §1). 코드 대신 이것을
+     * 보인다(사용자 지시 2026-11-20 · #333). 모르는 앞 글자면 코드를 그대로 낸다.
+     */
+    platforms: { W: 'WEB', P: 'POP', M: 'PDA' } as Record<string, string>,
     groupCount: (granted: number, total: number): string => `${String(granted)} / ${String(total)}`,
     groupCountLabel: (granted: number, total: number): string =>
       `${String(total)}개 중 ${String(granted)}개 부여`,

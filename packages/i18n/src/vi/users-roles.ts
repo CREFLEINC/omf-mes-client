@@ -209,12 +209,14 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     columns: {
       granted: 'Cấp quyền',
       name: 'Tên chức năng',
-      code: 'Mã quyền',
+      code: 'Nơi dùng',
     },
     tableCaption: (roleLabel: string) => `Quyền chức năng của vai trò ${roleLabel}`,
     /* 고르기만 하고 저장하지 않는다 - 되돌리는 길은 「취소」다. */
     selectAll: 'Chọn tất cả quyền',
     clearAll: 'Bỏ chọn tất cả quyền',
+    groupSelectAll: 'Cả nhóm',
+    platforms: { W: 'WEB', P: 'POP', M: 'PDA' } as Record<string, string>,
     groupCount: (granted: number, total: number): string => `${String(granted)} / ${String(total)}`,
     groupCountLabel: (granted: number, total: number): string =>
       `Đã cấp ${String(granted)} / ${String(total)}`,

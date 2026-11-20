@@ -1213,6 +1213,16 @@ export const UsersRolesScreen = () => {
     setPermissionState((prev) => (prev === null ? prev : { ...prev, selected: everyCode }));
   };
 
+  /** 업무 묶음 하나를 통째로 켜거나 끈다 — 전체 선택과 같이 고르기만 하고 저장은 따로다(사용자 지시 2026-11-20 · #333). */
+  const handleSetPermissionGroup = (codes: readonly string[], grant: boolean) => {
+    setPermissionState((prev) => {
+      if (prev === null) return prev;
+      const rest = prev.selected.filter((code) => !codes.includes(code));
+
+      return { ...prev, selected: grant ? [...rest, ...codes] : rest };
+    });
+  };
+
   const handleClearAllPermissions = () => {
     setPermissionState((prev) => (prev === null ? prev : { ...prev, selected: [] }));
   };
@@ -1971,6 +1981,7 @@ export const UsersRolesScreen = () => {
         isDirty={isPermissionDirty}
         isSaving={permissionWrite.isSaving}
         onToggle={handleTogglePermission}
+        onSetGroup={handleSetPermissionGroup}
         onSelectAll={handleSelectAllPermissions}
         onClearAll={handleClearAllPermissions}
         onSave={handleSavePermissions}

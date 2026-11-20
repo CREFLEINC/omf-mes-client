@@ -36908,3 +36908,20 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .users-roles-role-description {
   grid-column: 1 / -1;
 }
+
+/* 묶음 머리 — 확인칸(행 확인칸과 같은 열) + 접기 단추(사용자 지시 2026-11-20 · #333). */
+.permission-group-head {
+  display: flex;
+  align-items: center;
+}
+
+.permission-group-check {
+  display: inline-flex;
+  justify-content: center;
+  flex: 0 0 5rem;
+}
+
+.permission-group-head > .permission-group-toggle {
+  flex: 1 1 auto;
+  padding-left: 0;
+}

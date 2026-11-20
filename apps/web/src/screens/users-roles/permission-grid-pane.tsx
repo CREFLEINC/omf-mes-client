@@ -29,6 +29,8 @@ export interface PermissionGridPaneProps {
   isDirty: boolean;
   isSaving: boolean;
   onToggle: (code: string) => void;
+  /** 업무 묶음 하나를 통째로 켜거나 끈다(#333). */
+  onSetGroup: (codes: readonly string[], grant: boolean) => void;
   onSelectAll: () => void;
   onClearAll: () => void;
   onSave: () => void;
@@ -63,6 +65,7 @@ export const PermissionGridPane = ({
   isDirty,
   isSaving,
   onToggle,
+  onSetGroup,
   onSelectAll,
   onClearAll,
   onSave,
@@ -113,10 +116,11 @@ export const PermissionGridPane = ({
     { key: 'label', header: t.permission.columns.name, render: (row) => row.label },
     {
       key: 'code',
-      header: t.permission.columns.code,
+      /* 머리 글자는 두지 않는다(사용자 지시 2026-11-20 · #333) — 화면 낭독기에만 이름을 알린다. */
+      header: <span className="visually-hidden">{t.permission.columns.code}</span>,
       width: '9rem',
       align: 'center',
-      render: (row) => row.code,
+      render: (row) => t.permission.platforms[row.code.split('-')[0] ?? ''] ?? row.code,
     },
   ];
 
@@ -162,27 +166,43 @@ export const PermissionGridPane = ({
           renderGroupHeader={(groupKey, groupRows) => {
             const isOpen = expanded.has(groupKey);
             const granted = groupRows.filter((row) => row.isGranted).length;
+            const groupLabel = groupRows[0]?.groupLabel ?? groupKey;
 
             return (
-              <button
-                type="button"
-                className="permission-group-toggle"
-                aria-expanded={isOpen}
-                onClick={() => {
-                  toggleGroup(groupKey);
-                }}
-              >
-                <Icon name={isOpen ? 'expand_more' : 'chevron_right'} size={18} aria-hidden />
-                <span className="permission-group-name">
-                  {groupRows[0]?.groupLabel ?? groupKey}
+              <div className="permission-group-head">
+                {/* 묶음 확인칸 — 묶음의 권한을 모두 켜거나 끈다. 일부만 켜져 있으면 반쯤 표시다(#333). */}
+                <span className="permission-group-check">
+                  <Checkbox
+                    checked={granted > 0 && granted === groupRows.length}
+                    indeterminate={granted > 0 && granted < groupRows.length}
+                    disabled={isSaving}
+                    aria-label={`${roleLabel} · ${groupLabel} · ${t.permission.groupSelectAll}`}
+                    onChange={() => {
+                      onSetGroup(
+                        groupRows.map((row) => row.code),
+                        granted < groupRows.length,
+                      );
+                    }}
+                  />
                 </span>
-                <span
-                  className="permission-group-count"
-                  aria-label={t.permission.groupCountLabel(granted, groupRows.length)}
+                <button
+                  type="button"
+                  className="permission-group-toggle"
+                  aria-expanded={isOpen}
+                  onClick={() => {
+                    toggleGroup(groupKey);
+                  }}
                 >
-                  {t.permission.groupCount(granted, groupRows.length)}
-                </span>
-              </button>
+                  <Icon name={isOpen ? 'expand_more' : 'chevron_right'} size={18} aria-hidden />
+                  <span className="permission-group-name">{groupLabel}</span>
+                  <span
+                    className="permission-group-count"
+                    aria-label={t.permission.groupCountLabel(granted, groupRows.length)}
+                  >
+                    {t.permission.groupCount(granted, groupRows.length)}
+                  </span>
+                </button>
+              </div>
             );
           }}
         />

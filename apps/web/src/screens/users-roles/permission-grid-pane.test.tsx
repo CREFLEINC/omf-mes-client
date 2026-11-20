@@ -33,6 +33,7 @@ const renderPane = (overrides: Partial<PermissionGridPaneProps> = {}) => {
       isDirty={false}
       isSaving={false}
       onToggle={() => undefined}
+      onSetGroup={() => undefined}
       onSelectAll={() => undefined}
       onClearAll={() => undefined}
       onSave={() => undefined}
@@ -76,7 +77,7 @@ describe('PermissionGridPane 표', () => {
       within(pane())
         .getAllByRole('columnheader')
         .map((header) => header.textContent),
-    ).toEqual(['권한 부여', '기능명', '권한 코드']);
+    ).toEqual(['권한 부여', '기능명', '사용처']);
   });
 
   /** ⭐ 권한이 117개라 묶지 않으면 어디를 보고 있는지 알 수 없다. */
@@ -97,7 +98,9 @@ describe('PermissionGridPane 표', () => {
     expect(
       within(pane())
         .getAllByRole('checkbox')
-        .map((box) => box.getAttribute('aria-label')),
+        .map((box) => box.getAttribute('aria-label'))
+        /* 묶음 머리 확인칸(「묶음 전체」)은 따로 시험한다(#333). */
+        .filter((name) => !(name ?? '').includes('묶음 전체')),
     ).toEqual([
       'SYN-ROLE-01 · 합성 권한 하나 · 부여됨',
       'SYN-ROLE-01 · 합성 권한 둘 · 부여되지 않음',
@@ -294,6 +297,28 @@ describe('PermissionGridPane 빈 상태와 실패', () => {
 
 /* 업무 묶음 접기 · 펼치기(사용자 지시 2026-11-20 · #333) — 처음엔 접혀 있고, 머리에 부여 수 / 전체 수가 보인다. */
 describe('PermissionGridPane 업무 묶음', () => {
+  /* 코드 대신 쓰는 곳을 보인다 — W WEB · P POP · M PDA(사용자 지시 2026-11-20 · #333). */
+  it('권한 코드 대신 쓰는 곳(WEB · POP · PDA)이 보인다', () => {
+    renderPane({
+      groups: [
+        {
+          key: '01',
+          label: '자재·창고',
+          columns: [
+            { code: 'M-01-01', label: '입하 등록', isGranted: false, isUnlisted: false },
+            { code: 'P-01-01', label: '라벨 발행', isGranted: false, isUnlisted: false },
+            { code: 'W-01-01', label: '수입검사', isGranted: false, isUnlisted: false },
+          ],
+        },
+      ],
+    });
+
+    expect(within(pane()).getByText('PDA')).toBeInTheDocument();
+    expect(within(pane()).getByText('POP')).toBeInTheDocument();
+    expect(within(pane()).getByText('WEB')).toBeInTheDocument();
+    expect(within(pane()).queryByText('M-01-01')).toBeNull();
+  });
+
   it('묶음 머리는 처음에 접혀 있고 누르면 펼쳐진다', async () => {
     const { user } = renderPane();
 
@@ -307,6 +332,18 @@ describe('PermissionGridPane 업무 묶음', () => {
       'aria-expanded',
       'false',
     );
+  });
+
+  /* 묶음마다 통째로 켜고 끈다(사용자 지시 2026-11-20 · #333) — 일부만 켜져 있으면 반쯤 표시, 누르면 모두 켠다. */
+  it('묶음 확인칸은 일부 부여면 반쯤 표시이고 누르면 그 묶음을 모두 켠다', async () => {
+    const onSetGroup = vi.fn<(codes: readonly string[], grant: boolean) => void>();
+    const { user } = renderPane({ onSetGroup });
+
+    const box = within(pane()).getByRole('checkbox', { name: /자재·창고 · 묶음 전체/ });
+    expect(box).toHaveProperty('indeterminate', true);
+
+    await user.click(box);
+    expect(onSetGroup).toHaveBeenCalledWith(['SYN-PERM-01', 'SYN-PERM-02'], true);
   });
 
   it('접혀 있어도 모든 권한 선택은 모든 묶음에 적용된다', async () => {

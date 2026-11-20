@@ -4287,7 +4287,10 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
   const gridCells = async (): Promise<HTMLElement[]> => {
     await within(permissionPane()).findByRole('table');
 
-    return within(permissionPane()).getAllByRole('checkbox');
+    /* 묶음 머리 확인칸(「묶음 전체」)은 빼고 권한 행의 칸만 센다(#333). */
+    return within(permissionPane())
+      .getAllByRole('checkbox')
+      .filter((box) => !(box.getAttribute('aria-label') ?? '').includes('묶음 전체'));
   };
 
   /* 역할 설정 카드 아래 [저장] 한 번이 고친 구역(역할 정보 · 기능 권한)을 모두 보낸다(사용자 탭과 같다 · #333). */
@@ -4312,6 +4315,19 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
             [rolePath(5001), rolePermissionsPath(5001)].includes(request.url.pathname),
         ),
       ).toHaveLength(2);
+    });
+  });
+
+  it('묶음 확인칸을 누르면 그 묶음만 켜져 저장 본문에 실린다', async () => {
+    const { requests, user } = await openRole([...gridRoutes(), permissionReplaceRoute()]);
+
+    await gridCells();
+    const groupBoxes = within(permissionPane()).getAllByRole('checkbox', { name: /묶음 전체/ });
+    await user.click(groupBoxes[0] as HTMLElement);
+    await user.click(within(roleSettingsPane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(replaceBodyOf(requests)).not.toEqual({});
     });
   });
 
