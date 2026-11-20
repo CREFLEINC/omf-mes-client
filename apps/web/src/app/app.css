@@ -36903,3 +36903,8 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .users-roles-dialog-note {
   white-space: pre-line;
 }
+
+/* 역할 추가 팝업 · 역할 상세 정보 — 설명 칸은 폭에 맞춰 한 줄을 다 쓴다(사용자 지시 2026-11-20 · #333). */
+.users-roles-role-description {
+  grid-column: 1 / -1;
+}

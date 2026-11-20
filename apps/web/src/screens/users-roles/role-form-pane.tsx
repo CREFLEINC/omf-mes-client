@@ -144,7 +144,7 @@ export const RoleFormPane = ({
         </div>
 
         {/* 계약이 널을 허용한다 — 비우는 것이 정상 값이라 필수 표시를 붙이지 않는다. */}
-        <div className="field-cell">
+        <div className="field-cell users-roles-role-description">
           <FieldLabel
             htmlFor={descriptionId}
             label={t.role.fields.description}
