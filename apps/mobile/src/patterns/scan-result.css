@@ -17,6 +17,10 @@
   background: var(--surface);
 }
 
+.last-scan p {
+  margin: 0;
+}
+
 .last-scan__bar {
   display: flex;
   align-items: center;

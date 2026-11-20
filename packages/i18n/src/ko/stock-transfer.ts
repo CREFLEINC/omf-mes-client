@@ -121,4 +121,41 @@ export const stockTransfer = {
     action: '전송 실패한 기록 보기',
   },
   another: '다음 이동',
+  /**
+   * 방금 찍은 결과 칸(사용자 지시 2026-11-20, 입하 등록 시안 A 를 재고 이동에도) — 담음 초록 · 이미 담음 회색(몇 번
+   * 줄인지) · 담지 않음 빨강. 거절 까닭은 `from` 의 문구를 그대로 쓴다.
+   */
+  result: {
+    added: '담음',
+    duplicate: '이미 담은 LOT입니다',
+    duplicateRow: (no: number) => `반출 LOT No ${String(no)}에 있습니다`,
+    rejected: '담지 않음',
+  },
+  /** 반출 LOT 표 — 줄마다 수량 칸(재고 전량으로 채워 둔다, 사용자 결정 2026-11-20). */
+  tally: {
+    title: '반출 LOT',
+    total: (count: number) => `${String(count)}개`,
+    open: (itemCode: string, lotNo: string) => `${itemCode} ${lotNo} 열기`,
+  },
+  /** 반출 LOT 시트 — 이름표 칸과 [목록에서 빼기]. */
+  sheet: {
+    title: '반출 LOT',
+    fields: {
+      itemCode: '품목코드',
+      itemName: '품목명',
+      lot: 'LOT',
+      from: '출발',
+      onHand: '재고',
+      qty: '반출 수량',
+    },
+    remove: '목록에서 빼기',
+  },
+  /** 보낼 곳을 정하면 맨 위 한 줄로 접는다. */
+  destination: {
+    change: '바꾸기',
+  },
+  /** 바닥 바 — 담은 LOT 수와 합계. */
+  summary: {
+    count: (count: number) => `${String(count)}개`,
+  },
 } as const;
