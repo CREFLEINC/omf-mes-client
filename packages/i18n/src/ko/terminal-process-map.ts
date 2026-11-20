@@ -88,7 +88,7 @@ export const terminalProcessMap = {
     registered: '등록했습니다.',
     cancel: '취소',
     deactivate: '사용 중지',
-    deactivated: '단말을 중지했습니다. 기록은 남습니다.',
+    deactivated: '단말 사용을 중지했습니다. 기존 작업 기록은 유지됩니다.',
     /* 사용자 · 역할 사용 중지 창과 같은 모양(#333). */
     deactivateTitle: '단말 사용 중지',
     deactivateCaption: '사용 중지 대상',
@@ -111,7 +111,7 @@ export const terminalProcessMap = {
     lead: '등록할 기기에서 QR 코드를 스캔하세요.',
     imageLabel: '단말 등록용 코드 그림',
     copy: '등록 코드 복사',
-    copied: '복사 완료',
+    copied: '복사를 완료했습니다.',
     copyFailed: '복사하지 못했습니다. 브라우저의 클립보드 권한을 확인하세요.',
     copyUnavailable:
       '이 주소에서는 브라우저가 복사를 막아 등록 코드를 복사할 수 없습니다. 기기에서 QR을 스캔해 등록하세요.',
