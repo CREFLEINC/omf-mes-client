@@ -63,10 +63,8 @@ export const routing = {
       '선후행을 불러오지 못해 지울 수 있는지 확인할 수 없습니다. 새로고침한 뒤 다시 시도하세요.',
     removeBlockedByDependencies: (relations: string): string =>
       `이 공정에 선후행이 걸려 있습니다(${relations}). 먼저 [공정 연결]에서 그 관계를 지우고 공정을 지우세요.`,
-    compareRevisionsUnavailable:
-      'Rev 비교는 아직 할 수 없습니다. 비교 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
-    changeHistoryUnavailable:
-      '변경 이력은 아직 볼 수 없습니다. 조회 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
+    compareRevisionsUnavailable: 'Rev 비교는 아직 할 수 없습니다.',
+    changeHistoryUnavailable: '변경 이력은 아직 볼 수 없습니다.',
     /** 계약이 라인 1건 이상을 요구한다(위반 시 400 LINE_REQUIRED) — 화면이 먼저 막고 사유를 밝힌다. */
     confirmNeedsOperations: '확정은 공정을 1건 이상 등록해야 할 수 있습니다.',
     confirmNeedsDraft: '확정은 작성중 Rev에만 할 수 있습니다. 변경하려면 신규 Rev를 발행하세요.',

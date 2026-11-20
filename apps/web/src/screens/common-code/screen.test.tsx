@@ -4587,9 +4587,7 @@ describe('CommonCodeScreen — 자격 편집과 저장 (C65~C68·C74)', () => {
     const dialog = await openEditDialog(user);
 
     expect(
-      within(dialog).getByText(
-        '이 창의 확인은 저장이 아닙니다. 표에 반영된 뒤 「저장」을 눌러야 서버에 반영됩니다.',
-      ),
+      within(dialog).getByText('확인한 뒤 「저장」을 눌러야 저장됩니다.'),
     ).toBeInTheDocument();
   });
 

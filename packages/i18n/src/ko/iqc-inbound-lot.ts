@@ -280,7 +280,7 @@ export const iqcInboundLot = {
     title: '자재 관리 LOT 분리',
     /* 「P/O 배분」은 안내에서 뺀다 — 옮겨질 배정은 미리 보기 「옮겨지는 P/O 매칭」이 보인다(screens/W-01-01.md 시안과 다른 점). */
     /** 안내 한 줄 · 목록 제목 · 고른 수(사용자 시안 2026-11-16 · omf-all-around#274). */
-    intro: '선택한 LOT를 별도의 입하 LOT로 분리하여 판정합니다.',
+    intro: '고른 LOT 을 새 입하 LOT 으로 떼어 내 따로 판정합니다.',
     lotList: '분리할 LOT',
     pickedCount: (picked: number, total: number) => `${String(picked)}/${String(total)}개 선택`,
     resultChip: (seqNo: number) => `${String(seqNo)}회차`,

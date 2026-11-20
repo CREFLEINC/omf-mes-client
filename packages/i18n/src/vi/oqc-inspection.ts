@@ -419,8 +419,6 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
       alsoMatched: (seqNos: string): string => `Cũng liên kết với lần ${seqNos}`,
       matchRequired: 'Hãy chọn ít nhất 1 LOT đã lấy',
       judgmentHeading: 'Phán định',
-      judgmentNote:
-        'Chỉ chọn một. Không nhập số lượng (máy chủ tính bằng tổng SL đã lấy của các LOT liên kết).',
       judgmentRequired: 'Hãy chọn phán định',
       reasonHeading: 'Lý do kiểm tra lại',
       reasonHelp:

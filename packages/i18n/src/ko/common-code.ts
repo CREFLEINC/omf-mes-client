@@ -252,8 +252,7 @@ export const commonCode = {
       removeLabel: (warehouse: string): string => `${warehouse} 연결 해제`,
       picker: {
         title: '생산 창고 추가',
-        description: '연결할 창고를 고르세요. 사용 중인 창고만 보입니다.',
-        empty: '고를 수 있는 창고가 없습니다.',
+        empty: '고를 수 있는 창고가 없습니다. 사용 중인 창고만 고를 수 있습니다.',
         close: '닫기',
       },
       confirm: {
@@ -371,8 +370,7 @@ export const commonCode = {
     dialog: {
       addTitle: '자격 추가',
       editTitle: '자격 수정',
-      notSavedNotice:
-        '이 창의 확인은 저장이 아닙니다. 표에 반영된 뒤 「저장」을 눌러야 서버에 반영됩니다.',
+      notSavedNotice: '확인한 뒤 「저장」을 눌러야 저장됩니다.',
       confirm: '확인',
     },
     empty: {

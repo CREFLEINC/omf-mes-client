@@ -250,20 +250,14 @@ describe('ApprovalProgressPane — 사유 전문', () => {
 
 describe('ApprovalProgressPane — 승인 뒤에 남은 일', () => {
   /**
-   * **계약이 못 박은 사실이라 늘 선다.** 승인은 상태만 바꾸고 재고는 전기가 움직인다 —
-   * 승인만 받아 놓고 잊는 일을 막는 자리다.
+   * **남은 일이 있을 때만 말한다**(사용자 지시 2026-11-20). 늘 보이던 「승인은 재고를 차감하지
+   * 않는다」와 「판정하지 못한다」는 걷었다.
    */
-  it('승인이 재고를 차감하지 않는다는 사실은 늘 보인다', () => {
-    renderPane();
-
-    expect(screen.getByText(t.progress.postSeparateNote)).toBeInTheDocument();
-  });
-
-  /** 자리표시가 비어 있는 동안 화면이 못 하는 판정을 밝힌다. */
-  it('자리표시가 비어 있으면 판정하지 못한다고 말한다', () => {
+  it('자리표시가 비어 있으면 아무 안내도 내지 않는다', () => {
     renderPane({ isJudgePending: true });
 
-    expect(screen.getByText(t.progress.unjudgeableNote)).toBeInTheDocument();
+    expect(screen.queryByText(/판정하지 못/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/재고를 차감하지 않습니다/)).not.toBeInTheDocument();
     expect(screen.queryByText(t.progress.approvedNotPostedNote)).not.toBeInTheDocument();
   });
 
@@ -271,20 +265,16 @@ describe('ApprovalProgressPane — 승인 뒤에 남은 일', () => {
    * **전환 감지기** — 자리표시가 채워지고 그 요청이 승인이며 아직 전기 전이면 안내가 선다.
    * 채워졌을 때 살아나는 것을 재지 않으면 그 자리표시는 죽은 가지다.
    */
-  it('자리표시를 채우면 승인 뒤 안내가 서고 판정 불가 안내가 사라진다', () => {
+  it('자리표시를 채우면 승인 뒤 안내가 선다', () => {
     renderPane({
       state: { kind: 'ready', view: view([SAMPLE_APPROVED_STATUS]) },
       isJudgePending: false,
     });
 
     expect(screen.getByText(t.progress.approvedNotPostedNote)).toBeInTheDocument();
-    expect(screen.queryByText(t.progress.unjudgeableNote)).not.toBeInTheDocument();
   });
 
-  /**
-   * **이미 전기된 전표에 「재고는 아직 차감되지 않았습니다」는 거짓이다.** 셋 중 하나라도
-   * 어긋나면 화면이 확인하지 않은 것을 말하게 된다.
-   */
+  /** **이미 전기된 전표에 「눌러야 재고가 빠진다」는 거짓이다.** */
   it('이미 전기됐으면 승인 뒤 안내를 내지 않는다', () => {
     renderPane({
       state: { kind: 'ready', view: view([SAMPLE_APPROVED_STATUS]) },
@@ -293,8 +283,6 @@ describe('ApprovalProgressPane — 승인 뒤에 남은 일', () => {
     });
 
     expect(screen.queryByText(t.progress.approvedNotPostedNote)).not.toBeInTheDocument();
-    /* 짝 방향 — 늘 서는 문장은 그대로 있다(아무것도 안 그려서 통과한 것이 아니다). */
-    expect(screen.getByText(t.progress.postSeparateNote)).toBeInTheDocument();
   });
 
   it('승인 상태가 아니면 안내를 내지 않는다', () => {
@@ -311,6 +299,5 @@ describe('ApprovalProgressPane — 승인 뒤에 남은 일', () => {
     renderPane({ state: { kind: 'notSubmitted' }, isJudgePending: false });
 
     expect(screen.queryByText(t.progress.approvedNotPostedNote)).not.toBeInTheDocument();
-    expect(screen.queryByText(t.progress.postSeparateNote)).not.toBeInTheDocument();
   });
 });

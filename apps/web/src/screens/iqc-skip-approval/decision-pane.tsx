@@ -76,7 +76,6 @@ export const DecisionPane = ({
   banner,
 }: DecisionPaneProps) => {
   const commentId = useId();
-  const rejectGuideId = useId();
   const state = { isMyTurn, comment };
   const approveBlocked = decisionBlockedReason('approve', state);
   const rejectBlocked = decisionBlockedReason('reject', state);
@@ -111,12 +110,13 @@ export const DecisionPane = ({
         <TextField
           id={commentId}
           value={comment}
-          disabled={isCommentDisabled}
           /*
-           * 형식 유도 문구를 **입력칸의 설명으로 잇는다.** 디자인 시스템이 넘겨받은
-           * `aria-describedby`를 자기 것과 합쳐 주므로 도움말·오류·잠금 사유가 밀려나지 않는다.
+           * **반려 의견의 형식을 유도한다**(계획 결정 16). 칸 아래 상시 문장 대신 빈 칸의 자리표시로 —
+           * 적기 시작하면 사라진다(사용자 지시 2026-11-20).
            */
-          aria-describedby={isNotMyTurn ? `${rejectGuideId} ${turnNoteId}` : rejectGuideId}
+          placeholder={t.decision.commentRejectGuide}
+          disabled={isCommentDisabled}
+          aria-describedby={isNotMyTurn ? turnNoteId : undefined}
           /*
            * 잠긴 이유를 갈라 낸다 — 보내는 중이면 여기 적고, 내 차례가 아니면 단추 줄 아래
            * 한 줄(`turnNoteId`)이 말한다. 디자인 시스템이 잠겼을 때만 이 글자를 낸다.
@@ -127,14 +127,6 @@ export const DecisionPane = ({
             onChangeComment(event.target.value);
           }}
         />
-        {/*
-         * **반려 의견의 형식을 유도한다**(계획 결정 16). 도움말과 갈라 두는 이유: 위는
-         * 「언제 보낼 수 있는가」이고 이것은 「무엇을 적는가」다. 잠긴 상태에서도 남는다 —
-         * 무엇을 적어야 하는지는 지금 적을 수 있는지와 다른 축이다.
-         */}
-        <p id={rejectGuideId} className="field-note">
-          {t.decision.commentRejectGuide}
-        </p>
       </div>
 
       <div className="form-actions iqc-skip-approval-actions">

@@ -68,7 +68,6 @@ export const ResubmitPane = ({
             label={t.formFields.submitReason}
             value={reason}
             placeholder={t.form.reasonPlaceholder}
-            helperText={t.form.reasonHelper}
             disabled={isLocked}
             error={reasonError}
             onChange={(event) => {

@@ -35,9 +35,7 @@ describe('QualificationFormDialog — 확인은 저장이 아니다 (C65)', () =
     renderDialog();
 
     expect(
-      screen.getByText(
-        '이 창의 확인은 저장이 아닙니다. 표에 반영된 뒤 「저장」을 눌러야 서버에 반영됩니다.',
-      ),
+      screen.getByText('확인한 뒤 「저장」을 눌러야 저장됩니다.'),
     ).toBeInTheDocument();
   });
 

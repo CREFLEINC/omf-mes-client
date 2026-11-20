@@ -192,7 +192,7 @@ describe('W-05-01 ④ — 손 입력은 그대로', () => {
     expect(await within(pane()).findByText(te.stillManual)).toBeInTheDocument();
   });
 
-  it('꺼져 있으면 손으로만 입력한다고 말한다', async () => {
+  it('꺼져 있으면 직접 입력한다고 말한다', async () => {
     renderScreen({ enabled: [makeEnabled(8001, false)] });
 
     expect(await within(pane()).findByText(te.offNote)).toBeInTheDocument();

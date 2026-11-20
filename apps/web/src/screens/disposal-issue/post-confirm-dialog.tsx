@@ -103,7 +103,6 @@ export const PostConfirmDialog = ({ summary, onConfirm, onClose }: PostConfirmDi
     <p>{t.dialog.postDeducts}</p>
     <p>{t.dialog.postNoUndo}</p>
 
-    {summary.isJudgePending && <p className="field-note">{t.dialog.postJudgePending}</p>}
     {summary.reason.kind === 'unread' && (
       <p className="field-note">{t.dialog.postProgressUnread}</p>
     )}

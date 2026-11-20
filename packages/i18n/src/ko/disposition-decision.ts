@@ -118,13 +118,11 @@ export const dispositionDecision = {
     count: (count: number): string => `${String(count)}건`,
     /** 요청 구역 머리 — 제목 왼쪽, 한 줄 설명 오른쪽(사용자 시안 · #223). */
     requestHeading: '특채 요청',
-    requestNote: '불합격 LOT의 조건부 사용 승인을 요청합니다.',
     /** 005 FR-038 — 전량 특채(남은 수량 고정 · 일부 특채 없음). 자재 관리 LOT 이 여럿이면 `lotId` 없이 요청한다(D-14). */
     target: '대상 LOT',
     /** 요청 창 대상 칸 — 자재 관리 LOT 개수(사용자 시안 2026-11-17 · 창 디자인 통일). */
     targetAll: (count: number): string => `자재 관리 LOT ${String(count)}개`,
-    wholeNote:
-      '미처분 수량 전체에 대해 특채를 요청합니다. 일부 수량만 요청하려면 먼저 LOT을 분할해야 합니다.',
+    wholeNote: '처분하지 않은 수량 전체를 특채로 요청합니다. 일부만 요청하려면 먼저 LOT 을 나누세요.',
     /** 결재 대기 특채가 있으면 처분 판정 자리에 — 적용은 아래 「특채 요청 이력」의 [특채 적용]. */
     pendingBanner: (concessionNo: string): string => `특채 ${concessionNo} 결재 대기 중입니다.`,
     /** 결재가 승인됐고 적용 전(G2 M3). */

@@ -487,12 +487,6 @@ describe('GrLineTable — 반품 수량 입력', () => {
     expect(qtyBox(2)).toHaveValue('');
   });
 
-  it('빈 칸으로 시작한다는 사실을 표 위에서 밝힌다', () => {
-    renderTable();
-
-    expect(screen.getByText(t.notes.returnQtyEmptyStart)).toBeInTheDocument();
-  });
-
   it('치면 그 줄의 번호와 친 글자를 알린다', async () => {
     const { onChangeQty, user } = renderTable();
 

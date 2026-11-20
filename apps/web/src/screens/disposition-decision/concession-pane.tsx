@@ -202,16 +202,8 @@ export const ConcessionRequestDialog = ({
       open
       onClose={() => onClose(false)}
       size="lg"
-      /* 제목 오른쪽에 설명 라벨 — 창 이름은 제목만 읽힌다(사용자 지시 2026-11-17). */
-      title={
-        <span className="disposition-concession-title">
-          <span id={titleId}>{t.requestHeading}</span>
-          <span className="iqc-inspection-action-note" data-tone="info">
-            <Icon name="info" size={14} aria-hidden />
-            {t.requestNote}
-          </span>
-        </span>
-      }
+      /* 제목 오른쪽 설명 라벨(「조건부 사용 승인을 요청합니다」)은 창 이름과 같은 말이라 걷었다(사용자 지시 2026-11-20). */
+      title={<span id={titleId}>{t.requestHeading}</span>}
       aria-labelledby={titleId}
       showCloseButton={false}
       closeOnBackdropClick={false}

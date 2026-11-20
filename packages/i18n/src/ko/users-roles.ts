@@ -247,7 +247,7 @@ export const usersRoles = {
       status: '사용 상태',
     },
     /* 쓰이는 중이라 역할 코드가 잠겼다는 라벨(사용자 지시 2026-11-20 · #333). */
-    codeInUse: '사용 중인 코드는 변경 불가합니다.',
+    codeInUse: '사용 중인 코드는 바꿀 수 없습니다.',
     empty: {
       noneTitle: '등록된 역할이 없습니다',
       noneDescription: '「역할 추가」로 첫 역할을 등록하세요.',

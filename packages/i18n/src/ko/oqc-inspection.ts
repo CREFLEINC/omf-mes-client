@@ -301,8 +301,8 @@ export const oqcInspection = {
     /** 판정 구획의 「판정 확정 안내」 상자(#136) — 수량 · 고른 판정 · 되돌릴 수 없음 · LOT 영향. */
     guide: {
       title: '판정 확정 안내',
-      irreversible: '확정 후에는 판정을 수정할 수 없습니다.',
-      irreversibleHint: '변경이 필요한 경우 재검사를 진행해야 합니다.',
+      irreversible: '확정하면 판정을 고칠 수 없습니다.',
+      irreversibleHint: '바꾸려면 재검사를 해야 합니다.',
     },
   },
 
@@ -583,7 +583,6 @@ export const oqcInspection = {
       alsoMatched: (seqNos: string): string => `${seqNos}회차에도 매칭됨`,
       matchRequired: '피킹 LOT 을 1개 이상 고르세요',
       judgmentHeading: '판정',
-      judgmentNote: '하나만 고릅니다. 수량은 넣지 않습니다(서버가 매칭 LOT 피킹 합으로 채웁니다).',
       judgmentRequired: '판정을 고르세요',
       reasonHeading: '재검 사유',
       reasonHelp: '이 결과가 아래 피킹 LOT 의 판정을 바꿉니다. 재검 사유를 고르세요.',

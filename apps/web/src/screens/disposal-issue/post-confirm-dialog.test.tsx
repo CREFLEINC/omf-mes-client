@@ -66,21 +66,11 @@ describe('PostConfirmDialog — 무엇을 처리하는가', () => {
 });
 
 describe('PostConfirmDialog — 화면이 확인하지 못한 것', () => {
-  /**
-   * **자리표시가 비면 그 사실을 창에서 한 번 더 적는다**(완료 조건 C71). 구획의 상시 안내를
-   * 읽고 지나쳤어도 확인 직전에 다시 만난다.
-   */
-  it('승인 판정을 못 했으면 그 사실이 보인다', () => {
+  /** 「화면이 승인 여부를 판정하지 못했다」는 걷었다 — 승인 전이면 서버가 거절한다(사용자 지시 2026-11-20). */
+  it('승인 판정을 못 했어도 그 사정을 적지 않는다', () => {
     renderDialog({ isJudgePending: true });
 
-    expect(screen.getByText(t.dialog.postJudgePending)).toBeVisible();
-  });
-
-  /** 짝 방향 — 판정할 수 있게 되면 그 문장이 사라진다(전환 감지기의 창 쪽). */
-  it('승인 판정을 할 수 있으면 그 문장이 없다', () => {
-    renderDialog({ isJudgePending: false });
-
-    expect(screen.queryByText(t.dialog.postJudgePending)).not.toBeInTheDocument();
+    expect(screen.queryByText(/판정하지 못/)).not.toBeInTheDocument();
   });
 
   /**

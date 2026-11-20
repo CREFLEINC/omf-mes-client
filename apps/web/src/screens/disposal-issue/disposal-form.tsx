@@ -72,8 +72,9 @@ export interface DisposalFormProps {
  * 보조 문구가 그 차이를 말한다 — 낱말이 비슷해 사용자가 헷갈리는 자리다.
  *
  * **사유 형식을 유도하되 길이를 강제하지 않는다**(공유계약 A-12 · 승인 기록 §13-6). 자리표시
- * 문구의 예시와 보조 문구가 「첫 줄이 결재함 목록의 요약이 된다」를 말하고, 확인 창이 전문과
- * 첫 줄을 나눠 다시 보인다. 글자 수를 화면이 정하면 그것도 지어내는 것이다.
+ * 문구의 예시가 형식을 보이고, 「첫 줄이 결재함 목록의 요약이 된다」는 확인 창이 전문과 첫 줄을
+ * 나눠 보이며 말한다 — 칸 아래 상시 보조 문구는 걷었다(사용자 지시 2026-11-20). 글자 수를
+ * 화면이 정하면 그것도 지어내는 것이다.
  *
  * **폐기 계정 칸이 없다 — 잠긴 칸조차 없다**(변경 통지 #124 ⛔). 회계 계정은 MES 밖의 값이라
  * 「값이 오면 열릴 자리」가 아니고, 잠근 채로 두면 사용자는 언젠가 열릴 칸으로 읽는다.
@@ -267,13 +268,6 @@ export const DisposalForm = ({
       </div>
 
       {/*
-       * **승인 뒤에는 바꿀 수 없다는 사실을 밝힌다.** 통지는 이 컨트롤을 《승인 후》 구획에
-       * 두라고 했으나 계약에 전표 헤더를 고치는 경로가 없어(실측) 그 시점에는 보낼 통로가
-       * 없다 — 발의 시점으로 옮겼다는 사실이 화면에 없으면 사용자는 나중에 고르려 한다.
-       */}
-      <p className="field-note">{t.form.destinationNote}</p>
-
-      {/*
        * **요청 사유는 폼의 마지막 칸이고 폭을 다 쓴다.** 결재함 목록의 요약을 겸하는 문장이라
        * (공유계약 A-12) 다른 칸과 같은 격자에 두면 반 폭에 갇혀 쓴 글을 다시 읽을 수 없다.
        */}
@@ -283,7 +277,6 @@ export const DisposalForm = ({
           label={t.formFields.submitReason}
           value={values.reason}
           placeholder={t.form.reasonPlaceholder}
-          helperText={t.form.reasonHelper}
           disabled={isLocked}
           error={fieldErrors.reason}
           onChange={(event) => {
@@ -291,9 +284,6 @@ export const DisposalForm = ({
           }}
         />
       </div>
-
-      {/* 화면이 정하지 않는 값이 있다는 사실도 밝힌다 — 없는 토글을 찾아 헤매지 않게 한다. */}
-      <p className="field-note">{t.form.sendToErpNote}</p>
     </>
   );
 };

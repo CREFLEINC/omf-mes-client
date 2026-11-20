@@ -114,7 +114,7 @@ export const inspectionSheetTemplate = {
     heading: (itemCode: string, version: number) => `${itemCode} 버전 ${version}`,
     loading: '검사표 기준을 불러오는 중입니다.',
     loadFailed: '검사표 기준을 불러오지 못했습니다.',
-    readOnly: '확정 또는 사용 중지된 버전은 고칠 수 없습니다.',
+    readOnly: '확정되었거나 사용 중지된 버전은 고칠 수 없습니다.',
     basicSection: '기본 정보',
     model: '품목',
     pickModel: '품목 선택',

@@ -48,7 +48,7 @@ describe('ExternalCodeFormDialog — 확인은 저장이 아니다', () => {
     renderDialog();
 
     expect(
-      screen.getByText('확인을 눌러도 아직 저장되지 않습니다. 표를 확인한 뒤 저장하세요.'),
+      screen.getByText('확인한 뒤 「저장」을 눌러야 저장됩니다.'),
     ).toBeInTheDocument();
   });
 

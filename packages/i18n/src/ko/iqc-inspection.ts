@@ -234,7 +234,7 @@ export const iqcInspection = {
     /** 판정 확정 확인 창(사용자 지시 2026-11-09). */
     confirmDialog: {
       title: '판정을 확정하시겠습니까?',
-      irreversible: '확정 후에는 판정을 수정할 수 없습니다.',
+      irreversible: '확정하면 판정을 고칠 수 없습니다.',
       cancel: '취소',
     },
     stepSummary: {
@@ -431,7 +431,7 @@ export const iqcInspection = {
      */
     partialReceipt: '부분 입고',
     /** 「부분 입고 허용」 단추의 설명(마우스를 올리면 보이는 글). */
-    partialReceiptPending: '부분 입고 허용은 업데이트 예정입니다.',
+    partialReceiptPending: '부분 입고는 아직 쓸 수 없습니다.',
 
     /*
      * 재검사 — ⭐ 앞 회차를 고치는 것이 «아니라» 새 회차를 쌓는 일이라는 사실을 문면이

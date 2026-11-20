@@ -3,18 +3,10 @@ import type { Translated } from './translated';
 
 /**
  * W-02-10 추가 자재 출고 요청(수동). 발행은 되돌릴 수 없다 — 취소 경로가 이 화면에 없다.
- *
- * ⭐ **`policyNotice` 는 규범 선언이다.** 앞 문장이 금지를 그대로 말하고 뒤 문장이 대신 할 일을
- * 말한다. 결과 설명으로 무르게 옮기면 이 화면의 존재 이유가 사라진다.
  */
 export const materialIssueRequest: Translated<typeof ko.materialIssueRequest> = {
   title: 'Yêu cầu xuất kho bổ sung',
   breadcrumbRoot: 'Quản lý mua hàng / vật tư',
-  policyNotice: {
-    title: 'Cấm mang vật tư ra khỏi kho mà không theo quy trình',
-    description:
-      'Không được lấy vật tư trong kho khi chưa có yêu cầu. Vật tư thiếu cũng phải yêu cầu ở màn hình này và nhận qua xuất kho chính thức.',
-  },
   panes: {
     target: 'W/O đích',
     lines: 'Mặt hàng yêu cầu',

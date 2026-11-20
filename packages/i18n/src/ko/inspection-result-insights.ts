@@ -12,7 +12,6 @@ export const inspectionResultInsights = {
   page: {
     preparing: '검사 조회 조건을 준비하는 중',
     lookupFailed: '일부 조회 조건 이름을 불러오지 못했습니다.',
-    lookupFailedDetail: '내부 번호나 코드를 대신 표시하지 않습니다.',
     lookupRetry: '실패한 조건 다시 시도',
   },
   /* 조회 조건 패널과 조건 막대. */
@@ -143,7 +142,7 @@ export const inspectionResultInsights = {
     distribution: '불량 분포',
     distributionPane: '불량 분포 결과',
     /** 불량 기록의 출처에 수입검사가 없어 수입검사만 따로 거를 수 없다(서버 · 사용자 2026-11-02). */
-    iqcDistributionUnavailable: '수입검사만 따로 나눈 불량 분포는 아직 볼 수 없습니다.',
+    iqcDistributionUnavailable: '수입검사는 불량 분포를 따로 볼 수 없습니다.',
     groupBy: '분포 묶음 기준',
     groups: {
       defectCode: '불량코드',

@@ -187,8 +187,7 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       removeLabel: (warehouse: string): string => `Gỡ liên kết ${warehouse}`,
       picker: {
         title: 'Thêm kho sản xuất',
-        description: 'Chọn kho cần liên kết. Chỉ hiển thị kho đang sử dụng.',
-        empty: 'Không có kho nào để chọn.',
+        empty: 'Không có kho nào để chọn. Chỉ chọn được kho đang sử dụng.',
         close: 'Đóng',
       },
       confirm: {
