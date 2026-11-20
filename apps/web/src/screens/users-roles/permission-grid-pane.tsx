@@ -1,4 +1,12 @@
-import { Button, Checkbox, EmptyState, SkeletonText, Table, type Column } from '@crefle/web-ui';
+import {
+  Button,
+  Checkbox,
+  EmptyState,
+  Icon,
+  SkeletonText,
+  Table,
+  type Column,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
@@ -25,6 +33,8 @@ export interface PermissionGridPaneProps {
   onClearAll: () => void;
   onSave: () => void;
   onCancel: () => void;
+  /** 아래 [취소][저장] 줄. 끄면 역할 설정 카드 아래 한 줄이 맡는다(사용자 관리 탭과 같다 · #333). */
+  showActions?: boolean;
 }
 
 /**
@@ -57,6 +67,7 @@ export const PermissionGridPane = ({
   onClearAll,
   onSave,
   onCancel,
+  showActions = true,
 }: PermissionGridPaneProps) => {
   const noteId = useId();
 
@@ -86,7 +97,13 @@ export const PermissionGridPane = ({
       ),
     },
     { key: 'label', header: t.permission.columns.name, render: (row) => row.label },
-    { key: 'code', header: t.permission.columns.code, width: '9rem', render: (row) => row.code },
+    {
+      key: 'code',
+      header: t.permission.columns.code,
+      width: '9rem',
+      align: 'center',
+      render: (row) => row.code,
+    },
   ];
 
   const tableSlot = (): ReactNode => {
@@ -139,56 +156,77 @@ export const PermissionGridPane = ({
   const hasRows = rows.length > 0 && (loadError === null || loadError === undefined) && !isLoading;
 
   return (
-    <section className="pane" aria-label={t.panes.permission}>
+    <section
+      className="pane users-roles-pane users-roles-permission-pane"
+      aria-label={t.panes.permission}
+    >
+      {/*
+       * 표제 줄 — 왼쪽 「기능 권한」 + 라벨 안내, 오른쪽 전체 선택 · 해제(데이터 접근 범위 구역과 같은 모양 · #333).
+       * 전체 선택·해제는 고르기만 하고 저장은 따로라 아래 [저장]과 떨어뜨린다.
+       */}
+      <div className="pane-heading-row users-roles-heading">
+        <div className="users-roles-scope-title">
+          <h3 className="pane-title">{t.panes.permission}</h3>
+          <p
+            id={noteId}
+            className="iqc-inspection-action-note users-roles-scope-hint"
+            data-tone="info"
+          >
+            <Icon name="info" size={14} aria-hidden />
+            {t.permission.hint}
+          </p>
+        </div>
+        {hasRows && (
+          <div className="permission-bulk-actions">
+            <Button
+              variant="outlined"
+              size="sm"
+              className="app-button-neutral"
+              disabled={isSaving}
+              onClick={onSelectAll}
+            >
+              {t.permission.selectAll}
+            </Button>
+            <Button
+              variant="outlined"
+              size="sm"
+              className="app-button-neutral"
+              disabled={isSaving}
+              onClick={onClearAll}
+            >
+              {t.permission.clearAll}
+            </Button>
+          </div>
+        )}
+      </div>
       {banner}
       {unlistedNotice}
 
-      {/*
-       * 조작 안내는 **표보다 앞에** 둔다. 여러 칸이 함께 보는 안내라 컨트롤 이름이 아니라
-       * 무엇에 대한 안내인지로 시작한다(배치 규범 4).
-       */}
-      <p id={noteId} className="field-note">
-        {t.permission.editNote}
-      </p>
-
-      {/*
-       * 전체 선택·해제는 **표 위**에 둔다. 아래 액션 줄에 섞으면 「저장」과 나란히 서서
-       * 누르는 순간 저장되는 것으로 읽힌다 — 이 둘은 고르기만 하고 저장은 따로다.
-       */}
-      {hasRows && (
-        <div className="permission-bulk-actions">
-          <Button variant="outlined" size="sm" disabled={isSaving} onClick={onSelectAll}>
-            {t.permission.selectAll}
-          </Button>
-          <Button variant="outlined" size="sm" disabled={isSaving} onClick={onClearAll}>
-            {t.permission.clearAll}
-          </Button>
-        </div>
-      )}
-
       {tableSlot()}
 
-      <div className="form-actions">
-        <Button variant="outlined" disabled={!isDirty || isSaving} onClick={onCancel}>
-          {messages.common.cancel}
-        </Button>
-
-        {/*
-         * 고친 것이 없으면 주 액션을 **비활성 + 사유**로 둔다(배치 규범 4).
-         * 저장 중에는 진행 표시가 그 자리를 대신하므로 사유를 내지 않는다.
-         */}
-        {isDirty || isSaving ? (
-          <Button disabled={isSaving} loading={isSaving} onClick={onSave}>
-            {messages.common.save}
+      {showActions && (
+        <div className="form-actions">
+          <Button variant="outlined" disabled={!isDirty || isSaving} onClick={onCancel}>
+            {messages.common.cancel}
           </Button>
-        ) : (
-          <DisabledAction
-            variant="filled"
-            label={messages.common.save}
-            reason={t.actionReasons.saveNoChanges}
-          />
-        )}
-      </div>
+
+          {/*
+           * 고친 것이 없으면 주 액션을 **비활성 + 사유**로 둔다(배치 규범 4).
+           * 저장 중에는 진행 표시가 그 자리를 대신하므로 사유를 내지 않는다.
+           */}
+          {isDirty || isSaving ? (
+            <Button disabled={isSaving} loading={isSaving} onClick={onSave}>
+              {messages.common.save}
+            </Button>
+          ) : (
+            <DisabledAction
+              variant="filled"
+              label={messages.common.save}
+              reason={t.actionReasons.saveNoChanges}
+            />
+          )}
+        </div>
+      )}
     </section>
   );
 };

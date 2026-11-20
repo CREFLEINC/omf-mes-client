@@ -3,7 +3,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import { toRoleListQuery } from './filters';
+import { DEFAULT_PAGE_SIZE, toRoleListQuery } from './filters';
 import type { PageMeta, Role, RoleFilters } from './types';
 
 type RoleDetailResponse = components['schemas']['RoleDetailResponse'];
@@ -26,7 +26,8 @@ export interface RoleListResponse {
 
 export const roleKeys = {
   all: ['users-roles-roles'] as const,
-  list: (filters: RoleFilters, page: number) => ['users-roles-roles', 'list', filters, page] as const,
+  list: (filters: RoleFilters, page: number, size: number = DEFAULT_PAGE_SIZE) =>
+    ['users-roles-roles', 'list', filters, page, size] as const,
   detail: (roleId: number) => ['users-roles-roles', 'detail', roleId] as const,
   /** 이 역할에 부여된 기능 권한. 치환이 성공하면 이 키만 무효화한다. */
   permissions: (roleId: number) => ['users-roles-roles', 'permissions', roleId] as const,
@@ -46,14 +47,17 @@ export const useRoleList = (
   filters: RoleFilters,
   page: number,
   enabled: boolean,
+  size: number = DEFAULT_PAGE_SIZE,
 ): UseQueryResult<RoleListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: roleKeys.list(filters, page),
+    queryKey: roleKeys.list(filters, page, size),
     enabled,
     queryFn: () =>
-      runRequest(() => client.GET('/app/roles', { params: { query: toRoleListQuery(filters, page) } })),
+      runRequest(() =>
+        client.GET('/app/roles', { params: { query: toRoleListQuery(filters, page, size) } }),
+      ),
   });
 };
 

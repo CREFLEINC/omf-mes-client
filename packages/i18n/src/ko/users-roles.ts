@@ -22,9 +22,11 @@ export const usersRoles = {
     dataScope: '데이터 접근 범위',
     /** 오른쪽 한 카드 — 고른 사용자의 설정이 모두 여기 있다(omf-all-around#333). 표제는 사용자 이름이다. */
     userSettings: '사용자 설정',
-    roleList: '역할',
-    roleForm: '역할 정보',
+    roleList: '역할 목록',
+    roleForm: '역할 상세 정보',
     permission: '기능 권한',
+    /** 오른쪽 한 카드 — 고른 역할의 상세 정보 · 기능 권한(사용자 설정 카드와 같은 틀 · #333). */
+    roleSettings: '역할 설정',
   },
   actions: {
     prevPage: '이전',
@@ -118,6 +120,7 @@ export const usersRoles = {
   filters: {
     departmentSearchPlaceholder: '소속 부서를 입력하세요',
     pane: '사용자 조회 조건',
+    rolePane: '역할 조회 조건',
     userSearchLabel: '사용자 검색',
     userSearchPlaceholder: '아이디 또는 이름을 입력하세요',
     department: '소속 부서',
@@ -245,7 +248,6 @@ export const usersRoles = {
       noneDescription: '「역할 추가」로 첫 역할을 등록하세요.',
       noMatchTitle: '조건에 맞는 역할이 없습니다',
       noMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
-      notSelected: '왼쪽 목록에서 역할을 선택하세요.',
     },
     validation: {
       required: '필수 입력 항목입니다.',
@@ -266,6 +268,8 @@ export const usersRoles = {
    * **무엇에 대한 안내인지**로 시작한다(배치 규범 4의 이탈 조건).
    */
   permission: {
+    /** 기능 권한 표제 옆 라벨 안내 — 데이터 접근 범위 안내와 같은 모양(#333). */
+    hint: '선택한 권한이 이 역할에 부여됩니다.',
     editNote:
       '칸을 눌러 권한을 주거나 거둔 뒤 저장하세요. 저장은 이 역할의 권한 전체를 한 번에 바꿉니다.',
     /* 표의 열 머리. 권한이 117개라 세로로 세우고, 코드는 화면을 짚어 보는 열쇠라 함께 보인다. */
@@ -413,6 +417,13 @@ export const usersRoles = {
     /** 목록이 비었을 때 — 고를 사용자가 없다는 것을 먼저 말한다. */
     noUsersTitle: '표시할 사용자가 없습니다.',
     noUsersHint: '조회 조건을 바꾸거나 사용자를 추가하세요.',
+  },
+  /** 역할 탭 오른쪽 빈 안내 — 사용자 탭과 같은 모양(사용자 지시 2026-11-20 · #333). */
+  pickRole: {
+    title: '역할을 선택하세요.',
+    hint: '선택한 역할의 상세 정보 · 기능 권한이 표시됩니다.',
+    noRolesTitle: '표시할 역할이 없습니다.',
+    noRolesHint: '조회 조건을 바꾸거나 역할을 추가하세요.',
   },
   /** 사용자를 바꾸거나 새로 추가할 때, 저장하지 않은 변경이 있으면 묻는다(omf-all-around#333). */
   discard: {

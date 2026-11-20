@@ -146,7 +146,7 @@ describe('RoleFormPane 역할 코드 잠금', () => {
       editability: { codeEditable: false, reason: 'NOT_COUNTABLE', referenceCount: 3 },
     });
 
-    const pane = screen.getByRole('region', { name: '역할 정보' });
+    const pane = screen.getByRole('region', { name: '역할 상세 정보' });
 
     expect(pane.textContent).toContain('확인할 수 없어');
     expect(pane.textContent).not.toContain('3건');

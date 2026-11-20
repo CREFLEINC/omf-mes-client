@@ -1,4 +1,4 @@
-import { Button, TextField } from '@crefle/web-ui';
+import { Button, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
@@ -34,6 +34,13 @@ export interface RoleFormPaneProps {
   onSave: () => void;
   onCancel: () => void;
   onDeactivate: () => void;
+  /**
+   * 표제 줄(「역할 상세 정보」 + 오른쪽 [사용 중지])을 둔다 — 사용자 상세 정보와 같은 모양(사용자 지시 2026-11-20 · #333).
+   * 추가 팝업은 창 제목이 그 자리를 맡아 끈다.
+   */
+  showHeading?: boolean;
+  /** 폼 아래 [사용 중지][취소][저장] 줄. 끄면 카드 아래 [취소][저장] 한 줄 · 팝업 버튼이 맡는다. */
+  showActions?: boolean;
 }
 
 /**
@@ -63,6 +70,8 @@ export const RoleFormPane = ({
   onSave,
   onCancel,
   onDeactivate,
+  showHeading = false,
+  showActions = true,
 }: RoleFormPaneProps) => {
   const roleCodeId = useId();
   const roleNameId = useId();
@@ -73,7 +82,29 @@ export const RoleFormPane = ({
   const codeLockReason = editability === null ? null : codeLockMessage(editability);
 
   return (
-    <section className="pane" aria-label={t.panes.roleForm}>
+    <section className="pane users-roles-pane users-roles-user-pane" aria-label={t.panes.roleForm}>
+      {/*
+       * 사용 중지는 표제 줄 오른쪽 — 폼 값을 저장하지 않고 바로 서버에 나가는 작업이라 아래 [취소][저장]과 떨어뜨린다
+       * (사용자 상세 정보와 같다). 이미 미사용이면 비활성이다.
+       */}
+      {showHeading && (
+        <div className="pane-heading-row users-roles-heading">
+          <h3 className="pane-title">{t.panes.roleForm}</h3>
+          {mode === 'edit' && (
+            <div className="users-roles-account-actions">
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={deactivateDisabledReason !== null}
+                leadingIcon={<Icon name="block" size={18} />}
+                onClick={onDeactivate}
+              >
+                {messages.common.deactivate}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
       {banner}
 
       <div className="form-grid">
@@ -118,51 +149,55 @@ export const RoleFormPane = ({
         </div>
       </div>
 
-      <div className="form-actions">
-        {/*
-         * 등록 폼에는 사용 중지 자리를 두지 않는다 — 아직 없는 자원이라
-         * 「언젠가 풀린다」가 아니라 애초에 해당하지 않는 액션이다.
-         */}
-        {mode === 'edit' &&
-          (deactivateDisabledReason === null ? (
-            <div className="field-cell form-actions-secondary">
-              <Button variant="outlined" onClick={onDeactivate}>
-                {messages.common.deactivate}
-              </Button>
-            </div>
+      {showActions && (
+        <div className="form-actions">
+          {/*
+           * 등록 폼에는 사용 중지 자리를 두지 않는다 — 아직 없는 자원이라
+           * 「언젠가 풀린다」가 아니라 애초에 해당하지 않는 액션이다.
+           */}
+          {mode === 'edit' &&
+            (deactivateDisabledReason === null ? (
+              <div className="field-cell form-actions-secondary">
+                <Button variant="outlined" onClick={onDeactivate}>
+                  {messages.common.deactivate}
+                </Button>
+              </div>
+            ) : (
+              <DisabledAction
+                label={messages.common.deactivate}
+                reason={deactivateDisabledReason}
+                className="form-actions-secondary"
+              />
+            ))}
+
+          {/*
+           * 등록에서 「취소」는 **폼을 닫는 것**이라 고친 것이 없어도 눌러야 한다.
+           * 수정에서는 **기준값으로 되돌리는 것**이라 고친 것이 있을 때만 의미가 있다.
+           */}
+          <Button variant="outlined" disabled={mode === 'edit' && !isDirty} onClick={onCancel}>
+            {messages.common.cancel}
+          </Button>
+
+          {/*
+           * 고친 것이 없으면 주 액션을 **비활성 + 사유**로 둔다(배치 규범 4) —
+           * 사유가 없으면 사용자는 버튼이 왜 안 눌리는지 알 방법이 없다.
+           * 저장 중에는 진행 표시가 그 자리를 대신하므로 사유를 내지 않는다.
+           */}
+          {isDirty || isSaving ? (
+            <Button disabled={isSaving} loading={isSaving} onClick={onSave}>
+              {saveLabel}
+            </Button>
           ) : (
             <DisabledAction
-              label={messages.common.deactivate}
-              reason={deactivateDisabledReason}
-              className="form-actions-secondary"
+              variant="filled"
+              label={saveLabel}
+              reason={
+                mode === 'create' ? t.actionReasons.addRoleNoInput : t.actionReasons.saveNoChanges
+              }
             />
-          ))}
-
-        {/*
-         * 등록에서 「취소」는 **폼을 닫는 것**이라 고친 것이 없어도 눌러야 한다.
-         * 수정에서는 **기준값으로 되돌리는 것**이라 고친 것이 있을 때만 의미가 있다.
-         */}
-        <Button variant="outlined" disabled={mode === 'edit' && !isDirty} onClick={onCancel}>
-          {messages.common.cancel}
-        </Button>
-
-        {/*
-         * 고친 것이 없으면 주 액션을 **비활성 + 사유**로 둔다(배치 규범 4) —
-         * 사유가 없으면 사용자는 버튼이 왜 안 눌리는지 알 방법이 없다.
-         * 저장 중에는 진행 표시가 그 자리를 대신하므로 사유를 내지 않는다.
-         */}
-        {isDirty || isSaving ? (
-          <Button disabled={isSaving} loading={isSaving} onClick={onSave}>
-            {saveLabel}
-          </Button>
-        ) : (
-          <DisabledAction
-            variant="filled"
-            label={saveLabel}
-            reason={mode === 'create' ? t.actionReasons.addRoleNoInput : t.actionReasons.saveNoChanges}
-          />
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </section>
   );
 };

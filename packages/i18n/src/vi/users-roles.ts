@@ -26,9 +26,10 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     roleAssign: 'Gán vai trò',
     dataScope: 'Phạm vi truy cập dữ liệu',
     userSettings: 'Cài đặt người dùng',
-    roleList: 'Vai trò',
-    roleForm: 'Thông tin vai trò',
+    roleList: 'Danh sách vai trò',
+    roleForm: 'Thông tin chi tiết vai trò',
     permission: 'Quyền chức năng',
+    roleSettings: 'Thiết lập vai trò',
   },
   actions: {
     prevPage: 'Trước',
@@ -95,6 +96,7 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
   filters: {
     departmentSearchPlaceholder: 'Nhập bộ phận',
     pane: 'Điều kiện tìm người dùng',
+    rolePane: 'Điều kiện tìm vai trò',
     userSearchLabel: 'Tìm người dùng',
     userSearchPlaceholder: 'Nhập tên đăng nhập hoặc tên',
     department: 'Phòng ban',
@@ -185,7 +187,6 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
       noneDescription: 'Hãy đăng ký vai trò đầu tiên bằng «Thêm vai trò».',
       noMatchTitle: 'Không có vai trò khớp điều kiện',
       noMatchDescription: 'Hãy bớt điều kiện hoặc đặt lại rồi tra cứu lại.',
-      notSelected: 'Hãy chọn vai trò trong danh sách bên trái.',
     },
     validation: {
       required: 'Đây là mục bắt buộc.',
@@ -197,6 +198,7 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
   },
   /** 기능 권한 격자 — **부여·회수할 수 있다.** 저장은 이 역할의 권한 전체를 한 번에 바꾼다. */
   permission: {
+    hint: 'Các quyền đã chọn sẽ được cấp cho vai trò này.',
     editNote:
       'Nhấn vào ô để cấp hoặc thu hồi quyền, rồi lưu. Lần lưu sẽ thay toàn bộ quyền của vai trò này.',
     /* 표의 열 머리. 권한이 117개라 세로로 세우고, 코드는 화면을 짚어 보는 열쇠라 함께 보인다. */
@@ -288,6 +290,12 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     label: 'Tình trạng làm việc',
     filterOn: (label: string): string => `Chỉ xem ${label}`,
     filterOff: (label: string): string => `Bỏ lọc ${label}`,
+  },
+  pickRole: {
+    title: 'Hãy chọn vai trò.',
+    hint: 'Thông tin chi tiết và quyền chức năng của vai trò đã chọn sẽ hiển thị.',
+    noRolesTitle: 'Không có vai trò để hiển thị.',
+    noRolesHint: 'Hãy thay đổi điều kiện tìm kiếm hoặc thêm vai trò.',
   },
   pickUser: {
     title: 'Hãy chọn người dùng.',

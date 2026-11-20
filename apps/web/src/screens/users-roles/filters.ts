@@ -308,12 +308,14 @@ export const toRoleSearchParams = (
   tabId: string,
   filters: RoleFilters,
   page: number,
+  size: number = DEFAULT_PAGE_SIZE,
 ): URLSearchParams => {
   const next = new URLSearchParams({ [URL_KEYS.tab]: tabId });
 
   if (filters.q !== '') next.set(URL_KEYS.q, filters.q);
   if (filters.includeInactive) next.set(URL_KEYS.includeInactive, ON);
   if (page > 1) next.set(URL_KEYS.page, String(page));
+  if (size !== DEFAULT_PAGE_SIZE) next.set(URL_KEYS.size, String(size));
 
   return next;
 };
@@ -326,12 +328,18 @@ export interface RoleListQuery {
   q?: string;
   includeInactive?: boolean;
   page?: number;
+  size?: number;
 }
 
-export const toRoleListQuery = (filters: RoleFilters, page: number): RoleListQuery => ({
+export const toRoleListQuery = (
+  filters: RoleFilters,
+  page: number,
+  size: number = DEFAULT_PAGE_SIZE,
+): RoleListQuery => ({
   ...(filters.q === '' ? {} : { q: filters.q }),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
   ...(page > 1 ? { page } : {}),
+  ...(size === DEFAULT_PAGE_SIZE ? {} : { size }),
 });
 
 export interface RoleFilterChip {

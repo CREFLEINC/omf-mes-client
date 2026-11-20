@@ -456,9 +456,17 @@ const waitForUserList = async (requests: RecordedRequest[]): Promise<void> => {
   await within(userListPane()).findByRole('table');
 };
 
-const roleListPane = (): HTMLElement => screen.getByRole('region', { name: '역할' });
+const roleListPane = (): HTMLElement => screen.getByRole('region', { name: '역할 목록' });
 
-const roleFormPane = (): HTMLElement => screen.getByRole('region', { name: '역할 정보' });
+/** 위 조회 묶음 — 역할 검색 · 미사용 포함 · 조회 · 초기화 · 역할 추가(사용자 탭과 같은 틀 · #333). */
+const roleSearchPane = (): HTMLElement => screen.getByRole('region', { name: '역할 조회 조건' });
+
+const roleFormPane = (): HTMLElement => screen.getByRole('region', { name: '역할 상세 정보' });
+
+/** 오른쪽 역할 설정 카드 — 아래 [취소][저장] 한 줄이 역할 정보 · 기능 권한을 함께 저장한다(#333). */
+const roleSettingsPane = (): HTMLElement => screen.getByRole('region', { name: '역할 설정' });
+
+const roleCreateDialog = (): HTMLElement => screen.getByRole('dialog', { name: '역할 추가' });
 
 const permissionPane = (): HTMLElement => screen.getByRole('region', { name: '기능 권한' });
 
@@ -3387,8 +3395,8 @@ describe('UsersRolesScreen 역할 탭 진입과 조건', () => {
 
     await waitForRoleList(requests);
 
-    await user.type(within(roleListPane()).getByLabelText('역할 검색'), 'SYN');
-    await user.click(within(roleListPane()).getByRole('button', { name: '조회' }));
+    await user.type(within(roleSearchPane()).getByLabelText('역할 검색'), 'SYN');
+    await user.click(within(roleSearchPane()).getByRole('button', { name: '조회' }));
 
     await waitFor(() => {
       expect(roleRequests(requests).length).toBeGreaterThan(1);
@@ -3429,7 +3437,7 @@ describe('UsersRolesScreen 역할 탭 진입과 조건', () => {
 
     await waitForRoleList(requests);
 
-    await user.click(within(roleListPane()).getByRole('checkbox', { name: '미사용 포함' }));
+    await user.click(within(roleSearchPane()).getByRole('checkbox', { name: '미사용 포함' }));
 
     await waitFor(() => {
       expect(new URLSearchParams(search()).get('inactive')).toBe('1');
@@ -3527,7 +3535,7 @@ describe('UsersRolesScreen 탭 전환', () => {
 
     await waitForRoleList(requests);
 
-    expect(screen.getByText('왼쪽 목록에서 역할을 선택하세요.')).toBeInTheDocument();
+    expect(within(roleSettingsPane()).getByText('역할을 선택하세요.')).toBeInTheDocument();
     expect(requestsTo(requests, `${ROLES_PATH}/1001`)).toHaveLength(0);
   });
 });
@@ -3593,7 +3601,7 @@ describe('UsersRolesScreen 역할 목록 표시', () => {
     expect(within(banner).queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument();
     expect(within(roleListPane()).queryByRole('table')).not.toBeInTheDocument();
     expect(requestsTo(requests, rolePath(5001))).toHaveLength(0);
-    expect(screen.queryByRole('region', { name: '역할 정보' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '역할 상세 정보' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: '기능 권한' })).not.toBeInTheDocument();
     expect(
       within(roleListPane()).queryByRole('button', { name: '역할 추가' }),
@@ -3649,8 +3657,27 @@ describe('UsersRolesScreen 역할 상세 열기', () => {
 
     await waitForRoleList(requests);
 
-    expect(screen.getByText('왼쪽 목록에서 역할을 선택하세요.')).toBeInTheDocument();
+    expect(within(roleSettingsPane()).getByText('역할을 선택하세요.')).toBeInTheDocument();
     expect(requestsTo(requests, rolePath(5001))).toHaveLength(0);
+  });
+
+  /* 역할 추가는 팝업 — 필수 칸(역할 코드 · 역할명)이 차야 누를 수 있다(사용자 추가 팝업과 같다 · #333). */
+  it('역할 추가 팝업은 필수 칸이 차야 추가를 누를 수 있다', async () => {
+    const { requests, user } = renderScreen([roleListRoute()], ROLES_TAB);
+
+    await waitForRoleList(requests);
+    await user.click(within(roleSearchPane()).getByRole('button', { name: '역할 추가' }));
+
+    const addButton = within(await screen.findByRole('dialog', { name: '역할 추가' })).getByRole(
+      'button',
+      { name: '역할 추가' },
+    );
+    expect(addButton).toBeDisabled();
+
+    await user.type(roleCodeField(), 'SYN-NEW');
+    await user.type(roleNameField(), '합성 새 역할');
+
+    expect(addButton).toBeEnabled();
   });
 
   it('역할 추가는 빈 폼을 열고 상세를 조회하지 않는다', async () => {
@@ -3658,7 +3685,7 @@ describe('UsersRolesScreen 역할 상세 열기', () => {
 
     await waitForRoleList(requests);
 
-    await user.click(within(roleListPane()).getByRole('button', { name: '역할 추가' }));
+    await user.click(within(roleSearchPane()).getByRole('button', { name: '역할 추가' }));
 
     await waitFor(() => {
       expect(new URLSearchParams(search()).get('new')).toBe('role');
@@ -3692,7 +3719,7 @@ describe('UsersRolesScreen 역할 상세 열기', () => {
 
     await waitForRoleList(requests);
 
-    await user.click(within(roleListPane()).getByRole('button', { name: '역할 추가' }));
+    await user.click(within(roleSearchPane()).getByRole('button', { name: '역할 추가' }));
 
     await waitFor(() => {
       expect(new URLSearchParams(search()).get('new')).toBe('role');
@@ -3764,7 +3791,7 @@ describe('UsersRolesScreen 역할 수정 저장', () => {
   it('수정 본문에 역할 코드와 역할명이 실린다', async () => {
     const { requests, user } = await openAndEdit();
 
-    await user.click(within(roleFormPane()).getByRole('button', { name: '저장' }));
+    await user.click(within(roleSettingsPane()).getByRole('button', { name: '저장' }));
 
     await waitFor(() => {
       expect(roleWrites(requests)).toHaveLength(1);
@@ -3782,7 +3809,7 @@ describe('UsersRolesScreen 역할 수정 저장', () => {
   it('수정 요청에 멱등 키와 상세 경로의 잠금 토큰이 둘 다 실린다', async () => {
     const { requests, user } = await openAndEdit();
 
-    await user.click(within(roleFormPane()).getByRole('button', { name: '저장' }));
+    await user.click(within(roleSettingsPane()).getByRole('button', { name: '저장' }));
 
     await waitFor(() => {
       expect(roleWrites(requests)).toHaveLength(1);
@@ -3799,7 +3826,7 @@ describe('UsersRolesScreen 역할 수정 저장', () => {
 
     const before = roleRequests(requests).length;
 
-    await user.click(within(roleFormPane()).getByRole('button', { name: '저장' }));
+    await user.click(within(roleSettingsPane()).getByRole('button', { name: '저장' }));
 
     await waitFor(() => {
       expect(roleRequests(requests).length).toBeGreaterThan(before);
@@ -3818,7 +3845,7 @@ describe('UsersRolesScreen 역할 수정 저장', () => {
       roleUpdateRoute(),
     ]);
 
-    await user.click(within(roleFormPane()).getByRole('button', { name: '저장' }));
+    await user.click(within(roleSettingsPane()).getByRole('button', { name: '저장' }));
 
     await within(roleFormPane()).findByRole('alert');
 
@@ -3830,7 +3857,7 @@ describe('UsersRolesScreen 역할 수정 저장', () => {
     const { requests, user } = await openAndEdit();
 
     await user.clear(roleNameField());
-    await user.click(within(roleFormPane()).getByRole('button', { name: '저장' }));
+    await user.click(within(roleSettingsPane()).getByRole('button', { name: '저장' }));
 
     expect(await within(roleFormPane()).findByText('필수 입력 항목입니다.')).toBeInTheDocument();
     expect(roleWrites(requests)).toHaveLength(0);
@@ -3855,7 +3882,7 @@ describe('UsersRolesScreen 역할 수정 저장', () => {
       ),
     );
 
-    await user.click(within(roleFormPane()).getByRole('button', { name: '저장' }));
+    await user.click(within(roleSettingsPane()).getByRole('button', { name: '저장' }));
 
     await waitFor(() => {
       expect(roleWrites(requests)).toHaveLength(1);
@@ -3871,23 +3898,22 @@ describe('UsersRolesScreen 역할 수정 저장', () => {
       editRoutes(() => jsonResponse({ errors: [] }, { status: 500 })),
     );
 
-    await user.click(within(roleFormPane()).getByRole('button', { name: '저장' }));
+    await user.click(within(roleSettingsPane()).getByRole('button', { name: '저장' }));
 
     await within(roleFormPane()).findByRole('alert');
 
     expect(roleNameField()).toHaveValue('합성 역할 AX');
   });
 
-  it('고친 것이 없으면 저장이 비활성이고 사유가 보인다', async () => {
+  /* 카드 아래 [취소][저장]은 사용자 설정 카드처럼 사유 문구 없이 비활성만 한다(#333). */
+  it('고친 것이 없으면 저장 · 취소가 비활성이다', async () => {
     const { requests } = renderScreen(editRoutes(), '?tab=roles&rol=5001');
 
     await waitForRoleList(requests);
     await waitForRoleForm('SYN-ROLE-01');
 
-    expect(within(roleFormPane()).getByRole('button', { name: '저장' })).toBeDisabled();
-    expect(
-      within(roleFormPane()).getByText('저장은 변경된 내용이 있을 때 누를 수 있습니다.'),
-    ).toBeInTheDocument();
+    expect(within(roleSettingsPane()).getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(within(roleSettingsPane()).getByRole('button', { name: '취소' })).toBeDisabled();
   });
 
   /** 취소는 **서버를 부르지 않는다** — 초안을 기준값으로 되돌릴 뿐이다. */
@@ -3896,7 +3922,7 @@ describe('UsersRolesScreen 역할 수정 저장', () => {
 
     const before = requests.length;
 
-    await user.click(within(roleFormPane()).getByRole('button', { name: '취소' }));
+    await user.click(within(roleSettingsPane()).getByRole('button', { name: '취소' }));
 
     expect(roleNameField()).toHaveValue('합성 역할 A');
     expect(requests).toHaveLength(before);
@@ -3928,7 +3954,7 @@ describe('UsersRolesScreen 역할 등록', () => {
   it('등록 요청에 멱등 키만 실린다 — 아직 잠글 대상이 없다', async () => {
     const { requests, user } = await openAndFill();
 
-    await user.click(within(roleFormPane()).getByRole('button', { name: '역할 추가' }));
+    await user.click(within(roleCreateDialog()).getByRole('button', { name: '역할 추가' }));
 
     await waitFor(() => {
       expect(roleCreates(requests)).toHaveLength(1);
@@ -3943,7 +3969,7 @@ describe('UsersRolesScreen 역할 등록', () => {
   it('등록 본문에 사용 여부가 실리지 않는다', async () => {
     const { requests, user } = await openAndFill();
 
-    await user.click(within(roleFormPane()).getByRole('button', { name: '역할 추가' }));
+    await user.click(within(roleCreateDialog()).getByRole('button', { name: '역할 추가' }));
 
     await waitFor(() => {
       expect(roleCreates(requests)).toHaveLength(1);
@@ -3959,7 +3985,7 @@ describe('UsersRolesScreen 역할 등록', () => {
   it('등록에 성공하면 방금 만든 역할이 열린다', async () => {
     const { requests, search, user } = await openAndFill();
 
-    await user.click(within(roleFormPane()).getByRole('button', { name: '역할 추가' }));
+    await user.click(within(roleCreateDialog()).getByRole('button', { name: '역할 추가' }));
 
     await waitFor(() => {
       expect(new URLSearchParams(search()).get('rol')).toBe('5009');
@@ -4070,7 +4096,8 @@ describe('UsersRolesScreen 역할 사용 중지', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
-  it('이미 미사용인 역할은 사용 중지가 비활성이고 사유가 보인다', async () => {
+  /* 사용 중지는 표제 줄 단추 — 사용자 상세 정보처럼 사유 문구 없이 비활성만 한다(#333). */
+  it('이미 미사용인 역할은 사용 중지가 비활성이다', async () => {
     const inactive = roleFixtures[2] as Role;
     const { requests } = renderScreen(
       [roleListRoute(), roleDetailRoute(inactive), rolePermissionsRoute(inactive.roleId)],
@@ -4081,9 +4108,6 @@ describe('UsersRolesScreen 역할 사용 중지', () => {
     await waitForRoleForm('SYN-ROLE-03');
 
     expect(within(roleFormPane()).getByRole('button', { name: '사용 중지' })).toBeDisabled();
-    expect(
-      within(roleFormPane()).getByText('사용 중지는 이미 미사용인 역할에 다시 할 수 없습니다.'),
-    ).toBeInTheDocument();
   });
 });
 
@@ -4108,6 +4132,13 @@ describe('UsersRolesScreen 역할 초안·창의 수명', () => {
     await user.type(roleNameField(), 'X');
 
     await user.click(within(roleListPane()).getByRole('button', { name: 'SYN-ROLE-02' }));
+    /* 저장하지 않은 변경이 있어 먼저 묻는다(사용자 탭과 같다 · #333) — 버리기를 고르면 옮긴다. */
+    await user.click(
+      within(await screen.findByRole('dialog', { name: '저장하지 않은 변경사항' })).getByRole(
+        'button',
+        { name: '저장하지 않고 나가기' },
+      ),
+    );
 
     await waitForRoleForm('SYN-ROLE-02');
     expect(roleNameField()).toHaveValue('합성 역할 B');
@@ -4182,11 +4213,18 @@ describe('UsersRolesScreen 역할 초안·창의 수명', () => {
     await waitForRoleForm('SYN-ROLE-01');
 
     await user.clear(roleNameField());
-    await user.click(within(roleFormPane()).getByRole('button', { name: '저장' }));
+    await user.click(within(roleSettingsPane()).getByRole('button', { name: '저장' }));
 
     expect(await within(roleFormPane()).findByText('필수 입력 항목입니다.')).toBeInTheDocument();
 
     await user.click(within(roleListPane()).getByRole('button', { name: 'SYN-ROLE-02' }));
+    /* 저장하지 않은 변경이 있어 먼저 묻는다(사용자 탭과 같다 · #333) — 버리기를 고르면 옮긴다. */
+    await user.click(
+      within(await screen.findByRole('dialog', { name: '저장하지 않은 변경사항' })).getByRole(
+        'button',
+        { name: '저장하지 않고 나가기' },
+      ),
+    );
 
     await waitForRoleForm('SYN-ROLE-02');
 
@@ -4242,6 +4280,44 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
 
     return within(permissionPane()).getAllByRole('checkbox');
   };
+
+  /* 역할 설정 카드 아래 [저장] 한 번이 고친 구역(역할 정보 · 기능 권한)을 모두 보낸다(사용자 탭과 같다 · #333). */
+  it('역할 정보와 권한을 함께 고치면 저장 한 번에 둘 다 나간다', async () => {
+    const { requests, user } = await openRole([
+      ...gridRoutes(),
+      roleUpdateRoute(),
+      permissionReplaceRoute(),
+    ]);
+
+    const cells = await gridCells();
+    await waitForRoleForm('SYN-ROLE-01');
+    await user.type(roleNameField(), 'X');
+    await user.click(cells[2] as HTMLElement);
+    await user.click(within(roleSettingsPane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(
+        requests.filter(
+          (request) =>
+            request.method === 'PUT' &&
+            [rolePath(5001), rolePermissionsPath(5001)].includes(request.url.pathname),
+        ),
+      ).toHaveLength(2);
+    });
+  });
+
+  /* 고른 줄을 다시 누르면 선택이 풀린다(사용자 목록과 같다 · #333). */
+  it('고른 역할을 다시 누르면 선택이 풀리고 안내로 돌아간다', async () => {
+    const { search, user } = await openRole();
+
+    await waitForRoleForm('SYN-ROLE-01');
+    await user.click(within(roleListPane()).getByRole('button', { name: 'SYN-ROLE-01' }));
+
+    await waitFor(() => {
+      expect(new URLSearchParams(search()).has('rol')).toBe(false);
+    });
+    expect(within(roleSettingsPane()).getByText('역할을 선택하세요.')).toBeInTheDocument();
+  });
 
   const replaceBodyOf = (requests: RecordedRequest[]): Record<string, unknown> => {
     const put = requests.find(
@@ -4351,7 +4427,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
 
     await within(permissionPane()).findByRole('table');
     await user.click(within(permissionPane()).getByRole('button', { name: '전체 선택' }));
-    await user.click(within(permissionPane()).getByRole('button', { name: '저장' }));
+    await user.click(within(roleSettingsPane()).getByRole('button', { name: '저장' }));
 
     await waitFor(() => {
       expect(replaceBodyOf(requests)).toEqual({
@@ -4366,7 +4442,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
 
     await within(permissionPane()).findByRole('table');
     await user.click(within(permissionPane()).getByRole('button', { name: '전체 해제' }));
-    await user.click(within(permissionPane()).getByRole('button', { name: '저장' }));
+    await user.click(within(roleSettingsPane()).getByRole('button', { name: '저장' }));
 
     await waitFor(() => {
       expect(replaceBodyOf(requests)).toEqual({ permissionCodes: [] });
@@ -4379,7 +4455,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
 
     await within(permissionPane()).findByRole('table');
     await user.click(within(permissionPane()).getByRole('button', { name: '전체 해제' }));
-    await user.click(within(permissionPane()).getByRole('button', { name: '취소' }));
+    await user.click(within(roleSettingsPane()).getByRole('button', { name: '취소' }));
 
     expect((await gridCells()).map((box) => box.getAttribute('aria-label'))).toEqual([
       'SYN-ROLE-01 · 합성 권한 하나 · 부여됨',
@@ -4389,16 +4465,12 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
   });
 
   /** ⛔ 고친 것이 없으면 저장이 서지 않는다 — 누를 것이 없는 버튼을 두지 않는다. */
-  it('고치기 전에는 저장이 비활성이고 사유가 보인다', async () => {
+  it('고치기 전에는 저장이 비활성이다', async () => {
     await openRole();
 
     await within(permissionPane()).findByRole('table');
 
-    /* ⛔ 사유 문구만 재면 **저장이 눌리게 되는 회귀를 잡지 못한다.** */
-    expect(within(permissionPane()).getByRole('button', { name: '저장' })).toBeDisabled();
-    expect(
-      within(permissionPane()).getByText('저장은 변경된 내용이 있을 때 누를 수 있습니다.'),
-    ).toBeVisible();
+    expect(within(roleSettingsPane()).getByRole('button', { name: '저장' })).toBeDisabled();
   });
 
   /**
@@ -4411,7 +4483,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     const cells = await gridCells();
 
     await user.click(cells[2] as HTMLElement);
-    await user.click(within(permissionPane()).getByRole('button', { name: '저장' }));
+    await user.click(within(roleSettingsPane()).getByRole('button', { name: '저장' }));
 
     await waitFor(() => {
       expect(replaceBodyOf(requests)).toEqual({
@@ -4430,7 +4502,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     const cells = await gridCells();
 
     await user.click(cells[2] as HTMLElement);
-    await user.click(within(permissionPane()).getByRole('button', { name: '저장' }));
+    await user.click(within(roleSettingsPane()).getByRole('button', { name: '저장' }));
 
     await waitFor(() => {
       expect(requests.some((request) => request.method === 'PUT')).toBe(true);
@@ -4473,7 +4545,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     const cells = await gridCells();
 
     await user.click(cells[2] as HTMLElement);
-    await user.click(within(permissionPane()).getByRole('button', { name: '저장' }));
+    await user.click(within(roleSettingsPane()).getByRole('button', { name: '저장' }));
 
     await waitFor(async () => {
       expect((await gridCells()).map((cell) => cell.getAttribute('aria-label'))).toEqual([
@@ -4504,9 +4576,16 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     await user.click(cells[2] as HTMLElement);
 
     /* 선행 단언 — 지금은 고친 상태다. 이것이 없으면 뒤 단언이 무엇을 보는지 알 수 없다. */
-    expect(within(permissionPane()).getByRole('button', { name: '저장' })).toBeEnabled();
+    expect(within(roleSettingsPane()).getByRole('button', { name: '저장' })).toBeEnabled();
 
     await user.click(within(roleListPane()).getByRole('button', { name: 'SYN-ROLE-02' }));
+    /* 저장하지 않은 변경이 있어 먼저 묻는다(사용자 탭과 같다 · #333) — 버리기를 고르면 옮긴다. */
+    await user.click(
+      within(await screen.findByRole('dialog', { name: '저장하지 않은 변경사항' })).getByRole(
+        'button',
+        { name: '저장하지 않고 나가기' },
+      ),
+    );
 
     await waitFor(() => {
       expect(
@@ -4520,7 +4599,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
       'SYN-ROLE-02 · 합성 권한 둘 · 부여되지 않음',
       'SYN-ROLE-02 · 합성 권한 셋 · 부여되지 않음',
     ]);
-    expect(within(permissionPane()).getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(within(roleSettingsPane()).getByRole('button', { name: '저장' })).toBeDisabled();
   });
 
   /**
@@ -4565,7 +4644,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     const cells = await gridCells();
 
     await user.click(cells[2] as HTMLElement);
-    await user.click(within(permissionPane()).getByRole('button', { name: '취소' }));
+    await user.click(within(roleSettingsPane()).getByRole('button', { name: '취소' }));
 
     expect((await gridCells())[2]?.getAttribute('aria-label')).toBe(
       'SYN-ROLE-01 · 합성 권한 셋 · 부여되지 않음',
@@ -4591,7 +4670,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     const cells = await gridCells();
 
     await user.click(cells[0] as HTMLElement);
-    await user.click(within(permissionPane()).getByRole('button', { name: '저장' }));
+    await user.click(within(roleSettingsPane()).getByRole('button', { name: '저장' }));
 
     expect(
       await within(permissionPane()).findByText('이 권한을 가진 사람이 없어집니다'),
@@ -4614,7 +4693,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     const cells = await gridCells();
 
     await user.click(cells[0] as HTMLElement);
-    await user.click(within(permissionPane()).getByRole('button', { name: '저장' }));
+    await user.click(within(roleSettingsPane()).getByRole('button', { name: '저장' }));
 
     expect(await within(permissionPane()).findByText('합성 서버 문구')).toBeInTheDocument();
   });
@@ -4643,7 +4722,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     await openRole();
 
     const table = await within(permissionPane()).findByRole('table');
-    const note = within(permissionPane()).getByText(/칸을 눌러 권한을 주거나 거둔 뒤 저장하세요/);
+    const note = within(permissionPane()).getByText('선택한 권한이 이 역할에 부여됩니다.');
 
     expect(note).toBeVisible();
     expect(table).toHaveAttribute('aria-describedby', note.id);
@@ -4660,9 +4739,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
       await within(permissionPane()).findByText('부여할 수 있는 기능 권한이 없습니다'),
     ).toBeInTheDocument();
     expect(within(permissionPane()).queryByRole('table')).not.toBeInTheDocument();
-    expect(
-      within(permissionPane()).getByText(/칸을 눌러 권한을 주거나 거둔 뒤 저장하세요/),
-    ).toBeVisible();
+    expect(within(permissionPane()).getByText('선택한 권한이 이 역할에 부여됩니다.')).toBeVisible();
   });
 
   /** 실패를 빈 상태로 내면 「부여된 권한이 없습니다」가 되어 없는 사실을 단정한다. */
@@ -4766,7 +4843,7 @@ describe('UsersRolesScreen 역할 쓰기가 사용자 탭의 선택 목록을 �
 
     await user.type(roleCodeField(), 'SYN-ROLE-09');
     await user.type(roleNameField(), '합성 역할 D');
-    await user.click(within(roleFormPane()).getByRole('button', { name: '역할 추가' }));
+    await user.click(within(roleCreateDialog()).getByRole('button', { name: '역할 추가' }));
 
     await waitFor(() => {
       expect(isInvalidated(queryClient, ROLE_LOOKUP_KEY)).toBe(true);
@@ -4787,7 +4864,7 @@ describe('UsersRolesScreen 역할 쓰기가 사용자 탭의 선택 목록을 �
     await waitForRoleForm('SYN-ROLE-01');
 
     await user.type(roleNameField(), 'X');
-    await user.click(within(roleFormPane()).getByRole('button', { name: '저장' }));
+    await user.click(within(roleSettingsPane()).getByRole('button', { name: '저장' }));
 
     await waitFor(() => {
       expect(isInvalidated(queryClient, ROLE_LOOKUP_KEY)).toBe(true);

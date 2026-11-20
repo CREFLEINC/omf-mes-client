@@ -46,7 +46,7 @@ const renderPane = (overrides: Partial<PermissionGridPaneProps> = {}) => {
 
 const pane = (): HTMLElement => screen.getByRole('region', { name: '기능 권한' });
 
-const NOTE = /칸을 눌러 권한을 주거나 거둔 뒤 저장하세요/;
+const NOTE = '선택한 권한이 이 역할에 부여됩니다.';
 
 /** 권한 확인칸 하나. 이름이 「역할 · 권한 이름 · 상태」라 그것으로 집는다. */
 const permissionBox = (name: string): HTMLElement =>

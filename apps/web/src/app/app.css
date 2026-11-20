@@ -36803,3 +36803,42 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   height: 0;
   overflow: hidden;
 }
+
+/*
+ * 역할 설정 카드(좌우 배치) — 기능 권한 표가 카드의 남은 높이를 채우고 표만 구른다. 카드 아래 [취소][저장]이
+ * 늘 보이게 한다(사용자 지시 2026-11-20 · #333). 상하 배치는 카드가 늘어나는 종전 동작 그대로다.
+ */
+.po-board-split.inspection-split:not(.is-stacked) > .users-roles-role-settings:has(> .users-roles-permission-pane) {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  align-content: stretch;
+  overflow: hidden;
+}
+
+.po-board-split.inspection-split:not(.is-stacked) > .users-roles-role-settings > .users-roles-permission-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.po-board-split.inspection-split:not(.is-stacked)
+  > .users-roles-role-settings
+  > .users-roles-permission-pane
+  .permission-table-scroll {
+  flex: 1 1 auto;
+  min-height: 8rem;
+  max-height: none;
+}
+
+/* 표 위 「○○ 역할의 기능 권한」 설명은 화면 낭독기에만 — 바로 위 표제가 같은 말을 한다(#333). */
+.users-roles-permission-pane caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.users-roles-permission-pane > .pane-heading-row .permission-bulk-actions {
+  margin-bottom: 0;
+}
