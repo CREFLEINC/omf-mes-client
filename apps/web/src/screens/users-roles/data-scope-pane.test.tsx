@@ -60,7 +60,8 @@ describe('DataScopePane', () => {
 
     const heading = screen.getByRole('heading', { name: '데이터 접근 범위' });
 
-    expect(heading.parentElement).toContainElement(
+    /* 표제 · 안내가 한 묶음이고, 범위 추가는 그 묶음과 같은 줄 오른쪽이다. */
+    expect(heading.parentElement?.parentElement).toContainElement(
       screen.getByRole('button', { name: '범위 추가' }),
     );
   });
@@ -69,8 +70,12 @@ describe('DataScopePane', () => {
     renderPane();
 
     expect(rows()).toHaveLength(2);
-    expect(within(rows()[0] as HTMLElement).getByText('SYN-BU-01 · 합성 사업부 A')).toBeInTheDocument();
-    expect(within(rows()[0] as HTMLElement).getByText('SYN-PLT-01 · 합성 공장 A')).toBeInTheDocument();
+    expect(
+      within(rows()[0] as HTMLElement).getByText('SYN-BU-01 · 합성 사업부 A'),
+    ).toBeInTheDocument();
+    expect(
+      within(rows()[0] as HTMLElement).getByText('SYN-PLT-01 · 합성 공장 A'),
+    ).toBeInTheDocument();
   });
 
   /** 빈 축은 「고르지 않음」이 아니라 그 축 전체를 뜻하는 **고른 값**이다. */
@@ -158,14 +163,14 @@ describe('DataScopePane', () => {
   it('고친 것이 없으면 저장이 비활성이고 사유 문구는 내지 않는다', () => {
     renderPane();
 
-    expect(screen.getByRole('button', { name: '범위 저장' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
     expect(screen.queryByText(/저장은 변경된 내용이 있을 때/)).not.toBeInTheDocument();
   });
 
   it('고친 것이 있으면 저장과 취소를 누를 수 있다', async () => {
     const { props, user } = renderPane({ isDirty: true });
 
-    await user.click(screen.getByRole('button', { name: '범위 저장' }));
+    await user.click(screen.getByRole('button', { name: '저장' }));
     await user.click(screen.getByRole('button', { name: '취소' }));
 
     expect(props.onSave).toHaveBeenCalledTimes(1);

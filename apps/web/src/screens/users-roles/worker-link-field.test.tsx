@@ -107,7 +107,8 @@ describe('WorkerLinkField', () => {
     expect(await screen.findByText(t.linked)).toBeInTheDocument();
     expect(screen.getByText('합성 작업자')).toBeInTheDocument();
     expect(await screen.findByText('합성 부서')).toBeInTheDocument();
-    expect(screen.getByText(t.hintLinked)).toBeInTheDocument();
+    // 연결된 뒤에는 안내 문구를 두지 않는다(반복 안내 · 사용자 지시 2026-11-20).
+    expect(screen.queryByText(t.hintUnlinked)).not.toBeInTheDocument();
     expect(await screen.findByText(t.linkedToast('SYN-W-01 · 합성 작업자'))).toBeInTheDocument();
   });
 

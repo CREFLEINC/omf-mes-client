@@ -50,7 +50,7 @@ export interface UserFilterBarProps {
 
 /**
  * 위 조회 카드 — 수입검사 화면의 검색 묶음과 같은 자리(omf-all-around#333).
- * 소속 부서 · 검색창 · 사용 중지 계정 포함 · [조회][초기화] | [+ 사용자 추가] 를 한 줄에(사용자 지시 2026-11-20).
+ * 소속 부서 · 검색창 · 사용 중지 계정 포함 · [조회][초기화] … [+ 사용자 추가](오른쪽 끝) 를 한 줄에(사용자 지시 2026-11-20).
  * 재직 상태는 탭 줄 오른쪽 칩이 맡는다(수입검사의 상태 칩과 같다) — 조회·초기화는 걸린 칩을 그대로 둔다.
  */
 export const UserFilterBar = ({
@@ -93,10 +93,11 @@ export const UserFilterBar = ({
     <>
       {optionsNotice}
       <div className="filter-bar users-roles-filter-row">
-        {/* 규범 3-2 — 「SYN-DEPT-01 · 합성 부서 A」는 트리거 폭에 갇혀 잘린다. */}
+        {/* 부서 고르개는 이름이 들어가는 만큼만 — 넓은 칸(`wide`)은 빈 공간이 커서 뺐다(사용자 지시 2026-11-20 · #333). */}
         <SelectField
           label={t.filters.department}
-          wide
+          className="users-roles-department-select"
+          searchPlaceholder={t.filters.departmentSearchPlaceholder}
           options={[{ value: '', label: t.filters.departmentAll }, ...departmentOptions]}
           value={draft.departmentId}
           onChange={(value) => setDraft((prev) => ({ ...prev, departmentId: value }))}
@@ -134,10 +135,10 @@ export const UserFilterBar = ({
           </Button>
         </div>
 
-        {/* 다른 화면의 추가 단추와 같은 모양 — 구분선 뒤 채운 단추 + 더하기 아이콘(사용자 지시 2026-11-20). */}
-        <span className="inspection-standard-filter-divider" aria-hidden />
+        {/* 다른 화면의 추가 단추와 같은 모양(채운 단추 + 더하기 아이콘) — 구분선 없이 줄 오른쪽 끝(사용자 지시 2026-11-20). */}
         <Button
           variant="filled"
+          className="users-roles-add-user"
           leadingIcon={<Icon name="add" size={18} />}
           disabled={isCreating}
           onClick={onAddUser}
@@ -190,6 +191,16 @@ export interface UserListPaneProps {
 }
 
 /** 값이 없는 칸을 비워 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
+/*
+ * 재직 상태 라벨 색 — 초기 시드 세 값만 색을 정하고, 고객이 늘린 값은 중립색이다(값 목록은 고정하지 않는다).
+ * 표 안에서 상태가 한눈에 갈리도록 라벨로 낸다(사용자 지시 2026-11-20 · #333).
+ */
+const STATUS_TONE: Record<string, 'success' | 'warning' | 'idle'> = {
+  EMPLOYED: 'success',
+  ON_LEAVE: 'warning',
+  RESIGNED: 'idle',
+};
+
 const orEmptyMark = (value: string): string => (value === '' ? t.values.empty : value);
 
 /**
@@ -261,7 +272,14 @@ export const UserListPane = ({
       align: 'center',
       header: t.user.fields.status,
       width: '112px',
-      render: (row) => (row.statusCode === '' ? orEmptyMark('') : statusNameOf(row.statusCode)),
+      render: (row) =>
+        row.statusCode === '' ? (
+          orEmptyMark('')
+        ) : (
+          <Chip variant="status" size="sm" status={STATUS_TONE[row.statusCode] ?? 'idle'}>
+            {statusNameOf(row.statusCode)}
+          </Chip>
+        ),
     },
   ];
   /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(다른 목록과 같다 · 사용자 지시 2026-11-20). */
@@ -285,6 +303,11 @@ export const UserListPane = ({
         <EmptyState
           size="sm"
           live
+          icon={
+            <span className="inspection-standard-empty-icon">
+              <Icon name="last_page" size={20} />
+            </span>
+          }
           title={t.empty.beyondLastTitle}
           description={t.empty.beyondLastDescription}
           action={
@@ -301,6 +324,11 @@ export const UserListPane = ({
         <EmptyState
           size="sm"
           live
+          icon={
+            <span className="inspection-standard-empty-icon">
+              <Icon name="search_off" size={20} />
+            </span>
+          }
           title={t.user.empty.noMatchTitle}
           description={t.user.empty.noMatchDescription}
           action={
@@ -316,6 +344,11 @@ export const UserListPane = ({
       <EmptyState
         size="sm"
         live
+        icon={
+          <span className="inspection-standard-empty-icon">
+            <Icon name="group" size={20} />
+          </span>
+        }
         title={t.user.empty.noneTitle}
         description={t.user.empty.noneDescription}
       />
@@ -337,12 +370,13 @@ export const UserListPane = ({
     return (
       <>
         {/*
+         * `inspection-queue-table` — 수입검사 목록과 같은 머리 · 칸 가운데 정렬(열 손잡이가 있어도 이름이 칸 가운데).
          * 고른 줄 표시는 `app.css` 의 `.users-roles-list` 가 그린다 — `Table` 이 행 선택 표시를 주지 않는다.
          * 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 단추로 넘긴다(수입검사 목록과 같다).
          */}
         <div
           ref={fit.ref}
-          className="users-roles-list"
+          className="users-roles-list inspection-queue-table"
           style={resizable.style}
           onClick={(event) => {
             const target = event.target as Element;

@@ -139,7 +139,7 @@ describe('RoleAssignPane', () => {
   it('고친 것이 없으면 저장이 비활성이고 사유 문구는 내지 않는다', () => {
     renderPane();
 
-    const save = screen.getByRole('button', { name: '역할 저장' });
+    const save = screen.getByRole('button', { name: '저장' });
 
     expect(save).toBeDisabled();
     expect(screen.queryByText(/저장은 변경된 내용이 있을 때/)).not.toBeInTheDocument();
@@ -148,7 +148,7 @@ describe('RoleAssignPane', () => {
   it('고친 것이 있으면 저장과 취소를 누를 수 있다', async () => {
     const { props, user } = renderPane({ isDirty: true });
 
-    await user.click(screen.getByRole('button', { name: '역할 저장' }));
+    await user.click(screen.getByRole('button', { name: '저장' }));
     await user.click(screen.getByRole('button', { name: '취소' }));
 
     expect(props.onSave).toHaveBeenCalledTimes(1);

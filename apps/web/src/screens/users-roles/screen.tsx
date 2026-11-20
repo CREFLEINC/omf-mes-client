@@ -569,8 +569,16 @@ export const UsersRolesScreen = () => {
     });
   };
 
+  /* 고른 줄을 다시 누르면 선택이 풀린다(수입검사 목록과 같다 · 사용자 지시 2026-11-20 · #333). */
   const selectUser = (appUserId: number) => {
-    if (appUserId === selectedAppUserId) return;
+    if (appUserId === selectedAppUserId) {
+      leaveSafely(() => {
+        patchSearchParams((next) => {
+          applySelection(next, { kind: 'none' });
+        });
+      });
+      return;
+    }
 
     leaveSafely(() => {
       openUser(appUserId);
@@ -1062,6 +1070,13 @@ export const UsersRolesScreen = () => {
     activeUserWrite.write(formState.values);
   };
 
+  /** 수정 취소는 **서버를 부르지 않는다** — 초안을 기준값으로 되돌릴 뿐이다. */
+  const handleCancelUserEdit = () => {
+    setUserFieldErrors({});
+    userWrite.reset();
+    setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
+  };
+
   const handleToggleRole = (roleId: number) => {
     setRoleAssignState((prev) =>
       prev === null ? prev : { ...prev, selected: toggleRoleId(prev.selected, roleId) },
@@ -1144,6 +1159,35 @@ export const UsersRolesScreen = () => {
   const handleCancelDataScopes = () => {
     dataScopeWrite.reset();
     setDataScopeState((prev) => (prev === null ? prev : { ...prev, drafts: prev.baseline }));
+  };
+
+  /*
+   * 사용자 설정 카드 아래 [취소][저장] 한 줄(사용자 지시 2026-11-20 · omf-all-around#333).
+   *
+   * 저장 길은 셋 그대로다(낙관적 잠금이 있는 정보 수정 · 역할 치환 · 범위 치환) — **고친 구역만** 보낸다.
+   * 정보에 화면이 잡을 오류가 있으면 **아무것도 보내지 않는다** — 일부만 나가는 일을 줄인다. 그래도 서버가 한 구역만
+   * 거부할 수 있다: 그 구역의 배너가 서고 고친 값이 남아, 다시 누르면 남은 구역만 다시 나간다.
+   */
+  const isSettingsDirty = isUserDirty || isRoleAssignDirty || isDataScopeDirty;
+  const isSettingsSaving =
+    userWrite.isSaving || roleAssignWrite.isSaving || dataScopeWrite.isSaving;
+
+  const handleSaveAll = () => {
+    if (isUserDirty && formState !== null) {
+      const errors = validateUserForm(formState.values, 'edit');
+      setUserFieldErrors(errors);
+      if (Object.keys(errors).length > 0) return;
+    }
+
+    if (isUserDirty && formState !== null) activeUserWrite.write(formState.values);
+    if (isRoleAssignDirty) handleSaveRoleAssign();
+    if (isDataScopeDirty) handleSaveDataScopes();
+  };
+
+  const handleCancelAll = () => {
+    handleCancelUserEdit();
+    handleCancelRoleAssign();
+    handleCancelDataScopes();
   };
 
   /* ── 역할·권한 탭의 조작 ────────────────────────────────────────────────── */
@@ -1326,13 +1370,9 @@ export const UsersRolesScreen = () => {
         isDeactivateDisabled={userDetail.data.appUser.isActive === false}
         isDirty={isUserDirty}
         isSaving={userWrite.isSaving}
-        onSave={handleSaveUser}
-        onCancel={() => {
-          setUserFieldErrors({});
-          userWrite.reset();
-          // 취소는 **서버를 부르지 않는다** — 초안을 기준값으로 되돌릴 뿐이다.
-          setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
-        }}
+        onSave={handleSaveAll}
+        onCancel={handleCancelUserEdit}
+        showActions={false}
         onDeactivate={() => {
           userDeactivateWrite.reset();
           setIsDeactivateOpen(true);
@@ -1404,6 +1444,7 @@ export const UsersRolesScreen = () => {
         onToggle={handleToggleRole}
         onSave={handleSaveRoleAssign}
         onCancel={handleCancelRoleAssign}
+        showActions={false}
       />
     );
   };
@@ -1443,26 +1484,9 @@ export const UsersRolesScreen = () => {
           changeDataScopeDrafts((drafts) => removeDataScopeDraft(drafts, draftId));
         }}
         onSave={handleSaveDataScopes}
+        showActions={false}
         onCancel={handleCancelDataScopes}
       />
-    );
-  };
-
-  /**
-   * 오른쪽 카드 머리 — 고른 사용자의 이름과 로그인 아이디(omf-all-around#333). 아래 구역이 모두 이 사용자의
-   * 설정임을 한 번에 밝힌다. 등록 중이면 「사용자 추가」, 고르기 전·불러오는 중이면 「사용자 설정」.
-   */
-  const renderSettingsHead = (): ReactNode => {
-    const appUser = isCreatingUser ? undefined : userDetail.data?.appUser;
-    const isShown = appUser !== undefined && selectedAppUserId !== null;
-
-    return (
-      <div className="users-roles-settings-head">
-        <h2 className="pane-title">
-          {isCreatingUser ? t.actions.addUser : isShown ? appUser.userName : t.panes.userSettings}
-        </h2>
-        {isShown && <span className="users-roles-settings-sub">{appUser.loginId}</span>}
-      </div>
     );
   };
 
@@ -1537,22 +1561,58 @@ export const UsersRolesScreen = () => {
 
         <section className="pane users-roles-settings" aria-label={t.panes.userSettings}>
           {!isCreatingUser && selectedAppUserId === null ? (
-            <EmptyState
-              size="sm"
-              icon={
-                <span className="inspection-standard-empty-icon">
-                  <Icon name="person" size={20} />
-                </span>
-              }
-              title={t.pickUser.title}
-              description={t.pickUser.hint}
-            />
+            /*
+             * 빈 상세 — 수입검사 상세와 같은 아이콘 + 제목 + 보조 문구. 목록이 비었으면 「고르라」 대신
+             * 고를 사용자가 없다는 것을 말한다(사용자 지시 2026-11-20 · #333).
+             */
+            userList.data !== undefined && users.length === 0 ? (
+              <EmptyState
+                size="sm"
+                icon={
+                  <span className="inspection-standard-empty-icon">
+                    <Icon name="person_search" size={20} />
+                  </span>
+                }
+                title={t.pickUser.noUsersTitle}
+                description={t.pickUser.noUsersHint}
+              />
+            ) : (
+              <EmptyState
+                size="sm"
+                icon={
+                  <span className="inspection-standard-empty-icon">
+                    <Icon name="person" size={20} />
+                  </span>
+                }
+                title={t.pickUser.title}
+                description={t.pickUser.hint}
+              />
+            )
           ) : (
             <>
-              {renderSettingsHead()}
               {renderUserFormPane()}
               {renderRoleAssignPane()}
               {renderDataScopePane()}
+              {/* 수정에서만 — 등록은 정보 칸 하나라 그 칸의 [취소][사용자 추가]가 곧 아래 줄이다. */}
+              {!isCreatingUser && userDetail.data !== undefined && (
+                <div className="form-actions users-roles-settings-actions">
+                  <Button
+                    variant="outlined"
+                    disabled={!isSettingsDirty || isSettingsSaving}
+                    onClick={handleCancelAll}
+                  >
+                    {messages.common.cancel}
+                  </Button>
+                  {/* 규범 4(비활성 사유 상시 표시)의 예외 — 사용자 지시 2026-09-18: 저장 사유 문구를 내지 않는다. */}
+                  <Button
+                    disabled={!isSettingsDirty || isSettingsSaving}
+                    loading={isSettingsSaving}
+                    onClick={handleSaveAll}
+                  >
+                    {messages.common.save}
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </section>
@@ -1801,7 +1861,13 @@ export const UsersRolesScreen = () => {
         <Dialog
           open
           size="sm"
-          title={t.discard.title}
+          title={
+            /* 경고 아이콘 + 제목(사용자 시안 2026-11-20 · #333). */
+            <span className="users-roles-discard-title">
+              <Icon name="warning" size={22} aria-hidden />
+              {t.discard.title}
+            </span>
+          }
           onClose={() => {
             setPendingLeave(null);
           }}
@@ -1829,7 +1895,7 @@ export const UsersRolesScreen = () => {
             </>
           }
         >
-          <p>{messages.common.discardChangesConfirm}</p>
+          <p>{t.discard.body}</p>
         </Dialog>
       )}
 

@@ -1,4 +1,4 @@
-import { Button, TextField } from '@crefle/web-ui';
+import { Button, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
@@ -7,6 +7,13 @@ import { SelectField } from './select-field';
 import type { SelectOption, UserFormValues } from './types';
 
 const t = messages.usersRoles;
+
+/*
+ * 필수인데 비어 있는 칸 — 빨간 테두리(사용자 지시 2026-11-20 · #333). DS 입력칸에 「비었음」 상태가 없어 칸 껍데기에
+ * 클래스를 걸고 안의 상자에 오류색 테두리를 덧그린다(공정 라우팅 화면과 같은 방식). 공백만 넣은 것도 빈 칸이다.
+ */
+const requiredEmptyClass = (value: string): string | undefined =>
+  value.trim() === '' ? 'users-roles-required-empty' : undefined;
 
 export type UserFormMode = 'create' | 'edit';
 
@@ -29,6 +36,10 @@ export interface UserFormPaneProps {
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;
+  /**
+   * 이 칸의 [취소][저장] 줄을 그릴지. 사용자 설정 카드는 아래에 한 줄만 두므로 끈다(사용자 지시 2026-11-20 · #333).
+   */
+  showActions?: boolean;
   onDeactivate: () => void;
   /** 비밀번호 초기화 확인 창을 연다. 수정 모드에서만 쓴다. */
   onResetPassword: () => void;
@@ -40,29 +51,34 @@ export interface UserFormPaneProps {
 const ValueField = ({
   label,
   value,
-  note,
+  lockedLabel,
   className,
 }: {
   label: string;
   value: string;
-  note: string;
+  /** 칸 이름 오른쪽의 짧은 라벨(「변경 불가」). */
+  lockedLabel: string;
   className: string;
 }) => {
   const labelId = useId();
-  const noteId = useId();
+  const lockedId = useId();
 
   return (
     <div className={`field-cell ${className}`}>
-      <span id={labelId} className="field-label">
-        {label}
+      <span className="field-label users-roles-locked-label">
+        <span id={labelId}>{label}</span>
+        {/* 칸 이름 오른쪽 「변경 불가」 라벨 — 기준정보 화면의 잠긴 코드 안내와 같은 모양(사용자 지시 2026-11-20 · #333). */}
+        <span
+          id={lockedId}
+          className="iqc-inspection-action-note inspection-standard-label-hint"
+          data-tone="info"
+        >
+          {lockedLabel}
+        </span>
       </span>
       {/* 입력칸이 아님을 읽기 쉬운 채로 보인다 — 흐린 비활성 입력칸으로 그리면 값이 잘 안 읽힌다. */}
-      <p className="readonly-value" aria-labelledby={labelId} aria-describedby={noteId}>
+      <p className="readonly-value" aria-labelledby={labelId} aria-describedby={lockedId}>
         {value}
-      </p>
-      {/* 「바꿀 수 없다」는 값 아래에 둔다(omf-all-around#333) — 라벨 옆에 두면 라벨 줄이 길어져 옆 칸과 어긋난다. */}
-      <p id={noteId} className="field-note readonly-value-note">
-        {note}
       </p>
     </div>
   );
@@ -99,6 +115,7 @@ export const UserFormPane = ({
   isSaving,
   onSave,
   onCancel,
+  showActions = true,
   onDeactivate,
   onResetPassword,
   workerField,
@@ -131,6 +148,7 @@ export const UserFormPane = ({
               variant="outlined"
               size="sm"
               className="app-button-neutral"
+              leadingIcon={<Icon name="key" size={18} />}
               onClick={onResetPassword}
             >
               {t.actions.resetPassword}
@@ -139,6 +157,7 @@ export const UserFormPane = ({
               variant="outlined"
               size="sm"
               disabled={isDeactivateDisabled}
+              leadingIcon={<Icon name="person_off" size={18} />}
               onClick={onDeactivate}
             >
               {messages.common.deactivate}
@@ -165,6 +184,7 @@ export const UserFormPane = ({
             <TextField
               id={loginIdId}
               value={values.loginId}
+              containerClassName={requiredEmptyClass(values.loginId)}
               /*
                * ⛔ **아래 비밀번호 칸이 생기면서 이 줄이 필요해졌다.** 두 칸을 나란히 두면
                *    브라우저가 「아이디 + 비밀번호」를 **이 출처의 자격증명 쌍**으로 읽고 저장을
@@ -186,7 +206,7 @@ export const UserFormPane = ({
             className="urf-login"
             label={t.user.fields.loginId}
             value={values.loginId}
-            note={t.actionReasons.loginIdLocked}
+            lockedLabel={t.user.loginIdLocked}
           />
         )}
 
@@ -226,6 +246,7 @@ export const UserFormPane = ({
                */
               autoComplete="new-password"
               value={values.password}
+              containerClassName={requiredEmptyClass(values.password)}
               onChange={(event) => onChange({ password: event.target.value })}
               error={fieldErrors.password}
               aria-required
@@ -238,6 +259,7 @@ export const UserFormPane = ({
           <TextField
             id={userNameId}
             value={values.userName}
+            containerClassName={requiredEmptyClass(values.userName)}
             onChange={(event) => onChange({ userName: event.target.value })}
             error={fieldErrors.userName}
             aria-required
@@ -252,6 +274,7 @@ export const UserFormPane = ({
           className="urf-dept"
           label={t.user.fields.department}
           wide
+          searchPlaceholder={t.filters.departmentSearchPlaceholder}
           options={departmentOptions}
           value={values.departmentId}
           onChange={(value) => onChange({ departmentId: value })}
@@ -300,23 +323,25 @@ export const UserFormPane = ({
         />
       </div>
 
-      <div className="form-actions">
-        {/*
-         * 등록에서 「취소」는 **폼을 닫는 것**이라 고친 것이 없어도 눌러야 한다.
-         * 수정에서는 **기준값으로 되돌리는 것**이라 고친 것이 있을 때만 의미가 있다.
-         */}
-        <Button variant="outlined" disabled={mode === 'edit' && !isDirty} onClick={onCancel}>
-          {messages.common.cancel}
-        </Button>
+      {showActions && (
+        <div className="form-actions">
+          {/*
+           * 등록에서 「취소」는 **폼을 닫는 것**이라 고친 것이 없어도 눌러야 한다.
+           * 수정에서는 **기준값으로 되돌리는 것**이라 고친 것이 있을 때만 의미가 있다.
+           */}
+          <Button variant="outlined" disabled={mode === 'edit' && !isDirty} onClick={onCancel}>
+            {messages.common.cancel}
+          </Button>
 
-        {/*
-         * 규범 4(비활성 사유 상시 표시)의 예외 — 사용자 지시 2026-09-18: 이 화면의 「저장」·
-         * 「사용자 추가」 사유 문구를 내지 않는다. 고친 것이 없으면 비활성인 조건은 그대로다.
-         */}
-        <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
-          {saveLabel}
-        </Button>
-      </div>
+          {/*
+           * 규범 4(비활성 사유 상시 표시)의 예외 — 사용자 지시 2026-09-18: 이 화면의 「저장」·
+           * 「사용자 추가」 사유 문구를 내지 않는다. 고친 것이 없으면 비활성인 조건은 그대로다.
+           */}
+          <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
+            {saveLabel}
+          </Button>
+        </div>
+      )}
 
       {/* 연결된 현장 작업자 — 상세 정보의 하위 구역. 연결·변경·해제는 각자 바로 저장된다(「정보 저장」과 무관). */}
       {mode === 'edit' && workerField}

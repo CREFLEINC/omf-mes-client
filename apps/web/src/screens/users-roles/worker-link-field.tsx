@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Chip, Dialog, TextField, useToast } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, Dialog, Icon, TextField, useToast } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -193,8 +193,13 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
               {isLinked ? (
                 <>
                   <strong>{linkedName}</strong>
+                  {/* 사번 | 부서 코드 | 부서 이름 — 세로 막대로 나눈다(사용자 시안 2026-11-20 · #333). */}
                   <span className="users-roles-worker-link-meta">{linkedNo}</span>
-                  <span className="users-roles-worker-link-meta">{department}</span>
+                  {department.split(' · ').map((part) => (
+                    <span key={part} className="users-roles-worker-link-meta">
+                      {part}
+                    </span>
+                  ))}
                 </>
               ) : (
                 <span>{t.none}</span>
@@ -207,6 +212,7 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
                     variant="outlined"
                     size="sm"
                     className="app-button-neutral"
+                    leadingIcon={<Icon name="manage_accounts" size={18} />}
                     onClick={() => {
                       openPick('change');
                     }}
@@ -214,9 +220,10 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
                     {t.change}
                   </Button>
                   <Button
-                    variant="text"
+                    variant="outlined"
                     size="sm"
                     className="app-button-neutral"
+                    leadingIcon={<Icon name="link_off" size={18} />}
                     onClick={() => {
                       write.reset();
                       setIsUnlinkOpen(true);
@@ -238,9 +245,14 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
               )}
             </div>
           </div>
-          <p className="field-note users-roles-worker-link-hint">
-            {isLinked ? t.hintLinked : t.hintUnlinked}
-          </p>
+          {/* 연결됐을 때의 안내는 두지 않는다 — 반복 안내(사용자 지시 2026-11-20 · #333). */}
+          {/* 안내는 정보 안내 줄 모양(사용자 지시 2026-11-20 · #333). */}
+          {!isLinked && (
+            <p className="iqc-inspection-action-note users-roles-worker-link-hint" data-tone="info">
+              <Icon name="info" size={14} aria-hidden />
+              {t.hintUnlinked}
+            </p>
+          )}
         </>
       )}
 

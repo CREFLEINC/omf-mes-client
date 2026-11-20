@@ -22,6 +22,8 @@ export interface SelectFieldProps {
    * **판단 기준은 코드값이 아니라 선택지 문구 길이다.**
    */
   wide?: boolean;
+  /** 펼친 목록 검색창의 흐린 문구(선택지가 많을 때만 검색창이 선다). */
+  searchPlaceholder?: string;
   /** 배치용 클래스(예: 폼 안에서 칸의 폭 비중). 칸 자신의 `field-cell` 에 덧붙는다. */
   className?: string;
 }
@@ -49,6 +51,7 @@ export const SelectField = ({
   error,
   placeholder,
   wide = false,
+  searchPlaceholder,
   className,
 }: SelectFieldProps) => {
   const id = useId();
@@ -76,6 +79,7 @@ export const SelectField = ({
         value={value === '' && !hasEmptyOption ? null : value}
         onChange={onChange}
         placeholder={placeholder}
+        {...(searchPlaceholder !== undefined ? { searchPlaceholder } : {})}
         disabled={disabled}
         invalid={error !== undefined}
         aria-required={required || undefined}

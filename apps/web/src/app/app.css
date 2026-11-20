@@ -2723,7 +2723,8 @@ h2:has(> .inspection-standard-dialog-title) {
  * 필수인데 비어 있는 입력칸 — 빨간 테두리(사용자 지시 · #231). 긴급 작업지시 화면과 같은 방식:
  * DS 입력칸에 「비었음」 상태가 없어 칸 껍데기(`containerClassName`)를 걸고 안의 상자에 DS 오류색 테두리를 덧그린다.
  */
-.routing-required-empty > div:has(input) {
+.routing-required-empty > div:has(input),
+.users-roles-required-empty > div:has(input) {
   box-shadow: inset 0 0 0 1px var(--semantic-error);
 }
 
@@ -13533,15 +13534,31 @@ a.erp-send-chips:focus-visible {
   margin-bottom: 0;
 }
 
-/* 한 줄 — 소속 부서 · 검색창 · 사용 중지 계정 포함 · 조회 · 초기화 | 사용자 추가. 부서 고르개는 문구가 잘리지 않는 폭, 「사용자 추가」는 줄 오른쪽 끝. */
+/* 한 줄 — 소속 부서 · 검색창 · 사용 중지 계정 포함 · 조회 · 초기화 … 사용자 추가(오른쪽 끝). 부서 고르개는 문구가 잘리지 않는 폭, 「사용자 추가」는 줄 오른쪽 끝. */
 .users-roles-filter-row {
   align-items: flex-end;
 }
 
 /* 검색창은 흐린 문구(「아이디 또는 이름을 입력하세요」)가 다 보이는 폭만 — 남는 폭까지 늘리지 않는다(사용자 지시 2026-11-20). */
+/* 소속 부서 — 「전체」·부서 이름이 들어가는 만큼만(사용자 지시 2026-11-20 · #333). */
+.users-roles-filter-row > .users-roles-department-select {
+  flex: 0 0 12rem;
+  width: 12rem;
+}
+
+/* 고르개 상자가 칸을 꽉 채운다 — 글자만큼 줄면 칸 오른쪽이 빈다. */
+.users-roles-department-select > :not(.field-label) {
+  width: 100%;
+  min-width: 0;
+}
+
 .users-roles-filter-row > .users-roles-search-input {
-  flex: 0 1 22rem;
-  min-width: 16rem;
+  flex: 0 0 17rem;
+  width: 17rem;
+}
+
+.users-roles-filter-row > .users-roles-add-user {
+  margin-left: auto;
 }
 
 .users-roles-filter-row > .field-cell-unlabeled,
@@ -13663,12 +13680,6 @@ a.erp-send-chips:focus-visible {
   font-weight: 600;
 }
 
-/* 읽기 전용 칸의 보조 안내 — 값 아래 한 줄(omf-all-around#333). */
-.readonly-value-note {
-  max-width: none;
-  margin: 0;
-}
-
 /* 입력칸이 아닌 값 — 옅은 바탕으로 «고칠 수 없는 칸»임을 보이되 글자는 흐리게 두지 않는다. */
 .readonly-value {
   box-sizing: border-box;
@@ -13728,30 +13739,15 @@ a.erp-send-chips:focus-visible {
 }
 
 /*
- * 오른쪽 한 카드 — 고른 사용자의 설정(omf-all-around#333). 머리(이름 · 아이디) 아래로 상세 정보 · 사용자 역할 ·
+ * 오른쪽 한 카드 — 고른 사용자의 설정(omf-all-around#333). 상세 정보 · 사용자 역할 ·
  * 데이터 접근 범위가 구분선으로만 나뉜다 — 구역마다 카드를 따로 세우지 않는다.
  */
 .users-roles-settings {
   display: grid;
   gap: var(--space-4);
+  /* 카드가 창 높이까지 늘어도 구역 사이가 벌어지지 않게 위에서부터 쌓는다. */
+  align-content: start;
   container-type: inline-size;
-}
-
-.users-roles-settings-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-1) var(--space-3);
-  padding-bottom: var(--space-3);
-  border-bottom: 1px solid var(--outline-variant);
-}
-
-.users-roles-settings-head > .pane-title {
-  margin: 0;
-}
-
-.users-roles-settings-sub {
-  color: var(--on-surface-variant);
 }
 
 .users-roles-settings > .pane {
@@ -13759,6 +13755,13 @@ a.erp-send-chips:focus-visible {
   border: 0;
   border-radius: 0;
   background: none;
+}
+
+/* 카드 아래 [취소][저장] 한 줄 — 위 구역들과 선으로 나눈다(사용자 지시 2026-11-20 · #333). */
+.users-roles-settings > .users-roles-settings-actions {
+  margin: 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
 }
 
 .users-roles-settings > .pane + .pane {
@@ -13777,9 +13780,46 @@ a.erp-send-chips:focus-visible {
   margin-bottom: var(--space-3);
 }
 
-.users-roles-scope-hint {
+/* 저장 안 한 변경 확인 창 제목 — 경고 아이콘 + 제목(사용자 시안 2026-11-20 · #333). */
+.users-roles-discard-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* 범위 창의 겹침 안내 — 안내 띠 모양, 본문과 같은 크기 글자(사용자 지시 2026-11-20 · #333). */
+.iqc-inspection-action-note.users-roles-dialog-note[data-tone] {
+  margin: var(--space-3) 0 0;
+  font: var(--type-label-lg);
+  font-weight: 400;
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+.users-roles-scope-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+}
+
+/* 표제 오른쪽 안내 — 표제 · 표 글자와 같은 크기(사용자 지시 2026-11-20 · #333). 안내 줄 공통 글자 규칙보다 무겁게 건다. */
+.users-roles-scope-title > .iqc-inspection-action-note.users-roles-scope-hint {
   max-width: none;
-  margin: 0 0 var(--space-3);
+  margin: 0;
+  font: var(--type-label-lg);
+  font-weight: 400;
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+/* 로그인 아이디 칸 이름 줄 — 「변경 불가」 라벨이 서도 옆 칸 이름 줄과 높이가 어긋나지 않게 줄 높이를 고정한다. */
+.users-roles-locked-label {
+  display: flex;
+  align-items: center;
+}
+
+.users-roles-locked-label > .inspection-standard-label-hint {
+  line-height: 1.2;
 }
 
 /*
@@ -13828,6 +13868,17 @@ a.erp-send-chips:focus-visible {
   color: var(--on-surface-variant);
 }
 
+/* 사번 | 부서 코드 | 부서 이름 — 사이에 옅은 세로 막대(사용자 시안 2026-11-20 · #333). */
+.users-roles-worker-link-meta + .users-roles-worker-link-meta::before {
+  content: "";
+  display: inline-block;
+  width: 1px;
+  height: 0.9em;
+  margin-right: var(--space-3);
+  vertical-align: -0.1em;
+  background: var(--outline-variant);
+}
+
 .users-roles-worker-link-actions {
   display: flex;
   flex-wrap: wrap;
@@ -13838,6 +13889,8 @@ a.erp-send-chips:focus-visible {
 .users-roles-worker-link-hint {
   max-width: none;
   margin: 0;
+  justify-self: start;
+  width: fit-content;
 }
 
 /*

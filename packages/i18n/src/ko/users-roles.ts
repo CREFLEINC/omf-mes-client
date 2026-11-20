@@ -34,9 +34,9 @@ export const usersRoles = {
     addRole: '역할 추가',
     resetPassword: '비밀번호 초기화',
     /* 저장 경로가 칸마다 따로라(정보 · 역할 · 범위) 무엇을 저장하는지 버튼에 적는다(omf-all-around#333). */
-    saveInfo: '정보 저장',
-    saveRoles: '역할 저장',
-    saveScopes: '범위 저장',
+    saveInfo: '저장',
+    saveRoles: '저장',
+    saveScopes: '저장',
   },
   /** 비활성 사유는 배치 규범 4의 문형을 따른다 — 그 컨트롤의 이름으로 시작한다. */
   actionReasons: {
@@ -48,7 +48,6 @@ export const usersRoles = {
      * 계약의 수정 요청 본문에 로그인 ID가 아예 없다 — 「언젠가 풀린다」가 아니라
      * 보낼 자리가 없다는 뜻이다. 그 사실을 그대로 밝힌다.
      */
-    loginIdLocked: '변경할 수 없습니다.',
     deactivateRoleAlreadyDone: '사용 중지는 이미 미사용인 역할에 다시 할 수 없습니다.',
     /* 주 액션의 이름이 모드마다 달라 사유도 갈린다 — 규범 4는 컨트롤 이름으로 시작하라고 정한다. */
     saveNoChanges: '저장은 변경된 내용이 있을 때 누를 수 있습니다.',
@@ -63,7 +62,7 @@ export const usersRoles = {
      * 화면이 다르게 세면 사용자가 만든 줄이 저장 시점에야 거부된다.
      */
     dataScopeDuplicate:
-      '확인은 이미 있는 범위와 겹치지 않을 때 누를 수 있습니다. 비운 축은 「(전체)」로 봅니다.',
+      '이미 등록된 접근 범위와 중복되지 않도록 선택해 주세요.',
   },
   /**
    * 사용 중지 확인 창.
@@ -115,6 +114,7 @@ export const usersRoles = {
     totalOnly: (total: number): string => `전체 ${String(total)}건`,
   },
   filters: {
+    departmentSearchPlaceholder: '소속 부서를 입력하세요',
     pane: '사용자 조회 조건',
     userSearchLabel: '사용자 검색',
     userSearchPlaceholder: '아이디 또는 이름을 입력하세요',
@@ -191,7 +191,9 @@ export const usersRoles = {
     },
     statusDefault: '기본값(재직)',
     /* 부서를 고르지 않은 상태. 계약이 널을 허용하므로 비우는 것이 정상 값이다. */
-    departmentNone: '지정하지 않음',
+    departmentNone: '미지정',
+    /** 로그인 아이디 칸 이름 오른쪽 라벨(omf-all-around#333). */
+    loginIdLocked: '변경 불가',
     empty: {
       noneTitle: '등록된 사용자가 없습니다',
       noneDescription: '「사용자 추가」로 첫 사용자를 등록하세요.',
@@ -374,11 +376,14 @@ export const usersRoles = {
     dialog: {
       addTitle: '접근 범위 추가',
       editTitle: '접근 범위 수정',
-      /* 확인이 저장이라고 오해하면 창을 닫고 화면을 떠난다. */
-      notSavedNotice: '확인하면 표에 반영됩니다. 변경사항을 적용하려면 「범위 저장」을 눌러주세요.',
+      addLead: '추가할 사업부와 공장을 선택하세요.',
+      allBusinessUnits: '모든 사업부',
+      allPlants: '모든 공장',
+      add: '추가',
+      apply: '변경 적용',
     },
     /** 서버 규칙 — 줄이 없으면 제한 없음, 줄마다 공장 > 사업부 순으로 가장 좁은 축 하나를 본다. */
-    hint: '범위를 정하면 그 사업부·공장의 자료만 볼 수 있습니다. 「(전체)」는 그 항목 전체입니다.',
+    hint: '선택한 사업부와 공장의 데이터에 접근할 수 있습니다.',
     empty: {
       none: '지정된 범위가 없습니다',
       /* 줄이 없으면 제한 없음 — 서버 `scopedPlantWhere`(대시보드 · 인계작업 알림 설정 등). */
@@ -399,12 +404,16 @@ export const usersRoles = {
   pickUser: {
     title: '사용자를 선택하세요.',
     hint: '선택한 사용자의 상세 정보 · 역할 · 데이터 접근 범위가 표시됩니다.',
+    /** 목록이 비었을 때 — 고를 사용자가 없다는 것을 먼저 말한다. */
+    noUsersTitle: '표시할 사용자가 없습니다.',
+    noUsersHint: '조회 조건을 바꾸거나 사용자를 추가하세요.',
   },
   /** 사용자를 바꾸거나 새로 추가할 때, 저장하지 않은 변경이 있으면 묻는다(omf-all-around#333). */
   discard: {
-    title: '저장하지 않은 변경이 있습니다',
+    title: '저장하지 않은 변경사항',
+    body: '변경사항을 저장하지 않고 나가시겠습니까?',
     keep: '계속 수정',
-    confirm: '변경 버리기',
+    confirm: '저장하지 않고 나가기',
   },
   workerLink: {
     title: '연결된 현장 작업자',
@@ -413,7 +422,6 @@ export const usersRoles = {
     none: '연결된 작업자가 없습니다.',
     /** 미연결일 때 한 줄 — 왜 연결해야 하는지 */
     hintUnlinked: '수입검사 판정을 저장하려면 작업자 사번을 연결해야 합니다.',
-    hintLinked: '검사 판정 시 연결된 작업자 정보로 기록됩니다.',
     noDepartment: '부서 없음',
     connect: '작업자 연결',
     change: '작업자 변경',

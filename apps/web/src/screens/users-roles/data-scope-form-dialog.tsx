@@ -1,10 +1,9 @@
-import { AlertBanner, Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
 import type { DataScopeDraft } from './data-scope-draft';
 import { dataScopeBlockMessage, dataScopeBlockReason } from './data-scope-validation';
-import { DisabledAction } from './disabled-action';
 import { SelectField } from './select-field';
 import type { SelectOption } from './types';
 
@@ -73,36 +72,27 @@ export const DataScopeFormDialog = ({
            * 사용자 지시 2026-09-18. 비활성 조건은 그대로다. 겹침 사유는 무엇이 겹치는지 알려야
            * 고칠 수 있어 남긴다.
            */}
-          {blockReason === null || blockReason === 'targetRequired' ? (
-            <Button
-              disabled={blockReason !== null}
-              onClick={() => {
-                onConfirm(values);
-              }}
-            >
-              {t.scope.actions.confirm}
-            </Button>
-          ) : (
-            <DisabledAction
-              variant="filled"
-              label={t.scope.actions.confirm}
-              reason={dataScopeBlockMessage(blockReason)}
-            />
-          )}
+          {/* 겹침 안내는 단추 밑이 아니라 고르는 칸 아래 안내 띠로 선다(사용자 시안 2026-11-20 · #333). */}
+          <Button
+            disabled={blockReason !== null}
+            onClick={() => {
+              onConfirm(values);
+            }}
+          >
+            {isNew ? t.scope.dialog.add : t.scope.dialog.apply}
+          </Button>
         </>
       }
     >
-      {/* 확인이 저장이라고 오해하면 창을 닫고 화면을 떠난다. */}
-      <div className="banner-slot">
-        <AlertBanner variant="info">{t.scope.dialog.notSavedNotice}</AlertBanner>
-      </div>
+      {/* 무엇을 고르는 창인지 한 줄로 — 추가 창에만(사용자 시안 2026-11-20 · #333). */}
+      {isNew && <p className="dialog-lead">{t.scope.dialog.addLead}</p>}
 
       <div className="form-grid">
         {/* 규범 3-2 — 「SYN-BU-01 · 합성 사업부 A」는 트리거 폭에 갇혀 잘린다. */}
         <SelectField
           label={t.scope.fields.businessUnit}
           wide
-          options={[{ value: '', label: t.scope.values.all }, ...businessUnitOptions]}
+          options={[{ value: '', label: t.scope.dialog.allBusinessUnits }, ...businessUnitOptions]}
           value={values.businessUnitId}
           onChange={(value) => {
             change({ businessUnitId: value });
@@ -112,13 +102,25 @@ export const DataScopeFormDialog = ({
         <SelectField
           label={t.scope.fields.plant}
           wide
-          options={[{ value: '', label: t.scope.values.all }, ...plantOptions]}
+          options={[{ value: '', label: t.scope.dialog.allPlants }, ...plantOptions]}
           value={values.plantId}
           onChange={(value) => {
             change({ plantId: value });
           }}
         />
       </div>
+
+      {/* 「사업부·공장 중 하나 이상」 사유는 내지 않는다(사용자 지시 2026-09-18). 겹침은 무엇을 고칠지 알려야 해 남긴다. */}
+      {blockReason !== null && blockReason !== 'targetRequired' && (
+        <p
+          className="iqc-inspection-action-note users-roles-dialog-note"
+          data-tone="info"
+          role="status"
+        >
+          <Icon name="info" size={16} aria-hidden />
+          {dataScopeBlockMessage(blockReason)}
+        </p>
+      )}
     </Dialog>
   );
 };

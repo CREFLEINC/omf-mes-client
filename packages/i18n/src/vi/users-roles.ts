@@ -37,9 +37,9 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     addUser: 'Thêm người dùng',
     addRole: 'Thêm vai trò',
     resetPassword: 'Đặt lại mật khẩu',
-    saveInfo: 'Lưu thông tin',
-    saveRoles: 'Lưu vai trò',
-    saveScopes: 'Lưu phạm vi',
+    saveInfo: 'Lưu',
+    saveRoles: 'Lưu',
+    saveScopes: 'Lưu',
   },
   /** 비활성 사유는 **그 컨트롤의 이름으로 시작한다**(배치 규범 4). 옮긴 말에서도 앞머리를 지킨다. */
   actionReasons: {
@@ -50,7 +50,6 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     statusLookupEmpty:
       'Chưa đăng ký tình trạng làm việc nào nên không chọn được tình trạng làm việc.',
     /** ⚠ 「언젠가 풀린다」가 아니라 **보낼 자리가 없다**는 뜻이다 — 그 사실 그대로 옮긴다. */
-    loginIdLocked: 'Tên đăng nhập không thể thay đổi.',
     deactivateRoleAlreadyDone: 'Ngừng sử dụng không làm lại được với vai trò đã ngừng dùng.',
     saveNoChanges: 'Lưu chỉ bấm được khi có nội dung đã sửa.',
     addRoleNoInput: 'Thêm vai trò chỉ bấm được khi đã nhập nội dung.',
@@ -58,7 +57,7 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
       'Xác nhận chỉ bấm được sau khi chọn ít nhất một trong đơn vị kinh doanh và nhà máy.',
     /** ⚠ 비운 축을 「(전체)」로 접어 판정한다 — 그 사실을 빼면 중복 사유가 설명되지 않는다. */
     dataScopeDuplicate:
-      'Xác nhận chỉ bấm được khi không trùng với phạm vi đã có. Trục để trống được coi là «(Tất cả)».',
+      'Hãy chọn sao cho không trùng với phạm vi truy cập đã đăng ký.',
   },
   /** ⛔ 참조 건수·배정 건수를 내지 않는다 — 화면이 낼 수 있는 건수가 그 뜻이 아니다. */
   dialog: {
@@ -92,6 +91,7 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     totalOnly: (total: number): string => `Tổng ${String(total)} mục`,
   },
   filters: {
+    departmentSearchPlaceholder: 'Nhập bộ phận',
     pane: 'Điều kiện tìm người dùng',
     userSearchLabel: 'Tìm người dùng',
     userSearchPlaceholder: 'Nhập tên đăng nhập hoặc tên',
@@ -146,6 +146,7 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     statusDefault: 'Mặc định (đang làm việc)',
     /** 부서를 고르지 않은 상태. 계약이 널을 허용하므로 **비우는 것이 정상 값이다.** */
     departmentNone: 'Không chỉ định',
+    loginIdLocked: 'Không thể đổi',
     empty: {
       noneTitle: 'Chưa đăng ký người dùng nào',
       noneDescription: 'Hãy đăng ký người dùng đầu tiên bằng «Thêm người dùng».',
@@ -266,10 +267,13 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     dialog: {
       addTitle: 'Thêm phạm vi truy cập',
       editTitle: 'Sửa phạm vi truy cập',
-      /** ⚠ 확인이 저장이라고 오해하면 창을 닫고 화면을 떠난다. */
-      notSavedNotice: 'Xác nhận thì phản ánh vào bảng. Để áp dụng thay đổi, hãy bấm «Lưu phạm vi».',
+      addLead: 'Chọn bộ phận kinh doanh và nhà máy cần thêm.',
+      allBusinessUnits: 'Tất cả bộ phận kinh doanh',
+      allPlants: 'Tất cả nhà máy',
+      add: 'Thêm',
+      apply: 'Áp dụng thay đổi',
     },
-    hint: 'Khi chỉ định phạm vi, chỉ xem được dữ liệu của bộ phận kinh doanh · nhà máy đó. «(Tất cả)» là toàn bộ mục đó.',
+    hint: 'Có thể truy cập dữ liệu của bộ phận kinh doanh và nhà máy đã chọn.',
     empty: {
       none: 'Chưa chỉ định phạm vi nào',
       noneDescription: 'Có thể xem dữ liệu của mọi nhà máy.',
@@ -283,11 +287,14 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
   pickUser: {
     title: 'Hãy chọn người dùng.',
     hint: 'Thông tin chi tiết · vai trò · phạm vi truy cập dữ liệu của người dùng được chọn sẽ hiển thị.',
+    noUsersTitle: 'Không có người dùng để hiển thị.',
+    noUsersHint: 'Hãy đổi điều kiện tìm kiếm hoặc thêm người dùng.',
   },
   discard: {
-    title: 'Có thay đổi chưa lưu',
+    title: 'Thay đổi chưa lưu',
+    body: 'Bạn có muốn rời đi mà không lưu thay đổi?',
     keep: 'Tiếp tục sửa',
-    confirm: 'Bỏ thay đổi',
+    confirm: 'Rời đi không lưu',
   },
   workerLink: {
     title: 'Người lao động đã liên kết',
@@ -295,7 +302,6 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     unlinked: 'Chưa liên kết',
     none: 'Chưa có người lao động được liên kết.',
     hintUnlinked: 'Để lưu phán định kiểm tra đầu vào, cần liên kết mã nhân viên.',
-    hintLinked: 'Khi phán định kiểm tra, sẽ được ghi nhận theo người lao động này.',
     noDepartment: 'Không có bộ phận',
     connect: 'Liên kết người lao động',
     change: 'Đổi người lao động',

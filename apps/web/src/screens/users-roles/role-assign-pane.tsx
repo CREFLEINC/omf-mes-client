@@ -19,6 +19,10 @@ export interface RoleAssignPaneProps {
   onToggle: (roleId: number) => void;
   onSave: () => void;
   onCancel: () => void;
+  /**
+   * 이 칸의 [취소][저장] 줄을 그릴지. 사용자 설정 카드는 아래에 한 줄만 두므로 끈다(사용자 지시 2026-11-20 · #333).
+   */
+  showActions?: boolean;
 }
 
 /**
@@ -45,6 +49,7 @@ export const RoleAssignPane = ({
   onToggle,
   onSave,
   onCancel,
+  showActions = true,
 }: RoleAssignPaneProps) => {
   const lockedNoteId = useId();
   const hasLocked = choices.some((choice) => choice.isLocked);
@@ -114,16 +119,18 @@ export const RoleAssignPane = ({
         </p>
       )}
 
-      <div className="form-actions">
-        <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
-          {messages.common.cancel}
-        </Button>
+      {showActions && (
+        <div className="form-actions">
+          <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
+            {messages.common.cancel}
+          </Button>
 
-        {/* 규범 4(비활성 사유 상시 표시)의 예외 — 사용자 지시 2026-09-18: 이 화면의 저장 사유 문구를 내지 않는다. */}
-        <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
-          {t.actions.saveRoles}
-        </Button>
-      </div>
+          {/* 규범 4(비활성 사유 상시 표시)의 예외 — 사용자 지시 2026-09-18: 이 화면의 저장 사유 문구를 내지 않는다. */}
+          <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
+            {t.actions.saveRoles}
+          </Button>
+        </div>
+      )}
     </section>
   );
 };
