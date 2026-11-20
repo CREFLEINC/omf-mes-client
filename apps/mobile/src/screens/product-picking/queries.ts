@@ -12,6 +12,7 @@ import { findLot } from '../../patterns/lots';
 import { runRequest } from '../../patterns/request';
 import {
   chooseLine,
+  onlyOutOfScope,
   type ShipmentLotPickResult,
   type ShipmentLotReplaceResult,
   type ShipmentRequest,
@@ -83,9 +84,10 @@ const writeLine = (
 
 /** 화면이 보내기 전에 가른 거절 — 서버에 묻지 않는다. */
 export class LocalPickRejection extends Error {
-  readonly reason: 'notFound' | 'noLine';
+  /** `outOfScope` — 그 품목 줄이 다른 공장 · 창고 줄뿐이다(피처 012 FR-010). */
+  readonly reason: 'notFound' | 'noLine' | 'outOfScope';
 
-  constructor(reason: 'notFound' | 'noLine') {
+  constructor(reason: 'notFound' | 'noLine' | 'outOfScope') {
     super(reason);
     this.name = 'LocalPickRejection';
     this.reason = reason;
@@ -134,7 +136,9 @@ export const usePickLot = (): UseMutationResult<ShipmentLotPickResult, Error, Pi
       const line = chooseLine(request.lines ?? [], lot.itemId);
 
       if (line === null) {
-        throw new LocalPickRejection('noLine');
+        throw new LocalPickRejection(
+          onlyOutOfScope(request.lines ?? [], lot.itemId) ? 'outOfScope' : 'noLine',
+        );
       }
 
       return runRequest(() =>

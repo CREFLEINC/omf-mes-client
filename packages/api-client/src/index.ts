@@ -9,6 +9,7 @@ export {
   normalizeApiError,
   type ApiError,
   type ConflictBlocker,
+  type ConflictWarehouse,
   type ConflictCause,
   type ErrorItem,
   type RejectedLot,

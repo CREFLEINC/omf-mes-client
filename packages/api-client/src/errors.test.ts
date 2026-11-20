@@ -180,6 +180,28 @@ describe('normalizeApiError', () => {
     );
   });
 
+  /* 피처 012 — 피킹 409 `LOT_NOT_IN_LINE_WAREHOUSE` 는 LOT 이 있는 창고들을 싣는다. 화면이 그 이름을 그린다. */
+  it('US2-5 409 충돌의 LOT 이 있는 창고(warehouses)를 남기고, 모양이 틀린 줄은 버린다', () => {
+    const result = normalizeApiError(409, {
+      code: 'LOT_NOT_IN_LINE_WAREHOUSE',
+      message: '이 지시서의 출고 창고에 없는 LOT 입니다.',
+      conflictCause: 'user',
+      warehouses: [
+        { warehouseId: 12, warehouseCode: 'WH-B', warehouseName: '완제품창고 B', plantId: 2, plantName: '2공장' },
+        { warehouseId: 13 },
+      ],
+    });
+
+    expect(result).toMatchObject({
+      kind: 'conflict',
+      code: 'LOT_NOT_IN_LINE_WAREHOUSE',
+      warehouses: [{ warehouseId: 12, warehouseName: '완제품창고 B', plantName: '2공장' }],
+    });
+    expect(normalizeApiError(409, { conflictCause: 'user', message: '' })).not.toHaveProperty(
+      'warehouses',
+    );
+  });
+
   it('봉투로 온 오류도 응답 코드를 지고 온다', () => {
     const invalid = normalizeApiError(400, {
       errors: [{ scope: 'screen', code: 'UNIQUE_VIOLATION', message: '이미 있는 값입니다.' }],
