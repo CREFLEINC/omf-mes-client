@@ -77,6 +77,7 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
     judgmentAccepted: 'Đạt',
     completionReady: 'Chờ hoàn tất',
     blocked: (count: number): string => `Bị chặn ${String(count)}`,
+    delayed: 'Trễ hạn',
     replacement: (count: number): string => `Thay LOT ${String(count)}`,
   },
   filters: {
@@ -146,8 +147,8 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
     codeLocked: 'Sau khi hoàn tất xuất hàng thì không thể sửa mã quản lý xuất hàng',
     noLotsBanner:
       'Chưa lấy LOT nào. Quét nhãn LOT ở PDA 「Lấy hàng thành phẩm」 thì LOT sẽ hiện ở đây.',
-    blockersTitle: (count: number): string =>
-      `Có ${String(count)} lý do khiến chưa thể hoàn tất xuất hàng`,
+    remainingTitle: (count: number): string =>
+      `Còn ${String(count)} việc trước khi hoàn tất xuất hàng`,
     blockers: {
       PICKING_SHORT: (lineNo: string): string =>
         `Lấy hàng chưa đủ: dòng ${lineNo}. Hãy quét thêm LOT ở màn hình PDA 「Lấy hàng thành phẩm」.`,
