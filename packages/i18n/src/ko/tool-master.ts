@@ -146,7 +146,7 @@ export const toolMaster = {
     /** 중지해도 그 툴이 남긴 실적은 그대로다 — 감추는 것과 지우는 것은 다르다. */
     deactivateImpact: '이 툴이 남긴 실적은 그대로 남고, 새로 고를 때만 목록에서 빠집니다.',
     deactivateNotReversibleHere:
-      '삭제하지 않습니다. 다만 이 화면에는 다시 켜는 수단이 없어, 되돌리려면 담당자에게 요청해야 합니다.',
+      '삭제되지는 않습니다. 다시 켜려면 담당자에게 요청하세요.',
     deactivateConfirm: '사용 중지',
     deactivateTarget: (label: string): string => `${label} 을(를) 사용 중지합니다.`,
     disposeTitle: '폐기 처리할까요?',
@@ -179,7 +179,7 @@ export const toolMaster = {
      * 판정 없이 버튼을 열면 이미 끝난 자산에도 눌리는 컨트롤이 된다. 시드가 들어오면
      * 이 잠금은 저절로 풀린다(설계 `omf-mes#182`).
      */
-    disposeUnavailable: '자산 상태 값 목록이 아직 준비되지 않아 폐기 처리를 할 수 없습니다.',
+    disposeUnavailable: '등록된 자산 상태가 없어 폐기할 수 없습니다.',
   },
   notes: {
     /**

@@ -140,7 +140,7 @@ export const inspectionStandard = {
      * 순서 컬럼에 유일 제약이 있어 행 단위 저장이 성립하지 않는다 —
      * 이 창의 확인은 표에만 반영되고 서버 반영은 「저장」 한 번뿐이다. 그 사실을 감추지 않는다.
      */
-    itemLocalNote: '확인 시 목록에 추가되며, 저장 후 최종 반영됩니다.',
+    itemLocalNote: '확인하면 목록에 추가되고, 저장해야 반영됩니다.',
     /* 칸마다 무엇을 넣을지 알린다(사용자 시안 · #196). */
     /* 등록 · 복사 창의 기준코드 — 비우면 서버가 QP-{YYYYMMDD}-{SEQ4}로 등록한다(omf-all-around#262). */
     planCodePlaceholder: '비우면 자동으로 등록됩니다',

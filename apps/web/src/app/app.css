@@ -24479,7 +24479,8 @@ main:has(> .oqc-inspection-panes) {
   margin: 0;
 }
 
-.iqc-skip-approval-turn-note {
+.iqc-skip-approval-turn-note,
+.approval-inbox-turn-note {
   margin: 0;
   text-align: right;
 }

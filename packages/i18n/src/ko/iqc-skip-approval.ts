@@ -48,7 +48,7 @@ export const iqcSkipApproval = {
    * **값이 오면 이 안내는 사라진다.** 안내를 남기면 화면이 거짓말을 한다.
    */
   typePendingNote:
-    '승인 유형 코드가 아직 정해지지 않아 이 화면은 내가 승인자인 요청을 모두 보입니다. 유형 열과 사유로 긴급 IQC 생략 건인지 확인하세요.',
+    '내가 승인할 요청이 모두 보입니다. 유형과 사유로 긴급 IQC 생략 건인지 확인하세요.',
   fields: {
     approvalRequestNo: '요청번호',
     approvalTypeCode: '승인 유형',
@@ -102,9 +102,9 @@ export const iqcSkipApproval = {
      * ①은 대상 자체가 열 화면이 없는 것이고, ②는 규약이 아직 정해지지 않은 것이며,
      * ③은 그 화면이 이 앱에 아직 없는 것이다. 한 문구로 뭉개면 셋을 구분할 수 없다.
      */
-    blockedNotOpenable: '열기: 이 대상은 열 수 있는 화면이 없습니다',
-    blockedNoScreenId: '열기: 이 대상을 여는 화면이 정해지지 않았습니다',
-    blockedUnmapped: '열기: 이 화면은 아직 관리웹에 없습니다',
+    blockedNotOpenable: '이 문서는 열어 볼 화면이 없습니다',
+    blockedNoScreenId: '이 문서를 열 화면이 정해지지 않았습니다',
+    blockedUnmapped: '이 문서를 열 화면이 아직 없습니다',
   },
   /**
    * 결재 진행. **여기 있는 값은 전부 서버가 준 것을 그대로 옮긴 것이다** —
@@ -220,7 +220,7 @@ export const iqcSkipApproval = {
      */
     commentRejectGuide: '반려할 때는 무엇을 고치면 되는지 적어 주세요',
     /** 전송 중 잠금 사유. 같은 잠금을 여러 컨트롤이 나눠 쓰므로 무엇이 도는 중인지 밝힌다. */
-    commentSendingReason: '결재 의견: 결재를 보내는 중입니다',
+    commentSendingReason: '결재를 보내는 중입니다',
     /**
      * **보내는 자리가 다시 본 결과.** 버튼이 이미 막지만, 확인 창이 열린 사이 값이 비면
      * 여기서 걸린다 — 서버 목이 공백만인 의견을 그대로 받아 주므로 막는 곳이 화면뿐이다.
@@ -230,9 +230,9 @@ export const iqcSkipApproval = {
     reject: '반려',
     /** 비활성 사유는 **그 컨트롤의 이름으로 시작한다**(배치 규범 4). */
     blockedNotMyTurn: (action: string): string =>
-      `${action}: 지금은 이 요청을 결재할 차례가 아닙니다`,
+      '지금은 결재할 차례가 아닙니다',
     /** 앞머리가 이미 어느 컨트롤의 사유인지 말하므로 뒤는 무엇이 모자란지만 말한다. */
-    blockedNoComment: (action: string): string => `${action}: 의견을 적어야 보낼 수 있습니다`,
+    blockedNoComment: (action: string): string => '의견을 적어 주세요',
     /**
      * **네트워크가 끊긴 갈래에만** 덧붙인다. 요청이 서버에 닿았는지 화면이 알 수 없고,
      * 다시 누르면 **새 요청으로 나가** 두 번 결재될 수 있다는 사실을 숨기지 않는다.
@@ -288,7 +288,7 @@ export const iqcSkipApproval = {
     /** 005 — 입하 중(마감 전) 입하 LOT 은 생략할 수 없다(FR-032 · 409). 무엇을 하면 풀리는지 함께. */
     /** 005 — 실행할 대표 자재 관리 LOT(`targetLotId`)이 오지 않았다. 무엇이 막혔고 누구에게 물을지. */
     noTargetLot:
-      '실행: 이 입하 LOT 의 자재 관리 LOT 을 확인하지 못해 실행할 수 없습니다. 화면을 새로 고쳐도 같으면 전산담당에게 문의하세요.',
+      '이 입하 LOT 의 자재 관리 LOT 을 확인하지 못해 실행할 수 없습니다. 새로 고쳐도 같으면 전산담당에게 문의하세요.',
     receivingTitle: '아직 입하 중인 입하 LOT 입니다',
     receiving: 'PDA 입하 마감에서 이 입하 LOT 을 먼저 마감한 뒤 다시 실행하세요.',
     /** 한 줄 압축형(#193) — OQC 생략 실행과 같은 짜임이다. */

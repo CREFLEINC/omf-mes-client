@@ -4729,7 +4729,7 @@ describe('CommonCodeScreen — 자격 편집과 저장 (C65~C68·C74)', () => {
 
     const dialog = screen.getByRole('dialog');
     await user.click(within(dialog).getByLabelText('자격 유형'));
-    await user.click(screen.getByRole('option', { name: /선택지 준비 중/ }));
+    await user.click(screen.getByRole('option', { name: '미정' }));
     await pickDate(user, within(dialog).getByLabelText('유효 시작'), '2026-08-01');
     await user.click(within(dialog).getByRole('button', { name: '확인' }));
 
@@ -6042,7 +6042,7 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
 
     expect(notice).toBeInTheDocument();
     /* 출구 한 문장 — 문면 조각으로 못박는다(위 주석). */
-    expect(notice).toHaveTextContent('반복되면 담당자에게 알려 주세요');
+    expect(notice).toHaveTextContent('담당자에게 알려 주세요');
     /* 「다시 시도하면 풀린다」는 공통 문구가 이 자원에는 서지 않는다. */
     expect(screen.queryByText(messages.save.staleToken)).not.toBeInTheDocument();
     expect(putRequests(requests)).toHaveLength(0);
@@ -6085,7 +6085,7 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
     );
 
     expect(notice).toBeInTheDocument();
-    expect(notice).toHaveTextContent('반복되면 담당자에게 알려 주세요');
+    expect(notice).toHaveTextContent('담당자에게 알려 주세요');
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(putRequests(requests)).toHaveLength(0);
   });

@@ -347,7 +347,7 @@ export const iqcInboundLot = {
     /* 확인 창(사용자 시안 2026-11-17 · omf-all-around#286) — 질문 제목 · 대상 · 「취소 시 변경 사항」 상자 · 안내 한 줄. */
     title: '판정을 수정하시겠습니까?',
     target: (inboundLotNo: string) => `대상 LOT: ${inboundLotNo}`,
-    changesHeading: '취소 시 변경 사항',
+    changesHeading: '취소하면 바뀌는 것',
     /* 변경 사항 상자 — LOT 묶음(LOT 수 · 품질 상태) · 결과 묶음(사용자 시안 2026-11-19 · omf-all-around#296). */
     lotsLabel: '자재 관리 LOT',
     lotsCount: (count: number) => `${count}개`,

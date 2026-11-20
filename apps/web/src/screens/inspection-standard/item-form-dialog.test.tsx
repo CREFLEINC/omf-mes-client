@@ -59,7 +59,7 @@ describe('ItemFormDialog — 표시', () => {
     renderDialog();
 
     expect(
-      screen.getByText('확인 시 목록에 추가되며, 저장 후 최종 반영됩니다.'),
+      screen.getByText('확인하면 목록에 추가되고, 저장해야 반영됩니다.'),
     ).toBeInTheDocument();
   });
 

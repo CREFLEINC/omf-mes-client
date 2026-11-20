@@ -104,7 +104,7 @@ export const productDisposalRequest = {
     partnerPlaceholder: '폐기 거래처를 선택하세요',
     partnerEmpty: '폐기 역할이 붙은 거래처가 없습니다',
     /** §6 — 역할 목록이 비어도 **자체 폐기로는 출고할 수 있다.** 막다른 길로 두지 않는다. */
-    partnerPending: '선택지가 준비되지 않았습니다. 자체 폐기로는 출고할 수 있습니다.',
+    partnerPending: '등록된 거래처가 없습니다. 자체 폐기로는 출고할 수 있습니다.',
     partnerFailed: '폐기 거래처를 불러오지 못했습니다',
     reasonLabel: '출고 사유',
     submit: '기타출고 처리',

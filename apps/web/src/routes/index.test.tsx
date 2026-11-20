@@ -1131,7 +1131,7 @@ describe('appRouter — Lot Status 현황·변경이력 조회의 진입 경로'
   it('그 주소로 들어가면 LOT 조회의 첫 상태가 선다', async () => {
     renderRoutedApp('/quality/lot-status', lotStatusRoutes());
 
-    expect(await screen.findByText('LOT 유형 기준값이 준비되지 않았습니다.')).toBeVisible();
+    expect(await screen.findByText('등록된 LOT 유형이 없습니다.')).toBeVisible();
     expect(hubTab('LOT 상태', 'LOT 현황')).toHaveAttribute('aria-current', 'page');
     /* 현재 상태 단추는 탭 막대 오른쪽, 배치 단추를 접은 「⋯」 왼쪽이다(사용자 2026-10-30 · 시안 A). */
     const hubActions = document.getElementById('hub-actions');

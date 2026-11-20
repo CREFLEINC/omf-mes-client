@@ -43,7 +43,7 @@ describe('QualificationFormDialog — 확인은 저장이 아니다 (C65)', () =
     const { onConfirm, user } = renderDialog();
 
     await user.click(screen.getByLabelText('자격 유형'));
-    await user.click(screen.getByRole('option', { name: /선택지 준비 중/ }));
+    await user.click(screen.getByRole('option', { name: '미정' }));
     await pickDate(user, screen.getByLabelText('유효 시작'), '2026-08-01');
     await user.click(screen.getByRole('button', { name: '확인' }));
 
@@ -57,7 +57,7 @@ describe('QualificationFormDialog — 확인은 저장이 아니다 (C65)', () =
 
 describe('QualificationFormDialog — 자리표시 (C73)', () => {
   /*
-   * 계약: 「공통코드 — 값 목록 미정 §8-5」. 값을 지어내지 않는다 — 자리표시 「선택지 준비 중」이 그 사실을 말하고,
+   * 계약: 「공통코드 — 값 목록 미정 §8-5」. 값을 지어내지 않는다 — 자리표시 「미정」이 그 사실을 말하고,
    * 칸 아래 「준비 중」 설명은 두지 않는다(관리웹 정리 시안 A).
    */
   it('자격 유형 선택지가 자리표시 하나뿐이고 칸 아래 안내를 두지 않는다', async () => {

@@ -444,7 +444,7 @@ export const stockAdjust = {
      * 거기다) — 조건도 문구도 복구도 그쪽에 갈라 두었다.
      */
     lineReferencesFailed:
-      '위치·품목·단위·자재 LOT 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',
+      '위치·품목·단위·자재 LOT 이름을 불러오지 못했습니다.',
     /**
      * 창고만 실패하는 갈래. **직접 등록은 창고를 고르는 것으로 시작하므로 여기서 막히면
      * 화면 전체가 막다른 길이 된다** — 그래서 복구 수단이 이 안내와 함께 선다.
@@ -459,7 +459,7 @@ export const stockAdjust = {
      * 이름을 풀 수 없다) — 넷을 말하면 그 하나는 이 구획에 있지도 않은 것을 가리키게 된다.
      */
     historyReferencesFailed:
-      '품목·단위·자재 LOT 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',
+      '품목·단위·자재 LOT 이름을 불러오지 못했습니다.',
   },
   /**
    * 확인 창 — **되돌릴 수 없는 조작 앞의 마지막 층**이다.
@@ -495,7 +495,7 @@ export const stockAdjust = {
      * 조작이 아니다. 그 사실을 적지 않으면 사용자가 이 창으로 등록이 취소된 줄 안다.
      */
     discardWhileSaving:
-      '보내는 중인 등록은 이 창이 되돌리지 않습니다. 서버가 받아들이면 조정 전표는 만들어집니다.',
+      '이미 보낸 등록은 취소되지 않습니다.',
     /**
      * 상신 확인 — **되돌릴 수 없는 둘째 조작 앞의 마지막 층**이다.
      *
@@ -538,7 +538,7 @@ export const stockAdjust = {
     inventoryAdjustmentNo: '조정 전표번호',
     statusCode: '등록 시점 상태',
     lineCount: (lineCount: number): string =>
-      `서버가 저장한 조정 라인은 ${String(lineCount)}행입니다.`,
+      `저장된 조정 줄은 ${String(lineCount)}줄입니다.`,
     erp: 'ERP 송신',
     erpQueued: '송신 대기열에 올랐습니다',
     erpNotQueued: '송신 대기열에 오르지 않았습니다',
@@ -625,7 +625,7 @@ export const stockAdjust = {
      * 200은 왔는데 **전기 시각이 실려 오지 않았다**(계약이 그 값을 nullable로 두었다).
      * 빈 자리로 두면 「불러오지 못한 것」처럼 보이고, 지어내면 없는 사실을 말하게 된다.
      */
-    adjustedAtUnknown: '서버가 전기 시각을 내려주지 않았습니다',
+    adjustedAtUnknown: '전기 시각이 없습니다',
     /** 전기 응답이 준 상태 코드 **그대로**. 등록 시점 상태와 **다른 값**이라 이름을 가른다 */
     statusAfterPost: '전기 뒤 상태',
     /**

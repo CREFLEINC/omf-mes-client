@@ -76,10 +76,10 @@ export const materialIssueRequest = {
     outsideBom: 'BOM 밖',
     outsideBomTitle: 'BOM 에 없는 품목이 있습니다',
     outsideBomCount: (count: number): string =>
-      `BOM 에 없는 품목이 ${String(count)}건 있습니다. 투입 시 오투입 검증에 걸릴 수 있습니다. 요청은 막지 않습니다.`,
+      `BOM 에 없는 품목이 ${String(count)}건 있습니다. 투입할 때 오투입으로 걸릴 수 있습니다.`,
     existingRequestsTitle: '이 W/O 앞으로 이미 발행된 요청이 있습니다',
     existingRequests: (count: number): string =>
-      `이 W/O 앞으로 발행된 요청이 ${String(count)}건 있습니다. 중복 요청을 막지는 않습니다 — 아래 목록을 확인한 뒤 진행하세요.`,
+      `이 W/O로 이미 발행한 요청이 ${String(count)}건 있습니다. 겹치지 않는지 아래 목록을 확인하세요.`,
     existingRequestRow: (issueRequestNo: string, statusCode: string, requiredAt: string): string =>
       `${issueRequestNo} · ${statusCode} · ${requiredAt}`,
     existingRequestsTruncated: '앞쪽 일부만 보입니다. 전체는 출고 요청 현황에서 확인하세요.',

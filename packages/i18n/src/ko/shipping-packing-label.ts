@@ -51,7 +51,7 @@ export const shippingPackingLabel = {
      * ⚠ 발행 현황 조회가 대상 유형 코드를 조건으로 받는데 그 값이 아직 확정되지 않았다.
      * 값이 서버와 다르면 이미 뽑은 것도 「없음」으로 보인다 — 감추지 않고 밝힌다.
      */
-    seqNotice: '회차와 최근 인쇄 결과는 서버 발행 이력을 기준으로 표시합니다.',
+    seqNotice: '회차와 최근 인쇄 결과는 발행 이력 기준입니다.',
     /** ⛔ 「없다」와 「아직 고르지 않았다」를 같은 모양으로 그리지 않는다(공유계약 G-9). */
     beforeKind: '라벨 종류를 선택해 주세요.',
     empty: '이 출하에는 아직 출하 단위가 없습니다. 「출하 단위 구성」에서 먼저 만드세요.',
@@ -77,7 +77,7 @@ export const shippingPackingLabel = {
     countUnit: '건',
     composingUnits: (count: number) => `구성 중인 출하 단위 ${String(count)}건`,
     reissueRequired: (count: number) =>
-      `${String(count)}건은 발행 기록이 있지만 인쇄 완료가 아니므로 아래 재출력 흐름에서 처리해야 합니다.`,
+      `${String(count)}건은 발행했지만 인쇄를 마치지 못했습니다. 아래에서 다시 출력하세요.`,
     complete: '현재 발행 가능한 누락 라벨이 없습니다.',
     loadFailed: '누락 라벨을 확인하지 못했습니다. 확인 전에는 발행하지 않습니다.',
     packingAction: '누락 포장 라벨 출력',

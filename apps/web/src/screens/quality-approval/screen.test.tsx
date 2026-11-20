@@ -2027,7 +2027,7 @@ describe('QualityApprovalScreen decision action', () => {
     const rendered = renderScreen(offline, '/quality/approvals?approvalRequestId=31');
     await confirmApproval(rendered.user, '합성 승인 사유');
     expect(await screen.findByText(messages.httpError.offline)).toBeInTheDocument();
-    expect(screen.getByText('서버 적용 여부를 확인할 수 없습니다')).toBeInTheDocument();
+    expect(screen.getByText('적용됐는지 확인하지 못했습니다')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '반려' })).toBeDisabled();
     let beforeReload = detailCalls;
     failDetailReload = true;

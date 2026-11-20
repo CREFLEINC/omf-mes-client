@@ -36,9 +36,9 @@ export const workOrderProgress = {
     all: '전체',
 
     /** L-3 — 비울 수 없다. 그래서 「왜 막혔나」가 아니라 「무엇을 채우면 되나」를 적는다. */
-    periodRequired: '조회: 기간을 채우세요. 시작일과 종료일이 모두 필요합니다.',
-    periodInvalid: '조회: 달력에 없는 날짜입니다. 다시 고르세요.',
-    periodReversed: '조회: 시작일이 종료일보다 뒤입니다. 두 날짜를 바꿔 주세요.',
+    periodRequired: '시작일과 종료일을 모두 고르세요.',
+    periodInvalid: '달력에 없는 날짜입니다. 다시 고르세요.',
+    periodReversed: '시작일이 종료일보다 뒤입니다. 두 날짜를 바꿔 주세요.',
 
     /**
      * ⛔ 넓은 기간을 **막지 않는다** — 넓게 봐야 하는 일이 실제로 있다. 느려질 수 있다는
@@ -50,7 +50,7 @@ export const workOrderProgress = {
      * G-1·G-2 — 선택지를 세울 수 없으면 **지우지 않고 끄고 이유를 적는다.** 조용히 사라지면
      * 「원래 없는 기능」으로 읽히고, 값이 채워지는 날에도 아무도 눈치채지 못한다.
      */
-    statusUnavailable: '상태 값 목록을 받지 못했습니다. 상태로는 아직 거를 수 없습니다.',
+    statusUnavailable: '상태 목록을 불러오지 못해 상태로 거를 수 없습니다.',
     lookupFailed: '선택지를 받지 못했습니다. 새로고침해 보세요.',
 
     /**
@@ -200,6 +200,6 @@ export const workOrderProgress = {
     label: (at: string): string => `기준 ${at}`,
     refresh: '새로고침',
     /** L-6 — 자동 갱신이 없으므로, 화면이 스스로 최신이 되지 않는다는 사실을 알린다. */
-    note: '이 화면은 자동으로 갱신되지 않습니다. 새로고침을 눌러 다시 조회하세요.',
+    note: '자동으로 갱신되지 않습니다. 새로고침을 눌러 다시 조회하세요.',
   },
 } as const;

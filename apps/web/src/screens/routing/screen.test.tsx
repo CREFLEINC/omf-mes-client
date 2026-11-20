@@ -1948,7 +1948,7 @@ describe('RoutingScreen — 공정 선후행 설정', () => {
 
     expect(
       await within(dialog).findByText(
-        '이 Rev는 이미 확정돼 선후행을 바꿀 수 없습니다. 목록을 새로 읽었습니다 — 바꾸려면 신규 Rev를 발행하세요.',
+        '이 Rev는 이미 확정돼 선후행을 바꿀 수 없습니다. 바꾸려면 「신규 Rev 발행」을 누르세요.',
       ),
     ).toBeInTheDocument();
     await waitFor(() => expect(within(dialog).queryByRole('combobox')).toBeNull());
@@ -2015,10 +2015,10 @@ describe('RoutingScreen — 공정 선후행 설정', () => {
     const dependencies = within(operationsRegion()).getByRole('button', { name: '공정 연결' });
     expect(dependencies).toBeDisabled();
     expect(dependencies).toHaveAccessibleDescription(
-      '공정 연결은 공정 2개 이상 등록 시 사용 가능합니다.',
+      '공정을 2개 이상 등록하면 공정 연결을 쓸 수 있습니다.',
     );
     expect(
-      within(operationsRegion()).getByText('공정 연결은 공정 2개 이상 등록 시 사용 가능합니다.'),
+      within(operationsRegion()).getByText('공정을 2개 이상 등록하면 공정 연결을 쓸 수 있습니다.'),
     ).toHaveClass('visually-hidden');
   });
 });

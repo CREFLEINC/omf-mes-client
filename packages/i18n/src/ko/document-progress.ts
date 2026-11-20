@@ -179,7 +179,7 @@ export const documentProgress = {
   },
   empty: {
     /** 문서 유형 표가 비어 주입된 예외 상태의 방어 문구. */
-    typesPendingTitle: '문서 유형 선택지가 준비 중입니다',
+    typesPendingTitle: '등록된 문서 유형이 없습니다',
     noDocumentTypeTitle: '문서 유형을 고르고 조회하세요',
     noResultTitle: '조건에 맞는 문서가 없습니다',
     beyondLastTitle: '이 쪽에는 결과가 없습니다',

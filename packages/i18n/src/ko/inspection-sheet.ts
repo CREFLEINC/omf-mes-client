@@ -203,7 +203,7 @@ export const inspectionSheet = {
     checked: '확인했습니다.',
     completed: '승인과 확인이 모두 되어 검사표가 완료됐습니다.',
     reopened: (label: string): string => `${label}했습니다. 검사표가 작성 중으로 돌아갔습니다.`,
-    noPermission: '권한이 없어 서명·승인·확인이 불가합니다.',
+    noPermission: '권한이 없어 서명·승인·확인을 할 수 없습니다.',
     permissionSettings: '권한 설정',
   },
 

@@ -26,7 +26,7 @@ export const warehouseLocation = {
   /** 창고 정보 탭(안 A, 사용자 결정 2026-10-30) — 위치 창과 같은 머리 · 정보 판 · Location 묶음. */
   warehouseInfo: {
     /** Location 묶음의 서버가 만든 위치 목록 — 접근성 이름. */
-    systemLocations: '서버가 만든 위치',
+    systemLocations: '자동으로 만든 위치',
   },
   /**
    * 창고 위치 코드(omf-all-around#292) — 그 창고의 모든 위치 코드 앞에 붙는다. 창고 추가가 무작위로 지어 채우고
@@ -196,7 +196,7 @@ export const warehouseLocation = {
     failure: (code: string, reason: string): string => `${code} — ${reason}`,
     retryRest: '남은 것 다시 만들기',
     renameFailed: (reason: string): string => `만들었지만 이름 맞추기 실패 — ${reason}`,
-    netFail: '서버에 닿지 못해 멈췄습니다.',
+    netFail: '연결이 끊겨 멈췄습니다.',
   },
   /** 목록 별칭 칸에서 바로 고치기(#267 FR-007) — 이름은 그대로, 별칭만 바로 저장한다. */
   aliasEdit: {

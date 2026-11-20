@@ -3180,7 +3180,7 @@ describe('InspectionStandardScreen — 검사 항목 편집', () => {
     await user.type(within(dialogNode).getByLabelText('항목코드'), 'SYN-ITEM-CODE-09');
     await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');
     expect(
-      within(dialogNode).getByText('확인 시 목록에 추가되며, 저장 후 최종 반영됩니다.'),
+      within(dialogNode).getByText('확인하면 목록에 추가되고, 저장해야 반영됩니다.'),
     ).toBeInTheDocument();
 
     await user.click(within(dialogNode).getByRole('combobox', { name: '검사값 유형' }));

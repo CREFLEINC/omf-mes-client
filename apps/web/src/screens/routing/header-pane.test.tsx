@@ -202,7 +202,7 @@ describe('HeaderPane', () => {
     const { onObsolete, user } = renderPane({
       status: resolveRoutingStatus('CONFIRMED'),
       confirmDisabledReason:
-        '확정은 작성중 Rev에만 할 수 있습니다. 변경하려면 신규 Rev를 발행하세요.',
+        '작성중 Rev만 확정할 수 있습니다.',
       obsoleteDisabledReason: null,
     });
 

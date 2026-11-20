@@ -43,7 +43,7 @@ export const productionOrder = {
   },
   values: {
     erpReadOnlyNotice:
-      'ERP에서 받은 정보라 이 화면에서는 수정할 수 없습니다. ERP에서 수정한 뒤 다시 동기화하세요.',
+      'ERP에서 받은 정보라 여기서 고칠 수 없습니다. ERP에서 고친 뒤 다시 동기화하세요.',
     erpSyncHint: '동기화 결과는 연계 현황에서 확인할 수 있습니다.',
     searchPlaceholder: 'ERP W/O 번호',
     missingErpOrderNo: 'ERP 원번호 없음',
@@ -91,7 +91,7 @@ export const productionOrder = {
   },
   detail: {
     planHeading: '생산계획',
-    planDescription: '이 ERP W/O에 대해 수립한 생산계획입니다.',
+    planDescription: '이 ERP W/O로 세운 생산계획입니다.',
     workOrderHeading: '전개된 W/O',
     workOrderDescription: '생산계획을 전개해 생성한 W/O입니다.',
     unselectedNote: 'ERP W/O를 선택하면 표시됩니다.',

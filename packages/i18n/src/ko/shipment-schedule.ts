@@ -42,10 +42,10 @@ export const shipmentSchedule = {
   },
   /** 비활성 사유·실패 사유는 그 컨트롤이나 대상의 이름으로 시작한다. */
   reasons: {
-    periodRequired: '출하일 시작은 반드시 입력해야 합니다.',
+    periodRequired: '출하일 시작을 입력하세요.',
     periodInvalid: '출하일은 있는 날짜여야 합니다. 시작일과 종료일을 다시 고르세요.',
     periodReversed: '출하일 종료는 시작보다 앞설 수 없습니다.',
-    referencesFailed: '고객·납품처 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',
+    referencesFailed: '고객·납품처 이름을 불러오지 못했습니다.',
   },
   loading: {
     list: '출하 예정 목록을 불러오는 중',
