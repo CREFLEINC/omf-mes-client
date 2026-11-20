@@ -516,6 +516,26 @@ describe('M-04-01 제품 피킹 — LOT 통째 피킹', () => {
     expect(await screen.findByText('이미 이 지시서에 피킹한 LOT 입니다')).toBeTruthy();
   });
 
+  it('US3-1 · Q14 분리 확인 전 LOT 은 「분리 확인 전인 LOT 입니다」와 할 일을 보인다(피처 013)', async () => {
+    const user = userEvent.setup();
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname.endsWith(':pick-lot'),
+        respond: () => conflict('LOT_SPLIT_UNCONFIRMED'),
+      },
+    ]);
+    await openRequest(user);
+    await scan(user, 'P2611-0003');
+
+    const banner = await screen.findByRole('alert', { name: '분리 확인 전인 LOT 입니다' });
+    expect(
+      within(banner).getByText(
+        'POP 에서 나눈 뒤 PDA 「LOT 분리 확인」을 하지 않았습니다. 두 라벨을 스캔해 확인한 뒤 다시 스캔하세요',
+      ),
+    ).toBeTruthy();
+    expect(within(banner).getByText('피킹하지 않았습니다')).toBeTruthy();
+  });
+
   it('FR-006 보류·불량·재고 없음은 서버 문구를 보인다', async () => {
     const user = userEvent.setup();
     mount([

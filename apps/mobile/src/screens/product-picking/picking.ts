@@ -99,7 +99,12 @@ export const codeProblem = (text: string): 'tooLong' | null =>
   text.trim().length > MANAGEMENT_CODE_MAX ? 'tooLong' : null;
 
 export type PickRejectionCode =
-  'LOT_TARGET_REACHED' | 'LOT_ALREADY_RESERVED' | 'LOT_ALREADY_PICKED' | 'NO_LINE_FOR_ITEM';
+  | 'LOT_TARGET_REACHED'
+  | 'LOT_ALREADY_RESERVED'
+  | 'LOT_ALREADY_PICKED'
+  | 'NO_LINE_FOR_ITEM'
+  /** 피처 013 — POP 에서 나눈 뒤 PDA 「LOT 분리 확인」 전인 원래 · 새 LOT. */
+  | 'LOT_SPLIT_UNCONFIRMED';
 
 export type PickRejection =
   | { kind: 'code'; code: PickRejectionCode }
@@ -113,6 +118,7 @@ const REJECTION_CODES: readonly string[] = [
   'LOT_ALREADY_RESERVED',
   'LOT_ALREADY_PICKED',
   'NO_LINE_FOR_ITEM',
+  'LOT_SPLIT_UNCONFIRMED',
 ];
 
 /** `:pick-lot` 의 거절을 화면 말로 가른다. 409 는 `code` 로, 나머지는 서버 문구로. */

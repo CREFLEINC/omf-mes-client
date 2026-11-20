@@ -92,6 +92,9 @@ export const productPicking: Translated<typeof ko.productPicking> = {
       'Có phần đã được đặt trước cho phiếu xuất hàng hoặc lệnh xuất kho khác nên không lấy nguyên LOT được',
     LOT_ALREADY_PICKED: 'LOT này đã được lấy cho phiếu này',
     NO_LINE_FOR_ITEM: 'Phiếu này không có dòng cho mặt hàng này',
+    LOT_SPLIT_UNCONFIRMED: 'LOT chưa xác nhận tách',
+    splitUnconfirmedDetail:
+      'LOT đã tách trên POP nhưng chưa xác nhận trên PDA 「Xác nhận tách LOT」. Hãy quét hai nhãn để xác nhận rồi quét lại',
     notFound: 'Không phải LOT của nhà máy này',
     notFoundDetail: 'Hãy kiểm tra số và quét lại',
     failed: 'Không ghi nhận được việc lấy hàng',

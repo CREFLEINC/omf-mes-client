@@ -179,6 +179,9 @@ export const PickResult = ({ notice, itemOf, uomOf, onRetry }: PickResultProps) 
         {rejection.kind === 'code' && rejection.code === 'LOT_ALREADY_RESERVED' ? (
           <p className="last-scan__sub">{t.rejected.reservedDetail}</p>
         ) : null}
+        {rejection.kind === 'code' && rejection.code === 'LOT_SPLIT_UNCONFIRMED' ? (
+          <p className="last-scan__sub">{t.rejected.splitUnconfirmedDetail}</p>
+        ) : null}
         {rejection.kind === 'notFound' ? (
           <p className="last-scan__sub">{t.rejected.notFoundDetail}</p>
         ) : null}

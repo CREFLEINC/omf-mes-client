@@ -104,6 +104,10 @@ export const productPicking = {
     reservedDetail: '다른 출하 지시서나 출고에 예약된 몫이 있어 통째로 집을 수 없습니다',
     LOT_ALREADY_PICKED: '이미 이 지시서에 피킹한 LOT 입니다',
     NO_LINE_FOR_ITEM: '이 지시서에 이 품목 라인이 없습니다',
+    /** 피처 013(시안 M0401) — 원래 · 새 LOT 모두 해당. */
+    LOT_SPLIT_UNCONFIRMED: '분리 확인 전인 LOT 입니다',
+    splitUnconfirmedDetail:
+      'POP 에서 나눈 뒤 PDA 「LOT 분리 확인」을 하지 않았습니다. 두 라벨을 스캔해 확인한 뒤 다시 스캔하세요',
     notFound: '이 공장의 LOT 이 아닙니다',
     notFoundDetail: '번호를 확인하고 다시 스캔하세요',
     failed: '피킹을 기록하지 못했습니다',
