@@ -613,6 +613,27 @@ describe('재고 이동 화면', () => {
     expect(body.lines[0]?.requestedQty).toBe(80);
   });
 
+  /* 반출이 서버에 닿으면 표만 비우지 않고 띠로 알린다 — 다음 스캔에서 걷힌다(omf-all-around#345). */
+  it('#345 반출이 보내지면 「반출을 기록했습니다」 띠를 띄우고 다음 스캔에서 걷는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('반출 LOT 스캔');
+
+    scanInto('반출 LOT 스캔', LOT_NO);
+    await screen.findByLabelText(/반출 수량/);
+    await pickDestination(user);
+    await user.click(screen.getByRole('button', { name: '반출 기록' }));
+
+    expect(await screen.findByText('반출을 기록했습니다')).toBeTruthy();
+    expect(screen.getByText('도착 위치에 놓은 뒤 도착 스캔으로 이동을 끝냅니다.')).toBeTruthy();
+
+    scanInto('반출 LOT 스캔', LOT_NO);
+
+    await waitFor(() => {
+      expect(screen.queryByText('반출을 기록했습니다')).toBeNull();
+    });
+  });
+
   /*
    * 연타는 button.click() 을 연속으로 불러야 갈린다. await user.click() 세 번은 클릭 사이에
    * 다시 그리기가 끼어 결함이 있어도 통과한다. 요청 수가 아니라 멱등키가 하나인지로 잰다.
