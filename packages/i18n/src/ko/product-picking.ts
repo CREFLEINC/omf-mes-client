@@ -66,7 +66,7 @@ export const productPicking = {
     /** 이 기기 줄이 다 찼고 다른 공장 · 창고 줄이 남았을 때(시안 ⑦). */
     terminalDone: '이 기기 몫은 끝났습니다',
     terminalDoneDetail: (businessUnit: string) =>
-      `출하 완료는 ${businessUnit} 의 아무 POP 「출하 완료」에서 합니다`,
+      `출하 완료는 ${businessUnit}의 아무 POP 「출하 완료」에서 합니다`,
     terminalDoneDetailNoUnit: '출하 완료는 POP 「출하 완료」에서 합니다',
   },
   line: {
