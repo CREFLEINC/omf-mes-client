@@ -9,7 +9,7 @@ export const deviceRegistration: Translated<typeof ko.deviceRegistration> = {
     title: 'Máy này chưa được đăng ký',
     description:
       'Quét mã QR đăng ký trên màn hình quản trị. Nếu không quét được, hãy nhập mã đăng ký.',
-    where: 'Quản trị viên tạo mã đăng ký tại Web quản trị > Hệ thống > Cài đặt.',
+    where: 'Quản trị viên tạo mã đăng ký tại Web quản trị 「Quản trị hệ thống › Quản lý thiết bị đầu cuối」 bằng [Phát hành token đăng ký].',
   },
   code: {
     label: 'Mã đăng ký',
