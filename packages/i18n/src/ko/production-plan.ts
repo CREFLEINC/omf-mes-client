@@ -104,7 +104,7 @@ export const productionPlan = {
     remarksViewLabel: (rowName: string): string => `${rowName} 비고 확인`,
     remarksDialog: '비고',
     /** 제목 옆 안내 — 확정 뒤에는 고칠 수 없다는 사실을 미리 알린다(사용자 지시 2026-09-20) */
-    confirmedNotice: '계획 확정 시 수정 및 삭제가 불가합니다.',
+    confirmedNotice: '계획을 확정하면 고치거나 지울 수 없습니다.',
     totalLabel: '계획 수량 합계',
     totalUnknown: '합계 계산 불가',
     total: (planned: string, ordered: string, uomLabel: string): string =>

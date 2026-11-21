@@ -312,27 +312,23 @@ describe('DisposalForm 도착지', () => {
     );
   });
 
-  /**
-   * **승인 뒤에는 바꿀 수 없다는 사실을 폼이 밝힌다.** 통지는 이 컨트롤을 《승인 후》 구획에
-   * 두라고 했으나 그 시점에 값을 보낼 계약 통로가 없어 발의 시점으로 옮겼다 — 옮겼다는 사실이
-   * 화면에 없으면 사용자는 지금 고르지 않고 승인 뒤에 고르려 한다.
-   */
-  it('도착지가 승인 요청 때 함께 나간다는 사실을 밝힌다', () => {
+  /** 칸 아래 상시 안내를 두지 않는다 — 도착지는 확인 창이 다시 보인다(사용자 지시 2026-11-20). */
+  it('도착지 칸 아래에 늘 떠 있는 안내가 없다', () => {
     renderForm();
 
-    expect(screen.getByText(t.form.destinationNote)).toBeInTheDocument();
+    expect(screen.queryByText(/승인 뒤에는 이 화면에서 바꿀 수 없/)).not.toBeInTheDocument();
   });
 });
 
 describe('DisposalForm 상신 사유', () => {
-  /** **형식을 유도한다**(공유계약 A-12) — 예시와 보조 문구가 첫 줄의 노릇을 말한다. */
-  it('사유 칸에 예시와 「첫 줄이 요약이 된다」가 붙는다', () => {
+  /** **형식을 유도한다**(공유계약 A-12) — 예시가 형식을 보이고, 첫 줄의 노릇은 확인 창이 말한다. */
+  it('사유 칸에 예시가 붙고 칸 아래 보조 문구는 없다', () => {
     renderForm();
 
     const reason = screen.getByLabelText(t.formFields.submitReason);
 
     expect(reason).toHaveAttribute('placeholder', t.form.reasonPlaceholder);
-    expect(screen.getByText(t.form.reasonHelper)).toBeInTheDocument();
+    expect(screen.queryByText(/결재함 목록의 요약이 됩니다/)).not.toBeInTheDocument();
   });
 
   it('친 글자를 그대로 알린다', async () => {
@@ -426,12 +422,12 @@ describe('DisposalForm 잠금', () => {
 });
 
 describe('DisposalForm 없는 것', () => {
-  /** ERP 송신 토글을 두지 않는다(계획 결정 5) — **정하지 않았다는 사실만** 적는다. */
-  it('ERP 송신 토글이 없고 그 사실을 밝힌다', () => {
+  /** ERP 송신 토글을 두지 않는다(계획 결정 5). 정하지 않았다는 안내도 걷었다(사용자 지시 2026-11-20). */
+  it('ERP 송신 토글도 그 안내도 없다', () => {
     renderForm();
 
     expect(screen.queryByRole('switch')).not.toBeInTheDocument();
-    expect(screen.getByText(t.form.sendToErpNote)).toBeInTheDocument();
+    expect(screen.queryByText(/ERP 송신 여부/)).not.toBeInTheDocument();
   });
 
   /** 코드 오류는 **계약 필드 이름**으로 온다 — 서버가 준 것과 화면이 잡은 것이 같은 칸에 붙는다. */

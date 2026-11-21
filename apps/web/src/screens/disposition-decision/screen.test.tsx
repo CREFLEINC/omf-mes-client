@@ -136,7 +136,7 @@ describe('DispositionDecisionScreen 조회', () => {
 
     await user.click(screen.getByRole('button', { name: t.concession.request }));
     const dialog = await screen.findByRole('dialog', { name: t.concession.requestHeading });
-    expect(within(dialog).getByText(t.concession.requestNote)).toBeInTheDocument();
+    expect(within(dialog).queryByText(/조건부 사용 승인을 요청/)).not.toBeInTheDocument();
 
     await user.click(within(dialog).getByRole('button', { name: messages.common.cancel }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());

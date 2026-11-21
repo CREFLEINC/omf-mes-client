@@ -3470,7 +3470,7 @@ describe('WarehouseLocationScreen — 창고 정보 (안 A)', () => {
     expect(within(section).getByLabelText('셀')).toHaveTextContent('0');
     expect(within(section).getByLabelText('사용 중지')).toHaveTextContent('1');
 
-    const system = within(section).getByRole('list', { name: '서버가 만든 위치' });
+    const system = within(section).getByRole('list', { name: '자동으로 만든 위치' });
     const rows = within(system).getAllByRole('listitem');
     expect(within(rows[0]!).getByText('SYS-STAGING')).toBeInTheDocument();
     expect(within(rows[0]!).getByText('적치 대기')).toBeInTheDocument();

@@ -29,14 +29,13 @@ describe('ResubmitPane — 미상신 전표', () => {
   });
 
   /** 형식 유도는 두 자리에서 **같은 문구**로 한다 — 규칙이 갈리면 사유의 모양도 갈린다. */
-  it('발의 폼과 같은 예시·보조 문구를 쓴다', () => {
+  it('발의 폼과 같은 예시를 쓴다', () => {
     renderPane();
 
     expect(screen.getByLabelText(t.formFields.submitReason)).toHaveAttribute(
       'placeholder',
       t.form.reasonPlaceholder,
     );
-    expect(screen.getByText(t.form.reasonHelper)).toBeInTheDocument();
   });
 
   it('친 글자를 그대로 알린다', async () => {

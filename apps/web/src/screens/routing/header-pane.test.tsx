@@ -159,9 +159,7 @@ describe('HeaderPane', () => {
     expect(screen.getByRole('button', { name: 'Rev 비교' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '변경 이력' })).toBeDisabled();
     expect(
-      screen.getByText(
-        'Rev 비교는 아직 할 수 없습니다. 비교 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
-      ),
+      screen.getByText('Rev 비교는 아직 할 수 없습니다.'),
     ).toBeInTheDocument();
   });
 
@@ -204,7 +202,7 @@ describe('HeaderPane', () => {
     const { onObsolete, user } = renderPane({
       status: resolveRoutingStatus('CONFIRMED'),
       confirmDisabledReason:
-        '확정은 작성중 Rev에만 할 수 있습니다. 변경하려면 신규 Rev를 발행하세요.',
+        '작성중 Rev만 확정할 수 있습니다.',
       obsoleteDisabledReason: null,
     });
 

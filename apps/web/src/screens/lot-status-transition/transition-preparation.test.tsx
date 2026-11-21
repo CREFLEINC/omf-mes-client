@@ -1071,9 +1071,9 @@ describe('Lot Status 전이 준비', () => {
   });
 
   it.each([
-    ['empty', '등록된 사유 값이 없습니다. 공통코드에 값이 서야 진행할 수 있습니다.'],
-    ['failed', '사유 목록을 불러오지 못했습니다. 목록이 서야 진행할 수 있습니다.'],
-    ['truncated', '사유 목록 일부만 받아 진행할 수 없습니다.'],
+    ['empty', '등록된 사유가 없습니다. 공통코드에서 사유를 등록하세요.'],
+    ['failed', '사유 목록을 불러오지 못했습니다. 다시 조회하세요.'],
+    ['truncated', '사유 목록을 다 불러오지 못했습니다. 다시 조회하세요.'],
   ] as const)(
     '보류 사유 목록이 %s 이면 사유 칸을 잠그고 그 사유를 밝힌다',
     async (state, message) => {
@@ -1110,7 +1110,7 @@ describe('Lot Status 전이 준비', () => {
 
     expect(
       await screen.findByText(
-        '등록된 사유 값이 없습니다. 공통코드에 값이 서야 진행할 수 있습니다.',
+        '등록된 사유가 없습니다. 공통코드에서 사유를 등록하세요.',
       ),
     ).toBeVisible();
     expect(screen.getByLabelText('해제 사유')).toBeDisabled();

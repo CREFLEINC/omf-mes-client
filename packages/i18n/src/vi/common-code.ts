@@ -187,8 +187,7 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       removeLabel: (warehouse: string): string => `Gỡ liên kết ${warehouse}`,
       picker: {
         title: 'Thêm kho sản xuất',
-        description: 'Chọn kho cần liên kết. Chỉ hiển thị kho đang sử dụng.',
-        empty: 'Không có kho nào để chọn.',
+        empty: 'Không có kho nào để chọn. Chỉ chọn được kho đang sử dụng.',
         close: 'Đóng',
       },
       confirm: {
@@ -241,6 +240,7 @@ export const commonCode: Translated<typeof ko.commonCode> = {
   /** 자격·인증 — 이 화면에서 편집 가능한 유일한 작업자 자료. 저장은 전체 치환이다. */
   qualification: {
     paneTitle: 'Chứng chỉ · chứng nhận',
+    typePending: 'Chưa xác định',
     fields: {
       qualificationType: 'Loại chứng chỉ',
       process: 'Công đoạn',

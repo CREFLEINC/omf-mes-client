@@ -38,7 +38,7 @@ export const zaloConnection = {
     saved: '저장했습니다',
     copied: '파라미터 이름을 복사했습니다',
     reauth: '고객사 Zalo 담당자에게 새 갱신 토큰을 받아 [바꾸기]로 등록하세요',
-    deliveryDisabled: '이 서버는 Zalo 발송이 꺼져 있습니다',
+    deliveryDisabled: 'Zalo 발송이 꺼져 있습니다',
     lastError: (code: string, message: string): string => `${code} ${message}`.trim(),
     conflict: '다른 사람이 먼저 저장했습니다. 다시 불러온 뒤 저장하세요',
   },

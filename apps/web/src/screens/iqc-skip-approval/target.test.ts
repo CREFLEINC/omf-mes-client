@@ -93,13 +93,13 @@ describe('describeOpenBlock — 사유가 서로 다르다', () => {
   });
 
   /** 사유는 **그 컨트롤의 이름으로 시작한다**(배치 규범 4) — 비활성 컨트롤은 포커스를 못 받는다. */
-  it('세 사유가 모두 컨트롤 이름으로 시작한다', () => {
+  it('세 사유 모두 컨트롤 이름을 앞에 붙이지 않는다(레이아웃 규범 4-5)', () => {
     expect(describeOpenBlock({ kind: 'notOpenable' })).toBe(t.target.blockedNotOpenable);
     expect(describeOpenBlock({ kind: 'noScreenId' })).toBe(t.target.blockedNoScreenId);
     expect(describeOpenBlock({ kind: 'unmapped' })).toBe(t.target.blockedUnmapped);
     expect(
       [t.target.blockedNotOpenable, t.target.blockedNoScreenId, t.target.blockedUnmapped].every(
-        (reason) => reason.startsWith(t.target.open),
+        (reason) => !reason.startsWith(t.target.open),
       ),
     ).toBe(true);
   });

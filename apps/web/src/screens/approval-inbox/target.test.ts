@@ -90,13 +90,13 @@ describe('잠긴 사유', () => {
     expect(new Set(reasons).size).toBe(3);
   });
 
-  it('세 문구 모두 무엇이 막혔는지(열기)로 시작한다 — 어느 컨트롤의 사유인지가 먼저다', () => {
+  it('세 문구 모두 컨트롤 이름을 앞에 붙이지 않는다(레이아웃 규범 4-5)', () => {
     for (const reason of [
       describeOpenBlock({ kind: 'notOpenable' }),
       describeOpenBlock({ kind: 'noScreenId' }),
       describeOpenBlock({ kind: 'unmapped' }),
     ]) {
-      expect(reason.startsWith(`${t.target.open}:`)).toBe(true);
+      expect(reason.startsWith(`${t.target.open}:`)).toBe(false);
     }
   });
 });

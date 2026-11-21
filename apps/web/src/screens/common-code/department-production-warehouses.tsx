@@ -341,7 +341,6 @@ export const ProductionWarehouseSection = ({ editor }: ProductionWarehouseSectio
           </Button>
         }
       >
-        <p className="dialog-text">{t.picker.description}</p>
         {editor.candidates.length === 0 ? (
           <EmptyState size="sm" title={t.picker.empty} />
         ) : (

@@ -574,24 +574,11 @@ export const InspectionDetail = ({
                           scrollX
                           paged
                           bulkDownload
-                          toolbarStart={
-                            <span className="iqc-inspection-head-badge iqc-inspection-docs-help">
-                              <Icon name="attach_file" size={16} aria-hidden />
-                              <span>
-                                {messages.inspectionDocuments.help
-                                  .split(/(\d+\s*MB)/)
-                                  .map((part, index) =>
-                                    /^\d+\s*MB$/.test(part) ? (
-                                      <strong key={index} className="iqc-inspection-docs-limit">
-                                        {part}
-                                      </strong>
-                                    ) : (
-                                      part
-                                    ),
-                                  )}
-                              </span>
-                            </span>
-                          }
+                          /*
+                           * 받는 형식 · 크기 한도는 늘 펼친 띠 대신 ⓘ 로 — 첨부 창과 같은 모양. 어긋난 파일을
+                           * 고르면 그때 오류 문장이 같은 규칙을 말한다(사용자 지시 2026-11-20).
+                           */
+                          toolbarStart={<InfoTip text={messages.inspectionDocuments.help} />}
                         />
                       </div>
                     ) : null,

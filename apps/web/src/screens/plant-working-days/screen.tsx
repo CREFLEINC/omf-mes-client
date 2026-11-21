@@ -259,9 +259,6 @@ export const PlantWorkingDaysScreen = () => {
           />
         }
       />
-      <div className="banner-slot">
-        <AlertBanner variant="info">{t.intro}</AlertBanner>
-      </div>
       <section className="pane plant-working-days-pane" aria-label={t.tableLabel}>
         {/*
          * 주간 근무일이 무엇을 세는 값인지 — 머리 아래 설명 줄 대신 구획 제목 옆 ⓘ(관리웹 정리 시안 A).

@@ -2237,16 +2237,13 @@ describe('DisposalIssueScreen — 탭 둘', () => {
     expect(screen.getByRole('tab', { name: t.tabs.history })).toBeInTheDocument();
   });
 
-  /**
-   * **결재는 이 화면이 하지 않는다**(승인 기록 정정 1-2). 밝히지 않으면 사용자가 여기서
-   * 결재할 수 있다고 믿고 있지도 않은 승인 버튼을 찾아 헤맨다.
-   */
-  it('탭 줄에 결재를 어디서 하는지 적는다', async () => {
+  /** 탭 줄 위 상시 안내(승인 기록 정정 1-2)는 걷었다(사용자 지시 2026-11-20). */
+  it('탭 줄 위에 늘 떠 있는 안내가 없다', async () => {
     renderScreen(allRoutes());
 
     await waitForList();
 
-    expect(screen.getByText(t.tabs.note)).toBeInTheDocument();
+    expect(screen.queryByText(/결재는 결재함에서 합니다/)).not.toBeInTheDocument();
   });
 
   /** 감지기 M32 — 탭을 컴포넌트 상태로만 들고 있으면 이 단언이 무너진다. */
@@ -2938,20 +2935,16 @@ describe('DisposalIssueScreen — 결재 진행을 못 읽었을 때', () => {
 
 describe('DisposalIssueScreen — 승인 뒤에 남은 일', () => {
   /**
-   * **계약이 못 박은 사실이라 늘 선다.** 승인은 상태만 바꾸고 재고는 전기가 움직인다 —
-   * 승인만 받아 놓고 잊는 일을 막는 자리다(이슈 §6).
+   * 늘 보이던 「승인은 재고를 차감하지 않는다」 · 「판정하지 못한다」는 걷었다 — 남은 일이 있을
+   * 때만 말한다(사용자 지시 2026-11-20).
    */
-  it('승인이 재고를 차감하지 않는다는 사실이 보인다', async () => {
+  it('자리표시가 비어 있으면 승인 뒤 안내를 내지 않는다', async () => {
     renderScreen(allRoutes(), `${HISTORY_SEARCH}&gi=9501`);
 
-    expect(await screen.findByText(t.progress.postSeparateNote)).toBeVisible();
-  });
+    await screen.findByRole('group', { name: t.progress.reasonPane });
 
-  /** 자리표시가 비어 있는 지금은 화면이 승인 완료를 판정하지 못한다 — 그 사실을 밝힌다. */
-  it('자리표시가 비어 있으면 판정하지 못한다고 말한다', async () => {
-    renderScreen(allRoutes(), `${HISTORY_SEARCH}&gi=9501`);
-
-    expect(await screen.findByText(t.progress.unjudgeableNote)).toBeVisible();
+    expect(screen.queryByText(/판정하지 못/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/재고를 차감하지 않습니다/)).not.toBeInTheDocument();
     expect(screen.queryByText(t.progress.approvedNotPostedNote)).not.toBeInTheDocument();
   });
 
@@ -2975,7 +2968,6 @@ describe('DisposalIssueScreen — 승인 뒤에 남은 일', () => {
     );
 
     expect(await screen.findByText(t.progress.approvedNotPostedNote)).toBeVisible();
-    expect(screen.queryByText(t.progress.unjudgeableNote)).not.toBeInTheDocument();
   });
 
   /**
@@ -2988,8 +2980,8 @@ describe('DisposalIssueScreen — 승인 뒤에 남은 일', () => {
     renderScreen(allRoutes(), `${HISTORY_SEARCH}&gi=9501`);
 
     await waitForIssueLines();
+    await screen.findByRole('group', { name: t.progress.reasonPane });
 
-    expect(await screen.findByText(t.progress.postSeparateNote)).toBeVisible();
     expect(screen.queryByText(t.progress.approvedNotPostedNote)).not.toBeInTheDocument();
   });
 });
@@ -5156,25 +5148,23 @@ describe('DisposalIssueScreen — 기타출고 처리가 열리는 조건', () =
    * 코드가 확정되지 않아 화면이 판정할 근거가 없다 — 잠그면 승인된 건까지 막혀 화면이 통째로
    * 무용해지고, 막는 것은 서버다.
    */
-  it('상신된 품의에서 버튼이 열려 있고 판정하지 못한다는 사실이 보인다', async () => {
+  it('상신된 품의에서 버튼이 열려 있다', async () => {
     await setupReadyToPost();
 
     expect(postButton()).toBeEnabled();
-    expect(screen.getByText(t.post.unjudgeableNote)).toBeVisible();
   });
 
   /**
-   * **《처리하면 일어나는 일》 세 문장이 상시 자리에 있다**(완료 조건 C68 · 감지기 M66).
-   * 버튼이 열려 있든 잠겨 있든 같은 자리에 선다.
+   * 「처리하면 일어나는 일」 상시 세 문장은 걷었다 — 재고가 빠지고 되돌릴 수 없다는 사실은 누르기
+   * 직전 확인 창이 말한다(사용자 지시 2026-11-20).
    */
-  it('세 문장이 버튼 위 상시 자리에 있다', async () => {
+  it('버튼 위에 늘 떠 있는 문장이 없다', async () => {
     await setupReadyToPost();
 
     const pane = screen.getByRole('region', { name: t.post.label });
 
-    expect(within(pane).getByText(t.post.effectDeducts)).toBeVisible();
-    expect(within(pane).getByText(t.post.effectApprovalIsNotPosting)).toBeVisible();
-    expect(within(pane).getByText(t.post.effectNoUndoHere)).toBeVisible();
+    expect(within(pane).queryByText(/재고를 차감합니다/)).not.toBeInTheDocument();
+    expect(within(pane).queryByText(/판정하지 못/)).not.toBeInTheDocument();
   });
 
   /**
@@ -5187,8 +5177,6 @@ describe('DisposalIssueScreen — 기타출고 처리가 열리는 조건', () =
 
     expect(postButton()).toBeDisabled();
     expect(postButton()).toHaveAccessibleDescription(t.actionReasons.postNeedsSubmission);
-    /* 짝 방향 — 잠겨 있어도 세 문장은 그대로 보인다. */
-    expect(screen.getByText(t.post.effectDeducts)).toBeVisible();
   });
 
   /** 잠긴 버튼을 눌러도 창이 열리지 않고 요청도 나가지 않는다(첫째 겹). */
@@ -5208,14 +5196,13 @@ describe('DisposalIssueScreen — 기타출고 처리가 열리는 조건', () =
    * **전환 감지기**(완료 조건 C67 · 감지기 M64). 자리표시를 채우면 **승인 전 전표가 잠기고**
    * 판정 불가 안내가 사라진다 — 채웠을 때 살아나는 것을 재지 않으면 그 자리표시는 죽은 가지다.
    */
-  it('자리표시를 채우면 승인 전 전표에서 잠기고 안내가 사라진다', async () => {
+  it('자리표시를 채우면 승인 전 전표에서 잠긴다', async () => {
     approvedStatusCodes.push('SAMPLE_AP_STATUS_OTHER');
 
     await setupReadyToPost();
 
     expect(postButton()).toBeDisabled();
     expect(postButton()).toHaveAccessibleDescription(t.actionReasons.postNotApproved);
-    expect(screen.queryByText(t.post.unjudgeableNote)).not.toBeInTheDocument();
   });
 
   /** 짝 방향 — 자리표시를 채우고 그 요청이 승인 상태면 열린다. 잠금이 상수로 굳지 않았다. */
@@ -5225,7 +5212,6 @@ describe('DisposalIssueScreen — 기타출고 처리가 열리는 조건', () =
     await setupReadyToPost();
 
     expect(postButton()).toBeEnabled();
-    expect(screen.queryByText(t.post.unjudgeableNote)).not.toBeInTheDocument();
   });
 });
 
@@ -5257,8 +5243,6 @@ describe('DisposalIssueScreen — 처리도 확인 창을 지나야 나간다', 
     expect(within(dialog).getByText('합성 폐기 사유 첫 줄')).toBeVisible();
     expect(within(dialog).getByText(t.dialog.postDeducts)).toBeVisible();
     expect(within(dialog).getByText(t.dialog.postNoUndo)).toBeVisible();
-    /* 자리표시가 비어 있으므로 판정하지 못했다는 사실이 함께 선다. */
-    expect(within(dialog).getByText(t.dialog.postJudgePending)).toBeVisible();
   });
 
   /** **창 안에 선택칸이 없다**(완료 조건 C79 · `omf-mes#45`). */
@@ -5525,24 +5509,6 @@ describe('DisposalIssueScreen — 처리 성공 뒤', () => {
     await waitFor(() => {
       expect(invalidatedBalanceCount(queryClient)).toBeGreaterThan(0);
     });
-  });
-
-  /**
-   * **세 문장을 사라지는 자리로 옮기지 않는다**(완료 조건 C68 · 감지기 M67). 성공 뒤에도
-   * 상시 자리에 그대로 있고, 결과 구획에는 담기지 않는다.
-   */
-  it('성공 뒤에도 세 문장이 상시 자리에 있고 결과 구획에는 없다', async () => {
-    const { user } = await setupReadyToPost();
-
-    await user.click(postButton());
-    await confirmPost(user);
-
-    const result = await screen.findByRole('region', { name: t.result.postLabel });
-    const pane = screen.getByRole('region', { name: t.post.label });
-
-    expect(within(pane).getByText(t.post.effectDeducts)).toBeVisible();
-    expect(result.textContent ?? '').not.toContain(t.post.effectDeducts);
-    expect(result.textContent ?? '').not.toContain(t.post.effectNoUndoHere);
   });
 
   /** 성공 뒤 **주소도 탭도 바뀌지 않는다** — 방금 처리한 품의를 보던 자리가 사라지면 안 된다. */

@@ -55,9 +55,7 @@ export const InspectionResultInsightsPage = () => {
                 {t.page.lookupRetry}
               </Button>
             }
-          >
-            {t.page.lookupFailedDetail}
-          </AlertBanner>
+          />
         </div>
       )}
       <InspectionResultInsightsScreen lookups={lookups} />

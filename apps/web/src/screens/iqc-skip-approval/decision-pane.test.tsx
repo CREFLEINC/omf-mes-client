@@ -195,27 +195,13 @@ describe('DecisionPane', () => {
    * 필수로만 두면 한 글자짜리 반려가 기록에 남고 상신자는 같은 요청을 그대로 다시 올린다.
    */
   describe('반려 의견 형식 유도', () => {
-    it('입력칸 옆에 상시로 서고 도움말과 다른 문장이다', () => {
+    /** 칸 아래 상시 문장 대신 빈 칸의 자리표시로 — 적기 시작하면 사라진다(사용자 지시 2026-11-20). */
+    it('의견 칸의 자리표시로 서고 칸 아래 상시 문장은 없다', () => {
       renderPane();
 
-      expect(screen.getByText(t.decision.commentRejectGuide)).toBeVisible();
+      expect(commentBox()).toHaveAttribute('placeholder', t.decision.commentRejectGuide);
+      expect(screen.queryByText(t.decision.commentRejectGuide)).not.toBeInTheDocument();
       expect(t.decision.commentRejectGuide).not.toBe(t.decision.commentHelp);
-    });
-
-    /** 잠긴 상태에서도 남는다 — 「무엇을 적는가」는 지금 적을 수 있는지와 다른 축이다. */
-    it('내 차례가 아니어도 남는다', () => {
-      renderPane({ isMyTurn: false });
-
-      expect(screen.getByText(t.decision.commentRejectGuide)).toBeVisible();
-    });
-
-    /** 입력칸에 매인다 — 스크린리더가 그 칸에 닿았을 때 함께 읽혀야 한다. */
-    it('의견 입력칸의 설명으로 이어져 있다', () => {
-      renderPane();
-
-      expect(commentBox()).toHaveAccessibleDescription(
-        new RegExp(t.decision.commentRejectGuide.slice(0, 12)),
-      );
     });
   });
 

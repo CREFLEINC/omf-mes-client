@@ -108,7 +108,6 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     foldTitle: 'Lịch sử yêu cầu đặc cách',
     count: (count: number): string => `${String(count)}`,
     requestHeading: 'Yêu cầu đặc cách',
-    requestNote: 'Yêu cầu phê duyệt sử dụng có điều kiện cho LOT không đạt.',
     target: 'LOT đối tượng',
     targetAll: (count: number): string => `${String(count)} LOT quản lý vật tư`,
     wholeNote:

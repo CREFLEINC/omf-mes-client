@@ -176,7 +176,7 @@ export const oqcInspection = {
      * 쓰거나 확정할 길이 없다 — 막다른 길로 두지 않고, 여기서 할 수 있는 일(재검사)을 말한다.
      */
     draftElsewhere:
-      '이 회차는 다른 곳에서 작성 중이라 이 화면에서는 고칠 수 없습니다. 다시 판정하려면 재검사 회차를 추가합니다.',
+      '이 회차는 다른 곳에서 작성 중이라 여기서 고칠 수 없습니다. 다시 판정하려면 재검사 회차를 추가하세요.',
     fields: {
       inspectedQty: '총 검사량',
       accepted: '합격량',
@@ -209,7 +209,7 @@ export const oqcInspection = {
     confirmBlockedByItems: '검사 항목을 모두 판정해야 확정할 수 있습니다.',
     judgmentSectionTitle: '판정',
     /** 저장 단추 왼쪽 경고 — 저장이 곧 확정이라 되돌릴 수 없다(#136). */
-    saveNote: '판정 확정 후 수정이 불가합니다.',
+    saveNote: '확정하면 판정을 고칠 수 없습니다.',
     /** 넘겼다. 0으로 깎아 감추지 않는다. */
     over: (over: string): string => `검사 수량보다 ${over} 많습니다.`,
     quantityInvalid: '수량은 0 이상, 소수점 여섯 자리까지 넣을 수 있습니다.',
@@ -224,7 +224,7 @@ export const oqcInspection = {
      * 코드값 시드가 아직 안 들어가 목록이 빌 수 있다. ⛔ **감추지 않고 사유를 밝힌다** —
      * 감추면 그 자리가 왜 없는지 사용자가 알 수 없다.
      */
-    judgmentUnavailable: '판정 값 목록이 아직 준비되지 않았습니다. 담당자에게 문의하세요.',
+    judgmentUnavailable: '등록된 판정 값이 없습니다. 담당자에게 문의하세요.',
     /**
      * 저장된 판정이 지금 목록에 없다. 사용 중지된 코드일 수 있다 — 조용히 비우면 사용자가
      * 고르지 않았는데 고른 것이 지워진다.
@@ -246,7 +246,7 @@ export const oqcInspection = {
     blockedByDraftElsewhere: '다른 곳에서 작성 중인 회차입니다. 재검사로 새 회차를 쌓으세요.',
     blockedByTotals: '수량 합계가 검사 수량과 일치해야 합니다.',
     blockedByJudgmentOptions:
-      '판정 값 목록이 준비되지 않아 저장할 수 없습니다. 담당자에게 문의하세요.',
+      '등록된 판정 값이 없어 저장할 수 없습니다. 담당자에게 문의하세요.',
     blockedByJudgment: '최종 판정을 선택해주세요.',
     /** 합격판정개수 기준 자동 판정(omf-all-around#126) — 기준에 합격판정개수가 있을 때만 선다. IQC(#125)와 같은 규칙이다. */
     judgmentChange: {
@@ -301,8 +301,8 @@ export const oqcInspection = {
     /** 판정 구획의 「판정 확정 안내」 상자(#136) — 수량 · 고른 판정 · 되돌릴 수 없음 · LOT 영향. */
     guide: {
       title: '판정 확정 안내',
-      irreversible: '확정 후에는 판정을 수정할 수 없습니다.',
-      irreversibleHint: '변경이 필요한 경우 재검사를 진행해야 합니다.',
+      irreversible: '확정하면 판정을 고칠 수 없습니다.',
+      irreversibleHint: '바꾸려면 재검사를 해야 합니다.',
     },
   },
 
@@ -583,7 +583,6 @@ export const oqcInspection = {
       alsoMatched: (seqNos: string): string => `${seqNos}회차에도 매칭됨`,
       matchRequired: '피킹 LOT 을 1개 이상 고르세요',
       judgmentHeading: '판정',
-      judgmentNote: '하나만 고릅니다. 수량은 넣지 않습니다(서버가 매칭 LOT 피킹 합으로 채웁니다).',
       judgmentRequired: '판정을 고르세요',
       reasonHeading: '재검 사유',
       reasonHelp: '이 결과가 아래 피킹 LOT 의 판정을 바꿉니다. 재검 사유를 고르세요.',

@@ -707,7 +707,7 @@ describe('Lot Status 화면 shell', () => {
   });
 
   it.each([
-    ['empty', 'LOT 유형 기준값이 준비되지 않았습니다.'],
+    ['empty', '등록된 LOT 유형이 없습니다.'],
     ['error', 'LOT 유형 목록을 불러오지 못했습니다.'],
   ] as const)('LOT 유형 기준값이 %s 여도 안내만 하고 「전체」로 조회한다', async (state, note) => {
     const { urls } = renderScreen('/quality/lot-status', state);

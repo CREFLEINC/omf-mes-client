@@ -67,7 +67,9 @@ export const DecisionPane = ({
   const state = { isMyTurn, comment };
   const approveBlocked = decisionBlockedReason('approve', state);
   const rejectBlocked = decisionBlockedReason('reject', state);
-  const isCommentDisabled = !isMyTurn || isLocked;
+  const isNotMyTurn = !isMyTurn;
+  const isCommentDisabled = isNotMyTurn || isLocked;
+  const turnNoteId = useId();
 
   return (
     <div className="approval-inbox-detail-section" role="group" aria-label={t.panes.decision}>
@@ -90,13 +92,12 @@ export const DecisionPane = ({
           fullWidth
           value={comment}
           disabled={isCommentDisabled}
+          aria-describedby={isNotMyTurn ? turnNoteId : undefined}
           /*
-           * 잠긴 이유를 갈라 낸다 — 보내는 중이면 기다리면 되고, 내 차례가 아니면 기다려도
-           * 이 화면에서는 열리지 않는다. 디자인 시스템이 잠겼을 때만 이 글자를 낸다.
+           * 잠긴 이유를 갈라 낸다 — 보내는 중이면 여기 적고, 내 차례가 아니면 단추 줄 아래 한 줄
+           * (`turnNoteId`)이 말한다. 같은 문장을 칸 · 단추마다 되풀이하지 않는다(IQC 생략 한도승인과 같은 모양).
            */
-          disabledReason={
-            isLocked ? t.decision.commentSendingReason : t.decision.commentDisabledReason
-          }
+          disabledReason={isLocked ? t.decision.commentSendingReason : undefined}
           error={commentError}
           onChange={(event) => {
             onChangeComment(event.target.value);
@@ -104,24 +105,42 @@ export const DecisionPane = ({
         />
       </div>
 
-      <div className="form-actions">
+      <div className="form-actions approval-inbox-actions">
         {/* 되돌리기 쪽(반려)이 왼쪽, 흔한 길(승인)이 오른쪽 — 이 저장소의 액션 줄 차례 그대로다. */}
-        {rejectBlocked === null ? (
-          <Button variant="outlined" disabled={isLocked} onClick={onReject}>
-            {t.decision.reject}
-          </Button>
+        {isNotMyTurn ? (
+          <>
+            <Button variant="outlined" disabled aria-describedby={turnNoteId}>
+              {t.decision.reject}
+            </Button>
+            <Button variant="filled" disabled aria-describedby={turnNoteId}>
+              {t.decision.approve}
+            </Button>
+          </>
         ) : (
-          <DisabledAction label={t.decision.reject} reason={rejectBlocked} />
-        )}
+          <>
+            {rejectBlocked === null ? (
+              <Button variant="outlined" disabled={isLocked} onClick={onReject}>
+                {t.decision.reject}
+              </Button>
+            ) : (
+              <DisabledAction label={t.decision.reject} reason={rejectBlocked} />
+            )}
 
-        {approveBlocked === null ? (
-          <Button variant="filled" disabled={isLocked} onClick={onApprove}>
-            {t.decision.approve}
-          </Button>
-        ) : (
-          <DisabledAction variant="filled" label={t.decision.approve} reason={approveBlocked} />
+            {approveBlocked === null ? (
+              <Button variant="filled" disabled={isLocked} onClick={onApprove}>
+                {t.decision.approve}
+              </Button>
+            ) : (
+              <DisabledAction variant="filled" label={t.decision.approve} reason={approveBlocked} />
+            )}
+          </>
         )}
       </div>
+      {isNotMyTurn && (
+        <p id={turnNoteId} className="field-note approval-inbox-turn-note">
+          {t.decision.blockedNotMyTurn(t.decision.approve)}
+        </p>
+      )}
     </div>
   );
 };

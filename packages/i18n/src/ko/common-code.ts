@@ -252,8 +252,7 @@ export const commonCode = {
       removeLabel: (warehouse: string): string => `${warehouse} 연결 해제`,
       picker: {
         title: '생산 창고 추가',
-        description: '연결할 창고를 고르세요. 사용 중인 창고만 보입니다.',
-        empty: '고를 수 있는 창고가 없습니다.',
+        empty: '고를 수 있는 창고가 없습니다. 사용 중인 창고만 고를 수 있습니다.',
         close: '닫기',
       },
       confirm: {
@@ -322,6 +321,8 @@ export const commonCode = {
    */
   qualification: {
     paneTitle: '자격·인증',
+    /** 자격 유형 코드가 정해지기 전 자리표시 선택지(qualification-options.ts). */
+    typePending: '미정',
     fields: {
       qualificationType: '자격 유형',
       process: '공정',
@@ -371,8 +372,7 @@ export const commonCode = {
     dialog: {
       addTitle: '자격 추가',
       editTitle: '자격 수정',
-      notSavedNotice:
-        '이 창의 확인은 저장이 아닙니다. 표에 반영된 뒤 「저장」을 눌러야 서버에 반영됩니다.',
+      notSavedNotice: '확인한 뒤 「저장」을 눌러야 저장됩니다.',
       confirm: '확인',
     },
     empty: {
@@ -462,7 +462,7 @@ export const commonCode = {
      * 그 비대칭을 미리 밝힌다.
      */
     unknownNote:
-      '이 화면이 모르는 역할은 저장할 때 해제됩니다 — 서버가 정한 다섯 역할 밖의 값은 저장에서 거절되기 때문입니다. 해제되면 여기서는 다시 붙일 수 없습니다.',
+      '목록에 없는 역할은 저장할 때 빠집니다. 빠진 역할은 여기서 다시 붙일 수 없습니다.',
     /*
      * 잠금 토큰을 얻지 못해 저장이 멈춘 경우 — **이 자원에서만 공통 문구를 쓰지 않는다.**
      *
@@ -480,7 +480,7 @@ export const commonCode = {
      * 그대로 쓴다(`httpError.description`·`httpError.forbidden`).
      */
     saveTokenUnavailable:
-      '저장에 필요한 정보가 서버에서 아직 제공되지 않아 지금은 저장할 수 없습니다. 다시 눌러도 같은 결과입니다. 반복되면 담당자에게 알려 주세요.',
+      '저장에 필요한 정보가 없어 지금은 저장할 수 없습니다. 담당자에게 알려 주세요.',
     actionReasons: {
       saveNoChanges: '저장은 역할을 고친 뒤에 할 수 있습니다.',
       /*

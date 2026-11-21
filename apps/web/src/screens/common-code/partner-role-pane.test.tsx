@@ -190,7 +190,7 @@ describe('PartnerRolePane — 역할 체크칸', () => {
   it('어휘 밖 역할에 저장하면 해제된다는 안내가 보이고 그 칸에 이어져 있다', () => {
     renderPane();
 
-    const note = within(rolePane()).getByText(/저장에서 거절되기 때문입니다/);
+    const note = within(rolePane()).getByText(/목록에 없는 역할은 저장할 때 빠집니다/);
 
     expect(roleCheckbox(UNKNOWN_LABEL).getAttribute('aria-describedby')).toBe(
       note.getAttribute('id'),

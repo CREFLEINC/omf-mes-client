@@ -65,17 +65,17 @@ export const dispositionDecision = {
     reasonText: '부적합 사유',
   },
   all: '전체',
-  codePending: '선택할 기준값이 아직 준비되지 않았습니다',
-  codePlaceholder: '기준값 준비 중',
+  codePending: '등록된 값이 없습니다',
+  codePlaceholder: '등록된 값 없음',
   /** 심각도·상태 선택지는 공통코드 조회가 채운다 — 못 채운 사유를 갈래별로 밝힌다(G-2 · 규범 4). */
   codeLock: {
     loading: '기준값을 불러오는 중입니다',
     failed: '기준값을 불러오지 못했습니다. 다시 조회해 주세요',
-    empty: '등록된 기준값이 없습니다. 공통코드에 값이 서야 고를 수 있습니다',
+    empty: '등록된 값이 없습니다. 공통코드에서 값을 등록하세요',
   },
-  codeTruncated: '기준값 일부만 받았습니다. 목록에 없는 값은 고를 수 없습니다',
+  codeTruncated: '값을 일부만 불러왔습니다. 목록에 없는 값은 고를 수 없습니다',
   /** 주입된 코드 목록이 비어 있을 때의 방어 문구. 기본 목록은 고정 OpenAPI enum으로 채워져 있다. */
-  dispositionPending: '처분 선택지가 아직 준비되지 않아 판정을 저장할 수 없습니다',
+  dispositionPending: '등록된 처분이 없어 판정을 저장할 수 없습니다',
   /**
    * 원천 칸에 상시 붙는 안내 — **비어 있어서가 아니라 축의 범위가 좁아서** 다는 것이다.
    * 그래서 값 목록이 없을 때 다는 `codePending`과 자리가 다르다.
@@ -118,13 +118,11 @@ export const dispositionDecision = {
     count: (count: number): string => `${String(count)}건`,
     /** 요청 구역 머리 — 제목 왼쪽, 한 줄 설명 오른쪽(사용자 시안 · #223). */
     requestHeading: '특채 요청',
-    requestNote: '불합격 LOT의 조건부 사용 승인을 요청합니다.',
     /** 005 FR-038 — 전량 특채(남은 수량 고정 · 일부 특채 없음). 자재 관리 LOT 이 여럿이면 `lotId` 없이 요청한다(D-14). */
     target: '대상 LOT',
     /** 요청 창 대상 칸 — 자재 관리 LOT 개수(사용자 시안 2026-11-17 · 창 디자인 통일). */
     targetAll: (count: number): string => `자재 관리 LOT ${String(count)}개`,
-    wholeNote:
-      '미처분 수량 전체에 대해 특채를 요청합니다. 일부 수량만 요청하려면 먼저 LOT을 분할해야 합니다.',
+    wholeNote: '처분하지 않은 수량 전체를 특채로 요청합니다. 일부만 요청하려면 먼저 LOT 을 나누세요.',
     /** 결재 대기 특채가 있으면 처분 판정 자리에 — 적용은 아래 「특채 요청 이력」의 [특채 적용]. */
     pendingBanner: (concessionNo: string): string => `특채 ${concessionNo} 결재 대기 중입니다.`,
     /** 결재가 승인됐고 적용 전(G2 M3). */
@@ -233,7 +231,7 @@ export const dispositionDecision = {
       `처분 결정 수량 합이 남은 수량(${remaining})을 넘어 저장되지 않았습니다. 부적합을 다시 불러온 뒤 저장하세요`,
     alreadyClosed: '이미 종결된 부적합입니다. 판정을 저장할 수 없습니다',
     /* 입력칸 안내(「판정 사유를 입력하세요」)와 같은 말을 되풀이하지 않는다(omf-all-around#275). */
-    reasonRequired: '판정 사유는 꼭 입력해야 합니다.',
+    reasonRequired: '판정 사유를 입력하세요.',
     dispositionRequired: '처분을 선택하세요',
     savingReason: '판정을 저장하는 중입니다',
     uncertainReason: '앞서 보낸 판정의 처리 결과를 먼저 확인해야 합니다',

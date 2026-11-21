@@ -189,8 +189,6 @@ export const supplierReturn: Translated<typeof ko.supplierReturn> = {
   notes: {
     lotHold:
       'LOT vật tư có dấu 「Tạm giữ」 đang bị tạm giữ vì chất lượng. Màn hình này không gỡ được.',
-    returnQtyEmptyStart:
-      'Số lượng trả hàng bắt đầu bằng ô trống. Hãy tự ghi lượng cần trả về cho từng dòng.',
     submitRecheck:
       'Không xác nhận được đã gửi đến máy chủ hay chưa. Hãy tra cứu lại danh sách để xem phiếu trả hàng đã được tạo chưa rồi mới thử lại.',
     businessDateDerived: 'Ngày làm việc được gửi kèm theo giá trị lấy từ ngày xuất kho.',

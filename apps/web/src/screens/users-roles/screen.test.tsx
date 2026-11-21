@@ -4883,7 +4883,7 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
       'SYN-ROLE-01 · SYN-PERM-02 · 부여됨',
     ]);
     expect(
-      within(permissionPane()).getByText(/부여할 수 있는 권한 목록에 없는 권한이/),
+      within(permissionPane()).getByText(/목록에 없는 권한이 이 역할에 남아 있습니다/),
     ).toBeVisible();
   });
 

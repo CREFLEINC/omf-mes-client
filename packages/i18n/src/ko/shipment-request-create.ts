@@ -147,7 +147,7 @@ export const shipmentRequestCreate = {
       '새 줄의 출고 창고는 첫 줄 창고로 채웁니다. 같은 품목을 두 창고에서 내려면 줄을 따로 담습니다.',
     erpUnmatched: 'ERP S/O 없이 생성한 작업지시에는 ERP S/O 번호가 없습니다.',
     networkUnconfirmed:
-      '응답을 받지 못했습니다. 서버에 실제로 반영됐는지 다시 확인한 뒤 재시도하세요.',
+      '응답을 받지 못했습니다. 반영됐는지 목록에서 확인한 뒤 다시 시도하세요.',
   },
   /** 사업부를 바꿔 다른 사업부 창고를 고른 줄을 비웠을 때(FR-004 · US1-7). */
   warehouseCleared: {
@@ -158,7 +158,7 @@ export const shipmentRequestCreate = {
   shortage: {
     title: '가용 재고가 부족한 라인이 있습니다',
     description: (count: number): string =>
-      `배정 수량이 가용 수량을 넘는 라인이 ${String(count)}건 있습니다. 편성은 막지 않습니다 — 배정 수량을 낮추거나 그대로 진행할 수 있습니다.`,
+      `배정 수량이 가용 수량보다 많은 줄이 ${String(count)}건 있습니다. 배정 수량을 낮추거나 그대로 진행하세요.`,
   },
   result: {
     title: '출하작업지시를 편성했습니다',

@@ -125,7 +125,7 @@ describe('검사 추이·불량 분포', () => {
 
     await user.click(screen.getByRole('tab', { name: '불량 분포' }));
     expect(
-      await screen.findByText('수입검사만 따로 나눈 불량 분포는 아직 볼 수 없습니다.'),
+      await screen.findByText('수입검사는 불량 분포를 따로 볼 수 없습니다.'),
     ).toBeInTheDocument();
     expect(screen.queryByRole('table', { name: '불량코드 분포' })).not.toBeInTheDocument();
     expect(distributionCalls).toBe(0);

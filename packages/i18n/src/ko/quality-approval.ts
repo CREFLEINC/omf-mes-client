@@ -2,7 +2,7 @@ export const qualityApproval = {
   title: '품질 승인 처리',
   breadcrumbRoot: '품질 관리',
   scopeWarning:
-    '승인 유형 기준값이 준비되지 않아 나에게 배정된 모든 유형의 요청을 표시합니다. 승인 유형 원문을 확인하세요.',
+    '나에게 배정된 모든 유형의 요청이 보입니다. 승인 유형을 확인하세요.',
   fields: {
     approvalTypeCode: '승인 유형',
     statusCode: '상태',
@@ -279,7 +279,7 @@ export const qualityApproval = {
     savingReason: '결재 요청을 처리하는 중입니다',
     uncertainOtherTarget: '앞서 보낸 승인 요청의 상태를 먼저 확인해야 합니다',
     conditionRequired: '안전하게 확인된 연결 조건 1건이 필요합니다',
-    deliveryUnknown: '서버 적용 여부를 확인할 수 없습니다',
+    deliveryUnknown: '적용됐는지 확인하지 못했습니다',
     reloadTarget: '승인 대상 상세 다시 확인',
     stateOnly: '승인은 상태만 해제합니다',
     irreversible: '승인은 되돌릴 수 없습니다',

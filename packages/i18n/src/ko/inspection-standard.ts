@@ -68,7 +68,7 @@ export const inspectionStandard = {
     /* 어느 버전이 작성 중인지 밝힌다(사용자 시안 · #208). 조사는 숫자 끝자리 읽기를 따른다(2 · 4 · 5 · 9 → 가). */
     newVersionBlockedByDraft: (planVersion: number): string =>
       `버전 ${String(planVersion)}${[2, 4, 5, 9].includes(planVersion % 10) ? '가' : '이'} 작성 중입니다. 확정하거나 작성을 취소해 주세요.`,
-    confirmNeedsDraft: '확정은 작성중 버전에만 할 수 있습니다. 변경하려면 신규 버전을 발행하세요.',
+    confirmNeedsDraft: '작성중 버전만 확정할 수 있습니다.',
     /* 계약이 항목 1건 이상을 요구한다(위반 시 400 LINE_REQUIRED) — 화면이 먼저 막고 사유를 밝힌다. */
     confirmNeedsItems: '확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.',
     /*
@@ -84,8 +84,7 @@ export const inspectionStandard = {
      * 확정·사용 중지 버전에서는 검사 항목도 잠긴다. 여러 컨트롤(추가·수정·삭제·순서 이동·저장)이
      * 공유하는 안내라 컨트롤 이름이 아니라 무엇에 대한 안내인지로 시작한다(배치 규범 4의 이탈 조건).
      */
-    versionLocked:
-      '검사 항목은 작성중 버전에서만 편집할 수 있습니다. 변경하려면 신규 버전을 발행하세요.',
+    versionLocked: '검사 항목은 작성중 버전에서만 고칠 수 있습니다. 바꾸려면 「신규 버전 발행」을 누르세요.',
     /*
      * 항목을 저장하면 버전 정보도 다시 불러온다 — 그때 저장하지 않은 버전 편집이
      * 서버 값으로 되돌아간다. 조용히 잃지 않도록 먼저 막는다.
@@ -106,8 +105,8 @@ export const inspectionStandard = {
   /** 확정·사용 중지 버전의 편집 잠금 안내. 「어떻게 풀 것인가」를 함께 담는다. */
   stateLock: {
     title: '지금은 수정할 수 없는 버전입니다',
-    confirmed: '확정된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.',
-    obsolete: '사용 중지된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.',
+    confirmed: '확정된 버전은 고칠 수 없습니다. 바꾸려면 「신규 버전 발행」을 누르세요.',
+    obsolete: '사용 중지된 버전은 고칠 수 없습니다. 바꾸려면 「신규 버전 발행」을 누르세요.',
   },
   dialog: {
     deactivateTitle: '검사 기준을 사용 중지하시겠습니까?',
@@ -120,8 +119,7 @@ export const inspectionStandard = {
     deactivateDescription:
       '사용 중지하면 새 검사에 적용할 수 없습니다. 검사 기준 정보는 삭제되지 않습니다.',
     confirmTitle: '이 버전을 확정할까요?',
-    confirmDescription:
-      '확정하면 이 버전은 더 이상 수정할 수 없습니다. 변경하려면 신규 버전을 발행해야 합니다.',
+    confirmDescription: '확정하면 이 버전은 고칠 수 없습니다. 바꾸려면 새 버전을 발행해야 합니다.',
     /** 「버전 1을 …」 — 숫자 끝소리에 맞춰 을/를(2·4·5·9 는 「를」 · 사용자 시안 #258). */
     obsoleteTitle: (version: number): string =>
       `버전 ${String(version)}${[2, 4, 5, 9].includes(version % 10) ? '를' : '을'} 사용 중지하시겠습니까?`,
@@ -142,7 +140,7 @@ export const inspectionStandard = {
      * 순서 컬럼에 유일 제약이 있어 행 단위 저장이 성립하지 않는다 —
      * 이 창의 확인은 표에만 반영되고 서버 반영은 「저장」 한 번뿐이다. 그 사실을 감추지 않는다.
      */
-    itemLocalNote: '확인 시 목록에 추가되며, 저장 후 최종 반영됩니다.',
+    itemLocalNote: '확인하면 목록에 추가되고, 저장해야 반영됩니다.',
     /* 칸마다 무엇을 넣을지 알린다(사용자 시안 · #196). */
     /* 등록 · 복사 창의 기준코드 — 비우면 서버가 QP-{YYYYMMDD}-{SEQ4}로 등록한다(omf-all-around#262). */
     planCodePlaceholder: '비우면 자동으로 등록됩니다',
@@ -177,7 +175,7 @@ export const inspectionStandard = {
   import: {
     title: '검사 기준 엑셀 업로드',
     // 올린 기준은 바로 확정된다(#208) — 되돌릴 수 없다는 뜻을 한 줄로.
-    partialWarning: '업로드하면 기준별로 새 버전이 바로 확정되며, 일괄 취소할 수 없습니다.',
+    partialWarning: '올리면 기준마다 새 버전이 바로 확정되고, 한꺼번에 되돌릴 수 없습니다.',
     guideHeaderRow: '첫 번째 시트의 첫 행을 제목으로 사용합니다.',
     guideRequiredColumns: '필수 열: 기준코드, 항목코드, 항목명',
     guideTckt: '기존 검사기준서(TCKT) 파일도 업로드할 수 있습니다.',

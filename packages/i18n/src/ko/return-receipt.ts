@@ -37,9 +37,9 @@ export const returnReceipt = {
   },
   all: '전체',
   keywordPlaceholder: '출하번호·LOT 번호',
-  codePlaceholder: '기준값 준비 중',
+  codePlaceholder: '등록된 값 없음',
   /** 값 목록이 서버에서 오는 칸이 비었을 때 — 선택지를 지어내지 않는다. */
-  codePending: '선택할 기준값이 아직 준비되지 않았습니다',
+  codePending: '등록된 값이 없습니다',
   lookupLoading: '목록을 불러오는 중입니다',
   lookupFailed: '목록을 불러오지 못했습니다',
   lookupTruncated: '목록이 잘렸습니다. 찾는 값이 없으면 검색어를 좁히세요',

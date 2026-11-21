@@ -16,7 +16,7 @@ describe('QUALIFICATION_TYPE_OPTIONS', () => {
     expect(PENDING_QUALIFICATION_TYPE).toBe('PENDING');
   });
 
-  it('자리표시 문구가 준비 중임을 밝힌다', () => {
-    expect(QUALIFICATION_TYPE_OPTIONS[0]?.label).toBe('선택지 준비 중');
+  it('자리표시 문구가 미정임을 밝힌다', () => {
+    expect(QUALIFICATION_TYPE_OPTIONS[0]?.label).toBe('미정');
   });
 });

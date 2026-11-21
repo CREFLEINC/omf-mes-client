@@ -79,8 +79,8 @@ export const lotStatusHistory = {
     },
     notes: {
       lotTypeTruncated: '일부 LOT 유형만 표시됩니다.',
-      lotTypeUnseeded: 'LOT 유형 기준값이 준비되지 않았습니다.',
-      lotStatusUnseeded: '현재 상태 기준값이 준비되지 않았습니다.',
+      lotTypeUnseeded: '등록된 LOT 유형이 없습니다.',
+      lotStatusUnseeded: '등록된 상태 값이 없습니다.',
       locationNeedsWarehouse: '창고를 먼저 선택하세요',
       locationFailed: '위치 목록을 불러오지 못했습니다.',
       locationTruncated: '일부 위치만 표시됩니다.',

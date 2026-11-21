@@ -107,8 +107,8 @@ describe('RoleFormPane 역할 코드 잠금', () => {
 
     expect(codeField()).toBeDisabled();
     /* 쓰이는 중이라 잠기면 이름 오른쪽 라벨로 짧게 알린다(사용자 지시 2026-11-20 · #333). */
-    expect(screen.getByText('사용 중인 코드는 변경 불가합니다.')).toBeInTheDocument();
-    expect(codeField()).toHaveAccessibleDescription('사용 중인 코드는 변경 불가합니다.');
+    expect(screen.getByText('사용 중인 코드는 바꿀 수 없습니다.')).toBeInTheDocument();
+    expect(codeField()).toHaveAccessibleDescription('사용 중인 코드는 바꿀 수 없습니다.');
   });
 
   /** 어긋난 조합 ① — 서버가 실제로 준다. `reason`을 따라 읽으면 잠겨야 하는 칸이 열린다. */
