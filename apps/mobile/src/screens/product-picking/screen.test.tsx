@@ -1344,7 +1344,8 @@ describe('M-04-01 제품 피킹 — 줄 출고 창고(피처 012)', () => {
     await openRequest(user);
 
     expect(screen.getByText('이 기기 몫은 끝났습니다')).toBeTruthy();
-    expect(screen.getByText(/사업부 X 의 아무 POP 「출하 완료」에서 합니다/)).toBeTruthy();
+    /* #347 사업부 이름 뒤 「의」는 붙여 쓴다. */
+    expect(screen.getByText(/사업부 X의 아무 POP 「출하 완료」에서 합니다/)).toBeTruthy();
   });
 
   it('US6-1·빈 곳 ⑨ 옛 지시서는 「창고 미지정」 줄과 「사업부 미지정」 배지로 지금처럼 피킹한다', async () => {
