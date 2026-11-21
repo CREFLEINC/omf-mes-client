@@ -88,6 +88,8 @@ export const StockTransferScreen = () => {
     lines: StockTransferLine[];
   } | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  /** 방금 반출이 서버에 닿았다 — 다음 스캔·[이어서 하기]까지 초록 띠로 알린다(omf-all-around#345). */
+  const [shipNotice, setShipNotice] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
   /* 단말 키보드는 키가 촘촘하고 올라오면 라인 목록과 기록 단추를 덮는다. */
   const [keypadFor, setKeypadFor] = useState<number | null>(null);
@@ -231,6 +233,7 @@ export const StockTransferScreen = () => {
       setNoStock(false);
       setUnknownBusinessUnit(false);
       setLifecycleNotice(null);
+      setShipNotice(false);
       setScannedLot(value.trim());
     },
   });
@@ -341,6 +344,7 @@ export const StockTransferScreen = () => {
 
     inFlight.current = true;
     setSaveFailed(false);
+    setShipNotice(false);
 
     try {
       if (source === null) {
@@ -375,6 +379,7 @@ export const StockTransferScreen = () => {
       void unfinished.refetch();
       setOutcome(null);
       setLines([]);
+      setShipNotice(true);
     } finally {
       inFlight.current = false;
     }
@@ -616,6 +621,11 @@ export const StockTransferScreen = () => {
 
   return (
     <div className={keypad === null ? 'stock-transfer' : 'stock-transfer docked-pad-open'}>
+      {shipNotice ? (
+        <AlertBanner variant="success" title={t.shipped.title}>
+          {t.shipped.description}
+        </AlertBanner>
+      ) : null}
       <section className="stock-transfer__section" aria-label={t.unfinished.legend}>
         <h2 className="transfer-tally__title">{t.unfinished.legend}</h2>
         {unfinished.isPending ? <p role="status">{t.unfinished.loading}</p> : null}
@@ -659,6 +669,7 @@ export const StockTransferScreen = () => {
                         variant="outlined"
                         size="sm"
                         onClick={() => {
+                          setShipNotice(false);
                           setShipped(each);
                           setToWarehouseId(each.transfer.toWarehouseId);
                           setScannedLocation(null);
