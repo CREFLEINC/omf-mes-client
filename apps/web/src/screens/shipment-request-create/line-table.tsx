@@ -43,6 +43,11 @@ const t = messages.shipmentRequestCreate;
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
 const WIDTH = {
+  /**
+   * 품목 「코드 · 이름」. 정해 두지 않으면 고정 칸(수량·단위·창고·검사 …)이 자리를 다 가져가
+   * 1440 폭에서 「FG-A · 통합 완제품」처럼 여러 줄로 잘린다(omf-all-around#348). 표가 넓어지면 가로로 민다.
+   */
+  item: '240px',
   requestedQty: '112px',
   uom: '144px',
   availableQty: '96px',
@@ -144,6 +149,7 @@ export const LineTable = ({
     {
       key: 'item',
       header: t.lineTable.item,
+      width: WIDTH.item,
       /*
        * ⭐ **두 모드가 같은 모양이다** — 「코드 · 이름」 읽기 전용(사용자 결정 2026-09-18).
        *    현장이 코드로 대조하고 라벨·QR 도 코드다.
