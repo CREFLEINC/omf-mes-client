@@ -11,7 +11,7 @@ export const iqcInspection = {
   breadcrumbRoot: '품질 관리',
 
   queue: {
-    heading: '검사 대기',
+    heading: '검사 대상',
     /**
      * 표 머리. 좌측 큐가 약 1/3 폭이라 **고르는 데 필요한 넷만** 둔다(화면 스펙 §3).
      * 품목·수량 같은 나머지는 고른 뒤 우측 창이 보인다.

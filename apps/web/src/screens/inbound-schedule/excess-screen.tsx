@@ -331,7 +331,6 @@ export const InboundExcessScreen = () => {
 
     return (
       <>
-        <h2 className="pane-title">{t.listCount(total)}</h2>
         <BoardTable
           label={t.listTitle}
           widthKey="omf-mes:inbound-excess:columns:excess"

@@ -82,6 +82,7 @@ import {
   type RouteFilters,
   type RouteFormValues,
 } from './types';
+import './layout.css';
 
 const t = messages.approvalRoute;
 
@@ -1150,6 +1151,7 @@ export const ApprovalRouteScreen = () => {
           label: t.panes.list,
           title: t.panes.list,
           count: list.data?.page.total,
+          className: 'approval-route-list',
           content: (
             <RouteListPane
               routes={routes}

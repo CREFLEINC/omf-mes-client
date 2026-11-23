@@ -1,0 +1,49 @@
+/*
+ * 툴/금형/지그 마스터 — 조회 조건 상자(#350).
+ * 조회 줄을 두 줄로 접는 기준(app.css `@container (max-width: 52rem)`)은 종전엔 툴 목록 상자(`.tool-master-pane`)가
+ * 그릇이었다. 조회 줄이 조회 조건 상자로 옮겨 왔으니 그 상자를 그릇으로 삼는다.
+ */
+.tool-master-filter-box {
+  container-type: inline-size;
+}
+
+/*
+ * 툴 생성 · 엑셀 업로드가 조회 줄 끝에 함께 서서 한 줄 최소 폭이 약 68rem 으로 늘었다 — 그보다 좁으면 종전과 같은
+ * 모양(검색 · 단추 / 공장 · 유형)으로 접는다. 접지 않으면 두 단추가 상자 밖으로 밀려 잘린다.
+ * 공장 · 유형은 종전 최소 폭(10rem)을 지키고, 단추 칸이 모자라면 툴 생성 · 엑셀 업로드가 그 칸 안 다음 줄로 내려간다.
+ * 아주 좁을 때(36rem 이하)는 app.css 의 한 칸씩 배치가 그대로 맡는다.
+ */
+@container (36rem < width <= 68rem) {
+  .filter-bar.tool-master-filter {
+    grid-template-columns: repeat(2, minmax(10rem, 1fr)) auto;
+    grid-template-areas:
+      "search search actions"
+      "plant type .";
+  }
+
+  .filter-bar.tool-master-filter > :nth-child(1) {
+    grid-area: search;
+  }
+
+  .filter-bar.tool-master-filter > :nth-child(2) {
+    grid-area: plant;
+  }
+
+  .filter-bar.tool-master-filter > :nth-child(3) {
+    grid-area: type;
+  }
+
+  .filter-bar.tool-master-filter > .tool-master-search-actions {
+    grid-area: actions;
+    justify-self: start;
+    flex-wrap: wrap;
+  }
+
+  .filter-bar.tool-master-filter-more {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tool-master-filter-more > .tool-master-extra {
+    grid-column: auto;
+  }
+}

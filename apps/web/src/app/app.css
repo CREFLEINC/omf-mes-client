@@ -8389,6 +8389,22 @@ main:has(.iqc-skip-approval-detail) {
   }
 }
 
+/*
+ * 제목 줄(「목록 접기」)이 선 처분 목록(#350) — 넓은 창 상하 배치에서도 접기 단추는 제목 줄 하나만(막대의 작은 원은 감춘다),
+ * 접으면 서는 가로 「목록 N건」 탭(40px)이 잘리지 않게 첫 줄 높이를 내용만큼 둔다(종전 24px 원 단추 높이).
+ */
+@media (min-width: 1440px) {
+  .po-board-split.is-stacked.disposition-split:has(.po-board-list-head)
+    > .po-board-gutter
+    > .po-board-collapse {
+    display: none;
+  }
+
+  .po-board-split.is-stacked.disposition-split[data-left-collapsed]:has(.po-board-list-head) {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+}
+
 /* 처분 판정 처리 제목 아래 한 줄 — 판정 대기 · 처리 이력 칩과 배치 고르기를 오른쪽에(#223). */
 .disposition-top-bar {
   display: flex;

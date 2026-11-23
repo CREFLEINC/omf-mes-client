@@ -109,7 +109,7 @@ const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequ
 const planRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requestsTo(requests, PLANS_PATH);
 
-const planPane = (): HTMLElement => screen.getByRole('region', { name: '검사기준' });
+const planPane = (): HTMLElement => screen.getByRole('region', { name: '검사 기준' });
 
 /** 검사 기준 검색 칸을 펼쳐 검색어로 찾고, 한 기준을 골라 넣는다 — 창(팝업)을 거치지 않는다(#226). */
 const pickPlanInField = async (

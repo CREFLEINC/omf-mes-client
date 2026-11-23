@@ -145,7 +145,7 @@ export const approvalInbox = {
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
     beyondLastDescription: '첫 쪽으로 이동하세요.',
     noSelectionTitle: '요청을 고르면 자세한 내용이 보입니다',
-    noSelectionDescription: '위 목록에서 요청번호를 누르세요.',
+    noSelectionDescription: '목록에서 요청번호를 누르세요.',
     /**
      * 상세가 **404**. 「없는 것」이라 주소에서 고른 번호를 정리한다 —
      * 남겨 두면 새로고침·공유가 같은 빈자리로 되돌아온다.

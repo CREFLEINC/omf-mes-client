@@ -333,31 +333,27 @@ export const ErpCommonCodeScreen = () => {
             <SkeletonText lines={3} />
           </div>
         ) : (
-          <>
-            <BoardTable
-              label={t.groups.label}
-              widthKey="omf-mes:erp-common-code:columns:groups"
-              minWidth="29rem"
-              columns={groupColumns}
-              rows={groupRows}
-              /* 그룹 코드가 주소의 값이자 줄의 열쇠다 — 고른 줄을 주소로 바로 맞춘다. */
-              getRowId={(row) => row.groupCode}
-              pick={{
-                columnKey: 'groupCode',
-                // 접근 이름에 그룹 코드를 넣는다 — 같은 동작이 행마다 되풀이되면 어느 그룹인지 알 수 없다.
-                label: (row) => t.groups.openAction(row.groupCode),
-                currentId: group,
-                onPick: (row) => {
-                  // 그룹을 바꾸면 코드값 조건을 비운다 — 앞 그룹의 검색어가 새 그룹을 빈 결과로 만든다.
-                  setSearchParams(toSearchParams(row.groupCode, EMPTY_FILTERS));
-                },
-              }}
-              empty={<EmptyState size="sm" live title={t.empty.noGroupsTitle} />}
-            />
-            {groupRows.length > 0 && (
-              <p className="field-note">{t.groups.count(groupRows.length)}</p>
-            )}
-          </>
+          /* 그룹 수는 목록 제목 줄의 건수가 말한다(#350) — 표 아래에 겹쳐 적지 않는다. */
+          <BoardTable
+            label={t.groups.label}
+            widthKey="omf-mes:erp-common-code:columns:groups"
+            minWidth="29rem"
+            columns={groupColumns}
+            rows={groupRows}
+            /* 그룹 코드가 주소의 값이자 줄의 열쇠다 — 고른 줄을 주소로 바로 맞춘다. */
+            getRowId={(row) => row.groupCode}
+            pick={{
+              columnKey: 'groupCode',
+              // 접근 이름에 그룹 코드를 넣는다 — 같은 동작이 행마다 되풀이되면 어느 그룹인지 알 수 없다.
+              label: (row) => t.groups.openAction(row.groupCode),
+              currentId: group,
+              onPick: (row) => {
+                // 그룹을 바꾸면 코드값 조건을 비운다 — 앞 그룹의 검색어가 새 그룹을 빈 결과로 만든다.
+                setSearchParams(toSearchParams(row.groupCode, EMPTY_FILTERS));
+              },
+            }}
+            empty={<EmptyState size="sm" live title={t.empty.noGroupsTitle} />}
+          />
         ),
       }}
       detail={{

@@ -98,7 +98,7 @@ export const approvalInbox: Translated<typeof ko.approvalInbox> = {
     beyondLastTitle: 'Trang này không có kết quả',
     beyondLastDescription: 'Hãy về trang đầu.',
     noSelectionTitle: 'Chọn một yêu cầu thì sẽ thấy nội dung chi tiết',
-    noSelectionDescription: 'Hãy bấm số yêu cầu ở danh sách trên.',
+    noSelectionDescription: 'Hãy bấm số yêu cầu trong danh sách.',
     notFoundTitle: 'Không tìm thấy yêu cầu đã chọn',
     notFoundDescription: 'Yêu cầu đã được xử lý hoặc đã bị xóa. Hãy chọn lại từ danh sách.',
     forbiddenTitle: 'Bạn không có quyền xem yêu cầu này',

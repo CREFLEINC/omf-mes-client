@@ -56,6 +56,7 @@ import { TemplateEditor, TemplateStatusChip } from './template-editor';
 import { UsageChips, type UsageChipValue } from './usage-chips';
 import { usePageHub } from '../../patterns/page-hub';
 import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
+import './layout.css';
 
 const t = messages.inspectionSheetTemplate;
 const hubText = messages.common.inspectionHub;
@@ -171,7 +172,7 @@ const InspectionSheetTemplateScreenBody = ({
   const [opened, setOpened] = useState<Opened>(() =>
     startBasics === undefined ? null : { kind: 'new', basics: startBasics, seq: Date.now() },
   );
-  /* 넘어온 기본 정보로 새 편집을 열었으면 첫 그리기에 목록을 펴지 않고 접는다 — 「확인」과 같다. */
+  /* 넘어온 기본 정보로 새 편집을 열었으면 첫 그리기에 목록 접힘을 건드리지 않는다 — 접기는 「목록 접기」로만(#350). */
   const startsEditing = useRef(startBasics !== undefined);
   /*
    * 조회 조건을 바꾸면 접어 둔 목록을 다시 펼친다 — 거른 결과를 봐야 한다(#255 사용자 지시). 처음 열 때도 고른 기준이

@@ -199,7 +199,6 @@ export const inboundSchedule = {
    */
   excess: {
     /** 탭 이름은 사이드바 묶음(`app/nav-tree.ts`)이 갖는다. 왼쪽 표 위 제목 — 미연결 건수. */
-    listCount: (count: number): string => `미연결 초과분 ${String(count)}건`,
     splitter: '초과분 목록과 연결할 발주 라인 사이',
     listCollapse: '초과분 목록 접기',
     listExpand: '초과분 목록 펼치기',

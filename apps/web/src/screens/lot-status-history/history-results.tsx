@@ -78,11 +78,12 @@ export const HistoryResults = ({
   const currentPage = Math.min(Math.max(page, 1), totalPages);
   const start = (currentPage - 1) * pageSize;
   const rows = entries.slice(start, start + pageSize);
-  /* LOT 번호 왼쪽 유형 라벨 — LOT 현황 · LOT 상태 변경 목록과 같다(사용자 2026-11-02). 보이는 쪽의 LOT 만 읽는다. */
-  const listTotal = hasValidPeriod ? total : undefined;
+  /* 이력을 아직 받지 못했으면(불러오는 중 · 실패) 건수를 두지 않는다 — 「0건」으로 읽히지 않게. */
+  const listTotal = hasValidPeriod && history.data !== undefined ? total : undefined;
   useEffect(() => {
     onTotalChange(listTotal);
   }, [listTotal, onTotalChange]);
+  /* LOT 번호 왼쪽 유형 라벨 — LOT 현황 · LOT 상태 변경 목록과 같다(사용자 2026-11-02). 보이는 쪽의 LOT 만 읽는다. */
   const lotTypeCodes = useLotTypeCodes(rows.map((entry) => entry.event.lotId));
   const lotTypes = useLotTypeOptions();
   const lotTypeLabel = (entry: { event: { lotId: number } }): string | null => {

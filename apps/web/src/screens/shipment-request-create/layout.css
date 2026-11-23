@@ -5,3 +5,16 @@
 .sr-create-detail > .pane:only-child {
   flex: 1 0 auto;
 }
+
+/*
+ * 고른 ERP S/O 줄 — 다른 목록 | 상세 화면과 같은 정보 파랑 바탕 + 왼쪽 3px 선(#350 회귀 시험 — 종전엔 S/O 번호 단추의
+ * `aria-pressed` 만 있어 어느 줄을 골랐는지 보이지 않았다).
+ */
+.sr-create-source-list tbody tr:has(button[aria-pressed='true']) > td,
+.sr-create-source-list tbody tr:has(button[aria-pressed='true']):hover > td {
+  background: var(--semantic-info-container);
+}
+
+.sr-create-source-list tbody tr:has(button[aria-pressed='true']) > td:first-child {
+  box-shadow: inset 3px 0 0 var(--semantic-info);
+}

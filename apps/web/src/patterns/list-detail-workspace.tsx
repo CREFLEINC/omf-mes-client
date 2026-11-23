@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { useLayoutEffect, useRef, type ReactNode } from 'react';
 
 import { useHubActionsTarget } from './hub-actions';
 import { PaneListHead, PaneSplitter, useFitToViewport, usePaneSplit } from './po-board';
@@ -14,6 +14,8 @@ const hubText = messages.common.inspectionHub;
 export interface ListDetailWorkspaceProps {
   /** 폭 비율 · 접힘 · 배치(좌우/상하)를 브라우저에 남기는 열쇠 앞머리 — **화면마다 다르게.** */
   storageKey: string;
+  /** 좌우/상하 배치를 같은 탭 묶음의 다른 화면과 함께 쓸 때 그 열쇠(예: 품질 기준 정보 묶음) — 없으면 화면 몫. */
+  orientationKey?: string;
   /** 나란히 설 때 목록 몫(0~1). */
   initialRatio?: number;
   /** 탭 줄 오른쪽, 「⋯」(배치) 왼쪽에 둘 것 — 상태 칩 등. 탭 묶음 밖이면 조회 조건 위 오른쪽 줄에 선다. */
@@ -37,6 +39,7 @@ export interface ListDetailWorkspaceProps {
  */
 export const ListDetailWorkspace = ({
   storageKey,
+  orientationKey,
   initialRatio = 0.4,
   toolbar,
   filter,
@@ -45,8 +48,31 @@ export const ListDetailWorkspace = ({
 }: ListDetailWorkspaceProps) => {
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit(`${storageKey}:split`, initialRatio);
-  const layout = useSplitOrientation(`${storageKey}:split-orientation`);
+  const layout = useSplitOrientation(orientationKey ?? `${storageKey}:split-orientation`);
   const hubTarget = useHubActionsTarget();
+  const rootRef = useRef<HTMLDivElement>(null);
+  /*
+   * 처음 그릴 때는 탭 줄 자리를 아직 못 찾아 「⋯」 · 칩이 조회 상자 위에 잠깐 섰다가 탭 줄로 옮겨 간다 — 목록 | 상세가
+   * 위로 올라오므로 윗변을 다시 잰다(재지 않으면 창 바닥 위에 빈 띠가 남는다 · #350 회귀 시험). 위 칸의 높이가 바뀌면
+   * 이 상자 높이도 바뀌므로 그것을 지켜본다. 다음 그림 때 재서 같은 그림 안에서 크기가 되먹히지 않게 한다.
+   */
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    const splitEl = splitRef.current;
+    if (root === null || splitEl === null || typeof ResizeObserver === 'undefined') return;
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        splitEl.style.setProperty('--split-top', `${String(splitEl.getBoundingClientRect().top)}px`);
+      });
+    });
+    observer.observe(root);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [splitRef]);
   const collapse = {
     collapsed: split.collapsed,
     onToggle: split.toggleCollapsed,
@@ -60,7 +86,7 @@ export const ListDetailWorkspace = ({
   );
 
   return (
-    <div className="list-detail-workspace">
+    <div ref={rootRef} className="list-detail-workspace">
       {/* 탭 묶음 안이면 칩 · 「⋯」은 탭 줄로 간다(그 자리에 그대로). 밖이면 조회 조건 위 오른쪽 한 줄. */}
       {hubTarget === null ? (
         <div className="list-detail-toolbar">

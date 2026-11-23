@@ -11,7 +11,7 @@ import {
 } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
@@ -24,6 +24,7 @@ import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { PageNav } from '../../patterns/page-nav';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { Select } from '../../patterns/select';
+import { QUALITY_STANDARD_ORIENTATION_KEY } from '../../patterns/split-orientation';
 import { ItemHistoryDialog } from './history-dialog';
 import { LEVEL_CODES, LevelDialog } from './level-dialog';
 import { useLevelWrite } from './level-write';
@@ -158,6 +159,11 @@ export const InspectionLevelScreen = () => {
     setSelectedItem((prev) => (prev?.itemId === row.itemId ? null : row));
     setHistoryPage(1);
   };
+  /* 조회 조건(품목 · 수준)이 바뀌면 고른 품목을 푼다 — 목록에서 빠진 품목의 이력만 남지 않게(#350 회귀 시험). */
+  useEffect(() => {
+    setSelectedItem(null);
+    setHistoryPage(1);
+  }, [filter.itemId, filter.level]);
   const counts = useInspectionLevelCounts(filter.itemId, LEVEL_CODES);
   const rows = list.data?.items ?? [];
   const historyRows = histories.data?.items ?? [];
@@ -396,6 +402,8 @@ export const InspectionLevelScreen = () => {
        */}
       <ListDetailWorkspace
         storageKey="omf-mes:inspection-level"
+        /* 좌우 · 상하 배치는 탭 묶음(검사 기준 · 검사표 기준)과 함께 쓴다(#208). */
+        orientationKey={QUALITY_STANDARD_ORIENTATION_KEY}
         toolbar={
           <LevelFilterChips
             counts={counts.data ?? null}

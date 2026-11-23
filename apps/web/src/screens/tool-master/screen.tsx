@@ -28,6 +28,7 @@ import { ToolFormDialog } from './tool-form-dialog';
 import { ToolImportDialog } from './tool-import-dialog';
 import { useToolListPane } from './tool-list-pane';
 import { TOOL_FORM_FIELDS, validateTool } from './tool-validation';
+import './layout.css';
 import {
   isTruncated,
   toolDetailPath,
@@ -387,7 +388,7 @@ export const ToolMasterScreen = () => {
 
       <div className="list-detail-workspace">
         <section
-          className="pane po-board-filter list-detail-filter"
+          className="pane po-board-filter list-detail-filter tool-master-filter-box"
           aria-label={messages.common.paneList.filter}
         >
           {toolPane.filter}

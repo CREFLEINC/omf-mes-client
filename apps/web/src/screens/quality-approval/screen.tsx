@@ -82,6 +82,7 @@ import {
   type ApprovalRequestDetail,
 } from './types';
 import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
+import './layout.css';
 
 const EMPTY_ITEMS: ApprovalRequest[] = [];
 type DecisionAction = 'approve' | 'reject';

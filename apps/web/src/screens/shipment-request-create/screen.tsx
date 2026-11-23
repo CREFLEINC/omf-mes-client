@@ -564,6 +564,7 @@ export const ShipmentRequestCreateScreen = () => {
           label: t.panes.source,
           title: t.panes.source,
           count: list.data?.page.total,
+          className: 'sr-create-source-list',
           content: list.isError ? (
             <LoadErrorBanner
               error={list.error}
