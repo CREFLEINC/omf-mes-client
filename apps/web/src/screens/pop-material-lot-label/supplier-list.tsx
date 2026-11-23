@@ -146,7 +146,7 @@ export interface ItemListProps {
 
 /**
  * 둘째 목록 — **고른 공급사의 품목**(사용자 지시 2026-11-23). 품목코드는 왼쪽, 품목명은 오른쪽 끝(길면 글자를 줄여 한 줄).
- * 라벨 미출력 · 기본 포장은 있을 때만 한 줄 더 붙는다.
+ * 둘째 줄에 기본 포장 · 라벨 미출력(없으면 빈 줄 — 카드 높이를 맞춘다).
  */
 export const ItemList = ({
   groups,
@@ -177,12 +177,11 @@ export const ItemList = ({
               <span className="mll-pair-name">{group.itemCode}</span>
               <FitItemName name={group.itemName} />
             </span>
-            {(defaultLine !== null || unprinted !== null) && (
-              <span className="pu-item-sub mll-pair-supplier">
-                <span>{defaultLine}</span>
-                {unprinted !== null && <span className="mll-pair-unprinted">{unprinted}</span>}
-              </span>
-            )}
+            {/* 둘째 줄은 비어도 늘 둔다 — 카드 높이가 같아야 쪽 건수(`useFitCount`)가 늘었다 줄었다 하지 않는다. */}
+            <span className="pu-item-sub mll-pair-supplier">
+              <span>{defaultLine ?? '\u00a0'}</span>
+              {unprinted !== null && <span className="mll-pair-unprinted">{unprinted}</span>}
+            </span>
           </button>
         </li>
       );
