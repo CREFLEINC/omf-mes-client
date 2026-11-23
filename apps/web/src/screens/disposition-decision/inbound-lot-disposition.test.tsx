@@ -111,7 +111,7 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     await waitFor(() => expect(qty).toHaveTextContent('3,000 EA'));
 
     await user.click(screen.getByRole('radio', { name: '폐기' }));
-    expect(screen.getByText(t.form.wholeEffect(3, t.form.effect.SCRAP ?? ''))).toBeInTheDocument();
+    expect(screen.getByText(t.form.wholeEffect(3, '폐기'))).toBeInTheDocument();
     await user.type(screen.getByLabelText(t.form.reasonLabel), '합성 폐기 사유');
     await user.click(screen.getByRole('button', { name: t.actions.save }));
 

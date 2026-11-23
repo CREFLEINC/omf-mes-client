@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -82,12 +82,16 @@ describe('W-03-10 선별', () => {
     expect(screen.getByRole('button', { name: t.sort.help })).toBeInTheDocument();
     expect(screen.queryByText(t.sort.help)).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: t.sort.qtyNote })).toHaveLength(2);
-    // 저장하면 무엇이 일어나는지 미리 보인다 — 번호는 실행 응답으로만 안다.
-    expect(screen.getByText(t.sort.previewRest('0001, 0002', '2,000 EA'))).toBeInTheDocument();
-    expect(screen.getByText(t.sort.previewMoved('0003', '1,000 EA'))).toBeInTheDocument();
+    // 저장 후 처리 — 처리 이름과 대상 LOT · 수량, 아래 짧은 안내(#352).
+    const preview = screen.getByRole('group', { name: t.sort.previewTitle });
+    expect(
+      within(preview).getByText(t.sort.previewTarget('0001, 0002', '2,000 EA')),
+    ).toBeInTheDocument();
+    expect(within(preview).getByText(t.sort.previewTarget('0003', '1,000 EA'))).toBeInTheDocument();
+    expect(within(preview).getByText(t.sort.previewNotes[0] ?? '')).toBeInTheDocument();
     await user.type(screen.getByLabelText(t.sort.defectQty), '1050');
     await user.type(screen.getByLabelText(t.form.reasonLabel), '합성 선별 사유');
-    await user.click(screen.getByRole('button', { name: t.sort.save }));
+    await user.click(screen.getByRole('button', { name: t.actions.save }));
 
     await waitFor(() => expect(sortPost()).toBeDefined());
     // 수량 분할 본문 없이 — 고른 LOT 과 정보 수량만.
@@ -118,8 +122,11 @@ describe('W-03-10 선별', () => {
     await screen.findByText('SAMPLE-ML|0003');
 
     await user.click(screen.getByRole('radio', { name: '선별' }));
+    // 고르기 전에는 목록 위 안내만, 저장 후 처리 요약은 없다(#352).
+    expect(screen.getByText(t.sort.selectNote)).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: t.sort.previewTitle })).toBeNull();
     await user.type(screen.getByLabelText(t.form.reasonLabel), '합성 선별 사유');
-    const save = screen.getByRole('button', { name: t.sort.save });
+    const save = screen.getByRole('button', { name: t.actions.save });
     expect(save).toBeDisabled();
     expect(save).toHaveAccessibleDescription(t.sort.noneSelected);
 

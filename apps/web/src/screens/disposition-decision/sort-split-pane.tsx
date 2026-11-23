@@ -56,8 +56,11 @@ export const SortSplitPane = ({
   const moved = lots.filter((lot) => selected.has(lot.lotId));
   const rest = lots.filter((lot) => !selected.has(lot.lotId));
   const isAll = lots.length > 0 && moved.length >= lots.length;
+  /* 요약은 끝 번호로 부른다 — 끝 번호가 겹치는 LOT 이 있으면 헷갈리지 않게 전체 번호로(#352 사용자 지시). */
+  const tails = lots.map((lot) => lotTail(lot.lotNoText));
+  const useTail = new Set(tails).size === tails.length;
   const names = (rows: readonly NonconformanceLotRow[]): string =>
-    rows.map((row) => lotTail(row.lotNoText)).join(', ');
+    rows.map((row) => (useTail ? lotTail(row.lotNoText) : row.lotNoText)).join(', ');
 
   const toggle = (lotId: number, checked: boolean): void => {
     onChange({
@@ -71,13 +74,26 @@ export const SortSplitPane = ({
   return (
     <div className="disposition-sort" role="group" aria-labelledby={headingId}>
       {/* 선별 규칙은 제목 옆 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
+      {/* LOT 을 하나 이상 골라야 저장된다 — 제목에 필수 표시(#352 사용자 지시). */}
       <h4 className="disposition-sort-heading" id={headingId}>
         {t.heading}
+        <span className="required-mark" aria-hidden="true">
+          {' *'}
+        </span>
         <InfoTip text={t.help} />
       </h4>
+      {/* 목록 바로 위 안내 — 고르기 전에도 보인다(#352 사용자 지시). */}
+      <p className="iqc-inspection-action-note disposition-sort-note" data-tone="info">
+        <Icon name="info" size={14} aria-hidden />
+        {t.selectNote}
+      </p>
       <ul className="disposition-sort-lots" aria-label={t.lotsLabel}>
         {lots.map((lot) => (
-          <li key={lot.nonconformanceLotId} className="disposition-sort-lot">
+          <li
+            key={lot.nonconformanceLotId}
+            className="disposition-sort-lot"
+            data-checked={selected.has(lot.lotId) ? 'true' : undefined}
+          >
             <Checkbox
               checked={selected.has(lot.lotId)}
               disabled={disabled}
@@ -129,21 +145,34 @@ export const SortSplitPane = ({
           />
         </div>
       </div>
+      {/* 저장 후 처리 — 고른 LOT 이 있을 때만(고르기 전엔 위 안내만). 처리 결과와 대상 LOT 을 먼저 보인다(#352 사용자 지시). */}
       {moved.length > 0 && !isAll && (
         <div className="disposition-sort-preview" aria-label={t.previewTitle} role="group">
           <strong>{t.previewTitle}</strong>
-          <p>
-            <Icon name="check_circle" size={16} aria-hidden />
-            {t.previewRest(names(rest), `${formatQty(sumQty(rest))}${unit}`)}
-          </p>
-          <p>
-            <Icon name="call_split" size={16} aria-hidden />
-            {t.previewMoved(names(moved), `${formatQty(sumQty(moved))}${unit}`)}
-          </p>
-          <p>
-            <Icon name="fact_check" size={16} aria-hidden />
-            {t.previewIqc(inspectionRequestNo ?? null)}
-          </p>
+          <dl className="disposition-sort-preview-rows">
+            <div>
+              <dt>
+                <Icon name="check_circle" size={16} aria-hidden />
+                {t.previewRestLabel}
+              </dt>
+              <dd>{t.previewTarget(names(rest), `${formatQty(sumQty(rest))}${unit}`)}</dd>
+            </div>
+            <div>
+              <dt>
+                <Icon name="call_split" size={16} aria-hidden />
+                {t.previewMovedLabel}
+              </dt>
+              <dd>{t.previewTarget(names(moved), `${formatQty(sumQty(moved))}${unit}`)}</dd>
+            </div>
+          </dl>
+          <ul className="disposition-sort-preview-notes">
+            {t.previewNotes.map((note) => (
+              <li key={note}>{note}</li>
+            ))}
+            {inspectionRequestNo !== null && inspectionRequestNo !== undefined && (
+              <li>{t.previewIqc(inspectionRequestNo)}</li>
+            )}
+          </ul>
         </div>
       )}
     </div>

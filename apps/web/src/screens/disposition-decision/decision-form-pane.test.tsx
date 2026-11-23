@@ -132,6 +132,43 @@ describe('DecisionFormPane', () => {
     expect(screen.getByRole('button', { name: t.actions.cancel })).toBeDisabled();
   });
 
+  it('고른 유형을 한 번 더 누르면 선택을 푼다(#352) — 안 고른 유형은 그대로 고른다', async () => {
+    const options = [
+      { value: 'SCRAP', label: '폐기' },
+      { value: 'SORT', label: '선별' },
+    ];
+    const { props, user } = renderPane({
+      dispositionOptions: options,
+      value: { ...EMPTY_DECISION_FORM, dispositionTypeCode: 'SCRAP' },
+    });
+    const onChange = vi.mocked(props.onChange);
+
+    await user.click(screen.getByRole('radio', { name: '폐기' }));
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ dispositionTypeCode: '' }));
+
+    onChange.mockClear();
+    await user.click(screen.getByText('선별'));
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ dispositionTypeCode: 'SORT' }),
+    );
+  });
+
+  it('고른 유형으로 저장하면 생기는 일을 취소 왼쪽 안내 라벨로 보인다(#352)', () => {
+    renderPane({
+      dispositionOptions: [{ value: 'SCRAP', label: '폐기' }],
+      value: { ...EMPTY_DECISION_FORM, dispositionTypeCode: 'SCRAP' },
+      lots: [
+        { lotId: 1, lotNoText: 'L1' },
+        { lotId: 2, lotNoText: 'L2' },
+      ] as unknown as DecisionFormPaneProps['lots'],
+    });
+    const note = screen.getByText('저장하면 자재 관리 LOT 2개에 모두 ‘폐기’ 판정이 적용됩니다.');
+    expect(note).toHaveAttribute('data-tone', 'info');
+    expect(note.nextElementSibling).toBe(screen.getByRole('button', { name: t.actions.cancel }));
+  });
+
   it('입력이 없으면 취소를 잠근다', () => {
     renderPane({ canCancel: false });
 

@@ -9117,6 +9117,51 @@ main:has(.iqc-skip-approval-detail) {
   border-bottom: 1px solid var(--outline-variant);
 }
 
+/* 고른 행 — 체크 칸과 함께 은은한 바탕으로 가른다(omf-all-around#352). */
+.disposition-sort-lot[data-checked='true'] {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+.disposition-sort-note {
+  margin: 0;
+}
+
+/* 저장 후 처리 — 처리 이름 | 대상 LOT · 수량 두 줄, 아래 짧은 안내(#352). */
+.disposition-sort-preview-rows {
+  /* 두 줄이 한 격자를 나눠 써 값 열이 맞는다. */
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-4);
+  align-items: center;
+  margin: 0;
+}
+
+.disposition-sort-preview-rows > div {
+  display: contents;
+}
+
+.disposition-sort-preview-rows dt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--on-surface-variant);
+}
+
+.disposition-sort-preview-rows dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.disposition-sort-preview-notes {
+  display: grid;
+  gap: 2px;
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-4);
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
 .disposition-sort-lot-qty {
   margin-left: auto;
   color: var(--on-surface-variant);

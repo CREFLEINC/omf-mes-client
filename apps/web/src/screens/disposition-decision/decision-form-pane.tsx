@@ -1,4 +1,4 @@
-import { Button, Radio, RadioGroup, TextArea } from '@crefle/web-ui';
+import { Button, Icon, Radio, RadioGroup, TextArea } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
@@ -11,7 +11,7 @@ import {
   type DecisionFormErrors,
   type DecisionFormValue,
 } from './decision-form';
-import type { DispositionOption } from './disposition-codes';
+import { dispositionTypeLabel, type DispositionOption } from './disposition-codes';
 import type { DispositionLookup } from './lookups';
 import { SortSplitPane } from './sort-split-pane';
 import { formatQty, type NonconformanceLotRow } from './types';
@@ -178,6 +178,18 @@ export const DecisionFormPane = ({
                   className="disposition-type-option"
                   data-selected={value.dispositionTypeCode === option.value ? 'true' : undefined}
                   data-locked={option.lockReason === undefined ? undefined : 'true'}
+                  onClick={(event) => {
+                    /*
+                     * 고른 칸을 한 번 더 누르면 선택을 푼다(omf-all-around#352 사용자 지시). 라디오는 이미 고른 칸에서
+                     * change 를 내지 않아 클릭으로 본다 — 이름표를 눌러도 입력칸 클릭이 한 번 더 오므로 입력칸 클릭만 센다.
+                     */
+                    if (
+                      event.target instanceof HTMLInputElement &&
+                      value.dispositionTypeCode === option.value
+                    ) {
+                      onChange({ ...value, dispositionTypeCode: '' });
+                    }
+                  }}
                 >
                   <Radio
                     value={option.value}
@@ -252,12 +264,6 @@ export const DecisionFormPane = ({
                 {remainingText}
               </output>
             </div>
-            {/* 고른 유형으로 저장하면 생기는 일 한 줄(omf-all-around#275). */}
-            {effect !== undefined && (
-              <span id={qtyNoteId} className="field-note disposition-qty-note">
-                {t.form.wholeEffect(lots.length, effect)}
-              </span>
-            )}
             {errors.decisionQty !== undefined && (
               <span className="field-error disposition-qty-error">{errors.decisionQty}</span>
             )}
@@ -315,6 +321,13 @@ export const DecisionFormPane = ({
       )}
 
       <div className="form-actions disposition-decision-actions">
+        {/* 고른 유형으로 저장하면 생기는 일 — 정보 라벨로 취소 단추 왼쪽에(omf-all-around#352 사용자 지시). */}
+        {effect !== undefined && (
+          <span id={qtyNoteId} className="iqc-inspection-action-note" data-tone="info">
+            <Icon name="info" size={14} aria-hidden />
+            {t.form.wholeEffect(lots.length, dispositionTypeLabel(value.dispositionTypeCode))}
+          </span>
+        )}
         <Button variant="outlined" disabled={!canCancel || isSaving} onClick={onCancel}>
           {t.actions.cancel}
         </Button>
@@ -323,7 +336,7 @@ export const DecisionFormPane = ({
           aria-describedby={saveDescribedBy ?? (noSelectableType ? noTypeReasonId : undefined)}
           onClick={onSave}
         >
-          {isSort ? t.sort.save : t.actions.save}
+          {t.actions.save}
         </Button>
       </div>
     </div>
