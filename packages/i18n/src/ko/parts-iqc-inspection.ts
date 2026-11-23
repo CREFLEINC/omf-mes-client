@@ -166,7 +166,7 @@ export const partsIqcInspection = {
   /** 생략된 의뢰의 읽기 전용 요약(#225). */
   skipped: {
     /* 생략으로 닫힌 의뢰 안내(사용자 정정 2026-11-23 · omf-all-around#353). */
-    notice: '기본 설정에 따라 검사를 생략했습니다. 검사 결과를 입력할 필요가 없습니다.',
+    notice: '기본 설정에 따라 검사를 생략했습니다.',
   },
 
   requestStatus: {

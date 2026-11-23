@@ -263,7 +263,6 @@ export const InspectionDetail = ({
         <SkippedSummary
           itemParts={items.partsOf(detail.data.itemId)}
           planLabel={plan.data?.inspectionPlanCode ?? '-'}
-          planName={plan.data?.inspectionPlanName ?? '-'}
           lotNo={
             inboundFlow
               ? (inboundInspection.data?.lots ?? []).map((lot) => lot.lotNo).join(', ') || '-'
@@ -632,7 +631,6 @@ export const InspectionDetail = ({
 const SkippedSummary = (props: {
   itemParts: { code: string; name: string } | null;
   planLabel: string;
-  planName: string;
   lotNo: string;
   qtyLabel: string;
   inbound: { supplierLabel: string | null; receivedAt: string | null } | undefined;
@@ -653,10 +651,6 @@ const SkippedSummary = (props: {
         <div className="parts-iqc-fact">
           <dt className="field-label">{t.target.plan}</dt>
           <dd>{props.planLabel}</dd>
-        </div>
-        <div className="parts-iqc-fact">
-          <dt className="field-label">{t.target.planName}</dt>
-          <dd>{props.planName}</dd>
         </div>
       </dl>
       <div className="parts-iqc-lot-box" role="group" aria-label={t.lot.heading}>
