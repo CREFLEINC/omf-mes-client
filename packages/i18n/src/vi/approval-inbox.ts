@@ -147,7 +147,6 @@ export const approvalInbox: Translated<typeof ko.approvalInbox> = {
     GOODS_ISSUE_CANCEL: 'Hủy xuất kho',
     SHIPMENT_CANCEL: 'Hủy xuất hàng',
     PRODUCTION_RESULT_CORRECT: 'Đính chính kết quả sản xuất',
-    CONCESSION: 'Đặc cách',
   } as Record<string, string | undefined>,
   requestStatusNames: {
     PENDING: 'Chờ phê duyệt',

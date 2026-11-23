@@ -79,7 +79,7 @@ export const deviceRegistration = {
     title: '사번 확인',
     label: '사번',
     confirm: '확인',
-    change: '사번 바꾸기',
+    change: '사용자 전환',
     toWork: '작업 목록으로',
     /** 없는 사번과 목록 미수신은 작업자가 할 수 있는 일이 달라 문구를 가른다. */
     unknown: '등록되지 않았거나 재직 중이 아닌 사번입니다',

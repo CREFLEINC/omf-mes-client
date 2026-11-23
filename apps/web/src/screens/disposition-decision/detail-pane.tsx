@@ -1,19 +1,27 @@
-import { Button, Chip, type Column, EmptyState, Table } from '@crefle/web-ui';
+import { Chip, type Column, EmptyState, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
+import { InfoTip } from '../../patterns/info-tip';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 import { iqcResultLabel, IqcMatchChips } from './iqc-match';
 import type { DispositionLookup } from './lookups';
+import { NonconformanceLinkButton } from './nonconformance-link-button';
 import { SeverityBadge } from './severity-badge';
 import type { NonconformanceDetailView, NonconformanceLotRow } from './types';
 
 /** 품목 표시명 「코드 · 이름」의 구분자(lookups.ts). */
 const ITEM_LABEL_SEPARATOR = ' · '; // ui-check-ignore: C-13 표시명 구분자(lookups.ts 「코드 · 이름」)
+
+/** 선별로 새로 생긴 부적합(#352). */
+export interface DerivedNonconformance {
+  id: number;
+  no: string;
+}
 
 export interface DetailPaneProps {
   view: NonconformanceDetailView;
@@ -27,6 +35,8 @@ export interface DetailPaneProps {
   remainingText?: string | undefined;
   /** 005 — 「선별로 생김 ← NC-…」 의 원래 부적합으로 간다. */
   onOpenNonconformance?: ((nonconformanceId: number) => void) | undefined;
+  /** #352 — 이 부적합의 선별로 새로 생긴 부적합. 있으면 심각도 오른쪽 「신규 부적합 건」 칸에 [신규 부적합 건 조회]. */
+  derivedNonconformances?: DerivedNonconformance[];
   /** 처리 상태 배지 — 부적합번호 옆에 둔다(omf-all-around#275). */
   status?: ReactNode;
 }
@@ -44,6 +54,7 @@ export const DetailPane = ({
   lotStatuses = {},
   remainingText,
   onOpenNonconformance,
+  derivedNonconformances = [],
   status,
 }: DetailPaneProps) => {
   const t = messages.dispositionDecision;
@@ -152,7 +163,8 @@ export const DetailPane = ({
         <span className="disposition-detail-item-code">{itemCode}</span>
       </span>
     );
-  const facts: [string, ReactNode, boolean?][] = [
+  /** [이름, 값, 굵게?, 이름 옆 ⓘ 말풍선 글?] */
+  const facts: [string, ReactNode, boolean?, string?][] = [
     [
       t.fields.nonconformanceNo,
       <span className="disposition-detail-no">
@@ -176,6 +188,43 @@ export const DetailPane = ({
     [t.fields.openedAt, view.openedAtText],
     ...inboundFacts,
     [t.fields.severityCode, <SeverityBadge severity={severity} code={view.severityCode} />],
+    /* 선별로 생긴 부적합이면 심각도 오른쪽에 원래 부적합 — 누르면 그리로(#352 사용자 지시 · 종결 안내 옆 단추와 같은 모양). */
+    ...(view.sortedFrom === null || view.sortedFrom === undefined
+      ? []
+      : [
+          [
+            t.inboundLot.sortedFrom,
+            onOpenNonconformance === undefined ? (
+              view.sortedFrom.nonconformanceNo
+            ) : (
+              <NonconformanceLinkButton
+                nonconformanceNo={view.sortedFrom.nonconformanceNo}
+                text={t.inboundLot.sortedFromButton}
+                label={t.inboundLot.openSortedFrom(view.sortedFrom.nonconformanceNo)}
+                onClick={() => {
+                  if (view.sortedFrom) onOpenNonconformance(view.sortedFrom.nonconformanceId);
+                }}
+              />
+            ),
+            false,
+            /* 어디서 왔는지는 이름 옆 ⓘ 말풍선으로(#352 사용자 지시). */
+            t.inboundLot.sortedFromNote(view.sortedFrom.nonconformanceNo),
+          ] as [string, ReactNode, boolean, string],
+        ]),
+    /* 선별로 종결된 부적합이면 심각도 오른쪽에 새로 생긴 부적합 — 「기존 부적합 건」과 짝(#352 사용자 지시). */
+    ...derivedNonconformances.map((derived): [string, ReactNode] => [
+      t.inboundLot.derived,
+      onOpenNonconformance === undefined ? (
+        derived.no
+      ) : (
+        <NonconformanceLinkButton
+          nonconformanceNo={derived.no}
+          text={t.inboundLot.derivedButton}
+          label={t.inboundLot.openDerived(derived.no)}
+          onClick={() => onOpenNonconformance(derived.id)}
+        />
+      ),
+    ]),
   ];
 
   return (
@@ -185,33 +234,18 @@ export const DetailPane = ({
        */}
       <div className="disposition-detail-box">
         <dl className="disposition-detail-facts">
-          {facts.map(([label, value, isKey]) => (
+          {facts.map(([label, value, isKey, info]) => (
             <div className="disposition-detail-fact" key={label}>
-              <dt className="field-label">{label}</dt>
+              <dt className="field-label">
+                {label}
+                {info !== undefined && <InfoTip text={info} />}
+              </dt>
               <dd className={isKey === true ? 'disposition-detail-fact-key' : undefined}>
                 {value}
               </dd>
             </div>
           ))}
         </dl>
-        {view.sortedFrom !== null && view.sortedFrom !== undefined && (
-          <p className="field-note disposition-sorted-from">
-            {t.inboundLot.sortedFrom}{' '}
-            {onOpenNonconformance === undefined ? (
-              view.sortedFrom.nonconformanceNo
-            ) : (
-              <Button
-                variant="text"
-                size="sm"
-                onClick={() => {
-                  if (view.sortedFrom) onOpenNonconformance(view.sortedFrom.nonconformanceId);
-                }}
-              >
-                {view.sortedFrom.nonconformanceNo}
-              </Button>
-            )}
-          </p>
-        )}
       </div>
 
       <section className="disposition-subsection" aria-label={t.panes.lots}>

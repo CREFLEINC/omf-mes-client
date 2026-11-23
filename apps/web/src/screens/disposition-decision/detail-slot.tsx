@@ -2,7 +2,7 @@ import { EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import { DetailPane } from './detail-pane';
+import { DetailPane, type DerivedNonconformance } from './detail-pane';
 import { LoadErrorBanner } from './load-error';
 import type { DispositionLookup } from './lookups';
 import type { NonconformanceDetailView } from './types';
@@ -31,6 +31,8 @@ export interface DetailSlotProps {
   remainingText?: string | undefined;
   /** 005 — 「선별로 생김 ←」 원래 부적합 열기. */
   onOpenNonconformance?: ((nonconformanceId: number) => void) | undefined;
+  /** #352 — 이 부적합의 선별로 새로 생긴 부적합. */
+  derivedNonconformances?: DerivedNonconformance[];
   /** 부적합의 처리 상태 배지 — 부적합번호 옆. */
   status?: ReactNode;
 }
@@ -59,6 +61,7 @@ export const DetailSlot = ({
   lotStatuses,
   remainingText,
   onOpenNonconformance,
+  derivedNonconformances,
   status,
 }: DetailSlotProps): ReactNode => {
   const t = messages.dispositionDecision;
@@ -109,6 +112,7 @@ export const DetailSlot = ({
       lotStatuses={lotStatuses}
       remainingText={remainingText}
       onOpenNonconformance={onOpenNonconformance}
+      derivedNonconformances={derivedNonconformances}
       status={status}
     />
   );

@@ -109,7 +109,6 @@ const TRANSLATED = [
   'inspectionResultInsights',
   'lotStatusHistory',
   'lotStatusTransition',
-  'qualityApproval',
   'suspiciousMaterialHold',
   /* #1114 — 기준정보 11화면. */
   'commonCode',

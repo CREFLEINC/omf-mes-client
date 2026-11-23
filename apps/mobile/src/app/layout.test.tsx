@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import { useState, type ReactNode } from 'react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
@@ -11,6 +11,24 @@ import { useScreenTitle } from '../patterns/screen-title';
 import { OutboxProvider, useOutbox, type OutboxTransport } from '../patterns/outbox';
 import { WorkerSessionProvider, useWorkerSession } from '../patterns/worker-session';
 import { AppLayout } from './layout';
+
+/*
+ * 단말의 뒤로가기 키를 대신 누른다. 셸이 등록한 손잡이를 붙잡아 두고, 앱 닫기는 부르기만 센다.
+ */
+const backKey = vi.hoisted(() => ({
+  press: null as (() => void) | null,
+  exitApp: vi.fn(() => Promise.resolve()),
+}));
+
+vi.mock('@capacitor/app', () => ({
+  App: {
+    addListener: (_event: string, handler: () => void) => {
+      backKey.press = handler;
+      return Promise.resolve({ remove: () => Promise.resolve() });
+    },
+    exitApp: backKey.exitApp,
+  },
+}));
 
 const Screen = ({ title }: { title: string }) => {
   useScreenTitle(title);
@@ -356,6 +374,23 @@ describe('AppLayout', () => {
     expect(await screen.findByText('업무 작업 목록 화면')).toBeInTheDocument();
   });
 
+  /* 임시 위치 적재는 목록에 없고 적치·입고 완료에서만 들어온다 — ← 도 그 화면으로(사용자 지시 2026-11-23). */
+  it('목록에 없는 임시 위치 적재의 ← 는 적치·입고 완료로 간다', async () => {
+    const user = userEvent.setup();
+    render(
+      <Shell path="/temporary-putaway">
+        <Routes>
+          <Route path="/temporary-putaway" element={<p>임시 적치 화면</p>} />
+          <Route path="/putaway" element={<p>적치 화면</p>} />
+        </Routes>
+      </Shell>,
+    );
+
+    await user.click(screen.getByRole('button', { name: '적치·입고 완료 화면' }));
+
+    expect(await screen.findByText('적치 화면')).toBeInTheDocument();
+  });
+
   it('되돌릴 단계가 없으면 「이전 단계」를 두지 않는다', () => {
     renderLayout('본문 자리');
 
@@ -402,7 +437,7 @@ describe('AppLayout', () => {
 
     await user.click(screen.getByRole('button', { name: '사번 세우기' }));
     expect(screen.queryByText('사번을 먼저 확인하세요')).toBeNull();
-    await user.click(await screen.findByRole('link', { name: '사번 바꾸기' }));
+    await user.click(await screen.findByRole('link', { name: '사용자 전환' }));
     expect(await screen.findByText('사번 확인 화면')).toBeInTheDocument();
   });
 
@@ -410,5 +445,138 @@ describe('AppLayout', () => {
     render(<Shell path={path}>본문 자리</Shell>);
 
     expect(screen.queryByRole('button', { name: '작업 목록' })).toBeNull();
+  });
+
+  /* 사번은 아래 줄 오른쪽 끝이다 - 보내지 못한 건수가 그 앞에 선다(사용자 지시 2026-11-23). */
+  it('사번은 아래 줄에서 보내지 못한 건수 뒤에 선다', async () => {
+    const user = userEvent.setup();
+    render(
+      <Shell send={() => Promise.reject(new ApiRequestError({ kind: 'network' }))}>
+        <SignedInScreen />
+        <EnqueueScreen />
+      </Shell>,
+    );
+    await user.click(screen.getByRole('button', { name: '사번 세우기' }));
+    await user.click(screen.getByRole('button', { name: '담기' }));
+
+    const statusRow = screen.getByRole('banner').querySelector('.mobile-shell__statusbar');
+    const links = within(statusRow as HTMLElement).getAllByRole('link');
+
+    /* 전송 대기 목록 · 사번 확인 차례다. */
+    expect(links.map((link) => link.getAttribute('href'))).toEqual(['/outbox', '/']);
+  });
+
+  /* 설정은 홈 맨 아래 단추에서 앱바의 사번 오른쪽 아이콘으로 옮겼다(사용자 지시 2026-11-23). */
+  it('작업 목록에서는 사번 오른쪽에 설정 아이콘을 두고, 누르면 설정 화면으로 간다', async () => {
+    const user = userEvent.setup();
+    render(
+      <Shell path="/screens">
+        <SignedInScreen />
+        <Routes>
+          <Route path="/settings" element={<p>설정 화면</p>} />
+        </Routes>
+      </Shell>,
+    );
+    await user.click(screen.getByRole('button', { name: '사번 세우기' }));
+
+    const worker = screen.getByRole('link', { name: '사용자 전환' });
+    const settings = screen.getByRole('button', { name: '설정' });
+    expect(
+      worker.compareDocumentPosition(settings) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    await user.click(settings);
+    expect(await screen.findByText('설정 화면')).toBeInTheDocument();
+  });
+
+  it('사번을 넣기 전에도 작업 목록에는 설정 아이콘이 있다', () => {
+    render(<Shell path="/screens">본문 자리</Shell>);
+
+    expect(screen.getByRole('button', { name: '설정' })).toBeInTheDocument();
+  });
+
+  /* 작업 화면에서 설정으로 빠지면 적던 것을 두고 나간다. */
+  it('작업 화면에는 설정 아이콘을 두지 않는다', async () => {
+    const user = userEvent.setup();
+    render(
+      <Shell>
+        <SignedInScreen />
+      </Shell>,
+    );
+    await user.click(screen.getByRole('button', { name: '사번 세우기' }));
+
+    expect(screen.queryByRole('button', { name: '설정' })).toBeNull();
+  });
+});
+
+/*
+ * 첫 화면(사번 확인 · 작업 목록)에서 단말의 뒤로가기는 앱을 닫는다. 닫기 전에 한 번 묻는다(사용자
+ * 지시 2026-11-23). 셸은 라우터 주소가 아니라 창 주소로 첫 화면을 가린다 - 시험도 창 주소를 옮긴다.
+ */
+describe('첫 화면의 뒤로가기', () => {
+  beforeEach(() => {
+    backKey.exitApp.mockClear();
+  });
+
+  afterEach(() => {
+    window.history.replaceState(null, '', '/');
+  });
+
+  const pressBack = () => {
+    act(() => {
+      backKey.press?.();
+    });
+  };
+
+  it.each(['/', '/screens'])(
+    '%s 에서 누르면 종료할지 묻고, 「종료」를 누르면 앱을 닫는다',
+    async (path) => {
+      window.history.replaceState(null, '', path);
+      const user = userEvent.setup();
+      render(<Shell path={path}>본문 자리</Shell>);
+
+      pressBack();
+      const dialog = await screen.findByRole('dialog', { name: '앱을 종료할까요?' });
+      expect(backKey.exitApp).not.toHaveBeenCalled();
+
+      await user.click(within(dialog).getByRole('button', { name: '종료' }));
+      expect(backKey.exitApp).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('「취소」를 누르면 창만 닫고 앱은 그대로다', async () => {
+    window.history.replaceState(null, '', '/screens');
+    const user = userEvent.setup();
+    render(<Shell path="/screens">본문 자리</Shell>);
+
+    pressBack();
+    const dialog = await screen.findByRole('dialog', { name: '앱을 종료할까요?' });
+    await user.click(within(dialog).getByRole('button', { name: '취소' }));
+
+    expect(screen.queryByRole('dialog', { name: '앱을 종료할까요?' })).toBeNull();
+    expect(backKey.exitApp).not.toHaveBeenCalled();
+  });
+
+  it('묻는 창이 떠 있을 때 한 번 더 누르면 창을 닫는다', async () => {
+    window.history.replaceState(null, '', '/screens');
+    render(<Shell path="/screens">본문 자리</Shell>);
+
+    pressBack();
+    expect(await screen.findByRole('dialog', { name: '앱을 종료할까요?' })).toBeInTheDocument();
+
+    pressBack();
+    expect(screen.queryByRole('dialog', { name: '앱을 종료할까요?' })).toBeNull();
+    expect(backKey.exitApp).not.toHaveBeenCalled();
+  });
+
+  it('작업 화면에서는 묻지 않고 지나온 화면으로 돌아간다', () => {
+    window.history.replaceState(null, '', '/inbound-receipt');
+    const back = vi.spyOn(window.history, 'back').mockImplementation(() => undefined);
+    render(<Shell>본문 자리</Shell>);
+
+    pressBack();
+
+    expect(back).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('dialog', { name: '앱을 종료할까요?' })).toBeNull();
   });
 });

@@ -1121,12 +1121,12 @@ describe('고른 요청 — 정보·대상·진행', () => {
     expect(open).toHaveAccessibleDescription(t.target.blockedUnmapped);
   });
 
-  it('W-03-09 대상을 열면 선택한 승인 요청 ID가 정식 주소에 실린다', async () => {
+  it('W-04-02 대상을 열면 선택한 승인 요청 ID가 정식 주소에 실린다', async () => {
     const detail: ApprovalRequestDetail = {
       ...contradictoryMyTurnDetail,
       request: {
         ...contradictoryMyTurnDetail.request,
-        target: { ...contradictoryMyTurnDetail.request.target, screenId: 'W-03-09' },
+        target: { ...contradictoryMyTurnDetail.request.target, screenId: 'W-04-02' },
       },
     };
     renderScreen([listRoute(), countRoute(), detailRoute(detail)], '?rq=9001');
@@ -1136,7 +1136,7 @@ describe('고른 요청 — 정보·대상·진행', () => {
     await user.click(await screen.findByRole('button', { name: t.target.open }));
 
     await waitFor(() => {
-      expect(currentLocation()).toBe('/quality/approvals?approvalRequestId=9001');
+      expect(currentLocation()).toBe('/shipment/shipment-schedule?approvalRequestId=9001');
     });
   });
 

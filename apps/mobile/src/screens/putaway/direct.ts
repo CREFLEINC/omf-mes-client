@@ -1,4 +1,4 @@
-import type { ApiError, components } from '@omf-mes/api-client';
+import type { ApiError, components, InboundLotDetail } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { createIdempotencyKey, type OutboxDraft } from '../../patterns/outbox';
@@ -21,13 +21,15 @@ export type PutawayDirectResult = components['schemas']['PutawayDirectResult'];
 
 const t = messages.putaway.direct;
 
-/** 목록 묶음 — 입하 LOT · 품목. 입하 LOT 이 없는 이전 흐름 LOT 은 품목만으로 묶는다. */
+/** 목록 묶음(표의 한 줄) — 입하 LOT · 품목. 입하 LOT 이 없는 이전 흐름 LOT 은 품목만으로 묶는다. */
 export interface PendingLotGroup {
   key: string;
+  /** 진척을 읽을 입하 LOT — 이전 흐름 LOT 은 없다. */
+  inboundLotId: number | undefined;
   itemCode: string;
   itemName: string;
-  /** 「IL-… · 공급처」 또는 「입하 LOT 없음(이전 흐름)」. */
-  source: string;
+  /** 표의 공급사 머리 줄 — 없으면 「입하 LOT 없음(이전 흐름)」. */
+  supplierName: string;
   lots: PendingLot[];
 }
 
@@ -45,14 +47,13 @@ export const groupPendingLots = (lots: readonly PendingLot[]): PendingLotGroup[]
     if (group === undefined) {
       groups.set(key, {
         key,
+        inboundLotId: lot.inboundLotId,
         itemCode: lot.itemCode,
         itemName: lot.itemName,
-        source:
-          lot.inboundLotNo === undefined || lot.inboundLotNo === ''
-            ? lot.supplierName === undefined || lot.supplierName === ''
-              ? t.noInboundLot
-              : `${t.noInboundLot}, ${lot.supplierName}`
-            : t.groupSource(lot.inboundLotNo, lot.supplierName ?? ''),
+        supplierName:
+          lot.supplierName === undefined || lot.supplierName === ''
+            ? t.noInboundLot
+            : lot.supplierName,
         lots: [lot],
       });
     } else {
@@ -61,6 +62,62 @@ export const groupPendingLots = (lots: readonly PendingLot[]): PendingLotGroup[]
   }
 
   return [...groups.values()];
+};
+
+/** 적치할 창고를 가르는 창고 마스터 값 — 창고 유형 · 불량창고 여부. */
+export interface WarehouseFacts {
+  code: string;
+  typeCode: string;
+  isDefect: boolean;
+}
+
+/**
+ * 품목 유형 → 들어갈 창고 유형(사용자 지시 2026-11-23: 자재는 자재창고, 완제품은 제품창고). 그 밖의 유형(반제품 · 상품 …)은
+ * 정한 창고가 없어 null — 거르지 않는다.
+ */
+export const warehouseTypeFor = (itemTypeCode: string | undefined): string | null => {
+  switch (itemTypeCode) {
+    case 'RAW_MATERIAL':
+    case 'SUBSIDIARY_MATERIAL':
+      return 'MATERIAL';
+    case 'FINISHED':
+    case 'FINISHED_GOODS':
+      return 'PRODUCT';
+    default:
+      return null;
+  }
+};
+
+/**
+ * 이 LOT 을 둘 수 있는 창고인가(사용자 지시 2026-11-23) — 불량 LOT 은 불량창고에만, 정상 LOT 은 불량창고가 아니고 품목
+ * 유형에 맞는 창고에만. 창고 값을 모르면(마스터를 못 읽음) 막지 않는다 — 서버 판정이 그대로 남는다.
+ */
+export const fitsWarehouse = (
+  expectedType: string | null,
+  defective: boolean,
+  warehouse: WarehouseFacts | undefined,
+): boolean => {
+  if (warehouse === undefined) return true;
+  if (defective) return warehouse.isDefect;
+  if (warehouse.isDefect) return false;
+
+  return expectedType === null || warehouse.typeCode === expectedType;
+};
+
+/**
+ * 입하 LOT 의 적치 진척 — 적치(= 입고)된 자재 관리 LOT 수 / 적치할 자재 관리 LOT 수(사용자 지시 2026-11-23). 등록 대기 ·
+ * 해제된 LOT 과 반품 · 폐기로 처분된 LOT 은 적치하지 않으므로 세지 않는다. 검사 보류 LOT 은 아직 남은 것으로 센다.
+ */
+export const putawayProgressOf = (detail: InboundLotDetail): { done: number; total: number } => {
+  const lots = detail.lots.filter(
+    (lot) =>
+      lot.lifecycleStatusCode !== 'WAITING' &&
+      lot.lifecycleStatusCode !== 'VOIDED' &&
+      lot.dispositionStatusCode !== 'RETURNED' &&
+      lot.dispositionStatusCode !== 'DISPOSED',
+  );
+
+  return { done: lots.filter((lot) => lot.goodsReceived).length, total: lots.length };
 };
 
 /**

@@ -41,9 +41,8 @@ describe('W-03-10 목록 「원천」', () => {
 });
 
 describe('G2 L13 시안 문구', () => {
-  it('특채 팝업 대상은 「자재 관리 LOT n개」(사용자 시안 2026-11-17)', () => {
+  it('선별로 떼어 낸 꼬리 번호를 문구에 싣는다', () => {
     expect(t.sortedFromTail('0004')).toContain('0004');
-    expect(messages.dispositionDecision.concession.targetAll(3)).toBe('자재 관리 LOT 3개');
   });
 
   it('W-01-01 검사 조건은 「AQL 1.0」 — 정수도 소수 한 자리', () => {

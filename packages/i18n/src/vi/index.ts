@@ -117,7 +117,6 @@ import { erpCommonCode } from './erp-common-code';
 import { productionPlan } from './production-plan';
 import { productionResult } from './production-result';
 import { putaway } from './putaway';
-import { qualityApproval } from './quality-approval';
 import { recycleEntry } from './recycle-entry';
 import { repackLabelIssue } from './repack-label-issue';
 import { repairRoundtrip } from './repair-roundtrip';
@@ -286,7 +285,6 @@ export const vi: Translated<Messages> = {
   productPicking,
   productReceipt,
   putaway,
-  qualityApproval,
   recycleEntry,
   repackLabelIssue,
   repairRoundtrip,

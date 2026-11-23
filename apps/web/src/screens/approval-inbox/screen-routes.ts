@@ -4,7 +4,7 @@
  *
  * ---
  *
- * W-03-09는 화면과 선택 주소 규약이 함께 공개돼 표에 들어간다. W-03-10은 아직 실제
+ * 품질 승인 처리(W-03-09)는 특채 결재가 없어지며 화면째 지웠다(omf-all-around#352). W-03-10은 아직 실제
  * 클라이언트 route가 없으므로 넣지 않는다 — 그럴듯한 경로를 지으면 사용자가 엉뚱한 자리에
  * 도착하고 그 값이 규약처럼 굳는다.
  *
@@ -25,7 +25,6 @@ export type ScreenRouteTable = Readonly<Record<string, ScreenRouteDescriptor>>;
 
 /** 화면 ID → 주소와 선택 규약. W-03-10은 실제 route가 공개되기 전까지 일부러 없다. */
 export const SCREEN_ROUTES: ScreenRouteTable = {
-  'W-03-09': { path: '/quality/approvals', selectionKey: 'approvalRequestId' },
   /*
    * 출하 취소 결재 — 피처 012(R-7 · FR-021)부터 서버가 `SHIPMENT_CANCEL` 대상 화면을 W-04-02 로 낸다(옛 결재 포함).
    * 출하 예정 목록이 결재를 읽어 그 출하의 지시서 상세를 열고, 승인됐으면 「출하」 칸에 [취소 실행]을 세운다.

@@ -1,9 +1,11 @@
+import type { InboundLotDetail } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import {
   groupPendingLots,
   modeTextOf,
+  putawayProgressOf,
   reasonTextOf,
   toDirectDraft,
   verdictKindOf,
@@ -41,7 +43,9 @@ describe('적치 대기 LOT 묶음(피처 009)', () => {
       ['A-1', 'A-2'],
       ['B-1'],
     ]);
-    expect(groups[0]?.source).toBe('IL-0005, 대성정밀');
+    /* 공급사는 표의 머리 줄, 진척은 입하 LOT 에서 읽는다. */
+    expect(groups[0]?.supplierName).toBe('대성정밀');
+    expect(groups[0]?.inboundLotId).toBe(5);
   });
 
   it('입하 LOT 이 없는 이전 흐름 LOT 은 「입하 LOT 없음(이전 흐름)」 묶음', () => {
@@ -49,7 +53,41 @@ describe('적치 대기 LOT 묶음(피처 009)', () => {
       lot({ inboundLotId: undefined, inboundLotNo: undefined, supplierName: undefined }),
     ]);
 
-    expect(group?.source).toBe(d.noInboundLot);
+    expect(group?.supplierName).toBe(d.noInboundLot);
+    expect(group?.inboundLotId).toBeUndefined();
+  });
+});
+
+describe('적치 진척(사용자 지시 2026-11-23)', () => {
+  const detail = (lots: Partial<InboundLotDetail['lots'][number]>[]): InboundLotDetail =>
+    ({
+      lots: lots.map((each, index) => ({
+        lotId: index,
+        lotNo: `L-${String(index)}`,
+        lotQty: 1,
+        lifecycleStatusCode: 'ACTIVE',
+        statusCode: 'NORMAL',
+        goodsReceived: false,
+        dispositionStatusCode: null,
+        ...each,
+      })),
+    }) as InboundLotDetail;
+
+  it('적치(입고)된 LOT / 적치할 LOT — 대기 · 해제 · 반품 · 폐기 LOT 은 세지 않는다', () => {
+    expect(
+      putawayProgressOf(
+        detail([
+          { goodsReceived: true },
+          {},
+          { lifecycleStatusCode: 'WAITING' },
+          { lifecycleStatusCode: 'VOIDED' },
+          { dispositionStatusCode: 'RETURNED' },
+          { dispositionStatusCode: 'DISPOSED' },
+          /* 검사 보류는 아직 남은 것으로 센다. */
+          { statusCode: 'HOLD', dispositionStatusCode: 'IN_PROGRESS' },
+        ]),
+      ),
+    ).toEqual({ done: 1, total: 3 });
   });
 });
 

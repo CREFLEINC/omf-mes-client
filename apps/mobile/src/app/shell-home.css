@@ -21,7 +21,6 @@
   white-space: nowrap;
 }
 
-.shell-home__chips,
 .shell-home__areas,
 .shell-home__resume,
 .shell-home__status,
@@ -214,30 +213,6 @@
   color: var(--on-surface-variant);
 }
 
-/* 자주 쓰는 작업. 지름길이라 낮은 칩으로 접혀 선다 - 장갑 낀 손이 짚을 높이(48px)는 지킨다. */
-.shell-home__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.shell-home__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: var(--control-height-lg);
-  box-sizing: border-box;
-  padding: 0 var(--space-4) 0 var(--space-3);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  color: var(--on-surface);
-  font: var(--type-label-lg);
-  letter-spacing: var(--type-label-lg-tracking);
-  font-weight: 600;
-  text-decoration: none;
-}
-
 /* 업무 하나의 작업들. 행 전체가 누르는 곳이다 - 글자만 눌리면 장갑 낀 손이 빗나간다. */
 .shell-home__rows {
   display: flex;
@@ -260,7 +235,6 @@
 }
 
 .shell-home__area:focus-visible,
-.shell-home__chip:focus-visible,
 .shell-home__resume-card:focus-visible,
 .shell-home__stat:focus-visible,
 .shell-home__row:focus-visible {
@@ -304,22 +278,6 @@
   min-height: 56px;
 }
 
-/* 사용자 전환 · 설정. 업무 목록 아래 두 칸으로 나란히 - 주 단추가 아니라 외곽선이다. */
-.shell-home__tools {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
-}
-
-.shell-home__tools > button {
-  min-width: 0;
-}
-
-.shell-home__tool-icon {
-  flex: 0 0 auto;
-  margin-inline-end: var(--space-2);
-}
-
 /* 남은 작업 배지(피처 002). 중립색 — 빨강은 「이어서 하기」 전용이다. 화살표 앞에 붙는다. */
 .shell-home__badge {
   flex: 0 0 auto;
@@ -332,7 +290,7 @@
   color: var(--on-surface);
 }
 
-/* 수의 기준 — 홈 맨 아래 단추 위 한 줄. */
+/* 수의 기준 — 업무 바로 위 한 줄. */
 .shell-home__basis {
   display: flex;
   align-items: center;

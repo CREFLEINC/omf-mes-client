@@ -789,28 +789,6 @@ type SheetPut<Path, B> = Unused & {
 };
 
 /**
- * omf-all-around#207 — 일부 특채는 적용 때 LOT 을 나눈다. 재고가 있는 LOT 을 나누면 원장 영업일이 필요해 적용에
- * 본문(선택)이 생겼고, 응답에 떼어 낸 자식 LOT·새 부적합(`splitResult`)이 «적용 응답에만» 실린다.
- * 서버 전달본이 갱신될 때 동등성을 대조하고 제거한다.
- */
-export interface ConcessionApplyForward {
-  businessDate?: string;
-}
-
-export interface ConcessionSplitResult {
-  splitLotId: number;
-  splitLotNo: string;
-  splitNonconformanceId: number;
-  splitNonconformanceNo: string;
-}
-
-export type ConcessionAppliedForward = components['schemas']['Concession'] & {
-  splitResult?: ConcessionSplitResult | null;
-};
-
-type ConcessionApplyPath = paths['/quality/concessions/{concessionId}:apply'];
-
-/**
  * omf-all-around#207 — 재고 재등록이 처분 «특채»도 받는다. 특채는 보류를 고르지 않아 `lotHoldId`·`releaseReasonCode` 가
  * 선택이 되고(정상 처분이면 서버가 필수로 본다), 닫은 보류가 없으면 `releasedLotHoldId` 가 null 이다.
  */
@@ -857,15 +835,6 @@ export interface ForwardPaths {
     put: Omit<PlanItemsPath['put'], 'requestBody'> & {
       requestBody: {
         content: { 'application/json': { items: InspectionItemSpecUpsertForward[] } };
-      };
-    };
-  };
-  /** 적용 본문(선택)과 분할 결과 — `ConcessionApplyForward` 참고(#207). */
-  '/quality/concessions/{concessionId}:apply': Omit<ConcessionApplyPath, 'post'> & {
-    post: Omit<ConcessionApplyPath['post'], 'requestBody' | 'responses'> & {
-      requestBody?: { content: { 'application/json': ConcessionApplyForward } };
-      responses: Omit<ConcessionApplyPath['post']['responses'], 200> & {
-        200: Json<ConcessionAppliedForward>;
       };
     };
   };

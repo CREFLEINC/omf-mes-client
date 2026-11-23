@@ -21,6 +21,7 @@ import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
+import { rowNumberStyle } from '../../patterns/row-number';
 import { ArriveLots } from './arrive-lots';
 import { useLotBalances, useLotsById, useUnfinishedTransfers, useWarehouses } from './queries';
 import { TransferSheet } from './transfer-sheet';
@@ -643,7 +644,10 @@ export const StockTransferScreen = () => {
         {/* 카드 대신 한 줄씩 — 이동 번호 · 라인 수 · 출발 → 도착, 오른쪽 [이어서 하기](사용자 지시 2026-11-20). */}
         {(unfinished.data ?? []).length === 0 ? null : (
           <div className="transfer-tally__box">
-            <table className="transfer-tally__table">
+            <table
+              className="transfer-tally__table"
+              style={rowNumberStyle((unfinished.data ?? []).length)}
+            >
               <colgroup>
                 <col className="transfer-tally__col-no" />
                 <col />

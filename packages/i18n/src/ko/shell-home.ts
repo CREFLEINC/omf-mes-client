@@ -47,11 +47,10 @@ export const shellHome = {
     productLotSplitConfirm: 'POP 에서 나눈 두 라벨 스캔해 확인',
     packingRepack: '포장을 나누거나 합치기',
   },
-  /** 이 사번이 많이 들어간 작업. 사번마다 따로 센다. */
-  frequent: '자주 쓰는 작업',
-  /** 교대 때 다음 사람이 사번을 넣도록 지금 사번을 내리고 사번 확인으로 간다. */
-  switchWorker: '사용자 전환',
-  /** 업무 화면 맨 아래의 설정. 기기 등록 해제처럼 드물게 쓰는 것을 모은다. */
+  /**
+   * 설정. 기기 등록 해제처럼 드물게 쓰는 것을 모은다. 작업 목록 앱바의 사번 칩 오른쪽 아이콘으로
+   * 들어간다(홈 맨 아래 단추에서 옮김, 사용자 지시 2026-11-23).
+   */
   settings: {
     label: '설정',
     device: '기기',
@@ -75,7 +74,7 @@ export const shellHome = {
   workCount: {
     left: '남은 작업',
     label: (name: string, count: number) => `${name}, 남은 작업 ${String(count)}건`,
-    basisWarehouse: (warehouseName: string) => `이 기기: ${warehouseName} 기준`,
-    basisPlant: '이 기기: 공장 전체 기준',
+    /** 창고가 없는 기기의 수 기준. 창고가 있으면 창고 이름만 아이콘 옆에 적는다(사용자 지시 2026-11-23). */
+    basisPlant: '공장 전체',
   },
 } as const;

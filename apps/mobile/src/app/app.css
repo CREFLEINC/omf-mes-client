@@ -185,6 +185,9 @@ body {
 
 /* 둘째 줄 — 누구로 기록되는가 · 무엇이 아직 안 갔나. */
 .mobile-shell__statusbar {
+  /* DS 의 actions 칸은 내용만큼만 준다. 줄을 끝까지 늘려야 사번 · 설정이 오른쪽 끝에 붙는다. */
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -194,6 +197,25 @@ body {
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
   color: var(--on-surface-variant);
+}
+
+/*
+ * 사번 · 설정 묶음은 오른쪽 끝이다(사용자 지시 2026-11-23). 보내지 못한 건수가 없어도 오른쪽에
+ * 머물도록 앞을 밀어 둔다 - 칸 사이 벌리기만으로는 혼자 남은 칸이 왼쪽으로 붙는다.
+ */
+.mobile-shell__who {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  min-width: 0;
+  margin-inline-start: auto;
+}
+
+/* 누르는 자리는 40px 그대로 두고 줄 높이는 늘리지 않는다 - 홈에서만 앱바가 8px 커지면 화면을 옮길 때 본문이 출렁인다. */
+.mobile-shell__settings {
+  flex: 0 0 auto;
+  margin-block: calc(-1 * var(--space-1));
 }
 
 .mobile-shell__worker {

@@ -7,8 +7,8 @@ import './confirm-dialog.css';
 export interface ConfirmDialogProps {
   open: boolean;
   title: string;
-  /** 무엇이 일어나는지 한두 줄. */
-  children: ReactNode;
+  /** 무엇이 일어나는지 한두 줄. 제목만으로 충분하면 두지 않는다(앱 종료 확인). */
+  children?: ReactNode;
   cancelLabel: string;
   proceedLabel: string;
   /** 돌아가기 · 바깥 누르기 · 뒤로가기가 모두 여기로 온다. */

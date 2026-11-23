@@ -13,8 +13,21 @@ const t = messages.dispositionDecision.sort;
 export const lotTail = (lotNo: string): string =>
   lotNo.includes('|') ? (lotNo.split('|').pop() ?? lotNo) : lotNo;
 
-const sumQty = (lots: readonly NonconformanceLotRow[]): number =>
+export const sumQty = (lots: readonly NonconformanceLotRow[]): number =>
   lots.reduce((sum, lot) => sum + (lot.affectedQty ?? 0), 0);
+
+/**
+ * 요약에서 LOT 을 부르는 이름 — 끝 번호로 부르되, 끝 번호가 겹치는 LOT 이 있으면 헷갈리지 않게 전체 번호로(#352 사용자 지시).
+ * 저장 후 처리 상자와 판정 확인 팝업이 같은 이름을 쓴다.
+ */
+export const lotNames = (
+  lots: readonly NonconformanceLotRow[],
+  rows: readonly NonconformanceLotRow[],
+): string => {
+  const tails = lots.map((lot) => lotTail(lot.lotNoText));
+  const useTail = new Set(tails).size === tails.length;
+  return rows.map((row) => (useTail ? lotTail(row.lotNoText) : row.lotNoText)).join(', ');
+};
 
 export interface SortSplitPaneProps {
   lots: readonly NonconformanceLotRow[];
@@ -56,28 +69,50 @@ export const SortSplitPane = ({
   const moved = lots.filter((lot) => selected.has(lot.lotId));
   const rest = lots.filter((lot) => !selected.has(lot.lotId));
   const isAll = lots.length > 0 && moved.length >= lots.length;
-  const names = (rows: readonly NonconformanceLotRow[]): string =>
-    rows.map((row) => lotTail(row.lotNoText)).join(', ');
+  const names = (rows: readonly NonconformanceLotRow[]): string => lotNames(lots, rows);
 
+  /*
+   * LOT 을 고르거나 풀 때마다 양품 · 불량 수량 칸에 고른 대로의 합을 «값으로» 채운다 — 사용자가 그대로 고쳐 쓸 수 있다(#352 사용자 지시).
+   * 하나도 고르지 않으면 칸을 비운다.
+   */
   const toggle = (lotId: number, checked: boolean): void => {
+    const sortLotIds = checked
+      ? [...value.sortLotIds, lotId]
+      : value.sortLotIds.filter((id) => id !== lotId);
+    const picked = new Set(sortLotIds);
+    const qtyText = (rows: readonly NonconformanceLotRow[]): string =>
+      sortLotIds.length === 0 ? '' : String(Math.round(sumQty(rows) * 1e6) / 1e6);
     onChange({
       ...value,
-      sortLotIds: checked
-        ? [...value.sortLotIds, lotId]
-        : value.sortLotIds.filter((id) => id !== lotId),
+      sortLotIds,
+      goodQty: qtyText(lots.filter((lot) => !picked.has(lot.lotId))),
+      defectQty: qtyText(lots.filter((lot) => picked.has(lot.lotId))),
     });
   };
 
   return (
     <div className="disposition-sort" role="group" aria-labelledby={headingId}>
       {/* 선별 규칙은 제목 옆 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
+      {/* LOT 을 하나 이상 골라야 저장된다 — 제목에 필수 표시(#352 사용자 지시). */}
       <h4 className="disposition-sort-heading" id={headingId}>
         {t.heading}
+        <span className="required-mark" aria-hidden="true">
+          {' *'}
+        </span>
         <InfoTip text={t.help} />
       </h4>
+      {/* 목록 바로 위 안내 — 고르기 전에도 보인다(#352 사용자 지시). */}
+      <p className="iqc-inspection-action-note disposition-sort-note" data-tone="info">
+        <Icon name="info" size={14} aria-hidden />
+        {t.selectNote}
+      </p>
       <ul className="disposition-sort-lots" aria-label={t.lotsLabel}>
         {lots.map((lot) => (
-          <li key={lot.nonconformanceLotId} className="disposition-sort-lot">
+          <li
+            key={lot.nonconformanceLotId}
+            className="disposition-sort-lot"
+            data-checked={selected.has(lot.lotId) ? 'true' : undefined}
+          >
             <Checkbox
               checked={selected.has(lot.lotId)}
               disabled={disabled}
@@ -129,21 +164,33 @@ export const SortSplitPane = ({
           />
         </div>
       </div>
+      {/* 저장 후 처리 — 고른 LOT 이 있을 때만(고르기 전엔 위 안내만). 처리 결과와 대상 LOT 을 먼저 보인다(#352 사용자 지시). */}
       {moved.length > 0 && !isAll && (
         <div className="disposition-sort-preview" aria-label={t.previewTitle} role="group">
-          <strong>{t.previewTitle}</strong>
+          {/* 제목 앞 아이콘 · 아래 보조 안내는 같은 화면의 저장 결과 카드와 같은 모양(#352 사용자 지시). */}
+          <strong>
+            <Icon name="fact_check" size={18} aria-hidden />
+            {t.previewTitle}
+          </strong>
+          {/* 처리 한 줄씩 아이콘 + 처리 이름 + 대상 LOT · 수량 — 저장 결과 카드의 줄과 같은 모양(#352 사용자 지시). */}
           <p>
             <Icon name="check_circle" size={16} aria-hidden />
-            {t.previewRest(names(rest), `${formatQty(sumQty(rest))}${unit}`)}
+            <span>{t.previewRestLabel}</span>
+            <span>{t.previewTarget(names(rest), `${formatQty(sumQty(rest))}${unit}`)}</span>
           </p>
           <p>
             <Icon name="call_split" size={16} aria-hidden />
-            {t.previewMoved(names(moved), `${formatQty(sumQty(moved))}${unit}`)}
+            <span>{t.previewMovedLabel}</span>
+            <span>{t.previewTarget(names(moved), `${formatQty(sumQty(moved))}${unit}`)}</span>
           </p>
-          <p>
-            <Icon name="fact_check" size={16} aria-hidden />
-            {t.previewIqc(inspectionRequestNo ?? null)}
-          </p>
+          <ul className="disposition-sort-preview-notes">
+            {t.previewNotes.map((note) => (
+              <li key={note}>{note}</li>
+            ))}
+            {inspectionRequestNo !== null && inspectionRequestNo !== undefined && (
+              <li>{t.previewIqc(inspectionRequestNo)}</li>
+            )}
+          </ul>
         </div>
       )}
     </div>
