@@ -39,7 +39,6 @@ export const partsIqcInspection = {
     seqNo: (no: number) => `${String(no)}회차`,
     facts: {
       planCode: '기준서 코드',
-      planName: '모델명',
       effectiveFrom: '적용 시작일',
     },
     dataTypeOf: { NUMERIC: '수치형', BOOLEAN: '선택형', TEXT: '텍스트형' } as Record<
@@ -48,8 +47,9 @@ export const partsIqcInspection = {
     >,
     sampling: '검사 방식',
     full: '전수검사',
-    ratio: (r: number) => `LOT 의 ${String(r)}%`,
-    qty: (n: number) => `${String(n)}개`,
+    /* 시료 수를 풀어 쓴다 — 「3개」만으로는 검사 항목 개수로 읽혔다(사용자 지시 2026-11-23 · #353). */
+    ratio: (r: number) => `샘플 LOT 의 ${String(r)}%`,
+    qty: (n: number) => `샘플 ${String(n)}개`,
     no: 'No.',
     method: '유형',
     count: '차수',

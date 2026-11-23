@@ -17,7 +17,6 @@ const STANDARD_PATH = '/master-data/inspection-standard';
 
 export interface PlanDialogProps {
   planCode: string;
-  planName: string;
   itemParts: { code: string; name: string } | null;
   version: PlanVersion;
   specs: ItemSpec[];
@@ -40,7 +39,6 @@ export interface PlanDialogProps {
  */
 export const PlanDialog = ({
   planCode,
-  planName,
   itemParts,
   version,
   specs,
@@ -64,7 +62,6 @@ export const PlanDialog = ({
   /* 검사 화면 위쪽 기본 정보와 같은 칸 — 이름표 위 · 값 아래, 칸 사이 세로선(#247 · 사용자 지시 2026-11-10). */
   const facts: { label: string; value: string; sub?: string }[] = [
     { label: t.plan.facts.planCode, value: planCode },
-    { label: t.plan.facts.planName, value: planName },
     { label: t.plan.version, value: t.plan.versionNo(version.planVersion) },
     ...(seqNo === undefined
       ? []

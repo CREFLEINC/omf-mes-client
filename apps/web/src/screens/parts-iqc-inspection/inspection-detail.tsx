@@ -298,7 +298,6 @@ export const InspectionDetail = ({
           {skippedPlanOpen && version.data !== undefined && specs.data !== undefined && (
             <PlanDialog
               planCode={plan.data === undefined ? '-' : plan.data.inspectionPlanCode}
-              planName={plan.data?.inspectionPlanName ?? '-'}
               itemParts={items.partsOf(detail.data.itemId)}
               version={version.data}
               specs={[...specs.data].sort((a, b) => a.sequenceNo - b.sequenceNo)}
@@ -506,7 +505,6 @@ export const InspectionDetail = ({
         {inboundPlanOpen && version.data !== undefined && specs.data !== undefined && (
           <PlanDialog
             planCode={plan.data === undefined ? '-' : plan.data.inspectionPlanCode}
-            planName={plan.data?.inspectionPlanName ?? '-'}
             itemParts={items.partsOf(detail.data.itemId)}
             version={version.data}
             specs={[...specs.data].sort((a, b) => a.sequenceNo - b.sequenceNo)}
@@ -1146,7 +1144,6 @@ const InspectionForm = (props: FormProps) => {
       {planOpen && (
         <PlanDialog
           planCode={props.planLabel}
-          planName={props.planName}
           itemParts={props.itemParts}
           version={version}
           specs={specs}
