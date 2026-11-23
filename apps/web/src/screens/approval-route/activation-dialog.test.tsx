@@ -28,7 +28,7 @@ describe('ActivationDialog — 사용 중지', () => {
   it('무엇이 막히는지를 승인 유형과 함께 말한다', () => {
     renderDialog();
 
-    expect(screen.getByText(t.dialog.deactivateBlocks('GOODS_ISSUE_DISPOSAL'))).toBeInTheDocument();
+    expect(screen.getByText(t.dialog.deactivateBlocks('폐기 출고'))).toBeInTheDocument();
   });
 
   it('진행 중인 요청이 그대로 진행된다는 사실을 건수와 함께 말한다', () => {
@@ -72,7 +72,7 @@ describe('ActivationDialog — 다시 사용', () => {
   it('무엇이 열리는지와 단계 수를 말한다', () => {
     renderDialog({ intent: 'activate' });
 
-    expect(screen.getByText(t.dialog.activateOpens('GOODS_ISSUE_DISPOSAL'))).toBeInTheDocument();
+    expect(screen.getByText(t.dialog.activateOpens('폐기 출고'))).toBeInTheDocument();
     expect(screen.getByText(t.dialog.activateStepCount(2))).toBeInTheDocument();
   });
 
@@ -81,7 +81,7 @@ describe('ActivationDialog — 다시 사용', () => {
     renderDialog({ intent: 'activate' });
 
     expect(
-      screen.queryByText(t.dialog.deactivateBlocks('GOODS_ISSUE_DISPOSAL')),
+      screen.queryByText(t.dialog.deactivateBlocks('폐기 출고')),
     ).not.toBeInTheDocument();
     expect(screen.queryByText(t.dialog.deactivateInProgress(3))).not.toBeInTheDocument();
   });
@@ -112,7 +112,7 @@ describe('ActivationDialog — 창의 경계', () => {
   it('내부 번호를 내지 않는다', () => {
     const { container } = renderDialog();
 
-    expect(screen.getByText(t.dialog.deactivateBlocks('GOODS_ISSUE_DISPOSAL'))).toBeInTheDocument();
+    expect(screen.getByText(t.dialog.deactivateBlocks('폐기 출고'))).toBeInTheDocument();
     expect(container.textContent).not.toContain('9001');
   });
 

@@ -44,7 +44,7 @@ describe('RouteFormPane — 읽기 표기', () => {
   it('승인 유형·사용 여부·단계 수를 낸다', () => {
     renderPane();
 
-    expect(screen.getByText('GOODS_ISSUE_DISPOSAL')).toBeInTheDocument();
+    expect(screen.getByText('폐기 출고')).toBeInTheDocument();
     expect(screen.getByText(t.values.active)).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument();
   });
@@ -77,7 +77,7 @@ describe('RouteFormPane — 읽기 표기', () => {
     const { container } = renderPane();
 
     // 선행 단언 — 값이 실제로 그려져야 「번호가 없다」가 뜻을 갖는다.
-    expect(screen.getByText('GOODS_ISSUE_DISPOSAL')).toBeInTheDocument();
+    expect(screen.getByText('폐기 출고')).toBeInTheDocument();
     expect(container.textContent).not.toContain('9001');
     expect(container.textContent).not.toContain('9101');
   });

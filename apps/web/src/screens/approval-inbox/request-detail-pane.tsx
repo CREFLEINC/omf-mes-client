@@ -1,5 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
+import { approvalTypeLabelOf } from './code-options';
 import type { RequestDetailView } from './types';
 
 const t = messages.approvalInbox;
@@ -60,8 +61,7 @@ export const RequestDetailPane = ({ view }: RequestDetailPaneProps) => (
       </div>
       <div className="field-cell">
         <dt className="field-label">{t.fields.approvalTypeCode}</dt>
-        {/* 코드 문자열 그대로다 — 값 목록이 확정되기 전에 화면이 이름을 지어내지 않는다. */}
-        <dd>{view.approvalTypeCode}</dd>
+        <dd>{approvalTypeLabelOf(view.approvalTypeCode)}</dd>
       </div>
       <div className="field-cell">
         <dt className="field-label">{t.fields.requestedByName}</dt>

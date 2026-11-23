@@ -22,16 +22,28 @@ export const PLACEHOLDER_APPROVAL_TYPE_CODES = [
 /** 요청 상태 값 목록 — 같은 사정이다. 계약이 「값 목록은 공통코드 소관」이라고 적었다. */
 export const PLACEHOLDER_REQUEST_STATUS_CODES: readonly string[] = [];
 
+/** 승인 유형 코드 → 사람이 읽는 이름. 목록에 없는 코드는 코드 그대로 보인다. */
+export const approvalTypeLabelOf = (code: string): string =>
+  (messages.approvalInbox.approvalTypeNames as Record<string, string | undefined>)[code] ?? code;
+
 /**
- * 값 목록을 선택지로 옮긴다.
+ * 값 목록을 선택지로 옮긴다 — 요청 상태처럼 이름을 줄 곳이 아직 없는 값 목록에 쓴다.
  *
- * **라벨을 지어내지 않는다** — 코드값을 그대로 라벨로 쓴다. 사람이 읽을 이름을 주는 곳이
- * 아직 없는데 화면이 이름을 붙이면 그 뜻도 화면이 지어낸 것이 된다.
+ * 코드값을 그대로 라벨로 쓴다. 승인 유형은 이 함수가 아니라 `toApprovalTypeOptions`를 쓴다.
  *
  * **차례를 바꾸지 않는다.** 값 목록이 어떤 차례로 오는지가 뜻일 수 있다(자주 쓰는 것부터 등).
  */
 export const toCodeOptions = (values: readonly string[]): SelectOption[] =>
   values.map((code) => ({ value: code, label: code }));
+
+/**
+ * 승인 유형 값 목록을 선택지로 옮긴다.
+ *
+ * **라벨은 사람이 읽는 이름이다(#353, 사용자 지시).** 코드값만으로는 무슨 결재인지 읽히지 않아
+ * 서버 알림 이름과 같은 이름을 붙인다(`approvalTypeLabelOf`). 값은 코드 그대로 보낸다. 차례는 바꾸지 않는다.
+ */
+export const toApprovalTypeOptions = (values: readonly string[]): SelectOption[] =>
+  values.map((code) => ({ value: code, label: approvalTypeLabelOf(code) }));
 
 /** 선택지가 왜 비어 있는지 밝히는 안내. **차면 거둔다** — 남으면 화면이 거짓말을 한다. */
 export const codeNote = (options: readonly SelectOption[]): string | undefined =>

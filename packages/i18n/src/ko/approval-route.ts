@@ -129,6 +129,21 @@ export const approvalRoute = {
     noStepsDescription:
       '단계가 없으면 이 유형의 상신이 거부됩니다. 단계를 하나 이상 추가하면 열립니다.',
   },
+  /**
+   * 승인 유형 코드 → 사람이 읽는 이름(#353). 서버 알림 이름(`approval-type-names.ts`)과 같은 말이다.
+   * 목록 밖 코드는 코드 그대로 보인다(`approvalTypeLabelOf`).
+   */
+  approvalTypeNames: {
+    GOODS_ISSUE_DISPOSAL: '폐기 출고',
+    INVENTORY_ADJUSTMENT: '재고 조정',
+    PURCHASE_ORDER: 'P/O',
+    INBOUND_RECEIPT_CANCEL: '입하 취소',
+    GOODS_RECEIPT_CANCEL: '입고 취소',
+    GOODS_ISSUE_CANCEL: '출고 취소',
+    SHIPMENT_CANCEL: '출하 취소',
+    PRODUCTION_RESULT_CORRECT: '생산 실적 정정',
+    CONCESSION: '특채',
+  },
   values: {
     /** 이름 목록은 왔는데 그 안에 없다 — **값이 잘못됐다**는 신호다. */
     unknown: '알 수 없음',

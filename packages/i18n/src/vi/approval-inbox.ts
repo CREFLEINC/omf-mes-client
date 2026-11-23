@@ -140,6 +140,17 @@ export const approvalInbox: Translated<typeof ko.approvalInbox> = {
     approved: 'Đã phê duyệt',
     rejected: 'Đã từ chối',
   },
+  approvalTypeNames: {
+    GOODS_ISSUE_DISPOSAL: 'Xuất hủy',
+    INVENTORY_ADJUSTMENT: 'Điều chỉnh tồn kho',
+    PURCHASE_ORDER: 'Đơn mua hàng (P/O)',
+    INBOUND_RECEIPT_CANCEL: 'Hủy nhận hàng',
+    GOODS_RECEIPT_CANCEL: 'Hủy nhập kho',
+    GOODS_ISSUE_CANCEL: 'Hủy xuất kho',
+    SHIPMENT_CANCEL: 'Hủy xuất hàng',
+    PRODUCTION_RESULT_CORRECT: 'Đính chính kết quả sản xuất',
+    CONCESSION: 'Đặc cách',
+  },
   values: {
     unknownRequester: 'Không xác nhận được người trình',
     emptyReason: 'Lý do đang trống',

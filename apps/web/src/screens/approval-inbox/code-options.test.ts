@@ -5,7 +5,9 @@ import {
   PLACEHOLDER_APPROVAL_TYPE_CODES,
   PLACEHOLDER_REQUEST_STATUS_CODES,
   codeNote,
+  approvalTypeLabelOf,
   codePlaceholder,
+  toApprovalTypeOptions,
   toCodeOptions,
 } from './code-options';
 
@@ -46,6 +48,19 @@ describe('toCodeOptions', () => {
 
   it('라벨을 지어내지 않는다 — 코드값을 그대로 쓴다', () => {
     expect(toCodeOptions(['SAMPLE-A'])[0]?.label).toBe('SAMPLE-A');
+  });
+});
+
+describe('toApprovalTypeOptions', () => {
+  it('값은 코드 그대로, 라벨은 사람이 읽는 이름이다(#353)', () => {
+    expect(toApprovalTypeOptions(['GOODS_ISSUE_DISPOSAL', 'SHIPMENT_CANCEL'])).toEqual([
+      { value: 'GOODS_ISSUE_DISPOSAL', label: '폐기 출고' },
+      { value: 'SHIPMENT_CANCEL', label: '출하 취소' },
+    ]);
+  });
+
+  it('이름이 없는 코드는 코드 그대로 보인다', () => {
+    expect(approvalTypeLabelOf('UNKNOWN_TYPE')).toBe('UNKNOWN_TYPE');
   });
 });
 

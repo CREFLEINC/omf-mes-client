@@ -392,7 +392,7 @@ const selectRouteButton = (approvalTypeCode: string, businessUnitLabel: string):
   screen.getByRole('button', { name: t.actions.selectRow(approvalTypeCode, businessUnitLabel) });
 
 const waitForList = async (): Promise<void> => {
-  await screen.findByText('INVENTORY_ADJUSTMENT');
+  await screen.findByText('재고 조정');
 };
 
 const waitForForm = async (): Promise<HTMLElement> => screen.findByLabelText(t.fields.minValue);
@@ -714,7 +714,7 @@ describe('ApprovalRouteScreen — 목록', () => {
     expect(screen.getAllByRole('option')).toHaveLength(9); // 전체 + 승인 유형 8개(IQC·PQC 생략은 #353 폐지)
     expect(screen.queryByRole('option', { name: 'PQC_SKIP' })).toBeNull();
     expect(screen.queryByRole('option', { name: 'IQC_SKIP' })).toBeNull();
-    expect(screen.getByRole('option', { name: 'PRODUCTION_RESULT_CORRECT' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '생산 실적 정정' })).toBeInTheDocument();
     expect(screen.queryByText(messages.pendingCode.note)).toBeNull();
   });
 });
@@ -735,7 +735,7 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await waitForList();
-    await user.click(selectRouteButton('GOODS_ISSUE_DISPOSAL', BUSINESS_UNIT_LABEL));
+    await user.click(selectRouteButton('폐기 출고', BUSINESS_UNIT_LABEL));
 
     await screen.findByRole('region', { name: t.panes.steps });
 
@@ -751,7 +751,7 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
     );
 
     await waitForList();
-    await user.click(selectRouteButton('GOODS_ISSUE_DISPOSAL', BUSINESS_UNIT_LABEL));
+    await user.click(selectRouteButton('폐기 출고', BUSINESS_UNIT_LABEL));
 
     await waitFor(() => {
       expect(locationText()).toContain('ar=9001');
@@ -883,7 +883,7 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
 
     expect(await screen.findByText(t.empty.notFoundTitle)).toBeInTheDocument();
 
-    await user.click(selectRouteButton('INVENTORY_ADJUSTMENT', INACTIVE_BUSINESS_UNIT_LABEL));
+    await user.click(selectRouteButton('재고 조정', INACTIVE_BUSINESS_UNIT_LABEL));
 
     await screen.findByRole('region', { name: t.panes.steps });
     expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
@@ -1239,7 +1239,7 @@ describe('ApprovalRouteScreen — 빈 상태와 실패', () => {
     // 상세는 그대로 읽힌다 — 한쪽 실패가 다른 쪽을 지우지 않는다.
     const detailPane = screen.getByRole('region', { name: t.panes.detail });
 
-    expect(within(detailPane).getByText('GOODS_ISSUE_DISPOSAL')).toBeInTheDocument();
+    expect(within(detailPane).getByText('폐기 출고')).toBeInTheDocument();
     expect(within(detailPane).queryByText(messages.httpError.loadTitle)).toBeNull();
     expect(
       within(screen.getByRole('region', { name: t.panes.steps })).getByText(
@@ -1357,9 +1357,9 @@ describe('ApprovalRouteScreen — 등록 폼', () => {
       name: t.fields.approvalTypeCode,
     });
     await user.click(approvalType);
-    await user.click(screen.getByRole('option', { name: 'SHIPMENT_CANCEL' }));
+    await user.click(screen.getByRole('option', { name: '출하 취소' }));
 
-    expect(approvalType).toHaveTextContent('SHIPMENT_CANCEL');
+    expect(approvalType).toHaveTextContent('출하 취소');
     expect(within(createPane).queryByText(t.actionReasons.createPendingCode)).toBeNull();
     expect(within(createPane).queryByText(messages.pendingCode.note)).toBeNull();
     expect(writeRequests(requests)).toHaveLength(0);
@@ -1759,7 +1759,7 @@ describe('ApprovalRouteScreen — 사용 전환', () => {
     const dialog = activationDialog();
 
     expect(
-      within(dialog).getByText(t.dialog.deactivateBlocks('GOODS_ISSUE_DISPOSAL')),
+      within(dialog).getByText(t.dialog.deactivateBlocks('폐기 출고')),
     ).toBeInTheDocument();
     /* 건수는 결재선 응답이 실어 온 값이다 — 화면이 세지 않는다. */
     expect(within(dialog).getByText(t.dialog.deactivateInProgress(3))).toBeInTheDocument();
@@ -2072,7 +2072,7 @@ describe('ApprovalRouteScreen — 전송 중', () => {
       expect(updateRequests(requests)).toHaveLength(1);
     });
 
-    await user.click(selectRouteButton('INVENTORY_ADJUSTMENT', INACTIVE_BUSINESS_UNIT_LABEL));
+    await user.click(selectRouteButton('재고 조정', INACTIVE_BUSINESS_UNIT_LABEL));
 
     expect(locationText()).toContain('ar=9001');
     expect(locationText()).not.toContain('ar=9003');
@@ -2205,7 +2205,7 @@ describe('ApprovalRouteScreen — 배너 매임과 초안 수명', () => {
   it('실패 배너가 대상이 바뀌면 사라진다', async () => {
     const { user } = await failThenSelect();
 
-    await user.click(selectRouteButton('INVENTORY_ADJUSTMENT', INACTIVE_BUSINESS_UNIT_LABEL));
+    await user.click(selectRouteButton('재고 조정', INACTIVE_BUSINESS_UNIT_LABEL));
 
     await waitFor(() => {
       expect(screen.queryByText(messages.conflict.user)).not.toBeInTheDocument();
@@ -2300,7 +2300,7 @@ describe('ApprovalRouteScreen — 배너 매임과 초안 수명', () => {
     const { user } = renderScreen(allRoutes([detailRoute(routeFixtures[2])]), SELECTED);
 
     await dirtyForm(user, '77');
-    await user.click(selectRouteButton('INVENTORY_ADJUSTMENT', INACTIVE_BUSINESS_UNIT_LABEL));
+    await user.click(selectRouteButton('재고 조정', INACTIVE_BUSINESS_UNIT_LABEL));
 
     await waitFor(() => {
       expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('0');

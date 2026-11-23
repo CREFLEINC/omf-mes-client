@@ -355,7 +355,7 @@ describe('첫 진입', () => {
 
     const table = within(requestTable());
 
-    expect(table.getByText('INVENTORY_ADJUSTMENT')).toBeInTheDocument();
+    expect(table.getByText('재고 조정')).toBeInTheDocument();
     expect(table.getAllByText('합성 상신자1').length).toBe(2);
     /* 상신 일시는 **시각까지** 보인다 — 날짜만 그리면 여기서 멈춘다. */
     expect(table.getByText('2026-08-06 12:20')).toBeInTheDocument();

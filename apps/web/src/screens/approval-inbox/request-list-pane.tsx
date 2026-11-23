@@ -2,6 +2,7 @@ import { Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/we
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { approvalTypeLabelOf } from './code-options';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
 import type { RequestRow } from './types';
@@ -109,8 +110,7 @@ export const RequestListPane = ({
       key: 'approvalTypeCode',
       header: t.fields.approvalTypeCode,
       width: REQUEST_COLUMN_WIDTH.approvalTypeCode,
-      /* 코드 문자열 그대로다 — 값 목록이 확정되기 전에 화면이 이름을 지어내지 않는다. */
-      render: (row) => row.approvalTypeCode,
+      render: (row) => approvalTypeLabelOf(row.approvalTypeCode),
     },
     {
       key: 'requester',
