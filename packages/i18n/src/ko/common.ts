@@ -89,6 +89,12 @@ export const common = {
   },
   /** 검사 조회·판정(IQC · PQC · OQC) 탭 줄 오른쪽 건수 칩(omf-all-around#185). */
   columnOrderHandle: '끌어서 열 순서 바꾸기',
+  /** 목록 · 상세 화면의 목록 접기(omf-all-around#350) — 목록 제목 줄 「목록 접기」, 접힌 뒤 왼쪽 「목록」 탭. */
+  paneList: {
+    collapse: '목록 접기',
+    tab: '목록',
+    count: (count: number): string => `${String(count)}건`,
+  },
   inspectionHub: {
     /** 검사 기준 안내 문구 띠(omf-all-around#252). */
     guide: '검사 안내',

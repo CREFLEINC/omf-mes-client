@@ -37268,3 +37268,189 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   padding: 0;
   list-style: none;
 }
+
+/*
+ * 목록 접기 — 시안(omf-all-around#350). 목록 맨 위 제목 줄 「이름 · 건수 · [목록 접기]」, 접으면 왼쪽에 「목록 N건」 탭이 서고
+ * 상세가 남은 폭을 다 쓴다. 아이콘은 왼쪽 칸이 닫히고 열리는 패널 모양. 좌우로 나란히 설 때만 — 위아래로 쌓이면(좁은 창 · 상하 배치)
+ * 제목 줄의 단추와 탭을 감추고, 막대의 작은 원 단추가 그대로 접고 편다. 제목 줄이 없는 분할(`PaneListHead` 를 안 쓰는 화면)은 전과 같다.
+ */
+.po-board-list-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  flex: 0 0 auto;
+}
+
+.po-board-list-head > .pane-title {
+  margin: 0;
+}
+
+/* 구획 안 간격(flex gap)이 없는 목록(검사 조회·판정 등)은 제목 줄 아래를 띄운다. */
+.pane:not(.po-board-pane) > .po-board-list-head {
+  margin-bottom: var(--space-3);
+}
+
+.po-board-list-count {
+  color: var(--on-surface-variant);
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.po-board-list-collapse,
+.po-board-list-tab {
+  display: none;
+}
+
+@media (min-width: 1440px) {
+  .po-board-split:not(.is-stacked) .po-board-list-collapse {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    margin-left: auto;
+    padding: 0 14px 0 10px;
+    border: 1px solid var(--outline);
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--on-surface-variant);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .po-board-split:not(.is-stacked) .po-board-list-collapse:hover {
+    border-color: var(--semantic-info);
+    background: var(--state-hover-neutral);
+    color: var(--on-surface);
+  }
+
+  .po-board-list-collapse:focus-visible,
+  .po-board-list-tab:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+
+  /* 제목 줄에 단추가 있으니 막대 위 작은 원은 감춘다. */
+  .po-board-split:has(.po-board-list-head):not(.is-stacked) > .po-board-gutter > .po-board-collapse {
+    display: none;
+  }
+
+  /* 접힘 — 왼쪽 48px 탭 + 상세. */
+  .po-board-split:has(.po-board-list-head)[data-left-collapsed]:not(.is-stacked) {
+    grid-template-columns: 48px minmax(0, 1fr);
+    column-gap: var(--space-4);
+  }
+
+  .po-board-split:has(.po-board-list-head)[data-left-collapsed]:not(.is-stacked) > .po-board-gutter {
+    position: relative;
+    display: block;
+    align-self: stretch;
+  }
+
+  .po-board-split:has(.po-board-list-head):not(.is-stacked) > .po-board-gutter > .po-board-list-tab {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--on-surface-variant);
+    font: inherit;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+}
+
+/* 접힌 「목록」 탭 모양 — 보일지는 위 규칙이 정한다. */
+.po-board-list-tab:hover {
+  background: var(--state-hover-neutral);
+}
+
+.po-board-list-tab-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 48px;
+  padding: 10px 0 12px;
+  border: 1px solid var(--outline);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--elevation-1);
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.po-board-list-tab:hover .po-board-list-tab-body {
+  border-color: var(--semantic-info);
+  color: var(--on-surface);
+}
+
+.po-board-list-tab b {
+  color: var(--on-surface);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.po-board-list-tab .po-board-list-count {
+  font-size: 12px;
+}
+
+/* 생산 계획 ERP W/O 목록(좌우 배치)도 같은 목록 접기(#350) — 이 틀은 창 폭이 아니라 자기 폭으로 좌우를 가른다. */
+.erp-wo-adjustable-grid.is-side .po-board-list-collapse {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  margin-left: auto;
+  padding: 0 14px 0 10px;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--on-surface-variant);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.erp-wo-adjustable-grid.is-side .po-board-list-collapse:hover {
+  border-color: var(--semantic-info);
+  background: var(--state-hover-neutral);
+  color: var(--on-surface);
+}
+
+.erp-wo-adjustable-grid.is-side:has(.po-board-list-head) > .po-board-gutter > .po-board-collapse {
+  display: none;
+}
+
+.erp-wo-adjustable-grid.is-side[data-left-collapsed='true']:has(.po-board-list-tab) {
+  grid-template-columns: 48px minmax(0, 1fr);
+  column-gap: var(--space-4);
+}
+
+.erp-wo-adjustable-grid.is-side > .po-board-gutter > .po-board-list-tab {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--on-surface-variant);
+  font: inherit;
+  cursor: pointer;
+}
+
+.erp-wo-adjustable-grid.is-side > .po-board-gutter:has(> .po-board-list-tab) {
+  position: relative;
+}

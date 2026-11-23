@@ -28,7 +28,12 @@ import { useColumnWidths } from '../../patterns/column-resize';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { OaOnlyGate } from '../../patterns/oa-only-gate';
 import { PageNav } from '../../patterns/page-nav';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import { Select } from '../../patterns/select';
 import { useSession } from '../../patterns/session';
 import {
@@ -563,6 +568,13 @@ const InspectionSheetTemplateScreenBody = ({
           className="pane inspection-sheet-template-list-pane quality-standard-list-pane"
           aria-label={t.list.heading}
         >
+          <PaneListHead
+            title={t.list.heading}
+            collapse={{
+              ...listCollapse,
+              count: list.data === undefined ? undefined : sorted.length,
+            }}
+          />
           {list.isError && (
             <AlertBanner variant="error">
               {t.list.loadFailed}{' '}
@@ -630,7 +642,7 @@ const InspectionSheetTemplateScreenBody = ({
           label={hubText.splitter}
           ratio={split.ratio}
           onChange={split.commit}
-          collapse={listCollapse}
+          collapse={{ ...listCollapse, count: list.data === undefined ? undefined : sorted.length }}
         />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter

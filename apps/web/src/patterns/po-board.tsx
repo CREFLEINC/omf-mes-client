@@ -1,4 +1,5 @@
 import { Icon } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 
 import { MoreMenu } from './popover-button';
@@ -149,6 +150,39 @@ export const usePaneSplit = (storageKey: string, initial = 1 / 3) => {
 };
 
 /**
+/** 목록 접기 — 상태 · 바꾸기와 단추 이름(접기 · 펼치기). `count` 가 있으면 제목 줄 · 접힌 탭에 건수가 선다. */
+export interface PaneCollapse {
+  collapsed: boolean;
+  onToggle: () => void;
+  collapseLabel: string;
+  expandLabel: string;
+  count?: number;
+}
+
+/**
+ * 목록 제목 줄(omf-all-around#350 시안) — 「수주 목록 12건 … [목록 접기]」. 목록 구획 맨 위에 둔다.
+ * 「목록 접기」는 좌우로 나란히 설 때만 보이고(app.css), 위아래로 쌓이면 막대의 작은 원 단추가 그대로 접고 편다.
+ */
+export const PaneListHead = ({ title, collapse }: { title: string; collapse: PaneCollapse }) => (
+  <div className="po-board-list-head">
+    <h2 className="pane-title">{title}</h2>
+    {collapse.count !== undefined && (
+      <span className="po-board-list-count">{messages.common.paneList.count(collapse.count)}</span>
+    )}
+    <button
+      type="button"
+      className="po-board-list-collapse"
+      aria-label={collapse.collapseLabel}
+      aria-expanded={!collapse.collapsed}
+      title={collapse.collapseLabel}
+      onClick={collapse.onToggle}
+    >
+      <Icon name="left_panel_close" size={18} />
+      {messages.common.paneList.collapse}
+    </button>
+  </div>
+);
+
 /**
  * 두 구획 사이의 **막대 자리** — 끌기 막대와, 왼쪽 표를 접고 펴는 단추(사용자 지시 2026-10-24).
  *
@@ -168,12 +202,7 @@ export const PaneSplitter = ({
   onChange: (ratio: number) => void;
   orientation?: 'vertical' | 'horizontal';
   /** 있으면 접기 단추가 선다. 이름은 단추가 할 일(접기 · 펼치기)이다. */
-  collapse?: {
-    collapsed: boolean;
-    onToggle: () => void;
-    collapseLabel: string;
-    expandLabel: string;
-  };
+  collapse?: PaneCollapse;
 }) => (
   <div
     className="po-board-gutter"
@@ -189,6 +218,27 @@ export const PaneSplitter = ({
         onClick={collapse.onToggle}
       >
         <Icon name={collapse.collapsed ? 'left_panel_open' : 'left_panel_close'} size={18} />
+      </button>
+    )}
+    {/* 접힌 뒤 왼쪽 「목록」 탭 — 좌우로 나란히 설 때만 보인다(app.css). 위 줄의 작은 원은 그때 감춘다. */}
+    {collapse?.collapsed === true && (
+      <button
+        type="button"
+        className="po-board-list-tab"
+        aria-label={collapse.expandLabel}
+        aria-expanded={false}
+        title={collapse.expandLabel}
+        onClick={collapse.onToggle}
+      >
+        <span className="po-board-list-tab-body">
+          <Icon name="left_panel_open" size={18} />
+          <b>{messages.common.paneList.tab}</b>
+          {collapse.count !== undefined && (
+            <span className="po-board-list-count">
+              {messages.common.paneList.count(collapse.count)}
+            </span>
+          )}
+        </span>
       </button>
     )}
     {collapse?.collapsed !== true && (

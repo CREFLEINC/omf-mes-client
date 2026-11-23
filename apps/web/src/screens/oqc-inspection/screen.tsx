@@ -22,7 +22,12 @@ import {
   InspectionHubCounts,
   type InspectionHubStatus,
 } from '../../patterns/inspection-hub-counts';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import {
   PaneHeightSplitter,
   SplitOrientationToggle,
@@ -1142,6 +1147,10 @@ export const OqcInspectionScreen = () => {
           className="pane oqc-inspection-panes oqc-inspection-queue-pane"
           aria-label={t.queue.heading}
         >
+          <PaneListHead
+            title={t.queue.heading}
+            collapse={{ ...listCollapse, count: queue.data?.page.total }}
+          />
           {queue.isError && (
             <QueueLoadErrorBanner
               error={toApiError(queue.error)}
@@ -1189,7 +1198,7 @@ export const OqcInspectionScreen = () => {
           label={hubText.splitter}
           ratio={split.ratio}
           onChange={split.commit}
-          collapse={listCollapse}
+          collapse={{ ...listCollapse, count: queue.data?.page.total }}
         />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter

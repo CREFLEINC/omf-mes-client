@@ -48,10 +48,10 @@ describe('작업계획 배치와 영역 크기', () => {
         <input aria-label="생산량" defaultValue="120" />
       </AdjustableLayout>,
     );
-    await user.click(screen.getByRole('button', { name: '목록 접기' }));
+    await user.click(screen.getAllByRole('button', { name: '목록 접기' })[0]!);
     expect(screen.getByText('선택 목록')).not.toBeVisible();
     expect(screen.getByRole('textbox', { name: '생산량' })).toHaveValue('120');
-    await user.click(screen.getByRole('button', { name: '목록 펼치기' }));
+    await user.click(screen.getAllByRole('button', { name: '목록 펼치기' })[0]!);
     expect(screen.getByText('선택 목록')).toBeVisible();
     expect(screen.getByRole('textbox', { name: '생산량' })).toHaveValue('120');
   });

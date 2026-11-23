@@ -324,6 +324,7 @@ export const ErpCommonCodeScreen = () => {
       splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
       list={{
         label: t.groups.label,
+        count: groups.data?.length,
         /* 조회에 실패했으면 표도 빈 상태도 내지 않는다 — 실패를 「없습니다」로 보이면 안 된다. */
         content: groups.isError ? (
           <LoadErrorBanner error={groups.error} onRetry={() => void groups.refetch()} />

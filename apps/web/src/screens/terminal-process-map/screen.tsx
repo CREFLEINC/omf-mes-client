@@ -20,7 +20,12 @@ import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { SaveErrorBanner } from '../../patterns/master';
 import { PageNav } from '../../patterns/page-nav';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import { PaneHeightSplitter, useSplitOrientation } from '../../patterns/split-orientation';
 import {
   EMPTY_FILTERS,
@@ -860,6 +865,10 @@ export const TerminalProcessMapScreen = () => {
           data-left-collapsed={split.collapsed ? 'true' : undefined}
         >
           <section className="pane users-roles-list-pane" aria-label={t.panes.list}>
+            <PaneListHead
+              title={t.panes.list}
+              collapse={{ ...listCollapse, count: terminals.data?.page.total }}
+            />
             <div className="users-roles-list-body">{listSlot()}</div>
             {terminals.data !== undefined && (
               <PageNav<ListPageSize>
@@ -884,7 +893,7 @@ export const TerminalProcessMapScreen = () => {
             label={messages.common.inspectionHub.splitter}
             ratio={split.ratio}
             onChange={split.commit}
-            collapse={listCollapse}
+            collapse={{ ...listCollapse, count: terminals.data?.page.total }}
           />
           {layout.orientation === 'column' && (
             <PaneHeightSplitter

@@ -483,6 +483,7 @@ export const InboundExcessScreen = () => {
       splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
       list={{
         label: t.listTitle,
+        count: unlinked.data?.page.total,
         content: (
           <>
             {newFlowNotice}

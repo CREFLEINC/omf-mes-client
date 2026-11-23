@@ -3925,7 +3925,9 @@ describe('InspectionStandardScreen — 목록 접기(#252 · #255)', () => {
 
     await user.click(await screen.findByRole('button', { name: 'SYN-PLAN-01' }));
     expect(
-      await screen.findByRole('button', { name: messages.inspectionStandard.panes.listExpand }),
+      (
+        await screen.findAllByRole('button', { name: messages.inspectionStandard.panes.listExpand })
+      )[0]!,
     ).toBeInTheDocument();
 
     await user.click(
@@ -3934,7 +3936,11 @@ describe('InspectionStandardScreen — 목록 접기(#252 · #255)', () => {
     await user.click(screen.getByRole('option', { name: 'OQC (출하검사)' }));
 
     expect(
-      await screen.findByRole('button', { name: messages.inspectionStandard.panes.listCollapse }),
+      (
+        await screen.findAllByRole('button', {
+          name: messages.inspectionStandard.panes.listCollapse,
+        })
+      )[0]!,
     ).toHaveAttribute('aria-expanded', 'true');
   });
 
@@ -3943,7 +3949,11 @@ describe('InspectionStandardScreen — 목록 접기(#252 · #255)', () => {
     renderScreen([planListRoute(), ...lookupRoutes()]);
 
     expect(
-      await screen.findByRole('button', { name: messages.inspectionStandard.panes.listCollapse }),
+      (
+        await screen.findAllByRole('button', {
+          name: messages.inspectionStandard.panes.listCollapse,
+        })
+      )[0]!,
     ).toHaveAttribute('aria-expanded', 'true');
     window.localStorage.removeItem('omf-mes:inspection-standard:split:collapsed');
   });

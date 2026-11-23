@@ -26,7 +26,12 @@ import { useInspectionDrawings } from '../../patterns/inspection-drawings';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { usePageHub } from '../../patterns/page-hub';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import {
   PaneHeightSplitter,
   QUALITY_STANDARD_ORIENTATION_KEY,
@@ -2454,6 +2459,12 @@ export const InspectionStandardScreen = () => {
         data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <PlanListPane
+          head={
+            <PaneListHead
+              title={t.panes.plan}
+              collapse={{ ...listCollapse, count: planList.data?.page.total }}
+            />
+          }
           itemPartsOf={itemPartsOf}
           versionStatusOf={latestVersionStatusOf}
           plans={plans}
@@ -2483,7 +2494,7 @@ export const InspectionStandardScreen = () => {
           label={hubText.splitter}
           ratio={split.ratio}
           onChange={split.commit}
-          collapse={listCollapse}
+          collapse={{ ...listCollapse, count: planList.data?.page.total }}
         />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter
