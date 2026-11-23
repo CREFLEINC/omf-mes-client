@@ -165,7 +165,7 @@ export const putaway: Translated<typeof ko.putaway> = {
       PRODUCT: 'Thành phẩm chỉ được cất vào kho thành phẩm',
       other: 'Không thể cất LOT này vào kho này',
     },
-    designatedLabel: 'Vị trí chỉ định',
+    designatedLabel: 'Danh sách vị trí cất đề xuất',
     designatedAnywhere: 'Chưa có vị trí chỉ định',
     designatedNone: 'Chưa có vị trí chỉ định',
     wholeWarehouse: 'Toàn kho — kho không chia vị trí',

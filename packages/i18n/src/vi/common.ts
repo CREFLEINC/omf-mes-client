@@ -44,6 +44,7 @@ export const common: Translated<typeof ko.common> = {
     home: 'Danh sách công việc',
     back: 'Bước trước',
     backToArea: (area: string) => `Công việc ${area}`,
+    backToScreen: (screen: string) => `Màn hình ${screen}`,
     noWorker: 'Hãy xác nhận mã nhân viên trước',
     signIn: 'Xác nhận mã NV',
     changeWorker: 'Đổi người dùng',

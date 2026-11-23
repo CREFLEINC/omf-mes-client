@@ -402,6 +402,13 @@
   min-width: 0;
 }
 
+/* 적치 위치 나무 위 제목 「적치 위치 후보 목록」 — 「② 적치 위치」 구획 제목 아래 단계라 한 단계 작게(2026-11-23). */
+.putaway__candidates-title {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
 /* 목록 제목 줄 — 왼쪽 「적치 대기 자재 목록」, 오른쪽 끝 적치 대기 LOT 수(사용자 지시 2026-11-23). */
 .putaway__list-title {
   display: flex;
@@ -494,8 +501,6 @@
  * 24px 들여 쓰고, 윗 단계에 형제가 남았으면 세로선(│), 이 줄은 가지선(├ · └). 줄끼리 틈 없이 붙어 선이 끊기지 않는다.
  */
 .loc-tree {
-  --loc-tree-line: 1px dotted var(--outline);
-
   margin: 0;
   padding: var(--space-1, 4px) var(--space-2, 8px);
   border: 1px solid var(--outline-variant);
@@ -523,7 +528,7 @@
   top: 0;
   bottom: 0;
   left: 11px;
-  border-left: var(--loc-tree-line);
+  border-left: 1px dotted var(--outline);
 }
 
 /* └ — 마지막 형제는 세로선이 이 줄 가운데에서 멈춘다. */
@@ -538,7 +543,7 @@
   top: 50%;
   right: 0;
   left: 11px;
-  border-top: var(--loc-tree-line);
+  border-top: 1px dotted var(--outline);
 }
 
 .loc-tree__marker,
@@ -558,7 +563,7 @@
   top: calc(50% + 9px);
   bottom: 0;
   left: 11px;
-  border-left: var(--loc-tree-line);
+  border-left: 1px dotted var(--outline);
 }
 
 /* 맨 아래 위치 줄 — 가지선을 이름 앞까지 끌어온다. */
@@ -568,7 +573,7 @@
   top: 50%;
   right: var(--space-1, 4px);
   left: 0;
-  border-top: var(--loc-tree-line);
+  border-top: 1px dotted var(--outline);
 }
 
 .loc-tree__label {

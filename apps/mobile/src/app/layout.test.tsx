@@ -374,6 +374,23 @@ describe('AppLayout', () => {
     expect(await screen.findByText('업무 작업 목록 화면')).toBeInTheDocument();
   });
 
+  /* 임시 위치 적재는 목록에 없고 적치·입고 완료에서만 들어온다 — ← 도 그 화면으로(사용자 지시 2026-11-23). */
+  it('목록에 없는 임시 위치 적재의 ← 는 적치·입고 완료로 간다', async () => {
+    const user = userEvent.setup();
+    render(
+      <Shell path="/temporary-putaway">
+        <Routes>
+          <Route path="/temporary-putaway" element={<p>임시 적치 화면</p>} />
+          <Route path="/putaway" element={<p>적치 화면</p>} />
+        </Routes>
+      </Shell>,
+    );
+
+    await user.click(screen.getByRole('button', { name: '적치·입고 완료 화면' }));
+
+    expect(await screen.findByText('적치 화면')).toBeInTheDocument();
+  });
+
   it('되돌릴 단계가 없으면 「이전 단계」를 두지 않는다', () => {
     renderLayout('본문 자리');
 

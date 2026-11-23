@@ -13,7 +13,7 @@ import { OutboxProvider, useOutbox, type OutboxTransport } from '../patterns/out
 import { TaskDraftProvider, useTaskDraft } from '../patterns/task-draft';
 import { WorkerSessionProvider } from '../patterns/worker-session';
 import { appRoutes } from '../routes';
-import { hiddenScreens, homeAreas, screenOf } from './home-menu';
+import { hiddenScreens, homeAreas, parentScreenOf, screenOf } from './home-menu';
 import { HomeAreaScreen, ShellHome } from './shell-home';
 
 /*
@@ -67,9 +67,7 @@ const Shell = ({
       <MemoryRouter initialEntries={[path]}>
         <OutboxProvider send={send}>
           <WorkerSessionProvider>
-            <TaskDraftProvider>
-              {children}
-            </TaskDraftProvider>
+            <TaskDraftProvider>{children}</TaskDraftProvider>
           </WorkerSessionProvider>
         </OutboxProvider>
       </MemoryRouter>
@@ -238,13 +236,9 @@ describe('작업 목록', () => {
       within(areas)
         .getAllByRole('link')
         .map((link) => link.getAttribute('href')),
-    ).toEqual([
-      '/screens/inbound',
-      '/screens/warehouse',
-      '/screens/shipping',
-    ]);
+    ).toEqual(['/screens/inbound', '/screens/warehouse', '/screens/shipping']);
     /* 창고 7 — 피처 011 이 적치 기록(M-01-14)을 더했다. */
-    expect(screen.getByRole('link', { name: /^창고/ })).toHaveTextContent('작업 7개');
+    expect(screen.getByRole('link', { name: /^창고/ })).toHaveTextContent('작업 6개');
   });
 
   it('업무를 누르면 그 업무의 작업들이 선다', async () => {
@@ -262,10 +256,10 @@ describe('작업 목록', () => {
       'href',
       '/putaway',
     );
-    expect(within(list).getAllByRole('link')).toHaveLength(7);
+    expect(within(list).getAllByRole('link')).toHaveLength(6);
   });
 
-  it('FR-003 · D-6 창고 업무에 「적치 기록」이 임시 위치 적재 바로 다음에 선다', async () => {
+  it('FR-003 · D-6 창고 업무에 「적치 기록」이 적치·입고 완료 바로 다음에 나타난다', async () => {
     const user = userEvent.setup();
     render(
       <Shell>
@@ -278,7 +272,25 @@ describe('작업 목록', () => {
     const hrefs = within(screen.getByRole('navigation', { name: '창고' }))
       .getAllByRole('link')
       .map((link) => link.getAttribute('href'));
-    expect(hrefs.indexOf('/putaway-history')).toBe(hrefs.indexOf('/temporary-putaway') + 1);
+    expect(hrefs.indexOf('/putaway-history')).toBe(hrefs.indexOf('/putaway') + 1);
+  });
+
+  /* 적치·입고 완료에서 LOT 을 들고만 들어온다 — 목록에서 열면 안내뿐이었다(사용자 지시 2026-11-23). */
+  it('임시 위치 적재는 창고 업무에 없고 라우트는 남는다', () => {
+    render(
+      <Shell path="/screens/warehouse">
+        <HomeRoutes />
+      </Shell>,
+    );
+
+    expect(linkedPaths()).not.toContain('/temporary-putaway');
+    expect(screenOf('/temporary-putaway')).toBeUndefined();
+    expect(parentScreenOf('/temporary-putaway')?.to).toBe('/putaway');
+    expect(
+      (appRoutes[0]?.children ?? []).some(
+        (child) => 'path' in child && child.path === 'temporary-putaway',
+      ),
+    ).toBe(true);
   });
 
   it('없는 업무 주소는 첫 화면으로 돌린다', () => {

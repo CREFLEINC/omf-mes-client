@@ -118,7 +118,10 @@ const setup = (options: Setup = {}) => {
 
 const warehouseLabel = t.areas.warehouse.label;
 const shippingLabel = t.areas.shipping.label;
-/** 배지가 없을 때 창고 줄의 이름은 보이는 글자(「창고 작업 7개」)다. 7 — 피처 011 이 적치 기록을 더했다. */
+/**
+ * 배지가 없을 때 창고 줄의 이름은 보이는 글자(「창고 작업 6개」)다. 6 — 피처 011 이 적치 기록을 더했고, 임시 위치 적재는
+ * 목록에서 뺐다(2026-11-23).
+ */
 const areaName = new RegExp(`^${warehouseLabel}`);
 
 beforeEach(() => {
@@ -177,7 +180,7 @@ describe('모바일 홈 남은 작업 배지(피처 002)', () => {
 
     await waitFor(() => expect(counted).toHaveLength(1));
     expect(screen.queryByText(t.workCount.left)).toBeNull();
-    expect(screen.getByRole('link', { name: areaName })).toHaveTextContent(t.areas.count(7));
+    expect(screen.getByRole('link', { name: areaName })).toHaveTextContent(t.areas.count(6));
   });
 
   it('FR-018 조회가 실패하면 배지를 숨기고 오류 문구 없이 업무 줄은 그대로 누를 수 있다', async () => {

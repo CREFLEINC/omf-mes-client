@@ -375,20 +375,23 @@ export const PendingLotPanel = ({ found, workerNo, onClose, onRecorded }: Pendin
         ) : null}
 
         {/*
-         * ② 지정 위치 — 공장 안 모든 창고. 위치는 창고를 고르지 않고 코드로 찾는다. 창고 › 구역 › 랙 › 위치를 관리웹 BOM
-         * 처럼 들여 쓴 나무로 보인다(사용자 지시 2026-11-23). 지정 위치가 없으면 이 PDA 에 지정된 창고 아래 「지정 위치
-         * 없음」 — 그 창고도 없는(공장 전체) 단말이면 「지정 위치 없음」 한 줄.
+         * ② 지정 위치 — 공장 안 모든 창고. 위치는 창고를 고르지 않고 코드로 찾는다. 「적치 위치 후보 목록」 제목 아래
+         * 창고 › 구역 › 랙 › 위치를 관리웹 BOM 처럼 들여 쓴 나무로 보인다(사용자 지시 2026-11-23). 지정 위치가 없으면 이
+         * PDA 에 지정된 창고 아래 「지정 위치 없음」 — 그 창고도 없는(공장 전체) 단말이면 「지정 위치 없음」 한 줄.
          */}
         {check === null || check.kind === 'checking' || check.kind === 'failed' ? (
-          designated.length === 0 && fallbackWarehouse === null ? (
-            <p className="putaway__note">{d.designatedNone}</p>
-          ) : (
-            <DesignatedTree
-              designated={designated}
-              terminalWarehouse={fallbackWarehouse}
-              codeOf={(warehouseId) => warehouseOf(warehouseId)?.code}
-            />
-          )
+          <>
+            <h3 className="putaway__candidates-title">{d.designatedLabel}</h3>
+            {designated.length === 0 && fallbackWarehouse === null ? (
+              <p className="putaway__note">{d.designatedNone}</p>
+            ) : (
+              <DesignatedTree
+                designated={designated}
+                terminalWarehouse={fallbackWarehouse}
+                codeOf={(warehouseId) => warehouseOf(warehouseId)?.code}
+              />
+            )}
+          </>
         ) : null}
       </section>
 

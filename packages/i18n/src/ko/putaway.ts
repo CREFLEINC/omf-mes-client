@@ -244,7 +244,8 @@ export const putaway = {
       PRODUCT: '완제품은 제품창고에만 둘 수 있습니다',
       other: '이 LOT 을 둘 수 없는 창고입니다',
     },
-    designatedLabel: '지정 위치',
+    /** 적치 위치 나무 위 제목 — 나무의 이름표(aria-label)도 같은 말(사용자 지시 2026-11-23). */
+    designatedLabel: '적치 위치 후보 목록',
     designatedAnywhere: '지정 위치 없음',
     /** 지정 위치도 없고 이 PDA 창고 줄도 보이지 않을 때(창고 없는 단말 · 불량 LOT) — 표 줄과 같은 말. */
     designatedNone: '지정 위치 없음',

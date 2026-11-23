@@ -16,7 +16,7 @@ import {
 } from '../patterns/screen-title';
 import { useOutbox } from '../patterns/outbox';
 import { useWorkerSession } from '../patterns/worker-session';
-import { areaOfScreen, isWorkScreen } from './home-menu';
+import { areaOfScreen, isWorkScreen, parentScreenOf } from './home-menu';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -45,11 +45,13 @@ const ShellTopbar = () => {
    * 뒤로가기 키와 같은 일이지만, 키는 눈에 보이지 않아 수량 단계에서 라인을 다시 고르려는 사람이
    * 찾지 못했다(사용자 지시 2026-10-21). 되돌릴 단계가 없는 작업 화면에서는 그 작업이 걸린 업무의
    * 작업 목록으로 간다 - 홈 단추만 있으면 입하 등록에서 입고 목록으로 못 돌아가고 홈을 거쳐야
-   * 했다(사용자 지적 2026-10-21).
+   * 했다(사용자 지적 2026-10-21). 목록에 없이 다른 화면에서만 들어오는 화면(임시 위치 적재)은 그 앞 화면으로 간다.
    */
   const hasBackStep = useHasBackStep();
   const parentArea = areaOfScreen(pathname);
-  const showBack = !compact && (hasBackStep || parentArea !== undefined);
+  const parentScreen = parentScreenOf(pathname);
+  const showBack =
+    !compact && (hasBackStep || parentArea !== undefined || parentScreen !== undefined);
   // 귀속 정보는 상시 표시다 - 누구로 기록되는지 안 보이면 남의 사번으로 쌓인다(D-5).
   const { worker } = useWorkerSession();
   /*
@@ -85,16 +87,24 @@ const ShellTopbar = () => {
               icon="arrow_back"
               size="lg"
               aria-label={
-                hasBackStep || parentArea === undefined
+                hasBackStep
                   ? shell.back
-                  : shell.backToArea(parentArea.label)
+                  : parentScreen !== undefined
+                    ? shell.backToScreen(parentScreen.label)
+                    : parentArea !== undefined
+                      ? shell.backToArea(parentArea.label)
+                      : shell.back
               }
               onClick={() => {
-                if (runBackStep() || parentArea === undefined) {
+                if (runBackStep()) {
                   return;
                 }
 
-                void navigate(`/screens/${parentArea.id}`);
+                if (parentScreen !== undefined) {
+                  void navigate(parentScreen.to);
+                } else if (parentArea !== undefined) {
+                  void navigate(`/screens/${parentArea.id}`);
+                }
               }}
             />
           ) : null}
