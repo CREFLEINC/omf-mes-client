@@ -1,4 +1,4 @@
-import { Chip, type Column, EmptyState, Table } from '@crefle/web-ui';
+import { Chip, type Column, EmptyState, Icon, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -188,6 +188,7 @@ export const DetailPane = ({
             ) : (
               <NonconformanceLinkButton
                 nonconformanceNo={view.sortedFrom.nonconformanceNo}
+                text={t.inboundLot.sortedFromButton}
                 label={t.inboundLot.openSortedFrom(view.sortedFrom.nonconformanceNo)}
                 onClick={() => {
                   if (view.sortedFrom) onOpenNonconformance(view.sortedFrom.nonconformanceId);
@@ -214,6 +215,13 @@ export const DetailPane = ({
             </div>
           ))}
         </dl>
+        {/* 선별로 생긴 부적합 — 어디서 왔는지 안내 라벨로(#352 사용자 지시). */}
+        {view.sortedFrom !== null && view.sortedFrom !== undefined && (
+          <p className="iqc-inspection-action-note disposition-sorted-note" data-tone="info">
+            <Icon name="info" size={14} aria-hidden />
+            {t.inboundLot.sortedFromNote(view.sortedFrom.nonconformanceNo)}
+          </p>
+        )}
       </div>
 
       <section className="disposition-subsection" aria-label={t.panes.lots}>
