@@ -27,6 +27,18 @@ vi.mock('../../patterns/error-tone', () => ({
   },
 }));
 
+/* 기기 토큰 — 이 PDA 에 지정된 창고를 묻는 단말 번호가 여기서 나온다. 기본은 없음(창고 모름). */
+const token = vi.hoisted(() => ({ value: null as string | null }));
+vi.mock('../../patterns/device-token', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../../patterns/device-token')>();
+
+  return { ...original, currentDeviceToken: () => token.value ?? original.currentDeviceToken() };
+});
+
+/** 단말 번호(sub)만 든 합성 토큰. 서명은 보지 않는다. */
+const tokenFor = (terminalId: number): string =>
+  `x.${btoa(JSON.stringify({ sub: String(terminalId) })).replaceAll('=', '')}.y`;
+
 /** 단말 보관소가 거절하는 상황을 만든다. 담기지 못한 것을 화면이 말하는지 보기 위해서다. */
 const held = vi.hoisted(() => ({ failWrite: null as string | null }));
 
@@ -169,6 +181,7 @@ const routes = (options: Options = {}): StubRoute[] => [
       itemCode: 'RM-1001',
       itemName: '수지A',
       fifoPolicyCode: 'FEFO',
+      itemTypeCode: 'RAW_MATERIAL',
     },
   ]),
   {
@@ -257,6 +270,7 @@ const readyToRecord = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 beforeEach(() => {
+  token.value = null;
   held.failWrite = null;
   tone.played = 0;
   store.clear();
@@ -1297,6 +1311,49 @@ describe('적치 대기 LOT — 지시 없는 적치(피처 009)', () => {
     },
   ];
 
+  /** 창고 코드 — 지정 위치 표의 창고코드 칸. */
+  const warehousesRoute: StubRoute = {
+    match: (req) => new URL(req.url).pathname === '/mdm/warehouses',
+    respond: () =>
+      jsonResponse({
+        items: [
+          {
+            warehouseId: 2,
+            warehouseCode: 'WH01',
+            warehouseName: '원자재창고',
+            warehouseTypeCode: 'MATERIAL',
+            isDefect: false,
+          },
+          {
+            warehouseId: 3,
+            warehouseCode: 'WH05',
+            warehouseName: '외부창고',
+            warehouseTypeCode: 'MATERIAL',
+            isDefect: false,
+          },
+          {
+            warehouseId: 4,
+            warehouseCode: 'WH20',
+            warehouseName: '제품창고',
+            warehouseTypeCode: 'PRODUCT',
+            isDefect: false,
+          },
+        ],
+        page: { page: 1, size: 200, total: 3 },
+      }),
+  };
+
+  /** 위치 나무의 줄 — 「단계 이름」. 코드는 하이픈에서 꺾이지 않게 붙임표(‑)로 적혀 되돌린다. */
+  const treeLines = (tree: HTMLElement): string[] =>
+    within(tree)
+      .getAllByRole('treeitem')
+      .map(
+        (item) =>
+          `${item.getAttribute('aria-level') ?? ''} ${
+            item.querySelector('.loc-tree__label')?.textContent?.replaceAll('\u2011', '-') ?? ''
+          }`,
+      );
+
   const lookupRoute = (answer: (lotNo: string) => unknown, asked: string[] = []): StubRoute => ({
     match: (req) => new URL(req.url).pathname === '/logistics/putaway-pending-lots:lookup',
     respond: (req) => {
@@ -1314,6 +1371,14 @@ describe('적치 대기 LOT — 지시 없는 적치(피처 009)', () => {
     );
 
   const verdicts: Record<string, Record<string, unknown>> = {
+    /* 서버는 지정 위치라고 답하지만 제품창고다 — 자재 LOT 은 화면이 막는다(사용자 지시 2026-11-23). */
+    'WH20-A01-01': {
+      verdictCode: 'DESIGNATED',
+      locationId: 40,
+      locationPath: '제품창고 › A구역 › 랙 01 › 1단',
+      warehouseId: 4,
+      warehouseName: '제품창고',
+    },
     'WH01-A01-03': {
       verdictCode: 'DESIGNATED',
       locationId: 5,
@@ -1406,7 +1471,7 @@ describe('적치 대기 LOT — 지시 없는 적치(피처 009)', () => {
   const openPending = async () => {
     await screen.findByText('RM-1001');
     await scanListLot(PENDING_NO);
-    await screen.findByText(messages.putaway.direct.designatedLegend);
+    await screen.findByRole('tree', { name: messages.putaway.direct.designatedLabel });
   };
 
   /** 입하 LOT 상세 — 표의 진척(적치 완료 / 자재 관리 LOT)과 수량을 여기서 읽는다. */
@@ -1476,8 +1541,13 @@ describe('적치 대기 LOT — 지시 없는 적치(피처 009)', () => {
       },
     );
 
-    /* 요약은 적치 대기 LOT 수만 — 적치 지시 수는 적지 않는다(사용자 지시 2026-11-23). */
-    expect(await screen.findByText(messages.putaway.direct.summary('4'))).toBeTruthy();
+    /*
+     * 따로 서던 요약 줄은 걷고, 목록 제목 줄 오른쪽에 적치 대기 LOT 수만(사용자 지시 2026-11-23). 적치 지시 수는 적지
+     * 않는다.
+     */
+    const title = await screen.findByRole('heading', { name: /^적치 대기 자재 목록/u });
+    expect(within(title).getByText(messages.putaway.direct.count('4'))).toBeTruthy();
+    expect(screen.queryByText(/적치 대기 LOT \d+건/u)).toBeNull();
     expect(screen.queryByText(/적치 지시 \d+건/u)).toBeNull();
 
     const table = screen.getByRole('table');
@@ -1502,16 +1572,93 @@ describe('적치 대기 LOT — 지시 없는 적치(피처 009)', () => {
     const legacy = within(table).getByText('GK-3003').closest('tr') as HTMLElement;
     expect(legacy).toHaveTextContent('1,000EA');
     expect(legacy).toHaveTextContent('—');
-    /* 줄은 누르는 곳이 아니다 — 어느 LOT 을 들었는지는 라벨을 스캔해야 안다. */
-    expect(within(table).queryByRole('button')).toBeNull();
+    /* 줄마다 품목 칸이 누르는 자리다(적치로 간다). */
+    expect(within(table).getAllByRole('button')).toHaveLength(3);
     /* 지시는 지금처럼 같은 목록에 선다(004 보충 · 배포 전 구매 입고). */
     expect(screen.getByRole('button', { name: /PT-2026-0007/ })).toBeTruthy();
   });
 
-  it('US1-2·Q2 LOT 을 스캔하면 그 LOT 을 열고 지정 위치를 창고별로 보인다', async () => {
+  /* 줄을 누르면 적치(위치 스캔)로 간다(사용자 지시 2026-11-23). */
+  it('줄을 누르면 적치로 — 그 줄의 LOT 이 하나면 곧바로 그 LOT 을 연다', async () => {
+    const user = userEvent.setup();
     const asked: string[] = [];
     mount(
       [
+        lookupRoute(
+          (lotNo) => ({
+            lotId: 41,
+            lotNo,
+            found: true,
+            eligible: true,
+            lot: pendingLot(),
+            designated,
+          }),
+          asked,
+        ),
+      ],
+      { pendingLots: [pendingLot()] },
+    );
+
+    await user.click(
+      await screen.findByRole('button', { name: messages.putaway.direct.open('RM-1001', '수지A') }),
+    );
+
+    expect(
+      await screen.findByRole('tree', { name: messages.putaway.direct.designatedLabel }),
+    ).toBeTruthy();
+    expect(asked).toEqual([PENDING_NO]);
+  });
+
+  /* 아무 LOT 이나 열면 손에 든 것과 다른 LOT 이 그 위치에 기록된다 — 손에 든 라벨과 같은 LOT 을 고른다. */
+  it('그 줄의 LOT 이 여럿이면 고르는 시트를 띄우고, 고른 LOT 을 연다', async () => {
+    const user = userEvent.setup();
+    const asked: string[] = [];
+    mount(
+      [
+        lookupRoute(
+          (lotNo) => ({
+            lotId: 42,
+            lotNo,
+            found: true,
+            eligible: true,
+            lot: pendingLot({ lotId: 42, lotNo }),
+            designated,
+          }),
+          asked,
+        ),
+      ],
+      {
+        pendingLots: [
+          pendingLot(),
+          pendingLot({ lotId: 42, lotNo: 'RM-LOT-0102', lotStatusCode: 'DEFECTIVE' }),
+        ],
+      },
+    );
+
+    await user.click(
+      await screen.findByRole('button', { name: messages.putaway.direct.open('RM-1001', '수지A') }),
+    );
+    const sheet = await screen.findByRole('dialog', { name: messages.putaway.direct.pick.title });
+    expect(asked).toEqual([]);
+    const second = within(sheet).getByRole('button', {
+      name: messages.putaway.direct.pick.open('RM-LOT-0102'),
+    });
+    expect(second).toHaveTextContent(messages.putaway.direct.defective);
+
+    await user.click(second);
+
+    expect(
+      await screen.findByRole('tree', { name: messages.putaway.direct.designatedLabel }),
+    ).toBeTruthy();
+    expect(asked).toEqual(['RM-LOT-0102']);
+    expect(screen.queryByRole('dialog', { name: messages.putaway.direct.pick.title })).toBeNull();
+  });
+
+  it('US1-2·Q2 LOT 을 스캔하면 그 LOT 을 열고 지정 위치를 창고 › 구역 › 랙 › 위치 나무로 보인다', async () => {
+    const asked: string[] = [];
+    mount(
+      [
+        warehousesRoute,
         lookupRoute(
           (lotNo) => ({
             lotId: 41,
@@ -1532,11 +1679,113 @@ describe('적치 대기 LOT — 지시 없는 적치(피처 009)', () => {
     await openPending();
 
     expect(asked).toEqual([PENDING_NO]);
-    expect(screen.getByText('원자재창고')).toBeTruthy();
-    expect(screen.getByText('WH01-A01-03')).toBeTruthy();
-    expect(screen.getByText('원자재창고 › A구역 › 랙 01 › 3단')).toBeTruthy();
-    expect(screen.getByText('외부창고')).toBeTruthy();
+    /*
+     * 지정 위치는 나무 — 창고(코드 · 이름) › 구역 › 랙 › 위치(코드 · 이름), 관리웹 BOM 처럼 단계마다 들여 쓴다(사용자 지시
+     * 2026-11-23). 「지정 위치 — 공장 안 모든 창고」 머리 글은 없다.
+     */
+    const tree = screen.getByRole('tree', { name: messages.putaway.direct.designatedLabel });
+    await waitFor(() =>
+      expect(treeLines(tree)).toEqual([
+        '1 WH01원자재창고',
+        '2 A구역',
+        '3 랙 01',
+        '4 WH01-A01-033단',
+        '1 WH05외부창고',
+        '2 WH05-SYS-WHOLE창고 전체',
+      ]),
+    );
+    expect(screen.queryByText(/공장 안 모든 창고/u)).toBeNull();
     expect(screen.getByText(messages.putaway.direct.auto)).toBeTruthy();
+  });
+
+  /* 품목의 지정 위치가 없으면 이 PDA 에 지정된 창고만(사용자 지시 2026-11-23). */
+  it('지정 위치가 없으면 이 PDA 에 지정된 창고만 — 그 아래 「지정 위치 없음」', async () => {
+    token.value = tokenFor(77);
+    mount(
+      [
+        lookupRoute((lotNo) => ({
+          lotId: 41,
+          lotNo,
+          found: true,
+          eligible: true,
+          lot: pendingLot(),
+          designated: [],
+        })),
+        {
+          match: (req) => new URL(req.url).pathname === '/mdm/terminals/77',
+          respond: () =>
+            jsonResponse({ terminalId: 77, warehouseId: 2, warehouseName: '원자재창고' }),
+        },
+        warehousesRoute,
+      ],
+      { pendingLots: [pendingLot()] },
+    );
+    await screen.findByText('RM-1001');
+    await scanListLot(PENDING_NO);
+
+    const tree = await screen.findByRole('tree', {
+      name: messages.putaway.direct.designatedLabel,
+    });
+    await waitFor(() => expect(treeLines(tree)).toEqual(['1 WH01원자재창고', '2 지정 위치 없음']));
+  });
+
+  /* 불량 LOT 은 불량창고에만 둘 수 있다 — 단말 창고(일반)를 안내하지 않는다. */
+  it('불량 LOT 은 지정 위치가 없어도 이 PDA 창고를 보이지 않고 「지정 위치 없음」', async () => {
+    token.value = tokenFor(77);
+    const defective = pendingLot({ lotStatusCode: 'DEFECTIVE' });
+    mount(
+      [
+        lookupRoute((lotNo) => ({
+          lotId: 41,
+          lotNo,
+          found: true,
+          eligible: true,
+          lot: defective,
+          designated: [],
+        })),
+        {
+          match: (req) => new URL(req.url).pathname === '/mdm/terminals/77',
+          respond: () =>
+            jsonResponse({ terminalId: 77, warehouseId: 2, warehouseName: '원자재창고' }),
+        },
+      ],
+      { pendingLots: [defective] },
+    );
+    await screen.findByText('RM-1001');
+    await scanListLot(PENDING_NO);
+
+    expect(await screen.findByText(messages.putaway.direct.designatedNone)).toBeTruthy();
+    expect(
+      screen.queryByRole('tree', { name: messages.putaway.direct.designatedLabel }),
+    ).toBeNull();
+  });
+
+  it('지정 위치도 없고 이 PDA 에 창고도 없으면 「지정 위치 없음」', async () => {
+    token.value = tokenFor(78);
+    mount(
+      [
+        lookupRoute((lotNo) => ({
+          lotId: 41,
+          lotNo,
+          found: true,
+          eligible: true,
+          lot: pendingLot(),
+          designated: [],
+        })),
+        {
+          match: (req) => new URL(req.url).pathname === '/mdm/terminals/78',
+          respond: () => jsonResponse({ terminalId: 78, warehouseId: null, warehouseName: null }),
+        },
+      ],
+      { pendingLots: [pendingLot()] },
+    );
+    await screen.findByText('RM-1001');
+    await scanListLot(PENDING_NO);
+
+    expect(await screen.findByText(messages.putaway.direct.designatedNone)).toBeTruthy();
+    expect(
+      screen.queryByRole('tree', { name: messages.putaway.direct.designatedLabel }),
+    ).toBeNull();
   });
 
   it('US4-1 LOT 화면의 [임시 적치]는 그 LOT 을 들고 임시 위치 적재(LOT 모드)로 간다', async () => {
@@ -1663,8 +1912,92 @@ describe('적치 대기 LOT — 지시 없는 적치(피처 009)', () => {
     expect(screen.getByText('원자재창고 › C구역 › 랙 01 › 2단')).toBeTruthy();
     expect(screen.queryByRole('button', { name: '미지정 위치 적치' })).toBeNull();
     /* 지정 위치 목록(다른 위치들)도 접는다 — 막힌 배너 하나만 선다. */
-    expect(screen.queryByText(messages.putaway.direct.designatedLegend)).toBeNull();
+    expect(
+      screen.queryByRole('tree', { name: messages.putaway.direct.designatedLabel }),
+    ).toBeNull();
     expect(seen).toHaveLength(0);
+  });
+
+  /* 자재는 자재창고, 완제품은 제품창고, 불량은 불량창고(사용자 지시 2026-11-23). */
+  it('원자재 LOT 의 지정 위치는 자재창고 것만 — 제품창고 지정 위치는 보이지 않는다', async () => {
+    mount(
+      [
+        warehousesRoute,
+        lookupRoute((lotNo) => ({
+          lotId: 41,
+          lotNo,
+          found: true,
+          eligible: true,
+          lot: pendingLot(),
+          designated: [
+            ...designated,
+            {
+              warehouseId: 4,
+              warehouseName: '제품창고',
+              isDefect: false,
+              locations: [
+                { locationId: 40, locationCode: 'WH20-A01-01', locationPath: '제품창고 › A구역' },
+              ],
+            },
+          ],
+        })),
+      ],
+      { pendingLots: [pendingLot()] },
+    );
+    await openPending();
+
+    const tree = screen.getByRole('tree', { name: messages.putaway.direct.designatedLabel });
+    await waitFor(() => expect(within(tree).queryByText('제품창고')).toBeNull());
+    expect(within(tree).getByText('원자재창고')).toBeTruthy();
+  });
+
+  it('원자재 LOT 을 제품창고 위치에 스캔하면 서버가 받아도 기록하지 않고 막는다', async () => {
+    const seen: Request[] = [];
+    mount([warehousesRoute, eligible(), checkRoute(), putawayRoute(seen)], {
+      pendingLots: [pendingLot()],
+    });
+    await openPending();
+    await waitFor(() =>
+      expect(
+        within(
+          screen.getByRole('tree', { name: messages.putaway.direct.designatedLabel }),
+        ).getByText('WH01'),
+      ).toBeTruthy(),
+    );
+
+    scan('WH20-A01-01');
+
+    expect(await screen.findByText(messages.putaway.direct.wrongWarehouse.MATERIAL)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '미지정 위치 적치' })).toBeNull();
+    expect(seen).toHaveLength(0);
+  });
+
+  it('이 PDA 창고가 제품창고면 원자재 LOT 에 보이지 않고 「지정 위치 없음」', async () => {
+    token.value = tokenFor(79);
+    mount(
+      [
+        warehousesRoute,
+        lookupRoute((lotNo) => ({
+          lotId: 41,
+          lotNo,
+          found: true,
+          eligible: true,
+          lot: pendingLot(),
+          designated: [],
+        })),
+        {
+          match: (req) => new URL(req.url).pathname === '/mdm/terminals/79',
+          respond: () =>
+            jsonResponse({ terminalId: 79, warehouseId: 4, warehouseName: '제품창고' }),
+        },
+      ],
+      { pendingLots: [pendingLot()] },
+    );
+    await screen.findByText('RM-1001');
+    await scanListLot(PENDING_NO);
+
+    expect(await screen.findByText(messages.putaway.direct.designatedNone)).toBeTruthy();
+    expect(screen.queryByText('제품창고')).toBeNull();
   });
 
   it('US3-3·Q10 정상 LOT 을 불량창고 위치에 스캔하면 막는다', async () => {
@@ -1773,7 +2106,7 @@ describe('적치 대기 LOT — 지시 없는 적치(피처 009)', () => {
       'href',
       '/putaway-history',
     );
-    expect(screen.queryByText(messages.putaway.direct.summary('0'))).toBeNull();
+    expect(screen.queryByRole('heading', { name: /^적치 대기 자재 목록/u })).toBeNull();
     failed.unmount();
 
     /* 연결 끊김 — 사번 확인부터 닿지 않는다. */
@@ -1796,9 +2129,7 @@ describe('적치 대기 LOT — 지시 없는 적치(피처 009)', () => {
     mount([], { pendingLots: [pendingLot()] });
     await screen.findByText('RM-1001');
 
-    const summary = screen.getByText(messages.putaway.direct.summary('1'));
     const link = screen.getByRole('link', { name: messages.putaway.historyLink });
-    expect(summary.parentElement?.contains(link)).toBe(true);
 
     await user.click(link);
 

@@ -8,23 +8,27 @@ import { BottomActionBar } from '../../patterns/bottom-action-bar';
 import { playErrorTone } from '../../patterns/error-tone';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
+import { useItem } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { ApiRequestError } from '../../patterns/request';
 import { ScanZone } from '../../patterns/scan-zone';
 import { TaskHeader } from '../../patterns/task-header';
 import { useScanField } from '../../patterns/use-scan-field';
 import {
+  fitsWarehouse,
   modeTextOf,
   reasonTextOf,
   toDirectDraft,
   verdictKindOf,
   verdictTextOf,
+  warehouseTypeFor,
   type LocationCheck,
   type PendingLot,
   type PendingLotLookup,
   type PutawayDirectResult,
 } from './direct';
-import { useCheckLocation } from './queries';
+import { DesignatedTree } from './designated-tree';
+import { useCheckLocation, useTerminalWarehouse, useWarehouseFacts } from './queries';
 
 const t = messages.putaway;
 const d = messages.putaway.direct;
@@ -71,6 +75,14 @@ const reasonCodeOf = (error: unknown): string | null => {
   return codes.find((code) => reasonTextOf(code) !== null) ?? null;
 };
 
+/** 품목 유형에 맞지 않는 창고의 위치를 스캔했을 때 — 「자재는 자재창고에만 둘 수 있습니다」(사용자 지시 2026-11-23). */
+const wrongWarehouseText = (expectedType: string | null): string =>
+  expectedType === 'MATERIAL'
+    ? d.wrongWarehouse.MATERIAL
+    : expectedType === 'PRODUCT'
+      ? d.wrongWarehouse.PRODUCT
+      : d.wrongWarehouse.other;
+
 export interface PendingLotPanelProps {
   /** `:lookup` 이 적치 대기라고 답한 결과(`lot` 이 있다). */
   found: PendingLotLookup & { lot: PendingLot };
@@ -91,7 +103,31 @@ export const PendingLotPanel = ({ found, workerNo, onClose, onRecorded }: Pendin
   const navigate = useNavigate();
   const { enqueue, flush, isRejected } = useOutbox();
   const checkLocation = useCheckLocation();
+  const warehouseOf = useWarehouseFacts();
+  const terminalWarehouse = useTerminalWarehouse();
   const lot = found.lot;
+  const item = useItem(lot.itemId);
+  /*
+   * 둘 수 있는 창고(사용자 지시 2026-11-23) — 자재는 자재창고, 완제품은 제품창고, 불량 LOT 은 불량창고. 지정 위치 표 ·
+   * 이 PDA 창고 줄은 맞는 창고만 보이고, 맞지 않는 창고의 위치를 스캔하면 기록하지 않는다. 품목 · 창고 값을 아직 모르면
+   * 거르지 않는다(서버 판정이 그대로).
+   */
+  const expectedType = warehouseTypeFor(item.data?.itemTypeCode);
+  const defective = lot.lotStatusCode === 'DEFECTIVE';
+  const fits = (warehouseId: number | undefined): boolean =>
+    warehouseId === undefined || fitsWarehouse(expectedType, defective, warehouseOf(warehouseId));
+  const designated = (found.designated ?? []).filter((group) => fits(group.warehouseId));
+  /*
+   * 지정 위치가 없을 때 보일 이 PDA 의 창고 — 창고 값을 읽었고 둘 수 있는 창고일 때만(제품창고 단말의 자재 · 일반창고
+   * 단말의 불량 LOT 은 보이지 않는다). 모르는 창고를 안내하지 않는다.
+   */
+  const fallbackWarehouse =
+    terminalWarehouse !== null &&
+    terminalWarehouse !== undefined &&
+    warehouseOf(terminalWarehouse.warehouseId) !== undefined &&
+    fits(terminalWarehouse.warehouseId)
+      ? terminalWarehouse
+      : null;
   const [check, setCheck] = useState<Check | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
   /* 앞선 판정이 늦게 돌아와 뒤 스캔의 결과를 덮지 않게 한다. */
@@ -101,7 +137,13 @@ export const PendingLotPanel = ({ found, workerNo, onClose, onRecorded }: Pendin
   const qty = `${String(lot.qty)} ${lot.uomCode}`;
 
   const verdict = check?.kind === 'verdict' ? check.check : null;
-  const kind = verdict === null ? null : verdictKindOf(verdict.verdictCode);
+  /* 서버가 받아도 품목 유형에 맞지 않는 창고면 막는다(사용자 지시 2026-11-23). */
+  const wrongWarehouse =
+    verdict !== null &&
+    verdictKindOf(verdict.verdictCode) !== 'blocked' &&
+    !fits(verdict.warehouseId);
+  const kind =
+    verdict === null ? null : wrongWarehouse ? 'blocked' : verdictKindOf(verdict.verdictCode);
 
   const rescan = () => {
     checkSeq.current += 1;
@@ -196,8 +238,11 @@ export const PendingLotPanel = ({ found, workerNo, onClose, onRecorded }: Pendin
     if (seq !== checkSeq.current) return;
     setCheck({ code, kind: 'verdict', check: answer });
 
-    /* 지정 위치 — 단추 없이 곧바로 기록한다(SC-002). 그 밖은 화면에 남겨 사람이 고르게 한다. */
-    if (verdictKindOf(answer.verdictCode) === 'record') {
+    /*
+     * 지정 위치 — 단추 없이 곧바로 기록한다(SC-002). 그 밖은 화면에 남겨 사람이 고르게 한다. 품목 유형에 맞지 않는 창고는
+     * 지정 위치여도 기록하지 않는다(사용자 지시 2026-11-23).
+     */
+    if (verdictKindOf(answer.verdictCode) === 'record' && fits(answer.warehouseId)) {
       await record(answer, false);
     } else {
       /* 단말을 허리에 매단 채 스캔하므로 소리로도 알린다(공유계약 D-2). */
@@ -312,7 +357,11 @@ export const PendingLotPanel = ({ found, workerNo, onClose, onRecorded }: Pendin
           <AlertBanner
             className="putaway__verdict"
             variant="error"
-            title={verdictTextOf(verdict.verdictCode) ?? verdict.message}
+            title={
+              wrongWarehouse
+                ? wrongWarehouseText(expectedType)
+                : (verdictTextOf(verdict.verdictCode) ?? verdict.message)
+            }
           >
             {where(verdict)}
             <span className="putaway__verdict-line">{d.notRecorded}</span>
@@ -325,28 +374,21 @@ export const PendingLotPanel = ({ found, workerNo, onClose, onRecorded }: Pendin
           </AlertBanner>
         ) : null}
 
-        {/* ② 지정 위치 — 공장 안 모든 창고, 창고별. 위치는 창고를 고르지 않고 코드로 찾는다. */}
+        {/*
+         * ② 지정 위치 — 공장 안 모든 창고. 위치는 창고를 고르지 않고 코드로 찾는다. 창고 › 구역 › 랙 › 위치를 관리웹 BOM
+         * 처럼 들여 쓴 나무로 보인다(사용자 지시 2026-11-23). 지정 위치가 없으면 이 PDA 에 지정된 창고 아래 「지정 위치
+         * 없음」 — 그 창고도 없는(공장 전체) 단말이면 「지정 위치 없음」 한 줄.
+         */}
         {check === null || check.kind === 'checking' || check.kind === 'failed' ? (
-          <div className="putaway__designated">
-            <p className="putaway__designated-legend">{d.designatedLegend}</p>
-            {(found.designated ?? []).length === 0 ? (
-              <p className="putaway__note">{d.designatedNone}</p>
-            ) : (
-              (found.designated ?? []).map((group) => (
-                <div key={group.warehouseId} className="putaway__designated-group">
-                  <p className="putaway__designated-warehouse">{group.warehouseName}</p>
-                  <ul>
-                    {group.locations.map((each) => (
-                      <li key={each.locationId}>
-                        <span className="putaway__scanned">{each.locationCode}</span>
-                        <span className="putaway__path">{each.locationPath}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))
-            )}
-          </div>
+          designated.length === 0 && fallbackWarehouse === null ? (
+            <p className="putaway__note">{d.designatedNone}</p>
+          ) : (
+            <DesignatedTree
+              designated={designated}
+              terminalWarehouse={fallbackWarehouse}
+              codeOf={(warehouseId) => warehouseOf(warehouseId)?.code}
+            />
+          )
         ) : null}
       </section>
 

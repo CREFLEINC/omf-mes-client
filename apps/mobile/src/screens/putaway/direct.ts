@@ -64,6 +64,46 @@ export const groupPendingLots = (lots: readonly PendingLot[]): PendingLotGroup[]
   return [...groups.values()];
 };
 
+/** 적치할 창고를 가르는 창고 마스터 값 — 창고 유형 · 불량창고 여부. */
+export interface WarehouseFacts {
+  code: string;
+  typeCode: string;
+  isDefect: boolean;
+}
+
+/**
+ * 품목 유형 → 들어갈 창고 유형(사용자 지시 2026-11-23: 자재는 자재창고, 완제품은 제품창고). 그 밖의 유형(반제품 · 상품 …)은
+ * 정한 창고가 없어 null — 거르지 않는다.
+ */
+export const warehouseTypeFor = (itemTypeCode: string | undefined): string | null => {
+  switch (itemTypeCode) {
+    case 'RAW_MATERIAL':
+    case 'SUBSIDIARY_MATERIAL':
+      return 'MATERIAL';
+    case 'FINISHED':
+    case 'FINISHED_GOODS':
+      return 'PRODUCT';
+    default:
+      return null;
+  }
+};
+
+/**
+ * 이 LOT 을 둘 수 있는 창고인가(사용자 지시 2026-11-23) — 불량 LOT 은 불량창고에만, 정상 LOT 은 불량창고가 아니고 품목
+ * 유형에 맞는 창고에만. 창고 값을 모르면(마스터를 못 읽음) 막지 않는다 — 서버 판정이 그대로 남는다.
+ */
+export const fitsWarehouse = (
+  expectedType: string | null,
+  defective: boolean,
+  warehouse: WarehouseFacts | undefined,
+): boolean => {
+  if (warehouse === undefined) return true;
+  if (defective) return warehouse.isDefect;
+  if (warehouse.isDefect) return false;
+
+  return expectedType === null || warehouse.typeCode === expectedType;
+};
+
 /**
  * 입하 LOT 의 적치 진척 — 적치(= 입고)된 자재 관리 LOT 수 / 적치할 자재 관리 LOT 수(사용자 지시 2026-11-23). 등록 대기 ·
  * 해제된 LOT 과 반품 · 폐기로 처분된 LOT 은 적치하지 않으므로 세지 않는다. 검사 보류 LOT 은 아직 남은 것으로 센다.

@@ -2,6 +2,7 @@ import type { InboundLotDetail } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { FitName } from '../../patterns/fit-name';
+import { rowNumberStyle } from '../../patterns/row-number';
 import { putawayProgressOf, type PendingLotGroup } from './direct';
 
 const d = messages.putaway.direct;
@@ -27,23 +28,25 @@ const bySupplier = (
  * 적치 대기 표(사용자 지시 2026-11-23) — 공급사 머리 줄 › No · 품목코드 / 품목명 · 수량 · 진척(적치 완료 / 자재 관리
  * LOT). 입하 등록 · 입하 마감 표와 같은 모양이다. 입하 LOT 번호 · 자재 관리 LOT 번호는 적지 않는다.
  *
- * 줄은 누르지 않는다 — 한 줄에 LOT 이 여럿이라 어느 것을 들었는지는 라벨을 스캔해야 안다. 번호 없는 줄을 눌러 열면
- * 손에 든 것과 다른 LOT 이 그 위치에 기록될 수 있다.
+ * 품목 칸을 누르면 적치(위치 스캔)로 간다(사용자 지시 2026-11-23) — 그 줄의 적치 대기 LOT 이 하나면 곧바로, 여럿이면
+ * 고르는 시트를 먼저 띄운다(`onOpen` 이 정한다). 아무 LOT 이나 열면 손에 든 것과 다른 LOT 이 그 위치에 기록된다.
  *
  * 수량은 입하 LOT 의 받은 수량, 진척은 입하 LOT 상세로 센다 — 상세를 아직 못 읽었으면 적치 대기 LOT 의 합과 「—」.
  */
 export const PendingLotTable = ({
   groups,
   detailOf,
+  onOpen,
 }: {
   groups: readonly PendingLotGroup[];
   detailOf: (inboundLotId: number) => InboundLotDetail | undefined;
+  onOpen: (group: PendingLotGroup) => void;
 }) => {
   let no = 0;
 
   return (
     <div className="putaway-table__box">
-      <table className="putaway-table">
+      <table className="putaway-table" style={rowNumberStyle(groups.length)}>
         <colgroup>
           <col className="putaway-table__col-no" />
           <col />
@@ -77,14 +80,23 @@ export const PendingLotTable = ({
                 <tr key={group.key}>
                   <td className="putaway-table__no">{no}</td>
                   <td className="putaway-table__item">
-                    <span className="putaway-table__code">{group.itemCode}</span>
-                    <FitName
-                      className="putaway-table__name"
-                      text={group.itemName}
-                      min={7}
-                      lines={1}
-                      whole
-                    />
+                    <button
+                      type="button"
+                      className="putaway-table__open"
+                      aria-label={d.open(group.itemCode, group.itemName)}
+                      onClick={() => {
+                        onOpen(group);
+                      }}
+                    >
+                      <span className="putaway-table__code">{group.itemCode}</span>
+                      <FitName
+                        className="putaway-table__name"
+                        text={group.itemName}
+                        min={7}
+                        lines={1}
+                        whole
+                      />
+                    </button>
                   </td>
                   <td className="putaway-table__num">
                     {qtyNumber(qty)}

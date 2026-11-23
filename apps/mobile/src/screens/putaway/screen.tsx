@@ -38,9 +38,11 @@ import {
   modeTextOf,
   reasonTextOf,
   type PendingLot,
+  type PendingLotGroup,
   type PendingLotLookup,
 } from './direct';
 import { PendingLotPanel, type DirectRecorded } from './pending-lot-panel';
+import { PendingLotPick } from './pending-lot-pick';
 import { PendingLotTable } from './pending-lot-table';
 import {
   ANYWHERE,
@@ -118,6 +120,8 @@ export const PutawayScreen = () => {
   const [lookup, setLookup] = useState<LotLookup | null>(null);
   /* 피처 009 — 연 적치 대기 LOT. 지시(`task`)와 함께 열리지 않는다. */
   const [pendingLot, setPendingLot] = useState<OpenedLot | null>(null);
+  /* 적치할 LOT 을 고르는 시트 — 표의 한 줄에 LOT 이 여럿일 때. */
+  const [pickGroup, setPickGroup] = useState<PendingLotGroup | null>(null);
   const lookupPendingLot = useLookupPendingLot();
   /*
    * 방금 기록한 건 - 목록 위 배너로 무엇을 어디에 두었는지 말한다. 다음 스캔까지 둔다. 단추 없이
@@ -360,6 +364,25 @@ export const PutawayScreen = () => {
     }
   };
 
+  /*
+   * 표의 줄을 눌렀다 — 그 줄의 적치 대기 LOT 이 하나면 그 LOT 을 스캔한 것과 같고, 여럿이면 손에 든 라벨과 같은 LOT 을
+   * 고르는 시트를 띄운다(사용자 지시 2026-11-23). 아무 LOT 이나 열면 손에 든 것과 다른 LOT 이 그 위치에 기록된다.
+   */
+  const openGroup = (group: PendingLotGroup) => {
+    const [only, ...rest] = group.lots;
+
+    if (only === undefined) {
+      return;
+    }
+
+    if (rest.length === 0) {
+      void lookUpLot(only.lotNo);
+      return;
+    }
+
+    setPickGroup(group);
+  };
+
   /* 적치 대기 LOT 화면이 한 건을 적었다 — 목록으로 돌아와 무엇을 어디에 두었는지 말한다. */
   const directRecorded = async (recorded: DirectRecorded) => {
     setRegistered((prev) => [...prev, recorded]);
@@ -415,6 +438,10 @@ export const PutawayScreen = () => {
   /* 여럿을 추린 목록에서 뒤로가면 전체 목록으로 돌아온다. */
   useBackStep(task === null && pendingLot === null && lookup?.kind === 'many', () => {
     setLookup(null);
+  });
+  /* 적치할 LOT 을 고르는 시트는 뒤로가기로 닫는다. */
+  useBackStep(pickGroup !== null, () => {
+    setPickGroup(null);
   });
 
   const complete = async () => {
@@ -725,16 +752,10 @@ export const PutawayScreen = () => {
 
           {/*
            * 머리 줄 오른쪽이 「적치 기록」(M-01-14) 입구다 — 지난 적치는 거기서 본다(피처 011). 입구는 사번 미확인 · 조회
-           * 실패 · 연결 끊김에도 늘 선다(FR-003, T031). 왼쪽 수만 두 목록을 받았을 때 보인다.
+           * 실패 · 연결 끊김에도 늘 선다(FR-003, T031). 왼쪽에 서던 요약(「적치 대기 LOT N건」)은 걷고 수는 목록 제목 줄
+           * 오른쪽으로 옮겼다(사용자 지시 2026-11-23).
            */}
           <div className="putaway__head">
-            {lookup?.kind !== 'many' &&
-            tasks.data !== undefined &&
-            pendingLots.data !== undefined ? (
-              <p className="putaway__note">{d.summary(String(pendingLots.data.total))}</p>
-            ) : (
-              <span />
-            )}
             <Link className="putaway__history-link" to="/putaway-history">
               {t.historyLink}
               <Icon name="chevron_right" size={18} />
@@ -742,8 +763,8 @@ export const PutawayScreen = () => {
           </div>
 
           {/*
-           * 적치 대기 LOT(피처 009) — 입하 LOT · 품목으로 묶는다(입하 마감 오래된 순). 줄을 누르면 그 LOT 을
-           * 스캔한 것과 같다. 여럿을 추린 지시 목록을 보는 동안은 접는다.
+           * 적치 대기 자재 목록(피처 009) — 입하 LOT · 품목으로 묶는다(입하 마감 오래된 순). 줄을 누르면 적치(위치 스캔)로
+           * 간다 — 그 줄의 LOT 이 여럿이면 고르는 시트를 먼저 띄운다. 여럿을 추린 지시 목록을 보는 동안은 접는다.
            */}
           {lookup?.kind === 'many' ? null : (
             <>
@@ -758,8 +779,30 @@ export const PutawayScreen = () => {
               ) : null}
               {pendingLots.data === undefined || pendingLots.data.items.length === 0 ? null : (
                 <>
-                  <h2>{d.lotsLegend}</h2>
-                  <PendingLotTable groups={pendingGroups} detailOf={inboundLotOf} />
+                  {/* 제목과 같은 줄 오른쪽에 적치 대기 LOT 수(사용자 지시 2026-11-23). */}
+                  <h2 className="putaway__list-title">
+                    {d.lotsLegend}
+                    <span className="putaway__list-count">
+                      {d.count(String(pendingLots.data.total))}
+                    </span>
+                  </h2>
+                  <PendingLotTable
+                    groups={pendingGroups}
+                    detailOf={inboundLotOf}
+                    onOpen={openGroup}
+                  />
+                  {pickGroup === null ? null : (
+                    <PendingLotPick
+                      group={pickGroup}
+                      onPick={(lot) => {
+                        setPickGroup(null);
+                        void lookUpLot(lot.lotNo);
+                      }}
+                      onDismiss={() => {
+                        setPickGroup(null);
+                      }}
+                    />
+                  )}
                 </>
               )}
               {tasks.isSuccess &&

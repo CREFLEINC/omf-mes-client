@@ -8,6 +8,8 @@ export interface StubItem {
   storageConditionCode?: string | null;
   /** 수량에 붙는 단위. 계획에 없던 재고를 더할 때 화면이 이 값을 그대로 싣는다. */
   baseUomId?: number;
+  /** 품목 유형 — 적치 화면이 들어갈 창고 유형을 가른다(원자재 → 자재창고 …). */
+  itemTypeCode?: string;
 }
 
 const ITEM_PATH = /^\/mdm\/items\/(\d+)$/;
