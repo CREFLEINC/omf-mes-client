@@ -165,12 +165,10 @@ export const partsIqcInspection = {
   judgment: { ACCEPTED: '합격', REJECTED: '불합격', HELD: '보류' } as Record<string, string>,
   /** 생략된 의뢰의 읽기 전용 요약(#225). */
   skipped: {
-    notice: (basis: string | null): string =>
-      basis === null
-        ? '검사를 생략한 의뢰입니다. 입력할 검사 결과가 없습니다.'
-        : `검사를 생략한 의뢰입니다(${basis}). 입력할 검사 결과가 없습니다.`,
-    basis: { DEFAULT: '기본 설정' } as Record<string, string>,
+    /* 생략으로 닫힌 의뢰 안내(사용자 정정 2026-11-23 · omf-all-around#353). */
+    notice: '기본 설정에 따라 검사를 생략했습니다. 검사 결과를 입력할 필요가 없습니다.',
   },
+
   requestStatus: {
     /* 상단 건수 칩(대기 · 진행)과 같은 말(사용자 지시 2026-11-16 · #274). */
     REQUESTED: '대기',

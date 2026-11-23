@@ -157,12 +157,9 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
 
   judgment: { ACCEPTED: 'Đạt', REJECTED: 'Không đạt', HELD: 'Giữ lại' },
   skipped: {
-    notice: (basis: string | null): string =>
-      basis === null
-        ? 'Yêu cầu này đã bỏ qua kiểm tra. Không có kết quả kiểm tra để nhập.'
-        : `Yêu cầu này đã bỏ qua kiểm tra (${basis}). Không có kết quả kiểm tra để nhập.`,
-    basis: { DEFAULT: 'mặc định' } as Record<string, string>,
+    notice: 'Đã bỏ qua kiểm tra theo thiết lập mặc định. Không cần nhập kết quả kiểm tra.',
   },
+
   requestStatus: {
     REQUESTED: 'Chờ',
     IN_PROGRESS: 'Đang làm',

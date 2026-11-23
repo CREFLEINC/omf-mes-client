@@ -209,7 +209,7 @@ describe('W-01-01 상세의 갈림길 — 이전 데이터 IQC 와 새 흐름', 
     detailOf.value = { ...request('INBOUND_LOT'), statusCode: 'SKIPPED', skipBasisCode: 'DEFAULT' };
     mount();
 
-    expect(await screen.findByText(tp.skipped.notice(tp.skipped.basis.DEFAULT ?? null))).toBeInTheDocument();
+    expect(await screen.findByText(tp.skipped.notice)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.results.add })).toBeNull();
     expect(screen.queryByRole('button', { name: t.confirm.open })).toBeNull();
   });

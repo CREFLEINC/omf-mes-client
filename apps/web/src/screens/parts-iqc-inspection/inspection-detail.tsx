@@ -261,7 +261,6 @@ export const InspectionDetail = ({
     if (detail.data.statusCode === 'SKIPPED') {
       return (
         <SkippedSummary
-          skipBasisCode={detail.data.skipBasisCode ?? null}
           itemParts={items.partsOf(detail.data.itemId)}
           planLabel={plan.data?.inspectionPlanCode ?? '-'}
           planName={plan.data?.inspectionPlanName ?? '-'}
@@ -625,7 +624,6 @@ export const InspectionDetail = ({
 
 /** 생략된 의뢰의 읽기 전용 요약 — 검사 대상 · LOT 정보를 입력 화면과 같은 짜임으로 보인다(#225). */
 const SkippedSummary = (props: {
-  skipBasisCode: string | null;
   itemParts: { code: string; name: string } | null;
   planLabel: string;
   planName: string;
@@ -634,12 +632,12 @@ const SkippedSummary = (props: {
   inbound: { supplierLabel: string | null; receivedAt: string | null } | undefined;
 }) => (
   <>
-    <AlertBanner variant="info">
-      {t.skipped.notice(
-        props.skipBasisCode === null ? null : (t.skipped.basis[props.skipBasisCode] ?? null),
-      )}
-    </AlertBanner>
-    <section className="parts-iqc-block" aria-label={t.target.heading}>
+    <p className="iqc-inspection-action-note inspection-skip-note" data-tone="warning">
+      <Icon name="warning" size={16} aria-hidden />
+      {t.skipped.notice}
+    </p>
+    {/* 안내 줄 바로 아래라 구획 윗선을 두지 않는다(사용자 지시 2026-11-23 · omf-all-around#353). */}
+    <section className="parts-iqc-block parts-iqc-skipped" aria-label={t.target.heading}>
       <dl className="parts-iqc-facts">
         <div className="parts-iqc-fact">
           <dt className="field-label">{t.target.itemName}</dt>
@@ -661,21 +659,21 @@ const SkippedSummary = (props: {
       </dl>
       <div className="parts-iqc-lot-box" role="group" aria-label={t.lot.heading}>
         <h4>{t.lot.heading}</h4>
-        <dl className="parts-iqc-kv">
-          <div>
-            <dt>{t.lot.lotNo}</dt>
+        <dl className="parts-iqc-facts">
+          <div className="parts-iqc-fact">
+            <dt className="field-label">{t.lot.lotNo}</dt>
             <dd className="parts-iqc-lot-no">{props.lotNo}</dd>
           </div>
-          <div>
-            <dt>{t.lot.supplier}</dt>
+          <div className="parts-iqc-fact">
+            <dt className="field-label">{t.lot.supplier}</dt>
             <dd>{props.inbound?.supplierLabel ?? '-'}</dd>
           </div>
-          <div>
-            <dt>{t.lot.qty}</dt>
+          <div className="parts-iqc-fact">
+            <dt className="field-label">{t.lot.qty}</dt>
             <dd>{props.qtyLabel}</dd>
           </div>
-          <div>
-            <dt>{t.lot.receivedAt}</dt>
+          <div className="parts-iqc-fact">
+            <dt className="field-label">{t.lot.receivedAt}</dt>
             <dd>{formatPlantDateTime(props.inbound?.receivedAt ?? null) ?? '-'}</dd>
           </div>
         </dl>

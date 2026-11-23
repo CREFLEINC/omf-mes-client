@@ -32822,6 +32822,31 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   border-top: 1px solid var(--outline-variant);
 }
 
+/* 생략 안내 줄(IQC · PQC · OQC 상세 공통 · omf-all-around#353) — 글 폭만큼만, 위 카드와 띄운다. */
+.iqc-inspection-action-note.inspection-skip-note {
+  justify-self: start;
+  align-self: start;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.pqc-web > .iqc-inspection-action-note.inspection-skip-note {
+  margin-top: var(--space-3);
+}
+
+/* 생략 요약 — 안내 줄 바로 아래라 윗선 없이 붙인다(omf-all-around#353). */
+.parts-iqc-block.parts-iqc-skipped {
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* LOT 정보는 위 자재 칸과 같은 한 겹 카드로 — 바깥 상자를 겹치지 않는다. */
+.parts-iqc-skipped .parts-iqc-lot-box {
+  padding: 0;
+  border: 0;
+}
+
 .parts-iqc-form > .parts-iqc-block:first-of-type {
   padding-top: 0;
   border-top: 0;

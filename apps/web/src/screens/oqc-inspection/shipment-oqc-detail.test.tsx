@@ -403,7 +403,7 @@ describe('W-04-03 출하 OQC 새 흐름 — 상세', () => {
       request: shipmentOqcRequest({ statusCode: 'SKIPPED', results: [], lotJudgments: [] }),
     });
 
-    expect(await screen.findByText(s.skipped, { exact: false })).toBeInTheDocument();
+    expect(await screen.findByText(s.skippedNotice)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: s.results.add })).toBeNull();
     const lots = await lotsTable();
     expect(lots.getAllByText(s.judgments.SKIPPED).length).toBeGreaterThan(0);

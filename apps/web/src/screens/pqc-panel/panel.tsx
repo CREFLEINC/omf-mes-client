@@ -1,4 +1,4 @@
-import { AlertBanner, TextField } from '@crefle/web-ui';
+import { AlertBanner, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
@@ -434,7 +434,10 @@ export const PqcPanel = ({
             planVersion={planVersion.data ?? null}
             uomCode={uomCodeOf(target.uomId)}
           />
-          <AlertBanner variant="info">{t.detail.skipped}</AlertBanner>
+          <p className="iqc-inspection-action-note inspection-skip-note" data-tone="warning">
+            <Icon name="warning" size={16} aria-hidden />
+            {t.detail.skipped}
+          </p>
         </div>
       );
     }

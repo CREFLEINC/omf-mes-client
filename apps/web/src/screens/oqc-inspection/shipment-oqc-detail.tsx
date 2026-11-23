@@ -223,10 +223,16 @@ export const ShipmentOqcDetail = ({
       </dl>
 
       {/* 닫힌 의뢰(생략 · 출하 완료)는 그 사실을 한 줄로. 열린 의뢰의 판정 규칙은 「검사 결과」 제목 옆 ⓘ 로(관리웹 정리 시안 A). */}
-      {(skipped || request.statusCode === 'COMPLETED') && (
+      {skipped && (
+        <p className="iqc-inspection-action-note inspection-skip-note" data-tone="warning">
+          <Icon name="warning" size={16} aria-hidden />
+          {s.skippedNotice}
+        </p>
+      )}
+      {request.statusCode === 'COMPLETED' && (
         <p className="field-note oqc-shipment-note">
-          <Icon name={skipped ? 'fast_forward' : 'info'} size={16} aria-hidden />
-          <span>{skipped ? `${s.skipped} ${s.skippedMore}` : s.completed}</span>
+          <Icon name="info" size={16} aria-hidden />
+          <span>{s.completed}</span>
         </p>
       )}
 

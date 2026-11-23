@@ -470,6 +470,8 @@ export const oqcInspection = {
     over: (qty: string): string => `초과 ${qty}`,
     note: '판정은 POP 「출하 완료」 때 확정됩니다. 확정 버튼은 없습니다. 그 전까지 결과를 더하거나 고칠 수 있고, LOT 마다 그 LOT 을 매칭한 마지막 결과가 판정입니다.',
     skipped: '이 의뢰는 OQC 생략으로 닫혔습니다.',
+    /** 관리웹 상세의 생략 안내(사용자 정정 2026-11-23 · omf-all-around#353). POP 은 위 두 문장 그대로. */
+    skippedNotice: '기본 설정에 따라 검사를 생략했습니다. 검사 결과를 입력할 필요가 없습니다.',
     skippedMore:
       '피킹 LOT 은 모두 통과로 봅니다. 생략 뒤 피킹되는 LOT(교체 포함)도 생략으로 봅니다.',
     completed: '출하 완료로 판정이 확정된 의뢰입니다. 결과를 더하거나 고칠 수 없습니다.',
