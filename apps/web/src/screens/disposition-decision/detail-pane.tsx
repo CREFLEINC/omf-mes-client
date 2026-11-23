@@ -1,9 +1,10 @@
-import { Chip, type Column, EmptyState, Icon, Table } from '@crefle/web-ui';
+import { Chip, type Column, EmptyState, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
+import { InfoTip } from '../../patterns/info-tip';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
@@ -162,7 +163,8 @@ export const DetailPane = ({
         <span className="disposition-detail-item-code">{itemCode}</span>
       </span>
     );
-  const facts: [string, ReactNode, boolean?][] = [
+  /** [이름, 값, 굵게?, 이름 옆 ⓘ 말풍선 글?] */
+  const facts: [string, ReactNode, boolean?, string?][] = [
     [
       t.fields.nonconformanceNo,
       <span className="disposition-detail-no">
@@ -204,7 +206,10 @@ export const DetailPane = ({
                 }}
               />
             ),
-          ] as [string, ReactNode],
+            false,
+            /* 어디서 왔는지는 이름 옆 ⓘ 말풍선으로(#352 사용자 지시). */
+            t.inboundLot.sortedFromNote(view.sortedFrom.nonconformanceNo),
+          ] as [string, ReactNode, boolean, string],
         ]),
     /* 선별로 종결된 부적합이면 심각도 오른쪽에 새로 생긴 부적합 — 「기존 부적합 건」과 짝(#352 사용자 지시). */
     ...derivedNonconformances.map((derived): [string, ReactNode] => [
@@ -229,22 +234,18 @@ export const DetailPane = ({
        */}
       <div className="disposition-detail-box">
         <dl className="disposition-detail-facts">
-          {facts.map(([label, value, isKey]) => (
+          {facts.map(([label, value, isKey, info]) => (
             <div className="disposition-detail-fact" key={label}>
-              <dt className="field-label">{label}</dt>
+              <dt className="field-label">
+                {label}
+                {info !== undefined && <InfoTip text={info} />}
+              </dt>
               <dd className={isKey === true ? 'disposition-detail-fact-key' : undefined}>
                 {value}
               </dd>
             </div>
           ))}
         </dl>
-        {/* 선별로 생긴 부적합 — 어디서 왔는지 안내 라벨로(#352 사용자 지시). */}
-        {view.sortedFrom !== null && view.sortedFrom !== undefined && (
-          <p className="iqc-inspection-action-note disposition-sorted-note" data-tone="info">
-            <Icon name="info" size={14} aria-hidden />
-            {t.inboundLot.sortedFromNote(view.sortedFrom.nonconformanceNo)}
-          </p>
-        )}
       </div>
 
       <section className="disposition-subsection" aria-label={t.panes.lots}>

@@ -191,5 +191,11 @@ describe('W-03-10 선별', () => {
     expect(
       screen.getByRole('button', { name: t.inboundLot.openSortedFrom('SAMPLE-NC-0040') }),
     ).toHaveTextContent('기존 부적합 건 조회');
+    /* 어디서 왔는지는 「기존 부적합 건」 이름 옆 ⓘ 말풍선(#352). */
+    expect(
+      screen.getByRole('button', {
+        name: '이 부적합 건은 [SAMPLE-NC-0040]에서 선별된 LOT에 대해 생성되었습니다.',
+      }),
+    ).toBeInTheDocument();
   });
 });

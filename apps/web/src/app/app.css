@@ -8916,16 +8916,6 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 /* 다른 부적합으로 가는 단추 — 글자와 테두리를 빨강(주 색)으로 강조(#352 사용자 지시). 버튼 부품 규칙보다 무거워야 선다. */
-/* 선별로 생긴 부적합 안내 라벨 — 상세 상자 아래, 글자 14px(다른 안내 라벨과 같은 크기 · #352). */
-.disposition-detail-box > .disposition-sorted-note:nth-child(n) {
-  width: fit-content;
-  max-width: 100%;
-  margin: var(--space-3) 0 0;
-  font: var(--type-label-lg);
-  font-weight: 400;
-  letter-spacing: var(--type-label-lg-tracking);
-}
-
 .disposition-nc-link.disposition-nc-link {
   white-space: nowrap;
   box-shadow: inset 0 0 0 1px currentColor;
