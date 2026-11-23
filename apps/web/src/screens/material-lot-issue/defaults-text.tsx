@@ -1,11 +1,10 @@
-import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
-import { useItemStorageUnit, type UomOption } from '../../patterns/material-lot-batch';
-import { formatBaseQty, formatPackageQty } from '../../patterns/package-qty';
-import type { Defaults, Group } from './types';
+import type { UomOption } from '../../patterns/material-lot-batch';
+import { formatBaseQty, formatQty } from '../../patterns/package-qty';
+import type { Pair } from './types';
 
-const t = messages.materialLotIssue;
+const tp = messages.materialLotIssue.precreate;
 
 /** 품목 기본 보관 단위 글 — 「봉지 100 EA」(환산이 없으면 단위만). 없으면 null. 단위는 이름, 이름이 비면 코드(G2 L17). */
 export const storageText = (
@@ -22,50 +21,43 @@ export const storageText = (
     : `${unit} ${formatBaseQty(storage.qtyPerPackage, baseUomCode)}`;
 };
 
-/** 기본 정보 한 줄(screens/W-01-14.md 「기본 정보 칸」). */
-export const defaultsLine = (group: Group, defaults: Defaults): string =>
-  defaults.package === null
-    ? t.defaults.noPackage(formatBaseQty(defaults.lotQty, group.uomCode))
-    : formatPackageQty(defaults.lotQty, group.uomCode, defaults.package);
-
 /**
- * 기본 정보가 없을 때 — 「기본 정보 없음」 칩과 발행 창이 무엇으로 채우는지(품목 기본 보관 단위 또는 직접 입력).
- * 보관 단위는 그 품목만 따로 읽는다(기본 정보가 없는 줄에서만).
+ * 기본 정보 한 줄 — 품목 기본값(피처 014 · W-06-05 자재 LOT 기본크기 · 패키징). 「1,000 EA · BAG 10」 /
+ * 「500 EA · 패키징 없음」, 기본값이 없으면 「기본 단위 설정 없음」, 환산이 없으면 「품목 단위 환산 없음」(빨강).
+ * `withPackageQty` 면 패키징을 「BAG 10 × 100」(패키징 수 × 패키징당 수량)으로 — 상세 머리.
+ * ⛔ W-06-25 공급사·품목 기본 정보는 더 보지 않는다(FR-019 — 자동 생성이 쓰지 않는다).
  */
-const MissingDefaults = ({
-  group,
-  uoms,
+export const pairDefaultLine = (
+  pair: Pick<Pair, 'defaultsStatus' | 'lotDefaults' | 'item'>,
+  withPackageQty = false,
+): { text: string; isMissing: boolean } => {
+  if (pair.defaultsStatus === 'NO_CONVERSION') return { text: tp.noConversion, isMissing: true };
+  const defaults = pair.lotDefaults;
+  if (pair.defaultsStatus === 'NO_DEFAULT' || defaults === null) {
+    return { text: tp.noDefault, isMissing: true };
+  }
+  const qty = formatBaseQty(defaults.lotQty, pair.item.baseUomCode);
+  if (defaults.packageCount === null || defaults.packageUomCode === null) {
+    return { text: tp.defaultUnpackaged(qty), isMissing: false };
+  }
+  const per = Math.round((defaults.lotQty / defaults.packageCount) * 1e6) / 1e6;
+  const pkg = withPackageQty
+    ? `${defaults.packageUomCode} ${formatQty(defaults.packageCount)} × ${formatQty(per)}`
+    : `${defaults.packageUomCode} ${formatQty(defaults.packageCount)}`;
+  return { text: tp.defaultPackaged(qty, pkg), isMissing: false };
+};
+
+export const PairDefaultsText = ({
+  pair,
+  withPackageQty = false,
 }: {
-  group: Group;
-  uoms: readonly UomOption[] | undefined;
+  pair: Pick<Pair, 'defaultsStatus' | 'lotDefaults' | 'item'>;
+  withPackageQty?: boolean;
 }) => {
-  const storage = useItemStorageUnit(group.itemId);
-  const unit = storageText(storage.data, uoms, group.uomCode);
+  const line = pairDefaultLine(pair, withPackageQty);
   return (
-    <span className="mlot-issue-defaults">
-      <Chip size="sm" status="warning">
-        {t.defaults.missing}
-      </Chip>
-      {!storage.isPending && (
-        <span className="field-note">
-          {unit === null ? t.defaults.manual : t.defaults.fromStorage(unit)}
-        </span>
-      )}
+    <span className={line.isMissing ? 'mlot-issue-bad' : undefined}>
+      {line.isMissing || !withPackageQty ? line.text : tp.headDefault(line.text)}
     </span>
   );
 };
-
-export const DefaultsText = ({
-  group,
-  defaults,
-  uoms,
-}: {
-  group: Group;
-  defaults: Defaults | undefined;
-  uoms: readonly UomOption[] | undefined;
-}) =>
-  defaults === undefined ? (
-    <MissingDefaults group={group} uoms={uoms} />
-  ) : (
-    <span>{defaultsLine(group, defaults)}</span>
-  );
