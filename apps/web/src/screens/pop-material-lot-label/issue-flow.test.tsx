@@ -65,10 +65,12 @@ const waitingOnly = (count: number, over: Partial<Parameters<typeof group>[1]> =
 
 const rows = (): HTMLElement[] => screen.queryAllByRole('checkbox', { name: /SYN-ITEM-01\|/u });
 
-/** 왼쪽 첫 공급사·품목을 고른다(피처 014 — 화면을 열기만 해서는 고르지 않는다). */
+/** 공급사 칸 첫 공급사 → 품목 표 첫 품목을 고른다(세 칸 · 피처 014 — 화면을 열기만 해서는 고르지 않는다). */
 const pickFirst = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
-  const list = await screen.findByRole('list', { name: tp.listTitle });
-  await user.click(within(list).getAllByRole('button')[0] as HTMLElement);
+  const suppliers = await screen.findByRole('list', { name: tp.threeCols.suppliers });
+  await user.click(within(suppliers).getAllByRole('button')[0] as HTMLElement);
+  const items = await screen.findByRole('group', { name: tp.threeCols.items });
+  await user.click((await within(items).findAllByRole('button'))[0] as HTMLElement);
 };
 
 /** 이 쪽의 줄을 모두 고른다 — 「입하 대기 전체 선택」은 없앴다(피처 014 시안 확인 거리 2). */

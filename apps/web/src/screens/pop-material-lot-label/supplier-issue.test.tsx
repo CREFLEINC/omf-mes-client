@@ -33,10 +33,12 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** 왼쪽 첫 공급사·품목을 고른다(피처 014 — 화면을 열기만 해서는 고르지 않는다). */
+/** 공급사 칸 첫 공급사 → 품목 표 첫 품목을 고른다(세 칸 · 피처 014 — 화면을 열기만 해서는 고르지 않는다). */
 const pickFirstPair = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
-  const list = await screen.findByRole('list', { name: t.precreate.listTitle });
-  await user.click(within(list).getAllByRole('button')[0] as HTMLElement);
+  const suppliers = await screen.findByRole('list', { name: t.precreate.threeCols.suppliers });
+  await user.click(within(suppliers).getAllByRole('button')[0] as HTMLElement);
+  const items = await screen.findByRole('group', { name: t.precreate.threeCols.items });
+  await user.click((await within(items).findAllByRole('button'))[0] as HTMLElement);
 };
 
 const openBatch = async (user: ReturnType<typeof userEvent.setup>): Promise<HTMLElement> => {

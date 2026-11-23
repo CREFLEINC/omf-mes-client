@@ -11,6 +11,7 @@
 import type {
   MaterialLotPair,
   MaterialLotSummary,
+  MaterialLotSupplier,
   MaterialLotTab,
   MaterialLotTabRow,
   MaterialPackage,
@@ -307,8 +308,24 @@ export const renderLabelScreen = (options: HarnessOptions = {}) => {
               packageCount: share.package?.count ?? null,
             }
           : null,
+      printedCount: each.lots.filter((item) => tabOf(item) === 'PRINTED').length,
+      inspectionRequired: each.inspectionRequired,
+      lastIssuedAt:
+        each.lots
+          .map((item) => item.lastLabelIssue?.issuedAt ?? '')
+          .filter((value) => value !== '')
+          .sort()
+          .at(-1) ?? null,
     };
   };
+  /** 찾기 `q` — 공급사·품목 코드·이름(서버와 같은 조합 거르기). */
+  const matchesQ = (pair: MaterialLotPair, q: string): boolean =>
+    q === '' ||
+    [pair.supplier.code, pair.supplier.name, pair.item.code, pair.item.name].some((value) =>
+      value.toLocaleLowerCase('en-US').includes(q),
+    );
+  const busy = (unprinted: number, creatable: number): number =>
+    unprinted + creatable > 0 ? 0 : 1;
   let autoSerial = 0;
   /** 서버 `ensureMaterialLotsWithin` 흉내 — `upTo` 개까지 만든다. */
   const createShare = (each: WaitingMaterialLotGroup, upTo: number): number => {
@@ -389,20 +406,21 @@ export const renderLabelScreen = (options: HarnessOptions = {}) => {
         if (options.waitingFail === true) return jsonResponse({ message: '실패' }, { status: 500 });
         const url = new URL(request.url);
         const q = (url.searchParams.get('q') ?? '').toLocaleLowerCase('en-US');
+        const supplierId = url.searchParams.get('supplierId');
         const pageNo = Number(url.searchParams.get('page') ?? '1');
         const size = Number(url.searchParams.get('size') ?? '50');
         const all = groups
           .map(pairOf)
           .filter(
             (pair) =>
-              q === '' ||
-              [pair.supplier.code, pair.supplier.name, pair.item.code, pair.item.name].some(
-                (value) => value.toLocaleLowerCase('en-US').includes(q),
-              ),
+              matchesQ(pair, q) &&
+              (supplierId === null || String(pair.supplier.supplierId) === supplierId),
           );
-        const busy = (pair: MaterialLotPair): number =>
-          pair.unprintedCount + pair.creatableCount > 0 ? 0 : 1;
-        const sorted = [...all].sort((left, right) => busy(left) - busy(right));
+        const sorted = [...all].sort(
+          (left, right) =>
+            busy(left.unprintedCount, left.creatableCount) -
+            busy(right.unprintedCount, right.creatableCount),
+        );
 
         return jsonResponse({
           items: sorted.slice((pageNo - 1) * size, pageNo * size),
@@ -410,6 +428,44 @@ export const renderLabelScreen = (options: HarnessOptions = {}) => {
           summary: {
             unprintedCount: groups.reduce((sum, each) => sum + unprintedOf(each).length, 0),
           },
+        });
+      },
+    },
+    {
+      match: (request) => path(request) === '/logistics/material-lot-suppliers',
+      respond: (request) => {
+        void record(request);
+        if (options.waitingFail === true) return jsonResponse({ message: '실패' }, { status: 500 });
+        const url = new URL(request.url);
+        const q = (url.searchParams.get('q') ?? '').toLocaleLowerCase('en-US');
+        const pageNo = Number(url.searchParams.get('page') ?? '1');
+        const size = Number(url.searchParams.get('size') ?? '50');
+        const bySupplier = new Map<number, MaterialLotSupplier>();
+
+        for (const pair of groups.map(pairOf).filter((each) => matchesQ(each, q))) {
+          const row = bySupplier.get(pair.supplier.supplierId) ?? {
+            supplier: pair.supplier,
+            pairCount: 0,
+            unprintedCount: 0,
+            creatableCount: 0,
+          };
+
+          row.pairCount += 1;
+          row.unprintedCount += pair.unprintedCount;
+          row.creatableCount += pair.creatableCount;
+          bySupplier.set(pair.supplier.supplierId, row);
+        }
+
+        const sorted = [...bySupplier.values()].sort(
+          (left, right) =>
+            busy(left.unprintedCount, left.creatableCount) -
+              busy(right.unprintedCount, right.creatableCount) ||
+            left.supplier.code.localeCompare(right.supplier.code),
+        );
+
+        return jsonResponse({
+          items: sorted.slice((pageNo - 1) * size, pageNo * size),
+          page: { page: pageNo, size, total: sorted.length },
         });
       },
     },

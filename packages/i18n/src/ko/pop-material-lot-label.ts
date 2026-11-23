@@ -372,6 +372,32 @@ export const popMaterialLotLabel = {
       failed: 'LOT 번호를 찾지 못했습니다. 다시 스캔하세요.',
       chip: '스캔',
     },
+    /**
+     * 세 칸(#1751 짜임 · 피처 014 FR-010 세 칸 · 사용자 결정 2026-11-23 「세 칸에 맞추기」) — 공급사 칸 · 품목 표 · 상세.
+     */
+    threeCols: {
+      suppliers: '공급사',
+      items: '품목',
+      itemsOf: (supplierName: string) => `품목 · ${supplierName}`, // ui-check-ignore: C-13 설계 확정 문구(specs 014 screens/P-01-01 「품목 · 대한포장」)
+      pickSupplier: '공급사를 고르세요.',
+      pickSupplierHint:
+        '공급사 칸의 「미출력 N」은 그 공급사 품목들의 미출력 합입니다(아직 만들지 않은 몫 포함, 고르기 전에는 만들지 않음).',
+      pickItem: '품목을 고르세요. 품목을 고르면 탭 넷이 열립니다.',
+      emptySuppliers: '발행할 공급사가 없습니다. 발주가 등록되면 나타납니다.',
+      noMatchSuppliers: '찾는 공급사가 없습니다.',
+      emptyItems: '이 공급사에 찾는 품목이 없습니다.',
+      columns: {
+        itemCode: '품목코드',
+        itemName: '품목명',
+        unprinted: '미출력',
+        printed: '출력됨',
+        iqc: 'IQC',
+        lastIssued: '최근 발행',
+      },
+      iqcRequired: '검사',
+      /** 품목 표 미출력 칸의 빨간 칩 — 자동으로 만들 수 없는 까닭. */
+      miss: { NO_DEFAULT: '기본값 없음', NO_CONVERSION: '환산 없음' },
+    },
   },
   /** 라벨 미리 보기(발행 · 다시 인쇄). */
   preview: {

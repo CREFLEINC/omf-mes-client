@@ -1,4 +1,9 @@
-import type { MaterialLotPair, MaterialLotSummary, MaterialLotTab } from '@omf-mes/api-client';
+import type {
+  MaterialLotPair,
+  MaterialLotSummary,
+  MaterialLotSupplier,
+  MaterialLotTab,
+} from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
@@ -11,6 +16,7 @@ import {
   lookupMaterialLot,
   materialLotKeys,
   useMaterialLotPairs,
+  useMaterialLotSuppliers,
   useMaterialLots,
   type LotsTarget,
 } from '../../patterns/material-lot-precreate';
@@ -48,13 +54,14 @@ import { PrinterChip } from './printer-chip';
 import { choosePrinter, rememberPrinterName, storedPrinterName } from './printer-choice';
 import { usePrinters, useReissueReasons, useShellSelectsPrinter } from './queries';
 import { ReasonPicker } from './reason-picker';
-import { PairList, pairDefaultLine } from './supplier-list';
+import { ItemTable, SupplierList, pairDefaultLine, pairUnprintedOf } from './supplier-list';
 import { isWaiting, pairKeyOf, toLabelLotFromRow, type LabelLot, type PairRef } from './types';
 import { VoidDialog } from './void-dialog';
 import './uniform.css';
 
 const t = messages.popMaterialLotLabel;
 const tp = t.precreate;
+const tc = tp.threeCols;
 
 /** 라벨을 낼 수 없는 LOT 품질 상태 — 서버 `qualifyDocumentIssueTarget`(MATERIAL_LOT_LABEL)이 검사 대기·정상만 받는다. */
 const LABEL_LOCKED_LOT_STATUS: readonly string[] = ['DEFECTIVE', 'SCRAPPED'];
@@ -71,7 +78,13 @@ type DialogState =
   | { kind: 'preview'; lots: LabelLot[]; reprint: boolean }
   | null;
 
-/** 고른 공급사·품목 — 왼쪽 줄(`row`)이 있으면 칩 · 기본값을 함께 보인다. 번호 스캔으로 고르면 줄이 없을 수 있다. */
+/** 고른 공급사 — 공급사 칸 줄 또는 번호 스캔이 정한다. */
+interface PickedSupplier {
+  supplierId: number;
+  name: string;
+}
+
+/** 고른 공급사·품목 — 품목 표 줄(`row`)이 있으면 수 · 기본값을 함께 보인다. 번호 스캔으로 고르면 줄이 없을 수 있다. */
 interface PickedPair {
   ref: PairRef;
   row: MaterialLotPair | null;
@@ -99,23 +112,25 @@ const pairRefOf = (pair: MaterialLotPair): PairRef => ({
 const keyOfRef = (ref: PairRef): string => pairKeyOf(ref.supplierId, ref.itemId);
 
 /**
- * `P-01-01` 자재 관리 LOT 라벨 (POP) — 005 · 피처 014(omf-all-around#349 · 시안 P0101 · screens/P-01-01.md).
+ * `P-01-01` 자재 관리 LOT 라벨 (POP) — 005 · #1751 세 칸 · 피처 014(omf-all-around#349 · 시안 P0101 5판 · screens/P-01-01.md).
  *
  * ```
- * ┌ 공급사·품목 ─────────────────┐┌ 품목코드 · 품목명 · 공급사 · 기본 단위 · 기본값  [?] [+ 자재 관리 LOT 생성] ┐
- * │ 스캔 또는 찾기                 ││ [미출력 45 | 출력됨(입하 전) | 입하된 LOT | 폐기 LOT]                    │
- * │ 품목 [미출력 N][생성 예정 N]   ││ 발행 단위 [고르기]                                         [선택 해제] │
- * │   공급사 · 기본값              ││ 표(탭마다 칸) — 미출력은 차례 · P/O 라인 · 만든 방식                    │
- * │            총 N건 ‹ 1 / 22 ›  ││ 아직 만들지 않은 37건 포함                       총 45건 ‹ 1 / 6 ›   │
- * └──────────────────────────────┘└───────────────────────────────────────────────────────────────┘
+ * ┌ 공급사 ──────────┐┌ 품목 · 대한포장 ─────────────────┐┌ 품목코드 · 품목명 · 공급사 · 기본 단위  [?] [+ 생성] ┐
+ * │ 스캔 또는 찾기       ││ 품목코드│품목명│미출력│출력됨│IQC│최근 발행 ││ 기본 100 EA · ROLL 10 × 10 (품목 기본값)        │
+ * │ 대한포장   미출력 47  ││ 00022S │포장 필름│ 45 │ 5 │검사│11-23 ││ [미출력 45 | 출력됨(입하 전) | 입하된 | 폐기]     │
+ * │ …                 ││ 00031S │포장 테이프│2 기본값 없음│…    ││ 발행 단위 [10장 ▾]                 [선택 해제] │
+ * │ 총 18건 ‹ 1/1 ›    ││ 총 3건 ‹ 1/1 ›                    ││ 표 · 아직 만들지 않은 37건 포함    총 45건 ‹ 1/6 › │
+ * └─────────────────┘└─────────────────────────────────┘└──────────────────────────────────────────────┘
  * 작업 줄: [입하 대기 N개 폐기] [라벨 N장 발행]  (출력됨 · 입하된 탭: [N장 재인쇄] + 사유)
  * ```
  *
- * ⭐ 고르면 서버가 미입고 P/O 남은 양 중 이 쪽에 필요한 만큼만 LOT 을 만든다(FR-001 · FR-008). 그동안 오른쪽을
- *    덮어 「자재 관리 LOT 을 조회하고 생성하고 있습니다」를 보인다(FR-013).
- * ⭐ 왼쪽 · 오른쪽 모두 서버 쪽 나눔이다 — 공장 전체를 한 번에 받던 목록과 20초 다시 받기는 없앴다(FR-010).
+ * ⭐ 세 칸은 #1751 짜임 그대로(폭 280 · 640 · 나머지, 1100px 이하 220 · 260, 공급사 칸 접기 56). 공급사 칸
+ *    (`material-lot-suppliers`) · 품목 표(`material-lot-pairs?supplierId`) · 상세 탭 모두 서버 쪽 나눔이다 —
+ *    공장 전체를 한 번에 받던 목록과 20초 다시 받기는 없앴다(FR-010). 찾기 글자는 두 칸을 함께 거른다.
+ * ⭐ 품목을 고르면 서버가 미입고 P/O 남은 양 중 이 쪽에 필요한 만큼만 LOT 을 만든다(FR-001 · FR-008). 그동안
+ *    상세를 덮어 「자재 관리 LOT 을 조회하고 생성하고 있습니다」를 보인다(FR-013).
  * ⭐ 인쇄 길(발행 기록 → 라벨 짜기 → 셸 인쇄 → 결과 보고) · 발행 단위 · 결과 표 · 다시 발행은 그대로다.
- * ⚠ 화면을 열자마자 고르지 않는다 — 고르는 순간 LOT 이 만들어진다(시안 ①).
+ * ⚠ 화면을 열자마자 고르지 않는다 — 품목을 고르는 순간 LOT 이 만들어진다(시안 ①).
  */
 export const PopMaterialLotLabelScreen = () => {
   const { client } = useApiClient();
@@ -126,8 +141,12 @@ export const PopMaterialLotLabelScreen = () => {
   const isIssuing = batch.isRunning;
 
   const [scanText, setScanText] = useState('');
-  const [pairQ, setPairQ] = useState('');
-  const [pairPage, setPairPage] = useState(1);
+  /** 찾기 글자 — 공급사 칸 · 품목 표를 함께 거른다(서버 `q`). */
+  const [findQ, setFindQ] = useState('');
+  const [supplierPage, setSupplierPage] = useState(1);
+  const [itemPage, setItemPage] = useState(1);
+  const [pickedSupplier, setPickedSupplier] = useState<PickedSupplier | null>(null);
+  const [folded, setFolded] = useState(false);
   const [picked, setPicked] = useState<PickedPair | null>(null);
   const [tab, setTab] = useState<MaterialLotTab>('UNPRINTED');
   const [lotPage, setLotPage] = useState(1);
@@ -145,16 +164,32 @@ export const PopMaterialLotLabelScreen = () => {
   const known = useRef(new Map<number, LabelLot>());
 
   /* 쪽 넘김(규칙 1) — 한 쪽 건수는 구획 높이에 들어가는 만큼. */
-  const pairFitRef = useRef<HTMLUListElement>(null);
+  const supplierFitRef = useRef<HTMLUListElement>(null);
+  const itemFitRef = useRef<HTMLDivElement>(null);
   const tableFitRef = useRef<HTMLDivElement>(null);
-  const pairSize = useFitCount(pairFitRef, { fallback: 6 });
+  const supplierSize = useFitCount(supplierFitRef, { fallback: 6 });
+  const itemSize = useFitTableRows(itemFitRef, { fallback: 8 });
   const rowSize = useFitTableRows(tableFitRef, { fallback: 5 });
 
-  const pairs = useMaterialLotPairs(
-    plantId === null ? null : { plantId, q: pairQ, page: pairPage, size: pairSize },
+  const suppliers = useMaterialLotSuppliers(
+    plantId === null ? null : { plantId, q: findQ, page: supplierPage, size: supplierSize },
   );
-  const pairRows = pairs.data?.items ?? [];
-  const pairTotal = pairs.data?.total ?? 0;
+  const supplierRows = suppliers.data?.items ?? [];
+  const supplierTotal = suppliers.data?.total ?? 0;
+
+  const pairs = useMaterialLotPairs(
+    plantId === null || pickedSupplier === null
+      ? null
+      : {
+          plantId,
+          supplierId: pickedSupplier.supplierId,
+          q: findQ,
+          page: itemPage,
+          size: itemSize,
+        },
+  );
+  const pairRows = pickedSupplier === null ? [] : (pairs.data?.items ?? []);
+  const pairTotal = pickedSupplier === null ? 0 : (pairs.data?.total ?? 0);
 
   const target: LotsTarget | null =
     picked === null || plantId === null
@@ -233,6 +268,26 @@ export const PopMaterialLotLabelScreen = () => {
     setChecked(new Set());
   };
 
+  /** 공급사를 고르면 품목 표가 그 공급사 품목으로 바뀐다 — 품목은 고르지 않는다(고르면 LOT 이 생긴다). */
+  const chooseSupplier = (row: MaterialLotSupplier): void => {
+    if (pickedSupplier?.supplierId === row.supplier.supplierId) return;
+    setPickedSupplier({ supplierId: row.supplier.supplierId, name: row.supplier.name });
+    setItemPage(1);
+    setPicked(null);
+    setTab('UNPRINTED');
+    setLotPage(1);
+    setScanned(null);
+    setScanFound(null);
+    setReasonCode(null);
+    clearSelection();
+  };
+
+  const changeFind = (next: string): void => {
+    setFindQ(next);
+    setSupplierPage(1);
+    setItemPage(1);
+  };
+
   const choosePair = (next: PickedPair): void => {
     if (pickedKey === keyOfRef(next.ref)) return;
     setPicked(next);
@@ -274,8 +329,8 @@ export const PopMaterialLotLabelScreen = () => {
   };
 
   /**
-   * 「스캔 또는 찾기」(FR-021) — 자재 관리 LOT 번호면 공장 전체에서 찾아 그 공급사·품목 · 탭을 열고 맨 위에 골라
-   * 둔다. 번호가 아닌 글자는 공급사·품목 찾기다(서버 `q`).
+   * 「스캔 또는 찾기」(FR-021) — 자재 관리 LOT 번호면 공장 전체에서 찾아 그 공급사(공급사 칸) · 품목(품목 표) ·
+   * 탭을 열고 맨 위에 골라 둔다. 번호가 아닌 글자는 공급사 칸 · 품목 표를 함께 거른다(서버 `q`).
    */
   const submitScan = async (value: string): Promise<void> => {
     const text = value.trim();
@@ -284,8 +339,7 @@ export const PopMaterialLotLabelScreen = () => {
     setScanFound(null);
 
     if (!isMaterialLotNoText(text)) {
-      setPairQ(text);
-      setPairPage(1);
+      changeFind(text);
 
       return;
     }
@@ -318,6 +372,10 @@ export const PopMaterialLotLabelScreen = () => {
           (each) => each.supplier.supplierId === ref.supplierId && each.item.itemId === ref.itemId,
         ) ?? null;
 
+      /* 두 칸 모두 골라 둔다 — 찾기 글자는 비워 그 공급사 · 품목이 칸에 서게 한다. */
+      if (findQ !== '') changeFind('');
+      if (pickedSupplier?.supplierId !== ref.supplierId) setItemPage(1);
+      setPickedSupplier({ supplierId: ref.supplierId, name: ref.supplierName });
       setPicked({ ref, row });
       setTab(found.tab);
       setLotPage(1);
@@ -513,9 +571,33 @@ export const PopMaterialLotLabelScreen = () => {
     barState.kind === 'running' || barState.kind === 'paused' || barState.kind === 'done';
   const printedPicked = selectedWaiting.length - selectedUnprinted.length;
 
-  /* ── 왼쪽: 스캔 또는 찾기 + 공급사·품목(서버 쪽) ── */
+  const listProblem = (query: { isError: boolean; refetch: () => unknown }) =>
+    query.isError ? (
+      <PuNote
+        tone="bad"
+        action={
+          <PuButton
+            size="sm"
+            onClick={() => {
+              void query.refetch();
+            }}
+          >
+            {t.work.retry}
+          </PuButton>
+        }
+      >
+        {t.work.loadFailed}
+      </PuNote>
+    ) : null;
+
+  /* ── 첫째 칸: 스캔 또는 찾기 + 공급사(서버 쪽, #1751 접기) ── */
   const leftSection = (
-    <PuSection className="mll-left" title={tp.listTitle} split>
+    <PuSection
+      className="mll-left"
+      title={tc.suppliers}
+      fold={{ label: tc.suppliers, folded, onChange: setFolded }}
+      split
+    >
       <div className="mll-left-top">
         <PuScanField
           label={tp.scanLabel}
@@ -526,10 +608,7 @@ export const PopMaterialLotLabelScreen = () => {
           onChange={(value) => {
             setScanText(value);
             setScanError(null);
-            if (value.trim() === '' && pairQ !== '') {
-              setPairQ('');
-              setPairPage(1);
-            }
+            if (value.trim() === '' && findQ !== '') changeFind('');
           }}
           onSubmit={(value) => {
             void submitScan(value);
@@ -537,42 +616,62 @@ export const PopMaterialLotLabelScreen = () => {
         />
         {plantId === null ? (
           <PuEmpty icon="info" title={t.work.noPlant} />
-        ) : pairs.isError ? (
-          <PuNote
-            tone="bad"
-            action={
-              <PuButton
-                size="sm"
-                onClick={() => {
-                  void pairs.refetch();
-                }}
-              >
-                {t.work.retry}
-              </PuButton>
-            }
-          >
-            {t.work.loadFailed}
-          </PuNote>
-        ) : pairs.isPending ? null : pairRows.length === 0 ? (
-          <PuEmpty icon="search" title={pairQ === '' ? t.pairs.empty : t.pairs.noMatch} />
+        ) : suppliers.isError ? (
+          listProblem(suppliers)
+        ) : suppliers.isPending ? null : supplierRows.length === 0 ? (
+          <PuEmpty icon="search" title={findQ === '' ? tc.emptySuppliers : tc.noMatchSuppliers} />
         ) : (
-          <PairList
-            pairs={pairRows}
-            selectedKey={pickedKey}
+          <SupplierList
+            suppliers={supplierRows}
+            selectedId={pickedSupplier?.supplierId ?? null}
             isLocked={isFrozen}
-            onSelect={(row) => {
-              choosePair({ ref: pairRefOf(row), row });
-            }}
-            fitRef={pairFitRef}
+            onSelect={chooseSupplier}
+            fitRef={supplierFitRef}
           />
         )}
       </div>
       <PuPager
-        label={tp.listTitle}
+        label={tc.suppliers}
+        total={supplierTotal}
+        page={supplierPage}
+        pages={Math.max(1, Math.ceil(supplierTotal / Math.max(1, supplierSize)))}
+        onPage={setSupplierPage}
+      />
+    </PuSection>
+  );
+
+  /* ── 둘째 칸: 고른 공급사의 품목 표(서버 쪽, #1751) ── */
+  const itemSection = (
+    <PuSection
+      className="mll-mid"
+      title={pickedSupplier === null ? tc.items : tc.itemsOf(pickedSupplier.name)}
+      split
+    >
+      {pickedSupplier === null ? (
+        <PuEmpty icon="box" title={tc.pickSupplier} hint={tc.pickSupplierHint} />
+      ) : pairs.isError ? (
+        listProblem(pairs)
+      ) : pairs.isPending ? (
+        <div className="mll-mid-empty" />
+      ) : pairRows.length === 0 ? (
+        <PuEmpty icon="search" title={tc.emptyItems} />
+      ) : (
+        <ItemTable
+          pairs={pairRows}
+          selectedKey={pickedKey}
+          isLocked={isFrozen}
+          onSelect={(row) => {
+            choosePair({ ref: pairRefOf(row), row });
+          }}
+          fitRef={itemFitRef}
+        />
+      )}
+      <PuPager
+        label={tc.items}
         total={pairTotal}
-        page={pairPage}
-        pages={Math.max(1, Math.ceil(pairTotal / Math.max(1, pairSize)))}
-        onPage={setPairPage}
+        page={itemPage}
+        pages={Math.max(1, Math.ceil(pairTotal / Math.max(1, itemSize)))}
+        onPage={setItemPage}
       />
     </PuSection>
   );
@@ -583,8 +682,7 @@ export const PopMaterialLotLabelScreen = () => {
       ? lotsData.total
       : pickedRow === null
         ? null
-        : pickedRow.unprintedCount +
-          (pickedRow.defaultsStatus === 'OK' ? pickedRow.creatableCount : 0);
+        : pairUnprintedOf(pickedRow);
 
   const tabs = (
     <div className="mll-tabs">
@@ -661,8 +759,8 @@ export const PopMaterialLotLabelScreen = () => {
 
   const pairSection =
     picked === null ? (
-      <PuSection>
-        {pairs.isPending ? null : <PuEmpty icon="list" title={t.work.pickPair} />}
+      <PuSection label={tc.items}>
+        <PuEmpty icon="list" title={tc.pickItem} />
       </PuSection>
     ) : (
       <PuSection
@@ -905,8 +1003,9 @@ export const PopMaterialLotLabelScreen = () => {
           />
         }
       >
-        <PuCols variant="list">
+        <PuCols variant="list" className="mll-cols3">
           {leftSection}
+          {itemSection}
           {pairSection}
         </PuCols>
       </PuScreen>

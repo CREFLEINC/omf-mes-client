@@ -8,6 +8,9 @@ import { PuChip, PuIcon, puCx, type PuChipTone } from '../../patterns/pop-unifor
 import { rowStatusOf, type BatchSnapshot, type RowStatus } from './batch-view';
 import { isVoided, isWaiting, type LabelLot } from './types';
 
+/** P/O 번호와 라인 사이 — 「PO-2611-007 · 1」. */
+const PO_DOT = '·'; // ui-check-ignore: C-13 설계 확정 형식(specs 014 screens/P-01-01 「P/O · 라인」)
+
 const t = messages.popMaterialLotLabel.table;
 const tState = messages.popMaterialLotLabel.lotState;
 const tStatus = messages.popMaterialLotLabel.status;
@@ -128,10 +131,20 @@ export const LabelTable = ({
 }: LabelTableProps) => {
   const hasCheck = tab !== 'VOIDED';
   const hasAction = rowAction !== undefined && !showResults;
-  const poText = (lot: LabelLot): string =>
-    lot.purchaseOrderLine === null || lot.purchaseOrderLine === undefined
-      ? t.none
-      : tp.poLine(lot.purchaseOrderLine.purchaseOrderNo, lot.purchaseOrderLine.lineNo);
+  /* 「PO-2611-007 · 1」 — 1100px 이하는 띄어쓰기를 접어 「PO-2611-007·1」(screens/P-01-01.md 상태·예외). */
+  const poText = (lot: LabelLot): ReactNode => {
+    if (lot.purchaseOrderLine === null || lot.purchaseOrderLine === undefined) return t.none;
+
+    return (
+      <>
+        {lot.purchaseOrderLine.purchaseOrderNo}
+        <span className="mll-po-sep"> </span>
+        {PO_DOT}
+        <span className="mll-po-sep"> </span>
+        {lot.purchaseOrderLine.lineNo}
+      </>
+    );
+  };
   const modeChip = (lot: LabelLot): ReactNode =>
     lot.creationModeCode === undefined ? (
       t.none

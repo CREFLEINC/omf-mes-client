@@ -693,6 +693,88 @@
   }
 }
 
+/* 세 칸(#1751 · 피처 014 FR-010 세 칸): 공급사 · 고른 공급사의 품목 표 · 상세. 왼쪽을 접으면 56. */
+.pu-cols.list.mll-cols3 {
+  grid-template-columns: 280px 640px minmax(0, 1fr);
+}
+
+.pu-cols.list.mll-cols3:has(> .is-folded:first-child) {
+  grid-template-columns: 56px 640px minmax(0, 1fr);
+}
+
+/* 공급사 칸 「미출력 N」 — 있으면 노랑 굵게, 0 이면 흐리게(시안 P0101 ①). */
+.mll-pairs .mll-pair-item > .mll-pair-unprinted.has {
+  color: var(--pu-warn);
+  font-weight: 700;
+}
+
+.mll-pairs .mll-pair-item > .mll-pair-unprinted.is-zero {
+  color: var(--pu-text-3);
+}
+
+/* 가운데 품목 표 — 바깥 칸이 남는 높이를 갖고 쪽 줄 수를 잰다. 품목명 칸이 남는 폭을 갖는다. */
+.mll-items {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.mll-items > .pu-table-wrap {
+  max-height: 100%;
+}
+
+.mll-items .pu-table th,
+.mll-items .pu-table td {
+  padding-inline: 8px;
+}
+
+.mll-item-code {
+  all: unset;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mll-item-code:focus-visible {
+  outline: 2px solid var(--pu-primary);
+  outline-offset: 2px;
+}
+
+.mll-items td.mll-item-name-cell > .mll-pair-item-name {
+  display: block;
+  margin-left: 0;
+  text-align: left;
+  font-weight: 500;
+}
+
+.mll-items td.mll-unprinted-cell {
+  color: var(--pu-warn);
+  font-weight: 700;
+}
+
+/* 미출력 · 출력됨이 모두 0 인 품목은 흐리게(고를 수는 있다). */
+.mll-items tr.mll-idle td {
+  color: var(--pu-text-3);
+}
+
+.mll-mid-empty {
+  flex: 1 1 0;
+}
+
+@media (max-width: 1100px) {
+  .pu-cols.list.mll-cols3 {
+    grid-template-columns: 220px 260px minmax(0, 1fr);
+  }
+
+  .pu-cols.list.mll-cols3:has(> .is-folded:first-child) {
+    grid-template-columns: 56px 260px minmax(0, 1fr);
+  }
+
+  /* 상세 표 P/O · 라인을 「PO-2611-007·1」로 줄인다(screens/P-01-01.md 상태·예외). */
+  .mll-table .mll-po-sep {
+    display: none;
+  }
+}
+
 /* 라벨 미리보기 — 80 × 30 mm 비율 그대로, 창 폭에 맞춰 키운다(사용자 지시 2026-11-23). */
 .mll-preview {
   margin: 0;

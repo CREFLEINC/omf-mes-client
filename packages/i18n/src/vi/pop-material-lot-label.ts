@@ -317,6 +317,28 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
       failed: 'Không tìm được số LOT. Hãy quét lại.',
       chip: 'Quét',
     },
+    threeCols: {
+      suppliers: 'Nhà cung cấp',
+      items: 'Mặt hàng',
+      itemsOf: (supplierName: string) => `Mặt hàng · ${supplierName}`,
+      pickSupplier: 'Hãy chọn nhà cung cấp.',
+      pickSupplierHint:
+        '«Chưa in N» ở cột nhà cung cấp là tổng số chưa in của các mặt hàng của nhà cung cấp đó (gồm cả phần chưa tạo, chưa chọn thì chưa tạo).',
+      pickItem: 'Hãy chọn mặt hàng. Chọn mặt hàng sẽ mở bốn tab.',
+      emptySuppliers: 'Không có nhà cung cấp cần phát hành. Sẽ hiện khi có đơn đặt hàng.',
+      noMatchSuppliers: 'Không có nhà cung cấp cần tìm.',
+      emptyItems: 'Nhà cung cấp này không có mặt hàng cần tìm.',
+      columns: {
+        itemCode: 'Mã mặt hàng',
+        itemName: 'Tên mặt hàng',
+        unprinted: 'Chưa in',
+        printed: 'Đã in',
+        iqc: 'IQC',
+        lastIssued: 'Phát hành gần nhất',
+      },
+      iqcRequired: 'Kiểm tra',
+      miss: { NO_DEFAULT: 'Chưa có mặc định', NO_CONVERSION: 'Chưa có quy đổi' },
+    },
   },
   preview: {
     title: 'Xem trước nhãn',

@@ -4,6 +4,7 @@ import type {
   MaterialLotPair,
   MaterialLotPairItem,
   MaterialLotPairSupplier,
+  MaterialLotSupplier,
   MaterialLotTab,
   MaterialLotTabRow,
 } from '@omf-mes/api-client';
@@ -19,7 +20,8 @@ import { ApiRequestError, runRequest } from './request';
  *
  * | 무엇 | 경로 |
  * | --- | --- |
- * | 왼쪽 공급사·품목(찾기 · 쪽) | `GET /logistics/material-lot-pairs` — 만들지 않는다 |
+ * | POP 공급사 칸(찾기 · 쪽) | `GET /logistics/material-lot-suppliers` — 만들지 않는다(세 칸, 계약 §1a) |
+ * | 공급사·품목(찾기 · 쪽, POP 품목 표는 `supplierId`) | `GET /logistics/material-lot-pairs` — 만들지 않는다 |
  * | 오른쪽 탭 넷(쪽) | `GET /logistics/material-lots?tab=` — **미출력 탭만 이 쪽까지 모자란 몫을 만든다** |
  * | 번호 스캔 찾기 | `GET /logistics/material-lots/lookup` — 만들지 않는다 |
  *
@@ -37,8 +39,10 @@ export const TAB_ORDER: readonly MaterialLotTab[] = ['UNPRINTED', 'PRINTED', 'RE
 
 export const materialLotKeys = {
   all: ['material-lot-precreate'] as const,
-  pairs: (plantId: number, q: string, page: number, size: number) =>
-    ['material-lot-precreate', 'pairs', plantId, q, page, size] as const,
+  suppliers: (plantId: number, q: string, page: number, size: number) =>
+    ['material-lot-precreate', 'suppliers', plantId, q, page, size] as const,
+  pairs: (plantId: number, supplierId: number | null, q: string, page: number, size: number) =>
+    ['material-lot-precreate', 'pairs', plantId, supplierId, q, page, size] as const,
   lots: (
     plantId: number,
     supplierId: number,
@@ -51,6 +55,8 @@ export const materialLotKeys = {
 
 export interface PairsQuery {
   plantId: number;
+  /** POP 품목 표 — 고른 공급사로 거른다(세 칸). W-01-14 는 비운다. */
+  supplierId?: number | null;
   q: string;
   page: number;
   size: number;
@@ -76,6 +82,9 @@ export const fetchMaterialLotPairs = async (
       params: {
         query: {
           plantId: query.plantId,
+          ...(query.supplierId === undefined || query.supplierId === null
+            ? {}
+            : { supplierId: query.supplierId }),
           ...(q === '' ? {} : { q }),
           page: query.page,
           size: clampSize(query.size),
@@ -99,13 +108,72 @@ export const useMaterialLotPairs = (query: PairsQuery | null) => {
     queryKey:
       query === null
         ? [...materialLotKeys.all, 'pairs', 'none']
-        : materialLotKeys.pairs(query.plantId, query.q.trim(), query.page, query.size),
+        : materialLotKeys.pairs(
+            query.plantId,
+            query.supplierId ?? null,
+            query.q.trim(),
+            query.page,
+            query.size,
+          ),
     enabled: query !== null,
     placeholderData: (previous) => previous,
     queryFn: () => {
       if (query === null) throw new Error('공장 없음');
 
       return fetchMaterialLotPairs(client, query);
+    },
+  });
+};
+
+export interface SuppliersQuery {
+  plantId: number;
+  q: string;
+  page: number;
+  size: number;
+}
+
+export interface SuppliersPage {
+  items: MaterialLotSupplier[];
+  total: number;
+}
+
+/** POP 공급사 칸 한 쪽(계약 §1a) — 그 공급사 조합들의 미출력 · 만들 수 있는 몫 합. 만들지 않는다. */
+export const fetchMaterialLotSuppliers = async (
+  client: Client,
+  query: SuppliersQuery,
+): Promise<SuppliersPage> => {
+  const q = query.q.trim();
+  const data = await runRequest(() =>
+    client.GET('/logistics/material-lot-suppliers', {
+      params: {
+        query: {
+          plantId: query.plantId,
+          ...(q === '' ? {} : { q }),
+          page: query.page,
+          size: clampSize(query.size),
+        },
+      },
+    }),
+  );
+
+  return { items: data.items, total: data.page.total };
+};
+
+/** POP 공급사 칸 한 쪽. 공장을 모르면 부르지 않는다. */
+export const useMaterialLotSuppliers = (query: SuppliersQuery | null) => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey:
+      query === null
+        ? [...materialLotKeys.all, 'suppliers', 'none']
+        : materialLotKeys.suppliers(query.plantId, query.q.trim(), query.page, query.size),
+    enabled: query !== null,
+    placeholderData: (previous) => previous,
+    queryFn: () => {
+      if (query === null) throw new Error('공장 없음');
+
+      return fetchMaterialLotSuppliers(client, query);
     },
   });
 };
