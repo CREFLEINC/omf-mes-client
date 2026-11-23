@@ -165,7 +165,9 @@ describe('PopMaterialLotLabelScreen — 오른쪽 표', () => {
     const unprinted = rowOf(/\|0001 /u);
 
     expect(unprinted).toHaveTextContent('1,000 EA');
-    expect(unprinted).toHaveTextContent('봉지 10 × 100');
+    /* 포장은 개수만(사용자 지시 2026-11-23). */
+    expect(unprinted).toHaveTextContent('봉지 10');
+    expect(unprinted).not.toHaveTextContent('× 100');
     expect(unprinted).toHaveTextContent('SYN-SL-77');
     /* 발행 대기 표는 모두 입하 대기라 LOT 상태 칸이 없다(사용자 지시 2026-11-23). */
     expect(within(unprinted).queryByText(t.lotState.waiting)).toBeNull();
@@ -201,7 +203,7 @@ describe('PopMaterialLotLabelScreen — 오른쪽 표', () => {
     const head = await screen.findByRole('heading', { name: /SYN-ITEM-01/u });
     const f = t.work.fields;
     expect(head).toHaveTextContent(
-      `${f.itemCode}SYN-ITEM-01${f.itemName}합성 품목 가${f.supplier}합성 공급사 가${f.uom}EA` +
+      `${f.itemCode}SYN-ITEM-01${f.itemName}합성 품목 가${f.supplier}합성 공급사 가` +
         t.pairs.defaultPackaged('봉지 10 × 100 = 1,000 EA'),
     );
   });

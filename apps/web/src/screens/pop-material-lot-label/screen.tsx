@@ -672,10 +672,6 @@ export const PopMaterialLotLabelScreen = () => {
               <small>{t.work.fields.supplier}</small>
               <span className="mll-head-value">{current.supplierName}</span>
             </span>
-            <span className="mll-head-field">
-              <small>{t.work.fields.uom}</small>
-              <span className="mll-head-value">{current.uomCode}</span>
-            </span>
             {defaultLineOf(defaultsMap.get(currentKey ?? '')) === null ? null : (
               <span className="mll-head-sub">
                 {defaultLineOf(defaultsMap.get(currentKey ?? ''))}
@@ -701,23 +697,6 @@ export const PopMaterialLotLabelScreen = () => {
                   </ul>
                 </div>
               </PuHelpButton>
-              {/* C-4 — 사번이 없어 잠긴 까닭은 맨 위 띠와 같은 말이다. */}
-              {workerNo === null ? (
-                <span id={createNoteId} hidden>
-                  {messages.popChrome.workerMissing}
-                </span>
-              ) : null}
-              <PuButton
-                size="sm"
-                icon="plus"
-                disabled={isLocked || workerNo === null}
-                aria-describedby={workerNo === null ? createNoteId : undefined}
-                onClick={() => {
-                  setDialog({ kind: 'batch' });
-                }}
-              >
-                {t.work.create}
-              </PuButton>
             </>
           )
         }
@@ -763,6 +742,24 @@ export const PopMaterialLotLabelScreen = () => {
               {t.bar.selectAll}
             </PuButton>
           )}
+          {/* 「자재 관리 LOT 생성」은 선택 단추 오른쪽, 같은 높이(사용자 지시 2026-11-23). */}
+          {/* C-4 — 사번이 없어 잠긴 까닭은 맨 위 띠와 같은 말이다. */}
+          {workerNo === null ? (
+            <span id={createNoteId} hidden>
+              {messages.popChrome.workerMissing}
+            </span>
+          ) : null}
+          <PuButton
+            size="sm"
+            icon="plus"
+            disabled={isLocked || isShowingResults || workerNo === null}
+            aria-describedby={workerNo === null ? createNoteId : undefined}
+            onClick={() => {
+              setDialog({ kind: 'batch' });
+            }}
+          >
+            {t.work.create}
+          </PuButton>
         </div>
         {pairTableLots.length === 0 ? (
           <PuEmpty icon="box" title={t.work.waitingEmpty} hint={t.work.waitingEmptyHint} />

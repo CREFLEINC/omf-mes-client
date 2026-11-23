@@ -17,7 +17,7 @@ import {
   reportMaterialLotLabelPrint as reportPrint,
   type IssueView,
 } from '../../patterns/material-lot-label-print';
-import { notePrintTiming, renditionShell } from '../../patterns/pop-print';
+import { renditionShell } from '../../patterns/pop-print';
 import { runRequest, toApiError } from '../../patterns/request';
 
 import { toIssueFailure } from './failure';
@@ -128,7 +128,6 @@ interface PreparedLabel {
 const prepareLabel = async (
   deps: IssueDeps,
   command: IssueCommand,
-  spent: { issueMs: number; renderMs: number },
 ): Promise<PreparedLabel | IssueRunResult> => {
   const { client, workerNo, keys, onStep } = deps;
   const { lot, printerName, reissueReasonCode } = command;
@@ -147,22 +146,18 @@ const prepareLabel = async (
     const issueKey = held?.signature === signature ? held.key : createIdempotencyKey();
     keys.issue.set(lotId, { key: issueKey, signature });
 
-    const issueStart = performance.now();
     issue = await createIssue(
       client,
       { lotId, printerName, reissueReasonCode },
       workerNo,
       issueKey,
     );
-    spent.issueMs += performance.now() - issueStart;
     // 기록이 남았다 — 다음 재인쇄는 새 회차라 새 키여야 한다.
     keys.issue.delete(lotId);
 
     at = 'render';
     onStep('render');
-    const renderStart = performance.now();
     const bytes = buildLabel({ lot, issue });
-    spent.renderMs += performance.now() - renderStart;
 
     return { command, issue, bytes };
   } catch (cause) {
@@ -204,7 +199,6 @@ const concatLabels = (parts: readonly Uint8Array[]): Uint8Array => {
 const printChunk = async (
   deps: IssueDeps,
   prepared: readonly PreparedLabel[],
-  spent: { issueMs: number; renderMs: number },
 ): Promise<{ failureReason: string | null; done: Promise<IssueRunResult[]> }> => {
   const { client, workerNo, onStep } = deps;
   const first = prepared[0];
@@ -214,7 +208,6 @@ const printChunk = async (
   onStep('print');
   const label = `lots-${String(first.issue.documentIssueLogId)}-x${String(prepared.length)}`;
   const bytes = concatLabels(prepared.map((each) => each.bytes));
-  const printStart = performance.now();
   /* ⛔ 통로가 없으면 실패 사유(`NO_SHELL_REASON`)로 보고한다 — 나오지 않은 라벨이 나온 것으로 남지 않게. */
   const failureReason = await printMaterialLotLabel(
     renditionShell(),
@@ -222,11 +215,9 @@ const printChunk = async (
     label,
     first.command.shellPrinterName,
   );
-  const printMs = performance.now() - printStart;
   const isPrinted = failureReason === null;
 
   onStep('report');
-  const reportStart = performance.now();
   const done = Promise.all(
     prepared.map(({ command, issue }) =>
       reportPrint(client, issue.documentIssueLogId, failureReason, workerNo).then(
@@ -248,21 +239,7 @@ const printChunk = async (
         }),
       ),
     ),
-  ).then((results) => {
-    /* 어느 걸음이 느린지 — 셸 기록의 같은 `label` 줄과 짝을 맞춰 읽는다(사용자 지시 2026-11-23). */
-    notePrintTiming({
-      label,
-      labels: prepared.length,
-      bytes: bytes.byteLength,
-      issueMs: Math.round(spent.issueMs),
-      renderMs: Math.round(spent.renderMs),
-      printMs: Math.round(printMs),
-      reportMs: Math.round(performance.now() - reportStart),
-      result: isPrinted ? 'printed' : 'failed',
-    });
-
-    return results;
-  });
+  );
 
   return { failureReason, done };
 };
@@ -453,7 +430,6 @@ export const useBatchIssue = ({ workerNo }: IssueRunOptions): BatchIssueHandle =
           for (let start = 0; start < queue.length && !halted; start += PRINT_CHUNK) {
             const chunk = queue.slice(start, start + PRINT_CHUNK);
             const prepared: PreparedLabel[] = [];
-            const spent = { issueMs: 0, renderMs: 0 };
 
             for (const [offset, command] of chunk.entries()) {
               /* 멈춤 — 이미 기록을 만든 장은 아래에서 찍고, 나머지는 보내지 않는다. */
@@ -463,7 +439,7 @@ export const useBatchIssue = ({ workerNo }: IssueRunOptions): BatchIssueHandle =
               }
 
               setCurrentLotId(command.lot.lotId);
-              const outcome = await prepareLabel(deps, command, spent);
+              const outcome = await prepareLabel(deps, command);
 
               if (isPrepared(outcome)) {
                 prepared.push(outcome);
@@ -478,7 +454,7 @@ export const useBatchIssue = ({ workerNo }: IssueRunOptions): BatchIssueHandle =
               }
             }
 
-            const printed = await printChunk(deps, prepared, spent);
+            const printed = await printChunk(deps, prepared);
 
             reporting.push(
               printed.done.then((results) => {

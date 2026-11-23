@@ -5,9 +5,32 @@
  *    버리면 현장 단말은 키오스크라 개발자도구도 주소창도 없어 **무슨 일이 났는지 알 방법이
  *    사라진다.** 그래서 화면에서 뺀 것을 여기에 둔다 — 사람이 나중에 파일로 읽는다.
  *
- * ⚠ **인쇄가 실패한 회차만 적는다.** 성공까지 적으면 몇 달 도는 단말에서 파일이 계속 자라고,
- *    정작 찾으려는 실패가 그 사이에 묻힌다.
+ * ⚠ **1MB 가 넘으면 비우고 새로 적는다**(사용자 지시 2026-11-23). 성공(「보냄」)도 한 줄씩 남기므로
+ *    몇 달 도는 단말에서 파일이 끝없이 자라지 않게 한다.
  */
+
+import { appendFileSync, statSync, writeFileSync } from 'node:fs';
+
+/** 이 크기를 넘으면 비우고 새로 적는다. */
+export const PRINT_LOG_MAX_BYTES = 1024 * 1024;
+
+/** 한 줄을 덧붙인다 — 파일이 `max` 이상이면 비우고 그 줄부터 다시 적는다. */
+export function appendPrintLog(
+  path: string,
+  line: string,
+  max: number = PRINT_LOG_MAX_BYTES,
+): void {
+  let size = 0;
+
+  try {
+    size = statSync(path).size;
+  } catch {
+    /* 아직 없다 — 새로 만든다. */
+  }
+
+  if (size >= max) writeFileSync(path, line);
+  else appendFileSync(path, line);
+}
 
 /**
  * 단말이 알려 준 프린터 한 대. **드라이버 이름과 보이는 이름을 따로 적는다** — 지정할 때

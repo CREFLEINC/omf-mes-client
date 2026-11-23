@@ -53,7 +53,7 @@ export const popMaterialLotLabel = {
   /** 오른쪽 작업 칸. */
   work: {
     /** 상세 머리의 이름표(사용자 지시 2026-11-23). */
-    fields: { itemCode: '품목코드', itemName: '품목명', supplier: '공급사', uom: '기본 단위' },
+    fields: { itemCode: '품목코드', itemName: '품목명', supplier: '공급사' },
     create: '자재 관리 LOT 생성',
     /** 상시 할 일 한 줄 — 입하 대기 LOT 을 고르면 출고·투입 제한을 말한다(#295 시안). */
     help: '자재 관리 LOT 안내',

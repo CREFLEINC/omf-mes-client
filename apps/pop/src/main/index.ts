@@ -6,15 +6,7 @@
  * 이 파일이 얇아야 「Electron을 띄워야만 확인 가능한 부분」이 작아진다.
  */
 import { execFile, spawn } from 'node:child_process';
-import {
-  appendFileSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -24,7 +16,6 @@ import {
   PrintHostDownError,
   type PrintHost,
 } from './print-host';
-import { formatTimingLine, sanitizeTimingFields, since } from './print-timing';
 
 import {
   BrowserWindow,
@@ -62,7 +53,7 @@ import {
   isRenditionFormat,
   toRenditionFileName,
 } from './print';
-import { type LoggedPrinter, formatPrintLog, reasonOf } from './print-log';
+import { type LoggedPrinter, appendPrintLog, formatPrintLog, reasonOf } from './print-log';
 import { PRINT_PAGE_FILE, labelFileName, renderPrintPage } from './print-page';
 import {
   type LabelCommand,
@@ -412,17 +403,7 @@ function createWindowsPrintHost(dir: string): PrintHost {
   });
 }
 
-/** 라벨 한 작업의 셸 안 시간 — 용지 확인 · 전송(ms). `rendition:save` 가 시간 기록에 싣는다. */
-interface RawTiming {
-  probeMs: number;
-  sendMs: number;
-}
-
-function createRawPrinter(
-  fallbackName?: string,
-  host?: PrintHost,
-  onTiming?: (timing: RawTiming) => void,
-): RawPrinter | undefined {
+function createRawPrinter(fallbackName?: string, host?: PrintHost): RawPrinter | undefined {
   if (process.platform !== 'win32') return undefined;
 
   return {
@@ -449,16 +430,14 @@ function createRawPrinter(
        */
       /*
        * ⭐ **용지 크기는 명시적으로 정한 값**(사용자 지시 2026-11-23) — 단말 환경값 → 라벨이 적은 `SIZE` → (둘 다
-       *    없을 때만) 드라이버에 묻기. 드라이버에 묻는 데 작업마다 1초 남짓 걸렸다(인쇄 시간 기록 2026-11-23).
+       *    없을 때만) 드라이버에 묻기. 드라이버에 묻는 데 작업마다 1초 남짓 걸렸다(현장 실측 2026-11-23).
        */
       const commands = readFileSync(dataPath, 'latin1');
       const declared = isLabelSizePinned() ? null : declaredLabelSize(commands);
-      const probeStart = performance.now();
       const probed =
         isLabelSizePinned() || declared !== null
           ? declared
           : await probeMedia(deviceName ?? fallbackName, join(dataPath, '..'), host);
-      const probeMs = since(probeStart);
       const media = withProbedSize(readLabelMedia(), probed);
       /*
        * ⛔ **`ascii` 로 읽고 쓰지 않는다.** Node 의 `ascii` 는 바이트마다 최상위 비트를
@@ -477,23 +456,19 @@ function createRawPrinter(
        */
       if (host !== undefined) {
         try {
-          const sendStart = performance.now();
           await host.print({ path: dataPath, name: jobName, device: deviceName ?? fallbackName });
-          onTiming?.({ probeMs, sendMs: since(sendStart) });
           return;
         } catch (cause) {
           if (!(cause instanceof PrintHostDownError)) throw cause;
         }
       }
 
-      const fallbackStart = performance.now();
       await runPrintScript(
         join(dataPath, '..', 'raw-print.ps1'),
         /* 작업이 준 이름이 먼저다. 없으면 기동 시 지정값, 그것도 없으면 OS 기본이다. */
         buildRawPrintScript({ dataPath, deviceName: deviceName ?? fallbackName, jobName }),
         rawPrintScriptArgs,
       );
-      onTiming?.({ probeMs, sendMs: since(fallbackStart) });
     },
   };
 }
@@ -516,7 +491,7 @@ async function readDefaultPrinterName(
 ): Promise<string | null> {
   if (process.platform !== 'win32') return null;
 
-  /* 떠 있는 도우미가 있으면 그쪽에 묻는다 — 작업마다 PowerShell 을 새로 띄우지 않는다(인쇄 시간 기록 2026-11-23). */
+  /* 떠 있는 도우미가 있으면 그쪽에 묻는다 — 작업마다 PowerShell 을 새로 띄우지 않는다(현장 실측 2026-11-23). */
   if (host !== undefined) {
     try {
       return parseDefaultPrinterName(await host.defaultPrinter());
@@ -609,28 +584,9 @@ async function main(): Promise<void> {
     !MOCK_PRINTER && process.platform === 'win32' ? createWindowsPrintHost(stagingDir) : undefined;
   labelPrintHost?.warm();
   app.on('will-quit', () => labelPrintHost?.dispose());
-  /* 마지막 라벨 작업의 셸 안 시간 — `rendition:save` 가 읽어 시간 기록에 싣는다(한 번에 한 작업). */
-  let lastRawTiming: RawTiming | null = null;
-  /* 인쇄 시간 기록 한 줄(사용자 지시 2026-11-23). 못 적어도 인쇄를 막지 않는다. */
-  const noteTiming = (
-    side: 'shell' | 'screen',
-    fields: readonly (readonly [string, string | number])[],
-  ) => {
-    try {
-      mkdirSync(logDir, { recursive: true });
-      appendFileSync(
-        join(logDir, 'print-timing.log'),
-        formatTimingLine(new Date().toISOString(), side, fields),
-      );
-    } catch {
-      /* 기록을 남기지 못한 것이 인쇄를 막지 않는다. */
-    }
-  };
   const rawPrinter = MOCK_PRINTER
     ? createMockRawPrinter({ spoolDir: mockSpoolDir })
-    : createRawPrinter(process.env.POP_PRINTER_NAME, labelPrintHost, (timing) => {
-        lastRawTiming = timing;
-      });
+    : createRawPrinter(process.env.POP_PRINTER_NAME, labelPrintHost);
 
   if (MOCK_PRINTER) {
     console.warn(`가상 라벨 프린터 켜짐 — 라벨은 ${mockSpoolDir} 에 파일로만 남는다`);
@@ -678,7 +634,7 @@ async function main(): Promise<void> {
    */
   let printHost: BrowserWindow | null = null;
   /*
-   * 프린터 목록 · 기본 프린터 기억(사용자 지시 2026-11-23) — 작업마다 묻던 것이 1.3초씩 걸렸다(인쇄 시간 기록).
+   * 프린터 목록 · 기본 프린터 기억(사용자 지시 2026-11-23) — 작업마다 묻던 것이 1.3초씩 걸렸다(현장 실측).
    * ⚠ 1분만 들고, 인쇄가 실패하면 바로 버린다 — 현장에서 프린터를 갈아 끼우거나 기본을 바꿔도 따라간다.
    * 머리의 프린터 고르기 창(`printers:list`)은 늘 새로 묻는다.
    */
@@ -839,7 +795,6 @@ async function main(): Promise<void> {
       // 형식은 파일 경로 계산에 들어간다 — 아는 값인지 경계에서 막는다.
       if (!isRenditionFormat(format)) throw new UnknownFormatError(format);
 
-      const started = performance.now();
       const rendition = { bytes, label, format };
       const filePath = join(renditionDir, toRenditionFileName(label, now, format));
 
@@ -854,7 +809,7 @@ async function main(): Promise<void> {
       ) => {
         try {
           mkdirSync(logDir, { recursive: true });
-          appendFileSync(
+          appendPrintLog(
             join(logDir, 'print.log'),
             formatPrintLog({
               at: new Date().toISOString(),
@@ -877,7 +832,7 @@ async function main(): Promise<void> {
       ) => {
         try {
           mkdirSync(logDir, { recursive: true });
-          appendFileSync(
+          appendPrintLog(
             join(logDir, 'print.log'),
             formatPrintLog({
               at: new Date().toISOString(),
@@ -899,8 +854,6 @@ async function main(): Promise<void> {
        *    출력물이 아무 데도 남지 않는다.
        */
       await printer.print(rendition, { kind: 'file', filePath });
-      const fileMs = since(started);
-      const chooseStart = performance.now();
 
       /* 화면이 고른 프린터가 있으면 그것이 먼저다. 없으면 지금까지와 같다(기동 시 지정값 → OS 기본). */
       const { choice, available } = await resolvePrinter(requestedPrinterName(printerName));
@@ -918,23 +871,9 @@ async function main(): Promise<void> {
 
       /* 지정이 없으면 장치를 싣지 않는다 — 받는 쪽이 OS 기본으로 보낸다. */
       const deviceName = choice.kind === 'named' ? choice.deviceName : undefined;
-      const chooseMs = since(chooseStart);
 
       try {
-        lastRawTiming = null;
-        const sendStart = performance.now();
         await printer.print(rendition, { kind: 'printer', deviceName });
-        const raw = lastRawTiming as RawTiming | null;
-        /* 어느 걸음이 느린지 — 파일 · 프린터 고르기 · 용지 확인 · 전송(사용자 지시 2026-11-23). */
-        noteTiming('shell', [
-          ['label', label],
-          ['bytes', bytes.byteLength],
-          ['fileMs', fileMs],
-          ['chooseMs', chooseMs],
-          ['probeMs', raw?.probeMs ?? '-'],
-          ['sendMs', raw?.sendMs ?? since(sendStart)],
-          ['shellMs', since(started)],
-        ]);
         /*
          * ⭐ **성공도 남긴다**(사용자 지시 2026-09-08). 「아무 일도 안 일어난다」를 가리려면
          *    «보내기는 했는가»부터 알아야 하는데, 실패만 남기면 그 줄이 아예 없는 것과
@@ -951,11 +890,6 @@ async function main(): Promise<void> {
       return filePath;
     },
   );
-
-  /* 화면 쪽 시간(발행 기록 · 라벨 짜기 · 셸 왕복 · 결과 보고)을 같은 기록에 남긴다. */
-  ipcMain.handle('print-timing:note', (_e, fields: unknown) => {
-    noteTiming('screen', sanitizeTimingFields(fields));
-  });
 
   const window = new BrowserWindow(
     createKioskWindowOptions({ preloadPath: PRELOAD_PATH, isDev: IS_DEV }),
