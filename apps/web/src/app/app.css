@@ -8915,8 +8915,10 @@ main:has(.iqc-skip-approval-detail) {
   white-space: nowrap;
 }
 
-.disposition-nc-link {
+/* 다른 부적합으로 가는 단추 — 글자와 테두리를 빨강(주 색)으로 강조(#352 사용자 지시). 버튼 부품 규칙보다 무거워야 선다. */
+.disposition-nc-link.disposition-nc-link {
   white-space: nowrap;
+  box-shadow: inset 0 0 0 1px currentColor;
 }
 
 .disposition-iqc-matches {
