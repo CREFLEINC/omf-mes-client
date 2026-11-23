@@ -64,7 +64,9 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     loading: 'Đang tải thông tin kiểm tra.',
     loadFailed: 'Không tải được thông tin kiểm tra.',
     noPlan:
-      'Vật tư này chưa có tiêu chuẩn kiểm tra nên không thể nhập kết quả. Hãy xác nhận tiêu chuẩn kiểm tra trước.',
+      'Không có tiêu chuẩn kiểm tra được áp dụng. Chỉ nhập phán định tổng hợp và đính kèm tài liệu căn cứ phán định.',
+    planVersionNote:
+      'Tiêu chuẩn kiểm tra đã thay đổi được áp dụng từ các phiếu kiểm tra IQC phát hành mới. Các phiếu đã phát hành áp dụng tiêu chuẩn tại thời điểm phát hành.',
     setPlan: 'Thiết lập tiêu chuẩn kiểm tra',
     confirmed: (judgment: string) => `Kiểm tra đã được xác nhận — Phán định: ${judgment}`,
     workerMissing:
@@ -148,6 +150,7 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     heading: 'Phán định',
     suggested: 'Kết quả phán định tự động',
     pending: 'Nhập các hạng mục kiểm tra rồi xem kết quả phán định.',
+    noPlan: 'Chưa có tiêu chuẩn kiểm tra nên không phán định tự động.',
     waiting: 'Chờ phán định',
     overall: 'Phán định tổng',
     rejectedQty: (qty: number) => `(Số lượng lỗi ${String(qty)})`,
