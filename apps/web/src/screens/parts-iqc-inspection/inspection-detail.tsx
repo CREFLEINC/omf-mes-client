@@ -591,8 +591,7 @@ export const InspectionDetail = ({
                 {
                   value: 'input',
                   /* 생략 건은 진행할 검사가 없다 — 「검사 상세」(#353). */
-                  label:
-                    detail.data?.statusCode === 'SKIPPED' ? t.skipped.detailTab : t.tabs.input,
+                  label: detail.data?.statusCode === 'SKIPPED' ? t.skipped.detailTab : t.tabs.input,
                   content: tab === 'input' ? body() : null,
                 },
               ]),
@@ -663,7 +662,6 @@ export const InspectionDetail = ({
   );
 };
 
-/** 생략된 의뢰의 읽기 전용 요약 — 검사 대상 · LOT 정보를 입력 화면과 같은 짜임으로 보인다(#225). */
 /** 결과 드로어 모드(005 새 흐름). */
 export interface InspectionFormDrawer {
   /** 이 결과의 검사 회차 — 검사 기준 상세 창에 보인다(사용자 지시 2026-11-18 · omf-all-around#296). */
@@ -744,8 +742,6 @@ interface FormProps {
     onPickLevel: (values: LevelDialogValues) => void;
   } | null;
 }
-
-/** 기준서 도면 — 품질 기준 정보 「도면」 탭과 같은 보기(한 장씩 좌우로 넘김 · 사용자 지시 2026-10-30). */
 
 /** IQC 기준 안내 라벨 — 글 폭만큼, 본문 크기 글자(omf-all-around#351 · 사용자 지시 2026-11-23). */
 const PlanNote = ({ text }: { text: string }) => (

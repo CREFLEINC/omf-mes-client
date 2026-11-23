@@ -80,9 +80,7 @@ describe('ActivationDialog — 다시 사용', () => {
   it('끄기의 문장을 내지 않는다', () => {
     renderDialog({ intent: 'activate' });
 
-    expect(
-      screen.queryByText(t.dialog.deactivateBlocks('폐기 출고')),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(t.dialog.deactivateBlocks('폐기 출고'))).not.toBeInTheDocument();
     expect(screen.queryByText(t.dialog.deactivateInProgress(3))).not.toBeInTheDocument();
   });
 

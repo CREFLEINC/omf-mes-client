@@ -24,7 +24,7 @@ export const PLACEHOLDER_REQUEST_STATUS_CODES: readonly string[] = [];
 
 /** 승인 유형 코드 → 사람이 읽는 이름. 목록에 없는 코드는 코드 그대로 보인다. */
 export const approvalTypeLabelOf = (code: string): string =>
-  (messages.approvalInbox.approvalTypeNames as Record<string, string | undefined>)[code] ?? code;
+  messages.approvalInbox.approvalTypeNames[code] ?? code;
 
 /** 요청 상태 이름(결재 대기 · 승인 · 반려) — 모르는 코드는 그대로(omf-all-around#353). */
 export const requestStatusLabelOf = (code: string): string =>

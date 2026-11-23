@@ -87,7 +87,9 @@ const renderScreen = (options: RenderOptions = {}) => {
     }
     if (path === '/quality/inspection-requests/7101')
       return jsonResponse(
-        options.skipped === true ? { ...REQUEST, statusCode: 'SKIPPED', skipBasisCode: 'DEFAULT' } : REQUEST,
+        options.skipped === true
+          ? { ...REQUEST, statusCode: 'SKIPPED', skipBasisCode: 'DEFAULT' }
+          : REQUEST,
       );
     if (path === '/trace/lots') {
       const lotNo = url.searchParams.get('lotNo');

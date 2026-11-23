@@ -32858,10 +32858,6 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   margin-right: auto;
 }
 
-.pqc-web > .iqc-inspection-action-note.inspection-skip-note {
-  margin-bottom: var(--space-3);
-}
-
 /* 생략 요약 — 탭 바로 아래라 윗선 없이 붙인다(omf-all-around#353). */
 .parts-iqc-block.parts-iqc-skipped {
   padding-top: 0;

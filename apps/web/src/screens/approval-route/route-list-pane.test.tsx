@@ -73,9 +73,7 @@ describe('RouteListPane — 표', () => {
 
     // 선행 단언 — 단계가 있는 줄은 수치로 읽힌다.
     expect(within(rowOf('폐기 출고', 0)).getByText('2')).toBeInTheDocument();
-    expect(
-      within(rowOf('폐기 출고', 1)).getByText(t.values.noSteps),
-    ).toBeInTheDocument();
+    expect(within(rowOf('폐기 출고', 1)).getByText(t.values.noSteps)).toBeInTheDocument();
   });
 
   it('진행 중 건수를 응답 값 그대로 낸다', () => {

@@ -199,8 +199,7 @@ export const approvalInbox = {
     approve: '승인',
     reject: '반려',
     /** 비활성 사유는 **그 컨트롤의 이름으로 시작한다**(배치 규범 4). */
-    blockedNotMyTurn: (action: string): string =>
-      '지금은 결재할 차례가 아닙니다',
+    blockedNotMyTurn: (action: string): string => '지금은 결재할 차례가 아닙니다',
     /**
      * **뒤에 조작 이름을 되풀이하지 않는다.** 이 함수의 유일한 호출이 반려라 「반려: 반려
      * 의견을…」로 어절이 겹쳤다. 앞머리가 이미 어느 컨트롤의 사유인지 말하므로 뒤는 무엇이
@@ -253,9 +252,12 @@ export const approvalInbox = {
     SHIPMENT_CANCEL: '출하 취소',
     PRODUCTION_RESULT_CORRECT: '생산 실적 정정',
     CONCESSION: '특채',
-  },
+  } as Record<string, string | undefined>,
   /** 요청 상태 이름 — 품질 승인 처리와 같은 말(omf-all-around#353). 목록 밖 코드는 코드 그대로. */
-  requestStatusNames: { PENDING: '결재 대기', APPROVED: '승인', REJECTED: '반려' } as Record<string, string>,
+  requestStatusNames: { PENDING: '결재 대기', APPROVED: '승인', REJECTED: '반려' } as Record<
+    string,
+    string
+  >,
   values: {
     /** 이름이 오지 않았다. **번호를 대신 내지 않는다.** */
     unknownRequester: '상신자를 확인할 수 없습니다',

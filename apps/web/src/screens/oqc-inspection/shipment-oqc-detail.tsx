@@ -75,7 +75,10 @@ export const ShipmentOqcDetail = ({
     null,
   );
   const addBlockedId = useId();
-  const planCode = usePlanCode(request?.inspectionPlanVersionId ?? null);
+  /* 기준서 번호는 생략 요약만 보인다 — 일반 건은 부르지 않는다. */
+  const planCode = usePlanCode(
+    request?.statusCode === 'SKIPPED' ? (request.inspectionPlanVersionId ?? null) : null,
+  );
 
   if (query.isError) {
     return (

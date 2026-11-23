@@ -1758,9 +1758,7 @@ describe('ApprovalRouteScreen — 사용 전환', () => {
 
     const dialog = activationDialog();
 
-    expect(
-      within(dialog).getByText(t.dialog.deactivateBlocks('폐기 출고')),
-    ).toBeInTheDocument();
+    expect(within(dialog).getByText(t.dialog.deactivateBlocks('폐기 출고'))).toBeInTheDocument();
     /* 건수는 결재선 응답이 실어 온 값이다 — 화면이 세지 않는다. */
     expect(within(dialog).getByText(t.dialog.deactivateInProgress(3))).toBeInTheDocument();
     expect(within(dialog).getByText(t.dialog.deactivateReversible)).toBeInTheDocument();

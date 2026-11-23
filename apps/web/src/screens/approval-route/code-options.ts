@@ -19,9 +19,9 @@ export const PLACEHOLDER_APPROVAL_TYPE_CODES = [
   'PRODUCTION_RESULT_CORRECT',
 ] as const;
 
-/** 승인 유형 코드 → 사람이 읽는 이름. 목록에 없는 코드는 코드 그대로 보인다. */
+/** 승인 유형 코드 → 사람이 읽는 이름 — 결재함과 같은 이름표를 쓴다. 목록에 없는 코드는 코드 그대로 보인다. */
 export const approvalTypeLabelOf = (code: string): string =>
-  (messages.approvalRoute.approvalTypeNames as Record<string, string | undefined>)[code] ?? code;
+  messages.approvalInbox.approvalTypeNames[code] ?? code;
 
 /**
  * 값 목록을 선택지로 옮긴다.

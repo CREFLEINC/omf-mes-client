@@ -90,17 +90,7 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
     noStepsDescription:
       'Không có bước thì yêu cầu trình của loại này sẽ bị từ chối. Thêm ít nhất một bước là mở lại.',
   },
-  approvalTypeNames: {
-    GOODS_ISSUE_DISPOSAL: 'Xuất hủy',
-    INVENTORY_ADJUSTMENT: 'Điều chỉnh tồn kho',
-    PURCHASE_ORDER: 'Đơn mua hàng (P/O)',
-    INBOUND_RECEIPT_CANCEL: 'Hủy nhận hàng',
-    GOODS_RECEIPT_CANCEL: 'Hủy nhập kho',
-    GOODS_ISSUE_CANCEL: 'Hủy xuất kho',
-    SHIPMENT_CANCEL: 'Hủy xuất hàng',
-    PRODUCTION_RESULT_CORRECT: 'Đính chính kết quả sản xuất',
-    CONCESSION: 'Đặc cách',
-  },
+
   values: {
     unknown: 'Không rõ',
     referenceLoading: 'Đang tải tên',
