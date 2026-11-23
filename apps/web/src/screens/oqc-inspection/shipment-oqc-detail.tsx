@@ -7,7 +7,11 @@ import { InfoTip } from '../../patterns/info-tip';
 import { formatQty } from '../../patterns/package-qty';
 import { toApiError } from '../../patterns/request';
 import { PlanViewLauncher } from '../iqc-inspection/plan-view-launcher';
-import { SkippedOverview, usePlanCode } from '../parts-iqc-inspection/skipped-overview';
+import {
+  SkippedOverview,
+  type SkippedOverviewTab,
+  usePlanCode,
+} from '../parts-iqc-inspection/skipped-overview';
 import { useSamplingRule } from '../iqc-inspection/queries';
 import { LotNo } from '../parts-iqc-inspection/lot-match-field';
 import { ResultList } from '../parts-iqc-inspection/result-list';
@@ -41,6 +45,8 @@ export interface ShipmentOqcDetailProps {
   /** 품목 이름 · 코드 — 생략 건 요약(IQC 와 같은 틀 · #353)이 이름 · 코드 차례로 쓴다. 못 풀었으면 null. */
   itemParts: { code: string; name: string } | null;
   uomCode: string | null;
+  /** 생략 건 상세의 「검사 진행」 뒤 탭(검사 이력 · 시리얼별 검사 이력 · #353). */
+  skippedTabs?: SkippedOverviewTab[];
 }
 
 /**
@@ -58,6 +64,7 @@ export const ShipmentOqcDetail = ({
   itemLabel,
   itemParts,
   uomCode,
+  skippedTabs,
 }: ShipmentOqcDetailProps) => {
   const toast = useToast();
   const query = useShipmentOqcRequest(inspectionRequestId);
@@ -97,6 +104,7 @@ export const ShipmentOqcDetail = ({
       <div className="parts-iqc-detail-body iqc-inbound-detail oqc-shipment-detail">
         <SkippedOverview
           title={messages.partsIqcInspection.skipped.titleOqc}
+          {...(skippedTabs === undefined ? {} : { tabs: skippedTabs })}
           itemLabel={messages.partsIqcInspection.skipped.item}
           itemParts={itemParts}
           planCode={planCode}

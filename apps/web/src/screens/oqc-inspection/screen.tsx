@@ -764,6 +764,66 @@ export const OqcInspectionScreen = () => {
    * ⛔ 실패를 「고르지 않음」으로 접지 않는다. 접으면 고른 것이 사라진 것처럼 보여 사용자가 다시
    * 고르는데, 다시 골라도 같은 실패가 온다.
    */
+  const historyRevision = `${String(rounds.data?.length ?? 0)}:${JSON.stringify(round ?? null)}`;
+  const historyCount = useInspectionHistory(selectedId, historyRevision).data?.events.length;
+  const roundCount = rounds.data?.length ?? 0;
+  /* 출하 OQC 새 흐름은 회차 이력이 없다 — 결과 표가 대신한다(시안 W0403 「없어짐」). */
+  const showsRoundHistory =
+    (detail.data === undefined || !isShipmentOqc(detail.data)) &&
+    (roundCount > 1 || (isReinspectingNow && roundCount > 0));
+  /* 검사 이력 · 시리얼별 검사 이력 탭 — 아래 참고 상자, 생략 건은 상세 안 탭(IQC 와 같다 · 사용자 지시 2026-11-23 · #353). */
+  const historyTabItems =
+    selectedId === null || detail.data === undefined
+      ? []
+      : [
+          {
+            value: 'history',
+            label: messages.inspectionHistory.heading,
+            content: (
+              <div className="oqc-inspection-tab-body">
+                <div className="oqc-inspection-tab-head">
+                  <h3>{t.detail.historyTitle}</h3>
+                  {historyCount !== undefined && (
+                    <span className="oqc-inspection-fold-chip">
+                      {t.detail.historyCount(historyCount)}
+                    </span>
+                  )}
+                </div>
+                <InspectionHistoryPanel
+                  hideSourceLot
+                  key={`${String(selectedId)}-${String(roundCount)}`}
+                  inspectionRequestId={selectedId}
+                  judgmentLabelOf={(code) => labelOfCode(judgmentOptions, code)}
+                  revision={historyRevision}
+                />
+              </div>
+            ),
+          },
+          ...(detail.data.targetTypeCode === 'SHIPMENT_REQUEST'
+            ? [
+                {
+                  value: 'serials',
+                  label: t.serials.recordTab,
+                  content: (
+                    <div className="oqc-inspection-tab-body">
+                      <div className="oqc-inspection-tab-head">
+                        <h3>{t.serials.recordHeading}</h3>
+                        {serialRecordCount !== undefined && (
+                          <span className="oqc-inspection-fold-chip">
+                            {t.serials.recordCount(serialRecordCount)}
+                          </span>
+                        )}
+                      </div>
+                      <SerialRecords inspectionRequestId={selectedId} />
+                    </div>
+                  ),
+                },
+              ]
+            : []),
+        ];
+  const skippedShipment =
+    detail.data !== undefined && isShipmentOqc(detail.data) && detail.data.statusCode === 'SKIPPED';
+
   const detailContent =
     /* 고르지 않았으면 상세가 서지 않는다 — 목록만 선다(#136). 이 갈래는 아래 `selectedId` 를 좁히는 데만 쓴다. */
     selectedId === null ? null : detail.isError ? (
@@ -782,6 +842,7 @@ export const OqcInspectionScreen = () => {
         key={selectedId}
         inspectionRequestId={selectedId}
         itemParts={itemNames.partsOf(detail.data.itemId)}
+        skippedTabs={historyTabItems}
         itemLabel={((): ReactNode => {
           const parts = itemNames.partsOf(detail.data.itemId);
           return parts === null ? (
@@ -979,16 +1040,9 @@ export const OqcInspectionScreen = () => {
    * 참고 정보 — 판정 뒤에, 상세 카드 밖에 구획마다 접는 상자 하나로(#136 · IQC #133 과 같다). 내용과 동작은 그대로다.
    * 회차 이력은 회차가 둘 이상(재검사 중이면 하나 이상)일 때만 선다 — 서지 않으면 접는 상자도 두지 않는다.
    */
-  const historyRevision = `${String(rounds.data?.length ?? 0)}:${JSON.stringify(round ?? null)}`;
-  const historyCount = useInspectionHistory(selectedId, historyRevision).data?.events.length;
-  const roundCount = rounds.data?.length ?? 0;
-  /* 출하 OQC 새 흐름은 회차 이력이 없다 — 결과 표가 대신한다(시안 W0403 「없어짐」). */
-  const showsRoundHistory =
-    (detail.data === undefined || !isShipmentOqc(detail.data)) &&
-    (roundCount > 1 || (isReinspectingNow && roundCount > 0));
 
   const auxContent =
-    selectedId === null || detail.isError || detail.data === undefined ? null : (
+    selectedId === null || detail.isError || detail.data === undefined || skippedShipment ? null : (
       <div className="oqc-inspection-aux">
         {/* ⛔ 읽기 전용이다 — 앞 회차는 정정하지 않고 새 회차를 쌓는다(§5-3). */}
         {showsRoundHistory && (
@@ -1011,52 +1065,7 @@ export const OqcInspectionScreen = () => {
           <Tabs
             key={selectedId}
             aria-label={messages.inspectionHistory.heading}
-            items={[
-              {
-                value: 'history',
-                label: messages.inspectionHistory.heading,
-                content: (
-                  <div className="oqc-inspection-tab-body">
-                    <div className="oqc-inspection-tab-head">
-                      <h3>{t.detail.historyTitle}</h3>
-                      {historyCount !== undefined && (
-                        <span className="oqc-inspection-fold-chip">
-                          {t.detail.historyCount(historyCount)}
-                        </span>
-                      )}
-                    </div>
-                    <InspectionHistoryPanel
-                      hideSourceLot
-                      key={`${String(selectedId)}-${String(roundCount)}`}
-                      inspectionRequestId={selectedId}
-                      judgmentLabelOf={(code) => labelOfCode(judgmentOptions, code)}
-                      revision={historyRevision}
-                    />
-                  </div>
-                ),
-              },
-              ...(detail.data.targetTypeCode === 'SHIPMENT_REQUEST'
-                ? [
-                    {
-                      value: 'serials',
-                      label: t.serials.recordTab,
-                      content: (
-                        <div className="oqc-inspection-tab-body">
-                          <div className="oqc-inspection-tab-head">
-                            <h3>{t.serials.recordHeading}</h3>
-                            {serialRecordCount !== undefined && (
-                              <span className="oqc-inspection-fold-chip">
-                                {t.serials.recordCount(serialRecordCount)}
-                              </span>
-                            )}
-                          </div>
-                          <SerialRecords inspectionRequestId={selectedId} />
-                        </div>
-                      ),
-                    },
-                  ]
-                : []),
-            ]}
+            items={historyTabItems}
           />
         </section>
       </div>

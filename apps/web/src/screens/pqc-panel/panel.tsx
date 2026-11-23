@@ -50,6 +50,8 @@ import { PanelActions } from './panel-actions';
 import { pqcPanelKeys, useLatestRound, useRoundMeasurements } from './queries';
 import { ResultForm } from './result-form';
 import { SplitResultForm } from './split-result-form';
+import type { SkippedOverviewTab } from '../parts-iqc-inspection/skipped-overview';
+
 import { PqcSkippedOverview } from './skipped-overview';
 import { PanelTargetHeader } from './target-header';
 import { WebActions } from './web-actions';
@@ -100,6 +102,8 @@ export interface PqcPanelProps {
    * 입력을 고치면 참, 서버가 저장·확정을 받았으면 거짓이다.
    */
   onDirtyChange?: (dirty: boolean) => void;
+  /** 생략 건 상세의 「검사 진행」 뒤 탭(검사 이력) — 관리웹만 넘긴다(사용자 지시 2026-11-23 · #353). */
+  skippedTabs?: SkippedOverviewTab[];
 }
 
 /**
@@ -119,6 +123,7 @@ export const PqcPanel = ({
   withKeypad,
   variant,
   onDirtyChange,
+  skippedTabs,
 }: PqcPanelProps) => {
   const detail = useInspectionRequestDetail(inspectionRequestId);
   const itemSpecs = useInspectionItemSpecs(detail.data?.inspectionPlanVersionId ?? null);
@@ -431,7 +436,11 @@ export const PqcPanel = ({
       return (
         <div className="pqc-web">
           {/* IQC 생략 건과 같은 틀(사용자 지시 2026-11-23 · #353). */}
-          <PqcSkippedOverview detail={target} uomCode={uomCodeOf(target.uomId)} />
+          <PqcSkippedOverview
+            detail={target}
+            uomCode={uomCodeOf(target.uomId)}
+            {...(skippedTabs === undefined ? {} : { tabs: skippedTabs })}
+          />
         </div>
       );
     }

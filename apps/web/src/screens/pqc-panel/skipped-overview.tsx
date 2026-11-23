@@ -2,7 +2,11 @@ import { messages } from '@omf-mes/i18n';
 
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { PlanViewLauncher } from '../iqc-inspection/plan-view-launcher';
-import { SkippedOverview, usePlanCode } from '../parts-iqc-inspection/skipped-overview';
+import {
+  SkippedOverview,
+  type SkippedOverviewTab,
+  usePlanCode,
+} from '../parts-iqc-inspection/skipped-overview';
 import type { InspectionRequestDetail } from '../pqc-inspection/types';
 import { useItem, useLotDetail } from '../production-result/flow-queries';
 import { useTargetLots, useWorkOrder } from '../production-result/queries';
@@ -16,9 +20,12 @@ const VOIDED_LIFECYCLE = 'VOIDED';
 export const PqcSkippedOverview = ({
   detail,
   uomCode,
+  tabs,
 }: {
   detail: InspectionRequestDetail;
   uomCode: string | null;
+  /** 검사 이력 탭 — 관리웹 화면이 넘긴다(IQC 와 같은 「검사 진행 · 검사 이력」 · #353). */
+  tabs?: SkippedOverviewTab[];
 }) => {
   const workOrder = useWorkOrder(detail.workOrderId);
   const item = useItem(detail.itemId);
@@ -38,6 +45,7 @@ export const PqcSkippedOverview = ({
   return (
     <SkippedOverview
       title={tp.skipped.titlePqc}
+      {...(tabs === undefined ? {} : { tabs })}
       itemLabel={tp.skipped.item}
       itemParts={
         itemCode === undefined ? null : { code: itemCode, name: item.data?.itemName ?? '-' }
@@ -58,7 +66,8 @@ export const PqcSkippedOverview = ({
         {
           key: 'qty',
           label: t.targetQty,
-          value: uomCode === null ? String(detail.targetQty) : `${String(detail.targetQty)} ${uomCode}`,
+          value:
+            uomCode === null ? String(detail.targetQty) : `${String(detail.targetQty)} ${uomCode}`,
         },
         {
           key: 'at',

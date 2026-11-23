@@ -32847,6 +32847,11 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   border-top: 0;
 }
 
+/* PQC · OQC 생략 요약 — 제목 · 안내 줄과 첫 카드 사이를 띄운다(사용자 지시 2026-11-23 · #353). */
+.parts-iqc-detail-head + .parts-iqc-block.parts-iqc-skipped {
+  margin-top: var(--space-4);
+}
+
 /* 생략 요약의 자재명 — 이름과 코드를 한 줄에. */
 .parts-iqc-fact-key.parts-iqc-fact-inline {
   display: flex;
