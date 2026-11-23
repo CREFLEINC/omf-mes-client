@@ -188,7 +188,7 @@ export const PaneSplitter = ({
         title={collapse.collapsed ? collapse.expandLabel : collapse.collapseLabel}
         onClick={collapse.onToggle}
       >
-        <Icon name={collapse.collapsed ? 'chevron_right' : 'chevron_left'} size={18} />
+        <Icon name={collapse.collapsed ? 'left_panel_open' : 'left_panel_close'} size={18} />
       </button>
     )}
     {collapse?.collapsed !== true && (

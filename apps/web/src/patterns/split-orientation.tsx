@@ -149,7 +149,7 @@ export const PaneHeightSplitter = ({
         onPointerDown={(event) => event.stopPropagation()}
         onClick={collapse.onToggle}
       >
-        <Icon name={collapse.collapsed ? 'expand_more' : 'expand_less'} size={18} />
+        <Icon name={collapse.collapsed ? 'top_panel_open' : 'top_panel_close'} size={18} />
       </button>
     )}
   </div>
