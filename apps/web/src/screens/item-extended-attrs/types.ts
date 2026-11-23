@@ -75,6 +75,12 @@ export interface ItemAttrsFormValues {
   defaultLotStorageUomId: string;
   /** 생산 LOT 기본크기. 비우면 요청에 `null`이 실린다. */
   defaultProductionLotSize: string;
+  /**
+   * 자재 관리 LOT 패키징 단위 기본값(피처 014 FR-018). 비우면 `null`. LOT 당 패키징 수량과 함께 있거나 함께 빈다.
+   */
+  defaultPackageUomId: string;
+  /** LOT 당 패키징 수량 기본값(LOT 하나에 든 패키징 개수, 정수 ≥ 1). 자재 LOT 기본크기를 나머지 없이 나눠야 한다. */
+  defaultPackageCount: string;
   serialControlTypeCode: string;
   /**
    * 「유효기한 관리」 토글. **계약 필드가 아니다** —

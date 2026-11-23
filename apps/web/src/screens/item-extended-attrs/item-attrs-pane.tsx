@@ -14,6 +14,8 @@ export interface ItemAttrsPaneProps {
   /** 고른 품목의 유형 코드 — LOT 기본크기의 이름과 표시 여부가 이것으로 갈린다(`lotSizeLabelOf`). */
   itemTypeCode: string;
   uomOptions: SelectOption[];
+  /** 패키징 단위 고르기 목록(피처 014) — 없으면 `uomOptions` 를 쓴다. */
+  packageUomOptions?: SelectOption[];
   onChange: (patch: Partial<ItemAttrsFormValues>) => void;
   fieldErrors: Record<string, string>;
   banner: ReactNode;
@@ -31,6 +33,7 @@ export const ItemAttrsPane = ({
   values,
   itemTypeCode,
   uomOptions,
+  packageUomOptions = uomOptions,
   onChange,
   fieldErrors,
   banner,
@@ -41,6 +44,8 @@ export const ItemAttrsPane = ({
 }: ItemAttrsPaneProps) => {
   const lotStorageUomId = useId();
   const productionLotSizeId = useId();
+  const packageUomId = useId();
+  const packageCountId = useId();
   const shelfLifeManagedId = useId();
   const fifoId = useId();
   const inspectionId = useId();
@@ -50,6 +55,47 @@ export const ItemAttrsPane = ({
     { value: '', label: t.attrs.values.unspecified },
     ...uomOptions,
   ];
+  /* 패키징 기본값은 자재 관리 LOT 의 것이라 원자재 · 부자재에만 둔다(피처 014 FR-018 · 시안 W6). */
+  const isMaterialItem = isMaterialItemType(itemTypeCode);
+  const packageRows: SettingRow[] = isMaterialItem
+    ? [
+        {
+          id: packageUomId,
+          label: t.attrs.fields.defaultPackageUom,
+          error: fieldErrors.defaultPackageUomId,
+          control: (
+            <Select
+              size="sm"
+              id={packageUomId}
+              options={[{ value: '', label: t.attrs.values.unspecified }, ...packageUomOptions]}
+              value={values.defaultPackageUomId}
+              onChange={(value) => onChange({ defaultPackageUomId: value })}
+              invalid={fieldErrors.defaultPackageUomId !== undefined}
+            />
+          ),
+        },
+        {
+          id: packageCountId,
+          label: t.attrs.fields.defaultPackageCount,
+          info: t.attrs.defaultPackageCountNote,
+          control: (
+            <>
+              <TextField
+                size="sm"
+                id={packageCountId}
+                type="number"
+                step={1}
+                min={1}
+                value={values.defaultPackageCount}
+                onChange={(event) => onChange({ defaultPackageCount: event.target.value })}
+                error={fieldErrors.defaultPackageCount}
+              />
+              <span className="item-attrs-unit">{t.attrs.units.packages}</span>
+            </>
+          ),
+        },
+      ]
+    : [];
 
   const groups: SettingGroup[] = [
     {
@@ -89,6 +135,7 @@ export const ItemAttrsPane = ({
                 ),
               },
             ]),
+        ...packageRows,
       ],
     },
     {
@@ -243,6 +290,10 @@ export const lotSizeLabelOf = (itemTypeCode: string): string | null => {
   }
   return null;
 };
+
+/** 자재 관리 LOT 을 쓰는 품목유형 — 원자재 · 부자재(LOT 기본크기 이름이 「자재 LOT」인 유형). */
+const isMaterialItemType = (itemTypeCode: string): boolean =>
+  itemTypeCode === 'RAW_MATERIAL' || itemTypeCode === 'SUBSIDIARY_MATERIAL';
 
 interface SettingRow {
   /** 고르는 칸의 id — 항목 이름(label)이 이 칸을 부른다. */

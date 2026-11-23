@@ -1,3 +1,4 @@
+import type { ErrorItem } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import type { ItemAttrsFormValues } from './types';
@@ -21,6 +22,9 @@ const NON_NEGATIVE_INTEGER = /^\d+$/;
 export const ITEM_ATTRS_FORM_FIELDS: readonly string[] = [
   'defaultLotStorageUomId',
   'defaultProductionLotSize',
+  /* 피처 014 FR-018 — 서버 400 PAIR · INVALID 를 두 칸 아래에 낸다. */
+  'defaultPackageUomId',
+  'defaultPackageCount',
   'shelfLifeDays',
   'inspectionRequired',
   'fifoPolicyCode',
@@ -40,6 +44,25 @@ export const ITEM_ATTRS_FORM_FIELDS: readonly string[] = [
  * **유효기한 관리와 선출 정책을 연동하지 않는다**(이슈 #14 §4). 어긋난 조합에 경고도 내지 않는다 —
  * 경고는 자동 연동의 절반이며, 이슈가 「두 항목을 따로 받는다」로 정했다.
  */
+/**
+ * 서버 400 의 패키징 기본값 오류를 화면 문구로(피처 014 FR-018) — `PAIR` 는 「함께 넣거나 함께 비워」,
+ * LOT 당 패키징 수량의 `INVALID` 는 「패키징 수량이 부적합 합니다…」. 그 밖은 서버 문구 그대로.
+ */
+export const restatePackageError = (item: ErrorItem): string | undefined => {
+  if (item.field !== 'defaultPackageUomId' && item.field !== 'defaultPackageCount')
+    return undefined;
+  if (item.code === 'PAIR') return t.packagePair;
+  if (item.field === 'defaultPackageCount' && item.code === 'INVALID') return t.packageNotDivisible;
+  return undefined;
+};
+
+/** `size` 가 `count` 로 나머지 없이 나눠지는가 — 소수 기본크기의 부동소수 찌꺼기를 걷고 본다. */
+const isMultipleOf = (size: number, count: number): boolean => {
+  const quotient = size / count;
+
+  return Math.abs(quotient - Math.round(quotient)) < 1e-9;
+};
+
 export const validateItemAttrsForm = (values: ItemAttrsFormValues): Record<string, string> => {
   const errors: Record<string, string> = {};
 
@@ -62,6 +85,31 @@ export const validateItemAttrsForm = (values: ItemAttrsFormValues): Record<strin
 
   if (defaultProductionLotSize !== '' && !Number.isFinite(Number(defaultProductionLotSize))) {
     errors.defaultProductionLotSize = t.defaultProductionLotSizeInvalid;
+  }
+
+  /*
+   * 패키징 기본값(피처 014 FR-018) — 함께 넣거나 함께 비우고, LOT 당 패키징 수량은 1 이상 정수이며 자재 LOT
+   * 기본크기를 나머지 없이 나눠야 한다(서버와 같은 규칙: 기본크기 mod 수량 = 0). 기본크기가 비면 나눔은 보지 않는다.
+   */
+  const packageUomId = values.defaultPackageUomId.trim();
+  const packageCount = values.defaultPackageCount.trim();
+
+  if ((packageUomId === '') !== (packageCount === '')) {
+    if (packageUomId === '') errors.defaultPackageUomId = t.packagePair;
+    else errors.defaultPackageCount = t.packagePair;
+  } else if (packageCount !== '') {
+    const count = Number(packageCount);
+    const size = Number(defaultProductionLotSize);
+
+    if (!NON_NEGATIVE_INTEGER.test(packageCount) || count < 1) {
+      errors.defaultPackageCount = t.packageCountInvalid;
+    } else if (
+      defaultProductionLotSize !== '' &&
+      Number.isFinite(size) &&
+      !isMultipleOf(size, count)
+    ) {
+      errors.defaultPackageCount = t.packageNotDivisible;
+    }
   }
 
   /*

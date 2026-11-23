@@ -153,6 +153,9 @@ export const itemExtendedAttrs = {
       defaultProductionLotSize: '생산 LOT 기본크기',
       /** 원자재 · 부자재의 LOT 기본크기 — 생산 LOT 기본크기와 같은 칸을 쓴다(품목유형으로 이름만 갈린다). */
       defaultMaterialLotSize: '자재 LOT 기본크기',
+      /** 피처 014 FR-018 — 자재 관리 LOT 자동 생성이 복사하는 패키징 기본값(원자재 · 부자재만). */
+      defaultPackageUom: '패키징 단위 기본값',
+      defaultPackageCount: 'LOT 당 패키징 수량 기본값',
       serialControlType: '시리얼 관리 유형',
       shelfLifeManaged: '유효기한 관리',
       shelfLifeDays: '유효기한(일)',
@@ -168,7 +171,12 @@ export const itemExtendedAttrs = {
     /** 유효기한 관리 스위치 옆 일수 칸의 단위 — 칸 이름은 읽기 도구에만 있다. */
     units: {
       days: '일',
+      /** LOT 당 패키징 수량 칸의 단위 — 패키징 개수. */
+      packages: '개',
     },
+    /** LOT 당 패키징 수량 기본값 ⓘ — 시안 W0114-W0605 W6. */
+    defaultPackageCountNote:
+      '자재 관리 LOT 하나에 든 패키징 개수. 자재 LOT 기본크기를 나머지 없이 나눠야 합니다. 둘 다 비우면 패키징 없이 만듭니다.',
     /** IQC 대상 스위치 아래 안내 — 검사 기준의 IQC 「기본 생략」과 연동된다(omf-all-around#215). 전용 기준이 없으면 공통 기준을 따른다(2026-11-04). */
     inspectionRequiredSyncNote:
       '검사 기준의 IQC ‘기본 생략’과 함께 바뀝니다. 이 품목 전용 IQC 기준이 없으면 바꿀 때 새로 만들어지고, 그 전까지는 전 품목 공통 IQC 기준을 따릅니다.',
@@ -188,6 +196,12 @@ export const itemExtendedAttrs = {
       openedShelfLifeHoursInvalid: '개봉 후 유효시간(시간)은 1 이상의 정수로 입력하세요.',
       defaultLotStorageUomInvalid: 'LOT 보관 단위 기본값을 다시 선택하세요.',
       defaultProductionLotSizeInvalid: 'LOT 기본크기는 숫자로 입력하세요.',
+      /* 피처 014 FR-018 — 서버 400 PAIR 도 이 문구로. */
+      packagePair: '패키징 단위와 LOT 당 패키징 수량은 함께 넣거나 함께 비워 주세요',
+      packageCountInvalid: 'LOT 당 패키징 수량은 1 이상의 정수로 입력하세요.',
+      /* 서버 400 INVALID 와 같은 문구(명세 FR-018 · 검토 의견 2026-11-23). */
+      packageNotDivisible:
+        '패키징 수량이 부적합 합니다. 자재 LOT 기본크기를 정확히 나눌 수 있는 값을 입력해주세요.',
     },
   },
   /**

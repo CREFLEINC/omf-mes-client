@@ -237,6 +237,7 @@ export const popMaterialLotLabel = {
     item: '품목',
     /** 기본값을 어디서 채웠나(US1-1 · US1-3). */
     source: {
+      item: '품목 기본값에서 가져옴',
       default: '기본 정보에서 가져옴',
       itemStorage: '공급사·품목 기본 정보 없음 — 품목 기본 보관 단위로 채움', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
       none: '기본 정보 없음 — 직접 입력',

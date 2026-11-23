@@ -26,6 +26,14 @@ export const itemToAttrsFormValues = (item: Item): ItemAttrsFormValues => ({
     item.defaultProductionLotSize === null || item.defaultProductionLotSize === undefined
       ? ''
       : String(item.defaultProductionLotSize),
+  defaultPackageUomId:
+    item.defaultPackageUomId === null || item.defaultPackageUomId === undefined
+      ? ''
+      : String(item.defaultPackageUomId),
+  defaultPackageCount:
+    item.defaultPackageCount === null || item.defaultPackageCount === undefined
+      ? ''
+      : String(item.defaultPackageCount),
   serialControlTypeCode: item.serialControlTypeCode,
   /*
    * 계약에 「유효기한 관리」 컬럼이 없다 — `shelfLifeDays`의 널 여부가 그 토글이다(§8-2).
@@ -65,6 +73,8 @@ export const toItemUpdate = (values: ItemAttrsFormValues, source: Item): ItemUpd
   const nameVi = values.nameVi.trim();
   const defaultLotStorageUomId = values.defaultLotStorageUomId.trim();
   const defaultProductionLotSize = values.defaultProductionLotSize.trim();
+  const defaultPackageUomId = values.defaultPackageUomId.trim();
+  const defaultPackageCount = values.defaultPackageCount.trim();
   const storageConditionCode = values.storageConditionCode.trim();
   const openedShelfLifeHours = values.openedShelfLifeHours.trim();
 
@@ -76,6 +86,9 @@ export const toItemUpdate = (values: ItemAttrsFormValues, source: Item): ItemUpd
     defaultLotStorageUomId: defaultLotStorageUomId === '' ? null : Number(defaultLotStorageUomId),
     defaultProductionLotSize:
       defaultProductionLotSize === '' ? null : Number(defaultProductionLotSize),
+    /* 피처 014 FR-018 — 둘은 함께 보내고, 비우면 널로 지운다. */
+    defaultPackageUomId: defaultPackageUomId === '' ? null : Number(defaultPackageUomId),
+    defaultPackageCount: defaultPackageCount === '' ? null : Number(defaultPackageCount),
     // 앞뒤 공백이 붙은 코드는 눈으로 구분되지 않는 다른 값이 된다.
     serialControlTypeCode: values.serialControlTypeCode.trim(),
     // 토글 OFF는 「값을 비운다」가 아니라 「유효기한을 관리하지 않는다」다 — 널을 명시해 보낸다.
@@ -97,6 +110,8 @@ export const isSameItemAttrsValues = (a: ItemAttrsFormValues, b: ItemAttrsFormVa
   a.lotControlled === b.lotControlled &&
   a.defaultLotStorageUomId === b.defaultLotStorageUomId &&
   a.defaultProductionLotSize === b.defaultProductionLotSize &&
+  a.defaultPackageUomId === b.defaultPackageUomId &&
+  a.defaultPackageCount === b.defaultPackageCount &&
   a.serialControlTypeCode === b.serialControlTypeCode &&
   a.shelfLifeManaged === b.shelfLifeManaged &&
   a.shelfLifeDays === b.shelfLifeDays &&

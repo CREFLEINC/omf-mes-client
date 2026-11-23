@@ -174,3 +174,83 @@ describe('validateItemAttrsForm — 유효기한과 선출 정책을 연동하�
     ).toEqual({});
   });
 });
+
+/** 피처 014 FR-018 — 패키징 단위 · LOT 당 패키징 수량 기본값. */
+describe('US5 패키징 기본값 검사', () => {
+  const NOT_DIVISIBLE =
+    '패키징 수량이 부적합 합니다. 자재 LOT 기본크기를 정확히 나눌 수 있는 값을 입력해주세요.';
+  const PAIR = '패키징 단위와 LOT 당 패키징 수량은 함께 넣거나 함께 비워 주세요';
+
+  it('US5-1 둘 다 비우거나 둘 다 넣고 나눠지면 통과한다', () => {
+    expect(
+      validateItemAttrsForm(withValues({ defaultPackageUomId: '', defaultPackageCount: '' })),
+    ).toEqual({});
+    expect(
+      validateItemAttrsForm(
+        withValues({
+          defaultProductionLotSize: '100',
+          defaultPackageUomId: '7003',
+          defaultPackageCount: '10',
+        }),
+      ),
+    ).toEqual({});
+  });
+
+  it('US5-2 하나만 넣으면 빈 칸에 「함께 넣거나 함께 비워」를 낸다', () => {
+    expect(
+      validateItemAttrsForm(withValues({ defaultPackageUomId: '7003', defaultPackageCount: '' })),
+    ).toEqual({ defaultPackageCount: PAIR });
+    expect(
+      validateItemAttrsForm(withValues({ defaultPackageUomId: '', defaultPackageCount: '10' })),
+    ).toEqual({ defaultPackageUomId: PAIR });
+  });
+
+  it('US5-3 LOT 당 패키징 수량이 기본크기를 나누지 못하면(100 ÷ 30) 막는다', () => {
+    expect(
+      validateItemAttrsForm(
+        withValues({
+          defaultProductionLotSize: '100',
+          defaultPackageUomId: '7003',
+          defaultPackageCount: '30',
+        }),
+      ),
+    ).toEqual({ defaultPackageCount: NOT_DIVISIBLE });
+    /* 서버와 같다 — 기본크기 mod 수량 = 0. 2.5 ÷ 5 는 막힌다. */
+    expect(
+      validateItemAttrsForm(
+        withValues({
+          defaultProductionLotSize: '2.5',
+          defaultPackageUomId: '7003',
+          defaultPackageCount: '5',
+        }),
+      ),
+    ).toEqual({ defaultPackageCount: NOT_DIVISIBLE });
+  });
+
+  it('US5-3 0 · 소수 · 글자는 1 이상 정수로 넣으라고 한다', () => {
+    for (const count of ['0', '2.5', 'abc', '-1']) {
+      expect(
+        validateItemAttrsForm(
+          withValues({ defaultPackageUomId: '7003', defaultPackageCount: count }),
+        ).defaultPackageCount,
+      ).toBe('LOT 당 패키징 수량은 1 이상의 정수로 입력하세요.');
+    }
+  });
+
+  it('US5-3 기본크기가 비어 있으면 나눔 검사를 건너뛴다', () => {
+    expect(
+      validateItemAttrsForm(
+        withValues({
+          defaultProductionLotSize: '',
+          defaultPackageUomId: '7003',
+          defaultPackageCount: '30',
+        }),
+      ),
+    ).toEqual({});
+  });
+
+  it('US5 서버 오류도 두 칸에 붙도록 폼 칸 목록에 있다', () => {
+    expect(ITEM_ATTRS_FORM_FIELDS).toContain('defaultPackageUomId');
+    expect(ITEM_ATTRS_FORM_FIELDS).toContain('defaultPackageCount');
+  });
+});

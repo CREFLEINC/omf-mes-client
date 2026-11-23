@@ -33,7 +33,11 @@ import { ExternalCodePane } from './external-code-pane';
 import { ITEM_KEY, readItemFilters, readPage, readSelectedId, toSearchParams } from './filters';
 import { ItemAttrsPane } from './item-attrs-pane';
 import { isSameItemAttrsValues, itemToAttrsFormValues, toItemUpdate } from './item-attrs-mappers';
-import { ITEM_ATTRS_FORM_FIELDS, validateItemAttrsForm } from './item-attrs-validation';
+import {
+  ITEM_ATTRS_FORM_FIELDS,
+  restatePackageError,
+  validateItemAttrsForm,
+} from './item-attrs-validation';
 import { ItemFilterBar, ItemListPane } from './item-list-pane';
 import { ItemOriginFacts } from './item-origin-pane';
 import { ItemResourceMapSection } from './item-resource-map-section';
@@ -274,6 +278,8 @@ export const ItemExtendedAttrsScreen = () => {
     /* 「IQC 대상」은 그 품목 IQC 검사 기준의 기본 생략을 함께 바꾼다(#215) — 검사 기준 화면 자료도 다시 읽게 한다. */
     invalidateKeys: [itemKeys.all, planKeys.all],
     knownFields: ITEM_ATTRS_FORM_FIELDS,
+    /* 패키징 기본값 400(피처 014 FR-018) — PAIR · INVALID 를 화면 문구(ko·vi)로 바꿔 낸다. */
+    restateFieldError: restatePackageError,
     onSuccess: (saved) => {
       setAttrsFieldErrors({});
       const next = itemToAttrsFormValues(saved);
@@ -688,6 +694,7 @@ export const ItemExtendedAttrsScreen = () => {
         values={formState.values}
         itemTypeCode={formState.source.item.itemTypeCode}
         uomOptions={selectableOptions(uomOptions, formState.values.defaultLotStorageUomId)}
+        packageUomOptions={selectableOptions(uomOptions, formState.values.defaultPackageUomId)}
         onChange={changeAttrsValues}
         // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
         fieldErrors={{ ...attrsWrite.fieldErrors, ...attrsFieldErrors }}

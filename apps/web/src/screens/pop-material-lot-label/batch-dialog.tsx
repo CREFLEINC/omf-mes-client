@@ -9,6 +9,7 @@ import {
   isIntegerUom,
   prefillBatch,
   toBatchBody,
+  useItemLotDefault,
   useItemStorageUnit,
   useSupplierItemDefault,
   useUomOptions,
@@ -66,6 +67,7 @@ export const BatchDialog = (props: BatchDialogProps) => {
   const target = { plantId, supplierId: group.supplierId, itemId: group.itemId };
   const defaults = useSupplierItemDefault(target);
   const storage = useItemStorageUnit(group.itemId);
+  const itemDefault = useItemLotDefault(group.itemId);
   const uoms = useUomOptions();
   /* 기본값을 못 읽었으면 직접 입력으로 연다 — 막지 않는다. */
   const isLoading = defaults.isPending || (storage.isPending && !storage.isError);
@@ -94,7 +96,7 @@ export const BatchDialog = (props: BatchDialogProps) => {
   return (
     <BatchForm
       {...props}
-      prefill={prefillBatch(defaults.data ?? null, storage.data ?? null)}
+      prefill={prefillBatch(itemDefault.data ?? null, defaults.data ?? null, storage.data ?? null)}
       defaultsFailed={defaults.isError}
       uoms={uoms.data ?? []}
     />

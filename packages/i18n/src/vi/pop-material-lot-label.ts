@@ -190,6 +190,7 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     supplier: 'Nhà cung cấp',
     item: 'Mặt hàng',
     source: {
+      item: 'Lấy từ giá trị mặc định của mặt hàng',
       default: 'Lấy từ thông tin mặc định',
       itemStorage:
         'Chưa có thông tin mặc định nhà cung cấp · mặt hàng — điền theo đơn vị bảo quản mặc định của mặt hàng',
