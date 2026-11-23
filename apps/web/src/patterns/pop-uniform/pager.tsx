@@ -66,6 +66,84 @@ export const PuPager = ({
 };
 
 /**
+ * 쪽 줄 수 재기의 공통 틀 — `useFitCount` · `useFitTableRows` 가 함께 쓴다(피처 014 P-01-01 총괄 확인 2026-11-24).
+ *
+ * - 그릴 때마다 잰다(데이터가 바뀌어 줄이 높아지면 다음 그리기에서 줄인다 — 지금 동작 그대로).
+ * - ⭐ **진동 막기**: 줄 높이가 «그려진 줄 수»에 따라 바뀌면(두 줄 셀 · 칩이 든 줄이 보이느냐에 따라) 줄 수 → 보이는 줄 →
+ *   가장 높은 줄 → 줄 수가 번갈아 바뀌어 끝없이 돈다(Maximum update depth). 같은 칸 크기에서 «전에 거쳤던 값»으로 다시
+ *   줄어들면(= 돌기 시작) 그 값을 그 크기의 «천장»으로 삼아 다시 늘지 않는다 — 작은 쪽에 멈춘다. 처음 줄어드는 것
+ *   (데이터가 바뀌어 줄이 높아짐)은 천장을 만들지 않으므로 줄이 다시 낮아지면 지금처럼 늘어난다. 칸 크기(높이 · 폭)가
+ *   바뀌면 천장 · 거친 값을 풀고 새로 잰다.
+ * - ⭐ **칸이 갈려도 지켜본다**: 빈 상태 · 로딩으로 칸 요소가 내려갔다 다시 서면 `ref` 가 새 요소를 가리킨다. 크기 관찰을
+ *   새 요소로 옮겨 붙인다(전에는 처음 요소에 붙은 채라 창 크기를 바꿔도 다시 재지 않았다).
+ */
+const useFitMeasure = (
+  ref: RefObject<HTMLElement | null>,
+  fallback: number,
+  fitsOf: (box: HTMLElement) => number | null,
+): number => {
+  const [count, setCount] = useState(fallback);
+  const size = useRef<{
+    height: number;
+    width: number;
+    ceiling: number | null;
+    seen: Set<number>;
+  }>({ height: -1, width: -1, ceiling: null, seen: new Set() });
+  const fitsRef = useRef(fitsOf);
+  fitsRef.current = fitsOf;
+
+  const measure = useCallback(() => {
+    const box = ref.current;
+    if (box === null) return;
+    const height = box.clientHeight;
+    const width = box.clientWidth;
+    if (height <= 0) return;
+    if (height !== size.current.height || width !== size.current.width) {
+      size.current = { height, width, ceiling: null, seen: new Set() };
+    }
+    const fits = fitsRef.current(box);
+    if (fits === null) return;
+    setCount((prev) => {
+      const { ceiling, seen } = size.current;
+      const next = ceiling === null ? fits : Math.min(fits, ceiling);
+      if (next < prev && seen.has(next)) size.current.ceiling = next;
+      seen.add(prev);
+      seen.add(next);
+
+      return prev === next ? prev : next;
+    });
+  }, [ref]);
+
+  const observed = useRef<{ element: HTMLElement; observer: ResizeObserver } | null>(null);
+
+  useLayoutEffect(() => {
+    const box = ref.current;
+    if (observed.current?.element !== box) {
+      observed.current?.observer.disconnect();
+      observed.current = null;
+      if (box !== null && typeof ResizeObserver !== 'undefined') {
+        const observer = new ResizeObserver(() => {
+          measure();
+        });
+        observer.observe(box);
+        observed.current = { element: box, observer };
+      }
+    }
+    measure();
+  });
+
+  useEffect(
+    () => () => {
+      observed.current?.observer.disconnect();
+      observed.current = null;
+    },
+    [],
+  );
+
+  return count;
+};
+
+/**
  * 구획 높이에 들어가는 한 쪽 건수. `ref` 는 목록이 놓이는 칸(높이가 정해진 칸)이다.
  *
  * 그려진 줄 높이(가장 큰 것)와 간격으로 「몇 줄 들어가나」를 잰다. 줄이 아직 없으면 `fallback`.
@@ -73,49 +151,25 @@ export const PuPager = ({
  *
  * ⭐ 줄 높이는 «처음 잰 값»을 붙들지 않는다 — 데이터가 바뀌어 줄이 높아지면(두 줄 글 등) 다음 그리기에서
  *    다시 재서 줄인다. 그래서 넘치는 순간이 한 번 있을 수 있어 칸은 `overflow:hidden`(`.pu-fit`)으로 둔다.
+ *    같은 칸 크기에서 줄었다 늘었다 하면 작은 쪽에 멈춘다(`useFitMeasure`).
  */
 export const useFitCount = (
   ref: RefObject<HTMLElement | null>,
   { fallback = 5, min = 1, max = 50 }: { fallback?: number; min?: number; max?: number } = {},
-): number => {
-  const [count, setCount] = useState(fallback);
-
-  const measure = useCallback(() => {
-    const box = ref.current;
-    if (box === null) return;
-    const height = box.clientHeight;
-    if (height <= 0) return;
+): number =>
+  useFitMeasure(ref, fallback, (box) => {
     const rows = Array.from(box.children).filter(
       (child): child is HTMLElement => child instanceof HTMLElement && child.offsetHeight > 0,
     );
-    if (rows.length === 0) return;
+    if (rows.length === 0) return null;
     const style = getComputedStyle(box);
     const gap = Number.parseFloat(style.rowGap) || 0;
     const rowHeight = Math.max(...rows.map((row) => row.offsetHeight));
-    if (rowHeight <= 0) return;
-    const fits = Math.floor((height + gap) / (rowHeight + gap));
-    const next = Math.min(max, Math.max(min, fits));
-    setCount((prev) => (prev === next ? prev : next));
-  }, [ref, min, max]);
+    if (rowHeight <= 0) return null;
+    const fits = Math.floor((box.clientHeight + gap) / (rowHeight + gap));
 
-  useLayoutEffect(() => {
-    measure();
+    return Math.min(max, Math.max(min, fits));
   });
-
-  useLayoutEffect(() => {
-    const box = ref.current;
-    if (box === null || typeof ResizeObserver === 'undefined') return undefined;
-    const observer = new ResizeObserver(() => {
-      measure();
-    });
-    observer.observe(box);
-    return () => {
-      observer.disconnect();
-    };
-  }, [ref, measure]);
-
-  return count;
-};
 
 /**
  * 표에 들어가는 한 쪽 줄 수. `ref` 는 표를 감싼 칸(높이가 정해진 칸), 머리 줄은 빼고 잰다.
@@ -123,44 +177,19 @@ export const useFitCount = (
 export const useFitTableRows = (
   ref: RefObject<HTMLElement | null>,
   { fallback = 5, min = 1, max = 50 }: { fallback?: number; min?: number; max?: number } = {},
-): number => {
-  const [count, setCount] = useState(fallback);
-
-  const measure = useCallback(() => {
-    const box = ref.current;
-    if (box === null) return;
-    const height = box.clientHeight;
-    if (height <= 0) return;
+): number =>
+  useFitMeasure(ref, fallback, (box) => {
     const head = box.querySelector('thead');
     const rows = Array.from(box.querySelectorAll('tbody > tr')).filter(
       (row): row is HTMLElement => row instanceof HTMLElement && row.offsetHeight > 0,
     );
-    if (rows.length === 0) return;
+    if (rows.length === 0) return null;
     const rowHeight = Math.max(...rows.map((row) => row.offsetHeight));
     const headHeight = head instanceof HTMLElement ? head.offsetHeight : 0;
-    const fits = Math.floor((height - headHeight - 2) / rowHeight);
-    const next = Math.min(max, Math.max(min, fits));
-    setCount((prev) => (prev === next ? prev : next));
-  }, [ref, min, max]);
+    const fits = Math.floor((box.clientHeight - headHeight - 2) / rowHeight);
 
-  useLayoutEffect(() => {
-    measure();
+    return Math.min(max, Math.max(min, fits));
   });
-
-  useLayoutEffect(() => {
-    const box = ref.current;
-    if (box === null || typeof ResizeObserver === 'undefined') return undefined;
-    const observer = new ResizeObserver(() => {
-      measure();
-    });
-    observer.observe(box);
-    return () => {
-      observer.disconnect();
-    };
-  }, [ref, measure]);
-
-  return count;
-};
 
 export interface PuPage<T> {
   items: T[];
