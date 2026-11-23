@@ -283,7 +283,7 @@ describe('US1-5 공급사 LOT · 만들기', () => {
 });
 
 describe('US1-7 입하 대기 LOT 폐기', () => {
-  it('US1-7 고른 대기 LOT 을 확인 뒤 폐기한다 — 폐기는 아래로 내려간다', async () => {
+  it('US1-7 고른 대기 LOT 을 확인 뒤 폐기한다 — 폐기한 LOT 은 목록에서 빠진다', async () => {
     const user = userEvent.setup();
     const { sent } = renderLabelScreen();
 
@@ -304,8 +304,8 @@ describe('US1-7 입하 대기 LOT 폐기', () => {
     await waitFor(() =>
       expect(screen.queryAllByRole('checkbox', { name: /SYN-ITEM-01\|/u })).toHaveLength(0),
     );
-    const table = screen.getByRole('group', { name: t.work.waitingTitle });
-    expect(within(table).getAllByText(t.lotState.voided)).toHaveLength(3);
+    /* 폐기한 LOT 은 발행 대기 목록에서 빠진다(사용자 지시 2026-11-23). */
+    expect(document.body.textContent).not.toMatch(/\|000[124]/u);
   });
 
   it('대기가 아닌 LOT 은 서버가 건별 실패로 돌려준다 — 「N개 폐기 · 실패 N」으로 묶는다', async () => {

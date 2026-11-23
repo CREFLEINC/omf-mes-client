@@ -25,7 +25,6 @@ export const popMaterialLotLabel = {
   /** 왼쪽 공급사·품목 목록. 칩은 대기 자재 관리 LOT 수다. */
   pairs: {
     label: '공급사·품목', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
-    waiting: (count: number) => `입하 대기 ${count}`,
     /** 기본 정보 줄 뒤에 라벨 미출력 수(시안 「· 라벨 미출력 N」). */
     withUnprinted: (line: string, count: number) => `${line} · 라벨 미출력 ${count}`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
     /** 기본 정보 한 줄 — 패키징이 있으면 「기본 봉지 10 × 100 = 1,000 EA」. */

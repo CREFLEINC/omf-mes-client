@@ -4701,6 +4701,50 @@
   flex: 0 0 auto;
 }
 
+/* 맨 위 줄 오른쪽 끝 [설정](톱니) — 누르면 아래로 [단말 재등록] · [종료] 메뉴가 열린다(사용자 지시 2026-11-23). */
+.pop-nav-top__settings {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.pop-nav-top .pop-nav-top__settings-button {
+  min-width: 0;
+  padding-inline: 12px;
+}
+
+.pop-nav-top__settings-menu {
+  position: absolute;
+  inset-block-start: calc(100% + var(--space-2));
+  inset-inline-end: 0;
+  z-index: 30;
+  display: grid;
+  gap: var(--space-2);
+  min-width: 14rem;
+  padding: var(--space-2);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--elevation-2);
+}
+
+.pop-nav-top__settings-menu > button {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+/* 메뉴는 밝은 판 위라 머리줄의 어두운 단추 모양을 걷고 밝은 테두리 단추로 — 손가락 높이(48px). */
+.pop-nav-top .pop-nav-top__settings-menu .pop-logout {
+  min-height: 48px;
+  border-color: var(--outline-variant);
+  background: var(--surface);
+  color: var(--on-surface);
+  font-size: 16px;
+}
+
+.pop-nav-top .pop-nav-top__settings-menu .pop-logout:hover {
+  background: var(--surface-container);
+}
+
 /* 1024 폭 — 갱신 시각 · [종료]가 더해져 단말·설비 칩이 다 줄지 않게 맨 위 줄 단추 여백을 줄인다(#295). */
 @media (max-width: 1180px) {
   .pop-nav-top {
@@ -4713,7 +4757,7 @@
   }
 
   /* 사번·새로고침 단추는 글자만 — 아이콘 자리를 단말·설비 칩에 준다. [종료]는 전원 아이콘을 둔다. */
-  .pop-nav-top .pop-logout:not(.pop-nav-top__exit) .pop-nav-icon {
+  .pop-nav-top > .pop-logout:not(.pop-nav-top__exit) .pop-nav-icon {
     display: none;
   }
 

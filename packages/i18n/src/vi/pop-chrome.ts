@@ -75,6 +75,7 @@ export const popChrome: Translated<typeof ko.popChrome> = {
   login: 'Đăng nhập',
   refresh: 'Làm mới',
   refreshedAt: (time: string): string => `Cập nhật ${time}`,
+  settings: 'Cài đặt',
   exit: {
     button: 'Thoát',
     title: 'Thoát màn hình POP?',

@@ -132,7 +132,8 @@ export const LabelTable = ({
               <th className="mll-itemcol">{t.columns.item}</th>
               <th className="num fit">{t.columns.qty}</th>
               <th className="fit">{t.columns.package}</th>
-              <th className="fit mid">{t.columns.status}</th>
+              {/* 발행 대기 표는 모두 입하 대기라 LOT 상태 칸을 두지 않는다(사용자 지시 2026-11-23). */}
+              {isReprint && <th className="fit mid">{t.columns.status}</th>}
               <th className="fit">
                 {showResults ? t.columns.result : isReprint ? t.columns.printed : t.columns.label}
               </th>
@@ -206,9 +207,11 @@ export const LabelTable = ({
                   </td>
                   <td className="num fit">{qtyText}</td>
                   <td className="fit">{packageText}</td>
-                  <td className="fit mid">
-                    <LotStateChip lot={lot} />
-                  </td>
+                  {isReprint && (
+                    <td className="fit mid">
+                      <LotStateChip lot={lot} />
+                    </td>
+                  )}
                   <td className="fit">
                     {status !== null ? (
                       <PuChip tone={statusTone(status)}>{statusText(status)}</PuChip>

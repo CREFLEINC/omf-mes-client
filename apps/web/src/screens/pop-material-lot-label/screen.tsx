@@ -200,15 +200,11 @@ export const PopMaterialLotLabelScreen = () => {
     [current, waitOrder],
   );
   /*
-   * 입하 대기를 위에, 폐기를 아래에 — 폐기는 고를 수 없다(screens/P-01-01.md).
+   * 발행 대기 표는 입하 대기 LOT 만 — 폐기한 LOT 은 목록에서 뺀다(사용자 지시 2026-11-23).
    * ⭐ 라벨을 이미 발행한 LOT 은 발행 대기 표에 두지 않는다 — 재발행 탭에만 선다(사용자 지시 2026-11-19).
    */
   const waitingLots = useMemo(
-    () =>
-      currentLots
-        .filter(isUnissued)
-        .filter((lot) => isWaiting(lot) || isVoided(lot))
-        .sort((left, right) => Number(isVoided(left)) - Number(isVoided(right))),
+    () => currentLots.filter(isUnissued).filter(isWaiting),
     [currentLots],
   );
   const receivedLots = useMemo(

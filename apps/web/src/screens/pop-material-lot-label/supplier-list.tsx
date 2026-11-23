@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { RefObject } from 'react';
 
 import { formatBaseQty, formatPackageQty } from '../../patterns/package-qty';
-import { PuChip, puCx } from '../../patterns/pop-uniform';
+import { puCx } from '../../patterns/pop-uniform';
 import { pairKeyOf } from './types';
 
 const t = messages.popMaterialLotLabel.pairs;
@@ -34,7 +34,7 @@ export interface SupplierListProps {
 /**
  * 왼쪽 **공급사·품목** 목록(005 · screens/P-01-01.md · #295 시안).
  *
- * ⭐ 항목 전체가 누르는 자리다(규범 C-1). 칩은 입하 대기 자재 관리 LOT 수 — 0 이면 회색.
+ * ⭐ 항목 전체가 누르는 자리다(규범 C-1).
  * ⭐ 항목마다 공급사 · 기본 포장이 늘 보인다. 넘치면 화면이 쪽으로 나눈다(구획 안 스크롤 없음).
  */
 export const SupplierList = ({
@@ -62,13 +62,9 @@ export const SupplierList = ({
               onSelect(key);
             }}
           >
+            {/* 「입하 대기 N」 칩은 걷었다(사용자 지시 2026-11-23). */}
             <span className="pu-item-top">
               <span className="mll-pair-name">{`${group.itemCode} ${group.itemName}`}</span>
-              <span className="chips">
-                <PuChip tone={group.waitingCount > 0 ? 'warn' : 'idle'}>
-                  {t.waiting(group.waitingCount)}
-                </PuChip>
-              </span>
             </span>
             <span className="pu-item-sub">
               <span>

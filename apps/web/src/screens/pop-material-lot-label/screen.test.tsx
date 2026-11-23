@@ -43,20 +43,19 @@ const rowOf = (name: RegExp): HTMLElement =>
   screen.getByRole('checkbox', { name }).closest('tr') as HTMLElement;
 
 describe('PopMaterialLotLabelScreen — 공급사·품목(왼쪽)', () => {
-  it('공급사·품목마다 입하 대기 칩 · 공급사 · 기본 정보 한 줄 · 라벨 미출력을 보인다(입하 LOT 탭 없음)', async () => {
+  it('공급사·품목마다 공급사 · 기본 정보 한 줄 · 라벨 미출력을 보이고 입하 대기 칩은 없다(입하 LOT 탭 없음)', async () => {
     renderLabelScreen();
 
     const list = await screen.findByRole('list', { name: t.pairs.label });
     const [first, second] = within(list).getAllByRole('button');
 
     expect(first).toHaveTextContent('SYN-ITEM-01');
-    expect(first).toHaveTextContent(t.pairs.waiting(3));
+    expect(first).not.toHaveTextContent('입하 대기');
     expect(first).toHaveTextContent('합성 공급사 가');
     expect(first).toHaveTextContent(t.pairs.defaultPackaged('봉지 10 × 100 = 1,000 EA'));
     expect(first).toHaveTextContent(
       t.pairs.withUnprinted(t.pairs.defaultPackaged('봉지 10 × 100 = 1,000 EA'), 2),
     );
-    expect(second).toHaveTextContent(t.pairs.waiting(0));
     expect(second).toHaveTextContent(t.pairs.noDefault);
 
     /* ⛔ 입하 LOT 탭 · 라벨 대기 입하 줄은 없다(FR-036 · D-19·D-25). */
@@ -117,17 +116,17 @@ describe('PopMaterialLotLabelScreen — 공급사·품목(왼쪽)', () => {
 });
 
 describe('PopMaterialLotLabelScreen — 오른쪽 표', () => {
-  it('입하 대기는 위에, 폐기는 아래에(고를 수 없음) — 라벨을 발행한 LOT(입하 대기 · 입하됨)은 표에 없다', async () => {
+  it('입하 대기만 — 폐기한 LOT 과 라벨을 발행한 LOT(입하 대기 · 입하됨)은 표에 없다', async () => {
     renderLabelScreen();
 
     await waitFor(() => expect(waitingRows()).toHaveLength(2));
     const waitingTable = screen.getByRole('group', { name: t.work.waitingTitle });
     const text = waitingTable.textContent ?? '';
 
-    expect(text.indexOf('|0001')).toBeLessThan(text.indexOf('|0004'));
-    expect(within(waitingTable).getByText(t.lotState.voided)).toBeInTheDocument();
-    /* 폐기 LOT 은 체크 칸이 아니다. */
-    expect(screen.queryByRole('checkbox', { name: /\|0004 /u })).toBeNull();
+    expect(text).toContain('|0001');
+    /* 폐기한 LOT 은 목록에서 뺀다(사용자 지시 2026-11-23). */
+    expect(text).not.toContain('|0004');
+    expect(within(waitingTable).queryByText(t.lotState.voided)).toBeNull();
 
     /* 라벨을 발행한 LOT 은 발행 대기 표에 서지 않는다 — 재발행 탭에만(사용자 지시 2026-11-19). */
     expect(text).not.toContain('|0003');
@@ -145,7 +144,8 @@ describe('PopMaterialLotLabelScreen — 오른쪽 표', () => {
     expect(unprinted).toHaveTextContent('1,000 EA');
     expect(unprinted).toHaveTextContent('봉지 10 × 100');
     expect(unprinted).toHaveTextContent('SYN-SL-77');
-    expect(unprinted).toHaveTextContent(t.lotState.waiting);
+    /* 발행 대기 표는 모두 입하 대기라 LOT 상태 칸이 없다(사용자 지시 2026-11-23). */
+    expect(within(unprinted).queryByText(t.lotState.waiting)).toBeNull();
     expect(unprinted).toHaveTextContent(t.table.unprinted);
     expect(screen.queryByRole('checkbox', { name: /\|0003 /u })).toBeNull();
 

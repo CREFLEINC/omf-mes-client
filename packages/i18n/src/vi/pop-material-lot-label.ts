@@ -15,7 +15,6 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
   },
   pairs: {
     label: 'Nhà cung cấp · mặt hàng',
-    waiting: (count: number) => `Chờ nhập ${count}`,
     withUnprinted: (line: string, count: number) => `${line} · ${count} chưa in nhãn`,
     defaultPackaged: (text: string) => `Mặc định ${text}`,
     defaultUnpackaged: (text: string) => `Mặc định ${text} · Không đóng gói`,
