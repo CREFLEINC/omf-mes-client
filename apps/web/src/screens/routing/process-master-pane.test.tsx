@@ -271,7 +271,7 @@ describe('RoutingScreen — 공정 관리 탭', () => {
     await user.click(within(form).getByRole('button', { name: '재사용' }));
     const dialog = screen.getByRole('dialog');
     expect(
-      within(dialog).getByText(/새로운 공정 경로에 이 공정을 추가할 수 있습니다/),
+      within(dialog).getByText(/새로운 라우팅에 이 공정을 추가할 수 있습니다/),
     ).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: '재사용' }));
 

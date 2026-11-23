@@ -37338,6 +37338,11 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
     display: none;
   }
 
+  /* 접힘 — 목록 구획(제목 줄을 품은 첫 칸)을 감춘다. 공용 `.po-board-pane` 이 아닌 목록도 같다(#350). */
+  .po-board-split[data-left-collapsed]:not(.is-stacked) > :first-child:has(> .po-board-list-head) {
+    display: none;
+  }
+
   /* 접힘 — 왼쪽 48px 탭 + 상세. */
   .po-board-split:has(.po-board-list-head)[data-left-collapsed]:not(.is-stacked) {
     grid-template-columns: 48px minmax(0, 1fr);
@@ -37454,4 +37459,57 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-adjustable-grid.is-side > .po-board-gutter:has(> .po-board-list-tab) {
   position: relative;
   width: 48px;
+}
+
+/*
+ * 끌기 막대 없는 좌우 두 칸 화면의 목록 접기(#350) — 상자에 `list-collapsible` · `data-left-collapsed`, 목록 맨 위에
+ * `PaneListHead`, 목록 뒤에 `ListCollapseTab`. 두 칸이 나란히 서는 넓은 창(1440px~)에서만 접는다 — 좁으면 한 줄로 쌓여 접을 것이 없다.
+ */
+@media (min-width: 1440px) {
+  .list-collapsible .po-board-list-collapse {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    margin-left: auto;
+    padding: 0 14px 0 10px;
+    border: 1px solid var(--outline);
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--on-surface-variant);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .list-collapsible .po-board-list-collapse:hover {
+    border-color: var(--semantic-info);
+    background: var(--state-hover-neutral);
+    color: var(--on-surface);
+  }
+
+  .list-collapsible[data-left-collapsed] {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .list-collapsible[data-left-collapsed] > :first-child:has(> .po-board-list-head) {
+    display: none;
+  }
+
+  .list-collapsible > .po-board-list-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    align-self: stretch;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--on-surface-variant);
+    font: inherit;
+    cursor: pointer;
+  }
 }

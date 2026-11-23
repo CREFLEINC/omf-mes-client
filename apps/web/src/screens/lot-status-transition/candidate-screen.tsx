@@ -22,7 +22,12 @@ import {
   useFilterMore,
 } from '../../patterns/filter-more';
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import {
   PaneHeightSplitter,
   SplitOrientationToggle,
@@ -464,6 +469,13 @@ export const LotStatusTransitionCandidateScreen = () => {
   /* 고를 수 없는 크기(10 · 20 · 50 밖)를 서버가 돌려주면 크기 칸이 비므로 고른 크기를 보인다. */
   const shownPageSize: LotPageSize = LOT_PAGE_SIZES.find((size) => size === meta?.size) ?? pageSize;
 
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: messages.common.inspectionHub.listCollapse,
+    expandLabel: messages.common.inspectionHub.listExpand,
+    count: meta?.total,
+  };
   return (
     <div className="lot-status-transition-flow">
       {/* 상태 칩은 탭 막대 오른쪽, 좌우 · 상하 배치 단추 왼쪽이다. 탭 막대가 없으면(묶음 밖) 조회 카드 위쪽 줄에 둔다. */}
@@ -568,10 +580,13 @@ export const LotStatusTransitionCandidateScreen = () => {
         ref={splitRef}
         className={`po-board-split inspection-split lot-status-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
         style={{ ...split.style, ...layout.style }}
+
+        data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         {/* 결과 카드 — 총 건수는 표 아래 쪽 이동 줄에만 둔다(LOT 현황과 같다). */}
         {/* 「전이 대상 LOT」 제목은 두지 않는다(사용자 2026-11-02) — 구역 이름은 화면 읽기용으로만. */}
         <section className="pane lot-status-pane lot-status-transition-pane" aria-label={t.pane}>
+          <PaneListHead title={''} collapse={listCollapse} />
           {candidates.isError ? (
             <AlertBanner
               variant="error"
@@ -636,12 +651,14 @@ export const LotStatusTransitionCandidateScreen = () => {
           label={messages.common.inspectionHub.splitter}
           ratio={split.ratio}
           onChange={split.commit}
+          collapse={listCollapse}
         />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter
             label={messages.common.inspectionHub.heightSplitter}
             height={layout.listHeight}
             onChange={layout.changeListHeight}
+            collapse={listCollapse}
           />
         )}
         <div className="lot-status-transition-detail">

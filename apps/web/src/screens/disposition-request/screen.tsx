@@ -10,6 +10,7 @@ import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { requireIfMatch, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { ScreenHeader } from '../../patterns/screen-header';
+import { ListCollapseTab, PaneListHead, usePaneSplit } from '../../patterns/po-board';
 import { stageOf } from './codes';
 import { FilterBar } from './filter-bar';
 import {
@@ -337,6 +338,15 @@ export const DispositionRequestScreen = () => {
       : t.register.qtyNote(formatQty(activeRow.quantity), uomLabel);
   const followUp = toFollowUpStates(decisionRows);
 
+  /* 목록 접기(#350) — 넓은 창에서 두 칸이 나란히 설 때만 접힌다(app.css `list-collapsible`). */
+  const listSplit = usePaneSplit('omf-mes:disposition-request:list');
+  const listCollapse = {
+    collapsed: listSplit.collapsed,
+    onToggle: listSplit.toggleCollapsed,
+    collapseLabel: messages.common.inspectionHub.listCollapse,
+    expandLabel: messages.common.inspectionHub.listExpand,
+    count: list.data?.data.page.total,
+  };
   return (
     <>
       <ScreenHeader
@@ -352,12 +362,15 @@ export const DispositionRequestScreen = () => {
        * 상단 설명 띠(판정은 품질 화면에서 · 여기서는 등록과 의뢰)는 걷었다 — 화면 설명이고, 판정이 품질 화면
        * 몫이라는 것은 진행 단계 「판정 (품질 화면)」과 「② 판정 의뢰」 제목 옆 ⓘ 가 말한다(관리웹 정리 시안 A).
        */}
-      <div className="disposition-request-workspace">
+      <div
+        className="disposition-request-workspace list-collapsible"
+        data-left-collapsed={listCollapse.collapsed ? 'true' : undefined}
+      >
         <section
           className="pane disposition-request-pane disposition-request-list-pane"
           aria-label={t.panes.list}
         >
-          <h2 className="pane-title">{t.panes.list}</h2>
+          <PaneListHead title={t.panes.list} collapse={listCollapse} />
           <FilterBar
             applied={filters}
             warehouses={warehouses}
@@ -389,6 +402,7 @@ export const DispositionRequestScreen = () => {
             onChangePage={(nextPage) => apply(filters, nextPage)}
           />
         </section>
+        <ListCollapseTab collapse={listCollapse} />
         <div className="pane-stack disposition-request-side">
           <section className="pane disposition-request-pane" aria-label={t.panes.target}>
             <h2 className="pane-title">{t.panes.target}</h2>

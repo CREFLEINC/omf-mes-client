@@ -74,6 +74,7 @@ import {
   toSearchParams,
 } from './filters';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
+import { ListCollapseTab, PaneListHead, usePaneSplit } from '../../patterns/po-board';
 import {
   useActiveUserOptions,
   useBusinessUnitOptions,
@@ -1323,6 +1324,39 @@ export const CommonCodeScreen = () => {
   const selectedPartnerId = isPartnerTab ? readSelectedId(searchParams, PARTNER_SELECT_KEY) : null;
 
   const partnerList = usePartnerList(partnerFilters, page, isPartnerTab);
+  /* 목록 접기(#350) — 탭마다 따로. 넓은 창에서 두 칸이 나란히 설 때만 접힌다(app.css `list-collapsible`). */
+  const codeSplit = usePaneSplit('omf-mes:common-code:code:list');
+  const codeCollapse = {
+    collapsed: codeSplit.collapsed,
+    onToggle: codeSplit.toggleCollapsed,
+    collapseLabel: messages.common.inspectionHub.listCollapse,
+    expandLabel: messages.common.inspectionHub.listExpand,
+    count: codeGroupList.data?.page.total,
+  };
+  const orgSplit = usePaneSplit('omf-mes:common-code:org:list');
+  const orgCollapse = {
+    collapsed: orgSplit.collapsed,
+    onToggle: orgSplit.toggleCollapsed,
+    collapseLabel: messages.common.inspectionHub.listCollapse,
+    expandLabel: messages.common.inspectionHub.listExpand,
+    count: departmentList.data?.page.total,
+  };
+  const workerSplit = usePaneSplit('omf-mes:common-code:worker:list');
+  const workerCollapse = {
+    collapsed: workerSplit.collapsed,
+    onToggle: workerSplit.toggleCollapsed,
+    collapseLabel: messages.common.inspectionHub.listCollapse,
+    expandLabel: messages.common.inspectionHub.listExpand,
+    count: workerList.data?.page.total,
+  };
+  const partnerSplit = usePaneSplit('omf-mes:common-code:partner:list');
+  const partnerCollapse = {
+    collapsed: partnerSplit.collapsed,
+    onToggle: partnerSplit.toggleCollapsed,
+    collapseLabel: messages.common.inspectionHub.listCollapse,
+    expandLabel: messages.common.inspectionHub.listExpand,
+    count: partnerList.data?.page.total,
+  };
   const partners = partnerList.data?.items ?? [];
 
   const partnerPageView = toPageView(
@@ -1751,8 +1785,12 @@ export const CommonCodeScreen = () => {
   };
 
   const codeTabContent = (
-    <div className="two-pane">
+    <div
+      className="two-pane list-collapsible"
+      data-left-collapsed={codeCollapse.collapsed ? 'true' : undefined}
+    >
       <CodeGroupListPane
+        head={<PaneListHead title={t.panes.codeGroup} collapse={codeCollapse} />}
         codeGroups={codeGroups}
         isLoading={codeGroupList.isPending}
         appliedFilters={filters}
@@ -1772,6 +1810,7 @@ export const CommonCodeScreen = () => {
           ) : null
         }
       />
+      <ListCollapseTab collapse={codeCollapse} />
 
       {/*
        * 우 칸은 구획을 세로로 쌓는다 — 코드그룹 정보 아래에 코드값 한 벌이 붙는다.
@@ -1972,8 +2011,12 @@ export const CommonCodeScreen = () => {
   };
 
   const orgTabContent = (
-    <div className="two-pane">
+    <div
+      className="two-pane list-collapsible"
+      data-left-collapsed={orgCollapse.collapsed ? 'true' : undefined}
+    >
       <DepartmentListPane
+        head={<PaneListHead title={t.panes.department} collapse={orgCollapse} />}
         rows={orderedDepartments}
         byId={departmentById}
         isLoading={departmentList.isPending}
@@ -2001,6 +2044,7 @@ export const CommonCodeScreen = () => {
           ) : null
         }
       />
+      <ListCollapseTab collapse={orgCollapse} />
 
       {renderDepartmentFormPane()}
     </div>
@@ -2048,8 +2092,12 @@ export const CommonCodeScreen = () => {
   };
 
   const workerTabContent = (
-    <div className="two-pane">
+    <div
+      className="two-pane list-collapsible"
+      data-left-collapsed={workerCollapse.collapsed ? 'true' : undefined}
+    >
       <WorkerListPane
+        head={<PaneListHead title={t.panes.worker} collapse={workerCollapse} />}
         workers={workers}
         isLoading={workerList.isPending}
         appliedFilters={workerFilters}
@@ -2066,6 +2114,7 @@ export const CommonCodeScreen = () => {
           ) : null
         }
       />
+      <ListCollapseTab collapse={workerCollapse} />
 
       <div className="pane-stack">
         {renderWorkerDetailPane()}
@@ -2224,8 +2273,12 @@ export const CommonCodeScreen = () => {
   };
 
   const partnerTabContent = (
-    <div className="two-pane">
+    <div
+      className="two-pane list-collapsible"
+      data-left-collapsed={partnerCollapse.collapsed ? 'true' : undefined}
+    >
       <PartnerListPane
+        head={<PaneListHead title={t.panes.partner} collapse={partnerCollapse} />}
         partners={partners}
         isLoading={partnerList.isPending}
         appliedFilters={partnerFilters}
@@ -2240,6 +2293,7 @@ export const CommonCodeScreen = () => {
           ) : null
         }
       />
+      <ListCollapseTab collapse={partnerCollapse} />
 
       <div className="pane-stack">{renderPartnerRolePane()}</div>
     </div>

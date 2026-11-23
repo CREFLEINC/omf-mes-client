@@ -15,7 +15,12 @@ import { Navigate, useSearchParams } from 'react-router';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { PAGE_SIZES } from '../../patterns/page-nav';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import {
   PaneHeightSplitter,
   SplitOrientationToggle,
@@ -426,8 +431,16 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
         inactive: options.items.filter((item) => !item.isActive).length,
       };
 
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: hubText.listCollapse,
+    expandLabel: hubText.listExpand,
+    count: list.data?.page.total,
+  };
   const codeListPane = (
     <CodeListPane
+      head={<PaneListHead title={t.panes.list(adapter.labels.tab)} collapse={listCollapse} />}
       adapter={adapter}
       rows={rows}
       byId={byId}
@@ -651,15 +664,22 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
         ref={splitRef}
         className={`po-board-split inspection-split inspection-standard-split defect-cause-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
         style={{ ...split.style, ...layout.style }}
+        data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         {codeListPane}
 
-        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        <PaneSplitter
+          label={hubText.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+          collapse={listCollapse}
+        />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter
             label={hubText.heightSplitter}
             height={layout.listHeight}
             onChange={layout.changeListHeight}
+            collapse={listCollapse}
           />
         )}
 

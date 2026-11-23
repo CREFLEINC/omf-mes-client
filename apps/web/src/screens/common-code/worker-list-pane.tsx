@@ -33,6 +33,8 @@ export interface WorkerListPaneProps {
   selectedWorkerId: number | null;
   onSelect: (workerId: number) => void;
   loadError: ReactNode;
+  /** 목록 맨 위 제목 줄(「이름 · 건수 · 목록 접기」 · #350). 화면이 `PaneListHead` 로 넘긴다. */
+  head?: ReactNode;
 }
 
 /**
@@ -57,6 +59,7 @@ export const WorkerListPane = ({
   selectedWorkerId,
   onSelect,
   loadError,
+  head,
 }: WorkerListPaneProps) => {
   /* 트리거 모델: 편집은 모아서 적용, 해제는 즉시. */
   const [draft, setDraft] = useState<ScopedFilters>(appliedFilters);
@@ -175,6 +178,7 @@ export const WorkerListPane = ({
 
   return (
     <section className="pane" aria-label={t.panes.worker}>
+      {head}
       {optionsNotice}
 
       <div className="filter-bar">

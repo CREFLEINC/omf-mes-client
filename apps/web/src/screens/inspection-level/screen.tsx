@@ -23,7 +23,12 @@ import { SaveErrorBanner } from '../../patterns/master';
 import { ItemSelect } from '../../patterns/item-select';
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { PageNav } from '../../patterns/page-nav';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { Select } from '../../patterns/select';
 import {
@@ -382,6 +387,13 @@ export const InspectionLevelScreen = () => {
   );
   const historyFit = useFitColumns(historyResizable.columns, { scrollX: true });
 
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: hubText.listCollapse,
+    expandLabel: hubText.listExpand,
+    count: list.data?.page.total,
+  };
   return (
     <>
       {/* 탭 줄 오른쪽 — 검사 수준 칩 다음에 좌우 · 상하 배치(검사 기준 탭의 사용 여부 칩과 같은 자리 · 사용자 지시 · #208). */}
@@ -483,6 +495,8 @@ export const InspectionLevelScreen = () => {
         ref={splitRef}
         className={`po-board-split inspection-split inspection-standard-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
         style={{ ...split.style, ...layout.style }}
+
+        data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         {/*
          * 목록 카드 — 표 → 쪽 이동. 조회 줄은 위 카드에 따로 둔다(다른 탭과 같다 · #208).
@@ -491,6 +505,7 @@ export const InspectionLevelScreen = () => {
           className="pane inspection-level-list-pane quality-standard-list-pane"
           aria-label={t.title}
         >
+          <PaneListHead title={t.list.caption} collapse={listCollapse} />
           {list.isError && (
             <AlertBanner variant="error">
               {t.list.loadFailed}{' '}
@@ -539,12 +554,18 @@ export const InspectionLevelScreen = () => {
           )}
         </section>
 
-        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        <PaneSplitter
+          label={hubText.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+          collapse={listCollapse}
+        />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter
             label={hubText.heightSplitter}
             height={layout.listHeight}
             onChange={layout.changeListHeight}
+            collapse={listCollapse}
           />
         )}
 

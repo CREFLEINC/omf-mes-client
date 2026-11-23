@@ -30,7 +30,12 @@ import { TAB_PAGE_SIZES, type TabPageSize } from '../../patterns/client-page';
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
 import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import { runRequest } from '../../patterns/request';
 import { PagedSelect, Select } from '../../patterns/select';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
@@ -316,6 +321,13 @@ export const ProcessMasterPane = () => {
     },
   ];
 
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: hubText.listCollapse,
+    expandLabel: hubText.listExpand,
+    count: list.data?.page.total,
+  };
   return (
     <>
       {/*
@@ -351,8 +363,10 @@ export const ProcessMasterPane = () => {
         ref={splitRef}
         className={`po-board-split inspection-split inspection-standard-split routing-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
         style={{ ...split.style, ...layout.style }}
+        data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <ProcessListPane
+          head={<PaneListHead title="" collapse={listCollapse} />}
           processes={processes}
           columns={columns}
           filters={filters}
@@ -369,12 +383,18 @@ export const ProcessMasterPane = () => {
           }
         />
 
-        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        <PaneSplitter
+          label={hubText.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+          collapse={listCollapse}
+        />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter
             label={hubText.heightSplitter}
             height={layout.listHeight}
             onChange={layout.changeListHeight}
+            collapse={listCollapse}
           />
         )}
 
@@ -628,6 +648,8 @@ interface ProcessListPaneProps {
   filters: ProcessFilters;
   isLoading: boolean;
   loadError: ReactNode;
+  /** 목록 맨 위 제목 줄(건수 · 「목록 접기」 · #350). 화면이 `PaneListHead` 로 넘긴다. */
+  head?: ReactNode;
   /** 쪽 이동 줄 — 총 건수 · 건수 고르기 · 처음/이전/다음/마지막(#231). */
   pageMeta: PageNavMeta;
   onChangePage: (page: number) => void;
@@ -643,6 +665,7 @@ const ProcessListPane = ({
   pageMeta,
   onChangePage,
   onChangePageSize,
+  head,
 }: ProcessListPaneProps) => {
   /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다(표 공통 · #231). */
   const ordered = useColumnOrder('omf-mes:routing:process-columns:order', centerColumns(columns));
@@ -710,6 +733,7 @@ const ProcessListPane = ({
       aria-label={t.panes.processList}
     >
       {/* 제목 글은 두지 않는다 — 공정 경로 탭의 품목 목록과 같다(사용자 지시 · #231). 이름은 구역의 aria-label 이 갖는다. */}
+      {head}
       {listSlot}
 
       {(loadError === null || loadError === undefined) && !isLoading && (

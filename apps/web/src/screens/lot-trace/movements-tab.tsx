@@ -8,7 +8,12 @@ import { CountChip } from '../../patterns/count-chip';
 import { HUB_ACTIONS_ID } from '../../patterns/hub-actions';
 import { PageNav } from '../../patterns/page-nav';
 import { plantToday } from '../../patterns/plant-time';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import { useSession } from '../../patterns/session';
 import {
   PaneHeightSplitter,
@@ -276,6 +281,13 @@ export const LotHistory = () => {
 
   const lotOfRow = (row: MovementRow, lotId: number) => row.lots.some((lot) => lot.lotId === lotId);
 
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: messages.common.inspectionHub.listCollapse,
+    expandLabel: messages.common.inspectionHub.listExpand,
+    count: list.data?.page.total,
+  };
   return (
     <>
       <TabToolbar
@@ -316,16 +328,25 @@ export const LotHistory = () => {
         ref={splitRef}
         className={`po-board-split inspection-split lot-trace-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
         style={{ ...split.style, ...layout.style }}
+
+        data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <section className="pane lot-trace-list-pane" aria-label={t.list.pane}>
+          <PaneListHead title={t.list.pane} collapse={listCollapse} />
           {listBody}
         </section>
-        <PaneSplitter label={t.splitter} ratio={split.ratio} onChange={split.commit} />
+        <PaneSplitter
+          label={t.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+          collapse={listCollapse}
+        />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter
             label={messages.common.inspectionHub.heightSplitter}
             height={layout.listHeight}
             onChange={layout.changeListHeight}
+            collapse={listCollapse}
           />
         )}
         <section className="pane lot-trace-detail-pane" aria-label={t.chain.pane}>

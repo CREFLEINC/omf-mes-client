@@ -6,6 +6,7 @@ import { useSearchParams } from 'react-router';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
+import { ListCollapseTab, PaneListHead, usePaneSplit } from '../../patterns/po-board';
 import { ActivationDialog, type ActivationIntent } from './activation-dialog';
 import { approverNote, useApproverLookup, type ApproverOption } from './approver-options';
 import {
@@ -1111,6 +1112,15 @@ export const ApprovalRouteScreen = () => {
     );
   };
 
+  /* 목록 접기(#350) — 넓은 창에서 두 칸이 나란히 설 때만 접힌다(app.css `list-collapsible`). */
+  const listSplit = usePaneSplit('omf-mes:approval-route:list');
+  const listCollapse = {
+    collapsed: listSplit.collapsed,
+    onToggle: listSplit.toggleCollapsed,
+    collapseLabel: messages.common.inspectionHub.listCollapse,
+    expandLabel: messages.common.inspectionHub.listExpand,
+    count: list.data?.page.total,
+  };
   return (
     <>
       <PageHeader
@@ -1138,8 +1148,12 @@ export const ApprovalRouteScreen = () => {
        * (`display:grid; gap; align-content:start; min-width:0`) 이음매를 담는 쪽이 한 번에
        * 정의한다 — **2단 배치에서 쓰는 첫 사례다.** 문서 갱신은 두 번째 사용처에서 한다.
        */}
-      <div className="two-pane">
+      <div
+        className="two-pane list-collapsible"
+        data-left-collapsed={listCollapse.collapsed ? 'true' : undefined}
+      >
         <section className="pane" aria-label={t.panes.list}>
+          <PaneListHead title={t.panes.list} collapse={listCollapse} />
           <RouteFilterBar
             appliedFilters={filters}
             approvalTypeOptions={approvalTypeOptions}
@@ -1170,6 +1184,7 @@ export const ApprovalRouteScreen = () => {
             }
           />
         </section>
+        <ListCollapseTab collapse={listCollapse} />
 
         <div className="pane-stack">{detailSlot()}</div>
       </div>

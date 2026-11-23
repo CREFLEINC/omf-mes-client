@@ -639,10 +639,10 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         to: '/master-data/routing',
         icon: 'account_tree',
-        label: '공정 경로 관리',
+        label: '라우팅 관리',
         labelVi: 'Quản lý lộ trình công đoạn',
         tabs: [
-          { to: '/master-data/routing', label: '공정 경로', labelVi: 'Lộ trình công đoạn' },
+          { to: '/master-data/routing', label: '라우팅', labelVi: 'Lộ trình công đoạn' },
           { to: '/master-data/processes', label: '공정 관리', labelVi: 'Quản lý công đoạn' },
         ],
       },

@@ -205,12 +205,12 @@ describe('AppLayout', () => {
     expect(links).not.toContain('/master-data/master-change');
   });
 
-  it('사이드바에 공정 경로 관리 메뉴가 보인다', () => {
+  it('사이드바에 라우팅 관리 메뉴가 보인다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
 
-    expect(within(sidebar).getByRole('link', { name: '공정 경로 관리' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: '라우팅 관리' })).toHaveAttribute(
       'href',
       '/master-data/routing',
     );
@@ -621,9 +621,10 @@ describe('AppLayout', () => {
     expect(within(sidebar).getByText('영업 / 출하 관리')).toBeInTheDocument();
     /* ERP 수주정보 조회는 「ERP 연동 현황·이력」 묶음의 탭으로 옮겼다. */
     expect(within(sidebar).queryByRole('link', { name: '수주정보 조회 (ERP)' })).toBeNull();
-    expect(
-      within(sidebar).getByRole('link', { name: '출하작업지시 생성' }),
-    ).toHaveAttribute('href', '/shipment/shipment-request-create');
+    expect(within(sidebar).getByRole('link', { name: '출하작업지시 생성' })).toHaveAttribute(
+      'href',
+      '/shipment/shipment-request-create',
+    );
     expect(within(sidebar).getByRole('link', { name: '출하 예정 목록' })).toHaveAttribute(
       'href',
       '/shipment/shipment-schedule',
@@ -925,7 +926,9 @@ describe('AppLayout', () => {
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
 
     /* 짝 양성 — 시스템 관리 섹션은 실제로 펼쳐져 항목이 서 있다. */
-    expect(within(sidebar).getByRole('link', { name: '사용자 역할 권한 관리' })).toBeInTheDocument();
+    expect(
+      within(sidebar).getByRole('link', { name: '사용자 역할 권한 관리' }),
+    ).toBeInTheDocument();
     expect(
       within(sidebar).queryByRole('link', { name: messages.session.actions.changePassword }),
     ).toBeNull();

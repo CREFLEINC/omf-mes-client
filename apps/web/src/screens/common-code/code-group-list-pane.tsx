@@ -41,6 +41,8 @@ export interface CodeGroupListPaneProps {
    * 실패를 「등록된 코드그룹이 없습니다」로 보이면 사실과 다른 안내가 된다.
    */
   loadError: ReactNode;
+  /** 목록 맨 위 제목 줄(「이름 · 건수 · 목록 접기」 · #350). 화면이 `PaneListHead` 로 넘긴다. */
+  head?: ReactNode;
 }
 
 /**
@@ -64,6 +66,7 @@ export const CodeGroupListPane = ({
   isCreating,
   onAddCodeGroup,
   loadError,
+  head,
 }: CodeGroupListPaneProps) => {
   /*
    * 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
@@ -184,6 +187,7 @@ export const CodeGroupListPane = ({
 
   return (
     <section className="pane" aria-label={t.panes.codeGroup}>
+      {head}
       {/* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
       <div className="filter-bar">
         <SearchInput

@@ -71,9 +71,11 @@ describe('DispositionDecisionScreen 조회', () => {
     const split = document.querySelector('.disposition-split');
     await waitFor(() => expect(split).toHaveAttribute('data-left-collapsed', 'true'));
 
-    await user.click(screen.getByRole('button', { name: t.listExpand }));
+    /* 막대 위 원과 접힌 「목록」 탭이 같은 이름이다 — 넓은 창에서는 탭만 보인다(#350). */
+    await user.click(screen.getAllByRole('button', { name: t.listExpand })[0]!);
     expect(split).not.toHaveAttribute('data-left-collapsed');
-    await user.click(screen.getByRole('button', { name: t.listCollapse }));
+    /* 막대 위 원과 제목 줄 「목록 접기」도 같은 이름이다. */
+    await user.click(screen.getAllByRole('button', { name: t.listCollapse })[0]!);
     expect(split).toHaveAttribute('data-left-collapsed', 'true');
   });
 

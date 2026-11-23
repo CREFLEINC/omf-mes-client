@@ -1,6 +1,6 @@
 import { Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 
 import { MoreMenu } from './popover-button';
 
@@ -163,12 +163,35 @@ export interface PaneCollapse {
  * 목록 제목 줄(omf-all-around#350 시안) — 「수주 목록 12건 … [목록 접기]」. 목록 구획 맨 위에 둔다.
  * 「목록 접기」는 좌우로 나란히 설 때만 보이고(app.css), 위아래로 쌓이면 막대의 작은 원 단추가 그대로 접고 편다.
  */
-export const PaneListHead = ({ title, collapse }: { title: string; collapse: PaneCollapse }) => (
-  <div className="po-board-list-head">
-    <h2 className="pane-title">{title}</h2>
+export const PaneListHead = ({
+  title,
+  collapse,
+  titleId,
+  className,
+  children,
+}: {
+  /** 빈 글이면 제목을 두지 않는다(제목을 걷은 목록 — 건수 · 단추만). */
+  title: string;
+  collapse: PaneCollapse;
+  /** 목록 구획이 `aria-labelledby` 로 제목을 가리킬 때. */
+  titleId?: string;
+  /** 제목 줄에 붙일 화면 고유 이름(종전 머리줄 모양을 잇는다). */
+  className?: string;
+  /** 제목 줄에 함께 두던 것(안내 · 갱신 등) — 건수 뒤, 「목록 접기」 앞에 선다. */
+  children?: ReactNode;
+}) => (
+  <div
+    className={className === undefined ? 'po-board-list-head' : `po-board-list-head ${className}`}
+  >
+    {title !== '' && (
+      <h2 className="pane-title" id={titleId}>
+        {title}
+      </h2>
+    )}
     {collapse.count !== undefined && (
       <span className="po-board-list-count">{messages.common.paneList.count(collapse.count)}</span>
     )}
+    {children}
     <button
       type="button"
       className="po-board-list-collapse"
@@ -182,6 +205,32 @@ export const PaneListHead = ({ title, collapse }: { title: string; collapse: Pan
     </button>
   </div>
 );
+
+/**
+ * 끌기 막대가 없는 좌우 두 칸 화면의 접힌 「목록」 탭(#350). 목록 구획 바로 뒤에 둔다 — 접혀 있을 때만 선다.
+ * 그 두 칸 상자에 `list-collapsible` 과 `data-left-collapsed` 를 달면 app.css 가 왼쪽 48px 탭 + 상세로 바꾼다.
+ */
+export const ListCollapseTab = ({ collapse }: { collapse: PaneCollapse }) =>
+  collapse.collapsed ? (
+    <button
+      type="button"
+      className="po-board-list-tab"
+      aria-label={collapse.expandLabel}
+      aria-expanded={false}
+      title={collapse.expandLabel}
+      onClick={collapse.onToggle}
+    >
+      <span className="po-board-list-tab-body">
+        <Icon name="left_panel_open" size={18} />
+        <b>{messages.common.paneList.tab}</b>
+        {collapse.count !== undefined && (
+          <span className="po-board-list-count">
+            {messages.common.paneList.count(collapse.count)}
+          </span>
+        )}
+      </span>
+    </button>
+  ) : null;
 
 /**
  * 두 구획 사이의 **막대 자리** — 끌기 막대와, 왼쪽 표를 접고 펴는 단추(사용자 지시 2026-10-24).

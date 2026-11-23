@@ -249,7 +249,7 @@ describe('RoutingScreen — 품목 검색·선택', () => {
   it('품목을 고르면 작성중 개정을 바로 연다(#231)', async () => {
     const { router } = renderScreen([itemListRoute(), revisionListRoute()], '?item=5001');
 
-    const card = await screen.findByRole('region', { name: '공정 경로' });
+    const card = await screen.findByRole('region', { name: '라우팅' });
     expect(within(card).getByRole('tab', { name: '설정' })).toHaveAttribute(
       'aria-selected',
       'true',
@@ -453,7 +453,7 @@ describe('RoutingScreen — 헤더 상세 조회와 상태 잠금', () => {
     expect(within(actions).queryByRole('button', { name: '확정' })).toBeNull();
     expect(within(actions).getByRole('button', { name: '폐기' })).toBeEnabled();
     /* 신규 Rev 발행은 카드 머리 오른쪽(#231). */
-    const card = screen.getByRole('region', { name: '공정 경로' });
+    const card = screen.getByRole('region', { name: '라우팅' });
     expect(within(card).getByRole('button', { name: '신규 Rev 발행' })).toBeInTheDocument();
   });
 
@@ -497,7 +497,7 @@ describe('RoutingScreen — 헤더 상세 조회와 상태 잠금', () => {
     );
 
     /* 설정 탭 요약 줄에 품목코드 · 품목명을 칸을 나눠 보인다(#231). */
-    const card = await screen.findByRole('region', { name: '공정 경로' });
+    const card = await screen.findByRole('region', { name: '라우팅' });
     expect((await within(card).findByText('품목코드')).parentElement).toHaveTextContent(
       '품목코드ITM-001',
     );
@@ -510,7 +510,7 @@ describe('RoutingScreen — 헤더 상세 조회와 상태 잠금', () => {
       '?item=5001&rev=7003',
     );
 
-    const card = await screen.findByRole('region', { name: '공정 경로' });
+    const card = await screen.findByRole('region', { name: '라우팅' });
     expect(await within(card).findByText('Rev 3 · 작성중')).toBeInTheDocument();
     expect(within(card).getByRole('tab', { name: '설정' })).toHaveAttribute(
       'aria-selected',
@@ -1543,7 +1543,7 @@ describe('RoutingScreen — 확정·폐기', () => {
 });
 
 /* 신규 Rev 발행 · 첫 등록 단추는 상세 카드 「설정」 탭의 「기본 정보」 머리에 있다(#231). */
-const revisionRegion = (): HTMLElement => screen.getByRole('region', { name: '공정 경로' });
+const revisionRegion = (): HTMLElement => screen.getByRole('region', { name: '라우팅' });
 
 const createRoutingRoute = (
   respond: StubRoute['respond'] = () =>
@@ -1584,7 +1584,7 @@ describe('RoutingScreen — 신규 Rev 발행과 첫 Rev 등록', () => {
       '?item=5001&rev=7001',
     );
 
-    const card = await screen.findByRole('region', { name: '공정 경로' });
+    const card = await screen.findByRole('region', { name: '라우팅' });
     expect(await within(card).findByText('Rev 1 · 폐기')).toBeInTheDocument();
     expect(within(card).queryByRole('button', { name: '신규 Rev 발행' })).toBeNull();
     /* 안내 상자 대신 머리 라벨 하나. */

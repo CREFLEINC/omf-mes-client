@@ -49,6 +49,8 @@ export interface DepartmentListPaneProps {
    * 실패를 「등록된 부서가 없습니다」로 보이면 사실과 다른 안내가 된다.
    */
   loadError: ReactNode;
+  /** 목록 맨 위 제목 줄(「이름 · 건수 · 목록 접기」 · #350). 화면이 `PaneListHead` 로 넘긴다. */
+  head?: ReactNode;
 }
 
 /**
@@ -75,6 +77,7 @@ export const DepartmentListPane = ({
   isCreating,
   onAddDepartment,
   loadError,
+  head,
 }: DepartmentListPaneProps) => {
   /*
    * 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
@@ -216,6 +219,7 @@ export const DepartmentListPane = ({
 
   return (
     <section className="pane" aria-label={t.panes.department}>
+      {head}
       {optionsNotice}
 
       {/*

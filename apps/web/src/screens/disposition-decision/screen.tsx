@@ -10,6 +10,7 @@ import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { requireIfMatch, useMasterWrite } from '../../patterns/master';
 import {
   PaneLayoutToggle,
+  PaneListHead,
   PaneSplitter,
   useFitToViewport,
   usePaneLayout,
@@ -699,6 +700,22 @@ export const DispositionDecisionScreen = ({
       </Chip>
     );
 
+  /* 고른 것이 있을 때만 접는다(종전 그대로) — 제목 줄에 건수 · 「목록 접기」를 둔다(#350). */
+  const listCollapse =
+    activeSelectedId === null
+      ? undefined
+      : {
+          collapsed: isListCollapsed,
+          onToggle: () => setIsListFolded(!isListCollapsed),
+          collapseLabel: t.listCollapse,
+          expandLabel: t.listExpand,
+          count:
+            tab === 'pending'
+              ? list.data === undefined
+                ? undefined
+                : Math.max(0, list.data.page.total - cancelledIn(list.data.items))
+              : history.data?.page.total,
+        };
   return (
     <>
       {topBar}
@@ -731,7 +748,8 @@ export const DispositionDecisionScreen = ({
           className="pane po-board-pane po-board-scroll disposition-pane disposition-list-pane"
           aria-label={tab === 'pending' ? t.panes.list : t.panes.history}
         >
-          {/* 제목은 두지 않는다 — 구획 이름(`aria-label`)으로만 남긴다(사용자 지시 · #223). */}
+          {/* 제목은 두지 않는다 — 구획 이름(`aria-label`)으로만 남긴다(사용자 지시 · #223). 건수 · 「목록 접기」만(#350). */}
+          {listCollapse !== undefined && <PaneListHead title="" collapse={listCollapse} />}
           {tab === 'pending' ? (
             <NonconformanceList
               rows={rows}
@@ -795,16 +813,7 @@ export const DispositionDecisionScreen = ({
           ratio={split.ratio}
           onChange={split.commit}
           orientation={paneLayout.layout === 'stack' ? 'horizontal' : 'vertical'}
-          {...(activeSelectedId === null
-            ? {}
-            : {
-                collapse: {
-                  collapsed: isListCollapsed,
-                  onToggle: () => setIsListFolded(!isListCollapsed),
-                  collapseLabel: t.listCollapse,
-                  expandLabel: t.listExpand,
-                },
-              })}
+          {...(listCollapse === undefined ? {} : { collapse: listCollapse })}
         />
         {/*
          * 오른쪽은 한 구획 — 부적합 상세 · 처분 판정 · 처분 이력/특채 요청 이력 탭을 위에서 아래로(사용자 시안 · omf-all-around#223).

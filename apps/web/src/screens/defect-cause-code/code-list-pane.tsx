@@ -38,6 +38,8 @@ export interface CodeListPaneProps {
    * 실패를 「등록된 코드가 없습니다」로 보이면 사실과 다른 안내가 된다.
    */
   loadError: ReactNode;
+  /** 목록 맨 위 제목 줄(「이름 · 건수 · 목록 접기」 · #350). 화면이 `PaneListHead` 로 넘긴다. */
+  head?: ReactNode;
 }
 
 /** 표의 한 줄 — 대분류(머리)이거나 그 아래 상세(가지). 머리의 `code` 가 없으면 대분류를 못 찾은 묶음이다. */
@@ -133,6 +135,7 @@ export const CodeListPane = ({
   onSelect,
   processLabelOf,
   loadError,
+  head,
 }: CodeListPaneProps) => {
   const orEmpty = (value: string | null | undefined): string =>
     value === null || value === undefined || value === '' ? t.values.empty : value;
@@ -380,6 +383,7 @@ export const CodeListPane = ({
       className="pane inspection-standard-list-pane defect-cause-list-pane"
       aria-label={t.panes.list(adapter.labels.tab)}
     >
+      {head}
       {listSlot()}
 
       {(loadError === null || loadError === undefined) && !isLoading && (
