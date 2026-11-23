@@ -108,10 +108,27 @@ describe('DecisionFormPane', () => {
     renderPane({
       dispositionOptions: [
         { value: 'NORMAL', label: '정상' },
+        { value: 'SORT', label: '선별', lockReason: t.form.typeLock.closed },
+      ],
+    });
+    expect(screen.getByText(`선별: ${t.form.typeLock.closed}`)).toBeInTheDocument();
+  });
+
+  it('LOT 1개라 선별이 막히면 처분 유형 위 안내 라벨로 지시 문구 그대로 보인다(#352)', () => {
+    renderPane({
+      dispositionOptions: [
+        { value: 'NORMAL', label: '정상' },
         { value: 'SORT', label: '선별', lockReason: t.form.typeLock.sortSingleLot },
       ],
     });
-    expect(screen.getByText(`선별: ${t.form.typeLock.sortSingleLot}`)).toBeInTheDocument();
+    const note = screen.getByText('선별은 자재 관리 LOT가 2개 이상일 때 선택할 수 있습니다.', {
+      selector: 'p',
+    });
+    expect(note).toHaveAttribute('data-tone', 'info');
+    expect(
+      note.compareDocumentPosition(screen.getByText(t.form.dispositionLabel)) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(screen.getByRole('radio', { name: '선별' })).toHaveAccessibleDescription(
       t.form.typeLock.sortSingleLot,
     );

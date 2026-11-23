@@ -175,7 +175,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
       concessionApproved: 'Đặc cách đã duyệt — chờ áp dụng',
       concessionRejected: 'Đặc cách bị từ chối — chờ xác nhận',
       sortNoInboundLot: 'Không phù hợp trả hàng · OQC không có phân loại (không có LOT nhập hàng)',
-      sortSingleLot: 'Chỉ có 1 LOT quản lý vật tư nên không phân loại được',
+      sortSingleLot: 'Chỉ có thể chọn phân loại khi có từ 2 LOT quản lý vật tư trở lên.',
       sortNotFirst: 'Chỉ phân loại được ở lần quyết định đầu tiên',
       normalSorted: 'Phần lỗi tách ra do phân loại — hãy xử lý bằng hủy · đặc cách',
     },

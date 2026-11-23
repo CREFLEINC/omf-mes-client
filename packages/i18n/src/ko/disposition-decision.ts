@@ -198,7 +198,7 @@ export const dispositionDecision = {
       /** 결재 반려 뒤 [반려 확인] 전(omf-all-around#275). */
       concessionRejected: '특채 반려 — 반려 확인 대기',
       sortNoInboundLot: '반품·OQC 부적합에는 선별이 없습니다(입하 LOT 없음)', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
-      sortSingleLot: '자재 관리 LOT 가 1개라 선별할 수 없습니다',
+      sortSingleLot: '선별은 자재 관리 LOT가 2개 이상일 때 선택할 수 있습니다.',
       sortNotFirst: '선별은 첫 판정일 때만 할 수 있습니다',
       normalSorted: '선별로 떼어 낸 불량 — 폐기·특채로 처분', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
     },

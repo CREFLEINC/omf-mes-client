@@ -9006,13 +9006,6 @@ main:has(.iqc-skip-approval-detail) {
   background: transparent;
 }
 
-.disposition-type-hint {
-  display: block;
-  color: var(--on-surface-variant);
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
-}
-
 /* 처분 유형 | 처분 수량 한 줄 — 사이 세로선(사용자 시안 · omf-all-around#275). 상자가 좁으면 수량이 아래 줄로. */
 .disposition-decision-top {
   display: grid;

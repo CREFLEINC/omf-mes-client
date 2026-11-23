@@ -130,6 +130,12 @@ export const NonconformanceList = ({
       align: 'center',
       width: '160px',
       header: t.fields.openedAt,
+      /*
+       * 머리를 눌러 오름 · 내림차순(#352 사용자 지시) — 품질 승인 처리의 상신일시와 같은 방식. 서버에 정렬 조건이 없어
+       * 지금 받은 쪽 안에서 원문(RFC3339)으로 정렬한다.
+       */
+      sortable: true,
+      sortAccessor: (row) => row.openedAt,
       render: (row) => row.openedAtText,
     },
     {

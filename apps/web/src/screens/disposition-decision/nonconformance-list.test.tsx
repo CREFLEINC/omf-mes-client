@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -23,6 +23,7 @@ const rows: NonconformanceRow[] = [
     itemId: 5001,
     severityCode: 'CODE-B',
     statusCode: 'CODE-C',
+    openedAt: '2026-08-12T09:00:00+07:00',
     openedAtText: '2026-08-12',
     affectedQtyText: '320',
     uomId: 10,
@@ -34,6 +35,7 @@ const rows: NonconformanceRow[] = [
     itemId: 9999,
     severityCode: 'CODE-B',
     statusCode: 'CODE-C',
+    openedAt: '2026-08-11T09:00:00+07:00',
     openedAtText: '2026-08-11',
     affectedQtyText: t.values.unknownQty,
     uomId: 10,
@@ -123,6 +125,24 @@ describe('NonconformanceList', () => {
     renderList();
 
     expect(screen.getByText(t.values.unknownQty)).toBeInTheDocument();
+  });
+
+  it('접수일시 머리를 누르면 오름 · 내림차순으로 정렬한다(#352)', async () => {
+    const { user } = renderList();
+    const header = () => screen.getByRole('columnheader', { name: new RegExp(t.fields.openedAt) });
+    const order = () => screen.getAllByText(/^NC-TEST-004\d$/).map((node) => node.textContent);
+
+    await user.click(within(header()).getByRole('button'));
+    const first = header().getAttribute('aria-sort');
+    expect(order()).toEqual(
+      first === 'ascending' ? ['NC-TEST-0042', 'NC-TEST-0041'] : ['NC-TEST-0041', 'NC-TEST-0042'],
+    );
+
+    await user.click(within(header()).getByRole('button'));
+    expect(header().getAttribute('aria-sort')).not.toBe(first);
+    expect(order()).toEqual(
+      first === 'ascending' ? ['NC-TEST-0041', 'NC-TEST-0042'] : ['NC-TEST-0042', 'NC-TEST-0041'],
+    );
   });
 
   it('행을 고르면 식별자로 알린다', async () => {

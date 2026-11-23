@@ -139,12 +139,23 @@ export const DecisionFormPane = ({
   const noTypeReasonId = lockNotes[0]?.id;
   const visibleLockLines = [...new Set(lockNotes.map((note) => note.reason))].map((reason) => {
     const labels = lockNotes.filter((note) => note.reason === reason).map((note) => note.label);
-    return labels.length === optionCount ? reason : `${labels.join(', ')}: ${reason}`;
+    /* 이유 문장이 이미 유형 이름을 말하면(「선별은 …」) 앞에 다시 붙이지 않는다(#352 사용자 지시 문구). */
+    return labels.length === optionCount || labels.every((label) => reason.includes(label))
+      ? reason
+      : `${labels.join(', ')}: ${reason}`;
   });
 
   return (
     <div className="disposition-decision-form" role="group" aria-label={t.panes.decision}>
       <SaveErrorBanner error={writeError} onReload={onReload} />
+
+      {/* 막힌 유형의 이유는 처분 유형 위에 안내 라벨로(#352 사용자 지시). */}
+      {visibleLockLines.map((line) => (
+        <p key={line} className="iqc-inspection-action-note" data-tone="info" aria-hidden="true">
+          <Icon name="info" size={14} aria-hidden />
+          {line}
+        </p>
+      ))}
 
       {/* 처분 유형 왼쪽 | 처분 수량 오른쪽 한 줄(사용자 시안 · omf-all-around#275). 선별이면 수량 대신 아래에 고르기 칸. */}
       <div className="disposition-decision-top">
@@ -210,11 +221,6 @@ export const DecisionFormPane = ({
           {lockNotes.map(({ id, reason }) => (
             <span key={id} id={id} className="visually-hidden">
               {reason}
-            </span>
-          ))}
-          {visibleLockLines.map((line) => (
-            <span key={line} className="disposition-type-hint" aria-hidden="true">
-              {line}
             </span>
           ))}
           {errors.dispositionTypeCode !== undefined && (

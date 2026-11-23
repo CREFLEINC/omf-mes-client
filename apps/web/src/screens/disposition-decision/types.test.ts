@@ -133,6 +133,7 @@ describe('toNonconformanceRow', () => {
       itemId: 5001,
       severityCode: 'CODE-B',
       statusCode: 'CODE-C',
+      openedAt: nonconformance().openedAt,
       openedAtText: formatDateTime(nonconformance().openedAt),
       affectedQtyText: '320',
       uomId: nonconformance().uomId,
