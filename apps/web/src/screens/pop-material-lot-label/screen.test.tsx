@@ -10,6 +10,7 @@ import { POP_SCREENS } from '../../patterns/pop-screen-catalog';
 import {
   HARNESS_NOW,
   PLANT_ID,
+  WORKER_NO,
   group,
   lot,
   renderLabelScreen,
@@ -530,7 +531,7 @@ describe('US1 · US2 미출력 탭 — 고르면 이미 만들어져 있다', ()
     renderLabelScreen({
       lotsFail: {
         status: 409,
-        body: { errors: [{ scope: 'request', code: 'LOT_NO_CONFLICT', message: '충돌' }] },
+        body: { errors: [{ scope: 'screen', code: 'LOT_NO_CONFLICT', message: '충돌' }] },
       },
     });
 
@@ -852,5 +853,252 @@ describe('머리줄', () => {
     renderLabelScreen({ printersFail: true, groups: [group([lot(9001)])] });
 
     expect(await supplierButton('합성 공급사 가')).toBeInTheDocument();
+  });
+});
+
+/* ── C3 — 일괄 출력 장수 · [수정](피처 014 FR-015 · FR-016 · FR-017) ─────────────────────── */
+
+describe('FR-015 일괄 출력 — 장수만큼 차례대로', () => {
+  type Shell = (...args: unknown[]) => Promise<string>;
+  const installShell = (): void => {
+    const save = vi.fn<Shell>(async () => 'C:/syn/label.prn');
+    window.pop = { rendition: { save } } as unknown as typeof window.pop;
+  };
+
+  afterEach(() => {
+    delete window.pop;
+  });
+
+  const openBulk = async (user: ReturnType<typeof userEvent.setup>): Promise<HTMLElement> => {
+    await user.click(await screen.findByRole('button', { name: tp.bulk.action }));
+
+    return screen.findByRole('dialog', { name: tp.bulk.title });
+  };
+
+  const typeCount = async (
+    user: ReturnType<typeof userEvent.setup>,
+    dialog: HTMLElement,
+    count: number,
+  ): Promise<void> => {
+    const field = within(dialog).getByRole('textbox', { name: tp.bulk.count });
+    await user.clear(field);
+    await user.type(field, String(count));
+  };
+
+  const printedIds = (sent: ReturnType<typeof renderLabelScreen>['sent']): number[] =>
+    sentTo(sent, '/app/document-issues').map(
+      (entry) => (entry.body as { targets: { lotId: number }[] }).targets[0]?.lotId ?? 0,
+    );
+
+  it('US4-1 SC-006 장수 10 → 미출력 차례 1~10 을 미리 보기 뒤 차례대로 찍는다', async () => {
+    const user = userEvent.setup();
+    installShell();
+    const { sent } = renderLabelScreen(withShare(40));
+
+    await pickPair(user);
+    await waitFor(() => expect(checkboxes().length).toBeGreaterThan(0));
+    const dialog = await openBulk(user);
+    await typeCount(user, dialog, 10);
+    expect(within(dialog).getByText(tp.bulk.rangeValue(10))).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: tp.bulk.submit(10) }));
+
+    const preview = await screen.findByRole('dialog', { name: t.preview.title });
+    await user.click(within(preview).getByRole('button', { name: t.preview.print(10) }));
+    await waitFor(() => expect(printedIds(sent)).toHaveLength(10));
+
+    /* 일괄 출력은 미출력 탭을 장수 크기 한 쪽으로 받아 모은다. */
+    expect(
+      sentTo(sent, '/logistics/material-lots').some(
+        (entry) => entry.search.get('page') === '1' && entry.search.get('size') === '10',
+      ),
+    ).toBe(true);
+    /* 수동 둘(9001 · 9002) 다음에 자동 — 만든 차례(lot_id 오름차순). */
+    const ids = printedIds(sent);
+    expect(ids.slice(0, 2)).toEqual([9001, 9002]);
+    expect([...ids].sort((a, b) => a - b)).toEqual(ids);
+  });
+
+  it('US4-1a 다시 장수 10 을 넣으면 남은 미출력의 앞 10개(차례 11~20)를 찍는다', async () => {
+    const user = userEvent.setup();
+    installShell();
+    const { sent } = renderLabelScreen(withShare(40));
+
+    await pickPair(user);
+    await waitFor(() => expect(checkboxes().length).toBeGreaterThan(0));
+    for (const round of [1, 2]) {
+      const dialog = await openBulk(user);
+      await typeCount(user, dialog, 10);
+      await user.click(within(dialog).getByRole('button', { name: tp.bulk.submit(10) }));
+      const preview = await screen.findByRole('dialog', { name: t.preview.title });
+      await user.click(within(preview).getByRole('button', { name: t.preview.print(10) }));
+      await waitFor(() => expect(printedIds(sent)).toHaveLength(10 * round));
+      await user.click(await screen.findByRole('button', { name: t.bar.confirm }));
+    }
+
+    const ids = printedIds(sent);
+    expect(new Set(ids).size).toBe(20);
+    expect(Math.min(...ids.slice(10))).toBeGreaterThan(Math.max(...ids.slice(0, 10)));
+  });
+
+  it('US4-1b 미출력보다 많이 넣으면(50 > 42) 최대를 말하고 찍지 않는다', async () => {
+    const user = userEvent.setup();
+    const { sent } = renderLabelScreen(withShare(40));
+
+    await pickPair(user);
+    await waitFor(() => expect(checkboxes().length).toBeGreaterThan(0));
+    const dialog = await openBulk(user);
+    await typeCount(user, dialog, 50);
+
+    expect(within(dialog).getByText(tp.bulk.over(42))).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: tp.bulk.submitIdle })).toBeDisabled();
+    expect(sentTo(sent, '/app/document-issues')).toHaveLength(0);
+  });
+
+  it('US4-1c 만들어진 것보다 많이 넣으면(30) 모자란 몫을 먼저 만들고 30장을 모은다', async () => {
+    const user = userEvent.setup();
+    const { sent, shares } = renderLabelScreen(withShare(40));
+
+    await pickPair(user);
+    await waitFor(() => expect(checkboxes().length).toBeGreaterThan(0));
+    /* 첫 쪽 5줄 — 수동 2 + 자동 3 을 만들었다. */
+    expect(shares['8201:8601']?.creatable).toBe(37);
+    const dialog = await openBulk(user);
+    await typeCount(user, dialog, 30);
+    expect(within(dialog).getByText(tp.bulk.createValue(25))).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: tp.bulk.submit(30) }));
+
+    expect(
+      within(await screen.findByRole('dialog', { name: t.preview.title })).getByRole('button', {
+        name: t.preview.print(30),
+      }),
+    ).toBeInTheDocument();
+    expect(shares['8201:8601']?.creatable).toBe(12);
+    expect(
+      sentTo(sent, '/logistics/material-lots').some((entry) => entry.search.get('size') === '30'),
+    ).toBe(true);
+  });
+
+  it('SC-006 200 장을 넘기면 쪽(200)을 이어 받아 모은다', async () => {
+    const user = userEvent.setup();
+    const { sent } = renderLabelScreen(withShare(250));
+
+    await pickPair(user);
+    await waitFor(() => expect(checkboxes().length).toBeGreaterThan(0));
+    const dialog = await openBulk(user);
+    await typeCount(user, dialog, 210);
+    await user.click(within(dialog).getByRole('button', { name: tp.bulk.submit(210) }));
+
+    expect(
+      within(await screen.findByRole('dialog', { name: t.preview.title })).getByRole('button', {
+        name: t.preview.print(210),
+      }),
+    ).toBeInTheDocument();
+    const asks = sentTo(sent, '/logistics/material-lots').filter(
+      (entry) => entry.search.get('size') === '200',
+    );
+    expect(asks.map((entry) => [entry.search.get('page'), entry.search.get('size')])).toEqual([
+      ['1', '200'],
+      ['2', '200'],
+    ]);
+  });
+
+  it('FR-015 「미출력 라벨 일괄 출력」(전부 찍기) 단추는 없다', async () => {
+    const user = userEvent.setup();
+    renderLabelScreen(withShare(3));
+
+    await pickPair(user);
+    await waitFor(() => expect(checkboxes().length).toBeGreaterThan(0));
+    expect(screen.queryByRole('button', { name: /전부|모두 출력|미출력 라벨 일괄/u })).toBeNull();
+  });
+});
+
+describe('FR-016 · FR-017 [수정] — 출력 전 수량 · 포장 고치기', () => {
+  const ROLL_SHARE = withShare(3);
+
+  const openRevise = async (
+    user: ReturnType<typeof userEvent.setup>,
+    lotNoPart: RegExp,
+  ): Promise<HTMLElement> => {
+    const row = screen.getByRole('checkbox', { name: lotNoPart }).closest('tr') as HTMLElement;
+    await user.click(within(row).getByRole('button', { name: tp.revise.action }));
+
+    return screen.findByRole('dialog', { name: tp.revise.title });
+  };
+
+  it('US3-1 100 EA · 롤 10 × 10 을 롤 8 × 10 으로 고치면 재고량이 80 을 따르고, 저장하면 번호를 새로 받는다', async () => {
+    const user = userEvent.setup();
+    const { sent } = renderLabelScreen(ROLL_SHARE);
+
+    await pickPair(user);
+    await waitFor(() => expect(checkboxes()).toHaveLength(5));
+    const autoRow = bodyRows(tp.tabs.UNPRINTED)[2] as HTMLElement;
+    const lotNo = within(autoRow).getAllByRole('cell')[2]?.getAttribute('title') ?? '';
+    await user.click(within(autoRow).getByRole('button', { name: tp.revise.action }));
+    const dialog = await screen.findByRole('dialog', { name: tp.revise.title });
+
+    const count = within(dialog).getByRole('textbox', { name: tp.revise.packageCount });
+    await user.clear(count);
+    await user.type(count, '8');
+    expect(within(dialog).getByRole('textbox', { name: tp.revise.qty })).toHaveValue('80');
+    expect(within(dialog).getByText(tp.revise.renumber)).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(lotNo.replace('|100|', '|80|').replace(/\|\d+$/u, '|NNNN')),
+    ).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: tp.revise.save }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: tp.revise.title })).toBeNull());
+
+    const [revise] = sent.filter((entry) => entry.path.endsWith(':revise'));
+    expect(revise?.body).toEqual({
+      qty: 80,
+      package: { uomId: 8403, count: 8, qtyPerPackage: 10 },
+    });
+    expect(revise?.headers.get('X-Worker-No')).toBe(WORKER_NO);
+    expect(revise?.headers.get('Idempotency-Key')).not.toBeNull();
+    await waitFor(() => expect(bodyRows(tp.tabs.UNPRINTED)[2]).toHaveTextContent('|80|'));
+  });
+
+  it('US3-2 포장 수 × 포장당 수 ≠ 재고량이면 막고 그렇다고 말한다', async () => {
+    const user = userEvent.setup();
+    renderLabelScreen(ROLL_SHARE);
+
+    await pickPair(user);
+    await waitFor(() => expect(checkboxes()).toHaveLength(5));
+    const dialog = await openRevise(user, /\|0001 /u);
+    await user.clear(within(dialog).getByRole('textbox', { name: tp.revise.packageCount }));
+    await user.type(within(dialog).getByRole('textbox', { name: tp.revise.packageCount }), '7');
+    /* 재고량을 손으로 고치면 곱을 따르지 않고 그 값을 둔다 — 곱(700)과 다르면 막는다. */
+    const qty = within(dialog).getByRole('textbox', { name: tp.revise.qty });
+    await user.tripleClick(qty);
+    await user.keyboard('80');
+
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('≠');
+    expect(within(dialog).getByRole('button', { name: tp.revise.save })).toBeDisabled();
+  });
+
+  it('US3-3 출력됨 · 입하된 · 폐기 탭에는 [수정]이 없다', async () => {
+    const user = userEvent.setup();
+    renderLabelScreen();
+
+    await pickPair(user);
+    await user.click(await screen.findByRole('tab', { name: tp.tabs.PRINTED }));
+    await waitFor(() => expect(checkboxes()).toHaveLength(1));
+    expect(screen.queryByRole('button', { name: tp.revise.action })).toBeNull();
+  });
+
+  it('US3-3 서버가 409 ALREADY_PRINTED 로 거절하면 알리고 목록을 다시 받는다', async () => {
+    const user = userEvent.setup();
+    const { sent } = renderLabelScreen({ reviseFail: { status: 409, code: 'ALREADY_PRINTED' } });
+
+    await pickPair(user);
+    await waitFor(() => expect(checkboxes()).toHaveLength(2));
+    const asked = sentTo(sent, '/logistics/material-lots').length;
+    const dialog = await openRevise(user, /\|0001 /u);
+    await user.click(within(dialog).getByRole('button', { name: tp.revise.save }));
+
+    expect(await screen.findByText(tp.revise.alreadyPrinted)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(sentTo(sent, '/logistics/material-lots').length).toBeGreaterThan(asked),
+    );
   });
 });

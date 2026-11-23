@@ -10,8 +10,10 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import {
+  MATERIAL_LOT_PAGE_MAX,
   TAB_ORDER,
   creatableRemainingOf,
+  fetchMaterialLots,
   isMaterialLotNoText,
   lookupMaterialLot,
   materialLotKeys,
@@ -43,6 +45,7 @@ import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner
 import { ApiRequestError, toApiError } from '../../patterns/request';
 import { serverReasonOf } from '../../patterns/server-reason';
 import { BatchDialog } from './batch-dialog';
+import { BulkPrintDialog } from './bulk-print-dialog';
 import { retryCommands, summarize } from './batch-view';
 import { PRINT_FAILURE_REASON_CODE } from './codes';
 import { IssueBar, IssueStatusNote, type BarState } from './issue-bar';
@@ -54,6 +57,7 @@ import { PrinterChip } from './printer-chip';
 import { choosePrinter, rememberPrinterName, storedPrinterName } from './printer-choice';
 import { usePrinters, useReissueReasons, useShellSelectsPrinter } from './queries';
 import { ReasonPicker } from './reason-picker';
+import { ReviseDialog } from './revise-dialog';
 import { ItemTable, SupplierList, pairDefaultLine, pairUnprintedOf } from './supplier-list';
 import { isWaiting, pairKeyOf, toLabelLotFromRow, type LabelLot, type PairRef } from './types';
 import { VoidDialog } from './void-dialog';
@@ -74,6 +78,8 @@ interface ResultSnapshot {
 
 type DialogState =
   | { kind: 'batch' }
+  | { kind: 'bulk' }
+  | { kind: 'revise'; lot: LabelLot }
   | { kind: 'void'; lots: LabelLot[] }
   | { kind: 'preview'; lots: LabelLot[]; reprint: boolean }
   | null;
@@ -577,6 +583,49 @@ export const PopMaterialLotLabelScreen = () => {
     }
   };
 
+  /*
+   * 일괄 출력(FR-015) — 넣을 수 있는 최대는 미출력 탭 총 건수(아직 만들지 않은 몫 포함). 미출력 탭을 받았으면 그
+   * 응답, 아니면 왼쪽 줄의 미출력 + 생성 예정.
+   */
+  const bulkMax =
+    tab === 'UNPRINTED' && lotsData !== undefined
+      ? lotsData.total
+      : pickedRow === null
+        ? 0
+        : pickedRow.unprintedCount +
+          (pickedRow.defaultsStatus === 'OK' ? pickedRow.creatableCount : 0);
+  const bulkNotYet =
+    tab === 'UNPRINTED' && lotsData !== undefined
+      ? creatableRemainingOf(generation)
+      : pickedRow === null || pickedRow.defaultsStatus !== 'OK'
+        ? 0
+        : pickedRow.creatableCount;
+
+  /**
+   * 미출력 차례 1~N 을 모은다 — 서버 쪽(최대 200)을 이어 받으면 모자란 몫은 서버가 만든다(US4-1c). 모은 LOT 은
+   * 지금 출력 흐름(미리 보기 → 발행 단위마다 멈춤 → 실패 처리)으로 넘긴다.
+   */
+  const collectBulk = async (count: number): Promise<void> => {
+    if (target === null || picked === null) return;
+
+    const size = Math.min(count, MATERIAL_LOT_PAGE_MAX);
+    const pages = Math.ceil(count / size);
+    const collected: LabelLot[] = [];
+
+    for (let pageNo = 1; pageNo <= pages && collected.length < count; pageNo += 1) {
+      const page = await fetchMaterialLots(client, target, 'UNPRINTED', pageNo, size);
+
+      for (const row of page.items) collected.push(toLabelLotFromRow(row, picked.ref));
+      if (page.items.length < size) break;
+    }
+
+    const printLots = collected.slice(0, count).filter((each) => each.lastIssue === null);
+
+    for (const each of printLots) known.current.set(each.lotId, each);
+    refreshLots();
+    setDialog(printLots.length === 0 ? null : { kind: 'preview', lots: printLots, reprint: false });
+  };
+
   const statusNote = <IssueStatusNote state={barState} />;
   const hasStatusNote =
     barState.kind === 'running' || barState.kind === 'paused' || barState.kind === 'done';
@@ -827,6 +876,17 @@ export const PopMaterialLotLabelScreen = () => {
               ) : null}
               <PuButton
                 size="sm"
+                icon="print"
+                disabled={isLocked || workerNo === null || plantId === null || bulkMax === 0}
+                aria-describedby={workerNo === null ? createNoteId : undefined}
+                onClick={() => {
+                  setDialog({ kind: 'bulk' });
+                }}
+              >
+                {tp.bulk.action}
+              </PuButton>
+              <PuButton
+                size="sm"
                 icon="plus"
                 disabled={isLocked || workerNo === null}
                 aria-describedby={workerNo === null ? createNoteId : undefined}
@@ -924,6 +984,23 @@ export const PopMaterialLotLabelScreen = () => {
             scannedLotId={scanned?.tab === tab ? scanned.lot.lotId : null}
             defaultLotQty={pickedRow?.lotDefaults?.lotQty ?? null}
             hasMoreAfter={lotPage < Math.ceil(lotTotal / Math.max(1, lotSize))}
+            rowAction={
+              tab === 'UNPRINTED'
+                ? (each) =>
+                    isWaiting(each) && each.lastIssue === null ? (
+                      <PuButton
+                        size="sm"
+                        disabled={isLocked || workerNo === null}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setDialog({ kind: 'revise', lot: each });
+                        }}
+                      >
+                        {tp.revise.action}
+                      </PuButton>
+                    ) : null
+                : undefined
+            }
           />
         )}
         {isReprintTab && !isShowingResults && selected.length > 0 ? (
@@ -1042,6 +1119,39 @@ export const PopMaterialLotLabelScreen = () => {
             setDialog(null);
           }}
           onCreated={onCreated}
+        />
+      ) : null}
+      {dialog?.kind === 'bulk' ? (
+        <BulkPrintDialog
+          max={bulkMax}
+          existing={Math.max(0, bulkMax - bulkNotYet)}
+          unit={unit}
+          onCancel={() => {
+            setDialog(null);
+          }}
+          onConfirm={collectBulk}
+        />
+      ) : null}
+      {dialog?.kind === 'revise' && workerNo !== null ? (
+        <ReviseDialog
+          lot={dialog.lot}
+          workerNo={workerNo}
+          onClose={() => {
+            setDialog(null);
+          }}
+          onSaved={(lotNo) => {
+            setDialog(null);
+            refreshLots();
+            puToast(tp.revise.saved(lotNo));
+          }}
+          onRejected={(reason) => {
+            setDialog(null);
+            refreshLots();
+            puToast(
+              reason === 'alreadyPrinted' ? tp.revise.alreadyPrinted : tp.revise.stateLocked,
+              'warn',
+            );
+          }}
         />
       ) : null}
       {dialog?.kind === 'void' ? (

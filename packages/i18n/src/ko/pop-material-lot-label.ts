@@ -364,6 +364,63 @@ export const popMaterialLotLabel = {
     mode: { AUTO: '자동', MANUAL: '수동' },
     remainder: '나머지',
     poLine: (purchaseOrderNo: string, lineNo: number) => `${purchaseOrderNo} · ${lineNo}`, // ui-check-ignore: C-13 설계 확정 문구(specs 014 mockups/P0101)
+    /** [수정] 창(FR-016 · FR-017 · 시안 P0101 ⑤). */
+    revise: {
+      action: '수정',
+      title: '자재 관리 LOT 수정',
+      lotNo: '자재 관리 LOT 번호',
+      pair: '공급사·품목', // ui-check-ignore: C-13 설계 확정 문구(specs 014 mockups/P0101)
+      po: 'P/O 라인',
+      qty: '재고량',
+      package: '포장',
+      optional: '(선택)',
+      packageOn: '포장 넣기',
+      packageOff: '포장 없음',
+      packageUom: '포장 단위',
+      packageCount: '포장 수',
+      qtyPerPackage: '포장당 수',
+      calcOk: (calc: string) => `${calc} · 재고량과 같음`, // ui-check-ignore: C-13 설계 확정 문구(specs 014 mockups/P0101)
+      mismatch: (qty: string, calc: string) =>
+        `재고량 ${qty} ≠ ${calc} — 맞춰야 저장할 수 있습니다`,
+      invalid: '재고량과 포장 칸을 확인하세요(0보다 큰 수, 포장 수는 정수)',
+      renumber: '수량이 바뀌면 LOT 번호를 새로 받습니다',
+      now: '지금',
+      after: '저장 뒤',
+      printedNote: '출력한 LOT 은 고칠 수 없습니다(폐기하고 새로 만듭니다)',
+      cancel: '취소',
+      save: '저장',
+      saved: (lotNo: string) => `${lotNo} 로 고쳤습니다`,
+      alreadyPrinted: '이미 출력한 LOT 이라 고칠 수 없습니다. 목록을 다시 불러왔습니다.',
+      stateLocked: '입하됐거나 폐기한 LOT 이라 고칠 수 없습니다. 목록을 다시 불러왔습니다.',
+      conflict: 'LOT 번호가 겹쳐 저장하지 못했습니다. 다시 저장하세요.',
+      failed: '수정하지 못했습니다.',
+    },
+    /** [일괄 출력] 창(FR-015 · 시안 P0101 ④). */
+    bulk: {
+      action: '일괄 출력',
+      title: '일괄 출력',
+      lead: '미출력 자재 관리 LOT 을 차례 번호 순서대로 앞에서부터 찍습니다. 몇 장 찍을지 넣으세요.',
+      count: '찍을 장수',
+      unit: '장',
+      hint: (max: number, existing: number, notYet: number) =>
+        `최대 ${max} · 미출력 ${existing} + 아직 만들지 않은 ${notYet}`, // ui-check-ignore: C-13 설계 확정 문구(specs 014 mockups/P0101)
+      over: (max: number) => `최대 ${max}장까지 찍을 수 있습니다`,
+      overBody: (count: number) =>
+        `넣은 장수(${count})가 이 공급사와 품목의 미출력 LOT 수보다 많아 찍지 않습니다.`,
+      range: '찍을 LOT',
+      rangeValue: (count: number) => `차례 1 ~ ${count} · ${count}장`, // ui-check-ignore: C-13 설계 확정 문구(specs 014 mockups/P0101)
+      create: '먼저 만들기',
+      createValue: (count: number) => `아직 만들지 않은 ${count}개를 먼저 만든 뒤 찍습니다`,
+      unitLabel: '발행 단위',
+      unitEach: (count: number) => `${count}장마다 멈춤`,
+      unitAll: '멈추지 않음',
+      next: '다음: 라벨 미리보기에서 인쇄',
+      cancel: '취소',
+      submit: (count: number) => `${count}장 출력`,
+      submitIdle: '일괄 출력',
+      collecting: '찍을 LOT 을 모으고 있습니다',
+      failed: '찍을 LOT 을 받지 못했습니다. 다시 하세요.',
+    },
     lookup: {
       found: (tab: string) => `스캔한 LOT 을 찾았습니다. ${tab} 탭 맨 위에 골라 두었습니다.`,
       foundReprint: '사유를 골라 재인쇄하세요.',

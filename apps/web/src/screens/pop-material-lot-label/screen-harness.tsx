@@ -182,6 +182,8 @@ export interface HarnessOptions {
   shares?: Record<string, PairShare>;
   /** 미출력 탭 조회를 이 상태로 실패시킨다(409 LOT_NO_CONFLICT 등). */
   lotsFail?: { status: number; body?: unknown };
+  /** 출력 전 수정을 이 상태 · 코드로 거절한다(409 ALREADY_PRINTED 등). */
+  reviseFail?: { status: number; code: string };
   /** 탭 목록 응답을 이 약속이 풀릴 때까지 붙잡는다 — 「조회 · 생성 중」을 잰다. */
   lotsGate?: Promise<void>;
   /** 단위 목록 — 없으면 `UOMS`(G2 L17: 코드와 이름이 다른 단위를 흉내 낸다). */
@@ -496,7 +498,7 @@ export const renderLabelScreen = (options: HarnessOptions = {}) => {
           {
             errors: [
               {
-                scope: 'request',
+                scope: 'screen',
                 code: 'NOT_FOUND',
                 message: '이 공장에 없는 자재 관리 LOT 번호입니다',
               },
@@ -570,6 +572,51 @@ export const renderLabelScreen = (options: HarnessOptions = {}) => {
           page: { page: pageNo, size, total: rows.length + remaining },
           generation,
         });
+      },
+    },
+    {
+      match: (request) =>
+        /^\/logistics\/material-lots\/\d+:revise$/u.test(path(request)) &&
+        request.method === 'POST',
+      respond: async (request) => {
+        const entry = await record(request);
+        const lotId = Number(/material-lots\/(\d+):revise$/u.exec(path(request))?.[1]);
+        const body = entry.body as {
+          qty: number;
+          package: { uomId: number; count: number; qtyPerPackage: number } | null;
+        };
+        const fail = (status: number, code: string) =>
+          jsonResponse({ errors: [{ scope: 'screen', code, message: code }] }, { status });
+
+        if (options.reviseFail !== undefined) {
+          return fail(options.reviseFail.status, options.reviseFail.code);
+        }
+
+        const each = groups.find((candidate) =>
+          candidate.lots.some((item) => item.lotId === lotId),
+        );
+        const found = findLot(lotId);
+
+        if (each === undefined || found === undefined) return fail(404, 'NOT_FOUND');
+        if (found.lastLabelIssue !== null) return fail(409, 'ALREADY_PRINTED');
+        if (found.lifecycleStatusCode !== 'WAITING') return fail(409, 'STATE_LOCKED');
+
+        const uomCode = (id: number) => UOMS.find((uom) => uom.uomId === id)?.uomCode ?? '';
+        if (found.lotQty !== body.qty) {
+          const parts = found.lotNo.split('|');
+          found.lotNo = [parts[0], String(body.qty), parts[2], parts[3], '0001'].join('|');
+        }
+        found.lotQty = body.qty;
+        found.package =
+          body.package === null
+            ? null
+            : {
+                ...body.package,
+                uomCode: uomCode(body.package.uomId),
+                uomName: uomCode(body.package.uomId),
+              };
+
+        return jsonResponse(toRow(each, found, 0));
       },
     },
     {

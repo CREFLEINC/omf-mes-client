@@ -1,4 +1,3 @@
-import type { ApiClient, WaitingMaterialLotGroup } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -14,7 +13,7 @@ import { withoutSystemReissueReasons } from '../../patterns/reissue-reasons';
  * | 무엇 | 경로 |
  * | --- | --- |
  * | 공급사 칸 · 품목 표 · 탭 넷 · 번호 찾기 | `patterns/material-lot-precreate`(피처 014 — 서버 쪽 · 찾기, 20초 다시 받기 없음) |
- * | 보내기 직전 확인 | `GET /logistics/waiting-material-lots`(계약 §1) — `mutations.verifyCommands` 만 |
+ * | 보내기 직전 확인 | `GET /logistics/material-lots/lookup`(LOT 마다) — `mutations.verifyCommands` |
  * | 프린터 · 재발행 사유 | 지금 그대로 |
  *
  * ⭐ 옛 「라벨 대기 입하 줄」(`GET /logistics/inbound-receipt-lines` · 입하 건 → 줄 모으기)은 없앴다(FR-036 ·
@@ -23,25 +22,6 @@ import { withoutSystemReissueReasons } from '../../patterns/reissue-reasons';
  * 경로 리터럴은 이 파일에만 둔다 — `openapi-fetch`가 경로를 리터럴 타입으로 요구해
  * 문자열 변수로 넘기면 타입 검사가 풀린다.
  */
-
-type Client = ApiClient['client'];
-
-export const waitingKeys = {
-  all: ['pop-material-lot-label', 'waiting'] as const,
-  plant: (plantId: number) => ['pop-material-lot-label', 'waiting', plantId] as const,
-};
-
-/** 공급사·품목별 대기 자재 관리 LOT — 그 공장 전부(계약 §1). */
-export const fetchWaitingGroups = async (
-  client: Client,
-  plantId: number,
-): Promise<WaitingMaterialLotGroup[]> => {
-  const data = await runRequest(() =>
-    client.GET('/logistics/waiting-material-lots', { params: { query: { plantId } } }),
-  );
-
-  return data.items;
-};
 
 /**
  * 이 단말이 쓸 수 있는 프린터와 그 상태.
