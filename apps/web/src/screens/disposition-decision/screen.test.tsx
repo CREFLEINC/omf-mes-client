@@ -115,9 +115,9 @@ describe('DispositionDecisionScreen 조회', () => {
     await selectRow(user);
 
     expect(await screen.findByText(t.form.typeLock.closed, { selector: 'p' })).toBeInTheDocument();
-    await user.click(
-      screen.getByRole('button', { name: t.form.typeLock.openDerived('NC-TEST-0077') }),
-    );
+    const open = screen.getByRole('button', { name: t.form.typeLock.openDerived('NC-TEST-0077') });
+    expect(open).toHaveTextContent('신규 부적합 건 조회');
+    await user.click(open);
     await waitFor(() => expect(requestedPaths()).toContain('/quality/nonconformances/77'));
   });
 

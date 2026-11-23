@@ -1021,6 +1021,7 @@ export const DispositionDecisionScreen = ({
                       <NonconformanceLinkButton
                         key={derived.id}
                         nonconformanceNo={derived.no}
+                        text={t.form.typeLock.derivedButton}
                         label={t.form.typeLock.openDerived(derived.no)}
                         onClick={() =>
                           setSearchParams((current) =>

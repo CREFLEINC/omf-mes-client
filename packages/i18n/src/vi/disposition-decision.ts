@@ -173,6 +173,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
       closed: 'Mục không phù hợp này đã kết thúc',
       openDerived: (nonconformanceNo: string): string =>
         `Xem mục không phù hợp mới ${nonconformanceNo}`,
+      derivedButton: 'Xem mục không phù hợp mới',
       concessionPending: 'Đặc cách đang chờ phê duyệt',
       concessionApproved: 'Đặc cách đã duyệt — chờ áp dụng',
       concessionRejected: 'Đặc cách bị từ chối — chờ xác nhận',

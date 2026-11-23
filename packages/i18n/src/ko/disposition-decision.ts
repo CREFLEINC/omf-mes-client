@@ -194,8 +194,9 @@ export const dispositionDecision = {
       closed: '이 부적합 건은 종결되었습니다',
       concessionPending: '특채 결재 대기 중',
       /** 종결로 새로 생긴 부적합(선별)으로 가는 단추 이름(#352). */
-      openDerived: (nonconformanceNo: string): string =>
-        `새로 생긴 부적합 ${nonconformanceNo} 보기`,
+      openDerived: (nonconformanceNo: string): string => `신규 부적합 건 ${nonconformanceNo} 조회`,
+      /** 단추 글 — 「기존 부적합 건 조회」와 짝(#352 사용자 지시). */
+      derivedButton: '신규 부적합 건 조회',
       /** 결재 승인 뒤 적용 전 — 위 상자의 「승인됨 — 적용 대기」와 같은 말(G2 L-d). */
       concessionApproved: '특채 승인됨 — 적용 대기',
       /** 결재 반려 뒤 [반려 확인] 전(omf-all-around#275). */
