@@ -24,22 +24,36 @@ export const popMaterialLotLabel = {
   },
   /** 왼쪽 공급사·품목 목록. 칩은 대기 자재 관리 LOT 수다. */
   pairs: {
+    columns: {
+      itemCode: '품목코드',
+      itemName: '품목명',
+      lots: 'LOT',
+      qty: '수량',
+      printed: '라벨 출력',
+      iqc: 'IQC',
+      lastIssued: '최근 발행',
+    },
+    /** 라벨 출력 칸 — 입하 대기 LOT 가운데 출력한 수 / 전체. */
+    printedOf: (printed: number, total: number) => `${printed} / ${total}`,
+    iqcRequired: '대상',
+    none: '—',
+    suppliersLabel: '공급사',
+    itemsLabel: '품목',
     label: '공급사·품목', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
-    waiting: (count: number) => `입하 대기 ${count}`,
-    /** 기본 정보 줄 뒤에 라벨 미출력 수(시안 「· 라벨 미출력 N」). */
-    withUnprinted: (line: string, count: number) => `${line} · 라벨 미출력 ${count}`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    /** 공급사명 줄 오른쪽 끝의 라벨 미출력 수. */
+    unprinted: (count: number) => `라벨 미출력 ${count}`,
     /** 기본 정보 한 줄 — 패키징이 있으면 「기본 봉지 10 × 100 = 1,000 EA」. */
     defaultPackaged: (text: string) => `기본 ${text}`,
     defaultUnpackaged: (text: string) => `기본 ${text} · 포장 없음`,
-    noDefault: '기본 정보 없음',
-    empty: '공급사·품목이 없습니다. 관리웹 「공급사·품목 기본 정보」에 먼저 등록하세요.', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    /** 목록은 열린 발주 · 발행 이력에서 나온다 — 메뉴에서 숨긴 「공급사·품목 기본 정보」로 보내지 않는다. */
+    empty: '발행할 공급사·품목이 없습니다. 발주가 등록되면 나타납니다.', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
     noMatch: '찾는 공급사·품목이 없습니다.', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
   },
   /** 재발행 탭 왼쪽 안내. */
   /** 오른쪽 작업 칸. */
   work: {
-    meta: (supplier: string, supplierCode: string, uomCode: string, defaults: string) =>
-      `${supplier} ${supplierCode} · 기본 단위 ${uomCode} · ${defaults}`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    /** 상세 머리의 이름표(사용자 지시 2026-11-23). */
+    fields: { itemCode: '품목코드', itemName: '품목명', supplier: '공급사', uom: '기본 단위' },
     create: '자재 관리 LOT 생성',
     /** 상시 할 일 한 줄 — 입하 대기 LOT 을 고르면 출고·투입 제한을 말한다(#295 시안). */
     help: '자재 관리 LOT 안내',
@@ -73,7 +87,8 @@ export const popMaterialLotLabel = {
     columns: {
       check: '선택',
       lotNo: '자재 관리 LOT 번호',
-      item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       qty: '재고량',
       package: '포장',
       status: 'LOT 상태',
@@ -130,7 +145,7 @@ export const popMaterialLotLabel = {
     /** 이미 출력한 LOT 을 골랐다 — 첫 발행은 미출력만 찍는다. */
     printedNote: (count: number) =>
       `이미 출력한 ${count}장은 「재발행」 탭에서 사유를 선택해 재인쇄하세요`,
-    selectAllWaiting: (count: number) => `입하 대기 전체 선택 (${count}건)`,
+    selectAll: '전체 선택',
     selectAllReprint: (count: number) => `전체 선택 (${count}건)`,
     voidIdle: '폐기',
     void: (count: number) => `입하 대기 ${count}개 폐기`,
@@ -283,11 +298,6 @@ export const popMaterialLotLabel = {
   preview: {
     title: '라벨 미리보기',
     reprintTitle: '재인쇄 미리 보기',
-    kind: '자재 관리 LOT',
-    item: '품목',
-    qty: '수량',
-    package: '포장',
-    supplier: '공급사',
     reissue: (seq: number) => `재인쇄 ${seq}회`,
     prev: '◀ 이전',
     next: '다음 ▶',

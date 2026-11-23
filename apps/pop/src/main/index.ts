@@ -5,7 +5,7 @@
  * `window-options` · `renderer-path` · `file-blob-store` · `secure-store` · `local-db` · `print`.
  * 이 파일이 얇아야 「Electron을 띄워야만 확인 가능한 부분」이 작아진다.
  */
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import {
   appendFileSync,
   existsSync,
@@ -17,6 +17,13 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+
+import {
+  createPrintHost,
+  buildPrintHostScript,
+  PrintHostDownError,
+  type PrintHost,
+} from './print-host';
 
 import {
   BrowserWindow,
@@ -356,10 +363,19 @@ const readJsonFile = (path: string): unknown => parseHandWrittenJson(readFileSyn
 async function probeMedia(
   deviceName: string | undefined,
   jobDir: string,
+  host?: PrintHost,
 ): Promise<{ widthMm: number; heightMm: number } | null> {
   if (process.platform !== 'win32') return null;
 
   try {
+    /* 떠 있는 도우미가 있으면 그쪽에 묻는다 — 장마다 PowerShell 을 띄우지 않는다. */
+    if (host !== undefined) {
+      try {
+        return parseMediaProbe(await host.probe(deviceName));
+      } catch (cause) {
+        if (!(cause instanceof PrintHostDownError)) return null;
+      }
+    }
     const output = await runPrintScript(
       join(jobDir, 'media-probe.ps1'),
       buildMediaProbeScript(deviceName),
@@ -373,7 +389,27 @@ async function probeMedia(
   }
 }
 
-function createRawPrinter(fallbackName?: string): RawPrinter | undefined {
+/**
+ * 라벨 인쇄 도우미(계속 떠 있는 PowerShell) — 단말에 하나. 스크립트는 처음 띄울 때 `dir` 에 쓴다.
+ * ⚠ BOM 을 붙여 쓴다 — `runPrintScript` 와 같은 까닭(PowerShell 5.1 의 ANSI 읽기).
+ */
+function createWindowsPrintHost(dir: string): PrintHost {
+  return createPrintHost({
+    timeoutMs: DEFAULT_PRINT_TIMEOUT_MS,
+    start: () => {
+      const scriptPath = join(dir, 'print-host.ps1');
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(scriptPath, `\ufeff${buildPrintHostScript()}`, 'utf8');
+
+      return spawn('powershell.exe', rawPrintScriptArgs(scriptPath), {
+        windowsHide: true,
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+    },
+  });
+}
+
+function createRawPrinter(fallbackName?: string, host?: PrintHost): RawPrinter | undefined {
   if (process.platform !== 'win32') return undefined;
 
   return {
@@ -398,7 +434,7 @@ function createRawPrinter(fallbackName?: string): RawPrinter | undefined {
        *    않아도 그 단말에 걸린 라벨지에 맞는다 — 현장에서 갈아 끼워도 프린터 설정만 맞으면
        *    그대로 따라간다. 못 읽으면 설정값·기본값으로 물러선다.
        */
-      const probed = await probeMedia(deviceName ?? fallbackName, join(dataPath, '..'));
+      const probed = await probeMedia(deviceName ?? fallbackName, join(dataPath, '..'), host);
       const media = withProbedSize(readLabelMedia(), probed);
       /*
        * ⛔ **`ascii` 로 읽고 쓰지 않는다.** Node 의 `ascii` 는 바이트마다 최상위 비트를
@@ -409,6 +445,20 @@ function createRawPrinter(fallbackName?: string): RawPrinter | undefined {
        */
       const sent = applyLabelMedia(readFileSync(dataPath, 'latin1'), media);
       writeFileSync(dataPath, sent, 'latin1');
+
+      /*
+       * ⭐ 떠 있는 도우미로 보낸다 — 장마다 PowerShell 을 띄우고 C# 을 컴파일하던 것이 느린 까닭이었다.
+       * 도우미가 죽었거나 없을 때만(`PrintHostDownError`) 종전 길로 물러선다. 작업이 실패한 것은 그대로 실패다 —
+       * 다른 길로 다시 보내면 라벨이 두 장 나올 수 있다.
+       */
+      if (host !== undefined) {
+        try {
+          await host.print({ path: dataPath, name: jobName, device: deviceName ?? fallbackName });
+          return;
+        } catch (cause) {
+          if (!(cause instanceof PrintHostDownError)) throw cause;
+        }
+      }
 
       await runPrintScript(
         join(dataPath, '..', 'raw-print.ps1'),
@@ -514,9 +564,14 @@ async function main(): Promise<void> {
   const logDir = join(userData, 'logs');
   const stagingDir = join(app.getPath('temp'), 'omf-pop-print');
   const mockSpoolDir = join(userData, 'mock-printer');
+  /* 라벨 인쇄 도우미는 Windows 에서만 — 미리 띄워 첫 장도 빠르게, 끝날 때 닫는다. */
+  const labelPrintHost =
+    !MOCK_PRINTER && process.platform === 'win32' ? createWindowsPrintHost(stagingDir) : undefined;
+  labelPrintHost?.warm();
+  app.on('will-quit', () => labelPrintHost?.dispose());
   const rawPrinter = MOCK_PRINTER
     ? createMockRawPrinter({ spoolDir: mockSpoolDir })
-    : createRawPrinter(process.env.POP_PRINTER_NAME);
+    : createRawPrinter(process.env.POP_PRINTER_NAME, labelPrintHost);
 
   if (MOCK_PRINTER) {
     console.warn(`가상 라벨 프린터 켜짐 — 라벨은 ${mockSpoolDir} 에 파일로만 남는다`);

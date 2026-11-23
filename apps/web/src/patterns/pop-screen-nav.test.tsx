@@ -380,13 +380,19 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     expect(stamp()).toBeInTheDocument();
   });
 
-  it('[종료]는 확인 창을 거친다 — [취소]는 닫기만, [종료]는 POP 앱이면 앱 종료, 아니면 창 닫기', async () => {
+  it('[종료]는 설정 메뉴 안에 있고 확인 창을 거친다 — [취소]는 닫기만, [종료]는 POP 앱이면 앱 종료, 아니면 창 닫기', async () => {
     const user = userEvent.setup();
     setup();
     const exit = messages.popChrome.exit;
     const close = vi.spyOn(window, 'close').mockImplementation(() => undefined);
+    const openExit = async () => {
+      await user.click(screen.getByRole('button', { name: messages.popChrome.settings }));
+      await user.click(screen.getByRole('menuitem', { name: exit.button }));
+    };
 
-    await user.click(screen.getByRole('button', { name: exit.button }));
+    /* 맨 위 줄에는 [종료]가 바로 서지 않는다 — 톱니 [설정] 안에 있다(사용자 지시 2026-11-23). */
+    expect(screen.queryByRole('button', { name: exit.button })).toBeNull();
+    await openExit();
     const dialog = screen.getByRole('dialog', { name: exit.title });
     expect(within(dialog).getByText(exit.body)).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: '취소' }));
@@ -394,7 +400,7 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     expect(close).not.toHaveBeenCalled();
 
     /* 브라우저 — 셸 통로가 없으면 창 닫기. */
-    await user.click(screen.getByRole('button', { name: exit.button }));
+    await openExit();
     await user.click(
       within(screen.getByRole('dialog', { name: exit.title })).getByRole('button', {
         name: exit.confirm,
@@ -408,7 +414,7 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     const before = carrier.pop;
     carrier.pop = { app: { quit } };
     try {
-      await user.click(screen.getByRole('button', { name: exit.button }));
+      await openExit();
       await user.click(
         within(screen.getByRole('dialog', { name: exit.title })).getByRole('button', {
           name: exit.confirm,
@@ -535,17 +541,24 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     expect(screen.getByText('지금: /pop/home')).toBeInTheDocument();
   });
 
-  /* 사용자 지시 2026-11-20(#334) — [단말 재등록]은 맨 위 줄 [종료] 바로 왼쪽, 사번 입력 중에만 · 잠그지 않는다. */
-  it('사번이 없으면 [종료] 바로 왼쪽에 [단말 재등록]이 서고 눌린다', async () => {
+  /*
+   * 사용자 지시 2026-11-20(#334) — [단말 재등록]은 사번 입력 중에만 · 잠그지 않는다.
+   * 사용자 지시 2026-11-23 — 맨 위 줄에 바로 두지 않고 톱니 [설정] 메뉴 안, [종료] 바로 위에 둔다.
+   */
+  it('사번이 없으면 설정 메뉴 안 [종료] 바로 위에 [단말 재등록]이 서고 눌린다', async () => {
     const user = userEvent.setup();
     const onReRegister = vi.fn();
     setup({ route: '/pop/home', workerNo: null, onReRegister });
 
-    const button = screen.getByRole('button', {
+    expect(
+      screen.queryByRole('button', { name: messages.workerAssignment.registration.reRegister }),
+    ).toBeNull();
+    await user.click(screen.getByRole('button', { name: messages.popChrome.settings }));
+    const button = screen.getByRole('menuitem', {
       name: messages.workerAssignment.registration.reRegister,
     });
     expect(button).toBeEnabled();
-    const exit = screen.getByRole('button', {
+    const exit = screen.getByRole('menuitem', {
       name: new RegExp(messages.popChrome.exit.button, 'u'),
     });
     expect(button.nextElementSibling).toBe(exit);
@@ -555,14 +568,19 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     expect(look(button)).toEqual(look(exit));
     await user.click(button);
     expect(onReRegister).toHaveBeenCalledOnce();
+    /* 고르면 메뉴가 닫힌다. */
+    expect(screen.queryByRole('menu')).toBeNull();
   });
 
-  it('사번이 확인되면 [단말 재등록]을 두지 않는다', () => {
+  it('사번이 확인되면 설정 메뉴에 [단말 재등록]을 두지 않는다', async () => {
+    const user = userEvent.setup();
     setup({ onReRegister: vi.fn() });
 
+    await user.click(screen.getByRole('button', { name: messages.popChrome.settings }));
     expect(
-      screen.queryByRole('button', { name: messages.workerAssignment.registration.reRegister }),
+      screen.queryByRole('menuitem', { name: messages.workerAssignment.registration.reRegister }),
     ).toBeNull();
+    expect(screen.getByRole('menuitem', { name: messages.popChrome.exit.button })).toBeVisible();
   });
 });
 

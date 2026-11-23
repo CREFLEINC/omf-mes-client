@@ -67,7 +67,7 @@ const rows = (): HTMLElement[] => screen.queryAllByRole('checkbox', { name: /SYN
 /** 대기를 모두 고르고 [라벨 N장 발행] → 미리 보기 [N장 인쇄]. */
 const issueAll = async (user: ReturnType<typeof userEvent.setup>, count: number): Promise<void> => {
   await waitFor(() => expect(rows().length).toBeGreaterThan(0));
-  await user.click(screen.getByRole('button', { name: t.bar.selectAllWaiting(count) }));
+  await user.click(screen.getByRole('button', { name: t.bar.selectAll }));
   await user.click(screen.getByRole('button', { name: t.bar.issue(count) }));
   const dialog = await screen.findByRole('dialog', { name: t.preview.title });
   await user.click(within(dialog).getByRole('button', { name: t.preview.print(count) }));
@@ -177,7 +177,7 @@ describe('US1-4 라벨 발행 — 차례로 보낸다', () => {
     const { findLot, sent } = renderLabelScreen(waitingOnly(2));
 
     await waitFor(() => expect(rows()).toHaveLength(2));
-    await user.click(screen.getByRole('button', { name: t.bar.selectAllWaiting(2) }));
+    await user.click(screen.getByRole('button', { name: t.bar.selectAll }));
     /* 다른 단말이 그사이 9002 를 찍었다. */
     const other = findLot(9002);
     if (other !== undefined)
@@ -301,8 +301,12 @@ describe('라벨 발행 — N장마다 멈추고 이어서', () => {
     await waitFor(() =>
       expect(screen.getByText(messages.popUniform.pager.total(12))).toBeInTheDocument(),
     );
-    await user.click(screen.getByRole('radio', { name: t.bar.unit.each(10) }));
-    await user.click(screen.getByRole('button', { name: t.bar.selectAllWaiting(12) }));
+    /* 발행 단위는 고르기 칸(사용자 지시 2026-11-23). */
+    await user.click(screen.getByRole('combobox', { name: t.bar.unit.label }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('option', { name: t.bar.unit.each(10) }),
+    );
+    await user.click(screen.getByRole('button', { name: t.bar.selectAll }));
     /* 단위보다 많이 골랐다 — 단추와 안내 줄이 10장마다 멈춘다고 말한다. */
     expect(screen.getByText(t.bar.unitNote(10))).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: t.bar.issueEach(12, 10) }));
