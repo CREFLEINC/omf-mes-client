@@ -286,11 +286,9 @@ export const iqcInspection = {
       '이 계정에 연결된 작업자가 없어 판정을 저장할 수 없습니다. 작업자를 연결해 주세요.',
     followUp: {
       title: '불합격 LOT · 재검사 불가', // ui-check-ignore: C-13 사용자 지시 표기(#247)
-      body: '불합격으로 확정된 LOT은 재검사할 수 없습니다. 처분 판정 또는 공급사 반품을 진행해 주세요.',
-      toDisposition: '처분 판정',
+      body: '불합격으로 확정된 LOT은 재검사할 수 없습니다. 아래 부적합 처분에서 판정하거나 공급사 반품을 진행해 주세요.',
       toSupplierReturn: '공급사 반품',
-      noNonconformance:
-        '처분을 기다리는 부적합을 찾지 못했습니다. 처분 판정 목록에서 이 LOT 을 찾아 주세요.',
+      noNonconformance: '처분을 기다리는 부적합을 찾지 못했습니다. 공급사 반품을 진행해 주세요.',
     },
     rejection: {
       heading: '불합격 내용',

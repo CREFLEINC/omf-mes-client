@@ -3,9 +3,7 @@ import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import type { PendingListQuery } from './filters';
-import type { HistoryListQuery } from './history-filters';
 import type {
-  DispositionDecisionHistoryResponse,
   DispositionDecisionListResponse,
   Nonconformance,
   NonconformanceListResponse,
@@ -19,8 +17,6 @@ export const dispositionKeys = {
     ['disposition-decision', 'detail', nonconformanceId] as const,
   decisions: (nonconformanceId: number | null) =>
     ['disposition-decision', 'decisions', nonconformanceId] as const,
-  history: (query: HistoryListQuery | null) =>
-    ['disposition-decision', 'history', query === null ? null : { ...query }] as const,
 };
 
 /**
@@ -64,22 +60,6 @@ export const usePendingTotals = (queries: readonly PendingListQuery[]): (number 
       queryKey: dispositionKeys.pending(query),
       queryFn: () =>
         runRequest(() => client.GET('/quality/nonconformances', { params: { query } })),
-    })),
-  }).map((result) => result.data?.page.total);
-};
-
-/**
- * 처분 유형 칩의 건수(사용자 지시 · #223) — 유형마다 처분 이력 첫 쪽의 총수. 목록과 같은 열쇠 · 같은 조회라
- * 지금 보는 유형의 조회는 다시 나가지 않는다. 돌려주는 차례는 넘긴 조회의 차례다.
- */
-export const useHistoryTotals = (queries: readonly HistoryListQuery[]): (number | undefined)[] => {
-  const { client } = useApiClient();
-
-  return useQueries({
-    queries: queries.map((query) => ({
-      queryKey: dispositionKeys.history(query),
-      queryFn: () =>
-        runRequest(() => client.GET('/quality/disposition-decisions', { params: { query } })),
     })),
   }).map((result) => result.data?.page.total);
 };
@@ -147,30 +127,6 @@ export const useDispositionDecisions = (
           params: { path: { nonconformanceId } },
         }),
       );
-    },
-  });
-};
-
-/**
- * 처리 이력 탭.
- *
- * ⭐ **같은 경로를 `W-04-10`(폐기)·`W-04-11`(재등록)·`P-04-03`(재작업)이 처분 유형으로 걸러
- * 쓴다** — 이 화면이 채우는 진입 목록이 바로 이것이다.
- *
- * 판정 대기 탭에 있는 동안에는 열지 않는다 — 보지 않는 목록을 부르면 원장 조회가 두 배가 된다.
- */
-export const useDecisionHistory = (
-  query: HistoryListQuery | null,
-): UseQueryResult<DispositionDecisionHistoryResponse> => {
-  const { client } = useApiClient();
-
-  return useQuery({
-    queryKey: dispositionKeys.history(query),
-    enabled: query !== null,
-    queryFn: () => {
-      if (query === null) throw new Error('이력 탭이 아닐 때는 조회하지 않습니다.');
-
-      return runRequest(() => client.GET('/quality/disposition-decisions', { params: { query } }));
     },
   });
 };

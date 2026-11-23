@@ -1,6 +1,8 @@
 export const dispositionDecision = {
   title: '부적합 처분 관리',
   splitter: '끌어서 목록·상세 폭 조절',
+  /** 검사 화면 안 처분 상자(omf-all-around#354). */
+  box: { title: '부적합 처분' },
   /** 목록 · 상세 배치 고르기 — 「좌우 배치 | 상하 배치」 두 단추(품질 승인 처리 화면에서 옮김 · #352). */
   layout: { group: '목록·상세 배치', side: '좌우 배치', stack: '상하 배치' },
   /** 목록과 상세 사이 막대의 단추 — 항목을 고르면 목록이 접힌다(omf-all-around#275). */
@@ -10,25 +12,12 @@ export const dispositionDecision = {
   /** 탭 줄 오른쪽 상태 칩 — 「판정 대기 3」. 건수를 아직 모르면 이름만(#223). */
   statusChip: (label: string, count: number | undefined): string =>
     count === undefined ? label : `${label} ${String(count)}`,
-  tabs: {
-    label: '처분 판정 보기',
-    pending: '처분 대기',
-    history: '처분 이력',
-    /** 탭 줄 칩 — 「처분 대기 3」(#223). 건수를 아직 모르면 이름만. */
-    pendingCount: (count: number | undefined): string =>
-      count === undefined ? '처분 대기' : `처분 대기 ${String(count)}`,
-    historyCount: (count: number | undefined): string =>
-      count === undefined ? '처분 이력' : `처분 이력 ${String(count)}`,
-  },
   panes: {
     filter: '조회 조건',
     list: '처분 대기 목록',
     detail: '선택한 부적합',
     detailDecision: '부적합 상세',
-    /** 처분 이력 탭의 오른쪽 구획 — 판정 입력 없이 보기만(#223). */
-    historyDetail: '부적합 상세',
     decision: '판정',
-    history: '처분 판정 이력',
     lots: '대상 자재 관리 LOT',
     decisions: '처분 이력',
   },
@@ -40,12 +29,6 @@ export const dispositionDecision = {
     openedFrom: '접수 시작일',
     openedTo: '접수 종료일',
     decidedPeriod: '판정일',
-    decidedFrom: '판정 시작일',
-    decidedTo: '판정 종료일',
-    /** 처분 이력 목록 열 이름(#223). */
-    historyType: '처분 유형',
-    historyQty: '처분 수량',
-    historyReason: '판정 사유',
     item: '품목',
     /** 목록은 품목명 · 품목코드 두 칸(#352 사용자 지시). */
     itemName: '품목명',
@@ -98,8 +81,6 @@ export const dispositionDecision = {
   },
   detail: {
     select: '목록에서 판정할 부적합을 선택하세요.',
-    /** 처분 이력 탭 — 고르기 전 안내(#223). */
-    selectHistory: '목록에서 볼 처분 이력을 선택하세요.',
     /** 고르기 전 소제목 — 두 탭 같다(omf-all-around#228). */
     selectHint: '선택한 부적합의 상세 정보가 표시됩니다.',
     loading: '부적합 상세 불러오는 중',
@@ -288,12 +269,9 @@ export const dispositionDecision = {
     previewIqc: (inspectionRequestNo: string): string => `기존 검사 의뢰 ${inspectionRequestNo}`,
   },
   loading: '처분 대기 목록 불러오는 중',
-  historyLoading: '처분 이력 불러오는 중',
   empty: {
     title: '조건에 맞는 부적합이 없습니다',
     description: '기간을 넓히거나 다른 조건으로 조회하세요.',
-    historyTitle: '조건에 맞는 판정 내역이 없습니다',
-    historyDescription: '판정일 기간을 넓혀 다시 조회하세요.',
     beyondTitle: '이 쪽에 표시할 내용이 없습니다',
     beyondDescription: '첫 쪽으로 돌아가 확인하세요.',
   },

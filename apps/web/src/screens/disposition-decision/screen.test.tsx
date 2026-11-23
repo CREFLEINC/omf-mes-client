@@ -214,3 +214,26 @@ describe('DispositionDecisionScreen 조회', () => {
     expect(screen.queryByText(t.dispositionPending)).toBeNull();
   });
 });
+
+describe('DispositionDecisionScreen — OQC 탭 「판정 의뢰」(omf-all-around#354)', () => {
+  it('검사 건 없는 부적합만 서버에 걸러 달라고 하고, 원천(반품 · 제품) 조건 칸은 그대로 둔다', async () => {
+    renderWithProviders(
+      <SessionProvider>
+        <DispositionDecisionScreen requestOnly today={TODAY} offsetMinutes={KST} />
+      </SessionProvider>,
+      {
+        session: SYNTHETIC_SESSION,
+        fetch: dispositionStub(),
+        route: '/shipment/oqc-inspection?kind=request',
+      },
+    );
+
+    await waitFor(() => {
+      const url = requestedPaths().find((path) => path.startsWith('/quality/nonconformances?'));
+      const params = new URLSearchParams(url?.split('?')[1] ?? '');
+      expect(params.get('withoutInspectionRequestOnly')).toBe('true');
+      expect(params.get('sourceCode')).toBeNull();
+    });
+    expect(screen.getByLabelText(t.fields.sourcePick)).toBeInTheDocument();
+  });
+});

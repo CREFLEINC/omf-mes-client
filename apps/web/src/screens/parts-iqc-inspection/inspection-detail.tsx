@@ -104,6 +104,7 @@ import {
   suggestedJudgmentOf,
   type ItemJudgment,
 } from './judgment';
+import { DispositionBox } from '../disposition-decision/disposition-box';
 import { isManualDimension, ItemNameCell, MeasurementTable, rowStateOf } from './measurement-table';
 import {
   partsIqcKeys,
@@ -495,6 +496,11 @@ export const InspectionDetail = ({
           scanOpen={scanOpen}
           onConfirmed={savePendingLevel}
         />
+        {/* 불합격 확정이 세운 부적합 — 검사 상세와 따로 처분 상자로(omf-all-around#354). */}
+        {inboundInspection.data?.overallJudgmentCode === 'REJECTED' &&
+          inboundInspection.data.nonconformanceId != null && (
+            <DispositionBox nonconformanceId={inboundInspection.data.nonconformanceId} />
+          )}
         {inboundPlanOpen && version.data !== undefined && specs.data !== undefined && (
           <PlanDialog
             planCode={plan.data === undefined ? '-' : plan.data.inspectionPlanCode}
@@ -657,6 +663,10 @@ export const InspectionDetail = ({
             setPendingTab(null);
           }}
         />
+      )}
+      {/* 불합격 확정이 세운 부적합 — 검사 상세와 따로 처분 상자로(omf-all-around#354). */}
+      {confirmed && followUp.data?.nonconformanceId != null && (
+        <DispositionBox nonconformanceId={followUp.data.nonconformanceId} />
       )}
     </div>
   );

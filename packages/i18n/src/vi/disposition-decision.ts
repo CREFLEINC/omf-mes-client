@@ -10,6 +10,7 @@ import type { Translated } from './translated';
 export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
   title: 'Ra quyết định xử lý',
   splitter: 'Kéo để điều chỉnh độ rộng danh sách·chi tiết',
+  box: { title: 'Xử lý không phù hợp' },
   layout: {
     group: 'Bố cục danh sách·chi tiết',
     side: 'Bố cục trái phải',
@@ -21,23 +22,12 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
   /** 탭 줄 오른쪽 상태 칩 — 「판정 대기 3」. 건수를 아직 모르면 이름만(#223). */
   statusChip: (label: string, count: number | undefined): string =>
     count === undefined ? label : `${label} ${String(count)}`,
-  tabs: {
-    label: 'Xem đánh giá quyết định xử lý',
-    pending: 'Chờ đánh giá',
-    history: 'Lịch sử xử lý',
-    pendingCount: (count: number | undefined): string =>
-      count === undefined ? 'Chờ đánh giá' : `Chờ đánh giá ${String(count)}`,
-    historyCount: (count: number | undefined): string =>
-      count === undefined ? 'Lịch sử xử lý' : `Lịch sử xử lý ${String(count)}`,
-  },
   panes: {
     filter: 'Điều kiện tra cứu',
     list: 'Danh sách chờ đánh giá',
     detail: 'Mục không phù hợp đã chọn',
     detailDecision: 'Chi tiết không phù hợp',
-    historyDetail: 'Chi tiết không phù hợp',
     decision: 'Đánh giá',
-    history: 'Lịch sử đánh giá quyết định xử lý',
     lots: 'LOT quản lý vật tư liên quan',
     decisions: 'Lịch sử xử lý',
   },
@@ -49,11 +39,6 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     openedFrom: 'Ngày tiếp nhận từ',
     openedTo: 'Ngày tiếp nhận đến',
     decidedPeriod: 'Ngày đánh giá',
-    decidedFrom: 'Ngày đánh giá từ',
-    decidedTo: 'Ngày đánh giá đến',
-    historyType: 'Loại xử lý',
-    historyQty: 'Số lượng xử lý',
-    historyReason: 'Lý do đánh giá',
     item: 'Mặt hàng',
     itemName: 'Tên mặt hàng',
     itemCode: 'Mã mặt hàng',
@@ -95,7 +80,6 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
   },
   detail: {
     select: 'Hãy chọn mục không phù hợp cần đánh giá trong danh sách.',
-    selectHistory: 'Hãy chọn lịch sử xử lý cần xem trong danh sách.',
     selectHint: 'Thông tin chi tiết của mục không phù hợp đã chọn sẽ hiển thị.',
     loading: 'Đang tải chi tiết không phù hợp',
     notFound: 'Không tìm thấy mục không phù hợp',
@@ -250,12 +234,9 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
       `Yêu cầu kiểm tra ban đầu ${inspectionRequestNo}`,
   },
   loading: 'Đang tải danh sách chờ đánh giá',
-  historyLoading: 'Đang tải lịch sử xử lý',
   empty: {
     title: 'Không có mục không phù hợp nào khớp điều kiện',
     description: 'Hãy nới rộng khoảng thời gian hoặc tra cứu với điều kiện khác.',
-    historyTitle: 'Không có nội dung đánh giá nào khớp điều kiện',
-    historyDescription: 'Hãy nới rộng khoảng ngày đánh giá rồi tra cứu lại.',
     beyondTitle: 'Không có nội dung nào để hiển thị ở trang này',
     beyondDescription: 'Hãy quay về trang đầu để xem.',
   },

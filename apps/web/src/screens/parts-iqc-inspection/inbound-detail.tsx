@@ -12,7 +12,6 @@ import {
 import type { InspectionLotForward, InspectionResultSummaryForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
-import { Link } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { formatPackage, formatQty } from '../../patterns/package-qty';
@@ -40,9 +39,6 @@ const td = messages.iqcInboundLot.drawer;
 const th = messages.iqcInboundLot.history;
 const ts = messages.iqcInboundLot.split;
 const ta = messages.iqcInboundLot.attachments;
-
-/** 부적합 처분 관리(W-03-10) — 불합격 확정 배너의 부적합 번호가 이 화면으로 간다. */
-const DISPOSITION_PATH = '/quality/dispositions';
 
 /** 품질 상태 칩 색. */
 const lotStatusTone = (code: string): 'success' | 'error' | 'warning' | 'idle' =>
@@ -264,19 +260,6 @@ export const InboundDetail = ({
               {' · ' /* ui-check-ignore: C-13 사용자 지시 표기(굵은 제목 · 문장 · #274) */}
               {t.banner.rejected(lots.length, inspection.nonconformanceNo ?? null)}
             </span>
-            {inspection.nonconformanceNo == null ? null : (
-              <Link
-                className="iqc-inbound-nc-link"
-                to={`${DISPOSITION_PATH}${
-                  inspection.nonconformanceId == null
-                    ? ''
-                    : `?nonconformanceId=${String(inspection.nonconformanceId)}`
-                }`}
-              >
-                {t.banner.ncOpen}
-                <Icon name="open_in_new" size={18} aria-hidden />
-              </Link>
-            )}
           </span>
         </AlertBanner>
       );

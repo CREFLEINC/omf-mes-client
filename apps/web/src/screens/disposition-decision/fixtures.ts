@@ -165,14 +165,6 @@ export const dispositionStub = (options: DispositionStubOptions = {}): StubFetch
             }),
     },
     {
-      /* 처분 이력 탭 목록 — 판정 한 건이 부적합 번호를 함께 든다(#223). */
-      match: (request) => pathOf(request) === '/quality/disposition-decisions',
-      respond: () =>
-        jsonResponse(
-          listBody(decisions.map((row) => ({ ...row, nonconformanceNo: 'NC-TEST-0041' }))),
-        ),
-    },
-    {
       match: (request) => pathOf(request) === '/quality/nonconformances',
       respond: () =>
         options.listStatus === undefined
