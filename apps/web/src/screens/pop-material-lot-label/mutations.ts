@@ -108,7 +108,21 @@ interface IssueDeps {
  * ⛔ **인쇄에 실패해도 발행 기록을 되돌리지 않는다.** 실패는 보고하고 재발행으로 처리한다 — 그 재발행의
  *    사유가 「인쇄 실패」다(계약 명시).
  */
-const issueOne = async (deps: IssueDeps, command: IssueCommand): Promise<IssueRunResult> => {
+/**
+ * 한 장을 인쇄까지 몰고, 결과 보고는 기다리지 않고 넘긴다(사용자 지시 2026-11-23 「출력 속도가 너무 느려」).
+ *
+ * - `early` — 보고 전에 멈췄다(발행 기록 · 인쇄 실패 등). 묶음을 멈출지 이것으로 본다.
+ * - `done` — 보고까지 끝난 결과. 보고가 실패하면 「라벨은 나왔다」를 들고 온다(`hasPrintedLabel`).
+ *
+ * ⭐ 보고는 다음 장의 발행 · 인쇄와 겹쳐 간다 — 묶음은 끝나기 전에 모든 `done` 을 기다린다.
+ * ⛔ 다음 장의 발행 기록을 미리 만들지는 않는다 — 프린터가 서면 찍히지 않은 장의 기록이 남는다.
+ */
+interface StagedIssue {
+  early: IssueRunResult | null;
+  done: Promise<IssueRunResult>;
+}
+
+const startIssue = async (deps: IssueDeps, command: IssueCommand): Promise<StagedIssue> => {
   const { client, workerNo, keys, onStep } = deps;
   const { lot, printerName, reissueReasonCode, shellPrinterName } = command;
   const lotId = lot.lotId;
@@ -162,9 +176,7 @@ const issueOne = async (deps: IssueDeps, command: IssueCommand): Promise<IssueRu
     hasPrintedLabel = failureReason === null;
 
     enter('report');
-    await reportPrint(client, issue.documentIssueLogId, failureReason, workerNo);
-
-    return {
+    const printed: IssueRunResult = {
       lotId,
       isPrinted: failureReason === null,
       failedAt: failureReason === null ? null : 'print',
@@ -172,8 +184,23 @@ const issueOne = async (deps: IssueDeps, command: IssueCommand): Promise<IssueRu
       issue,
       error: null,
     };
+    const issued = issue;
+    const done = reportPrint(client, issued.documentIssueLogId, failureReason, workerNo).then(
+      () => printed,
+      (cause: unknown): IssueRunResult => ({
+        lotId,
+        isPrinted: false,
+        failedAt: 'report',
+        hasPrintedLabel,
+        issue: issued,
+        error: toApiError(cause),
+      }),
+    );
+
+    /* 인쇄가 실패했으면 묶음을 멈출지 보려고 보고까지 기다린다 — 드문 길이라 느려도 된다. */
+    return failureReason === null ? { early: null, done } : { early: await done, done };
   } catch (cause) {
-    return {
+    const failed: IssueRunResult = {
       lotId,
       isPrinted: false,
       failedAt: at,
@@ -181,6 +208,8 @@ const issueOne = async (deps: IssueDeps, command: IssueCommand): Promise<IssueRu
       issue,
       error: toApiError(cause),
     };
+
+    return { early: failed, done: Promise.resolve(failed) };
   }
 };
 
@@ -272,7 +301,7 @@ export const useBatchIssue = ({ workerNo }: IssueRunOptions): BatchIssueHandle =
   const stopRequested = useRef(false);
   /*
    * 멱등 키는 묶음을 넘어 붙잡아 둔다 — 실패한 장을 다시 보낼 때(같은 줄 · 같은 본문) 같은 키로
-   * 나가야 서버가 같은 쓰기로 본다(`issueOne` 머리말).
+   * 나가야 서버가 같은 쓰기로 본다(`startIssue` 머리말).
    */
   const keys = useRef<IssueKeys>({ issue: new Map() });
 
@@ -352,6 +381,8 @@ export const useBatchIssue = ({ workerNo }: IssueRunOptions): BatchIssueHandle =
             setSkipped((previous) => new Set([...previous, ...gone]));
           });
           let halted = false;
+          /* 보고 중인 장 — 다음 장과 겹쳐 가고, 묶음이 끝나기 전에 모두 기다린다. */
+          const reporting: Promise<void>[] = [];
 
           for (const [index, command] of queue.entries()) {
             const rest = queue.slice(index).map((left) => left.lot.lotId);
@@ -366,12 +397,16 @@ export const useBatchIssue = ({ workerNo }: IssueRunOptions): BatchIssueHandle =
 
             setCurrentLotId(command.lot.lotId);
 
-            const result = await issueOne(deps, command);
+            const staged = await startIssue(deps, command);
+            const record = (result: IssueRunResult): void => {
+              setResults((previous) => new Map(previous).set(command.lot.lotId, result));
+            };
 
-            setResults((previous) => new Map(previous).set(command.lot.lotId, result));
+            reporting.push(staged.done.then(record));
+            const result = staged.early;
 
             /* 프린터가 서면 다음 단위도 같은 답이다 — 기다리던 장까지 「보내지 않음」이다. */
-            if (stopsBatch(result)) {
+            if (result !== null && stopsBatch(result)) {
               const dropped = dropLater();
 
               setNotRun((previous) => new Set([...previous, ...rest.slice(1), ...dropped]));
@@ -386,6 +421,9 @@ export const useBatchIssue = ({ workerNo }: IssueRunOptions): BatchIssueHandle =
 
             setNotRun((previous) => new Set([...previous, ...dropped]));
           }
+
+          /* 겹쳐 보낸 결과 보고를 모두 받고 끝낸다 — 결과 표가 「보고 중」에 머물지 않게. */
+          await Promise.all(reporting);
         } finally {
           running.current = false;
           stopRequested.current = false;
