@@ -39,6 +39,7 @@ import { DetailSlot } from './detail-slot';
 import {
   codeOptionsOf,
   codeValueLabel,
+  CONCESSION_DISPOSITION,
   DISPOSITION_TYPE_CODES,
   dispositionOptionLock,
   dispositionTypeLabel,
@@ -201,9 +202,14 @@ export const DispositionDecisionScreen = ({
     () => (tab === 'pending' ? toPendingListQuery(filters, page, zone, size) : null),
     [filters, page, size, tab, zone],
   );
+  /* 처분 이력은 특채 판정도 읽는다 — 특채는 판정 저장 API 의 값이 아니라 따로 덧붙인다(#352). */
+  const historyTypeCodes = useMemo(
+    () => [...dispositionTypeCodes, CONCESSION_DISPOSITION],
+    [dispositionTypeCodes],
+  );
   const historyFilters = useMemo(
-    () => readHistoryFilters(searchParams, baseDate, dispositionTypeCodes),
-    [baseDate, dispositionTypeCodes, searchParams],
+    () => readHistoryFilters(searchParams, baseDate, historyTypeCodes),
+    [baseDate, historyTypeCodes, searchParams],
   );
   /* 두 탭의 처음 값 — 초기화가 되돌리는 값이고, 「초기화」는 이것과 다를 때만 보인다(C-6). */
   const pendingDefaults = useMemo(
@@ -261,7 +267,7 @@ export const DispositionDecisionScreen = ({
     ),
   );
   /* 처분 유형 칩 — 유형마다 지금 조건(유형은 빼고)의 건수. */
-  const historyTypeOptions = dispositionTypeOptions(dispositionTypeCodes);
+  const historyTypeOptions = dispositionTypeOptions(historyTypeCodes);
   const historyTypeTotals = useHistoryTotals(
     useMemo(
       () =>
@@ -275,7 +281,7 @@ export const DispositionDecisionScreen = ({
           return query === null ? [] : [query];
         }),
       // eslint-disable-next-line react-hooks/exhaustive-deps -- 선택지는 주입된 코드 목록이 바뀔 때만 바뀐다.
-      [historyFilters, size, zone, dispositionTypeCodes],
+      [historyFilters, size, zone, historyTypeCodes],
     ),
   );
   const historyCount = useDecisionHistory(
