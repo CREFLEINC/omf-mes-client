@@ -1,4 +1,4 @@
-import type { DispositionDecisionCreatedForward005 } from '@omf-mes/api-client';
+import type { components, DispositionDecisionCreatedForward005 } from '@omf-mes/api-client';
 import { Badge, Chip, Tabs, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
@@ -36,6 +36,11 @@ import {
   useConcessions,
 } from './concession-pane';
 import { DecisionFormPane } from './decision-form-pane';
+import {
+  PendingDispositionApprovalBox,
+  pendingDispositionApprovalOf,
+  useDispositionApprovals,
+} from './disposition-approval-pane';
 import { toDecisionLock } from './decision-lock';
 import { DetailSlot } from './detail-slot';
 import {
@@ -44,6 +49,7 @@ import {
   DISPOSITION_TYPE_CODES,
   dispositionOptionLock,
   dispositionTypeOptions,
+  selectableDispositionCodes,
   isClosedNonconformance,
   type DispositionOptionContext,
 } from './disposition-codes';
@@ -110,6 +116,8 @@ import {
 /** 취소된 부적합 — 처분 대기 목록에 두지 않는다(G2 L10). */
 const CANCELLED_NONCONFORMANCE = 'CANCELLED';
 const EMPTY_NONCONFORMANCES: Nonconformance[] = [];
+
+type DispositionApprovalOutcome = components['schemas']['DispositionApprovalOutcome'];
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -327,6 +335,8 @@ export const DispositionDecisionScreen = ({
   /* 특채 요청 팝업 — 처분 대기에서 고른 부적합에 대해 연다(사용자 지시 · #223). */
   const [isConcessionOpen, setIsConcessionOpen] = useState(false);
   const decisions = useDispositionDecisions(selectedId);
+  const dispositionApprovals = useDispositionApprovals(selectedId);
+  const pendingDispositionApproval = pendingDispositionApprovalOf(dispositionApprovals.data);
   /* 줄 · 상세에 보이는 품목은 첫 쪽 밖이어도 이름으로(G2 L-c). */
   const items = useItemLookupFor([
     ...(list.data?.items ?? []).map((item) => item.itemId),
@@ -401,10 +411,14 @@ export const DispositionDecisionScreen = ({
    * 중복을 걸러내면 두 번째 판정은 기록되지 않는데 화면은 성공으로 읽는다 — 되돌릴 수 없는
    * 원장 위의 조용한 유실이다(공유계약 C-1).
    */
-  const write = useMasterWrite<DecisionWriteVariables, DispositionDecisionCreatedForward005>({
+  /*
+   * 폐기 · 선별은 처분 결재로 올린다(omf-all-around#352) — 결재선이 있으면 요청만 남고(REQUESTED) 승인 뒤 [처분 적용],
+   * 결재선이 없으면 서버가 지금과 같은 판정 저장을 바로 한다(APPLIED · `decision` 이 판정 저장 응답과 같다).
+   */
+  const write = useMasterWrite<DecisionWriteVariables, DispositionApprovalOutcome>({
     request: async (variables, headers) => {
       const result = await client.POST(
-        '/quality/nonconformances/{nonconformanceId}/disposition-decisions',
+        '/quality/nonconformances/{nonconformanceId}/disposition-approvals',
         {
           params: {
             path: { nonconformanceId: variables.nonconformanceId },
@@ -414,7 +428,8 @@ export const DispositionDecisionScreen = ({
               'If-Match': requireIfMatch(headers),
             },
           },
-          body: variables.body,
+          /* 고를 수 있는 처분은 폐기 · 선별뿐이다(`SELECTABLE_DISPOSITION_TYPE_CODES`). */
+          body: variables.body as components['schemas']['DispositionApprovalCreate'],
         },
       );
 
@@ -461,9 +476,13 @@ export const DispositionDecisionScreen = ({
     ],
     /* 되돌릴 수 없는 쓰기다 — 취소 API가 없고 LOT 상태 전이를 함께 부른다(공유계약 B-8). */
     keyLifetime: 'until-applied',
-    onSuccess: (data) => {
+    onSuccess: (outcome) => {
       const sent = submitted.current;
-      if (sent !== null) {
+      if (outcome.outcome === 'REQUESTED') {
+        toast.show({ variant: 'success', description: t.approval.requested });
+      } else if (sent !== null) {
+        /* 결재 없이 바로 반영 — 선별의 새 입하 LOT · 새 부적합 번호도 판정 저장 응답과 같은 칸으로 온다. */
+        const data = outcome.decision as DispositionDecisionCreatedForward005 | undefined;
         const next = toDecisionResult(sent, data);
         setResult({ nonconformanceId: sent.nonconformanceId, result: next });
         /* 선별은 옮긴 LOT 이 어디로 갔는지 밝힌다 — 다음 처분은 그 새 부적합에서 한다(US7-2). */
@@ -511,7 +530,9 @@ export const DispositionDecisionScreen = ({
     decisionCount: decisions.data?.items.length ?? 0,
     isSortedOff: detailView?.sortedFrom !== null && detailView?.sortedFrom !== undefined,
   };
-  const dispositionOptions = dispositionTypeOptions(dispositionTypeCodes).map((option) => {
+  const dispositionOptions = dispositionTypeOptions(
+    selectableDispositionCodes(dispositionTypeCodes),
+  ).map((option) => {
     /* 유형마다 붙던 한 줄 설명은 걷었다 — 이름으로 알 수 있다(omf-all-around#275). 막힌 까닭만 남긴다. */
     const lockReason = dispositionOptionLock(option.value, optionContext);
     return {
@@ -528,7 +549,7 @@ export const DispositionDecisionScreen = ({
     writeError: write.error,
     detailError,
     uomId,
-    dispositionTypeCodes,
+    dispositionTypeCodes: selectableDispositionCodes(dispositionTypeCodes),
     ...(isOtherTarget && pendingTarget !== null
       ? { otherPendingWriteNo: pendingTarget.nonconformanceNo }
       : {}),
@@ -858,8 +879,12 @@ export const DispositionDecisionScreen = ({
                 {pendingConcession !== undefined && (
                   <PendingConcessionBox concession={pendingConcession} lotCount={lotRows.length} />
                 )}
-                {/* 특채가 걸려 있으면(결재 대기 · 승인 · 반려, 적용 전) 처분 판정을 할 수 없다 — 입력 칸을 두지 않고 위 상자만 보인다(사용자 지시 2026-11-17). */}
-                {pendingConcession === undefined && (
+                {/* 적용 전 처분 결재(폐기 · 선별) — 특채와 같이 결재 상태와 [처분 적용]을 이 상자에(omf-all-around#352). */}
+                {pendingDispositionApproval !== undefined && (
+                  <PendingDispositionApprovalBox approval={pendingDispositionApproval} />
+                )}
+                {/* 특채가 걸려 있으면(결재 대기 · 승인 · 반려, 적용 전) 처분 판정을 할 수 없다 — 입력 칸을 두지 않고 위 상자만 보인다(사용자 지시 2026-11-17). 처분 결재도 같다(#352). */}
+                {pendingConcession === undefined && pendingDispositionApproval === undefined && (
                   <DecisionFormPane
                     value={form}
                     errors={showErrors ? errors : write.fieldErrors}

@@ -18,8 +18,8 @@ import { DispositionDecisionScreen } from './screen';
 const t = messages.dispositionDecision;
 const TODAY = new Date(2026, 7, 12);
 const KST = 540;
-/** ⚠ 지어낸 자리표시다 — 처분 유형의 실제 값 목록은 아직 확정되지 않았다. */
-const CODE = 'REWORK';
+/** 고를 수 있는 처분은 폐기 · 선별뿐이다(omf-all-around#352) — 일반 저장은 폐기로 잰다. */
+const CODE = 'SCRAP';
 
 type User = ReturnType<typeof userEvent.setup>;
 
@@ -41,7 +41,7 @@ const renderScreen = (options: Parameters<typeof dispositionStub>[0] = {}): { us
 /* 005 FR-038 — 처분 수량은 남은 수량 전부로 고정한다(입력 칸 없음). */
 const fillDecision = async (user: User, reason = '표면만 손상됐다'): Promise<void> => {
   await screen.findByText('LOT-TEST-0088');
-  await user.click(screen.getByRole('radio', { name: '재작업' }));
+  await user.click(screen.getByRole('radio', { name: '폐기' }));
   await user.type(screen.getByLabelText(t.form.reasonLabel), reason);
 };
 
@@ -145,7 +145,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
   it('사유가 비면 서버로 보내지 않는다', async () => {
     const { user } = renderScreen();
     await screen.findByText('LOT-TEST-0088');
-    await user.click(screen.getByRole('radio', { name: '재작업' }));
+    await user.click(screen.getByRole('radio', { name: '폐기' }));
     await save(user);
 
     expect(await screen.findByText(t.form.reasonRequired)).toBeInTheDocument();
@@ -182,7 +182,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
               { code: 'INVALID_STATE', message: '이미 종결된 부적합입니다' },
               { status: 409 },
             )
-          : jsonResponse({}, { status: 201 });
+          : jsonResponse({ outcome: 'APPLIED', decision: {} }, { status: 201 });
       },
     });
     await fillDecision(user);
@@ -289,7 +289,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
 
     await user.click(screen.getByText('NC-TEST-0042'));
     await screen.findByText('LOT-TEST-0088');
-    await user.click(screen.getByRole('radio', { name: '재작업' }));
+    await user.click(screen.getByRole('radio', { name: '폐기' }));
     await user.type(screen.getByLabelText(t.form.reasonLabel), '표면만 손상됐다');
     await save(user);
 
@@ -335,3 +335,80 @@ describe('DispositionDecisionScreen 판정 저장', () => {
 });
 
 /* 옛 수량 분할 선별(#108 · P-53) 시험은 005 FR-038 로 선별이 「불량 자재 관리 LOT 고르기」로 바뀌어 `sort-split.test.tsx` 로 옮겼다. */
+
+/* omf-all-around#352 — 폐기 · 선별은 처분 결재로 올린다. */
+const pendingApproval = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+  dispositionApprovalId: 71,
+  nonconformanceId: 41,
+  dispositionTypeCode: 'SCRAP',
+  decisionQty: 320,
+  uomId: 7001,
+  uomCode: 'EA',
+  lotIds: [],
+  lots: [],
+  goodQty: null,
+  defectQty: null,
+  reason: '표면만 손상됐다',
+  approvalRequestId: 77,
+  approvalStatusCode: 'PENDING',
+  statusCode: 'PENDING',
+  dispositionDecisionId: null,
+  requestedByName: '합성 사용자',
+  createdAt: '2026-08-12T14:20:00+09:00',
+  ...overrides,
+});
+
+describe('DispositionDecisionScreen 처분 결재(#352)', () => {
+  it('결재선이 있어 요청만 남으면(REQUESTED) 요청 알림을 보이고 결과 카드는 세우지 않는다', async () => {
+    const { user } = renderScreen({
+      saveResponse: () =>
+        jsonResponse(
+          { outcome: 'REQUESTED', dispositionApproval: pendingApproval() },
+          { status: 201 },
+        ),
+    });
+    await fillDecision(user);
+    await save(user);
+
+    await waitFor(() => {
+      expect(new URL(posted()?.url ?? 'http://x').pathname).toBe(
+        '/quality/nonconformances/41/disposition-approvals',
+      );
+    });
+    expect(await screen.findByText(t.approval.requested)).toBeInTheDocument();
+    expect(screen.queryByText(t.form.resultClosed('폐기'))).toBeNull();
+    expect(screen.queryByText(t.form.success)).toBeNull();
+  });
+
+  it('결재 대기 처분이 있으면 판정 입력 대신 안내만 보이고 적용 단추는 없다', async () => {
+    renderScreen({ dispositionApprovals: [pendingApproval()] });
+    await screen.findByText('LOT-TEST-0088');
+
+    expect(await screen.findByText(t.approval.pendingBanner('폐기'))).toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: t.form.dispositionLabel })).toBeNull();
+    expect(screen.queryByRole('button', { name: t.actions.save })).toBeNull();
+    expect(screen.queryByRole('button', { name: t.approval.apply })).toBeNull();
+  });
+
+  it('⭐ 승인된 처분은 [처분 적용]으로 잠금 토큰을 실어 적용한다', async () => {
+    const { user } = renderScreen({
+      dispositionApprovals: [pendingApproval({ approvalStatusCode: 'APPROVED' })],
+    });
+    await screen.findByText('LOT-TEST-0088');
+
+    expect(await screen.findByText(t.approval.approvedBanner('폐기'))).toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: t.form.dispositionLabel })).toBeNull();
+    await user.click(screen.getByRole('button', { name: t.approval.apply }));
+
+    await waitFor(() => {
+      expect(posted()).toBeDefined();
+    });
+    const request = posted();
+    expect(new URL(request?.url ?? 'http://x').pathname).toBe(
+      '/quality/disposition-approvals/71:apply',
+    );
+    expect(request?.headers.get('If-Match')).toBe('W/"41"');
+    expect(request?.headers.get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/);
+    expect(await screen.findByText(t.approval.applied)).toBeInTheDocument();
+  });
+});

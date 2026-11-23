@@ -42,6 +42,7 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
   datePlaceholder: 'Hãy chọn ngày',
   qPlaceholder: 'Hãy nhập số yêu cầu',
   typeLabels: {
+    DISPOSITION: 'Xử lý',
     CONCESSION: 'Đặc cách',
     IQC_SKIP: 'Bỏ qua IQC (kiểm tra đầu vào)',
     PQC_SKIP: 'Bỏ qua PQC (kiểm tra công đoạn)',
@@ -139,6 +140,9 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     heading: 'Việc tiếp theo',
     concessionRejected: 'Đặc cách bị từ chối — hãy quyết định xử lý lại hoặc yêu cầu đặc cách lại',
     openDisposition: 'Mở xử lý quyết định',
+    dispositionRejected:
+      'Phê duyệt xử lý bị từ chối — hãy xác nhận từ chối rồi quyết định xử lý lại',
+    dispositionApproved: 'Xử lý đã được duyệt — nhấn Áp dụng xử lý ở màn hình xử lý để phản ánh',
     iqcRejectedTitle: 'Yêu cầu bỏ qua đã bị từ chối.',
     iqcRejected: 'Vui lòng tiến hành kiểm tra đầu vào.',
     iqcRejectedNote: 'Có thể yêu cầu bỏ qua lại trên PDA.',

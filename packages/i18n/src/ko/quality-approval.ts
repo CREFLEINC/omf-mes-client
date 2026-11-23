@@ -1,8 +1,7 @@
 export const qualityApproval = {
   title: '품질 승인 처리',
   breadcrumbRoot: '품질 관리',
-  scopeWarning:
-    '나에게 배정된 모든 유형의 요청이 보입니다. 승인 유형을 확인하세요.',
+  scopeWarning: '나에게 배정된 모든 유형의 요청이 보입니다. 승인 유형을 확인하세요.',
   fields: {
     approvalTypeCode: '승인 유형',
     statusCode: '상태',
@@ -38,6 +37,7 @@ export const qualityApproval = {
   qPlaceholder: '요청번호를 입력하세요',
   /** 승인 유형 코드 → 사용자 용어. 목록 밖 코드는 원문 그대로 보인다(`approvalTypeLabelOf`). */
   typeLabels: {
+    DISPOSITION: '처분',
     CONCESSION: '특채',
     IQC_SKIP: 'IQC (수입검사) 생략',
     PQC_SKIP: 'PQC (공정검사) 생략',
@@ -152,6 +152,10 @@ export const qualityApproval = {
   next: {
     heading: '다음 할 일',
     concessionRejected: '특채가 반려됐습니다 — 처분을 다시 정하거나 특채를 다시 요청하세요',
+    /** 처분(폐기 · 선별) 결재(omf-all-around#352) — 반영은 부적합 처분 관리의 [처분 적용] · [반려 확인]이 한다. */
+    dispositionRejected:
+      '처분 결재가 반려됐습니다 — 부적합 처분 관리에서 반려 확인 후 처분을 다시 정하세요',
+    dispositionApproved: '처분이 승인됐습니다 — 부적합 처분 관리에서 처분 적용을 누르면 반영됩니다',
     openDisposition: '부적합 처분 관리 열기',
     /** IQC 생략 반려 — 붉은 느낌표 제목 · 할 일 · 정보 표시 안내 세 줄(사용자 지시 2026-10-27). */
     iqcRejectedTitle: '생략 요청이 반려되었습니다.',

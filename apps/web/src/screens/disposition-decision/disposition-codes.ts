@@ -18,6 +18,15 @@ export const DISPOSITION_TYPE_CODES = ['REWORK', 'SCRAP', 'NORMAL', 'SORT'] as c
 export type DispositionTypeCode = (typeof DISPOSITION_TYPE_CODES)[number];
 
 /**
+ * 처분 대기에서 고를 수 있는 유형 — 폐기 · 선별만(특채는 따로 요청 단추). 정상 · 재작업은 고르지 않는다(omf-all-around#352).
+ * 처분 이력의 유형 칩 · 표시명은 지난 판정을 읽어야 하므로 위 넷을 그대로 쓴다.
+ */
+export const SELECTABLE_DISPOSITION_TYPE_CODES: readonly string[] = ['SCRAP', 'SORT'];
+
+export const selectableDispositionCodes = (codes: readonly string[]): string[] =>
+  codes.filter((code) => SELECTABLE_DISPOSITION_TYPE_CODES.includes(code));
+
+/**
  * 처분 셋은 **계약이 `enum` 으로 닫았다** — 공통코드 등록부에 없고 `/mdm/code-values` 를 부르지
  * 않는다(스펙 §4 row 104). 그래서 표시명은 화면이 갖는다(G-33). 모르는 값은 코드 그대로(G-9).
  */

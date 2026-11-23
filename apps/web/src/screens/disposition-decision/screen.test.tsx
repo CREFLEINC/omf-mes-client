@@ -174,13 +174,15 @@ describe('DispositionDecisionScreen 조회', () => {
       expect(save).toBeEnabled();
     });
     const group = screen.getByRole('radiogroup', { name: t.form.dispositionLabel });
-    // 고정 셋 + 선별(SORT). 005 FR-041 — 선별은 자재 입하 IQC 부적합(입하 LOT 있음)만이라 이 부적합(입하 LOT 없음)에서는 잠긴다.
-    expect(within(group).getAllByRole('radio')).toHaveLength(4);
+    // #352 — 고를 수 있는 처분은 폐기 · 선별뿐(정상 · 재작업은 없다). 005 FR-041 — 선별은 자재 입하 IQC 부적합(입하 LOT 있음)만이라 이 부적합(입하 LOT 없음)에서는 잠긴다.
+    expect(within(group).getAllByRole('radio')).toHaveLength(2);
+    expect(within(group).queryByRole('radio', { name: '정상' })).toBeNull();
+    expect(within(group).queryByRole('radio', { name: '재작업' })).toBeNull();
     expect(within(group).getByRole('radio', { name: '선별' })).toBeDisabled();
     expect(within(group).getByRole('radio', { name: '선별' })).toHaveAccessibleDescription(
       t.form.typeLock.sortNoInboundLot,
     );
-    expect(within(group).getByRole('radio', { name: '재작업' })).toBeEnabled();
+    expect(within(group).getByRole('radio', { name: '폐기' })).toBeEnabled();
     expect(screen.queryByText(t.dispositionPending)).toBeNull();
   });
 });

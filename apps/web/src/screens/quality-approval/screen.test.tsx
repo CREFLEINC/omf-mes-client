@@ -203,6 +203,32 @@ const processRoute = (
   respond,
 });
 
+/** #352 — 결재 대상 부적합 정보(「부적합 정보」 구획). 값은 지어낸 합성값이다. */
+const SUMMARY_PATH = /^\/quality\/approval-requests\/\d+\/nonconformance-summary$/;
+const summaryBody = (overrides: Record<string, unknown> = {}) => ({
+  nonconformanceId: 41,
+  nonconformanceNo: 'SYNTH-NC-041',
+  statusCode: 'OPEN',
+  itemCode: 'SYNTH-ITEM-1',
+  itemName: '합성 품목',
+  inspectionTypeCode: 'IQC',
+  description: '합성 외관 결함',
+  uomCode: 'EA',
+  affectedQtyTotal: 300,
+  remainingQty: 300,
+  lots: [{ lotId: 81, lotNo: 'SYNTH-LOT-081', affectedQty: 300 }],
+  approvalTypeCode: 'CONCESSION',
+  dispositionApproval: null,
+  concession: null,
+  ...overrides,
+});
+const summaryRoute = (
+  respond: StubRoute['respond'] = () => jsonResponse(summaryBody()),
+): StubRoute => ({
+  match: (request) => SUMMARY_PATH.test(new URL(request.url).pathname),
+  respond,
+});
+
 /** 탭 줄 승인·반려 칩의 건수 조회(#186) — 목록 조회와 갈라 센다. 결재 대기 건수는 목록과 같은 조회라 따로 나가지 않는다. */
 const isStatusCount = (url: URL): boolean =>
   url.pathname === PATH &&
@@ -223,6 +249,7 @@ const approvalFetch = (routes: StubRoute[]): StubFetch =>
     customerRoute(),
     uomRoute(),
     processRoute(),
+    summaryRoute(),
   ]);
 
 const recordingFetch = (
@@ -720,6 +747,7 @@ describe('QualityApprovalScreen detail', () => {
     ).toEqual([
       t.all,
       t.typeLabels.CONCESSION,
+      t.typeLabels.DISPOSITION,
       t.typeLabels.IQC_SKIP,
       t.typeLabels.PQC_SKIP,
       t.typeLabels.OQC_SKIP,
@@ -738,6 +766,70 @@ describe('QualityApprovalScreen detail', () => {
     const tabs = await screen.findByRole('tablist', { name: t.fields.approvalTypeCode });
     expect(within(tabs).queryByRole('tab', { name: t.typeLabels.IQC_SKIP })).toBeNull();
     expect(within(tabs).getByRole('tab', { name: t.typeLabels.OQC_SKIP })).toBeInTheDocument();
+  });
+
+  /* omf-all-around#352 — 처분(폐기 · 선별) 결재는 특채 조건을 묻지 않고 부적합 정보와 요청한 처분을 보인다. */
+  it('처분 결재 요청은 특채 조건 없이 부적합 정보 구획에 요청 처분을 보인다(#352)', async () => {
+    const disposition: ApprovalRequest = {
+      ...requests[0]!,
+      approvalTypeCode: 'DISPOSITION',
+      target: {
+        targetTypeCode: 'NONCONFORMANCE',
+        targetId: 41,
+        displayName: 'SYNTH-NC-041',
+        openable: false,
+      },
+    } as unknown as ApprovalRequest;
+    const recorded = recordingFetch(
+      listRoute(),
+      detailRoute(31, () => jsonResponse(detailBody(disposition))),
+      summaryRoute(() =>
+        jsonResponse(
+          summaryBody({
+            approvalTypeCode: 'DISPOSITION',
+            lots: [
+              { lotId: 81, lotNo: 'SYNTH-LOT-081', affectedQty: 100 },
+              { lotId: 82, lotNo: 'SYNTH-LOT-082', affectedQty: 200 },
+            ],
+            dispositionApproval: {
+              dispositionApprovalId: 71,
+              nonconformanceId: 41,
+              dispositionTypeCode: 'SORT',
+              decisionQty: null,
+              uomId: null,
+              uomCode: null,
+              lotIds: [82],
+              lots: [{ lotId: 82, lotNo: 'SYNTH-LOT-082' }],
+              goodQty: 100,
+              defectQty: 200,
+              reason: '합성 선별 사유',
+              approvalRequestId: 31,
+              approvalStatusCode: 'PENDING',
+              statusCode: 'PENDING',
+              dispositionDecisionId: null,
+              requestedByName: '합성 사용자',
+              createdAt: '2026-08-22T09:30:00+09:00',
+            },
+          }),
+        ),
+      ),
+    );
+    renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
+    const s = messages.dispositionDecision.approvalSummary;
+
+    const summary = await screen.findByRole('region', { name: s.title });
+    const valueOf = async (label: string): Promise<string | null | undefined> =>
+      (await within(summary).findByText(label)).nextElementSibling?.textContent;
+    expect(await valueOf(s.nonconformanceNo)).toBe('SYNTH-NC-041');
+    expect(await valueOf(s.lots)).toBe('SYNTH-LOT-081 (100 EA), SYNTH-LOT-082 (200 EA)');
+    expect(await valueOf(s.requestedDisposition)).toBe('선별');
+    expect(await valueOf(s.sortLots)).toBe('SYNTH-LOT-082');
+    expect(await valueOf(s.goodQty)).toBe('100 EA');
+    expect(await valueOf(s.defectQty)).toBe('200 EA');
+    expect(await valueOf(s.reason)).toBe('합성 선별 사유');
+    /* 특채 조건 구획 · 특채 후보 조회는 서지 않는다. */
+    expect(screen.queryByRole('group', { name: t.condition.title })).not.toBeInTheDocument();
+    expect(recorded.urls.some((url) => url.pathname === CONCESSIONS_PATH)).toBe(false);
   });
 });
 

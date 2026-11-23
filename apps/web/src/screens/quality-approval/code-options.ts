@@ -14,6 +14,7 @@ export interface CodeOption {
  */
 export const QUALITY_APPROVAL_TYPE_CODES: readonly string[] = [
   'CONCESSION',
+  'DISPOSITION',
   'PQC_SKIP',
   'OQC_SKIP',
 ];

@@ -71,7 +71,8 @@ const sortPost = (): Request | undefined =>
 describe('W-03-10 선별', () => {
   it('US7-2 불량 자재 관리 LOT 를 골라 저장하면 새 입하 LOT · 새 부적합 번호를 보인다', async () => {
     const { user } = renderSort({
-      saveResponse: () => jsonResponse(SORT_RESPONSE, { status: 200 }),
+      saveResponse: () =>
+        jsonResponse({ outcome: 'APPLIED', decision: SORT_RESPONSE }, { status: 200 }),
     });
     await screen.findByText('SAMPLE-ML|0003');
 
@@ -154,7 +155,7 @@ describe('W-03-10 선별', () => {
     );
   });
 
-  it('US7-2 선별로 생긴 부적합은 정상 처분이 없다', async () => {
+  it('US7-2 선별로 생긴 부적합에도 정상 처분은 없다 — 폐기를 고를 수 있다', async () => {
     renderSort({
       nonconformance: {
         inboundLotNo: 'SAMPLE-IL-0502',
@@ -164,10 +165,10 @@ describe('W-03-10 선별', () => {
     });
     await screen.findByText('SAMPLE-ML|0003');
 
-    expect(screen.getByRole('radio', { name: '정상' })).toBeDisabled();
-    expect(screen.getByRole('radio', { name: '정상' })).toHaveAccessibleDescription(
-      t.form.typeLock.normalSorted,
-    );
+    /* #352 — 정상 · 재작업은 어느 부적합에서도 고르지 않는다. */
+    expect(screen.queryByRole('radio', { name: '정상' })).toBeNull();
+    expect(screen.queryByRole('radio', { name: '재작업' })).toBeNull();
+    expect(screen.getByRole('radio', { name: '폐기' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'SAMPLE-NC-0040' })).toBeInTheDocument();
   });
 });

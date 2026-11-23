@@ -110,29 +110,27 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     const qty = screen.getByLabelText(t.form.qtyLabel);
     await waitFor(() => expect(qty).toHaveTextContent('3,000 EA'));
 
-    await user.click(screen.getByRole('radio', { name: '재작업' }));
-    expect(
-      screen.getByText(t.form.wholeEffect(3, t.form.reworkInboundEffect('SAMPLE-IL-0501'))),
-    ).toBeInTheDocument();
-    await user.type(screen.getByLabelText(t.form.reasonLabel), '합성 재작업 사유');
+    await user.click(screen.getByRole('radio', { name: '폐기' }));
+    expect(screen.getByText(t.form.wholeEffect(3, t.form.effect.SCRAP ?? ''))).toBeInTheDocument();
+    await user.type(screen.getByLabelText(t.form.reasonLabel), '합성 폐기 사유');
     await user.click(screen.getByRole('button', { name: t.actions.save }));
 
+    /* #352 — 판정 저장은 처분 결재로 올린다(결재선이 없으면 APPLIED 로 바로 반영). */
     await waitFor(() =>
-      expect(posted('/quality/nonconformances/41/disposition-decisions')).toBeDefined(),
+      expect(posted('/quality/nonconformances/41/disposition-approvals')).toBeDefined(),
     );
     await expect(
-      posted('/quality/nonconformances/41/disposition-decisions')?.json(),
+      posted('/quality/nonconformances/41/disposition-approvals')?.json(),
     ).resolves.toEqual({
-      dispositionTypeCode: 'REWORK',
+      dispositionTypeCode: 'SCRAP',
       decisionQty: 3000,
       uomId: 7001,
-      reason: '합성 재작업 사유',
+      reason: '합성 폐기 사유',
     });
-    expect(await screen.findByText(t.form.resultClosed('재작업'))).toBeInTheDocument();
+    expect(await screen.findByText(t.form.resultClosed('폐기'))).toBeInTheDocument();
     expect(
-      screen.getByText(t.form.resultLots(3, t.form.resultWhat.REWORK ?? '')),
+      screen.getByText(t.form.resultLots(3, t.form.resultWhat.SCRAP ?? '')),
     ).toBeInTheDocument();
-    expect(screen.getByText(t.form.reworkReopened('SAMPLE-IL-0501'))).toBeInTheDocument();
   });
 
   it('US4-4 다LOT 부적합의 전량 특채는 lotId 없이 남은 수량으로 요청하고, 특채가 걸린 자재 관리 LOT 수를 알린다', async () => {
@@ -182,7 +180,7 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     const sort = screen.getByRole('radio', { name: '선별' });
     expect(sort).toBeDisabled();
     expect(sort).toHaveAccessibleDescription(t.form.typeLock.sortNoInboundLot);
-    expect(screen.getByRole('radio', { name: '재작업' })).toBeEnabled();
+    expect(screen.getByRole('radio', { name: '폐기' })).toBeEnabled();
     expect(screen.queryByText(/처분 결과는/)).toBeNull();
   });
 
