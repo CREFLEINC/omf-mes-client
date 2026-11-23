@@ -43,6 +43,17 @@ describe('OA 공장 범위', () => {
 
   it('검사표 사업부 후보 — 범위가 있으면 그 사업부, 없으면 OA 공장들의 사업부', () => {
     expect(scopeBusinessUnitIds([{ businessUnitId: 7 }], PLANTS, OA)).toEqual([7]);
+    /* 같은 사업부의 공장 줄이 둘이어도 후보는 하나다. */
+    expect(
+      scopeBusinessUnitIds(
+        [
+          { businessUnitId: 1, plantId: 1 },
+          { businessUnitId: 1, plantId: 2 },
+        ],
+        PLANTS,
+        OA,
+      ),
+    ).toEqual([1]);
     expect(scopeBusinessUnitIds([], PLANTS, OA)).toEqual([1]);
     expect(scopeBusinessUnitIds([], PLANTS, new Set())).toEqual([]);
   });

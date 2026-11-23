@@ -111,8 +111,10 @@ const subscribePlantMode = (listener: () => void): (() => void) => {
   };
 };
 
-/** 고른 동작을 남기고 이 탭의 모든 판단 자리에 알린다. 남기지 못해도 이번 판에는 반영한다. */
+/** 저장이 막힌 브라우저에서도 이번 판에는 고른 동작을 쓰도록 들고 있는 값. */
 const memoryPlantMode = new Map<number, PlantMode>();
+
+/** 고른 동작을 남기고 이 탭의 모든 판단 자리에 알린다. 남기지 못해도 이번 판에는 반영한다. */
 const writePlantMode = (userId: number, mode: PlantMode): void => {
   memoryPlantMode.set(userId, mode);
   try {
@@ -214,13 +216,14 @@ export const useScopedPlants = ():
 
 /**
  * 검사표를 만들 사업부 후보 — 계정 범위의 사업부. 범위 줄이 없으면(제한 없음) OA 공장들의 사업부다(omf-all-around#336).
+ * 같은 사업부의 공장 줄이 여럿이어도(예: PL11 · PL13) 후보는 한 번만 낸다.
  */
 export const scopeBusinessUnitIds = (
   scopes: readonly Scope[],
   plants: readonly { plantCode: string; businessUnitId?: number | null }[],
   oaCodes: ReadonlySet<string>,
 ): number[] => {
-  if (scopes.length > 0) return scopes.map((scope) => scope.businessUnitId);
+  if (scopes.length > 0) return [...new Set(scopes.map((scope) => scope.businessUnitId))];
   const ids = plants
     .filter((plant) => oaCodes.has(plant.plantCode))
     .map((plant) => plant.businessUnitId)
@@ -232,7 +235,10 @@ export const useScopeBusinessUnitIds = (): number[] => {
   const { session } = useSession();
   const lookup = usePlantsAndOaCodes();
   if (session === null || session === undefined) return [];
-  if (session.scopes.length > 0) return session.scopes.map((scope) => scope.businessUnitId);
-  if (lookup.data === undefined) return [];
-  return scopeBusinessUnitIds(session.scopes, lookup.data.plants, lookup.data.codes);
+  if (session.scopes.length === 0 && lookup.data === undefined) return [];
+  return scopeBusinessUnitIds(
+    session.scopes,
+    lookup.data?.plants ?? [],
+    lookup.data?.codes ?? new Set<string>(),
+  );
 };
