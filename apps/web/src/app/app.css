@@ -33028,6 +33028,10 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   flex: 1 1 auto;
 }
 
+.parts-iqc-plan .parts-iqc-fact.parts-iqc-fact-wide {
+  flex-basis: 100%;
+}
+
 /* 코드 · 날짜처럼 짧은 값은 줄 안에서 끊지 않는다(「IQC-040101-」 / 「00064」로 갈리지 않게). 자재명만 길면 꺾는다. */
 .parts-iqc-plan .parts-iqc-fact > dd:not(.parts-iqc-fact-key) {
   white-space: nowrap;

@@ -60,17 +60,19 @@ export const PlanDialog = ({
           : '-';
 
   /* 검사 화면 위쪽 기본 정보와 같은 칸 — 이름표 위 · 값 아래, 칸 사이 세로선(#247 · 사용자 지시 2026-11-10). */
-  const facts: { label: string; value: string; sub?: string }[] = [
+  /* 긴 자재명은 첫 줄을 통째로, 짧은 값은 둘째 줄에 나란히 — 한 칸만 외따로 내려가지 않게(사용자 지시 2026-11-23 · #353). */
+  const facts: { label: string; value: string; sub?: string; wide?: boolean }[] = [
+    {
+      label: t.target.itemName,
+      value: itemParts?.name ?? '-',
+      ...(itemParts === null ? {} : { sub: itemParts.code }),
+      wide: true,
+    },
     { label: t.plan.facts.planCode, value: planCode },
     { label: t.plan.version, value: t.plan.versionNo(version.planVersion) },
     ...(seqNo === undefined
       ? []
       : [{ label: t.plan.seq, value: seqNo === null ? '-' : t.plan.seqNo(seqNo) }]),
-    {
-      label: t.target.itemName,
-      value: itemParts?.name ?? '-',
-      ...(itemParts === null ? {} : { sub: itemParts.code }),
-    },
     { label: t.plan.sampling, value: sampling },
     { label: t.plan.facts.effectiveFrom, value: version.effectiveFrom },
   ];
@@ -106,7 +108,12 @@ export const PlanDialog = ({
         {/* 정보 · 검사 항목 · 기준서 도면을 각각 테두리 상자로, 아이콘 없이(#247 · 사용자 지시 2026-11-10). */}
         <dl className="parts-iqc-facts">
           {facts.map((fact) => (
-            <div key={fact.label} className="parts-iqc-fact">
+            <div
+              key={fact.label}
+              className={
+                fact.wide === true ? 'parts-iqc-fact parts-iqc-fact-wide' : 'parts-iqc-fact'
+              }
+            >
               <dt className="field-label">{fact.label}</dt>
               <dd className={fact.sub === undefined ? undefined : 'parts-iqc-fact-key'}>
                 {fact.value}
