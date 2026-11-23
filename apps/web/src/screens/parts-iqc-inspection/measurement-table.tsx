@@ -1,7 +1,7 @@
 import { Chip, Icon, TextField } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useRef, type KeyboardEvent } from 'react';
+import { useRef, type KeyboardEvent, type ReactNode } from 'react';
 
 import { withUom } from '../iqc-inspection/uom-lookup';
 import { numberOf } from './form-state';
@@ -72,6 +72,8 @@ export interface MeasurementTableProps {
   onJudge: (itemId: number, judgment: ItemJudgment) => void;
   /** 저장을 막는 까닭(값만 적고 판정을 고르지 않은 항목) — 없으면 `null`. */
   blockedNote?: string | null;
+  /** 「검사 항목」 제목 오른쪽에 붙는 안내(omf-all-around#351). */
+  headNote?: ReactNode;
   /** 치수가 아닌 검사 항목 — 치수 줄 아래에 같은 표로 잇는다. 판정은 OK/NG 를 고르고, 텍스트 항목은 측정 칸에 글을 적는다. */
   checkItems?: ItemSpec[];
   texts?: Record<number, string>;
@@ -129,6 +131,7 @@ export const MeasurementTable = ({
   onChange,
   onJudge,
   blockedNote = null,
+  headNote = null,
   checkItems = [],
   texts = {},
   onText,
@@ -164,7 +167,10 @@ export const MeasurementTable = ({
   return (
     <section className="parts-iqc-card" aria-labelledby="parts-iqc-dimension">
       <div className="parts-iqc-block-head">
-        <h3 id="parts-iqc-dimension">{t.dimension.heading}</h3>
+        <div className="parts-iqc-head-title">
+          <h3 id="parts-iqc-dimension">{t.dimension.heading}</h3>
+          {headNote}
+        </div>
         <span className="parts-iqc-muted">
           {total === 0 ? t.dimension.none : t.dimension.progress(filled, total)}
         </span>
