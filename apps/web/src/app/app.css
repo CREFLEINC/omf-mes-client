@@ -30654,7 +30654,10 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   container-type: inline-size;
 }
 
-/* 목록 행 — 검사 조회·판정 목록과 같은 표시: 줄무늬 없음, 올리면 옅게, 고른 행은 바탕과 왼쪽 강조선. */
+/*
+ * 목록 행 — 검사 조회·판정 목록과 같은 표시: 줄무늬 없음, 올리면 옅게, 고른 행은 정보 파랑 바탕 + 첫 칸 왼쪽 파란 선
+ * (`.inspection-queue-table` 고른 줄과 같다 · #350).
+ */
 .lot-trace-list-rows tbody tr,
 .lot-trace-list-rows tbody tr:nth-child(even) {
   background: transparent;
@@ -30662,11 +30665,11 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 
 .lot-trace-list-rows .selectable-table tbody > tr.is-active > td,
 .lot-trace-list-rows .selectable-table tbody > tr.is-active:hover > td {
-  background: var(--surface-container-high);
+  background: var(--semantic-info-container);
 }
 
 .lot-trace-list-rows .selectable-table tbody > tr.is-active > td:first-child {
-  box-shadow: inset 3px 0 0 var(--primary);
+  box-shadow: inset 3px 0 0 var(--semantic-info);
 }
 
 /* LOT 번호 — 한 줄. 모자라면 앞 마디만 줄이고 끝 마디(일련번호)는 남긴다(trace-table.tsx). */
@@ -37523,6 +37526,12 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   flex-direction: column;
   gap: var(--space-5);
   min-width: 0;
+}
+
+/* 조회 상자 — 위아래 여백을 같게(조회 줄 기본 아래 여백을 걷는다 · 검사 조회·판정의 조회 상자와 같은 높이). */
+.list-detail-filter > :last-child,
+.list-detail-filter > :last-child > .filter-bar:last-child {
+  margin-bottom: 0;
 }
 
 /* 탭 묶음 밖이면 칩 · 「⋯」(배치)가 조회 조건 위 오른쪽 한 줄에 선다. */

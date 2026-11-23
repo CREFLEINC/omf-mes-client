@@ -214,8 +214,8 @@ const openRow = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 describe('검사표 기준', () => {
-  /* 고르면 목록을 접고, 막대의 단추로 다시 펼친다 — 검사 기준 화면과 같다(#252 · #255 사용자 지시). */
-  it('목록에서 기준을 고르면 목록이 접히고 「목록 펼치기」로 다시 펼친다', async () => {
+  /* 골라도 목록은 그대로 — 접기는 「목록 접기」로만(#350 사용자 지시). */
+  it('목록에서 기준을 골라도 목록은 펼친 채이고, 「목록 접기」 · 「목록 펼치기」로 접고 편다', async () => {
     window.localStorage.removeItem('omf-mes:inspection-sheet-template:split');
     const { user } = setup(template());
     const collapseLabel = messages.inspectionStandard.panes.listCollapse;
@@ -223,6 +223,8 @@ describe('검사표 기준', () => {
 
     expect((await screen.findAllByRole('button', { name: collapseLabel }))[0]!).toBeInTheDocument();
     await openRow(user);
+    expect(screen.queryByRole('button', { name: expandLabel })).toBeNull();
+    await user.click(screen.getAllByRole('button', { name: collapseLabel })[0]!);
 
     const expand = screen.getAllByRole('button', { name: expandLabel })[0]!;
     expect(expand).toHaveAttribute('aria-expanded', 'false');
@@ -237,6 +239,9 @@ describe('검사표 기준', () => {
     window.localStorage.removeItem('omf-mes:inspection-sheet-template:split');
     const { user } = setup(template());
     await openRow(user);
+    await user.click(
+      screen.getAllByRole('button', { name: messages.inspectionStandard.panes.listCollapse })[0]!,
+    );
     expect(
       screen.getAllByRole('button', { name: messages.inspectionStandard.panes.listExpand })[0]!,
     ).toBeInTheDocument();

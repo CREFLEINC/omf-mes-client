@@ -35,6 +35,7 @@ import {
   useInspectionLevelHistories,
   useInspectionLevels,
 } from './queries';
+import './layout.css';
 
 type InspectionLevelCode = components['schemas']['ItemInspectionLevel']['inspectionLevelCode'];
 type ItemInspectionLevel = components['schemas']['ItemInspectionLevel'];
@@ -141,13 +142,22 @@ export const InspectionLevelScreen = () => {
     { itemId: filter.itemId, level: filter.level },
   );
   const [historyItem, setHistoryItem] = useState<ItemInspectionLevel | null>(null);
+  /* 목록에서 고른 품목 — 오른쪽 이력이 이 품목만 보인다. 같은 줄을 다시 누르면 풀려 전체 이력(#350 사용자 지시). */
+  const [selectedItem, setSelectedItem] = useState<ItemInspectionLevel | null>(null);
   const [historyPage, setHistoryPage] = useState(1);
   const [historySize, setHistorySize] = useState<number>(PAGE_SIZE);
   const [editing, setEditing] = useState<{ row: ItemInspectionLevel | null } | null>(null);
 
   const list = useInspectionLevels(filter);
-  /* 아래 「전환 이력」 카드는 늘 전체 이력 — 한 품목 이력은 줄의 「이력」 창으로 본다(사용자 지시 · #208). */
-  const histories = useInspectionLevelHistories(null, historyPage, historySize);
+  const histories = useInspectionLevelHistories(
+    selectedItem?.itemId ?? null,
+    historyPage,
+    historySize,
+  );
+  const selectItem = (row: ItemInspectionLevel) => {
+    setSelectedItem((prev) => (prev?.itemId === row.itemId ? null : row));
+    setHistoryPage(1);
+  };
   const counts = useInspectionLevelCounts(filter.itemId, LEVEL_CODES);
   const rows = list.data?.items ?? [];
   const historyRows = histories.data?.items ?? [];
@@ -177,9 +187,16 @@ export const InspectionLevelScreen = () => {
       header: t.columns.itemCode,
       width: '140px',
       render: (row) => (
-        <span className="inspection-level-item-code" title={row.itemCode}>
+        <button
+          type="button"
+          className="link-cell inspection-level-item-code"
+          aria-current={selectedItem?.itemId === row.itemId ? 'true' : undefined}
+          aria-label={t.history.openRow(row.itemCode)}
+          title={row.itemCode}
+          onClick={() => selectItem(row)}
+        >
           {row.itemCode}
-        </span>
+        </button>
       ),
     },
     {
@@ -517,7 +534,18 @@ export const InspectionLevelScreen = () => {
           className: 'inspection-level-list-pane',
           content: (
             <>
-              <h2 className="pane-title">{t.history.heading}</h2>
+              <h2 className="pane-title">
+                {t.history.heading}
+                {selectedItem !== null && (
+                  <span className="inspection-level-history-item">
+                    {t.history.selectedItem(selectedItem.itemCode, selectedItem.itemName)}
+                  </span>
+                )}
+              </h2>
+              <p className="iqc-inspection-action-note" data-tone="info" role="status">
+                <Icon name="info" size={14} aria-hidden />
+                {selectedItem === null ? t.history.allHint : t.history.selectedHint}
+              </p>
               {histories.isError && (
                 <AlertBanner variant="error">{t.history.loadFailed}</AlertBanner>
               )}

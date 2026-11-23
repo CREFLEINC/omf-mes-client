@@ -2,7 +2,6 @@ import {
   AlertBanner,
   EmptyState,
   SkeletonText,
-  Tabs,
   useToast,
 } from '@crefle/web-ui';
 import type { ApiError, components } from '@omf-mes/api-client';
@@ -12,6 +11,7 @@ import { type ReactNode, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { HUB_ACTIONS_ID } from '../../patterns/hub-actions';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import {
   SaveErrorBanner,
@@ -130,6 +130,7 @@ import type {
   PartnerFilters,
   ScopedFilters,
 } from './types';
+import './layout.css';
 
 type CodeGroup = components['schemas']['CodeGroup'];
 type CodeGroupDetailResponse = components['schemas']['CodeGroupDetailResponse'];
@@ -1681,7 +1682,12 @@ export const CommonCodeScreen = () => {
     }
 
     if (selectedCodeGroupId === null) {
-      return <EmptyState size="sm" title={t.codeGroup.empty.notSelected} />;
+      /* 다른 탭(부서 · 작업자 · 거래처)처럼 상자 안에 안내를 둔다(#350). */
+      return (
+        <section className="pane" aria-label={t.panes.codeGroupForm}>
+          <EmptyState size="sm" title={t.codeGroup.empty.notSelected} />
+        </section>
+      );
     }
 
     if (codeGroupDetail.isError) {
@@ -2318,20 +2324,60 @@ export const CommonCodeScreen = () => {
   return (
     <>
       {/* 화면 제목 줄은 두지 않는다 — 탭마다 조회 조건 · 목록 · 상세 통일 배치(검사 조회·판정과 같다 · #350). */}
-      <Tabs
-        aria-label={t.tabs.label}
-        value={tab.id}
-        onChange={changeTab}
-        items={COMMON_CODE_TABS.map((definition) => ({
-          value: definition.id,
-          label: definition.label,
-          /*
-           * 활성 탭의 내용만 만든다. 디자인 시스템 Tabs는 비활성 패널도 DOM에 두므로
-           * 모두 만들면 보이지 않는 표가 함께 살아 있게 된다.
-           */
-          content: definition.id === tab.id ? tabContentOf(definition.id) : null,
-        }))}
-      />
+      {/*
+       * 탭 줄 — 다른 탭 묶음 화면(검사 조회·판정 등)의 탭 막대와 같은 모양(`hub-bar` · `hub-tab`)이고, 오른쪽 끝 일 단추
+       * 자리에 「⋯」(좌우 · 상하 배치)가 선다(#350 사용자 지시). 이 화면은 셸 탭 묶음 밖이라 그 자리를 여기서 세운다.
+       */}
+      <div className="hub-bar common-code-tab-bar">
+        <div
+          className="hub-tabs"
+          role="tablist"
+          aria-label={t.tabs.label}
+          onKeyDown={(event) => {
+            if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+            const index = COMMON_CODE_TABS.findIndex((definition) => definition.id === tab.id);
+            const step = event.key === 'ArrowRight' ? 1 : -1;
+            const next =
+              COMMON_CODE_TABS[(index + step + COMMON_CODE_TABS.length) % COMMON_CODE_TABS.length];
+            if (next === undefined) return;
+            event.preventDefault();
+            changeTab(next.id);
+            document.getElementById(`common-code-tab-${next.id}`)?.focus();
+          }}
+        >
+          {COMMON_CODE_TABS.map((definition) => {
+            const isActive = definition.id === tab.id;
+            return (
+              <button
+                key={definition.id}
+                type="button"
+                role="tab"
+                id={`common-code-tab-${definition.id}`}
+                className="hub-tab"
+                aria-selected={isActive}
+                aria-controls="common-code-tab-panel"
+                aria-current={isActive ? 'page' : undefined}
+                tabIndex={isActive ? 0 : -1}
+                onClick={() => {
+                  if (!isActive) changeTab(definition.id);
+                }}
+              >
+                {definition.label}
+              </button>
+            );
+          })}
+        </div>
+        <div id={HUB_ACTIONS_ID} className="hub-actions" />
+      </div>
+      {/* 활성 탭의 내용만 만든다 — 보이지 않는 표가 함께 살아 있지 않게. */}
+      <div
+        role="tabpanel"
+        id="common-code-tab-panel"
+        className="common-code-tab-panel"
+        aria-labelledby={`common-code-tab-${tab.id}`}
+      >
+        {tabContentOf(tab.id)}
+      </div>
 
       {/*
        * 창은 열 때만 붙인다 — 닫힌 창을 남겨 두면 지난 값이 그대로 살아 있다.

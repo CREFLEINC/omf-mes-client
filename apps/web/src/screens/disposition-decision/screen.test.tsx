@@ -65,19 +65,19 @@ describe('DispositionDecisionScreen 조회', () => {
     expect(await screen.findByText('LOT-TEST-0088')).toBeInTheDocument();
   });
 
-  it('항목을 고르면 목록이 접히고, 막대의 단추로 다시 펼친다(omf-all-around#275)', async () => {
+  it('항목을 골라도 목록은 그대로이고, 「목록 접기」로 접고 다시 펼친다(#350)', async () => {
     const { user } = renderScreen();
     expect(screen.queryByRole('button', { name: t.listExpand })).toBeNull();
     await selectRow(user);
     const split = document.querySelector('.disposition-split');
-    await waitFor(() => expect(split).toHaveAttribute('data-left-collapsed', 'true'));
-
-    /* 막대 위 원과 접힌 「목록」 탭이 같은 이름이다 — 넓은 창에서는 탭만 보인다(#350). */
-    await user.click(screen.getAllByRole('button', { name: t.listExpand })[0]!);
     expect(split).not.toHaveAttribute('data-left-collapsed');
-    /* 막대 위 원과 제목 줄 「목록 접기」도 같은 이름이다. */
+
+    /* 막대 위 원과 제목 줄 「목록 접기」가 같은 이름이다. */
     await user.click(screen.getAllByRole('button', { name: t.listCollapse })[0]!);
     expect(split).toHaveAttribute('data-left-collapsed', 'true');
+    /* 막대 위 원과 접힌 「목록」 탭이 같은 이름이다(#350). */
+    await user.click(screen.getAllByRole('button', { name: t.listExpand })[0]!);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
   });
 
   /* 부적합에 남은 품질 상태는 등록 때 값 — 판정으로 바뀐 LOT 상태를 LOT 조회로 보인다(#223). */

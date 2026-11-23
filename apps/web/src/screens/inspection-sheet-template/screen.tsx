@@ -180,7 +180,6 @@ const InspectionSheetTemplateScreenBody = ({
   useEffect(() => {
     if (startsEditing.current) {
       startsEditing.current = false;
-      if (!split.collapsed) split.toggleCollapsed();
       return;
     }
     if (split.collapsed) split.toggleCollapsed();
@@ -323,9 +322,8 @@ const InspectionSheetTemplateScreenBody = ({
               open(null);
               return;
             }
+            /* 골라도 목록은 그대로 둔다 — 접기는 사용자가 「목록 접기」로만(#350 사용자 지시). */
             open({ kind: 'existing', id: row.inspectionSheetTemplateId });
-            /* 고르면 목록을 접어 상세가 자리를 다 쓴다 — 검사 기준 화면과 같다(#252 · #255 사용자 지시). */
-            if (!split.collapsed) split.toggleCollapsed();
           }}
         >
           <span className="inspection-sheet-template-open-code">{row.itemCode}</span>
@@ -721,7 +719,6 @@ const InspectionSheetTemplateScreenBody = ({
           onConfirm={(basics) => {
             setIsCreating(false);
             open({ kind: 'new', basics, seq: Date.now() });
-            if (!split.collapsed) split.toggleCollapsed();
           }}
         />
       )}

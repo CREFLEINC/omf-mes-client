@@ -62,6 +62,11 @@ export const inspectionLevel = {
 
   history: {
     heading: '검사 수준 변경 이력',
+    /** 목록에서 고른 품목의 이력만 볼 때 — 다시 누르면 전체로 돌아간다(#350). */
+    selectedItem: (code: string, name: string) => `${code} · ${name}`,
+    allHint: '목록에서 품목을 누르면 그 품목의 이력만 보입니다.',
+    selectedHint: '같은 품목을 다시 누르면 전체 이력으로 돌아갑니다.',
+    openRow: (code: string) => `${code} 이력 보기`,
     itemTitle: '검사 수준 변경 이력',
     itemCode: (code: string) => `품목코드 ${code}`,
     itemColumns: {

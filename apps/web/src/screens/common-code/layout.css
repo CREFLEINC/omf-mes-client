@@ -1,0 +1,18 @@
+/*
+ * 공통코드 · 조직 · 작업자 탭 줄 — 셸 탭 막대(`hub-bar` · `hub-tab`)와 같은 모양. 그 탭은 링크(`a`)라 단추의 기본
+ * 테두리 · 바탕 · 글꼴을 걷어 같게 보이게 한다(#350).
+ */
+.common-code-tab-bar .hub-tab {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.common-code-tab-bar .hub-tab:hover {
+  background: var(--state-hover-neutral);
+}
+
+/* 탭 줄 아래 내용 — 탭 묶음 화면(검사 조회·판정)의 탭 막대와 조회 상자 사이 간격과 같다. */
+.common-code-tab-panel {
+  margin-top: var(--space-5);
+}

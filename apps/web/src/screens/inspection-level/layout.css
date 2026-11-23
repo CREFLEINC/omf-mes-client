@@ -1,0 +1,15 @@
+/* 검사 수준 변경 이력 — 고른 품목(코드 · 이름)을 제목 옆에 흐리게(#350). */
+.inspection-level-history-item {
+  margin-left: var(--space-2);
+  color: var(--on-surface-variant);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* 품목코드를 누르는 단추 — 다른 목록의 고르는 칸과 같은 링크 모양. */
+.inspection-level-rows .link-cell.inspection-level-item-code {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

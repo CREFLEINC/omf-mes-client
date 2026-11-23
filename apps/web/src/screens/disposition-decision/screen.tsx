@@ -222,8 +222,8 @@ export const DispositionDecisionScreen = ({
   /* 처분 이력 탭에서 고른 판정 한 건 — 고른 줄 표시용(#223). */
   const selectedDecisionId = readSelectedDecisionId(searchParams);
   /*
-   * 항목을 고르면 목록을 접어 상세가 자리를 다 쓴다(부품 IQC #252 와 같은 동작 · omf-all-around#275). 목록 제목 줄의
-   * 「목록 접기」로 언제든 접고, 접으면 왼쪽 「목록 N건」 탭으로 다시 편다(통일 배치 · #350).
+   * 항목을 골라도 목록은 그대로 둔다(#350 사용자 지시). 목록 제목 줄의 「목록 접기」로 접고, 접으면 왼쪽 「목록 N건」
+   * 탭으로 다시 편다(통일 배치 · #350).
    */
   const [isListFolded, setIsListFolded] = useState(false);
   const isListCollapsed = isListFolded;
@@ -776,7 +776,6 @@ export const DispositionDecisionScreen = ({
               onSelect={(id) => {
                 const next = selectedId === id ? null : id;
                 setSearchParams((current) => withSelectedNonconformance(current, next));
-                setIsListFolded(next !== null);
               }}
               onChangeSize={(next) => setSearchParams((current) => withPageSize(current, next))}
               onChangePage={(nextPage) => apply(filters, nextPage)}
@@ -800,7 +799,6 @@ export const DispositionDecisionScreen = ({
               onSelect={(row) => {
                 const isSame = row.dispositionDecisionId === selectedDecisionId;
                 setSearchParams((current) => withSelectedDecision(current, isSame ? null : row));
-                setIsListFolded(!isSame);
               }}
               onChangeSize={(next) => setSearchParams((current) => withPageSize(current, next))}
               onChangePage={(nextPage) => applyHistory(historyFilters, nextPage)}

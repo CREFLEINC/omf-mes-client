@@ -443,6 +443,20 @@ export const CurrentResults = ({
               }
             />
           </div>
+          {/*
+           * 표와 쪽 이동 줄 사이 오른쪽 — 마지막 갱신 + [갱신](사용자 2026-10-30 · 자리는 2026-11-23 지시). 요약과 목록을 함께
+           * 다시 부른다. 「조회 기준」 자리를 이어받는다(두 시각을 나란히 두면 헷갈린다).
+           */}
+          <div className="lot-status-refresh-foot">
+            <RefreshStatus
+              updatedAt={Math.max(list.dataUpdatedAt, summary.dataUpdatedAt)}
+              isRefreshing={list.isFetching || summary.isFetching}
+              onRefresh={() => {
+                void list.refetch();
+                void summary.refetch();
+              }}
+            />
+          </div>
           {meta !== undefined && (
             <PageNav
               sizes={LOT_PAGE_SIZES}
@@ -456,20 +470,6 @@ export const CurrentResults = ({
           )}
         </>
       )}
-      {/*
-       * 목록 상자 오른쪽 아래 — 마지막 갱신 + [갱신](사용자 2026-10-30 · 자리는 2026-11-23 지시). 요약과 목록을 함께
-       * 다시 부른다. 「조회 기준」 자리를 이어받는다(두 시각을 나란히 두면 헷갈린다).
-       */}
-      <div className="lot-status-refresh-foot">
-        <RefreshStatus
-          updatedAt={Math.max(list.dataUpdatedAt, summary.dataUpdatedAt)}
-          isRefreshing={list.isFetching || summary.isFetching}
-          onRefresh={() => {
-            void list.refetch();
-            void summary.refetch();
-          }}
-        />
-      </div>
     </section>
   );
 };

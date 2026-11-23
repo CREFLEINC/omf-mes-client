@@ -2476,13 +2476,8 @@ export const InspectionStandardScreen = () => {
           onChangePageSize={changePageSize}
           onChangePage={changePage}
           selectedPlanId={selectedPlanId}
-          /* 고르면 목록을 접어 상세가 자리를 다 쓴다 — 다시 펼치기는 목록과 상세 사이의 단추(사용자 지시 · #252). */
-          onSelect={(inspectionPlanId) =>
-            guardMove(() => {
-              handleSelectPlan(inspectionPlanId);
-              if (!split.collapsed) split.toggleCollapsed();
-            })
-          }
+          /* 골라도 목록은 그대로 둔다 — 접기는 사용자가 「목록 접기」로만(#350 사용자 지시). */
+          onSelect={(inspectionPlanId) => guardMove(() => handleSelectPlan(inspectionPlanId))}
           loadError={
             planList.isError ? (
               <LoadErrorBanner error={planList.error} onRetry={() => void planList.refetch()} />
