@@ -203,9 +203,10 @@ describe('PopMaterialLotLabelScreen — 오른쪽 표', () => {
     const head = await screen.findByRole('heading', { name: /SYN-ITEM-01/u });
     const f = t.work.fields;
     expect(head).toHaveTextContent(
-      `${f.itemCode}SYN-ITEM-01${f.itemName}합성 품목 가${f.supplier}합성 공급사 가` +
-        t.pairs.defaultPackaged('봉지 10 × 100 = 1,000 EA'),
+      `${f.itemCode}SYN-ITEM-01${f.itemName}합성 품목 가${f.supplier}합성 공급사 가`,
     );
+    /* 기본 정보 줄(「기본 봉지 10 × 100 = …」)은 적지 않는다(사용자 지시 2026-11-24). */
+    expect(head).not.toHaveTextContent('기본 봉지');
   });
 
   it('입하 대기가 없으면 만들라고 말한다', async () => {
@@ -312,7 +313,7 @@ describe('PopMaterialLotLabelScreen — 다시 받기', () => {
 });
 
 describe('PopMaterialLotLabelScreen — 새로 고침과 기본 정보', () => {
-  it('G2 L19 새로고침은 공급사·품목 기본 정보도 다시 받아, W-06-25 에서 고친 「기본 …」 줄이 바로 선다', async () => {
+  it('G2 L19 새로고침은 공급사·품목 기본 정보도 다시 받는다 — LOT 생성 창이 새 값으로 채운다', async () => {
     const defaults = [defaultInfo()];
     const { sent, queryClient } = renderLabelScreen({ defaults });
     const plantWide = () =>
@@ -320,28 +321,15 @@ describe('PopMaterialLotLabelScreen — 새로 고침과 기본 정보', () => {
         (each) => each.search.get('supplierId') === null,
       );
 
-    /* 기본 정보는 상세 제목에 적는다. */
-    const firstPair = async () => screen.findByRole('heading', { name: /SYN-ITEM-01/u });
-    const before = t.pairs.defaultPackaged('봉지 10 × 100 = 1,000 EA');
-    await waitFor(async () => expect(await firstPair()).toHaveTextContent(before));
+    await screen.findByRole('heading', { name: /SYN-ITEM-01/u });
+    await waitFor(() => expect(plantWide().length).toBeGreaterThan(0));
     const asked = plantWide().length;
 
-    /* 관리웹에서 고친 셈 — 다음 조회부터 새 값이 온다. */
-    const changed = defaultInfo({
-      lotQty: 2000,
-      package: { uomId: 8402, uomCode: '봉지', uomName: '봉지', count: 20, qtyPerPackage: 100 },
-      versionNo: 2,
-    });
-    defaults[0] = changed;
-    /* 맨 위 줄 [새로고침]은 모든 조회를 다시 받는다(`pop-screen-nav`). */
+    /* 맨 위 줄 [새로고침]은 모든 조회를 다시 받는다(`pop-screen-nav`) — LOT 생성 창이 새 기본 정보로 채운다. */
+    defaults[0] = defaultInfo({ versionNo: 2 });
     await queryClient.invalidateQueries();
 
     await waitFor(() => expect(plantWide().length).toBeGreaterThan(asked));
-    await waitFor(async () =>
-      expect(await firstPair()).toHaveTextContent(
-        t.pairs.defaultPackaged('봉지 20 × 100 = 2,000 EA'),
-      ),
-    );
   });
 });
 
@@ -357,28 +345,5 @@ describe('PopMaterialLotLabelScreen — 머리줄', () => {
     renderLabelScreen({ printersFail: true });
 
     await waitFor(() => expect(waitingRows()).toHaveLength(2));
-  });
-});
-
-describe('PopMaterialLotLabelScreen — 다른 묶음', () => {
-  it('기본 정보가 「포장 없음」이면 「기본 1 TON · 포장 없음」으로 적는다', async () => {
-    renderLabelScreen({
-      groups: [
-        group([lot(9201, { lotQty: 1, package: null })], {
-          itemId: 8602,
-          itemCode: 'SYN-ITEM-02',
-          supplierId: 8202,
-          supplierCode: 'SYN-P-02',
-          uomCode: 'TON',
-        }),
-      ],
-      defaults: [
-        defaultInfo({ itemId: 8602, supplierId: 8202, uomCode: 'TON', lotQty: 1, package: null }),
-      ],
-    });
-
-    expect(await screen.findByRole('heading', { name: /SYN-ITEM-02/u })).toHaveTextContent(
-      t.pairs.defaultUnpackaged('1 TON'),
-    );
   });
 });

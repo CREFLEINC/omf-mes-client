@@ -42,9 +42,6 @@ export const popMaterialLotLabel = {
     label: '공급사·품목', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
     /** 공급사명 줄 오른쪽 끝의 라벨 미출력 수. */
     unprinted: (count: number) => `라벨 미출력 ${count}`,
-    /** 기본 정보 한 줄 — 패키징이 있으면 「기본 봉지 10 × 100 = 1,000 EA」. */
-    defaultPackaged: (text: string) => `기본 ${text}`,
-    defaultUnpackaged: (text: string) => `기본 ${text} · 포장 없음`,
     /** 목록은 열린 발주 · 발행 이력에서 나온다 — 메뉴에서 숨긴 「공급사·품목 기본 정보」로 보내지 않는다. */
     empty: '발행할 공급사·품목이 없습니다. 발주가 등록되면 나타납니다.', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
     noMatch: '찾는 공급사·품목이 없습니다.', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
