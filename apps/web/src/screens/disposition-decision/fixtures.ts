@@ -1,3 +1,8 @@
+import { messages } from '@omf-mes/i18n';
+import { screen, waitFor } from '@testing-library/react';
+import type userEvent from '@testing-library/user-event';
+import { expect } from 'vitest';
+
 import { createStubFetch, jsonResponse, type StubFetch } from '../../test/api-harness';
 
 /**
@@ -33,7 +38,20 @@ export interface DispositionStubOptions {
   approvalStatusCode?: string;
   /** #352 — 이 부적합의 처분 결재(`GET …/disposition-approvals`). 없으면 빈 목록. */
   dispositionApprovals?: unknown[];
+  /** #352 — 처분 · 특채 결재선(`GET /quality/disposition-approval-routes`). 없으면 둘 다 결재선 없음. */
+  approvalRoutes?: unknown[];
 }
+
+/**
+ * [판정 저장] → 판정 확인 팝업의 [확인](#352). 화면 검증에 막혀 팝업이 뜨지 않으면 저장만 누르고 끝낸다.
+ */
+export const saveAndConfirm = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(screen.getByRole('button', { name: messages.dispositionDecision.actions.save }));
+  if (screen.queryByRole('dialog') === null) return;
+  const ok = screen.getByRole('button', { name: messages.dispositionDecision.confirm.ok });
+  await waitFor(() => expect(ok).toBeEnabled());
+  await user.click(ok);
+};
 
 let sent: Request[] = [];
 
@@ -133,6 +151,16 @@ export const dispositionStub = (options: DispositionStubOptions = {}): StubFetch
   };
 
   const inner = createStubFetch([
+    {
+      match: (request) => pathOf(request) === '/quality/disposition-approval-routes',
+      respond: () =>
+        jsonResponse({
+          items: options.approvalRoutes ?? [
+            { approvalTypeCode: 'DISPOSITION', hasRoute: false, steps: [] },
+            { approvalTypeCode: 'CONCESSION', hasRoute: false, steps: [] },
+          ],
+        }),
+    },
     {
       match: (request) => /^\/trace\/lots\/\d+$/.test(pathOf(request)),
       respond: (request) =>

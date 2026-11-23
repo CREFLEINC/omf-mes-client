@@ -6,7 +6,13 @@ import { describe, expect, it } from 'vitest';
 import { SessionProvider } from '../../patterns/session';
 import { jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
-import { dispositionStub, lotFixture, requestedPaths, requestsSent } from './fixtures';
+import {
+  dispositionStub,
+  lotFixture,
+  requestedPaths,
+  requestsSent,
+  saveAndConfirm,
+} from './fixtures';
 import { DispositionDecisionScreen } from './screen';
 
 /* 005 T094 — W-03-10 선별 = 불량 자재 관리 LOT 를 새 입하 LOT 로 분리(US7-2 · FR-041). 값은 전부 지어낸 합성값이다. */
@@ -91,7 +97,7 @@ describe('W-03-10 선별', () => {
     expect(within(preview).getByText(t.sort.previewNotes[0] ?? '')).toBeInTheDocument();
     await user.type(screen.getByLabelText(t.sort.defectQty), '1050');
     await user.type(screen.getByLabelText(t.form.reasonLabel), '합성 선별 사유');
-    await user.click(screen.getByRole('button', { name: t.actions.save }));
+    await saveAndConfirm(user);
 
     await waitFor(() => expect(sortPost()).toBeDefined());
     // 수량 분할 본문 없이 — 고른 LOT 과 정보 수량만.

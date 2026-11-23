@@ -12,6 +12,7 @@ import {
   lotFixture,
   requestedPaths,
   requestsSent,
+  saveAndConfirm,
 } from './fixtures';
 import { DispositionDecisionScreen } from './screen';
 
@@ -46,7 +47,7 @@ const fillDecision = async (user: User, reason = '표면만 손상됐다'): Prom
 };
 
 const save = async (user: User): Promise<void> => {
-  await user.click(screen.getByRole('button', { name: t.actions.save }));
+  await saveAndConfirm(user);
 };
 
 const posted = (): Request | undefined =>

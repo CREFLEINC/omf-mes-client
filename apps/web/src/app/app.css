@@ -37324,3 +37324,38 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .disposition-decision-actions > button {
   flex-shrink: 0;
 }
+
+/* 판정 확인 팝업(omf-all-around#352) — 이름 | 값 두 칸, 아래 안내 라벨 한 줄. */
+.disposition-confirm {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.disposition-confirm-rows {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.disposition-confirm-rows > div {
+  display: contents;
+}
+
+.disposition-confirm-rows dt {
+  color: var(--on-surface-variant);
+}
+
+.disposition-confirm-rows dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.disposition-confirm > .iqc-inspection-action-note {
+  justify-self: start;
+  max-width: 100%;
+  font: var(--type-label-lg);
+  font-weight: 400;
+  letter-spacing: var(--type-label-lg-tracking);
+}

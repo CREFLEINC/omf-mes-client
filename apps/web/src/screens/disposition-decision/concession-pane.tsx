@@ -59,7 +59,11 @@ interface ConcessionGroup {
 export const groupConcessions = (rows: readonly Concession[]): ConcessionGroup[] => {
   const groups = new Map<string, ConcessionGroup>();
   for (const row of rows) {
-    const key = String(row.approvalRequestId);
+    /* 결재선이 없어 바로 적용한 특채는 결재가 없다 — 부적합마다 한 묶음뿐이다(적용하면 부적합이 종결된다 · #352). */
+    const key =
+      row.approvalRequestId === null
+        ? `direct-${String(row.nonconformanceId)}`
+        : String(row.approvalRequestId);
     const group = groups.get(key);
     if (group === undefined) groups.set(key, { first: row, rows: [row] });
     else group.rows.push(row);
@@ -197,7 +201,8 @@ export const ConcessionHistory = ({
       render: (group) =>
         group.first.statusCode === PENDING && !readOnly ? (
           <ApplyButton
-            approvalRequestId={group.first.approvalRequestId}
+            /* 결재 대기(PENDING) 특채는 늘 결재가 있다 — 결재 없는 특채는 요청 때 바로 적용된다(#352). */
+            approvalRequestId={group.first.approvalRequestId ?? 0}
             disabled={applyWrite.isSaving}
             onClick={() => {
               setNotice(null);

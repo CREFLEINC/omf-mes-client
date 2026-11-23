@@ -244,6 +244,27 @@ export const dispositionDecision = {
     success: '판정을 저장했습니다',
   },
   /** 폐기 · 선별 처분 결재(omf-all-around#352) — 결재선이 있으면 요청 → 결재 → [처분 적용], 없으면 바로 반영. */
+  /** 판정 확인 팝업(omf-all-around#352) — 폐기 · 선별 · 특채 모두 저장 전에 띄운다. 결재선이 있으면 결재자, 없으면 바로 반영된다는 말. */
+  confirm: {
+    title: '판정 확인',
+    type: '처분 유형',
+    target: '대상',
+    targetLots: (count: number): string => `자재 관리 LOT ${String(count)}개`,
+    qty: '처분 수량',
+    sortRest: '정상 처리',
+    sortMoved: '불량 분리 · 새 판정 대기',
+    period: '적용 기간',
+    periodText: (from: string, to: string | null): string => `${from} ~ ${to ?? '제한 없음'}`,
+    reason: '판정 사유',
+    approvers: '결재자',
+    approverStep: (stepNo: number, name: string): string => `${String(stepNo)}단계 ${name}`,
+    routed: (applyLabel: string): string =>
+      `저장하면 결재를 요청합니다. 승인 뒤 [${applyLabel}]을 누르면 반영됩니다.`,
+    direct: '결재선이 없는 항목이라 저장하면 바로 반영됩니다.',
+    loading: '결재선을 확인하는 중입니다.',
+    loadFailed: '결재선을 확인하지 못했습니다. 다시 시도하세요.',
+    ok: '확인',
+  },
   approval: {
     requested: '결재를 요청했습니다. 승인되면 이 화면에서 처분 적용을 누르세요.',
     pendingBanner: (typeLabel: string): string => `${typeLabel} 처분 결재 대기 중입니다.`,

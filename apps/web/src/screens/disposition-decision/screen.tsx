@@ -53,6 +53,7 @@ import {
   codeValueLabel,
   DISPOSITION_TYPE_CODES,
   dispositionOptionLock,
+  dispositionTypeLabel,
   dispositionTypeOptions,
   selectableDispositionCodes,
   isClosedNonconformance,
@@ -106,7 +107,8 @@ import {
   usePendingTotals,
 } from './queries';
 import { toRemainingQty } from './remaining-qty';
-import { lotTail } from './sort-split-pane';
+import { lotNames, lotTail, sumQty } from './sort-split-pane';
+import { DecisionConfirmDialog, type DecisionConfirmRow } from './decision-confirm-dialog';
 import {
   decisionUomIdOf,
   formatQty,
@@ -394,6 +396,8 @@ export const DispositionDecisionScreen = ({
   );
 
   const [form, setForm] = useState<DecisionFormValue>(EMPTY_DECISION_FORM);
+  /* 판정 확인 팝업 — 폐기 · 선별 · 특채 모두 저장 전에 띄운다(omf-all-around#352 사용자 지시). */
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   /* 저장 결과 카드 — 그 부적합을 보고 있는 동안만 보인다(005 시안). */
   const [result, setResult] = useState<{ nonconformanceId: number; result: DecisionResult } | null>(
     null,
@@ -526,11 +530,16 @@ export const DispositionDecisionScreen = ({
     keyLifetime: 'until-applied',
     onSuccess: (data) => {
       const count = data.concessionIds?.length ?? 0;
-      /* 다LOT 전량 특채는 서버가 자재 관리 LOT 마다 특채 행을 만든 수를 알린다(D-14). */
-      toast.show({
-        variant: 'success',
-        description: count > 1 ? t.concession.requestedLots(count) : t.concession.requested,
-      });
+      /* 결재선이 없으면 서버가 바로 적용했다(APPLIED · #352). 다LOT 은 자재 관리 LOT 마다 특채 행을 만든 수를 알린다(D-14). */
+      const description =
+        data.outcome === 'APPLIED'
+          ? count > 1
+            ? t.concession.appliedLots(count)
+            : t.concession.applied
+          : count > 1
+            ? t.concession.requestedLots(count)
+            : t.concession.requested;
+      toast.show({ variant: 'success', description });
       setSideTab('concessions');
       setForm(EMPTY_DECISION_FORM);
       setShowErrors(false);
@@ -540,6 +549,7 @@ export const DispositionDecisionScreen = ({
   useEffect(() => {
     setForm(EMPTY_DECISION_FORM);
     setShowErrors(false);
+    setIsConfirmOpen(false);
   }, [selectedId]);
 
   /* 서버가 되돌린 필드 오류가 화면 검증을 덮는다 — 계약이 정본이다. */
@@ -582,6 +592,41 @@ export const DispositionDecisionScreen = ({
     } as (typeof dispositionOptions)[number],
   ];
   const uomText = uomId === undefined ? '' : ` ${lookupDisplayLabel(uoms, uomId)}`;
+  /** 판정 확인 팝업에 늘어놓을 저장 내용 — 고른 유형에 맞춰. */
+  const confirmRows = (): DecisionConfirmRow[] => {
+    const qty = (value: number | undefined): string => `${formatQty(value)}${uomText}`;
+    const rows: DecisionConfirmRow[] = [
+      { label: t.confirm.type, value: dispositionTypeLabel(form.dispositionTypeCode) },
+    ];
+    if (form.dispositionTypeCode === SORT) {
+      const picked = new Set(form.sortLotIds);
+      const moved = lotRows.filter((lot) => picked.has(lot.lotId));
+      const rest = lotRows.filter((lot) => !picked.has(lot.lotId));
+      rows.push(
+        {
+          label: t.confirm.sortRest,
+          value: t.sort.previewTarget(lotNames(lotRows, rest), qty(sumQty(rest))),
+        },
+        {
+          label: t.confirm.sortMoved,
+          value: t.sort.previewTarget(lotNames(lotRows, moved), qty(sumQty(moved))),
+        },
+      );
+    } else {
+      rows.push(
+        { label: t.confirm.target, value: t.confirm.targetLots(lotRows.length) },
+        { label: t.confirm.qty, value: qty(remaining.value) },
+      );
+    }
+    if (form.dispositionTypeCode === CONCESSION) {
+      rows.push({
+        label: t.confirm.period,
+        value: t.confirm.periodText(form.validFrom, form.validTo === '' ? null : form.validTo),
+      });
+    }
+    rows.push({ label: t.confirm.reason, value: form.reason.trim() });
+    return rows;
+  };
   const isOtherTarget = pendingTarget !== null && pendingTarget.nonconformanceId !== selectedId;
   const lock = toDecisionLock({
     selectedId,
@@ -599,8 +644,16 @@ export const DispositionDecisionScreen = ({
     setSearchParams((current) => toAppliedSearchParams(current, next, nextPage));
   };
 
+  /** [판정 저장] — 화면 검증을 통과하면 확인 팝업을 연다. 실제 저장은 팝업의 [확인]이 한다. */
   const save = (): void => {
     setShowErrors(true);
+    if (uomId === undefined || selectedId === null) return;
+    if (hasBlockingError(validateDecisionForm(form, formContext))) return;
+    setIsConfirmOpen(true);
+  };
+
+  const submit = (): void => {
+    setIsConfirmOpen(false);
     /*
      * 잠긴 동안에는 저장 버튼이 눌리지 않으므로 여기서 잠금을 다시 보지 않는다 —
      * 닿지 않는 분기는 감지기가 물 수 없다. 단위 좁히기만 남는다(타입이 요구한다).
@@ -1050,6 +1103,15 @@ export const DispositionDecisionScreen = ({
           )}
         </section>
       </div>
+      {isConfirmOpen && tab === 'pending' && selectedId !== null && (
+        <DecisionConfirmDialog
+          dispositionTypeCode={form.dispositionTypeCode}
+          rows={confirmRows()}
+          isSaving={write.isSaving || concessionWrite.isSaving}
+          onConfirm={submit}
+          onCancel={() => setIsConfirmOpen(false)}
+        />
+      )}
     </>
   );
 };

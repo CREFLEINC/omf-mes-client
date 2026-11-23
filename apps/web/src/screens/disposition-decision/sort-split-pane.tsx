@@ -13,8 +13,21 @@ const t = messages.dispositionDecision.sort;
 export const lotTail = (lotNo: string): string =>
   lotNo.includes('|') ? (lotNo.split('|').pop() ?? lotNo) : lotNo;
 
-const sumQty = (lots: readonly NonconformanceLotRow[]): number =>
+export const sumQty = (lots: readonly NonconformanceLotRow[]): number =>
   lots.reduce((sum, lot) => sum + (lot.affectedQty ?? 0), 0);
+
+/**
+ * 요약에서 LOT 을 부르는 이름 — 끝 번호로 부르되, 끝 번호가 겹치는 LOT 이 있으면 헷갈리지 않게 전체 번호로(#352 사용자 지시).
+ * 저장 후 처리 상자와 판정 확인 팝업이 같은 이름을 쓴다.
+ */
+export const lotNames = (
+  lots: readonly NonconformanceLotRow[],
+  rows: readonly NonconformanceLotRow[],
+): string => {
+  const tails = lots.map((lot) => lotTail(lot.lotNoText));
+  const useTail = new Set(tails).size === tails.length;
+  return rows.map((row) => (useTail ? lotTail(row.lotNoText) : row.lotNoText)).join(', ');
+};
 
 export interface SortSplitPaneProps {
   lots: readonly NonconformanceLotRow[];
@@ -56,11 +69,7 @@ export const SortSplitPane = ({
   const moved = lots.filter((lot) => selected.has(lot.lotId));
   const rest = lots.filter((lot) => !selected.has(lot.lotId));
   const isAll = lots.length > 0 && moved.length >= lots.length;
-  /* 요약은 끝 번호로 부른다 — 끝 번호가 겹치는 LOT 이 있으면 헷갈리지 않게 전체 번호로(#352 사용자 지시). */
-  const tails = lots.map((lot) => lotTail(lot.lotNoText));
-  const useTail = new Set(tails).size === tails.length;
-  const names = (rows: readonly NonconformanceLotRow[]): string =>
-    rows.map((row) => (useTail ? lotTail(row.lotNoText) : row.lotNoText)).join(', ');
+  const names = (rows: readonly NonconformanceLotRow[]): string => lotNames(lots, rows);
 
   const toggle = (lotId: number, checked: boolean): void => {
     onChange({

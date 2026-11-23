@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { SessionProvider } from '../../patterns/session';
 import { jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
-import { dispositionStub, lotFixture, requestsSent } from './fixtures';
+import { dispositionStub, lotFixture, requestsSent, saveAndConfirm } from './fixtures';
 import { DispositionDecisionScreen } from './screen';
 
 /* 005 T077 — W-03-10 입하 LOT 단위 처분(US4-4 · R14a-1 · FR-031 · FR-038). 값은 전부 지어낸 합성값이다. */
@@ -113,7 +113,7 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     await user.click(screen.getByRole('radio', { name: '폐기' }));
     expect(screen.getByText(t.form.wholeEffect(3, '폐기'))).toBeInTheDocument();
     await user.type(screen.getByLabelText(t.form.reasonLabel), '합성 폐기 사유');
-    await user.click(screen.getByRole('button', { name: t.actions.save }));
+    await saveAndConfirm(user);
 
     /* #352 — 판정 저장은 처분 결재로 올린다(결재선이 없으면 APPLIED 로 바로 반영). */
     await waitFor(() =>
@@ -163,7 +163,7 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
       screen.getByText('저장하면 자재 관리 LOT 3개에 모두 ‘특채’ 판정이 적용됩니다.'),
     ).toBeInTheDocument();
     await user.type(screen.getByLabelText(t.form.reasonLabel), '합성 특채 사유');
-    await user.click(screen.getByRole('button', { name: t.actions.save }));
+    await saveAndConfirm(user);
 
     await waitFor(() => expect(posted('/quality/concessions')).toBeDefined());
     const body = (await posted('/quality/concessions')?.json()) as Record<string, unknown>;

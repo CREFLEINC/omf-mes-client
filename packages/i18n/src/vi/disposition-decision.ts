@@ -206,6 +206,26 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     reloadDetail: 'Kiểm tra lại trạng thái không phù hợp',
     success: 'Đã lưu đánh giá',
   },
+  confirm: {
+    title: 'Xác nhận quyết định',
+    type: 'Loại xử lý',
+    target: 'Đối tượng',
+    targetLots: (count: number): string => `${String(count)} LOT quản lý vật tư`,
+    qty: 'Số lượng xử lý',
+    sortRest: 'Xử lý bình thường',
+    sortMoved: 'Tách lỗi · chờ quyết định mới',
+    period: 'Thời hạn áp dụng',
+    periodText: (from: string, to: string | null): string => `${from} ~ ${to ?? 'Không giới hạn'}`,
+    reason: 'Lý do quyết định',
+    approvers: 'Người phê duyệt',
+    approverStep: (stepNo: number, name: string): string => `Bước ${String(stepNo)} ${name}`,
+    routed: (applyLabel: string): string =>
+      `Khi lưu sẽ gửi yêu cầu phê duyệt. Sau khi được duyệt, nhấn [${applyLabel}] để áp dụng.`,
+    direct: 'Mục này không có tuyến phê duyệt nên khi lưu sẽ được áp dụng ngay.',
+    loading: 'Đang kiểm tra tuyến phê duyệt.',
+    loadFailed: 'Không kiểm tra được tuyến phê duyệt. Hãy thử lại.',
+    ok: 'Xác nhận',
+  },
   approval: {
     requested:
       'Đã gửi yêu cầu phê duyệt. Khi được duyệt, hãy nhấn Áp dụng xử lý trên màn hình này.',
