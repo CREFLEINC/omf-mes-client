@@ -22,16 +22,16 @@ export const inboundReceipt = {
   /** 방금 찍은 라벨 칸 — 늘 하나다(다음 스캔이 덮는다). */
   last: {
     ok: '등록됨',
-    /** 바로 앞 스캔과 공급사 · 품목이 다르다 — 섞여 들어온 자재를 그 자리에서 알아챈다. */
-    newItem: '새 품목',
     undo: '취소',
+    /** 칸 머리 오른쪽 ✕ — 칸을 내린다(사용자 지시 2026-11-23). 등록은 그대로다. */
+    dismiss: '닫기',
     undoLabel: (lotNo: string) => `${lotNo} 등록 취소`,
     loading: '품목을 불러오는 중입니다',
     autoClosed: '지난 날짜의 입하는 자동 마감됐습니다',
     rejected: '등록 안 됨',
-    /** 이번 입하 표에 이미 있는 라벨 — 서버에 다시 보내지 않는다. */
+    /** 입하 표에 이미 있는 라벨 — 서버에 다시 보내지 않는다. */
     duplicate: '이미 찍은 라벨입니다',
-    duplicateRow: (row: number) => `이번 입하 No ${row}에 있습니다`,
+    duplicateRow: (row: number) => `No ${row}에 있습니다`,
     offline: '전송 대기',
     offlineBody: '오프라인 — 연결되면 등록합니다',
     closed: '등록 안 됨',
@@ -55,10 +55,13 @@ export const inboundReceipt = {
       `전송 대기 ${count}개를 보냈습니다 · 등록 ${registered} · 거부 ${rejected}`, // ui-check-ignore: C-13 설계 확정 문구(screens/M-01-01.md)
     queueFailed: '전송 대기에 담지 못했습니다. 다시 스캔하세요.',
   },
-  /** 이번 입하 표 — 공급사 머리 줄 아래 품목 줄. 품목코드 위 · 품목명 아래로 잘리지 않게(사용자 지시 2026-11-20). */
+  /**
+   * 입하 표 — 공급사 머리 줄 아래 품목 줄. 품목코드 위 · 품목명 아래로 잘리지 않게(사용자 지시 2026-11-20).
+   * 제목은 공장 날짜(YY.MM.DD) + 「입하」, 오른쪽은 찍은 라벨 수(사용자 지시 2026-11-23 — 「이번 입하 N개」에서 바꿈).
+   */
   tally: {
-    title: '이번 입하',
-    total: (count: number) => `${count}개`,
+    title: (date: string) => `${date} 입하`,
+    total: (count: number) => `${count}건 Scan`,
     empty: '아직 등록한 자재 관리 LOT가 없습니다',
     columns: { no: 'No', item: '품목', count: '개수', qty: '수량' },
     closed: '마감됨',

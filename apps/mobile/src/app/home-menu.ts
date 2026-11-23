@@ -149,7 +149,7 @@ export const homeAreas: HomeArea[] = [
  *
  * 출하는 PDA 피킹(LOT 통째) → OQC → POP 출하 완료로 끝나 포장·재포장을 쓰지 않는다. 화면을 지우지
  * 않는 이유는 배포 전 진행분이다 — 주소로는 열리고, 열리면 사번 확인은 다른 작업 화면과 같다
- * (`isWorkScreen`). 「자주 쓰는 작업」에는 서지 않는다(`screenOf` 는 목록만 찾는다).
+ * (`isWorkScreen`). `screenOf` 는 목록의 화면만 찾는다.
  */
 export const hiddenScreens: HomeScreen[] = [
   {

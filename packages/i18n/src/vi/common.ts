@@ -46,7 +46,12 @@ export const common: Translated<typeof ko.common> = {
     backToArea: (area: string) => `Công việc ${area}`,
     noWorker: 'Hãy xác nhận mã nhân viên trước',
     signIn: 'Xác nhận mã NV',
-    changeWorker: 'Đổi mã nhân viên',
+    changeWorker: 'Đổi người dùng',
+    exit: {
+      title: 'Thoát ứng dụng?',
+      cancel: 'Hủy',
+      proceed: 'Thoát',
+    },
   },
   connection: {
     online: 'Trực tuyến',

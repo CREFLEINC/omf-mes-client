@@ -11,9 +11,8 @@ import { ApiRequestError } from '../patterns/request';
 import { createTestQueryClient } from '../test/api-harness';
 import { OutboxProvider, useOutbox, type OutboxTransport } from '../patterns/outbox';
 import { TaskDraftProvider, useTaskDraft } from '../patterns/task-draft';
-import { WorkerSessionProvider, useWorkerSession } from '../patterns/worker-session';
+import { WorkerSessionProvider } from '../patterns/worker-session';
 import { appRoutes } from '../routes';
-import { FrequentScreensProvider, useRecordScreenVisit } from './frequent-screens';
 import { hiddenScreens, homeAreas, screenOf } from './home-menu';
 import { HomeAreaScreen, ShellHome } from './shell-home';
 
@@ -22,7 +21,7 @@ import { HomeAreaScreen, ShellHome } from './shell-home';
  * - 홈 자신과 업무 목록, 사번 확인
  * - 전송 기록 두 화면 — 업무가 아니다. 앱바의 칩과 홈의 전송 현황이 그 길이고, 걸린 것이 없을
  *   때는 갈 일이 없다.
- * - 설정 — 업무가 아니다. 홈 맨 아래 단추가 그 길이다.
+ * - 설정 — 업무가 아니다. 작업 목록 앱바의 설정 아이콘이 그 길이다.
  * - 감춘 작업 화면(`hiddenScreens`) — 라우트는 남기고 목록에서만 뺐다(피처 010 재포장).
  */
 const NOT_LISTED = new Set([
@@ -69,7 +68,7 @@ const Shell = ({
         <OutboxProvider send={send}>
           <WorkerSessionProvider>
             <TaskDraftProvider>
-              <FrequentScreensProvider>{children}</FrequentScreensProvider>
+              {children}
             </TaskDraftProvider>
           </WorkerSessionProvider>
         </OutboxProvider>
@@ -107,26 +106,6 @@ const DraftingScreen = () => {
     >
       적다가 나가기
     </button>
-  );
-};
-
-/* 사번을 세우고 작업 화면에 들어가는 것을 대신한다 — 셸은 들어갈 때마다 센다. */
-const Visits = () => {
-  const { signIn } = useWorkerSession();
-  const record = useRecordScreenVisit();
-
-  return (
-    <>
-      <button type="button" onClick={() => signIn({ workerNo: '100027', workerName: '갑' })}>
-        사번 세우기
-      </button>
-      <button type="button" onClick={() => record('/putaway')}>
-        적치 들어가기
-      </button>
-      <button type="button" onClick={() => record('/inbound-receipt')}>
-        입하 들어가기
-      </button>
-    </>
   );
 };
 
@@ -312,73 +291,19 @@ describe('작업 목록', () => {
     expect(screen.getByRole('heading', { name: '업무' })).toBeInTheDocument();
   });
 
-  /* 한 사람이 하루에 쓰는 작업은 서너 개다. 매번 업무를 열어 찾게 하지 않는다. */
-  it('이 사번이 많이 쓴 작업을 차례대로 맨 위에 세운다', async () => {
-    const user = userEvent.setup();
+  /* 사용자 전환은 앱바의 사번 칩이, 설정은 그 오른쪽 아이콘이 한다(사용자 지시 2026-11-23). */
+  it('맨 아래에 「사용자 전환」 · 「설정」 단추를 두지 않는다', () => {
     render(
       <Shell>
-        <Visits />
         <HomeRoutes />
       </Shell>,
     );
 
-    expect(screen.queryByRole('heading', { name: '자주 쓰는 작업' })).toBeNull();
-
-    await user.click(screen.getByRole('button', { name: '사번 세우기' }));
-    await user.click(screen.getByRole('button', { name: '입하 들어가기' }));
-    await user.click(screen.getByRole('button', { name: '적치 들어가기' }));
-    await user.click(screen.getByRole('button', { name: '적치 들어가기' }));
-
-    const frequent = screen.getByRole('heading', { name: '자주 쓰는 작업' }).parentElement!;
-    expect(
-      within(frequent)
-        .getAllByRole('link')
-        .map((link) => link.getAttribute('href')),
-    ).toEqual(['/putaway', '/inbound-receipt']);
+    expect(screen.queryByRole('button', { name: /사용자 전환/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /설정/ })).toBeNull();
   });
 
   /* 걸린 것이 없는데 자리를 세우면 0 이 홈 맨 위를 차지한다. */
-  /* 교대 때 다음 사람이 바로 사번을 넣는다 - 사번 확인에서 「사번 바꾸기」를 다시 누르지 않는다. */
-  it('「사용자 전환」은 지금 사번을 내리고 사번 확인으로 간다', async () => {
-    const user = userEvent.setup();
-    const WorkerName = () => <p>{useWorkerSession().worker?.workerName ?? '사번 없음'}</p>;
-    render(
-      <Shell>
-        <Visits />
-        <WorkerName />
-        <Routes>
-          <Route path="/" element={<p>사번 확인 화면</p>} />
-          <Route path="/screens" element={<ShellHome />} />
-        </Routes>
-      </Shell>,
-    );
-
-    await user.click(screen.getByRole('button', { name: '사번 세우기' }));
-    expect(screen.getByText('갑')).toBeTruthy();
-
-    await user.click(screen.getByRole('button', { name: /사용자 전환/ }));
-
-    expect(screen.getByText('사번 확인 화면')).toBeTruthy();
-    expect(screen.getByText('사번 없음')).toBeTruthy();
-  });
-
-  /* 기기 등록 해제처럼 드물게 쓰는 것은 사번 입력 화면이 아니라 설정에 있다(사용자 지시 2026-10-21). */
-  it('「설정」은 설정 화면으로 간다', async () => {
-    const user = userEvent.setup();
-    render(
-      <Shell>
-        <Routes>
-          <Route path="/screens" element={<ShellHome />} />
-          <Route path="/settings" element={<p>설정 화면</p>} />
-        </Routes>
-      </Shell>,
-    );
-
-    await user.click(screen.getByRole('button', { name: /설정/ }));
-
-    expect(screen.getByText('설정 화면')).toBeTruthy();
-  });
-
   it('이어서 할 작업도 못 보낸 기록도 없으면 맨 위에 아무것도 세우지 않는다', () => {
     render(
       <Shell>

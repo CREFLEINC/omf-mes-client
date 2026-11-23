@@ -1,4 +1,4 @@
-import { Icon } from '@crefle/web-ui';
+import { Icon, IconButton } from '@crefle/web-ui';
 import type { InboundLotDetail } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
@@ -18,14 +18,27 @@ export interface LastScanProps {
   /** [취소]를 누를 수 있는가 — 입하 중 · 온라인 · 일하는 중 아님. */
   canUndo: boolean;
   onUndo: () => void;
+  /** 머리 오른쪽 ✕ — 칸을 내린다. 등록 · 거부 결과는 그대로다. */
+  onDismiss: () => void;
 }
 
 /**
  * 방금 찍은 라벨(사용자 지시 2026-11-20 「방금 찍은 바코드가 정말 맞는지」) — 품목코드 · 품목명 · 수량을 크게,
  * 번호 끝은 작게. 결과마다 바탕이 바뀐다: 등록 초록 · 이미 찍음 회색 · 전송 대기 노랑 · 거부 빨강.
- * 잘못 찍었으면 이 칸의 [취소] 한 번으로 되돌린다.
+ * 잘못 찍었으면 이 칸의 [취소] 한 번으로 되돌린다. 머리 오른쪽 끝 ✕ 가 칸을 내린다(사용자 지시 2026-11-23).
+ * 「새 품목」 칩은 두지 않는다(사용자 지시 2026-11-23) — 품목이 바뀐 것은 경고음이 알린다.
  */
-export const LastScan = ({ line, detail, canUndo, onUndo }: LastScanProps) => {
+export const LastScan = ({ line, detail, canUndo, onUndo, onDismiss }: LastScanProps) => {
+  const close = (
+    <IconButton
+      className="last-scan__close"
+      icon="close"
+      size="sm"
+      aria-label={t.last.dismiss}
+      onClick={onDismiss}
+    />
+  );
+
   if (line.kind === 'ok') {
     const parsed = parseMaterialLotNo(line.lotNo);
     const itemCode = detail?.itemCode ?? parsed?.itemCode ?? null;
@@ -36,7 +49,6 @@ export const LastScan = ({ line, detail, canUndo, onUndo }: LastScanProps) => {
         <p className="last-scan__bar">
           <Icon name="check_circle" size={20} />
           <span>{t.last.ok}</span>
-          {line.newItem ? <span className="last-scan__tag">{t.last.newItem}</span> : null}
           <Button
             className="last-scan__undo"
             variant="outlined"
@@ -47,6 +59,7 @@ export const LastScan = ({ line, detail, canUndo, onUndo }: LastScanProps) => {
           >
             {t.last.undo}
           </Button>
+          {close}
         </p>
         <div className="last-scan__body">
           {itemCode === null ? null : <p className="last-scan__code">{itemCode}</p>}
@@ -87,6 +100,7 @@ export const LastScan = ({ line, detail, canUndo, onUndo }: LastScanProps) => {
           size={20}
         />
         <span>{title}</span>
+        {close}
       </p>
       <div className="last-scan__body">
         <p className="last-scan__why">{reason}</p>

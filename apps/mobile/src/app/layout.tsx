@@ -3,7 +3,8 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 
-import { listenBackButton, runBackStep, useHasBackStep } from '../patterns/back-step';
+import { exitApp, listenBackButton, runBackStep, useHasBackStep } from '../patterns/back-step';
+import { ConfirmDialog } from '../patterns/confirm-dialog';
 import { keepListboxesInSafeArea } from '../patterns/listbox-safe-area';
 import { useServerReachable } from '../patterns/online-status';
 import { ScanFlashHost } from '../patterns/scan-feedback';
@@ -15,8 +16,7 @@ import {
 } from '../patterns/screen-title';
 import { useOutbox } from '../patterns/outbox';
 import { useWorkerSession } from '../patterns/worker-session';
-import { useRecordScreenVisit } from './frequent-screens';
-import { areaOfScreen, isWorkScreen, screenOf } from './home-menu';
+import { areaOfScreen, isWorkScreen } from './home-menu';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -24,6 +24,7 @@ interface AppLayoutProps {
 
 const t = messages.common.connection;
 const shell = messages.common.shell;
+const settings = messages.shellHome.settings;
 
 /** 작업 목록. 사번 확인(`/`) 다음에 서는 첫 화면이다. */
 const HOME_PATH = '/screens';
@@ -56,6 +57,11 @@ const ShellTopbar = () => {
    * 보이지 않으면 도달하지 못한 사실을 알 방법이 사라진다. 0 이면 감춘다.
    */
   const { pending, rejected } = useOutbox();
+  /*
+   * 설정은 작업 목록에서만 연다 - 사번 칩 오른쪽 아이콘이다(사용자 지시 2026-11-23, 홈 맨 아래
+   * 단추에서 옮김). 작업 화면에 두면 적던 것을 두고 기기 설정으로 빠지는 길이 생긴다.
+   */
+  const showSettings = pathname === HOME_PATH;
 
   return (
     <Topbar
@@ -130,22 +136,35 @@ const ShellTopbar = () => {
          * ⭐ 사번 확인 화면은 사번을 싣지 않는다 - 확인한 사번은 본문이 보여 준다(사용자 지시
          * 2026-09-14). 그 화면을 떠나면 다시 싣는다.
          */
-        compact || (worker === null && pending === 0 && rejected.length === 0) ? null : (
+        compact ||
+        (worker === null && pending === 0 && rejected.length === 0 && !showSettings) ? null : (
           <div className="mobile-shell__statusbar">
-            {worker === null ? (
-              <span />
-            ) : (
-              /*
-               * 사번 칩을 누르면 사번 확인 화면으로 간다 - 교대 · 바꾸기 · 기기 등록 풀기가 거기 있다.
-               * 전에는 그 화면으로 가는 길이 없었다(사용자 지적 2026-10-21).
-               */
-              <Link to="/" className="mobile-shell__worker" aria-label={shell.changeWorker}>
-                <Icon name="person" size={16} />
-                <b>{worker.workerName}</b>
-                {` · ${worker.workerNo}`}
-              </Link>
-            )}
             <QueueLinks pending={pending} rejected={rejected.length} />
+            {/* 사번은 오른쪽 끝, 설정은 그 오른쪽이다(사용자 지시 2026-11-23). */}
+            <span className="mobile-shell__who">
+              {worker === null ? null : (
+                /*
+                 * 사번 칩을 누르면 사번 확인 화면으로 간다 - 사용자 전환이 거기 있다. 전에는 그
+                 * 화면으로 가는 길이 없었다(사용자 지적 2026-10-21).
+                 */
+                <Link to="/" className="mobile-shell__worker" aria-label={shell.changeWorker}>
+                  <Icon name="person" size={16} />
+                  <b>{worker.workerName}</b>
+                  {` · ${worker.workerNo}`}
+                </Link>
+              )}
+              {showSettings ? (
+                <IconButton
+                  className="mobile-shell__settings"
+                  icon="settings"
+                  size="md"
+                  aria-label={settings.label}
+                  onClick={() => {
+                    void navigate('/settings');
+                  }}
+                />
+              ) : null}
+            </span>
           </div>
         )
       }
@@ -182,17 +201,20 @@ const QueueLinks = ({ pending, rejected }: { pending: number; rejected: number }
   );
 
 export const AppLayout = ({ children }: AppLayoutProps) => {
-  /* 단말의 뒤로가기를 화면 안 단계가 먼저 받는다. 없으면 이력으로 넘어간다. */
-  useEffect(() => listenBackButton(), []);
+  /*
+   * 단말의 뒤로가기를 화면 안 단계가 먼저 받는다. 없으면 이력으로 넘어간다. 첫 화면에서는 앱을
+   * 닫기 전에 묻는다(사용자 지시 2026-11-23) - 묻는 창이 떠 있을 때 한 번 더 누르면 창을 닫는다.
+   */
+  const [askExit, setAskExit] = useState(false);
+  useEffect(
+    () =>
+      listenBackButton(() => {
+        setAskExit((open) => !open);
+      }),
+    [],
+  );
 
-  /* 작업 화면에 들어갈 때마다 센다. 홈의 「자주 쓰는 작업」이 이것으로 선다. */
   const { pathname } = useLocation();
-  const recordVisit = useRecordScreenVisit();
-  useEffect(() => {
-    if (screenOf(pathname) !== undefined) {
-      recordVisit(pathname);
-    }
-  }, [pathname, recordVisit]);
   /* 드롭다운 목록은 셸 밖에 그려져 시스템 바 여백을 못 받는다. 바 안쪽으로 다시 놓는다. */
   useEffect(() => keepListboxesInSafeArea(), []);
   /* 앱바 바로 아래 알림 자리. 화면이 띄운 알림(`ScreenNotice`)이 여기로 온다. */
@@ -225,6 +247,17 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
           ) : null}
         </div>
         <ScreenNoticeSlotProvider value={noticeSlot}>{children}</ScreenNoticeSlotProvider>
+        {/* 셸 안에 둔다 - 가운데 작은 창 모양(`confirm-dialog.css`)이 `.mobile-shell` 아래에만 걸린다. */}
+        <ConfirmDialog
+          open={askExit}
+          title={shell.exit.title}
+          cancelLabel={shell.exit.cancel}
+          proceedLabel={shell.exit.proceed}
+          onCancel={() => {
+            setAskExit(false);
+          }}
+          onProceed={exitApp}
+        />
       </AppShell>
       {/* 스캔·저장 결과를 화면 가장자리로 알린다. 화면들이 부르는 `signal` 이 여기로 온다. */}
       <ScanFlashHost />

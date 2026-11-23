@@ -36,6 +36,7 @@ import {
 import {
   RECEIVE_LABEL,
   applyReceive,
+  businessDateOf,
   hasErrorCode,
   isReceiving,
   lotTail,
@@ -75,18 +76,18 @@ interface Tracked {
  * ```
  * ←  입하 등록                       [온라인] 사번
  * ▦ SCAN
- * ┌ ✓ 등록됨 [새 품목]        [취소] ┐   ← 방금 찍은 라벨 하나(다음 스캔 · 알림이 덮는다)
+ * ┌ ✓ 등록됨               [취소] ✕ ┐   ← 방금 찍은 라벨 하나(다음 스캔 · 알림이 덮는다, ✕ 로 내린다)
  * │ 품목코드 / 품목명 / 큰 수량       │
  * └ 공급사 · …|번호 끝                ┘
  * (전송 대기 띠)
- * 이번 입하 N개 — 공급사 머리 줄 › 품목 줄(No · 품목코드 · 품목 · 개수 · 수량), 줄을 누르면 그 품목의 LOT
+ * YY.MM.DD 입하 N건 Scan — 공급사 머리 줄 › 품목 줄(No · 품목코드 · 품목 · 개수 · 수량), 줄을 누르면 그 품목의 LOT
  * [모두 입하 마감 (n품목 m개)]
  * ```
  *
  * ⭐ 작업자에게 중요한 것만 남긴다(사용자 지시 2026-11-20) — 방금 찍은 라벨이 맞는지, 지금까지 몇 개를 찍었는지.
  *    입하 LOT 번호 · 상태 칩 · 등록 시각 · IQC 요청 번호 · 직접 입력 단추는 두지 않는다.
- * ⭐ 결과는 소리로도 가른다 — 등록 높은 음 두 번 · 새 품목 · 이미 찍음은 가운데 음 · 거부는 낮은 음(scan-feedback).
- * ⭐ 이번 입하 표에 이미 있는 라벨은 서버에 보내지 않고 회색 「이미 찍은 라벨」로 몇 번 줄인지 알린다.
+ * ⭐ 결과는 소리로도 가른다 — 등록 높은 음 두 번 · 품목이 바뀜 · 이미 찍음은 가운데 음 · 거부는 낮은 음(scan-feedback).
+ * ⭐ 입하 표에 이미 있는 라벨은 서버에 보내지 않고 회색 「이미 찍은 라벨」로 몇 번 줄인지 알린다.
  * ⭐ 하나씩 빼기 · 공급사 LOT 번호 · 이 품목만 마감은 품목 화면에서, 모두 마감은 바닥 단추로.
  *
  * ⛔ 없앤 것(기존 화면 디자인 변경): P/O 고르기 · 단계 · 수량 칸 · 초과 판정 · 「LOT 번호 없음」 대체 사유 · 입하 LOT
@@ -104,7 +105,7 @@ export const InboundReceiptScreen = () => {
   const [cards, setCards] = useState<CardState[]>([]);
   /** 품목 화면으로 연 입하 LOT — null 이면 스캔 화면. 앱바 ← 가 닫는다. */
   const [viewId, setViewId] = useState<number | null>(null);
-  /** 바로 앞 등록이 들어간 입하 LOT — 다르면 「새 품목」. */
+  /** 바로 앞 등록이 들어간 입하 LOT — 다르면 경고음(품목이 바뀌었다). */
   const lastOkId = useRef<number | null>(null);
   /* 결과 줄과 알림은 한 자리다 — 하나를 세우면 다른 하나는 내린다. */
   const [line, setLine] = useState<ScanLine | null>(null);
@@ -201,12 +202,11 @@ export const InboundReceiptScreen = () => {
       inboundLotId: first.inboundLotId,
       lotId: lot?.lotId ?? null,
       qty: lot?.lotQty ?? null,
-      newItem,
       autoClosed: result.inboundLots.some((each) => each.autoClosedInboundLotNo !== null),
     });
   };
 
-  /** 이번 입하 표에 이미 있는 라벨 — 거부가 아니라 회색 알림(가운데 음). */
+  /** 입하 표에 이미 있는 라벨 — 거부가 아니라 회색 알림(가운데 음). */
   const duplicate = (lotNo: string, row: number): void => {
     signal('warn');
     setViewId(null);
@@ -552,6 +552,9 @@ export const InboundReceiptScreen = () => {
             onUndo={() => {
               if (line.kind === 'ok' && line.lotId !== null) undo(line.inboundLotId, line.lotId);
             }}
+            onDismiss={() => {
+              setLine(null);
+            }}
           />
         )}
       </div>
@@ -572,6 +575,7 @@ export const InboundReceiptScreen = () => {
       )}
 
       <ReceiptTally
+        date={businessDateOf(new Date())}
         groups={groups}
         total={total}
         currentId={line?.kind === 'ok' ? line.inboundLotId : null}

@@ -13,7 +13,6 @@ import { OutboxProvider } from '../patterns/outbox';
 import { TaskDraftProvider } from '../patterns/task-draft';
 import { WorkerSessionProvider, useWorkerSession } from '../patterns/worker-session';
 import { createTestQueryClient, jsonResponse, type StubFetch } from '../test/api-harness';
-import { FrequentScreensProvider, useRecordScreenVisit } from './frequent-screens';
 import { HomeAreaScreen, ShellHome } from './shell-home';
 import { WORK_COUNT_INTERVAL_MS } from './work-counts';
 
@@ -41,18 +40,13 @@ interface Setup {
   signedIn?: boolean;
   path?: string;
   warehouseName?: string | null;
-  frequent?: string[];
 }
 
-const SignIn = ({ frequent }: { frequent: string[] }) => {
+const SignIn = () => {
   const { signIn } = useWorkerSession();
-  const record = useRecordScreenVisit();
   useEffect(() => {
     signIn({ workerNo: '100027', workerName: '합성 갑' });
   }, [signIn]);
-  useEffect(() => {
-    for (const path of frequent) record(path);
-  }, [frequent, record]);
   return null;
 };
 
@@ -100,9 +94,7 @@ const setup = (options: Setup = {}) => {
         <MemoryRouter initialEntries={[options.path ?? '/screens']}>
           <OutboxProvider send={() => Promise.resolve()}>
             <WorkerSessionProvider>
-              <TaskDraftProvider>
-                <FrequentScreensProvider>{children}</FrequentScreensProvider>
-              </TaskDraftProvider>
+              <TaskDraftProvider>{children}</TaskDraftProvider>
             </WorkerSessionProvider>
           </OutboxProvider>
         </MemoryRouter>
@@ -112,7 +104,7 @@ const setup = (options: Setup = {}) => {
 
   render(
     <Shell>
-      {options.signedIn === false ? null : <SignIn frequent={options.frequent ?? []} />}
+      {options.signedIn === false ? null : <SignIn />}
       <GoHome />
       <Routes>
         <Route path="/screens" element={<ShellHome />} />
@@ -167,15 +159,6 @@ describe('모바일 홈 남은 작업 배지(피처 002)', () => {
     ).toBeInTheDocument();
     /* 셀 수 없는 작업에는 배지가 없다. */
     expect(screen.getByRole('link', { name: messages.physicalCount.title })).toBeInTheDocument();
-  });
-
-  it('US3-1 자주 쓰는 작업 칩에도 같은 수가 선다', async () => {
-    setup({ frequent: ['/material-picking'] });
-
-    const chip = await screen.findByRole('link', {
-      name: t.workCount.label(messages.materialPicking.title, 3),
-    });
-    expect(within(chip).getByText('3')).toBeInTheDocument();
   });
 
   it('US3-2 12건이면 「9+」로 보이고 접근 이름은 12건이다', async () => {
@@ -246,12 +229,17 @@ describe('모바일 홈 남은 작업 배지(피처 002)', () => {
     expect(screen.queryByText(t.workCount.left)).toBeNull();
   });
 
-  it('홈 아래에 수의 기준을 적는다 — 창고가 있으면 그 창고, 없으면 공장 전체', async () => {
+  /*
+   * 업무 행의 남은 작업 수를 읽기 전에 기준을 본다 - 업무 바로 위에 아이콘과 창고 이름만 적는다
+   * (사용자 지시 2026-11-23).
+   */
+  it('업무 위에 수의 기준을 적는다 — 창고가 있으면 그 창고 이름, 없으면 공장 전체', async () => {
     token.value = tokenFor(9001);
     setup({ warehouseName: '합성 자재창고 A' });
-    expect(
-      await screen.findByText(t.workCount.basisWarehouse('합성 자재창고 A')),
-    ).toBeInTheDocument();
+    const basis = await screen.findByText('합성 자재창고 A');
+    const areas = screen.getByRole('heading', { name: t.areas.label });
+
+    expect(basis.compareDocumentPosition(areas) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('US3-8 창고가 없는 기기는 「공장 전체 기준」이다', async () => {

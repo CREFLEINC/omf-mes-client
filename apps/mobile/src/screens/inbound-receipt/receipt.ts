@@ -153,12 +153,10 @@ export type ScanLine =
       /** 등록된 자재 관리 LOT — [취소]가 푼다. 응답에 없으면 null. */
       lotId: number | null;
       qty: number | null;
-      /** 바로 앞 스캔과 공급사 · 품목이 다르다 — 「새 품목」. */
-      newItem: boolean;
       /** 이 스캔 때 날짜가 바뀌어 자동 마감된 입하가 있다. */
       autoClosed: boolean;
     }
-  /** 이번 입하 표에 이미 있는 라벨 — 서버에 보내지 않는다. `row` 는 표의 행 번호. */
+  /** 입하 표에 이미 있는 라벨 — 서버에 보내지 않는다. `row` 는 표의 행 번호. */
   | { kind: 'duplicate'; id: string; lotNo: string; row: number }
   | { kind: 'offline'; id: string; lotNo: string }
   /** `body` 는 제목에 없는 사실(들어가 있는 입하 LOT · 서버 문구)만 — 없으면 null. */
