@@ -3,3 +3,11 @@
   display: flex;
   justify-content: flex-end;
 }
+
+/*
+ * 「갱신」 줄과 쪽 이동 줄은 표 바로 아래에 붙어 선다 — 쪽 이동 바로 앞 칸을 늘리는 공용 규칙(app.css
+ * `.lot-status-pane:has(> .page-nav) > :has(+ .page-nav)`)이 이 줄에 걸려 사이가 벌어지던 것을 막는다(#350 사용자 지시).
+ */
+.lot-status-split > .lot-status-pane:has(> .page-nav) > .lot-status-refresh-foot.lot-status-refresh-foot {
+  flex: 0 0 auto;
+}

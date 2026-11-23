@@ -250,6 +250,26 @@ describe('검사 수준 관리', () => {
     );
     expect(screen.getByRole('dialog')).toHaveTextContent('PPAD003200');
   });
+
+  /* 목록 줄 아무 곳이나 누르면 오른쪽 이력이 그 품목만 — 다시 누르면 전체(#350 사용자 지시). */
+  it('목록 줄 아무 곳이나 누르면 오른쪽 이력이 그 품목만 조회되고, 다시 누르면 전체로 돌아간다', async () => {
+    const { user, requests } = setup();
+    const lastHistory = () => requests.filter((r) => r.url.pathname.endsWith(HISTORIES)).at(-1);
+    const row = await within(levelTable()).findByRole('row', { name: /PPAD003200/ });
+    await waitFor(() => expect(lastHistory()?.url.searchParams.has('itemId')).toBe(false));
+
+    await user.click(within(row).getByText('PAPER PAD EJECT'));
+    await waitFor(() => expect(lastHistory()?.url.searchParams.get('itemId')).toBe('3076'));
+    expect(screen.getByRole('button', { name: t.history.openRow('PPAD003200') })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(screen.getByText(t.history.selectedHint)).toBeInTheDocument();
+
+    await user.click(within(row).getByText('PAPER PAD EJECT'));
+    await waitFor(() => expect(lastHistory()?.url.searchParams.has('itemId')).toBe(false));
+    expect(screen.getByText(t.history.allHint)).toBeInTheDocument();
+  });
   /* 품목은 칸에서 바로 검색해 고른다(omf-all-around#226) — 고르면 바로 조회하고 「전체」는 종전 × 처럼 조건을 푼다. */
   it('품목은 칸에서 검색해 고르면 바로 조회하고, 「전체」를 고르면 조건을 푼다(#226)', async () => {
     const { user, requests } = setup();

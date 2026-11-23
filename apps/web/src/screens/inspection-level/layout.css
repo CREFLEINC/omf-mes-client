@@ -1,15 +1,63 @@
-/* 검사 수준 변경 이력 — 고른 품목(코드 · 이름)을 제목 옆에 흐리게(#350). */
-.inspection-level-history-item {
+/*
+ * 검사 수준 변경 이력 제목 줄 — 제목 오른쪽에 안내 알약(글자 폭만큼). 좁으면 다음 줄로 내려간다(#350 사용자 지시).
+ */
+.inspection-level-history-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-height: 32px;
+}
+
+.inspection-level-history-head > .pane-title {
+  margin: 0;
+}
+
+/* 안내 알약 — 다른 화면의 12px 보다 한 단계 크게(사용자 지시), 폭은 글자만큼. */
+.inspection-level-history-head > .iqc-inspection-action-note:nth-child(n) {
+  flex: 0 1 auto;
+  width: auto;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+/* 고른 품목(코드 · 이름) — 제목 옆에 흐리게. */
+.inspection-level-history-selected {
   margin-left: var(--space-2);
   color: var(--on-surface-variant);
   font-size: 14px;
   font-weight: 500;
 }
 
-/* 품목코드를 누르는 단추 — 다른 목록의 고르는 칸과 같은 링크 모양. */
-.inspection-level-rows .link-cell.inspection-level-item-code {
+/*
+ * 품목별 검사 수준 목록 — 줄 아무 곳이나 눌러 고른다(사용자 역할 권한 관리 목록과 같다). 고른 줄의 파란 바탕 · 왼쪽 선은
+ * `.inspection-queue-table` 의 `aria-current` 규칙이 그린다.
+ */
+.inspection-level-pick-rows tbody tr {
+  cursor: pointer;
+}
+
+.inspection-level-row-pick {
+  display: inline;
   max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.inspection-level-row-pick:focus-visible {
+  outline: none;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--focus-ring);
+}
+
+.inspection-level-row-pick[aria-current='true'] {
+  font-weight: 600;
 }

@@ -187,9 +187,13 @@ export const InspectionLevelScreen = () => {
       header: t.columns.itemCode,
       width: '140px',
       render: (row) => (
+        /*
+         * 줄 아무 곳이나 눌러 고른다(#350 사용자 지시) — 품목코드는 링크처럼 보이지 않고, 이 단추는 키보드 · 화면 낭독기가
+         * 줄을 고르는 자리로만 남는다(사용자 역할 권한 관리 목록과 같다). 고른 줄 표시는 `aria-current`.
+         */
         <button
           type="button"
-          className="link-cell inspection-level-item-code"
+          className="inspection-level-row-pick"
           aria-current={selectedItem?.itemId === row.itemId ? 'true' : undefined}
           aria-label={t.history.openRow(row.itemCode)}
           title={row.itemCode}
@@ -490,8 +494,19 @@ export const InspectionLevelScreen = () => {
               )}
               <div
                 ref={fit.ref}
-                className="inspection-queue-table inspection-standard-table-box inspection-level-rows cells-start"
+                /* 목록은 칸 값을 가운데 정렬한다(#350 사용자 지시 — `cells-start` 를 쓰지 않는다). */
+                className="inspection-queue-table inspection-standard-table-box inspection-level-rows inspection-level-pick-rows"
                 style={resizable.style}
+                onClick={(event) => {
+                  const target = event.target;
+                  if (!(target instanceof Element)) return;
+                  /* 줄 안의 단추(고르기 · 변경 · 이력)는 제 일을 한다. */
+                  if (target.closest('button, a, input, select, textarea') !== null) return;
+                  target
+                    .closest('tbody tr')
+                    ?.querySelector<HTMLButtonElement>('.inspection-level-row-pick')
+                    ?.click();
+                }}
               >
                 <Table
                   /* 표 이름은 카드 제목과 겹친다 — 화면에서는 감추고 읽기 도구에만 남긴다(#208). */
@@ -534,18 +549,21 @@ export const InspectionLevelScreen = () => {
           className: 'inspection-level-list-pane',
           content: (
             <>
-              <h2 className="pane-title">
-                {t.history.heading}
-                {selectedItem !== null && (
-                  <span className="inspection-level-history-item">
-                    {t.history.selectedItem(selectedItem.itemCode, selectedItem.itemName)}
-                  </span>
-                )}
-              </h2>
-              <p className="iqc-inspection-action-note" data-tone="info" role="status">
-                <Icon name="info" size={14} aria-hidden />
-                {selectedItem === null ? t.history.allHint : t.history.selectedHint}
-              </p>
+              {/* 제목 줄 — 제목 오른쪽에 안내(글자 폭만큼) · #350 사용자 지시. */}
+              <div className="inspection-level-history-head">
+                <h2 className="pane-title">
+                  {t.history.heading}
+                  {selectedItem !== null && (
+                    <span className="inspection-level-history-selected">
+                      {t.history.selectedItem(selectedItem.itemCode, selectedItem.itemName)}
+                    </span>
+                  )}
+                </h2>
+                <p className="iqc-inspection-action-note" data-tone="info" role="status">
+                  <Icon name="info" size={16} aria-hidden />
+                  {selectedItem === null ? t.history.allHint : t.history.selectedHint}
+                </p>
+              </div>
               {histories.isError && (
                 <AlertBanner variant="error">{t.history.loadFailed}</AlertBanner>
               )}
