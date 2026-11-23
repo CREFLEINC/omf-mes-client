@@ -111,20 +111,9 @@ describe('W-03-10 선별', () => {
       defectQty: 1050,
       reason: '합성 선별 사유',
     });
-    expect(await screen.findByText(t.sort.resultTitle)).toBeInTheDocument();
-    expect(screen.getByText(t.sort.resultRest('0001, 0002'))).toBeInTheDocument();
-    expect(
-      screen.getByText(t.sort.resultMoved('0003', 'SAMPLE-IL-0502'), { exact: false }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(t.sort.toast('0003', 'SAMPLE-IL-0502', 'SAMPLE-NC-0052')),
-    ).toBeInTheDocument();
-    // 정보 수량은 천 단위 쉼표(G2 L6).
-    expect(screen.getByText(t.sort.resultInfo('2,000', '1,050'))).toBeInTheDocument();
-
-    // 새 부적합은 링크 — 누르면 그 부적합을 연다.
-    await user.click(screen.getByRole('button', { name: 'SAMPLE-NC-0052' }));
-    await waitFor(() => expect(requestedPaths()).toContain('/quality/nonconformances/52'));
+    // 결과 상자 없이 알림만 — 새 부적합은 상단 링크가, LOT 별 결과는 LOT 표가 보인다(#352 사용자 지시).
+    expect(await screen.findByText(t.form.success)).toBeInTheDocument();
+    expect(document.querySelector('.disposition-result')).toBeNull();
   });
 
   it('US7-2 전부 고르면 막는다 — 원래 입하 LOT 에 하나 이상 남아야 한다. 하나도 안 골라도 저장할 수 없다', async () => {

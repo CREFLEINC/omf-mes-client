@@ -7,7 +7,7 @@ import type {
 import { Badge, Chip, Icon, Tabs, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -32,8 +32,6 @@ import {
   type DecisionCreateBody,
   type DecisionFormValue,
 } from './decision-form';
-import { DecisionResultCard, type DecisionResult } from './decision-result';
-import { ConcessionHistory, groupConcessions, useConcessions } from './concession-pane';
 import { DecisionFormPane, typeLockLines } from './decision-form-pane';
 import { toDecisionLock } from './decision-lock';
 import { DetailSlot } from './detail-slot';
@@ -96,7 +94,7 @@ import {
   usePendingTotals,
 } from './queries';
 import { toRemainingQty } from './remaining-qty';
-import { lotNames, lotTail, sumQty } from './sort-split-pane';
+import { lotNames, sumQty } from './sort-split-pane';
 import { DecisionConfirmDialog, type DecisionConfirmRow } from './decision-confirm-dialog';
 import {
   decisionUomIdOf,
@@ -132,48 +130,9 @@ interface PendingWriteTarget {
   nonconformanceNo: string;
 }
 
-/** 저장 순간의 폼과 대상 — 결과 카드 · 알림을 서버 응답과 함께 그린다(응답은 판정 한 건만 돌려준다). */
-interface SubmittedDecision {
-  nonconformanceId: number;
-  form: DecisionFormValue;
-  lotNos: { lotId: number; lotNoText: string }[];
-  inboundLotNo: string | null;
-  inspectionRequestNo: string | null;
-}
-
 /** 조회가 끝나기 전엔 `null` — 주소의 코드를 아직 판정할 수 없다. 끝나면 활성 코드 목록(빈 배열 포함). */
 const settledCodes = (lookup: DispositionLookup): readonly string[] | null =>
   lookup.isLoading ? null : codeOptionsOf(lookup).map((option) => option.value);
-
-/** 저장 순간의 폼 · 대상과 서버 응답으로 결과 카드의 값을 만든다. */
-const toDecisionResult = (
-  sent: SubmittedDecision,
-  data: DispositionDecisionCreatedForward005 | undefined,
-): DecisionResult => {
-  if (sent.form.dispositionTypeCode !== SORT) {
-    return {
-      kind: 'whole',
-      dispositionTypeCode: sent.form.dispositionTypeCode,
-      lotCount: sent.lotNos.length,
-      inboundLotNo: sent.inboundLotNo,
-    };
-  }
-  const moved = new Set(sent.form.sortLotIds);
-  const names = (rows: { lotNoText: string }[]): string =>
-    rows.map((row) => lotTail(row.lotNoText)).join(', ');
-  return {
-    kind: 'sort',
-    restLots: names(sent.lotNos.filter((lot) => !moved.has(lot.lotId))),
-    movedLots: names(sent.lotNos.filter((lot) => moved.has(lot.lotId))),
-    newInboundLotNo: data?.newInboundLotNo ?? null,
-    newInspectionRequestNo: data?.newInspectionRequestNo ?? null,
-    originalInspectionRequestNo: sent.inspectionRequestNo,
-    newNonconformanceId: data?.newNonconformanceId ?? null,
-    newNonconformanceNo: data?.newNonconformanceNo ?? null,
-    goodQty: sent.form.goodQty.trim(),
-    defectQty: sent.form.defectQty.trim(),
-  };
-};
 
 export interface DispositionDecisionScreenProps {
   dispositionTypeCodes?: readonly string[];
@@ -324,9 +283,6 @@ export const DispositionDecisionScreen = ({
     useMemo(() => toHistoryListQuery(historyFilters, 1, zone, size), [historyFilters, size, zone]),
   ).data?.page.total;
   const detail = useNonconformanceDetail(selectedId);
-  const concessions = useConcessions(selectedId);
-  /* 상세 아래 탭 — 판정 이력 | 특채 요청 및 이력(#223). */
-  const [sideTab, setSideTab] = useState<'decisions' | 'concessions'>('decisions');
   const decisions = useDispositionDecisions(selectedId);
   /* 줄 · 상세에 보이는 품목은 첫 쪽 밖이어도 이름으로(G2 L-c). */
   const items = useItemLookupFor([
@@ -397,11 +353,6 @@ export const DispositionDecisionScreen = ({
   const [form, setForm] = useState<DecisionFormValue>(EMPTY_DECISION_FORM);
   /* 판정 확인 팝업 — 폐기 · 선별 · 특채 모두 저장 전에 띄운다(omf-all-around#352 사용자 지시). */
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  /* 저장 결과 카드 — 그 부적합을 보고 있는 동안만 보인다(005 시안). */
-  const [result, setResult] = useState<{ nonconformanceId: number; result: DecisionResult } | null>(
-    null,
-  );
-  const submitted = useRef<SubmittedDecision | null>(null);
   const [showErrors, setShowErrors] = useState(false);
   /** 선택을 옮겨도 쓰기가 따라다니지 않도록, 겨눈 부적합을 기억한다. */
   const [pendingTarget, setPendingTarget] = useState<PendingWriteTarget | null>(null);
@@ -477,26 +428,8 @@ export const DispositionDecisionScreen = ({
     ],
     /* 되돌릴 수 없는 쓰기다 — 취소 API가 없고 LOT 상태 전이를 함께 부른다(공유계약 B-8). */
     keyLifetime: 'until-applied',
-    onSuccess: (data) => {
-      const sent = submitted.current;
-      if (sent !== null) {
-        const next = toDecisionResult(sent, data);
-        setResult({ nonconformanceId: sent.nonconformanceId, result: next });
-        /* 선별은 옮긴 LOT 이 어디로 갔는지 밝힌다 — 다음 처분은 그 새 부적합에서 한다(US7-2). */
-        toast.show({
-          variant: 'success',
-          description:
-            next.kind === 'sort'
-              ? t.sort.toast(
-                  next.movedLots,
-                  next.newInboundLotNo ?? t.sort.newInboundLot,
-                  next.newNonconformanceNo ?? t.values.unknownQty,
-                )
-              : t.form.success,
-        });
-      } else {
-        toast.show({ variant: 'success', description: t.form.success });
-      }
+    onSuccess: () => {
+      toast.show({ variant: 'success', description: t.form.success });
       setForm(EMPTY_DECISION_FORM);
       setShowErrors(false);
       setPendingTarget(null);
@@ -523,7 +456,6 @@ export const DispositionDecisionScreen = ({
       /* 다LOT 은 자재 관리 LOT 마다 특채 행을 만든 수를 알린다(D-14). */
       const description = count > 1 ? t.concession.appliedLots(count) : t.concession.applied;
       toast.show({ variant: 'success', description });
-      setSideTab('concessions');
       setForm(EMPTY_DECISION_FORM);
       setShowErrors(false);
     },
@@ -663,13 +595,6 @@ export const DispositionDecisionScreen = ({
     const body = toDecisionCreateBody(form, uomId, formContext);
     if (body === undefined) return;
 
-    submitted.current = {
-      nonconformanceId: selectedId,
-      form,
-      lotNos: lotRows.map((lot) => ({ lotId: lot.lotId, lotNoText: lot.lotNoText })),
-      inboundLotNo: detailView?.inboundLotNo ?? null,
-      inspectionRequestNo: detailView?.inspectionRequestNo ?? null,
-    };
     setPendingTarget({
       nonconformanceId: selectedId,
       nonconformanceNo: detail.data?.nonconformanceNo ?? String(selectedId),
@@ -956,131 +881,97 @@ export const DispositionDecisionScreen = ({
               status={statusChip}
             />
           </div>
-          {/* 판정 입력은 처분 대기에서만 — 처분 이력은 보기만 한다(#223). */}
-          {tab === 'pending' && selectedId !== null && detail.data !== undefined && (
-            <>
-              {/* 처분 판정 — 입력 카드와 단추. 남은 수량은 조회 시점 참고값이고 최종은 저장 때 서버가 낸다. */}
-              <div
-                className="disposition-side-part disposition-decision-card"
-                role="group"
-                aria-label={t.panes.decision}
-              >
-                {/* 막힌 처분 유형의 이유는 제목 오른쪽 안내 라벨로(#352 사용자 지시). */}
-                <div className="disposition-side-head disposition-decision-head">
-                  <h3 className="pane-subtitle">{t.form.heading}</h3>
-                  {typeLockLines(decisionOptions).map((line) => (
-                    <p
-                      key={line}
-                      className="iqc-inspection-action-note"
-                      data-tone="info"
-                      aria-hidden="true"
-                    >
-                      <Icon name="info" size={14} aria-hidden />
-                      {line}
-                    </p>
-                  ))}
-                </div>
-                <DecisionFormPane
-                  value={form}
-                  errors={showErrors ? errors : serverFieldErrors}
-                  remainingQty={remaining.value}
-                  lockReason={lock.reason}
-                  isUncertain={lock.isUncertain}
-                  onCheckOutcome={checkOutcome}
-                  dispositionOptions={decisionOptions}
-                  today={today}
-                  lots={lotRows}
-                  inboundLotNo={detailView?.inboundLotNo}
-                  inspectionRequestNo={detailView?.inspectionRequestNo}
-                  uomId={uomId}
-                  uoms={uoms}
-                  writeError={write.error ?? concessionWrite.error}
-                  isSaving={write.isSaving || concessionWrite.isSaving}
-                  canCancel={hasDecisionInput(form)}
-                  onChange={(next) => {
-                    /* 고친 칸의 서버 오류만 지운다 — 남은 칸의 오류까지 지우면 못 본 채 다시 보낸다. */
-                    if (next.dispositionTypeCode !== form.dispositionTypeCode)
-                      write.clearFieldError('dispositionTypeCode');
-                    if (next.reason !== form.reason) write.clearFieldError('reason');
-                    if (next.sortLotIds !== form.sortLotIds) write.clearFieldError('lotIds');
-                    if (next.goodQty !== form.goodQty) write.clearFieldError('goodQty');
-                    if (next.defectQty !== form.defectQty) write.clearFieldError('defectQty');
-                    if (next.reason !== form.reason) concessionWrite.clearFieldError('reason');
-                    if (next.validFrom !== form.validFrom)
-                      concessionWrite.clearFieldError('validFrom');
-                    if (next.validTo !== form.validTo) concessionWrite.clearFieldError('validTo');
-                    setForm(next);
-                  }}
-                  onSave={save}
-                  onCancel={() => {
-                    setForm(EMPTY_DECISION_FORM);
-                    setShowErrors(false);
-                    /* 지운 값에 대한 서버 판정을 남기지 않는다 — 빈 칸에 붙은 오류는 풀 길이 없다. */
-                    write.reset();
-                    concessionWrite.reset();
-                  }}
-                  onReload={checkOutcome}
-                />
-                {result !== null && result.nonconformanceId === selectedId && (
-                  <DecisionResultCard
-                    result={result.result}
-                    onOpenNonconformance={(id) =>
-                      setSearchParams((current) => withSelectedNonconformance(current, id))
-                    }
+          {/* 판정 대기면 처분 판정만, 판정이 끝났으면 처분 이력만(#352 사용자 지시). 처분 이력 탭은 보기만(#223). */}
+          {tab === 'pending' &&
+            selectedId !== null &&
+            detail.data !== undefined &&
+            !optionContext.isClosed && (
+              <>
+                {/* 처분 판정 — 입력 카드와 단추. 남은 수량은 조회 시점 참고값이고 최종은 저장 때 서버가 낸다. */}
+                <div
+                  className="disposition-side-part disposition-decision-card"
+                  role="group"
+                  aria-label={t.panes.decision}
+                >
+                  {/* 막힌 처분 유형의 이유는 제목 오른쪽 안내 라벨로(#352 사용자 지시). */}
+                  <div className="disposition-side-head disposition-decision-head">
+                    <h3 className="pane-subtitle">{t.form.heading}</h3>
+                    {typeLockLines(decisionOptions).map((line) => (
+                      <p
+                        key={line}
+                        className="iqc-inspection-action-note"
+                        data-tone="info"
+                        aria-hidden="true"
+                      >
+                        <Icon name="info" size={14} aria-hidden />
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+                  <DecisionFormPane
+                    value={form}
+                    errors={showErrors ? errors : serverFieldErrors}
+                    remainingQty={remaining.value}
+                    lockReason={lock.reason}
+                    isUncertain={lock.isUncertain}
+                    onCheckOutcome={checkOutcome}
+                    dispositionOptions={decisionOptions}
+                    today={today}
+                    lots={lotRows}
+                    inboundLotNo={detailView?.inboundLotNo}
+                    inspectionRequestNo={detailView?.inspectionRequestNo}
+                    uomId={uomId}
+                    uoms={uoms}
+                    writeError={write.error ?? concessionWrite.error}
+                    isSaving={write.isSaving || concessionWrite.isSaving}
+                    canCancel={hasDecisionInput(form)}
+                    onChange={(next) => {
+                      /* 고친 칸의 서버 오류만 지운다 — 남은 칸의 오류까지 지우면 못 본 채 다시 보낸다. */
+                      if (next.dispositionTypeCode !== form.dispositionTypeCode)
+                        write.clearFieldError('dispositionTypeCode');
+                      if (next.reason !== form.reason) write.clearFieldError('reason');
+                      if (next.sortLotIds !== form.sortLotIds) write.clearFieldError('lotIds');
+                      if (next.goodQty !== form.goodQty) write.clearFieldError('goodQty');
+                      if (next.defectQty !== form.defectQty) write.clearFieldError('defectQty');
+                      if (next.reason !== form.reason) concessionWrite.clearFieldError('reason');
+                      if (next.validFrom !== form.validFrom)
+                        concessionWrite.clearFieldError('validFrom');
+                      if (next.validTo !== form.validTo) concessionWrite.clearFieldError('validTo');
+                      setForm(next);
+                    }}
+                    onSave={save}
+                    onCancel={() => {
+                      setForm(EMPTY_DECISION_FORM);
+                      setShowErrors(false);
+                      /* 지운 값에 대한 서버 판정을 남기지 않는다 — 빈 칸에 붙은 오류는 풀 길이 없다. */
+                      write.reset();
+                      concessionWrite.reset();
+                    }}
+                    onReload={checkOutcome}
                   />
-                )}
+                </div>
+              </>
+            )}
+          {/* 처분 이력 — 특채도 판정 한 줄로 남는다. 탭 없이 한 구획, 판정이 끝난 건에만(#352 사용자 지시). */}
+          {selectedId !== null && detail.data !== undefined && optionContext.isClosed && (
+            <div className="disposition-side-part disposition-history-card">
+              <div className="disposition-side-head">
+                <h3 className="pane-subtitle">
+                  {t.panes.decisions}{' '}
+                  {decisions.isPending ? null : (
+                    <span className="disposition-count-badge">
+                      {t.decisions.count(decisionRows.length)}
+                    </span>
+                  )}
+                </h3>
               </div>
-            </>
-          )}
-          {/* 처분 이력 · 특채 요청 이력 — 탭 둘(사용자 지시 · #223). 특채 승인은 W-03-09 의 결재가 한다. */}
-          {selectedId !== null && detail.data !== undefined && (
-            /* 판정 이력 · 특채 — 테두리 상자 안의 탭(검사 조회·판정 상세 탭 상자와 같은 모양 · 사용자 지시 · #223). */
-            <Tabs
-              className="disposition-side-tabs"
-              size="md"
-              aria-label={t.panes.decisions}
-              value={sideTab}
-              onChange={(next) => setSideTab(next as 'decisions' | 'concessions')}
-              items={[
-                {
-                  value: 'decisions',
-                  /* 건수는 구획 제목 옆 건수와 같은 흐린 글(omf-all-around#286). */
-                  label: (
-                    <>
-                      {t.panes.decisions}{' '}
-                      {decisions.isPending ? null : (
-                        <span className="disposition-count-badge">
-                          {t.decisions.count(decisionRows.length)}
-                        </span>
-                      )}
-                    </>
-                  ),
-                  content: (
-                    <DecisionHistory
-                      rows={decisionRows}
-                      uoms={uoms}
-                      isLoading={decisions.isPending}
-                      isError={decisions.isError}
-                    />
-                  ),
-                },
-                {
-                  value: 'concessions',
-                  /* 다LOT 묶음은 결재 하나가 한 줄이다 — 행 수가 아니라 묶음 수로 센다(G2 L-d). */
-                  label: (
-                    <>
-                      {t.concession.foldTitle}{' '}
-                      {concessions.data === undefined ? null : (
-                        <span className="disposition-count-badge">
-                          {t.concession.count(groupConcessions(concessions.data).length)}
-                        </span>
-                      )}
-                    </>
-                  ),
-                  content: <ConcessionHistory nonconformanceId={selectedId} />,
-                },
-              ]}
-            />
+              <DecisionHistory
+                rows={decisionRows}
+                uoms={uoms}
+                isLoading={decisions.isPending}
+                isError={decisions.isError}
+              />
+            </div>
           )}
         </section>
       </div>

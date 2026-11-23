@@ -106,16 +106,8 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     unavailable: 'Không hiển thị được lịch sử đánh giá',
   },
   concession: {
-    /** 접는 머리 — 「특채 요청 및 이력 0건」(사용자 시안 · #223). */
-    foldTitle: 'Lịch sử yêu cầu đặc cách',
-    count: (count: number): string => `${String(count)}`,
     requestHeading: 'Yêu cầu đặc cách',
-    targetGroup: (count: number): string => `Toàn bộ ${String(count)} LOT quản lý vật tư`,
-    historyHeading: 'Lịch sử yêu cầu đặc cách',
     validToPlaceholder: 'Không giới hạn',
-    none: 'Chưa có lịch sử yêu cầu nhân nhượng.',
-    loading: 'Đang tải đặc cách.',
-    loadFailed: 'Không tải được đặc cách.',
     validFrom: 'Ngày bắt đầu áp dụng',
     validTo: 'Ngày kết thúc áp dụng (tùy chọn)',
     applied: 'Đã áp dụng đặc cách. LOT quản lý vật tư đã được giải phóng về bình thường.',
@@ -125,15 +117,6 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     blocked: {
       date: 'Hãy kiểm tra thời hạn hiệu lực.',
     },
-    status: { APPROVED: 'Đã áp dụng', APPLIED: 'Đã áp dụng' },
-    columns: {
-      concessionNo: 'Số đặc cách',
-      target: 'Đối tượng',
-      qty: 'Số lượng được dùng',
-      period: 'Thời hạn',
-      status: 'Trạng thái',
-    },
-    caption: 'Danh sách đặc cách',
   },
   form: {
     heading: 'Quyết định xử lý',
@@ -158,16 +141,6 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
       sortNotFirst: 'Chỉ phân loại được ở lần quyết định đầu tiên',
       normalSorted: 'Phần lỗi tách ra do phân loại — hãy xử lý bằng hủy · đặc cách',
     },
-    resultClosed: (typeLabel: string): string => `Đã kết thúc bằng quyết định ${typeLabel}`,
-    resultLots: (count: number, what: string): string =>
-      `Toàn bộ ${String(count)} LOT quản lý vật tư → ${what}`,
-    resultWhat: {
-      NORMAL: 'Bình thường',
-      SCRAP: 'Hủy',
-      REWORK: 'Chờ kiểm tra (làm lại) — mở lại IQC',
-    } as Record<string, string | undefined>,
-    reworkReopened: (inboundLotNo: string): string =>
-      `Kiểm tra ${inboundLotNo} đã được mở lại ở Tra cứu · đánh giá kiểm tra với trạng thái 「Đang kiểm tra」.`,
     qtyExceededByServer: (remaining: string): string =>
       `Tổng số lượng quyết định xử lý vượt số lượng còn lại (${remaining}) nên chưa được lưu. Hãy tải lại mục không phù hợp rồi lưu`,
     alreadyClosed: 'Mục không phù hợp này đã kết thúc. Không lưu được đánh giá',
@@ -269,19 +242,6 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     ],
     previewIqc: (inspectionRequestNo: string): string =>
       `Yêu cầu kiểm tra ban đầu ${inspectionRequestNo}`,
-    resultTitle: 'Đã lưu phân loại — mục không phù hợp này kết thúc bằng 「Phân loại」',
-    resultRest: (lots: string): string => `${lots} → bình thường (có thể nhập kho)`,
-    resultMoved: (lots: string, inboundLotNo: string): string =>
-      `${lots} → LOT nhập hàng mới ${inboundLotNo} (giữ nguyên lỗi)`,
-    resultIqc: (inspectionRequestNo: string, original: string | null): string =>
-      `IQC ${inspectionRequestNo} xác nhận không đạt${original === null ? '' : ` (liên kết với ${original})`}`,
-    resultNewNonconformance: 'Mục không phù hợp mới',
-    resultNewNonconformanceAfter: 'chờ quyết định — hãy xử lý bằng hủy · đặc cách',
-    resultInfo: (good: string, defect: string): string =>
-      `Số lượng thông tin: đạt ${good} · lỗi ${defect}`,
-    toast: (lots: string, inboundLotNo: string, nonconformanceNo: string): string =>
-      `Đã lưu phân loại. ${lots} đã chuyển sang LOT nhập hàng mới ${inboundLotNo} · mục không phù hợp ${nonconformanceNo}.`,
-    newInboundLot: 'LOT nhập hàng mới',
   },
   loading: 'Đang tải danh sách chờ đánh giá',
   historyLoading: 'Đang tải lịch sử xử lý',

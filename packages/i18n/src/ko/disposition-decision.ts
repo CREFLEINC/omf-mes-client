@@ -116,18 +116,9 @@ export const dispositionDecision = {
   },
   /** 특채(omf-all-around#84 · 서버 선행 P-79) — 불합격 LOT 을 결재 뒤 조건부로 쓴다. */
   concession: {
-    /** 접는 머리 — 「특채 요청 및 이력 0건」(사용자 시안 · #223). */
-    foldTitle: '특채 요청 이력',
-    count: (count: number): string => `${String(count)}건`,
     /** 요청 구역 머리 — 제목 왼쪽, 한 줄 설명 오른쪽(사용자 시안 · #223). */
     requestHeading: '특채 요청',
-    /** 이력 표의 묶음 한 줄 — 같은 결재의 행(자재 관리 LOT 마다 한 행)을 한 줄로. */
-    targetGroup: (count: number): string => `자재 관리 LOT ${String(count)}개 전부`,
-    historyHeading: '특채 요청 이력',
     validToPlaceholder: '제한 없음',
-    none: '특채 요청 이력이 없습니다.',
-    loading: '특채를 불러오는 중입니다.',
-    loadFailed: '특채를 불러오지 못했습니다.',
     validFrom: '적용 시작일',
     validTo: '적용 종료일 (선택)',
     applied: '특채를 적용했습니다. 자재 관리 LOT 이 정상으로 풀렸습니다.',
@@ -137,15 +128,6 @@ export const dispositionDecision = {
     blocked: {
       date: '유효 기간을 확인하세요.',
     },
-    status: { APPROVED: '적용됨', APPLIED: '적용됨' },
-    columns: {
-      concessionNo: '특채 번호',
-      target: '대상',
-      qty: '사용 가능 수량',
-      period: '유효 기간',
-      status: '상태',
-    },
-    caption: '특채 목록',
   },
   form: {
     /** 판정 구역 머리와 오른쪽 남은 수량(사용자 시안 · #223). */
@@ -178,17 +160,6 @@ export const dispositionDecision = {
       sortNotFirst: '선별은 첫 판정일 때만 할 수 있습니다',
       normalSorted: '선별로 떼어 낸 불량 — 폐기·특채로 처분', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
     },
-    /** 저장 뒤 결과 카드(정상 · 폐기 · 재작업). */
-    resultClosed: (typeLabel: string): string => `${typeLabel} 판정으로 종결`,
-    resultLots: (count: number, what: string): string =>
-      `자재 관리 LOT ${String(count)}개 전부 → ${what}`,
-    resultWhat: {
-      NORMAL: '정상',
-      SCRAP: '폐기',
-      REWORK: '검사 대기(재작업) — IQC 다시 열림',
-    } as Record<string, string | undefined>,
-    reworkReopened: (inboundLotNo: string): string =>
-      `검사 조회·판정에서 ${inboundLotNo} 검사가 「검사 진행 중」으로 다시 열렸습니다.`,
     /**
      * ⭐ 저장 409의 구조화 문구 — **저장을 서버가 거절한 뒤** 응답의 `code`를 보고 화면이 되말하는 문구다 — `message` 원문을 그대로 옮기지
      * 않는다(공유 정규화기를 고치지 않고 화면 로컬에서 되말한다). 근거: W-03-10 §6 ·
@@ -312,19 +283,6 @@ export const dispositionDecision = {
       '분리한 LOT에 해당하는 불합격 IQC 결과만 새 입하 LOT에 복사됩니다.',
     ],
     previewIqc: (inspectionRequestNo: string): string => `기존 검사 의뢰 ${inspectionRequestNo}`,
-    resultTitle: '선별을 저장했습니다 — 이 부적합은 「선별」로 종결',
-    resultRest: (lots: string): string => `${lots} → 정상 (입고할 수 있음)`,
-    resultMoved: (lots: string, inboundLotNo: string): string =>
-      `${lots} → 새 입하 LOT ${inboundLotNo} (불량 그대로)`,
-    resultIqc: (inspectionRequestNo: string, original: string | null): string =>
-      `IQC ${inspectionRequestNo} 불합격 확정${original === null ? '' : `(원래 ${original} 와 연결)`}`,
-    resultNewNonconformance: '새 부적합',
-    resultNewNonconformanceAfter: '판정 대기 — 폐기·특채로 처분하세요', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
-    resultInfo: (good: string, defect: string): string =>
-      `정보 수량: 양품 ${good} · 불량 ${defect}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
-    toast: (lots: string, inboundLotNo: string, nonconformanceNo: string): string =>
-      `선별을 저장했습니다. ${lots} 는 새 입하 LOT ${inboundLotNo} · 부적합 ${nonconformanceNo} 로 넘어갔습니다.`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
-    newInboundLot: '새 입하 LOT',
   },
   loading: '처분 대기 목록 불러오는 중',
   historyLoading: '처분 이력 불러오는 중',

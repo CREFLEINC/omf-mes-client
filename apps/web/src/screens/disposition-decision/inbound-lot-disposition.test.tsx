@@ -127,10 +127,9 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
       uomId: 7001,
       reason: '합성 폐기 사유',
     });
-    expect(await screen.findByText(t.form.resultClosed('폐기'))).toBeInTheDocument();
-    expect(
-      screen.getByText(t.form.resultLots(3, t.form.resultWhat.SCRAP ?? '')),
-    ).toBeInTheDocument();
+    /* 결과 상자는 두지 않는다 — 종결은 「처분 판정」 제목 옆 라벨이 말한다(#352 사용자 지시). */
+    expect(await screen.findByText(t.form.success)).toBeInTheDocument();
+    expect(document.querySelector('.disposition-result')).toBeNull();
   });
 
   it('US4-4 다LOT 부적합의 전량 특채는 lotId 없이 남은 수량으로 저장하고, 바로 풀린 자재 관리 LOT 수를 알린다', async () => {
