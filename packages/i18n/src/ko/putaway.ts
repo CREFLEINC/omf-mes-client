@@ -167,19 +167,40 @@ export const putaway = {
    * 지시 없이 위치를 스캔해 적치하면 그때 입고된다. 지시(004 보충·배포 전 구매 입고)는 위 문구 그대로다.
    */
   direct: {
-    /** 목록 머리 — 두 종류의 수(가운뎃점 나열은 C-13 이라 쉼표로 푼다). */
-    summary: (lots: string, tasks: string) => `적치 대기 LOT ${lots}건, 적치 지시 ${tasks}건`,
-    lotsLegend: '적치 대기 LOT',
+    /**
+     * 목록 제목과 같은 줄 오른쪽의 적치 대기 LOT 수 — 따로 서던 요약 줄(「적치 대기 LOT N건」)을 걷었다(사용자 지시
+     * 2026-11-23). 적치 지시 수는 적지 않는다.
+     */
+    count: (lots: string) => `${lots}건`,
+    lotsLegend: '적치 대기 자재 목록',
     lotsLoading: '적치 대기 LOT 을 불러오는 중입니다',
     lotsLoadFailed: '적치 대기 LOT 을 확인할 수 없습니다. 연결을 확인하세요.',
     tasksLegend: '적치 지시',
     /** 두 목록이 모두 비었을 때. */
     none: '적치할 LOT 과 적치 지시가 없습니다',
-    /** 입하 LOT 이 없는 이전 흐름 LOT 의 묶음 머리. */
+    /** 공급사가 없는 이전 흐름 LOT 의 공급사 머리 줄. */
     noInboundLot: '입하 LOT 없음(이전 흐름)',
-    /** 묶음 머리의 입하 LOT · 공급처. */
-    groupSource: (inboundLotNo: string, supplier: string) =>
-      supplier === '' ? inboundLotNo : `${inboundLotNo}, ${supplier}`,
+    /**
+     * 적치 대기 표(사용자 지시 2026-11-23) — No · 품목(코드 위 · 이름 아래) · 수량 · 진척. 입하 LOT · 자재 관리 LOT 번호는
+     * 적지 않는다. 칸 이름은 낭독기에만(표 머리 줄은 숨긴다).
+     */
+    columns: { no: 'No', item: '품목', qty: '수량', progress: '적치 진척' },
+    /** 진척 — 적치 완료 / 자재 관리 LOT. */
+    progress: (done: number, total: number) => `${String(done)}/${String(total)}`,
+    progressLabel: (done: number, total: number) =>
+      `자재 관리 LOT ${String(total)}개 중 ${String(done)}개 적치 완료`,
+    /** 줄의 품목 칸을 누르면 적치(위치 스캔)로 — LOT 이 여럿이면 고르는 시트를 먼저 띄운다. */
+    open: (itemCode: string, itemName: string) => `${itemCode} ${itemName} 적치`,
+    /**
+     * 한 줄(입하 LOT · 품목)에 적치 대기 LOT 이 여럿일 때 — 손에 든 라벨과 같은 LOT 을 고른다. 아무 LOT 이나 열면 손에 든
+     * 것과 다른 LOT 이 그 위치에 기록된다.
+     */
+    pick: {
+      title: '적치할 LOT 고르기',
+      itemCode: '품목코드',
+      itemName: '품목명',
+      open: (lotNo: string) => `${lotNo} 적치`,
+    },
     defective: '불량',
     normal: '정상',
     lotScanPrompt: '자재 LOT 라벨을 스캔하면 그 LOT 을 엽니다',
@@ -210,8 +231,24 @@ export const putaway = {
     statusLabel: '판정',
     change: '다른 LOT 고르기',
     /** 지정 위치 목록 — 창고별. */
-    designatedLegend: '지정 위치 — 공장 안 모든 창고',
-    designatedNone: '이 품목이 지정된 위치가 없습니다. 둘 위치를 스캔하세요',
+    /**
+     * 지정 위치 나무(사용자 지시 2026-11-23) — 창고 › 구역 › 랙 › 위치. 「지정 위치 — 공장 안 모든 창고」 머리 글은
+     * 걷었다. 품목의 지정 위치가 없으면 이 PDA 에 지정된 창고 아래 「지정 위치 없음」.
+     */
+    /**
+     * 품목 유형에 맞지 않는 창고의 위치(사용자 지시 2026-11-23) — 자재는 자재창고, 완제품은 제품창고, 불량은 불량창고.
+     * 서버가 받는 위치여도 화면이 기록하지 않는다.
+     */
+    wrongWarehouse: {
+      MATERIAL: '자재는 자재창고에만 둘 수 있습니다',
+      PRODUCT: '완제품은 제품창고에만 둘 수 있습니다',
+      other: '이 LOT 을 둘 수 없는 창고입니다',
+    },
+    /** 적치 위치 나무 위 제목 — 나무의 이름표(aria-label)도 같은 말(사용자 지시 2026-11-23). */
+    designatedLabel: '적치 위치 후보 목록',
+    designatedAnywhere: '지정 위치 없음',
+    /** 지정 위치도 없고 이 PDA 창고 줄도 보이지 않을 때(창고 없는 단말 · 불량 LOT) — 표 줄과 같은 말. */
+    designatedNone: '지정 위치 없음',
     wholeWarehouse: '창고 전체 — 위치를 나누지 않은 창고',
     checking: '위치를 확인하는 중입니다',
     checkFailed: '위치를 확인할 수 없습니다. 연결을 확인하세요.',

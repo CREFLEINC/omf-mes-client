@@ -48,6 +48,8 @@ const ALLOWED = [
   /* 제품 피킹 라인 시트의 불합격 LOT [교체] - 시안의 「작은 빨간 외곽선」(사용자 결정 2026-11-20). */
   'screens/product-picking/screen.css :: .picking-lot__replace.pda-button--outlined.pda-button--outlined:not(:disabled)',
   'screens/inbound-receipt/screen.css :: .receive-tally__close.pda-button--outlined.pda-button--outlined:not(:disabled), .item-lots__close.pda-button--outlined.pda-button--outlined:not(:disabled)',
+  /* 입하 마감의 [전체 마감] - 입하 등록 [마감]과 같은 마감 단추라 같은 빨간 글자 · 테두리(2026-11-23). */
+  'screens/inbound-close/screen.css :: .inbound-close__close-all.pda-button--outlined.pda-button--outlined:not(:disabled)',
 ];
 
 /**

@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef } from 'react';
 
 import { FitName } from '../../patterns/fit-name';
+import { rowNumberStyle } from '../../patterns/row-number';
 import {
   activeLots,
   inTerminalScope,
@@ -55,7 +56,11 @@ export const LineTally = ({
         {t.title} <span className="picking-tally__total">{t.total(lines.length)}</span>
       </h2>
       <div className="picking-tally__box">
-        <table ref={tableRef} className="picking-tally__table">
+        <table
+          ref={tableRef}
+          className="picking-tally__table"
+          style={rowNumberStyle(Math.max(0, ...lines.map((line) => line.lineNo)))}
+        >
           <colgroup>
             <col className="picking-tally__col-no" />
             <col />

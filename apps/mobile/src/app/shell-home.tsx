@@ -1,22 +1,15 @@
 import { Badge, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
-import { Link, Navigate, useNavigate, useParams } from 'react-router';
+import { Link, Navigate, useParams } from 'react-router';
 
-import { Button } from '../patterns/button';
 import { useOutbox } from '../patterns/outbox';
 import { useScreenTitle } from '../patterns/screen-title';
 import { useResumableTasks } from '../patterns/task-draft';
-import { useWorkerSession } from '../patterns/worker-session';
-import { useFrequentScreens } from './frequent-screens';
-import { areaOf, homeAreas, screenOf, type HomeScreen } from './home-menu';
+import { areaOf, homeAreas, type HomeScreen } from './home-menu';
 import { countOf, sumOf, useCountBasis, useWorkCounts } from './work-counts';
 import './shell-home.css';
 
 const t = messages.shellHome;
-
-/** 「자주 쓰는 작업」에 세우는 수. 두 줄 두 칸 — 스크롤 없이 업무 묶음까지 보인다. */
-const FREQUENT_LIMIT = 4;
 
 /**
  * 남은 작업 배지(피처 002). 1~9 그대로, 10 이상 「9+」, 0 이면 그리지 않는다(DS `Badge`). 색은 중립이다 —
@@ -30,31 +23,6 @@ const CountBadge = ({ count }: { count: number | undefined }) =>
 /** 남은 일이 있을 때만 이름에 실제 수를 싣는다. 없으면 보이는 글자가 이름이다. */
 const countLabel = (label: string, count: number | undefined): string | undefined =>
   count === undefined || count <= 0 ? undefined : t.workCount.label(label, count);
-
-/** 자주 쓰는 작업. 한 번에 들어가는 지름길이라 이름과 아이콘만 단 낮은 칩이다. */
-const ScreenChips = ({
-  screens,
-  counts,
-}: {
-  screens: HomeScreen[];
-  counts: ReturnType<typeof useWorkCounts>;
-}) => (
-  <ul className="shell-home__chips">
-    {screens.map((screen) => (
-      <li key={screen.to}>
-        <Link
-          to={screen.to}
-          className="shell-home__chip"
-          aria-label={countLabel(screen.label, countOf(screen, counts))}
-        >
-          <Icon name={screen.icon} size={20} />
-          <span>{screen.label}</span>
-          <CountBadge count={countOf(screen, counts)} />
-        </Link>
-      </li>
-    ))}
-  </ul>
-);
 
 /**
  * 업무 화면의 작업 한 행. 이름은 작업 이름뿐이고, 무엇을 하는 화면인지는 설명으로 붙인다 - 설명까지
@@ -74,7 +42,10 @@ const ScreenRow = ({ screen, count }: { screen: HomeScreen; count: number | unde
   </Link>
 );
 
-/** 수의 기준 한 줄 — 「이 단말: <창고> 기준」 / 「공장 전체 기준」. 수를 모르면 서지 않는다. */
+/**
+ * 수의 기준 한 줄 — 창고 아이콘과 이 기기의 창고 이름만(「이 기기: … 기준」 글자는 뺐다, 사용자 지시
+ * 2026-11-23). 창고가 없는 기기는 「공장 전체」. 수를 모르면 나타나지 않는다.
+ */
 const CountBasis = ({ counts }: { counts: ReturnType<typeof useWorkCounts> }) => {
   const basis = useCountBasis(counts !== undefined);
   if (counts === undefined || basis === undefined) return null;
@@ -82,7 +53,7 @@ const CountBasis = ({ counts }: { counts: ReturnType<typeof useWorkCounts> }) =>
   return (
     <p className="shell-home__basis">
       <Icon name="warehouse" size={20} />
-      <span>{basis === null ? t.workCount.basisPlant : t.workCount.basisWarehouse(basis)}</span>
+      <span>{basis ?? t.workCount.basisPlant}</span>
     </p>
   );
 };
@@ -97,22 +68,15 @@ const CountBasis = ({ counts }: { counts: ReturnType<typeof useWorkCounts> }) =>
  * 첫 화면에서 고를 것을 줄인다(사용자 지시 2026-10-20). 스물한 타일을 늘어놓는 대신
  * - 지금 이 사람에게 걸린 것(이어서 하기 · 전송 현황) — 있을 때만
  * - 네 업무 — 누르면 그 업무의 작업들
- * - 이 사번이 많이 쓰는 작업 넷 — 쓴 적이 있을 때만
- * 만 둔다. 대부분의 날은 「자주 쓰는 작업」에서 한 번에 들어간다. 차례는 개편 제안 v2 의 홈을
- * 따른다(사용자 결정 2026-10-21) - 업무 타일이 화면 위쪽에 고정되고 자주 쓰는 작업이 그 아래
- * 빈 곳을 채운다.
+ * 만 둔다. 차례는 개편 제안 v2 의 홈을 따른다(사용자 결정 2026-10-21) - 업무 타일이 화면 위쪽에
+ * 고정된다. 업무 아래 「자주 쓰는 작업」은 걷었다(사용자 지시 2026-11-23).
  *
  * 글자 링크로 두지 않는다 - 기본 링크는 글자 높이만큼만 눌리고 그 높이는 손가락보다 작다.
  */
 export const ShellHome = () => {
   const resumable = useResumableTasks();
   const { pending, rejected } = useOutbox();
-  const { signOut } = useWorkerSession();
-  const navigate = useNavigate();
   const counts = useWorkCounts();
-  const frequent = useFrequentScreens(FREQUENT_LIMIT)
-    .map(screenOf)
-    .filter((screen): screen is HomeScreen => screen !== undefined);
 
   return (
     <nav aria-label={t.label} className="shell-home">
@@ -181,6 +145,9 @@ export const ShellHome = () => {
         </section>
       )}
 
+      {/* 수의 기준(이 기기의 창고)은 업무 바로 위다 - 업무 행의 남은 작업 수를 읽기 전에 본다(사용자 지시 2026-11-23). */}
+      <CountBasis counts={counts} />
+
       <section className="shell-home__group">
         <h2>{t.areas.label}</h2>
         <ul className="shell-home__areas">
@@ -219,45 +186,10 @@ export const ShellHome = () => {
         </ul>
       </section>
 
-      {/* 업무를 고르는 길 아래, 화면의 빈 아래쪽에 선다. 대부분의 날은 여기서 한 번에 들어간다. */}
-      {frequent.length === 0 ? null : (
-        <section className="shell-home__group">
-          <h2>{t.frequent}</h2>
-          <ScreenChips screens={frequent} counts={counts} />
-        </section>
-      )}
-
       {/*
-       * 맨 아래 두 단추(사용자 지시 2026-10-21).
-       * - 사용자 전환: 교대 때 쓴다. 지금 사번을 내리고 사번 확인으로 간다 - 앱바의 사번 칩으로
-       *   가면 「사번 바꾸기」를 한 번 더 눌러야 한다.
-       * - 설정: 기기 등록 해제처럼 드물게 쓰는 것. 업무가 아니라 목록 행이 아닌 단추로 둔다.
+       * 맨 아래 「사용자 전환」 · 「설정」 단추는 걷었다(사용자 지시 2026-11-23). 사용자 전환은 앱바의
+       * 사번 칩이, 설정은 그 오른쪽 아이콘이 한다.
        */}
-      <CountBasis counts={counts} />
-
-      <div className="shell-home__tools">
-        <Button
-          variant="outlined"
-          size="xl"
-          onClick={() => {
-            signOut();
-            void navigate('/');
-          }}
-        >
-          <Icon name="switch_account" size={24} className="shell-home__tool-icon" />
-          {t.switchWorker}
-        </Button>
-        <Button
-          variant="outlined"
-          size="xl"
-          onClick={() => {
-            void navigate('/settings');
-          }}
-        >
-          <Icon name="settings" size={24} className="shell-home__tool-icon" />
-          {t.settings.label}
-        </Button>
-      </div>
     </nav>
   );
 };

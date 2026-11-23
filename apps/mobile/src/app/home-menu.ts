@@ -14,6 +14,8 @@ export interface HomeScreen {
   description: string;
   /** 남은 작업 수의 키(`/app/terminal-work-counts`, 피처 002). 인계 작업 화면만 갖는다. */
   countKey?: TerminalWorkCountKey;
+  /** 목록에 걸지 않고 다른 화면에서만 들어오는 화면의 앞 화면 주소. 앱바의 ← 가 그 화면으로 간다. */
+  parent?: string;
 }
 
 export interface HomeArea {
@@ -73,13 +75,7 @@ export const homeAreas: HomeArea[] = [
         icon: 'shelves',
         description: t.screens.putaway,
       },
-      {
-        to: '/temporary-putaway',
-        label: messages.temporaryPutaway.title,
-        icon: 'move_to_inbox',
-        description: t.screens.temporaryPutaway,
-      },
-      /* M-01-14 적치 기록(011) — 임시 위치 적재 다음. 남은 일이 아니라 지난 기록이라 배지를 두지 않는다. */
+      /* M-01-14 적치 기록(011) — 적치 다음. 남은 일이 아니라 지난 기록이라 배지를 두지 않는다. */
       {
         to: '/putaway-history',
         label: messages.putawayHistory.title,
@@ -149,9 +145,20 @@ export const homeAreas: HomeArea[] = [
  *
  * 출하는 PDA 피킹(LOT 통째) → OQC → POP 출하 완료로 끝나 포장·재포장을 쓰지 않는다. 화면을 지우지
  * 않는 이유는 배포 전 진행분이다 — 주소로는 열리고, 열리면 사번 확인은 다른 작업 화면과 같다
- * (`isWorkScreen`). 「자주 쓰는 작업」에는 서지 않는다(`screenOf` 는 목록만 찾는다).
+ * (`isWorkScreen`). `screenOf` 는 목록의 화면만 찾는다.
  */
 export const hiddenScreens: HomeScreen[] = [
+  /*
+   * 임시 위치 적재 — 적치·입고 완료에서 LOT 을 들고 [임시 적치]로만 들어온다. 목록에서 열면 들고 올 LOT 이 없어
+   * 「적치로 가라」는 안내뿐이라 목록에서 뺐다(사용자 지시 2026-11-23).
+   */
+  {
+    to: '/temporary-putaway',
+    label: messages.temporaryPutaway.title,
+    icon: 'move_to_inbox',
+    description: t.screens.temporaryPutaway,
+    parent: '/putaway',
+  },
   {
     to: '/packing-repack',
     label: messages.packingRepack.title,
@@ -215,6 +222,13 @@ export const screenOf = (path: string): HomeScreen | undefined =>
 /** 사번이 있어야 하는 작업 화면인가 — 목록의 화면과 감춘 화면 둘 다. */
 export const isWorkScreen = (path: string): boolean =>
   screenOf(path) !== undefined || hiddenScreens.some((screen) => screen.to === path);
+
+/** 목록에 없는 화면이 돌아갈 앞 화면 — 임시 위치 적재 › 적치·입고 완료. */
+export const parentScreenOf = (path: string): HomeScreen | undefined => {
+  const parent = hiddenScreens.find((screen) => screen.to === path)?.parent;
+
+  return parent === undefined ? undefined : screenOf(parent);
+};
 
 export const areaOf = (id: string | undefined): HomeArea | undefined =>
   homeAreas.find((area) => area.id === id);

@@ -8,12 +8,16 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { runBackStep } from '../../patterns/back-step';
+import { plantShortDateTime } from '../../patterns/plant-time';
 import { signal } from '../../patterns/scan-feedback';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
+import { businessDateOf } from './receipt';
+import { tallyDateText } from './receipt-tally';
+import { TODAY_CARDS_KEY } from './today-cards';
 import { InboundReceiptScreen } from './screen';
 
 /**
@@ -399,9 +403,12 @@ const ITEM = '합성 자재';
 
 const lastScan = (): HTMLElement => screen.getByRole('status', { name: t.scan.results });
 
-const tally = (): HTMLElement => screen.getByRole('region', { name: t.tally.title });
+/** 입하 표의 이름 — 「26.11.23 입하」처럼 공장 날짜가 붙는다. */
+const tallyTitle = (): string => t.tally.title(tallyDateText(businessDateOf(new Date())));
 
-/** 이번 입하 표의 품목 줄 — 품목코드로. */
+const tally = (): HTMLElement => screen.getByRole('region', { name: tallyTitle() });
+
+/** 입하 표의 품목 줄 — 품목코드로. */
 const rowOf = (itemCode: string): HTMLElement =>
   screen.getByRole('button', { name: t.tally.open(itemCode, ITEM) }).closest('tr') as HTMLElement;
 
@@ -421,6 +428,11 @@ const openItem = async (user: ReturnType<typeof userEvent.setup>, itemCode: stri
 };
 
 const signals = (): string[] => vi.mocked(signal).mock.calls.map(([kind]) => kind);
+
+/* 오늘 표는 기기 보관소에 남는다 — 비우지 않으면 앞 시험이 찍은 줄이 다음 시험의 표에 다시 나타난다. */
+beforeEach(() => {
+  localStorage.clear();
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -478,18 +490,21 @@ describe('US2-1 스캔마다 바로 등록', () => {
     expect(last.queryByText('합성 공급사 SYN01')).toBeNull();
     /* 번호는 줄이지 않고 전체를. */
     expect(last.getByText(A(2))).toBeInTheDocument();
-    /* 같은 품목을 이어 찍으면 「새 품목」은 없다. */
-    expect(last.queryByText(t.last.newItem)).toBeNull();
 
-    /* 이번 입하 표 — 품목 줄 하나, 개수 2 · 수량 2,000, 방금 찍은 줄. */
+    /* 입하 표 — 품목 줄 하나, 개수 2 · 수량 2,000, 방금 찍은 줄. */
     const row = rowOf('SYN-CAP');
     expect(row).toHaveAttribute('data-current', 'true');
+    /* 행 번호 바로 뒤 칸이 스캔 시각(처음 찍은 때) — 날짜 / 시각(사용자 지시 2026-11-23). */
+    expect(row.children[1]).toHaveClass('receive-tally__when');
+    expect(row.children[1]).toHaveTextContent(
+      plantShortDateTime('2026-11-11T01:00:00Z').replace(' ', ''),
+    );
     expect(within(row).getByText('2')).toBeInTheDocument();
     expect(row).toHaveTextContent('2,000EA');
     expect(signals()).toEqual(['confirm', 'confirm']);
   });
 
-  it('US2-4 공급사·품목이 섞이면 공급사 묶음 아래 줄이 늘고, 줄은 처음 찍은 차례에 행 번호로 선다 — 다른 품목은 「새 품목」', async () => {
+  it('US2-4 공급사·품목이 섞이면 공급사 묶음 아래 줄이 늘고, 줄은 처음 찍은 차례에 행 번호로 선다 — 다른 품목은 경고음', async () => {
     mount(createServer());
 
     await scan(A(1));
@@ -497,7 +512,6 @@ describe('US2-1 스캔마다 바로 등록', () => {
     await scan(B(1));
     await screen.findByRole('button', { name: t.tally.open('SYN-RES', ITEM) });
 
-    expect(within(lastScan()).getByText(t.last.newItem)).toBeInTheDocument();
     await scan(A(2));
     await waitFor(() => expect(rowOf('SYN-CAP')).toHaveAttribute('data-current', 'true'));
 
@@ -513,6 +527,82 @@ describe('US2-1 스캔마다 바로 등록', () => {
     expect(signals()).toEqual(['confirm', 'warn', 'warn']);
   });
 
+  /* 「새 품목」 칩은 두지 않고, 머리 오른쪽 ✕ 로 칸을 내린다(사용자 지시 2026-11-23). 등록은 그대로다. */
+  it('방금 찍은 칸은 ✕ 로 내리고, 표와 등록은 그대로다', async () => {
+    const user = userEvent.setup();
+    const server = createServer();
+    mount(server);
+
+    await scan(A(1));
+    await screen.findByRole('button', { name: t.tally.open('SYN-CAP', ITEM) });
+    await scan(B(1));
+    await screen.findByRole('button', { name: t.tally.open('SYN-RES', ITEM) });
+
+    await user.click(within(lastScan()).getByRole('button', { name: t.last.dismiss }));
+
+    expect(lastScan()).toBeEmptyDOMElement();
+    expect(tallyCodes()).toEqual(['1 SYN-CAP', '2 SYN-RES']);
+    expect(receives(server.sent)).toHaveLength(2);
+  });
+
+  it('거부 칸도 ✕ 로 내린다', async () => {
+    const user = userEvent.setup();
+    mount(createServer({ voided: [A(9)] }));
+
+    await scan(A(9));
+    const rejected = await screen.findByRole('region', { name: t.last.rejected });
+    await user.click(within(rejected).getByRole('button', { name: t.last.dismiss }));
+
+    expect(screen.queryByRole('region', { name: t.last.rejected })).toBeNull();
+  });
+
+  it('표 제목은 공장 날짜 YY.MM.DD 와 「입하」, 오른쪽은 찍은 수 「N건 Scan」이다', async () => {
+    mount(createServer());
+
+    await scan(A(1));
+    await waitFor(() => expect(tally()).toHaveTextContent(t.tally.total(1)));
+
+    expect(tallyDateText('2026-11-23')).toBe('26.11.23');
+    expect(within(tally()).getByRole('heading', { level: 2 })).toHaveTextContent(
+      `${tallyTitle()} ${t.tally.total(1)}`,
+    );
+  });
+
+  /* 화면을 떠났다 오거나 앱을 다시 켜도 그날 찍은 표가 남는다(사용자 지시 2026-11-23). */
+  it('오늘 찍은 표는 화면을 다시 열어도 같은 차례로 남고, 서버에 다시 보내지 않는다', async () => {
+    const server = createServer();
+    const first = mount(server);
+
+    await scanDone(A(1));
+    await scanDone(B(1));
+    await waitFor(() => expect(tallyCodes()).toEqual(['1 SYN-CAP', '2 SYN-RES']));
+    first.unmount();
+
+    mount(server);
+
+    await waitFor(() => expect(tallyCodes()).toEqual(['1 SYN-CAP', '2 SYN-RES']));
+    expect(tally()).toHaveTextContent(t.tally.total(2));
+    expect(receives(server.sent)).toHaveLength(2);
+  });
+
+  it('다른 날 남긴 표는 버린다', async () => {
+    localStorage.setItem(
+      `CapacitorStorage.${TODAY_CARDS_KEY}`,
+      JSON.stringify({
+        businessDate: '2000-01-01',
+        lots: [{ inboundLotId: 1, inboundLotNo: 'SYN-IL-OLD' }],
+      }),
+    );
+    const server = createServer();
+    mount(server);
+
+    expect(await screen.findByText(t.tally.empty)).toBeInTheDocument();
+    /* 지난 날의 입하 LOT 은 읽지도 않는다. */
+    expect(
+      server.sent.filter((entry) => entry.path.startsWith('/logistics/inbound-lots/')),
+    ).toEqual([]);
+  });
+
   it('US2-5 폐기 라벨은 빨간 거부 — 까닭은 서버 reasonCode 로 가른다(G1)', async () => {
     mount(createServer({ voided: [A(9)] }));
 
@@ -524,7 +614,7 @@ describe('US2-1 스캔마다 바로 등록', () => {
     expect(signals()).toEqual(['reject']);
   });
 
-  it('이번 입하 표에 이미 있는 라벨은 서버에 보내지 않고 회색으로 몇 번 줄인지 알린다', async () => {
+  it('입하 표에 이미 있는 라벨은 서버에 보내지 않고 회색으로 몇 번 줄인지 알린다', async () => {
     const server = createServer();
     mount(server);
 
@@ -533,7 +623,9 @@ describe('US2-1 스캔마다 바로 등록', () => {
     await scan(A(1));
 
     const last = await screen.findByRole('region', { name: t.last.duplicate });
-    expect(last).toHaveTextContent(t.last.duplicateRow(1));
+    /* 품목코드 품목명만 — 몇 번 줄인지 · 라벨 번호는 적지 않는다(사용자 지시 2026-11-23). */
+    expect(within(last).getByText(`SYN-CAP ${ITEM}`)).toBeInTheDocument();
+    expect(last).not.toHaveTextContent(A(1));
     expect(rowOf('SYN-CAP')).toHaveAttribute('data-duplicate', 'true');
     expect(rowOf('SYN-CAP')).toHaveAttribute('data-current', 'false');
     expect(receives(server.sent)).toHaveLength(1);
@@ -599,9 +691,9 @@ describe('방금 찍은 칸의 [취소]', () => {
     await waitFor(() => expect(tally()).toHaveTextContent(t.tally.total(2)));
     await user.click(await screen.findByRole('button', { name: t.last.undoLabel(A(2)) }));
 
-    expect(
-      await screen.findByText(t.unregistered.toast('…|SYN01|0002', '1,000 EA')),
-    ).toBeInTheDocument();
+    /* 무엇을 취소했는지만 — 품목코드 품목명 등록 취소(사용자 지시 2026-11-23). */
+    expect(await screen.findByText(t.unregistered.done('SYN-CAP', ITEM))).toBeInTheDocument();
+    expect(screen.getByText(`SYN-CAP ${ITEM} 등록 취소`)).toBeInTheDocument();
     expect(server.sent.find((each) => each.path.endsWith(':unregister-lots'))?.body).toMatchObject({
       lotIds: [9002],
     });
@@ -626,7 +718,7 @@ describe('품목 시트', () => {
     expect(lots).toHaveTextContent(`${t.lots.fields.itemName}${ITEM}`);
     expect(within(lots).getByText(/봉지 포장 10/u)).toBeInTheDocument();
     /* 화면은 그대로 — 시트만 위에 선다. */
-    expect(screen.getByRole('region', { name: t.tally.title })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: tallyTitle() })).toBeInTheDocument();
 
     act(() => {
       runBackStep();
@@ -634,14 +726,22 @@ describe('품목 시트', () => {
     await waitFor(() => expect(screen.queryByRole('dialog', { name: t.lots.title })).toBeNull());
   });
 
-  it('공급사가 하나뿐이면 공급사 머리 줄이 없다 — 표 머리 줄은 낭독기에만', async () => {
+  /* 표 맨 위에서 어느 공급사 것인지 보인다(사용자 지시 2026-11-23). */
+  it('공급사가 하나여도 공급사 머리 줄이 맨 위에 있다 — 표 머리 줄은 낭독기에만', async () => {
     mount(createServer());
 
     await scanDone(A(1));
     await screen.findByRole('button', { name: t.tally.open('SYN-CAP', ITEM) });
 
-    expect(tally().querySelector('.receive-tally__group')).toBeNull();
-    expect(within(tally()).getByRole('columnheader', { name: t.tally.columns.no })).toBeInTheDocument();
+    expect(
+      within(tally())
+        .getAllByRole('columnheader')
+        .filter((th) => th.getAttribute('scope') === 'colgroup')
+        .map((th) => th.textContent),
+    ).toEqual(['합성 공급사 SYN01']);
+    expect(
+      within(tally()).getByRole('columnheader', { name: t.tally.columns.no }),
+    ).toBeInTheDocument();
   });
 
   it('시트가 열려 있어도 찍으면 등록되고 시트가 닫힌다', async () => {
@@ -668,7 +768,7 @@ describe('품목 시트', () => {
     expect(x).toHaveAccessibleName('해제');
     await user.click(x);
 
-    expect(await screen.findByText(t.unregistered.lastToast(ITEM))).toBeInTheDocument();
+    expect(await screen.findByText(t.unregistered.done('SYN-CAP', ITEM))).toBeInTheDocument();
     expect(await screen.findByText(t.tally.empty)).toBeInTheDocument();
     expect(server.sent.find((each) => each.path.endsWith(':unregister-lots'))?.body).toMatchObject({
       lotIds: [9001],
@@ -690,10 +790,8 @@ describe('US2-2 입하 마감', () => {
     expect(dialog).toHaveTextContent(t.closeDialog.summaryOne(1, '1,000 EA'));
     await user.click(within(dialog).getByRole('button', { name: t.closeDialog.confirm }));
 
-    expect(await screen.findByText(t.closeDialog.toastOne(ITEM))).toBeInTheDocument();
-    await waitFor(() =>
-      expect(screen.queryByRole('button', { name: t.close.one(1) })).toBeNull(),
-    );
+    expect(await screen.findByText(t.closeDialog.toastOne('SYN-CAP', ITEM))).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('button', { name: t.close.one(1) })).toBeNull());
     expect(screen.queryByRole('button', { name: t.lots.unregister })).toBeNull();
     expect(screen.getByRole('button', { name: t.lots.editSupplierLot(A(1)) })).toBeDisabled();
     expect(screen.queryByText(/P\/O|IQC 요청 SYN/u)).toBeNull();
@@ -725,9 +823,7 @@ describe('US2-2 입하 마감', () => {
     expect(screen.queryByRole('button', { name: /모두 입하 마감/u })).toBeNull();
 
     await scan(A(2));
-    await waitFor(() =>
-      expect(tallyCodes()).toEqual(['1 SYN-CAP', '2 SYN-CAP', '3 SYN-RES']),
-    );
+    await waitFor(() => expect(tallyCodes()).toEqual(['1 SYN-CAP', '2 SYN-CAP', '3 SYN-RES']));
   });
 
   it('G2 L15 · US2-7 기본 생략 기준이 없는 검사 불필요 품목은 「IQC 기록이 생기지 않고」 — 「검사 생략」이라 하지 않는다', async () => {

@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef } from 'react';
 
 import { FitName } from '../../patterns/fit-name';
+import { rowNumberStyle } from '../../patterns/row-number';
 import { qtyProblemOf, type DraftLine } from './transfer';
 
 const t = messages.stockTransfer;
@@ -59,7 +60,11 @@ export const TransferTally = ({
         {t.tally.title} <span className="transfer-tally__total">{t.tally.total(lines.length)}</span>
       </h2>
       <div className="transfer-tally__box">
-        <table ref={tableRef} className="transfer-tally__table">
+        <table
+          ref={tableRef}
+          className="transfer-tally__table"
+          style={rowNumberStyle(lines.length)}
+        >
           <colgroup>
             <col className="transfer-tally__col-no" />
             <col />
