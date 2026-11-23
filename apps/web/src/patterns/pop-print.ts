@@ -65,6 +65,8 @@ export interface RenditionShell {
 /** 셸이 `contextBridge` 로 심는 것 중 **출력물에 관한 부분**. 브라우저에는 없다. */
 export interface PopShellApi {
   rendition: RenditionShell;
+  /** 인쇄 시간 기록(셸 `logs/print-timing.log`). **옛 설치본에는 없다.** */
+  printTiming?: { note: (fields: Record<string, string | number>) => Promise<void> };
 }
 
 declare global {
@@ -92,6 +94,17 @@ export const renditionShell = (): RenditionShell | null => {
   const shell = (globalThis as unknown as ShellCarrier).pop?.rendition;
 
   return typeof shell?.save === 'function' ? shell : null;
+};
+
+/**
+ * 인쇄 걸음 시간을 셸 기록에 남긴다(사용자 지시 2026-11-23 「출력 속도 개선 0번」). 셸이 없거나 옛 설치본이면
+ * 아무것도 하지 않는다 — 기록을 못 남긴 것이 인쇄를 막지 않는다.
+ */
+export const notePrintTiming = (fields: Record<string, string | number>): void => {
+  const note = (globalThis as unknown as { pop?: PopShellApi }).pop?.printTiming?.note;
+
+  if (typeof note !== 'function') return;
+  note(fields).catch(() => undefined);
 };
 
 /** 셸 위에서 도는가. 화면은 이 값으로 인쇄 안내를 가른다. */

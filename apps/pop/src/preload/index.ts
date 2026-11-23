@@ -58,6 +58,11 @@ const api = {
     capabilities: (): Promise<{ raw: boolean; selectable?: boolean }> =>
       ipcRenderer.invoke('printers:capabilities'),
   },
+  /** 인쇄 시간 기록(사용자 지시 2026-11-23) — 화면 쪽 걸음 시간을 셸의 `logs/print-timing.log` 에 남긴다. */
+  printTiming: {
+    note: (fields: Record<string, string | number>): Promise<void> =>
+      ipcRenderer.invoke('print-timing:note', fields),
+  },
   rendition: {
     /**
      * 서버가 그려 준 출력물을 파일로 저장하고 만들어진 경로를 돌려준다.
