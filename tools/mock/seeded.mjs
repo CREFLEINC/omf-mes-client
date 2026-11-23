@@ -229,11 +229,9 @@ const APP_PERMISSIONS = [
   { code: 'M-01-10', name: '재고이동·불량 반출', groupCode: '01' },
   { code: 'M-01-11', name: '실물 카운트', groupCode: '01' },
   { code: 'M-01-12', name: '재생재 등록', groupCode: '01' },
-  { code: 'M-01-13', name: '긴급 IQC 생략 요청', groupCode: '01' },
   { code: 'P-01-01', name: '자재LOT 등록·라벨 발행', groupCode: '01' },
   { code: 'P-01-02', name: '출고 QR 발행', groupCode: '01' },
   { code: 'W-01-01', name: 'IQC 수입검사·판정', groupCode: '01' },
-  { code: 'W-01-02', name: '긴급 IQC 생략 한도승인', groupCode: '01' },
   { code: 'W-01-03', name: '초과 입하 분리', groupCode: '01' },
   { code: 'W-01-04', name: '재고실사', groupCode: '01' },
   { code: 'W-01-05', name: '공급사 반품 처리', groupCode: '01' },
@@ -2110,23 +2108,6 @@ on('POST', '/app/document-issues/{documentIssueLogId}:report-print', (params, _q
 
   issue.printOutcome = body?.outcome ?? 'FAILED';
   return { issue };
-});
-
-on('POST', '/trace/lots/{lotId}:request-iqc-skip', (params, _q, body) => {
-  const request = {
-    approvalRequestId: newId(),
-    approvalTypeCode: 'IQC_SKIP',
-    targetTypeCode: 'INBOUND_LOT',
-    targetId: Number(params.lotId),
-    requestedByWorkerNo: body?.requestedByWorkerNo ?? '100027',
-    requestedAt: new Date().toISOString(),
-    reason: body?.reason ?? '',
-    statusCode: 'PENDING',
-    isMyTurn: false,
-  };
-
-  state.approvalRequests.push(request);
-  return { created: request, status: 201 };
 });
 
 /* ── 재고 ─────────────────────────────────────────────────── */
@@ -4921,64 +4902,6 @@ on('GET', '/quality/nonconformances', (_p, query) =>
   ),
 );
 
-/*
- * 승인된 OQC 생략의 실행(#193) — 실제 서버처럼 승인된 결재가 있어야 하고, 한 번 실행하면 다시 막는다(400).
- * 의뢰·LOT 이력은 옮기지 않는다 — 목은 품질 승인 처리의 실행 구획을 보려는 것이다.
- */
-const oqcSkipExecuted = new Set();
-on('POST', '/logistics/shipment-requests/{shipmentRequestId}:skip-oqc', (params) => {
-  const id = Number(params.shipmentRequestId);
-  const approved = state.approvalRequests.some(
-    (row) =>
-      row.approvalTypeCode === 'OQC_SKIP' && row.targetId === id && row.statusCode === 'APPROVED',
-  );
-  const message = !approved
-    ? '승인된 OQC 생략 요청이 없습니다.'
-    : oqcSkipExecuted.has(id)
-      ? '이 출하작업지시의 OQC 검사가 이미 끝났거나 생략돼 생략을 실행할 수 없습니다.'
-      : null;
-  if (message !== null) {
-    return {
-      status: 400,
-      created: { errors: [{ scope: 'screen', code: 'STATE_LOCKED', message }] },
-    };
-  }
-  oqcSkipExecuted.add(id);
-  const shipmentRequest = state.shipmentRequests?.find((row) => row.shipmentRequestId === id);
-  /* 실제 서버처럼 의뢰가 SKIPPED 로 닫혀 출하검사 롤업이 합격이 된다 — 품질 승인 처리가 이 값으로 「실행 완료」를 안다. */
-  if (shipmentRequest !== undefined) shipmentRequest.shippingInspectionStatusCode = 'PASSED';
-  return shipmentRequest ?? { shipmentRequestId: id };
-});
-
-/*
- * 승인된 IQC 생략의 실행(#193) — 실제 서버처럼 승인된 결재와 검사 대기 LOT 이 있어야 하고, 실행하면 LOT 이 정상이 된다.
- * 의뢰·보류 이력은 옮기지 않는다 — 목은 품질 승인 처리의 실행 구획과 「다음 할 일」을 보려는 것이다.
- */
-on('POST', '/trace/lots/{lotId}:skip-iqc', (params) => {
-  const id = Number(params.lotId);
-  const lot = state.lots.find((row) => row.lotId === id);
-  if (lot === undefined) return notFound('LOT 을 찾을 수 없습니다.');
-  const approved = state.approvalRequests.some(
-    (row) =>
-      row.approvalTypeCode === 'IQC_SKIP' && row.targetId === id && row.statusCode === 'APPROVED',
-  );
-  const message = !approved
-    ? '승인된 IQC 생략 요청이 없습니다.'
-    : lot.statusCode !== 'INSPECTION_PENDING'
-      ? '검사 대기 LOT 이 아니라 생략을 실행할 수 없습니다.'
-      : null;
-  if (message !== null) {
-    return {
-      status: 400,
-      created: { errors: [{ scope: 'screen', code: 'STATE_LOCKED', message }] },
-    };
-  }
-  lot.statusCode = 'NORMAL';
-  lot.held = false;
-  bumpVersion(lotVersions, id);
-  return { lot: withProgress(lot) };
-});
-
 /* 특채 — 품질 승인 처리가 결재 번호로 짝 특채를 찾고(`approvalRequestId`), 처분 판정이 부적합으로 찾는다(#193). */
 on('GET', '/quality/concessions', (_p, query) =>
   page(
@@ -5622,7 +5545,7 @@ on('GET', '/app/approval-requests', (_p, query, _b, headers) => {
 /*
  * 승인 요청 한 건 — **결재의 잠금 토큰이 이 응답으로만 온다**(#1032).
  *
- * ⚠ 이 경로가 씨앗에 없어 계약 예시 서버가 답했다. 목록에는 `AP-2026-000031`(IQC_SKIP)이
+ * ⚠ 이 경로가 씨앗에 없어 계약 예시 서버가 답했다. 목록에는 씨앗의 결재 요청이
  *   보이는데 상세는 예시의 다른 건이 떴고, 예시에는 `ETag` 가 없어 화면이 **승인 요청을
  *   아예 내지 못했다** — 「최신 정보를 불러오는 중입니다」에서 멈춘다.
  */

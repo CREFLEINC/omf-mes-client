@@ -13,10 +13,8 @@ describe('화면 ID 매핑표', () => {
     expect(SCREEN_ROUTES['W-04-12']).toBeUndefined();
   });
 
-  it('W-03-09는 정식 주소에 선택한 승인 요청 ID를 싣는다', () => {
-    expect(screenPathOf('W-03-09', 9001, SCREEN_ROUTES)).toBe(
-      '/quality/approvals?approvalRequestId=9001',
-    );
+  it('품질 승인 처리(W-03-09)는 화면째 지워 매핑표에 없다(omf-all-around#352)', () => {
+    expect(SCREEN_ROUTES['W-03-09']).toBeUndefined();
   });
 
   it('표에 없는 화면 ID는 경로가 없다', () => {

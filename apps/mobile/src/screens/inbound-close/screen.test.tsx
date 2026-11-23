@@ -449,19 +449,6 @@ describe('US2-12 마감 취소 가능 목록', () => {
       await screen.findByText(t.reopenDialog.done('SYN-IL-20261111-0005')),
     ).toBeInTheDocument();
   });
-
-  it('US2-12 긴급 생략 실행 건은 생략이 무효가 된다고 경고한다', async () => {
-    const user = userEvent.setup();
-    mount({
-      closable: [],
-      reopenable: [done(6, { reopenReasonCode: 'IQC_SKIPPED' })],
-    });
-
-    await user.click(await screen.findByRole('button', { name: t.done.reopen }));
-    expect(await screen.findByRole('dialog')).toHaveTextContent(
-      t.reopenDialog.effect.IQC_SKIPPED('SYN-IQC-6'),
-    );
-  });
 });
 
 describe('US2-13 같은 공급사·품목 입하 중이면 마감 취소가 막힌다', () => {

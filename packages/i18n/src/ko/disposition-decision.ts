@@ -1,5 +1,8 @@
 export const dispositionDecision = {
   title: '부적합 처분 관리',
+  splitter: '끌어서 목록·상세 폭 조절',
+  /** 목록 · 상세 배치 고르기 — 「좌우 배치 | 상하 배치」 두 단추(품질 승인 처리 화면에서 옮김 · #352). */
+  layout: { group: '목록·상세 배치', side: '좌우 배치', stack: '상하 배치' },
   /** 목록과 상세 사이 막대의 단추 — 항목을 고르면 목록이 접힌다(omf-all-around#275). */
   listCollapse: '목록 접기',
   listExpand: '목록 펼치기',

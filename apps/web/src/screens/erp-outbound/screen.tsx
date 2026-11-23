@@ -298,6 +298,7 @@ export const ErpOutboundScreen = () => {
         splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
         list={{
           label: t.panes.items,
+          count: items.data?.length,
           content: items.isError ? (
             <LoadErrorBanner error={items.error} onRetry={() => void items.refetch()} />
           ) : items.isPending ? (

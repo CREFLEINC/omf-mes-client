@@ -109,7 +109,7 @@ const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequ
 const planRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requestsTo(requests, PLANS_PATH);
 
-const planPane = (): HTMLElement => screen.getByRole('region', { name: '검사기준' });
+const planPane = (): HTMLElement => screen.getByRole('region', { name: '검사 기준' });
 
 /** 검사 기준 검색 칸을 펼쳐 검색어로 찾고, 한 기준을 골라 넣는다 — 창(팝업)을 거치지 않는다(#226). */
 const pickPlanInField = async (
@@ -3919,13 +3919,21 @@ describe('InspectionStandardScreen — OA 공장 계정의 PQC(#255)', () => {
 });
 
 describe('InspectionStandardScreen — 목록 접기(#252 · #255)', () => {
-  it('기준을 고르면 목록이 접히고, 조회 조건을 바꾸면 다시 펼쳐진다', async () => {
+  it('기준을 골라도 목록은 그대로이고, 접은 뒤 조회 조건을 바꾸면 다시 펼쳐진다(#350)', async () => {
     window.localStorage.removeItem('omf-mes:inspection-standard:split:collapsed');
     const { user } = renderScreen([planListRoute(), planDetailRoute(), ...lookupRoutes()]);
 
     await user.click(await screen.findByRole('button', { name: 'SYN-PLAN-01' }));
     expect(
-      await screen.findByRole('button', { name: messages.inspectionStandard.panes.listExpand }),
+      screen.queryByRole('button', { name: messages.inspectionStandard.panes.listExpand }),
+    ).toBeNull();
+    await user.click(
+      screen.getAllByRole('button', { name: messages.inspectionStandard.panes.listCollapse })[0]!,
+    );
+    expect(
+      (
+        await screen.findAllByRole('button', { name: messages.inspectionStandard.panes.listExpand })
+      )[0]!,
     ).toBeInTheDocument();
 
     await user.click(
@@ -3934,7 +3942,11 @@ describe('InspectionStandardScreen — 목록 접기(#252 · #255)', () => {
     await user.click(screen.getByRole('option', { name: 'OQC (출하검사)' }));
 
     expect(
-      await screen.findByRole('button', { name: messages.inspectionStandard.panes.listCollapse }),
+      (
+        await screen.findAllByRole('button', {
+          name: messages.inspectionStandard.panes.listCollapse,
+        })
+      )[0]!,
     ).toHaveAttribute('aria-expanded', 'true');
   });
 
@@ -3943,7 +3955,11 @@ describe('InspectionStandardScreen — 목록 접기(#252 · #255)', () => {
     renderScreen([planListRoute(), ...lookupRoutes()]);
 
     expect(
-      await screen.findByRole('button', { name: messages.inspectionStandard.panes.listCollapse }),
+      (
+        await screen.findAllByRole('button', {
+          name: messages.inspectionStandard.panes.listCollapse,
+        })
+      )[0]!,
     ).toHaveAttribute('aria-expanded', 'true');
     window.localStorage.removeItem('omf-mes:inspection-standard:split:collapsed');
   });

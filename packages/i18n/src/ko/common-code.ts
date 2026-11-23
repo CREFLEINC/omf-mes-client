@@ -6,8 +6,6 @@
  * 옮길 때 어느 열쇠가 딸려 가야 하는지 가릴 수 없다.
  */
 export const commonCode = {
-  title: '공통코드·조직·작업자',
-  breadcrumbRoot: '시스템 관리',
   /** 탭 라벨. **만든 탭만 둔다** — 없는 탭의 라벨을 미리 두면 무엇이 렌더되는지 흐려진다. */
   tabs: {
     label: '공통코드·조직·작업자',
@@ -27,6 +25,8 @@ export const commonCode = {
     partner: '거래처',
     partnerDetail: '거래처 기본 정보',
     partnerRoles: '거래처 역할',
+    /** 목록 옆 상세 칸(통일 배치 · #350) — 안에 정보 · 하위 구획을 쌓는다. */
+    detail: '상세',
   },
   actions: {
     prevPage: '이전',

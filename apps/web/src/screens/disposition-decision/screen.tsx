@@ -15,6 +15,7 @@ import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { requireIfMatch, useMasterWrite } from '../../patterns/master';
 import {
   PaneLayoutToggle,
+  PaneListHead,
   PaneSplitter,
   useFitToViewport,
   usePaneLayout,
@@ -183,12 +184,10 @@ export const DispositionDecisionScreen = ({
   /* 처분 이력 탭에서 고른 판정 한 건 — 고른 줄 표시용(#223). */
   const selectedDecisionId = readSelectedDecisionId(searchParams);
   /*
-   * 항목을 고르면 목록을 접어 상세가 자리를 다 쓴다 — 다시 펼치기는 목록과 상세 사이의 단추(부품 IQC #252 와 같은 동작 ·
-   * omf-all-around#275). 지금 탭에서 고른 것이 없으면 접힘은 뜻이 없어 늘 펼친다 — 목록이 숨은 채 빈 화면이 되지 않게.
+   * 항목을 골라도 목록은 그대로 둔다(#350 사용자 지시). 목록 제목 줄의 「목록 접기」로 접고, 접으면 왼쪽 「목록 N건」
+   * 탭으로 다시 편다(통일 배치 · #350).
    */
-  const [isListFolded, setIsListFolded] = useState(false);
-  const activeSelectedId = tab === 'pending' ? selectedId : selectedDecisionId;
-  const isListCollapsed = isListFolded && activeSelectedId !== null;
+  const [isListCollapsed, setIsListCollapsed] = useState(false);
   /*
    * 기간이 막히면 `null`이고 조회가 열리지 않는다.
    *
@@ -723,7 +722,7 @@ export const DispositionDecisionScreen = ({
         <PaneLayoutToggle
           layout={paneLayout.layout}
           onChange={paneLayout.change}
-          labels={messages.qualityApproval.layout}
+          labels={t.layout}
         />
       </div>
     </div>
@@ -737,6 +736,19 @@ export const DispositionDecisionScreen = ({
       </Chip>
     );
 
+  /* 목록 제목 줄 「이름 · 건수 · 목록 접기」 — 고른 것과 상관없이 늘 선다(통일 배치 · #350). */
+  const listCollapse = {
+    collapsed: isListCollapsed,
+    onToggle: () => setIsListCollapsed(!isListCollapsed),
+    collapseLabel: t.listCollapse,
+    expandLabel: t.listExpand,
+    count:
+      tab === 'pending'
+        ? list.data === undefined
+          ? undefined
+          : Math.max(0, list.data.page.total - cancelledIn(list.data.items))
+        : history.data?.page.total,
+  };
   return (
     <>
       {topBar}
@@ -769,7 +781,11 @@ export const DispositionDecisionScreen = ({
           className="pane po-board-pane po-board-scroll disposition-pane disposition-list-pane"
           aria-label={tab === 'pending' ? t.panes.list : t.panes.history}
         >
-          {/* 제목은 두지 않는다 — 구획 이름(`aria-label`)으로만 남긴다(사용자 지시 · #223). */}
+          {/* 제목 줄 — 「목록 이름 · N건 · 목록 접기」(통일 배치 · #350). */}
+          <PaneListHead
+            title={tab === 'pending' ? t.panes.list : t.panes.history}
+            collapse={listCollapse}
+          />
           {tab === 'pending' ? (
             <NonconformanceList
               rows={rows}
@@ -797,7 +813,6 @@ export const DispositionDecisionScreen = ({
               onSelect={(id) => {
                 const next = selectedId === id ? null : id;
                 setSearchParams((current) => withSelectedNonconformance(current, next));
-                setIsListFolded(next !== null);
               }}
               onChangeSize={(next) => setSearchParams((current) => withPageSize(current, next))}
               onChangePage={(nextPage) => apply(filters, nextPage)}
@@ -821,7 +836,6 @@ export const DispositionDecisionScreen = ({
               onSelect={(row) => {
                 const isSame = row.dispositionDecisionId === selectedDecisionId;
                 setSearchParams((current) => withSelectedDecision(current, isSame ? null : row));
-                setIsListFolded(!isSame);
               }}
               onChangeSize={(next) => setSearchParams((current) => withPageSize(current, next))}
               onChangePage={(nextPage) => applyHistory(historyFilters, nextPage)}
@@ -829,20 +843,11 @@ export const DispositionDecisionScreen = ({
           )}
         </section>
         <PaneSplitter
-          label={messages.qualityApproval.splitter}
+          label={t.splitter}
           ratio={split.ratio}
           onChange={split.commit}
           orientation={paneLayout.layout === 'stack' ? 'horizontal' : 'vertical'}
-          {...(activeSelectedId === null
-            ? {}
-            : {
-                collapse: {
-                  collapsed: isListCollapsed,
-                  onToggle: () => setIsListFolded(!isListCollapsed),
-                  collapseLabel: t.listCollapse,
-                  expandLabel: t.listExpand,
-                },
-              })}
+          collapse={listCollapse}
         />
         {/*
          * 오른쪽은 한 구획 — 부적합 상세 · 처분 판정 · 처분 이력/특채 요청 이력 탭을 위에서 아래로(사용자 시안 · omf-all-around#223).

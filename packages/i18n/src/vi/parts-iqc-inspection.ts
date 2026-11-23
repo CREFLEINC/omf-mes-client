@@ -41,14 +41,13 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     seqNo: (no: number) => `Lần ${String(no)}`,
     facts: {
       planCode: 'Mã tiêu chuẩn',
-      planName: 'Tên model',
       effectiveFrom: 'Ngày áp dụng',
     },
     dataTypeOf: { NUMERIC: 'Số', BOOLEAN: 'Lựa chọn', TEXT: 'Văn bản' } as Record<string, string>,
     sampling: 'Phương thức kiểm tra',
     full: 'Kiểm tra toàn bộ',
-    ratio: (r: number) => `${String(r)}% của LOT`,
-    qty: (n: number) => `${String(n)} cái`,
+    ratio: (r: number) => `Mẫu ${String(r)}% của LOT`,
+    qty: (n: number) => `Mẫu ${String(n)} cái`,
     no: 'No.',
     method: 'Loại',
     count: 'Số lần',
@@ -64,7 +63,9 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     loading: 'Đang tải thông tin kiểm tra.',
     loadFailed: 'Không tải được thông tin kiểm tra.',
     noPlan:
-      'Vật tư này chưa có tiêu chuẩn kiểm tra nên không thể nhập kết quả. Hãy xác nhận tiêu chuẩn kiểm tra trước.',
+      'Không có tiêu chuẩn kiểm tra được áp dụng. Chỉ nhập phán định tổng hợp và đính kèm tài liệu căn cứ phán định.',
+    planVersionNote:
+      'Tiêu chuẩn kiểm tra đã thay đổi được áp dụng từ các phiếu kiểm tra IQC phát hành mới. Các phiếu đã phát hành áp dụng tiêu chuẩn tại thời điểm phát hành.',
     setPlan: 'Thiết lập tiêu chuẩn kiểm tra',
     confirmed: (judgment: string) => `Kiểm tra đã được xác nhận — Phán định: ${judgment}`,
     workerMissing:
@@ -148,6 +149,7 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     heading: 'Phán định',
     suggested: 'Kết quả phán định tự động',
     pending: 'Nhập các hạng mục kiểm tra rồi xem kết quả phán định.',
+    noPlan: 'Chưa có tiêu chuẩn kiểm tra nên không phán định tự động.',
     waiting: 'Chờ phán định',
     overall: 'Phán định tổng',
     rejectedQty: (qty: number) => `(Số lượng lỗi ${String(qty)})`,
@@ -157,12 +159,14 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
 
   judgment: { ACCEPTED: 'Đạt', REJECTED: 'Không đạt', HELD: 'Giữ lại' },
   skipped: {
-    notice: (basis: string | null): string =>
-      basis === null
-        ? 'Yêu cầu này đã bỏ qua kiểm tra. Không có kết quả kiểm tra để nhập.'
-        : `Yêu cầu này đã bỏ qua kiểm tra (${basis}). Không có kết quả kiểm tra để nhập.`,
-    basis: { DEFAULT: 'mặc định', APPROVAL: 'đã duyệt' } as Record<string, string>,
+    notice: 'Đã bỏ qua kiểm tra theo thiết lập mặc định.',
+    requestNo: 'Số yêu cầu',
+    detailTab: 'Chi tiết kiểm tra',
+    item: 'Mặt hàng',
+    titlePqc: 'PQC Kiểm tra công đoạn',
+    titleOqc: 'OQC Kiểm tra xuất hàng',
   },
+
   requestStatus: {
     REQUESTED: 'Chờ',
     IN_PROGRESS: 'Đang làm',

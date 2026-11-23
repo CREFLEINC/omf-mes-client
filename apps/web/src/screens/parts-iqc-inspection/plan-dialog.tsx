@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { InspectionDrawingImages } from '../../patterns/inspection-drawings';
 import { useSession } from '../../patterns/session';
 import { withUom } from '../iqc-inspection/uom-lookup';
 import { toWebAccess } from '../../patterns/web-access';
@@ -17,7 +18,6 @@ const STANDARD_PATH = '/master-data/inspection-standard';
 
 export interface PlanDialogProps {
   planCode: string;
-  planName: string;
   itemParts: { code: string; name: string } | null;
   version: PlanVersion;
   specs: ItemSpec[];
@@ -31,6 +31,12 @@ export interface PlanDialogProps {
   /** 기준서 도면 — 검사 화면과 같은 그림을 그대로 보인다. */
   drawings: React.ReactNode;
   onClose: () => void;
+  /**
+   * 「수정」 — 넘기지 않으면 검사 기준 화면으로 바로 옮긴다. PQC · OQC 는 저장 안 한 입력을 먼저 묻는 길(`useLeaveFor`)로 넘긴다(#353).
+   */
+  onEdit?: (href: string) => void;
+  /** 첫 칸 이름 — IQC 는 「자재명」(기본), PQC · OQC 는 「품목」(#353). */
+  itemLabel?: string;
 }
 
 /**
@@ -40,7 +46,6 @@ export interface PlanDialogProps {
  */
 export const PlanDialog = ({
   planCode,
-  planName,
   itemParts,
   version,
   specs,
@@ -48,6 +53,8 @@ export const PlanDialog = ({
   seqNo,
   drawings,
   onClose,
+  onEdit,
+  itemLabel = t.target.itemName,
 }: PlanDialogProps) => {
   const { session } = useSession();
   const navigate = useNavigate();
@@ -62,18 +69,19 @@ export const PlanDialog = ({
           : '-';
 
   /* 검사 화면 위쪽 기본 정보와 같은 칸 — 이름표 위 · 값 아래, 칸 사이 세로선(#247 · 사용자 지시 2026-11-10). */
-  const facts: { label: string; value: string; sub?: string }[] = [
+  /* 긴 자재명은 첫 줄을 통째로, 짧은 값은 둘째 줄에 나란히 — 한 칸만 외따로 내려가지 않게(사용자 지시 2026-11-23 · #353). */
+  const facts: { label: string; value: string; sub?: string; wide?: boolean }[] = [
+    {
+      label: itemLabel,
+      value: itemParts?.name ?? '-',
+      ...(itemParts === null ? {} : { sub: itemParts.code }),
+      wide: true,
+    },
     { label: t.plan.facts.planCode, value: planCode },
-    { label: t.plan.facts.planName, value: planName },
     { label: t.plan.version, value: t.plan.versionNo(version.planVersion) },
     ...(seqNo === undefined
       ? []
       : [{ label: t.plan.seq, value: seqNo === null ? '-' : t.plan.seqNo(seqNo) }]),
-    {
-      label: t.target.itemName,
-      value: itemParts?.name ?? '-',
-      ...(itemParts === null ? {} : { sub: itemParts.code }),
-    },
     { label: t.plan.sampling, value: sampling },
     { label: t.plan.facts.effectiveFrom, value: version.effectiveFrom },
   ];
@@ -93,11 +101,11 @@ export const PlanDialog = ({
           {canEdit && (
             <Button
               variant="filled"
-              onClick={() =>
-                navigate(
-                  `${STANDARD_PATH}?plan=${String(version.inspectionPlanId)}&ver=${String(version.inspectionPlanVersionId)}`,
-                )
-              }
+              onClick={() => {
+                const href = `${STANDARD_PATH}?plan=${String(version.inspectionPlanId)}&ver=${String(version.inspectionPlanVersionId)}`;
+                if (onEdit === undefined) void navigate(href);
+                else onEdit(href);
+              }}
             >
               {t.plan.edit}
             </Button>
@@ -109,7 +117,12 @@ export const PlanDialog = ({
         {/* 정보 · 검사 항목 · 기준서 도면을 각각 테두리 상자로, 아이콘 없이(#247 · 사용자 지시 2026-11-10). */}
         <dl className="parts-iqc-facts">
           {facts.map((fact) => (
-            <div key={fact.label} className="parts-iqc-fact">
+            <div
+              key={fact.label}
+              className={
+                fact.wide === true ? 'parts-iqc-fact parts-iqc-fact-wide' : 'parts-iqc-fact'
+              }
+            >
               <dt className="field-label">{fact.label}</dt>
               <dd className={fact.sub === undefined ? undefined : 'parts-iqc-fact-key'}>
                 {fact.value}
@@ -185,3 +198,24 @@ export const PlanDialog = ({
     </Dialog>
   );
 };
+
+/** 기준서 도면 — 검사 화면 · 기준 상세 창이 같은 그림을 보인다. */
+export const DrawingImages = ({
+  drawings,
+}: {
+  drawings: { attachmentId: number; blob: Blob }[];
+}) => (
+  <section className="parts-iqc-card" aria-label={t.drawing.heading}>
+    <div className="parts-iqc-block-head">
+      <h3>{t.drawing.heading}</h3>
+      {drawings.length === 0 && <span className="parts-iqc-muted">{t.drawing.none}</span>}
+    </div>
+    {drawings.length === 0 ? null : (
+      <InspectionDrawingImages
+        drawings={drawings}
+        altOf={t.drawing.alt}
+        labels={{ prev: t.drawing.prev, next: t.drawing.next }}
+      />
+    )}
+  </section>
+);

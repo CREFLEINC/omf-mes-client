@@ -67,7 +67,6 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
     pane: 'Danh sách lịch sử',
     caption: 'Danh sách dòng lịch sử',
     loading: 'Đang tải lịch sử',
-    totalLines: (count: number): string => `Tất cả ${num(count)} dòng`,
     totalQty: 'Tổng số lượng',
     loadFailed: 'Không tải được lịch sử',
     loadFailedDescription: 'Hãy tra cứu lại sau ít phút.',

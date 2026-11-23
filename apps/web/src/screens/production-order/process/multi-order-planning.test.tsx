@@ -304,8 +304,10 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     try {
       mount();
       const list = await screen.findByRole('complementary', { name: 'ERP W/O 목록' });
-      await waitFor(() => expect(within(list).getAllByRole('button')).toHaveLength(2));
-      const first = within(list).getAllByRole('button')[0]!;
+      await waitFor(() =>
+        expect(within(within(list).getByRole('table')).getAllByRole('button')).toHaveLength(2),
+      );
+      const first = within(within(list).getByRole('table')).getAllByRole('button')[0]!;
       expect(within(list).queryByRole('columnheader', { name: '품목 코드' })).toBeNull();
       const detail = screen.getByRole('region', { name: '선택 ERP W/O 상세' });
       expect(within(detail).getByText('시험 품목 【 TEST-100 】', { exact: true })).toBeVisible();
@@ -320,7 +322,7 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
         ),
       );
       expect(within(list).getByRole('columnheader', { name: '품목 코드' })).toBeVisible();
-      const row = within(list).getAllByRole('button')[0]!.closest('tr')!;
+      const row = within(within(list).getByRole('table')).getAllByRole('button')[0]!.closest('tr')!;
       expect(within(row).getByText('ITEM1', { exact: true })).toBeVisible();
       expect(within(row).getByText('시험 품목 【 TEST-100 】', { exact: true })).toBeVisible();
       expect(screen.queryByRole('region', { name: '현재 ERP W/O 정보' })).toBeNull();
@@ -375,8 +377,10 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
   it('왼쪽 ERP W/O를 선택하면 오른쪽에 해당 상세만 표시한다', async () => {
     mount();
     const list = await screen.findByRole('complementary', { name: 'ERP W/O 목록' });
-    await waitFor(() => expect(within(list).getAllByRole('button')).toHaveLength(2));
-    const buttons = within(list).getAllByRole('button');
+    await waitFor(() =>
+      expect(within(within(list).getByRole('table')).getAllByRole('button')).toHaveLength(2),
+    );
+    const buttons = within(within(list).getByRole('table')).getAllByRole('button');
     await userEvent.setup().click(buttons[1]!);
     expect(buttons[1]).toHaveAttribute('aria-current', 'true');
     const detail = screen.getByRole('region', { name: '선택 ERP W/O 상세' });
@@ -385,6 +389,35 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     expect(within(detail).getByRole('region', { name: 'BOM 상세 정보' })).toBeVisible();
     expect(within(detail).getByRole('region', { name: 'Routing 상세 정보' })).toBeVisible();
     expect(screen.queryByRole('dialog', { name: '미저장 변경사항' })).toBeNull();
+  });
+  it('ERP W/O 목록을 접으면 「목록 N건」 탭이 서고, 펼쳐도 고른 ERP W/O가 그대로다(#350)', async () => {
+    try {
+      mount();
+      const list = await screen.findByRole('complementary', { name: 'ERP W/O 목록' });
+      await waitFor(() =>
+        expect(within(within(list).getByRole('table')).getAllByRole('button')).toHaveLength(2),
+      );
+      const user = userEvent.setup();
+      await user.click(within(within(list).getByRole('table')).getAllByRole('button')[1]!);
+      expect(list).toHaveTextContent('2건');
+      const grid = document.querySelector('.erp-wo-master-selection-layout')!;
+
+      await user.click(screen.getAllByRole('button', { name: '목록 접기' })[0]!);
+      expect(grid).toHaveAttribute('data-left-collapsed', 'true');
+      const tab = grid.querySelector<HTMLElement>('.po-board-list-tab');
+      expect(tab).toHaveTextContent('목록2건');
+
+      await user.click(tab!);
+      expect(grid).not.toHaveAttribute('data-left-collapsed');
+      expect(within(within(list).getByRole('table')).getAllByRole('button')[1]).toHaveAttribute(
+        'aria-current',
+        'true',
+      );
+      const detail = screen.getByRole('region', { name: '선택 ERP W/O 상세' });
+      expect(within(detail).getByText('B', { exact: true })).toBeVisible();
+    } finally {
+      localStorage.removeItem('omf-mes:work-planning:erp-wo-layout:ratio:collapsed');
+    }
   });
   it('분배한 계획을 ERP W/O별 저장하고 If-Match로 확정한 뒤 실행 단계로 이동한다', async () => {
     const server = mount();
@@ -410,7 +443,7 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     await user.click(buttons.at(-1)!);
     expect(await screen.findByText('실행 단계 assign')).toBeVisible();
     const executionList = screen.getByRole('complementary', { name: 'ERP W/O 목록' });
-    expect(within(executionList).getAllByRole('button')).toHaveLength(2);
+    expect(within(within(executionList).getByRole('table')).getAllByRole('button')).toHaveLength(2);
     expect(screen.queryByRole('combobox', { name: '처리할 ERP W/O' })).toBeNull();
     await user.click(within(executionList).getByRole('button', { name: /^B/ }));
     expect(

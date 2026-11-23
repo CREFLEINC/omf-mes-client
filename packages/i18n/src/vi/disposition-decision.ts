@@ -9,6 +9,12 @@ import type { Translated } from './translated';
  */
 export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
   title: 'Ra quyết định xử lý',
+  splitter: 'Kéo để điều chỉnh độ rộng danh sách·chi tiết',
+  layout: {
+    group: 'Bố cục danh sách·chi tiết',
+    side: 'Bố cục trái phải',
+    stack: 'Bố cục trên dưới',
+  },
   listCollapse: 'Thu gọn danh sách',
   listExpand: 'Mở rộng danh sách',
   breadcrumbRoot: 'Quản lý chất lượng',

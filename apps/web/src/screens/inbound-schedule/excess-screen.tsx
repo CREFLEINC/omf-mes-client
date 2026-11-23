@@ -331,7 +331,6 @@ export const InboundExcessScreen = () => {
 
     return (
       <>
-        <h2 className="pane-title">{t.listCount(total)}</h2>
         <BoardTable
           label={t.listTitle}
           widthKey="omf-mes:inbound-excess:columns:excess"
@@ -483,6 +482,7 @@ export const InboundExcessScreen = () => {
       splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
       list={{
         label: t.listTitle,
+        count: unlinked.data?.page.total,
         content: (
           <>
             {newFlowNotice}

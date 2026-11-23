@@ -28,7 +28,12 @@ import { useColumnWidths } from '../../patterns/column-resize';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { OaOnlyGate } from '../../patterns/oa-only-gate';
 import { PageNav } from '../../patterns/page-nav';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import { Select } from '../../patterns/select';
 import { useSession } from '../../patterns/session';
 import {
@@ -51,6 +56,7 @@ import { TemplateEditor, TemplateStatusChip } from './template-editor';
 import { UsageChips, type UsageChipValue } from './usage-chips';
 import { usePageHub } from '../../patterns/page-hub';
 import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
+import './layout.css';
 
 const t = messages.inspectionSheetTemplate;
 const hubText = messages.common.inspectionHub;
@@ -166,7 +172,7 @@ const InspectionSheetTemplateScreenBody = ({
   const [opened, setOpened] = useState<Opened>(() =>
     startBasics === undefined ? null : { kind: 'new', basics: startBasics, seq: Date.now() },
   );
-  /* 넘어온 기본 정보로 새 편집을 열었으면 첫 그리기에 목록을 펴지 않고 접는다 — 「확인」과 같다. */
+  /* 넘어온 기본 정보로 새 편집을 열었으면 첫 그리기에 목록 접힘을 건드리지 않는다 — 접기는 「목록 접기」로만(#350). */
   const startsEditing = useRef(startBasics !== undefined);
   /*
    * 조회 조건을 바꾸면 접어 둔 목록을 다시 펼친다 — 거른 결과를 봐야 한다(#255 사용자 지시). 처음 열 때도 고른 기준이
@@ -175,7 +181,6 @@ const InspectionSheetTemplateScreenBody = ({
   useEffect(() => {
     if (startsEditing.current) {
       startsEditing.current = false;
-      if (!split.collapsed) split.toggleCollapsed();
       return;
     }
     if (split.collapsed) split.toggleCollapsed();
@@ -318,9 +323,8 @@ const InspectionSheetTemplateScreenBody = ({
               open(null);
               return;
             }
+            /* 골라도 목록은 그대로 둔다 — 접기는 사용자가 「목록 접기」로만(#350 사용자 지시). */
             open({ kind: 'existing', id: row.inspectionSheetTemplateId });
-            /* 고르면 목록을 접어 상세가 자리를 다 쓴다 — 검사 기준 화면과 같다(#252 · #255 사용자 지시). */
-            if (!split.collapsed) split.toggleCollapsed();
           }}
         >
           <span className="inspection-sheet-template-open-code">{row.itemCode}</span>
@@ -563,6 +567,13 @@ const InspectionSheetTemplateScreenBody = ({
           className="pane inspection-sheet-template-list-pane quality-standard-list-pane"
           aria-label={t.list.heading}
         >
+          <PaneListHead
+            title={t.list.heading}
+            collapse={{
+              ...listCollapse,
+              count: list.data === undefined ? undefined : sorted.length,
+            }}
+          />
           {list.isError && (
             <AlertBanner variant="error">
               {t.list.loadFailed}{' '}
@@ -630,7 +641,7 @@ const InspectionSheetTemplateScreenBody = ({
           label={hubText.splitter}
           ratio={split.ratio}
           onChange={split.commit}
-          collapse={listCollapse}
+          collapse={{ ...listCollapse, count: list.data === undefined ? undefined : sorted.length }}
         />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter
@@ -709,7 +720,6 @@ const InspectionSheetTemplateScreenBody = ({
           onConfirm={(basics) => {
             setIsCreating(false);
             open({ kind: 'new', basics, seq: Date.now() });
-            if (!split.collapsed) split.toggleCollapsed();
           }}
         />
       )}

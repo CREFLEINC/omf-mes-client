@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import {
@@ -1455,6 +1455,20 @@ describe('EquipmentMasterScreen — 설비 목록 탭', () => {
     expect(pane.getByText('EQ-02')).toBeInTheDocument();
   });
 
+  /* 점검 항목 탭을 보는 동안에도 자산 뷰를 내리지 않는다 — 적어 두고 조회하지 않은 검색어가 남는다(#350 리뷰). */
+  it('점검 항목 탭에 다녀와도 설비 탭에 적어 둔 검색어가 남는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+    const pane = within(await openEquipmentTab(user));
+    await user.type(pane.getByLabelText(t.equipmentFilters.searchLabel), 'EQ-0');
+
+    await user.click(screen.getByRole('tab', { name: t.inspectionItem.tabLabel }));
+    await user.click(screen.getByRole('tab', { name: t.views.assets }));
+
+    const back = within(screen.getByRole('region', { name: t.tabs.equipment }));
+    expect(back.getByLabelText(t.equipmentFilters.searchLabel)).toHaveValue('EQ-0');
+  });
+
   /*
    * ⭐ 계약의 조건 이름은 `productionLineId` 이고 값은 설비 그룹 식별자와 «같다» —
    * 저장처의 이름이 `production_line` 이라 필드가 그것을 따르고 있을 뿐이다.
@@ -2629,5 +2643,36 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
     const dialog = within(await screen.findByRole('dialog', { name: t.equipmentForm.createTitle }));
 
     expect(dialog.queryByRole('button', { name: t.actions.disposeEquipment })).toBeNull();
+  });
+});
+
+describe('EquipmentMasterScreen — 목록 접기(#350)', () => {
+  afterEach(() => {
+    window.localStorage.removeItem('omf-mes:equipment-master:split:collapsed');
+  });
+
+  it('접으면 「목록 N건」 탭이 서고, 펼쳐도 고른 그룹 · 적던 값 · 검색어가 그대로다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const name = await openGroup(user);
+    await user.type(name, ' 수정');
+    await user.type(screen.getByLabelText(t.filters.searchLabel), 'GRP');
+    const split = document.querySelector('.list-detail-split')!;
+
+    await user.click(
+      screen.getAllByRole('button', { name: messages.common.inspectionHub.listCollapse })[0]!,
+    );
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = split.querySelector<HTMLElement>('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록4건');
+
+    await user.click(tab!);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    expect(screen.getByRole('button', { name: 'GRP-A' })).toHaveAttribute('aria-current', 'true');
+    expect(form().getByRole('textbox', { name: new RegExp(t.fields.groupName) })).toHaveValue(
+      'GRP-A 그룹 수정',
+    );
+    expect(screen.getByLabelText(t.filters.searchLabel)).toHaveValue('GRP');
   });
 });

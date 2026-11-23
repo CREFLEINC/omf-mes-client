@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   createStubFetch,
@@ -346,5 +346,38 @@ describe('W-05-01 ① — 이름 풀이의 한계', () => {
         t.scope.entry(t.scope.itemId, messages.common.reference.failed),
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe('W-05-01 — 목록 접기(#350)', () => {
+  afterEach(() => {
+    window.localStorage.removeItem('omf-mes:shot-conversion:split:collapsed');
+  });
+
+  it('접으면 「목록 N건」 탭이 서고, 펼쳐도 적던 기준일 · 미리보기 수량이 그대로다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+    await within(pane()).findByText(t.scope.all);
+    const preview = (): HTMLElement => screen.getByRole('region', { name: t.preview.paneTitle });
+    await user.type(within(pane()).getByLabelText(t.ratioList.effectiveOnLabel), '2026-08-23');
+    await user.type(
+      within(preview()).getByRole('textbox', { name: t.preview.quantityLabel }),
+      '500',
+    );
+    const split = document.querySelector('.list-detail-split')!;
+
+    await user.click(
+      screen.getAllByRole('button', { name: messages.common.inspectionHub.listCollapse })[0]!,
+    );
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = split.querySelector<HTMLElement>('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록4건');
+
+    await user.click(tab!);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    expect(within(pane()).getByLabelText(t.ratioList.effectiveOnLabel)).toHaveValue('2026-08-23');
+    expect(within(preview()).getByRole('textbox', { name: t.preview.quantityLabel })).toHaveValue(
+      '500',
+    );
   });
 });

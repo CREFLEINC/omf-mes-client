@@ -1,4 +1,4 @@
-import { AlertBanner, Breadcrumb, PageHeader, useToast } from '@crefle/web-ui';
+import { AlertBanner, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
@@ -6,7 +6,6 @@ import { useApiClient } from '../../patterns/api-context';
 import type { LookupSource } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
-import { ScreenHeader } from '../../patterns/screen-header';
 import {
   deactivateAvailability,
   disposeAvailability,
@@ -27,8 +26,9 @@ import { RetireConfirmDialog } from './retire-confirm-dialog';
 import { emptyFormValues, formValuesFrom, toToolCreate, toToolUpdate } from './mappers';
 import { ToolFormDialog } from './tool-form-dialog';
 import { ToolImportDialog } from './tool-import-dialog';
-import { ToolListPane } from './tool-list-pane';
+import { useToolListPane } from './tool-list-pane';
 import { TOOL_FORM_FIELDS, validateTool } from './tool-validation';
+import './layout.css';
 import {
   isTruncated,
   toolDetailPath,
@@ -342,18 +342,36 @@ export const ToolMasterScreen = () => {
       ? codeLockMessage(detail.data.editability)
       : null;
 
+  const toolPane = useToolListPane({
+    items,
+    isLoading: tools.isLoading,
+    appliedFilters: filters,
+    onApplyFilters: setFilters,
+    plantOptions: selectableOptions(plantSource, filters.plantId),
+    typeSource,
+    typeNote,
+    statusOptions,
+    onAdd: openCreate,
+    onEdit: openEdit,
+    onImport: () => {
+      resetIfIdle(importWrite);
+      setImportFile(null);
+      setImportPlantId('');
+      setImportResult(null);
+      setImporting(true);
+    },
+    loadError: tools.isError ? (
+      <LoadErrorBanner error={toApiError(tools.error)} onRetry={() => void tools.refetch()} />
+    ) : null,
+  });
+
   return (
     <div className="screen tool-master-screen">
-      <ScreenHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
-
+      {/*
+       * 화면 제목 줄은 두지 않는다 — 조회 조건 · 목록 통일 배치(검사 조회·판정과 같다 · #350).
+       * 상세 상자는 두지 않는다 — 툴의 등록 · 수정은 창(`ToolFormDialog`)에서 하고, 고른 줄을 붙잡아 두는
+       * 상태가 없다. 창을 상세 상자로 옮기면 여닫기 · 저장 흐름이 바뀐다.
+       */}
       {optionsNote !== undefined && (
         <div className="banner-slot">
           <AlertBanner variant="warning">{optionsNote}</AlertBanner>
@@ -368,31 +386,26 @@ export const ToolMasterScreen = () => {
         </div>
       )}
 
-      <ToolListPane
-        items={items}
-        total={tools.data?.page.total ?? null}
-        isLoading={tools.isLoading}
-        appliedFilters={filters}
-        onApplyFilters={setFilters}
-        plantOptions={selectableOptions(plantSource, filters.plantId)}
-        typeSource={typeSource}
-        typeNote={typeNote}
-        statusOptions={statusOptions}
-        onAdd={openCreate}
-        onEdit={openEdit}
-        onImport={() => {
-          resetIfIdle(importWrite);
-          setImportFile(null);
-          setImportPlantId('');
-          setImportResult(null);
-          setImporting(true);
-        }}
-        loadError={
-          tools.isError ? (
-            <LoadErrorBanner error={toApiError(tools.error)} onRetry={() => void tools.refetch()} />
-          ) : null
-        }
-      />
+      <div className="list-detail-workspace">
+        <section
+          className="pane po-board-filter list-detail-filter tool-master-filter-box"
+          aria-label={messages.common.paneList.filter}
+        >
+          {toolPane.filter}
+        </section>
+        <section className="pane tool-master-pane" aria-label={t.paneTitle}>
+          <div className="po-board-list-head">
+            <h2 className="pane-title">{t.paneTitle}</h2>
+            {/* 건수는 서버가 센 전체다 — 불러오는 중 · 실패일 때는 셀 수 없으니 세우지 않는다. */}
+            {tools.data !== undefined && !tools.isError && (
+              <span className="po-board-list-count" aria-live="polite">
+                {messages.common.paneList.count(tools.data.page.total)}
+              </span>
+            )}
+          </div>
+          {toolPane.list}
+        </section>
+      </div>
 
       {dialog !== null && (
         <ToolFormDialog

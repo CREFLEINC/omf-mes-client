@@ -156,7 +156,6 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   { path: '/logistics/stock-adjust', code: 'W-01-12', name: '재고조정' },
   { path: '/logistics/supplier-return', code: 'W-01-05', name: '공급사 반품 처리' },
   { path: '/logistics/disposal-issue', code: 'W-01-06', name: '폐기 요청·기타출고' },
-  { path: '/logistics/iqc-skip-approval', code: 'W-01-02', name: '긴급 IQC 생략 한도승인' },
   { path: '/logistics/document-progress', code: 'W-01-13', name: '물류 문서 진행현황·취소' },
 
   /* ── 출하 ─────────────────────────────────────────────────────────────── */
@@ -253,7 +252,6 @@ export const WEB_SCREENS: readonly WebScreen[] = [
     code: 'W-03-05',
     name: '검사실적·검사결과 조회(불량률·불량코드 분포 집계 포함)',
   },
-  { path: '/quality/approvals', code: 'W-03-09', name: '특채·한도승인 승인 처리' },
   { path: '/quality/dispositions', code: 'W-03-10', name: '부적합 처분 관리(재작업/폐기/정상)' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#107) — 화면 코드는 사용자 결정으로 부여했다. */
   { path: '/quality/pqc-inspections', code: 'W-03-11', name: 'PQC 검사 등록·조회' },

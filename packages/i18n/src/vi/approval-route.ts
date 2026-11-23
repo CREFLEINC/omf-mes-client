@@ -15,8 +15,6 @@ import type { Translated } from './translated';
  * 않는다 — 고르는 규칙은 서버가 갖는다.
  */
 export const approvalRoute: Translated<typeof ko.approvalRoute> = {
-  title: 'Định nghĩa luồng phê duyệt',
-  breadcrumbRoot: 'Quản trị hệ thống',
   panes: {
     list: 'Danh sách luồng phê duyệt',
     detail: 'Luồng đã chọn',
@@ -90,6 +88,7 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
     noStepsDescription:
       'Không có bước thì yêu cầu trình của loại này sẽ bị từ chối. Thêm ít nhất một bước là mở lại.',
   },
+
   values: {
     unknown: 'Không rõ',
     referenceLoading: 'Đang tải tên',

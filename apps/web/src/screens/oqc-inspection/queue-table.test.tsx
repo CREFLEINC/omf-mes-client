@@ -25,8 +25,8 @@ describe('QueueTable', () => {
   it('의뢰번호·품목·검사수량·상태 네 열을 그린다', () => {
     renderTable();
 
-    /* 「생략」·품목코드·품목명 칸은 OQC 목록(`queue-list-table`)에만 있다(#1728). */
-    const { skip: _skip, itemCode: _itemCode, itemName: _itemName, ...columns } = t.columns;
+    /* 품목코드·품목명 칸은 OQC 목록(`queue-list-table`)에만 있다(#1728). */
+    const { itemCode: _itemCode, itemName: _itemName, ...columns } = t.columns;
     for (const header of Object.values(columns)) {
       expect(screen.getByRole('columnheader', { name: header })).toBeInTheDocument();
     }

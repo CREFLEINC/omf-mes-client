@@ -61,6 +61,8 @@ export interface ItemPaneProps {
    * 실패를 「등록된 품목이 없습니다」로 보이면 사실과 다른 안내가 된다.
    */
   loadError: ReactNode;
+  /** 목록 맨 위 제목 줄(건수 · 「목록 접기」 · #350). 화면이 `PaneListHead` 로 넘긴다. */
+  head?: ReactNode;
 }
 
 const hasAnyFilter = (filters: ItemFilters): boolean =>
@@ -229,6 +231,7 @@ export const ItemPane = ({
   onChangePage,
   onChangePageSize,
   loadError,
+  head,
 }: ItemPaneProps) => {
   const columns: Column<Item>[] = [
     {
@@ -382,8 +385,9 @@ export const ItemPane = ({
   return (
     <section
       className="pane inspection-standard-list-pane routing-item-pane"
-      aria-label={t.panes.item}
+      aria-label={t.panes.itemList}
     >
+      {head}
       {listSlot()}
 
       {(loadError === null || loadError === undefined) && !isLoading && (

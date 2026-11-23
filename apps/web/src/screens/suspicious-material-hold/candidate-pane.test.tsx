@@ -113,8 +113,8 @@ describe('의심자재 후보 pane', () => {
     ).toBe('|LOT 번호|품목코드|품목명|위치|보유 수량|상태|최근 상태 변경일');
     /* 선택 칸 머리는 이 쪽 전체 선택 칸이다(사용자 2026-11-02). */
     expect(screen.getByRole('checkbox', { name: '이 쪽 LOT 전체 선택' })).toBeVisible();
-    /* 목록 카드 제목은 두지 않는다(다른 LOT 상태 탭과 같다 · 사용자 2026-11-02) — 구역 이름으로만 남는다. */
-    expect(screen.queryByRole('heading', { level: 2, name: '의심자재 후보' })).toBeNull();
+    /* 목록 제목 줄에 이름이 선다(2026-11-23 지시 · #350). */
+    expect(screen.getByRole('heading', { level: 2, name: '의심자재 후보' })).toBeVisible();
     expect(screen.getByRole('table', { name: '의심자재 후보' })).toBeVisible();
     // 최근 전이 시각은 공장 시각(UTC+7)으로 보인다 — omf-all-around#20
     expect(screen.getAllByText('2026-08-25 07:00')).toHaveLength(3);
@@ -260,5 +260,29 @@ describe('의심자재 후보 pane', () => {
     expect(box).toBeChecked();
     await user.click(row.querySelectorAll('td')[2]!);
     expect(box).not.toBeChecked();
+  });
+
+  /* 목록 제목 줄 「목록 접기」 · 접힌 「목록 N건」 탭(#350). */
+  it('목록을 접으면 탭에 건수가 서고, 펼친 뒤에도 고른 LOT · 적어 둔 조건이 그대로다', async () => {
+    const collapsedKey = 'omf-mes:suspicious-material-hold:split:collapsed';
+    window.localStorage.removeItem(collapsedKey);
+    const { user } = renderPane(() => jsonResponse(page([lot(701), lot(702)], 1, 1234)));
+    const box = await screen.findByRole('checkbox', { name: 'SYN-LOT-701 선택' });
+    await waitFor(() => expect(box).toBeEnabled());
+    await user.click(box);
+    await user.type(screen.getByLabelText('LOT 번호'), 'SYN-SEARCH');
+    const split = document.querySelector('.lot-status-split');
+
+    /* 막대 위 원과 제목 줄 「목록 접기」가 같은 이름이다. */
+    await user.click(screen.getAllByRole('button', { name: '목록 접기' })[0]!);
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = split!.querySelector<HTMLElement>('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록1234건');
+
+    await user.click(tab!);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    expect(screen.getByRole('checkbox', { name: 'SYN-LOT-701 선택' })).toBeChecked();
+    expect(screen.getByLabelText('LOT 번호')).toHaveValue('SYN-SEARCH');
+    window.localStorage.removeItem(collapsedKey);
   });
 });

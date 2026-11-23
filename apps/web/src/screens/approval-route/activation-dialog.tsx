@@ -2,6 +2,8 @@ import { Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { approvalTypeLabelOf } from './code-options';
+
 const t = messages.approvalRoute;
 
 /** 무엇을 하려는가. 두 조작이 말해야 하는 사실이 서로 달라 창 하나를 갈래로 쓴다. */
@@ -86,7 +88,7 @@ export const ActivationDialog = ({
 
       {isDeactivate ? (
         <>
-          <p>{t.dialog.deactivateBlocks(approvalTypeCode)}</p>
+          <p>{t.dialog.deactivateBlocks(approvalTypeLabelOf(approvalTypeCode))}</p>
           {/*
            * **진행 중 건수를 여기서 되풀이한다.** 폼에도 상시로 서 있지만, 끄기를 결정하는
            * 순간에 「이미 돌고 있는 것들은 어떻게 되나」가 가장 궁금해지는 자리다.
@@ -101,7 +103,7 @@ export const ActivationDialog = ({
         </>
       ) : (
         <>
-          <p>{t.dialog.activateOpens(approvalTypeCode)}</p>
+          <p>{t.dialog.activateOpens(approvalTypeLabelOf(approvalTypeCode))}</p>
           <p>{t.dialog.activateStepCount(stepCount)}</p>
         </>
       )}

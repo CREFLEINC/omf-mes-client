@@ -697,6 +697,36 @@ describe('OqcInspectionScreen — 목록 ↔ 상세(#136)', () => {
     expect(screen.getByRole('checkbox', { name: t.filters.pendingOnly })).not.toBeChecked();
   });
 
+  /* 골라도 목록은 그대로 — 접기는 「목록 접기」로만(#350 사용자 지시 · #296 의 저절로 접기를 걷었다). */
+  it('줄을 골라도 목록은 펼친 채이고, 「목록 접기」 · 「목록 펼치기」로 접고 편다(#350)', async () => {
+    window.localStorage.removeItem('omf-mes:oqc-inspection:split:collapsed');
+    const user = userEvent.setup();
+    const hub = messages.common.inspectionHub;
+
+    renderScreen();
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: t.queue.openRow(waitingRequest.inspectionRequestNo),
+      }),
+    );
+    await screen.findByLabelText(t.result.fields.accepted);
+    const split = document.querySelector('.inspection-split');
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    expect(screen.queryByRole('button', { name: hub.listExpand })).toBeNull();
+
+    await user.click(screen.getAllByRole('button', { name: hub.listCollapse })[0]!);
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
+    expect(split!.querySelector('.po-board-list-tab')).toHaveTextContent('목록3건');
+
+    await user.click(screen.getAllByRole('button', { name: hub.listExpand })[0]!);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    expect(
+      screen.getByRole('button', { name: t.queue.openRow(waitingRequest.inspectionRequestNo) }),
+    ).toHaveAttribute('aria-current', 'true');
+    window.localStorage.removeItem('omf-mes:oqc-inspection:split:collapsed');
+  });
+
   it('저장하지 않은 수량이 있으면 묻고, 「계속 작성」이면 입력이 그대로 남는다', async () => {
     const user = userEvent.setup();
 

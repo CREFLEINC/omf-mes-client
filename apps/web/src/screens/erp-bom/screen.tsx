@@ -462,7 +462,7 @@ export const ErpBomScreen = () => {
           </div>
         ),
       }}
-      list={{ label: t.panes.parents, content: listContent() }}
+      list={{ label: t.panes.parents, count: parents.data?.page.total, content: listContent() }}
       detail={{ label: t.panes.components, scroll: false, content: detailContent() }}
     />
   );

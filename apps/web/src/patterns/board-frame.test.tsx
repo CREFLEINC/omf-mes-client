@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -70,14 +70,46 @@ describe('BoardFrame', () => {
     const user = userEvent.setup();
     renderFrame();
     const split = screen.getByRole('region', { name: '합성 목록' }).parentElement;
+    /* 같은 이름의 단추가 제목 줄 · 접힌 탭에도 있다 — 막대 위 작은 원 단추를 콕 집는다. */
+    const circle = (): HTMLElement => {
+      const button = split?.querySelector<HTMLElement>('.po-board-gutter > .po-board-collapse');
+      if (button == null) throw new Error('막대 위 접기 단추가 없다');
+      return button;
+    };
 
-    await user.click(screen.getByRole('button', { name: SPLITTER.collapseLabel }));
+    expect(circle()).toHaveAccessibleName(SPLITTER.collapseLabel);
+    await user.click(circle());
 
     expect(split).toHaveAttribute('data-left-collapsed', 'true');
     expect(window.localStorage.getItem(`${SPLIT_KEY}:collapsed`)).toBe('1');
 
-    await user.click(screen.getByRole('button', { name: SPLITTER.expandLabel }));
+    expect(circle()).toHaveAccessibleName(SPLITTER.expandLabel);
+    await user.click(circle());
 
     expect(split).not.toHaveAttribute('data-left-collapsed');
+  });
+  it('목록 제목 줄에 이름 · 건수 · 「목록 접기」가 서고, 접으면 왼쪽 「목록」 탭으로 다시 편다(#350)', async () => {
+    const user = userEvent.setup();
+    render(
+      <BoardFrame
+        splitKey={SPLIT_KEY}
+        splitter={SPLITTER}
+        list={{ label: '합성 목록', count: 12, content: <p>목록 내용</p> }}
+        detail={{ label: '합성 상세', content: <p>상세 내용</p> }}
+      />,
+    );
+    const list = screen.getByRole('region', { name: '합성 목록' });
+    const split = list.parentElement;
+    expect(within(list).getByRole('heading', { name: '합성 목록' })).toBeInTheDocument();
+    expect(list).toHaveTextContent('12건');
+
+    await user.click(within(list).getByRole('button', { name: SPLITTER.collapseLabel }));
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
+
+    const tab = split!.querySelector('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록12건');
+    await user.click(tab as HTMLElement);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    expect(split!.querySelector('.po-board-list-tab')).toBeNull();
   });
 });

@@ -5,7 +5,6 @@ import type { ReactNode } from 'react';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
-import { OqcQueueSkipCell } from './queue-skip-cell';
 import { lotOverviewOf } from './shipment-oqc';
 import { OverviewChip } from './shipment-oqc-parts';
 import type { ItemNameLookup } from './reference-lookup';
@@ -35,11 +34,6 @@ import { formatDateTime, type InspectionQueueRow } from './types';
 
 const t = messages.oqcInspection.queue;
 const shipmentT = messages.oqcInspection.shipment.queue;
-/*
- * 생략은 결과 0건 의뢰만(피처 010 FR-012 · T020) — 새 흐름에서 진행(IN_PROGRESS)은 결과가 1건 이상이라는 뜻이다(첫 결과 저장이
- * 진행으로 올리고, 송신 전 취소로 다시 연 의뢰도 결과가 있다). 서버도 결과 있는 의뢰의 생략 요청을 거절한다(converge C-3).
- */
-const SKIPPABLE: readonly string[] = ['REQUESTED'];
 
 const columnsOf = (
   selectedId: number | null,
@@ -179,22 +173,6 @@ const columnsOf = (
     /* 정렬은 원문(RFC3339)으로 한다 — 표기용 문자열로 정렬하면 형식이 아닌 값이 섞일 때 어긋난다. */
     sortAccessor: (row) => row.requestedAt,
     render: (row) => <span className="oqc-inspection-num">{formatDateTime(row.requestedAt)}</span>,
-  },
-  {
-    key: 'skip',
-    align: 'center',
-    header: t.columns.skip,
-    width: '120px',
-    /* 대기(결과 0건) 출하작업지시 의뢰에만 둔다 — 끝났거나 결과가 있는 의뢰는 생략할 것이 없다(사용자 지시 2026-11-09 · T054). */
-    render: (row) =>
-      row.targetTypeCode === 'SHIPMENT_REQUEST' && SKIPPABLE.includes(row.statusCode) ? (
-        <OqcQueueSkipCell
-          inspectionRequestId={row.inspectionRequestId}
-          shipmentRequestId={row.targetId}
-        />
-      ) : (
-        messages.iqcInspection.queue.emptyValue
-      ),
   },
 ];
 

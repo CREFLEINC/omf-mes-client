@@ -383,4 +383,33 @@ describe('TerminalProcessMapScreen 기능 구성 저장', () => {
 
     expect(screen.queryByText(SERVER_MESSAGE)).not.toBeInTheDocument();
   });
+
+  /* 목록 접기(#350) — 접힌 탭에 건수, 펼치면 고른 단말 · 고친 구성이 그대로. */
+  it('목록을 접으면 「목록 N건」 탭이 서고, 펼쳐도 고른 단말과 고친 구성이 그대로다(#350)', async () => {
+    const keys = [
+      'omf-mes:terminal-process-map:split:collapsed',
+      'omf-mes:terminal-process-map:split-orientation',
+    ];
+    keys.forEach((key) => window.localStorage.removeItem(key));
+    const { user } = renderWith([processRow(11, '합성 사출', { canStartWork: true })]);
+    await screen.findByRole('button', { name: t.grid.save });
+    await user.click(flag('합성 사출', 'canCompleteWork'));
+    const split = document.querySelector('.users-roles-split');
+
+    await user.click(
+      screen.getAllByRole('button', { name: messages.common.inspectionHub.listCollapse })[0]!,
+    );
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = split!.querySelector<HTMLElement>('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록2건');
+
+    await user.click(tab!);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    expect(screen.getByRole('button', { name: 'SYN-TERM-01' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(flag('합성 사출', 'canCompleteWork')).toBeChecked();
+    keys.forEach((key) => window.localStorage.removeItem(key));
+  });
 });

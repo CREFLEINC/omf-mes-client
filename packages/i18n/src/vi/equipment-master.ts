@@ -7,7 +7,6 @@ import type { Translated } from './translated';
  */
 export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
   title: 'Dữ liệu gốc thiết bị · nhóm thiết bị',
-  breadcrumbRoot: 'Quản lý dữ liệu gốc',
   actions: {
     addGroup: 'Thêm nhóm',
     addEquipment: 'Thêm thiết bị',

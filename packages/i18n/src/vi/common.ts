@@ -68,6 +68,12 @@ export const common: Translated<typeof ko.common> = {
     inactiveSuffix: ' (ngừng dùng)',
   },
   columnOrderHandle: 'Kéo để đổi thứ tự cột',
+  paneList: {
+    filter: 'Điều kiện tra cứu',
+    collapse: 'Thu gọn',
+    tab: 'Danh sách',
+    count: (count: number): string => `${String(count)} mục`,
+  },
   inspectionHub: {
     guide: 'Hướng dẫn kiểm tra',
     guideCommon: 'Hướng dẫn chung',

@@ -70,7 +70,6 @@ import { appRouter } from './index';
  * **어느 쪽도 그 어긋남을 잡지 못한다.** 이 파일이 그 사이를 잇는다.
  */
 
-
 /** 라우터가 실제로 받는 경로. 자식 라우트의 `path`는 앞머리 `/`가 없다. */
 const routedPaths = (): string[] =>
   (appRouter.routes[0]?.children ?? [])
@@ -490,9 +489,6 @@ const inspectionResultRoutes = (): StubRoute[] => [
   lookupRoute('/mdm/processes', []),
 ];
 
-/** W-03-09가 선택 없는 첫 진입에 부르는 승인 요청 목록 하나다. */
-const qualityApprovalRoutes = (): StubRoute[] => [lookupRoute('/app/approval-requests', [])];
-
 const dispositionRoutes = (): StubRoute[] => [
   lookupRoute('/quality/nonconformances', []),
   lookupRoute('/mdm/items', []),
@@ -705,16 +701,9 @@ describe('appRouter', () => {
     expect(routedPaths()).not.toContain('/app/approval-requests');
   });
 
-  /*
-   * W-01-02는 결재함과 **같은 계약 경로**를 쓰는데 주소가 다르다 — 근거가 계약이 아니라
-   * **섹션**임을 두 화면이 나란히 보여 주는 자리다. 이 화면이 판정하는 것은 자재 입하
-   * 검사의 생략이라 그 판단의 맥락이 「자재창고」에 있고, 결재함은 올라온 결재를 두루
-   * 처리하는 자리라 축이 다르다.
-   */
-  it('긴급 IQC 생략 한도승인이 자재창고 앞머리로 등록돼 있다', () => {
-    expect(routedPaths()).toContain('/logistics/iqc-skip-approval');
-    expect(routedPaths()).not.toContain('/approval/iqc-skip');
-    expect(routedPaths()).not.toContain('/approval/iqc-skip-approval');
+  /* W-01-02 긴급 IQC 생략 한도승인은 없어졌다(omf-all-around#353) — 주소도 남기지 않는다. */
+  it('긴급 IQC 생략 한도승인 주소가 없다', () => {
+    expect(routedPaths()).not.toContain('/logistics/iqc-skip-approval');
   });
 
   /*
@@ -761,7 +750,7 @@ describe('appRouter', () => {
    * 리소스를 주소로 삼으면 한 주소를 여러 화면이 다툰다. 주소는 **화면**을 가리킨다.
    *
    * ⛔ **「승인」 앞머리가 아니다.** 취소가 승인을 타지만 이 화면이 하는 일은 결재가 아니라
-   * 상신과 실행이다(W-01-02가 같은 자리에서 같은 판정을 했다).
+   * 상신과 실행이다.
    */
   it('물류 전표 조회·취소가 자재창고 앞머리로 등록돼 있다', () => {
     expect(routedPaths()).toContain('/logistics/document-progress');
@@ -1066,7 +1055,6 @@ describe('appRouter — IQC 수입검사·판정의 진입 경로', () => {
   /**
    * 메뉴 IA 개편으로 검사는 **「품질 관리」 한 곳에 모였다** — IQC(입하) → PQC(공정) → OQC(출하)
    * 흐름 차례의 첫 자리다. 그래서 「구매 / 자재 관리」의 끝(물류 전표 조회·취소) 바로 뒤에 선다.
-   * IQC 생략 판정(W-01-02)은 「품질 승인 처리」의 탭이라 검사기준이 바로 뒤따른다(#144).
    */
   it('품질 관리 섹션의 첫 항목으로 구매 / 자재 관리 바로 뒤에 선다', () => {
     const hrefs = sidebarHrefs();
@@ -1248,31 +1236,11 @@ describe('appRouter — 검사실적·검사결과 조회의 진입 경로', () 
   });
 });
 
-describe('appRouter — 품질 승인 처리의 진입 경로', () => {
-  /* 제목·탐색 경로 없이 유형 탭이 맨 위에 선다(#186, 입하 예정 조회와 같은 짜임). */
-  it('품질관리 메뉴를 키보드로 열면 정식 주소와 유형 탭·목록 구획이 선다', async () => {
-    const user = userEvent.setup();
-    renderRoutedApp('/quality/lot-status', [...lotStatusRoutes(), ...qualityApprovalRoutes()]);
-
-    const link = screen.getByRole('link', { name: '품질 승인 처리' });
-    link.focus();
-    await user.keyboard('{Enter}');
-
-    await waitFor(() => expect(currentLocation()).toBe('/quality/approvals'));
-    expect(
-      await screen.findByRole('tablist', {
-        name: messages.qualityApproval.fields.approvalTypeCode,
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('region', { name: messages.qualityApproval.panes.list }),
-    ).toBeInTheDocument();
-  });
-
-  it('화면 주소는 exact 정식 route이고 테스트용 단수 주소는 없다', () => {
-    expect(routedPaths()).toContain('/quality/approvals');
-    expect(routedPaths()).not.toContain('/quality-approval');
-    expect(routedPaths()).not.toContain('/quality/approval');
+describe('appRouter — 품질 승인 처리 삭제(omf-all-around#352)', () => {
+  it('품질 승인 처리 주소와 메뉴는 없다', () => {
+    expect(routedPaths()).not.toContain('/quality/approvals');
+    renderRoutedApp('/quality/lot-status', lotStatusRoutes());
+    expect(screen.queryByRole('link', { name: '품질 승인 처리' })).toBeNull();
   });
 });
 

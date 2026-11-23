@@ -31,7 +31,6 @@ import {
 } from 'react';
 import { useNavigate } from 'react-router';
 
-import { InspectionDrawingImages } from '../../patterns/inspection-drawings';
 import { InfoTip } from '../../patterns/info-tip';
 import { InspectionGuideNotice } from '../../patterns/inspection-guide';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -81,7 +80,8 @@ import { InspectionHistory } from './history';
 import { InboundDetail, type InboundDetailProps } from './inbound-detail';
 import { splitRuleErrors } from './lot-judgment';
 import { useInboundFourM, useInboundInspection } from './inbound-queries';
-import { PlanDialog } from './plan-dialog';
+import { DrawingImages, PlanDialog } from './plan-dialog';
+import { SkippedNotice, SkippedOverview } from './skipped-overview';
 import { useUomLookup, withUom } from '../iqc-inspection/uom-lookup';
 import {
   checkRowCount,
@@ -183,6 +183,8 @@ export const InspectionDetail = ({
   const specs = useInspectionItemSpecs(versionId);
   const plan = useInspectionPlan(version.data?.inspectionPlanId ?? null);
   const drawings = useDrawings(versionId);
+  /* 생략 건 요약의 「기준 조회」 창(사용자 지시 2026-11-23 · #353). */
+  const [skippedPlanOpen, setSkippedPlanOpen] = useState(false);
   const inbound = useInboundInfo(inspectionRequestId);
   const defectCodes = useDefectCodes(true);
   const items = useItemNames([detail.data?.itemId]);
@@ -260,15 +262,50 @@ export const InspectionDetail = ({
     /* 생략으로 닫힌 의뢰는 입력할 것이 없다 — 받은 정보만 읽기 전용으로 보인다(사용자 지시 2026-11-02 · #225). */
     if (detail.data.statusCode === 'SKIPPED') {
       return (
-        <SkippedSummary
-          skipBasisCode={detail.data.skipBasisCode ?? null}
-          itemParts={items.partsOf(detail.data.itemId)}
-          planLabel={plan.data?.inspectionPlanCode ?? '-'}
-          planName={plan.data?.inspectionPlanName ?? '-'}
-          lotNo={lots.labelOf(detail.data.lotId)}
-          qtyLabel={withUom(String(detail.data.targetQty), uoms.codeOf(detail.data.uomId))}
-          inbound={inbound.data}
-        />
+        <>
+          <SkippedOverview
+            itemLabel={t.target.itemName}
+            itemParts={items.partsOf(detail.data.itemId)}
+            planCode={plan.data?.inspectionPlanCode ?? '-'}
+            requestNo={detail.data.inspectionRequestNo}
+            lotNo={
+              inboundFlow
+                ? (inboundInspection.data?.lots ?? []).map((lot) => lot.lotNo).join(', ') || '-'
+                : lots.labelOf(detail.data.lotId)
+            }
+            lotFacts={[
+              { key: 'supplier', label: t.lot.supplier, value: inbound.data?.supplierLabel ?? '-' },
+              {
+                key: 'qty',
+                label: t.lot.qty,
+                value: withUom(String(detail.data.targetQty), uoms.codeOf(detail.data.uomId)),
+              },
+              {
+                key: 'receivedAt',
+                label: t.lot.receivedAt,
+                value: formatPlantDateTime(inbound.data?.receivedAt ?? null) ?? '-',
+              },
+            ]}
+            planAction={
+              version.data === undefined || specs.data === undefined ? null : (
+                <Button variant="outlined" size="sm" onClick={() => setSkippedPlanOpen(true)}>
+                  {t.plan.open}
+                </Button>
+              )
+            }
+          />
+          {skippedPlanOpen && version.data !== undefined && specs.data !== undefined && (
+            <PlanDialog
+              planCode={plan.data === undefined ? '-' : plan.data.inspectionPlanCode}
+              itemParts={items.partsOf(detail.data.itemId)}
+              version={version.data}
+              specs={[...specs.data].sort((a, b) => a.sequenceNo - b.sequenceNo)}
+              uomCodeOf={uoms.codeOf}
+              drawings={<DrawingImages drawings={drawings.data ?? []} />}
+              onClose={() => setSkippedPlanOpen(false)}
+            />
+          )}
+        </>
       );
     }
     if (confirmed) {
@@ -280,9 +317,12 @@ export const InspectionDetail = ({
         </AlertBanner>
       );
     }
-    if (versionId === null || version.data === undefined || specs.data === undefined) {
-      /* 검사 기준 화면에서 이 품목의 IQC 기준 등록 창을 바로 연다(#225) — 그 화면 권한이 없으면 단추를 두지 않는다. */
-      const setPlan = toWebAccess(session?.permissions).allows(STANDARD_PATH) ? (
+    if (versionId !== null && (version.data === undefined || specs.data === undefined)) {
+      return <AlertBanner variant="error">{t.dialog.loadFailed}</AlertBanner>;
+    }
+    /* 기준이 없으면 검사 기준 화면에서 이 품목의 IQC 기준 등록 창을 바로 연다(#225) — 그 화면 권한이 없으면 단추를 두지 않는다. */
+    const setPlan =
+      versionId === null && toWebAccess(session?.permissions).allows(STANDARD_PATH) ? (
         <Button
           variant="outlined"
           size="sm"
@@ -290,23 +330,14 @@ export const InspectionDetail = ({
         >
           {t.dialog.setPlan}
         </Button>
-      ) : undefined;
-      /* 단추는 문구와 같은 줄에 둔다 — 띠의 action 자리는 문구 아래 줄로 내려간다(#225). */
-      return (
-        <AlertBanner variant="warning">
-          <span className="parts-iqc-no-plan">
-            <span>{t.dialog.noPlan}</span>
-            {setPlan}
-          </span>
-        </AlertBanner>
-      );
-    }
+      ) : null;
     return (
       <InspectionForm
         key={`${String(inspectionRequestId)}-${String(isReinspecting)}-${String(draftRound?.inspectionResultId ?? 0)}-${measurements.isSuccess ? 'm' : '-'}`}
         request={detail.data}
-        version={version.data}
-        specs={[...specs.data].sort((a, b) => a.sequenceNo - b.sequenceNo)}
+        version={version.data ?? null}
+        specs={[...(specs.data ?? [])].sort((a, b) => a.sequenceNo - b.sequenceNo)}
+        noPlanAction={setPlan}
         planLabel={plan.data === undefined ? '-' : plan.data.inspectionPlanCode}
         planName={plan.data?.inspectionPlanName ?? '-'}
         itemParts={items.partsOf(detail.data.itemId)}
@@ -380,8 +411,8 @@ export const InspectionDetail = ({
     onDirtyChange: formDirtyChange,
   }) => {
     if (detail.data === undefined) return null;
-    if (versionId === null || version.data === undefined || specs.data === undefined) {
-      return <AlertBanner variant="warning">{t.dialog.noPlan}</AlertBanner>;
+    if (versionId !== null && (version.data === undefined || specs.data === undefined)) {
+      return <AlertBanner variant="error">{t.dialog.loadFailed}</AlertBanner>;
     }
     /* OA — 적어 둔 4M 을 읽은 뒤에 양식을 연다(양식은 처음 값으로 4M 을 잡는다 · #290). */
     if (inboundFourM.isError)
@@ -393,8 +424,8 @@ export const InspectionDetail = ({
       <InspectionForm
         key={formKey}
         request={detail.data}
-        version={version.data}
-        specs={[...specs.data].sort((a, b) => a.sequenceNo - b.sequenceNo)}
+        version={version.data ?? null}
+        specs={[...(specs.data ?? [])].sort((a, b) => a.sequenceNo - b.sequenceNo)}
         planLabel={plan.data === undefined ? '-' : plan.data.inspectionPlanCode}
         planName={plan.data?.inspectionPlanName ?? '-'}
         itemParts={items.partsOf(detail.data.itemId)}
@@ -429,7 +460,8 @@ export const InspectionDetail = ({
   /* 새 흐름 상세의 [기준 조회] 창(사용자 지시 2026-11-19 · omf-all-around#296). */
   const [inboundPlanOpen, setInboundPlanOpen] = useState(false);
 
-  if (inboundFlow && detail.data !== undefined) {
+  /* 생략으로 닫힌 입하 LOT 의뢰도 결과를 받지 않는다 — 아래 공통 경로의 생략 요약으로 보낸다(omf-all-around#353). */
+  if (inboundFlow && detail.data !== undefined && detail.data.statusCode !== 'SKIPPED') {
     const aql = version.data?.aqlValue;
     const planText = [
       aql == null ? null : t.target.conditionAql(aql),
@@ -466,7 +498,6 @@ export const InspectionDetail = ({
         {inboundPlanOpen && version.data !== undefined && specs.data !== undefined && (
           <PlanDialog
             planCode={plan.data === undefined ? '-' : plan.data.inspectionPlanCode}
-            planName={plan.data?.inspectionPlanName ?? '-'}
             itemParts={items.partsOf(detail.data.itemId)}
             version={version.data}
             specs={[...specs.data].sort((a, b) => a.sequenceNo - b.sequenceNo)}
@@ -493,10 +524,16 @@ export const InspectionDetail = ({
     <div className="parts-iqc-detail-body">
       <div className="parts-iqc-detail-head">
         <h2 className="pane-title">{t.dialog.title}</h2>
-        {detail.data !== undefined && t.requestStatus[detail.data.statusCode] !== undefined && (
-          <Chip size="sm" status={detail.data.statusCode === 'IN_PROGRESS' ? 'info' : 'idle'}>
-            {t.requestStatus[detail.data.statusCode]}
-          </Chip>
+        {/* 생략 건은 상태 라벨 대신 안내 줄을 제목 바로 오른쪽에(사용자 지시 2026-11-23 · #353). */}
+        {detail.data?.statusCode === 'SKIPPED' ? (
+          <SkippedNotice />
+        ) : (
+          detail.data !== undefined &&
+          t.requestStatus[detail.data.statusCode] !== undefined && (
+            <Chip size="sm" status={detail.data.statusCode === 'IN_PROGRESS' ? 'info' : 'idle'}>
+              {t.requestStatus[detail.data.statusCode]}
+            </Chip>
+          )
         )}
         {isReinspecting ? (
           <Button
@@ -537,7 +574,6 @@ export const InspectionDetail = ({
         </p>
       )}
       {isReinspecting && <p className="field-note">{t.dialog.reinspectNote}</p>}
-      {/* IQC 생략은 OA 화면처럼 목록 「생략」 칸으로 옮겼다(omf-all-around#225). */}
       {/* 검사 진행 · 첨부 파일 · 검사 이력 순(#247 · 사용자 지시 2026-11-10) — 이력은 이 의뢰의 회차를 읽기 전용으로 */}
       <Tabs
         className="parts-iqc-detail-tabs"
@@ -551,7 +587,14 @@ export const InspectionDetail = ({
         items={[
           ...(confirmed
             ? []
-            : [{ value: 'input', label: t.tabs.input, content: tab === 'input' ? body() : null }]),
+            : [
+                {
+                  value: 'input',
+                  /* 생략 건은 진행할 검사가 없다 — 「검사 상세」(#353). */
+                  label: detail.data?.statusCode === 'SKIPPED' ? t.skipped.detailTab : t.tabs.input,
+                  content: tab === 'input' ? body() : null,
+                },
+              ]),
           /* 첨부 파일 — OA 화면 「첨부 파일」 탭과 같은 LOT 첨부(시험성적서 등 · #247 · 사용자 지시 2026-11-10). */
           ...(lotId === null
             ? []
@@ -619,67 +662,6 @@ export const InspectionDetail = ({
   );
 };
 
-/** 생략된 의뢰의 읽기 전용 요약 — 검사 대상 · LOT 정보를 입력 화면과 같은 짜임으로 보인다(#225). */
-const SkippedSummary = (props: {
-  skipBasisCode: string | null;
-  itemParts: { code: string; name: string } | null;
-  planLabel: string;
-  planName: string;
-  lotNo: string;
-  qtyLabel: string;
-  inbound: { supplierLabel: string | null; receivedAt: string | null } | undefined;
-}) => (
-  <>
-    <AlertBanner variant="info">
-      {t.skipped.notice(
-        props.skipBasisCode === null ? null : (t.skipped.basis[props.skipBasisCode] ?? null),
-      )}
-    </AlertBanner>
-    <section className="parts-iqc-block" aria-label={t.target.heading}>
-      <dl className="parts-iqc-facts">
-        <div className="parts-iqc-fact">
-          <dt className="field-label">{t.target.itemName}</dt>
-          <dd className="parts-iqc-fact-key">
-            {props.itemParts?.name ?? '-'}
-            {props.itemParts !== null && (
-              <span className="parts-iqc-fact-sub">{props.itemParts.code}</span>
-            )}
-          </dd>
-        </div>
-        <div className="parts-iqc-fact">
-          <dt className="field-label">{t.target.plan}</dt>
-          <dd>{props.planLabel}</dd>
-        </div>
-        <div className="parts-iqc-fact">
-          <dt className="field-label">{t.target.planName}</dt>
-          <dd>{props.planName}</dd>
-        </div>
-      </dl>
-      <div className="parts-iqc-lot-box" role="group" aria-label={t.lot.heading}>
-        <h4>{t.lot.heading}</h4>
-        <dl className="parts-iqc-kv">
-          <div>
-            <dt>{t.lot.lotNo}</dt>
-            <dd className="parts-iqc-lot-no">{props.lotNo}</dd>
-          </div>
-          <div>
-            <dt>{t.lot.supplier}</dt>
-            <dd>{props.inbound?.supplierLabel ?? '-'}</dd>
-          </div>
-          <div>
-            <dt>{t.lot.qty}</dt>
-            <dd>{props.qtyLabel}</dd>
-          </div>
-          <div>
-            <dt>{t.lot.receivedAt}</dt>
-            <dd>{formatPlantDateTime(props.inbound?.receivedAt ?? null) ?? '-'}</dd>
-          </div>
-        </dl>
-      </div>
-    </section>
-  </>
-);
-
 /** 결과 드로어 모드(005 새 흐름). */
 export interface InspectionFormDrawer {
   /** 이 결과의 검사 회차 — 검사 기준 상세 창에 보인다(사용자 지시 2026-11-18 · omf-all-around#296). */
@@ -708,8 +690,11 @@ interface FormProps {
     /** AQL 샘플링 기준이면 의뢰 수량으로 표에서 낸 시료 계획(omf-all-around#264). */
     aqlPlan: InspectionAqlPlanForward | null;
   };
-  version: components['schemas']['InspectionPlanVersion'];
+  /** 의뢰에 검사 기준이 없으면 `null` — 검사 항목 없이 종합 판정만 받는다(omf-all-around#351). */
+  version: components['schemas']['InspectionPlanVersion'] | null;
   specs: ItemSpec[];
+  /** 기준이 없을 때 안내 줄 오른쪽에 두는 [검사기준 설정](부품 화면 · #225). */
+  noPlanAction?: ReactNode;
   planLabel: string;
   planName: string;
   itemParts: { code: string; name: string } | null;
@@ -758,28 +743,20 @@ interface FormProps {
   } | null;
 }
 
-/** 기준서 도면 — 품질 기준 정보 「도면」 탭과 같은 보기(한 장씩 좌우로 넘김 · 사용자 지시 2026-10-30). */
-const DrawingImages = ({ drawings }: { drawings: { attachmentId: number; blob: Blob }[] }) => (
-  <section className="parts-iqc-card" aria-label={t.drawing.heading}>
-    <div className="parts-iqc-block-head">
-      <h3>{t.drawing.heading}</h3>
-      {drawings.length === 0 && <span className="parts-iqc-muted">{t.drawing.none}</span>}
-    </div>
-    {drawings.length === 0 ? null : (
-      <InspectionDrawingImages
-        drawings={drawings}
-        altOf={t.drawing.alt}
-        labels={{ prev: t.drawing.prev, next: t.drawing.next }}
-      />
-    )}
-  </section>
+/** IQC 기준 안내 라벨 — 글 폭만큼, 본문 크기 글자(omf-all-around#351 · 사용자 지시 2026-11-23). */
+const PlanNote = ({ text }: { text: string }) => (
+  <p className="iqc-inspection-action-note parts-iqc-plan-note" data-tone="info" role="status">
+    <Icon name="info" size={16} aria-hidden />
+    {text}
+  </p>
 );
 
 const InspectionForm = (props: FormProps) => {
   /* 측정 표 규격 칸의 단위(omf-all-around#296). */
   const uoms = useUomLookup();
   const { request, version, specs, draft } = props;
-  const versionAcceptance = version.acceptanceNumber ?? null;
+  const noPlan = version === null;
+  const versionAcceptance = version?.acceptanceNumber ?? null;
   /* AQL 샘플링이면 시료 수 · 합격 판정 수(Ac)를 표에서 낸 값으로 쓴다 — 서버 자동 판정도 같은 값이다(omf-all-around#264). */
   const { aqlPlan } = request;
   const judgmentAcceptance = aqlPlan?.acceptanceNumber ?? versionAcceptance;
@@ -787,11 +764,16 @@ const InspectionForm = (props: FormProps) => {
   const checkItems = specs.filter((s) => kindOf(s) === 'check');
   const defaultQty = String(
     aqlPlan?.sampleSize ??
-      sampleQtyOf(request.targetQty, {
-        samplingMethodCode: version.samplingMethodCode,
-        samplingRatio: version.samplingRatio ?? null,
-        samplingQty: version.samplingQty ?? null,
-      }),
+      sampleQtyOf(
+        request.targetQty,
+        version === null
+          ? null
+          : {
+              samplingMethodCode: version.samplingMethodCode,
+              samplingRatio: version.samplingRatio ?? null,
+              samplingQty: version.samplingQty ?? null,
+            },
+      ),
   );
 
   const initial = useMemo((): PartsIqcForm => {
@@ -891,7 +873,8 @@ const InspectionForm = (props: FormProps) => {
   /* 임시 저장 때 자동 판정과 다르게 고른 판정이면 그대로 되살린다(#247). */
   const [chosen, setChosen] = useState<string | null>(() => {
     const stored = draft?.overallJudgmentCode ?? '';
-    return stored !== '' && stored !== suggestedJudgmentOf(judgmentInputOf(initial))
+    /* 기준이 없으면 자동 판정이 없으니 저장한 판정을 그대로 되살린다(#351). */
+    return stored !== '' && (noPlan || stored !== suggestedJudgmentOf(judgmentInputOf(initial)))
       ? stored
       : null;
   });
@@ -921,7 +904,8 @@ const InspectionForm = (props: FormProps) => {
 
   const input = judgmentInputOf(form);
   const { inspectedQty, dimensions: dimensionResults, checks } = input;
-  const suggested = suggestedJudgmentOf(input);
+  /* 기준이 없으면 자동 판정이 없다 — 검사자가 종합 판정을 직접 고른다(#351). */
+  const suggested = noPlan ? null : suggestedJudgmentOf(input);
   const rejectedQty = rejectedQtyOf(input);
   const dimensionStates = dimensions.map((item, index) => {
     const put = (form.values[item.inspectionItemSpecId] ?? []).filter(
@@ -1158,10 +1142,9 @@ const InspectionForm = (props: FormProps) => {
         </AlertBanner>
       )}
       {/* 경고 안에서 바로 사번을 잇는다(사용자 지시 2026-10-30) — OA 화면의 연결 창과 같다. 성공하면 세션을 다시 읽어 경고가 걷힌다. */}
-      {planOpen && (
+      {planOpen && version !== null && (
         <PlanDialog
           planCode={props.planLabel}
-          planName={props.planName}
           itemParts={props.itemParts}
           version={version}
           specs={specs}
@@ -1191,10 +1174,12 @@ const InspectionForm = (props: FormProps) => {
             <dt className="field-label">{t.target.plan}</dt>
             <dd className="parts-iqc-plan-cell">
               {props.planLabel}
-              {/* 검사 기준 조회 팝업(사용자 지시 2026-10-30) */}
-              <Button variant="outlined" size="sm" onClick={() => setPlanOpen(true)}>
-                {t.plan.open}
-              </Button>
+              {/* 검사 기준 조회 팝업(사용자 지시 2026-10-30) — 기준이 없으면 열 것이 없다(#351). */}
+              {!noPlan && (
+                <Button variant="outlined" size="sm" onClick={() => setPlanOpen(true)}>
+                  {t.plan.open}
+                </Button>
+              )}
             </dd>
           </div>
           <div className="parts-iqc-fact">
@@ -1222,7 +1207,7 @@ const InspectionForm = (props: FormProps) => {
                 <div className="parts-iqc-fact">
                   <dt className="field-label">{t.target.condition}</dt>
                   <dd>
-                    {version.aqlValue == null
+                    {version?.aqlValue == null
                       ? t.target.conditionNone
                       : t.target.conditionAql(version.aqlValue)}
                   </dd>
@@ -1324,35 +1309,46 @@ const InspectionForm = (props: FormProps) => {
         </div>
       </section>
 
-      <MeasurementTable
-        items={dimensions}
-        uomCodeOf={uoms.codeOf}
-        values={form.values}
-        versionAcceptance={versionAcceptance}
-        judgments={form.checks}
-        disabled={submit.isSaving}
-        onChange={(itemId, index, text) => change(withValue(form, itemId, index, text))}
-        onJudge={(itemId, judgment) =>
-          change({ ...form, checks: { ...form.checks, [itemId]: judgment } })
-        }
-        blockedNote={
-          manualUnjudged.length > 0
-            ? messages.iqcInspection.measurements.blockedIncomplete
-            : defectsMissing
-              ? t.visual.defectsRequired
-              : null
-        }
-        checkItems={checkItems}
-        texts={form.texts}
-        onText={changeText}
-        {...(aqlPlan === null
-          ? {}
-          : {
-              defects: form.defects,
-              onDefects: (itemId: number, text: string) =>
-                change({ ...form, defects: { ...form.defects, [itemId]: text } }),
-            })}
-      />
+      {!noPlan && (
+        <MeasurementTable
+          headNote={specs.length > 0 ? <PlanNote text={t.dialog.planVersionNote} /> : null}
+          items={dimensions}
+          uomCodeOf={uoms.codeOf}
+          values={form.values}
+          versionAcceptance={versionAcceptance}
+          judgments={form.checks}
+          disabled={submit.isSaving}
+          onChange={(itemId, index, text) => change(withValue(form, itemId, index, text))}
+          onJudge={(itemId, judgment) =>
+            change({ ...form, checks: { ...form.checks, [itemId]: judgment } })
+          }
+          blockedNote={
+            manualUnjudged.length > 0
+              ? messages.iqcInspection.measurements.blockedIncomplete
+              : defectsMissing
+                ? t.visual.defectsRequired
+                : null
+          }
+          checkItems={checkItems}
+          texts={form.texts}
+          onText={changeText}
+          {...(aqlPlan === null
+            ? {}
+            : {
+                defects: form.defects,
+                onDefects: (itemId: number, text: string) =>
+                  change({ ...form, defects: { ...form.defects, [itemId]: text } }),
+              })}
+        />
+      )}
+
+      {/* 기준이 없을 때 안내 — 종합 판정 바로 위(omf-all-around#351 · 사용자 지시 2026-11-23). */}
+      {noPlan && (
+        <div className="parts-iqc-no-plan">
+          <PlanNote text={t.dialog.noPlan} />
+          {props.noPlanAction}
+        </div>
+      )}
 
       {/* 종합 판정 — 검사 항목 아래(#247 · 사용자 지시 2026-11-10). 왼쪽 자동 판정 결과 상자 · 세로선 · 오른쪽 종합 판정 고르기(사용자 시안 2026-10-29) */}
       <section className="parts-iqc-card" aria-labelledby="parts-iqc-verdict">
@@ -1365,7 +1361,9 @@ const InspectionForm = (props: FormProps) => {
           >
             <span className="parts-iqc-auto-label">{t.verdict.suggested}</span>
             {suggested === null ? (
-              <span className="parts-iqc-muted">{t.verdict.pending}</span>
+              <span className="parts-iqc-muted">
+                {noPlan ? t.verdict.noPlan : t.verdict.pending}
+              </span>
             ) : (
               <span className="parts-iqc-auto-value">
                 <strong>{t.judgment[suggested] ?? suggested}</strong>
@@ -1383,7 +1381,7 @@ const InspectionForm = (props: FormProps) => {
             <Select
               aria-labelledby="parts-iqc-overall"
               value={overall}
-              disabled={suggested === null}
+              disabled={suggested === null && !noPlan}
               options={['ACCEPTED', 'REJECTED', 'HELD'].map((value) => ({
                 value,
                 label: t.judgment[value] ?? value,

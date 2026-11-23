@@ -181,8 +181,9 @@ export const PreviewPane = ({
     );
   };
 
+  /* 상자(`미리보기` 구획)는 화면이 상세 자리에 세운다(#350) — 여기는 그 안의 제목과 본문만. */
   return (
-    <section className="pane shot-conversion-pane" aria-label={t.paneTitle}>
+    <>
       <h2 className="pane-title">{t.paneTitle}</h2>
 
       {/*
@@ -220,6 +221,6 @@ export const PreviewPane = ({
 
         {result()}
       </div>
-    </section>
+    </>
   );
 };

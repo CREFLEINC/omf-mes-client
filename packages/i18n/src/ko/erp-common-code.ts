@@ -18,7 +18,6 @@ export const erpCommonCode = {
     description: '설명',
     isActive: '사용',
     openAction: (groupCode: string): string => `${groupCode} 코드값 보기`,
-    count: (count: number): string => `${String(count)}개 그룹`,
   },
   values: {
     label: '코드값',

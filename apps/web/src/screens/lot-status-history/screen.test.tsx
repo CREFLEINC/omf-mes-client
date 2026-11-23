@@ -3,7 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { components } from '@omf-mes/api-client';
 import { useLocation } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   createStubFetch,
@@ -1306,6 +1306,75 @@ describe('Lot Status 화면 shell', () => {
 
     expect(await within(detail).findByText(/일부 처리자 이름을 확인하지 못해/)).toBeVisible();
     expect(within(detail).getByRole('table', { name: '보류 이력' })).toBeVisible();
+  });
+});
+
+/* 목록 제목 줄 「목록 접기」(#350) — 건수는 목록이 `onTotalChange` 로 알린 전체 건수다. */
+describe('Lot Status 화면 — 목록 접기(#350)', () => {
+  const collapseLabel = messages.common.inspectionHub.listCollapse;
+
+  afterEach(() => {
+    window.localStorage.removeItem('omf-mes:lot-status:split:collapsed');
+    window.localStorage.removeItem('omf-mes:lot-status-history:split:collapsed');
+  });
+
+  it('LOT 현황 — 제목 줄 · 접힌 탭에 전체 건수가 서고, 펼친 뒤에도 고른 LOT · 적던 LOT 스캔이 그대로다', async () => {
+    renderScreen('/quality/lot-status?lot=401', 'ready', [
+      ...qualityRoutes(200, 200, [statusRow], 1234),
+      ...detailRoutes(),
+    ]);
+    const user = userEvent.setup();
+    const table = await screen.findByRole('table', { name: 'LOT 현황' });
+    const list = screen.getByRole('region', { name: 'LOT 현황' });
+    const split = list.closest('.lot-status-split');
+    /* 받은 줄(1건)이 아니라 응답의 전체 건수다. */
+    await waitFor(() =>
+      expect(list.querySelector('.po-board-list-count')).toHaveTextContent('1234건'),
+    );
+    expect(within(table).getByText('SAMPLE-LOT-001')).toHaveAttribute('aria-current', 'true');
+    await user.type(screen.getByLabelText('LOT 스캔'), 'SAMPLE-DRAFT');
+
+    await user.click(screen.getAllByRole('button', { name: collapseLabel })[0]!);
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = split!.querySelector('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록1234건');
+
+    await user.click(tab as HTMLElement);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    expect(within(table).getByText('SAMPLE-LOT-001')).toHaveAttribute('aria-current', 'true');
+    expect(screen.getByRole('region', { name: 'LOT 상세' })).toBeInTheDocument();
+    expect(screen.getByLabelText('LOT 스캔')).toHaveValue('SAMPLE-DRAFT');
+  });
+
+  it('LOT 상태 이력 — 제목 줄 · 접힌 탭에 합친 이력 건수가 서고, 펼친 뒤에도 고른 줄 · 적던 LOT 스캔이 그대로다', async () => {
+    renderScreen('/quality/lot-status?mode=history&from=2026-08-01&to=2026-08-07', 'ready', [
+      ...holdRoutes(),
+      ...eventRoutes(),
+      ...detailRoutes(),
+    ]);
+    const user = userEvent.setup();
+    const table = await screen.findByRole('table', { name: 'LOT 이력' });
+    const list = screen.getByRole('region', { name: 'LOT 이력' });
+    const split = list.closest('.lot-status-split');
+    expect(within(list).getByRole('heading', { name: 'LOT 이력' })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(list.querySelector('.po-board-list-count')).toHaveTextContent('4건'),
+    );
+    await user.click(within(table).getAllByRole('row')[1]!);
+    const picked = () =>
+      within(table).getAllByRole('row')[1]!.querySelector('[aria-current="true"]');
+    await waitFor(() => expect(picked()).not.toBeNull());
+    await user.type(screen.getByLabelText('LOT 스캔'), 'SAMPLE-DRAFT');
+
+    await user.click(screen.getAllByRole('button', { name: collapseLabel })[0]!);
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = split!.querySelector('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록4건');
+
+    await user.click(tab as HTMLElement);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    expect(picked()).not.toBeNull();
+    expect(screen.getByLabelText('LOT 스캔')).toHaveValue('SAMPLE-DRAFT');
   });
 });
 

@@ -402,29 +402,6 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           },
         ],
       },
-      /*
-       * 품질 승인 처리 — 긴급 IQC 생략 한도승인(W-01-02)을 유형 탭 하나로 품는다(#144). 탭은 화면이 유형 탭
-       * 줄에 직접 그린다(`inlineTabs`) — 셸 탭 막대까지 서면 탭 줄이 둘이 된다.
-       */
-      {
-        to: '/quality/approvals',
-        icon: 'approval',
-        label: '품질 승인 처리',
-        labelVi: 'Xử lý phê duyệt chất lượng',
-        inlineTabs: true,
-        tabs: [
-          {
-            to: '/quality/approvals',
-            label: '품질 승인 처리',
-            labelVi: 'Xử lý phê duyệt chất lượng',
-          },
-          {
-            to: '/logistics/iqc-skip-approval',
-            label: 'IQC (수입검사) 생략',
-            labelVi: 'Bỏ qua IQC (kiểm tra đầu vào)',
-          },
-        ],
-      },
       /* W-03-10 — 여기서 정한 처분이 폐기·재등록·재작업 화면의 진입을 연다. */
       {
         to: '/quality/dispositions',
@@ -633,16 +610,16 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         ],
       },
       /*
-       * 공정 경로 관리 — 공정 경로(Routing) · 공정 관리(공정 마스터)를 사이드바 한 줄 · 본문 맨 위 탭으로 묶는다
+       * 라우팅 관리 — 라우팅(Routing) · 공정 관리(공정 마스터)를 사이드바 한 줄 · 본문 맨 위 탭으로 묶는다
        * (사용자 지시 · omf-all-around#231). 두 탭 모두 W-06-01 이다.
        */
       {
         to: '/master-data/routing',
         icon: 'account_tree',
-        label: '공정 경로 관리',
+        label: '라우팅 관리',
         labelVi: 'Quản lý lộ trình công đoạn',
         tabs: [
-          { to: '/master-data/routing', label: '공정 경로', labelVi: 'Lộ trình công đoạn' },
+          { to: '/master-data/routing', label: '라우팅', labelVi: 'Lộ trình công đoạn' },
           { to: '/master-data/processes', label: '공정 관리', labelVi: 'Quản lý công đoạn' },
         ],
       },

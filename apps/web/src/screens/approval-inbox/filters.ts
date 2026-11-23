@@ -1,6 +1,7 @@
 import type { paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { approvalTypeLabelOf } from './code-options';
 import { DEFAULT_TAB, toTabScopeQuery, type InboxTab } from './tabs';
 import type { InboxFilters } from './types';
 
@@ -244,7 +245,7 @@ export const toFilterChips = (filters: InboxFilters): InboxFilterChip[] => {
   if (filters.approvalTypeCode !== '') {
     chips.push({
       key: 'approvalTypeCode',
-      label: t.filters.chipApprovalType(filters.approvalTypeCode),
+      label: t.filters.chipApprovalType(approvalTypeLabelOf(filters.approvalTypeCode)),
       removeLabel: t.filters.chipRemoveApprovalType,
     });
   }

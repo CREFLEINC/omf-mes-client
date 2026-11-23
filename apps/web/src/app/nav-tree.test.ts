@@ -240,8 +240,6 @@ describe('주 메뉴 트리', () => {
       '/quality/lot-status-history → history',
       '/quality/lot-status-transition → history',
       '/quality/suspicious-material-hold → history',
-      '/quality/approvals → approval',
-      '/logistics/iqc-skip-approval → approval',
       '/quality/dispositions → gavel',
       '/production/production-orders → account_tree',
       '/production/po-change-review → account_tree',

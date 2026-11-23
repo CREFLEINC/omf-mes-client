@@ -7,8 +7,6 @@
  * 두 화면이 한 계산의 입력을 나눠 갖고, 나누는 선이 「툴 고유 ↔ 품목·공정 정책」이다.
  */
 export const shotConversion = {
-  title: '타발수 환산 파라미터 설정',
-  breadcrumbRoot: '기준정보 관리',
   optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
   optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
   /**

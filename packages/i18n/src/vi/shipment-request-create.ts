@@ -4,7 +4,6 @@ import type { Translated } from './translated';
 /** W-04-01 출하작업지시 생성. ERP S/O 경유와 ERP S/O 없이 생성이 한 폼을 나눠 쓴다. */
 export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> = {
   title: 'Tạo lệnh xuất hàng',
-  breadcrumbRoot: 'Quản lý bán hàng / xuất hàng',
   panes: {
     source: 'Danh sách ERP S/O',
     header: 'Thông tin lệnh xuất hàng',

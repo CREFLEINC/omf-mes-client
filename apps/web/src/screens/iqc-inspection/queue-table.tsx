@@ -1,6 +1,6 @@
-import { Chip, Table, type Column } from '@crefle/web-ui';
+import { Chip, Table, type Column, type SortState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { formatQty } from '../../patterns/package-qty';
@@ -8,7 +8,6 @@ import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 /* 대기·진행 밖의 상태(완료·생략·취소)도 실린다(#185) — 다섯 값을 다 아는 OQC 표식을 쓴다(PQC 와 같다). */
 import { toStatusBadge } from '../oqc-inspection/status-badge';
-import { InboundQueueSkipCell, QueueSkipCell, QueueStatusCell } from './queue-skip-cell';
 import { formatDateTime, type InspectionQueueInbound, type InspectionQueueRow } from './types';
 import { useUomLookup, withUom } from './uom-lookup';
 import type { ItemNameLookup, NameLookup } from './reference-lookup';
@@ -133,8 +132,6 @@ const InboundJudgmentCell = ({
   return <span className="iqc-inbound-queue-none">—</span>;
 };
 
-const SKIPPABLE: readonly string[] = ['REQUESTED', 'IN_PROGRESS'];
-
 /**
  * 목록에서는 품목 이름의 「【 … 】」 덧붙임(고객 품번 등)을 뺀 이름만 보인다(사용자 지시 2026-10-27 · #185).
  * 전체 이름은 마우스를 올리면 보이고, 상세는 그대로다.
@@ -155,13 +152,6 @@ export interface QueueTableProps {
   /** 고른 의뢰. 없으면 `null` — 아무 줄도 현재가 아니다 */
   selectedId: number | null;
   onSelect: (inspectionRequestId: number) => void;
-  /**
-   * 「생략」 칸(omf-all-around#225) — 주면 대기·진행 중이고 LOT 이 있는 줄에 생략 결재 단계의 단추가 선다.
-   * 값은 계정에 연결된 작업자 사번이다(없으면 `null` · 요청 단추가 잠긴다). 주지 않으면 열을 세우지 않는다.
-   */
-  skipWorkerNo?: string | null;
-  /** 생략 실행 뒤 함께 새로 읽을 목록 — 부품 IQC 화면이 이 표를 쓴다(#225). */
-  skipAlsoInvalidate?: readonly (readonly unknown[])[];
   /** 결과가 없을 때 표 자리에 그릴 것. 조회 실패와 빈 결과는 부르는 쪽이 가른다 */
   empty: ReactNode;
 }
@@ -172,8 +162,6 @@ const columnsOf = (
   itemNames: ItemNameLookup,
   lotNumbers: NameLookup,
   suppliers: NameLookup,
-  skipWorkerNo: string | null | undefined,
-  skipAlsoInvalidate: readonly (readonly unknown[])[] | undefined,
   hasInbound: boolean,
 ): Column<InspectionQueueRow>[] => [
   {
@@ -335,43 +323,13 @@ const columnsOf = (
     render: (row) => {
       const inboundStatus = row.inbound === null ? null : inboundStatusOf(row, row.inbound);
       if (inboundStatus !== null) {
-        /* 확정 전 입하 LOT 줄도 생략 결재 단계를 상태로 보인다(#225 · #274). */
-        if (
-          skipWorkerNo !== undefined &&
-          inboundStatus !== 'CONFIRMED' &&
-          row.inbound?.inboundLotId != null
-        ) {
-          return (
-            <QueueStatusCell
-              targetId={row.inbound.inboundLotId}
-              fallback={{
-                label: ti.status[inboundStatus],
-                tone: INBOUND_STATUS_TONE[inboundStatus],
-              }}
-            />
-          );
-        }
         return (
           <Chip variant="status" size="sm" status={INBOUND_STATUS_TONE[inboundStatus]}>
             {ti.status[inboundStatus]}
           </Chip>
         );
       }
-      const basic = toStatusBadge(row.statusCode, row.skipBasisCode);
-      /* 결재로 생략된 의뢰는 「생략」 하나로(사용자 지시 2026-11-02 · #225) — 기본 설정 생략은 그대로 가른다. */
-      const badge =
-        row.statusCode === 'SKIPPED' && row.skipBasisCode === 'APPROVAL'
-          ? { ...basic, label: t.skipStatus.SKIPPED ?? basic.label }
-          : basic;
-      /* 생략 칸이 서는 줄은 생략 결재 단계를 상태로 보인다(#225). */
-      if (
-        skipWorkerNo !== undefined &&
-        row.inbound === null &&
-        row.lotId !== null &&
-        SKIPPABLE.includes(row.statusCode)
-      ) {
-        return <QueueStatusCell targetId={row.lotId} fallback={badge} />;
-      }
+      const badge = toStatusBadge(row.statusCode, row.skipBasisCode);
 
       return (
         <Chip variant="status" size="sm" status={badge.tone}>
@@ -405,38 +363,21 @@ const columnsOf = (
     width: '170px',
     render: (row) => row.inspectionRequestNo,
   },
-  ...(skipWorkerNo === undefined
-    ? []
-    : [
-        {
-          key: 'skip',
-          align: 'center',
-          header: t.columns.skip,
-          width: '120px',
-          /* 대기·진행 중이고 LOT 이 있는 의뢰에만 둔다 — 끝난 의뢰는 생략할 것이 없다(생략됨은 상태 칸이 말한다). */
-          /* 입하 LOT 줄(005)도 확정 전이면 둔다 — 생략은 입하 LOT 전체에 걸린다(사용자 지시 2026-11-16 · #274). */
-          render: (row) => {
-            if (!SKIPPABLE.includes(row.statusCode)) return null;
-            if (row.inbound !== null) {
-              return row.inbound.inboundLotId !== null && !isConfirmed(row, row.inbound) ? (
-                <InboundQueueSkipCell
-                  inboundLotId={row.inbound.inboundLotId}
-                  workerNo={skipWorkerNo}
-                  alsoInvalidate={skipAlsoInvalidate}
-                />
-              ) : null;
-            }
-            return row.lotId !== null ? (
-              <QueueSkipCell
-                lotId={row.lotId}
-                workerNo={skipWorkerNo}
-                alsoInvalidate={skipAlsoInvalidate}
-              />
-            ) : null;
-          },
-        } satisfies Column<InspectionQueueRow>,
-      ]),
 ];
+
+/*
+ * 입하 LOT · 상태 · 종합 판정은 칸 가운데(omf-all-around#351 · 사용자 지시 2026-11-23) — 품질 표 공통 「칸 값 왼쪽」(`cells-start`)
+ * 위에 이 세 칸만 표식을 달아 가운데로 돌린다. 열 순서를 사용자가 바꾸므로 몇 번째 칸인지가 아니라 표식으로 가른다.
+ */
+const CENTERED_KEYS = new Set(['lotId', 'statusCode', 'overallJudgment']);
+const centered = (column: Column<InspectionQueueRow>): Column<InspectionQueueRow> => {
+  const { render } = column;
+  if (!CENTERED_KEYS.has(column.key) || render === undefined) return column;
+  return {
+    ...column,
+    render: (row, index) => <span className="iqc-queue-center">{render(row, index)}</span>,
+  };
+};
 
 export const QueueTable = ({
   rows,
@@ -445,27 +386,35 @@ export const QueueTable = ({
   suppliers,
   selectedId,
   onSelect,
-  skipWorkerNo,
-  skipAlsoInvalidate,
   empty,
   scrollX = false,
 }: QueueTableProps) => {
+  /*
+   * 목록은 의뢰 일시 오름차순으로 온다 — 처음부터 ▲ 로 보이고, 누를 때마다 오름 ↔ 내림만 오간다(omf-all-around#351 ·
+   * 사용자 지시 2026-11-23). 표 기본은 「정렬 없음」을 거치는데, 그 상태가 오름차순과 같아 눌러도 안 바뀌는 것처럼 보였다.
+   */
+  const [sort, setSort] = useState<SortState>({ key: 'requestedAt', direction: 'ascending' });
+  const changeSort = (next: SortState | null) =>
+    setSort(
+      next ?? {
+        key: sort.key,
+        direction: sort.direction === 'ascending' ? 'descending' : 'ascending',
+      },
+    );
+  /* 제어 정렬이면 표가 줄을 다시 세우지 않는다 — 받은 줄을 의뢰 일시로 세운다(같은 일시는 받은 순서 그대로). */
+  const sortedRows = useMemo(() => {
+    const byTime = [...rows].sort((a, b) =>
+      a.requestedAt < b.requestedAt ? -1 : a.requestedAt > b.requestedAt ? 1 : 0,
+    );
+    return sort.direction === 'ascending' ? byTime : byTime.reverse();
+  }, [rows, sort.direction]);
   /* 입하 LOT 줄(005)이 하나라도 있으면 그 칸들과 건수를 더한다 — 이전 데이터 줄만 있으면 지금 그대로다. */
   const hasInbound = rows.some((row) => row.inbound !== null);
   /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다(#185) — 순서를 먼저 정하고 그 위에 폭 손잡이를 단다. */
   /* 의뢰 일시를 첫 칸으로 옮기며 저장 열쇠를 바꿨다(v2) — 예전에 남긴 순서가 새 기본 순서를 가리지 않는다. */
   const ordered = useColumnOrder(
     'omf-mes:iqc-inspection:columns:queue:order:v2',
-    columnsOf(
-      selectedId,
-      onSelect,
-      itemNames,
-      lotNumbers,
-      suppliers,
-      skipWorkerNo,
-      skipAlsoInvalidate,
-      hasInbound,
-    ),
+    columnsOf(selectedId, onSelect, itemNames, lotNumbers, suppliers, hasInbound).map(centered),
   );
   const resizable = useColumnWidths('omf-mes:iqc-inspection:columns:queue', ordered, {
     /* 좌우 배치(가로 스크롤)에서는 열이 그 데이터의 가장 긴 폭까지만 넓어진다(사용자 지시 2026-10-26). */
@@ -498,8 +447,10 @@ export const QueueTable = ({
           caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
           density="compact"
           columns={fit.columns}
-          rows={rows}
+          rows={sortedRows}
           getRowId={(row) => String(row.inspectionRequestId)}
+          sort={sort}
+          onSortChange={changeSort}
           empty={empty}
         />
       </div>

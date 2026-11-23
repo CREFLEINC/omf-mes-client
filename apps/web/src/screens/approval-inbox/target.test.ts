@@ -66,10 +66,10 @@ describe('대상 열기 판정', () => {
     });
   });
 
-  it('W-03-09 대상은 승인 요청 ID를 정식 선택 키로 전달한다', () => {
-    expect(judgeTargetOpen(target(true, 'W-03-09'), 9001, SCREEN_ROUTES)).toEqual({
+  it('W-04-02 대상은 승인 요청 ID를 정식 선택 키로 전달한다', () => {
+    expect(judgeTargetOpen(target(true, 'W-04-02'), 9001, SCREEN_ROUTES)).toEqual({
       kind: 'open',
-      path: '/quality/approvals?approvalRequestId=9001',
+      path: '/shipment/shipment-schedule?approvalRequestId=9001',
     });
   });
 });

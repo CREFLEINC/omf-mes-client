@@ -49,7 +49,6 @@ import { supplierReturn } from './supplier-return';
 import { disposalIssue } from './disposal-issue';
 import { approvalRoute } from './approval-route';
 import { approvalInbox } from './approval-inbox';
-import { iqcSkipApproval } from './iqc-skip-approval';
 import { login } from './login';
 import { session } from './session';
 import { stockAdjust } from './stock-adjust';
@@ -71,7 +70,6 @@ import { partsIqcInspection } from './parts-iqc-inspection';
 import { pqcInspection } from './pqc-inspection';
 import { productionResult } from './production-result';
 import { equipmentMaster } from './equipment-master';
-import { qualityApproval } from './quality-approval';
 import { productionOrder } from './production-order';
 import { erpPurchaseOrder } from './erp-purchase-order';
 import { erpSalesOrder } from './erp-sales-order';
@@ -120,7 +118,6 @@ import { deviceRegistration } from './device-registration';
 import { equipmentFailureReport } from './equipment-failure-report';
 import { outboxPending } from './outbox-pending';
 import { outboxRejections } from './outbox-rejections';
-import { iqcSkipRequest } from './iqc-skip-request';
 import { equipmentInspection } from './equipment-inspection';
 import { oqcInspection } from './oqc-inspection';
 import { judgmentConfirm } from './judgment-confirm';
@@ -214,7 +211,6 @@ export const ko = {
   disposalIssue,
   approvalRoute,
   approvalInbox,
-  iqcSkipApproval,
   login,
   session,
   stockAdjust,
@@ -236,7 +232,6 @@ export const ko = {
   pqcInspection,
   productionResult,
   equipmentMaster,
-  qualityApproval,
   productionOrder,
   erpPurchaseOrder,
   erpSalesOrder,
@@ -282,7 +277,6 @@ export const ko = {
   equipmentFailureReport,
   outboxPending,
   outboxRejections,
-  iqcSkipRequest,
   equipmentInspection,
   oqcInspection,
   judgmentConfirm,
