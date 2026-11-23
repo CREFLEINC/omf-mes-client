@@ -8,8 +8,6 @@
  * 같은 유형·사업부로 사용 중인 결재선이 둘 이상일 수 있고 고르는 규칙은 서버가 갖는다.
  */
 export const approvalRoute = {
-  title: '결재선 정의',
-  breadcrumbRoot: '시스템 관리',
   panes: {
     list: '결재선 목록',
     detail: '고른 결재선',

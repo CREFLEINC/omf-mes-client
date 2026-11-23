@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { PaneSplitter, useFitToViewport, usePaneSplit } from './po-board';
+import { PaneListHead, PaneSplitter, useFitToViewport, usePaneSplit } from './po-board';
 
 /** 한 구획 — 접근 이름(보이지 않아도 구획을 부르는 이름)과 내용. */
 export interface BoardFramePane {
@@ -11,8 +11,11 @@ export interface BoardFramePane {
 interface BoardFrameBase {
   /** 위 상자 — 조회 조건 · 목록 조회 실패 안내. 크기가 바뀌면 아래 구획이 창 바닥에 다시 맞춘다. */
   above?: BoardFramePane;
-  /** 왼쪽(상세가 없으면 전체 폭) — 목록. 표가 구획 안에서 스크롤하고(머리줄 고정) 표 아래 쪽 이동은 바닥에 선다. */
-  list: BoardFramePane;
+  /**
+   * 왼쪽(상세가 없으면 전체 폭) — 목록. 표가 구획 안에서 스크롤하고(머리줄 고정) 표 아래 쪽 이동은 바닥에 선다.
+   * 두 구획이면 맨 위에 「이름 · 건수 · 목록 접기」 제목 줄이 선다(#350) — `count` 는 그 건수(조회 전이면 비운다).
+   */
+  list: BoardFramePane & { count?: number };
 }
 
 /** 목록 | 상세 두 구획. */
@@ -64,6 +67,13 @@ export const BoardFrame = ({
   /* 훅은 늘 부른다 — 한 구획이면 그 결과를 쓰지 않는다. */
   const split = usePaneSplit(splitKey ?? 'omf-mes:board-frame:single', initialRatio);
   const isSingle = detail === undefined || splitter === undefined;
+  const collapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: splitter?.collapseLabel ?? '',
+    expandLabel: splitter?.expandLabel ?? '',
+    count: list.count,
+  };
 
   return (
     <>
@@ -88,6 +98,7 @@ export const BoardFrame = ({
           data-left-collapsed={split.collapsed ? 'true' : undefined}
         >
           <section className="pane po-board-pane" aria-label={list.label}>
+            <PaneListHead title={list.label} collapse={collapse} />
             {list.content}
           </section>
 
@@ -95,12 +106,7 @@ export const BoardFrame = ({
             label={splitter.label}
             ratio={split.ratio}
             onChange={split.commit}
-            collapse={{
-              collapsed: split.collapsed,
-              onToggle: split.toggleCollapsed,
-              collapseLabel: splitter.collapseLabel,
-              expandLabel: splitter.expandLabel,
-            }}
+            collapse={collapse}
           />
 
           <section

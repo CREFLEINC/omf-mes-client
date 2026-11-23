@@ -19,7 +19,12 @@ import {
 import type { ScopedPlant } from '../../patterns/oa-access';
 import { PageNav } from '../../patterns/page-nav';
 import { usePageHub } from '../../patterns/page-hub';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import { toApiError } from '../../patterns/request';
 import { Select } from '../../patterns/select';
 import {
@@ -313,6 +318,10 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
           className="pane iqc-inspection-panes iqc-inspection-queue-pane"
           aria-label={oa.queue.heading}
         >
+          <PaneListHead
+            title={oa.queue.heading}
+            collapse={{ ...listCollapse, count: queue.data?.page.total }}
+          />
           {queue.isError && (
             <QueueLoadErrorBanner
               error={toApiError(queue.error)}
@@ -345,7 +354,7 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
           label={hubText.splitter}
           ratio={split.ratio}
           onChange={split.commit}
-          collapse={listCollapse}
+          collapse={{ ...listCollapse, count: queue.data?.page.total }}
         />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter

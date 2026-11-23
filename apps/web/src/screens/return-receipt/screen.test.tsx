@@ -231,6 +231,34 @@ describe('ReturnReceiptScreen — 원 출하가 있는 반품', () => {
   });
 
   /* G-2 — 사유 코드값이 비면 지어내지 않고 칸을 잠근다. 사유는 선택이라 등록은 막지 않는다. */
+  /* 목록 제목 줄 「목록 접기」 · 접힌 「목록 N건」 탭(#350). */
+  it('목록을 접으면 탭에 건수가 서고, 펼친 뒤에도 고른 출하 · 적어 둔 수량 · 검색어가 그대로다', async () => {
+    const collapsedKey = 'omf-mes:return-receipt:list:collapsed';
+    window.localStorage.removeItem(collapsedKey);
+    const { user } = renderScreen();
+    await selectShipment(user);
+    await user.type(linesGroup().getByLabelText(`LOT-TEST-0311 ${t.fields.returnQty}`), '40');
+    await user.type(screen.getByLabelText(t.fields.keyword), 'SH-TEST');
+    const workspace = document.querySelector('.return-receipt-workspace');
+
+    await user.click(
+      screen.getByRole('button', { name: messages.common.inspectionHub.listCollapse }),
+    );
+    expect(workspace).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = workspace!.querySelector<HTMLElement>('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록2건');
+
+    await user.click(tab!);
+    expect(workspace).not.toHaveAttribute('data-left-collapsed');
+    expect(workspace!.querySelector('.po-board-list-tab')).toBeNull();
+    expect(
+      screen.getByRole('button', { name: t.actions.selectRow('SH-TEST-0455') }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    expect(linesGroup().getByLabelText(`LOT-TEST-0311 ${t.fields.returnQty}`)).toHaveValue('40');
+    expect(screen.getByLabelText(t.fields.keyword)).toHaveValue('SH-TEST');
+    window.localStorage.removeItem(collapsedKey);
+  });
+
   it('반품 사유 코드값이 비면 사유 칸만 잠긴다', async () => {
     const { user } = renderScreen({ emptyReasons: true });
     await selectShipment(user);

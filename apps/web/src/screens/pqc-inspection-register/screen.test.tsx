@@ -611,4 +611,31 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     expect(await screen.findByText(pqc.result.saved)).toBeInTheDocument();
     expect(pane.getByRole('textbox', { name: web.quantity.accepted })).toHaveValue('4');
   });
+
+  /* 목록 접기(#350) — 접힌 탭에 건수, 펼치면 고른 의뢰 · 적던 수량이 그대로. */
+  it('목록을 접으면 「목록 N건」 탭이 서고, 펼쳐도 고른 의뢰와 적던 수량이 그대로다(#350)', async () => {
+    const storageKey = 'omf-mes:pqc-inspection-register:split:collapsed';
+    window.localStorage.removeItem(storageKey);
+    const user = userEvent.setup();
+    renderScreen();
+    const pane = await openRequest(user);
+    await user.clear(await pane.findByRole('textbox', { name: web.quantity.accepted }));
+    await user.type(pane.getByRole('textbox', { name: web.quantity.accepted }), '1');
+    const split = document.querySelector('.po-board-split');
+
+    await user.click(screen.getAllByRole('button', { name: hub.listCollapse })[0]!);
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = split!.querySelector<HTMLElement>('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록1건');
+
+    await user.click(tab!);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    expect(
+      within(screen.getByRole('region', { name: t.queue.heading })).getByText(
+        REQUEST.inspectionRequestNo,
+      ),
+    ).toHaveAttribute('aria-current', 'true');
+    expect(pane.getByRole('textbox', { name: web.quantity.accepted })).toHaveValue('1');
+    window.localStorage.removeItem(storageKey);
+  });
 });

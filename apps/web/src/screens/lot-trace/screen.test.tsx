@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigationType } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { plantToday } from '../../patterns/plant-time';
 import { SessionProvider } from '../../patterns/session';
@@ -502,6 +502,32 @@ describe('W-02-09 LOT 생산 이력 조회: 이력 목록', () => {
     await user.click(screen.getByRole('button', { name: 'W/O 번호 조건 제거' }));
     await waitFor(() => expect(navState()).not.toContain('wo='));
     expect(screen.queryByText(chip)).toBeNull();
+  });
+});
+
+/* 목록 제목 줄 「목록 접기」(#350) — 접어도 고른 줄은 그대로다(글 조건은 칸을 떠나면 바로 반영돼 따로 보지 않는다). */
+describe('W-02-09 LOT 생산 이력 조회: 목록 접기', () => {
+  afterEach(() => {
+    window.localStorage.removeItem('omf-mes:lot-trace:split:collapsed');
+  });
+
+  it('접으면 「목록 N건」 탭이 서고, 펼친 뒤에도 고른 줄 · 상세가 그대로다', async () => {
+    const user = userEvent.setup();
+    setup({ route: `${ROUTE}&kind=MATERIAL` });
+    const rowName = 'GR-SYN-0001 ITEM-A|500|261023|SUP-A|0001 상세 보기';
+    await user.click(await screen.findByRole('row', { name: rowName }));
+    expect(screen.getByRole('row', { name: rowName })).toHaveAttribute('aria-selected', 'true');
+    const split = document.querySelector('.lot-trace-split');
+
+    await user.click(screen.getAllByRole('button', { name: '목록 접기' })[0]!);
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = split!.querySelector('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록2건');
+
+    await user.click(tab as HTMLElement);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    expect(screen.getByRole('row', { name: rowName })).toHaveAttribute('aria-selected', 'true');
+    expect(navState()).toContain('selected=101');
   });
 });
 

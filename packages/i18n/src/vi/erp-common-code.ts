@@ -15,7 +15,6 @@ export const erpCommonCode: Translated<typeof ko.erpCommonCode> = {
     description: 'Mô tả',
     isActive: 'Sử dụng',
     openAction: (groupCode: string): string => `Xem giá trị mã của ${groupCode}`,
-    count: (count: number): string => `${String(count)} nhóm`,
   },
   values: {
     label: 'Giá trị mã',

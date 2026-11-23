@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { renderWithProviders } from '../../test/api-harness';
 import { dispositionEntryPath } from '../disposition-decision/filters';
@@ -427,5 +427,38 @@ describe('DispositionRequestScreen — ③ 결과 수신 후', () => {
     expect(resultPane().getByRole('button', { name: t.actions.openDecision })).toBeDisabled();
     expect(resultPane().getByText(t.result.followUp.openDecisionUnavailable)).toBeInTheDocument();
     expect(resultPane().getByText(t.result.notRequested)).toBeInTheDocument();
+  });
+});
+
+describe('DispositionRequestScreen — 목록 접기(#350)', () => {
+  afterEach(() => {
+    window.localStorage.removeItem('omf-mes:disposition-request:list:collapsed');
+  });
+
+  it('접으면 「목록 N건」 탭이 서고, 펼쳐도 고른 대상 · 적던 내용이 그대로다', async () => {
+    const { user } = renderScreen({ allCandidates: true });
+    await selectRow(user);
+    await waitFor(() => {
+      expect(registerPane().getByRole('button', { name: t.actions.register })).toBeEnabled();
+    });
+    const description = () =>
+      registerPane().getByLabelText(new RegExp(t.register.descriptionLabel));
+    await user.type(description(), '외관 스크래치');
+    const workspace = document.querySelector('.disposition-request-workspace')!;
+
+    await user.click(
+      screen.getAllByRole('button', { name: messages.common.inspectionHub.listCollapse })[0]!,
+    );
+    expect(workspace).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = workspace.querySelector<HTMLElement>('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록3건');
+
+    await user.click(tab!);
+    expect(workspace).not.toHaveAttribute('data-left-collapsed');
+    expect(workspace.querySelector('.po-board-list-tab')).toBeNull();
+    expect(
+      screen.getByRole('button', { name: t.actions.selectRow('LOT-TEST-0311') }),
+    ).toHaveAttribute('aria-current', 'true');
+    expect(description()).toHaveValue('외관 스크래치');
   });
 });

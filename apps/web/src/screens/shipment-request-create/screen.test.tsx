@@ -381,7 +381,8 @@ describe('ShipmentRequestCreateScreen — 지시서 가져오기(완료 조건 C
   it('쓸 수 없는 「지시서 가져오기」 단추를 세우지 않는다', async () => {
     renderScreen({ fetch: createStubFetch(baseRoutes()) });
 
-    expect(await screen.findByRole('heading', { name: t.title })).toBeInTheDocument();
+    /* 제목 줄은 통일 배치에서 뺐다(#350) — 편성 상세 상자가 화면 이름을 단다. */
+    expect(await screen.findByRole('region', { name: t.title })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '지시서 가져오기' })).toBeNull();
     expect(screen.getByRole('button', { name: t.actions.startStandalone })).toBeInTheDocument();
     expect(t.actions.startStandalone).toBe('ERP S/O 없이 생성');

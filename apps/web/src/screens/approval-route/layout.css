@@ -1,0 +1,12 @@
+/*
+ * 고른 결재선 줄 — 다른 목록 | 상세 화면과 같은 정보 파랑 바탕 + 왼쪽 3px 선(#350 회귀 시험 — 종전엔 승인 유형 단추의
+ * `aria-current` 만 있어 어느 줄을 골랐는지 보이지 않았다).
+ */
+.approval-route-list tbody tr:has(.link-cell[aria-current='true']) > td,
+.approval-route-list tbody tr:has(.link-cell[aria-current='true']):hover > td {
+  background: var(--semantic-info-container);
+}
+
+.approval-route-list tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
+  box-shadow: inset 3px 0 0 var(--semantic-info);
+}

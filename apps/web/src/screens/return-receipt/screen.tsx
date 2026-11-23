@@ -56,6 +56,7 @@ import { SearchPane } from './search-pane';
 import { ShipmentList } from './shipment-list';
 import { toLotLineSource, toReturnLineSources, type ShipmentRow } from './types';
 import { ScreenHeader } from '../../patterns/screen-header';
+import { ListCollapseTab, PaneListHead, usePaneSplit } from '../../patterns/po-board';
 
 const selectionKeyOf = (selection: Selection): string =>
   selection.kind === 'shipment' ? `shipment:${String(selection.shipmentId)}` : selection.kind;
@@ -222,6 +223,15 @@ export const ReturnReceiptScreen = () => {
 
   const visibleDraftErrors = { ...(showErrors ? draftErrors : {}), ...write.fieldErrors };
 
+  /* 목록 접기(#350, app.css `list-collapsible`) — 넓은 창은 왼쪽 세로 탭 + 상세, 좁으면 상세 위 가로 탭 + 상세 한 칸. */
+  const listSplit = usePaneSplit('omf-mes:return-receipt:list');
+  const listCollapse = {
+    collapsed: listSplit.collapsed,
+    onToggle: listSplit.toggleCollapsed,
+    collapseLabel: messages.common.inspectionHub.listCollapse,
+    expandLabel: messages.common.inspectionHub.listExpand,
+    count: list.data?.page.total,
+  };
   return (
     <>
       <ScreenHeader
@@ -237,12 +247,15 @@ export const ReturnReceiptScreen = () => {
        * 상단 설명 띠(무엇을 여기서 하는지 · 보류로 들어온다 · 판정은 판정 의뢰에서)는 걷었다 — 화면 설명이고,
        * 보류와 다음 화면은 등록 단추 위 「이 등록이 하는 일」이 말한다(관리웹 정리 시안 A).
        */}
-      <div className="return-receipt-workspace">
+      <div
+        className="return-receipt-workspace list-collapsible"
+        data-left-collapsed={listCollapse.collapsed ? 'true' : undefined}
+      >
         <section
           className="pane return-receipt-pane return-receipt-search-pane"
           aria-label={t.panes.search}
         >
-          <h2 className="pane-title">{t.panes.search}</h2>
+          <PaneListHead title={t.panes.search} collapse={listCollapse} />
           <SearchPane
             applied={filters}
             defaults={initialFilters}
@@ -271,6 +284,7 @@ export const ReturnReceiptScreen = () => {
             onChangePage={(nextPage) => apply(filters, nextPage)}
           />
         </section>
+        <ListCollapseTab collapse={listCollapse} />
         <section className="pane return-receipt-pane" aria-label={t.panes.receipt}>
           <h2 className="pane-title">{t.panes.receipt}</h2>
           {outcome !== null ? (

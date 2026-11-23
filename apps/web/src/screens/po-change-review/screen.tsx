@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { ScreenHeader } from '../../patterns/screen-header';
+import { ListCollapseTab, PaneListHead, usePaneSplit } from '../../patterns/po-board';
 import {
   adjustmentErrors,
   decisionLockReason,
@@ -85,6 +86,15 @@ export const PoChangeReviewScreen = () => {
    */
   const isConflict = write.error?.kind === 'conflict';
 
+  /* 목록 접기(#350, app.css `list-collapsible`) — 넓은 창은 왼쪽 세로 탭 + 상세, 좁으면 상세 위 가로 탭 + 상세 한 칸. */
+  const listSplit = usePaneSplit('omf-mes:po-change-review:list');
+  const listCollapse = {
+    collapsed: listSplit.collapsed,
+    onToggle: listSplit.toggleCollapsed,
+    collapseLabel: messages.common.inspectionHub.listCollapse,
+    expandLabel: messages.common.inspectionHub.listExpand,
+    count: list.data === undefined ? undefined : rows.length,
+  };
   return (
     <>
       <ScreenHeader
@@ -98,9 +108,12 @@ export const PoChangeReviewScreen = () => {
         actions={<Chip status="warning">{t.header.unacknowledged(unacknowledged)}</Chip>}
       />
 
-      <div className="two-pane po-change-review-layout">
+      <div
+        className="two-pane po-change-review-layout list-collapsible"
+        data-left-collapsed={listCollapse.collapsed ? 'true' : undefined}
+      >
         <section className="pane po-change-review-pane" aria-label={t.panes.list}>
-          <h2>{t.panes.list}</h2>
+          <PaneListHead title={t.panes.list} collapse={listCollapse} />
           <NotificationList
             rows={rows}
             selectedId={selectedId}
@@ -122,6 +135,7 @@ export const PoChangeReviewScreen = () => {
             onSelect={setSelectedId}
           />
         </section>
+        <ListCollapseTab collapse={listCollapse} />
 
         <div className="pane-stack">
           <DiffPane selected={selected} uoms={uoms} />

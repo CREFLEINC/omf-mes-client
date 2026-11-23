@@ -4,6 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useReducer, useState } from 'react';
 
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
+import { ListCollapseTab, PaneListHead, usePaneSplit } from '../../patterns/po-board';
 import { toWorkOrderPageView } from '../work-order/pagination';
 import { WorkOrderCloseCandidateListPane } from './candidate-list-pane';
 import {
@@ -314,6 +315,7 @@ export const WorkOrderCloseCandidateScreen = () => {
   const openSession = useWorkOrderCloseOpenSession(closeSelectedWorkOrderId);
   const openLots = useWorkOrderCloseOpenLots(closeSelectedWorkOrderId);
   const [forceEndTarget, setForceEndTarget] = useState<WorkOrderCloseOpenSessionView | null>(null);
+  const listSplit = usePaneSplit('omf-mes:work-order-close:list');
   const snapshot = useMemo(
     () =>
       toWorkOrderCloseCandidateSnapshot({
@@ -519,6 +521,17 @@ export const WorkOrderCloseCandidateScreen = () => {
       draft: update(toWorkOrderCloseSelectedDraft(current, state.selectedWorkOrderId)),
     }));
 
+  /*
+   * 목록 접기(#350, app.css `list-collapsible`) — 넓은 창(1440px~)은 왼쪽 48px 세로 탭 + 상세, 그보다 좁으면 상세 위
+   * 가로 탭 + 상세 한 칸.
+   */
+  const listCollapse = {
+    collapsed: listSplit.collapsed,
+    onToggle: listSplit.toggleCollapsed,
+    collapseLabel: messages.common.inspectionHub.listCollapse,
+    expandLabel: messages.common.inspectionHub.listExpand,
+    count: candidate.data?.page.total,
+  };
   return (
     <div className="work-order-close-workspace">
       <WorkOrderCloseFilterBar
@@ -536,8 +549,21 @@ export const WorkOrderCloseCandidateScreen = () => {
         onSearch={(next) => dispatch({ type: 'SEARCH', filters: next })}
         onReset={() => dispatch({ type: 'RESET' })}
       />
-      <div className="work-order-close-content">
+      <div
+        className="work-order-close-content list-collapsible"
+        data-left-collapsed={listCollapse.collapsed ? 'true' : undefined}
+      >
         <WorkOrderCloseCandidateListPane
+          head={
+            <PaneListHead
+              title={
+                correctionMode
+                  ? messages.workOrderClose.closedCandidateList.pane
+                  : messages.workOrderClose.candidateList.pane
+              }
+              collapse={listCollapse}
+            />
+          }
           rows={toWorkOrderCloseCandidateRows(candidates, itemNames.items, uoms, (code) => {
             const value = status.data?.items.find((item) => item.code === code);
             return value === undefined ? code : toWorkOrderCloseCodeLabel(value);
@@ -550,6 +576,7 @@ export const WorkOrderCloseCandidateScreen = () => {
           onSelect={(workOrderId) => dispatch({ type: 'SELECT', workOrderId })}
           onChangePage={(nextPage) => dispatch({ type: 'CHANGE_PAGE', page: nextPage })}
         />
+        <ListCollapseTab collapse={listCollapse} />
         {correctionMode ? (
           <div className="work-order-close-detail">
             {state.selectedWorkOrderId === null ? null : (

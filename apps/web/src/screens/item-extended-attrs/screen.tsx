@@ -965,6 +965,7 @@ export const ItemExtendedAttrsScreen = () => {
         }}
         list={{
           label: t.panes.item,
+          count: itemList.data?.page.total,
           content: (
             <ItemListPane
               items={items}

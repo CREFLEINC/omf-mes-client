@@ -302,4 +302,30 @@ describe('StockReinstatementScreen', () => {
     expect(screen.queryByRole('dialog', { name: t.confirm.title })).not.toBeInTheDocument();
     expect(requestsSent().filter((request) => request.method === 'POST')).toHaveLength(0);
   });
+
+  /* 목록 제목 줄 「목록 접기」 · 접힌 「목록 N건」 탭(#350). */
+  it('목록을 접으면 탭에 건수가 서고, 펼친 뒤에도 고른 줄 · 적어 둔 비고가 그대로다', async () => {
+    const collapsedKey = 'omf-mes:stock-reinstatement:list:collapsed';
+    window.localStorage.removeItem(collapsedKey);
+    const user = renderScreen();
+    await chooseTarget(user);
+    await user.type(screen.getByLabelText(t.fields.remarks), '합성 비고');
+    const workspace = document.querySelector('.stock-reinstatement-workspace');
+
+    await user.click(
+      screen.getByRole('button', { name: messages.common.inspectionHub.listCollapse }),
+    );
+    expect(workspace).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = workspace!.querySelector<HTMLElement>('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록1건');
+
+    await user.click(tab!);
+    expect(workspace).not.toHaveAttribute('data-left-collapsed');
+    expect(workspace!.querySelector('.po-board-list-tab')).toBeNull();
+    expect(
+      screen.getByRole('button', { name: t.actions.selectRow('LOT-SYNTH-6101') }),
+    ).toHaveAttribute('aria-current', 'true');
+    expect(screen.getByLabelText(t.fields.remarks)).toHaveValue('합성 비고');
+    window.localStorage.removeItem(collapsedKey);
+  });
 });

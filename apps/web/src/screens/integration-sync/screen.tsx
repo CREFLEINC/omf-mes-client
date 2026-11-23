@@ -5,7 +5,12 @@ import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite } from '../../patterns/master';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import { ErpSendChips } from '../erp-outbound/send-chips';
 import { toBatchResultView, type BatchResultView, type RequestedMessage } from './batch-result';
 import { BatchRetryDialog } from './batch-retry-dialog';
@@ -164,6 +169,14 @@ export const IntegrationSyncScreen = () => {
       : { ...periodQuery, ...toFilterQuery(filters), ...(page > 1 ? { page } : {}) };
 
   const list = useMessageList(listQuery);
+  /** 목록 접기 — 제목 줄 「목록 접기」 · 막대 · 접힌 탭이 함께 쓴다(#350). */
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: t.listCollapse,
+    expandLabel: t.listExpand,
+    count: list.data?.page.total,
+  };
   const rows = list.data?.items ?? [];
   const pageView = toPageView(list.data?.page ?? { page, size: 0, total: 0 }, rows.length);
 
@@ -391,6 +404,7 @@ export const IntegrationSyncScreen = () => {
         data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <section className="pane po-board-pane po-board-scroll" aria-label={t.panes.list}>
+          <PaneListHead title={t.panes.list} collapse={listCollapse} />
           {/* 조회에 실패했으면 표도 빈 상태도 내지 않는다 — 실패를 「기록이 없습니다」로 보이면 안 된다. */}
           {!list.isError && (
             <>
@@ -445,12 +459,7 @@ export const IntegrationSyncScreen = () => {
           label={t.splitter}
           ratio={split.ratio}
           onChange={split.commit}
-          collapse={{
-            collapsed: split.collapsed,
-            onToggle: split.toggleCollapsed,
-            collapseLabel: t.listCollapse,
-            expandLabel: t.listExpand,
-          }}
+          collapse={listCollapse}
         />
 
         {/* 상세 구획은 늘 선다 — 고르기 전에는 무엇을 하라는지만 말한다. */}

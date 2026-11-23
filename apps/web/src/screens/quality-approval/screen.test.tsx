@@ -2,7 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate, useNavigationType, useSearchParams } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   createStubFetch,
@@ -717,6 +717,63 @@ describe('QualityApprovalScreen detail', () => {
         .getAllByRole('tab')
         .map((tab) => tab.textContent),
     ).toEqual([t.all, t.typeLabels.CONCESSION]);
+  });
+});
+
+/* 목록 제목 줄 「목록 접기」(#350) — 좌우 배치에서만 접힌다. */
+describe('QualityApprovalScreen list collapse', () => {
+  const collapseLabel = messages.common.inspectionHub.listCollapse;
+  const expandLabel = messages.common.inspectionHub.listExpand;
+  const splitBox = () => screen.getByRole('region', { name: t.panes.list }).parentElement!;
+
+  afterEach(() => {
+    window.localStorage.removeItem('omf-mes:quality-approvals:split:collapsed');
+    window.localStorage.removeItem('omf-mes:quality-approvals:layout');
+  });
+
+  it('좌우 배치에서 접으면 「목록 N건」 탭이 서고, 펼친 뒤에도 고른 요청 · 적던 검색어가 그대로다', async () => {
+    const { user } = renderScreen(
+      approvalFetch([listRoute()]),
+      '/quality/approvals?approvalRequestId=31',
+    );
+    expect(await findRequest()).toHaveAttribute('aria-current', 'true');
+    await user.type(screen.getByLabelText(t.fields.q), '작성 중');
+
+    await user.click(screen.getAllByRole('button', { name: collapseLabel })[0]!);
+    expect(splitBox()).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = splitBox().querySelector('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록1건');
+
+    await user.click(tab as HTMLElement);
+    expect(splitBox()).not.toHaveAttribute('data-left-collapsed');
+    expect(await findRequest()).toHaveAttribute('aria-current', 'true');
+    expect(screen.getByLabelText(t.fields.q)).toHaveValue('작성 중');
+  });
+
+  it('상하 배치에서는 접히지 않는다 — 막대 위 단추가 없고 제목 줄 단추는 감추는 자리에 있으며, 좌우로 돌아오면 접힘이 남는다', async () => {
+    const { user } = renderScreen(approvalFetch([listRoute()]));
+    await findRequest();
+    await user.click(screen.getAllByRole('button', { name: collapseLabel })[0]!);
+    expect(splitBox()).toHaveAttribute('data-left-collapsed', 'true');
+
+    await user.click(screen.getByRole('button', { name: '더보기' }));
+    await user.click(screen.getByRole('button', { name: t.layout.stack }));
+    expect(splitBox()).toHaveClass('is-stacked');
+    expect(splitBox()).not.toHaveAttribute('data-left-collapsed');
+    expect(splitBox().querySelector('.po-board-list-tab')).toBeNull();
+    expect(screen.queryByRole('button', { name: expandLabel })).toBeNull();
+    /* 제목 줄 단추 하나만 남고, layout.css 가 감추는 자리(쌓인 배치의 목록 제목 줄)에 있다. */
+    const heads = screen.getAllByRole('button', { name: collapseLabel });
+    expect(heads).toHaveLength(1);
+    expect(
+      document.querySelector(
+        '.po-board-split.is-stacked > .quality-approval-list-pane > .po-board-list-head > .po-board-list-collapse',
+      ),
+    ).toBe(heads[0]);
+
+    await user.click(screen.getByRole('button', { name: '더보기' }));
+    await user.click(screen.getByRole('button', { name: t.layout.side }));
+    expect(splitBox()).toHaveAttribute('data-left-collapsed', 'true');
   });
 });
 

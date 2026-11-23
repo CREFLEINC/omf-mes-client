@@ -4,7 +4,12 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { plantToday } from '../../patterns/plant-time';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
 import { excessTabHref, readLegacyExcessEntry, type ExcessEntry } from './excess-entry';
@@ -166,6 +171,14 @@ export const InboundScheduleScreen = () => {
         : null;
 
   const list = usePurchaseOrderSummaries(listQuery);
+  /** 목록 접기 — 제목 줄 「목록 접기」 · 막대 · 접힌 탭이 함께 쓴다(#350). */
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: t.listCollapse,
+    expandLabel: t.listExpand,
+    count: list.data?.page.total,
+  };
   const rows = list.data?.items ?? EMPTY_ROWS;
 
   /*
@@ -364,6 +377,7 @@ export const InboundScheduleScreen = () => {
         data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <section className="pane po-board-pane" aria-label={t.panes.orders}>
+          <PaneListHead title={t.panes.orders} collapse={listCollapse} />
           {!list.isError && (
             <>
               <OrderTable
@@ -410,12 +424,7 @@ export const InboundScheduleScreen = () => {
           label={t.splitter}
           ratio={split.ratio}
           onChange={split.commit}
-          collapse={{
-            collapsed: split.collapsed,
-            onToggle: split.toggleCollapsed,
-            collapseLabel: t.listCollapse,
-            expandLabel: t.listExpand,
-          }}
+          collapse={listCollapse}
         />
 
         <section className="pane po-board-pane" aria-label={t.panes.lines}>

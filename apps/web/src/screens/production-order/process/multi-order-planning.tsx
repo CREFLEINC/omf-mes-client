@@ -17,7 +17,12 @@ import { WorkOrderOverview, receiptWarehouseLabel } from './work-order-overview'
 import { PlanCreationTools } from './plan-creation-tools';
 import { BoardTable } from '../../../patterns/board-table';
 import { AdjustableNativeTable } from './adjustable-table';
-import { AdjustableLayout, useAdjustableOrientation } from './adjustable-layout';
+import { PaneListHead } from '../../../patterns/po-board';
+import {
+  AdjustableLayout,
+  useAdjustableCollapse,
+  useAdjustableOrientation,
+} from './adjustable-layout';
 import { MasterDetails } from './master-details';
 import { messages } from '@omf-mes/i18n';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
@@ -92,6 +97,7 @@ const ErpWorkOrderList = ({
   onSelect: (value: string) => void;
 }) => {
   const side = useAdjustableOrientation() === 'side';
+  const collapse = useAdjustableCollapse();
   const columns: Column<Controller>[] = [
     {
       key: 'number',
@@ -158,9 +164,13 @@ const ErpWorkOrderList = ({
   ];
   return (
     <aside className="pane po-board-pane erp-wo-order-table-pane" aria-label="ERP W/O 목록">
-      <h2 className="pane-title">
-        ERP W/O 목록 <span className="field-note">{entries.length}건</span>
-      </h2>
+      {collapse === null ? (
+        <h2 className="pane-title">
+          ERP W/O 목록 <span className="field-note">{entries.length}건</span>
+        </h2>
+      ) : (
+        <PaneListHead title="ERP W/O 목록" collapse={collapse} />
+      )}
       <BoardTable
         label="ERP W/O 목록"
         columns={side ? columns.slice(0, 1) : columns}
@@ -669,6 +679,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
             <AdjustableLayout
               storageKey="omf-mes:work-planning:erp-wo-layout"
               collapsible
+              count={entries.length}
               label="ERP W/O 목록과 상세"
               ratio={0.25}
               className="erp-wo-master-selection-layout"
@@ -1025,6 +1036,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
             <AdjustableLayout
               storageKey="omf-mes:work-planning:erp-wo-layout"
               collapsible
+              count={entries.length}
               label="ERP W/O 목록과 상세"
               ratio={0.25}
               className="erp-wo-master-selection-layout erp-wo-execution-selection-layout"

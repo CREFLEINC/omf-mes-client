@@ -22,7 +22,12 @@ import {
   InspectionHubCounts,
   type InspectionHubStatus,
 } from '../../patterns/inspection-hub-counts';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import {
   PaneHeightSplitter,
   SplitOrientationToggle,
@@ -466,11 +471,9 @@ export const OqcInspectionScreen = () => {
   };
 
   /* 고른 줄을 다시 누르면 고르지 않은 상태로 — 상세가 닫힌다(저장 안 한 입력이 있으면 먼저 묻는다 · 사용자 지시 2026-10-28 · #197). */
-  /* 새 의뢰를 고르면 목록을 접어 상세가 자리를 다 쓴다 — IQC 와 같다(사용자 지시 2026-11-19 · omf-all-around#296). */
+  /* 골라도 목록은 그대로 둔다 — 접기는 사용자가 「목록 접기」로만(#350 사용자 지시). */
   const select = (inspectionRequestId: number): void => {
-    const next = inspectionRequestId === selectedId ? null : inspectionRequestId;
-    moveTo(next);
-    if (next !== null && !split.collapsed) split.toggleCollapsed();
+    moveTo(inspectionRequestId === selectedId ? null : inspectionRequestId);
   };
 
   /**
@@ -1152,6 +1155,10 @@ export const OqcInspectionScreen = () => {
           className="pane oqc-inspection-panes oqc-inspection-queue-pane"
           aria-label={t.queue.heading}
         >
+          <PaneListHead
+            title={t.queue.heading}
+            collapse={{ ...listCollapse, count: queue.data?.page.total }}
+          />
           {queue.isError && (
             <QueueLoadErrorBanner
               error={toApiError(queue.error)}
@@ -1199,7 +1206,7 @@ export const OqcInspectionScreen = () => {
           label={hubText.splitter}
           ratio={split.ratio}
           onChange={split.commit}
-          collapse={listCollapse}
+          collapse={{ ...listCollapse, count: queue.data?.page.total }}
         />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter
