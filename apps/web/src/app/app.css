@@ -8792,6 +8792,21 @@ main:has(.iqc-skip-approval-detail) {
   margin: 0;
 }
 
+/* 「처분 판정」 제목 바로 오른쪽에 막힌 유형 안내 라벨(#352 사용자 지시). */
+.disposition-decision-head {
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.disposition-decision-head > .iqc-inspection-action-note {
+  margin: 0;
+  width: fit-content;
+  font: var(--type-label-lg);
+  font-weight: 400;
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
 /* 판정 단추는 입력 바로 아래(사용자 시안 · #223). */
 .disposition-decision-form > .disposition-decision-actions {
   margin-top: 0;

@@ -19,6 +19,23 @@ import type { DispositionLookup } from './lookups';
 import { SortSplitPane } from './sort-split-pane';
 import { formatQty, type NonconformanceLotRow } from './types';
 
+/**
+ * 막힌 처분 유형의 이유를 눈에 보일 줄로 묶는다 — 모든 유형이 같은 이유면 이유만, 일부면 「선별: …」처럼 유형 이름을 앞에.
+ * 이유 문장이 이미 유형 이름을 말하면(「선별은 …」) 앞에 다시 붙이지 않는다(#352 사용자 지시 문구).
+ * 화면이 「처분 판정」 제목 오른쪽 안내 라벨로 보인다(#352 사용자 지시). 칸마다 읽는 이유는 이 창이 감춘 글로 잇는다.
+ */
+export const typeLockLines = (options: readonly DispositionOption[]): string[] => {
+  const notes = options.flatMap((option) =>
+    option.lockReason === undefined ? [] : [{ label: option.label, reason: option.lockReason }],
+  );
+  return [...new Set(notes.map((note) => note.reason))].map((reason) => {
+    const labels = notes.filter((note) => note.reason === reason).map((note) => note.label);
+    return labels.length === options.length || labels.every((label) => reason.includes(label))
+      ? reason
+      : `${labels.join(', ')}: ${reason}`;
+  });
+};
+
 export interface DecisionFormPaneProps {
   value: DecisionFormValue;
   errors: DecisionFormErrors;
@@ -137,25 +154,10 @@ export const DecisionFormPane = ({
   const noSelectableType =
     optionCount > 0 && lockNotes.length === optionCount && value.dispositionTypeCode === '';
   const noTypeReasonId = lockNotes[0]?.id;
-  const visibleLockLines = [...new Set(lockNotes.map((note) => note.reason))].map((reason) => {
-    const labels = lockNotes.filter((note) => note.reason === reason).map((note) => note.label);
-    /* 이유 문장이 이미 유형 이름을 말하면(「선별은 …」) 앞에 다시 붙이지 않는다(#352 사용자 지시 문구). */
-    return labels.length === optionCount || labels.every((label) => reason.includes(label))
-      ? reason
-      : `${labels.join(', ')}: ${reason}`;
-  });
 
   return (
     <div className="disposition-decision-form" role="group" aria-label={t.panes.decision}>
       <SaveErrorBanner error={writeError} onReload={onReload} />
-
-      {/* 막힌 유형의 이유는 처분 유형 위에 안내 라벨로(#352 사용자 지시). */}
-      {visibleLockLines.map((line) => (
-        <p key={line} className="iqc-inspection-action-note" data-tone="info" aria-hidden="true">
-          <Icon name="info" size={14} aria-hidden />
-          {line}
-        </p>
-      ))}
 
       {/* 처분 유형 왼쪽 | 처분 수량 오른쪽 한 줄(사용자 시안 · omf-all-around#275). 선별이면 수량 대신 아래에 고르기 칸. */}
       <div className="disposition-decision-top">

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { EMPTY_DECISION_FORM } from './decision-form';
-import { DecisionFormPane, type DecisionFormPaneProps } from './decision-form-pane';
+import { DecisionFormPane, type DecisionFormPaneProps, typeLockLines } from './decision-form-pane';
 import type { DispositionLookup } from './lookups';
 
 const t = messages.dispositionDecision;
@@ -85,17 +85,14 @@ describe('DecisionFormPane', () => {
   /* 005 FR-038 — 처분 수량은 남은 수량 전부로 고정한다(입력 없음). 옛 「남은 수량 초과 예고」 두 시험은 칸과 함께 없어졌다. */
   it('모든 유형이 같은 이유로 막히면 이유를 한 번만 보인다(#275)', () => {
     const closed = t.form.typeLock.closed;
-    renderPane({
-      dispositionOptions: [
-        { value: 'NORMAL', label: '정상', lockReason: closed },
-        { value: 'SCRAP', label: '폐기', lockReason: closed },
-        { value: 'CONCESSION', label: '특채', lockReason: closed },
-      ],
-    });
-    const visible = screen
-      .getAllByText(closed)
-      .filter((node) => !node.classList.contains('visually-hidden'));
-    expect(visible).toHaveLength(1);
+    const options = [
+      { value: 'NORMAL', label: '정상', lockReason: closed },
+      { value: 'SORT', label: '폐기', lockReason: closed },
+      { value: 'CONCESSION', label: '특채', lockReason: closed },
+    ];
+    /* 눈에 보이는 줄은 화면이 「처분 판정」 제목 오른쪽에 단다(#352) — 여기서는 묶는 규칙만. */
+    expect(typeLockLines(options)).toEqual([closed]);
+    renderPane({ dispositionOptions: options });
     expect(screen.getByRole('radio', { name: '정상' })).toHaveAccessibleDescription(closed);
     /* 고를 유형이 없으면 저장 · 사유 입력도 잠그고 그 이유를 잇는다. */
     const save = screen.getByRole('button', { name: t.actions.save });
@@ -104,31 +101,24 @@ describe('DecisionFormPane', () => {
     expect(screen.getByRole('textbox', { name: t.form.reasonLabel })).toBeDisabled();
   });
 
-  it('일부 유형만 막히면 유형 이름과 이유를 함께 보인다(#275)', () => {
-    renderPane({
-      dispositionOptions: [
+  it('일부 유형만 막히면 유형 이름과 이유를 함께 묶는다(#275)', () => {
+    expect(
+      typeLockLines([
         { value: 'NORMAL', label: '정상' },
         { value: 'SORT', label: '선별', lockReason: t.form.typeLock.closed },
-      ],
-    });
-    expect(screen.getByText(`선별: ${t.form.typeLock.closed}`)).toBeInTheDocument();
+      ]),
+    ).toEqual([`선별: ${t.form.typeLock.closed}`]);
   });
 
-  it('LOT 1개라 선별이 막히면 처분 유형 위 안내 라벨로 지시 문구 그대로 보인다(#352)', () => {
-    renderPane({
-      dispositionOptions: [
-        { value: 'NORMAL', label: '정상' },
-        { value: 'SORT', label: '선별', lockReason: t.form.typeLock.sortSingleLot },
-      ],
-    });
-    const note = screen.getByText('선별은 자재 관리 LOT가 2개 이상일 때 선택할 수 있습니다.', {
-      selector: 'p',
-    });
-    expect(note).toHaveAttribute('data-tone', 'info');
-    expect(
-      note.compareDocumentPosition(screen.getByText(t.form.dispositionLabel)) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+  it('이유 문장이 유형 이름을 이미 말하면 앞에 붙이지 않는다 — 지시 문구 그대로(#352)', () => {
+    const options = [
+      { value: 'NORMAL', label: '정상' },
+      { value: 'SORT', label: '선별', lockReason: t.form.typeLock.sortSingleLot },
+    ];
+    expect(typeLockLines(options)).toEqual([
+      '선별은 자재 관리 LOT가 2개 이상일 때 선택할 수 있습니다.',
+    ]);
+    renderPane({ dispositionOptions: options });
     expect(screen.getByRole('radio', { name: '선별' })).toHaveAccessibleDescription(
       t.form.typeLock.sortSingleLot,
     );

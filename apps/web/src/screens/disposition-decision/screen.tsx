@@ -4,7 +4,7 @@ import type {
   ConcessionCreateForward005,
   DispositionDecisionCreatedForward005,
 } from '@omf-mes/api-client';
-import { Badge, Chip, Tabs, useToast } from '@crefle/web-ui';
+import { Badge, Chip, Icon, Tabs, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -40,7 +40,7 @@ import {
   useConcessionApprovalStatus,
   useConcessions,
 } from './concession-pane';
-import { DecisionFormPane } from './decision-form-pane';
+import { DecisionFormPane, typeLockLines } from './decision-form-pane';
 import {
   PendingDispositionApprovalBox,
   pendingDispositionApprovalOf,
@@ -987,8 +987,20 @@ export const DispositionDecisionScreen = ({
                 role="group"
                 aria-label={t.panes.decision}
               >
-                <div className="disposition-side-head">
+                {/* 막힌 처분 유형의 이유는 제목 오른쪽 안내 라벨로(#352 사용자 지시). */}
+                <div className="disposition-side-head disposition-decision-head">
                   <h3 className="pane-subtitle">{t.form.heading}</h3>
+                  {typeLockLines(decisionOptions).map((line) => (
+                    <p
+                      key={line}
+                      className="iqc-inspection-action-note"
+                      data-tone="info"
+                      aria-hidden="true"
+                    >
+                      <Icon name="info" size={14} aria-hidden />
+                      {line}
+                    </p>
+                  ))}
                 </div>
                 {/* 적용 전 특채 — 결재 상태와 [특채 적용]을 이 상자에(시안 W0310-After · G2 M3). */}
                 {pendingConcession !== undefined && (
