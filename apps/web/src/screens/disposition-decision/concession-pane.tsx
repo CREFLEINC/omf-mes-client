@@ -1,90 +1,25 @@
-import {
-  Button,
-  Chip,
-  DatePicker,
-  Dialog,
-  EmptyState,
-  Icon,
-  Table,
-  TextArea,
-  TextField,
-  type Column,
-} from '@crefle/web-ui';
-import type {
-  ConcessionAppliedForward,
-  ConcessionCreatedForward005,
-  ConcessionCreateForward005,
-  components,
-} from '@omf-mes/api-client';
+import { Button, Chip, EmptyState, Table, type Column } from '@crefle/web-ui';
+import type { ConcessionAppliedForward, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
-import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
 import { toBusinessDate } from './decision-form';
-import type { DispositionLookup } from './lookups';
 import { dispositionKeys } from './queries';
-import { formatQty, type NonconformanceLotRow } from './types';
+import { formatQty } from './types';
 
 type Concession = components['schemas']['Concession'];
 
 const t = messages.dispositionDecision.concession;
-const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const PENDING = 'PENDING';
 const STATUS_LABEL: Record<string, string> = t.status;
 
 const concessionKey = (nonconformanceId: number) =>
   [...dispositionKeys.all, 'concessions', nonconformanceId] as const;
-
-interface Draft {
-  validFrom: string;
-  validTo: string;
-  reason: string;
-}
-
-const emptyDraft = (today: string): Draft => ({ validFrom: today, validTo: '', reason: '' });
-
-/** 자재 관리 LOT 의 단위가 하나면 그 단위 — 섞이면 고르지 않는다(판정 저장과 같은 규칙). */
-const lotsUomId = (lots: readonly NonconformanceLotRow[]): number | undefined => {
-  const first = lots[0];
-  return first !== undefined && lots.every((lot) => lot.uomId === first.uomId)
-    ? first.uomId
-    : undefined;
-};
-
-const blockedOf = (
-  draft: Draft,
-  remainingQty: number | undefined,
-  uomId: number | undefined,
-): string | null => {
-  if (remainingQty === undefined || remainingQty <= 0 || uomId === undefined) return t.blocked.qty;
-  if (!DATE.test(draft.validFrom)) return t.blocked.date;
-  if (draft.validTo !== '' && (!DATE.test(draft.validTo) || draft.validTo < draft.validFrom)) {
-    return t.blocked.date;
-  }
-  if (draft.reason.trim() === '') return t.blocked.reason;
-  return null;
-};
-
-export interface ConcessionRequestDialogProps {
-  nonconformanceId: number;
-  lots: readonly NonconformanceLotRow[];
-  /** 남은 수량 — 특채는 이 값 전부만 요청한다(FR-038 · 일부 특채 없음). 모르면 요청할 수 없다. */
-  remainingQty: number | undefined;
-  /** 단위 이름을 붙인다. 없으면 수만. */
-  uoms?: DispositionLookup | undefined;
-  /** 지금 날짜 — 시험이 고정할 수 있게 받는다. */
-  today?: Date;
-  /**
-   * 요청이 끝나면 `true` 로 닫는다 — 화면이 완료 알림을 띄운다. 자재 관리 LOT 이 여럿이면 서버가 만든 특채 행 수
-   * (`concessionIds`)를 함께 넘긴다.
-   */
-  onClose: (requested: boolean, lotCount?: number) => void;
-}
 
 export interface ConcessionHistoryProps {
   nonconformanceId: number;
@@ -113,187 +48,6 @@ export const useConcessions = (nonconformanceId: number | null) => {
         }),
       ).then((response) => response.items),
   });
-};
-
-/**
- * 문서 스크롤을 지금 자리에 붙든다 — 다음 두 틀에서 밀렸으면 되돌린다. 정리 함수를 돌려준다.
- * 특채 요청 창이 열리며 포커스가 옮겨갈 때 문서 전체가 위로 밀렸다(G2 L14-1 — html scrollTop 152, 앱 머리 −152, 아래 검은 띠).
- * 셸은 문서를 굴리지 않으므로 창을 여는 순간(누른 때)의 자리를 기억해 되돌린다 — 창이 그려진 뒤 기억하면 이미 밀린 자리다.
- */
-export const keepDocumentScroll = (): (() => void) => {
-  const root = document.scrollingElement ?? document.documentElement;
-  const top = root.scrollTop;
-  const left = root.scrollLeft;
-  const restore = (): void => {
-    if (root.scrollTop !== top) root.scrollTop = top;
-    if (root.scrollLeft !== left) root.scrollLeft = left;
-  };
-  let second = 0;
-  const first = requestAnimationFrame(() => {
-    restore();
-    second = requestAnimationFrame(restore);
-  });
-  return () => {
-    cancelAnimationFrame(first);
-    cancelAnimationFrame(second);
-  };
-};
-
-/**
- * 특채 요청 팝업(사용자 지시 · #223) — 처분 판정의 「특채」 칸으로 연다.
- * 대상은 자재 관리 LOT 전부, 사용 가능 수량은 남은 수량 고정(005 · mockups/W0310-After.html).
- */
-export const ConcessionRequestDialog = ({
-  nonconformanceId,
-  lots,
-  remainingQty,
-  uoms,
-  today,
-  onClose,
-}: ConcessionRequestDialogProps) => {
-  const fromFieldId = useId();
-  const toFieldId = useId();
-  const noteId = useId();
-  const titleId = useId();
-  const blockedId = useId();
-  const { client } = useApiClient();
-  const todayText = toBusinessDate(today ?? new Date());
-  const [draft, setDraft] = useState<Draft>(() => emptyDraft(todayText));
-  const uomId = lotsUomId(lots);
-  const uomLabel = uomId === undefined || uoms === undefined ? '' : lookupDisplayLabel(uoms, uomId);
-
-  const requestWrite = useMasterWrite<ConcessionCreateForward005, ConcessionCreatedForward005>({
-    request: (body, headers) =>
-      client.POST('/quality/concessions', {
-        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
-        body,
-      }),
-    etagPath: null,
-    invalidateKeys: [concessionKey(nonconformanceId)],
-    knownFields: ['lotId', 'approvedQty', 'uomId', 'validFrom', 'validTo', 'reason'],
-    keyLifetime: 'until-applied',
-    onSuccess: (data) => {
-      const count = data.concessionIds?.length ?? 0;
-      if (count > 1) onClose(true, count);
-      else onClose(true);
-    },
-  });
-
-  const blocked = blockedOf(draft, remainingQty, uomId);
-  const isSaving = requestWrite.isSaving;
-  const onlyLot = lots.length === 1 ? lots[0] : undefined;
-
-  const submit = (): void => {
-    if (blocked !== null || remainingQty === undefined || uomId === undefined) return;
-    requestWrite.write({
-      nonconformanceId,
-      /* 자재 관리 LOT 이 하나면 지금처럼 그 LOT, 여럿이면 비운다 — 서버가 LOT 마다 특채 행을 만든다(D-14). */
-      ...(onlyLot === undefined ? {} : { lotId: onlyLot.lotId }),
-      approvedQty: remainingQty,
-      uomId,
-      validFrom: draft.validFrom,
-      ...(draft.validTo === '' ? {} : { validTo: draft.validTo }),
-      reason: draft.reason.trim(),
-    });
-  };
-
-  return (
-    <Dialog
-      open
-      onClose={() => onClose(false)}
-      size="lg"
-      /* 제목 오른쪽 설명 라벨(「조건부 사용 승인을 요청합니다」)은 창 이름과 같은 말이라 걷었다(사용자 지시 2026-11-20). */
-      title={<span id={titleId}>{t.requestHeading}</span>}
-      aria-labelledby={titleId}
-      showCloseButton={false}
-      closeOnBackdropClick={false}
-      footer={
-        <>
-          <Button
-            variant="outlined"
-            className="app-button-neutral"
-            disabled={isSaving}
-            onClick={() => onClose(false)}
-          >
-            {messages.common.cancel}
-          </Button>
-          <Button
-            disabled={blocked !== null || isSaving}
-            aria-describedby={blocked === null ? undefined : blockedId}
-            onClick={submit}
-          >
-            {isSaving ? t.requesting : t.request}
-          </Button>
-        </>
-      }
-    >
-      <div className="disposition-concession-dialog">
-        <SaveErrorBanner error={requestWrite.error} />
-        <div className="disposition-concession-fields">
-          <TextField label={t.target} value={t.targetAll(lots.length)} readOnly fullWidth />
-          <TextField
-            label={t.qty}
-            value={`${formatQty(remainingQty)}${uomLabel === '' ? '' : ` ${uomLabel}`}`}
-            readOnly
-            fullWidth
-            aria-describedby={noteId}
-            error={requestWrite.fieldErrors.approvedQty}
-          />
-          <div className="field-cell">
-            <label className="field-label" htmlFor={fromFieldId}>
-              {t.validFrom}
-            </label>
-            <DatePicker
-              id={fromFieldId}
-              value={draft.validFrom === '' ? null : draft.validFrom}
-              max={draft.validTo === '' ? undefined : draft.validTo}
-              disabled={isSaving}
-              onChange={(value) => setDraft({ ...draft, validFrom: value ?? '' })}
-            />
-          </div>
-          <div className="field-cell">
-            <label className="field-label" htmlFor={toFieldId}>
-              {t.validTo}
-            </label>
-            <DatePicker
-              id={toFieldId}
-              clearable
-              placeholder={t.validToPlaceholder}
-              value={draft.validTo === '' ? null : draft.validTo}
-              min={draft.validFrom === '' ? undefined : draft.validFrom}
-              disabled={isSaving}
-              onChange={(value) => setDraft({ ...draft, validTo: value ?? '' })}
-            />
-            {requestWrite.fieldErrors.validTo !== undefined && (
-              <span className="field-error">{requestWrite.fieldErrors.validTo}</span>
-            )}
-          </div>
-        </div>
-        {/* 안내 한 줄 — 다른 창의 안내와 같은 정보 줄 모양(사용자 시안 2026-11-17). */}
-        <p id={noteId} className="iqc-inspection-action-note" data-tone="info">
-          <Icon name="info" size={14} aria-hidden />
-          {t.wholeNote}
-        </p>
-        <TextArea
-          label={t.reason}
-          rows={2}
-          placeholder={t.reasonPlaceholder}
-          required
-          fullWidth
-          value={draft.reason}
-          disabled={isSaving}
-          error={requestWrite.fieldErrors.reason}
-          onChange={(event) => setDraft({ ...draft, reason: event.target.value })}
-        />
-        {/* 칸별 안내 문구 없이 필수 표시로 알린다 — 단추가 읽을 이유만 가려 둔다. */}
-        {blocked !== null && (
-          <span id={blockedId} className="visually-hidden">
-            {t.requestBlocked}
-          </span>
-        )}
-      </div>
-    </Dialog>
-  );
 };
 
 interface ConcessionGroup {

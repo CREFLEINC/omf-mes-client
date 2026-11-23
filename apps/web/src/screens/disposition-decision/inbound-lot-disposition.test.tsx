@@ -155,21 +155,26 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     });
     await screen.findByText('SAMPLE-ML|0003');
 
-    await user.click(screen.getByRole('button', { name: t.concession.request }));
-    const dialog = await screen.findByRole('dialog', { name: t.concession.requestHeading });
-    // 수량 입력 없음 — 사용 가능 수량은 남은 수량 고정, 대상은 자재 관리 LOT 전부.
-    expect(within(dialog).getByLabelText(t.concession.qty)).toHaveValue('3,000 EA');
-    expect(within(dialog).getByLabelText(t.concession.qty)).toHaveAttribute('readonly');
-    expect(within(dialog).getByLabelText(t.concession.target)).toHaveValue(
-      t.concession.targetAll(3),
-    );
-    await user.type(within(dialog).getByLabelText(t.concession.reason), '합성 특채 사유');
-    await user.click(within(dialog).getByRole('button', { name: t.concession.request }));
+    // 팝업 없이 특채를 고르면 아래에 적용 기간 칸이 펼쳐지고, 사유는 판정 사유 칸 하나로 보낸다(#352).
+    await user.click(screen.getByRole('radio', { name: '특채' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByLabelText(t.concession.validFrom, { exact: false })).toBeInTheDocument();
+    expect(
+      screen.getByText('저장하면 자재 관리 LOT 3개에 모두 ‘특채’ 판정이 적용됩니다.'),
+    ).toBeInTheDocument();
+    await user.type(screen.getByLabelText(t.form.reasonLabel), '합성 특채 사유');
+    await user.click(screen.getByRole('button', { name: t.actions.save }));
 
     await waitFor(() => expect(posted('/quality/concessions')).toBeDefined());
     const body = (await posted('/quality/concessions')?.json()) as Record<string, unknown>;
     expect(body).not.toHaveProperty('lotId');
-    expect(body).toMatchObject({ nonconformanceId: 41, approvedQty: 3000, uomId: 7001 });
+    expect(body).toMatchObject({
+      nonconformanceId: 41,
+      approvedQty: 3000,
+      uomId: 7001,
+      reason: '합성 특채 사유',
+    });
+    expect(typeof body.validFrom).toBe('string');
     expect(await screen.findByText(t.concession.requestedLots(3))).toBeInTheDocument();
   });
 

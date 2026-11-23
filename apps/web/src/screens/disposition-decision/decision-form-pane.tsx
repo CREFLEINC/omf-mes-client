@@ -1,4 +1,4 @@
-import { Button, Icon, Radio, RadioGroup, TextArea } from '@crefle/web-ui';
+import { Button, DatePicker, Icon, Radio, RadioGroup, TextArea } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
@@ -6,8 +6,11 @@ import { useId } from 'react';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { SaveErrorBanner } from '../../patterns/master';
 import {
+  CONCESSION,
   SORT,
   sortSelectionError,
+  toBusinessDate,
+  withDispositionType,
   type DecisionFormErrors,
   type DecisionFormValue,
 } from './decision-form';
@@ -15,12 +18,6 @@ import { dispositionTypeLabel, type DispositionOption } from './disposition-code
 import type { DispositionLookup } from './lookups';
 import { SortSplitPane } from './sort-split-pane';
 import { formatQty, type NonconformanceLotRow } from './types';
-
-/** 특채 칸 — 고르면 특채 요청 팝업을 연다(요청 → W-03-09 결재 → 적용). */
-export interface ConcessionOption {
-  lockReason?: string | undefined;
-  onRequest: () => void;
-}
 
 export interface DecisionFormPaneProps {
   value: DecisionFormValue;
@@ -35,9 +32,10 @@ export interface DecisionFormPaneProps {
    */
   isUncertain: boolean;
   onCheckOutcome: () => void;
+  /** 고를 처분 유형 — 폐기 · 선별 · 특채(#352). 특채를 고르면 아래에 적용 기간 칸이 펼쳐진다. */
   dispositionOptions: DispositionOption[];
-  /** 특채 칸. 없으면 두지 않는다. */
-  concession?: ConcessionOption | undefined;
+  /** 지금 날짜 — 특채 적용 시작일의 처음 값. 시험이 고정할 수 있게 받는다. */
+  today?: Date | undefined;
   uomId: number | undefined;
   uoms: DispositionLookup;
   /** 부적합의 자재 관리 LOT — 효과 문구의 수와 선별 고르기에 쓴다. */
@@ -71,7 +69,7 @@ export const DecisionFormPane = ({
   isUncertain,
   onCheckOutcome,
   dispositionOptions,
-  concession,
+  today,
   uomId,
   uoms,
   lots = [],
@@ -92,6 +90,11 @@ export const DecisionFormPane = ({
   const qtyId = useId();
   const optionHintId = useId();
   const sortBlockId = useId();
+  const validFromId = useId();
+  const validToId = useId();
+  const todayText = toBusinessDate(today ?? new Date());
+  const isConcession = value.dispositionTypeCode === CONCESSION;
+  const pickType = (code: string): void => onChange(withDispositionType(value, code, todayText));
   const isLocked = lockReason !== undefined;
   const isSort = value.dispositionTypeCode === SORT;
   const uomLabel = uomId === undefined ? '' : lookupDisplayLabel(uoms, uomId);
@@ -99,11 +102,15 @@ export const DecisionFormPane = ({
     remainingQty === undefined
       ? formatQty(undefined)
       : `${formatQty(remainingQty)}${uomLabel === '' ? '' : ` ${uomLabel}`}`;
-  const effect = isWholeCode(value.dispositionTypeCode)
-    ? value.dispositionTypeCode === 'REWORK' && inboundLotNo !== null && inboundLotNo !== undefined
-      ? t.form.reworkInboundEffect(inboundLotNo)
-      : t.form.effect[value.dispositionTypeCode]
-    : undefined;
+  const effect = isConcession
+    ? ''
+    : isWholeCode(value.dispositionTypeCode)
+      ? value.dispositionTypeCode === 'REWORK' &&
+        inboundLotNo !== null &&
+        inboundLotNo !== undefined
+        ? t.form.reworkInboundEffect(inboundLotNo)
+        : t.form.effect[value.dispositionTypeCode]
+      : undefined;
   /* 선별은 고른 LOT 이 없거나 전부면 저장을 잠근다 — 전부는 보이는 오류, 없음은 가린 이유로 단추에 잇는다. */
   const sortBlock = isSort ? sortSelectionError(value.sortLotIds, lots.length) : undefined;
   const isAllSelected = isSort && lots.length > 0 && value.sortLotIds.length >= lots.length;
@@ -113,23 +120,14 @@ export const DecisionFormPane = ({
       ? undefined
       : sortBlockId;
 
-  const lockNotes = [
-    ...dispositionOptions.map((option) => ({
+  const lockNotes = dispositionOptions
+    .map((option) => ({
       id: `${optionHintId}-${option.value}`,
       label: option.label,
       reason: option.lockReason,
-    })),
-    ...(concession === undefined
-      ? []
-      : [
-          {
-            id: `${optionHintId}-CONCESSION`,
-            label: t.values.dispositionType.CONCESSION,
-            reason: concession.lockReason,
-          },
-        ]),
-  ].flatMap((note) => (note.reason === undefined ? [] : [{ ...note, reason: note.reason }]));
-  const optionCount = dispositionOptions.length + (concession === undefined ? 0 : 1);
+    }))
+    .flatMap((note) => (note.reason === undefined ? [] : [{ ...note, reason: note.reason }]));
+  const optionCount = dispositionOptions.length;
   /*
    * 고를 수 있는 유형이 하나도 없으면(종결 · 특채 결재 중 등) 저장 · 사유 입력도 잠근다 — 눌러도 「처분을 선택하세요」만
    * 나오는 단추를 두지 않는다. 이유는 위 막힘 글이 말한다(omf-all-around#275).
@@ -158,7 +156,7 @@ export const DecisionFormPane = ({
           {/*
            * 유형은 같은 폭 칸으로 한 줄에, 좁으면 줄을 바꾼다 — 고른 칸만 강조한다(omf-all-around#275).
            * 막힌 유형은 잠그고 그 이유를 칸 줄 아래에 단다(G-2 · 감추지 않는다).
-           * 특채는 라디오가 아니라 요청 팝업을 여는 단추다(결재가 붙는 별도 길).
+           * 특채도 같은 라디오다 — 팝업 없이 아래에 적용 기간 칸이 펼쳐진다(#352 사용자 지시).
            */}
           <RadioGroup
             name="disposition-type"
@@ -168,7 +166,7 @@ export const DecisionFormPane = ({
             disabled={isLocked || dispositionOptions.length === 0}
             aria-labelledby={groupLabelId}
             aria-describedby={isLocked ? lockReasonId : undefined}
-            onChange={(next) => onChange({ ...value, dispositionTypeCode: next })}
+            onChange={pickType}
           >
             {dispositionOptions.map((option) => {
               const hintId = `${optionHintId}-${option.value}`;
@@ -187,7 +185,7 @@ export const DecisionFormPane = ({
                       event.target instanceof HTMLInputElement &&
                       value.dispositionTypeCode === option.value
                     ) {
-                      onChange({ ...value, dispositionTypeCode: '' });
+                      pickType('');
                     }
                   }}
                 >
@@ -201,28 +199,6 @@ export const DecisionFormPane = ({
                 </div>
               );
             })}
-            {concession !== undefined && (
-              <div
-                className="disposition-type-option"
-                data-locked={concession.lockReason === undefined ? undefined : 'true'}
-              >
-                <Button
-                  variant="text"
-                  size="sm"
-                  className="disposition-type-concession"
-                  aria-label={t.concession.request}
-                  aria-describedby={
-                    concession.lockReason === undefined ? undefined : `${optionHintId}-CONCESSION`
-                  }
-                  disabled={isLocked || concession.lockReason !== undefined}
-                  onClick={concession.onRequest}
-                >
-                  {/* 다른 칸의 라디오 동그라미와 줄을 맞추는 빈 동그라미(모양만). */}
-                  <span className="disposition-type-concession-mark" aria-hidden="true" />
-                  {t.values.dispositionType.CONCESSION}
-                </Button>
-              </div>
-            )}
           </RadioGroup>
           {/*
            * 막힌 이유 — 칸마다 읽는 이유(`aria-describedby`)는 눈에 감춘 글로 두고, 눈에는 같은 이유를 한 줄로 묶어 보인다.
@@ -270,6 +246,49 @@ export const DecisionFormPane = ({
           </div>
         )}
       </div>
+
+      {/* 특채 — 요청 팝업에 있던 적용 기간 칸을 판정 칸 아래에(#352 사용자 지시). 수량은 위 처분 수량(남은 수량 전부), 사유는 아래 판정 사유. */}
+      {isConcession && (
+        <div
+          className="disposition-concession-fields"
+          role="group"
+          aria-label={t.concession.requestHeading}
+        >
+          <div className="field-cell">
+            <label className="field-label" htmlFor={validFromId}>
+              {t.concession.validFrom}
+              <span className="required-mark" aria-hidden="true">
+                {' *'}
+              </span>
+            </label>
+            <DatePicker
+              id={validFromId}
+              value={value.validFrom === '' ? null : value.validFrom}
+              max={value.validTo === '' ? undefined : value.validTo}
+              disabled={isLocked}
+              onChange={(next) => onChange({ ...value, validFrom: next ?? '' })}
+            />
+            {errors.validFrom !== undefined && (
+              <span className="field-error">{errors.validFrom}</span>
+            )}
+          </div>
+          <div className="field-cell">
+            <label className="field-label" htmlFor={validToId}>
+              {t.concession.validTo}
+            </label>
+            <DatePicker
+              id={validToId}
+              clearable
+              placeholder={t.concession.validToPlaceholder}
+              value={value.validTo === '' ? null : value.validTo}
+              min={value.validFrom === '' ? undefined : value.validFrom}
+              disabled={isLocked}
+              onChange={(next) => onChange({ ...value, validTo: next ?? '' })}
+            />
+            {errors.validTo !== undefined && <span className="field-error">{errors.validTo}</span>}
+          </div>
+        </div>
+      )}
 
       {isSort && (
         <SortSplitPane

@@ -108,10 +108,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     foldTitle: 'Lịch sử yêu cầu đặc cách',
     count: (count: number): string => `${String(count)}`,
     requestHeading: 'Yêu cầu đặc cách',
-    target: 'LOT đối tượng',
     targetAll: (count: number): string => `${String(count)} LOT quản lý vật tư`,
-    wholeNote:
-      'Yêu cầu đặc cách cho toàn bộ số lượng chưa xử lý. Nếu chỉ muốn yêu cầu một phần, hãy tách LOT trước.',
     pendingBanner: (concessionNo: string): string => `Đặc cách ${concessionNo} đang chờ phê duyệt.`,
     approvedBanner: (concessionNo: string): string => `Đặc cách ${concessionNo} đã được duyệt.`,
     rejectedBanner: (concessionNo: string): string =>
@@ -119,20 +116,15 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     close: 'Xác nhận từ chối',
     targetGroup: (count: number): string => `Toàn bộ ${String(count)} LOT quản lý vật tư`,
     historyHeading: 'Lịch sử yêu cầu đặc cách',
-    reasonPlaceholder: 'Nhập lý do đặc cách',
     validToPlaceholder: 'Không giới hạn',
     none: 'Chưa có lịch sử yêu cầu nhân nhượng.',
     loading: 'Đang tải đặc cách.',
     loadFailed: 'Không tải được đặc cách.',
-    request: 'Yêu cầu đặc cách',
-    requesting: 'Đang yêu cầu…',
     apply: 'Áp dụng đặc cách',
     applyWaiting: 'Phải phê duyệt xong mới áp dụng được',
     applying: 'Đang áp dụng…',
-    qty: 'Số lượng yêu cầu đặc cách',
     validFrom: 'Ngày bắt đầu áp dụng',
     validTo: 'Ngày kết thúc áp dụng (tùy chọn)',
-    reason: 'Lý do đặc cách',
     requested: 'Đã yêu cầu đặc cách. Hãy áp dụng sau khi phê duyệt xong.',
     requestedLots: (count: number): string =>
       `Đã yêu cầu đặc cách cho toàn bộ ${String(count)} LOT quản lý vật tư. Hãy áp dụng sau khi phê duyệt xong.`,
@@ -143,11 +135,8 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
       `Đã áp dụng đặc cách. Chỉ số lượng được duyệt trở về bình thường. Số lượng còn lỗi được tách sang LOT mới ${lotNo} và xử lý ở phiếu không phù hợp ${nonconformanceNo}. Hãy dán nhãn mới cho LOT còn lỗi.`,
     rejected: 'Phê duyệt bị từ chối nên đã đóng đặc cách.',
     /** 요청 단추가 잠겼을 때 읽는 이유 — 칸별 안내 문구는 두지 않는다(필수 표시로 알린다). */
-    requestBlocked: 'Có thể yêu cầu khi đủ số lượng còn lại, thời hạn hiệu lực và lý do đặc cách.',
     blocked: {
-      qty: 'Đang xác nhận số lượng còn lại.',
       date: 'Hãy kiểm tra thời hạn hiệu lực.',
-      reason: 'Hãy nhập lý do đặc cách.',
     },
     status: {
       PENDING: 'Chờ phê duyệt',

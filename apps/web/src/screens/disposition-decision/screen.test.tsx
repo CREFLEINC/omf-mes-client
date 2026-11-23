@@ -129,17 +129,18 @@ describe('DispositionDecisionScreen 조회', () => {
   });
 
   /* 판정 대기 → 부적합 선택 → 처분 판정 또는 특채 요청(#223) — 특채 요청은 팝업으로 연다. */
-  it('처분 판정 머리의 「특채 요청」을 누르면 요청 팝업이 열리고, 취소하면 닫힌다', async () => {
+  it('특채를 고르면 팝업 없이 아래에 적용 기간 칸이 펼쳐지고, 다시 누르면 접힌다(#352)', async () => {
     const { user } = renderScreen();
     await selectRow(user);
     await screen.findByText('LOT-TEST-0088');
 
-    await user.click(screen.getByRole('button', { name: t.concession.request }));
-    const dialog = await screen.findByRole('dialog', { name: t.concession.requestHeading });
-    expect(within(dialog).queryByText(/조건부 사용 승인을 요청/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: '특채' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByLabelText(t.concession.validFrom, { exact: false })).toBeInTheDocument();
+    expect(screen.getByText(t.concession.validTo)).toBeInTheDocument();
 
-    await user.click(within(dialog).getByRole('button', { name: messages.common.cancel }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await user.click(screen.getByRole('radio', { name: '특채' }));
+    expect(screen.queryByText(t.concession.validTo)).toBeNull();
   });
 
   it('⛔ 승인·반려 컨트롤이 화면에 없다', async () => {
@@ -174,8 +175,8 @@ describe('DispositionDecisionScreen 조회', () => {
       expect(save).toBeEnabled();
     });
     const group = screen.getByRole('radiogroup', { name: t.form.dispositionLabel });
-    // #352 — 고를 수 있는 처분은 폐기 · 선별뿐(정상 · 재작업은 없다). 005 FR-041 — 선별은 자재 입하 IQC 부적합(입하 LOT 있음)만이라 이 부적합(입하 LOT 없음)에서는 잠긴다.
-    expect(within(group).getAllByRole('radio')).toHaveLength(2);
+    // #352 — 고를 수 있는 처분은 폐기 · 선별 · 특채뿐(정상 · 재작업은 없다). 005 FR-041 — 선별은 자재 입하 IQC 부적합(입하 LOT 있음)만이라 이 부적합(입하 LOT 없음)에서는 잠긴다.
+    expect(within(group).getAllByRole('radio')).toHaveLength(3);
     expect(within(group).queryByRole('radio', { name: '정상' })).toBeNull();
     expect(within(group).queryByRole('radio', { name: '재작업' })).toBeNull();
     expect(within(group).getByRole('radio', { name: '선별' })).toBeDisabled();

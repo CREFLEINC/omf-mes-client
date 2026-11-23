@@ -89,8 +89,8 @@ describe('DecisionFormPane', () => {
       dispositionOptions: [
         { value: 'NORMAL', label: '정상', lockReason: closed },
         { value: 'SCRAP', label: '폐기', lockReason: closed },
+        { value: 'CONCESSION', label: '특채', lockReason: closed },
       ],
-      concession: { lockReason: closed, onRequest: () => undefined },
     });
     const visible = screen
       .getAllByText(closed)

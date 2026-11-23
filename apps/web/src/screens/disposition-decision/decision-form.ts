@@ -13,10 +13,15 @@ export interface DecisionFormValue {
   /** 선별만 — 정보 수량(선택 · 0 이상). 입력 그대로의 글자. 재고 · LOT 수량은 바뀌지 않는다. */
   goodQty: string;
   defectQty: string;
+  /** 특채(`CONCESSION`)만 — 적용 시작일(필수) · 종료일(선택) `YYYY-MM-DD`. 특채를 고르면 시작일이 오늘로 찬다(#352). */
+  validFrom: string;
+  validTo: string;
 }
 
 /** 선별 — 불량 자재 관리 LOT 을 새 입하 LOT · 새 부적합으로 넘긴다(US7-2). */
 export const SORT = 'SORT';
+/** 특채 — 팝업 없이 처분 유형으로 고르고 아래 칸에서 요청한다(omf-all-around#352 사용자 지시). */
+export const CONCESSION = 'CONCESSION';
 
 export interface DecisionFormErrors {
   dispositionTypeCode?: string;
@@ -26,6 +31,8 @@ export interface DecisionFormErrors {
   lotIds?: string;
   goodQty?: string;
   defectQty?: string;
+  validFrom?: string;
+  validTo?: string;
 }
 
 /**
@@ -39,7 +46,26 @@ export const EMPTY_DECISION_FORM: DecisionFormValue = {
   sortLotIds: [],
   goodQty: '',
   defectQty: '',
+  validFrom: '',
+  validTo: '',
 };
+
+/**
+ * 처분 유형을 바꾼 값 — 특채를 고르면 적용 시작일을 오늘로 채우고, 특채에서 벗어나면 날짜를 비운다(취소 단추가 빈 날짜만 남은
+ * 폼을 입력 있음으로 읽지 않게).
+ */
+export const withDispositionType = (
+  value: DecisionFormValue,
+  code: string,
+  today: string,
+): DecisionFormValue =>
+  code === CONCESSION
+    ? {
+        ...value,
+        dispositionTypeCode: code,
+        validFrom: value.validFrom === '' ? today : value.validFrom,
+      }
+    : { ...value, dispositionTypeCode: code, validFrom: '', validTo: '' };
 
 /**
  * 취소는 입력이 있을 때만 활성이다(스펙 §5-1) — API가 없고 화면 안에서 끝난다.
@@ -55,6 +81,7 @@ export const hasDecisionInput = (value: DecisionFormValue): boolean =>
  * ⚠ 상한이 없으면 `1e+21` 같은 지수 표기가 전선에 실린다.
  */
 const DECIMAL = /^\d{1,12}(\.\d{1,6})?$/;
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export interface DecisionFormContext {
   /** 남은 수량(서버가 낸 조회 시점 값 · 공유계약 L-2). 모르면 `undefined`. */
@@ -103,6 +130,16 @@ export const validateDecisionForm = (
     if (good !== undefined) errors.goodQty = good;
     if (defect !== undefined) errors.defectQty = defect;
   } else if (value.dispositionTypeCode !== '') {
+    if (value.dispositionTypeCode === CONCESSION) {
+      const c = messages.dispositionDecision.concession;
+      if (!DATE.test(value.validFrom)) errors.validFrom = c.blocked.date;
+      else if (
+        value.validTo !== '' &&
+        (!DATE.test(value.validTo) || value.validTo < value.validFrom)
+      ) {
+        errors.validTo = c.blocked.date;
+      }
+    }
     if (context.remainingQty === undefined) errors.decisionQty = t.remainingUnknown;
     else if (context.remainingQty <= 0) errors.decisionQty = t.typeLock.closed;
   }
@@ -150,7 +187,10 @@ export const toDecisionCreateBody = (
     };
   }
 
-  if (context.remainingQty === undefined) return undefined;
+  /* 특채는 판정 저장이 아니라 특채 요청으로 보낸다 — 화면이 따로 만든다(`toConcessionCreateBody`). */
+  if (value.dispositionTypeCode === CONCESSION || context.remainingQty === undefined) {
+    return undefined;
+  }
   return {
     /* 선택지가 계약 `enum` 값 그대로다 — 선별 · 특채는 위 · 다른 길이라 셋으로 좁혀 싣는다. */
     dispositionTypeCode: value.dispositionTypeCode as 'REWORK' | 'SCRAP' | 'NORMAL',

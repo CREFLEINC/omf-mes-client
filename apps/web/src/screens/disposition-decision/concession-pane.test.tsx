@@ -1,25 +1,14 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
-import { ConcessionHistory, ConcessionRequestDialog } from './concession-pane';
-import type { NonconformanceLotRow } from './types';
+import { ConcessionHistory } from './concession-pane';
 
 /** W-03-10 특채 구획(omf-all-around#84 · 서버 선행 P-79) — 요청과 적용. */
 
 const t = messages.dispositionDecision.concession;
-
-const LOT: NonconformanceLotRow = {
-  nonconformanceLotId: 1,
-  lotId: 8801,
-  lotNoText: 'MLOT-8801',
-  affectedQtyText: '100',
-  uomId: 7001,
-  qualityStatusText: '불량',
-  qualityStatusCode: 'DEFECTIVE',
-};
 
 const concession = (statusCode: string) => ({
   concessionId: 61,
@@ -67,22 +56,6 @@ const stub =
     throw new Error(`스텁에 없는 요청입니다: ${request.method} ${request.url}`);
   };
 
-const renderDialog = () => {
-  const writes: Request[] = [];
-  const onClose = vi.fn();
-  renderWithProviders(
-    <ConcessionRequestDialog
-      nonconformanceId={41}
-      lots={[LOT]}
-      remainingQty={30}
-      today={new Date(2026, 9, 16)}
-      onClose={onClose}
-    />,
-    { fetch: stub([], writes) },
-  );
-  return { writes, onClose, user: userEvent.setup() };
-};
-
 const renderHistory = (
   rows: unknown[],
   readOnly = false,
@@ -95,46 +68,6 @@ const renderHistory = (
   });
   return { writes, user: userEvent.setup() };
 };
-
-describe('ConcessionRequestDialog', () => {
-  it('특채를 요청한다 — LOT 이 하나면 그 LOT·단위로, 유효 시작은 오늘이다', async () => {
-    const { writes, onClose, user } = renderDialog();
-
-    expect(screen.getByRole('dialog', { name: t.requestHeading })).toBeInTheDocument();
-    // 005 FR-038 — 사용 가능 수량은 남은 수량 전부로 고정한다(입력 없음).
-    expect(screen.getByLabelText(t.qty, { exact: false })).toHaveAttribute('readonly');
-    await user.type(screen.getByLabelText(t.reason, { exact: false }), '외관 경미 — 조건부 사용');
-    await user.click(screen.getByRole('button', { name: t.request }));
-
-    await waitFor(() => expect(writes).toHaveLength(1));
-    expect(writes[0]?.headers.get('Idempotency-Key')).toBeTruthy();
-    await expect(writes[0]?.json()).resolves.toEqual({
-      nonconformanceId: 41,
-      lotId: 8801,
-      approvedQty: 30,
-      uomId: 7001,
-      validFrom: '2026-10-16',
-      reason: '외관 경미 — 조건부 사용',
-    });
-    await waitFor(() => expect(onClose).toHaveBeenCalledWith(true));
-  });
-
-  it('사유가 없으면 요청할 수 없다 — 칸별 안내 문구 없이 필수 표시로 알린다', async () => {
-    renderDialog();
-
-    expect(screen.getByRole('button', { name: t.request })).toBeDisabled();
-    expect(screen.queryByText(t.blocked.reason)).toBeNull();
-  });
-
-  it('취소는 쓰지 않고 닫는다', async () => {
-    const { writes, onClose, user } = renderDialog();
-
-    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
-
-    expect(onClose).toHaveBeenCalledWith(false);
-    expect(writes).toHaveLength(0);
-  });
-});
 
 describe('ConcessionHistory', () => {
   it('이력이 없으면 한 줄로 알린다', async () => {

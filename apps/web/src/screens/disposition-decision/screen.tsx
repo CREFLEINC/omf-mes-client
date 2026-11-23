@@ -1,4 +1,9 @@
-import type { components, DispositionDecisionCreatedForward005 } from '@omf-mes/api-client';
+import type {
+  components,
+  ConcessionCreatedForward005,
+  ConcessionCreateForward005,
+  DispositionDecisionCreatedForward005,
+} from '@omf-mes/api-client';
 import { Badge, Chip, Tabs, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
@@ -17,7 +22,9 @@ import {
 } from '../../patterns/po-board';
 import { toApiError } from '../../patterns/request';
 import {
+  CONCESSION,
   EMPTY_DECISION_FORM,
+  hasBlockingError,
   hasDecisionInput,
   SORT,
   toDecisionCreateBody,
@@ -28,9 +35,7 @@ import {
 import { DecisionResultCard, type DecisionResult } from './decision-result';
 import {
   ConcessionHistory,
-  ConcessionRequestDialog,
   groupConcessions,
-  keepDocumentScroll,
   PendingConcessionBox,
   useConcessionApprovalStatus,
   useConcessions,
@@ -332,8 +337,6 @@ export const DispositionDecisionScreen = ({
   const concessions = useConcessions(selectedId);
   /* 상세 아래 탭 — 판정 이력 | 특채 요청 및 이력(#223). */
   const [sideTab, setSideTab] = useState<'decisions' | 'concessions'>('decisions');
-  /* 특채 요청 팝업 — 처분 대기에서 고른 부적합에 대해 연다(사용자 지시 · #223). */
-  const [isConcessionOpen, setIsConcessionOpen] = useState(false);
   const decisions = useDispositionDecisions(selectedId);
   const dispositionApprovals = useDispositionApprovals(selectedId);
   const pendingDispositionApproval = pendingDispositionApprovalOf(dispositionApprovals.data);
@@ -506,6 +509,34 @@ export const DispositionDecisionScreen = ({
     },
   });
 
+  /*
+   * 특채 요청 — 팝업 없이 처분 판정 칸에서 보낸다(omf-all-around#352 사용자 지시). 사유는 판정 사유 칸 하나를 쓴다
+   * (서버가 특채 사유를 결재 사유 · 특채 비고 · 처분 이력 사유에 같은 값으로 남긴다 — 따로 받을 값이 아니다).
+   * 수량은 남은 수량 전부, 자재 관리 LOT 이 여럿이면 `lotId` 없이 보낸다(FR-038 · D-14 — 옛 팝업과 같은 본문).
+   */
+  const concessionWrite = useMasterWrite<ConcessionCreateForward005, ConcessionCreatedForward005>({
+    request: (body, headers) =>
+      client.POST('/quality/concessions', {
+        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+        body,
+      }),
+    etagPath: null,
+    invalidateKeys: [dispositionKeys.all],
+    knownFields: ['lotId', 'approvedQty', 'uomId', 'validFrom', 'validTo', 'reason'],
+    keyLifetime: 'until-applied',
+    onSuccess: (data) => {
+      const count = data.concessionIds?.length ?? 0;
+      /* 다LOT 전량 특채는 서버가 자재 관리 LOT 마다 특채 행을 만든 수를 알린다(D-14). */
+      toast.show({
+        variant: 'success',
+        description: count > 1 ? t.concession.requestedLots(count) : t.concession.requested,
+      });
+      setSideTab('concessions');
+      setForm(EMPTY_DECISION_FORM);
+      setShowErrors(false);
+    },
+  });
+
   useEffect(() => {
     setForm(EMPTY_DECISION_FORM);
     setShowErrors(false);
@@ -513,7 +544,8 @@ export const DispositionDecisionScreen = ({
 
   /* 서버가 되돌린 필드 오류가 화면 검증을 덮는다 — 계약이 정본이다. */
   const formContext = { remainingQty: remaining.value, lotCount: lotRows.length };
-  const errors = { ...validateDecisionForm(form, formContext), ...write.fieldErrors };
+  const serverFieldErrors = { ...write.fieldErrors, ...concessionWrite.fieldErrors };
+  const errors = { ...validateDecisionForm(form, formContext), ...serverFieldErrors };
   /* 005 — 처분 유형마다 막힘(종결 · 특채 결재 대기 · 선별 규칙 · 선별로 생긴 부적합의 정상). */
   const pendingConcession = concessions.data?.find((row) => row.statusCode === 'PENDING');
   /* 그 특채 결재의 상태 — 위 상자와 처분 유형 막힘 문구가 같은 말을 하게(G2 L-d). 같은 열쇠라 한 번만 나간다. */
@@ -540,13 +572,21 @@ export const DispositionDecisionScreen = ({
       ...(lockReason === undefined ? {} : { lockReason }),
     };
   });
-  const concessionLock = dispositionOptionLock('CONCESSION', optionContext);
+  const concessionLock = dispositionOptionLock(CONCESSION, optionContext);
+  /* 특채도 처분 유형 칸 하나로 — 고르면 아래에 적용 기간 칸이 펼쳐진다(#352 사용자 지시 · 팝업 없앰). */
+  const decisionOptions = [
+    ...dispositionOptions,
+    {
+      ...dispositionTypeOptions([CONCESSION])[0],
+      ...(concessionLock === undefined ? {} : { lockReason: concessionLock }),
+    } as (typeof dispositionOptions)[number],
+  ];
   const uomText = uomId === undefined ? '' : ` ${lookupDisplayLabel(uoms, uomId)}`;
   const isOtherTarget = pendingTarget !== null && pendingTarget.nonconformanceId !== selectedId;
   const lock = toDecisionLock({
     selectedId,
-    isSaving: write.isSaving,
-    writeError: write.error,
+    isSaving: write.isSaving || concessionWrite.isSaving,
+    writeError: write.error ?? concessionWrite.error,
     detailError,
     uomId,
     dispositionTypeCodes: selectableDispositionCodes(dispositionTypeCodes),
@@ -566,6 +606,24 @@ export const DispositionDecisionScreen = ({
      * 닿지 않는 분기는 감지기가 물 수 없다. 단위 좁히기만 남는다(타입이 요구한다).
      */
     if (uomId === undefined || selectedId === null) return;
+
+    if (form.dispositionTypeCode === CONCESSION) {
+      const remainingQty = remaining.value;
+      if (hasBlockingError(validateDecisionForm(form, formContext)) || remainingQty === undefined)
+        return;
+      const onlyLot = lotRows.length === 1 ? lotRows[0] : undefined;
+      concessionWrite.write({
+        nonconformanceId: selectedId,
+        /* 자재 관리 LOT 이 하나면 그 LOT, 여럿이면 비운다 — 서버가 LOT 마다 특채 행을 만든다(D-14). */
+        ...(onlyLot === undefined ? {} : { lotId: onlyLot.lotId }),
+        approvedQty: remainingQty,
+        uomId,
+        validFrom: form.validFrom,
+        ...(form.validTo === '' ? {} : { validTo: form.validTo }),
+        reason: form.reason.trim(),
+      });
+      return;
+    }
 
     /* 검증을 통과하지 못하면 본문이 만들어지지 않는다 — 그 자체가 마지막 문이다. */
     const body = toDecisionCreateBody(form, uomId, formContext);
@@ -887,27 +945,20 @@ export const DispositionDecisionScreen = ({
                 {pendingConcession === undefined && pendingDispositionApproval === undefined && (
                   <DecisionFormPane
                     value={form}
-                    errors={showErrors ? errors : write.fieldErrors}
+                    errors={showErrors ? errors : serverFieldErrors}
                     remainingQty={remaining.value}
                     lockReason={lock.reason}
                     isUncertain={lock.isUncertain}
                     onCheckOutcome={checkOutcome}
-                    dispositionOptions={dispositionOptions}
-                    concession={{
-                      lockReason: concessionLock,
-                      onRequest: () => {
-                        /* 창이 열리며 문서가 밀리지 않게 누른 순간의 자리를 붙든다(G2 L14-1). */
-                        keepDocumentScroll();
-                        setIsConcessionOpen(true);
-                      },
-                    }}
+                    dispositionOptions={decisionOptions}
+                    today={today}
                     lots={lotRows}
                     inboundLotNo={detailView?.inboundLotNo}
                     inspectionRequestNo={detailView?.inspectionRequestNo}
                     uomId={uomId}
                     uoms={uoms}
-                    writeError={write.error}
-                    isSaving={write.isSaving}
+                    writeError={write.error ?? concessionWrite.error}
+                    isSaving={write.isSaving || concessionWrite.isSaving}
                     canCancel={hasDecisionInput(form)}
                     onChange={(next) => {
                       /* 고친 칸의 서버 오류만 지운다 — 남은 칸의 오류까지 지우면 못 본 채 다시 보낸다. */
@@ -917,6 +968,10 @@ export const DispositionDecisionScreen = ({
                       if (next.sortLotIds !== form.sortLotIds) write.clearFieldError('lotIds');
                       if (next.goodQty !== form.goodQty) write.clearFieldError('goodQty');
                       if (next.defectQty !== form.defectQty) write.clearFieldError('defectQty');
+                      if (next.reason !== form.reason) concessionWrite.clearFieldError('reason');
+                      if (next.validFrom !== form.validFrom)
+                        concessionWrite.clearFieldError('validFrom');
+                      if (next.validTo !== form.validTo) concessionWrite.clearFieldError('validTo');
                       setForm(next);
                     }}
                     onSave={save}
@@ -925,6 +980,7 @@ export const DispositionDecisionScreen = ({
                       setShowErrors(false);
                       /* 지운 값에 대한 서버 판정을 남기지 않는다 — 빈 칸에 붙은 오류는 풀 길이 없다. */
                       write.reset();
+                      concessionWrite.reset();
                     }}
                     onReload={checkOutcome}
                   />
@@ -994,32 +1050,6 @@ export const DispositionDecisionScreen = ({
           )}
         </section>
       </div>
-      {isConcessionOpen &&
-        tab === 'pending' &&
-        selectedId !== null &&
-        detail.data !== undefined && (
-          <ConcessionRequestDialog
-            nonconformanceId={selectedId}
-            lots={lotRows}
-            remainingQty={remaining.value}
-            uoms={uoms}
-            today={today}
-            onClose={(requested, lotCount) => {
-              setIsConcessionOpen(false);
-              if (requested) {
-                /* 다LOT 전량 특채는 서버가 자재 관리 LOT 마다 특채 행을 만든 수를 알린다(D-14). */
-                toast.show({
-                  variant: 'success',
-                  description:
-                    lotCount === undefined
-                      ? t.concession.requested
-                      : t.concession.requestedLots(lotCount),
-                });
-                setSideTab('concessions');
-              }
-            }}
-          />
-        )}
     </>
   );
 };
