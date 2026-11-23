@@ -26000,6 +26000,363 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/logistics/material-lot-pairs': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 자재 관리 LOT 공급사·품목 목록(왼쪽)
+     * @description 근거: P-01-01 · W-01-14 (피처 014 FR-010·011). 조합 = 발행 묶음 ∪ 공급사·품목 기본 정보 ∪ 그 공장의 미마감 P/O 라인 — 발행 여부와 상관없이 모두. 정렬: 할 일(미출력 LOT 이 있거나 P/O 남은 양이 받기 전 자동 LOT 보다 많은) 조합 먼저, 그다음 공급사 코드·품목 코드. 만들지 않는다
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description 공장 */
+          plantId: number;
+          /** @description 공급사·품목 코드·이름(부분 일치) */
+          q?: string;
+          /** @description 쪽 */
+          page?: number;
+          /** @description 쪽 크기 */
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: components['schemas']['MaterialLotPair'][];
+              page: components['schemas']['PageMeta'];
+              summary: {
+                /** @description 공장 전체 이미 만든 미출력 LOT 수 — POP 「화면 이동」 배지(찾기와 상관없음) */
+                unprintedCount: number;
+              };
+            };
+          };
+        };
+        /** @description 검증 실패 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다. 단말은 POP 이고 질의 plantId 가 단말 공장이어야 한다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — P-01-01 · W-01-14 중 하나가 필요하다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/material-lots': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 자재 관리 LOT 탭 목록(오른쪽) — 미출력은 P/O 몫을 만들면서
+     * @description 근거: P-01-01 · W-01-14 (피처 014 FR-001~004·008·012~014). tab=UNPRINTED 일 때만 만든다 — (공장·공급사·품목) 잠금 안에서 P/O 몫(라인 남은 양 − 받은 양에 아직 들어가지 않은 자동 LOT, 발주일 순)을 계산해 이 쪽까지 모자란 만큼(page×size − 이미 있는 미출력)만 만든다. total(UNPRINTED) = 이미 있는 미출력 + 아직 만들 수 있는 수. 정렬: UNPRINTED 만든 차례(lot_id 오름차순) · PRINTED 마지막 발행 최근 순 · RECEIVED 받은 시각 최근 순 · VOIDED 폐기 시각 최근 순(기간 제한 없음).
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description 공장 */
+          plantId: number;
+          /** @description 공급사 */
+          supplierId: number;
+          /** @description 품목 */
+          itemId: number;
+          /** @description 탭 — 미출력 · 출력됨(입하 전) · 입하된 LOT · 폐기 LOT */
+          tab: 'UNPRINTED' | 'PRINTED' | 'RECEIVED' | 'VOIDED';
+          /** @description 쪽 */
+          page?: number;
+          /** @description 쪽 크기 */
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: components['schemas']['MaterialLotTabRow'][];
+              page: components['schemas']['PageMeta'];
+              /** @description UNPRINTED 만 — 다른 탭은 null */
+              generation: components['schemas']['MaterialLotGeneration'] | null;
+            };
+          };
+        };
+        /** @description 검증 실패 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다. 단말은 POP 이고 질의 plantId 가 단말 공장이어야 한다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — P-01-01 · W-01-14 중 하나가 필요하다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description LOT_NO_CONFLICT — 번호 충돌이 거듭됐다. 다시 부르면 풀린다 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/material-lots/lookup': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 자재 관리 LOT 번호 스캔 찾기
+     * @description 근거: P-01-01 (피처 014 FR-021). 공장 안 자재 관리 LOT 하나를 번호로 찾아 그 공급사·품목과 속한 탭을 알린다. 만들지 않는다. 탭: 입하 LOT 이 있으면 RECEIVED, 폐기 VOIDED, 대기이고 라벨 발행 기록이 있으면 PRINTED, 없으면 UNPRINTED
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description 공장 */
+          plantId: number;
+          /** @description 자재 관리 LOT 번호(스캔 값) */
+          lotNo: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 찾음 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              lot: components['schemas']['MaterialLotTabRow'];
+              supplier: components['schemas']['MaterialLotPairSupplier'];
+              item: components['schemas']['MaterialLotPairItem'];
+              /** @enum {string} */
+              tab: 'UNPRINTED' | 'PRINTED' | 'RECEIVED' | 'VOIDED';
+            };
+          };
+        };
+        /** @description 검증 실패 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다. 단말은 POP 이고 질의 plantId 가 단말 공장이어야 한다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — P-01-01 · W-01-14 중 하나가 필요하다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description NOT_FOUND 「이 공장에 없는 자재 관리 LOT 번호입니다」 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/material-lots/{lotId}:revise': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 출력 전 자재 관리 LOT 수정
+     * @description 근거: P-01-01 · W-01-14 (피처 014 FR-016·017). 미출력(대기 · 자재 관리 LOT 라벨 발행 기록 없음) LOT 의 수량·패키징을 고친다 — 자동·수동 모두. 같은 LOT(lotId·P/O 몫 기록 그대로)이고, 수량이 바뀌면 lotNo 를 새 수량 접두사(품목·수량·날짜·공급사)의 다음 일련으로 바꾼다. 같으면 번호 그대로. 줄인 몫은 다음 미출력 조회가 다시 만들고, 늘리면 만들 양이 줄어든다. 바꾼 사실은 감사(audit_event MATERIAL_LOT_REVISED, 옛·새 번호)에 남는다
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /** @description POP 단말에서는 필수(활성 작업자 사번 — 단말 공장). 웹(W-01-14)은 보내지 않는다 — 계정이 행위자다. */
+          'X-Worker-No'?: string;
+        };
+        path: {
+          /** @description 자재 관리 LOT */
+          lotId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['MaterialLotRevise'];
+        };
+      };
+      responses: {
+        /** @description 고친 LOT */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['MaterialLotTabRow'];
+          };
+        };
+        /** @description 검증 실패 — qty ≤ 0(RANGE) · qty ≠ count × qtyPerPackage(INVALID) · 없는 패키징 단위(INVALID) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다. 단말은 POP 이고 작업자(X-Worker-No)·멱등 키가 있어야 하며 LOT 이 단말 공장의 것이어야 한다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — P-01-01 · W-01-14 중 하나가 필요하다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 LOT */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description ALREADY_PRINTED(한 번이라도 출력한 LOT) · STATE_LOCKED(대기 아님 — 입하·폐기, 또는 자재 관리 LOT 이 아님) · LOT_NO_CONFLICT(번호 충돌이 거듭됨 — 다시 부르면 풀린다) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/trace/lots:void': {
     parameters: {
       query?: never;
@@ -48919,6 +49276,17 @@ export interface components {
        */
       defaultProductionLotSize?: number | null;
       /**
+       * Format: int64
+       * @description MES 확장 — 자재 관리 LOT 패키징 단위 기본값(피처 014 · omf-all-around#349). defaultPackageCount 와 함께 있거나 함께 비어야 한다. 조회 때 P/O 몫만큼 자동으로 만드는 자재 관리 LOT 에 복사한다(만든 뒤 바뀌어도 LOT 은 그대로). 근거: W-06-05 lot 그룹
+       * @example 1001
+       */
+      defaultPackageUomId?: number | null;
+      /**
+       * @description MES 확장 — LOT 당 패키징 수량 기본값(LOT 하나에 든 패키징 개수, 정수 ≥ 1). 패키징당 수량 = LOT 수량 ÷ 이 값. defaultProductionLotSize 를 나머지 없이 나눠야 한다(기본크기가 비면 검사하지 않음). 피처 014 FR-018
+       * @example 10
+       */
+      defaultPackageCount?: number | null;
+      /**
        * @description ERP 규격(SPEC) — 받은 그대로다. ERP 가 비워 보냈거나 ERP 에서 받지 않은 품목은 null
        * @example PC, LD7700, V-2, NATURAL
        */
@@ -48981,6 +49349,17 @@ export interface components {
        * @example 500
        */
       defaultProductionLotSize?: number | null;
+      /**
+       * Format: int64
+       * @description MES 확장 — 자재 관리 LOT 패키징 단위 기본값(피처 014 · omf-all-around#349). defaultPackageCount 와 함께 있거나 함께 비어야 한다. 조회 때 P/O 몫만큼 자동으로 만드는 자재 관리 LOT 에 복사한다(만든 뒤 바뀌어도 LOT 은 그대로). 근거: W-06-05 lot 그룹. 칸을 보내지 않으면 지금 값을 둔다
+       * @example 1001
+       */
+      defaultPackageUomId?: number | null;
+      /**
+       * @description MES 확장 — LOT 당 패키징 수량 기본값(LOT 하나에 든 패키징 개수, 정수 ≥ 1). 패키징당 수량 = LOT 수량 ÷ 이 값. defaultProductionLotSize 를 나머지 없이 나눠야 한다(기본크기가 비면 검사하지 않음). 피처 014 FR-018. 하나만 있으면 400 PAIR, 나누지 못하면 400 INVALID 「패키징 수량이 부적합 합니다. 자재 LOT 기본크기를 정확히 나눌 수 있는 값을 입력해주세요.」
+       * @example 10
+       */
+      defaultPackageCount?: number | null;
       /**
        * @description 품목 한국어 명칭 — QA #33 「다국어(한/베) 전범위(UI·마스터 명칭·출력물)」·QA #34 「다국어 명칭 = MES 확장 속성」을 되살렸다(2026-08-30). ERP 원본 필드의 편집 가능 여부와 무관하게 항상 편집 가능하다. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
        * @example 표시명
@@ -59643,6 +60022,106 @@ export interface components {
        * @enum {string|null}
        */
       receiptStatusCode: 'POSTED' | 'CANCEL_REQUESTED' | 'CANCELLED' | null;
+    };
+    /** @description 공급사(피처 014) */
+    MaterialLotPairSupplier: {
+      /** Format: int64 */
+      supplierId: number;
+      /** @example 100019 */
+      code: string;
+      name: string;
+    };
+    /** @description 품목(피처 014) */
+    MaterialLotPairItem: {
+      /** Format: int64 */
+      itemId: number;
+      code: string;
+      name: string;
+      /**
+       * @description 품목 기본 단위 — LOT 수량 단위
+       * @example EA
+       */
+      baseUomCode: string;
+    };
+    /** @description 왼쪽 공급사·품목 한 줄(피처 014 FR-010·011 · P-01-01 · W-01-14) */
+    MaterialLotPair: {
+      supplier: components['schemas']['MaterialLotPairSupplier'];
+      item: components['schemas']['MaterialLotPairItem'];
+      /** @description 이미 만든 미출력 LOT 수(대기 · 자재 관리 LOT 라벨 발행 기록 없음 · 수동 포함) */
+      unprintedCount: number;
+      /** @description P/O 몫으로 아직 만들 수 있는 LOT 수 — 계산만 하고 만들지 않는다(기본값 없음·환산 없음이면 0) */
+      creatableCount: number;
+      /**
+       * @description 품목 LOT 기본값 상태 — NO_DEFAULT 보관 단위·기본크기 없음, NO_CONVERSION 보관 단위 → 기본 단위 환산 없음
+       * @enum {string}
+       */
+      defaultsStatus: 'OK' | 'NO_DEFAULT' | 'NO_CONVERSION';
+      /** @description defaultsStatus = OK 일 때만 */
+      lotDefaults: {
+        /** @description LOT 하나의 수량(품목 기본 단위로 바꾼 값) */
+        lotQty: number;
+        /** Format: int64 */
+        packageUomId: number | null;
+        packageUomCode: string | null;
+        /** @description LOT 당 패키징 수량 */
+        packageCount: number | null;
+      } | null;
+    };
+    /** @description 오른쪽 탭의 자재 관리 LOT 한 줄(피처 014) — MaterialLotSummary 에 탭 차례·만든 방식·P/O 라인·받은·폐기 시각을 더한다 */
+    MaterialLotTabRow: components['schemas']['MaterialLotSummary'] & {
+      /** @description 이 탭에서의 차례(1 부터). 미출력 탭은 만든 차례(lot_id 오름차순 = P/O 발주일 차례) — 일괄 출력 장수가 이 차례의 앞에서부터다 */
+      seq: number;
+      /** @description 수량 단위(품목 기본 단위) */
+      uomCode: string;
+      /**
+       * @description AUTO = 조회가 P/O 몫으로 만듦(몫 기록 있음) · MANUAL = [만들기]
+       * @enum {string}
+       */
+      creationModeCode: 'AUTO' | 'MANUAL';
+      /** @description 만들 때 채운 P/O 라인(AUTO 만). 입하 마감 배정은 이것과 따로 발주일 순이다 */
+      purchaseOrderLine: {
+        /** Format: int64 */
+        purchaseOrderLineId: number;
+        purchaseOrderNo: string;
+        lineNo: number;
+      } | null;
+      /**
+       * Format: date-time
+       * @description 받은 시각(입하된 LOT 탭)
+       */
+      receivedAt: string | null;
+      /**
+       * Format: date-time
+       * @description 폐기 시각(폐기 LOT 탭)
+       */
+      voidedAt: string | null;
+    };
+    /** @description 미출력 탭 조회가 만든 결과(피처 014). P/O 감량으로 넘쳐도 따로 알리지 않는다(FR-009) */
+    MaterialLotGeneration: {
+      /**
+       * @description NO_DEFAULT 「기본 단위 설정이 안되어있습니다. 직접 생성해 주세요.」 · NO_CONVERSION 「품목 단위 환산이 없어 LOT 을 만들 수 없습니다. 관리자에게 문의하세요」 · NO_OPEN_PO(기본값은 있고 미출력·만들 수 있는 몫이 모두 0) 「입하 예정 계획이 없습니다. 관리자에게 문의하세요」. NO_* 여도 수동으로 만든 미출력 LOT 은 목록에 나온다
+       * @enum {string}
+       */
+      status: 'OK' | 'NO_DEFAULT' | 'NO_CONVERSION' | 'NO_OPEN_PO';
+      /** @description 이번 요청이 만든 LOT 수 */
+      createdNow: number;
+      /** @description 이번에 만든 뒤에도 P/O 몫으로 더 만들 수 있는 LOT 수 */
+      creatableRemaining: number;
+    };
+    /** @description 출력 전 자재 관리 LOT 수정(피처 014 FR-016·017). 수량이 바뀌면 번호의 수량 자리가 바뀌므로 새 일련을 받는다 */
+    MaterialLotRevise: {
+      /** @description LOT 수량(품목 기본 단위) */
+      qty: number;
+      /** @description null = 패키징 없음. 있으면 qty = count × qtyPerPackage 여야 한다 */
+      package: {
+        /**
+         * Format: int64
+         * @description 패키징 단위
+         */
+        uomId: number;
+        count: number;
+        qtyPerPackage: number;
+      } | null;
     };
     /**
      * @description 결재선 정의. 승인 유형과 사업부로 고른다.
