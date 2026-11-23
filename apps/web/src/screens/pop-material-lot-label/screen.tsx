@@ -5,6 +5,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { usePopIdentity } from '../../patterns/pop-identity';
+import { PopSelect } from '../../patterns/pop-select';
 import { ListOrderFoot, sortByTime, type ListOrder } from '../../patterns/pop-list-order';
 import { PopTopPrinter } from '../../patterns/pop-top-status';
 import {
@@ -242,6 +243,8 @@ export const PopMaterialLotLabelScreen = () => {
   /* 탭 건수는 표와 같은 규칙 — 라벨을 아직 발행하지 않은 입하 대기 LOT(사용자 지시 2026-11-19). */
   const waitingTotal = allLots.filter((lot) => isWaiting(lot) && isUnissued(lot)).length;
   const waitingCount = waitingLots.filter(isWaiting).length;
+  const isAllWaitingChecked =
+    waitingCount > 0 && waitingLots.filter(isWaiting).every((lot) => checked.has(lot.lotId));
 
   const lotById = useMemo(
     () => new Map(allLots.map((lot) => [lot.lotId, lot] as const)),
@@ -685,10 +688,7 @@ export const PopMaterialLotLabelScreen = () => {
             <b>{t.work.resultSummary(summary.printed, summary.unfinished.length)}</b>
           ) : (
             <>
-              {/* 「입하 대기 N」 칩은 두지 않는다 — 건수는 표·아래 단추가 말한다(사용자 지시 2026-11-19). */}
-              {receivedLots.length > 0 ? (
-                <PuChip tone="ok">{t.work.receivedChip(receivedLots.length)}</PuChip>
-              ) : null}
+              {/* 「입하 대기 N」 · 「입하 N · 재발행 탭」 칩은 두지 않는다(사용자 지시 2026-11-19 · 2026-11-23). */}
               <PuHelpButton title={t.work.help}>
                 <div className="mll-help">
                   <p>{t.work.helpIntro}</p>
@@ -732,10 +732,13 @@ export const PopMaterialLotLabelScreen = () => {
           <PuNote>{t.bar.unitNote(unit)}</PuNote>
         ) : null}
         <div className="mll-units">
-          <span className="pu-label">{t.bar.unit.label}</span>
-          <PuTiles
-            label={t.bar.unit.label}
-            cols={4}
+          {/* 발행 단위는 고르기 칸 하나(사용자 지시 2026-11-23). */}
+          <span className="pu-label" id={`${createNoteId}-unit`}>
+            {t.bar.unit.label}
+          </span>
+          <PopSelect
+            className="mll-unit-select"
+            aria-labelledby={`${createNoteId}-unit`}
             value={unitValue(unit)}
             disabled={isFrozen}
             options={ISSUE_UNITS.map((each) => ({
@@ -746,12 +749,20 @@ export const PopMaterialLotLabelScreen = () => {
               chooseUnit(value === 'all' ? null : Number(value));
             }}
           />
-          <PuButton size="sm" disabled={isFrozen || waitingCount === 0} onClick={selectAllWaiting}>
-            {t.bar.selectAllWaiting(waitingCount)}
-          </PuButton>
-          <PuButton size="sm" disabled={isFrozen || checked.size === 0} onClick={clearSelection}>
-            {t.bar.clear}
-          </PuButton>
+          {/* 전체 선택 · 선택 해제는 단추 하나 — 다 골랐으면 해제, 아니면 전체 선택(사용자 지시 2026-11-23). */}
+          {isAllWaitingChecked ? (
+            <PuButton size="sm" disabled={isFrozen} onClick={clearSelection}>
+              {t.bar.clear}
+            </PuButton>
+          ) : (
+            <PuButton
+              size="sm"
+              disabled={isFrozen || waitingCount === 0}
+              onClick={selectAllWaiting}
+            >
+              {t.bar.selectAllWaiting(waitingCount)}
+            </PuButton>
+          )}
         </div>
         {pairTableLots.length === 0 ? (
           <PuEmpty icon="box" title={t.work.waitingEmpty} hint={t.work.waitingEmptyHint} />

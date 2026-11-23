@@ -153,7 +153,8 @@ describe('PopMaterialLotLabelScreen — 오른쪽 표', () => {
     /* 라벨을 발행한 LOT 은 발행 대기 표에 서지 않는다 — 재발행 탭에만(사용자 지시 2026-11-19). */
     expect(text).not.toContain('|0003');
     expect(text).not.toContain('SYN-IL-0011');
-    expect(screen.getByText(t.work.receivedChip(1))).toBeInTheDocument();
+    /* 「입하 N · 재발행 탭」 칩은 두지 않는다(사용자 지시 2026-11-23). */
+    expect(screen.queryByText(t.work.receivedChip(1))).toBeNull();
   });
 
   it('줄은 번호 · 재고 수량 · 포장 · 공급사 LOT · 상태 · 라벨을 적는다 — 출력한 LOT 은 재발행 탭에 회차 · 시각 · 공급사 LOT 칸으로', async () => {

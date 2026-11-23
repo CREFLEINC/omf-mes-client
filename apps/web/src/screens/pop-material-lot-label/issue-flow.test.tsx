@@ -301,7 +301,11 @@ describe('라벨 발행 — N장마다 멈추고 이어서', () => {
     await waitFor(() =>
       expect(screen.getByText(messages.popUniform.pager.total(12))).toBeInTheDocument(),
     );
-    await user.click(screen.getByRole('radio', { name: t.bar.unit.each(10) }));
+    /* 발행 단위는 고르기 칸(사용자 지시 2026-11-23). */
+    await user.click(screen.getByRole('combobox', { name: t.bar.unit.label }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('option', { name: t.bar.unit.each(10) }),
+    );
     await user.click(screen.getByRole('button', { name: t.bar.selectAllWaiting(12) }));
     /* 단위보다 많이 골랐다 — 단추와 안내 줄이 10장마다 멈춘다고 말한다. */
     expect(screen.getByText(t.bar.unitNote(10))).toBeInTheDocument();
