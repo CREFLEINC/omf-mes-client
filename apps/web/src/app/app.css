@@ -31617,6 +31617,27 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   text-align: left;
 }
 
+/* IQC 목록의 입하 LOT · 상태 · 종합 판정은 가운데(omf-all-around#351) — 위 왼쪽 규칙보다 무겁게 표식 칸만 돌린다. */
+.iqc-inspection-queue-rows.inspection-queue-table.cells-start
+  table
+  tr:not([class*="_emptyCell"])
+  > td:nth-child(n):nth-child(n):nth-child(n):has(> .iqc-queue-center) {
+  text-align: center;
+}
+
+.iqc-queue-center {
+  display: contents;
+}
+
+.inspection-queue-table.cells-start .iqc-queue-center .iqc-inbound-queue-two {
+  align-items: center;
+}
+
+.inspection-queue-table.cells-start .iqc-queue-center .iqc-inspection-lot,
+.inspection-queue-table.cells-start .iqc-queue-center .iqc-inspection-lot-cell {
+  justify-content: center;
+}
+
 .inspection-queue-table.cells-start .iqc-inspection-lot-cell,
 .inspection-queue-table.cells-start .iqc-inspection-lot:has(> .iqc-inspection-lot-tail),
 .inspection-queue-table.cells-start .iqc-inspection-queue-item,
@@ -32987,6 +33008,24 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 
 .parts-iqc-no-plan > button {
   flex: none;
+}
+
+/*
+ * IQC 기준 안내 라벨 — 글 폭만큼, 본문 크기 글자(omf-all-around#351 · 사용자 지시 2026-11-23).
+ * 공용 `.iqc-inspection-action-note:nth-child(n)`(label-sm)보다 무거워야 글자가 커진다.
+ */
+.iqc-inspection-action-note.parts-iqc-plan-note[data-tone] {
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+/* 「검사 항목」 제목과 그 오른쪽 안내를 한 무리로 — 진행 건수는 줄 오른쪽 끝에 남는다. */
+.parts-iqc-head-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
 }
 
 .parts-iqc-plan {

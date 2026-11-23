@@ -78,6 +78,37 @@ const openButton = (inspectionRequestNo: string) =>
   });
 
 describe('QueueTable', () => {
+  it('#351 의뢰 일시는 처음부터 오름차순 — 누를 때마다 내림 ↔ 오름만 오간다(「정렬 없음」을 거치지 않는다)', async () => {
+    const user = userEvent.setup();
+    renderTable({
+      rows: [
+        {
+          ...rows[0]!,
+          inspectionRequestId: 901,
+          inspectionRequestNo: 'TST-REQ-B',
+          requestedAt: '2099-01-02T00:00:00Z',
+        },
+        {
+          ...rows[0]!,
+          inspectionRequestId: 902,
+          inspectionRequestNo: 'TST-REQ-A',
+          requestedAt: '2099-01-01T00:00:00Z',
+        },
+      ],
+    });
+    const header = screen.getByRole('columnheader', { name: new RegExp(t.columns.requestedAt) });
+    const order = () => screen.getAllByText(/^TST-REQ-[AB]$/).map((cell) => cell.textContent);
+
+    expect(header).toHaveAttribute('aria-sort', 'ascending');
+    expect(order()).toEqual(['TST-REQ-A', 'TST-REQ-B']);
+    await user.click(within(header).getByRole('button'));
+    expect(header).toHaveAttribute('aria-sort', 'descending');
+    expect(order()).toEqual(['TST-REQ-B', 'TST-REQ-A']);
+    await user.click(within(header).getByRole('button'));
+    expect(header).toHaveAttribute('aria-sort', 'ascending');
+    expect(order()).toEqual(['TST-REQ-A', 'TST-REQ-B']);
+  });
+
   it('의뢰마다 한 줄을 그린다', () => {
     renderTable();
 

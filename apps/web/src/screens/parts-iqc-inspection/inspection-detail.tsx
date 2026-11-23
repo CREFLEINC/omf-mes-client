@@ -317,9 +317,12 @@ export const InspectionDetail = ({
         </AlertBanner>
       );
     }
-    if (versionId === null || version.data === undefined || specs.data === undefined) {
-      /* 검사 기준 화면에서 이 품목의 IQC 기준 등록 창을 바로 연다(#225) — 그 화면 권한이 없으면 단추를 두지 않는다. */
-      const setPlan = toWebAccess(session?.permissions).allows(STANDARD_PATH) ? (
+    if (versionId !== null && (version.data === undefined || specs.data === undefined)) {
+      return <AlertBanner variant="error">{t.dialog.loadFailed}</AlertBanner>;
+    }
+    /* 기준이 없으면 검사 기준 화면에서 이 품목의 IQC 기준 등록 창을 바로 연다(#225) — 그 화면 권한이 없으면 단추를 두지 않는다. */
+    const setPlan =
+      versionId === null && toWebAccess(session?.permissions).allows(STANDARD_PATH) ? (
         <Button
           variant="outlined"
           size="sm"
@@ -327,23 +330,14 @@ export const InspectionDetail = ({
         >
           {t.dialog.setPlan}
         </Button>
-      ) : undefined;
-      /* 단추는 문구와 같은 줄에 둔다 — 띠의 action 자리는 문구 아래 줄로 내려간다(#225). */
-      return (
-        <AlertBanner variant="warning">
-          <span className="parts-iqc-no-plan">
-            <span>{t.dialog.noPlan}</span>
-            {setPlan}
-          </span>
-        </AlertBanner>
-      );
-    }
+      ) : null;
     return (
       <InspectionForm
         key={`${String(inspectionRequestId)}-${String(isReinspecting)}-${String(draftRound?.inspectionResultId ?? 0)}-${measurements.isSuccess ? 'm' : '-'}`}
         request={detail.data}
-        version={version.data}
-        specs={[...specs.data].sort((a, b) => a.sequenceNo - b.sequenceNo)}
+        version={version.data ?? null}
+        specs={[...(specs.data ?? [])].sort((a, b) => a.sequenceNo - b.sequenceNo)}
+        noPlanAction={setPlan}
         planLabel={plan.data === undefined ? '-' : plan.data.inspectionPlanCode}
         planName={plan.data?.inspectionPlanName ?? '-'}
         itemParts={items.partsOf(detail.data.itemId)}
@@ -417,8 +411,8 @@ export const InspectionDetail = ({
     onDirtyChange: formDirtyChange,
   }) => {
     if (detail.data === undefined) return null;
-    if (versionId === null || version.data === undefined || specs.data === undefined) {
-      return <AlertBanner variant="warning">{t.dialog.noPlan}</AlertBanner>;
+    if (versionId !== null && (version.data === undefined || specs.data === undefined)) {
+      return <AlertBanner variant="error">{t.dialog.loadFailed}</AlertBanner>;
     }
     /* OA — 적어 둔 4M 을 읽은 뒤에 양식을 연다(양식은 처음 값으로 4M 을 잡는다 · #290). */
     if (inboundFourM.isError)
@@ -430,8 +424,8 @@ export const InspectionDetail = ({
       <InspectionForm
         key={formKey}
         request={detail.data}
-        version={version.data}
-        specs={[...specs.data].sort((a, b) => a.sequenceNo - b.sequenceNo)}
+        version={version.data ?? null}
+        specs={[...(specs.data ?? [])].sort((a, b) => a.sequenceNo - b.sequenceNo)}
         planLabel={plan.data === undefined ? '-' : plan.data.inspectionPlanCode}
         planName={plan.data?.inspectionPlanName ?? '-'}
         itemParts={items.partsOf(detail.data.itemId)}
@@ -698,8 +692,11 @@ interface FormProps {
     /** AQL 샘플링 기준이면 의뢰 수량으로 표에서 낸 시료 계획(omf-all-around#264). */
     aqlPlan: InspectionAqlPlanForward | null;
   };
-  version: components['schemas']['InspectionPlanVersion'];
+  /** 의뢰에 검사 기준이 없으면 `null` — 검사 항목 없이 종합 판정만 받는다(omf-all-around#351). */
+  version: components['schemas']['InspectionPlanVersion'] | null;
   specs: ItemSpec[];
+  /** 기준이 없을 때 안내 줄 오른쪽에 두는 [검사기준 설정](부품 화면 · #225). */
+  noPlanAction?: ReactNode;
   planLabel: string;
   planName: string;
   itemParts: { code: string; name: string } | null;
@@ -750,11 +747,20 @@ interface FormProps {
 
 /** 기준서 도면 — 품질 기준 정보 「도면」 탭과 같은 보기(한 장씩 좌우로 넘김 · 사용자 지시 2026-10-30). */
 
+/** IQC 기준 안내 라벨 — 글 폭만큼, 본문 크기 글자(omf-all-around#351 · 사용자 지시 2026-11-23). */
+const PlanNote = ({ text }: { text: string }) => (
+  <p className="iqc-inspection-action-note parts-iqc-plan-note" data-tone="info" role="status">
+    <Icon name="info" size={16} aria-hidden />
+    {text}
+  </p>
+);
+
 const InspectionForm = (props: FormProps) => {
   /* 측정 표 규격 칸의 단위(omf-all-around#296). */
   const uoms = useUomLookup();
   const { request, version, specs, draft } = props;
-  const versionAcceptance = version.acceptanceNumber ?? null;
+  const noPlan = version === null;
+  const versionAcceptance = version?.acceptanceNumber ?? null;
   /* AQL 샘플링이면 시료 수 · 합격 판정 수(Ac)를 표에서 낸 값으로 쓴다 — 서버 자동 판정도 같은 값이다(omf-all-around#264). */
   const { aqlPlan } = request;
   const judgmentAcceptance = aqlPlan?.acceptanceNumber ?? versionAcceptance;
@@ -762,11 +768,16 @@ const InspectionForm = (props: FormProps) => {
   const checkItems = specs.filter((s) => kindOf(s) === 'check');
   const defaultQty = String(
     aqlPlan?.sampleSize ??
-      sampleQtyOf(request.targetQty, {
-        samplingMethodCode: version.samplingMethodCode,
-        samplingRatio: version.samplingRatio ?? null,
-        samplingQty: version.samplingQty ?? null,
-      }),
+      sampleQtyOf(
+        request.targetQty,
+        version === null
+          ? null
+          : {
+              samplingMethodCode: version.samplingMethodCode,
+              samplingRatio: version.samplingRatio ?? null,
+              samplingQty: version.samplingQty ?? null,
+            },
+      ),
   );
 
   const initial = useMemo((): PartsIqcForm => {
@@ -866,7 +877,8 @@ const InspectionForm = (props: FormProps) => {
   /* 임시 저장 때 자동 판정과 다르게 고른 판정이면 그대로 되살린다(#247). */
   const [chosen, setChosen] = useState<string | null>(() => {
     const stored = draft?.overallJudgmentCode ?? '';
-    return stored !== '' && stored !== suggestedJudgmentOf(judgmentInputOf(initial))
+    /* 기준이 없으면 자동 판정이 없으니 저장한 판정을 그대로 되살린다(#351). */
+    return stored !== '' && (noPlan || stored !== suggestedJudgmentOf(judgmentInputOf(initial)))
       ? stored
       : null;
   });
@@ -896,7 +908,8 @@ const InspectionForm = (props: FormProps) => {
 
   const input = judgmentInputOf(form);
   const { inspectedQty, dimensions: dimensionResults, checks } = input;
-  const suggested = suggestedJudgmentOf(input);
+  /* 기준이 없으면 자동 판정이 없다 — 검사자가 종합 판정을 직접 고른다(#351). */
+  const suggested = noPlan ? null : suggestedJudgmentOf(input);
   const rejectedQty = rejectedQtyOf(input);
   const dimensionStates = dimensions.map((item, index) => {
     const put = (form.values[item.inspectionItemSpecId] ?? []).filter(
@@ -1133,7 +1146,7 @@ const InspectionForm = (props: FormProps) => {
         </AlertBanner>
       )}
       {/* 경고 안에서 바로 사번을 잇는다(사용자 지시 2026-10-30) — OA 화면의 연결 창과 같다. 성공하면 세션을 다시 읽어 경고가 걷힌다. */}
-      {planOpen && (
+      {planOpen && version !== null && (
         <PlanDialog
           planCode={props.planLabel}
           itemParts={props.itemParts}
@@ -1165,10 +1178,12 @@ const InspectionForm = (props: FormProps) => {
             <dt className="field-label">{t.target.plan}</dt>
             <dd className="parts-iqc-plan-cell">
               {props.planLabel}
-              {/* 검사 기준 조회 팝업(사용자 지시 2026-10-30) */}
-              <Button variant="outlined" size="sm" onClick={() => setPlanOpen(true)}>
-                {t.plan.open}
-              </Button>
+              {/* 검사 기준 조회 팝업(사용자 지시 2026-10-30) — 기준이 없으면 열 것이 없다(#351). */}
+              {!noPlan && (
+                <Button variant="outlined" size="sm" onClick={() => setPlanOpen(true)}>
+                  {t.plan.open}
+                </Button>
+              )}
             </dd>
           </div>
           <div className="parts-iqc-fact">
@@ -1196,7 +1211,7 @@ const InspectionForm = (props: FormProps) => {
                 <div className="parts-iqc-fact">
                   <dt className="field-label">{t.target.condition}</dt>
                   <dd>
-                    {version.aqlValue == null
+                    {version?.aqlValue == null
                       ? t.target.conditionNone
                       : t.target.conditionAql(version.aqlValue)}
                   </dd>
@@ -1298,35 +1313,46 @@ const InspectionForm = (props: FormProps) => {
         </div>
       </section>
 
-      <MeasurementTable
-        items={dimensions}
-        uomCodeOf={uoms.codeOf}
-        values={form.values}
-        versionAcceptance={versionAcceptance}
-        judgments={form.checks}
-        disabled={submit.isSaving}
-        onChange={(itemId, index, text) => change(withValue(form, itemId, index, text))}
-        onJudge={(itemId, judgment) =>
-          change({ ...form, checks: { ...form.checks, [itemId]: judgment } })
-        }
-        blockedNote={
-          manualUnjudged.length > 0
-            ? messages.iqcInspection.measurements.blockedIncomplete
-            : defectsMissing
-              ? t.visual.defectsRequired
-              : null
-        }
-        checkItems={checkItems}
-        texts={form.texts}
-        onText={changeText}
-        {...(aqlPlan === null
-          ? {}
-          : {
-              defects: form.defects,
-              onDefects: (itemId: number, text: string) =>
-                change({ ...form, defects: { ...form.defects, [itemId]: text } }),
-            })}
-      />
+      {!noPlan && (
+        <MeasurementTable
+          headNote={specs.length > 0 ? <PlanNote text={t.dialog.planVersionNote} /> : null}
+          items={dimensions}
+          uomCodeOf={uoms.codeOf}
+          values={form.values}
+          versionAcceptance={versionAcceptance}
+          judgments={form.checks}
+          disabled={submit.isSaving}
+          onChange={(itemId, index, text) => change(withValue(form, itemId, index, text))}
+          onJudge={(itemId, judgment) =>
+            change({ ...form, checks: { ...form.checks, [itemId]: judgment } })
+          }
+          blockedNote={
+            manualUnjudged.length > 0
+              ? messages.iqcInspection.measurements.blockedIncomplete
+              : defectsMissing
+                ? t.visual.defectsRequired
+                : null
+          }
+          checkItems={checkItems}
+          texts={form.texts}
+          onText={changeText}
+          {...(aqlPlan === null
+            ? {}
+            : {
+                defects: form.defects,
+                onDefects: (itemId: number, text: string) =>
+                  change({ ...form, defects: { ...form.defects, [itemId]: text } }),
+              })}
+        />
+      )}
+
+      {/* 기준이 없을 때 안내 — 종합 판정 바로 위(omf-all-around#351 · 사용자 지시 2026-11-23). */}
+      {noPlan && (
+        <div className="parts-iqc-no-plan">
+          <PlanNote text={t.dialog.noPlan} />
+          {props.noPlanAction}
+        </div>
+      )}
 
       {/* 종합 판정 — 검사 항목 아래(#247 · 사용자 지시 2026-11-10). 왼쪽 자동 판정 결과 상자 · 세로선 · 오른쪽 종합 판정 고르기(사용자 시안 2026-10-29) */}
       <section className="parts-iqc-card" aria-labelledby="parts-iqc-verdict">
@@ -1339,7 +1365,9 @@ const InspectionForm = (props: FormProps) => {
           >
             <span className="parts-iqc-auto-label">{t.verdict.suggested}</span>
             {suggested === null ? (
-              <span className="parts-iqc-muted">{t.verdict.pending}</span>
+              <span className="parts-iqc-muted">
+                {noPlan ? t.verdict.noPlan : t.verdict.pending}
+              </span>
             ) : (
               <span className="parts-iqc-auto-value">
                 <strong>{t.judgment[suggested] ?? suggested}</strong>
@@ -1357,7 +1385,7 @@ const InspectionForm = (props: FormProps) => {
             <Select
               aria-labelledby="parts-iqc-overall"
               value={overall}
-              disabled={suggested === null}
+              disabled={suggested === null && !noPlan}
               options={['ACCEPTED', 'REJECTED', 'HELD'].map((value) => ({
                 value,
                 label: t.judgment[value] ?? value,
