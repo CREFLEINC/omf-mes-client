@@ -32,6 +32,7 @@
   display: none;
 }
 
-.mobile-shell dialog.confirm-dialog > div > div:empty + footer {
+/* 바닥 줄은 디자인 시스템이 그리는 footer 라 태그로 고르지 않고 빈 본문의 다음 자리로 고른다. */
+.mobile-shell dialog.confirm-dialog > div > div:empty + * {
   border-top: 0;
 }
