@@ -537,7 +537,6 @@ export const InspectionDetail = ({
         </p>
       )}
       {isReinspecting && <p className="field-note">{t.dialog.reinspectNote}</p>}
-      {/* IQC 생략은 OA 화면처럼 목록 「생략」 칸으로 옮겼다(omf-all-around#225). */}
       {/* 검사 진행 · 첨부 파일 · 검사 이력 순(#247 · 사용자 지시 2026-11-10) — 이력은 이 의뢰의 회차를 읽기 전용으로 */}
       <Tabs
         className="parts-iqc-detail-tabs"

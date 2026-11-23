@@ -23,7 +23,7 @@ import { PageNav } from '../../patterns/page-nav';
 import { usePageHub } from '../../patterns/page-hub';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import { toApiError } from '../../patterns/request';
-import { sessionKeys, useSession } from '../../patterns/session';
+import { sessionKeys } from '../../patterns/session';
 import {
   PaneHeightSplitter,
   SplitOrientationToggle,
@@ -71,7 +71,6 @@ const TODAY_KEY = 'td';
 const IqcInspectionScreenBody = () => {
   const hub = usePageHub();
   const toast = useToast();
-  const { session } = useSession();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   /* 입하 LOT 번호 스캔(T138)은 공장으로 찾는다 — OA 화면은 범위의 OA 공장들에서 찾는다. */
@@ -311,7 +310,6 @@ const IqcInspectionScreenBody = () => {
             suppliers={lotSuppliers}
             selectedId={selectedId}
             onSelect={select}
-            skipWorkerNo={session?.worker?.workerNo ?? null}
             empty={emptyContent}
           />
           {/*

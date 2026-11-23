@@ -10,7 +10,7 @@ const t = messages.qualityApproval;
 const request = (overrides: Partial<ApprovalRequest> = {}): ApprovalRequest => ({
   approvalRequestId: 31,
   approvalRequestNo: 'SYNTH-REQ-031',
-  approvalTypeCode: 'IQC_SKIP',
+  approvalTypeCode: 'CONCESSION',
   requestedBy: 700_001,
   requestedByName: '합성 상신자',
   requestedAt: '2026-08-22T09:30:00+09:00',

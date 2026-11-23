@@ -491,23 +491,6 @@ describe('AppLayout', () => {
   });
 
   /*
-   * W-01-02 — 긴급 IQC 생략 한도승인은 「품질 승인 처리」의 유형 탭 하나다(#144). 사이드바에 따로 서지
-   * 않고, 그 화면을 보는 동안 「품질 승인 처리」 줄이 켜진다. 탭은 화면이 그리므로 셸 탭 막대는 서지 않는다.
-   */
-  it('긴급 IQC 생략 한도승인은 사이드바에 따로 서지 않고 품질 승인 처리 줄을 켠다', () => {
-    renderLayout('본문 내용', { route: '/logistics/iqc-skip-approval' });
-
-    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
-
-    expect(sidebarHrefs()).not.toContain('/logistics/iqc-skip-approval');
-    expect(within(sidebar).getByRole('link', { name: '품질 승인 처리' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
-    expect(document.querySelector('.hub-tabs')).toBeNull();
-  });
-
-  /*
    * 품질 관리 — **독립 영역이다.** 검사를 IQC(입하) → PQC(공정) → OQC(출하) 흐름 차례로 세우고,
    * 검사기준·코드, 검사 이력, 그리고 LOT 상태 → 보류 → 승인 → 처분의 판정 갈래가 뒤따른다.
    * 검사기준 · 검사표 기준 · 불량·원인코드 · 판정유형 코드는 「품질 기준 정보」, 검사실적과 제품 검사표는 「검사 실적·결과」,

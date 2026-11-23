@@ -156,7 +156,6 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   { path: '/logistics/stock-adjust', code: 'W-01-12', name: '재고조정' },
   { path: '/logistics/supplier-return', code: 'W-01-05', name: '공급사 반품 처리' },
   { path: '/logistics/disposal-issue', code: 'W-01-06', name: '폐기 요청·기타출고' },
-  { path: '/logistics/iqc-skip-approval', code: 'W-01-02', name: '긴급 IQC 생략 한도승인' },
   { path: '/logistics/document-progress', code: 'W-01-13', name: '물류 문서 진행현황·취소' },
 
   /* ── 출하 ─────────────────────────────────────────────────────────────── */

@@ -75,7 +75,7 @@ const renderShipmentOqc = (options: Options = {}) => {
       return jsonResponse(request);
     }
     if (path === '/quality/inspection-results' && req.method === 'GET') {
-      /* 회차 목록 — 결과 요약을 회차 모양으로(생략 칸이 «결과 0건»을 이것으로 본다). */
+      /* 회차 목록 — 결과 요약을 회차 모양으로. */
       const items = (request.results ?? []).map((result) => ({
         ...result,
         inspectionRequestId: request.inspectionRequestId,
@@ -435,41 +435,7 @@ describe('W-04-03 출하 OQC 새 흐름 — 목록', () => {
     expect(row.getByText('SR-261118-001')).toBeInTheDocument();
     expect(row.getByText(s.queue.pickedLots(4))).toBeInTheDocument();
     expect(row.getByText(s.overview.rejected(1))).toBeInTheDocument();
-  });
-
-  it('T054·FR-012 진행 중(IN_PROGRESS) 의뢰에는 회차 목록이 비어 와도 [생략 요청]이 없다 — 결과 1건 이상이라는 뜻이다', async () => {
-    renderShipmentOqc({
-      request: { ...shipmentOqcRequest(), statusCode: 'IN_PROGRESS', results: [] },
-    });
-
-    const open = await screen.findByRole('button', { name: t.queue.openRow('IR-OQC-0201') });
-    const row = within(open.closest('tr') as HTMLElement);
-    expect(
-      row.queryByRole('button', { name: messages.iqcInspection.queue.skipRequest }),
-    ).toBeNull();
-  });
-
-  it('T054·FR-012 결과 0건(대기 REQUESTED) 의뢰에만 [생략 요청]이 선다', async () => {
-    renderShipmentOqc({
-      request: { ...shipmentOqcRequest(), statusCode: 'REQUESTED', results: [] },
-    });
-
-    const open = await screen.findByRole('button', { name: t.queue.openRow('IR-OQC-0201') });
-    const row = within(open.closest('tr') as HTMLElement);
-    expect(
-      await row.findByRole('button', { name: messages.iqcInspection.queue.skipRequest }),
-    ).toBeInTheDocument();
-  });
-
-  it('FR-012 결과가 있는 의뢰에는 [생략 요청]이 없다', async () => {
-    renderShipmentOqc();
-
-    const open = await screen.findByRole('button', { name: t.queue.openRow('IR-OQC-0201') });
-    const row = within(open.closest('tr') as HTMLElement);
-    await waitFor(() =>
-      expect(
-        row.queryByRole('button', { name: messages.iqcInspection.queue.skipRequest }),
-      ).toBeNull(),
-    );
+    /* 건별 생략 요청 칸은 없어졌다(omf-all-around#353). */
+    expect(screen.queryByRole('columnheader', { name: '생략' })).toBeNull();
   });
 });

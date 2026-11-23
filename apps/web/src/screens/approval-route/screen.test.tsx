@@ -711,9 +711,9 @@ describe('ApprovalRouteScreen — 목록', () => {
 
     await user.click(screen.getByRole('combobox', { name: t.fields.approvalTypeCode }));
 
-    expect(screen.getAllByRole('option')).toHaveLength(11); // 전체 + 고정 enum 9개 + PQC 생략(#212)
-    expect(screen.getByRole('option', { name: 'PQC_SKIP' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'IQC_SKIP' })).toBeInTheDocument();
+    expect(screen.getAllByRole('option')).toHaveLength(9); // 전체 + 승인 유형 8개(IQC·PQC 생략은 #353 폐지)
+    expect(screen.queryByRole('option', { name: 'PQC_SKIP' })).toBeNull();
+    expect(screen.queryByRole('option', { name: 'IQC_SKIP' })).toBeNull();
     expect(screen.getByRole('option', { name: 'PRODUCTION_RESULT_CORRECT' })).toBeInTheDocument();
     expect(screen.queryByText(messages.pendingCode.note)).toBeNull();
   });
@@ -1357,9 +1357,9 @@ describe('ApprovalRouteScreen — 등록 폼', () => {
       name: t.fields.approvalTypeCode,
     });
     await user.click(approvalType);
-    await user.click(screen.getByRole('option', { name: 'IQC_SKIP' }));
+    await user.click(screen.getByRole('option', { name: 'SHIPMENT_CANCEL' }));
 
-    expect(approvalType).toHaveTextContent('IQC_SKIP');
+    expect(approvalType).toHaveTextContent('SHIPMENT_CANCEL');
     expect(within(createPane).queryByText(t.actionReasons.createPendingCode)).toBeNull();
     expect(within(createPane).queryByText(messages.pendingCode.note)).toBeNull();
     expect(writeRequests(requests)).toHaveLength(0);

@@ -10,9 +10,9 @@ import {
 } from './code-options';
 
 describe('자리표시 상수', () => {
-  it('고정 OpenAPI의 승인 유형 9종을 담는다', () => {
-    expect(PLACEHOLDER_APPROVAL_TYPE_CODES).toHaveLength(9);
-    expect(PLACEHOLDER_APPROVAL_TYPE_CODES).toContain('IQC_SKIP');
+  it('고정 OpenAPI의 승인 유형에서 IQC 생략(#353 폐지)을 뺀 8종을 담는다', () => {
+    expect(PLACEHOLDER_APPROVAL_TYPE_CODES).toHaveLength(8);
+    expect(PLACEHOLDER_APPROVAL_TYPE_CODES).not.toContain('IQC_SKIP');
     expect(PLACEHOLDER_APPROVAL_TYPE_CODES).toContain('PRODUCTION_RESULT_CORRECT');
   });
 

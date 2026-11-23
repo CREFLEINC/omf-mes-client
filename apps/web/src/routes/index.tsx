@@ -83,7 +83,6 @@ import { DispositionDecisionScreen } from '../screens/disposition-decision/scree
 import { PqcInspectionRegisterScreen } from '../screens/pqc-inspection-register/screen';
 import { InspectionLevelScreen } from '../screens/inspection-level/screen';
 import { QualityApprovalScreen } from '../screens/quality-approval/screen';
-import { IQC_SKIP_TYPE_CODE } from '../screens/quality-approval/type-tabs';
 import { RoutingScreen } from '../screens/routing/screen';
 import { ExpeditedShipmentScreen } from '../screens/expedited-shipment/screen';
 import { ProductDisposalRequestScreen } from '../screens/product-disposal-request/screen';
@@ -259,8 +258,7 @@ export const appRouter = createBrowserRouter([
        * 이 순서로 이어져 있어 사이에 다른 것을 끼우지 않는다.
        *
        * ⛔ **「품질」 섹션을 새로 만들지 않는다.** 통합 IA 가 이 화면을 **「자재/창고 >
-       * 입하·검사」**에 두었고 형제 화면(W-01-02 긴급 IQC 생략 한도승인)이 이미 이 섹션에
-       * 서 있다. 품질 섹션은 Lot Status 계열(W-03-xx)이 들어올 때 그 화면들이 연다.
+       * 입하·검사」**에 두었다. 품질 섹션은 Lot Status 계열(W-03-xx)이 들어올 때 그 화면들이 연다.
        */
       /* 계정 공장에 따라 OA·부품 화면을 고른다(omf-all-around#211). */
       { path: 'logistics/iqc-inspection', element: <IqcInspectionRoute /> },
@@ -329,23 +327,6 @@ export const appRouter = createBrowserRouter([
        */
       { path: 'logistics/disposal-issue', element: <DisposalIssueScreen /> },
       /*
-       * W-01-02 — 계약 경로는 결재함과 같은 `/app/approval-requests`인데 주소 앞머리는
-       * **사이드바 섹션을 따라** `/logistics/`다. 판정하는 것이 자재 입하 검사의 생략이라
-       * 그 판단의 맥락이 이 섹션에 있다(설계 스펙의 breadcrumb도 「자재창고」다).
-       *
-       * **세 PR이 함께 여는 자리다.** 목록·상세까지만 선 상태에서는 이 줄을 두지 않았다 —
-       * 결재할 수 없는 판정 화면을 노출하면 승인자가 **판단 근거를 다 보고서도 아무것도
-       * 할 수 없다**(정책 §5.2 — 접근 불가능한 경계).
-       */
-      /*
-       * 긴급 IQC 생략 한도승인(W-01-02) — 품질 승인 처리의 「IQC (수입검사) 생략」 탭이다. 전체 탭과 같은 화면 · 같은
-       * 조회 조건을 쓰고 유형만 고정한다(#193 · 사용자 지시 2026-10-27).
-       */
-      {
-        path: 'logistics/iqc-skip-approval',
-        element: <QualityApprovalScreen fixedTypeCode={IQC_SKIP_TYPE_CODE} />,
-      },
-      /*
        * W-01-13 — 앞머리는 같은 규칙(사이드바 섹션)을 따른다. 계약 경로도 `/logistics/**`라 둘이
        * **우연히 같지만** 근거는 여기서도 섹션이다 — 계약을 근거로 삼았다면 W-01-07·W-01-12에서
        * 앞머리가 갈렸을 것이다(그쪽 계약은 `/inventory/**`인데 주소는 `/logistics/`다).
@@ -355,8 +336,7 @@ export const appRouter = createBrowserRouter([
        * 리소스를 주소로 삼으면 한 주소를 여러 화면이 다툰다. 주소는 **화면**을 가리킨다.
        *
        * **차례는 「자재창고」 섹션의 맨 뒤다.** 앞의 여덟이 물건이 오가는 순서이고(예정 → 초과
-       * 분리 → 입고 → 재고 확인 → 실사 → 조정 → 반품 → 폐기) 「긴급 IQC 생략」이 그 흐름 위에서
-       * 예외를 허가하는 자리인데, 이 화면은 그 흐름이 **남긴 문서들을 가로질러 보고 되돌리는**
+       * 분리 → 입고 → 재고 확인 → 실사 → 조정 → 반품 → 폐기), 이 화면은 그 흐름이 **남긴 문서들을 가로질러 보고 되돌리는**
        * 일이라 순서에 끼워 넣을 자리가 없다(`master-data/master-change`가 같은 이유로 마스터
        * 항목들 뒤에 섰다).
        *

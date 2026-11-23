@@ -402,28 +402,11 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           },
         ],
       },
-      /*
-       * 품질 승인 처리 — 긴급 IQC 생략 한도승인(W-01-02)을 유형 탭 하나로 품는다(#144). 탭은 화면이 유형 탭
-       * 줄에 직접 그린다(`inlineTabs`) — 셸 탭 막대까지 서면 탭 줄이 둘이 된다.
-       */
       {
         to: '/quality/approvals',
         icon: 'approval',
         label: '품질 승인 처리',
         labelVi: 'Xử lý phê duyệt chất lượng',
-        inlineTabs: true,
-        tabs: [
-          {
-            to: '/quality/approvals',
-            label: '품질 승인 처리',
-            labelVi: 'Xử lý phê duyệt chất lượng',
-          },
-          {
-            to: '/logistics/iqc-skip-approval',
-            label: 'IQC (수입검사) 생략',
-            labelVi: 'Bỏ qua IQC (kiểm tra đầu vào)',
-          },
-        ],
       },
       /* W-03-10 — 여기서 정한 처분이 폐기·재등록·재작업 화면의 진입을 연다. */
       {
