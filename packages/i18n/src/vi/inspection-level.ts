@@ -61,8 +61,8 @@ export const inspectionLevel = {
   history: {
     heading: 'Lịch sử thay đổi mức kiểm tra',
     selectedItem: (code: string, name: string) => `${code} · ${name}`,
-    allHint: 'Chọn một vật tư trong danh sách để chỉ xem lịch sử của vật tư đó.',
-    selectedHint: 'Chọn lại cùng vật tư để quay về toàn bộ lịch sử.',
+    allHint: 'Chọn một vật tư trong danh sách để chỉ hiển thị lịch sử của vật tư đó.',
+    selectedHint: 'Chọn lại cùng vật tư để hiển thị toàn bộ lịch sử.',
     openRow: (code: string) => `Xem lịch sử ${code}`,
     itemTitle: 'Lịch sử thay đổi mức kiểm tra',
     itemCode: (code: string) => `Mã vật tư ${code}`,
