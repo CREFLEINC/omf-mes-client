@@ -8799,7 +8799,7 @@ main:has(.iqc-skip-approval-detail) {
   flex-wrap: wrap;
 }
 
-.disposition-decision-head > .iqc-inspection-action-note {
+.disposition-decision-head > .iqc-inspection-action-note:nth-child(n) {
   margin: 0;
   width: fit-content;
   font: var(--type-label-lg);
@@ -37360,7 +37360,7 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   white-space: pre-wrap;
 }
 
-.disposition-confirm > .iqc-inspection-action-note {
+.disposition-confirm > .iqc-inspection-action-note:nth-child(n) {
   justify-self: start;
   max-width: 100%;
   font: var(--type-label-lg);
