@@ -16,16 +16,15 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
   pairs: {
     label: 'Nhà cung cấp · mặt hàng',
     withUnprinted: (line: string, count: number) => `${line} · ${count} chưa in nhãn`,
+    unprinted: (count: number) => `${count} chưa in nhãn`,
     defaultPackaged: (text: string) => `Mặc định ${text}`,
     defaultUnpackaged: (text: string) => `Mặc định ${text} · Không đóng gói`,
-    noDefault: 'Chưa có thông tin mặc định',
-    empty:
-      'Chưa có nhà cung cấp · mặt hàng nào. Hãy đăng ký trước ở màn hình quản trị 「Thông tin mặc định nhà cung cấp · mặt hàng」.',
+    empty: 'Không có nhà cung cấp · mặt hàng để phát hành. Mục sẽ hiện khi có đơn đặt hàng.',
     noMatch: 'Không có nhà cung cấp · mặt hàng cần tìm.',
   },
   work: {
-    meta: (supplier: string, supplierCode: string, uomCode: string, defaults: string) =>
-      `${supplier} ${supplierCode} · Đơn vị cơ sở ${uomCode} · ${defaults}`,
+    meta: (supplier: string, supplierCode: string, uomCode: string, defaults: string | null) =>
+      `${supplier} ${supplierCode} · Đơn vị cơ sở ${uomCode}${defaults === null ? '' : ` · ${defaults}`}`,
     create: 'Tạo LOT quản lý vật tư',
     help: 'Hướng dẫn LOT quản lý vật tư',
     helpIntro: 'Có thể tạo LOT và in nhãn trước khi vật tư nhập kho.',

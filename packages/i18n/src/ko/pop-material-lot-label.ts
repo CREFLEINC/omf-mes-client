@@ -27,18 +27,21 @@ export const popMaterialLotLabel = {
     label: '공급사·품목', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
     /** 기본 정보 줄 뒤에 라벨 미출력 수(시안 「· 라벨 미출력 N」). */
     withUnprinted: (line: string, count: number) => `${line} · 라벨 미출력 ${count}`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    /** 기본 정보가 없을 때 라벨 미출력 수만. */
+    unprinted: (count: number) => `라벨 미출력 ${count}`,
     /** 기본 정보 한 줄 — 패키징이 있으면 「기본 봉지 10 × 100 = 1,000 EA」. */
     defaultPackaged: (text: string) => `기본 ${text}`,
     defaultUnpackaged: (text: string) => `기본 ${text} · 포장 없음`,
-    noDefault: '기본 정보 없음',
-    empty: '공급사·품목이 없습니다. 관리웹 「공급사·품목 기본 정보」에 먼저 등록하세요.', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    /** 목록은 열린 발주 · 발행 이력에서 나온다 — 메뉴에서 숨긴 「공급사·품목 기본 정보」로 보내지 않는다. */
+    empty: '발행할 공급사·품목이 없습니다. 발주가 등록되면 나타납니다.', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
     noMatch: '찾는 공급사·품목이 없습니다.', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
   },
   /** 재발행 탭 왼쪽 안내. */
   /** 오른쪽 작업 칸. */
   work: {
-    meta: (supplier: string, supplierCode: string, uomCode: string, defaults: string) =>
-      `${supplier} ${supplierCode} · 기본 단위 ${uomCode} · ${defaults}`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    /** 기본 정보가 없으면(`null`) 마지막 칸을 뺀다. */
+    meta: (supplier: string, supplierCode: string, uomCode: string, defaults: string | null) =>
+      `${supplier} ${supplierCode} · 기본 단위 ${uomCode}${defaults === null ? '' : ` · ${defaults}`}`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
     create: '자재 관리 LOT 생성',
     /** 상시 할 일 한 줄 — 입하 대기 LOT 을 고르면 출고·투입 제한을 말한다(#295 시안). */
     help: '자재 관리 LOT 안내',

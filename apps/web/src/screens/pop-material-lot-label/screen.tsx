@@ -601,7 +601,8 @@ export const PopMaterialLotLabelScreen = () => {
       <PuSection
         className="mll-right"
         labelId={`${createNoteId}-pair`}
-        /* 공급사 · 기본 단위 · 기본 정보는 제목 오른쪽에 작고 흐리게 한 줄 — 넘치면 말줄임(사용자 지시 2026-11-19). */
+        /* 공급사 · 기본 단위 · 기본 정보는 제목 오른쪽에 작고 흐리게 한 줄 — 넘치면 말줄임(사용자 지시 2026-11-19).
+           기본 정보가 없으면 그 칸을 뺀다(사용자 지시 2026-11-23). */
         title={
           <>
             <span className="mll-head-name">{pairName}</span>

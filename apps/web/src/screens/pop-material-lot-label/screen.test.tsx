@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { POP_SCREENS } from '../../patterns/pop-screen-catalog';
 import { LIST_REFRESH_MS } from './queries';
-import { defaultLineOf } from './supplier-list';
 import {
   HARNESS_NOW,
   PLANT_ID,
@@ -56,7 +55,8 @@ describe('PopMaterialLotLabelScreen — 공급사·품목(왼쪽)', () => {
     expect(first).toHaveTextContent(
       t.pairs.withUnprinted(t.pairs.defaultPackaged('봉지 10 × 100 = 1,000 EA'), 2),
     );
-    expect(second).toHaveTextContent(t.pairs.noDefault);
+    /* 기본 정보가 없으면 「기본 정보 없음」을 적지 않는다(사용자 지시 2026-11-23). */
+    expect(second).not.toHaveTextContent('기본 정보 없음');
 
     /* ⛔ 입하 LOT 탭 · 라벨 대기 입하 줄은 없다(FR-036 · D-19·D-25). */
     const tabs = within(screen.getByRole('tablist', { name: t.tabs.label })).getAllByRole('tab');
@@ -292,7 +292,7 @@ describe('PopMaterialLotLabelScreen — 새로 고침과 기본 정보', () => {
 
     const firstPair = async () =>
       within(await screen.findByRole('list', { name: t.pairs.label })).getAllByRole('button')[0];
-    const before = defaultLineOf(defaultInfo());
+    const before = t.pairs.defaultPackaged('봉지 10 × 100 = 1,000 EA');
     await waitFor(async () => expect(await firstPair()).toHaveTextContent(before));
     const asked = plantWide().length;
 
@@ -307,7 +307,11 @@ describe('PopMaterialLotLabelScreen — 새로 고침과 기본 정보', () => {
     await queryClient.invalidateQueries();
 
     await waitFor(() => expect(plantWide().length).toBeGreaterThan(asked));
-    await waitFor(async () => expect(await firstPair()).toHaveTextContent(defaultLineOf(changed)));
+    await waitFor(async () =>
+      expect(await firstPair()).toHaveTextContent(
+        t.pairs.defaultPackaged('봉지 20 × 100 = 2,000 EA'),
+      ),
+    );
   });
 });
 

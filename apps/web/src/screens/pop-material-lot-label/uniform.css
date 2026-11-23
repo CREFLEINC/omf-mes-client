@@ -67,10 +67,6 @@
   white-space: nowrap;
 }
 
-.mll-miss {
-  color: var(--pu-warn);
-}
-
 /* ── 오른쪽: 머리 아래 한 줄 + 안내 + 발행 단위 + 표 + 쪽 넘김 ── */
 .mll-right > .pu-card-body {
   display: flex;
