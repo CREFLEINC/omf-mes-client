@@ -180,6 +180,9 @@ const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequ
 const codeGroupRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requestsTo(requests, CODE_GROUPS_PATH);
 
+/** 조회 조건 상자 — 목록과 따로 선다(통일 배치 · #350). 조회 줄 · 추가 단추는 여기에 있다. */
+const filterPane = (): HTMLElement => screen.getByRole('region', { name: '조회 조건' });
+
 const codeGroupPane = (): HTMLElement => screen.getByRole('region', { name: '코드그룹' });
 
 const codeGroupFormPane = (): HTMLElement => screen.getByRole('region', { name: '코드그룹 정보' });
@@ -411,7 +414,7 @@ describe('CommonCodeScreen — 코드그룹 목록 조회', () => {
     await screen.findByRole('button', { name: 'SYN-GRP-01' });
 
     await user.type(screen.getByLabelText('코드그룹 검색'), 'SYN');
-    await user.click(within(codeGroupPane()).getByRole('button', { name: '조회' }));
+    await user.click(within(filterPane()).getByRole('button', { name: '조회' }));
 
     expect(codeGroupRequests(requests).at(-1)?.url.searchParams.get('q')).toBe('SYN');
   });
@@ -420,7 +423,7 @@ describe('CommonCodeScreen — 코드그룹 목록 조회', () => {
     const { requests, user } = renderScreen([codeGroupListRoute()]);
     await screen.findByRole('button', { name: 'SYN-GRP-01' });
 
-    await user.click(within(codeGroupPane()).getByRole('button', { name: '조회' }));
+    await user.click(within(filterPane()).getByRole('button', { name: '조회' }));
 
     expect(codeGroupRequests(requests).at(-1)?.url.searchParams.has('q')).toBe(false);
   });
@@ -612,7 +615,7 @@ describe('CommonCodeScreen — 조건 변경과 선택 (C6·C11)', () => {
     await screen.findByRole('button', { name: 'SYN-GRP-01' });
 
     await user.type(screen.getByLabelText('코드그룹 검색'), 'SYN');
-    await user.click(within(codeGroupPane()).getByRole('button', { name: '조회' }));
+    await user.click(within(filterPane()).getByRole('button', { name: '조회' }));
 
     const last = codeGroupRequests(requests).at(-1);
     expect(last?.url.searchParams.has('page')).toBe(false);
@@ -1183,7 +1186,7 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
 
   /** 등록 폼을 열고 필수 두 칸을 채운 뒤 등록을 낸다. */
   const startCreate = async (user: ReturnType<typeof userEvent.setup>, groupName: string) => {
-    await user.click(within(codeGroupPane()).getByRole('button', { name: '그룹 추가' }));
+    await user.click(within(filterPane()).getByRole('button', { name: '그룹 추가' }));
     await screen.findByRole('region', { name: '코드그룹 정보' });
     await user.type(screen.getByLabelText('그룹코드'), 'SYN-GRP-09');
     await user.type(screen.getByLabelText('그룹명'), groupName);
@@ -1196,7 +1199,7 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
     groupName: string,
   ) => {
     await user.click(within(codeGroupFormPane()).getByRole('button', { name: '취소' }));
-    await user.click(within(codeGroupPane()).getByRole('button', { name: '그룹 추가' }));
+    await user.click(within(filterPane()).getByRole('button', { name: '그룹 추가' }));
     await user.type(screen.getByLabelText('그룹명'), groupName);
   };
 
@@ -1436,7 +1439,7 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
       },
     ]);
 
-    await user.click(await within(codeGroupPane()).findByRole('button', { name: '그룹 추가' }));
+    await user.click(await within(filterPane()).findByRole('button', { name: '그룹 추가' }));
     await user.type(screen.getByLabelText('그룹코드'), 'SYN-GRP-09');
     await user.type(screen.getByLabelText('그룹명'), '합성 코드그룹 I');
     await user.click(within(codeGroupFormPane()).getByRole('button', { name: '그룹 추가' }));
@@ -2521,7 +2524,7 @@ describe('CommonCodeScreen — 한 조작은 히스토리 한 칸이다 (리뷰 
 
     const before = history.search();
 
-    await user.click(within(codeGroupPane()).getByRole('button', { name: '그룹 추가' }));
+    await user.click(within(filterPane()).getByRole('button', { name: '그룹 추가' }));
     await screen.findByLabelText('그룹코드');
 
     history.back();
@@ -2880,7 +2883,7 @@ describe('CommonCodeScreen — 부서 조건과 선택 (C46)', () => {
     await screen.findByRole('button', { name: 'SYN-DEPT-01' });
 
     await user.type(screen.getByLabelText('부서 검색'), 'SYN');
-    await user.click(within(departmentPane()).getByRole('button', { name: '조회' }));
+    await user.click(within(filterPane()).getByRole('button', { name: '조회' }));
 
     expect(history.search()).toBe('?tab=org&q=SYN');
   });
@@ -2930,7 +2933,7 @@ describe('CommonCodeScreen — 부서 조건과 선택 (C46)', () => {
 
     const before = history.search();
 
-    await user.click(within(departmentPane()).getByRole('button', { name: '부서 추가' }));
+    await user.click(within(filterPane()).getByRole('button', { name: '부서 추가' }));
     expect(history.search()).toBe('?tab=org&new=dept');
 
     history.back();
@@ -3558,7 +3561,7 @@ describe('CommonCodeScreen — 나가는 중인 부서 저장의 매임과 잠�
    * 구획 이름만으로는 폼이 섰는지 가를 수 없다(코드그룹 구획과 갈리는 유일한 지형 차이다).
    */
   const startCreate = async (user: ReturnType<typeof userEvent.setup>, departmentName: string) => {
-    await user.click(await within(departmentPane()).findByRole('button', { name: '부서 추가' }));
+    await user.click(await within(filterPane()).findByRole('button', { name: '부서 추가' }));
     await user.type(await screen.findByLabelText('부서코드'), 'SYN-DEPT-09');
     await user.type(screen.getByLabelText('부서명'), departmentName);
     await user.click(addDepartmentButton());
@@ -3570,7 +3573,7 @@ describe('CommonCodeScreen — 나가는 중인 부서 저장의 매임과 잠�
     departmentName: string,
   ) => {
     await user.click(within(departmentFormPane()).getByRole('button', { name: '취소' }));
-    await user.click(within(departmentPane()).getByRole('button', { name: '부서 추가' }));
+    await user.click(within(filterPane()).getByRole('button', { name: '부서 추가' }));
     await user.type(await screen.findByLabelText('부서명'), departmentName);
   };
 
@@ -4388,7 +4391,7 @@ describe('CommonCodeScreen — 작업자 조건과 탭 전환', () => {
     await screen.findByRole('button', { name: 'SYN-W-0001' });
 
     await user.type(screen.getByLabelText('작업자 검색'), 'SYN');
-    await user.click(within(workerPane()).getByRole('button', { name: '조회' }));
+    await user.click(within(filterPane()).getByRole('button', { name: '조회' }));
 
     expect(history.search()).toBe('?tab=worker&q=SYN');
   });
@@ -4956,7 +4959,7 @@ describe('CommonCodeScreen — 자격 편집과 저장 (C65~C68·C74)', () => {
 
     // 조건을 바꾸면 보이는 작업자가 달라진다 — 주소에서 wkr가 사라진다.
     await user.type(screen.getByLabelText('작업자 검색'), 'SYN');
-    await user.click(within(workerPane()).getByRole('button', { name: '조회' }));
+    await user.click(within(filterPane()).getByRole('button', { name: '조회' }));
     expect(history.search()).toBe('?tab=worker&q=SYN');
 
     history.back();
@@ -5278,9 +5281,9 @@ describe('CommonCodeScreen — 탭마다 자기 선택 축 키를 쓴다', () =>
     const { requests, history, user } = renderScreen(workerRoutes(), '?tab=worker');
     await screen.findByRole('button', { name: 'SYN-W-0001' });
 
-    await user.click(within(workerPane()).getByLabelText('부서'));
+    await user.click(within(filterPane()).getByLabelText('부서'));
     await user.click(screen.getByRole('option', { name: /SYN-DEPT-01/ }));
-    await user.click(within(workerPane()).getByRole('button', { name: '조회' }));
+    await user.click(within(filterPane()).getByRole('button', { name: '조회' }));
 
     expect(history.search()).toContain('dept=3001');
     expect(history.search()).not.toContain('bu=');
@@ -5295,9 +5298,9 @@ describe('CommonCodeScreen — 탭마다 자기 선택 축 키를 쓴다', () =>
     const { requests, history, user } = renderScreen(orgRoutes(), '?tab=org');
     await screen.findByRole('button', { name: 'SYN-DEPT-01' });
 
-    await user.click(within(departmentPane()).getByLabelText('사업부'));
+    await user.click(within(filterPane()).getByLabelText('사업부'));
     await user.click(screen.getByRole('option', { name: /SYN-BU-01/ }));
-    await user.click(within(departmentPane()).getByRole('button', { name: '조회' }));
+    await user.click(within(filterPane()).getByRole('button', { name: '조회' }));
 
     expect(history.search()).toContain('bu=4001');
     expect(history.search()).not.toContain('dept=');
@@ -5754,7 +5757,7 @@ describe('CommonCodeScreen — 거래처 조건과 탭 전환 (C11·C15)', () =>
     const { history, user } = renderScreen(partnerRoutes(), '?tab=partner&ptn=9001');
     await screen.findByText('고객사');
 
-    await user.click(within(partnerPane()).getByRole('checkbox', { name: '미사용 포함' }));
+    await user.click(within(filterPane()).getByRole('checkbox', { name: '미사용 포함' }));
 
     expect(history.search()).toBe('?tab=partner&inactive=1');
   });
@@ -6817,7 +6820,7 @@ describe('CommonCodeScreen — 저장 실패와 초안 수명 (C32·C34)', () =>
     await screen.findByText('고객사');
 
     await user.click(roleCheckbox('공급사'));
-    await user.click(within(partnerPane()).getByRole('checkbox', { name: '미사용 포함' }));
+    await user.click(within(filterPane()).getByRole('checkbox', { name: '미사용 포함' }));
 
     await screen.findByText('좌측에서 거래처를 고르면 여기에 그 거래처의 역할이 보입니다');
     expect(screen.queryByRole('checkbox', { name: '공급사' })).not.toBeInTheDocument();

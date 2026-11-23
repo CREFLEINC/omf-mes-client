@@ -1,0 +1,9 @@
+/*
+ * 조회 줄 — 단추 칸(조회 · 조건 더보기 | 다시 조회)은 단추 글자 폭만큼 둔다.
+ * 다시 조회가 조회 상자로 들어오며(통일 배치 · #350) 4등분 칸에서는 단추 글자가 두 줄로 꺾인다.
+ */
+@media (min-width: 1101px) {
+  .filter-bar.approval-inbox-filter {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  }
+}

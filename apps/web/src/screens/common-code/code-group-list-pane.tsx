@@ -41,8 +41,11 @@ export interface CodeGroupListPaneProps {
    * 실패를 「등록된 코드그룹이 없습니다」로 보이면 사실과 다른 안내가 된다.
    */
   loadError: ReactNode;
-  /** 목록 맨 위 제목 줄(「이름 · 건수 · 목록 접기」 · #350). 화면이 `PaneListHead` 로 넘긴다. */
-  head?: ReactNode;
+  /**
+   * 조회 조건 · 목록을 화면이 따로 세울 때(통일 배치 · #350) 두 조각을 받아 배치한다.
+   * 없으면 한 구획 안에 조건 줄 · 목록을 차례로 둔다.
+   */
+  layout?: (parts: { filter: ReactNode; list: ReactNode }) => ReactNode;
 }
 
 /**
@@ -66,7 +69,7 @@ export const CodeGroupListPane = ({
   isCreating,
   onAddCodeGroup,
   loadError,
-  head,
+  layout,
 }: CodeGroupListPaneProps) => {
   /*
    * 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
@@ -185,9 +188,8 @@ export const CodeGroupListPane = ({
   /* 조건 칸이 모두 줄에 보여 칩을 따로 두지 않는다(C-6). 「초기화」는 바뀐 것이 있을 때만 보인다. */
   const isChanged = hasChangedFilters(EMPTY_CODE_GROUP_FILTERS, draft, appliedFilters);
 
-  return (
-    <section className="pane" aria-label={t.panes.codeGroup}>
-      {head}
+  const filter = (
+    <>
       {/* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
       <div className="filter-bar">
         <SearchInput
@@ -228,18 +230,23 @@ export const CodeGroupListPane = ({
               {messages.common.reset}
             </Button>
           )}
-        </div>
-      </div>
-
-      {listSlot()}
-
-      <div className="filter-bar">
-        <div className="field-cell">
+          <span className="inspection-standard-filter-divider" aria-hidden />
           <Button variant="outlined" disabled={isCreating} onClick={onAddCodeGroup}>
             {t.actions.addCodeGroup}
           </Button>
         </div>
       </div>
+    </>
+  );
+
+  const list = listSlot();
+
+  if (layout !== undefined) return layout({ filter, list });
+
+  return (
+    <section className="pane" aria-label={t.panes.codeGroup}>
+      {filter}
+      {list}
     </section>
   );
 };

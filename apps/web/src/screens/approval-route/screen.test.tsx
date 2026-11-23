@@ -408,12 +408,21 @@ const dirtyForm = async (user: ReturnType<typeof userEvent.setup>, text = '7'): 
 };
 
 /**
+ * 상세 구획(폼 · 빈 상태)을 집는다.
+ *
+ * **같은 이름의 구획이 둘이다** — 통일 배치(ListDetailWorkspace)의 상세 칸 껍데기와 그 안의 상세 상자.
+ * 안쪽 상자가 문서 순서상 뒤에 선다.
+ */
+const findDetailPane = async (): Promise<HTMLElement> =>
+  (await screen.findAllByRole('region', { name: t.panes.detail })).at(-1) as HTMLElement;
+
+/**
  * 폼의 사업부 칸을 「전 사업부 공통」으로 비운다.
  *
  * **조건 줄에도 같은 이름의 선택칸이 있다** — 폼 구획 안에서 집지 않으면 조건을 고치게 된다.
  */
 const clearBusinessUnit = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
-  const pane = await screen.findByRole('region', { name: t.panes.detail });
+  const pane = await findDetailPane();
 
   await user.click(within(pane).getByRole('combobox', { name: t.fields.businessUnit }));
   await user.click(screen.getByRole('option', { name: t.values.allBusinessUnits }));
@@ -1237,7 +1246,7 @@ describe('ApprovalRouteScreen — 빈 상태와 실패', () => {
     await screen.findByRole('region', { name: t.panes.steps });
 
     // 상세는 그대로 읽힌다 — 한쪽 실패가 다른 쪽을 지우지 않는다.
-    const detailPane = screen.getByRole('region', { name: t.panes.detail });
+    const detailPane = await findDetailPane();
 
     expect(within(detailPane).getByText('GOODS_ISSUE_DISPOSAL')).toBeInTheDocument();
     expect(within(detailPane).queryByText(messages.httpError.loadTitle)).toBeNull();
@@ -1306,7 +1315,7 @@ describe('ApprovalRouteScreen — 이 회차의 경계', () => {
 
     await user.click(screen.getByRole('button', { name: '주소 이동' }));
 
-    await screen.findByRole('region', { name: t.panes.detail });
+    await findDetailPane();
   });
 });
 
@@ -1897,7 +1906,7 @@ describe('ApprovalRouteScreen — 사용 전환', () => {
     /* 선행 단언 — 고치기 전에는 켜기가 열려 있다(서버 사업부 9101에 충돌이 없다). */
     expect(await screen.findByRole('button', { name: t.actions.activate })).toBeEnabled();
 
-    const pane = screen.getByRole('region', { name: t.panes.detail });
+    const pane = await findDetailPane();
 
     await user.click(within(pane).getByRole('combobox', { name: t.fields.businessUnit }));
     /* 고르는 자리라 미사용 표식이 붙는다 — 빼면 그 사업부가 걸린 결재선을 만들 길이 사라진다. */

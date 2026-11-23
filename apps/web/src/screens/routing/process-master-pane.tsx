@@ -73,6 +73,7 @@ import type {
   ProcessFormValues,
 } from './types';
 import { centerColumns } from './table-align';
+import './layout.css';
 
 const t = messages.routing;
 const hubText = messages.common.inspectionHub;
@@ -366,7 +367,7 @@ export const ProcessMasterPane = () => {
         data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <ProcessListPane
-          head={<PaneListHead title="" collapse={listCollapse} />}
+          head={<PaneListHead title={t.panes.processList} collapse={listCollapse} />}
           processes={processes}
           columns={columns}
           filters={filters}

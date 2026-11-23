@@ -141,11 +141,13 @@ const renderScreen = (options: RenderOptions = {}) => {
 };
 
 const listPane = () => screen.getByRole('region', { name: t.paneTitle });
+/* 조회 줄 · 조건 더보기 · 관리 액션은 목록 위 조회 조건 상자에 선다(#350). */
+const filterBox = () => screen.getByRole('region', { name: messages.common.paneList.filter });
 
 /** 정렬과 체크칸 셋은 「조건 더보기」 안에 접혀 있다(C-6) — 만지기 전에 편다. */
 const openMore = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(
-    within(listPane()).getByRole('button', { name: messages.common.filterMore.open }),
+    within(filterBox()).getByRole('button', { name: messages.common.filterMore.open }),
   );
 };
 
@@ -348,8 +350,10 @@ describe('W-05-13 툴 마스터 — 목록', () => {
         }),
     });
 
-    /* 천 단위 쉼표 — 목록 건수 선례와 같다. 받은 줄 수(1)가 아니라 전체(1,200)다. */
-    expect(await within(listPane()).findByText(t.resultTotal('1,200'))).toBeInTheDocument();
+    /* 목록 제목 줄의 건수 — 받은 줄 수(1)가 아니라 전체(1200)다(#350). */
+    expect(
+      await within(listPane()).findByText(messages.common.paneList.count(1200)),
+    ).toBeInTheDocument();
   });
 
   /*
@@ -360,15 +364,17 @@ describe('W-05-13 툴 마스터 — 목록', () => {
   it('정렬과 「추가 필터」 체크칸 셋은 조건 더보기 안에 있고 건수는 늘 보인다', async () => {
     const { user } = renderScreen();
 
-    expect(await within(listPane()).findByText(t.resultTotal('6'))).toBeVisible();
-    expect(within(listPane()).queryByRole('group', { name: t.filters.extraLabel })).toBeNull();
-    expect(within(listPane()).queryByRole('combobox', { name: t.filters.sortLabel })).toBeNull();
+    expect(
+      await within(listPane()).findByText(messages.common.paneList.count(6)),
+    ).toBeVisible();
+    expect(within(filterBox()).queryByRole('group', { name: t.filters.extraLabel })).toBeNull();
+    expect(within(filterBox()).queryByRole('combobox', { name: t.filters.sortLabel })).toBeNull();
 
     await openMore(user);
 
-    const group = within(listPane()).getByRole('group', { name: t.filters.extraLabel });
+    const group = within(filterBox()).getByRole('group', { name: t.filters.extraLabel });
     expect(within(group).getAllByRole('checkbox')).toHaveLength(3);
-    expect(within(listPane()).getByRole('combobox', { name: t.filters.sortLabel })).toBeVisible();
+    expect(within(filterBox()).getByRole('combobox', { name: t.filters.sortLabel })).toBeVisible();
   });
 
   /*
@@ -378,9 +384,9 @@ describe('W-05-13 툴 마스터 — 목록', () => {
   it('관리 액션을 조회 액션과 다른 자리에 둔다', async () => {
     renderScreen();
 
-    const search = await within(listPane()).findByRole('button', { name: messages.common.search });
-    const add = within(listPane()).getByRole('button', { name: t.actions.addTool });
-    const upload = within(listPane()).getByRole('button', { name: t.actions.importTools });
+    const search = await within(filterBox()).findByRole('button', { name: messages.common.search });
+    const add = within(filterBox()).getByRole('button', { name: t.actions.addTool });
+    const upload = within(filterBox()).getByRole('button', { name: t.actions.importTools });
 
     expect(add.parentElement).toBe(upload.parentElement);
     expect(add.parentElement).not.toBe(search.parentElement);
@@ -465,17 +471,17 @@ describe('W-05-13 툴 마스터 — 목록', () => {
     const { user } = renderScreen();
 
     await screen.findByRole('cell', { name: 'TL-01' });
-    await user.click(within(listPane()).getByRole('combobox', { name: t.fields.plant }));
+    await user.click(within(filterBox()).getByRole('combobox', { name: t.fields.plant }));
     await user.click(await screen.findByRole('option', { name: '제2공장' }));
-    await user.click(within(listPane()).getByRole('button', { name: messages.common.search }));
+    await user.click(within(filterBox()).getByRole('button', { name: messages.common.search }));
 
-    expect(within(listPane()).getByRole('combobox', { name: t.fields.plant })).toHaveTextContent(
+    expect(within(filterBox()).getByRole('combobox', { name: t.fields.plant })).toHaveTextContent(
       '제2공장',
     );
     expect(
-      within(listPane()).queryByRole('button', { name: messages.common.filterMore.remove('공장') }),
+      within(filterBox()).queryByRole('button', { name: messages.common.filterMore.remove('공장') }),
     ).toBeNull();
-    expect(within(listPane()).queryByText(/공장: /)).toBeNull();
+    expect(within(filterBox()).queryByText(/공장: /)).toBeNull();
   });
 
   /* 좁힘은 «고를 목록» 한 자리에만 건다 — 이름 풀이와 고를 목록이 다른 규율을 쓴다. */
@@ -485,7 +491,7 @@ describe('W-05-13 툴 마스터 — 목록', () => {
     });
 
     await screen.findByRole('cell', { name: 'TL-01' });
-    await user.click(within(listPane()).getByRole('combobox', { name: t.fields.plant }));
+    await user.click(within(filterBox()).getByRole('combobox', { name: t.fields.plant }));
 
     expect(await screen.findByRole('option', { name: '제1공장' })).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: /제3공장/ })).not.toBeInTheDocument();
@@ -497,7 +503,7 @@ describe('W-05-13 툴 마스터 — 조회 조건', () => {
     const { user, sent } = renderScreen();
 
     await screen.findByRole('cell', { name: 'TL-01' });
-    await user.type(within(listPane()).getByLabelText(t.filters.searchLabel), '프레스{Enter}');
+    await user.type(within(filterBox()).getByLabelText(t.filters.searchLabel), '프레스{Enter}');
 
     await waitFor(() => {
       expect(sent.at(-1)?.searchParams.get('q')).toBe('프레스');
@@ -508,9 +514,9 @@ describe('W-05-13 툴 마스터 — 조회 조건', () => {
     const { user, sent } = renderScreen();
 
     await screen.findByRole('cell', { name: 'TL-01' });
-    await user.click(within(listPane()).getByRole('combobox', { name: t.fields.plant }));
+    await user.click(within(filterBox()).getByRole('combobox', { name: t.fields.plant }));
     await user.click(await screen.findByRole('option', { name: '제2공장' }));
-    await user.click(within(listPane()).getByRole('button', { name: messages.common.search }));
+    await user.click(within(filterBox()).getByRole('button', { name: messages.common.search }));
 
     await waitFor(() => {
       expect(sent.at(-1)?.searchParams.get('plantId')).toBe('12');
@@ -524,7 +530,7 @@ describe('W-05-13 툴 마스터 — 조회 조건', () => {
     await screen.findByRole('cell', { name: 'TL-01' });
     await openMore(user);
     await user.click(
-      within(listPane()).getByRole('checkbox', { name: t.filters.guaranteedMissingOnly }),
+      within(filterBox()).getByRole('checkbox', { name: t.filters.guaranteedMissingOnly }),
     );
 
     await waitFor(() => {
@@ -537,7 +543,7 @@ describe('W-05-13 툴 마스터 — 조회 조건', () => {
 
     await screen.findByRole('cell', { name: 'TL-01' });
     await openMore(user);
-    await user.click(within(listPane()).getByRole('checkbox', { name: t.filters.pmDueOnly }));
+    await user.click(within(filterBox()).getByRole('checkbox', { name: t.filters.pmDueOnly }));
 
     await waitFor(() => {
       expect(sent.at(-1)?.searchParams.get('pmDueOnly')).toBe('true');
@@ -568,7 +574,7 @@ describe('W-05-13 툴 마스터 — 조회 조건', () => {
     await screen.findByRole('cell', { name: 'TL-01' });
     await openMore(user);
     await user.click(
-      within(listPane()).getByRole('checkbox', { name: messages.common.includeInactive }),
+      within(filterBox()).getByRole('checkbox', { name: messages.common.includeInactive }),
     );
 
     await waitFor(() => {
@@ -590,7 +596,7 @@ describe('W-05-13 툴 마스터 — 조회 조건', () => {
 
     await screen.findByRole('cell', { name: 'TL-01' });
     await openMore(user);
-    await user.click(within(listPane()).getByRole('combobox', { name: t.filters.sortLabel }));
+    await user.click(within(filterBox()).getByRole('combobox', { name: t.filters.sortLabel }));
     await user.click(await screen.findByRole('option', { name: t.filters.sort.shotUsageDesc }));
 
     await waitFor(() => {
@@ -608,20 +614,20 @@ describe('W-05-13 툴 마스터 — 조회 조건', () => {
 
     await screen.findByRole('cell', { name: 'TL-01' });
     await openMore(user);
-    await user.click(within(listPane()).getByRole('checkbox', { name: t.filters.pmDueOnly }));
+    await user.click(within(filterBox()).getByRole('checkbox', { name: t.filters.pmDueOnly }));
 
     await waitFor(() => {
       expect(sent.at(-1)?.searchParams.get('pmDueOnly')).toBe('true');
     });
 
-    await user.type(within(listPane()).getByLabelText(t.filters.searchLabel), '프레스');
-    await user.click(within(listPane()).getByRole('button', { name: messages.common.search }));
+    await user.type(within(filterBox()).getByLabelText(t.filters.searchLabel), '프레스');
+    await user.click(within(filterBox()).getByRole('button', { name: messages.common.search }));
 
     await waitFor(() => {
       expect(sent.at(-1)?.searchParams.get('q')).toBe('프레스');
     });
     expect(sent.at(-1)?.searchParams.get('pmDueOnly')).toBe('true');
-    expect(within(listPane()).getByRole('checkbox', { name: t.filters.pmDueOnly })).toBeChecked();
+    expect(within(filterBox()).getByRole('checkbox', { name: t.filters.pmDueOnly })).toBeChecked();
   });
 
   /* 정렬도 같은 축이다 — 「조회」가 앞서 고른 차례를 되돌리면 안 된다. */
@@ -630,14 +636,14 @@ describe('W-05-13 툴 마스터 — 조회 조건', () => {
 
     await screen.findByRole('cell', { name: 'TL-01' });
     await openMore(user);
-    await user.click(within(listPane()).getByRole('combobox', { name: t.filters.sortLabel }));
+    await user.click(within(filterBox()).getByRole('combobox', { name: t.filters.sortLabel }));
     await user.click(await screen.findByRole('option', { name: t.filters.sort.nextPmAsc }));
 
     await waitFor(() => {
       expect(sent.at(-1)?.searchParams.get('sort')).toBe('NEXT_PM_ASC');
     });
 
-    await user.type(within(listPane()).getByLabelText(t.filters.searchLabel), '프레스{Enter}');
+    await user.type(within(filterBox()).getByLabelText(t.filters.searchLabel), '프레스{Enter}');
 
     await waitFor(() => {
       expect(sent.at(-1)?.searchParams.get('q')).toBe('프레스');
@@ -650,24 +656,24 @@ describe('W-05-13 툴 마스터 — 조회 조건', () => {
     const { user } = renderScreen();
 
     await screen.findByRole('cell', { name: 'TL-01' });
-    await user.type(within(listPane()).getByLabelText(t.filters.searchLabel), '프레스{Enter}');
+    await user.type(within(filterBox()).getByLabelText(t.filters.searchLabel), '프레스{Enter}');
     await openMore(user);
-    await user.click(within(listPane()).getByRole('checkbox', { name: t.filters.pmDueOnly }));
+    await user.click(within(filterBox()).getByRole('checkbox', { name: t.filters.pmDueOnly }));
 
     /* 펼쳐 있으면 칸에 값이 보이므로 칩이 없다. */
     expect(
-      within(listPane()).queryByRole('button', { name: t.filters.chipRemovePmDue }),
+      within(filterBox()).queryByRole('button', { name: t.filters.chipRemovePmDue }),
     ).toBeNull();
 
     await user.click(
-      within(listPane()).getByRole('button', { name: messages.common.filterMore.close }),
+      within(filterBox()).getByRole('button', { name: messages.common.filterMore.close }),
     );
 
     expect(
-      await within(listPane()).findByRole('button', { name: t.filters.chipRemovePmDue }),
+      await within(filterBox()).findByRole('button', { name: t.filters.chipRemovePmDue }),
     ).toBeInTheDocument();
     /* 검색어는 보이는 칸이라 칩이 없다 — 칩은 하나뿐이다. */
-    expect(within(listPane()).getAllByRole('button', { name: /조건 제거$/ })).toHaveLength(1);
+    expect(within(filterBox()).getAllByRole('button', { name: /조건 제거$/ })).toHaveLength(1);
   });
 
   it('칩으로 도래만 조건을 거둔다', async () => {
@@ -675,9 +681,9 @@ describe('W-05-13 툴 마스터 — 조회 조건', () => {
 
     await screen.findByRole('cell', { name: 'TL-01' });
     await openMore(user);
-    await user.click(within(listPane()).getByRole('checkbox', { name: t.filters.pmDueOnly }));
+    await user.click(within(filterBox()).getByRole('checkbox', { name: t.filters.pmDueOnly }));
     await user.click(
-      within(listPane()).getByRole('button', { name: messages.common.filterMore.close }),
+      within(filterBox()).getByRole('button', { name: messages.common.filterMore.close }),
     );
 
     await user.click(await screen.findByRole('button', { name: t.filters.chipRemovePmDue }));
@@ -696,11 +702,11 @@ describe('W-05-13 툴 마스터 — 조회 조건', () => {
     const { user } = renderScreen();
 
     await screen.findByRole('cell', { name: 'TL-01' });
-    expect(within(listPane()).queryByRole('button', { name: messages.common.reset })).toBeNull();
+    expect(within(filterBox()).queryByRole('button', { name: messages.common.reset })).toBeNull();
 
-    await user.type(within(listPane()).getByLabelText(t.filters.searchLabel), '프');
+    await user.type(within(filterBox()).getByLabelText(t.filters.searchLabel), '프');
 
-    expect(within(listPane()).getByRole('button', { name: messages.common.reset })).toBeVisible();
+    expect(within(filterBox()).getByRole('button', { name: messages.common.reset })).toBeVisible();
   });
 
   it('적용하지 않은 입력도 초기화가 거둔다', async () => {
@@ -708,11 +714,11 @@ describe('W-05-13 툴 마스터 — 조회 조건', () => {
 
     await screen.findByRole('cell', { name: 'TL-01' });
 
-    const box = within(listPane()).getByLabelText(t.filters.searchLabel);
+    const box = within(filterBox()).getByLabelText(t.filters.searchLabel);
     await user.type(box, '프레스');
     expect(box).toHaveValue('프레스');
 
-    await user.click(within(listPane()).getByRole('button', { name: messages.common.reset }));
+    await user.click(within(filterBox()).getByRole('button', { name: messages.common.reset }));
 
     await waitFor(() => {
       expect(box).toHaveValue('');
@@ -724,19 +730,19 @@ describe('W-05-13 툴 마스터 — 조회 조건', () => {
 
     await screen.findByRole('cell', { name: 'TL-01' });
     await openMore(user);
-    await user.click(within(listPane()).getByRole('checkbox', { name: t.filters.pmDueOnly }));
+    await user.click(within(filterBox()).getByRole('checkbox', { name: t.filters.pmDueOnly }));
 
     await waitFor(() => {
       expect(sent.at(-1)?.searchParams.get('pmDueOnly')).toBe('true');
     });
 
-    await user.click(within(listPane()).getByRole('button', { name: messages.common.reset }));
+    await user.click(within(filterBox()).getByRole('button', { name: messages.common.reset }));
 
     await waitFor(() => {
       expect(sent.at(-1)?.searchParams.get('pmDueOnly')).toBeNull();
     });
     expect(
-      within(listPane()).getByRole('checkbox', { name: t.filters.pmDueOnly }),
+      within(filterBox()).getByRole('checkbox', { name: t.filters.pmDueOnly }),
     ).not.toBeChecked();
   });
 });
@@ -761,7 +767,7 @@ describe('W-05-13 툴 마스터 — 빈 상태와 실패', () => {
 
     await screen.findByRole('cell', { name: 'TL-01' });
     await openMore(user);
-    await user.click(within(listPane()).getByRole('checkbox', { name: t.filters.pmDueOnly }));
+    await user.click(within(filterBox()).getByRole('checkbox', { name: t.filters.pmDueOnly }));
 
     expect(await screen.findByText(t.empty.noMatchTitle)).toBeInTheDocument();
   });
@@ -837,7 +843,7 @@ const openEditOf = async (
 
 const openCreate = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
   await screen.findByRole('cell', { name: 'TL-01' });
-  await user.click(within(listPane()).getByRole('button', { name: t.actions.addTool }));
+  await user.click(within(filterBox()).getByRole('button', { name: t.actions.addTool }));
   await screen.findByRole('dialog', { name: t.form.createTitle });
 };
 
@@ -1690,7 +1696,7 @@ const openImport = async (
   selectPlant = true,
 ): Promise<void> => {
   await screen.findByRole('cell', { name: 'TL-01' });
-  await user.click(within(listPane()).getByRole('button', { name: t.actions.importTools }));
+  await user.click(within(filterBox()).getByRole('button', { name: t.actions.importTools }));
   await screen.findByRole('dialog', { name: t.import.title });
 
   if (selectPlant) {

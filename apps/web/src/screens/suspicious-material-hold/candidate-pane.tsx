@@ -648,11 +648,11 @@ export const SuspiciousMaterialCandidatePane = ({
         data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         {/*
-         * 결과 카드 — 「의심자재 후보」 제목은 두지 않는다(다른 LOT 상태 탭과 같다 · 사용자 2026-11-02). 고른 건수는 오른쪽
+         * 결과 카드 — 제목 줄 「의심자재 후보 · N건 · 목록 접기」(#350 · 이름은 2026-11-23 지시로 다시 붙였다). 고른 건수는 오른쪽
          * 「의심자재 보류 등록」 제목 옆에, 총 건수는 표 아래 쪽 이동 줄에.
          */}
         <section className="pane lot-status-pane suspicious-material-hold-pane" aria-label={t.pane}>
-          <PaneListHead title={''} collapse={listCollapse} />
+          <PaneListHead title={t.pane} collapse={listCollapse} />
           {candidates.isError ? (
             <AlertBanner
               variant="error"

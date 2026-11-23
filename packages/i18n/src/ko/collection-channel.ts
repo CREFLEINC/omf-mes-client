@@ -30,6 +30,8 @@ export const collectionChannel = {
   },
   channels: {
     paneTitle: '채널 매핑',
+    /** 통일 배치(#350)의 상세 자리 이름 — 안의 채널 상자(「채널 매핑」)와 겹치지 않게 따로 부른다. */
+    detailRegion: '채널 매핑 상세',
     /** 무엇의 채널을 보고 있는지 페인 머리에 남긴다 — 좌우가 멀어지면 고른 것을 잊는다. */
     paneOf: (code: string, name: string): string => `${code} · ${name}의 수집 채널`,
     /** 설비를 고르기 전에는 조회 자체가 없다 — 빈 표가 아니라 무엇을 해야 하는지 말한다. */

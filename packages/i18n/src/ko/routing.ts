@@ -9,6 +9,8 @@ export const routing = {
   breadcrumbRoot: '기준정보 관리',
   panes: {
     item: '품목',
+    /** 품목 목록 상자 제목 줄(#350). */
+    itemList: '품목 목록',
     revision: 'Rev 목록',
     header: 'Routing 정보',
     operations: '공정 라인',

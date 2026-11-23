@@ -1,0 +1,5 @@
+/* LOT 현황 — 「마지막 갱신 + [갱신]」을 목록 상자 오른쪽 아래(쪽 이동 줄 밑)에 둔다(2026-11-23 지시). */
+.lot-status-refresh-foot {
+  display: flex;
+  justify-content: flex-end;
+}

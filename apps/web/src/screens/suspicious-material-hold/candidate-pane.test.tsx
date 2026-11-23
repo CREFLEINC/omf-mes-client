@@ -113,8 +113,8 @@ describe('의심자재 후보 pane', () => {
     ).toBe('|LOT 번호|품목코드|품목명|위치|보유 수량|상태|최근 상태 변경일');
     /* 선택 칸 머리는 이 쪽 전체 선택 칸이다(사용자 2026-11-02). */
     expect(screen.getByRole('checkbox', { name: '이 쪽 LOT 전체 선택' })).toBeVisible();
-    /* 목록 카드 제목은 두지 않는다(다른 LOT 상태 탭과 같다 · 사용자 2026-11-02) — 구역 이름으로만 남는다. */
-    expect(screen.queryByRole('heading', { level: 2, name: '의심자재 후보' })).toBeNull();
+    /* 목록 제목 줄에 이름이 선다(2026-11-23 지시 · #350). */
+    expect(screen.getByRole('heading', { level: 2, name: '의심자재 후보' })).toBeVisible();
     expect(screen.getByRole('table', { name: '의심자재 후보' })).toBeVisible();
     // 최근 전이 시각은 공장 시각(UTC+7)으로 보인다 — omf-all-around#20
     expect(screen.getAllByText('2026-08-25 07:00')).toHaveLength(3);

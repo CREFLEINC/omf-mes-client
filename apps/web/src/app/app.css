@@ -37271,8 +37271,8 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 /*
  * 목록 접기 — 시안(omf-all-around#350). 목록 맨 위 제목 줄 「이름 · 건수 · [목록 접기]」, 접으면 왼쪽에 「목록 N건」 탭이 서고
- * 상세가 남은 폭을 다 쓴다. 아이콘은 왼쪽 칸이 닫히고 열리는 패널 모양. 좌우로 나란히 설 때만 — 위아래로 쌓이면(좁은 창 · 상하 배치)
- * 제목 줄의 단추와 탭을 감추고, 막대의 작은 원 단추가 그대로 접고 편다. 제목 줄이 없는 분할(`PaneListHead` 를 안 쓰는 화면)은 전과 같다.
+ * 상세가 남은 폭을 다 쓴다. 아이콘은 왼쪽 칸이 닫히고 열리는 패널 모양. 아래 규칙은 좌우로 나란히 설 때다 — 위아래로 쌓일 때(좁은 창 ·
+ * 상하 배치)는 파일 끝 「위아래로 쌓여도」 규칙이 가로 탭으로 같게 맞춘다. 제목 줄이 없는 분할(`PaneListHead` 를 안 쓰는 화면)은 전과 같다.
  */
 .po-board-list-head {
   display: flex;
@@ -37511,5 +37511,196 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
     color: var(--on-surface-variant);
     font: inherit;
     cursor: pointer;
+  }
+}
+
+/*
+ * 조회 조건 · 목록 · 상세 통일 배치(`ListDetailWorkspace` · omf-all-around#350) — 검사 조회·판정과 같은 모양.
+ * 위 조회 조건 상자, 아래 목록 | 상세. 목록은 표만 안에서 구르고 쪽 넘김은 바닥에, 상세는 상자 안에서 구른다.
+ */
+.list-detail-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+/* 탭 묶음 밖이면 칩 · 「⋯」(배치)가 조회 조건 위 오른쪽 한 줄에 선다. */
+.list-detail-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  min-height: 32px;
+  margin-bottom: calc(var(--space-2) * -1);
+}
+
+.list-detail-split > .list-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.list-detail-split > .list-detail-detail {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.list-detail-split > .list-detail-detail.is-bare {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.po-board-split.inspection-split.is-stacked > .list-detail-list {
+  box-sizing: border-box;
+  height: var(--stacked-list-height, auto);
+  max-height: var(--stacked-list-height, min(28rem, 50dvh));
+}
+
+.po-board-split.inspection-split.is-stacked > .list-detail-detail {
+  overflow: visible;
+}
+
+/*
+ * 위아래로 쌓여도(좁은 창 · 상하 배치) 같은 시안(#350) — 제목 줄 「목록 접기」는 늘 보이고, 접으면 목록 자리에 가로로 긴
+ * 「목록 N건」 탭이 서서 누르면 다시 편다. 막대의 작은 원 단추는 제목 줄이 있는 목록이면 감춘다.
+ */
+.po-board-split .po-board-list-head > .po-board-list-collapse,
+.list-collapsible .po-board-list-head > .po-board-list-collapse {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  margin-left: auto;
+  padding: 0 14px 0 10px;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--on-surface-variant);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.po-board-split .po-board-list-head > .po-board-list-collapse:hover,
+.list-collapsible .po-board-list-head > .po-board-list-collapse:hover {
+  border-color: var(--semantic-info);
+  background: var(--state-hover-neutral);
+  color: var(--on-surface);
+}
+
+.po-board-list-collapse:focus-visible,
+.po-board-list-tab:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.po-board-split[data-left-collapsed] > :first-child:has(> .po-board-list-head),
+.list-collapsible[data-left-collapsed] > :first-child:has(> .po-board-list-head) {
+  display: none;
+}
+
+.po-board-split:has(> :first-child > .po-board-list-head) .inspection-height-splitter > .po-board-collapse {
+  display: none;
+}
+
+.po-board-split[data-left-collapsed]:has(.po-board-list-head) > .inspection-height-splitter {
+  display: none;
+}
+
+/* 가로 「목록 N건」 탭 — 쌓였을 때. */
+.po-board-list-tab.is-row,
+.po-board-split.is-stacked[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter > .po-board-list-tab {
+  position: static;
+}
+
+.po-board-split.is-stacked[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter {
+  display: block;
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0 0 var(--space-4);
+}
+
+.po-board-split.is-stacked[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter::before,
+.po-board-split.is-stacked[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter::after {
+  display: none;
+}
+
+.po-board-split.is-stacked[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter > .po-board-collapse,
+.po-board-split.is-stacked[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter > .po-board-splitter {
+  display: none;
+}
+
+.po-board-split.is-stacked[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter > .po-board-list-tab {
+  display: flex;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--on-surface-variant);
+  font: inherit;
+  cursor: pointer;
+}
+
+.po-board-split.is-stacked[data-left-collapsed]:has(.po-board-list-head) .po-board-list-tab-body {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 16px;
+}
+
+@media (max-width: 1439.98px) {
+  .po-board-split:has(> :first-child > .po-board-list-head) > .po-board-gutter > .po-board-collapse {
+    display: none;
+  }
+
+  .po-board-split[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter {
+    display: block;
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0 0 var(--space-4);
+  }
+
+  .po-board-split[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter::before,
+  .po-board-split[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter::after {
+    display: none;
+  }
+
+  .po-board-split[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter > .po-board-splitter {
+    display: none;
+  }
+
+  .po-board-split[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter > .po-board-list-tab,
+  .list-collapsible[data-left-collapsed] > .po-board-list-tab {
+    position: static;
+    display: flex;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--on-surface-variant);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .po-board-split[data-left-collapsed]:has(.po-board-list-head) .po-board-list-tab-body,
+  .list-collapsible[data-left-collapsed] .po-board-list-tab-body {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 16px;
   }
 }

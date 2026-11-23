@@ -127,6 +127,9 @@ const renderAt = (options: Options = {}, route = '/?view=inspection-items') =>
   });
 
 const pane = async (): Promise<HTMLElement> => screen.findByRole('region', { name: ti.paneTitle });
+/* 조회 줄과 「점검 항목 추가」는 목록 위 조회 조건 상자에 선다(#350). */
+const filterBox = (): HTMLElement =>
+  screen.getByRole('region', { name: messages.common.paneList.filter });
 const dialog = (): HTMLElement => screen.getByRole('dialog');
 
 const bodyOf = async (request: Request): Promise<Record<string, unknown>> =>
@@ -185,7 +188,7 @@ describe('W-05-12 점검 항목 마스터 — 목록', () => {
     renderAt({ sent });
     await within(await pane()).findByText('벨트 장력');
     await user.click(
-      within(await pane()).getByRole('checkbox', { name: messages.common.includeInactive }),
+      within(filterBox()).getByRole('checkbox', { name: messages.common.includeInactive }),
     );
 
     await waitFor(() => {
@@ -220,7 +223,7 @@ describe('W-05-12 점검 항목 마스터 — 만든다', () => {
   ): Promise<void> => {
     renderAt(options);
     await within(await pane()).findByText('벨트 장력');
-    await user.click(within(await pane()).getByRole('button', { name: ti.addAction }));
+    await user.click(within(filterBox()).getByRole('button', { name: ti.addAction }));
   };
 
   it('등록 창이 열린다', async () => {

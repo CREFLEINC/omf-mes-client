@@ -29,6 +29,7 @@ export const collectionChannel: Translated<typeof ko.collectionChannel> = {
   },
   channels: {
     paneTitle: 'Ánh xạ kênh',
+    detailRegion: 'Chi tiết ánh xạ kênh',
     paneOf: (code: string, name: string): string => `Kênh thu thập của ${code} · ${name}`,
     /** 설비를 고르기 전에는 조회 자체가 없다 — 무엇을 해야 하는지 말한다. */
     noEquipmentTitle: 'Hãy chọn thiết bị',

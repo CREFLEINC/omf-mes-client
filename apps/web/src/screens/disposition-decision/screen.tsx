@@ -222,12 +222,11 @@ export const DispositionDecisionScreen = ({
   /* 처분 이력 탭에서 고른 판정 한 건 — 고른 줄 표시용(#223). */
   const selectedDecisionId = readSelectedDecisionId(searchParams);
   /*
-   * 항목을 고르면 목록을 접어 상세가 자리를 다 쓴다 — 다시 펼치기는 목록과 상세 사이의 단추(부품 IQC #252 와 같은 동작 ·
-   * omf-all-around#275). 지금 탭에서 고른 것이 없으면 접힘은 뜻이 없어 늘 펼친다 — 목록이 숨은 채 빈 화면이 되지 않게.
+   * 항목을 고르면 목록을 접어 상세가 자리를 다 쓴다(부품 IQC #252 와 같은 동작 · omf-all-around#275). 목록 제목 줄의
+   * 「목록 접기」로 언제든 접고, 접으면 왼쪽 「목록 N건」 탭으로 다시 편다(통일 배치 · #350).
    */
   const [isListFolded, setIsListFolded] = useState(false);
-  const activeSelectedId = tab === 'pending' ? selectedId : selectedDecisionId;
-  const isListCollapsed = isListFolded && activeSelectedId !== null;
+  const isListCollapsed = isListFolded;
   /*
    * 기간이 막히면 `null`이고 조회가 열리지 않는다.
    *
@@ -700,22 +699,19 @@ export const DispositionDecisionScreen = ({
       </Chip>
     );
 
-  /* 고른 것이 있을 때만 접는다(종전 그대로) — 제목 줄에 건수 · 「목록 접기」를 둔다(#350). */
-  const listCollapse =
-    activeSelectedId === null
-      ? undefined
-      : {
-          collapsed: isListCollapsed,
-          onToggle: () => setIsListFolded(!isListCollapsed),
-          collapseLabel: t.listCollapse,
-          expandLabel: t.listExpand,
-          count:
-            tab === 'pending'
-              ? list.data === undefined
-                ? undefined
-                : Math.max(0, list.data.page.total - cancelledIn(list.data.items))
-              : history.data?.page.total,
-        };
+  /* 목록 제목 줄 「이름 · 건수 · 목록 접기」 — 고른 것과 상관없이 늘 선다(통일 배치 · #350). */
+  const listCollapse = {
+    collapsed: isListCollapsed,
+    onToggle: () => setIsListFolded(!isListCollapsed),
+    collapseLabel: t.listCollapse,
+    expandLabel: t.listExpand,
+    count:
+      tab === 'pending'
+        ? list.data === undefined
+          ? undefined
+          : Math.max(0, list.data.page.total - cancelledIn(list.data.items))
+        : history.data?.page.total,
+  };
   return (
     <>
       {topBar}
@@ -748,8 +744,11 @@ export const DispositionDecisionScreen = ({
           className="pane po-board-pane po-board-scroll disposition-pane disposition-list-pane"
           aria-label={tab === 'pending' ? t.panes.list : t.panes.history}
         >
-          {/* 제목은 두지 않는다 — 구획 이름(`aria-label`)으로만 남긴다(사용자 지시 · #223). 건수 · 「목록 접기」만(#350). */}
-          {listCollapse !== undefined && <PaneListHead title="" collapse={listCollapse} />}
+          {/* 제목 줄 — 「목록 이름 · N건 · 목록 접기」(통일 배치 · #350). */}
+          <PaneListHead
+            title={tab === 'pending' ? t.panes.list : t.panes.history}
+            collapse={listCollapse}
+          />
           {tab === 'pending' ? (
             <NonconformanceList
               rows={rows}
@@ -813,7 +812,7 @@ export const DispositionDecisionScreen = ({
           ratio={split.ratio}
           onChange={split.commit}
           orientation={paneLayout.layout === 'stack' ? 'horizontal' : 'vertical'}
-          {...(listCollapse === undefined ? {} : { collapse: listCollapse })}
+          collapse={listCollapse}
         />
         {/*
          * 오른쪽은 한 구획 — 부적합 상세 · 처분 판정 · 처분 이력/특채 요청 이력 탭을 위에서 아래로(사용자 시안 · omf-all-around#223).

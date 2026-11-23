@@ -1,9 +1,10 @@
-import { Breadcrumb, Button, PageHeader, SkeletonText } from '@crefle/web-ui';
+import { SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { ItemPickerDialog, type ItemRow } from '../../patterns/item-picker';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
 import { useSession } from '../../patterns/session';
 import { AssignmentFormPane } from './assignment-form-pane';
@@ -64,6 +65,7 @@ import {
   validateHeader,
   validateLines,
 } from './validation';
+import './layout.css';
 
 const t = messages.shipmentRequestCreate;
 
@@ -537,42 +539,39 @@ export const ShipmentRequestCreateScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
-
-      {list.isError && (
-        <LoadErrorBanner
-          error={list.error}
-          onRetry={() => {
-            void list.refetch();
-          }}
-        />
-      )}
-
-      <div className="two-pane">
-        <section className="pane" aria-label={t.panes.source}>
-          <SourceFilterBar
-            appliedFilters={filters}
-            customerOptions={toSelectOptions(customers)}
-            customerName={describeReference(
-              toReference(customers, filters.customer === '' ? null : Number(filters.customer)),
-            )}
-            customerNote={lookupNote(customers)}
-            onSearch={applyFilters}
-            onRemoveFilter={removeFilter}
-            onReset={() => {
-              applyFilters(EMPTY_FILTERS);
-            }}
-          />
-
-          {!list.isError && (
+      {/* 통일 배치(#350) — 제목 줄 없이 조회 조건 상자 · ERP S/O 목록 | 편성 상세 · 「⋯」 배치 · 목록 접기. */}
+      <ListDetailWorkspace
+        storageKey="omf-mes:shipment-request-create"
+        filter={{
+          label: messages.common.paneList.filter,
+          content: (
+            <SourceFilterBar
+              appliedFilters={filters}
+              customerOptions={toSelectOptions(customers)}
+              customerName={describeReference(
+                toReference(customers, filters.customer === '' ? null : Number(filters.customer)),
+              )}
+              customerNote={lookupNote(customers)}
+              onSearch={applyFilters}
+              onRemoveFilter={removeFilter}
+              onReset={() => {
+                applyFilters(EMPTY_FILTERS);
+              }}
+            />
+          ),
+        }}
+        list={{
+          label: t.panes.source,
+          title: t.panes.source,
+          count: list.data?.page.total,
+          content: list.isError ? (
+            <LoadErrorBanner
+              error={list.error}
+              onRetry={() => {
+                void list.refetch();
+              }}
+            />
+          ) : (
             <>
               <SourceListTable
                 rows={rows}
@@ -587,11 +586,15 @@ export const ShipmentRequestCreateScreen = () => {
               />
               {!list.isPending && <PageNav view={pageView} onChange={changePage} />}
             </>
-          )}
-        </section>
-
-        <div className="pane-stack">{rightColumn()}</div>
-      </div>
+          ),
+        }}
+        detail={{
+          label: t.title,
+          bare: true,
+          className: 'sr-create-detail',
+          content: rightColumn(),
+        }}
+      />
 
       {/*
        * ⭐ **품목 선택은 팝업이다**(사용자 결정 2026-09-18). 품목 마스터가 9,269건이라 표 안

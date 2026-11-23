@@ -1,9 +1,7 @@
 import {
   AlertBanner,
-  Breadcrumb,
   Button,
   EmptyState,
-  PageHeader,
   SkeletonText,
   Tabs,
   useToast,
@@ -13,11 +11,13 @@ import { messages } from '@omf-mes/i18n';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import './layout.css';
+
 import { useApiClient } from '../../patterns/api-context';
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
-import { ScreenHeader } from '../../patterns/screen-header';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import {
   CODE_GROUPS,
   type CodeOption,
@@ -38,7 +38,7 @@ import {
 import { GroupFormPane, type LocationField } from './group-form-pane';
 import { InspectionAssignDialog } from './inspection-assign-dialog';
 import { InspectionItemDialog } from './inspection-item-dialog';
-import { InspectionItemPane } from './inspection-item-pane';
+import { useInspectionItemPane } from './inspection-item-pane';
 import { INSPECTION_ITEM_FIELDS, validateInspectionItem } from './inspection-item-validation';
 import { InspectionItemsPane } from './inspection-items-pane';
 import { resolutionText } from './inspection-resolution';
@@ -48,7 +48,7 @@ import {
   validateRows,
   type RowErrors,
 } from './inspection-assignment';
-import { GroupListPane } from './group-list-pane';
+import { useGroupListPane } from './group-list-pane';
 import { buildGroupRows, selfAndDescendantIds } from './group-tree';
 import { GROUP_FORM_FIELDS, validateGroup } from './group-validation';
 import { LoadErrorBanner } from './load-error-banner';
@@ -1341,69 +1341,114 @@ export const EquipmentMasterScreen = () => {
    * 그룹을 고른 뒤의 안쪽 탭이 아니라 화면 수준에서 갈린다 — 안쪽에 두면 「이 그룹의 점검
    * 항목」으로 읽히고, 그것은 부여지 마스터가 아니다.
    */
-  const renderAssetsView = () => (
-    <>
-      {/*
-       * 목록이 잘렸다는 사실을 감추지 않는다. 페이지 이동 컨트롤은 아직 없으므로
-       * 조건을 좁히는 것이 사용자가 할 수 있는 조치다.
-       */}
-      {listTruncated && listPage !== undefined && (
-        <AlertBanner variant="warning">
-          {t.listTruncated(groupItems.length, listPage.total)}
-        </AlertBanner>
-      )}
+  const groupPane = useGroupListPane({
+    rows: groupRows,
+    isLoading: groupList.isPending,
+    appliedFilters: filters,
+    onApplyFilters: handleApplyFilters,
+    plantOptions: selectableOptions(lookups.sources.plants, filters.plantId),
+    plants: lookups.sources.plants,
+    expandedIds,
+    onToggleExpand: handleToggleExpand,
+    selectedGroupId,
+    onSelect: (equipmentGroupId) =>
+      navigateWithDraftGuard({ grp: String(equipmentGroupId), mode: null }),
+    onAddGroup: handleAddGroup,
+    loadError: groupList.isError ? (
+      <LoadErrorBanner
+        error={toApiError(groupList.error)}
+        onRetry={() => void groupList.refetch()}
+      />
+    ) : null,
+    /* 「그룹 추가」는 이 뷰의 동작이라 이 뷰의 조회 조건 상자에 선다 — 점검 항목 뷰에는 없다. */
+    filterActions: <Button onClick={handleAddGroup}>{t.actions.addGroup}</Button>,
+  });
 
-      <div className="two-pane equipment-master-layout">
-        <GroupListPane
-          rows={groupRows}
-          isLoading={groupList.isPending}
-          appliedFilters={filters}
-          onApplyFilters={handleApplyFilters}
-          plantOptions={selectableOptions(lookups.sources.plants, filters.plantId)}
-          plants={lookups.sources.plants}
-          expandedIds={expandedIds}
-          onToggleExpand={handleToggleExpand}
-          selectedGroupId={selectedGroupId}
-          onSelect={(equipmentGroupId) =>
-            navigateWithDraftGuard({ grp: String(equipmentGroupId), mode: null })
-          }
-          onAddGroup={handleAddGroup}
-          loadError={
-            groupList.isError ? (
-              <LoadErrorBanner
-                error={toApiError(groupList.error)}
-                onRetry={() => void groupList.refetch()}
-              />
-            ) : null
-          }
-        />
-        {renderDetailPane()}
-      </div>
-    </>
+  const inspectionItemPane = useInspectionItemPane({
+    items: inspectionItemList.data?.items ?? [],
+    isLoading: inspectionItemList.isPending,
+    appliedFilters: inspectionItemFilters,
+    onApplyFilters: setInspectionItemFilters,
+    typeOptions: inspectionTypeOptions,
+    methodOptions: judgmentMethodOptions,
+    onAdd: openInspectionItemCreate,
+    onEdit: openInspectionItemEdit,
+    loadError: inspectionItemList.isError ? (
+      <LoadErrorBanner
+        error={toApiError(inspectionItemList.error)}
+        onRetry={() => void inspectionItemList.refetch()}
+      />
+    ) : null,
+  });
+
+  /**
+   * 자산 뷰 — 설비 그룹과 설비. 조회 조건 · 목록 · 상세 통일 배치(#350).
+   *
+   * ⭐ **점검 항목 마스터와 «나란히» 선다**(스펙 §5-1-1). 마스터는 그룹에 매이지 않으므로
+   * 그룹을 고른 뒤의 안쪽 탭이 아니라 화면 수준에서 갈린다 — 안쪽에 두면 「이 그룹의 점검
+   * 항목」으로 읽히고, 그것은 부여지 마스터가 아니다.
+   */
+  const renderAssetsView = () => (
+    <ListDetailWorkspace
+      storageKey="omf-mes:equipment-master"
+      filter={{ label: messages.common.paneList.filter, content: groupPane.filter }}
+      list={{
+        label: t.panes.groupList,
+        title: t.panes.groupList,
+        count: listPage?.total,
+        content: (
+          <>
+            {/*
+             * 목록이 잘렸다는 사실을 감추지 않는다. 페이지 이동 컨트롤은 아직 없으므로
+             * 조건을 좁히는 것이 사용자가 할 수 있는 조치다.
+             */}
+            {listTruncated && listPage !== undefined && (
+              <AlertBanner variant="warning">
+                {t.listTruncated(groupItems.length, listPage.total)}
+              </AlertBanner>
+            )}
+            {groupPane.list}
+          </>
+        ),
+      }}
+      detail={{ label: t.panes.groupDetail, content: renderDetailPane(), bare: true }}
+    />
+  );
+
+  /**
+   * 점검 항목 마스터 뷰 — 조회 조건 상자 + 목록 상자(#350).
+   *
+   * 상세 상자는 두지 않는다 — 항목의 등록 · 수정은 창(`InspectionItemDialog`)에서 하고, 이 뷰에는
+   * 고른 줄을 붙잡아 두는 상태가 없다. 창을 상세 상자로 옮기면 여닫기 · 저장 흐름이 바뀐다.
+   */
+  const renderInspectionItemsView = () => (
+    <div className="list-detail-workspace">
+      <section
+        className="pane po-board-filter list-detail-filter"
+        aria-label={messages.common.paneList.filter}
+      >
+        {inspectionItemPane.filter}
+      </section>
+      <section
+        className="pane equipment-master-pane equipment-master-inspection-master-pane"
+        aria-label={t.inspectionItem.paneTitle}
+      >
+        <div className="po-board-list-head">
+          <h2 className="pane-title">{t.inspectionItem.paneTitle}</h2>
+          {inspectionItemList.data !== undefined && (
+            <span className="po-board-list-count">
+              {messages.common.paneList.count(inspectionItemList.data.page.total)}
+            </span>
+          )}
+        </div>
+        {inspectionItemPane.list}
+      </section>
+    </div>
   );
 
   return (
     <>
-      <ScreenHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-        /*
-         * ⛔ **머리의 동작은 «보고 있는 뷰»의 것이다.** 점검 항목을 보는 중에 「그룹 추가」가
-         * 서 있으면 그 탭의 동작으로 읽힌다 — 누르면 뷰가 바뀌어 사용자가 길을 잃는다.
-         * 점검 항목을 더하는 자리는 그 뷰 «안»에 있다.
-         */
-        actions={
-          activeView === 'assets' ? (
-            <Button onClick={handleAddGroup}>{t.actions.addGroup}</Button>
-          ) : undefined
-        }
-      />
-
+      {/* 화면 제목 줄은 두지 않는다 — 조회 조건 · 목록 · 상세 통일 배치(검사 조회·판정과 같다 · #350). */}
       {lookupNotice}
 
       <Tabs
@@ -1411,30 +1456,19 @@ export const EquipmentMasterScreen = () => {
         value={activeView}
         onChange={(value) => updateParams({ view: value === 'assets' ? null : value })}
         items={[
-          { value: 'assets', label: t.views.assets, content: renderAssetsView() },
+          /*
+           * 자산 뷰는 보고 있을 때만 세운다 — 숨은 탭에 서 있으면 그 배치 「⋯」가 탭 줄에 남아 점검 항목
+           * 뷰의 것으로 읽힌다(#350). 조회 초안은 화면이 들고 있어 탭을 오가도 남는다.
+           */
+          {
+            value: 'assets',
+            label: t.views.assets,
+            content: activeView === 'assets' ? renderAssetsView() : null,
+          },
           {
             value: 'inspection-items',
             label: t.inspectionItem.tabLabel,
-            content: (
-              <InspectionItemPane
-                items={inspectionItemList.data?.items ?? []}
-                isLoading={inspectionItemList.isPending}
-                appliedFilters={inspectionItemFilters}
-                onApplyFilters={setInspectionItemFilters}
-                typeOptions={inspectionTypeOptions}
-                methodOptions={judgmentMethodOptions}
-                onAdd={openInspectionItemCreate}
-                onEdit={openInspectionItemEdit}
-                loadError={
-                  inspectionItemList.isError ? (
-                    <LoadErrorBanner
-                      error={toApiError(inspectionItemList.error)}
-                      onRetry={() => void inspectionItemList.refetch()}
-                    />
-                  ) : null
-                }
-              />
-            ),
+            content: renderInspectionItemsView(),
           },
         ]}
       />

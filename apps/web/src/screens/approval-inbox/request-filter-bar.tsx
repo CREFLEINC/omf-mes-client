@@ -1,6 +1,6 @@
 import { Button, DatePicker, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 
 import {
   FilterMoreButton,
@@ -29,6 +29,8 @@ export interface RequestFilterBarProps {
   /** 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. */
   onRemoveFilter: (key: FilterChipKey) => void;
   onReset: () => void;
+  /** 조회 · 초기화 뒤 구분선 너머에 둘 화면 단추(다시 조회) — 통일 배치(#350). */
+  actions?: ReactNode;
 }
 
 /**
@@ -60,6 +62,7 @@ export const RequestFilterBar = ({
   onSearch,
   onRemoveFilter,
   onReset,
+  actions,
 }: RequestFilterBarProps) => {
   const periodId = useId();
   const more = useFilterMore();
@@ -190,6 +193,12 @@ export const RequestFilterBar = ({
               </Button>
             )}
             <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
+            {actions !== undefined && (
+              <>
+                <span className="inspection-standard-filter-divider" aria-hidden />
+                {actions}
+              </>
+            )}
           </div>
         </div>
       </div>

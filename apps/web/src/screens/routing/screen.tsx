@@ -89,6 +89,7 @@ import type {
   RoutingHeaderFormValues,
   SelectOption,
 } from './types';
+import './layout.css';
 
 type RoutingDetailResponse = components['schemas']['RoutingDetailResponse'];
 
@@ -1227,7 +1228,7 @@ const RoutingWorkspace = () => {
         data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <ItemPane
-          head={<PaneListHead title="" collapse={listCollapse} />}
+          head={<PaneListHead title={t.panes.itemList} collapse={listCollapse} />}
           items={items}
           isLoading={itemList.isPending}
           appliedFilters={filters}

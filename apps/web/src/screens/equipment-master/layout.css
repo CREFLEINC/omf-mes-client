@@ -1,0 +1,9 @@
+/*
+ * 설비·설비그룹 마스터 — 조회 조건 · 목록 · 상세 통일 배치(#350).
+ * 상세는 상자를 씌우지 않은 자리(`bare`)에 화면의 상세 상자가 그대로 서므로, 그 상자가 아래 끝까지 차게 한다.
+ */
+.list-detail-detail.is-bare > .equipment-master-detail-pane {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+

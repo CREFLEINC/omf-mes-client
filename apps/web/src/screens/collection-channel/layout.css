@@ -1,0 +1,8 @@
+/*
+ * 수집 채널 매핑 관리 — 조회 조건 · 목록 · 상세 통일 배치(#350).
+ * 상세는 상자를 씌우지 않은 자리(`bare`)에 채널 상자가 그대로 서므로, 그 상자가 아래 끝까지 차게 한다.
+ */
+.list-detail-detail.is-bare > .collection-channel-pane {
+  flex: 1 1 auto;
+  min-height: 0;
+}

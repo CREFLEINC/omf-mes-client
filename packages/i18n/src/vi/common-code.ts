@@ -30,6 +30,8 @@ export const commonCode: Translated<typeof ko.commonCode> = {
     partner: 'Đối tác',
     partnerDetail: 'Thông tin cơ bản của đối tác',
     partnerRoles: 'Vai trò đối tác',
+    /** 목록 옆 상세 칸(통일 배치 · #350) — 안에 정보 · 하위 구획을 쌓는다. */
+    detail: 'Chi tiết',
   },
   actions: {
     prevPage: 'Trước',

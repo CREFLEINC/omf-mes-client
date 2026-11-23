@@ -234,8 +234,8 @@ describe('Lot Status 전이 후보', () => {
       size: '20',
     });
     expect(screen.getByRole('region', { name: '전이 대상 LOT' })).toBeVisible();
-    /* 목록 카드 제목은 두지 않는다(사용자 2026-11-02) — 구역 이름으로만 남는다. */
-    expect(screen.queryByRole('heading', { level: 2, name: '전이 대상 LOT' })).toBeNull();
+    /* 목록 제목 줄에 이름이 선다(2026-11-23 지시 · #350). */
+    expect(screen.getByRole('heading', { level: 2, name: '전이 대상 LOT' })).toBeVisible();
     expect(screen.getByRole('table', { name: '전이 대상 LOT' })).toBeVisible();
     /* 총 건수는 표 아래 쪽 이동 줄에만 선다 — 제목 옆 건수 · 「조회 결과」 머리는 없다(LOT 현황과 같다). */
     expect(screen.queryByRole('heading', { level: 3, name: '조회 결과' })).toBeNull();

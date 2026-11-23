@@ -223,16 +223,16 @@ export const LotHistory = () => {
     ) : (
       <>
         {list.data.capped && <AlertBanner variant="info">{t.list.capped(ALL_CAP)}</AlertBanner>}
-        {total > 0 && (
+        {/*
+         * 줄 수는 두지 않는다 — 목록 제목 줄에 건수가 있다(2026-11-23 지시). 전체는 구분마다 같은 LOT을 다시 센 수량이라
+         * 합계를 보이지 않는다.
+         */}
+        {total > 0 && filters.kind !== 'ALL' && (
           <p className="lot-trace-totals">
-            <span>{t.list.totalLines(total)}</span>
-            {/* 전체는 구분마다 같은 LOT을 다시 센 수량이라 합계를 보이지 않는다. */}
-            {filters.kind !== 'ALL' && (
-              <span>
-                <span className="lot-trace-totals-label">{t.list.totalQty}</span>{' '}
-                {formatQtyByUom(list.data.totals.qtyByUom)}
-              </span>
-            )}
+            <span>
+              <span className="lot-trace-totals-label">{t.list.totalQty}</span>{' '}
+              {formatQtyByUom(list.data.totals.qtyByUom)}
+            </span>
           </p>
         )}
         <MovementTable

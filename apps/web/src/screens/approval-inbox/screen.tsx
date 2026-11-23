@@ -1,9 +1,7 @@
 import {
   Badge,
-  Breadcrumb,
   Button,
   EmptyState,
-  PageHeader,
   SkeletonText,
   Tabs,
   useToast,
@@ -16,11 +14,9 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
-import { PaneListHead, PaneSplitter, usePaneSplit } from '../../patterns/po-board';
 import { toApiError } from '../../patterns/request';
-import { PaneHeightSplitter, useSplitOrientation } from '../../patterns/split-orientation';
-import { LayoutToggle } from '../terminal-process-map/layout-toggle';
 import { ApproveDialog } from './approve-dialog';
 import {
   PLACEHOLDER_APPROVAL_TYPE_CODES,
@@ -76,6 +72,7 @@ import {
   type ApprovalRequestDetail,
   type InboxFilters,
 } from './types';
+import './layout.css';
 
 const t = messages.approvalInbox;
 
@@ -237,16 +234,6 @@ export const ApprovalInboxScreen = () => {
   const items = list.data?.items ?? EMPTY_ITEMS;
   const rows = useMemo(() => items.map(toRequestRow), [items]);
   const pageView = toPageView(list.data?.page ?? { page, size: 0, total: 0 }, items.length);
-  /* 목록 · 상세 배치(좌우 · 상하)와 목록 접기 — 다른 목록 화면과 같다(#350). */
-  const split = usePaneSplit('omf-mes:approval-inbox:split', 0.45);
-  const layout = useSplitOrientation('omf-mes:approval-inbox:split-orientation');
-  const listCollapse = {
-    collapsed: split.collapsed,
-    onToggle: split.toggleCollapsed,
-    collapseLabel: messages.common.inspectionHub.listCollapse,
-    expandLabel: messages.common.inspectionHub.listExpand,
-    count: list.data?.page.total,
-  };
 
   /*
    * 대기 건수는 **전용 조회**가 갖는다(`queries.ts`에 근거 표가 있다).
@@ -944,88 +931,66 @@ export const ApprovalInboxScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-        actions={
-          <>
-            {/* 좌우 · 상하 배치 단추 둘 — 늘 보인다(단말기-공정 매핑과 같다 · #350). */}
-            <LayoutToggle orientation={layout.orientation} onChange={layout.change} />
-            <Button variant="outlined" size="sm" onClick={handleReload}>
-              {t.actions.reload}
-            </Button>
-          </>
-        }
-      />
-
-      <div
-        className={`po-board-split inspection-split approval-inbox-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
-        style={{ ...split.style, ...layout.style }}
-        data-left-collapsed={split.collapsed ? 'true' : undefined}
-      >
-        <section className="pane approval-inbox-pane" aria-labelledby="approval-list-title">
-          <PaneListHead
-            title={t.panes.list}
-            titleId="approval-list-title"
-            collapse={listCollapse}
-          />
-          {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-          <RequestFilterBar
-            appliedFilters={filters}
-            /*
-             * 자리표시 상수를 **화면이 읽어 넘긴다.** 부품이 직접 읽으면 「값이 확정되면 배열만
-             * 채운다」는 전환을 화면 수준에서 잴 수 없다.
-             */
-            approvalTypeOptions={toCodeOptions(PLACEHOLDER_APPROVAL_TYPE_CODES)}
-            statusOptions={toCodeOptions(PLACEHOLDER_REQUEST_STATUS_CODES)}
-            onSearch={(nextFilters) => {
-              apply(nextFilters, tab);
-            }}
-            onRemoveFilter={(key: FilterChipKey) => {
-              apply(clearFilter(filters, key), tab);
-            }}
-            onReset={() => {
-              apply(EMPTY_FILTERS, tab);
-            }}
-          />
-
-          <Tabs aria-label={t.tabs.label} items={tabItems} value={tab} onChange={changeTab} />
-        </section>
-
-        <PaneSplitter
-          label={messages.common.inspectionHub.splitter}
-          ratio={split.ratio}
-          onChange={split.commit}
-          collapse={listCollapse}
-        />
-        {layout.orientation === 'column' && (
-          <PaneHeightSplitter
-            label={messages.common.inspectionHub.heightSplitter}
-            height={layout.listHeight}
-            onChange={layout.changeListHeight}
-            collapse={listCollapse}
-          />
-        )}
-
-        {/*
-         * 아래 구획 — **늘 선다.** 안에 무엇이 오는지만 갈린다(`detailSlot`).
+      {/* 화면 제목 줄은 두지 않는다 — 조회 조건 · 목록 · 상세 통일 배치(검사 조회·판정과 같다 · #350). */}
+      <ListDetailWorkspace
+        storageKey="omf-mes:approval-inbox"
+        initialRatio={0.45}
+        filter={{
+          label: messages.common.paneList.filter,
+          content: (
+            /* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */
+            <RequestFilterBar
+              appliedFilters={filters}
+              /*
+               * 자리표시 상수를 **화면이 읽어 넘긴다.** 부품이 직접 읽으면 「값이 확정되면 배열만
+               * 채운다」는 전환을 화면 수준에서 잴 수 없다.
+               */
+              approvalTypeOptions={toCodeOptions(PLACEHOLDER_APPROVAL_TYPE_CODES)}
+              statusOptions={toCodeOptions(PLACEHOLDER_REQUEST_STATUS_CODES)}
+              onSearch={(nextFilters) => {
+                apply(nextFilters, tab);
+              }}
+              onRemoveFilter={(key: FilterChipKey) => {
+                apply(clearFilter(filters, key), tab);
+              }}
+              onReset={() => {
+                apply(EMPTY_FILTERS, tab);
+              }}
+              actions={
+                <Button variant="outlined" onClick={handleReload}>
+                  {t.actions.reload}
+                </Button>
+              }
+            />
+          ),
+        }}
+        list={{
+          label: t.panes.list,
+          title: t.panes.list,
+          count: list.data?.page.total,
+          className: 'approval-inbox-pane',
+          content: (
+            <Tabs aria-label={t.tabs.label} items={tabItems} value={tab} onChange={changeTab} />
+          ),
+        }}
+        /*
+         * 상세 구획 — **늘 선다.** 안에 무엇이 오는지만 갈린다(`detailSlot`).
          *
          * 조건부로 구획째 감추지 않는 이유: 주소에 `rq`가 서 있는데 그 요청을 읽을 수 없는
          * 상태(목록 밖·404·403·불러오는 중)에서 구획이 통째로 사라지면, 무엇을 골랐는지도
          * 무엇이 잘못됐는지도 화면 어디에도 단서가 없는 **빈 구간**이 생긴다.
-         */}
-        <section className="pane approval-inbox-pane" aria-labelledby="approval-detail-title">
-          <h2 id="approval-detail-title" className="pane-title">
-            {t.panes.detail}
-          </h2>
-          {detailSlot()}
-        </section>
-      </div>
+         */
+        detail={{
+          label: t.panes.detail,
+          className: 'approval-inbox-pane',
+          content: (
+            <>
+              <h2 className="pane-title">{t.panes.detail}</h2>
+              {detailSlot()}
+            </>
+          ),
+        }}
+      />
 
       {decisionDialog()}
     </>

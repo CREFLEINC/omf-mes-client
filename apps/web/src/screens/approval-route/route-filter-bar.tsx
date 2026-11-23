@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Button, Checkbox, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState } from 'react';
@@ -23,6 +24,8 @@ export interface RouteFilterBarProps {
   businessUnitNote?: string;
   onSearch: (filters: RouteFilters) => void;
   onReset: () => void;
+  /** 조회 · 초기화 뒤 구분선 너머의 화면 단추(새 결재선 등) — 검사 기준의 「기준 추가」 자리와 같다(#350). */
+  actions?: ReactNode;
 }
 
 /**
@@ -49,6 +52,7 @@ export const RouteFilterBar = ({
   businessUnitNote,
   onSearch,
   onReset,
+  actions,
 }: RouteFilterBarProps) => {
   const [filters, setFilters] = useState<RouteFilters>(appliedFilters);
 
@@ -166,6 +170,12 @@ export const RouteFilterBar = ({
             <Button variant="outlined" onClick={reset}>
               {messages.common.reset}
             </Button>
+          )}
+          {actions !== undefined && (
+            <>
+              <span className="inspection-standard-filter-divider" aria-hidden />
+              {actions}
+            </>
           )}
         </div>
       </div>

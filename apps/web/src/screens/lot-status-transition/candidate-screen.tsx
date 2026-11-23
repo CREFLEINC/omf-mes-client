@@ -584,9 +584,9 @@ export const LotStatusTransitionCandidateScreen = () => {
         data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         {/* 결과 카드 — 총 건수는 표 아래 쪽 이동 줄에만 둔다(LOT 현황과 같다). */}
-        {/* 「전이 대상 LOT」 제목은 두지 않는다(사용자 2026-11-02) — 구역 이름은 화면 읽기용으로만. */}
+        {/* 제목 줄 — 「전이 대상 LOT · N건 · 목록 접기」(#350 · 이름은 2026-11-23 지시로 다시 붙였다). */}
         <section className="pane lot-status-pane lot-status-transition-pane" aria-label={t.pane}>
-          <PaneListHead title={''} collapse={listCollapse} />
+          <PaneListHead title={t.pane} collapse={listCollapse} />
           {candidates.isError ? (
             <AlertBanner
               variant="error"

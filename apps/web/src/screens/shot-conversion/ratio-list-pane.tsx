@@ -205,17 +205,12 @@ export const RatioListPane = ({
 
   const truncated = total !== null && total > items.length;
 
+  /*
+   * 상자(`비율 정책` 구획)와 제목 줄(이름 · 건수 · 목록 접기)은 화면이 목록 자리에 세운다(#350) — 여기는 그 안의
+   * 기준일 줄과 표만.
+   */
   return (
-    <section className="pane shot-conversion-pane" aria-label={t.ratioList.paneTitle}>
-      {/*
-       * ⭐ **겹치는 것이 정상이다** — 공장 기본 위에 품목 예외를 얹는 것이 이 표의 쓰임이다.
-       * 겹칠 때의 규칙은 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). 「미리보기에서 확인하라」는 문장은
-       * 미리보기가 바로 아래 보여 두지 않는다.
-       */}
-      <h2 className="pane-title info-label">
-        {t.ratioList.paneTitle}
-        <InfoTip text={t.ratioList.overlapNote} />
-      </h2>
+    <>
 
       <div className="filter-bar shot-conversion-policy-filter">
         <div className="field-cell">
@@ -244,9 +239,15 @@ export const RatioListPane = ({
                 {messages.common.reset}
               </Button>
             )}
+            <span className="inspection-standard-filter-divider" aria-hidden />
             <Button variant="outlined" onClick={onAdd}>
               {t.actions.addPolicy}
             </Button>
+            {/*
+             * ⭐ **겹치는 것이 정상이다** — 공장 기본 위에 품목 예외를 얹는 것이 이 표의 쓰임이다.
+             * 겹칠 때의 규칙은 ⓘ 로 둔다(관리웹 정리 시안 A). 제목은 목록 제목 줄로 갔으니 이 줄 끝에 선다.
+             */}
+            <InfoTip text={t.ratioList.overlapNote} />
           </div>
         </div>
       </div>
@@ -258,6 +259,6 @@ export const RatioListPane = ({
       )}
 
       {listSlot()}
-    </section>
+    </>
   );
 };

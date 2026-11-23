@@ -94,6 +94,9 @@ const renderScreen = (options: StubOptions = {}) =>
 const equipmentPane = (): HTMLElement =>
   screen.getByRole('region', { name: t.equipment.paneTitle });
 const channelPane = (): HTMLElement => screen.getByRole('region', { name: t.channels.paneTitle });
+/* 설비 조회 줄은 목록 위 조회 조건 상자에 선다(#350). */
+const filterBox = (): HTMLElement =>
+  screen.getByRole('region', { name: messages.common.paneList.filter });
 
 /** 첫 설비를 고른다. 채널 페인은 이것이 없으면 아무것도 조회하지 않는다. */
 const pickFirstEquipment = async (): Promise<void> => {
@@ -440,10 +443,10 @@ describe('W-05-07 — 조회 조건과 빈 상태', () => {
     await screen.findByText('EQ-101');
 
     await user.type(
-      within(equipmentPane()).getByRole('searchbox', { name: t.equipment.searchLabel }),
+      within(filterBox()).getByRole('searchbox', { name: t.equipment.searchLabel }),
       '성형',
     );
-    await user.click(within(equipmentPane()).getByRole('button', { name: messages.common.search }));
+    await user.click(within(filterBox()).getByRole('button', { name: messages.common.search }));
 
     await waitFor(() => expect(requests.length).toBeGreaterThan(1));
     expect(queryOf(only(requests, requests.length - 1)).get('q')).toBe('성형');
@@ -467,7 +470,7 @@ describe('W-05-07 — 조회 조건과 빈 상태', () => {
     renderWithProviders(<CollectionChannelScreen />, { fetch: createStubFetch(spied) });
     await screen.findByText('EQ-101');
 
-    const pane = within(equipmentPane());
+    const pane = within(filterBox());
 
     await user.click(pane.getByRole('combobox', { name: t.fields.plant }));
     await user.click(await screen.findByRole('option', { name: '가상 1공장' }));
@@ -552,10 +555,10 @@ describe('W-05-07 — 조회 조건의 두 축', () => {
     renderScreen();
     await screen.findByText('EQ-101');
 
-    const box = within(equipmentPane()).getByRole('searchbox', { name: t.equipment.searchLabel });
+    const box = within(filterBox()).getByRole('searchbox', { name: t.equipment.searchLabel });
 
     await user.type(box, '성형');
-    await user.click(within(equipmentPane()).getByRole('button', { name: messages.common.reset }));
+    await user.click(within(filterBox()).getByRole('button', { name: messages.common.reset }));
 
     expect(box).toHaveValue('');
   });
@@ -567,7 +570,7 @@ describe('W-05-07 — 조회 조건의 두 축', () => {
     renderScreen();
     await screen.findByText('EQ-101');
 
-    const pane = within(equipmentPane());
+    const pane = within(filterBox());
 
     await user.type(pane.getByRole('searchbox', { name: t.equipment.searchLabel }), '성형');
     await user.click(pane.getByRole('combobox', { name: t.fields.plant }));
@@ -584,7 +587,7 @@ describe('W-05-07 — 조회 조건의 두 축', () => {
     renderScreen();
     await screen.findByText('EQ-101');
 
-    const pane = within(equipmentPane());
+    const pane = within(filterBox());
     expect(pane.queryByRole('button', { name: messages.common.reset })).toBeNull();
 
     await user.type(pane.getByRole('searchbox', { name: t.equipment.searchLabel }), '성');
@@ -640,10 +643,10 @@ describe('W-05-07 — 고른 설비를 붙드는 자리', () => {
 
     narrowed = true;
     await user.type(
-      within(equipmentPane()).getByRole('searchbox', { name: t.equipment.searchLabel }),
+      within(filterBox()).getByRole('searchbox', { name: t.equipment.searchLabel }),
       '없는설비',
     );
-    await user.click(within(equipmentPane()).getByRole('button', { name: messages.common.search }));
+    await user.click(within(filterBox()).getByRole('button', { name: messages.common.search }));
 
     expect(await screen.findByText(t.channels.noEquipmentTitle)).toBeInTheDocument();
   });

@@ -36,6 +36,8 @@ import { formatPlantDateTime } from '../../patterns/plant-time';
 import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 import { LotNo } from '../lot-trace/trace-table';
 
+import './layout.css';
+
 const t = messages.lotStatusHistory;
 const EMPTY = '—';
 
@@ -324,18 +326,6 @@ export const CurrentResults = ({
             {t.current.summary.outOfScope(summary.data.outOfScopeCount)}
           </p>
         )}
-        {/*
-         * 오른쪽 끝 — 마지막 갱신 + [갱신](사용자 2026-10-30). 요약과 목록을 함께 다시 부른다. 「조회 기준」 자리를
-         * 이어받는다(두 시각을 나란히 두면 헷갈린다).
-         */}
-        <RefreshStatus
-          updatedAt={Math.max(list.dataUpdatedAt, summary.dataUpdatedAt)}
-          isRefreshing={list.isFetching || summary.isFetching}
-          onRefresh={() => {
-            void list.refetch();
-            void summary.refetch();
-          }}
-        />
       </PaneListHead>
       {summary.isPending && (
         <div role="status" aria-label={t.current.summary.loading}>
@@ -466,6 +456,20 @@ export const CurrentResults = ({
           )}
         </>
       )}
+      {/*
+       * 목록 상자 오른쪽 아래 — 마지막 갱신 + [갱신](사용자 2026-10-30 · 자리는 2026-11-23 지시). 요약과 목록을 함께
+       * 다시 부른다. 「조회 기준」 자리를 이어받는다(두 시각을 나란히 두면 헷갈린다).
+       */}
+      <div className="lot-status-refresh-foot">
+        <RefreshStatus
+          updatedAt={Math.max(list.dataUpdatedAt, summary.dataUpdatedAt)}
+          isRefreshing={list.isFetching || summary.isFetching}
+          onRefresh={() => {
+            void list.refetch();
+            void summary.refetch();
+          }}
+        />
+      </div>
     </section>
   );
 };

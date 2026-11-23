@@ -1,8 +1,6 @@
 import {
   AlertBanner,
-  Breadcrumb,
   EmptyState,
-  PageHeader,
   SkeletonText,
   Tabs,
   useToast,
@@ -14,6 +12,7 @@ import { type ReactNode, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import {
   SaveErrorBanner,
   codeLockMessage,
@@ -74,7 +73,6 @@ import {
   toSearchParams,
 } from './filters';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
-import { ListCollapseTab, PaneListHead, usePaneSplit } from '../../patterns/po-board';
 import {
   useActiveUserOptions,
   useBusinessUnitOptions,
@@ -1324,39 +1322,6 @@ export const CommonCodeScreen = () => {
   const selectedPartnerId = isPartnerTab ? readSelectedId(searchParams, PARTNER_SELECT_KEY) : null;
 
   const partnerList = usePartnerList(partnerFilters, page, isPartnerTab);
-  /* 목록 접기(#350) — 탭마다 따로. 넓은 창에서 두 칸이 나란히 설 때만 접힌다(app.css `list-collapsible`). */
-  const codeSplit = usePaneSplit('omf-mes:common-code:code:list');
-  const codeCollapse = {
-    collapsed: codeSplit.collapsed,
-    onToggle: codeSplit.toggleCollapsed,
-    collapseLabel: messages.common.inspectionHub.listCollapse,
-    expandLabel: messages.common.inspectionHub.listExpand,
-    count: codeGroupList.data?.page.total,
-  };
-  const orgSplit = usePaneSplit('omf-mes:common-code:org:list');
-  const orgCollapse = {
-    collapsed: orgSplit.collapsed,
-    onToggle: orgSplit.toggleCollapsed,
-    collapseLabel: messages.common.inspectionHub.listCollapse,
-    expandLabel: messages.common.inspectionHub.listExpand,
-    count: departmentList.data?.page.total,
-  };
-  const workerSplit = usePaneSplit('omf-mes:common-code:worker:list');
-  const workerCollapse = {
-    collapsed: workerSplit.collapsed,
-    onToggle: workerSplit.toggleCollapsed,
-    collapseLabel: messages.common.inspectionHub.listCollapse,
-    expandLabel: messages.common.inspectionHub.listExpand,
-    count: workerList.data?.page.total,
-  };
-  const partnerSplit = usePaneSplit('omf-mes:common-code:partner:list');
-  const partnerCollapse = {
-    collapsed: partnerSplit.collapsed,
-    onToggle: partnerSplit.toggleCollapsed,
-    collapseLabel: messages.common.inspectionHub.listCollapse,
-    expandLabel: messages.common.inspectionHub.listExpand,
-    count: partnerList.data?.page.total,
-  };
   const partners = partnerList.data?.items ?? [];
 
   const partnerPageView = toPageView(
@@ -1785,54 +1750,66 @@ export const CommonCodeScreen = () => {
   };
 
   const codeTabContent = (
-    <div
-      className="two-pane list-collapsible"
-      data-left-collapsed={codeCollapse.collapsed ? 'true' : undefined}
-    >
-      <CodeGroupListPane
-        head={<PaneListHead title={t.panes.codeGroup} collapse={codeCollapse} />}
-        codeGroups={codeGroups}
-        isLoading={codeGroupList.isPending}
-        appliedFilters={filters}
-        onApplyFilters={applyFilters}
-        pageView={codeGroupPageView}
-        onChangePage={changeCodeGroupPage}
-        selectedCodeGroupId={selectedCodeGroupId}
-        onSelect={handleSelectCodeGroup}
-        isCreating={isCreatingCodeGroup}
-        onAddCodeGroup={handleAddCodeGroup}
-        loadError={
-          codeGroupList.isError ? (
-            <LoadErrorBanner
-              error={codeGroupList.error}
-              onRetry={() => void codeGroupList.refetch()}
-            />
-          ) : null
-        }
-      />
-      <ListCollapseTab collapse={codeCollapse} />
+    <CodeGroupListPane
+      codeGroups={codeGroups}
+      isLoading={codeGroupList.isPending}
+      appliedFilters={filters}
+      onApplyFilters={applyFilters}
+      pageView={codeGroupPageView}
+      onChangePage={changeCodeGroupPage}
+      selectedCodeGroupId={selectedCodeGroupId}
+      onSelect={handleSelectCodeGroup}
+      isCreating={isCreatingCodeGroup}
+      onAddCodeGroup={handleAddCodeGroup}
+      loadError={
+        codeGroupList.isError ? (
+          <LoadErrorBanner
+            error={codeGroupList.error}
+            onRetry={() => void codeGroupList.refetch()}
+          />
+        ) : null
+      }
+      layout={({ filter, list }) => (
+        <ListDetailWorkspace
+          storageKey="omf-mes:common-code:code"
+          filter={{ label: messages.common.paneList.filter, content: filter }}
+          list={{
+            label: t.panes.codeGroup,
+            title: t.panes.codeGroup,
+            count: codeGroupList.data?.page.total,
+            content: list,
+          }}
+          detail={{
+            label: t.panes.detail,
+            bare: true,
+            content: (
+              <>
+                {/*
+                 * 우 칸은 구획을 세로로 쌓는다 — 코드그룹 정보 아래에 코드값 한 벌이 붙는다.
+                 * 한 벌을 이 칸에 통째로 두면 코드값만 다루는 화면이 그 칸을 그대로 옮길 수 있다.
+                 */}
+                <div className="pane-stack">
+                  {renderCodeGroupFormPane()}
 
-      {/*
-       * 우 칸은 구획을 세로로 쌓는다 — 코드그룹 정보 아래에 코드값 한 벌이 붙는다.
-       * 한 벌을 이 칸에 통째로 두면 코드값만 다루는 화면이 그 칸을 그대로 옮길 수 있다.
-       */}
-      <div className="pane-stack">
-        {renderCodeGroupFormPane()}
-
-        <CodeValueSection
-          codeGroupId={selectedCodeGroupId}
-          selectedCodeValueId={selectedCodeValueId}
-          onSelectCodeValue={selectCodeValue}
-          isCreating={isCreatingCodeValue}
-          onOpenCreate={openCodeValueCreate}
-          onCloseCreate={closeCodeValueCreate}
-          includeInactive={codeValueIncludeInactive}
-          onIncludeInactiveChange={changeCodeValueIncludeInactive}
-          page={codeValuePage}
-          onPageChange={changeCodeValuePage}
+                  <CodeValueSection
+                    codeGroupId={selectedCodeGroupId}
+                    selectedCodeValueId={selectedCodeValueId}
+                    onSelectCodeValue={selectCodeValue}
+                    isCreating={isCreatingCodeValue}
+                    onOpenCreate={openCodeValueCreate}
+                    onCloseCreate={closeCodeValueCreate}
+                    includeInactive={codeValueIncludeInactive}
+                    onIncludeInactiveChange={changeCodeValueIncludeInactive}
+                    page={codeValuePage}
+                    onPageChange={changeCodeValuePage}
+                  />
+                </div>
+              </>
+            ),
+          }}
         />
-      </div>
-    </div>
+      )}
+    />
   );
 
   /**
@@ -2011,43 +1988,51 @@ export const CommonCodeScreen = () => {
   };
 
   const orgTabContent = (
-    <div
-      className="two-pane list-collapsible"
-      data-left-collapsed={orgCollapse.collapsed ? 'true' : undefined}
-    >
-      <DepartmentListPane
-        head={<PaneListHead title={t.panes.department} collapse={orgCollapse} />}
-        rows={orderedDepartments}
-        byId={departmentById}
-        isLoading={departmentList.isPending}
-        appliedFilters={departmentFilters}
-        onApplyFilters={applyDepartmentFilters}
-        businessUnitOptions={selectableOptions(businessUnitOptions, departmentFilters.scopeId)}
-        /*
-         * 조건 칩에는 번호가 아니라 이름을 낸다. 목록을 받는 중·실패·다 받은 뒤 미확인을
-         * 각각 다른 상태로 내고, 이름이 도착하면 그 이름으로 바뀐다 —
-         * 번호를 대신 보이면 사용자가 쓸 수 없는 값을 자료로 읽는다.
-         */
-        optionsNotice={renderOptionsNotice([businessUnitOptions])}
-        pageView={departmentPageView}
-        onChangePage={changeDepartmentPage}
-        selectedDepartmentId={selectedDepartmentId}
-        onSelect={handleSelectDepartmentRow}
-        isCreating={isCreatingDepartment}
-        onAddDepartment={handleAddDepartment}
-        loadError={
-          departmentList.isError ? (
-            <LoadErrorBanner
-              error={departmentList.error}
-              onRetry={() => void departmentList.refetch()}
-            />
-          ) : null
-        }
-      />
-      <ListCollapseTab collapse={orgCollapse} />
-
-      {renderDepartmentFormPane()}
-    </div>
+    <DepartmentListPane
+      rows={orderedDepartments}
+      byId={departmentById}
+      isLoading={departmentList.isPending}
+      appliedFilters={departmentFilters}
+      onApplyFilters={applyDepartmentFilters}
+      businessUnitOptions={selectableOptions(businessUnitOptions, departmentFilters.scopeId)}
+      /*
+       * 조건 칩에는 번호가 아니라 이름을 낸다. 목록을 받는 중·실패·다 받은 뒤 미확인을
+       * 각각 다른 상태로 내고, 이름이 도착하면 그 이름으로 바뀐다 —
+       * 번호를 대신 보이면 사용자가 쓸 수 없는 값을 자료로 읽는다.
+       */
+      optionsNotice={renderOptionsNotice([businessUnitOptions])}
+      pageView={departmentPageView}
+      onChangePage={changeDepartmentPage}
+      selectedDepartmentId={selectedDepartmentId}
+      onSelect={handleSelectDepartmentRow}
+      isCreating={isCreatingDepartment}
+      onAddDepartment={handleAddDepartment}
+      loadError={
+        departmentList.isError ? (
+          <LoadErrorBanner
+            error={departmentList.error}
+            onRetry={() => void departmentList.refetch()}
+          />
+        ) : null
+      }
+      layout={({ filter, list }) => (
+        <ListDetailWorkspace
+          storageKey="omf-mes:common-code:org"
+          filter={{ label: messages.common.paneList.filter, content: filter }}
+          list={{
+            label: t.panes.department,
+            title: t.panes.department,
+            count: departmentList.data?.page.total,
+            content: list,
+          }}
+          detail={{
+            label: t.panes.detail,
+            bare: true,
+            content: renderDepartmentFormPane(),
+          }}
+        />
+      )}
+    />
   );
 
   /**
@@ -2092,79 +2077,91 @@ export const CommonCodeScreen = () => {
   };
 
   const workerTabContent = (
-    <div
-      className="two-pane list-collapsible"
-      data-left-collapsed={workerCollapse.collapsed ? 'true' : undefined}
-    >
-      <WorkerListPane
-        head={<PaneListHead title={t.panes.worker} collapse={workerCollapse} />}
-        workers={workers}
-        isLoading={workerList.isPending}
-        appliedFilters={workerFilters}
-        onApplyFilters={applyWorkerFilters}
-        departmentOptions={selectableOptions(workerDepartmentOptions, workerFilters.scopeId)}
-        optionsNotice={renderOptionsNotice([workerDepartmentOptions])}
-        pageView={workerPageView}
-        onChangePage={changeWorkerPage}
-        selectedWorkerId={selectedWorkerId}
-        onSelect={handleSelectWorker}
-        loadError={
-          workerList.isError ? (
-            <LoadErrorBanner error={workerList.error} onRetry={() => void workerList.refetch()} />
-          ) : null
-        }
-      />
-      <ListCollapseTab collapse={workerCollapse} />
-
-      <div className="pane-stack">
-        {renderWorkerDetailPane()}
-
-        <QualificationPane
-          drafts={qualificationDrafts}
-          // 작업자를 고르기 전에는 아무것도 기다리지 않는다 — 조회가 나가지도 않았다.
-          isLoading={selectedWorkerId !== null && qualificationList.isPending}
-          isWorkerSelected={selectedWorkerId !== null}
-          processes={processOptions}
-          certifiers={certifierOptions}
-          optionsNotice={renderOptionsNotice([processOptions, certifierOptions])}
-          loadError={
-            qualificationList.isError ? (
-              <LoadErrorBanner
-                error={qualificationList.error}
-                onRetry={() => void qualificationList.refetch()}
-              />
-            ) : null
-          }
-          /*
-           * **남의 실패는 아예 그리지 않는다**(`isQualificationWriteMine`) — 뒤늦게 온 앞
-           * 작업자의 실패가 지금 구획에 서면 사용자는 손댄 적 없는 작업자가 막힌 줄 안다.
-           */
-          banner={
-            isQualificationWriteMine ? <SaveErrorBanner error={qualificationWrite.error} /> : null
-          }
-          isDirty={isQualificationDirty}
-          /* **막는 것은 전역** — 남의 저장 중에도 새 저장이 시작되지 않는다(사유는 페인이 낸다). */
-          isLocked={isQualificationLocked}
-          /* **가리는 것은 대상 축** — 진행 표시는 자기 저장에만 돈다. */
-          isSaving={isQualificationWriteMine && qualificationWrite.isSaving}
-          onAdd={() => openQualificationDialog(createQualificationDraft(), true)}
-          onEdit={(draftId) => {
-            const found = qualificationDrafts.find((item) => item.draftId === draftId);
-            if (found !== undefined) openQualificationDialog(found, false);
+    <WorkerListPane
+      workers={workers}
+      isLoading={workerList.isPending}
+      appliedFilters={workerFilters}
+      onApplyFilters={applyWorkerFilters}
+      departmentOptions={selectableOptions(workerDepartmentOptions, workerFilters.scopeId)}
+      optionsNotice={renderOptionsNotice([workerDepartmentOptions])}
+      pageView={workerPageView}
+      onChangePage={changeWorkerPage}
+      selectedWorkerId={selectedWorkerId}
+      onSelect={handleSelectWorker}
+      loadError={
+        workerList.isError ? (
+          <LoadErrorBanner error={workerList.error} onRetry={() => void workerList.refetch()} />
+        ) : null
+      }
+      layout={({ filter, list }) => (
+        <ListDetailWorkspace
+          storageKey="omf-mes:common-code:worker"
+          filter={{ label: messages.common.paneList.filter, content: filter }}
+          list={{
+            label: t.panes.worker,
+            title: t.panes.worker,
+            count: workerList.data?.page.total,
+            content: list,
           }}
-          onRemove={(draftId) => {
-            changeQualificationDrafts((drafts) => removeQualificationDraft(drafts, draftId));
-          }}
-          onSave={handleSaveQualifications}
-          onCancel={() => {
-            resetIfIdle(qualificationWrite);
-            setQualificationState((prev) =>
-              prev === null ? prev : { ...prev, drafts: prev.baseline },
-            );
+          detail={{
+            label: t.panes.detail,
+            bare: true,
+            content: (
+              <>
+                <div className="pane-stack">
+                  {renderWorkerDetailPane()}
+
+                  <QualificationPane
+                    drafts={qualificationDrafts}
+                    // 작업자를 고르기 전에는 아무것도 기다리지 않는다 — 조회가 나가지도 않았다.
+                    isLoading={selectedWorkerId !== null && qualificationList.isPending}
+                    isWorkerSelected={selectedWorkerId !== null}
+                    processes={processOptions}
+                    certifiers={certifierOptions}
+                    optionsNotice={renderOptionsNotice([processOptions, certifierOptions])}
+                    loadError={
+                      qualificationList.isError ? (
+                        <LoadErrorBanner
+                          error={qualificationList.error}
+                          onRetry={() => void qualificationList.refetch()}
+                        />
+                      ) : null
+                    }
+                    /*
+                     * **남의 실패는 아예 그리지 않는다**(`isQualificationWriteMine`) — 뒤늦게 온 앞
+                     * 작업자의 실패가 지금 구획에 서면 사용자는 손댄 적 없는 작업자가 막힌 줄 안다.
+                     */
+                    banner={
+                      isQualificationWriteMine ? <SaveErrorBanner error={qualificationWrite.error} /> : null
+                    }
+                    isDirty={isQualificationDirty}
+                    /* **막는 것은 전역** — 남의 저장 중에도 새 저장이 시작되지 않는다(사유는 페인이 낸다). */
+                    isLocked={isQualificationLocked}
+                    /* **가리는 것은 대상 축** — 진행 표시는 자기 저장에만 돈다. */
+                    isSaving={isQualificationWriteMine && qualificationWrite.isSaving}
+                    onAdd={() => openQualificationDialog(createQualificationDraft(), true)}
+                    onEdit={(draftId) => {
+                      const found = qualificationDrafts.find((item) => item.draftId === draftId);
+                      if (found !== undefined) openQualificationDialog(found, false);
+                    }}
+                    onRemove={(draftId) => {
+                      changeQualificationDrafts((drafts) => removeQualificationDraft(drafts, draftId));
+                    }}
+                    onSave={handleSaveQualifications}
+                    onCancel={() => {
+                      resetIfIdle(qualificationWrite);
+                      setQualificationState((prev) =>
+                        prev === null ? prev : { ...prev, drafts: prev.baseline },
+                      );
+                    }}
+                  />
+                </div>
+              </>
+            ),
           }}
         />
-      </div>
-    </div>
+      )}
+    />
   );
 
   /**
@@ -2273,30 +2270,42 @@ export const CommonCodeScreen = () => {
   };
 
   const partnerTabContent = (
-    <div
-      className="two-pane list-collapsible"
-      data-left-collapsed={partnerCollapse.collapsed ? 'true' : undefined}
-    >
-      <PartnerListPane
-        head={<PaneListHead title={t.panes.partner} collapse={partnerCollapse} />}
-        partners={partners}
-        isLoading={partnerList.isPending}
-        appliedFilters={partnerFilters}
-        onApplyFilters={applyPartnerFilters}
-        pageView={partnerPageView}
-        onChangePage={changePartnerPage}
-        selectedPartnerId={selectedPartnerId}
-        onSelect={handleSelectPartner}
-        loadError={
-          partnerList.isError ? (
-            <LoadErrorBanner error={partnerList.error} onRetry={() => void partnerList.refetch()} />
-          ) : null
-        }
-      />
-      <ListCollapseTab collapse={partnerCollapse} />
-
-      <div className="pane-stack">{renderPartnerRolePane()}</div>
-    </div>
+    <PartnerListPane
+      partners={partners}
+      isLoading={partnerList.isPending}
+      appliedFilters={partnerFilters}
+      onApplyFilters={applyPartnerFilters}
+      pageView={partnerPageView}
+      onChangePage={changePartnerPage}
+      selectedPartnerId={selectedPartnerId}
+      onSelect={handleSelectPartner}
+      loadError={
+        partnerList.isError ? (
+          <LoadErrorBanner error={partnerList.error} onRetry={() => void partnerList.refetch()} />
+        ) : null
+      }
+      layout={({ filter, list }) => (
+        <ListDetailWorkspace
+          storageKey="omf-mes:common-code:partner"
+          filter={{ label: messages.common.paneList.filter, content: filter }}
+          list={{
+            label: t.panes.partner,
+            title: t.panes.partner,
+            count: partnerList.data?.page.total,
+            content: list,
+          }}
+          detail={{
+            label: t.panes.detail,
+            bare: true,
+            content: (
+              <>
+                <div className="pane-stack">{renderPartnerRolePane()}</div>
+              </>
+            ),
+          }}
+        />
+      )}
+    />
   );
 
   const tabContentOf = (tabId: string): ReactNode => {
@@ -2308,16 +2317,7 @@ export const CommonCodeScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
-
+      {/* 화면 제목 줄은 두지 않는다 — 탭마다 조회 조건 · 목록 · 상세 통일 배치(검사 조회·판정과 같다 · #350). */}
       <Tabs
         aria-label={t.tabs.label}
         value={tab.id}

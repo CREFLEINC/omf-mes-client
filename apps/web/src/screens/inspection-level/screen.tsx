@@ -1,13 +1,11 @@
 import {
   AlertBanner,
-  Breadcrumb,
   Button,
   Chip,
   type ChipStatus,
   type Column,
   EmptyState,
   Icon,
-  PageHeader,
   Table,
   useToast,
 } from '@crefle/web-ui';
@@ -22,25 +20,13 @@ import { hasChangedFilters } from '../../patterns/filter-more';
 import { SaveErrorBanner } from '../../patterns/master';
 import { ItemSelect } from '../../patterns/item-select';
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { PageNav } from '../../patterns/page-nav';
-import {
-  PaneListHead,
-  PaneSplitter,
-  useFitToViewport,
-  usePaneSplit,
-} from '../../patterns/po-board';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { Select } from '../../patterns/select';
-import {
-  PaneHeightSplitter,
-  QUALITY_STANDARD_ORIENTATION_KEY,
-  SplitOrientationToggle,
-  useSplitOrientation,
-} from '../../patterns/split-orientation';
 import { ItemHistoryDialog } from './history-dialog';
 import { LEVEL_CODES, LevelDialog } from './level-dialog';
 import { useLevelWrite } from './level-write';
-import { usePageHub } from '../../patterns/page-hub';
 import {
   inspectionLevelKeys,
   PAGE_SIZE,
@@ -55,7 +41,6 @@ type ItemInspectionLevel = components['schemas']['ItemInspectionLevel'];
 type ItemInspectionLevelHistory = components['schemas']['ItemInspectionLevelHistory'];
 
 const t = messages.inspectionLevel;
-const hubText = messages.common.inspectionHub;
 
 const levelName = (code: string | null): string => (code === null ? '' : (t.levels[code] ?? code));
 
@@ -138,11 +123,6 @@ export const historyReason = (row: ItemInspectionLevelHistory): string => {
  * 자동 전환은 없다 — 사용자가 정한 수준만 쓴다(omf-all-around#133). 이력의 「자동」 줄은 그 전 기록이다.
  */
 export const InspectionLevelScreen = () => {
-  const hub = usePageHub();
-  /* 좌우 · 상하 배치 · 폭/높이 손잡이 · 창 높이 맞춤 — 검사 기준 탭과 같다(사용자 지시 · #208). 배치는 탭 묶음이 함께 쓴다. */
-  const { splitRef, aboveRef } = useFitToViewport();
-  const split = usePaneSplit('omf-mes:inspection-level:split', 0.4);
-  const layout = useSplitOrientation(QUALITY_STANDARD_ORIENTATION_KEY);
   const toast = useToast();
 
   /* 품목 — 조회 줄의 「품목 검색」 칸에서 바로 검색해서 고른다(#226). */
@@ -387,235 +367,205 @@ export const InspectionLevelScreen = () => {
   );
   const historyFit = useFitColumns(historyResizable.columns, { scrollX: true });
 
-  const listCollapse = {
-    collapsed: split.collapsed,
-    onToggle: split.toggleCollapsed,
-    collapseLabel: hubText.listCollapse,
-    expandLabel: hubText.listExpand,
-    count: list.data?.page.total,
-  };
   return (
     <>
-      {/* 탭 줄 오른쪽 — 검사 수준 칩 다음에 좌우 · 상하 배치(검사 기준 탭의 사용 여부 칩과 같은 자리 · 사용자 지시 · #208). */}
-      <LevelFilterChips
-        counts={counts.data ?? null}
-        value={filter.level}
-        onChange={(level) => setFilter((prev) => ({ ...prev, level, page: 1 }))}
-      />
-      <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
-      {/* 탭 묶음(품질 기준 정보) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(#208 · 검사 기준 탭과 같다). */}
-      {hub === null && (
-        <PageHeader
-          title={t.title}
-          breadcrumb={
-            <Breadcrumb
-              items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-              aria-label={messages.common.shell.breadcrumb}
-            />
-          }
-        />
-      )}
-
       {/*
-       * 조회 조건 — 검사 기준 · 검사표 기준 탭과 같은 카드 한 줄(사용자 지시 · #208):
-       * 품목 검색 → (오른쪽) 조회 · 초기화 | 품목 추가. 검사 수준은 탭 줄 오른쪽 칩으로 거른다.
+       * 조회 조건 · 목록 · 상세 통일 배치(검사 조회·판정과 같다 · #350) — 화면 제목 줄은 두지 않는다.
+       * 탭 줄 오른쪽 — 검사 수준 칩 다음에 좌우 · 상하 배치(「⋯」).
        */}
-      <section ref={aboveRef} className="pane inspection-level-search" role="search">
-        <form
-          className="filter-bar"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setFilter((prev) => ({
-              ...prev,
-              itemId: itemInput?.itemId ?? null,
-              page: 1,
-            }));
-          }}
-        >
-          {/* 품목 — 칸에서 바로 검색해서 고른다(#226). 고르면 바로 조회하고(#208) 「전체」는 종전 × 자리다. */}
-          <div className="field-cell search-select-cell">
-            <label className="field-label" htmlFor={itemSelectId}>
-              {t.list.keyword}
-            </label>
-            <ItemSelect
-              id={itemSelectId}
-              /* 칸 글자는 종전처럼 「코드 이름」이다. */
-              selectedOption={
-                itemInput === null
-                  ? null
-                  : { value: String(itemInput.itemId), label: itemInput.label }
-              }
-              leadingOptions={[{ value: '', label: t.list.all }]}
-              value={itemInput === null ? '' : String(itemInput.itemId)}
-              placeholder={t.list.all}
-              onItemChange={(picked) => {
-                setItemInput({
-                  itemId: picked.itemId,
-                  label: `${picked.itemCode} ${picked.itemName}`,
-                });
-                setFilter((prev) => ({ ...prev, itemId: picked.itemId, page: 1 }));
-              }}
-              onChange={(value) => {
-                if (value !== '') return;
-                setItemInput(null);
-                setFilter((prev) => ({ ...prev, itemId: null, page: 1 }));
-              }}
-            />
-          </div>
-          <div className="filter-actions field-cell-unlabeled">
-            <Button type="submit" variant="filled">
-              {messages.common.search}
-            </Button>
-            {/* 초기화 — 입력과 적용된 조건을 처음으로 되돌린다. 다른 탭과 같다. */}
-            {isFilterChanged && (
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  setItemInput(null);
-                  setFilter((prev) => ({ ...prev, itemId: null, level: '', page: 1 }));
-                }}
-              >
-                {messages.common.reset}
-              </Button>
-            )}
-            <span className="inspection-standard-filter-divider" aria-hidden />
-            <Button
-              variant="filled"
-              leadingIcon={<Icon name="add" size={18} />}
-              onClick={() => openDialog(null)}
-            >
-              {t.list.add}
-            </Button>
-          </div>
-        </form>
-      </section>
-
-      {/* 품목별 검사 수준(목록) | 전환 이력 — 검사 기준 탭의 목록 | 상세와 같은 분할(#208). */}
-      <div
-        ref={splitRef}
-        className={`po-board-split inspection-split inspection-standard-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
-        style={{ ...split.style, ...layout.style }}
-
-        data-left-collapsed={split.collapsed ? 'true' : undefined}
-      >
-        {/*
-         * 목록 카드 — 표 → 쪽 이동. 조회 줄은 위 카드에 따로 둔다(다른 탭과 같다 · #208).
-         */}
-        <section
-          className="pane inspection-level-list-pane quality-standard-list-pane"
-          aria-label={t.title}
-        >
-          <PaneListHead title={t.list.caption} collapse={listCollapse} />
-          {list.isError && (
-            <AlertBanner variant="error">
-              {t.list.loadFailed}{' '}
-              <Button size="sm" variant="text" onClick={() => void list.refetch()}>
-                {t.list.retry}
-              </Button>
-            </AlertBanner>
-          )}
-          <div
-            ref={fit.ref}
-            className="inspection-queue-table inspection-standard-table-box inspection-level-rows cells-start"
-            style={resizable.style}
-          >
-            <Table
-              /* 표 이름은 카드 제목과 겹친다 — 화면에서는 감추고 읽기 도구에만 남긴다(#208). */
-              caption={
-                <span className="inspection-standard-visually-hidden">{t.list.caption}</span>
-              }
-              density="compact"
-              columns={fit.columns}
-              rows={rows}
-              getRowId={(row) => String(row.itemInspectionLevelId)}
-              empty={
-                list.isPending ? (
-                  <EmptyState size="sm" live title={t.list.loading} />
-                ) : (
-                  <EmptyState
-                    size="sm"
-                    live
-                    icon={emptyIcon}
-                    title={t.list.empty}
-                    description={t.list.emptyHint}
-                  />
-                )
-              }
-            />
-          </div>
-          {list.data !== undefined && (
-            /* 쪽 이동은 다섯 목록이 같은 모양 · 같은 단추 크기 — 검사 기준 목록 기준(사용자 지시 · #208). */
-            <PageNav
-              meta={list.data.page}
-              buttonSize="md"
-              onChangePage={(page) => setFilter((prev) => ({ ...prev, page }))}
-              onChangeSize={(size) => setFilter((prev) => ({ ...prev, size, page: 1 }))}
-            />
-          )}
-        </section>
-
-        <PaneSplitter
-          label={hubText.splitter}
-          ratio={split.ratio}
-          onChange={split.commit}
-          collapse={listCollapse}
-        />
-        {layout.orientation === 'column' && (
-          <PaneHeightSplitter
-            label={hubText.heightSplitter}
-            height={layout.listHeight}
-            onChange={layout.changeListHeight}
-            collapse={listCollapse}
+      <ListDetailWorkspace
+        storageKey="omf-mes:inspection-level"
+        toolbar={
+          <LevelFilterChips
+            counts={counts.data ?? null}
+            value={filter.level}
+            onChange={(level) => setFilter((prev) => ({ ...prev, level, page: 1 }))}
           />
-        )}
-
-        <section
-          className="pane inspection-level-list-pane quality-standard-detail"
-          aria-label={t.history.heading}
-        >
-          <h2 className="pane-title">{t.history.heading}</h2>
-          {histories.isError && <AlertBanner variant="error">{t.history.loadFailed}</AlertBanner>}
-          <div
-            ref={historyFit.ref}
-            className="inspection-queue-table inspection-standard-table-box inspection-level-rows cells-start"
-            style={historyResizable.style}
-          >
-            <Table
-              caption={
-                <span className="inspection-standard-visually-hidden">{t.history.caption}</span>
-              }
-              density="compact"
-              columns={historyFit.columns}
-              rows={historyRows}
-              getRowId={(row) => String(row.itemInspectionLevelHistoryId)}
-              empty={
-                histories.isPending ? (
-                  <EmptyState size="sm" live title={t.history.loading} />
-                ) : (
-                  <EmptyState
-                    size="sm"
-                    live
-                    icon={emptyIcon}
-                    title={t.history.empty}
-                    description={t.history.emptyHint}
-                  />
-                )
-              }
-            />
-          </div>
-          {histories.data !== undefined && (
-            <PageNav
-              meta={histories.data.page}
-              buttonSize="md"
-              onChangePage={setHistoryPage}
-              onChangeSize={(size) => {
-                setHistorySize(size);
-                setHistoryPage(1);
+        }
+        filter={{
+          label: messages.common.paneList.filter,
+          content: (
+            /* 품목 검색 → (오른쪽) 조회 · 초기화 | 품목 추가. 검사 수준은 탭 줄 오른쪽 칩으로 거른다(#208). */
+            <form
+              className="filter-bar"
+              role="search"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setFilter((prev) => ({
+                  ...prev,
+                  itemId: itemInput?.itemId ?? null,
+                  page: 1,
+                }));
               }}
-            />
-          )}
-        </section>
-      </div>
+            >
+              {/* 품목 — 칸에서 바로 검색해서 고른다(#226). 고르면 바로 조회하고(#208) 「전체」는 종전 × 자리다. */}
+              <div className="field-cell search-select-cell">
+                <label className="field-label" htmlFor={itemSelectId}>
+                  {t.list.keyword}
+                </label>
+                <ItemSelect
+                  id={itemSelectId}
+                  /* 칸 글자는 종전처럼 「코드 이름」이다. */
+                  selectedOption={
+                    itemInput === null
+                      ? null
+                      : { value: String(itemInput.itemId), label: itemInput.label }
+                  }
+                  leadingOptions={[{ value: '', label: t.list.all }]}
+                  value={itemInput === null ? '' : String(itemInput.itemId)}
+                  placeholder={t.list.all}
+                  onItemChange={(picked) => {
+                    setItemInput({
+                      itemId: picked.itemId,
+                      label: `${picked.itemCode} ${picked.itemName}`,
+                    });
+                    setFilter((prev) => ({ ...prev, itemId: picked.itemId, page: 1 }));
+                  }}
+                  onChange={(value) => {
+                    if (value !== '') return;
+                    setItemInput(null);
+                    setFilter((prev) => ({ ...prev, itemId: null, page: 1 }));
+                  }}
+                />
+              </div>
+              <div className="filter-actions field-cell-unlabeled">
+                <Button type="submit" variant="filled">
+                  {messages.common.search}
+                </Button>
+                {/* 초기화 — 입력과 적용된 조건을 처음으로 되돌린다. 다른 탭과 같다. */}
+                {isFilterChanged && (
+                  <Button
+                    variant="outlined"
+                    onClick={() => {
+                      setItemInput(null);
+                      setFilter((prev) => ({ ...prev, itemId: null, level: '', page: 1 }));
+                    }}
+                  >
+                    {messages.common.reset}
+                  </Button>
+                )}
+                <span className="inspection-standard-filter-divider" aria-hidden />
+                <Button
+                  variant="filled"
+                  leadingIcon={<Icon name="add" size={18} />}
+                  onClick={() => openDialog(null)}
+                >
+                  {t.list.add}
+                </Button>
+              </div>
+            </form>
+          ),
+        }}
+        list={{
+          label: t.title,
+          title: t.list.caption,
+          count: list.data?.page.total,
+          className: 'inspection-level-list-pane',
+          content: (
+            <>
+              {list.isError && (
+                <AlertBanner variant="error">
+                  {t.list.loadFailed}{' '}
+                  <Button size="sm" variant="text" onClick={() => void list.refetch()}>
+                    {t.list.retry}
+                  </Button>
+                </AlertBanner>
+              )}
+              <div
+                ref={fit.ref}
+                className="inspection-queue-table inspection-standard-table-box inspection-level-rows cells-start"
+                style={resizable.style}
+              >
+                <Table
+                  /* 표 이름은 카드 제목과 겹친다 — 화면에서는 감추고 읽기 도구에만 남긴다(#208). */
+                  caption={
+                    <span className="inspection-standard-visually-hidden">{t.list.caption}</span>
+                  }
+                  density="compact"
+                  columns={fit.columns}
+                  rows={rows}
+                  getRowId={(row) => String(row.itemInspectionLevelId)}
+                  empty={
+                    list.isPending ? (
+                      <EmptyState size="sm" live title={t.list.loading} />
+                    ) : (
+                      <EmptyState
+                        size="sm"
+                        live
+                        icon={emptyIcon}
+                        title={t.list.empty}
+                        description={t.list.emptyHint}
+                      />
+                    )
+                  }
+                />
+              </div>
+              {list.data !== undefined && (
+                /* 쪽 이동은 다섯 목록이 같은 모양 · 같은 단추 크기 — 검사 기준 목록 기준(사용자 지시 · #208). */
+                <PageNav
+                  meta={list.data.page}
+                  buttonSize="md"
+                  onChangePage={(page) => setFilter((prev) => ({ ...prev, page }))}
+                  onChangeSize={(size) => setFilter((prev) => ({ ...prev, size, page: 1 }))}
+                />
+              )}
+            </>
+          ),
+        }}
+        detail={{
+          label: t.history.heading,
+          className: 'inspection-level-list-pane',
+          content: (
+            <>
+              <h2 className="pane-title">{t.history.heading}</h2>
+              {histories.isError && (
+                <AlertBanner variant="error">{t.history.loadFailed}</AlertBanner>
+              )}
+              <div
+                ref={historyFit.ref}
+                className="inspection-queue-table inspection-standard-table-box inspection-level-rows cells-start"
+                style={historyResizable.style}
+              >
+                <Table
+                  caption={
+                    <span className="inspection-standard-visually-hidden">
+                      {t.history.caption}
+                    </span>
+                  }
+                  density="compact"
+                  columns={historyFit.columns}
+                  rows={historyRows}
+                  getRowId={(row) => String(row.itemInspectionLevelHistoryId)}
+                  empty={
+                    histories.isPending ? (
+                      <EmptyState size="sm" live title={t.history.loading} />
+                    ) : (
+                      <EmptyState
+                        size="sm"
+                        live
+                        icon={emptyIcon}
+                        title={t.history.empty}
+                        description={t.history.emptyHint}
+                      />
+                    )
+                  }
+                />
+              </div>
+              {histories.data !== undefined && (
+                <PageNav
+                  meta={histories.data.page}
+                  buttonSize="md"
+                  onChangePage={setHistoryPage}
+                  onChangeSize={(size) => {
+                    setHistorySize(size);
+                    setHistoryPage(1);
+                  }}
+                />
+              )}
+            </>
+          ),
+        }}
+      />
 
       {editing !== null && (
         <LevelDialog

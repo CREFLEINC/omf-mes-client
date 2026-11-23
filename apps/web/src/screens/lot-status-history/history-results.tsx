@@ -93,11 +93,10 @@ export const HistoryResults = ({
     );
   };
 
-  /* 「LOT 이력」 제목은 두지 않는다(사용자 2026-11-02) — 구역 이름은 화면 읽기용으로만. */
   return (
     <section className="pane lot-status-pane lot-status-history-pane" aria-label={t.history.pane}>
-      {/* 제목은 두지 않고(사용자 2026-11-02) 건수 · 「목록 접기」만 선다(#350). */}
-      <PaneListHead title="" collapse={{ ...collapse, count: listTotal }} />
+      {/* 제목 줄 — 「LOT 이력 · N건 · 목록 접기」(#350 · 이름은 2026-11-23 지시로 다시 붙였다). */}
+      <PaneListHead title={t.history.pane} collapse={{ ...collapse, count: listTotal }} />
       {!hasValidPeriod && (
         <EmptyState
           size="sm"

@@ -27,6 +27,8 @@ export const commonCode = {
     partner: '거래처',
     partnerDetail: '거래처 기본 정보',
     partnerRoles: '거래처 역할',
+    /** 목록 옆 상세 칸(통일 배치 · #350) — 안에 정보 · 하위 구획을 쌓는다. */
+    detail: '상세',
   },
   actions: {
     prevPage: '이전',
