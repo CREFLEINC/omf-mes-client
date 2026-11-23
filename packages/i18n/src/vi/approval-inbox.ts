@@ -151,6 +151,7 @@ export const approvalInbox: Translated<typeof ko.approvalInbox> = {
     PRODUCTION_RESULT_CORRECT: 'Đính chính kết quả sản xuất',
     CONCESSION: 'Đặc cách',
   },
+  requestStatusNames: { PENDING: 'Chờ phê duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Từ chối' } as Record<string, string>,
   values: {
     unknownRequester: 'Không xác nhận được người trình',
     emptyReason: 'Lý do đang trống',

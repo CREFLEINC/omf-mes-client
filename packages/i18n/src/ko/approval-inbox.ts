@@ -254,6 +254,8 @@ export const approvalInbox = {
     PRODUCTION_RESULT_CORRECT: '생산 실적 정정',
     CONCESSION: '특채',
   },
+  /** 요청 상태 이름 — 품질 승인 처리와 같은 말(omf-all-around#353). 목록 밖 코드는 코드 그대로. */
+  requestStatusNames: { PENDING: '결재 대기', APPROVED: '승인', REJECTED: '반려' } as Record<string, string>,
   values: {
     /** 이름이 오지 않았다. **번호를 대신 내지 않는다.** */
     unknownRequester: '상신자를 확인할 수 없습니다',

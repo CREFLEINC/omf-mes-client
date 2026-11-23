@@ -1,6 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
-import { approvalTypeLabelOf } from './code-options';
+import { approvalTypeLabelOf, requestStatusLabelOf } from './code-options';
 import type { RequestDetailView } from './types';
 
 const t = messages.approvalInbox;
@@ -73,7 +73,7 @@ export const RequestDetailPane = ({ view }: RequestDetailPaneProps) => (
       </div>
       <div className="field-cell">
         <dt className="field-label">{t.fields.status}</dt>
-        <dd>{view.statusCode}</dd>
+        <dd>{requestStatusLabelOf(view.statusCode)}</dd>
       </div>
     </dl>
 

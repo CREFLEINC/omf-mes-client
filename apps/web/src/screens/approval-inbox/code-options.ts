@@ -26,6 +26,10 @@ export const PLACEHOLDER_REQUEST_STATUS_CODES: readonly string[] = [];
 export const approvalTypeLabelOf = (code: string): string =>
   (messages.approvalInbox.approvalTypeNames as Record<string, string | undefined>)[code] ?? code;
 
+/** 요청 상태 이름(결재 대기 · 승인 · 반려) — 모르는 코드는 그대로(omf-all-around#353). */
+export const requestStatusLabelOf = (code: string): string =>
+  messages.approvalInbox.requestStatusNames[code] ?? code;
+
 /**
  * 값 목록을 선택지로 옮긴다 — 요청 상태처럼 이름을 줄 곳이 아직 없는 값 목록에 쓴다.
  *
