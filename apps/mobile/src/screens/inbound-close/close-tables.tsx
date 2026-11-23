@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 
 import { Button } from '../../patterns/button';
 import { DateTimeLines } from '../../patterns/date-time-lines';
+import { rowNumberStyle } from '../../patterns/row-number';
 import { FitName } from '../../patterns/fit-name';
 import { formatQty, qtyNumber } from './close';
 
@@ -77,7 +78,7 @@ export const OpenTable = ({
   onOpen: (inboundLotId: number) => void;
 }) => (
   <div className="close-table__box">
-    <table className="close-table">
+    <table className="close-table" style={rowNumberStyle(lots.length)}>
       <colgroup>
         <col className="close-table__col-no" />
         <col className="close-table__col-when" />
@@ -139,7 +140,7 @@ export const DoneTable = ({
   onReopen: (lot: InboundLot) => void;
 }) => (
   <div className="close-table__box">
-    <table className="close-table close-table--done">
+    <table className="close-table close-table--done" style={rowNumberStyle(lots.length)}>
       <colgroup>
         <col className="close-table__col-no" />
         <col className="close-table__col-when" />

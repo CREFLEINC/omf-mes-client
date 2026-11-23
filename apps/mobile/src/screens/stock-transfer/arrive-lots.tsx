@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 
 import { FitName } from '../../patterns/fit-name';
+import { rowNumberStyle } from '../../patterns/row-number';
 import { lotTailOf } from './transfer-tally';
 import type { StockTransferLine } from './transfer';
 
@@ -23,7 +24,7 @@ export const ArriveLots = ({ lines, itemOf, lotNoOf, uomOf }: ArriveLotsProps) =
       {t.arrive.lots} <span className="transfer-tally__total">{t.tally.total(lines.length)}</span>
     </h2>
     <div className="transfer-tally__box">
-      <table className="transfer-tally__table">
+      <table className="transfer-tally__table" style={rowNumberStyle(lines.length)}>
         <colgroup>
           <col className="transfer-tally__col-no" />
           <col />

@@ -3,6 +3,7 @@ import { useEffect, useId, useRef } from 'react';
 
 import { Button } from '../../patterns/button';
 import { DateTimeLines } from '../../patterns/date-time-lines';
+import { rowNumberStyle } from '../../patterns/row-number';
 
 import { qtyNumber } from './lot-format';
 import { isReceiving, type TallyGroup } from './receipt';
@@ -96,7 +97,11 @@ export const ReceiptTally = ({
         <p className="receive-tally__empty">{t.empty}</p>
       ) : (
         <div className="receive-tally__scroll">
-          <table ref={tableRef} className="receive-tally__table">
+          <table
+            ref={tableRef}
+            className="receive-tally__table"
+            style={rowNumberStyle(groups.reduce((sum, group) => sum + group.rows.length, 0))}
+          >
             <colgroup>
               <col className="receive-tally__col-no" />
               <col className="receive-tally__col-when" />

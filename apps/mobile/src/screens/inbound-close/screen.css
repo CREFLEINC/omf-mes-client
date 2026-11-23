@@ -67,8 +67,12 @@
   font: var(--type-body-sm);
 }
 
+/*
+ * 행 번호 칸 — 가장 큰 번호의 자릿수만큼(표의 `--row-no-digits`, patterns/row-number.ts). 26px 고정일 때 세 자리부터
+ * 번호가 품목 칸으로 넘쳐 겹쳤다(사용자 지적 2026-11-23).
+ */
 .close-table__col-no {
-  width: 26px;
+  width: calc(var(--row-no-digits, 2) * 1ch + 8px);
 }
 
 .close-table__col-qty {
@@ -107,7 +111,7 @@
 }
 
 .close-table .close-table__no {
-  padding-inline-start: var(--space-2, 8px);
+  padding-inline: var(--space-1, 4px);
   color: var(--on-surface-muted);
   text-align: center;
   font-variant-numeric: tabular-nums;
@@ -201,10 +205,6 @@
 
 .close-table__col-done-qty {
   width: 80px;
-}
-
-.close-table--done .close-table__col-no {
-  width: 24px;
 }
 
 .close-table--done .close-table__col-when {
