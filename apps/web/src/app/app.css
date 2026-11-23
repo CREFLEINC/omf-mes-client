@@ -8915,8 +8915,8 @@ main:has(.iqc-skip-approval-detail) {
   white-space: nowrap;
 }
 
-.disposition-sorted-from {
-  margin: 0;
+.disposition-nc-link {
+  white-space: nowrap;
 }
 
 .disposition-iqc-matches {

@@ -276,7 +276,9 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
       string,
       string | undefined
     >,
-    sortedFrom: 'Sinh ra do phân loại ←',
+    sortedFrom: 'Mục không phù hợp trước phân loại',
+    openSortedFrom: (nonconformanceNo: string): string =>
+      `Xem mục không phù hợp trước phân loại ${nonconformanceNo}`,
     rejectedConfirmed: 'Đã xác nhận không đạt',
   },
   sort: {

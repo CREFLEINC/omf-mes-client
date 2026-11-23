@@ -321,7 +321,9 @@ export const dispositionDecision = {
       string,
       string | undefined
     >,
-    sortedFrom: '선별로 생김 ←',
+    /** 선별로 생긴 부적합의 원래 부적합 — 심각도 오른쪽 칸(#352 사용자 지시). */
+    sortedFrom: '선별 전 부적합',
+    openSortedFrom: (nonconformanceNo: string): string => `선별 전 부적합 ${nonconformanceNo} 보기`,
     rejectedConfirmed: '불합격 확정',
   },
   /** 005 선별(US7-2 · FR-041) — 불량 자재 관리 LOT 을 새 입하 LOT 로 옮긴다. 수량으로 LOT 를 쪼개지 않는다. */

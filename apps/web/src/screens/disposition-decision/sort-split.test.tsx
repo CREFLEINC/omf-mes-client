@@ -187,6 +187,9 @@ describe('W-03-10 선별', () => {
     expect(screen.queryByRole('radio', { name: '정상' })).toBeNull();
     expect(screen.queryByRole('radio', { name: '재작업' })).toBeNull();
     expect(screen.getByRole('radio', { name: '폐기' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'SAMPLE-NC-0040' })).toBeInTheDocument();
+    /* 심각도 오른쪽 「선별 전 부적합」 칸 — 테두리 단추(#352). */
+    expect(
+      screen.getByRole('button', { name: t.inboundLot.openSortedFrom('SAMPLE-NC-0040') }),
+    ).toHaveTextContent('SAMPLE-NC-0040');
   });
 });

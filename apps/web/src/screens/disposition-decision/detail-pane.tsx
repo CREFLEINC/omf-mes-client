@@ -1,4 +1,4 @@
-import { Button, Chip, type Column, EmptyState, Table } from '@crefle/web-ui';
+import { Chip, type Column, EmptyState, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -9,6 +9,7 @@ import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 import { iqcResultLabel, IqcMatchChips } from './iqc-match';
 import type { DispositionLookup } from './lookups';
+import { NonconformanceLinkButton } from './nonconformance-link-button';
 import { SeverityBadge } from './severity-badge';
 import type { NonconformanceDetailView, NonconformanceLotRow } from './types';
 
@@ -176,6 +177,25 @@ export const DetailPane = ({
     [t.fields.openedAt, view.openedAtText],
     ...inboundFacts,
     [t.fields.severityCode, <SeverityBadge severity={severity} code={view.severityCode} />],
+    /* 선별로 생긴 부적합이면 심각도 오른쪽에 원래 부적합 — 누르면 그리로(#352 사용자 지시 · 종결 안내 옆 단추와 같은 모양). */
+    ...(view.sortedFrom === null || view.sortedFrom === undefined
+      ? []
+      : [
+          [
+            t.inboundLot.sortedFrom,
+            onOpenNonconformance === undefined ? (
+              view.sortedFrom.nonconformanceNo
+            ) : (
+              <NonconformanceLinkButton
+                nonconformanceNo={view.sortedFrom.nonconformanceNo}
+                label={t.inboundLot.openSortedFrom(view.sortedFrom.nonconformanceNo)}
+                onClick={() => {
+                  if (view.sortedFrom) onOpenNonconformance(view.sortedFrom.nonconformanceId);
+                }}
+              />
+            ),
+          ] as [string, ReactNode],
+        ]),
   ];
 
   return (
@@ -194,24 +214,6 @@ export const DetailPane = ({
             </div>
           ))}
         </dl>
-        {view.sortedFrom !== null && view.sortedFrom !== undefined && (
-          <p className="field-note disposition-sorted-from">
-            {t.inboundLot.sortedFrom}{' '}
-            {onOpenNonconformance === undefined ? (
-              view.sortedFrom.nonconformanceNo
-            ) : (
-              <Button
-                variant="text"
-                size="sm"
-                onClick={() => {
-                  if (view.sortedFrom) onOpenNonconformance(view.sortedFrom.nonconformanceId);
-                }}
-              >
-                {view.sortedFrom.nonconformanceNo}
-              </Button>
-            )}
-          </p>
-        )}
       </div>
 
       <section className="disposition-subsection" aria-label={t.panes.lots}>

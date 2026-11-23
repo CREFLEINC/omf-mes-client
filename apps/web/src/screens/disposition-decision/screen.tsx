@@ -4,7 +4,7 @@ import type {
   ConcessionCreateForward005,
   DispositionDecisionCreatedForward005,
 } from '@omf-mes/api-client';
-import { Badge, Button, Chip, Icon, Tabs, useToast } from '@crefle/web-ui';
+import { Badge, Chip, Icon, Tabs, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -41,6 +41,7 @@ import {
   useConcessions,
 } from './concession-pane';
 import { DecisionFormPane, typeLockLines } from './decision-form-pane';
+import { NonconformanceLinkButton } from './nonconformance-link-button';
 import {
   PendingDispositionApprovalBox,
   pendingDispositionApprovalOf,
@@ -1017,20 +1018,16 @@ export const DispositionDecisionScreen = ({
                   {/* 종결로 새로 생긴 부적합(선별)으로 가는 단추 — 제목 옆 안내 바로 뒤(#352 사용자 지시). */}
                   {isClosedNonconformance(detail.data.statusCode, remaining.isSettled) &&
                     derivedNonconformances.map((derived) => (
-                      <Button
+                      <NonconformanceLinkButton
                         key={derived.id}
-                        variant="text"
-                        size="sm"
-                        aria-label={t.form.typeLock.openDerived(derived.no)}
+                        nonconformanceNo={derived.no}
+                        label={t.form.typeLock.openDerived(derived.no)}
                         onClick={() =>
                           setSearchParams((current) =>
                             withSelectedNonconformance(current, derived.id),
                           )
                         }
-                      >
-                        {derived.no}
-                        <Icon name="open_in_new" size={16} aria-hidden />
-                      </Button>
+                      />
                     ))}
                 </div>
                 {/* 적용 전 특채 — 결재 상태와 [특채 적용]을 이 상자에(시안 W0310-After · G2 M3). */}
