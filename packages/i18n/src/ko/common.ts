@@ -46,13 +46,13 @@ export const common = {
     notice:
       '이 화면은 OA 사업부 전용입니다. 로그인 계정의 공장 범위에 OA 공장이 없습니다. 필요하면 시스템 관리자에게 공장 범위를 요청하세요.',
     /** OA·부품 공장을 모두 가진 계정이 맨 위에서 「부품」을 고른 때(omf-all-around#336). */
-    partsModeNotice: '이 화면은 OA 사업부 전용입니다. 맨 위에서 「OA」를 고르면 볼 수 있습니다.',
+    partsModeNotice: '이 화면은 OA 사업부 전용입니다. 맨 위에서 「OA 사업부」를 고르면 볼 수 있습니다.',
   },
   /** OA·부품 공장을 모두 가진 계정의 동작 고르기 — 상단 바(omf-all-around#336). */
   plantMode: {
     label: '공장 동작',
-    oa: 'OA',
-    parts: '부품',
+    oa: 'OA 사업부',
+    parts: '부품 사업부',
   },
   shell: {
     brand: 'OMF-MES 모바일',
