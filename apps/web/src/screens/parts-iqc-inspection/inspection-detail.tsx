@@ -1179,20 +1179,6 @@ const InspectionForm = (props: FormProps) => {
       {connectOpen && props.appUserId !== null && (
         <WorkerConnectDialog appUserId={props.appUserId} onClose={() => setConnectOpen(false)} />
       )}
-      {/* 기준이 없을 때 · 기준을 바꿨을 때 안내(omf-all-around#351) */}
-      {noPlan && (
-        <div className="parts-iqc-no-plan">
-          <p className="iqc-inspection-action-note" data-tone="info" role="status">
-            <Icon name="info" size={14} aria-hidden />
-            {t.dialog.noPlan}
-          </p>
-          {props.noPlanAction}
-        </div>
-      )}
-      <p className="iqc-inspection-action-note" data-tone="info">
-        <Icon name="info" size={14} aria-hidden />
-        {t.dialog.planVersionNote}
-      </p>
 
       <section className="parts-iqc-block" aria-label={t.target.heading}>
         {/* 기본 정보 — OQC 상세의 기본 정보와 같은 짜임: 테두리 상자 안에 칸을 나란히, 칸 사이 세로선(사용자 시안 2026-10-29) */}
@@ -1376,6 +1362,22 @@ const InspectionForm = (props: FormProps) => {
               })}
         />
       )}
+
+      {/* 기준 안내 — 한 라벨에 두 문장, 종합 판정 바로 위(omf-all-around#351 · 사용자 지시 2026-11-23). */}
+      <div className="parts-iqc-no-plan">
+        <div
+          className="iqc-inspection-action-note parts-iqc-plan-note"
+          data-tone="info"
+          role="status"
+        >
+          <Icon name="info" size={16} aria-hidden />
+          <span className="parts-iqc-plan-note-lines">
+            {noPlan && <span>{t.dialog.noPlan}</span>}
+            <span>{t.dialog.planVersionNote}</span>
+          </span>
+        </div>
+        {props.noPlanAction}
+      </div>
 
       {/* 종합 판정 — 검사 항목 아래(#247 · 사용자 지시 2026-11-10). 왼쪽 자동 판정 결과 상자 · 세로선 · 오른쪽 종합 판정 고르기(사용자 시안 2026-10-29) */}
       <section className="parts-iqc-card" aria-labelledby="parts-iqc-verdict">

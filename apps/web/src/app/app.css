@@ -33358,9 +33358,26 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   flex: none;
 }
 
-/* 기준 없음 안내 줄 — 옆 단추가 있어도 아래 기준 안내 줄과 폭을 맞춘다(omf-all-around#351). */
+/* IQC 기준 안내 — 한 라벨에 두 문장(줄 바꿈), 글자는 본문 크기로 키운다(omf-all-around#351 · 사용자 지시 2026-11-23). */
 .parts-iqc-no-plan > .iqc-inspection-action-note {
   flex: 1;
+}
+
+/* 공용 `.iqc-inspection-action-note:nth-child(n)`(label-sm)보다 무거워야 글자가 커진다. */
+.parts-iqc-no-plan > .iqc-inspection-action-note.parts-iqc-plan-note {
+  align-items: flex-start;
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.parts-iqc-plan-note > svg,
+.parts-iqc-plan-note > .material-symbols-outlined {
+  margin-top: 0.2em;
+}
+
+.parts-iqc-plan-note-lines {
+  display: grid;
+  gap: var(--space-1);
 }
 
 .parts-iqc-plan {
