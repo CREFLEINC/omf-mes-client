@@ -44,9 +44,15 @@ export const common: Translated<typeof ko.common> = {
     home: 'Danh sách công việc',
     back: 'Bước trước',
     backToArea: (area: string) => `Công việc ${area}`,
+    backToScreen: (screen: string) => `Màn hình ${screen}`,
     noWorker: 'Hãy xác nhận mã nhân viên trước',
     signIn: 'Xác nhận mã NV',
-    changeWorker: 'Đổi mã nhân viên',
+    changeWorker: 'Đổi người dùng',
+    exit: {
+      title: 'Thoát ứng dụng?',
+      cancel: 'Hủy',
+      proceed: 'Thoát',
+    },
   },
   connection: {
     online: 'Trực tuyến',

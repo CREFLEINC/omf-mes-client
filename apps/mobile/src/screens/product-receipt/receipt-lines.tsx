@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef } from 'react';
 
 import { FitName } from '../../patterns/fit-name';
+import { rowNumberStyle } from '../../patterns/row-number';
 import { differsFromExpected, INSPECTION_PENDING, qtyProblemOf, type DraftLine } from './receipt';
 
 const t = messages.productReceipt;
@@ -53,7 +54,7 @@ export const ReceiptLines = ({
 
   return (
     <div className="receipt-lines__box">
-      <table ref={tableRef} className="receipt-lines__table">
+      <table ref={tableRef} className="receipt-lines__table" style={rowNumberStyle(lines.length)}>
         <colgroup>
           <col className="receipt-lines__col-no" />
           <col />

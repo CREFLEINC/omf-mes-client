@@ -22,24 +22,24 @@ export const inboundReceipt = {
   /** 방금 찍은 라벨 칸 — 늘 하나다(다음 스캔이 덮는다). */
   last: {
     ok: '등록됨',
-    /** 바로 앞 스캔과 공급사 · 품목이 다르다 — 섞여 들어온 자재를 그 자리에서 알아챈다. */
-    newItem: '새 품목',
-    undo: '취소',
-    undoLabel: (lotNo: string) => `${lotNo} 등록 취소`,
+    /** 방금 찍은 라벨의 등록을 되돌린다 — 「취소」만으로는 무엇을 취소하는지 몰랐다(사용자 지시 2026-11-23). */
+    undo: '스캔 취소',
+    /** 칸 머리 오른쪽 ✕ — 칸을 내린다(사용자 지시 2026-11-23). 등록은 그대로다. */
+    dismiss: '닫기',
+    undoLabel: (lotNo: string) => `${lotNo} 스캔 취소`,
     loading: '품목을 불러오는 중입니다',
-    autoClosed: '지난 날짜의 입하는 자동 마감됐습니다',
+    autoClosed: '지난 날짜의 입하는 자동으로 마감됐습니다',
     rejected: '등록 안 됨',
-    /** 이번 입하 표에 이미 있는 라벨 — 서버에 다시 보내지 않는다. */
+    /** 입하 표에 이미 있는 라벨 — 서버에 다시 보내지 않는다. */
     duplicate: '이미 찍은 라벨입니다',
-    duplicateRow: (row: number) => `이번 입하 No ${row}에 있습니다`,
     offline: '전송 대기',
-    offlineBody: '오프라인 — 연결되면 등록합니다',
+    offlineBody: '연결되면 자동으로 등록합니다',
     closed: '등록 안 됨',
     closedBody: '이미 마감된 입하입니다',
   },
   /** 거부 까닭 — 등록 없음. */
   reject: {
-    refused: '거부됐습니다',
+    refused: '등록할 수 없는 라벨입니다',
     voided: '폐기된 라벨입니다',
     alreadyReceived: '이미 입하된 라벨입니다',
     /** 어디에 들어가 있는지 — 서버가 알려 줄 때만. */
@@ -51,16 +51,22 @@ export const inboundReceipt = {
   },
   offline: {
     title: (count: number) => `전송 대기 ${count}`,
+    /** 연결되자 저절로 보낸 결과 — 다 들어갔으면 건수만, 아니면 들어가지 않은 건수까지(사용자 지시 2026-11-23). */
     flushed: (count: number, registered: number, rejected: number) =>
-      `전송 대기 ${count}개를 보냈습니다 · 등록 ${registered} · 거부 ${rejected}`, // ui-check-ignore: C-13 설계 확정 문구(screens/M-01-01.md)
+      rejected === 0
+        ? `전송 대기 ${count}건 등록`
+        : `전송 대기 ${count}건 중 ${registered}건 등록, ${rejected}건 등록 안 됨`,
     queueFailed: '전송 대기에 담지 못했습니다. 다시 스캔하세요.',
   },
-  /** 이번 입하 표 — 공급사 머리 줄 아래 품목 줄. 품목코드 위 · 품목명 아래로 잘리지 않게(사용자 지시 2026-11-20). */
+  /**
+   * 입하 표 — 공급사 머리 줄 아래 품목 줄. 품목코드 위 · 품목명 아래로 잘리지 않게(사용자 지시 2026-11-20).
+   * 제목은 공장 날짜(YY.MM.DD) + 「입하」, 오른쪽은 찍은 라벨 수(사용자 지시 2026-11-23 — 「이번 입하 N개」에서 바꿈).
+   */
   tally: {
-    title: '이번 입하',
-    total: (count: number) => `${count}개`,
+    title: (date: string) => `${date} 입하`,
+    total: (count: number) => `${count}건 Scan`, // ui-check-ignore: C-13 사용자 지시 표기 「N건 Scan」(2026-11-23)
     empty: '아직 등록한 자재 관리 LOT가 없습니다',
-    columns: { no: 'No', item: '품목', count: '개수', qty: '수량' },
+    columns: { no: 'No', scannedAt: '스캔 시각', item: '품목', count: '개수', qty: '수량' },
     closed: '마감됨',
     open: (itemCode: string, itemName: string) => `${itemCode} ${itemName} LOT 보기`,
     loadFailed: '불러오지 못한 품목이 있습니다',
@@ -89,12 +95,12 @@ export const inboundReceipt = {
     all: (items: number, lots: number) => `모두 입하 마감 (${items}품목 ${lots}개)`,
     one: (lots: number) => `이 품목만 마감 (${lots}개)`,
     /** 막힌 까닭(잠금 사유는 남긴다). */
-    blockedOffline: '오프라인 — 연결된 뒤에 할 수 있습니다',
-    blockedPending: (count: number) => `전송 대기 ${count}개를 보낸 뒤 마감할 수 있습니다`,
+    blockedOffline: '연결되면 마감할 수 있습니다',
+    blockedPending: (count: number) => `전송 대기 ${count}건을 보낸 뒤 마감할 수 있습니다`,
   },
+  /** 스캔 취소 · 해제 뒤 알림 — 무엇을 취소했는지만(사용자 지시 2026-11-23, 번호 끝 · 합계를 걷음). */
   unregistered: {
-    toast: (lotTail: string, total: string) => `등록 취소 — ${lotTail} · 합계 ${total}`, // ui-check-ignore: C-13 설계 확정 문구(screens/M-01-01.md)
-    lastToast: (itemName: string) => `등록 취소 — ${itemName} 입하가 비었습니다`,
+    done: (itemCode: string, itemName: string) => `${itemCode} ${itemName} 등록 취소`,
   },
   closeDialog: {
     titleAll: '모든 품목을 마감할까요?',
@@ -108,9 +114,9 @@ export const inboundReceipt = {
     bodyNoIqcRecord: '마감하면 IQC 기록이 생기지 않고, 더 찍거나 뺄 수 없습니다.',
     cancel: '계속 찍기',
     confirm: '마감',
-    toastOne: (itemName: string) => `${itemName} 입하 마감`,
-    toastAll: (items: number) => `${items}품목 입하 마감`,
-    failed: '마감하지 못했습니다. 다시 불러왔습니다.',
+    toastOne: (itemCode: string, itemName: string) => `${itemCode} ${itemName} 마감`,
+    toastAll: (items: number) => `${items}품목 마감`,
+    failed: '마감하지 못했습니다. 다시 시도하세요.',
   },
   sheet: {
     title: '공급사 LOT 번호',
@@ -120,12 +126,9 @@ export const inboundReceipt = {
     cancel: '취소',
     save: '저장',
     tooLong: '공급사 LOT 번호는 100자까지입니다',
-    saved: (no: string, count: number) => `공급사 LOT ${no} 저장 — 자재 관리 LOT ${count}개`,
-    cleared: (lotTail: string, rest: number) =>
-      rest === 0
-        ? `공급사 LOT 번호를 지웠습니다 — ${lotTail}`
-        : `공급사 LOT 번호를 지웠습니다 — ${lotTail} 외 ${rest}개`,
-    failed: '저장하지 못했습니다.',
+    saved: (no: string, count: number) => `공급사 LOT ${no} 저장 (${count}개)`,
+    cleared: (count: number) => `공급사 LOT 번호 삭제 (${count}개)`,
+    failed: '저장하지 못했습니다. 다시 시도하세요.',
   },
   /** 다른 화면(품목 고르기 부품)이 함께 쓴다 — 지우지 않는다. */
   itemPicker: {

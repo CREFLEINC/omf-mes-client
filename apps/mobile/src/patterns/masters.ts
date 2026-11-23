@@ -29,6 +29,8 @@ export interface ItemSummary {
   fifoPolicyCode: string;
   /** 보관조건. 위치의 같은 이름 값과 같은 코드계라 그대로 견준다. 비어 있을 수 있다. */
   storageConditionCode?: string | null;
+  /** 품목 유형(원자재 · 부자재 · 완제품 …) — 적치할 창고 유형을 가른다. 목록 조회로 만든 요약에는 없다. */
+  itemTypeCode?: string;
 }
 
 type ItemClient = ReturnType<typeof useApiClient>['client'];
@@ -43,6 +45,7 @@ const fetchItem = async (client: ItemClient, itemId: number): Promise<ItemSummar
     itemName: data.item.itemName,
     fifoPolicyCode: data.item.fifoPolicyCode,
     storageConditionCode: data.item.storageConditionCode,
+    itemTypeCode: data.item.itemTypeCode,
   };
 };
 

@@ -38,8 +38,6 @@ export const shellHome: Translated<typeof ko.shellHome> = {
     productLotSplitConfirm: 'Quét hai nhãn đã tách trên POP để xác nhận',
     packingRepack: 'Tách hoặc gộp kiện đóng gói',
   },
-  frequent: 'Công việc hay dùng',
-  switchWorker: 'Đổi người dùng',
   settings: {
     label: 'Cài đặt',
     device: 'Thiết bị',
@@ -57,7 +55,6 @@ export const shellHome: Translated<typeof ko.shellHome> = {
   workCount: {
     left: 'Việc còn lại',
     label: (name: string, count: number) => `${name}, còn ${String(count)} việc`,
-    basisWarehouse: (warehouseName: string) => `Máy này: theo ${warehouseName}`,
-    basisPlant: 'Máy này: theo toàn nhà máy',
+    basisPlant: 'Toàn nhà máy',
   },
 };

@@ -10,6 +10,10 @@ import { plantDateTime, plantShortDateTime } from '../../patterns/plant-time';
 export const formatQty = (qty: number, uomCode: string): string =>
   `${qty.toLocaleString('ko-KR', { maximumFractionDigits: 6 })} ${uomCode}`;
 
+/** 수량 숫자만 — 좁은 칸에서 단위는 작게 따로 붙인다(입하 완료 표). */
+export const qtyNumber = (qty: number): string =>
+  qty.toLocaleString('ko-KR', { maximumFractionDigits: 6 });
+
 /** 패키징 단위 이름(「봉지」) — 이름이 비면 코드(G2 L20 · M-01-01 과 같게). */
 export const packageNameOf = (pkg: { uomCode: string; uomName?: string | null }): string => {
   const name = pkg.uomName?.trim() ?? '';

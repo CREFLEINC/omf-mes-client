@@ -78,23 +78,28 @@ export const useBackStep = (active: boolean, onBack: () => void): void => {
   }, [active]);
 };
 
-const HOME_PATH = '/';
+/*
+ * 뒤로가기가 앱을 닫는 자리 - 사번 확인과 작업 목록. 작업 목록에서 이력으로 넘기면 사번 확인으로
+ * 돌아가 교대하려던 것처럼 보인다. 교대는 앱바의 사번 칩이 한다.
+ */
+const EXIT_PATHS = new Set(['/', '/screens']);
 
 /**
  * 단말의 뒤로가기를 화면 단계에 먼저 준다.
  *
- * 되돌릴 단계가 없으면 이력으로 넘기고, 첫 화면에서는 앱을 닫는다 - 안드로이드 관례다.
+ * 되돌릴 단계가 없으면 이력으로 넘기고, 첫 화면에서는 앱을 닫는다 - 안드로이드 관례다. 닫기 전에
+ * 한 번 묻는다(사용자 지시 2026-11-23) - 무엇을 할지는 `onExit` 이 정한다.
  * 단말이 주는 canGoBack 은 쓰지 않는다. 화면 전환이 pushState 라 그 값이 거짓으로 와,
  * 작업 목록으로 돌아갈 자리에서 앱이 통째로 닫혔다.
  */
-export const listenBackButton = (): (() => void) => {
+export const listenBackButton = (onExit: () => void): (() => void) => {
   const handle = App.addListener('backButton', () => {
     if (runBackStep()) {
       return;
     }
 
-    if (window.location.pathname === HOME_PATH) {
-      void App.exitApp();
+    if (EXIT_PATHS.has(window.location.pathname)) {
+      onExit();
       return;
     }
 
@@ -106,4 +111,9 @@ export const listenBackButton = (): (() => void) => {
       listener.remove();
     });
   };
+};
+
+/** 앱을 닫는다. 종료 확인 창에서 「종료」를 누르면 온다. */
+export const exitApp = (): void => {
+  void App.exitApp();
 };

@@ -45,6 +45,20 @@
   margin-inline-start: auto;
 }
 
+/*
+ * 칸을 내리는 ✕ — 머리 오른쪽 끝(입하 등록, 사용자 지시 2026-11-23). [취소]가 있으면 그 바로 뒤에 붙는다 - 둘 다
+ * 앞을 밀면 남는 폭이 반씩 갈려 [취소]가 가운데로 떠오른다. 띠 글자색을 그대로 받는다.
+ */
+.last-scan__close {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+  color: inherit;
+}
+
+.last-scan__undo ~ .last-scan__close {
+  margin-inline-start: 0;
+}
+
 .last-scan__body {
   display: flex;
   flex-direction: column;

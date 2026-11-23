@@ -34,6 +34,8 @@
 }
 
 .putaway__history-link {
+  /* 머리 줄에 입구 하나만 남았다 — 오른쪽 끝에(요약은 목록 제목 줄로 옮김, 2026-11-23). */
+  margin-inline-start: auto;
   display: inline-flex;
   align-items: center;
   gap: 2px;
@@ -279,112 +281,338 @@
 }
 
 /*
- * 피처 009 — 적치 대기 LOT 목록. 입하 LOT · 품목 묶음 하나가 흰 카드 하나이고, 그 안에 LOT 줄이 누르는
- * 곳으로 쌓인다. 줄을 누르면 그 LOT 라벨을 스캔한 것과 같다.
+ * 적치 대기 표(사용자 지시 2026-11-23) — 공급사 머리 줄 › No · 품목코드 / 품목명 · 수량 · 진척. 입하 등록 · 입하 마감
+ * 표와 같은 모양이다(흰 카드 · 회색 공급사 줄 · 표 머리 줄은 낭독기에만).
  */
-.putaway__groups,
-.putaway__lots,
-.putaway__designated ul {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2, 8px);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.putaway__group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1, 4px);
-  padding: var(--space-3) var(--space-3);
+.putaway-table__box {
+  overflow: hidden;
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-lg);
   background: var(--surface);
 }
 
-.putaway__group-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2, 8px);
-}
-
-.putaway__group-head strong {
-  font-family: var(--font-mono);
-}
-
-.putaway__lot {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+.putaway-table {
   width: 100%;
-  min-height: 48px;
-  box-sizing: border-box;
-  margin: 0;
-  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2);
-  border: 0;
-  border-radius: var(--radius-md);
-  background: var(--surface-container-low);
-  color: var(--on-surface);
+  border-collapse: collapse;
+  table-layout: fixed;
   font: var(--type-body-sm);
+}
+
+/*
+ * 행 번호 칸 — 가장 큰 번호의 자릿수만큼(표의 `--row-no-digits`, patterns/row-number.ts). 26px 고정일 때 세 자리부터
+ * 번호가 품목 칸으로 넘쳐 겹쳤다(사용자 지적 2026-11-23).
+ */
+.putaway-table__col-no {
+  width: calc(var(--row-no-digits, 2) * 1ch + 8px);
+}
+
+.putaway-table__col-qty {
+  width: 96px;
+}
+
+.putaway-table__col-progress {
+  width: 52px;
+}
+
+.putaway-table thead {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.putaway-table td {
+  height: 48px;
+  padding: 0 var(--space-1, 4px);
+  border-bottom: 1px solid var(--surface-container-high);
+  white-space: nowrap;
+}
+
+.putaway-table tbody:last-child tr:last-child td {
+  border-bottom: 0;
+}
+
+.putaway-table__group th {
+  height: 26px;
+  padding: 0 var(--space-3, 12px);
+  border-bottom: 1px solid var(--surface-container-high);
+  background: var(--surface-container-low);
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  font-weight: 700;
+  text-align: start;
+}
+
+.putaway-table .putaway-table__no {
+  padding-inline: var(--space-1, 4px);
+  color: var(--on-surface-muted);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 품목 — 코드 위 · 이름 아래, 잘리지 않게(이름은 줄여서라도 전체). */
+.putaway-table td.putaway-table__item {
+  padding-block: var(--space-2, 8px);
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.putaway-table__item > * {
+  display: block;
+  min-width: 0;
+}
+
+.putaway-table__code {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.putaway-table__name {
+  overflow: hidden;
+  color: var(--on-surface-variant);
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * 품목 칸 전체가 누르는 자리 — 누르면 적치(위치 스캔)로, LOT 이 여럿이면 고르는 시트(사용자 지시 2026-11-23). 셸의
+ * `.mobile-shell button { white-space: nowrap }` 보다 앞서도록 표 클래스를 겹쳐 적는다.
+ */
+.putaway-table .putaway-table__open {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.25;
   text-align: start;
   white-space: normal;
   cursor: pointer;
 }
 
-.putaway__lot:active {
-  background: var(--surface-container);
-}
-
-.putaway__lot:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-
-.putaway__lot .putaway__scanned {
-  flex: 1 1 0;
+.putaway-table__open > * {
   min-width: 0;
-  font-family: var(--font-mono);
 }
 
-.putaway__lot-qty {
-  flex: 0 0 auto;
-  font-variant-numeric: tabular-nums;
+/* 적치 위치 나무 위 제목 「적치 위치 후보 목록」 — 「② 적치 위치」 구획 제목 아래 단계라 한 단계 작게(2026-11-23). */
+.putaway__candidates-title {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
 }
 
-/* LOT 화면의 지정 위치 — 창고별 묶음, 줄마다 코드와 경로(창고 › 구역 › 랙). */
-.putaway__designated {
+/* 목록 제목 줄 — 왼쪽 「적치 대기 자재 목록」, 오른쪽 끝 적치 대기 LOT 수(사용자 지시 2026-11-23). */
+.putaway__list-title {
   display: flex;
-  flex-direction: column;
+  align-items: baseline;
   gap: var(--space-2, 8px);
 }
 
-.putaway__designated-legend {
+.putaway__list-count {
+  margin-inline-start: auto;
+  color: var(--on-surface-muted);
   font: var(--type-label-lg);
+  font-variant-numeric: tabular-nums;
 }
 
-.putaway__designated-group {
+/* 적치할 LOT 고르기 시트 — 줄 하나 = LOT 하나(번호 끝 · 수량 · 판정 · ›), 줄 전체가 누르는 자리. */
+.putaway-pick {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1, 4px);
+  gap: var(--space-3, 12px);
 }
 
-.putaway__designated-warehouse {
-  font-weight: 600;
-}
-
-.putaway__designated li {
+.putaway-pick__list {
   display: flex;
   flex-direction: column;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.putaway-pick .putaway-pick__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto 20px;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  width: 100%;
+  min-height: 48px;
+  padding: 0 var(--space-1, 4px);
+  border: 0;
+  border-bottom: 1px solid var(--surface-container-high);
+  background: transparent;
+  color: var(--on-surface);
+  font: var(--type-body-sm);
+  text-align: start;
+  cursor: pointer;
+}
+
+.putaway-pick__list li:last-child .putaway-pick__row {
+  border-bottom: 0;
+}
+
+.putaway-pick__no {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.putaway-pick__qty {
+  font-variant-numeric: tabular-nums;
+}
+
+.putaway-pick__status {
+  color: var(--on-surface-variant);
+}
+
+.putaway-pick__chevron {
+  color: var(--on-surface-muted);
+}
+
+.putaway-table .putaway-table__num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.putaway-table td.putaway-table__num:last-child {
+  padding-inline-end: var(--space-3, 12px);
+}
+
+.putaway-table__num small {
+  margin-inline-start: 2px;
+  color: var(--on-surface-muted);
+  font-size: 10px;
+}
+
+/* 진척 — 적치 완료 / 자재 관리 LOT, 한눈에 읽히게 굵게. */
+.putaway-table__progress {
+  font-weight: 700;
+}
+
+/*
+ * 적치 위치 후보 나무(사용자 지시 2026-11-23) — 관리웹 BOM 하이라키(apps/web `bom-tree-cell`)와 같은 연결선: 단계마다
+ * 24px 들여 쓰고, 윗 단계에 형제가 남았으면 세로선(│), 이 줄은 가지선(├ · └). 줄끼리 틈 없이 붙어 선이 끊기지 않는다.
+ */
+.loc-tree {
+  margin: 0;
+  padding: var(--space-1, 4px) var(--space-2, 8px);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
   background: var(--surface);
+  list-style: none;
 }
 
-.putaway__designated li .putaway__scanned {
+.loc-tree__row {
+  display: flex;
+  align-items: stretch;
+  min-height: 34px;
+}
+
+.loc-tree__rail {
+  position: relative;
+  flex: 0 0 24px;
+}
+
+.loc-tree__rail[data-line='pass']::before,
+.loc-tree__rail[data-line='tee']::before,
+.loc-tree__rail[data-line='elbow']::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 11px;
+  border-left: 1px dotted var(--outline);
+}
+
+/* └ — 마지막 형제는 세로선이 이 줄 가운데에서 멈춘다. */
+.loc-tree__rail[data-line='elbow']::before {
+  bottom: 50%;
+}
+
+.loc-tree__rail[data-line='tee']::after,
+.loc-tree__rail[data-line='elbow']::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 11px;
+  border-top: 1px dotted var(--outline);
+}
+
+.loc-tree__marker,
+.loc-tree__spacer {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 24px;
+  align-items: center;
+  justify-content: center;
+  color: var(--on-surface-muted);
+}
+
+/* 펼친 마디 — 아이콘 아래에서 줄 끝까지 세로선을 내려 첫 자식의 가지선과 잇는다. */
+.loc-tree__marker::after {
+  content: '';
+  position: absolute;
+  top: calc(50% + 9px);
+  bottom: 0;
+  left: 11px;
+  border-left: 1px dotted var(--outline);
+}
+
+/* 맨 아래 위치 줄 — 가지선을 이름 앞까지 끌어온다. */
+.loc-tree__spacer[data-branch='true']::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: var(--space-1, 4px);
+  left: 0;
+  border-top: 1px dotted var(--outline);
+}
+
+.loc-tree__label {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  min-width: 0;
+  padding-inline-start: var(--space-1, 4px);
+  font: var(--type-body-sm);
+}
+
+/* 코드는 굵은 고정폭 — 창고 코드와 스캔할 위치 코드. 넘치면 FitName 이 글자를 줄인다. */
+.loc-tree__code {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
   font-family: var(--font-mono);
-  font-weight: 600;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.loc-tree__name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--on-surface-variant);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 창고(맨 위) 줄의 이름은 진하게 — 묶음 머리다. */
+.loc-tree__row[data-depth='0'] .loc-tree__name {
+  color: var(--on-surface);
+  font-weight: 700;
+}
+
+.loc-tree__note {
+  color: var(--on-surface-muted);
 }
 
 .putaway__path {
@@ -399,25 +627,6 @@
   flex-wrap: wrap;
   gap: var(--space-1, 4px);
   padding-left: calc(20px + var(--space-2, 8px));
-}
-
-/* 적치 대기 LOT 줄 — 번호 한 줄, 그 아래 「불량」 칩 · 수량. */
-.putaway__lot-main {
-  display: flex;
-  flex: 1 1 0;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.putaway__lot-main .putaway__scanned {
-  flex: none;
-}
-
-.putaway__lot-meta {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2, 8px);
 }
 
 /* 떠 있는 직접 입력 단추(48px)와 그 아래 여백만큼 — 마지막 내용이 단추 밑으로 들어가지 않게. */

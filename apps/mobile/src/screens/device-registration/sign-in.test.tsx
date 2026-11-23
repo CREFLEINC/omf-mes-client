@@ -250,7 +250,7 @@ describe('사번 확인 화면', () => {
     expect(screen.getByRole('button', { name: '확인' })).toBeDisabled();
   });
 
-  it('사번을 바꾸면 다시 입력을 받는다', async () => {
+  it('「사용자 전환」을 누르면 다시 입력을 받는다', async () => {
     const user = userEvent.setup();
     mount();
 
@@ -258,7 +258,7 @@ describe('사번 확인 화면', () => {
     await press(user, '900028');
     await screen.findByText('작업자 1 · 900028');
 
-    await user.click(screen.getByRole('button', { name: '사번 바꾸기' }));
+    await user.click(screen.getByRole('button', { name: '사용자 전환' }));
 
     expect(await screen.findByRole('group', { name: '사번 입력' })).toBeInTheDocument();
     expect(screen.queryByText('작업자 1 · 900028')).not.toBeInTheDocument();
@@ -336,7 +336,7 @@ describe('등록이 서버에서 끊긴 기기', () => {
 
     await signedIn(user);
     dead = true;
-    await user.click(screen.getByRole('button', { name: '사번 바꾸기' }));
+    await user.click(screen.getByRole('button', { name: '사용자 전환' }));
 
     expect(await screen.findByText(EXPIRED)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '확인' })).not.toBeInTheDocument();

@@ -23,3 +23,16 @@
 .confirm-dialog__action {
   flex: 1;
 }
+
+/*
+ * 제목만으로 묻는 창(앱 종료 확인)은 본문이 비어 있다. 빈 띠가 제목과 단추를 떼어 놓지 않게 접고,
+ * 머리 밑줄과 바닥 윗줄이 겹쳐 굵은 선이 되지 않게 바닥 쪽 선을 걷는다.
+ */
+.mobile-shell dialog.confirm-dialog > div > div:empty {
+  display: none;
+}
+
+/* 바닥 줄은 디자인 시스템이 그리는 footer 라 태그로 고르지 않고 빈 본문의 다음 자리로 고른다. */
+.mobile-shell dialog.confirm-dialog > div > div:empty + * {
+  border-top: 0;
+}

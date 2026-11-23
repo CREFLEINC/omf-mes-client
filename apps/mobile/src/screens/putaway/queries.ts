@@ -1,10 +1,13 @@
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import type { InboundLotDetail } from '@omf-mes/api-client';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useCallback } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { currentDeviceToken } from '../../patterns/device-token';
+import { readTerminalIdFromToken } from '../../patterns/token-claims';
 import { findLot } from '../../patterns/lots';
 import { runRequest } from '../../patterns/request';
-import type { LocationCheck, PendingLot, PendingLotLookup } from './direct';
+import type { LocationCheck, PendingLot, PendingLotLookup, WarehouseFacts } from './direct';
 import type { PutawayTask } from './putaway';
 
 /** 아직 적치하지 않은 지시만. 끝낸 것이 목록에 남으면 같은 자리를 두 번 다녀온다. */
@@ -16,6 +19,94 @@ export const putawayKeys = {
   lotNo: (lotId: number | null) => ['putaway-lot-no', lotId] as const,
   /** 피처 009 — 적치 대기 LOT(지시 없음). */
   pendingLots: (workerId: number | null) => ['putaway-pending-lots', workerId] as const,
+  /** 적치 대기 표의 진척을 읽는 입하 LOT 상세. 적치한 뒤 통째로 다시 읽는다. */
+  inboundLots: ['putaway-inbound-lot'] as const,
+  inboundLot: (inboundLotId: number) => ['putaway-inbound-lot', inboundLotId] as const,
+};
+
+/** 이 PDA 에 지정된 창고 — 없으면 null(공장 전체 단말), 모르면 undefined. */
+export interface TerminalWarehouse {
+  warehouseId: number;
+  warehouseName: string;
+}
+
+/**
+ * 이 PDA 에 지정된 창고(사용자 지시 2026-11-23) — 품목의 지정 위치가 없으면 지정 위치 표에 이 창고만 보인다. 단말 응답의
+ * 창고 칸이 비면 창고 지정이 없는 단말이다.
+ */
+export const useTerminalWarehouse = (): TerminalWarehouse | null | undefined => {
+  const { client } = useApiClient();
+  const token = currentDeviceToken();
+  const terminalId = token === null ? null : readTerminalIdFromToken(token);
+  const query = useQuery({
+    queryKey: ['putaway-terminal', terminalId] as const,
+    enabled: terminalId !== null,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/terminals/{terminalId}', {
+          params: { path: { terminalId: terminalId ?? 0 } },
+        }),
+      ),
+  });
+
+  if (query.data === undefined || query.isError) return undefined;
+  const { warehouseId, warehouseName } = query.data;
+
+  return warehouseId === undefined || warehouseId === null || !warehouseName
+    ? null
+    : { warehouseId, warehouseName };
+};
+
+/**
+ * 창고 마스터 — 지정 위치 표의 창고코드 칸과, 품목 유형에 맞는 창고만 보이는 거르기(사용자 지시 2026-11-23). 지정
+ * 위치(`:lookup` 의 `designated`)는 창고 번호와 이름만 싣는다. 못 읽으면 undefined — 표는 그대로 서고 거르지 않는다.
+ */
+export const useWarehouseFacts = (): ((warehouseId: number) => WarehouseFacts | undefined) => {
+  const { client } = useApiClient();
+  const warehouses = useQuery({
+    queryKey: ['putaway-warehouses'] as const,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/warehouses', { params: { query: { size: 200 } } }),
+      );
+
+      return new Map(
+        data.items.map((warehouse) => [
+          warehouse.warehouseId,
+          {
+            code: warehouse.warehouseCode,
+            typeCode: warehouse.warehouseTypeCode,
+            isDefect: warehouse.isDefect,
+          } satisfies WarehouseFacts,
+        ]),
+      );
+    },
+  });
+
+  return (warehouseId) => warehouses.data?.get(warehouseId);
+};
+
+/**
+ * 적치 대기 표 줄마다 입하 LOT 상세 — 적치 완료 / 자재 관리 LOT 진척을 센다(사용자 지시 2026-11-23). 적치 대기 목록은
+ * 아직 적치하지 않은 LOT 만 싣기 때문에 이미 적치한 수는 입하 LOT 에서 읽는다.
+ */
+export const useInboundLotDetails = (
+  ids: readonly number[],
+): ((inboundLotId: number) => InboundLotDetail | undefined) => {
+  const { client } = useApiClient();
+  const results = useQueries({
+    queries: ids.map((inboundLotId) => ({
+      queryKey: putawayKeys.inboundLot(inboundLotId),
+      queryFn: () =>
+        runRequest(() =>
+          client.GET('/logistics/inbound-lots/{inboundLotId}', {
+            params: { path: { inboundLotId } },
+          }),
+        ),
+    })),
+  });
+
+  return (inboundLotId) => results[ids.indexOf(inboundLotId)]?.data;
 };
 
 /**

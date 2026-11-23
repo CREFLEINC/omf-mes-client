@@ -36,9 +36,9 @@ import {
 import {
   RECEIVE_LABEL,
   applyReceive,
+  businessDateOf,
   hasErrorCode,
   isReceiving,
-  lotTail,
   pendingCountFor,
   queuedLotNoOf,
   registeredInOf,
@@ -47,10 +47,10 @@ import {
   tallyOf,
   tallyRowOfLot,
   toReceiveDraft,
-  type CardState,
   type ScanLine,
 } from './receipt';
 import { ReceiptTally } from './receipt-tally';
+import { useTodayCards } from './today-cards';
 import { SupplierLotSheet } from './supplier-lot-sheet';
 import './screen.css';
 
@@ -75,18 +75,18 @@ interface Tracked {
  * ```
  * ←  입하 등록                       [온라인] 사번
  * ▦ SCAN
- * ┌ ✓ 등록됨 [새 품목]        [취소] ┐   ← 방금 찍은 라벨 하나(다음 스캔 · 알림이 덮는다)
+ * ┌ ✓ 등록됨               [취소] ✕ ┐   ← 방금 찍은 라벨 하나(다음 스캔 · 알림이 덮는다, ✕ 로 내린다)
  * │ 품목코드 / 품목명 / 큰 수량       │
  * └ 공급사 · …|번호 끝                ┘
  * (전송 대기 띠)
- * 이번 입하 N개 — 공급사 머리 줄 › 품목 줄(No · 품목코드 · 품목 · 개수 · 수량), 줄을 누르면 그 품목의 LOT
+ * YY.MM.DD 입하 N건 Scan — 공급사 머리 줄 › 품목 줄(No · 품목코드 · 품목 · 개수 · 수량), 줄을 누르면 그 품목의 LOT
  * [모두 입하 마감 (n품목 m개)]
  * ```
  *
  * ⭐ 작업자에게 중요한 것만 남긴다(사용자 지시 2026-11-20) — 방금 찍은 라벨이 맞는지, 지금까지 몇 개를 찍었는지.
  *    입하 LOT 번호 · 상태 칩 · 등록 시각 · IQC 요청 번호 · 직접 입력 단추는 두지 않는다.
- * ⭐ 결과는 소리로도 가른다 — 등록 높은 음 두 번 · 새 품목 · 이미 찍음은 가운데 음 · 거부는 낮은 음(scan-feedback).
- * ⭐ 이번 입하 표에 이미 있는 라벨은 서버에 보내지 않고 회색 「이미 찍은 라벨」로 몇 번 줄인지 알린다.
+ * ⭐ 결과는 소리로도 가른다 — 등록 높은 음 두 번 · 품목이 바뀜 · 이미 찍음은 가운데 음 · 거부는 낮은 음(scan-feedback).
+ * ⭐ 입하 표에 이미 있는 라벨은 서버에 보내지 않고 회색 「이미 찍은 라벨」로 몇 번 줄인지 알린다.
  * ⭐ 하나씩 빼기 · 공급사 LOT 번호 · 이 품목만 마감은 품목 화면에서, 모두 마감은 바닥 단추로.
  *
  * ⛔ 없앤 것(기존 화면 디자인 변경): P/O 고르기 · 단계 · 수량 칸 · 초과 판정 · 「LOT 번호 없음」 대체 사유 · 입하 LOT
@@ -101,10 +101,11 @@ export const InboundReceiptScreen = () => {
   const { worker } = useWorkerSession();
   const workerNo = worker?.workerNo ?? null;
 
-  const [cards, setCards] = useState<CardState[]>([]);
+  /* 오늘 이 기기가 표에 올린 입하 LOT — 화면을 떠났다 오거나 앱을 다시 켜도 남는다(사용자 지시 2026-11-23). */
+  const [cards, setCards] = useTodayCards();
   /** 품목 화면으로 연 입하 LOT — null 이면 스캔 화면. 앱바 ← 가 닫는다. */
   const [viewId, setViewId] = useState<number | null>(null);
-  /** 바로 앞 등록이 들어간 입하 LOT — 다르면 「새 품목」. */
+  /** 바로 앞 등록이 들어간 입하 LOT — 다르면 경고음(품목이 바뀌었다). */
   const lastOkId = useRef<number | null>(null);
   /* 결과 줄과 알림은 한 자리다 — 하나를 세우면 다른 하나는 내린다. */
   const [line, setLine] = useState<ScanLine | null>(null);
@@ -201,12 +202,11 @@ export const InboundReceiptScreen = () => {
       inboundLotId: first.inboundLotId,
       lotId: lot?.lotId ?? null,
       qty: lot?.lotQty ?? null,
-      newItem,
       autoClosed: result.inboundLots.some((each) => each.autoClosedInboundLotNo !== null),
     });
   };
 
-  /** 이번 입하 표에 이미 있는 라벨 — 거부가 아니라 회색 알림(가운데 음). */
+  /** 입하 표에 이미 있는 라벨 — 거부가 아니라 회색 알림(가운데 음). */
   const duplicate = (lotNo: string, row: number): void => {
     signal('warn');
     setViewId(null);
@@ -338,7 +338,7 @@ export const InboundReceiptScreen = () => {
 
   /*
    * 전송 대기에서 빠진 건 — 아웃박스가 연결되자 저절로 보낸 것이다. 응답으로 카드를 채우고, 결과는 한 줄로 센다
-   * (「전송 대기 N개를 보냈습니다 · 등록 N · 거부 N」). 거부된 건의 까닭은 셸의 전송 실패 화면에 남는다 — 여기에
+   * (「전송 대기 N건 등록」, 들어가지 않은 것이 있으면 그 건수까지). 거부된 건의 까닭은 셸의 전송 실패 화면에 남는다 — 여기에
    * 건마다 거부 줄을 세우지 않는다. 이 줄이 결과 줄 자리를 덮으니 보낸 라벨의 「오프라인」 줄도 함께 내려간다.
    */
   const pendingKeys = new Set(pending.map((entry) => entry.idempotencyKey));
@@ -391,12 +391,9 @@ export const InboundReceiptScreen = () => {
           previous.filter((card) => card.inboundLotId !== detail.inboundLotId),
         );
         setViewId((previous) => (previous === detail.inboundLotId ? null : previous));
-        showNotice(t.unregistered.lastToast(detail.itemName));
-      } else {
-        showNotice(
-          t.unregistered.toast(lotTail(lot.lotNo), qtyText(after.receivedQty, detail.uomCode)),
-        );
       }
+      /* 무엇을 취소했는지만 — 번호 끝 · 남은 합계는 표가 보인다(사용자 지시 2026-11-23). */
+      showNotice(t.unregistered.done(detail.itemCode, detail.itemName));
     } catch (cause) {
       reject(lot.lotNo, cause);
     } finally {
@@ -431,7 +428,7 @@ export const InboundReceiptScreen = () => {
     setBusyId(detail.inboundLotId);
     try {
       await closeReceipt(client, detail.inboundLotId, detail.versionNo, workerNo);
-      showNotice(t.closeDialog.toastOne(detail.itemName));
+      showNotice(t.closeDialog.toastOne(detail.itemCode, detail.itemName));
     } catch (cause) {
       setViewId(null);
       closeFailed(detail.itemCode, cause);
@@ -476,7 +473,7 @@ export const InboundReceiptScreen = () => {
       setSheet(null);
       showNotice(
         supplierLotNo === null
-          ? t.sheet.cleared(lotTail(lot.lotNo), lotIds.length - 1)
+          ? t.sheet.cleared(lotIds.length)
           : t.sheet.saved(supplierLotNo, lotIds.length),
       );
       refreshCard(detail.inboundLotId);
@@ -520,7 +517,12 @@ export const InboundReceiptScreen = () => {
           ? t.close.blockedPending(pairPendingOf(viewed))
           : null;
   const working = busyId !== null;
-  const lineDetail = line?.kind === 'ok' ? detailOf(line.inboundLotId) : undefined;
+  const lineDetail =
+    line?.kind === 'ok'
+      ? detailOf(line.inboundLotId)
+      : line?.kind === 'duplicate'
+        ? rows.find((row) => row.no === line.row)?.detail
+        : undefined;
 
   return (
     <div className="receive">
@@ -552,6 +554,9 @@ export const InboundReceiptScreen = () => {
             onUndo={() => {
               if (line.kind === 'ok' && line.lotId !== null) undo(line.inboundLotId, line.lotId);
             }}
+            onDismiss={() => {
+              setLine(null);
+            }}
           />
         )}
       </div>
@@ -572,6 +577,7 @@ export const InboundReceiptScreen = () => {
       )}
 
       <ReceiptTally
+        date={businessDateOf(new Date())}
         groups={groups}
         total={total}
         currentId={line?.kind === 'ok' ? line.inboundLotId : null}
