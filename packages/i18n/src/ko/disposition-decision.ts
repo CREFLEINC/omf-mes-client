@@ -193,10 +193,6 @@ export const dispositionDecision = {
     typeLock: {
       closed: '이 부적합 건은 종결되었습니다',
       concessionPending: '특채 결재 대기 중',
-      /** 종결로 새로 생긴 부적합(선별)으로 가는 단추 이름(#352). */
-      openDerived: (nonconformanceNo: string): string => `신규 부적합 건 ${nonconformanceNo} 조회`,
-      /** 단추 글 — 「기존 부적합 건 조회」와 짝(#352 사용자 지시). */
-      derivedButton: '신규 부적합 건 조회',
       /** 결재 승인 뒤 적용 전 — 위 상자의 「승인됨 — 적용 대기」와 같은 말(G2 L-d). */
       concessionApproved: '특채 승인됨 — 적용 대기',
       /** 결재 반려 뒤 [반려 확인] 전(omf-all-around#275). */
@@ -325,6 +321,10 @@ export const dispositionDecision = {
     /** 선별로 생긴 부적합의 기존 부적합 건 — 심각도 오른쪽 칸(#352 사용자 지시). */
     sortedFrom: '기존 부적합 건',
     sortedFromButton: '기존 부적합 건 조회',
+    /** 선별로 종결된 부적합에서 새로 생긴 부적합 — 「기존 부적합 건」과 짝(#352 사용자 지시). */
+    derived: '신규 부적합 건',
+    derivedButton: '신규 부적합 건 조회',
+    openDerived: (nonconformanceNo: string): string => `신규 부적합 건 ${nonconformanceNo} 조회`,
     sortedFromNote: (nonconformanceNo: string): string =>
       `이 부적합 건은 [${nonconformanceNo}]에서 선별된 LOT에 대해 생성되었습니다.`,
     openSortedFrom: (nonconformanceNo: string): string => `기존 부적합 건 ${nonconformanceNo} 조회`,

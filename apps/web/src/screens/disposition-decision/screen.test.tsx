@@ -102,7 +102,7 @@ describe('DispositionDecisionScreen 조회', () => {
     await waitFor(() => expect(screen.getByLabelText(t.form.qtyLabel)).toHaveTextContent('120 EA'));
   });
 
-  it('종결된 부적합은 제목 옆에 종결 안내와 선별로 새로 생긴 부적합으로 가는 단추를 보인다(#352)', async () => {
+  it('종결된 부적합은 제목 옆에 종결 안내를, 상세 상자에 선별로 새로 생긴 부적합으로 가는 단추를 보인다(#352)', async () => {
     const { user } = renderScreen({
       decidedQty: 320,
       nonconformance: { statusCode: 'DECIDED' },
@@ -115,7 +115,7 @@ describe('DispositionDecisionScreen 조회', () => {
     await selectRow(user);
 
     expect(await screen.findByText(t.form.typeLock.closed, { selector: 'p' })).toBeInTheDocument();
-    const open = screen.getByRole('button', { name: t.form.typeLock.openDerived('NC-TEST-0077') });
+    const open = screen.getByRole('button', { name: t.inboundLot.openDerived('NC-TEST-0077') });
     expect(open).toHaveTextContent('신규 부적합 건 조회');
     await user.click(open);
     await waitFor(() => expect(requestedPaths()).toContain('/quality/nonconformances/77'));

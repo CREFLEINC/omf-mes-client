@@ -41,7 +41,6 @@ import {
   useConcessions,
 } from './concession-pane';
 import { DecisionFormPane, typeLockLines } from './decision-form-pane';
-import { NonconformanceLinkButton } from './nonconformance-link-button';
 import {
   PendingDispositionApprovalBox,
   pendingDispositionApprovalOf,
@@ -382,7 +381,7 @@ export const DispositionDecisionScreen = ({
   const detailError = detail.isError ? toApiError(detail.error) : null;
   const isDetailNotFound = detailError?.kind === 'http' && detailError.status === 404;
   const remaining = toRemainingQty(decisions.data?.summary);
-  /** 이 부적합의 판정으로 새로 생긴 부적합(선별로 떼어 낸 불량) — 종결 안내 옆 이동 단추(#352). */
+  /** 이 부적합의 판정으로 새로 생긴 부적합(선별로 떼어 낸 불량) — 상세 상자의 「신규 부적합 건」 칸(#352). */
   const derivedNonconformances = (decisions.data?.items ?? [])
     .flatMap((item) =>
       item.newNonconformanceId == null
@@ -989,6 +988,7 @@ export const DispositionDecisionScreen = ({
               onOpenNonconformance={(id) =>
                 setSearchParams((current) => withSelectedNonconformance(current, id))
               }
+              derivedNonconformances={derivedNonconformances}
               status={statusChip}
             />
           </div>
@@ -1015,21 +1015,6 @@ export const DispositionDecisionScreen = ({
                       {line}
                     </p>
                   ))}
-                  {/* 종결로 새로 생긴 부적합(선별)으로 가는 단추 — 제목 옆 안내 바로 뒤(#352 사용자 지시). */}
-                  {isClosedNonconformance(detail.data.statusCode, remaining.isSettled) &&
-                    derivedNonconformances.map((derived) => (
-                      <NonconformanceLinkButton
-                        key={derived.id}
-                        nonconformanceNo={derived.no}
-                        text={t.form.typeLock.derivedButton}
-                        label={t.form.typeLock.openDerived(derived.no)}
-                        onClick={() =>
-                          setSearchParams((current) =>
-                            withSelectedNonconformance(current, derived.id),
-                          )
-                        }
-                      />
-                    ))}
                 </div>
                 {/* 적용 전 특채 — 결재 상태와 [특채 적용]을 이 상자에(시안 W0310-After · G2 M3). */}
                 {pendingConcession !== undefined && (

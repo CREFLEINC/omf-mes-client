@@ -16,6 +16,12 @@ import type { NonconformanceDetailView, NonconformanceLotRow } from './types';
 /** 품목 표시명 「코드 · 이름」의 구분자(lookups.ts). */
 const ITEM_LABEL_SEPARATOR = ' · '; // ui-check-ignore: C-13 표시명 구분자(lookups.ts 「코드 · 이름」)
 
+/** 선별로 새로 생긴 부적합(#352). */
+export interface DerivedNonconformance {
+  id: number;
+  no: string;
+}
+
 export interface DetailPaneProps {
   view: NonconformanceDetailView;
   items: DispositionLookup;
@@ -28,6 +34,8 @@ export interface DetailPaneProps {
   remainingText?: string | undefined;
   /** 005 — 「선별로 생김 ← NC-…」 의 원래 부적합으로 간다. */
   onOpenNonconformance?: ((nonconformanceId: number) => void) | undefined;
+  /** #352 — 이 부적합의 선별로 새로 생긴 부적합. 있으면 심각도 오른쪽 「신규 부적합 건」 칸에 [신규 부적합 건 조회]. */
+  derivedNonconformances?: DerivedNonconformance[];
   /** 처리 상태 배지 — 부적합번호 옆에 둔다(omf-all-around#275). */
   status?: ReactNode;
 }
@@ -45,6 +53,7 @@ export const DetailPane = ({
   lotStatuses = {},
   remainingText,
   onOpenNonconformance,
+  derivedNonconformances = [],
   status,
 }: DetailPaneProps) => {
   const t = messages.dispositionDecision;
@@ -197,6 +206,20 @@ export const DetailPane = ({
             ),
           ] as [string, ReactNode],
         ]),
+    /* 선별로 종결된 부적합이면 심각도 오른쪽에 새로 생긴 부적합 — 「기존 부적합 건」과 짝(#352 사용자 지시). */
+    ...derivedNonconformances.map((derived): [string, ReactNode] => [
+      t.inboundLot.derived,
+      onOpenNonconformance === undefined ? (
+        derived.no
+      ) : (
+        <NonconformanceLinkButton
+          nonconformanceNo={derived.no}
+          text={t.inboundLot.derivedButton}
+          label={t.inboundLot.openDerived(derived.no)}
+          onClick={() => onOpenNonconformance(derived.id)}
+        />
+      ),
+    ]),
   ];
 
   return (

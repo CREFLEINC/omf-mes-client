@@ -171,9 +171,6 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     remainingUnknown: 'Đang xác nhận số lượng còn lại. Hãy lưu lại sau giây lát',
     typeLock: {
       closed: 'Mục không phù hợp này đã kết thúc',
-      openDerived: (nonconformanceNo: string): string =>
-        `Xem mục không phù hợp mới ${nonconformanceNo}`,
-      derivedButton: 'Xem mục không phù hợp mới',
       concessionPending: 'Đặc cách đang chờ phê duyệt',
       concessionApproved: 'Đặc cách đã duyệt — chờ áp dụng',
       concessionRejected: 'Đặc cách bị từ chối — chờ xác nhận',
@@ -279,6 +276,10 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     >,
     sortedFrom: 'Mục không phù hợp gốc',
     sortedFromButton: 'Xem mục không phù hợp gốc',
+    derived: 'Mục không phù hợp mới',
+    derivedButton: 'Xem mục không phù hợp mới',
+    openDerived: (nonconformanceNo: string): string =>
+      `Xem mục không phù hợp mới ${nonconformanceNo}`,
     sortedFromNote: (nonconformanceNo: string): string =>
       `Mục không phù hợp này được tạo cho các LOT đã phân loại từ [${nonconformanceNo}].`,
     openSortedFrom: (nonconformanceNo: string): string =>
