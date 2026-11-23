@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -54,6 +54,13 @@ const posted = (): Request | undefined =>
   requestsSent().find((request) => request.method === 'POST');
 
 const allPosted = (): Request[] => requestsSent().filter((request) => request.method === 'POST');
+
+/** 결재를 올린 내용 표(#352). */
+const pendingDetails = (): HTMLElement => {
+  const node = document.querySelector<HTMLElement>('.disposition-pending-details');
+  if (node === null) throw new Error('결재 내용 표가 없다');
+  return node;
+};
 
 describe('DispositionDecisionScreen 판정 저장', () => {
   it('⭐ 멱등 키와 낙관적 잠금 토큰을 실어 보낸다', async () => {
@@ -381,11 +388,16 @@ describe('DispositionDecisionScreen 처분 결재(#352)', () => {
     expect(screen.queryByText(t.form.success)).toBeNull();
   });
 
-  it('결재 대기 처분이 있으면 판정 입력 대신 안내만 보이고 적용 단추는 없다', async () => {
+  it('결재 대기 처분이 있으면 판정 입력 대신 제목 옆 라벨과 결재를 올린 내용만 보이고 적용 단추는 없다', async () => {
     renderScreen({ dispositionApprovals: [pendingApproval()] });
     await screen.findByText('LOT-TEST-0088');
 
-    expect(await screen.findByText(t.approval.pendingBanner('폐기'))).toBeInTheDocument();
+    /* 「…결재 대기 중입니다」 문구 줄은 없고, 제목 옆 라벨 + 내용(#352 사용자 지시). */
+    expect(await screen.findByText(t.approval.pendingLabel('폐기'))).toBeInTheDocument();
+    expect(screen.queryByText(t.approval.pendingBanner('폐기'))).toBeNull();
+    expect(within(pendingDetails()).getByText('320 EA')).toBeInTheDocument();
+    expect(within(pendingDetails()).getByText('표면만 손상됐다')).toBeInTheDocument();
+    expect(within(pendingDetails()).getByText('합성 사용자')).toBeInTheDocument();
     expect(screen.queryByRole('radiogroup', { name: t.form.dispositionLabel })).toBeNull();
     expect(screen.queryByRole('button', { name: t.actions.save })).toBeNull();
     expect(screen.queryByRole('button', { name: t.approval.apply })).toBeNull();

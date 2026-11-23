@@ -234,6 +234,17 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     requested:
       'Đã gửi yêu cầu phê duyệt. Khi được duyệt, hãy nhấn Áp dụng xử lý trên màn hình này.',
     pendingBanner: (typeLabel: string): string => `Xử lý ${typeLabel} đang chờ phê duyệt.`,
+    pendingLabel: (typeLabel: string): string => `${typeLabel} đang chờ phê duyệt`,
+    approvedLabel: (typeLabel: string): string => `${typeLabel} đã duyệt — chờ áp dụng`,
+    rejectedLabel: (typeLabel: string): string => `${typeLabel} bị từ chối — chờ xác nhận`,
+    info: {
+      concessionNo: 'Số chấp nhận đặc biệt',
+      movedLots: 'LOT tách lỗi',
+      goodQty: 'Số lượng đạt',
+      defectQty: 'Số lượng lỗi',
+      requestedBy: 'Người yêu cầu',
+      requestedAt: 'Thời gian yêu cầu',
+    },
     approvedBanner: (typeLabel: string): string => `Xử lý ${typeLabel} đã được duyệt.`,
     rejectedBanner: (typeLabel: string): string => `Phê duyệt xử lý ${typeLabel} bị từ chối.`,
     apply: 'Áp dụng xử lý',

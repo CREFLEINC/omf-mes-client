@@ -8,7 +8,10 @@ import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
+import type { DecisionConfirmRow } from './decision-confirm-dialog';
 import { toBusinessDate } from './decision-form';
+import { PendingDecidedBar } from './pending-decided-bar';
+import { PendingDetails } from './pending-details';
 import { dispositionKeys } from './queries';
 import { formatQty } from './types';
 
@@ -266,13 +269,19 @@ export interface PendingConcessionBoxProps {
   concession: Concession;
   /** 이 결재로 묶인 자재 관리 LOT 수. */
   lotCount: number;
+  /** 결재를 올린 내용(#352) — 화면이 만든다. */
+  details: readonly DecisionConfirmRow[];
 }
 
 /**
  * 처분 판정 상자의 「적용 전 특채」 줄(screens/W-03-10.md · 시안 W0310-After — 같은 상자에 [특채 적용]). 결재 대기면 「결재 대기 중」,
  * 승인이면 「승인됨 — 적용 대기」와 [특채 적용], 반려면 [특채 닫기](적용 경로가 반려를 닫는다)(G2 M3).
  */
-export const PendingConcessionBox = ({ concession, lotCount }: PendingConcessionBoxProps) => {
+export const PendingConcessionBox = ({
+  concession,
+  lotCount,
+  details,
+}: PendingConcessionBoxProps) => {
   const { client } = useApiClient();
   const approval = useConcessionApprovalStatus(concession.approvalRequestId);
   const [notice, setNotice] = useState<string | null>(null);
@@ -301,35 +310,38 @@ export const PendingConcessionBox = ({ concession, lotCount }: PendingConcession
   const status = approval.data;
   const decided = status === 'APPROVED' || status === 'REJECTED';
 
+  /*
+   * 결재 대기면 문구 줄 없이 내용만 — 「결재 대기 중」은 「처분 판정」 제목 옆 라벨이 말한다(#352 사용자 지시).
+   * 승인 · 반려면 문구와 [특채 적용] · [반려 확인] 줄을 내용 위에 둔다.
+   */
   return (
-    <div
-      className="iqc-inspection-action-note disposition-pending-concession"
-      data-tone={status === 'APPROVED' ? 'success' : 'warning'}
-      role="status"
-    >
-      <span>
-        {status === 'APPROVED'
-          ? t.approvedBanner(concession.concessionNo)
-          : status === 'REJECTED'
-            ? t.rejectedBanner(concession.concessionNo)
-            : t.pendingBanner(concession.concessionNo)}
-      </span>
-      {decided ? (
-        <Button
-          size="sm"
-          variant={status === 'APPROVED' ? 'filled' : 'outlined'}
-          loading={applyWrite.isSaving}
-          onClick={() => {
-            setNotice(null);
-            /* 묶음 중 어느 행으로 불러도 같은 결재의 대기 행 전부가 함께 적용된다(계약 §10). */
-            applyWrite.write({ concessionId: concession.concessionId });
-          }}
+    <>
+      {decided && (
+        <PendingDecidedBar
+          tone={status === 'APPROVED' ? 'success' : 'warning'}
+          text={
+            status === 'APPROVED'
+              ? t.approvedBanner(concession.concessionNo)
+              : t.rejectedBanner(concession.concessionNo)
+          }
         >
-          {status === 'APPROVED' ? t.apply : t.close}
-        </Button>
-      ) : null}
+          <Button
+            size="sm"
+            variant={status === 'APPROVED' ? 'filled' : 'outlined'}
+            loading={applyWrite.isSaving}
+            onClick={() => {
+              setNotice(null);
+              /* 묶음 중 어느 행으로 불러도 같은 결재의 대기 행 전부가 함께 적용된다(계약 §10). */
+              applyWrite.write({ concessionId: concession.concessionId });
+            }}
+          >
+            {status === 'APPROVED' ? t.apply : t.close}
+          </Button>
+        </PendingDecidedBar>
+      )}
+      <PendingDetails rows={details} />
       <SaveErrorBanner error={applyWrite.error} />
       {notice !== null && <span className="field-note">{notice}</span>}
-    </div>
+    </>
   );
 };

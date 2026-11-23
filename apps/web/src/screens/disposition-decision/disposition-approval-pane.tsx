@@ -6,7 +6,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { requireIfMatch, SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
+import type { DecisionConfirmRow } from './decision-confirm-dialog';
 import { dispositionTypeLabel } from './disposition-codes';
+import { PendingDecidedBar } from './pending-decided-bar';
+import { PendingDetails } from './pending-details';
 import { dispositionKeys, nonconformanceDetailPath } from './queries';
 
 export type DispositionApproval = components['schemas']['DispositionApproval'];
@@ -37,13 +40,18 @@ export const pendingDispositionApprovalOf = (
 
 export interface PendingDispositionApprovalBoxProps {
   approval: DispositionApproval;
+  /** 결재를 올린 내용(#352) — 화면이 만든다. */
+  details: readonly DecisionConfirmRow[];
 }
 
 /**
  * 처분 판정 상자의 「적용 전 처분 결재」 줄 — 결재 대기면 안내만, 승인이면 [처분 적용], 반려면 [반려 확인](적용 경로가 반려를 닫는다).
  * 특채의 `PendingConcessionBox` 와 같은 모양이다(omf-all-around#352).
  */
-export const PendingDispositionApprovalBox = ({ approval }: PendingDispositionApprovalBoxProps) => {
+export const PendingDispositionApprovalBox = ({
+  approval,
+  details,
+}: PendingDispositionApprovalBoxProps) => {
   const { client } = useApiClient();
   const toast = useToast();
   const applyWrite = useMasterWrite<{ dispositionApprovalId: number }, DispositionApprovalApplied>({
@@ -73,32 +81,38 @@ export const PendingDispositionApprovalBox = ({ approval }: PendingDispositionAp
   const decided = status === 'APPROVED' || status === 'REJECTED';
   const typeLabel = dispositionTypeLabel(approval.dispositionTypeCode);
 
+  /* 결재 대기면 내용만 — 「결재 대기 중」은 「처분 판정」 제목 옆 라벨이 말한다(#352 사용자 지시). */
   return (
-    <div
-      className="iqc-inspection-action-note disposition-pending-concession"
-      data-tone={status === 'APPROVED' ? 'success' : 'warning'}
-      role="status"
-    >
-      <span>
-        {status === 'APPROVED'
-          ? t.approvedBanner(typeLabel)
-          : status === 'REJECTED'
-            ? t.rejectedBanner(typeLabel)
-            : t.pendingBanner(typeLabel)}
-      </span>
-      {decided ? (
-        <Button
-          size="sm"
-          variant={status === 'APPROVED' ? 'filled' : 'outlined'}
-          loading={applyWrite.isSaving}
-          onClick={() =>
-            applyWrite.write({ dispositionApprovalId: approval.dispositionApprovalId })
-          }
+    <>
+      {decided && (
+        <PendingDecidedBar
+          tone={status === 'APPROVED' ? 'success' : 'warning'}
+          text={status === 'APPROVED' ? t.approvedBanner(typeLabel) : t.rejectedBanner(typeLabel)}
         >
-          {status === 'APPROVED' ? t.apply : t.close}
-        </Button>
-      ) : null}
+          <Button
+            size="sm"
+            variant={status === 'APPROVED' ? 'filled' : 'outlined'}
+            loading={applyWrite.isSaving}
+            onClick={() =>
+              applyWrite.write({ dispositionApprovalId: approval.dispositionApprovalId })
+            }
+          >
+            {status === 'APPROVED' ? t.apply : t.close}
+          </Button>
+        </PendingDecidedBar>
+      )}
+      <PendingDetails rows={details} />
       <SaveErrorBanner error={applyWrite.error} />
-    </div>
+    </>
   );
+};
+
+/** 「처분 판정」 제목 옆 라벨 — 결재 상태에 따라(#352 사용자 지시). */
+export const dispositionApprovalLabel = (approval: DispositionApproval): string => {
+  const typeLabel = dispositionTypeLabel(approval.dispositionTypeCode);
+  return approval.approvalStatusCode === 'APPROVED'
+    ? t.approvedLabel(typeLabel)
+    : approval.approvalStatusCode === 'REJECTED'
+      ? t.rejectedLabel(typeLabel)
+      : t.pendingLabel(typeLabel);
 };

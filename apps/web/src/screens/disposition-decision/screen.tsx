@@ -43,6 +43,7 @@ import {
 import { DecisionFormPane, typeLockLines } from './decision-form-pane';
 import {
   PendingDispositionApprovalBox,
+  dispositionApprovalLabel,
   pendingDispositionApprovalOf,
   useDispositionApprovals,
 } from './disposition-approval-pane';
@@ -111,6 +112,7 @@ import { lotNames, lotTail, sumQty } from './sort-split-pane';
 import { DecisionConfirmDialog, type DecisionConfirmRow } from './decision-confirm-dialog';
 import {
   decisionUomIdOf,
+  formatDateTime,
   formatQty,
   toDecisionRow,
   toDetailView,
@@ -605,6 +607,79 @@ export const DispositionDecisionScreen = ({
     } as (typeof dispositionOptions)[number],
   ];
   const uomText = uomId === undefined ? '' : ` ${lookupDisplayLabel(uoms, uomId)}`;
+  /** 결재를 올린 특채의 내용(#352 사용자 지시) — 같은 결재로 묶인 LOT 마다 특채 행이 있다(D-14). */
+  const concessionDetails = (
+    concession: NonNullable<typeof pendingConcession>,
+  ): DecisionConfirmRow[] => {
+    const batch = (concessions.data ?? []).filter(
+      (row) =>
+        row.approvalRequestId === concession.approvalRequestId &&
+        row.statusCode === concession.statusCode,
+    );
+    const total = batch.reduce((sum, row) => sum + Number(row.approvedQty), 0);
+    const unit = ` ${lookupDisplayLabel(uoms, concession.uomId)}`;
+    return [
+      { label: t.approval.info.concessionNo, value: concession.concessionNo },
+      { label: t.confirm.type, value: dispositionTypeLabel(CONCESSION), strong: true },
+      {
+        label: t.confirm.target,
+        value:
+          batch.length > 1
+            ? t.confirm.targetLots(batch.length)
+            : (concession.lotNo ?? t.confirm.targetLots(lotRows.length)),
+        strong: true,
+      },
+      { label: t.confirm.qty, value: `${formatQty(total)}${unit}`, strong: true },
+      {
+        label: t.confirm.period,
+        value: t.confirm.periodText(concession.validFrom, concession.validTo ?? null),
+      },
+      { label: t.confirm.reason, value: concession.remarks ?? '' },
+    ];
+  };
+  /** 결재를 올린 폐기 · 선별의 내용(#352 사용자 지시). */
+  const dispositionApprovalDetails = (
+    approval: NonNullable<typeof pendingDispositionApproval>,
+  ): DecisionConfirmRow[] => {
+    /* 선별 요청은 단위 코드를 싣지 않는다 — 그때는 부적합 단위 이름으로. */
+    const unit = approval.uomCode == null ? uomText : ` ${approval.uomCode}`;
+    const qty = (value: number | null | undefined): string =>
+      `${formatQty(value ?? undefined)}${unit}`;
+    const rows: DecisionConfirmRow[] = [
+      {
+        label: t.confirm.type,
+        value: dispositionTypeLabel(approval.dispositionTypeCode),
+        strong: true,
+      },
+    ];
+    if (approval.dispositionTypeCode === SORT) {
+      rows.push({
+        label: t.approval.info.movedLots,
+        value: (approval.lots ?? []).map((lot) => lot.lotNo).join(', '),
+        strong: true,
+      });
+      if (approval.goodQty != null)
+        rows.push({ label: t.approval.info.goodQty, value: qty(approval.goodQty) });
+      if (approval.defectQty != null)
+        rows.push({ label: t.approval.info.defectQty, value: qty(approval.defectQty) });
+    } else {
+      rows.push(
+        { label: t.confirm.target, value: t.confirm.targetLots(lotRows.length), strong: true },
+        { label: t.confirm.qty, value: qty(approval.decisionQty), strong: true },
+      );
+    }
+    rows.push({ label: t.confirm.reason, value: approval.reason });
+    if (approval.requestedByName)
+      rows.push({ label: t.approval.info.requestedBy, value: approval.requestedByName });
+    if (approval.createdAt)
+      rows.push({ label: t.approval.info.requestedAt, value: formatDateTime(approval.createdAt) });
+    return rows;
+  };
+  /* 「처분 판정」 제목 옆 라벨 — 처분 결재가 걸려 있으면 그 상태 하나, 아니면 막힌 유형의 이유(#352 사용자 지시). */
+  const headLines =
+    pendingDispositionApproval !== undefined
+      ? [dispositionApprovalLabel(pendingDispositionApproval)]
+      : typeLockLines(decisionOptions);
   /** 판정 확인 팝업에 늘어놓을 저장 내용 — 고른 유형에 맞춰. */
   const confirmRows = (): DecisionConfirmRow[] => {
     const qty = (value: number | undefined): string => `${formatQty(value)}${uomText}`;
@@ -1004,7 +1079,7 @@ export const DispositionDecisionScreen = ({
                 {/* 막힌 처분 유형의 이유는 제목 오른쪽 안내 라벨로(#352 사용자 지시). */}
                 <div className="disposition-side-head disposition-decision-head">
                   <h3 className="pane-subtitle">{t.form.heading}</h3>
-                  {typeLockLines(decisionOptions).map((line) => (
+                  {headLines.map((line) => (
                     <p
                       key={line}
                       className="iqc-inspection-action-note"
@@ -1018,11 +1093,18 @@ export const DispositionDecisionScreen = ({
                 </div>
                 {/* 적용 전 특채 — 결재 상태와 [특채 적용]을 이 상자에(시안 W0310-After · G2 M3). */}
                 {pendingConcession !== undefined && (
-                  <PendingConcessionBox concession={pendingConcession} lotCount={lotRows.length} />
+                  <PendingConcessionBox
+                    concession={pendingConcession}
+                    lotCount={lotRows.length}
+                    details={concessionDetails(pendingConcession)}
+                  />
                 )}
                 {/* 적용 전 처분 결재(폐기 · 선별) — 특채와 같이 결재 상태와 [처분 적용]을 이 상자에(omf-all-around#352). */}
                 {pendingDispositionApproval !== undefined && (
-                  <PendingDispositionApprovalBox approval={pendingDispositionApproval} />
+                  <PendingDispositionApprovalBox
+                    approval={pendingDispositionApproval}
+                    details={dispositionApprovalDetails(pendingDispositionApproval)}
+                  />
                 )}
                 {/* 특채가 걸려 있으면(결재 대기 · 승인 · 반려, 적용 전) 처분 판정을 할 수 없다 — 입력 칸을 두지 않고 위 상자만 보인다(사용자 지시 2026-11-17). 처분 결재도 같다(#352). */}
                 {pendingConcession === undefined && pendingDispositionApproval === undefined && (

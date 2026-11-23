@@ -85,6 +85,13 @@ const posted = (path: string): Request | undefined =>
     (request) => request.method === 'POST' && new URL(request.url).pathname === path,
   );
 
+/** 결재를 올린 내용 표(#352). */
+const pendingDetails = (): HTMLElement => {
+  const node = document.querySelector<HTMLElement>('.disposition-pending-details');
+  if (node === null) throw new Error('결재 내용 표가 없다');
+  return node;
+};
+
 describe('W-03-10 입하 LOT 단위 처분', () => {
   it('US4-4 상세에 입하 LOT 번호 · 자재 관리 LOT 목록 · IQC 결과 매칭(참고)을 보인다', async () => {
     renderInbound();
@@ -189,7 +196,7 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     expect(screen.queryByText(/처분 결과는/)).toBeNull();
   });
 
-  it('US4-4 결재 대기 특채가 있으면 그 번호로 알리고, 다른 처분을 잠근다', async () => {
+  it('US4-4 결재 대기 특채가 있으면 제목 옆 라벨과 결재를 올린 내용을 보이고, 다른 처분을 잠근다', async () => {
     renderInbound({
       concessions: [
         {
@@ -219,9 +226,12 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
       ],
     });
 
-    expect(
-      await screen.findByText(t.concession.pendingBanner('SAMPLE-CN-0061')),
-    ).toBeInTheDocument();
+    /* 「…결재 대기 중입니다」 문구 줄은 없고, 제목 옆 라벨 + 내용(#352 사용자 지시). */
+    expect(await screen.findByText(t.form.typeLock.concessionPending)).toBeInTheDocument();
+    expect(screen.queryByText(t.concession.pendingBanner('SAMPLE-CN-0061'))).toBeNull();
+    expect(within(pendingDetails()).getByText('SAMPLE-CN-0061')).toBeInTheDocument();
+    expect(within(pendingDetails()).getByText(t.confirm.targetLots(2))).toBeInTheDocument();
+    expect(within(pendingDetails()).getByText('2026-11-11 ~ 제한 없음')).toBeInTheDocument();
     /* 특채가 걸려 있으면 처분 판정 입력 칸(처분 유형 · 판정 사유 · 저장)을 두지 않는다(사용자 지시 2026-11-17). */
     expect(
       document.querySelector(

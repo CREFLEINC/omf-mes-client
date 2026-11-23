@@ -272,6 +272,19 @@ export const dispositionDecision = {
   approval: {
     requested: '결재를 요청했습니다. 승인되면 이 화면에서 처분 적용을 누르세요.',
     pendingBanner: (typeLabel: string): string => `${typeLabel} 처분 결재 대기 중입니다.`,
+    /** 「처분 판정」 제목 옆 라벨 — 특채의 「특채 결재 대기 중」과 같은 말(#352 사용자 지시). */
+    pendingLabel: (typeLabel: string): string => `${typeLabel} 결재 대기 중`,
+    approvedLabel: (typeLabel: string): string => `${typeLabel} 승인됨 — 적용 대기`,
+    rejectedLabel: (typeLabel: string): string => `${typeLabel} 반려 — 반려 확인 대기`,
+    /** 결재 대기 내용(#352 사용자 지시) — 무엇으로 결재를 올렸는지. */
+    info: {
+      concessionNo: '특채 번호',
+      movedLots: '불량 분리 LOT',
+      goodQty: '양품 수량',
+      defectQty: '불량 수량',
+      requestedBy: '요청자',
+      requestedAt: '요청 일시',
+    },
     approvedBanner: (typeLabel: string): string => `${typeLabel} 처분이 승인됐습니다.`,
     rejectedBanner: (typeLabel: string): string => `${typeLabel} 처분 결재가 반려됐습니다.`,
     apply: '처분 적용',
