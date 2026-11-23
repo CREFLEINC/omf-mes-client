@@ -37313,3 +37313,31 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   padding: 0;
   list-style: none;
 }
+
+/*
+ * 처분 판정의 안내 라벨(저장 단추 옆 · 선별 목록 위) — 글자를 키우고 글 길이만큼만 바탕을 깐다(omf-all-around#352 사용자 지시).
+ * 공용 알약 규칙(`.iqc-inspection-action-note:nth-child(n)`)보다 무거워야 선다.
+ */
+.disposition-decision-form .iqc-inspection-action-note:nth-child(n) {
+  justify-self: start;
+  width: fit-content;
+  max-width: 100%;
+  font: var(--type-label-lg);
+  font-weight: 400;
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+/* 폭이 좁으면 단추를 아래로 밀지 않고 안내 라벨 안에서 줄을 바꾼다 — 취소 · 판정 저장은 한 줄에 남는다. */
+.disposition-decision-form > .disposition-decision-actions {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.disposition-decision-actions > .iqc-inspection-action-note:nth-child(n) {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.disposition-decision-actions > button {
+  flex-shrink: 0;
+}
