@@ -1,6 +1,7 @@
 import type { ErrorItem } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { toDecimalText } from './decimal-text';
 import type { ItemAttrsFormValues } from './types';
 
 const t = messages.itemExtendedAttrs.attrs.validation;
@@ -56,11 +57,25 @@ export const restatePackageError = (item: ErrorItem): string | undefined => {
   return undefined;
 };
 
-/** `size` 가 `count` 로 나머지 없이 나눠지는가 — 소수 기본크기의 부동소수 찌꺼기를 걷고 본다. */
-const isMultipleOf = (size: number, count: number): boolean => {
-  const quotient = size / count;
+/** 지수 표기 없는 양의 십진수 — 정수부와 소수부로 나눈다. */
+const PLAIN_DECIMAL = /^(\d+)(?:\.(\d*))?$/;
 
-  return Math.abs(quotient - Math.round(quotient)) < 1e-9;
+/**
+ * `size ÷ count`(봉지당 양)가 소수 1자리까지 떨어지는가(피처 014 FR-018 · 사용자 결정 2026-11-24).
+ * 부동소수 나눗셈을 쓰지 않는다 — 기본크기 문자열을 10^k 배 정수로 옮겨 `size × 10` 이 `count × 10^k` 의
+ * 배수인지 BigInt 로 본다(예: 2.5 ÷ 5 → 250 mod 50 = 0 통과, 2.5 ÷ 2 → 250 mod 20 ≠ 0 막힘).
+ * 지수 표기(`1e3`)는 십진 문자열로 편 뒤 본다. 그래도 읽지 못하면 막지 않는다(서버가 본다).
+ */
+const dividesToOneDecimal = (sizeText: string, count: number): boolean => {
+  const match = PLAIN_DECIMAL.exec(sizeText) ?? PLAIN_DECIMAL.exec(toDecimalText(Number(sizeText)));
+
+  if (match === null) return true;
+
+  const [, intPart = '0', fracPart = ''] = match;
+  const scaled = BigInt(`${intPart}${fracPart}`);
+  const unit = BigInt(count) * 10n ** BigInt(fracPart.length);
+
+  return (scaled * 10n) % unit === 0n;
 };
 
 export const validateItemAttrsForm = (values: ItemAttrsFormValues): Record<string, string> => {
@@ -89,7 +104,7 @@ export const validateItemAttrsForm = (values: ItemAttrsFormValues): Record<strin
 
   /*
    * 패키징 기본값(피처 014 FR-018) — 함께 넣거나 함께 비우고, LOT 당 패키징 수량은 1 이상 정수이며 자재 LOT
-   * 기본크기를 나머지 없이 나눠야 한다(서버와 같은 규칙: 기본크기 mod 수량 = 0). 기본크기가 비면 나눔은 보지 않는다.
+   * 기본크기 ÷ 수량(봉지당 양)이 소수 1자리까지 떨어져야 한다(사용자 결정 2026-11-24). 기본크기가 비면 나눔은 보지 않는다.
    */
   const packageUomId = values.defaultPackageUomId.trim();
   const packageCount = values.defaultPackageCount.trim();
@@ -106,7 +121,7 @@ export const validateItemAttrsForm = (values: ItemAttrsFormValues): Record<strin
     } else if (
       defaultProductionLotSize !== '' &&
       Number.isFinite(size) &&
-      !isMultipleOf(size, count)
+      !dividesToOneDecimal(defaultProductionLotSize, count)
     ) {
       errors.defaultPackageCount = t.packageNotDivisible;
     }

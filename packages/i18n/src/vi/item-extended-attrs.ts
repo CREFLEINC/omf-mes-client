@@ -131,7 +131,7 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
       packages: 'kiện',
     },
     defaultPackageCountNote:
-      'Số kiện đóng gói trong một LOT quản lý vật tư. Phải chia hết kích thước LOT vật tư mặc định. Để trống cả hai thì tạo không có đóng gói.',
+      'Số kiện đóng gói trong một LOT quản lý vật tư. Kích thước LOT vật tư mặc định ÷ số kiện đóng gói phải ra số có tối đa 1 chữ số thập phân. Để trống cả hai thì tạo không có đóng gói.',
     inspectionRequiredSyncNote:
       'Thay đổi cùng với ‘Bỏ qua mặc định’ IQC trong tiêu chuẩn kiểm tra. Nếu mặt hàng này chưa có tiêu chuẩn IQC riêng, tiêu chuẩn đó sẽ được tạo khi thay đổi; trước đó mặt hàng theo tiêu chuẩn IQC chung cho mọi mặt hàng.',
     values: {

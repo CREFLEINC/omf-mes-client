@@ -215,16 +215,41 @@ describe('US5 패키징 기본값 검사', () => {
         }),
       ),
     ).toEqual({ defaultPackageCount: NOT_DIVISIBLE });
-    /* 서버와 같다 — 기본크기 mod 수량 = 0. 2.5 ÷ 5 는 막힌다. */
+  });
+
+  /* 사용자 결정 2026-11-24 — 봉지당 양(기본크기 ÷ 수량)은 소수 1자리까지 허용한다. */
+  it.each([
+    ['2.5', '5', true],
+    ['10', '4', true],
+    ['2.5', '2', false],
+    ['100', '30', false],
+  ])('US5-3 Q15 기본크기 %s ÷ 패키징 수량 %s — 소수 1자리까지만 통과(%s)', (size, count, ok) => {
     expect(
       validateItemAttrsForm(
         withValues({
-          defaultProductionLotSize: '2.5',
+          defaultProductionLotSize: size,
           defaultPackageUomId: '7003',
-          defaultPackageCount: '5',
+          defaultPackageCount: count,
         }),
       ),
-    ).toEqual({ defaultPackageCount: NOT_DIVISIBLE });
+    ).toEqual(ok ? {} : { defaultPackageCount: NOT_DIVISIBLE });
+  });
+
+  it('US5-3 부동소수 오차에 흔들리지 않는다(0.3 ÷ 3 = 0.1 통과 · 0.7 ÷ 7 = 0.1 통과 · 0.3 ÷ 2 = 0.15 막힘)', () => {
+    const errorOf = (size: string, count: string) =>
+      validateItemAttrsForm(
+        withValues({
+          defaultProductionLotSize: size,
+          defaultPackageUomId: '7003',
+          defaultPackageCount: count,
+        }),
+      ).defaultPackageCount;
+
+    expect(errorOf('0.3', '3')).toBeUndefined();
+    expect(errorOf('0.7', '7')).toBeUndefined();
+    expect(errorOf('12.30', '3')).toBeUndefined();
+    expect(errorOf('0.3', '2')).toBe(NOT_DIVISIBLE);
+    expect(errorOf('1.05', '1')).toBe(NOT_DIVISIBLE);
   });
 
   it('US5-3 0 · 소수 · 글자는 1 이상 정수로 넣으라고 한다', () => {

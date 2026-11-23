@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { itemFixtures } from './fixtures';
 import { ItemAttrsPane, lotSizeLabelOf } from './item-attrs-pane';
 import { itemToAttrsFormValues } from './item-attrs-mappers';
+import { validateItemAttrsForm } from './item-attrs-validation';
 import type { ItemAttrsFormValues } from './types';
 
 const renderPane = (overrides: Partial<Parameters<typeof ItemAttrsPane>[0]> = {}) => {
@@ -250,6 +251,37 @@ describe('US5-1 ItemAttrsPane — 패키징 기본값 두 칸', () => {
     renderPane({ itemTypeCode: 'RAW_MATERIAL', fieldErrors: { defaultPackageCount: message } });
 
     expect(screen.getByText(message)).toBeInTheDocument();
+  });
+
+  /* 사용자 결정 2026-11-24 — 기본크기 ÷ 패키징 수량이 소수 1자리까지 떨어지면 통과(Q15). */
+  it.each([
+    ['2.5', '5', true],
+    ['10', '4', true],
+    ['2.5', '2', false],
+    ['100', '30', false],
+  ])('US5-3 Q15 기본크기 %s ÷ 패키징 수량 %s — 통과 %s', (size, count, ok) => {
+    const message =
+      '패키징 수량이 부적합 합니다. 자재 LOT 기본크기를 정확히 나눌 수 있는 값을 입력해주세요.';
+    const values = {
+      ...itemToAttrsFormValues(itemFixtures[0]!),
+      defaultProductionLotSize: size,
+      defaultPackageUomId: '7003',
+      defaultPackageCount: count,
+    };
+    renderPane({
+      itemTypeCode: 'RAW_MATERIAL',
+      values,
+      fieldErrors: validateItemAttrsForm(values),
+    });
+
+    if (ok) expect(screen.queryByText(message)).not.toBeInTheDocument();
+    else expect(screen.getByText(message)).toBeInTheDocument();
+  });
+
+  it('US5-3 LOT 당 패키징 수량 도움말은 소수 1자리 규칙을 말한다', () => {
+    expect(messages.itemExtendedAttrs.attrs.defaultPackageCountNote).toContain(
+      '자재 LOT 기본크기 ÷ 패키징 수량이 소수 1자리까지 떨어져야 합니다.',
+    );
   });
 
   it('US5-2 패키징 단위 칸의 오류도 낸다', () => {
