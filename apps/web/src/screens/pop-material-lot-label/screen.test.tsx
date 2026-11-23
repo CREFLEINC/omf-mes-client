@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { ko, messages, vi as viMessages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -386,6 +389,39 @@ describe('US1 · US2 미출력 탭 — 고르면 이미 만들어져 있다', ()
     expect(rows[2]).toHaveTextContent(tp.poLine('SYN-PO-07', 1));
     expect(rows[2]).toHaveTextContent('롤 10 × 10');
     expect(rows[2]).toHaveTextContent('100 EA');
+  });
+
+  it('FR-010 세 칸 1100px 이하 상세 표 — LOT 번호는 「|」 뒤마다 줄바꿈 자리를 두고 끝까지 적고, 줄일 칸 · 단추 칸에 이름을 단다', async () => {
+    const user = userEvent.setup();
+    renderLabelScreen(withShare(37));
+
+    await pickPair(user);
+    await waitFor(() => expect(checkboxes().length).toBeGreaterThan(0));
+
+    const table = lotTable(tp.tabs.UNPRINTED);
+    const lotCell = within(bodyRows(tp.tabs.UNPRINTED)[2] as HTMLElement)
+      .getAllByRole('cell')
+      .find((cell) => cell.classList.contains('mll-lotcol')) as HTMLElement;
+    const lotNo = lotCell.getAttribute('title') ?? '';
+    /* 말줄임 없이 번호 전체 — 칸(품목 · 수량 · 날짜 · 공급사 · 일련) 넷 사이마다 <wbr>. */
+    expect(lotCell.querySelector('.mll-lotno')?.textContent).toBe(lotNo);
+    expect(lotCell.querySelectorAll('wbr')).toHaveLength(lotNo.split('|').length - 1);
+    for (const name of ['mll-pkgcol', 'mll-pocol', 'mll-modecol']) {
+      expect(table.querySelectorAll(`th.${name}`)).toHaveLength(1);
+      expect(table.querySelectorAll(`td.${name}`).length).toBeGreaterThan(0);
+    }
+  });
+
+  it('FR-010 세 칸 1100px 이하 규칙 — LOT 번호 칸은 접고, 포장 · P/O 는 두 줄, 머리 줄은 겹치지 않게 접는다', () => {
+    const css = readFileSync(resolve(__dirname, 'uniform.css'), 'utf8');
+    const narrow = css.slice(css.lastIndexOf('@media (max-width: 1100px)'));
+
+    expect(narrow).toMatch(/td\.mll-lotcol \{[^}]*white-space: normal/u);
+    expect(narrow).toMatch(/th\.mll-lotcol \{[^}]*word-break: keep-all/u);
+    expect(narrow).toMatch(/td\.mll-pocol \{[^}]*white-space: normal/u);
+    expect(narrow).toMatch(/td\.mll-actcol > \.pu-btn/u);
+    expect(narrow).toMatch(/\.mll-right > \.pu-card-head \{[^}]*flex-wrap: wrap/u);
+    expect(narrow).toMatch(/\.mll-head-value \{[^}]*text-overflow: ellipsis/u);
   });
 
   it('US2-1 쪽 넘김의 총 건수는 아직 만들지 않은 몫을 포함하고 그 수를 함께 말한다', async () => {

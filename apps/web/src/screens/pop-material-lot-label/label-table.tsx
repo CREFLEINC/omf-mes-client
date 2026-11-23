@@ -1,6 +1,6 @@
 import type { MaterialLotTab } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode, RefObject } from 'react';
+import { Fragment, type ReactNode, type RefObject } from 'react';
 
 import { formatPackage, formatQty } from '../../patterns/package-qty';
 import { toPlantDateTimeParts } from '../../patterns/plant-time';
@@ -10,6 +10,25 @@ import { isVoided, isWaiting, type LabelLot } from './types';
 
 /** P/O 번호와 라인 사이 — 「PO-2611-007 · 1」. */
 const PO_DOT = '·'; // ui-check-ignore: C-13 설계 확정 형식(specs 014 screens/P-01-01 「P/O · 라인」)
+
+/**
+ * 자재 관리 LOT 번호 — `|` 뒤마다 줄바꿈 자리(`<wbr>`)를 둔다. 넓은 화면은 한 줄, 1100px 이하 좁은 상세 칸에서는
+ * 칸(품목 · 수량 · 날짜 · 공급사 · 일련) 단위로 두 줄에 걸쳐 끝까지 읽힌다(말줄임 없음). 글자 자체는 그대로다.
+ */
+const LotNoText = ({ lotNo }: { lotNo: string }) => (
+  <span className="mll-lotno">
+    {lotNo.split('|').map((part, index) => (
+      <Fragment key={index}>
+        {index === 0 ? null : (
+          <>
+            |<wbr />
+          </>
+        )}
+        {part}
+      </Fragment>
+    ))}
+  </span>
+);
 
 const t = messages.popMaterialLotLabel.table;
 const tState = messages.popMaterialLotLabel.lotState;
@@ -175,8 +194,8 @@ export const LabelTable = ({
                 {t.columns.lotNo}
               </th>
               <th className="num fit">{t.columns.qty}</th>
-              <th className="fit">{t.columns.package}</th>
-              <th className="fit">{tp.columns.po}</th>
+              <th className="fit mll-pkgcol">{t.columns.package}</th>
+              <th className="fit mll-pocol">{tp.columns.po}</th>
               {tab === 'RECEIVED' ? (
                 <>
                   <th className="mll-slotcol" title={t.columns.supplierLot}>
@@ -187,7 +206,7 @@ export const LabelTable = ({
                   <th className="fit">{tp.columns.printCount}</th>
                 </>
               ) : (
-                <th className="fit mid">{tp.columns.mode}</th>
+                <th className="fit mid mll-modecol">{tp.columns.mode}</th>
               )}
               {tab === 'PRINTED' && (
                 <>
@@ -203,7 +222,7 @@ export const LabelTable = ({
                 </>
               )}
               {showResults && <th className="fit">{t.columns.result}</th>}
-              {hasAction && <th className="fit mid" aria-label={t.columns.action} />}
+              {hasAction && <th className="fit mid mll-actcol" aria-label={t.columns.action} />}
             </tr>
           </thead>
           <tbody>
@@ -271,7 +290,7 @@ export const LabelTable = ({
                   )}
                   {/* 칸마다 값 하나 — 넘치면 한 줄 말줄임 + title(사용자 지시 2026-11-19). */}
                   <td className="pu-mono mll-lotcol" title={lot.lotNo}>
-                    {lot.lotNo}
+                    <LotNoText lotNo={lot.lotNo} />
                     {lot.lotId === scannedLotId ? (
                       <>
                         {' '}
@@ -286,8 +305,8 @@ export const LabelTable = ({
                     ) : null}
                   </td>
                   <td className="num fit">{qtyText}</td>
-                  <td className="fit">{packageText}</td>
-                  <td className="fit">{poText(lot)}</td>
+                  <td className="fit mll-pkgcol">{packageText}</td>
+                  <td className="fit mll-pocol">{poText(lot)}</td>
                   {tab === 'RECEIVED' ? (
                     <>
                       <td className="mll-slotcol" title={lot.supplierLotNo ?? undefined}>
@@ -300,7 +319,7 @@ export const LabelTable = ({
                       <td className="fit">{printCount(lot)}</td>
                     </>
                   ) : (
-                    <td className="fit mid">{modeChip(lot)}</td>
+                    <td className="fit mid mll-modecol">{modeChip(lot)}</td>
                   )}
                   {tab === 'PRINTED' && (
                     <>
@@ -324,7 +343,7 @@ export const LabelTable = ({
                       )}
                     </td>
                   )}
-                  {hasAction && <td className="fit mid">{rowAction(lot)}</td>}
+                  {hasAction && <td className="fit mid mll-actcol">{rowAction(lot)}</td>}
                 </tr>
               );
             })}

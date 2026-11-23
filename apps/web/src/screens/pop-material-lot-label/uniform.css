@@ -873,3 +873,86 @@
   font-size: 14px;
   color: var(--pu-text-2);
 }
+
+/*
+ * 1100px 이하 상세 칸(세 칸 · 총괄 확인 2026-11-24) — 상세 칸 폭이 약 550px 로 준다.
+ * ① LOT 번호가 가장 중요하다: 말줄임 대신 `|` 뒤에서 두 줄로 접어 끝까지 읽히게 하고, 남는 폭을 모두 갖는다.
+ *    머리 글은 낱말 단위로만 접는다(「자재 관리 LOT / 번호」).
+ * ② 포장 · P/O · 만든 방식은 글자를 줄이고 두 줄을 허용하며, [수정] 단추는 작게 — 가로로 넘치지 않는다.
+ * ③ 머리 줄: 이름표 칸들을 두 줄로 접고(값은 말줄임), 단추 줄은 그 아래로 — 글자가 겹치지 않는다.
+ */
+@media (max-width: 1100px) {
+  .mll-right .mll-table.mll-table .pu-table th.mll-lotcol {
+    width: auto;
+    white-space: normal;
+    word-break: keep-all;
+    line-height: 15px;
+  }
+
+  .mll-right .mll-table.mll-table .pu-table td.mll-lotcol {
+    white-space: normal;
+    line-height: 15px;
+    font-size: 12px;
+    text-overflow: clip;
+  }
+
+  .mll-right .mll-table.mll-table .pu-table th.mll-pkgcol,
+  .mll-right .mll-table.mll-table .pu-table th.mll-pocol,
+  .mll-right .mll-table.mll-table .pu-table th.mll-modecol {
+    white-space: normal;
+    word-break: keep-all;
+    line-height: 15px;
+  }
+
+  .mll-right .mll-table.mll-table .pu-table td.mll-pkgcol,
+  .mll-right .mll-table.mll-table .pu-table td.mll-pocol {
+    min-width: 56px;
+    max-width: 88px;
+    white-space: normal;
+    font-size: 12px;
+    line-height: 15px;
+    text-overflow: clip;
+  }
+
+  .mll-right .mll-table.mll-table .pu-table td.mll-modecol > .pu-chip {
+    padding-inline: 6px;
+    font-size: 12px;
+  }
+
+  .mll-right .mll-table.mll-table .pu-table td.mll-actcol > .pu-btn {
+    padding: 0 10px;
+  }
+
+  .mll-right > .pu-card-head {
+    height: auto;
+    min-height: 52px;
+    flex-wrap: wrap;
+    row-gap: 6px;
+    padding-bottom: 2px;
+  }
+
+  .mll-right > .pu-card-head h2 {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    row-gap: 2px;
+    column-gap: 10px;
+    white-space: normal;
+  }
+
+  .mll-right .mll-head-field {
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .mll-right .mll-head-name,
+  .mll-right .mll-head-value {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mll-right .mll-head-sub {
+    flex: 1 1 160px;
+    white-space: nowrap;
+  }
+}
