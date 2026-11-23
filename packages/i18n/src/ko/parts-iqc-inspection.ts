@@ -169,6 +169,8 @@ export const partsIqcInspection = {
     notice: '기본 설정에 따라 검사를 생략했습니다.',
     /* 생략 건 요약 — IQC · PQC · OQC 공통 틀(#353). */
     requestNo: '의뢰번호',
+    /** 생략 건은 진행할 검사가 없어 첫 탭 이름을 「검사 상세」로(사용자 정정 2026-11-23 · #353). */
+    detailTab: '검사 상세',
     item: '품목',
     titlePqc: 'PQC 공정검사',
     titleOqc: 'OQC 출하검사',

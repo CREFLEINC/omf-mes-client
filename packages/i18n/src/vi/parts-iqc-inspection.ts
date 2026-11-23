@@ -158,6 +158,7 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
   skipped: {
     notice: 'Đã bỏ qua kiểm tra theo thiết lập mặc định.',
     requestNo: 'Số yêu cầu',
+    detailTab: 'Chi tiết kiểm tra',
     item: 'Mặt hàng',
     titlePqc: 'PQC Kiểm tra công đoạn',
     titleOqc: 'OQC Kiểm tra xuất hàng',

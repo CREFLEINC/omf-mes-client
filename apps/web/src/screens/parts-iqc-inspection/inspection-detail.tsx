@@ -594,7 +594,15 @@ export const InspectionDetail = ({
         items={[
           ...(confirmed
             ? []
-            : [{ value: 'input', label: t.tabs.input, content: tab === 'input' ? body() : null }]),
+            : [
+                {
+                  value: 'input',
+                  /* 생략 건은 진행할 검사가 없다 — 「검사 상세」(#353). */
+                  label:
+                    detail.data?.statusCode === 'SKIPPED' ? t.skipped.detailTab : t.tabs.input,
+                  content: tab === 'input' ? body() : null,
+                },
+              ]),
           /* 첨부 파일 — OA 화면 「첨부 파일」 탭과 같은 LOT 첨부(시험성적서 등 · #247 · 사용자 지시 2026-11-10). */
           ...(lotId === null
             ? []

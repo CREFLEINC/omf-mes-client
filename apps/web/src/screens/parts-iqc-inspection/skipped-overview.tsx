@@ -70,7 +70,7 @@ export const SkippedOverview = (props: SkippedOverviewProps) => {
           size="md"
           aria-label={props.title ?? t.dialog.title}
           items={[
-            { value: 'input', label: t.tabs.input, content: cards },
+            { value: 'input', label: t.skipped.detailTab, content: cards },
             /* 이력 탭은 아래 참고 상자와 같은 모양(이력 줄 · 숨긴 부품 제목)으로 — 그 상자의 틀을 그대로 쓴다. */
             ...props.tabs.map((tab) => ({
               ...tab,
