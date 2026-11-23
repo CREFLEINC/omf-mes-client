@@ -7,6 +7,7 @@ import { InfoTip } from '../../patterns/info-tip';
 import { formatQty } from '../../patterns/package-qty';
 import { toApiError } from '../../patterns/request';
 import { PlanViewLauncher } from '../iqc-inspection/plan-view-launcher';
+import { SkippedOverview, usePlanCode } from '../parts-iqc-inspection/skipped-overview';
 import { useSamplingRule } from '../iqc-inspection/queries';
 import { LotNo } from '../parts-iqc-inspection/lot-match-field';
 import { ResultList } from '../parts-iqc-inspection/result-list';
@@ -37,6 +38,8 @@ export interface ShipmentOqcDetailProps {
   inspectionRequestId: number;
   /** 품목 「코드 · 이름」 — 화면이 품목 풀이를 이미 읽어 두었다. 못 풀었으면 표기 글 하나. */
   itemLabel: ReactNode;
+  /** 품목 이름 · 코드 — 생략 건 요약(IQC 와 같은 틀 · #353)이 이름 · 코드 차례로 쓴다. 못 풀었으면 null. */
+  itemParts: { code: string; name: string } | null;
   uomCode: string | null;
 }
 
@@ -53,6 +56,7 @@ export interface ShipmentOqcDetailProps {
 export const ShipmentOqcDetail = ({
   inspectionRequestId,
   itemLabel,
+  itemParts,
   uomCode,
 }: ShipmentOqcDetailProps) => {
   const toast = useToast();
@@ -64,6 +68,7 @@ export const ShipmentOqcDetail = ({
     null,
   );
   const addBlockedId = useId();
+  const planCode = usePlanCode(request?.inspectionPlanVersionId ?? null);
 
   if (query.isError) {
     return (
@@ -85,6 +90,43 @@ export const ShipmentOqcDetail = ({
     request.nextResultSeqNo ?? results.reduce((max, result) => Math.max(max, result.seqNo), 0) + 1;
   const refData = ref.data;
   const shipmentRequestNo = request.shipmentRequestNo ?? refData?.shipmentRequestNo ?? '—';
+
+  /* 생략 건은 IQC 생략 건과 같은 틀 — 입력 · 결과 칸 없이 요약만(사용자 지시 2026-11-23 · #353). */
+  if (skipped) {
+    return (
+      <div className="parts-iqc-detail-body iqc-inbound-detail oqc-shipment-detail">
+        <SkippedOverview
+          title={messages.partsIqcInspection.skipped.titleOqc}
+          itemLabel={messages.partsIqcInspection.skipped.item}
+          itemParts={itemParts}
+          planCode={planCode}
+          planAction={
+            request.inspectionPlanVersionId == null ? null : (
+              <PlanViewLauncher
+                inspectionPlanVersionId={request.inspectionPlanVersionId}
+                label={messages.iqcInspection.detail.openPlan}
+              />
+            )
+          }
+          requestNo={request.inspectionRequestNo}
+          lotNo={active.map((view) => view.lot.lotNo).join(', ') || '-'}
+          lotFacts={[
+            { key: 'sr', label: s.facts.shipmentRequest, value: shipmentRequestNo },
+            { key: 'customer', label: s.facts.customer, value: refData?.customerName ?? '—' },
+            {
+              key: 'tp',
+              label: s.facts.targetPicked,
+              value:
+                refData === undefined
+                  ? '—'
+                  : s.targetPicked(formatQty(refData.targetQty), formatQty(refData.pickedQty), uom),
+            },
+            { key: 'at', label: s.facts.requestedAt, value: formatDateTime(request.requestedAt) },
+          ]}
+        />
+      </div>
+    );
+  }
 
   const facts: { key: string; label: string; value: ReactNode; emphasized?: boolean }[] = [
     {
@@ -207,17 +249,9 @@ export const ShipmentOqcDetail = ({
     <div className="parts-iqc-detail-body iqc-inbound-detail oqc-shipment-detail">
       <div className="parts-iqc-detail-head">
         <h2 className="parts-iqc-sub-title">{request.inspectionRequestNo}</h2>
-        {/* 생략 건은 IQC 처럼 상태 라벨 대신 안내 줄을 제목 바로 오른쪽에(사용자 지시 2026-11-23 · #353). */}
-        {skipped ? (
-          <p className="iqc-inspection-action-note inspection-skip-note" data-tone="warning">
-            <Icon name="warning" size={16} aria-hidden />
-            {s.skippedNotice}
-          </p>
-        ) : (
-          <Chip variant="status" size="sm" status={badge.tone}>
-            {badge.label}
-          </Chip>
-        )}
+        <Chip variant="status" size="sm" status={badge.tone}>
+          {badge.label}
+        </Chip>
       </div>
       <dl className="parts-iqc-facts iqc-inbound-facts">
         {facts.map((fact) => (

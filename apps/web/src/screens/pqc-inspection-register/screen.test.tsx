@@ -388,7 +388,7 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     renderScreen({ skipped: true });
     const pane = await openRequest(user);
 
-    expect(await pane.findByText(pqc.detail.skipped)).toBeInTheDocument();
+    expect(await pane.findByText(messages.partsIqcInspection.skipped.notice)).toBeInTheDocument();
     expect(pane.queryByRole('button', { name: web.actions.confirm })).toBeNull();
     expect(pane.queryByRole('region', { name: web.quantityBox })).toBeNull();
   });

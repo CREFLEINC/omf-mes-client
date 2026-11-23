@@ -1,4 +1,4 @@
-import { AlertBanner, Icon, TextField } from '@crefle/web-ui';
+import { AlertBanner, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
@@ -50,6 +50,7 @@ import { PanelActions } from './panel-actions';
 import { pqcPanelKeys, useLatestRound, useRoundMeasurements } from './queries';
 import { ResultForm } from './result-form';
 import { SplitResultForm } from './split-result-form';
+import { PqcSkippedOverview } from './skipped-overview';
 import { PanelTargetHeader } from './target-header';
 import { WebActions } from './web-actions';
 import { PqcWebSteps } from './web-steps';
@@ -429,16 +430,8 @@ export const PqcPanel = ({
     if (target.statusCode === 'SKIPPED') {
       return (
         <div className="pqc-web">
-          {/* IQC 와 같이 안내 줄을 맨 위에(사용자 지시 2026-11-23 · #353). */}
-          <p className="iqc-inspection-action-note inspection-skip-note" data-tone="warning">
-            <Icon name="warning" size={16} aria-hidden />
-            {t.detail.skipped}
-          </p>
-          <WebSummary
-            detail={target}
-            planVersion={planVersion.data ?? null}
-            uomCode={uomCodeOf(target.uomId)}
-          />
+          {/* IQC 생략 건과 같은 틀(사용자 지시 2026-11-23 · #353). */}
+          <PqcSkippedOverview detail={target} uomCode={uomCodeOf(target.uomId)} />
         </div>
       );
     }

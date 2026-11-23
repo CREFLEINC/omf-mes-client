@@ -781,6 +781,7 @@ export const OqcInspectionScreen = () => {
       <ShipmentOqcDetail
         key={selectedId}
         inspectionRequestId={selectedId}
+        itemParts={itemNames.partsOf(detail.data.itemId)}
         itemLabel={((): ReactNode => {
           const parts = itemNames.partsOf(detail.data.itemId);
           return parts === null ? (

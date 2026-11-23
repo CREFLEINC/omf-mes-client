@@ -314,7 +314,6 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     over: (qty: string): string => `Vượt ${qty}`,
     note: 'Phán định được xác nhận khi「Hoàn tất xuất hàng」 trên POP. Không có nút xác nhận. Trước đó vẫn có thể thêm hoặc sửa kết quả, và kết quả cuối cùng liên kết với mỗi LOT là phán định của LOT đó.',
     skipped: 'Yêu cầu này đã đóng do bỏ qua OQC.',
-    skippedNotice: 'Đã bỏ qua kiểm tra theo thiết lập mặc định.',
     skippedMore:
       'Mọi LOT đã lấy được coi là thông qua, kể cả LOT lấy sau khi bỏ qua (bao gồm LOT thay thế).',
     completed:

@@ -158,6 +158,10 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
   judgment: { ACCEPTED: 'Đạt', REJECTED: 'Không đạt', HELD: 'Giữ lại' },
   skipped: {
     notice: 'Đã bỏ qua kiểm tra theo thiết lập mặc định.',
+    requestNo: 'Số yêu cầu',
+    item: 'Mặt hàng',
+    titlePqc: 'PQC Kiểm tra công đoạn',
+    titleOqc: 'OQC Kiểm tra xuất hàng',
   },
 
   requestStatus: {

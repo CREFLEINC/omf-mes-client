@@ -6,7 +6,6 @@ export const pqcInspection: Translated<typeof ko.pqcInspection> = {
   emptyValue: '—',
   detail: {
     heading: 'Đối tượng',
-    skipped: 'Đã bỏ qua kiểm tra theo thiết lập mặc định.',
     nothingSelected: 'Hãy chọn đối tượng kiểm tra ở màn hình công việc rồi vào.',
     loading: 'Đang tải yêu cầu kiểm tra.',
     fields: {

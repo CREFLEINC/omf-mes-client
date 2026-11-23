@@ -82,6 +82,7 @@ import { InboundDetail, type InboundDetailProps } from './inbound-detail';
 import { splitRuleErrors } from './lot-judgment';
 import { useInboundFourM, useInboundInspection } from './inbound-queries';
 import { PlanDialog } from './plan-dialog';
+import { SkippedNotice, SkippedOverview } from './skipped-overview';
 import { useUomLookup, withUom } from '../iqc-inspection/uom-lookup';
 import {
   checkRowCount,
@@ -263,16 +264,29 @@ export const InspectionDetail = ({
     if (detail.data.statusCode === 'SKIPPED') {
       return (
         <>
-          <SkippedSummary
+          <SkippedOverview
+            itemLabel={t.target.itemName}
             itemParts={items.partsOf(detail.data.itemId)}
-            planLabel={plan.data?.inspectionPlanCode ?? '-'}
+            planCode={plan.data?.inspectionPlanCode ?? '-'}
+            requestNo={detail.data.inspectionRequestNo}
             lotNo={
               inboundFlow
                 ? (inboundInspection.data?.lots ?? []).map((lot) => lot.lotNo).join(', ') || '-'
                 : lots.labelOf(detail.data.lotId)
             }
-            qtyLabel={withUom(String(detail.data.targetQty), uoms.codeOf(detail.data.uomId))}
-            inbound={inbound.data}
+            lotFacts={[
+              { key: 'supplier', label: t.lot.supplier, value: inbound.data?.supplierLabel ?? '-' },
+              {
+                key: 'qty',
+                label: t.lot.qty,
+                value: withUom(String(detail.data.targetQty), uoms.codeOf(detail.data.uomId)),
+              },
+              {
+                key: 'receivedAt',
+                label: t.lot.receivedAt,
+                value: formatPlantDateTime(inbound.data?.receivedAt ?? null) ?? '-',
+              },
+            ]}
             planAction={
               version.data === undefined || specs.data === undefined ? null : (
                 <Button variant="outlined" size="sm" onClick={() => setSkippedPlanOpen(true)}>
@@ -521,10 +535,7 @@ export const InspectionDetail = ({
         <h2 className="pane-title">{t.dialog.title}</h2>
         {/* 생략 건은 상태 라벨 대신 안내 줄을 제목 바로 오른쪽에(사용자 지시 2026-11-23 · #353). */}
         {detail.data?.statusCode === 'SKIPPED' ? (
-          <p className="iqc-inspection-action-note inspection-skip-note" data-tone="warning">
-            <Icon name="warning" size={16} aria-hidden />
-            {t.skipped.notice}
-          </p>
+          <SkippedNotice />
         ) : (
           detail.data !== undefined &&
           t.requestStatus[detail.data.statusCode] !== undefined && (
@@ -654,61 +665,6 @@ export const InspectionDetail = ({
 };
 
 /** 생략된 의뢰의 읽기 전용 요약 — 검사 대상 · LOT 정보를 입력 화면과 같은 짜임으로 보인다(#225). */
-const SkippedSummary = (props: {
-  itemParts: { code: string; name: string } | null;
-  planLabel: string;
-  lotNo: string;
-  qtyLabel: string;
-  inbound: { supplierLabel: string | null; receivedAt: string | null } | undefined;
-  planAction: ReactNode;
-}) => (
-  <>
-    {/* 탭 바로 아래라 구획 윗선을 두지 않는다(omf-all-around#353). */}
-    <section className="parts-iqc-block parts-iqc-skipped" aria-label={t.target.heading}>
-      <dl className="parts-iqc-facts">
-        <div className="parts-iqc-fact">
-          <dt className="field-label">{t.target.itemName}</dt>
-          {/* 자재명 · 코드를 한 줄에(사용자 지시 2026-11-23 · #353). */}
-          <dd className="parts-iqc-fact-key parts-iqc-fact-inline">
-            {props.itemParts?.name ?? '-'}
-            {props.itemParts !== null && (
-              <span className="parts-iqc-fact-sub">{props.itemParts.code}</span>
-            )}
-          </dd>
-        </div>
-        <div className="parts-iqc-fact">
-          <dt className="field-label">{t.target.plan}</dt>
-          <dd className="parts-iqc-plan-cell">
-            {props.planLabel}
-            {props.planAction}
-          </dd>
-        </div>
-      </dl>
-      <div className="parts-iqc-lot-box" role="group" aria-label={t.lot.heading}>
-        <h4>{t.lot.heading}</h4>
-        <dl className="parts-iqc-facts">
-          <div className="parts-iqc-fact">
-            <dt className="field-label">{t.lot.lotNo}</dt>
-            <dd className="parts-iqc-lot-no">{props.lotNo}</dd>
-          </div>
-          <div className="parts-iqc-fact">
-            <dt className="field-label">{t.lot.supplier}</dt>
-            <dd>{props.inbound?.supplierLabel ?? '-'}</dd>
-          </div>
-          <div className="parts-iqc-fact">
-            <dt className="field-label">{t.lot.qty}</dt>
-            <dd>{props.qtyLabel}</dd>
-          </div>
-          <div className="parts-iqc-fact">
-            <dt className="field-label">{t.lot.receivedAt}</dt>
-            <dd>{formatPlantDateTime(props.inbound?.receivedAt ?? null) ?? '-'}</dd>
-          </div>
-        </dl>
-      </div>
-    </section>
-  </>
-);
-
 /** 결과 드로어 모드(005 새 흐름). */
 export interface InspectionFormDrawer {
   /** 이 결과의 검사 회차 — 검사 기준 상세 창에 보인다(사용자 지시 2026-11-18 · omf-all-around#296). */

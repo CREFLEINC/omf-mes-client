@@ -398,15 +398,18 @@ describe('W-04-03 출하 OQC 새 흐름 — 상세', () => {
     });
   });
 
-  it('Q16 생략으로 닫힌 의뢰는 안내만 서고 결과를 더할 수 없다', async () => {
+  it('Q16 생략으로 닫힌 의뢰는 IQC 와 같은 요약만 — 피킹 LOT 표 · 결과 추가가 없다(#353)', async () => {
     renderShipmentOqc({
       request: shipmentOqcRequest({ statusCode: 'SKIPPED', results: [], lotJudgments: [] }),
     });
 
-    expect(await screen.findByText(s.skippedNotice)).toBeInTheDocument();
+    expect(await screen.findByText(messages.partsIqcInspection.skipped.notice)).toBeInTheDocument();
+    expect(screen.getByText(messages.partsIqcInspection.skipped.titleOqc)).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', { name: messages.partsIqcInspection.lot.heading }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: s.results.add })).toBeNull();
-    const lots = await lotsTable();
-    expect(lots.getAllByText(s.judgments.SKIPPED).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('table', { name: s.lots.heading(4) })).toBeNull();
   });
 
   it('US3-6 피킹 LOT 이 없으면 빈 상태와 「결과를 추가할 수 없습니다」', async () => {

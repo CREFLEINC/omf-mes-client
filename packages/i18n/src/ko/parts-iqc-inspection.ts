@@ -167,6 +167,11 @@ export const partsIqcInspection = {
   skipped: {
     /* 생략으로 닫힌 의뢰 안내(사용자 정정 2026-11-23 · omf-all-around#353). */
     notice: '기본 설정에 따라 검사를 생략했습니다.',
+    /* 생략 건 요약 — IQC · PQC · OQC 공통 틀(#353). */
+    requestNo: '의뢰번호',
+    item: '품목',
+    titlePqc: 'PQC 공정검사',
+    titleOqc: 'OQC 출하검사',
   },
 
   requestStatus: {
