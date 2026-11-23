@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { coversOaPlant, plantsInScope, scopeBusinessUnitIds } from './oa-access';
+import {
+  coversBothPlantKinds,
+  coversOaPlant,
+  plantsInScope,
+  scopeBusinessUnitIds,
+} from './oa-access';
 
 /** omf-all-around#89 — 사업부(VIETNAM)가 부품 PL11·OA PL13 을 함께 가져 공장 코드로 OA 를 가린다(서버와 같은 규칙). */
 const PLANTS = [
@@ -40,5 +45,13 @@ describe('OA 공장 범위', () => {
     expect(scopeBusinessUnitIds([{ businessUnitId: 7 }], PLANTS, OA)).toEqual([7]);
     expect(scopeBusinessUnitIds([], PLANTS, OA)).toEqual([1]);
     expect(scopeBusinessUnitIds([], PLANTS, new Set())).toEqual([]);
+  });
+
+  /* omf-all-around#336 — OA·부품 공장을 모두 가진 계정만 상단 바에서 동작을 고른다. */
+  it('OA·부품 공장을 모두 가졌는가 — 범위 없음 · 사업부 통째는 둘 다, 한 공장만이면 아니다', () => {
+    expect(coversBothPlantKinds([], PLANTS, OA)).toBe(true);
+    expect(coversBothPlantKinds([{ businessUnitId: 1 }], PLANTS, OA)).toBe(true);
+    expect(coversBothPlantKinds([{ businessUnitId: 1, plantId: 2 }], PLANTS, OA)).toBe(false);
+    expect(coversBothPlantKinds([{ businessUnitId: 1, plantId: 1 }], PLANTS, OA)).toBe(false);
   });
 });

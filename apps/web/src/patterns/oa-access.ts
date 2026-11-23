@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useSyncExternalStore } from 'react';
 
 import { useApiClient } from './api-context';
 import { runRequest } from './request';
@@ -87,12 +88,95 @@ const usePlantsAndOaCodes = () => {
   });
 };
 
+/** OA·부품 공장을 모두 가진 계정이 고른 동작(omf-all-around#336). */
+export type PlantMode = 'oa' | 'parts';
+
+/** 저장 키 — 사용자별로 브라우저에 남긴다(공용 PC 에서 다른 사람의 선택을 물려받지 않게). */
+const plantModeKey = (userId: number): string => `omf-mes.shell.plant-mode.${userId}`;
+
+const plantModeListeners = new Set<() => void>();
+
+const readPlantMode = (userId: number): PlantMode => {
+  try {
+    return globalThis.localStorage.getItem(plantModeKey(userId)) === 'parts' ? 'parts' : 'oa';
+  } catch {
+    return 'oa';
+  }
+};
+
+const subscribePlantMode = (listener: () => void): (() => void) => {
+  plantModeListeners.add(listener);
+  return () => {
+    plantModeListeners.delete(listener);
+  };
+};
+
+/** 고른 동작을 남기고 이 탭의 모든 판단 자리에 알린다. 남기지 못해도 이번 판에는 반영한다. */
+const memoryPlantMode = new Map<number, PlantMode>();
+const writePlantMode = (userId: number, mode: PlantMode): void => {
+  memoryPlantMode.set(userId, mode);
+  try {
+    globalThis.localStorage.setItem(plantModeKey(userId), mode);
+  } catch {
+    /* 저장이 막힌 브라우저 — 새로고침하면 기본(OA)으로 돌아간다. */
+  }
+  plantModeListeners.forEach((listener) => {
+    listener();
+  });
+};
+
+/** 계정 범위가 OA 공장과 부품 공장을 모두 덮는가 — 그때만 동작을 고른다. */
+export const coversBothPlantKinds = (
+  scopes: readonly Scope[],
+  plants: readonly PlantRow[],
+  oaCodes: ReadonlySet<string>,
+): boolean => {
+  const scoped = plantsInScope(scopes, plants);
+  return (
+    scoped.some((plant) => oaCodes.has(plant.plantCode)) &&
+    scoped.some((plant) => !oaCodes.has(plant.plantCode))
+  );
+};
+
+/**
+ * OA·부품 동작 고르기(omf-all-around#336 · 사용자 결정 2026-11-23). 범위에 OA·부품 공장이 함께 있는 계정
+ * (범위 없음 = 모든 공장 포함)만 `mixed` 이고, 그 계정은 고른 동작을 따른다. 기본은 OA(종전 동작).
+ * 한쪽 공장만 가진 계정은 지금처럼 범위로 정한다(#211 「전환 단추 없이」).
+ */
+export const usePlantMode = (): {
+  mixed: boolean;
+  mode: PlantMode;
+  setMode: (mode: PlantMode) => void;
+} => {
+  const { session } = useSession();
+  const lookup = usePlantsAndOaCodes();
+  const userId = session?.userId ?? null;
+  const mode = useSyncExternalStore(subscribePlantMode, () =>
+    userId === null ? 'oa' : (memoryPlantMode.get(userId) ?? readPlantMode(userId)),
+  );
+  const mixed =
+    session !== null &&
+    session !== undefined &&
+    lookup.data !== undefined &&
+    coversBothPlantKinds(session.scopes, lookup.data.plants, lookup.data.codes);
+  return {
+    mixed,
+    mode: mixed ? mode : 'oa',
+    setMode: (next) => {
+      if (userId !== null) writePlantMode(userId, next);
+    },
+  };
+};
+
 export const useOaAccess = (): OaAccess => {
   const { session } = useSession();
   const lookup = usePlantsAndOaCodes();
+  const plantMode = usePlantMode();
   if (session === null || session === undefined) return 'unknown';
   if (lookup.isPending) return 'checking';
   if (lookup.data === undefined) return 'unknown';
+  /* 두 공장 계정이 「부품」을 고르면 부품 계정처럼 본다(#336). */
+  if (plantMode.mixed && plantMode.mode === 'parts') return 'not-oa';
   return coversOaPlant(session.scopes, lookup.data.plants, lookup.data.codes) ? 'oa' : 'not-oa';
 };
 

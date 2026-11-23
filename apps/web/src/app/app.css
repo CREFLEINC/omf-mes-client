@@ -18276,6 +18276,12 @@ dialog.layout-editor-dialog {
 }
 
 /* 배치 단추 둘은 나란히(공용 「⋯」 판 안에서는 위아래로 선다). */
+/* 상단 바의 OA·부품 동작 단추 둘 — 가로로 나란히(omf-all-around#336). */
+.split-orientation-toggle.topbar-plant-mode {
+  flex-direction: row;
+  align-items: center;
+}
+
 .split-orientation-toggle.terminal-map-layout-toggle {
   flex-direction: row;
   align-items: center;
