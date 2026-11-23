@@ -8619,6 +8619,20 @@ main:has(.iqc-skip-approval-detail) {
   overflow-wrap: break-word;
 }
 
+/*
+ * 이름 옆 ⓘ(「기존 부적합 건」 · #352) — 아이콘과 글을 한 줄 가운데에 맞추고, 아이콘이 이름 줄을 높이지 않게 해 옆 칸 값과
+ * 같은 줄에 선다.
+ */
+.disposition-detail-fact > dt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.disposition-detail-fact > dt .info-tip {
+  margin-block: -4px;
+}
+
 .disposition-detail-fact-key {
   font: var(--type-title-sm);
   letter-spacing: var(--type-title-sm-tracking);
