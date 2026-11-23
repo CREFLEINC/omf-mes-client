@@ -33358,27 +33358,22 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   flex: none;
 }
 
-/* IQC 기준 안내 — 한 라벨에 두 문장(줄 바꿈), 글자는 본문 크기로 키운다(omf-all-around#351 · 사용자 지시 2026-11-23). */
-.parts-iqc-no-plan > .iqc-inspection-action-note {
-  flex: 1;
-}
-
-/* 공용 `.iqc-inspection-action-note:nth-child(n)`(label-sm)보다 무거워야 글자가 커진다. */
-.parts-iqc-no-plan > .iqc-inspection-action-note.parts-iqc-plan-note {
-  align-items: flex-start;
+/*
+ * IQC 기준 안내 라벨 — 글 폭만큼, 본문 크기 글자(omf-all-around#351 · 사용자 지시 2026-11-23).
+ * 공용 `.iqc-inspection-action-note:nth-child(n)`(label-sm)보다 무거워야 글자가 커진다.
+ */
+.iqc-inspection-action-note.parts-iqc-plan-note[data-tone] {
   font: var(--type-body-lg);
   letter-spacing: var(--type-body-lg-tracking);
 }
 
-/* 표식(16px)을 첫 줄(body-lg 줄 높이 24px) 가운데에 — 차이의 절반만큼 내린다. */
-.parts-iqc-plan-note > [aria-hidden="true"]:first-child {
-  flex: none;
-  margin-top: 4px;
-}
-
-.parts-iqc-plan-note-lines {
-  display: grid;
-  gap: var(--space-1);
+/* 「검사 항목」 제목과 그 오른쪽 안내를 한 무리로 — 진행 건수는 줄 오른쪽 끝에 남는다. */
+.parts-iqc-head-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
 }
 
 .parts-iqc-plan {

@@ -772,6 +772,14 @@ const DrawingImages = ({ drawings }: { drawings: { attachmentId: number; blob: B
   </section>
 );
 
+/** IQC 기준 안내 라벨 — 글 폭만큼, 본문 크기 글자(omf-all-around#351 · 사용자 지시 2026-11-23). */
+const PlanNote = ({ text }: { text: string }) => (
+  <p className="iqc-inspection-action-note parts-iqc-plan-note" data-tone="info" role="status">
+    <Icon name="info" size={16} aria-hidden />
+    {text}
+  </p>
+);
+
 const InspectionForm = (props: FormProps) => {
   /* 측정 표 규격 칸의 단위(omf-all-around#296). */
   const uoms = useUomLookup();
@@ -1333,6 +1341,7 @@ const InspectionForm = (props: FormProps) => {
 
       {!noPlan && (
         <MeasurementTable
+          headNote={specs.length > 0 ? <PlanNote text={t.dialog.planVersionNote} /> : null}
           items={dimensions}
           uomCodeOf={uoms.codeOf}
           values={form.values}
@@ -1363,21 +1372,13 @@ const InspectionForm = (props: FormProps) => {
         />
       )}
 
-      {/* 기준 안내 — 한 라벨에 두 문장, 종합 판정 바로 위(omf-all-around#351 · 사용자 지시 2026-11-23). */}
-      <div className="parts-iqc-no-plan">
-        <div
-          className="iqc-inspection-action-note parts-iqc-plan-note"
-          data-tone="info"
-          role="status"
-        >
-          <Icon name="info" size={16} aria-hidden />
-          <span className="parts-iqc-plan-note-lines">
-            {noPlan && <span>{t.dialog.noPlan}</span>}
-            <span>{t.dialog.planVersionNote}</span>
-          </span>
+      {/* 기준이 없을 때 안내 — 종합 판정 바로 위(omf-all-around#351 · 사용자 지시 2026-11-23). */}
+      {noPlan && (
+        <div className="parts-iqc-no-plan">
+          <PlanNote text={t.dialog.noPlan} />
+          {props.noPlanAction}
         </div>
-        {props.noPlanAction}
-      </div>
+      )}
 
       {/* 종합 판정 — 검사 항목 아래(#247 · 사용자 지시 2026-11-10). 왼쪽 자동 판정 결과 상자 · 세로선 · 오른쪽 종합 판정 고르기(사용자 시안 2026-10-29) */}
       <section className="parts-iqc-card" aria-labelledby="parts-iqc-verdict">

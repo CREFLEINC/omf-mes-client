@@ -54,7 +54,22 @@ vi.mock('../iqc-inspection/queries', async (importOriginal) => {
           };
     },
     useInspectionRounds: () => done([]),
-    useInspectionItemSpecs: (id: number | null) => (id === null ? PENDING : done([])),
+    useInspectionItemSpecs: (id: number | null) =>
+      id === null
+        ? PENDING
+        : done([
+            {
+              inspectionItemSpecId: 1,
+              inspectionPlanVersionId: 3,
+              sequenceNo: 1,
+              inspectionItemCode: 'TST-VIS',
+              inspectionItemName: '합성 외관',
+              dataTypeCode: 'BOOLEAN',
+              measurementCount: 1,
+              requiredFlag: true,
+              automaticJudgment: false,
+            },
+          ]),
     useDefectCodes: () => done([]),
     useRejectedLotFollowUp: () => done(undefined),
     useMeasurements: () => done([]),
@@ -145,25 +160,25 @@ const mount = () =>
   );
 
 describe('#351 검사 기준이 없는 IQC', () => {
-  it('양식을 열고 항목 없이 종합 판정을 직접 고른다 — 자동 판정 없이 빈 채로 시작', async () => {
+  it('양식을 열고 항목 없이 종합 판정을 직접 고른다 — 자동 판정 없이 빈 채로 시작, 기준 변경 안내는 없다', async () => {
     detailOf.value = request(null);
     mount();
 
     expect(await screen.findByText(tp.dialog.noPlan)).toBeInTheDocument();
-    expect(screen.getByText(tp.dialog.planVersionNote)).toBeInTheDocument();
+    expect(screen.queryByText(tp.dialog.planVersionNote)).toBeNull();
     expect(screen.getByRole('button', { name: tp.footer.submit })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: tp.plan.open })).toBeNull();
     expect(screen.getByText(tp.verdict.noPlan)).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: tp.verdict.overall })).toBeEnabled();
   });
 
-  it('기준이 있으면 지금 양식 그대로 — 기준 안내만 더하고, 자동 판정은 종전대로 낸다', async () => {
+  it('기준이 있으면 지금 양식 그대로 — 「검사 항목」 옆에 기준 변경 안내를 더한다', async () => {
     detailOf.value = request(3);
     mount();
 
     expect(await screen.findByText(tp.dialog.planVersionNote)).toBeInTheDocument();
     expect(screen.queryByText(tp.dialog.noPlan)).toBeNull();
     expect(screen.getByRole('button', { name: tp.plan.open })).toBeInTheDocument();
-    expect(screen.queryByText(tp.verdict.pending)).toBeNull();
+    expect(screen.getByText(tp.verdict.pending)).toBeInTheDocument();
   });
 });
