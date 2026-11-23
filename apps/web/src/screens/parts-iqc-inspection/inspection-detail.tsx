@@ -31,7 +31,6 @@ import {
 } from 'react';
 import { useNavigate } from 'react-router';
 
-import { InspectionDrawingImages } from '../../patterns/inspection-drawings';
 import { InfoTip } from '../../patterns/info-tip';
 import { InspectionGuideNotice } from '../../patterns/inspection-guide';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -81,7 +80,7 @@ import { InspectionHistory } from './history';
 import { InboundDetail, type InboundDetailProps } from './inbound-detail';
 import { splitRuleErrors } from './lot-judgment';
 import { useInboundFourM, useInboundInspection } from './inbound-queries';
-import { PlanDialog } from './plan-dialog';
+import { DrawingImages, PlanDialog } from './plan-dialog';
 import { SkippedNotice, SkippedOverview } from './skipped-overview';
 import { useUomLookup, withUom } from '../iqc-inspection/uom-lookup';
 import {
@@ -750,21 +749,6 @@ interface FormProps {
 }
 
 /** 기준서 도면 — 품질 기준 정보 「도면」 탭과 같은 보기(한 장씩 좌우로 넘김 · 사용자 지시 2026-10-30). */
-const DrawingImages = ({ drawings }: { drawings: { attachmentId: number; blob: Blob }[] }) => (
-  <section className="parts-iqc-card" aria-label={t.drawing.heading}>
-    <div className="parts-iqc-block-head">
-      <h3>{t.drawing.heading}</h3>
-      {drawings.length === 0 && <span className="parts-iqc-muted">{t.drawing.none}</span>}
-    </div>
-    {drawings.length === 0 ? null : (
-      <InspectionDrawingImages
-        drawings={drawings}
-        altOf={t.drawing.alt}
-        labels={{ prev: t.drawing.prev, next: t.drawing.next }}
-      />
-    )}
-  </section>
-);
 
 const InspectionForm = (props: FormProps) => {
   /* 측정 표 규격 칸의 단위(omf-all-around#296). */

@@ -91,23 +91,6 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     noPlanVersion: 'Không có tiêu chuẩn',
     planVersion: (version: number): string => `Phiên bản ${String(version)}`,
     openPlan: 'Xem tiêu chuẩn',
-    planView: {
-      title: 'Tiêu chuẩn kiểm tra áp dụng',
-      version: (version: number): string => `Phiên bản ${String(version)}`,
-      samplingLabel: 'Lấy mẫu',
-      fullInspection: 'Kiểm tra toàn bộ',
-      sampling: (ratio: number): string => `Kiểm tra mẫu ${String(ratio)}%`,
-      acceptanceLabel: 'Số chấp nhận',
-      acceptance: (count: number): string => `Đạt nếu không đạt ≤ ${String(count)}`,
-      acceptanceNone: 'Không có',
-      itemsHeading: 'Hạng mục kiểm tra',
-      itemsCount: (count: number): string => `(${String(count)})`,
-      columns: { no: 'No.', count: 'Số lần đo' },
-      count: (count: number): string => `${String(count)} lần`,
-      required: 'Bắt buộc',
-      close: 'Đóng',
-      edit: 'Sửa',
-    },
   },
 
   result: {

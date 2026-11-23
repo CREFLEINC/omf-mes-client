@@ -160,24 +160,6 @@ export const iqcInspection = {
     noPlanVersion: '기준 없음',
     planVersion: (version: number): string => `버전 ${String(version)}`,
     openPlan: '기준 조회',
-    /** 「기준 조회」 창(#197) — 화면을 옮기지 않고 기준을 보인다. 고치려면 [수정]. */
-    planView: {
-      title: '적용 검사 기준',
-      version: (version: number): string => `버전 ${String(version)}`,
-      samplingLabel: '샘플링',
-      fullInspection: '전수 검사',
-      sampling: (ratio: number): string => `샘플 검사 ${String(ratio)}%`,
-      acceptanceLabel: '합격판정개수',
-      acceptance: (count: number): string => `불합격 ${String(count)}개 이하 합격`,
-      acceptanceNone: '없음',
-      itemsHeading: '검사 항목',
-      itemsCount: (count: number): string => `(${String(count)})`,
-      columns: { no: 'No.', count: '측정 횟수' },
-      count: (count: number): string => `${String(count)}회`,
-      required: '필수',
-      close: '닫기',
-      edit: '수정',
-    },
   },
 
   /** 우측 창 — 수량 판정. 합계 제약이 이 구획을 지배한다. */
