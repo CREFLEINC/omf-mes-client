@@ -38,13 +38,16 @@ const renderDialog = (code: string, items: unknown[] | 'fail' = ROUTED) => {
 };
 
 describe('판정 확인 팝업(#352)', () => {
-  it('결재선이 있으면 결재자와 결재 요청 안내를 보이고, 확인을 누르면 저장한다', async () => {
+  it('결재선이 있으면 「결재 요청」 제목 · 결재자 · 승인 후 안내를 보이고, [결재 요청]을 누르면 저장한다', async () => {
     const { onConfirm, user } = renderDialog('SCRAP');
 
-    expect(await screen.findByText(t.confirm.routed(t.approval.apply))).toBeInTheDocument();
-    expect(screen.getByText(t.confirm.approverStep(1, '합성 결재자'))).toBeInTheDocument();
+    expect(
+      await screen.findByText(t.confirm.routed(t.approval.apply, t.confirm.subjectDisposition)),
+    ).toBeInTheDocument();
+    expect(screen.getByText(t.confirm.routedTitle)).toBeInTheDocument();
+    expect(screen.getByText('합성 결재자 (1단계)')).toBeInTheDocument();
     expect(screen.getByText('합성 사유')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: t.confirm.ok }));
+    await user.click(screen.getByRole('button', { name: t.confirm.request }));
     expect(onConfirm).toHaveBeenCalledOnce();
   });
 
@@ -52,6 +55,8 @@ describe('판정 확인 팝업(#352)', () => {
     renderDialog('CONCESSION');
 
     expect(await screen.findByText(t.confirm.direct)).toBeInTheDocument();
+    expect(screen.getByText(t.confirm.title)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.confirm.save })).toBeEnabled();
     expect(screen.queryByText(t.confirm.approvers)).toBeNull();
   });
 
@@ -59,12 +64,14 @@ describe('판정 확인 팝업(#352)', () => {
     renderDialog('SCRAP', 'fail');
 
     expect(await screen.findByText(t.confirm.loadFailed)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.confirm.ok })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.confirm.save })).toBeDisabled();
   });
 
   it('취소는 저장하지 않고 닫는다', async () => {
     const { onConfirm, onCancel, user } = renderDialog('SCRAP');
-    await waitFor(() => expect(screen.getByRole('button', { name: t.confirm.ok })).toBeEnabled());
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: t.confirm.request })).toBeEnabled(),
+    );
 
     await user.click(screen.getByRole('button', { name: messages.common.cancel }));
     expect(onCancel).toHaveBeenCalledOnce();

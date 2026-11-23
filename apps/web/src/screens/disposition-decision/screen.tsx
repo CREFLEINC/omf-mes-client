@@ -596,7 +596,11 @@ export const DispositionDecisionScreen = ({
   const confirmRows = (): DecisionConfirmRow[] => {
     const qty = (value: number | undefined): string => `${formatQty(value)}${uomText}`;
     const rows: DecisionConfirmRow[] = [
-      { label: t.confirm.type, value: dispositionTypeLabel(form.dispositionTypeCode) },
+      {
+        label: t.confirm.type,
+        value: dispositionTypeLabel(form.dispositionTypeCode),
+        strong: true,
+      },
     ];
     if (form.dispositionTypeCode === SORT) {
       const picked = new Set(form.sortLotIds);
@@ -614,8 +618,8 @@ export const DispositionDecisionScreen = ({
       );
     } else {
       rows.push(
-        { label: t.confirm.target, value: t.confirm.targetLots(lotRows.length) },
-        { label: t.confirm.qty, value: qty(remaining.value) },
+        { label: t.confirm.target, value: t.confirm.targetLots(lotRows.length), strong: true },
+        { label: t.confirm.qty, value: qty(remaining.value), strong: true },
       );
     }
     if (form.dispositionTypeCode === CONCESSION) {

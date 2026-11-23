@@ -31,6 +31,8 @@ export const useDispositionApprovalRoutes = (enabled: boolean) => {
 export interface DecisionConfirmRow {
   label: string;
   value: string;
+  /** 먼저 눈에 들어와야 할 값(처분 유형 · LOT 수 · 총 수량)은 굵게(#352 사용자 시안). */
+  strong?: boolean;
 }
 
 export interface DecisionConfirmDialogProps {
@@ -58,14 +60,18 @@ export const DecisionConfirmDialog = ({
   const route = routes.data?.find(
     (item) => item.approvalTypeCode === approvalTypeOf(dispositionTypeCode),
   );
-  const applyLabel = dispositionTypeCode === 'CONCESSION' ? t.concession.apply : t.approval.apply;
+  const isConcession = dispositionTypeCode === 'CONCESSION';
+  const applyLabel = isConcession ? t.concession.apply : t.approval.apply;
+  const subject = isConcession ? t.confirm.subjectConcession : t.confirm.subjectDisposition;
+  /* 결재선이 있으면 「결재 요청」, 없거나 아직 모르면 「판정 저장」(#352 사용자 시안). */
+  const routed = route?.hasRoute === true;
 
   return (
     <Dialog
       open
       onClose={onCancel}
       size="md"
-      title={<span id={titleId}>{t.confirm.title}</span>}
+      title={<span id={titleId}>{routed ? t.confirm.routedTitle : t.confirm.title}</span>}
       aria-labelledby={titleId}
       showCloseButton={false}
       closeOnBackdropClick={false}
@@ -80,7 +86,7 @@ export const DecisionConfirmDialog = ({
             {messages.common.cancel}
           </Button>
           <Button disabled={route === undefined || isSaving} loading={isSaving} onClick={onConfirm}>
-            {t.confirm.ok}
+            {routed ? t.confirm.request : t.confirm.save}
           </Button>
         </>
       }
@@ -90,10 +96,10 @@ export const DecisionConfirmDialog = ({
           {rows.map((row) => (
             <div key={row.label}>
               <dt>{row.label}</dt>
-              <dd>{row.value}</dd>
+              <dd>{row.strong === true ? <strong>{row.value}</strong> : row.value}</dd>
             </div>
           ))}
-          {route?.hasRoute === true && (
+          {routed && route !== undefined && (
             <div>
               <dt>{t.confirm.approvers}</dt>
               <dd>
@@ -116,7 +122,7 @@ export const DecisionConfirmDialog = ({
         ) : (
           <p className="iqc-inspection-action-note" data-tone="info">
             <Icon name="info" size={14} aria-hidden />
-            {route.hasRoute ? t.confirm.routed(applyLabel) : t.confirm.direct}
+            {route.hasRoute ? t.confirm.routed(applyLabel, subject) : t.confirm.direct}
           </p>
         )}
       </div>

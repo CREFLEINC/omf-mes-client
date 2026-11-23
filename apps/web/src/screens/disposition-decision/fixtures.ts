@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import type userEvent from '@testing-library/user-event';
 import { expect } from 'vitest';
 
@@ -48,7 +48,11 @@ export interface DispositionStubOptions {
 export const saveAndConfirm = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
   await user.click(screen.getByRole('button', { name: messages.dispositionDecision.actions.save }));
   if (screen.queryByRole('dialog') === null) return;
-  const ok = screen.getByRole('button', { name: messages.dispositionDecision.confirm.ok });
+  const { request, save } = messages.dispositionDecision.confirm;
+  /* 결재선이 있으면 [결재 요청], 없으면 [판정 저장](#352). */
+  const ok = within(screen.getByRole('dialog')).getByRole('button', {
+    name: new RegExp(`^(${request}|${save})$`),
+  });
   await waitFor(() => expect(ok).toBeEnabled());
   await user.click(ok);
 };

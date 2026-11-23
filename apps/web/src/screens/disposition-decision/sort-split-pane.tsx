@@ -71,12 +71,22 @@ export const SortSplitPane = ({
   const isAll = lots.length > 0 && moved.length >= lots.length;
   const names = (rows: readonly NonconformanceLotRow[]): string => lotNames(lots, rows);
 
+  /*
+   * LOT 을 고르거나 풀 때마다 양품 · 불량 수량 칸에 고른 대로의 합을 «값으로» 채운다 — 사용자가 그대로 고쳐 쓸 수 있다(#352 사용자 지시).
+   * 하나도 고르지 않으면 칸을 비운다.
+   */
   const toggle = (lotId: number, checked: boolean): void => {
+    const sortLotIds = checked
+      ? [...value.sortLotIds, lotId]
+      : value.sortLotIds.filter((id) => id !== lotId);
+    const picked = new Set(sortLotIds);
+    const qtyText = (rows: readonly NonconformanceLotRow[]): string =>
+      sortLotIds.length === 0 ? '' : String(Math.round(sumQty(rows) * 1e6) / 1e6);
     onChange({
       ...value,
-      sortLotIds: checked
-        ? [...value.sortLotIds, lotId]
-        : value.sortLotIds.filter((id) => id !== lotId),
+      sortLotIds,
+      goodQty: qtyText(lots.filter((lot) => !picked.has(lot.lotId))),
+      defectQty: qtyText(lots.filter((lot) => picked.has(lot.lotId))),
     });
   };
 
