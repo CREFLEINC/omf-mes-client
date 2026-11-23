@@ -31,6 +31,7 @@ export type MaterialLotPair = Schemas['MaterialLotPair'];
 export type MaterialLotPairSupplier = Schemas['MaterialLotPairSupplier'];
 export type MaterialLotPairItem = Schemas['MaterialLotPairItem'];
 export type MaterialLotPairDefaultsStatus = MaterialLotPair['defaultsStatus'];
+export type MaterialLotSupplier = Schemas['MaterialLotSupplier'];
 export type MaterialLotTabRow = Schemas['MaterialLotTabRow'];
 export type MaterialLotTab = QueryOf<'/logistics/material-lots'>['tab'];
 export type MaterialLotGeneration = Schemas['MaterialLotGeneration'];

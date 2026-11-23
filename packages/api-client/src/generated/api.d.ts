@@ -26000,6 +26000,84 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/logistics/material-lot-suppliers': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 자재 관리 LOT 공급사 목록(POP 첫째 칸)
+     * @description 근거: P-01-01 (피처 014 FR-010·011, 세 칸). 공급사 = GET /logistics/material-lot-pairs 의 조합 셋(같은 q 거르기)을 공급사로 묶은 것 — 조합 하나라도 맞으면 그 공급사가 선다(발행 이력 없는 공급사도). unprintedCount·creatableCount 는 그 공급사 조합들의 합(pairs 와 같은 계산). 정렬: 할 일(미출력 LOT 이 있거나 P/O 남은 양이 받기 전 자동 LOT 보다 많은) 조합이 있는 공급사 먼저, 그다음 공급사 코드. 만들지 않는다
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description 공장 */
+          plantId: number;
+          /** @description 공급사·품목 코드·이름(부분 일치) — 품목으로 찾으면 그 품목을 가진 공급사가 선다 */
+          q?: string;
+          /** @description 쪽 */
+          page?: number;
+          /** @description 쪽 크기 */
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: components['schemas']['MaterialLotSupplier'][];
+              page: components['schemas']['PageMeta'];
+            };
+          };
+        };
+        /** @description 검증 실패 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다. 단말은 POP 이고 질의 plantId 가 단말 공장이어야 한다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — P-01-01 · W-01-14 중 하나가 필요하다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/logistics/material-lot-pairs': {
     parameters: {
       query?: never;
@@ -26016,6 +26094,8 @@ export interface paths {
         query: {
           /** @description 공장 */
           plantId: number;
+          /** @description 공급사 — POP P-01-01 둘째 칸(품목 표)은 고른 공급사로 거른다(피처 014 세 칸). 비우면 모든 공급사 */
+          supplierId?: number;
           /** @description 공급사·품목 코드·이름(부분 일치) */
           q?: string;
           /** @description 쪽 */
@@ -60043,6 +60123,16 @@ export interface components {
        */
       baseUomCode: string;
     };
+    /** @description POP 첫째 칸 공급사 한 줄(피처 014 FR-010·011 · P-01-01 세 칸) */
+    MaterialLotSupplier: {
+      supplier: components['schemas']['MaterialLotPairSupplier'];
+      /** @description 찾기 조건에 맞는 그 공급사 품목 조합 수 */
+      pairCount: number;
+      /** @description 그 공급사 조합들의 이미 만든 미출력 LOT 수 합 */
+      unprintedCount: number;
+      /** @description 그 공급사 조합들의 P/O 몫으로 아직 만들 수 있는 LOT 수 합 — 계산만 하고 만들지 않는다. 화면 「미출력 N」= unprintedCount + creatableCount */
+      creatableCount: number;
+    };
     /** @description 왼쪽 공급사·품목 한 줄(피처 014 FR-010·011 · P-01-01 · W-01-14) */
     MaterialLotPair: {
       supplier: components['schemas']['MaterialLotPairSupplier'];
@@ -60066,6 +60156,15 @@ export interface components {
         /** @description LOT 당 패키징 수량 */
         packageCount: number | null;
       } | null;
+      /** @description 출력됨 LOT 수 — 대기(입하 전) · 자재 관리 LOT 라벨 발행 기록 있음(「출력됨」 탭과 같은 기준) */
+      printedCount: number;
+      /** @description 품목 수입검사(IQC) 대상 */
+      inspectionRequired: boolean;
+      /**
+       * Format: date-time
+       * @description 그 공급사·품목 자재 관리 LOT 의 마지막 라벨 발행 시각(입하·폐기된 LOT 포함) — 없으면 null
+       */
+      lastIssuedAt: string | null;
     };
     /** @description 오른쪽 탭의 자재 관리 LOT 한 줄(피처 014) — MaterialLotSummary 에 탭 차례·만든 방식·P/O 라인·받은·폐기 시각을 더한다 */
     MaterialLotTabRow: components['schemas']['MaterialLotSummary'] & {
