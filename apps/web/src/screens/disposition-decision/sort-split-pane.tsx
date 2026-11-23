@@ -148,7 +148,11 @@ export const SortSplitPane = ({
       {/* 저장 후 처리 — 고른 LOT 이 있을 때만(고르기 전엔 위 안내만). 처리 결과와 대상 LOT 을 먼저 보인다(#352 사용자 지시). */}
       {moved.length > 0 && !isAll && (
         <div className="disposition-sort-preview" aria-label={t.previewTitle} role="group">
-          <strong>{t.previewTitle}</strong>
+          {/* 제목 앞 아이콘 · 아래 보조 안내는 같은 화면의 저장 결과 카드와 같은 모양(#352 사용자 지시). */}
+          <strong>
+            <Icon name="fact_check" size={18} aria-hidden />
+            {t.previewTitle}
+          </strong>
           <dl className="disposition-sort-preview-rows">
             <div>
               <dt>
