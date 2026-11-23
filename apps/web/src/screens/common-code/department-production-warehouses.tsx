@@ -14,6 +14,7 @@ import { messages } from '@omf-mes/i18n';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import {
@@ -305,9 +306,16 @@ export const ProductionWarehouseSection = ({ editor }: ProductionWarehouseSectio
   return (
     <section className="production-warehouse-section" aria-labelledby="production-warehouse-title">
       <div className="section-heading-row">
-        <h3 id="production-warehouse-title" className="subsection-title">
-          {t.title}
-        </h3>
+        {/*
+         * 출고 창고를 고르는 규칙은 제목 옆 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A).
+         * 제목 안에 두지 않는다 — 구획 이름(`aria-labelledby`)에 문장이 섞인다.
+         */}
+        <div className="info-label">
+          <h3 id="production-warehouse-title" className="subsection-title">
+            {t.title}
+          </h3>
+          <InfoTip text={t.help} />
+        </div>
         <Button
           variant="outlined"
           size="sm"
@@ -317,7 +325,6 @@ export const ProductionWarehouseSection = ({ editor }: ProductionWarehouseSectio
           {`+ ${t.add}`}
         </Button>
       </div>
-      <p className="field-note">{t.help}</p>
       <SaveErrorBanner error={editor.error} />
       {body()}
 
@@ -334,7 +341,6 @@ export const ProductionWarehouseSection = ({ editor }: ProductionWarehouseSectio
           </Button>
         }
       >
-        <p className="dialog-text">{t.picker.description}</p>
         {editor.candidates.length === 0 ? (
           <EmptyState size="sm" title={t.picker.empty} />
         ) : (

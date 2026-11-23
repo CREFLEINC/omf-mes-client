@@ -245,7 +245,7 @@ export const itemExtendedAttrs = {
       editTitle: '사업부 매핑 수정',
       confirm: '확인',
       /* 확인이 저장이라고 오해하면 창을 닫고 화면을 떠난다 — 전체 치환이라 저장이 따로 있다. */
-      notSavedNotice: '확인을 눌러도 아직 저장되지 않습니다. 표를 확인한 뒤 저장하세요.',
+      notSavedNotice: '확인한 뒤 「저장」을 눌러야 저장됩니다.',
     },
     /* 「대상 품목 이름을 못 받았다」는 저장을 막지 않는다 — 표시만의 문제다. */
     itemNamesLoadFailed: '대상 품목 이름을 불러오지 못했습니다. 저장에는 영향이 없습니다.',
@@ -298,7 +298,7 @@ export const itemExtendedAttrs = {
       addTitle: '단위 환산 추가',
       editTitle: '단위 환산 수정',
       confirm: '확인',
-      notSavedNotice: '확인을 눌러도 아직 저장되지 않습니다. 표를 확인한 뒤 저장하세요.',
+      notSavedNotice: '확인한 뒤 「저장」을 눌러야 저장됩니다.',
     },
     validation: {
       required: '필수 입력 항목입니다.',
@@ -353,7 +353,7 @@ export const itemExtendedAttrs = {
       addTitle: '외부 코드 추가',
       editTitle: '외부 코드 수정',
       confirm: '확인',
-      notSavedNotice: '확인을 눌러도 아직 저장되지 않습니다. 표를 확인한 뒤 저장하세요.',
+      notSavedNotice: '확인한 뒤 「저장」을 눌러야 저장됩니다.',
     },
     externalSystemPlaceholder: '외부 시스템을 선택하세요',
     validation: {

@@ -74,6 +74,14 @@ describe('GiFilterBar — 모아서 적용', () => {
     expect(screen.getAllByLabelText(t.historyFields.period)).toHaveLength(1);
   });
 
+  /* 기본 기간이 없다는 사실은 출고일 라벨 옆 ⓘ 로 읽힌다 — 늘 펼쳐 두지 않는다(관리웹 정리 시안 A). */
+  it('기본 기간이 없다는 사실은 출고일 옆 ⓘ 의 설명으로 읽힌다', () => {
+    renderBar();
+
+    expect(screen.getByRole('button', { name: t.historyFilters.periodNote })).toBeInTheDocument();
+    expect(screen.queryByText(t.historyFilters.periodNote)).not.toBeInTheDocument();
+  });
+
   /**
    * **대상 조건 줄의 라벨과 겹치지 않는다.** 두 탭이 같은 낱말을 쓰면 한 화면 안에서 같은
    * 이름의 컨트롤이 둘이 되고, 이름으로 집는 조작·시험이 어느 것을 집었는지 알 수 없게 된다.

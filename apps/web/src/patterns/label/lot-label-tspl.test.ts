@@ -25,7 +25,6 @@ const FIELDS: MaterialLotLabelFields = {
   issueSeq: 2,
   supplier: 'SYN SUPPLIER (100330)',
   receipt: 'RCV 2026-09-14',
-  kind: 'material',
 };
 
 /** 한국어·베트남어가 든 합성값 — 이 세 줄만 그림으로 바뀌어야 한다. */
@@ -46,7 +45,6 @@ const STRESS: MaterialLotLabelFields = {
   issueSeq: 12345,
   supplier: 'S'.repeat(90),
   receipt: 'R'.repeat(80),
-  kind: 'material',
 };
 
 /* 80 × 30 mm 를 203 dpi 로 옮긴 점 수와, 실기에서 맞춘 안전 여백(좌우 4 mm · 위 2 mm · 아래 6 mm). */
@@ -112,7 +110,7 @@ const inkedRight = (bitmap: LabelBitmap): number =>
  *    겹치지 않는다. 시작점만 보면 잘림을 못 잡는다 — 끝점까지 본다(실기 HT800 2026-09-15).
  */
 const expectInside = (layout: MaterialLotLabelLayout): void => {
-  const { qr, texts, reverse } = layout;
+  const { qr, texts } = layout;
 
   expect(qr.x).toBe(LEFT);
   expect(qr.y).toBeGreaterThanOrEqual(TOP);
@@ -139,29 +137,13 @@ const expectInside = (layout: MaterialLotLabelLayout): void => {
     for (const b of boxes.slice(index + 1)) {
       const sameBand = a.top < b.bottom && b.top < a.bottom;
 
-      if (sameBand && a.field !== 'iqc' && b.field !== 'iqc') {
+      if (sameBand) {
         expect(Math.max(a.left, b.left) - Math.min(a.right, b.right)).toBeGreaterThanOrEqual(
           GAP_2MM,
         );
       }
     }
   });
-
-  if (reverse !== null) {
-    expect(reverse.x + reverse.width).toBeLessThanOrEqual(RIGHT_EDGE);
-    expect(reverse.y).toBeGreaterThanOrEqual(TOP);
-    expect(reverse.y + reverse.height).toBeLessThanOrEqual(BOTTOM_EDGE);
-    /* 뒤집는 상자에는 IQC 글자만 들어간다 — 다른 글이 닿으면 함께 뒤집힌다. */
-    for (const box of boxes.filter((each) => each.field !== 'iqc')) {
-      const touches =
-        box.left < reverse.x + reverse.width &&
-        reverse.x < box.right &&
-        box.top < reverse.y + reverse.height &&
-        reverse.y < box.bottom;
-
-      expect(touches).toBe(false);
-    }
-  }
 };
 
 describe('layoutMaterialLotLabel — 2026-10-24 개편 배치 (omf-all-around#184)', () => {
@@ -183,11 +165,9 @@ describe('layoutMaterialLotLabel — 2026-10-24 개편 배치 (omf-all-around#18
 
     for (const fields of [FIELDS, STRESS, { ...STRESS, uomCode: null, receipt: null }]) {
       expectInside(layoutMaterialLotLabel(fields));
-      expectInside(layoutMaterialLotLabel({ ...fields, kind: 'iqc' }));
     }
     expectInside(layoutMaterialLotLabel(LOCAL, local));
     expectInside(layoutMaterialLotLabel(longLocal, local));
-    expectInside(layoutMaterialLotLabel({ ...longLocal, kind: 'iqc' }, local));
   });
 
   it('LOT 이 길어 QR 이 커지면 글줄 칸이 «실제 QR 한 변»을 따라 좁아진다', () => {
@@ -345,37 +325,6 @@ describe('buildMaterialLotLabel — TEXT 판', () => {
     expect(command).not.toContain('BITMAP');
   });
 
-  it('⭐ IQC 라벨은 #n 대신 검은 상자 IQC — TEXT 를 찍고 REVERSE 로 뒤집는다(글줄 뒤 · QR 앞)', () => {
-    const lines = buildMaterialLotLabel({ ...FIELDS, kind: 'iqc' }).split('\r\n');
-    const iqc = lines.indexOf('TEXT 548,19,"0",0,12,12,"IQC"');
-    const reverse = lines.indexOf('REVERSE 540,16,67,40');
-    const lastText = lines.reduce(
-      (last, line, index) => (line.startsWith('TEXT ') ? index : last),
-      -1,
-    );
-
-    expect(lines.some((line) => line.includes('"#2"'))).toBe(false);
-    expect(iqc).toBeGreaterThan(-1);
-    expect(reverse).toBe(iqc + 1);
-    expect(iqc).toBe(lastText);
-    expect(lines[reverse + 1]).toMatch(/^QRCODE /u);
-
-    /* 뒤집는 상자가 IQC 글자를 품고, 품번은 상자 2 mm 앞에서 끝난다. */
-    const { texts, reverse: box } = layoutMaterialLotLabel({ ...FIELDS, kind: 'iqc' });
-    const mark = texts.find((line) => line.field === 'iqc');
-    const itemCode = texts.find((line) => line.field === 'itemCode');
-
-    expect(box).toEqual({ x: 540, y: 16, width: 67, height: 40 });
-    expect(mark?.x).toBeGreaterThanOrEqual(540);
-    expect((mark?.x ?? 0) + (mark?.width ?? 0)).toBeLessThanOrEqual(540 + 67);
-    expect((mark?.y ?? 0) + lineHeight(mark?.point ?? 0)).toBeLessThanOrEqual(16 + 40);
-    expect((itemCode?.x ?? 0) + (itemCode?.width ?? 0)).toBeLessThanOrEqual(540 - GAP_2MM);
-  });
-
-  it('자재 라벨에는 REVERSE 가 없다', () => {
-    expect(buildMaterialLotLabel(FIELDS)).not.toContain('REVERSE');
-  });
-
   it('너무 긴 품번은 줄였다가 잘라 끝에 ~ 를 남긴다 — 회차 칸 위로 넘치게 두지 않는다', () => {
     const { texts } = layoutMaterialLotLabel({ ...FIELDS, itemCode: 'X'.repeat(120) });
     const itemCode = texts.find((line) => line.field === 'itemCode');
@@ -458,9 +407,6 @@ describe('buildMaterialLotLabelBytes — ASCII 밖 줄만 그림으로', () => {
 
   it('모든 줄이 ASCII 면 그림을 켜도 TEXT 판과 바이트까지 같다', () => {
     expect(Array.from(buildMaterialLotLabelBytes(FIELDS, fakeRaster))).toEqual(ascii(FIELDS));
-    expect(Array.from(buildMaterialLotLabelBytes({ ...FIELDS, kind: 'iqc' }, fakeRaster))).toEqual(
-      ascii({ ...FIELDS, kind: 'iqc' }),
-    );
   });
 
   it('한글을 못 그리는 단말이면(그림 없음) 결정 17 대로 ? 로 찍는다', () => {
@@ -529,15 +475,6 @@ describe('buildMaterialLotLabelBytes — ASCII 밖 줄만 그림으로', () => {
     expect((decoded?.x ?? 0) + inkedRight(decoded?.bitmap ?? createBitmap(0, 0))).toBeLessThan(
       RIGHT_EDGE,
     );
-  });
-
-  it('⛔ IQC 의 REVERSE 는 그림 줄까지 다 찍은 뒤 QR 앞에 온다 — 뒤에 그린 그림이 상자를 덮지 않게', () => {
-    const text = latin1(buildMaterialLotLabelBytes({ ...LOCAL, kind: 'iqc' }, fakeRaster));
-    const reverse = text.indexOf('REVERSE ');
-
-    expect(reverse).toBeGreaterThan(text.lastIndexOf('BITMAP '));
-    expect(reverse).toBeGreaterThan(text.indexOf('"IQC"'));
-    expect(reverse).toBeLessThan(text.indexOf('QRCODE '));
   });
 });
 

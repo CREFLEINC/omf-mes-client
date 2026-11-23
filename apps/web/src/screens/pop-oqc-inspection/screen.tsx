@@ -55,7 +55,7 @@ import {
   judgmentTone,
   usePopJudgment,
 } from './judgment';
-import { PopQueueList } from './queue-list';
+import { isUnjudgeable, PopQueueList } from './queue-list';
 import { PopRequestBand } from './request-summary';
 import { PopSerialDialog, PopSerialSummary } from './serial-step';
 import { PopShipmentBar, PopShipmentDetail, usePopShipmentForm } from './shipment';
@@ -106,11 +106,17 @@ export const PopOqcInspectionScreen = () => {
     page: 1,
     size: PENDING_SIZE,
   });
+  /*
+   * 「판정 완료」 탭 앞쪽 쪽들은 판정을 마친 열린 의뢰(`judgedRows`, 화면에서 자름), 그 뒤 쪽들은 서버의 완료 의뢰다.
+   * 한 쪽에 둘을 섞어 칸을 넘기지 않는다(목록 칸 안 스크롤 · 잘림 없음 — 사용자 지시 2026-11-20).
+   */
+  const judgedOpenRows = (pendingQueue.data?.rows ?? []).filter(isJudgedOpen);
+  const judgedPages = Math.ceil(judgedOpenRows.length / Math.max(1, pageSize));
   const doneQueue = useInspectionQueue({
     inspectionTypeCode: FIXED_AXES.inspectionTypeCode,
     pendingOnly: false,
     statusCode: 'COMPLETED',
-    page: view === 'done' ? page : 1,
+    page: view === 'done' ? Math.max(1, page - judgedPages) : 1,
     size: pageSize,
   });
   const queue = view === 'pending' ? pendingQueue : doneQueue;
@@ -119,8 +125,17 @@ export const PopOqcInspectionScreen = () => {
    * (확정은 출하 완료 때라 상태가 진행으로 남는다). 미검사가 있거나 피킹 LOT 이 없으면 「판정 대기」.
    */
   const pendingRows = pendingQueue.data?.rows ?? [];
-  const waitingRows = pendingRows.filter((row) => !isJudgedOpen(row));
-  const judgedRows = pendingRows.filter(isJudgedOpen);
+  /*
+   * 판정할 수 있는 의뢰 먼저, 「판정 불가」(피킹 LOT 없음)는 맨 아래(사용자 지시 2026-11-20 · 출하 포장 #329 와 같다).
+   * 각 묶음 안은 받은 순서 그대로. ⭐ 한 번에 읽은 목록을 화면에서 쪽으로 나누므로 «자르기 전에» 줄 세운다.
+   * 고른 의뢰는 번호로 기억하므로 순서가 바뀌어도 그대로다.
+   */
+  const unsortedWaiting = pendingRows.filter((row) => !isJudgedOpen(row));
+  const waitingRows = [
+    ...unsortedWaiting.filter((row) => !isUnjudgeable(row)),
+    ...unsortedWaiting.filter(isUnjudgeable),
+  ];
+  const judgedRows = judgedOpenRows;
   const viewCount = {
     pending: waitingRows.length,
     done: judgedRows.length + (doneQueue.data?.page.total ?? 0),
@@ -230,23 +245,31 @@ export const PopOqcInspectionScreen = () => {
 
   /*
    * 판정 대기는 한 번에 읽은 줄(200)을 화면에서 쪽으로 나눠 보인다. 판정 완료는 서버 쪽 읽기 그대로이고,
-   * 판정을 마친 열린 의뢰(`judgedRows`)는 첫 쪽 앞에 선다(피처 010 — 목록 칸은 넘치면 굴린다).
+   * 판정을 마친 열린 의뢰(`judgedRows`)는 앞쪽 쪽들에 선다(피처 010 · 한 쪽은 칸에 드는 만큼).
    */
   const pendingPage = pageOf(waitingRows, page, pageSize);
   const rows =
     view === 'pending'
       ? pendingPage.items
-      : [...(page === 1 ? judgedRows : []), ...(doneQueue.data?.rows ?? [])];
+      : page <= judgedPages
+        ? pageOf(judgedRows, page, pageSize).items
+        : (doneQueue.data?.rows ?? []);
   const listPager =
     view === 'pending'
       ? { total: pendingPage.total, pages: pendingPage.pages }
       : {
-          total: doneQueue.data?.page.total ?? null,
+          total:
+            doneQueue.data === undefined
+              ? judgedRows.length > 0
+                ? judgedRows.length
+                : null
+              : judgedRows.length + doneQueue.data.page.total,
           pages: Math.max(
             1,
-            Math.ceil(
-              (doneQueue.data?.page.total ?? 0) / Math.max(1, doneQueue.data?.page.size ?? 1),
-            ),
+            judgedPages +
+              Math.ceil(
+                (doneQueue.data?.page.total ?? 0) / Math.max(1, doneQueue.data?.page.size ?? 1),
+              ),
           ),
         };
 
@@ -321,6 +344,9 @@ export const PopOqcInspectionScreen = () => {
   const showResult = selectedId === null ? view === 'done' : formReady && judgmentState.isLocked;
   const editable = formReady && !judgmentState.isLocked;
   const inQuantity = !showResult && step === 'quantity';
+  /* 오른쪽 입력(키패드) 칸 — 옛 흐름에서 의뢰를 골라 수량을 적을 때만. 고르기 전·판정 결과·새 흐름은 두지 않고
+     상세가 그 폭을 쓴다(사용자 지시 2026-11-20). */
+  const showKeypad = inQuantity && !isNewFlow && selectedId !== null;
   /* [저장](1단계 → 2단계)과 단계 줄 「2 최종 판정」은 같은 조건 — 수량 합계 = 검사 수량. */
   const nextReason: string | null = !formReady
     ? selectedId === null
@@ -411,11 +437,8 @@ export const PopOqcInspectionScreen = () => {
   const workBody = (() => {
     if (selectedId === null) {
       return (
-        <PuEmpty
-          icon="file"
-          title={t.detail.nothingSelectedTitle}
-          hint={view === 'done' ? t.detail.nothingSelectedDone : t.detail.nothingSelected}
-        />
+        /* 제목 한 줄만 — 설명 문장은 두지 않는다(불필요 문구 제거 · 사용자 지시 2026-11-20). */
+        <PuEmpty icon="file" title={t.detail.nothingSelectedTitle} />
       );
     }
     if (detail.isError) {
@@ -635,7 +658,7 @@ export const PopOqcInspectionScreen = () => {
       className="oqc-u"
       actionBar={isNewFlow ? <PopShipmentBar form={shipmentForm} /> : actionBar}
     >
-      <PuCols variant={inQuantity && !isNewFlow ? 'lk' : 'list'}>
+      <PuCols variant={showKeypad ? 'lk' : 'list'}>
         <PuSection
           className="oqc-list-card"
           head={
@@ -722,7 +745,7 @@ export const PopOqcInspectionScreen = () => {
           </PuSection>
         )}
 
-        {inQuantity && !isNewFlow && (
+        {showKeypad && (
           <PuSection title={t.result.keypadTitle}>
             <PuKeypad
               targetLabel={keypadOn ? t.result.fields[keypadTarget] : null}

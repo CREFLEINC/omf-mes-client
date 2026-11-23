@@ -61,8 +61,8 @@ describe('VersionTransitionDialog — 문면 잣대', () => {
     renderVersionTransition();
 
     const description = t.dialog.confirmDescription;
-    const lockAt = description.indexOf('더 이상 수정할 수 없습니다');
-    const nextAt = description.indexOf('신규 버전');
+    const lockAt = description.indexOf('고칠 수 없습니다');
+    const nextAt = description.indexOf('새 버전');
 
     expect(screen.getByRole('dialog', { name: t.dialog.confirmTitle })).toBeInTheDocument();
     expect(screen.getByText(description)).toBeInTheDocument();

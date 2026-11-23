@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   createStubFetch,
@@ -249,7 +249,7 @@ describe('RoutingScreen — 품목 검색·선택', () => {
   it('품목을 고르면 작성중 개정을 바로 연다(#231)', async () => {
     const { router } = renderScreen([itemListRoute(), revisionListRoute()], '?item=5001');
 
-    const card = await screen.findByRole('region', { name: '공정 경로' });
+    const card = await screen.findByRole('region', { name: '라우팅' });
     expect(within(card).getByRole('tab', { name: '설정' })).toHaveAttribute(
       'aria-selected',
       'true',
@@ -290,6 +290,33 @@ describe('RoutingScreen — 품목 검색·선택', () => {
   });
 });
 
+describe('RoutingScreen — 품목 목록 접기(#350)', () => {
+  afterEach(() => {
+    window.localStorage.removeItem('omf-mes:routing:split:collapsed');
+  });
+
+  it('접으면 「목록 N건」 탭이 서고, 펼친 뒤에도 고른 품목 · 적던 Routing 코드가 그대로다', async () => {
+    const { user } = renderScreen(
+      [itemListRoute(), revisionListRoute(), routingDetailRoute()],
+      '?item=5001',
+    );
+    await user.type(await screen.findByLabelText('Routing 코드'), '-B');
+    const split = document.querySelector('.routing-split');
+
+    await user.click(
+      screen.getAllByRole('button', { name: messages.common.inspectionHub.listCollapse })[0]!,
+    );
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = split!.querySelector('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록3건');
+
+    await user.click(tab as HTMLElement);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    expect(screen.getByRole('button', { name: 'ITM-001' })).toHaveAttribute('aria-current', 'true');
+    expect(screen.getByLabelText('Routing 코드')).toHaveValue('STANDARD-B');
+  });
+});
+
 describe('RoutingScreen — Rev 목록 조회·선택', () => {
   /*
    * 품목 목록의 「기본 Rev」 열이 보이는 품목마다 Rev 목록을 받는다(#231) — 그래도 itemId 없는 요청은 없다
@@ -311,7 +338,7 @@ describe('RoutingScreen — Rev 목록 조회·선택', () => {
     renderScreen([itemListRoute(), revisionListRoute()]);
     await screen.findByRole('button', { name: 'ITM-001' });
 
-    const itemPane = screen.getByRole('region', { name: '품목' });
+    const itemPane = screen.getByRole('region', { name: '품목 목록' });
     expect(within(itemPane).getByRole('columnheader', { name: /기본 Rev/ })).toBeInTheDocument();
     expect((await within(itemPane).findAllByText('Rev 2')).length).toBeGreaterThan(0);
     expect(within(itemPane).queryByRole('columnheader', { name: /유효/ })).toBeNull();
@@ -453,7 +480,7 @@ describe('RoutingScreen — 헤더 상세 조회와 상태 잠금', () => {
     expect(within(actions).queryByRole('button', { name: '확정' })).toBeNull();
     expect(within(actions).getByRole('button', { name: '폐기' })).toBeEnabled();
     /* 신규 Rev 발행은 카드 머리 오른쪽(#231). */
-    const card = screen.getByRole('region', { name: '공정 경로' });
+    const card = screen.getByRole('region', { name: '라우팅' });
     expect(within(card).getByRole('button', { name: '신규 Rev 발행' })).toBeInTheDocument();
   });
 
@@ -497,7 +524,7 @@ describe('RoutingScreen — 헤더 상세 조회와 상태 잠금', () => {
     );
 
     /* 설정 탭 요약 줄에 품목코드 · 품목명을 칸을 나눠 보인다(#231). */
-    const card = await screen.findByRole('region', { name: '공정 경로' });
+    const card = await screen.findByRole('region', { name: '라우팅' });
     expect((await within(card).findByText('품목코드')).parentElement).toHaveTextContent(
       '품목코드ITM-001',
     );
@@ -510,7 +537,7 @@ describe('RoutingScreen — 헤더 상세 조회와 상태 잠금', () => {
       '?item=5001&rev=7003',
     );
 
-    const card = await screen.findByRole('region', { name: '공정 경로' });
+    const card = await screen.findByRole('region', { name: '라우팅' });
     expect(await within(card).findByText('Rev 3 · 작성중')).toBeInTheDocument();
     expect(within(card).getByRole('tab', { name: '설정' })).toHaveAttribute(
       'aria-selected',
@@ -1543,7 +1570,7 @@ describe('RoutingScreen — 확정·폐기', () => {
 });
 
 /* 신규 Rev 발행 · 첫 등록 단추는 상세 카드 「설정」 탭의 「기본 정보」 머리에 있다(#231). */
-const revisionRegion = (): HTMLElement => screen.getByRole('region', { name: '공정 경로' });
+const revisionRegion = (): HTMLElement => screen.getByRole('region', { name: '라우팅' });
 
 const createRoutingRoute = (
   respond: StubRoute['respond'] = () =>
@@ -1584,7 +1611,7 @@ describe('RoutingScreen — 신규 Rev 발행과 첫 Rev 등록', () => {
       '?item=5001&rev=7001',
     );
 
-    const card = await screen.findByRole('region', { name: '공정 경로' });
+    const card = await screen.findByRole('region', { name: '라우팅' });
     expect(await within(card).findByText('Rev 1 · 폐기')).toBeInTheDocument();
     expect(within(card).queryByRole('button', { name: '신규 Rev 발행' })).toBeNull();
     /* 안내 상자 대신 머리 라벨 하나. */
@@ -1948,7 +1975,7 @@ describe('RoutingScreen — 공정 선후행 설정', () => {
 
     expect(
       await within(dialog).findByText(
-        '이 Rev는 이미 확정돼 선후행을 바꿀 수 없습니다. 목록을 새로 읽었습니다 — 바꾸려면 신규 Rev를 발행하세요.',
+        '이 Rev는 이미 확정돼 선후행을 바꿀 수 없습니다. 바꾸려면 「신규 Rev 발행」을 누르세요.',
       ),
     ).toBeInTheDocument();
     await waitFor(() => expect(within(dialog).queryByRole('combobox')).toBeNull());
@@ -2015,10 +2042,10 @@ describe('RoutingScreen — 공정 선후행 설정', () => {
     const dependencies = within(operationsRegion()).getByRole('button', { name: '공정 연결' });
     expect(dependencies).toBeDisabled();
     expect(dependencies).toHaveAccessibleDescription(
-      '공정 연결은 공정 2개 이상 등록 시 사용 가능합니다.',
+      '공정을 2개 이상 등록하면 공정 연결을 쓸 수 있습니다.',
     );
     expect(
-      within(operationsRegion()).getByText('공정 연결은 공정 2개 이상 등록 시 사용 가능합니다.'),
+      within(operationsRegion()).getByText('공정을 2개 이상 등록하면 공정 연결을 쓸 수 있습니다.'),
     ).toHaveClass('visually-hidden');
   });
 });

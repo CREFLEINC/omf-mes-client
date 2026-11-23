@@ -33,6 +33,11 @@ export interface WorkerListPaneProps {
   selectedWorkerId: number | null;
   onSelect: (workerId: number) => void;
   loadError: ReactNode;
+  /**
+   * 조회 조건 · 목록을 화면이 따로 세울 때(통일 배치 · #350) 두 조각을 받아 배치한다.
+   * 없으면 한 구획 안에 조건 줄 · 목록을 차례로 둔다 — 화면은 늘 넘기고, 목록 부품만 따로 그리는 부품 시험이 빈 채로 쓴다.
+   */
+  layout?: (parts: { filter: ReactNode; list: ReactNode }) => ReactNode;
 }
 
 /**
@@ -57,6 +62,7 @@ export const WorkerListPane = ({
   selectedWorkerId,
   onSelect,
   loadError,
+  layout,
 }: WorkerListPaneProps) => {
   /* 트리거 모델: 편집은 모아서 적용, 해제는 즉시. */
   const [draft, setDraft] = useState<ScopedFilters>(appliedFilters);
@@ -173,8 +179,8 @@ export const WorkerListPane = ({
   /* 조건 칸이 모두 줄에 보여 칩을 따로 두지 않는다(C-6). 「초기화」는 바뀐 것이 있을 때만 보인다. */
   const isChanged = hasChangedFilters(EMPTY_SCOPED_FILTERS, draft, appliedFilters);
 
-  return (
-    <section className="pane" aria-label={t.panes.worker}>
+  const filter = (
+    <>
       {optionsNotice}
 
       <div className="filter-bar">
@@ -226,8 +232,17 @@ export const WorkerListPane = ({
           )}
         </div>
       </div>
+    </>
+  );
 
-      {listSlot()}
+  const list = listSlot();
+
+  if (layout !== undefined) return layout({ filter, list });
+
+  return (
+    <section className="pane" aria-label={t.panes.worker}>
+      {filter}
+      {list}
     </section>
   );
 };

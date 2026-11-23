@@ -40,7 +40,7 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
       IN_PROGRESS: 'Đang làm',
       CONFIRMED: 'Hoàn tất',
     },
-    noPermission: 'Người có quyền xác nhận (W-01-15) mới xác nhận đánh giá · sửa đánh giá',
+    noPermission: 'Người có quyền xác nhận mới xác nhận đánh giá · sửa đánh giá',
     columns: {
       lotNo: 'Số LOT',
       qty: 'Số lượng',
@@ -179,7 +179,6 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
       CONFIRM_CANCELLED: 'Hủy xác nhận đánh giá',
       REOPENED_BY_REWORK: 'Mở lại do làm lại',
       SKIPPED: 'Bỏ qua kiểm tra',
-      SKIP_VOIDED: 'Hủy bỏ qua kiểm tra (hủy chốt)',
       SPLIT_OUT: 'Tách LOT quản lý vật tư',
       SPLIT_IN: 'Tạo do tách',
       CANCELLED_BY_REOPEN: 'Hủy yêu cầu do hủy chốt',
@@ -287,7 +286,7 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
     conflict: 'Dữ liệu đã thay đổi',
     reload: 'Tải lại',
     failed: 'Không xác nhận được đánh giá.',
-    noPermission: 'Người có quyền xác nhận (W-01-15) mới xác nhận đánh giá · sửa đánh giá',
+    noPermission: 'Người có quyền xác nhận mới xác nhận đánh giá · sửa đánh giá',
   },
   cancel: {
     open: 'Sửa đánh giá',
@@ -314,7 +313,7 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
     blockedTitle: 'Không thể sửa đánh giá',
     blockedLead: 'Các việc dưới đây đã diễn ra nên không thể sửa đánh giá.',
     blockedTail:
-      'Hãy hủy nhập kho hoặc hoàn tác thay đổi trạng thái rồi thử lại. Nếu xử lý · chấp nhận đặc biệt cho hàng không đạt đã bắt đầu, hãy xử lý ở W-03-10.',
+      'Hãy hủy nhập kho hoặc hoàn tác thay đổi trạng thái rồi thử lại. Nếu xử lý · chấp nhận đặc biệt cho hàng không đạt đã bắt đầu, hãy xử lý ở Ra quyết định xử lý.',
     blockedOk: 'Xác nhận',
     blockers: {
       GOODS_RECEIVED: 'Có LOT quản lý vật tư đã nhập kho',
@@ -322,7 +321,7 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
         'Có LOT quản lý vật tư đổi trạng thái ngoài IQC (nghi ngờ · tạm giữ, v.v.)',
       DISPOSITION_STARTED: 'Đã bắt đầu xử lý không phù hợp',
       CONCESSION_EXISTS: 'Có yêu cầu chấp nhận đặc biệt',
-      INBOUND_LOT_FINALIZED: 'LOT nhập hàng đã chốt cuối cùng (W-01-16)',
+      INBOUND_LOT_FINALIZED: 'LOT nhập hàng đã chốt cuối cùng',
     } as Record<string, string>,
     failed: 'Không hủy được xác nhận.',
   },

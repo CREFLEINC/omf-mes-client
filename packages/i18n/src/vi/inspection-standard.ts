@@ -292,6 +292,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   listColumns: {
     versionStatus: 'Trạng thái',
     item: 'Mặt hàng',
+    itemCode: 'Mã mặt hàng',
+    itemName: 'Tên mặt hàng',
     approval: 'Trạng thái phê duyệt',
     active: 'Trạng thái sử dụng',
     approved: 'Đã duyệt',

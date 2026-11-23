@@ -113,7 +113,6 @@ export const QualificationFormDialog = ({
           options={QUALIFICATION_TYPE_OPTIONS}
           value={values.qualificationTypeCode}
           onChange={(value) => change({ qualificationTypeCode: value })}
-          note={messages.pendingCode.note}
           error={errors.qualificationTypeCode}
         />
 

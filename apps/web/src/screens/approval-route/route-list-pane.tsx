@@ -2,6 +2,7 @@ import { Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/we
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { approvalTypeLabelOf } from './code-options';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
 import type { RouteView } from './types';
@@ -75,7 +76,7 @@ export const RouteListPane = ({
           type="button"
           className="link-cell"
           aria-label={t.actions.selectRow(
-            row.approvalTypeCode,
+            approvalTypeLabelOf(row.approvalTypeCode),
             businessUnitLabel(row.businessUnitId),
           )}
           aria-current={row.approvalRouteId === selectedRouteId ? 'true' : undefined}
@@ -83,7 +84,7 @@ export const RouteListPane = ({
             onSelect(row.approvalRouteId);
           }}
         >
-          {row.approvalTypeCode}
+          {approvalTypeLabelOf(row.approvalTypeCode)}
         </button>
       ),
     },

@@ -149,10 +149,10 @@ describe('모바일 홈 남은 작업 배지(피처 002)', () => {
     expect(
       screen.getByRole('link', { name: t.workCount.label(shippingLabel, 2) }),
     ).toBeInTheDocument();
-    /* 셀 것이 없는 업무는 지금처럼 「작업 N개」다. */
+    /* 셀 것이 없는 업무는 지금처럼 「작업 N개」다(입하 오류 등록 · 재생재 등록은 감춤). */
     expect(
       screen.getByRole('link', { name: new RegExp(`^${t.areas.inbound.label}`) }),
-    ).toHaveTextContent(t.areas.count(5));
+    ).toHaveTextContent(t.areas.count(2));
   });
 
   it('US3-1 업무 화면의 작업 줄에 그 작업의 수가 선다', async () => {

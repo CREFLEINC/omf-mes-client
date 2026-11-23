@@ -24,39 +24,6 @@
   gap: 8px;
 }
 
-/* 의뢰 정보 띠: 이름을 값 위에 작게 — 1단계 2열, 2단계·판정 결과(넓음) 4열. */
-.oqc-band > .pu-band.grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px 16px;
-  background: var(--pu-field);
-}
-
-.oqc-band.is-wide > .pu-band.grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.oqc-band .pu-band .kv {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0;
-}
-
-.oqc-band .pu-band .kv > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 13px;
-}
-
-.oqc-band .pu-band .kv > span > .pu-ic {
-  color: var(--pu-primary);
-}
-
-.oqc-band .pu-band .kv > b {
-  max-width: 100%;
-  white-space: nowrap;
-}
-
 .oqc-band .oqc-vrow {
   display: inline-flex;
   align-items: center;
@@ -272,90 +239,243 @@
  * 출하 OQC 새 흐름(피처 010) 상세 · 바닥 띠 — main 의 옛 `.pop-ui` 규칙을 이 화면 뿌리(`.oqc-u`)로 옮겼다.
  * 나머지 `pop-oqc-shipment*` 모양은 `app/pop.css` 의 피처 010 구획에 있다.
  */
-.oqc-u .pop-oqc-num {
-  font-variant-numeric: tabular-nums;
-}
-
 .oqc-u .pop-oqc-summary {
   display: flex;
   flex: none;
   flex-direction: column;
-  gap: var(--space-2);
-  padding-block-end: var(--space-3);
-  border-block-end: 1px solid var(--outline-variant);
+  gap: 8px;
 }
 
-.oqc-u .pop-oqc-summary__key {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-3) var(--space-6);
-}
-
-.oqc-u .pop-oqc-summary__no {
+/* 피킹 LOT 이 없을 때 한 줄 — 출하 완료(`psc-empty-row`)와 같은 모양. */
+.oqc-u .pop-oqc-empty-row {
   margin: 0;
-  font: 700 24px / 32px var(--font-sans);
-  letter-spacing: -0.01em;
+  padding: 12px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-field);
+  color: var(--pu-text-3);
+  font-size: 14px;
+  text-align: center;
 }
 
-.oqc-u .pop-oqc-summary__figures {
-  display: flex;
-  gap: var(--space-6);
-  margin: 0;
+/* LOT 번호·수량은 한 줄 — 창고 몫만 줄을 바꾼다. */
+.oqc-u .pop-oqc-nowrap {
+  white-space: nowrap;
 }
 
-.oqc-u .pop-oqc-summary dt {
-  font-size: var(--pop-label);
-  line-height: 20px;
-  color: var(--on-surface-variant);
-}
-
-.oqc-u .pop-oqc-summary dd {
-  margin: 0;
-}
-
-.oqc-u .pop-oqc-summary__figures dd {
-  font: 700 24px / 32px var(--font-sans);
-  font-variant-numeric: tabular-nums;
-}
-
-.oqc-u .pop-oqc-summary__ref {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-6);
-  margin: 0;
-}
-
-.oqc-u .pop-oqc-summary__ref > div {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-}
-
-.oqc-u .pop-oqc-summary__ref dd {
-  font-weight: 600;
-}
-
-.oqc-u .pop-oqc-step {
+/*
+ * 상세는 화면 높이 안에 다 든다 — 바깥 스크롤 없음(사용자 지시 2026-11-20). 위에서 아래로 정보 띠(내용 높이) →
+ * LOT·결과 탭 카드 → 결과 등록 카드. 남는 높이는 결과 등록 6 : 탭 카드 4, 결과 등록이 없으면 탭 카드가 다 갖는다.
+ * 카드 안 목록 · 표는 칸에 드는 줄만 한 쪽으로(`.pop-oqc-fit`) — 안쪽 스크롤도 잘린 줄도 없다.
+ */
+.oqc-u .oqc-work > .pu-card-body:has(> .pop-oqc-shipment) {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
 }
 
-.oqc-u .pop-oqc-step__title {
+.oqc-u .oqc-work .pop-oqc-shipment {
   display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-height: 0;
+}
+
+.oqc-u .pop-oqc-shipment > * {
+  flex: none;
+}
+
+.oqc-u .pop-oqc-shipment > .pop-oqc-shipment-box {
+  flex: 4 1 0;
+  min-height: min-content;
+  overflow: hidden;
+}
+
+/*
+ * 판정 대기에서 결과 등록이 열려 있으면 위 탭 카드는 한 쪽(줄 하나 + 쪽 넘김)만 — 남는 높이는 결과 등록이 다 가져 검사 대상 LOT
+ * 여러 줄 · 판정 · 재검 사유가 든다(#334 · 리뷰).
+ */
+.oqc-u .pop-oqc-shipment:has(> .pop-oqc-entry-card) > .pop-oqc-shipment-box {
+  flex: none;
+}
+
+/*
+ * 판정 완료 — 피킹 LOT 현황 | 검사 결과 두 카드를 나란히(사용자 지시 2026-11-20). 탭 카드와 같은 몫(4)을 갖고 두 카드는 같은 높이.
+ * 좁은 화면(≤1100)은 위아래로 쌓는다.
+ */
+.oqc-u .pop-oqc-shipment > .pop-oqc-shipment-split {
+  flex: 4 1 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  min-height: min-content;
+}
+
+.oqc-u .pop-oqc-shipment-split > .pop-oqc-shipment-box {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 나눈 카드는 좁다 — 회차 줄의 LOT 칩은 칸 안에서 줄이고, 「검사자 · 시각」은 다음 줄 오른쪽으로 내린다(겹치지 않게). */
+.oqc-u .pop-oqc-shipment-split .pop-oqc-shipment-result__body {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.oqc-u .pop-oqc-shipment-split .pop-oqc-shipment-result__body > * {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.oqc-u .pop-oqc-shipment-split .pop-oqc-shipment-result > :last-child {
+  flex-basis: 100%;
+  text-align: end;
+}
+
+/* 두 카드는 4 : 6 으로 나누되 줄 한 개는 늘 든다(목록 칸 최소 높이 = 첫 줄 높이 · `useFitPage`). */
+.oqc-u .pop-oqc-shipment > .pop-oqc-entry-card {
+  flex: 6 1 0;
+  min-height: min-content;
+}
+
+.oqc-u .pop-oqc-entry-card > .pu-card-body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 칸에 드는 줄만 보이는 목록 · 표 — 카드 안 남는 높이를 갖는다(쪽 넘김은 카드 제목 줄). */
+.oqc-u .pop-oqc-shipment-box > .pu-fit,
+.oqc-u .pop-oqc-entry > .pu-field > .pu-fit,
+.oqc-u .pop-oqc-entry-card > .pu-card-body > .pu-fit {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+/* 결과가 없을 때 탭 대신 서는 제목 — 보통 카드 제목(`pu-card-head h2`)과 같은 글자. */
+.oqc-u .pop-oqc-shipment-box__title {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 17px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* 결과 등록의 두 구획 탭은 글자 폭만큼 — 위 카드의 [피킹 LOT 현황 | 검사 결과] 탭과 같은 모양(사용자 지시 2026-11-20). */
+.oqc-u .pop-oqc-entry-card > .pu-card-head > .pu-seg {
+  flex: none;
+}
+
+.oqc-u .pop-oqc-shipment-box__head .pu-pager,
+.oqc-u .pop-oqc-entry-card .pu-card-head .pu-pager {
+  margin: 0;
+}
+
+/* 검사 대상 LOT 번호 — 좁은 칸에서도 다 보이게 줄을 바꾼다. */
+.oqc-u .pop-oqc-match .pu-check,
+.oqc-u .pop-oqc-lotno {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 정보 띠는 낮게 — 칸 최소 폭을 줄여 줄 수를 줄인다(상세가 화면 높이에 다 들게). */
+.oqc-u .pop-oqc-summary .pu-band-stack.is-fluid > .pu-band.grid {
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  row-gap: 2px;
+}
+
+/* ① 검사 대상 LOT · 판정 — 왼쪽 LOT 목록, 오른쪽 판정(→ 재검 사유), 사이 세로 구분선(포장 단위 화면과 같은 1px 선). */
+.oqc-u .pop-oqc-entry {
+  display: grid;
+  flex: 1 1 0;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  /* 줄 높이 = 칸 높이 — 판정 칸(재검 사유)이 길어도 LOT 목록 칸이 늘지 않아 쪽이 튀지 않는다(#334 · 리뷰). */
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+  gap: 24px;
+}
+
+/*
+ * [재검사 추가]로 결과 등록을 열면 위 두 카드(피킹 LOT 현황 | 검사 결과)는 접는다(#334 · 리뷰) — 피킹 LOT 은 아래 검사 대상 LOT 과
+ * 같은 목록이고, 두 카드가 한 줄씩만 서도 1280×800 에서 결과 등록에 LOT 3줄 · 재검 사유가 들지 않는다.
+ */
+.oqc-u .pop-oqc-shipment > .pop-oqc-shipment-split.is-entry {
+  display: none;
+}
+
+/* 재검 사유 고르기는 판정 바로 아래 — 바뀌는 LOT 줄은 그 아래에 두고 칸을 넘으면 잘린다(고르기 칸은 늘 보인다 · #334 · 리뷰). */
+.oqc-u .pop-oqc-entry__col .iqc-inbound-reason {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.oqc-u .pop-oqc-entry__col .iqc-inbound-reason > .field-note {
+  order: 1;
+}
+
+.oqc-u .pop-oqc-entry > .pu-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.oqc-u .pop-oqc-entry__col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding-left: 24px;
+  border-left: 1px solid var(--pu-line-2);
+}
+
+/* ② 검사 항목 — 표 제목 줄은 구획 탭이 대신한다(건수는 탭에). */
+.oqc-u .pop-oqc-items .pqc-web-section-head {
+  display: none;
+}
+
+/* 표 칸 높이 = 표 높이(쪽 줄 수를 정확히 재게 위아래 여백 없음). */
+.oqc-u .pop-oqc-items .pqc-web-section {
+  padding-block: 0;
+}
+
+/* 피킹 LOT · 검사 결과 줄은 낮게 — 한 쪽에 더 들게. */
+.oqc-u .pop-oqc-shipment-box .pop-oqc-shipment-lot,
+.oqc-u .pop-oqc-shipment-box .pop-oqc-shipment-result {
+  gap: 2px 16px;
+  padding-block: 6px;
+}
+
+/* 검사 결과 탭 — 회차 줄 아래 그 회차에 저장된 시리얼(번호 · OK/NG). */
+.oqc-u .pop-oqc-result-serials {
+  display: flex;
+  flex-basis: 100%;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
-  margin: 0;
-  font: 600 18px / 26px var(--font-sans);
+  gap: 6px 12px;
 }
 
-.oqc-u .pop-oqc-step__hint {
-  margin-inline-start: var(--space-2);
-  font: 400 var(--pop-label) / 22px var(--font-sans);
-  color: var(--on-surface-variant);
+.oqc-u .pop-oqc-result-serial {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 목록 카드 — 지시서 번호를 다 보이고 칩은 자리가 모자라면 아래로(작업 시작·재작업 목록과 같은 짜임). */
+.oqc-item .pu-item-top {
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
+
+.oqc-item .pu-item-top .no {
+  white-space: nowrap;
+  flex: none;
 }
 
 .oqc-u .pop-oqc-bar-note {
@@ -376,7 +496,136 @@
 }
 
 /* 잠긴 까닭 · 준비됨 안내는 공통 메뉴 아래에서 감춘다(main 과 같다) — 저장 중 · 저장됨 · 실패는 그대로 보인다. */
-.pop-frame .oqc-u .pop-oqc-bar-note--blocked,
+.pop-frame .oqc-u .pop-oqc-bar-note--blocked:not(.is-shown),
 .pop-frame .oqc-u .pop-oqc-bar-note--ready {
   display: none;
+}
+
+/*
+ * 출하 OQC 새 흐름 정리(사용자 지시 2026-11-20 · #334) — 정보 우선순위 · 작업 영역 강조 · 여백 줄임.
+ */
+
+/* 정보 띠 보조 정보(의뢰번호 · 고객 · 납품처 · 검사 기준 · 의뢰 일시)는 작고 옅게 — 주요 정보와 구분. */
+.oqc-u .pop-oqc-sub {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--pu-text-2);
+}
+
+/* 목록 카드 — 품목 코드를 둘째 줄 맨 앞에 또렷하게. */
+.oqc-item .pu-item-sub .oqc-item-code {
+  color: var(--pu-text);
+  font-weight: 600;
+}
+
+/* 왼쪽 단(정보 · 피킹 LOT 현황 · 검사 결과)은 간격을 줄인다. */
+.oqc-u .pop-oqc-shipment__col {
+  gap: 12px;
+}
+
+.oqc-u .pop-oqc-shipment-box {
+  gap: 8px;
+  padding: 12px 16px;
+}
+
+/* 검사 대상 LOT — 다른 POP 고르기 목록과 같은 체크 줄. */
+.oqc-u .pop-oqc-match {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.oqc-u .pop-oqc-match > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  border-bottom: 1px solid var(--pu-line-2);
+}
+
+.oqc-u .pop-oqc-match-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+
+/* 검사 기준 창 항목 이름은 줄을 바꾼다. */
+.pu-table td.pop-oqc-wrap {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: break-word;
+}
+
+/*
+ * 낮은 화면(1024×768 등) — 정보 띠를 「이름 값」 한 줄씩 이어 붙여(값은 자르지 않음) 낮춘다.
+ */
+@media (max-height: 820px) {
+  .oqc-u .pop-oqc-summary .pu-band-stack.is-fluid > .pu-band.grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 16px;
+    padding-block: 6px;
+  }
+
+  .oqc-u .pop-oqc-summary .pu-band-stack .pu-band .kv {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+  }
+
+  .oqc-u .pop-oqc-summary .pu-band-stack .pu-band .kv > span > .pu-ic {
+    display: none;
+  }
+
+  /* 카드 안 · 사이 여백을 줄이고, 검사 결과 회차 이름은 내용과 한 줄에. */
+  .oqc-u .oqc-work > .pu-card-body:has(> .pop-oqc-shipment) {
+    padding-bottom: 8px;
+  }
+
+  .oqc-u .oqc-work .pop-oqc-shipment {
+    gap: 6px;
+  }
+
+  .oqc-u .pop-oqc-shipment-box {
+    padding-block: 8px;
+  }
+
+  .oqc-u .pop-oqc-entry-card > .pu-card-head {
+    padding-top: 8px;
+  }
+
+  .oqc-u .pop-oqc-entry-card > .pu-card-body {
+    gap: 8px;
+    padding-block: 8px;
+  }
+
+  .oqc-u .pop-oqc-shipment-box .pop-oqc-shipment-result__body {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
+/* 좁은 화면 — 판정 타일 셋이 다 보이게 두 칸을 반씩. */
+@media (max-width: 1100px) {
+  /* 결과 등록이 열려 있으면 나란히 둔다 — 위아래로 쌓으면 결과 등록 칸이 남지 않는다(1024 실측). */
+  .oqc-u .pop-oqc-shipment > .pop-oqc-shipment-split:not(.is-entry) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .oqc-u .pop-oqc-entry {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .oqc-u .pop-oqc-entry__col {
+    padding-left: 16px;
+  }
+}
+
+/* 판정 타일 — 좁은 오른쪽 칸에서도 「불합격」이 잘리지 않게 안쪽 여백을 줄인다. */
+.oqc-u .pop-oqc-entry .pu-tile {
+  gap: 6px;
+  padding-inline: 8px;
 }

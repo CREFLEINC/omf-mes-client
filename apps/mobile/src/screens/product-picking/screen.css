@@ -40,8 +40,6 @@
 }
 
 .picking__targets,
-.picking__lots,
-.picking__portions,
 .picking__blockers,
 .picking__effects {
   display: flex;
@@ -65,151 +63,331 @@
   margin: 0;
 }
 
-/* 지시서 머리: 고객 · 납품처 · 수주 · 출하 예정을 두 칸 표로. */
-.picking__facts {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--space-1, 4px) var(--space-3, 12px);
-  margin: 0;
-}
-
-.picking__facts dt {
-  color: var(--on-surface-muted, inherit);
-}
-
-.picking__facts dd {
-  margin: 0;
-}
-
-.picking__line {
-  padding-top: var(--space-3, 12px);
-  border-top: 1px solid var(--outline-variant, currentColor);
-}
-
-/* 긴 칩(베트남어)은 줄을 넘긴다. */
-.picking__line-head,
-.picking__lot-head {
+/* ── 피킹 라인 표 — 입하 등록 「이번 입하」 표와 같은 모양(사용자 지시 2026-11-20). ── */
+.picking-tally {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: var(--space-2, 8px);
+}
+
+.picking-tally__title {
+  margin: 0;
+  font: var(--type-title-sm);
+}
+
+.picking-tally__total {
+  margin-inline-start: var(--space-1, 4px);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.picking-tally__box {
+  overflow: hidden;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.picking-tally__table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font: var(--type-body-sm);
+}
+
+.picking-tally__col-no {
+  width: 26px;
+}
+
+.picking-tally__col-lots {
+  width: 32px;
+}
+
+.picking-tally__col-qty {
+  width: 84px;
+}
+
+/* 표 머리 줄은 낭독기에만 — 화면에서는 노이즈다(사용자 지시 2026-11-20). */
+.picking-tally__table thead {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.picking-tally__table thead th {
+  height: 28px;
+  padding: 0 var(--space-1, 4px);
+  border-bottom: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  text-align: start;
+  white-space: nowrap;
+}
+
+.picking-tally__table td {
+  padding: 0 var(--space-1, 4px);
+  border-bottom: 1px solid var(--surface-container-high);
+  white-space: nowrap;
+}
+
+.picking-tally__table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.picking-tally__table .picking-tally__no {
+  padding-inline-start: var(--space-2, 8px);
+  color: var(--on-surface-muted);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.picking-tally__table .picking-tally__num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.picking-tally__table td.picking-tally__num:last-child {
+  padding-inline-end: var(--space-3, 12px);
+}
+
+.picking-tally__num small {
+  margin-inline-start: 2px;
+  color: var(--on-surface-muted);
+  font-size: 10px;
+}
+
+.picking-tally__table td.picking-tally__item {
+  white-space: normal;
+}
+
+/*
+ * 품목 칸 전체가 누르는 자리 — 코드 위 · 이름 아래. 셸의 `.mobile-shell button { white-space: nowrap }` 보다 앞서도록
+ * 표 클래스를 겹쳐 적는다 — 이름이 꺾여야 잘리지 않는다.
+ */
+.picking-tally__table .picking-tally__open {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 48px;
+  padding: var(--space-2, 8px) var(--space-1, 4px);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.25;
+  text-align: start;
+  white-space: normal;
+  cursor: pointer;
+}
+
+.picking-tally__open > * {
+  min-width: 0;
+}
+
+.picking-tally__code {
+  display: flex;
   align-items: center;
+  gap: var(--space-2, 8px);
+  font-family: var(--font-mono);
+  font-weight: 700;
 }
 
-/* 목표 타일 3칸: 목표 · 피킹 · 남음(파랑) 또는 초과(노랑). */
-.picking__tiles {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+/* 품목명은 작게 — 대조는 품목코드로 하고 이름은 거든다. 줄여서라도 전체 — fit-name 이 7px 까지 줄이고 그래도 넘치면 다음 줄로(사용자 지시 2026-11-20). */
+.picking-tally__name {
+  overflow: hidden;
+  color: var(--on-surface-variant);
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * 방금 피킹한 라인 — 초록 바탕 + 왼쪽 6px 선. 3px 은 옅어 한눈에 안 들어왔다 · 줄을 둘러싼
+ * 테두리는 지나쳤다(사용자 지시 2026-11-20). 이미 피킹한 LOT 을 또 찍으면 그 라인을 같은 모양의 회색으로.
+ */
+.picking-tally__table tr[data-current='true'] > td {
+  background: var(--semantic-success-container);
+}
+
+.picking-tally__table tr[data-current='true'] > td:first-child {
+  box-shadow: inset 6px 0 0 var(--semantic-success);
+}
+
+.picking-tally__table tr[data-duplicate='true'] > td {
+  background: var(--surface-container-high);
+}
+
+.picking-tally__table tr[data-duplicate='true'] > td:first-child {
+  box-shadow: inset 6px 0 0 var(--on-surface-muted);
+}
+
+.picking-tally__lots {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.picking-tally__qty-col {
+  width: 96px;
+}
+
+/* 불합격 LOT 이 있는 라인 — 줄 안 칩으로만(교체는 시트에서). 빨강은 진짜 오류라 쓴다. */
+.picking-tally__rejected {
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+  background: var(--semantic-error-container);
+  color: var(--semantic-error-text);
+  font: var(--type-label-sm);
+  font-family: var(--font-sans);
+}
+
+/* 목표를 채운 라인 — 수량을 초록 글자로. */
+.picking-tally__table tr[data-reached='true'] .picking-tally__num:last-child {
+  color: var(--semantic-success-text);
+}
+
+/* ── 지시서 머리 한 줄 — 번호 · 고객 · 수주 · 출하 예정, 오른쪽 작은 [지시서 코드]. ── */
+.picking__head {
+  display: flex;
+  align-items: center;
   gap: var(--space-2, 8px);
 }
 
-.picking__tile {
+.picking__head-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.picking__head-no {
+  font-family: var(--font-mono);
+}
+
+.picking__status:empty {
+  display: none;
+}
+
+/* ── 라인 시트 — 이름표 칸 아래 피킹 LOT. ── */
+.picking-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+.picking-sheet__lots {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  list-style: none;
+}
+
+.picking-lot {
   display: flex;
   flex-direction: column;
   gap: var(--space-1, 4px);
   padding: var(--space-2, 8px) var(--space-3, 12px);
-  border-radius: var(--radius-md, 8px);
-  background: var(--surface-container-low, transparent);
+  border-bottom: 1px solid var(--surface-container-high);
 }
 
-.picking__tile span {
-  color: var(--on-surface-muted, inherit);
-}
-
-.picking__tile strong {
-  font-size: 1.5rem;
-}
-
-.picking__tile--remaining {
-  background: var(--semantic-info-container, var(--surface-container));
-  color: var(--on-semantic-info-container, inherit);
-}
-
-.picking__tile--over {
-  background: var(--semantic-warning-container, var(--surface-container));
-  color: var(--on-semantic-warning-container, inherit);
-}
-
-.picking__lot {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2, 8px);
-  padding: var(--space-3, 12px);
-  border: 1px solid var(--outline-variant, currentColor);
-  border-radius: var(--radius-md, 8px);
-  background: var(--surface, transparent);
-}
-
-/* 방금 집은 LOT — 붉은 테. */
-.picking__lot--fresh {
-  border-color: var(--semantic-error, currentColor);
-  border-width: 2px;
+.picking-lot:last-child {
+  border-bottom: 0;
 }
 
 /* 교체로 빠진 LOT — 흐린 이력 줄. */
-.picking__lot--replaced {
+.picking-lot--replaced {
   opacity: 0.6;
-  background: var(--surface-container-low, transparent);
 }
 
-.picking__lot-qty {
+.picking-lot__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+
+.picking-lot__no {
+  font-family: var(--font-mono);
+}
+
+.picking-lot__qty {
   margin-inline-start: auto;
-  font-weight: 600;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
-.picking__portions > li {
+/* 창고 · 위치 몫 — 찍을 때마다 보는 정보라 LOT 번호 아래 늘 작게(사용자 결정 2026-11-20). */
+.picking-lot__portions {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  list-style: none;
+}
+
+.picking-lot__portions > li {
   display: flex;
   align-items: center;
   gap: var(--space-2, 8px);
-  color: var(--on-surface-variant, inherit);
 }
 
-/* 수량은 줄 끝 — 사이에 「적치 대기」 칩이 들어와도 자리가 같다. */
-.picking__portions > li > span:last-child {
+.picking-lot__portions > li > span:last-child {
   margin-left: auto;
 }
 
-.picking__replace {
-  align-self: flex-start;
-  background: var(--semantic-error, currentColor);
-  border-color: var(--semantic-error, currentColor);
-}
-
-.picking__code {
+.picking-lot__foot {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1, 4px);
-}
-
-.picking__code-label {
-  color: var(--on-surface-muted, inherit);
-}
-
-.picking__code-row,
-.picking__code-actions {
-  display: flex;
+  align-items: center;
   gap: var(--space-2, 8px);
 }
 
-.picking__code-value {
+.picking-lot__code {
+  display: flex;
   flex: 1;
+  align-items: center;
+  gap: var(--space-2, 8px);
   min-width: 0;
-  justify-content: flex-start;
+  font: var(--type-body-sm);
   overflow-wrap: anywhere;
 }
 
-/* 다음 스캔이 이 칸으로 간다 — 받는 중임을 테로. */
-.picking__code-value--waiting {
-  border-color: var(--primary, currentColor);
-  border-width: 2px;
+.picking-lot__code-label {
+  color: var(--on-surface-muted);
 }
 
-.picking__code-edit {
+/* 불합격 LOT 의 [교체] — 작은 빨간 외곽선. 꽉 찬 빨강은 교체 확인 창에만(사용자 결정 2026-11-20). */
+.picking-lot__replace.pda-button--outlined.pda-button--outlined:not(:disabled) {
+  color: var(--primary);
+  box-shadow: inset 0 0 0 1.5px var(--primary);
+}
+
+.picking-lot__replace.pda-button--outlined.pda-button--outlined:not(:disabled):focus-visible {
+  box-shadow:
+    inset 0 0 0 1.5px var(--primary),
+    var(--focus-ring);
+}
+
+.picking-lot__code-edit {
   display: flex;
   flex-direction: column;
   gap: var(--space-2, 8px);
 }
 
-.picking__code-actions > * {
+.picking-lot__code-actions {
+  display: flex;
+  gap: var(--space-2, 8px);
+}
+
+.picking-lot__code-actions > * {
   flex: 1;
 }
 
@@ -245,4 +423,39 @@
 .picking--qr > div {
   align-self: stretch;
   text-align: start;
+}
+
+/* 피처 012 — 줄 출고 창고 꼬리표(이 기기 줄은 파랑, 창고 미지정은 흐림). */
+.picking-tally__warehouse {
+  display: block;
+  white-space: normal;
+  color: var(--semantic-info);
+  font: var(--type-label-sm);
+  overflow-wrap: anywhere;
+}
+
+.picking-tally__warehouse[data-unassigned='true'] {
+  color: var(--on-surface-muted);
+}
+
+/* 이 기기 범위 밖 줄(FR-011) — 점선 테 · 회색 바탕, 읽기만. */
+.picking-tally__table tr[data-out-of-scope='true'] td {
+  background: var(--surface-container-low);
+  color: var(--on-surface-muted);
+  border-bottom: 1px dashed var(--outline-variant);
+}
+
+.picking-tally__table tr[data-out-of-scope='true'] .picking-tally__item {
+  white-space: normal;
+}
+
+.picking-tally__scope {
+  display: block;
+  font: var(--type-label-sm);
+  overflow-wrap: anywhere;
+}
+
+/* 두 창고에 걸친 LOT — 다른 창고에 남은 몫(Edge). */
+.picking-lot__split {
+  color: var(--on-surface-variant);
 }

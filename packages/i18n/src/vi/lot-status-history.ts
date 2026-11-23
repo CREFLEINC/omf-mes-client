@@ -37,6 +37,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     all: 'Tất cả',
     inactive: (label: string): string => `${label} (ngừng dùng)`,
     unlisted: (value: string): string => `${value} (chưa có trong danh sách)`,
+    empty: '—',
   },
   lotFilter: {
     pane: 'Điều kiện tra cứu LOT',
@@ -102,6 +103,8 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     columns: {
       lot: 'Số LOT',
       item: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       status: 'Trạng thái',
       onHand: 'Số lượng đang giữ',
       latestTransition: 'Ngày thay đổi cuối',
@@ -229,6 +232,24 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
       issueText: (goodsIssueNo: string, lineNo: number): string =>
         `${goodsIssueNo} · dòng ${String(lineNo)}`,
       childrenUsage: 'Hiển thị cả các LOT sản xuất đã dùng LOT được tách ra từ LOT này.',
+    },
+    productSplit: {
+      note: 'LOT được tách ra từ LOT gốc bằng thao tác tách LOT sản xuất.',
+      unconfirmedChip: 'Chưa xác nhận trên PDA',
+      qty: 'Số lượng tách',
+      at: 'Thời điểm tách',
+      atText: (at: string, terminal: string | null, worker: string | null): string =>
+        [at, terminal, worker].filter((part) => part !== null && part !== '').join(', '),
+      location: 'Vị trí tách',
+      // ui-check-ignore: C-13 시안 W0301 확정 표기(창고 · 위치)
+      locationText: (warehouseCode: string, locationCode: string): string =>
+        `${warehouseCode} · ${locationCode}`, // ui-check-ignore: C-13 시안 W0301 확정 표기
+      confirmed: 'Xác nhận trên PDA',
+      confirmedText: (at: string, worker: string | null): string =>
+        worker === null ? at : `${at}, ${worker}`,
+      notConfirmed: 'Chưa. Trước khi xác nhận, không lấy hàng xuất được',
+      workOrder: 'W/O',
+      workOrderText: (workOrderNo: string): string => `${workOrderNo} (LOT gốc)`,
     },
     fields: {
       lotNo: 'Số LOT',

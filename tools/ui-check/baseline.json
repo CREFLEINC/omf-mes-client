@@ -493,18 +493,6 @@
       "n": 1,
       "text": "가운뎃점: {row.isActive ? '' : ` · ${t.inactive}`}"
     },
-    "C-13|apps/web/src/patterns/pop-dev-screen-nav.tsx|23a123d9cd83": {
-      "n": 1,
-      "text": "가운뎃점: label: 'P-02-09 포장 라벨·인식표 재출력',"
-    },
-    "C-13|apps/web/src/patterns/pop-dev-screen-nav.tsx|2829c1c445ab": {
-      "n": 1,
-      "text": "가운뎃점: label: 'P-02-04 생산 실적·라벨·LOT 마감',"
-    },
-    "C-13|apps/web/src/patterns/pop-dev-screen-nav.tsx|b67bc924eb03": {
-      "n": 1,
-      "text": "가운뎃점: { path: '/pop/material-lot-label', label: 'P-01-01 자재LOT 등록·라벨' },"
-    },
     "C-13|apps/web/src/patterns/pop-screen-catalog.ts|d698551fc8ab": {
       "n": 1,
       "text": "가운뎃점: { path: '/pop/material-lot-label', code: 'P-01-01', name: '자재LOT 등록·라벨 발행' },"
@@ -2333,14 +2321,6 @@
       "n": 1,
       "text": "가운뎃점: body: '불합격으로 확정된 LOT 은 재검사 회차를 확정할 수 없습니다. 처분 판정에서 재작업(재검)·폐기·정상을 고르거나, 공급사로 반품하세요.',"
     },
-    "C-13|packages/i18n/src/ko/iqc-skip-approval.ts|bc8c280201f4": {
-      "n": 1,
-      "text": "가운뎃점: finished: (total: number): string => `결재 종료 · 전체 ${String(total)}단계`,"
-    },
-    "C-13|packages/i18n/src/ko/iqc-skip-request.ts|6495da05daea": {
-      "n": 1,
-      "text": "가운뎃점: placeholder: '라인 정지 임박 · 대체 자재 없음',"
-    },
     "C-13|packages/i18n/src/ko/item-extended-attrs.ts|0ca5316f758b": {
       "n": 1,
       "text": "가운뎃점: lot: 'LOT 기본값·식별',"
@@ -3225,10 +3205,6 @@
       "n": 1,
       "text": "<Button className=\"variance__wide\" variant=\"filled\" size=\"2xl\""
     },
-    "C-4|apps/mobile/src/screens/iqc-skip-request/screen.tsx|5d208bb28706": {
-      "n": 1,
-      "text": "<Button className=\"iqc-skip__wide\" variant=\"filled\" size=\"2xl\" disable"
-    },
     "C-4|apps/mobile/src/screens/material-lot-scan/screen.tsx|4a1c1d8670f4": {
       "n": 1,
       "text": "<Button className=\"material-lot-scan__wide\" variant=\"filled\" size=\"2"
@@ -3380,10 +3356,6 @@
     "C-4|apps/web/src/screens/iqc-inspection/result-form-pane.tsx|fe5d9aee68d0": {
       "n": 1,
       "text": "<Button type=\"button\" variant=\"filled\" size="
-    },
-    "C-4|apps/web/src/screens/iqc-skip-approval/decision-pane.tsx|c98617546d25": {
-      "n": 1,
-      "text": "<Button variant=\"filled\" disabled={isLocked} onClick={onApprove}>"
     },
     "C-4|apps/web/src/screens/lot-status-transition/candidate-screen.tsx|2332dc000ffd": {
       "n": 1,
@@ -3944,22 +3916,6 @@
     "C-8|apps/web/src/screens/iqc-inspection/pagination.ts|21542e9d817f": {
       "n": 1,
       "text": "pagination.ts"
-    },
-    "C-8|apps/web/src/screens/iqc-skip-approval/load-error-banner.tsx|da6b22b0db5e": {
-      "n": 1,
-      "text": "load-error-banner.tsx"
-    },
-    "C-8|apps/web/src/screens/iqc-skip-approval/page-nav.tsx|578be1d8b21c": {
-      "n": 1,
-      "text": "page-nav.tsx"
-    },
-    "C-8|apps/web/src/screens/iqc-skip-approval/pagination.ts|21542e9d817f": {
-      "n": 1,
-      "text": "pagination.ts"
-    },
-    "C-8|apps/web/src/screens/iqc-skip-approval/select-field.tsx|7925b44059cd": {
-      "n": 1,
-      "text": "select-field.tsx"
     },
     "C-8|apps/web/src/screens/item-extended-attrs/load-error-banner.tsx|da6b22b0db5e": {
       "n": 1,

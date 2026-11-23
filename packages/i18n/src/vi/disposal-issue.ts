@@ -18,7 +18,6 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
     label: 'Yêu cầu hủy · lịch sử xử lý',
     disposal: 'Yêu cầu hủy',
     history: 'Lịch sử xử lý',
-    note: 'Việc phê duyệt làm ở hộp phê duyệt. Màn hình này trình yêu cầu hủy và xử lý xuất khác cho yêu cầu đã được duyệt.',
   },
   fields: {
     warehouse: 'Kho',
@@ -64,8 +63,6 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
     lookupFailed: 'Không tải được danh sách tên. Hãy thử lại.',
     lookupTruncated:
       'Danh sách tên chỉ về một phần. Giá trị cần tìm có thể không có trong danh sách — không phải là đã mất.',
-    warehouseTypePending:
-      'Màn hình không lọc được kho thuộc diện hủy nên hiện mọi kho. Hãy tự chọn kho đang chứa vật tư cần hủy.',
     chipWarehouse: (name: string): string => `Kho: ${name}`,
     chipPeriodBoth: (from: string, to: string): string => `Ngày nhập kho: ${from} ~ ${to}`,
     chipPeriodFrom: (from: string): string => `Ngày nhập kho: từ ${from}`,
@@ -202,8 +199,6 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
   form: {
     label: 'Thông tin yêu cầu hủy',
     reasonPlaceholder: 'VD) Hủy phần bị đánh giá lỗi — 12 thùng không đạt kiểm tra đầu vào',
-    reasonHelper:
-      'Dòng đầu sẽ thành phần tóm tắt trong danh sách hộp phê duyệt. Hãy ghi ở dòng đầu là hủy cái gì, bao nhiêu và vì sao.',
     businessDateDerived:
       'Ngày làm việc được dựng từ ngày xuất kho và gửi kèm — không có ô ghi riêng.',
     selfDisposalChosen: 'Đã chọn tự hủy nên không chọn đối tác hủy.',
@@ -213,12 +208,6 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
       'Danh sách chọn chỉ về một phần đầu. Nếu không thấy đối tác cần tìm, hãy báo người phụ trách.',
     partnerEmptyNote: 'Không có đối tác hủy nào để chọn. Với tự hủy thì vẫn trình được.',
     partnerEmptyPlaceholder: 'Không có đối tác để chọn',
-    destinationNote:
-      'Nơi đến được gửi cùng phiếu khi yêu cầu phê duyệt — sau khi phê duyệt thì màn hình này không đổi được.',
-    sendToErpNote:
-      'Việc có gửi ERP hay không không do màn hình này quyết định — theo mặc định của máy chủ.',
-    chainNote:
-      'Bấm 「Yêu cầu phê duyệt」 thì phiếu yêu cầu hủy được tạo rồi trình lên phê duyệt. Lúc này tồn kho chưa chuyển động — nó chuyển động ở 「Xử lý xuất khác」 sau khi phê duyệt xong.',
   },
   actionReasons: {
     codeListPending:
@@ -268,8 +257,6 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
     postDeducts: 'Bấm xác nhận thì tồn kho bị trừ đúng bằng số lượng của phiếu này.',
     postNoUndo:
       'Màn hình này không có cách hoàn tác. Muốn hoàn nguyên thì cần hủy phiếu xuất kho, và việc đó lại phải qua phê duyệt.',
-    postJudgePending:
-      'Màn hình chưa xét được là đã phê duyệt hay chưa. Nếu chưa phê duyệt thì máy chủ sẽ từ chối xử lý.',
     postProgressUnread: 'Xử lý mà chưa xác nhận được tiến trình phê duyệt.',
     postAlreadyPosted:
       'Phiếu này có dòng đã ghi sổ. Xử lý lại thì tồn kho có thể chuyển động thêm một lần nữa.',
@@ -306,20 +293,9 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
   },
   post: {
     label: 'Xử lý xuất khác',
-    lead: 'Đây là nơi xử lý yêu cầu hủy đã được phê duyệt thành xuất kho thực tế.',
     destinationLabel: 'Nơi đến',
-    effectsLabel: 'Những việc xảy ra khi xử lý',
-    effectDeducts: 'Thao tác này trừ tồn kho.',
-    effectApprovalIsNotPosting:
-      'Phê duyệt không trừ tồn kho — sau khi phê duyệt vẫn phải bấm nút này thì việc xuất kho mới xảy ra.',
-    effectNoUndoHere:
-      'Muốn hoàn nguyên thì cần hủy phiếu xuất kho và việc hủy lại phải qua phê duyệt — màn hình này không có cách đó.',
-    unjudgeableNote:
-      'Màn hình không xét được là phê duyệt đã xong hay chưa nên không khóa nút này. Nếu chưa phê duyệt thì máy chủ sẽ từ chối xử lý.',
   },
   notes: {
-    disposalQtyEmptyStart:
-      'Số lượng hủy bắt đầu bằng ô trống. Hãy tự ghi lượng cần hủy cho từng dòng.',
     submitRecheck:
       'Không xác nhận được đã gửi đến nơi hay chưa. Hãy kiểm tra ở tab 「Lịch sử xử lý」 xem phiếu đã được tạo chưa rồi mới thử lại.',
     reloadFailed:
@@ -405,10 +381,6 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
     notFoundDescription: 'Yêu cầu phê duyệt đã bị xóa hoặc không nối với phiếu này.',
     loadFailedNote:
       'Dù không đọc được tiến trình phê duyệt thì những việc làm được với yêu cầu hủy này cũng không thay đổi.',
-    postSeparateNote:
-      'Phê duyệt không trừ tồn kho. Sau khi phê duyệt xong phải làm riêng 「Xử lý xuất khác」 thì việc xuất kho mới xảy ra.',
-    unjudgeableNote:
-      'Màn hình không xét được là phê duyệt đã xong hay chưa. Hãy nhìn các bước và mã trạng thái ở trên để tự đánh giá.',
     approvedNotPostedNote:
       'Đã được phê duyệt. Tồn kho chưa bị trừ — hãy tiến hành 「Xử lý xuất khác」.',
   },

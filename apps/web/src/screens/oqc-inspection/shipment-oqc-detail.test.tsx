@@ -75,7 +75,7 @@ const renderShipmentOqc = (options: Options = {}) => {
       return jsonResponse(request);
     }
     if (path === '/quality/inspection-results' && req.method === 'GET') {
-      /* 회차 목록 — 결과 요약을 회차 모양으로(생략 칸이 «결과 0건»을 이것으로 본다). */
+      /* 회차 목록 — 결과 요약을 회차 모양으로. */
       const items = (request.results ?? []).map((result) => ({
         ...result,
         inspectionRequestId: request.inspectionRequestId,
@@ -195,7 +195,9 @@ describe('W-04-03 출하 OQC 새 흐름 — 상세', () => {
     expect(
       results.getByRole('button', { name: `${s.results.seq(1)} ${s.results.edit}` }),
     ).toBeInTheDocument();
-    expect(screen.getByText(s.note)).toBeInTheDocument();
+    /* 판정 규칙은 늘 펼쳐 두지 않고 「검사 결과」 제목 옆 ⓘ 로 둔다. */
+    expect(screen.getByRole('button', { name: s.note })).toBeInTheDocument();
+    expect(screen.queryByText(s.note)).toBeNull();
   });
 
   it('US3-5 교체된 LOT 은 회색 이력 줄(교체됨 · 부적합 번호)로만 남고 매칭 후보에서 빠진다', async () => {
@@ -396,15 +398,18 @@ describe('W-04-03 출하 OQC 새 흐름 — 상세', () => {
     });
   });
 
-  it('Q16 생략으로 닫힌 의뢰는 안내만 서고 결과를 더할 수 없다', async () => {
+  it('Q16 생략으로 닫힌 의뢰는 IQC 와 같은 요약만 — 피킹 LOT 표 · 결과 추가가 없다(#353)', async () => {
     renderShipmentOqc({
       request: shipmentOqcRequest({ statusCode: 'SKIPPED', results: [], lotJudgments: [] }),
     });
 
-    expect(await screen.findByText(s.skipped, { exact: false })).toBeInTheDocument();
+    expect(await screen.findByText(messages.partsIqcInspection.skipped.notice)).toBeInTheDocument();
+    expect(screen.getByText(messages.partsIqcInspection.skipped.titleOqc)).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', { name: messages.partsIqcInspection.lot.heading }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: s.results.add })).toBeNull();
-    const lots = await lotsTable();
-    expect(lots.getAllByText(s.judgments.SKIPPED).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('table', { name: s.lots.heading(4) })).toBeNull();
   });
 
   it('US3-6 피킹 LOT 이 없으면 빈 상태와 「결과를 추가할 수 없습니다」', async () => {
@@ -433,41 +438,7 @@ describe('W-04-03 출하 OQC 새 흐름 — 목록', () => {
     expect(row.getByText('SR-261118-001')).toBeInTheDocument();
     expect(row.getByText(s.queue.pickedLots(4))).toBeInTheDocument();
     expect(row.getByText(s.overview.rejected(1))).toBeInTheDocument();
-  });
-
-  it('T054·FR-012 진행 중(IN_PROGRESS) 의뢰에는 회차 목록이 비어 와도 [생략 요청]이 없다 — 결과 1건 이상이라는 뜻이다', async () => {
-    renderShipmentOqc({
-      request: { ...shipmentOqcRequest(), statusCode: 'IN_PROGRESS', results: [] },
-    });
-
-    const open = await screen.findByRole('button', { name: t.queue.openRow('IR-OQC-0201') });
-    const row = within(open.closest('tr') as HTMLElement);
-    expect(
-      row.queryByRole('button', { name: messages.iqcInspection.queue.skipRequest }),
-    ).toBeNull();
-  });
-
-  it('T054·FR-012 결과 0건(대기 REQUESTED) 의뢰에만 [생략 요청]이 선다', async () => {
-    renderShipmentOqc({
-      request: { ...shipmentOqcRequest(), statusCode: 'REQUESTED', results: [] },
-    });
-
-    const open = await screen.findByRole('button', { name: t.queue.openRow('IR-OQC-0201') });
-    const row = within(open.closest('tr') as HTMLElement);
-    expect(
-      await row.findByRole('button', { name: messages.iqcInspection.queue.skipRequest }),
-    ).toBeInTheDocument();
-  });
-
-  it('FR-012 결과가 있는 의뢰에는 [생략 요청]이 없다', async () => {
-    renderShipmentOqc();
-
-    const open = await screen.findByRole('button', { name: t.queue.openRow('IR-OQC-0201') });
-    const row = within(open.closest('tr') as HTMLElement);
-    await waitFor(() =>
-      expect(
-        row.queryByRole('button', { name: messages.iqcInspection.queue.skipRequest }),
-      ).toBeNull(),
-    );
+    /* 건별 생략 요청 칸은 없어졌다(omf-all-around#353). */
+    expect(screen.queryByRole('columnheader', { name: '생략' })).toBeNull();
   });
 });

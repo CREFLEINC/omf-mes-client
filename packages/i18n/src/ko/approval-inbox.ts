@@ -6,8 +6,6 @@
  * 서버와 갈리는 순간 사용자에게 거짓 확신을 준다.
  */
 export const approvalInbox = {
-  title: '결재함',
-  breadcrumbRoot: '업무함',
   panes: {
     list: '승인 요청 목록',
     detail: '고른 요청',
@@ -82,10 +80,10 @@ export const approvalInbox = {
      * ①은 대상 자체가 열 화면이 없는 것이고, ②는 규약이 아직 정해지지 않은 것이며,
      * ③은 그 화면이 이 앱에 아직 없는 것이다. 한 문구로 뭉개면 셋을 구분할 수 없다.
      */
-    blockedNotOpenable: '열기: 이 대상은 열 수 있는 화면이 없습니다',
-    blockedNoScreenId: '열기: 이 대상을 여는 화면이 정해지지 않았습니다',
-    blockedUnmapped: '열기: 이 화면은 아직 관리웹에 없습니다',
-    /** 결재함이 무엇을 하지 않는지 밝힌다 — 여기서 문서를 읽을 수 있다고 오해하지 않게. */
+    blockedNotOpenable: '이 문서는 열어 볼 화면이 없습니다',
+    blockedNoScreenId: '이 문서를 열 화면이 정해지지 않았습니다',
+    blockedUnmapped: '이 문서를 열 화면이 아직 없습니다',
+    /** 결재함이 무엇을 하지 않는지 밝힌다(대상 제목 옆 ⓘ) — 여기서 문서를 읽을 수 있다고 오해하지 않게. */
     note: '내용은 원 화면에서 확인합니다',
   },
   /**
@@ -145,7 +143,7 @@ export const approvalInbox = {
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
     beyondLastDescription: '첫 쪽으로 이동하세요.',
     noSelectionTitle: '요청을 고르면 자세한 내용이 보입니다',
-    noSelectionDescription: '위 목록에서 요청번호를 누르세요.',
+    noSelectionDescription: '목록에서 요청번호를 누르세요.',
     /**
      * 상세가 **404**. 「없는 것」이라 주소에서 고른 번호를 정리한다 —
      * 남겨 두면 새로고침·공유가 같은 빈자리로 되돌아온다.
@@ -168,7 +166,7 @@ export const approvalInbox = {
    */
   decision: {
     /**
-     * **버튼 위 상시 자리에 서는 문장.** 성공 알림에 넣지 않는다 — 알림은 사라지지만
+     * **결재 구획 제목 옆 ⓘ 와 승인 확인 창의 문장.** 성공 알림에 넣지 않는다 — 알림은 사라지지만
      * 이 문장은 결재함을 보는 내내 참인 사실이고, 버튼이 잠겨 있을 때도 참이다.
      *
      * 계약이 승인 오퍼레이션 설명에 그대로 적었다: 승인은 요청의 상태만 바꾸고
@@ -179,7 +177,7 @@ export const approvalInbox = {
      * 의견 입력칸 — **하나뿐이다.**
      *
      * 승인이면 선택이고 반려면 필수라 라벨에 필수 표시를 붙이지 않는다(붙이면 승인에는
-     * 거짓말이 된다). 어느 쪽에 무엇이 필요한지는 도움말과 반려 버튼의 사유가 말한다.
+     * 거짓말이 된다). 어느 쪽에 무엇이 필요한지는 라벨 옆 ⓘ(`commentHelp`)와 반려 버튼의 사유가 말한다.
      */
     commentLabel: '결재 의견',
     commentHelp: '승인은 의견을 적지 않아도 되고, 반려는 의견이 있어야 보낼 수 있습니다.',
@@ -188,9 +186,9 @@ export const approvalInbox = {
      * **결재 진행 구획의 같은 뜻 문장과 글자가 다르다**: 저기는 요청의 상태를 말하고
      * 여기는 **이 컨트롤이 왜 잠겼는지**를 말한다(배치 규범 4 — 사유는 컨트롤 이름으로 시작한다).
      */
-    commentDisabledReason: '결재 의견: 지금은 이 요청을 결재할 차례가 아닙니다',
+    commentDisabledReason: '지금은 결재할 차례가 아닙니다',
     /** 전송 중 잠금 사유. 같은 잠금을 여러 컨트롤이 나눠 쓰므로 무엇이 도는 중인지 밝힌다. */
-    commentSendingReason: '결재 의견: 결재를 보내는 중입니다',
+    commentSendingReason: '결재를 보내는 중입니다',
     /**
      * **보내는 자리가 다시 본 결과.** 버튼이 이미 막지만, 확인 창이 열린 사이 값이 비면
      * 여기서 걸린다 — 서버 목이 공백만인 의견을 그대로 받아 주므로 막는 곳이 화면뿐이다.
@@ -199,14 +197,13 @@ export const approvalInbox = {
     approve: '승인',
     reject: '반려',
     /** 비활성 사유는 **그 컨트롤의 이름으로 시작한다**(배치 규범 4). */
-    blockedNotMyTurn: (action: string): string =>
-      `${action}: 지금은 이 요청을 결재할 차례가 아닙니다`,
+    blockedNotMyTurn: (action: string): string => '지금은 결재할 차례가 아닙니다',
     /**
      * **뒤에 조작 이름을 되풀이하지 않는다.** 이 함수의 유일한 호출이 반려라 「반려: 반려
      * 의견을…」로 어절이 겹쳤다. 앞머리가 이미 어느 컨트롤의 사유인지 말하므로 뒤는 무엇이
      * 모자란지만 말한다.
      */
-    blockedNoComment: (action: string): string => `${action}: 의견을 적어야 보낼 수 있습니다`,
+    blockedNoComment: (action: string): string => '의견을 적어 주세요',
     /**
      * **네트워크가 끊긴 갈래에만** 덧붙인다. 요청이 서버에 닿았는지 화면이 알 수 없고,
      * 다시 누르면 **새 요청으로 나가** 두 번 결재될 수 있다는 사실을 숨기지 않는다.
@@ -239,6 +236,26 @@ export const approvalInbox = {
     approved: '승인했습니다',
     rejected: '반려했습니다',
   },
+  /**
+   * 승인 유형 코드 → 사람이 읽는 이름(#353). 서버 알림 이름(`approval-type-names.ts`)과 같은 말이다.
+   * 목록 밖 코드는 코드 그대로 보인다(`approvalTypeLabelOf`).
+   */
+  approvalTypeNames: {
+    GOODS_ISSUE_DISPOSAL: '폐기 출고',
+    INVENTORY_ADJUSTMENT: '재고 조정',
+    PURCHASE_ORDER: 'P/O',
+    INBOUND_RECEIPT_CANCEL: '입하 취소',
+    GOODS_RECEIPT_CANCEL: '입고 취소',
+    GOODS_ISSUE_CANCEL: '출고 취소',
+    SHIPMENT_CANCEL: '출하 취소',
+    PRODUCTION_RESULT_CORRECT: '생산 실적 정정',
+    CONCESSION: '특채',
+  } as Record<string, string | undefined>,
+  /** 요청 상태 이름 — 품질 승인 처리와 같은 말(omf-all-around#353). 목록 밖 코드는 코드 그대로. */
+  requestStatusNames: { PENDING: '결재 대기', APPROVED: '승인', REJECTED: '반려' } as Record<
+    string,
+    string
+  >,
   values: {
     /** 이름이 오지 않았다. **번호를 대신 내지 않는다.** */
     unknownRequester: '상신자를 확인할 수 없습니다',

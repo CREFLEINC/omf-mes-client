@@ -7,7 +7,6 @@ import type { Translated } from './translated';
  */
 export const collectionChannel: Translated<typeof ko.collectionChannel> = {
   title: 'Quản lý ánh xạ kênh thu thập',
-  breadcrumbRoot: 'Quản lý dữ liệu gốc',
   optionsTruncated:
     'Danh sách lựa chọn chỉ hiển thị một phần. Không thấy giá trị cần tìm thì hãy báo người phụ trách.',
   optionsLoadFailed: 'Không tải được danh sách lựa chọn. Chỉ hiển thị giá trị đang lưu.',
@@ -29,6 +28,7 @@ export const collectionChannel: Translated<typeof ko.collectionChannel> = {
   },
   channels: {
     paneTitle: 'Ánh xạ kênh',
+    detailRegion: 'Chi tiết ánh xạ kênh',
     paneOf: (code: string, name: string): string => `Kênh thu thập của ${code} · ${name}`,
     /** 설비를 고르기 전에는 조회 자체가 없다 — 무엇을 해야 하는지 말한다. */
     noEquipmentTitle: 'Hãy chọn thiết bị',
@@ -114,8 +114,6 @@ export const collectionChannel: Translated<typeof ko.collectionChannel> = {
    */
   importLog: {
     title: 'Lấy từ nhật ký nhận',
-    description:
-      'Đây là tín hiệu gần đây vào từ thiết bị này. Hãy chọn tín hiệu cần tạo thành kênh. Tên được lấy đúng như đã nhận nên không chép sai được.',
     loading: 'Đang tải tín hiệu nhận gần đây',
     /** ⭐ 비활성 사유는 그 컨트롤의 이름으로 시작한다. */
     noObservationsReason:

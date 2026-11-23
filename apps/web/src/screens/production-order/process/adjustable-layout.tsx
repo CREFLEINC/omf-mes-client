@@ -12,12 +12,16 @@ import {
   PaneLayoutToggle,
   PaneSplitter,
   usePaneSplit,
+  type PaneCollapse,
   type PaneLayout,
 } from '../../../patterns/po-board';
 import { PaneHeightSplitter, useSplitOrientation } from '../../../patterns/split-orientation';
 
 const LayoutOrientation = createContext<PaneLayout>('side');
 export const useAdjustableOrientation = () => useContext(LayoutOrientation);
+/** 좌우로 설 때 목록 접기(#350) — 목록이 제목 줄에 「목록 접기」를 단다. 접을 수 없으면 `null`. */
+const LayoutCollapse = createContext<PaneCollapse | null>(null);
+export const useAdjustableCollapse = () => useContext(LayoutCollapse);
 
 /** 배치와 비율만 바꾼다. 저장 중인 편집 상태와 선택 대상은 그대로 유지한다. */
 export const AdjustableLayout = ({
@@ -27,6 +31,7 @@ export const AdjustableLayout = ({
   ratio = 0.5,
   className = '',
   collapsible = false,
+  count,
   toolsTargetId,
   children,
 }: {
@@ -36,6 +41,8 @@ export const AdjustableLayout = ({
   ratio?: number;
   className?: string;
   collapsible?: boolean;
+  /** 목록 건수 — 접힌 「목록」 탭에 함께 선다. */
+  count?: number;
   toolsTargetId?: string;
   children: ReactNode;
 }) => {
@@ -65,6 +72,16 @@ export const AdjustableLayout = ({
     return () => observer.disconnect();
   }, []);
   const side = layout === 'side' && fits;
+  const collapse: PaneCollapse | null =
+    side && collapsible
+      ? {
+          collapsed: split.collapsed,
+          onToggle: split.toggleCollapsed,
+          collapseLabel: '목록 접기',
+          expandLabel: '목록 펼치기',
+          count,
+        }
+      : null;
   const panes = Children.toArray(children);
   const layoutTools = (
     <div className="erp-wo-layout-tools" hidden={!fits}>
@@ -87,40 +104,36 @@ export const AdjustableLayout = ({
     <section className="erp-wo-adjustable" aria-label={label}>
       {toolsTarget ? createPortal(layoutTools, toolsTarget) : layoutTools}
       <LayoutOrientation.Provider value={side ? 'side' : 'stack'}>
-        <div
-          ref={ref}
-          data-left-collapsed={side && collapsible && split.collapsed ? 'true' : undefined}
-          className={`erp-wo-adjustable-grid ${side ? 'is-side' : 'is-stacked'} ${className}`}
-          style={{ ...split.style, ...height.style }}
-        >
-          <div className="erp-wo-adjustable-first" hidden={side && collapsible && split.collapsed}>
-            {panes[0]}
+        <LayoutCollapse.Provider value={collapse}>
+          <div
+            ref={ref}
+            data-left-collapsed={side && collapsible && split.collapsed ? 'true' : undefined}
+            className={`erp-wo-adjustable-grid ${side ? 'is-side' : 'is-stacked'} ${className}`}
+            style={{ ...split.style, ...height.style }}
+          >
+            <div
+              className="erp-wo-adjustable-first"
+              hidden={side && collapsible && split.collapsed}
+            >
+              {panes[0]}
+            </div>
+            {side ? (
+              <PaneSplitter
+                label={`${label} 너비 조절`}
+                ratio={split.ratio}
+                onChange={split.commit}
+                collapse={collapse ?? undefined}
+              />
+            ) : (
+              <PaneHeightSplitter
+                label={`${label} 높이 조절`}
+                height={height.listHeight}
+                onChange={height.changeListHeight}
+              />
+            )}
+            <div className="erp-wo-adjustable-second">{panes[1]}</div>
           </div>
-          {side ? (
-            <PaneSplitter
-              label={`${label} 너비 조절`}
-              ratio={split.ratio}
-              onChange={split.commit}
-              collapse={
-                collapsible
-                  ? {
-                      collapsed: split.collapsed,
-                      onToggle: split.toggleCollapsed,
-                      collapseLabel: '목록 접기',
-                      expandLabel: '목록 펼치기',
-                    }
-                  : undefined
-              }
-            />
-          ) : (
-            <PaneHeightSplitter
-              label={`${label} 높이 조절`}
-              height={height.listHeight}
-              onChange={height.changeListHeight}
-            />
-          )}
-          <div className="erp-wo-adjustable-second">{panes[1]}</div>
-        </div>
+        </LayoutCollapse.Provider>
       </LayoutOrientation.Provider>
     </section>
   );

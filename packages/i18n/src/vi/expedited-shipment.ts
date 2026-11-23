@@ -5,8 +5,6 @@ import type { Translated } from './translated';
 export const expeditedShipment: Translated<typeof ko.expeditedShipment> = {
   title: 'Xử lý xuất hàng thẳng khẩn cấp',
   breadcrumbRoot: 'Quản lý bán hàng / xuất hàng',
-  headerNotice:
-    'Bỏ qua luồng thông thường. Xuất hàng thẳng, không qua kho, không lấy hàng, không đóng gói.',
   panes: {
     lot: 'LOT thành phẩm đích',
     target: 'Đích xuất hàng',
@@ -42,8 +40,7 @@ export const expeditedShipment: Translated<typeof ko.expeditedShipment> = {
     label: 'Lệnh xuất hàng',
     placeholder: 'Hãy chọn lệnh xuất hàng',
     empty: 'Không có lệnh xuất hàng nào khớp mặt hàng của LOT đã chọn',
-    filteredByItem:
-      'Chỉ hiện những lệnh khớp mặt hàng của LOT đã chọn. Việc lọc này chỉ áp dụng trong phần kết quả nhận được ở trang này.',
+    filteredByItem: 'Chỉ hiện những lệnh khớp mặt hàng của LOT đã chọn.',
     period: 'Ngày xuất hàng',
     periodNote: 'Chỉ tra cứu các lệnh xuất hàng trong khoảng thời gian này.',
     periodInvalid: 'Ngày bắt đầu sau ngày kết thúc. Hãy đổi hai ngày cho nhau',
@@ -86,7 +83,6 @@ export const expeditedShipment: Translated<typeof ko.expeditedShipment> = {
   reason: {
     label: 'Lý do khẩn cấp',
     help: 'Hãy ghi lại vì sao bỏ qua luồng thông thường. Sau này sẽ có người đọc và phán đoán.',
-    withdrawn: 'Lý do là nhập tự do nên không tổng hợp được theo lý do.',
     required: 'Hãy nhập lý do khẩn cấp',
     tooLong: 'Lý do khẩn cấp quá dài. Hãy nhập tối đa 500 ký tự',
   },

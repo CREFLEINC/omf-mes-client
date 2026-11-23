@@ -1,6 +1,8 @@
 import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { InfoTip } from '../../patterns/info-tip';
+
 import { DisabledAction } from './disabled-action';
 import { describeOpenBlock, type TargetOpenState } from './target';
 
@@ -19,7 +21,7 @@ export interface TargetPaneProps {
  *
  * **대상 문서의 내용을 그리지 않는다.** 계약이 그렇게 적었고 상세 응답에 대상 본문이 아예
  * 없다. 결재함은 「무엇을 결재하는지 알아보고 원 화면으로 건너가는」 자리이지 문서를 읽는
- * 자리가 아니다 — 그 사실을 안내 한 줄로 밝힌다.
+ * 자리가 아니다 — 그 사실을 제목 옆 ⓘ 로 밝힌다(관리웹 정리 시안 A).
  *
  * **`targetTypeCode`를 받지 않는다.** 유형을 보고 무엇을 그릴지 갈리는 코드가 이 슬라이스에
  * 한 줄도 없어야 한다(계약이 금지한 매핑표). 이 부품은 이름 하나와 판정 하나만 받으므로
@@ -33,7 +35,10 @@ export interface TargetPaneProps {
 export const TargetPane = ({ name, openState, onOpen }: TargetPaneProps) => {
   return (
     <div className="approval-inbox-detail-section" role="group" aria-label={t.panes.target}>
-      <h3>{t.panes.target}</h3>
+      <h3 className="info-label">
+        {t.panes.target}
+        <InfoTip text={t.target.note} />
+      </h3>
       <dl className="filter-bar approval-inbox-target-facts">
         <div className="field-cell">
           <dt className="field-label">{t.panes.target}</dt>
@@ -57,8 +62,6 @@ export const TargetPane = ({ name, openState, onOpen }: TargetPaneProps) => {
         /* 사유는 감추지 않는다 — 비활성 컨트롤은 포커스를 받지 못해 툴팁으로는 닿을 수 없다. */
         <DisabledAction label={t.target.open} reason={describeOpenBlock(openState)} size="sm" />
       )}
-
-      <p className="field-note">{t.target.note}</p>
     </div>
   );
 };

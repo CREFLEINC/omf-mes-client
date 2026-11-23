@@ -60,7 +60,7 @@ export const iqcInboundLot = {
       /* 판정 확정된 의뢰의 상태는 「완료」(사용자 지시 2026-11-16 · #274). */
       CONFIRMED: '완료',
     },
-    noPermission: '판정 확정·판정 수정은 확정 권한(W-01-15)이 있는 사람이 합니다', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
+    noPermission: '판정 확정·판정 수정은 확정 권한이 있는 사람이 합니다', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
     columns: {
       lotNo: 'LOT 번호',
       qty: '수량',
@@ -212,7 +212,6 @@ export const iqcInboundLot = {
       CONFIRM_CANCELLED: '판정 확정 취소',
       REOPENED_BY_REWORK: '재작업으로 다시 열림',
       SKIPPED: '검사 생략',
-      SKIP_VOIDED: '검사 생략 무효(마감 취소)',
       SPLIT_OUT: '자재 관리 LOT 분리',
       SPLIT_IN: '분리로 생김',
       CANCELLED_BY_REOPEN: '마감 취소로 의뢰 취소',
@@ -280,7 +279,7 @@ export const iqcInboundLot = {
     title: '자재 관리 LOT 분리',
     /* 「P/O 배분」은 안내에서 뺀다 — 옮겨질 배정은 미리 보기 「옮겨지는 P/O 매칭」이 보인다(screens/W-01-01.md 시안과 다른 점). */
     /** 안내 한 줄 · 목록 제목 · 고른 수(사용자 시안 2026-11-16 · omf-all-around#274). */
-    intro: '선택한 LOT를 별도의 입하 LOT로 분리하여 판정합니다.',
+    intro: '고른 LOT 을 새 입하 LOT 으로 떼어 내 따로 판정합니다.',
     lotList: '분리할 LOT',
     pickedCount: (picked: number, total: number) => `${String(picked)}/${String(total)}개 선택`,
     resultChip: (seqNo: number) => `${String(seqNo)}회차`,
@@ -339,7 +338,7 @@ export const iqcInboundLot = {
     conflict: '이미 바뀌었습니다',
     reload: '다시 불러오기',
     failed: '판정을 확정하지 못했습니다.',
-    noPermission: '판정 확정·판정 수정은 확정 권한(W-01-15)이 있는 사람이 합니다', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
+    noPermission: '판정 확정·판정 수정은 확정 권한이 있는 사람이 합니다', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
   },
   cancel: {
     /* 단추 이름 「확정 취소」 → 「판정 수정」(사용자 지시 2026-11-18 · omf-all-around#296). 서버 동작(:cancel-confirm)은 같다. */
@@ -347,7 +346,7 @@ export const iqcInboundLot = {
     /* 확인 창(사용자 시안 2026-11-17 · omf-all-around#286) — 질문 제목 · 대상 · 「취소 시 변경 사항」 상자 · 안내 한 줄. */
     title: '판정을 수정하시겠습니까?',
     target: (inboundLotNo: string) => `대상 LOT: ${inboundLotNo}`,
-    changesHeading: '취소 시 변경 사항',
+    changesHeading: '취소하면 바뀌는 것',
     /* 변경 사항 상자 — LOT 묶음(LOT 수 · 품질 상태) · 결과 묶음(사용자 시안 2026-11-19 · omf-all-around#296). */
     lotsLabel: '자재 관리 LOT',
     lotsCount: (count: number) => `${count}개`,
@@ -371,14 +370,14 @@ export const iqcInboundLot = {
     blockedTitle: '판정을 수정할 수 없습니다',
     blockedLead: '아래 일이 이미 진행되어 판정을 수정할 수 없습니다.',
     blockedTail:
-      '입고를 취소하거나 상태 변경을 되돌린 뒤 다시 시도하세요. 불합격 건의 처분·특채가 시작됐으면 W-03-10 에서 처리합니다.', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
+      '입고를 취소하거나 상태 변경을 되돌린 뒤 다시 시도하세요. 불합격 건의 처분·특채가 시작됐으면 부적합 처분 관리에서 처리합니다.', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
     blockedOk: '확인',
     blockers: {
       GOODS_RECEIVED: '입고된 자재 관리 LOT 가 있습니다',
       LOT_STATUS_CHANGED: 'IQC 밖에서 상태가 바뀐 자재 관리 LOT 가 있습니다 (의심 보류 등)',
       DISPOSITION_STARTED: '부적합 처분이 시작됐습니다',
       CONCESSION_EXISTS: '특채 요청이 있습니다',
-      INBOUND_LOT_FINALIZED: '최종 마감된 입하 LOT 입니다(W-01-16)',
+      INBOUND_LOT_FINALIZED: '최종 마감된 입하 LOT 입니다',
     } as Record<string, string>,
     failed: '확정을 취소하지 못했습니다.',
   },

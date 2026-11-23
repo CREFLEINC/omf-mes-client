@@ -27,6 +27,23 @@ const uomLookup = {
 
 const uomOptions = [{ value: '8401', label: 'SAMPLE-UOM-EA · 개' }];
 
+/** 피처 012 — 출고 창고 칸에 필요한 것. 사업부를 골랐고 창고 둘이 있다. */
+const warehouseProps = {
+  warehouseOptions: [
+    {
+      label: '합성 사업부 가 활성 창고(불량창고 제외)',
+      options: [
+        { value: '9101', label: '완제품창고 A (1공장)' },
+        { value: '9102', label: '완제품창고 B (2공장)' },
+      ],
+    },
+  ],
+  hasBusinessUnit: true,
+  onChangeWarehouse: vi.fn(),
+  onSplit: vi.fn(),
+  salesOrderNo: 'SAMPLE-SO-0001',
+};
+
 const noAvailableQty: AvailableQtyLookup = {
   of: () => ({ kind: 'unasked' }),
   refetchAll: () => undefined,
@@ -48,6 +65,7 @@ describe('LineTable — 지시서 경유', () => {
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
         onRemove={vi.fn()}
+        {...warehouseProps}
       />,
     );
 
@@ -70,6 +88,7 @@ describe('LineTable — 지시서 경유', () => {
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
         onRemove={vi.fn()}
+        {...warehouseProps}
       />,
     );
 
@@ -91,6 +110,7 @@ describe('LineTable — 단독 생성', () => {
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
         onRemove={vi.fn()}
+        {...warehouseProps}
       />,
     );
 
@@ -106,7 +126,7 @@ describe('LineTable — 단독 생성', () => {
 
     render(
       <LineTable mode="standalone" rows={[row]} errors={{}} itemNames={itemNames} uomLookup={uomLookup}
-        onPickItem={vi.fn()} uomOptions={uomOptions} availableQty={noAvailableQty} onPatch={onPatch} onRemove={vi.fn()} />,
+        onPickItem={vi.fn()} uomOptions={uomOptions} availableQty={noAvailableQty} onPatch={onPatch} onRemove={vi.fn()} {...warehouseProps} />,
     );
 
     await user.click(screen.getByLabelText(t.lineTable.uomLabel(1)));
@@ -128,6 +148,7 @@ describe('LineTable — 단독 생성', () => {
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
         onRemove={vi.fn()}
+        {...warehouseProps}
       />,
     );
 
@@ -151,6 +172,7 @@ describe('LineTable — 단독 생성', () => {
         availableQty={noAvailableQty}
         onPatch={onPatch}
         onRemove={vi.fn()}
+        {...warehouseProps}
       />,
     );
 
@@ -178,6 +200,7 @@ describe('LineTable — 단독 생성', () => {
         availableQty={availableQty}
         onPatch={vi.fn()}
         onRemove={vi.fn()}
+        {...warehouseProps}
       />,
     );
 
@@ -204,6 +227,7 @@ describe('LineTable — 단독 생성', () => {
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
         onRemove={vi.fn()}
+        {...warehouseProps}
       />,
     );
 
@@ -228,6 +252,7 @@ describe('LineTable — 단독 생성', () => {
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
         onRemove={vi.fn()}
+        {...warehouseProps}
       />,
     );
 
@@ -251,6 +276,7 @@ describe('LineTable — 단독 생성', () => {
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
         onRemove={vi.fn()}
+        {...warehouseProps}
       />,
     );
 

@@ -2,7 +2,6 @@ import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
-import type { PostApproval } from './approval-progress';
 import { describeReference, toReference, type ReferenceSource } from './lookups';
 import type { IssueView } from './types';
 
@@ -44,12 +43,6 @@ export const describeIssueDestination = (
 };
 
 export interface PostPaneProps {
-  /**
-   * 승인 판정 네 갈래. **안내를 낼지 가르는 것은 첫째 갈래 하나뿐**이고, 잠글지는
-   * `blockReason`이 정한다 — 이 부품이 두 판정을 겹쳐 하면 한쪽만 고쳐질 때 「잠겼는데
-   * 판정하지 못한다고 적힌」 화면이 된다.
-   */
-  approval: PostApproval;
   /**
    * 왜 막혔는지. `null`이면 보낼 수 있다 — 사유 없이 잠그지 않는다(배치 규범 4).
    *
@@ -101,7 +94,6 @@ export interface PostPaneProps {
  * 기존 디자인 시스템 컴포넌트의 조합이라 이 화면 슬라이스가 소유한다.
  */
 export const PostPane = ({
-  approval,
   blockReason,
   destination,
   isLocked,
@@ -121,8 +113,7 @@ export const PostPane = ({
 
   return (
     <section className="pane" aria-label={t.post.label}>
-      <p>{t.post.lead}</p>
-
+      {/* 「…처리하는 자리입니다」 소개 문장은 걷었다 — 단추 이름이 같은 말을 한다(관리웹 정리 시안 A). */}
       {/*
        * **도착지를 처리 직전에 읽어 보인다**(변경 통지 #128 · 완료 조건 C26). 재고가 실제로
        * 움직이는 자리라 「누가 가져가는가」가 여기서 확인돼야 하고, **잠겨 있을 때도** 보인다 —
@@ -140,22 +131,9 @@ export const PostPane = ({
       </dl>
 
       {/*
-       * **상시 문구는 버튼보다 앞에 둔다.** 뒤에 두면 누르고 난 뒤에야 눈에 들어온다.
-       * 구획으로 감싸 이름을 붙이는 것은 스크린리더가 세 문장을 한 덩어리로 읽게 하기 위해서다.
+       * 「처리하면 일어나는 일」 상시 세 문장과 「승인 여부를 판정하지 못한다」 안내는 걷었다 —
+       * 재고가 빠지고 되돌릴 수 없다는 사실은 누르기 직전 확인 창이 말한다(사용자 지시 2026-11-20).
        */}
-      <section className="banner-slot" aria-label={t.post.effectsLabel}>
-        <p className="field-label">{t.post.effectsLabel}</p>
-        <p>{t.post.effectDeducts}</p>
-        <p>{t.post.effectApprovalIsNotPosting}</p>
-        <p>{t.post.effectNoUndoHere}</p>
-      </section>
-
-      {/*
-       * **모른다는 사실을 화면에 남긴다**(`omf-mes#64`). 자리표시가 채워지면 이 안내가 사라지고
-       * 승인 전 전표의 버튼이 잠긴다 — 그 전환을 재는 것이 이 줄의 값어치다.
-       */}
-      {approval.kind === 'judgePending' && <p className="field-note">{t.post.unjudgeableNote}</p>}
-
       <div className="form-actions">
         <div className="field-cell">
           <Button

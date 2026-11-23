@@ -39,7 +39,8 @@ describe('DispositionDecisionScreen 조회', () => {
     renderScreen();
 
     expect(await screen.findByRole('region', { name: t.panes.list })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: t.panes.list })).toBeNull();
+    /* 목록 제목 줄 「처분 대기 목록 · N건 · 목록 접기」가 늘 선다(통일 배치 · #350). */
+    expect(screen.getByRole('heading', { name: t.panes.list })).toBeInTheDocument();
     /* 고르기 전에는 상세 칸 제목 「부적합 상세 및 판정」을 두지 않는다 — 안내만(omf-all-around#228). */
     expect(screen.queryByRole('heading', { name: t.panes.detailDecision })).toBeNull();
     /* 고르기 전에는 판정 구역을 세우지 않는다(#223). */
@@ -64,17 +65,19 @@ describe('DispositionDecisionScreen 조회', () => {
     expect(await screen.findByText('LOT-TEST-0088')).toBeInTheDocument();
   });
 
-  it('항목을 고르면 목록이 접히고, 막대의 단추로 다시 펼친다(omf-all-around#275)', async () => {
+  it('항목을 골라도 목록은 그대로이고, 「목록 접기」로 접고 다시 펼친다(#350)', async () => {
     const { user } = renderScreen();
     expect(screen.queryByRole('button', { name: t.listExpand })).toBeNull();
     await selectRow(user);
     const split = document.querySelector('.disposition-split');
-    await waitFor(() => expect(split).toHaveAttribute('data-left-collapsed', 'true'));
-
-    await user.click(screen.getByRole('button', { name: t.listExpand }));
     expect(split).not.toHaveAttribute('data-left-collapsed');
-    await user.click(screen.getByRole('button', { name: t.listCollapse }));
+
+    /* 막대 위 원과 제목 줄 「목록 접기」가 같은 이름이다. */
+    await user.click(screen.getAllByRole('button', { name: t.listCollapse })[0]!);
     expect(split).toHaveAttribute('data-left-collapsed', 'true');
+    /* 막대 위 원과 접힌 「목록」 탭이 같은 이름이다(#350). */
+    await user.click(screen.getAllByRole('button', { name: t.listExpand })[0]!);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
   });
 
   /* 부적합에 남은 품질 상태는 등록 때 값 — 판정으로 바뀐 LOT 상태를 LOT 조회로 보인다(#223). */
@@ -136,7 +139,7 @@ describe('DispositionDecisionScreen 조회', () => {
 
     await user.click(screen.getByRole('button', { name: t.concession.request }));
     const dialog = await screen.findByRole('dialog', { name: t.concession.requestHeading });
-    expect(within(dialog).getByText(t.concession.requestNote)).toBeInTheDocument();
+    expect(within(dialog).queryByText(/조건부 사용 승인을 요청/)).not.toBeInTheDocument();
 
     await user.click(within(dialog).getByRole('button', { name: messages.common.cancel }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());

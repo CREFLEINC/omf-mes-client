@@ -180,24 +180,18 @@ export const supplierReturn: Translated<typeof ko.supplierReturn> = {
     lines: 'Các dòng đã trả hàng',
     linePair: (item: string, lot: string, qty: string): string => `${item} · ${lot} · ${qty}`,
     created: 'Đã tạo phiếu trả hàng và gửi kèm yêu cầu ghi sổ.',
-    statusNote: 'Mã trạng thái được hiện nguyên theo giá trị máy chủ trả về.',
     erpQueued: 'Đã đưa vào hàng đợi gửi ERP — là đưa vào hàng đợi chứ không phải đã gửi.',
     erpNotQueued: 'Chưa được đưa vào hàng đợi gửi ERP.',
     erpUnknown: 'Phản hồi không cho biết đã đưa vào hàng đợi gửi ERP hay chưa.',
     notConfirmed:
       'Tồn kho giảm bao nhiêu và việc ghi sổ đã thực sự xong hay chưa thì màn hình này chưa xác nhận — phản hồi không có thông tin đó.',
-    linesNote: 'Danh sách dòng dưới đây là nội dung phiếu trả hàng do máy chủ trả về.',
   },
   notes: {
     lotHold:
       'LOT vật tư có dấu 「Tạm giữ」 đang bị tạm giữ vì chất lượng. Màn hình này không gỡ được.',
-    returnQtyEmptyStart:
-      'Số lượng trả hàng bắt đầu bằng ô trống. Hãy tự ghi lượng cần trả về cho từng dòng.',
     submitRecheck:
       'Không xác nhận được đã gửi đến máy chủ hay chưa. Hãy tra cứu lại danh sách để xem phiếu trả hàng đã được tạo chưa rồi mới thử lại.',
     businessDateDerived: 'Ngày làm việc được gửi kèm theo giá trị lấy từ ngày xuất kho.',
-    sendToErpNote:
-      'Cấu hình gửi ERP không đổi được ở màn hình này. Ở đây chỉ quyết định có gửi hay không.',
     replacementExpectedNote:
       'Dự kiến nhập bù chỉ được ghi làm dấu trên phiếu. Không nối sang danh sách kế hoạch nhập hàng.',
   },

@@ -116,8 +116,6 @@ export const popMaterialLotLabel = {
     stopped: '멈춤',
     /** 보내기 직전에 다시 보니 다른 단말이 먼저 찍었다 — 실패가 아니다. */
     alreadyIssued: '이미 발행됨',
-    /** 종이는 나왔고 IQC 라벨만 안 나왔다 — 「실패」로 읽히면 자재 라벨을 한 장 더 찍는다. */
-    iqcMissing: '인쇄됨, IQC 라벨 안 나옴',
     failed: {
       printFailed: '인쇄 안 됨',
       reportFailedAfterPrint: '인쇄됨, 기록 안 됨',

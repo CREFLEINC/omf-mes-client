@@ -1,5 +1,6 @@
 import { Icon } from '@crefle/web-ui';
-import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { messages } from '@omf-mes/i18n';
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 
 import { MoreMenu } from './popover-button';
 
@@ -16,7 +17,11 @@ export const formatDotDate = (date: string): string => date.replaceAll('-', '.')
  * 실어, CSS 가 남은 높이만큼만 쓰고 넘치는 줄은 표 안에서 스크롤한다. 조건 줄이 펼쳐지거나 창 크기가
  * 바뀌면 윗변이 움직이므로 다시 잰다.
  */
-export const useFitToViewport = () => {
+/**
+ * `remeasureKey` — 표 구획이 다른 요소로 갈아 끼워지는 화면(탭마다 구획이 따로 서는 화면)이 넘긴다. 값이 바뀌면
+ * 새 구획을 다시 잰다 — 안 재면 새 구획에 `--split-top` 이 없어 높이가 창 바닥까지 닿지 않는다(#333).
+ */
+export const useFitToViewport = (remeasureKey?: string) => {
   const splitRef = useRef<HTMLDivElement>(null);
   const aboveRef = useRef<HTMLElement>(null);
 
@@ -38,7 +43,7 @@ export const useFitToViewport = () => {
       observer?.disconnect();
       window.removeEventListener('resize', measure);
     };
-  }, []);
+  }, [remeasureKey]);
 
   return { splitRef, aboveRef };
 };
@@ -121,7 +126,7 @@ export const usePaneSplit = (storageKey: string, initial = 1 / 3) => {
 
   /*
    * 왼쪽 표를 **완전히 접는다**(사용자 지시 2026-10-24). 접으면 오른쪽 구획이 폭을 다 쓴다. 비율과 같이 브라우저에 남긴다.
-   * 접힘은 나란히 설 때만 뜻이 있다 — 위아래로 쌓이면 CSS 가 무시한다(펼칠 단추가 막대에 있어서다).
+   * 위아래로 쌓여도 접힌다 — 목록 자리에 가로 「목록 N건」 탭이 선다(#350 · app.css).
    */
   const collapseKey = `${storageKey}:collapsed`;
   const [collapsed, setCollapsed] = useState<boolean>(() => {
@@ -144,7 +149,88 @@ export const usePaneSplit = (storageKey: string, initial = 1 / 3) => {
   return { ratio, commit, style, collapsed, toggleCollapsed };
 };
 
+/** 목록 접기 — 상태 · 바꾸기와 단추 이름(접기 · 펼치기). `count` 가 있으면 제목 줄 · 접힌 탭에 건수가 선다. */
+export interface PaneCollapse {
+  collapsed: boolean;
+  onToggle: () => void;
+  collapseLabel: string;
+  expandLabel: string;
+  count?: number;
+}
+
 /**
+ * 목록 제목 줄(omf-all-around#350 시안) — 「수주 목록 12건 … [목록 접기]」. 목록 구획 맨 위에 둔다.
+ * 「목록 접기」는 늘 보이고, 이 줄이 있는 두 구획에서는 막대 위 작은 원 접기 단추를 감춘다(app.css).
+ */
+export const PaneListHead = ({
+  title,
+  collapse,
+  titleId,
+  className,
+  children,
+}: {
+  /** 빈 글이면 제목을 두지 않는다(제목을 걷은 목록 — 건수 · 단추만). */
+  title: string;
+  collapse: PaneCollapse;
+  /** 목록 구획이 `aria-labelledby` 로 제목을 가리킬 때. */
+  titleId?: string;
+  /** 제목 줄에 붙일 화면 고유 이름(종전 머리줄 모양을 잇는다). */
+  className?: string;
+  /** 제목 줄에 함께 두던 것(안내 · 갱신 등) — 건수 뒤, 「목록 접기」 앞에 선다. */
+  children?: ReactNode;
+}) => (
+  <div
+    className={className === undefined ? 'po-board-list-head' : `po-board-list-head ${className}`}
+  >
+    {title !== '' && (
+      <h2 className="pane-title" id={titleId}>
+        {title}
+      </h2>
+    )}
+    {collapse.count !== undefined && (
+      <span className="po-board-list-count">{messages.common.paneList.count(collapse.count)}</span>
+    )}
+    {children}
+    <button
+      type="button"
+      className="po-board-list-collapse"
+      aria-label={collapse.collapseLabel}
+      aria-expanded={!collapse.collapsed}
+      title={collapse.collapseLabel}
+      onClick={collapse.onToggle}
+    >
+      <Icon name="left_panel_close" size={18} />
+      {messages.common.paneList.collapse}
+    </button>
+  </div>
+);
+
+/**
+ * 끌기 막대가 없는 좌우 두 칸 화면의 접힌 「목록」 탭(#350). 목록 구획 바로 뒤에 둔다 — 접혀 있을 때만 선다.
+ * 그 두 칸 상자에 `list-collapsible` 과 `data-left-collapsed` 를 달면 app.css 가 왼쪽 48px 탭 + 상세로 바꾼다.
+ */
+export const ListCollapseTab = ({ collapse }: { collapse: PaneCollapse }) =>
+  collapse.collapsed ? (
+    <button
+      type="button"
+      className="po-board-list-tab"
+      aria-label={collapse.expandLabel}
+      aria-expanded={false}
+      title={collapse.expandLabel}
+      onClick={collapse.onToggle}
+    >
+      <span className="po-board-list-tab-body">
+        <Icon name="left_panel_open" size={18} />
+        <b>{messages.common.paneList.tab}</b>
+        {collapse.count !== undefined && (
+          <span className="po-board-list-count">
+            {messages.common.paneList.count(collapse.count)}
+          </span>
+        )}
+      </span>
+    </button>
+  ) : null;
+
 /**
  * 두 구획 사이의 **막대 자리** — 끌기 막대와, 왼쪽 표를 접고 펴는 단추(사용자 지시 2026-10-24).
  *
@@ -164,12 +250,7 @@ export const PaneSplitter = ({
   onChange: (ratio: number) => void;
   orientation?: 'vertical' | 'horizontal';
   /** 있으면 접기 단추가 선다. 이름은 단추가 할 일(접기 · 펼치기)이다. */
-  collapse?: {
-    collapsed: boolean;
-    onToggle: () => void;
-    collapseLabel: string;
-    expandLabel: string;
-  };
+  collapse?: PaneCollapse;
 }) => (
   <div
     className="po-board-gutter"
@@ -184,9 +265,14 @@ export const PaneSplitter = ({
         title={collapse.collapsed ? collapse.expandLabel : collapse.collapseLabel}
         onClick={collapse.onToggle}
       >
-        <Icon name={collapse.collapsed ? 'chevron_right' : 'chevron_left'} size={18} />
+        <Icon name={collapse.collapsed ? 'left_panel_open' : 'left_panel_close'} size={18} />
       </button>
     )}
+    {/*
+     * 접힌 뒤 「목록 N건」 탭 — 좌우면 왼쪽 세로 탭, 위아래로 쌓이면 가로 탭(app.css). 위 줄의 작은 원은 그때 감춘다.
+     * 끌기 막대 없는 화면의 접힌 탭과 같은 부품이다.
+     */}
+    {collapse !== undefined && <ListCollapseTab collapse={collapse} />}
     {collapse?.collapsed !== true && (
       <div
         className="po-board-splitter"

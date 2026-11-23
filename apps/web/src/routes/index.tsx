@@ -12,7 +12,6 @@ import { HandoverAlertSettingsScreen } from '../screens/handover-alert-settings/
 import { PlantWorkingDaysScreen } from '../screens/plant-working-days/screen';
 import { ZaloConnectionScreen } from '../screens/zalo-connection/screen';
 import { DispatchHistoryScreen } from '../screens/dispatch-history/screen';
-import { JudgmentCodeScreen } from '../screens/common-code/judgment-code-screen';
 import { CommonCodeScreen } from '../screens/common-code/screen';
 import { DefectCauseCodeScreen } from '../screens/defect-cause-code/screen';
 import { DisposalIssueScreen } from '../screens/disposal-issue/screen';
@@ -72,7 +71,6 @@ import { DispositionRequestScreen } from '../screens/disposition-request/screen'
 import { ReturnReceiptScreen } from '../screens/return-receipt/screen';
 import { OqcInspectionScreen } from '../screens/oqc-inspection/screen';
 import { PasswordChangeScreen } from '../screens/password-change/screen';
-import { PoRegisterScreen } from '../screens/po-register/screen';
 import { PoChangeReviewScreen } from '../screens/po-change-review/screen';
 import { ProductionOrderScreen } from '../screens/production-order/screen';
 import {
@@ -84,13 +82,11 @@ import { ProductionOrderProcessScreen } from '../screens/production-order/proces
 import { DispositionDecisionScreen } from '../screens/disposition-decision/screen';
 import { PqcInspectionRegisterScreen } from '../screens/pqc-inspection-register/screen';
 import { InspectionLevelScreen } from '../screens/inspection-level/screen';
-import { ProductStockStatusScreen } from '../screens/product-stock-status/screen';
 import { QualityApprovalScreen } from '../screens/quality-approval/screen';
-import { IQC_SKIP_TYPE_CODE } from '../screens/quality-approval/type-tabs';
 import { RoutingScreen } from '../screens/routing/screen';
 import { ExpeditedShipmentScreen } from '../screens/expedited-shipment/screen';
 import { ProductDisposalRequestScreen } from '../screens/product-disposal-request/screen';
-import { ShipmentConfirmScreen } from '../screens/shipment-confirm/screen';
+import { ShipmentConfirmRedirect } from '../screens/shipment-schedule/shipment-confirm-redirect';
 import { ShipmentProcessingScreen } from '../screens/shipment-processing/screen';
 import { ShipmentRequestCreateScreen } from '../screens/shipment-request-create/screen';
 import { ShipmentScheduleScreen } from '../screens/shipment-schedule/screen';
@@ -171,7 +167,6 @@ export const appRouter = createBrowserRouter([
       },
       { path: 'master-data/common-code', element: <CommonCodeScreen /> },
       /* W-06-04 — 전용 자원이 아니라 공통코드의 코드값 편집기를 한 그룹으로 고정해 여는 진입점이다. */
-      { path: 'master-data/judgment-code', element: <JudgmentCodeScreen /> },
       { path: 'master-data/integration-sync', element: <IntegrationSyncScreen /> },
       /* W-06-12 — 「ERP 연동 현황·이력」 묶음의 「ERP 송신」 탭. 송신 항목과 고른 항목의 송신 예정 목록이다. */
       { path: 'master-data/erp-inbound', element: <ErpInboundScreen /> },
@@ -255,7 +250,6 @@ export const appRouter = createBrowserRouter([
        * 업무 순서 사슬(예정 · 입하 등록 → 입고 → 재고 → 실사 → 반품 → 폐기)에 들지 않으므로,
        * 이 화면을 여는 화면 옆이 읽히는 자리다.
        */
-      { path: 'logistics/po-register', element: <PoRegisterScreen /> },
       /*
        * W-01-01 — **차례가 업무 순서다.** 도착을 처리한 뒤(입하 등록) **받아들여도
        * 되는지를 먼저 판정하고**(IQC 수입검사·판정) 그 다음 창고로 받아들인다.
@@ -264,8 +258,7 @@ export const appRouter = createBrowserRouter([
        * 이 순서로 이어져 있어 사이에 다른 것을 끼우지 않는다.
        *
        * ⛔ **「품질」 섹션을 새로 만들지 않는다.** 통합 IA 가 이 화면을 **「자재/창고 >
-       * 입하·검사」**에 두었고 형제 화면(W-01-02 긴급 IQC 생략 한도승인)이 이미 이 섹션에
-       * 서 있다. 품질 섹션은 Lot Status 계열(W-03-xx)이 들어올 때 그 화면들이 연다.
+       * 입하·검사」**에 두었다. 품질 섹션은 Lot Status 계열(W-03-xx)이 들어올 때 그 화면들이 연다.
        */
       /* 계정 공장에 따라 OA·부품 화면을 고른다(omf-all-around#211). */
       { path: 'logistics/iqc-inspection', element: <IqcInspectionRoute /> },
@@ -334,23 +327,6 @@ export const appRouter = createBrowserRouter([
        */
       { path: 'logistics/disposal-issue', element: <DisposalIssueScreen /> },
       /*
-       * W-01-02 — 계약 경로는 결재함과 같은 `/app/approval-requests`인데 주소 앞머리는
-       * **사이드바 섹션을 따라** `/logistics/`다. 판정하는 것이 자재 입하 검사의 생략이라
-       * 그 판단의 맥락이 이 섹션에 있다(설계 스펙의 breadcrumb도 「자재창고」다).
-       *
-       * **세 PR이 함께 여는 자리다.** 목록·상세까지만 선 상태에서는 이 줄을 두지 않았다 —
-       * 결재할 수 없는 판정 화면을 노출하면 승인자가 **판단 근거를 다 보고서도 아무것도
-       * 할 수 없다**(정책 §5.2 — 접근 불가능한 경계).
-       */
-      /*
-       * 긴급 IQC 생략 한도승인(W-01-02) — 품질 승인 처리의 「IQC (수입검사) 생략」 탭이다. 전체 탭과 같은 화면 · 같은
-       * 조회 조건을 쓰고 유형만 고정한다(#193 · 사용자 지시 2026-10-27).
-       */
-      {
-        path: 'logistics/iqc-skip-approval',
-        element: <QualityApprovalScreen fixedTypeCode={IQC_SKIP_TYPE_CODE} />,
-      },
-      /*
        * W-01-13 — 앞머리는 같은 규칙(사이드바 섹션)을 따른다. 계약 경로도 `/logistics/**`라 둘이
        * **우연히 같지만** 근거는 여기서도 섹션이다 — 계약을 근거로 삼았다면 W-01-07·W-01-12에서
        * 앞머리가 갈렸을 것이다(그쪽 계약은 `/inventory/**`인데 주소는 `/logistics/`다).
@@ -360,8 +336,7 @@ export const appRouter = createBrowserRouter([
        * 리소스를 주소로 삼으면 한 주소를 여러 화면이 다툰다. 주소는 **화면**을 가리킨다.
        *
        * **차례는 「자재창고」 섹션의 맨 뒤다.** 앞의 여덟이 물건이 오가는 순서이고(예정 → 초과
-       * 분리 → 입고 → 재고 확인 → 실사 → 조정 → 반품 → 폐기) 「긴급 IQC 생략」이 그 흐름 위에서
-       * 예외를 허가하는 자리인데, 이 화면은 그 흐름이 **남긴 문서들을 가로질러 보고 되돌리는**
+       * 분리 → 입고 → 재고 확인 → 실사 → 조정 → 반품 → 폐기), 이 화면은 그 흐름이 **남긴 문서들을 가로질러 보고 되돌리는**
        * 일이라 순서에 끼워 넣을 자리가 없다(`master-data/master-change`가 같은 이유로 마스터
        * 항목들 뒤에 섰다).
        *
@@ -684,10 +659,10 @@ export const appRouter = createBrowserRouter([
        */
       { path: 'shipment/expedited-shipment', element: <ExpeditedShipmentScreen /> },
       /*
-       * W-04-12 — 앞의 두 화면이 만든 «미확정» 출하를 확정·취소하는 자리라 그 뒤에 둔다.
-       * 되돌릴 수 있는 구간이 여기서 끝난다.
+       * W-04-12 출하 내역은 없어졌다(피처 012 FR-023) — 옛 주소는 출하 예정 목록(W-04-02)으로 넘긴다.
+       * 그 일(ERP 송신 · 취소 요청 · 실행 · 미확정 확정)은 W-04-02 상세 「출하」 칸이 맡는다.
        */
-      { path: 'shipment/shipment-confirm', element: <ShipmentConfirmScreen /> },
+      { path: 'shipment/shipment-confirm', element: <ShipmentConfirmRedirect /> },
       /*
        * W-04-10 — 출하가 아니라 «되돌아온 물건을 버리는» 일이라 확정 뒤에 둔다. 처분 판정이
        * 선행이고 결재를 타므로 만드는 화면들과 축이 다르다.
@@ -697,7 +672,6 @@ export const appRouter = createBrowserRouter([
        * W-04-08 — 같은 규칙(사이드바 섹션)이다. 계약 경로는 `/logistics/**`이지만
        * 완제품 재고·Lot Status 조회는 출하 섹션에 둔다 — W-04-02와 같은 선례를 따른다.
        */
-      { path: 'shipment/product-stock-status', element: <ProductStockStatusScreen /> },
       /*
        * W-04-03 — 같은 규칙(사이드바 섹션)이다. 계약 경로는 `/quality/**`이지만 OQC 출하검사
        * 판정은 출하 섹션에 둔다 — W-04-02와 같은 선례를 따른다. 이 목록의 차례는 **착수 순서**라

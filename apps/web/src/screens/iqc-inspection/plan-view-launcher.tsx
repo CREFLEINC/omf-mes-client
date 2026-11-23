@@ -1,10 +1,12 @@
 import { Button } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
 import { useLeaveFor } from '../../patterns/leave-guard';
-import { toMeasurementRows } from './measurement-rows';
-import { PlanViewDialog } from './plan-view-dialog';
-import { useInspectionItemSpecs, useSamplingRule } from './queries';
+import { DrawingImages, PlanDialog } from '../parts-iqc-inspection/plan-dialog';
+import { useDrawings, useInspectionPlan, usePlanVersion } from '../parts-iqc-inspection/queries';
+import { useInspectionItemSpecs } from './queries';
+import { useItemNames } from './reference-lookup';
 import { useUomLookup } from './uom-lookup';
 
 export interface PlanViewLauncherProps {
@@ -15,8 +17,8 @@ export interface PlanViewLauncherProps {
 }
 
 /**
- * 「적용 검사 기준」 창을 여는 단추(#197) — IQC 의 [기준 조회]와 같은 창을 PQC · OQC 에서도 연다. 창의 [수정]은 검사기준 화면으로
- * 옮긴다(저장 안 한 입력이 있으면 화면이 먼저 묻는다 · `LeaveGuardProvider`).
+ * 「검사 기준 상세」 창을 여는 단추(#197) — PQC · OQC 도 IQC [기준 조회]와 같은 창을 연다(사용자 지시 2026-11-23 · #353).
+ * 창의 [수정]은 검사기준 화면으로 옮긴다(저장 안 한 입력이 있으면 화면이 먼저 묻는다 · `LeaveGuardProvider`).
  */
 export const PlanViewLauncher = ({
   inspectionPlanVersionId,
@@ -24,8 +26,12 @@ export const PlanViewLauncher = ({
   size = 'md',
 }: PlanViewLauncherProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const rule = useSamplingRule(isOpen ? inspectionPlanVersionId : null);
-  const specs = useInspectionItemSpecs(isOpen ? inspectionPlanVersionId : null);
+  const versionId = isOpen ? inspectionPlanVersionId : null;
+  const version = usePlanVersion(versionId);
+  const specs = useInspectionItemSpecs(versionId);
+  const plan = useInspectionPlan(version.data?.inspectionPlanId ?? null);
+  const drawings = useDrawings(versionId);
+  const items = useItemNames([plan.data?.itemId]);
   const uoms = useUomLookup();
   const leaveFor = useLeaveFor();
 
@@ -34,17 +40,19 @@ export const PlanViewLauncher = ({
       <Button type="button" size={size} variant="outlined" onClick={() => setIsOpen(true)}>
         {label}
       </Button>
-      {isOpen && rule.data !== undefined && (
-        <PlanViewDialog
-          rule={rule.data}
-          rows={toMeasurementRows(specs.data ?? [], [], uoms.codeOf)}
-          isLoading={specs.isLoading}
+      {isOpen && version.data !== undefined && specs.data !== undefined && (
+        <PlanDialog
+          planCode={plan.data?.inspectionPlanCode ?? '-'}
+          itemParts={plan.data?.itemId == null ? null : items.partsOf(plan.data.itemId)}
+          version={version.data}
+          specs={[...specs.data].sort((a, b) => a.sequenceNo - b.sequenceNo)}
+          uomCodeOf={uoms.codeOf}
+          drawings={<DrawingImages drawings={drawings.data ?? []} />}
+          itemLabel={messages.partsIqcInspection.skipped.item}
           onClose={() => setIsOpen(false)}
-          onEdit={() => {
+          onEdit={(href) => {
             setIsOpen(false);
-            leaveFor(
-              `/master-data/inspection-standard?plan=${String(rule.data.inspectionPlanId)}&ver=${String(inspectionPlanVersionId)}`,
-            );
+            leaveFor(href);
           }}
         />
       )}

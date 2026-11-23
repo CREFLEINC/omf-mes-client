@@ -1,4 +1,4 @@
-import { AlertBanner, Breadcrumb, PageHeader, useToast } from '@crefle/web-ui';
+import { AlertBanner, useToast } from '@crefle/web-ui';
 import { createIdempotencyKey } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
@@ -8,15 +8,16 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest, toApiError } from '../../patterns/request';
-import { ScreenHeader } from '../../patterns/screen-header';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { channelLimitNote } from './channel-notes';
 import { ChannelFormDialog } from './channel-form-dialog';
 import { ChannelPane } from './channel-pane';
 import { CHANNEL_FORM_FIELDS, validateChannel } from './channel-validation';
-import { EquipmentPane } from './equipment-pane';
+import { useEquipmentPane } from './equipment-pane';
 import { LoadErrorBanner } from './load-error-banner';
 import { ActivationDialog } from './activation-dialog';
 import { ImportDialog } from './import-dialog';
+import './layout.css';
 import { emptyFormValues, formValuesFrom, toChannelCreate, toChannelUpdate } from './mappers';
 import {
   retainSelectable,
@@ -513,17 +514,21 @@ export const CollectionChannelScreen = () => {
     <LoadErrorBanner error={toApiError(channels.error)} onRetry={() => void channels.refetch()} />
   ) : null;
 
+  const equipmentPane = useEquipmentPane({
+    items: equipmentItems,
+    isLoading: equipments.isPending,
+    total: equipments.data?.page.total ?? null,
+    appliedFilters: equipmentFilters,
+    onApplyFilters: setEquipmentFilters,
+    plantOptions: plantLookup.plants,
+    selectedEquipmentId,
+    onSelect: setSelectedEquipmentId,
+    loadError: equipmentError,
+  });
+
   return (
     <div className="screen">
-      <ScreenHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
+      {/* 화면 제목 줄은 두지 않는다 — 조회 조건 · 목록 · 상세 통일 배치(검사 조회·판정과 같다 · #350). */}
 
       {/* 고를 목록이 반쪽이면 없는 공장처럼 보인다 — 감추지 않고 밝힌다. 실패가 잘림보다 앞선다. */}
       {optionsNote !== null && (
@@ -532,33 +537,38 @@ export const CollectionChannelScreen = () => {
         </div>
       )}
 
-      <div className="two-pane collection-channel-layout">
-        <EquipmentPane
-          items={equipmentItems}
-          isLoading={equipments.isPending}
-          total={equipments.data?.page.total ?? null}
-          appliedFilters={equipmentFilters}
-          onApplyFilters={setEquipmentFilters}
-          plantOptions={plantLookup.plants}
-          selectedEquipmentId={selectedEquipmentId}
-          onSelect={setSelectedEquipmentId}
-          loadError={equipmentError}
-        />
-        <ChannelPane
-          equipment={selectedEquipment}
-          channels={channelItems}
-          isLoading={channels.isPending}
-          filters={channelFilters}
-          onChangeFilters={setChannelFilters}
-          limitNote={limitNote}
-          onAdd={openCreate}
-          onEdit={openEdit}
-          canImport={(anyObservations.data?.items.length ?? 0) > 0}
-          onImport={openImport}
-          onChangeActivation={openActivation}
-          loadError={channelError}
-        />
-      </div>
+      <ListDetailWorkspace
+        storageKey="omf-mes:collection-channel"
+        /* 종전 두 칸 비율(2 : 3.6)을 잇는다 — 채널 표가 넓어 상세 몫을 크게 둔다. */
+        initialRatio={0.36}
+        filter={{ label: messages.common.paneList.filter, content: equipmentPane.filter }}
+        list={{
+          label: t.equipment.paneTitle,
+          title: t.equipment.paneTitle,
+          count: equipments.data?.page.total,
+          content: equipmentPane.list,
+        }}
+        detail={{
+          label: t.channels.detailRegion,
+          bare: true,
+          content: (
+            <ChannelPane
+              equipment={selectedEquipment}
+              channels={channelItems}
+              isLoading={channels.isPending}
+              filters={channelFilters}
+              onChangeFilters={setChannelFilters}
+              limitNote={limitNote}
+              onAdd={openCreate}
+              onEdit={openEdit}
+              canImport={(anyObservations.data?.items.length ?? 0) > 0}
+              onImport={openImport}
+              onChangeActivation={openActivation}
+              loadError={channelError}
+            />
+          ),
+        }}
+      />
 
       {dialog !== null && selectedEquipment !== null && (
         <ChannelFormDialog

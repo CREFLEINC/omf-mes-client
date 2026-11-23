@@ -76,7 +76,6 @@ export const ShipmentResultDrawer = ({
   const [checked, setChecked] = useState(false);
   const [asking, setAsking] = useState(false);
   const savingId = useId();
-  const judgmentNoteId = useId();
 
   const save = useSaveShipmentResult(inspectionRequestId, () => onSaved(seqNo, editing !== null));
   const measurements = useShipmentMeasurements({
@@ -225,16 +224,12 @@ export const ShipmentResultDrawer = ({
                   variant={judgment === code ? 'filled' : 'outlined'}
                   aria-pressed={judgment === code}
                   disabled={save.isSaving}
-                  aria-describedby={judgmentNoteId}
                   onClick={() => setJudgment(code)}
                 >
                   {s.judgments[code]}
                 </Button>
               ))}
             </div>
-            <p id={judgmentNoteId} className="field-note">
-              {d.judgmentNote}
-            </p>
             {judgmentError === null ? null : (
               <p className="field-error" role="alert">
                 {judgmentError}

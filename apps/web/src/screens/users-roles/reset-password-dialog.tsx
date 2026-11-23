@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Dialog } from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
@@ -31,7 +31,8 @@ export const ResetPasswordDialog = ({
   <Dialog
     open={open}
     onClose={onClose}
-    size="sm"
+    /* 안내 라벨이 한 줄로 들어가게 넓힌다(사용자 지시 2026-11-20 · #333). */
+    size="md"
     title={t.resetPasswordTitle}
     closeOnBackdropClick={false}
     /* 오른쪽 위 X 를 두지 않는다(사용자 지시 2026-09-18) — 닫기는 「취소」와 Esc 로 한다. */
@@ -48,7 +49,14 @@ export const ResetPasswordDialog = ({
     }
   >
     {banner}
-    <p>{t.resetPasswordDescription}</p>
+    {/* 묻는 문장 + 라벨 모양 안내(사용자 시안 2026-11-20 · #333). */}
+    <div className="users-roles-worker-dialog">
+      <p>{t.resetPasswordQuestion}</p>
+      <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+        <Icon name="info" size={16} aria-hidden />
+        {t.resetPasswordDescription}
+      </p>
+    </div>
   </Dialog>
 );
 

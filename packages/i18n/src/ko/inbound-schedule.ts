@@ -198,8 +198,7 @@ export const inboundSchedule = {
    * 아직 안 한 일을 말할 뿐 현장에서 벌어진 일(발주보다 더 왔다)을 말하지 않는다 — 발주 없는 입하가 없어 미배정은 늘 초과분이다.
    */
   excess: {
-    /** 탭 이름은 사이드바 묶음(`app/nav-tree.ts`)이 갖는다. 왼쪽 표 위 제목 — 미연결 건수. */
-    listCount: (count: number): string => `미연결 초과분 ${String(count)}건`,
+    /** 탭 이름은 사이드바 묶음(`app/nav-tree.ts`)이 갖는다. */
     splitter: '초과분 목록과 연결할 발주 라인 사이',
     listCollapse: '초과분 목록 접기',
     listExpand: '초과분 목록 펼치기',

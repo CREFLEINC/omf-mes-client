@@ -57,7 +57,8 @@ export const emptyUserFormValues = (): UserFormValues => ({
   departmentId: '',
   email: '',
   phoneNumber: '',
-  statusCode: '',
+  /* 재직 상태는 「재직」이 미리 골라진 채 연다(사용자 지시 2026-11-20 · #333) — 서버 기본값과 같은 값이다. */
+  statusCode: 'EMPLOYED',
 });
 
 /**

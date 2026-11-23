@@ -90,7 +90,9 @@ describe('StockReinstatementScreen', () => {
     const user = renderScreen();
     await chooseTarget(user);
 
-    expect(screen.getByText(t.scopeNotice)).toBeInTheDocument();
+    /* 재등록이 LOT 을 새로 만들지 않는다는 규칙은 「재등록 입력」 제목 옆 ⓘ 로 읽힌다(관리웹 정리 시안 A). */
+    expect(screen.getByRole('button', { name: t.scopeNotice })).toBeInTheDocument();
+    expect(screen.queryByText(t.scopeNotice)).toBeNull();
     expect(screen.getAllByText(/WH-DEFECT/).length).toBeGreaterThan(0);
     expect(screen.getByText(/2027-02-01/)).toBeInTheDocument();
     expect(screen.getByText(t.history.opened)).toBeInTheDocument();
@@ -299,5 +301,31 @@ describe('StockReinstatementScreen', () => {
 
     expect(screen.queryByRole('dialog', { name: t.confirm.title })).not.toBeInTheDocument();
     expect(requestsSent().filter((request) => request.method === 'POST')).toHaveLength(0);
+  });
+
+  /* 목록 제목 줄 「목록 접기」 · 접힌 「목록 N건」 탭(#350). */
+  it('목록을 접으면 탭에 건수가 서고, 펼친 뒤에도 고른 줄 · 적어 둔 비고가 그대로다', async () => {
+    const collapsedKey = 'omf-mes:stock-reinstatement:list:collapsed';
+    window.localStorage.removeItem(collapsedKey);
+    const user = renderScreen();
+    await chooseTarget(user);
+    await user.type(screen.getByLabelText(t.fields.remarks), '합성 비고');
+    const workspace = document.querySelector('.stock-reinstatement-workspace');
+
+    await user.click(
+      screen.getByRole('button', { name: messages.common.inspectionHub.listCollapse }),
+    );
+    expect(workspace).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = workspace!.querySelector<HTMLElement>('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록1건');
+
+    await user.click(tab!);
+    expect(workspace).not.toHaveAttribute('data-left-collapsed');
+    expect(workspace!.querySelector('.po-board-list-tab')).toBeNull();
+    expect(
+      screen.getByRole('button', { name: t.actions.selectRow('LOT-SYNTH-6101') }),
+    ).toHaveAttribute('aria-current', 'true');
+    expect(screen.getByLabelText(t.fields.remarks)).toHaveValue('합성 비고');
+    window.localStorage.removeItem(collapsedKey);
   });
 });

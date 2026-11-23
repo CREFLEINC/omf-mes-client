@@ -21,6 +21,7 @@ import {
   type PrinterView,
   type ShipmentView,
 } from './types';
+import { withoutSystemReissueReasons } from '../../patterns/reissue-reasons';
 
 /**
  * 이 화면의 읽기 — **여섯이다.**
@@ -410,7 +411,9 @@ export const useReissueReasons = (enabled: boolean): UseQueryResult<ReissueReaso
           }),
         ),
       ),
-    select: (items) => items.map((item) => ({ code: item.code, name: item.codeName })),
+    /* 서버만 쓰는 사유(`LOT_SPLIT`)는 사람이 고르지 않는다(피처 013). */
+    select: (items) =>
+      withoutSystemReissueReasons(items).map((item) => ({ code: item.code, name: item.codeName })),
   });
 };
 

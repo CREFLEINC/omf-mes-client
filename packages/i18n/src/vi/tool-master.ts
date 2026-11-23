@@ -6,9 +6,7 @@ import type { Translated } from './translated';
  * 문구는 「툴」의 말(`công cụ`)을 쓰고 금형(`khuôn`)은 캐비티 자리에서만 선다.
  */
 export const toolMaster: Translated<typeof ko.toolMaster> = {
-  title: 'Dữ liệu gốc công cụ / khuôn / đồ gá',
   paneTitle: 'Danh sách công cụ',
-  breadcrumbRoot: 'Quản lý dữ liệu gốc',
   actions: {
     addTool: 'Tạo công cụ',
     importTools: 'Tải lên Excel',
@@ -45,8 +43,6 @@ export const toolMaster: Translated<typeof ko.toolMaster> = {
   loading: {
     tools: 'Đang tải danh sách công cụ',
   },
-  /** 서버가 센 전체 건수. 잘렸는지는 `listTruncated` 가 따로 말한다. */
-  resultTotal: (total: string): string => `Tổng ${total} mục`,
   listTruncated: (shown: number, total: number): string =>
     `Hiển thị ${shown} trong tổng ${total} mục. Hãy thu hẹp điều kiện rồi tra cứu.`,
   /* ⛔ 「못 받았다」와 가른다 — 사용자가 할 일이 다르다(omf-all-around#52). */

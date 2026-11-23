@@ -14,7 +14,6 @@ const renderPane = (overrides: Partial<PostPaneProps> = {}) => {
 
   render(
     <PostPane
-      approval={{ kind: 'judgePending' }}
       blockReason={null}
       destination={t.values.selfDisposal}
       isLocked={false}
@@ -28,85 +27,32 @@ const renderPane = (overrides: Partial<PostPaneProps> = {}) => {
 
 const postButton = (): HTMLElement => screen.getByRole('button', { name: t.actions.postIssue });
 
-describe('PostPane — 《처리하면 일어나는 일》 상시 문구', () => {
+describe('PostPane — 상시 문구를 두지 않는다', () => {
   /**
-   * **세 문장이 버튼 위 상시 자리에 선다**(완료 조건 C68 · 감지기 M66). 하나라도 감추면
-   * 되돌릴 수 없는 조작 앞에서 사용자가 알아야 할 사실이 빠진다.
+   * 「처리하면 일어나는 일」 세 문장 · 구획 소개 · 「판정하지 못한다」는 걷었다 — 재고가 빠지고
+   * 되돌릴 수 없다는 사실은 누르기 직전 확인 창이 말한다(사용자 지시 2026-11-20).
    */
-  it('세 문장이 함께 보인다', () => {
+  it('버튼 위에 늘 떠 있는 문장이 없다', () => {
     renderPane();
 
-    expect(screen.getByText(t.post.effectDeducts)).toBeVisible();
-    expect(screen.getByText(t.post.effectApprovalIsNotPosting)).toBeVisible();
-    expect(screen.getByText(t.post.effectNoUndoHere)).toBeVisible();
+    expect(screen.queryByText(/처리하는 자리입니다/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/판정하지 못/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/재고를 차감합니다/)).not.toBeInTheDocument();
   });
 
-  /**
-   * **버튼이 잠겨 있어도 보인다**(감지기 M66). 잠긴 동안 읽어 두어야 열렸을 때 무엇을 누르는지
-   * 알고, 잠금과 함께 감추면 정작 눌릴 수 있는 상태에서만 경고가 뜬다.
-   */
-  it('버튼이 잠겨 있어도 세 문장이 그대로 보인다', () => {
-    renderPane({ blockReason: t.actionReasons.postNeedsSubmission });
-
-    expect(postButton()).toBeDisabled();
-    expect(screen.getByText(t.post.effectDeducts)).toBeVisible();
-    expect(screen.getByText(t.post.effectApprovalIsNotPosting)).toBeVisible();
-    expect(screen.getByText(t.post.effectNoUndoHere)).toBeVisible();
-  });
-
-  /** 전송 중에도 그대로다 — 문구가 사라지는 자리에 있으면 상시 문구가 아니다. */
-  it('보내는 동안에도 세 문장이 그대로 보인다', () => {
-    renderPane({ isLocked: true, blockReason: null });
-
-    expect(screen.getByText(t.post.effectDeducts)).toBeVisible();
-    expect(screen.getByText(t.post.effectNoUndoHere)).toBeVisible();
-  });
-});
-
-describe('PostPane — 승인 판정을 못 하는 동안', () => {
-  /**
-   * **잠그지 않고 밝힌다**(승인 기록 §13-2 안 1 · 완료 조건 C67). 잠그면 승인된 건까지 처리할
-   * 수 없어 화면이 통째로 무용해진다 — 막는 것은 서버다.
-   */
-  it('자리표시가 비면 버튼이 열려 있고 그 사실을 적는다', () => {
-    renderPane({ approval: { kind: 'judgePending' }, blockReason: null });
+  /** 승인 여부를 화면이 모르는 동안에도 잠그지 않는다(승인 기록 §13-2 안 1) — 막는 것은 서버다. */
+  it('막을 까닭이 없으면 버튼이 열려 있다', () => {
+    renderPane({ blockReason: null });
 
     expect(postButton()).toBeEnabled();
-    expect(screen.getByText(t.post.unjudgeableNote)).toBeVisible();
   });
 
-  /**
-   * **전환 감지기**(감지기 M64) — 자리표시가 채워지면 안내가 사라지고 승인 전 전표가 잠긴다.
-   * 채웠을 때 살아나는 것을 재지 않으면 그 자리표시는 죽은 가지다.
-   */
-  it('자리표시가 채워져 승인 전이면 잠기고 안내가 사라진다', () => {
-    renderPane({
-      approval: { kind: 'notApproved' },
-      blockReason: t.actionReasons.postNotApproved,
-    });
+  /** 승인 전이면 잠기고 사유가 버튼 옆에서 읽힌다. */
+  it('승인 전이면 잠기고 사유가 읽힌다', () => {
+    renderPane({ blockReason: t.actionReasons.postNotApproved });
 
     expect(postButton()).toBeDisabled();
     expect(postButton()).toHaveAccessibleDescription(t.actionReasons.postNotApproved);
-    expect(screen.queryByText(t.post.unjudgeableNote)).not.toBeInTheDocument();
-  });
-
-  /** 승인된 전표는 열리고 안내도 없다 — 판정할 수 있게 된 뒤의 정상 갈래다. */
-  it('자리표시가 채워지고 승인됐으면 열리고 안내가 없다', () => {
-    renderPane({ approval: { kind: 'approved' }, blockReason: null });
-
-    expect(postButton()).toBeEnabled();
-    expect(screen.queryByText(t.post.unjudgeableNote)).not.toBeInTheDocument();
-  });
-
-  /**
-   * **결재 진행을 못 읽은 것은 「승인되지 않았다」가 아니다**(완료 조건 C78). 그때도 열려
-   * 있고, 판정하지 못했다는 안내는 **자리표시가 빈 갈래의 것**이라 서지 않는다.
-   */
-  it('진행을 못 읽었으면 열려 있고 판정 불가 안내는 서지 않는다', () => {
-    renderPane({ approval: { kind: 'unread' }, blockReason: null });
-
-    expect(postButton()).toBeEnabled();
-    expect(screen.queryByText(t.post.unjudgeableNote)).not.toBeInTheDocument();
   });
 });
 

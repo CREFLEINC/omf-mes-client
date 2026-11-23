@@ -5,7 +5,6 @@ import type { ReactNode } from 'react';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
-import { OqcQueueSkipCell } from './queue-skip-cell';
 import { lotOverviewOf } from './shipment-oqc';
 import { OverviewChip } from './shipment-oqc-parts';
 import type { ItemNameLookup } from './reference-lookup';
@@ -35,11 +34,6 @@ import { formatDateTime, type InspectionQueueRow } from './types';
 
 const t = messages.oqcInspection.queue;
 const shipmentT = messages.oqcInspection.shipment.queue;
-/*
- * 생략은 결과 0건 의뢰만(피처 010 FR-012 · T020) — 새 흐름에서 진행(IN_PROGRESS)은 결과가 1건 이상이라는 뜻이다(첫 결과 저장이
- * 진행으로 올리고, 송신 전 취소로 다시 연 의뢰도 결과가 있다). 서버도 결과 있는 의뢰의 생략 요청을 거절한다(converge C-3).
- */
-const SKIPPABLE: readonly string[] = ['REQUESTED'];
 
 const columnsOf = (
   selectedId: number | null,
@@ -59,23 +53,36 @@ const columnsOf = (
         <span className="oqc-inspection-queue-unregistered">{t.serialUnregistered}</span>
       ),
   },
+  /*
+   * 품목은 코드 · 이름 두 칸이다(사용자 지시 2026-11-20, 한 칸에 붙이던 「이름 코드」를 나눴다 · IQC 와 같은 모양). 못 푼
+   * 갈래는 코드 칸에 풀이의 사유를 내고 이름 칸은 비운다. 다른 열처럼 폭을 끌어 바꾼다(#185).
+   */
   {
-    key: 'itemId',
+    key: 'itemCode',
     align: 'start',
-    header: t.columns.itemId,
-    /* 다른 열처럼 폭을 끌어 바꾼다(#185). */
-    width: '280px',
-    /* 「이름 / 코드」 두 줄 — 못 푼 갈래는 줄이 하나뿐이라 풀이가 사유를 그 자리에 낸다(IQC 와 같은 모양). */
+    header: t.columns.itemCode,
+    width: '140px',
     render: (row) => {
       const parts = itemNames.partsOf(row.itemId);
-      const label = itemNames.labelOf(row.itemId);
-
-      return parts === null ? (
-        <span className="oqc-inspection-queue-item-name">{label}</span>
-      ) : (
-        <span className="oqc-inspection-queue-item" title={`${parts.name} · ${parts.code}`}>
-          <span className="oqc-inspection-queue-item-name">{parts.name}</span>
-          <span className="oqc-inspection-queue-sub">{parts.code}</span>
+      const value = parts === null ? itemNames.labelOf(row.itemId) : parts.code;
+      return (
+        <span className="oqc-inspection-queue-item-name" title={value}>
+          {value}
+        </span>
+      );
+    },
+  },
+  {
+    key: 'itemName',
+    align: 'start',
+    header: t.columns.itemName,
+    width: '220px',
+    render: (row) => {
+      const parts = itemNames.partsOf(row.itemId);
+      if (parts === null) return t.emptyValue;
+      return (
+        <span className="oqc-inspection-queue-item-name" title={parts.name}>
+          {parts.name}
         </span>
       );
     },
@@ -167,22 +174,6 @@ const columnsOf = (
     sortAccessor: (row) => row.requestedAt,
     render: (row) => <span className="oqc-inspection-num">{formatDateTime(row.requestedAt)}</span>,
   },
-  {
-    key: 'skip',
-    align: 'center',
-    header: t.columns.skip,
-    width: '120px',
-    /* 대기(결과 0건) 출하작업지시 의뢰에만 둔다 — 끝났거나 결과가 있는 의뢰는 생략할 것이 없다(사용자 지시 2026-11-09 · T054). */
-    render: (row) =>
-      row.targetTypeCode === 'SHIPMENT_REQUEST' && SKIPPABLE.includes(row.statusCode) ? (
-        <OqcQueueSkipCell
-          inspectionRequestId={row.inspectionRequestId}
-          shipmentRequestId={row.targetId}
-        />
-      ) : (
-        messages.iqcInspection.queue.emptyValue
-      ),
-  },
 ];
 
 export interface QueueListTableProps {
@@ -231,7 +222,7 @@ export const QueueListTable = ({
      */
     <div
       ref={fit.ref}
-      className="oqc-inspection-queue-rows inspection-queue-table"
+      className="oqc-inspection-queue-rows inspection-queue-table cells-start"
       style={resizable.style}
       onClick={(event) => {
         const target = event.target as Element;

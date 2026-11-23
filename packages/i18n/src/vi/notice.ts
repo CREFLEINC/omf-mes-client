@@ -15,9 +15,6 @@ import type { Translated } from './translated';
  * — 확인 이력이 남아야 한다는 것이 이 화면의 근거다.
  */
 export const notice: Translated<typeof ko.notice> = {
-  title: 'Thông cáo · truyền đạt',
-  breadcrumbRoot: 'Hộp công việc',
-
   panes: {
     list: 'Danh sách thông cáo',
     detail: 'Thông cáo',
@@ -57,7 +54,6 @@ export const notice: Translated<typeof ko.notice> = {
     BUSINESS_UNIT: 'Đơn vị kinh doanh',
     EQUIPMENT_GROUP: 'Nhóm thiết bị',
     WORK_SHIFT: 'Ca làm việc',
-    unsupported: 'Đợt 1 chỉ dùng được toàn công ty và lệnh sản xuất. Còn lại máy chủ sẽ từ chối.',
     /** ⚠ 선택칸 이름 **뒤**에 붙는 꼬리다 — 앞 공백까지가 이 값이다. */
     unsupportedSuffix: ' (đợt 1 chưa hỗ trợ)',
     companyNote: 'Tài khoản mới tạo cũng tự động vào diện đối tượng.',
@@ -110,7 +106,6 @@ export const notice: Translated<typeof ko.notice> = {
     lookupTruncated:
       'Chỉ hiển thị một phần danh sách. Không thấy cái cần tìm thì hãy hỏi người phụ trách.',
     selectPlaceholder: 'Hãy chọn',
-    attachmentLocked: 'Đính kèm chưa mở. Khi nào định được đính kèm vào đâu thì sẽ mở.',
   },
 
   detail: {

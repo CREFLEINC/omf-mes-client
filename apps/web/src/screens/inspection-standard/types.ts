@@ -53,7 +53,7 @@ export interface PlanFormValues {
   routingId: string;
   /**
    * 기본 생략(omf-all-around#212 · 옛 「PQC 생략 허용」 #119) — 검사 유형 공통. 켜면 이 기준이 걸리는 입하 LOT(IQC)·
-   * 작업지시(PQC)·출하작업지시(OQC)의 검사가 의뢰 없이 「생략(기본 설정)」으로 넘어간다.
+   * 작업지시(PQC)·출하작업지시(OQC)의 검사가 의뢰 없이 「생략」으로 넘어간다.
    */
   defaultSkip: boolean;
 }

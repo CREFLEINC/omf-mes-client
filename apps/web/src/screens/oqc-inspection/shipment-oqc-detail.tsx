@@ -3,9 +3,15 @@ import type { InspectionLotForward, InspectionResultSummaryForward } from '@omf-
 import { messages } from '@omf-mes/i18n';
 import { useId, useState, type ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { formatQty } from '../../patterns/package-qty';
 import { toApiError } from '../../patterns/request';
 import { PlanViewLauncher } from '../iqc-inspection/plan-view-launcher';
+import {
+  SkippedOverview,
+  type SkippedOverviewTab,
+  usePlanCode,
+} from '../parts-iqc-inspection/skipped-overview';
 import { useSamplingRule } from '../iqc-inspection/queries';
 import { LotNo } from '../parts-iqc-inspection/lot-match-field';
 import { ResultList } from '../parts-iqc-inspection/result-list';
@@ -36,7 +42,11 @@ export interface ShipmentOqcDetailProps {
   inspectionRequestId: number;
   /** 품목 「코드 · 이름」 — 화면이 품목 풀이를 이미 읽어 두었다. 못 풀었으면 표기 글 하나. */
   itemLabel: ReactNode;
+  /** 품목 이름 · 코드 — 생략 건 요약(IQC 와 같은 틀 · #353)이 이름 · 코드 차례로 쓴다. 못 풀었으면 null. */
+  itemParts: { code: string; name: string } | null;
   uomCode: string | null;
+  /** 생략 건 상세의 「검사 진행」 뒤 탭(검사 이력 · 시리얼별 검사 이력 · #353). */
+  skippedTabs?: SkippedOverviewTab[];
 }
 
 /**
@@ -52,7 +62,9 @@ export interface ShipmentOqcDetailProps {
 export const ShipmentOqcDetail = ({
   inspectionRequestId,
   itemLabel,
+  itemParts,
   uomCode,
+  skippedTabs,
 }: ShipmentOqcDetailProps) => {
   const toast = useToast();
   const query = useShipmentOqcRequest(inspectionRequestId);
@@ -63,6 +75,10 @@ export const ShipmentOqcDetail = ({
     null,
   );
   const addBlockedId = useId();
+  /* 기준서 번호는 생략 요약만 보인다 — 일반 건은 부르지 않는다. */
+  const planCode = usePlanCode(
+    request?.statusCode === 'SKIPPED' ? (request.inspectionPlanVersionId ?? null) : null,
+  );
 
   if (query.isError) {
     return (
@@ -84,6 +100,44 @@ export const ShipmentOqcDetail = ({
     request.nextResultSeqNo ?? results.reduce((max, result) => Math.max(max, result.seqNo), 0) + 1;
   const refData = ref.data;
   const shipmentRequestNo = request.shipmentRequestNo ?? refData?.shipmentRequestNo ?? '—';
+
+  /* 생략 건은 IQC 생략 건과 같은 틀 — 입력 · 결과 칸 없이 요약만(사용자 지시 2026-11-23 · #353). */
+  if (skipped) {
+    return (
+      <div className="parts-iqc-detail-body iqc-inbound-detail oqc-shipment-detail">
+        <SkippedOverview
+          title={messages.partsIqcInspection.skipped.titleOqc}
+          {...(skippedTabs === undefined ? {} : { tabs: skippedTabs })}
+          itemLabel={messages.partsIqcInspection.skipped.item}
+          itemParts={itemParts}
+          planCode={planCode}
+          planAction={
+            request.inspectionPlanVersionId == null ? null : (
+              <PlanViewLauncher
+                inspectionPlanVersionId={request.inspectionPlanVersionId}
+                label={messages.iqcInspection.detail.openPlan}
+              />
+            )
+          }
+          requestNo={request.inspectionRequestNo}
+          lotNo={active.map((view) => view.lot.lotNo).join(', ') || '-'}
+          lotFacts={[
+            { key: 'sr', label: s.facts.shipmentRequest, value: shipmentRequestNo },
+            { key: 'customer', label: s.facts.customer, value: refData?.customerName ?? '—' },
+            {
+              key: 'tp',
+              label: s.facts.targetPicked,
+              value:
+                refData === undefined
+                  ? '—'
+                  : s.targetPicked(formatQty(refData.targetQty), formatQty(refData.pickedQty), uom),
+            },
+            { key: 'at', label: s.facts.requestedAt, value: formatDateTime(request.requestedAt) },
+          ]}
+        />
+      </div>
+    );
+  }
 
   const facts: { key: string; label: string; value: ReactNode; emphasized?: boolean }[] = [
     {
@@ -221,16 +275,13 @@ export const ShipmentOqcDetail = ({
         ))}
       </dl>
 
-      <p className="field-note oqc-shipment-note">
-        <Icon name={skipped ? 'fast_forward' : 'info'} size={16} aria-hidden />
-        <span>
-          {skipped
-            ? `${s.skipped} ${s.skippedMore}`
-            : request.statusCode === 'COMPLETED'
-              ? s.completed
-              : s.note}
-        </span>
-      </p>
+      {/* 출하 완료로 닫힌 의뢰는 그 사실을 한 줄로(생략은 머리줄 안내). 열린 의뢰의 판정 규칙은 「검사 결과」 제목 옆 ⓘ 로(관리웹 정리 시안 A). */}
+      {request.statusCode === 'COMPLETED' && (
+        <p className="field-note oqc-shipment-note">
+          <Icon name="info" size={16} aria-hidden />
+          <span>{s.completed}</span>
+        </p>
+      )}
 
       <section className="parts-iqc-card" aria-label={s.lots.heading(active.length)}>
         <div className="parts-iqc-block-head">
@@ -263,9 +314,10 @@ export const ShipmentOqcDetail = ({
 
       <section className="parts-iqc-card" aria-label={s.results.heading(results.length)}>
         <div className="parts-iqc-block-head">
-          <h3>
+          <h3 className="oqc-shipment-results-title">
             {s.results.title}{' '}
             <span className="parts-iqc-muted">{s.results.count(results.length)}</span>
+            {!skipped && request.statusCode !== 'COMPLETED' && <InfoTip text={s.note} />}
           </h3>
           <span className="parts-iqc-footer-gap" />
           {isOpen ? (

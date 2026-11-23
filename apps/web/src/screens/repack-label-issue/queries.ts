@@ -18,6 +18,7 @@ import {
   type Printer,
   type RemainderCandidate,
 } from './types';
+import { withoutSystemReissueReasons } from '../../patterns/reissue-reasons';
 
 /** 목록을 한 번에 너무 크게 받지 않으면서 전체 계약 건수를 이어 받는 서버 페이지 크기. */
 const REASON_PAGE_SIZE = 100;
@@ -688,7 +689,8 @@ export const useReissueReasons = (): UseQueryResult<CodeValue[]> => {
   return useQuery({
     queryKey: repackLabelKeys.reissueReasons,
     queryFn: async (): Promise<CodeValue[]> => {
-      return readAllPages(REASON_PAGE_SIZE, (page, size) =>
+      /* 서버만 쓰는 사유(`LOT_SPLIT`)는 사람이 고르지 않는다(피처 013). */
+      const reasons = await readAllPages(REASON_PAGE_SIZE, (page, size) =>
         runRequest(() =>
           client.GET('/mdm/code-values', {
             params: {
@@ -701,6 +703,8 @@ export const useReissueReasons = (): UseQueryResult<CodeValue[]> => {
           }),
         ),
       );
+
+      return withoutSystemReissueReasons(reasons);
     },
   });
 };

@@ -112,7 +112,7 @@ describe('ErpInboundScreen — 표시', () => {
     const button = await panel().findByRole('button', { name: '품목 지금 읽기' });
     expect(button).toBeDisabled();
     expect(
-      panel().getByText('지금 읽기는 이 서버에서 ERP 연동이 꺼져 있어 쓸 수 없습니다.'),
+      panel().getByText('ERP 연동이 꺼져 있어 지금 읽기를 쓸 수 없습니다.'),
     ).toBeVisible();
   });
 

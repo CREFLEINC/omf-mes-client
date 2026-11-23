@@ -316,7 +316,7 @@ describe('GrLineTable — 폐기 수량 칸', () => {
    * **빈 칸으로 시작한다**(완료 조건 C26 · 감지기 M26). 입고 수량으로 미리 채우면
    * 전량 폐기가 기본값처럼 보이고, 사용자가 그대로 확인하면 받은 전부가 장부에서 빠진다.
    */
-  it('빈 칸으로 시작하고 그 이유를 밝힌다', () => {
+  it('빈 칸으로 시작한다', () => {
     renderTable();
 
     for (const ordinal of [1, 2, 3]) {
@@ -324,8 +324,6 @@ describe('GrLineTable — 폐기 수량 칸', () => {
         '',
       );
     }
-
-    expect(screen.getByText(t.notes.disposalQtyEmptyStart)).toBeInTheDocument();
   });
 
   it('친 글자를 그대로 보이고 바뀌면 알린다', async () => {

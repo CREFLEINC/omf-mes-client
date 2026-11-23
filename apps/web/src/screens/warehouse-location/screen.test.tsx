@@ -1282,11 +1282,14 @@ describe('WarehouseLocationScreen — 창고 신규 등록', () => {
     });
     expect(screen.queryByText('locationPrefix 중복')).not.toBeInTheDocument();
 
-    // [다시 만들기]로 새 코드를 지으면 그 칸의 서버 오류가 걷힌다.
+    // [다시 만들기]로 새 코드를 지으면 그 칸의 서버 오류가 걷힌다 — 형식 안내는 라벨 옆 ⓘ 라 칸 아래가 빈다.
     await user.click(screen.getByRole('button', { name: '다시 만들기' }));
-    expect(prefix).toHaveAccessibleDescription(
-      '무작위로 만들었습니다. 대문자와 숫자 2~6자로 고칠 수 있고, 저장한 뒤에는 바꿀 수 없습니다.',
-    );
+    expect(prefix).not.toBeInvalid();
+    expect(
+      screen.queryByText(
+        '이미 다른 창고가 쓰는 코드입니다 — 다른 코드를 넣거나 [다시 만들기]를 누르세요.',
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it('등록되면 그 창고의 상세로 옮겨 다시 조회한다 — 여기서 잠금 토큰을 확보한다', async () => {
@@ -3467,7 +3470,7 @@ describe('WarehouseLocationScreen — 창고 정보 (안 A)', () => {
     expect(within(section).getByLabelText('셀')).toHaveTextContent('0');
     expect(within(section).getByLabelText('사용 중지')).toHaveTextContent('1');
 
-    const system = within(section).getByRole('list', { name: '서버가 만든 위치' });
+    const system = within(section).getByRole('list', { name: '자동으로 만든 위치' });
     const rows = within(system).getAllByRole('listitem');
     expect(within(rows[0]!).getByText('SYS-STAGING')).toBeInTheDocument();
     expect(within(rows[0]!).getByText('적치 대기')).toBeInTheDocument();

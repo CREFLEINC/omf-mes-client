@@ -2,6 +2,7 @@ import { AlertBanner, SkeletonText, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import type { CodeOption } from './options';
 import {
   appliedRatio,
@@ -19,18 +20,31 @@ const t = messages.shotConversion.preview;
 interface ReadOnlyRowProps {
   label: string;
   value: string;
+  /** 이 값이 낸 결과 — 값 아래에 보이는 글자로 둔다 */
   note?: string;
+  /** 값이 어디서 오는지 — 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A) */
+  info?: string;
 }
 
 /** 값을 보여 주기만 하는 줄. 미리보기는 고치는 자리가 아니다. */
-const ReadOnlyRow = ({ label, value, note }: ReadOnlyRowProps) => {
+const ReadOnlyRow = ({ label, value, note, info }: ReadOnlyRowProps) => {
   const labelId = useId();
+  const labelNode = (
+    <span className="field-label" id={labelId}>
+      {label}
+    </span>
+  );
 
   return (
     <div className="field-cell">
-      <span className="field-label" id={labelId}>
-        {label}
-      </span>
+      {info === undefined ? (
+        labelNode
+      ) : (
+        <span className="info-label">
+          {labelNode}
+          <InfoTip text={info} />
+        </span>
+      )}
       <p aria-labelledby={labelId}>{value}</p>
       {note !== undefined && <span className="field-note">{note}</span>}
     </div>
@@ -130,7 +144,7 @@ export const PreviewPane = ({
         <ReadOnlyRow
           label={t.cavityLabel}
           value={cavity === null ? t.cavityNeedsTool : String(cavity)}
-          note={cavity === null ? undefined : t.cavitySource}
+          info={cavity === null ? undefined : t.cavitySource}
         />
 
         {/*
@@ -167,10 +181,10 @@ export const PreviewPane = ({
     );
   };
 
+  /* 상자(`미리보기` 구획)는 화면이 상세 자리에 세운다(#350) — 여기는 그 안의 제목과 본문만. */
   return (
-    <section className="pane shot-conversion-pane" aria-label={t.paneTitle}>
+    <>
       <h2 className="pane-title">{t.paneTitle}</h2>
-      <p className="dialog-lead">{t.description}</p>
 
       {/*
        * ⭐ **입력과 결과를 한 격자에 둔다.** 격자를 둘로 나눠 붙이면 그 사이만 간격이 없어
@@ -207,6 +221,6 @@ export const PreviewPane = ({
 
         {result()}
       </div>
-    </section>
+    </>
   );
 };

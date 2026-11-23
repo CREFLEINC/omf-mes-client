@@ -7,8 +7,6 @@
  * 두 화면이 한 계산의 입력을 나눠 갖고, 나누는 선이 「툴 고유 ↔ 품목·공정 정책」이다.
  */
 export const shotConversion = {
-  title: '타발수 환산 파라미터 설정',
-  breadcrumbRoot: '기준정보 관리',
   optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
   optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
   /**
@@ -21,10 +19,9 @@ export const shotConversion = {
     paneTitle: '환산 사용',
     switchLabel: '생산 수량으로 타발수를 환산한다',
     loading: '환산 사용 여부를 불러오는 중',
-    offNote: '끄면 타발수를 손으로만 입력합니다.',
+    offNote: '끄면 타발수를 직접 입력합니다.',
     /** ⭐ 켤 때 반드시 함께 읽혀야 하는 문장이다 — 없으면 손 입력이 막힌 줄 안다. */
-    stillManual:
-      '켜도 손 입력은 그대로 됩니다. 환산은 보조 경로이며, 켜면 작업실적 입력에 「생산 수량으로 환산」 선택지가 늘어납니다.',
+    stillManual: '켜도 타발수를 직접 입력할 수 있습니다. 작업실적 입력에 「생산 수량으로 환산」이 하나 더 생깁니다.',
     /**
      * ⚠ **막지 않는다**(공유계약 G-12·G-15) — 정책은 나중에 더할 수 있고, 켜 두는 것이
      * 「이제 정책을 만들겠다」는 뜻일 수 있다. 다만 지금 상태로는 동작하지 않는다고 말한다.
@@ -33,8 +30,7 @@ export const shotConversion = {
     noRatioTitle: '환산을 켜 두었지만 쓸 비율이 없습니다',
     /** ⛔ 아직 정하지 않은 것을 「끔」으로 그리지 않는다(공유계약 G-9). */
     notSetTitle: '아직 정하지 않았습니다',
-    notSet:
-      '환산 사용 여부를 아직 정하지 않았습니다. 정하기 전까지는 타발수를 손으로만 입력합니다.',
+    notSet: '아직 정하지 않았습니다. 정할 때까지 타발수는 직접 입력합니다.',
     loadFailed: '환산 사용 여부를 불러오지 못했습니다.',
   },
   ratioList: {
@@ -49,8 +45,6 @@ export const shotConversion = {
      * 겹치면 무엇이 이기는지를 표 곁에서 말해 두지 않으면, 사람마다 다르게 읽는다.
      */
     overlapNote: '범위가 겹치면 더 좁은 것이 이깁니다 — 품목 · 공정 · 공장 · 사업부 차례입니다.',
-    /** ⚠ 화면이 판정하지 않는다 — 실제로 무엇이 적용되는지는 미리보기가 서버에 물어 답한다. */
-    resolvedElsewhere: '지금 어느 정책이 적용되는지는 아래 미리보기에서 확인하세요.',
     listTruncated: (shown: number, total: number): string =>
       `전체 ${String(total)}건 중 ${String(shown)}건을 표시합니다. 기준일로 좁혀 보세요.`,
     effectiveOnLabel: '기준일',
@@ -151,8 +145,6 @@ export const shotConversion = {
    */
   preview: {
     paneTitle: '미리보기',
-    description:
-      '툴·품목·공정을 고르면 그 조합에 실제로 적용되는 정책과 그것으로 계산한 타발수를 보입니다.',
     toolLabel: '툴',
     itemLabel: '품목',
     processLabel: '공정',

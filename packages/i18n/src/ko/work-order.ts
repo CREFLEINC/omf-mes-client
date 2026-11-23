@@ -93,9 +93,9 @@ export const workOrder = {
     previous: '이전 쪽',
     next: '다음 쪽',
     disabled: {
-      first: '첫 쪽: 이미 첫 쪽입니다. 첫 쪽이 아닌 곳에서 이동할 수 있습니다.',
-      previous: '이전 쪽: 이미 첫 쪽입니다. 첫 쪽 뒤에서 이동할 수 있습니다.',
-      next: '다음 쪽: 다음 쪽이 없습니다. 다음 쪽이 있을 때 이동할 수 있습니다.',
+      first: '이미 첫 쪽입니다.',
+      previous: '앞 쪽이 없습니다.',
+      next: '다음 쪽이 없습니다.',
     },
   },
   validationPane: {

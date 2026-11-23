@@ -18,7 +18,6 @@ const resultOf = (over: Partial<IssueRunResult>): IssueRunResult => ({
   hasPrintedLabel: false,
   issue: null,
   error: null,
-  iqcLabel: null,
   ...over,
 });
 

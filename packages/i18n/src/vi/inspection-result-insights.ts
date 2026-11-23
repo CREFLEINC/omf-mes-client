@@ -18,7 +18,6 @@ export const inspectionResultInsights: Translated<typeof ko.inspectionResultInsi
   page: {
     preparing: 'Đang chuẩn bị điều kiện tra cứu kiểm tra',
     lookupFailed: 'Không tải được tên của một số điều kiện tra cứu.',
-    lookupFailedDetail: 'Không hiển thị số hiệu nội bộ hay mã để thay thế.',
     lookupRetry: 'Thử lại điều kiện đã thất bại',
   },
   filter: {

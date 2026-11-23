@@ -7,7 +7,6 @@ import type { Translated } from './translated';
  */
 export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
   title: 'Dữ liệu gốc thiết bị · nhóm thiết bị',
-  breadcrumbRoot: 'Quản lý dữ liệu gốc',
   actions: {
     addGroup: 'Thêm nhóm',
     addEquipment: 'Thêm thiết bị',
@@ -238,7 +237,6 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
   inspectionItem: {
     tabLabel: 'Hạng mục kiểm tra định kỳ',
     paneTitle: 'Dữ liệu gốc hạng mục kiểm tra định kỳ',
-    description: 'Tạo tại đây hạng mục kiểm tra định kỳ để gán cho thiết bị và nhóm thiết bị.',
     loading: 'Đang tải hạng mục kiểm tra định kỳ',
     emptyTitle: 'Không có hạng mục kiểm tra định kỳ nào được đăng ký',
     emptyDescription: 'Tạo hạng mục kiểm tra định kỳ thì gán được cho thiết bị · nhóm thiết bị.',

@@ -67,7 +67,6 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
     pane: 'Danh sách lịch sử',
     caption: 'Danh sách dòng lịch sử',
     loading: 'Đang tải lịch sử',
-    totalLines: (count: number): string => `Tất cả ${num(count)} dòng`,
     totalQty: 'Tổng số lượng',
     loadFailed: 'Không tải được lịch sử',
     loadFailedDescription: 'Hãy tra cứu lại sau ít phút.',
@@ -275,6 +274,9 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
       splitsSection: 'LOT tách',
       splitsHint:
         'Đây là các LOT tách ra từ LOT này khi xuất kho một phần. LOT tách lại từ LOT tách được thụt vào.',
+      productSplitsHint:
+        'LOT được tách ra từ LOT này bằng thao tác tách LOT sản xuất. LOT tách tiếp từ LOT mới được thụt vào.',
+      productSplitLine: (at: string): string => `Thời điểm tách ${at}`,
       splitLine: (at: string, issue: string): string =>
         `Thời điểm tách ${at} · số phiếu xuất kho ${issue}`,
       splitFrom: (lotNo: string): string => `Tách từ ${lotNo}`,

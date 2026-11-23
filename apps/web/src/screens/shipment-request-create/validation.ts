@@ -18,19 +18,20 @@ import type { AssignmentMode, ShipmentRequestLineDraft } from './types';
 const t = messages.shipmentRequestCreate;
 
 export const HEADER_FORM_FIELDS: readonly string[] = [
-  'fulfillmentPlantId',
+  'businessUnitId',
   'customerId',
   'shipToPartnerId',
   'requestedShipDate',
 ];
 
-export type LineFieldName = 'itemId' | 'uomId' | 'requestedQty' | 'allocatedQty';
+export type LineFieldName = 'itemId' | 'uomId' | 'requestedQty' | 'allocatedQty' | 'warehouseId';
 
 /** 줄 단위 오류의 열쇠. 줄 키가 앞에 온다 — 잘못 친 줄이 둘일 때 서로 섞이지 않는다. */
 export const lineFieldId = (key: string, field: LineFieldName): string => `${key}.${field}`;
 
 export interface HeaderDraft {
-  fulfillmentPlantId: string;
+  /** 지시서 사업부(피처 012 FR-001·002) — 「출하 담당 공장」 자리. */
+  businessUnitId: string;
   customerId: string;
   shipToPartnerId: string;
   requestedShipDate: string;
@@ -43,7 +44,7 @@ export const validateHeader = (
 ): Record<string, string> => {
   const errors: Record<string, string> = {};
 
-  if (draft.fulfillmentPlantId === '') errors.fulfillmentPlantId = t.errors.fulfillmentPlantRequired;
+  if (draft.businessUnitId === '') errors.businessUnitId = t.errors.businessUnitRequired;
   if (draft.requestedShipDate === '') errors.requestedShipDate = t.errors.requestedShipDateRequired;
 
   if (mode === 'standalone') {
@@ -109,13 +110,18 @@ const isIncompleteLine = (line: ShipmentRequestLineDraft): boolean =>
   line.salesOrderLineId === null &&
   (line.itemId === '' || line.uomId === '' || readQty(line.requestedQty).kind === 'empty');
 
-/** 배정 수량 오류(둘 다 모드) — 비었으면 0으로 보아 오류가 아니다(그 줄은 제외된다). */
+/**
+ * 배정 수량 오류(둘 다 모드) — 비었으면 0으로 보아 오류가 아니다(그 줄은 제외된다).
+ *
+ * 나눈 줄은 요청 수량이 없다(보내기 직전 정한다) — 「요청 수량을 넘는가」는 묶음 합(`splitGroupsOf`)이 본다.
+ */
 const allocatedQtyError = (line: ShipmentRequestLineDraft): string | null => {
   const read = readQty(line.allocatedQty);
 
   if (read.kind === 'empty') return null;
   if (read.kind === 'invalid') return t.errors.qtyNotNumber;
   if (read.value < 0) return t.errors.allocatedQtyNegative;
+  if (line.splitOf !== null) return null;
 
   const requested = readQty(line.requestedQty);
 
@@ -126,8 +132,78 @@ const allocatedQtyError = (line: ShipmentRequestLineDraft): string | null => {
   return null;
 };
 
+/** 이번 편성에 실리는 줄인가 — 배정 수량이 1 이상(`shipment-request-create-body.ts` 와 같은 기준). */
+export const isSendingLine = (line: ShipmentRequestLineDraft): boolean => {
+  const read = readQty(line.allocatedQty);
+
+  return read.kind === 'qty' && read.value >= 1;
+};
+
+/**
+ * 나눈 줄 묶음 하나(피처 012 FR-005) — 같은 S/O 줄을 가리키는 원 줄 + 나눈 줄들.
+ *
+ * `remaining` 은 원 줄의 요청 수량(= S/O 잔여, 승계 값)이다. `total` 은 묶음 배정 합.
+ */
+export interface SplitGroup {
+  originKey: string;
+  salesOrderLineNo: number | null;
+  remaining: number;
+  total: number;
+  lines: ShipmentRequestLineDraft[];
+  isOver: boolean;
+}
+
+/** 소수 수량의 합 오차를 피한다 — 계약 수량은 소수 6자리. 서버(`assertSalesOrderRemaining`)와 같은 셈. */
+const exceeds = (total: number, remaining: number): boolean =>
+  Math.round(total * 1e6) > Math.round(remaining * 1e6);
+
+const qtyOf = (raw: string): number => {
+  const read = readQty(raw);
+
+  return read.kind === 'qty' ? read.value : 0;
+};
+
+/** 나눈 줄이 하나라도 있는 원 줄마다 묶음을 낸다 — 나누지 않은 줄은 줄 단위 검사(배정 ≤ 요청)로 충분하다. */
+export const splitGroupsOf = (lines: readonly ShipmentRequestLineDraft[]): SplitGroup[] =>
+  lines
+    .filter((origin) => origin.splitOf === null && lines.some((line) => line.splitOf === origin.key))
+    .map((origin) => {
+      const group = lines.filter((line) => line.key === origin.key || line.splitOf === origin.key);
+      const remaining = qtyOf(origin.requestedQty);
+      const total = group.reduce((sum, line) => sum + qtyOf(line.allocatedQty), 0);
+
+      return {
+        originKey: origin.key,
+        salesOrderLineNo: origin.salesOrderLineNo,
+        remaining,
+        total,
+        lines: group,
+        isOver: exceeds(total, remaining),
+      };
+    });
+
+/**
+ * 창고를 고르지 않은 채 나갈 줄(피처 012 FR-003 · US1-6). 배정 0 인 줄은 이번에 나가지 않으므로 묻지 않는다.
+ */
+export const linesMissingWarehouse = (
+  lines: readonly ShipmentRequestLineDraft[],
+): ShipmentRequestLineDraft[] =>
+  lines.filter((line) => line.warehouseId === '' && isSendingLine(line));
+
 export const validateLines = (lines: readonly ShipmentRequestLineDraft[]): LineValidation => {
   const errors: Record<string, string> = {};
+  /*
+   * 창고 빈 칸은 «사람이 창고를 고르기 시작한 뒤»에만 붉게 적는다 — S/O 를 막 고른 직후 모든 줄이 붉으면
+   * 아무것도 안 했는데 잘못한 것처럼 읽힌다(2026-09-18 지시와 같은 규율). 막는 사유는 단추 옆에 늘 선다.
+   * 사업부를 바꿔 비운 줄은 붉게 적지 않는다 — 노란 테와 띠가 이미 말한다.
+   */
+  const startedPicking = lines.some((line) => line.warehouseId !== '');
+
+  for (const line of linesMissingWarehouse(lines)) {
+    if (startedPicking && !line.warehouseCleared) {
+      errors[lineFieldId(line.key, 'warehouseId')] = t.errors.warehouseRequired;
+    }
+  }
 
   for (const line of lines) {
     if (line.salesOrderLineId === null) {

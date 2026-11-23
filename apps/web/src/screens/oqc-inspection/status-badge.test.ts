@@ -17,10 +17,13 @@ describe('toStatusBadge', () => {
     expect(toStatusBadge('SKIPPED').tone).not.toBe(toStatusBadge('CANCELLED').tone);
   });
 
-  /* omf-all-around#212 — 생략은 근거(기본 설정 · 결재 승인)로 한 번 더 가른다. 근거가 없으면 종전 「생략」. */
-  it('생략은 근거로 가른다 — 기본 설정 · 결재 승인 · 근거 없음', () => {
+  /*
+   * omf-all-around#212 — 생략은 근거(기본 설정)로 한 번 더 가른다. 근거가 없거나 모르는 근거면 종전 「생략」.
+   * 건별 결재 승인 생략(APPROVAL)은 없어졌다(#353).
+   */
+  it('생략은 근거로 가른다 — 기본 설정 · 근거 없음 · 모르는 근거', () => {
     expect(toStatusBadge('SKIPPED', 'DEFAULT').label).toBe(t.skippedDefault);
-    expect(toStatusBadge('SKIPPED', 'APPROVAL').label).toBe(t.skippedApproval);
+    expect(toStatusBadge('SKIPPED', 'APPROVAL').label).toBe(t.skipped);
     expect(toStatusBadge('SKIPPED', null).label).toBe(t.skipped);
     expect(toStatusBadge('REQUESTED', 'DEFAULT').label).toBe(t.requested);
   });

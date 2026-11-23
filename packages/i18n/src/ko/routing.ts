@@ -8,7 +8,8 @@ export const routing = {
   title: 'Routing(공정)',
   breadcrumbRoot: '기준정보 관리',
   panes: {
-    item: '품목',
+    /** 품목 목록 상자 제목 줄(#350). */
+    itemList: '품목 목록',
     revision: 'Rev 목록',
     header: 'Routing 정보',
     operations: '공정 라인',
@@ -17,8 +18,8 @@ export const routing = {
   },
   /** 상세 카드(사용자 시안 · #231) — 머리 · 탭 · 구역 제목. */
   card: {
-    title: '공정 경로',
-    tabsLabel: '공정 경로 상세',
+    title: '라우팅',
+    tabsLabel: '라우팅 상세',
     settingsTab: '설정',
     historyTab: 'Rev 이력',
     /** 설정 탭 맨 아래 취소 · 저장 · 확정 · 폐기 줄(#231). */
@@ -57,19 +58,17 @@ export const routing = {
     /* 선후행은 저장된 라인만 가리킬 수 있다 — 저장 전 라인에는 서버 식별자가 없다. */
     dependenciesBlockedByUnsaved:
       '공정 연결은 저장하지 않은 공정 라인이 있으면 할 수 없습니다. 먼저 공정을 저장하거나 취소하세요.',
-    dependenciesNeedOperations: '공정 연결은 공정 2개 이상 등록 시 사용 가능합니다.',
+    dependenciesNeedOperations: '공정을 2개 이상 등록하면 공정 연결을 쓸 수 있습니다.',
     removeBlockedWhileCheckingDependencies: '선후행을 확인하는 중입니다. 잠시 뒤 다시 시도하세요.',
     removeBlockedByDependencyLoadError:
       '선후행을 불러오지 못해 지울 수 있는지 확인할 수 없습니다. 새로고침한 뒤 다시 시도하세요.',
     removeBlockedByDependencies: (relations: string): string =>
       `이 공정에 선후행이 걸려 있습니다(${relations}). 먼저 [공정 연결]에서 그 관계를 지우고 공정을 지우세요.`,
-    compareRevisionsUnavailable:
-      'Rev 비교는 아직 할 수 없습니다. 비교 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
-    changeHistoryUnavailable:
-      '변경 이력은 아직 볼 수 없습니다. 조회 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
+    compareRevisionsUnavailable: 'Rev 비교는 아직 할 수 없습니다.',
+    changeHistoryUnavailable: '변경 이력은 아직 볼 수 없습니다.',
     /** 계약이 라인 1건 이상을 요구한다(위반 시 400 LINE_REQUIRED) — 화면이 먼저 막고 사유를 밝힌다. */
     confirmNeedsOperations: '확정은 공정을 1건 이상 등록해야 할 수 있습니다.',
-    confirmNeedsDraft: '확정은 작성중 Rev에만 할 수 있습니다. 변경하려면 신규 Rev를 발행하세요.',
+    confirmNeedsDraft: '작성중 Rev만 확정할 수 있습니다.',
     /*
      * 확정하면 그 Rev는 더 이상 수정할 수 없다 — 저장하지 않은 편집은 되돌릴 길 없이 사라진다.
      * 잃기 전에 막는다.
@@ -89,7 +88,7 @@ export const routing = {
      * 공유하는 안내라 컨트롤 이름이 아니라 무엇에 대한 안내인지로 시작한다(배치 규범 4의 이탈 조건).
      */
     operationsLocked:
-      '공정 라인은 작성중 Rev에서만 편집할 수 있습니다. 변경하려면 신규 Rev를 발행하세요.',
+      '공정 라인은 작성중 Rev에서만 고칠 수 있습니다. 바꾸려면 「신규 Rev 발행」을 누르세요.',
     /*
      * 라인을 저장하면 헤더도 다시 불러온다(판 번호가 올라갈 수 있다) —
      * 그때 저장하지 않은 헤더 편집이 서버 값으로 되돌아간다. 조용히 잃지 않도록 먼저 막는다.
@@ -304,8 +303,7 @@ export const routing = {
      * 그 뒤에 무엇을 할 수 있는지를 먼저 밝힌다.
      */
     confirmTitle: '이 Rev를 확정할까요?',
-    confirmDescription:
-      '확정하면 이 Rev는 더 이상 수정할 수 없습니다. 변경하려면 신규 Rev를 발행해야 합니다.',
+    confirmDescription: '확정하면 이 Rev는 고칠 수 없습니다. 바꾸려면 신규 Rev를 발행해야 합니다.',
     obsoleteTitle: (revision: string): string => `${revision}를 폐기하시겠습니까?`,
     obsoleteDescription: '폐기된 Rev는 신규 작업에 사용할 수 없습니다.',
     obsoleteNote: '폐기 후에도 기존 이력은 유지됩니다.',
@@ -319,15 +317,14 @@ export const routing = {
     flagsTitle: '관리 설정',
     flagsSelected: (count: number): string => `${String(count)}개 선택`,
     deactivateProcessTitle: '공정 사용을 중지하시겠습니까?',
-    deactivateProcessDescription:
-      '사용을 중지하면 새로운 공정 경로에 해당 공정을 추가할 수 없습니다.',
+    deactivateProcessDescription: '사용을 중지하면 새로운 라우팅에 해당 공정을 추가할 수 없습니다.',
     /** 사용 중지 확인 창의 영향 상자 — 기존 확정 경로 유지 · 현재 참조 건수(사용자 시안 · #231). */
     deactivateImpactConfirmed: '기존 확정 경로',
     deactivateImpactConfirmedValue: '영향 없음',
     deactivateImpactReferences: '현재 참조',
     deactivateImpactReferencesValue: (count: number): string => `${String(count)}건`,
     activateProcessTitle: '공정을 재사용하시겠습니까?',
-    activateProcessDescription: '재사용하면 새로운 공정 경로에 이 공정을 추가할 수 있습니다.',
+    activateProcessDescription: '재사용하면 새로운 라우팅에 이 공정을 추가할 수 있습니다.',
   },
   /** 공정 선후행 설정 창. */
   dependencies: {
@@ -347,7 +344,7 @@ export const routing = {
     typesLoadFailed:
       '관계 유형 목록을 불러오지 못했습니다. 다시 시도하세요. 불러오기 전에는 저장할 수 없습니다.',
     stateLocked:
-      '이 Rev는 이미 확정돼 선후행을 바꿀 수 없습니다. 목록을 새로 읽었습니다 — 바꾸려면 신규 Rev를 발행하세요.',
+      '이 Rev는 이미 확정돼 선후행을 바꿀 수 없습니다. 바꾸려면 「신규 Rev 발행」을 누르세요.',
     validation: {
       required: '선행·후행 공정을 선택해 주세요.',
       predecessorRequired: '선행 공정을 선택해 주세요.',

@@ -35,6 +35,9 @@ export interface TerminalDraft {
   equipment: string;
   /** 빈 문자열이 「공장 전체」다(피처 002). 공장을 바꾸면 비운다 — 다른 공장 창고는 서버가 막는다. */
   warehouse: string;
+  /** 고른 설비 · 창고의 표시 이름(찾기 창에서 고른 줄) — 저장하지 않는다. */
+  equipmentLabel: string;
+  warehouseLabel: string;
 }
 
 export const EMPTY_TERMINAL: TerminalDraft = {
@@ -44,6 +47,8 @@ export const EMPTY_TERMINAL: TerminalDraft = {
   statusCode: '',
   equipment: '',
   warehouse: '',
+  equipmentLabel: '',
+  warehouseLabel: '',
 };
 
 export const toTerminalDraft = (view: TerminalView): TerminalDraft => ({
@@ -53,7 +58,26 @@ export const toTerminalDraft = (view: TerminalView): TerminalDraft => ({
   statusCode: view.statusCode,
   equipment: view.equipmentId === null ? '' : String(view.equipmentId),
   warehouse: view.warehouseId === null ? '' : String(view.warehouseId),
+  equipmentLabel: view.equipmentLabel ?? '',
+  warehouseLabel: view.warehouseName ?? '',
 });
+
+/**
+ * 단말 추가 팝업을 열자마자 채울 단말 코드 — `접두어-일련번호`(예: TERM-003), 쓰이지 않은 다음 번호
+ * (사용자 지시 2026-11-20 · #333). 유형을 고르기 전에도 채우려고 유형과 무관한 접두어를 쓴다. 고칠 수 있고, 겹치면 서버가 막는다.
+ */
+export const TERMINAL_CODE_PREFIX = 'TERM';
+
+export const nextTerminalCode = (typeCode: string, codes: readonly string[]): string => {
+  const pattern = new RegExp(`^${typeCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-(\\d+)$`);
+  const numbers = codes
+    .map((code) => pattern.exec(code)?.[1])
+    .filter((value): value is string => value !== undefined)
+    .map(Number);
+  const next = numbers.length === 0 ? 1 : Math.max(...numbers) + 1;
+
+  return `${typeCode}-${String(next).padStart(3, '0')}`;
+};
 
 export type TerminalErrors = Partial<Record<keyof TerminalDraft, string>>;
 

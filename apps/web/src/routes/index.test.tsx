@@ -46,14 +46,6 @@ import {
   notificationListBody,
 } from '../screens/notification-center/fixtures';
 import {
-  businessUnitFixtures,
-  inboundReceiptDetailBody,
-  itemFixtures,
-  partnerFixtures,
-  plantFixtures,
-  uomFixtures,
-} from '../screens/po-register/fixtures';
-import {
   countFixtures as adjustCountFixtures,
   itemFixtures as adjustItemFixtures,
   locationFixtures as adjustLocationFixtures,
@@ -78,7 +70,6 @@ import { appRouter } from './index';
  * **어느 쪽도 그 어긋남을 잡지 못한다.** 이 파일이 그 사이를 잇는다.
  */
 
-const t = messages.poRegister;
 
 /** 라우터가 실제로 받는 경로. 자식 라우트의 `path`는 앞머리 `/`가 없다. */
 const routedPaths = (): string[] =>
@@ -150,6 +141,17 @@ const hubTab = (hubLabel: string, tabLabel: string): HTMLElement =>
   within(screen.getByRole('navigation', { name: hubLabel })).getByRole('link', {
     name: tabLabel,
   });
+
+/**
+ * 탭 묶음 화면이 섰다 — 그 탭이 지금 탭이다. 묶음 안 화면은 제목을 세우지 않으므로(시안 A) 탭 막대가
+ * 화면 이름을 말한다.
+ */
+const findCurrentHubTab = async (hubLabel: string, tabLabel: string): Promise<HTMLElement> => {
+  const nav = await screen.findByRole('navigation', { name: hubLabel });
+  const tab = within(nav).getByRole('link', { name: tabLabel });
+  expect(tab).toHaveAttribute('aria-current', 'page');
+  return tab;
+};
 
 /**
  * **실제 라우트 표를 그대로 태운다.** 손으로 만든 두 줄짜리 표로 이동을 재면 그 표가 앱의
@@ -560,19 +562,6 @@ const workOrderCloseRoutes = (): StubRoute[] => [
   },
 ];
 
-/** W-01-11이 첫 진입에 부르는 것들 — 대상 초과분 상세와 이름 풀이 다섯. */
-const poRegisterRoutes = (): StubRoute[] => [
-  {
-    match: (request) => isGet(request, '/logistics/inbound-receipts/9101'),
-    respond: () => jsonResponse(inboundReceiptDetailBody()),
-  },
-  lookupRoute('/mdm/partners', partnerFixtures),
-  lookupRoute('/mdm/business-units', businessUnitFixtures),
-  lookupRoute('/mdm/plants', plantFixtures),
-  lookupRoute('/mdm/items', itemFixtures),
-  lookupRoute('/mdm/uoms', uomFixtures),
-];
-
 describe('appRouter', () => {
   it('사이드바가 가리키는 주소가 전부 라우트 표에 있다', () => {
     const routes = routedPaths();
@@ -716,25 +705,9 @@ describe('appRouter', () => {
     expect(routedPaths()).not.toContain('/app/approval-requests');
   });
 
-  /*
-   * W-01-02는 결재함과 **같은 계약 경로**를 쓰는데 주소가 다르다 — 근거가 계약이 아니라
-   * **섹션**임을 두 화면이 나란히 보여 주는 자리다. 이 화면이 판정하는 것은 자재 입하
-   * 검사의 생략이라 그 판단의 맥락이 「자재창고」에 있고, 결재함은 올라온 결재를 두루
-   * 처리하는 자리라 축이 다르다.
-   */
-  it('긴급 IQC 생략 한도승인이 자재창고 앞머리로 등록돼 있다', () => {
-    expect(routedPaths()).toContain('/logistics/iqc-skip-approval');
-    expect(routedPaths()).not.toContain('/approval/iqc-skip');
-    expect(routedPaths()).not.toContain('/approval/iqc-skip-approval');
-  });
-
-  /*
-   * **W-01-11 · C32** — 주소 앞머리는 다른 자재창고 화면과 같은 규칙(사이드바 섹션)을 따른다.
-   * 메뉴에 서지 않아도 이 화면이 속한 업무 묶음은 자재창고이고, 주소가 그 사실을 말해야 한다.
-   */
-  it('신규 P/O 등록이 자재창고 앞머리로 등록돼 있다', () => {
-    expect(routedPaths()).toContain('/logistics/po-register');
-    expect(routedPaths()).not.toContain('/logistics/purchase-orders');
+  /* W-01-02 긴급 IQC 생략 한도승인은 없어졌다(omf-all-around#353) — 주소도 남기지 않는다. */
+  it('긴급 IQC 생략 한도승인 주소가 없다', () => {
+    expect(routedPaths()).not.toContain('/logistics/iqc-skip-approval');
   });
 
   /*
@@ -781,7 +754,7 @@ describe('appRouter', () => {
    * 리소스를 주소로 삼으면 한 주소를 여러 화면이 다툰다. 주소는 **화면**을 가리킨다.
    *
    * ⛔ **「승인」 앞머리가 아니다.** 취소가 승인을 타지만 이 화면이 하는 일은 결재가 아니라
-   * 상신과 실행이다(W-01-02가 같은 자리에서 같은 판정을 했다).
+   * 상신과 실행이다.
    */
   it('물류 전표 조회·취소가 자재창고 앞머리로 등록돼 있다', () => {
     expect(routedPaths()).toContain('/logistics/document-progress');
@@ -816,8 +789,8 @@ describe('appRouter — 옛 적치 규칙 주소', () => {
 
 /**
  * **W-01-12는 진입 경로가 둘인 첫 화면이다** — 사이드바 항목(D-19)과 재고실사 마감 결과의
- * 링크(D-18). W-01-11이 링크 하나뿐이었던 것과 갈리는 자리이고, 그 근거는 **직접 등록이
- * 다른 화면을 거치지 않고 들어오는 정상 경로**라는 것이다(원천이 셋 — 착수 이슈 §6).
+ * 링크(D-18). 직접 등록이 다른 화면을 거치지 않고 들어오는 정상 경로라서 메뉴에도 둔다
+ * (원천이 셋 — 착수 이슈 §6).
  *
  * 이 describe가 두 경로를 양쪽에서 잰다 — 메뉴에 있고, 링크가 가리키는 주소가 실재한다.
  */
@@ -889,79 +862,6 @@ describe('appRouter — 재고조정의 진입 경로', () => {
      * 말을 하는 자리다.
      */
     expect(screen.queryByText('SAMPLE-IC-9101 · 2026-08-17')).not.toBeInTheDocument();
-  });
-});
-
-/**
- * **W-01-11은 이 저장소에서 처음으로 메뉴에 서지 않는 화면이다**(착수 이슈 §6 ① · 스펙 §5-2).
- *
- * 메뉴에 「신규 P/O 등록」이 서면 맥락 없는 진입이 기본 경로가 되고, 그때 사용자가 하는 일이
- * 곧 일반 구매 발주 등록이다. 그래서 메뉴에는 없고, 맥락(`receipt`)을 실은 주소로만 화면이 선다.
- *
- * 입하 등록의 결과는 더 이상 이 화면으로 가지 않는다(서버 장부 P-100) — 초과분은 줄의 `excessQty` 로
- * 실리고 「입하 예정 조회」의 초과분 연결 창으로 간다.
- */
-const PO_REGISTER_ENTRY = '/logistics/po-register?receipt=9101';
-
-describe('appRouter — 신규 P/O 등록의 진입 경로', () => {
-  /*
-   * **C33** — 메뉴에 항목이 없다. 주소와 글자를 **둘 다** 센다: 주소만 보면 이름이 다른 메뉴가
-   * 같은 화면을 열어도 통과하고, 글자만 보면 이름을 바꿔 단 메뉴가 통과한다.
-   */
-  it('사이드바에 이 화면 항목이 없다 — 입고 관리는 탭 없는 한 줄이다', () => {
-    renderWithProviders(
-      <SessionProvider>
-        <AppLayout>본문</AppLayout>
-      </SessionProvider>,
-      { session: SYNTHETIC_SESSION },
-    );
-    expandAllNavGroups();
-
-    /* 입고 관리는 탭 묶음이 아니다(2026-10-23 탭 합치기) — 이 화면이 숨을 탭 막대도 없다. */
-    expect(screen.queryByRole('navigation', { name: '입고 관리' })).toBeNull();
-
-    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
-    const hrefs = within(nav)
-      .getAllByRole('link')
-      .map((link) => link.getAttribute('href'));
-
-    /* 짝 양성 — 사이드바도 실제로 그려졌고 같은 섹션의 입고 관리 줄이 거기 있다. */
-    expect(hrefs).toContain('/logistics/inbound-schedule');
-    expect(hrefs).not.toContain('/logistics/po-register');
-    expect(within(nav).queryByText('신규 P/O 등록')).not.toBeInTheDocument();
-  });
-
-  /*
-   * **C32·C37** — 맥락(`receipt`)을 실은 주소로 들어가면 화면이 **그 맥락으로** 선다.
-   * 질의 열쇠(`receipt`)가 받는 쪽이 읽는 이름과 어긋나면 여기서 맥락 없는 화면이 서고 이 시험이 운다.
-   */
-  it('그 주소로 들어가면 대상 초과분이 실린 화면이 선다', async () => {
-    renderWithProviders(<RoutedApp />, {
-      session: SYNTHETIC_SESSION,
-      fetch: createStubFetch(poRegisterRoutes()),
-      route: PO_REGISTER_ENTRY,
-    });
-
-    expect(await screen.findByText('SAMPLE-IR-9101')).toBeInTheDocument();
-    /* 맥락이 실제로 실렸다 — 못 읽었으면 아래 짝 시험의 빈 상태가 이 자리에 선다. */
-    expect(screen.queryByText(t.empty.noContextTitle)).not.toBeInTheDocument();
-  });
-
-  /*
-   * **짝 음성** — 위 시험이 「무엇이든 그리기만 하면 통과」가 되지 않게, 맥락을 뺀 같은 주소가
-   * 실제로 다른 화면을 세우는 것을 함께 잰다. 질의 열쇠가 어긋나면 위 시험이 이쪽 모습을 본다.
-   */
-  it('맥락 없이 그 주소로 들어가면 넘어온 초과분이 없다고 말한다', async () => {
-    const [pathname] = PO_REGISTER_ENTRY.split('?');
-
-    renderWithProviders(<RoutedApp />, {
-      session: SYNTHETIC_SESSION,
-      fetch: createStubFetch(poRegisterRoutes()),
-      route: pathname ?? '',
-    });
-
-    expect(await screen.findByText(t.empty.noContextTitle)).toBeInTheDocument();
-    expect(screen.queryByText('SAMPLE-IR-9101')).not.toBeInTheDocument();
   });
 });
 
@@ -1159,7 +1059,6 @@ describe('appRouter — IQC 수입검사·판정의 진입 경로', () => {
   /**
    * 메뉴 IA 개편으로 검사는 **「품질 관리」 한 곳에 모였다** — IQC(입하) → PQC(공정) → OQC(출하)
    * 흐름 차례의 첫 자리다. 그래서 「구매 / 자재 관리」의 끝(물류 전표 조회·취소) 바로 뒤에 선다.
-   * IQC 생략 판정(W-01-02)은 「품질 승인 처리」의 탭이라 검사기준이 바로 뒤따른다(#144).
    */
   it('품질 관리 섹션의 첫 항목으로 구매 / 자재 관리 바로 뒤에 선다', () => {
     const hrefs = sidebarHrefs();
@@ -1224,18 +1123,18 @@ describe('appRouter — Lot Status 현황·변경이력 조회의 진입 경로'
   it('그 주소로 들어가면 LOT 조회의 첫 상태가 선다', async () => {
     renderRoutedApp('/quality/lot-status', lotStatusRoutes());
 
-    expect(await screen.findByText('LOT 유형 기준값이 준비되지 않았습니다.')).toBeVisible();
+    expect(await screen.findByText('등록된 LOT 유형이 없습니다.')).toBeVisible();
     expect(hubTab('LOT 상태', 'LOT 현황')).toHaveAttribute('aria-current', 'page');
-    /* 현재 상태 단추는 탭 막대 오른쪽, 좌우 · 상하 배치 단추 왼쪽이다(사용자 2026-10-30). */
+    /* 현재 상태 단추는 탭 막대 오른쪽, 배치 단추를 접은 「⋯」 왼쪽이다(사용자 2026-10-30 · 시안 A). */
     const hubActions = document.getElementById('hub-actions');
     const statusGroup = await screen.findByRole('group', { name: '현재 상태' });
-    const layoutGroup = await screen.findByRole('group', {
-      name: messages.common.inspectionHub.layoutLabel,
+    const layoutMenu = await screen.findByRole('button', {
+      name: messages.common.shell.moreActions,
     });
     expect(hubActions).toContainElement(statusGroup);
-    expect(hubActions).toContainElement(layoutGroup);
+    expect(hubActions).toContainElement(layoutMenu);
     expect(
-      statusGroup.compareDocumentPosition(layoutGroup) & Node.DOCUMENT_POSITION_FOLLOWING,
+      statusGroup.compareDocumentPosition(layoutMenu) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
       within(screen.getByRole('region', { name: 'LOT 조회 조건' })).queryByRole('group', {
@@ -1465,9 +1364,9 @@ describe('appRouter — 작업지시 목록 작업함의 진입 경로', () => {
     await user.keyboard('{Enter}');
 
     await waitFor(() => expect(currentLocation()).toBe('/production/production-orders'));
-    expect(
-      screen.getAllByRole('heading', { level: 1, name: messages.erpWorkOrderFlow.title }),
-    ).toHaveLength(1);
+    /* 탭 묶음 안이라 탭 막대가 화면 이름을 말한다 — 제목을 세우지 않는다(시안 A). */
+    expect(await findCurrentHubTab('작업계획', '작업계획')).toBeInTheDocument();
+    expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
     expect(await screen.findByText(messages.erpWorkOrderFlow.list.emptyTitle)).toBeVisible();
   });
 
@@ -1712,9 +1611,10 @@ describe('appRouter — 물류 전표 조회·취소의 진입 경로', () => {
       expect(currentLocation()).toBe('/logistics/document-progress');
     });
     expect(screen.getByLabelText(docProgress.fields.q)).toHaveValue('');
+    /* 「지금 취소 가능한 것만」은 「조건 더보기」에 접혀 있다 — 풀렸으면 접힌 조건 칩도 없다. */
     expect(
-      screen.getByRole('checkbox', { name: docProgress.fields.cancellableOnly }),
-    ).not.toBeChecked();
+      screen.queryByRole('button', { name: docProgress.filters.chipRemoveCancellableOnly }),
+    ).toBeNull();
   });
 
   /*
@@ -1814,9 +1714,8 @@ describe('appRouter — 설비·설비그룹 마스터의 진입 경로', () => 
   it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
     renderRoutedApp('/equipment/master', equipmentMasterRoutes());
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: messages.equipmentMaster.title }),
-    ).toBeInTheDocument();
+    expect(await findCurrentHubTab('설비', '설비·설비그룹 마스터')).toBeInTheDocument();
+    expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
   });
 
   /**
@@ -1845,18 +1744,10 @@ describe('appRouter — 설비·설비그룹 마스터의 진입 경로', () => 
       /* 「툴·금형」 — 캐비티 수(마스터)와 환산 비율(타발수)은 한 계산의 두 입력이다. */
       '/equipment/tool-master',
       '/equipment/shot-conversion',
-      /* 「계측기」 — 검교정 이력은 마스터 없이는 적힐 수 없어 마스터 옆으로 옮겼다. */
-      '/equipment/gauge-master',
-      '/equipment/gauge-calibration',
-      /* 설비 보전 관리 「설비 보전」 — W-05-04 고장 → W-05-05 보전지시 → W-05-06 실적. */
-      '/equipment/failures',
-      '/equipment/maintenance-orders',
-      '/equipment/maintenance-results',
-      /* 「툴 보전」 — W-05-02 오더 → W-05-03 실적. */
-      '/equipment/tool-pm-order',
-      '/equipment/tool-pm-result',
-      /* W-05-08 — 일한 결과를 보는 화면이라 섹션 끝이다. */
-      '/equipment/downtime-summary',
+      /*
+       * 「계측기」 묶음과 설비 보전 관리 묶음(고장 → 보전지시 → 실적 · 툴 보전 · 비가동 집계)은 메뉴에서
+       * 감췄다(사용자 지시 2026-11-20) — 주소는 남아 라우트 표에서 잰다.
+       */
     ]);
   });
 });
@@ -1890,9 +1781,8 @@ describe('appRouter — 작업 캘린더 설정의 진입 경로', () => {
   it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
     renderRoutedApp('/equipment/work-calendar', workCalendarRoutes());
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: messages.workCalendar.title }),
-    ).toBeInTheDocument();
+    expect(await findCurrentHubTab('설비', '작업 캘린더 설정')).toBeInTheDocument();
+    expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
   });
 
   /* ⭐ 라우트만 열고 화면이 서지 않는 상태를 잡으려면 조회가 실제로 도는 것까지 봐야 한다. */
@@ -1953,9 +1843,8 @@ describe('appRouter — 타발수 환산 파라미터 설정의 진입 경로', 
   it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
     renderRoutedApp('/equipment/shot-conversion', shotConversionRoutes());
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: messages.shotConversion.title }),
-    ).toBeInTheDocument();
+    expect(await findCurrentHubTab('툴·금형', '타발수 환산 파라미터 설정')).toBeInTheDocument();
+    expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
   });
 
   /* ⭐ 라우트만 열고 화면이 서지 않는 상태를 잡으려면 조회가 실제로 도는 것까지 봐야 한다. */
@@ -2015,9 +1904,8 @@ describe('appRouter — 수집 채널 매핑 관리의 진입 경로', () => {
   it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
     renderRoutedApp('/equipment/collection-channels', collectionChannelRoutes());
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: messages.collectionChannel.title }),
-    ).toBeInTheDocument();
+    expect(await findCurrentHubTab('설비', '수집 채널 매핑 관리')).toBeInTheDocument();
+    expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
   });
 
   /* ⭐ 라우트만 열고 화면이 서지 않는 상태를 잡으려면 조회가 실제로 도는 것까지 봐야 한다. */
@@ -2089,9 +1977,8 @@ describe('appRouter — 툴/금형/지그 마스터의 진입 경로', () => {
   it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
     renderRoutedApp('/equipment/tool-master', toolMasterRoutes());
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: messages.toolMaster.title }),
-    ).toBeInTheDocument();
+    expect(await findCurrentHubTab('툴·금형', '툴/금형/지그 마스터')).toBeInTheDocument();
+    expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
   });
 
   /* ⭐ 라우트만 열고 화면이 서지 않는 상태를 잡으려면 **조회가 실제로 도는 것**까지 봐야 한다. */
@@ -2133,39 +2020,26 @@ describe('appRouter — 툴/금형/지그 마스터의 진입 경로', () => {
  * 「계측기 마스터」라는 메뉴 이름은 「여기 있는 것은 계측기다」를 약속한다. 유형 값 목록이
  * 없던 동안에는 그 약속을 지킬 수 없어 미뤘고(설계 질의 `omf-mes#195`), 값이 확정돼
  * (회신 · 시드 `omf-mes#182`) 사용자가 실제로 계측기만 골라 볼 수 있게 되면서 세웠다.
- *
- * ⭐ **W-01-11과 갈린다** — 그쪽은 맥락 없는 진입이 요구사항 위반이라 **영영** 두지 않는다.
- * 이제 메뉴에 서지 않는 화면은 그것 하나뿐이다.
  */
 describe('appRouter — 계측기 마스터의 진입 경로', () => {
   /*
    * 주소와 글자를 **둘 다** 센다: 주소만 보면 이름이 다른 메뉴가 같은 화면을 열어도 통과하고,
    * 글자만 보면 이름을 바꿔 단 메뉴가 통과한다.
    */
-  it('사이드바의 계측기 묶음 줄이 이 화면을 가리키고 첫 탭이 이 화면이다', async () => {
-    const tabs = await hubTabLinks('계측기');
-
-    expect(tabs[0]).toEqual({ name: messages.gaugeMaster.title, href: '/equipment/gauge-master' });
-    /* 검교정 이력은 같은 계측기를 다루는 짝이라 바로 뒤 탭이다. */
-    expect(tabs[1]?.href).toBe('/equipment/gauge-calibration');
-  });
-
   /**
-   * ⭐ 기준정보 관리의 설비·툴·금형 묶음 뒤 — 공정을 도는 설비·툴·계측기 차례의 끝이고, 공급사·품목 기본
-   * 정보(005)와 창고·위치 묶음이 뒤따른다.
+   * ⭐ **메뉴에서 감췄다**(사용자 지시 2026-11-20) — 계측기 묶음(마스터 · 검교정 이력)도, 그 뒤에 서던 공급사·품목
+   * 기본 정보(W-06-25)도 사이드바에 없고 툴·금형 바로 뒤에 창고·위치가 선다. 주소는 남는다(아래).
    */
-  it('기준정보 관리에서 툴·금형 묶음 바로 뒤에 선다', () => {
+  it('사이드바에 없고 툴·금형 바로 뒤에 창고·위치가 선다', () => {
     const hrefs = sidebarHrefs();
 
-    expect(hrefs.indexOf('/equipment/gauge-master')).toBe(
-      hrefs.indexOf('/equipment/tool-master') + 1,
-    );
-    /* 005 — 계측기 뒤에 공급사·품목 기본 정보(W-06-25)가 서고 창고·위치가 뒤따른다. */
-    expect(hrefs.indexOf('/master-data/supplier-item-defaults')).toBe(
-      hrefs.indexOf('/equipment/gauge-master') + 1,
-    );
+    /* 짝 양성 — 사이드바는 실제로 그려졌다. */
+    expect(hrefs).toContain('/equipment/tool-master');
+    expect(hrefs).not.toContain('/equipment/gauge-master');
+    expect(hrefs).not.toContain('/equipment/gauge-calibration');
+    expect(hrefs).not.toContain('/master-data/supplier-item-defaults');
     expect(hrefs.indexOf('/master-data/warehouse-location')).toBe(
-      hrefs.indexOf('/master-data/supplier-item-defaults') + 1,
+      hrefs.indexOf('/equipment/tool-master') + 1,
     );
   });
 
@@ -2173,13 +2047,17 @@ describe('appRouter — 계측기 마스터의 진입 경로', () => {
     expect(routedPaths()).toContain('/equipment/gauge-master');
   });
 
-  /** **실제 라우트 표를 태우므로** 라우트 줄이 없거나 다른 화면을 가리키면 여기서 운다. */
+  /**
+   * **실제 라우트 표를 태우므로** 라우트 줄이 없거나 다른 화면을 가리키면 여기서 운다. 묶음이 메뉴에 없어
+   * 탭 막대가 서지 않으므로 화면이 제 제목을 세운다.
+   */
   it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
     renderRoutedApp('/equipment/gauge-master', gaugeMasterRoutes());
 
     expect(
       await screen.findByRole('heading', { level: 1, name: messages.gaugeMaster.title }),
     ).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: '계측기' })).toBeNull();
   });
 
   /*

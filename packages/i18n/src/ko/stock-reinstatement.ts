@@ -1,6 +1,7 @@
 export const stockReinstatement = {
   title: '재고 재등록',
   breadcrumbRoot: '영업 / 출하 관리',
+  /** 「재등록 입력」 제목 옆 ⓘ — 재등록이 LOT 을 새로 만들지 않는다는 규칙(관리웹 정리 시안 A). */
   scopeNotice: '재등록해도 새 LOT을 만들지 않습니다. 원 LOT과 반품 이력이 그대로 이어집니다.',
   panes: {
     candidates: '재등록 대기',
@@ -75,7 +76,7 @@ export const stockReinstatement = {
     qtyRequired: '수량을 1 이상 입력하세요.',
     qtyExceeded: (qty: number): string => `현재 보유 ${String(qty)}를 넘을 수 없습니다.`,
     releaseReasonRequired: '해제 사유를 선택하세요.',
-    releaseReasonUnavailable: '해제 사유 기준값을 불러온 뒤 확정할 수 있습니다.',
+    releaseReasonUnavailable: '해제 사유 목록을 불러오지 못해 확정할 수 없습니다.',
     optionalReasonEmpty: '등록된 재등록 사유가 없습니다. 선택 항목이므로 확정을 막지 않습니다.',
     selectPlaceholder: '선택하세요',
     noStockableLocation: '이 창고에는 재고를 둘 수 있는 위치가 없습니다. 다른 창고를 선택하세요.',

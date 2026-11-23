@@ -9,7 +9,6 @@
  */
 export const collectionChannel = {
   title: '수집 채널 매핑 관리',
-  breadcrumbRoot: '기준정보 관리',
   optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
   optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
   equipment: {
@@ -30,6 +29,8 @@ export const collectionChannel = {
   },
   channels: {
     paneTitle: '채널 매핑',
+    /** 통일 배치(#350)의 상세 자리 이름 — 안의 채널 상자(「채널 매핑」)와 겹치지 않게 따로 부른다. */
+    detailRegion: '채널 매핑 상세',
     /** 무엇의 채널을 보고 있는지 페인 머리에 남긴다 — 좌우가 멀어지면 고른 것을 잊는다. */
     paneOf: (code: string, name: string): string => `${code} · ${name}의 수집 채널`,
     /** 설비를 고르기 전에는 조회 자체가 없다 — 빈 표가 아니라 무엇을 해야 하는지 말한다. */
@@ -154,8 +155,6 @@ export const collectionChannel = {
    */
   importLog: {
     title: '수신 로그에서 가져오기',
-    description:
-      '이 설비에서 최근 들어온 신호입니다. 채널로 만들 것을 고르세요. 이름은 받은 그대로 담기므로 옮겨 적다 틀릴 일이 없습니다.',
     loading: '최근 수신 신호를 불러오는 중',
     /** ⭐ 비활성 사유는 그 컨트롤의 이름으로 시작한다 — 시각적으로 끊겨도 대상을 되찾는다. */
     noObservationsReason:

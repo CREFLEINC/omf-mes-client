@@ -30,7 +30,6 @@ export const shellHome = {
     inboundClose: '입하 중인 입하 LOT를 마감하거나 마감 취소',
     inboundVariance: '예정과 다른 입하를 남김 · 등록 뒤 수정 불가',
     recycleEntry: '재생재를 자재 묶음으로 등록',
-    iqcSkipRequest: '요청만 올림 · 승인은 관리웹',
     putaway: '입하한 자재를 적치 위치에 넣고 입고 완료',
     temporaryPutaway: '적치 위치에 못 넣을 때 임시 위치에 먼저 둠',
     putawayHistory: '내가 한 적치, 이 기기로 한 적치를 날짜별로 봄',
@@ -45,6 +44,7 @@ export const shellHome = {
     equipmentFailure: '고장 증상과 사진 보고',
     productReceipt: '완성 제품을 창고에 입고 · 적치',
     productPicking: '출하 지시대로 제품 꺼내기',
+    productLotSplitConfirm: 'POP 에서 나눈 두 라벨 스캔해 확인',
     packingRepack: '포장을 나누거나 합치기',
   },
   /** 이 사번이 많이 들어간 작업. 사번마다 따로 센다. */

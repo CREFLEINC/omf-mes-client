@@ -12,7 +12,7 @@ const t = messages.disposalIssue;
 /**
  * 줄바꿈 없는 공백(U+00A0).
  *
- * **escape로 적고 `export`한다**(전례 `iqc-skip-approval`과 같은 형태). 원시 글자로 두면 저장소의
+ * **escape로 적고 `export`한다**. 원시 글자로 두면 저장소의
  * 「비가시 공백 정리」 한 번이 **제품과 시험을 함께 지나** `toVisibleLine`을 무동작으로 만드는데,
  * 기대값이 같은 글자를 다시 쓰고 있으면 감지기가 아무 말도 하지 않는다(자기참조 · 리뷰 t3 실측).
  * `export`는 시험이 이 값을 **문자열 리터럴이 아니라 상수로** 참조하게 하려는 것이다.
@@ -278,17 +278,10 @@ const ReadyProgress = ({ view, isJudgePending, hasPosted }: ReadyProgressProps) 
       )}
 
       {/*
-       * **승인 뒤에 무엇이 남았는지 밝히는 자리**(승인 기록 정정 1-4).
-       *
-       * 세 문장이 서는 조건이 서로 다르다 —
-       * ① 「승인은 재고를 차감하지 않는다」는 **계약이 못 박은 사실**이라 늘 선다.
-       * ② 「승인이 끝났는지 판정하지 못한다」는 **자리표시가 비어 있는 동안**만 선다.
-       * ③ 「승인되었습니다 …」는 **자리표시가 채워졌고 · 그 요청이 승인이며 · 아직 한 줄도
-       *    전기되지 않았을 때**만 선다. 셋 중 하나라도 어긋나면 화면이 확인하지 않은 것을
-       *    말하게 된다 — 특히 이미 전기된 전표에 「재고는 아직 차감되지 않았습니다」는 거짓이다.
+       * **승인 뒤에 남은 일을 밝히는 자리**(승인 기록 정정 1-4). 그 일이 남았을 때만 말한다 —
+       * 자리표시가 채워졌고 · 그 요청이 승인이며 · 아직 한 줄도 전기되지 않았을 때. 늘 보이던
+       * 「승인은 재고를 차감하지 않는다」와 「판정하지 못한다」는 걷었다(사용자 지시 2026-11-20).
        */}
-      <p className="field-note">{t.progress.postSeparateNote}</p>
-      {isJudgePending && <p className="field-note">{t.progress.unjudgeableNote}</p>}
       {!isJudgePending && view.isApproved && !hasPosted && (
         <p className="field-note">{t.progress.approvedNotPostedNote}</p>
       )}

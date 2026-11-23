@@ -36,8 +36,6 @@ import type { Mold, ToolFilters } from './types';
 
 export interface ToolListPaneProps {
   items: Mold[];
-  /** 서버가 센 전체 건수. 한 쪽에 다 담기지 않아도 이 값은 전체다 — 잘림 안내는 화면이 따로 한다 */
-  total: number | null;
   isLoading: boolean;
   appliedFilters: ToolFilters;
   onApplyFilters: (next: ToolFilters) => void;
@@ -89,9 +87,12 @@ const hasAnyFilter = (filters: ToolFilters): boolean =>
 /** 「조건 더보기」에 접힌 체크칸 — 걸려 있으면 칩으로 알린다. 정렬은 목록을 좁히지 않아 칩을 두지 않는다. */
 type HiddenFlag = 'guaranteedShotCountMissing' | 'pmDueOnly' | 'includeInactive';
 
-export const ToolListPane = ({
+/**
+ * 조회 줄과 목록을 따로 돌려준다 — 통일 배치(#350)에서 조회 줄 · 조건 더보기 · 관리 액션은 조회 조건 상자에,
+ * 표는 목록 상자에 선다. 초안 조건은 여기 한 곳이 갖는다.
+ */
+export const useToolListPane = ({
   items,
-  total,
   isLoading,
   appliedFilters,
   onApplyFilters,
@@ -103,7 +104,7 @@ export const ToolListPane = ({
   onEdit,
   onImport,
   loadError,
-}: ToolListPaneProps) => {
+}: ToolListPaneProps): { filter: ReactNode; list: ReactNode } => {
   /* 「추가 필터」 이름표가 체크칸 무리의 이름이 된다 — 상자 없이 묶는 자리라 이름으로 잇는다. */
   const extraLabelId = useId();
   const more = useFilterMore();
@@ -320,34 +321,8 @@ export const ToolListPane = ({
     );
   };
 
-  return (
-    <section className="pane tool-master-pane" aria-label={t.paneTitle}>
-      {/*
-       * ⭐ **관리 액션은 제목 줄 오른쪽에 둔다.** 등록·올리기는 조회 조건이 아니라 자료를 만드는
-       *   일이다 — 조회·초기화와 한 줄에 섞이면 「무엇을 누르면 목록이 바뀌는가」가 흐려진다.
-       *   본문은 찾는 자리, 제목 줄 오른쪽은 만드는 자리로 갈라 읽히게 한다.
-       */}
-      <div className="pane-heading-row tool-master-heading">
-        <h2 className="pane-title">{t.paneTitle}</h2>
-        <div className="tool-master-manage-actions">
-          {/*
-           * ⭐ **사용자 지정(2026-09-22) — 되돌리지 않는다.** 두 관리 액션의 무게를 가른다.
-           *   「툴 생성」은 이 화면의 주 액션이라 채움 + 더하기 표식, 「엑셀 업로드」는 일괄 등록이라
-           *   외곽선 + 올리기 표식. 둘이 같은 채움이면 무엇이 먼저인지 읽히지 않았다(실측 캡처).
-           * 차례는 생성이 먼저다 — 형제 화면(검사 기준 목록)의 「추가 → 엑셀」 차례와 맞춘다.
-           */}
-          <Button leadingIcon={<Icon name="add" size={18} />} onClick={onAdd}>
-            {t.actions.addTool}
-          </Button>
-          <Button
-            variant="outlined"
-            leadingIcon={<Icon name="upload" size={18} />}
-            onClick={onImport}
-          >
-            {t.actions.importTools}
-          </Button>
-        </div>
-      </div>
+  const filter = (
+    <>
       <div className="filter-bar tool-master-filter">
         <SearchInput
           label={t.filters.searchLabel}
@@ -385,6 +360,30 @@ export const ToolListPane = ({
             </Button>
           )}
           <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
+          {/*
+           * ⭐ **관리 액션은 구분선 너머에 따로 묶는다**(#350 — 화면 단추는 조회 · 초기화 뒤 구분선 너머).
+           *   등록·올리기는 조회 조건이 아니라 자료를 만드는 일이다 — 조회·초기화와 한 무리에 섞이면
+           *   「무엇을 누르면 목록이 바뀌는가」가 흐려진다.
+           */}
+          <span className="inspection-standard-filter-divider" aria-hidden />
+          <div className="tool-master-manage-actions">
+            {/*
+             * ⭐ **사용자 지정(2026-09-22) — 되돌리지 않는다.** 두 관리 액션의 무게를 가른다.
+             *   「툴 생성」은 이 화면의 주 액션이라 채움 + 더하기 표식, 「엑셀 업로드」는 일괄 등록이라
+             *   외곽선 + 올리기 표식. 둘이 같은 채움이면 무엇이 먼저인지 읽히지 않았다(실측 캡처).
+             * 차례는 생성이 먼저다 — 형제 화면(검사 기준 목록)의 「추가 → 엑셀」 차례와 맞춘다.
+             */}
+            <Button leadingIcon={<Icon name="add" size={18} />} onClick={onAdd}>
+              {t.actions.addTool}
+            </Button>
+            <Button
+              variant="outlined"
+              leadingIcon={<Icon name="upload" size={18} />}
+              onClick={onImport}
+            >
+              {t.actions.importTools}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -448,29 +447,19 @@ export const ToolListPane = ({
         chips={hiddenChips}
         onRemove={(key) => onApplyFilters({ ...appliedFilters, [key]: false })}
       />
-
-      {/*
-       * ⭐ **건수는 표 바로 위 줄의 오른쪽 끝**에 둔다(사용자 지정 2026-09-22) — 바로 아래가 표다.
-       */}
-      <div className="tool-master-extra-row">
-        {/*
-         * ⭐ 유형 안내는 **조건 칸 밑이 아니라 이 줄에** 한 줄로 둔다 — 칸 밑에 붙으면 그 칸만 키가
-         *   커져 조회 줄의 입력 상자 높이가 어긋난다. 값이 있을 때는 아예 서지 않는다.
-         */}
-        {typeNote !== undefined && <p className="tool-master-type-note">{typeNote}</p>}
-        {/*
-         * ⭐ 건수는 **서버가 센 전체**다 — 한 쪽에 다 담기지 않아도 받은 줄 수로 세지 않는다. 잘렸는지는
-         *   화면 위 안내가 따로 말한다. 불러오는 중·실패일 때는 셀 수 없으니 세우지 않는다.
-         *   글자 결은 목록 건수 선례와 같은 `field-note`, 숫자는 천 단위 쉼표.
-         */}
-        {!isLoading && (loadError === null || loadError === undefined) && total !== null && (
-          <p className="field-note tool-master-result-count" aria-live="polite">
-            {t.resultTotal(new Intl.NumberFormat('ko-KR').format(total))}
-          </p>
-        )}
-      </div>
-
-      {listSlot()}
-    </section>
+    </>
   );
+
+  /*
+   * 건수는 목록 상자 제목 줄이 말한다(#350 · 서버가 센 전체). 유형 안내만 표 바로 위에 한 줄로 둔다 —
+   * 조건 칸 밑에 붙으면 그 칸만 키가 커져 조회 줄의 입력 상자 높이가 어긋난다. 값이 있을 때는 서지 않는다.
+   */
+  const list = (
+    <>
+      {typeNote !== undefined && <p className="tool-master-type-note">{typeNote}</p>}
+      {listSlot()}
+    </>
+  );
+
+  return { filter, list };
 };

@@ -53,10 +53,12 @@ export const pqcInspectionRegister = {
 
   /** 목록 표 열(#135) — 내부 번호 대신 작업지시 번호 · 품목 이름·코드. */
   columns: {
-    skip: '생략',
     lot: '대상 LOT',
     workOrder: '작업지시',
     item: '품목',
+    /** 품목은 코드 · 이름 두 칸으로 나눠 보인다(사용자 지시 2026-11-20). */
+    itemCode: '품목코드',
+    itemName: '품목명',
     targetQty: '검사 수량',
     status: '상태',
     requestedAt: '의뢰 일시',
@@ -142,45 +144,5 @@ export const pqcInspectionRegister = {
       confirmNote: '판정 확정 후 수정이 불가합니다.',
       confirmed: '판정이 확정되어 수정할 수 없습니다.',
     },
-  },
-  /**
-   * PQC 건별 생략(omf-all-around#212 · 서버 선행 P-152) — OQC 생략 구획과 같은 모양이다. 요청 → 결재(W-03-09) → 실행.
-   */
-  /** 목록 「생략」 칸의 창(사용자 지시 2026-11-09). */
-  skipDialog: {
-    approveTitle: 'PQC (공정검사) 생략 승인 처리',
-    approved: 'PQC 생략 요청을 승인했습니다.',
-    rejected: 'PQC 생략 요청을 반려했습니다.',
-    executeTitle: '공정검사를 생략하시겠습니까?',
-    executeBody:
-      '실행하면 이 작업지시의 남은 공정검사가 생략되고, 검사 대기인 생산 LOT 은 정상이 됩니다.',
-    execute: '생략 실행',
-  },
-  skip: {
-    heading: 'PQC (공정검사) 생략 요청',
-    steps: ['1. 생략 요청', '2. 승인 처리', '3. 생략 실행'],
-    result:
-      '요청 후 생략을 승인하면 이 작업지시의 남은 공정검사가 생략되고, 검사 대기인 생산 LOT 은 정상이 됩니다.',
-    reason: '생략 사유',
-    reasonPlaceholder: '생략 사유를 입력하세요',
-    openApproval: '요청 건 승인 처리로 이동',
-    currentStep: '현재 단계',
-    reasonCount: (count: number): string => `${String(count)}자`,
-    reasonRequired: '생략 사유를 입력하세요.',
-    openRequest: '생략 요청',
-    cancel: '취소',
-    request: '생략 승인 요청',
-    requesting: '요청하는 중…',
-    execute: 'PQC 생략 실행',
-    executing: '실행하는 중…',
-    requested: 'PQC 생략을 요청했습니다. 결재가 끝나면 여기서 실행하세요.',
-    pending: '결재가 아직 진행 중입니다.',
-    approved: '생략이 승인됐습니다. 실행하면 이 작업지시의 PQC 가 생략됩니다.',
-    rejected: '직전 생략 요청이 반려됐습니다. 다시 요청할 수 있습니다.',
-    executed: 'PQC 를 생략했습니다. 검사 대기였던 생산 LOT 은 정상이 됐습니다.',
-    skipped: '이 의뢰는 결재 승인으로 PQC 가 생략됐습니다.',
-    skippedDefault: '검사 기준이 ‘기본 생략’으로 설정되어 PQC 검사 없이 생산 처리됩니다.',
-    loading: '생략 결재 상태를 불러오는 중입니다.',
-    loadFailed: '생략 결재 상태를 불러오지 못했습니다.',
   },
 };

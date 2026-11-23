@@ -1,0 +1,315 @@
+/* P-04-08 생산 LOT 분리 — 시안 P0408(화면 전용 `pls-*`). 공통 모양은 `app/pop-uniform.css`. */
+
+.pls-title {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  margin: 0;
+}
+
+/* ── 왼쪽: 분리하기 — 내용이 넘치면 구획 안에서 구른다(1024×768) ── */
+.pls-work-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.pls-work-body > * {
+  flex: none;
+}
+
+.pls-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 스캔한 LOT 두 줄 — 구획 안에서 굴러도 맨 위에 붙어 있다. */
+.pls-lot {
+  position: sticky;
+  top: -12px;
+  z-index: 1;
+  margin: 0 -16px;
+  padding: 10px 16px 8px;
+  background: var(--pu-card);
+  border-bottom: 1px solid var(--pu-line);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pls-lot-line {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-width: 0;
+}
+
+.pls-lot-item {
+  font-size: 16px;
+}
+
+.pls-lot-code,
+.pls-lot-sub {
+  font-size: 13px;
+  color: var(--pu-text-2);
+}
+
+.pls-lotno {
+  font-weight: 700;
+  color: var(--pu-text);
+  word-break: break-all;
+}
+
+.pls-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.pls-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  line-height: 18px;
+}
+
+.pls-tile > span {
+  font-size: 13px;
+  color: var(--pu-text-2);
+}
+
+.pls-tile > .pls-tile-why {
+  color: var(--pu-bad);
+  font-weight: 700;
+}
+
+/* 수량 칸 + 미리보기(왼쪽) · 키패드(오른쪽) */
+.pls-qty {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 12px;
+  align-items: start;
+}
+
+.pls-qty-main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pls-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.pls-half {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--pu-line);
+  border-radius: 10px;
+  background: var(--pu-card-2);
+  min-width: 0;
+}
+
+.pls-half small {
+  font-size: 12px;
+  color: var(--pu-text-3);
+}
+
+.pls-half b {
+  font-size: 22px;
+  line-height: 28px;
+}
+
+.pls-half span {
+  font-size: 12px;
+  color: var(--pu-text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pls-half span.pls-wrap {
+  white-space: normal;
+  overflow: visible;
+}
+
+.pls-half.is-new {
+  border-color: var(--pu-info);
+  background: var(--pu-info-bg);
+}
+
+/* ── 오른쪽: 확인 대기 ── */
+.pls-queue .pu-card-head .meta {
+  min-width: 0;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+}
+
+/* 머리 안내는 두 줄까지 감는다(시안) — 한 줄로 두면 1440 에서도 끝이 잘렸다. */
+.pls-queue-hint {
+  font-size: 13px;
+  line-height: 17px;
+  color: var(--pu-text-3);
+  max-width: 330px;
+  white-space: normal;
+}
+
+.pls-queue-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pls-queue-body > .pls-table,
+.pls-queue-body > .pu-empty {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.pls-table {
+  overflow: hidden;
+}
+
+.pls-table > .pu-table-wrap {
+  max-height: 100%;
+}
+
+.pls-queue-foot {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.pls-one {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 300px;
+}
+
+.pls-strong {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.pls-sub {
+  display: block;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--pu-text-3);
+}
+
+.pls-new {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--pu-primary);
+  color: var(--pu-on-primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pls-chips-col {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pls-table .pls-pick.pls-pick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 2px solid var(--pu-line);
+  border-radius: 999px;
+  background: var(--pu-field);
+  color: var(--pu-on-primary);
+}
+
+.pls-table .pls-pick[aria-checked='true'] {
+  border-color: var(--pu-primary);
+  background: var(--pu-primary);
+}
+
+.pls-table .pls-pick svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* 실기 1024×768: 목록의 시각 · 라벨 열을 숨긴다(시안 좁은 폭). */
+@media (max-width: 1100px) {
+  .pls-table .pls-narrow-hide {
+    display: none;
+  }
+
+  .pls-qty {
+    grid-template-columns: minmax(0, 1fr) 220px;
+  }
+
+  .pls-queue-hint {
+    display: none;
+  }
+}
+
+/* ── 창: 라벨 두 장 ── */
+.pls-labels {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.pls-label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pls-label-face {
+  margin: 0;
+  grid-template-columns: minmax(0, 1fr) 88px;
+}
+
+.pls-label-face > span {
+  grid-column: 1;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pls-label-face > .qr {
+  grid-column: 2;
+  grid-row: 1 / span 4;
+}
+
+.pls-label-face > .pls-changed {
+  font-weight: 700;
+  background: var(--pu-warn-bg);
+}
+
+.pls-dialog-foot {
+  margin-right: auto;
+  font-size: 13px;
+  color: var(--pu-text-3);
+}

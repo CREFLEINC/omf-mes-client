@@ -5,14 +5,16 @@ import {
   PLACEHOLDER_APPROVAL_TYPE_CODES,
   PLACEHOLDER_REQUEST_STATUS_CODES,
   codeNote,
+  approvalTypeLabelOf,
   codePlaceholder,
+  toApprovalTypeOptions,
   toCodeOptions,
 } from './code-options';
 
 describe('자리표시 상수', () => {
-  it('고정 OpenAPI의 승인 유형 9종을 담는다', () => {
-    expect(PLACEHOLDER_APPROVAL_TYPE_CODES).toHaveLength(9);
-    expect(PLACEHOLDER_APPROVAL_TYPE_CODES).toContain('IQC_SKIP');
+  it('고정 OpenAPI의 승인 유형에서 IQC 생략(#353 폐지)을 뺀 8종을 담는다', () => {
+    expect(PLACEHOLDER_APPROVAL_TYPE_CODES).toHaveLength(8);
+    expect(PLACEHOLDER_APPROVAL_TYPE_CODES).not.toContain('IQC_SKIP');
     expect(PLACEHOLDER_APPROVAL_TYPE_CODES).toContain('PRODUCTION_RESULT_CORRECT');
   });
 
@@ -46,6 +48,19 @@ describe('toCodeOptions', () => {
 
   it('라벨을 지어내지 않는다 — 코드값을 그대로 쓴다', () => {
     expect(toCodeOptions(['SAMPLE-A'])[0]?.label).toBe('SAMPLE-A');
+  });
+});
+
+describe('toApprovalTypeOptions', () => {
+  it('값은 코드 그대로, 라벨은 사람이 읽는 이름이다(#353)', () => {
+    expect(toApprovalTypeOptions(['GOODS_ISSUE_DISPOSAL', 'SHIPMENT_CANCEL'])).toEqual([
+      { value: 'GOODS_ISSUE_DISPOSAL', label: '폐기 출고' },
+      { value: 'SHIPMENT_CANCEL', label: '출하 취소' },
+    ]);
+  });
+
+  it('이름이 없는 코드는 코드 그대로 보인다', () => {
+    expect(approvalTypeLabelOf('UNKNOWN_TYPE')).toBe('UNKNOWN_TYPE');
   });
 });
 

@@ -36,6 +36,8 @@ export const lotStatusHistory = {
     inactive: (label: string): string => `${label} (미사용)`,
     /** 기준값 목록에 없는 코드. 코드를 감추면 무엇이 어긋났는지 알 길이 없다. */
     unlisted: (value: string): string => `${value} (목록 미확정)`,
+    /** 값이 없는 칸 — 품목을 못 풀었을 때의 품목명 칸. */
+    empty: '—',
   },
   lotFilter: {
     pane: 'LOT 조회 조건',
@@ -77,8 +79,8 @@ export const lotStatusHistory = {
     },
     notes: {
       lotTypeTruncated: '일부 LOT 유형만 표시됩니다.',
-      lotTypeUnseeded: 'LOT 유형 기준값이 준비되지 않았습니다.',
-      lotStatusUnseeded: '현재 상태 기준값이 준비되지 않았습니다.',
+      lotTypeUnseeded: '등록된 LOT 유형이 없습니다.',
+      lotStatusUnseeded: '등록된 상태 값이 없습니다.',
       locationNeedsWarehouse: '창고를 먼저 선택하세요',
       locationFailed: '위치 목록을 불러오지 못했습니다.',
       locationTruncated: '일부 위치만 표시됩니다.',
@@ -110,6 +112,9 @@ export const lotStatusHistory = {
     columns: {
       lot: 'LOT 번호',
       item: '품목',
+      /** 품목은 코드 · 이름 두 칸으로 나눠 보인다(사용자 지시 2026-11-20). */
+      itemCode: '품목코드',
+      itemName: '품목명',
       status: '상태',
       onHand: '보유 수량',
       latestTransition: '최종 변경일',
@@ -252,6 +257,25 @@ export const lotStatusHistory = {
       issueText: (goodsIssueNo: string, lineNo: number): string =>
         `${goodsIssueNo} · 라인 ${String(lineNo)}`,
       childrenUsage: '이 LOT 에서 분할된 LOT 에 투입된 생산 LOT 도 함께 보입니다.',
+    },
+    /** 피처 013 — 생산 LOT 분리(P-04-08)로 생긴 LOT 의 분할 칸. 008 자재 분할 칸을 그대로 쓰고 출고 대신 이 줄들을 보인다. */
+    productSplit: {
+      note: '생산 LOT 분리로 원래 LOT 에서 떼어 낸 LOT 입니다.',
+      unconfirmedChip: 'PDA 확인 전',
+      qty: '분리 수량',
+      at: '분리 시각',
+      atText: (at: string, terminal: string | null, worker: string | null): string =>
+        [at, terminal, worker].filter((part) => part !== null && part !== '').join(', '),
+      location: '분리 위치',
+      // ui-check-ignore: C-13 시안 W0301 확정 표기(창고 · 위치)
+      locationText: (warehouseCode: string, locationCode: string): string =>
+        `${warehouseCode} · ${locationCode}`, // ui-check-ignore: C-13 시안 W0301 확정 표기
+      confirmed: 'PDA 확인',
+      confirmedText: (at: string, worker: string | null): string =>
+        worker === null ? at : `${at}, ${worker}`,
+      notConfirmed: '아직. 확인 전에는 출하 피킹이 되지 않습니다',
+      workOrder: 'W/O',
+      workOrderText: (workOrderNo: string): string => `${workOrderNo} (원래 LOT)`,
     },
     fields: {
       lotNo: 'LOT 번호',

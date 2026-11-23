@@ -2,7 +2,7 @@ export const qualityApproval = {
   title: '품질 승인 처리',
   breadcrumbRoot: '품질 관리',
   scopeWarning:
-    '승인 유형 기준값이 준비되지 않아 나에게 배정된 모든 유형의 요청을 표시합니다. 승인 유형 원문을 확인하세요.',
+    '나에게 배정된 모든 유형의 요청이 보입니다. 승인 유형을 확인하세요.',
   fields: {
     approvalTypeCode: '승인 유형',
     statusCode: '상태',
@@ -20,10 +20,6 @@ export const qualityApproval = {
     target: '대상',
     /** 목록 표의 대상 열 머리(#144)·상세의 대상 칸 이름(#186). 확인 창은 「대상」 그대로다. */
     targetLot: '대상 LOT',
-    /** 목록 대상 열 — OQC 생략 탭은 출하작업지시다(#193). 전체 탭은 위 「대상」. */
-    targetShipmentRequest: '대상 출하작업지시',
-    /** 목록 대상 열 — PQC 생략 탭은 작업지시다(omf-all-around#212). */
-    targetWorkOrder: '대상 작업지시',
     myTurn: '결재 차례',
   },
   /** 탭 줄 오른쪽 상태 칩(#186) — 「결재 대기 3」. 누르면 그 상태만 남고, 다시 누르면 풀린다. */
@@ -39,11 +35,8 @@ export const qualityApproval = {
   /** 승인 유형 코드 → 사용자 용어. 목록 밖 코드는 원문 그대로 보인다(`approvalTypeLabelOf`). */
   typeLabels: {
     CONCESSION: '특채',
-    IQC_SKIP: 'IQC (수입검사) 생략',
-    PQC_SKIP: 'PQC (공정검사) 생략',
-    OQC_SKIP: 'OQC (출하검사) 생략',
   },
-  /** 요청 상태 코드 → 사용자 용어(IQC 생략 화면과 같은 낱말). 색: 대기 주황 · 승인 초록 · 반려 빨강. */
+  /** 요청 상태 코드 → 사용자 용어. 색: 대기 주황 · 승인 초록 · 반려 빨강. */
   statusLabels: { PENDING: '결재 대기', APPROVED: '승인', REJECTED: '반려' },
   /** 목록 | 상세 사이 끌기 막대(#186) — 입하 예정 조회와 같은 말. */
   splitter: '끌어서 목록·상세 폭 조절',
@@ -69,109 +62,21 @@ export const qualityApproval = {
     loading: '승인 요청 상세 불러오는 중',
     notFound: '요청을 찾을 수 없습니다',
     notFoundDescription: '목록을 새로 조회한 뒤 다른 요청을 선택하세요.',
-    /** 「전체」·OQC 생략 탭의 승인된 OQC 생략 — 실행 권한이 없을 때(#193). 서버가 W-04-03 권한으로 거른다. */
     /** 특채 요청의 요청 상세 카드 제목과 요청 정보 묶음(#193). */
     concessionTitle: '특채 승인 상세',
     requestInfo: '요청 정보',
-    /** 「전체」 탭의 승인된 IQC 생략 — 실행 권한이 없을 때(#186). */
-    iqcSkipNoPermission: 'IQC 생략 실행은 「긴급 IQC 생략 한도승인」 화면 권한이 있어야 합니다.',
   },
   /**
-   * 승인된 OQC 생략의 실행 구획(#193) — IQC 생략 실행과 같은 모양이다. 승인은 잠금만 풀고(공유계약 J-8) 실행이
-   * 그 출하작업지시의 열린 OQC 의뢰를 생략으로 닫는다(omf-all-around#119 · 서버 P-83).
-   */
-  /** 승인된 PQC 생략의 실행(omf-all-around#212) — OQC 생략 실행과 같은 짜임이다. 단위는 작업지시다. */
-  pqcSkipExecute: {
-    heading: 'PQC 생략 실행',
-    note: '승인된 요청입니다. 실행하면 이 작업지시의 열린 PQC 검사 의뢰를 생략 처리하고, 검사 대기인 생산 LOT 을 정상으로 바꿉니다.',
-    action: 'PQC 생략 실행',
-    dialogTitle: 'PQC 생략을 실행할까요?',
-    dialogBody:
-      '열린 PQC 검사 의뢰가 생략 처리되고, 앞으로 등록하는 실적의 LOT 도 검사 없이 정상이 됩니다.',
-    irreversible: '실행한 뒤에는 되돌릴 수 없습니다.',
-    done: 'PQC 생략을 실행했습니다',
-    executed: '생략 실행 완료 — PQC 검사가 생략 처리되었습니다.',
-    compact: {
-      title: 'PQC 생략',
-      summary: '열린 검사 의뢰 생략 · 검사 대기 LOT 정상',
-      action: '실행',
-      done: '실행 완료',
-    },
-    checking: '상태를 확인하는 중입니다.',
-    notPending: (status: string) => `생략을 실행할 수 없는 상태입니다(상태 ${status}).`,
-  },
-  oqcSkipExecute: {
-    heading: 'OQC 생략 실행',
-    note: '승인된 요청입니다. 실행하면 이 출하작업지시의 열린 OQC 검사 의뢰를 생략 처리하고, 피킹한 LOT 에 생략 이력을 남깁니다.',
-    action: 'OQC 생략 실행',
-    dialogTitle: 'OQC 생략을 실행할까요?',
-    dialogBody:
-      '열린 OQC 검사 의뢰가 생략 처리되어 출하할 수 있게 됩니다. 피킹이 끝나지 않았으면 실행되지 않습니다 — 피킹을 먼저 마치세요.',
-    irreversible: '실행한 뒤에는 되돌릴 수 없습니다.',
-    done: 'OQC 생략을 실행했습니다',
-    executed: '생략 실행 완료 — OQC 검사가 생략 처리되었습니다.',
-    /** 한 줄 압축형(#193) — 이름 · 한 줄 요약 · 짧은 단추 · 완료 글. */
-    compact: {
-      title: 'OQC 생략',
-      summary: '열린 검사 의뢰 생략 · LOT 이력 기록',
-      action: '실행',
-      done: '실행 완료',
-    },
-    /* 실행 여부는 출하작업지시의 출하검사 상태로 안다 — 읽는 중 · 실행할 수 없는 상태(#193). */
-    checking: '상태를 확인하는 중입니다.',
-    notPending: (status: string) => `생략을 실행할 수 없는 상태입니다(상태 ${status}).`,
-  },
-  /**
-   * 승인된 특채의 적용 구획(#193) — IQC·OQC 생략 실행과 같은 짜임이다. 승인은 잠금만 풀고(공유계약 J-8), 적용이
+   * 승인된 특채의 적용 구획(#193). 승인은 잠금만 풀고(공유계약 J-8), 적용이
    * 처분 판정(특채)을 남기고 LOT 을 정상으로 바꾸며 수입검사 대기 보류를 푼다(omf-all-around#84 · 서버 P-79).
    */
   /**
-   * 「다음 할 일」(#193) — 결재 결과 카드 끝에서 이어서 일할 화면으로 보낸다. 반려면 다시 요청하거나 정상 검사로,
-   * 실행·적용을 마쳤으면 그다음 업무 화면으로 간다.
+   * 「다음 할 일」(#193) — 결재 결과 카드 끝에서 이어서 일할 화면으로 보낸다. 반려면 처분 판정 처리로 간다.
    */
-  /**
-   * OQC 생략의 대상 출하작업지시(#193) — IQC 생략의 대상 LOT 처럼 무엇을 생략하는지 보인다. 생략은 지시서 단위라
-   * 피킹한 LOT 이 여럿일 수 있다.
-   */
-  oqcShipment: {
-    shipmentRequest: '출하작업지시',
-    shipDate: '출하 예정일',
-    pickedLots: '피킹 LOT',
-    lotNo: 'LOT 번호',
-    pickedQty: '피킹 수량',
-    noPicks: '아직 피킹한 LOT 이 없습니다.',
-    loading: '출하작업지시를 불러오는 중입니다.',
-    failed: '출하작업지시를 불러오지 못했습니다.',
-    /** 출하검사 상태 — 생략을 실행할 수 없는 사정을 사람 말로(검사 대기 · 합격은 실행 · 완료로 따로 보인다). */
-    inspectionStatus: {
-      NOT_REQUIRED: '출하검사 대상 아님',
-      REJECTED: '출하검사 불합격',
-      HELD: '출하검사 보류',
-    } as Record<string, string>,
-  },
   next: {
     heading: '다음 할 일',
     concessionRejected: '특채가 반려됐습니다 — 처분을 다시 정하거나 특채를 다시 요청하세요',
     openDisposition: '부적합 처분 관리 열기',
-    /** IQC 생략 반려 — 붉은 느낌표 제목 · 할 일 · 정보 표시 안내 세 줄(사용자 지시 2026-10-27). */
-    iqcRejectedTitle: '생략 요청이 반려되었습니다.',
-    iqcRejected: '수입검사를 진행해 주세요.',
-    iqcRejectedNote: '생략 재요청은 PDA에서 가능합니다.',
-    openIqcInspection: 'IQC 수입검사 열기',
-    /** OQC 생략 반려 — 붉은 느낌표 제목 · 할 일 두 줄(사용자 지시 2026-10-27). */
-    oqcRejectedTitle: '출하검사 생략 요청이 반려되었습니다.',
-    oqcRejected: '출하검사를 진행하거나 생략을 다시 요청해 주세요.',
-    openOqcInspection: 'OQC 출하검사 열기',
-    /** IQC 생략 실행 완료 — 초록 체크 제목 · 할 일 두 줄(사용자 지시 2026-10-27). */
-    iqcDoneTitle: '수입검사 생략이 완료되었습니다.',
-    /*
-     * 피처 009(omf-all-around#294) — 관리웹 입고 처리(W-01-10)가 없어졌다. 생략한 LOT 은 적치 대기가 되고 PDA 에서
-     * 적치하면 입고된다. 링크는 입고 관리(W-01-09)에서 그 LOT 의 진행을 본다.
-     */
-    iqcDone: 'PDA 에서 적치하면 입고됩니다.',
-    openInboundSchedule: '입고 관리 열기',
-    oqcDone: 'OQC 생략을 실행했습니다 — 출하 처리를 이어서 하세요',
-    openShipmentProcessing: '출하 처리 열기',
   },
   concessionApply: {
     heading: '특채 적용',
@@ -279,7 +184,7 @@ export const qualityApproval = {
     savingReason: '결재 요청을 처리하는 중입니다',
     uncertainOtherTarget: '앞서 보낸 승인 요청의 상태를 먼저 확인해야 합니다',
     conditionRequired: '안전하게 확인된 연결 조건 1건이 필요합니다',
-    deliveryUnknown: '서버 적용 여부를 확인할 수 없습니다',
+    deliveryUnknown: '적용됐는지 확인하지 못했습니다',
     reloadTarget: '승인 대상 상세 다시 확인',
     stateOnly: '승인은 상태만 해제합니다',
     irreversible: '승인은 되돌릴 수 없습니다',

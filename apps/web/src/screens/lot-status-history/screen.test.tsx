@@ -3,7 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { components } from '@omf-mes/api-client';
 import { useLocation } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   createStubFetch,
@@ -447,7 +447,9 @@ describe('Lot Status 화면 shell', () => {
     expect(summary.getByText('0')).toBeVisible();
     expect(summary.getByText('집계 불가')).toBeVisible();
     expect(screen.getByText('SAMPLE_UNKNOWN (목록 미확정)')).toBeVisible();
-    expect(screen.getByText('SAMPLE-ITEM-01 · 합성 품목 (미사용)')).toBeVisible();
+    /* 품목은 코드 · 이름 두 칸이다(#1728). */
+    expect(screen.getAllByText('SAMPLE-ITEM-01').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('합성 품목 (미사용)').length).toBeGreaterThan(0);
     expect(screen.getByText('조회 권한이 없는 LOT 2건을 제외했습니다.')).toBeVisible();
     // 오른쪽 끝은 마지막 갱신 + [갱신] — 자동 갱신 안내는 없다(사용자 2026-10-30).
     expect(screen.getByText(/^마지막 갱신 /)).toBeVisible();
@@ -460,8 +462,8 @@ describe('Lot Status 화면 shell', () => {
     );
     expect(requestCount(urls, '/quality/lot-statuses')).toBe(listCalls + 1);
     const table = screen.getByRole('table', { name: 'LOT 현황' });
-    /* FR-035 — 「입하 LOT」 칸이 더해져 여섯에서 일곱 칸이 됐다. */
-    expect(within(table).getAllByRole('columnheader')).toHaveLength(7);
+    /* FR-035 — 「입하 LOT」 칸이 더해져 일곱 칸, #1728 품목을 코드 · 이름으로 나눠 여덟 칸이다. */
+    expect(within(table).getAllByRole('columnheader')).toHaveLength(8);
     expect(within(table).getByText('0')).toBeVisible();
   });
 
@@ -705,7 +707,7 @@ describe('Lot Status 화면 shell', () => {
   });
 
   it.each([
-    ['empty', 'LOT 유형 기준값이 준비되지 않았습니다.'],
+    ['empty', '등록된 LOT 유형이 없습니다.'],
     ['error', 'LOT 유형 목록을 불러오지 못했습니다.'],
   ] as const)('LOT 유형 기준값이 %s 여도 안내만 하고 「전체」로 조회한다', async (state, note) => {
     const { urls } = renderScreen('/quality/lot-status', state);
@@ -813,7 +815,8 @@ describe('Lot Status 화면 shell', () => {
 
       const table = await screen.findByRole('table', { name: 'LOT 현황' });
       expect(within(table).getByText(itemMessage)).toBeVisible();
-      expect(within(table).getByText('—')).toBeVisible();
+      /* 수량 칸과 (품목을 못 푼) 품목코드 칸이 「—」다(#1728). */
+      expect(within(table).getAllByText('—').length).toBeGreaterThan(0);
       expect(within(table).queryByText('999')).not.toBeInTheDocument();
       expect(screen.queryByText(/조회 권한이 없는 LOT .*건을 제외/)).not.toBeInTheDocument();
     },
@@ -831,7 +834,7 @@ describe('Lot Status 화면 shell', () => {
     );
 
     const table = await screen.findByRole('table', { name: 'LOT 현황' });
-    expect(await within(table).findAllByText('SAMPLE-ITEM-51 · 합성 51번째 품목')).toHaveLength(2);
+    expect(await within(table).findAllByText('합성 51번째 품목')).toHaveLength(2);
     expect(within(table).queryByText('알 수 없음')).not.toBeInTheDocument();
     const detailCalls = urls
       .map(({ pathname }) => pathname)
@@ -889,7 +892,16 @@ describe('Lot Status 화면 shell', () => {
       within(table)
         .getAllByRole('columnheader')
         .map((header) => (header.textContent ?? '').replace('drag_indicator', '')),
-    ).toEqual(['LOT 번호', '품목', '상태', '보유 수량', '상태 사유', '입하 LOT', '최종 변경일']);
+    ).toEqual([
+      'LOT 번호',
+      '품목코드',
+      '품목명',
+      '상태',
+      '보유 수량',
+      '상태 사유',
+      '입하 LOT',
+      '최종 변경일',
+    ]);
     const row = await within(table).findByRole('row', { name: /SAMPLE-LOT-Z/ });
     await user.click(within(row).getAllByRole('cell')[2]!);
     await waitFor(() => expect(locationSearch().get('lot')).toBe('401'));
@@ -914,7 +926,7 @@ describe('Lot Status 화면 shell', () => {
       (element.textContent ?? '').replace('drag_indicator', '');
     const itemHeader = within(table)
       .getAllByRole('columnheader')
-      .find((header) => headerText(header) === '품목');
+      .find((header) => headerText(header) === '품목코드');
 
     expect(itemHeader).toHaveAttribute('aria-sort', 'descending');
     expect(
@@ -922,7 +934,7 @@ describe('Lot Status 화면 shell', () => {
         .getAllByRole('button')
         .filter((button) => button.closest('th') !== null)
         .map(headerText),
-    ).toEqual(['LOT 번호', '품목', '최종 변경일']);
+    ).toEqual(['LOT 번호', '품목코드', '최종 변경일']);
     await user.click(within(table).getByRole('button', { name: 'LOT 번호' }));
     await waitFor(() => expect(locationSearch().get('sort')).toBe('lotNoAsc'));
     await waitFor(() => expect(requestCount(urls, '/quality/lot-statuses')).toBe(2));
@@ -1297,6 +1309,75 @@ describe('Lot Status 화면 shell', () => {
   });
 });
 
+/* 목록 제목 줄 「목록 접기」(#350) — 건수는 목록이 `onTotalChange` 로 알린 전체 건수다. */
+describe('Lot Status 화면 — 목록 접기(#350)', () => {
+  const collapseLabel = messages.common.inspectionHub.listCollapse;
+
+  afterEach(() => {
+    window.localStorage.removeItem('omf-mes:lot-status:split:collapsed');
+    window.localStorage.removeItem('omf-mes:lot-status-history:split:collapsed');
+  });
+
+  it('LOT 현황 — 제목 줄 · 접힌 탭에 전체 건수가 서고, 펼친 뒤에도 고른 LOT · 적던 LOT 스캔이 그대로다', async () => {
+    renderScreen('/quality/lot-status?lot=401', 'ready', [
+      ...qualityRoutes(200, 200, [statusRow], 1234),
+      ...detailRoutes(),
+    ]);
+    const user = userEvent.setup();
+    const table = await screen.findByRole('table', { name: 'LOT 현황' });
+    const list = screen.getByRole('region', { name: 'LOT 현황' });
+    const split = list.closest('.lot-status-split');
+    /* 받은 줄(1건)이 아니라 응답의 전체 건수다. */
+    await waitFor(() =>
+      expect(list.querySelector('.po-board-list-count')).toHaveTextContent('1234건'),
+    );
+    expect(within(table).getByText('SAMPLE-LOT-001')).toHaveAttribute('aria-current', 'true');
+    await user.type(screen.getByLabelText('LOT 스캔'), 'SAMPLE-DRAFT');
+
+    await user.click(screen.getAllByRole('button', { name: collapseLabel })[0]!);
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = split!.querySelector('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록1234건');
+
+    await user.click(tab as HTMLElement);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    expect(within(table).getByText('SAMPLE-LOT-001')).toHaveAttribute('aria-current', 'true');
+    expect(screen.getByRole('region', { name: 'LOT 상세' })).toBeInTheDocument();
+    expect(screen.getByLabelText('LOT 스캔')).toHaveValue('SAMPLE-DRAFT');
+  });
+
+  it('LOT 상태 이력 — 제목 줄 · 접힌 탭에 합친 이력 건수가 서고, 펼친 뒤에도 고른 줄 · 적던 LOT 스캔이 그대로다', async () => {
+    renderScreen('/quality/lot-status?mode=history&from=2026-08-01&to=2026-08-07', 'ready', [
+      ...holdRoutes(),
+      ...eventRoutes(),
+      ...detailRoutes(),
+    ]);
+    const user = userEvent.setup();
+    const table = await screen.findByRole('table', { name: 'LOT 이력' });
+    const list = screen.getByRole('region', { name: 'LOT 이력' });
+    const split = list.closest('.lot-status-split');
+    expect(within(list).getByRole('heading', { name: 'LOT 이력' })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(list.querySelector('.po-board-list-count')).toHaveTextContent('4건'),
+    );
+    await user.click(within(table).getAllByRole('row')[1]!);
+    const picked = () =>
+      within(table).getAllByRole('row')[1]!.querySelector('[aria-current="true"]');
+    await waitFor(() => expect(picked()).not.toBeNull());
+    await user.type(screen.getByLabelText('LOT 스캔'), 'SAMPLE-DRAFT');
+
+    await user.click(screen.getAllByRole('button', { name: collapseLabel })[0]!);
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = split!.querySelector('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록4건');
+
+    await user.click(tab as HTMLElement);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    expect(picked()).not.toBeNull();
+    expect(screen.getByLabelText('LOT 스캔')).toHaveValue('SAMPLE-DRAFT');
+  });
+});
+
 describe('LOT 상세의 [생산 이력 조회]', () => {
   const withPermissions = (permissions: string[]): Session => ({
     ...SYNTHETIC_SESSION,
@@ -1384,6 +1465,13 @@ describe('Lot Status 화면 — 분할 LOT (008)', () => {
     expect(
       within(split).getByRole('button', { name: 'SAMPLE-ITEM-01|1000|260820|100330|0001' }),
     ).toBeVisible();
+    /* 분할 LOT 의 뜻은 원래 LOT 칸 이름 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */
+    expect(
+      within(split).getByRole('button', { name: '부분 출고로 원래 LOT 에서 떼어 낸 LOT 입니다.' }),
+    ).toBeInTheDocument();
+    expect(
+      within(split).queryByText('부분 출고로 원래 LOT 에서 떼어 낸 LOT 입니다.'),
+    ).not.toBeInTheDocument();
     expect(within(split).getByText('분할 수량')).toBeVisible();
     expect(within(split).getByText('2026-11-17 08:40')).toBeVisible();
     expect(within(split).getByText('GI-SYN-0003 · 라인 1')).toBeVisible();
@@ -1410,5 +1498,91 @@ describe('Lot Status 화면 — 분할 LOT (008)', () => {
     const detail = await screen.findByRole('region', { name: 'LOT 상세' });
     await within(detail).findByText('SAMPLE-LOT-001');
     expect(within(detail).queryByText(/분할/u)).toBeNull();
+  });
+});
+
+/*
+ * 피처 013 생산 LOT 분리(omf-all-around#303 · 시안 W0301) — 분할 칸이 출고 대신 분리 위치 · 작업자 · PDA 확인 · W/O 를
+ * 보이고, 확인 전이면 머리에 「PDA 확인 전」 칩이 선다.
+ */
+describe('Lot Status 화면 — 생산 LOT 분리 (013)', () => {
+  const productLotSplit = (confirmed: boolean, role: 'PARENT' | 'CHILD' = 'CHILD') => ({
+    productLotSplitId: 9,
+    role,
+    splitQty: 30,
+    splitAt: '2026-11-20T02:12:00Z',
+    splitWorkerNo: 'W0021',
+    splitTerminalCode: 'POP-FG-01',
+    location: {
+      locationId: 45,
+      locationCode: 'FG-A-01',
+      warehouseCode: 'FG',
+      warehouseName: '제품 창고',
+    },
+    confirmedAt: confirmed ? '2026-11-20T02:30:00Z' : null,
+    confirmedWorkerNo: confirmed ? 'W0031' : null,
+    workOrderNo: 'WO-SYN-0012',
+  });
+
+  it('US4-4 · Q19 새 LOT 은 분리 수량 · 시각(단말 · 작업자) · 위치 · PDA 확인 전 · 원래 LOT 의 W/O 를 보인다', async () => {
+    renderScreen('/quality/lot-status?lot=401', 'ready', [
+      ...qualityRoutes(),
+      ...detailRoutes(200, {
+        parentLotId: 400,
+        parentLotNo: 'SAMPLE-PL-261118-0412',
+        splitAt: '2026-11-20T02:12:00Z',
+        splitGoodsIssue: null,
+        splitChildCount: 0,
+        productLotSplit: productLotSplit(false),
+      }),
+    ]);
+
+    const detail = await screen.findByRole('region', { name: 'LOT 상세' });
+    const split = await within(detail).findByRole('region', { name: '분할' });
+    expect(within(detail).getByText('PDA 확인 전')).toBeVisible();
+    expect(
+      within(split).getByRole('button', {
+        name: '생산 LOT 분리로 원래 LOT 에서 떼어 낸 LOT 입니다.',
+      }),
+    ).toBeVisible();
+    expect(within(split).getByText('분리 수량')).toBeVisible();
+    expect(within(split).getByText('2026-11-20 09:12, POP-FG-01, W0021')).toBeVisible();
+    expect(within(split).getByText('FG · FG-A-01')).toBeVisible();
+    expect(within(split).getByText('아직. 확인 전에는 출하 피킹이 되지 않습니다')).toBeVisible();
+    expect(within(split).getByText('WO-SYN-0012 (원래 LOT)')).toBeVisible();
+    expect(within(split).queryByText('분할 출고')).toBeNull();
+  });
+
+  it('US3-3 확인된 분리는 확인 시각 · 작업자를 보이고 「PDA 확인 전」 칩이 없다', async () => {
+    renderScreen('/quality/lot-status?lot=401', 'ready', [
+      ...qualityRoutes(),
+      ...detailRoutes(200, {
+        parentLotId: 400,
+        parentLotNo: 'SAMPLE-PL-261118-0412',
+        splitAt: '2026-11-20T02:12:00Z',
+        splitGoodsIssue: null,
+        splitChildCount: 0,
+        productLotSplit: productLotSplit(true),
+      }),
+    ]);
+
+    const detail = await screen.findByRole('region', { name: 'LOT 상세' });
+    const split = await within(detail).findByRole('region', { name: '분할' });
+    expect(within(split).getByText('2026-11-20 09:30, W0031')).toBeVisible();
+    expect(within(detail).queryByText('PDA 확인 전')).toBeNull();
+  });
+
+  it('Q19 원래 LOT 은 분할 칸 없이 「PDA 확인 전」 칩만 선다', async () => {
+    renderScreen('/quality/lot-status?lot=401', 'ready', [
+      ...qualityRoutes(),
+      ...detailRoutes(200, {
+        splitChildCount: 1,
+        productLotSplit: productLotSplit(false, 'PARENT'),
+      }),
+    ]);
+
+    const detail = await screen.findByRole('region', { name: 'LOT 상세' });
+    expect(await within(detail).findByText('PDA 확인 전')).toBeVisible();
+    expect(within(detail).queryByRole('region', { name: '분할' })).toBeNull();
   });
 });

@@ -159,7 +159,18 @@ describe('W-CO-15 공장 근무일 설정', () => {
     expect(first.getByText(t.tags.default)).toBeInTheDocument();
     expect(first.getByText('토, 일')).toBeInTheDocument();
     expect(screen.queryByText('합성 3공장')).not.toBeInTheDocument();
-    expect(screen.getByText(t.intro)).toBeInTheDocument();
+  });
+
+  /* 주간 근무일이 무엇을 세는지는 머리 아래 설명 줄이 아니라 구획 제목 옆 ⓘ 다(관리웹 정리 시안 A). */
+  it('주간 근무일의 뜻은 구획 제목 옆 ⓘ 의 설명으로 읽힌다', async () => {
+    setup();
+    await table();
+
+    const title = screen.getByRole('heading', { level: 2 });
+
+    expect(title).toHaveTextContent(t.tableLabel);
+    expect(within(title).getByRole('button', { name: t.description })).toBeInTheDocument();
+    expect(screen.queryByText(t.description)).not.toBeInTheDocument();
   });
 
   it('US7-3 6 으로 바꾸면 바뀐 줄 표시 · 예시를 다시 세고, 저장하면 오늘부터 적용 행을 더한 뒤 다시 열어도 6', async () => {
@@ -369,18 +380,19 @@ describe('W-CO-15 공장 근무일 설정', () => {
     expect(await screen.findByRole('dialog', { name: t.discard.title })).toBeInTheDocument();
   });
 
-  it('US7-3 바꾼 설정은 「이후 만드는 출고 요청부터」 적용한다고 안내하고, 저장 알림도 같은 말이다', async () => {
+  /* 머리 아래 상시 띠는 걷었다 — 적용 시점은 저장할 때 알림으로 말한다(사용자 지시 2026-11-20). */
+  it('US7-3 바꾼 설정은 「이후 만드는 출고 요청부터」 적용된다고 저장 알림이 말한다', async () => {
     const { user } = setup();
 
-    expect(await screen.findByText(t.intro)).toHaveTextContent('이후 만드는 출고 요청부터');
-    expect(screen.getByText(t.intro)).toHaveTextContent('이미 만든 요청의 출고 작업일은 그대로');
+    await table();
+    expect(screen.queryByText(/이미 만든 요청의 출고 작업일은 그대로/)).not.toBeInTheDocument();
 
     const row = await rowOf('합성 1공장');
     await user.click(row.getByRole('radio', { name: t.options.six }));
     await user.click(screen.getByRole('button', { name: t.actions.save }));
 
     expect(await screen.findByText(t.state.saved)).toHaveTextContent(
-      '이후 만드는 출고 요청부터 적용합니다',
+      '이후 만드는 출고 요청부터 적용됩니다',
     );
   });
 });

@@ -110,22 +110,29 @@ export const Select = forwardRef<
   SelectProps & {
     /** 선택지 수와 상관없이 늘 검색창을 둔다(불량 유형처럼 코드로 찾는 칸 · 사용자 2026-11-02). */
     searchable?: boolean;
+    /** 펼친 목록 검색창의 흐린 문구. 주지 않으면 공통 「검색」(사용자 지시 2026-11-20 · omf-all-around#333). */
+    searchPlaceholder?: string;
   }
->(function Select({ searchable = false, ...props }, ref) {
+>(function Select({ searchable = false, searchPlaceholder, ...props }, ref) {
   const fallbackId = useId();
   const triggerId = props.id ?? fallbackId;
   useCloseOnTriggerMove(triggerId);
   return searchable || countOptions(props.options) > SEARCH_THRESHOLD ? (
-    <SearchableSelect {...props} id={triggerId} ref={ref} />
+    <SearchableSelect
+      {...props}
+      id={triggerId}
+      ref={ref}
+      {...(searchPlaceholder !== undefined ? { searchPlaceholder } : {})}
+    />
   ) : (
     <DsSelect {...props} id={triggerId} ref={ref} />
   );
 });
 
-const SearchableSelect = forwardRef<HTMLButtonElement, SelectProps>(function SearchableSelect(
-  { options, placeholder, value, ...rest },
-  ref,
-) {
+const SearchableSelect = forwardRef<
+  HTMLButtonElement,
+  SelectProps & { searchPlaceholder?: string }
+>(function SearchableSelect({ options, placeholder, value, ...rest }, ref) {
   const [query, setQuery] = useState('');
   const filtered = useMemo(() => filterOptions(options, query), [options, query]);
 
@@ -331,6 +338,8 @@ interface SearchFrameProps extends SelectProps {
   foot?: ReactNode;
   /** 펼친 목록을 바닥 가까이 내렸을 때. */
   onNearEnd?: () => void;
+  /** 검색창의 흐린 문구. 주지 않으면 공통 「검색」. */
+  searchPlaceholder?: string;
 }
 
 /** 디자인 시스템 선택 칸 + 펼친 목록 맨 앞의 검색창 · 끝의 알림 자리. */
@@ -344,6 +353,7 @@ const SearchFrame = ({
   foot,
   onNearEnd,
   id,
+  searchPlaceholder = messages.common.selectSearch,
   ...dsProps
 }: SearchFrameProps) => {
   const fallbackId = useId();
@@ -475,7 +485,7 @@ const SearchFrame = ({
               className="select-search-input"
               aria-label={messages.common.selectSearch}
               aria-controls={`${triggerId}-listbox`}
-              placeholder={messages.common.selectSearch}
+              placeholder={searchPlaceholder}
               value={query}
               onChange={(event) => onQueryChange(event.target.value)}
               onKeyDown={onSearchKeyDown}

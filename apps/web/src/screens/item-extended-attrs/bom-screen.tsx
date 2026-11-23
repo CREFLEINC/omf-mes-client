@@ -835,7 +835,7 @@ export const ItemBomScreen = () => {
           </div>
         ),
       }}
-      list={{ label: tb.panes.parents, content: listContent() }}
+      list={{ label: tb.panes.parents, count: parents.data?.page.total, content: listContent() }}
       detail={{
         label: t.component.paneTitle,
         scroll: false,

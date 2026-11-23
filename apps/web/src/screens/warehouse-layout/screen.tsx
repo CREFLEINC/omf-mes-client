@@ -5,6 +5,7 @@ import { useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { BoardFrame } from '../../patterns/board-frame';
+import { InfoTip } from '../../patterns/info-tip';
 import { locationMarkerLabel, locationOptionLabel } from '../../patterns/location-label';
 import { initialExpandedLocationIds } from '../../patterns/location-tree';
 import { useSession } from '../../patterns/session';
@@ -247,6 +248,7 @@ export const WarehouseLayoutScreen = () => {
         splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
         list={{
           label: t.panes.locations,
+          count: warehouseId === null || locations.data === undefined ? undefined : rows.length,
           content:
             (
               /*
@@ -413,7 +415,8 @@ export const WarehouseLayoutScreen = () => {
                     <p className="layout-stock-legend">
                       <span className="layout-stock-legend-stocked">{t.stock.legendStocked}</span>
                       <span className="layout-stock-legend-empty">{t.stock.legendEmpty}</span>
-                      <span className="field-note">{t.stock.legendNote}</span>
+                      {/* 도면에 없는 위치의 표시는 범례 옆 ⓘ 로(관리웹 정리 시안 A). */}
+                      <InfoTip text={t.stock.legendNote} />
                     </p>
                   )
                 )}

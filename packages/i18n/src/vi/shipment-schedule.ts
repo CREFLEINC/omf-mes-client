@@ -77,13 +77,13 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
     judgmentAccepted: 'Đạt',
     completionReady: 'Chờ hoàn tất',
     blocked: (count: number): string => `Bị chặn ${String(count)}`,
+    delayed: 'Trễ hạn',
     replacement: (count: number): string => `Thay LOT ${String(count)}`,
   },
   filters: {
     all: 'Tất cả',
     inspectionRequired: 'Thuộc diện',
     inspectionNotRequired: 'Không thuộc diện',
-    summaryNote: 'Đang chuẩn bị phần tổng hợp.',
     lookupTruncated:
       'Chỉ hiện một phần đầu của các lựa chọn. Nếu không có giá trị cần tìm, hãy báo người phụ trách.',
     lookupFailed: 'Không tải được các lựa chọn.',
@@ -96,7 +96,7 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
     chipRemoveProgress: 'Bỏ điều kiện tiến độ',
     chipRemoveInspection: 'Bỏ điều kiện kiểm tra',
     q: 'Từ khóa',
-    qPlaceholder: 'Số lệnh xuất, khách hàng, mặt hàng',
+    qPlaceholder: 'Số lệnh xuất, số lô xuất hàng, khách hàng, mặt hàng',
     readyOnly: 'Chỉ chờ hoàn tất',
     hasReplacement: 'Có thay LOT',
     chipQ: (value: string): string => `Từ khóa: ${value}`,
@@ -138,8 +138,7 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
       completedBy: 'Hoàn tất',
     },
     noPickingWarehouse: 'Chưa có',
-    popOnly:
-      'Việc hoàn tất xuất hàng chỉ thực hiện trên POP 「Hoàn tất xuất hàng」 (P-04-07). Màn hình này chỉ để xem.',
+    popOnly: 'Việc hoàn tất xuất hàng chỉ thực hiện trên POP 「Hoàn tất xuất hàng」.',
     completed: (shipmentNo: string, completedAt: string): string =>
       `Đã hoàn tất xuất hàng trên POP (${shipmentNo}, ${completedAt}). Trừ tồn kho và số lượng đã xuất của đơn bán hàng đã được ghi cùng lúc. Mã quản lý xuất hàng không thể sửa nữa. Yêu cầu hủy được trình ở 「Lịch sử xuất hàng」.`,
     shipmentLink: (shipmentNo: string): string => `${shipmentNo} → Lịch sử xuất hàng`,
@@ -147,9 +146,9 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
       `${at}, ${terminal}, ${worker}`,
     codeLocked: 'Sau khi hoàn tất xuất hàng thì không thể sửa mã quản lý xuất hàng',
     noLotsBanner:
-      'Chưa lấy LOT nào. Sau khi chỉ định nhà máy phụ trách xuất hàng và phân bổ, quét nhãn LOT ở PDA 「Lấy hàng thành phẩm」 thì LOT sẽ hiện ở đây.',
-    blockersTitle: (count: number): string =>
-      `Có ${String(count)} lý do khiến chưa thể hoàn tất xuất hàng`,
+      'Chưa lấy LOT nào. Quét nhãn LOT ở PDA 「Lấy hàng thành phẩm」 thì LOT sẽ hiện ở đây.',
+    remainingTitle: (count: number): string =>
+      `Còn ${String(count)} việc trước khi hoàn tất xuất hàng`,
     blockers: {
       PICKING_SHORT: (lineNo: string): string =>
         `Lấy hàng chưa đủ: dòng ${lineNo}. Hãy quét thêm LOT ở màn hình PDA 「Lấy hàng thành phẩm」.`,
@@ -275,6 +274,55 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
     printedAt: (value: string): string => `In lúc ${value}`,
     printedByValue: (at: string, user: string): string => `${at}, web quản lý ${user}`,
     footnote:
-      'Quét QR ở trên tại POP 「Hoàn tất xuất hàng」 (P-04-07) thì lệnh xuất hàng này sẽ mở ra. Có hoàn tất được hay không sẽ do trạng thái lệnh xuất hàng lúc đó quyết định.',
+      'Quét QR ở trên tại POP 「Hoàn tất xuất hàng」 thì lệnh xuất hàng này sẽ mở ra. Có hoàn tất được hay không sẽ do trạng thái lệnh xuất hàng lúc đó quyết định.',
+  },
+  bu012: {
+    businessUnit: 'Đơn vị kinh doanh',
+    noBusinessUnit: 'Chưa chỉ định đơn vị kinh doanh',
+    lineWarehouse: 'Kho xuất',
+    warehouseUnassigned: 'Chưa chỉ định kho',
+    warehouse: (warehouse: string, plant: string): string => `${warehouse} (${plant})`,
+    warehouseLines: (warehouse: string, lines: string): string => `${warehouse}, dòng ${lines}`,
+    warehouseUnassignedNote:
+      'Lệnh tạo trước khi triển khai nên lấy hàng từ mọi kho (trừ kho hàng lỗi) của nhà máy của lệnh',
+    erpSend: 'Gửi ERP',
+    erpChipsLabel: 'Lọc theo trạng thái gửi ERP',
+    erpAll: 'Tất cả',
+    erpStatus: {
+      NOT_QUEUED: 'Chưa xác nhận',
+      PENDING: 'Chờ gửi',
+      SENT: 'Đã gửi',
+      SEND_ERROR: 'Lỗi gửi',
+      NOT_SENT_NO_SALES_ORDER: 'Không gửi',
+      CANCELLED: 'Đã hủy',
+    },
+    erpChip: (label: string, count: number): string => `${label} ${String(count)}`,
+    erpNote: 'Chỉ đếm lệnh có lô xuất hàng đã hoàn tất',
+    erpEmptyHint: 'Hãy mở rộng kỳ hoặc bỏ lọc trạng thái gửi ERP.',
+    fromApproval: 'Mở từ phê duyệt',
+    fromApprovalNote: 'Hãy xử lý hủy trong mục «Xuất hàng» bên dưới.',
+    outOfPeriod: (no: string): string => `Đã mở lệnh ngoài kỳ danh sách (${no})`,
+    linkedNotFound: 'Không tìm thấy lệnh xuất hàng được liên kết',
+    section: 'Xuất hàng',
+    sectionNote: 'Lô xuất hàng đã hoàn tất, trừ kho theo kho, gửi ERP, hủy',
+    sectionLoading: 'Đang tải lô xuất hàng',
+    sectionLoadFailed: 'Không tải được lô xuất hàng',
+    goodsIssues: 'Trừ kho theo kho',
+    goodsIssuesNote: 'Mỗi kho một phiếu xuất kho, nhà máy gửi ERP là nhà máy của kho',
+    goodsIssueColumns: { no: 'Phiếu xuất kho', warehouse: 'Kho', plant: 'Nhà máy', qty: 'Số lượng' },
+    lots: 'Phân bổ LOT',
+    lotColumns: {
+      lot: 'LOT',
+      line: 'Dòng',
+      place: 'Kho',
+      qty: 'Số lượng',
+      oqc: 'OQC',
+      code: 'Mã quản lý xuất hàng',
+    },
+    noPermission: 'Chỉ người có quyền «Hủy xuất hàng (trước khi gửi)» mới hủy và xác nhận được',
+    completedBand: (shipmentNo: string, completedAt: string): string =>
+      `Đã hoàn tất xuất hàng trên POP (${shipmentNo}, ${completedAt}). Trừ tồn kho và số lượng đã xuất của đơn bán hàng đã được ghi cùng lúc. Mã quản lý xuất hàng không thể sửa nữa. Yêu cầu hủy ở mục «Xuất hàng» bên dưới.`,
+    printBusinessUnit: 'Đơn vị kinh doanh',
+    printWarehouse: 'Kho xuất',
   },
 };

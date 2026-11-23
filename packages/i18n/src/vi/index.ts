@@ -60,12 +60,9 @@ import { erpItem } from './erp-item';
 import { erpProductionOrder } from './erp-production-order';
 import { iqcInspection } from './iqc-inspection';
 import { partsIqcInspection } from './parts-iqc-inspection';
-import { iqcSkipApproval } from './iqc-skip-approval';
-import { iqcSkipRequest } from './iqc-skip-request';
 import { itemExtendedAttrs } from './item-extended-attrs';
 import { itemPicker } from './item-picker';
 import { resourcePicker } from './resource-picker';
-import { judgmentCode } from './judgment-code';
 import { login } from './login';
 import { lotStatusHistory } from './lot-status-history';
 import { lotStatusTransition } from './lot-status-transition';
@@ -88,7 +85,6 @@ import { passwordChange } from './password-change';
 import { pendingCode } from './pending-code';
 import { physicalCount } from './physical-count';
 import { poChangeReview } from './po-change-review';
-import { poRegister } from './po-register';
 import { popLocationLabel } from './pop-location-label';
 import { inspectionDocuments } from './inspection-documents';
 import { inspectionHistory } from './inspection-history';
@@ -104,6 +100,8 @@ import { inspectionSheetEntry } from './inspection-sheet-entry';
 import { materialDefect } from './material-defect';
 import { popOqcInspection } from './pop-oqc-inspection';
 import { popShipmentComplete } from './pop-shipment-complete';
+import { productLotSplit } from './product-lot-split';
+import { productLotSplitConfirm } from './product-lot-split-confirm';
 import { popMaterialLotLabel } from './pop-material-lot-label';
 import { popChrome } from './pop-chrome';
 import { popUniform } from './pop-uniform';
@@ -111,7 +109,6 @@ import { pqcInspection } from './pqc-inspection';
 import { productDisposalRequest } from './product-disposal-request';
 import { productPicking } from './product-picking';
 import { productReceipt } from './product-receipt';
-import { productStockStatus } from './product-stock-status';
 import { productionOrder } from './production-order';
 import { erpPurchaseOrder } from './erp-purchase-order';
 import { erpSalesOrder } from './erp-sales-order';
@@ -232,12 +229,9 @@ export const vi: Translated<Messages> = {
   erpProductionOrder,
   iqcInspection,
   partsIqcInspection,
-  iqcSkipApproval,
-  iqcSkipRequest,
   itemExtendedAttrs,
   itemPicker,
   resourcePicker,
-  judgmentCode,
   login,
   lotStatusHistory,
   lotStatusTransition,
@@ -275,10 +269,11 @@ export const vi: Translated<Messages> = {
   materialDefect,
   popOqcInspection,
   popShipmentComplete,
+  productLotSplit,
+  productLotSplitConfirm,
   popMaterialLotLabel,
   popChrome,
   popUniform,
-  poRegister,
   pqcInspection,
   productDisposalRequest,
   productionOrder,
@@ -290,7 +285,6 @@ export const vi: Translated<Messages> = {
   productionResult,
   productPicking,
   productReceipt,
-  productStockStatus,
   putaway,
   qualityApproval,
   recycleEntry,

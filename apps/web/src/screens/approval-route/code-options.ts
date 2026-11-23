@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { SelectOption } from './types';
 
 /**
- * 고정 OpenAPI가 닫은 승인 유형 9개를 조회와 등록에서 함께 쓰는 단일 목록이다.
+ * 고정 OpenAPI가 닫은 승인 유형에서 없어진 IQC 생략(omf-all-around#353)을 뺀 8개를 조회와 등록에서 함께 쓰는 단일 목록이다.
  * 이 화면이 소유하며 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
@@ -16,22 +16,23 @@ export const PLACEHOLDER_APPROVAL_TYPE_CODES = [
   'GOODS_RECEIPT_CANCEL',
   'GOODS_ISSUE_CANCEL',
   'SHIPMENT_CANCEL',
-  'IQC_SKIP',
   'PRODUCTION_RESULT_CORRECT',
-  // 서버 선행 P-152(omf-all-around#212) — PQC 생략 결재선을 이 화면에서 등록한다.
-  'PQC_SKIP',
 ] as const;
+
+/** 승인 유형 코드 → 사람이 읽는 이름 — 결재함과 같은 이름표를 쓴다. 목록에 없는 코드는 코드 그대로 보인다. */
+export const approvalTypeLabelOf = (code: string): string =>
+  messages.approvalInbox.approvalTypeNames[code] ?? code;
 
 /**
  * 값 목록을 선택지로 옮긴다.
  *
- * **라벨을 지어내지 않는다** — 코드값을 그대로 라벨로 쓴다. 사람이 읽을 이름을 주는 곳이
- * 아직 없는데 화면이 이름을 붙이면 그 뜻도 화면이 지어낸 것이 된다.
+ * **라벨은 사람이 읽는 이름이다(#353, 사용자 지시).** 코드값만으로는 무슨 결재인지 읽히지 않아
+ * 서버 알림 이름과 같은 이름을 붙인다(`approvalTypeLabelOf`). 값은 코드 그대로 보낸다.
  *
  * **차례를 바꾸지 않는다.** 값 목록이 어떤 차례로 오는지가 뜻일 수 있다(자주 쓰는 것부터 등).
  */
 export const toApprovalTypeOptions = (values: readonly string[]): SelectOption[] =>
-  values.map((code) => ({ value: code, label: code }));
+  values.map((code) => ({ value: code, label: approvalTypeLabelOf(code) }));
 
 /** 선택지가 왜 비어 있는지 밝히는 안내. **차면 거둔다** — 남으면 화면이 거짓말을 한다. */
 export const codeNote = (options: readonly SelectOption[]): string | undefined =>
@@ -83,7 +84,7 @@ export const toApproverTypeOptions = (enabledCodes: readonly ApproverTypeCode[])
     disabled: !enabledCodes.includes(code),
   }));
 
-/** 잠긴 선택지가 하나라도 있으면 왜 잠겼는지 밝힌다. **전부 열리면 거둔다.** */
+/** 잠긴 선택지가 하나라도 있으면 무엇을 고를 수 있는지 밝힌다(라벨 옆 ⓘ). **전부 열리면 거둔다.** */
 export const approverTypeNote = (options: readonly SelectOption[]): string | undefined =>
   options.some((option) => option.disabled === true)
     ? messages.approvalRoute.notes.approverTypePending

@@ -6,7 +6,6 @@ import { HomeAreaScreen, ShellHome } from '../app/shell-home';
 import { WorkerSignInScreen } from '../screens/device-registration/sign-in';
 import { EquipmentFailureScreen } from '../screens/equipment-failure/screen';
 import { EquipmentInspectionScreen } from '../screens/equipment-inspection/screen';
-import { IqcSkipRequestScreen } from '../screens/iqc-skip-request/screen';
 import { InboundReceiptScreen } from '../screens/inbound-receipt/screen';
 import { InboundCloseScreen } from '../screens/inbound-close/screen';
 import { InboundVarianceScreen } from '../screens/inbound-variance/screen';
@@ -19,6 +18,7 @@ import { PhysicalCountScreen } from '../screens/physical-count/screen';
 import { ShopfloorReceiptScreen } from '../screens/shopfloor-receipt/screen';
 import { StockTransferScreen } from '../screens/stock-transfer/screen';
 import { ProductPickingScreen } from '../screens/product-picking/screen';
+import { ProductLotSplitConfirmScreen } from '../screens/product-lot-split-confirm/screen';
 import { ProductReceiptScreen } from '../screens/product-receipt/screen';
 import { PutawayScreen } from '../screens/putaway/screen';
 import { PutawayHistoryScreen } from '../screens/putaway-history/screen';
@@ -58,10 +58,11 @@ export const appRoutes: RouteObject[] = [
       { path: 'physical-count', element: <PhysicalCountScreen /> },
       { path: 'equipment-failure', element: <EquipmentFailureScreen /> },
       { path: 'equipment-inspection', element: <EquipmentInspectionScreen /> },
-      { path: 'iqc-skip-request', element: <IqcSkipRequestScreen /> },
       { path: 'wip-handover', element: <WipHandoverScreen /> },
       { path: 'repair-roundtrip', element: <RepairRoundtripScreen /> },
       { path: 'product-picking', element: <ProductPickingScreen /> },
+      /* M-04-05 LOT 분리 확인(피처 013) — 온라인 전용, 메뉴 배지 없음. */
+      { path: 'product-lot-split-confirm', element: <ProductLotSplitConfirmScreen /> },
       { path: 'product-receipt', element: <ProductReceiptScreen /> },
       { path: 'packing-repack', element: <PackingRepackScreen /> },
       { path: 'outbox', element: <OutboxPendingScreen /> },

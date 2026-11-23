@@ -6,8 +6,6 @@ import type { Translated } from './translated';
  * 「환산을 쓸지」를 정한다 — 툴별 차이(캐비티 수)는 툴 마스터의 몫이다.
  */
 export const shotConversion: Translated<typeof ko.shotConversion> = {
-  title: 'Thiết lập tham số quy đổi số nhát dập',
-  breadcrumbRoot: 'Quản lý dữ liệu gốc',
   optionsTruncated:
     'Danh sách lựa chọn chỉ hiển thị một phần. Không thấy giá trị cần tìm thì hãy báo người phụ trách.',
   optionsLoadFailed: 'Không tải được danh sách lựa chọn. Chỉ hiển thị giá trị đang lưu.',
@@ -44,8 +42,6 @@ export const shotConversion: Translated<typeof ko.shotConversion> = {
     /** ⭐ 범위가 겹치는 것이 정상이다 — 무엇이 이기는지를 표 곁에서 말해 둔다. */
     overlapNote:
       'Phạm vi chồng nhau thì cái hẹp hơn thắng — theo thứ tự mặt hàng · công đoạn · nhà máy · đơn vị kinh doanh.',
-    /** ⚠ 화면이 판정하지 않는다 — 실제로 무엇이 적용되는지는 미리보기가 서버에 물어 답한다. */
-    resolvedElsewhere: 'Chính sách nào đang được áp dụng thì hãy xem ở phần xem trước bên dưới.',
     listTruncated: (shown: number, total: number): string =>
       `Hiển thị ${String(shown)} trong tổng ${String(total)} mục. Hãy thu hẹp bằng ngày cơ sở.`,
     effectiveOnLabel: 'Ngày cơ sở',
@@ -129,8 +125,6 @@ export const shotConversion: Translated<typeof ko.shotConversion> = {
    */
   preview: {
     paneTitle: 'Xem trước',
-    description:
-      'Chọn công cụ · mặt hàng · công đoạn thì sẽ thấy chính sách thực sự áp dụng cho tổ hợp đó và số nhát dập tính theo nó.',
     toolLabel: 'Công cụ',
     itemLabel: 'Mặt hàng',
     processLabel: 'Công đoạn',

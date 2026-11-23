@@ -330,12 +330,11 @@ export const PopMaterialLotLabelScreen = () => {
 
     const commands: IssueCommand[] = lots.map((lot) =>
       reprint
-        ? { ...base, lot, reissueReasonCode: reasonCode, lotStatusCode: lot.statusCode }
+        ? { ...base, lot, reissueReasonCode: reasonCode }
         : {
             ...base,
             lot,
             reissueReasonCode: null,
-            lotStatusCode: lot.statusCode,
             /* 보내기 직전에 다른 단말이 먼저 찍지 않았는지 본다(`verifyCommands`). */
             verifyUnissued: true,
           },

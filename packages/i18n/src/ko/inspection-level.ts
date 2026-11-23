@@ -1,7 +1,6 @@
 /** 검사 수준 관리(관리웹 · 품질 관리). 품목별 IQC 검사 수준과 자동 전환 이력. */
 export const inspectionLevel = {
   title: '검사 수준 설정',
-  breadcrumbRoot: '품질 관리',
 
   levels: {
     NONE: '무검사',
@@ -30,6 +29,9 @@ export const inspectionLevel = {
 
   columns: {
     item: '품목',
+    /** 품목은 코드 · 이름 두 칸으로 나눠 보인다(사용자 지시 2026-11-20). */
+    itemCode: '품목코드',
+    itemName: '품목명',
     level: '검사 수준',
     updatedAt: '변경 일시',
     actions: '설정',
@@ -59,6 +61,11 @@ export const inspectionLevel = {
 
   history: {
     heading: '검사 수준 변경 이력',
+    /** 목록에서 고른 품목의 이력만 볼 때 — 다시 누르면 전체로 돌아간다(#350). */
+    selectedItem: (code: string, name: string) => `${code} · ${name}`,
+    allHint: '목록에서 품목을 누르면 해당 품목의 이력만 표시됩니다.',
+    selectedHint: '같은 품목을 다시 누르면 전체 이력이 표시됩니다.',
+    openRow: (code: string) => `${code} 고르기`,
     itemTitle: '검사 수준 변경 이력',
     itemCode: (code: string) => `품목코드 ${code}`,
     itemColumns: {
@@ -78,6 +85,8 @@ export const inspectionLevel = {
     columns: {
       changedAt: '변경 일시',
       item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       change: '검사 수준',
       type: '변경 방식',
       reason: '변경 사유',

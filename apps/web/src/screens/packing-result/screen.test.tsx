@@ -67,6 +67,8 @@ interface Options {
   reads?: Request[];
   /** 이 출하는 미포장 배분이 없다 — 확정할 수 없는 출하가 된다. */
   noUnpackedShipmentId?: number;
+  /** 미포장 배분 응답 줄 수를 그때그때 정한다(머리줄 [새로고침] 뒤 바뀐 값). 생략하면 1줄. */
+  unpackedCount?: () => number;
   /** 목록 항목의 `unpackedLotCount`(출하 식별자 → 수). 생략하면 그 칸이 없다(옛 서버). */
   listedUnpackedLotCounts?: Record<number, number>;
 }
@@ -268,6 +270,15 @@ const renderScreen = (options: Options = {}) => {
           return jsonResponse({ items: [], page: { ...page, total: 0 } });
         }
 
+        if (query.get('unpackedOnly') === 'true' && options.unpackedCount !== undefined) {
+          const count = options.unpackedCount();
+          const items = Array.from({ length: count }, (_, index) =>
+            allocation({ shipmentLotAllocationId: 9000 + index }),
+          );
+
+          return jsonResponse({ items, page: { ...page, total: count } });
+        }
+
         return jsonResponse({ items: [allocation()], page });
       },
     },
@@ -399,6 +410,23 @@ describe('PackingResultScreen', () => {
     );
 
     expect(byNumber).toHaveLength(0);
+  });
+
+  it('머리줄 [새로고침](전체 무효화)이 고른 출하의 미포장 배분을 다시 읽어 카드 건수를 바꾼다 — 고른 것은 그대로다', async () => {
+    const user = userEvent.setup();
+    let unpacked = 1;
+    const { queryClient } = renderScreen({ unpackedCount: () => unpacked });
+
+    await chooseShipment(user);
+    const card = await shipmentCard('SYN-SH-0501');
+    expect(await within(card).findByText(t.shipments.allocations(1))).toBeInTheDocument();
+
+    unpacked = 2;
+    await queryClient.invalidateQueries();
+
+    expect(await within(card).findByText(t.shipments.allocations(2))).toBeInTheDocument();
+    expect(card).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: t.actions.next })).toBeEnabled();
   });
 
   it('출하 카드를 누르면 그 출하가 골라지고 [다음]이 켜진다', async () => {

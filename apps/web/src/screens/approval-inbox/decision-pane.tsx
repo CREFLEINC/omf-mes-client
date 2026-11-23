@@ -2,6 +2,8 @@ import { Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
+import { InfoLabel, InfoTip } from '../../patterns/info-tip';
+
 import { decisionBlockedReason } from './decision-draft';
 import { DisabledAction } from './disabled-action';
 
@@ -30,7 +32,7 @@ export interface DecisionPaneProps {
  * 의견을 써야 하고, 확인 창은 「정말 보낼 것인가」만 묻는 자리로 남아야 한다.
  *
  * **입력칸은 하나뿐이다.** 승인이면 선택이고 반려면 필수라 라벨에 필수 표시를 붙이지 않는다 —
- * 붙이면 승인에는 거짓말이 된다. 어느 쪽에 무엇이 필요한지는 도움말과 반려 버튼의 사유가 말한다.
+ * 붙이면 승인에는 거짓말이 된다. 어느 쪽에 무엇이 필요한지는 라벨 옆 ⓘ 와 반려 버튼의 사유가 말한다.
  *
  * ---
  *
@@ -38,12 +40,13 @@ export interface DecisionPaneProps {
  *
  * | 겹 | 여기서 |
  * | :-: | --- |
- * | ① 상시 문구 | 자물쇠 문구가 **버튼 바로 위 상시 자리**에 선다. 버튼이 잠겨 있어도 보인다 |
+ * | ① 상시 문구 | 자물쇠 문구가 **구획 제목 옆 ⓘ** 에 늘 있다. 버튼이 잠겨 있어도 있다 — 확인 창이 한 번 더 펼쳐 보인다 |
  * | ② 확인 창 | 버튼은 창을 열 뿐이다 — 이 부품은 요청을 보내지 않는다 |
  * | ③ 전면 잠금 | `isLocked`가 입력칸과 버튼을 함께 잠근다(첫째 겹) |
  *
  * **자물쇠 문구를 성공 알림에 넣지 않는다.** 알림은 사라지지만 이 문장은 결재함을 보는 내내
  * 참인 사실이고, **버튼이 잠겨 있을 때도 참이다** — 그래서 문구의 자리가 버튼의 상태와 무관하다.
+ * 늘 펼쳐 두지는 않고 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A).
  *
  * **잠금 사유가 갈린다.** 「내 차례가 아니다」는 서버가 준 사실이고 「보내는 중이다」는 지금
  * 이 화면의 상태다 — 한 문구로 뭉개면 사용자가 기다려야 할지 물어봐야 할지 알 수 없다.
@@ -64,27 +67,37 @@ export const DecisionPane = ({
   const state = { isMyTurn, comment };
   const approveBlocked = decisionBlockedReason('approve', state);
   const rejectBlocked = decisionBlockedReason('reject', state);
-  const isCommentDisabled = !isMyTurn || isLocked;
+  const isNotMyTurn = !isMyTurn;
+  const isCommentDisabled = isNotMyTurn || isLocked;
+  const turnNoteId = useId();
 
   return (
     <div className="approval-inbox-detail-section" role="group" aria-label={t.panes.decision}>
-      <h3>{t.panes.decision}</h3>
+      <h3 className="info-label">
+        {t.panes.decision}
+        <InfoTip text={t.decision.lockNote} />
+      </h3>
       {banner}
 
       <div className="field-cell">
+        {/* 승인·반려에 의견이 필요한지는 칸 아래가 아니라 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}
+        <InfoLabel
+          htmlFor={commentId}
+          label={t.decision.commentLabel}
+          info={t.decision.commentHelp}
+        />
+        {/* 칸 아래 도움말이 칸 폭을 넓혀 주던 자리 — 걷은 뒤에도 좁아지지 않게 칸(최대 44rem)을 채운다. */}
         <TextField
           id={commentId}
-          label={t.decision.commentLabel}
+          fullWidth
           value={comment}
           disabled={isCommentDisabled}
-          helperText={t.decision.commentHelp}
+          aria-describedby={isNotMyTurn ? turnNoteId : undefined}
           /*
-           * 잠긴 이유를 갈라 낸다 — 보내는 중이면 기다리면 되고, 내 차례가 아니면 기다려도
-           * 이 화면에서는 열리지 않는다. 디자인 시스템이 잠겼을 때만 이 글자를 낸다.
+           * 잠긴 이유를 갈라 낸다 — 보내는 중이면 여기 적고, 내 차례가 아니면 단추 줄 아래 한 줄
+           * (`turnNoteId`)이 말한다. 같은 문장을 칸 · 단추마다 되풀이하지 않는다.
            */
-          disabledReason={
-            isLocked ? t.decision.commentSendingReason : t.decision.commentDisabledReason
-          }
+          disabledReason={isLocked ? t.decision.commentSendingReason : undefined}
           error={commentError}
           onChange={(event) => {
             onChangeComment(event.target.value);
@@ -92,30 +105,42 @@ export const DecisionPane = ({
         />
       </div>
 
-      {/*
-       * **상시 자리다.** 버튼의 상태와 무관하게 늘 선다 — 승인이 무엇을 하고 무엇을 하지
-       * 않는지는 누를 수 있는지와 상관없이 참인 사실이다.
-       */}
-      <p className="field-note">{t.decision.lockNote}</p>
-
-      <div className="form-actions">
+      <div className="form-actions approval-inbox-actions">
         {/* 되돌리기 쪽(반려)이 왼쪽, 흔한 길(승인)이 오른쪽 — 이 저장소의 액션 줄 차례 그대로다. */}
-        {rejectBlocked === null ? (
-          <Button variant="outlined" disabled={isLocked} onClick={onReject}>
-            {t.decision.reject}
-          </Button>
+        {isNotMyTurn ? (
+          <>
+            <Button variant="outlined" disabled aria-describedby={turnNoteId}>
+              {t.decision.reject}
+            </Button>
+            <Button variant="filled" disabled aria-describedby={turnNoteId}>
+              {t.decision.approve}
+            </Button>
+          </>
         ) : (
-          <DisabledAction label={t.decision.reject} reason={rejectBlocked} />
-        )}
+          <>
+            {rejectBlocked === null ? (
+              <Button variant="outlined" disabled={isLocked} onClick={onReject}>
+                {t.decision.reject}
+              </Button>
+            ) : (
+              <DisabledAction label={t.decision.reject} reason={rejectBlocked} />
+            )}
 
-        {approveBlocked === null ? (
-          <Button variant="filled" disabled={isLocked} onClick={onApprove}>
-            {t.decision.approve}
-          </Button>
-        ) : (
-          <DisabledAction variant="filled" label={t.decision.approve} reason={approveBlocked} />
+            {approveBlocked === null ? (
+              <Button variant="filled" disabled={isLocked} onClick={onApprove}>
+                {t.decision.approve}
+              </Button>
+            ) : (
+              <DisabledAction variant="filled" label={t.decision.approve} reason={approveBlocked} />
+            )}
+          </>
         )}
       </div>
+      {isNotMyTurn && (
+        <p id={turnNoteId} className="field-note approval-inbox-turn-note">
+          {t.decision.blockedNotMyTurn(t.decision.approve)}
+        </p>
+      )}
     </div>
   );
 };

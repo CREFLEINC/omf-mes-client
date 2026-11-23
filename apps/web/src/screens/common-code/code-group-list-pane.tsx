@@ -12,7 +12,6 @@ import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
 import { hasChangedFilters } from '../../patterns/filter-more';
-import { isProvisionalCatalog } from './code-group-catalog';
 import { hasAnyFilter } from './filters';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
@@ -42,6 +41,11 @@ export interface CodeGroupListPaneProps {
    * 실패를 「등록된 코드그룹이 없습니다」로 보이면 사실과 다른 안내가 된다.
    */
   loadError: ReactNode;
+  /**
+   * 조회 조건 · 목록을 화면이 따로 세울 때(통일 배치 · #350) 두 조각을 받아 배치한다.
+   * 없으면 한 구획 안에 조건 줄 · 목록을 차례로 둔다 — 화면은 늘 넘기고, 목록 부품만 따로 그리는 부품 시험이 빈 채로 쓴다.
+   */
+  layout?: (parts: { filter: ReactNode; list: ReactNode }) => ReactNode;
 }
 
 /**
@@ -65,6 +69,7 @@ export const CodeGroupListPane = ({
   isCreating,
   onAddCodeGroup,
   loadError,
+  layout,
 }: CodeGroupListPaneProps) => {
   /*
    * 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
@@ -183,18 +188,8 @@ export const CodeGroupListPane = ({
   /* 조건 칸이 모두 줄에 보여 칩을 따로 두지 않는다(C-6). 「초기화」는 바뀐 것이 있을 때만 보인다. */
   const isChanged = hasChangedFilters(EMPTY_CODE_GROUP_FILTERS, draft, appliedFilters);
 
-  return (
-    <section className="pane" aria-label={t.panes.codeGroup}>
-      {/*
-       * 결정 6 — 기대 목록이 비어 있다는 사실이 곧 「코드 체계가 아직 확정되지 않았다」는 뜻이다.
-       * 목록 위에 **한 번만** 낸다. 행마다 되풀이하면 표를 읽을 수 없다.
-       */}
-      {isProvisionalCatalog() && (
-        <div className="banner-slot">
-          <AlertBanner variant="info">{t.codeGroup.provisionalCatalog}</AlertBanner>
-        </div>
-      )}
-
+  const filter = (
+    <>
       {/* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
       <div className="filter-bar">
         <SearchInput
@@ -235,18 +230,23 @@ export const CodeGroupListPane = ({
               {messages.common.reset}
             </Button>
           )}
-        </div>
-      </div>
-
-      {listSlot()}
-
-      <div className="filter-bar">
-        <div className="field-cell">
+          <span className="inspection-standard-filter-divider" aria-hidden />
           <Button variant="outlined" disabled={isCreating} onClick={onAddCodeGroup}>
             {t.actions.addCodeGroup}
           </Button>
         </div>
       </div>
+    </>
+  );
+
+  const list = listSlot();
+
+  if (layout !== undefined) return layout({ filter, list });
+
+  return (
+    <section className="pane" aria-label={t.panes.codeGroup}>
+      {filter}
+      {list}
     </section>
   );
 };

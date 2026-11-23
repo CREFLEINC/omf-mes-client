@@ -10,6 +10,7 @@ import {
   cycleTypeLabel,
   statusLabel,
 } from './code-options';
+import { InfoTip } from '../../patterns/info-tip';
 import { FieldLabel } from './field-label';
 import { groupAssignmentNote, hierarchyText, type EquipmentHierarchy } from './hierarchy-text';
 import { SelectField } from './select-field';
@@ -60,25 +61,35 @@ const readOnlyText = (value: string | null): string =>
 interface ReadOnlyFieldProps {
   label: string;
   value: string | null;
-  note?: string;
+  /** 어디서 정해지는 값인지 — 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */
+  info?: string;
 }
 
 /**
  * 값을 보여 주기만 하는 칸.
  *
  * **폼 컨트롤을 잠그지 않고 값 표기로 낸다** — 잠긴 입력칸은 「언젠가 여기서 고칠 수 있다」를
- * 뜻하는데, 이 값들은 이 화면이 영영 정하지 않는다. 사유는 함께 낸다.
+ * 뜻하는데, 이 값들은 이 화면이 영영 정하지 않는다. 어디서 정하는지는 라벨 옆 ⓘ 로 낸다.
  */
-const ReadOnlyField = ({ label, value, note }: ReadOnlyFieldProps) => {
+const ReadOnlyField = ({ label, value, info }: ReadOnlyFieldProps) => {
   const labelId = useId();
+  const labelNode = (
+    <span className="field-label" id={labelId}>
+      {label}
+    </span>
+  );
 
   return (
     <div className="field-cell">
-      <span className="field-label" id={labelId}>
-        {label}
-      </span>
+      {info === undefined ? (
+        labelNode
+      ) : (
+        <span className="info-label">
+          {labelNode}
+          <InfoTip text={info} />
+        </span>
+      )}
       <p aria-labelledby={labelId}>{readOnlyText(value)}</p>
-      {note !== undefined && <span className="field-note">{note}</span>}
     </div>
   );
 };
@@ -256,7 +267,7 @@ export const EquipmentFormDialog = ({
                   )
                 : null
             }
-            note={t.actionReasons.calibrationCycleOwnedElsewhere}
+            info={t.actionReasons.calibrationCycleOwnedElsewhere}
           />
         )}
 
@@ -265,12 +276,12 @@ export const EquipmentFormDialog = ({
             <ReadOnlyField
               label={t.fields.status}
               value={statusCode === null ? null : statusLabel(statusCode, statusOptions)}
-              note={t.actionReasons.statusNotEditableHere}
+              info={t.actionReasons.statusNotEditableHere}
             />
             <ReadOnlyField
               label={t.fields.lastCalibrationDate}
               value={lastCalibrationDate}
-              note={t.actionReasons.calibrationDatesReadOnly}
+              info={t.actionReasons.calibrationDatesReadOnly}
             />
             <ReadOnlyField label={t.fields.calibrationDueDate} value={calibrationDueDate} />
 

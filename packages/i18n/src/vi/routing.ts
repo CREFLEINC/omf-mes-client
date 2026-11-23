@@ -11,7 +11,7 @@ export const routing: Translated<typeof ko.routing> = {
   title: 'Routing (công đoạn)',
   breadcrumbRoot: 'Quản lý dữ liệu gốc',
   panes: {
-    item: 'Mặt hàng',
+    itemList: 'Danh sách mặt hàng',
     revision: 'Danh sách Rev',
     header: 'Thông tin Routing',
     operations: 'Dòng công đoạn',

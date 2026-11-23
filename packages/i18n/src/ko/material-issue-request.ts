@@ -8,16 +8,6 @@
 export const materialIssueRequest = {
   title: '추가 출고 요청',
   breadcrumbRoot: '구매 / 자재 관리',
-  /**
-   * ⭐ **규칙을 알리는 문장이다.** 앞 문장이 「금지」를 그대로 말하고, 뒤 문장이 그 대신 무엇을
-   * 하면 되는지를 말한다. 결과 설명(「재고가 어긋난다」)으로 바꾸면 규범 선언이 사라진다 —
-   * 이 화면의 존재 이유가 앞 문장이다.
-   */
-  policyNotice: {
-    title: '절차를 거치지 않은 자재 반출은 금지입니다',
-    description:
-      '창고의 자재를 요청 없이 가져갈 수 없습니다. 부족한 자재도 이 화면에서 요청해 정식 출고를 거쳐 받습니다.',
-  },
   panes: {
     target: '대상 W/O',
     lines: '요청 품목',
@@ -86,10 +76,10 @@ export const materialIssueRequest = {
     outsideBom: 'BOM 밖',
     outsideBomTitle: 'BOM 에 없는 품목이 있습니다',
     outsideBomCount: (count: number): string =>
-      `BOM 에 없는 품목이 ${String(count)}건 있습니다. 투입 시 오투입 검증에 걸릴 수 있습니다. 요청은 막지 않습니다.`,
+      `BOM 에 없는 품목이 ${String(count)}건 있습니다. 투입할 때 오투입으로 걸릴 수 있습니다.`,
     existingRequestsTitle: '이 W/O 앞으로 이미 발행된 요청이 있습니다',
     existingRequests: (count: number): string =>
-      `이 W/O 앞으로 발행된 요청이 ${String(count)}건 있습니다. 중복 요청을 막지는 않습니다 — 아래 목록을 확인한 뒤 진행하세요.`,
+      `이 W/O로 이미 발행한 요청이 ${String(count)}건 있습니다. 겹치지 않는지 아래 목록을 확인하세요.`,
     existingRequestRow: (issueRequestNo: string, statusCode: string, requiredAt: string): string =>
       `${issueRequestNo} · ${statusCode} · ${requiredAt}`,
     existingRequestsTruncated: '앞쪽 일부만 보입니다. 전체는 출고 요청 현황에서 확인하세요.',
@@ -121,8 +111,6 @@ export const materialIssueRequest = {
     noLinesDescription: 'BOM 소요량을 불러오거나 품목을 직접 추가하세요.',
   },
   notes: {
-    lineNoAssignedByServer: '줄번호는 서버가 부여합니다.',
-    shortageColumnsReadOnly: 'BOM 소요·기출고·부족은 시스템이 낸 값이라 고칠 수 없습니다.',
     warehouseAutoFilled: 'W/O 의 기본 재공 위치로 채웠습니다. 필요하면 바꿀 수 있습니다.',
   },
   result: {

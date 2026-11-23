@@ -21,9 +21,14 @@ import { useScopedPlants } from '../../patterns/oa-access';
 import { OaOnlyGate } from '../../patterns/oa-only-gate';
 import { PageNav } from '../../patterns/page-nav';
 import { usePageHub } from '../../patterns/page-hub';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import { toApiError } from '../../patterns/request';
-import { sessionKeys, useSession } from '../../patterns/session';
+import { sessionKeys } from '../../patterns/session';
 import {
   PaneHeightSplitter,
   SplitOrientationToggle,
@@ -71,7 +76,6 @@ const TODAY_KEY = 'td';
 const IqcInspectionScreenBody = () => {
   const hub = usePageHub();
   const toast = useToast();
-  const { session } = useSession();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   /* 입하 LOT 번호 스캔(T138)은 공장으로 찾는다 — OA 화면은 범위의 OA 공장들에서 찾는다. */
@@ -159,11 +163,12 @@ const IqcInspectionScreenBody = () => {
     else openRequest(to);
   };
   /* 고른 줄을 다시 누르면 상세가 닫힌다. */
-  /* 새 의뢰를 고르면 목록을 접어 상세가 자리를 다 쓴다 — 다시 펼치기는 목록과 상세 사이의 단추(사용자 지시 · #252). */
+  /*
+   * 의뢰를 골라도 목록은 그대로 둔다 — 접기·펼치기는 목록과 상세 사이의 단추로만 한다(사용자 지시 2026-11-20, 고르면
+   * 저절로 접던 #252 를 걷음).
+   */
   const select = (inspectionRequestId: number): void => {
-    const next = inspectionRequestId === selectedId ? null : inspectionRequestId;
-    moveTo(next);
-    if (next !== null && !split.collapsed) split.toggleCollapsed();
+    moveTo(inspectionRequestId === selectedId ? null : inspectionRequestId);
   };
 
   /*
@@ -181,7 +186,6 @@ const IqcInspectionScreenBody = () => {
   }, [scanOpen, selectedId]);
   const openByScan = (inspectionRequestId: number, scannedLotId: number | null): void => {
     if (inspectionRequestId !== selectedId) select(inspectionRequestId);
-    else if (!split.collapsed) split.toggleCollapsed();
     setScanOpen(
       scannedLotId === null
         ? null
@@ -296,6 +300,10 @@ const IqcInspectionScreenBody = () => {
           className="pane iqc-inspection-panes iqc-inspection-queue-pane"
           aria-label={t.queue.heading}
         >
+          <PaneListHead
+            title={t.queue.heading}
+            collapse={{ ...listCollapse, count: queue.data?.page.total }}
+          />
           {queue.isError && (
             <QueueLoadErrorBanner
               error={toApiError(queue.error)}
@@ -311,7 +319,6 @@ const IqcInspectionScreenBody = () => {
             suppliers={lotSuppliers}
             selectedId={selectedId}
             onSelect={select}
-            skipWorkerNo={session?.worker?.workerNo ?? null}
             empty={emptyContent}
           />
           {/*
@@ -333,7 +340,7 @@ const IqcInspectionScreenBody = () => {
           label={hubText.splitter}
           ratio={split.ratio}
           onChange={split.commit}
-          collapse={listCollapse}
+          collapse={{ ...listCollapse, count: queue.data?.page.total }}
         />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter

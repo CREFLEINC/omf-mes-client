@@ -1,7 +1,6 @@
 /** Quản lý mức kiểm tra (web quản trị · Quản lý chất lượng). */
 export const inspectionLevel = {
   title: 'Thiết lập mức kiểm tra',
-  breadcrumbRoot: 'Quản lý chất lượng',
 
   levels: {
     NONE: 'Miễn kiểm',
@@ -29,6 +28,8 @@ export const inspectionLevel = {
 
   columns: {
     item: 'Vật tư',
+    itemCode: 'Mã vật tư',
+    itemName: 'Tên vật tư',
     level: 'Mức kiểm tra',
     updatedAt: 'Thời điểm thay đổi',
     actions: 'Thiết lập',
@@ -58,6 +59,10 @@ export const inspectionLevel = {
 
   history: {
     heading: 'Lịch sử thay đổi mức kiểm tra',
+    selectedItem: (code: string, name: string) => `${code} · ${name}`,
+    allHint: 'Chọn một vật tư trong danh sách để chỉ hiển thị lịch sử của vật tư đó.',
+    selectedHint: 'Chọn lại cùng vật tư để hiển thị toàn bộ lịch sử.',
+    openRow: (code: string) => `Chọn ${code}`,
     itemTitle: 'Lịch sử thay đổi mức kiểm tra',
     itemCode: (code: string) => `Mã vật tư ${code}`,
     itemColumns: {
@@ -77,6 +82,8 @@ export const inspectionLevel = {
     columns: {
       changedAt: 'Thời điểm thay đổi',
       item: 'Vật tư',
+      itemCode: 'Mã vật tư',
+      itemName: 'Tên vật tư',
       change: 'Mức kiểm tra',
       type: 'Cách thay đổi',
       reason: 'Lý do thay đổi',

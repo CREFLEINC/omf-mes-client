@@ -188,7 +188,8 @@ describe('W-06-06 생산 창고 구획', () => {
     expect(
       table.getByRole('link', { name: t.viewStockLabel('SYN-PW-A 합성 생산창고 A') }),
     ).toHaveAttribute('href', '/logistics/stock-status?wh=7001');
-    expect(screen.getByText(t.help)).toBeInTheDocument();
+    /* 출고 창고를 고르는 규칙은 제목 옆 ⓘ 의 설명으로 읽힌다(관리웹 정리 시안 A). */
+    expect(screen.getByRole('button', { name: t.help })).toBeInTheDocument();
   });
 
   it('US8-1 창고 추가로 여럿을 고르고 저장하면 전체 교체가 고른 창고를 모두 싣는다(뺀 것이 없으면 확인 없이)', async () => {

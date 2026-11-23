@@ -64,7 +64,6 @@ const renderDialog = (seqNo?: number) =>
     <PlanDialog
       {...(seqNo === undefined ? {} : { seqNo })}
       planCode="IQC-AA205-1"
-      planName="0090040302 수입검사"
       itemParts={{ code: '0090040302', name: 'BUSH' }}
       version={version}
       specs={specs}
@@ -84,7 +83,7 @@ describe('검사 기준 조회 팝업 (사용자 지시 2026-10-30)', () => {
     expect(screen.getByText('IQC-AA205-1')).toBeInTheDocument();
     expect(screen.getByText('2판')).toBeInTheDocument();
     expect(screen.getByText('2026-01-01')).toBeInTheDocument();
-    expect(screen.getByText('LOT 의 10%')).toBeInTheDocument();
+    expect(screen.getByText('샘플 LOT 의 10%')).toBeInTheDocument();
     expect(screen.getByText('BUSH')).toBeInTheDocument();
     expect(screen.getByText('수치형')).toBeInTheDocument();
     expect(screen.getByText('선택형')).toBeInTheDocument();

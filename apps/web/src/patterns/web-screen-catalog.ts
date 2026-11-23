@@ -12,7 +12,7 @@
  *    (`.dependency-cruiser.cjs` 「app-inner-direction」) `patterns` 는 `app/nav-tree.ts` 를 부를 수
  *    없다. 코드가 `NavEntry` 안에 있으면 **`patterns`·`screens` 는 화면 코드를 영영 못 읽는다.**
  *    여기 있으면 `app` 도 `screens` 도 `patterns` 도 읽는다.
- * ③ 사이드바에 **없는** 화면에도 코드는 있다(로그인 `W-CO-01`·신규 P/O 등록 `W-01-11` 등). 메뉴
+ * ③ 사이드바에 **없는** 화면에도 코드는 있다(로그인 `W-CO-01` 등). 메뉴
  *    항목의 속성으로 두면 그런 화면이 담길 자리가 없다.
  *
  * ⛔ **라우트 표에서 뽑지 않는다.** 위 ②와 같은 이유로 `patterns` 가 `routes` 를 부를 수 없다.
@@ -53,8 +53,7 @@ export interface WebScreen {
  *
  * ⛔ **메뉴에 없는 화면은 까닭 없이 담지 않는다.** 불변식은 「메뉴 항목 전부가 여기 있다」이고
  * (`routes/web-screen-catalog.test.ts` 가 그 방향을 잰다), 아무 화면이나 섞으면 그 불변식이
- * 「무엇의 전부인가」를 잃는다. 그래서 로그인 `W-CO-01` · 신규 P/O 등록 `W-01-11` · 완제품 재고
- * 조회 `W-04-08` 은 여기 없다.
+ * 「무엇의 전부인가」를 잃는다. 그래서 로그인 `W-CO-01` 은 여기 없다.
  *
  * ⚠ **예외 둘 — `W-02-02`·`W-02-03`.** 메뉴에서 뺐지만(omf-all-around#41) 목록에는 남긴다.
  * 화면 코드가 붙은 «갈 수 있는» 자리이고, 앞 화면의 이동 버튼으로 들어간다. 왜 메뉴에 없는지는
@@ -95,8 +94,6 @@ export const WEB_SCREENS: readonly WebScreen[] = [
     code: 'W-06-06',
     name: '공통코드·조직·작업자 마스터(다국어)',
   },
-  /* 같은 코드값 편집기를 열지만 **화면은 갈린다** — IA §3-1 「기준정보 > 품질 기준」의 독립 항목이다. */
-  { path: '/master-data/judgment-code', code: 'W-06-04', name: '판정유형 코드 마스터' },
   /*
    * ⚠ **연계(I/F) 3장 중 하나다.** 나머지 둘은 `W-06-09` 연계정의 관리(아직 화면 없음) · `W-06-12` 송신 I/F 정의(아래
    * 「ERP 송신」 탭)다 — 코드가 헷갈리기 쉬우니 여기 적어 둔다. 이 화면은 **실행 로그를 보고 실패를 재처리**하는 쪽이다.
@@ -159,14 +156,13 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   { path: '/logistics/stock-adjust', code: 'W-01-12', name: '재고조정' },
   { path: '/logistics/supplier-return', code: 'W-01-05', name: '공급사 반품 처리' },
   { path: '/logistics/disposal-issue', code: 'W-01-06', name: '폐기 요청·기타출고' },
-  { path: '/logistics/iqc-skip-approval', code: 'W-01-02', name: '긴급 IQC 생략 한도승인' },
   { path: '/logistics/document-progress', code: 'W-01-13', name: '물류 문서 진행현황·취소' },
 
   /* ── 출하 ─────────────────────────────────────────────────────────────── */
   {
     path: '/shipment/shipment-request-create',
     code: 'W-04-01',
-    name: '출하지시서 Import·작업지시 생성',
+    name: '출하작업지시 생성',
   },
   { path: '/shipment/shipment-schedule', code: 'W-04-02', name: '출하 예정 목록' },
   { path: '/shipment/oqc-inspection', code: 'W-04-03', name: 'OQC 출하검사 판정' },
@@ -184,7 +180,11 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   /* 피처 010 — 출하 처리 묶음에서 빠져 독립 항목이다. */
   { path: '/shipment/expedited-shipment', code: 'W-04-05', name: '긴급 직행 출하 처리' },
   /* IA v1.4 신설 · 피처 010 에서 「출하 내역」으로 바뀌었다 — 확정 단계가 없어졌다(옛 흐름만 한 건씩 확정). */
-  { path: '/shipment/shipment-confirm', code: 'W-04-12', name: '출하 내역' },
+  /*
+   * 피처 012 — W-04-12 는 메뉴 없는 권한 「출하 취소(송신 전)」로 남는다(R-6). 옛 주소는 W-04-02 로 넘기는 자리라
+   * 화면이 없지만, 이 줄이 있어야 W-04-12 만 가진 역할에게 W-04-02 메뉴가 선다(`nav-tree.ts` 의 `alsoFor` · T064).
+   */
+  { path: '/shipment/shipment-confirm', code: 'W-04-12', name: '출하 취소(송신 전)' },
   { path: '/shipment/return-receipts', code: 'W-04-06', name: '반품·클레임 입고 등록' },
   /*
    * ⚠ **의뢰이지 판정이 아니다.** 판정은 `W-03-10`(처분 판정 처리)이 갖는다 — IA §3-2 가
@@ -308,7 +308,7 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   { path: '/notification/notices', code: 'W-CO-04', name: '공지·전달 게시/조회' },
 
   /* ── 시스템 관리 ──────────────────────────────────────────────────────── */
-  { path: '/system/users-roles', code: 'W-CO-02', name: '사용자·역할·권한 관리' },
+  { path: '/system/users-roles', code: 'W-CO-02', name: '사용자 역할 권한 관리' },
   /*
    * ⚠ **06 이지 CO 가 아니다.** IA §3-1 은 이 화면을 「기준정보 > 승인」에 두었는데 사이드바는
    * 운영 설정이라는 성격을 따라 「시스템 관리」에 세웠다 — 메뉴 배치와 코드 도메인이 갈리는 둘째

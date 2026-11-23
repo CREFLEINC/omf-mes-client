@@ -10,7 +10,6 @@ const command: IssueCommand = {
   lot: labelLot(9001),
   printerName: null,
   reissueReasonCode: null,
-  lotStatusCode: null,
 };
 
 describe('useBatchIssue — 사번을 모를 때', () => {

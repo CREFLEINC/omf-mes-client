@@ -60,24 +60,24 @@ describe('모바일 라우트', () => {
     expect(await screen.findByText('전송 실패한 기록이 없습니다.')).toBeInTheDocument();
   });
 
-  it('셸 홈에서 업무를 거쳐 설비 점검으로 갈 수 있다', async () => {
-    const user = userEvent.setup();
+  /* 감춘 작업(사용자 지시 2026-11-20) — 홈에서는 닿지 않는다. 라우트는 남아 다시 열 때 목록에만 옮긴다. */
+  it('생산 현장 업무는 홈에 없다', async () => {
     renderAt('/screens');
 
-    await user.click(await screen.findByRole('link', { name: /^생산 현장/ }));
-    await user.click(await screen.findByRole('link', { name: '설비 점검' }));
-
-    expect(await screen.findByLabelText('설비 스캔')).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /^입고/ })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /^생산 현장/ })).not.toBeInTheDocument();
   });
 
-  it('셸 홈에서 업무를 거쳐 긴급 IQC 생략 요청으로 갈 수 있다', async () => {
+  it('입고 업무에 긴급 IQC 생략 요청 · 입하 오류 등록 · 재생재 등록이 없다', async () => {
     const user = userEvent.setup();
     renderAt('/screens');
 
     await user.click(await screen.findByRole('link', { name: /^입고/ }));
-    await user.click(await screen.findByRole('link', { name: '긴급 IQC 생략 요청' }));
 
-    expect(await screen.findByLabelText('자재 관리 LOT 스캔')).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: '입하 등록' })).toBeInTheDocument();
+    for (const name of ['긴급 IQC 생략 요청', '입하 오류 등록', '재생재 등록']) {
+      expect(screen.queryByRole('link', { name })).not.toBeInTheDocument();
+    }
   });
 
   it('경로로 바로 들어와도 화면이 선다', async () => {

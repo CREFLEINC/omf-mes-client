@@ -87,11 +87,12 @@ export const EnabledPane = ({
     );
   };
 
+  /* 상자(`환산 사용` 구획)는 화면이 조회 조건 자리에 세운다(#350) — 여기는 그 안의 제목과 본문만. */
   return (
-    <section className="pane shot-conversion-pane" aria-label={t.paneTitle}>
+    <div className="shot-conversion-pane shot-conversion-enabled">
       <h2 className="pane-title">{t.paneTitle}</h2>
       {banner}
       {body()}
-    </section>
+    </div>
   );
 };

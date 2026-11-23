@@ -47,19 +47,25 @@ export interface SalesOrderListResult {
 /** 지시서 라인 — 잔여 라인을 뽑는 데 필요한 값만 옮긴다(`line-draft.ts`가 소비한다). */
 export interface SalesOrderLineView {
   salesOrderLineId: number;
+  /** S/O 줄 번호 — 나눈 줄 묶음을 「SO · 줄」로 가리킨다(피처 012). */
+  lineNo: number;
   itemId: number;
   orderedQty: number;
   uomId: number;
   /** 누적 출하 수량. 서버가 유지한다 — 화면이 다시 세지 않는다(공유계약 L-2) */
   shippedQty: number;
+  /** ERP 창고 코드 — 참고로만 보인다. MES 창고를 이것으로 고르지 않는다(피처 012 FR-006). */
+  erpStorageLocationCode: string | null;
 }
 
 const toSalesOrderLineView = (data: SalesOrderLineResponse): SalesOrderLineView => ({
   salesOrderLineId: data.salesOrderLineId,
+  lineNo: data.lineNo,
   itemId: data.itemId,
   orderedQty: data.orderedQty,
   uomId: data.uomId,
   shippedQty: data.shippedQty,
+  erpStorageLocationCode: data.erpStorageLocationCode ?? null,
 });
 
 /** 지시서 상세 — 편성 폼이 승계 원천으로 쓴다. */
@@ -104,6 +110,23 @@ export interface ShipmentRequestLineDraft {
   allocatedQty: string;
   uomId: string;
   shippingInspectionRequired: boolean;
+  /**
+   * 출고 창고(피처 012 FR-003) — 줄마다 하나, 필수. 고르지 않았으면 빈 글자.
+   */
+  warehouseId: string;
+  /** 첫 줄 창고로 채운 값인가 — 「첫 줄 창고로 채움」을 작게 적는다(FR-004). 사람이 고르면 거짓. */
+  warehouseFilled: boolean;
+  /** 사업부를 바꿔 비운 줄인가 — 노란 테로 짚고 다시 고를 때까지 남는다(FR-004 · US1-7). */
+  warehouseCleared: boolean;
+  /**
+   * 나눈 줄이면 원 줄의 키(피처 012 FR-005). 원 줄·단독 생성 줄은 `null`.
+   * 나눈 줄은 원 줄과 같은 `salesOrderLineId` 를 가리키고, 요청 수량은 보내기 직전에 정한다.
+   */
+  splitOf: string | null;
+  /** S/O 줄 번호 — 나눈 줄 묶음을 「SO · 줄」로 가리킨다. 단독 생성 줄은 `null`. */
+  salesOrderLineNo: number | null;
+  /** ERP 창고 코드(참고) — S/O 원 줄만. */
+  erpStorageLocationCode: string | null;
 }
 
 /** 방금 만든 편성 — 결과 안내 구획이 그리는 것 전부다. */

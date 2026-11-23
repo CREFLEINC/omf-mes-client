@@ -10,9 +10,7 @@ export const plantWorkingDays: Translated<typeof ko.plantWorkingDays> = {
   title: 'Thiết lập ngày làm việc nhà máy',
   breadcrumbRoot: 'Quản trị hệ thống',
   description:
-    'Số ngày làm việc trong tuần của từng nhà máy, dùng để tính ngày xuất kho (1 ngày làm việc trước ngày sản xuất). Chỉ bỏ qua cuối tuần — không dùng ngày lễ và lịch làm việc.',
-  intro:
-    'Thiết lập đã đổi áp dụng cho các yêu cầu xuất tạo từ nay. Ngày xuất kho của yêu cầu đã tạo giữ nguyên. Nhà máy chưa thiết lập được tính theo 5 ngày/tuần.',
+    'Số ngày làm việc trong tuần của từng nhà máy, dùng để tính ngày xuất kho (1 ngày làm việc trước ngày sản xuất). Chỉ bỏ qua cuối tuần — không dùng ngày lễ và lịch làm việc. Nhà máy chưa thiết lập được tính theo 5 ngày/tuần.',
   tableLabel: 'Ngày làm việc theo nhà máy',
   columns: {
     plant: 'Nhà máy',

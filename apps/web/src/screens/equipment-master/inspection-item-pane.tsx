@@ -41,8 +41,10 @@ const hasAnyFilter = (filters: InspectionItemFilters): boolean =>
  *
  * ⭐ **부여 창이 쓰는 목록과 다르다.** 그쪽은 「고를 것」이라 살아 있는 것만 받지만, 여기는
  * 마스터라 **끈 것도 보여야 한다** — 다시 켜는 길이 여기뿐이다(B-4).
+ *
+ * 조회 줄과 목록을 따로 돌려준다 — 통일 배치(#350)에서 조회 줄은 조회 조건 상자에, 표는 목록 상자에 선다.
  */
-export const InspectionItemPane = ({
+export const useInspectionItemPane = ({
   items,
   isLoading,
   appliedFilters,
@@ -52,7 +54,7 @@ export const InspectionItemPane = ({
   onAdd,
   onEdit,
   loadError,
-}: InspectionItemPaneProps) => {
+}: InspectionItemPaneProps): { filter: ReactNode; list: ReactNode } => {
   /* 편집은 모아서 적용하고 해제는 즉시 — 형제 목록들과 같은 방아쇠 규약이다. */
   const [draft, setDraft] = useState<InspectionItemFilters>(appliedFilters);
 
@@ -148,47 +150,42 @@ export const InspectionItemPane = ({
     );
   };
 
-  return (
-    <section
-      className="pane equipment-master-pane equipment-master-inspection-master-pane"
-      aria-label={t.paneTitle}
-    >
-      <h2 className="pane-title">{t.paneTitle}</h2>
-      <p className="dialog-lead">{t.description}</p>
-
-      <div className="filter-bar equipment-master-filter">
-        <SearchInput
-          label={t.searchLabel}
-          placeholder={t.searchPlaceholder}
-          value={draft.q}
-          onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
-          onSearch={(value) => applyDraft({ q: value })}
-          clearLabel={messages.common.clear}
-        />
-        <SelectField
-          label={t.fields.inspectionType}
-          options={[{ value: '', label: t.typeAll }, ...typeOptions]}
-          value={draft.inspectionTypeCode}
-          onChange={(value) => applyDraft({ inspectionTypeCode: value })}
-        />
-        <div className="equipment-master-filter-footer">
-          {/* 해제 축이라 변경 즉시 적용한다. */}
-          <Checkbox
-            checked={draft.includeInactive}
-            onChange={(event) => applyDraft({ includeInactive: event.target.checked })}
-          >
-            {messages.common.includeInactive}
-          </Checkbox>
-          <div className="filter-actions">
-            <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
-            <Button variant="outlined" onClick={onAdd}>
-              {t.addAction}
-            </Button>
-          </div>
+  const filter = (
+    <div className="filter-bar">
+      <SearchInput
+        label={t.searchLabel}
+        placeholder={t.searchPlaceholder}
+        value={draft.q}
+        onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
+        onSearch={(value) => applyDraft({ q: value })}
+        clearLabel={messages.common.clear}
+      />
+      <SelectField
+        label={t.fields.inspectionType}
+        options={[{ value: '', label: t.typeAll }, ...typeOptions]}
+        value={draft.inspectionTypeCode}
+        onChange={(value) => applyDraft({ inspectionTypeCode: value })}
+      />
+      {/* 해제 축이라 변경 즉시 적용한다. */}
+      <div className="field-cell field-cell-unlabeled">
+        <Checkbox
+          checked={draft.includeInactive}
+          onChange={(event) => applyDraft({ includeInactive: event.target.checked })}
+        >
+          {messages.common.includeInactive}
+        </Checkbox>
+      </div>
+      <div className="field-cell field-cell-unlabeled">
+        <div className="filter-actions">
+          <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
+          <span className="inspection-standard-filter-divider" aria-hidden />
+          <Button variant="outlined" onClick={onAdd}>
+            {t.addAction}
+          </Button>
         </div>
       </div>
-
-      {listSlot()}
-    </section>
+    </div>
   );
+
+  return { filter, list: listSlot() };
 };

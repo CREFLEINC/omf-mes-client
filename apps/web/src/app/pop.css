@@ -1118,40 +1118,6 @@
 }
 
 /*
- * 사번 표시칸 — 이 화면이 말하는 값이라 가장 굵게 둔다.
- *
- * ⚠ **크기는 여기서 정하지 않는다.** 설계 §7 이 이 칸만 「큰 글자」로 못박은 자리라
- *   `app.css` 의 `.worker-no-field`(32px · 가운데 정렬)를 그대로 살린다 — POP 값 크기
- *   (`--pop-value-lg` 16px)를 여기에 다시 적으면 그 요구를 덮는다.
- *
- * ⛔ **`input` 을 뒤에 붙이지 않는다.** 디자인 시스템이 `className` 을 `<input>` 자신에
- *   넘기므로 그런 자식이 없다 — 한때 그렇게 적어 규칙이 통째로 죽어 있었다(실측).
- */
-.pop-ui .worker-no-field {
-  font-weight: 600;
-}
-
-/*
- * 현재 작업자 — 지금 누구로 기록되는지가 화면 밖에서도 보여야 한다(§5-4). 이 화면의 답이라
- * 본문(16)보다 크게 세운다(omf-all-around#109 담당자 지시서 C — 이름·사번을 쉽게 확인).
- */
-.pop-ui .worker-card__name {
-  margin: 0;
-  font: 700 24px / 32px var(--font-sans);
-}
-
-/* 작업자 미지정 — 지정된 상태(이름 카드)와 한눈에 갈리게 점선 상자로 비워 둔다. */
-.pop-ui .worker-card__none {
-  margin: 0;
-  padding: var(--space-5) var(--space-4);
-  border: 2px dashed var(--outline-variant);
-  border-radius: var(--radius-md);
-  font: 600 18px / 28px var(--font-sans);
-  color: var(--on-surface-variant);
-  text-align: center;
-}
-
-/*
  * 스캔 줄 — 입력칸과 버튼의 **윗선을 맞춘다.** 버튼 높이가 72(터치 하한)이고 칸이 60이라
  * 기존 규범 2(라벨 층만큼 내림)로는 아랫선이 12px 어긋난다.
  */
@@ -4176,6 +4142,26 @@
   font-weight: 700;
 }
 
+/* 사번이 없을 때 「사번 미입력 | 로그인」 — 빨강 채움 · 흰 글자(홈 탭 · 주 동작과 같은 빨강 · 사용자 지시 2026-11-20). */
+.pop-nav-top .pop-logout.pop-nav-top__login {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.pop-nav-top .pop-logout.pop-nav-top__login:hover {
+  background: color-mix(in srgb, var(--primary) 85%, var(--on-primary));
+}
+
+.pop-nav-top .pop-logout.pop-nav-top__login:focus-visible {
+  outline: 2px solid var(--on-primary);
+  outline-offset: 2px;
+}
+
+.pop-nav-top__login .pop-nav-top__switch {
+  border-inline-start-color: color-mix(in srgb, var(--on-primary) 60%, transparent);
+}
+
 .pop-nav-top .pop-logout .pop-nav-icon {
   inline-size: 16px;
   block-size: 16px;
@@ -4226,6 +4212,16 @@
 
 .pop-nav-group[data-on='true'] {
   color: var(--primary);
+}
+
+/* 사번 확인 전(홈의 사번 입력)에는 묶음을 잠근다 — 감추지 않고 흐리게(#334). */
+.pop-nav-group:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.pop-nav-group:disabled:hover {
+  background: transparent;
 }
 
 .pop-nav-group[data-on='true']::after {
@@ -4503,7 +4499,7 @@
   flex-shrink: 0;
 }
 
-/* 맨 위 줄 프린터 연결 표시 — 사번 입력 화면 머리줄과 같은 칩을 띠 높이에 맞춘다. */
+/* 맨 위 줄 프린터 연결 표시 — 칩을 띠 높이에 맞춘다. */
 .pop-nav-top__printer {
   display: inline-flex;
   align-items: center;
@@ -4739,15 +4735,9 @@
  */
 .oqc-u .pop-oqc-shipment {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-5);
   align-items: start;
-}
-
-@media (max-width: 1100px) {
-  .oqc-u .pop-oqc-shipment {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 .oqc-u .pop-oqc-shipment__col {
@@ -4778,12 +4768,6 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
-}
-
-.oqc-u .pop-oqc-shipment-box__head > h2,
-.oqc-u .pop-oqc-shipment-form__title {
-  margin: 0;
-  font: 700 18px / 26px var(--font-sans);
 }
 
 .oqc-u .pop-oqc-shipment-gap {
@@ -4842,465 +4826,4 @@
 
 .oqc-u .pop-oqc-shipment-result__seq {
   font-weight: 700;
-}
-
-.oqc-u .pop-oqc-shipment-judgments {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-2);
-}
-
-/*
- * ══ P-04-07 출하 완료(피처 010 · omf-all-around#305) ══════════════════════════
- *
- * 스캔 칸 → 본문(입구 안내 · 확인 화면 · 결과) → 바닥 띠. 본문만 구르고 스캔 칸과 [출하 완료]는 늘 보인다.
- * 확인 화면은 1024 배치에서 좌우 2단(왼쪽 라인·창고, 오른쪽 LOT), 좁으면 한 단으로 쌓는다(시안 ⑩).
- * 표 셀은 한 줄이고 품목명만 남는 폭을 가져가 말줄임한다(C-16). LOT 번호는 고정폭으로 자르지 않는다(C-10).
- */
-.pop-ui.pop-ship > .pop-ship-main {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  min-height: 0;
-}
-
-.pop-ui .pop-ship-bar-ready {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-
-.pop-ui .pop-ship-scan {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: end;
-  gap: var(--space-3);
-}
-
-/*
- * 스캔 줄과 그 아래 띠는 줄어들지 않는다(둘러보기 W-1) — 본문이 길면 열(flex column)이 이 줄까지 눌러 줄 높이가
- * 60 → 39 로 줄었고, 넘친 위쪽(라벨·칸·단추 윗부분)이 탭 띠 밑으로 잘려 보였다. 구르는 것은 본문뿐이다.
- */
-.pop-ui.pop-ship .pop-ship-scan,
-.pop-ui.pop-ship .scan-outcome {
-  flex-shrink: 0;
-}
-
-/* 확인 화면이 아래로 더 이어진다는 단서(둘러보기 W-8) — 본문 바닥에 붙어 따라 내려간다. */
-.pop-ui .pop-ship-more {
-  position: sticky;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-1);
-  margin: 0;
-  padding: var(--space-2) 0;
-  background: linear-gradient(to bottom, transparent, var(--surface) 40%);
-  color: var(--on-surface-variant);
-  font-size: var(--pop-label);
-  pointer-events: none;
-}
-
-/* 잠긴 [출하 완료]의 까닭 한 줄(둘러보기 W-9) — 하단 안내 문장(.field-note, #291 로 숨김)과 다른 자리다. */
-.pop-ui .pop-ship-bar-lock {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  color: var(--on-surface-variant);
-}
-
-.pop-ui .pop-ship-content {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-/* ── 스캔 대기: 세 입구 ── */
-.pop-ui .pop-ship-idle {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.pop-ui .pop-ship-entries {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-4);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.pop-ui .pop-ship-entry {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  color: var(--on-surface-variant);
-}
-
-.pop-ui .pop-ship-entry > strong {
-  font: var(--type-title-sm);
-  color: var(--on-surface);
-}
-
-.pop-ui .pop-ship-idle__same {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: 0;
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--surface-container-low);
-}
-
-/* ── 확인 화면 ── */
-.pop-ui .pop-ship-confirm {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.pop-ui .pop-ship-head {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-}
-
-.pop-ui .pop-ship-head__key {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.pop-ui .pop-ship-head__label,
-.pop-ui .pop-ship-head__via {
-  font: var(--type-label-sm);
-  color: var(--on-surface-variant);
-}
-
-.pop-ui .pop-ship-head__via {
-  margin-inline-start: auto;
-}
-
-.pop-ui .pop-ship-head__no {
-  font: var(--type-title-lg);
-  font-family: var(--font-mono);
-}
-
-.pop-ui .pop-ship-head__facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-6);
-  margin: 0;
-}
-
-.pop-ui .pop-ship-head__facts > div {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.pop-ui .pop-ship-head__facts dt {
-  color: var(--on-surface-variant);
-}
-
-.pop-ui .pop-ship-head__facts dd {
-  margin: 0;
-  font-weight: 600;
-}
-
-.pop-ui .pop-ship-section-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: 0;
-  font: var(--type-title-sm);
-}
-
-.pop-ui .pop-ship-section-title--error {
-  color: var(--semantic-error-text);
-}
-
-.pop-ui .pop-ship-blockers {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--semantic-error-container);
-  color: var(--on-semantic-error-container);
-}
-
-.pop-ui .pop-ship-blockers > ul {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.pop-ui .pop-ship-blocker {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-}
-
-/* 막는 이유는 잘라 내지 않는다 — 베트남어가 길어도 줄을 바꾼다(시안 ⑨). */
-.pop-ui .pop-ship-blocker__text {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.pop-ui .pop-ship-blocker__target {
-  font-family: var(--font-mono);
-}
-
-.pop-ui .pop-ship-blocker__hint {
-  font: var(--type-body-sm);
-}
-
-.pop-ui .pop-ship-body {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--space-4);
-  align-items: start;
-}
-
-.pop-ui .pop-ship-col {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.pop-ui .pop-ship-col > section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.pop-ui .pop-ship-table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: auto;
-}
-
-.pop-ui .pop-ship-table th,
-.pop-ui .pop-ship-table td {
-  padding: var(--space-2) var(--space-2);
-  border-block-end: 1px solid var(--outline-variant);
-  text-align: start;
-  white-space: nowrap;
-}
-
-.pop-ui .pop-ship-table th {
-  font: var(--type-label-sm);
-  color: var(--on-surface-variant);
-}
-
-.pop-ui .pop-ship-table .pop-ship-num {
-  text-align: end;
-  font-variant-numeric: tabular-nums;
-}
-
-.pop-ui .pop-ship-table .pop-ship-code,
-.pop-ui .pop-ship-table .pop-ship-lot {
-  font-family: var(--font-mono);
-}
-
-.pop-ui .pop-ship-table .pop-ship-name {
-  width: 100%;
-  max-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* LOT 번호 아래 몫 요약 — 여러 창고·적치 대기 자리에 나뉜 LOT 만(시안 ③·④). */
-.pop-ui .pop-ship-table .pop-ship-lot__portions {
-  display: block;
-  font: var(--type-body-sm);
-  color: var(--on-surface-variant);
-}
-
-/* 교체로 빠진 LOT 한 줄(시안 ③) — 출하에 들지 않는다는 알림. */
-.pop-ui .pop-ship-replaced {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: var(--space-2) 0 0;
-  color: var(--on-surface-variant);
-}
-
-/* 초과는 경고가 아니라 정보다 — 노란 글자만(시안 ③). */
-.pop-ui .pop-ship-table .pop-ship-over {
-  color: var(--on-semantic-warning-container);
-  font-weight: 600;
-}
-
-.pop-ui .pop-ship-table .pop-ship-row-blocked > td {
-  background: var(--semantic-error-container);
-}
-
-/* 두 창고에 나뉜 LOT 안내(시안 P0407-After ③) — 창고 목록 아래 한 줄씩. */
-.pop-ui .pop-ship-split-lot {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: var(--space-2) 0 0;
-}
-
-.pop-ui .pop-ship-warehouses {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.pop-ui .pop-ship-warehouses > li {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--surface-container-low);
-}
-
-.pop-ui .pop-ship-warehouse__qty {
-  margin-inline-start: auto;
-  color: var(--on-surface-variant);
-}
-
-/* ── 완료 결과 · 이미 완료 ── */
-.pop-ui .pop-ship-outcome {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-}
-
-.pop-ui .pop-ship-outcome--done {
-  border-color: var(--semantic-success);
-}
-
-.pop-ui .pop-ship-outcome__head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  color: var(--semantic-success-text);
-}
-
-.pop-ui .pop-ship-outcome__head h2,
-.pop-ui .pop-ship-outcome__head p {
-  margin: 0;
-}
-
-.pop-ui .pop-ship-outcome__head h2 {
-  font: var(--type-title-lg);
-}
-
-.pop-ui .pop-ship-outcome__label {
-  color: var(--on-surface-variant);
-}
-
-.pop-ui .pop-ship-outcome__no {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  color: var(--on-surface);
-}
-
-.pop-ui .pop-ship-outcome__facts {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: var(--space-2) var(--space-4);
-  margin: 0;
-}
-
-.pop-ui .pop-ship-outcome__facts > div {
-  display: contents;
-}
-
-.pop-ui .pop-ship-outcome__facts dt {
-  color: var(--on-surface-variant);
-}
-
-.pop-ui .pop-ship-outcome__facts dd {
-  margin: 0;
-}
-
-/* ── 찾기 ── */
-.pop-ui .pop-ship-search {
-  width: min(880px, calc(100% - var(--space-6)));
-}
-
-.pop-ui .pop-ship-search-bar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
-  align-items: end;
-  gap: var(--space-3);
-}
-
-.pop-ui .pop-ship-search-count {
-  color: var(--on-surface-variant);
-  white-space: nowrap;
-}
-
-.pop-ui .pop-ship-search-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  max-height: 420px;
-  margin: 0;
-  padding: 0;
-  overflow-y: auto;
-  list-style: none;
-}
-
-.pop-ui .pop-ship-search-row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  width: 100%;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  color: var(--on-surface);
-  text-align: start;
-  cursor: pointer;
-}
-
-.pop-ui .pop-ship-search-row__blocked {
-  color: var(--semantic-error-text);
-}
-
-/* 배치 폭이 좁으면(시안 ⑩ — 960 미만) 확인 화면과 입구 안내를 한 단으로 쌓는다. */
-@media (max-width: 959px) {
-  .pop-ui .pop-ship-body,
-  .pop-ui .pop-ship-entries {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }

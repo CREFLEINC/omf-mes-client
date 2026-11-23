@@ -39,7 +39,6 @@ export const partsIqcInspection = {
     seqNo: (no: number) => `${String(no)}회차`,
     facts: {
       planCode: '기준서 코드',
-      planName: '모델명',
       effectiveFrom: '적용 시작일',
     },
     dataTypeOf: { NUMERIC: '수치형', BOOLEAN: '선택형', TEXT: '텍스트형' } as Record<
@@ -48,8 +47,9 @@ export const partsIqcInspection = {
     >,
     sampling: '검사 방식',
     full: '전수검사',
-    ratio: (r: number) => `LOT 의 ${String(r)}%`,
-    qty: (n: number) => `${String(n)}개`,
+    /* 시료 수를 풀어 쓴다 — 「3개」만으로는 검사 항목 개수로 읽혔다(사용자 지시 2026-11-23 · #353). */
+    ratio: (r: number) => `샘플 LOT 의 ${String(r)}%`,
+    qty: (n: number) => `샘플 ${String(n)}개`,
     no: 'No.',
     method: '유형',
     count: '차수',
@@ -64,8 +64,9 @@ export const partsIqcInspection = {
     title: 'IQC 수입검사',
     loading: '검사 정보를 불러오는 중입니다.',
     loadFailed: '검사 정보를 불러오지 못했습니다.',
-    noPlan:
-      '이 품목에 적용할 검사기준이 없어 검사를 입력할 수 없습니다. 검사기준을 먼저 확정하세요.',
+    noPlan: '적용된 검사 기준이 없습니다. 종합 판정만 입력하고, 판정 근거 자료는 첨부해 주세요.',
+    planVersionNote:
+      '변경한 검사 기준은 새로 발행되는 IQC 검사 건부터 적용됩니다. 이미 발행된 건에는 발행 당시의 기준이 적용됩니다.',
     setPlan: '검사기준 설정',
     confirmed: (judgment: string) => `이미 확정된 검사입니다 — 판정: ${judgment}`,
     workerMissing:
@@ -155,6 +156,7 @@ export const partsIqcInspection = {
     heading: '판정',
     suggested: '자동 판정 결과',
     pending: '검사 항목 입력 후 판정 결과를 확인하세요.',
+    noPlan: '검사 기준이 없어 자동 판정을 하지 않습니다.',
     waiting: '판정 대기',
     overall: '종합 판정',
     rejectedQty: (qty: number) => `(불량 수량 ${String(qty)})`,
@@ -165,12 +167,17 @@ export const partsIqcInspection = {
   judgment: { ACCEPTED: '합격', REJECTED: '불합격', HELD: '보류' } as Record<string, string>,
   /** 생략된 의뢰의 읽기 전용 요약(#225). */
   skipped: {
-    notice: (basis: string | null): string =>
-      basis === null
-        ? '검사를 생략한 의뢰입니다. 입력할 검사 결과가 없습니다.'
-        : `검사를 생략한 의뢰입니다(${basis}). 입력할 검사 결과가 없습니다.`,
-    basis: { DEFAULT: '기본 설정', APPROVAL: '결재 승인' } as Record<string, string>,
+    /* 생략으로 닫힌 의뢰 안내(사용자 정정 2026-11-23 · omf-all-around#353). */
+    notice: '기본 설정에 따라 검사를 생략했습니다.',
+    /* 생략 건 요약 — IQC · PQC · OQC 공통 틀(#353). */
+    requestNo: '의뢰번호',
+    /** 생략 건은 진행할 검사가 없어 첫 탭 이름을 「검사 상세」로(사용자 정정 2026-11-23 · #353). */
+    detailTab: '검사 상세',
+    item: '품목',
+    titlePqc: 'PQC 공정검사',
+    titleOqc: 'OQC 출하검사',
   },
+
   requestStatus: {
     /* 상단 건수 칩(대기 · 진행)과 같은 말(사용자 지시 2026-11-16 · #274). */
     REQUESTED: '대기',

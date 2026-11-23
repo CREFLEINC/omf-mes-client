@@ -40,7 +40,10 @@ const draftOf = (filters: EquipmentFilters): EquipmentFilters => ({
 const hasAnyFilter = (filters: EquipmentFilters): boolean =>
   filters.q !== '' || filters.plantId !== '';
 
-export const EquipmentPane = ({
+/**
+ * 조회 줄과 목록을 따로 돌려준다 — 통일 배치(#350)에서 조회 줄은 조회 조건 상자에, 표는 목록 상자에 선다.
+ */
+export const useEquipmentPane = ({
   items,
   isLoading,
   total,
@@ -50,7 +53,7 @@ export const EquipmentPane = ({
   selectedEquipmentId,
   onSelect,
   loadError,
-}: EquipmentPaneProps) => {
+}: EquipmentPaneProps): { filter: ReactNode; list: ReactNode } => {
   const [draft, setDraft] = useState<EquipmentFilters>(draftOf(appliedFilters));
   const { q: appliedQ, plantId: appliedPlantId } = appliedFilters;
 
@@ -149,48 +152,49 @@ export const EquipmentPane = ({
 
   const truncated = total !== null && total > items.length;
 
-  return (
-    <section className="pane collection-channel-pane" aria-label={t.equipment.paneTitle}>
-      <h2 className="pane-title">{t.equipment.paneTitle}</h2>
-      <div className="filter-bar collection-channel-equipment-filter">
-        <SearchInput
-          label={t.equipment.searchLabel}
-          placeholder={t.equipment.searchPlaceholder}
-          value={draft.q}
-          onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
-          onSearch={(value) => applyDraft({ q: value })}
-          clearLabel={messages.common.clear}
-        />
-        <SelectField
-          label={t.fields.plant}
-          options={[{ value: '', label: t.equipment.plantAll }, ...plantOptions]}
-          value={draft.plantId}
-          onChange={(value) => setDraft((prev) => ({ ...prev, plantId: value }))}
-        />
-        {/* 규범 2-1 — 뜻이 짝인 액션이 줄바꿈으로 갈라지지 않게 한 덩어리로 묶는다. */}
-        <div className="field-cell field-cell-unlabeled">
-          <div className="filter-actions">
-            <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
-            {/* 「초기화」는 편집 중이거나 적용된 조건이 처음 값과 다를 때만 보인다(C-6). */}
-            {hasChangedFilters(defaultEquipmentFilters, draft, appliedFilters) && (
-              <Button variant="outlined" onClick={resetAll}>
-                {messages.common.reset}
-              </Button>
-            )}
-          </div>
+  const filter = (
+    <div className="filter-bar">
+      <SearchInput
+        label={t.equipment.searchLabel}
+        placeholder={t.equipment.searchPlaceholder}
+        value={draft.q}
+        onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
+        onSearch={(value) => applyDraft({ q: value })}
+        clearLabel={messages.common.clear}
+      />
+      <SelectField
+        label={t.fields.plant}
+        options={[{ value: '', label: t.equipment.plantAll }, ...plantOptions]}
+        value={draft.plantId}
+        onChange={(value) => setDraft((prev) => ({ ...prev, plantId: value }))}
+      />
+      {/* 규범 2-1 — 뜻이 짝인 액션이 줄바꿈으로 갈라지지 않게 한 덩어리로 묶는다. */}
+      <div className="field-cell field-cell-unlabeled">
+        <div className="filter-actions">
+          <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
+          {/* 「초기화」는 편집 중이거나 적용된 조건이 처음 값과 다를 때만 보인다(C-6). */}
+          {hasChangedFilters(defaultEquipmentFilters, draft, appliedFilters) && (
+            <Button variant="outlined" onClick={resetAll}>
+              {messages.common.reset}
+            </Button>
+          )}
         </div>
       </div>
+    </div>
+  );
 
-      {/* 조건 칩을 두지 않는다 — 조건 둘이 모두 조회 줄에 보인다(C-6, 보이는 칸은 칩으로 겹쳐 적지 않는다). */}
-
+  /* 조건 칩을 두지 않는다 — 조건 둘이 모두 조회 줄에 보인다(C-6, 보이는 칸은 칩으로 겹쳐 적지 않는다). */
+  const list = (
+    <>
       {/* 잘림은 목록 «위»에 둔다 — 아래에 두면 찾는 설비가 없다고 판단한 뒤에야 읽힌다. */}
       {truncated && total !== null && (
-        <p className="field-note" role="status">
+        <p className="field-note collection-channel-truncated" role="status">
           {t.equipment.truncated(items.length, total)}
         </p>
       )}
-
       {listSlot()}
-    </section>
+    </>
   );
+
+  return { filter, list };
 };

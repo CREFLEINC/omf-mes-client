@@ -216,7 +216,7 @@ describe('VersionFormPane — 상태 잠금', () => {
     expect(screen.getByLabelText('적용 시작일')).toBeDisabled();
     expect(screen.getByLabelText('AQL')).toBeDisabled();
     expect(
-      screen.getByText('확정된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.'),
+      screen.getByText('확정된 버전은 고칠 수 없습니다. 바꾸려면 「신규 버전 발행」을 누르세요.'),
     ).toBeInTheDocument();
   });
 
@@ -224,7 +224,7 @@ describe('VersionFormPane — 상태 잠금', () => {
     renderPane({ status: resolveVersionStatus('OBSOLETE') });
 
     expect(
-      screen.getByText('사용 중지된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.'),
+      screen.getByText('사용 중지된 버전은 고칠 수 없습니다. 바꾸려면 「신규 버전 발행」을 누르세요.'),
     ).toBeInTheDocument();
   });
 

@@ -27,7 +27,6 @@ import { ApprovalProgressPane, type ApprovalProgressState } from './approval-pro
 import {
   DEFECT_WAREHOUSE_TYPE_CODES,
   DISPOSAL_PARTNER_ROLE_CODE,
-  isDefectWarehouseTypePending,
   isDisposalPartnerRolePending,
   narrowToDefectWarehouses,
   PLACEHOLDER_DISPOSAL_ISSUE_CODES,
@@ -1322,14 +1321,10 @@ export const DisposalIssueScreen = () => {
   );
 
   /**
-   * 창고 선택칸의 한계 안내. **못 불러온 것이 먼저다** — 목록을 받지도 못했는데 「좁히지
-   * 못했다」를 말하면 사용자가 원인을 잘못 읽는다. 좁힘이 살아나면 마지막 갈래가 사라진다.
+   * 창고 선택칸의 한계 안내 — 불러오기 실패 · 잘림뿐이다. 「폐기 대상 창고를 가려내지 못해 모든
+   * 창고를 보입니다」는 창고 유형 값 목록이 없다는 개발 사정이라 걷었다(관리웹 정리 시안 A).
    */
-  const warehouseNote =
-    lookupNote(warehouses) ??
-    (isDefectWarehouseTypePending(DEFECT_WAREHOUSE_TYPE_CODES)
-      ? t.filters.warehouseTypePending
-      : undefined);
+  const warehouseNote = lookupNote(warehouses);
 
   /**
    * 값 목록이 확정되지 않은 코드의 선택지. **화면이 만들어 조건 줄에 넘긴다** —
@@ -1985,12 +1980,7 @@ export const DisposalIssueScreen = () => {
             {/* 다시 읽기의 실패는 쓰기의 실패와 **갈라 낸다** — 사용자가 할 조치가 다르다. */}
             {hasReloadFailure && <p className="field-error">{t.notes.reloadFailed}</p>}
 
-            {/*
-             * **한 번 눌러 요청이 둘 나간다**는 사실을 버튼 앞에서 밝힌다(승인 기록 정정 1-1).
-             * 밝히지 않으면 「승인을 요청했는데 전표만 생겼다」는 중간 실패가 까닭 없는 일이 된다.
-             */}
-            <p className="field-note">{t.form.chainNote}</p>
-
+            {/* 「재고는 승인 뒤 기타출고 처리에서 빠진다」는 확인 창에서만 말한다(사용자 지시 2026-11-20). */}
             <div className="form-actions">
               {/* 지우기가 상신보다 앞에 선다 — 되돌릴 수 없는 것이 손 가까이 있으면 안 된다. */}
               <div className="field-cell">
@@ -2270,7 +2260,6 @@ export const DisposalIssueScreen = () => {
              * 서버이고 계약이 그 사실을 적었다.
              */}
             <PostPane
-              approval={postApproval}
               blockReason={postBlock}
               /*
                * **그 전표가 어디로 가는가**(변경 통지 #128 · 완료 조건 C26). 이름은 **좁히지
@@ -2402,14 +2391,7 @@ export const DisposalIssueScreen = () => {
           </Button>
         }
       />
-      {/*
-       * **탭 줄 안내**(승인 기록 정정 1-2). 이 화면은 승인·반려를 하지 않고 결재 진행을
-       * 읽기만 한다 — 밝히지 않으면 사용자가 여기서 결재할 수 있다고 믿고 있지도 않은
-       * 승인 버튼을 찾아 헤맨다. 탭 안이 아니라 **탭 줄 위**에 두는 이유는 이 사실이 두 탭에
-       * 함께 걸리기 때문이다.
-       */}
-      <p className="field-note">{t.tabs.note}</p>
-
+      {/* 탭 줄 위 상시 안내(승인 기록 정정 1-2)는 걷었다 — 필수가 아닌 문장은 두지 않는다(사용자 지시 2026-11-20). */}
       <Tabs aria-label={t.tabs.label} items={tabItems} value={tab} onChange={changeTab} />
     </>
   );

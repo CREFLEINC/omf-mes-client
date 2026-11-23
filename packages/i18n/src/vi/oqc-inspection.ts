@@ -9,9 +9,10 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
   queue: {
     heading: 'Đối tượng kiểm tra',
     columns: {
-      skip: 'Bỏ qua',
       inspectionRequestNo: 'Số yêu cầu',
       itemId: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       targetQty: 'Số lượng kiểm tra',
       statusCode: 'Trạng thái',
     },
@@ -51,8 +52,7 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     inProgress: 'Đang làm',
     completed: 'Xong',
     skipped: 'Bỏ qua',
-    skippedDefault: 'Bỏ qua (mặc định)',
-    skippedApproval: 'Bỏ qua (đã duyệt)',
+    skippedDefault: 'Bỏ qua',
     cancelled: 'Đã hủy',
   },
 
@@ -156,8 +156,6 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     reinspectCancel: 'Thôi không kiểm tra lại',
     reinspectNote:
       'Nhập số lượng và đánh giá rồi lưu thì một lượt mới được tạo. Lượt trước vẫn được giữ nguyên.',
-    reinspectReasonPending:
-      'Lý do kiểm tra lại vẫn chưa chọn được. Khi danh sách lý do được quyết định thì sẽ thêm vào chỗ này.',
   },
 
   transition: {
@@ -211,44 +209,6 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     invalidState: 'Đánh giá không sửa được — hãy tiến hành bằng kiểm tra lại.',
   },
 
-  skipDialog: {
-    approveTitle: 'Phê duyệt bỏ qua OQC (kiểm tra xuất hàng)',
-    approved: 'Đã phê duyệt yêu cầu bỏ qua OQC.',
-    rejected: 'Đã từ chối yêu cầu bỏ qua OQC.',
-    executeTitle: 'Bỏ qua kiểm tra xuất hàng?',
-    executeBody:
-      'Khi thực hiện, phần kiểm tra xuất hàng còn lại của lệnh xuất hàng này được bỏ qua và kết quả kiểm tra được xử lý là đạt.',
-    execute: 'Thực hiện bỏ qua',
-  },
-  skip: {
-    heading: 'Yêu cầu bỏ qua OQC (kiểm tra xuất hàng)',
-    steps: ['1. Yêu cầu bỏ qua', '2. Phê duyệt', '3. Thực hiện bỏ qua'],
-    result:
-      'Sau khi yêu cầu và được phê duyệt bỏ qua, phần kiểm tra xuất hàng còn lại sẽ được bỏ qua và kết quả được xử lý là đạt.',
-    reason: 'Lý do bỏ qua',
-    reasonPlaceholder: 'Nhập lý do bỏ qua',
-    openApproval: 'Đến phê duyệt yêu cầu này',
-    currentStep: 'Bước hiện tại',
-    reasonCount: (count: number): string => `${String(count)} ký tự`,
-    reasonRequired: 'Hãy nhập lý do bỏ qua.',
-    openRequest: 'Yêu cầu bỏ qua',
-    cancel: 'Hủy',
-    request: 'Yêu cầu phê duyệt bỏ qua',
-    requesting: 'Đang yêu cầu…',
-    execute: 'Thực hiện bỏ qua OQC',
-    executing: 'Đang thực hiện…',
-    requested: 'Đã yêu cầu bỏ qua OQC. Khi phê duyệt xong, hãy thực hiện tại đây.',
-    pending: 'Phê duyệt vẫn đang tiến hành.',
-    approved:
-      'Việc bỏ qua đã được phê duyệt. Khi thực hiện, OQC của lệnh xuất hàng này sẽ được bỏ qua.',
-    rejected: 'Yêu cầu bỏ qua trước đó đã bị từ chối. Có thể yêu cầu lại.',
-    executed: 'Đã bỏ qua OQC. Kiểm tra xuất hàng đã chuyển sang đạt.',
-    skipped: 'Yêu cầu này đã đóng do bỏ qua OQC.',
-    skippedDefault:
-      'Tiêu chuẩn kiểm tra được đặt là ‘Bỏ qua mặc định’ nên đã xuất hàng mà không kiểm tra OQC.',
-    loading: 'Đang tải trạng thái phê duyệt bỏ qua.',
-    loadFailed: 'Không tải được trạng thái phê duyệt bỏ qua.',
-  },
   serials: {
     openByScanNotFound: 'Số serial hoặc số LOT chưa được đăng ký.',
     judge: {
@@ -352,7 +312,7 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     targetPicked: (target: string, picked: string, uom: string): string =>
       `${target} / ${picked} ${uom}`,
     over: (qty: string): string => `Vượt ${qty}`,
-    note: 'Phán định được xác nhận khi「Hoàn tất xuất hàng」(P-04-07) trên POP. Không có nút xác nhận. Trước đó vẫn có thể thêm hoặc sửa kết quả, và kết quả cuối cùng liên kết với mỗi LOT là phán định của LOT đó.',
+    note: 'Phán định được xác nhận khi「Hoàn tất xuất hàng」 trên POP. Không có nút xác nhận. Trước đó vẫn có thể thêm hoặc sửa kết quả, và kết quả cuối cùng liên kết với mỗi LOT là phán định của LOT đó.',
     skipped: 'Yêu cầu này đã đóng do bỏ qua OQC.',
     skippedMore:
       'Mọi LOT đã lấy được coi là thông qua, kể cả LOT lấy sau khi bỏ qua (bao gồm LOT thay thế).',
@@ -419,8 +379,6 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
       alsoMatched: (seqNos: string): string => `Cũng liên kết với lần ${seqNos}`,
       matchRequired: 'Hãy chọn ít nhất 1 LOT đã lấy',
       judgmentHeading: 'Phán định',
-      judgmentNote:
-        'Chỉ chọn một. Không nhập số lượng (máy chủ tính bằng tổng SL đã lấy của các LOT liên kết).',
       judgmentRequired: 'Hãy chọn phán định',
       reasonHeading: 'Lý do kiểm tra lại',
       reasonHelp:

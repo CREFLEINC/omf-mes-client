@@ -163,6 +163,7 @@ export const backwardChain = (
       }
     : null,
   inputMaterials: inputs,
+  splitFrom: null,
 });
 
 export const inputMaterial = (

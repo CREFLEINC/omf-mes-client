@@ -5,10 +5,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { InfoTip } from '../../patterns/info-tip';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { requireIfMatch, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { ScreenHeader } from '../../patterns/screen-header';
+import { ListCollapseTab, PaneListHead, usePaneSplit } from '../../patterns/po-board';
 import { stageOf } from './codes';
 import { FilterBar } from './filter-bar';
 import {
@@ -329,8 +331,22 @@ export const DispositionRequestScreen = () => {
   };
 
   const steps = toProgressSteps(activeRow?.stage ?? null, activeRow !== null);
+  /* 대상 수량 전량을 부적합으로 등록한다는 안내 — 대상이 있고 아직 등록 전일 때만. */
+  const registerQtyNote =
+    activeRow === null || activeRow.quantity === null || activeRow.nonconformanceId !== null
+      ? undefined
+      : t.register.qtyNote(formatQty(activeRow.quantity), uomLabel);
   const followUp = toFollowUpStates(decisionRows);
 
+  /* 목록 접기(#350, app.css `list-collapsible`) — 넓은 창은 왼쪽 세로 탭 + 상세, 좁으면 상세 위 가로 탭 + 상세 한 칸. */
+  const listSplit = usePaneSplit('omf-mes:disposition-request:list');
+  const listCollapse = {
+    collapsed: listSplit.collapsed,
+    onToggle: listSplit.toggleCollapsed,
+    collapseLabel: messages.common.inspectionHub.listCollapse,
+    expandLabel: messages.common.inspectionHub.listExpand,
+    count: list.data?.data.page.total,
+  };
   return (
     <>
       <ScreenHeader
@@ -342,16 +358,19 @@ export const DispositionRequestScreen = () => {
           />
         }
       />
-      {/* 이 화면이 «하지 않는 것»을 상단에 상시 적는다 — 판정 버튼을 찾다가 못 찾게 하지 않는다(§5-1). */}
-      <div className="banner-slot">
-        <AlertBanner variant="info">{t.scopeNotice}</AlertBanner>
-      </div>
-      <div className="disposition-request-workspace">
+      {/*
+       * 상단 설명 띠(판정은 품질 화면에서 · 여기서는 등록과 의뢰)는 걷었다 — 화면 설명이고, 판정이 품질 화면
+       * 몫이라는 것은 진행 단계 「판정 (품질 화면)」과 「② 판정 의뢰」 제목 옆 ⓘ 가 말한다(관리웹 정리 시안 A).
+       */}
+      <div
+        className="disposition-request-workspace list-collapsible"
+        data-left-collapsed={listCollapse.collapsed ? 'true' : undefined}
+      >
         <section
           className="pane disposition-request-pane disposition-request-list-pane"
           aria-label={t.panes.list}
         >
-          <h2 className="pane-title">{t.panes.list}</h2>
+          <PaneListHead title={t.panes.list} collapse={listCollapse} />
           <FilterBar
             applied={filters}
             warehouses={warehouses}
@@ -383,6 +402,7 @@ export const DispositionRequestScreen = () => {
             onChangePage={(nextPage) => apply(filters, nextPage)}
           />
         </section>
+        <ListCollapseTab collapse={listCollapse} />
         <div className="pane-stack disposition-request-side">
           <section className="pane disposition-request-pane" aria-label={t.panes.target}>
             <h2 className="pane-title">{t.panes.target}</h2>
@@ -401,20 +421,19 @@ export const DispositionRequestScreen = () => {
             <ProgressStepper steps={steps} />
           </section>
           <section className="pane disposition-request-pane" aria-label={t.panes.register}>
-            <h2 className="pane-title">{t.panes.register}</h2>
+            {/* 대상 수량 전량을 등록한다는 사실은 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
+            <h2 className="pane-title">
+              <span className="info-label">
+                {t.panes.register}
+                {registerQtyNote !== undefined && <InfoTip text={registerQtyNote} />}
+              </span>
+            </h2>
             <RegisterPane
               value={registerForm}
               errors={showRegisterErrors ? registerErrors : register.fieldErrors}
               warning={descriptionWarning(registerForm)}
               severity={severity}
               departments={departments}
-              qtyNote={
-                activeRow === null ||
-                activeRow.quantity === null ||
-                activeRow.nonconformanceId !== null
-                  ? undefined
-                  : t.register.qtyNote(formatQty(activeRow.quantity), uomLabel)
-              }
               lock={registerLock}
               onCheckOutcome={checkOutcome}
               writeError={register.error}
@@ -437,7 +456,13 @@ export const DispositionRequestScreen = () => {
             />
           </section>
           <section className="pane disposition-request-pane" aria-label={t.panes.request}>
-            <h2 className="pane-title">{t.panes.request}</h2>
+            {/* 의뢰하면 무엇이 일어나는지 — 품질 화면으로 넘어가고 결과가 돌아온다(스펙 §3 ②) · 제목 옆 ⓘ. */}
+            <h2 className="pane-title">
+              <span className="info-label">
+                {t.panes.request}
+                <InfoTip text={t.request.afterNote} />
+              </span>
+            </h2>
             <RequestPane
               value={requestForm}
               errors={showRequestErrors ? requestErrors : request.fieldErrors}
@@ -462,7 +487,13 @@ export const DispositionRequestScreen = () => {
             />
           </section>
           <section className="pane disposition-request-pane" aria-label={t.panes.result}>
-            <h2 className="pane-title">{t.panes.result}</h2>
+            {/* 부분 처분이 정상이다(§5-5) — 처분이 여러 건일 수 있다는 사실은 제목 옆 ⓘ 로 둔다. */}
+            <h2 className="pane-title">
+              <span className="info-label">
+                {t.panes.result}
+                <InfoTip text={t.result.partialNote} />
+              </span>
+            </h2>
             <ResultPane
               nonconformanceId={activeRow?.nonconformanceId ?? null}
               stage={activeRow?.stage ?? null}

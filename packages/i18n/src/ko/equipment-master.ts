@@ -7,7 +7,6 @@
  */
 export const equipmentMaster = {
   title: '설비·설비그룹 마스터',
-  breadcrumbRoot: '기준정보 관리',
   actions: {
     addGroup: '그룹 추가',
     addEquipment: '설비 추가',
@@ -58,7 +57,7 @@ export const equipmentMaster = {
      * 그때 감추지 않고 비활성 + 사유로 둔다(G-2) — 목록이 들어오면 이 잠금은 저절로 풀린다.
      */
     disposeUnavailable:
-      '자산 상태의 값 목록을 아직 불러오지 못해 폐기를 쓸 수 없습니다. 목록이 준비되면 이 버튼을 쓸 수 있습니다.',
+      '등록된 자산 상태가 없어 폐기할 수 없습니다.',
     deactivateNeedsCleanForm:
       '사용 중지는 저장하지 않은 변경이 있으면 쓸 수 없습니다. 먼저 저장하거나 취소하세요.',
   },
@@ -130,7 +129,7 @@ export const equipmentMaster = {
     members: (count: number): string =>
       `이 그룹에 설비 ${count}대가 소속돼 있습니다. 소속은 그대로 남고, 새로 고를 때만 이 그룹이 목록에서 빠집니다.`,
     notReversibleHere:
-      '삭제하지 않습니다. 다만 이 화면에는 다시 켜는 수단이 없어, 되돌리려면 담당자에게 요청해야 합니다.',
+      '삭제되지는 않습니다. 다시 켜려면 담당자에게 요청하세요.',
     confirm: '사용 중지',
   },
   form: {
@@ -332,7 +331,6 @@ export const equipmentMaster = {
   inspectionItem: {
     tabLabel: '점검 항목',
     paneTitle: '점검 항목 마스터',
-    description: '설비와 설비 그룹에 부여할 점검 항목을 여기서 만듭니다.',
     loading: '점검 항목을 불러오는 중',
     emptyTitle: '등록된 점검 항목이 없습니다',
     emptyDescription: '점검 항목을 만들면 설비·설비 그룹에 부여할 수 있습니다.',

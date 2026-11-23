@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useState, useSyncExternalStore, type CSSProperties } from 'react';
 
 import { HubActions, useHubActionsTarget } from './hub-actions';
+import type { PaneCollapse } from './po-board';
 import { MoreMenu } from './popover-button';
 
 const t = messages.common.inspectionHub;
@@ -91,12 +92,7 @@ export const PaneHeightSplitter = ({
    * 있으면 막대 왼쪽 끝에 목록 접기 단추가 선다 — 좌우 배치 막대(`PaneSplitter`)의 단추와 같은 모양(사용자 지시 · #252).
    * 접혀 있으면 끌어도 높이를 바꾸지 않는다(목록이 없다).
    */
-  collapse?: {
-    collapsed: boolean;
-    onToggle: () => void;
-    collapseLabel: string;
-    expandLabel: string;
-  };
+  collapse?: PaneCollapse;
 }) => (
   <div
     className="inspection-height-splitter"
@@ -149,7 +145,7 @@ export const PaneHeightSplitter = ({
         onPointerDown={(event) => event.stopPropagation()}
         onClick={collapse.onToggle}
       >
-        <Icon name={collapse.collapsed ? 'expand_more' : 'expand_less'} size={18} />
+        <Icon name={collapse.collapsed ? 'top_panel_open' : 'top_panel_close'} size={18} />
       </button>
     )}
   </div>

@@ -9,8 +9,6 @@ import type { Translated } from './translated';
  * `codeValue` 묶음은 통째로 옮겨질 것을 전제로 모아 둔 자리라 바깥과 같은 문구도 따로 둔다.
  */
 export const commonCode: Translated<typeof ko.commonCode> = {
-  title: 'Mã chung · Tổ chức · Công nhân',
-  breadcrumbRoot: 'Quản trị hệ thống',
   /** 탭 라벨. 만든 탭만 둔다. */
   tabs: {
     label: 'Mã chung · Tổ chức · Công nhân',
@@ -30,6 +28,8 @@ export const commonCode: Translated<typeof ko.commonCode> = {
     partner: 'Đối tác',
     partnerDetail: 'Thông tin cơ bản của đối tác',
     partnerRoles: 'Vai trò đối tác',
+    /** 목록 옆 상세 칸(통일 배치 · #350) — 안에 정보 · 하위 구획을 쌓는다. */
+    detail: 'Chi tiết',
   },
   actions: {
     prevPage: 'Trước',
@@ -105,8 +105,6 @@ export const commonCode: Translated<typeof ko.commonCode> = {
     unknown: 'Không rõ',
   },
   codeGroup: {
-    provisionalCatalog:
-      'Đây là danh sách tạm. Khi hệ thống mã được xác nhận, thành phần các nhóm mã hiển thị ở đây có thể thay đổi.',
     fields: {
       groupCode: 'Mã nhóm',
       groupName: 'Tên nhóm',
@@ -189,8 +187,7 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       removeLabel: (warehouse: string): string => `Gỡ liên kết ${warehouse}`,
       picker: {
         title: 'Thêm kho sản xuất',
-        description: 'Chọn kho cần liên kết. Chỉ hiển thị kho đang sử dụng.',
-        empty: 'Không có kho nào để chọn.',
+        empty: 'Không có kho nào để chọn. Chỉ chọn được kho đang sử dụng.',
         close: 'Đóng',
       },
       confirm: {
@@ -243,6 +240,7 @@ export const commonCode: Translated<typeof ko.commonCode> = {
   /** 자격·인증 — 이 화면에서 편집 가능한 유일한 작업자 자료. 저장은 전체 치환이다. */
   qualification: {
     paneTitle: 'Chứng chỉ · chứng nhận',
+    typePending: 'Chưa xác định',
     fields: {
       qualificationType: 'Loại chứng chỉ',
       process: 'Công đoạn',

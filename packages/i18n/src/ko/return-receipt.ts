@@ -7,9 +7,6 @@
 export const returnReceipt = {
   title: '반품·클레임 입고 등록',
   breadcrumbRoot: '영업 / 출하 관리',
-  /** 상단 상시 안내 — 확정된 출하는 취소되지 않고 이 화면으로 돌아온다. */
-  scopeNotice:
-    '확정된 출하의 반품·클레임은 여기서 입고합니다. 반품은 보류(Hold)로 들어오고, 재작업/폐기 판정은 판정 의뢰 화면에서 합니다.',
   panes: {
     search: '① 원 출하 찾기',
     receipt: '② 반품 입고',
@@ -40,9 +37,9 @@ export const returnReceipt = {
   },
   all: '전체',
   keywordPlaceholder: '출하번호·LOT 번호',
-  codePlaceholder: '기준값 준비 중',
+  codePlaceholder: '등록된 값 없음',
   /** 값 목록이 서버에서 오는 칸이 비었을 때 — 선택지를 지어내지 않는다. */
-  codePending: '선택할 기준값이 아직 준비되지 않았습니다',
+  codePending: '등록된 값이 없습니다',
   lookupLoading: '목록을 불러오는 중입니다',
   lookupFailed: '목록을 불러오지 못했습니다',
   lookupTruncated: '목록이 잘렸습니다. 찾는 값이 없으면 검색어를 좁히세요',
@@ -58,8 +55,6 @@ export const returnReceipt = {
       '기간을 넓히거나 검색어를 바꿔 보세요. 원 출하를 못 찾으면 아래에서 직접 입력합니다.',
     beyondLast: '이 쪽은 비어 있습니다. 첫 쪽으로 돌아가세요.',
     loading: '출하를 불러오는 중입니다',
-    /** 원 출하를 못 찾는 것이 정상이다 — 막지 않고 길을 낸다. */
-    notFoundHint: '원 출하를 못 찾으면 아래에서 직접 입력합니다.',
     lotCount: (count: number): string => `LOT ${String(count)}건`,
   },
   actions: {
@@ -86,8 +81,6 @@ export const returnReceipt = {
     detailLoading: '원 출하의 LOT을 불러오는 중입니다',
     noAllocations: '이 출하에는 배분된 LOT이 없습니다. 원 출하 없이 등록하세요.',
   },
-  /** 원천은 고정이다 — 출하가 끝난 뒤 돌아오는 입고는 전부 고객 클레임이라 가를 것이 없다. */
-  sourceFixed: '원천은 고객 클레임으로 고정됩니다. 입고 유형은 반품 입고입니다.',
   lot: {
     label: 'LOT 번호',
     placeholder: 'LOT 번호를 정확히 입력',
@@ -109,7 +102,8 @@ export const returnReceipt = {
   },
   form: {
     reasonPlaceholder: '선택하지 않음',
-    reasonHelp: '순수한 반품 사유만 고릅니다. 값은 공통코드에서 옵니다.',
+    /** 라벨 옆 ⓘ(관리웹 정리 시안 A) — 값이 어디서 오는지는 사용자가 할 일이 아니라 적지 않는다. */
+    reasonHelp: '순수한 반품 사유만 고릅니다.',
     remarksHelp: '고객이 말한 내용·상태를 적어 두면 판정에 도움이 됩니다.',
     warehouseHelp: '반품은 불량창고로 우선 입고합니다.',
     warehouseNotDefect:

@@ -212,16 +212,6 @@ export const codeNote = (options: readonly SelectOption[]): string | undefined =
 export const codePlaceholder = (): string => messages.pendingCode.placeholder;
 
 /**
- * 창고를 유형으로 좁힐 수 있는가. **거짓이 되는 순간 화면의 안내가 사라진다.**
- *
- * 상수를 함수 안에서 직접 읽지 않고 **인자로 받는다.** 그래야 「값이 채워졌을 때 무엇이
- * 달라지는가」를 감지기가 실제로 잴 수 있다 — 안에서 읽으면 그 전환을 시험할 길이 없어
- * 자리표시가 죽은 가지가 된다.
- */
-export const isDefectWarehouseTypePending = (typeCodes: readonly string[]): boolean =>
-  typeCodes.length === 0;
-
-/**
  * 폐기 거래처 선택칸이 지금 **어떤 사정인가** — 여섯 갈래(리뷰 Major B1).
  *
  * ⛔ **목록 길이로 사유를 짓지 않기 위한 타입이다.** 「비어 있다」는 사실 하나에 서로 다른

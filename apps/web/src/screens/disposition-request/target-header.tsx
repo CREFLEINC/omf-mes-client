@@ -84,8 +84,7 @@ export const TargetHeader = ({ row, detail, uoms, onRetry }: TargetHeaderProps):
           </dd>
         </div>
       </dl>
-      {/* 원천은 묻지 않는다 — 그 사실을 읽기 표시 옆에 상시 둔다(§5-1-1). */}
-      <p className="field-note">{t.register.sourceDerived}</p>
+      {/* 원천은 묻지 않는다(§5-1-1) — 고를 칸이 없으니 서버가 정한다는 사정도 적지 않는다(관리웹 정리 시안 A). */}
 
       {row.nonconformanceId !== null && (
         <div className="disposition-request-subsection" aria-label={t.fields.nonconformanceNo}>

@@ -27,7 +27,7 @@ export interface HomeArea {
 }
 
 /**
- * 작업 목록을 자재가 흐르는 차례대로 네 업무로 묶는다.
+ * 작업 목록을 자재가 흐르는 차례대로 업무로 묶는다(생산 현장은 감춤 — 아래 `hiddenScreens`).
  *
  * 전에는 설계 IA 의 아홉 묶음 스물한 타일을 한 화면에 늘어놓아, 첫 화면에서 고를 것이 너무
  * 많았다(사용자 지시 2026-10-20). 현장은 「무슨 일을 하러 왔나」로 찾으므로 일이 일어나는 자리로
@@ -57,24 +57,6 @@ export const homeAreas: HomeArea[] = [
         label: messages.inboundClose.title,
         icon: 'inventory',
         description: t.screens.inboundClose,
-      },
-      {
-        to: '/inbound-variance',
-        label: messages.inboundVariance.title,
-        icon: 'report',
-        description: t.screens.inboundVariance,
-      },
-      {
-        to: '/recycle-entry',
-        label: messages.recycleEntry.title,
-        icon: 'recycling',
-        description: t.screens.recycleEntry,
-      },
-      {
-        to: '/iqc-skip-request',
-        label: messages.iqcSkipRequest.title,
-        icon: 'bolt',
-        description: t.screens.iqcSkipRequest,
       },
     ],
   },
@@ -133,44 +115,6 @@ export const homeAreas: HomeArea[] = [
     ],
   },
   {
-    id: 'shopfloor',
-    label: t.areas.shopfloor.label,
-    summary: t.areas.shopfloor.summary,
-    icon: 'factory',
-    screens: [
-      {
-        to: '/shopfloor-receipt',
-        label: messages.shopfloorReceipt.title,
-        icon: 'factory',
-        description: t.screens.shopfloorReceipt,
-      },
-      {
-        to: '/wip-handover',
-        label: messages.wipHandover.title,
-        icon: 'sync_alt',
-        description: t.screens.wipHandover,
-      },
-      {
-        to: '/repair-roundtrip',
-        label: messages.repairRoundtrip.title,
-        icon: 'build',
-        description: t.screens.repairRoundtrip,
-      },
-      {
-        to: '/equipment-inspection',
-        label: messages.equipmentInspection.title,
-        icon: 'checklist',
-        description: t.screens.equipmentInspection,
-      },
-      {
-        to: '/equipment-failure',
-        label: messages.equipmentFailureReport.title,
-        icon: 'warning',
-        description: t.screens.equipmentFailure,
-      },
-    ],
-  },
-  {
     id: 'shipping',
     label: t.areas.shipping.label,
     summary: t.areas.shipping.summary,
@@ -189,6 +133,13 @@ export const homeAreas: HomeArea[] = [
         icon: 'inventory',
         description: t.screens.productPicking,
       },
+      /* M-04-05 LOT 분리 확인(피처 013) — POP 에서 나눈 두 라벨을 스캔해 확인한다. 남은 작업 수는 두지 않는다. */
+      {
+        to: '/product-lot-split-confirm',
+        label: messages.productLotSplitConfirm.title,
+        icon: 'call_split',
+        description: t.screens.productLotSplitConfirm,
+      },
     ],
   },
 ];
@@ -206,6 +157,52 @@ export const hiddenScreens: HomeScreen[] = [
     label: messages.packingRepack.title,
     icon: 'inventory_2',
     description: t.screens.packingRepack,
+  },
+  /*
+   * 아직 현장에서 쓰지 않는 작업 — 입하 오류 등록 · 재생재 등록과 생산 현장 업무 전체
+   * (사용자 지시 2026-11-20 「숨김 처리해서 사용자가 접근 못하게」). 다시 열 때는 위 목록으로 옮긴다.
+   */
+  {
+    to: '/inbound-variance',
+    label: messages.inboundVariance.title,
+    icon: 'report',
+    description: t.screens.inboundVariance,
+  },
+  {
+    to: '/recycle-entry',
+    label: messages.recycleEntry.title,
+    icon: 'recycling',
+    description: t.screens.recycleEntry,
+  },
+  {
+    to: '/shopfloor-receipt',
+    label: messages.shopfloorReceipt.title,
+    icon: 'factory',
+    description: t.screens.shopfloorReceipt,
+  },
+  {
+    to: '/wip-handover',
+    label: messages.wipHandover.title,
+    icon: 'sync_alt',
+    description: t.screens.wipHandover,
+  },
+  {
+    to: '/repair-roundtrip',
+    label: messages.repairRoundtrip.title,
+    icon: 'build',
+    description: t.screens.repairRoundtrip,
+  },
+  {
+    to: '/equipment-inspection',
+    label: messages.equipmentInspection.title,
+    icon: 'checklist',
+    description: t.screens.equipmentInspection,
+  },
+  {
+    to: '/equipment-failure',
+    label: messages.equipmentFailureReport.title,
+    icon: 'warning',
+    description: t.screens.equipmentFailure,
   },
 ];
 

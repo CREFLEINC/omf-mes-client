@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { appRouter } from './index';
-import { popRoutes } from './pop';
+import { POP_LEGACY_REDIRECTS, popRoutes } from './pop';
 
 /**
  * POP 라우트가 **관리웹 라우트 표에 섞여 들어가지 않는지**를 지킨다.
@@ -43,11 +43,12 @@ describe('POP 라우트 분리', () => {
    * 일어나지 않는다(실측: 지워도 타입 검사·시험 전건 통과). 주소가 사라진 것은 그 화면을
    * 여는 사람만 알게 되고, POP은 그 사람이 현장에 있다.
    *
-   * `P-CO-01`은 **단말을 켰을 때 맨 처음 서는 화면**이라 주소가 사라지면 단말이 아무 데도
-   * 가지 못한다. 그래서 이 하나는 이름으로 못박는다.
+   * 홈은 **단말을 켰을 때 맨 처음 서는 화면**(사번 입력 포함 · #334)이라 주소가 사라지면 단말이 아무 데도
+   * 가지 못한다. 그래서 이 하나는 이름으로 못박는다. 옛 사번 입력 주소는 홈으로 넘긴다.
    */
-  it('P-CO-01 진입 주소가 서 있다', () => {
-    expect(popRoutes.map(({ path }) => path)).toContain('/pop/worker-assignment');
+  it('진입 주소(홈)가 서 있고, 옛 사번 입력 주소는 홈으로 넘긴다', () => {
+    expect(popRoutes.map(({ path }) => path)).toContain('/pop/home');
+    expect(POP_LEGACY_REDIRECTS['/pop/worker-assignment']).toBe('/pop/home');
   });
 
   /**

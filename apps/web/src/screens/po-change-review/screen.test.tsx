@@ -217,12 +217,12 @@ describe('PoChangeReviewScreen', () => {
     });
   });
 
-  /* A-11 — 이 화면에 두지 않은 것을 두지 않았다고 «화면에» 적는다. */
-  it('⚠ 취소 후속을 이 화면에 두지 않았다고 적는다', async () => {
+  /* 취소 후속은 이 화면에 없다 — 판정 제목 옆 ⓘ 의 설명으로 읽힌다(관리웹 정리 시안 A). */
+  it('⚠ 취소 후속을 이 화면에 두지 않았다는 것은 판정 ⓘ 로 읽힌다', async () => {
     renderScreen();
     await screen.findByRole('button', { name: t.list.selectRow('SYNTH-PO-0031') });
 
-    expect(document.body.textContent ?? '').toContain(t.withdrawn.cancelFollowUp);
+    expect(screen.getByRole('button', { name: t.withdrawn.cancelFollowUp })).toBeInTheDocument();
   });
 
   /* ⭐ 반영은 W/O 조정을 함께 싣는다 — 한 트랜잭션(B-8). 서버가 나누지 않으니 사람이 적는다. */
@@ -231,6 +231,8 @@ describe('PoChangeReviewScreen', () => {
     await selectRow(user);
     await user.click(await screen.findByRole('radio', { name: t.decision.apply }));
     expect(screen.getByText(t.decision.applyWithoutAdjustment)).toBeInTheDocument();
+    /* 조정 수량을 적는 법은 영향 받는 W/O 제목 옆 ⓘ 로 읽힌다(관리웹 정리 시안 A). */
+    expect(screen.getByRole('button', { name: t.workOrders.adjustHelp })).toBeInTheDocument();
 
     await user.type(screen.getByLabelText(t.workOrders.adjustLabel('SYNTH-WO-013')), '2500');
     expect(screen.queryByText(t.decision.applyWithoutAdjustment)).not.toBeInTheDocument();
@@ -253,5 +255,34 @@ describe('PoChangeReviewScreen', () => {
     expect(screen.getByText(t.workOrders.adjustNotNumber)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.decision.submit })).toBeDisabled();
     expect(screen.getByText(t.lock.adjustment)).toBeInTheDocument();
+  });
+
+  /* 목록 제목 줄 「목록 접기」 · 접힌 「목록 N건」 탭(#350). */
+  it('목록을 접으면 탭에 건수가 서고, 펼친 뒤에도 고른 P/O · 고른 판정 · 적어 둔 사유가 그대로다', async () => {
+    const collapsedKey = 'omf-mes:po-change-review:list:collapsed';
+    window.localStorage.removeItem(collapsedKey);
+    const { user } = renderScreen();
+    await selectRow(user);
+    await user.click(await screen.findByRole('radio', { name: t.decision.proceed }));
+    await user.type(screen.getByLabelText(t.decision.reasonLabel), '납기 우선');
+    const layout = document.querySelector('.po-change-review-layout');
+
+    await user.click(
+      screen.getByRole('button', { name: messages.common.inspectionHub.listCollapse }),
+    );
+    expect(layout).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = layout!.querySelector<HTMLElement>('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록1건');
+
+    await user.click(tab!);
+    expect(layout).not.toHaveAttribute('data-left-collapsed');
+    expect(layout!.querySelector('.po-board-list-tab')).toBeNull();
+    expect(screen.getByRole('button', { name: t.list.selectRow('SYNTH-PO-0031') })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(screen.getByRole('radio', { name: t.decision.proceed })).toBeChecked();
+    expect(screen.getByLabelText(t.decision.reasonLabel)).toHaveValue('납기 우선');
+    window.localStorage.removeItem(collapsedKey);
   });
 });

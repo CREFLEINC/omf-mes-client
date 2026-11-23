@@ -27,6 +27,8 @@ export interface WorkOrderCloseCandidateListPaneProps {
   onSelect: (workOrderId: number) => void;
   onChangePage: (page: number) => void;
   variant?: 'close' | 'correction';
+  /** 목록 맨 위 제목 줄(「이름 · 건수 · 목록 접기」 · #350). 화면이 `PaneListHead` 로 넘긴다 — 없으면 종전 제목. */
+  head?: ReactNode;
 }
 
 const itemLabel = (value: WorkOrderCloseCandidateRow['itemLabel']): string =>
@@ -41,6 +43,7 @@ export const WorkOrderCloseCandidateListPane = ({
   onSelect,
   onChangePage,
   variant = 'close',
+  head,
 }: WorkOrderCloseCandidateListPaneProps) => {
   const copy = variant === 'correction' ? messages.workOrderClose.closedCandidateList : t;
   const columns: Column<WorkOrderCloseCandidateRow>[] = [
@@ -72,6 +75,7 @@ export const WorkOrderCloseCandidateListPane = ({
   if (loadError !== null && loadError !== undefined) {
     return (
       <section className="pane" aria-label={copy.pane}>
+        {head}
         {loadError}
       </section>
     );
@@ -80,6 +84,7 @@ export const WorkOrderCloseCandidateListPane = ({
   if (isLoading) {
     return (
       <section className="pane" aria-label={copy.pane}>
+        {head}
         <div role="status" aria-label={copy.loading}>
           <SkeletonText lines={3} />
         </div>
@@ -89,7 +94,7 @@ export const WorkOrderCloseCandidateListPane = ({
 
   return (
     <section className="pane work-order-close-list-pane" aria-label={copy.pane}>
-      <h2 className="pane-title">{copy.pane}</h2>
+      {head ?? <h2 className="pane-title">{copy.pane}</h2>}
       <div className="wide-table work-order-close-table">
         <Table
           density="compact"

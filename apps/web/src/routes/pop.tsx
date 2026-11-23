@@ -9,6 +9,7 @@ import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/scr
 import { PopMaterialDefectScreen } from '../screens/pop-material-defect/screen';
 import { PopOqcInspectionScreen } from '../screens/pop-oqc-inspection/screen';
 import { PopShipmentCompleteScreen } from '../screens/pop-shipment-complete/screen';
+import { ProductLotSplitScreen } from '../screens/product-lot-split/screen';
 import { RepackLabelIssueScreen } from '../screens/repack-label-issue/screen';
 import { ProductionFlowScreen } from '../screens/production-result/screen';
 import { ReworkResultRegisterScreen } from '../screens/rework-result-register/screen';
@@ -17,15 +18,16 @@ import { PackingResultScreen } from '../screens/packing-result/screen';
 import { PopHomeScreen } from '../screens/pop-home/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
 import { WorkHoldRegisterScreen } from '../screens/work-hold-register/screen';
-import { WorkerAssignmentScreen } from '../screens/worker-assignment/screen';
 import { WorkStartScreen } from '../screens/work-start/screen';
 
 /**
- * 합쳐서 없어진 POP 화면의 옛 주소 → 새 자리. 라우트 표에는 서지만 화면이 아니라서 화면 목록(이름표 ·
- * 개발용 이동)과 대조할 때 뺀다(`pop-screen-catalog.test.ts` · `pop-dev-screen-nav.test.ts`).
+ * 합쳐서 없어진 POP 화면의 옛 주소 → 새 자리. 라우트 표에는 서지만 화면이 아니라서 화면 목록(이름표)과
+ * 대조할 때 뺀다(`pop-screen-catalog.test.ts`).
  */
 export const POP_LEGACY_REDIRECTS: Readonly<Record<string, string>> = {
   '/pop/emergency-work-orders': '/pop/work-start?type=emergency',
+  /* 사번 입력 화면(P-CO-01)은 홈으로 합쳤다(omf-all-around#334) — 사번은 홈에서 확인한다. */
+  '/pop/worker-assignment': '/pop/home',
 };
 
 /**
@@ -53,21 +55,7 @@ export const POP_LEGACY_REDIRECTS: Readonly<Record<string, string>> = {
  */
 export const popRoutes: RouteObject[] = [
   /*
-   * P-CO-01 — **POP 셸의 진입 화면이다.** 스펙 §1 이 IA 위치를 「POP > 진입(셸 공통)」으로
-   * 못박았다: 메뉴로 찾아 들어가는 화면이 아니라 **단말을 켰을 때 맨 처음 서는 화면**이다.
-   * 그래서 이 배열의 첫 자리에 둔다 — 아래 태스크 화면들은 이 화면이 사번을 정한 «뒤»에 선다.
-   *
-   * ⛔ **세로 예산이 셸 밖에 서는 이유다.** §3/E-1 은 헤더 64 + 본문 704 = 768 이고 「슬랙이
-   * 0」이라, 관리웹 셸의 상단 바와 본문 여백이 위에 얹히면 1024×768 단말에서 본문 아래가
-   * 잘린다.
-   *
-   * ⭐ **이 화면이 정한 사번은 태스크 화면이 읽는다.** 단말 메모리의
-   * `patterns/worker-session`을 `P-02-01`과 POP 쓰기 화면들이 귀속값으로 사용한다. 단말·공정은
-   * 여전히 셸의 `patterns/pop-identity` 몫이라, 사번 지정만으로 그 두 값까지 채워지지는 않는다.
-   */
-  { path: '/pop/worker-assignment', element: <WorkerAssignmentScreen /> },
-  /*
-   * 홈(#291) — 사번 확인 뒤 처음 서는 화면. 남은 작업과 바로가기만 보인다. 권한 코드가 없는
+   * 홈(#291) — **POP 셸의 진입 화면이다**(#334). 사번이 없으면 사번 입력을 세우고, 확인 뒤 남은 작업과 바로가기를 보인다. 권한 코드가 없는
    * 안내 화면이라 이동 후보(`patterns/pop-screen-catalog` 의 `POP_SCREENS`)에는 담지 않는다.
    */
   { path: '/pop/home', element: <PopHomeScreen /> },
@@ -146,6 +134,11 @@ export const popRoutes: RouteObject[] = [
    * 범위 밖이고 집행은 서버의 403 이다.
    */
   { path: '/pop/goods-issue-qr', element: <GoodsIssueQrScreen /> },
+  /*
+   * P-04-08 생산 LOT 분리(피처 013 · omf-all-around#303) — 창고 묶음. 제품 창고 생산 LOT 을 수량으로 둘로 나누고
+   * 라벨 두 장을 찍는다. 진입 컨텍스트 없이 LOT 스캔부터 시작한다. 집행은 서버(P-04-08 권한 · 라벨 출력 공정)다.
+   */
+  { path: '/pop/product-lot-split', element: <ProductLotSplitScreen /> },
   /*
    * P-04-05 — 포장이 끝난 상자를 스캔해 **출하 단위**로 묶고, 마감하면 납품 라벨이 나간다
    * (SHIP-UNIT-01 · 설계 §6). ⚠ 서버 경로가 아직 없어 조회·쓰기는 붙어 있지 않다(P4c).

@@ -48,7 +48,7 @@ bash <잡 디렉터리>/build-local-backend-3100.sh
       ↓
 [웹] P/O 등록 ─→ [PDA] 입하 등록 → 자재LOT 스캔·등록
                           ↓
-[웹] IQC 판정  ←─ 또는 ─→ [PDA] 긴급 IQC 생략 요청 → [웹] 승인
+[웹] IQC 판정
       ↓
 [PDA] 적치·입고 완료
       ↓
@@ -111,14 +111,14 @@ bash <잡 디렉터리>/build-local-backend-3100.sh
 
 ⚠ 사번 화면은 **숫자만** 받는다. 문자가 섞인 사번은 넣을 수 없다 — 설계 확인 중인 사항이다.
 
-### 4. P/O 등록
+### 4. 발주 확인
 
 | | |
 | --- | --- |
 | 담당 | 웹 |
-| 화면 | `/logistics/po-register` |
-| 조작 | 공급사·품목·수량으로 발주를 만든다 |
-| 기대 | 발주가 생기고 입하 예정에 나타난다 |
+| 화면 | `/system/erp-data/purchase-orders` |
+| 조작 | ERP 에서 받은 발주 중 시험에 쓸 공급사·품목을 고른다(관리웹에서 발주를 새로 만드는 화면은 없다) |
+| 기대 | 그 발주가 입하 예정에 나타난다 |
 | 실제 | |
 
 ### 5. 입하 등록
@@ -144,26 +144,13 @@ bash <잡 디렉터리>/build-local-backend-3100.sh
 ⚠ **LOT 이 이미 붙은 라인을 고르면 401 이 온다.** 서버가 범위 층에서 거절하므로 「이미 등록됨」
 같은 안내가 아니라 인증 실패처럼 보인다. 라인을 새로 잡아 시험한다.
 
-### 7. IQC — 둘 중 하나
-
-**7-a. 정상 판정 (웹)**
+### 7. IQC 판정 (웹)
 
 | | |
 | --- | --- |
 | 화면 | `/logistics/iqc-inspection` |
 | 기대 | 판정이 서고 LOT 상태가 넘어간다 |
 | 실제 | |
-
-**7-b. 긴급 생략 요청 (PDA) → 승인 (웹)**
-
-| | |
-| --- | --- |
-| 화면 | PDA 긴급 IQC 생략 요청 → 웹 `/logistics/iqc-skip-approval` |
-| 기대 | 요청이 올라가고 웹에서 승인하면 LOT 이 쓸 수 있게 된다 |
-| 실제 | |
-
-⚠ 결재선이 없거나 **단계가 0개**면 요청 자체가 `ROUTE_NOT_FOUND` 로 떨어진다. 시험 전에
-`/system/approval-route` 에서 `IQC_SKIP` 결재선과 단계가 서 있는지 본다.
 
 ### 8. 적치·입고 완료
 
@@ -306,9 +293,8 @@ bash <잡 디렉터리>/build-local-backend-3100.sh
 | --- | --- | --- |
 | 시험용 단말 | 웹 `/system/terminal-process-map` | 2단계 QR 을 못 낸다 |
 | 숫자 사번 작업자 | 웹 기준정보 | 3단계를 못 지나간다 |
-| 공급사·품목·발주 | 웹 `/logistics/po-register` | 5단계 고를 것이 없다 |
+| 공급사·품목·발주 | ERP 수신(웹 `/system/erp-data/purchase-orders`) | 5단계 고를 것이 없다 |
 | LOT 이 안 붙은 입하 라인 | 5단계가 만든다 | 6단계가 401 로 떨어진다 |
-| `IQC_SKIP` 결재선 + 단계 | 웹 `/system/approval-route` | 7-b 가 `ROUTE_NOT_FOUND` |
 | 위치의 보관 품목 | 웹 `/master-data/warehouse-location` | 8단계가 보관 위치를 안내하지 않는다(창고 어디든 받는다) |
 | 설비 점검 항목 | 웹 `/equipment/master` | 설비 점검 화면이 빈다 |
 | 불량 코드 | 웹 `/master-data/defect-cause-code` | 수리 왕복에서 이름이 안 뜬다 |

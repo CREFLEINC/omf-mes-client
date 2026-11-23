@@ -16,6 +16,7 @@ import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
 import { useSession } from '../../patterns/session';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
@@ -251,7 +252,6 @@ export const PlantWorkingDaysScreen = () => {
       <LeaveGuard when={isDirty} discardTitle={t.discard.title} discardBody={t.discard.body} />
       <PageHeader
         title={t.title}
-        description={t.description}
         breadcrumb={
           <Breadcrumb
             items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
@@ -259,10 +259,15 @@ export const PlantWorkingDaysScreen = () => {
           />
         }
       />
-      <div className="banner-slot">
-        <AlertBanner variant="info">{t.intro}</AlertBanner>
-      </div>
       <section className="pane plant-working-days-pane" aria-label={t.tableLabel}>
+        {/*
+         * 주간 근무일이 무엇을 세는 값인지 — 머리 아래 설명 줄 대신 구획 제목 옆 ⓘ(관리웹 정리 시안 A).
+         * 표 머리에 두면 표의 가로 넘김 상자가 툴팁을 자른다.
+         */}
+        <h2 className="pane-title info-label">
+          {t.tableLabel}
+          <InfoTip text={t.description} />
+        </h2>
         {body()}
       </section>
     </>

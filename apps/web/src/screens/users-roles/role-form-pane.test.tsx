@@ -106,7 +106,9 @@ describe('RoleFormPane 역할 코드 잠금', () => {
     renderPane({ editability: { codeEditable: false, reason: 'REFERENCED', referenceCount: 3 } });
 
     expect(codeField()).toBeDisabled();
-    expect(screen.getByText('이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.')).toBeInTheDocument();
+    /* 쓰이는 중이라 잠기면 이름 오른쪽 라벨로 짧게 알린다(사용자 지시 2026-11-20 · #333). */
+    expect(screen.getByText('사용 중인 코드는 바꿀 수 없습니다.')).toBeInTheDocument();
+    expect(codeField()).toHaveAccessibleDescription('사용 중인 코드는 바꿀 수 없습니다.');
   });
 
   /** 어긋난 조합 ① — 서버가 실제로 준다. `reason`을 따라 읽으면 잠겨야 하는 칸이 열린다. */
@@ -146,7 +148,7 @@ describe('RoleFormPane 역할 코드 잠금', () => {
       editability: { codeEditable: false, reason: 'NOT_COUNTABLE', referenceCount: 3 },
     });
 
-    const pane = screen.getByRole('region', { name: '역할 정보' });
+    const pane = screen.getByRole('region', { name: '역할 상세 정보' });
 
     expect(pane.textContent).toContain('확인할 수 없어');
     expect(pane.textContent).not.toContain('3건');
@@ -195,7 +197,9 @@ describe('RoleFormPane 액션', () => {
     renderPane({ mode: 'create', editability: null });
 
     expect(screen.getByRole('button', { name: '역할 추가' })).toBeDisabled();
-    expect(screen.getByText('역할 추가는 입력한 내용이 있을 때 누를 수 있습니다.')).toBeInTheDocument();
+    expect(
+      screen.getByText('역할 추가는 입력한 내용이 있을 때 누를 수 있습니다.'),
+    ).toBeInTheDocument();
   });
 
   /** 아직 없는 자원이라 「언젠가 풀린다」가 아니라 애초에 해당하지 않는 액션이다. */
@@ -215,7 +219,9 @@ describe('RoleFormPane 액션', () => {
   });
 
   it('이미 미사용이면 사용 중지가 비활성이고 사유가 보인다', () => {
-    renderPane({ deactivateDisabledReason: '사용 중지는 이미 미사용인 역할에 다시 할 수 없습니다.' });
+    renderPane({
+      deactivateDisabledReason: '사용 중지는 이미 미사용인 역할에 다시 할 수 없습니다.',
+    });
 
     expect(screen.getByRole('button', { name: '사용 중지' })).toBeDisabled();
     expect(

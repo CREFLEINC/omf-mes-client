@@ -10,6 +10,8 @@ export interface SelectFieldProps {
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
+  /** 선택 입력칸 표시 — `FieldLabel` 로 넘긴다. */
+  optionalMark?: string;
   disabled?: boolean;
   /** 비활성 사유. 디자인 시스템 `Select`에는 `disabledReason`이 없어 화면이 직접 붙인다(배치 규범 4). */
   disabledReason?: string;
@@ -22,6 +24,8 @@ export interface SelectFieldProps {
    * **판단 기준은 코드값이 아니라 선택지 문구 길이다.**
    */
   wide?: boolean;
+  /** 펼친 목록 검색창의 흐린 문구(선택지가 많을 때만 검색창이 선다). */
+  searchPlaceholder?: string;
   /** 배치용 클래스(예: 폼 안에서 칸의 폭 비중). 칸 자신의 `field-cell` 에 덧붙는다. */
   className?: string;
 }
@@ -43,12 +47,14 @@ export const SelectField = ({
   value,
   onChange,
   required = false,
+  optionalMark,
   disabled = false,
   disabledReason,
   note,
   error,
   placeholder,
   wide = false,
+  searchPlaceholder,
   className,
 }: SelectFieldProps) => {
   const id = useId();
@@ -69,13 +75,14 @@ export const SelectField = ({
         .filter((name) => name !== null && name !== undefined)
         .join(' ')}
     >
-      <FieldLabel htmlFor={id} label={label} required={required} />
+      <FieldLabel htmlFor={id} label={label} required={required} optionalMark={optionalMark} />
       <Select
         id={id}
         options={options}
         value={value === '' && !hasEmptyOption ? null : value}
         onChange={onChange}
         placeholder={placeholder}
+        {...(searchPlaceholder !== undefined ? { searchPlaceholder } : {})}
         disabled={disabled}
         invalid={error !== undefined}
         aria-required={required || undefined}

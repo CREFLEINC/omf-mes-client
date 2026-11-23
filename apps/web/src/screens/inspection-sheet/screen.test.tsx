@@ -738,6 +738,9 @@ describe('제품 검사표 조회', () => {
     const dialog = await screen.findByRole('dialog', { name: t.create.title });
     // 시리얼이 비면 열 수 없다.
     expect(within(dialog).getByRole('button', { name: t.create.open })).toBeDisabled();
+    // 이미 있는 시리얼이면 그 검사표를 연다는 사실은 라벨 옆 ⓘ 로 둔다.
+    expect(within(dialog).getByRole('button', { name: t.create.note })).toBeInTheDocument();
+    expect(within(dialog).queryByText(t.create.note)).not.toBeInTheDocument();
 
     await user.type(within(dialog).getByRole('textbox', { name: t.create.serial }), ' SN-0001 ');
     await user.click(within(dialog).getByRole('button', { name: t.create.open }));
@@ -761,6 +764,10 @@ describe('제품 검사표 조회', () => {
     const { user, requests } = setup(['W-03-13']);
     await open(user);
     await user.click(screen.getByRole('tab', { name: d.tabs.entry }));
+    // 구획 안내는 늘 펼쳐 두지 않고 제목 옆 ⓘ 로 둔다.
+    expect(screen.getByRole('button', { name: p.header.note })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: p.ng.note })).toBeInTheDocument();
+    expect(screen.queryByText(p.header.note)).not.toBeInTheDocument();
 
     await user.type(screen.getByRole('textbox', { name: p.header.destinationText }), '일본');
     await user.click(screen.getByRole('button', { name: p.header.save }));
@@ -806,6 +813,34 @@ describe('제품 검사표 조회', () => {
 
     expect(screen.getByRole('tab', { name: d.tabs.basic })).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: d.tabs.entry })).not.toBeInTheDocument();
+  });
+
+  /* 목록 접기(#350) — 접힌 탭에 건수, 펼치면 고른 검사표 · 적던 값이 그대로. */
+  it('목록을 접으면 「목록 N건」 탭이 서고, 펼쳐도 고른 검사표와 적던 값이 그대로다(#350)', async () => {
+    const storageKey = 'omf-mes:inspection-sheet:split:collapsed';
+    window.localStorage.removeItem(storageKey);
+    const p = messages.inspectionSheetEntry;
+    const { user } = setup(['W-03-13']);
+    await open(user);
+    await user.click(screen.getByRole('tab', { name: d.tabs.entry }));
+    await user.type(screen.getByRole('textbox', { name: p.header.destinationText }), '일본');
+    const split = document.querySelector('.inspection-sheet-split');
+
+    await user.click(
+      screen.getAllByRole('button', { name: messages.common.inspectionHub.listCollapse })[0]!,
+    );
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = split!.querySelector<HTMLElement>('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록1건');
+
+    await user.click(tab!);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    expect(screen.getByRole('button', { name: t.list.openRow('SN-0001') })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(screen.getByRole('textbox', { name: p.header.destinationText })).toHaveValue('일본');
+    window.localStorage.removeItem(storageKey);
   });
 
   it('부품 공장 범위만 있는 계정은 「OA 사업부 전용」 안내만 보이고 목록을 조회하지 않는다', async () => {

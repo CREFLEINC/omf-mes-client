@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   createStubFetch,
@@ -180,15 +180,17 @@ describe('W-05-01 ① — 비율 정책을 본다', () => {
   });
 
   /**
-   * ⭐ **겹치는 것이 정상이다.** 규칙을 곁에 적지 않으면 사람마다 다르게 읽는다.
-   * ⛔ 그리고 **화면이 판정하지 않는다**는 사실도 함께 말한다.
+   * ⭐ **겹치는 것이 정상이다.** 규칙은 목록 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A).
+   * 「미리보기에서 확인하라」는 문장은 두지 않는다 — 미리보기가 바로 아래 보인다.
    */
-  it('겹칠 때의 규칙과 판정하는 자리를 함께 말한다', async () => {
+  it('겹칠 때의 규칙을 목록 제목 옆 ⓘ 로 말한다', async () => {
     renderScreen();
     await within(pane()).findByText(t.scope.all);
 
-    expect(within(pane()).getByText(t.ratioList.overlapNote)).toBeInTheDocument();
-    expect(within(pane()).getByText(t.ratioList.resolvedElsewhere)).toBeInTheDocument();
+    expect(
+      within(pane()).getByRole('button', { name: t.ratioList.overlapNote }),
+    ).toBeInTheDocument();
+    expect(within(pane()).queryByText(/미리보기에서 확인하세요/)).toBeNull();
   });
 });
 
@@ -344,5 +346,38 @@ describe('W-05-01 ① — 이름 풀이의 한계', () => {
         t.scope.entry(t.scope.itemId, messages.common.reference.failed),
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe('W-05-01 — 목록 접기(#350)', () => {
+  afterEach(() => {
+    window.localStorage.removeItem('omf-mes:shot-conversion:split:collapsed');
+  });
+
+  it('접으면 「목록 N건」 탭이 서고, 펼쳐도 적던 기준일 · 미리보기 수량이 그대로다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+    await within(pane()).findByText(t.scope.all);
+    const preview = (): HTMLElement => screen.getByRole('region', { name: t.preview.paneTitle });
+    await user.type(within(pane()).getByLabelText(t.ratioList.effectiveOnLabel), '2026-08-23');
+    await user.type(
+      within(preview()).getByRole('textbox', { name: t.preview.quantityLabel }),
+      '500',
+    );
+    const split = document.querySelector('.list-detail-split')!;
+
+    await user.click(
+      screen.getAllByRole('button', { name: messages.common.inspectionHub.listCollapse })[0]!,
+    );
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = split.querySelector<HTMLElement>('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록4건');
+
+    await user.click(tab!);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    expect(within(pane()).getByLabelText(t.ratioList.effectiveOnLabel)).toHaveValue('2026-08-23');
+    expect(within(preview()).getByRole('textbox', { name: t.preview.quantityLabel })).toHaveValue(
+      '500',
+    );
   });
 });

@@ -88,7 +88,8 @@ describe('ErpCommonCodeScreen', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'UNIT 코드값 보기' })).toBeInTheDocument();
     expect(screen.queryByText('ITEM_TYPE')).not.toBeInTheDocument();
-    expect(screen.getByText('2개 그룹')).toBeInTheDocument();
+    // 그룹 수는 목록 제목 줄의 건수로 한 번만 선다(#350) — 표 아래 「N개 그룹」은 걷었다.
+    expect(screen.getByText('2건')).toBeInTheDocument();
     expect(screen.getByText('코드 그룹을 고르세요')).toBeInTheDocument();
 
     // 미사용 그룹도 받는다 — 꺼진 ERP 그룹이 사라지지 않게.

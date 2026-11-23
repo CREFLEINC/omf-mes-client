@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { toLineQtyTotals, toShipmentRequestView } from './types';
+import {
+  completionMarkOf,
+  localToday,
+  remainingBlockers,
+  tallyBlockers,
+  toLineQtyTotals,
+  toShipmentRequestView,
+  type BlockerCode,
+} from './types';
 
 const LINE = {
   shipmentRequestLineId: 1,
@@ -21,6 +29,7 @@ const LINE = {
   /* 피처 010 — 초과·피킹 LOT 행. 이 시험은 아직 이 값을 읽지 않는다. */
   overQty: 0,
   lots: [],
+  warehouse: null,
 };
 
 const RESPONSE = {
@@ -44,6 +53,12 @@ const RESPONSE = {
   blockerSummary: {},
   lotJudgmentSummary: { notInspected: 0, accepted: 0, rejected: 0, held: 0 },
   completedShipment: null,
+  /* 피처 012 — 사업부·줄 창고 요약·ERP 송신·출하. */
+  businessUnitId: null,
+  businessUnit: null,
+  warehouses: [],
+  erpSendStatus: null,
+  shipments: [],
 };
 
 describe('toLineQtyTotals', () => {
@@ -111,9 +126,12 @@ describe('toShipmentRequestView', () => {
       lineTotals: { requestedQty: 100, allocatedQty: 80, pickedQty: 40, shippedQty: 20 },
       overQty: 0,
       lotJudgmentSummary: { notInspected: 0, accepted: 0, rejected: 0, held: 0 },
-      blockerCount: 0,
+      blockers: { issueCount: 0, inProgressCount: 0, pickingShort: false, completed: false },
       pickingWarehouseNames: [],
       replacementCount: 0,
+      businessUnitName: null,
+      lineWarehouses: [],
+      erpSendStatus: null,
     });
   });
 
@@ -136,5 +154,79 @@ describe('toShipmentRequestView', () => {
       inspectionStatus: 'NOT_REQUIRED',
       lineTotals: null,
     });
+  });
+});
+
+const codes = (...list: BlockerCode[]) => list.map((code) => ({ code }));
+
+describe('#342 막는 이유 갈래', () => {
+  it('#342 불합격 · 보류 · 수주 라인 취소만 이슈로 세고, 피킹 부족 · 미검사는 정상 진행, 출하 완료는 상태다', () => {
+    expect(
+      tallyBlockers(
+        codes('REJECTED', 'HELD', 'SALES_ORDER_LINE_CANCELLED', 'PICKING_SHORT', 'NOT_INSPECTED'),
+      ),
+    ).toEqual({ issueCount: 3, inProgressCount: 2, pickingShort: true, completed: false });
+    expect(tallyBlockers(codes('ALREADY_COMPLETED'))).toEqual({
+      issueCount: 0,
+      inProgressCount: 0,
+      pickingShort: false,
+      completed: true,
+    });
+  });
+
+  it('#342 상세 띠는 이슈를 먼저 두고 「이미 출하 완료」는 뺀다', () => {
+    expect(
+      remainingBlockers(
+        codes('PICKING_SHORT', 'HELD', 'NOT_INSPECTED', 'ALREADY_COMPLETED', 'REJECTED'),
+      ).map((blocker) => blocker.code),
+    ).toEqual(['HELD', 'REJECTED', 'PICKING_SHORT', 'NOT_INSPECTED']);
+  });
+
+  it('#342 오늘은 기기 로컬 날짜의 YYYY-MM-DD 다', () => {
+    expect(localToday(new Date(2026, 0, 5, 23, 59))).toBe('2026-01-05');
+  });
+});
+
+describe('#342 completionMarkOf', () => {
+  const TODAY = '2026-11-20';
+  const row = (
+    blockerCodes: BlockerCode[] | null,
+    requestedShipDate = '2026-11-20',
+    shipmentProgressCode: Parameters<typeof completionMarkOf>[0]['shipmentProgressCode'] = 'PICKED',
+  ) => ({
+    blockers: blockerCodes === null ? null : tallyBlockers(codes(...blockerCodes)),
+    requestedShipDate,
+    shipmentProgressCode,
+  });
+
+  it('#342 확인 1 — 피킹 부족 · 미검사만이고 출하일이 오늘 이후면 칩이 없다', () => {
+    expect(completionMarkOf(row(['PICKING_SHORT', 'NOT_INSPECTED']), TODAY)).toBeNull();
+    expect(completionMarkOf(row(['NOT_INSPECTED'], '2026-11-01'), TODAY)).toBeNull();
+  });
+
+  it('#342 확인 2 — 출하일이 지난 피킹 부족은 「지연」(오늘 출하일은 아직 지연 아님)', () => {
+    expect(completionMarkOf(row(['PICKING_SHORT'], '2026-11-19'), TODAY)).toEqual({
+      kind: 'delayed',
+    });
+    expect(completionMarkOf(row(['PICKING_SHORT'], '2026-11-20'), TODAY)).toBeNull();
+  });
+
+  it('#342 확인 3 — 진짜 이슈가 있으면 이슈 수만 센 「막힘 n」이 「지연」보다 앞선다', () => {
+    expect(
+      completionMarkOf(
+        row(['REJECTED', 'HELD', 'PICKING_SHORT', 'NOT_INSPECTED'], '2026-11-01'),
+        TODAY,
+      ),
+    ).toEqual({ kind: 'blocked', count: 2 });
+  });
+
+  it('#342 확인 4 — 막는 이유가 없으면 「완료 대기」, 출하 완료 · 미편성 · 옛 서버는 칩 없음', () => {
+    expect(completionMarkOf(row([]), TODAY)).toEqual({ kind: 'ready' });
+    expect(completionMarkOf(row(['ALREADY_COMPLETED']), TODAY)).toBeNull();
+    expect(completionMarkOf(row([], TODAY, 'SHIPPED'), TODAY)).toBeNull();
+    expect(
+      completionMarkOf(row(['PICKING_SHORT'], '2026-11-01', 'NOT_ALLOCATED'), TODAY),
+    ).toBeNull();
+    expect(completionMarkOf(row(null), TODAY)).toBeNull();
   });
 });

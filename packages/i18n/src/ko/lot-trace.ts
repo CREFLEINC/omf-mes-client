@@ -64,7 +64,6 @@ export const lotTrace = {
     pane: '이력 목록',
     caption: '이력 줄 목록',
     loading: '이력을 불러오는 중',
-    totalLines: (count: number): string => `전체 ${count.toLocaleString('ko-KR')}줄`,
     totalQty: '수량 합계',
     loadFailed: '이력을 불러오지 못했습니다',
     loadFailedDescription: '잠시 뒤 다시 조회하세요.',
@@ -276,6 +275,10 @@ export const lotTrace = {
       splitsSection: '분할 LOT',
       splitsHint:
         '이 LOT 에서 부분 출고로 떼어 낸 LOT 입니다. 분할 LOT 에서 다시 나온 LOT 은 들여 씁니다.',
+      /** 피처 013 — 생산 LOT 분리(P-04-08)로 떼어 낸 LOT. 원래 생산 LOT 상세에 선다. */
+      productSplitsHint:
+        '이 LOT 에서 생산 LOT 분리로 떼어 낸 LOT 입니다. 새 LOT 에서 다시 나눈 LOT 은 들여 씁니다.',
+      productSplitLine: (at: string): string => `분리 시각 ${at}`,
       splitLine: (at: string, issue: string): string => `분할 시각 ${at} · 출고번호 ${issue}`,
       splitFrom: (lotNo: string): string => `${lotNo} 에서 분할`,
       usageHint: '분할 LOT 으로 투입된 W/O 도 함께 보입니다.',

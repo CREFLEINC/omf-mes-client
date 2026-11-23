@@ -20,6 +20,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { isStockableLocation } from '../../patterns/location-level';
 import { SaveErrorBanner } from '../../patterns/master';
 import { ScreenHeader } from '../../patterns/screen-header';
@@ -56,6 +57,7 @@ import {
 } from './types';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { locationOptionLabel } from '../../patterns/location-label';
+import { ListCollapseTab, PaneListHead, usePaneSplit } from '../../patterns/po-board';
 
 const t = messages.stockReinstatement;
 const PAGE_SIZE = 50;
@@ -461,6 +463,15 @@ export const StockReinstatementScreen = () => {
     toLocation: toLocation === undefined ? null : locationOptionLabel(toLocation),
   };
 
+  /* 목록 접기(#350, app.css `list-collapsible`) — 넓은 창은 왼쪽 세로 탭 + 상세, 좁으면 상세 위 가로 탭 + 상세 한 칸. */
+  const listSplit = usePaneSplit('omf-mes:stock-reinstatement:list');
+  const listCollapse = {
+    collapsed: listSplit.collapsed,
+    onToggle: listSplit.toggleCollapsed,
+    collapseLabel: messages.common.inspectionHub.listCollapse,
+    expandLabel: messages.common.inspectionHub.listExpand,
+    count: candidates.data?.page.total,
+  };
   return (
     <>
       <ScreenHeader
@@ -472,12 +483,13 @@ export const StockReinstatementScreen = () => {
           />
         }
       />
-      <div className="banner-slot">
-        <AlertBanner variant="info">{t.scopeNotice}</AlertBanner>
-      </div>
-      <div className="stock-reinstatement-workspace">
+      {/* 화면 머리의 띠 대신 「재등록 입력」 제목 옆 ⓘ 로 둔다 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
+      <div
+        className="stock-reinstatement-workspace list-collapsible"
+        data-left-collapsed={listCollapse.collapsed ? 'true' : undefined}
+      >
         <section className="pane stock-reinstatement-pane" aria-label={t.panes.candidates}>
-          <h2 className="pane-title">{t.panes.candidates}</h2>
+          <PaneListHead title={t.panes.candidates} collapse={listCollapse} />
           <div className="stock-reinstatement-filter">
             <SelectField
               label={t.fields.sourceWarehouse}
@@ -538,6 +550,7 @@ export const StockReinstatementScreen = () => {
             </nav>
           )}
         </section>
+        <ListCollapseTab collapse={listCollapse} />
 
         <section className="pane stock-reinstatement-pane" aria-label={t.panes.detail}>
           <h2 className="pane-title">{t.panes.detail}</h2>
@@ -620,7 +633,12 @@ export const StockReinstatementScreen = () => {
                 )}
               </div>
               <div className="stock-reinstatement-section">
-                <h3>{t.panes.form}</h3>
+                <h3>
+                  <span className="info-label">
+                    {t.panes.form}
+                    <InfoTip text={t.scopeNotice} />
+                  </span>
+                </h3>
                 <div className="form-grid stock-reinstatement-form">
                   <SelectField
                     label={t.fields.targetWarehouse}

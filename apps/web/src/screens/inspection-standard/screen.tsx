@@ -26,7 +26,12 @@ import { useInspectionDrawings } from '../../patterns/inspection-drawings';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { usePageHub } from '../../patterns/page-hub';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import {
   PaneHeightSplitter,
   QUALITY_STANDARD_ORIENTATION_KEY,
@@ -2456,6 +2461,12 @@ export const InspectionStandardScreen = () => {
         data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <PlanListPane
+          head={
+            <PaneListHead
+              title={t.panes.plan}
+              collapse={{ ...listCollapse, count: planList.data?.page.total }}
+            />
+          }
           itemPartsOf={itemPartsOf}
           versionStatusOf={latestVersionStatusOf}
           plans={plans}
@@ -2467,13 +2478,8 @@ export const InspectionStandardScreen = () => {
           onChangePageSize={changePageSize}
           onChangePage={changePage}
           selectedPlanId={selectedPlanId}
-          /* 고르면 목록을 접어 상세가 자리를 다 쓴다 — 다시 펼치기는 목록과 상세 사이의 단추(사용자 지시 · #252). */
-          onSelect={(inspectionPlanId) =>
-            guardMove(() => {
-              handleSelectPlan(inspectionPlanId);
-              if (!split.collapsed) split.toggleCollapsed();
-            })
-          }
+          /* 골라도 목록은 그대로 둔다 — 접기는 사용자가 「목록 접기」로만(#350 사용자 지시). */
+          onSelect={(inspectionPlanId) => guardMove(() => handleSelectPlan(inspectionPlanId))}
           loadError={
             planList.isError ? (
               <LoadErrorBanner error={planList.error} onRetry={() => void planList.refetch()} />
@@ -2485,7 +2491,7 @@ export const InspectionStandardScreen = () => {
           label={hubText.splitter}
           ratio={split.ratio}
           onChange={split.commit}
-          collapse={listCollapse}
+          collapse={{ ...listCollapse, count: planList.data?.page.total }}
         />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter

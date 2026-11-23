@@ -102,8 +102,8 @@ export const NAV_LEAD: NavEntry = {
  *
  * ⭐ **묶음의 뼈대는 「MES 메뉴 아키텍처」이고, 차례는 「매일 일하는 순서」다**(사용자 2026-10-20).
  * 매일 여는 업무 묶음(구매/자재 → 품질 → 생산 → 영업/출하)과 자기에게 온 것을 보는 업무함을
- * 앞에 두고, **정해 두고 가끔 여는 묶음**(기준정보 관리 → 설비 보전 관리 → 시스템 관리)을 뒤에
- * 둔다. 아키텍처는 기준정보를 맨 앞에 두었으나, 자주 열지 않는 마스터가 첫 줄을 차지하면 매일
+ * 앞에 두고, **정해 두고 가끔 여는 묶음**(기준정보 관리 → 시스템 관리)을 뒤에 둔다(설비 보전 관리는
+ * 메뉴에서 감췄다 · 2026-11-20). 아키텍처는 기준정보를 맨 앞에 두었으나, 자주 열지 않는 마스터가 첫 줄을 차지하면 매일
  * 쓰는 묶음이 아래로 밀린다.
  *
  * ⭐ **짝을 이루는 화면은 탭 묶음 한 줄로 선다**(`tabs` · 사용자 2026-10-20). 같은 데이터를 나눠
@@ -402,28 +402,11 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           },
         ],
       },
-      /*
-       * 품질 승인 처리 — 긴급 IQC 생략 한도승인(W-01-02)을 유형 탭 하나로 품는다(#144). 탭은 화면이 유형 탭
-       * 줄에 직접 그린다(`inlineTabs`) — 셸 탭 막대까지 서면 탭 줄이 둘이 된다.
-       */
       {
         to: '/quality/approvals',
         icon: 'approval',
         label: '품질 승인 처리',
         labelVi: 'Xử lý phê duyệt chất lượng',
-        inlineTabs: true,
-        tabs: [
-          {
-            to: '/quality/approvals',
-            label: '품질 승인 처리',
-            labelVi: 'Xử lý phê duyệt chất lượng',
-          },
-          {
-            to: '/logistics/iqc-skip-approval',
-            label: 'IQC (수입검사) 생략',
-            labelVi: 'Bỏ qua IQC (kiểm tra đầu vào)',
-          },
-        ],
       },
       /* W-03-10 — 여기서 정한 처분이 폐기·재등록·재작업 화면의 진입을 연다. */
       {
@@ -436,8 +419,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   },
   /*
    * 생산 관리 — ERP W/O 를 받아 보고(바뀐 것은 같은 자리에서 확인) → MES W/O 로 확정·배포하고 →
-   * (예외로 긴급 발행) → 진행을 보고 → 마감한다. 긴급 W/O 의 부족 자재는 「구매 / 자재 관리 > 출고
-   * 관리」의 자재 불출 요청으로 잇는다.
+   * 진행을 보고 → 마감한다. 예외 갈래인 긴급 발행은 메뉴에서 감췄다(아래 W-02-07 자리).
    */
   {
     label: '생산 관리',
@@ -479,13 +461,10 @@ export const NAV_GROUPS: readonly NavGroup[] = [
        * W-02-04(W/O 확정, 배포)는 메뉴에서 뺐다. 배포는 「작업지시 목록」 작업함의 일괄 배포와 처리 화면 마지막 단계가
        * 맡는다(화면 구성 규범 C-17, T-W-C). 옛 주소는 작업함의 「배포 대기」 조건으로 넘어간다.
        */
-      /* W-02-07 — 계획을 거치지 않고 직접 발행한다. 갈래가 달라 정규 흐름 뒤에 둔다. */
-      {
-        to: '/production/emergency-work-orders',
-        icon: 'bolt',
-        label: '긴급 W/O 발행',
-        labelVi: 'Phát hành W/O khẩn',
-      },
+      /*
+       * W-02-07 긴급 W/O 발행은 **메뉴에서 감춘다**(사용자 지시 2026-11-20) — 주소·화면은 남긴다. 다시 세우면
+       * 자리는 여기다(계획을 거치지 않는 갈래라 정규 흐름 뒤).
+       */
       {
         to: '/production/work-order-progress',
         icon: 'monitoring',
@@ -513,7 +492,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     ],
   },
   /*
-   * 영업 / 출하 관리 — 출하지시 편성 → 예정 → 긴급 직행 → 출하 내역(피처 010),
+   * 영업 / 출하 관리 — 출하지시 편성 → 예정(피처 012: 긴급 직행 · 출하 내역은 메뉴에서 뺐다),
    * 그리고 확정된 출하가 되돌아오는 반품·클레임 갈래가 뒤따른다. OQC 판정은 「품질 관리」로 옮겼다.
    */
   {
@@ -524,7 +503,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         to: '/shipment/shipment-request-create',
         icon: 'assignment',
-        label: '출하지시서 Import·작업지시 생성',
+        label: '출하작업지시 생성',
         labelVi: 'Import lệnh xuất hàng · tạo lệnh sản xuất',
       },
       {
@@ -532,29 +511,18 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         icon: 'event_note',
         label: '출하 예정 목록',
         labelVi: 'Danh sách kế hoạch xuất hàng',
+        /*
+         * 피처 012 T064 · FR-024 — 「출하 취소(송신 전)」(W-04-12)만 가진 역할도 이 화면에서 취소 · 확정을 한다.
+         * 역할 저장값을 바꾸지 않고 메뉴를 세운다.
+         */
+        alsoFor: ['/shipment/shipment-confirm'],
       },
       /*
-       * 피처 010(omf-all-around#305) — 출하는 PDA 피킹 → OQC → POP 「출하 완료」(P-04-07)로 끝난다.
-       * 관리웹 출하 처리(W-04-04)는 **메뉴에서 감춘다** — 주소·화면은 남긴다(배포 전에 예약만 있던
-       * 옛 피킹을 끝내는 관리자용 링크, 배포 공지). 그래서 그 묶음에 있던 긴급 직행(W-04-05)이
-       * 독립 항목으로 나왔다 — 창고 경유·피킹·포장을 건너뛰는 예외 흐름이라 출하 내역 «앞»이다.
+       * 피처 012 — 긴급 직행 출하 처리(W-04-05)는 쓰지 않는다: 메뉴에서 감춘다(FR-022a · D-13). 주소 · 화면 · 서버는
+       * 그대로 둔다 — 다시 세우려면 이 자리에 아래 항목을 되살린다.
+       *   { to: '/shipment/expedited-shipment', icon: 'outbound', label: '긴급 직행 출하 처리', labelVi: 'Xử lý xuất hàng thẳng khẩn' }
+       * 출하 내역(W-04-12)은 없어졌다(FR-023) — 그 일은 출하 예정 목록 「출하」 칸이 맡는다.
        */
-      {
-        to: '/shipment/expedited-shipment',
-        icon: 'outbound',
-        label: '긴급 직행 출하 처리',
-        labelVi: 'Xử lý xuất hàng thẳng khẩn',
-      },
-      /*
-       * W-04-12 — 확정 단계가 없어져 이름이 「출하 내역」이다(피처 010). 옛 흐름·긴급 직행의 미확정
-       * 출하는 이 화면 상세에서 한 건씩 확정한다.
-       */
-      {
-        to: '/shipment/shipment-confirm',
-        icon: 'task_alt',
-        label: '출하 내역',
-        labelVi: 'Lịch sử xuất hàng',
-      },
       /*
        * 반품·클레임 — 확정된 출하가 되돌아오는 한 흐름이다: 입고 등록 → 판정 의뢰(판정은 품질의
        * 처분 판정 처리 W-03-10 몫) → 판정 결과에 따라 재고 재등록 또는 제품 폐기 요청.
@@ -621,8 +589,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   },
   /*
    * 기준정보 관리 — 품목·BOM(ERP 원본 위에 MES 확장속성)을 앞에 두고, MES 가 직접 세우는
-   * 마스터(공정 → 설비 → 툴·금형 → 계측기 → 창고)를 뒤에 둔다. 횡단 조회인 마스터
-   * 변경관리가 끝이다. ERP 에서 받은 원본만 보는 표는 「시스템 관리 > ERP 연동 현황·이력」에 있다.
+   * 마스터(공정 → 설비 → 툴·금형 → 창고)를 뒤에 둔다. 계측기 · 공급사·품목 기본 정보 · 마스터 변경관리는
+   * 메뉴에서 감췄다(각 자리의 주석). ERP 에서 받은 원본만 보는 표는 「시스템 관리 > ERP 연동 현황·이력」에 있다.
    */
   {
     label: '기준정보 관리',
@@ -648,16 +616,16 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         ],
       },
       /*
-       * 공정 경로 관리 — 공정 경로(Routing) · 공정 관리(공정 마스터)를 사이드바 한 줄 · 본문 맨 위 탭으로 묶는다
+       * 라우팅 관리 — 라우팅(Routing) · 공정 관리(공정 마스터)를 사이드바 한 줄 · 본문 맨 위 탭으로 묶는다
        * (사용자 지시 · omf-all-around#231). 두 탭 모두 W-06-01 이다.
        */
       {
         to: '/master-data/routing',
         icon: 'account_tree',
-        label: '공정 경로 관리',
+        label: '라우팅 관리',
         labelVi: 'Quản lý lộ trình công đoạn',
         tabs: [
-          { to: '/master-data/routing', label: '공정 경로', labelVi: 'Lộ trình công đoạn' },
+          { to: '/master-data/routing', label: '라우팅', labelVi: 'Lộ trình công đoạn' },
           { to: '/master-data/processes', label: '공정 관리', labelVi: 'Quản lý công đoạn' },
         ],
       },
@@ -708,37 +676,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         ],
       },
       /*
-       * 계측기 — 마스터와 검교정 이력이 **같은 계측기를 다룬다**. 검교정은 보전 묶음에 있었으나
-       * 이력이 마스터 없이는 적힐 수 없어 마스터 옆으로 옮겼다.
+       * 계측기(마스터 · 검교정 이력 탭 묶음)와 W-06-25 공급사·품목 기본 정보는 **메뉴에서 감춘다**(사용자 지시
+       * 2026-11-20) — 주소·화면은 남긴다. 다시 세우면 자리는 툴·금형 다음 · 창고·위치 앞이다(계측기 → 공급사·품목).
        */
-      {
-        to: '/equipment/gauge-master',
-        icon: 'straighten',
-        label: '계측기',
-        labelVi: 'Thiết bị đo',
-        tabs: [
-          {
-            to: '/equipment/gauge-master',
-            label: '계측기 마스터 관리',
-            labelVi: 'Quản lý dữ liệu gốc thiết bị đo',
-          },
-          {
-            to: '/equipment/gauge-calibration',
-            label: '계측기 검교정 이력',
-            labelVi: 'Lịch sử hiệu chuẩn thiết bị đo',
-          },
-        ],
-      },
-      /*
-       * W-06-25 공급사·품목 기본 정보 — 자재 관리 LOT 발행(POP P-01-01 · 관리웹 W-01-14)이 미리 채울 패키징과
-       * 자재 관리 LOT당 재고 수량(005 · omf-all-around#254). 품목 다음, 창고·위치 앞이다(screens/W-06-25.md).
-       */
-      {
-        to: '/master-data/supplier-item-defaults',
-        icon: 'package_2',
-        label: '공급사·품목 기본 정보', // ui-check-ignore: C-13 설계 확정 화면 이름 「공급사·품목 기본 정보」(screens/W-06-25.md)
-        labelVi: 'Thông tin mặc định nhà cung cấp · mặt hàng', // ui-check-ignore: C-13 설계 확정 화면 이름 「공급사·품목 기본 정보」(screens/W-06-25.md)
-      },
       /*
        * 창고·위치 — 창고·Location → 창고 배치도(위치를 도면에 얹음).
        * 물건이 오가는 「구매 / 자재 관리」가 아니라 어디에 둘지 **정해 두는** 일이라 기준정보다.
@@ -761,77 +701,16 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           },
         ],
       },
-      /* 특정 마스터에 속하지 않는 횡단 조회라 마스터 항목들 뒤에 둔다. */
-      {
-        to: '/master-data/master-change',
-        icon: 'history',
-        label: '마스터 변경관리',
-        labelVi: 'Quản lý thay đổi dữ liệu gốc',
-      },
+      /*
+       * W-06-11 마스터 변경관리는 **메뉴에서 감춘다**(사용자 지시 2026-11-20) — 주소·화면은 남긴다. 다시 세우면
+       * 자리는 마스터 항목들 뒤다(특정 마스터에 속하지 않는 횡단 조회).
+       */
     ],
   },
   /*
-   * 설비 보전 관리 — 아키텍처에 없는 묶음이다. 기준정보 관리 뒤·시스템 관리 앞이다(사용자 2026-10-20). 설비·툴·
-   * 계측기 마스터는 「기준정보 관리」로 갔고 여기에는 **일하는 화면**만 남았다: 설비 보전(고장
-   * → 지시 → 실적) · 툴 보전(오더 → 실적) · 결과를 보는 비가동 집계.
+   * 설비 보전 관리 묶음(설비 보전 · 툴 보전 · 비가동 집계 조회)은 **통째로 메뉴에서 감춘다**(사용자 지시 2026-11-20)
+   * — 주소·화면은 남긴다. 다시 세우면 자리는 기준정보 관리 뒤·시스템 관리 앞이다(사용자 2026-10-20).
    */
-  {
-    label: '설비 보전 관리',
-    labelVi: 'Quản lý bảo trì thiết bị',
-    icon: 'build',
-    items: [
-      /* 설비 보전 — 고장이 보전지시의 한 원천이고, 지시가 실적의 대상이다. 한 흐름의 세 단계다. */
-      {
-        to: '/equipment/failures',
-        icon: 'build',
-        label: '설비 보전',
-        labelVi: 'Bảo trì thiết bị',
-        tabs: [
-          {
-            to: '/equipment/failures',
-            label: '설비고장 상세처리',
-            labelVi: 'Xử lý chi tiết sự cố thiết bị',
-          },
-          {
-            to: '/equipment/maintenance-orders',
-            label: '보전지시 발행',
-            labelVi: 'Phát hành lệnh bảo trì',
-          },
-          {
-            to: '/equipment/maintenance-results',
-            label: '보전 실적·예비품',
-            labelVi: 'Kết quả bảo trì · phụ tùng',
-          },
-        ],
-      },
-      /* 툴 보전 — 오더가 실적의 대상이다. */
-      {
-        to: '/equipment/tool-pm-order',
-        icon: 'schedule',
-        label: '툴 보전',
-        labelVi: 'Bảo trì công cụ',
-        tabs: [
-          {
-            to: '/equipment/tool-pm-order',
-            label: '툴 보전오더 생성',
-            labelVi: 'Tạo lệnh bảo trì công cụ',
-          },
-          {
-            to: '/equipment/tool-pm-result',
-            label: '툴 PM 실적 등록',
-            labelVi: 'Đăng ký kết quả PM công cụ',
-          },
-        ],
-      },
-      /* 돌아간 결과를 보는 자리라 일하는 화면들 뒤다. */
-      {
-        to: '/equipment/downtime-summary',
-        icon: 'timelapse',
-        label: '비가동 집계 조회',
-        labelVi: 'Tra cứu tổng hợp dừng máy',
-      },
-    ],
-  },
   /*
    * 시스템 관리 — **관리자가 남을 설정하고 연동을 지켜보는 자리**다. ERP 연동 현황(받은 데이터 조회 포함) → 사용자·권한 → 결재·알림
    * 설정 → 공통 설정 차례다(아키텍처).
@@ -887,8 +766,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         to: '/system/users-roles',
         icon: 'manage_accounts',
-        label: '사용자·역할·권한',
-        labelVi: 'Người dùng · vai trò · quyền',
+        label: '사용자 역할 권한 관리',
+        labelVi: 'Quản lý người dùng · vai trò · quyền',
       },
       /* W-06-15 — 승인자를 정할 수 있게 된 다음에 결재선을 세운다. */
       {
@@ -942,8 +821,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         to: '/system/terminal-process-map',
         icon: 'tablet_android',
-        label: '단말기-공정 매핑',
-        labelVi: 'Ánh xạ máy quét - công đoạn',
+        label: '단말 관리',
+        labelVi: 'Quản lý thiết bị đầu cuối',
       },
     ],
   },

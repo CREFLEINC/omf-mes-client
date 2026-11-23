@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import {
@@ -1003,7 +1003,9 @@ describe('EquipmentMasterScreen — 상위 그룹 선택지와 순환', () => {
     await user.click(await screen.findByRole('button', { name: 'GRP-A' }));
 
     await screen.findByRole('region', { name: t.form.editTitle });
-    expect(form().getByText(t.actionReasons.parentExcludesSelfAndDescendants)).toBeInTheDocument();
+    expect(
+      form().getByRole('button', { name: t.actionReasons.parentExcludesSelfAndDescendants }),
+    ).toBeInTheDocument();
   });
 
   it('최상위로 두는 선택지가 첫 줄에 있다', async () => {
@@ -1453,6 +1455,20 @@ describe('EquipmentMasterScreen — 설비 목록 탭', () => {
     expect(pane.getByText('EQ-02')).toBeInTheDocument();
   });
 
+  /* 점검 항목 탭을 보는 동안에도 자산 뷰를 내리지 않는다 — 적어 두고 조회하지 않은 검색어가 남는다(#350 리뷰). */
+  it('점검 항목 탭에 다녀와도 설비 탭에 적어 둔 검색어가 남는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+    const pane = within(await openEquipmentTab(user));
+    await user.type(pane.getByLabelText(t.equipmentFilters.searchLabel), 'EQ-0');
+
+    await user.click(screen.getByRole('tab', { name: t.inspectionItem.tabLabel }));
+    await user.click(screen.getByRole('tab', { name: t.views.assets }));
+
+    const back = within(screen.getByRole('region', { name: t.tabs.equipment }));
+    expect(back.getByLabelText(t.equipmentFilters.searchLabel)).toHaveValue('EQ-0');
+  });
+
   /*
    * ⭐ 계약의 조건 이름은 `productionLineId` 이고 값은 설비 그룹 식별자와 «같다» —
    * 저장처의 이름이 `production_line` 이라 필드가 그것을 따르고 있을 뿐이다.
@@ -1885,19 +1901,23 @@ describe('EquipmentMasterScreen — 설비 등록·수정', () => {
 
     expect(equipmentForm().getByLabelText(t.fields.calibrationCycle)).toHaveTextContent('12');
     expect(
-      equipmentForm().getByText(t.actionReasons.calibrationCycleOwnedElsewhere),
+      equipmentForm().getByRole('button', { name: t.actionReasons.calibrationCycleOwnedElsewhere }),
     ).toBeInTheDocument();
   });
 
   /* 이 화면이 영영 정하지 않는 값은 잠긴 입력칸이 아니라 값 표기로 낸다. */
-  it('운용 상태와 검교정 일자를 값으로만 보이고 사유를 함께 낸다', async () => {
+  it('운용 상태와 검교정 일자를 값으로만 보이고 사유는 라벨 옆 ⓘ 로 낸다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
     await openEquipment(user);
 
-    expect(equipmentForm().getByText(t.actionReasons.statusNotEditableHere)).toBeInTheDocument();
-    expect(equipmentForm().getByText(t.actionReasons.calibrationDatesReadOnly)).toBeInTheDocument();
+    expect(
+      equipmentForm().getByRole('button', { name: t.actionReasons.statusNotEditableHere }),
+    ).toBeInTheDocument();
+    expect(
+      equipmentForm().getByRole('button', { name: t.actionReasons.calibrationDatesReadOnly }),
+    ).toBeInTheDocument();
     // 잠긴 입력칸을 두지 않는다 — 「언젠가 여기서 고칠 수 있다」를 뜻하게 된다.
     expect(
       equipmentForm().queryByRole('textbox', { name: new RegExp(t.fields.lastCalibrationDate) }),
@@ -2623,5 +2643,36 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
     const dialog = within(await screen.findByRole('dialog', { name: t.equipmentForm.createTitle }));
 
     expect(dialog.queryByRole('button', { name: t.actions.disposeEquipment })).toBeNull();
+  });
+});
+
+describe('EquipmentMasterScreen — 목록 접기(#350)', () => {
+  afterEach(() => {
+    window.localStorage.removeItem('omf-mes:equipment-master:split:collapsed');
+  });
+
+  it('접으면 「목록 N건」 탭이 서고, 펼쳐도 고른 그룹 · 적던 값 · 검색어가 그대로다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const name = await openGroup(user);
+    await user.type(name, ' 수정');
+    await user.type(screen.getByLabelText(t.filters.searchLabel), 'GRP');
+    const split = document.querySelector('.list-detail-split')!;
+
+    await user.click(
+      screen.getAllByRole('button', { name: messages.common.inspectionHub.listCollapse })[0]!,
+    );
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = split.querySelector<HTMLElement>('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록4건');
+
+    await user.click(tab!);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    expect(screen.getByRole('button', { name: 'GRP-A' })).toHaveAttribute('aria-current', 'true');
+    expect(form().getByRole('textbox', { name: new RegExp(t.fields.groupName) })).toHaveValue(
+      'GRP-A 그룹 수정',
+    );
+    expect(screen.getByLabelText(t.filters.searchLabel)).toHaveValue('GRP');
   });
 });

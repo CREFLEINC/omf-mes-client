@@ -20,9 +20,11 @@ export const oqcInspection = {
      * 대상 LOT·기준 버전 같은 나머지는 고른 뒤 우측 창이 보인다.
      */
     columns: {
-      skip: '생략',
       inspectionRequestNo: '의뢰번호',
       itemId: '품목',
+      /** 품목은 코드 · 이름 두 칸으로 나눠 보인다(사용자 지시 2026-11-20). */
+      itemCode: '품목코드',
+      itemName: '품목명',
       targetQty: '검사수량',
       statusCode: '상태',
     },
@@ -99,9 +101,8 @@ export const oqcInspection = {
     inProgress: '진행',
     completed: '완료',
     skipped: '생략',
-    /** 생략 근거(omf-all-around#212) — 검사 기준의 기본 생략 · 건별 결재 승인. */
-    skippedDefault: '생략(기본 설정)',
-    skippedApproval: '생략(결재 승인)',
+    /** 생략 근거(omf-all-around#212) — 검사 기준의 기본 생략. */
+    skippedDefault: '생략',
     cancelled: '취소',
   },
 
@@ -173,7 +174,7 @@ export const oqcInspection = {
      * 쓰거나 확정할 길이 없다 — 막다른 길로 두지 않고, 여기서 할 수 있는 일(재검사)을 말한다.
      */
     draftElsewhere:
-      '이 회차는 다른 곳에서 작성 중이라 이 화면에서는 고칠 수 없습니다. 다시 판정하려면 재검사 회차를 추가합니다.',
+      '이 회차는 다른 곳에서 작성 중이라 여기서 고칠 수 없습니다. 다시 판정하려면 재검사 회차를 추가하세요.',
     fields: {
       inspectedQty: '총 검사량',
       accepted: '합격량',
@@ -206,7 +207,7 @@ export const oqcInspection = {
     confirmBlockedByItems: '검사 항목을 모두 판정해야 확정할 수 있습니다.',
     judgmentSectionTitle: '판정',
     /** 저장 단추 왼쪽 경고 — 저장이 곧 확정이라 되돌릴 수 없다(#136). */
-    saveNote: '판정 확정 후 수정이 불가합니다.',
+    saveNote: '확정하면 판정을 고칠 수 없습니다.',
     /** 넘겼다. 0으로 깎아 감추지 않는다. */
     over: (over: string): string => `검사 수량보다 ${over} 많습니다.`,
     quantityInvalid: '수량은 0 이상, 소수점 여섯 자리까지 넣을 수 있습니다.',
@@ -221,7 +222,7 @@ export const oqcInspection = {
      * 코드값 시드가 아직 안 들어가 목록이 빌 수 있다. ⛔ **감추지 않고 사유를 밝힌다** —
      * 감추면 그 자리가 왜 없는지 사용자가 알 수 없다.
      */
-    judgmentUnavailable: '판정 값 목록이 아직 준비되지 않았습니다. 담당자에게 문의하세요.',
+    judgmentUnavailable: '등록된 판정 값이 없습니다. 담당자에게 문의하세요.',
     /**
      * 저장된 판정이 지금 목록에 없다. 사용 중지된 코드일 수 있다 — 조용히 비우면 사용자가
      * 고르지 않았는데 고른 것이 지워진다.
@@ -243,7 +244,7 @@ export const oqcInspection = {
     blockedByDraftElsewhere: '다른 곳에서 작성 중인 회차입니다. 재검사로 새 회차를 쌓으세요.',
     blockedByTotals: '수량 합계가 검사 수량과 일치해야 합니다.',
     blockedByJudgmentOptions:
-      '판정 값 목록이 준비되지 않아 저장할 수 없습니다. 담당자에게 문의하세요.',
+      '등록된 판정 값이 없어 저장할 수 없습니다. 담당자에게 문의하세요.',
     blockedByJudgment: '최종 판정을 선택해주세요.',
     /** 합격판정개수 기준 자동 판정(omf-all-around#126) — 기준에 합격판정개수가 있을 때만 선다. IQC(#125)와 같은 규칙이다. */
     judgmentChange: {
@@ -263,12 +264,6 @@ export const oqcInspection = {
     reinspect: '재검사 회차 추가',
     reinspectCancel: '재검사 그만두기',
     reinspectNote: '수량과 판정을 넣고 저장하면 새 회차가 만들어집니다. 앞 회차는 그대로 남습니다.',
-    /**
-     * ⛔ **사유를 지어내지 않는다.** 고를 값 목록이 아직 정해지지 않았다. 칸을 감추지 않고
-     * 왜 없는지 밝힌다.
-     */
-    reinspectReasonPending:
-      '재검사 사유는 아직 고를 수 없습니다. 사유 목록이 정해지면 이 자리에 추가됩니다.',
   },
 
   /**
@@ -304,8 +299,8 @@ export const oqcInspection = {
     /** 판정 구획의 「판정 확정 안내」 상자(#136) — 수량 · 고른 판정 · 되돌릴 수 없음 · LOT 영향. */
     guide: {
       title: '판정 확정 안내',
-      irreversible: '확정 후에는 판정을 수정할 수 없습니다.',
-      irreversibleHint: '변경이 필요한 경우 재검사를 진행해야 합니다.',
+      irreversible: '확정하면 판정을 고칠 수 없습니다.',
+      irreversibleHint: '바꾸려면 재검사를 해야 합니다.',
     },
   },
 
@@ -358,52 +353,6 @@ export const oqcInspection = {
     invalidState: '판정은 수정할 수 없습니다 — 재검사로 진행하세요.',
   },
 
-  /**
-   * OQC 생략(omf-all-around#119 · 서버 선행 P-83) — 요청 → 「특채·한도승인 승인 처리」 결재 → 여기서 실행.
-   * ⭐ 단위는 출하작업지시 하나다 — 실행하면 그 출하작업지시의 열린 OQC 의뢰가 함께 생략된다.
-   */
-  /** 목록 「생략」 칸의 창(사용자 지시 2026-11-09). */
-  skipDialog: {
-    approveTitle: 'OQC (출하검사) 생략 승인 처리',
-    approved: 'OQC 생략 요청을 승인했습니다.',
-    rejected: 'OQC 생략 요청을 반려했습니다.',
-    executeTitle: '출하검사를 생략하시겠습니까?',
-    executeBody:
-      '실행하면 이 출하작업지시의 남은 출하검사가 생략되고, 검사 결과는 합격으로 처리됩니다.',
-    execute: '생략 실행',
-  },
-  skip: {
-    heading: 'OQC (출하검사) 생략 요청',
-    /** 요청 → 승인 → 실행 단계(#136). */
-    steps: ['1. 생략 요청', '2. 승인 처리', '3. 생략 실행'],
-    /** 실행 뒤 결과 — 무엇이 바뀌는지(#136). */
-    result: '요청 후 생략을 승인하면 남은 출하검사가 생략되고, 검사 결과는 합격으로 처리됩니다.',
-    reason: '생략 사유',
-    reasonPlaceholder: '생략 사유를 입력하세요',
-    /** 요청한 그 건의 결재 화면으로(#136) — 「특채·한도승인 승인 처리」. 요청이 결재 대기일 때만 선다. */
-    openApproval: '요청 건 승인 처리로 이동',
-    currentStep: '현재 단계',
-    /** 입력한 글자 수 — 상한은 없다(계약은 비우지만 않으면 된다 · #136). */
-    reasonCount: (count: number): string => `${String(count)}자`,
-    reasonRequired: '생략 사유를 입력하세요.',
-    /** 구획의 단추 — 사유를 쓰는 창을 연다(#136). */
-    openRequest: '생략 요청',
-    cancel: '취소',
-    request: '생략 승인 요청',
-    requesting: '요청하는 중…',
-    execute: 'OQC 생략 실행',
-    executing: '실행하는 중…',
-    requested: 'OQC 생략을 요청했습니다. 결재가 끝나면 여기서 실행하세요.',
-    pending: '결재가 아직 진행 중입니다.',
-    approved: '생략이 승인됐습니다. 실행하면 이 출하작업지시의 OQC 가 생략됩니다.',
-    rejected: '직전 생략 요청이 반려됐습니다. 다시 요청할 수 있습니다.',
-    executed: 'OQC 를 생략했습니다. 출하검사가 통과로 바뀌었습니다.',
-    skipped: '이 의뢰는 OQC 생략으로 닫혔습니다.',
-    /** 검사 기준의 기본 생략으로 만들어진 의뢰(omf-all-around#212) — 결재 없이 처음부터 생략이다. */
-    skippedDefault: '검사 기준이 ‘기본 생략’으로 설정되어 OQC 검사 없이 출하 처리되었습니다.',
-    loading: '생략 결재 상태를 불러오는 중입니다.',
-    loadFailed: '생략 결재 상태를 불러오지 못했습니다.',
-  },
   /**
    * 시리얼 OQC(omf-all-around#68 · 서버 선행 P-101) — 검사한 시리얼과 OK/NG 를 판정과 함께 저장한다.
    * 시리얼 판정은 시리얼당 한 줄로 남는다. 재검 회차는 1차를 그대로 두고 최종만 바꾼다.
@@ -519,7 +468,7 @@ export const oqcInspection = {
     targetPicked: (target: string, picked: string, uom: string): string =>
       `${target} / ${picked} ${uom}`,
     over: (qty: string): string => `초과 ${qty}`,
-    note: '판정은 POP 「출하 완료」(P-04-07) 때 확정됩니다. 확정 버튼은 없습니다. 그 전까지 결과를 더하거나 고칠 수 있고, LOT 마다 그 LOT 을 매칭한 마지막 결과가 판정입니다.',
+    note: '판정은 POP 「출하 완료」 때 확정됩니다. 확정 버튼은 없습니다. 그 전까지 결과를 더하거나 고칠 수 있고, LOT 마다 그 LOT 을 매칭한 마지막 결과가 판정입니다.',
     skipped: '이 의뢰는 OQC 생략으로 닫혔습니다.',
     skippedMore:
       '피킹 LOT 은 모두 통과로 봅니다. 생략 뒤 피킹되는 LOT(교체 포함)도 생략으로 봅니다.',
@@ -586,7 +535,6 @@ export const oqcInspection = {
       alsoMatched: (seqNos: string): string => `${seqNos}회차에도 매칭됨`,
       matchRequired: '피킹 LOT 을 1개 이상 고르세요',
       judgmentHeading: '판정',
-      judgmentNote: '하나만 고릅니다. 수량은 넣지 않습니다(서버가 매칭 LOT 피킹 합으로 채웁니다).',
       judgmentRequired: '판정을 고르세요',
       reasonHeading: '재검 사유',
       reasonHelp: '이 결과가 아래 피킹 LOT 의 판정을 바꿉니다. 재검 사유를 고르세요.',

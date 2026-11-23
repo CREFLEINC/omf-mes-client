@@ -13,7 +13,12 @@ import type { ReactNode } from 'react';
 import { describeReference, toReference, type ReferenceSource } from './lookups';
 import { CONTRACT_SORT_KEYS, toSortState, type SortKey } from './sort';
 import { progressLabel } from './status-options';
-import type { LineQtyTotals, ShipmentRequestView } from './types';
+import {
+  completionMarkOf,
+  localToday,
+  type LineQtyTotals,
+  type ShipmentRequestView,
+} from './types';
 
 const t = messages.shipmentSchedule;
 
@@ -29,12 +34,12 @@ export interface ShipmentTableProps {
   customerLookup: ReferenceSource;
   shipToPartnerLookup: ReferenceSource;
   /** 지정이 끝난 줄에 **어느 공장인지**를 적기 위해 받는다(사용자 지시 2026-09-22). */
-  fulfillmentPlantLookup: ReferenceSource;
   onFirstPage: () => void;
   onRetryReferences: () => void;
-  onAssignPlant: (shipmentRequestId: number) => void;
   /** 피처 010 — 지시서 번호를 누르면 상세 창을 연다. */
   onOpenDetail: (shipmentRequestId: number) => void;
+  /** 피처 012 — ERP 송신 칩으로 거른 중이면 빈 문구가 그 거르기를 풀라고 말한다(시안 W0402-After 빈 상태). */
+  erpFiltered?: boolean;
 }
 
 /** 값이 없는 칸은 비워 두지 않는다. */
@@ -106,20 +111,29 @@ const renderJudgment = (summary: ShipmentRequestView['lotJudgmentSummary']): Rea
 };
 
 /**
- * 피처 010 — 진행 칩 아래 「완료 대기」(막는 이유 없음) / 「막힘 n」. 미편성과 출하 완료에는 달지 않는다.
+ * 피처 010 — 진행 칩 아래 칩. 고르는 규칙은 `completionMarkOf`(#342): 진짜 이슈는 붉은 「막힘 n」,
+ * 출하일이 지난 피킹 부족은 주황 「지연」, 막는 이유가 없으면 초록 「완료 대기」, 정상 진행만이면 없음.
  */
-const renderCompletion = (row: ShipmentRequestView): ReactNode => {
-  if (row.blockerCount === null) return null;
-  if (row.shipmentProgressCode === 'NOT_ALLOCATED' || row.shipmentProgressCode === 'SHIPPED') {
-    return null;
+const renderCompletion = (row: ShipmentRequestView, today: string): ReactNode => {
+  const mark = completionMarkOf(row, today);
+  if (mark === null) return null;
+  if (mark.kind === 'blocked') {
+    return (
+      <Chip variant="status" status="error" size="sm">
+        {t.values.blocked(mark.count)}
+      </Chip>
+    );
   }
-  return row.blockerCount === 0 ? (
+  if (mark.kind === 'delayed') {
+    return (
+      <Chip variant="status" status="warning" size="sm">
+        {t.values.delayed}
+      </Chip>
+    );
+  }
+  return (
     <Chip variant="status" status="success" size="sm">
       {t.values.completionReady}
-    </Chip>
-  ) : (
-    <Chip variant="status" status="error" size="sm">
-      {t.values.blocked(row.blockerCount)}
     </Chip>
   );
 };
@@ -164,12 +178,13 @@ export const ShipmentTable = ({
   onSortChange,
   customerLookup,
   shipToPartnerLookup,
-  fulfillmentPlantLookup,
   onFirstPage,
   onRetryReferences,
-  onAssignPlant,
   onOpenDetail,
+  erpFiltered = false,
 }: ShipmentTableProps) => {
+  /* 「지연」 판단의 오늘 — 화면을 연 기기의 날짜(#342). */
+  const today = localToday();
   const columns: Column<ShipmentRequestView>[] = [
     {
       key: 'requestedShipDate',
@@ -242,19 +257,37 @@ export const ShipmentTable = ({
           <Chip variant="status" status={progressTone(row.shipmentProgressCode)} size="sm">
             {orEmptyMark(progressLabel(row.shipmentProgressCode))}
           </Chip>
-          {renderCompletion(row)}
+          {renderCompletion(row, today)}
         </span>
       ),
     },
     {
-      key: 'pickingWarehouses',
+      /*
+       * 피처 012 — 「피킹 창고」 자리에 지시서 줄의 출고 창고 요약(시안 W0402-After ②). 아래 줄에 공장.
+       * 옛 지시서(줄 창고 없음)는 「창고 미지정」(US6-1).
+       */
+      key: 'lineWarehouses',
       align: 'center',
-      header: t.table.pickingWarehouses,
-      width: '9%',
+      header: t.bu012.lineWarehouse,
+      width: '11%',
       render: (row) =>
-        row.pickingWarehouseNames.length === 0
-          ? t.values.empty
-          : row.pickingWarehouseNames.join(', '),
+        row.lineWarehouses.length === 0 ? (
+          <Chip variant="status" status="idle" size="sm">
+            {t.bu012.warehouseUnassigned}
+          </Chip>
+        ) : (
+          <span
+            className="shipment-schedule-warehouses"
+            title={row.lineWarehouses
+              .map((warehouse) => t.bu012.warehouse(warehouse.warehouseName, warehouse.plantName))
+              .join(', ')}
+          >
+            <span>{row.lineWarehouses.map((warehouse) => warehouse.warehouseName).join(', ')}</span>
+            <span className="field-note">
+              {[...new Set(row.lineWarehouses.map((warehouse) => warehouse.plantName))].join(', ')}
+            </span>
+          </span>
+        ),
     },
     {
       key: 'marks',
@@ -271,49 +304,29 @@ export const ShipmentTable = ({
         ),
     },
     {
-      key: 'fulfillmentPlant',
+      /* 피처 012 FR-018 — 대표 ERP 송신 상태(완료 출하가 있을 때만). 완료 전 지시서는 「—」. */
+      key: 'erpSendStatus',
+      align: 'center',
+      width: '8%',
+      header: t.bu012.erpSend,
+      render: (row) =>
+        row.erpSendStatus === null || row.erpSendStatus === undefined
+          ? t.values.empty
+          : t.bu012.erpStatus[row.erpSendStatus],
+    },
+    {
+      /* 피처 012 FR-007 — 「출하 담당 공장」 → 「사업부」. 사업부 없는 공장의 옛 지시서는 배지(빈 곳 ⑨). */
+      key: 'businessUnit',
       align: 'center',
       width: '9%',
-      header: t.table.fulfillmentPlant,
+      header: t.bu012.businessUnit,
       render: (row) =>
-        row.fulfillmentPlantId == null ? (
-          <Button
-            variant="outlined"
-            onClick={() => {
-              onAssignPlant(row.shipmentRequestId);
-            }}
-          >
-            {t.actions.assignPlant}
-          </Button>
+        row.businessUnitName === null ? (
+          <Chip variant="status" status="warning" size="sm">
+            {t.bu012.noBusinessUnit}
+          </Chip>
         ) : (
-          /*
-           * 「지정됨」이 아니라 **어느 공장인지** 적는다(사용자 지시 2026-09-22) — 지정 여부만
-           * 알려서는 다시 눌러 확인해야 한다. 이름을 못 구한 사정은 다른 참조 열과 같게 말한다.
-           *
-           * 단추가 글자로 바뀌어도 **줄 높이가 달라지지 않게** 한다 — 저장 뒤에 표가 낮아지면
-           * 고친 줄이 아니라 표 전체가 움직인 것처럼 보인다.
-           */
-          /*
-           * 지정을 끝낸 뒤에도 **다시 열 수 있다**(사용자 지시 2026-09-22). 서버는 피킹 전이고
-           * 이미 나간 출하의 창고 공장이 같으면 몇 번이든 받아 준다 — 막힌 경우는 서버가
-           * 사유를 돌려주므로 화면이 미리 잠그지 않는다.
-           */
-          <span className="shipment-schedule-plant-assigned">
-            <span className="shipment-schedule-plant-name">
-              {describeReference(toReference(fulfillmentPlantLookup, row.fulfillmentPlantId))}
-            </span>
-            <Button
-              className="shipment-schedule-plant-change"
-              variant="outlined"
-              /* 지정은 해야 할 일이고 변경은 이미 끝난 일을 되돌리는 보조 액션이라 작다. */
-              size="sm"
-              onClick={() => {
-                onAssignPlant(row.shipmentRequestId);
-              }}
-            >
-              {t.actions.changePlant}
-            </Button>
-          </span>
+          row.businessUnitName
         ),
     },
   ];
@@ -358,7 +371,7 @@ export const ShipmentTable = ({
         size="sm"
         live
         title={t.empty.noResultTitle}
-        description={t.empty.noResultDescription}
+        description={erpFiltered ? t.bu012.erpEmptyHint : t.empty.noResultDescription}
       />
     );
   };

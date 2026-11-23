@@ -1,0 +1,40 @@
+/*
+ * ── 품목 · 라인 시트 — 표의 줄을 누르면 아래에서 올라온다. 디자인 시스템은 좁은 화면에서 대화상자를 전체 화면으로 펴는데, 그 규칙을 되돌려
+ * 바닥에 붙은 판으로 띄운다(뒤 화면이 비쳐 하던 자리가 보인다).
+ */
+.mobile-shell dialog.item-sheet {
+  --dialog-max-h: 85dvh;
+  width: 100vw;
+  max-width: none;
+  height: fit-content;
+  margin: auto 0 0;
+  padding: 0;
+}
+
+.mobile-shell dialog.item-sheet > div {
+  height: auto;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+/* 시트 머리의 이름표 칸 — 이름표 왼쪽 · 값 오른쪽 한 줄씩(품목코드 · 품목명 · …). */
+.sheet-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-1, 4px) var(--space-3, 12px);
+  margin: 0;
+  font: var(--type-body-sm);
+}
+
+.sheet-facts dt {
+  color: var(--on-surface-muted);
+}
+
+.sheet-facts dd {
+  margin: 0;
+  color: var(--on-surface);
+}
+
+.sheet-facts .sheet-facts__code {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}

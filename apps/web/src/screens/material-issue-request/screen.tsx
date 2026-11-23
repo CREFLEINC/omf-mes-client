@@ -646,15 +646,7 @@ export const MaterialIssueRequestScreen = () => {
       />
 
       <div className="material-issue-request-workspace">
-        {/*
-         * ⭐ **상수 표시다.** 조건부로 감추지 않는다 — 이 문장이 이 화면의 존재 이유다.
-         */}
-        <div className="banner-slot">
-          <AlertBanner variant="info" title={t.policyNotice.title}>
-            {t.policyNotice.description}
-          </AlertBanner>
-        </div>
-
+        {/* 「절차를 거치지 않은 자재 반출은 금지」 상시 띠는 걷었다 — 필수가 아닌 문장은 두지 않는다(사용자 지시 2026-11-20). */}
         {prefill !== null && (
           <div className="banner-slot">
             <AlertBanner variant="info">{t.prefilled}</AlertBanner>
@@ -720,8 +712,9 @@ export const MaterialIssueRequestScreen = () => {
                     })),
                   ],
                   value: form.sourceWarehouseId === '' ? AUTO_SOURCE : form.sourceWarehouseId,
-                  note: lacksProductionWarehouse
-                    ? t.sourceWarehouse.none
+                  note: lacksProductionWarehouse ? t.sourceWarehouse.none : undefined,
+                  info: lacksProductionWarehouse
+                    ? undefined
                     : form.sourceWarehouseId === ''
                       ? t.sourceWarehouse.autoHelp(productionWarehouses.length)
                       : t.sourceWarehouse.fixedHelp(
@@ -783,9 +776,9 @@ export const MaterialIssueRequestScreen = () => {
             />
 
             <div className="material-issue-request-footer">
-              {usesProductionWarehouses && <p className="field-note">{t.reasonHelp}</p>}
               <ReasonPane
                 reasons={reasons}
+                info={usesProductionWarehouses ? t.reasonHelp : undefined}
                 reasonCode={form.reasonCode}
                 onChangeReason={(value) => {
                   changeForm({ reasonCode: value });

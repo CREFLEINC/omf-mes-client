@@ -12,8 +12,7 @@ export const inboundClose: Translated<typeof ko.inboundClose> = {
   done: {
     heading: (count: number) => `Đã nhập hàng xong · có thể hủy chốt ${count}`,
     empty: 'Không có mục nào hủy chốt được',
-    autoChip: 'Tự động chốt',
-    closedAuto: (when: string) => `Tự động chốt do sang ngày mới ${when}`,
+    closedAuto: (when: string) => `Tự động chốt ${when}`,
     closed: (when: string) => `Chốt ${when}`,
     reopen: 'Hủy chốt',
     blocked: (no: string) =>
@@ -24,36 +23,23 @@ export const inboundClose: Translated<typeof ko.inboundClose> = {
         chip: 'Không cần kiểm tra · chưa nhập kho',
         sub: 'LOT quản lý vật tư bình thường',
       },
-      IQC_SKIPPED: {
-        chip: 'Đã bỏ qua IQC khẩn cấp · chưa nhập kho',
-        sub: 'LOT quản lý vật tư bình thường (bỏ qua khẩn cấp)',
-      },
     },
   },
+  list: {
+    open: (itemCode: string, itemName: string) => `Mở ${itemCode} ${itemName}`,
+  },
+  sheet: {
+    title: 'Hàng nhập',
+    fields: { itemCode: 'Mã hàng', itemName: 'Tên hàng', supplier: 'Nhà cung cấp', qty: 'Số lượng' },
+    summary: (count: number, total: string) => `${String(count)} cái ${total}`,
+  },
   card: {
-    facts: {
-      supplier: 'Nhà cung cấp',
-      item: 'Mặt hàng',
-      lotCount: 'Số LOT',
-      totalQty: 'Tổng số lượng',
-      firstAt: 'Đăng ký đầu tiên',
-      quality: 'Chất lượng',
-    },
-    lotCount: (count: number) => `${count}`,
     open: (no: string) => `Mở ${no}`,
     withIqc: (closed: string, iqcNo: string) => `${closed} · ${iqcNo}`,
     lotItem: (no: string, item: string) => `${no} · ${item}`,
   },
   detail: {
-    inboundLot: 'LOT nhập hàng',
-    status: 'Trạng thái',
-    statusValue: 'Đang nhập hàng · chưa chốt',
-    item: 'Mặt hàng',
-    supplier: 'Nhà cung cấp',
-    receiptNo: 'Số nhập hàng',
-    firstAt: 'Đăng ký đầu tiên',
     lotCount: 'Số LOT',
-    totalQty: 'Tổng số lượng',
     lots: (count: number) => `LOT quản lý vật tư ${count}`,
     columns: { no: 'Số', qty: 'Số lượng', registered: 'Đăng ký' },
     unregister: 'Gỡ',
@@ -85,8 +71,6 @@ export const inboundClose: Translated<typeof ko.inboundClose> = {
     withIqc: (no: string) => `Đã nhập hàng xong — đã tạo yêu cầu IQC (${no})`,
     withIqcNoNumber: 'Đã nhập hàng xong — đã tạo yêu cầu IQC',
     noInspection: 'Đã nhập hàng xong — không cần kiểm tra, LOT quản lý vật tư bình thường',
-    notice: 'Đã gửi thông báo bàn giao IQC cho người phụ trách chất lượng.',
-    back: 'Về danh sách',
   },
   reopenDialog: {
     title: 'Hủy chốt?',
@@ -95,8 +79,6 @@ export const inboundClose: Translated<typeof ko.inboundClose> = {
         `Yêu cầu IQC (${iqcNo}) bị hủy và LOT nhập hàng quay về 「Đang nhập hàng」. LOT quản lý vật tư vẫn giữ chờ kiểm tra · tạm giữ.`,
       INSPECTION_NOT_REQUIRED: () =>
         'Bản ghi IQC 「Bỏ qua kiểm tra」 bị hủy và LOT nhập hàng quay về 「Đang nhập hàng」. LOT quản lý vật tư vẫn Bình thường (mặt hàng không cần kiểm tra).',
-      IQC_SKIPPED: (iqcNo: string) =>
-        `Yêu cầu IQC (${iqcNo}) bị hủy và LOT nhập hàng quay về 「Đang nhập hàng」. Việc bỏ qua IQC khẩn cấp mất hiệu lực và LOT quản lý vật tư quay về chờ kiểm tra.`,
     },
     cancel: 'Đóng',
     proceed: 'Hủy chốt',
@@ -109,7 +91,6 @@ export const inboundClose: Translated<typeof ko.inboundClose> = {
     codes: {
       IQC_RECORDED: 'Trong lúc đó đã có kết quả IQC.',
       GOODS_RECEIVED: 'Trong lúc đó LOT quản lý vật tư đã nhập kho.',
-      SKIP_PENDING: 'Đang chờ phê duyệt bỏ qua khẩn cấp.',
       INBOUND_LOT_FINALIZED: 'Quản trị viên đã Chốt cuối cùng.',
       LEGACY_INBOUND_LOT: 'Đây là dữ liệu nhập hàng cũ nên không hủy chốt được.',
     } as Record<string, string | undefined>,

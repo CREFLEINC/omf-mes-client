@@ -11,7 +11,7 @@ const DRAFTS = toOperationDrafts(routingOperationFixtures);
 const PROCESS_LABELS: Record<string, string> = { '9001': '사출', '9002': '조립' };
 
 const OPERATIONS_LOCK_REASON =
-  '공정 라인은 작성중 Rev에서만 편집할 수 있습니다. 변경하려면 신규 Rev를 발행하세요.';
+  '공정 라인은 작성중 Rev에서만 고칠 수 있습니다. 바꾸려면 「신규 Rev 발행」을 누르세요.';
 
 const renderPane = (overrides: Partial<OperationsPaneProps> = {}) => {
   const props: OperationsPaneProps = {

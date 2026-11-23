@@ -11,8 +11,10 @@ import { useFourMChangeTypeLabel } from '../four-m-inputs/panel';
 import { MaterialLotUsage, ProductionLotInputs } from './lot-genealogy';
 import { lotStatusTone, useLotTypeOptions } from './options';
 import { useLotDetail } from './queries';
+import type { ProductLotSplitView } from './types';
 import { useItemNameSources } from './reference-options';
 import { useUomCodeOf, withUom } from './uoms';
+import { InfoTip } from '../../patterns/info-tip';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
@@ -78,6 +80,9 @@ export const LotDetailPane = ({
   /* 투입 이력에서 고른 생산 LOT — 그 LOT 의 상세 이력을 팝업으로 연다(사용자 2026-11-02). */
   /* 008 — 분할 LOT 의 원래 LOT 을 같은 팝업으로 연다(「원래 LOT 상세 보기」). */
   const [parentOpen, setParentOpen] = useState(false);
+  /* 피처 013 — 생산 LOT 분리. 자식이면 분할 칸이 출고 대신 분리 위치 · 작업자 · PDA 확인을 보인다. */
+  const productSplit = detail.data?.productSplit ?? null;
+  const childSplit = productSplit?.role === 'CHILD' ? productSplit : null;
   const [openedLot, setOpenedLot] = useState<{
     lotId: number;
     lotNo: string;
@@ -181,6 +186,12 @@ export const LotDetailPane = ({
                       {t.detail.split.chip}
                     </Chip>
                   )}
+                  {/* 피처 013 — 분리한 뒤 PDA 에서 두 라벨을 확인하기 전이면 원래 · 새 LOT 모두 출하 피킹이 막힌다. */}
+                  {productSplit != null && productSplit.confirmedAt === null && (
+                    <Chip variant="status" status="warning" size="sm">
+                      {t.detail.productSplit.unconfirmedChip}
+                    </Chip>
+                  )}
                 </span>,
               ],
               [
@@ -231,10 +242,17 @@ export const LotDetailPane = ({
       {/* 008 — 부분 출고로 떼어 낸 분할 LOT 이면 그 원래 LOT · 분할 수량 · 시각 · 출고. */}
       {detail.data?.split != null && (
         <section className="lot-detail-split" aria-label={t.detail.split.label}>
-          <p className="field-note">{t.detail.split.note}</p>
           <dl className="lot-detail-fields">
             <div className="lot-detail-field" data-size="wide">
-              <dt className="field-label">{t.detail.split.parent}</dt>
+              {/* 분할 LOT 이 무엇인지는 원래 LOT 칸 이름 옆 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
+              <dt className="field-label">
+                <span className="info-label">
+                  {t.detail.split.parent}
+                  <InfoTip
+                    text={childSplit === null ? t.detail.split.note : t.detail.productSplit.note}
+                  />
+                </span>
+              </dt>
               <dd>
                 <Button
                   variant="text"
@@ -251,14 +269,24 @@ export const LotDetailPane = ({
                 )}
               </dd>
             </div>
-            <div className="lot-detail-field" data-size="short">
-              <dt className="field-label">{t.detail.split.qty}</dt>
-              <dd>{withUom(String(detail.data.initialQty), uomCodeOf(detail.data.uomId))}</dd>
-            </div>
-            <div className="lot-detail-field" data-size="short">
-              <dt className="field-label">{t.detail.split.at}</dt>
-              <dd>{formatDateTime(detail.data.split.splitAt)}</dd>
-            </div>
+            {childSplit === null ? (
+              <>
+                <div className="lot-detail-field" data-size="short">
+                  <dt className="field-label">{t.detail.split.qty}</dt>
+                  <dd>{withUom(String(detail.data.initialQty), uomCodeOf(detail.data.uomId))}</dd>
+                </div>
+                <div className="lot-detail-field" data-size="short">
+                  <dt className="field-label">{t.detail.split.at}</dt>
+                  <dd>{formatDateTime(detail.data.split.splitAt)}</dd>
+                </div>
+              </>
+            ) : (
+              <ProductSplitFields
+                split={childSplit}
+                uomCode={uomCodeOf(detail.data.uomId)}
+                formatDateTime={formatDateTime}
+              />
+            )}
             {detail.data.split.goodsIssue !== null && (
               <div className="lot-detail-field" data-size="short">
                 <dt className="field-label">{t.detail.split.issue}</dt>
@@ -386,5 +414,57 @@ export const LotHistoryDialog = ({
         />
       </div>
     </Dialog>
+  );
+};
+
+/**
+ * 생산 LOT 분리로 생긴 LOT 의 분할 칸(피처 013 · 시안 W0301) — 분리 수량 · 시각(단말 · 작업자) · 위치 · PDA 확인 · W/O.
+ * W/O 는 원래 LOT 의 것이다(서버가 분할 뿌리로 채운다).
+ */
+const ProductSplitFields = ({
+  split,
+  uomCode,
+  formatDateTime,
+}: {
+  split: ProductLotSplitView;
+  uomCode: string | null;
+  formatDateTime: (value: string | null) => string;
+}) => {
+  const ps = t.detail.productSplit;
+  const fields: [string, string, string][] = [
+    ['short', ps.qty, withUom(String(split.splitQty), uomCode)],
+    [
+      'wide',
+      ps.at,
+      ps.atText(formatDateTime(split.splitAt), split.splitTerminalCode, split.splitWorkerNo),
+    ],
+    [
+      'short',
+      ps.location,
+      ps.locationText(split.location.warehouseCode, split.location.locationCode),
+    ],
+    [
+      'wide',
+      ps.confirmed,
+      split.confirmedAt === null
+        ? ps.notConfirmed
+        : ps.confirmedText(formatDateTime(split.confirmedAt), split.confirmedWorkerNo),
+    ],
+    [
+      'short',
+      ps.workOrder,
+      split.workOrderNo === null ? EMPTY : ps.workOrderText(split.workOrderNo),
+    ],
+  ];
+
+  return (
+    <>
+      {fields.map(([size, label, value]) => (
+        <div className="lot-detail-field" data-size={size} key={label}>
+          <dt className="field-label">{label}</dt>
+          <dd>{value}</dd>
+        </div>
+      ))}
+    </>
   );
 };

@@ -71,6 +71,11 @@ export const useShipmentMeasurements = ({
     drafts,
     judgmentOptions,
     isLoading: specs.isLoading,
+    /** 검사 항목을 못 읽었다 — 「항목 없음」과 다른 경우다(POP 은 따로 보인다). */
+    loadError: specs.isError ? specs.error : null,
+    retry: () => {
+      void specs.refetch();
+    },
     hasError: hasValueError(rows, drafts),
     changeValue: (rowKey: string, value: string) =>
       setDrafts((current) => ({
@@ -103,9 +108,12 @@ export type ShipmentMeasurements = ReturnType<typeof useShipmentMeasurements>;
 export const ShipmentMeasurementSection = ({
   form,
   locked,
+  visibleRows,
 }: {
   form: ShipmentMeasurements;
   locked: boolean;
+  /** POP 이 쪽으로 나눠 보일 줄(없으면 전부). */
+  visibleRows?: ShipmentMeasurements['rows'];
 }) => {
   const uoms = useUomLookup();
   if (!form.hasPlan) return null;
@@ -121,6 +129,7 @@ export const ShipmentMeasurementSection = ({
         uomCodeOf={(uomId) => uoms.codeOf(uomId ?? undefined)}
         isLoading={form.isLoading}
         isLocked={locked}
+        visibleRows={visibleRows}
       />
     </div>
   );

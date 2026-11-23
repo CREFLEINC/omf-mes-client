@@ -305,8 +305,6 @@ export const GrLineTable = ({
 
   return (
     <>
-      <p className="field-note">{t.notes.returnQtyEmptyStart}</p>
-
       <div className="wide-table">
         <Table
           density="compact"
