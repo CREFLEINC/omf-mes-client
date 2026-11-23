@@ -169,6 +169,17 @@ describe('DecisionFormPane', () => {
     expect(note.nextElementSibling).toBe(screen.getByRole('button', { name: t.actions.cancel }));
   });
 
+  it('판정 사유가 비어 있으면 저장을 잠그고 이유를 단추에 잇는다(#352)', () => {
+    renderPane({ value: { ...EMPTY_DECISION_FORM, dispositionTypeCode: CODE, reason: '  ' } });
+    expect(saveButton()).toBeDisabled();
+    expect(saveButton()).toHaveAccessibleDescription(t.form.reasonRequired);
+  });
+
+  it('판정 사유를 넣으면 저장이 열린다(#352)', () => {
+    renderPane({ value: { ...EMPTY_DECISION_FORM, dispositionTypeCode: CODE, reason: '사유' } });
+    expect(saveButton()).toBeEnabled();
+  });
+
   it('입력이 없으면 취소를 잠근다', () => {
     renderPane({ canCancel: false });
 
@@ -208,7 +219,7 @@ describe('DecisionFormPane', () => {
       errors: { reason: t.form.reasonRequired, decisionQty: t.form.remainingUnknown },
     });
 
-    expect(screen.getByText(t.form.reasonRequired)).toBeInTheDocument();
+    expect(screen.getAllByText(t.form.reasonRequired)[0]).toBeInTheDocument();
     expect(screen.getByText(t.form.remainingUnknown)).toBeInTheDocument();
   });
 });

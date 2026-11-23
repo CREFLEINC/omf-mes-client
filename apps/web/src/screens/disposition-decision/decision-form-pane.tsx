@@ -90,12 +90,14 @@ export const DecisionFormPane = ({
   const qtyId = useId();
   const optionHintId = useId();
   const sortBlockId = useId();
+  const reasonBlockId = useId();
   const validFromId = useId();
   const validToId = useId();
   const todayText = toBusinessDate(today ?? new Date());
   const isConcession = value.dispositionTypeCode === CONCESSION;
   const pickType = (code: string): void => onChange(withDispositionType(value, code, todayText));
   const isLocked = lockReason !== undefined;
+  const reasonMissing = value.reason.trim() === '';
   const isSort = value.dispositionTypeCode === SORT;
   const uomLabel = uomId === undefined ? '' : lookupDisplayLabel(uoms, uomId);
   const remainingText =
@@ -339,6 +341,12 @@ export const DecisionFormPane = ({
         </span>
       )}
 
+      {/* 판정 사유는 필수 — 비어 있으면 저장 단추를 잠그고 그 이유를 단추에 잇는다(#352 사용자 지시). */}
+      {reasonMissing && (
+        <span id={reasonBlockId} className="visually-hidden">
+          {t.form.reasonRequired}
+        </span>
+      )}
       <div className="form-actions disposition-decision-actions">
         {/* 고른 유형으로 저장하면 생기는 일 — 정보 라벨로 취소 단추 왼쪽에(omf-all-around#352 사용자 지시). */}
         {effect !== undefined && (
@@ -351,8 +359,13 @@ export const DecisionFormPane = ({
           {t.actions.cancel}
         </Button>
         <Button
-          disabled={isLocked || isSaving || sortBlock !== undefined || noSelectableType}
-          aria-describedby={saveDescribedBy ?? (noSelectableType ? noTypeReasonId : undefined)}
+          disabled={
+            isLocked || isSaving || sortBlock !== undefined || noSelectableType || reasonMissing
+          }
+          aria-describedby={
+            saveDescribedBy ??
+            (noSelectableType ? noTypeReasonId : reasonMissing ? reasonBlockId : undefined)
+          }
           onClick={onSave}
         >
           {t.actions.save}

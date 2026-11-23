@@ -171,6 +171,10 @@ describe('DispositionDecisionScreen 조회', () => {
     await selectRow(user);
 
     const save = screen.getByRole('button', { name: t.actions.save });
+    // 판정 사유가 비어 있으면 저장이 잠긴다 — 넣으면 열린다(#352).
+    await waitFor(() => expect(screen.getByLabelText(t.form.reasonLabel)).toBeEnabled());
+    expect(save).toBeDisabled();
+    await user.type(screen.getByLabelText(t.form.reasonLabel), '합성 사유');
     await waitFor(() => {
       expect(save).toBeEnabled();
     });
