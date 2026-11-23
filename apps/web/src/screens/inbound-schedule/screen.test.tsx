@@ -1617,9 +1617,9 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     await screen.findByText('SAMPLE|LOT|0001');
     const split = (): Element | null => document.querySelector('.po-board-split');
 
-    await user.click(screen.getByRole('button', { name: t.listCollapse }));
+    await user.click(screen.getAllByRole('button', { name: t.listCollapse })[0]!);
     expect(split()).toHaveAttribute('data-left-collapsed', 'true');
-    expect(screen.getByRole('button', { name: t.listExpand })).toHaveAttribute(
+    expect(screen.getAllByRole('button', { name: t.listExpand })[0]!).toHaveAttribute(
       'aria-expanded',
       'false',
     );
@@ -1631,7 +1631,7 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
       ),
     ).toBe(true);
 
-    await user.click(screen.getByRole('button', { name: t.listExpand }));
+    await user.click(screen.getAllByRole('button', { name: t.listExpand })[0]!);
     expect(split()).not.toHaveAttribute('data-left-collapsed');
     expect(screen.getByRole('separator', { name: t.splitter })).toBeInTheDocument();
   });

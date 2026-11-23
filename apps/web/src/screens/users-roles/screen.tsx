@@ -16,7 +16,12 @@ import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from 'rea
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import {
   PaneHeightSplitter,
   SplitOrientationToggle,
@@ -1779,6 +1784,12 @@ export const UsersRolesScreen = () => {
         data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <UserListPane
+          head={
+            <PaneListHead
+              title={t.panes.userList}
+              collapse={{ ...listCollapse, count: userList.data?.page.total }}
+            />
+          }
           users={users}
           isLoading={userList.isPending}
           appliedFilters={filters}
@@ -1803,7 +1814,7 @@ export const UsersRolesScreen = () => {
           label={messages.common.inspectionHub.splitter}
           ratio={split.ratio}
           onChange={split.commit}
-          collapse={listCollapse}
+          collapse={{ ...listCollapse, count: userList.data?.page.total }}
         />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter
@@ -2094,6 +2105,12 @@ export const UsersRolesScreen = () => {
         data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <RoleListPane
+          head={
+            <PaneListHead
+              title={t.panes.roleList}
+              collapse={{ ...listCollapse, count: roleList.data?.page.total }}
+            />
+          }
           roles={roles}
           isLoading={roleList.isPending}
           appliedFilters={roleFilters}
@@ -2116,7 +2133,7 @@ export const UsersRolesScreen = () => {
           label={messages.common.inspectionHub.splitter}
           ratio={split.ratio}
           onChange={split.commit}
-          collapse={listCollapse}
+          collapse={{ ...listCollapse, count: roleList.data?.page.total }}
         />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter

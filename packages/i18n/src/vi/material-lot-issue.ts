@@ -18,7 +18,6 @@ export const materialLotIssue: Translated<typeof ko.materialLotIssue> = {
   },
   list: {
     label: 'Nhà cung cấp · mặt hàng',
-    count: (count: number) => `${count} nhà cung cấp · mặt hàng`,
     issue: 'Phát hành LOT quản lý vật tư',
     columns: {
       supplier: 'Nhà cung cấp',

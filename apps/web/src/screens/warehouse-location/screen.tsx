@@ -1465,6 +1465,7 @@ export const WarehouseLocationScreen = () => {
         splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
         list={{
           label: t.panes.list,
+          count: listPage?.total,
           content: (
             /* 조회 조건은 목록 위에 좁게(사용자 지시 2026-10-29) — 화면 위 상자를 두지 않는다. 표는 구획의 바로 아래 자식이라 남은 높이에서 스크롤한다. */
             <>

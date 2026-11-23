@@ -7,7 +7,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
   breadcrumbRoot: 'Quản lý chất lượng',
 
   queue: {
-    heading: 'Chờ kiểm tra',
+    heading: 'Đối tượng kiểm tra',
     columns: {
       item: 'Mặt hàng',
       itemCode: 'Mã mặt hàng',

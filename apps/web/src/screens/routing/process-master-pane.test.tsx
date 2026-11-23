@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   createStubFetch,
@@ -156,6 +156,10 @@ const processListRequests = <T extends { method: string; url: URL }>(recorded: T
   );
 
 describe('RoutingScreen — 공정 관리 탭', () => {
+  afterEach(() => {
+    window.localStorage.removeItem('omf-mes:routing:process-split:collapsed');
+  });
+
   it('탭은 셸 탭 막대(주소)가 고르고, 공정 목록은 품목 선택 없이 조회한다', async () => {
     const { recorded } = renderScreen();
 
@@ -271,7 +275,7 @@ describe('RoutingScreen — 공정 관리 탭', () => {
     await user.click(within(form).getByRole('button', { name: '재사용' }));
     const dialog = screen.getByRole('dialog');
     expect(
-      within(dialog).getByText(/새로운 공정 경로에 이 공정을 추가할 수 있습니다/),
+      within(dialog).getByText(/새로운 라우팅에 이 공정을 추가할 수 있습니다/),
     ).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: '재사용' }));
 
@@ -307,6 +311,28 @@ describe('RoutingScreen — 공정 관리 탭', () => {
     const dialog = await screen.findByRole('dialog', { name: '저장하지 않은 변경이 있습니다' });
     await user.click(within(dialog).getByRole('button', { name: '계속 편집' }));
 
+    expect(within(form).getByLabelText('공정명')).toHaveValue('사출-X');
+  });
+
+  /* 목록 제목 줄 「목록 접기」(#350) — 접어도 고른 공정 · 적던 값은 그대로다. */
+  it('공정 목록을 접으면 「목록 N건」 탭이 서고, 펼친 뒤에도 고른 공정 · 적던 공정명이 그대로다', async () => {
+    const { user } = renderScreen();
+    await user.click(await screen.findByRole('button', { name: 'OP-INJ' }));
+    const form = await screen.findByRole('region', { name: '공정 상세' });
+    await user.click(await within(form).findByRole('button', { name: '수정' }));
+    await user.type(within(form).getByLabelText('공정명'), '-X');
+    const split = document.querySelector('.routing-split');
+
+    await user.click(
+      screen.getAllByRole('button', { name: messages.common.inspectionHub.listCollapse })[0]!,
+    );
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = split!.querySelector('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록2건');
+
+    await user.click(tab as HTMLElement);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    expect(screen.getByRole('button', { name: 'OP-INJ' })).toHaveAttribute('aria-current', 'true');
     expect(within(form).getByLabelText('공정명')).toHaveValue('사출-X');
   });
 

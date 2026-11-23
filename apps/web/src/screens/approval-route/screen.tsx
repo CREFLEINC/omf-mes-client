@@ -1,9 +1,10 @@
-import { Breadcrumb, Button, EmptyState, PageHeader, SkeletonText, useToast } from '@crefle/web-ui';
+import { Button, EmptyState, Icon, SkeletonText, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { ActivationDialog, type ActivationIntent } from './activation-dialog';
@@ -81,6 +82,7 @@ import {
   type RouteFilters,
   type RouteFormValues,
 } from './types';
+import './layout.css';
 
 const t = messages.approvalRoute;
 
@@ -1031,7 +1033,7 @@ export const ApprovalRouteScreen = () => {
 
     if (isRouteNotFound || isRouteMissing) {
       return (
-        <section className="pane" aria-label={t.panes.detail}>
+        <section className="pane">
           <EmptyState
             size="sm"
             live
@@ -1044,7 +1046,7 @@ export const ApprovalRouteScreen = () => {
 
     if (selectedRouteId === null) {
       return (
-        <section className="pane" aria-label={t.panes.detail}>
+        <section className="pane">
           <EmptyState
             size="sm"
             title={t.empty.noSelectionTitle}
@@ -1056,7 +1058,7 @@ export const ApprovalRouteScreen = () => {
 
     if (detail.isError) {
       return (
-        <section className="pane" aria-label={t.panes.detail}>
+        <section className="pane">
           <LoadErrorBanner error={detail.error} onRetry={reloadDetail} />
         </section>
       );
@@ -1064,7 +1066,7 @@ export const ApprovalRouteScreen = () => {
 
     if (route === null || draft === null) {
       return (
-        <section className="pane" aria-label={t.panes.detail}>
+        <section className="pane">
           <div role="status" aria-label={t.loading.detail}>
             <SkeletonText lines={5} />
           </div>
@@ -1113,66 +1115,68 @@ export const ApprovalRouteScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-        actions={
-          <>
-            <Button variant="outlined" disabled={isLocked} onClick={handleCreate}>
-              {t.actions.create}
-            </Button>
-            <Button variant="outlined" onClick={handleReload}>
-              {t.actions.reload}
-            </Button>
-          </>
-        }
+      {/* 화면 제목 줄은 두지 않는다 — 조회 조건 · 목록 · 상세 통일 배치(검사 조회·판정과 같다 · #350). */}
+      <ListDetailWorkspace
+        storageKey="omf-mes:approval-route"
+        filter={{
+          label: messages.common.paneList.filter,
+          content: (
+            <RouteFilterBar
+              appliedFilters={filters}
+              approvalTypeOptions={approvalTypeOptions}
+              businessUnitOptions={toBusinessUnitOptions(businessUnits.entries)}
+              businessUnitNote={lookupNote(businessUnits)}
+              onSearch={handleSearch}
+              onReset={() => {
+                handleSearch(DEFAULT_FILTERS);
+              }}
+              actions={
+                <>
+                  <Button variant="outlined" onClick={handleReload}>
+                    {t.actions.reload}
+                  </Button>
+                  <Button
+                    leadingIcon={<Icon name="add" size={18} />}
+                    disabled={isLocked}
+                    onClick={handleCreate}
+                  >
+                    {t.actions.create}
+                  </Button>
+                </>
+              }
+            />
+          ),
+        }}
+        list={{
+          label: t.panes.list,
+          title: t.panes.list,
+          count: list.data?.page.total,
+          className: 'approval-route-list',
+          content: (
+            <RouteListPane
+              routes={routes}
+              isLoading={list.isPending}
+              pageView={pageView}
+              onChangePage={handleChangePage}
+              selectedRouteId={selectedRouteId}
+              onSelect={handleSelect}
+              businessUnitLabel={businessUnitLabelOf}
+              loadError={
+                list.isError ? (
+                  <LoadErrorBanner
+                    error={list.error}
+                    onRetry={() => {
+                      void list.refetch();
+                    }}
+                  />
+                ) : null
+              }
+            />
+          ),
+        }}
+        /* 상세 칸 껍데기가 「고른 결재선」 구획 이름을 갖는다 — 안쪽 상자에는 같은 이름을 겹쳐 달지 않는다(#350 리뷰). */
+        detail={{ label: t.panes.detail, content: detailSlot(), bare: true }}
       />
-
-      {/*
-       * 좌 목록 / 우 스택. `.pane-stack`은 3단 배치 전용이 아니라 일반 격자이며
-       * (`display:grid; gap; align-content:start; min-width:0`) 이음매를 담는 쪽이 한 번에
-       * 정의한다 — **2단 배치에서 쓰는 첫 사례다.** 문서 갱신은 두 번째 사용처에서 한다.
-       */}
-      <div className="two-pane">
-        <section className="pane" aria-label={t.panes.list}>
-          <RouteFilterBar
-            appliedFilters={filters}
-            approvalTypeOptions={approvalTypeOptions}
-            businessUnitOptions={toBusinessUnitOptions(businessUnits.entries)}
-            businessUnitNote={lookupNote(businessUnits)}
-            onSearch={handleSearch}
-            onReset={() => {
-              handleSearch(DEFAULT_FILTERS);
-            }}
-          />
-          <RouteListPane
-            routes={routes}
-            isLoading={list.isPending}
-            pageView={pageView}
-            onChangePage={handleChangePage}
-            selectedRouteId={selectedRouteId}
-            onSelect={handleSelect}
-            businessUnitLabel={businessUnitLabelOf}
-            loadError={
-              list.isError ? (
-                <LoadErrorBanner
-                  error={list.error}
-                  onRetry={() => {
-                    void list.refetch();
-                  }}
-                />
-              ) : null
-            }
-          />
-        </section>
-
-        <div className="pane-stack">{detailSlot()}</div>
-      </div>
 
       {/*
        * 창은 **열 때만 붙인다** — 디자인 시스템 `Dialog`는 닫혀도 내용이 DOM에 남아

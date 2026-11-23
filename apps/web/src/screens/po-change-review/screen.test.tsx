@@ -256,4 +256,33 @@ describe('PoChangeReviewScreen', () => {
     expect(screen.getByRole('button', { name: t.decision.submit })).toBeDisabled();
     expect(screen.getByText(t.lock.adjustment)).toBeInTheDocument();
   });
+
+  /* 목록 제목 줄 「목록 접기」 · 접힌 「목록 N건」 탭(#350). */
+  it('목록을 접으면 탭에 건수가 서고, 펼친 뒤에도 고른 P/O · 고른 판정 · 적어 둔 사유가 그대로다', async () => {
+    const collapsedKey = 'omf-mes:po-change-review:list:collapsed';
+    window.localStorage.removeItem(collapsedKey);
+    const { user } = renderScreen();
+    await selectRow(user);
+    await user.click(await screen.findByRole('radio', { name: t.decision.proceed }));
+    await user.type(screen.getByLabelText(t.decision.reasonLabel), '납기 우선');
+    const layout = document.querySelector('.po-change-review-layout');
+
+    await user.click(
+      screen.getByRole('button', { name: messages.common.inspectionHub.listCollapse }),
+    );
+    expect(layout).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = layout!.querySelector<HTMLElement>('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록1건');
+
+    await user.click(tab!);
+    expect(layout).not.toHaveAttribute('data-left-collapsed');
+    expect(layout!.querySelector('.po-board-list-tab')).toBeNull();
+    expect(screen.getByRole('button', { name: t.list.selectRow('SYNTH-PO-0031') })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(screen.getByRole('radio', { name: t.decision.proceed })).toBeChecked();
+    expect(screen.getByLabelText(t.decision.reasonLabel)).toHaveValue('납기 우선');
+    window.localStorage.removeItem(collapsedKey);
+  });
 });

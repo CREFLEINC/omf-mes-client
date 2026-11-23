@@ -9,6 +9,7 @@ import {
   Table,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useEffect } from 'react';
 
 import { toLotStatusSort, toTableSort } from './current-sort';
 import {
@@ -28,11 +29,14 @@ import { useItemNameSources } from './reference-options';
 import { lotStatusRowKey, type LotStatusRow } from './types';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { PageNav } from '../../patterns/page-nav';
+import { PaneListHead, type PaneCollapse } from '../../patterns/po-board';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 import { LotNo } from '../lot-trace/trace-table';
+
+import './layout.css';
 
 const t = messages.lotStatusHistory;
 const EMPTY = '—';
@@ -59,6 +63,10 @@ const OneLine = ({ text }: { text: string }) => (
 );
 
 interface CurrentResultsProps {
+  /** 목록 접기(제목 줄 「목록 접기」 · #350) — 건수는 이 목록이 채운다. */
+  collapse: PaneCollapse;
+  /** 목록 건수를 화면에 알린다 — 접힌 「목록」 탭이 건수를 보인다(#350). */
+  onTotalChange: (total: number | undefined) => void;
   filters: LotFilters;
   page: number;
   statusOptions: readonly FilterOption[];
@@ -87,6 +95,8 @@ export const CurrentResults = ({
   onSelectLot,
   selectedLotId,
   onFilterInboundLot,
+  collapse,
+  onTotalChange,
 }: CurrentResultsProps) => {
   /*
    * 들어오자마자 목록을 띄운다(사용자 2026-10-30) — 아직 조회 단추를 누르지 않았으면(유형이 빈 값) 「전체」 유형으로
@@ -295,14 +305,20 @@ export const CurrentResults = ({
   /* 고를 수 없는 크기(20 · 50 · 100 밖)를 서버가 돌려주면 크기 칸이 비므로 고른 크기를 보인다. */
   const shownPageSize: LotPageSize =
     LOT_PAGE_SIZES.find((size) => size === pageSize) ?? requestedPageSize;
+  const listTotal = meta?.total;
+  useEffect(() => {
+    onTotalChange(listTotal);
+  }, [listTotal, onTotalChange]);
   const isBeyondLast = meta !== undefined && meta.total > 0 && currentPage > totalPages;
 
   return (
     <section className="pane lot-status-pane" aria-labelledby="lot-current-results-title">
-      <div className="lot-status-pane-head">
-        <h2 className="pane-title" id="lot-current-results-title">
-          {t.current.pane}
-        </h2>
+      <PaneListHead
+        className="lot-status-pane-head"
+        title={t.current.pane}
+        titleId="lot-current-results-title"
+        collapse={{ ...collapse, count: listTotal }}
+      >
         {/* 권한 밖 제외 안내는 제목 바로 옆, 글 길이만큼만(사용자 2026-10-30). */}
         {summary.data?.outOfScopeCount != null && summary.data.outOfScopeCount > 0 && (
           <p className="iqc-inspection-action-note lot-status-scope-note" data-tone="info">
@@ -310,19 +326,7 @@ export const CurrentResults = ({
             {t.current.summary.outOfScope(summary.data.outOfScopeCount)}
           </p>
         )}
-        {/*
-         * 오른쪽 끝 — 마지막 갱신 + [갱신](사용자 2026-10-30). 요약과 목록을 함께 다시 부른다. 「조회 기준」 자리를
-         * 이어받는다(두 시각을 나란히 두면 헷갈린다).
-         */}
-        <RefreshStatus
-          updatedAt={Math.max(list.dataUpdatedAt, summary.dataUpdatedAt)}
-          isRefreshing={list.isFetching || summary.isFetching}
-          onRefresh={() => {
-            void list.refetch();
-            void summary.refetch();
-          }}
-        />
-      </div>
+      </PaneListHead>
       {summary.isPending && (
         <div role="status" aria-label={t.current.summary.loading}>
           <SkeletonText lines={1} />
@@ -369,7 +373,7 @@ export const CurrentResults = ({
       )}
 
       <div className="lot-status-pane-head">
-        {/* 총 건수는 표 아래 쪽 이동 줄에만 둔다(사용자 2026-10-30). */}
+        {/* 「총 N건」은 표 아래 쪽 이동 줄에 둔다(사용자 2026-10-30) — 목록 제목 줄에는 「N건」(#350). */}
         <h3 className="lot-status-list-title">{t.current.list.title}</h3>
       </div>
       {list.isPending && (
@@ -439,18 +443,32 @@ export const CurrentResults = ({
               }
             />
           </div>
-          {meta !== undefined && (
-            <PageNav
-              sizes={LOT_PAGE_SIZES}
-              meta={{ page: currentPage, size: shownPageSize, total: meta.total }}
-              onChangePage={onPageChange}
-              onChangeSize={onPageSizeChange}
-              /* 쪽 크기 선택은 작게, 처음~마지막 단추는 크게 — 화면 안 쪽 이동을 같은 크기로(사용자 2026-10-30). */
-              controlSize="sm"
-              buttonSize="md"
-            />
-          )}
         </>
+      )}
+      {/*
+       * 표와 쪽 이동 줄 사이 오른쪽 — 마지막 갱신 + [갱신](사용자 2026-10-30 · 자리는 2026-11-23 지시). 요약과 목록을 함께
+       * 다시 부른다. 「조회 기준」 자리를 이어받는다(두 시각을 나란히 두면 헷갈린다). 첫 조회 중 · 실패 때도 늘 보인다(종전과 같다).
+       */}
+      <div className="lot-status-refresh-foot">
+        <RefreshStatus
+          updatedAt={Math.max(list.dataUpdatedAt, summary.dataUpdatedAt)}
+          isRefreshing={list.isFetching || summary.isFetching}
+          onRefresh={() => {
+            void list.refetch();
+            void summary.refetch();
+          }}
+        />
+      </div>
+      {meta !== undefined && (
+        <PageNav
+          sizes={LOT_PAGE_SIZES}
+          meta={{ page: currentPage, size: shownPageSize, total: meta.total }}
+          onChangePage={onPageChange}
+          onChangeSize={onPageSizeChange}
+          /* 쪽 크기 선택은 작게, 처음~마지막 단추는 크게 — 화면 안 쪽 이동을 같은 크기로(사용자 2026-10-30). */
+          controlSize="sm"
+          buttonSize="md"
+        />
       )}
     </section>
   );

@@ -140,7 +140,6 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     inactiveSuffix: ' (không dùng)',
   },
   excess: {
-    listCount: (count: number): string => `${String(count)} phần vượt chưa liên kết`,
     splitter: 'Giữa danh sách phần vượt và dòng P/O để liên kết',
     listCollapse: 'Thu gọn danh sách phần vượt',
     listExpand: 'Mở rộng danh sách phần vượt',

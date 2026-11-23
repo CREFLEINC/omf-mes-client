@@ -6259,16 +6259,6 @@ dialog.routing-history-dialog {
   max-height: var(--stacked-list-height, min(28rem, 50dvh));
 }
 
-/*
- * 검사 수준 관리 목록 카드는 표 위에 제목 · 검색 · 안내 세 줄을 더 담는다 — 세 탭이 같이 쓰는 목록 높이를 그대로 쓰면
- * 표 자리가 한 줄로 줄어든다(#208). 그 세 줄 만큼 더 준다.
- */
-.po-board-split.inspection-split.is-stacked
-  > .inspection-level-list-pane:first-child {
-  height: calc(var(--stacked-list-height, 20rem) + 9rem);
-  max-height: calc(var(--stacked-list-height, min(28rem, 50dvh)) + 9rem);
-}
-
 .po-board-split.inspection-split.is-stacked > .quality-standard-detail {
   overflow: visible;
 }
@@ -8389,6 +8379,22 @@ main:has(.iqc-skip-approval-detail) {
   }
 }
 
+/*
+ * 제목 줄(「목록 접기」)이 선 처분 목록(#350) — 넓은 창 상하 배치에서도 접기 단추는 제목 줄 하나만(막대의 작은 원은 감춘다),
+ * 접으면 서는 가로 「목록 N건」 탭(40px)이 잘리지 않게 첫 줄 높이를 내용만큼 둔다(종전 24px 원 단추 높이).
+ */
+@media (min-width: 1440px) {
+  .po-board-split.is-stacked.disposition-split:has(.po-board-list-head)
+    > .po-board-gutter
+    > .po-board-collapse {
+    display: none;
+  }
+
+  .po-board-split.is-stacked.disposition-split[data-left-collapsed]:has(.po-board-list-head) {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+}
+
 /* 처분 판정 처리 제목 아래 한 줄 — 판정 대기 · 처리 이력 칩과 배치 고르기를 오른쪽에(#223). */
 .disposition-top-bar {
   display: flex;
@@ -9200,11 +9206,6 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 /* 설비·설비그룹 마스터 — 계층 목록과 선택한 그룹의 작업 공간을 함께 읽히게 한다. */
-.two-pane.equipment-master-layout {
-  grid-template-columns: minmax(24rem, 5fr) minmax(0, 7fr);
-  gap: var(--space-5);
-}
-
 .equipment-master-pane,
 .equipment-master-tab-content,
 .equipment-master-form,
@@ -9354,12 +9355,6 @@ main:has(.iqc-skip-approval-detail) {
   margin: 0;
 }
 
-@media (max-width: 1100px) {
-  .two-pane.equipment-master-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (max-width: 640px) {
   .filter-bar.equipment-master-filter {
     grid-template-columns: 1fr;
@@ -9381,19 +9376,6 @@ main:has(.iqc-skip-approval-detail) {
  * 툴/금형/지그 마스터 — 제목 줄(관리 액션) · 조회 줄(조건 + 조회·초기화) · 딸린 조건(체크칸) ·
  * 건수 · 표의 층을 가른다. 여백은 공용 간격 토큰만 쓰고, 한 단계씩 줄여 정보량에 맞춘다.
  */
-/*
- * 페이지 제목과 카드 사이 — 공용 `.screen` 에는 간격 규칙이 없어 둘이 맞붙는다. 전 화면 공통을
- * 건드리면 다른 화면 배치가 함께 움직이므로 이 화면 뿌리에만 준다. 배너 칸은 제 아래 여백을
- * 이미 갖고 있어 카드 앞에서만 벌린다.
- */
-.tool-master-screen > .tool-master-pane {
-  margin-top: var(--space-4);
-}
-
-.tool-master-screen > .banner-slot + .tool-master-pane {
-  margin-top: 0;
-}
-
 .tool-master-pane {
   display: grid;
   align-content: start;
@@ -9402,20 +9384,6 @@ main:has(.iqc-skip-approval-detail) {
   min-width: 0;
   /* 접는 기준을 화면이 아니라 이 카드의 폭으로 — 옆 메뉴가 열리면 둘이 달라진다. */
   container-type: inline-size;
-}
-
-.tool-master-pane > .pane-title,
-.tool-master-heading > .pane-title {
-  margin: 0;
-  color: var(--on-surface);
-  font: var(--type-title-lg);
-  letter-spacing: var(--type-title-lg-tracking);
-}
-
-/* 공용 `pane-heading-row` 의 아래 여백은 격자 간격이 대신한다 — 두 번 벌어지지 않게. */
-.pane-heading-row.tool-master-heading {
-  align-items: center;
-  margin-bottom: 0;
 }
 
 /* 관리 액션 한 무리 — 높이는 같은 크기의 버튼이 맞추고, 간격 8px 로 붙여 카드 오른쪽 위에 세운다. */
@@ -9471,27 +9439,6 @@ main:has(.iqc-skip-approval-detail) {
   flex-flow: row wrap;
   align-items: center;
   gap: var(--space-2) var(--space-4);
-}
-
-.tool-master-pane .filter-more-chips {
-  margin-bottom: 0;
-}
-
-/*
- * 건수 줄 — 유형 안내와 건수. 건수는 줄 오른쪽 끝. 바로 아래 표와는 격자 간격보다 한 단계
- * 좁게 붙인다 — 건수가 표의 머리로 읽히게.
- */
-.tool-master-extra-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-4);
-  margin-bottom: calc(var(--space-2) - var(--space-3));
-}
-
-.tool-master-extra-row > .tool-master-result-count {
-  max-width: none;
-  margin: 0 0 0 auto;
 }
 
 .tool-master-type-note {
@@ -9858,23 +9805,13 @@ main:has(.iqc-skip-approval-detail) {
     grid-area: auto;
   }
 
-  .tool-master-extra-row,
   .tool-master-extra > .check-group {
     align-items: flex-start;
     flex-direction: column;
   }
-
-  .tool-master-extra-row > .tool-master-result-count {
-    margin-left: 0;
-  }
 }
 
 /* 수집 채널 매핑 — 설비 선택과 그 설비의 채널 작업 공간을 한 시야에 둔다. */
-.two-pane.collection-channel-layout {
-  grid-template-columns: minmax(20rem, 2fr) minmax(0, 3.6fr);
-  gap: var(--space-5);
-}
-
 .collection-channel-pane,
 .collection-channel-table {
   min-width: 0;
@@ -9901,29 +9838,8 @@ main:has(.iqc-skip-approval-detail) {
   letter-spacing: var(--type-title-sm-tracking);
 }
 
-.filter-bar.collection-channel-equipment-filter {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-4);
-  margin-bottom: 0;
-}
-
-.collection-channel-equipment-filter > *,
-.collection-channel-equipment-filter .field-cell {
-  min-width: 0;
-}
-
-.collection-channel-equipment-filter .field-cell {
-  align-items: stretch;
-}
-
-.collection-channel-equipment-filter > .field-cell-unlabeled,
 .collection-channel-toolbar > .field-cell-unlabeled {
   margin-top: 0;
-}
-
-.collection-channel-equipment-filter > .field-cell-unlabeled {
-  align-items: flex-end;
 }
 
 .filter-bar.collection-channel-toolbar {
@@ -9976,22 +9892,6 @@ main:has(.iqc-skip-approval-detail) {
   margin: 0;
 }
 
-@media (min-width: 1600px) {
-  .filter-bar.collection-channel-equipment-filter {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .collection-channel-equipment-filter > .field-cell-unlabeled {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (max-width: 1000px) {
-  .two-pane.collection-channel-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (max-width: 640px) {
   .collection-channel-toolbar > .field-cell {
     align-items: stretch;
@@ -10005,18 +9905,9 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 /* 타발수 환산 — 전역 설정과 정책·미리보기의 단계가 구획 간격과 제목 계층으로 읽히게 한다. */
-.shot-conversion-workspace,
-.shot-conversion-main-grid,
 .shot-conversion-pane,
 .shot-conversion-table {
   min-width: 0;
-}
-
-.shot-conversion-workspace,
-.shot-conversion-main-grid {
-  display: grid;
-  gap: var(--space-5);
-  align-items: start;
 }
 
 .shot-conversion-pane {
@@ -10075,12 +9966,6 @@ main:has(.iqc-skip-approval-detail) {
 
 .shot-conversion-preview-grid {
   align-items: start;
-}
-
-@media (min-width: 1500px) {
-  .shot-conversion-main-grid {
-    grid-template-columns: minmax(58rem, 3.4fr) minmax(32rem, 2fr);
-  }
 }
 
 @media (max-width: 640px) {
@@ -10977,10 +10862,6 @@ main:has(.iqc-skip-approval-detail) {
   flex-wrap: nowrap;
 }
 
-.approval-inbox-pane .filter-more-chips {
-  margin-bottom: 0;
-}
-
 .approval-inbox-table {
   max-width: 100%;
   overflow-x: auto;
@@ -11165,10 +11046,6 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 .notice-filter-actions .filter-actions {
   flex-wrap: nowrap;
-}
-
-.notice-pane > .filter-more-chips {
-  margin-bottom: 0;
 }
 
 .notice-pane > .pane-lead,
@@ -21667,22 +21544,6 @@ dialog.terminal-map-form-dialog {
  * 검사 수준 관리 탭(#208 · 사용자 시안) — 목록 카드 하나에 제목 줄 · 검색 줄 · 안내 · 둥근 테두리 표 · 쪽 이동.
  * 카드 안 검색 줄의 아래 여백은 걷고(카드 간격이 맡는다), 라벨 없는 한 줄이라 가운데로 맞춘다.
  */
-/* 조회 카드 — 검사표 기준 탭의 조회 카드와 같다(사용자 지시 · #208). */
-.inspection-level-search > .filter-bar {
-  margin-bottom: 0;
-}
-
-.inspection-level-search .filter-actions {
-  align-items: center;
-  margin-left: auto;
-}
-
-/* 품목 검색 칸 — 흐린 안내(「품목 코드 또는 품목명을 입력하세요」)가 꼭 맞는 폭, 창이 좁으면 그만큼 준다(사용자 지시 · #208). */
-.inspection-level-search > .filter-bar > :first-child {
-  flex: 0 1 19em;
-  min-width: 12rem;
-}
-
 /* 품목 이력 창 — 품목 머리 · 표 · 쪽 이동 사이를 띄운다(#208). */
 .inspection-level-history-dialog {
   display: flex;
@@ -21746,10 +21607,6 @@ dialog.terminal-map-form-dialog {
   gap: var(--space-2);
   min-width: 0;
   white-space: nowrap;
-}
-
-.inspection-level-item-code {
-  flex: 0 0 auto;
 }
 
 .inspection-level-item-cell > .inspection-sheet-template-muted {
@@ -30654,7 +30511,10 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   container-type: inline-size;
 }
 
-/* 목록 행 — 검사 조회·판정 목록과 같은 표시: 줄무늬 없음, 올리면 옅게, 고른 행은 바탕과 왼쪽 강조선. */
+/*
+ * 목록 행 — 검사 조회·판정 목록과 같은 표시: 줄무늬 없음, 올리면 옅게, 고른 행은 정보 파랑 바탕 + 첫 칸 왼쪽 파란 선
+ * (`.inspection-queue-table` 고른 줄과 같다 · #350).
+ */
 .lot-trace-list-rows tbody tr,
 .lot-trace-list-rows tbody tr:nth-child(even) {
   background: transparent;
@@ -30662,11 +30522,11 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 
 .lot-trace-list-rows .selectable-table tbody > tr.is-active > td,
 .lot-trace-list-rows .selectable-table tbody > tr.is-active:hover > td {
-  background: var(--surface-container-high);
+  background: var(--semantic-info-container);
 }
 
 .lot-trace-list-rows .selectable-table tbody > tr.is-active > td:first-child {
-  box-shadow: inset 3px 0 0 var(--primary);
+  box-shadow: inset 3px 0 0 var(--semantic-info);
 }
 
 /* LOT 번호 — 한 줄. 모자라면 앞 마디만 줄이고 끝 마디(일련번호)는 남긴다(trace-table.tsx). */
@@ -35534,8 +35394,7 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 /* 칸 글자도 검사 조회·판정 조건 줄과 같은 한 단계 작은 본문 글자(#228). */
 .inspection-standard-search:not(.defect-cause-search),
-.inspection-sheet-template-search,
-.inspection-level-search {
+.inspection-sheet-template-search {
   --type-body-lg: var(--type-body-sm);
   --type-body-lg-tracking: var(--type-body-sm-tracking, 0);
 }
@@ -37306,4 +37165,428 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/*
+ * 목록 접기 — 시안(omf-all-around#350). 목록 맨 위 제목 줄 「이름 · 건수 · [목록 접기]」, 접으면 왼쪽에 「목록 N건」 탭이 서고
+ * 상세가 남은 폭을 다 쓴다. 아이콘은 왼쪽 칸이 닫히고 열리는 패널 모양. 아래 규칙은 좌우로 나란히 설 때다 — 위아래로 쌓일 때(좁은 창 ·
+ * 상하 배치)는 파일 끝 「위아래로 쌓여도」 규칙이 가로 탭으로 같게 맞춘다. 제목 줄이 없는 분할(`PaneListHead` 를 안 쓰는 화면)은 전과 같다.
+ */
+.po-board-list-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  flex: 0 0 auto;
+}
+
+.po-board-list-head > .pane-title {
+  margin: 0;
+}
+
+/*
+ * 구획 안 간격(flex gap)이 없는 목록(검사 조회·판정 등)은 제목 줄 아래를 띄운다. 통일 배치 목록(`list-detail-list`)은
+ * 구획 간격이 띄우므로 겹쳐 주지 않는다(겹치면 24px 로 오른쪽 상세보다 12px 처진다 · #350 리뷰).
+ */
+.pane:not(.po-board-pane, .list-detail-list) > .po-board-list-head {
+  margin-bottom: var(--space-3);
+}
+
+/* 두 구획 판(BoardFrame) 목록은 넓은 창에서만 flex 간격이 있다 — 좁은 창에서도 제목 줄이 표에 붙지 않게 띄운다. */
+@media (max-width: 1439.98px) {
+  .po-board-pane > .po-board-list-head {
+    margin-bottom: var(--space-3);
+  }
+
+  /* 품질 승인 · 부적합 처분 목록은 좁은 창에서 자기 격자 간격(16px)이 있다 — 그만큼 덜 띄워 12px 로 맞춘다. */
+  .po-board-pane:is(.quality-approval-pane, .disposition-pane) > .po-board-list-head {
+    margin-bottom: calc(var(--space-3) - var(--space-4));
+  }
+}
+
+/*
+ * 구획에 칸 간격(gap)이 이미 있는 목록 — 제목 줄 아래가 화면마다 12px 이 되게 그 간격만큼 덜 띄운다(#350 리뷰 · 종전엔
+ * 간격과 여백이 겹쳐 24 · 28 · 32px 로 화면마다 달랐다). 간격 12px 인 구획은 0, 16px 은 -4px, 20px 은 -8px.
+ */
+.pane:is(
+    .inspection-standard-list-pane,
+    .tool-master-pane,
+    .lot-trace-list-pane,
+    .inspection-sheet-list-pane,
+    .lot-status-pane,
+    .pqc-web-list,
+    .users-roles-list-pane
+  )
+  > .po-board-list-head {
+  margin-bottom: 0;
+}
+
+.pane:is(
+    .work-order-close-list-pane,
+    .suspicious-material-hold-pane,
+    .disposition-request-pane
+  )
+  > .po-board-list-head {
+  margin-bottom: calc(var(--space-3) - var(--space-4));
+}
+
+.pane.stock-reinstatement-pane > .po-board-list-head {
+  margin-bottom: calc(var(--space-3) - var(--space-5));
+}
+
+.po-board-list-count {
+  color: var(--on-surface-variant);
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.po-board-list-collapse,
+.po-board-list-tab {
+  display: none;
+}
+
+@media (min-width: 1440px) {
+  /* 제목 줄에 단추가 있으니 막대 위 작은 원은 감춘다. */
+  .po-board-split:has(.po-board-list-head):not(.is-stacked) > .po-board-gutter > .po-board-collapse {
+    display: none;
+  }
+
+  /* 접힘 — 목록 구획(제목 줄을 품은 첫 칸)을 감춘다. 공용 `.po-board-pane` 이 아닌 목록도 같다(#350). */
+  .po-board-split[data-left-collapsed]:not(.is-stacked) > :first-child:has(> .po-board-list-head) {
+    display: none;
+  }
+
+  /* 접힘 — 왼쪽 48px 탭 + 상세. */
+  .po-board-split:has(.po-board-list-head)[data-left-collapsed]:not(.is-stacked) {
+    grid-template-columns: 48px minmax(0, 1fr);
+    column-gap: var(--space-4);
+  }
+
+  .po-board-split:has(.po-board-list-head)[data-left-collapsed]:not(.is-stacked) > .po-board-gutter {
+    position: relative;
+    display: block;
+    align-self: stretch;
+  }
+
+  .po-board-split:has(.po-board-list-head):not(.is-stacked) > .po-board-gutter > .po-board-list-tab {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--on-surface-variant);
+    font: inherit;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+}
+
+/* 접힌 「목록」 탭 모양 — 보일지는 위 규칙이 정한다. */
+.po-board-list-tab:hover {
+  background: var(--state-hover-neutral);
+}
+
+.po-board-list-tab-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 48px;
+  padding: 10px 0 12px;
+  border: 1px solid var(--outline);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--elevation-1);
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.po-board-list-tab:hover .po-board-list-tab-body {
+  border-color: var(--semantic-info);
+  color: var(--on-surface);
+}
+
+.po-board-list-tab b {
+  color: var(--on-surface);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.po-board-list-tab .po-board-list-count {
+  font-size: 12px;
+}
+
+/*
+ * 생산 계획 ERP W/O 목록(좌우 배치)도 같은 목록 접기(#350) — 이 틀은 창 폭이 아니라 자기 폭으로 좌우를 가른다. 단추 모양은
+ * 아래 「목록 접기 단추」 한 벌을 쓴다.
+ */
+.erp-wo-adjustable-grid.is-side:has(.po-board-list-head) > .po-board-gutter > .po-board-collapse {
+  display: none;
+}
+
+.erp-wo-adjustable-grid.is-side[data-left-collapsed='true']:has(.po-board-list-tab) {
+  grid-template-columns: 48px minmax(0, 1fr);
+  column-gap: var(--space-4);
+}
+
+.erp-wo-adjustable-grid.is-side > .po-board-gutter > .po-board-list-tab {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--on-surface-variant);
+  font: inherit;
+  cursor: pointer;
+}
+
+.erp-wo-adjustable-grid.is-side > .po-board-gutter:has(> .po-board-list-tab) {
+  position: relative;
+  width: 48px;
+}
+
+/*
+ * 끌기 막대 없는 좌우 두 칸 화면의 목록 접기(#350) — 상자에 `list-collapsible` · `data-left-collapsed`, 목록 맨 위에
+ * `PaneListHead`, 목록 뒤에 `ListCollapseTab`. 넓은 창(1440px~)은 왼쪽 48px 세로 탭 + 상세, 그보다 좁으면 상세 위 가로 탭(아래 규칙).
+ */
+@media (min-width: 1440px) {
+  .list-collapsible[data-left-collapsed] {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .list-collapsible[data-left-collapsed] > :first-child:has(> .po-board-list-head) {
+    display: none;
+  }
+
+  .list-collapsible > .po-board-list-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    align-self: stretch;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--on-surface-variant);
+    font: inherit;
+    cursor: pointer;
+  }
+}
+
+/*
+ * 조회 조건 · 목록 · 상세 통일 배치(`ListDetailWorkspace` · omf-all-around#350) — 검사 조회·판정과 같은 모양.
+ * 위 조회 조건 상자, 아래 목록 | 상세. 목록은 표만 안에서 구르고 쪽 넘김은 바닥에, 상세는 상자 안에서 구른다.
+ */
+.list-detail-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+/* 조회 상자 — 위아래 여백을 같게(조회 줄 기본 아래 여백을 걷는다 · 검사 조회·판정의 조회 상자와 같은 높이). */
+.list-detail-filter > :last-child,
+.list-detail-filter > :last-child > .filter-bar:last-child {
+  margin-bottom: 0;
+}
+
+/* 탭 묶음 밖이면 칩 · 「⋯」(배치)가 조회 조건 위 오른쪽 한 줄에 선다. */
+.list-detail-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  min-height: 32px;
+  margin-bottom: calc(var(--space-2) * -1);
+}
+
+.list-detail-split > .list-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.list-detail-split > .list-detail-detail {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.list-detail-split > .list-detail-detail.is-bare {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.po-board-split.inspection-split.is-stacked > .list-detail-list {
+  box-sizing: border-box;
+  height: var(--stacked-list-height, auto);
+  max-height: var(--stacked-list-height, min(28rem, 50dvh));
+}
+
+.po-board-split.inspection-split.is-stacked > .list-detail-detail {
+  overflow: visible;
+}
+
+/*
+ * 위아래로 쌓여도(좁은 창 · 상하 배치) 같은 시안(#350) — 제목 줄 「목록 접기」는 늘 보이고, 접으면 목록 자리에 가로로 긴
+ * 「목록 N건」 탭이 서서 누르면 다시 편다. 막대의 작은 원 단추는 제목 줄이 있는 목록이면 감춘다.
+ */
+/* 목록 접기 단추 — 모양은 이 한 벌이다(#350). 보이는 자리는 두 구획 · 끌기 막대 없는 두 칸 · ERP W/O 좌우 배치. */
+.po-board-list-head > .po-board-list-collapse {
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  margin-left: auto;
+  padding: 0 14px 0 10px;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--on-surface-variant);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.po-board-list-head > .po-board-list-collapse:hover {
+  border-color: var(--semantic-info);
+  background: var(--state-hover-neutral);
+  color: var(--on-surface);
+}
+
+.po-board-split .po-board-list-head > .po-board-list-collapse,
+.list-collapsible .po-board-list-head > .po-board-list-collapse,
+.erp-wo-adjustable-grid.is-side .po-board-list-collapse {
+  display: inline-flex;
+}
+
+.po-board-list-collapse:focus-visible,
+.po-board-list-tab:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.po-board-split[data-left-collapsed] > :first-child:has(> .po-board-list-head),
+.list-collapsible[data-left-collapsed] > :first-child:has(> .po-board-list-head) {
+  display: none;
+}
+
+.po-board-split:has(> :first-child > .po-board-list-head) .inspection-height-splitter > .po-board-collapse {
+  display: none;
+}
+
+.po-board-split[data-left-collapsed]:has(.po-board-list-head) > .inspection-height-splitter {
+  display: none;
+}
+
+/* 가로 「목록 N건」 탭 — 쌓였을 때. */
+.po-board-list-tab.is-row,
+.po-board-split.is-stacked[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter > .po-board-list-tab {
+  position: static;
+}
+
+.po-board-split.is-stacked[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter {
+  display: block;
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0 0 var(--space-4);
+}
+
+.po-board-split.is-stacked[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter::before,
+.po-board-split.is-stacked[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter::after {
+  display: none;
+}
+
+.po-board-split.is-stacked[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter > .po-board-collapse,
+.po-board-split.is-stacked[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter > .po-board-splitter {
+  display: none;
+}
+
+.po-board-split.is-stacked[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter > .po-board-list-tab {
+  display: flex;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--on-surface-variant);
+  font: inherit;
+  cursor: pointer;
+}
+
+.po-board-split.is-stacked[data-left-collapsed]:has(.po-board-list-head) .po-board-list-tab-body {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 16px;
+}
+
+@media (max-width: 1439.98px) {
+  .po-board-split:has(> :first-child > .po-board-list-head) > .po-board-gutter > .po-board-collapse {
+    display: none;
+  }
+
+  .po-board-split[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter {
+    display: block;
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0 0 var(--space-4);
+  }
+
+  .po-board-split[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter::before,
+  .po-board-split[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter::after {
+    display: none;
+  }
+
+  .po-board-split[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter > .po-board-splitter {
+    display: none;
+  }
+
+  .po-board-split[data-left-collapsed]:has(.po-board-list-head) > .po-board-gutter > .po-board-list-tab,
+  .list-collapsible[data-left-collapsed] > .po-board-list-tab {
+    position: static;
+    display: flex;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--on-surface-variant);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .po-board-split[data-left-collapsed]:has(.po-board-list-head) .po-board-list-tab-body,
+  .list-collapsible[data-left-collapsed] .po-board-list-tab-body {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 16px;
+  }
+
+  /*
+   * 화면마다 한 줄로 쌓이는 폭이 달라(W/O 마감은 1280px 이하) 그 사이 폭에서는 아직 두 칸이다 — 접으면 가로 「목록 N건」 탭을
+   * 상세 위 한 줄에 두고 상세가 폭을 다 쓰게 한 칸으로 바꾼다(#350 리뷰 · 종전엔 왼쪽 칸에 탭만 남고 상세가 넓어지지 않았다).
+   */
+  .list-collapsible.list-collapsible[data-left-collapsed] {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

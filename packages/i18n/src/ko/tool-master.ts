@@ -5,9 +5,7 @@
  * `toolTypeCode` 가 가른다(스펙 §3). 그래서 문구는 「툴」의 말을 쓴다.
  */
 export const toolMaster = {
-  title: '툴/금형/지그 마스터 관리',
   paneTitle: '툴 목록',
-  breadcrumbRoot: '기준정보 관리',
   actions: {
     addTool: '툴 생성',
     importTools: '엑셀 업로드',
@@ -58,8 +56,6 @@ export const toolMaster = {
   loading: {
     tools: '툴 목록을 불러오는 중',
   },
-  /** 서버가 센 전체 건수. 잘렸는지는 `listTruncated` 가 따로 말한다. */
-  resultTotal: (total: string): string => `총 ${total}건`,
   listTruncated: (shown: number, total: number): string =>
     `전체 ${total}건 중 ${shown}건을 표시합니다. 조건을 좁혀 조회하세요.`,
   /* ⛔ 「못 받았다」와 가른다 — 사용자가 할 일이 다르다(omf-all-around#52). */

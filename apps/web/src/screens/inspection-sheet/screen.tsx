@@ -31,7 +31,12 @@ import { SaveErrorBanner } from '../../patterns/master';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { OaOnlyGate } from '../../patterns/oa-only-gate';
 import { usePageHub } from '../../patterns/page-hub';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import { PAGE_SIZES, PageNav, type PageSize } from '../../patterns/page-nav';
 import { Select } from '../../patterns/select';
 import { useSession } from '../../patterns/session';
@@ -314,6 +319,14 @@ const InspectionSheetScreenBody = () => {
 
   const scan = useListFilter(filter);
   const list = useSheetList(toQuery(filter, scan ?? {}), scan !== null);
+  /* 목록 제목 줄 「검사표 목록 · N건 · 목록 접기」 — 접으면 왼쪽 「목록 N건」 탭(#350). */
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: hubText.listCollapse,
+    expandLabel: hubText.listExpand,
+    count: list.data?.page.total,
+  };
   /*
    * 모델 · 작업지시는 「조건 더보기」로 접어 둔다(사용자 지시 2026-11-02 · #217 · C-6). 늘 접힌 채로 들어오고, 걸린 조건은
    * 아래 칩으로 알린다 — × 는 그 조건만 풀어 바로 조회한다.
@@ -642,8 +655,10 @@ const InspectionSheetScreenBody = () => {
         ref={splitRef}
         className={`po-board-split inspection-split inspection-sheet-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
         style={{ ...split.style, ...layout.style }}
+        data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <section className="pane inspection-sheet-list-pane" aria-label={t.list.heading}>
+          <PaneListHead title={t.list.heading} collapse={listCollapse} />
           {list.isError && (
             <AlertBanner variant="error">
               {t.list.loadFailed}{' '}
@@ -688,12 +703,18 @@ const InspectionSheetScreenBody = () => {
           )}
         </section>
 
-        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        <PaneSplitter
+          label={hubText.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+          collapse={listCollapse}
+        />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter
             label={hubText.heightSplitter}
             height={layout.listHeight}
             onChange={layout.changeListHeight}
+            collapse={listCollapse}
           />
         )}
 

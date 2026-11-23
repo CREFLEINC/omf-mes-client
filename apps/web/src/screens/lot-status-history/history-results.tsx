@@ -1,8 +1,9 @@
 import { AlertBanner, Button, EmptyState, SkeletonText, type SortState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { PageNav } from '../../patterns/page-nav';
+import { PaneListHead, type PaneCollapse } from '../../patterns/po-board';
 import { type HistoryFilters, LOT_PAGE_SIZES, type LotPageSize } from './filters';
 import type { FilterOption } from './lot-filter-bar';
 import { LotDetailPane } from './lot-detail-pane';
@@ -21,6 +22,10 @@ export const HISTORY_PAGE_SIZE = 20;
 const quantity = (value: number): string => new Intl.NumberFormat('ko-KR').format(value);
 
 interface HistoryResultsProps {
+  /** 목록 접기(제목 줄 「목록 접기」 · #350) — 건수는 이 목록이 채운다. */
+  collapse: PaneCollapse;
+  /** 목록 건수를 화면에 알린다 — 접힌 「목록」 탭이 건수를 보인다(#350). */
+  onTotalChange: (total: number | undefined) => void;
   filters: HistoryFilters;
   page: number;
   offsetMinutes: number;
@@ -44,6 +49,8 @@ export const HistoryResults = ({
   selectedKey,
   onSelectEntry,
   statusFilter,
+  collapse,
+  onTotalChange,
 }: HistoryResultsProps) => {
   const history = useLotHistoryTimeline(filters, offsetMinutes);
   /* 쪽 크기는 LOT 목록처럼 20 · 50 · 100 에서 고른다(사용자 2026-10-30 · 디자인 통일). */
@@ -71,6 +78,11 @@ export const HistoryResults = ({
   const currentPage = Math.min(Math.max(page, 1), totalPages);
   const start = (currentPage - 1) * pageSize;
   const rows = entries.slice(start, start + pageSize);
+  /* 이력을 아직 받지 못했으면(불러오는 중 · 실패) 건수를 두지 않는다 — 「0건」으로 읽히지 않게. */
+  const listTotal = hasValidPeriod && history.data !== undefined ? total : undefined;
+  useEffect(() => {
+    onTotalChange(listTotal);
+  }, [listTotal, onTotalChange]);
   /* LOT 번호 왼쪽 유형 라벨 — LOT 현황 · LOT 상태 변경 목록과 같다(사용자 2026-11-02). 보이는 쪽의 LOT 만 읽는다. */
   const lotTypeCodes = useLotTypeCodes(rows.map((entry) => entry.event.lotId));
   const lotTypes = useLotTypeOptions();
@@ -82,9 +94,10 @@ export const HistoryResults = ({
     );
   };
 
-  /* 「LOT 이력」 제목은 두지 않는다(사용자 2026-11-02) — 구역 이름은 화면 읽기용으로만. */
   return (
     <section className="pane lot-status-pane lot-status-history-pane" aria-label={t.history.pane}>
+      {/* 제목 줄 — 「LOT 이력 · N건 · 목록 접기」(#350 · 이름은 2026-11-23 지시로 다시 붙였다). */}
+      <PaneListHead title={t.history.pane} collapse={{ ...collapse, count: listTotal }} />
       {!hasValidPeriod && (
         <EmptyState
           size="sm"

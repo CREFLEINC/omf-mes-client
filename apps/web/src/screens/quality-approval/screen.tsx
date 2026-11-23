@@ -9,6 +9,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import {
   PaneLayoutToggle,
+  PaneListHead,
   PaneSplitter,
   useFitToViewport,
   usePaneLayout,
@@ -81,6 +82,7 @@ import {
   type ApprovalRequestDetail,
 } from './types';
 import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
+import './layout.css';
 
 const EMPTY_ITEMS: ApprovalRequest[] = [];
 type DecisionAction = 'approve' | 'reject';
@@ -805,6 +807,15 @@ export const QualityApprovalScreen = ({
     decisionWrite.write(dialogDraft);
   };
 
+  /* 목록 접기는 좌우 배치에서만(#350) — 상하 배치에서는 제목 줄 단추가 숨고 막대 위 단추도 두지 않는다. */
+  const isSide = paneLayout.layout === 'side';
+  const listCollapse = {
+    collapsed: sideSplit.collapsed,
+    onToggle: sideSplit.toggleCollapsed,
+    collapseLabel: messages.common.inspectionHub.listCollapse,
+    expandLabel: messages.common.inspectionHub.listExpand,
+    count: list.data?.page.total,
+  };
   return (
     <>
       {/*
@@ -856,11 +867,17 @@ export const QualityApprovalScreen = ({
           onReset={() => apply(EMPTY_FILTERS, PENDING_ONLY_DEFAULT)}
         />
       </section>
-      <div ref={splitRef} className={paneLayout.className} style={split.style}>
+      <div
+        ref={splitRef}
+        className={paneLayout.className}
+        style={split.style}
+        data-left-collapsed={isSide && sideSplit.collapsed ? 'true' : undefined}
+      >
         <section
           className="pane po-board-pane po-board-scroll quality-approval-pane quality-approval-list-pane"
           aria-label={t.panes.list}
         >
+          <PaneListHead title={t.panes.list} collapse={listCollapse} />
           {scopeWarning !== undefined && (
             <div className="banner-slot">
               <AlertBanner variant="info">{scopeWarning}</AlertBanner>
@@ -903,6 +920,7 @@ export const QualityApprovalScreen = ({
           ratio={split.ratio}
           onChange={split.commit}
           orientation={paneLayout.layout === 'stack' ? 'horizontal' : 'vertical'}
+          {...(isSide ? { collapse: listCollapse } : {})}
         />
 
         {/*

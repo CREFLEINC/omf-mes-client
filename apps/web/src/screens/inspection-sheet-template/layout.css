@@ -1,0 +1,8 @@
+/*
+ * 품목 열은 폭을 정하지 않아 남는 폭만 받는다 — 좌우 배치(목록이 좁을 때)에서 남는 폭이 없으면 품목 칸이 폭 0으로 사라졌다
+ * (#350 회귀 시험 · main 에서도 같았다). 정한 열 폭의 합(`--col-fixed`, patterns/column-resize.tsx)에 품목 칸 12rem 을 더해
+ * 표 최소 폭으로 두고, 넘치면 표 안에서 옆으로 구른다(검사 기준 목록과 같은 방식).
+ */
+.inspection-sheet-template-rows table {
+  min-width: calc(var(--col-fixed, 0px) + 12rem);
+}
