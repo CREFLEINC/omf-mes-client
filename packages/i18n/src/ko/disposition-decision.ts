@@ -191,8 +191,11 @@ export const dispositionDecision = {
     remainingUnknown: '남은 수량을 확인하는 중입니다. 잠시 뒤 다시 저장하세요',
     /** 막힌 처분 유형의 이유 — 단추는 잠그고 이유를 단다. */
     typeLock: {
-      closed: '종결된 부적합입니다',
+      closed: '이 부적합 건은 종결되었습니다',
       concessionPending: '특채 결재 대기 중',
+      /** 종결로 새로 생긴 부적합(선별)으로 가는 단추 이름(#352). */
+      openDerived: (nonconformanceNo: string): string =>
+        `새로 생긴 부적합 ${nonconformanceNo} 보기`,
       /** 결재 승인 뒤 적용 전 — 위 상자의 「승인됨 — 적용 대기」와 같은 말(G2 L-d). */
       concessionApproved: '특채 승인됨 — 적용 대기',
       /** 결재 반려 뒤 [반려 확인] 전(omf-all-around#275). */

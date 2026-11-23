@@ -102,6 +102,25 @@ describe('DispositionDecisionScreen 조회', () => {
     await waitFor(() => expect(screen.getByLabelText(t.form.qtyLabel)).toHaveTextContent('120 EA'));
   });
 
+  it('종결된 부적합은 제목 옆에 종결 안내와 선별로 새로 생긴 부적합으로 가는 단추를 보인다(#352)', async () => {
+    const { user } = renderScreen({
+      decidedQty: 320,
+      nonconformance: { statusCode: 'DECIDED' },
+      decision: {
+        dispositionTypeCode: 'SORT',
+        newNonconformanceId: 77,
+        newNonconformanceNo: 'NC-TEST-0077',
+      },
+    });
+    await selectRow(user);
+
+    expect(await screen.findByText(t.form.typeLock.closed, { selector: 'p' })).toBeInTheDocument();
+    await user.click(
+      screen.getByRole('button', { name: t.form.typeLock.openDerived('NC-TEST-0077') }),
+    );
+    await waitFor(() => expect(requestedPaths()).toContain('/quality/nonconformances/77'));
+  });
+
   /*
    * ⭐ 되살아난 원천 축이 **화면 끝에서 서버 요청까지** 닿는지 본다(#648). 필터 바만 보는
    * 시험은 「칸은 섰는데 조회 조건에는 안 실리는」 결함을 통과시킨다 — 눈으로 봐서 가장

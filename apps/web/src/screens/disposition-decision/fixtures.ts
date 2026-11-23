@@ -38,6 +38,8 @@ export interface DispositionStubOptions {
   approvalStatusCode?: string;
   /** #352 — 이 부적합의 처분 결재(`GET …/disposition-approvals`). 없으면 빈 목록. */
   dispositionApprovals?: unknown[];
+  /** #352 — 이미 판정된 행에 덮을 칸(선별로 생긴 새 부적합 등). */
+  decision?: Record<string, unknown>;
   /** #352 — 처분 · 특채 결재선(`GET /quality/disposition-approval-routes`). 없으면 둘 다 결재선 없음. */
   approvalRoutes?: unknown[];
 }
@@ -143,7 +145,10 @@ const pathOf = (request: Request): string => new URL(request.url).pathname;
 export const dispositionStub = (options: DispositionStubOptions = {}): StubFetch => {
   sent = [];
   const lots = options.lots ?? [lotFixture()];
-  const decisions = options.decidedQty === undefined ? [] : [decisionFixture(options.decidedQty)];
+  const decisions =
+    options.decidedQty === undefined
+      ? []
+      : [{ ...decisionFixture(options.decidedQty), ...options.decision }];
   const decidedQtyTotal = options.decidedQty ?? 0;
   const affectedQtyTotal = affectedQtyTotalOf(lots);
   /** W-03-10 ② 「남은 수량」 구획 — 서버가 이미 뺀 값이라 화면은 그대로 읽기만 한다. */

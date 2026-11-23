@@ -170,7 +170,9 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
       `đều chuyển sang chờ kiểm tra, IQC của LOT nhập hàng ${inboundLotNo} được mở lại để kiểm tra lại.`,
     remainingUnknown: 'Đang xác nhận số lượng còn lại. Hãy lưu lại sau giây lát',
     typeLock: {
-      closed: 'Mục không phù hợp đã kết thúc',
+      closed: 'Mục không phù hợp này đã kết thúc',
+      openDerived: (nonconformanceNo: string): string =>
+        `Xem mục không phù hợp mới ${nonconformanceNo}`,
       concessionPending: 'Đặc cách đang chờ phê duyệt',
       concessionApproved: 'Đặc cách đã duyệt — chờ áp dụng',
       concessionRejected: 'Đặc cách bị từ chối — chờ xác nhận',

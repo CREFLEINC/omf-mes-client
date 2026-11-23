@@ -4,7 +4,7 @@ import type {
   ConcessionCreateForward005,
   DispositionDecisionCreatedForward005,
 } from '@omf-mes/api-client';
-import { Badge, Chip, Icon, Tabs, useToast } from '@crefle/web-ui';
+import { Badge, Button, Chip, Icon, Tabs, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -381,6 +381,19 @@ export const DispositionDecisionScreen = ({
   const detailError = detail.isError ? toApiError(detail.error) : null;
   const isDetailNotFound = detailError?.kind === 'http' && detailError.status === 404;
   const remaining = toRemainingQty(decisions.data?.summary);
+  /** 이 부적합의 판정으로 새로 생긴 부적합(선별로 떼어 낸 불량) — 종결 안내 옆 이동 단추(#352). */
+  const derivedNonconformances = (decisions.data?.items ?? [])
+    .flatMap((item) =>
+      item.newNonconformanceId == null
+        ? []
+        : [
+            {
+              id: item.newNonconformanceId,
+              no: item.newNonconformanceNo ?? String(item.newNonconformanceId),
+            },
+          ],
+    )
+    .filter((item, index, all) => all.findIndex((other) => other.id === item.id) === index);
   const uomId = decisionUomIdOf(detail.data?.lots);
   const detailView = useMemo(
     () => (detail.data === undefined ? null : toDetailView(detail.data)),
@@ -1001,6 +1014,24 @@ export const DispositionDecisionScreen = ({
                       {line}
                     </p>
                   ))}
+                  {/* 종결로 새로 생긴 부적합(선별)으로 가는 단추 — 제목 옆 안내 바로 뒤(#352 사용자 지시). */}
+                  {isClosedNonconformance(detail.data.statusCode, remaining.isSettled) &&
+                    derivedNonconformances.map((derived) => (
+                      <Button
+                        key={derived.id}
+                        variant="text"
+                        size="sm"
+                        aria-label={t.form.typeLock.openDerived(derived.no)}
+                        onClick={() =>
+                          setSearchParams((current) =>
+                            withSelectedNonconformance(current, derived.id),
+                          )
+                        }
+                      >
+                        {derived.no}
+                        <Icon name="open_in_new" size={16} aria-hidden />
+                      </Button>
+                    ))}
                 </div>
                 {/* 적용 전 특채 — 결재 상태와 [특채 적용]을 이 상자에(시안 W0310-After · G2 M3). */}
                 {pendingConcession !== undefined && (
