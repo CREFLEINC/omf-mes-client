@@ -1,6 +1,8 @@
 import type { DispositionDecisionCreateForward005 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { CONCESSION_DISPOSITION } from './disposition-codes';
+
 /**
  * ⭐ 005 FR-038 — 처분은 입하 LOT 단위다. 판정 하나가 부적합 LOT(= 입하 LOT 의 자재 관리 LOT) 전부를 옮기고,
  * 처분 수량은 **남은 수량 전부로 고정**한다(입력 · 일부 판정 없음). 선별은 수량이 아니라 **불량 자재 관리 LOT 고르기**다.
@@ -20,8 +22,8 @@ export interface DecisionFormValue {
 
 /** 선별 — 불량 자재 관리 LOT 을 새 입하 LOT · 새 부적합으로 넘긴다(US7-2). */
 export const SORT = 'SORT';
-/** 특채 — 팝업 없이 처분 유형으로 고르고 아래 칸에서 요청한다(omf-all-around#352 사용자 지시). */
-export const CONCESSION = 'CONCESSION';
+/** 특채 — 팝업 없이 처분 유형으로 고르고 저장하면 바로 적용된다(omf-all-around#352 사용자 지시). 값은 처분 코드와 같다. */
+export const CONCESSION = CONCESSION_DISPOSITION;
 
 export interface DecisionFormErrors {
   dispositionTypeCode?: string;
