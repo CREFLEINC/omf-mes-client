@@ -32,8 +32,6 @@ export const iqcInspection = {
       statusCode: '상태',
       requestedAt: '의뢰 일시',
       inspectionRequestNo: '의뢰번호',
-      /** 줄에서 바로 여는 「생략 요청」(omf-all-around#225). */
-      skip: '생략',
     },
     /** 값이 없는 칸. 빈 칸으로 두면 「없음」인지 「못 불러왔는지」 구분되지 않는다. */
     emptyValue: '—',
@@ -49,41 +47,6 @@ export const iqcInspection = {
      */
     openRow: (item: string, inspectionRequestNo: string): string =>
       `${item} · 검사 의뢰 ${inspectionRequestNo} 열기`,
-    /** 줄의 생략 단추 — 그 LOT 의 생략 결재 단계마다 하나(#225). */
-    skipRequest: '생략 요청',
-    skipApprove: '승인 처리',
-    skipExecute: '생략 실행',
-    /** 상태 칸 — 생략 결재가 걸린 대기·진행 의뢰는 결재 단계를 보인다(사용자 지시 2026-11-02 · #225). */
-    /** 결재로 생략된 의뢰(SKIPPED · APPROVAL)는 「생략」 하나로 보인다(사용자 지시 2026-11-02). */
-    skipStatus: {
-      PENDING: '생략 대기',
-      APPROVED: '생략 승인',
-      REJECTED: '생략 반려',
-      SKIPPED: '생략',
-    } as Record<string, string>,
-    /** 줄의 단추가 여는 창(#225) — 승인 처리는 품질 승인 처리 화면으로 옮기지 않고 여기서 한다. */
-    skipDialog: {
-      /** 「생략 요청」 창 안내(사용자 지시 2026-11-02). */
-      requestResult: '승인되면 수입검사를 건너뛰고 LOT 상태가 「정상」으로 바뀝니다.',
-      approveTitle: 'IQC (수입검사) 생략 승인 처리',
-      requestNo: '요청번호',
-      requester: '상신자',
-      reason: '요청 사유',
-      comment: '결재 사유',
-      commentPlaceholder: '반려 또는 승인 사유를 입력하세요',
-      commentRequired: '결재 사유를 입력하세요.',
-      notMyTurn: '지금은 내 결재 차례가 아니라 승인·반려할 수 없습니다.',
-      approve: '승인',
-      reject: '반려',
-      approved: 'IQC 생략 요청을 승인했습니다.',
-      rejected: 'IQC 생략 요청을 반려했습니다.',
-      loading: '결재 정보를 불러오는 중입니다.',
-      loadFailed: '결재 정보를 불러오지 못했습니다.',
-      executeTitle: '수입검사를 생략하시겠습니까?',
-      executeBody:
-        "수입검사가 생략되고 LOT 상태가 '정상'으로 변경됩니다. 실행 후에는 취소할 수 없습니다.",
-      execute: '생략 실행',
-    },
     caption: '검사 대기 목록',
     /**
      * 조회는 됐는데 결과가 없다. 조건을 바꾸는 것이 사용자가 할 수 있는 유일한 조치다.
@@ -197,24 +160,6 @@ export const iqcInspection = {
     noPlanVersion: '기준 없음',
     planVersion: (version: number): string => `버전 ${String(version)}`,
     openPlan: '기준 조회',
-    /** 「기준 조회」 창(#197) — 화면을 옮기지 않고 기준을 보인다. 고치려면 [수정]. */
-    planView: {
-      title: '적용 검사 기준',
-      version: (version: number): string => `버전 ${String(version)}`,
-      samplingLabel: '샘플링',
-      fullInspection: '전수 검사',
-      sampling: (ratio: number): string => `샘플 검사 ${String(ratio)}%`,
-      acceptanceLabel: '합격판정개수',
-      acceptance: (count: number): string => `불합격 ${String(count)}개 이하 합격`,
-      acceptanceNone: '없음',
-      itemsHeading: '검사 항목',
-      itemsCount: (count: number): string => `(${String(count)})`,
-      columns: { no: 'No.', count: '측정 횟수' },
-      count: (count: number): string => `${String(count)}회`,
-      required: '필수',
-      close: '닫기',
-      edit: '수정',
-    },
   },
 
   /** 우측 창 — 수량 판정. 합계 제약이 이 구획을 지배한다. */
@@ -563,39 +508,5 @@ export const iqcInspection = {
     /** 결과는 있는데 이 쪽에는 없다. 조건이 아니라 쪽이 문제이므로 앞쪽으로 가라고 말한다. */
     beyondLast: '이 쪽에는 결과가 없습니다. 앞쪽으로 돌아가 보세요.',
     toFirstPage: '첫 쪽으로',
-  },
-  /**
-   * IQC 건별 생략(omf-all-around#212) — OQC·PQC 생략 구획과 같은 모양이다. 요청 → 결재(W-03-09) → 실행.
-   * 단위는 입하 LOT 이다(PDA 「IQC 생략 요청」과 같은 요청).
-   */
-  skip: {
-    heading: 'IQC (수입검사) 생략 요청',
-    steps: ['1. 생략 요청', '2. 승인 처리', '3. 생략 실행'],
-    result: '요청 후 생략을 승인하면 이 LOT 의 수입검사가 생략되고, LOT 은 정상이 됩니다.',
-    reason: '생략 사유',
-    reasonPlaceholder: '생략 사유를 입력하세요',
-    openApproval: '요청 건 승인 처리로 이동',
-    currentStep: '현재 단계',
-    reasonCount: (count: number): string => `${String(count)}자`,
-    reasonRequired: '생략 사유를 입력하세요.',
-    openRequest: '생략 요청',
-    cancel: '취소',
-    request: '생략 승인 요청',
-    requesting: '요청하는 중…',
-    execute: 'IQC 생략 실행',
-    executing: '실행하는 중…',
-    requested: 'IQC 생략을 요청했습니다. 결재가 끝나면 여기서 실행하세요.',
-    pending: '결재가 아직 진행 중입니다.',
-    approved: '생략이 승인됐습니다. 실행하면 이 LOT 의 IQC 가 생략됩니다.',
-    rejected: '직전 생략 요청이 반려됐습니다. 다시 요청할 수 있습니다.',
-    executed: 'IQC 를 생략했습니다. LOT 이 정상이 됐습니다.',
-    skipped: '이 의뢰는 결재 승인으로 IQC 가 생략됐습니다.',
-    skippedDefault:
-      '검사 기준이 ‘기본 생략’으로 설정되어 IQC 검사 없이 LOT 이 정상 처리되었습니다.',
-    loading: '생략 결재 상태를 불러오는 중입니다.',
-    loadFailed: '생략 결재 상태를 불러오지 못했습니다.',
-    /** 요청은 사번을 함께 보낸다 — 계정에 작업자가 없으면 요청하지 못한다. */
-    workerNotLinked:
-      '계정에 연결된 작업자가 없어 생략을 요청할 수 없습니다. 판정 칸의 「작업자 연결」로 먼저 이어 주세요.',
   },
 } as const;

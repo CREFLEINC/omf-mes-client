@@ -88,6 +88,7 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
     noStepsDescription:
       'Không có bước thì yêu cầu trình của loại này sẽ bị từ chối. Thêm ít nhất một bước là mở lại.',
   },
+
   values: {
     unknown: 'Không rõ',
     referenceLoading: 'Đang tải tên',

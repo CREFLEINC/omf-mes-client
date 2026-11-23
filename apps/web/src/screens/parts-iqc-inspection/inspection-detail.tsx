@@ -31,7 +31,6 @@ import {
 } from 'react';
 import { useNavigate } from 'react-router';
 
-import { InspectionDrawingImages } from '../../patterns/inspection-drawings';
 import { InfoTip } from '../../patterns/info-tip';
 import { InspectionGuideNotice } from '../../patterns/inspection-guide';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -81,7 +80,8 @@ import { InspectionHistory } from './history';
 import { InboundDetail, type InboundDetailProps } from './inbound-detail';
 import { splitRuleErrors } from './lot-judgment';
 import { useInboundFourM, useInboundInspection } from './inbound-queries';
-import { PlanDialog } from './plan-dialog';
+import { DrawingImages, PlanDialog } from './plan-dialog';
+import { SkippedNotice, SkippedOverview } from './skipped-overview';
 import { useUomLookup, withUom } from '../iqc-inspection/uom-lookup';
 import {
   checkRowCount,
@@ -183,6 +183,8 @@ export const InspectionDetail = ({
   const specs = useInspectionItemSpecs(versionId);
   const plan = useInspectionPlan(version.data?.inspectionPlanId ?? null);
   const drawings = useDrawings(versionId);
+  /* 생략 건 요약의 「기준 조회」 창(사용자 지시 2026-11-23 · #353). */
+  const [skippedPlanOpen, setSkippedPlanOpen] = useState(false);
   const inbound = useInboundInfo(inspectionRequestId);
   const defectCodes = useDefectCodes(true);
   const items = useItemNames([detail.data?.itemId]);
@@ -260,15 +262,50 @@ export const InspectionDetail = ({
     /* 생략으로 닫힌 의뢰는 입력할 것이 없다 — 받은 정보만 읽기 전용으로 보인다(사용자 지시 2026-11-02 · #225). */
     if (detail.data.statusCode === 'SKIPPED') {
       return (
-        <SkippedSummary
-          skipBasisCode={detail.data.skipBasisCode ?? null}
-          itemParts={items.partsOf(detail.data.itemId)}
-          planLabel={plan.data?.inspectionPlanCode ?? '-'}
-          planName={plan.data?.inspectionPlanName ?? '-'}
-          lotNo={lots.labelOf(detail.data.lotId)}
-          qtyLabel={withUom(String(detail.data.targetQty), uoms.codeOf(detail.data.uomId))}
-          inbound={inbound.data}
-        />
+        <>
+          <SkippedOverview
+            itemLabel={t.target.itemName}
+            itemParts={items.partsOf(detail.data.itemId)}
+            planCode={plan.data?.inspectionPlanCode ?? '-'}
+            requestNo={detail.data.inspectionRequestNo}
+            lotNo={
+              inboundFlow
+                ? (inboundInspection.data?.lots ?? []).map((lot) => lot.lotNo).join(', ') || '-'
+                : lots.labelOf(detail.data.lotId)
+            }
+            lotFacts={[
+              { key: 'supplier', label: t.lot.supplier, value: inbound.data?.supplierLabel ?? '-' },
+              {
+                key: 'qty',
+                label: t.lot.qty,
+                value: withUom(String(detail.data.targetQty), uoms.codeOf(detail.data.uomId)),
+              },
+              {
+                key: 'receivedAt',
+                label: t.lot.receivedAt,
+                value: formatPlantDateTime(inbound.data?.receivedAt ?? null) ?? '-',
+              },
+            ]}
+            planAction={
+              version.data === undefined || specs.data === undefined ? null : (
+                <Button variant="outlined" size="sm" onClick={() => setSkippedPlanOpen(true)}>
+                  {t.plan.open}
+                </Button>
+              )
+            }
+          />
+          {skippedPlanOpen && version.data !== undefined && specs.data !== undefined && (
+            <PlanDialog
+              planCode={plan.data === undefined ? '-' : plan.data.inspectionPlanCode}
+              itemParts={items.partsOf(detail.data.itemId)}
+              version={version.data}
+              specs={[...specs.data].sort((a, b) => a.sequenceNo - b.sequenceNo)}
+              uomCodeOf={uoms.codeOf}
+              drawings={<DrawingImages drawings={drawings.data ?? []} />}
+              onClose={() => setSkippedPlanOpen(false)}
+            />
+          )}
+        </>
       );
     }
     if (confirmed) {
@@ -423,7 +460,8 @@ export const InspectionDetail = ({
   /* 새 흐름 상세의 [기준 조회] 창(사용자 지시 2026-11-19 · omf-all-around#296). */
   const [inboundPlanOpen, setInboundPlanOpen] = useState(false);
 
-  if (inboundFlow && detail.data !== undefined) {
+  /* 생략으로 닫힌 입하 LOT 의뢰도 결과를 받지 않는다 — 아래 공통 경로의 생략 요약으로 보낸다(omf-all-around#353). */
+  if (inboundFlow && detail.data !== undefined && detail.data.statusCode !== 'SKIPPED') {
     const aql = version.data?.aqlValue;
     const planText = [
       aql == null ? null : t.target.conditionAql(aql),
@@ -460,7 +498,6 @@ export const InspectionDetail = ({
         {inboundPlanOpen && version.data !== undefined && specs.data !== undefined && (
           <PlanDialog
             planCode={plan.data === undefined ? '-' : plan.data.inspectionPlanCode}
-            planName={plan.data?.inspectionPlanName ?? '-'}
             itemParts={items.partsOf(detail.data.itemId)}
             version={version.data}
             specs={[...specs.data].sort((a, b) => a.sequenceNo - b.sequenceNo)}
@@ -487,10 +524,16 @@ export const InspectionDetail = ({
     <div className="parts-iqc-detail-body">
       <div className="parts-iqc-detail-head">
         <h2 className="pane-title">{t.dialog.title}</h2>
-        {detail.data !== undefined && t.requestStatus[detail.data.statusCode] !== undefined && (
-          <Chip size="sm" status={detail.data.statusCode === 'IN_PROGRESS' ? 'info' : 'idle'}>
-            {t.requestStatus[detail.data.statusCode]}
-          </Chip>
+        {/* 생략 건은 상태 라벨 대신 안내 줄을 제목 바로 오른쪽에(사용자 지시 2026-11-23 · #353). */}
+        {detail.data?.statusCode === 'SKIPPED' ? (
+          <SkippedNotice />
+        ) : (
+          detail.data !== undefined &&
+          t.requestStatus[detail.data.statusCode] !== undefined && (
+            <Chip size="sm" status={detail.data.statusCode === 'IN_PROGRESS' ? 'info' : 'idle'}>
+              {t.requestStatus[detail.data.statusCode]}
+            </Chip>
+          )
         )}
         {isReinspecting ? (
           <Button
@@ -531,7 +574,6 @@ export const InspectionDetail = ({
         </p>
       )}
       {isReinspecting && <p className="field-note">{t.dialog.reinspectNote}</p>}
-      {/* IQC 생략은 OA 화면처럼 목록 「생략」 칸으로 옮겼다(omf-all-around#225). */}
       {/* 검사 진행 · 첨부 파일 · 검사 이력 순(#247 · 사용자 지시 2026-11-10) — 이력은 이 의뢰의 회차를 읽기 전용으로 */}
       <Tabs
         className="parts-iqc-detail-tabs"
@@ -545,7 +587,14 @@ export const InspectionDetail = ({
         items={[
           ...(confirmed
             ? []
-            : [{ value: 'input', label: t.tabs.input, content: tab === 'input' ? body() : null }]),
+            : [
+                {
+                  value: 'input',
+                  /* 생략 건은 진행할 검사가 없다 — 「검사 상세」(#353). */
+                  label: detail.data?.statusCode === 'SKIPPED' ? t.skipped.detailTab : t.tabs.input,
+                  content: tab === 'input' ? body() : null,
+                },
+              ]),
           /* 첨부 파일 — OA 화면 「첨부 파일」 탭과 같은 LOT 첨부(시험성적서 등 · #247 · 사용자 지시 2026-11-10). */
           ...(lotId === null
             ? []
@@ -612,67 +661,6 @@ export const InspectionDetail = ({
     </div>
   );
 };
-
-/** 생략된 의뢰의 읽기 전용 요약 — 검사 대상 · LOT 정보를 입력 화면과 같은 짜임으로 보인다(#225). */
-const SkippedSummary = (props: {
-  skipBasisCode: string | null;
-  itemParts: { code: string; name: string } | null;
-  planLabel: string;
-  planName: string;
-  lotNo: string;
-  qtyLabel: string;
-  inbound: { supplierLabel: string | null; receivedAt: string | null } | undefined;
-}) => (
-  <>
-    <AlertBanner variant="info">
-      {t.skipped.notice(
-        props.skipBasisCode === null ? null : (t.skipped.basis[props.skipBasisCode] ?? null),
-      )}
-    </AlertBanner>
-    <section className="parts-iqc-block" aria-label={t.target.heading}>
-      <dl className="parts-iqc-facts">
-        <div className="parts-iqc-fact">
-          <dt className="field-label">{t.target.itemName}</dt>
-          <dd className="parts-iqc-fact-key">
-            {props.itemParts?.name ?? '-'}
-            {props.itemParts !== null && (
-              <span className="parts-iqc-fact-sub">{props.itemParts.code}</span>
-            )}
-          </dd>
-        </div>
-        <div className="parts-iqc-fact">
-          <dt className="field-label">{t.target.plan}</dt>
-          <dd>{props.planLabel}</dd>
-        </div>
-        <div className="parts-iqc-fact">
-          <dt className="field-label">{t.target.planName}</dt>
-          <dd>{props.planName}</dd>
-        </div>
-      </dl>
-      <div className="parts-iqc-lot-box" role="group" aria-label={t.lot.heading}>
-        <h4>{t.lot.heading}</h4>
-        <dl className="parts-iqc-kv">
-          <div>
-            <dt>{t.lot.lotNo}</dt>
-            <dd className="parts-iqc-lot-no">{props.lotNo}</dd>
-          </div>
-          <div>
-            <dt>{t.lot.supplier}</dt>
-            <dd>{props.inbound?.supplierLabel ?? '-'}</dd>
-          </div>
-          <div>
-            <dt>{t.lot.qty}</dt>
-            <dd>{props.qtyLabel}</dd>
-          </div>
-          <div>
-            <dt>{t.lot.receivedAt}</dt>
-            <dd>{formatPlantDateTime(props.inbound?.receivedAt ?? null) ?? '-'}</dd>
-          </div>
-        </dl>
-      </div>
-    </section>
-  </>
-);
 
 /** 결과 드로어 모드(005 새 흐름). */
 export interface InspectionFormDrawer {
@@ -754,23 +742,6 @@ interface FormProps {
     onPickLevel: (values: LevelDialogValues) => void;
   } | null;
 }
-
-/** 기준서 도면 — 품질 기준 정보 「도면」 탭과 같은 보기(한 장씩 좌우로 넘김 · 사용자 지시 2026-10-30). */
-const DrawingImages = ({ drawings }: { drawings: { attachmentId: number; blob: Blob }[] }) => (
-  <section className="parts-iqc-card" aria-label={t.drawing.heading}>
-    <div className="parts-iqc-block-head">
-      <h3>{t.drawing.heading}</h3>
-      {drawings.length === 0 && <span className="parts-iqc-muted">{t.drawing.none}</span>}
-    </div>
-    {drawings.length === 0 ? null : (
-      <InspectionDrawingImages
-        drawings={drawings}
-        altOf={t.drawing.alt}
-        labels={{ prev: t.drawing.prev, next: t.drawing.next }}
-      />
-    )}
-  </section>
-);
 
 /** IQC 기준 안내 라벨 — 글 폭만큼, 본문 크기 글자(omf-all-around#351 · 사용자 지시 2026-11-23). */
 const PlanNote = ({ text }: { text: string }) => (
@@ -1174,7 +1145,6 @@ const InspectionForm = (props: FormProps) => {
       {planOpen && version !== null && (
         <PlanDialog
           planCode={props.planLabel}
-          planName={props.planName}
           itemParts={props.itemParts}
           version={version}
           specs={specs}

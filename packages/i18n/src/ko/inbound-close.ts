@@ -4,7 +4,7 @@
  * 입하 중인 입하 LOT 를 건별로 확인·해제·입하 마감하고, 아직 다음 일이 시작되지 않은 입하 완료 건을 마감 취소한다.
  * 문구는 확정 시안(mockups/M0103-After)을 따른다. 「공급사·품목」은 설계 확정 용어다.
  * 화면에 원리 설명 · 다른 화면 코드(M-01-01 · W-01-01 · W-01-16)를 적지 않는다(사용자 지시 2026-11-18). 마감하지 않아도 공장
- * 날짜가 바뀌면 시스템이 자동 마감하고, 마감 취소 목록에는 아직 다음 일(IQC 결과 · 입고 · 긴급 생략 결재 · 최종 마감)이
+ * 날짜가 바뀌면 시스템이 자동 마감하고, 마감 취소 목록에는 아직 다음 일(IQC 결과 · 입고 · 최종 마감)이
  * 시작되지 않은 건만 온다 — 이 사정은 주석에만 남긴다.
  */
 export const inboundClose = {
@@ -29,7 +29,6 @@ export const inboundClose = {
     reason: {
       NO_IQC_RESULT: { chip: 'IQC 결과 0건', sub: '검사 필요 · 결과 없음' }, // ui-check-ignore: C-13 설계 확정 칩 문구(screens/M-01-03.md)
       INSPECTION_NOT_REQUIRED: { chip: '검사 불필요 · 입고 전', sub: '자재 관리 LOT 정상' }, // ui-check-ignore: C-13 설계 확정 칩 문구(screens/M-01-03.md)
-      IQC_SKIPPED: { chip: '긴급 생략 실행 · 입고 전', sub: '자재 관리 LOT 정상(긴급 생략)' }, // ui-check-ignore: C-13 설계 확정 칩 문구(screens/M-01-03.md)
     },
   },
   /** 카드 공통. */
@@ -96,8 +95,6 @@ export const inboundClose = {
         `IQC 요청(${iqcNo})이 취소되고 입하 LOT가 「입하 중」으로 돌아갑니다. 자재 관리 LOT는 검사 대기·보류 그대로입니다.`, // ui-check-ignore: C-13 설계 확정 효과 문구(screens/M-01-03.md)
       INSPECTION_NOT_REQUIRED: () =>
         'IQC 「검사 생략」 기록이 취소되고 입하 LOT가 「입하 중」으로 돌아갑니다. 자재 관리 LOT는 정상 그대로입니다(검사 불필요 품목).',
-      IQC_SKIPPED: (iqcNo: string) =>
-        `IQC 요청(${iqcNo})이 취소되고 입하 LOT가 「입하 중」으로 돌아갑니다. 긴급 IQC 생략이 무효가 되고 자재 관리 LOT가 검사 대기로 돌아갑니다.`,
     },
     cancel: '닫기',
     proceed: '마감 취소',
@@ -111,7 +108,6 @@ export const inboundClose = {
     codes: {
       IQC_RECORDED: '그사이 IQC 결과가 기록됐습니다.',
       GOODS_RECEIVED: '그사이 자재 관리 LOT가 입고됐습니다.',
-      SKIP_PENDING: '긴급 생략 결재가 진행 중입니다.',
       INBOUND_LOT_FINALIZED: '관리자가 최종 마감했습니다.',
       LEGACY_INBOUND_LOT: '이전 데이터 입하라 마감을 취소할 수 없습니다.',
     } as Record<string, string | undefined>,

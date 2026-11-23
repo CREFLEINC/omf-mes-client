@@ -902,7 +902,7 @@ export const createSeed = (now = new Date()) => {
       sourceId: 9002,
       statusCode: 'INSPECTION_PENDING',
       completedAt: null,
-      /* 검사 대기로 보류된 자재 — 위치 확인 화면의 보류 경고와 IQC 생략 요청 대상이다. */
+      /* 검사 대기로 보류된 자재 — 위치 확인 화면의 보류 경고 대상이다. */
       held: true,
     },
     /*
@@ -924,7 +924,7 @@ export const createSeed = (now = new Date()) => {
       completedAt: null,
       held: true,
     },
-    /* 승인된 IQC 생략의 대상 — 아직 실행 전이라 검사 대기다(#193 상황별 화면 확인용). */
+    /* 검사 대기 자재 LOT(#193 상황별 화면 확인용). */
     {
       lotId: 8004,
       lotNo: 'ABC-123|80|260731|SUP-001|0010',
@@ -1947,9 +1947,7 @@ export const createSeed = (now = new Date()) => {
       minimumShelfLifeDays: 90,
     },
     /*
-     * 품질 승인 처리의 OQC 생략 확인용(#193) — 피킹을 마치고 출하검사를 기다리는 지시서 둘. 9603 은 생략이 승인됐고
-     * (AP-2026-000027), 9604 는 한 번 반려된 뒤 다시 상신됐다(AP-2026-000025 반려 · AP-2026-000033 대기).
-     * `shippingInspectionStatusCode`(계약 필수)는 생략을 실행하면 PASSED 가 된다(서버 롤업). 값은 전부 지어낸 것이다.
+     * 피킹을 마치고 출하검사를 기다리는 지시서 둘(#193). 값은 전부 지어낸 것이다.
      */
     ...[
       { shipmentRequestId: 9603, shipmentRequestNo: 'SR-2026-1027-0131', customerId: 4003 },
@@ -2004,7 +2002,7 @@ export const createSeed = (now = new Date()) => {
       uomId: 1001,
       fifoPolicyCode: 'FEFO',
     },
-    /* OQC 생략 확인용 지시서(9603 · 9604)의 줄 — 집은 LOT(`picks`)이 품질 승인 처리의 「피킹 LOT」으로 선다(#193). */
+    /* 출하검사 대기 지시서(9603 · 9604)의 줄 — 집은 LOT(`picks`)이 함께 실린다(#193). */
     {
       shipmentRequestLineId: 9803,
       shipmentRequestId: 9603,
@@ -2707,8 +2705,7 @@ export const createSeed = (now = new Date()) => {
      * `inspectionTypeCode=IQC · pendingOnly=true` 로 고정해 묻는데 씨앗에 IQC 가 하나도
      * 없어, 88단계 시험 16번이 늘 「전체 0건」이었다.
      *
-     * 대상은 검사 대기로 보류된 자재 LOT(8003)이다 — 같은 LOT 이 IQC 생략 한도승인(18번)의
-     * 대상이라, 두 화면이 같은 건을 놓고 갈린다.
+     * 대상은 검사 대기로 보류된 자재 LOT(8003)이다.
      */
     {
       inspectionRequestId: 16003,
@@ -2756,58 +2753,7 @@ export const createSeed = (now = new Date()) => {
    * 렌더가 죽어 요청 목록 자리가 통째로 열리지 않는다.
    */
   const approvalRequests = [
-    {
-      approvalRequestId: 15001,
-      approvalRequestNo: 'AP-2026-000031',
-      approvalTypeCode: 'IQC_SKIP',
-      targetTypeCode: 'INBOUND_LOT',
-      targetId: 8003,
-      target: {
-        targetTypeCode: 'INBOUND_LOT',
-        targetId: 8003,
-        displayName: MATERIAL_LOT_HELD,
-        openable: false,
-      },
-      requestedBy: 1001,
-      requestedByName: '홍길동',
-      requestedByWorkerNo: '100027',
-      requestedAt: iso(-1, 13),
-      reason: '긴급 생산 투입 — 수입검사 대기 중',
-      statusCode: 'PENDING',
-      currentStepNo: 1,
-      totalStepNo: 2,
-      isMyTurn: true,
-      /*
-       * 결재 단계 — **상세(`{ request, steps }`)가 이 목록을 싣는다**(#1032). ⛔ 목록 응답에는
-       * 싣지 않는다(계약 `ApprovalRequest` 에 없는 칸이다) — 목록 처리기가 걷어낸다.
-       */
-      steps: [
-        {
-          stepNo: 1,
-          approverId: 1001,
-          approverName: '김품질',
-          decisionCode: null,
-          decisionAt: null,
-          decisionComment: null,
-          isMine: true,
-          isCurrent: true,
-        },
-        {
-          stepNo: 2,
-          approverId: 1002,
-          approverName: '박승인',
-          decisionCode: null,
-          decisionAt: null,
-          decisionComment: null,
-          isMine: false,
-          isCurrent: false,
-        },
-      ],
-    },
-    /*
-     * 결재가 끝난 요청 둘(#186 상태 칩 확인용) — 승인 하나 · 반려 하나. 「결재 대기만」 조회나 위 LOT(8003)
-     * 조회에는 걸리지 않는다. 값은 전부 지어낸 것이다.
-     */
+    /* 결재가 끝난 요청(#186 상태 칩 확인용) — 「결재 대기만」 조회에는 걸리지 않는다. 값은 전부 지어낸 것이다. */
     {
       approvalRequestId: 15002,
       approvalRequestNo: 'AP-2026-000028',
@@ -2842,232 +2788,10 @@ export const createSeed = (now = new Date()) => {
         },
       ],
     },
-    {
-      approvalRequestId: 15003,
-      approvalRequestNo: 'AP-2026-000025',
-      approvalTypeCode: 'OQC_SKIP',
-      targetTypeCode: 'SHIPMENT_REQUEST',
-      targetId: 9604,
-      target: {
-        targetTypeCode: 'SHIPMENT_REQUEST',
-        targetId: 9604,
-        displayName: '출하작업지시 #9604',
-        openable: false,
-      },
-      requestedBy: 1001,
-      requestedByName: '홍길동',
-      requestedByWorkerNo: '100027',
-      requestedAt: iso(-6, 15),
-      reason: '납기 임박 — 출하검사 생략 요청',
-      statusCode: 'REJECTED',
-      currentStepNo: 1,
-      totalStepNo: 1,
-      isMyTurn: false,
-      steps: [
-        {
-          stepNo: 1,
-          approverId: 1001,
-          approverName: '김품질',
-          decisionCode: 'REJECTED',
-          decisionAt: iso(-5, 11),
-          decisionComment: '검사 생략 근거 부족',
-          isMine: true,
-          isCurrent: false,
-        },
-      ],
-    },
     /*
-     * 승인된 OQC 생략(#193) — 품질 승인 처리에서 「OQC 생략 실행」 구획을 보려고 둔다. 대상은 출하작업지시 9603 이다
-     * (실제 서버처럼 SHIPMENT_REQUEST). 값은 전부 지어낸 것이다.
+     * 상황별 화면 확인용(#193) — 특채 × 상태(내 차례·남의 차례·승인·반려) × 적용(전·완료)을 한 번에 볼 수 있게
+     * 둔다. 건별 검사 생략 결재(IQC·OQC 생략)는 없어졌다(omf-all-around#353). 값은 전부 지어낸 것이다.
      */
-    {
-      approvalRequestId: 15004,
-      approvalRequestNo: 'AP-2026-000027',
-      approvalTypeCode: 'OQC_SKIP',
-      targetTypeCode: 'SHIPMENT_REQUEST',
-      targetId: 9603,
-      target: {
-        targetTypeCode: 'SHIPMENT_REQUEST',
-        targetId: 9603,
-        displayName: '출하작업지시 #9603',
-        openable: false,
-      },
-      requestedBy: 1001,
-      requestedByName: '홍길동',
-      requestedByWorkerNo: '100027',
-      requestedAt: iso(-2, 9),
-      reason: '긴급 출하 — 출하검사 생략 요청',
-      statusCode: 'APPROVED',
-      currentStepNo: 1,
-      totalStepNo: 1,
-      isMyTurn: false,
-      steps: [
-        {
-          stepNo: 1,
-          approverId: 1001,
-          approverName: '김품질',
-          decisionCode: 'APPROVED',
-          decisionAt: iso(-1, 10),
-          decisionComment: '납기 우선 — 생략 승인',
-          isMine: true,
-          isCurrent: false,
-        },
-      ],
-    },
-    /*
-     * 상황별 화면 확인용(#193) — 종류(IQC 생략·OQC 생략·특채) × 상태(내 차례·남의 차례·승인·반려) ×
-     * 실행(전·완료)을 한 번에 볼 수 있게 둔다. 값은 전부 지어낸 것이다.
-     */
-    /* IQC 생략 승인 · 실행 전 — [실행] 단추 */
-    {
-      approvalRequestId: 15005,
-      approvalRequestNo: 'AP-2026-000032',
-      approvalTypeCode: 'IQC_SKIP',
-      targetTypeCode: 'INBOUND_LOT',
-      targetId: 8004,
-      target: {
-        targetTypeCode: 'INBOUND_LOT',
-        targetId: 8004,
-        displayName: 'ABC-123|80|260731|SUP-001|0010',
-        openable: false,
-      },
-      requestedBy: 1001,
-      requestedByName: '홍길동',
-      requestedByWorkerNo: '100027',
-      requestedAt: iso(-1, 15),
-      reason: '생산 라인 대기 — 수입검사 생략 요청',
-      statusCode: 'APPROVED',
-      currentStepNo: 1,
-      totalStepNo: 1,
-      isMyTurn: false,
-      steps: [
-        {
-          stepNo: 1,
-          approverId: 1001,
-          approverName: '김품질',
-          decisionCode: 'APPROVED',
-          decisionAt: iso(0, 8),
-          decisionComment: '공급사 성적서 확인 — 생략 승인',
-          isMine: true,
-          isCurrent: false,
-        },
-      ],
-    },
-    /* IQC 생략 승인 · 실행 완료(LOT 정상) — 「다음 할 일」 자재 입고 */
-    {
-      approvalRequestId: 15006,
-      approvalRequestNo: 'AP-2026-000024',
-      approvalTypeCode: 'IQC_SKIP',
-      targetTypeCode: 'INBOUND_LOT',
-      targetId: 8001,
-      target: {
-        targetTypeCode: 'INBOUND_LOT',
-        targetId: 8001,
-        displayName: 'ABC-123|500|260731|SUP-001|0007',
-        openable: false,
-      },
-      requestedBy: 1001,
-      requestedByName: '홍길동',
-      requestedByWorkerNo: '100027',
-      requestedAt: iso(-8, 9),
-      reason: '긴급 투입 — 수입검사 생략 요청',
-      statusCode: 'APPROVED',
-      currentStepNo: 1,
-      totalStepNo: 1,
-      isMyTurn: false,
-      steps: [
-        {
-          stepNo: 1,
-          approverId: 1001,
-          approverName: '김품질',
-          decisionCode: 'APPROVED',
-          decisionAt: iso(-7, 10),
-          decisionComment: '생략 승인',
-          isMine: true,
-          isCurrent: false,
-        },
-      ],
-    },
-    /* IQC 생략 반려 — 「다음 할 일」 IQC 수입검사 */
-    {
-      approvalRequestId: 15007,
-      approvalRequestNo: 'AP-2026-000023',
-      approvalTypeCode: 'IQC_SKIP',
-      targetTypeCode: 'INBOUND_LOT',
-      targetId: 8002,
-      target: {
-        targetTypeCode: 'INBOUND_LOT',
-        targetId: 8002,
-        displayName: 'RM-1001|300|260731|SUP-001|0008',
-        openable: false,
-      },
-      requestedBy: 1001,
-      requestedByName: '홍길동',
-      requestedByWorkerNo: '100027',
-      requestedAt: iso(-9, 14),
-      reason: '수입검사 생략 요청',
-      statusCode: 'REJECTED',
-      currentStepNo: 1,
-      totalStepNo: 1,
-      isMyTurn: false,
-      steps: [
-        {
-          stepNo: 1,
-          approverId: 1001,
-          approverName: '김품질',
-          decisionCode: 'REJECTED',
-          decisionAt: iso(-8, 11),
-          decisionComment: '신규 공급사 — 수입검사 필수',
-          isMine: true,
-          isCurrent: false,
-        },
-      ],
-    },
-    /* OQC 생략 2단계 중 2단계 · 내 차례 — ① 승인 → ② 내 차례 */
-    {
-      approvalRequestId: 15008,
-      approvalRequestNo: 'AP-2026-000033',
-      approvalTypeCode: 'OQC_SKIP',
-      targetTypeCode: 'SHIPMENT_REQUEST',
-      targetId: 9604,
-      target: {
-        targetTypeCode: 'SHIPMENT_REQUEST',
-        targetId: 9604,
-        displayName: '출하작업지시 #9604',
-        openable: false,
-      },
-      requestedBy: 1001,
-      requestedByName: '홍길동',
-      requestedByWorkerNo: '100027',
-      requestedAt: iso(0, 8),
-      reason: '긴급 출하 — 출하검사 생략 요청',
-      statusCode: 'PENDING',
-      currentStepNo: 2,
-      totalStepNo: 2,
-      isMyTurn: true,
-      steps: [
-        {
-          stepNo: 1,
-          approverId: 1002,
-          approverName: '박승인',
-          decisionCode: 'APPROVED',
-          decisionAt: iso(0, 9),
-          decisionComment: '1차 확인 — 이상 없음',
-          isMine: false,
-          isCurrent: false,
-        },
-        {
-          stepNo: 2,
-          approverId: 1001,
-          approverName: '김품질',
-          decisionCode: null,
-          decisionAt: null,
-          decisionComment: null,
-          isMine: true,
-          isCurrent: true,
-        },
-      ],
-    },
     /* 특채 대기 · 남의 차례 — 회색 라벨, 승인 칸 없음 */
     {
       approvalRequestId: 15009,

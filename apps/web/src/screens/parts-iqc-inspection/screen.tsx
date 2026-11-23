@@ -18,7 +18,6 @@ import {
 } from '../../patterns/inspection-hub-counts';
 import type { ScopedPlant } from '../../patterns/oa-access';
 import { PageNav } from '../../patterns/page-nav';
-import { useSession } from '../../patterns/session';
 import { usePageHub } from '../../patterns/page-hub';
 import {
   PaneListHead,
@@ -57,7 +56,7 @@ import { useItemNames, useLotNumbers, useLotSuppliers } from '../iqc-inspection/
 import { withDraft, withStatus } from '../oqc-inspection/filters';
 import { LeaveGuard } from '../routing/leave-guard';
 import { InspectionDetail } from './inspection-detail';
-import { partsIqcKeys, usePartsQueue } from './queries';
+import { usePartsQueue } from './queries';
 import { plantTodayRange } from './today';
 
 const t = messages.partsIqcInspection;
@@ -82,7 +81,6 @@ export interface PartsIqcInspectionScreenProps {
 export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenProps) => {
   const hub = usePageHub();
   const toast = useToast();
-  const { session } = useSession();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const filters = readFilters(searchParams);
@@ -338,8 +336,6 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
             suppliers={lotSuppliers}
             selectedId={selectedId}
             onSelect={select}
-            skipWorkerNo={session?.worker?.workerNo ?? null}
-            skipAlsoInvalidate={[partsIqcKeys.all]}
             empty={emptyContent}
           />
           {queue.data !== undefined && (

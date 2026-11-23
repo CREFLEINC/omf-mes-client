@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import {
+  QUALITY_APPROVAL_TYPE_CODES,
   approvalScopeWarning,
   approvalTypeLabelOf,
   statusBadgeOf,
@@ -14,15 +15,20 @@ describe('approvalScopeWarning', () => {
   });
 
   it('승인 유형 기준값이 하나라도 있으면 준비 중 경고를 내리지 않는다', () => {
-    expect(approvalScopeWarning(['IQC_SKIP'])).toBeUndefined();
+    expect(approvalScopeWarning(['CONCESSION'])).toBeUndefined();
+  });
+});
+
+describe('QUALITY_APPROVAL_TYPE_CODES', () => {
+  it('품질 승인 유형은 특채 하나다 — 건별 검사 생략 결재는 없어졌다(#353)', () => {
+    expect(QUALITY_APPROVAL_TYPE_CODES).toEqual(['CONCESSION']);
   });
 });
 
 describe('approvalTypeLabelOf', () => {
   it('아는 승인 유형은 사용자 용어로, 모르는 코드는 원문 그대로 보인다', () => {
-    expect(toTypeOptions(['CONCESSION', 'OQC_SKIP', 'SYNTH-TYPE'])).toEqual([
+    expect(toTypeOptions(['CONCESSION', 'SYNTH-TYPE'])).toEqual([
       { value: 'CONCESSION', label: messages.qualityApproval.typeLabels.CONCESSION },
-      { value: 'OQC_SKIP', label: messages.qualityApproval.typeLabels.OQC_SKIP },
       { value: 'SYNTH-TYPE', label: 'SYNTH-TYPE' },
     ]);
     expect(approvalTypeLabelOf('CONCESSION')).toBe('특채');

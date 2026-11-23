@@ -95,7 +95,7 @@ export const DecisionPane = ({
           aria-describedby={isNotMyTurn ? turnNoteId : undefined}
           /*
            * 잠긴 이유를 갈라 낸다 — 보내는 중이면 여기 적고, 내 차례가 아니면 단추 줄 아래 한 줄
-           * (`turnNoteId`)이 말한다. 같은 문장을 칸 · 단추마다 되풀이하지 않는다(IQC 생략 한도승인과 같은 모양).
+           * (`turnNoteId`)이 말한다. 같은 문장을 칸 · 단추마다 되풀이하지 않는다.
            */
           disabledReason={isLocked ? t.decision.commentSendingReason : undefined}
           error={commentError}

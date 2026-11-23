@@ -53,7 +53,7 @@ import { PqcPanel } from '../pqc-panel/panel';
 import { InspectionHistoryPanel, useInspectionHistory } from '../inspection-history/panel';
 import { labelOfCode } from '../oqc-inspection/code-options';
 import { CODE_GROUPS, toCodeOptions } from '../pqc-inspection/code-options';
-import { useCodeValues } from '../pqc-inspection/queries';
+import { useCodeValues, useInspectionRequestDetail } from '../pqc-inspection/queries';
 import { useItem } from '../production-result/flow-queries';
 import { EMPTY_PQC_FILTERS, PqcFilterBar, type PqcFilters } from './filter-bar';
 import { PqcQueueTable } from './queue-table';
@@ -160,6 +160,32 @@ export const PqcInspectionRegisterScreen = () => {
   const judgmentOptions = toCodeOptions(useCodeValues(CODE_GROUPS.overallJudgment).data ?? []);
   const historyRevision = String(submitter.sentCount);
   const historyCount = useInspectionHistory(selectedId, historyRevision).data?.events.length;
+  /* 생략 건은 이력을 상세 안 「검사 이력」 탭으로(IQC 와 같다 · 사용자 지시 2026-11-23 · #353). 캐시를 패널과 같이 쓴다. */
+  const selectedSkipped = useInspectionRequestDetail(selectedId).data?.statusCode === 'SKIPPED';
+  const historyTab = {
+    value: 'history',
+    label: messages.inspectionHistory.heading,
+    content: (
+      <div className="oqc-inspection-tab-body">
+        <div className="oqc-inspection-tab-head">
+          <h3>{tOqc.detail.historyTitle}</h3>
+          {historyCount !== undefined && (
+            <span className="oqc-inspection-fold-chip">
+              {tOqc.detail.historyCount(historyCount)}
+            </span>
+          )}
+        </div>
+        {selectedId !== null && (
+          <InspectionHistoryPanel
+            hideSourceLot
+            inspectionRequestId={selectedId}
+            judgmentLabelOf={(code) => labelOfCode(judgmentOptions, code)}
+            revision={historyRevision}
+          />
+        )}
+      </div>
+    ),
+  };
 
   const queue = useInspectionQueue({
     inspectionTypeCode: PQC,
@@ -410,40 +436,20 @@ export const PqcInspectionRegisterScreen = () => {
                   withKeypad={false}
                   variant="web"
                   onDirtyChange={onDirtyChange}
+                  skippedTabs={[historyTab]}
                 />
               </LeaveGuardProvider>
-              <div className="oqc-inspection-aux">
-                <section className="pane oqc-inspection-fold oqc-inspection-history-card">
-                  <Tabs
-                    key={selectedId}
-                    aria-label={messages.inspectionHistory.heading}
-                    items={[
-                      {
-                        value: 'history',
-                        label: messages.inspectionHistory.heading,
-                        content: (
-                          <div className="oqc-inspection-tab-body">
-                            <div className="oqc-inspection-tab-head">
-                              <h3>{tOqc.detail.historyTitle}</h3>
-                              {historyCount !== undefined && (
-                                <span className="oqc-inspection-fold-chip">
-                                  {tOqc.detail.historyCount(historyCount)}
-                                </span>
-                              )}
-                            </div>
-                            <InspectionHistoryPanel
-                              hideSourceLot
-                              inspectionRequestId={selectedId}
-                              judgmentLabelOf={(code) => labelOfCode(judgmentOptions, code)}
-                              revision={historyRevision}
-                            />
-                          </div>
-                        ),
-                      },
-                    ]}
-                  />
-                </section>
-              </div>
+              {!selectedSkipped && (
+                <div className="oqc-inspection-aux">
+                  <section className="pane oqc-inspection-fold oqc-inspection-history-card">
+                    <Tabs
+                      key={selectedId}
+                      aria-label={messages.inspectionHistory.heading}
+                      items={[historyTab]}
+                    />
+                  </section>
+                </div>
+              )}
             </>
           )}
         </section>

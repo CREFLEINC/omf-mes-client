@@ -41,14 +41,13 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     seqNo: (no: number) => `Lần ${String(no)}`,
     facts: {
       planCode: 'Mã tiêu chuẩn',
-      planName: 'Tên model',
       effectiveFrom: 'Ngày áp dụng',
     },
     dataTypeOf: { NUMERIC: 'Số', BOOLEAN: 'Lựa chọn', TEXT: 'Văn bản' } as Record<string, string>,
     sampling: 'Phương thức kiểm tra',
     full: 'Kiểm tra toàn bộ',
-    ratio: (r: number) => `${String(r)}% của LOT`,
-    qty: (n: number) => `${String(n)} cái`,
+    ratio: (r: number) => `Mẫu ${String(r)}% của LOT`,
+    qty: (n: number) => `Mẫu ${String(n)} cái`,
     no: 'No.',
     method: 'Loại',
     count: 'Số lần',
@@ -160,12 +159,14 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
 
   judgment: { ACCEPTED: 'Đạt', REJECTED: 'Không đạt', HELD: 'Giữ lại' },
   skipped: {
-    notice: (basis: string | null): string =>
-      basis === null
-        ? 'Yêu cầu này đã bỏ qua kiểm tra. Không có kết quả kiểm tra để nhập.'
-        : `Yêu cầu này đã bỏ qua kiểm tra (${basis}). Không có kết quả kiểm tra để nhập.`,
-    basis: { DEFAULT: 'mặc định', APPROVAL: 'đã duyệt' } as Record<string, string>,
+    notice: 'Đã bỏ qua kiểm tra theo thiết lập mặc định.',
+    requestNo: 'Số yêu cầu',
+    detailTab: 'Chi tiết kiểm tra',
+    item: 'Mặt hàng',
+    titlePqc: 'PQC Kiểm tra công đoạn',
+    titleOqc: 'OQC Kiểm tra xuất hàng',
   },
+
   requestStatus: {
     REQUESTED: 'Chờ',
     IN_PROGRESS: 'Đang làm',

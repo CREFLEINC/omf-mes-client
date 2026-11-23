@@ -21,6 +21,7 @@ import { ApproveDialog } from './approve-dialog';
 import {
   PLACEHOLDER_APPROVAL_TYPE_CODES,
   PLACEHOLDER_REQUEST_STATUS_CODES,
+  toApprovalTypeOptions,
   toCodeOptions,
 } from './code-options';
 import {
@@ -945,7 +946,7 @@ export const ApprovalInboxScreen = () => {
                * 자리표시 상수를 **화면이 읽어 넘긴다.** 부품이 직접 읽으면 「값이 확정되면 배열만
                * 채운다」는 전환을 화면 수준에서 잴 수 없다.
                */
-              approvalTypeOptions={toCodeOptions(PLACEHOLDER_APPROVAL_TYPE_CODES)}
+              approvalTypeOptions={toApprovalTypeOptions(PLACEHOLDER_APPROVAL_TYPE_CODES)}
               statusOptions={toCodeOptions(PLACEHOLDER_REQUEST_STATUS_CODES)}
               onSearch={(nextFilters) => {
                 apply(nextFilters, tab);

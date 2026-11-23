@@ -4,7 +4,7 @@ import { type ReactNode, useId } from 'react';
 
 import { InfoTip } from '../../patterns/info-tip';
 
-import { codeNote, codePlaceholder } from './code-options';
+import { approvalTypeLabelOf, codeNote, codePlaceholder } from './code-options';
 import { DisabledAction } from './disabled-action';
 import { FieldLabel } from './field-label';
 import type { RouteFormMode } from './route-validation';
@@ -139,7 +139,7 @@ export const RouteFormPane = ({
           {
             key: 'approvalTypeCode',
             label: t.fields.approvalTypeCode,
-            value: route.approvalTypeCode,
+            value: approvalTypeLabelOf(route.approvalTypeCode),
             /* 수정에서 승인 유형을 못 바꾸는 까닭은 칸 아래가 아니라 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */
             info: t.notes.approvalTypeFixed,
           },

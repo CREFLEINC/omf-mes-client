@@ -5,6 +5,7 @@ import {
   APPROVER_TYPE_CODES,
   ENABLED_APPROVER_TYPE_CODES,
   PLACEHOLDER_APPROVAL_TYPE_CODES,
+  approvalTypeLabelOf,
   approverTypeNote,
   codeNote,
   codePlaceholder,
@@ -22,24 +23,29 @@ const t = messages.approvalRoute;
  */
 
 describe('PLACEHOLDER_APPROVAL_TYPE_CODES', () => {
-  it('고정 OpenAPI의 승인 유형 9종 + 서버 선행 PQC 생략(#212)을 담는다', () => {
-    expect(PLACEHOLDER_APPROVAL_TYPE_CODES).toHaveLength(10);
+  it('고정 OpenAPI의 승인 유형에서 IQC 생략(#353 폐지)을 뺀 8종을 담는다', () => {
+    expect(PLACEHOLDER_APPROVAL_TYPE_CODES).toHaveLength(8);
     expect(PLACEHOLDER_APPROVAL_TYPE_CODES).toContain('PRODUCTION_RESULT_CORRECT');
-    expect(PLACEHOLDER_APPROVAL_TYPE_CODES).toContain('PQC_SKIP');
+    expect(PLACEHOLDER_APPROVAL_TYPE_CODES).not.toContain('IQC_SKIP');
+    expect(PLACEHOLDER_APPROVAL_TYPE_CODES).not.toContain('PQC_SKIP');
   });
 });
 
 describe('toApprovalTypeOptions', () => {
-  it('고정 목록은 10개 선택지가 된다', () => {
-    expect(toApprovalTypeOptions(PLACEHOLDER_APPROVAL_TYPE_CODES)).toHaveLength(10);
+  it('고정 목록은 8개 선택지가 된다', () => {
+    expect(toApprovalTypeOptions(PLACEHOLDER_APPROVAL_TYPE_CODES)).toHaveLength(8);
   });
 
-  it('값이 차면 코드값을 그대로 라벨로 쓴다', () => {
-    // 사람이 읽을 이름을 주는 곳이 아직 없다 — 화면이 이름을 붙이면 그 뜻도 지어낸 것이 된다.
+  it('값은 코드 그대로, 라벨은 사람이 읽는 이름이다(#353)', () => {
     expect(toApprovalTypeOptions(['GOODS_ISSUE_DISPOSAL', 'INVENTORY_ADJUSTMENT'])).toEqual([
-      { value: 'GOODS_ISSUE_DISPOSAL', label: 'GOODS_ISSUE_DISPOSAL' },
-      { value: 'INVENTORY_ADJUSTMENT', label: 'INVENTORY_ADJUSTMENT' },
+      { value: 'GOODS_ISSUE_DISPOSAL', label: '폐기 출고' },
+      { value: 'INVENTORY_ADJUSTMENT', label: '재고 조정' },
     ]);
+  });
+
+  it('이름이 없는 코드는 코드 그대로 보인다', () => {
+    expect(approvalTypeLabelOf('UNKNOWN_TYPE')).toBe('UNKNOWN_TYPE');
+    expect(approvalTypeLabelOf('PURCHASE_ORDER')).toBe('P/O');
   });
 
   it('차례를 바꾸지 않는다', () => {

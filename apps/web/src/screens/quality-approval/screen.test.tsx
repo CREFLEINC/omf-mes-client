@@ -39,7 +39,7 @@ const requests: ApprovalRequest[] = [
   {
     approvalRequestId: 31,
     approvalRequestNo: 'SYNTH-REQ-031',
-    /* 특채 — 연결 조건(특채 조건)을 찾는 갈래를 잰다. IQC·OQC 생략은 조건이 없어 시험마다 따로 세운다(#186). */
+    /* 특채 — 연결 조건(특채 조건)을 찾는 갈래를 잰다. */
     approvalTypeCode: 'CONCESSION',
     requestedBy: 7,
     requestedByName: '합성 사용자',
@@ -193,7 +193,7 @@ const processRoute = (
           processId: 1_301,
           processCode: 'SYNTH-OP',
           processName: '합성 공정',
-          processTypeCode: 'IQC_SKIP',
+          processTypeCode: 'SYNTH-PROCESS-TYPE',
           isActive: true,
         },
       ]),
@@ -296,7 +296,7 @@ const findRequest = () =>
 describe('QualityApprovalScreen query and disclosure', () => {
   it('assignedToMe와 적용된 URL만 보내고 미확정 코드·선택·무관 키는 보내지 않는다', async () => {
     const recorded = recordingFetch(listRoute());
-    /* 기준값이 비었을 때의 규율을 잰다 — 기본값에는 특채(CONCESSION · #84)·OQC 생략(OQC_SKIP · #119)이 들어 있어 비운 채로 세운다. */
+    /* 기준값이 비었을 때의 규율을 잰다 — 기본값에는 특채(CONCESSION · #84)가 들어 있어 비운 채로 세운다. */
     const { user } = renderScreen(
       recorded.fetch,
       '/quality/approvals?ty=UNCONFIRMED&st=UNKNOWN&q=SYNTH&page=2&approvalRequestId=31&view=compact',
@@ -324,13 +324,13 @@ describe('QualityApprovalScreen query and disclosure', () => {
 
   it('승인 유형 기준값이 준비되면 넓은 조회 경고를 거두고 해당 유형을 보낸다', async () => {
     const recorded = recordingFetch(listRoute());
-    renderScreen(recorded.fetch, '/quality/approvals?ty=IQC_SKIP', ['IQC_SKIP']);
+    renderScreen(recorded.fetch, '/quality/approvals?ty=CONCESSION', ['CONCESSION']);
 
     expect(await findRequest()).toBeInTheDocument();
     expect(screen.queryByText(t.scopeWarning)).not.toBeInTheDocument();
     expect(Object.fromEntries(recorded.urls[0]?.searchParams ?? [])).toEqual({
       assignedToMe: 'true',
-      approvalTypeCode: 'IQC_SKIP',
+      approvalTypeCode: 'CONCESSION',
     });
   });
 
@@ -525,7 +525,6 @@ describe('QualityApprovalScreen detail', () => {
       'true',
     );
     expect(within(tabs).getByRole('tab', { name: '특채' })).toBeInTheDocument();
-    expect(within(tabs).getByRole('tab', { name: 'OQC (출하검사) 생략' })).toBeInTheDocument();
     /* 상세 · 결재 진행 구획은 선택 전에는 서지 않고, 오른쪽에는 고르라는 안내만 선다(#186). */
     expect(screen.queryByRole('region', { name: t.panes.detail })).toBeNull();
     expect(screen.queryByRole('region', { name: t.panes.progress })).toBeNull();
@@ -709,35 +708,15 @@ describe('QualityApprovalScreen detail', () => {
     expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?ty=CONCESSION');
   });
 
-  it('「IQC (수입검사) 생략」 탭은 PQC·OQC 생략 앞에 서고, 누르면 긴급 IQC 생략 한도승인 화면으로 간다', async () => {
-    const { user } = renderScreen(approvalFetch([listRoute()]));
+  it('유형 탭은 「전체」와 「특채」뿐이다 — 건별 검사 생략 결재 탭은 없다(#353)', async () => {
+    renderScreen(approvalFetch([listRoute()]));
 
     const tabs = await screen.findByRole('tablist', { name: t.fields.approvalTypeCode });
     expect(
       within(tabs)
         .getAllByRole('tab')
         .map((tab) => tab.textContent),
-    ).toEqual([
-      t.all,
-      t.typeLabels.CONCESSION,
-      t.typeLabels.IQC_SKIP,
-      t.typeLabels.PQC_SKIP,
-      t.typeLabels.OQC_SKIP,
-    ]);
-    await user.click(within(tabs).getByRole('tab', { name: t.typeLabels.IQC_SKIP }));
-
-    expect(screen.getByLabelText('현재 경로')).toHaveTextContent('/logistics/iqc-skip-approval');
-  });
-
-  it('긴급 IQC 생략 한도승인을 볼 권한이 없으면 그 탭을 세우지 않는다', async () => {
-    renderScreen(approvalFetch([listRoute()]), '/quality/approvals', undefined, {
-      ...SYNTHETIC_SESSION,
-      permissions: ['W-03-09'],
-    });
-
-    const tabs = await screen.findByRole('tablist', { name: t.fields.approvalTypeCode });
-    expect(within(tabs).queryByRole('tab', { name: t.typeLabels.IQC_SKIP })).toBeNull();
-    expect(within(tabs).getByRole('tab', { name: t.typeLabels.OQC_SKIP })).toBeInTheDocument();
+    ).toEqual([t.all, t.typeLabels.CONCESSION]);
   });
 });
 
@@ -912,236 +891,7 @@ describe('QualityApprovalScreen conditions', () => {
     expect(within(group).queryByText('SYNTH-WO-1201')).toBeNull();
   });
 
-  /* OQC 생략(#193) — IQC 생략처럼 승인된 뒤에만 이 화면에 생략 실행 구획이 선다. 연결 조건(특채)은 묻지 않는다. */
-  const oqcSkipRequest = (overrides: Partial<ApprovalRequest> = {}): ApprovalRequest =>
-    ({
-      ...requests[0]!,
-      approvalTypeCode: 'OQC_SKIP',
-      target: {
-        targetTypeCode: 'SHIPMENT_REQUEST',
-        targetId: 21,
-        displayName: '출하작업지시',
-        openable: false,
-      },
-      ...overrides,
-    }) as unknown as ApprovalRequest;
-  const OQC_SKIP_EXECUTE_PATH = '/logistics/shipment-requests/21:skip-oqc';
-
-  it('결재 대기 OQC 생략은 연결 조건도 생략 실행 구획도 세우지 않는다(#193)', async () => {
-    renderScreen(
-      approvalFetch([
-        listRoute(),
-        detailRoute(31, () => jsonResponse(detailBody(oqcSkipRequest()))),
-      ]),
-      '/quality/approvals?approvalRequestId=31',
-    );
-
-    expect(await screen.findByRole('region', { name: t.panes.detail })).toBeInTheDocument();
-    expect(screen.queryByRole('group', { name: t.condition.title })).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('region', { name: t.oqcSkipExecute.heading }),
-    ).not.toBeInTheDocument();
-  });
-
-  it('승인된 OQC 생략은 확인 뒤 생략 실행을 한 번 보내고 실행 완료를 보인다(#193)', async () => {
-    const approved = oqcSkipRequest({
-      statusCode: 'APPROVED',
-      isMyTurn: false,
-      currentStepNo: null,
-    } as Partial<ApprovalRequest>);
-    const recorded = recordingFetch(
-      listRoute(),
-      detailRoute(31, () => jsonResponse(detailBody(approved))),
-      {
-        match: (request) => new URL(request.url).pathname === OQC_SKIP_EXECUTE_PATH,
-        respond: () => jsonResponse({}),
-      },
-    );
-    const { user } = renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
-    const o = t.oqcSkipExecute;
-
-    const pane = await screen.findByRole('region', { name: o.heading });
-    /* 한 줄 압축형(#193) — 「OQC 생략 · 열린 검사 의뢰 생략 · LOT 이력 기록」과 짧은 「실행」 단추. */
-    expect(pane).toHaveTextContent(o.compact.title);
-    expect(pane).toHaveTextContent(o.compact.summary);
-    await user.click(within(pane).getByRole('button', { name: o.compact.action }));
-    const dialog = await screen.findByRole('dialog', { name: o.dialogTitle });
-    expect(recorded.urls.some((url) => url.pathname === OQC_SKIP_EXECUTE_PATH)).toBe(false);
-
-    await user.click(within(dialog).getByRole('button', { name: o.action }));
-
-    await waitFor(() => {
-      expect(recorded.urls.filter((url) => url.pathname === OQC_SKIP_EXECUTE_PATH)).toHaveLength(1);
-    });
-    expect(await screen.findByText(o.compact.done)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: o.compact.action })).not.toBeInTheDocument();
-  });
-
-  /* omf-all-around#212 — PQC 생략은 OQC 생략과 같은 짜임이다. 대상은 작업지시다. */
-  it('승인된 PQC 생략은 확인 뒤 작업지시 생략 실행을 한 번 보내고 실행 완료를 보인다(#212)', async () => {
-    const approved = oqcSkipRequest({
-      approvalTypeCode: 'PQC_SKIP',
-      statusCode: 'APPROVED',
-      isMyTurn: false,
-      currentStepNo: null,
-      target: {
-        targetTypeCode: 'WORK_ORDER',
-        targetId: 11,
-        displayName: '작업지시',
-        openable: false,
-      },
-    } as unknown as Partial<ApprovalRequest>);
-    const PQC_SKIP_EXECUTE_PATH = '/production/work-orders/11:skip-pqc';
-    const recorded = recordingFetch(
-      listRoute(),
-      detailRoute(31, () => jsonResponse(detailBody(approved))),
-      {
-        match: (request) => new URL(request.url).pathname === PQC_SKIP_EXECUTE_PATH,
-        respond: () => jsonResponse({}),
-      },
-    );
-    const { user } = renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
-    const p = t.pqcSkipExecute;
-
-    const pane = await screen.findByRole('region', { name: p.heading });
-    expect(screen.queryByRole('group', { name: t.condition.title })).not.toBeInTheDocument();
-    await user.click(within(pane).getByRole('button', { name: p.compact.action }));
-    const dialog = await screen.findByRole('dialog', { name: p.dialogTitle });
-    await user.click(within(dialog).getByRole('button', { name: p.action }));
-
-    await waitFor(() => {
-      expect(recorded.urls.filter((url) => url.pathname === PQC_SKIP_EXECUTE_PATH)).toHaveLength(1);
-    });
-    expect(await screen.findByText(p.compact.done)).toBeInTheDocument();
-  });
-
-  it('OQC 출하검사 판정 권한이 없어도 승인 화면 권한만으로 승인된 OQC 생략을 실행할 수 있다(#193)', async () => {
-    const approved = oqcSkipRequest({
-      statusCode: 'APPROVED',
-      isMyTurn: false,
-      currentStepNo: null,
-    } as Partial<ApprovalRequest>);
-    renderScreen(
-      approvalFetch([listRoute(), detailRoute(31, () => jsonResponse(detailBody(approved)))]),
-      '/quality/approvals?approvalRequestId=31',
-      undefined,
-      { ...SYNTHETIC_SESSION, permissions: ['W-03-09'] },
-    );
-
-    const pane = await screen.findByRole('region', { name: t.oqcSkipExecute.heading });
-    expect(
-      within(pane).getByRole('button', { name: t.oqcSkipExecute.compact.action }),
-    ).toBeEnabled();
-  });
-
-  /* 「전체」 탭에서도 IQC 생략을 처리한다(#186) — 특채 조건을 찾지 않고, 승인되면 생략 실행 구획이 선다. */
-  it('IQC 생략 결재는 특채 조건을 찾지 않고 승인을 막지 않는다', async () => {
-    const iqcSkip = { ...requests[0]!, approvalTypeCode: 'IQC_SKIP' } as unknown as ApprovalRequest;
-    const recorded = recordingFetch(
-      listRoute(),
-      detailRoute(31, () => jsonResponse(detailBody(iqcSkip))),
-    );
-    renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
-
-    expect(await screen.findByRole('region', { name: t.panes.detail })).toBeInTheDocument();
-    expect(screen.queryByRole('group', { name: t.condition.title })).not.toBeInTheDocument();
-    expect(screen.queryByText(t.approval.conditionRequired)).not.toBeInTheDocument();
-    expect(screen.queryByText(t.condition.unsafe)).not.toBeInTheDocument();
-    /* 결재 대기에서는 실행 구획이 서지 않는다 — 승인된 뒤의 일이다. */
-    expect(
-      screen.queryByRole('region', { name: messages.iqcSkipApproval.skipExecute.heading }),
-    ).not.toBeInTheDocument();
-    expect(recorded.urls.some((url) => url.pathname === CONCESSIONS_PATH)).toBe(false);
-  });
-
-  it('IQC 생략 화면 권한이 없으면 승인된 IQC 생략에 실행 단추 대신 안내만 세우고 LOT 도 읽지 않는다(#186 리뷰)', async () => {
-    const approved = {
-      ...requests[0]!,
-      approvalTypeCode: 'IQC_SKIP',
-      statusCode: 'APPROVED',
-      isMyTurn: false,
-      currentStepNo: null,
-      /* 005 S10 — 생략 결재의 대상은 입하 LOT, 실행은 대표 자재 관리 LOT(`targetLotId`)로(계약 §11 · 응답의 새 칸). */
-      target: { ...requests[0]!.target, targetLotId: 91 },
-    } as unknown as ApprovalRequest;
-    const recorded = recordingFetch(
-      listRoute(),
-      detailRoute(31, () => jsonResponse(detailBody(approved))),
-    );
-    renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31', undefined, {
-      ...SYNTHETIC_SESSION,
-      permissions: ['W-03-09'],
-    });
-
-    expect(await screen.findByText(t.detail.iqcSkipNoPermission)).toBeInTheDocument();
-    expect(
-      screen.queryByRole('region', { name: messages.iqcSkipApproval.skipExecute.heading }),
-    ).not.toBeInTheDocument();
-    expect(recorded.urls.some((url) => url.pathname === '/trace/lots/91')).toBe(false);
-  });
-
-  it('G2 L-a 입하 마감 취소로 무효가 된 IQC 생략(targetVoided)은 [실행]을 잠그고 무효 안내를 보이며 실행을 보내지 않는다', async () => {
-    const approved = {
-      ...requests[0]!,
-      approvalTypeCode: 'IQC_SKIP',
-      statusCode: 'APPROVED',
-      isMyTurn: false,
-      currentStepNo: null,
-      target: { ...requests[0]!.target, targetLotId: 91, targetVoided: true },
-    } as unknown as ApprovalRequest;
-    const recorded = recordingFetch(
-      listRoute(),
-      detailRoute(31, () => jsonResponse(detailBody(approved))),
-    );
-    renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
-    const s = messages.iqcSkipApproval.skipExecute;
-
-    const pane = await screen.findByRole('region', { name: s.heading });
-    expect(within(pane).getByText(s.voided)).toBeInTheDocument();
-    expect(within(pane).getByRole('button', { name: s.compact.action })).toBeDisabled();
-    expect(recorded.urls.some((url) => url.pathname.endsWith(':skip-iqc'))).toBe(false);
-  });
-
-  it('승인된 IQC 생략은 대상 LOT 이 검사 대기면 확인 뒤 생략 실행을 한 번 보낸다', async () => {
-    const approved = {
-      ...requests[0]!,
-      approvalTypeCode: 'IQC_SKIP',
-      statusCode: 'APPROVED',
-      isMyTurn: false,
-      currentStepNo: null,
-      /* 005 S10 — 생략 결재의 대상은 입하 LOT, 실행은 대표 자재 관리 LOT(`targetLotId`)로(계약 §11 · 응답의 새 칸). */
-      target: { ...requests[0]!.target, targetLotId: 91 },
-    } as unknown as ApprovalRequest;
-    const skipPath = '/trace/lots/91:skip-iqc';
-    const recorded = recordingFetch(
-      listRoute(),
-      detailRoute(31, () => jsonResponse(detailBody(approved))),
-      {
-        match: (request) => new URL(request.url).pathname === '/trace/lots/91',
-        respond: () => jsonResponse({ lot: { lotId: 91, statusCode: 'INSPECTION_PENDING' } }),
-      },
-      {
-        match: (request) => new URL(request.url).pathname === skipPath,
-        respond: () => jsonResponse({}),
-      },
-    );
-    const { user } = renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
-    const s = messages.iqcSkipApproval.skipExecute;
-
-    const pane = await screen.findByRole('region', { name: s.heading });
-    /* 한 줄 압축형(#193) — 여는 단추는 짧은 「실행」, 확인 창의 단추는 종전 이름 그대로다. */
-    await user.click(await within(pane).findByRole('button', { name: s.compact.action }));
-    const dialog = await screen.findByRole('dialog', { name: s.dialogTitle });
-    expect(recorded.urls.some((url) => url.pathname === skipPath)).toBe(false);
-
-    await user.click(within(dialog).getByRole('button', { name: s.action }));
-
-    await waitFor(() => {
-      expect(recorded.urls.filter((url) => url.pathname === skipPath)).toHaveLength(1);
-    });
-  });
-
-  /* 특채 적용(#193) — IQC·OQC 생략 실행처럼 승인된 특채를 이 화면에서 적용한다. 적용 여부는 특채 상태가 말한다. */
+  /* 특채 적용(#193) — 승인된 특채를 이 화면에서 적용한다. 적용 여부는 특채 상태가 말한다. */
   const approvedConcessionRequest = {
     ...requests[0]!,
     statusCode: 'APPROVED',
@@ -1206,26 +956,7 @@ describe('QualityApprovalScreen conditions', () => {
     expect(screen.queryByRole('region', { name: t.concessionApply.heading })).toBeNull();
   });
 
-  /* 「다음 할 일」(#193) — 반려면 다시 요청하거나 정상 검사로 가는 화면을 결재 결과 카드 끝에 잇는다. */
-  it('반려된 OQC 생략은 다음 할 일로 OQC 출하검사 판정을 잇는다(#193)', async () => {
-    const rejected = oqcSkipRequest({
-      statusCode: 'REJECTED',
-      isMyTurn: false,
-      currentStepNo: null,
-    } as Partial<ApprovalRequest>);
-    renderScreen(
-      approvalFetch([listRoute(), detailRoute(31, () => jsonResponse(detailBody(rejected)))]),
-      '/quality/approvals?approvalRequestId=31',
-    );
-
-    const next = await screen.findByRole('group', { name: t.next.heading });
-    expect(next).toHaveTextContent(t.next.oqcRejected);
-    expect(within(next).getByRole('link', { name: t.next.openOqcInspection })).toHaveAttribute(
-      'href',
-      '/shipment/oqc-inspection',
-    );
-  });
-
+  /* 「다음 할 일」(#193) — 반려면 처분 판정으로 가는 화면을 결재 결과 카드 끝에 잇는다. */
   it('반려된 특채는 다음 할 일로 그 부적합의 처분 판정 처리를 잇는다(#193)', async () => {
     const rejected = {
       ...requests[0]!,
@@ -1249,37 +980,6 @@ describe('QualityApprovalScreen conditions', () => {
       'href',
       dispositionEntryPath(701),
     );
-  });
-
-  /* 피처 009 — 관리웹 입고 처리(W-01-10)가 없어졌다. 생략한 LOT 은 PDA 적치로 입고된다. */
-  it('FR-003 생략을 실행한 IQC 생략은 「PDA 에서 적치하면 입고됩니다」와 입고 관리의 그 LOT 링크를 잇는다', async () => {
-    const approved = {
-      ...requests[0]!,
-      approvalTypeCode: 'IQC_SKIP',
-      statusCode: 'APPROVED',
-      isMyTurn: false,
-      currentStepNo: null,
-      target: { ...requests[0]!.target, targetLotId: 91 },
-    } as unknown as ApprovalRequest;
-    renderScreen(
-      approvalFetch([
-        listRoute(),
-        detailRoute(31, () => jsonResponse(detailBody(approved))),
-        {
-          match: (request) => new URL(request.url).pathname === '/trace/lots/91',
-          respond: () => jsonResponse({ lot: { lotId: 91, statusCode: 'NORMAL' } }),
-        },
-      ]),
-      '/quality/approvals?approvalRequestId=31',
-    );
-
-    const next = await screen.findByRole('group', { name: t.next.heading });
-    expect(next).toHaveTextContent(t.next.iqcDone);
-    expect(within(next).getByRole('link', { name: t.next.openInboundSchedule })).toHaveAttribute(
-      'href',
-      '/logistics/inbound-schedule?lot=91',
-    );
-    expect(within(next).queryByRole('link', { name: /정상품 입하/ })).toBeNull();
   });
 
   it('결재 대기 요청에는 다음 할 일을 세우지 않는다(#193)', async () => {
@@ -1640,65 +1340,6 @@ describe('QualityApprovalScreen decision action', () => {
   const findRequestButton = (requestNo: string) =>
     screen.findByRole('button', { name: t.actions.selectRow(requestNo) });
   const reloadTargetButton = () => screen.findByRole('button', { name: t.approval.reloadTarget });
-
-  it('⭐ OQC 생략 결재는 연결 조건(특채) 없이 승인·반려할 수 있고 특채를 묻지 않는다(#119)', async () => {
-    const oqcSkip = {
-      ...requests[0]!,
-      approvalTypeCode: 'OQC_SKIP',
-      target: {
-        targetTypeCode: 'SHIPMENT_REQUEST',
-        targetId: 21,
-        displayName: 'SHIPMENT_REQUEST #21',
-        openable: false,
-      },
-    } as unknown as ApprovalRequest;
-    const recorded = recordingFetch(
-      listRoute(),
-      detailRoute(31, () => jsonResponse(actionDetail(oqcSkip), { headers: { ETag: '"9"' } })),
-      {
-        match: (request) => new URL(request.url).pathname === APPROVE_PATH,
-        respond: () => jsonResponse(actionDetail({ ...oqcSkip, statusCode: 'APPROVED' })),
-      },
-    );
-    const { user } = renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
-    const input = await screen.findByRole('textbox', { name: '결재 사유' });
-
-    expect(input).toBeEnabled();
-    expect(input).not.toHaveAccessibleDescription(/안전하게 확인된 연결 조건 1건이 필요합니다/);
-    expect(screen.getByRole('button', { name: '승인' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: '반려' })).toBeEnabled();
-
-    await confirmApproval(user, '출하 생략 승인');
-    await waitFor(() =>
-      expect(recorded.urls.some((url) => url.pathname === APPROVE_PATH)).toBe(true),
-    );
-    expect(recorded.urls.some((url) => url.pathname === CONCESSIONS_PATH)).toBe(false);
-  });
-
-  it('「전체」 탭에서 IQC 생략을 승인하면 IQC 생략 탭의 저장된 조회도 다시 읽게 한다(#186 리뷰)', async () => {
-    const iqcSkip = { ...requests[0]!, approvalTypeCode: 'IQC_SKIP' } as unknown as ApprovalRequest;
-    const recorded = recordingFetch(
-      listRoute(),
-      detailRoute(31, () => jsonResponse(actionDetail(iqcSkip), { headers: { ETag: '"9"' } })),
-      {
-        match: (request) => new URL(request.url).pathname === APPROVE_PATH,
-        respond: () => jsonResponse(actionDetail({ ...iqcSkip, statusCode: 'APPROVED' })),
-      },
-    );
-    const { queryClient, user } = renderScreen(
-      recorded.fetch,
-      '/quality/approvals?approvalRequestId=31',
-    );
-    /* IQC 생략 탭이 앞서 읽어 둔 목록 — 승인 뒤 낡은 것으로 표시돼야 탭을 옮겼을 때 다시 읽는다. */
-    queryClient.setQueryData(['iqc-skip-approval', 'list', {}], { items: [], page: {} });
-
-    await confirmApproval(user, 'IQC 생략 승인');
-    await waitFor(() =>
-      expect(queryClient.getQueryState(['iqc-skip-approval', 'list', {}])?.isInvalidated).toBe(
-        true,
-      ),
-    );
-  });
 
   it('선택 없음·내 차례 아님·안전한 연결 조건 없음·공백 사유에서는 보내지 않는다', async () => {
     const noSelection = renderScreen(approvalFetch([listRoute()]));

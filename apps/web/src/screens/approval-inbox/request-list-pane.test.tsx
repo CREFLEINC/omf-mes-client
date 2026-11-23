@@ -188,14 +188,14 @@ describe('RequestListPane — 확정된 여섯 열', () => {
     expect(text).toContain('16:40');
   });
 
-  it('승인 유형 열이 서고 코드를 그대로 낸다', () => {
+  it('승인 유형 열이 서고 사람이 읽는 이름을 낸다', () => {
     renderPane();
 
     expect(
       screen.getByRole('columnheader', { name: t.fields.approvalTypeCode }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText('GOODS_ISSUE_DISPOSAL').length).toBe(2);
-    expect(screen.getByText('INVENTORY_ADJUSTMENT')).toBeInTheDocument();
+    expect(screen.getAllByText('폐기 출고').length).toBe(2);
+    expect(screen.getByText('재고 조정')).toBeInTheDocument();
   });
 
   it('대상 표시명을 목록에 내지 않는다 — 대상은 상세 구획 소관이다', () => {
@@ -204,7 +204,7 @@ describe('RequestListPane — 확정된 여섯 열', () => {
 
     /* 선행 단언 — 열이 실제로 서 있어야 「그 값이 없다」가 뜻을 갖는다. */
     expect(screen.getAllByRole('columnheader')).toHaveLength(6);
-    expect(text).toContain('GOODS_ISSUE_DISPOSAL');
+    expect(text).toContain('폐기 출고');
 
     for (const request of requestFixtures) {
       if (request.target.displayName !== '') expect(text).not.toContain(request.target.displayName);

@@ -204,4 +204,13 @@ describe('W-01-01 상세의 갈림길 — 이전 데이터 IQC 와 새 흐름', 
     expect(screen.getByRole('button', { name: t.results.add })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: tp.footer.submit })).toBeNull();
   });
+
+  it('#353 기본 생략으로 닫힌 입하 LOT 의뢰는 생략 안내만 — [검사 결과 추가] · [판정 확정]이 없다', async () => {
+    detailOf.value = { ...request('INBOUND_LOT'), statusCode: 'SKIPPED', skipBasisCode: 'DEFAULT' };
+    mount();
+
+    expect(await screen.findByText(tp.skipped.notice)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.results.add })).toBeNull();
+    expect(screen.queryByRole('button', { name: t.confirm.open })).toBeNull();
+  });
 });

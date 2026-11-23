@@ -76,16 +76,11 @@ export type DispositionDecisionCreatedForward005 = Schemas['DispositionDecision'
 export type ConcessionCreateForward005 = Schemas['ConcessionCreate'];
 export type ConcessionCreatedForward005 = Schemas['Concession'];
 
-/* ── LOT · 결재 · IQC 생략(계약 §1 · §11) ── */
+/* ── LOT · 결재(계약 §1 · §11) ── */
 
 export type LotForward = Schemas['Lot'];
 export type ApprovalTargetForward = Schemas['ApprovalTarget'];
 export type ApprovalRequestDetailForward = Schemas['ApprovalRequestDetail'];
-/** IQC 생략 실행 응답의 입하 LOT 칸(계약 §11). */
-export type IqcSkipInboundLotForward = Pick<
-  Schemas['IqcSkipExecuted'],
-  'inboundLotNo' | 'lotCount'
->;
 
 /* ── 입고 관리 · 재고 · LOT 현황의 입하 LOT 칸(계약 §12 · §13) ── */
 

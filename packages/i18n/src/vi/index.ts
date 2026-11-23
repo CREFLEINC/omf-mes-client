@@ -60,8 +60,6 @@ import { erpItem } from './erp-item';
 import { erpProductionOrder } from './erp-production-order';
 import { iqcInspection } from './iqc-inspection';
 import { partsIqcInspection } from './parts-iqc-inspection';
-import { iqcSkipApproval } from './iqc-skip-approval';
-import { iqcSkipRequest } from './iqc-skip-request';
 import { itemExtendedAttrs } from './item-extended-attrs';
 import { itemPicker } from './item-picker';
 import { resourcePicker } from './resource-picker';
@@ -231,8 +229,6 @@ export const vi: Translated<Messages> = {
   erpProductionOrder,
   iqcInspection,
   partsIqcInspection,
-  iqcSkipApproval,
-  iqcSkipRequest,
   itemExtendedAttrs,
   itemPicker,
   resourcePicker,

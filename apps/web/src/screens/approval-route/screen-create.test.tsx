@@ -11,6 +11,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
+import { approvalTypeLabelOf } from './code-options';
 import { businessUnitFixtures, createdRouteFixture, routeFixtures } from './fixtures';
 import { ApprovalRouteScreen } from './screen';
 
@@ -217,13 +218,13 @@ const openCreateForm = async (
   user: ReturnType<typeof userEvent.setup>,
   approvalTypeCode = 'PURCHASE_ORDER',
 ): Promise<HTMLElement> => {
-  await screen.findByText('INVENTORY_ADJUSTMENT');
+  await screen.findByText('재고 조정');
   await user.click(screen.getByRole('button', { name: t.actions.create }));
 
   const pane = await screen.findByRole('region', { name: t.panes.create });
 
   await user.click(within(pane).getByRole('combobox', { name: t.fields.approvalTypeCode }));
-  await user.click(screen.getByRole('option', { name: approvalTypeCode }));
+  await user.click(screen.getByRole('option', { name: approvalTypeLabelOf(approvalTypeCode) }));
 
   return pane;
 };
@@ -243,7 +244,7 @@ describe('ApprovalRouteScreen(등록) — 값 목록이 차면 등록이 열린�
   it('유형을 고르기 전에는 사유와 함께 잠겨 있다', async () => {
     const { user } = renderScreen(allRoutes());
 
-    await screen.findByText('INVENTORY_ADJUSTMENT');
+    await screen.findByText('재고 조정');
     await user.click(screen.getByRole('button', { name: t.actions.create }));
 
     const pane = await screen.findByRole('region', { name: t.panes.create });
@@ -386,7 +387,7 @@ describe('ApprovalRouteScreen(등록) — 활성 중복 선검사', () => {
   it('유형을 고른 뒤에야 조준 조회가 나간다', async () => {
     const { requests, user } = renderScreen(allRoutes());
 
-    await screen.findByText('INVENTORY_ADJUSTMENT');
+    await screen.findByText('재고 조정');
     await user.click(screen.getByRole('button', { name: t.actions.create }));
 
     const pane = await screen.findByRole('region', { name: t.panes.create });
@@ -395,7 +396,7 @@ describe('ApprovalRouteScreen(등록) — 활성 중복 선검사', () => {
 
     /* 조건 줄에도 같은 이름의 선택칸이 있다 — 폼 구획 안에서 집는다. */
     await user.click(within(pane).getByRole('combobox', { name: t.fields.approvalTypeCode }));
-    await user.click(screen.getByRole('option', { name: 'PURCHASE_ORDER' }));
+    await user.click(screen.getByRole('option', { name: 'P/O' }));
 
     await waitFor(() => {
       expect(probeRequests(requests)).toHaveLength(1);
@@ -449,7 +450,7 @@ describe('ApprovalRouteScreen(등록) — 성공 뒤 목록', () => {
     const listPane = screen.getByRole('region', { name: t.panes.list });
 
     await waitFor(() => {
-      expect(within(listPane).getByText('PURCHASE_ORDER')).toBeInTheDocument();
+      expect(within(listPane).getByText('P/O')).toBeInTheDocument();
     });
   });
 });

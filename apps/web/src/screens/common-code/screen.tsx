@@ -1453,8 +1453,7 @@ export const CommonCodeScreen = () => {
    * 중에도 잠기지 않으므로 특수한 경로가 아니다.
    *
    * 끊는 것과 **가리는 것**은 다르다 — 되먹임은 그대로 두고, *보이는 것*만 대상이 같을 때 낸다.
-   * 같은 저장소의 전례 둘이 같은 자리에 같은 축을 두었다(`iqc-skip-approval`의
-   * `isWriteResultMine` · `disposal-issue`의 `isChainForCurrentTarget`).
+   * 같은 저장소의 전례가 같은 자리에 같은 축을 두었다(`disposal-issue`의 `isChainForCurrentTarget`).
    */
   const [roleWriteTargetId, setRoleWriteTargetId] = useState<number | null>(null);
 
@@ -1481,7 +1480,6 @@ export const CommonCodeScreen = () => {
    * **막을 것은 전역이다.** 저장이 하나라도 나가는 중이면 어느 거래처에서도 새 저장을 시작할
    * 수 없다 — 대상 축(`isRoleWriteMine`)은 *보이는 것*을 가릴 뿐 **막는 데 쓰지 않는다.**
    * 둘을 뭉치면 남의 저장 중에 새 저장이 열려 위의 겹침이 그대로 일어난다.
-   * 전례(`iqc-skip-approval`)가 같은 화면에서 잠금과 표시를 이렇게 갈라 둔다.
    */
   const isPartnerRoleLocked = partnerRoleWrite.isSaving;
 

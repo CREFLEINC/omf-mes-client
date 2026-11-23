@@ -23,11 +23,6 @@ export interface DetailPaneProps {
    * 특채는 늘 부적합을 근거로 만든다(서버 DB 필수). 처분 판정 처리 권한이 없으면 `link` 를 넘기지 않는다.
    */
   nonconformance?: { name: string; link?: { to: string; label: string } };
-  /**
-   * 대상이 LOT 이 아닐 때의 대상 칸(#193 · OQC 생략은 출하작업지시) — 이름과 값을 바꾸고, `extra` 줄(출하 예정일 등)을
-   * 그 아래에 같은 모양으로 잇는다.
-   */
-  target?: { label: string; name: string; extra?: ReadonlyArray<readonly [string, string]> };
 }
 
 type OpenLink = { to: string; label: string };
@@ -59,7 +54,6 @@ export const DetailPane = ({
   variant = 'default',
   targetLot,
   nonconformance,
-  target,
 }: DetailPaneProps) => {
   const t = messages.qualityApproval;
 
@@ -152,15 +146,9 @@ export const DetailPane = ({
         role="group"
         aria-label={t.panes.target}
       >
-        <span className="field-label">{target?.label ?? t.fields.targetLot}</span>
-        <span>{linkedValue(target?.name ?? targetLot?.name ?? view.targetName, targetLot)}</span>
+        <span className="field-label">{t.fields.targetLot}</span>
+        <span>{linkedValue(targetLot?.name ?? view.targetName, targetLot)}</span>
       </div>
-      {target?.extra?.map(([label, value]) => (
-        <div className="field-cell quality-approval-content-card" key={label}>
-          <span className="field-label">{label}</span>
-          <span>{value}</span>
-        </div>
-      ))}
     </div>
   );
 };

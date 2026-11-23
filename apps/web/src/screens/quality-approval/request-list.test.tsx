@@ -12,7 +12,7 @@ const rows: RequestRow[] = [
   {
     approvalRequestId: 31,
     approvalRequestNo: 'SYNTH-REQ-031',
-    approvalTypeCode: 'IQC_SKIP',
+    approvalTypeCode: 'CONCESSION',
     targetName: '합성 대상 A',
     requestedAt: '2026-08-22T09:30:00+09:00',
     requestedAtText: '2026-08-22 07:30',
@@ -74,7 +74,7 @@ describe('RequestList compact selection', () => {
       t.fields.approvalTypeCode,
       t.fields.myTurn,
     ]);
-    expect(dataRow('SYNTH-REQ-031')).toHaveTextContent(t.typeLabels.IQC_SKIP);
+    expect(dataRow('SYNTH-REQ-031')).toHaveTextContent(t.typeLabels.CONCESSION);
     /* 언제 상신됐는지(#193). */
     expect(dataRow('SYNTH-REQ-031')).toHaveTextContent('2026-08-22 07:30');
     /* 모르는 상태 코드는 원문 그대로 꼬리표에 선다. */

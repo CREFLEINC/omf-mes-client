@@ -1,13 +1,25 @@
 import { Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
-import type { SkipExecuteState } from './target';
+/**
+ * 실행 구획이 무엇을 보이는가 — 단추는 실행할 수 있을 때만이다.
+ *
+ * | 갈래 | 뜻 |
+ * | --- | --- |
+ * | `executable` | 실행할 수 있다 |
+ * | `executed` | 이미 실행됐다 |
+ * | `notPending` | 그 밖의 상태 — 실행할 수 없다 |
+ * | `checking` | 아직 상태를 읽는 중 |
+ */
+export type ExecuteState =
+  | { kind: 'executable' }
+  | { kind: 'executed' }
+  | { kind: 'notPending'; statusCode: string }
+  | { kind: 'checking' };
 
-const IQC_TEXTS = messages.iqcSkipApproval.skipExecute;
-
-/** 실행 구획의 글 — IQC 생략이 기본이고, 품질 승인 처리의 OQC 생략이 같은 구획을 자기 글로 쓴다(#193). */
-export type SkipExecuteTexts = Record<
+/** 실행 구획의 글 — 특채 적용(#193)이 자기 글로 쓴다. */
+export type ExecuteTexts = Record<
   | 'heading'
   | 'note'
   | 'action'
@@ -19,63 +31,36 @@ export type SkipExecuteTexts = Record<
   string
 > & { notPending: (status: string) => string };
 
-export interface SkipExecutePaneProps {
-  /** 대상 LOT 상태로 정한 모양 — 버튼은 검사 대기일 때만(`target.ts` `judgeSkipExecute`). */
-  state: SkipExecuteState;
+export interface ExecutePaneProps {
+  /** 대상 상태로 정한 모양 — 단추는 실행할 수 있을 때만 선다. */
+  state: ExecuteState;
   isSaving: boolean;
   onExecute: () => void;
   /** 실패 배너 슬롯. 오류 갈래를 아는 것은 화면이다. */
   banner: ReactNode;
-  texts?: SkipExecuteTexts;
+  texts: ExecuteTexts;
   /**
-   * 한 줄 압축형(#193 — 품질 승인 처리의 OQC 생략) — 왼쪽에 이름 · 한 줄 요약, 오른쪽에 짧은 단추.
+   * 한 줄 압축형(#193) — 왼쪽에 이름 · 한 줄 요약, 오른쪽에 짧은 단추.
    * 확인 창은 그대로다(되돌릴 수 없는 조작이라 「정말 실행할 것인가」를 한 번 묻는다).
    */
   compact?: { title: string; summary: string; action: string; done: string };
-  /**
-   * 005 — 실행할 LOT 을 모를 때의 까닭(W-01-02 · 대표 자재 관리 LOT `targetLotId` 가 오지 않음).
-   * 있으면 단추를 잠그고 이 까닭을 `aria-describedby` 로 잇는다 — 상태(`state`)보다 먼저 본다.
-   */
-  lockedReason?: string;
 }
 
 /**
- * 승인된 요청의 **생략 실행** 구획(omf-all-around#105).
+ * 승인된 요청의 **실행** 구획 — 품질 승인 처리의 특채 적용이 쓴다.
  *
- * 승인은 요청 상태만 바꾼다(《승인 시 결과》 ⓘ · 공유계약 J-8). 의뢰·보류·LOT 을 옮기는 것은
- * 이 실행이다 — 그래서 결재 구획과 따로 세우고, 되돌릴 수 없는 조작이라 확인 창을 한 번 거친다.
+ * 승인은 요청 상태만 바꾼다. 실제로 옮기는 것은 이 실행이다 — 그래서 결재 구획과 따로 세우고,
+ * 되돌릴 수 없는 조작이라 확인 창을 한 번 거친다.
  */
-export const SkipExecutePane = ({
+export const ExecutePane = ({
   state,
   isSaving,
   onExecute,
   banner,
-  texts: t = IQC_TEXTS,
+  texts: t,
   compact,
-  lockedReason,
-}: SkipExecutePaneProps) => {
+}: ExecutePaneProps) => {
   const [isConfirming, setIsConfirming] = useState(false);
-  const reasonId = useId();
-
-  /* 실행할 LOT 을 모르면 단추를 세우되 잠그고 까닭을 잇는다(비활성 컨트롤은 툴팁에 닿지 않는다). */
-  if (lockedReason !== undefined) {
-    return (
-      <section
-        className={`iqc-skip-approval-section iqc-skip-approval-execute${compact === undefined ? '' : ' is-compact'}`}
-        aria-label={t.heading}
-      >
-        <div className="iqc-skip-approval-execute-text">
-          <h3 className="iqc-skip-approval-heading">{compact?.title ?? t.heading}</h3>
-          <p id={reasonId} className="field-note">
-            {lockedReason}
-          </p>
-        </div>
-        <Button disabled aria-describedby={reasonId}>
-          {compact?.action ?? t.action}
-        </Button>
-      </section>
-    );
-  }
 
   /*
    * 한 줄 압축형에서 실행할 수 없을 때 — 단추 자리에 결과(완료 초록 글)나 사정(확인 중·실행 불가)이 선다.
@@ -84,19 +69,17 @@ export const SkipExecutePane = ({
   if (compact !== undefined && state.kind !== 'executable') {
     return (
       <section
-        className={`iqc-skip-approval-section iqc-skip-approval-execute is-compact${
-          state.kind === 'executed' ? ' is-done' : ''
-        }`}
+        className={`quality-approval-execute is-compact${state.kind === 'executed' ? ' is-done' : ''}`}
         aria-label={t.heading}
       >
-        <div className="iqc-skip-approval-execute-text">
-          <h3 className="iqc-skip-approval-heading">{compact.title}</h3>
+        <div className="quality-approval-execute-text">
+          <h3 className="quality-approval-execute-heading">{compact.title}</h3>
           <p>{compact.summary}</p>
         </div>
         {state.kind === 'executed' ? (
-          <p className="iqc-skip-approval-done">{compact.done}</p>
+          <p className="quality-approval-execute-done">{compact.done}</p>
         ) : (
-          <p className="field-note iqc-skip-approval-execute-note">
+          <p className="field-note quality-approval-execute-note">
             {state.kind === 'checking' ? t.checking : t.notPending(state.statusCode)}
           </p>
         )}
@@ -106,14 +89,11 @@ export const SkipExecutePane = ({
 
   if (state.kind !== 'executable') {
     return (
-      <section
-        className="iqc-skip-approval-section iqc-skip-approval-execute"
-        aria-label={t.heading}
-      >
-        <h3 className="iqc-skip-approval-heading">{t.heading}</h3>
+      <section className="quality-approval-execute" aria-label={t.heading}>
+        <h3 className="quality-approval-execute-heading">{t.heading}</h3>
         {state.kind === 'executed' ? (
           /* 완료는 초록 글자로 — 실행 단추 대신 결과가 선다. */
-          <p className="iqc-skip-approval-done">{t.executed}</p>
+          <p className="quality-approval-execute-done">{t.executed}</p>
         ) : (
           <p className="field-note">
             {state.kind === 'checking' ? t.checking : t.notPending(state.statusCode)}
@@ -137,12 +117,12 @@ export const SkipExecutePane = ({
 
   return (
     <section
-      className={`iqc-skip-approval-section iqc-skip-approval-execute${compact === undefined ? '' : ' is-compact'}`}
+      className={`quality-approval-execute${compact === undefined ? '' : ' is-compact'}`}
       aria-label={t.heading}
     >
       {compact === undefined ? (
         <>
-          <h3 className="iqc-skip-approval-heading">{t.heading}</h3>
+          <h3 className="quality-approval-execute-heading">{t.heading}</h3>
           {banner}
           <p className="field-note">{t.note}</p>
           {openButton}
@@ -150,8 +130,8 @@ export const SkipExecutePane = ({
       ) : (
         <>
           {banner}
-          <div className="iqc-skip-approval-execute-text">
-            <h3 className="iqc-skip-approval-heading">{compact.title}</h3>
+          <div className="quality-approval-execute-text">
+            <h3 className="quality-approval-execute-heading">{compact.title}</h3>
             <p>{compact.summary}</p>
           </div>
           {openButton}
