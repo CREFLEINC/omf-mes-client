@@ -65,7 +65,9 @@ export const partsIqcInspection = {
     loading: '검사 정보를 불러오는 중입니다.',
     loadFailed: '검사 정보를 불러오지 못했습니다.',
     noPlan:
-      '이 품목에 적용할 검사기준이 없어 검사를 입력할 수 없습니다. 검사기준을 먼저 확정하세요.',
+      '검사 기준이 없어 검사 항목 없이 종합 판정만 입력합니다. 판정 근거 자료는 파일 첨부로 남겨 주세요.',
+    planVersionNote:
+      '검사 기준을 바꾸면 새로 발행되는 IQC 검사 건부터 적용됩니다. 이미 발행된 건은 발행 때 기준으로 검사합니다.',
     setPlan: '검사기준 설정',
     confirmed: (judgment: string) => `이미 확정된 검사입니다 — 판정: ${judgment}`,
     workerMissing:
@@ -155,6 +157,7 @@ export const partsIqcInspection = {
     heading: '판정',
     suggested: '자동 판정 결과',
     pending: '검사 항목 입력 후 판정 결과를 확인하세요.',
+    noPlan: '검사 기준이 없어 자동 판정을 하지 않습니다.',
     waiting: '판정 대기',
     overall: '종합 판정',
     rejectedQty: (qty: number) => `(불량 수량 ${String(qty)})`,

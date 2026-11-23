@@ -33358,6 +33358,11 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   flex: none;
 }
 
+/* 기준 없음 안내 줄 — 옆 단추가 있어도 아래 기준 안내 줄과 폭을 맞춘다(omf-all-around#351). */
+.parts-iqc-no-plan > .iqc-inspection-action-note {
+  flex: 1;
+}
+
 .parts-iqc-plan {
   display: grid;
   gap: var(--space-4);
