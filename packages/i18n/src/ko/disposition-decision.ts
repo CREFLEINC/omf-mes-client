@@ -121,16 +121,6 @@ export const dispositionDecision = {
     count: (count: number): string => `${String(count)}건`,
     /** 요청 구역 머리 — 제목 왼쪽, 한 줄 설명 오른쪽(사용자 시안 · #223). */
     requestHeading: '특채 요청',
-    /** 005 FR-038 — 전량 특채(남은 수량 고정 · 일부 특채 없음). 자재 관리 LOT 이 여럿이면 `lotId` 없이 요청한다(D-14). */
-    /** 요청 창 대상 칸 — 자재 관리 LOT 개수(사용자 시안 2026-11-17 · 창 디자인 통일). */
-    targetAll: (count: number): string => `자재 관리 LOT ${String(count)}개`,
-    /** 결재 대기 특채가 있으면 처분 판정 자리에 — 적용은 아래 「특채 요청 이력」의 [특채 적용]. */
-    pendingBanner: (concessionNo: string): string => `특채 ${concessionNo} 결재 대기 중입니다.`,
-    /** 결재가 승인됐고 적용 전(G2 M3). */
-    approvedBanner: (concessionNo: string): string => `특채 ${concessionNo} 승인됐습니다.`,
-    rejectedBanner: (concessionNo: string): string => `특채 ${concessionNo} 결재가 반려됐습니다.`,
-    /** 반려된 특채를 마무리하는 단추 — 적용 경로가 반려 묶음을 닫는다(omf-all-around#275 — 「특채 닫기」에서 바꿈). */
-    close: '반려 확인',
     /** 이력 표의 묶음 한 줄 — 같은 결재의 행(자재 관리 LOT 마다 한 행)을 한 줄로. */
     targetGroup: (count: number): string => `자재 관리 LOT ${String(count)}개 전부`,
     historyHeading: '특채 요청 이력',
@@ -138,28 +128,16 @@ export const dispositionDecision = {
     none: '특채 요청 이력이 없습니다.',
     loading: '특채를 불러오는 중입니다.',
     loadFailed: '특채를 불러오지 못했습니다.',
-    apply: '특채 적용',
-    /** 결재 대기 중에는 적용할 수 없다(G2 5차). */
-    applyWaiting: '결재가 끝나야 적용할 수 있습니다',
-    applying: '적용하는 중…',
     validFrom: '적용 시작일',
     validTo: '적용 종료일 (선택)',
-    requested: '특채를 요청했습니다. 결재가 끝나면 적용하세요.',
-    /** 다LOT 전량 특채 — 서버가 자재 관리 LOT 마다 특채 행을 만든 수(`concessionIds`). */
-    requestedLots: (count: number): string =>
-      `특채를 요청했습니다. 자재 관리 LOT ${String(count)}개 전부에 특채가 걸렸습니다. 결재가 끝나면 적용하세요.`,
     applied: '특채를 적용했습니다. 자재 관리 LOT 이 정상으로 풀렸습니다.',
     appliedLots: (count: number): string =>
       `특채를 적용했습니다. 자재 관리 LOT ${String(count)}개가 정상으로 풀렸습니다.`,
-    /** omf-all-around#207 — 일부 특채는 승인 안 된 수량을 «불량으로 남은 LOT»(새 번호)으로 나눈다. */
-    appliedSplit: (lotNo: string, nonconformanceNo: string): string =>
-      `특채를 적용했습니다. 승인 수량만 정상으로 풀었습니다. 불량으로 남은 수량은 새 LOT ${lotNo} 로 나누었고, 부적합 ${nonconformanceNo} 에서 처분합니다. 불량으로 남은 LOT 에 새 라벨을 붙이세요.`,
-    rejected: '결재가 반려되어 특채를 닫았습니다.',
     /** 요청 단추가 잠겼을 때 읽는 이유 — 칸별 안내 문구는 두지 않는다(필수 표시로 알린다). */
     blocked: {
       date: '유효 기간을 확인하세요.',
     },
-    status: { PENDING: '결재 대기', APPROVED: '적용됨', APPLIED: '적용됨', REJECTED: '반려' },
+    status: { APPROVED: '적용됨', APPLIED: '적용됨' },
     columns: {
       concessionNo: '특채 번호',
       target: '대상',
@@ -195,11 +173,6 @@ export const dispositionDecision = {
     /** 막힌 처분 유형의 이유 — 단추는 잠그고 이유를 단다. */
     typeLock: {
       closed: '이 부적합 건은 종결되었습니다',
-      concessionPending: '특채 결재 대기 중',
-      /** 결재 승인 뒤 적용 전 — 위 상자의 「승인됨 — 적용 대기」와 같은 말(G2 L-d). */
-      concessionApproved: '특채 승인됨 — 적용 대기',
-      /** 결재 반려 뒤 [반려 확인] 전(omf-all-around#275). */
-      concessionRejected: '특채 반려 — 반려 확인 대기',
       sortNoInboundLot: '반품·OQC 부적합에는 선별이 없습니다(입하 LOT 없음)', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
       sortSingleLot: '선별은 자재 관리 LOT가 2개 이상일 때 선택할 수 있습니다.',
       sortNotFirst: '선별은 첫 판정일 때만 할 수 있습니다',
@@ -250,7 +223,6 @@ export const dispositionDecision = {
   /** 판정 확인 팝업(omf-all-around#352) — 폐기 · 선별 · 특채 모두 저장 전에 띄운다. 결재선이 있으면 결재자, 없으면 바로 반영된다는 말. */
   confirm: {
     title: '처분 판정 확인',
-    routedTitle: '처분 판정 결재 요청',
     type: '처분 유형',
     target: '대상 LOT',
     targetLots: (count: number): string => `자재 관리 LOT ${String(count)}개`,
@@ -260,40 +232,8 @@ export const dispositionDecision = {
     period: '적용 기간',
     periodText: (from: string, to: string | null): string => `${from} ~ ${to ?? '제한 없음'}`,
     reason: '판정 사유',
-    approvers: '결재자',
-    approverStep: (stepNo: number, name: string): string => `${name} (${String(stepNo)}단계)`,
-    routed: (applyLabel: string, subject: string): string =>
-      `승인 후 [${applyLabel}]을 눌러야 ${subject} 반영됩니다.`,
-    subjectDisposition: '처분이',
-    subjectConcession: '특채가',
-    direct: '결재선이 없는 항목이라 저장하면 바로 반영됩니다.',
-    loading: '결재선을 확인하는 중입니다.',
-    loadFailed: '결재선을 확인하지 못했습니다. 다시 시도하세요.',
-    request: '결재 요청',
+    direct: '저장하면 바로 반영됩니다.',
     save: '판정 저장',
-  },
-  approval: {
-    requested: '결재를 요청했습니다. 승인되면 이 화면에서 처분 적용을 누르세요.',
-    pendingBanner: (typeLabel: string): string => `${typeLabel} 처분 결재 대기 중입니다.`,
-    /** 「처분 판정」 제목 옆 라벨 — 특채의 「특채 결재 대기 중」과 같은 말(#352 사용자 지시). */
-    pendingLabel: (typeLabel: string): string => `${typeLabel} 결재 대기 중`,
-    approvedLabel: (typeLabel: string): string => `${typeLabel} 승인됨 — 적용 대기`,
-    rejectedLabel: (typeLabel: string): string => `${typeLabel} 반려 — 반려 확인 대기`,
-    /** 결재 대기 내용(#352 사용자 지시) — 무엇으로 결재를 올렸는지. */
-    info: {
-      concessionNo: '특채 번호',
-      movedLots: '불량 분리 LOT',
-      goodQty: '양품 수량',
-      defectQty: '불량 수량',
-      requestedBy: '요청자',
-      requestedAt: '요청 일시',
-    },
-    approvedBanner: (typeLabel: string): string => `${typeLabel} 처분이 승인됐습니다.`,
-    rejectedBanner: (typeLabel: string): string => `${typeLabel} 처분 결재가 반려됐습니다.`,
-    apply: '처분 적용',
-    close: '반려 확인',
-    applied: '처분을 적용했습니다',
-    rejected: '결재가 반려되어 처분 요청을 닫았습니다. 다시 판정할 수 있습니다.',
   },
   /** 결재자가 보는 부적합 정보(omf-all-around#352) — 품질 승인 처리 · 결재함 상세에 선다. */
   approvalSummary: {

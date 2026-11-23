@@ -34,14 +34,8 @@ export interface DispositionStubOptions {
   concessions?: unknown[];
   /** 005 — 특채 요청 응답을 갈아 끼운다. */
   concessionResponse?: () => Response;
-  /** 005 — 특채 결재 요청의 상태(`GET /app/approval-requests/{id}`, G2 M3). 없으면 그 조회는 실패한다. */
-  approvalStatusCode?: string;
-  /** #352 — 이 부적합의 처분 결재(`GET …/disposition-approvals`). 없으면 빈 목록. */
-  dispositionApprovals?: unknown[];
   /** #352 — 이미 판정된 행에 덮을 칸(선별로 생긴 새 부적합 등). */
   decision?: Record<string, unknown>;
-  /** #352 — 처분 · 특채 결재선(`GET /quality/disposition-approval-routes`). 없으면 둘 다 결재선 없음. */
-  approvalRoutes?: unknown[];
 }
 
 /**
@@ -50,10 +44,8 @@ export interface DispositionStubOptions {
 export const saveAndConfirm = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
   await user.click(screen.getByRole('button', { name: messages.dispositionDecision.actions.save }));
   if (screen.queryByRole('dialog') === null) return;
-  const { request, save } = messages.dispositionDecision.confirm;
-  /* 결재선이 있으면 [결재 요청], 없으면 [판정 저장](#352). */
   const ok = within(screen.getByRole('dialog')).getByRole('button', {
-    name: new RegExp(`^(${request}|${save})$`),
+    name: messages.dispositionDecision.confirm.save,
   });
   await waitFor(() => expect(ok).toBeEnabled());
   await user.click(ok);
@@ -161,16 +153,6 @@ export const dispositionStub = (options: DispositionStubOptions = {}): StubFetch
 
   const inner = createStubFetch([
     {
-      match: (request) => pathOf(request) === '/quality/disposition-approval-routes',
-      respond: () =>
-        jsonResponse({
-          items: options.approvalRoutes ?? [
-            { approvalTypeCode: 'DISPOSITION', hasRoute: false, steps: [] },
-            { approvalTypeCode: 'CONCESSION', hasRoute: false, steps: [] },
-          ],
-        }),
-    },
-    {
       match: (request) => /^\/trace\/lots\/\d+$/.test(pathOf(request)),
       respond: (request) =>
         options.lotStatusCode === undefined
@@ -214,32 +196,12 @@ export const dispositionStub = (options: DispositionStubOptions = {}): StubFetch
     },
     {
       match: (request) =>
-        /^\/quality\/nonconformances\/\d+\/disposition-approvals$/.test(pathOf(request)) &&
-        request.method === 'GET',
-      respond: () => jsonResponse({ items: options.dispositionApprovals ?? [] }),
-    },
-    {
-      /* #352 — 판정 저장은 처분 결재로 올린다. 결재선이 없으면 APPLIED 로 판정 저장 응답을 `decision` 에 싣는다. */
-      match: (request) =>
-        /^\/quality\/nonconformances\/\d+\/disposition-approvals$/.test(pathOf(request)) &&
+        /^\/quality\/nonconformances\/\d+\/disposition-decisions$/.test(pathOf(request)) &&
         request.method === 'POST',
       respond: () => {
         if (options.saveThrows === true) throw new Error('연결이 끊겼습니다');
-        return (
-          options.saveResponse?.() ??
-          jsonResponse({ outcome: 'APPLIED', decision: {} }, { status: 201 })
-        );
+        return options.saveResponse?.() ?? jsonResponse({}, { status: 201 });
       },
-    },
-    {
-      match: (request) => /^\/quality\/disposition-approvals\/\d+:apply$/.test(pathOf(request)),
-      respond: (request) =>
-        jsonResponse({
-          dispositionApproval: {
-            dispositionApprovalId: Number(pathOf(request).split('/').pop()?.split(':')[0]),
-            statusCode: 'APPLIED',
-          },
-        }),
     },
     {
       match: (request) => /^\/quality\/nonconformances\/\d+$/.test(pathOf(request)),
@@ -294,18 +256,6 @@ export const dispositionStub = (options: DispositionStubOptions = {}): StubFetch
             match: (request: Request) =>
               /^\/quality\/concessions\/\d+:apply$/.test(pathOf(request)),
             respond: () => jsonResponse({ concessionId: 61, statusCode: 'APPLIED' }),
-          },
-        ]),
-    ...(options.approvalStatusCode === undefined
-      ? []
-      : [
-          {
-            match: (request: Request) => /^\/app\/approval-requests\/\d+$/.test(pathOf(request)),
-            respond: () =>
-              jsonResponse({
-                request: { approvalRequestId: 77, statusCode: options.approvalStatusCode },
-                steps: [],
-              }),
           },
         ]),
     {

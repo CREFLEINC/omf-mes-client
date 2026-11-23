@@ -20,12 +20,12 @@ describe('approvalScopeWarning', () => {
 
 describe('approvalTypeLabelOf', () => {
   it('아는 승인 유형은 사용자 용어로, 모르는 코드는 원문 그대로 보인다', () => {
-    expect(toTypeOptions(['CONCESSION', 'OQC_SKIP', 'SYNTH-TYPE'])).toEqual([
-      { value: 'CONCESSION', label: messages.qualityApproval.typeLabels.CONCESSION },
+    expect(toTypeOptions(['PQC_SKIP', 'OQC_SKIP', 'SYNTH-TYPE'])).toEqual([
+      { value: 'PQC_SKIP', label: messages.qualityApproval.typeLabels.PQC_SKIP },
       { value: 'OQC_SKIP', label: messages.qualityApproval.typeLabels.OQC_SKIP },
       { value: 'SYNTH-TYPE', label: 'SYNTH-TYPE' },
     ]);
-    expect(approvalTypeLabelOf('CONCESSION')).toBe('특채');
+    expect(approvalTypeLabelOf('PQC_SKIP')).toBe('PQC (공정검사) 생략');
   });
 });
 

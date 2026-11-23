@@ -77,8 +77,7 @@ const sortPost = (): Request | undefined =>
 describe('W-03-10 선별', () => {
   it('US7-2 불량 자재 관리 LOT 를 골라 저장하면 새 입하 LOT · 새 부적합 번호를 보인다', async () => {
     const { user } = renderSort({
-      saveResponse: () =>
-        jsonResponse({ outcome: 'APPLIED', decision: SORT_RESPONSE }, { status: 200 }),
+      saveResponse: () => jsonResponse(SORT_RESPONSE, { status: 200 }),
     });
     await screen.findByText('SAMPLE-ML|0003');
 

@@ -37,8 +37,6 @@ export const qualityApproval = {
   qPlaceholder: '요청번호를 입력하세요',
   /** 승인 유형 코드 → 사용자 용어. 목록 밖 코드는 원문 그대로 보인다(`approvalTypeLabelOf`). */
   typeLabels: {
-    DISPOSITION: '처분',
-    CONCESSION: '특채',
     IQC_SKIP: 'IQC (수입검사) 생략',
     PQC_SKIP: 'PQC (공정검사) 생략',
     OQC_SKIP: 'OQC (출하검사) 생략',
@@ -70,9 +68,6 @@ export const qualityApproval = {
     notFound: '요청을 찾을 수 없습니다',
     notFoundDescription: '목록을 새로 조회한 뒤 다른 요청을 선택하세요.',
     /** 「전체」·OQC 생략 탭의 승인된 OQC 생략 — 실행 권한이 없을 때(#193). 서버가 W-04-03 권한으로 거른다. */
-    /** 특채 요청의 요청 상세 카드 제목과 요청 정보 묶음(#193). */
-    concessionTitle: '특채 승인 상세',
-    requestInfo: '요청 정보',
     /** 「전체」 탭의 승인된 IQC 생략 — 실행 권한이 없을 때(#186). */
     iqcSkipNoPermission: 'IQC 생략 실행은 「긴급 IQC 생략 한도승인」 화면 권한이 있어야 합니다.',
   },
@@ -122,10 +117,6 @@ export const qualityApproval = {
     notPending: (status: string) => `생략을 실행할 수 없는 상태입니다(상태 ${status}).`,
   },
   /**
-   * 승인된 특채의 적용 구획(#193) — IQC·OQC 생략 실행과 같은 짜임이다. 승인은 잠금만 풀고(공유계약 J-8), 적용이
-   * 처분 판정(특채)을 남기고 LOT 을 정상으로 바꾸며 수입검사 대기 보류를 푼다(omf-all-around#84 · 서버 P-79).
-   */
-  /**
    * 「다음 할 일」(#193) — 결재 결과 카드 끝에서 이어서 일할 화면으로 보낸다. 반려면 다시 요청하거나 정상 검사로,
    * 실행·적용을 마쳤으면 그다음 업무 화면으로 간다.
    */
@@ -151,12 +142,6 @@ export const qualityApproval = {
   },
   next: {
     heading: '다음 할 일',
-    concessionRejected: '특채가 반려됐습니다 — 처분을 다시 정하거나 특채를 다시 요청하세요',
-    /** 처분(폐기 · 선별) 결재(omf-all-around#352) — 반영은 부적합 처분 관리의 [처분 적용] · [반려 확인]이 한다. */
-    dispositionRejected:
-      '처분 결재가 반려됐습니다 — 부적합 처분 관리에서 반려 확인 후 처분을 다시 정하세요',
-    dispositionApproved: '처분이 승인됐습니다 — 부적합 처분 관리에서 처분 적용을 누르면 반영됩니다',
-    openDisposition: '부적합 처분 관리 열기',
     /** IQC 생략 반려 — 붉은 느낌표 제목 · 할 일 · 정보 표시 안내 세 줄(사용자 지시 2026-10-27). */
     iqcRejectedTitle: '생략 요청이 반려되었습니다.',
     iqcRejected: '수입검사를 진행해 주세요.',
@@ -177,80 +162,10 @@ export const qualityApproval = {
     oqcDone: 'OQC 생략을 실행했습니다 — 출하 처리를 이어서 하세요',
     openShipmentProcessing: '출하 처리 열기',
   },
-  concessionApply: {
-    heading: '특채 적용',
-    note: '승인된 특채입니다. 적용하면 처분 판정(특채)을 남기고 LOT 을 정상으로 바꾸며 수입검사 대기 보류를 풉니다.',
-    action: '특채 적용',
-    dialogTitle: '특채를 적용할까요?',
-    dialogBody:
-      '처분 판정(특채)이 남고 LOT 이 정상이 됩니다. 남은 수량을 넘거나 LOT 상태가 맞지 않으면 적용되지 않습니다.',
-    irreversible: '적용한 뒤에는 되돌릴 수 없습니다.',
-    done: '특채를 적용했습니다',
-    executed: '적용 완료 — LOT 이 정상 상태입니다.',
-    checking: '특채 상태를 확인하는 중입니다.',
-    notPending: (status: string) => `적용할 수 없는 특채 상태입니다(상태 ${status}).`,
-    compact: {
-      title: '특채 적용',
-      summary: '처분 판정 기록 · LOT 정상 · 검사 대기 보류 해제',
-      action: '적용',
-      done: '적용 완료',
-    },
-  },
   condition: {
-    title: '연결 조건',
-    loading: '연결 조건 불러오는 중',
-    none: '연결된 조건 없음',
-    unsafe: '연결 조건을 안전하게 특정할 수 없습니다',
-    /**
-     * ⭐ 부적합 상세를 소유한 화면(처분 판정 처리)으로 나가는 링크의 이름.
-     * 버튼이 아니라 링크라 이름이 곧 「어디로 가는가」다 — 사유를 따로 잇지 않는다.
-     */
-    openNonconformance: '부적합 열기',
-    nonconformance: '부적합',
-    /** 번호는 계약에서 선택 항목이다 — 없다고 이동까지 막지 않는다. 식별자는 따로 있다. */
-    nonconformanceNoUnknown: '부적합번호 미제공',
-    concessionNo: '특채번호',
-    approvedQty: '승인 수량',
-    consumedQty: '사용 수량',
-    uom: '단위',
-    validity: '유효기간',
-    remarks: '비고',
-    workOrder: '허용 작업지시',
-    process: '허용 공정',
-    customer: '허용 고객',
-    usableLabel: '사용 가능 여부',
-    usable: '사용 가능',
-    unusable: '사용 불가',
-    usableUnknown: '사용 가능 여부 미제공',
-    concessionNoUnknown: '특채번호 미제공',
-    remarksEmpty: '등록된 비고가 없습니다',
-    openEnded: '종료일 없음',
-    unrestricted: '제한 없음',
-    /** 특채 승인 상세 카드(#193)의 묶음 이름 — 수량 요약 · 사용 조건 · 적용 제한 · 연관 부적합. */
-    remainingQty: '잔여 수량',
-    usageTitle: '사용 조건',
-    limits: '적용 제한',
-    limitWorkOrder: '작업지시',
-    limitProcess: '공정',
-    limitCustomer: '고객',
-    limitsNone: '작업지시 · 공정 · 고객 모두 제한 없음',
-    nonconformanceHeading: '연관 부적합',
-    /** 다른 화면으로 여는 줄(#193) — 대상 LOT 은 LOT 상태, 허용 작업지시는 W/O 진행현황에서 연다. */
-    lotHeading: '대상 LOT',
-    lotNoUnknown: 'LOT 번호 미제공',
-    /** 005 다LOT 전량 특채 묶음(G2 H2). */
-    lotBundle: (count: number) => `자재 관리 LOT ${count}개 전부`,
     openLot: 'LOT 열기',
     /** 소제목 옆 작은 보조 단추의 글 — 무엇을 여는지는 소제목이 말하고, 읽기 이름은 「LOT 열기」 등 전체다. */
     open: '열기',
-    workOrderHeading: '허용 작업지시',
-    openWorkOrder: '작업지시 열기',
-    reference: {
-      loading: '참조 이름 불러오는 중',
-      failed: '참조 이름 조회 실패',
-      unknown: '참조 이름을 확인할 수 없음',
-      truncated: '참조 목록이 잘려 이름을 확인할 수 없음',
-    },
   },
   progress: {
     steps: '결재 단계',

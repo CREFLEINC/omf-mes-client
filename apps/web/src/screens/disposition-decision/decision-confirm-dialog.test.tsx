@@ -1,77 +1,46 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { jsonResponse, renderWithProviders } from '../../test/api-harness';
+import { renderWithProviders } from '../../test/api-harness';
 import { DecisionConfirmDialog } from './decision-confirm-dialog';
 
-/** #352 판정 확인 팝업 — 결재선이 있으면 결재자 · 결재 요청, 없으면 바로 반영. 값은 지어낸 것이다. */
+/** #352 판정 확인 팝업 — 결재 없이 저장하면 바로 반영된다. 값은 지어낸 것이다. */
 const t = messages.dispositionDecision;
 
-const ROUTED = [
-  {
-    approvalTypeCode: 'DISPOSITION',
-    hasRoute: true,
-    steps: [{ stepNo: 1, approverName: '합성 결재자' }],
-  },
-  { approvalTypeCode: 'CONCESSION', hasRoute: false, steps: [] },
-];
-
-const renderDialog = (code: string, items: unknown[] | 'fail' = ROUTED) => {
+const renderDialog = () => {
   const onConfirm = vi.fn();
   const onCancel = vi.fn();
   renderWithProviders(
     <DecisionConfirmDialog
-      dispositionTypeCode={code}
       rows={[{ label: t.confirm.reason, value: '합성 사유' }]}
       isSaving={false}
       onConfirm={onConfirm}
       onCancel={onCancel}
     />,
     {
-      fetch: async () =>
-        items === 'fail' ? jsonResponse({ message: '' }, { status: 500 }) : jsonResponse({ items }),
+      fetch: async () => {
+        throw new Error('팝업은 서버를 부르지 않는다');
+      },
     },
   );
   return { onConfirm, onCancel, user: userEvent.setup() };
 };
 
 describe('판정 확인 팝업(#352)', () => {
-  it('결재선이 있으면 「결재 요청」 제목 · 결재자 · 승인 후 안내를 보이고, [결재 요청]을 누르면 저장한다', async () => {
-    const { onConfirm, user } = renderDialog('SCRAP');
+  it('저장할 내용과 「바로 반영」 안내를 보이고, [판정 저장]을 누르면 저장한다', async () => {
+    const { onConfirm, user } = renderDialog();
 
-    expect(
-      await screen.findByText(t.confirm.routed(t.approval.apply, t.confirm.subjectDisposition)),
-    ).toBeInTheDocument();
-    expect(screen.getByText(t.confirm.routedTitle)).toBeInTheDocument();
-    expect(screen.getByText('합성 결재자 (1단계)')).toBeInTheDocument();
+    expect(screen.getByText(t.confirm.title)).toBeInTheDocument();
+    expect(screen.getByText(t.confirm.direct)).toBeInTheDocument();
     expect(screen.getByText('합성 사유')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: t.confirm.request }));
+    await user.click(screen.getByRole('button', { name: t.confirm.save }));
     expect(onConfirm).toHaveBeenCalledOnce();
   });
 
-  it('결재선이 없으면 바로 반영된다고 알리고 결재자 칸은 두지 않는다', async () => {
-    renderDialog('CONCESSION');
-
-    expect(await screen.findByText(t.confirm.direct)).toBeInTheDocument();
-    expect(screen.getByText(t.confirm.title)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.confirm.save })).toBeEnabled();
-    expect(screen.queryByText(t.confirm.approvers)).toBeNull();
-  });
-
-  it('결재선을 확인하지 못하면 확인을 잠근다 — 무엇이 일어날지 모른 채 저장하지 않는다', async () => {
-    renderDialog('SCRAP', 'fail');
-
-    expect(await screen.findByText(t.confirm.loadFailed)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.confirm.save })).toBeDisabled();
-  });
-
   it('취소는 저장하지 않고 닫는다', async () => {
-    const { onConfirm, onCancel, user } = renderDialog('SCRAP');
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: t.confirm.request })).toBeEnabled(),
-    );
+    const { onConfirm, onCancel, user } = renderDialog();
 
     await user.click(screen.getByRole('button', { name: messages.common.cancel }));
     expect(onCancel).toHaveBeenCalledOnce();

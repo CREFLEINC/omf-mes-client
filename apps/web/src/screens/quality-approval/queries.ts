@@ -6,14 +6,9 @@ import type { RequestListQuery } from './filters';
 import type {
   ApprovalRequest,
   ApprovalRequestDetail,
-  Concession,
-  ConcessionListResponse,
   PageMeta,
-  Partner,
-  Process,
   ShipmentRequest,
   Uom,
-  WorkOrder,
 } from './types';
 
 export interface RequestListResponse {
@@ -26,26 +21,12 @@ export interface UomListResponse {
   page: PageMeta;
 }
 
-export interface ProcessListResponse {
-  items: Process[];
-  page: PageMeta;
-}
-
 export const qualityApprovalKeys = {
   all: ['quality-approval'] as const,
   list: (query: RequestListQuery) => ['quality-approval', 'list', { ...query }] as const,
   detail: (approvalRequestId: number | null) =>
     ['quality-approval', 'detail', approvalRequestId] as const,
-  candidates: (approvalRequestId: number | null) =>
-    ['quality-approval', 'condition-candidates', approvalRequestId] as const,
-  condition: (concessionId: number | null) =>
-    ['quality-approval', 'condition', concessionId] as const,
-  workOrder: (workOrderId: number | null) =>
-    ['quality-approval', 'condition-work-order', workOrderId] as const,
-  customer: (partnerId: number | null) =>
-    ['quality-approval', 'condition-customer', partnerId] as const,
   uoms: ['quality-approval', 'condition-uoms'] as const,
-  processes: ['quality-approval', 'condition-processes'] as const,
   oqcShipment: (shipmentRequestId: number | null) =>
     ['quality-approval', 'oqc-shipment', shipmentRequestId] as const,
 };
@@ -53,17 +34,7 @@ export const qualityApprovalKeys = {
 export const requestDetailPath = (approvalRequestId: number): string =>
   `/app/approval-requests/${String(approvalRequestId)}`;
 
-export const concessionDetailPath = (concessionId: number): string =>
-  `/quality/concessions/${String(concessionId)}`;
-
-export const workOrderReferencePath = (workOrderId: number): string =>
-  `/production/work-orders/${String(workOrderId)}`;
-
-export const customerReferencePath = (partnerId: number): string =>
-  `/mdm/partners/${String(partnerId)}`;
-
 export const UOM_REFERENCE_PATH = '/mdm/uoms';
-export const PROCESS_REFERENCE_PATH = '/mdm/processes';
 
 export const useApprovalRequests = (
   query: RequestListQuery,
@@ -93,79 +64,6 @@ export const useApprovalRequestDetail = (
         client.GET('/app/approval-requests/{approvalRequestId}', {
           params: { path: { approvalRequestId } },
         }),
-      );
-    },
-  });
-};
-
-export const useConcessionCandidates = (
-  approvalRequestId: number | null,
-): UseQueryResult<ConcessionListResponse> => {
-  const { client } = useApiClient();
-
-  return useQuery({
-    queryKey: qualityApprovalKeys.candidates(approvalRequestId),
-    enabled: approvalRequestId !== null,
-    queryFn: () => {
-      if (approvalRequestId === null) throw new Error('승인 요청 상세가 준비되지 않았습니다.');
-
-      return runRequest(() =>
-        client.GET('/quality/concessions', {
-          /* 다LOT 특채 묶음은 LOT 마다 한 행 — 한 쪽에 다 받는다(G2 H2). */
-          params: { query: { approvalRequestId, page: 1, size: 100 } },
-        }),
-      );
-    },
-  });
-};
-
-export const useConcessionDetail = (concessionId: number | null): UseQueryResult<Concession> => {
-  const { client } = useApiClient();
-
-  return useQuery({
-    queryKey: qualityApprovalKeys.condition(concessionId),
-    enabled: concessionId !== null,
-    queryFn: () => {
-      if (concessionId === null) throw new Error('연결된 조건이 특정되지 않았습니다.');
-
-      return runRequest(() =>
-        client.GET('/quality/concessions/{concessionId}', {
-          params: { path: { concessionId } },
-        }),
-      );
-    },
-  });
-};
-
-export const useConditionWorkOrder = (workOrderId: number | null): UseQueryResult<WorkOrder> => {
-  const { client } = useApiClient();
-
-  return useQuery({
-    queryKey: qualityApprovalKeys.workOrder(workOrderId),
-    enabled: workOrderId !== null,
-    queryFn: () => {
-      if (workOrderId === null) throw new Error('허용 작업지시가 없는 조건입니다.');
-
-      return runRequest(() =>
-        client.GET('/production/work-orders/{workOrderId}', {
-          params: { path: { workOrderId } },
-        }),
-      );
-    },
-  });
-};
-
-export const useConditionCustomer = (partnerId: number | null): UseQueryResult<Partner> => {
-  const { client } = useApiClient();
-
-  return useQuery({
-    queryKey: qualityApprovalKeys.customer(partnerId),
-    enabled: partnerId !== null,
-    queryFn: () => {
-      if (partnerId === null) throw new Error('허용 고객이 없는 조건입니다.');
-
-      return runRequest(() =>
-        client.GET('/mdm/partners/{partnerId}', { params: { path: { partnerId } } }),
       );
     },
   });
@@ -203,23 +101,5 @@ export const useConditionUoms = (enabled: boolean): UseQueryResult<UomListRespon
     enabled,
     queryFn: () =>
       runRequest(() => client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } })),
-  });
-};
-
-export const useConditionProcesses = (
-  processId: number | null,
-): UseQueryResult<ProcessListResponse> => {
-  const { client } = useApiClient();
-
-  return useQuery({
-    queryKey: qualityApprovalKeys.processes,
-    enabled: processId !== null,
-    queryFn: () => {
-      if (processId === null) throw new Error('허용 공정이 없는 조건입니다.');
-
-      return runRequest(() =>
-        client.GET('/mdm/processes', { params: { query: { includeInactive: true } } }),
-      );
-    },
   });
 };

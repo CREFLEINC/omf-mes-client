@@ -5,18 +5,9 @@ import { formatPlantDateTime } from '../../patterns/plant-time';
 export type ApprovalRequest = components['schemas']['ApprovalRequest'];
 export type ApprovalRequestDetail = components['schemas']['ApprovalRequestDetail'];
 export type ApprovalStep = components['schemas']['ApprovalStep'];
-export type Concession = components['schemas']['Concession'];
-export type WorkOrder = components['schemas']['WorkOrder'];
-export type Partner = components['schemas']['Partner'];
 export type Uom = components['schemas']['Uom'];
-export type Process = components['schemas']['Process'];
 export type PageMeta = components['schemas']['PageMeta'];
 export type ShipmentRequest = components['schemas']['ShipmentRequest'];
-
-export interface ConcessionListResponse {
-  items: Concession[];
-  page: PageMeta;
-}
 
 export interface RequestRow {
   approvalRequestId: number;

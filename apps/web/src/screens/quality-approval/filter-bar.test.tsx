@@ -46,7 +46,7 @@ describe('FilterBar draft lifetime', () => {
   it('기간·검색어 draft를 Enter로 함께 적용한다', async () => {
     /* 적용된 승인 유형(탭)·상태(칩)는 조건 막대의 적용·조회에도 그대로 실려 간다. */
     const { props, user } = renderBar({
-      applied: { ...EMPTY_FILTERS, approvalTypeCode: 'CONCESSION', statusCode: 'APPROVED' },
+      applied: { ...EMPTY_FILTERS, approvalTypeCode: 'PQC_SKIP', statusCode: 'APPROVED' },
     });
 
     /* 상신일은 시작일·종료일 두 칸으로 따로 고른다(#144). */
@@ -54,7 +54,7 @@ describe('FilterBar draft lifetime', () => {
     await pickDate(user, screen.getByLabelText(t.fields.periodTo), '2026-08-22');
     await user.type(requestSearch(), 'SYNTH-REQ{Enter}');
     expect(props.onApply).toHaveBeenCalledWith({
-      approvalTypeCode: 'CONCESSION',
+      approvalTypeCode: 'PQC_SKIP',
       statusCode: 'APPROVED',
       from: '2026-08-01',
       to: '2026-08-22',
@@ -64,7 +64,7 @@ describe('FilterBar draft lifetime', () => {
 
     await user.click(screen.getByRole('button', { name: messages.common.search }));
     expect(props.onApply).toHaveBeenLastCalledWith({
-      approvalTypeCode: 'CONCESSION',
+      approvalTypeCode: 'PQC_SKIP',
       statusCode: 'APPROVED',
       from: '2026-08-01',
       to: '2026-08-22',
@@ -84,7 +84,7 @@ describe('FilterBar draft lifetime', () => {
 
   it('「초기화」는 조건 줄의 값이 처음 값과 다를 때만 보인다 — 탭 줄의 유형 · 상태는 견주지 않는다(C-6)', async () => {
     const { user } = renderBar({
-      applied: { ...EMPTY_FILTERS, approvalTypeCode: 'CONCESSION', statusCode: 'APPROVED' },
+      applied: { ...EMPTY_FILTERS, approvalTypeCode: 'PQC_SKIP', statusCode: 'APPROVED' },
     });
 
     expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();

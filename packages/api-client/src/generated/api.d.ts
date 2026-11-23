@@ -27785,10 +27785,8 @@ export interface paths {
             | 'SHIPMENT_CANCEL'
             | 'IQC_SKIP'
             | 'PRODUCTION_RESULT_CORRECT'
-            | 'CONCESSION'
             | 'OQC_SKIP'
-            | 'PQC_SKIP'
-            | 'DISPOSITION';
+            | 'PQC_SKIP';
           businessUnitId?: number;
           /** @description 참이면 사용 중만 */
           activeOnly?: boolean;
@@ -28402,10 +28400,8 @@ export interface paths {
             | 'SHIPMENT_CANCEL'
             | 'IQC_SKIP'
             | 'PRODUCTION_RESULT_CORRECT'
-            | 'CONCESSION'
             | 'OQC_SKIP'
-            | 'PQC_SKIP'
-            | 'DISPOSITION';
+            | 'PQC_SKIP';
           /** @description 결재 요청 상태로 거른다 — 대기(PENDING) · 승인(APPROVED) · 반려(REJECTED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=APPROVAL_REQUEST_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
           statusCode?: string;
           /** @description 업무 화면이 자기 문서의 승인 상태를 찾을 때 targetId 와 함께 쓴다 */
@@ -37717,8 +37713,8 @@ export interface paths {
     };
     put?: never;
     /**
-     * 특채 요청
-     * @description 부적합의 불합격 LOT 을 조건부로 쓰겠다고 결재를 올린다. 특채(PENDING)와 결재 요청(approvalTypeCode=CONCESSION · 대상 NONCONFORMANCE — 결재는 늘 1건)을 한 번에 만든다 — 승인은 W-03-09(POST /app/approval-requests/{id}:approve), 적용은 :apply 다. 사용 가능 수량은 그 부적합의 남은 수량과 같아야 한다(일부 특채 제거 — FR-038). lotId 를 비우면 부적합 LOT 마다 특채 행(lot_id = 그 LOT · approvedQty = 그 LOT 의 부적합 수량)이 같은 결재로 묶여 선다(D-14). 응답은 첫 행 + concessionIds(묶음 전부)·approvalRequestId. ⭐ 특채 결재선이 없으면(활성 결재선 0 · 단계 0) 결재 요청 없이 «바로 적용»한다 — :apply 승인과 같은 결과(처분 판정 CONCESSION · LOT 정상 · 부적합 종결)를 한 트랜잭션에서 만들고 outcome=APPLIED · approvalRequestId=null 로 돌려준다(omf-all-around#352). 결재선이 있으면 outcome=REQUESTED. 근거: omf-all-around#84 (서버 선행 · 장부 P-79) · 근거: 피처 005 §10 · FR-038 · D-14 · omf-all-around#254 ⭐ 그 부적합에 결재 진행 중인 폐기·선별 처분 결재가 있으면 409 INVALID_STATE. 근거: omf-all-around#352
+     * 특채 저장
+     * @description 부적합의 불합격 LOT 을 조건부로 쓰도록 특채를 저장하고 «바로 적용»한다 — 결재를 거치지 않는다(omf-all-around#352 사용자 결정 2026-11-23 · 결재 요청·승인·:apply 제거). 한 트랜잭션에서 특채(APPROVED)·처분 판정 CONCESSION 1건·LOT 정상(C25)·수입검사 대기 보류 해제·부적합 종결을 만든다. 사용 가능 수량은 그 부적합의 남은 수량과 같아야 한다(일부 특채 제거 — FR-038). lotId 를 비우면 부적합 LOT 마다 특채 행(lot_id = 그 LOT · approvedQty = 그 LOT 의 부적합 수량)이 선다(D-14). 응답은 첫 행 + concessionIds(묶음 전부). 근거: omf-all-around#84 (서버 선행 · 장부 P-79) · 피처 005 §10 · FR-038 · D-14 · omf-all-around#254 · omf-all-around#352
      */
     post: {
       parameters: {
@@ -37774,108 +37770,6 @@ export interface paths {
         };
         /** @description 없는 부적합 */
         404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 결재 진행 중인 폐기·선별 처분 결재가 있다(INVALID_STATE). 근거: omf-all-around#352 */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/quality/concessions/{concessionId}:apply': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * 특채 적용
-     * @description 승인된 특채를 적용한다 — 묶음(같은 부적합 · 같은 결재) 중 어느 행으로 불러도 묶음의 PENDING 행 «전부»를 한 트랜잭션에서: 행마다 APPROVED · 부적합에 처분 판정(CONCESSION) 1건(수량 = 행 합계 = 남은 수량) · 묶음 LOT 전부 정상(C25 · 원천은 그 LOT 의 특채 행) · 수입검사 대기 보류 해제(CONCESSION_APPROVED) · 부적합 닫힘. 승인 수량 합이 적용 시점의 남은 수량보다 크면(요청 뒤 다른 처분이 먼저 수량을 씀) 400 approvedQty, 작으면(일부 수량으로 요청한 옛 특채) 409 「일부 특채는 지원하지 않습니다」 — 반려한 뒤 남은 수량 전체로 다시 요청한다(R-14a). 나머지를 자식 LOT 으로 떼는 동작은 없어졌다(splitResult 는 늘 null). 결재가 진행 중이면 400 APPROVAL_IN_PROGRESS, 반려면 묶음을 REJECTED 로 닫고 200(statusCode=REJECTED · LOT 은 그대로). 이미 적용·반려된 특채(묶음의 두 번째 적용 포함)는 409. 근거: omf-all-around#84 · #207 (장부 P-79) · 근거: 피처 005 §10 · FR-038 · D-14 · omf-all-around#254
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header: {
-          /** @description 전 쓰기 API 필수. */
-          'Idempotency-Key': components['parameters']['IdempotencyKey'];
-        };
-        path: {
-          concessionId: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: {
-        content: {
-          'application/json': components['schemas']['ConcessionApply'];
-        };
-      };
-      responses: {
-        /** @description 적용됨 — 그 행 + concessionIds(적용한 묶음) */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Concession'];
-          };
-        };
-        /** @description 검증 실패 · 승인 전 · 남은 수량 초과 */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 권한 없음 */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 없는 특채 */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 이미 적용·반려된 특채(STATE_LOCKED) · 일부 수량 특채(옛 요청 — STATE_LOCKED 「일부 특채는 지원하지 않습니다」). 근거: 피처 005 §10 · FR-038 · D-14 · omf-all-around#254 */
-        409: {
           headers: {
             [name: string]: unknown;
           };
@@ -38128,372 +38022,6 @@ export interface paths {
           };
         };
         /** @description 요청 오류 — 필수값 누락·허용되지 않은 값·형식 오류 등 검증 실패 */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/quality/nonconformances/{nonconformanceId}/disposition-approvals': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        nonconformanceId: number;
-      };
-      cookie?: never;
-    };
-    /**
-     * 이 부적합의 처분 결재
-     * @description W-03-10 「결재 진행」 표시 — 이 부적합의 폐기·선별 처분 결재 요청(최신 먼저). statusCode 는 이 요청의 반영 상태(PENDING 결재 진행 중 · APPLIED 반영됨 · REJECTED 반려로 닫힘), approvalStatusCode 는 결재 요청(app.approval_request)의 상태다 — 승인됐지만 아직 :apply 전이면 statusCode=PENDING · approvalStatusCode=APPROVED. 근거: omf-all-around#352
-     */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          nonconformanceId: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description 목록 */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              items: components['schemas']['DispositionApproval'][];
-            };
-          };
-        };
-        /** @description 요청 오류 — 형식 오류 */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-      };
-    };
-    put?: never;
-    /**
-     * 처분 결재 요청(폐기·선별)
-     * @description W-03-10 「처분 대기」의 폐기(SCRAP)·선별(SORT). ⭐ 결재 유형 DISPOSITION(대상 NONCONFORMANCE · 사업부 공통본)의 사용 중인 결재선이 «없으면»(활성 결재선 0 또는 단계 0) 결재 없이 POST …/disposition-decisions 와 똑같이 바로 판정한다 — outcome=APPLIED · decision(선별이면 newInboundLotId 등 선별 칸 포함). 결재선이 둘 이상이면 400 ROUTE_AMBIGUOUS. 결재선이 있으면 결재 요청(approvalTypeCode=DISPOSITION · reason=본문 reason)과 처분 결재 행(PENDING)을 한 트랜잭션에서 만든다 — outcome=REQUESTED · dispositionApproval. 요청 때 바로 판정과 같은 검사를 한다: 없는 부적합 404 · 닫힌 부적합 409 INVALID_STATE · 결재 진행 중인 처분 결재·특채가 있으면 409 INVALID_STATE(「결재 진행 중인 처분이 있습니다.」) · 폐기는 decisionQty·uomId 필수·단위·자릿수 400, 남은 수량 초과 409 DISPOSITION_QTY_EXCEEDED(remainingQty) · 선별은 lotIds 필수 400, 부적합 LOT 이 아닌 것·LOT 전부 400, 반품·OQC·선별로 생긴 부적합 400, 판정·특채가 이미 있으면 409 INVALID_STATE. 요청도 부적합 version_no 를 올린다(ETag = 새 값). 승인은 W-03-09(POST /app/approval-requests/{id}:approve), 반영은 POST /quality/disposition-approvals/{dispositionApprovalId}:apply 다. ⭐ If-Match 는 처분 판정 저장과 같은 부적합 상세의 ETag 다. 근거: omf-all-around#352
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header: {
-          /** @description 전 쓰기 API 필수. */
-          'Idempotency-Key': components['parameters']['IdempotencyKey'];
-          /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
-          'If-Match': components['parameters']['IfMatchVersion'];
-        };
-        path: {
-          nonconformanceId: number;
-        };
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['DispositionApprovalCreate'];
-        };
-      };
-      responses: {
-        /** @description 바로 판정됨(APPLIED) 또는 결재 요청됨(REQUESTED) */
-        201: {
-          headers: {
-            /** @description 낙관적 잠금 토큰 — 이 부적합의 새 version_no. */
-            ETag?: string;
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['DispositionApprovalOutcome'];
-          };
-        };
-        /** @description 검증 실패 · 결재선 둘 이상(ROUTE_AMBIGUOUS) · 결재자 유형 미지원(APPROVER_TYPE_NOT_SUPPORTED) */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 단말·권한 게이팅에 막혔다 */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 없는 부적합 */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 닫힌 부적합 · 결재 진행 중인 처분(INVALID_STATE) · 남은 수량 초과(DISPOSITION_QTY_EXCEEDED) · 판 번호 충돌(VERSION_CONFLICT) */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['QualityConflictResponse'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/quality/disposition-approvals/{dispositionApprovalId}:apply': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * 처분 결재 반영
-     * @description 승인된 폐기·선별 처분 결재를 반영한다 — 요청 때 저장한 본문(폐기: decisionQty·uomId · 선별: lotIds·goodQty·defectQty)으로 POST …/disposition-decisions 와 같은 처분 판정을 한 트랜잭션에서 만들고(LOT 전이·보류 해제·선별 분리 동일), 판정의 approvalRequestId 를 채우고 이 행을 APPLIED(dispositionDecisionId) 로 바꾼다 — 200 { dispositionApproval, decision }. 결재가 진행 중이면 400 APPROVAL_IN_PROGRESS. 반려(승인 아닌 끝)면 이 행을 REJECTED 로 닫고 200 { dispositionApproval }(decision 없음 · LOT 은 그대로). 이미 반영·반려된 행은 409 INVALID_STATE. 반영 시점의 남은 수량·LOT 상태로 다시 판정한다(초과 409 DISPOSITION_QTY_EXCEEDED · 판 번호 409 VERSION_CONFLICT). ⭐ If-Match 는 부적합 상세(또는 GET /quality/approval-requests/{approvalRequestId}/nonconformance-summary)의 ETag 다. ETag = 부적합 version_no(반영이면 새 값). 근거: omf-all-around#352
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header: {
-          /** @description 전 쓰기 API 필수. */
-          'Idempotency-Key': components['parameters']['IdempotencyKey'];
-          /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
-          'If-Match': components['parameters']['IfMatchVersion'];
-        };
-        path: {
-          dispositionApprovalId: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description 반영됨 또는 반려로 닫힘 */
-        200: {
-          headers: {
-            /** @description 낙관적 잠금 토큰 — 이 부적합의 version_no. */
-            ETag?: string;
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['DispositionApprovalApplied'];
-          };
-        };
-        /** @description 결재 진행 중(APPROVAL_IN_PROGRESS) · 지금 LOT 상태로 옮길 수 없음(STATE_LOCKED) */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 권한 없음 */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 없는 처분 결재 · 없는 부적합 */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 이미 반영·반려된 처분 결재 · 닫힌 부적합(INVALID_STATE) · 남은 수량 초과(DISPOSITION_QTY_EXCEEDED) · 판 번호 충돌(VERSION_CONFLICT) */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['QualityConflictResponse'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/quality/approval-requests/{approvalRequestId}/nonconformance-summary': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * 결재 대상 부적합 요약
-     * @description W-03-09 결재함 — 결재 대상이 부적합(target NONCONFORMANCE · 특채 CONCESSION · 처분 DISPOSITION)인 결재 요청의 부적합 요약과 요청 내용. 그 밖의 결재 요청·없는 결재는 404. dispositionApproval 은 DISPOSITION 이면 그 결재의 처분 결재 행, concession 은 CONCESSION 이면 그 결재의 특채 묶음 요약이다(해당 없으면 null). 남은 수량은 처분 화면과 같은 서버 계산이다(공유계약 L-2). 로그인만 본다 — 기능 권한을 보지 않는다. ETag = 부적합 version_no(:apply 의 If-Match). 근거: omf-all-around#352
-     */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          approvalRequestId: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description 요약 */
-        200: {
-          headers: {
-            /** @description 이 부적합의 version_no. */
-            ETag?: string;
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ApprovalNonconformanceSummary'];
-          };
-        };
-        /** @description 요청 오류 — 형식 오류 */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 없는 결재 · 부적합 대상이 아닌 결재 · 없는 부적합 */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/quality/disposition-approval-routes': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * 처분 결재선 확인
-     * @description W-03-10 판정 확인 팝업 — 처분(DISPOSITION · 폐기·선별)과 특채(CONCESSION) 결재선이 있는지와 결재 단계(순서 · 결재자 이름). hasRoute=false 면 그 처분은 저장 때 결재 없이 바로 반영된다(POST …/disposition-approvals outcome=APPLIED · POST /quality/concessions outcome=APPLIED). 활성 결재선이 둘 이상이면 400 ROUTE_AMBIGUOUS. 로그인만 본다 — 기능 권한을 보지 않는다. 근거: omf-all-around#352
-     */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description 처분 · 특채 결재선 */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              items: components['schemas']['DispositionApprovalRoute'][];
-            };
-          };
-        };
-        /** @description 요청 오류 — 활성 결재선이 둘 이상(ROUTE_AMBIGUOUS) */
         400: {
           headers: {
             [name: string]: unknown;
@@ -40371,7 +39899,7 @@ export interface paths {
     put?: never;
     /**
      * 처분 판정 저장
-     * @description W-03-10 「판정 저장」. 부적합 하나를 수량으로 갈라 여러 번 부를 수 있다 — 일부 재작업 · 일부 폐기가 성립한다. ⭐ 판정 저장과 Lot Status 전이는 한 트랜잭션이다(공유계약 B-8) — 처분만 남고 LOT 이 안 바뀌면 다음 화면이 잘못된 대상을 집는다. 근거: W-03-10 §5-1·§5-2 · DR-008 확정 3-A ⭐ 도착 상태는 처분에 따라 갈린다 — 재작업 → INSPECTION_PENDING(검사 대기) · 폐기 → SCRAPPED(폐기) · 정상 → NORMAL(정상). 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 가 갖는다. ⭐ If-Match 값은 이 경로의 GET 이 아니라 부적합 상세(GET /quality/nonconformances/{nonconformanceId} · 제품출하 계약)의 ETag 를 담는다 — 잠그는 대상이 처분 결정 한 건이 아니라 부적합이기 때문이다. ⛔ 이 경로의 목록 GET 에는 ETag 가 없다. ⭐ 판정 하나가 부적합의 LOT 전부(자재 입하 IQC 부적합이면 입하 LOT 의 자재 관리 LOT 전부)를 옮긴다(FR-031). ⭐ SORT(선별 — 자재 관리 LOT 분리 · R-14b): 본문 { dispositionTypeCode: SORT, lotIds[], goodQty?, defectQty?, reason }. 새 흐름 자재 입하 IQC 부적합이고 판정·특채가 하나도 없을 때만(판정·특채 있음·닫힘 409 INVALID_STATE). 한 트랜잭션: 고른 LOT 을 새 입하 LOT 으로 분리(:split-lots 와 같은 공통 효과 — 새 줄·원래 줄 감소·LOT 의 입하 LOT·원천·P/O 배정 이전 「P/O 없음」부터·이벤트 SPLIT), 남은 LOT → 정상(처분 정상과 같은 전이·검사 보류 해제), 이 부적합에서 옮긴 LOT 줄을 빼고 SORT 판정 1건(수량 = 남은 LOT 의 부적합 수량 합, sortGoodQty·sortDefectQty = 보낸 정보 수량) → 닫힘, 새 입하 LOT 에 IQC 요청 COMPLETED·종합 판정 REJECTED·splitFromInspectionRequestId = 원래 요청(옮긴 LOT 에만 매칭된 원래 결과를 확정으로 복사 — 측정치 포함·불량 기록 제외, 원래 결과는 그대로), 요청 이벤트 SPLIT_OUT·SPLIT_IN, 옮긴 LOT 은 불량 그대로 새 부적합 1건(PENDING_DECISION · sortedFromNonconformanceId = 이 부적합 · 결과 연결 = 복사한 불합격 결과 중 순번 최소). 응답 201 에 newInboundLotId·newInboundLotNo·newNonconformanceId·newNonconformanceNo·newInspectionRequestNo. 400: lotIds 가 부적합 LOT 전부(「원래 입하 LOT에 자재 관리 LOT가 하나 이상 남아야 합니다」)·부적합 LOT 이 아닌 것·반품·OQC·이전 데이터 부적합. 옛 수량 분할 본문(lotIds 없음)은 400(FR-038). 근거: 피처 005 §10 · FR-041 · R-14b · omf-all-around#254 · FR-038 · D-14 ⭐ 이 부적합에 결재 진행 중인 처분 결재(POST …/disposition-approvals · PENDING)가 있으면 409 INVALID_STATE(「결재 진행 중인 처분이 있습니다.」) — 결재가 끝난 뒤 처분한다. 근거: omf-all-around#352
+     * @description W-03-10 「판정 저장」. 부적합 하나를 수량으로 갈라 여러 번 부를 수 있다 — 일부 재작업 · 일부 폐기가 성립한다. ⭐ 판정 저장과 Lot Status 전이는 한 트랜잭션이다(공유계약 B-8) — 처분만 남고 LOT 이 안 바뀌면 다음 화면이 잘못된 대상을 집는다. 근거: W-03-10 §5-1·§5-2 · DR-008 확정 3-A ⭐ 도착 상태는 처분에 따라 갈린다 — 재작업 → INSPECTION_PENDING(검사 대기) · 폐기 → SCRAPPED(폐기) · 정상 → NORMAL(정상). 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 가 갖는다. ⭐ If-Match 값은 이 경로의 GET 이 아니라 부적합 상세(GET /quality/nonconformances/{nonconformanceId} · 제품출하 계약)의 ETag 를 담는다 — 잠그는 대상이 처분 결정 한 건이 아니라 부적합이기 때문이다. ⛔ 이 경로의 목록 GET 에는 ETag 가 없다. ⭐ 판정 하나가 부적합의 LOT 전부(자재 입하 IQC 부적합이면 입하 LOT 의 자재 관리 LOT 전부)를 옮긴다(FR-031). ⭐ SORT(선별 — 자재 관리 LOT 분리 · R-14b): 본문 { dispositionTypeCode: SORT, lotIds[], goodQty?, defectQty?, reason }. 새 흐름 자재 입하 IQC 부적합이고 판정·특채가 하나도 없을 때만(판정·특채 있음·닫힘 409 INVALID_STATE). 한 트랜잭션: 고른 LOT 을 새 입하 LOT 으로 분리(:split-lots 와 같은 공통 효과 — 새 줄·원래 줄 감소·LOT 의 입하 LOT·원천·P/O 배정 이전 「P/O 없음」부터·이벤트 SPLIT), 남은 LOT → 정상(처분 정상과 같은 전이·검사 보류 해제), 이 부적합에서 옮긴 LOT 줄을 빼고 SORT 판정 1건(수량 = 남은 LOT 의 부적합 수량 합, sortGoodQty·sortDefectQty = 보낸 정보 수량) → 닫힘, 새 입하 LOT 에 IQC 요청 COMPLETED·종합 판정 REJECTED·splitFromInspectionRequestId = 원래 요청(옮긴 LOT 에만 매칭된 원래 결과를 확정으로 복사 — 측정치 포함·불량 기록 제외, 원래 결과는 그대로), 요청 이벤트 SPLIT_OUT·SPLIT_IN, 옮긴 LOT 은 불량 그대로 새 부적합 1건(PENDING_DECISION · sortedFromNonconformanceId = 이 부적합 · 결과 연결 = 복사한 불합격 결과 중 순번 최소). 응답 201 에 newInboundLotId·newInboundLotNo·newNonconformanceId·newNonconformanceNo·newInspectionRequestNo. 400: lotIds 가 부적합 LOT 전부(「원래 입하 LOT에 자재 관리 LOT가 하나 이상 남아야 합니다」)·부적합 LOT 이 아닌 것·반품·OQC·이전 데이터 부적합. 옛 수량 분할 본문(lotIds 없음)은 400(FR-038). 근거: 피처 005 §10 · FR-041 · R-14b · omf-all-around#254 · FR-038 · D-14
      */
     post: {
       parameters: {
@@ -40440,7 +39968,7 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description 충돌 — 남은 수량 초과(DISPOSITION_QTY_EXCEEDED) · 닫힌 부적합·결재 진행 중인 처분 결재(INVALID_STATE · omf-all-around#352) · 판 번호(VERSION_CONFLICT) */
+        /** @description 충돌 */
         409: {
           headers: {
             [name: string]: unknown;
@@ -60142,10 +59670,8 @@ export interface components {
         | 'SHIPMENT_CANCEL'
         | 'IQC_SKIP'
         | 'PRODUCTION_RESULT_CORRECT'
-        | 'CONCESSION'
         | 'OQC_SKIP'
-        | 'PQC_SKIP'
-        | 'DISPOSITION';
+        | 'PQC_SKIP';
       /**
        * Format: int64
        * @description 비우면 전 사업부 공통 결재선이다
@@ -60195,10 +59721,8 @@ export interface components {
         | 'SHIPMENT_CANCEL'
         | 'IQC_SKIP'
         | 'PRODUCTION_RESULT_CORRECT'
-        | 'CONCESSION'
         | 'OQC_SKIP'
-        | 'PQC_SKIP'
-        | 'DISPOSITION';
+        | 'PQC_SKIP';
       /**
        * Format: int64
        * @description 비우면 전 사업부 공통
@@ -60447,10 +59971,8 @@ export interface components {
         | 'SHIPMENT_CANCEL'
         | 'IQC_SKIP'
         | 'PRODUCTION_RESULT_CORRECT'
-        | 'CONCESSION'
         | 'OQC_SKIP'
-        | 'PQC_SKIP'
-        | 'DISPOSITION';
+        | 'PQC_SKIP';
       /**
        * Format: int64
        * @description 앱 계정 행위자 ID. 계정 없는 현장 작업자는 null이며 별도 작업자 ID와 같은 업무 트랜잭션의 감사 기록으로 귀속을 보존한다.
@@ -66880,15 +66402,6 @@ export interface components {
       /** @description 특채 사유 — 결재 요청 사유와 특채 비고에 함께 남는다. */
       reason: string;
     };
-    /** @description 특채 적용 본문(선택). businessDate 는 일부 특채가 없어져(FR-038) 쓰지 않는다 — 보내도 형식만 본다. 근거: 피처 005 §10 · FR-038 · D-14 · omf-all-around#254 */
-    ConcessionApply: {
-      /**
-       * Format: date
-       * @description 쓰지 않는다(옛 화면 호환 — 날짜 형식만 본다). 근거: 피처 005 §10 · FR-038 · D-14 · omf-all-around#254
-       * @example 2026-11-03
-       */
-      businessDate?: string;
-    };
     /** @description 특채 — 단순 판정이 아니라 사용 범위 통제 데이터다. ⛔ 생성 경로를 두지 않는다(요청을 만드는 화면이 미정 · W-03-09 §8-4). ⛔ 승인·반려는 app-공통 계약이다. ⛔ 조건 수정을 두지 않는다 — 결재는 예/아니오다(공유계약 J-10) */
     Concession: {
       /**
@@ -66960,7 +66473,7 @@ export interface components {
       unrestrictedAxes?: string[];
       /**
        * Format: int64
-       * @description 특채 결재 요청. 결재선이 없어 결재 없이 바로 적용한 특채는 null 이다(omf-all-around#352).
+       * @description 옛 특채 결재 요청. 특채는 결재 없이 바로 적용하므로 새 특채는 늘 null 이다(omf-all-around#352).
        * @example 1001
        */
       approvalRequestId: number | null;
@@ -66975,22 +66488,8 @@ export interface components {
       remarks?: string;
       /** @example 1 */
       versionNo?: number;
-      /** @description 적용(:apply) «응답»에만 — 늘 null 이다(일부 특채·나머지 분리 삭제, FR-038). 옛 화면 호환으로 남긴다. 조회 응답에는 없다. 근거: 피처 005 §10 · FR-038 · D-14 · omf-all-around#254 */
-      splitResult?: {
-        /** Format: int64 */
-        splitLotId: number;
-        splitLotNo: string;
-        /** Format: int64 */
-        splitNonconformanceId: number;
-        splitNonconformanceNo: string;
-      } | null;
-      /** @description 요청(POST)·적용(:apply) «응답»에만 — 같은 요청으로 태어난 묶음(같은 nonconformanceId + 같은 approvalRequestId)의 특채 id 전부(오름차순). LOT 이 하나인 부적합이면 [concessionId]. 조회 응답에는 없다 — 묶음은 approvalRequestId 로 알아본다. 근거: 피처 005 §10 · FR-038 · D-14 · omf-all-around#254 */
+      /** @description 저장(POST) «응답»에만 — 같은 요청으로 태어난 묶음의 특채 id 전부(오름차순). LOT 이 하나인 부적합이면 [concessionId]. 조회 응답에는 없다. 근거: 피처 005 §10 · FR-038 · D-14 · omf-all-around#254 */
       concessionIds?: number[];
-      /**
-       * @description 요청(POST) «응답»에만 — REQUESTED=결재 요청됨(PENDING · 승인 뒤 :apply) · APPLIED=특채 결재선이 없어 결재 없이 바로 적용됨(APPROVED · 처분 판정 · LOT 정상 · approvalRequestId null). 근거: omf-all-around#352
-       * @enum {string}
-       */
-      outcome?: 'APPLIED' | 'REQUESTED';
     };
     DefectDistribution: {
       nodes: components['schemas']['DefectDistributionNode'][];
@@ -67277,10 +66776,10 @@ export interface components {
       newInboundLotNo?: string | null;
       /**
        * Format: int64
-       * @description 판정 저장 응답의 선별만 — 옮긴 LOT 의 새 부적합(판정 대기 · sortedFromNonconformanceId = 이 부적합). 근거: 피처 005 §10 · FR-041 · R-14b · omf-all-around#254
+       * @description 선별만 — 옮긴 LOT 의 새 부적합(판정 대기 · sortedFromNonconformanceId = 이 부적합). 판정 저장 응답과 판정 목록·이력 조회가 함께 싣는다(목록은 omf-all-around#352 — 종결 안내의 이동 단추). 근거: 피처 005 §10 · FR-041 · R-14b · omf-all-around#254
        */
       newNonconformanceId?: number | null;
-      /** @description 판정 저장 응답의 선별만 — 새 부적합 번호. 근거: 피처 005 §10 · FR-041 · R-14b · omf-all-around#254 */
+      /** @description 선별만 — 새 부적합 번호. 판정 저장 응답과 판정 목록·이력 조회가 함께 싣는다(omf-all-around#352). 근거: 피처 005 §10 · FR-041 · R-14b · omf-all-around#254 */
       newNonconformanceNo?: string | null;
       /** @description 판정 저장 응답의 선별만 — 새 입하 LOT 에 불합격으로 확정된 IQC 검사 번호(원래 검사와 연결, 옮긴 LOT 에만 매칭된 결과를 복사). 근거: 피처 005 §10 · FR-041 · R-14b · omf-all-around#254 */
       newInspectionRequestNo?: string | null;
@@ -67311,172 +66810,6 @@ export interface components {
        * @example 1001
        */
       uomId: number;
-    };
-    /** @description 처분 결재 요청 — DispositionDecisionCreate 와 같은 모양(폐기는 decisionQty·uomId 필수 · 선별은 lotIds 필수). 근거: omf-all-around#352 */
-    DispositionApprovalCreate: {
-      /**
-       * @description 처분 유형 — 폐기 SCRAP · 선별 SORT 만 결재를 탄다. 정상·재작업은 POST …/disposition-decisions 가 바로 판정한다.
-       * @enum {string}
-       */
-      dispositionTypeCode: 'SCRAP' | 'SORT';
-      /**
-       * Format: double
-       * @description 0 초과다 — 물리 CHECK 가 (> 0) 이고 정수 하한이 아니다. 단위마다 소수 자릿수가 있어(mdm.uom.decimalScale) 1 미만이 성립한다. 남은 수량 이하인지는 서버가 판정한다(409). 근거: W-03-10 §2-1 · §4-B · omf-mes#253
-       * @example 30
-       */
-      decisionQty?: number;
-      /**
-       * Format: int64
-       * @example 1001
-       */
-      uomId?: number;
-      /**
-       * @description ⭐ 비울 수 없다 — 남이 읽고 판단할 자유 텍스트라 화면이 필수로 만든다. 왜 그렇게 정했는지가 근거로 남는다. 공백만 있는 문자열도 받지 않는다(공유계약 A-12 — 같은 계약의 NonconformanceCreate.description 과 같은 처리)
-       * @example 변형 손상이 커 재작업으로 회복되지 않는다
-       */
-      reason: string;
-      /** @description SORT 만 — 불량 자재 관리 LOT(이 부적합의 LOT, 전부는 아님). 고른 LOT 은 새 입하 LOT 으로 분리돼 불량 그대로 새 부적합(판정 대기)에 담기고, 남은 LOT 은 정상이 되며 이 부적합은 SORT 판정 1건(수량 = 남은 LOT 의 부적합 수량 합)으로 닫힌다. 근거: 피처 005 §10 · FR-041 · R-14b · omf-all-around#254 */
-      lotIds?: number[];
-      /**
-       * Format: double
-       * @description SORT 만 — 정보 수량(양품). 판정 행 sortGoodQty 에 남고 재고·LOT 수량은 바뀌지 않는다. 없으면 null. 근거: 피처 005 §10 · FR-041 · R-14b · omf-all-around#254
-       */
-      goodQty?: number;
-      /**
-       * Format: double
-       * @description SORT 만 — 정보 수량(불량). 판정 행 sortDefectQty 에 남는다. 없으면 null. 근거: 피처 005 §10 · FR-041 · R-14b · omf-all-around#254
-       */
-      defectQty?: number;
-    };
-    /** @description 폐기·선별 처분 결재 한 건(quality.disposition_approval). 근거: omf-all-around#352 */
-    DispositionApproval: {
-      /**
-       * Format: int64
-       * @example 1001
-       */
-      dispositionApprovalId: number;
-      /**
-       * Format: int64
-       * @example 1001
-       */
-      nonconformanceId: number;
-      /** @enum {string} */
-      dispositionTypeCode: 'SCRAP' | 'SORT';
-      /**
-       * Format: double
-       * @description 폐기만 — 요청 수량
-       */
-      decisionQty: number | null;
-      /**
-       * Format: int64
-       * @description 폐기만
-       */
-      uomId: number | null;
-      uomCode: string | null;
-      /** @description 선별만 — 불량 자재 관리 LOT(폐기는 빈 배열) */
-      lotIds: number[];
-      lots: {
-        /**
-         * Format: int64
-         * @example 1001
-         */
-        lotId: number;
-        lotNo: string;
-      }[];
-      /**
-       * Format: double
-       * @description 선별만 — 정보 수량(양품)
-       */
-      goodQty: number | null;
-      /**
-       * Format: double
-       * @description 선별만 — 정보 수량(불량)
-       */
-      defectQty: number | null;
-      reason: string;
-      /**
-       * Format: int64
-       * @example 1001
-       */
-      approvalRequestId: number;
-      /** @description 결재 요청(app.approval_request)의 상태 — PENDING·APPROVED·REJECTED 등. ApprovalRequest.statusCode 와 같은 값이다. */
-      approvalStatusCode: string;
-      /**
-       * @description 반영 상태 — PENDING 결재 진행 중(승인 뒤 :apply 전 포함) · APPLIED 처분 판정 반영됨 · REJECTED 반려로 닫힘
-       * @enum {string}
-       */
-      statusCode: 'PENDING' | 'APPLIED' | 'REJECTED';
-      /**
-       * Format: int64
-       * @description APPLIED 일 때 만든 처분 판정
-       */
-      dispositionDecisionId: number | null;
-      requestedByName: string;
-      /** Format: date-time */
-      createdAt: string;
-    };
-    /** @description 근거: omf-all-around#352 */
-    DispositionApprovalOutcome: {
-      /**
-       * @description APPLIED=결재선이 없어 바로 판정됨(decision) · REQUESTED=결재 요청됨(dispositionApproval)
-       * @enum {string}
-       */
-      outcome: 'APPLIED' | 'REQUESTED';
-      decision?: components['schemas']['DispositionDecision'];
-      dispositionApproval?: components['schemas']['DispositionApproval'];
-    };
-    /** @description 반영 결과 — 반려로 닫혔으면 decision 이 없다. 근거: omf-all-around#352 */
-    DispositionApprovalApplied: {
-      dispositionApproval: components['schemas']['DispositionApproval'];
-      decision?: components['schemas']['DispositionDecision'];
-    };
-    /** @description 결재함(W-03-09) 결재자가 보는 부적합 요약. 근거: omf-all-around#352 */
-    ApprovalNonconformanceSummary: {
-      /**
-       * Format: int64
-       * @example 1001
-       */
-      nonconformanceId: number;
-      nonconformanceNo: string;
-      /** @description 부적합 상태 */
-      statusCode: string;
-      itemCode: string;
-      itemName: string;
-      /** @description 부적합을 만든 검사 의뢰의 검사 유형(IQC·PQC·OQC) — 의뢰가 없으면 null */
-      inspectionTypeCode: string | null;
-      /** @description 불량 내용 */
-      description: string;
-      uomCode: string | null;
-      /** Format: double */
-      affectedQtyTotal: number;
-      /**
-       * Format: double
-       * @description 대상 − 결정. 서버 계산(공유계약 L-2)
-       */
-      remainingQty: number;
-      lots: {
-        /**
-         * Format: int64
-         * @example 1001
-         */
-        lotId: number;
-        lotNo: string;
-        /** Format: double */
-        affectedQty: number;
-      }[];
-      /** @description 결재 유형 — CONCESSION · DISPOSITION */
-      approvalTypeCode: string;
-      dispositionApproval: components['schemas']['DispositionApproval'] | null;
-      concession: {
-        concessionNos: string[];
-        /** Format: double */
-        approvedQty: number;
-        /** Format: date */
-        validFrom: string;
-        /** Format: date */
-        validTo: string | null;
-        reason: string;
-      } | null;
     };
     /** @description 처분 결정 등록. ⭐ decidedBy·decidedAt 은 받지 않는다 — 서버가 인증 주체와 수신 시각으로 채운다(공유계약 B-6). 정상·폐기·재작업은 decisionQty·uomId 가 필수다(없으면 400 REQUIRED — 선별 본문이 따로라 스키마가 필수로 두지 못한다). 선별(SORT)은 lotIds·reason(+goodQty·defectQty)이다. 근거: 피처 005 §10 · FR-041 · R-14b · omf-all-around#254 */
     DispositionDecisionCreate: {
@@ -69338,26 +68671,6 @@ export interface components {
       acceptanceNumber: number;
       /** @example 2 */
       rejectionNumber: number;
-    };
-    /** @description 근거: omf-all-around#352 */
-    DispositionApprovalRoute: {
-      /**
-       * @description DISPOSITION=폐기·선별 처분 결재 · CONCESSION=특채 결재
-       * @enum {string}
-       */
-      approvalTypeCode: 'DISPOSITION' | 'CONCESSION';
-      /** @description 사용 중인 결재선(단계 1개 이상)이 있다. false 면 결재 없이 바로 반영된다 */
-      hasRoute: boolean;
-      /** @description 결재 단계 — 순서대로. hasRoute=false 면 빈 배열 */
-      steps: {
-        /**
-         * Format: int32
-         * @example 1
-         */
-        stepNo: number;
-        /** @example 홍길동 */
-        approverName: string;
-      }[];
     };
     /** @description 판정 의뢰. ⭐ 이 화면은 판정하지 않는다 — 재작업/폐기 판정은 전 도메인에서 03 품질 소관으로 통일돼 있다(F04 정합 확정 2026-07-07 · W-04-07 §5-1). 받는 화면은 W-03-10 이고 처분 결정 자원은 품질 계약이 소유한다(DR-008 확정 3-A) */
     DispositionRequest: {

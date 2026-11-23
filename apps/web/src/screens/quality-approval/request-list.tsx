@@ -20,7 +20,7 @@ export interface RequestListProps {
   onChangePage: (page: number) => void;
   /** 대상 열 이름 — 탭(승인 유형)에 맞춘다(#193). 주지 않으면 「대상 LOT」. */
   targetHeader?: string;
-  /** 승인 유형 열 — 한 유형 탭(특채 · IQC 생략 · OQC 생략)은 탭이 이미 유형을 말해 두지 않는다(#193). 기본은 보인다. */
+  /** 승인 유형 열 — 한 유형 탭(IQC · PQC · OQC 생략)은 탭이 이미 유형을 말해 두지 않는다(#193). 기본은 보인다. */
   showType?: boolean;
 }
 

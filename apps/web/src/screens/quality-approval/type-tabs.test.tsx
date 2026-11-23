@@ -13,7 +13,7 @@ import {
 
 const t = messages.qualityApproval;
 const OPTIONS = [
-  { value: 'CONCESSION', label: t.typeLabels.CONCESSION },
+  { value: 'PQC_SKIP', label: t.typeLabels.PQC_SKIP },
   { value: 'OQC_SKIP', label: t.typeLabels.OQC_SKIP },
 ];
 
@@ -22,7 +22,7 @@ describe('TypeTabs', () => {
     render(<TypeTabs options={OPTIONS} value="OQC_SKIP" onChange={vi.fn()} />);
     const list = screen.getByRole('tablist', { name: t.fields.approvalTypeCode });
 
-    expect(list).toHaveTextContent(`${t.all}${t.typeLabels.CONCESSION}${t.typeLabels.OQC_SKIP}`);
+    expect(list).toHaveTextContent(`${t.all}${t.typeLabels.PQC_SKIP}${t.typeLabels.OQC_SKIP}`);
     expect(screen.getByRole('tab', { name: t.typeLabels.OQC_SKIP })).toHaveAttribute(
       'aria-selected',
       'true',
@@ -36,26 +36,27 @@ describe('TypeTabs', () => {
     /* 제어 탭이라 이미 고른 탭을 다시 눌러도 알리지 않는다 — 고르지 않은 두 탭을 누른다. */
     render(<TypeTabs options={OPTIONS} value="OQC_SKIP" onChange={onChange} />);
 
-    await user.click(screen.getByRole('tab', { name: t.typeLabels.CONCESSION }));
+    await user.click(screen.getByRole('tab', { name: t.typeLabels.PQC_SKIP }));
     await user.click(screen.getByRole('tab', { name: t.all }));
 
-    expect(onChange.mock.calls).toEqual([['CONCESSION'], ['']]);
+    expect(onChange.mock.calls).toEqual([['PQC_SKIP'], ['']]);
   });
 
   it('IQC 생략 탭을 OQC 생략 앞에 끼운다(#144) — OQC 생략이 없으면 끝에 둔다', () => {
-    expect(toTypeTabOptions(['CONCESSION', 'OQC_SKIP']).map((option) => option.label)).toEqual([
-      t.typeLabels.CONCESSION,
+    expect(toTypeTabOptions(['OQC_SKIP']).map((option) => option.label)).toEqual([
       t.typeLabels.IQC_SKIP,
       t.typeLabels.OQC_SKIP,
     ]);
-    expect(toTypeTabOptions(['CONCESSION']).map((option) => option.value)).toEqual([
-      'CONCESSION',
+    expect(toTypeTabOptions(['SYNTH-TYPE']).map((option) => option.value)).toEqual([
+      'SYNTH-TYPE',
       'IQC_SKIP',
     ]);
     /* #212 — PQC 생략이 있으면 그 앞에 끼운다(IQC → PQC → OQC 차례). */
-    expect(
-      toTypeTabOptions(['CONCESSION', 'PQC_SKIP', 'OQC_SKIP']).map((option) => option.value),
-    ).toEqual(['CONCESSION', 'IQC_SKIP', 'PQC_SKIP', 'OQC_SKIP']);
+    expect(toTypeTabOptions(['PQC_SKIP', 'OQC_SKIP']).map((option) => option.value)).toEqual([
+      'IQC_SKIP',
+      'PQC_SKIP',
+      'OQC_SKIP',
+    ]);
   });
 
   it('고를 유형이 없으면 탭을 세우지 않는다', () => {

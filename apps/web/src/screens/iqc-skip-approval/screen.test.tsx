@@ -409,9 +409,9 @@ describe('품질 승인 처리의 유형 탭(#144)', () => {
       'true',
     );
 
-    await user.click(within(tabs).getByRole('tab', { name: qa.typeLabels.CONCESSION }));
+    await user.click(within(tabs).getByRole('tab', { name: qa.typeLabels.PQC_SKIP }));
 
-    expect(currentLocation()).toBe('/quality/approvals?ty=CONCESSION');
+    expect(currentLocation()).toBe('/quality/approvals?ty=PQC_SKIP');
   });
 
   it('「전체」 탭은 조건 없이 품질 승인 처리 목록으로 간다', async () => {

@@ -64,7 +64,6 @@ import { SCREEN_ROUTES } from './screen-routes';
 import { canSeeAllRequests, readTab, tabLabel, visibleTabs, type InboxTab } from './tabs';
 import { describeTargetName, judgeTargetOpen } from './target';
 import { TargetPane } from './target-pane';
-import { ApprovalSummaryPane } from '../disposition-decision/approval-summary-pane';
 import {
   toRequestDetailView,
   toRequestRow,
@@ -842,10 +841,6 @@ export const ApprovalInboxScreen = () => {
             void navigate(path);
           }}
         />
-        {/* 대상이 부적합이면(특채 · 처분 · #352) 결재자가 무엇을 승인하는지 부적합 정보를 보인다. */}
-        {String(request.target.targetTypeCode) === 'NONCONFORMANCE' && (
-          <ApprovalSummaryPane approvalRequestId={request.approvalRequestId} />
-        )}
         <ProgressPane view={toRequestProgressView(detail.data, REJECTION_DECISION_CODES)} />
         {/*
          * **의견 입력칸과 결재 액션이 진행 구획 바로 아래에 선다.**

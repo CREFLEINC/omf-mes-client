@@ -1,24 +1,17 @@
-import { Button, Chip, EmptyState, Table, type Column } from '@crefle/web-ui';
-import type { ConcessionAppliedForward, components } from '@omf-mes/api-client';
+import { Chip, EmptyState, Table, type Column } from '@crefle/web-ui';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 import { useApiClient } from '../../patterns/api-context';
-import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
-import type { DecisionConfirmRow } from './decision-confirm-dialog';
-import { toBusinessDate } from './decision-form';
-import { PendingDecidedBar } from './pending-decided-bar';
-import { PendingDetails } from './pending-details';
 import { dispositionKeys } from './queries';
 import { formatQty } from './types';
 
 type Concession = components['schemas']['Concession'];
 
 const t = messages.dispositionDecision.concession;
-const PENDING = 'PENDING';
 const STATUS_LABEL: Record<string, string> = t.status;
 
 const concessionKey = (nonconformanceId: number) =>
@@ -26,16 +19,13 @@ const concessionKey = (nonconformanceId: number) =>
 
 export interface ConcessionHistoryProps {
   nonconformanceId: number;
-  /** 처분 이력 탭은 보기만 — 결재 대기 특채의 「적용」 단추를 두지 않는다(#223). */
-  readOnly?: boolean;
 }
 
 /**
- * W-03-10 의 「특채」 구획(omf-all-around#84 · 서버 선행 P-79).
+ * W-03-10 의 「특채」 이력(omf-all-around#84 · 서버 선행 P-79).
  *
- * ⭐ 요청 → 결재(W-03-09) → 적용. 이 구획은 요청과 적용만 한다 — 승인은 결재 경로의 몫이다.
- * ⭐ 005 FR-038 · D-14 — 특채는 남은 수량 전부만(입력 없음). 자재 관리 LOT 이 여럿이면 `lotId` 없이 요청하고 서버가
- *    LOT 마다 특채 행을 같은 결재로 묶어 만든다. 적용은 묶음 중 어느 행으로 불러도 같은 결재의 행 전부를 함께 적용한다.
+ * ⭐ 특채는 처분 판정에서 저장하면 결재 없이 바로 적용된다(omf-all-around#352) — 이 구획은 보기만 한다.
+ * ⭐ 005 FR-038 · D-14 — 특채는 남은 수량 전부만. 자재 관리 LOT 이 여럿이면 서버가 LOT 마다 특채 행을 만든다.
  * ⛔ 사용 가능 수량 · 허용 조건은 기록일 뿐 출고 · 투입에서 막지 않는다(#84 범위 · #207 결정).
  */
 /** 이 부적합의 특채 목록 — 구획과 탭 이름의 건수가 같은 조회를 쓴다(#223). */
@@ -58,111 +48,30 @@ interface ConcessionGroup {
   rows: Concession[];
 }
 
-/** 결재 하나에 묶인 특채 행들 — 옛 행은 결재마다 한 행이라 홀로 한 줄이다. 차례는 받은 차례. */
+/**
+ * 한 번에 저장한 특채 행들(자재 관리 LOT 마다 한 행)을 한 줄로 묶는다. 특채는 남은 수량 전부라 저장하면 부적합이
+ * 종결된다 — 부적합마다 한 묶음뿐이다(#352).
+ */
 export const groupConcessions = (rows: readonly Concession[]): ConcessionGroup[] => {
-  const groups = new Map<string, ConcessionGroup>();
+  const groups = new Map<number, ConcessionGroup>();
   for (const row of rows) {
-    /* 결재선이 없어 바로 적용한 특채는 결재가 없다 — 부적합마다 한 묶음뿐이다(적용하면 부적합이 종결된다 · #352). */
-    const key =
-      row.approvalRequestId === null
-        ? `direct-${String(row.nonconformanceId)}`
-        : String(row.approvalRequestId);
-    const group = groups.get(key);
-    if (group === undefined) groups.set(key, { first: row, rows: [row] });
+    const group = groups.get(row.nonconformanceId);
+    if (group === undefined) groups.set(row.nonconformanceId, { first: row, rows: [row] });
     else group.rows.push(row);
   }
   return [...groups.values()];
 };
 
-/**
- * 이력 표의 [특채 적용] — 위 상자와 같은 기준으로 결재가 승인 · 반려된 때만 연다(G2 5차). 결재 대기 중이면 잠그고 까닭을 단다.
- */
-const ApplyButton = ({
-  approvalRequestId,
-  disabled,
-  onClick,
-  children,
-}: {
-  approvalRequestId: number;
-  disabled: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) => {
-  const approval = useConcessionApprovalStatus(approvalRequestId);
-  const decided = approval.data === 'APPROVED' || approval.data === 'REJECTED';
-
-  return (
-    <Button
-      variant="outlined"
-      size="sm"
-      disabled={disabled || !decided}
-      title={decided ? undefined : t.applyWaiting}
-      onClick={onClick}
-    >
-      {children}
-    </Button>
-  );
-};
-
-/**
- * 특채 요청 이력 — 상세 아래 「특채 요청 이력」 탭의 내용(#223). 결재 대기 특채는 처분 대기 탭에서만 적용한다.
- */
-export const ConcessionHistory = ({
-  nonconformanceId,
-  readOnly = false,
-}: ConcessionHistoryProps) => {
-  const { client } = useApiClient();
-  const [notice, setNotice] = useState<string | null>(null);
-
-  useEffect(() => {
-    setNotice(null);
-  }, [nonconformanceId]);
-
+/** 특채 이력 — 상세 아래 「특채 이력」 탭의 내용(#223). */
+export const ConcessionHistory = ({ nonconformanceId }: ConcessionHistoryProps) => {
   const list = useConcessions(nonconformanceId);
-
-  /* 같은 결재(`approvalRequestId`)의 행(자재 관리 LOT 마다 한 행)은 한 줄로 묶어 보인다(005 D-14). */
   const groups = groupConcessions(list.data ?? []);
-  /* 적용한 묶음의 행 수 — 알림 문구에 쓴다(쓰기 응답은 첫 행만 돌려준다). */
-  const appliedCount = useRef(1);
-
-  const applyWrite = useMasterWrite<{ concessionId: number }, ConcessionAppliedForward>({
-    /* 옛 일부 특채 적용은 LOT 을 나누며 재고도 원장으로 나눴다 — 그때 쓰는 영업일을 늘 싣는다(#207 · C-8). */
-    request: ({ concessionId }, headers) =>
-      client.POST('/quality/concessions/{concessionId}:apply', {
-        params: {
-          path: { concessionId },
-          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
-        },
-        body: { businessDate: toBusinessDate(new Date()) },
-      }),
-    etagPath: null,
-    /* 적용은 LOT·부적합·판정을 함께 바꾼다 — 이 화면의 뿌리 키를 다시 부른다. */
-    invalidateKeys: [dispositionKeys.all],
-    knownFields: [],
-    keyLifetime: 'until-applied',
-    onSuccess: (data) =>
-      setNotice(
-        data.statusCode === 'REJECTED'
-          ? t.rejected
-          : data.splitResult
-            ? t.appliedSplit(data.splitResult.splitLotNo, data.splitResult.splitNonconformanceNo)
-            : appliedCount.current > 1
-              ? t.appliedLots(appliedCount.current)
-              : t.applied,
-      ),
-  });
 
   const statusChip = (row: Concession) => (
     <Chip
       variant="status"
       size="sm"
-      status={
-        row.statusCode === 'APPROVED' || row.statusCode === 'APPLIED'
-          ? 'success'
-          : row.statusCode === PENDING
-            ? 'warning'
-            : 'error'
-      }
+      status={row.statusCode === 'APPROVED' || row.statusCode === 'APPLIED' ? 'success' : 'error'}
     >
       {STATUS_LABEL[row.statusCode] ?? row.statusCode}
     </Chip>
@@ -201,24 +110,7 @@ export const ConcessionHistory = ({
       key: 'status',
       align: 'center',
       header: t.columns.status,
-      render: (group) =>
-        group.first.statusCode === PENDING && !readOnly ? (
-          <ApplyButton
-            /* 결재 대기(PENDING) 특채는 늘 결재가 있다 — 결재 없는 특채는 요청 때 바로 적용된다(#352). */
-            approvalRequestId={group.first.approvalRequestId ?? 0}
-            disabled={applyWrite.isSaving}
-            onClick={() => {
-              setNotice(null);
-              appliedCount.current = group.rows.length;
-              /* 묶음 중 어느 행으로 불러도 같은 결재의 대기 행 전부가 함께 적용된다(계약 §10). */
-              applyWrite.write({ concessionId: group.first.concessionId });
-            }}
-          >
-            {applyWrite.isSaving ? t.applying : t.apply}
-          </ApplyButton>
-        ) : (
-          statusChip(group.first)
-        ),
+      render: (group) => statusChip(group.first),
     },
   ];
 
@@ -226,8 +118,6 @@ export const ConcessionHistory = ({
 
   return (
     <div className="disposition-concession" role="group" aria-label={t.historyHeading}>
-      <SaveErrorBanner error={applyWrite.error} />
-      {notice !== null && <p className="field-note">{notice}</p>}
       <div className="disposition-table disposition-decision-table">
         <Table
           caption={<span className="disposition-table-caption">{t.caption}</span>}
@@ -247,101 +137,5 @@ export const ConcessionHistory = ({
         />
       </div>
     </div>
-  );
-};
-
-/** 특채 결재 요청의 상태(W-03-09) — 특채는 적용 전까지 PENDING 이라 결재가 끝났는지는 결재 요청이 말한다(G2 M3). */
-export const useConcessionApprovalStatus = (approvalRequestId: number | null) => {
-  const { client } = useApiClient();
-  return useQuery({
-    queryKey: [...dispositionKeys.all, 'concession-approval', approvalRequestId ?? 0] as const,
-    enabled: approvalRequestId !== null,
-    queryFn: () =>
-      runRequest(() =>
-        client.GET('/app/approval-requests/{approvalRequestId}', {
-          params: { path: { approvalRequestId: approvalRequestId as number } },
-        }),
-      ).then((detail) => detail.request.statusCode),
-  });
-};
-
-export interface PendingConcessionBoxProps {
-  concession: Concession;
-  /** 이 결재로 묶인 자재 관리 LOT 수. */
-  lotCount: number;
-  /** 결재를 올린 내용(#352) — 화면이 만든다. */
-  details: readonly DecisionConfirmRow[];
-}
-
-/**
- * 처분 판정 상자의 「적용 전 특채」 줄(screens/W-03-10.md · 시안 W0310-After — 같은 상자에 [특채 적용]). 결재 대기면 「결재 대기 중」,
- * 승인이면 「승인됨 — 적용 대기」와 [특채 적용], 반려면 [특채 닫기](적용 경로가 반려를 닫는다)(G2 M3).
- */
-export const PendingConcessionBox = ({
-  concession,
-  lotCount,
-  details,
-}: PendingConcessionBoxProps) => {
-  const { client } = useApiClient();
-  const approval = useConcessionApprovalStatus(concession.approvalRequestId);
-  const [notice, setNotice] = useState<string | null>(null);
-  const applyWrite = useMasterWrite<{ concessionId: number }, ConcessionAppliedForward>({
-    request: ({ concessionId }, headers) =>
-      client.POST('/quality/concessions/{concessionId}:apply', {
-        params: {
-          path: { concessionId },
-          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
-        },
-        body: { businessDate: toBusinessDate(new Date()) },
-      }),
-    etagPath: null,
-    invalidateKeys: [dispositionKeys.all],
-    knownFields: [],
-    keyLifetime: 'until-applied',
-    onSuccess: (data) =>
-      setNotice(
-        data.statusCode === 'REJECTED'
-          ? t.rejected
-          : lotCount > 1
-            ? t.appliedLots(lotCount)
-            : t.applied,
-      ),
-  });
-  const status = approval.data;
-  const decided = status === 'APPROVED' || status === 'REJECTED';
-
-  /*
-   * 결재 대기면 문구 줄 없이 내용만 — 「결재 대기 중」은 「처분 판정」 제목 옆 라벨이 말한다(#352 사용자 지시).
-   * 승인 · 반려면 문구와 [특채 적용] · [반려 확인] 줄을 내용 위에 둔다.
-   */
-  return (
-    <>
-      {decided && (
-        <PendingDecidedBar
-          tone={status === 'APPROVED' ? 'success' : 'warning'}
-          text={
-            status === 'APPROVED'
-              ? t.approvedBanner(concession.concessionNo)
-              : t.rejectedBanner(concession.concessionNo)
-          }
-        >
-          <Button
-            size="sm"
-            variant={status === 'APPROVED' ? 'filled' : 'outlined'}
-            loading={applyWrite.isSaving}
-            onClick={() => {
-              setNotice(null);
-              /* 묶음 중 어느 행으로 불러도 같은 결재의 대기 행 전부가 함께 적용된다(계약 §10). */
-              applyWrite.write({ concessionId: concession.concessionId });
-            }}
-          >
-            {status === 'APPROVED' ? t.apply : t.close}
-          </Button>
-        </PendingDecidedBar>
-      )}
-      <PendingDetails rows={details} />
-      <SaveErrorBanner error={applyWrite.error} />
-      {notice !== null && <span className="field-note">{notice}</span>}
-    </>
   );
 };
