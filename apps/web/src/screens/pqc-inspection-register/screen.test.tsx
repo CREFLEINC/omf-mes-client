@@ -53,6 +53,8 @@ const ROUND = {
 };
 
 interface RenderOptions {
+  /** 의뢰가 기본 생략으로 닫혔다(#353). */
+  skipped?: boolean;
   /** 그 의뢰의 회차 목록. 함수면 부를 때마다 다시 정한다(저장 뒤 재조회). */
   rounds?: object[] | (() => object[]);
   roundsFail?: boolean;
@@ -83,7 +85,12 @@ const renderScreen = (options: RenderOptions = {}) => {
       const items = options.queueItems ?? [REQUEST];
       return jsonResponse({ items, page: { page: 1, size: 50, total: items.length } });
     }
-    if (path === '/quality/inspection-requests/7101') return jsonResponse(REQUEST);
+    if (path === '/quality/inspection-requests/7101')
+      return jsonResponse(
+        options.skipped === true
+          ? { ...REQUEST, statusCode: 'SKIPPED', skipBasisCode: 'DEFAULT' }
+          : REQUEST,
+      );
     if (path === '/trace/lots') {
       const lotNo = url.searchParams.get('lotNo');
       const workOrderId = url.searchParams.get('workOrderId');
@@ -378,6 +385,16 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     await waitFor(() => expect(summary).toHaveTextContent(REQUEST.inspectionRequestNo));
   });
 
+  it('#353 기본 생략으로 닫힌 의뢰는 생략 안내만 보이고, 수량·판정 입력과 [판정 확정]이 없다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ skipped: true });
+    const pane = await openRequest(user);
+
+    expect(await pane.findByText(messages.partsIqcInspection.skipped.notice)).toBeInTheDocument();
+    expect(pane.queryByRole('button', { name: web.actions.confirm })).toBeNull();
+    expect(pane.queryByRole('region', { name: web.quantityBox })).toBeNull();
+  });
+
   it('상세의 검사 기본 정보는 작업지시 번호·품목 이름·코드와 작업지시의 생산 LOT 을 보이고, 머리 제목은 「검사 기본 정보」(#135)', async () => {
     const user = userEvent.setup();
     renderScreen();
@@ -593,5 +610,32 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
 
     expect(await screen.findByText(pqc.result.saved)).toBeInTheDocument();
     expect(pane.getByRole('textbox', { name: web.quantity.accepted })).toHaveValue('4');
+  });
+
+  /* 목록 접기(#350) — 접힌 탭에 건수, 펼치면 고른 의뢰 · 적던 수량이 그대로. */
+  it('목록을 접으면 「목록 N건」 탭이 서고, 펼쳐도 고른 의뢰와 적던 수량이 그대로다(#350)', async () => {
+    const storageKey = 'omf-mes:pqc-inspection-register:split:collapsed';
+    window.localStorage.removeItem(storageKey);
+    const user = userEvent.setup();
+    renderScreen();
+    const pane = await openRequest(user);
+    await user.clear(await pane.findByRole('textbox', { name: web.quantity.accepted }));
+    await user.type(pane.getByRole('textbox', { name: web.quantity.accepted }), '1');
+    const split = document.querySelector('.po-board-split');
+
+    await user.click(screen.getAllByRole('button', { name: hub.listCollapse })[0]!);
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = split!.querySelector<HTMLElement>('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록1건');
+
+    await user.click(tab!);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    expect(
+      within(screen.getByRole('region', { name: t.queue.heading })).getByText(
+        REQUEST.inspectionRequestNo,
+      ),
+    ).toHaveAttribute('aria-current', 'true');
+    expect(pane.getByRole('textbox', { name: web.quantity.accepted })).toHaveValue('1');
+    window.localStorage.removeItem(storageKey);
   });
 });

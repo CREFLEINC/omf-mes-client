@@ -49,7 +49,6 @@ import { supplierReturn } from './supplier-return';
 import { disposalIssue } from './disposal-issue';
 import { approvalRoute } from './approval-route';
 import { approvalInbox } from './approval-inbox';
-import { iqcSkipApproval } from './iqc-skip-approval';
 import { login } from './login';
 import { session } from './session';
 import { stockAdjust } from './stock-adjust';
@@ -120,7 +119,6 @@ import { deviceRegistration } from './device-registration';
 import { equipmentFailureReport } from './equipment-failure-report';
 import { outboxPending } from './outbox-pending';
 import { outboxRejections } from './outbox-rejections';
-import { iqcSkipRequest } from './iqc-skip-request';
 import { equipmentInspection } from './equipment-inspection';
 import { oqcInspection } from './oqc-inspection';
 import { judgmentConfirm } from './judgment-confirm';
@@ -214,7 +212,6 @@ export const ko = {
   disposalIssue,
   approvalRoute,
   approvalInbox,
-  iqcSkipApproval,
   login,
   session,
   stockAdjust,
@@ -282,7 +279,6 @@ export const ko = {
   equipmentFailureReport,
   outboxPending,
   outboxRejections,
-  iqcSkipRequest,
   equipmentInspection,
   oqcInspection,
   judgmentConfirm,

@@ -248,7 +248,6 @@ export const MaterialLotIssueScreen = () => {
 
     return (
       <>
-        <h2 className="pane-title">{tl.count(rows.length)}</h2>
         <BoardTable
           label={tl.label}
           widthKey="omf-mes:material-lot-issue:columns:groups"
@@ -305,7 +304,11 @@ export const MaterialLotIssueScreen = () => {
           label: t.filters.label,
           content: <div className="pane po-board-filter">{filters}</div>,
         }}
-        list={{ label: tl.label, content: table() }}
+        list={{
+          label: tl.label,
+          count: plantId === null || groups.isPending || groups.isError ? undefined : rows.length,
+          content: table(),
+        }}
         detail={{ label: t.detail.label, content: detail() }}
       />
 

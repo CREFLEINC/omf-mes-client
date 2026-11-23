@@ -15,6 +15,8 @@ import type { Role, RoleFilters } from './types';
 const t = messages.usersRoles;
 
 export interface RoleListPaneProps {
+  /** 목록 맨 위 제목 줄(「이름 · 건수 · 목록 접기」 · #350). 화면이 `PaneListHead` 로 넘긴다. */
+  head?: ReactNode;
   roles: Role[];
   isLoading: boolean;
   /** 적용된 조건 — 빈 상태 문구를 가른다 */
@@ -59,6 +61,7 @@ export const RoleListPane = ({
   selectedRoleId,
   onSelect,
   loadError,
+  head,
 }: RoleListPaneProps) => {
   const baseColumns: Column<Role>[] = [
     {
@@ -208,6 +211,7 @@ export const RoleListPane = ({
 
   return (
     <section className="pane users-roles-list-pane" aria-label={t.panes.roleList}>
+      {head}
       <div className="users-roles-list-body">{listSlot()}</div>
       {pageMeta !== null && (loadError === null || loadError === undefined) && (
         <PageNav

@@ -37,6 +37,11 @@ export interface PartnerListPaneProps {
    * 실패를 「등록된 거래처가 없습니다」로 보이면 사실과 다른 안내가 된다.
    */
   loadError: ReactNode;
+  /**
+   * 조회 조건 · 목록을 화면이 따로 세울 때(통일 배치 · #350) 두 조각을 받아 배치한다.
+   * 없으면 한 구획 안에 조건 줄 · 목록을 차례로 둔다 — 화면은 늘 넘기고, 목록 부품만 따로 그리는 부품 시험이 빈 채로 쓴다.
+   */
+  layout?: (parts: { filter: ReactNode; list: ReactNode }) => ReactNode;
 }
 
 /**
@@ -64,6 +69,7 @@ export const PartnerListPane = ({
   selectedPartnerId,
   onSelect,
   loadError,
+  layout,
 }: PartnerListPaneProps) => {
   /*
    * 트리거 모델: 검색어는 모아서 적용, 미사용 포함은 즉시.
@@ -184,8 +190,8 @@ export const PartnerListPane = ({
   /* 「초기화」는 바뀐 것이 있을 때만 보인다(C-6). */
   const isChanged = hasChangedFilters(EMPTY_PARTNER_FILTERS, draft, appliedFilters);
 
-  return (
-    <section className="pane" aria-label={t.panes.partner}>
+  const filter = (
+    <>
       {/* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
       <div className="filter-bar">
         <SearchInput
@@ -225,8 +231,17 @@ export const PartnerListPane = ({
           )}
         </div>
       </div>
+    </>
+  );
 
-      {listSlot()}
+  const list = listSlot();
+
+  if (layout !== undefined) return layout({ filter, list });
+
+  return (
+    <section className="pane" aria-label={t.panes.partner}>
+      {filter}
+      {list}
     </section>
   );
 };

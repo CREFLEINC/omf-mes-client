@@ -389,6 +389,34 @@ describe('DefectCauseCodeScreen — 2계층 표시', () => {
     expect(screen.getByText('코드를 선택하세요')).toBeInTheDocument();
     expect(screen.getByText('목록에서 선택하면 상세 정보가 표시됩니다.')).toBeInTheDocument();
   });
+
+  /* 목록 접기(#350) — 접힌 탭에 건수, 펼치면 고른 코드 · 상세가 그대로. */
+  it('목록을 접으면 「목록 N건」 탭이 서고, 펼쳐도 고른 코드와 상세가 그대로다(#350)', async () => {
+    const storageKey = 'omf-mes:defect-cause-code:split:collapsed';
+    window.localStorage.removeItem(storageKey);
+    const { user } = renderScreen([
+      defectOptionsRoute(),
+      defectListRoute(),
+      defectDetailRoute(defectCodeFixtures[1]),
+    ]);
+    await user.click(await screen.findByRole('button', { name: 'DF-11' }));
+    await screen.findByRole('button', { name: '수정' });
+    const split = document.querySelector('.defect-cause-split');
+
+    await user.click(
+      screen.getAllByRole('button', { name: messages.common.inspectionHub.listCollapse })[0]!,
+    );
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = split!.querySelector<HTMLElement>('.po-board-list-tab');
+    expect(tab).toHaveTextContent(`목록${String(defectCodeFixtures.length)}건`);
+
+    await user.click(tab!);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    expect(screen.getByRole('button', { name: 'DF-11' })).toHaveAttribute('aria-current', 'true');
+    expect(currentLocation()).toContain('sel=1002');
+    expect(screen.getByRole('button', { name: '수정' })).toBeInTheDocument();
+    window.localStorage.removeItem(storageKey);
+  });
 });
 
 describe('DefectCauseCodeScreen — 탭', () => {

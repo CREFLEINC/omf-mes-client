@@ -18,6 +18,8 @@ import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 const t = messages.inspectionStandard;
 
 export interface PlanListPaneProps {
+  /** 목록 맨 위 제목 줄(「이름 · 건수 · 목록 접기」 · #350). 화면이 `PaneListHead` 로 넘긴다. */
+  head?: ReactNode;
   plans: InspectionPlan[];
   isLoading: boolean;
   /** 적용된 조건 — 0건 안내를 가른다(조건 줄은 `PlanFilterBar` 가 목록 위에 따로 세운다) */
@@ -66,6 +68,7 @@ export const PlanListPane = ({
   loadError,
   itemPartsOf,
   versionStatusOf,
+  head,
 }: PlanListPaneProps) => {
   const columns: Column<InspectionPlan>[] = [
     {
@@ -286,6 +289,7 @@ export const PlanListPane = ({
 
   return (
     <section className="pane inspection-standard-list-pane" aria-label={t.panes.plan}>
+      {head}
       {listSlot()}
 
       {(loadError === null || loadError === undefined) && !isLoading && (

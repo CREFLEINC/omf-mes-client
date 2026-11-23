@@ -214,20 +214,22 @@ const openRow = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 describe('검사표 기준', () => {
-  /* 고르면 목록을 접고, 막대의 단추로 다시 펼친다 — 검사 기준 화면과 같다(#252 · #255 사용자 지시). */
-  it('목록에서 기준을 고르면 목록이 접히고 「목록 펼치기」로 다시 펼친다', async () => {
+  /* 골라도 목록은 그대로 — 접기는 「목록 접기」로만(#350 사용자 지시). */
+  it('목록에서 기준을 골라도 목록은 펼친 채이고, 「목록 접기」 · 「목록 펼치기」로 접고 편다', async () => {
     window.localStorage.removeItem('omf-mes:inspection-sheet-template:split');
     const { user } = setup(template());
     const collapseLabel = messages.inspectionStandard.panes.listCollapse;
     const expandLabel = messages.inspectionStandard.panes.listExpand;
 
-    expect(await screen.findByRole('button', { name: collapseLabel })).toBeInTheDocument();
+    expect((await screen.findAllByRole('button', { name: collapseLabel }))[0]!).toBeInTheDocument();
     await openRow(user);
+    expect(screen.queryByRole('button', { name: expandLabel })).toBeNull();
+    await user.click(screen.getAllByRole('button', { name: collapseLabel })[0]!);
 
-    const expand = screen.getByRole('button', { name: expandLabel });
+    const expand = screen.getAllByRole('button', { name: expandLabel })[0]!;
     expect(expand).toHaveAttribute('aria-expanded', 'false');
     await user.click(expand);
-    expect(screen.getByRole('button', { name: collapseLabel })).toHaveAttribute(
+    expect(screen.getAllByRole('button', { name: collapseLabel })[0]!).toHaveAttribute(
       'aria-expanded',
       'true',
     );
@@ -237,15 +239,20 @@ describe('검사표 기준', () => {
     window.localStorage.removeItem('omf-mes:inspection-sheet-template:split');
     const { user } = setup(template());
     await openRow(user);
+    await user.click(
+      screen.getAllByRole('button', { name: messages.inspectionStandard.panes.listCollapse })[0]!,
+    );
     expect(
-      screen.getByRole('button', { name: messages.inspectionStandard.panes.listExpand }),
+      screen.getAllByRole('button', { name: messages.inspectionStandard.panes.listExpand })[0]!,
     ).toBeInTheDocument();
 
     await user.type(screen.getByLabelText(t.list.material), '재료');
 
-    expect(
-      await screen.findByRole('button', { name: messages.inspectionStandard.panes.listCollapse }),
-    ).toHaveAttribute('aria-expanded', 'true');
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('button', { name: messages.inspectionStandard.panes.listCollapse })[0]!,
+      ).toHaveAttribute('aria-expanded', 'true'),
+    );
   });
 
   /* 모델(품목)은 칸에서 바로 검색해 고른다(omf-all-around#226) — 고르면 바로 조회하고 「전체」는 종전 × 처럼 조건을 푼다. */

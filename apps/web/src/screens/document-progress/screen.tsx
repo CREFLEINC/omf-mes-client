@@ -948,6 +948,7 @@ export const DocumentProgressScreen = () => {
         }}
         list={{
           label: t.panes.list,
+          count: list.data?.page.total,
           /*
            * 조회에 실패했으면 표도 빈 상태도 내지 않는다 — 실패를 「없습니다」로 보이면 사용자가
            * 자료가 없는 줄 알고 조건을 넓힌다.

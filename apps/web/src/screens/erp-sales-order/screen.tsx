@@ -100,6 +100,7 @@ export const ErpSalesOrderScreen = () => {
       }}
       list={{
         label: t.panes.list,
+        count: list.data?.page.total,
         content: list.isError ? null : (
           <ErpSalesOrderListPane
             rows={rows}

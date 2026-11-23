@@ -9,7 +9,6 @@ import { toWebAccess } from '../../patterns/web-access';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { DISPOSITION_SCREEN_PATH, dispositionEntryPath } from '../disposition-decision/filters';
 import { dispositionKeys } from '../disposition-decision/queries';
-import { SkipExecutePane } from '../iqc-skip-approval/skip-execute-pane';
 import { LOT_STATUS_SCREEN_PATH, lotStatusEntryPath } from '../lot-status-history/filters';
 import {
   WORK_ORDER_PROGRESS_SCREEN_PATH,
@@ -32,6 +31,7 @@ import {
   qualityApprovalKeys,
 } from './queries';
 import { linkedValue, type DetailPaneProps } from './detail-pane';
+import { ExecutePane } from './execute-pane';
 
 export interface ConditionPaneProps {
   approvalRequestId: number | null;
@@ -60,7 +60,7 @@ export const ConditionPane = ({
   const { client } = useApiClient();
   const toast = useToast();
   /*
-   * 승인된 특채의 적용(#193) — IQC·OQC 생략 실행처럼 이 화면에서 한다. 서버 경로는 처분 판정 처리의 적용과 같고,
+   * 승인된 특채의 적용(#193) — 이 화면에서 한다. 서버 경로는 처분 판정 처리의 적용과 같고,
    * 서버가 결재 화면(W-03-09) 권한으로도 연다(서버 `manual-permissions` · #193). 적용 여부는 특채 상태가 말한다.
    */
   const [applySentId, setApplySentId] = useState<number | null>(null);
@@ -346,7 +346,7 @@ export const ConditionPane = ({
       {requestStatusCode === 'APPROVED' &&
         (detail.data.statusCode === CONCESSION_PENDING ||
           detail.data.statusCode === CONCESSION_APPLIED) && (
-          <SkipExecutePane
+          <ExecutePane
             texts={messages.qualityApproval.concessionApply}
             compact={messages.qualityApproval.concessionApply.compact}
             state={

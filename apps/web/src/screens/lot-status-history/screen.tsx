@@ -208,6 +208,7 @@ const LotMode = ({
 
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:lot-status:split', 0.5);
+  const [listTotal, setListTotal] = useState<number | undefined>(undefined);
   const layout = useSplitOrientation(LOT_STATUS_ORIENTATION_KEY);
 
   const lotStatusNote =
@@ -247,6 +248,13 @@ const LotMode = ({
     />
   );
 
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: hubText.listCollapse,
+    expandLabel: hubText.listExpand,
+    count: listTotal,
+  };
   return (
     <div className="lot-status-workspace">
       {/*
@@ -284,8 +292,11 @@ const LotMode = ({
         ref={splitRef}
         className={`po-board-split inspection-split lot-status-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
         style={{ ...split.style, ...layout.style }}
+        data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <CurrentResults
+          onTotalChange={setListTotal}
+          collapse={listCollapse}
           filters={filters}
           page={page}
           statusOptions={toCodeOptions(lotStatuses.data?.items)}
@@ -305,12 +316,18 @@ const LotMode = ({
             })
           }
         />
-        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        <PaneSplitter
+          label={hubText.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+          collapse={listCollapse}
+        />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter
             label={hubText.heightSplitter}
             height={layout.listHeight}
             onChange={layout.changeListHeight}
+            collapse={listCollapse}
           />
         )}
         <section
@@ -386,6 +403,7 @@ const HistoryMode = ({
    */
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:lot-status-history:split', 0.5);
+  const [listTotal, setListTotal] = useState<number | undefined>(undefined);
   const layout = useSplitOrientation(LOT_STATUS_HISTORY_ORIENTATION_KEY);
   const [selected, setSelected] = useState<{ key: string; lotId: number } | null>(null);
   /*
@@ -419,6 +437,13 @@ const HistoryMode = ({
     />
   );
 
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: hubText.listCollapse,
+    expandLabel: hubText.listExpand,
+    count: listTotal,
+  };
   return (
     <div className="lot-status-workspace">
       {hubTarget !== null && <HubActions target={hubTarget}>{statusChips}</HubActions>}
@@ -442,8 +467,11 @@ const HistoryMode = ({
         ref={splitRef}
         className={`po-board-split inspection-split lot-status-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
         style={{ ...split.style, ...layout.style }}
+        data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <HistoryResults
+          onTotalChange={setListTotal}
+          collapse={listCollapse}
           filters={filters}
           page={page}
           offsetMinutes={offsetMinutes}
@@ -457,12 +485,18 @@ const HistoryMode = ({
           }
           statusFilter={statusFilter}
         />
-        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        <PaneSplitter
+          label={hubText.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+          collapse={listCollapse}
+        />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter
             label={hubText.heightSplitter}
             height={layout.listHeight}
             onChange={layout.changeListHeight}
+            collapse={listCollapse}
           />
         )}
         <section

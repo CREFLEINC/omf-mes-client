@@ -6,8 +6,6 @@
  * 서버와 갈리는 순간 사용자에게 거짓 확신을 준다.
  */
 export const approvalInbox = {
-  title: '결재함',
-  breadcrumbRoot: '업무함',
   panes: {
     list: '승인 요청 목록',
     detail: '고른 요청',
@@ -145,7 +143,7 @@ export const approvalInbox = {
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
     beyondLastDescription: '첫 쪽으로 이동하세요.',
     noSelectionTitle: '요청을 고르면 자세한 내용이 보입니다',
-    noSelectionDescription: '위 목록에서 요청번호를 누르세요.',
+    noSelectionDescription: '목록에서 요청번호를 누르세요.',
     /**
      * 상세가 **404**. 「없는 것」이라 주소에서 고른 번호를 정리한다 —
      * 남겨 두면 새로고침·공유가 같은 빈자리로 되돌아온다.
@@ -199,8 +197,7 @@ export const approvalInbox = {
     approve: '승인',
     reject: '반려',
     /** 비활성 사유는 **그 컨트롤의 이름으로 시작한다**(배치 규범 4). */
-    blockedNotMyTurn: (action: string): string =>
-      '지금은 결재할 차례가 아닙니다',
+    blockedNotMyTurn: (action: string): string => '지금은 결재할 차례가 아닙니다',
     /**
      * **뒤에 조작 이름을 되풀이하지 않는다.** 이 함수의 유일한 호출이 반려라 「반려: 반려
      * 의견을…」로 어절이 겹쳤다. 앞머리가 이미 어느 컨트롤의 사유인지 말하므로 뒤는 무엇이
@@ -239,6 +236,26 @@ export const approvalInbox = {
     approved: '승인했습니다',
     rejected: '반려했습니다',
   },
+  /**
+   * 승인 유형 코드 → 사람이 읽는 이름(#353). 서버 알림 이름(`approval-type-names.ts`)과 같은 말이다.
+   * 목록 밖 코드는 코드 그대로 보인다(`approvalTypeLabelOf`).
+   */
+  approvalTypeNames: {
+    GOODS_ISSUE_DISPOSAL: '폐기 출고',
+    INVENTORY_ADJUSTMENT: '재고 조정',
+    PURCHASE_ORDER: 'P/O',
+    INBOUND_RECEIPT_CANCEL: '입하 취소',
+    GOODS_RECEIPT_CANCEL: '입고 취소',
+    GOODS_ISSUE_CANCEL: '출고 취소',
+    SHIPMENT_CANCEL: '출하 취소',
+    PRODUCTION_RESULT_CORRECT: '생산 실적 정정',
+    CONCESSION: '특채',
+  } as Record<string, string | undefined>,
+  /** 요청 상태 이름 — 품질 승인 처리와 같은 말(omf-all-around#353). 목록 밖 코드는 코드 그대로. */
+  requestStatusNames: { PENDING: '결재 대기', APPROVED: '승인', REJECTED: '반려' } as Record<
+    string,
+    string
+  >,
   values: {
     /** 이름이 오지 않았다. **번호를 대신 내지 않는다.** */
     unknownRequester: '상신자를 확인할 수 없습니다',

@@ -494,7 +494,7 @@ export const InboundCloseScreen = () => {
         >
           <LotFacts lot={dialog.target} />
           <AlertBanner
-            variant={reopenReasonOf(dialog.target) === 'IQC_SKIPPED' ? 'warning' : 'info'}
+            variant="info"
             title={t.reopenDialog.effect[reopenReasonOf(dialog.target)](
               dialog.target.iqc?.requestNo ?? '',
             )}

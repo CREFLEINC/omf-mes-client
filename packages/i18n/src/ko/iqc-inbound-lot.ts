@@ -212,7 +212,6 @@ export const iqcInboundLot = {
       CONFIRM_CANCELLED: '판정 확정 취소',
       REOPENED_BY_REWORK: '재작업으로 다시 열림',
       SKIPPED: '검사 생략',
-      SKIP_VOIDED: '검사 생략 무효(마감 취소)',
       SPLIT_OUT: '자재 관리 LOT 분리',
       SPLIT_IN: '분리로 생김',
       CANCELLED_BY_REOPEN: '마감 취소로 의뢰 취소',

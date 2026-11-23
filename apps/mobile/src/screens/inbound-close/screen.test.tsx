@@ -524,20 +524,6 @@ describe('US2-12 입하 완료 목록', () => {
       await screen.findByText(t.reopenDialog.done('SYN-ITEM-01', '합성 품목 가')),
     ).toBeInTheDocument();
   });
-
-  it('US2-12 긴급 생략 실행 건은 생략이 무효가 된다고 경고한다', async () => {
-    const user = userEvent.setup();
-    mount({
-      closable: [],
-      reopenable: [done(6, { reopenReasonCode: 'IQC_SKIPPED' })],
-    });
-
-    await openDoneTab(user);
-    await user.click(await screen.findByRole('button', { name: REOPEN }));
-    expect(await screen.findByRole('dialog')).toHaveTextContent(
-      t.reopenDialog.effect.IQC_SKIPPED('SYN-IQC-6'),
-    );
-  });
 });
 
 describe('US2-13 같은 공급사·품목 입하 중이면 마감 취소가 막힌다', () => {

@@ -89,7 +89,6 @@ const TRANSLATED = [
   'goodsReceipt',
   'inboundSchedule',
   'iqcInspection',
-  'iqcSkipApproval',
   'stockAdjust',
   'stockStatus',
   'stocktaking',

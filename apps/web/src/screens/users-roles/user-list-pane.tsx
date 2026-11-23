@@ -16,6 +16,8 @@ import { EMPTY_USER_FILTERS } from './user-filter-bar';
 const t = messages.usersRoles;
 
 export interface UserListPaneProps {
+  /** 목록 맨 위 제목 줄(「이름 · 건수 · 목록 접기」 · #350). 화면이 `PaneListHead` 로 넘긴다. */
+  head?: ReactNode;
   users: AppUser[];
   isLoading: boolean;
   /** 적용된 조건 — 빈 상태 문구를 가른다 */
@@ -85,6 +87,7 @@ export const UserListPane = ({
   selectedAppUserId,
   onSelect,
   loadError,
+  head,
 }: UserListPaneProps) => {
   /* 머리글과 셀을 가운데로 맞춘다(사용자 요청 2026-09-18) — 열 정렬은 DS `Column.align` 으로만 한다. */
   const baseColumns: Column<AppUser>[] = [
@@ -256,6 +259,7 @@ export const UserListPane = ({
 
   return (
     <section className="pane users-roles-list-pane" aria-label={t.panes.userList}>
+      {head}
       <div className="users-roles-list-body">{listSlot()}</div>
       {pageMeta !== null && loadError === null && (
         <PageNav

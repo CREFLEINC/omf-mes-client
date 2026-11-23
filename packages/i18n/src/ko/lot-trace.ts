@@ -64,7 +64,6 @@ export const lotTrace = {
     pane: '이력 목록',
     caption: '이력 줄 목록',
     loading: '이력을 불러오는 중',
-    totalLines: (count: number): string => `전체 ${count.toLocaleString('ko-KR')}줄`,
     totalQty: '수량 합계',
     loadFailed: '이력을 불러오지 못했습니다',
     loadFailedDescription: '잠시 뒤 다시 조회하세요.',

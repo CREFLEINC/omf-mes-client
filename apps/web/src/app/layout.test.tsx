@@ -205,12 +205,12 @@ describe('AppLayout', () => {
     expect(links).not.toContain('/master-data/master-change');
   });
 
-  it('사이드바에 공정 경로 관리 메뉴가 보인다', () => {
+  it('사이드바에 라우팅 관리 메뉴가 보인다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
 
-    expect(within(sidebar).getByRole('link', { name: '공정 경로 관리' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: '라우팅 관리' })).toHaveAttribute(
       'href',
       '/master-data/routing',
     );
@@ -491,23 +491,6 @@ describe('AppLayout', () => {
   });
 
   /*
-   * W-01-02 — 긴급 IQC 생략 한도승인은 「품질 승인 처리」의 유형 탭 하나다(#144). 사이드바에 따로 서지
-   * 않고, 그 화면을 보는 동안 「품질 승인 처리」 줄이 켜진다. 탭은 화면이 그리므로 셸 탭 막대는 서지 않는다.
-   */
-  it('긴급 IQC 생략 한도승인은 사이드바에 따로 서지 않고 품질 승인 처리 줄을 켠다', () => {
-    renderLayout('본문 내용', { route: '/logistics/iqc-skip-approval' });
-
-    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
-
-    expect(sidebarHrefs()).not.toContain('/logistics/iqc-skip-approval');
-    expect(within(sidebar).getByRole('link', { name: '품질 승인 처리' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
-    expect(document.querySelector('.hub-tabs')).toBeNull();
-  });
-
-  /*
    * 품질 관리 — **독립 영역이다.** 검사를 IQC(입하) → PQC(공정) → OQC(출하) 흐름 차례로 세우고,
    * 검사기준·코드, 검사 이력, 그리고 LOT 상태 → 보류 → 승인 → 처분의 판정 갈래가 뒤따른다.
    * 검사기준 · 검사표 기준 · 불량·원인코드 · 판정유형 코드는 「품질 기준 정보」, 검사실적과 제품 검사표는 「검사 실적·결과」,
@@ -621,9 +604,10 @@ describe('AppLayout', () => {
     expect(within(sidebar).getByText('영업 / 출하 관리')).toBeInTheDocument();
     /* ERP 수주정보 조회는 「ERP 연동 현황·이력」 묶음의 탭으로 옮겼다. */
     expect(within(sidebar).queryByRole('link', { name: '수주정보 조회 (ERP)' })).toBeNull();
-    expect(
-      within(sidebar).getByRole('link', { name: '출하작업지시 생성' }),
-    ).toHaveAttribute('href', '/shipment/shipment-request-create');
+    expect(within(sidebar).getByRole('link', { name: '출하작업지시 생성' })).toHaveAttribute(
+      'href',
+      '/shipment/shipment-request-create',
+    );
     expect(within(sidebar).getByRole('link', { name: '출하 예정 목록' })).toHaveAttribute(
       'href',
       '/shipment/shipment-schedule',
@@ -925,7 +909,9 @@ describe('AppLayout', () => {
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
 
     /* 짝 양성 — 시스템 관리 섹션은 실제로 펼쳐져 항목이 서 있다. */
-    expect(within(sidebar).getByRole('link', { name: '사용자 역할 권한 관리' })).toBeInTheDocument();
+    expect(
+      within(sidebar).getByRole('link', { name: '사용자 역할 권한 관리' }),
+    ).toBeInTheDocument();
     expect(
       within(sidebar).queryByRole('link', { name: messages.session.actions.changePassword }),
     ).toBeNull();

@@ -80,8 +80,6 @@ export const inboundClose: Translated<typeof ko.inboundClose> = {
         `Yêu cầu IQC (${iqcNo}) bị hủy và LOT nhập hàng quay về 「Đang nhập hàng」. LOT quản lý vật tư vẫn giữ trạng thái chờ kiểm tra hoặc tạm giữ.`,
       INSPECTION_NOT_REQUIRED: () =>
         'Bản ghi IQC 「Bỏ qua kiểm tra」 bị hủy và LOT nhập hàng quay về 「Đang nhập hàng」. LOT quản lý vật tư vẫn Bình thường (mặt hàng không cần kiểm tra).',
-      IQC_SKIPPED: (iqcNo: string) =>
-        `Yêu cầu IQC (${iqcNo}) bị hủy và LOT nhập hàng quay về 「Đang nhập hàng」. Việc bỏ qua IQC khẩn cấp mất hiệu lực và LOT quản lý vật tư quay về chờ kiểm tra.`,
     },
     cancel: 'Đóng',
     proceed: 'Hủy chốt',
@@ -94,7 +92,6 @@ export const inboundClose: Translated<typeof ko.inboundClose> = {
     codes: {
       IQC_RECORDED: 'Trong lúc đó đã có kết quả IQC.',
       GOODS_RECEIVED: 'Trong lúc đó LOT quản lý vật tư đã nhập kho.',
-      SKIP_PENDING: 'Đang chờ phê duyệt bỏ qua khẩn cấp.',
       INBOUND_LOT_FINALIZED: 'Quản trị viên đã Chốt cuối cùng.',
       LEGACY_INBOUND_LOT: 'Đây là dữ liệu nhập hàng cũ nên không hủy chốt được.',
     } as Record<string, string | undefined>,

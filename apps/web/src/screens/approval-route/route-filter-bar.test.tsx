@@ -143,7 +143,7 @@ describe('RouteFilterBar — 승인 유형 자리표시', () => {
     await user.click(screen.getByRole('combobox', { name: t.fields.approvalTypeCode }));
 
     expect(screen.getByRole('option', { name: t.filters.all })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'GOODS_ISSUE_DISPOSAL' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '폐기 출고' })).toBeInTheDocument();
   });
 
   it('고를 것이 없는 칸에는 「전체」도 붙이지 않는다', async () => {

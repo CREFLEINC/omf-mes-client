@@ -24,7 +24,12 @@ import {
   type HiddenFilterChip,
 } from '../../patterns/filter-more';
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import {
   PaneHeightSplitter,
   SplitOrientationToggle,
@@ -500,6 +505,13 @@ export const SuspiciousMaterialCandidatePane = ({
   /* 고를 수 없는 크기(10 · 20 · 50 밖)를 서버가 돌려주면 크기 칸이 비므로 고른 크기를 보인다. */
   const shownPageSize: LotPageSize = LOT_PAGE_SIZES.find((size) => size === meta?.size) ?? pageSize;
 
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: messages.common.inspectionHub.listCollapse,
+    expandLabel: messages.common.inspectionHub.listExpand,
+    count: meta?.total,
+  };
   return (
     <div className="suspicious-material-hold-flow">
       {/* 상태 칩은 탭 막대 오른쪽, 좌우 · 상하 배치 단추 왼쪽이다. 탭 막대가 없으면(묶음 밖) 조회 카드 위쪽 줄에 둔다. */}
@@ -632,12 +644,14 @@ export const SuspiciousMaterialCandidatePane = ({
         ref={splitRef}
         className={`po-board-split inspection-split lot-status-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
         style={{ ...split.style, ...layout.style }}
+        data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         {/*
-         * 결과 카드 — 「의심자재 후보」 제목은 두지 않는다(다른 LOT 상태 탭과 같다 · 사용자 2026-11-02). 고른 건수는 오른쪽
+         * 결과 카드 — 제목 줄 「의심자재 후보 · N건 · 목록 접기」(#350 · 이름은 2026-11-23 지시로 다시 붙였다). 고른 건수는 오른쪽
          * 「의심자재 보류 등록」 제목 옆에, 총 건수는 표 아래 쪽 이동 줄에.
          */}
         <section className="pane lot-status-pane suspicious-material-hold-pane" aria-label={t.pane}>
+          <PaneListHead title={t.pane} collapse={listCollapse} />
           {candidates.isError ? (
             <AlertBanner
               variant="error"
@@ -706,12 +720,14 @@ export const SuspiciousMaterialCandidatePane = ({
           label={messages.common.inspectionHub.splitter}
           ratio={split.ratio}
           onChange={split.commit}
+          collapse={listCollapse}
         />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter
             label={messages.common.inspectionHub.heightSplitter}
             height={layout.listHeight}
             onChange={layout.changeListHeight}
+            collapse={listCollapse}
           />
         )}
         <div className="suspicious-material-hold-detail">{detail}</div>

@@ -41,6 +41,8 @@ export interface GroupListPaneProps {
    * 실패를 「등록된 설비 그룹이 없습니다」로 보이면 사실과 다른 안내가 된다.
    */
   loadError: ReactNode;
+  /** 조회 · 초기화 뒤 구분선 너머에 둘 화면 단추(그룹 추가 등) — 조회 조건 상자에 선다(#350). */
+  filterActions?: ReactNode;
 }
 
 const t = messages.equipmentMaster;
@@ -65,7 +67,11 @@ const groupDraftOf = (filters: GroupFilters): GroupDraftFilters => ({
   plantId: filters.plantId,
 });
 
-export const GroupListPane = ({
+/**
+ * 조회 줄과 목록을 따로 돌려준다 — 통일 배치(#350)에서 조회 줄은 조회 조건 상자에, 표는 목록 상자에 선다.
+ * 초안 조건은 여기 한 곳이 갖는다.
+ */
+export const useGroupListPane = ({
   rows,
   isLoading,
   appliedFilters,
@@ -78,7 +84,8 @@ export const GroupListPane = ({
   onSelect,
   onAddGroup,
   loadError,
-}: GroupListPaneProps) => {
+  filterActions,
+}: GroupListPaneProps): { filter: ReactNode; list: ReactNode } => {
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
   // 편집 중인 값은 draft에만 있다 — 「조회」를 눌러야 적용된다.
   const [draft, setDraft] = useState<GroupDraftFilters>(groupDraftOf(appliedFilters));
@@ -212,53 +219,71 @@ export const GroupListPane = ({
     );
   };
 
+  /* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */
+  const filter = (
+    <div className="filter-bar">
+      <SearchInput
+        label={t.filters.searchLabel}
+        placeholder={t.filters.searchPlaceholder}
+        value={draft.q}
+        onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
+        onSearch={(value) => applyDraft({ q: value })}
+        clearLabel={messages.common.clear}
+      />
+      {/* 같은 화면 안에서 라벨 붙은 선택칸을 두 가지로 만들지 않는다 — 부품 하나가 그 규약을 갖는다. */}
+      <SelectField
+        label={t.fields.plant}
+        options={[{ value: '', label: t.filters.plantAll }, ...plantOptions]}
+        value={draft.plantId}
+        onChange={(value) => setDraft((prev) => ({ ...prev, plantId: value }))}
+      />
+      {/* 해제 축이라 변경 즉시 적용한다. */}
+      <div className="field-cell field-cell-unlabeled">
+        <Checkbox
+          checked={appliedFilters.includeInactive}
+          onChange={(event) =>
+            onApplyFilters({ ...appliedFilters, includeInactive: event.target.checked })
+          }
+        >
+          {messages.common.includeInactive}
+        </Checkbox>
+      </div>
+      <div className="field-cell field-cell-unlabeled">
+        <div className="filter-actions">
+          <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
+          {hasChangedFilters(
+            defaultGroupFilters,
+            { ...appliedFilters, ...draft },
+            appliedFilters,
+          ) && (
+            <Button variant="outlined" onClick={resetAll}>
+              {messages.common.reset}
+            </Button>
+          )}
+          {filterActions !== undefined && (
+            <>
+              <span className="inspection-standard-filter-divider" aria-hidden />
+              {filterActions}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  /* 조건 칩을 두지 않는다 — 조건 셋이 모두 조회 줄에 보인다(C-6, 보이는 칸은 칩으로 겹쳐 적지 않는다). */
+  return { filter, list: listSlot() };
+};
+
+/** 조회 줄과 목록을 한 상자에 함께 그린다 — 목록 부품을 따로 시험할 때 쓴다. */
+export const GroupListPane = (props: GroupListPaneProps) => {
+  const { filter, list } = useGroupListPane(props);
+
   return (
     <section className="pane equipment-master-pane" aria-label={t.panes.groupList}>
       <h2 className="pane-title">{t.panes.groupList}</h2>
-      {/* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-      <div className="filter-bar equipment-master-filter">
-        <SearchInput
-          label={t.filters.searchLabel}
-          placeholder={t.filters.searchPlaceholder}
-          value={draft.q}
-          onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
-          onSearch={(value) => applyDraft({ q: value })}
-          clearLabel={messages.common.clear}
-        />
-        {/* 같은 화면 안에서 라벨 붙은 선택칸을 두 가지로 만들지 않는다 — 부품 하나가 그 규약을 갖는다. */}
-        <SelectField
-          label={t.fields.plant}
-          options={[{ value: '', label: t.filters.plantAll }, ...plantOptions]}
-          value={draft.plantId}
-          onChange={(value) => setDraft((prev) => ({ ...prev, plantId: value }))}
-        />
-        {/* 해제 축이라 변경 즉시 적용한다. */}
-        <div className="equipment-master-filter-footer">
-          <Checkbox
-            checked={appliedFilters.includeInactive}
-            onChange={(event) =>
-              onApplyFilters({ ...appliedFilters, includeInactive: event.target.checked })
-            }
-          >
-            {messages.common.includeInactive}
-          </Checkbox>
-          <div className="filter-actions">
-            <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
-            {hasChangedFilters(
-              defaultGroupFilters,
-              { ...appliedFilters, ...draft },
-              appliedFilters,
-            ) && (
-              <Button variant="outlined" onClick={resetAll}>
-                {messages.common.reset}
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* 조건 칩을 두지 않는다 — 조건 셋이 모두 조회 줄에 보인다(C-6, 보이는 칸은 칩으로 겹쳐 적지 않는다). */}
-      {listSlot()}
+      {filter}
+      {list}
     </section>
   );
 };

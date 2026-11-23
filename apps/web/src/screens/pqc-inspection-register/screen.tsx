@@ -21,7 +21,12 @@ import {
   InspectionHubCounts,
   type InspectionHubStatus,
 } from '../../patterns/inspection-hub-counts';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import {
   PaneHeightSplitter,
   SplitOrientationToggle,
@@ -48,7 +53,7 @@ import { PqcPanel } from '../pqc-panel/panel';
 import { InspectionHistoryPanel, useInspectionHistory } from '../inspection-history/panel';
 import { labelOfCode } from '../oqc-inspection/code-options';
 import { CODE_GROUPS, toCodeOptions } from '../pqc-inspection/code-options';
-import { useCodeValues } from '../pqc-inspection/queries';
+import { useCodeValues, useInspectionRequestDetail } from '../pqc-inspection/queries';
 import { useItem } from '../production-result/flow-queries';
 import { EMPTY_PQC_FILTERS, PqcFilterBar, type PqcFilters } from './filter-bar';
 import { PqcQueueTable } from './queue-table';
@@ -155,6 +160,32 @@ export const PqcInspectionRegisterScreen = () => {
   const judgmentOptions = toCodeOptions(useCodeValues(CODE_GROUPS.overallJudgment).data ?? []);
   const historyRevision = String(submitter.sentCount);
   const historyCount = useInspectionHistory(selectedId, historyRevision).data?.events.length;
+  /* 생략 건은 이력을 상세 안 「검사 이력」 탭으로(IQC 와 같다 · 사용자 지시 2026-11-23 · #353). 캐시를 패널과 같이 쓴다. */
+  const selectedSkipped = useInspectionRequestDetail(selectedId).data?.statusCode === 'SKIPPED';
+  const historyTab = {
+    value: 'history',
+    label: messages.inspectionHistory.heading,
+    content: (
+      <div className="oqc-inspection-tab-body">
+        <div className="oqc-inspection-tab-head">
+          <h3>{tOqc.detail.historyTitle}</h3>
+          {historyCount !== undefined && (
+            <span className="oqc-inspection-fold-chip">
+              {tOqc.detail.historyCount(historyCount)}
+            </span>
+          )}
+        </div>
+        {selectedId !== null && (
+          <InspectionHistoryPanel
+            hideSourceLot
+            inspectionRequestId={selectedId}
+            judgmentLabelOf={(code) => labelOfCode(judgmentOptions, code)}
+            revision={historyRevision}
+          />
+        )}
+      </div>
+    ),
+  };
 
   const queue = useInspectionQueue({
     inspectionTypeCode: PQC,
@@ -200,6 +231,13 @@ export const PqcInspectionRegisterScreen = () => {
   /* 목록 · 상세 배치 — 입하 예정 조회와 같은 좌우 분할, 가운데 막대로 폭을 나눈다(비율은 브라우저에 남는다). */
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:pqc-inspection-register:split', 0.45);
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: hubText.listCollapse,
+    expandLabel: hubText.listExpand,
+    count: queue.data?.page.total,
+  };
   /* 좌우 · 상하 배치(사용자 지시 2026-10-26) — 세 탭이 같은 고름을 쓴다. */
   const layout = useSplitOrientation('omf-mes:inspection-hub:split-orientation');
 
@@ -324,8 +362,10 @@ export const PqcInspectionRegisterScreen = () => {
         ref={splitRef}
         className={`po-board-split inspection-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
         style={{ ...split.style, ...layout.style }}
+        data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <section className="pane pqc-web-list" aria-label={t.queue.heading}>
+          <PaneListHead title={t.queue.heading} collapse={listCollapse} />
           {queue.isError && (
             <QueueLoadErrorBanner
               error={toApiError(queue.error)}
@@ -356,12 +396,18 @@ export const PqcInspectionRegisterScreen = () => {
           )}
         </section>
 
-        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        <PaneSplitter
+          label={hubText.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+          collapse={listCollapse}
+        />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter
             label={hubText.heightSplitter}
             height={layout.listHeight}
             onChange={layout.changeListHeight}
+            collapse={listCollapse}
           />
         )}
 
@@ -390,40 +436,20 @@ export const PqcInspectionRegisterScreen = () => {
                   withKeypad={false}
                   variant="web"
                   onDirtyChange={onDirtyChange}
+                  skippedTabs={[historyTab]}
                 />
               </LeaveGuardProvider>
-              <div className="oqc-inspection-aux">
-                <section className="pane oqc-inspection-fold oqc-inspection-history-card">
-                  <Tabs
-                    key={selectedId}
-                    aria-label={messages.inspectionHistory.heading}
-                    items={[
-                      {
-                        value: 'history',
-                        label: messages.inspectionHistory.heading,
-                        content: (
-                          <div className="oqc-inspection-tab-body">
-                            <div className="oqc-inspection-tab-head">
-                              <h3>{tOqc.detail.historyTitle}</h3>
-                              {historyCount !== undefined && (
-                                <span className="oqc-inspection-fold-chip">
-                                  {tOqc.detail.historyCount(historyCount)}
-                                </span>
-                              )}
-                            </div>
-                            <InspectionHistoryPanel
-                              hideSourceLot
-                              inspectionRequestId={selectedId}
-                              judgmentLabelOf={(code) => labelOfCode(judgmentOptions, code)}
-                              revision={historyRevision}
-                            />
-                          </div>
-                        ),
-                      },
-                    ]}
-                  />
-                </section>
-              </div>
+              {!selectedSkipped && (
+                <div className="oqc-inspection-aux">
+                  <section className="pane oqc-inspection-fold oqc-inspection-history-card">
+                    <Tabs
+                      key={selectedId}
+                      aria-label={messages.inspectionHistory.heading}
+                      items={[historyTab]}
+                    />
+                  </section>
+                </div>
+              )}
             </>
           )}
         </section>

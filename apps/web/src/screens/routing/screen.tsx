@@ -19,7 +19,12 @@ import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns
 import { usePageHub } from '../../patterns/page-hub';
 import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 import { TAB_PAGE_SIZES } from '../../patterns/client-page';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import {
   PaneHeightSplitter,
   SplitOrientationToggle,
@@ -84,6 +89,7 @@ import type {
   RoutingHeaderFormValues,
   SelectOption,
 } from './types';
+import './layout.css';
 
 type RoutingDetailResponse = components['schemas']['RoutingDetailResponse'];
 
@@ -1175,6 +1181,13 @@ const RoutingWorkspace = () => {
     );
   };
 
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: hubText.listCollapse,
+    expandLabel: hubText.listExpand,
+    count: itemList.data?.page.total,
+  };
   return (
     <>
       <LeaveGuard
@@ -1212,8 +1225,10 @@ const RoutingWorkspace = () => {
         ref={splitRef}
         className={`po-board-split inspection-split inspection-standard-split routing-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
         style={{ ...split.style, ...layout.style }}
+        data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <ItemPane
+          head={<PaneListHead title={t.panes.itemList} collapse={listCollapse} />}
           items={items}
           isLoading={itemList.isPending}
           appliedFilters={filters}
@@ -1236,12 +1251,18 @@ const RoutingWorkspace = () => {
           }
         />
 
-        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        <PaneSplitter
+          label={hubText.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+          collapse={listCollapse}
+        />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter
             label={hubText.heightSplitter}
             height={layout.listHeight}
             onChange={layout.changeListHeight}
+            collapse={listCollapse}
           />
         )}
 

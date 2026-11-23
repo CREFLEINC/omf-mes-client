@@ -49,6 +49,11 @@ export interface DepartmentListPaneProps {
    * 실패를 「등록된 부서가 없습니다」로 보이면 사실과 다른 안내가 된다.
    */
   loadError: ReactNode;
+  /**
+   * 조회 조건 · 목록을 화면이 따로 세울 때(통일 배치 · #350) 두 조각을 받아 배치한다.
+   * 없으면 한 구획 안에 조건 줄 · 목록을 차례로 둔다 — 화면은 늘 넘기고, 목록 부품만 따로 그리는 부품 시험이 빈 채로 쓴다.
+   */
+  layout?: (parts: { filter: ReactNode; list: ReactNode }) => ReactNode;
 }
 
 /**
@@ -75,6 +80,7 @@ export const DepartmentListPane = ({
   isCreating,
   onAddDepartment,
   loadError,
+  layout,
 }: DepartmentListPaneProps) => {
   /*
    * 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
@@ -214,19 +220,9 @@ export const DepartmentListPane = ({
   /* 조건 칸이 모두 줄에 보여 칩을 따로 두지 않는다(C-6). 「초기화」는 바뀐 것이 있을 때만 보인다. */
   const isChanged = hasChangedFilters(EMPTY_SCOPED_FILTERS, draft, appliedFilters);
 
-  return (
-    <section className="pane" aria-label={t.panes.department}>
+  const filter = (
+    <>
       {optionsNotice}
-
-      {/*
-       * 이슈 §6이 예고한 「2단 표시로는 부족한」 상태를 감추지 않는다.
-       * 목록 위에 한 번만 낸다 — 행마다 되풀이하면 표를 읽을 수 없다.
-       */}
-      {hasDeepHierarchy(rows, byId) && (
-        <div className="banner-slot">
-          <AlertBanner variant="info">{t.department.notices.deepHierarchy}</AlertBanner>
-        </div>
-      )}
 
       {/* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
       <div className="filter-bar">
@@ -281,18 +277,37 @@ export const DepartmentListPane = ({
               {messages.common.reset}
             </Button>
           )}
-        </div>
-      </div>
-
-      {listSlot()}
-
-      <div className="filter-bar">
-        <div className="field-cell">
+          <span className="inspection-standard-filter-divider" aria-hidden />
           <Button variant="outlined" disabled={isCreating} onClick={onAddDepartment}>
             {t.actions.addDepartment}
           </Button>
         </div>
       </div>
+    </>
+  );
+
+  const list = (
+    <>
+      {/*
+       * 이슈 §6이 예고한 「2단 표시로는 부족한」 상태를 감추지 않는다.
+       * 목록 위에 한 번만 낸다 — 행마다 되풀이하면 표를 읽을 수 없다.
+       */}
+      {hasDeepHierarchy(rows, byId) && (
+        <div className="banner-slot">
+          <AlertBanner variant="info">{t.department.notices.deepHierarchy}</AlertBanner>
+        </div>
+      )}
+
+      {listSlot()}
+    </>
+  );
+
+  if (layout !== undefined) return layout({ filter, list });
+
+  return (
+    <section className="pane" aria-label={t.panes.department}>
+      {filter}
+      {list}
     </section>
   );
 };

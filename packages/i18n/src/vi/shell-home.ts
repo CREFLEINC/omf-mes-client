@@ -21,7 +21,6 @@ export const shellHome: Translated<typeof ko.shellHome> = {
     inboundClose: 'Chốt hoặc hủy chốt LOT nhập hàng đang nhập',
     inboundVariance: 'Ghi nhận nhập hàng khác dự kiến · Không sửa sau khi đăng ký',
     recycleEntry: 'Đăng ký vật liệu tái chế thành lô vật tư',
-    iqcSkipRequest: 'Chỉ gửi yêu cầu · Phê duyệt trên web quản trị',
     putaway: 'Đưa vật tư đã nhập vào vị trí cất và hoàn tất nhập kho',
     temporaryPutaway: 'Để tạm ở vị trí tạm khi chưa cất được vào vị trí',
     putawayHistory: 'Xem lại các lần cất hàng của tôi hoặc của thiết bị này theo ngày',

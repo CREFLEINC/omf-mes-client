@@ -15,9 +15,6 @@ import type { Translated } from './translated';
  * — 확인 이력이 남아야 한다는 것이 이 화면의 근거다.
  */
 export const notice: Translated<typeof ko.notice> = {
-  title: 'Thông cáo · truyền đạt',
-  breadcrumbRoot: 'Hộp công việc',
-
   panes: {
     list: 'Danh sách thông cáo',
     detail: 'Thông cáo',

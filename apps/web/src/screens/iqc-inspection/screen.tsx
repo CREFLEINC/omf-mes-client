@@ -21,9 +21,14 @@ import { useScopedPlants } from '../../patterns/oa-access';
 import { OaOnlyGate } from '../../patterns/oa-only-gate';
 import { PageNav } from '../../patterns/page-nav';
 import { usePageHub } from '../../patterns/page-hub';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import { toApiError } from '../../patterns/request';
-import { sessionKeys, useSession } from '../../patterns/session';
+import { sessionKeys } from '../../patterns/session';
 import {
   PaneHeightSplitter,
   SplitOrientationToggle,
@@ -71,7 +76,6 @@ const TODAY_KEY = 'td';
 const IqcInspectionScreenBody = () => {
   const hub = usePageHub();
   const toast = useToast();
-  const { session } = useSession();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   /* 입하 LOT 번호 스캔(T138)은 공장으로 찾는다 — OA 화면은 범위의 OA 공장들에서 찾는다. */
@@ -296,6 +300,10 @@ const IqcInspectionScreenBody = () => {
           className="pane iqc-inspection-panes iqc-inspection-queue-pane"
           aria-label={t.queue.heading}
         >
+          <PaneListHead
+            title={t.queue.heading}
+            collapse={{ ...listCollapse, count: queue.data?.page.total }}
+          />
           {queue.isError && (
             <QueueLoadErrorBanner
               error={toApiError(queue.error)}
@@ -311,7 +319,6 @@ const IqcInspectionScreenBody = () => {
             suppliers={lotSuppliers}
             selectedId={selectedId}
             onSelect={select}
-            skipWorkerNo={session?.worker?.workerNo ?? null}
             empty={emptyContent}
           />
           {/*
@@ -333,7 +340,7 @@ const IqcInspectionScreenBody = () => {
           label={hubText.splitter}
           ratio={split.ratio}
           onChange={split.commit}
-          collapse={listCollapse}
+          collapse={{ ...listCollapse, count: queue.data?.page.total }}
         />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter

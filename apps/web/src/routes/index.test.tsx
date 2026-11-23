@@ -705,16 +705,9 @@ describe('appRouter', () => {
     expect(routedPaths()).not.toContain('/app/approval-requests');
   });
 
-  /*
-   * W-01-02는 결재함과 **같은 계약 경로**를 쓰는데 주소가 다르다 — 근거가 계약이 아니라
-   * **섹션**임을 두 화면이 나란히 보여 주는 자리다. 이 화면이 판정하는 것은 자재 입하
-   * 검사의 생략이라 그 판단의 맥락이 「자재창고」에 있고, 결재함은 올라온 결재를 두루
-   * 처리하는 자리라 축이 다르다.
-   */
-  it('긴급 IQC 생략 한도승인이 자재창고 앞머리로 등록돼 있다', () => {
-    expect(routedPaths()).toContain('/logistics/iqc-skip-approval');
-    expect(routedPaths()).not.toContain('/approval/iqc-skip');
-    expect(routedPaths()).not.toContain('/approval/iqc-skip-approval');
+  /* W-01-02 긴급 IQC 생략 한도승인은 없어졌다(omf-all-around#353) — 주소도 남기지 않는다. */
+  it('긴급 IQC 생략 한도승인 주소가 없다', () => {
+    expect(routedPaths()).not.toContain('/logistics/iqc-skip-approval');
   });
 
   /*
@@ -761,7 +754,7 @@ describe('appRouter', () => {
    * 리소스를 주소로 삼으면 한 주소를 여러 화면이 다툰다. 주소는 **화면**을 가리킨다.
    *
    * ⛔ **「승인」 앞머리가 아니다.** 취소가 승인을 타지만 이 화면이 하는 일은 결재가 아니라
-   * 상신과 실행이다(W-01-02가 같은 자리에서 같은 판정을 했다).
+   * 상신과 실행이다.
    */
   it('물류 전표 조회·취소가 자재창고 앞머리로 등록돼 있다', () => {
     expect(routedPaths()).toContain('/logistics/document-progress');
@@ -1066,7 +1059,6 @@ describe('appRouter — IQC 수입검사·판정의 진입 경로', () => {
   /**
    * 메뉴 IA 개편으로 검사는 **「품질 관리」 한 곳에 모였다** — IQC(입하) → PQC(공정) → OQC(출하)
    * 흐름 차례의 첫 자리다. 그래서 「구매 / 자재 관리」의 끝(물류 전표 조회·취소) 바로 뒤에 선다.
-   * IQC 생략 판정(W-01-02)은 「품질 승인 처리」의 탭이라 검사기준이 바로 뒤따른다(#144).
    */
   it('품질 관리 섹션의 첫 항목으로 구매 / 자재 관리 바로 뒤에 선다', () => {
     const hrefs = sidebarHrefs();

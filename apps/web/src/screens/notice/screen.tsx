@@ -1,13 +1,11 @@
 import {
   AlertBanner,
-  Breadcrumb,
   Button,
   Checkbox,
   Chip,
   DatePicker,
   Dialog,
   EmptyState,
-  PageHeader,
   SearchInput,
   Skeleton,
   Table,
@@ -25,6 +23,7 @@ import {
   useFilterMore,
 } from '../../patterns/filter-more';
 import { InfoTip } from '../../patterns/info-tip';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
 import { AckPanel } from './ack-panel';
 import {
@@ -124,9 +123,9 @@ export const NoticeScreen = () => {
   );
 
   const create = useNoticeCreate((created) => {
-    setFormMode('closed');
-    setFlash(t.form.saved);
+    /* 새 공지로 옮겨 간 뒤에 안내를 띄운다 — 옮기기(`selectNotice`)가 안내를 지우므로 순서가 바뀌면 안내가 안 뜬다. */
     selectNotice(created.noticeId);
+    setFlash(t.form.saved);
   });
 
   const update = useNoticeUpdate(selectedId, () => {
@@ -305,316 +304,351 @@ export const NoticeScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-        actions={<Button onClick={openCreate}>{t.form.create}</Button>}
-      />
+      {/* 화면 제목 줄은 두지 않는다 — 조회 조건 · 목록 · 상세 통일 배치(검사 조회·판정과 같다 · #350). */}
+      <ListDetailWorkspace
+        storageKey="omf-mes:notice"
+        filter={{
+          label: messages.common.paneList.filter,
+          content: (
+            <>
+              <div className="filter-bar notice-filter">
+                <div className="field-cell">
+                  <span className="field-label">{t.filters.search}</span>
+                  <SearchInput
+                    value={search}
+                    placeholder={t.filters.searchPlaceholder}
+                    onChange={(event) => {
+                      setSearch(event.target.value);
+                    }}
+                    onSearch={() => {
+                      apply({ q: search });
+                    }}
+                    clearLabel={messages.common.clear}
+                  />
+                </div>
 
-      {flash !== null && (
-        <div className="banner-slot">
-          <AlertBanner
-            variant="success"
-            onDismiss={() => {
-              setFlash(null);
-            }}
-            dismissLabel={messages.common.close}
-          >
-            {flash}
-          </AlertBanner>
-        </div>
-      )}
-
-      <section className="pane notice-pane" aria-label={t.panes.list}>
-        <h2 className="pane-title">{t.panes.list}</h2>
-        <div className="filter-bar notice-filter">
-          <div className="field-cell">
-            <span className="field-label">{t.filters.search}</span>
-            <SearchInput
-              value={search}
-              placeholder={t.filters.searchPlaceholder}
-              onChange={(event) => {
-                setSearch(event.target.value);
-              }}
-              onSearch={() => {
-                apply({ q: search });
-              }}
-              clearLabel={messages.common.clear}
-            />
-          </div>
-
-          <SelectField
-            label={t.filters.status}
-            options={statusOptions}
-            value={filters.statusCode}
-            placeholder={t.filters.statusAll}
-            /* 상태가 정해지는 방식은 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */
-            info={t.status.derived}
-            onChange={(value) => {
-              apply({ statusCode: value });
-            }}
-          />
-
-          <div className="field-cell notice-filter-period">
-            {/* ⭐ 시작일이 아니라 겹침으로 거른다 — 기간 칸 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}
-            <span className="info-label">
-              <span className="field-label">{t.filters.from}</span>
-              <InfoTip text={t.filters.periodNote} />
-            </span>
-            <DatePicker
-              mode="single"
-              clearable
-              placeholder={messages.common.selectDate}
-              value={filters.overlapFrom === '' ? null : filters.overlapFrom}
-              onChange={(value) => {
-                apply({ overlapFrom: value ?? '' });
-              }}
-            />
-          </div>
-
-          <div className="field-cell notice-filter-period">
-            <span className="field-label">{t.filters.to}</span>
-            <DatePicker
-              mode="single"
-              clearable
-              placeholder={messages.common.selectDate}
-              invalid={invalidPeriod !== undefined}
-              value={filters.overlapTo === '' ? null : filters.overlapTo}
-              onChange={(value) => {
-                apply({ overlapTo: value ?? '' });
-              }}
-            />
-            {invalidPeriod !== undefined && <span className="field-error">{invalidPeriod}</span>}
-          </div>
-
-          <div className="field-cell field-cell-unlabeled notice-filter-actions">
-            <div className="filter-actions">
-              {isFilterChanged && (
-                <Button
-                  variant="outlined"
-                  onClick={() => {
-                    setSearch('');
-                    setSearchParams(toSearchParams(EMPTY_FILTERS, selectedId));
+                <SelectField
+                  label={t.filters.status}
+                  options={statusOptions}
+                  value={filters.statusCode}
+                  placeholder={t.filters.statusAll}
+                  /* 상태가 정해지는 방식은 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */
+                  info={t.status.derived}
+                  onChange={(value) => {
+                    apply({ statusCode: value });
                   }}
-                >
-                  {t.filters.clear}
-                </Button>
+                />
+
+                <div className="field-cell notice-filter-period">
+                  {/* ⭐ 시작일이 아니라 겹침으로 거른다 — 기간 칸 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}
+                  <span className="info-label">
+                    <span className="field-label">{t.filters.from}</span>
+                    <InfoTip text={t.filters.periodNote} />
+                  </span>
+                  <DatePicker
+                    mode="single"
+                    clearable
+                    placeholder={messages.common.selectDate}
+                    value={filters.overlapFrom === '' ? null : filters.overlapFrom}
+                    onChange={(value) => {
+                      apply({ overlapFrom: value ?? '' });
+                    }}
+                  />
+                </div>
+
+                <div className="field-cell notice-filter-period">
+                  <span className="field-label">{t.filters.to}</span>
+                  <DatePicker
+                    mode="single"
+                    clearable
+                    placeholder={messages.common.selectDate}
+                    invalid={invalidPeriod !== undefined}
+                    value={filters.overlapTo === '' ? null : filters.overlapTo}
+                    onChange={(value) => {
+                      apply({ overlapTo: value ?? '' });
+                    }}
+                  />
+                  {invalidPeriod !== undefined && (
+                    <span className="field-error">{invalidPeriod}</span>
+                  )}
+                </div>
+
+                <div className="field-cell field-cell-unlabeled notice-filter-actions">
+                  <div className="filter-actions">
+                    {isFilterChanged && (
+                      <Button
+                        variant="outlined"
+                        onClick={() => {
+                          setSearch('');
+                          setSearchParams(toSearchParams(EMPTY_FILTERS, selectedId));
+                        }}
+                      >
+                        {t.filters.clear}
+                      </Button>
+                    )}
+                    <FilterMoreButton
+                      open={more.isOpen}
+                      controlsId={more.id}
+                      onToggle={more.toggle}
+                    />
+                    <span className="inspection-standard-filter-divider" aria-hidden />
+                    <Button onClick={openCreate}>{t.form.create}</Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+              <div id={more.id} hidden={!more.isOpen}>
+                <div className="filter-bar notice-filter">
+                  <SelectField
+                    label={t.filters.scope}
+                    options={scopeFilterOptions}
+                    value={filters.scopeCode}
+                    placeholder={t.filters.scopeAll}
+                    onChange={(value) => {
+                      apply({ scopeCode: value });
+                    }}
+                  />
+
+                  <div className="field-cell field-cell-unlabeled check-group check-group-row notice-filter-options">
+                    <Checkbox
+                      checked={filters.activeOnly}
+                      onChange={(event) => {
+                        apply({ activeOnly: event.target.checked });
+                      }}
+                    >
+                      {t.filters.activeOnly}
+                    </Checkbox>
+                    <Checkbox
+                      checked={filters.unacknowledgedByMe}
+                      onChange={(event) => {
+                        apply({ unacknowledgedByMe: event.target.checked });
+                      }}
+                    >
+                      {t.filters.unacknowledgedByMe}
+                    </Checkbox>
+                  </div>
+                </div>
+              </div>
+
+              <HiddenFilterChips
+                open={more.isOpen}
+                chips={hiddenChips}
+                onRemove={(key) => {
+                  if (key === 'scopeCode') apply({ scopeCode: '' });
+                  else if (key === 'activeOnly') apply({ activeOnly: false });
+                  else apply({ unacknowledgedByMe: false });
+                }}
+              />
+            </>
+          ),
+        }}
+        list={{
+          label: t.panes.list,
+          title: t.panes.list,
+          count: notices.data?.page.total,
+          content: (
+            <>
+              {notices.isError ? (
+                <LoadErrorBanner
+                  error={notices.error}
+                  onRetry={() => {
+                    void notices.refetch();
+                  }}
+                />
+              ) : notices.isPending ? (
+                <Skeleton variant="rect" height="12rem" />
+              ) : (
+                <div className="wide-table notice-table">
+                  <Table
+                    columns={columns}
+                    rows={rows}
+                    getRowId={(row) => String(row.noticeId)}
+                    density="compact"
+                    caption={t.panes.list}
+                    empty={
+                      <EmptyState
+                        size="sm"
+                        live
+                        title={t.list.emptyTitle}
+                        description={t.list.empty}
+                      />
+                    }
+                  />
+                </div>
               )}
-              <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
-            </div>
-          </div>
-        </div>
+              {pageView !== null && (
+                <PageNav
+                  view={pageView}
+                  onChange={(page) => {
+                    apply({ page });
+                  }}
+                />
+              )}
+            </>
+          ),
+        }}
+        detail={{
+          label: t.panes.detail,
+          bare: true,
+          content: (
+            <>
+              {/*
+               * 저장 · 게시 · 마감 · 확인 안내 — 상세 상자 위에 둔다(통일 배치 밖에 두면 안내가 뜨고 질 때 목록 | 상세 높이가
+               * 창 바닥과 어긋난다 · #350 리뷰).
+               */}
+              {flash !== null && (
+                <div className="banner-slot">
+                  <AlertBanner
+                    variant="success"
+                    onDismiss={() => {
+                      setFlash(null);
+                    }}
+                    dismissLabel={messages.common.close}
+                  >
+                    {flash}
+                  </AlertBanner>
+                </div>
+              )}
+              {/* 바깥 상세 구획이 「공지」 이름을 갖는다 — 안쪽 상자에 같은 이름을 겹쳐 달지 않는다. */}
+              <section className="pane notice-pane">
+                <h2 className="pane-title">
+                  {formMode === 'create' ? t.form.create : t.panes.detail}
+                </h2>
 
-        {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
-        <div id={more.id} hidden={!more.isOpen}>
-          <div className="filter-bar notice-filter">
-            <SelectField
-              label={t.filters.scope}
-              options={scopeFilterOptions}
-              value={filters.scopeCode}
-              placeholder={t.filters.scopeAll}
-              onChange={(value) => {
-                apply({ scopeCode: value });
-              }}
-            />
+                {formMode !== 'closed' ? (
+                  <NoticeForm
+                    draft={draft}
+                    errors={errors}
+                    isSaving={create.isSaving || update.isSaving}
+                    saveError={formMode === 'create' ? create.error : update.error}
+                    fieldErrors={formMode === 'create' ? create.fieldErrors : update.fieldErrors}
+                    workOrders={workOrders}
+                    onChange={(patch) => {
+                      setDraft((prev) => ({ ...prev, ...patch }));
+                    }}
+                    onSubmit={submit}
+                    onCancel={() => {
+                      setFormMode('closed');
+                    }}
+                  />
+                ) : selectedId === null ? (
+                  <EmptyState size="sm" title={t.list.selectTitle} description={t.list.select} />
+                ) : detail.isError ? (
+                  <LoadErrorBanner
+                    error={detail.error}
+                    onRetry={() => {
+                      void detail.refetch();
+                    }}
+                  />
+                ) : detail.isPending || selected === null ? (
+                  <Skeleton variant="rect" height="10rem" />
+                ) : (
+                  <>
+                    <SaveErrorBanner error={publish.error ?? close.error} />
+                    <SaveErrorBanner error={acknowledge.error ?? dismiss.error} />
 
-            <div className="field-cell field-cell-unlabeled check-group check-group-row notice-filter-options">
-              <Checkbox
-                checked={filters.activeOnly}
-                onChange={(event) => {
-                  apply({ activeOnly: event.target.checked });
-                }}
-              >
-                {t.filters.activeOnly}
-              </Checkbox>
-              <Checkbox
-                checked={filters.unacknowledgedByMe}
-                onChange={(event) => {
-                  apply({ unacknowledgedByMe: event.target.checked });
-                }}
-              >
-                {t.filters.unacknowledgedByMe}
-              </Checkbox>
-            </div>
-          </div>
-        </div>
+                    <dl className="token-meta">
+                      <dt>{t.list.status}</dt>
+                      <dd>{statusLabel(selected.statusCode)}</dd>
+                      <dt>{t.detail.period}</dt>
+                      <dd>
+                        {formatPeriod(selected.startDate, selected.endDate, t.detail.noEndDate)}
+                      </dd>
+                      <dt>{t.list.scope}</dt>
+                      <dd>
+                        {scopeLabel(selected.scopeCode)}
+                        {needsWorkOrder(selected.scopeCode) && selected.targetWorkOrderNo !== null
+                          ? ` · ${selected.targetWorkOrderNo}`
+                          : ''}
+                      </dd>
+                      <dt>{t.detail.publishedAt}</dt>
+                      <dd>
+                        {selected.publishedAt === null
+                          ? t.list.notAvailable
+                          : formatMoment(selected.publishedAt)}
+                      </dd>
+                    </dl>
 
-        <HiddenFilterChips
-          open={more.isOpen}
-          chips={hiddenChips}
-          onRemove={(key) => {
-            if (key === 'scopeCode') apply({ scopeCode: '' });
-            else if (key === 'activeOnly') apply({ activeOnly: false });
-            else apply({ unacknowledgedByMe: false });
-          }}
-        />
+                    <p className="notice-body">{selected.body}</p>
 
-        {notices.isError ? (
-          <LoadErrorBanner
-            error={notices.error}
-            onRetry={() => {
-              void notices.refetch();
-            }}
-          />
-        ) : notices.isPending ? (
-          <Skeleton variant="rect" height="12rem" />
-        ) : (
-          <div className="wide-table notice-table">
-            <Table
-              columns={columns}
-              rows={rows}
-              getRowId={(row) => String(row.noticeId)}
-              density="compact"
-              caption={t.panes.list}
-              empty={
-                <EmptyState size="sm" live title={t.list.emptyTitle} description={t.list.empty} />
-              }
-            />
-          </div>
-        )}
-        {pageView !== null && (
-          <PageNav
-            view={pageView}
-            onChange={(page) => {
-              apply({ page });
-            }}
-          />
-        )}
-      </section>
+                    {/* ⛔⛔ 게시 뒤에는 본문을 고칠 수 없다 — 잠근 이유를 잠근 자리에 적는다. */}
+                    {!editable && <p className="pane-lead">{t.detail.lockedAfterPublish}</p>}
 
-      <section className="pane notice-pane" aria-label={t.panes.detail}>
-        <h2 className="pane-title">{formMode === 'create' ? t.form.create : t.panes.detail}</h2>
+                    <div className="form-actions">
+                      <Button
+                        variant="outlined"
+                        disabled={acknowledge.isSaving}
+                        onClick={() => {
+                          acknowledge.write({});
+                        }}
+                      >
+                        {t.detail.acknowledge}
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        /* ⚠ 확인을 요구한 공지는 그냥 닫을 수 없다 — 서버가 거부한다. */
+                        disabled={selected.acknowledgeRequired || dismiss.isSaving}
+                        onClick={() => {
+                          dismiss.write({});
+                        }}
+                      >
+                        {t.detail.dismiss}
+                      </Button>
+                      <Button variant="outlined" disabled={!editable} onClick={openEdit}>
+                        {t.form.edit}
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        disabled={!isClosable(selected.statusCode) || close.isSaving}
+                        onClick={() => {
+                          setConfirming('close');
+                        }}
+                      >
+                        {t.detail.close}
+                      </Button>
+                      <Button
+                        disabled={!isPublishable(selected.statusCode) || publish.isSaving}
+                        onClick={() => {
+                          setConfirming('publish');
+                        }}
+                      >
+                        {t.detail.publish}
+                      </Button>
+                    </div>
+                    {selected.acknowledgeRequired && (
+                      <p className="field-note">{t.detail.dismissLocked}</p>
+                    )}
+                  </>
+                )}
+              </section>
 
-        {formMode !== 'closed' ? (
-          <NoticeForm
-            draft={draft}
-            errors={errors}
-            isSaving={create.isSaving || update.isSaving}
-            saveError={formMode === 'create' ? create.error : update.error}
-            fieldErrors={formMode === 'create' ? create.fieldErrors : update.fieldErrors}
-            workOrders={workOrders}
-            onChange={(patch) => {
-              setDraft((prev) => ({ ...prev, ...patch }));
-            }}
-            onSubmit={submit}
-            onCancel={() => {
-              setFormMode('closed');
-            }}
-          />
-        ) : selectedId === null ? (
-          <EmptyState size="sm" title={t.list.selectTitle} description={t.list.select} />
-        ) : detail.isError ? (
-          <LoadErrorBanner
-            error={detail.error}
-            onRetry={() => {
-              void detail.refetch();
-            }}
-          />
-        ) : detail.isPending || selected === null ? (
-          <Skeleton variant="rect" height="10rem" />
-        ) : (
-          <>
-            <SaveErrorBanner error={publish.error ?? close.error} />
-            <SaveErrorBanner error={acknowledge.error ?? dismiss.error} />
-
-            <dl className="token-meta">
-              <dt>{t.list.status}</dt>
-              <dd>{statusLabel(selected.statusCode)}</dd>
-              <dt>{t.detail.period}</dt>
-              <dd>{formatPeriod(selected.startDate, selected.endDate, t.detail.noEndDate)}</dd>
-              <dt>{t.list.scope}</dt>
-              <dd>
-                {scopeLabel(selected.scopeCode)}
-                {needsWorkOrder(selected.scopeCode) && selected.targetWorkOrderNo !== null
-                  ? ` · ${selected.targetWorkOrderNo}`
-                  : ''}
-              </dd>
-              <dt>{t.detail.publishedAt}</dt>
-              <dd>
-                {selected.publishedAt === null
-                  ? t.list.notAvailable
-                  : formatMoment(selected.publishedAt)}
-              </dd>
-            </dl>
-
-            <p className="notice-body">{selected.body}</p>
-
-            {/* ⛔⛔ 게시 뒤에는 본문을 고칠 수 없다 — 잠근 이유를 잠근 자리에 적는다. */}
-            {!editable && <p className="pane-lead">{t.detail.lockedAfterPublish}</p>}
-
-            <div className="form-actions">
-              <Button
-                variant="outlined"
-                disabled={acknowledge.isSaving}
-                onClick={() => {
-                  acknowledge.write({});
-                }}
-              >
-                {t.detail.acknowledge}
-              </Button>
-              <Button
-                variant="outlined"
-                /* ⚠ 확인을 요구한 공지는 그냥 닫을 수 없다 — 서버가 거부한다. */
-                disabled={selected.acknowledgeRequired || dismiss.isSaving}
-                onClick={() => {
-                  dismiss.write({});
-                }}
-              >
-                {t.detail.dismiss}
-              </Button>
-              <Button variant="outlined" disabled={!editable} onClick={openEdit}>
-                {t.form.edit}
-              </Button>
-              <Button
-                variant="outlined"
-                disabled={!isClosable(selected.statusCode) || close.isSaving}
-                onClick={() => {
-                  setConfirming('close');
-                }}
-              >
-                {t.detail.close}
-              </Button>
-              <Button
-                disabled={!isPublishable(selected.statusCode) || publish.isSaving}
-                onClick={() => {
-                  setConfirming('publish');
-                }}
-              >
-                {t.detail.publish}
-              </Button>
-            </div>
-            {selected.acknowledgeRequired && <p className="field-note">{t.detail.dismissLocked}</p>}
-          </>
-        )}
-      </section>
-
-      {selected !== null && formMode === 'closed' && (
-        <section className="pane notice-pane" aria-label={t.panes.ack}>
-          <h2 className="pane-title info-label">
-            {t.ack.title}
-            {/* 사번으로 보이는 행의 뜻은 제목 옆 ⓘ 로 — 확인을 받는 공지에서만 목록이 있다(관리웹 정리 시안 A). */}
-            {selected.acknowledgeRequired && <InfoTip text={t.ack.workerNote} />}
-          </h2>
-          <AckPanel
-            required={selected.acknowledgeRequired}
-            pendingOnly={pendingOnly}
-            isPending={acks.isPending}
-            isError={acks.isError}
-            error={acks.error}
-            data={acks.data}
-            hasDenominator={selected.targetCount !== null}
-            onPendingOnlyChange={setPendingOnly}
-            onRetry={() => {
-              void acks.refetch();
-            }}
-          />
-        </section>
-      )}
+              {selected !== null && formMode === 'closed' && (
+                <section className="pane notice-pane" aria-label={t.panes.ack}>
+                  <h2 className="pane-title info-label">
+                    {t.ack.title}
+                    {/* 사번으로 보이는 행의 뜻은 제목 옆 ⓘ 로 — 확인을 받는 공지에서만 목록이 있다(관리웹 정리 시안 A). */}
+                    {selected.acknowledgeRequired && <InfoTip text={t.ack.workerNote} />}
+                  </h2>
+                  <AckPanel
+                    required={selected.acknowledgeRequired}
+                    pendingOnly={pendingOnly}
+                    isPending={acks.isPending}
+                    isError={acks.isError}
+                    error={acks.error}
+                    data={acks.data}
+                    hasDenominator={selected.targetCount !== null}
+                    onPendingOnlyChange={setPendingOnly}
+                    onRetry={() => {
+                      void acks.refetch();
+                    }}
+                  />
+                </section>
+              )}
+            </>
+          ),
+        }}
+      />
 
       <Dialog
         open={confirming !== 'none'}
