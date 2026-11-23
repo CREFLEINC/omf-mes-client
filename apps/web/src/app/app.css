@@ -4150,6 +4150,7 @@ dialog.routing-history-dialog {
 
 /* 필수 표시 — 디자인 시스템 내장 라벨의 표시와 같은 토큰(빨강). 직접 만든 라벨에 붙인다. */
 .field-label > .required-mark,
+.disposition-sort-heading > .required-mark,
 .warehouse-location-field-label .required-mark,
 .production-plan-required-header > .required-mark {
   color: var(--semantic-error-text);
@@ -9126,30 +9127,9 @@ main:has(.iqc-skip-approval-detail) {
   margin: 0;
 }
 
-/* 저장 후 처리 — 처리 이름 | 대상 LOT · 수량 두 줄, 아래 짧은 안내(#352). */
-.disposition-sort-preview-rows {
-  /* 두 줄이 한 격자를 나눠 써 값 열이 맞는다. */
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: var(--space-1) var(--space-4);
-  align-items: center;
-  margin: 0;
-}
-
-.disposition-sort-preview-rows > div {
-  display: contents;
-}
-
-.disposition-sort-preview-rows dt {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  color: var(--on-surface-variant);
-}
-
-.disposition-sort-preview-rows dd {
-  margin: 0;
-  overflow-wrap: anywhere;
+/* 저장 후 처리 줄 — 처리 이름과 대상 LOT · 수량 사이를 조금 띄운다(#352). */
+.disposition-sort-preview p > span + span {
+  margin-left: var(--space-2);
 }
 
 .disposition-sort-preview-notes {

@@ -153,22 +153,17 @@ export const SortSplitPane = ({
             <Icon name="fact_check" size={18} aria-hidden />
             {t.previewTitle}
           </strong>
-          <dl className="disposition-sort-preview-rows">
-            <div>
-              <dt>
-                <Icon name="check_circle" size={16} aria-hidden />
-                {t.previewRestLabel}
-              </dt>
-              <dd>{t.previewTarget(names(rest), `${formatQty(sumQty(rest))}${unit}`)}</dd>
-            </div>
-            <div>
-              <dt>
-                <Icon name="call_split" size={16} aria-hidden />
-                {t.previewMovedLabel}
-              </dt>
-              <dd>{t.previewTarget(names(moved), `${formatQty(sumQty(moved))}${unit}`)}</dd>
-            </div>
-          </dl>
+          {/* 처리 한 줄씩 아이콘 + 처리 이름 + 대상 LOT · 수량 — 저장 결과 카드의 줄과 같은 모양(#352 사용자 지시). */}
+          <p>
+            <Icon name="check_circle" size={16} aria-hidden />
+            <span>{t.previewRestLabel}</span>
+            <span>{t.previewTarget(names(rest), `${formatQty(sumQty(rest))}${unit}`)}</span>
+          </p>
+          <p>
+            <Icon name="call_split" size={16} aria-hidden />
+            <span>{t.previewMovedLabel}</span>
+            <span>{t.previewTarget(names(moved), `${formatQty(sumQty(moved))}${unit}`)}</span>
+          </p>
           <ul className="disposition-sort-preview-notes">
             {t.previewNotes.map((note) => (
               <li key={note}>{note}</li>
