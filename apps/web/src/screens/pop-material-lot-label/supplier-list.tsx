@@ -69,8 +69,10 @@ export const SupplierList = ({
                 <span className="mll-pair-unprinted">{t.unprinted(group.unprintedCount)}</span>
               )}
             </span>
-            <span className="pu-item-top">
-              <span className="mll-pair-name">{`${group.itemCode} ${group.itemName}`}</span>
+            {/* 품목코드는 왼쪽, 품목명은 오른쪽 끝(사용자 지시 2026-11-23). */}
+            <span className="pu-item-top mll-pair-item">
+              <span className="mll-pair-name">{group.itemCode}</span>
+              <span className="mll-pair-name mll-pair-item-name">{group.itemName}</span>
             </span>
             {defaultLine !== null && (
               <span className="pu-item-sub">

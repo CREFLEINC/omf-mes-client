@@ -67,6 +67,20 @@
   white-space: nowrap;
 }
 
+/* 품목 줄 — 코드는 다 보이고, 이름이 오른쪽 끝에서 먼저 말줄임. */
+.mll-pairs .mll-pair-item > .mll-pair-name:first-child {
+  flex: none;
+}
+
+.mll-pairs .mll-pair-item > .mll-pair-item-name {
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+
 /* 공급사명 줄 — 라벨 미출력 수는 같은 줄 오른쪽 끝(줄바꿈 없이, 공급사명이 먼저 말줄임). */
 .mll-pairs .mll-pair-supplier {
   flex-wrap: nowrap;
