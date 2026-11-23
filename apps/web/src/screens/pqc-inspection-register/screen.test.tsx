@@ -53,6 +53,8 @@ const ROUND = {
 };
 
 interface RenderOptions {
+  /** 의뢰가 기본 생략으로 닫혔다(#353). */
+  skipped?: boolean;
   /** 그 의뢰의 회차 목록. 함수면 부를 때마다 다시 정한다(저장 뒤 재조회). */
   rounds?: object[] | (() => object[]);
   roundsFail?: boolean;
@@ -83,7 +85,10 @@ const renderScreen = (options: RenderOptions = {}) => {
       const items = options.queueItems ?? [REQUEST];
       return jsonResponse({ items, page: { page: 1, size: 50, total: items.length } });
     }
-    if (path === '/quality/inspection-requests/7101') return jsonResponse(REQUEST);
+    if (path === '/quality/inspection-requests/7101')
+      return jsonResponse(
+        options.skipped === true ? { ...REQUEST, statusCode: 'SKIPPED', skipBasisCode: 'DEFAULT' } : REQUEST,
+      );
     if (path === '/trace/lots') {
       const lotNo = url.searchParams.get('lotNo');
       const workOrderId = url.searchParams.get('workOrderId');
@@ -376,6 +381,16 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     await user.click(within(firstRow as HTMLElement).getByText('합성 품목'));
     const summary = await screen.findByRole('region', { name: web.summary.heading });
     await waitFor(() => expect(summary).toHaveTextContent(REQUEST.inspectionRequestNo));
+  });
+
+  it('#353 기본 생략으로 닫힌 의뢰는 생략 안내만 보이고, 수량·판정 입력과 [판정 확정]이 없다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ skipped: true });
+    const pane = await openRequest(user);
+
+    expect(await pane.findByText(pqc.detail.skipped)).toBeInTheDocument();
+    expect(pane.queryByRole('button', { name: web.actions.confirm })).toBeNull();
+    expect(pane.queryByRole('region', { name: web.quantityBox })).toBeNull();
   });
 
   it('상세의 검사 기본 정보는 작업지시 번호·품목 이름·코드와 작업지시의 생산 LOT 을 보이고, 머리 제목은 「검사 기본 정보」(#135)', async () => {

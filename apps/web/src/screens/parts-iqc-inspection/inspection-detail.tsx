@@ -265,7 +265,11 @@ export const InspectionDetail = ({
           itemParts={items.partsOf(detail.data.itemId)}
           planLabel={plan.data?.inspectionPlanCode ?? '-'}
           planName={plan.data?.inspectionPlanName ?? '-'}
-          lotNo={lots.labelOf(detail.data.lotId)}
+          lotNo={
+            inboundFlow
+              ? (inboundInspection.data?.lots ?? []).map((lot) => lot.lotNo).join(', ') || '-'
+              : lots.labelOf(detail.data.lotId)
+          }
           qtyLabel={withUom(String(detail.data.targetQty), uoms.codeOf(detail.data.uomId))}
           inbound={inbound.data}
         />
@@ -429,7 +433,8 @@ export const InspectionDetail = ({
   /* 새 흐름 상세의 [기준 조회] 창(사용자 지시 2026-11-19 · omf-all-around#296). */
   const [inboundPlanOpen, setInboundPlanOpen] = useState(false);
 
-  if (inboundFlow && detail.data !== undefined) {
+  /* 생략으로 닫힌 입하 LOT 의뢰도 결과를 받지 않는다 — 아래 공통 경로의 생략 요약으로 보낸다(omf-all-around#353). */
+  if (inboundFlow && detail.data !== undefined && detail.data.statusCode !== 'SKIPPED') {
     const aql = version.data?.aqlValue;
     const planText = [
       aql == null ? null : t.target.conditionAql(aql),

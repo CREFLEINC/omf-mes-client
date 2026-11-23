@@ -425,6 +425,20 @@ export const PqcPanel = ({
     }
     const tNoStandard = t.noStandard;
 
+    /* 생략으로 닫힌 의뢰는 입력할 것이 없다 — 대상 요약과 안내만(omf-all-around#353). */
+    if (target.statusCode === 'SKIPPED') {
+      return (
+        <div className="pqc-web">
+          <WebSummary
+            detail={target}
+            planVersion={planVersion.data ?? null}
+            uomCode={uomCodeOf(target.uomId)}
+          />
+          <AlertBanner variant="info">{t.detail.skipped}</AlertBanner>
+        </div>
+      );
+    }
+
     return (
       <div className="pqc-web">
         <WebSummary
