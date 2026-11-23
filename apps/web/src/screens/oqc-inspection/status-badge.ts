@@ -41,7 +41,7 @@ const BADGE_OF: Record<string, StatusBadge> = {
 };
 
 /**
- * 생략은 근거로 한 번 더 가른다(omf-all-around#212) — 기준의 기본 생략은 「생략(기본 설정)」이다.
+ * 생략은 근거로 한 번 더 가른다(omf-all-around#212) — 기준의 기본 생략은 「생략」이다(#353 용어 정정).
  * 근거가 없거나 모르는 근거면 종전대로 「생략」 하나다.
  */
 const SKIPPED_OF: Record<string, StatusBadge> = {

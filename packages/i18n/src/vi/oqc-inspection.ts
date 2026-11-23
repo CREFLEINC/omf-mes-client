@@ -52,7 +52,7 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     inProgress: 'Đang làm',
     completed: 'Xong',
     skipped: 'Bỏ qua',
-    skippedDefault: 'Bỏ qua (mặc định)',
+    skippedDefault: 'Bỏ qua',
     cancelled: 'Đã hủy',
   },
 

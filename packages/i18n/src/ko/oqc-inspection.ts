@@ -102,7 +102,7 @@ export const oqcInspection = {
     completed: '완료',
     skipped: '생략',
     /** 생략 근거(omf-all-around#212) — 검사 기준의 기본 생략. */
-    skippedDefault: '생략(기본 설정)',
+    skippedDefault: '생략',
     cancelled: '취소',
   },
 
