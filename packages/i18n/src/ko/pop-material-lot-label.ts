@@ -24,6 +24,19 @@ export const popMaterialLotLabel = {
   },
   /** 왼쪽 공급사·품목 목록. 칩은 대기 자재 관리 LOT 수다. */
   pairs: {
+    columns: {
+      itemCode: '품목코드',
+      itemName: '품목명',
+      lots: 'LOT',
+      qty: '수량',
+      printed: '라벨 출력',
+      iqc: 'IQC',
+      lastIssued: '최근 발행',
+    },
+    /** 라벨 출력 칸 — 입하 대기 LOT 가운데 출력한 수 / 전체. */
+    printedOf: (printed: number, total: number) => `${printed} / ${total}`,
+    iqcRequired: '대상',
+    none: '—',
     suppliersLabel: '공급사',
     itemsLabel: '품목',
     label: '공급사·품목', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)

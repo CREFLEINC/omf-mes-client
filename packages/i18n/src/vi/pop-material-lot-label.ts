@@ -14,6 +14,18 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     scanLabel: 'Số LOT quản lý vật tư hoặc mã/tên mặt hàng',
   },
   pairs: {
+    columns: {
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
+      lots: 'LOT',
+      qty: 'Số lượng',
+      printed: 'Đã in nhãn',
+      iqc: 'IQC',
+      lastIssued: 'Phát hành gần nhất',
+    },
+    printedOf: (printed: number, total: number) => `${printed} / ${total}`,
+    iqcRequired: 'Có',
+    none: '—',
     suppliersLabel: 'Nhà cung cấp',
     itemsLabel: 'Mặt hàng',
     label: 'Nhà cung cấp · mặt hàng',

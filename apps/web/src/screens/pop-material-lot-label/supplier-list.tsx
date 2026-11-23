@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useLayoutEffect, useRef, type RefObject } from 'react';
 
 import { formatBaseQty, formatPackageQty } from '../../patterns/package-qty';
+import { toPlantDateTimeParts } from '../../patterns/plant-time';
 import { puCx } from '../../patterns/pop-uniform';
 import { pairKeyOf } from './types';
 
@@ -60,6 +61,9 @@ const FitItemName = ({ name }: { name: string }) => {
 };
 
 /** 왼쪽 공급사 목록의 한 줄 — 찾기에 걸린 공급사·품목을 공급사별로 모은 것. */
+/** 최근 발행 — 「11-23」(공장 날짜). */
+const shortWhen = (value: string): string => toPlantDateTimeParts(value)?.date.slice(5) ?? t.none;
+
 export interface SupplierRow {
   supplierId: number;
   supplierName: string;
@@ -133,58 +137,91 @@ export const SupplierList = ({
   </ul>
 );
 
-export interface ItemListProps {
+export interface ItemTableProps {
   /** 이 쪽에 보일 고른 공급사의 품목(쪽 넘김은 화면이 자른다). */
   groups: readonly WaitingMaterialLotGroup[];
-  defaults: ReadonlyMap<string, SupplierItemDefault>;
   selectedKey: string | null;
   isLocked: boolean;
   onSelect: (key: string) => void;
-  /** 쪽 건수를 재는 칸. */
-  fitRef: RefObject<HTMLUListElement | null>;
+  /** 쪽 줄 수를 재는 칸(표를 감싼 칸). */
+  fitRef: RefObject<HTMLDivElement | null>;
 }
 
 /**
- * 둘째 목록 — **고른 공급사의 품목**(사용자 지시 2026-11-23). 품목코드는 왼쪽, 품목명은 오른쪽 끝(길면 글자를 줄여 한 줄).
- * 둘째 줄에 기본 포장 · 라벨 미출력(없으면 빈 줄 — 카드 높이를 맞춘다).
+ * 둘째 목록 — **고른 공급사의 품목 표**(사용자 지시 2026-11-23).
+ * 품목코드 · 품목명(길면 글자를 줄여 한 줄) · 입하 대기 LOT 수 · 그 수량 · 라벨 출력(출력 / 대기) · IQC 대상 · 최근 발행.
+ * ⭐ 줄 어디를 눌러도 고른다 — 품목코드 칸의 단추가 읽어 주는 도구의 이름을 갖는다.
  */
-export const ItemList = ({
-  groups,
-  defaults,
-  selectedKey,
-  isLocked,
-  onSelect,
-  fitRef,
-}: ItemListProps) => (
-  <ul ref={fitRef} className="pu-list pu-fit mll-pairs" aria-label={t.itemsLabel}>
-    {groups.map((group) => {
-      const key = pairKeyOf(group.supplierId, group.itemId);
-      const defaultLine = defaultLineOf(defaults.get(key));
-      const unprinted = group.unprintedCount > 0 ? t.unprinted(group.unprintedCount) : null;
+export const ItemTable = ({ groups, selectedKey, isLocked, onSelect, fitRef }: ItemTableProps) => (
+  <div ref={fitRef} className="mll-items" role="group" aria-label={t.itemsLabel}>
+    <div className="pu-table-wrap">
+      <table className="pu-table">
+        <thead>
+          <tr>
+            <th className="fit">{t.columns.itemCode}</th>
+            <th>{t.columns.itemName}</th>
+            <th className="num fit">{t.columns.lots}</th>
+            <th className="num fit">{t.columns.qty}</th>
+            <th className="num fit">{t.columns.printed}</th>
+            <th className="fit mid">{t.columns.iqc}</th>
+            <th className="fit">{t.columns.lastIssued}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {groups.map((group) => {
+            const key = pairKeyOf(group.supplierId, group.itemId);
+            const isSelected = key === selectedKey;
+            const printed = group.waitingCount - group.unprintedCount;
 
-      return (
-        <li key={key}>
-          <button
-            type="button"
-            className={puCx('pu-item', key === selectedKey && 'is-selected')}
-            aria-pressed={key === selectedKey}
-            disabled={isLocked}
-            onClick={() => {
-              onSelect(key);
-            }}
-          >
-            <span className="pu-item-top mll-pair-item">
-              <span className="mll-pair-name">{group.itemCode}</span>
-              <FitItemName name={group.itemName} />
-            </span>
-            {/* 둘째 줄은 비어도 늘 둔다 — 카드 높이가 같아야 쪽 건수(`useFitCount`)가 늘었다 줄었다 하지 않는다. */}
-            <span className="pu-item-sub mll-pair-supplier">
-              <span>{defaultLine ?? '\u00a0'}</span>
-              {unprinted !== null && <span className="mll-pair-unprinted">{unprinted}</span>}
-            </span>
-          </button>
-        </li>
-      );
-    })}
-  </ul>
+            return (
+              <tr
+                key={key}
+                className={puCx('is-pick', isSelected && 'is-selected')}
+                onClick={
+                  isLocked
+                    ? undefined
+                    : () => {
+                        onSelect(key);
+                      }
+                }
+              >
+                <td className="fit">
+                  <button
+                    type="button"
+                    className="mll-item-code"
+                    aria-pressed={isSelected}
+                    disabled={isLocked}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onSelect(key);
+                    }}
+                  >
+                    {group.itemCode}
+                  </button>
+                </td>
+                <td className="mll-item-name-cell">
+                  <FitItemName name={group.itemName} />
+                </td>
+                <td className="num fit">
+                  {group.waitingCount === 0 ? t.none : group.waitingCount}
+                </td>
+                <td className="num fit">
+                  {group.waitingCount === 0
+                    ? t.none
+                    : formatBaseQty(group.waitingQty, group.uomCode)}
+                </td>
+                <td className={puCx('num fit', group.unprintedCount > 0 && 'mll-unprinted-cell')}>
+                  {group.waitingCount === 0 ? t.none : t.printedOf(printed, group.waitingCount)}
+                </td>
+                <td className="fit mid">{group.inspectionRequired ? t.iqcRequired : t.none}</td>
+                <td className="fit">
+                  {group.lastIssuedAt === null ? t.none : shortWhen(group.lastIssuedAt)}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  </div>
 );

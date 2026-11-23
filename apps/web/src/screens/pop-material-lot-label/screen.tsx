@@ -49,7 +49,7 @@ import {
   useWaitingGroups,
 } from './queries';
 import { ReasonPicker } from './reason-picker';
-import { defaultLineOf, ItemList, SupplierList, supplierRowsOf } from './supplier-list';
+import { defaultLineOf, ItemTable, SupplierList, supplierRowsOf } from './supplier-list';
 import { isVoided, isWaiting, pairKeyOf, toLabelLots, type LabelLot } from './types';
 import { VoidDialog } from './void-dialog';
 import './uniform.css';
@@ -264,10 +264,10 @@ export const PopMaterialLotLabelScreen = () => {
 
   /* 쪽 넘김(규칙 1) — 한 쪽 건수는 구획 높이에 들어가는 만큼. */
   const supplierFitRef = useRef<HTMLUListElement>(null);
-  const itemFitRef = useRef<HTMLUListElement>(null);
+  const itemFitRef = useRef<HTMLDivElement>(null);
   const tableFitRef = useRef<HTMLDivElement>(null);
   const supplierSize = useFitCount(supplierFitRef, { fallback: 4 });
-  const itemSize = useFitCount(itemFitRef, { fallback: 4 });
+  const itemSize = useFitTableRows(itemFitRef, { fallback: 8 });
   const rowSize = useFitTableRows(tableFitRef, { fallback: 5 });
   /* 입하 대기 · 폐기 다음에 최근 입하된 LOT(흐림, 고를 수 없음) — 결과를 그리는 동안은 그때 표 그대로. */
   const pairTableLots = snapshot?.lots ?? [...waitingLots, ...receivedLots.filter(isUnissued)];
@@ -625,9 +625,8 @@ export const PopMaterialLotLabelScreen = () => {
     >
       {supplierGroups.length === 0 ? null : (
         <>
-          <ItemList
+          <ItemTable
             groups={itemPage.items}
-            defaults={defaultsMap}
             selectedKey={currentKey}
             isLocked={isFrozen}
             onSelect={choosePair}

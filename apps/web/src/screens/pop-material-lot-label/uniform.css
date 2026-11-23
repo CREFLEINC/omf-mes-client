@@ -707,11 +707,50 @@
 
 /* 세 칸(사용자 지시 2026-11-23): 공급사 · 고른 공급사의 품목 · 상세. 왼쪽을 접으면 56. */
 .pu-cols.list.mll-cols3 {
-  grid-template-columns: 300px 360px minmax(0, 1fr);
+  grid-template-columns: 280px 700px minmax(0, 1fr);
 }
 
 .pu-cols.list.mll-cols3:has(> .is-folded:first-child) {
-  grid-template-columns: 56px 360px minmax(0, 1fr);
+  grid-template-columns: 56px 700px minmax(0, 1fr);
+}
+
+/* 가운데 품목 표 — 바깥 칸이 남는 높이를 갖고 쪽 줄 수를 잰다. 품목명 칸이 남는 폭을 갖는다. */
+.mll-items {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.mll-items > .pu-table-wrap {
+  max-height: 100%;
+}
+
+.mll-items .pu-table th,
+.mll-items .pu-table td {
+  padding-inline: 8px;
+}
+
+.mll-item-code {
+  all: unset;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mll-item-code:focus-visible {
+  outline: 2px solid var(--pu-primary);
+  outline-offset: 2px;
+}
+
+.mll-items td.mll-item-name-cell > .mll-pair-item-name {
+  display: block;
+  margin-left: 0;
+  text-align: left;
+  font-weight: 500;
+}
+
+.mll-items td.mll-unprinted-cell {
+  color: var(--pu-warn);
+  font-weight: 700;
 }
 
 @media (max-width: 1100px) {
