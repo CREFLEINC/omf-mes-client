@@ -1,6 +1,6 @@
 import type { SupplierItemDefault, WaitingMaterialLotGroup } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import type { RefObject } from 'react';
+import { useLayoutEffect, useRef, type RefObject } from 'react';
 
 import { formatBaseQty, formatPackageQty } from '../../patterns/package-qty';
 import { puCx } from '../../patterns/pop-uniform';
@@ -18,6 +18,45 @@ export const defaultLineOf = (defaults: SupplierItemDefault | undefined): string
   return defaults.package === null
     ? t.defaultUnpackaged(formatBaseQty(defaults.lotQty, defaults.uomCode))
     : t.defaultPackaged(formatPackageQty(defaults.lotQty, defaults.uomCode, defaults.package));
+};
+
+/** 품목명 글자 크기 — 넘치면 이 범위에서 줄여 한 줄에 담는다(사용자 지시 2026-11-23). */
+const NAME_FONT_MAX = 15;
+const NAME_FONT_MIN = 10;
+
+/**
+ * 품목명 — 칸에 넘치면 글자를 0.5px 씩 줄여 말줄임 없이 한 줄에 담는다. 가장 작게(10px)도 넘치는
+ * 아주 긴 이름만 말줄임 + title 로 남는다. 칸 폭이 바뀌면(화면 크기) 다시 잰다.
+ */
+const FitItemName = ({ name }: { name: string }) => {
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (element === null) return undefined;
+    const fit = () => {
+      let size = NAME_FONT_MAX;
+      element.style.fontSize = `${size}px`;
+      while (element.scrollWidth > element.clientWidth && size > NAME_FONT_MIN) {
+        size -= 0.5;
+        element.style.fontSize = `${size}px`;
+      }
+    };
+    fit();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(fit);
+    observer.observe(element.parentElement ?? element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [name]);
+
+  return (
+    <span ref={ref} className="mll-pair-name mll-pair-item-name" title={name}>
+      {name}
+    </span>
+  );
 };
 
 export interface SupplierListProps {
@@ -72,7 +111,7 @@ export const SupplierList = ({
             {/* 품목코드는 왼쪽, 품목명은 오른쪽 끝(사용자 지시 2026-11-23). */}
             <span className="pu-item-top mll-pair-item">
               <span className="mll-pair-name">{group.itemCode}</span>
-              <span className="mll-pair-name mll-pair-item-name">{group.itemName}</span>
+              <FitItemName name={group.itemName} />
             </span>
             {defaultLine !== null && (
               <span className="pu-item-sub">
