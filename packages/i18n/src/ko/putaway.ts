@@ -167,19 +167,25 @@ export const putaway = {
    * 지시 없이 위치를 스캔해 적치하면 그때 입고된다. 지시(004 보충·배포 전 구매 입고)는 위 문구 그대로다.
    */
   direct: {
-    /** 목록 머리 — 두 종류의 수(가운뎃점 나열은 C-13 이라 쉼표로 푼다). */
-    summary: (lots: string, tasks: string) => `적치 대기 LOT ${lots}건, 적치 지시 ${tasks}건`,
+    /** 목록 머리 — 적치 대기 LOT 수. 적치 지시 수는 적지 않는다(사용자 지시 2026-11-23). */
+    summary: (lots: string) => `적치 대기 LOT ${lots}건`,
     lotsLegend: '적치 대기 LOT',
     lotsLoading: '적치 대기 LOT 을 불러오는 중입니다',
     lotsLoadFailed: '적치 대기 LOT 을 확인할 수 없습니다. 연결을 확인하세요.',
     tasksLegend: '적치 지시',
     /** 두 목록이 모두 비었을 때. */
     none: '적치할 LOT 과 적치 지시가 없습니다',
-    /** 입하 LOT 이 없는 이전 흐름 LOT 의 묶음 머리. */
+    /** 공급사가 없는 이전 흐름 LOT 의 공급사 머리 줄. */
     noInboundLot: '입하 LOT 없음(이전 흐름)',
-    /** 묶음 머리의 입하 LOT · 공급처. */
-    groupSource: (inboundLotNo: string, supplier: string) =>
-      supplier === '' ? inboundLotNo : `${inboundLotNo}, ${supplier}`,
+    /**
+     * 적치 대기 표(사용자 지시 2026-11-23) — No · 품목(코드 위 · 이름 아래) · 수량 · 진척. 입하 LOT · 자재 관리 LOT 번호는
+     * 적지 않는다. 칸 이름은 낭독기에만(표 머리 줄은 숨긴다).
+     */
+    columns: { no: 'No', item: '품목', qty: '수량', progress: '적치 진척' },
+    /** 진척 — 적치 완료 / 자재 관리 LOT. */
+    progress: (done: number, total: number) => `${String(done)}/${String(total)}`,
+    progressLabel: (done: number, total: number) =>
+      `자재 관리 LOT ${String(total)}개 중 ${String(done)}개 적치 완료`,
     defective: '불량',
     normal: '정상',
     lotScanPrompt: '자재 LOT 라벨을 스캔하면 그 LOT 을 엽니다',

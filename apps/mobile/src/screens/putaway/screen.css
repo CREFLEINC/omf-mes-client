@@ -278,12 +278,7 @@
   color: var(--on-semantic-warning-container);
 }
 
-/*
- * 피처 009 — 적치 대기 LOT 목록. 입하 LOT · 품목 묶음 하나가 흰 카드 하나이고, 그 안에 LOT 줄이 누르는
- * 곳으로 쌓인다. 줄을 누르면 그 LOT 라벨을 스캔한 것과 같다.
- */
-.putaway__groups,
-.putaway__lots,
+/* LOT 화면의 지정 위치 목록. */
 .putaway__designated ul {
   display: flex;
   flex-direction: column;
@@ -293,64 +288,118 @@
   list-style: none;
 }
 
-.putaway__group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1, 4px);
-  padding: var(--space-3) var(--space-3);
+/*
+ * 적치 대기 표(사용자 지시 2026-11-23) — 공급사 머리 줄 › No · 품목코드 / 품목명 · 수량 · 진척. 입하 등록 · 입하 마감
+ * 표와 같은 모양이다(흰 카드 · 회색 공급사 줄 · 표 머리 줄은 낭독기에만).
+ */
+.putaway-table__box {
+  overflow: hidden;
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-lg);
   background: var(--surface);
 }
 
-.putaway__group-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2, 8px);
-}
-
-.putaway__group-head strong {
-  font-family: var(--font-mono);
-}
-
-.putaway__lot {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+.putaway-table {
   width: 100%;
-  min-height: 48px;
-  box-sizing: border-box;
-  margin: 0;
-  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2);
-  border: 0;
-  border-radius: var(--radius-md);
-  background: var(--surface-container-low);
-  color: var(--on-surface);
+  border-collapse: collapse;
+  table-layout: fixed;
   font: var(--type-body-sm);
+}
+
+.putaway-table__col-no {
+  width: 26px;
+}
+
+.putaway-table__col-qty {
+  width: 96px;
+}
+
+.putaway-table__col-progress {
+  width: 52px;
+}
+
+.putaway-table thead {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.putaway-table td {
+  height: 48px;
+  padding: 0 var(--space-1, 4px);
+  border-bottom: 1px solid var(--surface-container-high);
+  white-space: nowrap;
+}
+
+.putaway-table tbody:last-child tr:last-child td {
+  border-bottom: 0;
+}
+
+.putaway-table__group th {
+  height: 26px;
+  padding: 0 var(--space-3, 12px);
+  border-bottom: 1px solid var(--surface-container-high);
+  background: var(--surface-container-low);
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  font-weight: 700;
   text-align: start;
-  white-space: normal;
-  cursor: pointer;
 }
 
-.putaway__lot:active {
-  background: var(--surface-container);
-}
-
-.putaway__lot:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-
-.putaway__lot .putaway__scanned {
-  flex: 1 1 0;
-  min-width: 0;
-  font-family: var(--font-mono);
-}
-
-.putaway__lot-qty {
-  flex: 0 0 auto;
+.putaway-table .putaway-table__no {
+  padding-inline-start: var(--space-2, 8px);
+  color: var(--on-surface-muted);
+  text-align: center;
   font-variant-numeric: tabular-nums;
+}
+
+/* 품목 — 코드 위 · 이름 아래, 잘리지 않게(이름은 줄여서라도 전체). */
+.putaway-table td.putaway-table__item {
+  padding-block: var(--space-2, 8px);
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.putaway-table__item > * {
+  display: block;
+  min-width: 0;
+}
+
+.putaway-table__code {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.putaway-table__name {
+  overflow: hidden;
+  color: var(--on-surface-variant);
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.putaway-table .putaway-table__num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.putaway-table td.putaway-table__num:last-child {
+  padding-inline-end: var(--space-3, 12px);
+}
+
+.putaway-table__num small {
+  margin-inline-start: 2px;
+  color: var(--on-surface-muted);
+  font-size: 10px;
+}
+
+/* 진척 — 적치 완료 / 자재 관리 LOT, 한눈에 읽히게 굵게. */
+.putaway-table__progress {
+  font-weight: 700;
 }
 
 /* LOT 화면의 지정 위치 — 창고별 묶음, 줄마다 코드와 경로(창고 › 구역 › 랙). */
@@ -399,25 +448,6 @@
   flex-wrap: wrap;
   gap: var(--space-1, 4px);
   padding-left: calc(20px + var(--space-2, 8px));
-}
-
-/* 적치 대기 LOT 줄 — 번호 한 줄, 그 아래 「불량」 칩 · 수량. */
-.putaway__lot-main {
-  display: flex;
-  flex: 1 1 0;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.putaway__lot-main .putaway__scanned {
-  flex: none;
-}
-
-.putaway__lot-meta {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2, 8px);
 }
 
 /* 떠 있는 직접 입력 단추(48px)와 그 아래 여백만큼 — 마지막 내용이 단추 밑으로 들어가지 않게. */

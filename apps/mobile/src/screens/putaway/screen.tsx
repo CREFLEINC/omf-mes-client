@@ -25,6 +25,7 @@ import { useLoadFailure } from '../../patterns/load-failure';
 import {
   putawayKeys,
   useFindTasksByLot,
+  useInboundLotDetails,
   useLookupPendingLot,
   usePendingLots,
   usePutawayTasks,
@@ -40,6 +41,7 @@ import {
   type PendingLotLookup,
 } from './direct';
 import { PendingLotPanel, type DirectRecorded } from './pending-lot-panel';
+import { PendingLotTable } from './pending-lot-table';
 import {
   ANYWHERE,
   MATCHED,
@@ -137,6 +139,14 @@ export const PutawayScreen = () => {
   const workerId = useWorkerId(worker?.workerNo ?? null);
   const tasks = usePutawayTasks(workerId.data ?? null);
   const pendingLots = usePendingLots(workerId.data ?? null);
+  /* 표의 줄(입하 LOT · 품목)과 그 진척을 셀 입하 LOT 상세(사용자 지시 2026-11-23). */
+  const pendingGroups =
+    pendingLots.data === undefined ? [] : groupPendingLots(pendingLots.data.items);
+  const inboundLotOf = useInboundLotDetails(
+    pendingGroups.flatMap((group) =>
+      group.inboundLotId === undefined ? [] : [group.inboundLotId],
+    ),
+  );
   const locations = useLocations(task?.warehouseId ?? null);
   const byCode = useLocationByCode(task?.warehouseId ?? null, scanned);
   const uoms = useUomCodes(true);
@@ -359,6 +369,8 @@ export const PutawayScreen = () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: putawayKeys.pendingLots(workerId.data ?? null) }),
       queryClient.invalidateQueries({ queryKey: putawayKeys.tasks(workerId.data ?? null) }),
+      /* 진척(적치 완료 / 자재 관리 LOT)이 하나 늘었다. */
+      queryClient.invalidateQueries({ queryKey: putawayKeys.inboundLots }),
     ]);
   };
 
@@ -719,9 +731,7 @@ export const PutawayScreen = () => {
             {lookup?.kind !== 'many' &&
             tasks.data !== undefined &&
             pendingLots.data !== undefined ? (
-              <p className="putaway__note">
-                {d.summary(String(pendingLots.data.total), String(tasks.data.length))}
-              </p>
+              <p className="putaway__note">{d.summary(String(pendingLots.data.total))}</p>
             ) : (
               <span />
             )}
@@ -749,44 +759,7 @@ export const PutawayScreen = () => {
               {pendingLots.data === undefined || pendingLots.data.items.length === 0 ? null : (
                 <>
                   <h2>{d.lotsLegend}</h2>
-                  <ul className="putaway__groups">
-                    {groupPendingLots(pendingLots.data.items).map((group) => (
-                      <li key={group.key} className="putaway__group">
-                        <p className="putaway__group-head">
-                          <strong>{group.itemCode}</strong>
-                          <span>{group.itemName}</span>
-                          <Chip>{String(group.lots.length)}</Chip>
-                        </p>
-                        <p className="putaway__note">{group.source}</p>
-                        <ul className="putaway__lots">
-                          {group.lots.map((each) => (
-                            <li key={each.lotId}>
-                              <button
-                                type="button"
-                                className="putaway__lot"
-                                onClick={() => void lookUpLot(each.lotNo)}
-                              >
-                                {/*
-                                 * LOT 번호는 한 줄을 다 쓰고, 「불량」 칩 · 수량은 그 아래 줄에 선다 — 긴 번호(`…|…|…`)가
-                                 * 375px 에서 칩에 가려졌다(실제 앱 확인 2026-11-18).
-                                 */}
-                                <span className="putaway__lot-main">
-                                  <span className="putaway__scanned">{each.lotNo}</span>
-                                  <span className="putaway__lot-meta">
-                                    {each.lotStatusCode === 'DEFECTIVE' ? (
-                                      <Chip status="error">{d.defective}</Chip>
-                                    ) : null}
-                                    <span className="putaway__lot-qty">{`${String(each.qty)} ${each.uomCode}`}</span>
-                                  </span>
-                                </span>
-                                <Icon name="chevron_right" size={24} className="putaway__chevron" />
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      </li>
-                    ))}
-                  </ul>
+                  <PendingLotTable groups={pendingGroups} detailOf={inboundLotOf} />
                 </>
               )}
               {tasks.isSuccess &&

@@ -117,15 +117,17 @@ export const putaway: Translated<typeof ko.putaway> = {
   noWorker: 'Hãy xác nhận mã nhân viên trước',
   historyLink: 'Lịch sử cất hàng',
   direct: {
-    summary: (lots: string, tasks: string) => `${lots} LOT chờ cất, ${tasks} lệnh cất hàng`,
+    summary: (lots: string) => `${lots} LOT chờ cất`,
     lotsLegend: 'LOT chờ cất',
     lotsLoading: 'Đang tải LOT chờ cất',
     lotsLoadFailed: 'Không xác nhận được LOT chờ cất. Hãy kiểm tra kết nối.',
     tasksLegend: 'Lệnh cất hàng',
     none: 'Không có LOT chờ cất hay lệnh cất hàng nào',
     noInboundLot: 'Không có LOT nhập (luồng cũ)',
-    groupSource: (inboundLotNo: string, supplier: string) =>
-      supplier === '' ? inboundLotNo : `${inboundLotNo}, ${supplier}`,
+    columns: { no: 'No', item: 'Mặt hàng', qty: 'Số lượng', progress: 'Tiến độ cất' },
+    progress: (done: number, total: number) => `${String(done)}/${String(total)}`,
+    progressLabel: (done: number, total: number) =>
+      `Đã cất ${String(done)} trên ${String(total)} LOT quản lý vật tư`,
     defective: 'Lỗi',
     normal: 'Bình thường',
     lotScanPrompt: 'Quét nhãn LOT vật tư để mở LOT đó',

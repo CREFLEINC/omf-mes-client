@@ -1,4 +1,5 @@
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import type { InboundLotDetail } from '@omf-mes/api-client';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useCallback } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -16,6 +17,32 @@ export const putawayKeys = {
   lotNo: (lotId: number | null) => ['putaway-lot-no', lotId] as const,
   /** 피처 009 — 적치 대기 LOT(지시 없음). */
   pendingLots: (workerId: number | null) => ['putaway-pending-lots', workerId] as const,
+  /** 적치 대기 표의 진척을 읽는 입하 LOT 상세. 적치한 뒤 통째로 다시 읽는다. */
+  inboundLots: ['putaway-inbound-lot'] as const,
+  inboundLot: (inboundLotId: number) => ['putaway-inbound-lot', inboundLotId] as const,
+};
+
+/**
+ * 적치 대기 표 줄마다 입하 LOT 상세 — 적치 완료 / 자재 관리 LOT 진척을 센다(사용자 지시 2026-11-23). 적치 대기 목록은
+ * 아직 적치하지 않은 LOT 만 싣기 때문에 이미 적치한 수는 입하 LOT 에서 읽는다.
+ */
+export const useInboundLotDetails = (
+  ids: readonly number[],
+): ((inboundLotId: number) => InboundLotDetail | undefined) => {
+  const { client } = useApiClient();
+  const results = useQueries({
+    queries: ids.map((inboundLotId) => ({
+      queryKey: putawayKeys.inboundLot(inboundLotId),
+      queryFn: () =>
+        runRequest(() =>
+          client.GET('/logistics/inbound-lots/{inboundLotId}', {
+            params: { path: { inboundLotId } },
+          }),
+        ),
+    })),
+  });
+
+  return (inboundLotId) => results[ids.indexOf(inboundLotId)]?.data;
 };
 
 /**
