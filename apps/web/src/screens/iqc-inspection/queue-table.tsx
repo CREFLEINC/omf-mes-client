@@ -1,6 +1,6 @@
-import { Chip, Table, type Column } from '@crefle/web-ui';
+import { Chip, Table, type Column, type SortState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { formatQty } from '../../patterns/package-qty';
@@ -438,6 +438,20 @@ const columnsOf = (
       ]),
 ];
 
+/*
+ * 입하 LOT · 상태 · 종합 판정은 칸 가운데(omf-all-around#351 · 사용자 지시 2026-11-23) — 품질 표 공통 「칸 값 왼쪽」(`cells-start`)
+ * 위에 이 세 칸만 표식을 달아 가운데로 돌린다. 열 순서를 사용자가 바꾸므로 몇 번째 칸인지가 아니라 표식으로 가른다.
+ */
+const CENTERED_KEYS = new Set(['lotId', 'statusCode', 'overallJudgment']);
+const centered = (column: Column<InspectionQueueRow>): Column<InspectionQueueRow> => {
+  const { render } = column;
+  if (!CENTERED_KEYS.has(column.key) || render === undefined) return column;
+  return {
+    ...column,
+    render: (row, index) => <span className="iqc-queue-center">{render(row, index)}</span>,
+  };
+};
+
 export const QueueTable = ({
   rows,
   itemNames,
@@ -450,6 +464,25 @@ export const QueueTable = ({
   empty,
   scrollX = false,
 }: QueueTableProps) => {
+  /*
+   * 목록은 의뢰 일시 오름차순으로 온다 — 처음부터 ▲ 로 보이고, 누를 때마다 오름 ↔ 내림만 오간다(omf-all-around#351 ·
+   * 사용자 지시 2026-11-23). 표 기본은 「정렬 없음」을 거치는데, 그 상태가 오름차순과 같아 눌러도 안 바뀌는 것처럼 보였다.
+   */
+  const [sort, setSort] = useState<SortState>({ key: 'requestedAt', direction: 'ascending' });
+  const changeSort = (next: SortState | null) =>
+    setSort(
+      next ?? {
+        key: sort.key,
+        direction: sort.direction === 'ascending' ? 'descending' : 'ascending',
+      },
+    );
+  /* 제어 정렬이면 표가 줄을 다시 세우지 않는다 — 받은 줄을 의뢰 일시로 세운다(같은 일시는 받은 순서 그대로). */
+  const sortedRows = useMemo(() => {
+    const byTime = [...rows].sort((a, b) =>
+      a.requestedAt < b.requestedAt ? -1 : a.requestedAt > b.requestedAt ? 1 : 0,
+    );
+    return sort.direction === 'ascending' ? byTime : byTime.reverse();
+  }, [rows, sort.direction]);
   /* 입하 LOT 줄(005)이 하나라도 있으면 그 칸들과 건수를 더한다 — 이전 데이터 줄만 있으면 지금 그대로다. */
   const hasInbound = rows.some((row) => row.inbound !== null);
   /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다(#185) — 순서를 먼저 정하고 그 위에 폭 손잡이를 단다. */
@@ -465,7 +498,7 @@ export const QueueTable = ({
       skipWorkerNo,
       skipAlsoInvalidate,
       hasInbound,
-    ),
+    ).map(centered),
   );
   const resizable = useColumnWidths('omf-mes:iqc-inspection:columns:queue', ordered, {
     /* 좌우 배치(가로 스크롤)에서는 열이 그 데이터의 가장 긴 폭까지만 넓어진다(사용자 지시 2026-10-26). */
@@ -498,8 +531,10 @@ export const QueueTable = ({
           caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
           density="compact"
           columns={fit.columns}
-          rows={rows}
+          rows={sortedRows}
           getRowId={(row) => String(row.inspectionRequestId)}
+          sort={sort}
+          onSortChange={changeSort}
           empty={empty}
         />
       </div>

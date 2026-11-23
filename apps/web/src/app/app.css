@@ -32030,6 +32030,27 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   text-align: left;
 }
 
+/* IQC 목록의 입하 LOT · 상태 · 종합 판정은 가운데(omf-all-around#351) — 위 왼쪽 규칙보다 무겁게 표식 칸만 돌린다. */
+.iqc-inspection-queue-rows.inspection-queue-table.cells-start
+  table
+  tr:not([class*="_emptyCell"])
+  > td:nth-child(n):nth-child(n):nth-child(n):has(> .iqc-queue-center) {
+  text-align: center;
+}
+
+.iqc-queue-center {
+  display: contents;
+}
+
+.inspection-queue-table.cells-start .iqc-queue-center .iqc-inbound-queue-two {
+  align-items: center;
+}
+
+.inspection-queue-table.cells-start .iqc-queue-center .iqc-inspection-lot,
+.inspection-queue-table.cells-start .iqc-queue-center .iqc-inspection-lot-cell {
+  justify-content: center;
+}
+
 .inspection-queue-table.cells-start .iqc-inspection-lot-cell,
 .inspection-queue-table.cells-start .iqc-inspection-lot:has(> .iqc-inspection-lot-tail),
 .inspection-queue-table.cells-start .iqc-inspection-queue-item,
