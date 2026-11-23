@@ -52,9 +52,12 @@ describe('PopMaterialLotLabelScreen — 공급사·품목(왼쪽)', () => {
     expect(first).not.toHaveTextContent('입하 대기');
     expect(first).toHaveTextContent('합성 공급사 가');
     expect(first).toHaveTextContent(t.pairs.defaultPackaged('봉지 10 × 100 = 1,000 EA'));
-    expect(first).toHaveTextContent(
-      t.pairs.withUnprinted(t.pairs.defaultPackaged('봉지 10 × 100 = 1,000 EA'), 2),
-    );
+    expect(first).toHaveTextContent(t.pairs.unprinted(2));
+    /* 첫 줄은 공급사명(코드 없이)과 라벨 미출력 수, 둘째 줄이 품목이다(사용자 지시 2026-11-23). */
+    const [supplierRow, itemRow] = Array.from((first as HTMLElement).children);
+    expect(supplierRow).toHaveTextContent(`합성 공급사 가${t.pairs.unprinted(2)}`);
+    expect(itemRow).toHaveTextContent('SYN-ITEM-01');
+    expect(first).not.toHaveTextContent('SYN-P-01');
     /* 기본 정보가 없으면 「기본 정보 없음」을 적지 않는다(사용자 지시 2026-11-23). */
     expect(second).not.toHaveTextContent('기본 정보 없음');
 
@@ -147,6 +150,18 @@ describe('PopMaterialLotLabelScreen — 오른쪽 표', () => {
     /* 발행 대기 표는 모두 입하 대기라 LOT 상태 칸이 없다(사용자 지시 2026-11-23). */
     expect(within(unprinted).queryByText(t.lotState.waiting)).toBeNull();
     expect(unprinted).toHaveTextContent(t.table.unprinted);
+    /* 품목은 코드 · 이름 두 칸(사용자 지시 2026-11-23). */
+    expect(
+      screen.getByRole('columnheader', { name: t.table.columns.itemCode }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: t.table.columns.itemName }),
+    ).toBeInTheDocument();
+    const unprintedCells = within(unprinted)
+      .getAllByRole('cell')
+      .map((cell) => cell.textContent);
+    expect(unprintedCells).toContain('SYN-ITEM-01');
+    expect(unprintedCells).toContain('합성 품목 가');
     expect(screen.queryByRole('checkbox', { name: /\|0003 /u })).toBeNull();
 
     await user.click(screen.getByRole('tab', { name: t.tabs.reprint }));
@@ -168,12 +183,7 @@ describe('PopMaterialLotLabelScreen — 오른쪽 표', () => {
 
     expect(
       await screen.findByText(
-        t.work.meta(
-          '합성 공급사 가',
-          'SYN-P-01',
-          'EA',
-          t.pairs.defaultPackaged('봉지 10 × 100 = 1,000 EA'),
-        ),
+        t.work.meta('합성 공급사 가', 'EA', t.pairs.defaultPackaged('봉지 10 × 100 = 1,000 EA')),
       ),
     ).toBeInTheDocument();
   });

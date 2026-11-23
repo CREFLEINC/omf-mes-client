@@ -609,7 +609,6 @@ export const PopMaterialLotLabelScreen = () => {
             <span className="mll-head-sub">
               {t.work.meta(
                 current.supplierName,
-                current.supplierCode,
                 current.uomCode,
                 defaultLineOf(defaultsMap.get(currentKey ?? '')),
               )}

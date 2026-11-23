@@ -35,7 +35,7 @@ export interface SupplierListProps {
  * 왼쪽 **공급사·품목** 목록(005 · screens/P-01-01.md · #295 시안).
  *
  * ⭐ 항목 전체가 누르는 자리다(규범 C-1).
- * ⭐ 항목마다 공급사가 늘 보이고, 기본 포장 · 라벨 미출력은 있을 때만 한 줄 더 붙는다. 넘치면 화면이 쪽으로 나눈다(구획 안 스크롤 없음).
+ * ⭐ 항목마다 공급사명 · 품목이 늘 보이고, 라벨 미출력은 공급사명 줄 오른쪽에, 기본 포장은 있을 때만 한 줄 더 붙는다. 넘치면 화면이 쪽으로 나눈다(구획 안 스크롤 없음).
  */
 export const SupplierList = ({
   groups,
@@ -49,15 +49,6 @@ export const SupplierList = ({
     {groups.map((group) => {
       const key = pairKeyOf(group.supplierId, group.itemId);
       const defaultLine = defaultLineOf(defaults.get(key));
-      const unprinted = group.unprintedCount > 0 ? group.unprintedCount : null;
-      const thirdLine =
-        defaultLine === null
-          ? unprinted === null
-            ? null
-            : t.unprinted(unprinted)
-          : unprinted === null
-            ? defaultLine
-            : t.withUnprinted(defaultLine, unprinted);
 
       return (
         <li key={key}>
@@ -70,18 +61,20 @@ export const SupplierList = ({
               onSelect(key);
             }}
           >
-            {/* 「입하 대기 N」 칩은 걷었다(사용자 지시 2026-11-23). */}
+            {/* 첫 줄은 공급사명(코드 없이) · 오른쪽 끝에 라벨 미출력 수, 둘째 줄은 품목(사용자 지시 2026-11-23).
+                「입하 대기 N」 칩은 걷었다. */}
+            <span className="pu-item-sub mll-pair-supplier">
+              <span>{group.supplierName}</span>
+              {group.unprintedCount > 0 && (
+                <span className="mll-pair-unprinted">{t.unprinted(group.unprintedCount)}</span>
+              )}
+            </span>
             <span className="pu-item-top">
               <span className="mll-pair-name">{`${group.itemCode} ${group.itemName}`}</span>
             </span>
-            <span className="pu-item-sub">
-              <span>
-                {group.supplierName} <b>{group.supplierCode}</b>
-              </span>
-            </span>
-            {thirdLine !== null && (
+            {defaultLine !== null && (
               <span className="pu-item-sub">
-                <span>{thirdLine}</span>
+                <span>{defaultLine}</span>
               </span>
             )}
           </button>

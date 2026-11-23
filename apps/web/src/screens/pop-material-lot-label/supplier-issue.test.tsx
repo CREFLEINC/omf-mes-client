@@ -339,8 +339,6 @@ describe('기본 정보 한 줄', () => {
     expect(first).not.toHaveTextContent('기본 정보 없음');
     expect(first).not.toHaveTextContent('기본 ');
     expect(first).toHaveTextContent(t.pairs.unprinted(2));
-    expect(
-      await screen.findByText(t.work.meta('합성 공급사 가', 'SYN-P-01', 'EA', null)),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(t.work.meta('합성 공급사 가', 'EA', null))).toBeInTheDocument();
   });
 });

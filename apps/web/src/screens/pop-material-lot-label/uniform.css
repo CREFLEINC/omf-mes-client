@@ -67,6 +67,17 @@
   white-space: nowrap;
 }
 
+/* 공급사명 줄 — 라벨 미출력 수는 같은 줄 오른쪽 끝(줄바꿈 없이, 공급사명이 먼저 말줄임). */
+.mll-pairs .mll-pair-supplier {
+  flex-wrap: nowrap;
+}
+
+.mll-pairs .mll-pair-supplier > .mll-pair-unprinted {
+  flex: none;
+  margin-left: auto;
+  color: var(--pu-text-2);
+}
+
 /* ── 오른쪽: 머리 아래 한 줄 + 안내 + 발행 단위 + 표 + 쪽 넘김 ── */
 .mll-right > .pu-card-body {
   display: flex;
@@ -640,5 +651,10 @@
     width: 72px;
     white-space: normal;
     line-height: 15px;
+  }
+
+  /* 재발행 표는 칸이 열 개라 1024 에서는 품목명 칸을 접는다 — LOT 번호가 먼저다. 품목코드 칸 title 에 이름이 있다. */
+  .mll-table.is-reprint .pu-table .mll-itemcol {
+    display: none;
   }
 }
