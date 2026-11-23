@@ -145,7 +145,7 @@ export const popMaterialLotLabel = {
     /** 이미 출력한 LOT 을 골랐다 — 첫 발행은 미출력만 찍는다. */
     printedNote: (count: number) =>
       `이미 출력한 ${count}장은 「재발행」 탭에서 사유를 선택해 재인쇄하세요`,
-    selectAllWaiting: (count: number) => `입하 대기 전체 선택 (${count}건)`,
+    selectAll: '전체 선택',
     selectAllReprint: (count: number) => `전체 선택 (${count}건)`,
     voidIdle: '폐기',
     void: (count: number) => `입하 대기 ${count}개 폐기`,

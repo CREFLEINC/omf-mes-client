@@ -249,7 +249,7 @@ describe('PopMaterialLotLabelScreen — 고르기와 작업 줄', () => {
     renderLabelScreen();
 
     await waitFor(() => expect(waitingRows()).toHaveLength(2));
-    await user.click(screen.getByRole('button', { name: t.bar.selectAllWaiting(2) }));
+    await user.click(screen.getByRole('button', { name: t.bar.selectAll }));
 
     expect(waitingRows().filter((row) => row.getAttribute('aria-checked') === 'true')).toHaveLength(
       2,

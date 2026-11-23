@@ -760,7 +760,7 @@ export const PopMaterialLotLabelScreen = () => {
               disabled={isFrozen || waitingCount === 0}
               onClick={selectAllWaiting}
             >
-              {t.bar.selectAllWaiting(waitingCount)}
+              {t.bar.selectAll}
             </PuButton>
           )}
         </div>

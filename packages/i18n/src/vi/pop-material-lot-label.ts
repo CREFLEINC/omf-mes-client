@@ -122,7 +122,7 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     label: 'Thao tác',
     printedNote: (count: number) =>
       `${count} nhãn đã in thì hãy chọn lý do ở thẻ 「Phát hành lại」 rồi in lại`,
-    selectAllWaiting: (count: number) => `Chọn tất cả LOT chờ nhập (${count})`,
+    selectAll: 'Chọn tất cả',
     selectAllReprint: (count: number) => `Chọn tất cả (${count})`,
     voidIdle: 'Hủy',
     void: (count: number) => `Hủy ${count} LOT chờ nhập`,

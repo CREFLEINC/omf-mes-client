@@ -318,7 +318,7 @@ describe('US1-7 입하 대기 LOT 폐기', () => {
     await waitFor(() =>
       expect(screen.getAllByRole('checkbox', { name: /SYN-ITEM-01\|/u })).toHaveLength(2),
     );
-    await user.click(screen.getByRole('button', { name: t.bar.selectAllWaiting(2) }));
+    await user.click(screen.getByRole('button', { name: t.bar.selectAll }));
     await user.click(screen.getByRole('button', { name: t.bar.void(2) }));
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', {
