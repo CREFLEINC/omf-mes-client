@@ -1,4 +1,4 @@
-import { AlertBanner, useToast } from '@crefle/web-ui';
+import { AlertBanner, Tabs, useToast } from '@crefle/web-ui';
 import type {
   InboundLot,
   InboundLotClosed,
@@ -20,9 +20,10 @@ import { currentPlantId } from '../../patterns/plant';
 import { toApiError } from '../../patterns/request';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { Words } from '../../patterns/words';
 import {
   formatQty,
-  inboundTail,
+  fullWhen,
   isStateLocked,
   isVersionConflict,
   lotTail,
@@ -43,9 +44,31 @@ import {
 } from './queries';
 import { CloseSheet } from './close-sheet';
 import { DoneTable, OpenTable } from './close-tables';
+import '../../patterns/item-sheet.css';
 import './screen.css';
 
 const t = messages.inboundClose;
+
+/**
+ * 마감 취소 · 막힘 창의 이름표 칸 — 무엇을 취소하는지 이름표를 붙여 적는다(사용자 지시 2026-11-23 「명시적으로 항목
+ * 타이틀」, 가운데 점으로 잇지 않는다). 품목 시트와 같은 모양이다.
+ */
+const LotFacts = ({ lot }: { lot: InboundLot }) => (
+  <dl className="sheet-facts">
+    <dt>{t.sheet.fields.itemCode}</dt>
+    <dd className="sheet-facts__code">{lot.itemCode}</dd>
+    <dt>{t.sheet.fields.itemName}</dt>
+    <dd>
+      <Words text={lot.itemName} />
+    </dd>
+    <dt>{t.sheet.fields.supplier}</dt>
+    <dd>{lot.supplierName}</dd>
+    <dt>{t.sheet.fields.qty}</dt>
+    <dd>{t.sheet.summary(lot.lotCount, formatQty(lot.receivedQty, lot.uomCode))}</dd>
+    <dt>{t.sheet.fields.closedAt}</dt>
+    <dd>{fullWhen(lot.receivedClosedAt)}</dd>
+  </dl>
+);
 
 /** 자재 관리 LOT 수의 합 — [전체 마감]의 이름 · 확인 창. */
 const lotsOf = (lots: readonly InboundLot[]): number =>
@@ -75,11 +98,13 @@ type Dialog =
  *
  * ```
  * ←  입하 마감
- * ┌ 입하 중            [전체 마감] ┐ ← closable=true — No · 스캔 시각 · 품목 · LOT 수 · 수량, 줄을 누르면 상세
- * ┌ 입하 완료                      ┐ ← reopenable=true — No · 마감 시각 · 품목 · 개수 · [마감 취소]
+ * [ 입하 중 | 입하 완료 ]                 ← 탭
+ * 입하 중:                    [전체 마감]   ← closable=true — No · 스캔 시각 · 품목 · LOT 수 · 수량, 줄을 누르면 상세
+ * 입하 완료:                                ← reopenable=true — No · 마감 시각 · 품목 · 개수 · 수량 · [취소]
  * ```
  *
- * ⭐ 두 구획은 흰 카드 + 회색 머리 띠로 가른다 — 건수 · 「마감 대상」 · 「마감 취소 가능」은 적지 않는다(사용자 지시 2026-11-23).
+ * ⭐ 입하 중 · 입하 완료는 탭으로 가른다 — 한 화면에 이으면 입하 중이 많을 때 입하 완료가 밑에 깔린다(사용자 지시
+ *    2026-11-23). 건수 · 「마감 대상」 · 「마감 취소 가능」은 적지 않는다.
  *
  * ⭐ 온라인에서만 쓴다 — 마감 · 해제 · 마감 취소 모두 바로 부르는 API 다(아웃박스에 담지 않는다).
  * ⭐ 부분 입하 사유는 묻지 않는다. P/O 매칭 결과는 작업자에게 보이지 않는다(설계 변경 1 · 3).
@@ -96,6 +121,7 @@ export const InboundCloseScreen = () => {
   const plantId = currentPlantId();
 
   const [view, setView] = useState<View>({ kind: 'list' });
+  const [tab, setTab] = useState<'open' | 'done'>('open');
   const [dialog, setDialog] = useState<Dialog>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   /* 같은 틱에 두 번 누른 것을 막는다 — 상태는 다음 그리기에서야 바뀐다. */
@@ -212,7 +238,10 @@ export const InboundCloseScreen = () => {
         await reopenReceipt(client, target.inboundLotId, target.versionNo, workerNo);
         setDialog(null);
         await refresh();
-        toast.show({ variant: 'success', description: t.reopenDialog.done(target.inboundLotNo) });
+        toast.show({
+          variant: 'success',
+          description: t.reopenDialog.done(target.itemCode, target.itemName),
+        });
       },
       (error) => {
         const codes = reopenBlockersOf(error);
@@ -364,6 +393,48 @@ export const InboundCloseScreen = () => {
   const done = reopenable.data ?? [];
   const loadError = closable.error ?? reopenable.error;
 
+  const openPanel = (
+    <section className="inbound-close__section" aria-label={t.open.heading}>
+      {receiving.length === 0 ? null : (
+        <div className="inbound-close__tools">
+          <Button
+            variant="outlined"
+            size="sm"
+            className="inbound-close__close-all"
+            aria-label={t.open.closeAllLabel(receiving.length, lotsOf(receiving))}
+            disabled={lockReason !== null || saving}
+            onClick={() => {
+              setActionError(null);
+              setDialog({ kind: 'closeAll' });
+            }}
+          >
+            {t.open.closeAll}
+          </Button>
+        </div>
+      )}
+      {closable.data !== undefined && receiving.length === 0 ? (
+        <p className="inbound-close__dim">{t.open.empty}</p>
+      ) : null}
+      {receiving.length === 0 ? null : <OpenTable lots={receiving} onOpen={openDetail} />}
+    </section>
+  );
+
+  const donePanel = (
+    <section className="inbound-close__section" aria-label={t.done.heading}>
+      {reopenable.data !== undefined && done.length === 0 ? (
+        <p className="inbound-close__dim">{t.done.empty}</p>
+      ) : null}
+      {done.length === 0 ? null : (
+        <DoneTable
+          lots={done}
+          currentId={justClosedId}
+          locked={lockReason !== null}
+          onReopen={askReopen}
+        />
+      )}
+    </section>
+  );
+
   return (
     <div className="inbound-close">
       {notices}
@@ -375,48 +446,17 @@ export const InboundCloseScreen = () => {
         </FailureBanner>
       )}
 
-      <section className="inbound-close__section" aria-label={t.open.heading}>
-        <div className="inbound-close__band">
-          <h2 className="inbound-close__heading">{t.open.heading}</h2>
-          {receiving.length === 0 ? null : (
-            <Button
-              variant="outlined"
-              size="sm"
-              className="inbound-close__close-all"
-              aria-label={t.open.closeAllLabel(receiving.length, lotsOf(receiving))}
-              disabled={lockReason !== null || saving}
-              onClick={() => {
-                setActionError(null);
-                setDialog({ kind: 'closeAll' });
-              }}
-            >
-              {t.open.closeAll}
-            </Button>
-          )}
-        </div>
-        {closable.data !== undefined && receiving.length === 0 ? (
-          <p className="inbound-close__dim">{t.open.empty}</p>
-        ) : null}
-        {receiving.length === 0 ? null : <OpenTable lots={receiving} onOpen={openDetail} />}
-      </section>
-
-      <section className="inbound-close__section" aria-label={t.done.heading}>
-        <div className="inbound-close__band">
-          <h2 className="inbound-close__heading">{t.done.heading}</h2>
-        </div>
-        {reopenable.data !== undefined && done.length === 0 ? (
-          <p className="inbound-close__dim">{t.done.empty}</p>
-        ) : null}
-        {done.length === 0 ? null : (
-          <DoneTable
-            lots={done}
-            currentId={justClosedId}
-            blockerOf={(lot) => (openBlockerOf(lot, receiving) === null ? null : t.done.blocked)}
-            locked={lockReason !== null}
-            onReopen={askReopen}
-          />
-        )}
-      </section>
+      <Tabs
+        aria-label={t.tabsLabel}
+        value={tab}
+        onChange={(value) => {
+          setTab(value === 'done' ? 'done' : 'open');
+        }}
+        items={[
+          { value: 'open', label: t.open.heading, content: tab === 'open' ? openPanel : null },
+          { value: 'done', label: t.done.heading, content: tab === 'done' ? donePanel : null },
+        ]}
+      />
 
       {sheetPart}
 
@@ -452,12 +492,7 @@ export const InboundCloseScreen = () => {
             confirmReopen(dialog.target);
           }}
         >
-          <p className="inbound-close__mono">
-            {t.card.lotItem(
-              dialog.target.inboundLotNo,
-              `${dialog.target.itemCode} ${dialog.target.itemName}`,
-            )}
-          </p>
+          <LotFacts lot={dialog.target} />
           <AlertBanner
             variant={reopenReasonOf(dialog.target) === 'IQC_SKIPPED' ? 'warning' : 'info'}
             title={t.reopenDialog.effect[reopenReasonOf(dialog.target)](
@@ -471,7 +506,7 @@ export const InboundCloseScreen = () => {
   );
 };
 
-/** 마감 취소 막힘 창 — 같은 공급사·품목 입하 중이면 그것을 열 단추를 둔다. */
+/** 마감 취소 막힘 창 — 무엇이 막혔는지 이름표 칸과 까닭. 같은 공급사·품목 입하 중이면 그것을 열 단추를 둔다. */
 const BlockedDialog = ({
   dialog,
   onClose,
@@ -483,11 +518,7 @@ const BlockedDialog = ({
 }) => {
   const { target, codes, openLot } = dialog;
   const lines = codes.flatMap((code) => {
-    if (code === 'OPEN_RECEIPT_EXISTS') {
-      return openLot === null
-        ? []
-        : [t.blockedDialog.openReceipt(target.supplierName, target.itemCode, openLot.inboundLotNo)];
-    }
+    if (code === 'OPEN_RECEIPT_EXISTS') return [t.blockedDialog.openReceipt];
 
     const text = t.blockedDialog.codes[code];
 
@@ -500,9 +531,7 @@ const BlockedDialog = ({
       title={t.blockedDialog.title}
       cancelLabel={t.blockedDialog.close}
       proceedLabel={
-        openLot?.inboundLotId == null
-          ? t.blockedDialog.close
-          : t.card.open(inboundTail(openLot.inboundLotNo))
+        openLot?.inboundLotId == null ? t.blockedDialog.close : t.blockedDialog.openReceiving
       }
       onCancel={onClose}
       onProceed={() => {
@@ -510,9 +539,7 @@ const BlockedDialog = ({
         else onOpen(openLot.inboundLotId);
       }}
     >
-      <p className="inbound-close__mono">
-        {t.card.lotItem(target.inboundLotNo, `${target.itemCode} ${target.itemName}`)}
-      </p>
+      <LotFacts lot={target} />
       {(lines.length === 0 ? [t.blockedDialog.other] : lines).map((line) => (
         <AlertBanner key={line} variant="warning" title={line} />
       ))}

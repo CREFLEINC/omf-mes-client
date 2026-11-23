@@ -125,6 +125,22 @@
   width: 32px;
 }
 
+/* 스캔 시각 — 행 번호 바로 뒤, 날짜 위 · 시각 아래 두 줄(사용자 지시 2026-11-23). 입하 마감 표와 같은 모양. */
+.receive-tally__col-when {
+  width: 44px;
+}
+
+.receive-tally__table td.receive-tally__when {
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+
+.receive-tally__when > span {
+  display: block;
+}
+
 .receive-tally__col-qty {
   width: 84px;
 }

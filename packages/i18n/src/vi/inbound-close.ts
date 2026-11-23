@@ -3,6 +3,7 @@ import type { Translated } from './translated';
 
 export const inboundClose: Translated<typeof ko.inboundClose> = {
   title: 'Chốt nhập hàng',
+  tabsLabel: 'Danh sách chốt nhập hàng',
   open: {
     heading: 'Đang nhập hàng',
     empty: 'Không có LOT nhập hàng nào cần chốt',
@@ -13,8 +14,8 @@ export const inboundClose: Translated<typeof ko.inboundClose> = {
   done: {
     heading: 'Đã nhập hàng xong',
     empty: 'Không có mục nào hủy chốt được',
-    reopen: 'Hủy chốt',
-    blocked: 'Cùng mặt hàng đang nhập hàng nên không thể hủy chốt',
+    reopen: 'Hủy',
+    reopenLabel: (itemCode: string, itemName: string) => `Hủy chốt ${itemCode} ${itemName}`,
   },
   closeAllDialog: {
     title: 'Chốt tất cả mặt hàng đang nhập hàng?',
@@ -29,12 +30,14 @@ export const inboundClose: Translated<typeof ko.inboundClose> = {
   },
   sheet: {
     title: 'Hàng nhập',
-    fields: { itemCode: 'Mã hàng', itemName: 'Tên hàng', supplier: 'Nhà cung cấp', qty: 'Số lượng' },
+    fields: {
+      itemCode: 'Mã hàng',
+      itemName: 'Tên hàng',
+      supplier: 'Nhà cung cấp',
+      qty: 'Số lượng',
+      closedAt: 'Giờ chốt',
+    },
     summary: (count: number, total: string) => `${String(count)} cái ${total}`,
-  },
-  card: {
-    open: (no: string) => `Mở ${no}`,
-    lotItem: (no: string, item: string) => `${no} · ${item}`,
   },
   detail: {
     lotCount: 'Số LOT',
@@ -74,7 +77,7 @@ export const inboundClose: Translated<typeof ko.inboundClose> = {
     title: 'Hủy chốt?',
     effect: {
       NO_IQC_RESULT: (iqcNo: string) =>
-        `Yêu cầu IQC (${iqcNo}) bị hủy và LOT nhập hàng quay về 「Đang nhập hàng」. LOT quản lý vật tư vẫn giữ chờ kiểm tra · tạm giữ.`,
+        `Yêu cầu IQC (${iqcNo}) bị hủy và LOT nhập hàng quay về 「Đang nhập hàng」. LOT quản lý vật tư vẫn giữ trạng thái chờ kiểm tra hoặc tạm giữ.`,
       INSPECTION_NOT_REQUIRED: () =>
         'Bản ghi IQC 「Bỏ qua kiểm tra」 bị hủy và LOT nhập hàng quay về 「Đang nhập hàng」. LOT quản lý vật tư vẫn Bình thường (mặt hàng không cần kiểm tra).',
       IQC_SKIPPED: (iqcNo: string) =>
@@ -82,12 +85,12 @@ export const inboundClose: Translated<typeof ko.inboundClose> = {
     },
     cancel: 'Đóng',
     proceed: 'Hủy chốt',
-    done: (no: string) => `${no}: Đã hủy chốt — về Đang nhập hàng`,
+    done: (itemCode: string, itemName: string) => `Đã hủy chốt ${itemCode} ${itemName}`,
   },
   blockedDialog: {
     title: 'Không thể hủy chốt',
-    openReceipt: (supplier: string, item: string, no: string) =>
-      `Cùng nhà cung cấp · mặt hàng (${supplier} · ${item}): ${no} đang nhập hàng. Hãy chốt LOT đó trước.`,
+    openReceipt: 'Cùng mặt hàng đang nhập hàng nên không thể hủy chốt.',
+    openReceiving: 'Mở mục đang nhập hàng',
     codes: {
       IQC_RECORDED: 'Trong lúc đó đã có kết quả IQC.',
       GOODS_RECEIVED: 'Trong lúc đó LOT quản lý vật tư đã nhập kho.',

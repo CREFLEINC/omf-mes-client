@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef } from 'react';
 
 import { Button } from '../../patterns/button';
+import { DateTimeLines } from '../../patterns/date-time-lines';
 
 import { qtyNumber } from './lot-format';
 import { isReceiving, type TallyGroup } from './receipt';
@@ -98,6 +99,7 @@ export const ReceiptTally = ({
           <table ref={tableRef} className="receive-tally__table">
             <colgroup>
               <col className="receive-tally__col-no" />
+              <col className="receive-tally__col-when" />
               <col />
               <col className="receive-tally__col-count" />
               <col className="receive-tally__col-qty" />
@@ -107,6 +109,7 @@ export const ReceiptTally = ({
                 <th scope="col" className="receive-tally__no">
                   {t.columns.no}
                 </th>
+                <th scope="col">{t.columns.scannedAt}</th>
                 <th scope="col">{t.columns.item}</th>
                 <th scope="col" className="receive-tally__num">
                   {t.columns.count}
@@ -119,7 +122,7 @@ export const ReceiptTally = ({
             {groups.map((group) => (
               <tbody key={group.supplierId}>
                 <tr className="receive-tally__group">
-                  <th scope="colgroup" colSpan={4}>
+                  <th scope="colgroup" colSpan={5}>
                     {group.supplierName}
                   </th>
                 </tr>
@@ -134,6 +137,10 @@ export const ReceiptTally = ({
                       data-closed={closed}
                     >
                       <td className="receive-tally__no">{no}</td>
+                      {/* 스캔 시각 — 그 품목을 처음 찍은 때(사용자 지시 2026-11-23, 행 번호 바로 뒤). */}
+                      <td className="receive-tally__when">
+                        <DateTimeLines iso={detail.firstRegisteredAt} />
+                      </td>
                       <td className="receive-tally__item">
                         <button
                           type="button"

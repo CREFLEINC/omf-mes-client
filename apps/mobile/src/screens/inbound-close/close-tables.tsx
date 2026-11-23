@@ -1,11 +1,11 @@
-import { Icon } from '@crefle/web-ui';
 import type { InboundLot } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { Button } from '../../patterns/button';
+import { DateTimeLines } from '../../patterns/date-time-lines';
 import { FitName } from '../../patterns/fit-name';
-import { formatQty, shortWhen } from './close';
+import { formatQty, qtyNumber } from './close';
 
 const t = messages.inboundClose;
 
@@ -64,18 +64,6 @@ const Rows = ({ lots, cells, columns, currentId = null, alwaysGroup = false }: R
   );
 };
 
-/** 시각 칸 — 날짜 위 · 시각 아래 두 줄(「11-23」 / 「10:05」), 좁은 칸에서 아무 데나 꺾이지 않게. */
-const When = ({ iso }: { iso: string | null }) => {
-  const [date = '', time = ''] = shortWhen(iso).split(' ');
-
-  return (
-    <>
-      <span>{date}</span>
-      <span>{time}</span>
-    </>
-  );
-};
-
 /**
  * 입하 중 표 — 공급사 머리 줄 › No · 스캔 시각 · 품목코드 / 품목명(줄여서라도 전체) · LOT 수 · 수량(사용자 지시 2026-11-20 ·
  * 2026-11-23). 스캔 시각은 그 품목을 처음 찍은 때다. 「마감 취소됨」 칩은 두지 않는다(사용자 지시 2026-11-23). 품목 칸을
@@ -104,7 +92,7 @@ export const OpenTable = ({
         cells={(lot) => (
           <>
             <td className="close-table__when">
-              <When iso={lot.firstRegisteredAt} />
+              <DateTimeLines iso={lot.firstRegisteredAt} />
             </td>
             <td className="close-table__item">
               <button
@@ -135,77 +123,72 @@ export const OpenTable = ({
 );
 
 /**
- * 입하 완료 표 — 공급사 머리 줄 › No · 마감 시각 · 품목코드 / 품목명 · 개수 · 작은 외곽선 [마감 취소](사용자 지시 2026-11-23).
- * 까닭(「IQC 결과 0건」 등) · IQC 요청 번호 · 입하 LOT 번호는 줄에 두지 않는다 — 마감 취소 확인 창이 까닭을 말한다.
- * 방금 마감한 줄은 초록(결과 화면 대신).
+ * 입하 완료 표 — 공급사 머리 줄 › No · 마감 시각 · 품목코드 / 품목명 · 개수 · 수량 · 작은 외곽선 [취소](사용자 지시
+ * 2026-11-23). 까닭(「IQC 결과 0건」 등) · IQC 요청 번호 · 입하 LOT 번호 · 막힘은 줄에 두지 않는다 — [취소]를 누르면 뜨는
+ * 창(마감 취소 확인 · 막힘)이 말한다. 방금 마감한 줄은 초록(결과 화면 대신).
  */
 export const DoneTable = ({
   lots,
   currentId,
-  blockerOf,
   locked,
   onReopen,
 }: {
   lots: readonly InboundLot[];
   currentId: number | null;
-  blockerOf: (lot: InboundLot) => string | null;
   locked: boolean;
   onReopen: (lot: InboundLot) => void;
 }) => (
   <div className="close-table__box">
-    <table className="close-table">
+    <table className="close-table close-table--done">
       <colgroup>
         <col className="close-table__col-no" />
         <col className="close-table__col-when" />
         <col />
         <col className="close-table__col-count" />
+        <col className="close-table__col-done-qty" />
         <col className="close-table__col-action" />
       </colgroup>
       <Rows
         lots={lots}
-        columns={5}
+        columns={6}
         currentId={currentId}
         alwaysGroup
-        cells={(lot) => {
-          const blocker = blockerOf(lot);
-
-          return (
-            <>
-              <td className="close-table__when">
-                <When iso={lot.receivedClosedAt} />
-              </td>
-              <td className="close-table__item close-table__item--static">
-                <span className="close-table__code">{lot.itemCode}</span>
-                <FitName
-                  className="close-table__name"
-                  text={lot.itemName}
-                  min={7}
-                  lines={1}
-                  whole
-                />
-                {blocker === null ? null : (
-                  <span className="close-table__blocked">
-                    <Icon name="lock" size={16} />
-                    {blocker}
-                  </span>
-                )}
-              </td>
-              <td className="close-table__num close-table__count">{lot.lotCount}</td>
-              <td className="close-table__action">
-                <Button
-                  variant="outlined"
-                  size="sm"
-                  disabled={locked}
-                  onClick={() => {
-                    onReopen(lot);
-                  }}
-                >
-                  {t.done.reopen}
-                </Button>
-              </td>
-            </>
-          );
-        }}
+        cells={(lot) => (
+          <>
+            <td className="close-table__when">
+              <DateTimeLines iso={lot.receivedClosedAt} />
+            </td>
+            <td className="close-table__item close-table__item--static">
+              {/* 칸이 좁다 — 긴 품목코드는 꺾지 않고 글자를 줄여 한 줄에(줄여도 넘치면 그때 꺾는다). */}
+              <FitName
+                className="close-table__code close-table__code--fit"
+                text={lot.itemCode}
+                min={10}
+                lines={1}
+                whole
+              />
+              <FitName className="close-table__name" text={lot.itemName} min={7} lines={1} whole />
+            </td>
+            <td className="close-table__num close-table__count">{lot.lotCount}</td>
+            <td className="close-table__num close-table__qty">
+              {qtyNumber(lot.receivedQty)}
+              <small>{lot.uomCode}</small>
+            </td>
+            <td className="close-table__action">
+              <Button
+                variant="outlined"
+                size="sm"
+                aria-label={t.done.reopenLabel(lot.itemCode, lot.itemName)}
+                disabled={locked}
+                onClick={() => {
+                  onReopen(lot);
+                }}
+              >
+                {t.done.reopen}
+              </Button>
+            </td>
+          </>
+        )}
       />
     </table>
   </div>

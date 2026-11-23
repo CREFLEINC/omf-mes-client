@@ -10,8 +10,13 @@
 export const inboundClose = {
   title: '입하 마감',
   /**
-   * 목록 위 구획 — 입하 중. 제목은 카드 머리 띠로 가르고 건수는 적지 않는다(사용자 지시 2026-11-23, 「(마감 대상) N」을 걷음).
-   * 띠 오른쪽 [전체 마감]이 입하 중인 품목을 모두 마감한다. 「마감 취소됨」 칩은 두지 않는다.
+   * 입하 중 · 입하 완료 탭 — 한 화면에 이어 두면 입하 중이 많을 때 입하 완료가 밑에 깔린다(사용자 지시 2026-11-23).
+   * 탭 이름은 아래 두 구획의 heading 이다.
+   */
+  tabsLabel: '입하 마감 목록',
+  /**
+   * 입하 중 탭. 건수는 적지 않는다(사용자 지시 2026-11-23, 「(마감 대상) N」을 걷음). 표 위 오른쪽 [전체 마감]이 입하 중인
+   * 품목을 모두 마감한다. 「마감 취소됨」 칩은 두지 않는다.
    */
   open: {
     heading: '입하 중',
@@ -20,18 +25,15 @@ export const inboundClose = {
     closeAllLabel: (items: number, lots: number) => `입하 중 ${items}품목 ${lots}개 전체 마감`,
   },
   /**
-   * 목록 아래 구획 — 입하 완료. 줄은 품목 · 개수 · 마감 시각 · [마감 취소]만(사용자 지시 2026-11-23). 「마감 취소 가능 N」 ·
-   * 까닭 칩(「IQC 결과 0건」 등) · IQC 요청 번호 · 입하 LOT 번호는 줄에 두지 않는다 — 까닭은 마감 취소 확인 창이 말한다.
+   * 입하 완료 탭. 줄은 마감 시각 · 품목 · 개수 · 수량 · [취소]만(사용자 지시 2026-11-23). 「마감 취소 가능 N」 · 까닭 칩
+   * (「IQC 결과 0건」 등) · IQC 요청 번호 · 입하 LOT 번호 · 막힘 줄은 줄에 두지 않는다 — [취소]를 누르면 뜨는 창이 말한다.
    */
   done: {
     heading: '입하 완료',
     empty: '마감 취소할 수 있는 건이 없습니다',
-    reopen: '마감 취소',
-    /**
-     * 이 줄은 [마감 취소]가 막혔다는 뜻이다 — 같은 공급사·품목을 그 뒤에 다시 받아 「입하 중」이 새로 생겼고, 한
-     * 공급사·품목에 입하 중은 하나뿐이라 마감을 취소하면 둘이 된다. 번호는 적지 않는다(막힘 창에 [열기]가 있다).
-     */
-    blocked: '같은 품목을 입하 중이라 마감 취소할 수 없습니다',
+    /** 줄 끝 단추 — 「마감 취소」를 줄였다(사용자 지시 2026-11-23). 낭독 이름은 무엇을 취소하는지까지. */
+    reopen: '취소',
+    reopenLabel: (itemCode: string, itemName: string) => `${itemCode} ${itemName} 마감 취소`,
   },
   /** [전체 마감] 확인 창 · 결과. */
   closeAllDialog: {
@@ -53,12 +55,15 @@ export const inboundClose = {
   /** 줄을 누르면 아래에서 올라오는 시트 — 이름표 칸 · 자재 관리 LOT · [마감]. */
   sheet: {
     title: '입하 품목',
-    fields: { itemCode: '품목코드', itemName: '품목명', supplier: '공급사', qty: '수량' },
+    /** 이름표 칸 — 품목 시트와 마감 취소 · 막힘 창이 같이 쓴다(창의 「명시적인 타이틀」, 사용자 지시 2026-11-23). */
+    fields: {
+      itemCode: '품목코드',
+      itemName: '품목명',
+      supplier: '공급사',
+      qty: '수량',
+      closedAt: '마감 시각',
+    },
     summary: (count: number, total: string) => `${String(count)}개 ${total}`,
-  },
-  card: {
-    open: (no: string) => `${no} 열기`,
-    lotItem: (no: string, item: string) => `${no} · ${item}`, // ui-check-ignore: C-13 설계 확정 창 표기(mockups/M0103-After)
   },
   /** 상세(입하 중 카드를 누르면). */
   detail: {
@@ -102,7 +107,7 @@ export const inboundClose = {
     title: '마감을 취소할까요?',
     effect: {
       NO_IQC_RESULT: (iqcNo: string) =>
-        `IQC 요청(${iqcNo})이 취소되고 입하 LOT가 「입하 중」으로 돌아갑니다. 자재 관리 LOT는 검사 대기·보류 그대로입니다.`, // ui-check-ignore: C-13 설계 확정 효과 문구(screens/M-01-03.md)
+        `IQC 요청(${iqcNo})이 취소되고 입하 LOT가 「입하 중」으로 돌아갑니다. 자재 관리 LOT는 검사 대기나 보류 상태 그대로입니다.`,
       INSPECTION_NOT_REQUIRED: () =>
         'IQC 「검사 생략」 기록이 취소되고 입하 LOT가 「입하 중」으로 돌아갑니다. 자재 관리 LOT는 정상 그대로입니다(검사 불필요 품목).',
       IQC_SKIPPED: (iqcNo: string) =>
@@ -110,13 +115,18 @@ export const inboundClose = {
     },
     cancel: '닫기',
     proceed: '마감 취소',
-    done: (no: string) => `${no} 마감을 취소했습니다 — 입하 중으로`,
+    done: (itemCode: string, itemName: string) => `${itemCode} ${itemName} 마감 취소`,
   },
   /** 마감 취소 막힘 창(409). 코드마다 「여기에 보이지 않는 것」과 같은 말. */
   blockedDialog: {
     title: '마감을 취소할 수 없습니다',
-    openReceipt: (supplier: string, item: string, no: string) =>
-      `같은 공급사·품목(${supplier} · ${item})의 ${no} 이 입하 중입니다. 먼저 마감하세요.`, // ui-check-ignore: C-13 설계 확정 막힘 문구(screens/M-01-03.md)
+    /**
+     * 같은 공급사·품목을 그 뒤에 다시 받아 「입하 중」이 새로 생겼다 — 한 공급사·품목에 입하 중은 하나뿐이라 마감을 취소하면
+     * 둘이 된다. 줄에 미리 적던 것을 [취소]를 누른 때 이 창에서만 말한다(사용자 지시 2026-11-23).
+     */
+    openReceipt: '같은 품목을 입하 중이라 마감 취소할 수 없습니다.',
+    /** 그 입하 중 건의 품목 시트를 연다. */
+    openReceiving: '입하 중 열기',
     codes: {
       IQC_RECORDED: '그사이 IQC 결과가 기록됐습니다.',
       GOODS_RECEIVED: '그사이 자재 관리 LOT가 입고됐습니다.',

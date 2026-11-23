@@ -18,51 +18,20 @@
   margin: 0;
 }
 
-/*
- * 구획은 흰 카드 하나 — 테두리 + 회색 머리 띠(제목) 아래 표. 입하 등록의 입하 LOT 카드 · 표 상자와 같은 톤이다(사용자
- * 지시 2026-11-23 「기존 화면의 톤앤매너」). 입하 중 · 입하 완료는 카드 사이 간격과 머리 띠로 갈린다.
- */
+/* 탭 하나의 내용 — 위 오른쪽 도구 줄([전체 마감]) · 흰 카드 표. 입하 중 · 입하 완료는 탭으로 갈린다(사용자 지시 2026-11-23). */
 .inbound-close__section {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-}
-
-/* 카드 안의 표 상자는 테두리를 겹쳐 그리지 않는다. */
-.inbound-close__section .close-table__box {
-  border: 0;
-  border-radius: 0;
-}
-
-.inbound-close__section > .inbound-close__dim {
-  padding: var(--space-3, 12px);
-}
-
-.inbound-close__heading {
-  margin: 0;
-  font: var(--type-title-sm);
-}
-
-/* 카드 머리 띠 — 회색 바탕 · 아래 선, 제목 왼쪽 · [전체 마감] 오른쪽 끝. */
-.inbound-close__band {
-  display: flex;
-  align-items: center;
   gap: var(--space-2, 8px);
-  min-height: 44px;
-  padding: var(--space-1, 4px) var(--space-2, 8px) var(--space-1, 4px) var(--space-3, 12px);
-  border-bottom: 1px solid var(--outline-variant);
-  background: var(--surface-container-high);
-  color: var(--on-surface);
+  padding-top: var(--space-3, 12px);
 }
 
-.inbound-close__close-all {
-  margin-inline-start: auto;
+.inbound-close__tools {
+  display: flex;
+  justify-content: flex-end;
 }
 
-/* 회색 띠 위에서도 단추로 보이게 흰 바탕 · 주 색 테두리 — 입하 등록 표 머리의 [마감]과 같은 모양. */
+/* 흰 바탕 · 주 색 테두리 — 입하 등록 표 머리의 [마감]과 같은 모양. */
 .inbound-close__close-all.pda-button--outlined.pda-button--outlined:not(:disabled) {
   background: var(--surface);
   color: var(--primary);
@@ -222,8 +191,43 @@
   width: 32px;
 }
 
+/*
+ * 입하 완료 표는 칸이 여섯이다(No · 마감 시각 · 품목 · 개수 · 수량 · [취소]) — 360dp 에서 품목 칸이 100px 남짓 남도록
+ * 다른 칸을 조인다. 수량은 「1,250,000 EA」까지 한 줄에 들도록 글자를 한 단계 줄이고 단위는 작게.
+ */
 .close-table__col-action {
-  width: 96px;
+  width: 56px;
+}
+
+.close-table__col-done-qty {
+  width: 80px;
+}
+
+.close-table--done .close-table__col-no {
+  width: 24px;
+}
+
+.close-table--done .close-table__col-when {
+  width: 40px;
+}
+
+.close-table--done .close-table__col-count {
+  width: 26px;
+}
+
+.close-table--done td.close-table__qty {
+  font-size: 13px;
+}
+
+.close-table--done .close-table__action {
+  padding-inline-end: var(--space-1, 4px);
+}
+
+/* 한 줄 품목코드 — 넘치는지 재야 FitName 이 글자를 줄인다. */
+.close-table__item--static .close-table__code.close-table__code--fit {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .close-table__count {
@@ -271,14 +275,6 @@
 
 .close-table__when > span {
   display: block;
-}
-
-.close-table__blocked {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1, 4px);
-  color: var(--on-surface-variant);
-  font: var(--type-label-sm);
 }
 
 .close-table__action {

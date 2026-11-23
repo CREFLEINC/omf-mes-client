@@ -11,6 +11,7 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { runBackStep } from '../../patterns/back-step';
+import { plantShortDateTime } from '../../patterns/plant-time';
 import { signal } from '../../patterns/scan-feedback';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
@@ -493,6 +494,11 @@ describe('US2-1 스캔마다 바로 등록', () => {
     /* 입하 표 — 품목 줄 하나, 개수 2 · 수량 2,000, 방금 찍은 줄. */
     const row = rowOf('SYN-CAP');
     expect(row).toHaveAttribute('data-current', 'true');
+    /* 행 번호 바로 뒤 칸이 스캔 시각(처음 찍은 때) — 날짜 / 시각(사용자 지시 2026-11-23). */
+    expect(row.children[1]).toHaveClass('receive-tally__when');
+    expect(row.children[1]).toHaveTextContent(
+      plantShortDateTime('2026-11-11T01:00:00Z').replace(' ', ''),
+    );
     expect(within(row).getByText('2')).toBeInTheDocument();
     expect(row).toHaveTextContent('2,000EA');
     expect(signals()).toEqual(['confirm', 'confirm']);
@@ -733,7 +739,9 @@ describe('품목 시트', () => {
         .filter((th) => th.getAttribute('scope') === 'colgroup')
         .map((th) => th.textContent),
     ).toEqual(['합성 공급사 SYN01']);
-    expect(within(tally()).getByRole('columnheader', { name: t.tally.columns.no })).toBeInTheDocument();
+    expect(
+      within(tally()).getByRole('columnheader', { name: t.tally.columns.no }),
+    ).toBeInTheDocument();
   });
 
   it('시트가 열려 있어도 찍으면 등록되고 시트가 닫힌다', async () => {
@@ -783,9 +791,7 @@ describe('US2-2 입하 마감', () => {
     await user.click(within(dialog).getByRole('button', { name: t.closeDialog.confirm }));
 
     expect(await screen.findByText(t.closeDialog.toastOne('SYN-CAP', ITEM))).toBeInTheDocument();
-    await waitFor(() =>
-      expect(screen.queryByRole('button', { name: t.close.one(1) })).toBeNull(),
-    );
+    await waitFor(() => expect(screen.queryByRole('button', { name: t.close.one(1) })).toBeNull());
     expect(screen.queryByRole('button', { name: t.lots.unregister })).toBeNull();
     expect(screen.getByRole('button', { name: t.lots.editSupplierLot(A(1)) })).toBeDisabled();
     expect(screen.queryByText(/P\/O|IQC 요청 SYN/u)).toBeNull();
@@ -817,9 +823,7 @@ describe('US2-2 입하 마감', () => {
     expect(screen.queryByRole('button', { name: /모두 입하 마감/u })).toBeNull();
 
     await scan(A(2));
-    await waitFor(() =>
-      expect(tallyCodes()).toEqual(['1 SYN-CAP', '2 SYN-CAP', '3 SYN-RES']),
-    );
+    await waitFor(() => expect(tallyCodes()).toEqual(['1 SYN-CAP', '2 SYN-CAP', '3 SYN-RES']));
   });
 
   it('G2 L15 · US2-7 기본 생략 기준이 없는 검사 불필요 품목은 「IQC 기록이 생기지 않고」 — 「검사 생략」이라 하지 않는다', async () => {

@@ -1,11 +1,12 @@
 import type { InboundLot, InboundLotDetail } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, useState, type ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { runBackStep } from '../../patterns/back-step';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { shortWhen } from './close';
@@ -280,8 +281,12 @@ describe('US2-10 입하 중 목록 · 상세 · 해제 · 마감', () => {
     expect(screen.queryByText('SYN-IL-20261111-0003')).toBeNull();
     /* 공급사는 하나여도 머리 줄로 보인다(사용자 지시 2026-11-20). */
     expect(screen.getByText('합성 공급사 가')).toBeInTheDocument();
-    /* 제목은 띠 하나 — 건수 · 「마감 대상」은 적지 않는다(사용자 지시 2026-11-23). */
-    expect(screen.getByRole('heading', { name: t.open.heading })).toBeInTheDocument();
+    /* 입하 중 · 입하 완료는 탭 — 건수 · 「마감 대상」은 적지 않는다(사용자 지시 2026-11-23). */
+    expect(screen.getByRole('tab', { name: t.open.heading })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(screen.getByRole('tab', { name: t.done.heading })).toBeInTheDocument();
     expect(screen.queryByText(/마감 대상/u)).toBeNull();
     expect(sent.find((each) => each.search.get('closable') === 'true')?.search.get('plantId')).toBe(
       '8301',
@@ -464,19 +469,31 @@ describe('입하 중 전체 마감', () => {
   });
 });
 
+/** 입하 완료 탭으로 — 입하 중 · 입하 완료는 탭으로 갈린다(사용자 지시 2026-11-23). */
+const openDoneTab = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(await screen.findByRole('tab', { name: t.done.heading }));
+};
+
+/** 입하 완료 줄의 [취소] — 낭독 이름은 무엇을 마감 취소하는지까지. */
+const REOPEN = t.done.reopenLabel('SYN-ITEM-01', '합성 품목 가');
+
 describe('US2-12 입하 완료 목록', () => {
-  it('US2-12 「입하 완료」 줄은 품목 · 개수 · 마감 시각만 보이고, 확인 뒤 마감을 취소한다', async () => {
+  it('US2-12 「입하 완료」 탭 줄은 마감 시각 · 품목 · 개수 · 수량 · [취소]만 보이고, 확인 뒤 마감을 취소한다', async () => {
     const user = userEvent.setup();
     const { sent } = mount({
       closable: [],
       reopenable: [done(5, { closedAutomatically: true, supplierId: 8202 })],
     });
 
-    expect(await screen.findByRole('heading', { name: t.done.heading })).toBeInTheDocument();
-    /* 줄 — 품목 · 개수 · 마감 시각(날짜 / 시각). 공급사는 머리 줄(사용자 지시 2026-11-23). */
-    const row = (await screen.findByText('SYN-ITEM-01')).closest('tr') as HTMLElement;
+    await openDoneTab(user);
+    /* 줄 — 마감 시각(날짜 / 시각) · 품목 · 개수 · 수량. 공급사는 머리 줄(사용자 지시 2026-11-23). */
+    const row = (await screen.findByRole('button', { name: REOPEN })).closest('tr') as HTMLElement;
+    /* 품목코드는 줄이 하이픈에서 꺾이지 않게 붙임표(‑)로 적힌다. */
+    expect(row).toHaveTextContent(/SYN.ITEM.01/u);
     const [date = '', time = ''] = shortWhen('2026-11-10T17:00:00Z').split(' ');
     expect(row.querySelector('.close-table__count')).toHaveTextContent('2');
+    expect(row.querySelector('.close-table__qty')).toHaveTextContent('2,000EA');
+    expect(within(row).getByRole('button', { name: REOPEN })).toHaveTextContent(t.done.reopen);
     /* 행 번호 바로 뒤 칸이 마감 시각(사용자 지시 2026-11-23). */
     expect(row.children[1]).toHaveClass('close-table__when');
     expect(row.children[1]).toHaveTextContent(`${date}${time}`);
@@ -486,10 +503,14 @@ describe('US2-12 입하 완료 목록', () => {
     expect(row).not.toHaveTextContent('SYN-IQC-5');
     expect(row).not.toHaveTextContent('SYN-IL-');
     expect(screen.queryByText(/마감 취소 가능/u)).toBeNull();
-    expect(screen.getByText(t.open.empty)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: t.done.reopen }));
+    await user.click(screen.getByRole('button', { name: REOPEN }));
     const dialog = await screen.findByRole('dialog', { name: t.reopenDialog.title });
+    /* 무엇을 취소하는지 이름표 칸으로 — 가운데 점으로 잇지 않는다(사용자 지시 2026-11-23). */
+    expect(dialog).toHaveTextContent(`${t.sheet.fields.itemCode}SYN-ITEM-01`);
+    expect(dialog).toHaveTextContent(`${t.sheet.fields.supplier}합성 공급사 가`);
+    expect(dialog).toHaveTextContent(t.sheet.fields.closedAt);
+    expect(dialog.textContent).not.toContain('·');
     expect(dialog).toHaveTextContent(t.reopenDialog.effect.NO_IQC_RESULT('SYN-IQC-5'));
     await user.click(within(dialog).getByRole('button', { name: t.reopenDialog.proceed }));
 
@@ -500,7 +521,7 @@ describe('US2-12 입하 완료 목록', () => {
       versionNo: 3,
     });
     expect(
-      await screen.findByText(t.reopenDialog.done('SYN-IL-20261111-0005')),
+      await screen.findByText(t.reopenDialog.done('SYN-ITEM-01', '합성 품목 가')),
     ).toBeInTheDocument();
   });
 
@@ -511,7 +532,8 @@ describe('US2-12 입하 완료 목록', () => {
       reopenable: [done(6, { reopenReasonCode: 'IQC_SKIPPED' })],
     });
 
-    await user.click(await screen.findByRole('button', { name: t.done.reopen }));
+    await openDoneTab(user);
+    await user.click(await screen.findByRole('button', { name: REOPEN }));
     expect(await screen.findByRole('dialog')).toHaveTextContent(
       t.reopenDialog.effect.IQC_SKIPPED('SYN-IQC-6'),
     );
@@ -519,7 +541,7 @@ describe('US2-12 입하 완료 목록', () => {
 });
 
 describe('US2-13 같은 공급사·품목 입하 중이면 마감 취소가 막힌다', () => {
-  it('US2-13 카드에 미리 막힘을 보이고, 누르면 먼저 마감할 입하 LOT 번호와 [열기]를 준다', async () => {
+  it('US2-13 줄에는 막힘을 적지 않고, [취소]를 누르면 창에서 까닭과 [입하 중 열기]를 준다', async () => {
     const user = userEvent.setup();
     /* 서버가 「같은 공급사·품목 입하 중」 하나로만 막힌 건도 싣고 막힘 칸을 준다(G1). */
     const { sent } = mount({
@@ -534,16 +556,18 @@ describe('US2-13 같은 공급사·품목 입하 중이면 마감 취소가 막�
       ],
     });
 
-    expect(await screen.findByText(t.done.blocked)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: t.done.reopen }));
+    await openDoneTab(user);
+    await user.click(await screen.findByRole('button', { name: REOPEN }));
+    /* 줄에 미리 적던 막힘은 창에서만(사용자 지시 2026-11-23). */
+    expect(screen.queryByText(t.blockedDialog.openReceipt, { selector: 'td *' })).toBeNull();
 
     const dialog = await screen.findByRole('dialog', { name: t.blockedDialog.title });
-    expect(dialog).toHaveTextContent(
-      t.blockedDialog.openReceipt('합성 공급사 가', 'SYN-ITEM-01', 'SYN-IL-20261111-0003'),
-    );
+    expect(dialog).toHaveTextContent(t.blockedDialog.openReceipt);
+    expect(dialog).toHaveTextContent(`${t.sheet.fields.itemCode}SYN-ITEM-01`);
+    expect(dialog.textContent).not.toContain('·');
     expect(sent.some((each) => each.path.endsWith(':reopen-receipt'))).toBe(false);
 
-    await user.click(within(dialog).getByRole('button', { name: t.card.open('0003') }));
+    await user.click(within(dialog).getByRole('button', { name: t.blockedDialog.openReceiving }));
     expect(await screen.findByRole('dialog', { name: t.sheet.title })).toBeInTheDocument();
   });
 
@@ -560,7 +584,8 @@ describe('US2-13 같은 공급사·품목 입하 중이면 마감 취소가 막�
       },
     });
 
-    await user.click(await screen.findByRole('button', { name: t.done.reopen }));
+    await openDoneTab(user);
+    await user.click(await screen.findByRole('button', { name: REOPEN }));
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', {
         name: t.reopenDialog.proceed,
@@ -579,14 +604,19 @@ describe('US2-10 온라인에서만', () => {
     mount({ closable: [inboundLot(3)], reopenable: [done(5, { supplierId: 8202 })] });
 
     expect(await screen.findByText(t.offline)).toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: t.done.reopen })).toBeDisabled();
 
     await user.click(
-      screen.getByRole('button', { name: t.list.open('SYN-ITEM-01', '합성 품목 가') }),
+      await screen.findByRole('button', { name: t.list.open('SYN-ITEM-01', '합성 품목 가') }),
     );
     const unregisters = await screen.findAllByRole('button', { name: t.detail.unregister });
     for (const each of unregisters) expect(each).toBeDisabled();
     expect(screen.getByRole('button', { name: t.detail.close })).toBeDisabled();
+    act(() => {
+      runBackStep();
+    });
+
+    await openDoneTab(user);
+    expect(await screen.findByRole('button', { name: REOPEN })).toBeDisabled();
   });
 
   it('기기의 공장을 모르면 목록을 부르지 않는다', async () => {
@@ -603,13 +633,14 @@ describe('G1 입하 마감 목록', () => {
     const user = userEvent.setup();
     mount({ closable: [inboundLot(3)], reopenable: [done(2)] });
 
-    await user.click(await screen.findByRole('button', { name: t.done.reopen }));
+    await openDoneTab(user);
+    await user.click(await screen.findByRole('button', { name: REOPEN }));
 
     expect(await screen.findByRole('dialog', { name: t.reopenDialog.title })).toBeInTheDocument();
-    expect(screen.queryByText(t.done.blocked)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.blockedDialog.openReceipt)).not.toBeInTheDocument();
   });
 
-  it('G1 막는 입하 LOT 가 지금 목록에 없으면 막힘 창은 번호만 보이고 [열기]를 두지 않는다', async () => {
+  it('G1 막는 입하 LOT 가 지금 목록에 없으면 막힘 창에 [입하 중 열기]를 두지 않는다', async () => {
     const user = userEvent.setup();
     mount({
       closable: [],
@@ -623,12 +654,16 @@ describe('G1 입하 마감 목록', () => {
       ],
     });
 
-    expect(await screen.findByText(t.done.blocked)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: t.done.reopen }));
+    await openDoneTab(user);
+    await user.click(await screen.findByRole('button', { name: REOPEN }));
 
     const dialog = await screen.findByRole('dialog', { name: t.blockedDialog.title });
-    expect(dialog).toHaveTextContent('SYN-IL-20261111-0009');
-    expect(within(dialog).queryByRole('button', { name: t.card.open('0009') })).toBeNull();
+    expect(dialog).toHaveTextContent(t.blockedDialog.openReceipt);
+    /* 입하 LOT 번호는 창에도 적지 않는다(사용자 지시 2026-11-23). */
+    expect(dialog).not.toHaveTextContent('SYN-IL-20261111-0009');
+    expect(
+      within(dialog).queryByRole('button', { name: t.blockedDialog.openReceiving }),
+    ).toBeNull();
   });
 
   it('G1 화면을 나갔다 다시 들어오면 목록을 새로 읽는다 — 다른 기기에서 마감한 건이 「입하 중」에 남지 않는다', async () => {

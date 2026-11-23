@@ -45,7 +45,7 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     title: (date: string) => `Nhập hàng ${date}`,
     total: (count: number) => `Scan ${count} nhãn`,
     empty: 'Chưa đăng ký LOT quản lý vật tư nào',
-    columns: { no: 'No', item: 'Mặt hàng', count: 'SL', qty: 'Số lượng' },
+    columns: { no: 'No', scannedAt: 'Giờ quét', item: 'Mặt hàng', count: 'SL', qty: 'Số lượng' },
     closed: 'Đã chốt',
     open: (itemCode: string, itemName: string) => `Xem LOT ${itemCode} ${itemName}`,
     loadFailed: 'Có mặt hàng chưa tải được',

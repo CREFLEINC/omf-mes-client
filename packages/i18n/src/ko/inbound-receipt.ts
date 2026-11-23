@@ -66,7 +66,7 @@ export const inboundReceipt = {
     title: (date: string) => `${date} 입하`,
     total: (count: number) => `${count}건 Scan`, // ui-check-ignore: C-13 사용자 지시 표기 「N건 Scan」(2026-11-23)
     empty: '아직 등록한 자재 관리 LOT가 없습니다',
-    columns: { no: 'No', item: '품목', count: '개수', qty: '수량' },
+    columns: { no: 'No', scannedAt: '스캔 시각', item: '품목', count: '개수', qty: '수량' },
     closed: '마감됨',
     open: (itemCode: string, itemName: string) => `${itemCode} ${itemName} LOT 보기`,
     loadFailed: '불러오지 못한 품목이 있습니다',
