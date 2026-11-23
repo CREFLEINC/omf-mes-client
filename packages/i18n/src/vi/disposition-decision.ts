@@ -49,6 +49,8 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     historyQty: 'Số lượng xử lý',
     historyReason: 'Lý do đánh giá',
     item: 'Mặt hàng',
+    itemName: 'Tên mặt hàng',
+    itemCode: 'Mã mặt hàng',
     severityCode: 'Mức nghiêm trọng',
     statusCode: 'Trạng thái xử lý',
     sourceCode: 'Nguồn',

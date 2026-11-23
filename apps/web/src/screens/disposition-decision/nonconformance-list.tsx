@@ -23,6 +23,12 @@ const itemNameOf = (label: string): string => {
   return nameParts.length === 0 ? label : nameParts.join(ITEM_LABEL_SEPARATOR);
 };
 
+/** 품목 표시명 「코드 · 이름」에서 코드만(#352). 이름이 없는 표시명(모르는 품목 등)은 코드를 모르므로 「—」. */
+const itemCodeOf = (label: string): string => {
+  const [code, ...nameParts] = label.split(ITEM_LABEL_SEPARATOR);
+  return nameParts.length === 0 ? '—' : (code ?? '—');
+};
+
 export interface NonconformanceListProps {
   rows: NonconformanceRow[];
   /** 005 「원천」 칸 글(부적합 id → 글 · G2 L8). 없으면 칸을 두지 않는다. */
@@ -101,9 +107,16 @@ export const NonconformanceList = ({
       align: 'center',
       /* 품목 이름이 덜 잘리게(omf-all-around#275). */
       width: '260px',
-      header: t.fields.item,
-      /* 품목은 이름만 — 표시명 「코드 · 이름」의 이름 쪽(omf-all-around#286). 이름이 없으면 표시명 그대로. */
+      header: t.fields.itemName,
+      /* 품목명 · 품목코드 두 칸으로(#352 사용자 지시) — 표시명 「코드 · 이름」을 나눈다. 이름이 없으면 표시명 그대로. */
       render: (row) => itemNameOf(lookupDisplayLabel(items, row.itemId)),
+    },
+    {
+      key: 'itemCode',
+      align: 'center',
+      width: '140px',
+      header: t.fields.itemCode,
+      render: (row) => itemCodeOf(lookupDisplayLabel(items, row.itemId)),
     },
     {
       key: 'qty',

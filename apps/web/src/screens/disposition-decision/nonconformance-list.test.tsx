@@ -102,10 +102,17 @@ describe('NonconformanceList', () => {
     expect(screen.queryByText(/원천으로 거르는/)).toBeNull();
   });
 
-  it('품목은 이름만 보인다 — 코드는 상세에서(omf-all-around#286)', () => {
+  it('품목은 품목명 · 품목코드 두 칸으로 나눠 보인다(#352)', () => {
     renderList();
 
+    expect(
+      screen.getByRole('columnheader', { name: new RegExp(t.fields.itemName) }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: new RegExp(t.fields.itemCode) }),
+    ).toBeInTheDocument();
     expect(screen.getByText('합성 품목')).toBeInTheDocument();
+    expect(screen.getByText('SYNTH-ITEM-1')).toBeInTheDocument();
     expect(screen.queryByText('SYNTH-ITEM-1 · 합성 품목')).toBeNull();
   });
 
@@ -124,7 +131,12 @@ describe('NonconformanceList', () => {
   it('대상 LOT이 실려 오지 않은 행의 수량 칸을 비운다', () => {
     renderList();
 
-    expect(screen.getByText(t.values.unknownQty)).toBeInTheDocument();
+    /* 「—」는 수량 칸과, 이름을 못 찾은 품목의 품목코드 칸 두 곳(#352). */
+    const qtyIndex = screen
+      .getAllByRole('columnheader')
+      .findIndex((header) => header.textContent?.includes(t.detail.affectedQty));
+    const row = screen.getByText('NC-TEST-0042').closest('tr');
+    expect(row?.querySelectorAll('td')[qtyIndex]).toHaveTextContent(t.values.unknownQty);
   });
 
   it('접수일시 머리를 누르면 오름 · 내림차순으로 정렬한다(#352)', async () => {

@@ -44,6 +44,9 @@ export const dispositionDecision = {
     historyQty: '처분 수량',
     historyReason: '판정 사유',
     item: '품목',
+    /** 목록은 품목명 · 품목코드 두 칸(#352 사용자 지시). */
+    itemName: '품목명',
+    itemCode: '품목코드',
     severityCode: '심각도',
     statusCode: '처리 상태',
     sourceCode: '원천',
