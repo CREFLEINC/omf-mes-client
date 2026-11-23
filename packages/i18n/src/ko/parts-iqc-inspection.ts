@@ -64,10 +64,9 @@ export const partsIqcInspection = {
     title: 'IQC 수입검사',
     loading: '검사 정보를 불러오는 중입니다.',
     loadFailed: '검사 정보를 불러오지 못했습니다.',
-    noPlan:
-      '검사 기준이 없어 검사 항목 없이 종합 판정만 입력합니다. 판정 근거 자료는 파일 첨부로 남겨 주세요.',
+    noPlan: '적용된 검사 기준이 없습니다. 종합 판정만 입력하고, 판정 근거 자료는 첨부해 주세요.',
     planVersionNote:
-      '검사 기준을 바꾸면 새로 발행되는 IQC 검사 건부터 적용됩니다. 이미 발행된 건은 발행 때 기준으로 검사합니다.',
+      '변경한 검사 기준은 새로 발행되는 IQC 검사 건부터 적용됩니다. 이미 발행된 건에는 발행 당시의 기준이 적용됩니다.',
     setPlan: '검사기준 설정',
     confirmed: (judgment: string) => `이미 확정된 검사입니다 — 판정: ${judgment}`,
     workerMissing:

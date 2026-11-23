@@ -33370,9 +33370,10 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   letter-spacing: var(--type-body-lg-tracking);
 }
 
-.parts-iqc-plan-note > svg,
-.parts-iqc-plan-note > .material-symbols-outlined {
-  margin-top: 0.2em;
+/* 표식(16px)을 첫 줄(body-lg 줄 높이 24px) 가운데에 — 차이의 절반만큼 내린다. */
+.parts-iqc-plan-note > [aria-hidden="true"]:first-child {
+  flex: none;
+  margin-top: 4px;
 }
 
 .parts-iqc-plan-note-lines {
