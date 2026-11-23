@@ -11,9 +11,9 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
   },
   last: {
     ok: 'Đã đăng ký',
-    undo: 'Hủy',
+    undo: 'Hủy quét',
     dismiss: 'Đóng',
-    undoLabel: (lotNo: string) => `Hủy đăng ký ${lotNo}`,
+    undoLabel: (lotNo: string) => `Hủy quét ${lotNo}`,
     loading: 'Đang tải mặt hàng',
     autoClosed: 'Lô nhập của ngày trước đã tự động chốt',
     rejected: 'Không đăng ký',

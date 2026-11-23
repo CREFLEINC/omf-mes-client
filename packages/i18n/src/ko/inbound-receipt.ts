@@ -22,10 +22,11 @@ export const inboundReceipt = {
   /** 방금 찍은 라벨 칸 — 늘 하나다(다음 스캔이 덮는다). */
   last: {
     ok: '등록됨',
-    undo: '취소',
+    /** 방금 찍은 라벨의 등록을 되돌린다 — 「취소」만으로는 무엇을 취소하는지 몰랐다(사용자 지시 2026-11-23). */
+    undo: '스캔 취소',
     /** 칸 머리 오른쪽 ✕ — 칸을 내린다(사용자 지시 2026-11-23). 등록은 그대로다. */
     dismiss: '닫기',
-    undoLabel: (lotNo: string) => `${lotNo} 등록 취소`,
+    undoLabel: (lotNo: string) => `${lotNo} 스캔 취소`,
     loading: '품목을 불러오는 중입니다',
     autoClosed: '지난 날짜의 입하는 자동 마감됐습니다',
     rejected: '등록 안 됨',

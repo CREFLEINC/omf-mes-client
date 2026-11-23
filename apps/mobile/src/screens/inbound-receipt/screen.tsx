@@ -48,10 +48,10 @@ import {
   tallyOf,
   tallyRowOfLot,
   toReceiveDraft,
-  type CardState,
   type ScanLine,
 } from './receipt';
 import { ReceiptTally } from './receipt-tally';
+import { useTodayCards } from './today-cards';
 import { SupplierLotSheet } from './supplier-lot-sheet';
 import './screen.css';
 
@@ -102,7 +102,8 @@ export const InboundReceiptScreen = () => {
   const { worker } = useWorkerSession();
   const workerNo = worker?.workerNo ?? null;
 
-  const [cards, setCards] = useState<CardState[]>([]);
+  /* 오늘 이 기기가 표에 올린 입하 LOT — 화면을 떠났다 오거나 앱을 다시 켜도 남는다(사용자 지시 2026-11-23). */
+  const [cards, setCards] = useTodayCards();
   /** 품목 화면으로 연 입하 LOT — null 이면 스캔 화면. 앱바 ← 가 닫는다. */
   const [viewId, setViewId] = useState<number | null>(null);
   /** 바로 앞 등록이 들어간 입하 LOT — 다르면 경고음(품목이 바뀌었다). */

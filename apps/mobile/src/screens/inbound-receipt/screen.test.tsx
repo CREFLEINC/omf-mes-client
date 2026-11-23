@@ -8,7 +8,7 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { runBackStep } from '../../patterns/back-step';
 import { signal } from '../../patterns/scan-feedback';
@@ -16,6 +16,7 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { businessDateOf } from './receipt';
 import { tallyDateText } from './receipt-tally';
+import { TODAY_CARDS_KEY } from './today-cards';
 import { InboundReceiptScreen } from './screen';
 
 /**
@@ -427,6 +428,11 @@ const openItem = async (user: ReturnType<typeof userEvent.setup>, itemCode: stri
 
 const signals = (): string[] => vi.mocked(signal).mock.calls.map(([kind]) => kind);
 
+/* 오늘 표는 기기 보관소에 남는다 — 비우지 않으면 앞 시험이 찍은 줄이 다음 시험의 표에 다시 나타난다. */
+beforeEach(() => {
+  localStorage.clear();
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
   vi.mocked(signal).mockClear();
@@ -554,6 +560,41 @@ describe('US2-1 스캔마다 바로 등록', () => {
     expect(within(tally()).getByRole('heading', { level: 2 })).toHaveTextContent(
       `${tallyTitle()} ${t.tally.total(1)}`,
     );
+  });
+
+  /* 화면을 떠났다 오거나 앱을 다시 켜도 그날 찍은 표가 남는다(사용자 지시 2026-11-23). */
+  it('오늘 찍은 표는 화면을 다시 열어도 같은 차례로 남고, 서버에 다시 보내지 않는다', async () => {
+    const server = createServer();
+    const first = mount(server);
+
+    await scanDone(A(1));
+    await scanDone(B(1));
+    await waitFor(() => expect(tallyCodes()).toEqual(['1 SYN-CAP', '2 SYN-RES']));
+    first.unmount();
+
+    mount(server);
+
+    await waitFor(() => expect(tallyCodes()).toEqual(['1 SYN-CAP', '2 SYN-RES']));
+    expect(tally()).toHaveTextContent(t.tally.total(2));
+    expect(receives(server.sent)).toHaveLength(2);
+  });
+
+  it('다른 날 남긴 표는 버린다', async () => {
+    localStorage.setItem(
+      `CapacitorStorage.${TODAY_CARDS_KEY}`,
+      JSON.stringify({
+        businessDate: '2000-01-01',
+        lots: [{ inboundLotId: 1, inboundLotNo: 'SYN-IL-OLD' }],
+      }),
+    );
+    const server = createServer();
+    mount(server);
+
+    expect(await screen.findByText(t.tally.empty)).toBeInTheDocument();
+    /* 지난 날의 입하 LOT 은 읽지도 않는다. */
+    expect(
+      server.sent.filter((entry) => entry.path.startsWith('/logistics/inbound-lots/')),
+    ).toEqual([]);
   });
 
   it('US2-5 폐기 라벨은 빨간 거부 — 까닭은 서버 reasonCode 로 가른다(G1)', async () => {
