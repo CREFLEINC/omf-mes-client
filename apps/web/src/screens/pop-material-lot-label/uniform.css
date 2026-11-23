@@ -138,6 +138,12 @@
   flex: 0 1 auto;
 }
 
+/* 품목코드 · 기본 단위는 다 보이고, 품목명 · 공급사가 먼저 줄어든다. */
+.mll-head-field:first-child,
+.mll-head-field:nth-child(4) {
+  flex: none;
+}
+
 .mll-head-field > small {
   flex: none;
   font-size: 12px;
@@ -384,20 +390,6 @@
   color: var(--pu-warn);
 }
 
-.mll-preview > span {
-  grid-column: 1;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.mll-preview-qty {
-  font-size: 18px;
-}
-
-.mll-preview-lot {
-  font-size: 11px;
-}
-
 .mll-preview-reissue {
   color: #b3261e;
   font-weight: 700;
@@ -408,10 +400,6 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-}
-
-.mll-preview-code {
-  font-size: 18px;
 }
 
 /* 1024 단말: 발행 단위 줄은 두 줄로, 재발행 표는 LOT 번호 칸을 줄여 품목 칸 자리를 남긴다. */
@@ -707,11 +695,11 @@
 
 /* 세 칸(사용자 지시 2026-11-23): 공급사 · 고른 공급사의 품목 · 상세. 왼쪽을 접으면 56. */
 .pu-cols.list.mll-cols3 {
-  grid-template-columns: 280px 700px minmax(0, 1fr);
+  grid-template-columns: 280px 640px minmax(0, 1fr);
 }
 
 .pu-cols.list.mll-cols3:has(> .is-folded:first-child) {
-  grid-template-columns: 56px 700px minmax(0, 1fr);
+  grid-template-columns: 56px 640px minmax(0, 1fr);
 }
 
 /* 가운데 품목 표 — 바깥 칸이 남는 높이를 갖고 쪽 줄 수를 잰다. 품목명 칸이 남는 폭을 갖는다. */
@@ -761,4 +749,20 @@
   .pu-cols.list.mll-cols3:has(> .is-folded:first-child) {
     grid-template-columns: 56px 260px minmax(0, 1fr);
   }
+}
+
+/* 라벨 미리보기 — 80 × 30 mm 비율 그대로, 창 폭에 맞춰 키운다(사용자 지시 2026-11-23). */
+.mll-preview {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+}
+
+.mll-label-svg {
+  display: block;
+  width: min(100%, 720px);
+  height: auto;
+  aspect-ratio: 80 / 30;
+  font-family: var(--pu-font, sans-serif);
 }

@@ -251,11 +251,6 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
   preview: {
     title: 'Xem trước nhãn',
     reprintTitle: 'Xem trước in lại',
-    kind: 'LOT quản lý vật tư',
-    item: 'Mặt hàng',
-    qty: 'Số lượng',
-    package: 'Đóng gói',
-    supplier: 'Nhà cung cấp',
     reissue: (seq: number) => `In lại lượt ${seq}`,
     prev: '◀ Trước',
     next: 'Sau ▶',

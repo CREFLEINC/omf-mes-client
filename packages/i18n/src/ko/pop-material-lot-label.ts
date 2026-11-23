@@ -298,11 +298,6 @@ export const popMaterialLotLabel = {
   preview: {
     title: '라벨 미리보기',
     reprintTitle: '재인쇄 미리 보기',
-    kind: '자재 관리 LOT',
-    item: '품목',
-    qty: '수량',
-    package: '포장',
-    supplier: '공급사',
     reissue: (seq: number) => `재인쇄 ${seq}회`,
     prev: '◀ 이전',
     next: '다음 ▶',
