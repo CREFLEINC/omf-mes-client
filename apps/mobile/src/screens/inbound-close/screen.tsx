@@ -10,7 +10,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
-import { keepHyphens } from '../../patterns/keep-hyphens';
 import { useBackStep } from '../../patterns/back-step';
 import { Button } from '../../patterns/button';
 import { ConfirmDialog } from '../../patterns/confirm-dialog';
@@ -32,7 +31,6 @@ import {
   reopenBlockersOf,
   type OpenBlocker,
   reopenReasonOf,
-  shortWhen,
 } from './close';
 import {
   closeReceipt,
@@ -49,14 +47,9 @@ import './screen.css';
 
 const t = messages.inboundClose;
 
-/** 마감 줄 — 「날짜 바뀜 자동 마감 11-11 00:00 · IQC-…」. */
-const closedText = (lot: InboundLot): string => {
-  /* 날짜와 시각 사이에서 줄이 꺾이지 않게(「11-11」 / 「00:00」). */
-  const when = keepHyphens(shortWhen(lot.receivedClosedAt)).replace(' ', '\u00a0');
-  const closed = lot.closedAutomatically ? t.done.closedAuto(when) : t.done.closed(when);
-
-  return lot.iqc?.requestNo == null ? closed : t.card.withIqc(closed, lot.iqc.requestNo);
-};
+/** 자재 관리 LOT 수의 합 — [전체 마감]의 이름 · 확인 창. */
+const lotsOf = (lots: readonly InboundLot[]): number =>
+  lots.reduce((sum, lot) => sum + lot.lotCount, 0);
 
 /** 목록 위에 「입하 품목」 시트를 띄웠나. 마감 결과 화면은 없앴다 — 알림 한 줄과 표의 초록 줄로 대신한다(사용자 결정 2026-11-20). */
 type View = { kind: 'list' } | { kind: 'detail'; inboundLotId: number };
@@ -72,6 +65,7 @@ const closedHeadline = (closed: InboundLotClosed): string =>
 type Dialog =
   | { kind: 'unregister'; lot: InboundLotMaterialLot }
   | { kind: 'close' }
+  | { kind: 'closeAll' }
   | { kind: 'reopen'; target: InboundLot }
   | { kind: 'blocked'; target: InboundLot; codes: string[]; openLot: OpenBlocker | null }
   | null;
@@ -81,9 +75,11 @@ type Dialog =
  *
  * ```
  * ←  입하 마감
- * 입하 중 (마감 대상) N          ← closable=true — 누르면 상세(LOT · 해제 · 마감)
- * 입하 완료 · 마감 취소 가능 N    ← reopenable=true — [마감 취소]
+ * ┌ 입하 중            [전체 마감] ┐ ← closable=true — No · 스캔 시각 · 품목 · LOT 수 · 수량, 줄을 누르면 상세
+ * ┌ 입하 완료                      ┐ ← reopenable=true — No · 마감 시각 · 품목 · 개수 · [마감 취소]
  * ```
+ *
+ * ⭐ 두 구획은 흰 카드 + 회색 머리 띠로 가른다 — 건수 · 「마감 대상」 · 「마감 취소 가능」은 적지 않는다(사용자 지시 2026-11-23).
  *
  * ⭐ 온라인에서만 쓴다 — 마감 · 해제 · 마감 취소 모두 바로 부르는 API 다(아웃박스에 담지 않는다).
  * ⭐ 부분 입하 사유는 묻지 않는다. P/O 매칭 결과는 작업자에게 보이지 않는다(설계 변경 1 · 3).
@@ -193,6 +189,20 @@ export const InboundCloseScreen = () => {
       setView({ kind: 'list' });
       setJustClosedId(closed.inboundLotId);
       toast.show({ variant: 'success', description: closedHeadline(closed) });
+    });
+  };
+
+  /** [전체 마감] — 입하 중인 품목을 차례로. 하나라도 막히면 거기서 멈추고 까닭을 보인다(마감된 것은 목록이 보인다). */
+  const confirmCloseAll = (targets: readonly InboundLot[]): void => {
+    void run(async (workerNo) => {
+      for (const lot of targets) {
+        await closeReceipt(client, lot.inboundLotId, lot.versionNo, workerNo);
+      }
+
+      setDialog(null);
+      await refresh();
+      setJustClosedId(null);
+      toast.show({ variant: 'success', description: t.closeAllDialog.done(targets.length) });
     });
   };
 
@@ -365,16 +375,35 @@ export const InboundCloseScreen = () => {
         </FailureBanner>
       )}
 
-      <section className="inbound-close__section" aria-label={t.open.heading(receiving.length)}>
-        <h2 className="inbound-close__heading">{t.open.heading(receiving.length)}</h2>
+      <section className="inbound-close__section" aria-label={t.open.heading}>
+        <div className="inbound-close__band">
+          <h2 className="inbound-close__heading">{t.open.heading}</h2>
+          {receiving.length === 0 ? null : (
+            <Button
+              variant="outlined"
+              size="sm"
+              className="inbound-close__close-all"
+              aria-label={t.open.closeAllLabel(receiving.length, lotsOf(receiving))}
+              disabled={lockReason !== null || saving}
+              onClick={() => {
+                setActionError(null);
+                setDialog({ kind: 'closeAll' });
+              }}
+            >
+              {t.open.closeAll}
+            </Button>
+          )}
+        </div>
         {closable.data !== undefined && receiving.length === 0 ? (
           <p className="inbound-close__dim">{t.open.empty}</p>
         ) : null}
         {receiving.length === 0 ? null : <OpenTable lots={receiving} onOpen={openDetail} />}
       </section>
 
-      <section className="inbound-close__section" aria-label={t.done.heading(done.length)}>
-        <h2 className="inbound-close__heading">{t.done.heading(done.length)}</h2>
+      <section className="inbound-close__section" aria-label={t.done.heading}>
+        <div className="inbound-close__band">
+          <h2 className="inbound-close__heading">{t.done.heading}</h2>
+        </div>
         {reopenable.data !== undefined && done.length === 0 ? (
           <p className="inbound-close__dim">{t.done.empty}</p>
         ) : null}
@@ -382,13 +411,7 @@ export const InboundCloseScreen = () => {
           <DoneTable
             lots={done}
             currentId={justClosedId}
-            reasonOf={(lot) => t.done.reason[reopenReasonOf(lot)].chip}
-            closedTextOf={closedText}
-            blockerOf={(lot) => {
-              const blocker = openBlockerOf(lot, receiving);
-
-              return blocker === null ? null : t.done.blocked(blocker.inboundLotNo);
-            }}
+            blockerOf={(lot) => (openBlockerOf(lot, receiving) === null ? null : t.done.blocked)}
             locked={lockReason !== null}
             onReopen={askReopen}
           />
@@ -396,6 +419,25 @@ export const InboundCloseScreen = () => {
       </section>
 
       {sheetPart}
+
+      {dialog?.kind === 'closeAll' ? (
+        <ConfirmDialog
+          open
+          title={t.closeAllDialog.title}
+          cancelLabel={t.closeAllDialog.cancel}
+          proceedLabel={t.closeAllDialog.proceed}
+          onCancel={() => {
+            setDialog(null);
+          }}
+          onProceed={() => {
+            confirmCloseAll(receiving);
+          }}
+        >
+          <p className="inbound-close__text">
+            {`${t.closeAllDialog.summary(receiving.length, lotsOf(receiving))} ${t.closeAllDialog.body}`}
+          </p>
+        </ConfirmDialog>
+      ) : null}
 
       {dialog?.kind === 'reopen' ? (
         <ConfirmDialog

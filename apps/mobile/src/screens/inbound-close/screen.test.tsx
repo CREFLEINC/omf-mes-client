@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { shortWhen } from './close';
 import { InboundCloseScreen } from './screen';
 
 /**
@@ -261,10 +262,10 @@ afterEach(() => {
 });
 
 describe('US2-10 입하 중 목록 · 상세 · 해제 · 마감', () => {
-  it('US2-10 입하 중은 번호 붙은 표 — 품목코드 · 품목명 · LOT 수 · 수량, 입하 LOT 번호 · 경과일은 줄에 없다', async () => {
+  it('US2-10 입하 중은 번호 붙은 표 — 스캔 시각 · 품목코드 · 품목명 · LOT 수 · 수량, 입하 LOT 번호 · 경과일은 줄에 없다', async () => {
     const { sent } = mount();
 
-    /* 줄은 품목으로 찾는다 — 입하 LOT 번호 · 첫 등록 시각은 줄에서 뺐다(사용자 지시 2026-11-20). */
+    /* 줄은 품목으로 찾는다 — 입하 LOT 번호는 줄에서 뺐다(사용자 지시 2026-11-20). */
     const row = (
       await screen.findByRole('button', { name: t.list.open('SYN-ITEM-01', '합성 품목 가') })
     ).closest('tr') as HTMLElement;
@@ -272,13 +273,29 @@ describe('US2-10 입하 중 목록 · 상세 · 해제 · 마감', () => {
     expect(row).toHaveTextContent('합성 품목 가');
     expect(row).toHaveTextContent('2,000 EA');
     expect(within(row).getByText('2')).toBeInTheDocument();
+    /* 행 번호 바로 뒤 칸이 스캔 시각(첫 스캔) — 날짜 / 시각(사용자 지시 2026-11-23). */
+    const [scanDate = '', scanTime = ''] = shortWhen('2026-11-11T01:05:00Z').split(' ');
+    expect(row.children[1]).toHaveClass('close-table__when');
+    expect(row.children[1]).toHaveTextContent(`${scanDate}${scanTime}`);
     expect(screen.queryByText('SYN-IL-20261111-0003')).toBeNull();
     /* 공급사는 하나여도 머리 줄로 보인다(사용자 지시 2026-11-20). */
     expect(screen.getByText('합성 공급사 가')).toBeInTheDocument();
-    expect(screen.getByText(t.open.heading(1))).toBeInTheDocument();
+    /* 제목은 띠 하나 — 건수 · 「마감 대상」은 적지 않는다(사용자 지시 2026-11-23). */
+    expect(screen.getByRole('heading', { name: t.open.heading })).toBeInTheDocument();
+    expect(screen.queryByText(/마감 대상/u)).toBeNull();
     expect(sent.find((each) => each.search.get('closable') === 'true')?.search.get('plantId')).toBe(
       '8301',
     );
+  });
+
+  /* 「마감 취소됨」 칩은 두지 않는다(사용자 지시 2026-11-23). */
+  it('마감 취소했던 입하 중 줄에도 칩이 없다', async () => {
+    mount({ closable: [inboundLot(3, { reopened: true })] });
+
+    const row = (
+      await screen.findByRole('button', { name: t.list.open('SYN-ITEM-01', '합성 품목 가') })
+    ).closest('tr') as HTMLElement;
+    expect(row).not.toHaveTextContent('마감 취소됨');
   });
 
   it('US2-10 상세에서 자재 관리 LOT 를 보고 마감한다 — 부분 입하 사유를 묻지 않고 결과에 P/O 가 없다', async () => {
@@ -419,19 +436,56 @@ describe('US2-10 입하 중 목록 · 상세 · 해제 · 마감', () => {
   });
 });
 
-describe('US2-12 마감 취소 가능 목록', () => {
-  it('US2-12 「입하 완료 · 마감 취소 가능」에 까닭 칩 · 「자동 마감」을 보이고, 확인 뒤 마감을 취소한다', async () => {
+describe('입하 중 전체 마감', () => {
+  /* 띠 오른쪽 [전체 마감] — 확인 뒤 입하 중인 품목을 차례로 마감한다(사용자 지시 2026-11-23). */
+  it('[전체 마감]은 확인 뒤 입하 중인 품목을 모두 마감한다', async () => {
+    const user = userEvent.setup();
+    const { sent } = mount({ closable: [inboundLot(3), inboundLot(4)], reopenable: [] });
+
+    await user.click(await screen.findByRole('button', { name: t.open.closeAllLabel(2, 4) }));
+    const dialog = await screen.findByRole('dialog', { name: t.closeAllDialog.title });
+    expect(dialog).toHaveTextContent(t.closeAllDialog.summary(2, 4));
+    await user.click(within(dialog).getByRole('button', { name: t.closeAllDialog.proceed }));
+
+    expect(await screen.findByText(t.closeAllDialog.done(2))).toBeInTheDocument();
+    expect(
+      sent.filter((each) => each.path.endsWith(':close-receipt')).map((each) => each.path),
+    ).toEqual([
+      '/logistics/inbound-lots/3:close-receipt',
+      '/logistics/inbound-lots/4:close-receipt',
+    ]);
+  });
+
+  it('입하 중이 없으면 [전체 마감]이 없다', async () => {
+    mount({ closable: [], reopenable: [] });
+
+    expect(await screen.findByText(t.open.empty)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /전체 마감/u })).toBeNull();
+  });
+});
+
+describe('US2-12 입하 완료 목록', () => {
+  it('US2-12 「입하 완료」 줄은 품목 · 개수 · 마감 시각만 보이고, 확인 뒤 마감을 취소한다', async () => {
     const user = userEvent.setup();
     const { sent } = mount({
       closable: [],
       reopenable: [done(5, { closedAutomatically: true, supplierId: 8202 })],
     });
 
-    expect(await screen.findByText(t.done.heading(1))).toBeInTheDocument();
-    /* 칩 대신 아래 회색 줄 — 「까닭 · 자동 마감 시각 · IQC 번호」, 공급사는 머리 줄(사용자 결정 2026-11-20 시안 B). */
-    expect(screen.getByText(t.done.reason.NO_IQC_RESULT.chip)).toBeInTheDocument();
-    expect(screen.getByText(/· 자동 마감 \d\d[-‑]\d\d \d\d:\d\d · SYN-IQC-5$/u)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: t.done.heading })).toBeInTheDocument();
+    /* 줄 — 품목 · 개수 · 마감 시각(날짜 / 시각). 공급사는 머리 줄(사용자 지시 2026-11-23). */
+    const row = (await screen.findByText('SYN-ITEM-01')).closest('tr') as HTMLElement;
+    const [date = '', time = ''] = shortWhen('2026-11-10T17:00:00Z').split(' ');
+    expect(row.querySelector('.close-table__count')).toHaveTextContent('2');
+    /* 행 번호 바로 뒤 칸이 마감 시각(사용자 지시 2026-11-23). */
+    expect(row.children[1]).toHaveClass('close-table__when');
+    expect(row.children[1]).toHaveTextContent(`${date}${time}`);
     expect(screen.getByText('합성 공급사 가')).toBeInTheDocument();
+    /* 까닭 칩 · IQC 요청 번호 · 입하 LOT 번호 · 「마감 취소 가능 N」은 두지 않는다. */
+    expect(row).not.toHaveTextContent('IQC 결과');
+    expect(row).not.toHaveTextContent('SYN-IQC-5');
+    expect(row).not.toHaveTextContent('SYN-IL-');
+    expect(screen.queryByText(/마감 취소 가능/u)).toBeNull();
     expect(screen.getByText(t.open.empty)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.done.reopen }));
@@ -480,7 +534,7 @@ describe('US2-13 같은 공급사·품목 입하 중이면 마감 취소가 막�
       ],
     });
 
-    expect(await screen.findByText(t.done.blocked('SYN-IL-20261111-0003'))).toBeInTheDocument();
+    expect(await screen.findByText(t.done.blocked)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: t.done.reopen }));
 
     const dialog = await screen.findByRole('dialog', { name: t.blockedDialog.title });
@@ -552,7 +606,7 @@ describe('G1 입하 마감 목록', () => {
     await user.click(await screen.findByRole('button', { name: t.done.reopen }));
 
     expect(await screen.findByRole('dialog', { name: t.reopenDialog.title })).toBeInTheDocument();
-    expect(screen.queryByText(t.done.blocked('SYN-IL-20261111-0003'))).not.toBeInTheDocument();
+    expect(screen.queryByText(t.done.blocked)).not.toBeInTheDocument();
   });
 
   it('G1 막는 입하 LOT 가 지금 목록에 없으면 막힘 창은 번호만 보이고 [열기]를 두지 않는다', async () => {
@@ -569,7 +623,7 @@ describe('G1 입하 마감 목록', () => {
       ],
     });
 
-    expect(await screen.findByText(t.done.blocked('SYN-IL-20261111-0009'))).toBeInTheDocument();
+    expect(await screen.findByText(t.done.blocked)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: t.done.reopen }));
 
     const dialog = await screen.findByRole('dialog', { name: t.blockedDialog.title });

@@ -617,7 +617,9 @@ describe('US2-1 스캔마다 바로 등록', () => {
     await scan(A(1));
 
     const last = await screen.findByRole('region', { name: t.last.duplicate });
-    expect(last).toHaveTextContent(t.last.duplicateRow(1));
+    /* 품목코드 품목명만 — 몇 번 줄인지 · 라벨 번호는 적지 않는다(사용자 지시 2026-11-23). */
+    expect(within(last).getByText(`SYN-CAP ${ITEM}`)).toBeInTheDocument();
+    expect(last).not.toHaveTextContent(A(1));
     expect(rowOf('SYN-CAP')).toHaveAttribute('data-duplicate', 'true');
     expect(rowOf('SYN-CAP')).toHaveAttribute('data-current', 'false');
     expect(receives(server.sent)).toHaveLength(1);
@@ -683,9 +685,9 @@ describe('방금 찍은 칸의 [취소]', () => {
     await waitFor(() => expect(tally()).toHaveTextContent(t.tally.total(2)));
     await user.click(await screen.findByRole('button', { name: t.last.undoLabel(A(2)) }));
 
-    expect(
-      await screen.findByText(t.unregistered.toast('…|SYN01|0002', '1,000 EA')),
-    ).toBeInTheDocument();
+    /* 무엇을 취소했는지만 — 품목코드 품목명 등록 취소(사용자 지시 2026-11-23). */
+    expect(await screen.findByText(t.unregistered.done('SYN-CAP', ITEM))).toBeInTheDocument();
+    expect(screen.getByText(`SYN-CAP ${ITEM} 등록 취소`)).toBeInTheDocument();
     expect(server.sent.find((each) => each.path.endsWith(':unregister-lots'))?.body).toMatchObject({
       lotIds: [9002],
     });
@@ -758,7 +760,7 @@ describe('품목 시트', () => {
     expect(x).toHaveAccessibleName('해제');
     await user.click(x);
 
-    expect(await screen.findByText(t.unregistered.lastToast(ITEM))).toBeInTheDocument();
+    expect(await screen.findByText(t.unregistered.done('SYN-CAP', ITEM))).toBeInTheDocument();
     expect(await screen.findByText(t.tally.empty)).toBeInTheDocument();
     expect(server.sent.find((each) => each.path.endsWith(':unregister-lots'))?.body).toMatchObject({
       lotIds: [9001],
@@ -780,7 +782,7 @@ describe('US2-2 입하 마감', () => {
     expect(dialog).toHaveTextContent(t.closeDialog.summaryOne(1, '1,000 EA'));
     await user.click(within(dialog).getByRole('button', { name: t.closeDialog.confirm }));
 
-    expect(await screen.findByText(t.closeDialog.toastOne(ITEM))).toBeInTheDocument();
+    expect(await screen.findByText(t.closeDialog.toastOne('SYN-CAP', ITEM))).toBeInTheDocument();
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: t.close.one(1) })).toBeNull(),
     );

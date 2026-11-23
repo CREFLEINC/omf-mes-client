@@ -9,28 +9,38 @@
  */
 export const inboundClose = {
   title: '입하 마감',
-  /** 목록 위 구획 — 입하 중(마감 대상). */
+  /**
+   * 목록 위 구획 — 입하 중. 제목은 카드 머리 띠로 가르고 건수는 적지 않는다(사용자 지시 2026-11-23, 「(마감 대상) N」을 걷음).
+   * 띠 오른쪽 [전체 마감]이 입하 중인 품목을 모두 마감한다. 「마감 취소됨」 칩은 두지 않는다.
+   */
   open: {
-    heading: (count: number) => `입하 중 (마감 대상) ${count}`,
+    heading: '입하 중',
     empty: '마감할 입하 LOT가 없습니다',
-    receiving: '입하 중',
-    reopened: '마감 취소됨',
+    closeAll: '전체 마감',
+    closeAllLabel: (items: number, lots: number) => `입하 중 ${items}품목 ${lots}개 전체 마감`,
   },
-  /** 목록 아래 구획 — 입하 완료 · 마감 취소 가능. */
+  /**
+   * 목록 아래 구획 — 입하 완료. 줄은 품목 · 개수 · 마감 시각 · [마감 취소]만(사용자 지시 2026-11-23). 「마감 취소 가능 N」 ·
+   * 까닭 칩(「IQC 결과 0건」 등) · IQC 요청 번호 · 입하 LOT 번호는 줄에 두지 않는다 — 까닭은 마감 취소 확인 창이 말한다.
+   */
   done: {
-    heading: (count: number) => `입하 완료 · 마감 취소 가능 ${count}`, // ui-check-ignore: C-13 설계 확정 구획 이름(screens/M-01-03.md)
+    heading: '입하 완료',
     empty: '마감 취소할 수 있는 건이 없습니다',
-    closedAuto: (when: string) => `자동 마감 ${when}`,
-    closed: (when: string) => `마감 ${when}`,
     reopen: '마감 취소',
-    /** 같은 공급사·품목이 입하 중이라 미리 막힌 건. */
-    blocked: (no: string) =>
-      `같은 공급사·품목의 ${no} 이 입하 중 — 먼저 마감해야 취소할 수 있습니다`, // ui-check-ignore: C-13 설계 확정 용어 「공급사·품목」(screens/M-01-03.md)
-    reason: {
-      NO_IQC_RESULT: { chip: 'IQC 결과 0건', sub: '검사 필요 · 결과 없음' }, // ui-check-ignore: C-13 설계 확정 칩 문구(screens/M-01-03.md)
-      INSPECTION_NOT_REQUIRED: { chip: '검사 불필요 · 입고 전', sub: '자재 관리 LOT 정상' }, // ui-check-ignore: C-13 설계 확정 칩 문구(screens/M-01-03.md)
-      IQC_SKIPPED: { chip: '긴급 생략 실행 · 입고 전', sub: '자재 관리 LOT 정상(긴급 생략)' }, // ui-check-ignore: C-13 설계 확정 칩 문구(screens/M-01-03.md)
-    },
+    /**
+     * 이 줄은 [마감 취소]가 막혔다는 뜻이다 — 같은 공급사·품목을 그 뒤에 다시 받아 「입하 중」이 새로 생겼고, 한
+     * 공급사·품목에 입하 중은 하나뿐이라 마감을 취소하면 둘이 된다. 번호는 적지 않는다(막힘 창에 [열기]가 있다).
+     */
+    blocked: '같은 품목을 입하 중이라 마감 취소할 수 없습니다',
+  },
+  /** [전체 마감] 확인 창 · 결과. */
+  closeAllDialog: {
+    title: '입하 중인 품목을 모두 마감할까요?',
+    summary: (items: number, lots: number) => `${items}품목 ${lots}개를 마감합니다.`,
+    body: '마감하면 더 받거나 해제할 수 없고, 검사가 필요한 품목은 IQC 요청이 생깁니다.',
+    cancel: '취소',
+    proceed: '전체 마감',
+    done: (items: number) => `${items}품목 마감`,
   },
   /** 카드 공통. */
   /**
@@ -48,7 +58,6 @@ export const inboundClose = {
   },
   card: {
     open: (no: string) => `${no} 열기`,
-    withIqc: (closed: string, iqcNo: string) => `${closed} · ${iqcNo}`, // ui-check-ignore: C-13 설계 확정 카드 표기(screens/M-01-03.md)
     lotItem: (no: string, item: string) => `${no} · ${item}`, // ui-check-ignore: C-13 설계 확정 창 표기(mockups/M0103-After)
   },
   /** 상세(입하 중 카드를 누르면). */

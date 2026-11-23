@@ -13,7 +13,7 @@ const t = messages.inboundReceipt;
 
 export interface LastScanProps {
   line: ScanLine;
-  /** 성공 줄의 입하 LOT — 품목명 · 공급사를 여기서 읽는다(불러오는 중이면 undefined). */
+  /** 성공 줄 · 이미 찍은 줄의 입하 LOT — 품목코드 · 품목명을 여기서 읽는다(불러오는 중이면 undefined). */
   detail: InboundLotDetail | undefined;
   /** [취소]를 누를 수 있는가 — 입하 중 · 온라인 · 일하는 중 아님. */
   canUndo: boolean;
@@ -81,24 +81,35 @@ export const LastScan = ({ line, detail, canUndo, onUndo, onDismiss }: LastScanP
     );
   }
 
+  /* 이미 찍은 라벨은 품목코드 품목명만 — 몇 번 줄인지 · 번호는 적지 않는다(사용자 지시 2026-11-23). 표의 그 줄이 회색으로 짚인다. */
+  if (line.kind === 'duplicate') {
+    return (
+      <section className="last-scan" data-kind="duplicate" aria-label={t.last.duplicate}>
+        <p className="last-scan__bar">
+          <Icon name="info" size={20} />
+          <span>{t.last.duplicate}</span>
+          {close}
+        </p>
+        <div className="last-scan__body">
+          <p className="last-scan__why">
+            {detail === undefined ? line.lotNo : `${detail.itemCode} ${detail.itemName}`}
+          </p>
+        </div>
+      </section>
+    );
+  }
+
   const [title, reason, body] =
-    line.kind === 'duplicate'
-      ? [t.last.duplicate, t.last.duplicateRow(line.row), null]
-      : line.kind === 'offline'
-        ? [t.last.offline, t.last.offlineBody, null]
-        : line.kind === 'closed'
-          ? [t.last.closed, t.last.closedBody, null]
-          : [t.last.rejected, line.reason, line.body];
+    line.kind === 'offline'
+      ? [t.last.offline, t.last.offlineBody, null]
+      : line.kind === 'closed'
+        ? [t.last.closed, t.last.closedBody, null]
+        : [t.last.rejected, line.reason, line.body];
 
   return (
     <section className="last-scan" data-kind={line.kind} aria-label={title}>
       <p className="last-scan__bar">
-        <Icon
-          name={
-            line.kind === 'duplicate' ? 'info' : line.kind === 'offline' ? 'cloud_off' : 'block'
-          }
-          size={20}
-        />
+        <Icon name={line.kind === 'offline' ? 'cloud_off' : 'block'} size={20} />
         <span>{title}</span>
         {close}
       </p>

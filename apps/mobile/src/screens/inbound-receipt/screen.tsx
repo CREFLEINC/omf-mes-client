@@ -39,7 +39,6 @@ import {
   businessDateOf,
   hasErrorCode,
   isReceiving,
-  lotTail,
   pendingCountFor,
   queuedLotNoOf,
   registeredInOf,
@@ -339,7 +338,7 @@ export const InboundReceiptScreen = () => {
 
   /*
    * 전송 대기에서 빠진 건 — 아웃박스가 연결되자 저절로 보낸 것이다. 응답으로 카드를 채우고, 결과는 한 줄로 센다
-   * (「전송 대기 N개를 보냈습니다 · 등록 N · 거부 N」). 거부된 건의 까닭은 셸의 전송 실패 화면에 남는다 — 여기에
+   * (「전송 대기 N건 등록」, 들어가지 않은 것이 있으면 그 건수까지). 거부된 건의 까닭은 셸의 전송 실패 화면에 남는다 — 여기에
    * 건마다 거부 줄을 세우지 않는다. 이 줄이 결과 줄 자리를 덮으니 보낸 라벨의 「오프라인」 줄도 함께 내려간다.
    */
   const pendingKeys = new Set(pending.map((entry) => entry.idempotencyKey));
@@ -392,12 +391,9 @@ export const InboundReceiptScreen = () => {
           previous.filter((card) => card.inboundLotId !== detail.inboundLotId),
         );
         setViewId((previous) => (previous === detail.inboundLotId ? null : previous));
-        showNotice(t.unregistered.lastToast(detail.itemName));
-      } else {
-        showNotice(
-          t.unregistered.toast(lotTail(lot.lotNo), qtyText(after.receivedQty, detail.uomCode)),
-        );
       }
+      /* 무엇을 취소했는지만 — 번호 끝 · 남은 합계는 표가 보인다(사용자 지시 2026-11-23). */
+      showNotice(t.unregistered.done(detail.itemCode, detail.itemName));
     } catch (cause) {
       reject(lot.lotNo, cause);
     } finally {
@@ -432,7 +428,7 @@ export const InboundReceiptScreen = () => {
     setBusyId(detail.inboundLotId);
     try {
       await closeReceipt(client, detail.inboundLotId, detail.versionNo, workerNo);
-      showNotice(t.closeDialog.toastOne(detail.itemName));
+      showNotice(t.closeDialog.toastOne(detail.itemCode, detail.itemName));
     } catch (cause) {
       setViewId(null);
       closeFailed(detail.itemCode, cause);
@@ -477,7 +473,7 @@ export const InboundReceiptScreen = () => {
       setSheet(null);
       showNotice(
         supplierLotNo === null
-          ? t.sheet.cleared(lotTail(lot.lotNo), lotIds.length - 1)
+          ? t.sheet.cleared(lotIds.length)
           : t.sheet.saved(supplierLotNo, lotIds.length),
       );
       refreshCard(detail.inboundLotId);
@@ -521,7 +517,12 @@ export const InboundReceiptScreen = () => {
           ? t.close.blockedPending(pairPendingOf(viewed))
           : null;
   const working = busyId !== null;
-  const lineDetail = line?.kind === 'ok' ? detailOf(line.inboundLotId) : undefined;
+  const lineDetail =
+    line?.kind === 'ok'
+      ? detailOf(line.inboundLotId)
+      : line?.kind === 'duplicate'
+        ? rows.find((row) => row.no === line.row)?.detail
+        : undefined;
 
   return (
     <div className="receive">

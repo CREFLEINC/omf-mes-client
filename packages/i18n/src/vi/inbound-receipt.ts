@@ -18,14 +18,13 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     autoClosed: 'Lô nhập của ngày trước đã tự động chốt',
     rejected: 'Không đăng ký',
     duplicate: 'Nhãn này đã quét rồi',
-    duplicateRow: (row: number) => `Có ở No ${row}`,
     offline: 'Chờ gửi',
-    offlineBody: 'Ngoại tuyến — sẽ đăng ký khi có kết nối',
+    offlineBody: 'Sẽ tự động đăng ký khi có kết nối',
     closed: 'Không đăng ký',
     closedBody: 'Lô nhập này đã chốt',
   },
   reject: {
-    refused: 'Bị từ chối',
+    refused: 'Không thể đăng ký nhãn này',
     voided: 'Nhãn đã hủy',
     alreadyReceived: 'Nhãn đã được nhập hàng',
     alreadyReceivedIn: (receiving: boolean) =>
@@ -37,7 +36,9 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
   offline: {
     title: (count: number) => `Chờ gửi ${count}`,
     flushed: (count: number, registered: number, rejected: number) =>
-      `Đã gửi ${count} mục chờ · đăng ký ${registered} · từ chối ${rejected}`,
+      rejected === 0
+        ? `Đã đăng ký ${count} mục chờ gửi`
+        : `${count} mục chờ gửi: đăng ký ${registered} · không đăng ký ${rejected}`,
     queueFailed: 'Không đưa được vào hàng chờ gửi. Hãy quét lại.',
   },
   tally: {
@@ -65,12 +66,11 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     allShort: 'Chốt',
     all: (items: number, lots: number) => `Chốt nhập tất cả (${items} mặt hàng ${lots} cái)`,
     one: (lots: number) => `Chỉ chốt mặt hàng này (${lots} cái)`,
-    blockedOffline: 'Ngoại tuyến — có thể làm sau khi kết nối',
+    blockedOffline: 'Có thể chốt khi có kết nối',
     blockedPending: (count: number) => `Có thể chốt sau khi gửi ${count} mục chờ`,
   },
   unregistered: {
-    toast: (lotTail: string, total: string) => `Đã hủy đăng ký — ${lotTail} · tổng ${total}`,
-    lastToast: (itemName: string) => `Đã hủy đăng ký — lô nhập ${itemName} đã trống`,
+    done: (itemCode: string, itemName: string) => `Đã hủy đăng ký ${itemCode} ${itemName}`,
   },
   closeDialog: {
     titleAll: 'Chốt nhập tất cả mặt hàng?',
@@ -82,9 +82,9 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     bodyNoIqcRecord: 'Sau khi chốt không tạo bản ghi IQC và không thể quét thêm hay gỡ.',
     cancel: 'Quét tiếp',
     confirm: 'Chốt',
-    toastOne: (itemName: string) => `Đã chốt nhập ${itemName}`,
-    toastAll: (items: number) => `Đã chốt nhập ${items} mặt hàng`,
-    failed: 'Không chốt được. Đã tải lại.',
+    toastOne: (itemCode: string, itemName: string) => `Đã chốt ${itemCode} ${itemName}`,
+    toastAll: (items: number) => `Đã chốt ${items} mặt hàng`,
+    failed: 'Không chốt được. Hãy thử lại.',
   },
   sheet: {
     title: 'Số LOT nhà cung cấp',
@@ -95,13 +95,9 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     cancel: 'Hủy',
     save: 'Lưu',
     tooLong: 'Số LOT nhà cung cấp tối đa 100 ký tự',
-    saved: (no: string, count: number) =>
-      `Đã lưu LOT nhà cung cấp ${no} — ${count} LOT quản lý vật tư`,
-    cleared: (lotTail: string, rest: number) =>
-      rest === 0
-        ? `Đã xóa số LOT nhà cung cấp — ${lotTail}`
-        : `Đã xóa số LOT nhà cung cấp — ${lotTail} và ${rest} LOT khác`,
-    failed: 'Không lưu được.',
+    saved: (no: string, count: number) => `Đã lưu LOT nhà cung cấp ${no} (${count})`,
+    cleared: (count: number) => `Đã xóa số LOT nhà cung cấp (${count})`,
+    failed: 'Không lưu được. Hãy thử lại.',
   },
   itemPicker: {
     title: 'Chọn mặt hàng',
