@@ -1,5 +1,6 @@
+import type { MaterialLotTab } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import type { RefObject } from 'react';
+import type { ReactNode, RefObject } from 'react';
 
 import { formatPackage, formatQty } from '../../patterns/package-qty';
 import { toPlantDateTimeParts } from '../../patterns/plant-time';
@@ -10,23 +11,22 @@ import { isVoided, isWaiting, type LabelLot } from './types';
 const t = messages.popMaterialLotLabel.table;
 const tState = messages.popMaterialLotLabel.lotState;
 const tStatus = messages.popMaterialLotLabel.status;
+const tp = messages.popMaterialLotLabel.precreate;
 
 /**
- * 표가 무엇을 보이는가(screens/P-01-01.md · #295 시안).
+ * 탭마다 무엇을 보이는가(피처 014 · 시안 P0101 ③ · ⑧ · ⑨ · screens/P-01-01.md 「표시 항목」).
  *
- * - `waiting` 공급사·품목의 라벨 미발행 입하 대기(맨 뒤에 최근 입하된 LOT — 고를 수 없음)
- *   — 선택 · 번호 · 공급사 LOT 번호 · 재고 수량 · 포장 · 라벨 · 등록일시(품목은 상세 제목에)
- * - `reprint` 재발행 — 선택 · 번호 · 공급사 LOT 번호 · 품목코드 · 품목명 · 재고 수량 · 포장 · 상태 · 출력(회차) · 최근 출력일시
+ * - `UNPRINTED` 미출력 — 선택 · 차례 · 번호 · 재고량 · 포장 · P/O 라인 · 만든 방식(· [수정])
+ * - `PRINTED` 출력됨(입하 전) — 선택 · 번호 · 재고량 · 포장 · P/O 라인 · 만든 방식 · 출력 횟수 · 최근 출력일시
+ * - `RECEIVED` 입하된 LOT — 선택 · 번호 · 재고량 · 포장 · P/O 라인 · 공급사 LOT 번호 · LOT 상태 · 입하 일시 · 출력 횟수
+ * - `VOIDED` 폐기 LOT — 번호 · 재고량 · 포장 · P/O 라인 · 만든 방식 · LOT 상태 · 폐기 일시 · 출력 횟수(고를 수 없음)
  * ⭐ 칸마다 값 하나(사용자 지시 2026-11-19) — 두 줄 묶음 칸은 두지 않는다.
- *
- * ⭐ 발행 중 · 결과 확인 전에는 마지막 칸이 그 LOT 의 결과다(체크 대신 결과 표식이 제자리에 붙는다).
+ * ⭐ 발행 중 · 결과 확인 전에는 맨 끝에 결과 칸이 선다(체크 대신 결과 표식이 제자리에 붙는다).
  * ⭐ 줄 어디를 눌러도 고른다 — 첫 칸의 체크 단추가 읽어 주는 도구의 이름(번호·수량)을 갖는다.
  */
-export type LabelTableMode = 'waiting' | 'reprint';
-
 export interface LabelTableProps {
-  mode: LabelTableMode;
-  /** 이 쪽에 보일 줄(쪽 넘김은 화면이 자른다). */
+  tab: MaterialLotTab;
+  /** 이 쪽에 보일 줄(서버 쪽). */
   lots: readonly LabelLot[];
   checked: ReadonlySet<number>;
   onToggle: (lotId: number) => void;
@@ -37,9 +37,23 @@ export interface LabelTableProps {
   batch: BatchSnapshot;
   /** 표 이름(읽어 주는 도구). */
   label: string;
-  /** 쪽 건수를 재는 칸. */
+  /** 쪽 줄 수를 재는 칸. */
   fitRef: RefObject<HTMLDivElement | null>;
+  /** 번호 스캔으로 찾아 맨 위에 둔 LOT — 번호 옆에 「스캔」 칩. */
+  scannedLotId?: number | null;
+  /** 품목 기본 LOT 수량 — 자동 LOT 이 이보다 작으면 「나머지」 칩(시안 ③). */
+  defaultLotQty?: number | null;
+  /** 줄 끝 동작 칸(미출력 탭 [수정]) — 없으면 칸을 두지 않는다. */
+  rowAction?: (lot: LabelLot) => ReactNode;
 }
+
+/** 이 탭에서 고를 수 있는 줄인가 — 미출력 · 출력됨은 입하 대기, 입하된은 폐기 아닌 것, 폐기는 없음. */
+export const isSelectableIn = (tab: MaterialLotTab, lot: LabelLot): boolean => {
+  if (tab === 'VOIDED') return false;
+  if (tab === 'RECEIVED') return !isVoided(lot);
+
+  return isWaiting(lot);
+};
 
 /** 마지막 발행 — 「11-11 08:12」(공장 시각). */
 export const issuedWhen = (value: string): string => {
@@ -95,11 +109,11 @@ export const LotStateChip = ({ lot }: { lot: LabelLot }) => {
 };
 
 /**
- * 자재 관리 LOT 표 — 칸마다 값 하나, 긴 칸(번호 · 공급사 LOT · 품목)은 한 줄 말줄임이라 가로로 넘치지 않는다.
+ * 자재 관리 LOT 표 — 칸마다 값 하나, 긴 칸(번호 · 공급사 LOT)은 한 줄 말줄임이라 가로로 넘치지 않는다.
  * ⭐ LOT 번호는 저장된 그대로, 고정폭으로(규범 C-10).
  */
 export const LabelTable = ({
-  mode,
+  tab,
   lots,
   checked,
   onToggle,
@@ -108,13 +122,33 @@ export const LabelTable = ({
   batch,
   label,
   fitRef,
+  scannedLotId = null,
+  defaultLotQty = null,
+  rowAction,
 }: LabelTableProps) => {
-  const isReprint = mode === 'reprint';
+  const hasCheck = tab !== 'VOIDED';
+  const hasAction = rowAction !== undefined && !showResults;
+  const poText = (lot: LabelLot): string =>
+    lot.purchaseOrderLine === null || lot.purchaseOrderLine === undefined
+      ? t.none
+      : tp.poLine(lot.purchaseOrderLine.purchaseOrderNo, lot.purchaseOrderLine.lineNo);
+  const modeChip = (lot: LabelLot): ReactNode =>
+    lot.creationModeCode === undefined ? (
+      t.none
+    ) : (
+      <PuChip tone={lot.creationModeCode === 'AUTO' ? 'info' : 'idle'}>
+        {tp.mode[lot.creationModeCode]}
+      </PuChip>
+    );
+  const printCount = (lot: LabelLot): string =>
+    lot.lastIssue === null ? t.unprinted : t.issuedSeq(lot.lastIssue.issueSeq);
+  const when = (value: string | null | undefined): string =>
+    value === null || value === undefined ? t.none : issuedWhen(value) || t.none;
 
   return (
     <div
       ref={fitRef}
-      className={puCx('mll-table', isReprint && 'is-reprint')}
+      className={puCx('mll-table', `is-${tab.toLowerCase()}`)}
       role="group"
       aria-label={label}
     >
@@ -122,38 +156,56 @@ export const LabelTable = ({
         <table className="pu-table">
           <thead>
             <tr>
-              <th className="fit mid">{t.columns.check}</th>
+              {hasCheck && <th className="fit mid">{t.columns.check}</th>}
+              {tab === 'UNPRINTED' && <th className="fit mid">{tp.columns.seq}</th>}
               <th className="mll-lotcol" title={t.columns.lotNo}>
                 {t.columns.lotNo}
               </th>
-              <th className="mll-slotcol" title={t.columns.supplierLot}>
-                {t.columns.supplierLot}
-              </th>
-              {/* 품목은 코드 · 이름 두 칸 — 발행 대기는 상세 제목에 품목이 있어 빼고 재발행에만(사용자 지시 2026-11-23). */}
-              {isReprint && <th className="fit">{t.columns.itemCode}</th>}
-              {isReprint && <th className="mll-itemcol">{t.columns.itemName}</th>}
               <th className="num fit">{t.columns.qty}</th>
               <th className="fit">{t.columns.package}</th>
-              {/* 발행 대기 표는 모두 입하 대기라 LOT 상태 칸을 두지 않는다(사용자 지시 2026-11-23). */}
-              {isReprint && <th className="fit mid">{t.columns.status}</th>}
-              <th className="fit">
-                {showResults ? t.columns.result : isReprint ? t.columns.printed : t.columns.label}
-              </th>
-              {isReprint ? (
-                <th className="fit">{t.columns.lastPrinted}</th>
+              <th className="fit">{tp.columns.po}</th>
+              {tab === 'RECEIVED' ? (
+                <>
+                  <th className="mll-slotcol" title={t.columns.supplierLot}>
+                    {t.columns.supplierLot}
+                  </th>
+                  <th className="fit mid">{t.columns.status}</th>
+                  <th className="fit">{tp.columns.receivedAt}</th>
+                  <th className="fit">{tp.columns.printCount}</th>
+                </>
               ) : (
-                <th className="fit">{t.columns.createdAt}</th>
+                <th className="fit mid">{tp.columns.mode}</th>
               )}
+              {tab === 'PRINTED' && (
+                <>
+                  <th className="fit">{tp.columns.printCount}</th>
+                  <th className="fit">{tp.columns.lastPrinted}</th>
+                </>
+              )}
+              {tab === 'VOIDED' && (
+                <>
+                  <th className="fit mid">{t.columns.status}</th>
+                  <th className="fit">{tp.columns.voidedAt}</th>
+                  <th className="fit">{tp.columns.printCount}</th>
+                </>
+              )}
+              {showResults && <th className="fit">{t.columns.result}</th>}
+              {hasAction && <th className="fit mid" aria-label={t.columns.action} />}
             </tr>
           </thead>
           <tbody>
             {lots.map((lot) => {
               const status = showResults ? rowStatusOf(lot.lotId, batch) : null;
-              const selectable = !showResults && (isReprint ? !isVoided(lot) : isWaiting(lot));
+              const selectable = !showResults && isSelectableIn(tab, lot);
               const isChecked = checked.has(lot.lotId);
               const canToggle = selectable && !isLocked;
               const packageText = formatPackage(lot.package) ?? t.noPackage;
               const qtyText = `${formatQty(lot.lotQty)} ${lot.uomCode}`;
+              const isRemainder =
+                tab === 'UNPRINTED' &&
+                lot.creationModeCode === 'AUTO' &&
+                defaultLotQty !== null &&
+                lot.lotQty < defaultLotQty;
 
               return (
                 <tr
@@ -172,77 +224,94 @@ export const LabelTable = ({
                       : undefined
                   }
                 >
-                  <td className="fit mid">
-                    {status !== null && status.kind !== 'notSelected' ? (
-                      <span className="mll-mark" data-tone={statusTone(status)}>
-                        {status.kind === 'printed' ? <PuIcon name="check" /> : null}
-                        {status.kind === 'failed' ? <PuIcon name="x" /> : null}
-                      </span>
-                    ) : selectable ? (
-                      <button
-                        type="button"
-                        role="checkbox"
-                        className="mll-box"
-                        aria-checked={isChecked}
-                        aria-label={t.rowName(lot.lotNo, qtyText)}
-                        disabled={isLocked}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onToggle(lot.lotId);
-                        }}
-                      >
-                        {isChecked ? <PuIcon name="check" /> : null}
-                      </button>
-                    ) : (
-                      <span className="mll-box is-off" aria-hidden="true" />
-                    )}
-                  </td>
+                  {hasCheck && (
+                    <td className="fit mid">
+                      {status !== null && status.kind !== 'notSelected' ? (
+                        <span className="mll-mark" data-tone={statusTone(status)}>
+                          {status.kind === 'printed' ? <PuIcon name="check" /> : null}
+                          {status.kind === 'failed' ? <PuIcon name="x" /> : null}
+                        </span>
+                      ) : selectable ? (
+                        <button
+                          type="button"
+                          role="checkbox"
+                          className="mll-box"
+                          aria-checked={isChecked}
+                          aria-label={t.rowName(lot.lotNo, qtyText)}
+                          disabled={isLocked}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onToggle(lot.lotId);
+                          }}
+                        >
+                          {isChecked ? <PuIcon name="check" /> : null}
+                        </button>
+                      ) : (
+                        <span className="mll-box is-off" aria-hidden="true" />
+                      )}
+                    </td>
+                  )}
+                  {tab === 'UNPRINTED' && (
+                    <td className="fit mid">
+                      <span className="mll-seq">{lot.seq ?? t.none}</span>
+                    </td>
+                  )}
                   {/* 칸마다 값 하나 — 넘치면 한 줄 말줄임 + title(사용자 지시 2026-11-19). */}
                   <td className="pu-mono mll-lotcol" title={lot.lotNo}>
                     {lot.lotNo}
+                    {lot.lotId === scannedLotId ? (
+                      <>
+                        {' '}
+                        <PuChip tone="info">{tp.lookup.chip}</PuChip>
+                      </>
+                    ) : null}
+                    {isRemainder ? (
+                      <>
+                        {' '}
+                        <PuChip tone="warn">{tp.remainder}</PuChip>
+                      </>
+                    ) : null}
                   </td>
-                  <td className="mll-slotcol" title={lot.supplierLotNo ?? undefined}>
-                    {lot.supplierLotNo ?? t.none}
-                  </td>
-                  {isReprint && (
-                    <td className="fit" title={`${lot.itemCode} ${lot.itemName}`}>
-                      <b>{lot.itemCode}</b>
-                    </td>
-                  )}
-                  {isReprint && (
-                    <td className="mll-itemcol" title={lot.itemName}>
-                      {lot.itemName}
-                    </td>
-                  )}
                   <td className="num fit">{qtyText}</td>
                   <td className="fit">{packageText}</td>
-                  {isReprint && (
-                    <td className="fit mid">
-                      <LotStateChip lot={lot} />
-                    </td>
-                  )}
-                  <td className="fit">
-                    {status !== null ? (
-                      <PuChip tone={statusTone(status)}>{statusText(status)}</PuChip>
-                    ) : lot.lastIssue === null ? (
-                      isReprint ? (
-                        t.none
-                      ) : (
-                        <span className="mll-dim">{t.unprinted}</span>
-                      )
-                    ) : (
-                      t.issuedSeq(lot.lastIssue.issueSeq)
-                    )}
-                  </td>
-                  {isReprint ? (
-                    <td className="fit">
-                      {lot.lastIssue === null ? t.none : issuedWhen(lot.lastIssue.issuedAt)}
-                    </td>
+                  <td className="fit">{poText(lot)}</td>
+                  {tab === 'RECEIVED' ? (
+                    <>
+                      <td className="mll-slotcol" title={lot.supplierLotNo ?? undefined}>
+                        {lot.supplierLotNo ?? t.none}
+                      </td>
+                      <td className="fit mid">
+                        <LotStateChip lot={lot} />
+                      </td>
+                      <td className="fit">{when(lot.receivedAt)}</td>
+                      <td className="fit">{printCount(lot)}</td>
+                    </>
                   ) : (
+                    <td className="fit mid">{modeChip(lot)}</td>
+                  )}
+                  {tab === 'PRINTED' && (
+                    <>
+                      <td className="fit">{printCount(lot)}</td>
+                      <td className="fit">{when(lot.lastIssue?.issuedAt)}</td>
+                    </>
+                  )}
+                  {tab === 'VOIDED' && (
+                    <>
+                      <td className="fit mid">
+                        <LotStateChip lot={lot} />
+                      </td>
+                      <td className="fit">{when(lot.voidedAt)}</td>
+                      <td className="fit">{printCount(lot)}</td>
+                    </>
+                  )}
+                  {showResults && (
                     <td className="fit">
-                      {lot.createdAt === undefined ? t.none : issuedWhen(lot.createdAt) || t.none}
+                      {status === null ? null : (
+                        <PuChip tone={statusTone(status)}>{statusText(status)}</PuChip>
+                      )}
                     </td>
                   )}
+                  {hasAction && <td className="fit mid">{rowAction(lot)}</td>}
                 </tr>
               );
             })}

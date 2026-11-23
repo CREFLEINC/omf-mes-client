@@ -231,13 +231,13 @@
   width: auto;
 }
 
-.mll-table.is-reprint .pu-table th.mll-slotcol {
+.mll-table.is-received .pu-table th.mll-slotcol {
   width: 108px;
 }
 
 /* 재발행 표는 칸이 아홉 개라 칸 안 여백을 줄인다 — 1280 에서 LOT 번호가 다 보이고 품목 칸에 폭이 남는다. */
-.mll-table.is-reprint .pu-table th,
-.mll-table.is-reprint .pu-table td {
+.mll-table.is-received .pu-table th,
+.mll-table.is-received .pu-table td {
   padding-inline: 6px;
 }
 
@@ -618,7 +618,7 @@
     padding-inline: 6px;
   }
 
-  .mll-table.is-reprint .pu-table th.fit:not(.mid) {
+  .mll-table.is-received .pu-table th.fit:not(.mid) {
     white-space: normal;
     line-height: 15px;
   }
@@ -632,7 +632,7 @@
     width: 1%;
   }
 
-  .mll-table.is-reprint .pu-table th.mll-slotcol {
+  .mll-table.is-received .pu-table th.mll-slotcol {
     width: 80px;
     white-space: normal;
     line-height: 15px;
@@ -688,66 +688,8 @@
   }
 
   /* 재발행 표는 칸이 열 개라 1024 에서는 품목명 칸을 접는다 — LOT 번호가 먼저다. 품목코드 칸 title 에 이름이 있다. */
-  .mll-table.is-reprint .pu-table .mll-itemcol {
+  .mll-table.is-received .pu-table .mll-itemcol {
     display: none;
-  }
-}
-
-/* 세 칸(사용자 지시 2026-11-23): 공급사 · 고른 공급사의 품목 · 상세. 왼쪽을 접으면 56. */
-.pu-cols.list.mll-cols3 {
-  grid-template-columns: 280px 640px minmax(0, 1fr);
-}
-
-.pu-cols.list.mll-cols3:has(> .is-folded:first-child) {
-  grid-template-columns: 56px 640px minmax(0, 1fr);
-}
-
-/* 가운데 품목 표 — 바깥 칸이 남는 높이를 갖고 쪽 줄 수를 잰다. 품목명 칸이 남는 폭을 갖는다. */
-.mll-items {
-  overflow: hidden;
-  min-height: 0;
-}
-
-.mll-items > .pu-table-wrap {
-  max-height: 100%;
-}
-
-.mll-items .pu-table th,
-.mll-items .pu-table td {
-  padding-inline: 8px;
-}
-
-.mll-item-code {
-  all: unset;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.mll-item-code:focus-visible {
-  outline: 2px solid var(--pu-primary);
-  outline-offset: 2px;
-}
-
-.mll-items td.mll-item-name-cell > .mll-pair-item-name {
-  display: block;
-  margin-left: 0;
-  text-align: left;
-  font-weight: 500;
-}
-
-.mll-items td.mll-unprinted-cell {
-  color: var(--pu-warn);
-  font-weight: 700;
-}
-
-@media (max-width: 1100px) {
-  .pu-cols.list.mll-cols3 {
-    grid-template-columns: 220px 260px minmax(0, 1fr);
-  }
-
-  .pu-cols.list.mll-cols3:has(> .is-folded:first-child) {
-    grid-template-columns: 56px 260px minmax(0, 1fr);
   }
 }
 
@@ -765,4 +707,87 @@
   height: auto;
   aspect-ratio: 80 / 30;
   font-family: var(--pu-font, sans-serif);
+}
+
+/* ── 피처 014: 공급사·품목 줄 칩 · 탭 넷 · 로딩 · 알림(시안 P0101) ── */
+.mll-pairs .mll-pair-item {
+  flex-wrap: nowrap;
+}
+
+.mll-pair-chips {
+  display: inline-flex;
+  flex: none;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.mll-pairs .mll-pair-sub {
+  font-size: 13px;
+  color: var(--pu-text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mll-pairs .mll-pair-sub.mll-miss,
+.mll-head-sub.mll-miss {
+  color: var(--pu-bad);
+}
+
+/* 미출력 · 생성 예정이 모두 0 인 조합은 흐리게(고를 수는 있다). */
+.mll-pairs .pu-item.mll-idle {
+  opacity: 0.6;
+}
+
+.mll-right {
+  position: relative;
+}
+
+.mll-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mll-seq {
+  font-weight: 700;
+}
+
+.mll-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.mll-foot > .mll-foot-note {
+  font-size: 13px;
+  color: var(--pu-text-3);
+}
+
+/* 조회 · 생성 중 — 오른쪽 구획을 덮고 문구를 보인다(FR-013). */
+.mll-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: inherit;
+  background: var(--pu-card);
+  opacity: 0.94;
+  text-align: center;
+  padding: 24px;
+}
+
+.mll-loading > b {
+  font-size: 18px;
+}
+
+.mll-loading > span {
+  font-size: 14px;
+  color: var(--pu-text-2);
 }

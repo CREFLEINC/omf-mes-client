@@ -9,7 +9,11 @@
  *    바뀐 대로 선다(실서버와 같은 순서).
  */
 import type {
+  MaterialLotPair,
   MaterialLotSummary,
+  MaterialLotTab,
+  MaterialLotTabRow,
+  MaterialPackage,
   SupplierItemDefault,
   WaitingMaterialLotGroup,
 } from '@omf-mes/api-client';
@@ -142,10 +146,43 @@ export interface ItemFixture {
   defaultLotStorageUomId?: number | null;
   /** 보관 단위 → 기본 단위 환산(있으면 패키징당 수량). */
   storageRate?: number;
+  /** 피처 014 — 자재 LOT 기본크기 · 패키징 기본값(있으면 [만들기] 창이 품목 기본값으로 채운다). */
+  defaultProductionLotSize?: number | null;
+  defaultPackageUomId?: number | null;
+  defaultPackageCount?: number | null;
+}
+
+/**
+ * 피처 014 — 공급사·품목 하나의 P/O 몫 흉내. 서버처럼 미출력 탭 조회가 이 쪽까지 모자란 만큼만 만들고
+ * (`page × size − 이미 있는 미출력`), 만든 만큼 `creatable` 이 준다. 없으면 기본값 있음 · 만들 몫 0.
+ */
+export interface PairShare {
+  /** 아직 만들 수 있는 LOT 수. */
+  creatable: number;
+  lotQty: number;
+  package: MaterialPackage | null;
+  /** 품목 기본값 상태 — `NO_DEFAULT` · `NO_CONVERSION` 이면 만들지 않는다. */
+  status?: 'OK' | 'NO_DEFAULT' | 'NO_CONVERSION';
+  /** 만든 LOT 이 채우는 P/O 라인. */
+  po?: { purchaseOrderLineId: number; purchaseOrderNo: string; lineNo: number };
+}
+
+/** 흉내 서버가 LOT 마다 들고 있는 014 칸. */
+interface LotMeta {
+  creationModeCode: 'AUTO' | 'MANUAL';
+  purchaseOrderLine: MaterialLotTabRow['purchaseOrderLine'];
+  receivedAt: string | null;
+  voidedAt: string | null;
 }
 
 export interface HarnessOptions {
   groups?: WaitingMaterialLotGroup[];
+  /** 피처 014 — 공급사·품목(`supplierId:itemId`)마다의 P/O 몫. */
+  shares?: Record<string, PairShare>;
+  /** 미출력 탭 조회를 이 상태로 실패시킨다(409 LOT_NO_CONFLICT 등). */
+  lotsFail?: { status: number; body?: unknown };
+  /** 탭 목록 응답을 이 약속이 풀릴 때까지 붙잡는다 — 「조회 · 생성 중」을 잰다. */
+  lotsGate?: Promise<void>;
   /** 단위 목록 — 없으면 `UOMS`(G2 L17: 코드와 이름이 다른 단위를 흉내 낸다). */
   uoms?: readonly (typeof UOMS)[number][];
   defaults?: SupplierItemDefault[];
@@ -157,7 +194,7 @@ export interface HarnessOptions {
   issueHangs?: boolean;
   reportFails?: boolean;
   reissueReasons?: { code: string; codeName: string }[];
-  /** 목록 조회를 실패시킨다. */
+  /** 목록 조회(공급사·품목)를 실패시킨다. */
   waitingFail?: boolean;
   /** 이 LOT 은 폐기에서 건별 실패로 돌려준다. */
   voidRejects?: number[];
@@ -206,6 +243,125 @@ export const renderLabelScreen = (options: HarnessOptions = {}) => {
   const findLot = (lotId: number): MaterialLotSummary | undefined =>
     groups.flatMap((each) => each.lots).find((item) => item.lotId === lotId);
 
+  /* ── 피처 014 흉내 — 탭 넷 · P/O 몫 생성 · 번호 찾기 ── */
+  const shares = structuredClone(options.shares ?? {});
+  const metas = new Map<number, LotMeta>();
+  const metaOf = (item: MaterialLotSummary): LotMeta => {
+    const found = metas.get(item.lotId);
+
+    if (found !== undefined) return found;
+
+    const fresh: LotMeta = {
+      creationModeCode: 'MANUAL',
+      purchaseOrderLine: null,
+      receivedAt: item.inboundLotId === null ? null : item.createdAt,
+      voidedAt: item.lifecycleStatusCode === 'VOIDED' ? item.createdAt : null,
+    };
+    metas.set(item.lotId, fresh);
+
+    return fresh;
+  };
+  const keyOf = (each: WaitingMaterialLotGroup): string =>
+    `${String(each.supplierId)}:${String(each.itemId)}`;
+  const shareOf = (each: WaitingMaterialLotGroup): PairShare =>
+    shares[keyOf(each)] ?? { creatable: 0, lotQty: 1000, package: BAG };
+  const tabOf = (item: MaterialLotSummary): MaterialLotTab => {
+    if (item.lifecycleStatusCode === 'VOIDED') return 'VOIDED';
+    if (item.lifecycleStatusCode === 'ACTIVE') return 'RECEIVED';
+
+    return item.lastLabelIssue === null ? 'UNPRINTED' : 'PRINTED';
+  };
+  const unprintedOf = (each: WaitingMaterialLotGroup): MaterialLotSummary[] =>
+    each.lots.filter((item) => tabOf(item) === 'UNPRINTED');
+  const toRow = (
+    each: WaitingMaterialLotGroup,
+    item: MaterialLotSummary,
+    seq: number,
+  ): MaterialLotTabRow => ({
+    ...item,
+    seq,
+    uomCode: each.uomCode,
+    ...metaOf(item),
+  });
+  const pairOf = (each: WaitingMaterialLotGroup): MaterialLotPair => {
+    const share = shareOf(each);
+    const status = share.status ?? 'OK';
+
+    return {
+      supplier: { supplierId: each.supplierId, code: each.supplierCode, name: each.supplierName },
+      item: {
+        itemId: each.itemId,
+        code: each.itemCode,
+        name: each.itemName,
+        baseUomCode: each.uomCode,
+      },
+      unprintedCount: unprintedOf(each).length,
+      creatableCount: status === 'OK' ? share.creatable : 0,
+      defaultsStatus: status,
+      lotDefaults:
+        status === 'OK'
+          ? {
+              lotQty: share.lotQty,
+              packageUomId: share.package?.uomId ?? null,
+              packageUomCode: share.package?.uomCode ?? null,
+              packageCount: share.package?.count ?? null,
+            }
+          : null,
+    };
+  };
+  let autoSerial = 0;
+  /** 서버 `ensureMaterialLotsWithin` 흉내 — `upTo` 개까지 만든다. */
+  const createShare = (each: WaitingMaterialLotGroup, upTo: number): number => {
+    const share = shareOf(each);
+
+    if ((share.status ?? 'OK') !== 'OK' || upTo <= 0) return 0;
+
+    const count = Math.min(upTo, share.creatable);
+
+    for (let index = 0; index < count; index += 1) {
+      nextLotId += 1;
+      autoSerial += 1;
+      const made = lot(nextLotId, {
+        lotNo: `${each.itemCode}|${String(share.lotQty)}|261111|${each.supplierCode}|${String(
+          9000 + autoSerial,
+        )}`,
+        lotQty: share.lotQty,
+        package: share.package,
+        createdAt: '2026-11-11T04:00:00Z',
+      });
+      each.lots.push(made);
+      metas.set(made.lotId, {
+        creationModeCode: 'AUTO',
+        purchaseOrderLine: share.po ?? {
+          purchaseOrderLineId: 7101,
+          purchaseOrderNo: 'SYN-PO-01',
+          lineNo: 1,
+        },
+        receivedAt: null,
+        voidedAt: null,
+      });
+    }
+    share.creatable -= count;
+    shares[keyOf(each)] = share;
+
+    return count;
+  };
+  const tabRows = (each: WaitingMaterialLotGroup, tab: MaterialLotTab): MaterialLotSummary[] => {
+    const rows = each.lots.filter((item) => tabOf(item) === tab);
+    const stamp = (item: MaterialLotSummary): string =>
+      tab === 'PRINTED'
+        ? (item.lastLabelIssue?.issuedAt ?? '')
+        : tab === 'RECEIVED'
+          ? (metaOf(item).receivedAt ?? '')
+          : (metaOf(item).voidedAt ?? '');
+
+    return tab === 'UNPRINTED'
+      ? rows.sort((left, right) => left.lotId - right.lotId)
+      : rows.sort(
+          (left, right) => stamp(right).localeCompare(stamp(left)) || right.lotId - left.lotId,
+        );
+  };
+
   const record = async (request: Request): Promise<Sent> => {
     const url = new URL(request.url);
     const entry: Sent = {
@@ -226,6 +382,140 @@ export const renderLabelScreen = (options: HarnessOptions = {}) => {
   const path = (request: Request): string => new URL(request.url).pathname;
 
   const fetch = createStubFetch([
+    {
+      match: (request) => path(request) === '/logistics/material-lot-pairs',
+      respond: (request) => {
+        void record(request);
+        if (options.waitingFail === true) return jsonResponse({ message: '실패' }, { status: 500 });
+        const url = new URL(request.url);
+        const q = (url.searchParams.get('q') ?? '').toLocaleLowerCase('en-US');
+        const pageNo = Number(url.searchParams.get('page') ?? '1');
+        const size = Number(url.searchParams.get('size') ?? '50');
+        const all = groups
+          .map(pairOf)
+          .filter(
+            (pair) =>
+              q === '' ||
+              [pair.supplier.code, pair.supplier.name, pair.item.code, pair.item.name].some(
+                (value) => value.toLocaleLowerCase('en-US').includes(q),
+              ),
+          );
+        const busy = (pair: MaterialLotPair): number =>
+          pair.unprintedCount + pair.creatableCount > 0 ? 0 : 1;
+        const sorted = [...all].sort((left, right) => busy(left) - busy(right));
+
+        return jsonResponse({
+          items: sorted.slice((pageNo - 1) * size, pageNo * size),
+          page: { page: pageNo, size, total: sorted.length },
+          summary: {
+            unprintedCount: groups.reduce((sum, each) => sum + unprintedOf(each).length, 0),
+          },
+        });
+      },
+    },
+    {
+      match: (request) => path(request) === '/logistics/material-lots/lookup',
+      respond: (request) => {
+        void record(request);
+        const lotNo = new URL(request.url).searchParams.get('lotNo') ?? '';
+
+        for (const each of groups) {
+          const found = each.lots.find((item) => item.lotNo === lotNo);
+
+          if (found !== undefined) {
+            const tab = tabOf(found);
+            const seq = tabRows(each, tab).findIndex((item) => item.lotId === found.lotId) + 1;
+            const pair = pairOf(each);
+
+            return jsonResponse({
+              lot: toRow(each, found, seq),
+              supplier: pair.supplier,
+              item: pair.item,
+              tab,
+            });
+          }
+        }
+
+        return jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'request',
+                code: 'NOT_FOUND',
+                message: '이 공장에 없는 자재 관리 LOT 번호입니다',
+              },
+            ],
+          },
+          { status: 404 },
+        );
+      },
+    },
+    {
+      match: (request) => path(request) === '/logistics/material-lots' && request.method === 'GET',
+      respond: async (request) => {
+        void record(request);
+        if (options.lotsGate !== undefined) await options.lotsGate;
+        const url = new URL(request.url);
+        const tab = (url.searchParams.get('tab') ?? 'UNPRINTED') as MaterialLotTab;
+
+        if (options.lotsFail !== undefined && tab === 'UNPRINTED') {
+          return jsonResponse(options.lotsFail.body ?? { message: '실패' }, {
+            status: options.lotsFail.status,
+          });
+        }
+
+        const supplierId = Number(url.searchParams.get('supplierId'));
+        const itemId = Number(url.searchParams.get('itemId'));
+        const pageNo = Number(url.searchParams.get('page') ?? '1');
+        const size = Number(url.searchParams.get('size') ?? '20');
+        const each = groups.find(
+          (candidate) => candidate.supplierId === supplierId && candidate.itemId === itemId,
+        );
+
+        if (each === undefined) {
+          return jsonResponse({
+            items: [],
+            page: { page: pageNo, size, total: 0 },
+            generation:
+              tab === 'UNPRINTED'
+                ? { status: 'NO_OPEN_PO', createdNow: 0, creatableRemaining: 0 }
+                : null,
+          });
+        }
+
+        let generation = null;
+
+        if (tab === 'UNPRINTED') {
+          const existing = unprintedOf(each).length;
+          const createdNow = createShare(each, pageNo * size - existing);
+          const share = shareOf(each);
+          const status = share.status ?? 'OK';
+          const remaining = status === 'OK' ? share.creatable : 0;
+
+          generation = {
+            status:
+              status !== 'OK'
+                ? status
+                : unprintedOf(each).length + remaining === 0
+                  ? 'NO_OPEN_PO'
+                  : 'OK',
+            createdNow,
+            creatableRemaining: remaining,
+          };
+        }
+
+        const rows = tabRows(each, tab);
+        const remaining = generation?.creatableRemaining ?? 0;
+
+        return jsonResponse({
+          items: rows
+            .slice((pageNo - 1) * size, pageNo * size)
+            .map((item, index) => toRow(each, item, (pageNo - 1) * size + index + 1)),
+          page: { page: pageNo, size, total: rows.length + remaining },
+          generation,
+        });
+      },
+    },
     {
       match: (request) => path(request) === '/logistics/waiting-material-lots',
       respond: (request) => {
@@ -268,6 +558,9 @@ export const renderLabelScreen = (options: HarnessOptions = {}) => {
                 itemName: '합성 품목',
                 baseUomId: item.baseUomId,
                 defaultLotStorageUomId: item.defaultLotStorageUomId ?? null,
+                defaultProductionLotSize: item.defaultProductionLotSize ?? null,
+                defaultPackageUomId: item.defaultPackageUomId ?? null,
+                defaultPackageCount: item.defaultPackageCount ?? null,
               },
               editability: {},
             });
@@ -362,7 +655,10 @@ export const renderLabelScreen = (options: HarnessOptions = {}) => {
             const found = findLot(lotId);
             const ok = found?.lifecycleStatusCode === 'WAITING' && !rejects.has(lotId);
 
-            if (ok && found !== undefined) found.lifecycleStatusCode = 'VOIDED';
+            if (ok && found !== undefined) {
+              found.lifecycleStatusCode = 'VOIDED';
+              metaOf(found).voidedAt = '2026-11-11T04:40:00Z';
+            }
 
             return {
               lotId,
@@ -536,7 +832,7 @@ export const renderLabelScreen = (options: HarnessOptions = {}) => {
     { fetch },
   );
 
-  return { ...result, sent, groups, findLot };
+  return { ...result, sent, groups, findLot, shares };
 };
 
 /** 보낸 요청 가운데 이 경로의 것. */

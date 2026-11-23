@@ -1,4 +1,4 @@
-import type { MaterialLotSummary, WaitingMaterialLotGroup } from '@omf-mes/api-client';
+import type { MaterialLotSummary } from '@omf-mes/api-client';
 import { createIdempotencyKey } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
@@ -33,13 +33,14 @@ import { toApiError } from '../../patterns/request';
 import { serverReasonOf } from '../../patterns/server-reason';
 import { PopSelect } from '../../patterns/pop-select';
 import { createMaterialLotBatch } from './mutations';
+import type { PairRef } from './types';
 
 const t = messages.popMaterialLotLabel.batch;
 
 export interface BatchDialogProps {
   plantId: number;
   workerNo: string;
-  group: WaitingMaterialLotGroup;
+  group: PairRef;
   onClose: () => void;
   /** 만든 LOT — 화면이 고른 채로 둔다. */
   onCreated: (lots: MaterialLotSummary[]) => void;

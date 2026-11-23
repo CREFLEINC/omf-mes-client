@@ -299,7 +299,7 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
    * #295 시안 — 남은 작업 수가 없는 화면도 그 화면 대기 건수를 탭에 붙이고, 묶음 수는 탭 수의 합이다.
    * 피처 010 — 출하 단위 구성(P-04-05)은 감춘 화면이라 권한이 있어도 그 수를 묻지 않는다.
    */
-  it('창고 화면 탭에 대기 건수가 붙고 묶음 수는 탭 합이며(감춘 출하 단위 구성은 묻지 않는다), 남은 작업 창 수는 그대로다', async () => {
+  it('배지 창고 화면 탭에 대기 건수가 붙고 묶음 수는 탭 합이며(감춘 출하 단위 구성은 묻지 않는다), 남은 작업 창 수는 그대로다 — 자재 관리 LOT 라벨은 이미 만든 미출력 수(피처 014 D-9)', async () => {
     const user = userEvent.setup();
     const asked: string[] = [];
     const path = (request: Request) => new URL(request.url).pathname;
@@ -308,10 +308,15 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
       session: { ...SESSION, permissions: [...SESSION.permissions, 'P-01-02', 'P-04-05'] },
       extra: [
         {
-          match: (request) => path(request) === '/logistics/waiting-material-lots',
+          match: (request) => path(request) === '/logistics/material-lot-pairs',
           respond: (request) => {
             asked.push(request.url);
-            return jsonResponse({ items: [{ waitingCount: 20 }, { waitingCount: 6 }] });
+            /* 배지는 한 쪽(size 1)만 불러 공장 전체 미출력 합계(`summary.unprintedCount`)를 쓴다. */
+            return jsonResponse({
+              items: [],
+              page: { page: 1, size: 1, total: 132 },
+              summary: { unprintedCount: 26 },
+            });
           },
         },
         {
@@ -340,6 +345,9 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     ).toBeInTheDocument();
     expect(asked.some((url) => url.includes('plantId=2'))).toBe(true);
     expect(asked.some((url) => url.includes('labelState=UNPRINTED'))).toBe(true);
+    expect(
+      asked.some((url) => url.includes('/logistics/material-lot-pairs') && url.includes('size=1')),
+    ).toBe(true);
     expect(asked.some((url) => url.includes('hasUnassignedPackedBox=true'))).toBe(false);
 
     await user.click(groupButton('창고'));

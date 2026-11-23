@@ -22,6 +22,7 @@ import { runRequest, toApiError } from '../../patterns/request';
 
 import { toIssueFailure } from './failure';
 import type { IssueUnit } from './issue-unit';
+import { materialLotKeys } from '../../patterns/material-lot-precreate';
 import { fetchWaitingGroups, waitingKeys } from './queries';
 
 import type { LabelLot } from './types';
@@ -433,6 +434,8 @@ export const useBatchIssue = ({ workerNo }: IssueRunOptions): BatchIssueHandle =
           setStep(null);
           // LOT 의 발행 여부가 바뀌었다 — 끝나면 언제나 목록을 다시 읽는다.
           await queryClient.invalidateQueries({ queryKey: waitingKeys.all });
+          /* 탭 넷 · 왼쪽 칩도 다시 받는다 — 찍은 LOT 은 미출력에서 출력됨으로 옮긴다(피처 014). */
+          await queryClient.invalidateQueries({ queryKey: materialLotKeys.all });
         }
       };
 
