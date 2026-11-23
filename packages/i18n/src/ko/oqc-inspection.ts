@@ -20,7 +20,6 @@ export const oqcInspection = {
      * 대상 LOT·기준 버전 같은 나머지는 고른 뒤 우측 창이 보인다.
      */
     columns: {
-      skip: '생략',
       inspectionRequestNo: '의뢰번호',
       itemId: '품목',
       /** 품목은 코드 · 이름 두 칸으로 나눠 보인다(사용자 지시 2026-11-20). */
@@ -102,9 +101,8 @@ export const oqcInspection = {
     inProgress: '진행',
     completed: '완료',
     skipped: '생략',
-    /** 생략 근거(omf-all-around#212) — 검사 기준의 기본 생략 · 건별 결재 승인. */
+    /** 생략 근거(omf-all-around#212) — 검사 기준의 기본 생략. */
     skippedDefault: '생략(기본 설정)',
-    skippedApproval: '생략(결재 승인)',
     cancelled: '취소',
   },
 
@@ -355,52 +353,6 @@ export const oqcInspection = {
     invalidState: '판정은 수정할 수 없습니다 — 재검사로 진행하세요.',
   },
 
-  /**
-   * OQC 생략(omf-all-around#119 · 서버 선행 P-83) — 요청 → 「특채·한도승인 승인 처리」 결재 → 여기서 실행.
-   * ⭐ 단위는 출하작업지시 하나다 — 실행하면 그 출하작업지시의 열린 OQC 의뢰가 함께 생략된다.
-   */
-  /** 목록 「생략」 칸의 창(사용자 지시 2026-11-09). */
-  skipDialog: {
-    approveTitle: 'OQC (출하검사) 생략 승인 처리',
-    approved: 'OQC 생략 요청을 승인했습니다.',
-    rejected: 'OQC 생략 요청을 반려했습니다.',
-    executeTitle: '출하검사를 생략하시겠습니까?',
-    executeBody:
-      '실행하면 이 출하작업지시의 남은 출하검사가 생략되고, 검사 결과는 합격으로 처리됩니다.',
-    execute: '생략 실행',
-  },
-  skip: {
-    heading: 'OQC (출하검사) 생략 요청',
-    /** 요청 → 승인 → 실행 단계(#136). */
-    steps: ['1. 생략 요청', '2. 승인 처리', '3. 생략 실행'],
-    /** 실행 뒤 결과 — 무엇이 바뀌는지(#136). */
-    result: '요청 후 생략을 승인하면 남은 출하검사가 생략되고, 검사 결과는 합격으로 처리됩니다.',
-    reason: '생략 사유',
-    reasonPlaceholder: '생략 사유를 입력하세요',
-    /** 요청한 그 건의 결재 화면으로(#136) — 「특채·한도승인 승인 처리」. 요청이 결재 대기일 때만 선다. */
-    openApproval: '요청 건 승인 처리로 이동',
-    currentStep: '현재 단계',
-    /** 입력한 글자 수 — 상한은 없다(계약은 비우지만 않으면 된다 · #136). */
-    reasonCount: (count: number): string => `${String(count)}자`,
-    reasonRequired: '생략 사유를 입력하세요.',
-    /** 구획의 단추 — 사유를 쓰는 창을 연다(#136). */
-    openRequest: '생략 요청',
-    cancel: '취소',
-    request: '생략 승인 요청',
-    requesting: '요청하는 중…',
-    execute: 'OQC 생략 실행',
-    executing: '실행하는 중…',
-    requested: 'OQC 생략을 요청했습니다. 결재가 끝나면 여기서 실행하세요.',
-    pending: '결재가 아직 진행 중입니다.',
-    approved: '생략이 승인됐습니다. 실행하면 이 출하작업지시의 OQC 가 생략됩니다.',
-    rejected: '직전 생략 요청이 반려됐습니다. 다시 요청할 수 있습니다.',
-    executed: 'OQC 를 생략했습니다. 출하검사가 통과로 바뀌었습니다.',
-    skipped: '이 의뢰는 OQC 생략으로 닫혔습니다.',
-    /** 검사 기준의 기본 생략으로 만들어진 의뢰(omf-all-around#212) — 결재 없이 처음부터 생략이다. */
-    skippedDefault: '검사 기준이 ‘기본 생략’으로 설정되어 OQC 검사 없이 출하 처리되었습니다.',
-    loading: '생략 결재 상태를 불러오는 중입니다.',
-    loadFailed: '생략 결재 상태를 불러오지 못했습니다.',
-  },
   /**
    * 시리얼 OQC(omf-all-around#68 · 서버 선행 P-101) — 검사한 시리얼과 OK/NG 를 판정과 함께 저장한다.
    * 시리얼 판정은 시리얼당 한 줄로 남는다. 재검 회차는 1차를 그대로 두고 최종만 바꾼다.

@@ -187,11 +187,10 @@ describe('작업 목록', () => {
    * Q21 피처 010 — 출하는 PDA 피킹 → OQC → POP 출하 완료로 끝나 재포장(포장 수정)을 쓰지 않는다.
    * 제품 출하 업무에서 감추되 라우트는 남긴다(배포 전 진행분).
    */
-  it('입하 오류 등록 · 재생재 등록 · 긴급 IQC 생략 요청과 생산 현장 작업은 목록에 없다', () => {
+  it('입하 오류 등록 · 재생재 등록과 생산 현장 작업은 목록에 없다', () => {
     const hidden = [
       '/inbound-variance',
       '/recycle-entry',
-      '/iqc-skip-request',
       '/shopfloor-receipt',
       '/wip-handover',
       '/repair-roundtrip',

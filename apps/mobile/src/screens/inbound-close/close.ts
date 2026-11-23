@@ -82,7 +82,6 @@ export const REOPEN_BLOCKER_CODES = [
   'OPEN_RECEIPT_EXISTS',
   'IQC_RECORDED',
   'GOODS_RECEIVED',
-  'SKIP_PENDING',
   'INBOUND_LOT_FINALIZED',
   'LEGACY_INBOUND_LOT',
 ] as const;
@@ -108,6 +107,16 @@ export const isVersionConflict = (error: ApiError): boolean =>
 export const isStateLocked = (error: ApiError): boolean =>
   error.kind === 'stateLocked' || codesOf(error).includes('STATE_LOCKED');
 
-/** 마감 취소 가능 건의 까닭 — 서버가 비워 보내면 IQC 결과 0건으로 읽는다(목록 조건이 그것만 낸다). */
-export const reopenReasonOf = (lot: InboundLot): InboundLotReopenReasonCode =>
-  lot.reopenReasonCode ?? (lot.inspectionRequired ? 'NO_IQC_RESULT' : 'INSPECTION_NOT_REQUIRED');
+/**
+ * 마감 취소 가능 건의 까닭. 긴급 IQC 생략(`IQC_SKIPPED`)은 없어졌다(omf-all-around#353) — 고정 계약에는 아직 값이
+ * 남아 있어 타입에서만 뺀다.
+ */
+export type ReopenReasonCode = Exclude<InboundLotReopenReasonCode, 'IQC_SKIPPED'>;
+
+/** 서버가 비워 보내면(또는 없어진 값이면) 검사 필요 여부로 읽는다(목록 조건이 그것만 낸다). */
+export const reopenReasonOf = (lot: InboundLot): ReopenReasonCode =>
+  lot.reopenReasonCode === 'NO_IQC_RESULT' || lot.reopenReasonCode === 'INSPECTION_NOT_REQUIRED'
+    ? lot.reopenReasonCode
+    : lot.inspectionRequired
+      ? 'NO_IQC_RESULT'
+      : 'INSPECTION_NOT_REQUIRED';

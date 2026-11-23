@@ -169,7 +169,7 @@ export const partsIqcInspection = {
       basis === null
         ? '검사를 생략한 의뢰입니다. 입력할 검사 결과가 없습니다.'
         : `검사를 생략한 의뢰입니다(${basis}). 입력할 검사 결과가 없습니다.`,
-    basis: { DEFAULT: '기본 설정', APPROVAL: '결재 승인' } as Record<string, string>,
+    basis: { DEFAULT: '기본 설정' } as Record<string, string>,
   },
   requestStatus: {
     /* 상단 건수 칩(대기 · 진행)과 같은 말(사용자 지시 2026-11-16 · #274). */

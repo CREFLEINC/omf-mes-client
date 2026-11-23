@@ -179,7 +179,6 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
       CONFIRM_CANCELLED: 'Hủy xác nhận đánh giá',
       REOPENED_BY_REWORK: 'Mở lại do làm lại',
       SKIPPED: 'Bỏ qua kiểm tra',
-      SKIP_VOIDED: 'Hủy bỏ qua kiểm tra (hủy chốt)',
       SPLIT_OUT: 'Tách LOT quản lý vật tư',
       SPLIT_IN: 'Tạo do tách',
       CANCELLED_BY_REOPEN: 'Hủy yêu cầu do hủy chốt',
