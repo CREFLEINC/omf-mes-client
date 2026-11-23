@@ -497,7 +497,13 @@ export const InspectionDetail = ({
     <div className="parts-iqc-detail-body">
       <div className="parts-iqc-detail-head">
         <h2 className="pane-title">{t.dialog.title}</h2>
-        {detail.data !== undefined && t.requestStatus[detail.data.statusCode] !== undefined && (
+        {/* 생략 건은 상태 라벨 대신 안내 줄을 제목 바로 오른쪽에(사용자 지시 2026-11-23 · #353). */}
+        {detail.data?.statusCode === 'SKIPPED' ? (
+          <p className="iqc-inspection-action-note inspection-skip-note" data-tone="warning">
+            <Icon name="warning" size={16} aria-hidden />
+            {t.skipped.notice}
+          </p>
+        ) : detail.data !== undefined && t.requestStatus[detail.data.statusCode] !== undefined && (
           <Chip size="sm" status={detail.data.statusCode === 'IN_PROGRESS' ? 'info' : 'idle'}>
             {t.requestStatus[detail.data.statusCode]}
           </Chip>
@@ -632,11 +638,7 @@ const SkippedSummary = (props: {
   inbound: { supplierLabel: string | null; receivedAt: string | null } | undefined;
 }) => (
   <>
-    <p className="iqc-inspection-action-note inspection-skip-note" data-tone="warning">
-      <Icon name="warning" size={16} aria-hidden />
-      {t.skipped.notice}
-    </p>
-    {/* 안내 줄 바로 아래라 구획 윗선을 두지 않는다(사용자 지시 2026-11-23 · omf-all-around#353). */}
+    {/* 탭 바로 아래라 구획 윗선을 두지 않는다(omf-all-around#353). */}
     <section className="parts-iqc-block parts-iqc-skipped" aria-label={t.target.heading}>
       <dl className="parts-iqc-facts">
         <div className="parts-iqc-fact">

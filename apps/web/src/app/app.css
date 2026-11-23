@@ -32807,8 +32807,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 .parts-iqc-detail-head {
   display: flex;
   align-items: center;
-  /* 상태 라벨은 제목 바로 오른쪽에(사용자 지시 2026-11-23 · #353). 재검사 단추는 아래 margin-left: auto 로 오른쪽 끝. */
-  justify-content: flex-start;
+  justify-content: space-between;
   gap: var(--space-3);
 }
 
@@ -32833,11 +32832,16 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   font: var(--type-body-lg);
 }
 
+/* IQC 는 제목 바로 오른쪽에 붙인다(머리줄 양 끝 배치를 이 줄만 풀기). */
+.parts-iqc-detail-head > .iqc-inspection-action-note.inspection-skip-note {
+  margin-right: auto;
+}
+
 .pqc-web > .iqc-inspection-action-note.inspection-skip-note {
   margin-top: var(--space-3);
 }
 
-/* 생략 요약 — 안내 줄 바로 아래라 윗선 없이 붙인다(omf-all-around#353). */
+/* 생략 요약 — 탭 바로 아래라 윗선 없이 붙인다(omf-all-around#353). */
 .parts-iqc-block.parts-iqc-skipped {
   padding-top: 0;
   border-top: 0;
