@@ -59,8 +59,82 @@ const FitItemName = ({ name }: { name: string }) => {
   );
 };
 
+/** 왼쪽 공급사 목록의 한 줄 — 찾기에 걸린 공급사·품목을 공급사별로 모은 것. */
+export interface SupplierRow {
+  supplierId: number;
+  supplierName: string;
+  /** 그 공급사 품목들의 라벨 미출력 합. */
+  unprintedCount: number;
+}
+
+/** 공급사·품목을 공급사별로 모은다 — 순서는 처음 나온 차례(서버 정렬: 공급사 코드 · 품목 코드). */
+export const supplierRowsOf = (groups: readonly WaitingMaterialLotGroup[]): SupplierRow[] => {
+  const rows = new Map<number, SupplierRow>();
+
+  for (const group of groups) {
+    const row = rows.get(group.supplierId);
+
+    if (row === undefined) {
+      rows.set(group.supplierId, {
+        supplierId: group.supplierId,
+        supplierName: group.supplierName,
+        unprintedCount: group.unprintedCount,
+      });
+    } else {
+      row.unprintedCount += group.unprintedCount;
+    }
+  }
+
+  return [...rows.values()];
+};
+
 export interface SupplierListProps {
-  /** 이 쪽에 보일 공급사·품목(쪽 넘김은 화면이 자른다). */
+  /** 이 쪽에 보일 공급사(쪽 넘김은 화면이 자른다). */
+  suppliers: readonly SupplierRow[];
+  selectedId: number | null;
+  isLocked: boolean;
+  onSelect: (supplierId: number) => void;
+  /** 쪽 건수를 재는 칸. */
+  fitRef: RefObject<HTMLUListElement | null>;
+}
+
+/**
+ * 첫째 목록 — **공급사만**(사용자 지시 2026-11-23). 공급사명(코드 없이) · 오른쪽 끝에 라벨 미출력 수.
+ * ⭐ 항목 전체가 누르는 자리다(규범 C-1). 넘치면 화면이 쪽으로 나눈다(구획 안 스크롤 없음).
+ */
+export const SupplierList = ({
+  suppliers,
+  selectedId,
+  isLocked,
+  onSelect,
+  fitRef,
+}: SupplierListProps) => (
+  <ul ref={fitRef} className="pu-list pu-fit mll-pairs" aria-label={t.suppliersLabel}>
+    {suppliers.map((supplier) => (
+      <li key={supplier.supplierId}>
+        <button
+          type="button"
+          className={puCx('pu-item', supplier.supplierId === selectedId && 'is-selected')}
+          aria-pressed={supplier.supplierId === selectedId}
+          disabled={isLocked}
+          onClick={() => {
+            onSelect(supplier.supplierId);
+          }}
+        >
+          <span className="pu-item-top mll-pair-item">
+            <span className="mll-pair-name">{supplier.supplierName}</span>
+            {supplier.unprintedCount > 0 && (
+              <span className="mll-pair-unprinted">{t.unprinted(supplier.unprintedCount)}</span>
+            )}
+          </span>
+        </button>
+      </li>
+    ))}
+  </ul>
+);
+
+export interface ItemListProps {
+  /** 이 쪽에 보일 고른 공급사의 품목(쪽 넘김은 화면이 자른다). */
   groups: readonly WaitingMaterialLotGroup[];
   defaults: ReadonlyMap<string, SupplierItemDefault>;
   selectedKey: string | null;
@@ -71,23 +145,22 @@ export interface SupplierListProps {
 }
 
 /**
- * 왼쪽 **공급사·품목** 목록(005 · screens/P-01-01.md · #295 시안).
- *
- * ⭐ 항목 전체가 누르는 자리다(규범 C-1).
- * ⭐ 항목마다 공급사명 · 품목이 늘 보이고, 라벨 미출력은 공급사명 줄 오른쪽에, 기본 포장은 있을 때만 한 줄 더 붙는다. 넘치면 화면이 쪽으로 나눈다(구획 안 스크롤 없음).
+ * 둘째 목록 — **고른 공급사의 품목**(사용자 지시 2026-11-23). 품목코드는 왼쪽, 품목명은 오른쪽 끝(길면 글자를 줄여 한 줄).
+ * 라벨 미출력 · 기본 포장은 있을 때만 한 줄 더 붙는다.
  */
-export const SupplierList = ({
+export const ItemList = ({
   groups,
   defaults,
   selectedKey,
   isLocked,
   onSelect,
   fitRef,
-}: SupplierListProps) => (
-  <ul ref={fitRef} className="pu-list pu-fit mll-pairs" aria-label={t.label}>
+}: ItemListProps) => (
+  <ul ref={fitRef} className="pu-list pu-fit mll-pairs" aria-label={t.itemsLabel}>
     {groups.map((group) => {
       const key = pairKeyOf(group.supplierId, group.itemId);
       const defaultLine = defaultLineOf(defaults.get(key));
+      const unprinted = group.unprintedCount > 0 ? t.unprinted(group.unprintedCount) : null;
 
       return (
         <li key={key}>
@@ -100,22 +173,14 @@ export const SupplierList = ({
               onSelect(key);
             }}
           >
-            {/* 첫 줄은 공급사명(코드 없이) · 오른쪽 끝에 라벨 미출력 수, 둘째 줄은 품목(사용자 지시 2026-11-23).
-                「입하 대기 N」 칩은 걷었다. */}
-            <span className="pu-item-sub mll-pair-supplier">
-              <span>{group.supplierName}</span>
-              {group.unprintedCount > 0 && (
-                <span className="mll-pair-unprinted">{t.unprinted(group.unprintedCount)}</span>
-              )}
-            </span>
-            {/* 품목코드는 왼쪽, 품목명은 오른쪽 끝(사용자 지시 2026-11-23). */}
             <span className="pu-item-top mll-pair-item">
               <span className="mll-pair-name">{group.itemCode}</span>
               <FitItemName name={group.itemName} />
             </span>
-            {defaultLine !== null && (
-              <span className="pu-item-sub">
+            {(defaultLine !== null || unprinted !== null) && (
+              <span className="pu-item-sub mll-pair-supplier">
                 <span>{defaultLine}</span>
+                {unprinted !== null && <span className="mll-pair-unprinted">{unprinted}</span>}
               </span>
             )}
           </button>

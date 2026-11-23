@@ -334,11 +334,12 @@ describe('기본 정보 한 줄', () => {
   it('기본 정보가 없는 공급사·품목은 그 줄 없이 라벨 미출력 수만 적는다', async () => {
     renderLabelScreen({ defaults: [defaultInfo({ itemId: 9999 })] });
 
-    const list = await screen.findByRole('list', { name: t.pairs.label });
+    const list = await screen.findByRole('list', { name: t.pairs.itemsLabel });
     const first = within(list).getAllByRole('button')[0];
     expect(first).not.toHaveTextContent('기본 정보 없음');
     expect(first).not.toHaveTextContent('기본 ');
     expect(first).toHaveTextContent(t.pairs.unprinted(2));
-    expect(await screen.findByText(t.work.meta('합성 공급사 가', 'EA', null))).toBeInTheDocument();
+    const head = await screen.findByRole('heading', { name: /SYN-ITEM-01/u });
+    expect(head).not.toHaveTextContent(/기본 (?!단위)/u);
   });
 });

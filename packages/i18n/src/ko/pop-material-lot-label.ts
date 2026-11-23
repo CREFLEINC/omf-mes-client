@@ -24,6 +24,8 @@ export const popMaterialLotLabel = {
   },
   /** 왼쪽 공급사·품목 목록. 칩은 대기 자재 관리 LOT 수다. */
   pairs: {
+    suppliersLabel: '공급사',
+    itemsLabel: '품목',
     label: '공급사·품목', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
     /** 공급사명 줄 오른쪽 끝의 라벨 미출력 수. */
     unprinted: (count: number) => `라벨 미출력 ${count}`,
@@ -37,9 +39,8 @@ export const popMaterialLotLabel = {
   /** 재발행 탭 왼쪽 안내. */
   /** 오른쪽 작업 칸. */
   work: {
-    /** 공급사 코드는 적지 않는다(사용자 지시 2026-11-23). 기본 정보가 없으면(`null`) 마지막 칸을 뺀다. */
-    meta: (supplier: string, uomCode: string, defaults: string | null) =>
-      `${supplier} · 기본 단위 ${uomCode}${defaults === null ? '' : ` · ${defaults}`}`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    /** 상세 머리의 이름표(사용자 지시 2026-11-23). */
+    fields: { itemCode: '품목코드', itemName: '품목명', supplier: '공급사', uom: '기본 단위' },
     create: '자재 관리 LOT 생성',
     /** 상시 할 일 한 줄 — 입하 대기 LOT 을 고르면 출고·투입 제한을 말한다(#295 시안). */
     help: '자재 관리 LOT 안내',

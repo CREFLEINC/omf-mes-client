@@ -49,7 +49,7 @@ import {
   useWaitingGroups,
 } from './queries';
 import { ReasonPicker } from './reason-picker';
-import { defaultLineOf, SupplierList } from './supplier-list';
+import { defaultLineOf, ItemList, SupplierList, supplierRowsOf } from './supplier-list';
 import { isVoided, isWaiting, pairKeyOf, toLabelLots, type LabelLot } from './types';
 import { VoidDialog } from './void-dialog';
 import './uniform.css';
@@ -130,6 +130,7 @@ export const PopMaterialLotLabelScreen = () => {
   const [query, setQuery] = useState('');
   const [scanNote, setScanNote] = useState<string | null>(null);
   const [pairKey, setPairKey] = useState<string | null>(null);
+  const [supplierId, setSupplierId] = useState<number | null>(null);
   const [checked, setChecked] = useState<ReadonlySet<number>>(new Set());
   const [reasonCode, setReasonCode] = useState<string | null>(null);
   const [unit, setUnit] = useState<IssueUnit>(storedIssueUnit);
@@ -183,9 +184,20 @@ export const PopMaterialLotLabelScreen = () => {
     () => (tab === 'pairs' ? waiting.groups.filter((group) => matchesPair(group, normalized)) : []),
     [tab, waiting.groups, normalized],
   );
+  /* 첫째 목록은 공급사, 둘째 목록은 고른 공급사의 품목(사용자 지시 2026-11-23). */
+  const suppliers = useMemo(() => supplierRowsOf(groups), [groups]);
+  const currentSupplier =
+    suppliers.find((supplier) => supplier.supplierId === supplierId) ?? suppliers[0] ?? null;
+  const supplierGroups = useMemo(
+    () =>
+      currentSupplier === null
+        ? []
+        : groups.filter((group) => group.supplierId === currentSupplier.supplierId),
+    [groups, currentSupplier],
+  );
   const current =
-    groups.find((group) => pairKeyOf(group.supplierId, group.itemId) === pairKey) ??
-    groups[0] ??
+    supplierGroups.find((group) => pairKeyOf(group.supplierId, group.itemId) === pairKey) ??
+    supplierGroups[0] ??
     null;
   const currentKey = current === null ? null : pairKeyOf(current.supplierId, current.itemId);
   /*
@@ -251,14 +263,17 @@ export const PopMaterialLotLabelScreen = () => {
   const isShowingResults = snapshot !== null;
 
   /* 쪽 넘김(규칙 1) — 한 쪽 건수는 구획 높이에 들어가는 만큼. */
-  const pairFitRef = useRef<HTMLUListElement>(null);
+  const supplierFitRef = useRef<HTMLUListElement>(null);
+  const itemFitRef = useRef<HTMLUListElement>(null);
   const tableFitRef = useRef<HTMLDivElement>(null);
-  const pairSize = useFitCount(pairFitRef, { fallback: 4 });
+  const supplierSize = useFitCount(supplierFitRef, { fallback: 4 });
+  const itemSize = useFitCount(itemFitRef, { fallback: 4 });
   const rowSize = useFitTableRows(tableFitRef, { fallback: 5 });
   /* 입하 대기 · 폐기 다음에 최근 입하된 LOT(흐림, 고를 수 없음) — 결과를 그리는 동안은 그때 표 그대로. */
   const pairTableLots = snapshot?.lots ?? [...waitingLots, ...receivedLots.filter(isUnissued)];
   const reprintTableLots = snapshot?.lots ?? reprintLots;
-  const pairPage = useClientPage(groups, pairSize);
+  const supplierPage = useClientPage(suppliers, supplierSize);
+  const itemPage = useClientPage(supplierGroups, itemSize);
   const waitPage = useClientPage(pairTableLots, rowSize);
   const reprintPage = useClientPage(reprintTableLots, rowSize);
 
@@ -273,14 +288,25 @@ export const PopMaterialLotLabelScreen = () => {
     setScanNote(null);
     setReasonCode(null);
     clearSelection();
-    pairPage.setPage(1);
+    supplierPage.setPage(1);
+    itemPage.setPage(1);
     waitPage.setPage(1);
     reprintPage.setPage(1);
   };
 
   const changePairQuery = (next: string): void => {
     setQuery(next);
-    pairPage.setPage(1);
+    supplierPage.setPage(1);
+    itemPage.setPage(1);
+  };
+
+  const chooseSupplier = (next: number): void => {
+    if (next === currentSupplier?.supplierId) return;
+    setSupplierId(next);
+    setPairKey(null);
+    clearSelection();
+    itemPage.setPage(1);
+    waitPage.setPage(1);
   };
 
   const choosePair = (key: string): void => {
@@ -554,21 +580,20 @@ export const PopMaterialLotLabelScreen = () => {
               <PuEmpty icon="search" title={normalized === '' ? t.pairs.empty : t.pairs.noMatch} />
             ) : (
               <SupplierList
-                groups={pairPage.items}
-                defaults={defaultsMap}
-                selectedKey={currentKey}
+                suppliers={supplierPage.items}
+                selectedId={currentSupplier?.supplierId ?? null}
                 isLocked={isFrozen}
-                onSelect={choosePair}
-                fitRef={pairFitRef}
+                onSelect={chooseSupplier}
+                fitRef={supplierFitRef}
               />
             )}
           </div>
           <PuPager
-            label={t.pairs.label}
-            total={pairPage.total}
-            page={pairPage.page}
-            pages={pairPage.pages}
-            onPage={pairPage.setPage}
+            label={t.pairs.suppliersLabel}
+            total={supplierPage.total}
+            page={supplierPage.page}
+            pages={supplierPage.pages}
+            onPage={supplierPage.setPage}
           />
         </>
       ) : (
@@ -591,6 +616,35 @@ export const PopMaterialLotLabelScreen = () => {
     </PuSection>
   );
 
+  /* 가운데 — 고른 공급사의 품목(사용자 지시 2026-11-23). */
+  const itemSection = (
+    <PuSection
+      className="mll-mid"
+      title={currentSupplier?.supplierName ?? t.pairs.itemsLabel}
+      split
+    >
+      {supplierGroups.length === 0 ? null : (
+        <>
+          <ItemList
+            groups={itemPage.items}
+            defaults={defaultsMap}
+            selectedKey={currentKey}
+            isLocked={isFrozen}
+            onSelect={choosePair}
+            fitRef={itemFitRef}
+          />
+          <PuPager
+            label={t.pairs.itemsLabel}
+            total={itemPage.total}
+            page={itemPage.page}
+            pages={itemPage.pages}
+            onPage={itemPage.setPage}
+          />
+        </>
+      )}
+    </PuSection>
+  );
+
   const pairSection =
     current === null ? (
       <PuSection>
@@ -601,18 +655,30 @@ export const PopMaterialLotLabelScreen = () => {
       <PuSection
         className="mll-right"
         labelId={`${createNoteId}-pair`}
-        /* 공급사 · 기본 단위 · 기본 정보는 제목 오른쪽에 작고 흐리게 한 줄 — 넘치면 말줄임(사용자 지시 2026-11-19).
-           기본 정보가 없으면 그 칸을 뺀다(사용자 지시 2026-11-23). */
+        /* 품목코드 · 품목명 · 공급사를 이름표와 함께 적는다(사용자 지시 2026-11-23). 기본 정보는 있을 때만. */
         title={
           <>
-            <span className="mll-head-name">{pairName}</span>
-            <span className="mll-head-sub">
-              {t.work.meta(
-                current.supplierName,
-                current.uomCode,
-                defaultLineOf(defaultsMap.get(currentKey ?? '')),
-              )}
+            <span className="mll-head-field">
+              <small>{t.work.fields.itemCode}</small>
+              <span className="mll-head-name">{current.itemCode}</span>
             </span>
+            <span className="mll-head-field">
+              <small>{t.work.fields.itemName}</small>
+              <span className="mll-head-name">{current.itemName}</span>
+            </span>
+            <span className="mll-head-field">
+              <small>{t.work.fields.supplier}</small>
+              <span className="mll-head-value">{current.supplierName}</span>
+            </span>
+            <span className="mll-head-field">
+              <small>{t.work.fields.uom}</small>
+              <span className="mll-head-value">{current.uomCode}</span>
+            </span>
+            {defaultLineOf(defaultsMap.get(currentKey ?? '')) === null ? null : (
+              <span className="mll-head-sub">
+                {defaultLineOf(defaultsMap.get(currentKey ?? ''))}
+              </span>
+            )}
           </>
         }
         meta={
@@ -858,10 +924,18 @@ export const PopMaterialLotLabelScreen = () => {
           />
         }
       >
-        <PuCols variant="list">
-          {leftSection}
-          {tab === 'pairs' ? pairSection : reprintSection}
-        </PuCols>
+        {tab === 'pairs' ? (
+          <PuCols variant="list" className="mll-cols3">
+            {leftSection}
+            {itemSection}
+            {pairSection}
+          </PuCols>
+        ) : (
+          <PuCols variant="list">
+            {leftSection}
+            {reprintSection}
+          </PuCols>
+        )}
       </PuScreen>
 
       {dialog?.kind === 'batch' && current !== null && plantId !== null && workerNo !== null ? (

@@ -14,6 +14,8 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     scanLabel: 'Số LOT quản lý vật tư hoặc mã/tên mặt hàng',
   },
   pairs: {
+    suppliersLabel: 'Nhà cung cấp',
+    itemsLabel: 'Mặt hàng',
     label: 'Nhà cung cấp · mặt hàng',
     unprinted: (count: number) => `${count} chưa in nhãn`,
     defaultPackaged: (text: string) => `Mặc định ${text}`,
@@ -22,8 +24,12 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     noMatch: 'Không có nhà cung cấp · mặt hàng cần tìm.',
   },
   work: {
-    meta: (supplier: string, uomCode: string, defaults: string | null) =>
-      `${supplier} · Đơn vị cơ sở ${uomCode}${defaults === null ? '' : ` · ${defaults}`}`,
+    fields: {
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
+      supplier: 'Nhà cung cấp',
+      uom: 'Đơn vị cơ sở',
+    },
     create: 'Tạo LOT quản lý vật tư',
     help: 'Hướng dẫn LOT quản lý vật tư',
     helpIntro: 'Có thể tạo LOT và in nhãn trước khi vật tư nhập kho.',
