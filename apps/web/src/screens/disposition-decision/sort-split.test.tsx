@@ -1,12 +1,18 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { SessionProvider } from '../../patterns/session';
 import { jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
-import { dispositionStub, lotFixture, requestedPaths, requestsSent } from './fixtures';
+import {
+  dispositionStub,
+  lotFixture,
+  requestedPaths,
+  requestsSent,
+  saveAndConfirm,
+} from './fixtures';
 import { DispositionDecisionScreen } from './screen';
 
 /* 005 T094 — W-03-10 선별 = 불량 자재 관리 LOT 를 새 입하 LOT 로 분리(US7-2 · FR-041). 값은 전부 지어낸 합성값이다. */
@@ -81,35 +87,33 @@ describe('W-03-10 선별', () => {
     expect(screen.getByRole('button', { name: t.sort.help })).toBeInTheDocument();
     expect(screen.queryByText(t.sort.help)).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: t.sort.qtyNote })).toHaveLength(2);
-    // 저장하면 무엇이 일어나는지 미리 보인다 — 번호는 실행 응답으로만 안다.
-    expect(screen.getByText(t.sort.previewRest('0001, 0002', '2,000 EA'))).toBeInTheDocument();
-    expect(screen.getByText(t.sort.previewMoved('0003', '1,000 EA'))).toBeInTheDocument();
+    // 저장 후 처리 — 처리 이름과 대상 LOT · 수량, 아래 짧은 안내(#352).
+    const preview = screen.getByRole('group', { name: t.sort.previewTitle });
+    expect(
+      within(preview).getByText(t.sort.previewTarget('0001, 0002', '2,000 EA')),
+    ).toBeInTheDocument();
+    expect(within(preview).getByText(t.sort.previewTarget('0003', '1,000 EA'))).toBeInTheDocument();
+    expect(within(preview).getByText(t.sort.previewNotes[0] ?? '')).toBeInTheDocument();
+    // 고른 대로 양품 · 불량 수량이 «값으로» 채워지고, 사용자가 고쳐 쓸 수 있다(#352).
+    expect(screen.getByLabelText(t.sort.goodQty)).toHaveValue('2000');
+    expect(screen.getByLabelText(t.sort.defectQty)).toHaveValue('1000');
+    await user.clear(screen.getByLabelText(t.sort.defectQty));
     await user.type(screen.getByLabelText(t.sort.defectQty), '1050');
     await user.type(screen.getByLabelText(t.form.reasonLabel), '합성 선별 사유');
-    await user.click(screen.getByRole('button', { name: t.sort.save }));
+    await saveAndConfirm(user);
 
     await waitFor(() => expect(sortPost()).toBeDefined());
     // 수량 분할 본문 없이 — 고른 LOT 과 정보 수량만.
     await expect(sortPost()?.json()).resolves.toEqual({
       dispositionTypeCode: 'SORT',
       lotIds: [8203],
+      goodQty: 2000,
       defectQty: 1050,
       reason: '합성 선별 사유',
     });
-    expect(await screen.findByText(t.sort.resultTitle)).toBeInTheDocument();
-    expect(screen.getByText(t.sort.resultRest('0001, 0002'))).toBeInTheDocument();
-    expect(
-      screen.getByText(t.sort.resultMoved('0003', 'SAMPLE-IL-0502'), { exact: false }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(t.sort.toast('0003', 'SAMPLE-IL-0502', 'SAMPLE-NC-0052')),
-    ).toBeInTheDocument();
-    // 정보 수량은 천 단위 쉼표(G2 L6).
-    expect(screen.getByText(t.sort.resultInfo(t.values.unknownQty, '1,050'))).toBeInTheDocument();
-
-    // 새 부적합은 링크 — 누르면 그 부적합을 연다.
-    await user.click(screen.getByRole('button', { name: 'SAMPLE-NC-0052' }));
-    await waitFor(() => expect(requestedPaths()).toContain('/quality/nonconformances/52'));
+    // 결과 상자 없이 알림만 — 새 부적합은 상단 링크가, LOT 별 결과는 LOT 표가 보인다(#352 사용자 지시).
+    expect(await screen.findByText(t.form.success)).toBeInTheDocument();
+    expect(document.querySelector('.disposition-result')).toBeNull();
   });
 
   it('US7-2 전부 고르면 막는다 — 원래 입하 LOT 에 하나 이상 남아야 한다. 하나도 안 골라도 저장할 수 없다', async () => {
@@ -117,8 +121,11 @@ describe('W-03-10 선별', () => {
     await screen.findByText('SAMPLE-ML|0003');
 
     await user.click(screen.getByRole('radio', { name: '선별' }));
+    // 고르기 전에는 목록 위 안내만, 저장 후 처리 요약은 없다(#352).
+    expect(screen.getByText(t.sort.selectNote)).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: t.sort.previewTitle })).toBeNull();
     await user.type(screen.getByLabelText(t.form.reasonLabel), '합성 선별 사유');
-    const save = screen.getByRole('button', { name: t.sort.save });
+    const save = screen.getByRole('button', { name: t.actions.save });
     expect(save).toBeDisabled();
     expect(save).toHaveAccessibleDescription(t.sort.noneSelected);
 
@@ -154,7 +161,7 @@ describe('W-03-10 선별', () => {
     );
   });
 
-  it('US7-2 선별로 생긴 부적합은 정상 처분이 없다', async () => {
+  it('US7-2 선별로 생긴 부적합에도 정상 처분은 없다 — 폐기를 고를 수 있다', async () => {
     renderSort({
       nonconformance: {
         inboundLotNo: 'SAMPLE-IL-0502',
@@ -164,10 +171,19 @@ describe('W-03-10 선별', () => {
     });
     await screen.findByText('SAMPLE-ML|0003');
 
-    expect(screen.getByRole('radio', { name: '정상' })).toBeDisabled();
-    expect(screen.getByRole('radio', { name: '정상' })).toHaveAccessibleDescription(
-      t.form.typeLock.normalSorted,
-    );
-    expect(screen.getByRole('button', { name: 'SAMPLE-NC-0040' })).toBeInTheDocument();
+    /* #352 — 정상 · 재작업은 어느 부적합에서도 고르지 않는다. */
+    expect(screen.queryByRole('radio', { name: '정상' })).toBeNull();
+    expect(screen.queryByRole('radio', { name: '재작업' })).toBeNull();
+    expect(screen.getByRole('radio', { name: '폐기' })).toBeEnabled();
+    /* 심각도 오른쪽 「기존 부적합 건」 칸 — [기존 부적합 건 조회] 단추(#352). */
+    expect(
+      screen.getByRole('button', { name: t.inboundLot.openSortedFrom('SAMPLE-NC-0040') }),
+    ).toHaveTextContent('기존 부적합 건 조회');
+    /* 어디서 왔는지는 「기존 부적합 건」 이름 옆 ⓘ 말풍선(#352). */
+    expect(
+      screen.getByRole('button', {
+        name: '이 부적합 건은 [SAMPLE-NC-0040]에서 선별된 LOT에 대해 생성되었습니다.',
+      }),
+    ).toBeInTheDocument();
   });
 });

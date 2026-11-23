@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -12,14 +12,15 @@ import {
   lotFixture,
   requestedPaths,
   requestsSent,
+  saveAndConfirm,
 } from './fixtures';
 import { DispositionDecisionScreen } from './screen';
 
 const t = messages.dispositionDecision;
 const TODAY = new Date(2026, 7, 12);
 const KST = 540;
-/** ⚠ 지어낸 자리표시다 — 처분 유형의 실제 값 목록은 아직 확정되지 않았다. */
-const CODE = 'REWORK';
+/** 고를 수 있는 처분은 폐기 · 선별뿐이다(omf-all-around#352) — 일반 저장은 폐기로 잰다. */
+const CODE = 'SCRAP';
 
 type User = ReturnType<typeof userEvent.setup>;
 
@@ -41,12 +42,12 @@ const renderScreen = (options: Parameters<typeof dispositionStub>[0] = {}): { us
 /* 005 FR-038 — 처분 수량은 남은 수량 전부로 고정한다(입력 칸 없음). */
 const fillDecision = async (user: User, reason = '표면만 손상됐다'): Promise<void> => {
   await screen.findByText('LOT-TEST-0088');
-  await user.click(screen.getByRole('radio', { name: '재작업' }));
+  await user.click(screen.getByRole('radio', { name: '폐기' }));
   await user.type(screen.getByLabelText(t.form.reasonLabel), reason);
 };
 
 const save = async (user: User): Promise<void> => {
-  await user.click(screen.getByRole('button', { name: t.actions.save }));
+  await saveAndConfirm(user);
 };
 
 const posted = (): Request | undefined =>
@@ -145,7 +146,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
   it('사유가 비면 서버로 보내지 않는다', async () => {
     const { user } = renderScreen();
     await screen.findByText('LOT-TEST-0088');
-    await user.click(screen.getByRole('radio', { name: '재작업' }));
+    await user.click(screen.getByRole('radio', { name: '폐기' }));
     await save(user);
 
     expect(await screen.findByText(t.form.reasonRequired)).toBeInTheDocument();
@@ -289,7 +290,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
 
     await user.click(screen.getByText('NC-TEST-0042'));
     await screen.findByText('LOT-TEST-0088');
-    await user.click(screen.getByRole('radio', { name: '재작업' }));
+    await user.click(screen.getByRole('radio', { name: '폐기' }));
     await user.type(screen.getByLabelText(t.form.reasonLabel), '표면만 손상됐다');
     await save(user);
 
@@ -335,3 +336,23 @@ describe('DispositionDecisionScreen 판정 저장', () => {
 });
 
 /* 옛 수량 분할 선별(#108 · P-53) 시험은 005 FR-038 로 선별이 「불량 자재 관리 LOT 고르기」로 바뀌어 `sort-split.test.tsx` 로 옮겼다. */
+
+describe('DispositionDecisionScreen 결재 없이 바로 반영(#352)', () => {
+  it('판정 확인 팝업에서 [판정 저장]을 누르면 결재 없이 판정 저장 경로로 보내고 결과를 바로 보인다', async () => {
+    const { user } = renderScreen();
+    await fillDecision(user);
+    await user.click(screen.getByRole('button', { name: t.actions.save }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(t.confirm.title)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.confirm.direct)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: t.confirm.save }));
+
+    await waitFor(() => {
+      expect(new URL(posted()?.url ?? 'http://x').pathname).toBe(
+        '/quality/nonconformances/41/disposition-decisions',
+      );
+    });
+    expect(await screen.findByText(t.form.success)).toBeInTheDocument();
+  });
+});

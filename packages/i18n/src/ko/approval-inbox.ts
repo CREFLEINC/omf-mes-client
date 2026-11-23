@@ -249,9 +249,8 @@ export const approvalInbox = {
     GOODS_ISSUE_CANCEL: '출고 취소',
     SHIPMENT_CANCEL: '출하 취소',
     PRODUCTION_RESULT_CORRECT: '생산 실적 정정',
-    CONCESSION: '특채',
   } as Record<string, string | undefined>,
-  /** 요청 상태 이름 — 품질 승인 처리와 같은 말(omf-all-around#353). 목록 밖 코드는 코드 그대로. */
+  /** 요청 상태 이름(omf-all-around#353). 목록 밖 코드는 코드 그대로. */
   requestStatusNames: { PENDING: '결재 대기', APPROVED: '승인', REJECTED: '반려' } as Record<
     string,
     string

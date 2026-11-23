@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { SessionProvider } from '../../patterns/session';
 import { jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
-import { dispositionStub, lotFixture, requestsSent } from './fixtures';
+import { dispositionStub, lotFixture, requestsSent, saveAndConfirm } from './fixtures';
 import { DispositionDecisionScreen } from './screen';
 
 /* 005 T077 — W-03-10 입하 LOT 단위 처분(US4-4 · R14a-1 · FR-031 · FR-038). 값은 전부 지어낸 합성값이다. */
@@ -110,32 +110,29 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     const qty = screen.getByLabelText(t.form.qtyLabel);
     await waitFor(() => expect(qty).toHaveTextContent('3,000 EA'));
 
-    await user.click(screen.getByRole('radio', { name: '재작업' }));
-    expect(
-      screen.getByText(t.form.wholeEffect(3, t.form.reworkInboundEffect('SAMPLE-IL-0501'))),
-    ).toBeInTheDocument();
-    await user.type(screen.getByLabelText(t.form.reasonLabel), '합성 재작업 사유');
-    await user.click(screen.getByRole('button', { name: t.actions.save }));
+    await user.click(screen.getByRole('radio', { name: '폐기' }));
+    expect(screen.getByText(t.form.wholeEffect(3, '폐기'))).toBeInTheDocument();
+    await user.type(screen.getByLabelText(t.form.reasonLabel), '합성 폐기 사유');
+    await saveAndConfirm(user);
 
+    /* #352 — 결재 없이 판정 저장 경로로 바로 반영한다. */
     await waitFor(() =>
       expect(posted('/quality/nonconformances/41/disposition-decisions')).toBeDefined(),
     );
     await expect(
       posted('/quality/nonconformances/41/disposition-decisions')?.json(),
     ).resolves.toEqual({
-      dispositionTypeCode: 'REWORK',
+      dispositionTypeCode: 'SCRAP',
       decisionQty: 3000,
       uomId: 7001,
-      reason: '합성 재작업 사유',
+      reason: '합성 폐기 사유',
     });
-    expect(await screen.findByText(t.form.resultClosed('재작업'))).toBeInTheDocument();
-    expect(
-      screen.getByText(t.form.resultLots(3, t.form.resultWhat.REWORK ?? '')),
-    ).toBeInTheDocument();
-    expect(screen.getByText(t.form.reworkReopened('SAMPLE-IL-0501'))).toBeInTheDocument();
+    /* 결과 상자는 두지 않는다 — 종결은 「처분 판정」 제목 옆 라벨이 말한다(#352 사용자 지시). */
+    expect(await screen.findByText(t.form.success)).toBeInTheDocument();
+    expect(document.querySelector('.disposition-result')).toBeNull();
   });
 
-  it('US4-4 다LOT 부적합의 전량 특채는 lotId 없이 남은 수량으로 요청하고, 특채가 걸린 자재 관리 LOT 수를 알린다', async () => {
+  it('US4-4 다LOT 부적합의 전량 특채는 lotId 없이 남은 수량으로 저장하고, 바로 풀린 자재 관리 LOT 수를 알린다', async () => {
     const { user } = renderInbound({
       concessionResponse: () =>
         jsonResponse(
@@ -148,8 +145,8 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
             consumedQty: 0,
             uomId: 7001,
             validFrom: '2026-11-11',
-            approvalRequestId: 77,
-            statusCode: 'PENDING',
+            approvalRequestId: null,
+            statusCode: 'APPROVED',
             concessionIds: [61, 62, 63],
           },
           { status: 201 },
@@ -157,22 +154,27 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     });
     await screen.findByText('SAMPLE-ML|0003');
 
-    await user.click(screen.getByRole('button', { name: t.concession.request }));
-    const dialog = await screen.findByRole('dialog', { name: t.concession.requestHeading });
-    // 수량 입력 없음 — 사용 가능 수량은 남은 수량 고정, 대상은 자재 관리 LOT 전부.
-    expect(within(dialog).getByLabelText(t.concession.qty)).toHaveValue('3,000 EA');
-    expect(within(dialog).getByLabelText(t.concession.qty)).toHaveAttribute('readonly');
-    expect(within(dialog).getByLabelText(t.concession.target)).toHaveValue(
-      t.concession.targetAll(3),
-    );
-    await user.type(within(dialog).getByLabelText(t.concession.reason), '합성 특채 사유');
-    await user.click(within(dialog).getByRole('button', { name: t.concession.request }));
+    // 팝업 없이 특채를 고르면 아래에 적용 기간 칸이 펼쳐지고, 사유는 판정 사유 칸 하나로 보낸다(#352).
+    await user.click(screen.getByRole('radio', { name: '특채' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByLabelText(t.concession.validFrom, { exact: false })).toBeInTheDocument();
+    expect(
+      screen.getByText('저장하면 자재 관리 LOT 3개에 모두 ‘특채’ 판정이 적용됩니다.'),
+    ).toBeInTheDocument();
+    await user.type(screen.getByLabelText(t.form.reasonLabel), '합성 특채 사유');
+    await saveAndConfirm(user);
 
     await waitFor(() => expect(posted('/quality/concessions')).toBeDefined());
     const body = (await posted('/quality/concessions')?.json()) as Record<string, unknown>;
     expect(body).not.toHaveProperty('lotId');
-    expect(body).toMatchObject({ nonconformanceId: 41, approvedQty: 3000, uomId: 7001 });
-    expect(await screen.findByText(t.concession.requestedLots(3))).toBeInTheDocument();
+    expect(body).toMatchObject({
+      nonconformanceId: 41,
+      approvedQty: 3000,
+      uomId: 7001,
+      reason: '합성 특채 사유',
+    });
+    expect(typeof body.validFrom).toBe('string');
+    expect(await screen.findByText(t.concession.appliedLots(3))).toBeInTheDocument();
   });
 
   it('R14a-1 반품 · OQC 부적합(입하 LOT 없음)에는 선별이 없다 — 잠그고 이유를 단다', async () => {
@@ -182,117 +184,8 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     const sort = screen.getByRole('radio', { name: '선별' });
     expect(sort).toBeDisabled();
     expect(sort).toHaveAccessibleDescription(t.form.typeLock.sortNoInboundLot);
-    expect(screen.getByRole('radio', { name: '재작업' })).toBeEnabled();
+    expect(screen.getByRole('radio', { name: '폐기' })).toBeEnabled();
     expect(screen.queryByText(/처분 결과는/)).toBeNull();
-  });
-
-  it('US4-4 결재 대기 특채가 있으면 그 번호로 알리고, 다른 처분을 잠근다', async () => {
-    renderInbound({
-      concessions: [
-        {
-          concessionId: 61,
-          concessionNo: 'SAMPLE-CN-0061',
-          nonconformanceId: 41,
-          lotId: 8101,
-          approvedQty: 1000,
-          consumedQty: 0,
-          uomId: 7001,
-          validFrom: '2026-11-11',
-          approvalRequestId: 77,
-          statusCode: 'PENDING',
-        },
-        {
-          concessionId: 62,
-          concessionNo: 'SAMPLE-CN-0062',
-          nonconformanceId: 41,
-          lotId: 8102,
-          approvedQty: 1000,
-          consumedQty: 0,
-          uomId: 7001,
-          validFrom: '2026-11-11',
-          approvalRequestId: 77,
-          statusCode: 'PENDING',
-        },
-      ],
-    });
-
-    expect(
-      await screen.findByText(t.concession.pendingBanner('SAMPLE-CN-0061')),
-    ).toBeInTheDocument();
-    /* 특채가 걸려 있으면 처분 판정 입력 칸(처분 유형 · 판정 사유 · 저장)을 두지 않는다(사용자 지시 2026-11-17). */
-    expect(
-      document.querySelector(
-        '.disposition-decision-card [role="radiogroup"], .disposition-decision-card input[type="radio"]',
-      ),
-    ).toBeNull();
-    expect(document.querySelector('.disposition-decision-card textarea')).toBeNull();
-    /* 다LOT 묶음(행 둘 · 결재 하나)은 이력 탭에서 1건으로 센다(G2 L-d). */
-    expect(
-      screen.getByRole('tab', {
-        name: `${t.concession.foldTitle} ${t.concession.count(1)}`.trim(),
-      }),
-    ).toBeInTheDocument();
-  });
-
-  it('US4-4 G2 M3 결재가 승인된 특채는 「승인됨 — 적용 대기」이고 [특채 적용]이 처분 판정 상자 안에 있다', async () => {
-    const pending = {
-      concessionId: 61,
-      concessionNo: 'SAMPLE-CN-0061',
-      nonconformanceId: 41,
-      lotId: 8101,
-      approvedQty: 1000,
-      consumedQty: 0,
-      uomId: 7001,
-      validFrom: '2026-11-11',
-      approvalRequestId: 77,
-      statusCode: 'PENDING',
-    };
-    const { user } = renderInbound({ concessions: [pending], approvalStatusCode: 'APPROVED' });
-
-    const banner = await screen.findByText(t.concession.approvedBanner('SAMPLE-CN-0061'));
-    const box = banner.closest('.disposition-pending-concession') as HTMLElement;
-    /* 처분 판정 상자 안 — 「특채 요청 이력」 탭에만 있지 않다. */
-    expect(box.closest('.disposition-decision-card')).not.toBeNull();
-    expect(screen.queryByText(t.concession.pendingBanner('SAMPLE-CN-0061'))).toBeNull();
-
-    /* 적용 전에는 처분 판정 입력 칸을 두지 않는다. */
-    expect(
-      document.querySelector(
-        '.disposition-decision-card [role="radiogroup"], .disposition-decision-card input[type="radio"]',
-      ),
-    ).toBeNull();
-
-    await user.click(within(box).getByRole('button', { name: t.concession.apply }));
-    await waitFor(() => expect(posted('/quality/concessions/61:apply')).toBeDefined());
-  });
-
-  it('#275 결재가 반려된 특채는 [반려 확인]이 있고, 처분 판정 입력 칸은 두지 않는다', async () => {
-    const pending = {
-      concessionId: 61,
-      concessionNo: 'SAMPLE-CN-0061',
-      nonconformanceId: 41,
-      lotId: 8101,
-      approvedQty: 1000,
-      consumedQty: 0,
-      uomId: 7001,
-      validFrom: '2026-11-11',
-      approvalRequestId: 77,
-      statusCode: 'PENDING',
-    };
-    const { user } = renderInbound({ concessions: [pending], approvalStatusCode: 'REJECTED' });
-
-    const banner = await screen.findByText(t.concession.rejectedBanner('SAMPLE-CN-0061'));
-    const box = banner.closest('.disposition-pending-concession') as HTMLElement;
-
-    expect(
-      document.querySelector(
-        '.disposition-decision-card [role="radiogroup"], .disposition-decision-card input[type="radio"]',
-      ),
-    ).toBeNull();
-
-    /* [반려 확인]은 예전 [특채 닫기]와 같은 적용 경로를 부른다. */
-    await user.click(within(box).getByRole('button', { name: t.concession.close }));
-    await waitFor(() => expect(posted('/quality/concessions/61:apply')).toBeDefined());
   });
 
   it('G2 L10 취소된 부적합(CANCELLED · IQC 확정 취소로 생김)은 처분 대기 목록에 나오지 않는다', async () => {
@@ -309,30 +202,6 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     expect(document.querySelector('[data-nc-id="41"]')).toBeNull();
     /* 탭 숫자도 행 수와 같다 — 취소 건을 덜어 0 이 되어 배지가 없다(G2 L-b · 서버 total 은 1). */
     expect(screen.queryByLabelText(t.tabs.pendingCount(1))).toBeNull();
-  });
-
-  it('G2 5차 결재 대기 중(승인 전)에는 특채 이력 표의 [특채 적용]이 잠긴다 — 위 상자와 같은 기준', async () => {
-    const pending = {
-      concessionId: 61,
-      concessionNo: 'SAMPLE-CN-0061',
-      nonconformanceId: 41,
-      lotId: 8101,
-      approvedQty: 1000,
-      consumedQty: 0,
-      uomId: 7001,
-      validFrom: '2026-11-11',
-      approvalRequestId: 77,
-      statusCode: 'PENDING',
-    };
-    const { user } = renderInbound({ concessions: [pending], approvalStatusCode: 'PENDING' });
-
-    await user.click(
-      await screen.findByRole('tab', {
-        name: `${t.concession.foldTitle} ${t.concession.count(1)}`.trim(),
-      }),
-    );
-    const history = await screen.findByRole('group', { name: t.concession.historyHeading });
-    expect(await within(history).findByRole('button', { name: t.concession.apply })).toBeDisabled();
   });
 
   it('#275 「지금(바뀌기 전)」 안내 띠는 두지 않는다', async () => {

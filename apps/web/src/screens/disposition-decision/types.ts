@@ -75,6 +75,8 @@ export interface NonconformanceRow {
   itemId: number;
   severityCode: string;
   statusCode: string;
+  /** 접수일시 원문(RFC3339) — 목록 머리 정렬용(#352). */
+  openedAt: string;
   openedAtText: string;
   affectedQtyText: string;
   /** 부적합 수량의 단위 — 목록 수량 칸에 함께 보인다(omf-all-around#286). */
@@ -101,6 +103,7 @@ export const toNonconformanceRow = (nonconformance: Nonconformance): Nonconforma
   itemId: nonconformance.itemId,
   severityCode: nonconformance.severityCode,
   statusCode: nonconformance.statusCode,
+  openedAt: nonconformance.openedAt,
   /* 「접수일시」 — 상세와 같은 공장 시각 날짜 · 시각(omf-all-around#286). */
   openedAtText: formatDateTime(nonconformance.openedAt),
   /* ⭐ lots를 세지 않는다 — 서버가 롤업해 낸 합을 그대로 옮긴다(공유계약 L-2). 근거: omf-mes#253 */

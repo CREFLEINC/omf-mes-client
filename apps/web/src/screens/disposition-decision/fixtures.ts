@@ -1,3 +1,8 @@
+import { messages } from '@omf-mes/i18n';
+import { screen, waitFor, within } from '@testing-library/react';
+import type userEvent from '@testing-library/user-event';
+import { expect } from 'vitest';
+
 import { createStubFetch, jsonResponse, type StubFetch } from '../../test/api-harness';
 
 /**
@@ -29,9 +34,22 @@ export interface DispositionStubOptions {
   concessions?: unknown[];
   /** 005 — 특채 요청 응답을 갈아 끼운다. */
   concessionResponse?: () => Response;
-  /** 005 — 특채 결재 요청의 상태(`GET /app/approval-requests/{id}`, G2 M3). 없으면 그 조회는 실패한다. */
-  approvalStatusCode?: string;
+  /** #352 — 이미 판정된 행에 덮을 칸(선별로 생긴 새 부적합 등). */
+  decision?: Record<string, unknown>;
 }
+
+/**
+ * [판정 저장] → 판정 확인 팝업의 [확인](#352). 화면 검증에 막혀 팝업이 뜨지 않으면 저장만 누르고 끝낸다.
+ */
+export const saveAndConfirm = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(screen.getByRole('button', { name: messages.dispositionDecision.actions.save }));
+  if (screen.queryByRole('dialog') === null) return;
+  const ok = within(screen.getByRole('dialog')).getByRole('button', {
+    name: messages.dispositionDecision.confirm.save,
+  });
+  await waitFor(() => expect(ok).toBeEnabled());
+  await user.click(ok);
+};
 
 let sent: Request[] = [];
 
@@ -119,7 +137,10 @@ const pathOf = (request: Request): string => new URL(request.url).pathname;
 export const dispositionStub = (options: DispositionStubOptions = {}): StubFetch => {
   sent = [];
   const lots = options.lots ?? [lotFixture()];
-  const decisions = options.decidedQty === undefined ? [] : [decisionFixture(options.decidedQty)];
+  const decisions =
+    options.decidedQty === undefined
+      ? []
+      : [{ ...decisionFixture(options.decidedQty), ...options.decision }];
   const decidedQtyTotal = options.decidedQty ?? 0;
   const affectedQtyTotal = affectedQtyTotalOf(lots);
   /** W-03-10 ② 「남은 수량」 구획 — 서버가 이미 뺀 값이라 화면은 그대로 읽기만 한다. */
@@ -235,18 +256,6 @@ export const dispositionStub = (options: DispositionStubOptions = {}): StubFetch
             match: (request: Request) =>
               /^\/quality\/concessions\/\d+:apply$/.test(pathOf(request)),
             respond: () => jsonResponse({ concessionId: 61, statusCode: 'APPLIED' }),
-          },
-        ]),
-    ...(options.approvalStatusCode === undefined
-      ? []
-      : [
-          {
-            match: (request: Request) => /^\/app\/approval-requests\/\d+$/.test(pathOf(request)),
-            respond: () =>
-              jsonResponse({
-                request: { approvalRequestId: 77, statusCode: options.approvalStatusCode },
-                steps: [],
-              }),
           },
         ]),
     {

@@ -27785,7 +27785,6 @@ export interface paths {
             | 'SHIPMENT_CANCEL'
             | 'IQC_SKIP'
             | 'PRODUCTION_RESULT_CORRECT'
-            | 'CONCESSION'
             | 'OQC_SKIP'
             | 'PQC_SKIP';
           businessUnitId?: number;
@@ -28401,7 +28400,6 @@ export interface paths {
             | 'SHIPMENT_CANCEL'
             | 'IQC_SKIP'
             | 'PRODUCTION_RESULT_CORRECT'
-            | 'CONCESSION'
             | 'OQC_SKIP'
             | 'PQC_SKIP';
           /** @description 결재 요청 상태로 거른다 — 대기(PENDING) · 승인(APPROVED) · 반려(REJECTED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=APPROVAL_REQUEST_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
@@ -37715,8 +37713,8 @@ export interface paths {
     };
     put?: never;
     /**
-     * 특채 요청
-     * @description 부적합의 불합격 LOT 을 조건부로 쓰겠다고 결재를 올린다. 특채(PENDING)와 결재 요청(approvalTypeCode=CONCESSION · 대상 NONCONFORMANCE — 결재는 늘 1건)을 한 번에 만든다 — 승인은 W-03-09(POST /app/approval-requests/{id}:approve), 적용은 :apply 다. 사용 가능 수량은 그 부적합의 남은 수량과 같아야 한다(일부 특채 제거 — FR-038). lotId 를 비우면 부적합 LOT 마다 특채 행(lot_id = 그 LOT · approvedQty = 그 LOT 의 부적합 수량)이 같은 결재로 묶여 선다(D-14). 응답은 첫 행 + concessionIds(묶음 전부)·approvalRequestId. 결재선이 없으면 400 ROUTE_NOT_FOUND. 근거: omf-all-around#84 (서버 선행 · 장부 P-79) · 근거: 피처 005 §10 · FR-038 · D-14 · omf-all-around#254
+     * 특채 저장
+     * @description 부적합의 불합격 LOT 을 조건부로 쓰도록 특채를 저장하고 «바로 적용»한다 — 결재를 거치지 않는다(omf-all-around#352 사용자 결정 2026-11-23 · 결재 요청·승인·:apply 제거). 한 트랜잭션에서 특채(APPROVED)·처분 판정 CONCESSION 1건·LOT 정상(C25)·수입검사 대기 보류 해제·부적합 종결을 만든다. 사용 가능 수량은 그 부적합의 남은 수량과 같아야 한다(일부 특채 제거 — FR-038). lotId 를 비우면 부적합 LOT 마다 특채 행(lot_id = 그 LOT · approvedQty = 그 LOT 의 부적합 수량)이 선다(D-14). 응답은 첫 행 + concessionIds(묶음 전부). 근거: omf-all-around#84 (서버 선행 · 장부 P-79) · 피처 005 §10 · FR-038 · D-14 · omf-all-around#254 · omf-all-around#352
      */
     post: {
       parameters: {
@@ -37772,99 +37770,6 @@ export interface paths {
         };
         /** @description 없는 부적합 */
         404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/quality/concessions/{concessionId}:apply': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * 특채 적용
-     * @description 승인된 특채를 적용한다 — 묶음(같은 부적합 · 같은 결재) 중 어느 행으로 불러도 묶음의 PENDING 행 «전부»를 한 트랜잭션에서: 행마다 APPROVED · 부적합에 처분 판정(CONCESSION) 1건(수량 = 행 합계 = 남은 수량) · 묶음 LOT 전부 정상(C25 · 원천은 그 LOT 의 특채 행) · 수입검사 대기 보류 해제(CONCESSION_APPROVED) · 부적합 닫힘. 승인 수량 합이 적용 시점의 남은 수량보다 크면(요청 뒤 다른 처분이 먼저 수량을 씀) 400 approvedQty, 작으면(일부 수량으로 요청한 옛 특채) 409 「일부 특채는 지원하지 않습니다」 — 반려한 뒤 남은 수량 전체로 다시 요청한다(R-14a). 나머지를 자식 LOT 으로 떼는 동작은 없어졌다(splitResult 는 늘 null). 결재가 진행 중이면 400 APPROVAL_IN_PROGRESS, 반려면 묶음을 REJECTED 로 닫고 200(statusCode=REJECTED · LOT 은 그대로). 이미 적용·반려된 특채(묶음의 두 번째 적용 포함)는 409. 근거: omf-all-around#84 · #207 (장부 P-79) · 근거: 피처 005 §10 · FR-038 · D-14 · omf-all-around#254
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header: {
-          /** @description 전 쓰기 API 필수. */
-          'Idempotency-Key': components['parameters']['IdempotencyKey'];
-        };
-        path: {
-          concessionId: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: {
-        content: {
-          'application/json': components['schemas']['ConcessionApply'];
-        };
-      };
-      responses: {
-        /** @description 적용됨 — 그 행 + concessionIds(적용한 묶음) */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Concession'];
-          };
-        };
-        /** @description 검증 실패 · 승인 전 · 남은 수량 초과 */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 권한 없음 */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 없는 특채 */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 이미 적용·반려된 특채(STATE_LOCKED) · 일부 수량 특채(옛 요청 — STATE_LOCKED 「일부 특채는 지원하지 않습니다」). 근거: 피처 005 §10 · FR-038 · D-14 · omf-all-around#254 */
-        409: {
           headers: {
             [name: string]: unknown;
           };
@@ -59765,7 +59670,6 @@ export interface components {
         | 'SHIPMENT_CANCEL'
         | 'IQC_SKIP'
         | 'PRODUCTION_RESULT_CORRECT'
-        | 'CONCESSION'
         | 'OQC_SKIP'
         | 'PQC_SKIP';
       /**
@@ -59817,7 +59721,6 @@ export interface components {
         | 'SHIPMENT_CANCEL'
         | 'IQC_SKIP'
         | 'PRODUCTION_RESULT_CORRECT'
-        | 'CONCESSION'
         | 'OQC_SKIP'
         | 'PQC_SKIP';
       /**
@@ -60068,7 +59971,6 @@ export interface components {
         | 'SHIPMENT_CANCEL'
         | 'IQC_SKIP'
         | 'PRODUCTION_RESULT_CORRECT'
-        | 'CONCESSION'
         | 'OQC_SKIP'
         | 'PQC_SKIP';
       /**
@@ -66500,15 +66402,6 @@ export interface components {
       /** @description 특채 사유 — 결재 요청 사유와 특채 비고에 함께 남는다. */
       reason: string;
     };
-    /** @description 특채 적용 본문(선택). businessDate 는 일부 특채가 없어져(FR-038) 쓰지 않는다 — 보내도 형식만 본다. 근거: 피처 005 §10 · FR-038 · D-14 · omf-all-around#254 */
-    ConcessionApply: {
-      /**
-       * Format: date
-       * @description 쓰지 않는다(옛 화면 호환 — 날짜 형식만 본다). 근거: 피처 005 §10 · FR-038 · D-14 · omf-all-around#254
-       * @example 2026-11-03
-       */
-      businessDate?: string;
-    };
     /** @description 특채 — 단순 판정이 아니라 사용 범위 통제 데이터다. ⛔ 생성 경로를 두지 않는다(요청을 만드는 화면이 미정 · W-03-09 §8-4). ⛔ 승인·반려는 app-공통 계약이다. ⛔ 조건 수정을 두지 않는다 — 결재는 예/아니오다(공유계약 J-10) */
     Concession: {
       /**
@@ -66580,9 +66473,10 @@ export interface components {
       unrestrictedAxes?: string[];
       /**
        * Format: int64
+       * @description 옛 특채 결재 요청. 특채는 결재 없이 바로 적용하므로 새 특채는 늘 null 이다(omf-all-around#352).
        * @example 1001
        */
-      approvalRequestId: number;
+      approvalRequestId: number | null;
       /** @example 값 */
       statusCode: string;
       /**
@@ -66594,16 +66488,7 @@ export interface components {
       remarks?: string;
       /** @example 1 */
       versionNo?: number;
-      /** @description 적용(:apply) «응답»에만 — 늘 null 이다(일부 특채·나머지 분리 삭제, FR-038). 옛 화면 호환으로 남긴다. 조회 응답에는 없다. 근거: 피처 005 §10 · FR-038 · D-14 · omf-all-around#254 */
-      splitResult?: {
-        /** Format: int64 */
-        splitLotId: number;
-        splitLotNo: string;
-        /** Format: int64 */
-        splitNonconformanceId: number;
-        splitNonconformanceNo: string;
-      } | null;
-      /** @description 요청(POST)·적용(:apply) «응답»에만 — 같은 요청으로 태어난 묶음(같은 nonconformanceId + 같은 approvalRequestId)의 특채 id 전부(오름차순). LOT 이 하나인 부적합이면 [concessionId]. 조회 응답에는 없다 — 묶음은 approvalRequestId 로 알아본다. 근거: 피처 005 §10 · FR-038 · D-14 · omf-all-around#254 */
+      /** @description 저장(POST) «응답»에만 — 같은 요청으로 태어난 묶음의 특채 id 전부(오름차순). LOT 이 하나인 부적합이면 [concessionId]. 조회 응답에는 없다. 근거: 피처 005 §10 · FR-038 · D-14 · omf-all-around#254 */
       concessionIds?: number[];
     };
     DefectDistribution: {
@@ -66891,10 +66776,10 @@ export interface components {
       newInboundLotNo?: string | null;
       /**
        * Format: int64
-       * @description 판정 저장 응답의 선별만 — 옮긴 LOT 의 새 부적합(판정 대기 · sortedFromNonconformanceId = 이 부적합). 근거: 피처 005 §10 · FR-041 · R-14b · omf-all-around#254
+       * @description 선별만 — 옮긴 LOT 의 새 부적합(판정 대기 · sortedFromNonconformanceId = 이 부적합). 판정 저장 응답과 판정 목록·이력 조회가 함께 싣는다(목록은 omf-all-around#352 — 종결 안내의 이동 단추). 근거: 피처 005 §10 · FR-041 · R-14b · omf-all-around#254
        */
       newNonconformanceId?: number | null;
-      /** @description 판정 저장 응답의 선별만 — 새 부적합 번호. 근거: 피처 005 §10 · FR-041 · R-14b · omf-all-around#254 */
+      /** @description 선별만 — 새 부적합 번호. 판정 저장 응답과 판정 목록·이력 조회가 함께 싣는다(omf-all-around#352). 근거: 피처 005 §10 · FR-041 · R-14b · omf-all-around#254 */
       newNonconformanceNo?: string | null;
       /** @description 판정 저장 응답의 선별만 — 새 입하 LOT 에 불합격으로 확정된 IQC 검사 번호(원래 검사와 연결, 옮긴 LOT 에만 매칭된 결과를 복사). 근거: 피처 005 §10 · FR-041 · R-14b · omf-all-around#254 */
       newInspectionRequestNo?: string | null;
@@ -70692,7 +70577,7 @@ export interface components {
        */
       warehouseName?: string;
     };
-    /** @description 살아 있는 피킹 LOT 의 OQC 판정 수 */
+    /** @description 피킹 LOT 의 OQC 판정 수 — 교체된 LOT 만 빼고 출하한 LOT 도 센다(omf-all-around#344) */
     ShipmentLotJudgmentSummary: {
       /** @example 0 */
       notInspected: number;

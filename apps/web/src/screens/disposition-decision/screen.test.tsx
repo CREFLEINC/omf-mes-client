@@ -105,6 +105,26 @@ describe('DispositionDecisionScreen 조회', () => {
     await waitFor(() => expect(screen.getByLabelText(t.form.qtyLabel)).toHaveTextContent('120 EA'));
   });
 
+  it('종결된 부적합은 처분 판정 없이 처분 이력만, 상세 상자에 선별로 새로 생긴 부적합으로 가는 단추를 보인다(#352)', async () => {
+    const { user } = renderScreen({
+      decidedQty: 320,
+      nonconformance: { statusCode: 'DECIDED' },
+      decision: {
+        dispositionTypeCode: 'SORT',
+        newNonconformanceId: 77,
+        newNonconformanceNo: 'NC-TEST-0077',
+      },
+    });
+    await selectRow(user);
+
+    expect(await screen.findByRole('group', { name: t.panes.decisions })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: t.panes.decision })).toBeNull();
+    const open = screen.getByRole('button', { name: t.inboundLot.openDerived('NC-TEST-0077') });
+    expect(open).toHaveTextContent('신규 부적합 건 조회');
+    await user.click(open);
+    await waitFor(() => expect(requestedPaths()).toContain('/quality/nonconformances/77'));
+  });
+
   /*
    * ⭐ 되살아난 원천 축이 **화면 끝에서 서버 요청까지** 닿는지 본다(#648). 필터 바만 보는
    * 시험은 「칸은 섰는데 조회 조건에는 안 실리는」 결함을 통과시킨다 — 눈으로 봐서 가장
@@ -132,17 +152,18 @@ describe('DispositionDecisionScreen 조회', () => {
   });
 
   /* 판정 대기 → 부적합 선택 → 처분 판정 또는 특채 요청(#223) — 특채 요청은 팝업으로 연다. */
-  it('처분 판정 머리의 「특채 요청」을 누르면 요청 팝업이 열리고, 취소하면 닫힌다', async () => {
+  it('특채를 고르면 팝업 없이 아래에 적용 기간 칸이 펼쳐지고, 다시 누르면 접힌다(#352)', async () => {
     const { user } = renderScreen();
     await selectRow(user);
     await screen.findByText('LOT-TEST-0088');
 
-    await user.click(screen.getByRole('button', { name: t.concession.request }));
-    const dialog = await screen.findByRole('dialog', { name: t.concession.requestHeading });
-    expect(within(dialog).queryByText(/조건부 사용 승인을 요청/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: '특채' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByLabelText(t.concession.validFrom, { exact: false })).toBeInTheDocument();
+    expect(screen.getByText(t.concession.validTo)).toBeInTheDocument();
 
-    await user.click(within(dialog).getByRole('button', { name: messages.common.cancel }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await user.click(screen.getByRole('radio', { name: '특채' }));
+    expect(screen.queryByText(t.concession.validTo)).toBeNull();
   });
 
   it('⛔ 승인·반려 컨트롤이 화면에 없다', async () => {
@@ -173,17 +194,23 @@ describe('DispositionDecisionScreen 조회', () => {
     await selectRow(user);
 
     const save = screen.getByRole('button', { name: t.actions.save });
+    // 판정 사유가 비어 있으면 저장이 잠긴다 — 넣으면 열린다(#352).
+    await waitFor(() => expect(screen.getByLabelText(t.form.reasonLabel)).toBeEnabled());
+    expect(save).toBeDisabled();
+    await user.type(screen.getByLabelText(t.form.reasonLabel), '합성 사유');
     await waitFor(() => {
       expect(save).toBeEnabled();
     });
     const group = screen.getByRole('radiogroup', { name: t.form.dispositionLabel });
-    // 고정 셋 + 선별(SORT). 005 FR-041 — 선별은 자재 입하 IQC 부적합(입하 LOT 있음)만이라 이 부적합(입하 LOT 없음)에서는 잠긴다.
-    expect(within(group).getAllByRole('radio')).toHaveLength(4);
+    // #352 — 고를 수 있는 처분은 폐기 · 선별 · 특채뿐(정상 · 재작업은 없다). 005 FR-041 — 선별은 자재 입하 IQC 부적합(입하 LOT 있음)만이라 이 부적합(입하 LOT 없음)에서는 잠긴다.
+    expect(within(group).getAllByRole('radio')).toHaveLength(3);
+    expect(within(group).queryByRole('radio', { name: '정상' })).toBeNull();
+    expect(within(group).queryByRole('radio', { name: '재작업' })).toBeNull();
     expect(within(group).getByRole('radio', { name: '선별' })).toBeDisabled();
     expect(within(group).getByRole('radio', { name: '선별' })).toHaveAccessibleDescription(
       t.form.typeLock.sortNoInboundLot,
     );
-    expect(within(group).getByRole('radio', { name: '재작업' })).toBeEnabled();
+    expect(within(group).getByRole('radio', { name: '폐기' })).toBeEnabled();
     expect(screen.queryByText(t.dispositionPending)).toBeNull();
   });
 });

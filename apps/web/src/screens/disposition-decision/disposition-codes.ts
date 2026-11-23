@@ -18,12 +18,21 @@ export const DISPOSITION_TYPE_CODES = ['REWORK', 'SCRAP', 'NORMAL', 'SORT'] as c
 export type DispositionTypeCode = (typeof DISPOSITION_TYPE_CODES)[number];
 
 /**
+ * 처분 대기에서 고를 수 있는 유형 — 폐기 · 선별만(특채는 따로 요청 단추). 정상 · 재작업은 고르지 않는다(omf-all-around#352).
+ * 처분 이력의 유형 칩 · 표시명은 지난 판정을 읽어야 하므로 위 넷을 그대로 쓴다.
+ */
+export const SELECTABLE_DISPOSITION_TYPE_CODES: readonly string[] = ['SCRAP', 'SORT'];
+
+export const selectableDispositionCodes = (codes: readonly string[]): string[] =>
+  codes.filter((code) => SELECTABLE_DISPOSITION_TYPE_CODES.includes(code));
+
+/**
  * 처분 셋은 **계약이 `enum` 으로 닫았다** — 공통코드 등록부에 없고 `/mdm/code-values` 를 부르지
  * 않는다(스펙 §4 row 104). 그래서 표시명은 화면이 갖는다(G-33). 모르는 값은 코드 그대로(G-9).
  */
 /**
- * 특채(`CONCESSION`)는 이 화면에서 «고르는» 처분이 아니다 — 결재 뒤 특채 적용이 남긴다(#84 · P-79).
- * 그래서 선택지에는 없고 이력의 표시명에만 있다.
+ * 특채(`CONCESSION`)는 처분 판정 저장 API 로 보내는 처분이 아니다 — 특채 저장(`POST /quality/concessions`)이 바로 적용하며
+ * 남긴다(#84 · P-79 · #352). 그래서 판정 저장의 선택지에는 없고, 화면이 따로 덧붙이며 이력의 표시명에 있다.
  */
 export const CONCESSION_DISPOSITION = 'CONCESSION';
 type LabeledDispositionCode = DispositionTypeCode | typeof CONCESSION_DISPOSITION;
@@ -108,12 +117,6 @@ export const isClosedNonconformance = (statusCode: string, isSettled: boolean): 
 
 export interface DispositionOptionContext {
   isClosed: boolean;
-  /** 결재 대기 특채가 있다 — 특채 밖 유형은 막는다. */
-  hasPendingConcession: boolean;
-  /** 그 특채의 결재가 승인됐다(적용 전) — 막는 까닭을 「승인됨 — 적용 대기」로(G2 L-d). */
-  isConcessionApproved?: boolean;
-  /** 그 특채의 결재가 반려됐다([반려 확인] 전) — 막는 까닭을 「반려 — 반려 확인 대기」로(omf-all-around#275). */
-  isConcessionRejected?: boolean;
   /** 입하 LOT — 자재 입하 IQC 부적합만 있다. 반품 · OQC 는 없다(선별 없음). */
   inboundLotNo: string | null | undefined;
   lotCount: number;
@@ -125,7 +128,7 @@ export interface DispositionOptionContext {
 
 /**
  * 처분 유형을 막는 이유(005 · screens/W-03-10.md 「막힌 유형」). 없으면 고를 수 있다.
- * 차례: 종결 → 특채 결재 대기 → 선별 규칙(입하 LOT 없음 · LOT 1개 · 첫 판정 아님) → 선별로 생긴 부적합의 정상.
+ * 차례: 종결 → 선별 규칙(입하 LOT 없음 · LOT 1개 · 첫 판정 아님) → 선별로 생긴 부적합의 정상.
  */
 export const dispositionOptionLock = (
   code: string,
@@ -134,10 +137,6 @@ export const dispositionOptionLock = (
   const t = messages.dispositionDecision.form.typeLock;
 
   if (context.isClosed) return t.closed;
-  if (context.hasPendingConcession) {
-    if (context.isConcessionApproved === true) return t.concessionApproved;
-    return context.isConcessionRejected === true ? t.concessionRejected : t.concessionPending;
-  }
   if (code === 'SORT') {
     if (context.inboundLotNo === null || context.inboundLotNo === undefined) {
       return t.sortNoInboundLot;

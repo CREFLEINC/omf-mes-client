@@ -82,7 +82,6 @@ import { ProductionOrderProcessScreen } from '../screens/production-order/proces
 import { DispositionDecisionScreen } from '../screens/disposition-decision/screen';
 import { PqcInspectionRegisterScreen } from '../screens/pqc-inspection-register/screen';
 import { InspectionLevelScreen } from '../screens/inspection-level/screen';
-import { QualityApprovalScreen } from '../screens/quality-approval/screen';
 import { RoutingScreen } from '../screens/routing/screen';
 import { ExpeditedShipmentScreen } from '../screens/expedited-shipment/screen';
 import { ProductDisposalRequestScreen } from '../screens/product-disposal-request/screen';
@@ -429,8 +428,6 @@ export const appRouter = createBrowserRouter([
       { path: 'quality/suspicious-material-hold', element: <SuspiciousMaterialHoldScreen /> },
       /* W-03-05 — 측정치는 검사 결과 상세 안의 표로 본다(따로 여는 쪽 없음 · omf-all-around#217). */
       { path: 'quality/inspection-results', element: <InspectionResultInsightsPage /> },
-      /* W-03-09 — Lot Status 조회·판정·의심자재 등록 다음에 서는 품질 승인 화면이다. */
-      { path: 'quality/approvals', element: <QualityApprovalScreen /> },
       /*
        * W-03-10 — 특채·한도승인 «다음»이다. 부적합의 처분을 정하는 화면이라 승인 처리 뒤에 서고,
        * 이 라우트가 W-04-10(폐기)·W-04-11(재등록)·P-04-03(재작업)의 진입 목록과

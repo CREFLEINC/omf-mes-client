@@ -70,7 +70,6 @@ import { partsIqcInspection } from './parts-iqc-inspection';
 import { pqcInspection } from './pqc-inspection';
 import { productionResult } from './production-result';
 import { equipmentMaster } from './equipment-master';
-import { qualityApproval } from './quality-approval';
 import { productionOrder } from './production-order';
 import { erpPurchaseOrder } from './erp-purchase-order';
 import { erpSalesOrder } from './erp-sales-order';
@@ -233,7 +232,6 @@ export const ko = {
   pqcInspection,
   productionResult,
   equipmentMaster,
-  qualityApproval,
   productionOrder,
   erpPurchaseOrder,
   erpSalesOrder,

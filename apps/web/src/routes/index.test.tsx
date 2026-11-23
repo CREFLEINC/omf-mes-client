@@ -70,7 +70,6 @@ import { appRouter } from './index';
  * **어느 쪽도 그 어긋남을 잡지 못한다.** 이 파일이 그 사이를 잇는다.
  */
 
-
 /** 라우터가 실제로 받는 경로. 자식 라우트의 `path`는 앞머리 `/`가 없다. */
 const routedPaths = (): string[] =>
   (appRouter.routes[0]?.children ?? [])
@@ -489,9 +488,6 @@ const inspectionResultRoutes = (): StubRoute[] => [
   lookupRoute('/mdm/items', []),
   lookupRoute('/mdm/processes', []),
 ];
-
-/** W-03-09가 선택 없는 첫 진입에 부르는 승인 요청 목록 하나다. */
-const qualityApprovalRoutes = (): StubRoute[] => [lookupRoute('/app/approval-requests', [])];
 
 const dispositionRoutes = (): StubRoute[] => [
   lookupRoute('/quality/nonconformances', []),
@@ -1240,31 +1236,11 @@ describe('appRouter — 검사실적·검사결과 조회의 진입 경로', () 
   });
 });
 
-describe('appRouter — 품질 승인 처리의 진입 경로', () => {
-  /* 제목·탐색 경로 없이 유형 탭이 맨 위에 선다(#186, 입하 예정 조회와 같은 짜임). */
-  it('품질관리 메뉴를 키보드로 열면 정식 주소와 유형 탭·목록 구획이 선다', async () => {
-    const user = userEvent.setup();
-    renderRoutedApp('/quality/lot-status', [...lotStatusRoutes(), ...qualityApprovalRoutes()]);
-
-    const link = screen.getByRole('link', { name: '품질 승인 처리' });
-    link.focus();
-    await user.keyboard('{Enter}');
-
-    await waitFor(() => expect(currentLocation()).toBe('/quality/approvals'));
-    expect(
-      await screen.findByRole('tablist', {
-        name: messages.qualityApproval.fields.approvalTypeCode,
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('region', { name: messages.qualityApproval.panes.list }),
-    ).toBeInTheDocument();
-  });
-
-  it('화면 주소는 exact 정식 route이고 테스트용 단수 주소는 없다', () => {
-    expect(routedPaths()).toContain('/quality/approvals');
-    expect(routedPaths()).not.toContain('/quality-approval');
-    expect(routedPaths()).not.toContain('/quality/approval');
+describe('appRouter — 품질 승인 처리 삭제(omf-all-around#352)', () => {
+  it('품질 승인 처리 주소와 메뉴는 없다', () => {
+    expect(routedPaths()).not.toContain('/quality/approvals');
+    renderRoutedApp('/quality/lot-status', lotStatusRoutes());
+    expect(screen.queryByRole('link', { name: '품질 승인 처리' })).toBeNull();
   });
 });
 

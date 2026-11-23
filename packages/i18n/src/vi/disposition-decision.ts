@@ -9,6 +9,12 @@ import type { Translated } from './translated';
  */
 export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
   title: 'Ra quyết định xử lý',
+  splitter: 'Kéo để điều chỉnh độ rộng danh sách·chi tiết',
+  layout: {
+    group: 'Bố cục danh sách·chi tiết',
+    side: 'Bố cục trái phải',
+    stack: 'Bố cục trên dưới',
+  },
   listCollapse: 'Thu gọn danh sách',
   listExpand: 'Mở rộng danh sách',
   breadcrumbRoot: 'Quản lý chất lượng',
@@ -49,6 +55,8 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     historyQty: 'Số lượng xử lý',
     historyReason: 'Lý do đánh giá',
     item: 'Mặt hàng',
+    itemName: 'Tên mặt hàng',
+    itemCode: 'Mã mặt hàng',
     severityCode: 'Mức nghiêm trọng',
     statusCode: 'Trạng thái xử lý',
     sourceCode: 'Nguồn',
@@ -104,65 +112,17 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     unavailable: 'Không hiển thị được lịch sử đánh giá',
   },
   concession: {
-    /** 접는 머리 — 「특채 요청 및 이력 0건」(사용자 시안 · #223). */
-    foldTitle: 'Lịch sử yêu cầu đặc cách',
-    count: (count: number): string => `${String(count)}`,
     requestHeading: 'Yêu cầu đặc cách',
-    target: 'LOT đối tượng',
-    targetAll: (count: number): string => `${String(count)} LOT quản lý vật tư`,
-    wholeNote:
-      'Yêu cầu đặc cách cho toàn bộ số lượng chưa xử lý. Nếu chỉ muốn yêu cầu một phần, hãy tách LOT trước.',
-    pendingBanner: (concessionNo: string): string => `Đặc cách ${concessionNo} đang chờ phê duyệt.`,
-    approvedBanner: (concessionNo: string): string => `Đặc cách ${concessionNo} đã được duyệt.`,
-    rejectedBanner: (concessionNo: string): string =>
-      `Phê duyệt đặc cách ${concessionNo} đã bị từ chối.`,
-    close: 'Xác nhận từ chối',
-    targetGroup: (count: number): string => `Toàn bộ ${String(count)} LOT quản lý vật tư`,
-    historyHeading: 'Lịch sử yêu cầu đặc cách',
-    reasonPlaceholder: 'Nhập lý do đặc cách',
     validToPlaceholder: 'Không giới hạn',
-    none: 'Chưa có lịch sử yêu cầu nhân nhượng.',
-    loading: 'Đang tải đặc cách.',
-    loadFailed: 'Không tải được đặc cách.',
-    request: 'Yêu cầu đặc cách',
-    requesting: 'Đang yêu cầu…',
-    apply: 'Áp dụng đặc cách',
-    applyWaiting: 'Phải phê duyệt xong mới áp dụng được',
-    applying: 'Đang áp dụng…',
-    qty: 'Số lượng yêu cầu đặc cách',
     validFrom: 'Ngày bắt đầu áp dụng',
     validTo: 'Ngày kết thúc áp dụng (tùy chọn)',
-    reason: 'Lý do đặc cách',
-    requested: 'Đã yêu cầu đặc cách. Hãy áp dụng sau khi phê duyệt xong.',
-    requestedLots: (count: number): string =>
-      `Đã yêu cầu đặc cách cho toàn bộ ${String(count)} LOT quản lý vật tư. Hãy áp dụng sau khi phê duyệt xong.`,
     applied: 'Đã áp dụng đặc cách. LOT quản lý vật tư đã được giải phóng về bình thường.',
     appliedLots: (count: number): string =>
       `Đã áp dụng đặc cách. ${String(count)} LOT quản lý vật tư đã được giải phóng về bình thường.`,
-    appliedSplit: (lotNo: string, nonconformanceNo: string): string =>
-      `Đã áp dụng đặc cách. Chỉ số lượng được duyệt trở về bình thường. Số lượng còn lỗi được tách sang LOT mới ${lotNo} và xử lý ở phiếu không phù hợp ${nonconformanceNo}. Hãy dán nhãn mới cho LOT còn lỗi.`,
-    rejected: 'Phê duyệt bị từ chối nên đã đóng đặc cách.',
     /** 요청 단추가 잠겼을 때 읽는 이유 — 칸별 안내 문구는 두지 않는다(필수 표시로 알린다). */
-    requestBlocked: 'Có thể yêu cầu khi đủ số lượng còn lại, thời hạn hiệu lực và lý do đặc cách.',
     blocked: {
-      qty: 'Đang xác nhận số lượng còn lại.',
       date: 'Hãy kiểm tra thời hạn hiệu lực.',
-      reason: 'Hãy nhập lý do đặc cách.',
     },
-    status: {
-      PENDING: 'Chờ phê duyệt',
-      APPROVED: 'Đã áp dụng',
-      APPLIED: 'Đã áp dụng',
-      REJECTED: 'Bị từ chối',
-    },
-    columns: {
-      concessionNo: 'Số đặc cách',
-      target: 'Đối tượng',
-      qty: 'Số lượng được dùng',
-      period: 'Thời hạn',
-      status: 'Trạng thái',
-    },
-    caption: 'Danh sách đặc cách',
   },
   form: {
     heading: 'Quyết định xử lý',
@@ -170,8 +130,8 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     dispositionLabel: 'Loại xử lý',
     qtyLabel: 'Số lượng',
     reasonLabel: 'Lý do',
-    wholeEffect: (count: number, effect: string): string =>
-      `Khi lưu, ${String(count)} LOT quản lý vật tư ${effect}`,
+    wholeEffect: (count: number, typeLabel: string): string =>
+      `Khi lưu, phán định ‘${typeLabel}’ sẽ được áp dụng cho tất cả ${String(count)} LOT quản lý vật tư.`,
     effect: {
       NORMAL: 'đều chuyển sang bình thường.',
       SCRAP: 'đều chuyển sang hủy.',
@@ -181,25 +141,12 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
       `đều chuyển sang chờ kiểm tra, IQC của LOT nhập hàng ${inboundLotNo} được mở lại để kiểm tra lại.`,
     remainingUnknown: 'Đang xác nhận số lượng còn lại. Hãy lưu lại sau giây lát',
     typeLock: {
-      closed: 'Mục không phù hợp đã kết thúc',
-      concessionPending: 'Đặc cách đang chờ phê duyệt',
-      concessionApproved: 'Đặc cách đã duyệt — chờ áp dụng',
-      concessionRejected: 'Đặc cách bị từ chối — chờ xác nhận',
+      closed: 'Mục không phù hợp này đã kết thúc',
       sortNoInboundLot: 'Không phù hợp trả hàng · OQC không có phân loại (không có LOT nhập hàng)',
-      sortSingleLot: 'Chỉ có 1 LOT quản lý vật tư nên không phân loại được',
+      sortSingleLot: 'Chỉ có thể chọn phân loại khi có từ 2 LOT quản lý vật tư trở lên.',
       sortNotFirst: 'Chỉ phân loại được ở lần quyết định đầu tiên',
-      normalSorted: 'Phần lỗi tách ra do phân loại — hãy xử lý bằng hủy · làm lại · đặc cách',
+      normalSorted: 'Phần lỗi tách ra do phân loại — hãy xử lý bằng hủy · đặc cách',
     },
-    resultClosed: (typeLabel: string): string => `Đã kết thúc bằng quyết định ${typeLabel}`,
-    resultLots: (count: number, what: string): string =>
-      `Toàn bộ ${String(count)} LOT quản lý vật tư → ${what}`,
-    resultWhat: {
-      NORMAL: 'Bình thường',
-      SCRAP: 'Hủy',
-      REWORK: 'Chờ kiểm tra (làm lại) — mở lại IQC',
-    } as Record<string, string | undefined>,
-    reworkReopened: (inboundLotNo: string): string =>
-      `Kiểm tra ${inboundLotNo} đã được mở lại ở Tra cứu · đánh giá kiểm tra với trạng thái 「Đang kiểm tra」.`,
     qtyExceededByServer: (remaining: string): string =>
       `Tổng số lượng quyết định xử lý vượt số lượng còn lại (${remaining}) nên chưa được lưu. Hãy tải lại mục không phù hợp rồi lưu`,
     alreadyClosed: 'Mục không phù hợp này đã kết thúc. Không lưu được đánh giá',
@@ -216,6 +163,36 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     selectFirstReason: 'Hãy chọn mục không phù hợp cần đánh giá trước',
     reloadDetail: 'Kiểm tra lại trạng thái không phù hợp',
     success: 'Đã lưu đánh giá',
+  },
+  confirm: {
+    title: 'Xác nhận quyết định xử lý',
+    type: 'Loại xử lý',
+    target: 'LOT đối tượng',
+    targetLots: (count: number): string => `${String(count)} LOT quản lý vật tư`,
+    qty: 'Tổng số lượng xử lý',
+    sortRest: 'Xử lý bình thường',
+    sortMoved: 'Tách lỗi · chờ quyết định mới',
+    period: 'Thời hạn áp dụng',
+    periodText: (from: string, to: string | null): string => `${from} ~ ${to ?? 'Không giới hạn'}`,
+    reason: 'Lý do quyết định',
+    direct: 'Khi lưu sẽ được áp dụng ngay.',
+    save: 'Lưu quyết định',
+  },
+  approvalSummary: {
+    title: 'Thông tin không phù hợp',
+    nonconformanceNo: 'Số không phù hợp',
+    item: 'Mặt hàng',
+    lots: 'LOT đối tượng',
+    affectedQty: 'Số lượng không phù hợp',
+    remainingQty: 'Số lượng còn lại',
+    defect: 'Nội dung lỗi',
+    requestedDisposition: 'Xử lý yêu cầu',
+    sortLots: 'LOT tách ra là lỗi',
+    goodQty: 'Số lượng đạt',
+    defectQty: 'Số lượng lỗi',
+    reason: 'Lý do xử lý',
+    loading: 'Đang tải thông tin không phù hợp',
+    loadError: 'Không tải được thông tin không phù hợp. Hãy thử lại.',
   },
   inboundLot: {
     inboundLotNo: 'LOT nhập hàng',
@@ -234,42 +211,43 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
       string,
       string | undefined
     >,
-    sortedFrom: 'Sinh ra do phân loại ←',
+    sortedFrom: 'Mục không phù hợp gốc',
+    sortedFromButton: 'Xem mục không phù hợp gốc',
+    derived: 'Mục không phù hợp mới',
+    derivedButton: 'Xem mục không phù hợp mới',
+    openDerived: (nonconformanceNo: string): string =>
+      `Xem mục không phù hợp mới ${nonconformanceNo}`,
+    sortedFromNote: (nonconformanceNo: string): string =>
+      `Mục không phù hợp này được tạo cho các LOT đã phân loại từ [${nonconformanceNo}].`,
+    openSortedFrom: (nonconformanceNo: string): string =>
+      `Xem mục không phù hợp gốc ${nonconformanceNo}`,
     rejectedConfirmed: 'Đã xác nhận không đạt',
   },
   sort: {
-    heading: 'Phân loại — chọn LOT quản lý vật tư lỗi',
+    heading: 'LOT vật tư tách ra là lỗi',
+    selectNote:
+      'Khi lưu, LOT đã chọn sẽ được tách ra là lỗi, các LOT còn lại được xử lý bình thường.',
     help: 'LOT quản lý vật tư được chọn sẽ chuyển sang LOT nhập hàng mới, giữ nguyên lỗi và xử lý ở mục không phù hợp mới. LOT quản lý vật tư không chọn sẽ về bình thường. Không chia LOT theo số lượng.',
     lotsLabel: 'LOT quản lý vật tư lỗi',
     noMatch: 'Không có kết quả kiểm tra liên kết',
     allSelected:
-      'LOT nhập hàng ban đầu phải còn ít nhất một LOT quản lý vật tư. Nếu tất cả đều lỗi, đừng phân loại mà hãy xử lý bằng hủy · làm lại · đặc cách.',
+      'LOT nhập hàng ban đầu phải còn ít nhất một LOT quản lý vật tư. Nếu tất cả đều lỗi, đừng phân loại mà hãy xử lý bằng hủy · đặc cách.',
     noneSelected: 'Hãy chọn ít nhất một LOT quản lý vật tư lỗi',
-    goodQty: 'Số lượng đạt (thông tin · tùy chọn)',
-    defectQty: 'Số lượng lỗi (thông tin · tùy chọn)',
+    goodQty: 'Số lượng đạt (tùy chọn)',
+    defectQty: 'Số lượng lỗi (tùy chọn)',
     qtyNote: 'Chỉ để ghi kết quả phân loại. Số lượng tồn kho · LOT không thay đổi.',
     qtyInvalid: 'Hãy nhập số từ 0 trở lên',
-    previewTitle: 'Khi lưu',
-    previewRest: (lots: string, qty: string): string =>
-      `${lots} (${qty}) → bình thường, mục không phù hợp này kết thúc bằng 「Phân loại」`,
-    previewMoved: (lots: string, qty: string): string =>
-      `${lots} (${qty}) → LOT nhập hàng mới, giữ nguyên lỗi · 1 mục không phù hợp mới (chờ quyết định, liên kết với mục này)`,
-    previewIqc: (inspectionRequestNo: string | null): string =>
-      `Bản ghi IQC đã xác nhận không đạt ở LOT nhập hàng mới (liên kết với ${inspectionRequestNo === null ? 'IQC ban đầu' : inspectionRequestNo}, sao chép kết quả chỉ khớp với LOT đã chuyển)`,
-    save: 'Lưu phân loại',
-    resultTitle: 'Đã lưu phân loại — mục không phù hợp này kết thúc bằng 「Phân loại」',
-    resultRest: (lots: string): string => `${lots} → bình thường (có thể nhập kho)`,
-    resultMoved: (lots: string, inboundLotNo: string): string =>
-      `${lots} → LOT nhập hàng mới ${inboundLotNo} (giữ nguyên lỗi)`,
-    resultIqc: (inspectionRequestNo: string, original: string | null): string =>
-      `IQC ${inspectionRequestNo} xác nhận không đạt${original === null ? '' : ` (liên kết với ${original})`}`,
-    resultNewNonconformance: 'Mục không phù hợp mới',
-    resultNewNonconformanceAfter: 'chờ quyết định — hãy xử lý bằng hủy · làm lại · đặc cách',
-    resultInfo: (good: string, defect: string): string =>
-      `Số lượng thông tin: đạt ${good} · lỗi ${defect}`,
-    toast: (lots: string, inboundLotNo: string, nonconformanceNo: string): string =>
-      `Đã lưu phân loại. ${lots} đã chuyển sang LOT nhập hàng mới ${inboundLotNo} · mục không phù hợp ${nonconformanceNo}.`,
-    newInboundLot: 'LOT nhập hàng mới',
+    previewTitle: 'Xử lý sau khi lưu',
+    previewRestLabel: 'Xử lý bình thường',
+    previewMovedLabel: 'Tách lỗi · chờ quyết định mới',
+    previewTarget: (lots: string, qty: string): string => `${lots} · ${qty}`,
+    previewNotes: [
+      'Mục không phù hợp hiện tại kết thúc bằng ‘Phân loại’.',
+      'LOT lỗi được tách sang LOT nhập hàng mới và một mục không phù hợp mới được đăng ký ở trạng thái chờ quyết định.',
+      'Chỉ kết quả IQC không đạt của LOT đã tách được sao chép sang LOT nhập hàng mới.',
+    ],
+    previewIqc: (inspectionRequestNo: string): string =>
+      `Yêu cầu kiểm tra ban đầu ${inspectionRequestNo}`,
   },
   loading: 'Đang tải danh sách chờ đánh giá',
   historyLoading: 'Đang tải lịch sử xử lý',

@@ -122,6 +122,24 @@ describe('DispositionDecisionScreen 탭', () => {
     );
   });
 
+  /* 특채도 처분 판정으로 바로 남는다(#352) — 칩이 빠지면 유형별 건수의 합이 전체와 어긋난다. */
+  it('처분 이력의 처분 유형 칩에 특채가 있고, 누르면 특채로 조회한다', async () => {
+    const { user } = renderScreen('/quality/dispositions?tab=history');
+    const chips = await screen.findByRole('group', { name: t.fields.historyType });
+
+    await user.click(within(chips).getByRole('button', { name: /^특채/ }));
+
+    await waitFor(() => {
+      expect(
+        requestedPaths().some(
+          (path) =>
+            path.startsWith('/quality/disposition-decisions') &&
+            path.includes('dispositionTypeCode=CONCESSION'),
+        ),
+      ).toBe(true);
+    });
+  });
+
   it('탭을 옮기면 고른 부적합을 지운다 — 탭마다 목록이 다르다', async () => {
     const { user } = renderScreen('/quality/dispositions?nonconformanceId=41');
     await screen.findByText('도장 표면 박리');

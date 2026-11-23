@@ -520,10 +520,8 @@ describe('AppLayout', () => {
     expect(within(sidebar).queryByRole('link', { name: '의심자재 보류' })).toBeNull();
     expect(within(sidebar).queryByRole('link', { name: '검사실적·검사결과 조회' })).toBeNull();
     expect(within(sidebar).queryByRole('link', { name: '제품 검사표 조회' })).toBeNull();
-    expect(within(sidebar).getByRole('link', { name: '품질 승인 처리' })).toHaveAttribute(
-      'href',
-      '/quality/approvals',
-    );
+    /* 품질 승인 처리는 특채 결재가 없어지며 화면째 지웠다(omf-all-around#352). */
+    expect(within(sidebar).queryByRole('link', { name: '품질 승인 처리' })).toBeNull();
     expect(within(sidebar).getByRole('link', { name: '부적합 처분 관리' })).toHaveAttribute(
       'href',
       '/quality/dispositions',
@@ -539,7 +537,6 @@ describe('AppLayout', () => {
       '/quality/inspection-results',
       /* 「LOT 상태」 묶음 — 조회 → 판정 → 의심자재 등록(#210). */
       '/quality/lot-status',
-      '/quality/approvals',
       /* W-03-10 — 여기서 정한 처분이 폐기·재등록·재작업 화면의 진입을 연다. */
       '/quality/dispositions',
     ];
@@ -963,7 +960,6 @@ describe('AppLayout', () => {
       '/master-data/defect-cause-code',
       '/quality/inspection-results' /* ← 검사 실적·결과 */,
       '/quality/lot-status' /* ← LOT 상태 */,
-      '/quality/approvals',
       '/quality/dispositions',
       /* 생산 관리 — 작업계획(작업함, 변경 확인) → 진행 → LOT 생산 이력 조회 → 마감. 긴급 W/O 발행은 감췄다. */
       '/production/production-orders' /* ← 작업계획 */,
@@ -1629,7 +1625,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(37);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(36);
   });
 
   /*
@@ -1679,7 +1675,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(37);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(36);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */
