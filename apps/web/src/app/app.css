@@ -32838,13 +32838,21 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 }
 
 .pqc-web > .iqc-inspection-action-note.inspection-skip-note {
-  margin-top: var(--space-3);
+  margin-bottom: var(--space-3);
 }
 
 /* 생략 요약 — 탭 바로 아래라 윗선 없이 붙인다(omf-all-around#353). */
 .parts-iqc-block.parts-iqc-skipped {
   padding-top: 0;
   border-top: 0;
+}
+
+/* 생략 요약의 자재명 — 이름과 코드를 한 줄에. */
+.parts-iqc-fact-key.parts-iqc-fact-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
 }
 
 /* LOT 정보는 위 자재 칸과 같은 한 겹 카드로 — 바깥 상자를 겹치지 않는다. */

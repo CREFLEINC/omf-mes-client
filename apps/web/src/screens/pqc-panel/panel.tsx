@@ -429,15 +429,16 @@ export const PqcPanel = ({
     if (target.statusCode === 'SKIPPED') {
       return (
         <div className="pqc-web">
+          {/* IQC 와 같이 안내 줄을 맨 위에(사용자 지시 2026-11-23 · #353). */}
+          <p className="iqc-inspection-action-note inspection-skip-note" data-tone="warning">
+            <Icon name="warning" size={16} aria-hidden />
+            {t.detail.skipped}
+          </p>
           <WebSummary
             detail={target}
             planVersion={planVersion.data ?? null}
             uomCode={uomCodeOf(target.uomId)}
           />
-          <p className="iqc-inspection-action-note inspection-skip-note" data-tone="warning">
-            <Icon name="warning" size={16} aria-hidden />
-            {t.detail.skipped}
-          </p>
         </div>
       );
     }

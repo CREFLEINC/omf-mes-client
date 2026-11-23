@@ -207,9 +207,17 @@ export const ShipmentOqcDetail = ({
     <div className="parts-iqc-detail-body iqc-inbound-detail oqc-shipment-detail">
       <div className="parts-iqc-detail-head">
         <h2 className="parts-iqc-sub-title">{request.inspectionRequestNo}</h2>
-        <Chip variant="status" size="sm" status={badge.tone}>
-          {badge.label}
-        </Chip>
+        {/* 생략 건은 IQC 처럼 상태 라벨 대신 안내 줄을 제목 바로 오른쪽에(사용자 지시 2026-11-23 · #353). */}
+        {skipped ? (
+          <p className="iqc-inspection-action-note inspection-skip-note" data-tone="warning">
+            <Icon name="warning" size={16} aria-hidden />
+            {s.skippedNotice}
+          </p>
+        ) : (
+          <Chip variant="status" size="sm" status={badge.tone}>
+            {badge.label}
+          </Chip>
+        )}
       </div>
       <dl className="parts-iqc-facts iqc-inbound-facts">
         {facts.map((fact) => (
@@ -222,13 +230,7 @@ export const ShipmentOqcDetail = ({
         ))}
       </dl>
 
-      {/* 닫힌 의뢰(생략 · 출하 완료)는 그 사실을 한 줄로. 열린 의뢰의 판정 규칙은 「검사 결과」 제목 옆 ⓘ 로(관리웹 정리 시안 A). */}
-      {skipped && (
-        <p className="iqc-inspection-action-note inspection-skip-note" data-tone="warning">
-          <Icon name="warning" size={16} aria-hidden />
-          {s.skippedNotice}
-        </p>
-      )}
+      {/* 출하 완료로 닫힌 의뢰는 그 사실을 한 줄로(생략은 머리줄 안내). 열린 의뢰의 판정 규칙은 「검사 결과」 제목 옆 ⓘ 로(관리웹 정리 시안 A). */}
       {request.statusCode === 'COMPLETED' && (
         <p className="field-note oqc-shipment-note">
           <Icon name="info" size={16} aria-hidden />

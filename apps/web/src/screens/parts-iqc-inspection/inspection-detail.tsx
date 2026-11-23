@@ -183,6 +183,8 @@ export const InspectionDetail = ({
   const specs = useInspectionItemSpecs(versionId);
   const plan = useInspectionPlan(version.data?.inspectionPlanId ?? null);
   const drawings = useDrawings(versionId);
+  /* 생략 건 요약의 「기준 조회」 창(사용자 지시 2026-11-23 · #353). */
+  const [skippedPlanOpen, setSkippedPlanOpen] = useState(false);
   const inbound = useInboundInfo(inspectionRequestId);
   const defectCodes = useDefectCodes(true);
   const items = useItemNames([detail.data?.itemId]);
@@ -260,17 +262,38 @@ export const InspectionDetail = ({
     /* 생략으로 닫힌 의뢰는 입력할 것이 없다 — 받은 정보만 읽기 전용으로 보인다(사용자 지시 2026-11-02 · #225). */
     if (detail.data.statusCode === 'SKIPPED') {
       return (
-        <SkippedSummary
-          itemParts={items.partsOf(detail.data.itemId)}
-          planLabel={plan.data?.inspectionPlanCode ?? '-'}
-          lotNo={
-            inboundFlow
-              ? (inboundInspection.data?.lots ?? []).map((lot) => lot.lotNo).join(', ') || '-'
-              : lots.labelOf(detail.data.lotId)
-          }
-          qtyLabel={withUom(String(detail.data.targetQty), uoms.codeOf(detail.data.uomId))}
-          inbound={inbound.data}
-        />
+        <>
+          <SkippedSummary
+            itemParts={items.partsOf(detail.data.itemId)}
+            planLabel={plan.data?.inspectionPlanCode ?? '-'}
+            lotNo={
+              inboundFlow
+                ? (inboundInspection.data?.lots ?? []).map((lot) => lot.lotNo).join(', ') || '-'
+                : lots.labelOf(detail.data.lotId)
+            }
+            qtyLabel={withUom(String(detail.data.targetQty), uoms.codeOf(detail.data.uomId))}
+            inbound={inbound.data}
+            planAction={
+              version.data === undefined || specs.data === undefined ? null : (
+                <Button variant="outlined" size="sm" onClick={() => setSkippedPlanOpen(true)}>
+                  {t.plan.open}
+                </Button>
+              )
+            }
+          />
+          {skippedPlanOpen && version.data !== undefined && specs.data !== undefined && (
+            <PlanDialog
+              planCode={plan.data === undefined ? '-' : plan.data.inspectionPlanCode}
+              planName={plan.data?.inspectionPlanName ?? '-'}
+              itemParts={items.partsOf(detail.data.itemId)}
+              version={version.data}
+              specs={[...specs.data].sort((a, b) => a.sequenceNo - b.sequenceNo)}
+              uomCodeOf={uoms.codeOf}
+              drawings={<DrawingImages drawings={drawings.data ?? []} />}
+              onClose={() => setSkippedPlanOpen(false)}
+            />
+          )}
+        </>
       );
     }
     if (confirmed) {
@@ -502,10 +525,13 @@ export const InspectionDetail = ({
             <Icon name="warning" size={16} aria-hidden />
             {t.skipped.notice}
           </p>
-        ) : detail.data !== undefined && t.requestStatus[detail.data.statusCode] !== undefined && (
-          <Chip size="sm" status={detail.data.statusCode === 'IN_PROGRESS' ? 'info' : 'idle'}>
-            {t.requestStatus[detail.data.statusCode]}
-          </Chip>
+        ) : (
+          detail.data !== undefined &&
+          t.requestStatus[detail.data.statusCode] !== undefined && (
+            <Chip size="sm" status={detail.data.statusCode === 'IN_PROGRESS' ? 'info' : 'idle'}>
+              {t.requestStatus[detail.data.statusCode]}
+            </Chip>
+          )
         )}
         {isReinspecting ? (
           <Button
@@ -634,6 +660,7 @@ const SkippedSummary = (props: {
   lotNo: string;
   qtyLabel: string;
   inbound: { supplierLabel: string | null; receivedAt: string | null } | undefined;
+  planAction: ReactNode;
 }) => (
   <>
     {/* 탭 바로 아래라 구획 윗선을 두지 않는다(omf-all-around#353). */}
@@ -641,7 +668,8 @@ const SkippedSummary = (props: {
       <dl className="parts-iqc-facts">
         <div className="parts-iqc-fact">
           <dt className="field-label">{t.target.itemName}</dt>
-          <dd className="parts-iqc-fact-key">
+          {/* 자재명 · 코드를 한 줄에(사용자 지시 2026-11-23 · #353). */}
+          <dd className="parts-iqc-fact-key parts-iqc-fact-inline">
             {props.itemParts?.name ?? '-'}
             {props.itemParts !== null && (
               <span className="parts-iqc-fact-sub">{props.itemParts.code}</span>
@@ -650,7 +678,10 @@ const SkippedSummary = (props: {
         </div>
         <div className="parts-iqc-fact">
           <dt className="field-label">{t.target.plan}</dt>
-          <dd>{props.planLabel}</dd>
+          <dd className="parts-iqc-plan-cell">
+            {props.planLabel}
+            {props.planAction}
+          </dd>
         </div>
       </dl>
       <div className="parts-iqc-lot-box" role="group" aria-label={t.lot.heading}>
