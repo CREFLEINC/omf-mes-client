@@ -248,6 +248,7 @@ export const WarehouseLayoutScreen = () => {
         splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
         list={{
           label: t.panes.locations,
+          count: warehouseId === null || locations.data === undefined ? undefined : rows.length,
           content:
             (
               /*

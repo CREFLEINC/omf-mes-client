@@ -37453,4 +37453,5 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 .erp-wo-adjustable-grid.is-side > .po-board-gutter:has(> .po-board-list-tab) {
   position: relative;
+  width: 48px;
 }
