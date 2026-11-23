@@ -38,6 +38,17 @@ const filterPane = () =>
   within(screen.getByRole('region', { name: messages.common.paneList.filter }));
 
 describe('NoticeScreen — 조회 조건(C-6)', () => {
+  /* 「새 공지 쓰기」는 화면 제목 줄에서 조회 조건 상자로 옮겼다(#350) — 공지 등록으로 들어가는 단추다. */
+  it('조회 조건 상자의 「새 공지 쓰기」를 누르면 등록 폼이 상세 자리에 선다', async () => {
+    const { user } = setup();
+
+    await user.click(await filterPane().findByRole('button', { name: t.form.create }));
+
+    const detail = screen.getByRole('region', { name: t.panes.detail });
+    expect(within(detail).getByRole('heading', { name: t.form.create })).toBeVisible();
+    expect(within(detail).getByLabelText(t.form.title)).toBeVisible();
+  });
+
   it('대상 범위와 체크칸 둘은 조건 더보기 안에 접혀 있다', async () => {
     const { user } = setup();
 
@@ -51,14 +62,18 @@ describe('NoticeScreen — 조회 조건(C-6)', () => {
 
     expect(filterPane().getByRole('combobox', { name: t.filters.scope })).toBeVisible();
     expect(filterPane().getByRole('checkbox', { name: t.filters.activeOnly })).toBeChecked();
-    expect(filterPane().getByRole('checkbox', { name: t.filters.unacknowledgedByMe })).toBeVisible();
+    expect(
+      filterPane().getByRole('checkbox', { name: t.filters.unacknowledgedByMe }),
+    ).toBeVisible();
   });
 
   /* 「게시 중만」은 기본이 켜짐이다 — 접혀서도 끝난 공지가 왜 안 보이는지 드러나야 한다. */
   it('접힌 칸에 걸린 조건만 칩이 되고 × 가 그 조건만 풀어 다시 조회한다', async () => {
     const { listQueries, user } = setup('/notification/notices?q=점검&scopeCode=COMPANY');
 
-    const scopeChip = await filterPane().findByRole('button', { name: more.remove(t.filters.scope) });
+    const scopeChip = await filterPane().findByRole('button', {
+      name: more.remove(t.filters.scope),
+    });
     expect(filterPane().getByText(t.filters.chipScope(t.scope.COMPANY))).toBeVisible();
     expect(
       filterPane().getByRole('button', { name: more.remove(t.filters.activeOnly) }),

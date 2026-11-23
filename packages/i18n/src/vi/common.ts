@@ -72,7 +72,7 @@ export const common: Translated<typeof ko.common> = {
     filter: 'Điều kiện tra cứu',
     collapse: 'Thu gọn',
     tab: 'Danh sách',
-    count: (count: number): string => `${count.toLocaleString('vi-VN')} mục`,
+    count: (count: number): string => `${String(count)} mục`,
   },
   inspectionHub: {
     guide: 'Hướng dẫn kiểm tra',

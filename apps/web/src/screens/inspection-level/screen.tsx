@@ -159,11 +159,14 @@ export const InspectionLevelScreen = () => {
     setSelectedItem((prev) => (prev?.itemId === row.itemId ? null : row));
     setHistoryPage(1);
   };
-  /* 조회 조건(품목 · 수준)이 바뀌면 고른 품목을 푼다 — 목록에서 빠진 품목의 이력만 남지 않게(#350 회귀 시험). */
+  /*
+   * 조회 조건(품목 · 수준)이나 목록 쪽이 바뀌면 고른 품목을 푼다 — 목록에 보이지 않는 품목의 이력만 남지 않게(#350 회귀
+   * 시험 · 리뷰).
+   */
   useEffect(() => {
     setSelectedItem(null);
     setHistoryPage(1);
-  }, [filter.itemId, filter.level]);
+  }, [filter.itemId, filter.level, filter.page, filter.size]);
   const counts = useInspectionLevelCounts(filter.itemId, LEVEL_CODES);
   const rows = list.data?.items ?? [];
   const historyRows = histories.data?.items ?? [];
@@ -416,7 +419,7 @@ export const InspectionLevelScreen = () => {
           content: (
             /* 품목 검색 → (오른쪽) 조회 · 초기화 | 품목 추가. 검사 수준은 탭 줄 오른쪽 칩으로 거른다(#208). */
             <form
-              className="filter-bar"
+              className="filter-bar inspection-level-filter"
               role="search"
               onSubmit={(event) => {
                 event.preventDefault();
@@ -489,7 +492,7 @@ export const InspectionLevelScreen = () => {
           label: t.title,
           title: t.list.caption,
           count: list.data?.page.total,
-          className: 'inspection-level-list-pane',
+          className: 'inspection-level-list-pane quality-standard-list-pane',
           content: (
             <>
               {list.isError && (
@@ -554,13 +557,15 @@ export const InspectionLevelScreen = () => {
         }}
         detail={{
           label: t.history.heading,
-          className: 'inspection-level-list-pane',
+          className: 'inspection-level-list-pane quality-standard-detail',
           content: (
             <>
               {/* 제목 줄 — 제목 오른쪽에 안내(글자 폭만큼) · #350 사용자 지시. */}
               <div className="inspection-level-history-head">
                 <h2 className="pane-title">
                   {t.history.heading}
+                  {/* 띄어 읽게 — 화면 낭독기가 제목과 품목을 붙여 읽지 않는다. */}
+                  {selectedItem !== null && ' '}
                   {selectedItem !== null && (
                     <span className="inspection-level-history-selected">
                       {t.history.selectedItem(selectedItem.itemCode, selectedItem.itemName)}
@@ -582,9 +587,7 @@ export const InspectionLevelScreen = () => {
               >
                 <Table
                   caption={
-                    <span className="inspection-standard-visually-hidden">
-                      {t.history.caption}
-                    </span>
+                    <span className="inspection-standard-visually-hidden">{t.history.caption}</span>
                   }
                   density="compact"
                   columns={historyFit.columns}

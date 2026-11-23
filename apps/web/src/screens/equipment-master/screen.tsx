@@ -1,11 +1,4 @@
-import {
-  AlertBanner,
-  Button,
-  EmptyState,
-  SkeletonText,
-  Tabs,
-  useToast,
-} from '@crefle/web-ui';
+import { AlertBanner, Button, EmptyState, SkeletonText, Tabs, useToast } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useState } from 'react';
@@ -1334,13 +1327,7 @@ export const EquipmentMasterScreen = () => {
 
   const listPage = groupList.data?.page;
   const listTruncated = listPage !== undefined && isTruncated(listPage, groupItems.length);
-  /**
-   * 자산 뷰 — 설비 그룹과 설비.
-   *
-   * ⭐ **점검 항목 마스터와 «나란히» 선다**(스펙 §5-1-1). 마스터는 그룹에 매이지 않으므로
-   * 그룹을 고른 뒤의 안쪽 탭이 아니라 화면 수준에서 갈린다 — 안쪽에 두면 「이 그룹의 점검
-   * 항목」으로 읽히고, 그것은 부여지 마스터가 아니다.
-   */
+  /* 설비 그룹 목록 — 조회 줄과 목록을 따로 받아 통일 배치의 조회 상자 · 목록 상자에 세운다(#350). */
   const groupPane = useGroupListPane({
     rows: groupRows,
     isLoading: groupList.isPending,
@@ -1391,6 +1378,7 @@ export const EquipmentMasterScreen = () => {
   const renderAssetsView = () => (
     <ListDetailWorkspace
       storageKey="omf-mes:equipment-master"
+      visible={activeView === 'assets'}
       filter={{ label: messages.common.paneList.filter, content: groupPane.filter }}
       list={{
         label: t.panes.groupList,
@@ -1435,8 +1423,9 @@ export const EquipmentMasterScreen = () => {
       >
         <div className="po-board-list-head">
           <h2 className="pane-title">{t.inspectionItem.paneTitle}</h2>
-          {inspectionItemList.data !== undefined && (
-            <span className="po-board-list-count">
+          {/* 건수는 서버가 센 전체다 — 불러오는 중 · 실패일 때는 셀 수 없으니 세우지 않는다(툴 목록과 같다). */}
+          {inspectionItemList.data !== undefined && !inspectionItemList.isError && (
+            <span className="po-board-list-count" aria-live="polite">
               {messages.common.paneList.count(inspectionItemList.data.page.total)}
             </span>
           )}
@@ -1457,13 +1446,14 @@ export const EquipmentMasterScreen = () => {
         onChange={(value) => updateParams({ view: value === 'assets' ? null : value })}
         items={[
           /*
-           * 자산 뷰는 보고 있을 때만 세운다 — 숨은 탭에 서 있으면 그 배치 「⋯」가 탭 줄에 남아 점검 항목
-           * 뷰의 것으로 읽힌다(#350). 조회 초안은 화면이 들고 있어 탭을 오가도 남는다.
+           * 자산 뷰는 점검 항목 탭을 보는 동안에도 내리지 않는다 — 적어 두고 아직 조회하지 않은 설비 검색어 · 목록
+           * 스크롤이 탭을 오가도 남는다. 다만 그동안은 배치 「⋯」를 탭 줄에서 내려 점검 항목 뷰의 것으로 읽히지 않게
+           * 한다(`visible` · #350 리뷰).
            */
           {
             value: 'assets',
             label: t.views.assets,
-            content: activeView === 'assets' ? renderAssetsView() : null,
+            content: renderAssetsView(),
           },
           {
             value: 'inspection-items',

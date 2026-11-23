@@ -644,7 +644,6 @@ export const SuspiciousMaterialCandidatePane = ({
         ref={splitRef}
         className={`po-board-split inspection-split lot-status-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
         style={{ ...split.style, ...layout.style }}
-
         data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         {/*

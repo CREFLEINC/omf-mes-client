@@ -94,7 +94,8 @@ export const common = {
     filter: '조회 조건',
     collapse: '목록 접기',
     tab: '목록',
-    count: (count: number): string => `${count.toLocaleString('ko-KR')}건`,
+    /* 쉼표 없이 — 쪽 이동 줄 「총 N건」 등 앱 전체 건수 표기와 같다(#350 리뷰). */
+    count: (count: number): string => `${String(count)}건`,
   },
   inspectionHub: {
     /** 검사 기준 안내 문구 띠(omf-all-around#252). */

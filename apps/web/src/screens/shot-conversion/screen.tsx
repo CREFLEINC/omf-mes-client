@@ -466,9 +466,7 @@ export const ShotConversionScreen = () => {
               banner={
                 <SaveErrorBanner
                   error={enabledWrite.error}
-                  onReload={
-                    enabledTarget === null ? undefined : () => void enabledDetail.refetch()
-                  }
+                  onReload={enabledTarget === null ? undefined : () => void enabledDetail.refetch()}
                 />
               }
               loadError={

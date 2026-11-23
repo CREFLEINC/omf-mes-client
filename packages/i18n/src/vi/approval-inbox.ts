@@ -15,8 +15,6 @@ import type { Translated } from './translated';
  * 쪽(`người trình`)이 같은 화면에 나란히 서므로 두 말을 섞지 않는다.
  */
 export const approvalInbox: Translated<typeof ko.approvalInbox> = {
-  title: 'Hộp phê duyệt',
-  breadcrumbRoot: 'Hộp công việc',
   panes: {
     list: 'Danh sách yêu cầu phê duyệt',
     detail: 'Yêu cầu đã chọn',

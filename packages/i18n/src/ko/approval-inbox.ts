@@ -6,8 +6,6 @@
  * 서버와 갈리는 순간 사용자에게 거짓 확신을 준다.
  */
 export const approvalInbox = {
-  title: '결재함',
-  breadcrumbRoot: '업무함',
   panes: {
     list: '승인 요청 목록',
     detail: '고른 요청',

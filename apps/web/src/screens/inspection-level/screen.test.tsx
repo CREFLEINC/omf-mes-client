@@ -270,6 +270,23 @@ describe('검사 수준 관리', () => {
     await waitFor(() => expect(lastHistory()?.url.searchParams.has('itemId')).toBe(false));
     expect(screen.getByText(t.history.allHint)).toBeInTheDocument();
   });
+
+  /* 조회 조건이 바뀌면 고른 품목이 풀린다 — 목록에 없는 품목의 이력만 남지 않게(#350 리뷰). */
+  it('품목을 고른 뒤 조회 조건을 바꾸면 고른 품목이 풀려 오른쪽 이력이 전체로 돌아간다', async () => {
+    const { user, requests } = setup();
+    const lastHistory = () => requests.filter((r) => r.url.pathname.endsWith(HISTORIES)).at(-1);
+    const row = await within(levelTable()).findByRole('row', { name: /PPAD003200/ });
+
+    await user.click(within(row).getByText('PAPER PAD EJECT'));
+    await waitFor(() => expect(lastHistory()?.url.searchParams.get('itemId')).toBe('3076'));
+
+    await user.click(screen.getByLabelText(t.list.keyword));
+    await user.click(await screen.findByRole('option', { name: /^OA-002 · / }));
+
+    await waitFor(() => expect(lastHistory()?.url.searchParams.has('itemId')).toBe(false));
+    expect(lastHistory()?.url.searchParams.get('page')).toBe('1');
+    expect(screen.getByText(t.history.allHint)).toBeInTheDocument();
+  });
   /* 품목은 칸에서 바로 검색해 고른다(omf-all-around#226) — 고르면 바로 조회하고 「전체」는 종전 × 처럼 조건을 푼다. */
   it('품목은 칸에서 검색해 고르면 바로 조회하고, 「전체」를 고르면 조건을 푼다(#226)', async () => {
     const { user, requests } = setup();

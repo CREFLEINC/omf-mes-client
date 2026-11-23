@@ -211,7 +211,6 @@ export const RatioListPane = ({
    */
   return (
     <>
-
       <div className="filter-bar shot-conversion-policy-filter">
         <div className="field-cell">
           {/* 비우면 끝난 정책까지 본다는 뜻은 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}

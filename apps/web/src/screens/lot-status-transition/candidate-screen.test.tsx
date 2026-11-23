@@ -237,7 +237,7 @@ describe('Lot Status 전이 후보', () => {
     /* 목록 제목 줄에 이름이 선다(2026-11-23 지시 · #350). */
     expect(screen.getByRole('heading', { level: 2, name: '전이 대상 LOT' })).toBeVisible();
     expect(screen.getByRole('table', { name: '전이 대상 LOT' })).toBeVisible();
-    /* 총 건수는 표 아래 쪽 이동 줄에만 선다 — 제목 옆 건수 · 「조회 결과」 머리는 없다(LOT 현황과 같다). */
+    /* 「총 N건」은 표 아래 쪽 이동 줄에 한 번 — 제목 줄 건수는 「N건」이고 「조회 결과」 머리는 없다(LOT 현황과 같다). */
     expect(screen.queryByRole('heading', { level: 3, name: '조회 결과' })).toBeNull();
     const nav = screen.getByRole('navigation', { name: '쪽 이동' });
     expect(within(nav).getByText('총 20건')).toBeVisible();
@@ -652,5 +652,33 @@ describe('Lot Status 전이 후보', () => {
       },
     ]);
     expect(screen.getByRole('status', { name: 'LOT 후보를 불러오는 중' })).toBeVisible();
+  });
+
+  /* 목록 제목 줄 「목록 접기」 · 접힌 「목록 N건」 탭(#350). */
+  it('목록을 접으면 탭에 건수가 서고, 펼친 뒤에도 고른 LOT · 고른 상태 · 적어 둔 조건이 그대로다', async () => {
+    const collapsedKey = 'omf-mes:lot-status-transition:split:collapsed';
+    window.localStorage.removeItem(collapsedKey);
+    const { user } = renderScreen([listRoute()]);
+    const select = await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' });
+    await user.click(select);
+    await user.click(await screen.findByRole('radio', { name: 'DEFECTIVE' }));
+    await user.type(screen.getByLabelText('LOT 스캔'), 'SYN-LOT');
+    const split = document.querySelector('.lot-status-split');
+
+    /* 막대 위 원과 제목 줄 「목록 접기」가 같은 이름이다. */
+    await user.click(screen.getAllByRole('button', { name: '목록 접기' })[0]!);
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = split!.querySelector<HTMLElement>('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록20건');
+
+    await user.click(tab!);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    expect(screen.getByRole('button', { name: 'SYN-LOT-ALPHA 선택' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(screen.getByRole('radio', { name: 'DEFECTIVE' })).toBeChecked();
+    expect(screen.getByLabelText('LOT 스캔')).toHaveValue('SYN-LOT');
+    window.localStorage.removeItem(collapsedKey);
   });
 });

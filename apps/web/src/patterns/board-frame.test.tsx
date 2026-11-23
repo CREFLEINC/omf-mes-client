@@ -70,13 +70,21 @@ describe('BoardFrame', () => {
     const user = userEvent.setup();
     renderFrame();
     const split = screen.getByRole('region', { name: '합성 목록' }).parentElement;
+    /* 같은 이름의 단추가 제목 줄 · 접힌 탭에도 있다 — 막대 위 작은 원 단추를 콕 집는다. */
+    const circle = (): HTMLElement => {
+      const button = split?.querySelector<HTMLElement>('.po-board-gutter > .po-board-collapse');
+      if (button == null) throw new Error('막대 위 접기 단추가 없다');
+      return button;
+    };
 
-    await user.click(screen.getAllByRole('button', { name: SPLITTER.collapseLabel })[0]!);
+    expect(circle()).toHaveAccessibleName(SPLITTER.collapseLabel);
+    await user.click(circle());
 
     expect(split).toHaveAttribute('data-left-collapsed', 'true');
     expect(window.localStorage.getItem(`${SPLIT_KEY}:collapsed`)).toBe('1');
 
-    await user.click(screen.getAllByRole('button', { name: SPLITTER.expandLabel })[0]!);
+    expect(circle()).toHaveAccessibleName(SPLITTER.expandLabel);
+    await user.click(circle());
 
     expect(split).not.toHaveAttribute('data-left-collapsed');
   });

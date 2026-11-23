@@ -225,8 +225,7 @@ export const DispositionDecisionScreen = ({
    * 항목을 골라도 목록은 그대로 둔다(#350 사용자 지시). 목록 제목 줄의 「목록 접기」로 접고, 접으면 왼쪽 「목록 N건」
    * 탭으로 다시 편다(통일 배치 · #350).
    */
-  const [isListFolded, setIsListFolded] = useState(false);
-  const isListCollapsed = isListFolded;
+  const [isListCollapsed, setIsListCollapsed] = useState(false);
   /*
    * 기간이 막히면 `null`이고 조회가 열리지 않는다.
    *
@@ -702,7 +701,7 @@ export const DispositionDecisionScreen = ({
   /* 목록 제목 줄 「이름 · 건수 · 목록 접기」 — 고른 것과 상관없이 늘 선다(통일 배치 · #350). */
   const listCollapse = {
     collapsed: isListCollapsed,
-    onToggle: () => setIsListFolded(!isListCollapsed),
+    onToggle: () => setIsListCollapsed(!isListCollapsed),
     collapseLabel: t.listCollapse,
     expandLabel: t.listExpand,
     count:

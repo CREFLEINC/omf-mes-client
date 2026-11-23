@@ -6,3 +6,8 @@
   flex: 1 1 auto;
   min-height: 0;
 }
+
+/* 설비 목록 잘림 안내 — 목록 상자의 칸 간격이 띄우므로 안내 문단의 기본 위 여백은 걷는다(종전 설비 상자와 같다). */
+.collection-channel-truncated {
+  margin: 0;
+}

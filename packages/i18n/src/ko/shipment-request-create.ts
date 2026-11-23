@@ -8,7 +8,6 @@
  */
 export const shipmentRequestCreate = {
   title: '출하작업지시 생성',
-  breadcrumbRoot: '영업 / 출하 관리',
   panes: {
     source: 'ERP S/O 목록',
     header: '출하작업지시 정보',

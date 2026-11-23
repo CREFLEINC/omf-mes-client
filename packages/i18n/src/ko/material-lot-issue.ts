@@ -24,7 +24,6 @@ export const materialLotIssue = {
   },
   list: {
     label: '공급사·품목', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-14.md · 시안 W0114-After)
-    count: (count: number) => `공급사·품목 ${count}건`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-14.md · 시안 W0114-After)
     issue: '자재 관리 LOT 발행',
     columns: {
       supplier: '공급사',

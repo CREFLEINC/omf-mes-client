@@ -156,7 +156,8 @@ export const RouteFormPane = ({
         ];
 
   return (
-    <section className="pane" aria-label={isCreate ? t.panes.create : t.panes.detail}>
+    /* 고른 결재선이면 이름은 바깥 상세 칸이 갖는다 — 새 결재선일 때만 이 상자가 「새 결재선」 구획이 된다(#350 리뷰). */
+    <section className="pane" aria-label={isCreate ? t.panes.create : undefined}>
       {banner}
 
       {summary.length > 0 && (

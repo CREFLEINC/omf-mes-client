@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   createStubFetch,
@@ -692,5 +692,41 @@ describe('W-05-07 — 공장 선택 목록', () => {
 
     expect(await screen.findByText(t.optionsTruncated)).toBeInTheDocument();
     expect(screen.queryByText(t.optionsLoadFailed)).not.toBeInTheDocument();
+  });
+});
+
+describe('W-05-07 — 목록 접기(#350)', () => {
+  afterEach(() => {
+    window.localStorage.removeItem('omf-mes:collection-channel:split:collapsed');
+  });
+
+  it('접으면 「목록 N건」 탭이 서고, 펼쳐도 고른 설비 · 검색어 · 채널 조건이 그대로다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+    await pickFirstEquipment();
+    await within(channelPane()).findByText('CYCLE_TIME');
+    const search = within(filterBox()).getByRole('searchbox', { name: t.equipment.searchLabel });
+    await user.type(search, '성형');
+    await user.click(
+      within(channelPane()).getByRole('checkbox', { name: messages.common.includeInactive }),
+    );
+    const split = document.querySelector('.list-detail-split')!;
+
+    await user.click(
+      screen.getAllByRole('button', { name: messages.common.inspectionHub.listCollapse })[0]!,
+    );
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = split.querySelector<HTMLElement>('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록3건');
+
+    await user.click(tab!);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    expect(
+      screen.getByRole('button', { name: t.equipment.selectLabel('EQ-101', '가상 성형기 1호') }),
+    ).toHaveAttribute('aria-current', 'true');
+    expect(search).toHaveValue('성형');
+    expect(
+      within(channelPane()).getByRole('checkbox', { name: messages.common.includeInactive }),
+    ).toBeChecked();
   });
 });

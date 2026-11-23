@@ -9,8 +9,6 @@ import type { Translated } from './translated';
  * `codeValue` 묶음은 통째로 옮겨질 것을 전제로 모아 둔 자리라 바깥과 같은 문구도 따로 둔다.
  */
 export const commonCode: Translated<typeof ko.commonCode> = {
-  title: 'Mã chung · Tổ chức · Công nhân',
-  breadcrumbRoot: 'Quản trị hệ thống',
   /** 탭 라벨. 만든 탭만 둔다. */
   tabs: {
     label: 'Mã chung · Tổ chức · Công nhân',

@@ -407,14 +407,9 @@ const dirtyForm = async (user: ReturnType<typeof userEvent.setup>, text = '7'): 
   await user.type(field, text);
 };
 
-/**
- * 상세 구획(폼 · 빈 상태)을 집는다.
- *
- * **같은 이름의 구획이 둘이다** — 통일 배치(ListDetailWorkspace)의 상세 칸 껍데기와 그 안의 상세 상자.
- * 안쪽 상자가 문서 순서상 뒤에 선다.
- */
+/** 상세 구획(폼 · 빈 상태)을 집는다 — 통일 배치(ListDetailWorkspace)의 상세 칸이 이 이름을 갖는다. */
 const findDetailPane = async (): Promise<HTMLElement> =>
-  (await screen.findAllByRole('region', { name: t.panes.detail })).at(-1) as HTMLElement;
+  screen.findByRole('region', { name: t.panes.detail });
 
 /**
  * 폼의 사업부 칸을 「전 사업부 공통」으로 비운다.
@@ -1249,12 +1244,12 @@ describe('ApprovalRouteScreen — 빈 상태와 실패', () => {
     const detailPane = await findDetailPane();
 
     expect(within(detailPane).getByText('GOODS_ISSUE_DISPOSAL')).toBeInTheDocument();
-    expect(within(detailPane).queryByText(messages.httpError.loadTitle)).toBeNull();
-    expect(
-      within(screen.getByRole('region', { name: t.panes.steps })).getByText(
-        messages.httpError.loadTitle,
-      ),
-    ).toBeInTheDocument();
+    /* 상세 칸 안의 실패 안내는 단계 구획의 것 하나뿐이다 — 결재선 정보 쪽에는 서지 않는다. */
+    const loadErrors = within(detailPane).getAllByText(messages.httpError.loadTitle);
+    expect(loadErrors).toHaveLength(1);
+    expect(screen.getByRole('region', { name: t.panes.steps })).toContainElement(
+      loadErrors.at(0) ?? null,
+    );
 
     const before = stepsRequests(requests).length;
     await user.click(screen.getByRole('button', { name: messages.common.retry }));

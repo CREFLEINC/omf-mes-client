@@ -4,9 +4,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
-import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { ActivationDialog, type ActivationIntent } from './activation-dialog';
 import { approverNote, useApproverLookup, type ApproverOption } from './approver-options';
 import {
@@ -1033,7 +1033,7 @@ export const ApprovalRouteScreen = () => {
 
     if (isRouteNotFound || isRouteMissing) {
       return (
-        <section className="pane" aria-label={t.panes.detail}>
+        <section className="pane">
           <EmptyState
             size="sm"
             live
@@ -1046,7 +1046,7 @@ export const ApprovalRouteScreen = () => {
 
     if (selectedRouteId === null) {
       return (
-        <section className="pane" aria-label={t.panes.detail}>
+        <section className="pane">
           <EmptyState
             size="sm"
             title={t.empty.noSelectionTitle}
@@ -1058,7 +1058,7 @@ export const ApprovalRouteScreen = () => {
 
     if (detail.isError) {
       return (
-        <section className="pane" aria-label={t.panes.detail}>
+        <section className="pane">
           <LoadErrorBanner error={detail.error} onRetry={reloadDetail} />
         </section>
       );
@@ -1066,7 +1066,7 @@ export const ApprovalRouteScreen = () => {
 
     if (route === null || draft === null) {
       return (
-        <section className="pane" aria-label={t.panes.detail}>
+        <section className="pane">
           <div role="status" aria-label={t.loading.detail}>
             <SkeletonText lines={5} />
           </div>
@@ -1174,6 +1174,7 @@ export const ApprovalRouteScreen = () => {
             />
           ),
         }}
+        /* 상세 칸 껍데기가 「고른 결재선」 구획 이름을 갖는다 — 안쪽 상자에는 같은 이름을 겹쳐 달지 않는다(#350 리뷰). */
         detail={{ label: t.panes.detail, content: detailSlot(), bare: true }}
       />
 

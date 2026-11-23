@@ -29,6 +29,11 @@ export interface ListDetailWorkspaceProps {
   list: { label: string; title: string; count?: number; content: ReactNode; className?: string };
   /** 상세 상자. `bare` 면 상자를 씌우지 않는다(안에서 여러 상자를 쌓는 상세). */
   detail: { label: string; content: ReactNode; className?: string; bare?: boolean };
+  /**
+   * 화면 안 탭에 숨어 있는 동안 `false` — 탭 줄의 칩 · 「⋯」을 내려 보이는 탭의 것으로 읽히지 않게 한다. 배치 자체는
+   * 그대로 두어(내리지 않는다) 적어 둔 조회 값 · 스크롤이 탭을 오가도 남는다. 주지 않으면 늘 보인다.
+   */
+  visible?: boolean;
 }
 
 /**
@@ -45,6 +50,7 @@ export const ListDetailWorkspace = ({
   filter,
   list,
   detail,
+  visible = true,
 }: ListDetailWorkspaceProps) => {
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit(`${storageKey}:split`, initialRatio);
@@ -64,7 +70,10 @@ export const ListDetailWorkspace = ({
     const observer = new ResizeObserver(() => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        splitEl.style.setProperty('--split-top', `${String(splitEl.getBoundingClientRect().top)}px`);
+        splitEl.style.setProperty(
+          '--split-top',
+          `${String(splitEl.getBoundingClientRect().top)}px`,
+        );
       });
     });
     observer.observe(root);
@@ -88,7 +97,7 @@ export const ListDetailWorkspace = ({
   return (
     <div ref={rootRef} className="list-detail-workspace">
       {/* 탭 묶음 안이면 칩 · 「⋯」은 탭 줄로 간다(그 자리에 그대로). 밖이면 조회 조건 위 오른쪽 한 줄. */}
-      {hubTarget === null ? (
+      {!visible ? null : hubTarget === null ? (
         <div className="list-detail-toolbar">
           {toolbar}
           {toggle}

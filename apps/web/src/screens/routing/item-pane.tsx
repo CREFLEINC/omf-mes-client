@@ -385,7 +385,7 @@ export const ItemPane = ({
   return (
     <section
       className="pane inspection-standard-list-pane routing-item-pane"
-      aria-label={t.panes.item}
+      aria-label={t.panes.itemList}
     >
       {head}
       {listSlot()}

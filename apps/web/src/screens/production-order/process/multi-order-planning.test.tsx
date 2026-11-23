@@ -390,6 +390,35 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     expect(within(detail).getByRole('region', { name: 'Routing 상세 정보' })).toBeVisible();
     expect(screen.queryByRole('dialog', { name: '미저장 변경사항' })).toBeNull();
   });
+  it('ERP W/O 목록을 접으면 「목록 N건」 탭이 서고, 펼쳐도 고른 ERP W/O가 그대로다(#350)', async () => {
+    try {
+      mount();
+      const list = await screen.findByRole('complementary', { name: 'ERP W/O 목록' });
+      await waitFor(() =>
+        expect(within(within(list).getByRole('table')).getAllByRole('button')).toHaveLength(2),
+      );
+      const user = userEvent.setup();
+      await user.click(within(within(list).getByRole('table')).getAllByRole('button')[1]!);
+      expect(list).toHaveTextContent('2건');
+      const grid = document.querySelector('.erp-wo-master-selection-layout')!;
+
+      await user.click(screen.getAllByRole('button', { name: '목록 접기' })[0]!);
+      expect(grid).toHaveAttribute('data-left-collapsed', 'true');
+      const tab = grid.querySelector<HTMLElement>('.po-board-list-tab');
+      expect(tab).toHaveTextContent('목록2건');
+
+      await user.click(tab!);
+      expect(grid).not.toHaveAttribute('data-left-collapsed');
+      expect(within(within(list).getByRole('table')).getAllByRole('button')[1]).toHaveAttribute(
+        'aria-current',
+        'true',
+      );
+      const detail = screen.getByRole('region', { name: '선택 ERP W/O 상세' });
+      expect(within(detail).getByText('B', { exact: true })).toBeVisible();
+    } finally {
+      localStorage.removeItem('omf-mes:work-planning:erp-wo-layout:ratio:collapsed');
+    }
+  });
   it('분배한 계획을 ERP W/O별 저장하고 If-Match로 확정한 뒤 실행 단계로 이동한다', async () => {
     const server = mount();
     const user = await distribute();

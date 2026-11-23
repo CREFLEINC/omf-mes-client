@@ -1,9 +1,4 @@
-import {
-  AlertBanner,
-  EmptyState,
-  SkeletonText,
-  useToast,
-} from '@crefle/web-ui';
+import { AlertBanner, EmptyState, SkeletonText, useToast } from '@crefle/web-ui';
 import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
@@ -139,6 +134,9 @@ type DepartmentDetailResponse = components['schemas']['DepartmentDetailResponse'
 type WorkerQualificationListResponse = components['schemas']['WorkerQualificationListResponse'];
 
 const t = messages.commonCode;
+
+/** 좌우 · 상하 배치는 네 탭(공통코드 · 조직 · 작업자 · 거래처)이 함께 쓴다 — 「⋯」 이 같은 탭 줄에 선다(#350 리뷰). */
+const ORIENTATION_KEY = 'omf-mes:common-code:split-orientation';
 
 /**
  * 폼의 현재 값과 그것이 어디서 나왔는지.
@@ -1778,6 +1776,7 @@ export const CommonCodeScreen = () => {
       layout={({ filter, list }) => (
         <ListDetailWorkspace
           storageKey="omf-mes:common-code:code"
+          orientationKey={ORIENTATION_KEY}
           filter={{ label: messages.common.paneList.filter, content: filter }}
           list={{
             label: t.panes.codeGroup,
@@ -2024,6 +2023,7 @@ export const CommonCodeScreen = () => {
       layout={({ filter, list }) => (
         <ListDetailWorkspace
           storageKey="omf-mes:common-code:org"
+          orientationKey={ORIENTATION_KEY}
           filter={{ label: messages.common.paneList.filter, content: filter }}
           list={{
             label: t.panes.department,
@@ -2102,6 +2102,7 @@ export const CommonCodeScreen = () => {
       layout={({ filter, list }) => (
         <ListDetailWorkspace
           storageKey="omf-mes:common-code:worker"
+          orientationKey={ORIENTATION_KEY}
           filter={{ label: messages.common.paneList.filter, content: filter }}
           list={{
             label: t.panes.worker,
@@ -2113,56 +2114,58 @@ export const CommonCodeScreen = () => {
             label: t.panes.detail,
             bare: true,
             content: (
-              <>
-                <div className="pane-stack">
-                  {renderWorkerDetailPane()}
+              <div className="pane-stack">
+                {renderWorkerDetailPane()}
 
-                  <QualificationPane
-                    drafts={qualificationDrafts}
-                    // 작업자를 고르기 전에는 아무것도 기다리지 않는다 — 조회가 나가지도 않았다.
-                    isLoading={selectedWorkerId !== null && qualificationList.isPending}
-                    isWorkerSelected={selectedWorkerId !== null}
-                    processes={processOptions}
-                    certifiers={certifierOptions}
-                    optionsNotice={renderOptionsNotice([processOptions, certifierOptions])}
-                    loadError={
-                      qualificationList.isError ? (
-                        <LoadErrorBanner
-                          error={qualificationList.error}
-                          onRetry={() => void qualificationList.refetch()}
-                        />
-                      ) : null
-                    }
-                    /*
-                     * **남의 실패는 아예 그리지 않는다**(`isQualificationWriteMine`) — 뒤늦게 온 앞
-                     * 작업자의 실패가 지금 구획에 서면 사용자는 손댄 적 없는 작업자가 막힌 줄 안다.
-                     */
-                    banner={
-                      isQualificationWriteMine ? <SaveErrorBanner error={qualificationWrite.error} /> : null
-                    }
-                    isDirty={isQualificationDirty}
-                    /* **막는 것은 전역** — 남의 저장 중에도 새 저장이 시작되지 않는다(사유는 페인이 낸다). */
-                    isLocked={isQualificationLocked}
-                    /* **가리는 것은 대상 축** — 진행 표시는 자기 저장에만 돈다. */
-                    isSaving={isQualificationWriteMine && qualificationWrite.isSaving}
-                    onAdd={() => openQualificationDialog(createQualificationDraft(), true)}
-                    onEdit={(draftId) => {
-                      const found = qualificationDrafts.find((item) => item.draftId === draftId);
-                      if (found !== undefined) openQualificationDialog(found, false);
-                    }}
-                    onRemove={(draftId) => {
-                      changeQualificationDrafts((drafts) => removeQualificationDraft(drafts, draftId));
-                    }}
-                    onSave={handleSaveQualifications}
-                    onCancel={() => {
-                      resetIfIdle(qualificationWrite);
-                      setQualificationState((prev) =>
-                        prev === null ? prev : { ...prev, drafts: prev.baseline },
-                      );
-                    }}
-                  />
-                </div>
-              </>
+                <QualificationPane
+                  drafts={qualificationDrafts}
+                  // 작업자를 고르기 전에는 아무것도 기다리지 않는다 — 조회가 나가지도 않았다.
+                  isLoading={selectedWorkerId !== null && qualificationList.isPending}
+                  isWorkerSelected={selectedWorkerId !== null}
+                  processes={processOptions}
+                  certifiers={certifierOptions}
+                  optionsNotice={renderOptionsNotice([processOptions, certifierOptions])}
+                  loadError={
+                    qualificationList.isError ? (
+                      <LoadErrorBanner
+                        error={qualificationList.error}
+                        onRetry={() => void qualificationList.refetch()}
+                      />
+                    ) : null
+                  }
+                  /*
+                   * **남의 실패는 아예 그리지 않는다**(`isQualificationWriteMine`) — 뒤늦게 온 앞
+                   * 작업자의 실패가 지금 구획에 서면 사용자는 손댄 적 없는 작업자가 막힌 줄 안다.
+                   */
+                  banner={
+                    isQualificationWriteMine ? (
+                      <SaveErrorBanner error={qualificationWrite.error} />
+                    ) : null
+                  }
+                  isDirty={isQualificationDirty}
+                  /* **막는 것은 전역** — 남의 저장 중에도 새 저장이 시작되지 않는다(사유는 페인이 낸다). */
+                  isLocked={isQualificationLocked}
+                  /* **가리는 것은 대상 축** — 진행 표시는 자기 저장에만 돈다. */
+                  isSaving={isQualificationWriteMine && qualificationWrite.isSaving}
+                  onAdd={() => openQualificationDialog(createQualificationDraft(), true)}
+                  onEdit={(draftId) => {
+                    const found = qualificationDrafts.find((item) => item.draftId === draftId);
+                    if (found !== undefined) openQualificationDialog(found, false);
+                  }}
+                  onRemove={(draftId) => {
+                    changeQualificationDrafts((drafts) =>
+                      removeQualificationDraft(drafts, draftId),
+                    );
+                  }}
+                  onSave={handleSaveQualifications}
+                  onCancel={() => {
+                    resetIfIdle(qualificationWrite);
+                    setQualificationState((prev) =>
+                      prev === null ? prev : { ...prev, drafts: prev.baseline },
+                    );
+                  }}
+                />
+              </div>
             ),
           }}
         />
@@ -2293,6 +2296,7 @@ export const CommonCodeScreen = () => {
       layout={({ filter, list }) => (
         <ListDetailWorkspace
           storageKey="omf-mes:common-code:partner"
+          orientationKey={ORIENTATION_KEY}
           filter={{ label: messages.common.paneList.filter, content: filter }}
           list={{
             label: t.panes.partner,
@@ -2303,11 +2307,7 @@ export const CommonCodeScreen = () => {
           detail={{
             label: t.panes.detail,
             bare: true,
-            content: (
-              <>
-                <div className="pane-stack">{renderPartnerRolePane()}</div>
-              </>
-            ),
+            content: <div className="pane-stack">{renderPartnerRolePane()}</div>,
           }}
         />
       )}
@@ -2334,11 +2334,21 @@ export const CommonCodeScreen = () => {
           role="tablist"
           aria-label={t.tabs.label}
           onKeyDown={(event) => {
-            if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+            /* 탭 목록 키 — ←/→ 는 이웃 탭(끝에서 돌아감), Home/End 는 처음 · 마지막 탭(디자인 시스템 Tabs 와 같다). */
             const index = COMMON_CODE_TABS.findIndex((definition) => definition.id === tab.id);
-            const step = event.key === 'ArrowRight' ? 1 : -1;
-            const next =
-              COMMON_CODE_TABS[(index + step + COMMON_CODE_TABS.length) % COMMON_CODE_TABS.length];
+            const count = COMMON_CODE_TABS.length;
+            const nextIndex =
+              event.key === 'ArrowRight'
+                ? (index + 1) % count
+                : event.key === 'ArrowLeft'
+                  ? (index - 1 + count) % count
+                  : event.key === 'Home'
+                    ? 0
+                    : event.key === 'End'
+                      ? count - 1
+                      : null;
+            if (nextIndex === null) return;
+            const next = COMMON_CODE_TABS[nextIndex];
             if (next === undefined) return;
             event.preventDefault();
             changeTab(next.id);
@@ -2356,7 +2366,6 @@ export const CommonCodeScreen = () => {
                 className="hub-tab"
                 aria-selected={isActive}
                 aria-controls="common-code-tab-panel"
-                aria-current={isActive ? 'page' : undefined}
                 tabIndex={isActive ? 0 : -1}
                 onClick={() => {
                   if (!isActive) changeTab(definition.id);

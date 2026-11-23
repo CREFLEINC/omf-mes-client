@@ -733,7 +733,7 @@ const ProcessListPane = ({
       className="pane inspection-standard-list-pane routing-process-list-pane"
       aria-label={t.panes.processList}
     >
-      {/* 제목 글은 두지 않는다 — 공정 경로 탭의 품목 목록과 같다(사용자 지시 · #231). 이름은 구역의 aria-label 이 갖는다. */}
+      {/* 목록 제목 줄 「공정 목록 · N건 · 목록 접기」 — #350 시안이 #231 의 「제목 글 없음」을 대신한다(라우팅 탭의 품목 목록과 같다). */}
       {head}
       {listSlot}
 

@@ -373,7 +373,7 @@ export const CurrentResults = ({
       )}
 
       <div className="lot-status-pane-head">
-        {/* 총 건수는 표 아래 쪽 이동 줄에만 둔다(사용자 2026-10-30). */}
+        {/* 「총 N건」은 표 아래 쪽 이동 줄에 둔다(사용자 2026-10-30) — 목록 제목 줄에는 「N건」(#350). */}
         <h3 className="lot-status-list-title">{t.current.list.title}</h3>
       </div>
       {list.isPending && (
@@ -443,32 +443,32 @@ export const CurrentResults = ({
               }
             />
           </div>
-          {/*
-           * 표와 쪽 이동 줄 사이 오른쪽 — 마지막 갱신 + [갱신](사용자 2026-10-30 · 자리는 2026-11-23 지시). 요약과 목록을 함께
-           * 다시 부른다. 「조회 기준」 자리를 이어받는다(두 시각을 나란히 두면 헷갈린다).
-           */}
-          <div className="lot-status-refresh-foot">
-            <RefreshStatus
-              updatedAt={Math.max(list.dataUpdatedAt, summary.dataUpdatedAt)}
-              isRefreshing={list.isFetching || summary.isFetching}
-              onRefresh={() => {
-                void list.refetch();
-                void summary.refetch();
-              }}
-            />
-          </div>
-          {meta !== undefined && (
-            <PageNav
-              sizes={LOT_PAGE_SIZES}
-              meta={{ page: currentPage, size: shownPageSize, total: meta.total }}
-              onChangePage={onPageChange}
-              onChangeSize={onPageSizeChange}
-              /* 쪽 크기 선택은 작게, 처음~마지막 단추는 크게 — 화면 안 쪽 이동을 같은 크기로(사용자 2026-10-30). */
-              controlSize="sm"
-              buttonSize="md"
-            />
-          )}
         </>
+      )}
+      {/*
+       * 표와 쪽 이동 줄 사이 오른쪽 — 마지막 갱신 + [갱신](사용자 2026-10-30 · 자리는 2026-11-23 지시). 요약과 목록을 함께
+       * 다시 부른다. 「조회 기준」 자리를 이어받는다(두 시각을 나란히 두면 헷갈린다). 첫 조회 중 · 실패 때도 늘 보인다(종전과 같다).
+       */}
+      <div className="lot-status-refresh-foot">
+        <RefreshStatus
+          updatedAt={Math.max(list.dataUpdatedAt, summary.dataUpdatedAt)}
+          isRefreshing={list.isFetching || summary.isFetching}
+          onRefresh={() => {
+            void list.refetch();
+            void summary.refetch();
+          }}
+        />
+      </div>
+      {meta !== undefined && (
+        <PageNav
+          sizes={LOT_PAGE_SIZES}
+          meta={{ page: currentPage, size: shownPageSize, total: meta.total }}
+          onChangePage={onPageChange}
+          onChangeSize={onPageSizeChange}
+          /* 쪽 크기 선택은 작게, 처음~마지막 단추는 크게 — 화면 안 쪽 이동을 같은 크기로(사용자 2026-10-30). */
+          controlSize="sm"
+          buttonSize="md"
+        />
       )}
     </section>
   );

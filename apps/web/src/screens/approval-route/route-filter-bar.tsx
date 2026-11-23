@@ -1,7 +1,6 @@
-import type { ReactNode } from 'react';
 import { Button, Checkbox, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 import { hasChangedFilters } from '../../patterns/filter-more';
 import { codeNote, codePlaceholder } from './code-options';

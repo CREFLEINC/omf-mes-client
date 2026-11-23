@@ -521,7 +521,10 @@ export const WorkOrderCloseCandidateScreen = () => {
       draft: update(toWorkOrderCloseSelectedDraft(current, state.selectedWorkOrderId)),
     }));
 
-  /* 목록 접기(#350) — 넓은 창에서 두 칸이 나란히 설 때만 접힌다(app.css `list-collapsible`). */
+  /*
+   * 목록 접기(#350, app.css `list-collapsible`) — 넓은 창(1440px~)은 왼쪽 48px 세로 탭 + 상세, 그보다 좁으면 상세 위
+   * 가로 탭 + 상세 한 칸.
+   */
   const listCollapse = {
     collapsed: listSplit.collapsed,
     onToggle: listSplit.toggleCollapsed,

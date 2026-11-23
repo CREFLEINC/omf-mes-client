@@ -23,7 +23,7 @@
 
 /* 고른 품목(코드 · 이름) — 제목 옆에 흐리게. */
 .inspection-level-history-selected {
-  margin-left: var(--space-2);
+  margin-left: var(--space-1);
   color: var(--on-surface-variant);
   font-size: 14px;
   font-weight: 500;
@@ -60,4 +60,25 @@
 
 .inspection-level-row-pick[aria-current='true'] {
   font-weight: 600;
+}
+
+/*
+ * 조회 상자 — 품목 칸은 흐린 안내(「품목 코드 또는 품목명을 입력하세요」)가 꼭 맞는 폭, [조회] · [초기화] | [품목 추가]는
+ * 오른쪽 끝(검사 기준 · 검사표 기준 탭과 같다 · #208). 칸 글자는 한 단계 작은 본문 글자(#228).
+ */
+.inspection-level-filter {
+  --type-body-lg: var(--type-body-sm);
+  --type-body-lg-tracking: var(--type-body-sm-tracking, 0);
+
+  margin-bottom: 0;
+}
+
+.inspection-level-filter > :first-child {
+  flex: 0 1 19em;
+  min-width: 12rem;
+}
+
+.inspection-level-filter .filter-actions {
+  align-items: center;
+  margin-left: auto;
 }

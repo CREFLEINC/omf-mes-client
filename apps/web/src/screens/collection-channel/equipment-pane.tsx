@@ -188,7 +188,7 @@ export const useEquipmentPane = ({
     <>
       {/* 잘림은 목록 «위»에 둔다 — 아래에 두면 찾는 설비가 없다고 판단한 뒤에야 읽힌다. */}
       {truncated && total !== null && (
-        <p className="field-note" role="status">
+        <p className="field-note collection-channel-truncated" role="status">
           {t.equipment.truncated(items.length, total)}
         </p>
       )}
@@ -197,17 +197,4 @@ export const useEquipmentPane = ({
   );
 
   return { filter, list };
-};
-
-/** 조회 줄과 목록을 한 상자에 함께 그린다 — 목록 부품을 따로 시험할 때 쓴다. */
-export const EquipmentPane = (props: EquipmentPaneProps) => {
-  const { filter, list } = useEquipmentPane(props);
-
-  return (
-    <section className="pane collection-channel-pane" aria-label={t.equipment.paneTitle}>
-      <h2 className="pane-title">{t.equipment.paneTitle}</h2>
-      {filter}
-      {list}
-    </section>
-  );
 };

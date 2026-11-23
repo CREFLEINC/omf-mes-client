@@ -86,7 +86,7 @@ export const PoChangeReviewScreen = () => {
    */
   const isConflict = write.error?.kind === 'conflict';
 
-  /* 목록 접기(#350) — 넓은 창에서 두 칸이 나란히 설 때만 접힌다(app.css `list-collapsible`). */
+  /* 목록 접기(#350, app.css `list-collapsible`) — 넓은 창은 왼쪽 세로 탭 + 상세, 좁으면 상세 위 가로 탭 + 상세 한 칸. */
   const listSplit = usePaneSplit('omf-mes:po-change-review:list');
   const listCollapse = {
     collapsed: listSplit.collapsed,

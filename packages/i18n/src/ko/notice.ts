@@ -7,9 +7,6 @@
  * ⭐ **상태는 서버가 파생한다** — 상태를 직접 쓰는 액션을 만들지 않는다.
  */
 export const notice = {
-  title: '공지·전달',
-  breadcrumbRoot: '업무함',
-
   panes: {
     list: '공지 목록',
     detail: '공지',

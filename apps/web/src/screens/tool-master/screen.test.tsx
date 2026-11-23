@@ -364,9 +364,7 @@ describe('W-05-13 툴 마스터 — 목록', () => {
   it('정렬과 「추가 필터」 체크칸 셋은 조건 더보기 안에 있고 건수는 늘 보인다', async () => {
     const { user } = renderScreen();
 
-    expect(
-      await within(listPane()).findByText(messages.common.paneList.count(6)),
-    ).toBeVisible();
+    expect(await within(listPane()).findByText(messages.common.paneList.count(6))).toBeVisible();
     expect(within(filterBox()).queryByRole('group', { name: t.filters.extraLabel })).toBeNull();
     expect(within(filterBox()).queryByRole('combobox', { name: t.filters.sortLabel })).toBeNull();
 
@@ -479,7 +477,9 @@ describe('W-05-13 툴 마스터 — 목록', () => {
       '제2공장',
     );
     expect(
-      within(filterBox()).queryByRole('button', { name: messages.common.filterMore.remove('공장') }),
+      within(filterBox()).queryByRole('button', {
+        name: messages.common.filterMore.remove('공장'),
+      }),
     ).toBeNull();
     expect(within(filterBox()).queryByText(/공장: /)).toBeNull();
   });

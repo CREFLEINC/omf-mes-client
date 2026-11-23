@@ -126,7 +126,7 @@ export const usePaneSplit = (storageKey: string, initial = 1 / 3) => {
 
   /*
    * 왼쪽 표를 **완전히 접는다**(사용자 지시 2026-10-24). 접으면 오른쪽 구획이 폭을 다 쓴다. 비율과 같이 브라우저에 남긴다.
-   * 접힘은 나란히 설 때만 뜻이 있다 — 위아래로 쌓이면 CSS 가 무시한다(펼칠 단추가 막대에 있어서다).
+   * 위아래로 쌓여도 접힌다 — 목록 자리에 가로 「목록 N건」 탭이 선다(#350 · app.css).
    */
   const collapseKey = `${storageKey}:collapsed`;
   const [collapsed, setCollapsed] = useState<boolean>(() => {
@@ -149,7 +149,6 @@ export const usePaneSplit = (storageKey: string, initial = 1 / 3) => {
   return { ratio, commit, style, collapsed, toggleCollapsed };
 };
 
-/**
 /** 목록 접기 — 상태 · 바꾸기와 단추 이름(접기 · 펼치기). `count` 가 있으면 제목 줄 · 접힌 탭에 건수가 선다. */
 export interface PaneCollapse {
   collapsed: boolean;
@@ -161,7 +160,7 @@ export interface PaneCollapse {
 
 /**
  * 목록 제목 줄(omf-all-around#350 시안) — 「수주 목록 12건 … [목록 접기]」. 목록 구획 맨 위에 둔다.
- * 「목록 접기」는 좌우로 나란히 설 때만 보이고(app.css), 위아래로 쌓이면 막대의 작은 원 단추가 그대로 접고 편다.
+ * 「목록 접기」는 늘 보이고, 이 줄이 있는 두 구획에서는 막대 위 작은 원 접기 단추를 감춘다(app.css).
  */
 export const PaneListHead = ({
   title,
@@ -269,27 +268,11 @@ export const PaneSplitter = ({
         <Icon name={collapse.collapsed ? 'left_panel_open' : 'left_panel_close'} size={18} />
       </button>
     )}
-    {/* 접힌 뒤 왼쪽 「목록」 탭 — 좌우로 나란히 설 때만 보인다(app.css). 위 줄의 작은 원은 그때 감춘다. */}
-    {collapse?.collapsed === true && (
-      <button
-        type="button"
-        className="po-board-list-tab"
-        aria-label={collapse.expandLabel}
-        aria-expanded={false}
-        title={collapse.expandLabel}
-        onClick={collapse.onToggle}
-      >
-        <span className="po-board-list-tab-body">
-          <Icon name="left_panel_open" size={18} />
-          <b>{messages.common.paneList.tab}</b>
-          {collapse.count !== undefined && (
-            <span className="po-board-list-count">
-              {messages.common.paneList.count(collapse.count)}
-            </span>
-          )}
-        </span>
-      </button>
-    )}
+    {/*
+     * 접힌 뒤 「목록 N건」 탭 — 좌우면 왼쪽 세로 탭, 위아래로 쌓이면 가로 탭(app.css). 위 줄의 작은 원은 그때 감춘다.
+     * 끌기 막대 없는 화면의 접힌 탭과 같은 부품이다.
+     */}
+    {collapse !== undefined && <ListCollapseTab collapse={collapse} />}
     {collapse?.collapsed !== true && (
       <div
         className="po-board-splitter"

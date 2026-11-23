@@ -17,8 +17,8 @@
   .filter-bar.tool-master-filter {
     grid-template-columns: repeat(2, minmax(10rem, 1fr)) auto;
     grid-template-areas:
-      "search search actions"
-      "plant type .";
+      'search search actions'
+      'plant type .';
   }
 
   .filter-bar.tool-master-filter > :nth-child(1) {

@@ -261,4 +261,28 @@ describe('의심자재 후보 pane', () => {
     await user.click(row.querySelectorAll('td')[2]!);
     expect(box).not.toBeChecked();
   });
+
+  /* 목록 제목 줄 「목록 접기」 · 접힌 「목록 N건」 탭(#350). */
+  it('목록을 접으면 탭에 건수가 서고, 펼친 뒤에도 고른 LOT · 적어 둔 조건이 그대로다', async () => {
+    const collapsedKey = 'omf-mes:suspicious-material-hold:split:collapsed';
+    window.localStorage.removeItem(collapsedKey);
+    const { user } = renderPane(() => jsonResponse(page([lot(701), lot(702)], 1, 1234)));
+    const box = await screen.findByRole('checkbox', { name: 'SYN-LOT-701 선택' });
+    await waitFor(() => expect(box).toBeEnabled());
+    await user.click(box);
+    await user.type(screen.getByLabelText('LOT 번호'), 'SYN-SEARCH');
+    const split = document.querySelector('.lot-status-split');
+
+    /* 막대 위 원과 제목 줄 「목록 접기」가 같은 이름이다. */
+    await user.click(screen.getAllByRole('button', { name: '목록 접기' })[0]!);
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = split!.querySelector<HTMLElement>('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록1234건');
+
+    await user.click(tab!);
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    expect(screen.getByRole('checkbox', { name: 'SYN-LOT-701 선택' })).toBeChecked();
+    expect(screen.getByLabelText('LOT 번호')).toHaveValue('SYN-SEARCH');
+    window.localStorage.removeItem(collapsedKey);
+  });
 });

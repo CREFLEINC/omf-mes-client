@@ -2,6 +2,9 @@
  * 품질 승인 처리 — 목록 접기는 좌우 배치에서만(#350). 상하 배치에서는 접어도 목록이 그대로라 제목 줄 「목록 접기」를
  * 감춘다(공용 규칙 `.po-board-split .po-board-list-head > .po-board-list-collapse` 가 쌓인 배치에도 단추를 세운다).
  */
-.po-board-split.is-stacked > .quality-approval-list-pane > .po-board-list-head > .po-board-list-collapse {
+.po-board-split.is-stacked
+  > .quality-approval-list-pane
+  > .po-board-list-head
+  > .po-board-list-collapse {
   display: none;
 }

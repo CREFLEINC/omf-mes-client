@@ -41,8 +41,7 @@ const hasAnyFilter = (filters: InspectionItemFilters): boolean =>
  *
  * ⭐ **부여 창이 쓰는 목록과 다르다.** 그쪽은 「고를 것」이라 살아 있는 것만 받지만, 여기는
  * 마스터라 **끈 것도 보여야 한다** — 다시 켜는 길이 여기뿐이다(B-4).
- */
-/**
+ *
  * 조회 줄과 목록을 따로 돌려준다 — 통일 배치(#350)에서 조회 줄은 조회 조건 상자에, 표는 목록 상자에 선다.
  */
 export const useInspectionItemPane = ({
@@ -189,20 +188,4 @@ export const useInspectionItemPane = ({
   );
 
   return { filter, list: listSlot() };
-};
-
-/** 조회 줄과 목록을 한 상자에 함께 그린다 — 목록 부품을 따로 시험할 때 쓴다. */
-export const InspectionItemPane = (props: InspectionItemPaneProps) => {
-  const { filter, list } = useInspectionItemPane(props);
-
-  return (
-    <section
-      className="pane equipment-master-pane equipment-master-inspection-master-pane"
-      aria-label={t.paneTitle}
-    >
-      <h2 className="pane-title">{t.paneTitle}</h2>
-      {filter}
-      {list}
-    </section>
-  );
 };

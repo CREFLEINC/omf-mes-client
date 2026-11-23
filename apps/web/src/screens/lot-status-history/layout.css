@@ -11,7 +11,9 @@
  * 쪽 이동 바로 앞 칸을 늘리는 공용 규칙(app.css `.lot-status-pane:has(> .page-nav) > :has(+ .page-nav)`)이 갱신 줄에 걸리지
  * 않게 하고(늘면 단추가 표에서 떨어진다), 쪽 이동 줄은 위쪽 여백을 자동으로 두어 바닥으로 민다.
  */
-.lot-status-split > .lot-status-pane:has(> .page-nav) > .lot-status-refresh-foot.lot-status-refresh-foot {
+.lot-status-split
+  > .lot-status-pane:has(> .page-nav)
+  > .lot-status-refresh-foot.lot-status-refresh-foot {
   flex: 0 0 auto;
 }
 

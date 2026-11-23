@@ -328,7 +328,6 @@ export const LotHistory = () => {
         ref={splitRef}
         className={`po-board-split inspection-split lot-trace-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
         style={{ ...split.style, ...layout.style }}
-
         data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <section className="pane lot-trace-list-pane" aria-label={t.list.pane}>

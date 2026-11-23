@@ -29,3 +29,9 @@
 .common-code-tab-panel tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
   box-shadow: inset 3px 0 0 var(--semantic-info);
 }
+
+/* 고른 탭 — 셸 탭 막대의 고른 탭(`aria-current="page"`)과 같은 모양. 이 탭은 `role="tab"` 이라 `aria-selected` 로 고른다. */
+.common-code-tab-bar .hub-tab[aria-selected='true'] {
+  color: var(--primary-text);
+  box-shadow: inset 0 -2px 0 var(--primary-text);
+}

@@ -35,7 +35,7 @@ export interface WorkerListPaneProps {
   loadError: ReactNode;
   /**
    * 조회 조건 · 목록을 화면이 따로 세울 때(통일 배치 · #350) 두 조각을 받아 배치한다.
-   * 없으면 한 구획 안에 조건 줄 · 목록을 차례로 둔다.
+   * 없으면 한 구획 안에 조건 줄 · 목록을 차례로 둔다 — 화면은 늘 넘기고, 목록 부품만 따로 그리는 부품 시험이 빈 채로 쓴다.
    */
   layout?: (parts: { filter: ReactNode; list: ReactNode }) => ReactNode;
 }

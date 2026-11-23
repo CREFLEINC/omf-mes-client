@@ -123,9 +123,9 @@ export const NoticeScreen = () => {
   );
 
   const create = useNoticeCreate((created) => {
-    setFormMode('closed');
-    setFlash(t.form.saved);
+    /* 새 공지로 옮겨 간 뒤에 안내를 띄운다 — 옮기기(`selectNotice`)가 안내를 지우므로 순서가 바뀌면 안내가 안 뜬다. */
     selectNotice(created.noticeId);
+    setFlash(t.form.saved);
   });
 
   const update = useNoticeUpdate(selectedId, () => {
@@ -304,20 +304,6 @@ export const NoticeScreen = () => {
 
   return (
     <>
-      {flash !== null && (
-        <div className="banner-slot">
-          <AlertBanner
-            variant="success"
-            onDismiss={() => {
-              setFlash(null);
-            }}
-            dismissLabel={messages.common.close}
-          >
-            {flash}
-          </AlertBanner>
-        </div>
-      )}
-
       {/* 화면 제목 줄은 두지 않는다 — 조회 조건 · 목록 · 상세 통일 배치(검사 조회·판정과 같다 · #350). */}
       <ListDetailWorkspace
         storageKey="omf-mes:notice"
@@ -382,7 +368,9 @@ export const NoticeScreen = () => {
                       apply({ overlapTo: value ?? '' });
                     }}
                   />
-                  {invalidPeriod !== undefined && <span className="field-error">{invalidPeriod}</span>}
+                  {invalidPeriod !== undefined && (
+                    <span className="field-error">{invalidPeriod}</span>
+                  )}
                 </div>
 
                 <div className="field-cell field-cell-unlabeled notice-filter-actions">
@@ -398,7 +386,11 @@ export const NoticeScreen = () => {
                         {t.filters.clear}
                       </Button>
                     )}
-                    <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
+                    <FilterMoreButton
+                      open={more.isOpen}
+                      controlsId={more.id}
+                      onToggle={more.toggle}
+                    />
                     <span className="inspection-standard-filter-divider" aria-hidden />
                     <Button onClick={openCreate}>{t.form.create}</Button>
                   </div>
@@ -455,7 +447,6 @@ export const NoticeScreen = () => {
           label: t.panes.list,
           title: t.panes.list,
           count: notices.data?.page.total,
-          className: 'notice-pane',
           content: (
             <>
               {notices.isError ? (
@@ -476,7 +467,12 @@ export const NoticeScreen = () => {
                     density="compact"
                     caption={t.panes.list}
                     empty={
-                      <EmptyState size="sm" live title={t.list.emptyTitle} description={t.list.empty} />
+                      <EmptyState
+                        size="sm"
+                        live
+                        title={t.list.emptyTitle}
+                        description={t.list.empty}
+                      />
                     }
                   />
                 </div>
@@ -497,134 +493,158 @@ export const NoticeScreen = () => {
           bare: true,
           content: (
             <>
-            <section className="pane notice-pane" aria-label={t.panes.detail}>
-              <h2 className="pane-title">{formMode === 'create' ? t.form.create : t.panes.detail}</h2>
-
-              {formMode !== 'closed' ? (
-                <NoticeForm
-                  draft={draft}
-                  errors={errors}
-                  isSaving={create.isSaving || update.isSaving}
-                  saveError={formMode === 'create' ? create.error : update.error}
-                  fieldErrors={formMode === 'create' ? create.fieldErrors : update.fieldErrors}
-                  workOrders={workOrders}
-                  onChange={(patch) => {
-                    setDraft((prev) => ({ ...prev, ...patch }));
-                  }}
-                  onSubmit={submit}
-                  onCancel={() => {
-                    setFormMode('closed');
-                  }}
-                />
-              ) : selectedId === null ? (
-                <EmptyState size="sm" title={t.list.selectTitle} description={t.list.select} />
-              ) : detail.isError ? (
-                <LoadErrorBanner
-                  error={detail.error}
-                  onRetry={() => {
-                    void detail.refetch();
-                  }}
-                />
-              ) : detail.isPending || selected === null ? (
-                <Skeleton variant="rect" height="10rem" />
-              ) : (
-                <>
-                  <SaveErrorBanner error={publish.error ?? close.error} />
-                  <SaveErrorBanner error={acknowledge.error ?? dismiss.error} />
-
-                  <dl className="token-meta">
-                    <dt>{t.list.status}</dt>
-                    <dd>{statusLabel(selected.statusCode)}</dd>
-                    <dt>{t.detail.period}</dt>
-                    <dd>{formatPeriod(selected.startDate, selected.endDate, t.detail.noEndDate)}</dd>
-                    <dt>{t.list.scope}</dt>
-                    <dd>
-                      {scopeLabel(selected.scopeCode)}
-                      {needsWorkOrder(selected.scopeCode) && selected.targetWorkOrderNo !== null
-                        ? ` · ${selected.targetWorkOrderNo}`
-                        : ''}
-                    </dd>
-                    <dt>{t.detail.publishedAt}</dt>
-                    <dd>
-                      {selected.publishedAt === null
-                        ? t.list.notAvailable
-                        : formatMoment(selected.publishedAt)}
-                    </dd>
-                  </dl>
-
-                  <p className="notice-body">{selected.body}</p>
-
-                  {/* ⛔⛔ 게시 뒤에는 본문을 고칠 수 없다 — 잠근 이유를 잠근 자리에 적는다. */}
-                  {!editable && <p className="pane-lead">{t.detail.lockedAfterPublish}</p>}
-
-                  <div className="form-actions">
-                    <Button
-                      variant="outlined"
-                      disabled={acknowledge.isSaving}
-                      onClick={() => {
-                        acknowledge.write({});
-                      }}
-                    >
-                      {t.detail.acknowledge}
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      /* ⚠ 확인을 요구한 공지는 그냥 닫을 수 없다 — 서버가 거부한다. */
-                      disabled={selected.acknowledgeRequired || dismiss.isSaving}
-                      onClick={() => {
-                        dismiss.write({});
-                      }}
-                    >
-                      {t.detail.dismiss}
-                    </Button>
-                    <Button variant="outlined" disabled={!editable} onClick={openEdit}>
-                      {t.form.edit}
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      disabled={!isClosable(selected.statusCode) || close.isSaving}
-                      onClick={() => {
-                        setConfirming('close');
-                      }}
-                    >
-                      {t.detail.close}
-                    </Button>
-                    <Button
-                      disabled={!isPublishable(selected.statusCode) || publish.isSaving}
-                      onClick={() => {
-                        setConfirming('publish');
-                      }}
-                    >
-                      {t.detail.publish}
-                    </Button>
-                  </div>
-                  {selected.acknowledgeRequired && <p className="field-note">{t.detail.dismissLocked}</p>}
-                </>
+              {/*
+               * 저장 · 게시 · 마감 · 확인 안내 — 상세 상자 위에 둔다(통일 배치 밖에 두면 안내가 뜨고 질 때 목록 | 상세 높이가
+               * 창 바닥과 어긋난다 · #350 리뷰).
+               */}
+              {flash !== null && (
+                <div className="banner-slot">
+                  <AlertBanner
+                    variant="success"
+                    onDismiss={() => {
+                      setFlash(null);
+                    }}
+                    dismissLabel={messages.common.close}
+                  >
+                    {flash}
+                  </AlertBanner>
+                </div>
               )}
-            </section>
-
-            {selected !== null && formMode === 'closed' && (
-              <section className="pane notice-pane" aria-label={t.panes.ack}>
-                <h2 className="pane-title info-label">
-                  {t.ack.title}
-                  {/* 사번으로 보이는 행의 뜻은 제목 옆 ⓘ 로 — 확인을 받는 공지에서만 목록이 있다(관리웹 정리 시안 A). */}
-                  {selected.acknowledgeRequired && <InfoTip text={t.ack.workerNote} />}
+              {/* 바깥 상세 구획이 「공지」 이름을 갖는다 — 안쪽 상자에 같은 이름을 겹쳐 달지 않는다. */}
+              <section className="pane notice-pane">
+                <h2 className="pane-title">
+                  {formMode === 'create' ? t.form.create : t.panes.detail}
                 </h2>
-                <AckPanel
-                  required={selected.acknowledgeRequired}
-                  pendingOnly={pendingOnly}
-                  isPending={acks.isPending}
-                  isError={acks.isError}
-                  error={acks.error}
-                  data={acks.data}
-                  hasDenominator={selected.targetCount !== null}
-                  onPendingOnlyChange={setPendingOnly}
-                  onRetry={() => {
-                    void acks.refetch();
-                  }}
-                />
+
+                {formMode !== 'closed' ? (
+                  <NoticeForm
+                    draft={draft}
+                    errors={errors}
+                    isSaving={create.isSaving || update.isSaving}
+                    saveError={formMode === 'create' ? create.error : update.error}
+                    fieldErrors={formMode === 'create' ? create.fieldErrors : update.fieldErrors}
+                    workOrders={workOrders}
+                    onChange={(patch) => {
+                      setDraft((prev) => ({ ...prev, ...patch }));
+                    }}
+                    onSubmit={submit}
+                    onCancel={() => {
+                      setFormMode('closed');
+                    }}
+                  />
+                ) : selectedId === null ? (
+                  <EmptyState size="sm" title={t.list.selectTitle} description={t.list.select} />
+                ) : detail.isError ? (
+                  <LoadErrorBanner
+                    error={detail.error}
+                    onRetry={() => {
+                      void detail.refetch();
+                    }}
+                  />
+                ) : detail.isPending || selected === null ? (
+                  <Skeleton variant="rect" height="10rem" />
+                ) : (
+                  <>
+                    <SaveErrorBanner error={publish.error ?? close.error} />
+                    <SaveErrorBanner error={acknowledge.error ?? dismiss.error} />
+
+                    <dl className="token-meta">
+                      <dt>{t.list.status}</dt>
+                      <dd>{statusLabel(selected.statusCode)}</dd>
+                      <dt>{t.detail.period}</dt>
+                      <dd>
+                        {formatPeriod(selected.startDate, selected.endDate, t.detail.noEndDate)}
+                      </dd>
+                      <dt>{t.list.scope}</dt>
+                      <dd>
+                        {scopeLabel(selected.scopeCode)}
+                        {needsWorkOrder(selected.scopeCode) && selected.targetWorkOrderNo !== null
+                          ? ` · ${selected.targetWorkOrderNo}`
+                          : ''}
+                      </dd>
+                      <dt>{t.detail.publishedAt}</dt>
+                      <dd>
+                        {selected.publishedAt === null
+                          ? t.list.notAvailable
+                          : formatMoment(selected.publishedAt)}
+                      </dd>
+                    </dl>
+
+                    <p className="notice-body">{selected.body}</p>
+
+                    {/* ⛔⛔ 게시 뒤에는 본문을 고칠 수 없다 — 잠근 이유를 잠근 자리에 적는다. */}
+                    {!editable && <p className="pane-lead">{t.detail.lockedAfterPublish}</p>}
+
+                    <div className="form-actions">
+                      <Button
+                        variant="outlined"
+                        disabled={acknowledge.isSaving}
+                        onClick={() => {
+                          acknowledge.write({});
+                        }}
+                      >
+                        {t.detail.acknowledge}
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        /* ⚠ 확인을 요구한 공지는 그냥 닫을 수 없다 — 서버가 거부한다. */
+                        disabled={selected.acknowledgeRequired || dismiss.isSaving}
+                        onClick={() => {
+                          dismiss.write({});
+                        }}
+                      >
+                        {t.detail.dismiss}
+                      </Button>
+                      <Button variant="outlined" disabled={!editable} onClick={openEdit}>
+                        {t.form.edit}
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        disabled={!isClosable(selected.statusCode) || close.isSaving}
+                        onClick={() => {
+                          setConfirming('close');
+                        }}
+                      >
+                        {t.detail.close}
+                      </Button>
+                      <Button
+                        disabled={!isPublishable(selected.statusCode) || publish.isSaving}
+                        onClick={() => {
+                          setConfirming('publish');
+                        }}
+                      >
+                        {t.detail.publish}
+                      </Button>
+                    </div>
+                    {selected.acknowledgeRequired && (
+                      <p className="field-note">{t.detail.dismissLocked}</p>
+                    )}
+                  </>
+                )}
               </section>
-            )}
+
+              {selected !== null && formMode === 'closed' && (
+                <section className="pane notice-pane" aria-label={t.panes.ack}>
+                  <h2 className="pane-title info-label">
+                    {t.ack.title}
+                    {/* 사번으로 보이는 행의 뜻은 제목 옆 ⓘ 로 — 확인을 받는 공지에서만 목록이 있다(관리웹 정리 시안 A). */}
+                    {selected.acknowledgeRequired && <InfoTip text={t.ack.workerNote} />}
+                  </h2>
+                  <AckPanel
+                    required={selected.acknowledgeRequired}
+                    pendingOnly={pendingOnly}
+                    isPending={acks.isPending}
+                    isError={acks.isError}
+                    error={acks.error}
+                    data={acks.data}
+                    hasDenominator={selected.targetCount !== null}
+                    onPendingOnlyChange={setPendingOnly}
+                    onRetry={() => {
+                      void acks.refetch();
+                    }}
+                  />
+                </section>
+              )}
             </>
           ),
         }}

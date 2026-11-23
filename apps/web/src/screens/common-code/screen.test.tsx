@@ -386,6 +386,37 @@ describe('CommonCodeScreen — 탭', () => {
     expect(await screen.findByRole('button', { name: 'SYN-GRP-01' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: '공통코드' })).toHaveAttribute('aria-selected', 'true');
   });
+
+  /* 탭 줄을 화면이 직접 그린다(#350) — 디자인 시스템 Tabs 가 하던 키 이동을 화면이 맡는다. */
+  it('←/→ 는 이웃 탭(끝에서 돌아감), Home/End 는 처음 · 마지막 탭으로 옮기고 포커스도 따라간다', async () => {
+    const { history, user } = renderScreen([
+      codeGroupListRoute(),
+      ...orgRoutes(),
+      ...workerRoutes(),
+      ...partnerRoutes(),
+    ]);
+    await screen.findByRole('button', { name: 'SYN-GRP-01' });
+    const tabOf = (name: string): HTMLElement => screen.getByRole('tab', { name });
+    const expectActive = (name: string, tab: string): void => {
+      expect(tabOf(name)).toHaveAttribute('aria-selected', 'true');
+      expect(tabOf(name)).toHaveFocus();
+      expect(history.search()).toContain(`tab=${tab}`);
+    };
+
+    tabOf('공통코드').focus();
+    await user.keyboard('{ArrowRight}');
+    expectActive('조직(부서)', 'org');
+    await user.keyboard('{End}');
+    expectActive('거래처 역할', 'partner');
+    await user.keyboard('{ArrowRight}');
+    expectActive('공통코드', 'code');
+    await user.keyboard('{ArrowLeft}');
+    expectActive('거래처 역할', 'partner');
+    await user.keyboard('{Home}');
+    expectActive('공통코드', 'code');
+    /* 고른 탭은 `aria-selected` 로만 말한다 — 「현재 페이지」로 겹쳐 읽히지 않게. */
+    expect(tabOf('공통코드')).not.toHaveAttribute('aria-current');
+  });
 });
 
 describe('CommonCodeScreen — 코드그룹 목록 조회', () => {
@@ -3558,7 +3589,7 @@ describe('CommonCodeScreen — 나가는 중인 부서 저장의 매임과 잠�
    * 등록 폼을 열고 필수 두 칸을 채운 뒤 등록을 낸다.
    *
    * 폼이 섰음을 **입력칸으로** 앵커한다 — 이 구획은 선택 전 안내도 같은 이름의 구획 안에 서므로
-   * 구획 이름만으로는 폼이 섰는지 가를 수 없다(코드그룹 구획과 갈리는 유일한 지형 차이다).
+   * 구획 이름만으로는 폼이 섰는지 가를 수 없다.
    */
   const startCreate = async (user: ReturnType<typeof userEvent.setup>, departmentName: string) => {
     await user.click(await within(filterPane()).findByRole('button', { name: '부서 추가' }));

@@ -1214,4 +1214,37 @@ describe('WorkOrderCloseCandidateScreen', () => {
     );
     expect(api.urls.slice(before.length).map((url) => url.pathname)).toEqual([paths.candidates]);
   });
+
+  /* 목록 접기(#350) — 접힌 탭에 건수, 펼치면 고른 W/O · 고른 사유가 그대로. */
+  it('목록을 접으면 「목록 N건」 탭이 서고, 펼쳐도 고른 W/O 와 입력이 그대로다(#350)', async () => {
+    const storageKey = 'omf-mes:work-order-close:list:collapsed';
+    window.localStorage.removeItem(storageKey);
+    const user = userEvent.setup();
+    const api = makeApi();
+    renderWithProviders(<View />, { fetch: api.fetch });
+    await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
+    const reason = await screen.findByRole('combobox', { name: t.input.reason.label });
+    await user.click(reason);
+    await user.click(screen.getByRole('option', { name: 'Synthetic first reason' }));
+    const content = document.querySelector('.work-order-close-content');
+
+    await user.click(
+      screen.getAllByRole('button', { name: messages.common.inspectionHub.listCollapse })[0]!,
+    );
+    expect(content).toHaveAttribute('data-left-collapsed', 'true');
+    const tab = content!.querySelector<HTMLElement>('.po-board-list-tab');
+    expect(tab).toHaveTextContent('목록21건');
+
+    await user.click(tab!);
+    expect(content).not.toHaveAttribute('data-left-collapsed');
+    expect(content!.querySelector('.po-board-list-tab')).toBeNull();
+    expect(screen.getByRole('button', { name: 'SYN-WO-701 선택' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(screen.getByRole('combobox', { name: t.input.reason.label })).toHaveTextContent(
+      'Synthetic first reason',
+    );
+    window.localStorage.removeItem(storageKey);
+  });
 });
