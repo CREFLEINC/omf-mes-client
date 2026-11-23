@@ -2,7 +2,7 @@ import { AlertBanner, Breadcrumb, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import { useOaAccess } from './oa-access';
+import { useOaAccess, usePlantMode } from './oa-access';
 import { usePageHub } from './page-hub';
 
 export interface OaOnlyGateProps {
@@ -18,6 +18,7 @@ export interface OaOnlyGateProps {
  */
 export const OaOnlyGate = ({ title, breadcrumbRoot, children }: OaOnlyGateProps) => {
   const access = useOaAccess();
+  const plantMode = usePlantMode();
   const hub = usePageHub();
   if (access === 'oa' || access === 'unknown') return <>{children}</>;
   return (
@@ -37,7 +38,10 @@ export const OaOnlyGate = ({ title, breadcrumbRoot, children }: OaOnlyGateProps)
       {access === 'checking' ? (
         <p className="field-note">{messages.common.oaOnly.checking}</p>
       ) : (
-        <AlertBanner variant="info">{messages.common.oaOnly.notice}</AlertBanner>
+        <AlertBanner variant="info">
+          {/* 두 공장 계정이 「부품」을 고른 때는 범위가 아니라 고른 동작 때문이다(#336). */}
+          {plantMode.mixed ? messages.common.oaOnly.partsModeNotice : messages.common.oaOnly.notice}
+        </AlertBanner>
       )}
     </>
   );

@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useSyncExternalStore } from 'react';
 
 import { useApiClient } from './api-context';
 import { runRequest } from './request';
@@ -23,6 +24,7 @@ interface Scope {
 
 /**
  * 계정 범위가 OA 공장을 덮는가 — 서버(`oa-plant.ts`)와 같은 규칙. 공장 없는 범위는 그 사업부의 모든 공장이다.
+ * 범위 줄이 없으면 제한 없음 — 모든 공장(omf-all-around#336).
  * ⚠ 사업부(VIETNAM)가 부품·OA 두 공장을 함께 가져 공장 코드로 가른다.
  */
 export const coversOaPlant = (
@@ -32,12 +34,14 @@ export const coversOaPlant = (
 ): boolean =>
   plants
     .filter((plant) => oaCodes.has(plant.plantCode))
-    .some((plant) =>
-      scopes.some((scope) =>
-        scope.plantId === undefined
-          ? scope.businessUnitId === plant.businessUnitId
-          : scope.plantId === plant.plantId,
-      ),
+    .some(
+      (plant) =>
+        scopes.length === 0 ||
+        scopes.some((scope) =>
+          scope.plantId === undefined
+            ? scope.businessUnitId === plant.businessUnitId
+            : scope.plantId === plant.plantId,
+        ),
     );
 
 interface PlantRow {
@@ -47,17 +51,19 @@ interface PlantRow {
   businessUnitId?: number | null;
 }
 
-/** 계정 범위가 덮는 공장 — 공장 없는 범위는 그 사업부의 모든 공장이다(`coversOaPlant` 와 같은 규칙). */
+/** 계정 범위가 덮는 공장 — 공장 없는 범위는 그 사업부의 모든 공장, 범위 줄이 없으면 모든 공장(`coversOaPlant` 와 같은 규칙). */
 export const plantsInScope = <T extends PlantRow>(
   scopes: readonly Scope[],
   plants: readonly T[],
 ): T[] =>
-  plants.filter((plant) =>
-    scopes.some((scope) =>
-      scope.plantId === undefined
-        ? scope.businessUnitId === plant.businessUnitId
-        : scope.plantId === plant.plantId,
-    ),
+  plants.filter(
+    (plant) =>
+      scopes.length === 0 ||
+      scopes.some((scope) =>
+        scope.plantId === undefined
+          ? scope.businessUnitId === plant.businessUnitId
+          : scope.plantId === plant.plantId,
+      ),
   );
 
 /** 공장 목록과 OA 공장 코드 — OA 판정과 부품 공장 고르기(omf-all-around#211)가 같은 조회를 나눠 쓴다. */
@@ -82,12 +88,97 @@ const usePlantsAndOaCodes = () => {
   });
 };
 
+/** OA·부품 공장을 모두 가진 계정이 고른 동작(omf-all-around#336). */
+export type PlantMode = 'oa' | 'parts';
+
+/** 저장 키 — 사용자별로 브라우저에 남긴다(공용 PC 에서 다른 사람의 선택을 물려받지 않게). */
+const plantModeKey = (userId: number): string => `omf-mes.shell.plant-mode.${userId}`;
+
+const plantModeListeners = new Set<() => void>();
+
+const readPlantMode = (userId: number): PlantMode => {
+  try {
+    return globalThis.localStorage.getItem(plantModeKey(userId)) === 'parts' ? 'parts' : 'oa';
+  } catch {
+    return 'oa';
+  }
+};
+
+const subscribePlantMode = (listener: () => void): (() => void) => {
+  plantModeListeners.add(listener);
+  return () => {
+    plantModeListeners.delete(listener);
+  };
+};
+
+/** 저장이 막힌 브라우저에서도 이번 판에는 고른 동작을 쓰도록 들고 있는 값. */
+const memoryPlantMode = new Map<number, PlantMode>();
+
+/** 고른 동작을 남기고 이 탭의 모든 판단 자리에 알린다. 남기지 못해도 이번 판에는 반영한다. */
+const writePlantMode = (userId: number, mode: PlantMode): void => {
+  memoryPlantMode.set(userId, mode);
+  try {
+    globalThis.localStorage.setItem(plantModeKey(userId), mode);
+  } catch {
+    /* 저장이 막힌 브라우저 — 새로고침하면 기본(OA)으로 돌아간다. */
+  }
+  plantModeListeners.forEach((listener) => {
+    listener();
+  });
+};
+
+/** 계정 범위가 OA 공장과 부품 공장을 모두 덮는가 — 그때만 동작을 고른다. */
+export const coversBothPlantKinds = (
+  scopes: readonly Scope[],
+  plants: readonly PlantRow[],
+  oaCodes: ReadonlySet<string>,
+): boolean => {
+  const scoped = plantsInScope(scopes, plants);
+  return (
+    scoped.some((plant) => oaCodes.has(plant.plantCode)) &&
+    scoped.some((plant) => !oaCodes.has(plant.plantCode))
+  );
+};
+
+/**
+ * OA·부품 동작 고르기(omf-all-around#336 · 사용자 결정 2026-11-23). 범위에 OA·부품 공장이 함께 있는 계정
+ * (범위 없음 = 모든 공장 포함)만 `mixed` 이고, 그 계정은 고른 동작을 따른다. 기본은 OA(종전 동작).
+ * 한쪽 공장만 가진 계정은 지금처럼 범위로 정한다(#211 「전환 단추 없이」).
+ */
+export const usePlantMode = (): {
+  mixed: boolean;
+  mode: PlantMode;
+  setMode: (mode: PlantMode) => void;
+} => {
+  const { session } = useSession();
+  const lookup = usePlantsAndOaCodes();
+  const userId = session?.userId ?? null;
+  const mode = useSyncExternalStore(subscribePlantMode, () =>
+    userId === null ? 'oa' : (memoryPlantMode.get(userId) ?? readPlantMode(userId)),
+  );
+  const mixed =
+    session !== null &&
+    session !== undefined &&
+    lookup.data !== undefined &&
+    coversBothPlantKinds(session.scopes, lookup.data.plants, lookup.data.codes);
+  return {
+    mixed,
+    mode: mixed ? mode : 'oa',
+    setMode: (next) => {
+      if (userId !== null) writePlantMode(userId, next);
+    },
+  };
+};
+
 export const useOaAccess = (): OaAccess => {
   const { session } = useSession();
   const lookup = usePlantsAndOaCodes();
+  const plantMode = usePlantMode();
   if (session === null || session === undefined) return 'unknown';
   if (lookup.isPending) return 'checking';
   if (lookup.data === undefined) return 'unknown';
+  /* 두 공장 계정이 「부품」을 고르면 부품 계정처럼 본다(#336). */
+  if (plantMode.mixed && plantMode.mode === 'parts') return 'not-oa';
   return coversOaPlant(session.scopes, lookup.data.plants, lookup.data.codes) ? 'oa' : 'not-oa';
 };
 
@@ -121,4 +212,33 @@ export const useScopedPlants = ():
     oa: scoped.filter((plant) => codes.has(plant.plantCode)),
     parts: scoped.filter((plant) => !codes.has(plant.plantCode)),
   };
+};
+
+/**
+ * 검사표를 만들 사업부 후보 — 계정 범위의 사업부. 범위 줄이 없으면(제한 없음) OA 공장들의 사업부다(omf-all-around#336).
+ * 같은 사업부의 공장 줄이 여럿이어도(예: PL11 · PL13) 후보는 한 번만 낸다.
+ */
+export const scopeBusinessUnitIds = (
+  scopes: readonly Scope[],
+  plants: readonly { plantCode: string; businessUnitId?: number | null }[],
+  oaCodes: ReadonlySet<string>,
+): number[] => {
+  if (scopes.length > 0) return [...new Set(scopes.map((scope) => scope.businessUnitId))];
+  const ids = plants
+    .filter((plant) => oaCodes.has(plant.plantCode))
+    .map((plant) => plant.businessUnitId)
+    .filter((id): id is number => typeof id === 'number');
+  return [...new Set(ids)];
+};
+
+export const useScopeBusinessUnitIds = (): number[] => {
+  const { session } = useSession();
+  const lookup = usePlantsAndOaCodes();
+  if (session === null || session === undefined) return [];
+  if (session.scopes.length === 0 && lookup.data === undefined) return [];
+  return scopeBusinessUnitIds(
+    session.scopes,
+    lookup.data?.plants ?? [],
+    lookup.data?.codes ?? new Set<string>(),
+  );
 };

@@ -32,6 +32,12 @@ export const common: Translated<typeof ko.common> = {
     checking: 'Đang kiểm tra nhà máy có được dùng màn hình này không.',
     notice:
       'Màn hình này chỉ dành cho bộ phận OA. Phạm vi nhà máy của tài khoản đăng nhập không có nhà máy OA. Nếu cần, hãy đề nghị quản trị hệ thống cấp phạm vi nhà máy.',
+    partsModeNotice: 'Màn hình này chỉ dành cho bộ phận OA. Chọn「Bộ phận OA」ở phía trên để xem.',
+  },
+  plantMode: {
+    label: 'Chế độ nhà máy',
+    oa: 'Bộ phận OA',
+    parts: 'Bộ phận linh kiện',
   },
   shell: {
     brand: 'OMF-MES Di động',
