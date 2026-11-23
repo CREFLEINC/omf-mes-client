@@ -1,6 +1,6 @@
 /*
- * LOT 현황 — 「마지막 갱신 + [갱신]」과 쪽 이동 줄은 목록 상자 바닥에 붙어 선다(갱신이 쪽 이동 바로 위 · 둘 사이는 띄우지
- * 않는다 · 2026-11-23 지시). 줄이 적으면 표 아래가 비고, 줄이 많아 넘치면 상자 안에서 구른다.
+ * LOT 현황 — 「마지막 갱신 + [갱신]」은 목록(표) 바로 아래 오른쪽, 쪽 이동 줄은 목록 상자 바닥(2026-11-23 지시).
+ * 줄이 적으면 갱신 줄과 쪽 이동 줄 사이가 비고, 줄이 많아 넘치면 상자 안에서 구른다.
  */
 .lot-status-refresh-foot {
   display: flex;
@@ -8,10 +8,13 @@
 }
 
 /*
- * 쪽 이동 바로 앞 칸을 늘리는 공용 규칙(app.css `.lot-status-pane:has(> .page-nav) > :has(+ .page-nav)`)이 이 줄에 걸리면
- * 갱신과 쪽 이동 사이가 벌어진다 — 늘리지 않고, 위쪽 여백을 자동으로 두어 두 줄을 함께 바닥으로 민다.
+ * 쪽 이동 바로 앞 칸을 늘리는 공용 규칙(app.css `.lot-status-pane:has(> .page-nav) > :has(+ .page-nav)`)이 갱신 줄에 걸리지
+ * 않게 하고(늘면 단추가 표에서 떨어진다), 쪽 이동 줄은 위쪽 여백을 자동으로 두어 바닥으로 민다.
  */
 .lot-status-split > .lot-status-pane:has(> .page-nav) > .lot-status-refresh-foot.lot-status-refresh-foot {
   flex: 0 0 auto;
+}
+
+.lot-status-split > .lot-status-pane:has(> .lot-status-refresh-foot) > .page-nav.page-nav {
   margin-top: auto;
 }
