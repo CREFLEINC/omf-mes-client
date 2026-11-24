@@ -2076,7 +2076,21 @@ h2:has(> .inspection-standard-dialog-title) {
   height: 2.25rem;
   background: var(--surface-container);
   color: var(--on-surface-variant);
-  font: var(--type-body-md);
+  /* 다른 표 머리와 같은 굵기 · 크기(--type-body-md 는 디자인 시스템에 없어 16px 로 떨어졌다, 2026-11-24). */
+  font: var(--type-label-lg);
+}
+
+/*
+ * 줄은 다른 표처럼 흰 바탕(사용자 지시 2026-11-24 「확장 속성도 시인성 개선」) — 판(옅은 회색) 위에서 표가 갈린다.
+ * 구분 칸은 상세 표 이름표와 같은 띠 바탕.
+ */
+.item-attrs-table tbody th,
+.item-attrs-table tbody td {
+  background: var(--surface);
+}
+
+.item-attrs-table tbody th.item-attrs-group {
+  background: var(--surface-container);
 }
 
 .item-attrs-table thead th:nth-child(1) {
@@ -2101,8 +2115,8 @@ h2:has(> .inspection-standard-dialog-title) {
 .item-attrs-field .field-label {
   margin: 0;
   color: var(--on-surface);
-  font: var(--type-body-md);
-  line-height: 1.25;
+  /* 품목명 · 상세 표 값과 같은 14px. */
+  font: var(--type-body-sm);
 }
 
 .item-attrs-table td .field-error {
