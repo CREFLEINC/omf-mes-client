@@ -20556,6 +20556,16 @@ dialog.terminal-map-form-dialog {
   overflow-x: auto;
 }
 
+/* 변경 사유 — 글이 있으면 왼쪽, 「—」(사유 없음)만 가운데(사용자 지시 · #357). 다른 칸은 열 정렬(가운데)을 따른다. */
+.inspection-level-rows tbody td .inspection-level-history-reason {
+  display: block;
+  text-align: left;
+}
+
+.inspection-level-rows tbody td .inspection-level-history-reason.is-empty {
+  text-align: center;
+}
+
 .inspection-level-rows thead th {
   color: var(--on-surface-variant);
   font: var(--type-label-lg);

@@ -4127,6 +4127,38 @@ describe('InspectionStandardScreen — 품목 검사 수준(#357)', () => {
     );
   });
 
+  /* 서버는 최근 것부터만 준다 — 다 받아 화면이 정렬하므로 쪽을 넘어서도 순서가 맞다(사용자 지시). */
+  it('변경 일시 머리를 누르면 오름 · 내림이 바뀌고, 사유는 글이면 왼쪽 · 「—」면 가운데로 놓는다', async () => {
+    const later = {
+      ...HISTORY_ROW,
+      itemInspectionLevelHistoryId: 2,
+      fromLevelCode: 'NORMAL',
+      toLevelCode: 'TIGHTENED',
+      reason: null,
+      changedAt: '2026-11-05T00:00:00Z',
+    };
+    const { user } = renderSelectedPlan(levelRoutes([LEVEL], [later, HISTORY_ROW]));
+
+    await user.click(await screen.findByRole('tab', { name: '검사 수준 변경 이력' }));
+    const section = await screen.findByRole('region', { name: '검사 수준 변경 이력' });
+    await within(section).findByText('합성 최초 지정');
+    const firstRowText = () => within(section).getAllByRole('row')[1]?.textContent ?? '';
+    const header = within(section).getByRole('columnheader', { name: /변경 일시/ });
+
+    expect(header).toHaveAttribute('aria-sort', 'descending');
+    expect(firstRowText()).toContain('엄격');
+    expect(within(section).getByText('—')).toHaveClass('is-empty');
+    expect(within(section).getByText('합성 최초 지정')).not.toHaveClass('is-empty');
+
+    await user.click(within(header).getByRole('button', { name: /변경 일시/ }));
+    expect(header).toHaveAttribute('aria-sort', 'ascending');
+    expect(firstRowText()).toContain('합성 최초 지정');
+
+    await user.click(within(header).getByRole('button', { name: /변경 일시/ }));
+    expect(header).toHaveAttribute('aria-sort', 'descending');
+    expect(firstRowText()).toContain('엄격');
+  });
+
   it('수준 변경 이력이 없으면 「검사 수준 변경 이력이 없습니다.」라고 낸다', async () => {
     const { user } = renderSelectedPlan(levelRoutes([LEVEL], []));
 

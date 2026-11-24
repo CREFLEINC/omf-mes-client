@@ -1,5 +1,5 @@
 import type { components } from '@omf-mes/api-client';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -13,8 +13,7 @@ export const PAGE_SIZE = 50;
 export const inspectionLevelKeys = {
   /** 무효화용 앞부분 — 저장하면 목록과 이력이 함께 낡는다. */
   all: ['inspection-level'] as const,
-  history: (itemId: number | null, page: number, size: number) =>
-    ['inspection-level', 'history', itemId, page, size] as const,
+  itemHistory: (itemId: number) => ['inspection-level', 'history', itemId] as const,
 };
 
 export interface PageMetaView {
@@ -28,23 +27,30 @@ export interface Paged<T> {
   page: PageMetaView;
 }
 
-/** 전환 이력. 품목을 고르면 그 품목만 본다. */
-export const useInspectionLevelHistories = (
-  itemId: number | null,
-  page: number,
-  size: number = PAGE_SIZE,
-) => {
+/** 한 번에 받는 줄 수 — 품목 하나의 이력을 다 받을 때 쪽마다 이만큼씩 받는다. */
+const ALL_PAGE_SIZE = 100;
+
+/**
+ * 품목 하나의 전환 이력 전부. 서버는 최근 것부터 쪽으로만 주고 정렬 조건이 없어,
+ * 「변경 일시」 오름 · 내림을 쪽을 넘어 맞게 하려고 다 받아 화면이 정렬 · 쪽 나누기를 한다(사용자 지시 · omf-all-around#357).
+ */
+export const useItemInspectionLevelHistories = (itemId: number) => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: inspectionLevelKeys.history(itemId, page, size),
-    placeholderData: keepPreviousData,
-    queryFn: (): Promise<Paged<ItemInspectionLevelHistory>> =>
-      runRequest(() =>
-        client.GET('/quality/item-inspection-level-histories', {
-          params: { query: { ...(itemId === null ? {} : { itemId }), page, size } },
-        }),
-      ),
+    queryKey: inspectionLevelKeys.itemHistory(itemId),
+    queryFn: async (): Promise<ItemInspectionLevelHistory[]> => {
+      const items: ItemInspectionLevelHistory[] = [];
+      for (let page = 1; ; page += 1) {
+        const data: Paged<ItemInspectionLevelHistory> = await runRequest(() =>
+          client.GET('/quality/item-inspection-level-histories', {
+            params: { query: { itemId, page, size: ALL_PAGE_SIZE } },
+          }),
+        );
+        items.push(...data.items);
+        if (items.length >= data.page.total || data.items.length === 0) return items;
+      }
+    },
   });
 };
 
