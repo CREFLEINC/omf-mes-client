@@ -199,7 +199,13 @@ export const PopMaterialLotLabelScreen = () => {
     picked === null || plantId === null
       ? null
       : { plantId, supplierId: picked.ref.supplierId, itemId: picked.ref.itemId };
-  const lots = useMaterialLots(target, tab, lotPage, rowSize);
+  /*
+   * 스캔한 LOT 은 그 탭 표 맨 위에 한 줄 더 붙는다(FR-021) — 그동안은 한 쪽을 한 줄 작게 받아 칸을 넘지 않게 한다(T059).
+   * 고정 줄은 스캔 직후 그 탭 · 첫 보기에서만 — 탭이나 쪽을 바꾸면 풀린다(chooseTab · 쪽 넘김).
+   */
+  const isScanPinned = scanned !== null && scanned.tab === tab;
+  const lotSize = isScanPinned ? Math.max(1, rowSize - 1) : rowSize;
+  const lots = useMaterialLots(target, tab, lotPage, lotSize);
   const lotsData = lots.data;
   const generation = tab === 'UNPRINTED' ? (lotsData?.generation ?? null) : null;
 
@@ -308,6 +314,7 @@ export const PopMaterialLotLabelScreen = () => {
     setTab(next);
     setLotPage(1);
     setReasonCode(null);
+    setScanned(null);
     setScanFound(null);
     clearSelection();
   };
@@ -836,12 +843,19 @@ export const PopMaterialLotLabelScreen = () => {
         {tabs}
         {hasStatusNote ? statusNote : null}
         {scanFound === null || hasStatusNote ? null : (
-          <PuNote tone="ok" live>
-            {scanFound}
-            {isReprintTab ? ` ${tp.lookup.foundReprint}` : null}
-          </PuNote>
+          <div className="mll-scan-note">
+            <PuNote tone="ok" live>
+              {scanFound}
+              {isReprintTab ? ` ${tp.lookup.foundReprint}` : null}
+            </PuNote>
+          </div>
         )}
-        {isReprintTab || tab === 'VOIDED' ? <PuNote>{tp.tabNotes[tab]}</PuNote> : null}
+        {/* 1100px 이하에서 스캔 안내가 서 있으면 탭 안내는 접는다(T059 · uniform.css). */}
+        {isReprintTab || tab === 'VOIDED' ? (
+          <div className="mll-tab-note">
+            <PuNote>{tp.tabNotes[tab]}</PuNote>
+          </div>
+        ) : null}
         {lotsConflict ? (
           <PuNote
             tone="bad"
@@ -909,18 +923,20 @@ export const PopMaterialLotLabelScreen = () => {
             fitRef={tableFitRef}
             scannedLotId={scanned?.tab === tab ? scanned.lot.lotId : null}
             defaultLotQty={pickedRow?.lotDefaults?.lotQty ?? null}
-            hasMoreAfter={lotPage < Math.ceil(lotTotal / Math.max(1, rowSize))}
+            hasMoreAfter={lotPage < Math.ceil(lotTotal / Math.max(1, lotSize))}
           />
         )}
         {isReprintTab && !isShowingResults && selected.length > 0 ? (
-          <ReasonPicker
-            reasons={reasons.data ?? []}
-            isLoading={reasons.isPending}
-            isError={reasons.isError}
-            selected={reasonCode}
-            isLocked={isLocked}
-            onSelect={setReasonCode}
-          />
+          <div className="mll-reasons">
+            <ReasonPicker
+              reasons={reasons.data ?? []}
+              isLoading={reasons.isPending}
+              isError={reasons.isError}
+              selected={reasonCode}
+              isLocked={isLocked}
+              onSelect={setReasonCode}
+            />
+          </div>
         ) : null}
         {barState.kind === 'reprint' && barState.blockedReason !== null ? (
           <PuNote tone="bad">{barState.blockedReason}</PuNote>
@@ -933,9 +949,11 @@ export const PopMaterialLotLabelScreen = () => {
             label={tp.tabs[tab]}
             total={lotTotal}
             page={lotPage}
-            pages={Math.max(1, Math.ceil(lotTotal / Math.max(1, rowSize)))}
+            pages={Math.max(1, Math.ceil(lotTotal / Math.max(1, lotSize)))}
             onPage={(next) => {
               setLotPage(next);
+              setScanned(null);
+              setScanFound(null);
             }}
           />
         </div>

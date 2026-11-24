@@ -434,7 +434,8 @@ describe('US1 · US2 미출력 탭 — 고르면 이미 만들어져 있다', ()
 
   it('FR-010 세 칸 1100px 이하 규칙 — LOT 번호 칸은 접고, 포장은 두 줄, 머리 줄은 겹치지 않게 접는다', () => {
     const css = readFileSync(resolve(__dirname, 'uniform.css'), 'utf8');
-    const narrow = css.slice(css.lastIndexOf('@media (max-width: 1100px)'));
+    const start = css.indexOf('1100px 이하 상세 칸(세 칸');
+    const narrow = css.slice(start, css.indexOf('1100px 이하 스캔 직후', start));
 
     expect(narrow).toMatch(/td\.mll-lotcol \{[^}]*white-space: normal/u);
     expect(narrow).toMatch(/th\.mll-lotcol \{[^}]*word-break: keep-all/u);
@@ -691,6 +692,64 @@ describe('FR-021 번호 스캔 찾기', () => {
       expect(await supplierButton('합성 공급사 가')).toHaveAttribute('aria-pressed', 'true'),
     );
     expect(await itemRow('SYN-ITEM-01')).toHaveClass('is-selected');
+  });
+
+  it('T059 FR-021 스캔 고정 줄 — 그 동안 한 쪽을 한 줄 작게 받고, 탭을 바꾸면 고정이 풀려 원래 쪽 크기로', async () => {
+    const user = userEvent.setup();
+    const { sent } = renderLabelScreen();
+
+    await supplierList();
+    await user.type(
+      screen.getByRole('textbox', { name: tp.scanLabel }),
+      'SYN-ITEM-01|1000|261111|SYN-P-01|0003{Enter}',
+    );
+    await waitFor(() => expect(bodyRows(tp.tabs.PRINTED)[0]).toHaveTextContent(tp.lookup.chip));
+
+    const printed = sentTo(sent, '/logistics/material-lots').filter(
+      (entry) => entry.search.get('tab') === 'PRINTED',
+    );
+    const pinnedSize = Number(printed.at(-1)?.search.get('size'));
+
+    await user.click(
+      screen.getByRole('tab', { name: (name) => name.startsWith(tp.tabs.UNPRINTED) }),
+    );
+    await user.click(screen.getByRole('tab', { name: tp.tabs.PRINTED }));
+    await waitFor(() => expect(bodyRows(tp.tabs.PRINTED)[0]).toHaveTextContent('|0003'));
+
+    /* 고정이 풀렸다 — 「스캔」 칩 없음, 한 쪽 크기는 한 줄 커진다. */
+    expect(bodyRows(tp.tabs.PRINTED)[0]).not.toHaveTextContent(tp.lookup.chip);
+    const after = sentTo(sent, '/logistics/material-lots').filter(
+      (entry) => entry.search.get('tab') === 'PRINTED',
+    );
+    expect(Number(after.at(-1)?.search.get('size'))).toBe(pinnedSize + 1);
+    expect(
+      screen.queryByText((text) => text.startsWith(tp.lookup.found(tp.tabs.PRINTED))),
+    ).toBeNull();
+  });
+
+  it('T059 FR-021 1100px 이하 스캔 직후 — 안내 띠는 작게, 스캔 안내가 서면 탭 안내는 접고, 사유는 이름 옆 한 줄', async () => {
+    const user = userEvent.setup();
+    renderLabelScreen();
+
+    await supplierList();
+    await user.type(
+      screen.getByRole('textbox', { name: tp.scanLabel }),
+      'SYN-ITEM-01|1000|261111|SYN-P-01|0003{Enter}',
+    );
+    const found = await screen.findByText((text) =>
+      text.startsWith(tp.lookup.found(tp.tabs.PRINTED)),
+    );
+    /* 구조: 스캔 안내 뒤에 탭 안내, 사유 고르기는 감싼 칸 안. */
+    const scanNote = found.closest('.mll-scan-note');
+    expect(scanNote).not.toBeNull();
+    expect(scanNote?.parentElement?.querySelector('.mll-scan-note ~ .mll-tab-note')).not.toBeNull();
+    expect(screen.getByRole('radio', { name: '훼손' }).closest('.mll-reasons')).not.toBeNull();
+
+    const css = readFileSync(resolve(__dirname, 'uniform.css'), 'utf8');
+    const narrow = css.slice(css.indexOf('1100px 이하 스캔 직후'));
+    expect(narrow).toMatch(/\.mll-scan-note ~ \.mll-tab-note \{[^}]*display: none/u);
+    expect(narrow).toMatch(/\.mll-reasons \.pu-tiles \{[^}]*grid-auto-flow: column/u);
+    expect(narrow).toMatch(/\.mll-reasons \.pu-field \{[^}]*grid-template-columns: auto/u);
   });
 
   it('US4-5 폐기 LOT 이면 폐기 LOT 탭을 열고 찍을 수 없다고 말한다', async () => {
