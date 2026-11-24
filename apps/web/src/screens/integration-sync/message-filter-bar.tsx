@@ -10,16 +10,13 @@ import {
 } from '../../patterns/filter-more';
 import { Select } from '../../patterns/select';
 import { EMPTY_FILTERS, toFilterChips, type MessageFilters } from './filters';
-import { interfaceName, statusName } from './message-labels';
+import { directionName, interfaceName, statusName } from './message-labels';
 import { defaultPeriod, validatePeriod, type PeriodInput } from './period';
 
 const t = messages.integrationSync;
 
-/**
- * 「조건 더보기」에 접는 조건(C-6) — 칩은 이 조건만 낸다. 송수신 구분은 위 줄 라벨이 거르고 그 라벨이 걸린 값을 보이므로
- * 조회 상자에 칸 · 칩을 두지 않는다(사용자 지시 2026-11-24).
- */
-const FOLDED_KEYS: readonly (keyof MessageFilters)[] = ['retryMin'];
+/** 「조건 더보기」에 접는 조건(C-6) — 칩은 이 조건만 낸다(송수신 구분 칸 되살림 · 사용자 지시 2026-11-24). */
+const FOLDED_KEYS: readonly (keyof MessageFilters)[] = ['direction', 'retryMin'];
 
 /** 한 선택칸이 필요로 하는 것 전부. 세 칸이 같은 구조라 한 그리기 함수로 돌린다. */
 interface CodeSelect {
@@ -42,6 +39,7 @@ export interface MessageFilterBarProps {
    */
   statusOptions: readonly string[];
   interfaceOptions: readonly string[];
+  directionOptions: readonly string[];
   onSearch: (period: PeriodInput, filters: MessageFilters) => void;
   /** 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. */
   onRemoveFilter: (key: keyof MessageFilters) => void;
@@ -55,7 +53,7 @@ export interface MessageFilterBarProps {
  * 반쯤 지운 기간으로 요청이 나간다. 「조회」를 누를 때만 주소가 바뀌고 그때 조회된다.
  * 조건 칩의 ×는 해제라 즉시 반영한다.
  *
- * **보이는 칸은 셋이다**(C-6) — 기간 · 항목 · 상태. 재시도 횟수는 「조건 더보기」에 접고,
+ * **보이는 칸은 셋이다**(C-6) — 기간 · 항목 · 상태. 구분 · 재시도 횟수는 「조건 더보기」에 접고,
  * 접힌 조건이 걸려 있으면 칩으로만 알린다. 「초기화」는 바뀐 것이 있을 때만 보인다.
  * [조회][초기화][조건 더보기]는 줄 오른쪽 끝에 함께 선다(단말 관리와 같다 · #358).
  */
@@ -64,6 +62,7 @@ export const MessageFilterBar = ({
   appliedFilters,
   statusOptions,
   interfaceOptions,
+  directionOptions,
   onSearch,
   onRemoveFilter,
   onReset,
@@ -110,7 +109,7 @@ export const MessageFilterBar = ({
     { key: 'status', label: t.fields.status, options: statusOptions, nameOf: statusName },
   ];
 
-  /* 접힌 칸(재시도 횟수)의 조건만 칩으로 — 보이는 칸의 값을 칩으로 겹쳐 적지 않는다. */
+  /* 접힌 칸(구분 · 재시도 횟수)의 조건만 칩으로 — 보이는 칸의 값을 칩으로 겹쳐 적지 않는다. */
   const hiddenChips = toFilterChips(appliedFilters).filter((chip) =>
     FOLDED_KEYS.includes(chip.key),
   );
@@ -220,6 +219,13 @@ export const MessageFilterBar = ({
       {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
       <div id={more.id} hidden={!more.isOpen}>
         <div className="filter-bar">
+          {renderCodeSelect({
+            key: 'direction',
+            label: t.fields.direction,
+            options: directionOptions,
+            nameOf: directionName,
+            plain: true,
+          })}
           <div className="field-cell">
             <label className="field-label" htmlFor={`${fieldId}-retryMin`}>
               {t.fields.retryMin}

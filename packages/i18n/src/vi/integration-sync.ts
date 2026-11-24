@@ -49,6 +49,7 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
     periodTo: 'Ngày phát sinh đến',
     status: 'Chọn trạng thái',
     interfaceCode: 'Chọn hạng mục liên kết',
+    direction: 'Chọn gửi/nhận',
     retryMin: 'Số lần thử lại tối thiểu',
     retryMinPlaceholder: 'Nhập số',
   },
@@ -110,8 +111,6 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
     lastErrorMessage: 'Nội dung lỗi',
     retry: 'Xử lý lại',
     retryTimes: (count: number): string => `${String(count)} lần`,
-    directionChips: 'Lọc theo gửi/nhận',
-    directionAll: 'Tất cả',
   },
   /** 비활성 사유는 그 컨트롤의 이름으로 시작한다. */
   reasons: {

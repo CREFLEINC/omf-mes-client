@@ -6,7 +6,8 @@ import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { useQueryClient } from '@tanstack/react-query';
 import { sessionKeys, type Session } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
-import { useSendEnabled } from './queries';
+import { MESSAGE_STATUS } from './outbound-items';
+import { useOutboundCounts, useSendEnabled } from './queries';
 
 const t = messages.erpOutbound;
 
@@ -19,7 +20,9 @@ export const ERP_OUTBOUND_PATH = '/master-data/erp-outbound';
  *
  * 맨 앞은 이 서버의 **송신 켜짐 · 꺼짐**(사용자 지시 2026-10-28) — 꺼져 있으면 대기가 쌓여도 보내지 않는다.
  *
- * `linkToTab` 이면 칩 묶음이 ERP 송신 탭으로 가는 링크다(연동 현황·이력). 켜짐을 모르면(옛 서버) 자리도 두지 않는다.
+ * `linkToTab` 이면 칩 묶음이 ERP 송신 탭으로 가는 링크다(연동 현황·이력). 건수를 아직 받지 못했거나 권한이 없으면
+ * 건수 칩을 세우지 않는다 — 0 으로 보이면 보낼 것이 없는 줄 안다. 켜짐을 모르면(옛 서버) 켜짐 칩을 세우지 않는다.
+ * **0건인 건수 칩은 세우지 않는다**(#358) — 누르는 거르기가 아니라 걸려 있을 일이 없다. 세울 칩이 하나도 없으면 자리도 두지 않는다.
  */
 export const ErpSendChips = ({ linkToTab = false }: { linkToTab?: boolean }) => {
   const target = useHubActionsTarget();
@@ -29,23 +32,45 @@ export const ErpSendChips = ({ linkToTab = false }: { linkToTab?: boolean }) => 
    */
   const session = useQueryClient().getQueryData<Session | null>(sessionKeys.current);
   const canOpenTab = toWebAccess(session?.permissions).allows(ERP_OUTBOUND_PATH);
-  /* 대기 · 실패 건수 칩은 두지 않는다 — 켜짐 · 꺼짐 하나만(ERP 수신의 「수신 켜짐」과 같다 · 사용자 지시 2026-11-24). */
+  /* 꽂을 자리가 없으면 세지도 않는다 — 보이지 않을 건수를 부르지 않는다. */
+  const counts = useOutboundCounts(target !== null);
   const sendEnabled = useSendEnabled(target !== null);
+  const pending = counts.total(MESSAGE_STATUS.pending);
+  const failed = counts.total(MESSAGE_STATUS.failed);
+  const hasCounts = pending !== undefined && failed !== undefined;
+  const showPending = hasCounts && pending > 0;
+  const showFailed = hasCounts && failed > 0;
 
-  if (target === null || sendEnabled === null) return null;
+  if (target === null || (!showPending && !showFailed && sendEnabled === null)) return null;
 
   const chips = (
     <>
-      <Chip variant="status" size="sm" status={sendEnabled ? 'success' : 'warning'}>
-        {sendEnabled ? t.chips.sendOn : t.chips.sendOff}
-      </Chip>
+      {showPending && (
+        <Chip variant="status" size="sm" status="info">
+          {t.chips.pending(pending)}
+        </Chip>
+      )}
+      {showFailed && (
+        <Chip variant="status" size="sm" status="error">
+          {t.chips.failed(failed)}
+        </Chip>
+      )}
     </>
   );
 
   return (
     <HubActions target={target}>
-      {linkToTab && canOpenTab ? (
-        /* 접근 이름을 따로 주지 않는다 — 주면 칩 글자(켜짐 · 꺼짐)를 덮는다. */
+      {/*
+       * 켜짐 · 꺼짐은 건수가 없는 상태라 칩이 아니라 「● 송신 ON」 점 + 글자로, 건수 칩 바로 오른쪽에 둔다
+       * (`.erp-link-state` · 사용자 지시 2026-11-24). 건수 칩만 링크 묶음에 든다.
+       */}
+      {sendEnabled !== null && (
+        <span className="erp-link-state" data-on={sendEnabled ? 'true' : 'false'}>
+          {sendEnabled ? t.chips.sendOn : t.chips.sendOff}
+        </span>
+      )}
+      {!showPending && !showFailed ? null : linkToTab && canOpenTab ? (
+        /* 접근 이름을 따로 주지 않는다 — 주면 칩 글자(대기 N · 실패 N)를 덮어 건수가 읽히지 않는다. */
         <Link to={ERP_OUTBOUND_PATH} className="erp-send-chips">
           {chips}
         </Link>

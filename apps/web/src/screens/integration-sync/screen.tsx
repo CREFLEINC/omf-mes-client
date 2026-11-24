@@ -8,11 +8,11 @@ import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { useMasterWrite } from '../../patterns/master';
 import { PageNav } from '../../patterns/page-nav';
 import { ErpSendChips } from '../erp-outbound/send-chips';
-import { DirectionChips } from './direction-chips';
 import { ERP_LINK_ORIENTATION_KEY } from './erp-link-layout';
 import { toBatchResultView, type BatchResultView, type RequestedMessage } from './batch-result';
 import { BatchRetryDialog } from './batch-retry-dialog';
 import {
+  PLACEHOLDER_DIRECTION_CODES,
   PLACEHOLDER_INTERFACE_CODES,
   PLACEHOLDER_STATUS_CODES,
   toCodeOptions,
@@ -369,17 +369,8 @@ export const IntegrationSyncScreen = () => {
         orientationKey={ERP_LINK_ORIENTATION_KEY}
         initialRatio={0.65}
         toolbar={
-          <>
-            <ErpSendChips linkToTab />
-            {/* 위 줄 송수신 구분 라벨 — 누르면 그 구분으로 거른다(#358). */}
-            <DirectionChips
-              query={periodQuery === null ? null : { ...periodQuery, ...toFilterQuery(filters) }}
-              value={filters.direction}
-              onChange={(code) => {
-                applyQuery(period, { ...filters, direction: code });
-              }}
-            />
-          </>
+          /* 송수신 구분 라벨(전체 · 수신 · 송신)은 두지 않는다 — 구분은 조회 상자의 선택칸이 거른다(사용자 지시 2026-11-24). */
+          <ErpSendChips linkToTab />
         }
         filter={{
           label: t.panes.filter,
@@ -399,6 +390,12 @@ export const IntegrationSyncScreen = () => {
                 optionRows,
                 (row) => row.interfaceCode,
                 filters.iface,
+              )}
+              directionOptions={toCodeOptions(
+                PLACEHOLDER_DIRECTION_CODES,
+                optionRows,
+                (row) => row.directionCode,
+                filters.direction,
               )}
               onSearch={(nextPeriod, nextFilters) => {
                 applyQuery(nextPeriod, nextFilters);

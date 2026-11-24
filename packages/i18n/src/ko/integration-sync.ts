@@ -57,6 +57,7 @@ export const integrationSync = {
     periodTo: '발생일 종료',
     status: '상태 선택',
     interfaceCode: '연동 항목 선택',
+    direction: '송수신 구분 선택',
     retryMin: '최소 재시도 횟수',
     /** 최소 재시도 횟수 칸의 흐린 문구(#358). */
     retryMinPlaceholder: '숫자를 입력하세요',
@@ -133,9 +134,6 @@ export const integrationSync = {
     retry: '재처리',
     /** 재시도 횟수 값 — 「0회」(#358). */
     retryTimes: (count: number): string => `${String(count)}회`,
-    /** 위 줄 송수신 구분 라벨 묶음 — 누르면 그 구분으로 거른다(#358). */
-    directionChips: '송수신 구분으로 거르기',
-    directionAll: '전체',
   },
   /** 비활성 사유는 그 컨트롤의 이름으로 시작한다. */
   reasons: {

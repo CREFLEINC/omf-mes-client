@@ -11,31 +11,17 @@ export const erpInbound = {
   /** 탭 막대 오른쪽 칩 — 이 서버의 수신 켜짐(ERP_SYNC_ENABLED). */
   chips: {
     label: 'ERP 수신 상태',
-    receiveOn: '수신 켜짐',
-    receiveOff: '수신 꺼짐',
-  },
-  /** 조회 상자 — 수신 항목 이름 · 구분 · 상태로 화면 안에서 거른다(서버 요청은 그대로 · #358). */
-  filters: {
-    label: '조회 조건',
-    search: '수신 항목 검색',
-    searchPlaceholder: '수신 항목 이름을 입력하세요',
-    lane: '구분 선택',
-    state: '상태 선택',
-    all: '전체',
+    receiveOn: '수신 ON',
+    receiveOff: '수신 OFF',
+    /** 받는 표 전체의 최근 수신 건수 합 — 0건이면 세우지 않는다(송신의 「송신 대기 N」과 같은 꼴 · #358). */
+    applied: (count: number): string => `수신 반영 ${count.toLocaleString()}`,
+    failed: (count: number): string => `수신 실패 ${count.toLocaleString()}`,
+    held: (count: number): string => `수신 보류 ${count.toLocaleString()}`,
   },
   /** 목록 상자 | 상세 상자(#358). */
   panes: {
-    list: '받는 표 목록',
-    detail: '받는 표 상세',
+    list: 'ERP 수신 목록',
   },
-  /** 상세 상자 — 고른 표의 마지막 읽기 결과와 「지금 읽기」. */
-  detail: {
-    pick: '받는 표를 선택하세요.',
-    pickDescription: '선택한 표의 마지막 읽기 결과를 확인하고 지금 읽기를 요청할 수 있습니다.',
-    pickRow: (name: string): string => `${name} 선택`,
-  },
-  /** 이름 검색에 맞는 표가 없을 때. */
-  noMatch: '조건에 맞는 수신 항목이 없습니다',
   table: {
     label: 'ERP 수신 표',
     /** ERP에서 받아 오는 자료의 종류(품목 · 거래처 · 수주 …) — 「표」는 시스템 말이라 바꿨다(#358). */

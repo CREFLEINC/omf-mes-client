@@ -642,24 +642,11 @@ describe('IntegrationSyncScreen — 상세', () => {
     expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(0);
   });
 
-  it('위 줄 송수신 구분 라벨을 누르면 그 방향으로 거르고, 「전체」는 거르기를 푼다(#358)', async () => {
-    const { requests, user } = renderScreen([listRoute(), detailRoute()], PERIOD);
-    const group = await screen.findByRole('group', { name: '송수신 구분으로 거르기' });
+  it('위 줄에 송수신 구분 라벨을 두지 않는다 — 구분은 「조건 더보기」의 선택칸이 거른다(#358)', async () => {
+    renderScreen([listRoute(), detailRoute()], PERIOD);
+    await screen.findByText('SAMPLE-KEY-0001');
 
-    await user.click(await within(group).findByText(/^송신/));
-
-    expect(currentLocation()).toContain('dir=OUTBOUND');
-    await waitFor(() => {
-      expect(
-        requestsTo(requests, LIST_PATH).some(
-          (request) => request.url.searchParams.get('directionCode') === 'OUTBOUND',
-        ),
-      ).toBe(true);
-    });
-
-    await user.click(within(group).getByText(/^전체/));
-
-    expect(currentLocation()).not.toContain('dir=');
+    expect(screen.queryByRole('group', { name: '송수신 구분으로 거르기' })).toBeNull();
   });
 
   it('고르기 전에는 오른쪽 상세 구획이 메시지를 고르라고만 말한다', async () => {

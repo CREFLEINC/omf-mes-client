@@ -39067,22 +39067,44 @@ body:has(
  * 탭 줄 오른쪽 — 송신 · 수신 칩 다음에 배치 「⋯」(단말 관리와 같은 순서). 칩은 건수를 받은 뒤에야 꽂혀 늦게 붙으므로
  * 차례를 CSS 로 정한다.
  */
-.hub-actions:has(> .erp-send-chips) > .more-menu {
+.hub-actions:has(> .erp-send-chips) > .more-menu,
+.hub-actions:has(> .erp-link-state) > .more-menu {
+  order: 2;
+}
+
+/*
+ * ERP 연동 묶음의 ON · OFF — 건수가 없는 상태라 칩 대신 「● 수신 ON」 점 + 글자, 건수 칩 바로 오른쪽(「⋯」 앞 · #358).
+ * 켜짐은 초록 점, 꺼짐은 주황 점.
+ */
+.hub-actions > .erp-link-state {
   order: 1;
 }
 
-/* ERP 수신 상세 — 고른 표 이름 왼쪽, 「지금 읽기」 오른쪽 한 줄. */
-.erp-inbound-detail-head {
-  display: flex;
+.erp-link-state {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  /* 아래 간격은 상세 상자의 줄 간격(`.integration-sync-detail` gap)이 맡는다(#358). */
-  margin: 0;
+  gap: var(--space-1);
+  /* 글자 크기 · 굵기는 옆 건수 칩(작은 칩)과 같게 — 탭 줄에서 혼자 커 보이지 않게(사용자 지시 2026-11-24). */
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+  white-space: nowrap;
 }
 
-.erp-inbound-detail-head > .pane-title {
-  margin: 0;
+.erp-link-state::before {
+  content: '';
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  background: var(--semantic-success);
+}
+
+.erp-link-state[data-on='false']::before {
+  background: var(--semantic-warning);
+}
+
+/* ERP 수신 — 상세 상자가 없어 목록 상자가 한 줄을 다 쓴다(#358). */
+.list-detail-split.erp-inbound-split {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 /* 쪽 넘김 — 목록 상자가 좁으면 [처음]~[마지막]이 아랫줄로 내려간다(잘리지 않게). */

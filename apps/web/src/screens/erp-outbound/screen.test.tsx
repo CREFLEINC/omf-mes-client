@@ -18,7 +18,7 @@ const ROUTE = '/master-data/erp-outbound';
 const SETTINGS_PATH = '/integration/outbound-item-settings';
 const MESSAGES_PATH = '/integration/messages';
 
-/** 서버 응답 그대로(서버 #849) — 차례 · 이름 · 짝 · 대기 · 실패 건수는 서버가 정한다. 송신 켜짐은 시험마다 붙인다. */
+/** 서버 응답 그대로(서버 #849) — 차례 · 이름 · 짝 · 대기 · 실패 건수는 서버가 정한다. 송신 ON은 시험마다 붙인다. */
 const SETTINGS = {
   items: [
     {
@@ -200,7 +200,7 @@ describe('ErpOutboundScreen — 상태 선택', () => {
 });
 
 describe('ErpOutboundScreen — 탭 막대 칩', () => {
-  it('송신이 꺼진 서버면 「송신 꺼짐」 칩을 맨 앞에 세운다', async () => {
+  it('송신이 꺼진 서버면 「송신 OFF」 칩을 맨 앞에 세운다', async () => {
     renderScreen([
       {
         match: (request) =>
@@ -211,18 +211,16 @@ describe('ErpOutboundScreen — 탭 막대 칩', () => {
     ]);
 
     const hub = within(screen.getByTestId('hub-actions'));
-    expect(await hub.findByText('송신 꺼짐')).toBeInTheDocument();
-    expect(hub.queryByText(/^송신 대기 /)).toBeNull();
+    expect(await hub.findByText('송신 OFF')).toBeInTheDocument();
+    expect(await hub.findByText(/^송신 대기 /)).toBeInTheDocument();
   });
 
-  it('켜짐을 모르는 서버(응답에 없음)면 칩을 세우지 않는다', async () => {
+  it('켜짐을 모르는 서버(응답에 없음)면 켜짐 칩을 세우지 않는다', async () => {
     renderScreen([settingsRoute, messagesRoute()]);
 
-    await itemsPane().findByRole('button', { name: '입고 (G/R) 선택' });
-    // 탭 줄의 배치 「⋯」 메뉴는 그대로 선다 — 칩 묶음만 없다.
-    expect(
-      within(screen.getByTestId('hub-actions')).queryByRole('group', { name: 'ERP 송신 상태' }),
-    ).toBeNull();
+    const hub = within(screen.getByTestId('hub-actions'));
+    expect(await hub.findByText(/^송신 대기 /)).toBeInTheDocument();
+    expect(hub.queryByText(/^송신 (ON|OFF)$/)).toBeNull();
   });
 });
 
