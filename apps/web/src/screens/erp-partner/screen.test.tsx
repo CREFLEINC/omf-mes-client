@@ -93,10 +93,19 @@ describe('ErpPartnerScreen', () => {
     const rowA = rowOf(await screen.findByText('예시 거래처 A'));
     expect(await within(rowA).findByText('고객사, 공급사')).toBeInTheDocument();
 
+    // ERP 거래처 코드 · 국가 열이 목록에 있다(사용자 지시 2026-11-24).
+    const table = screen.getByRole('table');
+    expect(
+      within(table).getByRole('columnheader', { name: 'ERP 거래처 코드' }),
+    ).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', { name: '국가' })).toBeInTheDocument();
+    expect(within(rowA).getAllByText('SAMPLE-P1')).toHaveLength(2);
+
     const rowB = rowOf(screen.getByText('예시 거래처 B'));
-    // 역할이 비어 있다(ERP 코드·국가는 상세에만 있다).
-    expect(await within(rowB).findAllByText('—')).toHaveLength(1);
-    expect(within(rowB).getByText('미사용')).toBeInTheDocument();
+    // ERP 거래처 코드 · 국가 · 역할이 비어 있다.
+    expect(await within(rowB).findAllByText('—')).toHaveLength(3);
+    // 사용 여부는 상태 라벨로 낸다(사용자 지시 2026-11-24).
+    expect(within(rowB).getByText('미사용').parentElement?.className).toMatch(/status-idle/);
 
     const rowC = rowOf(screen.getByText('예시 거래처 C'));
     expect(await within(rowC).findByText('불러오지 못함')).toBeInTheDocument();
@@ -144,6 +153,9 @@ describe('ErpPartnerScreen', () => {
     await user.click(await screen.findByText('예시 거래처 B'));
     // ERP 코드·국가·역할이 모두 비어 있다.
     expect(await within(detail).findAllByText('—')).toHaveLength(3);
+    expect(within(detail).getByText('미사용').parentElement?.className).toMatch(/status-idle/);
+    // 「거래처 상세」 제목 상자는 걷었다 — 값만 남는다.
+    expect(within(detail).queryByRole('heading', { name: '거래처 상세' })).not.toBeInTheDocument();
 
     await user.click(screen.getByText('예시 거래처 A'));
     expect(await within(detail).findByText('고객사, 공급사')).toBeInTheDocument();

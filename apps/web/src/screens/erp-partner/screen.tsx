@@ -1,4 +1,12 @@
-import { Button, Checkbox, type Column, EmptyState, SkeletonText, TextField } from '@crefle/web-ui';
+import {
+  Button,
+  Checkbox,
+  Chip,
+  type Column,
+  EmptyState,
+  SkeletonText,
+  TextField,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
@@ -37,6 +45,13 @@ const orEmpty = (value: string | number | null | undefined): ReactNode =>
   value === null || value === undefined || value === '' ? t.values.empty : String(value);
 
 const activeLabel = (isActive: boolean): string => (isActive ? t.values.active : t.values.inactive);
+
+/** 사용 여부 상태 라벨 — 공통코드 탭과 같은 모양(사용자 지시 2026-11-24). */
+const ActiveChip = ({ isActive }: { isActive: boolean }) => (
+  <Chip variant="status" size="sm" status={isActive ? 'success' : 'idle'}>
+    {activeLabel(isActive)}
+  </Chip>
+);
 
 /** 역할 칸. 불러오는 중·실패·없음을 서로 다른 문구로 낸다 — 실패를 「역할 없음」으로 보이면 안 된다. */
 const rolesText = (state: RolesState | undefined): string => {
@@ -218,6 +233,19 @@ export const ErpPartnerScreen = () => {
       width: '180px',
       render: (row) => <OneLine text={row.partnerName} />,
     },
+    /* ERP 거래처 코드 · 국가 — 레이아웃 통일(055c65e62)에서 빠졌던 열을 종전 모양 그대로 되살린다(사용자 지시 2026-11-24). */
+    {
+      key: 'erpPartnerCode',
+      header: t.table.erpPartnerCode,
+      width: '140px',
+      render: (row) => orEmpty(row.erpPartnerCode),
+    },
+    {
+      key: 'countryCode',
+      header: t.table.countryCode,
+      width: '72px',
+      render: (row) => orEmpty(row.countryCode),
+    },
     {
       key: 'roles',
       header: t.table.roles,
@@ -228,7 +256,7 @@ export const ErpPartnerScreen = () => {
       key: 'isActive',
       header: t.table.isActive,
       width: '72px',
-      render: (row) => activeLabel(row.isActive),
+      render: (row) => <ActiveChip isActive={row.isActive} />,
     },
   ];
 
@@ -317,8 +345,10 @@ export const ErpPartnerScreen = () => {
           </>
         ),
       }}
+      /* 「거래처 상세」 상자(테두리 · 제목)는 걷고 값만 남긴다(사용자 지시 2026-11-24). */
       detail={{
         label: t.panes.detail,
+        bare: true,
         content:
           selected === null ? (
             <ErpPickEmpty
@@ -328,7 +358,6 @@ export const ErpPartnerScreen = () => {
             />
           ) : (
             <ErpDetailFields
-              title={t.panes.detail}
               fields={[
                 { key: 'partnerCode', label: t.table.partnerCode, value: selected.partnerCode },
                 { key: 'partnerName', label: t.table.partnerName, value: selected.partnerName },
@@ -347,7 +376,11 @@ export const ErpPartnerScreen = () => {
                   label: t.table.roles,
                   value: rolesText(roles.get(selected.partnerId)),
                 },
-                { key: 'isActive', label: t.table.isActive, value: activeLabel(selected.isActive) },
+                {
+                  key: 'isActive',
+                  label: t.table.isActive,
+                  value: <ActiveChip isActive={selected.isActive} />,
+                },
               ]}
             />
           ),

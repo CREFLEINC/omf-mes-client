@@ -97,7 +97,7 @@ const renderScreen = (routes: StubRoute[], search = '') => {
 };
 
 describe('ErpItemScreen', () => {
-  it('목록은 식별 열만, 고른 품목의 ERP 원본 칸은 상세에 내고 이름을 못 찾은 유형·단위는 받은 값을 그대로 낸다', async () => {
+  it('목록에 규격 · 품목 그룹까지 내고, 고른 품목은 제목 없는 상세에 내며 이름을 못 찾은 유형·단위는 받은 값을 그대로 낸다', async () => {
     const { requests, user, urls } = renderScreen([listRoute()]);
 
     const table = await screen.findByRole('table');
@@ -107,16 +107,33 @@ describe('ErpItemScreen', () => {
     // 이름이 없는 유형 코드·단위 번호는 지우지 않고 그대로 낸다.
     expect(within(table).getByText('SYN_UNNAMED')).toBeInTheDocument();
     expect(within(table).getByText('8999')).toBeInTheDocument();
-    expect(within(table).getByText(t.values.inactive)).toBeInTheDocument();
-    // 규격 · 품목그룹은 목록에 없고 상세에 있다.
-    expect(within(table).queryByText('SYN 10x20')).not.toBeInTheDocument();
+    // 사용 여부는 상태 라벨로 낸다(사용자 지시 2026-11-24).
+    expect(within(table).getByText(t.values.inactive).parentElement?.className).toMatch(
+      /status-idle/,
+    );
+    expect(within(table).getByText(t.values.active).parentElement?.className).toMatch(
+      /status-success/,
+    );
+    // 규격 · 품목 그룹은 목록에도 있다(사용자 지시 2026-11-24). 값이 없으면 「—」.
+    expect(within(table).getByRole('columnheader', { name: t.table.erpSpec })).toBeInTheDocument();
+    expect(
+      within(table).getByRole('columnheader', { name: t.table.erpItemGroupCode }),
+    ).toBeInTheDocument();
+    expect(within(table).getByText('SYN 10x20')).toBeInTheDocument();
+    expect(within(table).getByText('SYN-GRP')).toBeInTheDocument();
+    expect(within(table).getAllByText(t.values.empty)).toHaveLength(2);
 
     const detail = screen.getByRole('region', { name: t.panes.detail });
     expect(within(detail).getByText(t.empty.pickTitle)).toBeInTheDocument();
+    // 「품목 상세」 제목 상자는 걷었다 — 값만 남는다.
+    expect(within(detail).queryByRole('heading', { name: t.panes.detail })).not.toBeInTheDocument();
 
     await user.click(within(table).getByText('합성 품목 B'));
     expect(within(detail).getByText('SYN-ITEM-002')).toBeInTheDocument();
     expect(within(detail).getAllByText(t.values.empty)).toHaveLength(2);
+    expect(within(detail).getByText(t.values.inactive).parentElement?.className).toMatch(
+      /status-idle/,
+    );
 
     await user.click(within(table).getByText('SYN-ITEM-001'));
     expect(within(detail).getByText('SYN 10x20')).toBeInTheDocument();

@@ -53,6 +53,8 @@ export interface ErpListTableProps<T> {
   };
   empty?: ReactNode;
   className?: string;
+  /** 열이 상자보다 넓으면 줄이지 않고 표 안에서 가로로 구른다 — 열이 많은 표(구매발주)용. 기본은 줄여 맞춘다. */
+  scrollX?: boolean;
 }
 
 const cellText = <T,>(row: T, key: string): ReactNode => {
@@ -73,6 +75,7 @@ export const ErpListTable = <T,>({
   pick,
   empty,
   className,
+  scrollX = false,
 }: ErpListTableProps<T>) => {
   const pickKey = pick === undefined ? undefined : (pick.columnKey ?? columns[0]?.key);
   const picked =
@@ -103,7 +106,7 @@ export const ErpListTable = <T,>({
         );
   const ordered = useColumnOrder(`${storageKey}:order`, picked);
   const resizable = useColumnWidths(storageKey, ordered);
-  const fit = useFitColumns(resizable.columns);
+  const fit = useFitColumns(resizable.columns, { scrollX });
 
   return (
     <div
@@ -162,16 +165,16 @@ export interface ErpDetailField {
   value: ReactNode;
 }
 
-/** 고른 줄의 모든 칸을 「이름 : 값」 읽기 전용으로. */
+/** 고른 줄의 모든 칸을 「이름 : 값」 읽기 전용으로. `title` 을 주지 않으면 제목 줄 없이 값만 보인다. */
 export const ErpDetailFields = ({
   title,
   fields,
 }: {
-  title: string;
+  title?: string;
   fields: readonly ErpDetailField[];
 }) => (
   <div className="erp-data-detail">
-    <h2 className="pane-title">{title}</h2>
+    {title !== undefined && <h2 className="pane-title">{title}</h2>}
     <dl className="erp-data-detail-fields">
       {fields.map((field) => (
         <div key={field.key}>

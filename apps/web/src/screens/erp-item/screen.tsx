@@ -1,4 +1,12 @@
-import { Button, Checkbox, type Column, EmptyState, SkeletonText, TextField } from '@crefle/web-ui';
+import {
+  Button,
+  Checkbox,
+  Chip,
+  type Column,
+  EmptyState,
+  SkeletonText,
+  TextField,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
@@ -30,6 +38,13 @@ const orEmpty = (value: string | number | null | undefined): ReactNode =>
   value === null || value === undefined || value === '' ? t.values.empty : String(value);
 
 const activeLabel = (isActive: boolean): string => (isActive ? t.values.active : t.values.inactive);
+
+/** 사용 여부 상태 라벨 — 공통코드 탭과 같은 모양(사용자 지시 2026-11-24). */
+const ActiveChip = ({ isActive }: { isActive: boolean }) => (
+  <Chip variant="status" size="sm" status={isActive ? 'success' : 'idle'}>
+    {activeLabel(isActive)}
+  </Chip>
+);
 
 /** 주소의 조건. 조건은 전부 주소가 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다. */
 interface Filters {
@@ -201,6 +216,24 @@ export const ErpItemScreen = () => {
       width: '112px',
       render: (row) => itemTypes.nameOf(row.itemTypeCode),
     },
+    /* 규격 · 품목 그룹 — 레이아웃 통일(055c65e62)에서 빠졌던 열을 종전 모양 그대로 되살린다(사용자 지시 2026-11-24). */
+    {
+      key: 'erpSpec',
+      header: t.table.erpSpec,
+      width: '160px',
+      render: (row) =>
+        row.erpSpec === null || row.erpSpec === undefined || row.erpSpec === '' ? (
+          t.values.empty
+        ) : (
+          <OneLine text={row.erpSpec} />
+        ),
+    },
+    {
+      key: 'erpItemGroupCode',
+      header: t.table.erpItemGroupCode,
+      width: '112px',
+      render: (row) => orEmpty(row.erpItemGroupCode),
+    },
     {
       key: 'baseUomId',
       header: t.table.baseUom,
@@ -211,7 +244,7 @@ export const ErpItemScreen = () => {
       key: 'isActive',
       header: t.table.isActive,
       width: '72px',
-      render: (row) => activeLabel(row.isActive),
+      render: (row) => <ActiveChip isActive={row.isActive} />,
     },
   ];
 
@@ -301,8 +334,10 @@ export const ErpItemScreen = () => {
           </>
         ),
       }}
+      /* 「품목 상세」 상자(테두리 · 제목)는 걷고 값만 남긴다(사용자 지시 2026-11-24). */
       detail={{
         label: t.panes.detail,
+        bare: true,
         content:
           selected === null ? (
             <ErpPickEmpty
@@ -312,7 +347,6 @@ export const ErpItemScreen = () => {
             />
           ) : (
             <ErpDetailFields
-              title={t.panes.detail}
               fields={[
                 { key: 'itemCode', label: t.table.itemCode, value: selected.itemCode },
                 { key: 'itemName', label: t.table.itemName, value: selected.itemName },
@@ -328,7 +362,11 @@ export const ErpItemScreen = () => {
                   value: orEmpty(selected.erpItemGroupCode),
                 },
                 { key: 'baseUom', label: t.table.baseUom, value: uoms.nameOf(selected.baseUomId) },
-                { key: 'isActive', label: t.table.isActive, value: activeLabel(selected.isActive) },
+                {
+                  key: 'isActive',
+                  label: t.table.isActive,
+                  value: <ActiveChip isActive={selected.isActive} />,
+                },
               ]}
             />
           ),
