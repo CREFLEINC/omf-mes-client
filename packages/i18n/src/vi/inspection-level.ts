@@ -23,8 +23,6 @@ export const inspectionLevel = {
   },
 
   history: {
-    itemTitle: 'Lịch sử thay đổi mức kiểm tra',
-    itemCode: (code: string) => `Mã vật tư ${code}`,
     itemColumns: {
       changedAt: 'Thời điểm thay đổi',
       level: 'Mức kiểm tra',

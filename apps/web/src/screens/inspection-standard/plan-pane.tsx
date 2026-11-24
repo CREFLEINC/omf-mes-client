@@ -67,6 +67,8 @@ export interface PlanPaneProps {
   sheetFields?: ReactNode;
   /** 고른 품목 전체 — 검사표 기준 칸이 품목 이름을 들고 간다(#260). */
   onItemChange?: (item: { itemId: number; itemCode: string; itemName: string }) => void;
+  /** 「기본 정보 수정」 창의 IQC 기준에만 — 라우팅 다음 「검사 수준」 칸(omf-all-around#357). */
+  levelField?: ReactNode;
 }
 
 /**
@@ -103,6 +105,7 @@ export const PlanPane = ({
   embedded = false,
   sheetFields,
   onItemChange,
+  levelField,
 }: PlanPaneProps) => {
   const isSheet = sheetFields !== undefined;
   const codeId = useId();
@@ -296,6 +299,9 @@ export const PlanPane = ({
             )}
           </div>
         )}
+
+        {/* 검사 수준(IQC · 품목 있음) — 품목에 딸린 값이라 품목 · 라우팅 다음(omf-all-around#357). */}
+        {levelField}
 
         {isSheet && <div className="inspection-standard-sheet-fields">{sheetFields}</div>}
       </div>

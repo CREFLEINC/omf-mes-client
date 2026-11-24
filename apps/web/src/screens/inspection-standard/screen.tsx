@@ -6,6 +6,7 @@ import {
   EmptyState,
   Icon,
   SkeletonText,
+  Tabs,
   useToast,
 } from '@crefle/web-ui';
 import {
@@ -78,7 +79,11 @@ import {
   type InspectionPlanImportResult,
   importStatusOf,
 } from './import-dialog';
+import { ItemLevelHistoryTable } from '../inspection-level/history-table';
+import { useLevelWrite } from '../inspection-level/level-write';
+import { useItemInspectionLevel } from '../inspection-level/queries';
 import { ItemLevelFact } from './item-level-fact';
+import { type LevelDraft, PlanLevelField } from './plan-level-field';
 import { PlanDetailHead } from './plan-detail-head';
 import { PlanFilterBar } from './plan-filter-bar';
 import type { TemplateBasics } from '../inspection-sheet-template/basic-dialog';
@@ -155,6 +160,8 @@ const t = messages.inspectionStandard;
 
 /** 라우팅 화면 — 상세 머리의 「라우팅 조회」가 이 주소로 그 품목 · Rev 를 연다(`item` · `rev` 는 그 화면의 주소 칸이다). */
 const ROUTING_PATH = '/master-data/routing';
+/** 검사 수준 지정 · 변경 권한(W-03-12) — 서버가 이 화면 권한으로 받는다. 화면 자체는 검사 기준에 합쳤다(omf-all-around#357). */
+const INSPECTION_LEVEL_PATH = '/quality/inspection-levels';
 
 /** 바뀌면 편집 대상(기준 · 버전)이 바뀌는 질의 — 「뒤로」로 이 값만 바뀌어도 편집이 사라져 묻는다. */
 const EDIT_TARGET_PARAMS = ['plan', 'ver'] as const;
@@ -303,6 +310,12 @@ export const InspectionStandardScreen = () => {
   /* 「버전 설정 수정」 창 — 작성중 버전의 설정을 고친다(버전 설정 탭을 걷었다 · #196). */
   const [isVersionEditOpen, setIsVersionEditOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  /* 「이력」 창의 탭 — 검사 기준(버전) 이력 · 품목 검사 수준 이력(omf-all-around#357). 열 때마다 검사 기준 이력부터. */
+  const [historyTab, setHistoryTab] = useState<'plan' | 'level'>('plan');
+  const closeHistory = (): void => {
+    setIsHistoryOpen(false);
+    setHistoryTab('plan');
+  };
   const toast = useToast();
   const { client } = useApiClient();
   const sheetForPqc = useSheetForPqc();
@@ -483,11 +496,53 @@ export const InspectionStandardScreen = () => {
       setPlanFieldErrors({});
       const next = planToFormValues(saved);
       setFormState((prev) => (prev === null ? prev : { ...prev, baseline: next, values: next }));
+      /* 검사 수준도 바꿨으면 이어서 저장한다 — 창은 그 저장이 끝나야 닫는다(omf-all-around#357). */
+      const thenLevel = afterPlanSave.current;
+      afterPlanSave.current = null;
+      if (thenLevel !== null) {
+        thenLevel();
+        return;
+      }
       /* 저장하면 「기본 정보 수정」 창을 닫는다(사용자 지시 2026-11-04). */
       setIsPlanEditOpen(false);
       toast.show({ variant: 'success', description: messages.common.saved });
     },
   });
+
+  /*
+   * 「기본 정보 수정」 창의 검사 수준(omf-all-around#357) — IQC 기준이고 품목이 있을 때만. 창에서 고른 품목의 수준을 묻는다.
+   * 기본 정보와 저장 길이 다르다(품목 검사 수준 API) — 기본 정보를 먼저 저장하고 이어서 저장한다.
+   */
+  const levelItemId =
+    formState !== null &&
+    formState.values.inspectionTypeCode === 'IQC' &&
+    formState.values.itemId !== ''
+      ? Number(formState.values.itemId)
+      : null;
+  const currentLevel = useItemInspectionLevel(isPlanEditOpen ? levelItemId : null);
+  const [levelDraft, setLevelDraft] = useState<LevelDraft | null>(null);
+  /* 고른 뒤 품목을 바꾸면 고른 수준은 그 품목 것이 아니다 — 견주지 않는다. */
+  const activeLevelDraft =
+    levelDraft !== null && levelDraft.itemId === levelItemId && currentLevel.isSuccess
+      ? levelDraft
+      : null;
+  const isLevelDirty =
+    activeLevelDraft !== null &&
+    activeLevelDraft.level !== (currentLevel.data?.inspectionLevelCode ?? null);
+  const canEditLevel = toWebAccess(session?.permissions).allows(INSPECTION_LEVEL_PATH);
+  const afterPlanSave = useRef<(() => void) | null>(null);
+  const levelWrite = useLevelWrite(() => {
+    setLevelDraft(null);
+    setIsPlanEditOpen(false);
+    toast.show({ variant: 'success', description: messages.common.saved });
+  });
+  const writeLevel = (): void => {
+    if (activeLevelDraft === null) return;
+    levelWrite.write({
+      row: currentLevel.data ?? null,
+      values: activeLevelDraft,
+    });
+  };
 
   const createWrite = useMasterWrite<PlanFormValues, InspectionPlan>({
     request: (values, headers) =>
@@ -1381,6 +1436,13 @@ export const InspectionStandardScreen = () => {
     // 화면에서 잡히는 오류는 서버로 보내지 않는다.
     if (Object.keys(errors).length > 0) return;
 
+    levelWrite.reset();
+    /* 기본 정보가 그대로면 검사 수준만 저장한다(omf-all-around#357). */
+    if (!isPlanDirty) {
+      writeLevel();
+      return;
+    }
+    afterPlanSave.current = isLevelDirty ? writeLevel : null;
     planWrite.write(formState.values);
   };
 
@@ -1794,6 +1856,8 @@ export const InspectionStandardScreen = () => {
 
     /* 창을 닫으면 고친 값을 버린다 — 보이지 않는 미저장 편집이 남으면 신규 버전 발행이 이유 모르게 막힌다. */
     const cancelPlanEdit = (): void => {
+      setLevelDraft(null);
+      levelWrite.reset();
       planWrite.reset();
       setPlanFieldErrors({});
       setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
@@ -1813,16 +1877,8 @@ export const InspectionStandardScreen = () => {
           itemLevel={(() => {
             const plan = planDetail.data.inspectionPlan;
             const itemId = plan.itemId ?? null;
-            const parts = itemId === null ? null : itemPartsOf(itemId);
-            if (plan.inspectionTypeCode !== 'IQC' || itemId === null || parts === null) {
-              return undefined;
-            }
-            return (
-              <ItemLevelFact
-                key={itemId}
-                item={{ itemId, itemCode: parts.code ?? '', itemName: parts.name }}
-              />
-            );
+            if (plan.inspectionTypeCode !== 'IQC' || itemId === null) return undefined;
+            return <ItemLevelFact key={itemId} itemId={itemId} />;
           })()}
           routingRevision={routingOptions.revisions.find(
             (revision) =>
@@ -1947,7 +2003,39 @@ export const InspectionStandardScreen = () => {
               onRoutingRefresh={refreshPlanRouting}
               // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
               fieldErrors={{ ...planWrite.fieldErrors, ...planFieldErrors }}
-              banner={<SaveErrorBanner error={planWrite.error} onReload={handleReloadPlanDetail} />}
+              banner={
+                <>
+                  <SaveErrorBanner error={planWrite.error} onReload={handleReloadPlanDetail} />
+                  {/* 기본 정보는 저장됐고 검사 수준만 막힌 경우 — 다시 「저장」하면 검사 수준만 보낸다. */}
+                  <SaveErrorBanner
+                    error={levelWrite.error}
+                    onReload={() => {
+                      levelWrite.reset();
+                      setLevelDraft(null);
+                      void currentLevel.refetch();
+                    }}
+                  />
+                </>
+              }
+              levelField={
+                levelItemId === null ? undefined : (
+                  <PlanLevelField
+                    key={levelItemId}
+                    itemId={levelItemId}
+                    current={currentLevel.data ?? null}
+                    status={
+                      currentLevel.isSuccess ? 'ready' : currentLevel.isError ? 'error' : 'pending'
+                    }
+                    canEdit={canEditLevel}
+                    draft={activeLevelDraft}
+                    onChange={(next) => {
+                      levelWrite.reset();
+                      setLevelDraft(next);
+                    }}
+                    fieldErrors={levelWrite.fieldErrors}
+                  />
+                )
+              }
               optionsNotice={optionsNotice}
               itemOptions={optionsFor(itemOptions, formState.values.itemId)}
               routingRevisions={routingOptions.revisions}
@@ -1961,8 +2049,8 @@ export const InspectionStandardScreen = () => {
                   ? t.values.codeInUseLocked
                   : codeLockMessage(planDetail.data.editability)
               }
-              isDirty={isPlanDirty}
-              isSaving={planWrite.isSaving}
+              isDirty={isPlanDirty || isLevelDirty}
+              isSaving={planWrite.isSaving || levelWrite.isSaving}
               onSave={handleSavePlan}
               /* 창의 「취소」는 고친 값을 버리고 창을 닫는다(닫기 단추를 따로 두지 않는다 · 사용자 시안 #196). */
               onCancel={() => {
@@ -1981,6 +2069,10 @@ export const InspectionStandardScreen = () => {
    * 버전 상세를 못 받았거나 받는 중이면 종전 버전 정보 칸이 그 상태를 낸다.
    */
   const renderVersionBody = (): ReactNode => {
+    /* 「이력」 창의 검사 수준 이력 탭 — 품목이 있는 IQC 기준에만(omf-all-around#357). */
+    const historyPlan = planDetail.data?.inspectionPlan;
+    const historyLevelItemId =
+      historyPlan?.inspectionTypeCode === 'IQC' ? (historyPlan.itemId ?? null) : null;
     if (versionCreateValues !== null) return renderVersionFormPane();
 
     if (selectedVersionId === null) {
@@ -2019,33 +2111,63 @@ export const InspectionStandardScreen = () => {
         {isCompareOpen && renderCompareDialog()}
 
         {isHistoryOpen && selectedVersionId !== null && (
-          /* 종전 「이력」 탭 내용을 창으로(사용자 지시 · #258). */
+          /*
+           * 종전 「이력」 탭 내용을 창으로(사용자 지시 · #258). 품목이 있는 IQC 기준은 「검사 기준 이력 · 검사 수준 이력」 탭으로
+           * 나눈다 — 검사 수준 설정 화면의 이력을 여기로 옮겼다(사용자 지시 · omf-all-around#357).
+           */
           <Dialog
             open
             size="lg"
-            /* 「최근 1년」 라벨은 제목 줄에(사용자 지시 · #258). */
+            /* 「최근 1년」 라벨은 제목 줄에(사용자 지시 · #258). 검사 기준 이력에만 걸린다. */
             title={
               <span className="inspection-standard-dialog-title">
                 {t.versionSection.history}
-                <span className="inspection-standard-dialog-title-chips">
-                  <Chip variant="status" size="sm" status="idle">
-                    {t.history.range}
-                  </Chip>
-                </span>
+                {(historyLevelItemId === null || historyTab === 'plan') && (
+                  <span className="inspection-standard-dialog-title-chips">
+                    <Chip variant="status" size="sm" status="idle">
+                      {t.history.range}
+                    </Chip>
+                  </span>
+                )}
               </span>
             }
             showCloseButton={false}
-            onClose={() => setIsHistoryOpen(false)}
+            onClose={closeHistory}
             footer={
-              <Button variant="outlined" onClick={() => setIsHistoryOpen(false)}>
+              <Button variant="outlined" onClick={closeHistory}>
                 {messages.common.close}
               </Button>
             }
           >
-            <VersionHistoryTable
-              inspectionPlanVersionId={selectedVersionId}
-              labels={compareLabels}
-            />
+            {historyLevelItemId === null ? (
+              <VersionHistoryTable
+                inspectionPlanVersionId={selectedVersionId}
+                labels={compareLabels}
+              />
+            ) : (
+              <Tabs
+                aria-label={t.itemLevel.historyTabs}
+                value={historyTab}
+                onChange={(value) => setHistoryTab(value as 'plan' | 'level')}
+                items={[
+                  {
+                    value: 'plan',
+                    label: t.itemLevel.planHistoryTab,
+                    content: (
+                      <VersionHistoryTable
+                        inspectionPlanVersionId={selectedVersionId}
+                        labels={compareLabels}
+                      />
+                    ),
+                  },
+                  {
+                    value: 'level',
+                    label: t.itemLevel.levelHistoryTab,
+                    content: <ItemLevelHistoryTable itemId={historyLevelItemId} />,
+                  },
+                ]}
+              />
+            )}
           </Dialog>
         )}
 

@@ -20522,29 +20522,11 @@ dialog.terminal-map-form-dialog {
  * 검사 수준 관리 탭(#208 · 사용자 시안) — 목록 카드 하나에 제목 줄 · 검색 줄 · 안내 · 둥근 테두리 표 · 쪽 이동.
  * 카드 안 검색 줄의 아래 여백은 걷고(카드 간격이 맡는다), 라벨 없는 한 줄이라 가운데로 맞춘다.
  */
-/* 품목 이력 창 — 품목 머리 · 표 · 쪽 이동 사이를 띄운다(#208). */
+/* 품목 검사 수준 이력(검사 기준 「이력」 창 탭 · omf-all-around#357) — 표 · 쪽 이동 사이를 띄운다(#208). */
 .inspection-level-history-dialog {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-}
-
-/* 품목 머리 — 품목명(크게) 위, 「품목코드 …」(흐리게) 아래(사용자 시안 · #208). */
-.inspection-level-history-item > p {
-  margin: 0;
-}
-
-/* 창 본문 문단 규칙보다 무거워야 크기 · 색이 선다. */
-.inspection-level-history-item > .inspection-level-history-item-name {
-  color: var(--on-surface);
-  font: var(--type-title-md);
-  letter-spacing: var(--type-title-md-tracking);
-}
-
-.inspection-level-history-item > .inspection-sheet-template-muted {
-  color: var(--on-surface-variant);
-  font: var(--type-body-md);
-  letter-spacing: var(--type-body-md-tracking);
 }
 
 /* 검사 수준 칸 — 새 수준 칩 위, 「최초 지정」 · 「…에서 변경」 아래(사용자 시안 · #208). */

@@ -256,9 +256,13 @@ export const inspectionStandard = {
     label: '검사 수준',
     unset: '미지정',
     loadFailed: '불러오지 못함',
-    set: '지정',
-    change: '변경',
-    history: '이력',
+    /** 기본 정보 수정 창 — 수준을 바꾸면 나오는 사유 칸(선택 · 이력에 남는다). */
+    reason: '변경 사유',
+    reasonPlaceholder: '사유를 입력하세요(선택)',
+    /** 「이력」 창의 탭 — 버전 이력 · 품목 검사 수준 이력. */
+    planHistoryTab: '검사 기준 이력',
+    levelHistoryTab: '검사 수준 이력',
+    historyTabs: '이력 구분',
   },
   detail: {
     title: '검사 기준 상세',

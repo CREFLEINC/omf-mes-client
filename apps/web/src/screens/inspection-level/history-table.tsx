@@ -1,13 +1,4 @@
-import {
-  AlertBanner,
-  Button,
-  Chip,
-  type ChipStatus,
-  type Column,
-  Dialog,
-  EmptyState,
-  Table,
-} from '@crefle/web-ui';
+import { AlertBanner, Chip, type ChipStatus, type Column, EmptyState, Table } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
@@ -98,75 +89,53 @@ const columns: Column<ItemInspectionLevelHistory>[] = [
   },
 ];
 
-export interface ItemHistoryDialogProps {
-  item: { itemId: number; itemCode: string; itemName: string };
-  onClose: () => void;
+export interface ItemLevelHistoryTableProps {
+  itemId: number;
 }
 
 /**
- * 품목 하나의 검사 수준 전환 이력 창(사용자 지시 · #208). 검사 기준 상세의 「이력」이 연다(omf-all-around#357).
+ * 품목 하나의 검사 수준 전환 이력 표(사용자 시안 · #208). 검사 기준 「이력」 창의 「검사 수준 이력」 탭이 쓴다(omf-all-around#357).
  */
-export const ItemHistoryDialog = ({ item, onClose }: ItemHistoryDialogProps) => {
+export const ItemLevelHistoryTable = ({ itemId }: ItemLevelHistoryTableProps) => {
   const [page, setPage] = useState(1);
   const [size, setSize] = useState<number>(PAGE_SIZE);
-  const histories = useInspectionLevelHistories(item.itemId, page, size);
+  const histories = useInspectionLevelHistories(itemId, page, size);
   /* 창 폭에 맞춰 열을 비율대로 줄이고 늘린다 — 마지막 열(처리자)이 잘리지 않게(#208). */
   const fit = useFitColumns(columns);
 
   return (
-    <Dialog
-      open
-      size="lg"
-      closeOnBackdropClick={false}
-      showCloseButton={false}
-      title={t.history.itemTitle}
-      onClose={onClose}
-      footer={
-        <Button variant="outlined" onClick={onClose}>
-          {messages.common.close}
-        </Button>
-      }
-    >
-      <div className="inspection-level-history-dialog">
-        {/* 품목 머리 — 품목명(크게) · 아래 「품목코드 …」(흐리게) · 사용자 시안(#208). */}
-        <div className="inspection-level-history-item">
-          <p className="inspection-level-history-item-name">{item.itemName}</p>
-          <p className="inspection-sheet-template-muted">{t.history.itemCode(item.itemCode)}</p>
-        </div>
-        {histories.isError && <AlertBanner variant="error">{t.history.loadFailed}</AlertBanner>}
-        <div
-          ref={fit.ref}
-          className="inspection-queue-table inspection-standard-table-box inspection-level-rows"
-        >
-          <Table
-            caption={
-              <span className="inspection-standard-visually-hidden">{t.history.caption}</span>
-            }
-            density="compact"
-            columns={fit.columns}
-            rows={histories.data?.items ?? []}
-            getRowId={(row) => String(row.itemInspectionLevelHistoryId)}
-            empty={
-              <EmptyState
-                size="sm"
-                live
-                title={histories.isPending ? t.history.loading : t.history.empty}
-              />
-            }
-          />
-        </div>
-        {histories.data !== undefined && (
-          <PageNav
-            meta={histories.data.page}
-            buttonSize="md"
-            onChangePage={setPage}
-            onChangeSize={(next) => {
-              setSize(next);
-              setPage(1);
-            }}
-          />
-        )}
+    <div className="inspection-level-history-dialog">
+      {histories.isError && <AlertBanner variant="error">{t.history.loadFailed}</AlertBanner>}
+      <div
+        ref={fit.ref}
+        className="inspection-queue-table inspection-standard-table-box inspection-level-rows"
+      >
+        <Table
+          caption={<span className="inspection-standard-visually-hidden">{t.history.caption}</span>}
+          density="compact"
+          columns={fit.columns}
+          rows={histories.data?.items ?? []}
+          getRowId={(row) => String(row.itemInspectionLevelHistoryId)}
+          empty={
+            <EmptyState
+              size="sm"
+              live
+              title={histories.isPending ? t.history.loading : t.history.empty}
+            />
+          }
+        />
       </div>
-    </Dialog>
+      {histories.data !== undefined && (
+        <PageNav
+          meta={histories.data.page}
+          buttonSize="md"
+          onChangePage={setPage}
+          onChangeSize={(next) => {
+            setSize(next);
+            setPage(1);
+          }}
+        />
+      )}
+    </div>
   );
 };

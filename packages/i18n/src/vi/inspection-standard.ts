@@ -222,9 +222,13 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     label: 'Mức kiểm tra',
     unset: 'Chưa chỉ định',
     loadFailed: 'Không tải được',
-    set: 'Chỉ định',
-    change: 'Đổi',
-    history: 'Lịch sử',
+    /** 기본 정보 수정 창 — 수준을 바꾸면 나오는 사유 칸(선택 · 이력에 남는다). */
+    reason: 'Lý do thay đổi',
+    reasonPlaceholder: 'Nhập lý do (không bắt buộc)',
+    /** 「이력」 창의 탭 — 버전 이력 · 품목 검사 수준 이력. */
+    planHistoryTab: 'Lịch sử tiêu chuẩn kiểm tra',
+    levelHistoryTab: 'Lịch sử mức kiểm tra',
+    historyTabs: 'Loại lịch sử',
   },
   detail: {
     title: 'Chi tiết tiêu chuẩn kiểm tra',

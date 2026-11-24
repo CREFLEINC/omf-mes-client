@@ -23,8 +23,6 @@ export const inspectionLevel = {
   },
 
   history: {
-    itemTitle: '검사 수준 변경 이력',
-    itemCode: (code: string) => `품목코드 ${code}`,
     itemColumns: {
       changedAt: '변경 일시',
       level: '검사 수준',

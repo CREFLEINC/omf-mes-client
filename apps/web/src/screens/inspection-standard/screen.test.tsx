@@ -4007,3 +4007,147 @@ describe('InspectionStandardScreen — 상세 표시 순서(#256)', () => {
     ]);
   });
 });
+
+/* 검사 수준 설정 화면을 합쳤다(omf-all-around#357) — 보기는 상세 칸, 지정 · 변경은 「기본 정보 수정」 창, 이력은 「이력」 창 탭. */
+describe('InspectionStandardScreen — 품목 검사 수준(#357)', () => {
+  const LEVELS = '/quality/item-inspection-levels';
+  const HISTORIES = '/quality/item-inspection-level-histories';
+  const LEVEL = {
+    itemInspectionLevelId: 9,
+    itemId: 5001,
+    itemCode: 'SYN-ITEM-01',
+    itemName: '합성 품목 A',
+    inspectionLevelCode: 'NORMAL',
+    autoSwitchEnabled: false,
+    consecutiveAcceptCount: 0,
+    updatedAt: '2026-11-01T00:00:00Z',
+    versionNo: 3,
+  };
+  const levelRoutes = (levels: object[]): StubRoute[] => [
+    {
+      match: (request) => isGet(request, LEVELS),
+      respond: () =>
+        jsonResponse({ items: levels, page: { page: 1, size: 1, total: levels.length } }),
+    },
+    {
+      match: (request) =>
+        request.method === 'PUT' && new URL(request.url).pathname === `${LEVELS}/9`,
+      respond: () => jsonResponse({ ...LEVEL, inspectionLevelCode: 'TIGHTENED', versionNo: 4 }),
+    },
+    {
+      match: (request) => request.method === 'POST' && new URL(request.url).pathname === LEVELS,
+      respond: () => jsonResponse({ ...LEVEL, versionNo: 1 }, { status: 201 }),
+    },
+    {
+      match: (request) => isGet(request, HISTORIES),
+      respond: () =>
+        jsonResponse({
+          items: [
+            {
+              itemInspectionLevelHistoryId: 1,
+              itemId: 5001,
+              itemCode: 'SYN-ITEM-01',
+              itemName: '합성 품목 A',
+              fromLevelCode: null,
+              toLevelCode: 'NORMAL',
+              changeTypeCode: 'MANUAL',
+              consecutiveAcceptCount: null,
+              inspectionRequestId: null,
+              inspectionRequestNo: null,
+              reason: '합성 최초 지정',
+              changedAt: '2026-11-01T00:00:00Z',
+              changedByName: '합성 사용자',
+            },
+          ],
+          page: { page: 1, size: 50, total: 1 },
+        }),
+    },
+  ];
+  const levelSelect = () => within(planForm()).getByRole('combobox', { name: '검사 수준' });
+
+  it('상세 칸은 수준만 보이고 「변경」 · 「이력」 단추를 두지 않는다', async () => {
+    renderSelectedPlan(levelRoutes([LEVEL]));
+
+    const facts = await waitFor(() => {
+      const box = document.querySelector('.inspection-standard-plan-facts');
+      expect(box).not.toBeNull();
+      return box as HTMLElement;
+    });
+    expect(await within(facts).findByText('보통')).toBeInTheDocument();
+    expect(within(facts).queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('기본 정보는 그대로 두고 수준만 바꾸면 수준만 사유와 함께 받은 판으로 잠가 보내고 창을 닫는다', async () => {
+    const { requests, user } = renderSelectedPlan(levelRoutes([LEVEL]));
+    await awaitPlanForm();
+
+    await user.click(await waitFor(levelSelect));
+    await user.click(screen.getByRole('option', { name: '엄격' }));
+    await user.type(within(planForm()).getByLabelText('변경 사유'), '고객 클레임');
+    await user.click(within(planForm()).getByRole('button', { name: '저장' }));
+
+    await screen.findByText('저장했습니다');
+    expect(requests.some((r) => r.method === 'PUT' && r.url.pathname === PLAN_DETAIL_PATH)).toBe(
+      false,
+    );
+    const put = requests.find((r) => r.method === 'PUT' && r.url.pathname === `${LEVELS}/9`);
+    expect(put?.headers.get('If-Match')).toBe('3');
+    expect(JSON.parse(put?.body ?? '{}')).toEqual({
+      inspectionLevelCode: 'TIGHTENED',
+      reason: '고객 클레임',
+    });
+    expect(screen.queryByRole('region', { name: '기준 정보' })).not.toBeInTheDocument();
+  });
+
+  it('기준명과 수준을 함께 바꾸면 기본 정보를 먼저 저장하고 이어서 수준을 저장한다', async () => {
+    const { requests, user } = renderSelectedPlan([planSaveRoute(), ...levelRoutes([LEVEL])]);
+
+    await user.type(await findPlanField('기준명'), 'X');
+    await user.click(await waitFor(levelSelect));
+    await user.click(screen.getByRole('option', { name: '엄격' }));
+    await user.click(within(planForm()).getByRole('button', { name: '저장' }));
+
+    await screen.findByText('저장했습니다');
+    const writes = requests.filter((r) => r.method === 'PUT').map((r) => r.url.pathname);
+    expect(writes).toEqual([PLAN_DETAIL_PATH, `${LEVELS}/9`]);
+  });
+
+  it('수준이 없는 품목은 「미지정」에서 골라 지정한다 — 사유를 비우면 싣지 않는다', async () => {
+    const { requests, user } = renderSelectedPlan(levelRoutes([]));
+    await awaitPlanForm();
+
+    await user.click(await waitFor(levelSelect));
+    expect(screen.getByRole('option', { name: '미지정' })).toBeInTheDocument();
+    await user.click(screen.getByRole('option', { name: '수월' }));
+    await user.click(within(planForm()).getByRole('button', { name: '저장' }));
+
+    await screen.findByText('저장했습니다');
+    const post = requests.find((r) => r.method === 'POST' && r.url.pathname === LEVELS);
+    expect(JSON.parse(post?.body ?? '{}')).toEqual({
+      itemId: 5001,
+      inspectionLevelCode: 'REDUCED',
+    });
+  });
+
+  it('「이력」 창은 검사 기준 이력 · 검사 수준 이력 탭으로 나뉘고, 검사 수준 이력은 그 품목만 조회한다', async () => {
+    const { requests, user } = renderSelectedVersion([
+      ...levelRoutes([LEVEL]),
+      {
+        match: (request) => isGet(request, '/audit/events'),
+        respond: () => jsonResponse({ items: [], page: { page: 1, size: 100, total: 0 } }),
+      },
+    ]);
+    await awaitVersionForm();
+
+    await user.click(await screen.findByRole('button', { name: '버전 이력' }));
+    const dialog = await screen.findByRole('dialog', { name: /^버전 이력/ });
+    expect(within(dialog).getByRole('tab', { name: '검사 기준 이력' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+
+    await user.click(within(dialog).getByRole('tab', { name: '검사 수준 이력' }));
+    expect(await within(dialog).findByText('합성 최초 지정')).toBeInTheDocument();
+    expect(requestsTo(requests, HISTORIES)[0]?.url.searchParams.get('itemId')).toBe('5001');
+  });
+});

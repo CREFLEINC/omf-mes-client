@@ -49,18 +49,20 @@ export const useInspectionLevelHistories = (
 };
 
 /**
- * 품목 하나의 현재 검사 수준 — 없으면 `null`(미지정). 검사 기준 상세의 「검사 수준」 칸이 쓴다(omf-all-around#357).
+ * 품목 하나의 현재 검사 수준 — 없으면 `null`(미지정). 검사 기준 상세의 「검사 수준」 칸 · 기본 정보 수정 창이 쓴다(omf-all-around#357).
  * 키는 IQC 검사 화면의 「검사 수준」 칸과 같다 — 저장하면 `inspectionLevelKeys.all` 무효화로 함께 낡는다.
  */
-export const useItemInspectionLevel = (itemId: number) => {
+export const useItemInspectionLevel = (itemId: number | null) => {
   const { client } = useApiClient();
 
   return useQuery({
     queryKey: [...inspectionLevelKeys.all, 'item', itemId] as const,
+    /* 품목이 없으면(전 품목 공통 · IQC 밖) 묻지 않는다. */
+    enabled: itemId !== null,
     queryFn: (): Promise<ItemInspectionLevel | null> =>
       runRequest(() =>
         client.GET('/quality/item-inspection-levels', {
-          params: { query: { itemId, page: 1, size: 1 } },
+          params: { query: { itemId: itemId ?? 0, page: 1, size: 1 } },
         }),
       ).then((paged: Paged<ItemInspectionLevel>) => paged.items[0] ?? null),
   });
