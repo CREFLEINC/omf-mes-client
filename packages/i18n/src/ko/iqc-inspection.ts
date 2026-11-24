@@ -147,7 +147,7 @@ export const iqcInspection = {
     },
     level: {
       unset: '미지정',
-      saveFailed: '검사 수준을 지정하지 못했습니다. 검사 수준 관리 화면에서 지정해 주세요.',
+      saveFailed: '검사 수준을 지정하지 못했습니다. 검사 기준 관리에서 이 품목의 IQC 기준을 열고 「기본 정보 수정」으로 지정해 주세요.',
       loadFailed: '불러오지 못함',
       set: '지정',
     },

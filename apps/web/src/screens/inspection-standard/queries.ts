@@ -83,7 +83,7 @@ export const useInspectionPlanList = (
 
 /** 서버 조건으로는 거를 수 없는 조건이 걸렸는가 — 그러면 전부 받아 화면이 거른다. */
 const needsClientFilter = (filters: PlanFilters): boolean =>
-  filters.inactiveOnly || filters.unapprovedOnly || filters.versionStatus !== '';
+  filters.inactiveOnly || filters.versionStatus !== '';
 
 type ApiClient = ReturnType<typeof useApiClient>['client'];
 
@@ -99,7 +99,7 @@ const latestVersionStatus = async (
   return latest === undefined ? null : resolveVersionStatus(latest.statusCode).status;
 };
 
-/** 서버 조건으로 전부 받아 미사용만 · 미승인만 · 상태를 화면이 거른다. */
+/** 서버 조건으로 전부 받아 미사용만 · 상태를 화면이 거른다. */
 const fetchFilteredPlans = async (
   client: ApiClient,
   filters: PlanFilters,
@@ -108,11 +108,7 @@ const fetchFilteredPlans = async (
     (query) => runRequest(() => client.GET('/quality/inspection-plans', { params: { query } })),
     toListQuery(filters, 1, ALL_PAGE_SIZE),
   );
-  const kept = all.filter(
-    (plan) =>
-      (!filters.inactiveOnly || !plan.isActive) &&
-      (!filters.unapprovedOnly || plan.approvedAt === null || plan.approvedAt === undefined),
-  );
+  const kept = all.filter((plan) => !filters.inactiveOnly || !plan.isActive);
   if (filters.versionStatus === '') return kept;
 
   const statuses = await Promise.all(
@@ -134,7 +130,7 @@ export interface PlanUsageCounts {
  */
 export const usePlanUsageCounts = (
   filters: PlanFilters,
-  /** 칩이 서는 자리(탭 묶음)에서만 센다 — 칩이 없으면 요청도 없다. */
+  /** 칩이 없으면 요청도 없다. */
   enabled: boolean,
 ): UseQueryResult<PlanUsageCounts> => {
   const { client } = useApiClient();

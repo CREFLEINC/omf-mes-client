@@ -1,10 +1,9 @@
 import type { components } from '@omf-mes/api-client';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 
-type InspectionLevelCode = components['schemas']['ItemInspectionLevel']['inspectionLevelCode'];
 type ItemInspectionLevel = components['schemas']['ItemInspectionLevel'];
 type ItemInspectionLevelHistory = components['schemas']['ItemInspectionLevelHistory'];
 
@@ -14,19 +13,8 @@ export const PAGE_SIZE = 50;
 export const inspectionLevelKeys = {
   /** 무효화용 앞부분 — 저장하면 목록과 이력이 함께 낡는다. */
   all: ['inspection-level'] as const,
-  list: (query: LevelListFilter) => ['inspection-level', 'list', query] as const,
-  counts: (itemId: number | null) => ['inspection-level', 'counts', itemId] as const,
-  history: (itemId: number | null, page: number, size: number) =>
-    ['inspection-level', 'history', itemId, page, size] as const,
+  itemHistory: (itemId: number) => ['inspection-level', 'history', itemId] as const,
 };
-
-export interface LevelListFilter {
-  /** 품목 선택 창에서 고른 품목 — 없으면 전체(#208). */
-  itemId: number | null;
-  level: InspectionLevelCode | '';
-  page: number;
-  size: number;
-}
 
 export interface PageMetaView {
   page: number;
@@ -39,77 +27,49 @@ export interface Paged<T> {
   page: PageMetaView;
 }
 
-export const useInspectionLevels = (filter: LevelListFilter) => {
+/** 한 번에 받는 줄 수 — 품목 하나의 이력을 다 받을 때 쪽마다 이만큼씩 받는다. */
+const ALL_PAGE_SIZE = 100;
+
+/**
+ * 품목 하나의 전환 이력 전부. 서버는 최근 것부터 쪽으로만 주고 정렬 조건이 없어,
+ * 「변경 일시」 오름 · 내림을 쪽을 넘어 맞게 하려고 다 받아 화면이 정렬 · 쪽 나누기를 한다(사용자 지시 · omf-all-around#357).
+ */
+export const useItemInspectionLevelHistories = (itemId: number) => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: inspectionLevelKeys.list(filter),
-    placeholderData: keepPreviousData,
-    queryFn: (): Promise<Paged<ItemInspectionLevel>> =>
-      runRequest(() =>
-        client.GET('/quality/item-inspection-levels', {
-          params: {
-            query: {
-              ...(filter.itemId === null ? {} : { itemId: filter.itemId }),
-              ...(filter.level === '' ? {} : { inspectionLevelCode: filter.level }),
-              page: filter.page,
-              size: filter.size,
-            },
-          },
-        }),
-      ),
-  });
-};
-
-/** 상단 칩 건수 — 전체 · 수준별 품목 수. 쪽 크기 1 로 묻고 합계만 쓴다(검사 기준 사용 여부 칩과 같다 · #208). */
-export const useInspectionLevelCounts = (
-  itemId: number | null,
-  levels: readonly InspectionLevelCode[],
-) => {
-  const { client } = useApiClient();
-
-  return useQuery({
-    queryKey: inspectionLevelKeys.counts(itemId),
-    queryFn: async (): Promise<Record<InspectionLevelCode | '', number>> => {
-      const total = (level: InspectionLevelCode | '') =>
-        runRequest(() =>
-          client.GET('/quality/item-inspection-levels', {
-            params: {
-              query: {
-                ...(itemId === null ? {} : { itemId }),
-                ...(level === '' ? {} : { inspectionLevelCode: level }),
-                page: 1,
-                size: 1,
-              },
-            },
+    queryKey: inspectionLevelKeys.itemHistory(itemId),
+    queryFn: async (): Promise<ItemInspectionLevelHistory[]> => {
+      const items: ItemInspectionLevelHistory[] = [];
+      for (let page = 1; ; page += 1) {
+        const data: Paged<ItemInspectionLevelHistory> = await runRequest(() =>
+          client.GET('/quality/item-inspection-level-histories', {
+            params: { query: { itemId, page, size: ALL_PAGE_SIZE } },
           }),
-        ).then((paged) => paged.page.total);
-      const keys = ['', ...levels] as const;
-      const totals = await Promise.all(keys.map(total));
-      return Object.fromEntries(keys.map((key, index) => [key, totals[index]])) as Record<
-        InspectionLevelCode | '',
-        number
-      >;
+        );
+        items.push(...data.items);
+        if (items.length >= data.page.total || data.items.length === 0) return items;
+      }
     },
   });
 };
 
-/** 전환 이력. 품목을 고르면 그 품목만 본다. */
-export const useInspectionLevelHistories = (
-  itemId: number | null,
-  page: number,
-  size: number = PAGE_SIZE,
-) => {
+/**
+ * 품목 하나의 현재 검사 수준 — 없으면 `null`(미지정). 검사 기준 상세의 「검사 수준」 칸 · 기본 정보 수정 창이 쓴다(omf-all-around#357).
+ * 키는 IQC 검사 화면의 「검사 수준」 칸과 같다 — 저장하면 `inspectionLevelKeys.all` 무효화로 함께 낡는다.
+ */
+export const useItemInspectionLevel = (itemId: number | null) => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: inspectionLevelKeys.history(itemId, page, size),
-    placeholderData: keepPreviousData,
-    queryFn: (): Promise<Paged<ItemInspectionLevelHistory>> =>
+    queryKey: [...inspectionLevelKeys.all, 'item', itemId] as const,
+    /* 품목이 없으면(전 품목 공통 · IQC 밖) 묻지 않는다. */
+    enabled: itemId !== null,
+    queryFn: (): Promise<ItemInspectionLevel | null> =>
       runRequest(() =>
-        client.GET('/quality/item-inspection-level-histories', {
-          params: { query: { ...(itemId === null ? {} : { itemId }), page, size } },
+        client.GET('/quality/item-inspection-levels', {
+          params: { query: { itemId: itemId ?? 0, page: 1, size: 1 } },
         }),
-      ),
+      ).then((paged: Paged<ItemInspectionLevel>) => paged.items[0] ?? null),
   });
 };

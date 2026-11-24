@@ -6,8 +6,6 @@ import type { Translated } from './translated';
  * 단위를 지우면 30을 30개로 읽는다(#201).
  */
 export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
-  title: 'Đăng ký tiêu chuẩn kiểm tra',
-  breadcrumbRoot: 'Quản lý chất lượng',
   panes: {
     plan: 'Tiêu chuẩn kiểm tra',
     version: 'Danh sách phiên bản',
@@ -20,7 +18,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   actions: {
     openRouting: 'Tra cứu routing',
     reactivate: 'Sử dụng lại',
-    approve: 'Phê duyệt',
     copy: 'Sao chép',
     /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
     tempSave: 'Lưu tạm',
@@ -97,8 +94,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   dialog: {
     deactivateTitle: 'Bạn có muốn ngừng sử dụng tiêu chuẩn kiểm tra không?',
     activateTitle: 'Bạn có muốn sử dụng lại tiêu chuẩn kiểm tra không?',
-    approveTitle: 'Phê duyệt tiêu chuẩn kiểm tra?',
-    approveDescription: 'Sau khi phê duyệt thì không thể hủy.',
     activateDescription: 'Sử dụng lại thì có thể áp dụng tiêu chuẩn này cho lần kiểm tra mới.',
     deactivateDescription:
       'Khi ngừng dùng, tiêu chuẩn sẽ không áp dụng được cho lần kiểm tra mới. Thông tin tiêu chuẩn kiểm tra không bị xóa.',
@@ -141,7 +136,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   result: {
     deactivated: 'Đã ngừng sử dụng tiêu chuẩn kiểm tra.',
     activated: 'Đã sử dụng lại tiêu chuẩn kiểm tra.',
-    approved: 'Đã phê duyệt tiêu chuẩn kiểm tra.',
     copied:
       'Đã tạo bản sao tiêu chuẩn kiểm tra. Phiên bản đang soạn — hãy kiểm tra nội dung rồi xác nhận.',
     confirmed: 'Đã xác nhận phiên bản.',
@@ -205,8 +199,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     chipInspectionType: (label: string): string => `Loại kiểm tra: ${label}`,
     chipRemoveKeyword: 'Bỏ điều kiện từ khóa',
     chipRemoveInspectionType: 'Bỏ điều kiện loại kiểm tra',
-    unapprovedOnly: 'Chưa phê duyệt',
-    chipRemoveUnapproved: 'Bỏ điều kiện chưa phê duyệt',
     usageLabel: 'Sử dụng',
     usageAll: 'Tất cả',
     usageActive: 'Đang dùng',
@@ -219,13 +211,26 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     chipItem: (label: string): string => `Mặt hàng: ${label}`,
     chipRemoveItem: 'Bỏ điều kiện mặt hàng',
   },
+  /** IQC 기준 상세의 품목 검사 수준 칸 — 검사 수준 설정 화면을 합쳤다(omf-all-around#357). */
+  itemLevel: {
+    label: 'Mức kiểm tra',
+    unset: 'Chưa chỉ định',
+    loadFailed: 'Không tải được',
+    /** 기본 정보 수정 창 — 수준을 바꾸면 나오는 사유 칸(선택 · 이력에 남는다). */
+    reason: 'Lý do thay đổi',
+    reasonPlaceholder: 'Nhập lý do (không bắt buộc)',
+    /** 아래 카드 탭 — 버전 관리 · 검사 수준 변경 이력(사용자 지시 · #357). historyTitle 은 그 탭 상자의 접근성 이름. */
+    detailTabs: 'Loại chi tiết',
+    versionTab: 'Quản lý phiên bản',
+    levelTab: 'Lịch sử thay đổi mức kiểm tra',
+    historyTitle: 'Lịch sử thay đổi mức kiểm tra',
+  },
   detail: {
     title: 'Chi tiết tiêu chuẩn kiểm tra',
     createTitle: 'Đăng ký tiêu chuẩn kiểm tra',
     copyTitle: 'Sao chép tiêu chuẩn kiểm tra',
     copyNote: (version: number): string =>
       `Sao chép thiết lập và hạng mục kiểm tra của phiên bản ${String(version)}. Không sao chép bản vẽ.`,
-    chipNotApproved: 'Chưa phê duyệt',
     chipActive: 'Sử dụng',
     chipInactive: 'Ngừng dùng',
     editBasic: 'Sửa thông tin cơ bản',
@@ -234,7 +239,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     pqcSkipOff: 'Không áp dụng',
     close: 'Đóng',
     defaultSkipLabel: 'Có bỏ qua mặc định',
-    approvalLabel: 'Trạng thái phê duyệt',
     activeLabel: 'Trạng thái sử dụng',
   },
   versionSection: {
@@ -294,10 +298,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     item: 'Mặt hàng',
     itemCode: 'Mã mặt hàng',
     itemName: 'Tên mặt hàng',
-    approval: 'Trạng thái phê duyệt',
     active: 'Trạng thái sử dụng',
-    approved: 'Đã duyệt',
-    notApproved: 'Chưa duyệt',
   },
   compare: {
     title: 'So sánh phiên bản',
@@ -416,7 +417,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     process: 'Công đoạn',
     routing: 'Routing',
     defaultSkip: 'Bỏ qua mặc định',
-    approval: 'Phê duyệt',
     active: 'Sử dụng',
     planVersion: 'Phiên bản',
     status: 'Trạng thái',
@@ -466,9 +466,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     /** 「전 품목 공통 기준」. 계약이 품목 널을 허용한다 — 빈 칸으로 두면 빠뜨린 것처럼 보인다. */
     allItems: 'Chung mọi mặt hàng',
     pickItem: 'Hãy chọn mặt hàng',
-    /* 승인자 이름을 만들지 않는다 — 계약이 주는 것은 사용자 번호뿐이라 시각만 낸다. */
-    approvedAt: (at: string): string => `Đã phê duyệt · ${at}`,
-    notApproved: 'Chưa phê duyệt',
     active: 'Đang dùng',
     inactive: 'Ngừng dùng',
     /*

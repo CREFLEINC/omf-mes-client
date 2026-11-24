@@ -4,10 +4,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 
-/* 검사 수준 관리 권한(W-03-12)이 있는 계정 — 권한이 없어서 [지정]이 안 서는 것과 가르기 위해서다. */
+/* 검사 수준 지정 권한(검사기준 등록 W-06-02 · W-03-12 를 합침 · #357)이 있는 계정 — 권한이 없어서 [지정]이 안 서는 것과 가르기 위해서다. */
 vi.mock('../../patterns/session', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../patterns/session')>()),
-  useSession: () => ({ session: { permissions: ['W-03-12'] } }),
+  useSession: () => ({ session: { permissions: ['W-06-02'] } }),
 }));
 
 const { ItemLevel, ItemLevelStep } = await import('./item-level');

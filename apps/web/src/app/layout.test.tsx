@@ -216,13 +216,13 @@ describe('AppLayout', () => {
     );
   });
 
-  /* 검사기준은 「품질 기준 정보」 묶음의 첫 탭이다 — 사이드바의 묶음 줄이 그 주소를 건다. */
-  it('사이드바에 품질 기준 정보 묶음이 검사기준 주소로 보인다', () => {
+  /* 검사 수준 설정을 검사 기준 화면에 합쳐 묶음을 풀었다 — 「검사 기준 관리」 한 줄이다(omf-all-around#357). */
+  it('사이드바에 검사 기준 관리 줄이 검사기준 주소로 보인다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
 
-    expect(within(sidebar).getByRole('link', { name: '품질 기준 정보' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: '검사 기준 관리' })).toHaveAttribute(
       'href',
       '/master-data/inspection-standard',
     );
@@ -527,7 +527,7 @@ describe('AppLayout', () => {
 
     const qualityOrder = [
       '/logistics/iqc-inspection',
-      /* 「품질 기준 정보」 묶음 — 검사기준 → 검사표 기준(W-06-24) → 검사 수준 관리(W-03-12). */
+      /* 검사 기준 — 검사 수준 관리(W-03-12)를 상세로 합쳤다(omf-all-around#357). */
       '/master-data/inspection-standard',
       /* 「품질 코드 관리」 묶음 — 불량·원인코드 → 판정유형 코드(#208). */
       '/master-data/defect-cause-code',
@@ -952,7 +952,7 @@ describe('AppLayout', () => {
       '/logistics/document-progress',
       /* 품질 관리 — 검사 조회·판정(IQC · PQC · OQC 탭) → 기준·코드 → 이력 → LOT 판정 갈래. */
       '/logistics/iqc-inspection' /* ← 검사 조회·판정 */,
-      '/master-data/inspection-standard' /* ← 품질 기준 정보 */,
+      '/master-data/inspection-standard' /* ← 검사 기준 관리 */,
       '/master-data/defect-cause-code',
       '/quality/inspection-results' /* ← 검사 실적·결과 */,
       '/quality/lot-status' /* ← LOT 상태 */,
@@ -993,7 +993,7 @@ describe('AppLayout', () => {
   });
 
   /*
-   * 탭 묶음 열두 개의 **탭 차례와 경로**(계측기 · 설비 보전 · 툴 보전은 메뉴에서 감췄다). 사이드바 전체 감지기가 묶음 줄만 재므로, 묶음 안의
+   * 탭 묶음 열한 개의 **탭 차례와 경로**(계측기 · 설비 보전 · 툴 보전은 메뉴에서 감췄다). 사이드바 전체 감지기가 묶음 줄만 재므로, 묶음 안의
    * 차례는 여기서 얼린다 — 묶음 줄을 **실제로 눌러** 첫 탭에 들어가고 그 자리의 탭 막대를 읽는다.
    * 줄을 누르면 첫 탭에 닿는다는 것(`to` = 첫 탭)도 함께 재진다.
    */
@@ -1012,7 +1012,6 @@ describe('AppLayout', () => {
         '/logistics/supplier-return',
         '/logistics/disposal-issue',
       ],
-      '품질 기준 정보': ['/master-data/inspection-standard', '/quality/inspection-levels'],
       '품질 코드 관리': ['/master-data/defect-cause-code', '/master-data/defect-process-mapping'],
       '검사 실적·결과': ['/quality/inspection-results', '/quality/inspection-sheets'],
       'LOT 상태': [

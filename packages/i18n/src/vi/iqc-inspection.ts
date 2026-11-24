@@ -82,7 +82,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     },
     level: {
       saveFailed:
-        'Không thể chỉ định mức kiểm tra. Vui lòng chỉ định tại màn hình quản lý mức kiểm tra.',
+        'Không thể chỉ định mức kiểm tra. Vui lòng mở tiêu chuẩn IQC của mặt hàng này trong Quản lý tiêu chuẩn kiểm tra và chỉ định tại 「Sửa thông tin cơ bản」.',
       unset: 'Chưa chỉ định',
       loadFailed: 'Không tải được',
       set: 'Chỉ định',

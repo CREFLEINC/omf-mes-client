@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 
 const t = messages.inspectionStandard;
 
-export type PlanActionKind = 'deactivate' | 'activate' | 'approve';
+export type PlanActionKind = 'deactivate' | 'activate';
 
 const TEXT: Record<PlanActionKind, { title: string; action: string; description: string }> = {
   deactivate: {
@@ -16,12 +16,6 @@ const TEXT: Record<PlanActionKind, { title: string; action: string; description:
     title: t.dialog.activateTitle,
     action: t.actions.reactivate,
     description: t.dialog.activateDescription,
-  },
-  /* 승인(사용자 지시 · omf-all-around#258) — 계약에 승인 해제가 없어 되돌릴 수 없다. */
-  approve: {
-    title: t.dialog.approveTitle,
-    action: t.actions.approve,
-    description: t.dialog.approveDescription,
   },
 };
 
@@ -36,7 +30,7 @@ export interface PlanActionDialogProps {
 }
 
 /**
- * 사용 중지 · 다시 사용(사용자 지시 2026-11-04) · 승인(#208 에서 걷었다가 되살림 · 사용자 지시 omf-all-around#258) 확인.
+ * 사용 중지 · 다시 사용(사용자 지시 2026-11-04) 확인. 승인은 걷었다(omf-all-around#357).
  *
  * **되돌릴 수 없다** — 물리 삭제가 없어 사용 중지가 마지막 상태다.
  * 그래서 확인을 한 단계 두고 **무엇이 일어나는지 먼저 밝힌다.**
@@ -55,7 +49,7 @@ export const PlanActionDialog = ({
   <Dialog
     open={open}
     onClose={onClose}
-    /* 사용 중지 · 승인 창은 넓힌다(사용자 시안 · #258). */
+    /* 사용 중지 창은 넓힌다(사용자 시안 · #258). */
     size={kind === 'activate' ? 'sm' : 'md'}
     title={TEXT[kind].title}
     closeOnBackdropClick={false}

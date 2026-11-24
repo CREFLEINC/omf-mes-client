@@ -31,8 +31,6 @@ export interface PlanFilters {
   includeInactive: boolean;
   /** 사용 여부 칩의 「미사용」 — 미사용인 기준만(#208). 서버 조건이 없어 화면이 거른다. */
   inactiveOnly: boolean;
-  /** 「미승인」 체크 — 승인되지 않은 기준만(#208). 서버 조건이 없어 화면이 거른다. */
-  unapprovedOnly: boolean;
   /** 상태 선택 — 가장 높은 버전의 상태(#208). 비면 전체. 서버 조건이 없어 화면이 거른다. */
   versionStatus: '' | 'draft' | 'confirmed' | 'obsolete';
 }
