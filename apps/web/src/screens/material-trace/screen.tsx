@@ -3,14 +3,15 @@
  * 유형: T-W-A 조회형 — 위 조건 줄, 왼쪽 LOT 목록(최근 100 · 공급사 + 입하일 조건 · 스캔 누적), 오른쪽 고른 LOT 하나의
  *       요약 · LOT 계보(반제품을 지나 출하 · 재고까지) · 영향 제품 LOT(최종 LOT 목록). 틀은 `patterns/trace-tree`.
  * 이탈: C-6 조회 조건 줄에 [초기화] 대신 [최근 목록으로](목록 상태를 지움, FR-024)를 두고 번호 칸은 Enter · 스캔으로
- *       바로 찾는다(LOT 상태 조회와 같다). C-10 스캔 목록에만 「스캔 번호」 칸이 선다(어느 번호로 들어왔는지, FR-025).
- *       계보 표는 조회형 상세의 하위 표지만 들여쓰기 칸이 길어 상세 창 안에서 가로로 구를 수 있다.
+ *       바로 찾는다(LOT 상태 조회와 같다). C-10 · C-16 목록과 최종 LOT 표의 첫 칸은 「LOT 번호 + 아래 줄(들어온 번호 ·
+ *       품목 · 상대)」 두 줄이고, LOT 번호는 줄이지 않고 칸 폭에서 접는다(시안 2판 · 총괄 확인 2026-11-24). 최종 LOT 표의
+ *       묶은 칸(고객 · 출하번호 · 창고 위치)은 두 줄까지 접는다. 계보 표는 들여쓰기 칸이 길어 상세 창 안에서 가로로 구를 수 있다.
  */
 import { Chip, type Column } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 
 import { TraceEndTable } from '../../patterns/trace-tree/end-table';
-import { TraceLotNo, lotStatusTone, shortDateTime } from '../../patterns/trace-tree/cells';
+import { TraceLotCell, lotStatusTone, shortDateTime } from '../../patterns/trace-tree/cells';
 import { TraceSummaryCard } from '../../patterns/trace-tree/summary-card';
 import { TraceWorkspace, type TraceDetailContext } from '../../patterns/trace-tree/trace-workspace';
 import type { ForwardEndRow, ForwardTree } from '../../patterns/trace-tree/types';
@@ -33,7 +34,7 @@ const firstWithMore = (values: readonly string[]): string =>
     ? (values[0] ?? '')
     : `${values[0] ?? ''} ${t.summary.moreShipments(values.length - 1)}`;
 
-const Summary = ({ tree, names, partial, entry }: TraceDetailContext) => {
+const Summary = ({ tree, names, partial, entry, stageOf }: TraceDetailContext) => {
   const forward = tree as ForwardTree;
   const root = forward.nodes.find((node) => node.nodeKey === forward.root);
   if (root?.lot === undefined) return null;
@@ -54,12 +55,29 @@ const Summary = ({ tree, names, partial, entry }: TraceDetailContext) => {
     ...(material?.supplierLotNo
       ? [{ key: 'supplierLot', label: t.summary.supplierLot, value: material.supplierLotNo }]
       : []),
+    ...(material?.iqcJudgmentCode
+      ? [
+          {
+            key: 'iqc',
+            label: t.summary.iqc,
+            value: (
+              <Chip
+                variant="status"
+                size="sm"
+                status={material.iqcJudgmentCode === 'PASS' ? 'success' : 'warning'}
+              >
+                {names.iqc(material.iqcJudgmentCode)}
+              </Chip>
+            ),
+          },
+        ]
+      : []),
   ];
   const summary = forward.summary;
   return (
     <TraceSummaryCard
       lot={root.lot}
-      kindLabel={t.tree.stages[root.kind]}
+      kindLabel={t.tree.stages[stageOf(root.nodeKey) ?? root.kind]}
       statusName={names.lotStatus(root.lot.statusCode)}
       serialNo={entry?.serialNo ?? null}
       partial={partial}
@@ -99,17 +117,13 @@ const columns = (statusName: (code: string) => string): Column<ForwardEndRow>[] 
     {
       key: 'lotNo',
       header: c.lotNo,
-      width: '170px',
-      render: (row) => <TraceLotNo lotNo={row.lot.lotNo} />,
-    },
-    {
-      key: 'item',
-      header: c.itemName,
-      width: '100px',
+      width: '180px',
       render: (row) => (
-        <span className="ellipsis-cell" title={named(row.item.name, row.item.code)}>
-          {row.item.name}
-        </span>
+        <TraceLotCell
+          lotNo={row.lot.lotNo}
+          sub={row.item.name}
+          subTitle={named(row.item.name, row.item.code)}
+        />
       ),
     },
     {
@@ -128,7 +142,7 @@ const columns = (statusName: (code: string) => string): Column<ForwardEndRow>[] 
       render: (row) => {
         const text = destinationOf(row);
         return (
-          <span className="ellipsis-cell" title={text}>
+          <span className="trace-tree-wrap" title={text}>
             {text}
           </span>
         );

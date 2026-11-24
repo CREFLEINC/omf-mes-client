@@ -69,6 +69,7 @@ export const forwardTreeOf = (lotId: number, lotNo: string): ForwardTree => ({
         supplier: { partnerId: 7, code: 'SUP-S', name: '공급사 S' },
         supplierLotNo: 'SUP-A',
         receivedAt: '2026-11-01T02:00:00Z',
+        iqcJudgmentCode: 'PASS',
       },
     },
     {

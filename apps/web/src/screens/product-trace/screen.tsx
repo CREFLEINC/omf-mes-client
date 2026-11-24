@@ -4,12 +4,13 @@
  * 유형: T-W-A 조회형 — 위 조건 줄, 왼쪽 LOT 목록(최근 100 — LOT 마다 출하일, 없으면 제품 창고 입고일 · 고객 + 출하일 조건 ·
  *       스캔 누적), 오른쪽 고른 LOT 하나의 요약(그 LOT 의 출하) · LOT 계보(W/O → 투입 자재 → 반제품이면 그 자재까지 →
  *       입하 LOT · 공급사) · 투입 원자재 LOT(최종 LOT 목록). 틀은 `patterns/trace-tree`.
- * 이탈: W-02-13 과 같다(C-6 [최근 목록으로] · 스캔 Enter, C-10 스캔 목록의 「스캔 번호」 칸, 계보 표 가로 구름).
+ * 이탈: W-02-13 과 같다(C-6 [최근 목록으로] · 스캔 Enter, C-10 · C-16 첫 칸 두 줄 · LOT 번호 접기, 묶은 칸(공급사 ·
+ *       공급사 LOT) 두 줄, 계보 표 가로 구름).
  */
 import { Chip, type Column } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 
-import { TraceLotNo, shortDateTime } from '../../patterns/trace-tree/cells';
+import { TraceLotCell, shortDateTime } from '../../patterns/trace-tree/cells';
 import { TraceEndTable } from '../../patterns/trace-tree/end-table';
 import { TraceSummaryCard } from '../../patterns/trace-tree/summary-card';
 import { TraceWorkspace, type TraceDetailContext } from '../../patterns/trace-tree/trace-workspace';
@@ -22,7 +23,7 @@ const qtyFormat = new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 3 });
 const rowIdOf = (row: BackwardEndRow): string =>
   `${String(row.lot.lotId)}:${row.workOrder.workOrderNo}`;
 
-const Summary = ({ tree, names, partial, entry }: TraceDetailContext) => {
+const Summary = ({ tree, names, partial, entry, stageOf }: TraceDetailContext) => {
   const backward = tree as BackwardTree;
   /* 시리얼로 들어오면 뿌리가 시리얼이다 — 요약은 그 아래 LOT 이다. */
   const rootNode = backward.nodes.find((node) => node.nodeKey === backward.root);
@@ -67,7 +68,7 @@ const Summary = ({ tree, names, partial, entry }: TraceDetailContext) => {
   return (
     <TraceSummaryCard
       lot={lotNode.lot}
-      kindLabel={t.tree.stages[lotNode.kind]}
+      kindLabel={t.tree.stages[stageOf(lotNode.nodeKey) ?? lotNode.kind]}
       statusName={names.lotStatus(lotNode.lot.statusCode)}
       serialNo={rootNode?.serialNo ?? entry?.serialNo ?? null}
       partial={partial}
@@ -95,17 +96,13 @@ const columns = (iqcName: (code: string) => string): Column<BackwardEndRow>[] =>
     {
       key: 'lotNo',
       header: c.lotNo,
-      width: '170px',
-      render: (row) => <TraceLotNo lotNo={row.lot.lotNo} />,
-    },
-    {
-      key: 'item',
-      header: c.itemName,
-      width: '100px',
+      width: '180px',
       render: (row) => (
-        <span className="ellipsis-cell" title={named(row.item.name, row.item.code)}>
-          {row.item.name}
-        </span>
+        <TraceLotCell
+          lotNo={row.lot.lotNo}
+          sub={row.item.name}
+          subTitle={named(row.item.name, row.item.code)}
+        />
       ),
     },
     {
@@ -117,7 +114,7 @@ const columns = (iqcName: (code: string) => string): Column<BackwardEndRow>[] =>
           .join(', ');
         return (
           <span
-            className="ellipsis-cell"
+            className="trace-tree-wrap"
             title={
               row.supplier === null
                 ? text
@@ -134,13 +131,13 @@ const columns = (iqcName: (code: string) => string): Column<BackwardEndRow>[] =>
     {
       key: 'inboundLot',
       header: c.inboundLot,
-      width: '140px',
+      width: '116px',
       render: (row) =>
         row.inboundLot === null ? (
           ''
         ) : (
           <span
-            className="mono-cell"
+            className="trace-tree-wrap mono-cell"
             title={c.receivedAt(shortDateTime(row.inboundLot.receivedDate, true))}
           >
             {row.inboundLot.inboundLotNo}
@@ -150,7 +147,7 @@ const columns = (iqcName: (code: string) => string): Column<BackwardEndRow>[] =>
     {
       key: 'iqc',
       header: c.iqc,
-      width: '64px',
+      width: '60px',
       render: (row) => {
         const code = row.inboundLot?.iqcJudgmentCode ?? null;
         return code === null ? (
@@ -165,13 +162,15 @@ const columns = (iqcName: (code: string) => string): Column<BackwardEndRow>[] =>
     {
       key: 'workOrder',
       header: c.workOrder,
-      width: '140px',
-      render: (row) => <span className="mono-cell">{row.workOrder.workOrderNo}</span>,
+      width: '116px',
+      render: (row) => (
+        <span className="trace-tree-wrap mono-cell">{row.workOrder.workOrderNo}</span>
+      ),
     },
     {
       key: 'qty',
       header: c.qty,
-      width: '88px',
+      width: '80px',
       align: 'end',
       render: (row) =>
         row.consumedQty === null ? '' : `${qtyFormat.format(row.consumedQty)} ${row.uomCode}`,

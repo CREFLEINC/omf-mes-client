@@ -98,6 +98,10 @@ describe('W-02-13 자재 기준 생산 추적', () => {
     expect(within(tree).getByText('WO-SYN-0002')).toBeInTheDocument();
     expect(within(tree).getByText('SH-SYN-0001')).toBeInTheDocument();
     expect(within(tree).getByText(t.tree.stages.SEMI_LOT)).toBeInTheDocument();
+    /* 요약 — 입하 LOT · 공급사 · 공급사 LOT · IQC 결과 */
+    const summary = within(detail()).getByRole('region', { name: t.detail.base });
+    expect(within(summary).getByText('SUP-A')).toBeInTheDocument();
+    expect(within(summary).getByText('합격')).toBeInTheDocument();
     /* 영향 제품 LOT — 완제품(출하) · 반제품 P2(재고), 반제품 P1 은 없음 */
     const end = within(detail()).getByRole('table', { name: t.material.endTitle });
     expect(within(end).getByText('고객 X SH-SYN-0001')).toBeInTheDocument();
@@ -172,7 +176,7 @@ describe('W-02-13 자재 기준 생산 추적', () => {
   it('FR-003 주소 ?lot= 로 들어오면 그 LOT 을 목록에 넣고 고른다', async () => {
     setup(`/production/material-trace?lot=${String(B.lot.lotId)}`);
     await waitFor(() => expect(listRows()).toHaveLength(1));
-    expect(within(listTable()).getByTitle(B.lot.lotNo)).toBeInTheDocument();
+    expect(within(listTable()).getByText(B.lot.lotNo)).toBeInTheDocument();
     expect(
       await within(detail()).findByRole('table', { name: t.tree.caption }),
     ).toBeInTheDocument();
