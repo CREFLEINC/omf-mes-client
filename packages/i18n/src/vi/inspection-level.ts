@@ -9,17 +9,12 @@ export const inspectionLevel = {
 
   dialog: {
     addTitle: 'Chỉ định mức kiểm tra',
-    changeTitle: 'Đổi mức kiểm tra',
     item: 'Vật tư',
-    pickItem: 'Tìm vật tư',
-    pickConfirm: 'Chọn',
-    noItem: 'Hãy chọn vật tư.',
-    itemPlaceholder: 'Hãy chọn vật tư',
     level: 'Mức kiểm tra',
     reason: 'Lý do',
     reasonPlaceholder: 'Nhập lý do (không bắt buộc)',
-    sameLevel: 'Trùng với mức kiểm tra hiện tại.',
-    duplicate: 'Vật tư này đã được chỉ định mức kiểm tra. Hãy tải lại màn hình rồi dùng 「Đổi」.',
+    duplicate:
+      'Vật tư này đã được chỉ định mức kiểm tra. Vui lòng mở tiêu chuẩn IQC của mặt hàng này trong Quản lý tiêu chuẩn kiểm tra và đổi tại 「Sửa thông tin cơ bản」.',
   },
 
   history: {

@@ -134,7 +134,7 @@ export interface ItemLevelHistoryTableProps {
 }
 
 /**
- * 품목 하나의 검사 수준 전환 이력 표(사용자 시안 · #208). 검사 기준 상세의 「검사 수준 변경 이력」 탭과 「버전 이력」 창의 「검사 수준 이력」 탭이 쓴다(omf-all-around#357).
+ * 품목 하나의 검사 수준 전환 이력 표(사용자 시안 · #208). 검사 기준 상세의 「검사 수준 변경 이력」 탭이 쓴다(omf-all-around#357).
  */
 export const ItemLevelHistoryTable = ({ itemId }: ItemLevelHistoryTableProps) => {
   const [page, setPage] = useState(1);
@@ -154,7 +154,7 @@ export const ItemLevelHistoryTable = ({ itemId }: ItemLevelHistoryTableProps) =>
   const current = Math.min(page, Math.max(1, Math.ceil(total / size)));
   const rows = all.slice((current - 1) * size, current * size);
   /*
-   * 변경 사유 칸은 이 쪽의 가장 긴 사유만큼 넓힌다 — 잘라 「…」로 감추지 않고, 상자보다 넓으면 표 안에서 가로로 굴려 본다
+   * 변경 사유 칸은 이 품목 이력 전체에서 가장 긴 사유만큼 넓힌다(쪽을 넘겨도 열 폭이 흔들리지 않게) — 잘라 「…」로 감추지 않고, 상자보다 넓으면 표 안에서 가로로 굴려 본다
    * (사용자 지시 · omf-all-around#357).
    */
   const reasonWidth = useMemo(() => {

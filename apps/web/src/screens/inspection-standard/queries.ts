@@ -130,7 +130,7 @@ export interface PlanUsageCounts {
  */
 export const usePlanUsageCounts = (
   filters: PlanFilters,
-  /** 칩이 서는 자리(탭 묶음)에서만 센다 — 칩이 없으면 요청도 없다. */
+  /** 칩이 없으면 요청도 없다. */
   enabled: boolean,
 ): UseQueryResult<PlanUsageCounts> => {
   const { client } = useApiClient();

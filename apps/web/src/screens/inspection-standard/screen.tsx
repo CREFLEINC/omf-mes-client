@@ -335,9 +335,16 @@ export const InspectionStandardScreen = () => {
   const pageSize = readSize(searchParams);
 
   const selectedPlanId = Number(searchParams.get('plan') ?? '') || null;
+  /* 다른 기준을 고르면 아래 카드는 「버전 관리」 탭으로 돌아간다 — 이력 탭에 남아 버전 화면이 가려지지 않게. */
+  const [detailTabPlanId, setDetailTabPlanId] = useState(selectedPlanId);
+  if (detailTabPlanId !== selectedPlanId) {
+    setDetailTabPlanId(selectedPlanId);
+    setDetailTab('version');
+  }
 
   const planList = useInspectionPlanList(filters, page, pageSize);
-  const usageCounts = usePlanUsageCounts(filters, hub !== null);
+  /* 사용 여부 칩은 탭 막대가 있든 없든 선다(omf-all-around#357) — 건수도 늘 센다. */
+  const usageCounts = usePlanUsageCounts(filters, true);
 
   /** 엑셀 올리기 창. `null` 이면 닫혀 있다 — 파일과 결과는 창이 닫히면 함께 버린다. */
   const [importState, setImportState] = useState<{
@@ -747,7 +754,7 @@ export const InspectionStandardScreen = () => {
       ? null
       : resolveVersionStatus(versionDetail.data.inspectionPlanVersion.statusCode);
 
-  /* 버전 이력은 고른 버전이 있을 때만. 품목이 있는 IQC 기준이면 그 창에 검사 수준 이력 탭이 붙는다(omf-all-around#357). */
+  /* 버전 이력은 고른 버전이 있을 때만. 검사 수준 이력은 아래 카드 「검사 수준 변경 이력」 탭이 맡는다(omf-all-around#357). */
   const historyVersionId =
     selectedVersionId !== null && versionStatus !== null ? selectedVersionId : null;
   const historyPlan = planDetail.data?.inspectionPlan;
@@ -1461,7 +1468,8 @@ export const InspectionStandardScreen = () => {
    * 잃기 전에 먼저 막고 무엇을 하면 풀리는지 알린다.
    */
   /* 담아 둔 지시문은 「확정」이 저장하고 확정한다 — 확정을 막는 저장 전 편집에서는 뺀다. */
-  const isDirtyExceptGuide = isPlanDirty || isVersionDirty || isItemsDirty || drawingDraft.isDirty;
+  const isDirtyExceptGuide =
+    isPlanDirty || isLevelDirty || isVersionDirty || isItemsDirty || drawingDraft.isDirty;
   const isAnythingDirty = isDirtyExceptGuide || guideDraft !== null;
 
   /* 작성중 버전이 이미 있으면 새로 발행하지 않는다 — 서버는 막지 않아 화면이 먼저 막는다(사용자 지시 · #196). */
@@ -1652,7 +1660,6 @@ export const InspectionStandardScreen = () => {
           </Button>
         ) : undefined
       }
-      /* 버전이 없을 때의 검사 수준 이력은 상세 「검사 수준」 칸 옆 「변경 이력」이 맡는다(사용자 지시 · omf-all-around#357). */
       onHistory={historyVersionId !== null ? () => setIsHistoryOpen(true) : undefined}
       versions={versions}
       isLoading={versionList.isPending}
@@ -1847,7 +1854,7 @@ export const InspectionStandardScreen = () => {
         <PlanDetailHead
           plan={planDetail.data.inspectionPlan}
           itemLabel={itemLabel}
-          /* IQC 기준이면 품목의 검사 수준을 보이고 그 자리에서 지정 · 변경한다(omf-all-around#357). */
+          /* IQC 기준이면 품목의 검사 수준을 보인다 — 변경은 「기본 정보 수정」 창에서 한다(omf-all-around#357). */
           itemLevel={(() => {
             const plan = planDetail.data.inspectionPlan;
             const itemId = plan.itemId ?? null;
@@ -1973,7 +1980,7 @@ export const InspectionStandardScreen = () => {
                     className="inspection-standard-version-card"
                     aria-label={t.itemLevel.historyTitle}
                   >
-                    <ItemLevelHistoryTable itemId={historyLevelItemId} />
+                    <ItemLevelHistoryTable key={historyLevelItemId} itemId={historyLevelItemId} />
                   </section>
                 ),
               },
@@ -2508,7 +2515,6 @@ export const InspectionStandardScreen = () => {
         onChange={(usage) => applyFilters(withUsage(filters, usage))}
       />
       <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
-      {/* 탭 묶음(품질 기준 정보) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다. */}
       {/*
        * 탭 막대가 없으면 사용 여부 칩 · 배치 단추만 오른쪽 끝 한 줄에 둔다(omf-all-around#357).
        * 화면 제목 · 경로(「품질 관리 > 검사기준 등록」)는 두지 않는다 — 사이드바 「검사 기준 관리」가 말한다(사용자 지시).

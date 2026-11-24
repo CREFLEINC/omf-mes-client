@@ -25,7 +25,7 @@ export interface PlanLevelFieldProps {
   /** 품목의 지금 수준 — 미지정이면 `null` */
   current: ItemInspectionLevel | null;
   status: 'pending' | 'error' | 'ready';
-  /** 검사 수준 관리 권한(W-03-12)이 없으면 보기만 */
+  /** 검사 기준 관리 권한(W-06-02)이 없으면 보기만 */
   canEdit: boolean;
   draft: LevelDraft | null;
   onChange: (next: LevelDraft | null) => void;

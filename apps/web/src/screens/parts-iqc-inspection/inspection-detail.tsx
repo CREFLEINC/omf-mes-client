@@ -234,7 +234,7 @@ export const InspectionDetail = ({
   const levelWrite = useLevelWrite(() => undefined);
   const savePendingLevel = () => {
     if (pendingLevel !== null) {
-      levelWrite.write({ row: null, values: pendingLevel });
+      levelWrite.write(pendingLevel);
       storePendingLevel(inspectionRequestId, null);
       setPendingLevel(null);
     }

@@ -106,8 +106,9 @@ const renderScreen = (
 const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
   requests.filter((request) => request.url.pathname === pathname);
 
+/* 사용 여부 칩 건수 조회(`size=1`)는 빼고 목록 요청만 센다 — 칩은 탭 막대 없이도 늘 건수를 센다(omf-all-around#357). */
 const planRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
-  requestsTo(requests, PLANS_PATH);
+  requestsTo(requests, PLANS_PATH).filter((r) => r.url.searchParams.get('size') !== '1');
 
 const planPane = (): HTMLElement => screen.getByRole('region', { name: '검사 기준' });
 
@@ -132,6 +133,20 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
     const first = planRequests(requests);
     expect(first).toHaveLength(1);
     expect(first[0]?.url.search).toBe('');
+  });
+
+  it('사용 여부 칩에 건수가 붙는다 — 탭 막대가 없어도 센다(omf-all-around#357)', async () => {
+    renderScreen([planListRoute()]);
+
+    const chips = await screen.findByRole('group', {
+      name: messages.inspectionStandard.filters.usageLabel,
+    });
+    const total = String(inspectionPlanFixtures.length);
+    await waitFor(() => {
+      expect(
+        within(chips).getByRole('button', { pressed: false, name: new RegExp(`^전체.*${total}`) }),
+      ).toBeInTheDocument();
+    });
   });
 
   it('서버 응답의 기준을 표에 그린다', async () => {

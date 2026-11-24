@@ -2064,7 +2064,6 @@ h2:has(> .inspection-standard-dialog-title) {
     .pqc-web-list,
     .oqc-inspection-queue-pane,
     .inspection-standard-list-pane,
-    .inspection-level-list-pane,
     .inspection-sheet-template-list-pane,
     .inspection-sheet-list-pane,
     .lot-status-pane,
@@ -20537,19 +20536,9 @@ dialog.terminal-map-form-dialog {
  * 같은 열에 맞춰 부가 정보(검사 유형 · 기준 버전 · 의뢰 일시)가 선다. LOT 열이 가장 넓고 길면 말줄임이다(#133).
  * 카드가 좁으면 두 열.
  */
-/* 검사 수준 지정 · 변경 창 — 품목 · 검사 수준 · 사유를 한 열로(#133). */
+/* 검사 수준 지정 창(IQC 검사) — 품목 · 검사 수준 · 사유를 한 열로(#133). */
 .form-grid.inspection-level-form {
   grid-template-columns: minmax(0, 1fr);
-}
-
-/* 「현재 검사 수준과 동일합니다.」 — 정보 아이콘 + 오류색 한 줄, 선택칸과 한 칸 띄운다(#133). */
-.inspection-level-same {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  margin-top: var(--space-2);
-  color: var(--semantic-error-text);
-  font: var(--type-body-sm);
 }
 
 /* 품목 값 — 항목명(작은 보조 글) 아래 본문보다 한 단계 큰 본문색(#133). */
@@ -20560,61 +20549,11 @@ dialog.terminal-map-form-dialog {
   letter-spacing: var(--type-title-sm-tracking);
 }
 
-/* 검사 수준 창 — 고른 품목 칸 · 「품목 찾기」를 한 줄로(#208). */
-.inspection-level-pick {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-/* 입력칸과 같은 높이·테두리의 읽기 전용 값 — 긴 품목명은 말줄임(#208). */
-.inspection-level-pick-value {
-  box-sizing: border-box;
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 2.5rem;
-  padding: var(--space-2) var(--space-3);
-  overflow: hidden;
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-sm);
-  color: var(--on-surface);
-  font: var(--type-body-md);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-/* 비어 있는 필수 칸은 처음부터 빨간 테두리만 — 안내는 흐린 글(검사 기준 탭과 같다 · #208). */
-.inspection-level-pick-empty {
-  border-color: var(--semantic-error-text);
-  color: var(--on-surface-variant);
-}
-
-/*
- * 검사 수준 관리 탭(#208 · 사용자 시안) — 목록 카드 하나에 제목 줄 · 검색 줄 · 안내 · 둥근 테두리 표 · 쪽 이동.
- * 카드 안 검색 줄의 아래 여백은 걷고(카드 간격이 맡는다), 라벨 없는 한 줄이라 가운데로 맞춘다.
- */
-/* 품목 검사 수준 이력(검사 수준 변경 이력 창 · 버전 이력 창 탭 · omf-all-around#357) — 표 · 쪽 이동 사이를 띄운다(#208). */
+/* 품목 검사 수준 이력(검사 기준 상세 「검사 수준 변경 이력」 탭 · omf-all-around#357) — 표 · 쪽 이동 사이를 띄운다(#208). */
 .inspection-level-history-dialog {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-}
-
-/* 목록 · 이력 카드 — 제목 · 표 · 쪽 이동 줄 사이를 같은 간격으로(#208). */
-.inspection-level-list-pane {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  min-width: 0;
-}
-
-.inspection-level-list-pane .pane-title {
-  margin: 0;
-}
-
-.inspection-level-list-pane > .page-nav {
-  margin-top: 0;
 }
 
 /* 상자보다 넓은 표(긴 변경 사유 등)는 표 안에서 가로로 굴려 본다(사용자 지시 · omf-all-around#357). DS 표의 감싸개가 맡는다. */

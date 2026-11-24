@@ -83,8 +83,7 @@ export const ItemLevel = ({
       )}
       {editing && item !== null && (
         <LevelDialog
-          row={row}
-          presetItem={{ itemId, ...item }}
+          item={{ itemId, ...item }}
           fieldErrors={{}}
           banner={null}
           isSaving={false}
