@@ -43247,6 +43247,8 @@ export interface paths {
           warehouseId?: number;
           itemId?: number;
           lotId?: number;
+          /** @description 참이면 **검사 건(IQC · OQC)에 묶이지 않은 부적합만** 낸다 — 재작업/폐기 판정 의뢰(W-04-07)로 올린 반품 · 제품 부적합이다. 검사 조회·판정 OQC 탭 「구분: 판정 의뢰」가 쓴다(omf-all-around#354). ⛔ 화면이 응답을 걸러 대신하지 않는다(페이지 단위). */
+          withoutInspectionRequestOnly?: boolean;
           /** @description 부적합 심각도 — 중대(CRITICAL) · 중(MAJOR) · 경(MINOR). ⭐ 화면 목업이 「심각도 중대」(W-03-10 §3)·「심각도 중」(W-04-07 §3)을 그려 3단계 축이 이미 서 있다. ⭐ 고객이 늘릴 수 있다 — 아래는 초기값(기본값)이지 닫힌 목록이 아니다. 값 목록은 GET /mdm/code-values?codeGroupCode=NONCONFORMANCE_SEVERITY 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
           severityCode?: string;
           /** @description 기간 필수 — 공유계약 L-3 */

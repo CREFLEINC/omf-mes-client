@@ -12,14 +12,16 @@ import {
 import type { InspectionLotForward, InspectionResultSummaryForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
-import { Link } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { DispositionBox } from '../disposition-decision/disposition-box';
+import { iqcInspectionKeys } from '../iqc-inspection/queries';
 import { formatPackage, formatQty } from '../../patterns/package-qty';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { toApiError } from '../../patterns/request';
 import {
   deleteInspectionResult,
+  iqcInboundKeys,
   useInboundInspection,
   useInboundRefresh,
   type InboundInspection,
@@ -40,9 +42,8 @@ const td = messages.iqcInboundLot.drawer;
 const th = messages.iqcInboundLot.history;
 const ts = messages.iqcInboundLot.split;
 const ta = messages.iqcInboundLot.attachments;
-
-/** 부적합 처분 관리(W-03-10) — 불합격 확정 배너의 부적합 번호가 이 화면으로 간다. */
-const DISPOSITION_PATH = '/quality/dispositions';
+/** 처분 저장 뒤 IQC 목록 · LOT 품질 상태 · 불합격 안내를 다시 읽는다(선별로 생긴 새 건이 목록에 바로 서게). */
+const IQC_REFRESH_KEYS = [iqcInspectionKeys.all, iqcInboundKeys.all];
 
 /** 품질 상태 칩 색. */
 const lotStatusTone = (code: string): 'success' | 'error' | 'warning' | 'idle' =>
@@ -57,6 +58,8 @@ const lotStatusTone = (code: string): 'success' | 'error' | 'warning' | 'idle' =
 /** 판정 확정됐는가 — 새 흐름은 의뢰 단위 확정(`confirmedAt`). */
 export const isConfirmed = (inspection: InboundInspection): boolean =>
   inspection.confirmedAt != null;
+
+type InboundTab = 'detail' | 'history' | 'disposition';
 
 export interface InboundDetailProps {
   inspectionRequestId: number;
@@ -115,14 +118,16 @@ export const InboundDetail = ({
     setOpenedScan(scanOpen.key);
     if (isConfirmed(loaded) || drawer !== null) return;
     if (!(loaded.lots ?? []).some((lot) => lot.lotId === scanOpen.lotId)) return;
-    setTab('detail');
+    setPicked({ requestId: inspectionRequestId, tab: 'detail' });
     setDrawer({ editing: null, preselectedLotIds: [scanOpen.lotId] });
-  }, [scanOpen, loaded, openedScan, drawer]);
+  }, [scanOpen, loaded, openedScan, drawer, inspectionRequestId]);
   const [deleting, setDeleting] = useState<InspectionResultSummaryForward | null>(null);
   const [busy, setBusy] = useState(false);
   const [writeError, setWriteError] = useState<'conflict' | 'locked' | 'failed' | null>(null);
-  /* 상세 내용 · 변경 이력 탭(사용자 지시 2026-11-16 · omf-all-around#274). */
-  const [tab, setTab] = useState<'detail' | 'history'>('detail');
+  /*
+   * 상세 정보 · 작업 이력(사용자 지시 2026-11-16 · omf-all-around#274) · 부적합 처분(#354) 탭 — 고른 탭은 의뢰마다 처음부터.
+   */
+  const [picked, setPicked] = useState<{ requestId: number; tab: InboundTab } | null>(null);
   const [splitOpen, setSplitOpen] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
   const splitLockId = useId();
@@ -143,6 +148,14 @@ export const InboundDetail = ({
 
   const inspection = query.data;
   const confirmed = isConfirmed(inspection);
+  /* 불합격 확정이 세운 부적합 — 「부적합 처분」 탭으로 따로 두고, 그런 건을 열면 이 탭부터 보인다(omf-all-around#354). */
+  const nonconformanceId =
+    inspection.overallJudgmentCode === 'REJECTED' ? (inspection.nonconformanceId ?? null) : null;
+  const pickedTab = picked?.requestId === inspectionRequestId ? picked.tab : null;
+  const tab: InboundTab =
+    pickedTab === 'disposition' && nonconformanceId === null
+      ? 'detail'
+      : (pickedTab ?? (nonconformanceId === null ? 'detail' : 'disposition'));
   const lots = inspection.lots ?? [];
   const results = inspection.results ?? [];
   const inboundLotNo = inspection.inboundLotNo ?? inspection.inspectionRequestNo;
@@ -264,19 +277,6 @@ export const InboundDetail = ({
               {' · ' /* ui-check-ignore: C-13 사용자 지시 표기(굵은 제목 · 문장 · #274) */}
               {t.banner.rejected(lots.length, inspection.nonconformanceNo ?? null)}
             </span>
-            {inspection.nonconformanceNo == null ? null : (
-              <Link
-                className="iqc-inbound-nc-link"
-                to={`${DISPOSITION_PATH}${
-                  inspection.nonconformanceId == null
-                    ? ''
-                    : `?nonconformanceId=${String(inspection.nonconformanceId)}`
-                }`}
-              >
-                {t.banner.ncOpen}
-                <Icon name="open_in_new" size={18} aria-hidden />
-              </Link>
-            )}
           </span>
         </AlertBanner>
       );
@@ -308,7 +308,12 @@ export const InboundDetail = ({
         size="md"
         aria-label={inboundLotNo}
         value={tab}
-        onChange={(next) => setTab(next === 'history' ? 'history' : 'detail')}
+        onChange={(next) =>
+          setPicked({
+            requestId: inspectionRequestId,
+            tab: next === 'history' || next === 'disposition' ? next : 'detail',
+          })
+        }
         items={[
           {
             value: 'detail',
@@ -658,6 +663,23 @@ export const InboundDetail = ({
                 />
               ) : null,
           },
+          ...(nonconformanceId === null
+            ? []
+            : [
+                {
+                  value: 'disposition',
+                  label: messages.dispositionDecision.box.title,
+                  content:
+                    tab === 'disposition' ? (
+                      <div className="disposition-tab">
+                        <DispositionBox
+                          nonconformanceId={nonconformanceId}
+                          refreshKeys={IQC_REFRESH_KEYS}
+                        />
+                      </div>
+                    ) : null,
+                },
+              ]),
         ]}
       />
     </div>

@@ -97,7 +97,6 @@ export const iqcInboundLot = {
         ncNo === null
           ? `자재 관리 LOT ${count}개가 모두 불량 처리되었습니다.`
           : `자재 관리 LOT ${count}개가 모두 불량 처리되었습니다. 부적합 ${ncNo}에서 후속 처분을 진행하세요.`,
-      ncOpen: '부적합 처분 관리로 이동',
       heldTitle: '검사 보류 확정',
       held: '자재 관리 LOT는 검사 대기로 남습니다. 다시 검사하려면 판정 수정 후 검사 결과를 추가하세요.',
     },

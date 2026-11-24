@@ -1246,20 +1246,12 @@ describe('appRouter — 품질 승인 처리 삭제(omf-all-around#352)', () => 
 
 describe('appRouter — 부적합 처분 관리의 진입 경로', () => {
   /* 화면 제목 줄은 걷었다(#223) — 사이드바 그 줄이 켜지고 탭 줄이 선다. */
-  it('품질관리 메뉴를 키보드로 열면 정식 주소로 가고 그 메뉴가 켜진다', async () => {
-    const user = userEvent.setup();
-    renderRoutedApp('/quality/lot-status', [...lotStatusRoutes(), ...dispositionRoutes()]);
+  /* 메뉴는 없앴다(omf-all-around#354) — 옛 주소는 검사 조회·판정 탭으로 넘긴다. */
+  it('메뉴에 「부적합 처분 관리」가 없고, 옛 주소는 IQC 탭으로 넘긴다', async () => {
+    renderRoutedApp('/quality/dispositions', [...lotStatusRoutes(), ...dispositionRoutes()]);
 
-    const link = screen.getByRole('link', { name: '부적합 처분 관리' });
-    link.focus();
-    await user.keyboard('{Enter}');
-
-    await waitFor(() => expect(currentLocation()).toBe('/quality/dispositions'));
-    expect(screen.getByRole('link', { name: '부적합 처분 관리' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
-    expect(await screen.findByRole('tab', { name: /^처분 대기/ })).toBeInTheDocument();
+    await waitFor(() => expect(currentLocation()).toBe('/logistics/iqc-inspection'));
+    expect(screen.queryByRole('link', { name: '부적합 처분 관리' })).toBeNull();
   });
 
   it('⭐ 다른 화면이 부르는 진입 주소와 등록된 라우트가 «같다»', () => {
