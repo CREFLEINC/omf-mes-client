@@ -611,7 +611,7 @@ export const ItemExtendedAttrsScreen = () => {
         above={{
           label: t.panes.filter,
           content: (
-            <div className="pane po-board-filter item-master-filter">
+            <div className="pane po-board-filter item-master-filter filter-field-surface">
               <ItemFilterBar
                 applied={filters}
                 onApply={applyFilters}

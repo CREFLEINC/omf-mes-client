@@ -39,6 +39,7 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
   },
   filters: {
     itemSearchLabel: 'Mã·tên mặt hàng',
+    itemSearchPlaceholder: 'Nhập mã hoặc tên mặt hàng',
     itemTypeLabel: 'Loại mặt hàng',
     itemTypeAll: 'Tất cả',
     iqcLabel: 'Đối tượng IQC',
