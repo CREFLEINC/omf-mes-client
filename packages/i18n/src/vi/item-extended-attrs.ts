@@ -11,20 +11,13 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
   tabs: {
     label: 'Khu vực chi tiết mặt hàng',
     attrs: 'Thuộc tính mở rộng',
-    subsidiary: 'Thông tin phụ',
+    uomConversion: 'Quy đổi đơn vị',
+    resourceMap: 'Thiết bị · khuôn',
   },
   splitter: 'Kéo để điều chỉnh độ rộng danh sách mặt hàng·chi tiết',
   listCollapse: 'Thu gọn danh sách mặt hàng',
   listExpand: 'Mở danh sách mặt hàng',
   pickItem: (itemCode: string): string => `Chọn ${itemCode}`,
-  /* 화면 스펙의 구획 이름이라 여기서 새로 짓지 않는다. */
-  subTabs: {
-    label: 'Thông tin phụ',
-    buMap: 'Ánh xạ đơn vị kinh doanh',
-    uomConversion: 'Quy đổi đơn vị',
-    externalCode: 'Mã ngoài',
-    resourceMap: 'Thiết bị · khuôn',
-  },
   panes: {
     detail: 'Chi tiết mặt hàng',
     filter: 'Điều kiện tra cứu',
@@ -103,6 +96,7 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
       lot: 'Mặc định LOT',
       shelfLife: 'Hạn sử dụng · thứ tự xuất',
       inventory: 'Kiểm tra · tồn kho',
+      package: 'Đóng gói nhỏ',
     },
     fields: {
       nameKo: 'Tên mặt hàng (tiếng Hàn)',
@@ -133,6 +127,9 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
       active: 'Đang dùng',
       inactive: 'Ngừng dùng',
       unspecified: 'Không chỉ định',
+      noPackage: 'Chưa có đóng gói nhỏ',
+      packageLoading: 'Đang tải đóng gói nhỏ',
+      packageLoadFailed: 'Không tải được đóng gói nhỏ',
     },
     validation: {
       required: 'Đây là mục bắt buộc.',
@@ -147,64 +144,7 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
       defaultProductionLotSizeInvalid: 'Hãy nhập kích thước LOT mặc định bằng số.',
     },
   },
-  /* 대상 품목을 검색해서 고르는 묶음(결정 8) - 번호를 입력받지 않는다. */
-  itemPicker: {
-    keywordLabel: 'Tìm mặt hàng đích',
-    keywordPlaceholder: 'Mã mặt hàng hoặc tên mặt hàng',
-    search: 'Tìm',
-    resultLabel: 'Mặt hàng đích',
-    resultPlaceholder: 'Hãy chọn trong kết quả tìm',
-    /* 검색 전에 선택칸이 빈 것이 정상이다 - 밝히지 않으면 고장으로 읽힌다. */
-    beforeSearch: 'Hãy nhập mã mặt hàng hoặc tên mặt hàng rồi bấm tìm.',
-    truncated: 'Kết quả tìm quá nhiều nên chỉ hiển thị một phần. Hãy thu hẹp từ khóa.',
-    noResult: 'Không có mặt hàng khớp từ khóa. Hãy đổi từ khóa rồi tìm lại.',
-    searchFailed: 'Không tìm được mặt hàng. Lát nữa hãy tìm lại.',
-  },
-  /* 부속 하위 탭① - 사업부 매핑. 계약에 유일 제약이 없어 중복 안내를 두지 않는다(결정 7). */
-  buMap: {
-    paneTitle: 'Ánh xạ đơn vị kinh doanh',
-    fields: {
-      fromBusinessUnit: 'Đơn vị kinh doanh gửi',
-      toBusinessUnit: 'Đơn vị kinh doanh nhận',
-      toItem: 'Mặt hàng đích',
-      validPeriod: 'Thời hạn hiệu lực',
-      effectiveFrom: 'Hiệu lực từ',
-      effectiveTo: 'Hiệu lực đến',
-      edit: 'Sửa',
-    },
-    values: {
-      period: (from: string, to: string): string => `${from} ~ ${to}`,
-    },
-    actions: {
-      add: 'Thêm ánh xạ',
-      editRow: (name: string): string => `Sửa ánh xạ ${name}`,
-      removeRow: (name: string): string => `Xóa ánh xạ ${name}`,
-    },
-    loading: {
-      list: 'Đang tải ánh xạ đơn vị kinh doanh',
-    },
-    empty: {
-      noneTitle: 'Chưa đăng ký ánh xạ đơn vị kinh doanh',
-      noneDescription: 'Hãy tạo dòng bằng «Thêm ánh xạ» rồi lưu.',
-    },
-    dialog: {
-      addTitle: 'Thêm ánh xạ đơn vị kinh doanh',
-      editTitle: 'Sửa ánh xạ đơn vị kinh doanh',
-      confirm: 'Xác nhận',
-      /* 확인이 저장이라고 오해하면 창을 닫고 화면을 떠난다 - 저장이 따로 있다는 말을 남긴다. */
-      notSavedNotice: 'Bấm xác nhận thì vẫn chưa lưu. Hãy kiểm tra bảng rồi lưu.',
-    },
-    /* 이름을 못 받은 것은 저장을 막지 않는다 - 표시만의 문제다. */
-    itemNamesLoadFailed: 'Không tải được tên mặt hàng đích. Việc lưu không bị ảnh hưởng.',
-    validation: {
-      required: 'Đây là mục bắt buộc.',
-      /* 계약 ck_item_bu_map_distinct */
-      sameBusinessUnit: 'Đơn vị kinh doanh gửi và đơn vị kinh doanh nhận phải khác nhau.',
-      /* 계약 ck_item_bu_map_dates - 짝 제약이라 두 칸에 함께 낸다. */
-      validRangeReversed: 'Hiệu lực đến phải bằng hoặc sau hiệu lực từ.',
-    },
-  },
-  /* 부속 하위 탭② - 단위 환산. 유일 제약이 있어 저장을 막는 사유 문구가 함께 있다. */
+  /* 부속 하위 탭① - 단위 환산. 유일 제약이 있어 저장을 막는 사유 문구가 함께 있다. */
   uomConversion: {
     paneTitle: 'Quy đổi đơn vị',
     fields: {
@@ -257,56 +197,7 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
         'Có dòng trùng cả đơn vị trước quy đổi · đơn vị sau quy đổi · hiệu lực từ. Hãy dọn các dòng trùng.',
     },
   },
-  /*
-   * 부속 하위 탭③ - 외부 코드. 유일 제약이 `COALESCE(partner_id,0)`으로 접혀(A-7)
-   * 거래처를 비운 두 줄이 같은 짝이 된다 - 그 사실을 문구가 밝힌다.
-   */
-  externalCode: {
-    paneTitle: 'Mã ngoài',
-    fields: {
-      externalSystem: 'Hệ thống ngoài',
-      partner: 'Đối tác',
-      externalItemCode: 'Mã mặt hàng ngoài',
-      edit: 'Sửa',
-    },
-    values: {
-      /* 계약이 「비우면 (전체)」로 정했다(A-7) - 빈 칸은 빠뜨린 것으로 읽힌다. */
-      allPartners: '(Tất cả)',
-    },
-    actions: {
-      add: 'Thêm mã ngoài',
-      editRow: (name: string): string => `Sửa mã ngoài ${name}`,
-      removeRow: (name: string): string => `Xóa mã ngoài ${name}`,
-    },
-    actionReasons: {
-      saveBlockedByDuplicate:
-        'Không lưu được. Có từ hai dòng trở lên trùng cả hệ thống ngoài và đối tác. Hãy sửa hoặc xóa dòng trùng rồi lưu.',
-    },
-    loading: {
-      list: 'Đang tải mã ngoài',
-    },
-    empty: {
-      noneTitle: 'Chưa đăng ký mã ngoài',
-      noneDescription: 'Hãy tạo dòng bằng «Thêm mã ngoài» rồi lưu.',
-    },
-    dialog: {
-      addTitle: 'Thêm mã ngoài',
-      editTitle: 'Sửa mã ngoài',
-      confirm: 'Xác nhận',
-      notSavedNotice: 'Bấm xác nhận thì vẫn chưa lưu. Hãy kiểm tra bảng rồi lưu.',
-    },
-    externalSystemPlaceholder: 'Hãy chọn hệ thống ngoài',
-    validation: {
-      required: 'Đây là mục bắt buộc.',
-      externalItemCodeTooLong: 'Mã mặt hàng ngoài không được vượt quá 100 ký tự.',
-      /* 계약 uq_item_external_code - COALESCE(partner_id,0) 접기를 문구가 밝힌다(A-7). */
-      duplicateKey:
-        'Đã có dòng trùng cả hệ thống ngoài và đối tác. Các dòng để trống đối tác cũng được xem là trùng nhau.',
-      duplicateInList:
-        'Có dòng trùng cả hệ thống ngoài và đối tác. Các dòng để trống đối tác cũng được xem là trùng nhau nên hãy dọn các dòng trùng.',
-    },
-  },
-  /* 부속 하위 탭 - 설비·금형 매핑. 다른 부속 하위 탭과 달리 줄마다 바로 저장한다. */
+  /* 부속 하위 탭② - 설비·금형 매핑. 다른 부속 하위 탭과 달리 줄마다 바로 저장한다. */
   itemResourceMap: {
     paneTitle: 'Thiết bị · khuôn',
     fields: {
@@ -508,8 +399,7 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
     },
     actionReasons: {
       /* 「무엇이 막혔는지 + 어떻게 푸는지」 - 이 컨트롤의 이름으로 시작한다. */
-      routingOperationEmpty:
-        'Công đoạn đăng ký hiện không chọn được vì mặt hàng này chưa có luồng công đoạn nào. Hãy đăng ký luồng công đoạn trước rồi mở lại.',
+      routingOperationEmpty: 'Chưa có luồng công đoạn nên không chọn được.',
     },
     loading: {
       list: 'Đang tải thành phần',
@@ -517,7 +407,7 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
       detail: 'Đang tải thông tin thành phần',
     },
     dialog: {
-      title: (name: string): string => `Sửa cột mở rộng của thành phần — ${name}`,
+      title: 'Sửa cột mở rộng của thành phần',
       /* 창에 원본 열이 없다는 사실을 밝힌다 - 서버가 막지 않으므로 화면이 지키는 자리다. */
       originNotice:
         'Cột gốc do hệ thống ngoài sở hữu nên không đổi được ở đây. Chỉ bốn mục dưới đây được lưu.',

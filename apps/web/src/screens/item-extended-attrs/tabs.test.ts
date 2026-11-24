@@ -1,26 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  DEFAULT_SUBSIDIARY_TAB_ID,
-  DEFAULT_TAB_ID,
-  ITEM_DETAIL_TABS,
-  ITEM_EXTENDED_ATTRS_TABS,
-  SUBSIDIARY_TABS,
-  resolveSubsidiaryTab,
-  resolveTab,
-} from './tabs';
+import { DEFAULT_TAB_ID, ITEM_DETAIL_TABS, ITEM_EXTENDED_ATTRS_TABS, resolveTab } from './tabs';
 
 describe('탭 정의', () => {
   /* 품목 / BOM 은 셸 탭 막대가 가른다(주소가 다르다) — 품목 탭 오른쪽 구획에 BOM 을 섞지 않는다. */
   it('품목 세부 탭에는 BOM을 섞지 않는다', () => {
-    expect(ITEM_DETAIL_TABS.map((tab) => tab.id)).toEqual(['attrs', 'sub']);
+    expect(ITEM_DETAIL_TABS.map((tab) => tab.id)).toEqual(['attrs', 'uom', 'res']);
   });
 
   /*
    * **만든 탭만 넣는다.** 자리만 먼저 둔 탭은 「눌러도 빈 화면」이 되므로 이 배열이 그것을 막는 자리다.
    */
   it('지금 만든 탭만 들어 있다', () => {
-    expect(ITEM_EXTENDED_ATTRS_TABS.map((tab) => tab.id)).toEqual(['attrs', 'sub']);
+    expect(ITEM_EXTENDED_ATTRS_TABS.map((tab) => tab.id)).toEqual(['attrs', 'uom', 'res']);
   });
 
   it('탭마다 라벨이 있다', () => {
@@ -37,7 +29,8 @@ describe('탭 정의', () => {
 describe('resolveTab', () => {
   it('아는 값은 그 탭이다', () => {
     expect(resolveTab('attrs').id).toBe('attrs');
-    expect(resolveTab('sub').id).toBe('sub');
+    expect(resolveTab('uom').id).toBe('uom');
+    expect(resolveTab('res').id).toBe('res');
   });
 
   /* 주소를 손으로 고쳐도 빈 화면이 되지 않아야 한다. */
@@ -54,48 +47,15 @@ describe('resolveTab', () => {
 });
 
 /**
- * 부속 정보 안의 하위 탭. **바깥 탭과 같은 규칙을 쓴다** —
- * 층이 다르다고 해석 규칙을 달리하면 주소를 읽는 사람이 두 가지를 외워야 한다.
+ * 확장 속성 · 단위 환산 · 설비·금형이 한 줄의 탭이다(사용자 지시 2026-11-24 — 「부속 정보」 탭 안의 하위 탭을 올림).
  */
-describe('하위 탭 정의', () => {
-  it('부속 자원 하위 탭이 정해진 순서로 들어 있다', () => {
-    expect(SUBSIDIARY_TABS.map((tab) => tab.id)).toEqual(['bu', 'uom', 'ext', 'res']);
+describe('탭 순서', () => {
+  it('확장 속성 · 단위 환산 · 설비·금형 순이다', () => {
+    expect(ITEM_EXTENDED_ATTRS_TABS.map((tab) => tab.id)).toEqual(['attrs', 'uom', 'res']);
   });
 
-  it('하위 탭마다 라벨이 있다', () => {
-    for (const tab of SUBSIDIARY_TABS) {
-      expect(tab.label).not.toBe('');
-    }
-  });
-
-  it('기본 하위 탭은 첫 하위 탭이다', () => {
-    expect(DEFAULT_SUBSIDIARY_TAB_ID).toBe(SUBSIDIARY_TABS[0].id);
-  });
-
-  /* 바깥 탭과 하위 탭이 같은 값을 쓰면 어느 층의 값인지 주소만 보고 알 수 없다. */
-  it('바깥 탭과 값이 겹치지 않는다', () => {
-    const outer = new Set(ITEM_EXTENDED_ATTRS_TABS.map((tab) => String(tab.id)));
-
-    for (const tab of SUBSIDIARY_TABS) {
-      expect(outer.has(tab.id)).toBe(false);
-    }
-  });
-});
-
-describe('resolveSubsidiaryTab', () => {
-  it('아는 값은 그 하위 탭이다', () => {
-    expect(resolveSubsidiaryTab('uom').id).toBe('uom');
-    expect(resolveSubsidiaryTab('ext').id).toBe('ext');
-    expect(resolveSubsidiaryTab('res').id).toBe('res');
-  });
-
-  it('모르는 값·빈 값은 첫 하위 탭으로 떨어진다', () => {
-    expect(resolveSubsidiaryTab('bogus').id).toBe(DEFAULT_SUBSIDIARY_TAB_ID);
-    expect(resolveSubsidiaryTab('').id).toBe(DEFAULT_SUBSIDIARY_TAB_ID);
-    expect(resolveSubsidiaryTab(null).id).toBe(DEFAULT_SUBSIDIARY_TAB_ID);
-  });
-
-  it('대소문자를 느슨하게 해석하지 않는다', () => {
-    expect(resolveSubsidiaryTab('UOM').id).toBe(DEFAULT_SUBSIDIARY_TAB_ID);
+  /* 없앤 「부속 정보」 탭의 옛 주소(`tab=sub`)는 첫 탭으로 떨어진다. */
+  it('옛 부속 정보 탭 주소는 첫 탭으로 떨어진다', () => {
+    expect(resolveTab('sub').id).toBe(DEFAULT_TAB_ID);
   });
 });

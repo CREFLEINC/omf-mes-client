@@ -1,6 +1,5 @@
 import { ensureOption } from './options';
 import type { SelectOption } from './types';
-import type { ExternalSystemCode } from './external-code-draft';
 
 /**
  * 값 목록이 확정되지 않은 코드를 어떻게 다루는지 **한 곳에서** 정한다(결정 4).
@@ -12,8 +11,7 @@ import type { ExternalSystemCode } from './external-code-draft';
  * 그것은 스키마 예시 문자열이지 실제 코드값이 아니다.
  *
  * 앞선 화면(W-06-06)은 값 목록 미정 코드를 「빈 선택지 + 안내」로 처리했고
- * 그 결과 자격을 실제로 등록할 수 없었다. 이 화면에서 같은 처리를 하면
- * 외부 코드 편집이 통째로 멈춘다 — 그래서 코드마다 갈라 처리한다.
+ * 그 결과 자격을 실제로 등록할 수 없었다 — 그래서 코드마다 갈라 처리한다.
  */
 
 /**
@@ -31,18 +29,6 @@ export const FIFO_POLICY_CODES: readonly string[] = ['FIFO', 'FEFO'];
  * 그 필드를 다루는 구획이 생길 때다 — 지금 없는 구획의 필드를 미리 적지 않는다.
  */
 export const FREE_TEXT_CODES: readonly string[] = ['serialControlTypeCode', 'storageConditionCode'];
-
-/** OpenAPI가 고객 확장 불가 enum으로 닫은 외부 시스템 셋. */
-export const EXTERNAL_SYSTEM_CODES: readonly ExternalSystemCode[] = [
-  'EQUIPMENT_STANDARD_IF',
-  'TRACKING_SYSTEM',
-  'UNIERP',
-];
-
-export const externalSystemOptions: SelectOption[] = EXTERNAL_SYSTEM_CODES.map((code) => ({
-  value: code,
-  label: code,
-}));
 
 /**
  * 선출 정책 선택지.

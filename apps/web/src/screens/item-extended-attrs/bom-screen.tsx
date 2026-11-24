@@ -216,9 +216,14 @@ interface ParentFactsProps {
 /** 모품목 상세 — 품목 칸과 그 BOM 칸을 하이라키 위에 한 줄로(「BOM 조회 (ERP)」와 같은 모양). */
 const ParentFacts = ({ item, bom, typeName, statusName, uomName }: ParentFactsProps) => {
   const detail = item.item as ItemWithErp | null;
-  const facts = [
-    { key: 'code', label: t.origin.fields.itemCode, value: item.code ?? item.name, strong: true },
-    { key: 'name', label: t.origin.fields.itemName, value: detail?.itemName ?? t.values.empty },
+  const facts: { key: string; label: string; value: string; code?: boolean; wide?: boolean }[] = [
+    { key: 'code', label: t.origin.fields.itemCode, value: item.code ?? item.name, code: true },
+    {
+      key: 'name',
+      label: t.origin.fields.itemName,
+      value: detail?.itemName ?? t.values.empty,
+      wide: true,
+    },
     {
       key: 'type',
       label: tb.fields.itemType,
@@ -230,7 +235,12 @@ const ParentFacts = ({ item, bom, typeName, statusName, uomName }: ParentFactsPr
       label: t.origin.fields.baseUom,
       value: detail === null ? t.values.empty : uomName(detail.baseUomId),
     },
-    { key: 'bom', label: t.bom.fields.bomCode, value: bom.bomCode },
+    {
+      key: 'baseQty',
+      label: t.bom.fields.baseQty,
+      value: requiredQtyText(bom.baseQty, uomName(bom.baseUomId)),
+    },
+    { key: 'bom', label: t.bom.fields.bomCode, value: bom.bomCode, code: true },
     { key: 'rev', label: t.bom.fields.bomVersion, value: String(bom.bomVersion) },
     { key: 'status', label: t.bom.fields.status, value: statusName(bom.statusCode) },
     {
@@ -238,23 +248,25 @@ const ParentFacts = ({ item, bom, typeName, statusName, uomName }: ParentFactsPr
       label: t.bom.fields.validPeriod,
       /* 끝이 없는 BOM 은 「~ —」로 — 끝이 비면 잘린 값처럼 보인다. */
       value: t.bom.values.period(bom.effectiveFrom, bom.effectiveTo ?? t.values.empty),
-    },
-    {
-      key: 'baseQty',
-      label: t.bom.fields.baseQty,
-      value: requiredQtyText(bom.baseQty, uomName(bom.baseUomId)),
+      wide: true,
     },
   ];
 
+  /*
+   * 이름표 | 값 짝을 칸으로 둔 격자 표(사용자 지시 2026-11-24 「상세정보를 깔끔한 표로」). 상자 폭에 따라 세 짝 · 두 짝씩
+   * 줄을 바꿔 카드 밖으로 넘지 않는다(같은 날 「가로폭을 줄이면 표가 카드를 넘어간다」). 품목명 · 유효기간은 두 칸을 쓴다.
+   */
   return (
-    <dl className="po-board-order-facts bom-parent-facts" aria-label={tb.parentFacts}>
-      {facts.map((fact) => (
-        <div key={fact.key}>
-          <dt>{fact.label}</dt>
-          <dd className={fact.strong === true ? 'bom-tree-code' : undefined}>{fact.value}</dd>
-        </div>
-      ))}
-    </dl>
+    <div className="bom-parent-box">
+      <dl className="bom-parent-grid" aria-label={tb.parentFacts}>
+        {facts.map((fact) => (
+          <div key={fact.key} data-wide={fact.wide === true ? '' : undefined}>
+            <dt>{fact.label}</dt>
+            <dd className={fact.code === true ? 'bom-tree-code' : undefined}>{fact.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 };
 
@@ -305,6 +317,8 @@ interface EditingRow {
   bomComponentId: number;
   parentItemId: number;
   rowName: string;
+  itemCode: string | null;
+  itemName: string;
 }
 
 interface ComponentFormState {
@@ -379,7 +393,7 @@ const BomTreeTable = ({ bom, uoms, processes, onEdit }: BomTreeTableProps) => {
     {
       key: 'requiredQty',
       header: tb.columns.requiredQty,
-      width: '128px',
+      width: '104px',
       align: 'end',
       render: (row) =>
         row.component === null
@@ -392,7 +406,7 @@ const BomTreeTable = ({ bom, uoms, processes, onEdit }: BomTreeTableProps) => {
     {
       key: 'scrapRate',
       header: tb.columns.scrapRate,
-      width: '80px',
+      width: '64px',
       align: 'end',
       render: (row) =>
         row.component === null ? t.values.empty : formatRate(row.component.scrapRate),
@@ -400,7 +414,7 @@ const BomTreeTable = ({ bom, uoms, processes, onEdit }: BomTreeTableProps) => {
     {
       key: 'isMandatory',
       header: tb.columns.isMandatory,
-      width: '64px',
+      width: '52px',
       render: (row) =>
         row.component === null
           ? t.values.empty
@@ -411,7 +425,8 @@ const BomTreeTable = ({ bom, uoms, processes, onEdit }: BomTreeTableProps) => {
     {
       key: 'process',
       header: t.component.fields.process,
-      width: '160px',
+      /* 공정 · 확장 표시는 대부분 비어 「—」뿐이다 — 좁혀서 품목 열이 덜 잘리게(사용자 지시 2026-11-24). 긴 값은 한 줄 말줄임. */
+      width: '96px',
       render: (row) =>
         row.component === null || row.parentItemId === null ? (
           t.values.empty
@@ -426,7 +441,7 @@ const BomTreeTable = ({ bom, uoms, processes, onEdit }: BomTreeTableProps) => {
     {
       key: 'extensions',
       header: t.component.fields.extensions,
-      width: '112px',
+      width: '80px',
       render: (row) => {
         const labels = row.component === null ? [] : extensionLabels(row.component);
         if (labels.length === 0) return t.values.empty;
@@ -455,6 +470,8 @@ const BomTreeTable = ({ bom, uoms, processes, onEdit }: BomTreeTableProps) => {
                 bomComponentId: component.bomComponentId,
                 parentItemId,
                 rowName: rowLabel(row),
+                itemCode: itemOf(row.itemId).code,
+                itemName: itemOf(row.itemId).name,
               });
             }}
           />
@@ -468,7 +485,8 @@ const BomTreeTable = ({ bom, uoms, processes, onEdit }: BomTreeTableProps) => {
       label={t.component.paneTitle}
       className="bom-tree-table"
       widthKey="omf-mes:item-boms:columns:tree"
-      minWidth="58rem"
+      /* 열을 좁힌 뒤 품목 열이 300px 안팎 남는 폭 — 그보다 좁은 창에서만 표 상자 안 가로 스크롤(2026-11-24). */
+      minWidth="48rem"
       columns={columns}
       rows={rows}
       getRowId={(row) => row.key}
@@ -660,7 +678,8 @@ const BomDetail = ({ parentItemId, requestedBomId, onPickBom }: BomDetailProps) 
       {/* 열 때만 마운트한다 — 닫힌 창을 남기면 지난 값이 살아 있고, 창이 행 상세 조회를 붙잡고 있게 된다. */}
       {editing !== null && (
         <BomComponentFormDialog
-          rowName={editing.rowName}
+          itemCode={editing.itemCode}
+          itemName={editing.itemName}
           loadError={
             detail.isError ? (
               <LoadErrorBanner error={detail.error} onRetry={() => void detail.refetch()} />
@@ -824,7 +843,7 @@ export const ItemBomScreen = () => {
       above={{
         label: t.panes.filter,
         content: (
-          <div className="pane po-board-filter">
+          <div className="pane po-board-filter item-master-filter">
             <FilterBar
               applied={filters}
               typeName={typeName}
