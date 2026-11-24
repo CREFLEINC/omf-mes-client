@@ -20547,6 +20547,15 @@ dialog.terminal-map-form-dialog {
   margin-top: 0;
 }
 
+/* 상자보다 넓은 표(긴 변경 사유 등)는 표 안에서 가로로 굴려 본다(사용자 지시 · omf-all-around#357). DS 표의 감싸개가 맡는다. */
+.inspection-level-history-dialog {
+  min-width: 0;
+}
+
+.inspection-level-rows > div {
+  overflow-x: auto;
+}
+
 .inspection-level-rows thead th {
   color: var(--on-surface-variant);
   font: var(--type-label-lg);

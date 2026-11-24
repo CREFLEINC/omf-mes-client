@@ -1,9 +1,11 @@
 import { AlertBanner, Chip, type ChipStatus, type Column, EmptyState, Table } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useColumnWidths } from '../../patterns/column-resize';
 import { PageNav } from '../../patterns/page-nav';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { PAGE_SIZE, useInspectionLevelHistories } from './queries';
@@ -45,7 +47,7 @@ export const historyReason = (row: ItemInspectionLevelHistory): string => {
  * 사유는 「기본 정보 수정」 창에서 받는 값이고, 자동 전환의 근거(연속 합격 · 불합격 의뢰)도 여기에 보여 남긴다.
  * 품목은 창 머리가 말하므로 열에서 뺀다. 왼쪽 정렬.
  */
-const columns: Column<ItemInspectionLevelHistory>[] = [
+const baseColumns = (reasonWidth: number): Column<ItemInspectionLevelHistory>[] => [
   {
     key: 'changedAt',
     header: t.history.itemColumns.changedAt,
@@ -78,13 +80,32 @@ const columns: Column<ItemInspectionLevelHistory>[] = [
   {
     key: 'reason',
     header: t.history.itemColumns.reason,
-    width: '180px',
+    width: `${String(reasonWidth)}px`,
     render: (row) => {
       const reason = historyReason(row);
       return <span title={reason}>{reason}</span>;
     },
   },
 ];
+
+const REASON_MIN = 180;
+/* 칸 안 여백(좌우) — 글자 폭에 더해 잘리지 않게 한다. */
+const CELL_PADDING = 40;
+
+let measureContext: CanvasRenderingContext2D | null | undefined;
+/** 표 글꼴로 잰 글자 폭. 잴 수 없으면(시험 환경) 글자 수로 어림한다. */
+const textWidth = (text: string, font: string): number => {
+  if (measureContext === undefined) {
+    try {
+      measureContext = document.createElement('canvas').getContext('2d');
+    } catch {
+      measureContext = null;
+    }
+  }
+  if (measureContext === null) return text.length * 14;
+  measureContext.font = font;
+  return measureContext.measureText(text).width;
+};
 
 export interface ItemLevelHistoryTableProps {
   itemId: number;
@@ -97,8 +118,29 @@ export const ItemLevelHistoryTable = ({ itemId }: ItemLevelHistoryTableProps) =>
   const [page, setPage] = useState(1);
   const [size, setSize] = useState<number>(PAGE_SIZE);
   const histories = useInspectionLevelHistories(itemId, page, size);
-  /* 창 폭에 맞춰 열을 비율대로 줄이고 늘린다 — 마지막 열이 잘리지 않게(#208). */
-  const fit = useFitColumns(columns);
+  const rows = histories.data?.items ?? [];
+  /*
+   * 변경 사유 칸은 이 쪽의 가장 긴 사유만큼 넓힌다 — 잘라 「…」로 감추지 않고, 상자보다 넓으면 표 안에서 가로로 굴려 본다
+   * (사용자 지시 · omf-all-around#357).
+   */
+  const reasonWidth = useMemo(() => {
+    const font = `${getComputedStyle(document.body).fontSize} ${getComputedStyle(document.body).fontFamily}`;
+    const widest = rows.reduce(
+      (max, row) => Math.max(max, textWidth(historyReason(row), font)),
+      textWidth(t.history.itemColumns.reason, font),
+    );
+    return Math.max(REASON_MIN, Math.ceil(widest) + CELL_PADDING);
+  }, [rows]);
+  /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다 — 모든 표 공통(useColumnOrder · useColumnWidths). */
+  const ordered = useColumnOrder(
+    'omf-mes:inspection-level:columns:item-history:order',
+    baseColumns(reasonWidth),
+  );
+  const resizable = useColumnWidths('omf-mes:inspection-level:columns:item-history', ordered, {
+    fitContent: true,
+  });
+  /* 모자라면 상자 폭에 맞춰 늘리고, 넘치면 줄이지 않고 표 안에서 가로로 구른다. */
+  const fit = useFitColumns(resizable.columns, { scrollX: true });
 
   return (
     <div className="inspection-level-history-dialog">
@@ -106,12 +148,13 @@ export const ItemLevelHistoryTable = ({ itemId }: ItemLevelHistoryTableProps) =>
       <div
         ref={fit.ref}
         className="inspection-queue-table inspection-standard-table-box inspection-level-rows"
+        style={resizable.style}
       >
         <Table
           caption={<span className="inspection-standard-visually-hidden">{t.history.caption}</span>}
           density="compact"
           columns={fit.columns}
-          rows={histories.data?.items ?? []}
+          rows={rows}
           getRowId={(row) => String(row.itemInspectionLevelHistoryId)}
           empty={
             <EmptyState
