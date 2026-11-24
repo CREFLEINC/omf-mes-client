@@ -87,6 +87,8 @@ describe('W-03-10 선별', () => {
     expect(screen.getByRole('button', { name: t.sort.help })).toBeInTheDocument();
     expect(screen.queryByText(t.sort.help)).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: t.sort.qtyNote })).toHaveLength(2);
+    // 처분 수량은 선별을 골라도 같은 자리에 남는다 — 남은 수량 전부(omf-all-around#354).
+    expect(screen.getByLabelText(t.form.qtyLabel)).toHaveTextContent('3,000 EA');
     // 저장 후 처리 — 처리 이름과 대상 LOT · 수량, 아래 짧은 안내(#352).
     const preview = screen.getByRole('group', { name: t.sort.previewTitle });
     expect(

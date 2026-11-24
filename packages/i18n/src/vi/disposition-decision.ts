@@ -210,8 +210,8 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
   sort: {
     heading: 'LOT vật tư tách ra là lỗi',
     selectNote:
-      'Khi lưu, LOT đã chọn sẽ được tách ra là lỗi, các LOT còn lại được xử lý bình thường.',
-    help: 'LOT quản lý vật tư được chọn sẽ chuyển sang LOT nhập hàng mới, giữ nguyên lỗi và xử lý ở mục không phù hợp mới. LOT quản lý vật tư không chọn sẽ về bình thường. Không chia LOT theo số lượng.',
+      'LOT đã chọn được tách ra là lỗi, các LOT còn lại được xử lý bình thường.',
+    help: 'Chuyển toàn bộ LOT đã chọn sang LOT nhập hàng mới. Việc xử lý LOT đã tách được thực hiện ở mục không phù hợp mới.',
     lotsLabel: 'LOT quản lý vật tư lỗi',
     noMatch: 'Không có kết quả kiểm tra liên kết',
     allSelected:
@@ -219,7 +219,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     noneSelected: 'Hãy chọn ít nhất một LOT quản lý vật tư lỗi',
     goodQty: 'Số lượng đạt (tùy chọn)',
     defectQty: 'Số lượng lỗi (tùy chọn)',
-    qtyNote: 'Chỉ để ghi kết quả phân loại. Số lượng tồn kho · LOT không thay đổi.',
+    qtyNote: 'Số lượng nhập chỉ được ghi làm kết quả phân loại, không phản ánh vào tồn kho và số lượng LOT.',
     qtyInvalid: 'Hãy nhập số từ 0 trở lên',
     previewTitle: 'Xử lý sau khi lưu',
     previewRestLabel: 'Xử lý bình thường',

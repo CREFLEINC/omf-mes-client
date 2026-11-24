@@ -245,8 +245,8 @@ export const dispositionDecision = {
   sort: {
     /** 선별 영역(omf-all-around#352 사용자 지시) — 제목 · 목록 위 안내 · 저장 후 처리 요약. */
     heading: '불량으로 분리할 자재 LOT',
-    selectNote: '저장하면 선택한 LOT는 불량으로 분리되고, 나머지 LOT는 정상 처리됩니다.',
-    help: '고른 자재 관리 LOT 는 새 입하 LOT 로 옮겨져 불량 그대로 새 부적합에서 처분합니다. 고르지 않은 자재 관리 LOT 는 정상이 됩니다. 수량으로 LOT 를 쪼개지 않습니다.',
+    selectNote: '선택한 LOT는 불량으로 분리하고, 나머지 LOT는 정상 처리합니다.',
+    help: '선택한 LOT 전체를 새 입하 LOT로 옮깁니다. 분리한 LOT의 처분은 새 부적합 건에서 진행합니다.',
     lotsLabel: '불량 자재 관리 LOT',
     noMatch: '연결된 검사 결과 없음',
     allSelected:
@@ -254,7 +254,7 @@ export const dispositionDecision = {
     noneSelected: '불량 자재 관리 LOT 를 하나 이상 고르세요',
     goodQty: '양품 수량 (선택)',
     defectQty: '불량 수량 (선택)',
-    qtyNote: '선별 결과 기록용입니다. 재고·LOT 수량은 바뀌지 않습니다.', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
+    qtyNote: '입력한 수량은 선별 결과로만 기록되며, 재고와 LOT 수량에는 반영되지 않습니다.',
     qtyInvalid: '0 이상의 수로 입력하세요',
     previewTitle: '저장 후 처리',
     previewRestLabel: '정상 처리',

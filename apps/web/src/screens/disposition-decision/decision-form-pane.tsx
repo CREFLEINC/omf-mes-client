@@ -230,31 +230,32 @@ export const DecisionFormPane = ({
           )}
         </div>
 
-        {!isSort && (
-          /* 처분 수량 = 남은 수량 전부 — 입력하지 않는다(FR-038 · 일부 판정 없음). 바꿀 수 없는 값이라 글로 보인다. */
-          <div className="disposition-qty-card">
-            <label className="field-label" htmlFor={qtyId}>
-              {t.form.qtyLabel}
-            </label>
-            <div className="disposition-qty-line">
-              <output
-                id={qtyId}
-                className="disposition-qty-value"
-                aria-describedby={[
-                  isLocked ? lockReasonId : '',
-                  effect === undefined ? '' : qtyNoteId,
-                ]
-                  .filter((id) => id !== '')
-                  .join(' ')}
-              >
-                {remainingText}
-              </output>
-            </div>
-            {errors.decisionQty !== undefined && (
-              <span className="field-error disposition-qty-error">{errors.decisionQty}</span>
-            )}
+        {/*
+         * 처분 수량 = 남은 수량 전부 — 입력하지 않는다(FR-038 · 일부 판정 없음). 바꿀 수 없는 값이라 글로 보인다.
+         * 선별을 골라도 같은 자리에 그대로 둔다 — 유형을 바꿀 때 칸이 사라졌다 나타나지 않게(omf-all-around#354 사용자 지시).
+         */}
+        <div className="disposition-qty-card">
+          <label className="field-label" htmlFor={qtyId}>
+            {t.form.qtyLabel}
+          </label>
+          <div className="disposition-qty-line">
+            <output
+              id={qtyId}
+              className="disposition-qty-value"
+              aria-describedby={[
+                isLocked ? lockReasonId : '',
+                effect === undefined ? '' : qtyNoteId,
+              ]
+                .filter((id) => id !== '')
+                .join(' ')}
+            >
+              {remainingText}
+            </output>
           </div>
-        )}
+          {errors.decisionQty !== undefined && (
+            <span className="field-error disposition-qty-error">{errors.decisionQty}</span>
+          )}
+        </div>
       </div>
 
       {/* 특채 — 요청 팝업에 있던 적용 기간 칸을 판정 칸 아래에(#352 사용자 지시). 수량은 위 처분 수량(남은 수량 전부), 사유는 아래 판정 사유. */}
