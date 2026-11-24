@@ -193,6 +193,170 @@ const on = (method, pattern, handle) => {
   routes.push({ method, matcher: new RegExp(`^${source}$`), keys, handle });
 };
 
+/* ── ERP 연동 현황·이력(W-06-10 · omf-all-around#358) ───────────────────────────── */
+
+/*
+ * 연동 이력 — Prism 예시는 「줄 1개 · 전체 137건」 고정이라 쪽 넘김 · 조건 · 건수가 맞는지 볼 수 없었다(#358).
+ * 오늘부터 14일 전까지 송신 · 수신 건을 고르게 깔고, 화면이 거는 조건(기간 · 상태 · 연동 항목 · 방향 · 재시도 횟수)을
+ * 그대로 건다. 재처리는 「대기」로 되돌리고 재시도 횟수를 올린다. 워커가 잡고 있는 건(lockedBy)은 409 workerLease.
+ */
+const INTEGRATION_INTERFACES = [
+  ['IF-GR-SEND', 'OUTBOUND', 'GR'],
+  ['IF-WO-CLOSE-SEND', 'OUTBOUND', 'WO'],
+  ['IF-SHIPMENT-PGI-SEND', 'OUTBOUND', 'PGI'],
+  ['IF-ERP-ITEM-RECV', 'INBOUND', 'ITEM'],
+  ['IF-ERP-PO-RECV', 'INBOUND', 'PO'],
+  ['IF-ERP-SO-RECV', 'INBOUND', 'SO'],
+  ['IF-ERP-BP-RECV', 'INBOUND', 'BP'],
+  ['IF-ERP-PRODORD-RECV', 'INBOUND', 'PRODORD'],
+];
+const INTEGRATION_ERRORS = [
+  '연계 대상 시스템 응답 없음(timeout 30s)',
+  'ERP 품목 코드 미등록',
+  '필수 항목 누락: 창고 코드',
+  'ERP 전표 마감 기간',
+];
+
+const integrationMessages = (() => {
+  const rows = [];
+  const now = Date.now();
+  const hour = 60 * 60 * 1000;
+  for (let index = 0; index < 96; index += 1) {
+    const [interfaceCode, directionCode, prefix] =
+      INTEGRATION_INTERFACES[index % INTEGRATION_INTERFACES.length];
+    const createdMs = now - (index * 3 + 1) * hour - (index % 7) * 11 * 60 * 1000;
+    const created = new Date(createdMs);
+    const ymd = created.toISOString().slice(0, 10).replaceAll('-', '');
+    const docNo = `${prefix}-${ymd}-${String(1000 + index).slice(1)}`;
+    /* 대략 완료 70% · 실패 15% · 대기 10% · 처리 중 5%. */
+    const roll = index % 20;
+    const statusCode =
+      roll < 14 ? 'DONE' : roll < 17 ? 'FAILED' : roll < 19 ? 'PENDING' : 'PROCESSING';
+    const iso = (ms) => new Date(ms).toISOString();
+    const retryCount =
+      statusCode === 'FAILED' ? 1 + (index % 4) : statusCode === 'DONE' && index % 9 === 0 ? 1 : 0;
+    rows.push({
+      integrationMessageId: 70001 + index,
+      messageKey: `${interfaceCode}:${docNo}`,
+      interfaceCode,
+      directionCode,
+      targetTypeCode: prefix,
+      targetId: 5000 + index,
+      statusCode,
+      retryCount,
+      lastErrorMessage:
+        statusCode === 'FAILED' ? INTEGRATION_ERRORS[index % INTEGRATION_ERRORS.length] : null,
+      createdAt: iso(createdMs),
+      availableAt:
+        statusCode === 'FAILED' && index % 2 === 0
+          ? iso(now + ((index % 5) + 1) * 10 * 60 * 1000)
+          : iso(createdMs),
+      sentAt: statusCode === 'PENDING' ? null : iso(createdMs + 60 * 1000),
+      completedAt: statusCode === 'DONE' ? iso(createdMs + 2 * 60 * 1000) : null,
+      lockedAt: statusCode === 'PROCESSING' ? iso(now - 5 * 60 * 1000) : null,
+      lockedBy: statusCode === 'PROCESSING' ? 'sync-worker-01' : null,
+    });
+  }
+
+  return rows;
+})();
+
+const integrationMatches = (row, query) => {
+  const from = query.get('createdFrom');
+  const to = query.get('createdTo');
+  const at = Date.parse(row.createdAt);
+  if (from !== null && at < Date.parse(from)) return false;
+  if (to !== null && at > Date.parse(to)) return false;
+  for (const key of ['statusCode', 'interfaceCode', 'directionCode', 'targetTypeCode']) {
+    const value = query.get(key);
+    if (value !== null && value !== '' && row[key] !== value) return false;
+  }
+  const retryMin = query.get('retryCountMin');
+  if (retryMin !== null && retryMin !== '' && row.retryCount < Number(retryMin)) return false;
+
+  return true;
+};
+
+on('GET', '/integration/messages', (_params, query) => {
+  if (query.get('createdFrom') === null || query.get('createdTo') === null) {
+    return fieldError('createdFrom', 'REQUIRED', '조회 기간을 정하세요.');
+  }
+  const rows = integrationMessages
+    .filter((row) => integrationMatches(row, query))
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+
+  return page(rows, query);
+});
+
+on('GET', '/integration/messages/{integrationMessageId}', (params) => {
+  const row = integrationMessages.find(
+    (entry) => entry.integrationMessageId === Number(params.integrationMessageId),
+  );
+  if (row === undefined)
+    return { status: 404, created: { message: '연동 이력을 찾을 수 없습니다.' } };
+
+  /* 전문(payload)은 화면이 그리지 않는다 — 합성값만 싣는다. */
+  return { ...row, payload: { sample: true } };
+});
+
+/** 한 건 재처리 — 성공이면 그 행, 거절이면 `{ status, created }`. */
+const retryIntegration = (id) => {
+  const row = integrationMessages.find((entry) => entry.integrationMessageId === id);
+  if (row === undefined)
+    return { status: 404, created: { message: '연동 이력을 찾을 수 없습니다.' } };
+  if (row.lockedBy !== null) {
+    return {
+      status: 409,
+      created: {
+        conflictCause: 'workerLease',
+        lockedAt: row.lockedAt,
+        message: '처리 중인 건입니다.',
+      },
+    };
+  }
+  if (row.statusCode === 'DONE') {
+    return {
+      status: 400,
+      created: {
+        errors: [
+          { scope: 'screen', code: 'NOT_RETRYABLE', message: '완료된 건은 다시 보낼 수 없습니다.' },
+        ],
+      },
+    };
+  }
+  row.statusCode = 'PENDING';
+  row.retryCount += 1;
+  row.availableAt = new Date().toISOString();
+
+  return row;
+};
+
+on('POST', '/integration/messages/{integrationMessageId}:retry', (params) =>
+  retryIntegration(Number(params.integrationMessageId)),
+);
+
+on('POST', '/integration/messages:retry-batch', (_params, _query, body) => {
+  const ids = Array.isArray(body?.integrationMessageIds) ? body.integrationMessageIds : [];
+  const failed = [];
+  let succeeded = 0;
+  ids.forEach((id, index) => {
+    const result = retryIntegration(Number(id));
+    if (result !== null && typeof result === 'object' && 'status' in result) {
+      failed.push({
+        index,
+        key: String(id),
+        errors: result.created.errors ?? [
+          { scope: 'screen', code: 'CONFLICT', message: result.created.message },
+        ],
+      });
+    } else {
+      succeeded += 1;
+    }
+  });
+
+  return { succeeded, failed };
+});
+
 /* ── 사용자·역할·권한(W-CO-02) ───────────────────────────── */
 
 /**
