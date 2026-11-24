@@ -152,7 +152,7 @@ const sizeNow = (): number => Number(screen.getByLabelText('size').textContent);
 const oscillating = (rendered: number): number => (rendered >= 5 ? 70 : 40);
 
 describe('FR-010 세 칸 쪽 줄 수 — 줄 높이가 줄 수에 따라 바뀌어도 돌지 않는다', () => {
-  it('useFitTableRows 줄 수가 줄었다 늘었다 하면 작은 쪽에 멈춘다(Maximum update depth 없음)', () => {
+  it('FR-010 세 칸 useFitTableRows 줄 수가 줄었다 늘었다 하면 작은 쪽에 멈춘다(Maximum update depth 없음)', () => {
     rowHeightFor = oscillating;
 
     render(<TableProbe />);
@@ -160,7 +160,7 @@ describe('FR-010 세 칸 쪽 줄 수 — 줄 높이가 줄 수에 따라 바뀌�
     expect(sizeNow()).toBe(3);
   });
 
-  it('useFitCount 도 같다', () => {
+  it('FR-010 세 칸 useFitCount 도 같다', () => {
     rowHeightFor = oscillating;
 
     render(<ListProbe />);
@@ -169,7 +169,7 @@ describe('FR-010 세 칸 쪽 줄 수 — 줄 높이가 줄 수에 따라 바뀌�
     expect(sizeNow()).toBe(4);
   });
 
-  it('칸 크기가 바뀌면 다시 재고 늘어날 수 있다(1100 → 1920)', () => {
+  it('FR-010 세 칸 칸 크기가 바뀌면 다시 재고 늘어날 수 있다(1100 → 1920)', () => {
     rowHeightFor = oscillating;
     render(<TableProbe />);
     expect(sizeNow()).toBe(3);
@@ -185,7 +185,7 @@ describe('FR-010 세 칸 쪽 줄 수 — 줄 높이가 줄 수에 따라 바뀌�
     expect(sizeNow()).toBe(14);
   });
 
-  it('P-01-01 스캔 · 인쇄 직후 — 칸 높이가 줄 수에 따라 오르내려도(420 ↔ 384) 작은 쪽에 멈춘다', () => {
+  it('FR-010 세 칸 P-01-01 스캔 · 인쇄 직후 — 칸 높이가 줄 수에 따라 오르내려도(420 ↔ 384) 작은 쪽에 멈춘다', () => {
     /* 실측(1920×1080): 8줄 칸이면 받는 동안 쪽 넘김이 숨어 420, 7줄로 다시 받으면 쪽 넘김이 서서 384. 줄 높이 44. */
     rowHeightFor = () => 44;
     boxHeightFor = (rendered) => (rendered >= 8 ? 384 : 420);
@@ -196,7 +196,7 @@ describe('FR-010 세 칸 쪽 줄 수 — 줄 높이가 줄 수에 따라 바뀌�
     expect(sizeNow()).toBe(7);
   });
 
-  it('처음 줄어드는 것은 천장을 만들지 않는다 — 줄이 다시 낮아지면 지금처럼 늘어난다', () => {
+  it('FR-010 세 칸 처음 줄어드는 것은 천장을 만들지 않는다 — 줄이 다시 낮아지면 지금처럼 늘어난다', () => {
     const { rerender } = render(<TableProbe />);
     expect(sizeNow()).toBe(6);
 
@@ -211,7 +211,7 @@ describe('FR-010 세 칸 쪽 줄 수 — 줄 높이가 줄 수에 따라 바뀌�
     expect(sizeNow()).toBe(6);
   });
 
-  it('줄 높이가 고르면 지금처럼 칸 높이에 드는 만큼', () => {
+  it('FR-010 세 칸 줄 높이가 고르면 지금처럼 칸 높이에 드는 만큼', () => {
     render(<TableProbe />);
     expect(sizeNow()).toBe(6);
 
@@ -219,7 +219,7 @@ describe('FR-010 세 칸 쪽 줄 수 — 줄 높이가 줄 수에 따라 바뀌�
     expect(screen.getAllByLabelText('size')[1]).toHaveTextContent('7');
   });
 
-  it('표 칸이 빈 상태로 갈렸다 다시 서면 새 칸을 지켜본다 — 그 뒤 크기 바뀜에도 다시 잰다', () => {
+  it('FR-010 세 칸 표 칸이 빈 상태로 갈렸다 다시 서면 새 칸을 지켜본다 — 그 뒤 크기 바뀜에도 다시 잰다', () => {
     const { rerender } = render(<TableProbe />);
     expect(sizeNow()).toBe(6);
 

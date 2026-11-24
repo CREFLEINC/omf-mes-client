@@ -13,7 +13,7 @@ import { withoutSystemReissueReasons } from '../../patterns/reissue-reasons';
  *
  * | 무엇 | 경로 |
  * | --- | --- |
- * | 왼쪽 공급사·품목 · 탭 넷 · 번호 찾기 | `patterns/material-lot-precreate`(피처 014 — 서버 쪽 · 찾기, 20초 다시 받기 없음) |
+ * | 공급사 칸 · 품목 표 · 탭 넷 · 번호 찾기 | `patterns/material-lot-precreate`(피처 014 — 서버 쪽 · 찾기, 20초 다시 받기 없음) |
  * | 보내기 직전 확인 | `GET /logistics/waiting-material-lots`(계약 §1) — `mutations.verifyCommands` 만 |
  * | 프린터 · 재발행 사유 | 지금 그대로 |
  *

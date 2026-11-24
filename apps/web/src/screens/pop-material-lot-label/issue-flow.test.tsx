@@ -169,7 +169,7 @@ describe('US1-4 라벨 발행 — 차례로 보낸다', () => {
     expect(commands).toContain('PRINT 1,1');
   });
 
-  it('다 나오면 LOT 마다 「인쇄됨」을 남기고, 「확인」을 누르면 미출력에서 빠져 출력됨(입하 전) 탭에 회차로 선다', async () => {
+  it('US4-4 다 나오면 LOT 마다 「인쇄됨」을 남기고, 「확인」을 누르면 미출력에서 빠져 출력됨(입하 전) 탭에 회차로 선다', async () => {
     const user = userEvent.setup();
     installShell();
     renderLabelScreen(waitingOnly(2));
@@ -441,7 +441,7 @@ describe('US4-4 출력됨(입하 전) · 입하된 LOT 탭에서 다시 인쇄',
     );
   });
 
-  it('⛔ 불량 LOT 은 누르기 전에 막고 그 까닭을 말한다(입하된 LOT 탭)', async () => {
+  it('US4-2 ⛔ 불량 LOT 은 누르기 전에 막고 그 까닭을 말한다(입하된 LOT 탭)', async () => {
     const user = userEvent.setup();
     renderLabelScreen(PRINTED());
 

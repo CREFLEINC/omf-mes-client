@@ -349,7 +349,7 @@ describe('FR-010 세 칸 · FR-011 공급사 칸 → 품목 표 — 서버 쪽 �
     expect(await supplierList()).toBeInTheDocument();
   });
 
-  it('⛔ 단말의 공장을 모르면 목록을 부르지 않는다', async () => {
+  it('FR-010 ⛔ 단말의 공장을 모르면 목록을 부르지 않는다', async () => {
     const { sent } = renderLabelScreen({ identity: { plantId: null } });
 
     expect(await screen.findByText(t.work.noPlant)).toBeInTheDocument();
@@ -357,7 +357,7 @@ describe('FR-010 세 칸 · FR-011 공급사 칸 → 품목 표 — 서버 쪽 �
     expect(sentTo(sent, '/logistics/material-lot-pairs')).toHaveLength(0);
   });
 
-  it('목록을 받지 못하면 사유와 다시 불러오기를 함께 보인다', async () => {
+  it('FR-010 목록을 받지 못하면 사유와 다시 불러오기를 함께 보인다', async () => {
     renderLabelScreen({ waitingFail: true });
 
     expect(await screen.findByText(t.work.loadFailed)).toBeInTheDocument();
@@ -502,7 +502,7 @@ describe('US1 · US2 미출력 탭 — 고르면 이미 만들어져 있다', ()
     expect(await screen.findByText(tp.notes.NO_CONVERSION)).toBeInTheDocument();
   });
 
-  it('409 LOT_NO_CONFLICT 면 다시 불러오라고 말한다', async () => {
+  it('US2-4 409 LOT_NO_CONFLICT 면 다시 불러오라고 말한다', async () => {
     const user = userEvent.setup();
     renderLabelScreen({
       lotsFail: {
@@ -516,7 +516,7 @@ describe('US1 · US2 미출력 탭 — 고르면 이미 만들어져 있다', ()
     expect(screen.getByRole('button', { name: t.work.retry })).toBeInTheDocument();
   });
 
-  it('머리에 품목코드 · 품목명 · 공급사 · 기본 단위를 이름표와 함께, 품목 기본값을 적는다', async () => {
+  it('FR-010 세 칸 US1-6 머리에 품목코드 · 품목명 · 공급사 · 기본 단위를 이름표와 함께, 품목 기본값을 적는다', async () => {
     const user = userEvent.setup();
     renderLabelScreen(withShare(0));
 
@@ -529,7 +529,7 @@ describe('US1 · US2 미출력 탭 — 고르면 이미 만들어져 있다', ()
     );
   });
 
-  it('vi 문구 — 로딩 · 알림이 베트남어로 옮겨져 있다', () => {
+  it('US2-3 FR-005 vi 문구 — 로딩 · 알림이 베트남어로 옮겨져 있다', () => {
     const viP = viMessages.popMaterialLotLabel.precreate;
     const koP = ko.popMaterialLotLabel.precreate;
 
@@ -592,7 +592,7 @@ describe('FR-014 탭 넷 — 출력됨(입하 전) · 입하된 LOT · 폐기 LO
     expect(screen.getByRole('button', { name: t.bar.issueIdle })).toBeDisabled();
   });
 
-  it('탭을 바꾸면 고른 것이 풀린다', async () => {
+  it('FR-014 탭을 바꾸면 고른 것이 풀린다', async () => {
     const user = userEvent.setup();
     renderLabelScreen();
 
@@ -723,7 +723,7 @@ describe('고르기와 작업 줄', () => {
     expect(screen.getByRole('button', { name: t.bar.issueIdle })).toBeDisabled();
   });
 
-  it('⛔ 「입하 대기 전체 선택」 · 정렬 고르기는 없다(시안 확인 거리 2)', async () => {
+  it('US4-1 ⛔ 「입하 대기 전체 선택」 · 정렬 고르기는 없다(시안 확인 거리 2)', async () => {
     const user = userEvent.setup();
     renderLabelScreen();
 
@@ -733,7 +733,7 @@ describe('고르기와 작업 줄', () => {
     expect(screen.queryByRole('tab', { name: /최신순/u })).toBeNull();
   });
 
-  it('다른 공급사·품목을 누르면 고른 것이 풀리고 미출력 탭으로 돌아간다', async () => {
+  it('FR-010 세 칸 다른 공급사·품목을 누르면 고른 것이 풀리고 미출력 탭으로 돌아간다', async () => {
     const user = userEvent.setup();
     renderLabelScreen();
 

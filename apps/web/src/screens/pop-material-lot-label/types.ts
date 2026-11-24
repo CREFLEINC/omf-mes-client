@@ -85,7 +85,7 @@ export interface LabelLot {
   voidedAt?: string | null;
 }
 
-/** 공급사·품목 하나 — 왼쪽 목록 · 번호 찾기 · 만들기 창이 함께 쓰는 이름표. */
+/** 공급사·품목 하나 — 품목 표 · 번호 찾기 · 만들기 창이 함께 쓰는 이름표. */
 export interface PairRef {
   supplierId: number;
   supplierCode: string;
@@ -123,7 +123,7 @@ export const toLabelLotFromRow = (row: MaterialLotTabRow, pair: PairRef): LabelL
   voidedAt: row.voidedAt,
 });
 
-/** 공급사·품목 묶음의 열쇠 — 왼쪽 목록의 한 줄. */
+/** 공급사·품목 묶음의 열쇠 — 품목 표의 한 줄. */
 export const pairKeyOf = (supplierId: number, itemId: number): string =>
   `${String(supplierId)}:${String(itemId)}`;
 
