@@ -49,7 +49,8 @@ const WIDTHS = {
    * ⚠ 열 폭은 px 만 받는다(`column-resize` 의 `pxOf` — 그 밖은 남은 폭 나눔).
    */
   /* 편집 창 — 이름 칸이 92px 로 눌려 「적치···」로 잘렸다(사용자 지시 2026-11-24). 코드 · 도면을 줄여 이름에 내준다. */
-  compact: { code: '232px', level: '84px', placed: '64px', min: '0px' },
+  /* 편집 창 — 이름이 앞인 「위치」 한 칸이 남는 폭을 쓴다(사용자 결정 2026-11-24). 놓지 않음 칩이 들어가는 도면 칸. */
+  compact: { code: '', level: '84px', placed: '100px', min: '0px' },
 } as const;
 
 /**
@@ -86,60 +87,116 @@ export const LocationList = ({
     onExpandedChange(next);
   };
 
+  /** 이름 · 별칭 연필 — 조회 화면의 「이름」 칸과 편집 창의 「위치」 칸이 함께 쓴다. */
+  const nameCell = (row: LocationTreeRow) =>
+    onEditAlias === undefined ? (
+      <OneLine text={locationShownName(row.location)} />
+    ) : (
+      <div className="layout-alias-cell">
+        <OneLine text={locationShownName(row.location)} />
+        <IconButton
+          size="sm"
+          icon="edit"
+          aria-label={messages.warehouseLocation.aliasEdit.edit(row.location.locationCode)}
+          onClick={() => {
+            onEditAlias(row.location);
+          }}
+        />
+      </div>
+    );
+
+  /*
+   * 편집 창(compact)의 「위치」 칸 — 이름을 앞에, 코드는 같은 줄 뒤에 작게(사용자 결정 2026-11-24). 두 값을 위아래로 쌓지
+   * 않는다. 별칭 연필은 줄 끝에.
+   */
+  const compactLocationColumn: Column<LocationTreeRow> = {
+    key: 'location',
+    header: (
+      <LocationTreeHeader
+        rows={treeRows}
+        expandedIds={expandedIds}
+        onCollapseAll={() => {
+          onExpandedChange(new Set());
+        }}
+        onExpandAll={() => {
+          onExpandedChange(parentLocationIds(locations));
+        }}
+      >
+        {t.editor.location}
+      </LocationTreeHeader>
+    ),
+    render: (row) => (
+      <LocationTreeCell
+        row={row}
+        expanded={expandedIds.has(row.location.locationId)}
+        onToggle={toggleExpand}
+      >
+        <BoardTablePickButton
+          id={String(row.location.locationId)}
+          label={row.location.locationCode}
+          current={selectedLocationId === row.location.locationId}
+        >
+          <span className="layout-location-name">{locationShownName(row.location)}</span>
+          <span className="layout-location-code">{row.location.locationCode}</span>
+        </BoardTablePickButton>
+        {onEditAlias !== undefined && (
+          <IconButton
+            size="sm"
+            icon="edit"
+            aria-label={messages.warehouseLocation.aliasEdit.edit(row.location.locationCode)}
+            onClick={() => {
+              onEditAlias(row.location);
+            }}
+          />
+        )}
+      </LocationTreeCell>
+    ),
+  };
+
   const columns: Column<LocationTreeRow>[] = [
-    {
-      key: 'code',
-      header: (
-        <LocationTreeHeader
-          rows={treeRows}
-          expandedIds={expandedIds}
-          onCollapseAll={() => {
-            onExpandedChange(new Set());
-          }}
-          onExpandAll={() => {
-            onExpandedChange(parentLocationIds(locations));
-          }}
-        >
-          {t.locations.code}
-        </LocationTreeHeader>
-      ),
-      width: widths.code,
-      render: (row) => (
-        <LocationTreeCell
-          row={row}
-          expanded={expandedIds.has(row.location.locationId)}
-          onToggle={toggleExpand}
-        >
-          <BoardTablePickButton
-            id={String(row.location.locationId)}
-            label={row.location.locationCode}
-            current={selectedLocationId === row.location.locationId}
-          >
-            {row.location.locationCode}
-          </BoardTablePickButton>
-        </LocationTreeCell>
-      ),
-    },
-    {
-      key: 'name',
-      header: t.locations.name,
-      render: (row) =>
-        onEditAlias === undefined ? (
-          <OneLine text={locationShownName(row.location)} />
-        ) : (
-          <div className="layout-alias-cell">
-            <OneLine text={locationShownName(row.location)} />
-            <IconButton
-              size="sm"
-              icon="edit"
-              aria-label={messages.warehouseLocation.aliasEdit.edit(row.location.locationCode)}
-              onClick={() => {
-                onEditAlias(row.location);
-              }}
-            />
-          </div>
-        ),
-    },
+    ...(compact ? [compactLocationColumn] : []),
+    ...(compact
+      ? []
+      : [
+          {
+            key: 'code',
+            header: (
+              <LocationTreeHeader
+                rows={treeRows}
+                expandedIds={expandedIds}
+                onCollapseAll={() => {
+                  onExpandedChange(new Set());
+                }}
+                onExpandAll={() => {
+                  onExpandedChange(parentLocationIds(locations));
+                }}
+              >
+                {t.locations.code}
+              </LocationTreeHeader>
+            ),
+            width: widths.code,
+            render: (row) => (
+              <LocationTreeCell
+                row={row}
+                expanded={expandedIds.has(row.location.locationId)}
+                onToggle={toggleExpand}
+              >
+                <BoardTablePickButton
+                  id={String(row.location.locationId)}
+                  label={row.location.locationCode}
+                  current={selectedLocationId === row.location.locationId}
+                >
+                  {row.location.locationCode}
+                </BoardTablePickButton>
+              </LocationTreeCell>
+            ),
+          } as Column<LocationTreeRow>,
+          {
+            key: 'name',
+            header: t.locations.name,
+            render: nameCell,
+          },
+        ]),
     {
       key: 'level',
       header: t.locations.level,
@@ -179,7 +236,7 @@ export const LocationList = ({
       getRowId={(row) => String(row.location.locationId)}
       widthKey={
         compact
-          ? 'omf-mes:warehouse-layout:editor-location-tree-widths:v3'
+          ? 'omf-mes:warehouse-layout:editor-location-tree-widths:v4'
           : 'omf-mes:warehouse-layout:location-tree-widths'
       }
       minWidth={widths.min}

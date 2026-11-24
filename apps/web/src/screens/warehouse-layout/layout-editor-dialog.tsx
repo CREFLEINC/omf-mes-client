@@ -30,7 +30,8 @@ import { useCanWriteLocations } from '../warehouse-location/queries';
 import { AliasPopover } from './alias-popover';
 import { LoadErrorBanner } from './load-error-banner';
 import { LocationList } from './location-list';
-import { MarkerShapeFields } from './marker-shape-fields';
+import { EditorToolbar } from './editor-toolbar';
+import { MarkerPropsPanel } from './marker-props-panel';
 import { isPlaceable, splitPlaceable, useKnownLocations } from './placeable';
 import { useDrawingContent, useLayout, useLayoutReplace, useLocations } from './queries';
 import type { LocationView } from './types';
@@ -102,6 +103,10 @@ export const LayoutEditorDialog = ({
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   /** 「변경을 버리고 닫을까요?」 확인 창이 서 있다. */
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+  /** 도면 배율 — 1 은 창에 맞춤(안 A, 사용자 결정 2026-11-24). 판이 커지면 도면 칸 안에서 스크롤한다. */
+  const [zoom, setZoom] = useState(1);
+  /** 놓은 뒤 다음 놓지 않은 위치를 자동으로 고른다(안 C 의 것, 사용자 결정 2026-11-24). 처음 배치가 많은 창고를 위해 기본 켬. */
+  const [autoNext, setAutoNext] = useState(true);
 
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -274,7 +279,41 @@ export const LayoutEditorDialog = ({
     }
 
     setHint(null);
-    setDraft(placeMarker(draft, selectedLocation, x, y));
+    const next = placeMarker(draft, selectedLocation, x, y);
+    setDraft(next);
+    if (autoNext && !hasMarker(draft, selectedLocation)) pickNextUnplaced(next, selectedLocation);
+  };
+
+  /**
+   * 다음 놓지 않은 위치를 고른다 — 목록 차례로 방금 놓은 것 뒤에서 먼저 찾고, 없으면 처음부터. 접힌 구역 밑의 랙이면 그 구역을
+   * 펼쳐 목록에서도 보이게 한다. 이미 놓인 표식을 옮긴 것은 넘기지 않는다(새로 놓을 때만).
+   */
+  const pickNextUnplaced = (markers: LayoutDraft, after: number): void => {
+    const index = placeableRows.findIndex((row) => row.locationId === after);
+    const ordered = [...placeableRows.slice(index + 1), ...placeableRows.slice(0, index + 1)];
+    const nextRow = ordered.find((row) => !hasMarker(markers, row.locationId));
+    if (nextRow === undefined) return;
+    setSelectedLocation(nextRow.locationId);
+    const parentId = nextRow.parentLocationId;
+    if (
+      parentId !== null &&
+      parentId !== undefined &&
+      expandedIds !== null &&
+      !expandedIds.has(parentId)
+    ) {
+      setExpandedIds(new Set([...expandedIds, parentId]));
+    }
+  };
+
+  /** 목록 위 진행 — 놓을 수 있는 위치(구역 · 랙) 가운데 도면에 놓인 수. */
+  const placedCount = placeableRows.filter((row) => hasMarker(draft, row.locationId)).length;
+
+  const removeSelected = (): void => {
+    if (selectedLocation === null) {
+      setHint(t.map.removeNeedsMarker);
+      return;
+    }
+    setDraft(removeMarker(draft, selectedLocation));
   };
 
   /**
@@ -348,58 +387,6 @@ export const LayoutEditorDialog = ({
 
   const footer = (
     <>
-      {/*
-       * ⭐ **DS 에 파일 입력이 없다** — 숨긴 native 입력을 DS `Button` 이 부르는 조합이다(§8 · `tool-master/file-field.tsx`
-       * 와 같은 관용구).
-       */}
-      <input
-        ref={fileInput}
-        type="file"
-        accept={DRAWING_ACCEPT}
-        className="file-input"
-        aria-label={t.map.upload}
-        /* ⛔ 버튼만 막으면 자판으로 칸에 닿는 길이 남는다 — 칸도 함께 잠근다. */
-        disabled={draftDirty || busy}
-        onChange={(event) => {
-          pickFile(event.target.files?.[0] ?? null, event.target);
-        }}
-      />
-      <Button
-        variant="outlined"
-        loading={drawing.isBusy}
-        /* ⛔ 저장하지 않은 점 편집 위에 도면을 갈지 않는다 — 사유는 판 아래에 적는다. */
-        disabled={draftDirty || replace.isSaving}
-        onClick={() => {
-          fileInput.current?.click();
-        }}
-      >
-        {drawing.isBusy ? busyLabel : t.map.upload}
-      </Button>
-      <Button
-        variant="outlined"
-        disabled={
-          drawing.isBusy || selectedLocation === null || !hasMarker(draft, selectedLocation)
-        }
-        onClick={() => {
-          if (selectedLocation === null) {
-            setHint(t.map.removeNeedsMarker);
-            return;
-          }
-          setDraft(removeMarker(draft, selectedLocation));
-        }}
-      >
-        {t.map.remove}
-      </Button>
-      <Button
-        variant="outlined"
-        disabled={busy || !draftDirty}
-        onClick={() => {
-          setDraft(base);
-          setHint(null);
-        }}
-      >
-        {t.map.reset}
-      </Button>
       <span className="layout-editor-footer-gap">
         {replace.isSaving && <span className="field-note">{t.map.saving}</span>}
       </span>
@@ -452,6 +439,19 @@ export const LayoutEditorDialog = ({
             >
               {t.locations.includeInactive}
             </Checkbox>
+            {placeableRows.length > 0 && (
+              /* 막대는 그림일 뿐 — 진행 막대(role=progressbar)는 「올리는 중 · 저장 중」에만 쓴다. 글자가 같은 말을 한다. */
+              <div className="layout-editor-progress">
+                <span>{t.editor.progress(placedCount, placeableRows.length)}</span>
+                <span className="layout-editor-progress-bar" aria-hidden="true">
+                  <span
+                    style={{
+                      inlineSize: `${String(Math.round((placedCount / placeableRows.length) * 100))}%`,
+                    }}
+                  />
+                </span>
+              </div>
+            )}
             {locations.isError ? (
               <LoadErrorBanner
                 error={locations.error}
@@ -492,6 +492,40 @@ export const LayoutEditorDialog = ({
           </section>
 
           <section className="layout-editor-map" aria-label={t.panes.map}>
+            {/*
+             * ⭐ **DS 에 파일 입력이 없다** — 숨긴 native 입력을 DS `Button` 이 부르는 조합이다(§8 · `tool-master/file-field.tsx`
+             * 와 같은 관용구).
+             */}
+            <input
+              ref={fileInput}
+              type="file"
+              accept={DRAWING_ACCEPT}
+              className="file-input"
+              aria-label={t.map.upload}
+              /* ⛔ 버튼만 막으면 자판으로 칸에 닿는 길이 남는다 — 칸도 함께 잠근다. */
+              disabled={draftDirty || busy}
+              onChange={(event) => {
+                pickFile(event.target.files?.[0] ?? null, event.target);
+              }}
+            />
+            <EditorToolbar
+              uploadLabel={drawing.isBusy ? busyLabel : t.map.upload}
+              uploadLoading={drawing.isBusy}
+              /* ⛔ 저장하지 않은 점 편집 위에 도면을 갈지 않는다 — 사유는 판 아래에 적는다. */
+              uploadDisabled={draftDirty || replace.isSaving}
+              onUpload={() => {
+                fileInput.current?.click();
+              }}
+              resetDisabled={busy || !draftDirty}
+              onReset={() => {
+                setDraft(base);
+                setHint(null);
+              }}
+              autoNext={autoNext}
+              onAutoNextChange={setAutoNext}
+              zoom={zoom}
+              onZoomChange={setZoom}
+            />
             {flash !== null && (
               <div className="banner-slot">
                 <AlertBanner
@@ -557,11 +591,18 @@ export const LayoutEditorDialog = ({
                 {/* ⭐ 판은 남은 높이 · 폭에 도면 비율을 지켜 맞춘다 — 올리는 동안 이 위에 가림막이 선다. */}
                 <div className="layout-editor-stage">
                   <div
-                    className="drawing-stage layout-editor-board"
-                    style={
+                    className={
                       drawingAspect === null
-                        ? undefined
-                        : ({ '--drawing-aspect': String(drawingAspect) } as CSSProperties)
+                        ? 'drawing-stage layout-editor-board is-blank'
+                        : 'drawing-stage layout-editor-board'
+                    }
+                    style={
+                      {
+                        '--board-zoom': String(zoom),
+                        ...(drawingAspect === null
+                          ? {}
+                          : { '--drawing-aspect': String(drawingAspect) }),
+                      } as CSSProperties
                     }
                   >
                     {boardMounted && (
@@ -617,17 +658,6 @@ export const LayoutEditorDialog = ({
 
                 {hint !== null && <p className="field-error">{hint}</p>}
 
-                {/* 고른 표식의 크기 · 회전 — 자판으로도 바꾼다(판의 손잡이는 포인터 전용). */}
-                {selectedMarker !== undefined && (
-                  <MarkerShapeFields
-                    shape={selectedMarker}
-                    disabled={busy}
-                    onChange={(shape) => {
-                      setDraft(shapeMarker(draft, selectedMarker.locationId, shape));
-                    }}
-                  />
-                )}
-
                 {/* 올리기 자리의 말 — 사유 · 사전 검사 · 서버가 돌려준 파일 오류가 여기 모인다. */}
                 {draftDirty && <p className="field-note">{t.map.uploadNeedsCleanDraft}</p>}
                 {fileNote !== null && <p className="field-error">{fileNote}</p>}
@@ -637,6 +667,22 @@ export const LayoutEditorDialog = ({
               </>
             )}
           </section>
+
+          <MarkerPropsPanel
+            location={
+              selectedLocation === null
+                ? undefined
+                : rows.find((row) => row.locationId === selectedLocation)
+            }
+            marker={selectedMarker}
+            disabled={busy}
+            onShapeChange={(shape) => {
+              if (selectedMarker !== undefined) {
+                setDraft(shapeMarker(draft, selectedMarker.locationId, shape));
+              }
+            }}
+            onRemove={removeSelected}
+          />
         </div>
       </Dialog>
 

@@ -44,7 +44,7 @@ export const warehouseLayout = {
     drawingLoadFailed: '도면을 불러오지 못했습니다.',
     drawingRetry: '도면 다시 불러오기',
     /** 위치를 고르지 않고 도면을 눌렀다. */
-    placeNeedsLocation: '찍을 위치를 선택하세요.',
+    placeNeedsLocation: '놓을 위치를 목록에서 고르세요.',
     /**
      * ⭐ 잠긴 판이 **무엇을 막고 무엇은 허락하는지** 듣는 사람에게 전하는 말. 「사용 불가」로
      * 뭉뚱그리면 고르기까지 막힌 것으로 들린다 — 잠겨도 고르기는 된다.
@@ -64,7 +64,7 @@ export const warehouseLayout = {
     width: '너비(%)',
     height: '높이(%)',
     rotation: '회전(°)',
-    remove: '지도에서 빼기',
+    remove: '도면에서 빼기',
     removeNeedsMarker: '뺄 표식을 선택하세요.',
     save: '배치도 저장',
     saving: '저장하는 중입니다.',
@@ -127,6 +127,19 @@ export const warehouseLayout = {
     drawingBoard: '배치를 그리는 중',
     /** 편집 창 목록은 배치 대상(구역 · 랙)만이다 — 그것이 없을 때. */
     emptyPlaceable: '도면에 둘 구역·랙이 없습니다', // ui-check-ignore: C-13 승인 tasks T037 문구(#266)
+    /** 편집 창 안 A(사용자 결정 2026-11-24) — 도면 위 도구 막대 · 오른쪽 속성 판 · 목록 위 진행. */
+    toolbar: '도면 도구',
+    progress: (placed: number, total: number): string =>
+      `놓음 ${String(placed)} / ${String(total)}`,
+    autoNext: '놓은 뒤 다음 위치 고르기',
+    zoomOut: '축소',
+    zoomIn: '확대',
+    zoomFit: '창에 맞춤',
+    zoomLevel: (percent: number): string => `${String(percent)}%`,
+    props: '고른 위치',
+    propsEmpty: '목록에서 위치를 고르고 도면을 누르면 놓입니다.',
+    propsNotPlaced: '아직 도면에 없습니다. 도면을 누르면 놓입니다.',
+    location: '위치',
   },
 
   /**
@@ -136,7 +149,7 @@ export const warehouseLayout = {
   stock: {
     legendStocked: '재고 있음',
     legendEmpty: '비어 있음',
-    legendNote: '도면에 없는 위치는 목록의 「아직」',
+    legendNote: '도면에 없는 위치는 목록의 「놓지 않음」',
     title: (locationCode: string): string => `${locationCode} 재고`,
     location: '위치',
     item: '품목',
@@ -156,8 +169,8 @@ export const warehouseLayout = {
     /** Location 목록의 「구분」과 같은 열 — 단계 이름, 서버가 만든 위치는 역할 이름. */
     level: '구분',
     placed: '도면',
-    onMap: '찍음',
-    notOnMap: '아직',
+    onMap: '놓음',
+    notOnMap: '놓지 않음',
     /** 위치는 창고·Location 화면에서 등록한다. */
     emptyTitle: '위치가 없습니다',
     /** 위치가 없는 창고 — 이 화면은 위치를 만들지 않는다(FR-012). 받는 것은 등록하는 화면의 이름이다. */

@@ -1145,3 +1145,80 @@ describe('W-CO-08 편집 창 — 반응 (2차 · FR-017)', () => {
     }
   });
 });
+
+/* 안 A(사용자 결정 2026-11-24) — 도면 도구 막대 · 오른쪽 속성 판 · 목록 위 진행 · 놓은 뒤 다음 위치 자동 고르기. */
+describe('W-CO-08 편집 창 — 도구 막대 · 속성 판 (안 A)', () => {
+  const props = (): HTMLElement => screen.getByRole('region', { name: t.editor.props });
+
+  it('놓으면 진행이 늘고, 다음 놓지 않은 위치가 저절로 골라져 속성 판에 보인다', async () => {
+    const { user } = renderEditor({ layouts: [withDrawing([])] });
+
+    await loaded();
+    expect(screen.getByText(t.editor.progress(0, 2))).toBeInTheDocument();
+    expect(within(props()).getByText(t.editor.propsEmpty)).toBeInTheDocument();
+
+    await user.click(locationButton('SYN-LOC-07'));
+    stubBoardRect(board());
+    fireEvent.click(board(), { clientX: 140, clientY: 80 });
+
+    expect(screen.getByText(t.editor.progress(1, 2))).toBeInTheDocument();
+    expect(locationButton('SYN-LOC-08')).toHaveAttribute('aria-current', 'true');
+    expect(within(props()).getByText('합성 위치 나')).toBeInTheDocument();
+    expect(within(props()).getByText(t.editor.propsNotPlaced)).toBeInTheDocument();
+  });
+
+  it('「놓은 뒤 다음 위치 고르기」를 끄면 놓은 위치가 그대로 골라져 있고 크기 칸이 보인다', async () => {
+    const { user } = renderEditor({ layouts: [withDrawing([])] });
+
+    await loaded();
+    await user.click(screen.getByRole('checkbox', { name: t.editor.autoNext }));
+    await user.click(locationButton('SYN-LOC-07'));
+    stubBoardRect(board());
+    fireEvent.click(board(), { clientX: 140, clientY: 80 });
+
+    expect(locationButton('SYN-LOC-07')).toHaveAttribute('aria-current', 'true');
+    expect(within(props()).getByRole('group', { name: t.map.shape })).toBeInTheDocument();
+  });
+
+  it('속성 판의 [도면에서 빼기]로 고른 표식을 뺀다 — 바닥 줄에는 취소 · 저장만 있다', async () => {
+    const { user } = renderEditor({ layouts: [withDrawing()] });
+
+    await loaded();
+    await user.click(locationButton('SYN-LOC-07'));
+    await user.click(within(props()).getByRole('button', { name: t.map.remove }));
+
+    expect(within(board()).queryByRole('button', { name: pinName('SYN-LOC-07') })).toBeNull();
+    expect(screen.getByText(t.editor.progress(0, 2))).toBeInTheDocument();
+    const toolbar = screen.getByRole('toolbar', { name: t.editor.toolbar });
+    expect(within(toolbar).getByRole('button', { name: t.map.upload })).toBeInTheDocument();
+    expect(within(toolbar).getByRole('button', { name: t.map.reset })).toBeEnabled();
+  });
+
+  it('축소 · 확대 · 창에 맞춤 — 50%~400%, 배율 글자가 바뀌고 판에 배율이 실린다', async () => {
+    const { user } = renderEditor({ layouts: [withDrawing()] });
+
+    await loaded();
+    const toolbar = screen.getByRole('toolbar', { name: t.editor.toolbar });
+    const stage = board().closest<HTMLElement>('.layout-editor-board')!;
+    expect(within(toolbar).getByText(t.editor.zoomLevel(100))).toBeInTheDocument();
+    expect(within(toolbar).getByRole('button', { name: t.editor.zoomFit })).toBeDisabled();
+
+    /* 축소 — 75% · 50%, 50% 아래로는 더 줄지 않는다. */
+    await user.click(within(toolbar).getByRole('button', { name: t.editor.zoomOut }));
+    expect(within(toolbar).getByText(t.editor.zoomLevel(75))).toBeInTheDocument();
+    await user.click(within(toolbar).getByRole('button', { name: t.editor.zoomOut }));
+    expect(within(toolbar).getByText(t.editor.zoomLevel(50))).toBeInTheDocument();
+    expect(stage.style.getPropertyValue('--board-zoom')).toBe('0.5');
+    expect(within(toolbar).getByRole('button', { name: t.editor.zoomOut })).toBeDisabled();
+
+    await user.click(within(toolbar).getByRole('button', { name: t.editor.zoomFit }));
+    await user.click(within(toolbar).getByRole('button', { name: t.editor.zoomIn }));
+    await user.click(within(toolbar).getByRole('button', { name: t.editor.zoomIn }));
+    expect(within(toolbar).getByText(t.editor.zoomLevel(150))).toBeInTheDocument();
+    expect(stage.style.getPropertyValue('--board-zoom')).toBe('1.5');
+
+    await user.click(within(toolbar).getByRole('button', { name: t.editor.zoomFit }));
+    expect(within(toolbar).getByText(t.editor.zoomLevel(100))).toBeInTheDocument();
+    expect(stage.style.getPropertyValue('--board-zoom')).toBe('1');
+  });
+});

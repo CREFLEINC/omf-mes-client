@@ -13225,10 +13225,10 @@ dialog.layout-editor-dialog {
 .layout-editor-body {
   display: grid;
   /*
-   * 목록 40rem(640px) | 도면 나머지(사용자 지시 2026-11-24) — 480px 에서는 이름 칸이 92px 로 눌려 잘렸다. 목록 안은 코드 232 ·
-   * 이름 약 260 · 구분 84 · 도면 64. 도면은 창 폭 1440px 기준 약 760px 로 남는다.
+   * 안 A(사용자 결정 2026-11-24) — 목록 28rem | 도구 막대 + 도면(나머지) | 속성 판 15rem. 목록은 이름이 앞인 「위치」 한 칸 ·
+   * 구분 · 도면이라 좁아도 된다.
    */
-  grid-template-columns: minmax(0, 40rem) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 28rem) minmax(0, 1fr) minmax(0, 15rem);
   gap: var(--space-4);
   block-size: calc(var(--dialog-max-h) - var(--layout-editor-chrome));
   min-block-size: 20rem;
@@ -13313,10 +13313,135 @@ dialog.layout-editor-dialog {
  * 도면 비율(`--drawing-aspect`, 화면이 그림을 읽어 준다)과 폭 가운데 작은 쪽을 쓴다. 비율을 모르면(도면 없음) 폭 전체.
  */
 .layout-editor-board {
-  inline-size: min(100%, calc(100cqh * var(--drawing-aspect, 100)));
+  /* 배율(--board-zoom)만큼 키운다 — 1 이면 창에 맞춤. 판의 좌표는 화면 위 크기로 재므로 커져도 누른 자리가 맞다. */
+  inline-size: calc(min(100%, calc(100cqh * var(--drawing-aspect, 100))) * var(--board-zoom, 1));
   /* 판을 붙이기 전(다음 프레임)에도 「배치를 그리는 중」이 설 높이 — 판의 최소 높이와 같다. */
   min-block-size: 16rem;
   margin-inline: auto;
+}
+
+/* 도면이 없으면 판이 도면 칸 높이를 다 쓴다(안 A) — 그림이 없어 높이를 정할 것이 없다. 격자 위에 바로 놓는다. */
+.layout-editor-board.is-blank .marker-overlay-board,
+.layout-editor-board.is-blank .marker-overlay-placeholder {
+  min-block-size: calc(100cqh * var(--board-zoom, 1) - 2px);
+}
+
+.layout-editor-board.is-blank .marker-overlay-board {
+  background-color: var(--surface);
+  background-image:
+    linear-gradient(
+      color-mix(in srgb, var(--outline-variant) 45%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--outline-variant) 45%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 32px 32px;
+}
+
+/* 확대하면 도면 칸 안에서 가로 · 세로로 스크롤한다. */
+.layout-editor-stage {
+  overflow: auto;
+}
+
+/* 도면 도구 막대 — 도면 올리기 · 되돌리기 · 다음 위치 자동 | 축소 · 배율 · 확대 · 맞춤. */
+.layout-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.layout-editor-toolbar-gap {
+  flex: 1 1 auto;
+}
+
+.layout-editor-zoom {
+  min-inline-size: 3.5em;
+  text-align: center;
+  font: var(--type-label-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 목록 위 진행 — 「놓음 3 / 17」 · 막대. */
+.layout-editor-progress {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+  font: var(--type-label-lg);
+}
+
+.layout-editor-progress-bar {
+  position: relative;
+  block-size: 6px;
+  border-radius: 3px;
+  background: var(--surface-container-high);
+  overflow: hidden;
+}
+
+.layout-editor-progress-bar > span {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  border-radius: 3px;
+  background: var(--primary);
+}
+
+/* 편집 창 목록의 「위치」 칸 — 이름을 앞에, 코드는 같은 줄 뒤에 작게. */
+.layout-location-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layout-location-code {
+  flex: none;
+  margin-left: var(--space-2);
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+  white-space: nowrap;
+}
+
+/* 오른쪽 속성 판 — 고른 위치 이름 · 코드 · 단계, 크기 · 회전 칸, 도면에서 빼기. */
+.layout-editor-props {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-block-size: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: auto;
+}
+
+.layout-editor-props-head {
+  display: grid;
+  gap: 2px;
+}
+
+.layout-editor-props-head > strong {
+  font: var(--type-title-sm);
+  font-weight: 700;
+}
+
+.layout-editor-props .marker-shape-fields {
+  flex-direction: column;
+}
+
+.layout-editor-props .marker-shape-fields > * {
+  flex: none;
+}
+
+.layout-editor-props > button {
+  align-self: flex-start;
 }
 
 /* 발 — [도면 올리기] [지도에서 빼기] [되돌리기] · (저장 중 안내) · [취소] [배치도 저장]. */
@@ -40239,7 +40364,6 @@ body:has(
   background: var(--semantic-warning-container);
 }
 
-
 /*
  * 목록 · 최종 LOT 표의 첫 칸 — LOT 번호(줄이지 않고 칸 폭에서 접음) + 보조 줄(들어온 번호 · 품목 · 상대, 넘치면 말줄임).
  * 공용 표(.inspection-queue-table)는 칸을 한 줄 · 가운데로 두므로 이 칸만 왼쪽 맞춤 · 여러 줄로 푼다(시안 2판).
@@ -40385,11 +40509,10 @@ body:has(
   white-space: normal;
 }
 
-
-
-
 /* Location 표 「배치도」 열(사용자 지시 2026-11-24) — 배치도 수정 창으로 가는 아이콘 링크, 둘 수 없는 줄은 흐린 줄표. */
 .location-layout-link {
+  /* 아이콘만인 링크 — 전역 링크 밑줄을 걷는다(사용자 지시 2026-11-25). */
+  text-decoration: none;
   display: inline-grid;
   place-items: center;
   width: 32px;
