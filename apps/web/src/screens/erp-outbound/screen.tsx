@@ -27,11 +27,10 @@ import { PageNav } from '../../patterns/page-nav';
 import { documentNoOf, messageTitleOf } from '../integration-sync/message-labels';
 import { formatDateTime } from '../integration-sync/message-status';
 import { toPageView } from '../integration-sync/pagination';
-import { toPeriodQuery, type PeriodInput } from '../integration-sync/period';
+import { toPeriodQuery } from '../integration-sync/period';
 import { ERP_LINK_ORIENTATION_KEY } from '../integration-sync/erp-link-layout';
 import type { IntegrationMessageRow } from '../integration-sync/types';
-import { CreatedFilter } from './created-filter';
-import { readCreatedPeriod } from './created-period';
+import { formatDate } from './created-period';
 import { MESSAGE_STATUS, type OutboundItem } from './outbound-items';
 import {
   useOutboundCounts,
@@ -46,6 +45,9 @@ const ts = messages.integrationSync;
 
 /** 연동 현황·이력 — 송신 예정 건의 메시지 키가 그 탭의 상세를 연다. */
 const INTEGRATION_SYNC_PATH = '/master-data/integration-sync';
+
+/** 송신 예정의 「전체」 기간 시작 — 서버가 기간을 꼭 받으므로 그보다 앞선 날짜로 둔다(#358). */
+const PENDING_FROM = '2000-01-01';
 
 const readPage = (raw: string | null): number => {
   const value = Number(raw);
@@ -244,48 +246,27 @@ export const ErpOutboundScreen = () => {
   const selected =
     itemRows.find((item) => item.outboundItemCode === requestedCode) ?? itemRows[0] ?? null;
   const page = readPage(searchParams.get('page'));
-  /* 생성일 조건 — 주소의 `from` · `to`(날짜). 없으면 전체다. */
-  const created = readCreatedPeriod(searchParams);
   /*
-   * 「오늘」은 그릴 때마다 다시 잰다 — 목록이 15초마다 다시 그려지므로, 자정을 넘겨 켜 둔 화면에서도 「최근 1주일」이
-   * 오늘까지로 걸린다(한 번만 재면 어제에 머문다).
+   * 송신 예정은 늘 전체 기간으로 본다 — 생성일 조건 칸은 두지 않는다(사용자 지시 2026-11-24). 서버는 기간 없는 조회를
+   * 받지 않으므로(계약 `createdFrom` · `createdTo` 필수) 「아주 오래전 ~ 오늘」을 실어 보낸다. 「오늘」은 그릴 때마다
+   * 다시 잰다 — 목록이 15초마다 다시 그려지므로 자정을 넘겨 켜 둔 화면에서도 오늘까지로 걸린다.
    */
   const today = new Date();
-  const offsetMinutes = -today.getTimezoneOffset();
-
-  const pending = usePendingMessages(
-    selected?.interfaceCode ?? null,
-    page,
-    created === null ? null : toPeriodQuery(created, offsetMinutes),
+  const allPeriod = toPeriodQuery(
+    { from: PENDING_FROM, to: formatDate(today) },
+    -today.getTimezoneOffset(),
   );
+
+  const pending = usePendingMessages(selected?.interfaceCode ?? null, page, allPeriod);
   const pendingRows = pending.data?.items ?? [];
   const pageView = toPageView(
     pending.data?.page ?? { page, size: 0, total: 0 },
     pendingRows.length,
   );
 
-  /** 항목을 바꿔도 생성일 조건은 남긴다 — 같은 기간으로 다른 항목을 본다. 쪽은 처음으로. */
+  /** 항목을 고르면 쪽은 처음으로. */
   const select = (code: string): void => {
-    const next = new URLSearchParams({ item: code });
-    if (created !== null) {
-      next.set('from', created.from);
-      next.set('to', created.to);
-    }
-    setSearchParams(next);
-  };
-  /** 생성일 조건을 바꾸면 쪽은 처음으로. */
-  const applyCreated = (period: PeriodInput | null): void => {
-    const next = new URLSearchParams(searchParams);
-    if (selected !== null) next.set('item', selected.outboundItemCode);
-    next.delete('page');
-    if (period === null) {
-      next.delete('from');
-      next.delete('to');
-    } else {
-      next.set('from', period.from);
-      next.set('to', period.to);
-    }
-    setSearchParams(next);
+    setSearchParams(new URLSearchParams({ item: code }));
   };
   const changePage = (nextPage: number): void => {
     const next = new URLSearchParams(searchParams);
@@ -511,17 +492,12 @@ export const ErpOutboundScreen = () => {
                   </div>
                 )}
               </dl>
-              {/* 송신 예정 — 제목 줄에 건수, 생성일 조건, 아직 보내지 않은 건의 표(#358). */}
+              {/* 송신 예정 — 제목 줄에 건수, 아직 보내지 않은 건의 표(#358). */}
               <h3 className="pane-title erp-outbound-pending-title">
                 {selected.interfaceCode !== null && pendingCount !== undefined
                   ? t.pendingTitle(selected.outboundItemName, pendingCount)
                   : t.panes.pending}
               </h3>
-              {selected.interfaceCode !== null && (
-                <div className="po-board-filter">
-                  <CreatedFilter applied={created} today={today} onApply={applyCreated} />
-                </div>
-              )}
               {pendingSlot()}
             </div>
           ),

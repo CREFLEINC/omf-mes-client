@@ -9,7 +9,7 @@ export const erpOutbound = {
   panes: {
     items: '송신 항목',
     /** 목록 상자 제목 — 「송신 항목 목록 N건」(#358). */
-    list: '송신 항목 목록',
+    list: 'ERP 송신 목록',
     pending: '송신 예정',
     /** 상세 상자 제목(#358). */
     detail: '송신 항목 상세',
@@ -69,21 +69,6 @@ export const erpOutbound = {
     noInterface: '아직 ERP로 보내지 않는 항목입니다',
     noPending: '보낼 건이 없습니다',
     beyondLast: '이 쪽에는 보낼 건이 없습니다',
-  },
-  /** 송신 예정의 생성일 조건 — 바로 고르는 범위(오늘 포함)와 날짜 두 칸. */
-  created: {
-    label: '생성일',
-    presets: '생성일 범위 바로 고르기',
-    all: '전체',
-    week: '최근 1주일',
-    month: '최근 1개월',
-    from: '시작일',
-    to: '종료일',
-    /** 생성일 칸의 비활성 사유 — 연동 현황·이력의 「발생일」 문구를 빌려 쓰지 않는다(#358). */
-    reasons: {
-      searchNeedsPeriod: '조회는 기간을 모두 채운 뒤에 쓸 수 있습니다. 시작일과 종료일을 고르세요.',
-      periodReversed: '기간 종료는 기간 시작보다 앞설 수 없습니다.',
-    },
   },
   /** 탭 막대 오른쪽의 상태 칩 — 송신 항목 전체의 합. 누르면 이 탭으로 온다. */
   chips: {

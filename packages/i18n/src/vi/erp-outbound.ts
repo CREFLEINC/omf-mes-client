@@ -9,7 +9,7 @@ export const erpOutbound: Translated<typeof ko.erpOutbound> = {
   title: 'Gửi ERP',
   panes: {
     items: 'Hạng mục gửi',
-    list: 'Danh sách hạng mục gửi',
+    list: 'Danh sách gửi ERP',
     pending: 'Chờ gửi',
     detail: 'Chi tiết hạng mục gửi',
   },
@@ -54,20 +54,6 @@ export const erpOutbound: Translated<typeof ko.erpOutbound> = {
     noInterface: 'Hạng mục này chưa gửi sang ERP',
     noPending: 'Không có bản tin chờ gửi',
     beyondLast: 'Trang này không có bản tin chờ gửi',
-  },
-  created: {
-    label: 'Ngày tạo',
-    presets: 'Chọn nhanh khoảng ngày tạo',
-    all: 'Tất cả',
-    week: '1 tuần gần nhất',
-    month: '1 tháng gần nhất',
-    from: 'Từ ngày',
-    to: 'Đến ngày',
-    reasons: {
-      searchNeedsPeriod:
-        'Tra cứu chỉ dùng được sau khi điền đủ kỳ. Hãy chọn ngày bắt đầu và ngày kết thúc.',
-      periodReversed: 'Kết thúc kỳ không được sớm hơn bắt đầu kỳ.',
-    },
   },
   chips: {
     sendOn: 'Gửi: bật',
