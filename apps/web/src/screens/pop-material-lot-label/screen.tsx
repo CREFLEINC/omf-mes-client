@@ -50,7 +50,7 @@ import {
   useWaitingGroups,
 } from './queries';
 import { ReasonPicker } from './reason-picker';
-import { defaultLineOf, ItemTable, SupplierList, supplierRowsOf } from './supplier-list';
+import { ItemTable, SupplierList, supplierRowsOf } from './supplier-list';
 import { isVoided, isWaiting, pairKeyOf, toLabelLots, type LabelLot } from './types';
 import { VoidDialog } from './void-dialog';
 import './uniform.css';
@@ -142,7 +142,6 @@ export const PopMaterialLotLabelScreen = () => {
 
   const waiting = useWaitingGroups(plantId, isIssuing || dialog !== null);
   const defaults = useSupplierItemDefaults(plantId);
-  const defaultsMap = defaults.data ?? new Map();
   const queryClient = useQueryClient();
   /*
    * 다시 불러오기는 목록과 함께 공급사·품목 기본 정보도 다시 받는다 — 기본 정보는 오래 들고 있어(60초)
@@ -657,7 +656,7 @@ export const PopMaterialLotLabelScreen = () => {
       <PuSection
         className="mll-right"
         labelId={`${createNoteId}-pair`}
-        /* 품목코드 · 품목명 · 공급사를 이름표와 함께 적는다(사용자 지시 2026-11-23). 기본 정보는 있을 때만. */
+        /* 품목코드 · 품목명 · 공급사를 이름표와 함께 적는다. 기본 정보(「기본 봉지 8 × 2,000 …」)는 적지 않는다(사용자 지시 2026-11-23 · 11-24). */
         title={
           <>
             <span className="mll-head-field">
@@ -672,15 +671,6 @@ export const PopMaterialLotLabelScreen = () => {
               <small>{t.work.fields.supplier}</small>
               <span className="mll-head-value">{current.supplierName}</span>
             </span>
-            <span className="mll-head-field">
-              <small>{t.work.fields.uom}</small>
-              <span className="mll-head-value">{current.uomCode}</span>
-            </span>
-            {defaultLineOf(defaultsMap.get(currentKey ?? '')) === null ? null : (
-              <span className="mll-head-sub">
-                {defaultLineOf(defaultsMap.get(currentKey ?? ''))}
-              </span>
-            )}
           </>
         }
         meta={
@@ -701,23 +691,6 @@ export const PopMaterialLotLabelScreen = () => {
                   </ul>
                 </div>
               </PuHelpButton>
-              {/* C-4 — 사번이 없어 잠긴 까닭은 맨 위 띠와 같은 말이다. */}
-              {workerNo === null ? (
-                <span id={createNoteId} hidden>
-                  {messages.popChrome.workerMissing}
-                </span>
-              ) : null}
-              <PuButton
-                size="sm"
-                icon="plus"
-                disabled={isLocked || workerNo === null}
-                aria-describedby={workerNo === null ? createNoteId : undefined}
-                onClick={() => {
-                  setDialog({ kind: 'batch' });
-                }}
-              >
-                {t.work.create}
-              </PuButton>
             </>
           )
         }
@@ -763,6 +736,24 @@ export const PopMaterialLotLabelScreen = () => {
               {t.bar.selectAll}
             </PuButton>
           )}
+          {/* 「자재 관리 LOT 생성」은 선택 단추 오른쪽, 같은 높이(사용자 지시 2026-11-23). */}
+          {/* C-4 — 사번이 없어 잠긴 까닭은 맨 위 띠와 같은 말이다. */}
+          {workerNo === null ? (
+            <span id={createNoteId} hidden>
+              {messages.popChrome.workerMissing}
+            </span>
+          ) : null}
+          <PuButton
+            size="sm"
+            icon="plus"
+            disabled={isLocked || isShowingResults || workerNo === null}
+            aria-describedby={workerNo === null ? createNoteId : undefined}
+            onClick={() => {
+              setDialog({ kind: 'batch' });
+            }}
+          >
+            {t.work.create}
+          </PuButton>
         </div>
         {pairTableLots.length === 0 ? (
           <PuEmpty icon="box" title={t.work.waitingEmpty} hint={t.work.waitingEmptyHint} />

@@ -204,6 +204,13 @@
   height: 48px;
 }
 
+/* 발행 단위 고르기 칸도 단추와 같은 높이(사용자 지시 2026-11-23). */
+.mll-units .mll-unit-select,
+.mll-units .mll-unit-select button {
+  height: 48px;
+  min-height: 48px;
+}
+
 /* 표: 바깥 칸(`mll-table`)이 남는 높이를 갖고 쪽 건수를 잰다. 칸 폭·줄 높이는 공통 표(`pu-table`) 규칙.
  * LOT 번호 칸은 번호만큼(넘치면 말줄임) — 남는 폭은 발행 대기면 마지막 「라벨」, 재발행이면 「품목」 칸이 갖는다. */
 .mll-table {
@@ -719,7 +726,6 @@
 
 .mll-item-code {
   all: unset;
-  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -765,4 +771,23 @@
   height: auto;
   aspect-ratio: 80 / 30;
   font-family: var(--pu-font, sans-serif);
+}
+
+/*
+ * 발행 대기 표 칸 배치(사용자 지시 2026-11-23 「표 컬럼의 위치를 조정」) — LOT 번호는 번호만큼, 나머지 칸
+ * (공급사 LOT · 재고량 · 포장 · 출력 유무 · 등록일시)이 남는 폭을 고르게 나눠 가운데 맞춤. 한쪽에 몰려 큰 빈칸이 생기지 않게.
+ */
+.mll-table:not(.is-reprint) .pu-table th.mll-lotcol {
+  width: 280px;
+}
+
+.mll-table:not(.is-reprint) .pu-table th:not(:first-child):not(.mll-lotcol),
+.mll-table:not(.is-reprint) .pu-table td:not(:first-child):not(.mll-lotcol) {
+  width: auto;
+  text-align: center;
+}
+
+/* 품목 표의 품목코드 — 공통 단추 글자(17px)보다 2px 작게(사용자 지시 2026-11-23). */
+.mll-items .pu-table td .mll-item-code {
+  font-size: 15px;
 }

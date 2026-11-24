@@ -1,6 +1,16 @@
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
-import { type PrintLogEntry, formatPrintLog, reasonOf } from './print-log';
+import {
+  PRINT_LOG_MAX_BYTES,
+  type PrintLogEntry,
+  appendPrintLog,
+  formatPrintLog,
+  reasonOf,
+} from './print-log';
 
 const entry: PrintLogEntry = {
   at: '2026-09-03T10:00:00.000Z',
@@ -50,5 +60,23 @@ describe('인쇄 진단 기록', () => {
   it('말 없는 실패도 빈 사유로 남기지 않는다', () => {
     expect(reasonOf(new Error(''))).not.toBe('');
     expect(reasonOf('종이 없음')).toBe('종이 없음');
+  });
+});
+
+describe('print.log 크기(사용자 지시 2026-11-23)', () => {
+  it('1MB 를 넘으면 비우고 새 줄부터 다시 적는다', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'omf-print-log-'));
+    const path = join(dir, 'print.log');
+
+    try {
+      appendPrintLog(path, 'a\n', 4);
+      appendPrintLog(path, 'b\n', 4);
+      expect(readFileSync(path, 'utf8')).toBe('a\nb\n');
+      appendPrintLog(path, 'c\n', 4);
+      expect(readFileSync(path, 'utf8')).toBe('c\n');
+      expect(PRINT_LOG_MAX_BYTES).toBe(1024 * 1024);
+    } finally {
+      rmSync(dir, { force: true, recursive: true });
+    }
   });
 });
