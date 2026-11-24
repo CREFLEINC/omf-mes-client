@@ -47,9 +47,9 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
   fields: {
     periodFrom: 'Bắt đầu kỳ',
     periodTo: 'Kết thúc kỳ',
-    status: 'Trạng thái',
-    interfaceCode: 'Hạng mục',
-    direction: 'Phân loại',
+    status: 'Chọn trạng thái',
+    interfaceCode: 'Chọn hạng mục',
+    direction: 'Chọn phân loại',
     retryMin: 'Số lần thử lại (từ)',
   },
   actions: {

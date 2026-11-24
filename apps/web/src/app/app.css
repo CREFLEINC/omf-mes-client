@@ -12238,6 +12238,11 @@ a.erp-send-chips:focus-visible {
  * 글자는 label-lg, 켜진 탭은 탭 폭 전체에 `--primary-text` 굵은 밑줄. 품질 결재 유형 탭(`.quality-approval-type-tabs`)과 같은 방식.
  */
 /* 탭 목록의 아래 여백 · 진한 선을 걷고 옅은 선 하나만 — 켜진 탭 밑줄이 그 선 위에 바로 붙는다(선 두 줄 방지). */
+/* 탭 줄 ↔ 조회 상자 사이 — 다른 탭 화면(hub-bar)과 같게(omf-all-around#358). */
+.users-roles-tab-strip {
+  gap: var(--space-5);
+}
+
 .users-roles-tab-strip [role='tablist'] {
   gap: 0;
   padding: 0;
@@ -12278,7 +12283,8 @@ a.erp-send-chips:focus-visible {
 
 .users-roles-workspace {
   display: grid;
-  gap: var(--space-4);
+  /* 조회 상자 ↔ 목록 사이 — ListDetailWorkspace 와 같게(omf-all-around#358). */
+  gap: var(--space-5);
   min-width: 0;
 }
 
@@ -12313,12 +12319,6 @@ a.erp-send-chips:focus-visible {
 .users-roles-filter-row > .users-roles-search-input {
   flex: 0 0 17rem;
   width: 17rem;
-}
-
-/* 역할 검색 — 흐린 문구(역할 코드 또는 역할명을 입력하세요)가 꼭 들어가는 너비만큼만 넓힌다(사용자 지시 2026-11-20 · #333). */
-.users-roles-filter-row > .users-roles-search-input.users-roles-role-search-input {
-  flex-basis: 18.5rem;
-  width: 18.5rem;
 }
 
 /* 조회 · 초기화 · 사용자 추가를 함께 오른쪽 끝으로(사용자 지시 2026-11-20 · #333). */
@@ -17069,16 +17069,15 @@ dialog.layout-editor-dialog {
   margin-bottom: var(--space-3);
 }
 
+/* 위 줄 ↔ 조회 상자 사이를 다른 시스템 관리 화면(ListDetailWorkspace)과 같게(omf-all-around#358). */
+.terminal-map-top-actions + .users-roles-workspace {
+  margin-top: 0;
+}
+
 /* 상단 바의 OA·부품 동작 단추 둘 — 가로로 나란히(omf-all-around#336). */
 .split-orientation-toggle.topbar-plant-mode {
   flex-direction: row;
   align-items: center;
-}
-
-/* 단말 코드 검색 — 흐린 문구(단말 코드를 입력하세요)가 들어가는 폭만(사용자 지시 2026-11-20 · #333). */
-.users-roles-filter-row > .users-roles-search-input.terminal-map-search-input {
-  flex-basis: 14rem;
-  width: 14rem;
 }
 
 /* 단말 추가 · 수정 팝업(사용자 시안 2026-11-20 · #333) — 제목 아래 구분선, 두 열. */

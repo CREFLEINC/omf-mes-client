@@ -11,8 +11,9 @@ export const erpPartner: Translated<typeof ko.erpPartner> = {
     detail: 'Chi tiết đối tác',
   },
   fields: {
-    q: 'Mã·Tên đối tác',
-    role: 'Vai trò',
+    q: 'Tìm đối tác',
+    qPlaceholder: 'Nhập mã hoặc tên đối tác',
+    role: 'Chọn vai trò',
     includeInactive: 'Bao gồm ngừng sử dụng',
   },
   table: {

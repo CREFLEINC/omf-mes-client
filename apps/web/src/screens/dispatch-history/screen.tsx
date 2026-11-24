@@ -302,7 +302,7 @@ export const DispatchHistoryScreen = () => {
         </div>
         {selectField(
           'event',
-          t.filters.event,
+          t.filters.eventSelect,
           filters.event,
           handoverOptions.length === 0
             ? eventOptions
@@ -316,7 +316,7 @@ export const DispatchHistoryScreen = () => {
         )}
         {selectField(
           'result',
-          t.filters.result,
+          t.filters.resultSelect,
           filters.result,
           [
             { value: 'NOTIFIED', label: t.results.NOTIFIED },
@@ -347,7 +347,7 @@ export const DispatchHistoryScreen = () => {
         <div className="filter-bar">
           {selectField(
             'department',
-            t.filters.department,
+            t.filters.departmentSelect,
             filters.department,
             departmentOptions,
             (value) => setFilters((prev) => ({ ...prev, department: value })),

@@ -9,6 +9,10 @@ import {
   useFilterMore,
   type HiddenFilterChip,
 } from '../../patterns/filter-more';
+import {
+  FIT_PLACEHOLDER_CLASS,
+  useFitPlaceholderWidth,
+} from '../../patterns/fit-placeholder-width';
 import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
 import { DEFAULT_FILTERS, type ErpProductionOrderFilters } from './filters';
@@ -57,7 +61,7 @@ const ItemField = ({ value, onChange }: ItemFieldProps) => {
   return (
     <div className="field-cell filter-field-md">
       <label className="field-label" htmlFor={id}>
-        {t.fields.item}
+        {t.filters.itemSelect}
       </label>
       <ItemSelect
         id={id}
@@ -94,6 +98,7 @@ export const ErpProductionOrderFilterBar = ({
   onReset,
 }: ErpProductionOrderFilterBarProps) => {
   const [draft, setDraft] = useState(appliedFilters);
+  const searchRef = useFitPlaceholderWidth(t.values.searchPlaceholder);
   const periodId = useId();
   const more = useFilterMore();
   const { q, item, status, from, to, progress } = appliedFilters;
@@ -177,11 +182,12 @@ export const ErpProductionOrderFilterBar = ({
         <SearchInput
           label={t.fields.q}
           placeholder={t.values.searchPlaceholder}
+          ref={searchRef}
           value={draft.q}
           onChange={(event) => update('q', event.target.value)}
           onSearch={search}
           clearLabel={messages.common.clear}
-          containerClassName="filter-field-sm erp-order-search"
+          containerClassName={`filter-field-sm erp-order-search ${FIT_PLACEHOLDER_CLASS}`}
         />
         <div className="filter-actions field-cell-unlabeled">
           <Button onClick={search}>{messages.common.search}</Button>
@@ -203,7 +209,7 @@ export const ErpProductionOrderFilterBar = ({
             onChange={(next) => onSearch({ ...appliedFilters, progress: next })}
           />
           <FilterSelect
-            label={t.fields.status}
+            label={t.filters.statusSelect}
             options={statusOptions}
             value={draft.status}
             onChange={(value) => update('status', value)}

@@ -29,7 +29,8 @@ export const erpCommonCode = {
     isActive: '사용',
   },
   fields: {
-    groupSearch: '그룹 코드·그룹명',
+    groupSearch: '코드그룹 검색',
+    groupSearchPlaceholder: '그룹 코드 또는 그룹명을 입력하세요',
     q: '코드·코드명',
     includeInactive: '미사용 포함',
   },

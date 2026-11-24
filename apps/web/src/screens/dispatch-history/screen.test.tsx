@@ -201,7 +201,7 @@ describe('DispatchHistoryScreen', () => {
     const { dispatchQueries } = setup();
 
     await dispatchPane().findByText('WO-20261021-001');
-    await user.click(screen.getByRole('combobox', { name: t.filters.result }));
+    await user.click(screen.getByRole('combobox', { name: t.filters.resultSelect }));
     await user.click(await screen.findByRole('option', { name: t.results.SKIPPED }));
     await user.click(screen.getByRole('button', { name: t.filters.search }));
 
@@ -238,7 +238,7 @@ describe('DispatchHistoryScreen', () => {
     await dispatchPane().findByText('WO-20261021-001');
     expect(t.zaloSummary(2, 1, 0, 0, 3)).toBe('성공 2, 실패 1, 대기 0, 만료 0, 번호없음 3');
     await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
-    await user.click(screen.getByRole('combobox', { name: t.filters.department }));
+    await user.click(screen.getByRole('combobox', { name: t.filters.departmentSelect }));
     expect(await screen.findByRole('option', { name: '생산1팀 (D-PRD1)' })).toBeInTheDocument();
   });
 
@@ -248,7 +248,7 @@ describe('DispatchHistoryScreen', () => {
     const { dispatchQueries } = setup({ route: `${ROUTE}&dept=7&result=SKIPPED` });
 
     await dispatchPane().findByText('WO-20261021-001');
-    expect(screen.queryByRole('combobox', { name: t.filters.department })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: t.filters.departmentSelect })).toBeNull();
     expect(await screen.findByText(t.filters.chipDepartment('생산1팀 (D-PRD1)'))).toBeVisible();
     expect(screen.getAllByRole('button', { name: /조건 제거$/ })).toHaveLength(1);
 

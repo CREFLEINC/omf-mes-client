@@ -61,6 +61,9 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
   },
   filters: {
     all: 'Tất cả',
+    approvalTypeSelect: 'Chọn loại phê duyệt',
+    businessUnitSelect: 'Chọn đơn vị kinh doanh',
+    qPlaceholder: 'Nhập loại phê duyệt',
     lookupTruncated:
       'Lựa chọn chỉ hiện một phần ở đầu. Không thấy giá trị cần tìm thì hãy báo người phụ trách.',
     lookupFailed: 'Không tải được lựa chọn.',

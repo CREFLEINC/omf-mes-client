@@ -5,6 +5,10 @@ import { useSearchParams } from 'react-router';
 
 import { useClientPage } from '../../patterns/client-page';
 import { hasChangedFilters } from '../../patterns/filter-more';
+import {
+  FIT_PLACEHOLDER_CLASS,
+  useFitPlaceholderWidth,
+} from '../../patterns/fit-placeholder-width';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { OneLine } from '../../patterns/po-board';
 import { PAGE_SIZES, PageNav, type PageSize } from '../../patterns/page-nav';
@@ -293,6 +297,7 @@ const matchesGroup = (row: CodeGroup, q: string): boolean => {
 export const ErpCommonCodeScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [groupSearch, setGroupSearch] = useState('');
+  const searchRef = useFitPlaceholderWidth(t.fields.groupSearchPlaceholder);
   const [appliedGroupSearch, setAppliedGroupSearch] = useState('');
 
   const group = readGroup(searchParams);
@@ -340,7 +345,10 @@ export const ErpCommonCodeScreen = () => {
             }}
           >
             <TextField
+              containerClassName={FIT_PLACEHOLDER_CLASS}
               label={t.fields.groupSearch}
+              placeholder={t.fields.groupSearchPlaceholder}
+              ref={searchRef}
               value={groupSearch}
               onChange={(event) => {
                 setGroupSearch(event.target.value);

@@ -279,7 +279,11 @@ describe('ErpPurchaseOrderScreen', () => {
       screen.queryByRole('button', { name: messages.common.filterMore.remove(label) });
 
     await screen.findByRole('button', { name: 'SYN-PO-901' });
-    for (const label of [t.fields.plant, t.fields.status, t.fields.orderType]) {
+    for (const label of [
+      t.filters.plantSelect,
+      t.filters.statusSelect,
+      t.filters.orderTypeSelect,
+    ]) {
       expect(screen.queryByRole('combobox', { name: label })).toBeNull();
     }
     /* 코드가 아니라 선택지 이름으로. */
@@ -304,7 +308,9 @@ describe('ErpPurchaseOrderScreen', () => {
 
     /* 펼치면 칸에 값이 보이므로 칩을 거둔다. */
     await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
-    expect(screen.getByRole('combobox', { name: t.fields.status })).toHaveTextContent('합성 등록');
+    expect(screen.getByRole('combobox', { name: t.filters.statusSelect })).toHaveTextContent(
+      '합성 등록',
+    );
     expect(removeOf(t.fields.status)).toBeNull();
 
     /* 초기화는 처음 값과 다른 것이 있을 때만 보인다 — 누르면 처음으로 돌아가고 다시 숨는다. */

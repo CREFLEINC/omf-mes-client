@@ -30,9 +30,9 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     includeInactive: 'Gồm cả không sử dụng',
     apply: 'Tra cứu',
     clear: 'Đặt lại',
-    type: 'Loại thiết bị',
-    equipment: 'Thiết bị lắp đặt',
-    warehouse: 'Kho',
+    type: 'Chọn loại thiết bị',
+    equipment: 'Chọn thiết bị lắp đặt',
+    warehouse: 'Chọn kho',
     all: 'Tất cả',
   },
 

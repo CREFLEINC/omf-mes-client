@@ -328,12 +328,14 @@ describe('ErpSalesOrderScreen', () => {
     expect(listUrls()[0]?.searchParams.get('statusCode')).toBe('RECEIVED');
 
     /* 상태는 「조건 더보기」에 접혀 있다 — 펼쳐야 칸이 보인다. */
-    expect(screen.queryByRole('combobox', { name: t.fields.status })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('combobox', { name: t.filters.statusSelect }),
+    ).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
 
     /* 글로 적는 칸이 아니라 선택지다. */
     expect(screen.queryByRole('textbox', { name: t.fields.status })).not.toBeInTheDocument();
-    const status = screen.getByRole('combobox', { name: t.fields.status });
+    const status = screen.getByRole('combobox', { name: t.filters.statusSelect });
     await waitFor(() => expect(status).toHaveTextContent('수신'));
     await user.click(status);
     await user.click(await screen.findByRole('option', { name: '취소' }));

@@ -17,7 +17,8 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
     setting: (eventName: string): string => `Thiết lập: ${eventName}`,
   },
   fields: {
-    department: 'Phòng ban',
+    department: 'Chọn phòng ban',
+    departmentPlaceholder: 'Chọn phòng ban',
     enabled: 'Nhận thông báo',
     zalo: 'Gửi cả qua Zalo',
     recipients: (count: number): string => `Người nhận (${String(count)})`,

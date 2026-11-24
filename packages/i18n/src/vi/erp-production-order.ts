@@ -18,7 +18,7 @@ export const erpProductionOrder: Translated<typeof ko.erpProductionOrder> = {
     rework: 'Làm lại',
     status: 'Trạng thái',
     progress: 'Tiến độ',
-    q: 'Số ERP W/O',
+    q: 'Tìm số W/O',
   },
   panes: {
     filters: 'Điều kiện tra cứu ERP W/O',
@@ -27,6 +27,8 @@ export const erpProductionOrder: Translated<typeof ko.erpProductionOrder> = {
   },
   filters: {
     all: 'Tất cả',
+    itemSelect: 'Chọn mặt hàng',
+    statusSelect: 'Chọn trạng thái',
     itemPlaceholder: 'Tìm và chọn mặt hàng',
     itemClear: 'Xóa mặt hàng',
     itemPick: 'Chọn',
@@ -45,7 +47,7 @@ export const erpProductionOrder: Translated<typeof ko.erpProductionOrder> = {
     },
   },
   values: {
-    searchPlaceholder: 'Một phần số ERP W/O',
+    searchPlaceholder: 'Nhập số ERP W/O',
     missing: '-',
     unknown: 'Không xác định',
     loadingName: 'Đang tải',

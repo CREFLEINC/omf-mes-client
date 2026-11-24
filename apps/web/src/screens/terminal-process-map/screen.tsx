@@ -19,6 +19,10 @@ import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { hasChangedFilters } from '../../patterns/filter-more';
+import {
+  FIT_PLACEHOLDER_CLASS,
+  useFitPlaceholderWidth,
+} from '../../patterns/fit-placeholder-width';
 import { SaveErrorBanner } from '../../patterns/master';
 import { PageNav } from '../../patterns/page-nav';
 import {
@@ -136,6 +140,7 @@ export const TerminalProcessMapScreen = () => {
   const selectedId = readSelected(searchParams);
 
   const [search, setSearch] = useState(filters.q);
+  const searchRef = useFitPlaceholderWidth(t.filters.searchPlaceholder);
   const [formMode, setFormMode] = useState<FormMode>('closed');
   const [terminalDraft, setTerminalDraft] = useState<TerminalDraft>(EMPTY_TERMINAL);
   const [terminalErrors, setTerminalErrors] = useState<TerminalErrors>({});
@@ -799,10 +804,11 @@ export const TerminalProcessMapScreen = () => {
               />
             </div>
             <SearchInput
-              containerClassName="users-roles-search-input terminal-map-search-input"
+              containerClassName={`users-roles-search-input ${FIT_PLACEHOLDER_CLASS}`}
               label={t.filters.search}
               value={search}
               placeholder={t.filters.searchPlaceholder}
+              ref={searchRef}
               onChange={(event) => {
                 setSearch(event.target.value);
               }}

@@ -21,7 +21,7 @@ export const erpSalesOrder = {
     uom: '단위',
     requestedDeliveryDate: '납기 요청일',
     unassignedOnly: '미편성만',
-    q: '수주번호',
+    q: '수주번호 검색',
     orderType: '수주 유형',
     movementType: '이동 유형',
     salesGroup: '영업그룹',
@@ -36,6 +36,9 @@ export const erpSalesOrder = {
   },
   filters: {
     all: '전체',
+    /* 조회 상자 선택칸 이름(#358). 목록 열 · 칩은 `fields` 이름 그대로. */
+    customerSelect: '고객사 선택',
+    statusSelect: '상태 선택',
     /** 「조건 더보기」에 접힌 조건의 칩 — 「상태: 반려」처럼 칸 이름과 값을 한 줄로. */
     chip: (label: string, value: string): string => `${label}: ${value}`,
   },
@@ -56,7 +59,7 @@ export const erpSalesOrder = {
     },
   },
   values: {
-    searchPlaceholder: '수주번호',
+    searchPlaceholder: '수주번호를 입력하세요',
     missing: '-',
     unknown: '알 수 없음',
     loadingName: '불러오는 중',

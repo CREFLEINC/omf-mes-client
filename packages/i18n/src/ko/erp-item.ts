@@ -12,8 +12,9 @@ export const erpItem = {
     detail: '품목 상세',
   },
   fields: {
-    q: '품목코드·품목명',
-    itemType: '품목유형',
+    q: '품목 검색',
+    qPlaceholder: '품목코드 또는 품목명을 입력하세요',
+    itemType: '품목 유형 선택',
     includeInactive: '미사용 포함',
   },
   filters: {

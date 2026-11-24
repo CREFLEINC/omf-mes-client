@@ -53,7 +53,7 @@ describe('RouteFilterBar — 모아서 적용', () => {
   it('사업부를 고르면 조회에 함께 실린다', async () => {
     const { onSearch, user } = renderBar();
 
-    await user.click(screen.getByRole('combobox', { name: t.fields.businessUnit }));
+    await user.click(screen.getByRole('combobox', { name: t.filters.businessUnitSelect }));
     await user.click(screen.getByRole('option', { name: BUSINESS_UNIT_LABEL }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
@@ -127,7 +127,7 @@ describe('RouteFilterBar — 승인 유형 자리표시', () => {
   it('선택지가 비어 있고 왜 비었는지 밝힌다', () => {
     renderBar({ approvalTypeOptions: [] });
 
-    const control = screen.getByRole('combobox', { name: t.fields.approvalTypeCode });
+    const control = screen.getByRole('combobox', { name: t.filters.approvalTypeSelect });
 
     expect(screen.getByText(messages.pendingCode.note)).toBeInTheDocument();
     expect(control).toHaveAccessibleDescription(messages.pendingCode.note);
@@ -140,7 +140,7 @@ describe('RouteFilterBar — 승인 유형 자리표시', () => {
 
     expect(screen.queryByText(messages.pendingCode.note)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('combobox', { name: t.fields.approvalTypeCode }));
+    await user.click(screen.getByRole('combobox', { name: t.filters.approvalTypeSelect }));
 
     expect(screen.getByRole('option', { name: t.filters.all })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: '폐기 출고' })).toBeInTheDocument();
@@ -149,7 +149,7 @@ describe('RouteFilterBar — 승인 유형 자리표시', () => {
   it('고를 것이 없는 칸에는 「전체」도 붙이지 않는다', async () => {
     const { user } = renderBar({ approvalTypeOptions: [] });
 
-    await user.click(screen.getByRole('combobox', { name: t.fields.approvalTypeCode }));
+    await user.click(screen.getByRole('combobox', { name: t.filters.approvalTypeSelect }));
 
     expect(screen.queryByRole('option', { name: t.filters.all })).not.toBeInTheDocument();
   });

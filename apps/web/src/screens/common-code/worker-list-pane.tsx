@@ -13,6 +13,10 @@ import { type ReactNode, useEffect, useState } from 'react';
 
 import { useFitColumns } from '../../patterns/column-fit';
 import { hasChangedFilters } from '../../patterns/filter-more';
+import {
+  FIT_PLACEHOLDER_CLASS,
+  useFitPlaceholderWidth,
+} from '../../patterns/fit-placeholder-width';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
@@ -76,6 +80,7 @@ export const WorkerListPane = ({
 }: WorkerListPaneProps) => {
   /* 트리거 모델: 편집은 모아서 적용, 해제는 즉시. */
   const [draft, setDraft] = useState<ScopedFilters>(appliedFilters);
+  const searchRef = useFitPlaceholderWidth(t.filters.workerSearchPlaceholder);
   const {
     q: appliedQ,
     scopeId: appliedScopeId,
@@ -230,8 +235,10 @@ export const WorkerListPane = ({
 
       <div className="filter-bar common-code-filter">
         <SearchInput
+          containerClassName={FIT_PLACEHOLDER_CLASS}
           label={t.filters.workerSearchLabel}
           placeholder={t.filters.workerSearchPlaceholder}
+          ref={searchRef}
           value={draft.q}
           onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
           onSearch={(value) => onApplyFilters({ ...draft, q: value })}

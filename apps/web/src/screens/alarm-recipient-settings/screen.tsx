@@ -455,7 +455,7 @@ export const AlarmRecipientSettingsScreen = () => {
             label={t.fields.department}
             options={departmentOptions}
             value={departmentId === null ? '' : String(departmentId)}
-            placeholder={t.fields.department}
+            placeholder={t.fields.departmentPlaceholder}
             disabled={departments.isPending}
             note={departments.data?.truncated === true ? t.state.departmentsTruncated : undefined}
             onChange={(value) => {

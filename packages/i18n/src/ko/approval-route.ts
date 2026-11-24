@@ -87,6 +87,10 @@ export const approvalRoute = {
   },
   filters: {
     all: '전체',
+    /* 조회 상자 칸 이름 · 흐린 문구(#358). 목록 열 · 등록 폼은 `fields` 이름 그대로. */
+    approvalTypeSelect: '승인 유형 선택',
+    businessUnitSelect: '사업부 선택',
+    qPlaceholder: '승인 유형을 입력하세요',
     lookupTruncated: '선택지가 앞쪽 일부만 보입니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
     lookupFailed: '선택지를 불러오지 못했습니다.',
   },

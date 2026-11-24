@@ -127,7 +127,7 @@ export const usersRoles = {
     rolePane: '역할 조회 조건',
     userSearchLabel: '사용자 검색',
     userSearchPlaceholder: '아이디 또는 이름을 입력하세요',
-    department: '소속 부서',
+    department: '소속 부서 선택',
     /* 선택지에 빈 값을 두어 고른 부서를 다시 「전체」로 되돌릴 수 있게 한다. */
     departmentAll: '전체',
     /*

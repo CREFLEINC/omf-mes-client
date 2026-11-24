@@ -14,6 +14,10 @@ import { type ReactNode, useEffect, useState } from 'react';
 
 import { useFitColumns } from '../../patterns/column-fit';
 import { hasChangedFilters } from '../../patterns/filter-more';
+import {
+  FIT_PLACEHOLDER_CLASS,
+  useFitPlaceholderWidth,
+} from '../../patterns/fit-placeholder-width';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
@@ -86,6 +90,7 @@ export const CodeGroupListPane = ({
    * 편집 중인 값은 draft에만 있고 조건 칩에 미러하지 않는다 — 칩은 「적용된 조건」의 표시다.
    */
   const [draft, setDraft] = useState<CodeGroupFilters>(appliedFilters);
+  const searchRef = useFitPlaceholderWidth(t.filters.codeGroupSearchPlaceholder);
   const { q: appliedQ, includeInactive: appliedIncludeInactive } = appliedFilters;
 
   useEffect(() => {
@@ -238,8 +243,10 @@ export const CodeGroupListPane = ({
       {/* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
       <div className="filter-bar common-code-filter">
         <SearchInput
+          containerClassName={FIT_PLACEHOLDER_CLASS}
           label={t.filters.codeGroupSearchLabel}
           placeholder={t.filters.codeGroupSearchPlaceholder}
+          ref={searchRef}
           value={draft.q}
           onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
           onSearch={(value) => onApplyFilters({ ...draft, q: value })}

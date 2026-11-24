@@ -12,7 +12,8 @@ export const erpEmployee = {
     detail: '사원 상세',
   },
   fields: {
-    q: '사번·성명',
+    q: '사원 검색',
+    qPlaceholder: '사번 또는 성명을 입력하세요',
     includeInactive: '퇴사자 포함',
   },
   table: {

@@ -9,6 +9,10 @@ import {
   useFilterMore,
   type HiddenFilterChip,
 } from '../../patterns/filter-more';
+import {
+  FIT_PLACEHOLDER_CLASS,
+  useFitPlaceholderWidth,
+} from '../../patterns/fit-placeholder-width';
 import { PartnerSelect } from '../../patterns/partner-select';
 import { Select } from '../../patterns/select';
 import { DEFAULT_FILTERS, type PurchaseOrderFilters } from './filters';
@@ -97,6 +101,7 @@ export const ErpPurchaseOrderFilterBar = ({
   onReset,
 }: ErpPurchaseOrderFilterBarProps) => {
   const [draft, setDraft] = useState(appliedFilters);
+  const searchRef = useFitPlaceholderWidth(t.values.searchPlaceholder);
   const periodId = useId();
   const more = useFilterMore();
   const { q, supplier, plant, status, orderType, from, to, progress } = appliedFilters;
@@ -176,7 +181,7 @@ export const ErpPurchaseOrderFilterBar = ({
         </div>
         <FilterSelect
           partners
-          label={t.fields.supplier}
+          label={t.filters.supplierSelect}
           className="filter-field-md"
           options={[]}
           value={draft.supplier}
@@ -185,11 +190,12 @@ export const ErpPurchaseOrderFilterBar = ({
         <SearchInput
           label={t.fields.q}
           placeholder={t.values.searchPlaceholder}
+          ref={searchRef}
           value={draft.q}
           onChange={(event) => update('q', event.target.value)}
           onSearch={search}
           clearLabel={messages.common.clear}
-          containerClassName="filter-field-sm erp-order-search"
+          containerClassName={`filter-field-sm erp-order-search ${FIT_PLACEHOLDER_CLASS}`}
         />
         {/* 조회 · 초기화 · 조건 더보기는 줄 오른쪽 끝(단말 관리와 같다 · #358). 초기화는 바뀐 것이 있을 때만. */}
         <div className="filter-actions field-cell-unlabeled">
@@ -212,14 +218,14 @@ export const ErpPurchaseOrderFilterBar = ({
             onChange={(next) => onSearch({ ...appliedFilters, progress: next })}
           />
           <FilterSelect
-            label={t.fields.plant}
+            label={t.filters.plantSelect}
             className="filter-field-md"
             options={plantOptions}
             value={draft.plant}
             onChange={(value) => update('plant', value)}
           />
           <FilterSelect
-            label={t.fields.status}
+            label={t.filters.statusSelect}
             className="filter-field-sm"
             options={statusOptions}
             value={draft.status}
@@ -227,7 +233,7 @@ export const ErpPurchaseOrderFilterBar = ({
           />
           {/* 발주 유형(사용자 지시 2026-10-28) — 외자 · 내자 · 위탁가공 등을 갈라 본다. */}
           <FilterSelect
-            label={t.fields.orderType}
+            label={t.filters.orderTypeSelect}
             className="erp-po-order-type-field"
             options={orderTypeOptions}
             value={draft.orderType}

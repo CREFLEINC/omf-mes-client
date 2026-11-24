@@ -11,8 +11,9 @@ export const erpItem: Translated<typeof ko.erpItem> = {
     detail: 'Chi tiết mặt hàng',
   },
   fields: {
-    q: 'Mã·Tên mặt hàng',
-    itemType: 'Loại mặt hàng',
+    q: 'Tìm mặt hàng',
+    qPlaceholder: 'Nhập mã hoặc tên mặt hàng',
+    itemType: 'Chọn loại mặt hàng',
     includeInactive: 'Bao gồm ngừng sử dụng',
   },
   filters: {

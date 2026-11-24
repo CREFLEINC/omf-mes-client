@@ -16,6 +16,10 @@ import { BoardTable } from '../../patterns/board-table';
 import { useClientPage } from '../../patterns/client-page';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { hasChangedFilters } from '../../patterns/filter-more';
+import {
+  FIT_PLACEHOLDER_CLASS,
+  useFitPlaceholderWidth,
+} from '../../patterns/fit-placeholder-width';
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { PageNav } from '../../patterns/page-nav';
@@ -84,6 +88,7 @@ export const ErpInboundScreen = () => {
   const [pending, setPending] = useState<Record<string, PendingRun>>({});
   /* 이름 검색 — 치는 값(`search`)과 [조회]로 건 값(`query`). 고른 표는 `interfaceCode` 로 잡는다(#358). */
   const [search, setSearch] = useState('');
+  const searchRef = useFitPlaceholderWidth(t.filters.searchPlaceholder);
   const [query, setQuery] = useState('');
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
 
@@ -324,10 +329,11 @@ export const ErpInboundScreen = () => {
                초기화는 검색어가 처음 값(빈칸)과 다를 때만 보인다. */
             <div className="filter-bar erp-link-filter">
               <SearchInput
-                containerClassName="erp-link-search-input"
+                containerClassName={`erp-link-search-input ${FIT_PLACEHOLDER_CLASS}`}
                 label={t.filters.search}
                 value={search}
                 placeholder={t.filters.searchPlaceholder}
+                ref={searchRef}
                 onChange={(event) => {
                   setSearch(event.target.value);
                 }}

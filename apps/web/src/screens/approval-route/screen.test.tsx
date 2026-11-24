@@ -716,7 +716,7 @@ describe('ApprovalRouteScreen — 목록', () => {
 
     await waitForList();
 
-    await user.click(screen.getByRole('combobox', { name: t.fields.approvalTypeCode }));
+    await user.click(screen.getByRole('combobox', { name: t.filters.approvalTypeSelect }));
 
     expect(screen.getAllByRole('option')).toHaveLength(9); // 전체 + 승인 유형 8개(IQC·PQC 생략은 #353 폐지)
     expect(screen.queryByRole('option', { name: 'PQC_SKIP' })).toBeNull();

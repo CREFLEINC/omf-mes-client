@@ -162,7 +162,7 @@ describe('ErpCommonCodeScreen', () => {
     // 그룹 검색 초기화도 검색어가 처음 값(빈칸)과 다를 때만 보인다.
     expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
 
-    await user.type(screen.getByLabelText('그룹 코드·그룹명'), '단위');
+    await user.type(screen.getByLabelText('코드그룹 검색'), '단위');
     await user.click(screen.getAllByRole('button', { name: '조회' })[0]!);
     expect(screen.queryByRole('button', { name: 'PUR_GROUP' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'UNIT' })).toBeInTheDocument();

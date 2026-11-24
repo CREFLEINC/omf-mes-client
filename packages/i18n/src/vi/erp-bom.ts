@@ -7,8 +7,9 @@ export const erpBom: Translated<typeof ko.erpBom> = {
   breadcrumbRoot: 'Quản trị hệ thống',
   fields: {
     hasBom: 'Chỉ mặt hàng có BOM',
-    itemType: 'Loại',
-    q: 'Mã·tên mặt hàng',
+    itemType: 'Chọn loại',
+    q: 'Tìm mặt hàng',
+    qPlaceholder: 'Nhập mã hoặc tên mặt hàng',
   },
   panes: {
     parents: 'Danh sách mặt hàng cha',

@@ -26,9 +26,9 @@ export const terminalProcessMap = {
     includeInactive: '미사용 포함',
     apply: '조회',
     clear: '초기화',
-    type: '단말 유형',
-    equipment: '설치 설비',
-    warehouse: '창고',
+    type: '단말 유형 선택',
+    equipment: '설치 설비 선택',
+    warehouse: '창고 선택',
     all: '전체',
   },
 

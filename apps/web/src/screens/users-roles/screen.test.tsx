@@ -569,7 +569,7 @@ describe('UsersRolesScreen 조건과 주소', () => {
 
     await user.type(within(userSearchPane()).getByLabelText('사용자 검색'), 'syn');
     // 디자인 시스템 `Select`는 네이티브 `<select>`가 아니라 트리거를 누른 뒤 선택지를 누른다.
-    await user.click(within(userSearchPane()).getByLabelText('소속 부서'));
+    await user.click(within(userSearchPane()).getByLabelText('소속 부서 선택'));
     await user.click(await screen.findByRole('option', { name: /SYN-DEPT-01/ }));
     await user.click(within(userSearchPane()).getByRole('button', { name: '조회' }));
 

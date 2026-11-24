@@ -26,9 +26,9 @@ interface FilterChangeCase {
 }
 
 const FILTER_CHANGE_CASES: FilterChangeCase[] = [
-  { key: 'status', label: '상태', value: 'FAILED', shown: '실패' },
-  { key: 'iface', label: '항목', value: 'IF-GR-SEND', shown: '입고 (G/R)' },
-  { key: 'direction', label: '구분', value: 'OUTBOUND', shown: '송신' },
+  { key: 'status', label: '상태 선택', value: 'FAILED', shown: '실패' },
+  { key: 'iface', label: '항목 선택', value: 'IF-GR-SEND', shown: '입고 (G/R)' },
+  { key: 'direction', label: '구분 선택', value: 'OUTBOUND', shown: '송신' },
   { key: 'retryMin', label: '재시도 횟수(이상)', value: '5', shown: '5' },
 ];
 
@@ -164,12 +164,12 @@ describe('MessageFilterBar — 기간', () => {
 
     expect(screen.queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('combobox', { name: '상태' }));
+    await user.click(screen.getByRole('combobox', { name: '상태 선택' }));
     await user.click(screen.getByRole('option', { name: '실패' }));
     await user.click(screen.getByRole('button', { name: '초기화' }));
 
     /* 걸린 조건이 처음 그대로여도 고르던 값을 되돌리고 단추를 거둔다. */
-    expect(screen.getByRole('combobox', { name: '상태' })).toHaveTextContent('전체');
+    expect(screen.getByRole('combobox', { name: '상태 선택' })).toHaveTextContent('전체');
     expect(screen.queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
   });
 });
@@ -178,7 +178,7 @@ describe('MessageFilterBar — 조건 4종', () => {
   it('선택칸마다 눈에 보이는 라벨이 붙는다', () => {
     renderBar();
 
-    for (const label of ['구분', '항목', '상태', '재시도 횟수(이상)']) {
+    for (const label of ['구분 선택', '항목 선택', '상태 선택', '재시도 횟수(이상)']) {
       expect(screen.getByLabelText(label)).toBeInTheDocument();
     }
     // 대상 유형 칸은 두지 않는다 — 값이 시스템 코드라 읽을 수 없고 항목과 짝이다.
@@ -251,14 +251,14 @@ describe('MessageFilterBar — 조건 더보기(C-6)', () => {
     const more = screen.getByRole('button', { name: messages.common.filterMore.open });
 
     expect(more).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.getByRole('combobox', { name: '항목' })).toBeVisible();
-    expect(screen.getByRole('combobox', { name: '상태' })).toBeVisible();
-    expect(screen.queryByRole('combobox', { name: '구분' })).toBeNull();
+    expect(screen.getByRole('combobox', { name: '항목 선택' })).toBeVisible();
+    expect(screen.getByRole('combobox', { name: '상태 선택' })).toBeVisible();
+    expect(screen.queryByRole('combobox', { name: '구분 선택' })).toBeNull();
     expect(screen.queryByRole('spinbutton', { name: '재시도 횟수(이상)' })).toBeNull();
 
     await user.click(more);
 
-    expect(screen.getByRole('combobox', { name: '구분' })).toBeVisible();
+    expect(screen.getByRole('combobox', { name: '구분 선택' })).toBeVisible();
     expect(screen.getByRole('spinbutton', { name: '재시도 횟수(이상)' })).toBeVisible();
   });
 

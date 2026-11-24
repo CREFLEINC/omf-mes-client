@@ -11,7 +11,8 @@ export const handoverAlertSettings = {
     setting: (typeName: string): string => `설정: ${typeName}`,
   },
   fields: {
-    plant: '공장',
+    plant: '공장 선택',
+    plantPlaceholder: '공장을 선택하세요',
     when: '언제',
     where: '처리',
     enabled: '알림 받기',

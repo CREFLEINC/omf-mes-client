@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { hasChangedFilters } from '../../patterns/filter-more';
+import {
+  FIT_PLACEHOLDER_CLASS,
+  useFitPlaceholderWidth,
+} from '../../patterns/fit-placeholder-width';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { OneLine } from '../../patterns/po-board';
 import { PAGE_SIZES, PageNav, type PageSize } from '../../patterns/page-nav';
@@ -70,6 +74,7 @@ interface FilterBarProps {
 /** 입력 중인 값은 이 줄이 갖고, 「조회」를 눌러야 주소로 옮긴다 — 글자마다 요청이 나가지 않게 한다. */
 const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
   const [draft, setDraft] = useState<Filters>(applied);
+  const searchRef = useFitPlaceholderWidth(t.fields.qPlaceholder);
   const { q, includeInactive } = applied;
 
   // 뒤로가기 등으로 주소가 바뀌면 입력칸도 따라간다.
@@ -97,7 +102,10 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
       }}
     >
       <TextField
+        containerClassName={FIT_PLACEHOLDER_CLASS}
         label={t.fields.q}
+        placeholder={t.fields.qPlaceholder}
+        ref={searchRef}
         value={draft.q}
         onChange={(event) => {
           setDraft((prev) => ({ ...prev, q: event.target.value }));

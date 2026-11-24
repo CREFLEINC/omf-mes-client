@@ -311,7 +311,7 @@ describe('ErpProductionOrderScreen', () => {
     const removeStatus = messages.common.filterMore.remove(t.fields.status);
 
     await findRow('SYN-EWO-901');
-    expect(screen.queryByRole('combobox', { name: t.fields.status })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: t.filters.statusSelect })).toBeNull();
     /* 코드가 아니라 선택지 이름으로. 보이는 칸(ERP W/O 번호)은 칩으로 겹쳐 적지 않는다. */
     expect(await screen.findByText(t.filters.chip(t.fields.status, '합성 수정됨'))).toBeVisible();
     expect(screen.queryByText(t.filters.chip(t.fields.q, 'SYN'))).toBeNull();
@@ -319,7 +319,7 @@ describe('ErpProductionOrderScreen', () => {
     /* 펼치면 칸에 값이 보이므로 칩을 거둔다. */
     const more = screen.getByRole('button', { name: messages.common.filterMore.open });
     await user.click(more);
-    expect(screen.getByRole('combobox', { name: t.fields.status })).toHaveTextContent(
+    expect(screen.getByRole('combobox', { name: t.filters.statusSelect })).toHaveTextContent(
       '합성 수정됨',
     );
     expect(screen.queryByRole('button', { name: removeStatus })).toBeNull();

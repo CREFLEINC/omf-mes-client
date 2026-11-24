@@ -28,7 +28,8 @@ export const erpCommonCode: Translated<typeof ko.erpCommonCode> = {
     isActive: 'Sử dụng',
   },
   fields: {
-    groupSearch: 'Mã nhóm·Tên nhóm',
+    groupSearch: 'Tìm nhóm mã',
+    groupSearchPlaceholder: 'Nhập mã nhóm hoặc tên nhóm',
     q: 'Mã·Tên mã',
     includeInactive: 'Bao gồm ngừng sử dụng',
   },

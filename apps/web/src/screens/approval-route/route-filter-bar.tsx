@@ -3,6 +3,10 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useState, type ReactNode } from 'react';
 
 import { hasChangedFilters } from '../../patterns/filter-more';
+import {
+  FIT_PLACEHOLDER_CLASS,
+  useFitPlaceholderWidth,
+} from '../../patterns/fit-placeholder-width';
 import { codeNote, codePlaceholder } from './code-options';
 import { DEFAULT_FILTERS } from './filters';
 import { SelectField } from './select-field';
@@ -105,12 +109,14 @@ export const RouteFilterBar = ({
    */
   const typeOptions = approvalTypeOptions.length === 0 ? [] : withAll(approvalTypeOptions);
 
+  const searchRef = useFitPlaceholderWidth(t.filters.qPlaceholder);
+
   const isChanged = hasChangedFilters(DEFAULT_FILTERS, filters, appliedFilters);
 
   return (
     <div className="filter-bar approval-route-filter">
       <SelectField
-        label={t.fields.approvalTypeCode}
+        label={t.filters.approvalTypeSelect}
         options={typeOptions}
         value={filters.approvalTypeCode}
         note={codeNote(approvalTypeOptions)}
@@ -126,7 +132,7 @@ export const RouteFilterBar = ({
        */}
       <SelectField
         wide
-        label={t.fields.businessUnit}
+        label={t.filters.businessUnitSelect}
         options={withAll(businessUnitOptions)}
         value={filters.businessUnitId}
         note={businessUnitNote}
@@ -136,7 +142,10 @@ export const RouteFilterBar = ({
       />
 
       <SearchInput
+        containerClassName={FIT_PLACEHOLDER_CLASS}
         label={t.fields.q}
+        placeholder={t.filters.qPlaceholder}
+        ref={searchRef}
         value={filters.q}
         onChange={(event) => {
           setFilters((prev) => ({ ...prev, q: event.target.value }));

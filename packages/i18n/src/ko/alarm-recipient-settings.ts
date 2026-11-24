@@ -5,7 +5,8 @@
 export const alarmRecipientSettings = {
   panes: { events: '이벤트', setting: (eventName: string): string => `설정: ${eventName}` },
   fields: {
-    department: '부서',
+    department: '부서 선택',
+    departmentPlaceholder: '부서를 선택하세요',
     enabled: '알림 받기',
     zalo: 'Zalo로도 보내기',
     recipients: (count: number): string => `수신자 (${String(count)})`,

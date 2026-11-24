@@ -25,6 +25,10 @@ import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { hasChangedFilters } from '../../patterns/filter-more';
+import {
+  FIT_PLACEHOLDER_CLASS,
+  useFitPlaceholderWidth,
+} from '../../patterns/fit-placeholder-width';
 import { SaveErrorBanner } from '../../patterns/master';
 import { PageNav } from '../../patterns/page-nav';
 import {
@@ -93,6 +97,7 @@ export const ZaloConnectionScreen = () => {
   const [flash, setFlash] = useState<string | null>(null);
   /* 템플릿 이름 검색 — 화면 안에서만 거른다(#358). 입력 중인 글과 [조회]로 건 글을 따로 든다. */
   const [search, setSearch] = useState('');
+  const searchRef = useFitPlaceholderWidth(w.searchPlaceholder);
   const [keyword, setKeyword] = useState('');
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const { splitRef, aboveRef } = useFitToViewport();
@@ -503,10 +508,11 @@ export const ZaloConnectionScreen = () => {
       <section className="pane po-board-filter list-detail-filter" aria-label={w.filter}>
         <div className="filter-bar notify-filter-row">
           <SearchInput
-            containerClassName="notify-search-input"
+            containerClassName={`notify-search-input ${FIT_PLACEHOLDER_CLASS}`}
             label={w.search}
             value={search}
             placeholder={w.searchPlaceholder}
+            ref={searchRef}
             onChange={(event) => setSearch(event.target.value)}
             onSearch={(value) => setKeyword(value)}
             clearLabel={messages.common.clear}

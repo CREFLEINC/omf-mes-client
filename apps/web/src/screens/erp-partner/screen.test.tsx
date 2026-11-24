@@ -112,9 +112,9 @@ describe('ErpPartnerScreen', () => {
     // 초기화는 바뀐 것이 있을 때만 보인다.
     expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
 
-    await user.type(screen.getByLabelText('거래처 코드·명'), 'SAMPLE');
+    await user.type(screen.getByLabelText('거래처 검색'), 'SAMPLE');
     expect(screen.getByRole('button', { name: '초기화' })).toBeInTheDocument();
-    await user.click(screen.getByRole('combobox', { name: '역할' }));
+    await user.click(screen.getByRole('combobox', { name: '역할 선택' }));
     await user.click(screen.getByRole('option', { name: '공급사' }));
     await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
     await user.click(screen.getByRole('button', { name: '조회' }));

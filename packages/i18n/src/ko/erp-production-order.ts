@@ -20,7 +20,7 @@ export const erpProductionOrder = {
     rework: '재작업',
     status: '상태',
     progress: '진행',
-    q: 'ERP W/O 번호',
+    q: 'W/O 번호 검색',
   },
   panes: {
     filters: 'ERP W/O 조회 조건',
@@ -29,6 +29,9 @@ export const erpProductionOrder = {
   },
   filters: {
     all: '전체',
+    /* 조회 상자 선택칸 이름(#358). 목록 열 · 칩은 `fields` 이름 그대로. */
+    itemSelect: '품목 선택',
+    statusSelect: '상태 선택',
     itemPlaceholder: '품목을 검색해 고르세요',
     itemClear: '품목 지우기',
     itemPick: '고르기',
@@ -52,7 +55,7 @@ export const erpProductionOrder = {
     },
   },
   values: {
-    searchPlaceholder: 'ERP W/O 번호 일부',
+    searchPlaceholder: 'ERP W/O 번호를 입력하세요',
     missing: '-',
     unknown: '알 수 없음',
     loadingName: '불러오는 중',

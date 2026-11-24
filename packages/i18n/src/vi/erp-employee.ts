@@ -11,7 +11,8 @@ export const erpEmployee: Translated<typeof ko.erpEmployee> = {
     detail: 'Chi tiết nhân viên',
   },
   fields: {
-    q: 'Mã NV·Họ tên',
+    q: 'Tìm nhân viên',
+    qPlaceholder: 'Nhập mã NV hoặc họ tên',
     includeInactive: 'Bao gồm đã nghỉ việc',
   },
   table: {

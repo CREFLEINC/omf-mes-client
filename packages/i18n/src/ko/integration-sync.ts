@@ -55,9 +55,9 @@ export const integrationSync = {
   fields: {
     periodFrom: '기간 시작',
     periodTo: '기간 종료',
-    status: '상태',
-    interfaceCode: '항목',
-    direction: '구분',
+    status: '상태 선택',
+    interfaceCode: '항목 선택',
+    direction: '구분 선택',
     retryMin: '재시도 횟수(이상)',
   },
   actions: {

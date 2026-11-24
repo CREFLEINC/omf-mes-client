@@ -27,6 +27,10 @@ import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { hasChangedFilters } from '../../patterns/filter-more';
+import {
+  FIT_PLACEHOLDER_CLASS,
+  useFitPlaceholderWidth,
+} from '../../patterns/fit-placeholder-width';
 import { InfoTip } from '../../patterns/info-tip';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -134,6 +138,7 @@ export const HandoverAlertSettingsScreen = () => {
   const [pendingMove, setPendingMove] = useState<Move | null>(null);
   /* 작업 이름 검색 — 화면 안에서만 거른다(서버 요청은 그대로 · #358). 입력 중인 글과 [조회]로 건 글을 따로 든다. */
   const [search, setSearch] = useState('');
+  const searchRef = useFitPlaceholderWidth(w.searchPlaceholder);
   const [keyword, setKeyword] = useState('');
 
   /* 고른 자리를 URL 에 적어 둔다 — 새로고침해도 같은 행이 열린다. */
@@ -514,7 +519,7 @@ export const HandoverAlertSettingsScreen = () => {
             label={t.fields.plant}
             options={plantOptions}
             value={plantId === null ? '' : String(plantId)}
-            placeholder={t.fields.plant}
+            placeholder={t.fields.plantPlaceholder}
             onChange={(value) => {
               if (value === String(plantId) || selectedCode === null) return;
               requestMove({ plant: value, type: selectedCode });
@@ -522,10 +527,11 @@ export const HandoverAlertSettingsScreen = () => {
           />
         )}
         <SearchInput
-          containerClassName="notify-search-input"
+          containerClassName={`notify-search-input ${FIT_PLACEHOLDER_CLASS}`}
           label={w.search}
           value={search}
           placeholder={w.searchPlaceholder}
+          ref={searchRef}
           onChange={(event) => setSearch(event.target.value)}
           onSearch={(value) => setKeyword(value)}
           clearLabel={messages.common.clear}

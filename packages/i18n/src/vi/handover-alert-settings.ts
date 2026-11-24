@@ -15,7 +15,8 @@ export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> 
     setting: (typeName: string): string => `Thiết lập: ${typeName}`,
   },
   fields: {
-    plant: 'Nhà máy',
+    plant: 'Chọn nhà máy',
+    plantPlaceholder: 'Chọn nhà máy',
     when: 'Khi nào',
     where: 'Xử lý',
     enabled: 'Nhận thông báo',

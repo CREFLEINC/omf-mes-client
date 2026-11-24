@@ -21,7 +21,7 @@ export const erpSalesOrder: Translated<typeof ko.erpSalesOrder> = {
     uom: 'Đơn vị',
     requestedDeliveryDate: 'Ngày giao yêu cầu',
     unassignedOnly: 'Chỉ đơn chưa xếp',
-    q: 'Số đơn bán',
+    q: 'Tìm số đơn bán',
     orderType: 'Loại đơn bán',
     movementType: 'Loại di chuyển',
     salesGroup: 'Nhóm bán hàng',
@@ -36,6 +36,8 @@ export const erpSalesOrder: Translated<typeof ko.erpSalesOrder> = {
   },
   filters: {
     all: 'Tất cả',
+    customerSelect: 'Chọn khách hàng',
+    statusSelect: 'Chọn trạng thái',
     chip: (label: string, value: string): string => `${label}: ${value}`,
   },
   progress: {
@@ -51,7 +53,7 @@ export const erpSalesOrder: Translated<typeof ko.erpSalesOrder> = {
     },
   },
   values: {
-    searchPlaceholder: 'Số đơn bán',
+    searchPlaceholder: 'Nhập số đơn bán',
     missing: '-',
     unknown: 'Không xác định',
     loadingName: 'Đang tải',

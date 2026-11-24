@@ -9,6 +9,10 @@ export const dispatchHistory = {
     deliveryStatus: '상태',
     all: '전체',
     search: '조회',
+    /* 조회 상자 선택칸 이름(#358). 칩 · 「조건 제거」는 위 이름 그대로. */
+    eventSelect: '이벤트 선택',
+    resultSelect: '결과 선택',
+    departmentSelect: '부서 선택',
     /** 「조건 더보기」에 접힌 부서 조건의 칩(C-6). */
     chipDepartment: (name: string): string => `부서: ${name}`,
     /** 이벤트 선택지의 묶음 이름 — 기존 6종 뒤에 인계 작업 10종(피처 002). */

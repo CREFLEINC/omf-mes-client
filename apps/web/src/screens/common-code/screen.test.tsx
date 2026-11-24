@@ -2726,7 +2726,7 @@ describe('CommonCodeScreen — 부서 목록 조회 (C41·C45·C47)', () => {
     await screen.findByRole('button', { name: 'SYN-DEPT-01' });
 
     expect(requestsTo(requests, BUSINESS_UNITS_PATH)).toHaveLength(1);
-    expect(screen.getByLabelText('사업부')).toBeInTheDocument();
+    expect(screen.getByLabelText('사업부 선택')).toBeInTheDocument();
   });
 
   /* C45 — 잘림을 감추면 사용자는 찾는 값이 왜 없는지 알 수 없다. */
@@ -5305,7 +5305,7 @@ describe('CommonCodeScreen — 탭마다 자기 선택 축 키를 쓴다', () =>
     const { requests, history, user } = renderScreen(workerRoutes(), '?tab=worker');
     await screen.findByRole('button', { name: 'SYN-W-0001' });
 
-    await user.click(within(filterPane()).getByLabelText('부서'));
+    await user.click(within(filterPane()).getByLabelText('부서 선택'));
     await user.click(screen.getByRole('option', { name: /SYN-DEPT-01/ }));
     await user.click(within(filterPane()).getByRole('button', { name: '조회' }));
 
@@ -5322,7 +5322,7 @@ describe('CommonCodeScreen — 탭마다 자기 선택 축 키를 쓴다', () =>
     const { requests, history, user } = renderScreen(orgRoutes(), '?tab=org');
     await screen.findByRole('button', { name: 'SYN-DEPT-01' });
 
-    await user.click(within(filterPane()).getByLabelText('사업부'));
+    await user.click(within(filterPane()).getByLabelText('사업부 선택'));
     await user.click(screen.getByRole('option', { name: /SYN-BU-01/ }));
     await user.click(within(filterPane()).getByRole('button', { name: '조회' }));
 

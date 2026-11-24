@@ -7,6 +7,10 @@ import { useSearchParams } from 'react-router';
 import { pickBom, useBomTree, type BomTreeRoot, type BomTreeRow } from '../../patterns/bom-tree';
 import { BomTreeCell } from '../../patterns/bom-tree-cell';
 import { hasChangedFilters } from '../../patterns/filter-more';
+import {
+  FIT_PLACEHOLDER_CLASS,
+  useFitPlaceholderWidth,
+} from '../../patterns/fit-placeholder-width';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { OneLine } from '../../patterns/po-board';
 import { PAGE_SIZES, PageNav, type PageSize } from '../../patterns/page-nav';
@@ -106,6 +110,7 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
   const typeNameOf = useItemTypeNames();
   const typeId = useId();
   const [q, setQ] = useState(applied.q);
+  const searchRef = useFitPlaceholderWidth(t.fields.qPlaceholder);
 
   // 뒤로가기 등으로 주소가 바뀌면 입력칸도 따라간다.
   useEffect(() => {
@@ -155,7 +160,10 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
         </Checkbox>
       </div>
       <TextField
+        containerClassName={FIT_PLACEHOLDER_CLASS}
         label={t.fields.q}
+        placeholder={t.fields.qPlaceholder}
+        ref={searchRef}
         value={q}
         onChange={(event) => {
           setQ(event.target.value);

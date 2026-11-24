@@ -28,7 +28,7 @@ export const erpPurchaseOrder: Translated<typeof ko.erpPurchaseOrder> = {
     storageLocation: 'Kho',
     cancelled: 'Hủy',
     customsClearance: 'Số thông quan',
-    q: 'Số đơn mua',
+    q: 'Tìm số đơn mua',
   },
   panes: {
     filters: 'Điều kiện tra cứu đơn mua hàng',
@@ -38,6 +38,10 @@ export const erpPurchaseOrder: Translated<typeof ko.erpPurchaseOrder> = {
   },
   filters: {
     all: 'Tất cả',
+    supplierSelect: 'Chọn nhà cung cấp',
+    plantSelect: 'Chọn nhà máy',
+    statusSelect: 'Chọn trạng thái',
+    orderTypeSelect: 'Chọn loại đơn mua',
     chip: (label: string, value: string): string => `${label}: ${value}`,
   },
   progress: {
@@ -67,7 +71,7 @@ export const erpPurchaseOrder: Translated<typeof ko.erpPurchaseOrder> = {
       `Dòng ${String(lineNo)}: ${candidates}`,
   },
   values: {
-    searchPlaceholder: 'Số P/O',
+    searchPlaceholder: 'Nhập số đơn mua',
     missing: '-',
     unknown: 'Không xác định',
     loadingName: 'Đang tải',

@@ -346,7 +346,7 @@ describe('IntegrationSyncScreen — 조건으로 좁히기', () => {
     const { requests, user } = renderScreen([listRoute()], PERIOD);
     await screen.findByText('SAMPLE-KEY-0001');
 
-    await user.click(screen.getByRole('combobox', { name: '상태' }));
+    await user.click(screen.getByRole('combobox', { name: '상태 선택' }));
     await user.click(screen.getByRole('option', { name: 'ERROR' }));
     /* 재시도 횟수는 「조건 더보기」 안에 접혀 있다(C-6). */
     await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
@@ -395,7 +395,7 @@ describe('IntegrationSyncScreen — 조건으로 좁히기', () => {
     const { user } = renderScreen([listRoute()], `${PERIOD}&status=FAILED`);
     await screen.findByText('SAMPLE-KEY-0001');
 
-    await user.click(screen.getByRole('combobox', { name: '상태' }));
+    await user.click(screen.getByRole('combobox', { name: '상태 선택' }));
 
     // 아는 상태는 업무 이름(실패), 모르는 코드는 코드 그대로(ERROR).
     expect(screen.getByRole('option', { name: 'ERROR' })).toBeInTheDocument();
@@ -406,7 +406,7 @@ describe('IntegrationSyncScreen — 조건으로 좁히기', () => {
     const { user } = renderScreen([listRoute()], `${PERIOD}&status=GONE_CODE`);
     await screen.findByText('SAMPLE-KEY-0001');
 
-    await user.click(screen.getByRole('combobox', { name: '상태' }));
+    await user.click(screen.getByRole('combobox', { name: '상태 선택' }));
 
     expect(screen.getByRole('option', { name: 'GONE_CODE' })).toBeInTheDocument();
   });
@@ -556,7 +556,7 @@ describe('IntegrationSyncScreen — 쪽 이동', () => {
     );
     await screen.findByText('SAMPLE-KEY-0001');
 
-    await user.click(screen.getByRole('combobox', { name: '상태' }));
+    await user.click(screen.getByRole('combobox', { name: '상태 선택' }));
     await user.click(screen.getByRole('option', { name: 'ERROR' }));
     await user.click(screen.getByRole('button', { name: '조회' }));
 
@@ -1251,7 +1251,7 @@ describe('IntegrationSyncScreen — 선택칸 폭', () => {
     renderScreen([listRoute()], PERIOD);
     await screen.findByText('SAMPLE-KEY-0001');
 
-    for (const label of ['구분', '항목', '상태']) {
+    for (const label of ['구분 선택', '항목 선택', '상태 선택']) {
       expect(screen.getByLabelText(label).closest('.field-cell')).toHaveClass('wide-select');
     }
   });

@@ -15,6 +15,10 @@ import { BoardTable } from '../../patterns/board-table';
 import { useClientPage } from '../../patterns/client-page';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { hasChangedFilters } from '../../patterns/filter-more';
+import {
+  FIT_PLACEHOLDER_CLASS,
+  useFitPlaceholderWidth,
+} from '../../patterns/fit-placeholder-width';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { OneLine } from '../../patterns/po-board';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
@@ -205,6 +209,7 @@ export const ErpOutboundScreen = () => {
   const itemRows = items.data ?? [];
   /* 이름 검색 — 치는 값(`search`)과 [조회]로 건 값(`query`). 주소에 두지 않는다(화면 안 거르기 · #358). */
   const [search, setSearch] = useState('');
+  const searchRef = useFitPlaceholderWidth(t.filters.searchPlaceholder);
   const [query, setQuery] = useState('');
   const shownItems = itemRows.filter((item) => matchesName(item, query));
   /* 송신 항목은 다 받는 작은 목록이라 화면에서 쪽을 나눈다(#358). */
@@ -331,10 +336,11 @@ export const ErpOutboundScreen = () => {
              초기화는 검색어가 처음 값(빈칸)과 다를 때만 보인다. */
           <div className="filter-bar erp-link-filter">
             <SearchInput
-              containerClassName="erp-link-search-input"
+              containerClassName={`erp-link-search-input ${FIT_PLACEHOLDER_CLASS}`}
               label={t.filters.search}
               value={search}
               placeholder={t.filters.searchPlaceholder}
+              ref={searchRef}
               onChange={(event) => {
                 setSearch(event.target.value);
               }}

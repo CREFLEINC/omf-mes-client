@@ -75,10 +75,10 @@ export const commonCode = {
   },
   filters: {
     codeGroupSearchLabel: '코드그룹 검색',
-    codeGroupSearchPlaceholder: '그룹코드 또는 그룹명',
+    codeGroupSearchPlaceholder: '그룹코드 또는 그룹명을 입력하세요',
     departmentSearchLabel: '부서 검색',
-    departmentSearchPlaceholder: '부서코드 또는 부서명',
-    businessUnit: '사업부',
+    departmentSearchPlaceholder: '부서코드 또는 부서명을 입력하세요',
+    businessUnit: '사업부 선택',
     /* 선택지에 빈 값을 두어 고른 사업부를 다시 「전체」로 되돌릴 수 있게 한다. */
     businessUnitAll: '전체 사업부',
     /*
@@ -86,15 +86,15 @@ export const commonCode = {
      * 검색어(사번·성명) + 부서 + 미사용 포함 셋으로 좁힌다.
      */
     workerSearchLabel: '작업자 검색',
-    workerSearchPlaceholder: '사번 또는 성명',
-    department: '부서',
+    workerSearchPlaceholder: '사번 또는 성명을 입력하세요',
+    department: '부서 선택',
     departmentAll: '전체 부서',
     /*
      * 거래처 탭에는 선택 축 필터가 없다 — **역할로 좁히지 않는다.**
      * 이 탭은 역할을 붙이는 곳이라 역할이 아직 없는 거래처가 반드시 보여야 한다.
      */
     partnerSearchLabel: '거래처 검색',
-    partnerSearchPlaceholder: '거래처코드 또는 거래처명',
+    partnerSearchPlaceholder: '거래처코드 또는 거래처명을 입력하세요',
   },
   loading: {
     codeGroups: '코드그룹 목록을 불러오는 중',

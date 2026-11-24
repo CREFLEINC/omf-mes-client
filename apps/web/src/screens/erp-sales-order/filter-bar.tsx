@@ -9,6 +9,10 @@ import {
   useFilterMore,
   type HiddenFilterChip,
 } from '../../patterns/filter-more';
+import {
+  FIT_PLACEHOLDER_CLASS,
+  useFitPlaceholderWidth,
+} from '../../patterns/fit-placeholder-width';
 import { PartnerSelect } from '../../patterns/partner-select';
 import { Select } from '../../patterns/select';
 import { DEFAULT_FILTERS, type SalesOrderFilters } from './filters';
@@ -47,6 +51,7 @@ export const ErpSalesOrderFilterBar = ({
   onReset,
 }: ErpSalesOrderFilterBarProps) => {
   const [draft, setDraft] = useState(appliedFilters);
+  const searchRef = useFitPlaceholderWidth(t.values.searchPlaceholder);
   const periodId = useId();
   const customerId = useId();
   const statusId = useId();
@@ -130,7 +135,7 @@ export const ErpSalesOrderFilterBar = ({
         </div>
         <div className="field-cell filter-field-md">
           <label className="field-label" htmlFor={customerId}>
-            {t.fields.customer}
+            {t.filters.customerSelect}
           </label>
           {/* 거래처는 천여 건이라 칸이 쪽 단위로 받는다(사용자 지시 2026-10-29). */}
           <PartnerSelect
@@ -144,11 +149,12 @@ export const ErpSalesOrderFilterBar = ({
         <SearchInput
           label={t.fields.q}
           placeholder={t.values.searchPlaceholder}
+          ref={searchRef}
           value={draft.q}
           onChange={(event) => update('q', event.target.value)}
           onSearch={search}
           clearLabel={messages.common.clear}
-          containerClassName="filter-field-sm erp-order-search"
+          containerClassName={`filter-field-sm erp-order-search ${FIT_PLACEHOLDER_CLASS}`}
         />
         {/* 조회 · 초기화 · 조건 더보기는 줄 오른쪽 끝(단말 관리와 같다 · #358). 초기화는 바뀐 것이 있을 때만. */}
         <div className="filter-actions field-cell-unlabeled">
@@ -172,7 +178,7 @@ export const ErpSalesOrderFilterBar = ({
           />
           <div className="field-cell filter-field-sm">
             <label className="field-label" htmlFor={statusId}>
-              {t.fields.status}
+              {t.filters.statusSelect}
             </label>
             <Select
               id={statusId}

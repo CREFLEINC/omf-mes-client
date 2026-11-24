@@ -29,7 +29,7 @@ export const erpPurchaseOrder = {
     cancelled: '취소',
     /** 외자 발주(발주 유형 `PO`) 라인의 ERP 통관번호 / 순번(서버 장부 P-143). */
     customsClearance: '통관번호',
-    q: '발주번호',
+    q: '발주번호 검색',
   },
   panes: {
     filters: '구매발주 조회 조건',
@@ -39,6 +39,11 @@ export const erpPurchaseOrder = {
   },
   filters: {
     all: '전체',
+    /* 조회 상자 선택칸 이름(#358). 목록 열 · 칩은 `fields` 이름 그대로. */
+    supplierSelect: '공급사 선택',
+    plantSelect: '공장 선택',
+    statusSelect: '상태 선택',
+    orderTypeSelect: '발주 유형 선택',
     /** 「조건 더보기」에 접힌 조건의 칩 — 「상태: 반려」처럼 칸 이름과 값을 한 줄로. */
     chip: (label: string, value: string): string => `${label}: ${value}`,
   },
@@ -77,7 +82,7 @@ export const erpPurchaseOrder = {
       `라인 ${String(lineNo)}: ${candidates}`,
   },
   values: {
-    searchPlaceholder: 'P/O 번호',
+    searchPlaceholder: '발주번호를 입력하세요',
     missing: '-',
     unknown: '알 수 없음',
     loadingName: '불러오는 중',

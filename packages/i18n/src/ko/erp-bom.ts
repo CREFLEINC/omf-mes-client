@@ -6,8 +6,9 @@ export const erpBom = {
   breadcrumbRoot: '시스템 관리',
   fields: {
     hasBom: 'BOM 있는 품목만',
-    itemType: '유형',
-    q: '품목코드·품목명',
+    itemType: '유형 선택',
+    q: '품목 검색',
+    qPlaceholder: '품목코드 또는 품목명을 입력하세요',
   },
   panes: {
     parents: '모품목 목록',

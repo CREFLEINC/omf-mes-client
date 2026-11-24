@@ -13,8 +13,9 @@ export const erpPartner = {
     detail: '거래처 상세',
   },
   fields: {
-    q: '거래처 코드·명',
-    role: '역할',
+    q: '거래처 검색',
+    qPlaceholder: '거래처 코드 또는 거래처명을 입력하세요',
+    role: '역할 선택',
     includeInactive: '미사용 포함',
   },
   table: {
