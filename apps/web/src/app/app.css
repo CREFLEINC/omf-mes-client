@@ -39522,9 +39522,14 @@ body:has(
 /* 연동 현황·이력 상세(#358) — 정보 상자 하나(검사 조회·판정과 같은 모양) → 오류 내용(있을 때만). */
 .integration-sync-detail {
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-3);
   align-content: start;
   min-width: 0;
+}
+
+/* 상자 제목 「연동 이력 상세」 — 공용 제목의 아래 여백을 걷어 목록 상자의 제목 줄 → 표 간격과 같게. */
+.integration-sync-detail > .pane-title {
+  margin: 0;
 }
 
 /* 정보 상자 첫 칸의 문서 번호 — 제목 글자 크기, 기본 여백은 없앤다. */
