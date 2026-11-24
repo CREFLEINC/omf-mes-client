@@ -246,6 +246,8 @@ export const dispositionDecision = {
     /** 선별 영역(omf-all-around#352 사용자 지시) — 제목 · 제목 옆 안내 · 저장 후 처리 요약. */
     heading: '불량으로 분리할 자재 LOT',
     selectNote: '선택한 LOT는 불량으로 분리하고, 나머지 LOT는 정상 처리합니다.',
+    /** 제목 오른쪽 안내 라벨(omf-all-around#354 사용자 지시). */
+    headNote: '하나 이상의 LOT를 선택하세요.',
     lotsLabel: '불량 자재 관리 LOT',
     noMatch: '연결된 검사 결과 없음',
     allSelected:

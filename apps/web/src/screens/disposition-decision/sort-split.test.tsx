@@ -86,6 +86,7 @@ describe('W-03-10 선별', () => {
     // 정보 수량의 뜻은 ⓘ 로 둔다(관리웹 정리 시안 A). 제목 옆 ⓘ 는 없다 — 안내는 [취소] 왼쪽 라벨(#354).
     const heading = screen.getByRole('heading', { name: new RegExp(t.sort.heading) });
     expect(within(heading).queryByRole('button')).toBeNull();
+    expect(heading.parentElement).toHaveTextContent(t.sort.headNote);
     expect(screen.getByText(t.sort.selectNote).nextElementSibling).toBe(
       screen.getByRole('button', { name: t.actions.cancel }),
     );

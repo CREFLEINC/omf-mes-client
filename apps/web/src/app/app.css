@@ -8102,6 +8102,19 @@ dialog.routing-history-dialog {
   background: var(--surface-container-high);
 }
 
+/* 제목과 안내 라벨을 한 줄에 — 좁으면 라벨이 다음 줄로(omf-all-around#354). */
+.disposition-sort-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+}
+
+.disposition-sort-note {
+  margin: 0;
+}
+
 .disposition-sort-heading {
   display: flex;
   align-items: center;

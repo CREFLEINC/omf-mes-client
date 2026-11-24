@@ -105,12 +105,19 @@ export const SortSplitPane = ({
        * 제목 옆 ⓘ 설명은 두지 않는다. 고른 LOT 이 어떻게 되는지는 [취소] 왼쪽 안내 라벨로(omf-all-around#354 사용자 지시).
        * LOT 을 하나 이상 골라야 저장된다 — 제목에 필수 표시(#352 사용자 지시).
        */}
-      <h4 className="disposition-sort-heading" id={headingId}>
-        {t.heading}
-        <span className="required-mark" aria-hidden="true">
-          {' *'}
-        </span>
-      </h4>
+      <div className="disposition-sort-head">
+        <h4 className="disposition-sort-heading" id={headingId}>
+          {t.heading}
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        </h4>
+        {/* 제목 오른쪽 안내 라벨(omf-all-around#354 사용자 지시). */}
+        <p className="iqc-inspection-action-note disposition-sort-note" data-tone="info">
+          <Icon name="info" size={14} aria-hidden />
+          {t.headNote}
+        </p>
+      </div>
       <ul className="disposition-sort-lots" aria-label={t.lotsLabel}>
         {lots.map((lot) => (
           <li
