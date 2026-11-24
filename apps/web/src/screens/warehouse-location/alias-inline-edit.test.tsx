@@ -153,7 +153,6 @@ const renderPane = (
       onFilterTextChange={vi.fn()}
       canAddRoot
       addRootDisabledReason=""
-      onAddRoot={vi.fn()}
       canAddChild={false}
       onAddChild={vi.fn()}
       canPrintLabels={false}

@@ -26,8 +26,8 @@ import type { LocationViewMode } from './leaf-rows';
 import type { Location } from './types';
 
 export interface LocationPaneProps {
-  /** 고른 창고의 창고 위치 코드(#292) — 탭 맨 위에 잠긴 줄로 보인다. 창고를 아직 못 읽었으면 null. */
-  locationPrefix?: string | null;
+  /** 표 위 한 줄 위치 수 — 「전체 6 · 구역 1 · 랙 1 · 층 1 · 셀 1」. 아직 못 셌으면 null. */
+  countText?: string | null;
   /** buildLocationRows의 결과 */
   rows: LocationTreeRow[];
   isLoading: boolean;
@@ -43,7 +43,6 @@ export interface LocationPaneProps {
   onFilterTextChange: (value: string) => void;
   canAddRoot: boolean;
   addRootDisabledReason: string;
-  onAddRoot: () => void;
   /** 구역 하나를 골랐을 때만 — 그 구역 밑에 랙을 층 · 셀과 함께 단다. */
   canAddChild: boolean;
   onAddChild: () => void;
@@ -75,17 +74,6 @@ const t = messages.warehouseLocation;
 /** 선택(약 48) + 코드 320 + 별칭 적어도 240 + 구분 88 + 사용 상태 90. */
 export const LOCATION_TABLE_MIN_WIDTH = '790px';
 
-/** 창고 위치 코드 줄 — 이 창고의 모든 위치 코드 앞에 붙고 바꿀 수 없다(omf-all-around#292). */
-const LocationPrefixRow = ({ prefix }: { prefix: string }) => (
-  <dl className="warehouse-location-prefix-row">
-    <dt>{t.locationPrefix.label}</dt>
-    <dd>
-      <span className="location-items-code">{prefix}</span>
-      <Icon name="lock" size={16} aria-hidden="true" />
-    </dd>
-  </dl>
-);
-
 /** 코드 칸에 코드 대신 보일 별칭 — 비었거나 코드와 같으면 코드를 그대로 보인다. */
 const aliasOf = (location: Location): string => {
   const alias = location.aliasName?.trim() ?? '';
@@ -94,7 +82,7 @@ const aliasOf = (location: Location): string => {
 };
 
 export const LocationPane = ({
-  locationPrefix = null,
+  countText = null,
   rows,
   isLoading,
   expandedIds,
@@ -107,7 +95,6 @@ export const LocationPane = ({
   onFilterTextChange,
   canAddRoot,
   addRootDisabledReason,
-  onAddRoot,
   canAddChild,
   onAddChild,
   canPrintLabels,
@@ -277,7 +264,7 @@ export const LocationPane = ({
        * 별칭 칸이 몇 px 로 눌리면 입력칸 폭이 0 에 가까워져 브라우저가 IME 확정 글자마다 커서를 맨 앞에 둔다(#267 실동작).
        */
       <BoardTable
-        label={t.tabs.location}
+        label={t.sections.location}
         className="location-tree-table warehouse-location-location-table"
         columns={columns}
         rows={rows}
@@ -293,23 +280,24 @@ export const LocationPane = ({
   };
 
   return (
-    <section aria-label={t.tabs.location}>
-      {locationPrefix !== null && <LocationPrefixRow prefix={locationPrefix} />}
+    <section aria-label={t.sections.location}>
       {actionBanner}
       {/*
-       * 역할별로 묶는다(omf-all-around#17) — 검색(왼쪽) · 등록 · 출력(오른쪽 끝). 검색은 칸 제목 없이 접근명만
-       * (사용자 지시 2026-10-29). 고르기는 랙 추가(구역 하나)와 라벨 일괄 출력에 쓰고, 무엇이든 고른 동안 구역 추가는
-       * 막는다(사용자 지시 2026-10-29). 구역 추가의 비활성 사유는 계층을 못 불렀을 때만 묶음 아래에 붙인다.
+       * 검색 · 보기(왼쪽)와 [Location 추가](오른쪽 끝) 한 줄. 검색은 칸 제목 없이 접근명만(사용자 지시 2026-10-29).
+       * 고른 행에 하는 일(랙 추가 · 라벨 출력)은 아래 선택 막대에 둔다. 추가의 비활성 사유는 계층을 못 불렀을 때만 단추 밑에.
        */}
       <div className="filter-bar warehouse-location-location-toolbar">
-        <SearchInput
-          aria-label={t.filters.locationSearchLabel}
-          placeholder={t.filters.locationSearchPlaceholder}
-          value={filterText}
-          onChange={(event) => onFilterTextChange(event.target.value)}
-          onClear={() => onFilterTextChange('')}
-          clearLabel={messages.common.clear}
-        />
+        {/* 검색칸 바탕은 품목 · BOM 조회와 같은 공용 규칙(사용자 지시 2026-11-24) — 보기 단추는 칠하지 않게 검색칸만 감싼다. */}
+        <div className="filter-field-surface warehouse-location-search">
+          <SearchInput
+            aria-label={t.filters.locationSearchLabel}
+            placeholder={t.filters.locationSearchPlaceholder}
+            value={filterText}
+            onChange={(event) => onFilterTextChange(event.target.value)}
+            onClear={() => onFilterTextChange('')}
+            clearLabel={messages.common.clear}
+          />
+        </div>
         {onViewModeChange !== undefined && (
           <div className="warehouse-location-view" role="group" aria-labelledby={viewLabelId}>
             <span className="field-label" id={viewLabelId}>
@@ -327,46 +315,61 @@ export const LocationPane = ({
             </RadioGroup>
           </div>
         )}
-        <div className="warehouse-location-location-create">
-          <div className="filter-actions">
+        {canBulkCreate && (
+          <div className="warehouse-location-location-create">
+            {/* 위치를 만드는 단추는 이것 하나(사용자 지시 2026-11-24) — 구역부터 셀까지, 기존 구역에 랙도 이 창에서. */}
             <Button
-              variant="outlined"
-              disabled={!canAddRoot || selectedIds.length > 0}
+              leadingIcon={<Icon name="library_add" size={18} />}
+              disabled={!canAddRoot}
               aria-describedby={canAddRoot ? undefined : addRootNoteId}
-              onClick={onAddRoot}
+              onClick={onBulkCreate}
             >
-              {t.actions.addZone}
+              {t.bulkCreate.open}
             </Button>
-            {canBulkCreate && (
-              <Button
-                leadingIcon={<Icon name="library_add" size={18} />}
-                disabled={!canAddRoot}
-                aria-describedby={canAddRoot ? undefined : addRootNoteId}
-                onClick={onBulkCreate}
-              >
-                {t.bulkCreate.open}
-              </Button>
+            {!canAddRoot && (
+              <span id={addRootNoteId} className="field-note warehouse-location-inline-note">
+                {addRootDisabledReason}
+              </span>
             )}
-            <Button variant="outlined" disabled={!canAddChild} onClick={onAddChild}>
+          </div>
+        )}
+      </div>
+
+      {/*
+       * 선택 막대(안 2, 사용자 결정 2026-11-24) — 고른 행이 있을 때만 표 위에, 그 행에 할 수 있는 일만. 고르지 않으면
+       * 그 자리에 위치 수 줄이 있다. 흐린 단추를 늘 세워 두지 않는다.
+       */}
+      {selectedIds.length > 0 ? (
+        <div className="location-selection-bar" role="toolbar" aria-label={t.selection.label}>
+          <span className="location-selection-count">{t.selection.count(selectedIds.length)}</span>
+          {canAddChild && (
+            <Button size="sm" leadingIcon={<Icon name="add" size={18} />} onClick={onAddChild}>
               {t.actions.addRack}
             </Button>
+          )}
+          {(canPrintLabels || isPrintingLabels) && (
             <Button
+              size="sm"
               variant="outlined"
-              disabled={!canPrintLabels || isPrintingLabels}
+              leadingIcon={<Icon name="print" size={18} />}
+              disabled={isPrintingLabels}
               loading={isPrintingLabels}
               onClick={onPrintLabels}
             >
               {t.actions.printLabels}
             </Button>
-          </div>
-          {!canAddRoot && (
-            <span id={addRootNoteId} className="field-note warehouse-location-inline-note">
-              {addRootDisabledReason}
-            </span>
           )}
+          <Button size="sm" variant="text" onClick={() => onSelectionChange([])}>
+            {t.selection.clear}
+          </Button>
         </div>
-      </div>
-
+      ) : (
+        countText !== null && (
+          <p className="warehouse-location-count" aria-label={t.warehouseInfo.countLabel}>
+            {countText}
+          </p>
+        )
+      )}
       {listSlot()}
     </section>
   );

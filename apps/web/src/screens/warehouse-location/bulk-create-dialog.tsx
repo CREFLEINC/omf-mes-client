@@ -3,6 +3,7 @@ import {
   Button,
   Checkbox,
   Dialog,
+  Icon,
   Progress,
   Radio,
   RadioGroup,
@@ -31,7 +32,7 @@ export interface BulkCreateDialogProps {
   warehouseId: number;
   /** 고른 창고의 창고 위치 코드 — 새 구역 코드 미리 보기 앞에 붙는다(omf-all-around#292). */
   locationPrefix: string;
-  /** 「창고코드 · 창고명」 — 창 제목에 붙는다. */
+  /** 「창고코드 · 창고명」 — 본문 맨 위 대상 줄에 보인다(제목에는 싣지 않는다, 사용자 지시 2026-11-24). */
   warehouseLabel: string;
   /** 고른 창고의 위치 전체(검색과 무관한 계층). */
   items: readonly Location[];
@@ -63,7 +64,7 @@ const zoneContents = (zone: Location, items: readonly Location[]) => {
 };
 
 /**
- * 위치 일괄 생성 창(#267 · 시안 `W-06-07-bulk.html`). 새 구역 만들기 / 기존 구역에 랙 추가 둘 중 하나를 고르고 네 수(또는
+ * Location 추가 창(#267 · 시안 `W-06-07-bulk.html`, 옛 「일괄 생성」). 새 구역부터 / 이미 있는 구역에 랙 둘 중 하나를 고르고 네 수(또는
  * 세 수)를 넣으면 합계와 첫 · 마지막 코드를 바로 보인다. [만들기]를 누르면 계획을 그 자리에서 굳히고 차례로 만든다 — 일부가
  * 실패하면 같은 계획으로 남은 것만 다시 만든다. 만드는 동안에는 닫히지 않는다.
  *
@@ -80,8 +81,9 @@ export const BulkCreateDialog = ({
   const [mode, setMode] = useState<Mode>('newZones');
   const [zoneText, setZoneText] = useState('1');
   const [rackText, setRackText] = useState('1');
-  const [levelText, setLevelText] = useState('1');
-  const [cellText, setCellText] = useState('1');
+  /* 층 · 셀은 기본 0 — 랙까지만 만들고, 필요할 때 넣는다(사용자 지시 2026-11-24). */
+  const [levelText, setLevelText] = useState('0');
+  const [cellText, setCellText] = useState('0');
   const [zoneIds, setZoneIds] = useState<number[]>([]);
   /** [만들기] 뒤의 계획 — 만든 것이 목록에 들어와도 코드가 다시 지어지지 않게 굳힌다. */
   const [frozen, setFrozen] = useState<BulkPlan | null>(null);
@@ -219,13 +221,30 @@ export const BulkCreateDialog = ({
       className="location-dialog bulk-create-dialog"
       open={open}
       onClose={close}
-      title={b.title(warehouseLabel)}
+      title={b.open}
       size="lg"
       showCloseButton={!running}
       closeOnBackdropClick={!running}
       footer={footer}
     >
       <div className="location-dialog-body bulk-create">
+        {/* 어느 창고에 만드는지 — 제목이 아니라 본문 맨 위에(사용자 지시 2026-11-24). */}
+        <dl className="bulk-create-target">
+          <div>
+            <dt>{t.fields.warehouse}</dt>
+            <dd>{warehouseLabel}</dd>
+          </div>
+          {locationPrefix !== '' && (
+            <div>
+              <dt>{t.locationPrefix.label}</dt>
+              <dd>
+                <span className="bulk-create-target-code">{locationPrefix}</span>
+                <Icon name="lock" size={14} aria-hidden="true" />
+              </dd>
+            </div>
+          )}
+        </dl>
+
         <RadioGroup
           name="bulk-create-mode"
           aria-label={b.modeLabel}
@@ -242,31 +261,35 @@ export const BulkCreateDialog = ({
           <fieldset className="bulk-create-zones">
             <legend>{b.pickZones}</legend>
             {userZones.length === 0 && <p className="field-note">{b.noZones}</p>}
-            {userZones.map((zone) => {
-              const isBlocked = blocked.has(zone.locationId);
-              const contents = zoneContents(zone, items);
-              const alias = zone.aliasName?.trim() ?? '';
-              return (
-                <div key={zone.locationId} className="bulk-create-zone">
-                  <Checkbox
-                    checked={!isBlocked && zoneIds.includes(zone.locationId)}
-                    disabled={locked || isBlocked}
-                    onChange={(event) =>
-                      setZoneIds((prev) =>
-                        event.target.checked
-                          ? [...prev, zone.locationId]
-                          : prev.filter((id) => id !== zone.locationId),
-                      )
-                    }
-                  >
-                    {alias === '' ? zone.locationCode : b.zoneName(zone.locationCode, alias)}
-                  </Checkbox>
-                  <small className={isBlocked ? 'field-error' : 'field-note'}>
-                    {isBlocked ? b.stockBlocked : b.zoneInfo(contents.racks, contents.cells)}
-                  </small>
-                </div>
-              );
-            })}
+            {/* 구역이 많으면 목록만 스크롤한다 — 아래 수 · 합계 칸이 창 밖으로 밀리지 않게(사용자 지시 2026-11-24). */}
+            <div className="bulk-create-zone-list">
+              {userZones.map((zone) => {
+                const isBlocked = blocked.has(zone.locationId);
+                const contents = zoneContents(zone, items);
+                const alias = zone.aliasName?.trim() ?? '';
+                return (
+                  <div key={zone.locationId} className="bulk-create-zone">
+                    <Checkbox
+                      checked={!isBlocked && zoneIds.includes(zone.locationId)}
+                      disabled={locked || isBlocked}
+                      onChange={(event) =>
+                        setZoneIds((prev) =>
+                          event.target.checked
+                            ? [...prev, zone.locationId]
+                            : prev.filter((id) => id !== zone.locationId),
+                        )
+                      }
+                    >
+                      {alias === '' ? zone.locationCode : b.zoneName(zone.locationCode, alias)}
+                    </Checkbox>
+                    {/* 지금 랙 · 셀 수는 구역 이름과 한 줄에(사용자 지시 2026-11-24). */}
+                    <span className={isBlocked ? 'field-error' : 'bulk-create-zone-info'}>
+                      {isBlocked ? b.stockBlocked : b.zoneInfo(contents.racks, contents.cells)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </fieldset>
         )}
 
@@ -300,16 +323,6 @@ export const BulkCreateDialog = ({
               )}
             </span>
           </div>
-          {plan.firstCode !== null && plan.lastCode !== null && (
-            <div className="bulk-create-summary-codes">
-              <span>
-                {b.firstCode} <code>{plan.firstCode}</code>
-              </span>
-              <span>
-                {b.lastCode} <code>{plan.lastCode}</code>
-              </span>
-            </div>
-          )}
         </section>
 
         {blockReason !== null && !locked && (

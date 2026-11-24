@@ -44,8 +44,8 @@ describe('W-CO-08 창고 배치도 — 조건 상자', () => {
     await loaded();
     expect(screen.queryByRole('button', { name: wl.actions.addWarehouse })).toBeNull();
 
+    /* [조회] 없이 입력이 멈추면 적용된다(안 A, 사용자 결정 2026-11-24). */
     await user.type(screen.getByRole('searchbox', { name: wl.filters.searchLabel }), 'SYN');
-    await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     await waitFor(() => {
       expect(
@@ -256,7 +256,7 @@ describe('W-CO-08 조회 화면 — 읽기 전용 · [수정] (US2)', () => {
 
     expect(screen.getByText(t.locations.emptyTitle)).toBeInTheDocument();
     expect(screen.getByText(t.locations.emptyGuide(wl.title))).toBeInTheDocument();
-    for (const name of [wl.actions.addZone, wl.actions.addRack, wl.actions.addWarehouse]) {
+    for (const name of [wl.bulkCreate.open, wl.actions.addRack, wl.actions.addWarehouse]) {
       expect(screen.queryByRole('button', { name })).toBeNull();
     }
   });

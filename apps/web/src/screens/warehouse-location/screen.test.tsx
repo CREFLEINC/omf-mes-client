@@ -143,6 +143,15 @@ const renderScreen = (
 const listRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requests.filter((request) => request.url.pathname === '/mdm/warehouses');
 
+/** 창고 머리의 [창고 정보]로 수정 창을 연다(안 B, 사용자 결정 2026-11-24) — 창고 칸은 이 창 안에 있다. */
+const openWarehouseEdit = async (
+  user: ReturnType<typeof userEvent.setup>,
+): Promise<HTMLElement> => {
+  await user.click(await screen.findByRole('button', { name: '창고 정보' }));
+
+  return screen.findByRole('dialog', { name: '창고 정보 수정' });
+};
+
 describe('WarehouseLocationScreen — 창고 목록 조회', () => {
   it('서버 응답의 창고를 표에 그린다', async () => {
     renderScreen([warehouseListRoute()]);
@@ -227,17 +236,18 @@ describe('WarehouseLocationScreen — 창고 목록 조회', () => {
     const { requests, user } = renderScreen([warehouseListRoute(), ...lookupRoutes()]);
     await screen.findByRole('button', { name: 'WH-01' });
 
-    // 미사용 포함·창고 유형은 즉시 적용되고, 검색어는 조회를 눌러 적용한다(omf-all-around#17).
+    // 미사용 포함·창고 유형은 즉시, 검색어는 입력이 멈추면 적용된다(안 A, 사용자 결정 2026-11-24).
     await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
     await user.type(screen.getByLabelText('창고 검색'), 'WH-0');
     await user.click(screen.getByRole('combobox', { name: '창고 유형' }));
     await user.click(screen.getByRole('option', { name: '자재창고' }));
-    await user.click(screen.getByRole('button', { name: '조회' }));
 
-    const last = listRequests(requests).at(-1);
-    expect(last?.url.searchParams.get('q')).toBe('WH-0');
-    expect(last?.url.searchParams.get('warehouseTypeCode')).toBe('MATERIAL');
-    expect(last?.url.searchParams.get('includeInactive')).toBe('true');
+    await waitFor(() => {
+      const last = listRequests(requests).at(-1);
+      expect(last?.url.searchParams.get('q')).toBe('WH-0');
+      expect(last?.url.searchParams.get('warehouseTypeCode')).toBe('MATERIAL');
+      expect(last?.url.searchParams.get('includeInactive')).toBe('true');
+    });
   });
 
   /*
@@ -284,11 +294,8 @@ describe('WarehouseLocationScreen — 창고 목록 조회', () => {
     await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
 
     expect(screen.getByLabelText('창고 검색')).toHaveValue('WH-0');
-    /* 검색어는 [조회]·Enter 로만 적용된다 — 아직 요청에 실리지 않는다. */
-    expect(listRequests(requests).at(-1)?.url.searchParams.get('q')).toBeNull();
 
-    await user.click(screen.getByRole('button', { name: '조회' }));
-
+    /* 입력이 멈추면 검색어도 실린다 — 고른 유형 · 미사용 포함과 함께. */
     await waitFor(() => {
       const last = listRequests(requests).at(-1);
       expect(last?.url.searchParams.get('q')).toBe('WH-0');
@@ -492,11 +499,12 @@ describe('WarehouseLocationScreen — 창고 상세 조회', () => {
   });
 
   it('선택 목록이 잘리면 폼에 그 사실을 알린다', async () => {
-    renderScreen(
+    const { user } = renderScreen(
       [warehouseListRoute(), warehouseDetailRoute(), locationListRoute(), ...lookupRoutes(500)],
       '?wh=1001',
     );
 
+    await openWarehouseEdit(user);
     expect(
       await screen.findByText(
         '선택할 수 있는 항목이 일부만 표시될 수 있습니다. 찾는 항목이 없으면 담당자에게 문의해 주세요.',
@@ -505,7 +513,7 @@ describe('WarehouseLocationScreen — 창고 상세 조회', () => {
   });
 
   it('선택 목록 조회가 실패하면 그 사실을 폼에 알린다 — 빈 선택칸을 이유 없이 두지 않는다', async () => {
-    renderScreen(
+    const { user } = renderScreen(
       [
         warehouseListRoute(),
         warehouseDetailRoute(),
@@ -519,6 +527,7 @@ describe('WarehouseLocationScreen — 창고 상세 조회', () => {
       '?wh=1001',
     );
 
+    await openWarehouseEdit(user);
     expect(
       await screen.findByText('선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.'),
     ).toBeInTheDocument();
@@ -526,7 +535,7 @@ describe('WarehouseLocationScreen — 창고 상세 조회', () => {
 
   it('공장 조회 실패 중인 현재 FK는 번호 대신 실패 상태를 표시한다', async () => {
     const warehouse: Warehouse = { ...warehouseFixtures[0]!, plantId: 9999 };
-    renderScreen(
+    const { user } = renderScreen(
       [
         warehouseListRoute([warehouse]),
         warehouseDetailRoute(warehouse),
@@ -541,7 +550,7 @@ describe('WarehouseLocationScreen — 창고 상세 조회', () => {
     );
 
     /* 목록의 공장 열도 같은 실패 상태를 낸다 — 상세 폼 안으로 범위를 좁힌다. */
-    const form = await screen.findByRole('region', { name: '창고 정보' });
+    const form = await openWarehouseEdit(user);
     expect(await within(form).findByText(messages.common.reference.failed)).toBeInTheDocument();
     expect(screen.queryByText('9999')).not.toBeInTheDocument();
   });
@@ -552,14 +561,17 @@ describe('WarehouseLocationScreen — 창고 상세 조회', () => {
       '?wh=1001',
     );
 
-    await screen.findByLabelText('창고명');
-    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    const dialog = await openWarehouseEdit(user);
+    expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled();
 
     await editWarehouse(user);
-    expect(screen.getByRole('button', { name: '저장' })).not.toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: '저장' })).not.toBeDisabled();
 
-    await user.click(screen.getByRole('button', { name: '취소' }));
-    expect(screen.getByRole('switch', { name: '불량 창고' })).not.toBeChecked();
+    /* 취소하면 창이 닫히고 고친 값을 버린다 — 다시 열면 서버 값이다. */
+    await user.click(within(dialog).getByRole('button', { name: '취소' }));
+    expect(screen.queryByRole('dialog', { name: '창고 정보 수정' })).not.toBeInTheDocument();
+    const reopened = await openWarehouseEdit(user);
+    expect(within(reopened).getByRole('switch', { name: '불량 창고' })).not.toBeChecked();
   });
 });
 
@@ -573,11 +585,13 @@ const aliasInput = async (
   return within(dialog).getByRole('textbox', { name: '별칭' });
 };
 
-const openLocationTab = async (user: ReturnType<typeof userEvent.setup>): Promise<HTMLElement> => {
-  await screen.findByLabelText('창고명');
-  await user.click(screen.getByRole('tab', { name: 'Location' }));
+/** 창고 머리 밑 Location 표 묶음(안 B — 탭 없이 늘 보인다). 상세가 온 뒤에 돌려준다. */
+const openLocationTab = async (
+  _user?: ReturnType<typeof userEvent.setup>,
+): Promise<HTMLElement> => {
+  await screen.findByRole('button', { name: '창고 정보' });
 
-  return screen.getByRole('tabpanel');
+  return screen.getByRole('region', { name: 'Location' });
 };
 
 describe('WarehouseLocationScreen — Location 계층 조회', () => {
@@ -704,7 +718,8 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
     expect(await within(panel).findByRole('button', { name: 'A-01-01-01' })).toBeInTheDocument();
   });
 
-  it('어느 창고든 Location 탭을 열 수 있다', async () => {
+  /* 안 B(사용자 결정 2026-11-24) — 탭 없이 창고 머리 밑에 Location 표가 늘 보인다. */
+  it('창고를 고르면 탭 없이 창고 머리 밑에 Location 표가 보인다', async () => {
     renderScreen(
       [
         warehouseListRoute(),
@@ -715,14 +730,12 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
       '?wh=1002',
     );
 
-    await screen.findByLabelText('창고명');
-    expect(screen.getByRole('tab', { name: 'Location' })).not.toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
+    const panel = await openLocationTab();
+    expect(screen.queryByRole('tab')).toBeNull();
+    expect(within(panel).getByRole('searchbox', { name: 'Location 검색' })).toBeInTheDocument();
   });
 
-  it('tab=location 주소로 열면 Location 탭이 열린다', async () => {
+  it('옛 tab=location 주소로 열어도 같은 화면이다', async () => {
     renderScreen(
       [
         warehouseListRoute(),
@@ -733,7 +746,8 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
       '?wh=1002&tab=location',
     );
 
-    await screen.findByRole('tab', { name: 'Location', selected: true });
+    await openLocationTab();
+    expect(screen.queryByRole('tab')).toBeNull();
   });
 
   it('셀(계층의 맨 아래)에는 하위 추가를 막는다', async () => {
@@ -754,12 +768,13 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
     );
 
     const panel = await openLocationTab(user);
-    await user.click(within(panel).getAllByRole('checkbox')[4]!);
-    const addChild = within(panel).getByRole('button', { name: '랙 추가' });
+    await user.click(within(panel).getByRole('button', { name: '전체 접기' }));
+    await user.click(within(panel).getByRole('button', { name: '전체 펼치기' }));
+    await user.click(rowCheckbox(panel, 'A-01-01-01-01'));
 
-    // 활성 조건(깊이 한도)은 그대로이고, 사유 문구는 내지 않는다(omf-all-around#17).
-    expect(addChild).toBeDisabled();
-    expect(addChild).not.toHaveAttribute('aria-describedby');
+    /* 선택 막대(안 2) — 구역이 아니면 [랙 추가]를 흐리게 두지 않고 아예 내지 않는다. */
+    const bar = within(panel).getByRole('toolbar', { name: '고른 위치' });
+    expect(within(bar).queryByRole('button', { name: '랙 추가' })).not.toBeInTheDocument();
   });
 
   it('접기 버튼이 실제로 동작한다', async () => {
@@ -771,9 +786,7 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
     const panel = await openLocationTab(user);
     await user.click(within(panel).getAllByRole('button', { name: '하위 접기' })[0]!);
 
-    expect(
-      within(screen.getByRole('tabpanel')).queryByRole('button', { name: 'A-01-01' }),
-    ).not.toBeInTheDocument();
+    expect(within(panel).queryByRole('button', { name: 'A-01-01' })).not.toBeInTheDocument();
   });
 
   it('Location 조회에 실패하면 표 대신 오류 배너가 나온다', async () => {
@@ -797,44 +810,21 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
     expect(within(panel).queryByText('등록된 Location이 없습니다')).not.toBeInTheDocument();
   });
 
-  it('#292 탭 맨 위에 창고 위치 코드를 바꿀 수 없는 줄로 보인다', async () => {
-    const { user } = renderScreen(
+  it('#292 창고 머리에 창고 위치 코드를 바꿀 수 없는 글자로 보인다', async () => {
+    renderScreen(
       [warehouseListRoute(), warehouseDetailRoute(), locationListRoute(), ...lookupRoutes()],
       '?wh=1001',
     );
 
-    const panel = await openLocationTab(user);
-    const row = within(panel).getByText('창고 위치 코드').closest('dl');
+    await openLocationTab();
+    const header = screen.getByRole('region', { name: '창고' });
+    const row = within(header).getByText('창고 위치 코드').closest('dl');
 
     expect(row).not.toBeNull();
     expect(within(row!).getByText('K7PM')).toBeInTheDocument();
     /* 설명 문장은 걷었다(사용자 지시 2026-11-19) — 자물쇠만 남는다. */
     expect(within(row!).queryByText(/바꿀 수 없습니다/u)).not.toBeInTheDocument();
-    expect(within(panel).queryByRole('textbox', { name: '창고 위치 코드' })).toBeNull();
-  });
-
-  it('구역 추가는 상위를 창고로 보이고 위치 코드를 발행해 글자로 보인다', async () => {
-    const { user } = renderScreen(
-      [warehouseListRoute(), warehouseDetailRoute(), locationListRoute(), ...lookupRoutes()],
-      '?wh=1001',
-    );
-
-    const panel = await openLocationTab(user);
-    await user.click(within(panel).getByRole('button', { name: '구역 추가' }));
-
-    const dialog = screen.getByRole('dialog');
-    // 구역의 상위는 창고다 — 같은 값을 두 번 보이지 않고 창고 한 줄만.
-    expect(within(dialog).getByLabelText('창고')).toHaveTextContent('WH-01 · 1공장 자재창고');
-    expect(within(dialog).queryByLabelText('상위 위치')).toBeNull();
-    // 머리에 만들 단계가 보인다.
-    expect(within(dialog).getByText('구역')).toBeInTheDocument();
-    // 있는 구역(A-01 · B-01)은 모양이 달라 세지 않는다 — 서버처럼 Z 번호 가운데 가장 큰 것 + 1.
-    expect(within(dialog).getByLabelText('위치 코드')).toHaveTextContent('K7PM-Z01');
-    expect(within(dialog).queryByRole('textbox', { name: '위치 코드' })).not.toBeInTheDocument();
-    // 안내문 없이 값만(사용자 지시 2026-10-29).
-    expect(within(dialog).queryByText('MES가 자동으로 발행합니다.')).toBeNull();
-    expect(within(dialog).queryByLabelText('위치명')).not.toBeInTheDocument();
-    expect(within(dialog).queryByLabelText('수용량')).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: '창고 위치 코드' })).toBeNull();
   });
 
   it('행의 코드를 누르면 그 값이 채워진 수정 다이얼로그가 열린다', async () => {
@@ -857,8 +847,9 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
  * (사용자 지시 2026-10-30).
  */
 const editWarehouse = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
-  await screen.findByLabelText('창고명');
-  await user.click(screen.getByRole('switch', { name: '불량 창고' }));
+  const dialog =
+    screen.queryByRole('dialog', { name: '창고 정보 수정' }) ?? (await openWarehouseEdit(user));
+  await user.click(within(dialog).getByRole('switch', { name: '불량 창고' }));
   const confirm = screen.getByRole('dialog', { name: '불량 창고로 바꿀까요?' });
   await user.click(within(confirm).getByRole('button', { name: '확인' }));
 };
@@ -885,7 +876,7 @@ const putRoute = (respond: StubRoute['respond']): StubRoute => ({
 
 /** 옛 `tab=putaway`(없어진 적치 규칙 탭, omf-mes-server #907)는 기본 탭으로 연다. */
 describe('WarehouseLocationScreen — 적치 규칙 탭 없음', () => {
-  it('옛 tab=putaway 로 열면 창고 정보 탭이 열리고 적치 규칙 탭은 없다', async () => {
+  it('옛 tab=putaway 로 열어도 같은 화면이고 적치 규칙은 없다', async () => {
     const { requests } = renderScreen(
       [
         warehouseListRoute(),
@@ -896,11 +887,9 @@ describe('WarehouseLocationScreen — 적치 규칙 탭 없음', () => {
       '?wh=1001&tab=putaway',
     );
 
-    await screen.findByLabelText('창고명');
-    expect(
-      screen.getByRole('tab', { name: messages.warehouseLocation.tabs.warehouse }),
-    ).toHaveAttribute('aria-selected', 'true');
-    expect(screen.queryByRole('tab', { name: '적치 규칙' })).toBeNull();
+    await openLocationTab();
+    expect(screen.queryByRole('tab')).toBeNull();
+    expect(screen.queryByText('적치 규칙')).toBeNull();
     expect(requests.some((request) => request.url.pathname.startsWith('/logistics/'))).toBe(false);
   });
 });
@@ -957,7 +946,11 @@ describe('WarehouseLocationScreen — 창고 수정 저장', () => {
     await user.click(screen.getByRole('button', { name: '저장' }));
     await screen.findByText('저장했습니다');
 
-    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    /* 저장하면 창이 닫히고, 다시 열면 저장한 값이 기준값이다. */
+    expect(screen.queryByRole('dialog', { name: '창고 정보 수정' })).not.toBeInTheDocument();
+    const dialog = await openWarehouseEdit(user);
+    expect(within(dialog).getByRole('switch', { name: '불량 창고' })).toBeChecked();
+    expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled();
   });
 
   it('409면 원인에 맞는 충돌 배너와 최신 불러오기가 뜬다', async () => {
@@ -1007,7 +1000,9 @@ describe('WarehouseLocationScreen — 창고 수정 저장', () => {
       (request) => request.url.pathname === '/mdm/warehouses/1001' && request.method === 'GET',
     ).length;
     expect(after).toBeGreaterThan(before);
-    expect(await screen.findByLabelText('창고명')).toHaveValue('1공장 자재창고');
+    const dialog = await screen.findByRole('dialog', { name: '창고 정보 수정' });
+    expect(await within(dialog).findByLabelText('창고명')).toHaveValue('1공장 자재창고');
+    expect(within(dialog).getByRole('switch', { name: '불량 창고' })).not.toBeChecked();
   });
 
   it('서버가 준 필드 오류는 인라인으로, 모르는 필드는 배너로 간다', async () => {
@@ -1137,25 +1132,22 @@ const fillCreateForm = async (user: ReturnType<typeof userEvent.setup>): Promise
 };
 
 describe('WarehouseLocationScreen — 창고 신규 등록', () => {
-  it('창고 추가를 누르면 빈 폼이 열리고 공장을 고를 수 있으며 사용 중지가 없다', async () => {
-    const { user } = renderScreen([warehouseListRoute(), ...lookupRoutes()]);
+  /* [창고 추가] 단추는 없앴다(사용자 지시 2026-11-24) — 조회 줄에도 빈 목록에도 없다. 등록 판은 `?mode=create` 로만 연다. */
+  it('조회 줄과 빈 목록에 창고 추가 단추가 없다', async () => {
+    renderScreen([warehouseListRoute([]), ...lookupRoutes()]);
 
-    await user.click(await screen.findByRole('button', { name: '창고 추가' }));
+    await screen.findByText('아직 등록된 창고가 없습니다');
+    expect(screen.queryByRole('button', { name: '창고 추가' })).toBeNull();
+  });
 
-    expect(screen.getByLabelText('창고 코드')).toHaveValue('');
+  it('mode=create 로 열면 빈 등록 판이 열리고 공장을 고를 수 있으며 사용 중지가 없다', async () => {
+    renderScreen([warehouseListRoute(), ...lookupRoutes()], '?mode=create');
+
+    expect(await screen.findByLabelText('창고 코드')).toHaveValue('');
     expect(screen.getByLabelText('창고명')).toHaveValue('');
-    // 공장은 필터 바에도 있어 폼 안으로 범위를 좁힌다.
     const form = screen.getByRole('region', { name: '창고 추가' });
     expect(within(form).getByRole('combobox', { name: '공장' })).not.toBeDisabled();
     expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
-  });
-
-  it('빈 상태의 창고 추가도 같은 신규 폼을 연다', async () => {
-    const { user } = renderScreen([warehouseListRoute([]), ...lookupRoutes()]);
-
-    await user.click(await screen.findByRole('button', { name: '창고 추가' }));
-
-    expect(screen.getByLabelText('창고 코드')).toHaveValue('');
   });
 
   it('신규 등록에서 공장을 비우면 요청을 보내지 않고 인라인 오류를 낸다', async () => {
@@ -1315,8 +1307,9 @@ describe('WarehouseLocationScreen — 창고 신규 등록', () => {
         ),
       ).toBe(true);
     });
-    // 상세가 열렸다는 것은 Location 탭이 다시 생겼다는 뜻이다.
-    expect(screen.getByRole('tab', { name: 'Location' })).toBeInTheDocument();
+    // 상세가 열렸다는 것은 창고 머리와 Location 표가 생겼다는 뜻이다.
+    expect(await screen.findByRole('button', { name: '창고 정보' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Location' })).toBeInTheDocument();
   });
 
   it('등록이 400이면 필드 오류가 인라인으로 뜬다', async () => {
@@ -1408,10 +1401,10 @@ const deactivateRoute = (respond: StubRoute['respond']): StubRoute => ({
 const openDeactivateDialog = async (
   user: ReturnType<typeof userEvent.setup>,
 ): Promise<HTMLElement> => {
-  await screen.findByLabelText('창고명');
-  await user.click(screen.getByRole('button', { name: '사용 중지' }));
+  const edit = await openWarehouseEdit(user);
+  await user.click(within(edit).getByRole('button', { name: '사용 중지' }));
 
-  const dialog = screen.getByRole('dialog');
+  const dialog = screen.getByRole('dialog', { name: '창고 사용 중지' });
   /* 남은 재고를 묻는 동안 확인이 잠긴다 — 답이 온 뒤에 누른다. */
   await waitFor(() =>
     expect(within(dialog).getByRole('button', { name: '사용 중지' })).not.toBeDisabled(),
@@ -1498,9 +1491,9 @@ describe('WarehouseLocationScreen — 창고 사용 중지', () => {
       '?wh=1001',
     );
 
-    await screen.findByLabelText('창고명');
-    await user.click(screen.getByRole('button', { name: '사용 중지' }));
-    const dialog = screen.getByRole('dialog');
+    const edit = await openWarehouseEdit(user);
+    await user.click(within(edit).getByRole('button', { name: '사용 중지' }));
+    const dialog = screen.getByRole('dialog', { name: '창고 사용 중지' });
     expect(within(dialog).getByRole('button', { name: '사용 중지' })).toBeDisabled();
 
     answer(
@@ -1596,12 +1589,14 @@ describe('WarehouseLocationScreen — 창고 사용 중지', () => {
     await user.click(within(dialog).getByRole('button', { name: '사용 중지' }));
 
     expect(
-      await within(screen.getByRole('dialog')).findByText(
+      await within(screen.getByRole('dialog', { name: '창고 사용 중지' })).findByText(
         '다른 작업에서 이 항목을 처리하는 중입니다. 잠시 뒤 최신 내용을 불러와 다시 저장하세요.',
       ),
     ).toBeInTheDocument();
     expect(
-      within(screen.getByRole('dialog')).getByRole('button', { name: '최신 불러오기' }),
+      within(screen.getByRole('dialog', { name: '창고 사용 중지' })).getByRole('button', {
+        name: '최신 불러오기',
+      }),
     ).toBeInTheDocument();
   });
 
@@ -1623,11 +1618,15 @@ describe('WarehouseLocationScreen — 창고 사용 중지', () => {
     const dialog = await openDeactivateDialog(user);
     await user.click(within(dialog).getByRole('button', { name: '사용 중지' }));
 
-    const alert = await within(screen.getByRole('dialog')).findByRole('alert');
+    const alert = await within(screen.getByRole('dialog', { name: '창고 사용 중지' })).findByRole(
+      'alert',
+    );
     expect(alert).toHaveTextContent('지금은 저장할 수 없는 상태입니다');
     // 재조회해도 풀리지 않는다 — 재시도를 권하지 않는다.
     expect(
-      within(screen.getByRole('dialog')).queryByRole('button', { name: '최신 불러오기' }),
+      within(screen.getByRole('dialog', { name: '창고 사용 중지' })).queryByRole('button', {
+        name: '최신 불러오기',
+      }),
     ).not.toBeInTheDocument();
     // 일반 문구로 뭉개면 무엇을 먼저 해야 하는지 알 수 없다.
     expect(alert).toHaveTextContent('확정된 항목입니다.');
@@ -1649,11 +1648,13 @@ describe('WarehouseLocationScreen — 창고 사용 중지', () => {
     const dialog = await openDeactivateDialog(user);
     await user.click(within(dialog).getByRole('button', { name: '사용 중지' }));
 
-    expect(await within(screen.getByRole('dialog')).findByRole('alert')).toBeInTheDocument();
+    expect(
+      await within(screen.getByRole('dialog', { name: '창고 사용 중지' })).findByRole('alert'),
+    ).toBeInTheDocument();
   });
 
   it('이미 미사용인 창고에는 다시 사용 버튼이 있다', async () => {
-    renderScreen(
+    const { user } = renderScreen(
       [
         warehouseListRoute(),
         warehouseDetailRoute({ ...warehouseFixtures[0]!, isActive: false }),
@@ -1663,9 +1664,9 @@ describe('WarehouseLocationScreen — 창고 사용 중지', () => {
       '?wh=1001',
     );
 
-    await screen.findByLabelText('창고명');
+    const edit = await openWarehouseEdit(user);
 
-    expect(screen.getByRole('button', { name: '다시 사용' })).toBeInTheDocument();
+    expect(within(edit).getByRole('button', { name: '다시 사용' })).toBeInTheDocument();
   });
 });
 
@@ -1935,66 +1936,24 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     expect(JSON.parse(put?.body ?? '{}')).toMatchObject({ aliasName: '원자재 랙' });
   });
 
-  it('구역 추가는 상위 위치를 널로, 별칭이 없으면 코드를 위치명으로 보낸다', async () => {
+  it('검증이 걸리면 요청을 보내지 않고 인라인 오류를 낸다', async () => {
     const { requests, user } = renderScreen(
-      locationWriteRoutes({
-        match: (request) =>
-          request.method === 'POST' && new URL(request.url).pathname === '/mdm/locations',
-        respond: () => jsonResponse(locationFixtures[3]!, { status: 201 }),
-      }),
+      locationWriteRoutes(locationDetailRoute(locationFixtures[0]!)),
       '?wh=1001',
     );
 
     const panel = await openLocationTab(user);
-    await user.click(within(panel).getByRole('button', { name: '구역 추가' }));
+    await user.click(within(panel).getByRole('button', { name: 'A-01' }));
 
     const dialog = screen.getByRole('dialog');
-    await user.click(within(dialog).getByRole('button', { name: '저장' }));
-
-    await screen.findByText('등록했습니다');
-
-    const post = requests.find(
-      (request) => request.method === 'POST' && request.url.pathname === '/mdm/locations',
-    );
-    const body = JSON.parse(post?.body ?? '{}') as Record<string, unknown>;
-    // 코드는 서버가 발행한다 — 미리 지어 보인 코드(창고 위치 코드-Z01, #292)는 별칭이 없을 때의 위치명으로만 쓴다.
-    expect(body).toMatchObject({
-      parentLocationId: null,
-      locationName: 'K7PM-Z01',
-      aliasName: null,
-    });
-    // 위치는 코드 · 위치유형 · 혼적 · 수용량 · 보관조건을 싣지 않는다.
-    for (const key of [
-      'locationCode',
-      'locationTypeCode',
-      'allowMixedItem',
-      'allowMixedLot',
-      'capacityQty',
-      'capacityUomId',
-      'qualityZoneCode',
-      'storageConditionCode',
-    ]) {
-      expect(body).not.toHaveProperty(key);
-    }
-  });
-
-  it('검증이 걸리면 요청을 보내지 않고 인라인 오류를 낸다', async () => {
-    const { requests, user } = renderScreen(locationWriteRoutes(), '?wh=1001');
-
-    const panel = await openLocationTab(user);
-    await user.click(within(panel).getByRole('button', { name: '구역 추가' }));
-
-    const dialog = screen.getByRole('dialog');
-    await user.click(await aliasInput(user, dialog));
+    const alias = await aliasInput(user, dialog);
+    await user.clear(alias);
     await user.paste('가'.repeat(201));
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: '저장' })).toBeEnabled());
     await user.click(within(dialog).getByRole('button', { name: '저장' }));
 
     expect(within(dialog).getByText('별칭은 200자 이하로 입력하세요.')).toBeInTheDocument();
-    expect(
-      requests.some(
-        (request) => request.method === 'POST' && request.url.pathname === '/mdm/locations',
-      ),
-    ).toBe(false);
+    expect(requests.some((request) => request.method === 'PUT')).toBe(false);
   });
 
   it('편집 다이얼로그를 열면 상세를 조회하고 위치 코드는 글자로 보인다', async () => {
@@ -2092,18 +2051,18 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
 
   it('서버가 준 필드 오류는 다이얼로그 안에 인라인으로 뜬다', async () => {
     const { user } = renderScreen(
-      locationWriteRoutes({
+      locationWriteRoutes(locationDetailRoute(locationFixtures[0]!), {
         match: (request) =>
-          request.method === 'POST' && new URL(request.url).pathname === '/mdm/locations',
+          request.method === 'PUT' && new URL(request.url).pathname === '/mdm/locations/2001',
         respond: () =>
           jsonResponse(
             {
               errors: [
                 {
                   scope: 'field',
-                  field: 'locationCode',
+                  field: 'aliasName',
                   code: 'DUPLICATED',
-                  message: '이미 사용 중인 위치코드입니다.',
+                  message: '이미 사용 중인 별칭입니다.',
                 },
               ],
             },
@@ -2114,12 +2073,16 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     );
 
     const panel = await openLocationTab(user);
-    await user.click(within(panel).getByRole('button', { name: '구역 추가' }));
+    await user.click(within(panel).getByRole('button', { name: 'A-01' }));
 
     const dialog = screen.getByRole('dialog');
+    const alias = await aliasInput(user, dialog);
+    await user.clear(alias);
+    await user.type(alias, '원자재 구역');
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: '저장' })).toBeEnabled());
     await user.click(within(dialog).getByRole('button', { name: '저장' }));
 
-    expect(await within(dialog).findByText('이미 사용 중인 위치코드입니다.')).toBeInTheDocument();
+    expect(await within(dialog).findByText('이미 사용 중인 별칭입니다.')).toBeInTheDocument();
     // 실패하면 다이얼로그를 닫지 않는다 — 입력한 내용을 다시 쓰게 만들지 않는다.
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
@@ -2611,18 +2574,21 @@ describe('WarehouseLocationScreen — 사용 중지 · 삭제는 구역 · 랙 �
 });
 
 describe('WarehouseLocationScreen — 목록 단추', () => {
-  it('무엇이든 고르면 구역 추가를 막는다', async () => {
+  /* 안 2(사용자 결정 2026-11-24) — 고르면 표 위에 선택 막대, [선택 해제]로 사라지고 위치 수 줄이 돌아온다. */
+  it('고르면 선택 막대가 나타나고 선택 해제로 사라진다', async () => {
     const { user } = renderScreen(locationWriteRoutes(), '?wh=1001');
 
     const panel = await openLocationTab(user);
-    const addZone = within(panel).getByRole('button', { name: '구역 추가' });
-    await waitFor(() => expect(addZone).toBeEnabled());
+    expect(within(panel).queryByRole('toolbar', { name: '고른 위치' })).toBeNull();
 
     await user.click(rowCheckbox(panel, 'B-01'));
-    expect(addZone).toBeDisabled();
+    const bar = within(panel).getByRole('toolbar', { name: '고른 위치' });
+    expect(within(bar).getByText('1개 선택됨')).toBeInTheDocument();
+    expect(within(bar).getByRole('button', { name: '랙 추가' })).toBeInTheDocument();
 
-    await user.click(rowCheckbox(panel, 'B-01'));
-    expect(addZone).toBeEnabled();
+    await user.click(within(bar).getByRole('button', { name: '선택 해제' }));
+    expect(within(panel).queryByRole('toolbar', { name: '고른 위치' })).toBeNull();
+    expect(rowCheckbox(panel, 'B-01')).not.toBeChecked();
   });
 
   it('전체 펼치기는 모든 하위를, 전체 접기는 구역만 남긴다', async () => {
@@ -2698,11 +2664,11 @@ describe('WarehouseLocationScreen — 라벨 일괄 출력', () => {
     noLabelRoute,
   ];
 
-  it('고른 것이 없으면 막혀 있다', async () => {
+  it('고른 것이 없으면 라벨 출력 단추가 없다 — 고르면 선택 막대에 나타난다', async () => {
     const { user } = renderScreen(labelRoutes([]), '?wh=1001');
 
     const panel = await openLocationTab(user);
-    expect(within(panel).getByRole('button', { name: '라벨 일괄 출력' })).toBeDisabled();
+    expect(within(panel).queryByRole('button', { name: '라벨 출력' })).toBeNull();
   });
 
   it('랙을 고르면 그 밑의 켜진 셀을 모아 발행하고 그림과 인쇄 단추를 보인다', async () => {
@@ -2711,8 +2677,7 @@ describe('WarehouseLocationScreen — 라벨 일괄 출력', () => {
     const panel = await openLocationTab(user);
     await user.click(rowCheckbox(panel, 'A-01-01'));
     await user.click(rowCheckbox(panel, 'B-01'));
-    const print = within(panel).getByRole('button', { name: '라벨 일괄 출력' });
-    await waitFor(() => expect(print).toBeEnabled());
+    const print = await within(panel).findByRole('button', { name: '라벨 출력' });
     await user.click(print);
 
     const preview = await screen.findByRole('dialog', { name: '라벨 출력' });
@@ -2744,8 +2709,7 @@ describe('WarehouseLocationScreen — 라벨 일괄 출력', () => {
 
     const panel = await openLocationTab(user);
     await user.click(rowCheckbox(panel, 'A-01-01'));
-    const print = within(panel).getByRole('button', { name: '라벨 일괄 출력' });
-    await waitFor(() => expect(print).toBeEnabled());
+    const print = await within(panel).findByRole('button', { name: '라벨 출력' });
     await user.click(print);
 
     const reason = await screen.findByRole('dialog', { name: '라벨 재발행' });
@@ -3404,8 +3368,8 @@ describe('WarehouseLocationScreen — 보관 품목', () => {
   });
 });
 
-/** 창고 정보 탭 안 A(사용자 결정 2026-10-30) — 머리 · 정보 판의 연필 · 불량 창고 확인 · Location 묶음 · 등록 미리 채움. */
-describe('WarehouseLocationScreen — 창고 정보 (안 A)', () => {
+/** 안 B(사용자 결정 2026-11-24) — 창고 머리 · Location 위치 수 줄 · 수정 창의 연필 · 불량 창고 확인 · 등록 미리 채움. */
+describe('WarehouseLocationScreen — 창고 머리 · 창고 정보 수정 창 (안 B)', () => {
   const SUMMARY_LOCATIONS: Location[] = [
     { ...locationFixtures[0]!, locationId: 2101, locationCode: 'Z01', locationLevelCode: 'ZONE' },
     {
@@ -3438,22 +3402,26 @@ describe('WarehouseLocationScreen — 창고 정보 (안 A)', () => {
     },
   ];
 
-  it('머리에 창고 코드 · 창고명 · 상태가 보이고, 내부 창고면 외부 표시가 없다', async () => {
+  it('머리에 창고 코드 · 창고명 · 유형 · 상태 · 공장 · 사업부가 보이고, 내부 창고면 외부 표시가 없다', async () => {
     renderScreen(
       [warehouseListRoute(), warehouseDetailRoute(), locationListRoute(), ...lookupRoutes()],
       '?wh=1001',
     );
 
-    const form = await screen.findByRole('region', { name: '창고 정보' });
-    expect(await within(form).findByLabelText('창고 코드')).toHaveTextContent('WH-01');
-    expect(within(form).getByLabelText('창고명')).toHaveTextContent('1공장 자재창고');
-    expect(within(form).getByText('사용 중')).toBeInTheDocument();
-    expect(within(form).getByRole('switch', { name: '외부 창고' })).not.toBeChecked();
-    expect(form.querySelector('.location-identity')?.textContent ?? '').not.toContain('외부 창고');
+    const header = await screen.findByRole('region', { name: '창고' });
+    expect(await within(header).findByLabelText('창고 코드')).toHaveTextContent('WH-01');
+    expect(within(header).getByLabelText('창고명')).toHaveTextContent('1공장 자재창고');
+    expect(within(header).getByText('사용 중')).toBeInTheDocument();
+    expect(await within(header).findByText('자재창고')).toBeInTheDocument();
+    expect(within(header).getByText('1공장')).toBeInTheDocument();
+    expect(within(header).queryByText('외부 창고')).not.toBeInTheDocument();
+    /* 창고 칸은 머리에서 바로 고치지 않는다 — 수정 창에서. 사용 중지도 창 안에만 있다. */
+    expect(within(header).queryByRole('switch')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
   });
 
-  it('Location 묶음은 Location 탭과 같은 목록으로 센다 — 요청이 한 번이고, 옆 탭을 연다', async () => {
-    const { requests, user } = renderScreen(
+  it('Location 표 위에 위치 수를 한 줄로 센다 — 표와 같은 목록이라 요청이 한 번이다', async () => {
+    const { requests } = renderScreen(
       [
         warehouseListRoute(),
         warehouseDetailRoute(),
@@ -3464,24 +3432,12 @@ describe('WarehouseLocationScreen — 창고 정보 (안 A)', () => {
     );
 
     const section = await screen.findByRole('region', { name: 'Location' });
-    expect(await within(section).findByLabelText('구역')).toHaveTextContent('2');
-    expect(within(section).getByLabelText('랙')).toHaveTextContent('1');
-    expect(within(section).getByLabelText('층')).toHaveTextContent('0');
-    expect(within(section).getByLabelText('셀')).toHaveTextContent('0');
-    expect(within(section).getByLabelText('사용 중지')).toHaveTextContent('1');
-
-    const system = within(section).getByRole('list', { name: '자동으로 만든 위치' });
-    const rows = within(system).getAllByRole('listitem');
-    expect(within(rows[0]!).getByText('SYS-STAGING')).toBeInTheDocument();
-    expect(within(rows[0]!).getByText('적치 대기')).toBeInTheDocument();
-    expect(within(rows[1]!).getByText('SYS-WHOLE')).toBeInTheDocument();
-    expect(within(rows[1]!).getByText('창고 전체')).toBeInTheDocument();
-
-    await user.click(within(section).getByRole('button', { name: 'Location 탭에서 보기' }));
-    expect(
-      await screen.findByRole('tab', { name: 'Location', selected: true }),
-    ).toBeInTheDocument();
-    expect(await screen.findByText('Z01-R001')).toBeInTheDocument();
+    expect(await within(section).findByLabelText('위치 수')).toHaveTextContent(
+      '전체 5 · 구역 2 · 랙 1 · 사용 중지 1',
+    );
+    expect(await within(section).findByText('Z01-R001')).toBeInTheDocument();
+    /* 서버가 만든 위치는 표에 있으니 따로 늘어놓지 않는다. */
+    expect(screen.queryByRole('list', { name: '자동으로 만든 위치' })).toBeNull();
 
     const locationGets = requests.filter(
       (request) =>
@@ -3498,8 +3454,8 @@ describe('WarehouseLocationScreen — 창고 정보 (안 A)', () => {
       '?wh=1001',
     );
 
-    const form = await screen.findByRole('region', { name: '창고 정보' });
-    await within(form).findByLabelText('창고명');
+    const dialog = await openWarehouseEdit(user);
+    const form = within(dialog).getByRole('region', { name: '창고 정보' });
     expect(within(form).queryByRole('combobox')).not.toBeInTheDocument();
 
     await user.click(within(form).getByRole('button', { name: '창고 유형 수정' }));
@@ -3514,11 +3470,14 @@ describe('WarehouseLocationScreen — 창고 정보 (안 A)', () => {
     expect(within(form).getByText('사업부').closest('.location-facts-row')).not.toHaveClass(
       'is-changed',
     );
-    expect(screen.getByRole('button', { name: '저장' })).not.toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: '저장' })).not.toBeDisabled();
 
-    await user.click(screen.getByRole('button', { name: '취소' }));
-    expect(within(form).getByText('자재창고')).toBeInTheDocument();
-    expect(within(form).getByText('창고 유형').closest('.location-facts-row')).not.toHaveClass(
+    await user.click(within(dialog).getByRole('button', { name: '취소' }));
+    const reopened = within(await openWarehouseEdit(user)).getByRole('region', {
+      name: '창고 정보',
+    });
+    expect(within(reopened).getByText('자재창고')).toBeInTheDocument();
+    expect(within(reopened).getByText('창고 유형').closest('.location-facts-row')).not.toHaveClass(
       'is-changed',
     );
   });
@@ -3529,16 +3488,16 @@ describe('WarehouseLocationScreen — 창고 정보 (안 A)', () => {
       '?wh=1001',
     );
 
-    await screen.findByLabelText('창고명');
-    await user.click(screen.getByRole('switch', { name: '불량 창고' }));
+    const dialog = await openWarehouseEdit(user);
+    await user.click(within(dialog).getByRole('switch', { name: '불량 창고' }));
 
     const confirm = screen.getByRole('dialog', { name: '불량 창고로 바꿀까요?' });
     expect(within(confirm).getByText('WH-01')).toBeInTheDocument();
     await user.click(within(confirm).getByRole('button', { name: '취소' }));
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.getByRole('switch', { name: '불량 창고' })).not.toBeChecked();
-    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(screen.queryByRole('dialog', { name: '불량 창고로 바꿀까요?' })).not.toBeInTheDocument();
+    expect(within(dialog).getByRole('switch', { name: '불량 창고' })).not.toBeChecked();
+    expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled();
   });
 
   it('불량 창고를 확인하면 값이 바뀌고 머리에 칩이 붙으며 저장이 켜진다', async () => {
@@ -3549,10 +3508,15 @@ describe('WarehouseLocationScreen — 창고 정보 (안 A)', () => {
 
     await editWarehouse(user);
 
-    const form = screen.getByRole('region', { name: '창고 정보' });
-    expect(screen.getByRole('switch', { name: '불량 창고' })).toBeChecked();
+    const dialog = screen.getByRole('dialog', { name: '창고 정보 수정' });
+    const form = within(dialog).getByRole('region', { name: '창고 정보' });
+    expect(within(form).getByRole('switch', { name: '불량 창고' })).toBeChecked();
     expect(within(form).getAllByText('불량 창고')).toHaveLength(2);
-    expect(screen.getByRole('button', { name: '저장' })).not.toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: '저장' })).not.toBeDisabled();
+    /* 저장 전에는 화면의 창고 머리가 그대로다. */
+    expect(
+      within(screen.getByRole('region', { name: '창고' })).queryByText('불량 창고'),
+    ).not.toBeInTheDocument();
   });
 
   it('불량 창고를 끌 때는 해제 확인을 묻는다', async () => {
@@ -3566,8 +3530,8 @@ describe('WarehouseLocationScreen — 창고 정보 (안 A)', () => {
       '?wh=1001',
     );
 
-    await screen.findByLabelText('창고명');
-    await user.click(screen.getByRole('switch', { name: '불량 창고' }));
+    const dialog = await openWarehouseEdit(user);
+    await user.click(within(dialog).getByRole('switch', { name: '불량 창고' }));
 
     expect(screen.getByRole('dialog', { name: '불량 창고에서 해제할까요?' })).toBeInTheDocument();
   });

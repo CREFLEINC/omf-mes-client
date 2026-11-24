@@ -16,20 +16,28 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     list: 'Danh sách kho',
     detail: 'Chi tiết kho',
   },
-  tabs: {
+  sections: {
     warehouse: 'Thông tin kho',
     location: 'Location',
   },
   actions: {
     addWarehouse: 'Thêm kho',
-    addZone: 'Thêm khu',
     addRack: 'Thêm kệ',
-    printLabels: 'In nhãn hàng loạt',
+    printLabels: 'In nhãn',
     activate: 'Dùng lại',
-    viewLocations: 'Xem ở tab Location',
+    editWarehouse: 'Thông tin kho',
+  },
+  selection: {
+    label: 'Vị trí đã chọn',
+    count: (count: number): string => `Đã chọn ${String(count)}`,
+    clear: 'Bỏ chọn',
   },
   warehouseInfo: {
-    systemLocations: 'Vị trí do máy chủ tạo',
+    editTitle: 'Sửa thông tin kho',
+    countLabel: 'Số vị trí',
+    total: (count: number): string => `Tất cả ${String(count)}`,
+    level: (label: string, count: number): string => `${label} ${String(count)}`,
+    inactive: (count: number): string => `Ngừng dùng ${String(count)}`,
   },
   locationPrefix: {
     label: 'Mã vị trí kho',
@@ -69,7 +77,7 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     warehouseNoneTitle: 'Chưa đăng ký kho nào',
     warehouseNoMatchTitle: 'Không có kết quả khớp điều kiện',
     locationNoneTitle: 'Chưa đăng ký Location',
-    locationNoneDescription: 'Hãy thêm khu.',
+    locationNoneDescription: 'Hãy tạo bằng [Thêm Location].',
     locationNoMatchTitle: 'Không có Location khớp điều kiện',
     locationNoMatchDescription: 'Xóa từ khóa thì thấy lại toàn bộ phân cấp.',
     warehouseNotSelectedTitle: 'Thông tin kho',
@@ -132,8 +140,6 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     selectionLabel: 'Chọn Location',
   },
   dialog: {
-    createTitle: 'Thêm Location',
-    createZoneTitle: 'Thêm khu',
     createRackTitle: 'Thêm kệ',
     editRackTitle: 'Sửa kệ',
     editTitle: 'Sửa Location',
@@ -143,26 +149,25 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   /** 위치 수정 창 안의 보관 품목(사용자 지시 2026-10-29) — 품목 무관 · 지정 품목만 둘 중 하나. 안내문 없이. */
   /** 정보 판에서 연필로 고치는 값(별칭). */
   bulkCreate: {
-    open: 'Tạo hàng loạt',
-    title: (warehouse: string): string =>
-      warehouse === '' ? 'Tạo vị trí hàng loạt' : `Tạo vị trí hàng loạt — ${warehouse}`,
-    modeLabel: 'Cách tạo',
-    modeNew: 'Tạo khu mới',
+    open: 'Thêm Location',
+    modeLabel: 'Cách thêm',
+    modeNew: 'Thêm từ khu mới',
     modeExisting: 'Thêm kệ vào khu có sẵn',
-    zoneCount: 'Số khu',
+    zoneCount: 'Số khu thêm',
     racksPerZone: 'Số kệ mỗi khu',
     levelsPerRack: 'Số tầng mỗi kệ',
     cellsPerLevel: 'Số ô mỗi tầng',
-    levelHint: '0 = chỉ tạo kệ',
-    cellHint: '0 = chỉ tới tầng',
+    levelHint: 'Nhập 0 thì chỉ thêm kệ, không có tầng · ô.',
+    cellHint: 'Nhập 0 thì chỉ thêm tới tầng, không có ô.',
     pickZones: 'Khu sẽ thêm kệ',
     noZones: 'Không có khu để thêm kệ.',
     zoneName: (code: string, alias: string): string => `${code} · ${alias}`,
-    zoneInfo: (racks: number, cells: number): string => `${String(racks)} kệ · ${String(cells)} ô`,
-    stockBlocked: 'Khu đang có tồn kho nên không thể đặt kệ — hãy chuyển tồn kho trước.',
+    zoneInfo: (racks: number, cells: number): string =>
+      `Hiện ${String(racks)} kệ · ${String(cells)} ô`,
+    stockBlocked: 'Có tồn kho nên không thể thêm kệ',
     pickRequired: 'Hãy chọn ít nhất một khu để thêm kệ.',
-    rackNoLeft: 'Vượt quá số kệ R999. Hãy giảm số kệ.',
-    total: 'Vị trí sẽ tạo',
+    rackNoLeft: 'Mỗi khu thêm tối đa 999 kệ. Hãy giảm số kệ.',
+    total: 'Vị trí sẽ thêm',
     count: (count: number): string => `${count.toLocaleString('vi-VN')} vị trí`,
     parts: (zones: number | null, racks: number, levels: number, cells: number): string =>
       [
@@ -173,15 +178,13 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
       ]
         .filter((part) => part !== null)
         .join(' · '),
-    firstCode: 'Mã đầu',
-    lastCode: 'Mã cuối',
     overCells: (count: number): string =>
       `Mỗi lần tạo tối đa 1.000 ô (hiện ${count.toLocaleString('vi-VN')}). Hãy giảm số lượng.`,
     overAll: (count: number): string =>
       `Mỗi lần tạo tối đa 1.200 vị trí (hiện ${count.toLocaleString('vi-VN')}). Hãy giảm số lượng.`,
-    make: 'Tạo',
-    making: (done: number, total: number): string => `Đang tạo ${String(done)}/${String(total)}`,
-    done: (count: number): string => `Đã tạo ${count.toLocaleString('vi-VN')} vị trí.`,
+    make: 'Thêm',
+    making: (done: number, total: number): string => `Đang thêm ${String(done)}/${String(total)}`,
+    done: (count: number): string => `Đã thêm ${count.toLocaleString('vi-VN')} vị trí.`,
     partial: (created: number, failedRacks: number): string =>
       `Đã tạo ${created.toLocaleString('vi-VN')}, chưa tạo được ${String(failedRacks)} kệ.`,
     partialNames: (created: number): string =>
@@ -233,7 +236,7 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     levelHeader: 'Tầng',
     rowHeader: (levelNo: number): string => `Tầng ${String(levelNo)}`,
     columnHeader: (cellNo: number): string => `Cột ${String(cellNo)}`,
-    saving: (done: number, total: number): string => `Đang tạo ${String(done)}/${String(total)}`,
+    saving: (done: number, total: number): string => `Đang thêm ${String(done)}/${String(total)}`,
     stopped: (done: number, reason: string): string =>
       `Đã dừng sau khi tạo ${String(done)} mục. ${reason} Lưu lại để chỉ tạo phần còn lại.`,
   },

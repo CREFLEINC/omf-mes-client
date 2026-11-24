@@ -11885,11 +11885,6 @@ a.erp-send-chips:focus-visible {
   gap: var(--space-2);
 }
 
-/* 창고·Location(입고 관리 짜임, 사용자 지시 2026-10-29) — 「창고 추가」는 조건 줄 오른쪽 끝. */
-.warehouse-location-add {
-  margin-left: auto;
-}
-
 /*
  * 상세 폼 정돈 2차(omf-all-around#17) — 이 화면 안에서만. 공용 규칙(.form-grid·.form-actions·.banner-slot)은 그대로다.
  * 선택 목록 잘림 안내는 조건·문구·경고 유형을 그대로 두고 크기만 줄인다 — 폼보다 먼저 읽히지 않게.
@@ -11973,7 +11968,7 @@ a.erp-send-chips:focus-visible {
   gap: var(--space-2);
 }
 
-/* Location 탭의 보기(전체 계층 · 적치 위치만) — 이름과 단추를 한 줄에. */
+/* Location 표의 보기(전체 계층 · 적치 위치만) — 이름과 단추를 한 줄에. */
 .warehouse-location-view {
   display: flex;
   align-items: center;
@@ -11981,7 +11976,7 @@ a.erp-send-chips:focus-visible {
 }
 
 /*
- * Location 탭 윗부분(omf-all-around#17) — 검색은 왼쪽, 등록 단추 묶음은 오른쪽 끝(검색 옆에 붙어
+ * Location 표 윗부분(omf-all-around#17) — 검색은 왼쪽, 등록 단추 묶음은 오른쪽 끝(검색 옆에 붙어
  * 검색 동작처럼 읽히지 않게), 비활성 사유 도움말은 그 묶음 바로 아래 오른쪽 정렬.
  */
 .warehouse-location-location-create {
@@ -27397,7 +27392,7 @@ body.col-reordering * {
 }
 
 /* 위 transform 이 DS 의 내림차순 뒤집기(rotate 180deg)를 덮어 내림차순도 ▲ 로 보였다 — 뒤집기를 함께 건다(#357). */
-.inspection-queue-table thead th[data-align="center"][aria-sort="descending"] > button > svg {
+.inspection-queue-table thead th[data-align='center'][aria-sort='descending'] > button > svg {
   transform: translateY(-50%) rotate(180deg);
 }
 
@@ -29809,7 +29804,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded='true'])
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-/* 위치 일괄 생성 창(#267 · 시안 W-06-07-bulk) — 방식 · 수 · 구역 목록 · 합계 · 진행. */
+/* Location 추가 창(#267 · 시안 W-06-07-bulk, 옛 「일괄 생성」) — 대상 창고 · 방법 · 구역 목록 · 수 · 합계 · 진행. */
 .bulk-create {
   min-width: 0;
 }
@@ -29858,11 +29853,71 @@ body:has(.iqc-inspection-step-measure [aria-expanded='true'])
   font: var(--type-label-lg);
 }
 
+/* 구역 목록 — 많으면 이 안에서만 스크롤한다(사용자 지시 2026-11-24). 줄 높이 약 40px × 6줄. */
+.bulk-create-zone-list {
+  max-height: 15rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* 구역 한 줄 — 왼쪽 체크칸 · 이름, 오른쪽 끝 지금 랙 · 셀 수(또는 막힌 까닭). 두 줄로 쌓지 않는다. */
 .bulk-create-zone {
-  display: grid;
-  gap: 2px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
   border-top: 1px solid var(--outline-variant);
+}
+
+.bulk-create-zone > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.bulk-create-zone > :last-child {
+  flex: none;
+  white-space: nowrap;
+}
+
+.bulk-create-zone-info {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Location 추가 창 맨 위 — 어느 창고에 만드는지(제목에 싣지 않는다). */
+.bulk-create-target {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-5);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-low);
+}
+
+.bulk-create-target > div {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.bulk-create-target dt {
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+}
+
+.bulk-create-target dd {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  font: var(--type-body-sm);
+  font-weight: 600;
+}
+
+.bulk-create-target-code {
+  font-weight: 700;
 }
 
 .bulk-create-summary {
@@ -29888,16 +29943,6 @@ body:has(.iqc-inspection-step-measure [aria-expanded='true'])
 
 .bulk-create-summary-total > strong {
   font: var(--type-title-lg);
-}
-
-.bulk-create-summary-codes {
-  display: grid;
-  gap: 2px;
-  color: var(--on-surface-variant);
-}
-
-.bulk-create-summary-codes code {
-  color: var(--on-surface);
 }
 
 .bulk-create-progress {
@@ -30345,6 +30390,23 @@ body:has(.iqc-inspection-step-measure [aria-expanded='true'])
   gap: var(--space-2);
 }
 
+/*
+ * 조회 묶음 상자 — 품목 · BOM 조회처럼 옅은 판 위에 흰 입력칸(사용자 지시 2026-11-24). 창고 목록의 조회 칸과
+ * Location 표 위 검색 줄이 같은 상자를 쓴다. 입력칸 바탕은 `filter-field-surface` 가 맡는다.
+ */
+.warehouse-location-filter.filter-field-surface,
+.filter-bar.warehouse-location-location-toolbar {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container-low);
+}
+
+.filter-bar.warehouse-location-location-toolbar {
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
 .warehouse-location-filter-row {
   display: flex;
   flex-wrap: wrap;
@@ -30369,6 +30431,59 @@ body:has(.iqc-inspection-step-measure [aria-expanded='true'])
 .warehouse-location-filter-row:last-child > :nth-child(-n + 2) {
   flex: 1 1 8rem;
   min-width: 0;
+}
+
+/*
+ * 창고 조회 한 줄(안 A, 사용자 결정 2026-11-24) — 검색 · 공장 · 유형 · 미사용 포함. 검색이 남는 폭을 맡고 두 선택칸은
+ * 글자만큼 좁게. 목록 창이 좁으면 미사용 포함부터 다음 줄로 내려간다. 위 두 줄 규칙(:first-child · :last-child)을 덮는다.
+ */
+.warehouse-location-filter-row.is-one-line {
+  flex-wrap: wrap;
+}
+
+.warehouse-location-filter-row.is-one-line > :first-child {
+  flex: 1 1 8rem;
+  min-width: 7rem;
+}
+
+.warehouse-location-filter-row.is-one-line > .warehouse-filter-select {
+  flex: 0 1 9.5rem;
+  min-width: 6rem;
+}
+
+.warehouse-location-filter-row.is-one-line > :last-child {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* 검색칸 · 미사용 포함도 선택칸과 같은 13px(사용자 지시 2026-11-24). */
+.warehouse-location-filter-row.is-one-line input[type='search'],
+.warehouse-location-filter-row.is-one-line input[type='search']::placeholder,
+.warehouse-location-filter-row.is-one-line > :last-child {
+  font-size: 13px;
+}
+
+/*
+ * 공장 · 창고 유형 선택칸 — 글자를 한 단계 작게, 칸 폭 안에서 말줄임해 옆 칸과 겹치지 않게(사용자 지시 2026-11-24).
+ * 고른 값도 검정 글자 그대로 둔다.
+ */
+.warehouse-filter-select > *,
+.warehouse-filter-select [aria-haspopup] {
+  width: 100%;
+  min-width: 0;
+}
+
+.warehouse-filter-select [aria-haspopup] {
+  gap: var(--space-1);
+  padding-inline: var(--space-3) var(--space-2);
+  font-size: 13px;
+}
+
+.warehouse-filter-select [aria-haspopup] > :first-child {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /*
@@ -30432,7 +30547,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded='true'])
 }
 
 /*
- * 창고 정보 탭(안 A, 사용자 결정 2026-10-30) — 위치 창과 같은 짜임: 머리 · 옅은 정보 판 · Location 묶음 · 바닥.
+ * 창고 정보 판(안 A 2026-10-30, 안 B 2026-11-24 로 수정 창 안에) — 위치 창과 같은 짜임: 머리 · 옅은 정보 판 · 바닥.
  * 정보 판은 공장 · 사업부 · 창고 유형 · 불량 창고 넷을 한 줄에, 선택칸이 열리는 유형 칸을 조금 넓게.
  */
 .warehouse-info {
@@ -30455,76 +30570,6 @@ body:has(.iqc-inspection-step-measure [aria-expanded='true'])
 .warehouse-info .warehouse-location-form-actions {
   margin-top: var(--space-1);
   padding-top: var(--space-3);
-}
-
-.warehouse-info-section-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.warehouse-info-section-head .location-section-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.warehouse-info-section-head > button {
-  margin-left: auto;
-}
-
-/* 단계별 수 — 구역 · 랙 · 층 · 셀 · 사용 중지 다섯 칸. */
-.warehouse-info-stats {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: var(--space-2);
-  margin: 0;
-}
-
-.warehouse-info-stat {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-}
-
-.warehouse-info-stat .location-identity-icon,
-.warehouse-info-system .location-identity-icon {
-  width: 28px;
-  height: 28px;
-}
-
-.warehouse-info-stat-text {
-  display: grid;
-  min-width: 0;
-}
-
-.warehouse-info-stat-text dt {
-  color: var(--on-surface-variant);
-  font: var(--type-label-sm);
-}
-
-.warehouse-info-stat-text dd {
-  margin: 0;
-  font: var(--type-title-sm);
-  font-weight: 700;
-}
-
-.warehouse-info-stat.is-muted dd {
-  color: var(--on-surface-variant);
-}
-
-/* 서버가 만든 위치 — 한두 줄이라 보관 품목 목록의 고정 높이를 풀어 준다. */
-.warehouse-info-system {
-  height: auto;
-}
-
-.warehouse-info-system .location-items-row {
-  padding: var(--space-2) var(--space-3);
 }
 
 /* 창고 추가 — 머리 · 세 칸씩 두 줄(공장 · 코드 · 창고명 / 사업부 · 유형 · 불량 창고). */
@@ -30567,25 +30612,140 @@ body:has(.iqc-inspection-step-measure [aria-expanded='true'])
   flex: none;
 }
 
-/* Location 탭 맨 위의 창고 위치 코드 줄 — 이름 · 코드 · 자물쇠 · 안내(#292). */
-.warehouse-location-prefix-row {
+/*
+ * 오른쪽 창 맨 위 창고 머리(안 B, 사용자 결정 2026-11-24) — 머리 줄 · [창고 정보] 단추, 그 밑에 공장 · 사업부 · 창고 위치
+ * 코드(잠김). 밑에 Location 표가 이어진다.
+ */
+.warehouse-header {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.warehouse-header-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.warehouse-header-top .location-identity {
+  flex: 1;
+  min-width: 0;
+}
+
+.warehouse-header-top > button {
+  flex: none;
+}
+
+/* 머리의 코드 · 창고명은 상세 창의 제목이다 — 표 글자보다 한 단계 크게(가시성, 사용자 지시 2026-11-24). */
+.warehouse-header .location-identity-code,
+.warehouse-header .location-identity-alias {
+  font: var(--type-title-lg);
+  font-weight: 700;
+}
+
+.warehouse-header .location-identity-alias {
+  font-weight: 500;
+}
+
+.warehouse-header-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3);
-  margin: 0 0 var(--space-3);
+  gap: var(--space-1) var(--space-2);
+  padding-left: calc(36px + var(--space-3));
+  color: var(--on-surface);
+  font: var(--type-label-lg);
 }
 
-.warehouse-location-prefix-row dt {
-  font: var(--type-label-lg);
+/* 값 사이에 가는 점 — 공장 · 사업부 · 창고 위치 코드가 한 덩어리로 붙어 읽히지 않게. */
+.warehouse-header-meta > * + *::before {
+  content: '·';
+  margin-right: var(--space-2);
   color: var(--on-surface-variant);
 }
 
-.warehouse-location-prefix-row dd {
+.warehouse-header-meta dt {
+  color: var(--on-surface-variant);
+}
+
+.warehouse-header-meta dl {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   margin: 0;
+}
+
+.warehouse-header-meta dd {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  color: var(--on-surface);
+}
+
+.warehouse-header-prefix {
+  font-weight: 700;
+}
+
+/* Location 표 위 위치 수 한 줄 — 「전체 6 · 구역 1 · 랙 1 · 층 1 · 셀 1」. 표 제목 자리라 진하게. */
+.warehouse-location-count {
+  margin: 0 0 var(--space-2);
+  color: var(--on-surface);
+  font: var(--type-label-lg);
+  font-weight: 600;
+}
+
+/*
+ * Location 선택 막대(안 2, 사용자 결정 2026-11-24) — 고른 행이 있을 때 위치 수 줄 자리에 나타난다. 고른 수 · 그 행에 할
+ * 일(랙 추가 · 라벨 출력) · 선택 해제. 위치 수 줄과 높이를 비슷하게 두어 표가 크게 뛰지 않게.
+ */
+.location-selection-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-high);
+}
+
+.location-selection-count {
+  margin-right: auto;
+  font: var(--type-label-lg);
+  font-weight: 700;
+}
+
+/* Location 검색칸 — 보기 단추와 한 줄에, 위치 코드가 다 보이는 폭. */
+.warehouse-location-search {
+  flex: 0 1 18rem;
+}
+
+/* 창고 정보 수정 창 — 공장 · 사업부 · 유형 · 외부 · 불량 다섯 칸을 한 줄에(불량 창고가 둘째 줄로 떨어지지 않게). */
+.location-dialog .warehouse-info .location-facts {
+  grid-template-columns: 1fr 1.2fr 1.4fr 0.8fr 0.8fr;
+}
+
+/* 수정 창 본문 맨 아래 「사용 상태」 줄 — 이름 · 지금 상태 칩 · 바꾸는 단추(사용자 지시 2026-11-24). */
+.warehouse-info-state {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.warehouse-info-state-label {
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+}
+
+.warehouse-info-state > button {
+  margin-left: auto;
 }
 
 /*
@@ -32243,7 +32403,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded='true'])
   gap: var(--space-5);
 }
 
-.pqc-web-inspected-row .iqc-inspection-qty-group[data-group="manual"] {
+.pqc-web-inspected-row .iqc-inspection-qty-group[data-group='manual'] {
   flex: 0 0 auto;
 }
 
@@ -32261,7 +32421,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded='true'])
   font: var(--type-body-lg);
 }
 
-.pqc-web-inspected-row .iqc-inspection-qty-input [class*="_inputWrap"] {
+.pqc-web-inspected-row .iqc-inspection-qty-input [class*='_inputWrap'] {
   min-height: 0;
   border-radius: var(--radius-sm);
   background: var(--surface);
@@ -32277,7 +32437,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded='true'])
 }
 
 /* OQC 피킹 LOT 없음 안내 — 두 문장이 각각 한 줄로 서게 DS 설명 폭 제한(42ch)을 푼다(사용자 지시 2026-11-24 · #356). */
-.oqc-shipment-lots-empty [class*="_description"] {
+.oqc-shipment-lots-empty [class*='_description'] {
   max-width: none;
 }
 
@@ -38927,7 +39087,7 @@ body:has(
   position: static;
 }
 
-.iqc-inbound-attach-dialog .parts-iqc-block-head .info-tip-anchor > [role="tooltip"] {
+.iqc-inbound-attach-dialog .parts-iqc-block-head .info-tip-anchor > [role='tooltip'] {
   top: calc(100% + var(--space-1));
   right: 0;
   left: 0;

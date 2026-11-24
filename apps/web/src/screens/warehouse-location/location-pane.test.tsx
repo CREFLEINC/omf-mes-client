@@ -1,5 +1,5 @@
 import { AlertBanner } from '@crefle/web-ui';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -14,7 +14,6 @@ const renderPane = (overrides: Partial<Parameters<typeof LocationPane>[0]> = {})
   const onToggleExpand = vi.fn();
   const onSelectionChange = vi.fn();
   const onFilterTextChange = vi.fn();
-  const onAddRoot = vi.fn();
   const onAddChild = vi.fn();
   const onEdit = vi.fn();
   const onCollapseAll = vi.fn();
@@ -35,7 +34,6 @@ const renderPane = (overrides: Partial<Parameters<typeof LocationPane>[0]> = {})
       onFilterTextChange={onFilterTextChange}
       canAddRoot
       addRootDisabledReason="Location을 추가할 수 없습니다."
-      onAddRoot={onAddRoot}
       canAddChild={false}
       onAddChild={onAddChild}
       canPrintLabels={false}
@@ -52,7 +50,6 @@ const renderPane = (overrides: Partial<Parameters<typeof LocationPane>[0]> = {})
     onToggleExpand,
     onSelectionChange,
     onFilterTextChange,
-    onAddRoot,
     onAddChild,
     onEdit,
     onCollapseAll,
@@ -157,31 +154,57 @@ describe('LocationPane', () => {
     expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ locationId: 2002 }));
   });
 
-  // 하위 추가는 사유 문구 없이 비활성만 둔다(사용자 지시 2026-09-18 · omf-all-around#17).
-  it('선택이 없으면 하위 추가가 비활성이고 사유 문구는 없다', () => {
-    renderPane({ selectedIds: [] });
+  /* 선택 막대(안 2, 사용자 결정 2026-11-24) — 고른 행이 있을 때만, 그 행에 할 수 있는 일만. 흐린 단추를 두지 않는다. */
+  it('고른 것이 없으면 선택 막대 대신 위치 수 줄이 있고 랙 추가 · 라벨 출력 단추가 없다', () => {
+    renderPane({ selectedIds: [], countText: '전체 6 · 구역 2' });
 
-    const button = screen.getByRole('button', { name: '랙 추가' });
-
-    expect(button).toBeDisabled();
-    expect(button).not.toHaveAttribute('aria-describedby');
+    expect(screen.queryByRole('toolbar', { name: '고른 위치' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('위치 수')).toHaveTextContent('전체 6 · 구역 2');
+    expect(screen.queryByRole('button', { name: '랙 추가' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '라벨 출력' })).not.toBeInTheDocument();
   });
 
-  it('선택이 2건 이상이면 하위 추가가 비활성이다', () => {
-    renderPane({ selectedIds: ['2001', '2004'] });
-
-    expect(screen.getByRole('button', { name: '랙 추가' })).toBeDisabled();
-  });
-
-  it('선택이 정확히 1건이면 하위 추가를 눌러 onAddChild를 부른다', async () => {
+  it('구역 하나를 고르면 막대에 고른 수 · 랙 추가가 있고, 누르면 onAddChild를 부른다', async () => {
     const user = userEvent.setup();
     const { onAddChild } = renderPane({ selectedIds: ['2001'], canAddChild: true });
 
-    const addChild = screen.getByRole('button', { name: '랙 추가' });
-    expect(addChild).not.toBeDisabled();
-
-    await user.click(addChild);
+    const bar = screen.getByRole('toolbar', { name: '고른 위치' });
+    expect(within(bar).getByText('1개 선택됨')).toBeInTheDocument();
+    expect(screen.queryByLabelText('위치 수')).not.toBeInTheDocument();
+    await user.click(within(bar).getByRole('button', { name: '랙 추가' }));
     expect(onAddChild).toHaveBeenCalledTimes(1);
+  });
+
+  it('구역이 아니거나 여럿을 고르면 랙 추가가 막대에 없다', () => {
+    renderPane({ selectedIds: ['2001', '2004'], canAddChild: false });
+
+    const bar = screen.getByRole('toolbar', { name: '고른 위치' });
+    expect(within(bar).getByText('2개 선택됨')).toBeInTheDocument();
+    expect(within(bar).queryByRole('button', { name: '랙 추가' })).not.toBeInTheDocument();
+  });
+
+  it('낼 라벨이 있으면 막대의 라벨 출력이 onPrintLabels를 부르고, 선택 해제는 고른 것을 비운다', async () => {
+    const user = userEvent.setup();
+    const { onPrintLabels, onSelectionChange } = renderPane({
+      selectedIds: ['2004'],
+      canPrintLabels: true,
+    });
+
+    const bar = screen.getByRole('toolbar', { name: '고른 위치' });
+    await user.click(within(bar).getByRole('button', { name: '라벨 출력' }));
+    expect(onPrintLabels).toHaveBeenCalledTimes(1);
+    await user.click(within(bar).getByRole('button', { name: '선택 해제' }));
+    expect(onSelectionChange).toHaveBeenCalledWith([]);
+  });
+
+  it('낼 라벨이 없으면 막대에 라벨 출력이 없다', () => {
+    renderPane({ selectedIds: ['2001'], canPrintLabels: false });
+
+    expect(
+      within(screen.getByRole('toolbar', { name: '고른 위치' })).queryByRole('button', {
+        name: '라벨 출력',
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it('라벨 이미지 생성 단추와 선택 안내가 없다 — 라벨은 위치를 눌러 연 창에서 본다', () => {
@@ -189,15 +212,6 @@ describe('LocationPane', () => {
 
     expect(screen.queryByRole('button', { name: '라벨 이미지 생성' })).not.toBeInTheDocument();
     expect(screen.queryByText('Location을 하나 이상 선택해 주세요.')).not.toBeInTheDocument();
-  });
-
-  it('구역 추가를 누르면 onAddRoot를 부른다', async () => {
-    const user = userEvent.setup();
-    const { onAddRoot } = renderPane();
-
-    await user.click(screen.getByRole('button', { name: '구역 추가' }));
-
-    expect(onAddRoot).toHaveBeenCalledTimes(1);
   });
 
   it('검색 입력은 서버 조회를 갱신하도록 상위에 전달한다', async () => {
@@ -214,22 +228,6 @@ describe('LocationPane', () => {
 
     expect(screen.getByRole('searchbox', { name: 'Location 검색' })).toBeInTheDocument();
     expect(screen.queryByText('Location 검색')).not.toBeInTheDocument();
-  });
-
-  it('고른 행이 있으면 구역 추가를 막는다', () => {
-    renderPane({ selectedIds: ['2004'] });
-
-    expect(screen.getByRole('button', { name: '구역 추가' })).toBeDisabled();
-  });
-
-  it('라벨 일괄 출력은 랙 추가 바로 오른쪽에 있고, 낼 것이 있을 때만 누를 수 있다', async () => {
-    const user = userEvent.setup();
-    const { onPrintLabels } = renderPane({ canPrintLabels: true });
-
-    const print = screen.getByRole('button', { name: '라벨 일괄 출력' });
-    expect(screen.getByRole('button', { name: '랙 추가' }).nextElementSibling).toBe(print);
-    await user.click(print);
-    expect(onPrintLabels).toHaveBeenCalledTimes(1);
   });
 
   it('전체 접기 · 펼치기는 펼친 것이 있는지에 따라 바뀐다', async () => {
@@ -266,24 +264,28 @@ describe('LocationPane', () => {
     expect(screen.queryByText('등록된 Location이 없습니다')).not.toBeInTheDocument();
   });
 
-  it('loadError가 있어도 추가 액션 줄은 남는다', () => {
-    renderPane({ rows: [], loadError: <AlertBanner variant="error" title="실패" /> });
+  it('loadError가 있어도 추가 단추는 남는다', () => {
+    renderPane({
+      rows: [],
+      loadError: <AlertBanner variant="error" title="실패" />,
+      canBulkCreate: true,
+    });
 
-    expect(screen.getByRole('button', { name: '구역 추가' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Location 추가/u })).toBeInTheDocument();
   });
 
   /* Location 탭 정돈(omf-all-around#17 4차) — 문구·배치만, 활성 조건은 그대로. */
-  it('등록할 수 있으면 빈 상태가 구역 추가를 안내한다', () => {
+  it('등록할 수 있으면 빈 상태가 [Location 추가]를 안내한다', () => {
     renderPane({ rows: [] });
 
-    expect(screen.getByText('구역을 추가해 주세요.')).toBeInTheDocument();
+    expect(screen.getByText('[Location 추가]로 만들어 주세요.')).toBeInTheDocument();
   });
 
-  it('구역 추가가 막혀 있으면 빈 상태가 추가를 권하지 않고 사유를 보인다', () => {
+  it('추가가 막혀 있으면 빈 상태가 추가를 권하지 않고 사유를 보인다', () => {
     const reason = 'Location 계층을 불러온 뒤 추가할 수 있습니다.';
-    renderPane({ rows: [], canAddRoot: false, addRootDisabledReason: reason });
+    renderPane({ rows: [], canAddRoot: false, addRootDisabledReason: reason, canBulkCreate: true });
 
-    expect(screen.queryByText('구역을 추가해 주세요.')).not.toBeInTheDocument();
+    expect(screen.queryByText('[Location 추가]로 만들어 주세요.')).not.toBeInTheDocument();
     expect(screen.getAllByText(reason).length).toBeGreaterThan(0);
   });
 });
