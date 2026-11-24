@@ -28,6 +28,8 @@ interface FilterSelectProps {
   className?: string;
   /** 거래처 칸 — 선택지를 받지 않고 쪽 단위로 찾는다(`PartnerSelect`, 사용자 지시 2026-10-29). */
   partners?: boolean;
+  /** 선택지가 적어도 맨 위에 검색창을 세운다(공장 검색 · 사용자 지시 2026-11-24). */
+  searchable?: boolean;
 }
 
 const FilterSelect = ({
@@ -37,6 +39,7 @@ const FilterSelect = ({
   onChange,
   className,
   partners = false,
+  searchable = false,
 }: FilterSelectProps) => {
   const id = useId();
   return (
@@ -55,6 +58,7 @@ const FilterSelect = ({
       ) : (
         <Select
           id={id}
+          searchable={searchable}
           options={[{ value: '', label: t.filters.all }, ...options]}
           value={value}
           onChange={onChange}
@@ -145,11 +149,34 @@ export const ErpPurchaseOrderFilterBar = ({
   return (
     <>
       <div className="filter-bar erp-data-filter-row">
-        {/* 선택 · 검색 · 기간 순서 — 품목 · 거래처 · BOM 탭과 같은 차례(사용자 지시 2026-11-24). */}
+        {/* 발주일 · 공급사 검색 · 발주 번호 검색 순서(사용자 지시 2026-11-24). */}
+        {/*
+         * 기간은 **한 컨트롤**이다(C-12 — 브라우저 날짜 칸을 쓰지 않는다). 컴포넌트가 완결된 쌍만, 그것도
+         * 시작 ≤ 종료로만 내보내 이 칸을 거친 역전은 생기지 않는다. 주소 키(`from`·`to`)와 요청 파라미터는 그대로다.
+         */}
+        <div className="field-cell erp-po-period-field">
+          <label className="field-label" htmlFor={periodId}>
+            {t.fields.orderDate}
+          </label>
+          <DatePicker
+            id={periodId}
+            mode="range"
+            clearable
+            value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
+            placeholder={t.filters.orderDatePlaceholder}
+            onChange={(value) =>
+              setDraft((current) => ({
+                ...current,
+                from: value === null ? '' : value[0],
+                to: value === null ? '' : value[1],
+              }))
+            }
+          />
+        </div>
         <FilterSelect
           partners
           label={t.filters.supplierSelect}
-          className="filter-field-md"
+          className="erp-po-supplier-field"
           options={[]}
           value={draft.supplier}
           onChange={(value) => update('supplier', value)}
@@ -164,29 +191,6 @@ export const ErpPurchaseOrderFilterBar = ({
           clearLabel={messages.common.clear}
           containerClassName={`filter-field-sm erp-order-search ${FIT_PLACEHOLDER_CLASS}`}
         />
-        {/*
-         * 기간은 **한 컨트롤**이다(C-12 — 브라우저 날짜 칸을 쓰지 않는다). 컴포넌트가 완결된 쌍만, 그것도
-         * 시작 ≤ 종료로만 내보내 이 칸을 거친 역전은 생기지 않는다. 주소 키(`from`·`to`)와 요청 파라미터는 그대로다.
-         */}
-        <div className="field-cell filter-field-md">
-          <label className="field-label" htmlFor={periodId}>
-            {t.fields.orderDate}
-          </label>
-          <DatePicker
-            id={periodId}
-            mode="range"
-            clearable
-            value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
-            placeholder={messages.common.selectDate}
-            onChange={(value) =>
-              setDraft((current) => ({
-                ...current,
-                from: value === null ? '' : value[0],
-                to: value === null ? '' : value[1],
-              }))
-            }
-          />
-        </div>
         {/* 조회 · 초기화 · 조건 더보기는 줄 오른쪽 끝(단말 관리와 같다 · #358). 초기화는 바뀐 것이 있을 때만. */}
         <div className="filter-actions field-cell-unlabeled">
           <Button onClick={search}>{messages.common.search}</Button>
@@ -200,18 +204,19 @@ export const ErpPurchaseOrderFilterBar = ({
       </div>
 
       {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
-      <div id={more.id} hidden={!more.isOpen}>
+      <div id={more.id} className="erp-po-more" hidden={!more.isOpen}>
         <div className="filter-bar">
           <FilterSelect
+            searchable
             label={t.filters.plantSelect}
-            className="filter-field-md"
+            className="erp-po-supplier-field"
             options={plantOptions}
             value={draft.plant}
             onChange={(value) => update('plant', value)}
           />
           <FilterSelect
             label={t.filters.statusSelect}
-            className="filter-field-sm"
+            className="erp-po-supplier-field"
             options={statusOptions}
             value={draft.status}
             onChange={(value) => update('status', value)}
@@ -219,7 +224,7 @@ export const ErpPurchaseOrderFilterBar = ({
           {/* 발주 유형(사용자 지시 2026-10-28) — 외자 · 내자 · 위탁가공 등을 갈라 본다. */}
           <FilterSelect
             label={t.filters.orderTypeSelect}
-            className="erp-po-order-type-field"
+            className="erp-po-supplier-field"
             options={orderTypeOptions}
             value={draft.orderType}
             onChange={(value) => update('orderType', value)}

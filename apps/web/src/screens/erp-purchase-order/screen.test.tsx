@@ -188,8 +188,8 @@ describe('ErpPurchaseOrderScreen', () => {
     expect(await within(listPane).findByText('합성 등록')).toBeInTheDocument();
     /* ERP 발주번호는 P/O 번호와 겹쳐 보이지 않는다. */
     expect(within(listPane).queryByText('SYN-EPO-901')).not.toBeInTheDocument();
-    /* 발주 유형 · 구매그룹 · 공장은 목록에 두지 않고 상세에서 본다(#358). */
-    expect(within(listPane).queryByText('합성 구매그룹')).not.toBeInTheDocument();
+    /* 공장 · 발주 유형 · 구매 그룹 · 입고 예정일도 목록에서 본다(사용자 지시 2026-11-24). */
+    expect(await within(listPane).findByText('합성 구매그룹')).toBeInTheDocument();
     const codeGroups = requests
       .map((request) => new URL(request.url))
       .filter((url) => url.pathname === '/mdm/code-values');
@@ -201,10 +201,11 @@ describe('ErpPurchaseOrderScreen', () => {
 
     await user.click(select);
     const linesPane = await screen.findByRole('region', { name: t.panes.lines });
-    expect(await within(linesPane).findByText('SYN-ITEM · 합성 품목')).toBeInTheDocument();
-    expect(await within(linesPane).findByText('SYN-EA')).toBeInTheDocument();
-    /* 잔량 = 발주 100 - 입하 30. */
-    expect(within(linesPane).getByText('70')).toBeInTheDocument();
+    /* 품목 코드 · 품목명은 두 칸, 수량은 단위를 붙인다(사용자 지시 2026-11-24). */
+    expect(await within(linesPane).findByText('SYN-ITEM')).toBeInTheDocument();
+    expect(within(linesPane).getByText('합성 품목')).toBeInTheDocument();
+    /* 미입하 수량 = 발주 100 - 입하 30. */
+    expect(await within(linesPane).findByText('70 SYN-EA')).toBeInTheDocument();
     expect(await within(linesPane).findByText('합성 창고')).toBeInTheDocument();
     expect(storageAndCancelCells(linesPane)).toEqual(['합성 창고', t.values.missing]);
     const detailPane = screen.getByRole('region', { name: t.panes.detail });
@@ -216,7 +217,9 @@ describe('ErpPurchaseOrderScreen', () => {
 
     /* 읽기 전용 — 쓰기 요청이 한 번도 나가지 않고, 수정 단추도 없다. */
     expect(requests.every((request) => request.method === 'GET')).toBe(true);
-    expect(screen.queryByRole('button', { name: /저장|수정|삭제|등록/ })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /^(저장|수정|삭제|등록)$/ }),
+    ).not.toBeInTheDocument();
     /* 읽기 전용 안내 문구는 두지 않는다 — 수정 컨트롤이 없는 것으로 충분하다. */
     expect(screen.queryByText(/수정할 수 없습니다/)).not.toBeInTheDocument();
   });
@@ -487,7 +490,7 @@ describe('ErpPurchaseOrderScreen', () => {
     renderWithProviders(<ErpPurchaseOrderScreen />, { fetch, route: '/?sel=901' });
 
     const linesPane = await screen.findByRole('region', { name: t.panes.lines });
-    expect(await within(linesPane).findByText('SYN-ITEM · 합성 품목')).toBeInTheDocument();
+    expect(await within(linesPane).findByText('합성 품목')).toBeInTheDocument();
     expect(storageAndCancelCells(linesPane)).toEqual([t.values.missing, t.values.missing]);
     const detailPane = screen.getByRole('region', { name: t.panes.detail });
     expect(
@@ -616,7 +619,7 @@ describe('ErpPurchaseOrderScreen — 외자 발주 통관번호', () => {
 
     const linesPane = await screen.findByRole('region', { name: t.panes.lines });
     /* 세 라인이 같은 품목이다. */
-    expect(await within(linesPane).findAllByText('SYN-ITEM · 합성 품목')).toHaveLength(3);
+    expect(await within(linesPane).findAllByText('합성 품목')).toHaveLength(3);
     expect(
       within(linesPane).queryByRole('columnheader', { name: t.fields.customsClearance }),
     ).not.toBeInTheDocument();

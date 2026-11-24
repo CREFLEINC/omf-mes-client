@@ -13,20 +13,23 @@ export const erpPurchaseOrder = {
     plant: '공장',
     orderDate: '발주일',
     expectedReceiptDate: '입고 예정일',
-    status: '상태',
+    /** 발주 문서의 등록 상태(LOGISTICS_DOCUMENT_STATUS) — 입고 「진행 상태」와 갈라 부른다(사용자 지시 2026-11-24). */
+    status: '등록 상태',
     progress: '진행 상태',
     lineNo: '순번',
     item: '품목',
+    itemCode: '품목 코드',
+    itemName: '품목명',
     orderedQty: '발주 수량',
     receivedQty: '입하 수량',
-    remainingQty: '잔량',
+    remainingQty: '미입하 수량',
     uom: '단위',
-    tolerance: '허용 범위(초과/부족)',
+    tolerance: '허용 수량(초과/부족)',
     orderType: '발주 유형',
     purchaseGroup: '구매 그룹',
     ioType: '입출고 유형',
     storageLocation: '창고',
-    cancelled: '취소',
+    cancelled: '취소 여부',
     /** 외자 발주(발주 유형 `PO`) 라인의 ERP 통관번호 / 순번(서버 장부 P-143). */
     customsClearance: '통관번호',
     q: '발주 번호 검색',
@@ -40,9 +43,11 @@ export const erpPurchaseOrder = {
   filters: {
     all: '전체',
     /* 조회 상자 선택칸 이름(#358). 목록 열 · 칩은 `fields` 이름 그대로. */
-    supplierSelect: '공급사 선택',
-    plantSelect: '공장 선택',
-    statusSelect: '상태 선택',
+    supplierSelect: '공급사 검색',
+    plantSelect: '공장 검색',
+    statusSelect: '등록 상태 선택',
+    /** 발주일 칸의 흐린 안내(사용자 지시 2026-11-24). */
+    orderDatePlaceholder: '발주일을 선택하세요',
     orderTypeSelect: '발주 유형 선택',
     /** 「조건 더보기」에 접힌 조건의 칩 — 「상태: 반려」처럼 칸 이름과 값을 한 줄로. */
     chip: (label: string, value: string): string => `${label}: ${value}`,
@@ -51,6 +56,12 @@ export const erpPurchaseOrder = {
    * 진행 — 입하가 다 됐는가(사용자 지시 2026-10-28). 조건 단추와 목록 열이 같은 낱말을 쓴다.
    * 표지는 서버 `receiptStatusCode` 의 넷이다.
    */
+  /** 등록 상태 표시명(사용자 지시 2026-11-24) — 코드값별. */
+  registrationStatus: {
+    OPEN: '진행',
+    CLOSED: '완료',
+    CANCELLED: '취소',
+  },
   progress: {
     group: '진행 상태',
     all: '전체',

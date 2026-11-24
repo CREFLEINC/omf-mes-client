@@ -214,7 +214,7 @@ describe('ErpBomScreen', () => {
     });
   });
 
-  it('「BOM 있는 품목만」을 끄면 그 조건 없이 부른다', async () => {
+  it('「BOM이 있는 품목」을 끄면 그 조건 없이 부른다', async () => {
     const { urls, user } = renderScreen([]);
     await screen.findByText('SYN-PARENT');
 
@@ -274,6 +274,10 @@ describe('ErpBomScreen', () => {
     expect(within(facts).getByText('SYN-BOM')).toBeInTheDocument();
     expect(within(facts).getByText('1 SYN-EA')).toBeInTheDocument();
     expect(await within(facts).findByText('SYN-PARENT')).toHaveClass('bom-tree-code');
+    // 상세 칸은 품목명 · 품목 코드 순(사용자 지시 2026-11-24) — 나머지 순서는 그대로.
+    expect(
+      Array.from(facts.querySelectorAll('dt'), (term) => term.textContent).slice(0, 3),
+    ).toEqual([t.parent.itemName, t.parent.itemCode, t.parent.itemType]);
     expect(tree().getByText('SYN-CHILD-1')).toHaveClass('bom-tree-code');
     expect(await tree().findByText('2.5 SYN-EA')).toBeInTheDocument();
     expect(tree().getByText('1,000 SYN-EA')).toBeInTheDocument();
@@ -284,6 +288,11 @@ describe('ErpBomScreen', () => {
     expect(rows[0]).toHaveTextContent('SYN-PARENT');
     expect(rows[1]).toHaveTextContent('SYN-CHILD-1');
     expect(rows[2]).toHaveTextContent('SYN-CHILD-2');
+    // 필수 여부는 「필수 · 선택」으로(「예 · 아니오」가 어색하다 — 사용자 지시 2026-11-24).
+    const mandatoryOf = (row: HTMLElement | undefined) =>
+      Array.from(row?.querySelectorAll('td') ?? []).at(-1)?.textContent;
+    expect(mandatoryOf(rows[1])).toBe(t.values.mandatory);
+    expect(mandatoryOf(rows[2])).toBe(t.values.optional);
     // 뿌리는 하위 구성을 펼친 채로 서고, 자품목은 하위 BOM 이 없어 단추가 없다.
     expect(tree().getByRole('button', { name: 'SYN-PARENT · 합성 모품목 접기' })).toHaveAttribute(
       'aria-expanded',

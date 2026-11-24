@@ -5,7 +5,7 @@ export const erpBom = {
   title: 'BOM 조회 (ERP)',
   breadcrumbRoot: '시스템 관리',
   fields: {
-    hasBom: 'BOM이 있는 품목만',
+    hasBom: 'BOM이 있는 품목',
     itemType: '품목 유형 선택',
     q: '품목 검색',
     qPlaceholder: '품목 코드 또는 품목명을 입력하세요',
@@ -50,8 +50,9 @@ export const erpBom = {
   },
   values: {
     empty: '—',
-    yes: '예',
-    no: '아니오',
+    /** 필수 여부 열 — 품목 확장속성의 구성품 표와 같은 말(「예 · 아니오」가 어색하다 — 사용자 지시 2026-11-24). */
+    mandatory: '필수',
+    optional: '선택',
     loadingName: '불러오는 중',
     failedName: '불러오지 못함',
     unknown: '등록되지 않은 품목',

@@ -10,6 +10,9 @@ import type { PurchaseOrderListItem } from './types';
 
 const t = messages.erpPurchaseOrder;
 
+const displayOr = (value: string | null | undefined): string =>
+  value === null || value === undefined || value.trim() === '' ? t.values.missing : value;
+
 export interface ErpPurchaseOrderListPaneProps {
   rows: PurchaseOrderListItem[];
   isLoading: boolean;
@@ -17,6 +20,11 @@ export interface ErpPurchaseOrderListPaneProps {
   meta: PageNavMeta;
   selectedId: number | null;
   supplierNameOf: (id: number) => string;
+  plantNameOf: (id: number) => string;
+  /** ERP 발주 유형(공통코드 `ORDER_TYPE`) — 서버 #737 · P-67 */
+  orderTypeNameOf: (code: string | null | undefined) => string;
+  /** ERP 구매그룹(공통코드 `PUR_GROUP`) — 서버 #737 · P-67 */
+  purchaseGroupNameOf: (code: string | null | undefined) => string;
   statusNameOf: (code: string) => string;
   onSelect: (purchaseOrderId: number) => void;
   /** 고른 줄을 다시 누르면 고르기를 푼다. */
@@ -35,6 +43,9 @@ export const ErpPurchaseOrderListPane = ({
   meta,
   selectedId,
   supplierNameOf,
+  plantNameOf,
+  orderTypeNameOf,
+  purchaseGroupNameOf,
   statusNameOf,
   onSelect,
   onUnselect,
@@ -49,7 +60,32 @@ export const ErpPurchaseOrderListPane = ({
       width: '168px',
       render: (row) => <OneLine text={supplierNameOf(row.supplierId)} />,
     },
+    /* 공장 · 발주 유형 · 구매 그룹 · 입고 예정일 — 목록에서도 본다(되살림 · 사용자 지시 2026-11-24). */
+    {
+      key: 'plantId',
+      header: t.fields.plant,
+      width: '112px',
+      render: (row) => <OneLine text={plantNameOf(row.plantId)} />,
+    },
+    {
+      key: 'erpOrderTypeCode',
+      header: t.fields.orderType,
+      width: '96px',
+      render: (row) => <OneLine text={orderTypeNameOf(row.erpOrderTypeCode)} />,
+    },
+    {
+      key: 'erpPurchaseGroupCode',
+      header: t.fields.purchaseGroup,
+      width: '96px',
+      render: (row) => <OneLine text={purchaseGroupNameOf(row.erpPurchaseGroupCode)} />,
+    },
     { key: 'orderDate', header: t.fields.orderDate, width: '104px' },
+    {
+      key: 'expectedReceiptDate',
+      header: t.fields.expectedReceiptDate,
+      width: '104px',
+      render: (row) => displayOr(row.expectedReceiptDate),
+    },
     {
       key: 'receiptStatusCode',
       header: t.fields.progress,
@@ -82,6 +118,8 @@ export const ErpPurchaseOrderListPane = ({
       <ErpListTable
         label={t.panes.list}
         storageKey="omf-mes:erp-purchase-order:columns:orders"
+        /* 열 9개 — 줄여 잘리지 않게 가로로 구른다(사용자 지시 2026-11-24 열 되살림). */
+        scrollX
         columns={columns}
         rows={rows}
         getRowId={(row) => String(row.purchaseOrderId)}

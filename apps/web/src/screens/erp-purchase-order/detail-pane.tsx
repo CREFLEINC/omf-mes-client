@@ -43,6 +43,14 @@ export interface ErpPurchaseOrderDetailPaneProps {
   linesAction?: ReactNode;
 }
 
+/** 「코드 · 이름」을 두 칸으로 나눈다(사용자 지시 2026-11-24). 이름을 못 풀었으면(불러오는 중 · 없음) 안내를 코드 칸에 둔다. */
+const splitCodeName = (label: string): { code: string; name: string } => {
+  const at = label.indexOf(' · ');
+  return at < 0
+    ? { code: label, name: t.values.missing }
+    : { code: label.slice(0, at), name: label.slice(at + 3) };
+};
+
 /** 라인 취소 표시 — 취소 표지와 ERP 가 취소를 보낸 시각(공장 시각). 취소되지 않았으면 「-」 */
 const renderCancelled = (cancelledAt: string | null | undefined) => {
   if (cancelledAt === null || cancelledAt === undefined || cancelledAt === '') {
@@ -123,42 +131,50 @@ export const ErpPurchaseOrderDetailPane = ({
   ];
 
   /* 잔량은 서버가 내리지 않는다 — 발주에서 입하를 뺀 값을 표시로만 보인다(0 아래로 내리지 않는다). */
+  /* 수량은 단위를 붙여 보인다 — 단위 칸은 따로 두지 않는다(사용자 지시 2026-11-24). */
+  const withUom = (qty: number, uomId: number): string => `${formatQty(qty)} ${uomNameOf(uomId)}`;
   const columns: Column<PurchaseOrderLine>[] = [
     { key: 'lineNo', header: t.fields.lineNo, width: '72px', align: 'end' },
     {
       key: 'itemId',
-      header: t.fields.item,
-      width: '200px',
-      render: (row) => <OneLine text={itemNameOf(row.itemId)} />,
+      header: t.fields.itemCode,
+      width: '120px',
+      render: (row) => <OneLine text={splitCodeName(itemNameOf(row.itemId)).code} />,
+    },
+    {
+      key: 'itemName',
+      header: t.fields.itemName,
+      width: '160px',
+      render: (row) => <OneLine text={splitCodeName(itemNameOf(row.itemId)).name} />,
     },
     {
       key: 'orderedQty',
       header: t.fields.orderedQty,
       width: '104px',
       align: 'end',
-      render: (row) => formatQty(row.orderedQty),
+      render: (row) => withUom(row.orderedQty, row.uomId),
     },
     {
       key: 'receivedQty',
       header: t.fields.receivedQty,
       width: '104px',
       align: 'end',
-      render: (row) => formatQty(row.receivedQty),
+      render: (row) => withUom(row.receivedQty, row.uomId),
     },
     {
       key: 'remainingQty',
       header: t.fields.remainingQty,
       width: '104px',
       align: 'end',
-      render: (row) => formatQty(Math.max(0, row.orderedQty - row.receivedQty)),
+      render: (row) => withUom(Math.max(0, row.orderedQty - row.receivedQty), row.uomId),
     },
-    { key: 'uomId', header: t.fields.uom, width: '64px', render: (row) => uomNameOf(row.uomId) },
     {
       key: 'tolerance',
       header: t.fields.tolerance,
-      width: '128px',
+      width: '144px',
       align: 'end',
-      render: (row) => `${formatQty(row.toleranceOverQty)} / ${formatQty(row.toleranceUnderQty)}`,
+      render: (row) =>
+        `${formatQty(row.toleranceOverQty)} / ${withUom(row.toleranceUnderQty, row.uomId)}`,
     },
     /* 통관번호 / 순번 — 외자 발주에만 있는 칸이라 그때만 세운다(omf-all-around#206). */
     ...(isForeignOrder(header)

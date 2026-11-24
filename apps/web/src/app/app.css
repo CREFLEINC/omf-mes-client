@@ -29088,19 +29088,6 @@ body:has(.iqc-inspection-step-measure [aria-expanded='true'])
 }
 
 /*
- * 구매발주 조회(ERP) 발주 유형 조건 — 코드 이름이 길어(「외자발주(직수입)(IMPORT P/O)」) 칸이 이름만큼 넓어지면 조회 ·
- * 초기화가 다음 줄로 밀린다. 폭을 정하고 넘치는 이름은 말줄임한다.
- */
-.erp-po-order-type-field {
-  width: 13rem;
-}
-
-.erp-po-order-type-field > :not(label) {
-  width: 100%;
-  min-width: 0;
-}
-
-/*
  * ERP 구매발주 · 수주 · W/O 번호 검색칸 — 좁음 폭(C-19 `filter-field-sm`) 안에 검색창 테두리 상자가 들어오게 안쪽 여백까지
  * 칸 폭에 넣는다. 그대로 두면 상자가 칸보다 24px 넓어 옆의 「조회」를 덮는다. 폭 클래스가 칸 안 단추를 칸 폭으로 늘리는
  * 규칙은 선택 칸을 위한 것이라, 검색창의 지우기(×) 단추는 제 크기로 되돌린다 — 늘어나면 글자 칸이 사라진다.
@@ -39884,4 +39871,52 @@ body:has(
 /* ERP 공통코드 — 코드값 검색 줄을 조회 조건 상자처럼 감싼다(사용자 지시 2026-11-24). */
 .erp-code-value-filter > .filter-bar {
   margin-bottom: 0;
+}
+
+/*
+ * ERP BOM 구성품 표 — 품목(하이라키) 칸만 왼쪽에 붙인다(사용자 지시 2026-11-24). ERP 데이터 표 공용 규칙이 칸과 칸 안
+ * 덩어리를 가운데로 모아, 단계마다 줄 시작점이 달라지고 왼쪽에 빈 자리가 생겼다. 열 순서를 바꿔도 따라가게 칸 내용으로 고른다.
+ */
+.erp-data-list.bom-tree-table table td:has(> .bom-tree-cell):nth-child(n):nth-child(n) {
+  text-align: left;
+}
+
+.erp-data-list.bom-tree-table table td > .bom-tree-cell {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+/* ERP 구매발주 — 조회 칸 폭(사용자 지시 2026-11-24). 선택칸 넷(공급사 · 공장 · 등록 상태 · 발주 유형)은 같은 폭으로 줄이고,
+   발주일은 흐린 문구 「발주일을 선택하세요」 길이만큼만(고르면 기간 길이를 따른다). */
+.erp-po-supplier-field {
+  flex: 0 0 auto;
+  width: 176px;
+}
+
+.erp-po-supplier-field > :not(label),
+.erp-po-supplier-field > * > button {
+  width: 100%;
+  min-width: 0;
+}
+
+.erp-po-period-field {
+  flex: 0 0 auto;
+  width: max-content;
+}
+
+/* 「조건 더보기」로 펼친 둘째 줄 — 첫 줄과 사이를 띄운다. */
+.erp-po-more > .filter-bar {
+  margin-top: 12px;
+}
+
+/*
+ * 상세 구획을 좁게 끌어도 구성품 표의 머리글(「필수 여부」 등) · 품목 칸이 잘리지 않게 — 표 상자에 최소 폭을 두어 열 맞춤
+ * (`patterns/column-fit.tsx`)이 칸을 줄이지 않게 하고, 그보다 좁으면 구성품 구획 안에서만 가로로 구른다(사용자 지시 2026-11-24).
+ */
+.erp-data-sub:has(> .erp-data-list.bom-tree-table) {
+  overflow-x: auto;
+}
+
+.erp-data-sub > .erp-data-list.bom-tree-table {
+  min-width: 36rem;
 }

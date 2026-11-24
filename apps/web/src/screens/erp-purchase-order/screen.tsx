@@ -134,6 +134,9 @@ export const ErpPurchaseOrderScreen = () => {
             meta={meta}
             selectedId={selectedId}
             supplierNameOf={suppliers.nameOf}
+            plantNameOf={plants.nameOf}
+            orderTypeNameOf={orderTypes.nameOf}
+            purchaseGroupNameOf={purchaseGroups.nameOf}
             statusNameOf={status.nameOf}
             onSelect={(id) => setSearchParams(toSelectionSearchParams(searchParams, id))}
             onUnselect={() => setSearchParams(toClearedSelectionSearchParams(searchParams))}

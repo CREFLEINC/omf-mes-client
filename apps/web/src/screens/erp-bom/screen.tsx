@@ -41,7 +41,9 @@ import type { Bom } from './types';
 
 const t = messages.erpBom;
 
-const yesNo = (value: boolean): string => (value ? t.values.yes : t.values.no);
+/** 필수 여부 — 「필수 · 선택」(「예 · 아니오」가 어색하다 — 사용자 지시 2026-11-24). */
+const mandatoryLabel = (value: boolean): string =>
+  value ? t.values.mandatory : t.values.optional;
 
 const formatQty = (qty: number, uom: string): string => `${qty.toLocaleString()} ${uom}`;
 
@@ -210,7 +212,10 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
   };
 
   const columns: Column<BomTreeRow>[] = [
-    /* 폭을 주지 않는 유일한 열 — 들여 쓴 품목 이름이 남는 폭을 다 쓴다. */
+    /*
+     * 폭을 주지 않는 유일한 열 — 들여 쓴 품목 이름이 남는 폭을 다 쓴다. 칸 안은 왼쪽 정렬(app.css `.bom-tree-table`)이라
+     * 단계마다 들여 쓴 자리 · 연결선이 줄마다 같은 세로선에 선다.
+     */
     {
       key: 'item',
       header: t.tree.item,
@@ -249,8 +254,10 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
     {
       key: 'isMandatory',
       header: t.componentTable.isMandatory,
-      width: '64px',
-      render: (row) => (row.component === null ? t.values.empty : yesNo(row.component.isMandatory)),
+      /* 머리글 「필수 여부」와 끌기 손잡이가 잘리지 않는 폭(사용자 지시 2026-11-24). */
+      width: '104px',
+      render: (row) =>
+        row.component === null ? t.values.empty : mandatoryLabel(row.component.isMandatory),
     },
   ];
 
@@ -282,12 +289,13 @@ const ParentFacts = ({ item, bom }: ParentFactsProps) => {
   const uomNameOf = useUomNames();
   const detail = item.item;
   const itemFacts = [
+    /* 품목명 · 품목 코드 순(사용자 지시 2026-11-24). */
+    { key: 'name', label: t.parent.itemName, value: detail?.itemName ?? t.values.empty },
     {
       key: 'code',
       label: t.parent.itemCode,
       value: <span className="bom-tree-code">{item.code ?? item.name}</span>,
     },
-    { key: 'name', label: t.parent.itemName, value: detail?.itemName ?? t.values.empty },
     {
       key: 'type',
       label: t.parent.itemType,

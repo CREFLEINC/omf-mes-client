@@ -153,7 +153,25 @@ export const useCodeLookup = (codeGroupCode: string, enabled = true): CodeLookup
 };
 
 /** 상태 표시명 — 공통코드 LOGISTICS_DOCUMENT_STATUS(공유계약 G-32). */
-export const useStatusLookup = (): CodeLookup => useCodeLookup('LOGISTICS_DOCUMENT_STATUS');
+/*
+ * 등록 상태는 「진행 · 완료 · 취소」로 짧게 부른다(사용자 지시 2026-11-24) — 입고 「진행 상태」(입하 전 · 일부 입하 …)와
+ * 갈라 읽히게. 그 밖의 코드는 공통코드 이름 그대로.
+ */
+export const useStatusLookup = (): CodeLookup => {
+  const lookup = useCodeLookup('LOGISTICS_DOCUMENT_STATUS');
+  const labelOf = (code: string, name: string): string =>
+    (t.registrationStatus as Record<string, string | undefined>)[code] ?? name;
+  return {
+    options: lookup.options.map((option) => ({
+      ...option,
+      label: labelOf(option.value, option.label),
+    })),
+    nameOf: (code) =>
+      code === null || code === undefined
+        ? lookup.nameOf(code)
+        : labelOf(code, lookup.nameOf(code)),
+  };
+};
 
 const isNotFound = (error: unknown): boolean => {
   const apiError = toApiError(error);

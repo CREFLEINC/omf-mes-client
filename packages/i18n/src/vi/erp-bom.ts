@@ -6,7 +6,7 @@ export const erpBom: Translated<typeof ko.erpBom> = {
   title: 'Tra cứu BOM (ERP)',
   breadcrumbRoot: 'Quản trị hệ thống',
   fields: {
-    hasBom: 'Chỉ mặt hàng có BOM',
+    hasBom: 'Mặt hàng có BOM',
     itemType: 'Chọn loại',
     q: 'Tìm mặt hàng',
     qPlaceholder: 'Nhập mã hoặc tên mặt hàng',
@@ -47,8 +47,8 @@ export const erpBom: Translated<typeof ko.erpBom> = {
   },
   values: {
     empty: '—',
-    yes: 'Có',
-    no: 'Không',
+    mandatory: 'Bắt buộc',
+    optional: 'Tùy chọn',
     loadingName: 'Đang tải',
     failedName: 'Không tải được',
     unknown: 'Mặt hàng chưa đăng ký',
